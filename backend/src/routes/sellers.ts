@@ -656,7 +656,7 @@ router.post('/:id/send-valuation-email', async (req: Request, res: Response) => 
       fixedAssetTaxRoadPrice,
       landArea: seller.property?.landArea,
       buildingArea: seller.property?.buildingArea,
-    };
+    } as any;
 
     // メール送信
     const { EmailService } = await import('../services/EmailService.supabase');

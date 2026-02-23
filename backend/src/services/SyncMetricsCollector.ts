@@ -232,13 +232,13 @@ property_sync_circuit_breaker_state ${metrics.circuitBreakerState}
       database: 0,
       rateLimit: 0,
       unknown: 0
-    } as Record<string, number>;
+    };
 
     for (const metric of metricsData || []) {
       if (metric.metric_type === 'sync_errors_by_type' && metric.metadata?.error_type) {
         const errorType = metric.metadata.error_type;
         if (errorType in errorsByType) {
-          errorsByType[errorType as keyof typeof errorsByType] += metric.metric_value;
+          (errorsByType as any)[errorType] += metric.metric_value;
         } else {
           errorsByType.unknown += metric.metric_value;
         }
@@ -251,7 +251,7 @@ property_sync_circuit_breaker_state ${metrics.circuitBreakerState}
       successRate: latestMetrics.success_rate || 0,
       duration: latestMetrics.sync_duration_seconds || 0,
       throughput: latestMetrics.sync_throughput_items_per_second || 0,
-      errors: errorsByType,
+      errors: errorsByType as Record<string, number>,
       apiResponseTime: {
         p50: latestMetrics.api_response_time_p50 || 0,
         p95: latestMetrics.api_response_time_p95 || 0,
