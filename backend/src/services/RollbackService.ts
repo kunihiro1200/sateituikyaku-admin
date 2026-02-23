@@ -145,6 +145,7 @@ export class RollbackService {
         success: true,
         restoredCount: snapshotData.length,
         duration,
+        snapshotId,
       };
     } catch (error: any) {
       const duration = Date.now() - startTime;
@@ -164,6 +165,7 @@ export class RollbackService {
         restoredCount: 0,
         error: error.message,
         duration,
+        snapshotId,
       };
     }
   }
