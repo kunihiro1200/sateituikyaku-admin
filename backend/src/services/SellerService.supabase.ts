@@ -17,19 +17,21 @@ import { CalendarService } from './CalendarService.supabase';
 import { ExclusionDateCalculator } from './ExclusionDateCalculator';
 import { SyncQueue } from './SyncQueue';
 
-// イニシャルからフルネ�EムへのマッピングキャチE��ュ
+// イニシャルからフルネームへのマッピングキャッシュ
 let initialsToNameCache: Map<string, string> | null = null;
 let cacheLastUpdated: number = 0;
-const CACHE_DURATION = 5 * 60 * 1000; // 5刁E
+const CACHE_DURATION = 5 * 60 * 1000; // 5分
+
 /**
- * スタチE��のイニシャルからフルネ�Eムを取征E */
+ * スタッフのイニシャルからフルネームを取得
+ */
 async function getEmployeeNameByInitials(initials: string | null | undefined): Promise<string | null> {
   if (!initials) return null;
 
-  // キャチE��ュの有効期限をチェチE��
+  // キャッシュの有効期限をチェック
   const now = Date.now();
   if (!initialsToNameCache || (now - cacheLastUpdated) > CACHE_DURATION) {
-    // キャチE��ュを更新
+    // キャッシュを更新
     await refreshEmployeeCache();
   }
 
@@ -37,7 +39,7 @@ async function getEmployeeNameByInitials(initials: string | null | undefined): P
 }
 
 /**
- * スタチE��惁E��のキャチE��ュを更新
+ * スタッフ情報のキャッシュを更新
  */
 async function refreshEmployeeCache(): Promise<void> {
   try {
@@ -65,7 +67,7 @@ async function refreshEmployeeCache(): Promise<void> {
     });
 
     cacheLastUpdated = Date.now();
-    console.log(`✁EEmployee initials cache updated: ${initialsToNameCache.size} employees`);
+    console.log(`✅ Employee initials cache updated: ${initialsToNameCache.size} employees`);
   } catch (error) {
     console.error('Error refreshing employee cache:', error);
   }
@@ -75,15 +77,17 @@ export class SellerService extends BaseRepository {
   private syncQueue?: SyncQueue;
 
   /**
-   * 同期キューを設定（オプション�E�E   */
+   * 同期キューを設定（オプション）
+   */
   setSyncQueue(syncQueue: SyncQueue): void {
     this.syncQueue = syncQueue;
   }
 
   /**
-   * 売主を登録�E�Ehase 1拡張版！E   */
+   * 売主を登録（Phase 1拡張版）
+   */
   async createSeller(data: CreateSellerRequest, employeeId: string): Promise<CreateSellerResponse> {
-    // Phase 1: 重褁E��ェチE��
+    // Phase 1: 重複チェック
     const encryptedPhone = encrypt(data.phoneNumber);
     const encryptedEmail = data.email ? encrypt(data.email) : undefined;
     
@@ -100,7 +104,8 @@ export class SellerService extends BaseRepository {
         }
       : undefined;
 
-    // Phase 1: 売主番号を生成（提供されてぁE��ぁE��合！E    let sellerNumber = data.sellerNumber;
+    // Phase 1: 売主番号を生成（提供されていない場合）
+    let sellerNumber = data.sellerNumber;
     if (!sellerNumber) {
       try {
         sellerNumber = await sellerNumberService.generateWithRetry();
@@ -112,12 +117,14 @@ export class SellerService extends BaseRepository {
       }
     }
 
-    // 除外日を計箁E    const exclusionDate = ExclusionDateCalculator.calculateExclusionDate(
+    // 除外日を計算
+    const exclusionDate = ExclusionDateCalculator.calculateExclusionDate(
       data.inquiryDate,
       data.site
     );
 
-    // 個人惁E��を暗号匁E    const encryptedData = {
+    // 個人情報を暗号化
+    const encryptedData = {
       name: encrypt(data.name),
       address: encrypt(data.address),
       phone_number: encryptedPhone,
@@ -138,8 +145,8 @@ export class SellerService extends BaseRepository {
       exclusion_date: exclusionDate,
     };
 
-    // 売主を作�E
-    const { data: seller, error: sellerError } = await this.table('sellers')
+    // 売主を作成
+    const { data: seller, error: sellerError } = await this.table<Seller>('sellers')
       .insert(encryptedData)
       .select()
       .single();
@@ -148,7 +155,7 @@ export class SellerService extends BaseRepository {
       throw new Error(`Failed to create seller: ${sellerError?.message}`);
     }
 
-    // Phase 1: 重褁E��歴を記録
+    // Phase 1: 重複履歴を記録
     if (duplicateMatches.length > 0) {
       for (const match of duplicateMatches) {
         try {
@@ -159,11 +166,12 @@ export class SellerService extends BaseRepository {
           );
         } catch (error) {
           console.error('Failed to record duplicate history:', error);
-          // 履歴記録の失敗�E致命皁E��はなぁE�Eで続衁E        }
+          // 履歴記録の失敗は致命的ではないので続行
+        }
       }
     }
 
-    // 物件惁E��を作�E
+    // 物件情報を作成
     const { error: propertyError } = await this.table('properties').insert({
       seller_id: seller.id,
       address: data.property.address,
@@ -189,16 +197,18 @@ export class SellerService extends BaseRepository {
     // 復号化して返す
     const decryptedSeller = await this.decryptSeller(seller);
     
-    // キャチE��ュを無効化（新しいセラーが追加された�EでリストキャチE��ュをクリア�E�E    await CacheHelper.delPattern('sellers:list:*');
+    // キャッシュを無効化（新しいセラーが追加されたのでリストキャッシュをクリア）
+    await CacheHelper.delPattern('sellers:list:*');
     
-    // スプレチE��シートに同期�E�非同期�E�E    if (this.syncQueue) {
+    // スプレッドシートに同期（非同期）
+    if (this.syncQueue) {
       await this.syncQueue.enqueue({
         type: 'create',
         sellerId: seller.id,
       });
     }
     
-    // Phase 1: 重褁E��告と一緒に返す
+    // Phase 1: 重複警告と一緒に返す
     return {
       seller: decryptedSeller,
       duplicateWarning,
@@ -206,14 +216,18 @@ export class SellerService extends BaseRepository {
   }
 
   /**
-   * 売主惁E��を取征E   * @param sellerId - 売主ID
-   * @param includeDeleted - 削除済み売主も含めるか（デフォルチE false�E�E   */
+   * 売主情報を取得
+   * @param sellerId - 売主ID
+   * @param includeDeleted - 削除済み売主も含めるか（デフォルト: false）
+   */
   async getSeller(sellerId: string, includeDeleted: boolean = false): Promise<Seller | null> {
-    // 売主惁E��を取征E    let query = this.table('sellers')
+    // 売主情報を取得
+    let query = this.table<Seller>('sellers')
       .select('*')
       .eq('id', sellerId);
     
-    // チE��ォルトで削除済みを除夁E    if (!includeDeleted) {
+    // デフォルトで削除済みを除外
+    if (!includeDeleted) {
       query = query.is('deleted_at', null);
     }
     
@@ -223,11 +237,13 @@ export class SellerService extends BaseRepository {
       return null;
     }
 
-    // 物件惁E��を取得！Esingle()ではなく�E列で取得！E    let propertyQuery = this.table('properties')
+    // 物件情報を取得（.single()ではなく配列で取得）
+    let propertyQuery = this.table('properties')
       .select('*')
       .eq('seller_id', sellerId);
     
-    // チE��ォルトで削除済み物件を除夁E    if (!includeDeleted) {
+    // デフォルトで削除済み物件を除外
+    if (!includeDeleted) {
       propertyQuery = propertyQuery.is('deleted_at', null);
     }
     
@@ -246,29 +262,34 @@ export class SellerService extends BaseRepository {
       visitAssignee: decryptedSeller.visitAssignee,
     });
     
-    // 除外日を計箁E    const exclusionDate = ExclusionDateCalculator.calculateExclusionDate(
+    // 除外日を計算
+    const exclusionDate = ExclusionDateCalculator.calculateExclusionDate(
       decryptedSeller.inquiryDate,
       decryptedSeller.site
     );
     decryptedSeller.exclusionDate = exclusionDate;
     
-    // 物件惁E��を追加�E�カラム名をcamelCaseに変換�E�E    if (!propertyError && properties && properties.length > 0) {
-      const property = properties[0]; // 最初�E物件を使用
+    // 物件情報を追加（カラム名をcamelCaseに変換）
+    if (!propertyError && properties && properties.length > 0) {
+      const property = properties[0]; // 最初の物件を使用
       decryptedSeller.property = {
         id: property.id,
         sellerId: property.seller_id,
-        address: property.property_address || property.address, // property_addressを優允E        prefecture: property.prefecture,
+        address: property.property_address || property.address, // property_addressを優先
+        prefecture: property.prefecture,
         city: property.city,
         propertyType: property.property_type,
         landArea: property.land_area,
         buildingArea: property.building_area,
         landAreaVerified: property.land_area_verified,
         buildingAreaVerified: property.building_area_verified,
-        buildYear: property.construction_year || property.build_year, // construction_yearを優允E        structure: property.structure,
+        buildYear: property.construction_year || property.build_year, // construction_yearを優先
+        structure: property.structure,
         floorPlan: property.floor_plan,
         floors: property.floors,
         rooms: property.rooms,
-        sellerSituation: property.current_status || property.seller_situation, // current_statusを優允E        currentStatus: property.current_status, // 新しいフィールドとして追加
+        sellerSituation: property.current_status || property.seller_situation, // current_statusを優先
+        currentStatus: property.current_status, // 新しいフィールドとして追加
         parking: property.parking,
         additionalInfo: property.additional_info,
       };
@@ -278,12 +299,13 @@ export class SellerService extends BaseRepository {
   }
 
   /**
-   * 売主惁E��を更新
+   * 売主情報を更新
    */
   async updateSeller(sellerId: string, data: UpdateSellerRequest): Promise<Seller> {
     const updates: any = {};
 
-    // 暗号化が忁E��なフィールチE    if (data.name !== undefined) {
+    // 暗号化が必要なフィールド
+    if (data.name !== undefined) {
       updates.name = encrypt(data.name);
     }
     if (data.address !== undefined) {
@@ -296,7 +318,8 @@ export class SellerService extends BaseRepository {
       updates.email = data.email ? encrypt(data.email) : null;
     }
 
-    // 暗号化不要なフィールチE    if (data.status !== undefined) {
+    // 暗号化不要なフィールド
+    if (data.status !== undefined) {
       updates.status = data.status;
     }
     if (data.confidence !== undefined) {
@@ -310,7 +333,8 @@ export class SellerService extends BaseRepository {
     }
     if (data.appointmentDate !== undefined) {
       updates.appointment_date = data.appointmentDate;
-      // appointmentDateをvisit_dateとvisit_timeに刁E��して保孁E      if (data.appointmentDate) {
+      // appointmentDateをvisit_dateとvisit_timeに分割して保存
+      if (data.appointmentDate) {
         const appointmentDateObj = new Date(data.appointmentDate);
         updates.visit_date = appointmentDateObj.toISOString().split('T')[0]; // YYYY-MM-DD
         const hours = appointmentDateObj.getHours().toString().padStart(2, '0');
@@ -343,17 +367,21 @@ export class SellerService extends BaseRepository {
       updates.valuation_assigned_by = data.valuationAssignedBy;
     }
 
-    // 競合情報フィールチE    if ((data as any).competitorName !== undefined) {
+    // 競合情報フィールド
+    if ((data as any).competitorName !== undefined) {
       updates.competitor_name = (data as any).competitorName;
     }
     if ((data as any).competitors !== undefined) {
-      // competitorsはcompetitor_nameとして保存（カンマ区刁E��の斁E���E�E�E      updates.competitor_name = (data as any).competitors;
+      // competitorsはcompetitor_nameとして保存（カンマ区切りの文字列）
+      updates.competitor_name = (data as any).competitors;
     }
     if ((data as any).exclusiveDecisionDate !== undefined) {
-      // exclusive_decision_dateカラムは存在しなぁE��め、contract_year_monthに保孁E      updates.contract_year_month = (data as any).exclusiveDecisionDate;
+      // exclusive_decision_dateカラムは存在しないため、contract_year_monthに保存
+      updates.contract_year_month = (data as any).exclusiveDecisionDate;
     }
     if ((data as any).exclusiveOtherDecisionFactors !== undefined) {
-      // exclusive_other_decision_factorは単数形�E��E列をカンマ区刁E��斁E���Eとして保存！E      const factors = (data as any).exclusiveOtherDecisionFactors;
+      // exclusive_other_decision_factorは単数形（配列をカンマ区切り文字列として保存）
+      const factors = (data as any).exclusiveOtherDecisionFactors;
       if (Array.isArray(factors) && factors.length > 0) {
         updates.exclusive_other_decision_factor = factors.join(', ');
       } else {
@@ -383,11 +411,13 @@ export class SellerService extends BaseRepository {
       updates.exclusion_action = (data as any).exclusionAction;
     }
 
-    // 冁E��前伝達事頁E    if (data.viewingNotes !== undefined) {
+    // 内覧前伝達事項
+    if (data.viewingNotes !== undefined) {
       updates.viewing_notes = this.sanitizeViewingNotes(data.viewingNotes);
     }
 
-    // 最新状況E    if (data.latestStatus !== undefined) {
+    // 最新状況
+    if (data.latestStatus !== undefined) {
       updates.latest_status = this.sanitizeLatestStatus(data.latestStatus);
     }
 
@@ -402,15 +432,17 @@ export class SellerService extends BaseRepository {
       updates.inquiry_date = data.inquiryDate;
     }
 
-    // 郵送スチE�EタスフィールチE    if ((data as any).mailingStatus !== undefined) {
+    // 郵送ステータスフィールド
+    if ((data as any).mailingStatus !== undefined) {
       updates.mailing_status = (data as any).mailingStatus;
     }
     if ((data as any).mailSentDate !== undefined) {
       updates.mail_sent_date = (data as any).mailSentDate;
     }
 
-    // 除外日を計算！EnquiryDateまた�Esiteが更新される場合！E    if (data.inquiryDate !== undefined || data.site !== undefined) {
-      // 現在の売主チE�Eタを取得して、更新されなぁE��ィールド�E値を使用
+    // 除外日を計算（inquiryDateまたはsiteが更新される場合）
+    if (data.inquiryDate !== undefined || data.site !== undefined) {
+      // 現在の売主データを取得して、更新されないフィールドの値を使用
       const { data: currentSeller } = await this.table('sellers')
         .select('inquiry_date, site')
         .eq('id', sellerId)
@@ -468,14 +500,14 @@ export class SellerService extends BaseRepository {
       },
     });
 
-    const { data: seller, error } = await this.table('sellers')
+    const { data: seller, error } = await this.table<Seller>('sellers')
       .update(updates)
       .eq('id', sellerId)
       .select()
       .single();
 
     if (error) {
-      console.error('❁EUpdate seller error:', error);
+      console.error('❌ Update seller error:', error);
       throw new Error(`Failed to update seller: ${error.message}`);
     }
 
@@ -483,13 +515,14 @@ export class SellerService extends BaseRepository {
       throw new Error('Seller not found after update');
     }
 
-    console.log('✁EUpdated seller from DB:', {
+    console.log('✅ Updated seller from DB:', {
       id: seller.id,
       phone_number: (seller as any).phone_number ? `${(seller as any).phone_number.substring(0, 20)}...` : 'empty',
       raw_phone_number_length: (seller as any).phone_number?.length || 0,
     });
 
-    // チE�Eタベ�Eスから再度取得して確誁E    const { data: verifyData, error: verifyError } = await this.table('sellers')
+    // データベースから再度取得して確認
+    const { data: verifyData, error: verifyError } = await this.table('sellers')
       .select('*')
       .eq('id', sellerId)
       .single();
@@ -505,10 +538,12 @@ export class SellerService extends BaseRepository {
 
     const decryptedSeller = await this.decryptSeller(seller);
 
-    // キャチE��ュを無効匁E    await CacheHelper.del(CacheHelper.generateKey('seller', sellerId));
+    // キャッシュを無効化
+    await CacheHelper.del(CacheHelper.generateKey('seller', sellerId));
     await CacheHelper.delPattern('sellers:list:*');
 
-    // スプレチE��シートに同期�E�非同期�E�E    if (this.syncQueue) {
+    // スプレッドシートに同期（非同期）
+    if (this.syncQueue) {
       await this.syncQueue.enqueue({
         type: 'update',
         sellerId: sellerId,
@@ -519,7 +554,7 @@ export class SellerService extends BaseRepository {
   }
 
   /**
-   * 売主惁E��を更新し、予紁E��報があれ�Eカレンダーイベントを作�E/更新
+   * 売主情報を更新し、予約情報があればカレンダーイベントを作成/更新
    */
   async updateSellerWithAppointment(
     sellerId: string,
@@ -532,31 +567,33 @@ export class SellerService extends BaseRepository {
       assignedTo: data.assignedTo,
     });
 
-    // まず売主惁E��を更新
+    // まず売主情報を更新
     const updatedSeller = await this.updateSeller(sellerId, data);
 
-    // 予紁E��報がある場合、カレンダーイベントを作�E/更新
+    // 予約情報がある場合、カレンダーイベントを作成/更新
     if (data.appointmentDate && data.assignedTo) {
       try {
         const calendarService = new CalendarService();
 
-        // 売主の詳細惁E��を取征E        const { data: property } = await this.table('properties')
+        // 売主の詳細情報を取得
+        const { data: property } = await this.table('properties')
           .select('*')
           .eq('seller_id', sellerId)
           .single();
 
         if (!property) {
-          console.warn('⚠�E�E Property not found for seller, skipping calendar event');
+          console.warn('⚠️  Property not found for seller, skipping calendar event');
           return updatedSeller;
         }
 
-        // 拁E��老E�E惁E��を取征E        const { data: assignedEmployee } = await this.table('employees')
+        // 担当者の情報を取得
+        const { data: assignedEmployee } = await this.table('employees')
           .select('id, name, email')
           .eq('id', data.assignedTo)
           .single();
 
         if (!assignedEmployee) {
-          console.warn('⚠�E�E Assigned employee not found, skipping calendar event');
+          console.warn('⚠️  Assigned employee not found, skipping calendar event');
           return updatedSeller;
         }
 
@@ -566,26 +603,29 @@ export class SellerService extends BaseRepository {
           assignedEmployeeEmail: assignedEmployee.email,
         });
 
-        // 既存�E予紁E��あるか確誁E        const { data: existingAppointments } = await this.table('appointments')
+        // 既存の予約があるか確認
+        const { data: existingAppointments } = await this.table('appointments')
           .select('*')
           .eq('seller_id', sellerId)
           .order('created_at', { ascending: false })
           .limit(1);
 
         const appointmentDate = new Date(data.appointmentDate);
-        const endDate = new Date(appointmentDate.getTime() + 60 * 60 * 1000); // 1時間征E
+        const endDate = new Date(appointmentDate.getTime() + 60 * 60 * 1000); // 1時間後
+
         if (existingAppointments && existingAppointments.length > 0) {
           const existingAppointment = existingAppointments[0];
           
-          // 拁E��老E��変更された場合�E、古ぁE��ベントを削除して新しいイベントを作�E
+          // 担当者が変更された場合は、古いイベントを削除して新しいイベントを作成
           if (existingAppointment.assigned_employee_id !== assignedEmployee.id) {
             console.log('🔄 Assigned employee changed, recreating calendar event');
             console.log('  Old employee:', existingAppointment.assigned_employee_id);
             console.log('  New employee:', assignedEmployee.id);
             
-            // 古ぁE��ポイントメントを削除�E�カレンダーイベントも削除される！E            await calendarService.cancelAppointment(existingAppointment.id);
+            // 古いアポイントメントを削除（カレンダーイベントも削除される）
+            await calendarService.cancelAppointment(existingAppointment.id);
             
-            // 新しいアポイントメントを作�E
+            // 新しいアポイントメントを作成
             console.log('✨ Creating new appointment for new assignee');
             await calendarService.createAppointment(
               {
@@ -605,7 +645,7 @@ export class SellerService extends BaseRepository {
               property.address
             );
           } else {
-            // 拁E��老E��同じ場合�E、既存�E予紁E��更新
+            // 担当者が同じ場合は、既存の予約を更新
             console.log('📝 Updating existing appointment (same assignee)');
             await calendarService.updateAppointment(existingAppointment.id, {
               startTime: appointmentDate,
@@ -615,7 +655,7 @@ export class SellerService extends BaseRepository {
             });
           }
         } else {
-          // 新しい予紁E��作�E
+          // 新しい予約を作成
           console.log('✨ Creating new appointment');
           await calendarService.createAppointment(
             {
@@ -636,17 +676,19 @@ export class SellerService extends BaseRepository {
           );
         }
 
-        console.log('✁ECalendar event created/updated successfully');
+        console.log('✅ Calendar event created/updated successfully');
       } catch (calendarError: any) {
-        console.error('❁EFailed to create/update calendar event:', calendarError.message);
-        // カレンダーエラーは無視して続行（売主惁E��は更新済み�E�E      }
+        console.error('❌ Failed to create/update calendar event:', calendarError.message);
+        // カレンダーエラーは無視して続行（売主情報は更新済み）
+      }
     }
 
     return updatedSeller;
   }
 
   /**
-   * 売主リストを取得（�Eージネ�Eション、フィルタ対応！E   */
+   * 売主リストを取得（ページネーション、フィルタ対応）
+   */
   async listSellers(params: ListSellersParams): Promise<PaginatedResult<Seller>> {
     const {
       page = 1,
@@ -657,17 +699,20 @@ export class SellerService extends BaseRepository {
       nextCallDateTo,
       sortBy = 'inquiry_date',
       sortOrder = 'desc',
-      includeDeleted = false, // チE��ォルトで削除済みを除夁E      statusCategory, // サイドバーカチE��リフィルター
+      includeDeleted = false, // デフォルトで削除済みを除外
+      statusCategory, // サイドバーカテゴリフィルター
     } = params;
 
-    // JST今日の日付を取征E    const now = new Date();
+    // JST今日の日付を取得
+    const now = new Date();
     const jstTime = new Date(now.getTime() + (9 * 60 * 60 * 1000));
     const todayJST = `${jstTime.getUTCFullYear()}-${String(jstTime.getUTCMonth() + 1).padStart(2, '0')}-${String(jstTime.getUTCDate()).padStart(2, '0')}`;
     
-    // 未査定�E基準日
+    // 未査定の基準日
     const cutoffDate = '2025-12-08';
 
-    // キャチE��ュキーを生戁E    const cacheKey = CacheHelper.generateKey(
+    // キャッシュキーを生成
+    const cacheKey = CacheHelper.generateKey(
       'sellers:list',
       page,
       pageSize,
@@ -679,70 +724,82 @@ export class SellerService extends BaseRepository {
       statusCategory || 'all'
     );
 
-    // キャチE��ュをチェチE��
+    // キャッシュをチェック
     const cached = await CacheHelper.get<PaginatedResult<Seller>>(cacheKey);
     if (cached) {
-      console.log('✁ECache hit for sellers list');
+      console.log('✅ Cache hit for sellers list');
       return cached;
     }
 
-    // クエリを構築（物件惁E��も含める�E�E    let query = this.table('sellers').select('*, properties(*)', { count: 'exact' });
+    // クエリを構築（物件情報も含める）
+    let query = this.table<Seller>('sellers').select('*, properties(*)', { count: 'exact' });
 
-    // チE��ォルトで削除済みを除外（�Eイグレーション051で追加済み�E�E    if (!includeDeleted) {
+    // デフォルトで削除済みを除外（マイグレーション051で追加済み）
+    if (!includeDeleted) {
       query = query.is('deleted_at', null);
     }
 
-    // サイドバーカチE��リフィルターを適用
+    // サイドバーカテゴリフィルターを適用
     if (statusCategory && statusCategory !== 'all') {
       switch (statusCategory) {
         case 'visitScheduled':
-          // 訪問予定（営拁E��入力あめEAND 訪問日が今日以降！E          query = query
+          // 訪問予定（営担に入力あり AND 訪問日が今日以降）
+          query = query
             .not('visit_assignee', 'is', null)
             .neq('visit_assignee', '')
             .gte('visit_date', todayJST);
           break;
         case 'visitCompleted':
-          // 訪問済み�E�営拁E��入力あめEAND 訪問日が昨日以前！E          query = query
+          // 訪問済み（営担に入力あり AND 訪問日が昨日以前）
+          query = query
             .not('visit_assignee', 'is', null)
             .neq('visit_assignee', '')
             .lt('visit_date', todayJST);
           break;
         case 'todayCallAssigned':
-          // 当日TEL�E�担当）（営拁E��り（「外す」以外！EAND 次電日が今日以前！E          query = query
+          // 当日TEL（担当）（営担あり（「外す」以外） AND 次電日が今日以前）
+          query = query
             .not('visit_assignee', 'is', null)
             .neq('visit_assignee', '')
             .neq('visit_assignee', '外す')
             .lte('next_call_date', todayJST);
           break;
         case 'todayCall':
-          // 当日TEL刁E��追客中 AND 次電日が今日以剁EAND コミュニケーション惁E��なぁEAND 営拁E��し！E          query = query
+          // 当日TEL分（追客中 AND 次電日が今日以前 AND コミュニケーション情報なし AND 営担なし）
+          query = query
             .ilike('status', '%追客中%')
             .lte('next_call_date', todayJST)
-            // 営拁E��空また�E「外す、E            .or('visit_assignee.is.null,visit_assignee.eq.,visit_assignee.eq.外す')
-            // コミュニケーション惁E��が�Eて空
+            // 営担が空または「外す」
+            .or('visit_assignee.is.null,visit_assignee.eq.,visit_assignee.eq.外す')
+            // コミュニケーション情報が全て空
             .or('phone_contact_person.is.null,phone_contact_person.eq.')
             .or('preferred_contact_time.is.null,preferred_contact_time.eq.')
             .or('contact_method.is.null,contact_method.eq.');
           break;
         case 'todayCallWithInfo':
-          // 当日TEL�E��E容�E�（追客中 AND 次電日が今日以剁EAND コミュニケーション惁E��あり AND 営拁E��し！E          query = query
+          // 当日TEL（内容）（追客中 AND 次電日が今日以前 AND コミュニケーション情報あり AND 営担なし）
+          query = query
             .ilike('status', '%追客中%')
             .lte('next_call_date', todayJST)
-            // 営拁E��空また�E「外す、E            .or('visit_assignee.is.null,visit_assignee.eq.,visit_assignee.eq.外す')
-            // コミュニケーション惁E��のぁE��れかに入力あめE            .or('phone_contact_person.neq.,preferred_contact_time.neq.,contact_method.neq.');
+            // 営担が空または「外す」
+            .or('visit_assignee.is.null,visit_assignee.eq.,visit_assignee.eq.外す')
+            // コミュニケーション情報のいずれかに入力あり
+            .or('phone_contact_person.neq.,preferred_contact_time.neq.,contact_method.neq.');
           break;
         case 'unvaluated':
-          // 未査定（追客中 AND 査定額が全て空 AND 反響日付が基準日以陁EAND 営拁E��空�E�E          query = query
+          // 未査定（追客中 AND 査定額が全て空 AND 反響日付が基準日以降 AND 営担が空）
+          query = query
             .ilike('status', '%追客中%')
             .gte('inquiry_date', cutoffDate)
             .or('visit_assignee.is.null,visit_assignee.eq.')
             .is('valuation_amount_1', null)
             .is('valuation_amount_2', null)
             .is('valuation_amount_3', null)
-            .neq('mailing_status', '不要E);
+            .neq('mailing_status', '不要');
           break;
         case 'mailingPending':
-          // 査定（郵送E��（郵送スチE�Eタスが「未」！E          query = query.eq('mailing_status', '未');
+          // 査定（郵送）（郵送ステータスが「未」）
+          query = query.eq('mailing_status', '未');
           break;
       }
     }
@@ -761,13 +818,14 @@ export class SellerService extends BaseRepository {
       query = query.lte('next_call_date', nextCallDateTo);
     }
 
-    // ソート！Enquiry_dateがnullのも�Eは最後に表示�E�E    if (sortBy === 'inquiry_date') {
+    // ソート（inquiry_dateがnullのものは最後に表示）
+    if (sortBy === 'inquiry_date') {
       query = query.order(sortBy, { ascending: sortOrder === 'asc', nullsFirst: false });
     } else {
       query = query.order(sortBy, { ascending: sortOrder === 'asc' });
     }
 
-    // ペ�Eジネ�Eション
+    // ページネーション
     const offset = (page - 1) * pageSize;
     query = query.range(offset, offset + pageSize - 1);
 
@@ -777,28 +835,32 @@ export class SellerService extends BaseRepository {
       throw new Error(`Failed to list sellers: ${error.message}`);
     }
 
-    // 復号化して物件惁E��を追加
+    // 復号化して物件情報を追加
     const decryptedSellers = await Promise.all((sellers || []).map(async (seller) => {
       const decrypted = await this.decryptSeller(seller);
       
-      // 物件惁E��を追加�E��E列�E場合�E最初�E要素を使用�E�E      if (seller.properties) {
+      // 物件情報を追加（配列の場合は最初の要素を使用）
+      if (seller.properties) {
         const property = Array.isArray(seller.properties) ? seller.properties[0] : seller.properties;
         if (property) {
           decrypted.property = {
             id: property.id,
             sellerId: property.seller_id,
-            address: property.property_address || property.address, // property_addressを優允E            prefecture: property.prefecture,
+            address: property.property_address || property.address, // property_addressを優先
+            prefecture: property.prefecture,
             city: property.city,
             propertyType: property.property_type,
             landArea: property.land_area,
             buildingArea: property.building_area,
             landAreaVerified: property.land_area_verified,
             buildingAreaVerified: property.building_area_verified,
-            buildYear: property.construction_year || property.build_year, // construction_yearを優允E            structure: property.structure,
+            buildYear: property.construction_year || property.build_year, // construction_yearを優先
+            structure: property.structure,
             floorPlan: property.floor_plan,
             floors: property.floors,
             rooms: property.rooms,
-            sellerSituation: property.current_status || property.seller_situation, // current_statusを優允E            currentStatus: property.current_status, // 新しいフィールドとして追加
+            sellerSituation: property.current_status || property.seller_situation, // current_statusを優先
+            currentStatus: property.current_status, // 新しいフィールドとして追加
             parking: property.parking,
             additionalInfo: property.additional_info,
           };
@@ -808,7 +870,8 @@ export class SellerService extends BaseRepository {
       return decrypted;
     }));
 
-    // 吁E��主の最新通話日時を取得（一時的にコメントアウト！E    // const sellersWithCallDate = await Promise.all(
+    // 各売主の最新通話日時を取得（一時的にコメントアウト）
+    // const sellersWithCallDate = await Promise.all(
     //   decryptedSellers.map(async (seller) => {
     //     const { data: latestCall } = await this.table('activities')
     //       .select('created_at')
@@ -833,28 +896,34 @@ export class SellerService extends BaseRepository {
       totalPages: Math.ceil((count || 0) / pageSize),
     };
 
-    // キャチE��ュに保孁E    await CacheHelper.set(cacheKey, result, CACHE_TTL.SELLER_LIST);
+    // キャッシュに保存
+    await CacheHelper.set(cacheKey, result, CACHE_TTL.SELLER_LIST);
 
     return result;
   }
 
   /**
-   * 売主を検索�E�部刁E��致�E�E   * 最適匁E 売主番号での検索は高速化�E�暗号化されてぁE��ぁE��めE��E   * @param query - 検索クエリ
-   * @param includeDeleted - 削除済み売主も含めるか（デフォルチE false�E�E   */
+   * 売主を検索（部分一致）
+   * 最適化: 売主番号での検索は高速化（暗号化されていないため）
+   * @param query - 検索クエリ
+   * @param includeDeleted - 削除済み売主も含めるか（デフォルト: false）
+   */
   async searchSellers(query: string, includeDeleted: boolean = false): Promise<Seller[]> {
     console.log('🔍 searchSellers called with query:', query);
     
     const lowerQuery = query.toLowerCase().trim();
     
-    // 売主番号での検索を優先（暗号化されてぁE��ぁE�Eで高速！E    // AA12903のような形式�E場合、データベ�Eスで直接検索
+    // 売主番号での検索を優先（暗号化されていないので高速）
+    // AA12903のような形式の場合、データベースで直接検索
     if (lowerQuery.match(/^aa\d+$/i)) {
       console.log('🚀 Fast path: Searching by seller_number in database');
-      let sellerQuery = this.table('sellers')
+      let sellerQuery = this.table<Seller>('sellers')
         .select('*')
         .ilike('seller_number', `%${lowerQuery}%`)
         .limit(50);
       
-      // チE��ォルトで削除済みを除外（�Eイグレーション051で追加済み�E�E      if (!includeDeleted) {
+      // デフォルトで削除済みを除外（マイグレーション051で追加済み）
+      if (!includeDeleted) {
         sellerQuery = sellerQuery.is('deleted_at', null);
       }
       
@@ -865,21 +934,22 @@ export class SellerService extends BaseRepository {
       }
 
       if (sellers && sellers.length > 0) {
-        console.log(`✁EFound ${sellers.length} sellers by seller_number`);
+        console.log(`✅ Found ${sellers.length} sellers by seller_number`);
         const decryptedSellers = await Promise.all(sellers.map(seller => this.decryptSeller(seller)));
         return decryptedSellers;
       }
     }
     
-    // 数字�Eみの場合も売主番号として検索
+    // 数字のみの場合も売主番号として検索
     if (lowerQuery.match(/^\d+$/)) {
       console.log('🚀 Fast path: Searching by seller_number (numeric) in database');
-      let sellerQuery = this.table('sellers')
+      let sellerQuery = this.table<Seller>('sellers')
         .select('*')
         .ilike('seller_number', `%${lowerQuery}%`)
         .limit(50);
       
-      // チE��ォルトで削除済みを除夁E      if (!includeDeleted) {
+      // デフォルトで削除済みを除外
+      if (!includeDeleted) {
         sellerQuery = sellerQuery.is('deleted_at', null);
       }
       
@@ -890,20 +960,23 @@ export class SellerService extends BaseRepository {
       }
 
       if (sellers && sellers.length > 0) {
-        console.log(`✁EFound ${sellers.length} sellers by seller_number`);
+        console.log(`✅ Found ${sellers.length} sellers by seller_number`);
         const decryptedSellers = await Promise.all(sellers.map(seller => this.decryptSeller(seller)));
         return decryptedSellers;
       }
     }
     
-    // 名前、住所、E��話番号での検索は全件取得が忁E��E��暗号化されてぁE��ため�E�E    console.log('⚠�E�E Slow path: Full scan required for encrypted field search');
+    // 名前、住所、電話番号での検索は全件取得が必要（暗号化されているため）
+    console.log('⚠️  Slow path: Full scan required for encrypted field search');
     
-    // 最大100件に制限して検索速度を改喁E    let sellerQuery = this.table('sellers')
+    // 最大100件に制限して検索速度を改善
+    let sellerQuery = this.table<Seller>('sellers')
       .select('*')
       .order('updated_at', { ascending: false })
       .limit(100);
     
-    // チE��ォルトで削除済みを除夁E    if (!includeDeleted) {
+    // デフォルトで削除済みを除外
+    if (!includeDeleted) {
       sellerQuery = sellerQuery.is('deleted_at', null);
     }
     
@@ -925,12 +998,12 @@ export class SellerService extends BaseRepository {
         const decrypted = await this.decryptSeller(seller);
         decryptedSellers.push(decrypted);
       } catch (error) {
-        console.error(`❁EFailed to decrypt seller ${seller.id}:`, error);
+        console.error(`❌ Failed to decrypt seller ${seller.id}:`, error);
         // Skip this seller and continue
       }
     }
 
-    // 復号化後に部刁E��致検索
+    // 復号化後に部分一致検索
     const results = decryptedSellers.filter(
       (seller) =>
         (seller.name && seller.name.toLowerCase().includes(lowerQuery)) ||
@@ -945,10 +1018,12 @@ export class SellerService extends BaseRepository {
   }
 
   /**
-   * 売主チE�Eタを復号匁E   */
+   * 売主データを復号化
+   */
   private async decryptSeller(seller: any): Promise<Seller> {
     try {
-      // イニシャルをフルネ�Eムに変換�E�非同期処琁E��E      const visitAssigneeFullName = await getEmployeeNameByInitials(seller.visit_assignee);
+      // イニシャルをフルネームに変換（非同期処理）
+      const visitAssigneeFullName = await getEmployeeNameByInitials(seller.visit_assignee);
       const visitValuationAcquirerFullName = await getEmployeeNameByInitials(seller.visit_valuation_acquirer);
 
       const decrypted = {
@@ -973,7 +1048,8 @@ export class SellerService extends BaseRepository {
         inquiryDatetime: seller.inquiry_detailed_datetime ? new Date(seller.inquiry_detailed_datetime) : undefined,
         inquiryDetailedDatetime: seller.inquiry_detailed_datetime ? new Date(seller.inquiry_detailed_datetime) : undefined,
         isUnreachable: seller.is_unreachable || false,
-        unreachableStatus: seller.unreachable_status, // 不通スチE�Eタス�E�文字�E�E�E        unreachableSince: seller.unreachable_since ? new Date(seller.unreachable_since) : undefined,
+        unreachableStatus: seller.unreachable_status, // 不通ステータス（文字列）
+        unreachableSince: seller.unreachable_since ? new Date(seller.unreachable_since) : undefined,
         firstCallerInitials: seller.first_caller_initials,
         firstCallerEmployeeId: seller.first_caller_employee_id,
         confidenceLevel: seller.confidence,
@@ -985,7 +1061,8 @@ export class SellerService extends BaseRepository {
         valuationAmount2: seller.valuation_amount_2,
         valuationAmount3: seller.valuation_amount_3,
         valuationAssignedBy: seller.valuation_assigned_by,
-        // 競合情報フィールチE        competitorName: seller.competitor_name,
+        // 競合情報フィールド
+        competitorName: seller.competitor_name,
         competitorNameAndReason: seller.competitor_name_and_reason,
         exclusiveOtherDecisionFactors: seller.exclusive_other_decision_factor 
           ? seller.exclusive_other_decision_factor.split(', ').filter((f: string) => f.trim())
@@ -1006,7 +1083,8 @@ export class SellerService extends BaseRepository {
         visitDate: seller.visit_date ? new Date(seller.visit_date) : undefined,
         visitTime: seller.visit_time,
         visitAcquisitionDate: seller.visit_acquisition_date ? new Date(seller.visit_acquisition_date) : undefined,
-        // イニシャルをフルネ�Eムに変換�E�フォールバック付き�E�E        visitAssignee: visitAssigneeFullName || seller.visit_assignee || undefined,
+        // イニシャルをフルネームに変換（フォールバック付き）
+        visitAssignee: visitAssigneeFullName || seller.visit_assignee || undefined,
         visitValuationAcquirer: visitValuationAcquirerFullName || seller.visit_valuation_acquirer || undefined,
         valuationAssignee: seller.valuation_assignee,
         phoneAssignee: seller.phone_assignee,
@@ -1027,13 +1105,14 @@ export class SellerService extends BaseRepository {
         mailSentDate: seller.mail_sent_date ? new Date(seller.mail_sent_date) : undefined,
         // Valuation method field
         valuationMethod: seller.valuation_method,
-        // Valuation text field (I列「査定額」テキスト形弁E
+        // Valuation text field (I列「査定額」テキスト形式)
         valuationText: seller.valuation_text,
-        // 冁E��前伝達事頁E��最新状況E        viewingNotes: seller.viewing_notes,
+        // 内覧前伝達事項と最新状況
+        viewingNotes: seller.viewing_notes,
         latestStatus: seller.latest_status,
         // Pinrich status
         pinrichStatus: seller.pinrich_status,
-        // Property fields (物件関連フィールチE
+        // Property fields (物件関連フィールド)
         propertyAddress: seller.property_address,
         propertyType: seller.property_type,
         landArea: seller.land_area,
@@ -1045,7 +1124,7 @@ export class SellerService extends BaseRepository {
       
       return decrypted;
     } catch (error) {
-      console.error('❁EDecryption error for seller:', seller.id, seller.seller_number);
+      console.error('❌ Decryption error for seller:', seller.id, seller.seller_number);
       console.error('Error details:', error);
       console.error('Raw seller data:', {
         name_exists: !!seller.name,
@@ -1063,7 +1142,7 @@ export class SellerService extends BaseRepository {
    * Phase 1: Mark seller as unreachable
    */
   async markAsUnreachable(sellerId: string): Promise<Seller> {
-    const { data: seller, error } = await this.table('sellers')
+    const { data: seller, error } = await this.table<Seller>('sellers')
       .update({
         is_unreachable: true,
         unreachable_since: new Date(),
@@ -1080,7 +1159,8 @@ export class SellerService extends BaseRepository {
       throw new Error('Seller not found');
     }
 
-    // キャチE��ュを無効匁E    const cacheKey = CacheHelper.generateKey('seller', sellerId);
+    // キャッシュを無効化
+    const cacheKey = CacheHelper.generateKey('seller', sellerId);
     await CacheHelper.del(cacheKey);
 
     return await this.decryptSeller(seller);
@@ -1090,7 +1170,7 @@ export class SellerService extends BaseRepository {
    * Phase 1: Clear unreachable status
    */
   async clearUnreachable(sellerId: string): Promise<Seller> {
-    const { data: seller, error } = await this.table('sellers')
+    const { data: seller, error } = await this.table<Seller>('sellers')
       .update({
         is_unreachable: false,
         unreachable_since: null,
@@ -1107,7 +1187,8 @@ export class SellerService extends BaseRepository {
       throw new Error('Seller not found');
     }
 
-    // キャチE��ュを無効匁E    const cacheKey = CacheHelper.generateKey('seller', sellerId);
+    // キャッシュを無効化
+    const cacheKey = CacheHelper.generateKey('seller', sellerId);
     await CacheHelper.del(cacheKey);
 
     return await this.decryptSeller(seller);
@@ -1117,7 +1198,7 @@ export class SellerService extends BaseRepository {
    * Phase 1: Confirm duplicate seller
    */
   async confirmDuplicate(sellerId: string, employeeId: string): Promise<Seller> {
-    const { data: seller, error } = await this.table('sellers')
+    const { data: seller, error } = await this.table<Seller>('sellers')
       .update({
         duplicate_confirmed: true,
         duplicate_confirmed_at: new Date(),
@@ -1135,7 +1216,8 @@ export class SellerService extends BaseRepository {
       throw new Error('Seller not found');
     }
 
-    // キャチE��ュを無効匁E    const cacheKey = CacheHelper.generateKey('seller', sellerId);
+    // キャッシュを無効化
+    const cacheKey = CacheHelper.generateKey('seller', sellerId);
     await CacheHelper.del(cacheKey);
 
     return await this.decryptSeller(seller);
@@ -1158,11 +1240,14 @@ export class SellerService extends BaseRepository {
   }
 
   /**
-   * 訪問統計を取征E   * @param month - 対象月！EYYY-MM形式！E   */
+   * 訪問統計を取得
+   * @param month - 対象月（YYYY-MM形式）
+   */
   async getVisitStats(month: string) {
     console.log('📊 getVisitStats called with month:', month);
     
-    // 月�E開始日と終亁E��を計箁E    const startDate = new Date(`${month}-01T00:00:00Z`);
+    // 月の開始日と終了日を計算
+    const startDate = new Date(`${month}-01T00:00:00Z`);
     const endDate = new Date(startDate);
     endDate.setMonth(endDate.getMonth() + 1);
     endDate.setDate(0); // 前月の最終日
@@ -1173,7 +1258,9 @@ export class SellerService extends BaseRepository {
       endDate: endDate.toISOString(),
     });
 
-    // 訪問予紁E��ある売主を取得！Eisit_dateを使用�E�E    // visit_dateはDATE型なのでYYYY-MM-DD形式で比輁E    const startDateStr = `${month}-01`;
+    // 訪問予約がある売主を取得（visit_dateを使用）
+    // visit_dateはDATE型なのでYYYY-MM-DD形式で比較
+    const startDateStr = `${month}-01`;
     const endDateStr = endDate.toISOString().split('T')[0];
     
     const { data: sellers, error } = await this.table('sellers')
@@ -1204,13 +1291,14 @@ export class SellerService extends BaseRepository {
       if (emp.initials) {
         employeeMap.set(emp.initials, { id: emp.id, name: emp.name || emp.email, initials: emp.initials });
       }
-      // 名前でも�EチE��ング
+      // 名前でもマッピング
       if (emp.name) {
         employeeMap.set(emp.name, { id: emp.id, name: emp.name, initials: emp.initials || emp.name });
       }
     }
 
-    // 営拁E��との訪問数を集訁E    const statsByEmployee: Record<string, { count: number; name: string; initials: string; employeeId: string }> = {};
+    // 営担ごとの訪問数を集計
+    const statsByEmployee: Record<string, { count: number; name: string; initials: string; employeeId: string }> = {};
     let totalVisits = 0;
 
     for (const seller of sellers || []) {
@@ -1218,7 +1306,8 @@ export class SellerService extends BaseRepository {
       const assignee = (seller as any).visit_assignee;
       
       if (assignee) {
-        // イニシャルまた�E名前から従業員惁E��を取征E        const employee = employeeMap.get(assignee);
+        // イニシャルまたは名前から従業員情報を取得
+        const employee = employeeMap.get(assignee);
         const employeeKey = assignee; // イニシャルをキーとして使用
         const employeeName = employee?.name || assignee;
         const employeeInitials = employee?.initials || assignee;
@@ -1238,7 +1327,9 @@ export class SellerService extends BaseRepository {
       }
     }
 
-    // 山本マネージャーの訪問率を計箁E    // イニシャルがY�E�山本�E��EスタチE��を探ぁE    const yamamoto = Object.values(statsByEmployee).find(
+    // 山本マネージャーの訪問率を計算
+    // イニシャルがY（山本）のスタッフを探す
+    const yamamoto = Object.values(statsByEmployee).find(
       (stat) => stat.name.includes('山本') || stat.initials === 'Y'
     );
 
@@ -1260,34 +1351,40 @@ export class SellerService extends BaseRepository {
   }
 
   /**
-   * 冁E��前伝達事頁E��サニタイズ
-   * @param value - 冁E��前伝達事頁E�E値
-   * @returns サニタイズされた値�E�E0,000斁E��以冁E��また�Enull
+   * 内覧前伝達事項をサニタイズ
+   * @param value - 内覧前伝達事項の値
+   * @returns サニタイズされた値（10,000文字以内）またはnull
    */
   private sanitizeViewingNotes(value: string | null | undefined): string | null {
     if (!value || value.trim() === '') {
       return null;
     }
-    // 10,000斁E��制陁E    return value.substring(0, 10000);
+    // 10,000文字制限
+    return value.substring(0, 10000);
   }
 
   /**
    * 最新状況をサニタイズ
-   * @param value - 最新状況�E値
-   * @returns サニタイズされた値�E�E55斁E��以冁E��また�Enull
+   * @param value - 最新状況の値
+   * @returns サニタイズされた値（255文字以内）またはnull
    */
   private sanitizeLatestStatus(value: string | null | undefined): string | null {
     if (!value || value.trim() === '') {
       return null;
     }
-    // 255斁E��制陁E    return value.substring(0, 255);
+    // 255文字制限
+    return value.substring(0, 255);
   }
 
   /**
-   * サイドバー用のカチE��リカウントを取征E   * 吁E��チE��リの条件に合う売主のみをデータベ�Eスから直接カウンチE   * 
-   * 【優先頁E��、E   * 1. 訪問予定（営拁E��めE+ 訪問日が今日以降）�E 最優允E   * 2. 訪問済み�E�営拁E��めE+ 訪問日が昨日以前）�E 2番目
-   * 3. 当日TEL�E�担当）（営拁E��めE+ 次電日が今日以前）�E 3番目
-   * 4. 当日TEL刁E当日TEL�E��E容�E��E 営拁E��し�E場合�Eみ
+   * サイドバー用のカテゴリカウントを取得
+   * 各カテゴリの条件に合う売主のみをデータベースから直接カウント
+   * 
+   * 【優先順位】
+   * 1. 訪問予定（営担あり + 訪問日が今日以降）← 最優先
+   * 2. 訪問済み（営担あり + 訪問日が昨日以前）← 2番目
+   * 3. 当日TEL（担当）（営担あり + 次電日が今日以前）← 3番目
+   * 4. 当日TEL分/当日TEL（内容）← 営担なしの場合のみ
    */
   async getSidebarCounts(): Promise<{
     todayCall: number;
@@ -1298,21 +1395,24 @@ export class SellerService extends BaseRepository {
     unvaluated: number;
     mailingPending: number;
   }> {
-    // JST今日の日付を取征E    const now = new Date();
+    // JST今日の日付を取得
+    const now = new Date();
     const jstTime = new Date(now.getTime() + (9 * 60 * 60 * 1000));
     const todayJST = `${jstTime.getUTCFullYear()}-${String(jstTime.getUTCMonth() + 1).padStart(2, '0')}-${String(jstTime.getUTCDate()).padStart(2, '0')}`;
     
-    // 未査定�E基準日
+    // 未査定の基準日
     const cutoffDate = '2025-12-08';
 
-    // ヘルパ�E関数: 営拁E��有効かどぁE��を判定（「外す」�E拁E��なしと同じ扱ぁE��E    const hasValidVisitAssignee = (visitAssignee: string | null | undefined): boolean => {
+    // ヘルパー関数: 営担が有効かどうかを判定（「外す」は担当なしと同じ扱い）
+    const hasValidVisitAssignee = (visitAssignee: string | null | undefined): boolean => {
       if (!visitAssignee || visitAssignee.trim() === '' || visitAssignee.trim() === '外す') {
         return false;
       }
       return true;
     };
 
-    // 1. 訪問予定（営拁E��入力あめEAND 訪問日が今日以降）�E 最優允E    const { count: visitScheduledCount } = await this.table('sellers')
+    // 1. 訪問予定（営担に入力あり AND 訪問日が今日以降）← 最優先
+    const { count: visitScheduledCount } = await this.table('sellers')
       .select('*', { count: 'exact', head: true })
       .is('deleted_at', null)
       .not('visit_assignee', 'is', null)
@@ -1320,7 +1420,7 @@ export class SellerService extends BaseRepository {
       .neq('visit_assignee', '外す')
       .gte('visit_date', todayJST);
 
-    // 2. 訪問済み�E�営拁E��入力あめEAND 訪問日が昨日以前）�E 2番目
+    // 2. 訪問済み（営担に入力あり AND 訪問日が昨日以前）← 2番目
     const { count: visitCompletedCount } = await this.table('sellers')
       .select('*', { count: 'exact', head: true })
       .is('deleted_at', null)
@@ -1329,7 +1429,8 @@ export class SellerService extends BaseRepository {
       .neq('visit_assignee', '外す')
       .lt('visit_date', todayJST);
 
-    // 3. 当日TEL�E�担当）（営拁E��めE+ 次電日が今日以前！E    // 訪問日の有無に関係なく、営拁E��あり次電日が今日以前であれば対象
+    // 3. 当日TEL（担当）（営担あり + 次電日が今日以前）
+    // 訪問日の有無に関係なく、営担があり次電日が今日以前であれば対象
     const { data: todayCallAssignedSellers } = await this.table('sellers')
       .select('id, visit_assignee')
       .is('deleted_at', null)
@@ -1340,44 +1441,53 @@ export class SellerService extends BaseRepository {
 
     const todayCallAssignedCount = (todayCallAssignedSellers || []).length;
 
-    // 4. 当日TEL刁E当日TEL�E��E容�E�E    // 追客中 AND 次電日が今日以剁EAND 営拁E��し�E売主を取征E    const { data: todayCallBaseSellers } = await this.table('sellers')
+    // 4. 当日TEL分/当日TEL（内容）
+    // 追客中 AND 次電日が今日以前 AND 営担なしの売主を取得
+    const { data: todayCallBaseSellers } = await this.table('sellers')
       .select('id, visit_assignee, phone_contact_person, preferred_contact_time, contact_method')
       .is('deleted_at', null)
       .ilike('status', '%追客中%')
       .lte('next_call_date', todayJST);
 
-    // 営拁E��ある売主を除外（訪問日の有無に関係なく！E    const filteredTodayCallSellers = (todayCallBaseSellers || []).filter(s => {
-      // 営拁E��入力がある場合�E当日TEL刁E当日TEL�E��E容�E�から除夁E      return !hasValidVisitAssignee(s.visit_assignee);
+    // 営担がある売主を除外（訪問日の有無に関係なく）
+    const filteredTodayCallSellers = (todayCallBaseSellers || []).filter(s => {
+      // 営担に入力がある場合は当日TEL分/当日TEL（内容）から除外
+      return !hasValidVisitAssignee(s.visit_assignee);
     });
 
-    // コミュニケーション惁E��があるものをカウント（当日TEL�E��E容�E�！E    const todayCallWithInfoCount = filteredTodayCallSellers.filter(s => {
+    // コミュニケーション情報があるものをカウント（当日TEL（内容））
+    const todayCallWithInfoCount = filteredTodayCallSellers.filter(s => {
       const hasInfo = (s.phone_contact_person && s.phone_contact_person.trim() !== '') ||
                       (s.preferred_contact_time && s.preferred_contact_time.trim() !== '') ||
                       (s.contact_method && s.contact_method.trim() !== '');
       return hasInfo;
     }).length;
 
-    // コミュニケーション惁E��がなぁE��のをカウント（当日TEL刁E��E    const todayCallNoInfoCount = filteredTodayCallSellers.filter(s => {
+    // コミュニケーション情報がないものをカウント（当日TEL分）
+    const todayCallNoInfoCount = filteredTodayCallSellers.filter(s => {
       const hasInfo = (s.phone_contact_person && s.phone_contact_person.trim() !== '') ||
                       (s.preferred_contact_time && s.preferred_contact_time.trim() !== '') ||
                       (s.contact_method && s.contact_method.trim() !== '');
       return !hasInfo;
     }).length;
 
-    // 5. 未査定（追客中 AND 査定額が全て空 AND 反響日付が基準日以陁EAND 営拁E��空�E�E    const { data: unvaluatedSellers } = await this.table('sellers')
+    // 5. 未査定（追客中 AND 査定額が全て空 AND 反響日付が基準日以降 AND 営担が空）
+    const { data: unvaluatedSellers } = await this.table('sellers')
       .select('id, valuation_amount_1, valuation_amount_2, valuation_amount_3, visit_assignee, mailing_status')
       .is('deleted_at', null)
       .ilike('status', '%追客中%')
       .gte('inquiry_date', cutoffDate)
       .or('visit_assignee.is.null,visit_assignee.eq.,visit_assignee.eq.外す');
 
-    // 査定額が全て空で、E��送スチE�Eタスが「不要」でなぁE��のをカウンチE    const unvaluatedCount = (unvaluatedSellers || []).filter(s => {
+    // 査定額が全て空で、郵送ステータスが「不要」でないものをカウント
+    const unvaluatedCount = (unvaluatedSellers || []).filter(s => {
       const hasNoValuation = !s.valuation_amount_1 && !s.valuation_amount_2 && !s.valuation_amount_3;
-      const isNotRequired = s.mailing_status === '不要E;
+      const isNotRequired = s.mailing_status === '不要';
       return hasNoValuation && !isNotRequired;
     }).length;
 
-    // 6. 査定（郵送E��（郵送スチE�Eタスが「未」！E    const { count: mailingPendingCount } = await this.table('sellers')
+    // 6. 査定（郵送）（郵送ステータスが「未」）
+    const { count: mailingPendingCount } = await this.table('sellers')
       .select('*', { count: 'exact', head: true })
       .is('deleted_at', null)
       .eq('mailing_status', '未');
