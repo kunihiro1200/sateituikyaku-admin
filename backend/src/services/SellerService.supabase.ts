@@ -322,8 +322,8 @@ export class SellerService extends BaseRepository {
     if (data.status !== undefined) {
       updates.status = data.status;
     }
-    if (data.confidence !== undefined) {
-      updates.confidence = data.confidence;
+    if (data.confidence !== undefined || data.confidenceLevel !== undefined) {
+      updates.confidence = data.confidence || data.confidenceLevel;
     }
     if (data.assignedTo !== undefined) {
       updates.assigned_to = data.assignedTo;
