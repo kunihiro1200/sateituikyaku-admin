@@ -724,8 +724,12 @@ export class BuyerService {
     }
 
     // Create a map of buyer number to details
-    const detailsMap = new Map(
-      (pastBuyerRecords || []).map(record => [
+    const detailsMap = new Map<string, {
+      propertyNumber: null;
+      inquiryDate: string | null;
+      inquirySource: null;
+    }>(
+      (pastBuyerRecords || []).map((record: any) => [
         record.buyer_number,
         {
           propertyNumber: null,
