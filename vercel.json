@@ -1,14 +1,13 @@
 {
   "version": 2,
-  "builds": [
-    {
-      "src": "backend/api/index.ts",
-      "use": "@vercel/node",
-      "config": {
-        "includeFiles": ["backend/src/**", "backend/package.json", "backend/tsconfig.json"]
-      }
+  "buildCommand": "cd backend && npm install && npm run build",
+  "outputDirectory": "backend/dist",
+  "functions": {
+    "backend/api/index.ts": {
+      "runtime": "@vercel/node@3.0.0",
+      "includeFiles": "backend/src/**"
     }
-  ],
+  },
   "routes": [
     {
       "src": "/(.*)",

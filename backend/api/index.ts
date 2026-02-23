@@ -25,7 +25,8 @@ async function getApp() {
       console.log('✅ Step 2: Module imported successfully');
       console.log('📦 Step 3: Module exports:', Object.keys(appModule));
       
-      app = appModule.default || appModule.app || appModule;
+      // backend/src/index.ts は export default app のみを提供
+      app = appModule.default;
       console.log('📦 Step 4: App type:', typeof app);
       
       if (!app) {
