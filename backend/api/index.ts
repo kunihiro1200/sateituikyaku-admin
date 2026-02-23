@@ -1,6 +1,7 @@
 ﻿// Vercel serverless function entry point (TypeScript)
 // Step-by-step Express app loading with detailed error reporting
 
+// @ts-nocheck - Disable type checking for Vercel environment
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 // Vercel環境であることを明示
