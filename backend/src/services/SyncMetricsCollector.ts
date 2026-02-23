@@ -251,7 +251,7 @@ property_sync_circuit_breaker_state ${metrics.circuitBreakerState}
       successRate: latestMetrics.success_rate || 0,
       duration: latestMetrics.sync_duration_seconds || 0,
       throughput: latestMetrics.sync_throughput_items_per_second || 0,
-      errors: errorsByType as Record<string, number>,
+      errors: errorsByType,
       apiResponseTime: {
         p50: latestMetrics.api_response_time_p50 || 0,
         p95: latestMetrics.api_response_time_p95 || 0,
