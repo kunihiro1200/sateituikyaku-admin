@@ -51,7 +51,7 @@ router.post(
         valuationAmount2: seller.valuationAmount2,
         valuationAmount3: seller.valuationAmount3,
         fixedAssetTaxRoadPrice: seller.fixedAssetTaxRoadPrice,
-      };
+      } as any;
 
       // メールを送信
       const result = await emailService.sendValuationEmail(

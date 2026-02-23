@@ -107,25 +107,26 @@ router.get('/seller/:sellerId', authenticate, async (req: Request, res: Response
 
     // Extract spreadsheet comments from seller.comments field
     const spreadsheetComments: string[] = [];
-    if (seller.comments) {
+    const sellerWithComments = seller as any;
+    if (sellerWithComments.comments) {
       // Parse comments field - assuming it's stored as JSON array or newline-separated
       try {
-        if (typeof seller.comments === 'string') {
+        if (typeof sellerWithComments.comments === 'string') {
           // Try parsing as JSON first
           try {
-            const parsed = JSON.parse(seller.comments);
+            const parsed = JSON.parse(sellerWithComments.comments);
             if (Array.isArray(parsed)) {
               spreadsheetComments.push(...parsed);
             } else {
               // Split by newlines if not JSON
-              spreadsheetComments.push(...seller.comments.split('\n').filter(c => c.trim()));
+              spreadsheetComments.push(...sellerWithComments.comments.split('\n').filter((c: string) => c.trim()));
             }
           } catch {
             // Split by newlines if JSON parse fails
-            spreadsheetComments.push(...seller.comments.split('\n').filter(c => c.trim()));
+            spreadsheetComments.push(...sellerWithComments.comments.split('\n').filter((c: string) => c.trim()));
           }
-        } else if (Array.isArray(seller.comments)) {
-          spreadsheetComments.push(...seller.comments);
+        } else if (Array.isArray(sellerWithComments.comments)) {
+          spreadsheetComments.push(...sellerWithComments.comments);
         }
       } catch (error) {
         console.warn('Failed to parse seller comments:', error);
@@ -142,8 +143,8 @@ router.get('/seller/:sellerId', authenticate, async (req: Request, res: Response
       sellerData: {
         name: seller.name,
         status: seller.status,
-        confidence: seller.confidence,
-        assignedTo: seller.assignedTo,
+        confidence: (seller as any).confidence,
+        assignedTo: (seller as any).assignedTo,
       },
     });
 
