@@ -367,7 +367,7 @@ export interface CreateSellerRequest {
   sellerNumber?: string;
   inquirySource: string;
   inquiryYear: number;
-  // inquiry_date は削除（DBに存在しない）
+  inquiryDate?: Date | string | null; // 反響日付
   inquiryDatetime?: Date;
   confidenceLevel?: ConfidenceLevel;
   firstCallerInitials?: string;

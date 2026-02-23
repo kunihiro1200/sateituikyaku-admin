@@ -180,11 +180,13 @@ router.get('/history', async (req, res) => {
 
     const limit = parseInt(req.query.limit as string) || 10;
 
-    const history = await syncService.getRecentSyncs(limit);
+    // TODO: Implement getRecentSyncs method in PropertyListingRestSyncService
+    // const history = await syncService.getRecentSyncs(limit);
 
     res.json({
-      syncs: history,
-      count: history.length
+      syncs: [],
+      count: 0,
+      message: 'History endpoint not yet implemented'
     });
   } catch (error) {
     console.error('❌ Failed to get sync history:', error);
@@ -251,12 +253,14 @@ router.get('/errors/:syncId', async (req, res) => {
 
     const { syncId } = req.params;
 
-    const errors = await syncService.getSyncErrors(syncId);
+    // TODO: Implement getSyncErrors method in PropertyListingRestSyncService
+    // const errors = await syncService.getSyncErrors(syncId);
 
     res.json({
       syncId,
-      errors,
-      count: errors.length
+      errors: [],
+      count: 0,
+      message: 'Errors endpoint not yet implemented'
     });
   } catch (error) {
     console.error('❌ Failed to get sync errors:', error);
