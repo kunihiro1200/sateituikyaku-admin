@@ -26,9 +26,7 @@
     "alwaysStrict": false,
     "noPropertyAccessFromIndexSignature": false,
     "noEmitOnError": false,
-    "isolatedModules": true,
-    "suppressImplicitAnyIndexErrors": true,
-    "noStrictGenericChecks": true
+    "isolatedModules": true
   },
   "include": ["src/**/*", "api/**/*"],
   "exclude": ["node_modules", "dist", "**/*.test.ts"],
