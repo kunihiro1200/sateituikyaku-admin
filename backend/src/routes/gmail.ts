@@ -12,7 +12,7 @@ router.post('/send-to-buyer', async (req, res) => {
     const { buyerId, propertyIds, templateId, customizations } = req.body;
 
     // 買主情報を取得
-    const buyer = await buyerService.getBuyerById(buyerId);
+    const buyer = await buyerService.getById(buyerId);
     if (!buyer || !buyer.email) {
       return res.status(404).json({ error: '買主が見つからないか、メールアドレスが登録されていません' });
     }
@@ -24,7 +24,7 @@ router.post('/send-to-buyer', async (req, res) => {
       body: customizations?.body || '',
       propertyIds: propertyIds || [],
       templateId: templateId
-    });
+    } as any);
 
     res.json({ success: true, result });
   } catch (error) {

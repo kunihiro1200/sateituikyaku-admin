@@ -250,12 +250,12 @@ router.post('/manual', async (req: Request, res: Response) => {
         maxDelayMs: 5000,
         backoffMultiplier: 2,
       },
-      { operation: 'fetchLatestData', endpoint: '/api/sync/manual' }
+      { operation: 'fetchLatestData', endpoint: '/api/sync/manual' } as Record<string, any>
     );
     
     // 差分を計算
     const diff = await syncService.compareWithCache(
-      cachedData?.data || []
+      (cachedData?.data || []) as any
     );
     
     // 差分を適用（リトライ機能付き）
@@ -267,7 +267,7 @@ router.post('/manual', async (req: Request, res: Response) => {
         maxDelayMs: 2000,
         backoffMultiplier: 2,
       },
-      { operation: 'applyChanges', recordCount: diff.added.length + diff.updated.length }
+      { operation: 'applyChanges', recordCount: diff.added.length + diff.updated.length } as Record<string, any>
     );
     
     // キャッシュを更新

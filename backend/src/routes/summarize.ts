@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import { authenticate } from '../middleware/auth';
 import { SummaryGenerator } from '../services/SummaryGenerator';
 import { ActivityLogService } from '../services/ActivityLogService';
-import { SellerService } from '../services/SellerService';
+import { SellerService } from '../services/SellerService.supabase';
 
 const router = Router();
 const summaryGenerator = new SummaryGenerator();
