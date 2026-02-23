@@ -2,7 +2,7 @@
   "name": "seller-list-management-backend",
   "version": "1.0.0",
   "description": "不動産売主リスト管理システム - バックエンド",
-  "main": "dist/index.js",
+  "main": "src/index.ts",
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
     "build": "tsc --skipLibCheck --noEmit false || exit 0",
