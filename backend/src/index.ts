@@ -1,13 +1,14 @@
 import dotenv from 'dotenv';
 import path from 'path';
 
-// 最初に環境変数を読み込む
+// 最初に環境変数を読み込む（Vercel環境では.envファイルは存在しないため、エラーは無視）
 const envPath = path.resolve(__dirname, '../.env');
 console.log('📁 Loading .env from:', envPath);
 const result = dotenv.config({ path: envPath });
 
 if (result.error) {
-  console.error('❌ Error loading .env file:', result.error);
+  // Vercel環境では.envファイルが存在しないため、エラーは警告として扱う
+  console.warn('⚠️ .env file not found (this is normal in Vercel environment):', result.error.message);
 } else {
   console.log('✅ .env file loaded successfully');
   console.log('🔑 All environment variables starting with GMAIL:');

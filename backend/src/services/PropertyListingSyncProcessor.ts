@@ -11,7 +11,6 @@
  */
 
 import { SupabaseClient } from '@supabase/supabase-js';
-import PQueue from 'p-queue';
 
 export interface PropertyListing {
   property_number: string;
@@ -80,7 +79,7 @@ export interface SyncResult {
  * バッチ処理とレート制限を使用して、物件リストを効率的に同期します。
  */
 export class PropertyListingSyncProcessor {
-  private queue: PQueue;
+  private queue: any; // PQueueは動的インポートで初期化
   private supabase: SupabaseClient;
   private config: Required<SyncConfig>;
 
@@ -96,12 +95,23 @@ export class PropertyListingSyncProcessor {
       retryDelay: config.retryDelay ?? 1000,
     };
 
-    // キューを初期化（レート制限付き）
-    this.queue = new PQueue({
-      concurrency: this.config.concurrency,
-      interval: 1000, // 1秒間隔
-      intervalCap: this.config.rateLimit, // 1秒あたりのリクエスト数
-    });
+    // キューは初回使用時に動的インポートで初期化
+    this.queue = null;
+  }
+
+  /**
+   * PQueueを動的にインポートして初期化
+   */
+  private async initializeQueue() {
+    if (!this.queue) {
+      const PQueue = (await import('p-queue')).default;
+      this.queue = new PQueue({
+        concurrency: this.config.concurrency,
+        interval: 1000, // 1秒間隔
+        intervalCap: this.config.rateLimit, // 1秒あたりのリクエスト数
+      });
+    }
+    return this.queue;
   }
 
   /**
@@ -115,6 +125,9 @@ export class PropertyListingSyncProcessor {
     listings: PropertyListing[],
     syncId: string
   ): Promise<SyncResult> {
+    // キューを初期化
+    const queue = await this.initializeQueue();
+    
     const result: SyncResult = {
       syncId,
       status: 'completed',
@@ -143,7 +156,7 @@ export class PropertyListingSyncProcessor {
     for (let i = 0; i < batches.length; i++) {
       const batch = batches[i];
       
-      await this.queue.add(async () => {
+      await queue.add(async () => {
         console.log(
           `[PropertyListingSyncProcessor] Processing batch ${i + 1}/${batches.length} (${batch.length} items)`
         );
@@ -162,7 +175,7 @@ export class PropertyListingSyncProcessor {
     }
 
     // すべてのタスクが完了するまで待機
-    await this.queue.onIdle();
+    await queue.onIdle();
 
     result.completedAt = new Date();
     
@@ -405,13 +418,15 @@ export class PropertyListingSyncProcessor {
    * @returns キューに入っているタスク数 + 実行中のタスク数
    */
   async getQueueSize(): Promise<number> {
-    return this.queue.size + this.queue.pending;
+    const queue = await this.initializeQueue();
+    return queue.size + queue.pending;
   }
 
   /**
    * キューをクリア
    */
-  clearQueue(): void {
-    this.queue.clear();
+  async clearQueue(): Promise<void> {
+    const queue = await this.initializeQueue();
+    queue.clear();
   }
 }
