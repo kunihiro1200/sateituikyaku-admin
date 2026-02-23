@@ -2,17 +2,17 @@
   "version": 2,
   "builds": [
     {
-      "src": "api/index.ts",
+      "src": "backend/api/index.ts",
       "use": "@vercel/node",
       "config": {
-        "includeFiles": ["src/**", "package.json", "tsconfig.json"]
+        "includeFiles": ["backend/src/**", "backend/package.json", "backend/tsconfig.json"]
       }
     }
   ],
   "routes": [
     {
       "src": "/(.*)",
-      "dest": "/api/index.ts"
+      "dest": "/backend/api/index.ts"
     }
   ],
   "env": {
