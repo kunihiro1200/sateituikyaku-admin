@@ -86,7 +86,7 @@ export class DuplicateDetectionService {
         },
         propertyInfo: seller.properties?.[0]
           ? {
-              address: seller.properties[0].property_address || seller.properties[0].address,
+              address: seller.properties[0].address,
               propertyType: seller.properties[0].property_type,
             }
           : undefined,
@@ -156,7 +156,7 @@ export class DuplicateDetectionService {
         },
         propertyInfo: seller.properties?.[0]
           ? {
-              address: seller.properties[0].property_address || seller.properties[0].address,
+              address: seller.properties[0].address,
               propertyType: seller.properties[0].property_type,
             }
           : undefined,

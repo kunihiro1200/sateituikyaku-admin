@@ -104,7 +104,7 @@ export class BuyerService {
     // 検索
     if (search) {
       query = query.or(
-        `buyer_number.ilike.%${search}%,name.ilike.%${search}%,phone_number.ilike.%${search}%,property_number.ilike.%${search}%`
+        `buyer_number.ilike.%${search}%,name.ilike.%${search}%,phone_number.ilike.%${search}%`
       );
     }
 
@@ -200,9 +200,9 @@ export class BuyerService {
   async search(query: string, limit: number = 20): Promise<any[]> {
     const { data, error } = await this.supabase
       .from('buyers')
-      .select('id, buyer_number, name, phone_number, email, property_number, latest_status, initial_assignee')
+      .select('id, buyer_number, name, phone_number, email, latest_status, initial_assignee')
       .or(
-        `buyer_number.ilike.%${query}%,name.ilike.%${query}%,phone_number.ilike.%${query}%,property_number.ilike.%${query}%`
+        `buyer_number.ilike.%${query}%,name.ilike.%${query}%,phone_number.ilike.%${query}%`
       )
       .limit(limit);
 

@@ -305,9 +305,9 @@ export class EmailService extends BaseRepository {
       <div class="details">
         <h2>査定結果</h2>
         <div class="price">
-          査定額: ${valuation.estimatedPrice.toLocaleString()}円
+          査定額1: ${valuation.valuation1.toLocaleString()}円
         </div>
-        <p>価格範囲: ${valuation.priceMin.toLocaleString()}円 〜 ${valuation.priceMax.toLocaleString()}円</p>
+        <p>価格範囲: ${valuation.valuation1.toLocaleString()}円 〜 ${valuation.valuation3.toLocaleString()}円</p>
       </div>
       
       <div class="details">

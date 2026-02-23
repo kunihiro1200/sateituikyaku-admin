@@ -65,10 +65,10 @@ export class RollbackService {
 
       // ログを記録
       await this.logger.startSyncLog('manual', undefined, {
-        operation: 'snapshot_created',
+        operation: 'snapshot_created' as const,
         snapshotId: snapshot.id,
         sellerCount,
-      });
+      } as Record<string, any>);
 
       return {
         id: snapshot.id,
@@ -78,9 +78,9 @@ export class RollbackService {
       };
     } catch (error: any) {
       await this.logger.logError('unknown', error.message, {
-        operation: 'create_snapshot',
+        operation: 'create_snapshot' as const,
         stackTrace: error.stack,
-      });
+      } as Record<string, any>);
       throw error;
     }
   }
@@ -111,10 +111,10 @@ export class RollbackService {
 
       // ログを開始
       const logId = await this.logger.startSyncLog('manual', undefined, {
-        operation: 'rollback',
+        operation: 'rollback' as const,
         snapshotId,
         targetCount: snapshotData.length,
-      });
+      } as Record<string, any>);
 
       // トランザクション的に処理
       // 1. 現在のデータを削除
@@ -154,10 +154,10 @@ export class RollbackService {
         SyncLogger.determineErrorType(error),
         error.message,
         {
-          operation: 'rollback',
+          operation: 'rollback' as const,
           snapshotId,
           stackTrace: error.stack,
-        }
+        } as Record<string, any>
       );
 
       return {
@@ -210,9 +210,9 @@ export class RollbackService {
       return true;
     } catch (error: any) {
       await this.logger.logError('unknown', error.message, {
-        operation: 'delete_snapshot',
+        operation: 'delete_snapshot' as const,
         snapshotId,
-      });
+      } as Record<string, any>);
       return false;
     }
   }
@@ -238,9 +238,9 @@ export class RollbackService {
       return deleted?.length || 0;
     } catch (error: any) {
       await this.logger.logError('unknown', error.message, {
-        operation: 'cleanup_snapshots',
+        operation: 'cleanup_snapshots' as const,
         retentionDays,
-      });
+      } as Record<string, any>);
       return 0;
     }
   }
