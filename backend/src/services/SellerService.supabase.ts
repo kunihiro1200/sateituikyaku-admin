@@ -91,7 +91,7 @@ export class SellerService extends BaseRepository {
     const encryptedPhone = encrypt(data.phoneNumber);
     const encryptedEmail = data.email ? encrypt(data.email) : undefined;
     
-    const duplicateMatches = await duplicateDetectionService.checkDuplicates(
+    const duplicateMatches = await duplicateDetectionService.instance.checkDuplicates(
       encryptedPhone,
       encryptedEmail
     );
@@ -159,7 +159,7 @@ export class SellerService extends BaseRepository {
     if (duplicateMatches.length > 0) {
       for (const match of duplicateMatches) {
         try {
-          await duplicateDetectionService.recordDuplicateHistory(
+          await duplicateDetectionService.instance.recordDuplicateHistory(
             seller.id,
             match.sellerId,
             match.matchType
@@ -1227,7 +1227,7 @@ export class SellerService extends BaseRepository {
    * Phase 1: Get duplicate history for a seller
    */
   async getDuplicateHistory(sellerId: string) {
-    return duplicateDetectionService.getDuplicateHistory(sellerId);
+    return duplicateDetectionService.instance.getDuplicateHistory(sellerId);
   }
 
   /**
@@ -1236,7 +1236,7 @@ export class SellerService extends BaseRepository {
   async checkDuplicates(phoneNumber: string, email?: string, excludeId?: string) {
     const encryptedPhone = encrypt(phoneNumber);
     const encryptedEmail = email ? encrypt(email) : undefined;
-    return duplicateDetectionService.checkDuplicates(encryptedPhone, encryptedEmail, excludeId);
+    return duplicateDetectionService.instance.checkDuplicates(encryptedPhone, encryptedEmail, excludeId);
   }
 
   /**
