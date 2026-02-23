@@ -24,7 +24,6 @@ export class InquiryService {
         .from('sellers')
         .update({
           inquiry_year: inquiryData.inquiryYear,
-          inquiry_date: inquiryData.inquiryDate,
           inquiry_detailed_datetime: inquiryData.inquiryDetailedDateTime,
           inquiry_site: inquiryData.inquirySite,
           inquiry_reason: inquiryData.inquiryReason,
@@ -33,7 +32,7 @@ export class InquiryService {
         })
         .eq('id', sellerId)
         .select(
-          'inquiry_year, inquiry_date, inquiry_detailed_datetime, inquiry_site, inquiry_reason, site_url, number_of_companies'
+          'inquiry_year, inquiry_detailed_datetime, inquiry_site, inquiry_reason, site_url, number_of_companies'
         )
         .single();
 

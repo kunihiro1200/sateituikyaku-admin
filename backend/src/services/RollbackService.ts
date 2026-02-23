@@ -14,6 +14,7 @@ export interface RollbackResult {
   restoredCount: number;
   error?: string;
   duration: number;
+  snapshotId?: string;
 }
 
 /**
