@@ -1,16 +1,15 @@
 {
+  "version": 2,
   "builds": [
     {
       "src": "api/index.ts",
-      "use": "@vercel/node",
-      "config": {
-        "includeFiles": ["src/**"]
-      }
+      "use": "@vercel/node"
     }
   ],
-  "build": {
-    "env": {
-      "VERCEL_SKIP_TYPE_CHECK": "1"
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "/api/index.ts"
     }
-  }
+  ]
 }
