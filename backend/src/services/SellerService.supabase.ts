@@ -146,7 +146,7 @@ export class SellerService extends BaseRepository {
     };
 
     // 売主を作成
-    const { data: seller, error: sellerError } = await this.table<Seller>('sellers')
+    const { data: seller, error: sellerError } = await this.table('sellers')
       .insert(encryptedData)
       .select()
       .single();
@@ -222,7 +222,7 @@ export class SellerService extends BaseRepository {
    */
   async getSeller(sellerId: string, includeDeleted: boolean = false): Promise<Seller | null> {
     // 売主情報を取得
-    let query = this.table<Seller>('sellers')
+    let query = this.table('sellers')
       .select('*')
       .eq('id', sellerId);
     
@@ -500,7 +500,7 @@ export class SellerService extends BaseRepository {
       },
     });
 
-    const { data: seller, error } = await this.table<Seller>('sellers')
+    const { data: seller, error } = await this.table('sellers')
       .update(updates)
       .eq('id', sellerId)
       .select()
@@ -732,7 +732,7 @@ export class SellerService extends BaseRepository {
     }
 
     // クエリを構築（物件情報も含める）
-    let query = this.table<Seller>('sellers').select('*, properties(*)', { count: 'exact' });
+    let query = this.table('sellers').select('*, properties(*)', { count: 'exact' });
 
     // デフォルトで削除済みを除外（マイグレーション051で追加済み）
     if (!includeDeleted) {
@@ -917,7 +917,7 @@ export class SellerService extends BaseRepository {
     // AA12903のような形式の場合、データベースで直接検索
     if (lowerQuery.match(/^aa\d+$/i)) {
       console.log('🚀 Fast path: Searching by seller_number in database');
-      let sellerQuery = this.table<Seller>('sellers')
+      let sellerQuery = this.table('sellers')
         .select('*')
         .ilike('seller_number', `%${lowerQuery}%`)
         .limit(50);
@@ -943,7 +943,7 @@ export class SellerService extends BaseRepository {
     // 数字のみの場合も売主番号として検索
     if (lowerQuery.match(/^\d+$/)) {
       console.log('🚀 Fast path: Searching by seller_number (numeric) in database');
-      let sellerQuery = this.table<Seller>('sellers')
+      let sellerQuery = this.table('sellers')
         .select('*')
         .ilike('seller_number', `%${lowerQuery}%`)
         .limit(50);
@@ -970,7 +970,7 @@ export class SellerService extends BaseRepository {
     console.log('⚠️  Slow path: Full scan required for encrypted field search');
     
     // 最大100件に制限して検索速度を改善
-    let sellerQuery = this.table<Seller>('sellers')
+    let sellerQuery = this.table('sellers')
       .select('*')
       .order('updated_at', { ascending: false })
       .limit(100);
@@ -1142,7 +1142,7 @@ export class SellerService extends BaseRepository {
    * Phase 1: Mark seller as unreachable
    */
   async markAsUnreachable(sellerId: string): Promise<Seller> {
-    const { data: seller, error } = await this.table<Seller>('sellers')
+    const { data: seller, error } = await this.table('sellers')
       .update({
         is_unreachable: true,
         unreachable_since: new Date(),
@@ -1170,7 +1170,7 @@ export class SellerService extends BaseRepository {
    * Phase 1: Clear unreachable status
    */
   async clearUnreachable(sellerId: string): Promise<Seller> {
-    const { data: seller, error } = await this.table<Seller>('sellers')
+    const { data: seller, error } = await this.table('sellers')
       .update({
         is_unreachable: false,
         unreachable_since: null,
@@ -1198,7 +1198,7 @@ export class SellerService extends BaseRepository {
    * Phase 1: Confirm duplicate seller
    */
   async confirmDuplicate(sellerId: string, employeeId: string): Promise<Seller> {
-    const { data: seller, error } = await this.table<Seller>('sellers')
+    const { data: seller, error } = await this.table('sellers')
       .update({
         duplicate_confirmed: true,
         duplicate_confirmed_at: new Date(),
