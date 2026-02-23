@@ -232,7 +232,7 @@ property_sync_circuit_breaker_state ${metrics.circuitBreakerState}
       database: 0,
       rateLimit: 0,
       unknown: 0
-    };
+    } as Record<string, number>;
 
     for (const metric of metricsData || []) {
       if (metric.metric_type === 'sync_errors_by_type' && metric.metadata?.error_type) {

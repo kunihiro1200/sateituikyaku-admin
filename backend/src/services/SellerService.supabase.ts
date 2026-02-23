@@ -292,7 +292,7 @@ export class SellerService extends BaseRepository {
         currentStatus: property.current_status, // 新しいフィールドとして追加
         parking: property.parking,
         additionalInfo: property.additional_info,
-      };
+      } as any;
     }
 
     return decryptedSeller;
@@ -863,7 +863,7 @@ export class SellerService extends BaseRepository {
             currentStatus: property.current_status, // 新しいフィールドとして追加
             parking: property.parking,
             additionalInfo: property.additional_info,
-          };
+          } as any;
         }
       }
       

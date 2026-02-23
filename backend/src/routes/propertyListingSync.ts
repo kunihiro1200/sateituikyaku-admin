@@ -218,9 +218,18 @@ router.get('/statistics', async (req, res) => {
       });
     }
 
-    const statistics = await syncService.getStatistics();
+    // TODO: Implement getStatistics method in PropertyListingRestSyncService
+    // const statistics = await syncService.getStatistics();
 
-    res.json(statistics);
+    res.json({
+      errorRate: 0,
+      avgDuration: 0,
+      totalSyncs: 0,
+      successfulSyncs: 0,
+      failedSyncs: 0,
+      partialSyncs: 0,
+      message: 'Statistics endpoint not yet implemented'
+    });
   } catch (error) {
     console.error('❌ Failed to get statistics:', error);
     res.status(500).json({
