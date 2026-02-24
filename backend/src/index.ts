@@ -385,10 +385,10 @@ const startServer = async () => {
       // 録音ファイルクリーンアップワーカーを起動
       setTimeout(async () => {
         try {
-          const { getRecordingCleanupWorker } = await import('./jobs/recordingCleanup');
-          const cleanupWorker = getRecordingCleanupWorker();
-          cleanupWorker.start();
-          const config = cleanupWorker.getConfig();
+          // const { getRecordingCleanupWorker } = await import('./jobs/recordingCleanup');
+          // const cleanupWorker = getRecordingCleanupWorker();
+          // cleanupWorker.start();
+          // const config = cleanupWorker.getConfig();
           console.log(`🧹 Recording cleanup worker started (schedule: ${config.schedule}, retention: ${config.retentionDays} days)`);
         } catch (error: any) {
           console.error('⚠️ Recording cleanup worker failed to start (non-blocking):', error.message);
