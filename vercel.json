@@ -1,15 +1,14 @@
 {
   "version": 2,
   "functions": {
-    "api/index.ts": {
-      "includeFiles": "backend/{src,config}/**",
+    "backend/api/index.ts": {
       "excludeFiles": "backend/node_modules/**"
     }
   },
   "routes": [
     {
       "src": "/(.*)",
-      "dest": "/api/index.ts"
+      "dest": "/backend/api/index.ts"
     }
   ]
 }
