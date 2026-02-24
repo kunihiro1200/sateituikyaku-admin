@@ -1,14 +1,18 @@
 {
   "version": 2,
-  "functions": {
-    "backend/api/index.ts": {
-      "excludeFiles": "backend/node_modules/**"
+  "builds": [
+    {
+      "src": "backend/package.json",
+      "use": "@vercel/node",
+      "config": {
+        "includeFiles": ["backend/src/**", "backend/config/**"]
+      }
     }
-  },
+  ],
   "routes": [
     {
       "src": "/(.*)",
-      "dest": "/backend/api/index.ts"
+      "dest": "/backend/src/index.js"
     }
   ]
 }
