@@ -1,4 +1,4 @@
-// 公開物件サイト専用のエントリーポイント
+﻿// 公開物件サイト専用のエントリーポイント
 // Force cache clear: 2026-01-31 17:00 - Restore working state
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import express from 'express';
@@ -1610,7 +1610,7 @@ app.get('/api/cron/sync-property-listings', async (req, res) => {
     // 外部からのアクセスを防ぐため、Vercel Dashboardで設定する
     
     // PropertyListingSyncServiceを使用してフル同期を実行
-    const { getPropertyListingSyncService } = await import('./src/services/PropertyListingSyncService');
+    const { getPropertyListingSyncService } = await import('../src/services/PropertyListingSyncService');
     const syncService = getPropertyListingSyncService();
     await syncService.initialize();
     
