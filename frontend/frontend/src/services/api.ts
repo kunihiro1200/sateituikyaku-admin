@@ -56,7 +56,7 @@ api.interceptors.response.use(
         try {
           // インターセプターをスキップして直接リクエスト
           const response = await axios.post(
-            `${API_BASE_URL}/auth/refresh`,
+            `${API_BASE_URL}//api/auth/refresh`,
             { refresh_token: refreshToken },
             {
               headers: { 'Content-Type': 'application/json' },
