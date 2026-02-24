@@ -1,33 +1,42 @@
-import dotenv from 'dotenv';
+﻿import dotenv from 'dotenv';
 import path from 'path';
+import fs from 'fs';
 
-// Vercel環境では.envファイルの読み込みをスキップ
-if (process.env.VERCEL !== '1') {
+// 最初に環境変数を読み込む（Vercel環境では.envファイルは存在しない）
+try {
   const envPath = path.resolve(__dirname, '../.env');
-  console.log('📁 Loading .env from:', envPath);
-  const result = dotenv.config({ path: envPath });
+  if (fs.existsSync(envPath)) {
+    console.log('📁 Loading .env from:', envPath);
+    const result = dotenv.config({ path: envPath });
 
-  if (result.error) {
-    console.warn('⚠️ .env file not found:', result.error.message);
+    if (result.error) {
+      console.error('❌ Error loading .env file:', result.error);
+    } else {
+      console.log('✅ .env file loaded successfully');
+    }
   } else {
-    console.log('✅ .env file loaded successfully');
-    console.log('🔑 All environment variables starting with GMAIL:');
-    Object.keys(process.env)
-      .filter(key => key.startsWith('GMAIL'))
-      .forEach(key => {
-        console.log(`  ${key}:`, process.env[key] ? `"${process.env[key]?.substring(0, 20)}..."` : 'Missing');
-      });
-    console.log('🔑 All environment variables starting with GOOGLE_CALENDAR:');
-    Object.keys(process.env)
-      .filter(key => key.startsWith('GOOGLE_CALENDAR'))
-      .forEach(key => {
-        console.log(`  ${key}:`, process.env[key] ? `"${process.env[key]?.substring(0, 20)}..."` : 'Missing');
-      });
+    console.log('ℹ️  .env file not found (running in Vercel environment)');
   }
-} else {
-  console.log('🚀 Running in Vercel environment - using Vercel environment variables');
+} catch (error) {
+  console.error('⚠️ Error checking .env file:', error);
+  console.log('ℹ️  Continuing without .env file (using environment variables)');
 }
 
+// 環境変数のログ出力（デバッグ用）
+if (process.env.NODE_ENV !== 'production') {
+  console.log('🔑 All environment variables starting with GMAIL:');
+  Object.keys(process.env)
+    .filter(key => key.startsWith('GMAIL'))
+    .forEach(key => {
+      console.log(`  ${key}:`, process.env[key] ? `"${process.env[key]?.substring(0, 20)}..."` : 'Missing');
+    });
+  console.log('🔑 All environment variables starting with GOOGLE_CALENDAR:');
+  Object.keys(process.env)
+    .filter(key => key.startsWith('GOOGLE_CALENDAR'))
+    .forEach(key => {
+      console.log(`  ${key}:`, process.env[key] ? `"${process.env[key]?.substring(0, 20)}..."` : 'Missing');
+    });
+}
 
 import express from 'express';
 import cors from 'cors';
@@ -108,7 +117,8 @@ app.use(cors({
     'http://localhost:3000',  // バックエンド自身も追加
     'https://property-site-frontend-kappa.vercel.app',  // 公開物件サイト
     'https://new-admin-management-system-v2.vercel.app',  // 社内管理システムフロントエンド
-    'https://baikyaku-property-site3.vercel.app'  // 社内管理システムバックエンド
+    'https://baikyaku-property-site3.vercel.app',  // 社内管理システムバックエンド
+    'https://sateituikyaku-admin-frontend.vercel.app'  // 新しいフロントエンド
   ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
@@ -120,16 +130,11 @@ app.use(express.json({ limit: '50mb' })); // 画像付きメール対応のた�
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(activityLogger);
 
-
 // Health check
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// Health check for /api/health (Vercel routing)
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
-});
 // Cron Job: 問合せをスプレッドシートに同期（1分ごとに実行）
 // ⚠️ 重要: 他のルートより前に定義（より具体的なルートを優先）
 app.get('/api/cron/sync-inquiries', async (req, res) => {
@@ -380,8 +385,8 @@ const startServer = async () => {
       // 録音ファイルクリーンアップワーカーを起動
       setTimeout(async () => {
         try {
-          const recordingCleanupModule = await import('./jobs/recordingCleanup') as any;
-          const cleanupWorker = (recordingCleanupModule as any).getRecordingCleanupWorker();
+          const { getRecordingCleanupWorker } = await import('./jobs/recordingCleanup');
+          const cleanupWorker = getRecordingCleanupWorker();
           cleanupWorker.start();
           const config = cleanupWorker.getConfig();
           console.log(`🧹 Recording cleanup worker started (schedule: ${config.schedule}, retention: ${config.retentionDays} days)`);
