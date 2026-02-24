@@ -1,29 +1,33 @@
 import dotenv from 'dotenv';
 import path from 'path';
 
-// 最初に環境変数を読み込む（Vercel環境では.envファイルは存在しないため、エラーは無視）
-const envPath = path.resolve(__dirname, '../.env');
-console.log('📁 Loading .env from:', envPath);
-const result = dotenv.config({ path: envPath });
+// Vercel環境では.envファイルの読み込みをスキップ
+if (process.env.VERCEL !== '1') {
+  const envPath = path.resolve(__dirname, '../.env');
+  console.log('📁 Loading .env from:', envPath);
+  const result = dotenv.config({ path: envPath });
 
-if (result.error) {
-  // Vercel環境では.envファイルが存在しないため、エラーは警告として扱う
-  console.warn('⚠️ .env file not found (this is normal in Vercel environment):', result.error.message);
+  if (result.error) {
+    console.warn('⚠️ .env file not found:', result.error.message);
+  } else {
+    console.log('✅ .env file loaded successfully');
+    console.log('🔑 All environment variables starting with GMAIL:');
+    Object.keys(process.env)
+      .filter(key => key.startsWith('GMAIL'))
+      .forEach(key => {
+        console.log(`  ${key}:`, process.env[key] ? `"${process.env[key]?.substring(0, 20)}..."` : 'Missing');
+      });
+    console.log('🔑 All environment variables starting with GOOGLE_CALENDAR:');
+    Object.keys(process.env)
+      .filter(key => key.startsWith('GOOGLE_CALENDAR'))
+      .forEach(key => {
+        console.log(`  ${key}:`, process.env[key] ? `"${process.env[key]?.substring(0, 20)}..."` : 'Missing');
+      });
+  }
 } else {
-  console.log('✅ .env file loaded successfully');
-  console.log('🔑 All environment variables starting with GMAIL:');
-  Object.keys(process.env)
-    .filter(key => key.startsWith('GMAIL'))
-    .forEach(key => {
-      console.log(`  ${key}:`, process.env[key] ? `"${process.env[key]?.substring(0, 20)}..."` : 'Missing');
-    });
-  console.log('🔑 All environment variables starting with GOOGLE_CALENDAR:');
-  Object.keys(process.env)
-    .filter(key => key.startsWith('GOOGLE_CALENDAR'))
-    .forEach(key => {
-      console.log(`  ${key}:`, process.env[key] ? `"${process.env[key]?.substring(0, 20)}..."` : 'Missing');
-    });
+  console.log('🚀 Running in Vercel environment - using Vercel environment variables');
 }
+
 
 import express from 'express';
 import cors from 'cors';
