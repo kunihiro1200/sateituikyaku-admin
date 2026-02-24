@@ -22,7 +22,7 @@ async function getApp() {
       
       // 動的インポートでExpressアプリを取得
       // パスを修正: backend/src/index に変更
-      const appModule = await import('../backend/src/index');
+      const appModule = await import('backend/src/index');
       console.log('✅ Step 2: Module imported successfully');
       console.log('📦 Step 3: Module exports:', Object.keys(appModule));
       
