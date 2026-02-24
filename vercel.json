@@ -2,7 +2,8 @@
   "version": 2,
   "functions": {
     "api/index.ts": {
-      "includeFiles": "backend/**"
+      "includeFiles": "backend/{src,config}/**",
+      "excludeFiles": "backend/node_modules/**"
     }
   },
   "routes": [
