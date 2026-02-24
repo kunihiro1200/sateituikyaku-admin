@@ -120,11 +120,16 @@ app.use(express.json({ limit: '50mb' })); // 画像付きメール対応のた�
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(activityLogger);
 
+
 // Health check
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// Health check for /api/health (Vercel routing)
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
 // Cron Job: 問合せをスプレッドシートに同期（1分ごとに実行）
 // ⚠️ 重要: 他のルートより前に定義（より具体的なルートを優先）
 app.get('/api/cron/sync-inquiries', async (req, res) => {
