@@ -389,7 +389,7 @@ const startServer = async () => {
           // const cleanupWorker = getRecordingCleanupWorker();
           // cleanupWorker.start();
           // const config = cleanupWorker.getConfig();
-          console.log(`🧹 Recording cleanup worker started (schedule: ${config.schedule}, retention: ${config.retentionDays} days)`);
+          // console.log(`🧹 Recording cleanup worker started (schedule: ${config.schedule}, retention: ${config.retentionDays} days)`);
         } catch (error: any) {
           console.error('⚠️ Recording cleanup worker failed to start (non-blocking):', error.message);
         }
