@@ -96,7 +96,7 @@ export const useAuthStore = create<AuthState>()(
 
       // バックエンドにトークンを送信して社員情報を取得
       console.log('🔵 Calling backend /auth/callback...');
-      const response = await api.post('/api/auth/callback', {
+      const response = await api.post('/auth/callback', {
         access_token: session.access_token,
         refresh_token: session.refresh_token,
       });
@@ -133,7 +133,7 @@ export const useAuthStore = create<AuthState>()(
 
   logout: async () => {
     try {
-      await api.post('/api/auth/logout');
+      await api.post('/auth/logout');
     } catch (error) {
       console.error('Logout error:', error);
     } finally {
@@ -176,9 +176,7 @@ export const useAuthStore = create<AuthState>()(
 
       // 社員情報を取得
       try {
-        const response = await api.get('/api/auth/me');
-
-
+        const response = await api.get('/auth/me');
         console.log('✅ Auth check successful');
         set({ employee: response.data, isAuthenticated: true, isLoading: false });
       } catch (apiError: any) {

@@ -71,7 +71,7 @@ export class EmailIntegrationService {
         inquiry_source: emailData.inquirySource,
         inquiry_date: emailData.inquiryDate.toISOString(),
         inquiry_year: emailData.inquiryYear || emailData.inquiryDate.getFullYear(),
-        status: SellerStatus.FOLLOWING_UP,
+        status: SellerStatus.NEW,
         is_unreachable: false,
         duplicate_confirmed: false,
       };

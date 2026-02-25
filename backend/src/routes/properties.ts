@@ -382,7 +382,7 @@ router.post(
       const { id } = req.params;
 
       // Get property
-      const property = await (propertyService as any).getPropertyById(id);
+      const property = await propertyService.getPropertyById(id);
       if (!property) {
         return res.status(404).json({
           error: {

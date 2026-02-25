@@ -62,12 +62,12 @@ router.get('/active-initials', async (req: Request, res: Response) => {
   try {
     // スタッフ管理スプレッドシートから通常=TRUEのスタッフを取得
     const { GoogleSheetsClient } = await import('../services/GoogleSheetsClient');
-    const sheetsClient = new GoogleSheetsClient({
-      spreadsheetId: process.env.STAFF_SPREADSHEET_ID || '1-9yAuVYQRm-_zhjYX7M7zjiGbnBibkG77Mpz93sN1xx',
-      sheetName: 'スタッフ'
-    });
+    const sheetsClient = new GoogleSheetsClient(
+      process.env.STAFF_SPREADSHEET_ID || '19yAuVYQRm-_zhjYX7M7zjiGbnBibkG77Mpz93sN1xx',
+      'スタッフ'
+    );
 
-    await sheetsClient.authenticate();
+    await sheetsClient.initialize();
     const rows = await sheetsClient.readAll();
 
     // 通常=TRUEのスタッフのイニシャルを抽出

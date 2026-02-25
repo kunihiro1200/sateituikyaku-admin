@@ -86,8 +86,8 @@ export class DuplicateDetectionService {
         },
         propertyInfo: seller.properties?.[0]
           ? {
-              address: (seller.properties[0] as any).property_address || (seller.properties[0] as any).address,
-              propertyType: (seller.properties[0] as any).property_type,
+              address: seller.properties[0].property_address || seller.properties[0].address,
+              propertyType: seller.properties[0].property_type,
             }
           : undefined,
       }));
@@ -156,8 +156,8 @@ export class DuplicateDetectionService {
         },
         propertyInfo: seller.properties?.[0]
           ? {
-              address: (seller.properties[0] as any).property_address || (seller.properties[0] as any).address,
-              propertyType: (seller.properties[0] as any).property_type,
+              address: seller.properties[0].property_address || seller.properties[0].address,
+              propertyType: seller.properties[0].property_type,
             }
           : undefined,
       }));
@@ -257,10 +257,10 @@ export class DuplicateDetectionService {
           past_owner_name: pastSeller.name,
           past_owner_phone: pastSeller.phone_number,
           past_owner_email: pastSeller.email,
-          past_property_address: (pastSeller as any).property_address || (pastSeller.properties?.[0] as any)?.property_address,
-          past_property_type: (pastSeller.properties?.[0] as any)?.property_type,
+          past_property_address: pastSeller.properties?.[0]?.property_address || pastSeller.properties?.[0]?.address,
+          past_property_type: pastSeller.properties?.[0]?.property_type,
           past_inquiry_date: pastSeller.inquiry_date,
-        } as any);
+        });
 
       if (insertError) {
         console.error('Error recording duplicate history:', insertError);

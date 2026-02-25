@@ -11,6 +11,7 @@
  */
 
 import { SupabaseClient } from '@supabase/supabase-js';
+import type PQueue from 'p-queue';
 
 export interface PropertyListing {
   property_number: string;
@@ -79,7 +80,7 @@ export interface SyncResult {
  * バッチ処理とレート制限を使用して、物件リストを効率的に同期します。
  */
 export class PropertyListingSyncProcessor {
-  private queue: any; // PQueueは動的インポートで初期化
+  private queue: PQueue | null = null;
   private supabase: SupabaseClient;
   private config: Required<SyncConfig>;
 
@@ -94,23 +95,25 @@ export class PropertyListingSyncProcessor {
       maxRetries: config.maxRetries ?? 3,
       retryDelay: config.retryDelay ?? 1000,
     };
-
-    // キューは初回使用時に動的インポートで初期化
-    this.queue = null;
   }
 
   /**
-   * PQueueを動的にインポートして初期化
+   * キューを初期化（動的インポート）
    */
-  private async initializeQueue() {
-    if (!this.queue) {
-      const PQueue = (await import('p-queue')).default;
-      this.queue = new PQueue({
-        concurrency: this.config.concurrency,
-        interval: 1000, // 1秒間隔
-        intervalCap: this.config.rateLimit, // 1秒あたりのリクエスト数
-      });
+  private async initQueue(): Promise<PQueue> {
+    if (this.queue) {
+      return this.queue;
     }
+
+    const { default: PQueue } = await import('p-queue');
+    
+    // キューを初期化（レート制限付き）
+    this.queue = new PQueue({
+      concurrency: this.config.concurrency,
+      interval: 1000, // 1秒間隔
+      intervalCap: this.config.rateLimit, // 1秒あたりのリクエスト数
+    });
+    
     return this.queue;
   }
 
@@ -126,7 +129,7 @@ export class PropertyListingSyncProcessor {
     syncId: string
   ): Promise<SyncResult> {
     // キューを初期化
-    const queue = await this.initializeQueue();
+    const queue = await this.initQueue();
     
     const result: SyncResult = {
       syncId,
@@ -418,7 +421,7 @@ export class PropertyListingSyncProcessor {
    * @returns キューに入っているタスク数 + 実行中のタスク数
    */
   async getQueueSize(): Promise<number> {
-    const queue = await this.initializeQueue();
+    const queue = await this.initQueue();
     return queue.size + queue.pending;
   }
 
@@ -426,7 +429,7 @@ export class PropertyListingSyncProcessor {
    * キューをクリア
    */
   async clearQueue(): Promise<void> {
-    const queue = await this.initializeQueue();
+    const queue = await this.initQueue();
     queue.clear();
   }
 }

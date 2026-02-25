@@ -2,18 +2,11 @@ import express, { Request, Response } from 'express';
 import { CalendarWebhookService, WebhookHeaders } from '../services/CalendarWebhookService';
 import { CalendarSyncService } from '../services/CalendarSyncService';
 import { GoogleAuthService } from '../services/GoogleAuthService';
-import { createClient } from '@supabase/supabase-js';
 
 const router = express.Router();
 const webhookService = new CalendarWebhookService();
 const syncService = new CalendarSyncService();
 const authService = new GoogleAuthService();
-
-// Supabaseクライアントを初期化
-const supabase = createClient(
-  process.env.SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_KEY!
-);
 
 /**
  * POST /api/webhooks/calendar
@@ -51,8 +44,8 @@ router.post('/calendar', async (req: Request, res: Response) => {
         // exists状態の場合、同期を実行
         if (headers['x-goog-resource-state'] === 'exists') {
           // チャンネルIDから従業員IDを取得
-          const { data: channel } = await supabase
-            .from('calendar_webhook_channels')
+          const { data: channel } = await webhookService
+            .table('calendar_webhook_channels')
             .select('employee_id')
             .eq('channel_id', headers['x-goog-channel-id'])
             .single();

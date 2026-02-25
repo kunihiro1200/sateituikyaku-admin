@@ -104,7 +104,7 @@ export class BuyerService {
     // 検索
     if (search) {
       query = query.or(
-        `buyer_number.ilike.%${search}%,name.ilike.%${search}%,phone_number.ilike.%${search}%`
+        `buyer_number.ilike.%${search}%,name.ilike.%${search}%,phone_number.ilike.%${search}%,property_number.ilike.%${search}%`
       );
     }
 
@@ -200,9 +200,9 @@ export class BuyerService {
   async search(query: string, limit: number = 20): Promise<any[]> {
     const { data, error } = await this.supabase
       .from('buyers')
-      .select('id, buyer_number, name, phone_number, email, latest_status, initial_assignee')
+      .select('id, buyer_number, name, phone_number, email, property_number, latest_status, initial_assignee')
       .or(
-        `buyer_number.ilike.%${query}%,name.ilike.%${query}%,phone_number.ilike.%${query}%`
+        `buyer_number.ilike.%${query}%,name.ilike.%${query}%,phone_number.ilike.%${query}%,property_number.ilike.%${query}%`
       )
       .limit(limit);
 
@@ -709,7 +709,7 @@ export class BuyerService {
     // in the buyers table (they might still exist as separate records)
     const { data: pastBuyerRecords, error } = await this.supabase
       .from('buyers')
-      .select('buyer_number, reception_date')
+      .select('buyer_number, property_number, reception_date, inquiry_source')
       .in('buyer_number', pastBuyerNumbers);
 
     if (error) {
@@ -724,17 +724,13 @@ export class BuyerService {
     }
 
     // Create a map of buyer number to details
-    const detailsMap = new Map<string, {
-      propertyNumber: null;
-      inquiryDate: string | null;
-      inquirySource: null;
-    }>(
-      (pastBuyerRecords || []).map((record: any) => [
+    const detailsMap = new Map(
+      (pastBuyerRecords || []).map(record => [
         record.buyer_number,
         {
-          propertyNumber: null,
+          propertyNumber: record.property_number,
           inquiryDate: record.reception_date,
-          inquirySource: null
+          inquirySource: record.inquiry_source
         }
       ])
     );
@@ -763,7 +759,7 @@ export class BuyerService {
   } | null> {
     const { data, error } = await this.supabase
       .from('buyers')
-      .select('buyer_id, buyer_number, reception_date, latest_status')
+      .select('buyer_id, buyer_number, property_number, reception_date, inquiry_source, latest_status')
       .eq('buyer_number', buyerNumber)
       .single();
 
@@ -776,9 +772,9 @@ export class BuyerService {
 
     return {
       buyerNumber: data.buyer_number,
-      propertyNumber: null,
+      propertyNumber: data.property_number,
       inquiryDate: data.reception_date,
-      inquirySource: null,
+      inquirySource: data.inquiry_source,
       status: data.latest_status,
       buyerId: data.buyer_id
     };
@@ -814,9 +810,9 @@ export class BuyerService {
     // Add current buyer number inquiry
     history.push({
       buyerNumber: buyer.buyer_number,
-      propertyNumber: null,
+      propertyNumber: buyer.property_number,
       inquiryDate: buyer.reception_date,
-      inquirySource: null,
+      inquirySource: buyer.inquiry_source,
       status: buyer.latest_status,
       isCurrent: true
     });
@@ -873,20 +869,48 @@ export class BuyerService {
       inquiryDate: string;
     }>();
 
-    // Get past buyer numbers
+    // Parse current buyer's property numbers
+    if (buyer.property_number) {
+      const currentPropertyNumbers = buyer.property_number
+        .split(',')
+        .map((n: string) => n.trim())
+        .filter((n: string) => n);
+      
+      currentPropertyNumbers.forEach((propNum: string) => {
+        allPropertyNumbers.push(propNum);
+        propertyToBuyerMap.set(propNum, {
+          buyerNumber: buyer.buyer_number,
+          status: 'current',
+          inquiryDate: buyer.reception_date || ''
+        });
+      });
+    }
+
+    // Get past buyer numbers and their property numbers
     const pastBuyerNumbers = this.parsePastBuyerList(buyer.past_buyer_list);
     
     for (const pastBuyerNumber of pastBuyerNumbers) {
       // Fetch past buyer data
       const { data: pastBuyer, error: pastBuyerError } = await this.supabase
         .from('buyers')
-        .select('buyer_number, reception_date')
+        .select('buyer_number, property_number, reception_date')
         .eq('buyer_number', pastBuyerNumber)
         .single();
 
-      if (!pastBuyerError && pastBuyer) {
-        // Note: property_number field doesn't exist, so we can't fetch property numbers
-        // This section is kept for future compatibility
+      if (!pastBuyerError && pastBuyer && pastBuyer.property_number) {
+        const pastPropertyNumbers = pastBuyer.property_number
+          .split(',')
+          .map((n: string) => n.trim())
+          .filter((n: string) => n);
+        
+        pastPropertyNumbers.forEach((propNum: string) => {
+          allPropertyNumbers.push(propNum);
+          propertyToBuyerMap.set(propNum, {
+            buyerNumber: pastBuyer.buyer_number,
+            status: 'past',
+            inquiryDate: pastBuyer.reception_date || ''
+          });
+        });
       }
     }
 

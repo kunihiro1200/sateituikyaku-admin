@@ -14,7 +14,6 @@ export interface RollbackResult {
   restoredCount: number;
   error?: string;
   duration: number;
-  snapshotId?: string;
 }
 
 /**
@@ -65,10 +64,10 @@ export class RollbackService {
 
       // ログを記録
       await this.logger.startSyncLog('manual', undefined, {
-        operation: 'snapshot_created' as const,
+        operation: 'snapshot_created',
         snapshotId: snapshot.id,
         sellerCount,
-      } as Record<string, any>);
+      });
 
       return {
         id: snapshot.id,
@@ -78,9 +77,9 @@ export class RollbackService {
       };
     } catch (error: any) {
       await this.logger.logError('unknown', error.message, {
-        operation: 'create_snapshot' as const,
+        operation: 'create_snapshot',
         stackTrace: error.stack,
-      } as Record<string, any>);
+      });
       throw error;
     }
   }
@@ -111,10 +110,10 @@ export class RollbackService {
 
       // ログを開始
       const logId = await this.logger.startSyncLog('manual', undefined, {
-        operation: 'rollback' as const,
+        operation: 'rollback',
         snapshotId,
         targetCount: snapshotData.length,
-      } as Record<string, any>);
+      });
 
       // トランザクション的に処理
       // 1. 現在のデータを削除
@@ -145,7 +144,6 @@ export class RollbackService {
         success: true,
         restoredCount: snapshotData.length,
         duration,
-        snapshotId,
       };
     } catch (error: any) {
       const duration = Date.now() - startTime;
@@ -154,10 +152,10 @@ export class RollbackService {
         SyncLogger.determineErrorType(error),
         error.message,
         {
-          operation: 'rollback' as const,
+          operation: 'rollback',
           snapshotId,
           stackTrace: error.stack,
-        } as Record<string, any>
+        }
       );
 
       return {
@@ -165,7 +163,6 @@ export class RollbackService {
         restoredCount: 0,
         error: error.message,
         duration,
-        snapshotId,
       };
     }
   }
@@ -210,9 +207,9 @@ export class RollbackService {
       return true;
     } catch (error: any) {
       await this.logger.logError('unknown', error.message, {
-        operation: 'delete_snapshot' as const,
+        operation: 'delete_snapshot',
         snapshotId,
-      } as Record<string, any>);
+      });
       return false;
     }
   }
@@ -238,9 +235,9 @@ export class RollbackService {
       return deleted?.length || 0;
     } catch (error: any) {
       await this.logger.logError('unknown', error.message, {
-        operation: 'cleanup_snapshots' as const,
+        operation: 'cleanup_snapshots',
         retentionDays,
-      } as Record<string, any>);
+      });
       return 0;
     }
   }

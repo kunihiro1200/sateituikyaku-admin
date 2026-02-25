@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import { authenticate } from '../middleware/auth';
 import { SummaryGenerator } from '../services/SummaryGenerator';
 import { ActivityLogService } from '../services/ActivityLogService';
-import { SellerService } from '../services/SellerService.supabase';
+import { SellerService } from '../services/SellerService';
 
 const router = Router();
 const summaryGenerator = new SummaryGenerator();
@@ -107,26 +107,25 @@ router.get('/seller/:sellerId', authenticate, async (req: Request, res: Response
 
     // Extract spreadsheet comments from seller.comments field
     const spreadsheetComments: string[] = [];
-    const sellerWithComments = seller as any;
-    if (sellerWithComments.comments) {
+    if (seller.comments) {
       // Parse comments field - assuming it's stored as JSON array or newline-separated
       try {
-        if (typeof sellerWithComments.comments === 'string') {
+        if (typeof seller.comments === 'string') {
           // Try parsing as JSON first
           try {
-            const parsed = JSON.parse(sellerWithComments.comments);
+            const parsed = JSON.parse(seller.comments);
             if (Array.isArray(parsed)) {
               spreadsheetComments.push(...parsed);
             } else {
               // Split by newlines if not JSON
-              spreadsheetComments.push(...sellerWithComments.comments.split('\n').filter((c: string) => c.trim()));
+              spreadsheetComments.push(...seller.comments.split('\n').filter(c => c.trim()));
             }
           } catch {
             // Split by newlines if JSON parse fails
-            spreadsheetComments.push(...sellerWithComments.comments.split('\n').filter((c: string) => c.trim()));
+            spreadsheetComments.push(...seller.comments.split('\n').filter(c => c.trim()));
           }
-        } else if (Array.isArray(sellerWithComments.comments)) {
-          spreadsheetComments.push(...sellerWithComments.comments);
+        } else if (Array.isArray(seller.comments)) {
+          spreadsheetComments.push(...seller.comments);
         }
       } catch (error) {
         console.warn('Failed to parse seller comments:', error);
@@ -143,8 +142,8 @@ router.get('/seller/:sellerId', authenticate, async (req: Request, res: Response
       sellerData: {
         name: seller.name,
         status: seller.status,
-        confidence: (seller as any).confidence,
-        assignedTo: (seller as any).assignedTo,
+        confidence: seller.confidence,
+        assignedTo: seller.assignedTo,
       },
     });
 

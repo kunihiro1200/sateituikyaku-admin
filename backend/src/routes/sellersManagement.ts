@@ -64,7 +64,7 @@ router.post(
       }
 
       const { phoneNumber, email, excludeId } = req.body;
-      const matches = await (duplicateDetectionService as any).checkDuplicates(
+      const matches = await duplicateDetectionService.checkDuplicates(
         phoneNumber,
         email,
         excludeId
@@ -106,7 +106,7 @@ router.post(
       }
 
       const { sellerNumber } = req.params;
-      const sellerData = await (duplicateDetectionService as any).copySeller(sellerNumber);
+      const sellerData = await duplicateDetectionService.copySeller(sellerNumber);
 
       res.json({ sellerData });
     } catch (error: any) {
@@ -144,7 +144,7 @@ router.post(
       }
 
       const { buyerNumber } = req.params;
-      const buyerData = await (duplicateDetectionService as any).copyBuyer(buyerNumber);
+      const buyerData = await duplicateDetectionService.copyBuyer(buyerNumber);
 
       res.json({ buyerData });
     } catch (error: any) {
@@ -185,7 +185,7 @@ router.post(
       }
 
       const { phoneNumber, email } = req.body;
-      const pastInfo = await (duplicateDetectionService as any).getPastOwnerAndPropertyInfo(
+      const pastInfo = await duplicateDetectionService.getPastOwnerAndPropertyInfo(
         phoneNumber,
         email
       );
@@ -474,8 +474,8 @@ router.post(
 
       const delivery =
         type === 'email'
-          ? await (documentDeliveryService as any).recordEmailSent(id, date)
-          : await (documentDeliveryService as any).recordMailSent(id, date);
+          ? await documentDeliveryService.recordEmailSent(id, date)
+          : await documentDeliveryService.recordMailSent(id, date);
 
       res.json({ delivery });
     } catch (error: any) {

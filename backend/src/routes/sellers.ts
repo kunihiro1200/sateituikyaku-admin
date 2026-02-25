@@ -645,8 +645,8 @@ router.post('/:id/send-valuation-email', async (req: Request, res: Response) => 
     }
 
     // 固定資産税路線価を取得
-    const fixedAssetTaxRoadPrice = (seller.property as any)?.fixedAssetTaxRoadPrice || 
-                                   (seller.property as any)?.sellerFixedAssetTaxRoadPrice;
+    const fixedAssetTaxRoadPrice = seller.property?.fixedAssetTaxRoadPrice || 
+                                   seller.property?.sellerFixedAssetTaxRoadPrice;
 
     // 査定データを準備
     const valuationData = {
@@ -656,7 +656,7 @@ router.post('/:id/send-valuation-email', async (req: Request, res: Response) => 
       fixedAssetTaxRoadPrice,
       landArea: seller.property?.landArea,
       buildingArea: seller.property?.buildingArea,
-    } as any;
+    };
 
     // メール送信
     const { EmailService } = await import('../services/EmailService.supabase');

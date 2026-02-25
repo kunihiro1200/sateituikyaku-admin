@@ -226,13 +226,7 @@ property_sync_circuit_breaker_state ${metrics.circuitBreakerState}
 
     // メトリクスを集計
     const latestMetrics: Record<string, number> = {};
-    const errorsByType: {
-      network: number;
-      validation: number;
-      database: number;
-      rateLimit: number;
-      unknown: number;
-    } = {
+    const errorsByType: Record<string, number> = {
       network: 0,
       validation: 0,
       database: 0,
@@ -244,7 +238,7 @@ property_sync_circuit_breaker_state ${metrics.circuitBreakerState}
       if (metric.metric_type === 'sync_errors_by_type' && metric.metadata?.error_type) {
         const errorType = metric.metadata.error_type;
         if (errorType in errorsByType) {
-          (errorsByType as any)[errorType] += metric.metric_value;
+          errorsByType[errorType as keyof typeof errorsByType] += metric.metric_value;
         } else {
           errorsByType.unknown += metric.metric_value;
         }

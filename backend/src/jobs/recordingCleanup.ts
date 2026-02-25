@@ -17,7 +17,7 @@ import logger from '../utils/logger';
 
 // Job data interface
 export interface RecordingCleanupJobData {
-  retentionDays?: number;
+  retentionDays: number;
   archiveDays?: number;
   dryRun?: boolean;
   batchSize?: number;
@@ -209,7 +209,7 @@ recordingCleanupQueue.on('completed', (job: Job<RecordingCleanupJobData>, result
 
 // Job failed after all retries
 recordingCleanupQueue.on('failed', (job: Job<RecordingCleanupJobData>, error: Error) => {
-  logger.error(`[RecordingCleanup] Job ${job.id} failed after all retries:`, { error: error.message });
+  logger.error(`[RecordingCleanup] Job ${job.id} failed after all retries:`, error.message);
 });
 
 // Job is active (started processing)
@@ -223,7 +223,7 @@ recordingCleanupQueue.on('active', (job: Job<RecordingCleanupJobData>) => {
 export async function addRecordingCleanupJob(
   options: RecordingCleanupJobData = {}
 ): Promise<Job<RecordingCleanupJobData>> {
-  logger.info('[RecordingCleanup] Adding cleanup job to queue', { options });
+  logger.info('[RecordingCleanup] Adding cleanup job to queue', options);
 
   const job = await recordingCleanupQueue.add(
     {
@@ -366,7 +366,7 @@ export async function getCleanupQueueStats(): Promise<{
 export async function runCleanupNow(
   options: RecordingCleanupJobData = {}
 ): Promise<RecordingCleanupJobResult> {
-  logger.info('[RecordingCleanup] Running cleanup immediately', { options });
+  logger.info('[RecordingCleanup] Running cleanup immediately', options);
 
   const job = await addRecordingCleanupJob(options);
   

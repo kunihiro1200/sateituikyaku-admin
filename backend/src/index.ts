@@ -1,4 +1,4 @@
-﻿import dotenv from 'dotenv';
+import dotenv from 'dotenv';
 import path from 'path';
 import fs from 'fs';
 
@@ -117,8 +117,7 @@ app.use(cors({
     'http://localhost:3000',  // バックエンド自身も追加
     'https://property-site-frontend-kappa.vercel.app',  // 公開物件サイト
     'https://new-admin-management-system-v2.vercel.app',  // 社内管理システムフロントエンド
-    'https://baikyaku-property-site3.vercel.app',  // 社内管理システムバックエンド
-    'https://sateituikyaku-admin-frontend.vercel.app'  // 新しいフロントエンド
+    'https://baikyaku-property-site3.vercel.app'  // 社内管理システムバックエンド
   ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
@@ -385,11 +384,11 @@ const startServer = async () => {
       // 録音ファイルクリーンアップワーカーを起動
       setTimeout(async () => {
         try {
-          // const { getRecordingCleanupWorker } = await import('./jobs/recordingCleanup');
-          // const cleanupWorker = getRecordingCleanupWorker();
-          // cleanupWorker.start();
-          // const config = cleanupWorker.getConfig();
-          // console.log(`🧹 Recording cleanup worker started (schedule: ${config.schedule}, retention: ${config.retentionDays} days)`);
+          const { getRecordingCleanupWorker } = await import('./jobs/recordingCleanup');
+          const cleanupWorker = getRecordingCleanupWorker();
+          cleanupWorker.start();
+          const config = cleanupWorker.getConfig();
+          console.log(`🧹 Recording cleanup worker started (schedule: ${config.schedule}, retention: ${config.retentionDays} days)`);
         } catch (error: any) {
           console.error('⚠️ Recording cleanup worker failed to start (non-blocking):', error.message);
         }
