@@ -46,7 +46,7 @@ import morgan from 'morgan';
 import supabase from './config/supabase';
 import redisClient, { connectRedis } from './config/redis';
 import authRoutes from './routes/auth';
-import authSupabaseRoutes from './routes/auth.supabase';C:\Users\kunih\sateituikyaku-admin\backend\src\index.ts
+import authSupabaseRoutes from './routes/auth.supabase';
 import sellerRoutes from './routes/sellers';
 import sellersManagementRoutes from './routes/sellersManagement';
 import propertyRoutes from './routes/properties';
