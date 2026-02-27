@@ -1,7 +1,7 @@
-{
+﻿{
   "name": "seller-list-management-frontend",
   "version": "1.0.2",
-  "description": "不動産売主リスト管琁E��スチE�� - フロントエンチE,
+  "description": "不動産売主リスト管理システム - フロントエンド",
   "private": true,
   "scripts": {
     "dev": "vite",
