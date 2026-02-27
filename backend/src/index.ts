@@ -46,7 +46,7 @@ import morgan from 'morgan';
 import supabase from './config/supabase';
 import redisClient, { connectRedis } from './config/redis';
 import authRoutes from './routes/auth';
-import authSupabaseRoutes from './routes/auth.supabase';
+import authSupabaseRoutes from './routes/auth.supabase';C:\Users\kunih\sateituikyaku-admin\backend\src\index.ts
 import sellerRoutes from './routes/sellers';
 import sellersManagementRoutes from './routes/sellersManagement';
 import propertyRoutes from './routes/properties';
@@ -115,6 +115,7 @@ app.use(cors({
     'http://localhost:5174', 
     'http://localhost:5175',
     'http://localhost:3000',  // バックエンド自身も追加
+    'https://sateituikyaku-admin-frontend.vercel.app', // 新しい管理システムフロントエンド
     'https://property-site-frontend-kappa.vercel.app',  // 公開物件サイト
     'https://new-admin-management-system-v2.vercel.app',  // 社内管理システムフロントエンド
     'https://baikyaku-property-site3.vercel.app'  // 社内管理システムバックエンド
