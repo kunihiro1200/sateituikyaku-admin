@@ -17,7 +17,7 @@ import logger from '../utils/logger';
 
 // Job data interface
 export interface RecordingCleanupJobData {
-  retentionDays: number;
+  retentionDays?: number;
   archiveDays?: number;
   dryRun?: boolean;
   batchSize?: number;

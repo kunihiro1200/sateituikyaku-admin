@@ -759,7 +759,7 @@ export class BuyerService {
   } | null> {
     const { data, error } = await this.supabase
       .from('buyers')
-      .select('buyer_id, buyer_number, property_number, reception_date, inquiry_source, latest_status')
+      .select('id, buyer_number, property_number, reception_date, inquiry_source, latest_status')
       .eq('buyer_number', buyerNumber)
       .single();
 
@@ -776,7 +776,7 @@ export class BuyerService {
       inquiryDate: data.reception_date,
       inquirySource: data.inquiry_source,
       status: data.latest_status,
-      buyerId: data.buyer_id
+      buyerId: data.id
     };
   }
 
