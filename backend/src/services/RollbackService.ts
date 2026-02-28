@@ -153,8 +153,8 @@ export class RollbackService {
         error.message,
         {
           operation: 'rollback',
-          snapshotId,
           stackTrace: error.stack,
+          metadata: { snapshotId },
         }
       );
 
@@ -208,7 +208,7 @@ export class RollbackService {
     } catch (error: any) {
       await this.logger.logError('unknown', error.message, {
         operation: 'delete_snapshot',
-        snapshotId,
+        metadata: { snapshotId },
       });
       return false;
     }
@@ -236,7 +236,7 @@ export class RollbackService {
     } catch (error: any) {
       await this.logger.logError('unknown', error.message, {
         operation: 'cleanup_snapshots',
-        retentionDays,
+        metadata: { retentionDays },
       });
       return 0;
     }
