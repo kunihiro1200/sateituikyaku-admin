@@ -2,6 +2,7 @@ import express, { Request, Response } from 'express';
 import { CalendarWebhookService, WebhookHeaders } from '../services/CalendarWebhookService';
 import { CalendarSyncService } from '../services/CalendarSyncService';
 import { GoogleAuthService } from '../services/GoogleAuthService';
+import supabase from '../config/supabase';
 
 const router = express.Router();
 const webhookService = new CalendarWebhookService();
@@ -44,8 +45,8 @@ router.post('/calendar', async (req: Request, res: Response) => {
         // exists状態の場合、同期を実行
         if (headers['x-goog-resource-state'] === 'exists') {
           // チャンネルIDから従業員IDを取得
-          const { data: channel } = await webhookService
-            .table('calendar_webhook_channels')
+          const { data: channel } = await supabase
+            .from('calendar_webhook_channels')
             .select('employee_id')
             .eq('channel_id', headers['x-goog-channel-id'])
             .single();

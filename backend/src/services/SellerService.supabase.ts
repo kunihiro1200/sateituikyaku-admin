@@ -135,7 +135,6 @@ export class SellerService extends BaseRepository {
       seller_number: sellerNumber,
       inquiry_source: data.inquirySource,
       inquiry_year: data.inquiryYear,
-      inquiry_date: data.inquiryDate,
       inquiry_datetime: data.inquiryDatetime || null,
       confidence: data.confidenceLevel || null,
       first_caller_initials: data.firstCallerInitials || null,

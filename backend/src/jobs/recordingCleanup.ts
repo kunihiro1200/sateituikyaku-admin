@@ -209,7 +209,7 @@ recordingCleanupQueue.on('completed', (job: Job<RecordingCleanupJobData>, result
 
 // Job failed after all retries
 recordingCleanupQueue.on('failed', (job: Job<RecordingCleanupJobData>, error: Error) => {
-  logger.error(`[RecordingCleanup] Job ${job.id} failed after all retries:`, error.message);
+  logger.error(`[RecordingCleanup] Job ${job.id} failed after all retries: ${error.message}`);
 });
 
 // Job is active (started processing)
