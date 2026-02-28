@@ -134,6 +134,7 @@ export class AutoSyncService {
           success: true,
           newSellersCount: 0,
           updatedSellersCount: 0,
+          propertyListingsUpdated: 0,
           errors: [],
           duration: Date.now() - startTime,
         };
