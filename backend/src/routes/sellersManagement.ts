@@ -472,12 +472,13 @@ router.post(
       const { type, sentDate } = req.body;
       const date = sentDate ? new Date(sentDate) : new Date();
 
-      const delivery =
-        type === 'email'
-          ? await documentDeliveryService.recordEmailSent(id, date)
-          : await documentDeliveryService.recordMailSent(id, date);
+      if (type === 'email') {
+        await documentDeliveryService.recordEmailSentDate(id, date);
+      } else {
+        await documentDeliveryService.recordMailSentDate(id, date);
+      }
 
-      res.json({ delivery });
+      res.json({ success: true });
     } catch (error: any) {
       console.error('Record document delivery error:', error);
       res.status(500).json({
