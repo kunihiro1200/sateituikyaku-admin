@@ -1,7 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { createClient } from '@supabase/supabase-js';
-import { Pool } from 'pg';
 import { createRateLimiter } from '../middleware/rateLimiter';
 import { GoogleSheetsClient } from '../services/GoogleSheetsClient';
 
@@ -21,23 +20,26 @@ const supabase = createClient(
 //   }
 // });
 
-// GoogleSheetsClientを直接初期化
-const sheetsClient = new GoogleSheetsClient({
-  spreadsheetId: process.env.GOOGLE_SHEETS_BUYER_SPREADSHEET_ID!,
-  sheetName: process.env.GOOGLE_SHEETS_BUYER_SHEET_NAME || '買主リスト',
-  serviceAccountKeyPath: process.env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH || './google-service-account.json',
-});
-
-// 認証を実行（同期的に待つ）
+// GoogleSheetsClientを遅延初期化（GOOGLE_SHEETS_BUYER_SPREADSHEET_IDが未設定でもサーバーが起動できるように）
+let sheetsClient: GoogleSheetsClient | null = null;
 let isAuthenticated = false;
-sheetsClient.authenticate()
-  .then(() => {
-    isAuthenticated = true;
-    console.log('[publicInquiries] GoogleSheetsClient authenticated successfully');
-  })
-  .catch(error => {
-    console.error('[publicInquiries] GoogleSheetsClient認証エラー:', error);
-  });
+
+function getOrCreateSheetsClient(): GoogleSheetsClient | null {
+  const spreadsheetId = process.env.GOOGLE_SHEETS_BUYER_SPREADSHEET_ID;
+  if (!spreadsheetId) {
+    console.warn('[publicInquiries] GOOGLE_SHEETS_BUYER_SPREADSHEET_ID is not set. Buyer sheet sync will be skipped.');
+    return null;
+  }
+  if (!sheetsClient) {
+    sheetsClient = new GoogleSheetsClient({
+      spreadsheetId,
+      sheetName: process.env.GOOGLE_SHEETS_BUYER_SHEET_NAME || '買主リスト',
+      serviceAccountKeyPath: process.env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH || './google-service-account.json',
+    });
+    isAuthenticated = false;
+  }
+  return sheetsClient;
+}
 
 // Validation schema for inquiry form
 const inquirySchema = z.object({
@@ -143,17 +145,23 @@ router.post(
 
       // 直接買主リストに転記（property_inquiriesテーブルをバイパス）
       try {
+        // GoogleSheetsClientを取得（環境変数が未設定の場合はスキップ）
+        const client = getOrCreateSheetsClient();
+        if (!client) {
+          console.warn('[publicInquiries] Skipping buyer sheet sync: GOOGLE_SHEETS_BUYER_SPREADSHEET_ID not configured');
+          // スキップするが処理は続行
+        } else {
         // GoogleSheetsClientの認証を確認
         if (!isAuthenticated) {
           console.error('[publicInquiries] GoogleSheetsClient not authenticated yet');
           // 認証を再試行
-          await sheetsClient.authenticate();
+          await client.authenticate();
           isAuthenticated = true;
         }
 
         console.log('[publicInquiries] Reading all rows from buyer sheet...');
         // 買主番号を採番
-        const allRows = await sheetsClient.readAll();
+        const allRows = await client.readAll();
         console.log('[publicInquiries] Read rows:', allRows ? allRows.length : 'undefined');
         
         if (!allRows || !Array.isArray(allRows)) {
@@ -212,7 +220,7 @@ router.post(
 
         // スプレッドシートの特定行に直接書き込み
         console.log('[publicInquiries] Writing to row:', targetRowIndex, 'with data:', rowData);
-        await sheetsClient.updateRow(targetRowIndex, rowData);
+        await client.updateRow(targetRowIndex, rowData);
         console.log('[publicInquiries] Row written successfully');
 
         console.log('Inquiry synced to buyer sheet:', {
@@ -221,6 +229,7 @@ router.post(
           customerName: inquiryData.name
         });
 
+        } // end else (client exists)
       } catch (syncError) {
         // 転記エラーはログに記録するが、ユーザーには成功を返す
         console.error('Failed to sync inquiry to buyer sheet:', syncError);
