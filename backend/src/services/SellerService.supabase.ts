@@ -264,7 +264,7 @@ export class SellerService extends BaseRepository {
     
     // 除外日を計算
     const exclusionDate = ExclusionDateCalculator.calculateExclusionDate(
-      decryptedSeller.inquiryDate,
+      (decryptedSeller as any).inquiryDate,
       decryptedSeller.site
     );
     decryptedSeller.exclusionDate = exclusionDate;
@@ -322,8 +322,8 @@ export class SellerService extends BaseRepository {
     if (data.status !== undefined) {
       updates.status = data.status;
     }
-    if (data.confidence !== undefined) {
-      updates.confidence = data.confidence;
+    if ((data as any).confidence !== undefined) {
+      updates.confidence = (data as any).confidence;
     }
     if (data.assignedTo !== undefined) {
       updates.assigned_to = data.assignedTo;
@@ -428,8 +428,8 @@ export class SellerService extends BaseRepository {
     if (data.inquiryYear !== undefined) {
       updates.inquiry_year = data.inquiryYear;
     }
-    if (data.inquiryDate !== undefined) {
-      updates.inquiry_date = data.inquiryDate;
+    if ((data as any).inquiryDate !== undefined) {
+      updates.inquiry_date = (data as any).inquiryDate;
     }
 
     // 郵送ステータスフィールド
@@ -441,14 +441,14 @@ export class SellerService extends BaseRepository {
     }
 
     // 除外日を計算（inquiryDateまたはsiteが更新される場合）
-    if (data.inquiryDate !== undefined || data.site !== undefined) {
+    if ((data as any).inquiryDate !== undefined || data.site !== undefined) {
       // 現在の売主データを取得して、更新されないフィールドの値を使用
       const { data: currentSeller } = await this.table('sellers')
         .select('inquiry_date, site')
         .eq('id', sellerId)
         .single();
       
-      const inquiryDateForCalc = data.inquiryDate !== undefined ? data.inquiryDate : currentSeller?.inquiry_date;
+      const inquiryDateForCalc = (data as any).inquiryDate !== undefined ? (data as any).inquiryDate : currentSeller?.inquiry_date;
       const siteForCalc = data.site !== undefined ? data.site : currentSeller?.site;
       
       const exclusionDate = ExclusionDateCalculator.calculateExclusionDate(

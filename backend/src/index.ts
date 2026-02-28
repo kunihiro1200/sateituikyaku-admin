@@ -382,14 +382,12 @@ const startServer = async () => {
         }
       }, 10000); // 10秒後に実行（クォータ制限対策）
 
-      // 録音ファイルクリーンアップワーカーを起動
+      // 録音ファイルクリーンアップワーカーを起動（毎日午前2時に実行）
       setTimeout(async () => {
         try {
-          const { getRecordingCleanupWorker } = await import('./jobs/recordingCleanup');
-          const cleanupWorker = getRecordingCleanupWorker();
-          cleanupWorker.start();
-          const config = cleanupWorker.getConfig();
-          console.log(`🧹 Recording cleanup worker started (schedule: ${config.schedule}, retention: ${config.retentionDays} days)`);
+          const { scheduleRecordingCleanup } = await import('./jobs/recordingCleanup');
+          await scheduleRecordingCleanup('0 2 * * *', { retentionDays: 90 });
+          console.log(`🧹 Recording cleanup job scheduled (daily at 2:00 AM, retention: 90 days)`);
         } catch (error: any) {
           console.error('⚠️ Recording cleanup worker failed to start (non-blocking):', error.message);
         }
