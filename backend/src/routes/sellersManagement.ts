@@ -64,7 +64,7 @@ router.post(
       }
 
       const { phoneNumber, email, excludeId } = req.body;
-      const matches = await duplicateDetectionService.checkDuplicates(
+      const matches = await duplicateDetectionService.instance.checkDuplicates(
         phoneNumber,
         email,
         excludeId
@@ -106,7 +106,7 @@ router.post(
       }
 
       const { sellerNumber } = req.params;
-      const sellerData = await duplicateDetectionService.copySeller(sellerNumber);
+      const sellerData = await duplicateDetectionService.instance.copySeller(sellerNumber);
 
       res.json({ sellerData });
     } catch (error: any) {
@@ -144,7 +144,7 @@ router.post(
       }
 
       const { buyerNumber } = req.params;
-      const buyerData = await duplicateDetectionService.copyBuyer(buyerNumber);
+      const buyerData = await duplicateDetectionService.instance.copyBuyer(buyerNumber);
 
       res.json({ buyerData });
     } catch (error: any) {
@@ -185,7 +185,7 @@ router.post(
       }
 
       const { phoneNumber, email } = req.body;
-      const pastInfo = await duplicateDetectionService.getPastOwnerAndPropertyInfo(
+      const pastInfo = await duplicateDetectionService.instance.getPastOwnerAndPropertyInfo(
         phoneNumber,
         email
       );
