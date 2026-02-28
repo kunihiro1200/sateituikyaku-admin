@@ -11,7 +11,7 @@ const KEY_LENGTH = 32;
 
 // 環境変数から暗号化キーを取得
 const getEncryptionKey = (): Buffer | null => {
-  const key = process.env.ENCRYPTION_KEY;
+  const key = process.env.ENCRYPTION_KEY?.trim();
   
   if (!key) {
     // 暗号化キーが設定されていない場合はnullを返す（暗号化なしモード）
