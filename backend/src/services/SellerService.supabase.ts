@@ -117,9 +117,9 @@ export class SellerService extends BaseRepository {
       }
     }
 
-    // 除外日を計算
+    // 除外日を計算（CreateSellerRequestにinquiryDateは存在しないため、inquiryDatetimeを使用）
     const exclusionDate = ExclusionDateCalculator.calculateExclusionDate(
-      data.inquiryDate,
+      data.inquiryDatetime || null,
       data.site
     );
 

@@ -253,9 +253,9 @@ router.post('/manual', async (req: Request, res: Response) => {
       { operation: 'fetchLatestData', endpoint: '/api/sync/manual' }
     );
     
-    // 差分を計算
+    // 差分を計算（cachedData?.data は unknown 型のため any[] にキャスト）
     const diff = await syncService.compareWithCache(
-      cachedData?.data || []
+      (cachedData?.data || []) as any[]
     );
     
     // 差分を適用（リトライ機能付き）
