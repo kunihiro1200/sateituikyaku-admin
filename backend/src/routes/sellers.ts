@@ -644,18 +644,15 @@ router.post('/:id/send-valuation-email', async (req: Request, res: Response) => 
       });
     }
 
-    // 固定資産税路線価を取得
-    const fixedAssetTaxRoadPrice = seller.property?.fixedAssetTaxRoadPrice || 
-                                   seller.property?.sellerFixedAssetTaxRoadPrice;
-
-    // 査定データを準備
+    // 査定データを準備（ValuationResult型に合わせる）
     const valuationData = {
-      valuationAmount1: seller.valuationAmount1,
-      valuationAmount2: seller.valuationAmount2,
-      valuationAmount3: seller.valuationAmount3,
-      fixedAssetTaxRoadPrice,
-      landArea: seller.property?.landArea,
-      buildingArea: seller.property?.buildingArea,
+      sellerId: seller.id,
+      valuation1: seller.valuationAmount1 || 0,
+      valuation2: seller.valuationAmount2 || 0,
+      valuation3: seller.valuationAmount3 || 0,
+      calculationBasis: '',
+      isAnomalous: false,
+      calculatedAt: new Date(),
     };
 
     // メール送信
