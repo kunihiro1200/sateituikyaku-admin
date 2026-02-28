@@ -118,17 +118,23 @@ export default function SellersPage() {
   const [sidebarCounts, setSidebarCounts] = useState<{
     todayCall: number;
     todayCallWithInfo: number;
+    todayCallAssigned: number;
     visitScheduled: number;
     visitCompleted: number;
     unvaluated: number;
     mailingPending: number;
+    todayCallNotStarted: number;
+    pinrichEmpty: number;
   }>({
     todayCall: 0,
     todayCallWithInfo: 0,
+    todayCallAssigned: 0,
     visitScheduled: 0,
     visitCompleted: 0,
     unvaluated: 0,
     mailingPending: 0,
+    todayCallNotStarted: 0,
+    pinrichEmpty: 0,
   });
   const [sidebarLoading, setSidebarLoading] = useState(true);
   
@@ -249,10 +255,13 @@ export default function SellersPage() {
       setSidebarCounts({
         todayCall: 0,
         todayCallWithInfo: 0,
+        todayCallAssigned: 0,
         visitScheduled: 0,
         visitCompleted: 0,
         unvaluated: 0,
         mailingPending: 0,
+        todayCallNotStarted: 0,
+        pinrichEmpty: 0,
       });
     } finally {
       setSidebarLoading(false);

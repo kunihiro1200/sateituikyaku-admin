@@ -24,8 +24,13 @@ import {
   CategoryCounts,
   isTodayCall,
   isTodayCallWithInfo,
+  isTodayCallAssigned,
+  isVisitScheduled,
+  isVisitCompleted,
   isUnvaluated,
   isMailingPending,
+  isTodayCallNotStarted,
+  isPinrichEmpty,
 } from '../utils/sellerStatusFilters';
 import { Seller } from '../types';
 
@@ -52,7 +57,10 @@ interface SellerStatusSidebarProps {
 const getSellerCategory = (seller: Seller | any): StatusCategory | null => {
   if (!seller) return null;
   
-  // 優先順位: 当日TEL分 > 当日TEL（内容） > 未査定 > 査定（郵送）
+  // 優先順位: 訪問予定 > 訪問済み > 当日TEL（担当） > 当日TEL分 > 当日TEL（内容） > 未査定 > 査定（郵送）
+  if (isVisitScheduled(seller)) return 'visitScheduled';
+  if (isVisitCompleted(seller)) return 'visitCompleted';
+  if (isTodayCallAssigned(seller)) return 'todayCallAssigned';
   if (isTodayCall(seller)) return 'todayCall';
   if (isTodayCallWithInfo(seller)) return 'todayCallWithInfo';
   if (isUnvaluated(seller)) return 'unvaluated';
@@ -68,6 +76,12 @@ const filterSellersByCategory = (sellers: any[], category: StatusCategory): any[
   if (!sellers) return [];
   
   switch (category) {
+    case 'visitScheduled':
+      return sellers.filter(isVisitScheduled);
+    case 'visitCompleted':
+      return sellers.filter(isVisitCompleted);
+    case 'todayCallAssigned':
+      return sellers.filter(isTodayCallAssigned);
     case 'todayCall':
       return sellers.filter(isTodayCall);
     case 'todayCallWithInfo':
@@ -76,6 +90,10 @@ const filterSellersByCategory = (sellers: any[], category: StatusCategory): any[
       return sellers.filter(isUnvaluated);
     case 'mailingPending':
       return sellers.filter(isMailingPending);
+    case 'todayCallNotStarted':
+      return sellers.filter(isTodayCallNotStarted);
+    case 'pinrichEmpty':
+      return sellers.filter(isPinrichEmpty);
     default:
       return sellers;
   }
@@ -86,14 +104,24 @@ const filterSellersByCategory = (sellers: any[], category: StatusCategory): any[
  */
 const getCategoryLabel = (category: StatusCategory): string => {
   switch (category) {
+    case 'visitScheduled':
+      return '①訪問予定';
+    case 'visitCompleted':
+      return '②訪問済み';
+    case 'todayCallAssigned':
+      return '当日TEL（担当）';
     case 'todayCall':
-      return '①当日TEL分';
+      return '③当日TEL分';
     case 'todayCallWithInfo':
-      return '②当日TEL（内容）';
+      return '④当日TEL（内容）';
     case 'unvaluated':
-      return '③未査定';
+      return '⑤未査定';
     case 'mailingPending':
-      return '④査定（郵送）';
+      return '⑥査定（郵送）';
+    case 'todayCallNotStarted':
+      return '⑦当日TEL_未着手';
+    case 'pinrichEmpty':
+      return '⑧Pinrich空欄';
     case 'all':
       return 'All';
     default:
@@ -106,6 +134,12 @@ const getCategoryLabel = (category: StatusCategory): string => {
  */
 const getCategoryColor = (category: StatusCategory): string => {
   switch (category) {
+    case 'visitScheduled':
+      return 'success.main';
+    case 'visitCompleted':
+      return 'primary.main';
+    case 'todayCallAssigned':
+      return '#ff5722';
     case 'todayCall':
       return 'error.main';
     case 'todayCallWithInfo':
@@ -114,6 +148,10 @@ const getCategoryColor = (category: StatusCategory): string => {
       return 'warning.main';
     case 'mailingPending':
       return 'info.main';
+    case 'todayCallNotStarted':
+      return '#ff9800';
+    case 'pinrichEmpty':
+      return '#795548';
     default:
       return 'text.primary';
   }
@@ -413,10 +451,15 @@ export default function SellerStatusSidebar({
         )}
       </Button>
       
-      {renderCategoryButton('todayCall', '①当日TEL分', '#d32f2f')}
-      {renderCategoryButton('todayCallWithInfo', '②当日TEL（内容）', '#9c27b0')}
-      {renderCategoryButton('unvaluated', '③未査定', '#ed6c02')}
-      {renderCategoryButton('mailingPending', '④査定（郵送）', '#0288d1')}
+      {renderCategoryButton('visitScheduled', '①訪問予定', '#2e7d32')}
+      {renderCategoryButton('visitCompleted', '②訪問済み', '#1565c0')}
+      {renderCategoryButton('todayCallAssigned', '当日TEL（担当）', '#ff5722')}
+      {renderCategoryButton('todayCall', '③当日TEL分', '#d32f2f')}
+      {renderCategoryButton('todayCallWithInfo', '④当日TEL（内容）', '#9c27b0')}
+      {renderCategoryButton('unvaluated', '⑤未査定', '#ed6c02')}
+      {renderCategoryButton('mailingPending', '⑥査定（郵送）', '#0288d1')}
+      {renderCategoryButton('todayCallNotStarted', '⑦当日TEL_未着手', '#ff9800')}
+      {renderCategoryButton('pinrichEmpty', '⑧Pinrich空欄', '#795548')}
     </Box>
   );
 
@@ -427,16 +470,22 @@ export default function SellerStatusSidebar({
     const label = getCategoryLabel(expandedCategory);
     const color = getCategoryColor(expandedCategory);
     
+    // MUIのテーマカラー名を実際の色コードに変換
+    const resolveColor = (c: string): string => {
+      switch (c) {
+        case 'success.main': return '#2e7d32';
+        case 'primary.main': return '#1565c0';
+        case 'error.main': return '#d32f2f';
+        case 'secondary.main': return '#9c27b0';
+        case 'warning.main': return '#ed6c02';
+        case 'info.main': return '#0288d1';
+        default: return c; // '#ff5722', '#ff9800', '#795548' などはそのまま
+      }
+    };
+    
     return (
       <Box>
-        {renderCategoryButton(
-          expandedCategory, 
-          label, 
-          color === 'error.main' ? '#d32f2f' :
-          color === 'secondary.main' ? '#9c27b0' :
-          color === 'warning.main' ? '#ed6c02' :
-          color === 'info.main' ? '#0288d1' : '#000'
-        )}
+        {renderCategoryButton(expandedCategory, label, resolveColor(color))}
       </Box>
     );
   };
