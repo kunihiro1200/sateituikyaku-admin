@@ -231,6 +231,7 @@ export const calculateTaskStatus = (task: WorkTask): string => {
 // ステータスカテゴリ定義
 export const getStatusCategories = (tasks: WorkTask[]): StatusCategory[] => {
   const statusCounts: Record<string, number> = {};
+  const statusDates: Record<string, Set<string>> = {};
   
   // 各タスクのステータスを計算してカウント
   tasks.forEach(task => {
@@ -239,23 +240,31 @@ export const getStatusCategories = (tasks: WorkTask[]): StatusCategory[] => {
     const statusKey = getStatusKey(status);
     if (statusKey) {
       statusCounts[statusKey] = (statusCounts[statusKey] || 0) + 1;
+      // 全ての日付を収集（重複を避けるためSetを使用）
+      if (!statusDates[statusKey]) {
+        statusDates[statusKey] = new Set<string>();
+      }
+      const dateMatch = status.match(/(\d{1,2}\/\d{1,2})/);
+      if (dateMatch) {
+        statusDates[statusKey].add(dateMatch[1]);
+      }
     }
   });
 
   // カテゴリ定義（順序付き）
-  const categoryDefinitions: { key: string; label: string; matchPrefix: string }[] = [
-    { key: 'sales_contract_confirm', label: '売買契約　営業確認中', matchPrefix: '売買契約　営業確認中' },
-    { key: 'sales_contract_input', label: '売買契約 入力待ち', matchPrefix: '売買契約 入力待ち' },
-    { key: 'site_registration_request', label: 'サイト登録依頼してください', matchPrefix: 'サイト登録依頼してください' },
-    { key: 'settlement_chat_pending', label: '決済完了チャット送信未', matchPrefix: '決済完了チャット送信未' },
-    { key: 'payment_pending', label: '入金確認未', matchPrefix: '入金確認未' },
-    { key: 'ledger_required', label: '要台帳作成', matchPrefix: '要台帳作成' },
-    { key: 'sales_contract_binding', label: '売買契約 製本待ち', matchPrefix: '売買契約 製本待ち' },
-    { key: 'sales_contract_unrequested', label: '売買契約 依頼未', matchPrefix: '売買契約 依頼未' },
-    { key: 'site_delivery_pending', label: 'サイト依頼済み納品待ち', matchPrefix: 'サイト依頼済み納品待ち' },
-    { key: 'site_registration_check', label: 'サイト登録要確認', matchPrefix: 'サイト登録要確認' },
-    { key: 'mediation_deadline', label: '媒介作成_締日', matchPrefix: '媒介作成_締日' },
-    { key: 'on_hold', label: '保留', matchPrefix: '保留' },
+  const categoryDefinitions: { key: string; defaultLabel: string; matchPrefix: string }[] = [
+    { key: 'sales_contract_confirm', defaultLabel: '売買契約　営業確認中', matchPrefix: '売買契約　営業確認中' },
+    { key: 'sales_contract_input', defaultLabel: '売買契約 入力待ち', matchPrefix: '売買契約 入力待ち' },
+    { key: 'site_registration_request', defaultLabel: 'サイト登録依頼してください', matchPrefix: 'サイト登録依頼してください' },
+    { key: 'settlement_chat_pending', defaultLabel: '決済完了チャット送信未', matchPrefix: '決済完了チャット送信未' },
+    { key: 'payment_pending', defaultLabel: '入金確認未', matchPrefix: '入金確認未' },
+    { key: 'ledger_required', defaultLabel: '要台帳作成', matchPrefix: '要台帳作成' },
+    { key: 'sales_contract_binding', defaultLabel: '売買契約 製本待ち', matchPrefix: '売買契約 製本待ち' },
+    { key: 'sales_contract_unrequested', defaultLabel: '売買契約 依頼未', matchPrefix: '売買契約 依頼未' },
+    { key: 'site_delivery_pending', defaultLabel: 'サイト依頼済み納品待ち', matchPrefix: 'サイト依頼済み納品待ち' },
+    { key: 'site_registration_check', defaultLabel: 'サイト登録要確認', matchPrefix: 'サイト登録要確認' },
+    { key: 'mediation_deadline', defaultLabel: '媒介作成_締日', matchPrefix: '媒介作成_締日' },
+    { key: 'on_hold', defaultLabel: '保留', matchPrefix: '保留' },
   ];
 
   // 件数が0より大きいカテゴリのみ返す
@@ -271,9 +280,22 @@ export const getStatusCategories = (tasks: WorkTask[]): StatusCategory[] => {
   categoryDefinitions.forEach(def => {
     const count = statusCounts[def.key] || 0;
     if (count > 0) {
+      // 日付のSetを配列に変換してソート
+      const dates = statusDates[def.key]
+        ? Array.from(statusDates[def.key]).sort((a, b) => {
+            const [aMonth, aDay] = a.split('/').map(Number);
+            const [bMonth, bDay] = b.split('/').map(Number);
+            if (aMonth !== bMonth) return aMonth - bMonth;
+            return aDay - bDay;
+          })
+        : [];
+      
+      // ラベルを構築（日付がある場合は追加）
+      const label = dates.length > 0 ? `${def.defaultLabel} ${dates.join(', ')}` : def.defaultLabel;
+      
       categories.push({
         key: def.key,
-        label: def.label,
+        label,
         count,
         filter: (task: WorkTask) => calculateTaskStatus(task).startsWith(def.matchPrefix),
       });
