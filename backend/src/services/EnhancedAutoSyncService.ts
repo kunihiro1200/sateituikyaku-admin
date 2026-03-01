@@ -1932,10 +1932,37 @@ export class EnhancedAutoSyncService {
         console.log('\n⏭️  Phase 3: Seller Deletion Sync (Disabled)');
       }
 
-      // Phase 4: 作業タスク同期（既存）
+      // Phase 4: 業務タスク同期（スプレッドシート → DB）
       console.log('\n📋 Phase 4: Work Task Sync');
-      // Note: Work task sync is handled elsewhere
-      console.log('✅ Work task sync (handled by existing service)');
+      let workTaskSyncResult = {
+        synced: 0,
+        failed: 0,
+        duration_ms: 0,
+      };
+
+      try {
+        const wtStartTime = Date.now();
+        const { WorkTaskSyncService } = await import('./WorkTaskSyncService');
+        const workTaskSyncService = new WorkTaskSyncService();
+        const wtResult = await workTaskSyncService.syncAll();
+        workTaskSyncResult = {
+          synced: wtResult.successCount,
+          failed: wtResult.errorCount,
+          duration_ms: Date.now() - wtStartTime,
+        };
+        if (wtResult.successCount > 0) {
+          console.log(`✅ Work task sync: ${wtResult.successCount} synced`);
+        } else {
+          console.log('✅ No work tasks to sync');
+        }
+        if (wtResult.errorCount > 0) {
+          console.warn(`⚠️  Work task sync errors: ${wtResult.errorCount}`);
+        }
+      } catch (error: any) {
+        console.error('⚠️  Work task sync error:', error.message);
+        workTaskSyncResult.failed = 1;
+        // エラーでも次のフェーズに進む
+      }
 
       // Phase 4.5: 物件リスト更新同期（新規追加）
       console.log('\n🏢 Phase 4.5: Property Listing Update Sync');
@@ -2054,6 +2081,7 @@ export class EnhancedAutoSyncService {
       console.log(`   Sellers Added: ${additionResult.successfullyAdded}`);
       console.log(`   Sellers Updated: ${additionResult.successfullyUpdated}`);
       console.log(`   Sellers Deleted: ${deletionResult.successfullyDeleted}`);
+      console.log(`   Work Tasks Synced: ${workTaskSyncResult.synced}`);
       console.log(`   Property Listings Updated: ${propertyListingUpdateResult.updated}`);
       console.log(`   New Properties Added: ${newPropertyAdditionResult.added}`);
       console.log(`   Property Details Synced: ${propertyDetailsSyncResult.synced}`);

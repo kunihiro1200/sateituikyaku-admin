@@ -2,8 +2,8 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { google, sheets_v4 } from 'googleapis';
 import { WorkTaskColumnMapper, WorkTaskData } from './WorkTaskColumnMapper';
 
-const SPREADSHEET_ID = '1MO2vs0mDUFCgM-rjXXPRIy3pKKdfIFvUDwacM-2174g';
-const SHEET_NAME = '業務依頼';
+const SPREADSHEET_ID = process.env.WORK_TASK_SPREADSHEET_ID || '1MO2vs0mDUFCgM-rjXXPRIy3pKKdfIFvUDwacM-2174g';
+const SHEET_NAME = process.env.WORK_TASK_SHEET_NAME || '業務依頼';
 
 export interface SyncError {
   rowNumber: number;
@@ -42,7 +42,7 @@ export class WorkTaskSyncService {
     if (this.sheets) return this.sheets;
 
     const auth = new google.auth.GoogleAuth({
-      keyFile: process.env.GOOGLE_SERVICE_ACCOUNT_PATH || 'google-service-account.json',
+      keyFile: process.env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH || process.env.GOOGLE_SERVICE_ACCOUNT_PATH || 'google-service-account.json',
       scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
     });
 
@@ -68,14 +68,18 @@ export class WorkTaskSyncService {
       });
       const headers = headerResponse.data.values?.[0] || [];
 
-      // データ行を取得（2行目以降）
+      // データ行を全件取得（2行目以降）
       const dataResponse = await sheets.spreadsheets.values.get({
         spreadsheetId: SPREADSHEET_ID,
-        range: `${SHEET_NAME}!2:1000`,
+        range: `${SHEET_NAME}!2:3000`,
       });
       const rows = dataResponse.data.values || [];
 
-      console.log(`取得行数: ${rows.length}`);
+      console.log(`[WorkTaskSync] 取得行数: ${rows.length}`);
+
+      // バッチ処理用バッファ
+      const batchData: WorkTaskData[] = [];
+      const BATCH_SIZE = 50;
 
       for (let i = 0; i < rows.length; i++) {
         const rowNumber = i + 2; // 1-indexed, ヘッダー行を除く
@@ -108,32 +112,41 @@ export class WorkTaskSyncService {
           // データ変換
           const workTaskData = this.columnMapper.mapToDatabase(sheetRow);
           workTaskData.synced_at = new Date().toISOString();
+          batchData.push(workTaskData);
 
-          // Upsert処理
-          const { error: upsertError } = await this.supabase
-            .from('work_tasks')
-            .upsert(workTaskData, {
-              onConflict: 'property_number',
-            });
+          // バッチサイズに達したらupsert
+          if (batchData.length >= BATCH_SIZE) {
+            const { error: upsertError } = await this.supabase
+              .from('work_tasks')
+              .upsert(batchData, { onConflict: 'property_number' });
 
-          if (upsertError) {
-            errors.push({
-              rowNumber,
-              propertyNumber,
-              error: upsertError.message,
-            });
-          } else {
-            successCount++;
+            if (upsertError) {
+              errors.push({ rowNumber, error: upsertError.message });
+            } else {
+              successCount += batchData.length;
+            }
+            batchData.length = 0;
           }
         } catch (rowError: any) {
-          errors.push({
-            rowNumber,
-            error: rowError.message,
-          });
+          errors.push({ rowNumber, error: rowError.message });
+        }
+      }
+
+      // 残りのバッチをupsert
+      if (batchData.length > 0) {
+        const { error: upsertError } = await this.supabase
+          .from('work_tasks')
+          .upsert(batchData, { onConflict: 'property_number' });
+
+        if (upsertError) {
+          errors.push({ rowNumber: -1, error: upsertError.message });
+        } else {
+          successCount += batchData.length;
         }
       }
 
       const endTime = new Date();
+      console.log(`[WorkTaskSync] 完了: 成功=${successCount}, エラー=${errors.length}`);
 
       return {
         totalRows: rows.length,
@@ -145,6 +158,7 @@ export class WorkTaskSyncService {
       };
     } catch (error: any) {
       const endTime = new Date();
+      console.error('[WorkTaskSync] 同期エラー:', error.message);
       return {
         totalRows: 0,
         successCount: 0,
@@ -173,7 +187,7 @@ export class WorkTaskSyncService {
       // 全データを取得して物件番号で検索
       const dataResponse = await sheets.spreadsheets.values.get({
         spreadsheetId: SPREADSHEET_ID,
-        range: `${SHEET_NAME}!2:1000`,
+        range: `${SHEET_NAME}!2:3000`,
       });
       const rows = dataResponse.data.values || [];
 
