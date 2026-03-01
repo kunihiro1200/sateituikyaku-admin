@@ -423,8 +423,8 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
         <Typography variant="h6" sx={{ mt: 3, mb: 2, fontWeight: 'bold', color: 'primary.main' }}>
           【図面作成依頼】
         </Typography>
-        <EditableField label="間取図" field="floor_plan" />
-        <EditableField label="方位記号" field="direction_symbol" />
+        <EditableButtonSelect label="間取図" field="floor_plan" options={['クラウドワークス', '他', '不要']} />
+        <EditableButtonSelect label="方位記号" field="direction_symbol" options={['確認済', '不要（営業相談済）']} />
         <EditableMultilineField label="コメント（間取図関係）" field="floor_plan_comment" />
         <EditableSendCountSelect label="CWの方へ依頼メール（間取り、区画図）" field="cw_request_email_floor_plan" />
         <EditableSendCountSelect label="CWの方へ依頼メール（2階以上）" field="cw_request_email_2f_above" />
@@ -435,8 +435,23 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
           【図面確認】
         </Typography>
         <EditableButtonSelect label="間取図確認者" field="floor_plan_confirmer" options={activeStaffInitials} />
-        <EditableField label="間取図確認OK/修正コメント" field="floor_plan_ok_comment" />
-        <EditableField label="間取図修正回数（当社の依頼ミスのみ）" field="floor_plan_revision_count" type="number" />
+        <Grid container spacing={2} alignItems="flex-start" sx={{ mb: 1.5 }}>
+          <Grid item xs={4}>
+            <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500, pt: 1 }}>間取図確認OK/修正コメント</Typography>
+          </Grid>
+          <Grid item xs={8}>
+            <TextField
+              size="small"
+              value={getValue('floor_plan_ok_comment') || '図面OKです'}
+              onChange={(e) => handleFieldChange('floor_plan_ok_comment', e.target.value)}
+              fullWidth
+              multiline
+              rows={4}
+              placeholder="図面OKです"
+            />
+          </Grid>
+        </Grid>
+        <EditableButtonSelect label="間取図修正回数（当社の依頼ミスのみ）" field="floor_plan_revision_count" options={['1', '2', '3', '4']} />
         <EditableField label="間取図完了日" field="floor_plan_completed_date" type="date" />
         <EditableSendCountSelect label="間取図格納済み連絡メール" field="floor_plan_stored_email" />
 
@@ -445,20 +460,37 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
           【サイト登録確認】
         </Typography>
         <EditableButtonSelect label="サイト登録確認" field="site_registration_confirmed" options={['確認中', '完了', '他']} />
+        <Grid container spacing={2} alignItems="flex-start" sx={{ mb: 1.5 }}>
+          <Grid item xs={4}>
+            <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500, pt: 1 }}>サイト登録確認OKコメント</Typography>
+          </Grid>
+          <Grid item xs={8}>
+            <TextField
+              size="small"
+              value={getValue('site_registration_ok_comment') || '確認完了いたしました。'}
+              onChange={(e) => handleFieldChange('site_registration_ok_comment', e.target.value)}
+              fullWidth
+              multiline
+              rows={4}
+              placeholder="確認完了いたしました。"
+            />
+          </Grid>
+        </Grid>
         <EditableSingleButton label="パノラマ完了" field="panorama_completed" buttonLabel="完了" />
         {/* サイト登録確認者（サイト登録確認が「完了」の場合のみ表示） */}
         {isSiteRegistrationCompleted && (
           <EditableButtonSelect label="サイト登録確認者" field="site_registration_confirmer" options={activeStaffInitials} />
         )}
 
-        {/* 【確認後処理】グループ */}
-        <Typography variant="h6" sx={{ mt: 3, mb: 2, fontWeight: 'bold', color: 'primary.main' }}>
+        {/* 【確認後処理】グループ（紫色） */}
+        <Typography variant="h6" sx={{ mt: 3, mb: 2, fontWeight: 'bold', color: '#9c27b0' }}>
           【確認後処理】
         </Typography>
         <EditableField label="配信日" field="distribution_date" type="date" />
-        <EditableField label="物件ファイル" field="property_file" />
+        <EditableButtonSelect label="物件ファイル" field="property_file" options={['担当に渡し済み', '未']} />
         <EditableField label="公開予定日" field="publish_scheduled_date" type="date" />
         <EditableField label="メール配信" field="email_distribution" />
+        <EditableButtonSelect label="物件一覧に行追加" field="property_list_row_added" options={['追加済', '未']} />
         {/* サイト登録締め日（コピー表示） */}
         <Grid container spacing={2} alignItems="center" sx={{ mb: 1.5 }}>
           <Grid item xs={4}>
@@ -583,7 +615,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
             <Typography variant="h6">業務詳細 - {propertyNumber || ''}</Typography>
             {data && (
               <Typography variant="body2" color="text.secondary">
-                {[data.property_type, data.property_address, data.seller_name].filter(Boolean).join(' / ')}
+                {[data.property_type, data.property_address, data.sales_assignee ? `担当：${data.sales_assignee}` : null, data.seller_name ? `売主名：${data.seller_name}` : null].filter(Boolean).join('　')}
               </Typography>
             )}
           </Box>
