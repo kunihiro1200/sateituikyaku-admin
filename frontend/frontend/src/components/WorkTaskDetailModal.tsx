@@ -31,6 +31,7 @@ interface WorkTaskDetailModalProps {
 interface WorkTaskData {
   id: string;
   property_number: string;
+  property_type: string;
   property_address: string;
   seller_name: string;
   spreadsheet_url: string;
@@ -238,7 +239,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
         <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>{label}</Typography>
       </Grid>
       <Grid item xs={8}>
-        <ButtonGroup size="small" variant="outlined">
+        <ButtonGroup size="small" variant="outlined" fullWidth>
           {options.map((opt) => (
             <Button
               key={opt}
@@ -261,7 +262,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
         <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>{label}</Typography>
       </Grid>
       <Grid item xs={8}>
-        <ButtonGroup size="small" variant="outlined">
+        <ButtonGroup size="small" variant="outlined" fullWidth>
           <Button
             variant={getValue(field) === '送信1' ? 'contained' : 'outlined'}
             onClick={() => handleFieldChange(field, '送信1')}
@@ -298,7 +299,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
         <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>{label}</Typography>
       </Grid>
       <Grid item xs={8}>
-        <ButtonGroup size="small" variant="outlined">
+        <ButtonGroup size="small" variant="outlined" fullWidth>
           <Button
             variant={getValue(field) === 'Y' ? 'contained' : 'outlined'}
             color={getValue(field) === 'Y' ? 'primary' : 'inherit'}
@@ -310,6 +311,32 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
             onClick={() => handleFieldChange(field, 'N')}
           >N</Button>
         </ButtonGroup>
+      </Grid>
+    </Grid>
+  );
+
+  // 単一ボタン（パノラマ用）
+  const EditableSingleButton = ({ label, field, buttonLabel }: { label: string; field: string; buttonLabel: string }) => (
+    <Grid container spacing={2} alignItems="center" sx={{ mb: 1.5 }}>
+      <Grid item xs={4}>
+        <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>{label}</Typography>
+      </Grid>
+      <Grid item xs={8}>
+        <Button
+          size="small"
+          variant={getValue(field) === buttonLabel ? 'contained' : 'outlined'}
+          onClick={() => handleFieldChange(field, getValue(field) === buttonLabel ? '' : buttonLabel)}
+          sx={getValue(field) === buttonLabel ? {
+            bgcolor: '#f57c00',
+            color: '#ffffff',
+            '&:hover': { bgcolor: '#e65100' }
+          } : {
+            borderColor: 'divider',
+            color: 'text.secondary',
+          }}
+        >
+          {buttonLabel}
+        </Button>
       </Grid>
     </Grid>
   );
@@ -357,7 +384,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
         <EditableSendCountSelect label="CWの方へ依頼メール（サイト登録）" field="cw_request_email_site" />
         <EditableField label="CWの方" field="cw_person" />
         <EditableMultilineField label="コメント（サイト登録）" field="site_registration_comment" />
-        <EditableField label="パノラマ" field="panorama" />
+        <EditableSingleButton label="パノラマ" field="panorama" buttonLabel="あり" />
         <EditableButtonSelect label="サイト登録依頼者" field="site_registration_requestor" options={activeStaffInitials} />
         <Grid container spacing={2} alignItems="center" sx={{ mb: 1.5 }}>
           <Grid item xs={4}>
@@ -548,7 +575,14 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
     <>
       <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
         <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 0 }}>
-          <Typography variant="h6">業務詳細 - {propertyNumber || ''}</Typography>
+          <Box>
+            <Typography variant="h6">業務詳細 - {propertyNumber || ''}</Typography>
+            {data && (
+              <Typography variant="body2" color="text.secondary">
+                {[data.property_type, data.property_address, data.seller_name].filter(Boolean).join(' / ')}
+              </Typography>
+            )}
+          </Box>
           <IconButton onClick={onClose} size="small"><CloseIcon /></IconButton>
         </DialogTitle>
         <Box sx={{ borderBottom: 1, borderColor: 'divider', px: 2 }}>
