@@ -46,11 +46,28 @@ interface WorkTaskData {
   site_registration_due_date: string;
   site_registration_confirmed: string;
   site_registration_confirmer: string;
+  site_registration_comment: string;
+  site_registration_requestor: string;
+  storage_url: string;
+  cw_request_email_site: string;
+  cw_person: string;
+  property_list_row_added: string;
+  property_file: string;
+  email_distribution: string;
+  distribution_date: string;
+  publish_scheduled_date: string;
   floor_plan: string;
   floor_plan_request_date: string;
   floor_plan_due_date: string;
   floor_plan_completed_date: string;
   floor_plan_confirmer: string;
+  floor_plan_comment: string;
+  floor_plan_ok_comment: string;
+  floor_plan_revision_count: number;
+  floor_plan_stored_email: string;
+  cw_request_email_floor_plan: string;
+  cw_request_email_2f_above: string;
+  direction_symbol: string;
   panorama: string;
   panorama_completed: string;
   site_notes: string;
@@ -87,6 +104,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
   const [saving, setSaving] = useState(false);
   const [data, setData] = useState<WorkTaskData | null>(null);
   const [editedData, setEditedData] = useState<Partial<WorkTaskData>>({});
+  const [activeStaffInitials, setActiveStaffInitials] = useState<string[]>([]);
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
     open: false, message: '', severity: 'success'
   });
@@ -97,6 +115,19 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
       setEditedData({});
     }
   }, [open, propertyNumber]);
+
+  useEffect(() => {
+    // 通常スタッフのイニシャルを取得
+    const fetchActiveStaff = async () => {
+      try {
+        const response = await api.get('/api/employees/active-initials');
+        setActiveStaffInitials(response.data.initials || []);
+      } catch (error) {
+        console.error('Failed to fetch active staff initials:', error);
+      }
+    };
+    fetchActiveStaff();
+  }, []);
 
   const fetchData = async () => {
     if (!propertyNumber) return;
@@ -223,6 +254,43 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
     </Grid>
   );
 
+  // 編集可能ボタン選択（送信回数用）
+  const EditableSendCountSelect = ({ label, field }: { label: string; field: string }) => (
+    <Grid container spacing={2} alignItems="center" sx={{ mb: 1.5 }}>
+      <Grid item xs={4}>
+        <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>{label}</Typography>
+      </Grid>
+      <Grid item xs={8}>
+        <ButtonGroup size="small" variant="outlined">
+          <Button
+            variant={getValue(field) === '送信1' ? 'contained' : 'outlined'}
+            onClick={() => handleFieldChange(field, '送信1')}
+            sx={getValue(field) === '送信1' ? {
+              bgcolor: '#f57c00',
+              color: '#ffffff',
+              '&:hover': { bgcolor: '#e65100' }
+            } : {
+              borderColor: 'divider',
+              color: 'text.secondary',
+            }}
+          >送信1</Button>
+          <Button
+            variant={getValue(field) === '送信2' ? 'contained' : 'outlined'}
+            onClick={() => handleFieldChange(field, '送信2')}
+            sx={getValue(field) === '送信2' ? {
+              bgcolor: '#f57c00',
+              color: '#ffffff',
+              '&:hover': { bgcolor: '#e65100' }
+            } : {
+              borderColor: 'divider',
+              color: 'text.secondary',
+            }}
+          >送信2</Button>
+        </ButtonGroup>
+      </Grid>
+    </Grid>
+  );
+
   // Yes/No選択
   const EditableYesNo = ({ label, field }: { label: string; field: string }) => (
     <Grid container spacing={2} alignItems="center" sx={{ mb: 1.5 }}>
@@ -264,23 +332,118 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
   );
 
   // サイト登録セクション
-  const SiteRegistrationSection = () => (
-    <Box sx={{ p: 2 }}>
-      <EditableField label="サイト登録締め日" field="site_registration_deadline" type="date" />
-      <EditableField label="サイト登録依頼日" field="site_registration_request_date" type="date" />
-      <EditableField label="サイト登録納期予定日" field="site_registration_due_date" type="date" />
-      <EditableField label="サイト登録確認" field="site_registration_confirmed" />
-      <EditableButtonSelect label="サイト登録確認者" field="site_registration_confirmer" options={ASSIGNEE_OPTIONS} />
-      <EditableField label="間取図" field="floor_plan" />
-      <EditableField label="間取図依頼日" field="floor_plan_request_date" type="date" />
-      <EditableField label="間取図完了予定" field="floor_plan_due_date" type="date" />
-      <EditableField label="間取図完了日" field="floor_plan_completed_date" type="date" />
-      <EditableButtonSelect label="間取図確認者" field="floor_plan_confirmer" options={ASSIGNEE_OPTIONS} />
-      <EditableField label="パノラマ" field="panorama" />
-      <EditableField label="パノラマ完了" field="panorama_completed" />
-      <EditableField label="サイト備考" field="site_notes" />
-    </Box>
-  );
+  const SiteRegistrationSection = () => {
+    // サイト登録納期予定日の自動計算（今日から2日後）
+    const calculateDueDate = () => {
+      const d = new Date();
+      d.setDate(d.getDate() + 2);
+      return d.toISOString().split('T')[0];
+    };
+
+    // サイト登録確認が「完了」かどうか
+    const isSiteRegistrationCompleted = getValue('site_registration_confirmed') === '完了';
+
+    return (
+      <Box sx={{ p: 2 }}>
+        {/* サイト登録締め日（一番上） */}
+        <EditableField label="サイト登録締め日" field="site_registration_deadline" type="date" />
+
+        {/* 【サイト登録依頼】グループ */}
+        <Typography variant="h6" sx={{ mt: 3, mb: 2, fontWeight: 'bold', color: 'primary.main' }}>
+          【サイト登録依頼】
+        </Typography>
+        <EditableField label="サイト備考" field="site_notes" />
+        <EditableField label="格納先URL" field="storage_url" type="url" />
+        <EditableSendCountSelect label="CWの方へ依頼メール（サイト登録）" field="cw_request_email_site" />
+        <EditableField label="CWの方" field="cw_person" />
+        <EditableMultilineField label="コメント（サイト登録）" field="site_registration_comment" />
+        <EditableField label="パノラマ" field="panorama" />
+        <EditableButtonSelect label="サイト登録依頼者" field="site_registration_requestor" options={activeStaffInitials} />
+        <Grid container spacing={2} alignItems="center" sx={{ mb: 1.5 }}>
+          <Grid item xs={4}>
+            <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>
+              サイト登録納期予定日
+            </Typography>
+          </Grid>
+          <Grid item xs={8}>
+            <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+              <TextField
+                size="small"
+                type="date"
+                value={formatDateForInput(getValue('site_registration_due_date'))}
+                onChange={(e) => handleFieldChange('site_registration_due_date', e.target.value || null)}
+                fullWidth
+                InputLabelProps={{ shrink: true }}
+              />
+              <Button
+                size="small"
+                variant="outlined"
+                onClick={() => handleFieldChange('site_registration_due_date', calculateDueDate())}
+                sx={{ whiteSpace: 'nowrap' }}
+              >
+                今日+2日
+              </Button>
+            </Box>
+          </Grid>
+        </Grid>
+        <EditableField label="物件一覧に行追加" field="property_list_row_added" />
+
+        {/* 【図面作成依頼】グループ */}
+        <Typography variant="h6" sx={{ mt: 3, mb: 2, fontWeight: 'bold', color: 'primary.main' }}>
+          【図面作成依頼】
+        </Typography>
+        <EditableField label="間取図" field="floor_plan" />
+        <EditableField label="方位記号" field="direction_symbol" />
+        <EditableMultilineField label="コメント（間取図関係）" field="floor_plan_comment" />
+        <EditableSendCountSelect label="CWの方へ依頼メール（間取り、区画図）" field="cw_request_email_floor_plan" />
+        <EditableSendCountSelect label="CWの方へ依頼メール（2階以上）" field="cw_request_email_2f_above" />
+        <EditableField label="間取図完了予定" field="floor_plan_due_date" type="date" />
+
+        {/* 【図面確認】グループ（赤色） */}
+        <Typography variant="h6" sx={{ mt: 3, mb: 2, fontWeight: 'bold', color: 'error.main' }}>
+          【図面確認】
+        </Typography>
+        <EditableButtonSelect label="間取図確認者" field="floor_plan_confirmer" options={activeStaffInitials} />
+        <EditableField label="間取図確認OK/修正コメント" field="floor_plan_ok_comment" />
+        <EditableField label="間取図修正回数（当社の依頼ミスのみ）" field="floor_plan_revision_count" type="number" />
+        <EditableField label="間取図完了日" field="floor_plan_completed_date" type="date" />
+        <EditableField label="間取図格納済み連絡メール" field="floor_plan_stored_email" />
+
+        {/* 【サイト登録確認】グループ（赤色） */}
+        <Typography variant="h6" sx={{ mt: 3, mb: 2, fontWeight: 'bold', color: 'error.main' }}>
+          【サイト登録確認】
+        </Typography>
+        <EditableField label="サイト登録確認" field="site_registration_confirmed" />
+        <EditableField label="パノラマ完了" field="panorama_completed" />
+        {/* サイト登録確認者（サイト登録確認が「完了」の場合のみ表示） */}
+        {isSiteRegistrationCompleted && (
+          <EditableButtonSelect label="サイト登録確認者" field="site_registration_confirmer" options={activeStaffInitials} />
+        )}
+
+        {/* 【確認後処理】グループ */}
+        <Typography variant="h6" sx={{ mt: 3, mb: 2, fontWeight: 'bold', color: 'primary.main' }}>
+          【確認後処理】
+        </Typography>
+        <EditableField label="配信日" field="distribution_date" type="date" />
+        <EditableField label="物件ファイル" field="property_file" />
+        <EditableField label="公開予定日" field="publish_scheduled_date" type="date" />
+        <EditableField label="メール配信" field="email_distribution" />
+        {/* サイト登録締め日（コピー表示） */}
+        <Grid container spacing={2} alignItems="center" sx={{ mb: 1.5 }}>
+          <Grid item xs={4}>
+            <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>
+              サイト登録締め日
+            </Typography>
+          </Grid>
+          <Grid item xs={8}>
+            <Typography variant="body2" sx={{ py: 1 }}>
+              {formatDateForInput(getValue('site_registration_deadline')) || '（未設定）'}
+            </Typography>
+          </Grid>
+        </Grid>
+      </Box>
+    );
+  };
 
   // 複数行テキストフィールド
   const EditableMultilineField = ({ label, field }: { label: string; field: string }) => (
