@@ -262,11 +262,13 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
         <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>{label}</Typography>
       </Grid>
       <Grid item xs={8}>
-        <ButtonGroup size="small" variant="outlined" fullWidth>
+        <Box sx={{ display: 'flex', gap: 1 }}>
           <Button
-            variant={getValue(field) === '送信1' ? 'contained' : 'outlined'}
-            onClick={() => handleFieldChange(field, '送信1')}
-            sx={getValue(field) === '送信1' ? {
+            size="small"
+            variant={getValue(field) === 'TRUE' ? 'contained' : 'outlined'}
+            onClick={() => handleFieldChange(field, 'TRUE')}
+            fullWidth
+            sx={getValue(field) === 'TRUE' ? {
               bgcolor: '#f57c00',
               color: '#ffffff',
               '&:hover': { bgcolor: '#e65100' }
@@ -276,9 +278,11 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
             }}
           >送信1</Button>
           <Button
-            variant={getValue(field) === '送信2' ? 'contained' : 'outlined'}
-            onClick={() => handleFieldChange(field, '送信2')}
-            sx={getValue(field) === '送信2' ? {
+            size="small"
+            variant={getValue(field) === 'FALSE' ? 'contained' : 'outlined'}
+            onClick={() => handleFieldChange(field, 'FALSE')}
+            fullWidth
+            sx={getValue(field) === 'FALSE' ? {
               bgcolor: '#f57c00',
               color: '#ffffff',
               '&:hover': { bgcolor: '#e65100' }
@@ -287,7 +291,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
               color: 'text.secondary',
             }}
           >送信2</Button>
-        </ButtonGroup>
+        </Box>
       </Grid>
     </Grid>
   );
@@ -434,14 +438,14 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
         <EditableField label="間取図確認OK/修正コメント" field="floor_plan_ok_comment" />
         <EditableField label="間取図修正回数（当社の依頼ミスのみ）" field="floor_plan_revision_count" type="number" />
         <EditableField label="間取図完了日" field="floor_plan_completed_date" type="date" />
-        <EditableField label="間取図格納済み連絡メール" field="floor_plan_stored_email" />
+        <EditableSendCountSelect label="間取図格納済み連絡メール" field="floor_plan_stored_email" />
 
         {/* 【サイト登録確認】グループ（赤色） */}
         <Typography variant="h6" sx={{ mt: 3, mb: 2, fontWeight: 'bold', color: 'error.main' }}>
           【サイト登録確認】
         </Typography>
-        <EditableField label="サイト登録確認" field="site_registration_confirmed" />
-        <EditableField label="パノラマ完了" field="panorama_completed" />
+        <EditableButtonSelect label="サイト登録確認" field="site_registration_confirmed" options={['確認中', '完了', '他']} />
+        <EditableSingleButton label="パノラマ完了" field="panorama_completed" buttonLabel="完了" />
         {/* サイト登録確認者（サイト登録確認が「完了」の場合のみ表示） */}
         {isSiteRegistrationCompleted && (
           <EditableButtonSelect label="サイト登録確認者" field="site_registration_confirmer" options={activeStaffInitials} />
