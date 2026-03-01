@@ -37,14 +37,28 @@ export class WorkTaskSyncService {
 
   /**
    * Google Sheets APIクライアントを初期化
+   * Vercel環境: GOOGLE_SERVICE_ACCOUNT_JSON（JSON文字列）を使用
+   * ローカル環境: GOOGLE_SERVICE_ACCOUNT_KEY_PATH（ファイルパス）を使用
    */
   private async initSheetsClient(): Promise<sheets_v4.Sheets> {
     if (this.sheets) return this.sheets;
 
-    const auth = new google.auth.GoogleAuth({
-      keyFile: process.env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH || process.env.GOOGLE_SERVICE_ACCOUNT_PATH || 'google-service-account.json',
-      scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
-    });
+    let auth: any;
+
+    if (process.env.GOOGLE_SERVICE_ACCOUNT_JSON) {
+      // Vercel環境: 環境変数からJSON認証情報を取得
+      const credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON);
+      auth = new google.auth.GoogleAuth({
+        credentials,
+        scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
+      });
+    } else {
+      // ローカル環境: ファイルパスから認証情報を取得
+      auth = new google.auth.GoogleAuth({
+        keyFile: process.env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH || process.env.GOOGLE_SERVICE_ACCOUNT_PATH || 'google-service-account.json',
+        scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
+      });
+    }
 
     this.sheets = google.sheets({ version: 'v4', auth });
     return this.sheets;
