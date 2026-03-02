@@ -105,7 +105,9 @@ export interface Seller {
   visit_date?: string | null; // スプレッドシートAB列（訪問日 Y/M/D）
   visitTime?: string;
   visitDayOfWeek?: string;
-  visitAssignee?: string; // 営担
+  visitAssignee?: string; // 営担（フルネームに変換済み）
+  visitAssigneeInitials?: string; // 営担の元のイニシャル（フィルタリング用）
+  visit_assignee?: string; // 生のDBカラム値（後方互換性）
   visitAcquiredBy?: string; // 訪問査定取得者（旧フィールド名）
   visitValuationAcquirer?: string; // 訪問査定取得者（visit_valuation_acquirer）
   visitNotes?: string;

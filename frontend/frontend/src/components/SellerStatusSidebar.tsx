@@ -3,16 +3,6 @@
  * 
  * 売主リストページと通話モードページで共通で使用するサイドバー
  * 現在の売主がどのステータスカテゴリに属するかをハイライト表示
- * 
- * 【サイドバーステータス定義】
- * 1. 「当日TEL分」 - 追客中 + 次電日が今日以前 + コミュニケーション情報が全て空
- * 2. 「当日TEL（内容）」 - 追客中 + 次電日が今日以前 + コミュニケーション情報あり
- * 3. 「未査定」 - 査定額が全て空 + 反響日付が2025/12/8以降 + 営担が空
- * 4. 「査定（郵送）」 - 郵送ステータスが「未」
- * 
- * 【機能】
- * - カテゴリをクリックすると展開され、該当する売主リストが表示される
- * - 「売主リスト」タイトルをクリックすると全カテゴリ表示に戻る
  */
 
 import { useState, useEffect } from 'react';
@@ -26,6 +16,8 @@ import {
   isTodayCallWithInfo,
   isUnvaluated,
   isMailingPending,
+  isVisitAssignedTo,
+  isTodayCallAssignedTo,
 } from '../utils/sellerStatusFilters';
 import { Seller } from '../types';
 
@@ -44,6 +36,8 @@ interface SellerStatusSidebarProps {
   sellers?: any[];
   /** ローディング中かどうか */
   loading?: boolean;
+  /** スタッフイニシャル一覧（担当者別カテゴリー表示用） */
+  assigneeInitials?: string[];
 }
 
 /**
@@ -52,7 +46,6 @@ interface SellerStatusSidebarProps {
 const getSellerCategory = (seller: Seller | any): StatusCategory | null => {
   if (!seller) return null;
   
-  // 優先順位: 当日TEL分 > 当日TEL（内容） > 未査定 > 査定（郵送）
   if (isTodayCall(seller)) return 'todayCall';
   if (isTodayCallWithInfo(seller)) return 'todayCallWithInfo';
   if (isUnvaluated(seller)) return 'unvaluated';
@@ -67,6 +60,15 @@ const getSellerCategory = (seller: Seller | any): StatusCategory | null => {
 const filterSellersByCategory = (sellers: any[], category: StatusCategory): any[] => {
   if (!sellers) return [];
   
+  if (typeof category === 'string' && category.startsWith('visitAssigned:')) {
+    const assignee = category.replace('visitAssigned:', '');
+    return sellers.filter(s => isVisitAssignedTo(s, assignee));
+  }
+  if (typeof category === 'string' && category.startsWith('todayCallAssigned:')) {
+    const assignee = category.replace('todayCallAssigned:', '');
+    return sellers.filter(s => isTodayCallAssignedTo(s, assignee));
+  }
+
   switch (category) {
     case 'todayCall':
       return sellers.filter(isTodayCall);
@@ -127,58 +129,11 @@ export default function SellerStatusSidebar({
   isCallMode = false,
   sellers = [],
   loading = false,
+  assigneeInitials = [],
 }: SellerStatusSidebarProps) {
   const navigate = useNavigate();
   
-  // デバッグログ - コンポーネントがレンダリングされるたびに出力
-  console.log('=== SellerStatusSidebar レンダリング ===');
-  console.log('レンダリング時刻:', new Date().toISOString());
-  console.log('isCallMode:', isCallMode);
-  console.log('loading:', loading);
-  console.log('sellers prop received:', sellers);
-  console.log('sellers count:', sellers?.length ?? 'undefined/null');
-  console.log('sellers type:', typeof sellers);
-  console.log('sellers is array:', Array.isArray(sellers));
-  
-  // sellersが有効な配列かどうかを確認
   const validSellers = Array.isArray(sellers) ? sellers : [];
-  console.log('validSellers count:', validSellers.length);
-  
-  if (validSellers.length > 0) {
-    console.log('サンプル売主 (最初の1件):', validSellers[0]);
-    
-    // フィルタリング結果を確認
-    const todayCallCount = validSellers.filter(isTodayCall).length;
-    const todayCallWithInfoCount = validSellers.filter(isTodayCallWithInfo).length;
-    const unvaluatedCount = validSellers.filter(isUnvaluated).length;
-    const mailingPendingCount = validSellers.filter(isMailingPending).length;
-    console.log('=== フィルタリング結果 ===');
-    console.log('当日TEL分:', todayCallCount);
-    console.log('当日TEL（内容）:', todayCallWithInfoCount);
-    console.log('未査定:', unvaluatedCount);
-    console.log('査定（郵送）:', mailingPendingCount);
-    
-    // 追客中の売主を確認
-    const followingUpSellers = validSellers.filter((s: any) => {
-      const status = s.status || '';
-      return typeof status === 'string' && status.includes('追客中');
-    });
-    console.log('追客中の売主:', followingUpSellers.length);
-    
-    // 次電日が今日以前の売主を確認
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const todayOrBeforeSellers = validSellers.filter((s: any) => {
-      const nextCallDate = s.nextCallDate || s.next_call_date;
-      if (!nextCallDate) return false;
-      const date = new Date(nextCallDate);
-      date.setHours(0, 0, 0, 0);
-      return date.getTime() <= today.getTime();
-    });
-    console.log('次電日が今日以前の売主:', todayOrBeforeSellers.length);
-  } else {
-    console.warn('⚠️ sellers配列が空です - CallModePageからデータが渡されていない可能性があります');
-  }
   
   // 展開中のカテゴリ（nullの場合は全カテゴリ表示）
   const [expandedCategory, setExpandedCategory] = useState<StatusCategory | null>(null);
@@ -196,10 +151,8 @@ export default function SellerStatusSidebar({
   // ボタンがアクティブかどうかを判定
   const isActive = (category: StatusCategory): boolean => {
     if (isCallMode) {
-      // 通話モードページ: 現在の売主のカテゴリと一致するかどうか
       return currentSellerCategory === category;
     } else {
-      // 売主リストページ: 選択中のカテゴリと一致するかどうか
       return selectedCategory === category;
     }
   };
@@ -207,14 +160,11 @@ export default function SellerStatusSidebar({
   // カテゴリヘッダークリック時の処理
   const handleCategoryClick = (category: StatusCategory) => {
     if (expandedCategory === category) {
-      // 既に展開中のカテゴリをクリックした場合は閉じる
       setExpandedCategory(null);
     } else {
-      // 新しいカテゴリを展開
       setExpandedCategory(category);
     }
     
-    // 売主リストページの場合、カテゴリを選択
     if (!isCallMode) {
       onCategorySelect?.(category);
     }
@@ -235,20 +185,21 @@ export default function SellerStatusSidebar({
   
   // 件数を取得
   const getCount = (category: StatusCategory): number => {
-    if (categoryCounts) {
-      return categoryCounts[category] ?? 0;
+    if (typeof category === 'string' && (category.startsWith('visitAssigned:') || category.startsWith('todayCallAssigned:'))) {
+      return filterSellersByCategory(validSellers, category).length;
     }
-    // sellersから計算
-    return filterSellersByCategory(sellers, category).length;
+    if (categoryCounts) {
+      return (categoryCounts as unknown as Record<string, number>)[category] ?? 0;
+    }
+    return filterSellersByCategory(validSellers, category).length;
   };
 
   // カテゴリボタンをレンダリング
   const renderCategoryButton = (category: StatusCategory, label: string, color: string) => {
     const count = getCount(category);
     const isExpanded = expandedCategory === category;
-    const filteredSellers = filterSellersByCategory(sellers, category);
+    const filteredSellers = filterSellersByCategory(validSellers, category);
     
-    // 件数が0の場合は非表示（展開中でない場合）
     if (count === 0 && !isExpanded) return null;
     
     return (
@@ -299,7 +250,6 @@ export default function SellerStatusSidebar({
             maxHeight: 400,
             overflow: 'auto',
           }}>
-            {/* カテゴリサブヘッダー */}
             <Box sx={{ 
               p: 1.5, 
               borderBottom: 1, 
@@ -332,7 +282,6 @@ export default function SellerStatusSidebar({
                       onClick={() => handleSellerClick(seller.id)}
                     >
                       <Box sx={{ width: '100%' }}>
-                        {/* 売主番号と名前 */}
                         <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
                           {seller.sellerNumber}（{seller.name}）
                           {seller.status && (
@@ -342,7 +291,6 @@ export default function SellerStatusSidebar({
                           )}
                         </Typography>
                         
-                        {/* 住所と次電日 */}
                         <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
                           {seller.propertyAddress || seller.address || '-'}
                           {seller.nextCallDate && (
@@ -350,7 +298,6 @@ export default function SellerStatusSidebar({
                           )}
                         </Typography>
                         
-                        {/* アクションアイコン */}
                         <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 0.5, mt: 0.5 }}>
                           <IconButton size="small" sx={{ p: 0.5 }}>
                             <Edit fontSize="small" />
@@ -383,7 +330,49 @@ export default function SellerStatusSidebar({
     );
   };
 
-  // 全カテゴリ表示モード（展開中のカテゴリがない場合）
+  // 担当者別カテゴリーをレンダリング
+  // assigneeInitials prop（スタッフスプレッドシートから取得）を使用
+  const renderAssigneeCategories = () => {
+    // assigneeInitialsが空の場合はsellersから動的に取得（フォールバック）
+    const initials = assigneeInitials.length > 0
+      ? assigneeInitials
+      : [...new Set(
+          validSellers
+            .map((s: any) => s.visitAssigneeInitials || s.visit_assignee || '')
+            .filter((a: string) => a && a.trim() !== '' && a.trim() !== '外す')
+        )].sort() as string[];
+
+    return initials.map(assignee => {
+      const assignedSellers = validSellers.filter(s => isVisitAssignedTo(s, assignee));
+      const todayCallSellers = validSellers.filter(s => isTodayCallAssignedTo(s, assignee));
+
+      // 担当者に該当する売主がいない場合は表示しない
+      if (assignedSellers.length === 0 && todayCallSellers.length === 0) return null;
+
+      return (
+        <Box key={assignee}>
+          {/* 担当（Y）メインカテゴリー */}
+          {renderCategoryButton(
+            `visitAssigned:${assignee}` as StatusCategory,
+            `担当（${assignee}）`,
+            '#ff5722'
+          )}
+          {/* 当日TEL(Y)サブカテゴリー（インデント付き） */}
+          {todayCallSellers.length > 0 && (
+            <Box sx={{ pl: 2 }}>
+              {renderCategoryButton(
+                `todayCallAssigned:${assignee}` as StatusCategory,
+                `当日TEL(${assignee})`,
+                '#ff5722'
+              )}
+            </Box>
+          )}
+        </Box>
+      );
+    });
+  };
+
+  // 全カテゴリ表示モード
   const renderAllCategories = () => (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
       {/* All */}
@@ -412,7 +401,11 @@ export default function SellerStatusSidebar({
           <Chip label={categoryCounts.all} size="small" sx={{ height: 20, fontSize: '0.7rem' }} />
         )}
       </Button>
-      
+
+      {/* 担当者別カテゴリー（動的生成） */}
+      {renderAssigneeCategories()}
+
+      {/* 既存の固定カテゴリー */}
       {renderCategoryButton('todayCall', '①当日TEL分', '#d32f2f')}
       {renderCategoryButton('todayCallWithInfo', '②当日TEL（内容）', '#9c27b0')}
       {renderCategoryButton('unvaluated', '③未査定', '#ed6c02')}
@@ -420,7 +413,7 @@ export default function SellerStatusSidebar({
     </Box>
   );
 
-  // 展開モード（特定のカテゴリが展開されている場合）
+  // 展開モード
   const renderExpandedCategory = () => {
     if (!expandedCategory) return null;
     
@@ -470,7 +463,6 @@ export default function SellerStatusSidebar({
           <Typography variant="body2" sx={{ ml: 1 }}>読み込み中...</Typography>
         </Box>
       ) : (
-        /* カテゴリリスト */
         expandedCategory ? renderExpandedCategory() : renderAllCategories()
       )}
     </Paper>

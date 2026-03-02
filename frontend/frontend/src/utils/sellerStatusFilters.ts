@@ -39,7 +39,9 @@ import { Seller } from '../types';
 // visitCompleted: 訪問済み（営担に入力あり、訪問日が昨日以前）
 // todayCallNotStarted: 当日TEL_未着手（不通が空欄 + 反響日付が2026/1/1以降）
 // pinrichEmpty: Pinrich空欄（Pinrichカラムが空欄）
-export type StatusCategory = 'all' | 'todayCall' | 'todayCallWithInfo' | 'todayCallAssigned' | 'visitScheduled' | 'visitCompleted' | 'unvaluated' | 'mailingPending' | 'todayCallNotStarted' | 'pinrichEmpty';
+export type StatusCategory = 'all' | 'todayCall' | 'todayCallWithInfo' | 'todayCallAssigned' | 'visitScheduled' | 'visitCompleted' | 'unvaluated' | 'mailingPending' | 'todayCallNotStarted' | 'pinrichEmpty'
+  | `visitAssigned:${string}`      // 担当カテゴリー（例: visitAssigned:Y）
+  | `todayCallAssigned:${string}`; // 当日TELサブカテゴリー（例: todayCallAssigned:Y）
 
 // カテゴリカウントのインターフェース
 export interface CategoryCounts {
@@ -179,7 +181,9 @@ const isYesterdayOrBefore = (dateStr: string | Date | undefined | null): boolean
  * 「外す」は担当なしと同じ扱い
  */
 const hasVisitAssignee = (seller: Seller | any): boolean => {
-  const visitAssignee = seller.visitAssignee || seller.visit_assignee || '';
+  // visitAssigneeInitials（元のイニシャル）を優先して確認
+  // visitAssigneeはフルネームに変換されている場合があるため
+  const visitAssignee = seller.visitAssigneeInitials || seller.visit_assignee || '';
   // 空文字または「外す」の場合は担当なしとみなす
   if (!visitAssignee || visitAssignee.trim() === '' || visitAssignee.trim() === '外す') {
     return false;
@@ -656,6 +660,53 @@ export const isPinrichEmpty = (seller: Seller | any): boolean => {
 };
 
 /**
+ * 特定の担当者（イニシャル）に該当する売主を判定
+ * 
+ * @param seller 売主データ
+ * @param assignee 担当者イニシャル
+ * @returns 指定した担当者に割り当てられているかどうか
+ */
+export const isVisitAssignedTo = (seller: Seller | any, assignee: string): boolean => {
+  // 空文字や「外す」は担当なしと同じ扱い
+  if (!assignee || assignee.trim() === '' || assignee.trim() === '外す') {
+    return false;
+  }
+  // visitAssigneeInitials（元のイニシャル）を優先して比較
+  // visitAssigneeはフルネームに変換されている場合があるため
+  const visitAssigneeInitials = seller.visitAssigneeInitials || seller.visit_assignee || '';
+  return visitAssigneeInitials.trim() === assignee;
+};
+
+/**
+ * 特定の担当者の当日TEL対象かどうかを判定
+ * 
+ * 条件:
+ * - 指定した担当者（イニシャル）に割り当てられている
+ * - 次電日が今日以前（isTodayCallAssigned の条件）
+ * 
+ * @param seller 売主データ
+ * @param assignee 担当者イニシャル
+ * @returns 指定した担当者の当日TEL対象かどうか
+ */
+export const isTodayCallAssignedTo = (seller: Seller | any, assignee: string): boolean => {
+  return isVisitAssignedTo(seller, assignee) && isTodayCallAssigned(seller);
+};
+
+/**
+ * 売主リストからユニークな担当者イニシャルを取得
+ * 「外す」と空文字を除外し、重複を排除してソートして返す
+ * 
+ * @param sellers 売主リスト
+ * @returns ユニークな担当者イニシャルの配列（ソート済み）
+ */
+export const getUniqueAssignees = (sellers: (Seller | any)[]): string[] => {
+  const assignees = sellers
+    .map(s => s.visitAssignee || s.visit_assignee || '')
+    .filter(a => a && a.trim() !== '' && a.trim() !== '外す');
+  return [...new Set(assignees)].sort();
+};
+
+/**
  * カテゴリ別の売主数をカウント
  * 
  * @param sellers 売主リスト
@@ -691,6 +742,16 @@ export const filterSellersByCategory = (
   sellers: (Seller | any)[],
   category: StatusCategory
 ): (Seller | any)[] => {
+  // 動的カテゴリーの処理（switch文より前に処理）
+  if (typeof category === 'string' && category.startsWith('visitAssigned:')) {
+    const assignee = category.replace('visitAssigned:', '');
+    return sellers.filter(s => isVisitAssignedTo(s, assignee));
+  }
+  if (typeof category === 'string' && category.startsWith('todayCallAssigned:')) {
+    const assignee = category.replace('todayCallAssigned:', '');
+    return sellers.filter(s => isTodayCallAssignedTo(s, assignee));
+  }
+
   switch (category) {
     case 'todayCall':
       return sellers.filter(isTodayCall);

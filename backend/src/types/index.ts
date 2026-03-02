@@ -102,7 +102,8 @@ export interface Seller {
   visitDate?: Date;
   visitTime?: string;
   visitDayOfWeek?: string;
-  visitAssignee?: string; // 営担
+  visitAssignee?: string; // 営担（フルネームに変換済み）
+  visitAssigneeInitials?: string; // 営担の元のイニシャル（フィルタリング用）
   visitValuationAcquirer?: string; // 訪問査定取得者（visit_valuation_acquirer）
   visitNotes?: string;
   visitRatio?: number;

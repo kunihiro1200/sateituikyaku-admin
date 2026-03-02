@@ -118,20 +118,27 @@ export default function SellersPage() {
   const [sidebarCounts, setSidebarCounts] = useState<{
     todayCall: number;
     todayCallWithInfo: number;
+    todayCallAssigned: number;
     visitScheduled: number;
     visitCompleted: number;
     unvaluated: number;
     mailingPending: number;
+    todayCallNotStarted: number;
+    pinrichEmpty: number;
   }>({
     todayCall: 0,
     todayCallWithInfo: 0,
+    todayCallAssigned: 0,
     visitScheduled: 0,
     visitCompleted: 0,
     unvaluated: 0,
     mailingPending: 0,
+    todayCallNotStarted: 0,
+    pinrichEmpty: 0,
   });
   const [sidebarLoading, setSidebarLoading] = useState(true);
-  
+  // 担当者イニシャル一覧（スタッフスプレッドシートから取得）
+  const [assigneeInitials, setAssigneeInitials] = useState<string[]>([]);  
   // ページ状態をsessionStorageから復元
   const [page, setPage] = useState(() => {
     const saved = sessionStorage.getItem('sellersPage');
@@ -249,19 +256,33 @@ export default function SellersPage() {
       setSidebarCounts({
         todayCall: 0,
         todayCallWithInfo: 0,
+        todayCallAssigned: 0,
         visitScheduled: 0,
         visitCompleted: 0,
         unvaluated: 0,
         mailingPending: 0,
+        todayCallNotStarted: 0,
+        pinrichEmpty: 0,
       });
     } finally {
       setSidebarLoading(false);
     }
   };
 
-  // 初回ロード時にサイドバーカウントを取得
+  // 担当者イニシャル一覧を取得（スタッフスプレッドシートから）
+  const fetchAssigneeInitials = async () => {
+    try {
+      const response = await api.get('/api/employees/active-initials');
+      setAssigneeInitials(response.data.initials || []);
+    } catch (error) {
+      console.error('Failed to fetch assignee initials:', error);
+    }
+  };
+
+  // 初回ロード時にサイドバーカウントとイニシャルを取得
   useEffect(() => {
     fetchSidebarCounts();
+    fetchAssigneeInitials();
   }, []);
 
   useEffect(() => {
@@ -414,6 +435,7 @@ export default function SellersPage() {
             isCallMode={false}
             sellers={sellers}
             loading={sidebarLoading}
+            assigneeInitials={assigneeInitials}
           />
 
           {/* メインコンテンツ */}
