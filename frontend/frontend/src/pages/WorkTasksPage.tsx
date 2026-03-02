@@ -20,8 +20,6 @@ import {
   Badge,
 } from '@mui/material';
 import { Search as SearchIcon } from '@mui/icons-material';
-import ClearIcon from '@mui/icons-material/Clear';
-import IconButton from '@mui/material/IconButton';
 import api from '../services/api';
 import WorkTaskDetailModal from '../components/WorkTaskDetailModal';
 import { WorkTask, getStatusCategories, filterTasksByStatus, calculateTaskStatus } from '../utils/workTaskStatusUtils';
@@ -127,7 +125,7 @@ export default function WorkTasksPage() {
 
   return (
     <Container maxWidth="xl" sx={{ py: 3 }}>
-      <Typography variant="h5" fontWeight="bold" sx={{ mb: 2, color: '#9c27b0' }}>業務依頼</Typography>
+      <Typography variant="h5" fontWeight="bold" sx={{ mb: 2 }}>業務依頼</Typography>
       
       {/* ページナビゲーション */}
       <PageNavigation />
@@ -148,13 +146,7 @@ export default function WorkTasksPage() {
                 onClick={() => handleCategoryChange(cat.key)}
                 sx={{ 
                   py: 0.5,
-                  '&.Mui-selected': { 
-                    bgcolor: '#ba68c830',
-                    color: '#7b1fa2',
-                    '& .MuiListItemText-primary': {
-                      fontWeight: 600,
-                    }
-                  }
+                  '&.Mui-selected': { bgcolor: 'action.selected' }
                 }}
               >
                 <ListItemText 
@@ -170,14 +162,9 @@ export default function WorkTasksPage() {
                 />
                 <Badge
                   badgeContent={cat.count}
+                  color="primary"
                   max={999}
-                  sx={{ 
-                    ml: 1,
-                    '& .MuiBadge-badge': {
-                      bgcolor: '#9c27b0',
-                      color: '#ffffff',
-                    }
-                  }}
+                  sx={{ ml: 1 }}
                 />
               </ListItemButton>
             ))}
@@ -201,20 +188,6 @@ export default function WorkTasksPage() {
                 startAdornment: (
                   <InputAdornment position="start">
                     <SearchIcon />
-                  </InputAdornment>
-                ),
-                endAdornment: searchQuery && (
-                  <InputAdornment position="end">
-                    <IconButton
-                      size="small"
-                      onClick={() => {
-                        setSearchQuery('');
-                        setPage(0);
-                      }}
-                      edge="end"
-                    >
-                      <ClearIcon />
-                    </IconButton>
                   </InputAdornment>
                 ),
               }}
@@ -242,7 +215,7 @@ export default function WorkTasksPage() {
           <TableContainer component={Paper}>
             <Table size="small">
               <TableHead>
-                <TableRow sx={{ bgcolor: '#ba68c820' }}>
+                <TableRow sx={{ bgcolor: '#f5f5f5' }}>
                   <TableCell>物件番号</TableCell>
                   <TableCell>物件所在</TableCell>
                   <TableCell>売主</TableCell>
@@ -279,7 +252,7 @@ export default function WorkTasksPage() {
                         sx={{ cursor: 'pointer' }}
                       >
                         <TableCell>
-                          <Typography variant="body2" fontWeight="bold" sx={{ color: '#9c27b0' }}>
+                          <Typography variant="body2" color="primary" fontWeight="bold">
                             {task.property_number || '-'}
                           </Typography>
                         </TableCell>

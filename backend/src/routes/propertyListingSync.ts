@@ -180,13 +180,12 @@ router.get('/history', async (req, res) => {
 
     const limit = parseInt(req.query.limit as string) || 10;
 
-    // getRecentSyncs メソッドは存在しないため、空配列を返す
+    const history = await syncService.getRecentSyncs(limit);
+
     res.json({
-      syncs: [],
-      count: 0,
-      message: 'History not available in this version'
+      syncs: history,
+      count: history.length
     });
-    return;
   } catch (error) {
     console.error('❌ Failed to get sync history:', error);
     res.status(500).json({
@@ -217,14 +216,9 @@ router.get('/statistics', async (req, res) => {
       });
     }
 
-    // getStatistics メソッドは存在しないため、getHealth() を使用
-    const health = await syncService.getHealth();
-    res.json({
-      errorRate: health.errorRate,
-      avgDuration: health.avgSyncDuration,
-      status: health.status,
-    });
-    return;
+    const statistics = await syncService.getStatistics();
+
+    res.json(statistics);
   } catch (error) {
     console.error('❌ Failed to get statistics:', error);
     res.status(500).json({
@@ -257,14 +251,13 @@ router.get('/errors/:syncId', async (req, res) => {
 
     const { syncId } = req.params;
 
-    // getSyncErrors メソッドは存在しないため、空配列を返す
+    const errors = await syncService.getSyncErrors(syncId);
+
     res.json({
       syncId,
-      errors: [],
-      count: 0,
-      message: 'Error details not available in this version'
+      errors,
+      count: errors.length
     });
-    return;
   } catch (error) {
     console.error('❌ Failed to get sync errors:', error);
     res.status(500).json({

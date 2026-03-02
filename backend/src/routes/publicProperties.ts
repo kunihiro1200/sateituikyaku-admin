@@ -593,8 +593,8 @@ router.get('/properties/:id/images', async (req: Request, res: Response): Promis
       console.log(`[Images API] Using athome_data as storage_url: ${storageUrl}`);
     }
 
-    // 格納先URLから画像を取得（引数は1つのみ）
-    const result = await propertyImageService.getImagesFromStorageUrl(storageUrl);
+    // 格納先URLから画像を取得
+    const result = await propertyImageService.getImagesFromStorageUrl(storageUrl, property.property_number);
 
     // 非表示画像リストを取得（UUIDを使用）
     const hiddenImages = await propertyListingService.getHiddenImages(property.id);
@@ -1218,8 +1218,7 @@ router.post('/properties/:identifier/clear-image-cache', async (req: Request, re
 
     // 画像表示時と同じロジックで実際のフォルダIDを取得
     // （athome公開フォルダが存在する場合はそのID、なければ親フォルダID）
-    // 引数は1つのみ（property_numberは不要）
-    const result = await propertyImageService.getImagesFromStorageUrl(storageUrl);
+    const result = await propertyImageService.getImagesFromStorageUrl(storageUrl, property.property_number);
     const actualFolderId = result.folderId || parentFolderId;
     
     console.log(`📁 Parent folder ID: ${parentFolderId}`);
@@ -1322,8 +1321,7 @@ router.post('/properties/:identifier/refresh-essential', async (req: Request, re
         propertyImageService.clearCache(folderId);
       }
       
-      // キャッシュをクリアしてから画像を取得（引数は1つのみ）
-      const result = await propertyImageService.getImagesFromStorageUrl(storageUrl);
+      const result = await propertyImageService.getImagesFromStorageUrl(storageUrl, property.property_number);
       
       // 非表示画像をフィルタリング
       const hiddenImages = await propertyListingService.getHiddenImages(property.id);
@@ -1424,8 +1422,7 @@ router.post('/properties/:identifier/refresh-all', async (req: Request, res: Res
         propertyImageService.clearCache(folderId);
       }
       
-      // 画像を取得（引数は1つのみ）
-      const result = await propertyImageService.getImagesFromStorageUrl(storageUrl);
+      const result = await propertyImageService.getImagesFromStorageUrl(storageUrl, property.property_number);
       const hiddenImages = await propertyListingService.getHiddenImages(property.id);
       images = result.images.filter(img => !hiddenImages.includes(img.id));
       

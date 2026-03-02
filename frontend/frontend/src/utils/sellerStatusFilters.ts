@@ -37,10 +37,9 @@ import { Seller } from '../types';
 // todayCallAssigned: 営担あり + 訪問日なし + 次電日が今日以前
 // visitScheduled: 訪問予定（営担に入力あり、訪問日が今日以降）
 // visitCompleted: 訪問済み（営担に入力あり、訪問日が昨日以前）
-// visitOther: 担当分（営担に入力あり、訪問日なし）
 // todayCallNotStarted: 当日TEL_未着手（不通が空欄 + 反響日付が2026/1/1以降）
 // pinrichEmpty: Pinrich空欄（Pinrichカラムが空欄）
-export type StatusCategory = 'all' | 'todayCall' | 'todayCallWithInfo' | 'todayCallAssigned' | 'visitScheduled' | 'visitCompleted' | 'visitOther' | 'unvaluated' | 'mailingPending' | 'todayCallNotStarted' | 'pinrichEmpty';
+export type StatusCategory = 'all' | 'todayCall' | 'todayCallWithInfo' | 'todayCallAssigned' | 'visitScheduled' | 'visitCompleted' | 'unvaluated' | 'mailingPending' | 'todayCallNotStarted' | 'pinrichEmpty';
 
 // カテゴリカウントのインターフェース
 export interface CategoryCounts {
@@ -54,11 +53,6 @@ export interface CategoryCounts {
   mailingPending: number;
   todayCallNotStarted: number; // 当日TEL_未着手（不通が空欄 + 反響日付が2026/1/1以降）
   pinrichEmpty: number;        // Pinrich空欄（Pinrichカラムが空欄）
-  // イニシャル別カウント（APIから取得）
-  visitScheduledByAssignee?: { initial: string; count: number }[];
-  visitCompletedByAssignee?: { initial: string; count: number }[];
-  todayCallAssignedByAssignee?: { initial: string; count: number }[];
-  todayCallWithInfoGroups?: { label: string; count: number; sellers?: any[] }[];
 }
 
 /**
@@ -310,52 +304,6 @@ export const getAssignedNoVisitDateLabel = (seller: Seller | any): string => {
   }
   
   return '担当分';
-};
-
-/**
- * 訪問その他判定（営担に入力あり、訪問日なし）
- * 
- * 【サイドバー表示】「担当分（イニシャル）」
- * 
- * 条件:
- * - 営担（visitAssignee）に入力がある
- * - 訪問日（visitDate）が空
- * 
- * isAssignedNoVisitDate の別名（SellerStatusSidebar.tsx との互換性のため）
- * 
- * @param seller 売主データ
- * @returns 訪問その他対象かどうか
- */
-export const isVisitOther = (seller: Seller | any): boolean => {
-  return isAssignedNoVisitDate(seller);
-};
-
-/**
- * 当日TEL（内容）をラベル別にグループ化
- * 
- * @param sellers 売主リスト
- * @returns ラベル別グループ（例: [{ label: '当日TEL(Eメール)', count: 3, sellers: [...] }]）
- */
-export const groupTodayCallWithInfo = (
-  sellers: (Seller | any)[]
-): { label: string; count: number; sellers: any[] }[] => {
-  const groupMap: { [label: string]: any[] } = {};
-  
-  sellers.filter(isTodayCallWithInfo).forEach(seller => {
-    const label = getTodayCallWithInfoLabel(seller);
-    if (!groupMap[label]) {
-      groupMap[label] = [];
-    }
-    groupMap[label].push(seller);
-  });
-  
-  return Object.entries(groupMap)
-    .map(([label, groupSellers]) => ({
-      label,
-      count: groupSellers.length,
-      sellers: groupSellers,
-    }))
-    .sort((a, b) => b.count - a.count); // 件数の多い順
 };
 
 /**
@@ -754,8 +702,6 @@ export const filterSellersByCategory = (
       return sellers.filter(isVisitScheduled);
     case 'visitCompleted':
       return sellers.filter(isVisitCompleted);
-    case 'visitOther':
-      return sellers.filter(isVisitOther);
     case 'unvaluated':
       return sellers.filter(isUnvaluated);
     case 'mailingPending':

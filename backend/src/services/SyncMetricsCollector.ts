@@ -226,7 +226,7 @@ property_sync_circuit_breaker_state ${metrics.circuitBreakerState}
 
     // メトリクスを集計
     const latestMetrics: Record<string, number> = {};
-    const errorsByType: PrometheusMetrics['errors'] = {
+    const errorsByType: Record<string, number> = {
       network: 0,
       validation: 0,
       database: 0,

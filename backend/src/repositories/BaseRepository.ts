@@ -11,7 +11,7 @@ export class BaseRepository {
   /**
    * テーブルからデータを取得
    */
-  protected table<T = any>(tableName: string) {
+  protected table(tableName: string) {
     return this.supabase.from(tableName);
   }
 

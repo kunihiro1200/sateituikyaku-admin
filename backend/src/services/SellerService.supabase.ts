@@ -91,7 +91,7 @@ export class SellerService extends BaseRepository {
     const encryptedPhone = encrypt(data.phoneNumber);
     const encryptedEmail = data.email ? encrypt(data.email) : undefined;
     
-    const duplicateMatches = await duplicateDetectionService.instance.checkDuplicates(
+    const duplicateMatches = await duplicateDetectionService.checkDuplicates(
       encryptedPhone,
       encryptedEmail
     );
@@ -117,9 +117,9 @@ export class SellerService extends BaseRepository {
       }
     }
 
-    // 除外日を計算（CreateSellerRequestにinquiryDateは存在しないため、inquiryDatetimeを使用）
+    // 除外日を計算
     const exclusionDate = ExclusionDateCalculator.calculateExclusionDate(
-      data.inquiryDatetime || null,
+      data.inquiryDate,
       data.site
     );
 
@@ -135,6 +135,7 @@ export class SellerService extends BaseRepository {
       seller_number: sellerNumber,
       inquiry_source: data.inquirySource,
       inquiry_year: data.inquiryYear,
+      inquiry_date: data.inquiryDate,
       inquiry_datetime: data.inquiryDatetime || null,
       confidence: data.confidenceLevel || null,
       first_caller_initials: data.firstCallerInitials || null,
@@ -158,7 +159,7 @@ export class SellerService extends BaseRepository {
     if (duplicateMatches.length > 0) {
       for (const match of duplicateMatches) {
         try {
-          await duplicateDetectionService.instance.recordDuplicateHistory(
+          await duplicateDetectionService.recordDuplicateHistory(
             seller.id,
             match.sellerId,
             match.matchType
@@ -263,7 +264,7 @@ export class SellerService extends BaseRepository {
     
     // 除外日を計算
     const exclusionDate = ExclusionDateCalculator.calculateExclusionDate(
-      (decryptedSeller as any).inquiryDate,
+      decryptedSeller.inquiryDate,
       decryptedSeller.site
     );
     decryptedSeller.exclusionDate = exclusionDate;
@@ -321,8 +322,8 @@ export class SellerService extends BaseRepository {
     if (data.status !== undefined) {
       updates.status = data.status;
     }
-    if ((data as any).confidence !== undefined) {
-      updates.confidence = (data as any).confidence;
+    if (data.confidence !== undefined) {
+      updates.confidence = data.confidence;
     }
     if (data.assignedTo !== undefined) {
       updates.assigned_to = data.assignedTo;
@@ -427,8 +428,8 @@ export class SellerService extends BaseRepository {
     if (data.inquiryYear !== undefined) {
       updates.inquiry_year = data.inquiryYear;
     }
-    if ((data as any).inquiryDate !== undefined) {
-      updates.inquiry_date = (data as any).inquiryDate;
+    if (data.inquiryDate !== undefined) {
+      updates.inquiry_date = data.inquiryDate;
     }
 
     // 郵送ステータスフィールド
@@ -440,14 +441,14 @@ export class SellerService extends BaseRepository {
     }
 
     // 除外日を計算（inquiryDateまたはsiteが更新される場合）
-    if ((data as any).inquiryDate !== undefined || data.site !== undefined) {
+    if (data.inquiryDate !== undefined || data.site !== undefined) {
       // 現在の売主データを取得して、更新されないフィールドの値を使用
       const { data: currentSeller } = await this.table('sellers')
         .select('inquiry_date, site')
         .eq('id', sellerId)
         .single();
       
-      const inquiryDateForCalc = (data as any).inquiryDate !== undefined ? (data as any).inquiryDate : currentSeller?.inquiry_date;
+      const inquiryDateForCalc = data.inquiryDate !== undefined ? data.inquiryDate : currentSeller?.inquiry_date;
       const siteForCalc = data.site !== undefined ? data.site : currentSeller?.site;
       
       const exclusionDate = ExclusionDateCalculator.calculateExclusionDate(
@@ -799,29 +800,6 @@ export class SellerService extends BaseRepository {
         case 'mailingPending':
           // 査定（郵送）（郵送ステータスが「未」）
           query = query.eq('mailing_status', '未');
-          break;
-        case 'todayCallNotStarted':
-          // 当日TEL_未着手（当日TEL分の条件 + 不通が空欄 + 反響日付が2026/1/1以降）
-          query = query
-            .ilike('status', '%追客中%')
-            .lte('next_call_date', todayJST)
-            .or('visit_assignee.is.null,visit_assignee.eq.,visit_assignee.eq.外す')
-            .or('phone_contact_person.is.null,phone_contact_person.eq.')
-            .or('preferred_contact_time.is.null,preferred_contact_time.eq.')
-            .or('contact_method.is.null,contact_method.eq.')
-            .or('unreachable_status.is.null,unreachable_status.eq.')
-            .gte('inquiry_date', '2026-01-01');
-          break;
-        case 'pinrichEmpty':
-          // Pinrich空欄（当日TEL分の条件 + Pinrichが空欄）
-          query = query
-            .ilike('status', '%追客中%')
-            .lte('next_call_date', todayJST)
-            .or('visit_assignee.is.null,visit_assignee.eq.,visit_assignee.eq.外す')
-            .or('phone_contact_person.is.null,phone_contact_person.eq.')
-            .or('preferred_contact_time.is.null,preferred_contact_time.eq.')
-            .or('contact_method.is.null,contact_method.eq.')
-            .or('pinrich_status.is.null,pinrich_status.eq.');
           break;
       }
     }
@@ -1249,7 +1227,7 @@ export class SellerService extends BaseRepository {
    * Phase 1: Get duplicate history for a seller
    */
   async getDuplicateHistory(sellerId: string) {
-    return duplicateDetectionService.instance.getDuplicateHistory(sellerId);
+    return duplicateDetectionService.getDuplicateHistory(sellerId);
   }
 
   /**
@@ -1258,7 +1236,7 @@ export class SellerService extends BaseRepository {
   async checkDuplicates(phoneNumber: string, email?: string, excludeId?: string) {
     const encryptedPhone = encrypt(phoneNumber);
     const encryptedEmail = email ? encrypt(email) : undefined;
-    return duplicateDetectionService.instance.checkDuplicates(encryptedPhone, encryptedEmail, excludeId);
+    return duplicateDetectionService.checkDuplicates(encryptedPhone, encryptedEmail, excludeId);
   }
 
   /**
@@ -1416,8 +1394,6 @@ export class SellerService extends BaseRepository {
     visitCompleted: number;
     unvaluated: number;
     mailingPending: number;
-    todayCallNotStarted: number;
-    pinrichEmpty: number;
   }> {
     // JST今日の日付を取得
     const now = new Date();
@@ -1468,7 +1444,7 @@ export class SellerService extends BaseRepository {
     // 4. 当日TEL分/当日TEL（内容）
     // 追客中 AND 次電日が今日以前 AND 営担なしの売主を取得
     const { data: todayCallBaseSellers } = await this.table('sellers')
-      .select('id, visit_assignee, phone_contact_person, preferred_contact_time, contact_method, unreachable_status, pinrich_status, inquiry_date')
+      .select('id, visit_assignee, phone_contact_person, preferred_contact_time, contact_method')
       .is('deleted_at', null)
       .ilike('status', '%追客中%')
       .lte('next_call_date', todayJST);
@@ -1516,29 +1492,6 @@ export class SellerService extends BaseRepository {
       .is('deleted_at', null)
       .eq('mailing_status', '未');
 
-    // 7. 当日TEL_未着手（当日TEL分の条件 + 不通が空欄 + 反響日付が2026/1/1以降）
-    const todayCallNotStartedCount = filteredTodayCallSellers.filter(s => {
-      const hasInfo = (s.phone_contact_person && s.phone_contact_person.trim() !== '') ||
-                      (s.preferred_contact_time && s.preferred_contact_time.trim() !== '') ||
-                      (s.contact_method && s.contact_method.trim() !== '');
-      if (hasInfo) return false; // コミュニケーション情報ありは除外
-      const hasUnreachable = s.unreachable_status && s.unreachable_status.trim() !== '';
-      if (hasUnreachable) return false; // 不通ありは除外
-      const inquiryDate = s.inquiry_date;
-      if (!inquiryDate) return false;
-      return inquiryDate >= '2026-01-01';
-    }).length;
-
-    // 8. Pinrich空欄（当日TEL分の条件 + Pinrichが空欄）
-    const pinrichEmptyCount = filteredTodayCallSellers.filter(s => {
-      const hasInfo = (s.phone_contact_person && s.phone_contact_person.trim() !== '') ||
-                      (s.preferred_contact_time && s.preferred_contact_time.trim() !== '') ||
-                      (s.contact_method && s.contact_method.trim() !== '');
-      if (hasInfo) return false; // コミュニケーション情報ありは除外
-      const hasPinrich = s.pinrich_status && s.pinrich_status.trim() !== '';
-      return !hasPinrich;
-    }).length;
-
     return {
       todayCall: todayCallNoInfoCount || 0,
       todayCallWithInfo: todayCallWithInfoCount || 0,
@@ -1547,8 +1500,6 @@ export class SellerService extends BaseRepository {
       visitCompleted: visitCompletedCount || 0,
       unvaluated: unvaluatedCount || 0,
       mailingPending: mailingPendingCount || 0,
-      todayCallNotStarted: todayCallNotStartedCount || 0,
-      pinrichEmpty: pinrichEmptyCount || 0,
     };
   }
 }

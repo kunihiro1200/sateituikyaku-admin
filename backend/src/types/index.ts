@@ -201,7 +201,6 @@ export interface PropertyInfo {
   floors?: number;
   rooms?: number;
   sellerSituation?: string; // 居住中、空き家、賃貸中、古屋あり、更地
-  currentStatus?: string; // current_status（新しいフィールド）
   parking?: boolean;
   additionalInfo?: string;
 }
@@ -430,7 +429,7 @@ export interface ListSellersParams {
   // Deletion sync filter
   includeDeleted?: boolean; // Default: false (exclude deleted sellers)
   // サイドバーカテゴリフィルター
-  statusCategory?: 'all' | 'todayCall' | 'todayCallWithInfo' | 'todayCallAssigned' | 'visitScheduled' | 'visitCompleted' | 'unvaluated' | 'mailingPending' | 'todayCallNotStarted' | 'pinrichEmpty';
+  statusCategory?: 'all' | 'todayCall' | 'todayCallWithInfo' | 'todayCallAssigned' | 'visitScheduled' | 'visitCompleted' | 'unvaluated' | 'mailingPending';
 }
 
 export interface PaginatedResult<T> {

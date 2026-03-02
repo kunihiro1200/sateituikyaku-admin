@@ -1,4 +1,4 @@
-﻿import { BaseRepository } from '../repositories/BaseRepository';
+import { BaseRepository } from '../repositories/BaseRepository';
 import {
   Seller,
   PropertyInfo,
@@ -6,12 +6,82 @@ import {
   UpdateSellerRequest,
   ListSellersParams,
   PaginatedResult,
+  SellerStatus,
 } from '../types';
 import { encrypt, decrypt } from '../utils/encryption';
 
 export class SellerService extends BaseRepository {
   /**
-   * Get seller by ID
+   * 売主を登録
+   */
+  async createSeller(data: CreateSellerRequest, employeeId: string): Promise<Seller> {
+    const client = await this.pool.connect();
+
+    try {
+      await client.query('BEGIN');
+
+      // 個人情報を暗号化
+      const encryptedData = {
+        name: encrypt(data.name),
+        address: encrypt(data.address),
+        phoneNumber: encrypt(data.phoneNumber),
+        email: data.email ? encrypt(data.email) : null,
+      };
+
+      // 売主を作成
+      const sellerResult = await client.query<Seller>(
+        `INSERT INTO sellers (name, address, phone_number, email, status)
+         VALUES ($1, $2, $3, $4, $5)
+         RETURNING *`,
+        [
+          encryptedData.name,
+          encryptedData.address,
+          encryptedData.phoneNumber,
+          encryptedData.email,
+          SellerStatus.FOLLOWING_UP,
+        ]
+      );
+
+      const seller = sellerResult.rows[0];
+
+      // 物件情報を作成
+      await client.query(
+        `INSERT INTO properties (
+          seller_id, address, prefecture, city, property_type,
+          land_area, building_area, build_year, structure,
+          floors, rooms, parking, additional_info
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
+        [
+          seller.id,
+          data.property.address,
+          data.property.prefecture,
+          data.property.city,
+          data.property.propertyType,
+          data.property.landArea,
+          data.property.buildingArea,
+          data.property.buildYear,
+          data.property.structure,
+          data.property.floors,
+          data.property.rooms,
+          data.property.parking,
+          data.property.additionalInfo,
+        ]
+      );
+
+      await client.query('COMMIT');
+
+      // 復号化して返す
+      return this.decryptSeller(seller);
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  /**
+   * 売主情報を取得
    */
   async getSeller(sellerId: string): Promise<Seller | null> {
     const seller = await this.queryOne<Seller>(
@@ -23,15 +93,15 @@ export class SellerService extends BaseRepository {
       return null;
     }
 
-    // Get property info
+    // 物件情報も取得
     const property = await this.queryOne<PropertyInfo>(
       'SELECT * FROM properties WHERE seller_id = $1',
       [sellerId]
     );
 
     const decryptedSeller = this.decryptSeller(seller);
-
-    // Include property info
+    
+    // 物件情報を含める
     if (property) {
       decryptedSeller.property = property;
     }
@@ -40,7 +110,7 @@ export class SellerService extends BaseRepository {
   }
 
   /**
-   * Get seller by seller number
+   * 売主番号で売主を取得
    */
   async getSellerByNumber(sellerNumber: string): Promise<Seller | null> {
     const seller = await this.queryOne<Seller>(
@@ -52,15 +122,15 @@ export class SellerService extends BaseRepository {
       return null;
     }
 
-    // Get property info
+    // 物件情報も取得
     const property = await this.queryOne<PropertyInfo>(
       'SELECT * FROM properties WHERE seller_id = $1',
       [seller.id]
     );
 
     const decryptedSeller = this.decryptSeller(seller);
-
-    // Include property info
+    
+    // 物件情報を含める
     if (property) {
       decryptedSeller.property = property;
     }
@@ -69,7 +139,7 @@ export class SellerService extends BaseRepository {
   }
 
   /**
-   * Update seller info
+   * 売主情報を更新
    */
   async updateSeller(
     sellerId: string,
@@ -79,7 +149,7 @@ export class SellerService extends BaseRepository {
     const values: any[] = [];
     let paramIndex = 1;
 
-    // Fields requiring encryption
+    // 暗号化が必要なフィールド
     if (data.name !== undefined) {
       updates.push(`name = $${paramIndex++}`);
       values.push(encrypt(data.name));
@@ -97,10 +167,14 @@ export class SellerService extends BaseRepository {
       values.push(data.email ? encrypt(data.email) : null);
     }
 
-    // Fields not requiring encryption
+    // 暗号化不要なフィールド
     if (data.status !== undefined) {
       updates.push(`status = $${paramIndex++}`);
       values.push(data.status);
+    }
+    if (data.confidence !== undefined) {
+      updates.push(`confidence = $${paramIndex++}`);
+      values.push(data.confidence);
     }
     if (data.assignedTo !== undefined) {
       updates.push(`assigned_to = $${paramIndex++}`);
@@ -130,27 +204,28 @@ export class SellerService extends BaseRepository {
   }
 
   /**
-   * List sellers with pagination and filtering
+   * 売主リストを取得（ページネーション、フィルタ対応）
    */
   async listSellers(params: ListSellersParams): Promise<PaginatedResult<Seller>> {
-    const {
-      page = 1,
-      pageSize = 50,
-      status,
-      assignedTo,
-      nextCallDateFrom,
-      nextCallDateTo,
+    const { 
+      page = 1, 
+      pageSize = 50, 
+      status, 
+      assignedTo, 
+      nextCallDateFrom, 
+      nextCallDateTo, 
       searchQuery,
-      sortBy = 'created_at',
-      sortOrder = 'desc',
+      sortBy = 'created_at', 
+      sortOrder = 'desc' 
     } = params;
 
-    // Use searchSellers when search query is provided
+    // 検索クエリがある場合は、searchSellers を使用
     if (searchQuery) {
       const searchResults = await this.searchSellers(searchQuery);
-
+      
+      // フィルタを適用
       let filteredResults = searchResults;
-
+      
       if (status) {
         filteredResults = filteredResults.filter(s => s.status === status);
       }
@@ -158,16 +233,17 @@ export class SellerService extends BaseRepository {
         filteredResults = filteredResults.filter(s => s.assignedTo === assignedTo);
       }
       if (nextCallDateFrom) {
-        filteredResults = filteredResults.filter(s =>
+        filteredResults = filteredResults.filter(s => 
           s.nextCallDate && new Date(s.nextCallDate) >= new Date(nextCallDateFrom)
         );
       }
       if (nextCallDateTo) {
-        filteredResults = filteredResults.filter(s =>
+        filteredResults = filteredResults.filter(s => 
           s.nextCallDate && new Date(s.nextCallDate) <= new Date(nextCallDateTo)
         );
       }
 
+      // ページネーション
       const total = filteredResults.length;
       const offset = (page - 1) * pageSize;
       const paginatedResults = filteredResults.slice(offset, offset + pageSize);
@@ -185,6 +261,7 @@ export class SellerService extends BaseRepository {
     const values: any[] = [];
     let paramIndex = 1;
 
+    // フィルタ条件を構築
     if (status) {
       conditions.push(`status = $${paramIndex++}`);
       values.push(status);
@@ -204,25 +281,26 @@ export class SellerService extends BaseRepository {
 
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
-    // Get total count
+    // 総件数を取得
     const countResult = await this.query<{ count: string }>(
       `SELECT COUNT(*) as count FROM sellers ${whereClause}`,
       values
     );
-    const total = parseInt(countResult[0].count, 10);
+    const total = parseInt(countResult.rows[0].count, 10);
 
-    // Pagination
+    // ページネーション
     const offset = (page - 1) * pageSize;
     values.push(pageSize, offset);
 
-    // Fetch data
-    const sellers = await this.query<Seller>(
+    // データを取得
+    const sellers = await this.queryMany<Seller>(
       `SELECT * FROM sellers ${whereClause}
        ORDER BY ${sortBy} ${sortOrder}
        LIMIT $${paramIndex++} OFFSET $${paramIndex++}`,
       values
     );
 
+    // 復号化
     const decryptedSellers = sellers.map((seller: Seller) => this.decryptSeller(seller));
 
     return {
@@ -235,16 +313,18 @@ export class SellerService extends BaseRepository {
   }
 
   /**
-   * Search sellers (partial match)
+   * 売主を検索（部分一致）
    */
   async searchSellers(query: string): Promise<Seller[]> {
-    // Encrypted data cannot be searched directly, so fetch all and filter after decryption
-    const sellers = await this.query<Seller>(
+    // 暗号化されたデータは検索できないため、全件取得して復号化後に検索
+    // 本番環境では検索用の別テーブルやElasticsearchの使用を推奨
+    const sellers = await this.queryMany<Seller>(
       'SELECT * FROM sellers ORDER BY created_at DESC LIMIT 1000'
     );
 
     const decryptedSellers = sellers.map((seller: Seller) => this.decryptSeller(seller));
 
+    // 復号化後に部分一致検索
     const lowerQuery = query.toLowerCase();
     return decryptedSellers.filter(
       (seller: Seller) =>
@@ -256,7 +336,7 @@ export class SellerService extends BaseRepository {
   }
 
   /**
-   * Decrypt seller data
+   * 売主データを復号化
    */
   private decryptSeller(seller: Seller): Seller {
     return {

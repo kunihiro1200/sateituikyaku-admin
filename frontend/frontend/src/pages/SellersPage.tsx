@@ -118,23 +118,17 @@ export default function SellersPage() {
   const [sidebarCounts, setSidebarCounts] = useState<{
     todayCall: number;
     todayCallWithInfo: number;
-    todayCallAssigned: number;
     visitScheduled: number;
     visitCompleted: number;
     unvaluated: number;
     mailingPending: number;
-    todayCallNotStarted: number;
-    pinrichEmpty: number;
   }>({
     todayCall: 0,
     todayCallWithInfo: 0,
-    todayCallAssigned: 0,
     visitScheduled: 0,
     visitCompleted: 0,
     unvaluated: 0,
     mailingPending: 0,
-    todayCallNotStarted: 0,
-    pinrichEmpty: 0,
   });
   const [sidebarLoading, setSidebarLoading] = useState(true);
   
@@ -255,13 +249,10 @@ export default function SellersPage() {
       setSidebarCounts({
         todayCall: 0,
         todayCallWithInfo: 0,
-        todayCallAssigned: 0,
         visitScheduled: 0,
         visitCompleted: 0,
         unvaluated: 0,
         mailingPending: 0,
-        todayCallNotStarted: 0,
-        pinrichEmpty: 0,
       });
     } finally {
       setSidebarLoading(false);
@@ -366,7 +357,7 @@ export default function SellersPage() {
 
       <Box sx={{ my: 4 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-          <Typography variant="h5" fontWeight="bold" sx={{ color: '#d32f2f' }}>
+          <Typography variant="h4" component="h1">
             売主リスト
           </Typography>
           <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
@@ -583,7 +574,7 @@ export default function SellersPage() {
                     data-seller-id={seller.id}
                   >
                     <TableCell>
-                      <Typography variant="body2" fontWeight="bold" sx={{ color: '#d32f2f' }}>
+                      <Typography variant="body2" fontWeight="bold" color="primary">
                         {seller.sellerNumber || '-'}
                       </Typography>
                     </TableCell>

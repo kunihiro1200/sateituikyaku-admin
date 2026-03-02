@@ -85,11 +85,11 @@ export class DuplicateDetectionService {
           sellerNumber: seller.seller_number,
         },
         propertyInfo: seller.properties?.[0]
-          ? {
-              address: seller.properties[0].property_address || seller.properties[0].address,
-              propertyType: seller.properties[0].property_type,
-            }
-          : undefined,
+  ? {
+      address: seller.properties[0].address,
+      propertyType: seller.properties[0].property_type,
+    }
+  : undefined,
       }));
     } catch (error) {
       console.error('Check duplicate by phone error:', error);
@@ -257,7 +257,7 @@ export class DuplicateDetectionService {
           past_owner_name: pastSeller.name,
           past_owner_phone: pastSeller.phone_number,
           past_owner_email: pastSeller.email,
-          past_property_address: pastSeller.properties?.[0]?.address,
+          past_property_address: pastSeller.properties?.[0]?.property_address || pastSeller.properties?.[0]?.address,
           past_property_type: pastSeller.properties?.[0]?.property_type,
           past_inquiry_date: pastSeller.inquiry_date,
         });

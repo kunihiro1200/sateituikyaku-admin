@@ -24,6 +24,7 @@ export class InquiryService {
         .from('sellers')
         .update({
           inquiry_year: inquiryData.inquiryYear,
+          inquiry_date: inquiryData.inquiryDate,
           inquiry_detailed_datetime: inquiryData.inquiryDetailedDateTime,
           inquiry_site: inquiryData.inquirySite,
           inquiry_reason: inquiryData.inquiryReason,
@@ -32,7 +33,7 @@ export class InquiryService {
         })
         .eq('id', sellerId)
         .select(
-          'inquiry_year, inquiry_detailed_datetime, inquiry_site, inquiry_reason, site_url, number_of_companies'
+          'inquiry_year, inquiry_date, inquiry_detailed_datetime, inquiry_site, inquiry_reason, site_url, number_of_companies'
         )
         .single();
 
@@ -59,7 +60,7 @@ export class InquiryService {
       const { data, error } = await supabase
         .from('sellers')
         .select(
-          'inquiry_year, inquiry_detailed_datetime, inquiry_site, inquiry_reason, site_url, number_of_companies'
+          'inquiry_year, inquiry_date, inquiry_detailed_datetime, inquiry_site, inquiry_reason, site_url, number_of_companies'
         )
         .eq('id', sellerId)
         .single();
@@ -73,7 +74,7 @@ export class InquiryService {
       }
 
       // Check if inquiry data exists
-      if (!data.inquiry_year && !data.inquiry_detailed_datetime) {
+      if (!data.inquiry_year && !data.inquiry_date) {
         return null;
       }
 
@@ -225,17 +226,18 @@ export class InquiryService {
    * Map database record to InquiryInfo type
    */
   private mapToInquiryInfo(data: any): InquiryInfo {
-    return {
-      inquiryYear: data.inquiry_year,
-      inquiryDetailedDateTime: data.inquiry_detailed_datetime
-        ? new Date(data.inquiry_detailed_datetime)
-        : undefined,
-      inquirySite: data.inquiry_site,
-      inquiryReason: data.inquiry_reason,
-      siteUrl: data.site_url,
-      numberOfCompanies: data.number_of_companies,
-    };
-  }
+  return {
+    inquiryYear: data.inquiry_year,
+    inquiryDate: data.inquiry_date,
+    inquiryDetailedDateTime: data.inquiry_detailed_datetime
+      ? new Date(data.inquiry_detailed_datetime)
+      : undefined,
+    inquirySite: data.inquiry_site,
+    inquiryReason: data.inquiry_reason,
+    siteUrl: data.site_url,
+    numberOfCompanies: data.number_of_companies,
+  };
+}
 }
 
 // Export singleton instance

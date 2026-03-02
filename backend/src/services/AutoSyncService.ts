@@ -134,7 +134,6 @@ export class AutoSyncService {
           success: true,
           newSellersCount: 0,
           updatedSellersCount: 0,
-          propertyListingsUpdated: 0,
           errors: [],
           duration: Date.now() - startTime,
         };
@@ -236,13 +235,13 @@ export class AutoSyncService {
       }
 
       return {
-        success: errors.length === 0,
-        newSellersCount,
-        updatedSellersCount,
-        propertyListingsUpdated,
-        errors,
-        duration,
-      };
+  success: errors.length === 0,
+  newSellersCount,
+  updatedSellersCount,
+  propertyListingsUpdated: propertyListingsUpdated,
+  errors,
+  duration,
+};
 
     } catch (error: any) {
       console.error('❌ Auto-sync failed:', error.message);

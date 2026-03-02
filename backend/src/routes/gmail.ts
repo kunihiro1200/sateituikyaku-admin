@@ -12,19 +12,18 @@ router.post('/send-to-buyer', async (req, res) => {
     const { buyerId, propertyIds, templateId, customizations } = req.body;
 
     // 買主情報を取得
-    const buyer = await buyerService.getById(buyerId);
+    const buyer = await buyerService.getBuyerById(buyerId);
     if (!buyer || !buyer.email) {
       return res.status(404).json({ error: '買主が見つからないか、メールアドレスが登録されていません' });
     }
 
-    // メール送信（EmailWithImagesParamsの正しい型に合わせて呼び出す）
+    // メール送信
     const result = await emailService.sendEmailWithImages({
-      sellerId: buyerId,
-      sellerNumber: buyer.buyer_number || buyerId,
       to: buyer.email,
       subject: customizations?.subject || 'お問い合わせの物件について',
       body: customizations?.body || '',
-      from: process.env.GMAIL_FROM_ADDRESS || 'noreply@example.com',
+      propertyIds: propertyIds || [],
+      templateId: templateId
     });
 
     res.json({ success: true, result });

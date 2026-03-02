@@ -39,7 +39,7 @@ export interface InlineEditableFieldProps {
   alwaysShowBorder?: boolean;  // 常に囲い枠を表示するかどうか
   borderPlaceholder?: string;  // 囲い枠内に表示するプレースホルダー
   showEditIndicator?: boolean;  // 編集可能インジケーターを常時表示するか（デフォルト: true）
-  oneClickDropdown?: boolean;  // ドロップダウンを1クリックで開く（デフォルト: false）
+  oneClickDropdown?: boolean;  // プルダウンを1クリックで開くか（デフォルト: false）
 }
 
 export const InlineEditableField: React.FC<InlineEditableFieldProps> = memo(({
@@ -127,9 +127,9 @@ export const InlineEditableField: React.FC<InlineEditableFieldProps> = memo(({
   // Handle click to activate edit mode
   const handleClick = () => {
     if (!isEditable) return;
-
+    
     if (fieldType === 'dropdown' && oneClickDropdown) {
-      // ドロップダウンの1クリック編集が有効な場合は即座に開く
+      // プルダウンの1クリック編集が有効な場合は即座に開く
       setDropdownOpen(true);
     } else if (!isEditing) {
       // その他のフィールドは従来通り編集モードに入る
@@ -140,7 +140,7 @@ export const InlineEditableField: React.FC<InlineEditableFieldProps> = memo(({
   // Handle dropdown change with auto-save (for one-click dropdown)
   const handleDropdownChange = async (newValue: any) => {
     if (!oneClickDropdown) return;
-
+    
     try {
       await onSave(newValue);
       setDropdownOpen(false);
@@ -306,20 +306,88 @@ export const InlineEditableField: React.FC<InlineEditableFieldProps> = memo(({
 
       case 'date':
         return (
-          <TextField
-            {...commonProps}
-            type="date"
-            InputLabelProps={{ shrink: true }}
-          />
+          <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
+            <TextField
+              {...commonProps}
+              type="date"
+              InputLabelProps={{ shrink: true }}
+              sx={{ ...commonProps.sx, flex: 1 }}
+            />
+            {editValue && (
+              <Box
+                onClick={async (e) => {
+                  e.stopPropagation();
+                  // 直接空文字で保存
+                  try {
+                    await onSave('');
+                    setIsEditing(false);
+                  } catch (err) {
+                    console.error('Failed to delete date:', err);
+                  }
+                }}
+                sx={{
+                  mt: 0.5,
+                  px: 1,
+                  py: 0.5,
+                  cursor: 'pointer',
+                  color: 'error.main',
+                  fontSize: '0.75rem',
+                  border: '1px solid',
+                  borderColor: 'error.main',
+                  borderRadius: 1,
+                  '&:hover': {
+                    bgcolor: 'error.light',
+                    color: 'error.contrastText',
+                  },
+                }}
+              >
+                削除
+              </Box>
+            )}
+          </Box>
         );
 
       case 'time':
         return (
-          <TextField
-            {...commonProps}
-            type="time"
-            InputLabelProps={{ shrink: true }}
-          />
+          <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
+            <TextField
+              {...commonProps}
+              type="time"
+              InputLabelProps={{ shrink: true }}
+              sx={{ ...commonProps.sx, flex: 1 }}
+            />
+            {editValue && (
+              <Box
+                onClick={async (e) => {
+                  e.stopPropagation();
+                  // 直接空文字で保存
+                  try {
+                    await onSave('');
+                    setIsEditing(false);
+                  } catch (err) {
+                    console.error('Failed to delete time:', err);
+                  }
+                }}
+                sx={{
+                  mt: 0.5,
+                  px: 1,
+                  py: 0.5,
+                  cursor: 'pointer',
+                  color: 'error.main',
+                  fontSize: '0.75rem',
+                  border: '1px solid',
+                  borderColor: 'error.main',
+                  borderRadius: 1,
+                  '&:hover': {
+                    bgcolor: 'error.light',
+                    color: 'error.contrastText',
+                  },
+                }}
+              >
+                削除
+              </Box>
+            )}
+          </Box>
         );
 
       case 'number':
@@ -387,7 +455,7 @@ export const InlineEditableField: React.FC<InlineEditableFieldProps> = memo(({
                     borderColor: isEditable && showEditIndicator
                       ? (isHovered || dropdownOpen ? 'primary.main' : 'rgba(0, 0, 0, 0.23)')
                       : 'transparent',
-                    bgcolor: isEditable && (isHovered || dropdownOpen) ? 'action.hover' :
+                    bgcolor: isEditable && (isHovered || dropdownOpen) ? 'action.hover' : 
                              (isEditable && showEditIndicator ? 'background.paper' : 'transparent'),
                     transition: 'all 0.2s ease',
                     minHeight: 36,
@@ -406,25 +474,25 @@ export const InlineEditableField: React.FC<InlineEditableFieldProps> = memo(({
                   >
                     {getDisplayValue()}
                   </Typography>
-
+                  
                   {isEditable && showEditIndicator && (
-                    <ArrowDropDownIcon
-                      sx={{
-                        ml: 0.5,
-                        fontSize: 20,
+                    <ArrowDropDownIcon 
+                      sx={{ 
+                        ml: 0.5, 
+                        fontSize: 20, 
                         color: isHovered || dropdownOpen ? 'primary.main' : 'text.secondary',
                         transition: 'color 0.2s ease',
-                      }}
+                      }} 
                     />
                   )}
-
+                  
                   {!isEditable && (
                     <Tooltip title={effectivePermissions.reason || '編集不可'}>
                       <LockIcon sx={{ ml: 1, fontSize: 16, color: 'text.disabled' }} />
                     </Tooltip>
                   )}
                 </Box>
-
+                
                 {/* Autocompleteドロップダウン */}
                 {dropdownOpen && (
                   <Box sx={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 1300, mt: 0.5 }}>
