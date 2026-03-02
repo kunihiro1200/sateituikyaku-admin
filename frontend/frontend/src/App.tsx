@@ -22,6 +22,8 @@ import PublicPropertyListingPage from './pages/PublicPropertyListingPage';
 import PublicPropertiesPage from './pages/PublicPropertiesPage';
 import PublicPropertyDetailPage from './pages/PublicPropertyDetailPage';
 import { PropertyListingSyncDashboard } from './pages/PropertyListingSyncDashboard';
+import SharedItemsPage from './pages/SharedItemsPage';
+import SharedItemDetailPage from './pages/SharedItemDetailPage';
 import ProtectedRoute from './components/ProtectedRoute';
 import { useAuthStore } from './store/authStore';
 import { GoogleMapsProvider } from './contexts/GoogleMapsContext';
@@ -175,6 +177,22 @@ function App() {
         element={
           <ProtectedRoute>
             <BuyerDetailPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/shared-items"
+        element={
+          <ProtectedRoute>
+            <SharedItemsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/shared-items/:id"
+        element={
+          <ProtectedRoute>
+            <SharedItemDetailPage />
           </ProtectedRoute>
         }
       />

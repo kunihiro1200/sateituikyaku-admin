@@ -60,28 +60,28 @@
     - 環境変数を確認
     - _Requirements: 1.1_
 
-- [ ] 6. フロントエンド認証ファイルのコピー
-  - [ ] 6.1 `frontend/src/pages/LoginPage.tsx`をコピー
+- [x] 6. フロントエンド認証ファイルのコピー
+  - [x] 6.1 `frontend/src/pages/LoginPage.tsx`をコピー
     - 移行元から移行先へコピー
     - APIエンドポイントを確認
     - _Requirements: 1.1_
 
-  - [ ] 6.2 `frontend/src/store/authStore.ts`をコピー
+  - [x] 6.2 `frontend/src/store/authStore.ts`をコピー
     - 移行元から移行先へコピー
     - Supabase設定を確認
     - _Requirements: 1.1_
 
-  - [ ] 6.3 `frontend/src/components/ProtectedRoute.tsx`をコピー
+  - [x] 6.3 `frontend/src/components/ProtectedRoute.tsx`をコピー
     - 移行元から移行先へコピー
     - 認証チェックロジックを確認
     - _Requirements: 1.1_
 
-- [ ] 7. バックエンドindex.tsの更新
+- [x] 7. バックエンドindex.tsの更新
   - 認証ルートを追加（`/auth`, `/api/auth`）
   - CORS設定を確認
   - _Requirements: 1.1_
 
-- [ ] 8. フロントエンドApp.tsxの更新
+- [x] 8. フロントエンドApp.tsxの更新
   - ログインページのルートを追加
   - ProtectedRouteを設定
   - 認証チェックを初期化
@@ -130,14 +130,14 @@
 
 ### Phase 2: 売主管理の移行（3-4日目：2/25-26）
 
-- [ ] 13. バックエンド売主管理ファイルのコピー
-  - [ ] 13.1 ルートファイルのコピー
+- [x] 13. バックエンド売主管理ファイルのコピー
+  - [x] 13.1 ルートファイルのコピー
     - `backend/src/routes/sellers.ts`をコピー
     - `backend/src/routes/sellersManagement.ts`をコピー
     - インポートパスを確認
     - _Requirements: 2.1, 2.2_
 
-  - [ ] 13.2 サービスファイルのコピー
+  - [x] 13.2 サービスファイルのコピー
     - `backend/src/services/SellerService.supabase.ts`をコピー
     - `backend/src/services/SpreadsheetSyncService.ts`をコピー
     - `backend/src/services/SyncQueue.ts`をコピー
@@ -146,13 +146,13 @@
     - 依存関係を確認
     - _Requirements: 2.2_
 
-  - [ ] 13.3 設定ファイルのコピー
+  - [x] 13.3 設定ファイルのコピー
     - `backend/src/config/column-mapping.json`をコピー
     - カラムマッピングを確認
     - _Requirements: 2.2_
 
-- [ ] 14. フロントエンド売主管理ファイルのコピー
-  - [ ] 14.1 ページファイルのコピー
+- [x] 14. フロントエンド売主管理ファイルのコピー
+  - [x] 14.1 ページファイルのコピー
     - `frontend/src/pages/SellersPage.tsx`をコピー
     - `frontend/src/pages/NewSellerPage.tsx`をコピー
     - `frontend/src/pages/SellerDetailPage.tsx`をコピー
@@ -160,18 +160,18 @@
     - APIエンドポイントを確認
     - _Requirements: 2.1, 2.4, 2.5_
 
-  - [ ] 14.2 コンポーネントのコピー（必要に応じて）
+  - [x] 14.2 コンポーネントのコピー（必要に応じて）
     - `frontend/src/components/sellers/`ディレクトリをコピー
     - 依存関係を確認
     - _Requirements: 2.1_
 
-- [ ] 15. バックエンドindex.tsの更新
+- [x] 15. バックエンドindex.tsの更新
   - 売主ルートを追加（`/api/sellers`）
   - 同期ルートを追加（`/api/sync`）
   - 自動同期の起動コードを追加
   - _Requirements: 2.1, 2.2_
 
-- [ ] 16. フロントエンドApp.tsxの更新
+- [x] 16. フロントエンドApp.tsxの更新
   - 売主一覧ページのルートを追加（`/`）
   - 売主作成ページのルートを追加（`/sellers/new`）
   - 売主詳細ページのルートを追加（`/sellers/:id`）
@@ -241,14 +241,14 @@
 
 ### Phase 3: 物件管理の移行（5-6日目：2/27-28）
 
-- [ ] 21. バックエンド物件管理ファイルのコピー
-  - [ ] 21.1 ルートファイルのコピー
+- [x] 21. バックエンド物件管理ファイルのコピー
+  - [x] 21.1 ルートファイルのコピー
     - `backend/src/routes/properties.ts`をコピー
     - `backend/src/routes/propertyListings.ts`をコピー
     - インポートパスを確認
     - _Requirements: 3.1, 3.2_
 
-  - [ ] 21.2 サービスファイルのコピー
+  - [x] 21.2 サービスファイルのコピー
     - `backend/src/services/PropertyService.ts`をコピー
     - `backend/src/services/PropertyListingService.ts`をコピー
     - `backend/src/services/PropertyImageService.ts`をコピー
@@ -256,23 +256,23 @@
     - 依存関係を確認
     - _Requirements: 3.1, 3.4_
 
-- [ ] 22. フロントエンド物件管理ファイルのコピー
-  - [ ] 22.1 ページファイルのコピー
+- [x] 22. フロントエンド物件管理ファイルのコピー
+  - [x] 22.1 ページファイルのコピー
     - `frontend/src/pages/PropertyListingsPage.tsx`をコピー
     - `frontend/src/pages/PropertyListingDetailPage.tsx`をコピー
     - APIエンドポイントを確認
     - _Requirements: 3.1, 3.3_
 
-  - [ ] 22.2 コンポーネントのコピー（必要に応じて）
+  - [x] 22.2 コンポーネントのコピー（必要に応じて）
     - `frontend/src/components/properties/`ディレクトリをコピー
     - 依存関係を確認
     - _Requirements: 3.1_
 
-- [ ] 23. バックエンドindex.tsの更新
+- [x] 23. バックエンドindex.tsの更新
   - 物件ルートを追加（`/api/properties`, `/api/property-listings`）
   - _Requirements: 3.1_
 
-- [ ] 24. フロントエンドApp.tsxの更新
+- [x] 24. フロントエンドApp.tsxの更新
   - 物件一覧ページのルートを追加（`/properties`）
   - 物件詳細ページのルートを追加（`/properties/:id`）
   - _Requirements: 3.1_
@@ -318,37 +318,37 @@
 
 ### Phase 4: 買主管理の移行（7-8日目：3/1-2）
 
-- [ ] 29. バックエンド買主管理ファイルのコピー
-  - [ ] 29.1 ルートファイルのコピー
+- [x] 29. バックエンド買主管理ファイルのコピー
+  - [x] 29.1 ルートファイルのコピー
     - `backend/src/routes/buyers.ts`をコピー
     - インポートパスを確認
     - _Requirements: 4.1, 4.2_
 
-  - [ ] 29.2 サービスファイルのコピー
+  - [x] 29.2 サービスファイルのコピー
     - `backend/src/services/BuyerService.ts`をコピー
     - `backend/src/services/BuyerSyncService.ts`をコピー
     - `backend/src/services/BuyerDistributionService.ts`をコピー
     - 依存関係を確認
     - _Requirements: 4.1, 4.2_
 
-- [ ] 30. フロントエンド買主管理ファイルのコピー
-  - [ ] 30.1 ページファイルのコピー
+- [x] 30. フロントエンド買主管理ファイルのコピー
+  - [x] 30.1 ページファイルのコピー
     - `frontend/src/pages/BuyersPage.tsx`をコピー
     - `frontend/src/pages/NewBuyerPage.tsx`をコピー
     - `frontend/src/pages/BuyerDetailPage.tsx`をコピー
     - APIエンドポイントを確認
     - _Requirements: 4.1_
 
-  - [ ] 30.2 コンポーネントのコピー（必要に応じて）
+  - [x] 30.2 コンポーネントのコピー（必要に応じて）
     - `frontend/src/components/buyers/`ディレクトリをコピー
     - 依存関係を確認
     - _Requirements: 4.1_
 
-- [ ] 31. バックエンドindex.tsの更新
+- [x] 31. バックエンドindex.tsの更新
   - 買主ルートを追加（`/api/buyers`）
   - _Requirements: 4.1_
 
-- [ ] 32. フロントエンドApp.tsxの更新
+- [x] 32. フロントエンドApp.tsxの更新
   - 買主一覧ページのルートを追加（`/buyers`）
   - 買主作成ページのルートを追加（`/buyers/new`）
   - 買主詳細ページのルートを追加（`/buyers/:id`）
@@ -403,34 +403,34 @@
 
 ### Phase 5: 業務リスト管理の移行（9日目：3/3）
 
-- [ ] 37. バックエンド業務リスト管理ファイルのコピー
-  - [ ] 37.1 ルートファイルのコピー
+- [x] 37. バックエンド業務リスト管理ファイルのコピー
+  - [x] 37.1 ルートファイルのコピー
     - `backend/src/routes/workTasks.ts`をコピー
     - インポートパスを確認
     - _Requirements: 5.1, 5.2_
 
-  - [ ] 37.2 サービスファイルのコピー
+  - [x] 37.2 サービスファイルのコピー
     - `backend/src/services/WorkTaskService.ts`をコピー
     - `backend/src/services/WorkTaskSyncService.ts`をコピー
     - 依存関係を確認
     - _Requirements: 5.1, 5.2_
 
-- [ ] 38. フロントエンド業務リスト管理ファイルのコピー
-  - [ ] 38.1 ページファイルのコピー
+- [x] 38. フロントエンド業務リスト管理ファイルのコピー
+  - [x] 38.1 ページファイルのコピー
     - `frontend/src/pages/WorkTasksPage.tsx`をコピー
     - APIエンドポイントを確認
     - _Requirements: 5.1_
 
-  - [ ] 38.2 コンポーネントのコピー（必要に応じて）
+  - [x] 38.2 コンポーネントのコピー（必要に応じて）
     - `frontend/src/components/workTasks/`ディレクトリをコピー
     - 依存関係を確認
     - _Requirements: 5.1_
 
-- [ ] 39. バックエンドindex.tsの更新
+- [x] 39. バックエンドindex.tsの更新
   - 業務タスクルートを追加（`/api/work-tasks`）
   - _Requirements: 5.1_
 
-- [ ] 40. フロントエンドApp.tsxの更新
+- [x] 40. フロントエンドApp.tsxの更新
   - 業務リストページのルートを追加（`/work-tasks`）
   - _Requirements: 5.1_
 
@@ -481,36 +481,36 @@
 
 ### Phase 6: 従業員・カレンダー管理の移行（10日目：3/4）
 
-- [ ] 45. バックエンド従業員・カレンダー管理ファイルのコピー
-  - [ ] 45.1 ルートファイルのコピー
+- [x] 45. バックエンド従業員・カレンダー管理ファイルのコピー
+  - [x] 45.1 ルートファイルのコピー
     - `backend/src/routes/employees.ts`をコピー
     - `backend/src/routes/googleCalendar.ts`をコピー
     - インポートパスを確認
     - _Requirements: 6.1, 6.2_
 
-  - [ ] 45.2 サービスファイルのコピー
+  - [x] 45.2 サービスファイルのコピー
     - `backend/src/services/CalendarService.supabase.ts`をコピー
     - 依存関係を確認
     - _Requirements: 6.2, 6.3_
 
-- [ ] 46. フロントエンド従業員・カレンダー管理ファイルのコピー
-  - [ ] 46.1 ページファイルのコピー
+- [x] 46. フロントエンド従業員・カレンダー管理ファイルのコピー
+  - [x] 46.1 ページファイルのコピー
     - `frontend/src/pages/EmployeeCalendarStatusPage.tsx`をコピー
     - APIエンドポイントを確認
     - _Requirements: 6.1, 6.2_
 
-  - [ ] 46.2 コンポーネントのコピー（必要に応じて）
+  - [x] 46.2 コンポーネントのコピー（必要に応じて）
     - `frontend/src/components/employees/`ディレクトリをコピー
     - `frontend/src/components/calendar/`ディレクトリをコピー
     - 依存関係を確認
     - _Requirements: 6.1, 6.2_
 
-- [ ] 47. バックエンドindex.tsの更新
+- [x] 47. バックエンドindex.tsの更新
   - 従業員ルートを追加（`/api/employees`）
   - カレンダールートを追加（`/api/google-calendar`）
   - _Requirements: 6.1, 6.2_
 
-- [ ] 48. フロントエンドApp.tsxの更新
+- [x] 48. フロントエンドApp.tsxの更新
   - 従業員カレンダー状態ページのルートを追加（`/employee-calendar`）
   - _Requirements: 6.1, 6.2_
 
@@ -550,20 +550,20 @@
 
 ### Phase 7: メール・通知機能の移行（11日目：3/5）
 
-- [ ] 53. バックエンドメール・通知機能ファイルのコピー
-  - [ ] 53.1 ルートファイルのコピー
+- [x] 53. バックエンドメール・通知機能ファイルのコピー
+  - [x] 53.1 ルートファイルのコピー
     - `backend/src/routes/emails.ts`をコピー
     - `backend/src/routes/gmail.ts`をコピー
     - インポートパスを確認
     - _Requirements: 7.1_
 
-  - [ ] 53.2 サービスファイルのコピー
+  - [x] 53.2 サービスファイルのコピー
     - `backend/src/services/EmailService.supabase.ts`をコピー
     - `backend/src/services/ChatNotificationService.ts`をコピー
     - 依存関係を確認
     - _Requirements: 7.1, 7.2_
 
-- [ ] 54. バックエンドindex.tsの更新
+- [x] 54. バックエンドindex.tsの更新
   - メールルートを追加（`/api/emails`）
   - Gmailルートを追加（`/api/gmail`）
   - _Requirements: 7.1_
@@ -600,42 +600,45 @@
 
 ### Phase 8: その他の機能の移行（12日目：3/6）
 
-- [ ] 58. バックエンドその他機能ファイルのコピー
-  - [ ] 58.1 アクティビティログ関連ファイルのコピー
+- [x] 58. バックエンドその他機能ファイルのコピー
+  - [x] 58.1 アクティビティログ関連ファイルのコピー
     - `backend/src/routes/activityLogs.ts`をコピー（存在する場合）
     - `backend/src/services/ActivityLogService.ts`をコピー（存在する場合）
     - _Requirements: 8.1_
 
-  - [ ] 58.2 フォローアップ関連ファイルのコピー
+  - [x] 58.2 フォローアップ関連ファイルのコピー
     - `backend/src/routes/followUps.ts`をコピー（存在する場合）
     - `backend/src/services/FollowUpService.ts`をコピー（存在する場合）
     - _Requirements: 8.1_
 
-  - [ ] 58.3 予約管理関連ファイルのコピー
+  - [x] 58.3 予約管理関連ファイルのコピー
     - `backend/src/routes/appointments.ts`をコピー（存在する場合）
     - `backend/src/services/AppointmentService.ts`をコピー（存在する場合）
     - _Requirements: 8.1_
 
-  - [ ] 58.4 統計・レポート関連ファイルのコピー
+  - [x] 58.4 統計・レポート関連ファイルのコピー
     - `backend/src/routes/statistics.ts`をコピー（存在する場合）
     - `backend/src/services/StatisticsService.ts`をコピー（存在する場合）
     - _Requirements: 8.1, 8.2_
 
-- [ ] 59. フロントエンドその他機能ファイルのコピー
-  - [ ] 59.1 設定ページのコピー
+- [x] 59. フロントエンドその他機能ファイルのコピー
+  - [x] 59.1 設定ページのコピー
     - `frontend/src/pages/SettingsPage.tsx`をコピー（存在する場合）
     - _Requirements: 8.1_
 
-  - [ ] 59.2 統計ページのコピー
+  - [x] 59.2 統計ページのコピー
     - `frontend/src/pages/StatisticsPage.tsx`をコピー（存在する場合）
     - _Requirements: 8.1_
 
-- [ ] 60. バックエンドindex.tsの更新
+- [x] 60. バックエンドindex.tsの更新
   - その他のルートを追加
+  - 共有リスト（`/api/shared-items`）ルートを追加
   - _Requirements: 8.1_
 
-- [ ] 61. フロントエンドApp.tsxの更新
+- [x] 61. フロントエンドApp.tsxの更新
   - その他のページのルートを追加
+  - 共有リスト（`/shared-items`, `/shared-items/:id`）ルートを追加
+  - PageNavigationに「共有」リンクを追加
   - _Requirements: 8.1_
 
 - [ ] 62. バックエンドのデプロイ
