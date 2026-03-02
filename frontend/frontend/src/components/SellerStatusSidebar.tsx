@@ -15,7 +15,7 @@
  * - 「売主リスト」タイトルをクリックすると全カテゴリ表示に戻る
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Paper, Typography, Box, Button, Chip, Collapse, IconButton, List, ListItem, Divider, CircularProgress } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { ExpandMore, ExpandLess, Edit, Email, Phone, Chat, LocationOn } from '@mui/icons-material';
@@ -24,13 +24,16 @@ import {
   CategoryCounts,
   isTodayCall,
   isTodayCallWithInfo,
-  isTodayCallAssigned,
   isVisitScheduled,
   isVisitCompleted,
+  isVisitOther,
   isUnvaluated,
   isMailingPending,
   isTodayCallNotStarted,
   isPinrichEmpty,
+  getVisitStatusLabel,
+  groupTodayCallWithInfo,
+  getTodayCallWithInfoLabel,
 } from '../utils/sellerStatusFilters';
 import { Seller } from '../types';
 
@@ -41,8 +44,10 @@ interface SellerStatusSidebarProps {
   categoryCounts?: CategoryCounts;
   /** 選択中のカテゴリ（売主リストページで使用） */
   selectedCategory?: StatusCategory;
+  /** 選択中の営担イニシャル（訪問予定/訪問済みで使用） */
+  selectedVisitAssignee?: string;
   /** カテゴリ選択時のコールバック（売主リストページで使用） */
-  onCategorySelect?: (category: StatusCategory) => void;
+  onCategorySelect?: (category: StatusCategory, visitAssignee?: string, visitStatus?: 'scheduled' | 'completed') => void;
   /** 通話モードページかどうか */
   isCallMode?: boolean;
   /** 売主リスト（展開時に表示する売主データ） */
@@ -57,10 +62,10 @@ interface SellerStatusSidebarProps {
 const getSellerCategory = (seller: Seller | any): StatusCategory | null => {
   if (!seller) return null;
   
-  // 優先順位: 訪問予定 > 訪問済み > 当日TEL（担当） > 当日TEL分 > 当日TEL（内容） > 未査定 > 査定（郵送）
+  // 優先順位: 訪問予定 > 訪問済み > その他（担当） > 当日TEL分 > 当日TEL（内容） > 未査定 > 査定（郵送）
   if (isVisitScheduled(seller)) return 'visitScheduled';
   if (isVisitCompleted(seller)) return 'visitCompleted';
-  if (isTodayCallAssigned(seller)) return 'todayCallAssigned';
+  if (isVisitOther(seller)) return 'visitOther';
   if (isTodayCall(seller)) return 'todayCall';
   if (isTodayCallWithInfo(seller)) return 'todayCallWithInfo';
   if (isUnvaluated(seller)) return 'unvaluated';
@@ -80,8 +85,8 @@ const filterSellersByCategory = (sellers: any[], category: StatusCategory): any[
       return sellers.filter(isVisitScheduled);
     case 'visitCompleted':
       return sellers.filter(isVisitCompleted);
-    case 'todayCallAssigned':
-      return sellers.filter(isTodayCallAssigned);
+    case 'visitOther':
+      return sellers.filter(isVisitOther);
     case 'todayCall':
       return sellers.filter(isTodayCall);
     case 'todayCallWithInfo':
@@ -101,6 +106,7 @@ const filterSellersByCategory = (sellers: any[], category: StatusCategory): any[
 
 /**
  * カテゴリの表示名を取得
+ * 注意: todayCallWithInfoは親カテゴリとして表示しない（サブカテゴリのみ表示）
  */
 const getCategoryLabel = (category: StatusCategory): string => {
   switch (category) {
@@ -108,12 +114,10 @@ const getCategoryLabel = (category: StatusCategory): string => {
       return '①訪問予定';
     case 'visitCompleted':
       return '②訪問済み';
-    case 'todayCallAssigned':
-      return '当日TEL（担当）';
     case 'todayCall':
       return '③当日TEL分';
     case 'todayCallWithInfo':
-      return '④当日TEL（内容）';
+      return ''; // 親カテゴリは表示しない（サブカテゴリのみ表示）
     case 'unvaluated':
       return '⑤未査定';
     case 'mailingPending':
@@ -130,16 +134,44 @@ const getCategoryLabel = (category: StatusCategory): string => {
 };
 
 /**
+ * 訪問予定/訪問済みの営担イニシャル別データを取得
+ * @returns { initial: string, count: number, sellers: any[] }[] イニシャル別のデータ
+ */
+const getVisitDataByAssignee = (
+  sellers: any[],
+  filterFn: (seller: any) => boolean
+): { initial: string; count: number; sellers: any[] }[] => {
+  const dataMap: { [initial: string]: any[] } = {};
+  
+  sellers.filter(filterFn).forEach(seller => {
+    const assignee = seller.visitAssignee || seller.visit_assignee || '';
+    if (assignee && assignee.trim() !== '') {
+      const initial = assignee.trim();
+      if (!dataMap[initial]) {
+        dataMap[initial] = [];
+      }
+      dataMap[initial].push(seller);
+    }
+  });
+  
+  return Object.entries(dataMap)
+    .map(([initial, sellers]) => ({
+      initial,
+      count: sellers.length,
+      sellers,
+    }))
+    .sort((a, b) => b.count - a.count); // 件数の多い順
+};
+
+/**
  * カテゴリの色を取得
  */
 const getCategoryColor = (category: StatusCategory): string => {
   switch (category) {
     case 'visitScheduled':
-      return 'success.main';
+      return 'success.main';  // 緑色
     case 'visitCompleted':
-      return 'primary.main';
-    case 'todayCallAssigned':
-      return '#ff5722';
+      return 'primary.main';  // 青色
     case 'todayCall':
       return 'error.main';
     case 'todayCallWithInfo':
@@ -149,9 +181,9 @@ const getCategoryColor = (category: StatusCategory): string => {
     case 'mailingPending':
       return 'info.main';
     case 'todayCallNotStarted':
-      return '#ff9800';
+      return '#ff9800';  // オレンジ
     case 'pinrichEmpty':
-      return '#795548';
+      return '#795548';  // ブラウン
     default:
       return 'text.primary';
   }
@@ -161,6 +193,7 @@ export default function SellerStatusSidebar({
   currentSeller,
   categoryCounts,
   selectedCategory,
+  selectedVisitAssignee,
   onCategorySelect,
   isCallMode = false,
   sellers = [],
@@ -168,66 +201,44 @@ export default function SellerStatusSidebar({
 }: SellerStatusSidebarProps) {
   const navigate = useNavigate();
   
-  // デバッグログ - コンポーネントがレンダリングされるたびに出力
-  console.log('=== SellerStatusSidebar レンダリング ===');
-  console.log('レンダリング時刻:', new Date().toISOString());
-  console.log('isCallMode:', isCallMode);
-  console.log('loading:', loading);
-  console.log('sellers prop received:', sellers);
-  console.log('sellers count:', sellers?.length ?? 'undefined/null');
-  console.log('sellers type:', typeof sellers);
-  console.log('sellers is array:', Array.isArray(sellers));
+  // 展開中のカテゴリ（nullの場合は全カテゴリ表示）
+  // sessionStorageから復元（リロード時に状態を維持）
+  const [expandedCategory, setExpandedCategory] = useState<StatusCategory | null>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = sessionStorage.getItem('sidebarExpandedCategory');
+      return saved as StatusCategory | null;
+    }
+    return null;
+  });
+  
+  // 訪問予定/訪問済みは展開せず、クリックでメインテーブルにフィルタリング結果を表示するため、
+  // expandedVisitKeyは廃止（展開機能を削除）
   
   // sellersが有効な配列かどうかを確認
   const validSellers = Array.isArray(sellers) ? sellers : [];
-  console.log('validSellers count:', validSellers.length);
   
-  if (validSellers.length > 0) {
-    console.log('サンプル売主 (最初の1件):', validSellers[0]);
-    
-    // フィルタリング結果を確認
-    const todayCallCount = validSellers.filter(isTodayCall).length;
-    const todayCallWithInfoCount = validSellers.filter(isTodayCallWithInfo).length;
-    const unvaluatedCount = validSellers.filter(isUnvaluated).length;
-    const mailingPendingCount = validSellers.filter(isMailingPending).length;
-    console.log('=== フィルタリング結果 ===');
-    console.log('当日TEL分:', todayCallCount);
-    console.log('当日TEL（内容）:', todayCallWithInfoCount);
-    console.log('未査定:', unvaluatedCount);
-    console.log('査定（郵送）:', mailingPendingCount);
-    
-    // 追客中の売主を確認
-    const followingUpSellers = validSellers.filter((s: any) => {
-      const status = s.status || '';
-      return typeof status === 'string' && status.includes('追客中');
-    });
-    console.log('追客中の売主:', followingUpSellers.length);
-    
-    // 次電日が今日以前の売主を確認
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const todayOrBeforeSellers = validSellers.filter((s: any) => {
-      const nextCallDate = s.nextCallDate || s.next_call_date;
-      if (!nextCallDate) return false;
-      const date = new Date(nextCallDate);
-      date.setHours(0, 0, 0, 0);
-      return date.getTime() <= today.getTime();
-    });
-    console.log('次電日が今日以前の売主:', todayOrBeforeSellers.length);
-  } else {
-    console.warn('⚠️ sellers配列が空です - CallModePageからデータが渡されていない可能性があります');
-  }
-  
-  // 展開中のカテゴリ（nullの場合は全カテゴリ表示）
-  const [expandedCategory, setExpandedCategory] = useState<StatusCategory | null>(null);
+  // expandedCategoryが変更されたらsessionStorageに保存
+  useEffect(() => {
+    if (expandedCategory) {
+      sessionStorage.setItem('sidebarExpandedCategory', expandedCategory);
+    } else {
+      sessionStorage.removeItem('sidebarExpandedCategory');
+    }
+  }, [expandedCategory]);
   
   // 通話モードページの場合、現在の売主のカテゴリを判定
   const currentSellerCategory = isCallMode ? getSellerCategory(currentSeller) : null;
   
-  // 通話モードページの場合、現在の売主のカテゴリを自動展開
+  // 通話モードページの場合、sessionStorageに保存された展開状態がなければ現在の売主のカテゴリを自動展開
+  // ※ sessionStorageに保存された展開状態がある場合は、それを優先する（ユーザーが選択したカテゴリを維持）
   useEffect(() => {
     if (isCallMode && currentSellerCategory) {
-      setExpandedCategory(currentSellerCategory);
+      // sessionStorageに展開状態が保存されていない場合のみ、現在の売主のカテゴリを自動展開
+      const savedCategory = sessionStorage.getItem('sidebarExpandedCategory');
+      
+      if (!savedCategory) {
+        setExpandedCategory(currentSellerCategory);
+      }
     }
   }, [isCallMode, currentSellerCategory]);
   
@@ -244,16 +255,24 @@ export default function SellerStatusSidebar({
   
   // カテゴリヘッダークリック時の処理
   const handleCategoryClick = (category: StatusCategory) => {
-    if (expandedCategory === category) {
-      // 既に展開中のカテゴリをクリックした場合は閉じる
-      setExpandedCategory(null);
+    if (isCallMode) {
+      // 通話モードページの場合、最初の売主の通話モードページに遷移
+      const filteredSellers = filterSellersByCategory(sellers, category);
+      if (filteredSellers.length > 0) {
+        const firstSeller = filteredSellers[0];
+        navigate(`/sellers/${firstSeller.id}/call`);
+      } else {
+        console.warn(`カテゴリ「${getCategoryLabel(category)}」に該当する売主がいません`);
+      }
     } else {
-      // 新しいカテゴリを展開
-      setExpandedCategory(category);
-    }
-    
-    // 売主リストページの場合、カテゴリを選択
-    if (!isCallMode) {
+      // 売主リストページの場合、カテゴリを選択（現在の動作を維持）
+      if (expandedCategory === category) {
+        // 既に展開中のカテゴリをクリックした場合は閉じる
+        setExpandedCategory(null);
+      } else {
+        // 新しいカテゴリを展開
+        setExpandedCategory(category);
+      }
       onCategorySelect?.(category);
     }
   };
@@ -278,6 +297,302 @@ export default function SellerStatusSidebar({
     }
     // sellersから計算
     return filterSellersByCategory(sellers, category).length;
+  };
+
+  // 通話モードページで現在の売主の営担イニシャルを取得
+  const currentSellerVisitAssignee = isCallMode && currentSeller 
+    ? (currentSeller.visitAssignee || currentSeller.visit_assignee || '').trim()
+    : '';
+
+  // 当日TEL（内容）のグループ化結果をキャッシュ（コンポーネントのトップレベルで定義）
+  // APIから取得したグループ化データを優先、なければvalidSellersから計算
+  const todayCallWithInfoGroups = useMemo(() => {
+    // APIから取得したグループ化データがある場合はそれを使用
+    if (categoryCounts?.todayCallWithInfoGroups && categoryCounts.todayCallWithInfoGroups.length > 0) {
+      return categoryCounts.todayCallWithInfoGroups;
+    }
+    
+    // なければvalidSellersから計算（後方互換性のため）
+    const computed = groupTodayCallWithInfo(validSellers);
+    return computed;
+  }, [categoryCounts?.todayCallWithInfoGroups, validSellers]);
+
+  /**
+   * 営担イニシャルが一致するかどうかを判定
+   * 
+   * 注意: APIレスポンスでは、visitAssigneeがイニシャルからフルネームに変換される場合がある
+   * 例: '生' → '生野'
+   * そのため、完全一致だけでなく、先頭文字での一致もチェックする
+   * 
+   * @param assignee 現在の売主の営担（フルネームの場合あり）
+   * @param initial サイドバーに表示されるイニシャル
+   * @returns 一致するかどうか
+   */
+  const isMatchingAssignee = (assignee: string, initial: string): boolean => {
+    if (!assignee || !initial) return false;
+    
+    // 完全一致をチェック
+    if (assignee === initial) return true;
+    
+    // 先頭文字での一致をチェック（フルネームの場合）
+    // 例: assignee='生野', initial='生' → true
+    if (assignee.charAt(0) === initial) return true;
+    
+    // イニシャルが先頭文字と一致するかチェック（逆方向）
+    // 例: assignee='生', initial='生野' → true（通常はこのケースはないが念のため）
+    if (initial.charAt(0) === assignee) return true;
+    
+    return false;
+  };
+
+  // 訪問予定/訪問済みのイニシャル別ボタンをレンダリング
+  // クリックでメインテーブルにフィルタリング結果を表示（展開機能は廃止）
+  const renderVisitCategoryButtons = (
+    category: 'visitScheduled' | 'visitCompleted',
+    prefix: string,
+    color: string
+  ) => {
+    // categoryCountsからイニシャル別カウントを取得（APIから取得したデータを優先）
+    const byAssigneeKey = category === 'visitScheduled' ? 'visitScheduledByAssignee' : 'visitCompletedByAssignee';
+    const byAssigneeData = categoryCounts?.[byAssigneeKey] || [];
+    
+    // 当日TEL（担当）のカウントを取得
+    const todayCallAssignedData = categoryCounts?.todayCallAssignedByAssignee || [];
+    
+    // APIからイニシャル別カウントが取得できた場合はそれを使用
+    if (byAssigneeData.length > 0) {
+      return (
+        <Box key={category}>
+          {byAssigneeData.map(({ initial, count }) => {
+            const visitKey = `${category}-${initial}`;
+            // 選択状態の判定: 
+            // - 売主リストページ: カテゴリとイニシャルの両方が一致する場合
+            // - 通話モードページ: 現在の売主のカテゴリとイニシャルが一致する場合
+            // 注意: currentSellerVisitAssigneeはフルネームの場合があるため、isMatchingAssigneeで比較
+            const isSelected = isCallMode
+              ? (currentSellerCategory === category && isMatchingAssignee(currentSellerVisitAssignee, initial))
+              : (selectedCategory === category && selectedVisitAssignee === initial);
+            const label = `${prefix}(${initial})`;
+            
+            // このイニシャルの当日TEL（担当）カウントを取得
+            const todayCallCount = todayCallAssignedData.find(d => d.initial === initial)?.count || 0;
+            
+            return (
+              <Box key={visitKey}>
+                {/* 訪問予定/訪問済みボタン */}
+                <Button
+                  fullWidth
+                  onClick={() => {
+                    if (isCallMode) {
+                      // 通話モードページの場合、最初の売主の通話モードページに遷移
+                      const filterFn = category === 'visitScheduled' ? isVisitScheduled : isVisitCompleted;
+                      const visitData = getVisitDataByAssignee(sellers, filterFn);
+                      const targetData = visitData.find(d => d.initial === initial);
+                      if (targetData && targetData.sellers.length > 0) {
+                        const firstSeller = targetData.sellers[0];
+                        navigate(`/sellers/${firstSeller.id}/call`);
+                      } else {
+                        console.warn(`${prefix}(${initial})に該当する売主がいません`);
+                      }
+                    } else {
+                      // 売主リストページの場合、カテゴリとイニシャルを選択（現在の動作を維持）
+                      if (isSelected) {
+                        // 既に選択中の場合は選択解除
+                        onCategorySelect?.('all', undefined);
+                      } else {
+                        // 新しいカテゴリを選択してメインテーブルをフィルタリング
+                        setExpandedCategory(null);
+                        onCategorySelect?.(category, initial);
+                      }
+                    }
+                  }}
+                  sx={{ 
+                    justifyContent: 'space-between', 
+                    textAlign: 'left',
+                    fontSize: '0.85rem',
+                    py: 0.75,
+                    px: 1.5,
+                    color: isSelected ? 'white' : color,
+                    bgcolor: isSelected ? color : 'transparent',
+                    borderRadius: 1,
+                    '&:hover': {
+                      bgcolor: isSelected ? color : `${color}15`,
+                    }
+                  }}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <span>{label}</span>
+                    <Chip 
+                      label={count} 
+                      size="small"
+                      sx={{ 
+                        height: 20, 
+                        fontSize: '0.7rem',
+                        bgcolor: isSelected ? 'rgba(255,255,255,0.3)' : undefined,
+                        color: isSelected ? 'white' : undefined,
+                      }}
+                    />
+                  </Box>
+                </Button>
+                
+                {/* 当日TEL（担当）サブカテゴリー - インデント表示 */}
+                {todayCallCount > 0 && (
+                  <Button
+                    fullWidth
+                    onClick={() => {
+                      if (isCallMode) {
+                        // 通話モードページの場合、最初の売主の通話モードページに遷移
+                        const todayCallSellers = validSellers.filter(s => 
+                          s.visit_assignee === initial && 
+                          s.next_call_date && 
+                          new Date(s.next_call_date) <= new Date()
+                        );
+                        if (todayCallSellers.length > 0) {
+                          const firstSeller = todayCallSellers[0];
+                          navigate(`/sellers/${firstSeller.id}/call`);
+                        }
+                      } else {
+                        // 売主リストページの場合、当日TEL（担当）を選択
+                        // 🚨 重要: visitAssigneeとvisitStatusパラメータを渡す
+                        // - visitAssignee: その営業担当が担当の売主のみを表示
+                        // - visitStatus: 訪問予定 or 訪問済みを区別（カテゴリの排他性）
+                        // 条件: 営担=initial + 状況（当社）に「追客中」が含まれる + 次電日が今日以前
+                        const isTodayCallSelected = selectedCategory === 'todayCallAssigned' && selectedVisitAssignee === initial;
+                        if (isTodayCallSelected) {
+                          onCategorySelect?.('all', undefined, undefined);
+                        } else {
+                          setExpandedCategory(null);
+                          // categoryが'visitScheduled'なら'scheduled'、'visitCompleted'なら'completed'を渡す
+                          const visitStatus = category === 'visitScheduled' ? 'scheduled' : 'completed';
+                          onCategorySelect?.('todayCallAssigned', initial, visitStatus);
+                        }
+                      }
+                    }}
+                    sx={{ 
+                      justifyContent: 'space-between', 
+                      textAlign: 'left',
+                      fontSize: '0.8rem',
+                      py: 0.5,
+                      px: 1.5,
+                      pl: 3,  // インデント
+                      color: selectedCategory === 'todayCallAssigned' && selectedVisitAssignee === initial ? 'white' : '#ff5722',
+                      bgcolor: selectedCategory === 'todayCallAssigned' && selectedVisitAssignee === initial ? '#ff5722' : 'transparent',
+                      borderRadius: 1,
+                      '&:hover': {
+                        bgcolor: selectedCategory === 'todayCallAssigned' && selectedVisitAssignee === initial ? '#ff5722' : '#ff572215',
+                      }
+                    }}
+                  >
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <span>└ {category === 'visitScheduled' ? '未' : '済'}当日TEL({initial})</span>
+                      <Chip 
+                        label={todayCallCount} 
+                        size="small"
+                        sx={{ 
+                          height: 18, 
+                          fontSize: '0.65rem',
+                          bgcolor: selectedCategory === 'todayCallAssigned' && selectedVisitAssignee === initial ? 'rgba(255,255,255,0.3)' : undefined,
+                          color: selectedCategory === 'todayCallAssigned' && selectedVisitAssignee === initial ? 'white' : undefined,
+                        }}
+                      />
+                    </Box>
+                  </Button>
+                )}
+              </Box>
+            );
+          })}
+        </Box>
+      );
+    }
+    
+    // フォールバック: sellersからフィルタリング（従来の動作）
+    const filterFn = category === 'visitScheduled' ? isVisitScheduled : isVisitCompleted;
+    const visitData = getVisitDataByAssignee(sellers, filterFn);
+    
+    // 該当データがない場合は非表示
+    if (visitData.length === 0) return null;
+    
+    return (
+      <Box key={category}>
+        {visitData.map(({ initial, count }) => {
+          const visitKey = `${category}-${initial}`;
+          // 選択状態の判定: 
+          // - 売主リストページ: カテゴリとイニシャルの両方が一致する場合
+          // - 通話モードページ: 現在の売主のカテゴリとイニシャルが一致する場合
+          // 注意: currentSellerVisitAssigneeはフルネームの場合があるため、isMatchingAssigneeで比較
+          const isSelected = isCallMode
+            ? (currentSellerCategory === category && isMatchingAssignee(currentSellerVisitAssignee, initial))
+            : (selectedCategory === category && selectedVisitAssignee === initial);
+          const label = `${prefix}(${initial})`;
+          
+          // このイニシャルの当日TEL（担当）カウントを計算
+          const todayCallSellers = validSellers.filter(s => 
+            s.visit_assignee === initial && 
+            s.next_call_date && 
+            new Date(s.next_call_date) <= new Date()
+          );
+          const todayCallCount = todayCallSellers.length;
+          
+          return (
+            <Box key={visitKey}>
+              {/* 訪問予定/訪問済みボタン */}
+              <Button
+                fullWidth
+                onClick={() => {
+                  if (isCallMode) {
+                    // 通話モードページの場合、最初の売主の通話モードページに遷移
+                    const filterFn = category === 'visitScheduled' ? isVisitScheduled : isVisitCompleted;
+                    const visitData = getVisitDataByAssignee(sellers, filterFn);
+                    const targetData = visitData.find(d => d.initial === initial);
+                    if (targetData && targetData.sellers.length > 0) {
+                      const firstSeller = targetData.sellers[0];
+                      navigate(`/sellers/${firstSeller.id}/call`);
+                    } else {
+                      console.warn(`${prefix}(${initial})に該当する売主がいません`);
+                    }
+                  } else {
+                    // 売主リストページの場合、カテゴリとイニシャルを選択（現在の動作を維持）
+                    if (isSelected) {
+                      onCategorySelect?.('all', undefined);
+                    } else {
+                      setExpandedCategory(null);
+                      onCategorySelect?.(category, initial);
+                    }
+                  }
+                }}
+                sx={{ 
+                  justifyContent: 'space-between', 
+                  textAlign: 'left',
+                  fontSize: '0.85rem',
+                  py: 0.75,
+                  px: 1.5,
+                  color: isSelected ? 'white' : color,
+                  bgcolor: isSelected ? color : 'transparent',
+                  borderRadius: 1,
+                  '&:hover': {
+                    bgcolor: isSelected ? color : `${color}15`,
+                  }
+                }}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <span>{label}</span>
+                  <Chip 
+                    label={count} 
+                    size="small"
+                    sx={{ 
+                      height: 20, 
+                      fontSize: '0.7rem',
+                      bgcolor: isSelected ? 'rgba(255,255,255,0.3)' : undefined,
+                      color: isSelected ? 'white' : undefined,
+                    }}
+                  />
+                </Box>
+              </Button>
+            </Box>
+          );
+        })}
+      </Box>
+    );
   };
 
   // カテゴリボタンをレンダリング
@@ -422,12 +737,18 @@ export default function SellerStatusSidebar({
   };
 
   // 全カテゴリ表示モード（展開中のカテゴリがない場合）
-  const renderAllCategories = () => (
+  const renderAllCategories = () => {
+    // 通話モードページで、現在の売主がどのカテゴリにも属さない場合は「All」をハイライト
+    const isAllActive = isCallMode 
+      ? (currentSellerCategory === null)  // どのカテゴリにも属さない場合
+      : isActive('all');
+    
+    return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
       {/* All */}
       <Button
         fullWidth
-        variant={isActive('all') ? 'contained' : 'text'}
+        variant={isAllActive ? 'contained' : 'text'}
         onClick={() => {
           setExpandedCategory(null);
           if (!isCallMode) {
@@ -451,41 +772,252 @@ export default function SellerStatusSidebar({
         )}
       </Button>
       
-      {renderCategoryButton('visitScheduled', '①訪問予定', '#2e7d32')}
-      {renderCategoryButton('visitCompleted', '②訪問済み', '#1565c0')}
-      {renderCategoryButton('todayCallAssigned', '当日TEL（担当）', '#ff5722')}
       {renderCategoryButton('todayCall', '③当日TEL分', '#d32f2f')}
-      {renderCategoryButton('todayCallWithInfo', '④当日TEL（内容）', '#9c27b0')}
+      
+      {/* コミュニケーション情報別カテゴリ - 独立した本カテゴリとして表示 */}
+      {todayCallWithInfoGroups.map((group) => {
+        // 選択状態の判定:
+        // - 売主リストページ: カテゴリとラベルの両方が一致する場合
+        // - 通話モードページ: 現在の売主のカテゴリとラベルが一致する場合
+        const isSelected = isCallMode
+          ? (currentSellerCategory === 'todayCallWithInfo' && 
+             getTodayCallWithInfoLabel(currentSeller) === group.label)
+          : (selectedCategory === 'todayCallWithInfo' && 
+             selectedVisitAssignee === group.label);
+        
+        return (
+          <Button
+            key={group.label}
+            fullWidth
+            onClick={() => {
+              if (isCallMode) {
+                // 通話モードページの場合、最初の売主の通話モードページに遷移
+                // group.sellersがある場合はそれを使用、ない場合はvalidSellersから検索
+                const groupSellers = group.sellers || validSellers.filter(s => 
+                  isTodayCallWithInfo(s) && getTodayCallWithInfoLabel(s) === group.label
+                );
+                
+                if (groupSellers.length > 0) {
+                  const firstSeller = groupSellers[0];
+                  navigate(`/sellers/${firstSeller.id}/call`);
+                } else {
+                  console.warn(`${group.label}に該当する売主がいません`);
+                }
+              } else {
+                // 売主リストページの場合、カテゴリとグループを選択（現在の動作を維持）
+                if (isSelected) {
+                  // 既に選択中の場合は選択解除
+                  onCategorySelect?.('all', undefined);
+                } else {
+                  // 新しいカテゴリを選択
+                  setExpandedCategory(null);
+                  onCategorySelect?.('todayCallWithInfo', group.label);
+                }
+              }
+            }}
+            sx={{ 
+              justifyContent: 'space-between', 
+              textAlign: 'left',
+              fontSize: '0.85rem',
+              py: 0.75,
+              px: 1.5,
+              color: isSelected ? 'white' : '#9c27b0',
+              bgcolor: isSelected ? '#9c27b0' : 'transparent',
+              borderRadius: 1,
+              '&:hover': {
+                bgcolor: isSelected ? '#9c27b0' : '#9c27b015',
+              }
+            }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <span>{group.label}</span>
+              <Chip 
+                label={group.count} 
+                size="small"
+                sx={{ 
+                  height: 20, 
+                  fontSize: '0.7rem',
+                  bgcolor: isSelected ? 'rgba(255,255,255,0.3)' : undefined,
+                  color: isSelected ? 'white' : undefined,
+                }}
+              />
+            </Box>
+          </Button>
+        );
+      })}
+      
       {renderCategoryButton('unvaluated', '⑤未査定', '#ed6c02')}
       {renderCategoryButton('mailingPending', '⑥査定（郵送）', '#0288d1')}
       {renderCategoryButton('todayCallNotStarted', '⑦当日TEL_未着手', '#ff9800')}
       {renderCategoryButton('pinrichEmpty', '⑧Pinrich空欄', '#795548')}
+      
+      {/* 担当(イニシャル) - 最後に移動 */}
+      {categoryCounts?.assigneeGroups && categoryCounts.assigneeGroups.length > 0 && (
+        categoryCounts.assigneeGroups.map((group) => {
+          const isSelected = selectedVisitAssignee === group.initial;
+          const label = `担当(${group.initial})`;
+          
+          return (
+            <Box key={`assignee-${group.initial}`} sx={{ bgcolor: '#f5f5f5', borderRadius: 1, p: 0.5 }}>
+              {/* 担当(イニシャル)ボタン */}
+              <Button
+                fullWidth
+                onClick={() => {
+                  if (isSelected) {
+                    onCategorySelect?.('all', undefined);
+                  } else {
+                    setExpandedCategory(null);
+                    onCategorySelect?.('visitScheduled', group.initial);
+                  }
+                }}
+                sx={{ 
+                  justifyContent: 'space-between', 
+                  textAlign: 'left',
+                  fontSize: '0.85rem',
+                  py: 0.75,
+                  px: 1.5,
+                  color: isSelected ? 'white' : '#1976d2',
+                  bgcolor: isSelected ? '#1976d2' : 'transparent',
+                  borderRadius: 1,
+                  '&:hover': {
+                    bgcolor: isSelected ? '#1976d2' : '#1976d215',
+                  }
+                }}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <span>{label}</span>
+                  <Chip 
+                    label={group.totalCount} 
+                    size="small"
+                    sx={{ 
+                      height: 20, 
+                      fontSize: '0.7rem',
+                      bgcolor: isSelected ? 'rgba(255,255,255,0.3)' : undefined,
+                      color: isSelected ? 'white' : undefined,
+                    }}
+                  />
+                </Box>
+              </Button>
+              
+              {/* 当日TEL(イニシャル)サブカテゴリー */}
+              {group.todayCallCount > 0 && (
+                <Button
+                  fullWidth
+                  onClick={() => {
+                    const isTodayCallSelected = selectedCategory === 'todayCallAssigned' && selectedVisitAssignee === group.initial;
+                    if (isTodayCallSelected) {
+                      onCategorySelect?.('all', undefined, undefined);
+                    } else {
+                      setExpandedCategory(null);
+                      onCategorySelect?.('todayCallAssigned', group.initial, undefined);
+                    }
+                  }}
+                  sx={{ 
+                    justifyContent: 'space-between', 
+                    textAlign: 'left',
+                    fontSize: '0.8rem',
+                    py: 0.5,
+                    px: 1.5,
+                    pl: 3,  // インデント
+                    color: selectedCategory === 'todayCallAssigned' && selectedVisitAssignee === group.initial ? 'white' : '#ff5722',
+                    bgcolor: selectedCategory === 'todayCallAssigned' && selectedVisitAssignee === group.initial ? '#ff5722' : 'transparent',
+                    borderRadius: 1,
+                    '&:hover': {
+                      bgcolor: selectedCategory === 'todayCallAssigned' && selectedVisitAssignee === group.initial ? '#ff5722' : '#ff572215',
+                    }
+                  }}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <span>└ 当日TEL({group.initial})</span>
+                    <Chip 
+                      label={group.todayCallCount} 
+                      size="small"
+                      sx={{ 
+                        height: 18, 
+                        fontSize: '0.65rem',
+                        bgcolor: selectedCategory === 'todayCallAssigned' && selectedVisitAssignee === group.initial ? 'rgba(255,255,255,0.3)' : undefined,
+                        color: selectedCategory === 'todayCallAssigned' && selectedVisitAssignee === group.initial ? 'white' : undefined,
+                      }}
+                    />
+                  </Box>
+                </Button>
+              )}
+              
+              {/* その他(イニシャル)サブカテゴリー */}
+              {group.otherCount > 0 && (
+                <Button
+                  fullWidth
+                  onClick={() => {
+                    const isOtherSelected = selectedCategory === 'visitOther' && selectedVisitAssignee === group.initial;
+                    if (isOtherSelected) {
+                      onCategorySelect?.('all', undefined, undefined);
+                    } else {
+                      setExpandedCategory(null);
+                      onCategorySelect?.('visitOther', group.initial, undefined);
+                    }
+                  }}
+                  sx={{ 
+                    justifyContent: 'space-between', 
+                    textAlign: 'left',
+                    fontSize: '0.8rem',
+                    py: 0.5,
+                    px: 1.5,
+                    pl: 3,  // インデント
+                    color: selectedCategory === 'visitOther' && selectedVisitAssignee === group.initial ? 'white' : '#757575',
+                    bgcolor: selectedCategory === 'visitOther' && selectedVisitAssignee === group.initial ? '#757575' : 'transparent',
+                    borderRadius: 1,
+                    '&:hover': {
+                      bgcolor: selectedCategory === 'visitOther' && selectedVisitAssignee === group.initial ? '#757575' : '#75757515',
+                    }
+                  }}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <span>└ その他({group.initial})</span>
+                    <Chip 
+                      label={group.otherCount} 
+                      size="small"
+                      sx={{ 
+                        height: 18, 
+                        fontSize: '0.65rem',
+                        bgcolor: selectedCategory === 'visitOther' && selectedVisitAssignee === group.initial ? 'rgba(255,255,255,0.3)' : undefined,
+                        color: selectedCategory === 'visitOther' && selectedVisitAssignee === group.initial ? 'white' : undefined,
+                      }}
+                    />
+                  </Box>
+                </Button>
+              )}
+            </Box>
+          );
+        })
+      )}
     </Box>
-  );
+  );};
+
+  // 訪問予定/訪問済みのボタンは展開せず、クリックでメインテーブルにフィルタリング結果を表示
+  // renderExpandedVisitCategory関数は削除（展開機能を廃止）
 
   // 展開モード（特定のカテゴリが展開されている場合）
+  // 訪問予定/訪問済みは展開せず、メインテーブルにフィルタリング結果を表示するため、expandedVisitKeyは使用しない
   const renderExpandedCategory = () => {
     if (!expandedCategory) return null;
     
     const label = getCategoryLabel(expandedCategory);
     const color = getCategoryColor(expandedCategory);
     
-    // MUIのテーマカラー名を実際の色コードに変換
-    const resolveColor = (c: string): string => {
-      switch (c) {
-        case 'success.main': return '#2e7d32';
-        case 'primary.main': return '#1565c0';
-        case 'error.main': return '#d32f2f';
-        case 'secondary.main': return '#9c27b0';
-        case 'warning.main': return '#ed6c02';
-        case 'info.main': return '#0288d1';
-        default: return c; // '#ff5722', '#ff9800', '#795548' などはそのまま
-      }
-    };
-    
     return (
       <Box>
-        {renderCategoryButton(expandedCategory, label, resolveColor(color))}
+        {renderCategoryButton(
+          expandedCategory, 
+          label, 
+          color === 'success.main' ? '#2e7d32' :
+          color === 'primary.main' ? '#1976d2' :
+          color === 'error.main' ? '#d32f2f' :
+          color === 'secondary.main' ? '#9c27b0' :
+          color === 'warning.main' ? '#ed6c02' :
+          color === 'info.main' ? '#0288d1' :
+          color === '#ff9800' ? '#ff9800' :
+          color === '#795548' ? '#795548' : '#000'
+        )}
       </Box>
     );
   };

@@ -12,6 +12,7 @@
 - `backend-architecture.md` - バックエンドアーキテクチャ定義
 - `environment-definition.md` - 環境定義（本番環境とローカル環境）
 - `auto-sync-timing.md` - 自動同期のタイミング
+- `encryption-key-protection.md` - ENCRYPTION_KEY保護ルール
 
 ### 売主（Seller）関連（常に読み込み）
 - `seller-table-column-definition.md` - 売主テーブルのカラム定義
@@ -79,6 +80,7 @@
 - `backend-architecture.md` - バックエンドアーキテクチャ定義
 - `environment-definition.md` - 環境定義
 - `auto-sync-timing.md` - 自動同期のタイミング
+- `encryption-key-protection.md` - ENCRYPTION_KEY保護ルール
 - `seller-table-column-definition.md` - 売主テーブルのカラム定義
 - `seller-spreadsheet-column-mapping.md` - 売主スプレッドシートのカラムマッピング
 - `sidebar-status-definition.md` - サイドバーステータス定義
@@ -113,7 +115,8 @@
 
 ---
 
-**最終更新日**: 2026年1月31日  
+**最終更新日**: 2026年2月28日  
 **更新内容**: 
+- `encryption-key-protection.md` を常時読み込みリストに追加
 - 物件関連のステアリングドキュメントを手動読み込み（`inclusion: manual`）に変更
 - 売主関連の作業時にコンテキストを軽量化
