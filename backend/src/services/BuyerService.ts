@@ -724,7 +724,7 @@ export class BuyerService {
     }
 
     // Create a map of buyer number to details
-    const detailsMap = new Map<string, { propertyNumber: string | null; inquiryDate: string | null; inquirySource: string | null }>(
+    const detailsMap = new Map(
       (pastBuyerRecords || []).map(record => [
         record.buyer_number,
         {
@@ -759,7 +759,7 @@ export class BuyerService {
   } | null> {
     const { data, error } = await this.supabase
       .from('buyers')
-      .select('id, buyer_number, property_number, reception_date, inquiry_source, latest_status')
+      .select('buyer_id, buyer_number, property_number, reception_date, inquiry_source, latest_status')
       .eq('buyer_number', buyerNumber)
       .single();
 
@@ -776,7 +776,7 @@ export class BuyerService {
       inquiryDate: data.reception_date,
       inquirySource: data.inquiry_source,
       status: data.latest_status,
-      buyerId: data.id
+      buyerId: data.buyer_id
     };
   }
 

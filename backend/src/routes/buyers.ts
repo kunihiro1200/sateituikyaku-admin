@@ -289,14 +289,14 @@ router.post('/:buyerId/email-history', async (req: Request, res: Response) => {
       });
     }
 
-    // Save email history（SaveEmailHistoryParamsの正しいフィールド名 senderEmail を使用）
+    // Save email history
     const historyIds = await emailHistoryService.saveEmailHistory({
       buyerId,
       propertyNumbers,
       recipientEmail,
       subject,
       body,
-      senderEmail: sentBy,
+      sentBy,
       emailType,
     });
 
