@@ -286,9 +286,11 @@ app.use('/api/emails', emailRoutes);  // 画像添付機能用の追加ルート
 app.use('/api/sellers', followUpRoutes);
 app.use('/appointments', appointmentRoutes);
 app.use('/activity-logs', activityLogRoutes);
+app.use('/api/activity-logs', activityLogRoutes);  // フロントエンド用
 app.use('/summarize', summarizeRoutes);
 app.use('/api/auth/google/calendar', googleCalendarRoutes);
 app.use('/employees', employeeRoutes);
+app.use('/api/employees', employeeRoutes);  // フロントエンド用
 app.use('/chat-notifications', chatNotificationRoutes);
 app.use('/api/webhooks', webhookRoutes);
 app.use('/api/integration', integrationRoutes);
