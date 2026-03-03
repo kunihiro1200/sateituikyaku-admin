@@ -60,7 +60,7 @@ export interface Seller {
   
   // 反響情報
   inquiryYear?: number;
-  // inquiry_date カラムは存在しないため削除
+  inquiryDate?: Date | string; // 反響日付
   inquiryDetailedDateTime?: Date;
   inquirySite?: string; // サイト（ウ、L等）
   inquiryReason?: string; // 査定理由
@@ -368,7 +368,7 @@ export interface CreateSellerRequest {
   sellerNumber?: string;
   inquirySource: string;
   inquiryYear: number;
-  // inquiry_date は削除（DBに存在しない）
+  inquiryDate?: Date | string; // 反響日付
   inquiryDatetime?: Date;
   confidenceLevel?: ConfidenceLevel;
   firstCallerInitials?: string;
@@ -402,7 +402,8 @@ export interface UpdateSellerRequest {
   // Phase 1 fields
   inquirySource?: string;
   inquiryYear?: number;
-  // inquiry_date は削除（DBに存在しない）
+  inquiryDate?: Date | string; // 反響日付
+  confidence?: string; // 確度
   isUnreachable?: boolean;
   confidenceLevel?: ConfidenceLevel;
   firstCallerInitials?: string;

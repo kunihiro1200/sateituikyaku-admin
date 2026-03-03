@@ -665,8 +665,8 @@ router.post('/:id/send-valuation-email', async (req: Request, res: Response) => 
     }
 
     // 固定資産税路線価を取得
-    const fixedAssetTaxRoadPrice = seller.property?.fixedAssetTaxRoadPrice || 
-                                   seller.property?.sellerFixedAssetTaxRoadPrice;
+    const fixedAssetTaxRoadPrice = (seller.property as any)?.fixedAssetTaxRoadPrice || 
+                                   (seller.property as any)?.sellerFixedAssetTaxRoadPrice;
 
     // 査定データを準備
     const valuationData = {
@@ -683,7 +683,7 @@ router.post('/:id/send-valuation-email', async (req: Request, res: Response) => 
     const emailService = new EmailService();
     const result = await emailService.sendValuationEmail(
       seller,
-      valuationData,
+      valuationData as any,
       req.employee!.email,
       req.employee!.id
     );

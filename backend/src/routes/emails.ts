@@ -56,7 +56,7 @@ router.post(
       // メールを送信
       const result = await emailService.sendValuationEmail(
         seller,
-        valuationData,
+        valuationData as any,
         req.employee!.email,
         req.employee!.id
       );
