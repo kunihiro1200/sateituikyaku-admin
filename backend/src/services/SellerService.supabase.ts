@@ -1378,6 +1378,32 @@ export class SellerService extends BaseRepository {
   }
 
   /**
+   * 担当者（visit_assignee）のユニーク一覧を取得
+   * サイドバーの担当者別カテゴリー表示用
+   * 「外す」と空文字は除外する
+   */
+  async getUniqueAssigneeInitials(): Promise<string[]> {
+    const { data, error } = await this.table('sellers')
+      .select('visit_assignee')
+      .is('deleted_at', null)
+      .not('visit_assignee', 'is', null)
+      .neq('visit_assignee', '')
+      .neq('visit_assignee', '外す');
+
+    if (error) {
+      console.error('getUniqueAssigneeInitials error:', error);
+      return [];
+    }
+
+    // ユニークな値を抽出してソート
+    const unique = [...new Set((data || []).map((row: any) => row.visit_assignee as string))]
+      .filter(Boolean)
+      .sort();
+
+    return unique;
+  }
+
+  /**
    * サイドバー用のカテゴリカウントを取得
    * 各カテゴリの条件に合う売主のみをデータベースから直接カウント
    * 

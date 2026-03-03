@@ -28,6 +28,7 @@ import api from '../services/api';
 import {
   StatusCategory,
   filterSellersByCategory,
+  getUniqueAssignees,
 } from '../utils/sellerStatusFilters';
 import { formatInquiryDate } from '../utils/inquiryDateFormatter';
 import PageNavigation from '../components/PageNavigation';
@@ -269,11 +270,10 @@ export default function SellersPage() {
     }
   };
 
-  // 担当者イニシャル一覧を取得（スタッフスプレッドシートから）
+  // 担当者イニシャル一覧を取得（DBから直接取得）
   const fetchAssigneeInitials = async () => {
     try {
-      const response = await api.get('/api/employees/active-initials');
-      console.log('[fetchAssigneeInitials] response:', response.data);
+      const response = await api.get('/api/sellers/assignee-initials');
       setAssigneeInitials(response.data.initials || []);
     } catch (error: any) {
       console.error('[fetchAssigneeInitials] Failed:', error?.response?.status, error?.response?.data || error?.message);
