@@ -60,30 +60,60 @@ router.get('/active', async (req: Request, res: Response) => {
  */
 router.get('/active-initials', async (req: Request, res: Response) => {
   try {
-    // スタッフ管理スプレッドシートから通常=TRUEのスタッフを取得
     const { GoogleSheetsClient } = await import('../services/GoogleSheetsClient');
-    const sheetsClient = new GoogleSheetsClient({
-      spreadsheetId: process.env.STAFF_SPREADSHEET_ID || '19yAuVYQRm-_zhjYX7M7zjiGbnBibkG77Mpz93sN1xx',
-      sheetName: 'スタッフ',
-    });
+    const spreadsheetId = process.env.STAFF_SPREADSHEET_ID || '19yAuVYQRm-_zhjYX7M7zjiGbnBibkG77Mpz93sN1xx';
 
-    await sheetsClient.authenticate();
-    const rows = await sheetsClient.readAll();
+    // シート名の候補（「スタッフ」が見つからない場合は「Sheet1」等を試す）
+    const sheetNameCandidates = ['スタッフ', 'Staff', 'Sheet1', 'シート1'];
+    let rows: any[] = [];
+    let usedSheetName = '';
+
+    for (const sheetName of sheetNameCandidates) {
+      try {
+        const sheetsClient = new GoogleSheetsClient({ spreadsheetId, sheetName });
+        await sheetsClient.authenticate();
+        rows = await sheetsClient.readAll();
+        usedSheetName = sheetName;
+        console.log(`[active-initials] Found sheet: "${sheetName}", rows: ${rows.length}`);
+        break;
+      } catch (sheetError: any) {
+        console.warn(`[active-initials] Sheet "${sheetName}" not found: ${sheetError.message}`);
+      }
+    }
+
+    if (rows.length === 0) {
+      console.warn('[active-initials] No rows found in any sheet candidate');
+      return res.json({ initials: [] });
+    }
+
+    // ヘッダーをログ出力（デバッグ用）
+    const headers = Object.keys(rows[0] || {});
+    console.log(`[active-initials] Sheet "${usedSheetName}" headers:`, headers);
+
+    // 「通常」列と「イニシャル」列を探す（列名の揺れに対応）
+    const normalColKey = headers.find(h => h.includes('通常') || h.toLowerCase() === 'normal') || '通常';
+    const initialColKey = headers.find(h => h.includes('イニシャル') || h.toLowerCase() === 'initial') || 'イニシャル';
+
+    console.log(`[active-initials] Using columns: normalCol="${normalColKey}", initialCol="${initialColKey}"`);
 
     // 通常=TRUEのスタッフのイニシャルを抽出
     const activeInitials = rows
-      .filter((row: any) => row['通常'] === 'TRUE' || row['通常'] === true)
-      .map((row: any) => row['イニシャル'])
-      .filter((initial: string) => initial && initial.trim() !== '');
+      .filter((row: any) => {
+        const val = row[normalColKey];
+        return val === 'TRUE' || val === true || val === '1' || val === 1;
+      })
+      .map((row: any) => row[initialColKey])
+      .filter((initial: any) => initial && String(initial).trim() !== '');
 
-    console.log(`Returning ${activeInitials.length} active staff initials`);
+    console.log(`[active-initials] Returning ${activeInitials.length} active staff initials:`, activeInitials);
     res.json({ initials: activeInitials });
-  } catch (error) {
-    console.error('Get active staff initials error:', error);
+  } catch (error: any) {
+    console.error('[active-initials] Error:', error.message, error.stack);
     res.status(500).json({
       error: {
         code: 'GET_ACTIVE_INITIALS_ERROR',
         message: 'Failed to get active staff initials',
+        detail: error.message,
         retryable: true,
       },
     });
