@@ -156,6 +156,26 @@ router.get('/sidebar-counts', async (req: Request, res: Response) => {
 });
 
 /**
+ * 担当者（visit_assignee）のユニーク一覧を取得
+ * サイドバーの担当者別カテゴリー表示用
+ */
+router.get('/assignee-initials', async (req: Request, res: Response) => {
+  try {
+    const initials = await sellerService.getUniqueAssigneeInitials();
+    res.json({ initials });
+  } catch (error) {
+    console.error('Get assignee initials error:', error);
+    res.status(500).json({
+      error: {
+        code: 'GET_ASSIGNEE_INITIALS_ERROR',
+        message: 'Failed to get assignee initials',
+        retryable: true,
+      },
+    });
+  }
+});
+
+/**
  * 売主を検索
  */
 router.get('/search', async (req: Request, res: Response) => {

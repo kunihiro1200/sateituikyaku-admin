@@ -402,14 +402,18 @@ export default function SellerStatusSidebar({
         )}
       </Button>
 
-      {/* 担当者別カテゴリー（動的生成） */}
-      {renderAssigneeCategories()}
-
       {/* 既存の固定カテゴリー */}
       {renderCategoryButton('todayCall', '①当日TEL分', '#d32f2f')}
       {renderCategoryButton('todayCallWithInfo', '②当日TEL（内容）', '#9c27b0')}
       {renderCategoryButton('unvaluated', '③未査定', '#ed6c02')}
       {renderCategoryButton('mailingPending', '④査定（郵送）', '#0288d1')}
+
+      {/* 担当者別カテゴリー（動的生成・区切り線付き） */}
+      {assigneeInitials.length > 0 && (
+        <Box sx={{ mt: 0.5, pt: 0.5, borderTop: '1px solid', borderColor: 'grey.200', bgcolor: '#fff8f5', borderRadius: 1, px: 0.5 }}>
+          {renderAssigneeCategories()}
+        </Box>
+      )}
     </Box>
   );
 

@@ -700,8 +700,10 @@ export const isTodayCallAssignedTo = (seller: Seller | any, assignee: string): b
  * @returns ユニークな担当者イニシャルの配列（ソート済み）
  */
 export const getUniqueAssignees = (sellers: (Seller | any)[]): string[] => {
+  // visitAssigneeInitials（元のイニシャル）を優先して使用
+  // visitAssigneeはフルネームに変換されている場合があるため
   const assignees = sellers
-    .map(s => s.visitAssignee || s.visit_assignee || '')
+    .map(s => s.visitAssigneeInitials || s.visit_assignee || '')
     .filter(a => a && a.trim() !== '' && a.trim() !== '外す');
   return [...new Set(assignees)].sort();
 };
