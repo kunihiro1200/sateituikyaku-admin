@@ -273,9 +273,10 @@ export default function SellersPage() {
   const fetchAssigneeInitials = async () => {
     try {
       const response = await api.get('/api/employees/active-initials');
+      console.log('[fetchAssigneeInitials] response:', response.data);
       setAssigneeInitials(response.data.initials || []);
-    } catch (error) {
-      console.error('Failed to fetch assignee initials:', error);
+    } catch (error: any) {
+      console.error('[fetchAssigneeInitials] Failed:', error?.response?.status, error?.response?.data || error?.message);
     }
   };
 
