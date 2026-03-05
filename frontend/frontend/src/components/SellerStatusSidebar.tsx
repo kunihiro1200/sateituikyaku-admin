@@ -16,6 +16,8 @@ import {
   isTodayCallWithInfo,
   isUnvaluated,
   isMailingPending,
+  isTodayCallNotStarted,
+  isPinrichEmpty,
   isVisitAssignedTo,
   isTodayCallAssignedTo,
 } from '../utils/sellerStatusFilters';
@@ -78,6 +80,10 @@ const filterSellersByCategory = (sellers: any[], category: StatusCategory): any[
       return sellers.filter(isUnvaluated);
     case 'mailingPending':
       return sellers.filter(isMailingPending);
+    case 'todayCallNotStarted':
+      return sellers.filter(isTodayCallNotStarted);
+    case 'pinrichEmpty':
+      return sellers.filter(isPinrichEmpty);
     default:
       return sellers;
   }
@@ -407,6 +413,8 @@ export default function SellerStatusSidebar({
       {renderCategoryButton('todayCallWithInfo', '②当日TEL（内容）', '#9c27b0')}
       {renderCategoryButton('unvaluated', '③未査定', '#ed6c02')}
       {renderCategoryButton('mailingPending', '④査定（郵送）', '#0288d1')}
+      {renderCategoryButton('todayCallNotStarted', '⑦当日TEL_未着手', '#ff9800')}
+      {renderCategoryButton('pinrichEmpty', '⑧Pinrich空欄', '#795548')}
 
       {/* 担当者別カテゴリー（動的生成・区切り線付き） */}
       {assigneeInitials.length > 0 && (

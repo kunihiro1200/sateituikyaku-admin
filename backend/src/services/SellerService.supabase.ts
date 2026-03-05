@@ -800,6 +800,36 @@ export class SellerService extends BaseRepository {
           // 査定（郵送）（郵送ステータスが「未」）
           query = query.eq('mailing_status', '未');
           break;
+        case 'todayCallNotStarted':
+          // 当日TEL_未着手（当日TEL分の条件 + 不通が空欄 + 反響日付が2026/1/1以降）
+          query = query
+            .ilike('status', '%追客中%')
+            .lte('next_call_date', todayJST)
+            // 営担が空または「外す」
+            .or('visit_assignee.is.null,visit_assignee.eq.,visit_assignee.eq.外す')
+            // コミュニケーション情報が全て空
+            .or('phone_contact_person.is.null,phone_contact_person.eq.')
+            .or('preferred_contact_time.is.null,preferred_contact_time.eq.')
+            .or('contact_method.is.null,contact_method.eq.')
+            // 不通が空欄
+            .or('unreachable_status.is.null,unreachable_status.eq.')
+            // 反響日付が2026/1/1以降
+            .gte('inquiry_date', '2026-01-01');
+          break;
+        case 'pinrichEmpty':
+          // Pinrich空欄（当日TEL分の条件 + Pinrichが空欄）
+          query = query
+            .ilike('status', '%追客中%')
+            .lte('next_call_date', todayJST)
+            // 営担が空または「外す」
+            .or('visit_assignee.is.null,visit_assignee.eq.,visit_assignee.eq.外す')
+            // コミュニケーション情報が全て空
+            .or('phone_contact_person.is.null,phone_contact_person.eq.')
+            .or('preferred_contact_time.is.null,preferred_contact_time.eq.')
+            .or('contact_method.is.null,contact_method.eq.')
+            // Pinrichが空欄
+            .or('pinrich_status.is.null,pinrich_status.eq.');
+          break;
       }
     }
 
@@ -1419,6 +1449,8 @@ export class SellerService extends BaseRepository {
     visitCompleted: number;
     unvaluated: number;
     mailingPending: number;
+    todayCallNotStarted: number;
+    pinrichEmpty: number;
   }> {
     // JST今日の日付を取得
     const now = new Date();
@@ -1469,7 +1501,7 @@ export class SellerService extends BaseRepository {
     // 4. 当日TEL分/当日TEL（内容）
     // 追客中 AND 次電日が今日以前 AND 営担なしの売主を取得
     const { data: todayCallBaseSellers } = await this.table('sellers')
-      .select('id, visit_assignee, phone_contact_person, preferred_contact_time, contact_method')
+      .select('id, visit_assignee, phone_contact_person, preferred_contact_time, contact_method, unreachable_status, inquiry_date, pinrich_status')
       .is('deleted_at', null)
       .ilike('status', '%追客中%')
       .lte('next_call_date', todayJST);
@@ -1517,6 +1549,33 @@ export class SellerService extends BaseRepository {
       .is('deleted_at', null)
       .eq('mailing_status', '未');
 
+    // 7. 当日TEL_未着手（当日TEL分の条件 + 不通が空欄 + 反響日付が2026/1/1以降）
+    const todayCallNotStartedCount = filteredTodayCallSellers.filter(s => {
+      // コミュニケーション情報が全て空（当日TEL分の条件）
+      const hasInfo = (s.phone_contact_person && s.phone_contact_person.trim() !== '') ||
+                      (s.preferred_contact_time && s.preferred_contact_time.trim() !== '') ||
+                      (s.contact_method && s.contact_method.trim() !== '');
+      if (hasInfo) return false;
+      // 不通が空欄
+      const unreachable = (s as any).unreachable_status || '';
+      if (unreachable && unreachable.trim() !== '') return false;
+      // 反響日付が2026/1/1以降
+      const inquiryDate = (s as any).inquiry_date || '';
+      return inquiryDate >= '2026-01-01';
+    }).length;
+
+    // 8. Pinrich空欄（当日TEL分の条件 + Pinrichが空欄）
+    const pinrichEmptyCount = filteredTodayCallSellers.filter(s => {
+      // コミュニケーション情報が全て空（当日TEL分の条件）
+      const hasInfo = (s.phone_contact_person && s.phone_contact_person.trim() !== '') ||
+                      (s.preferred_contact_time && s.preferred_contact_time.trim() !== '') ||
+                      (s.contact_method && s.contact_method.trim() !== '');
+      if (hasInfo) return false;
+      // Pinrichが空欄
+      const pinrich = (s as any).pinrich_status || '';
+      return !pinrich || pinrich.trim() === '';
+    }).length;
+
     return {
       todayCall: todayCallNoInfoCount || 0,
       todayCallWithInfo: todayCallWithInfoCount || 0,
@@ -1525,6 +1584,8 @@ export class SellerService extends BaseRepository {
       visitCompleted: visitCompletedCount || 0,
       unvaluated: unvaluatedCount || 0,
       mailingPending: mailingPendingCount || 0,
+      todayCallNotStarted: todayCallNotStartedCount || 0,
+      pinrichEmpty: pinrichEmptyCount || 0,
     };
   }
 }
