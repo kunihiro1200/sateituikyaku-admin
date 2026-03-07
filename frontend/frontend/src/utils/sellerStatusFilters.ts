@@ -55,6 +55,8 @@ export interface CategoryCounts {
   mailingPending: number;
   todayCallNotStarted: number; // 当日TEL_未着手（不通が空欄 + 反響日付が2026/1/1以降）
   pinrichEmpty: number;        // Pinrich空欄（Pinrichカラムが空欄）
+  visitAssignedCounts?: Record<string, number>;     // 担当者別件数（全売主）
+  todayCallAssignedCounts?: Record<string, number>; // 担当者別当日TEL件数
 }
 
 /**
@@ -183,7 +185,8 @@ const isYesterdayOrBefore = (dateStr: string | Date | undefined | null): boolean
 const hasVisitAssignee = (seller: Seller | any): boolean => {
   // visitAssigneeInitials（元のイニシャル）を優先して確認
   // visitAssigneeはフルネームに変換されている場合があるため
-  const visitAssignee = seller.visitAssigneeInitials || seller.visit_assignee || '';
+  // visitAssignee（camelCase）も参照（APIレスポンスの形式に対応）
+  const visitAssignee = seller.visitAssigneeInitials || seller.visit_assignee || seller.visitAssignee || '';
   // 空文字または「外す」の場合は担当なしとみなす
   if (!visitAssignee || visitAssignee.trim() === '' || visitAssignee.trim() === '外す') {
     return false;
@@ -553,9 +556,10 @@ export const isUnvaluated = (seller: Seller | any): boolean => {
   }
   
   // 営担に値がある場合は未査定として表示しない
-  const hasAssignee = seller.visitAssignee && 
-                      typeof seller.visitAssignee === 'string' && 
-                      seller.visitAssignee.trim() !== '';
+  const hasAssignee = (seller.visitAssigneeInitials || seller.visit_assignee || seller.visitAssignee) && 
+                      typeof (seller.visitAssigneeInitials || seller.visit_assignee || seller.visitAssignee) === 'string' && 
+                      (seller.visitAssigneeInitials || seller.visit_assignee || seller.visitAssignee).trim() !== '' &&
+                      (seller.visitAssigneeInitials || seller.visit_assignee || seller.visitAssignee).trim() !== '外す';
   if (hasAssignee) {
     return false;
   }
@@ -673,7 +677,8 @@ export const isVisitAssignedTo = (seller: Seller | any, assignee: string): boole
   }
   // visitAssigneeInitials（元のイニシャル）を優先して比較
   // visitAssigneeはフルネームに変換されている場合があるため
-  const visitAssigneeInitials = seller.visitAssigneeInitials || seller.visit_assignee || '';
+  // visitAssignee（camelCase）も参照（APIレスポンスの形式に対応）
+  const visitAssigneeInitials = seller.visitAssigneeInitials || seller.visit_assignee || seller.visitAssignee || '';
   return visitAssigneeInitials.trim() === assignee;
 };
 
@@ -702,8 +707,9 @@ export const isTodayCallAssignedTo = (seller: Seller | any, assignee: string): b
 export const getUniqueAssignees = (sellers: (Seller | any)[]): string[] => {
   // visitAssigneeInitials（元のイニシャル）を優先して使用
   // visitAssigneeはフルネームに変換されている場合があるため
+  // visitAssignee（camelCase）も参照（APIレスポンスの形式に対応）
   const assignees = sellers
-    .map(s => s.visitAssigneeInitials || s.visit_assignee || '')
+    .map(s => s.visitAssigneeInitials || s.visit_assignee || s.visitAssignee || '')
     .filter(a => a && a.trim() !== '' && a.trim() !== '外す');
   return [...new Set(assignees)].sort();
 };

@@ -20,6 +20,9 @@ import {
   isPinrichEmpty,
   isVisitAssignedTo,
   isTodayCallAssignedTo,
+  isTodayCallAssigned,
+  isVisitScheduled,
+  isVisitCompleted,
 } from '../utils/sellerStatusFilters';
 import { Seller } from '../types';
 
@@ -84,6 +87,12 @@ const filterSellersByCategory = (sellers: any[], category: StatusCategory): any[
       return sellers.filter(isTodayCallNotStarted);
     case 'pinrichEmpty':
       return sellers.filter(isPinrichEmpty);
+    case 'todayCallAssigned':
+      return sellers.filter(isTodayCallAssigned);
+    case 'visitScheduled':
+      return sellers.filter(isVisitScheduled);
+    case 'visitCompleted':
+      return sellers.filter(isVisitCompleted);
     default:
       return sellers;
   }
@@ -191,7 +200,20 @@ export default function SellerStatusSidebar({
   
   // 件数を取得
   const getCount = (category: StatusCategory): number => {
-    if (typeof category === 'string' && (category.startsWith('visitAssigned:') || category.startsWith('todayCallAssigned:'))) {
+    if (typeof category === 'string' && category.startsWith('visitAssigned:')) {
+      const assignee = category.replace('visitAssigned:', '');
+      // APIから取得した担当者別カウントがあればそれを使用（全件対象）
+      if (categoryCounts?.visitAssignedCounts) {
+        return categoryCounts.visitAssignedCounts[assignee] ?? 0;
+      }
+      return filterSellersByCategory(validSellers, category).length;
+    }
+    if (typeof category === 'string' && category.startsWith('todayCallAssigned:')) {
+      const assignee = category.replace('todayCallAssigned:', '');
+      // APIから取得した担当者別当日TELカウントがあればそれを使用（全件対象）
+      if (categoryCounts?.todayCallAssignedCounts) {
+        return categoryCounts.todayCallAssignedCounts[assignee] ?? 0;
+      }
       return filterSellersByCategory(validSellers, category).length;
     }
     if (categoryCounts) {
@@ -344,16 +366,22 @@ export default function SellerStatusSidebar({
       ? assigneeInitials
       : [...new Set(
           validSellers
-            .map((s: any) => s.visitAssigneeInitials || s.visit_assignee || '')
+            .map((s: any) => s.visitAssigneeInitials || s.visit_assignee || s.visitAssignee || '')
             .filter((a: string) => a && a.trim() !== '' && a.trim() !== '外す')
         )].sort() as string[];
 
     return initials.map(assignee => {
-      const assignedSellers = validSellers.filter(s => isVisitAssignedTo(s, assignee));
-      const todayCallSellers = validSellers.filter(s => isTodayCallAssignedTo(s, assignee));
+      // APIから取得した全件カウントを優先して使用
+      const assignedCount = categoryCounts?.visitAssignedCounts
+        ? (categoryCounts.visitAssignedCounts[assignee] ?? 0)
+        : validSellers.filter(s => isVisitAssignedTo(s, assignee)).length;
+
+      const todayCallCount = categoryCounts?.todayCallAssignedCounts
+        ? (categoryCounts.todayCallAssignedCounts[assignee] ?? 0)
+        : validSellers.filter(s => isTodayCallAssignedTo(s, assignee)).length;
 
       // 担当者に該当する売主がいない場合は表示しない
-      if (assignedSellers.length === 0 && todayCallSellers.length === 0) return null;
+      if (assignedCount === 0 && todayCallCount === 0) return null;
 
       return (
         <Box key={assignee}>
@@ -364,7 +392,7 @@ export default function SellerStatusSidebar({
             '#ff5722'
           )}
           {/* 当日TEL(Y)サブカテゴリー（インデント付き） */}
-          {todayCallSellers.length > 0 && (
+          {todayCallCount > 0 && (
             <Box sx={{ pl: 2 }}>
               {renderCategoryButton(
                 `todayCallAssigned:${assignee}` as StatusCategory,
@@ -409,6 +437,9 @@ export default function SellerStatusSidebar({
       </Button>
 
       {/* 既存の固定カテゴリー */}
+      {renderCategoryButton('visitScheduled', '①訪問予定', '#2e7d32')}
+      {renderCategoryButton('visitCompleted', '②訪問済み', '#1565c0')}
+      {renderCategoryButton('todayCallAssigned', '当日TEL（担当）', '#ff5722')}
       {renderCategoryButton('todayCall', '①当日TEL分', '#d32f2f')}
       {renderCategoryButton('todayCallWithInfo', '②当日TEL（内容）', '#9c27b0')}
       {renderCategoryButton('unvaluated', '③未査定', '#ed6c02')}
@@ -417,11 +448,10 @@ export default function SellerStatusSidebar({
       {renderCategoryButton('pinrichEmpty', '⑧Pinrich空欄', '#795548')}
 
       {/* 担当者別カテゴリー（動的生成・区切り線付き） */}
-      {assigneeInitials.length > 0 && (
-        <Box sx={{ mt: 0.5, pt: 0.5, borderTop: '1px solid', borderColor: 'grey.200', bgcolor: '#fff8f5', borderRadius: 1, px: 0.5 }}>
-          {renderAssigneeCategories()}
-        </Box>
-      )}
+      {/* assigneeInitialsが空でもsellersから動的取得するため常に表示 */}
+      <Box sx={{ mt: 0.5, pt: 0.5, borderTop: '1px solid', borderColor: 'grey.200', bgcolor: '#fff8f5', borderRadius: 1, px: 0.5 }}>
+        {renderAssigneeCategories()}
+      </Box>
     </Box>
   );
 

@@ -126,6 +126,8 @@ export default function SellersPage() {
     mailingPending: number;
     todayCallNotStarted: number;
     pinrichEmpty: number;
+    visitAssignedCounts?: Record<string, number>;
+    todayCallAssignedCounts?: Record<string, number>;
   }>({
     todayCall: 0,
     todayCallWithInfo: 0,

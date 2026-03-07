@@ -1451,6 +1451,8 @@ export class SellerService extends BaseRepository {
     mailingPending: number;
     todayCallNotStarted: number;
     pinrichEmpty: number;
+    visitAssignedCounts: Record<string, number>;
+    todayCallAssignedCounts: Record<string, number>;
   }> {
     // JST今日の日付を取得
     const now = new Date();
@@ -1497,6 +1499,27 @@ export class SellerService extends BaseRepository {
       .lte('next_call_date', todayJST);
 
     const todayCallAssignedCount = (todayCallAssignedSellers || []).length;
+
+    // 担当者別カウント（visitAssignedCounts）: 全売主の visit_assignee 別件数
+    const { data: allAssignedSellers } = await this.table('sellers')
+      .select('visit_assignee')
+      .is('deleted_at', null)
+      .not('visit_assignee', 'is', null)
+      .neq('visit_assignee', '')
+      .neq('visit_assignee', '外す');
+
+    const visitAssignedCounts: Record<string, number> = {};
+    (allAssignedSellers || []).forEach((s: any) => {
+      const a = s.visit_assignee;
+      if (a) visitAssignedCounts[a] = (visitAssignedCounts[a] || 0) + 1;
+    });
+
+    // 当日TEL（担当）の担当者別カウント（todayCallAssignedCounts）
+    const todayCallAssignedCounts: Record<string, number> = {};
+    (todayCallAssignedSellers || []).forEach((s: any) => {
+      const a = s.visit_assignee;
+      if (a) todayCallAssignedCounts[a] = (todayCallAssignedCounts[a] || 0) + 1;
+    });
 
     // 4. 当日TEL分/当日TEL（内容）
     // 追客中 AND 次電日が今日以前 AND 営担なしの売主を取得
@@ -1586,6 +1609,8 @@ export class SellerService extends BaseRepository {
       mailingPending: mailingPendingCount || 0,
       todayCallNotStarted: todayCallNotStartedCount || 0,
       pinrichEmpty: pinrichEmptyCount || 0,
+      visitAssignedCounts,
+      todayCallAssignedCounts,
     };
   }
 }
