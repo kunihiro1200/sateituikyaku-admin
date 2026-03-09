@@ -16,12 +16,14 @@ import {
   Chip,
   InputAdornment,
   MenuItem,
+  IconButton,
 } from '@mui/material';
 import {
   Add as AddIcon,
   Search as SearchIcon,
   Phone as PhoneIcon,
   FilterList as FilterListIcon,
+  Clear as ClearIcon,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
@@ -461,7 +463,21 @@ export default function SellersPage() {
                   </InputAdornment>
                 ),
                 endAdornment: (
-                  <Button onClick={handleSearch}>検索</Button>
+                  <InputAdornment position="end">
+                    {searchQuery && (
+                      <IconButton
+                        size="small"
+                        onClick={() => {
+                          setSearchQuery('');
+                          fetchSellers();
+                        }}
+                        aria-label="検索をクリア"
+                      >
+                        <ClearIcon fontSize="small" />
+                      </IconButton>
+                    )}
+                    <Button onClick={handleSearch}>検索</Button>
+                  </InputAdornment>
                 ),
               }}
             />
