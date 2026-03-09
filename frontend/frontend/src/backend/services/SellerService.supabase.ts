@@ -746,9 +746,11 @@ export class SellerService extends BaseRepository {
       query = query.lte('next_call_date', nextCallDateTo);
     }
 
-    // ソート（inquiry_dateがnullのものは最後に表示）
+    // ソート（inquiry_dateがnullのものは最後に表示、同日の場合は売主番号が大きいほうを最新とする）
     if (sortBy === 'inquiry_date') {
-      query = query.order(sortBy, { ascending: sortOrder === 'asc', nullsFirst: false });
+      query = query
+        .order(sortBy, { ascending: sortOrder === 'asc', nullsFirst: false })
+        .order('seller_number', { ascending: sortOrder === 'asc' });
     } else {
       query = query.order(sortBy, { ascending: sortOrder === 'asc' });
     }
