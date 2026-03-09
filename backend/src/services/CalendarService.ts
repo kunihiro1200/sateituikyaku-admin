@@ -271,7 +271,7 @@ ${request.notes ? `\n備考: ${request.notes}` : ''}
    */
   async findAppointmentByCalendarEventId(eventId: string): Promise<Appointment | null> {
     try {
-      const { data, error } = await this.table<Appointment>('appointments')
+      const { data, error } = await this.table('appointments')
         .select('*')
         .eq('calendar_event_id', eventId)
         .single();
@@ -284,7 +284,7 @@ ${request.notes ? `\n備考: ${request.notes}` : ''}
         throw new Error(`Failed to find appointment: ${error.message}`);
       }
 
-      return data;
+      return data as Appointment;
     } catch (error: any) {
       console.error('Error finding appointment by calendar event ID:', error);
       throw error;

@@ -13,7 +13,9 @@ inclusion: always
 
 ## 📁 バックエンド構造
 
-### 1. **売主管理システム用バックエンド**（メインサーバー）
+### 1. **社内管理システム用バックエンド**（メインサーバー）
+
+**Vercelプロジェクト名**: `baikyaku-property-site3` ✅
 
 **ディレクトリ**: `backend/src/`
 
@@ -37,14 +39,22 @@ inclusion: always
 - `backend/src/services/SpreadsheetSyncService.ts`
 
 **フロントエンド**:
-- `frontend/` (ポート5173)
+- **Vercelプロジェクト名**: `sateituikyaku-admin-frontend` ✅
+- **URL**: `https://sateituikyaku-admin-frontend.vercel.app`
+- ローカル: `frontend/frontend/` (ポート5173)
 - 売主詳細ページ: `/sellers/:id`
 - 通話モードページ: `/sellers/:id/call`
 - 物件詳細ページ: `/properties/:id`
 
+**CORS設定（`backend/src/index.ts`）**:
+- `https://sateituikyaku-admin-frontend.vercel.app` ← 社内管理システムフロントエンド（正しいURL）
+- `http://localhost:5173` ← ローカル開発
+
 ---
 
 ### 2. **公開物件サイト用バックエンド**（サブサーバー）
+
+**Vercelプロジェクト名**: `property-site-frontend` ✅
 
 **ディレクトリ**: `backend/api/`
 
