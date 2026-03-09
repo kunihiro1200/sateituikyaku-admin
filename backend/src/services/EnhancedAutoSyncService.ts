@@ -858,7 +858,7 @@ export class EnhancedAutoSyncService {
     while (hasMore) {
       const { data: dbSellers, error } = await this.supabase
         .from('sellers')
-        .select('seller_number, status, contract_year_month, visit_assignee, phone_contact_person, preferred_contact_time, contact_method, next_call_date, unreachable_status, inquiry_date, updated_at')
+        .select('seller_number, status, contract_year_month, visit_assignee, phone_contact_person, preferred_contact_time, contact_method, next_call_date, unreachable_status, inquiry_date, comments, updated_at')
         .range(offset, offset + pageSize - 1);
 
       if (error) {
@@ -964,6 +964,13 @@ export class EnhancedAutoSyncService {
             if (formattedInquiryDate !== dbInquiryDate) {
               needsUpdate = true;
             }
+          }
+
+          // commentsの比較
+          const dbComments = dbSeller.comments || '';
+          const sheetComments = sheetRow['コメント'] || '';
+          if (sheetComments !== dbComments) {
+            needsUpdate = true;
           }
 
           if (needsUpdate) {
@@ -1158,6 +1165,7 @@ export class EnhancedAutoSyncService {
       pinrich_status: mappedData.pinrich_status || null,
       is_unreachable: this.convertIsUnreachable(row['不通']),
       unreachable_status: row['不通'] ? String(row['不通']) : null,
+      comments: row['コメント'] ? String(row['コメント']) : null,
       updated_at: new Date().toISOString(),
     };
 
@@ -1350,6 +1358,7 @@ export class EnhancedAutoSyncService {
       pinrich_status: mappedData.pinrich_status || null,
       is_unreachable: this.convertIsUnreachable(row['不通']),
       unreachable_status: row['不通'] ? String(row['不通']) : null,
+      comments: row['コメント'] ? String(row['コメント']) : null,
     };
 
     // 物件関連フィールドを追加
