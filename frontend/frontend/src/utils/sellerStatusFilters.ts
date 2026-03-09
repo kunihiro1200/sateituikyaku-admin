@@ -333,6 +333,12 @@ export const isTodayCallAssigned = (seller: Seller | any): boolean => {
     return false;
   }
   
+  // 追客不要が含まれる場合は対象外
+  const status = seller.status || '';
+  if (status.includes('追客不要')) {
+    return false;
+  }
+  
   // 次電日が今日以前かチェック
   const nextCallDate = seller.nextCallDate || seller.next_call_date;
   return isTodayOrBefore(nextCallDate);

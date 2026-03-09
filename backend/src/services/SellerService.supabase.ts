@@ -756,12 +756,13 @@ export class SellerService extends BaseRepository {
             .lt('visit_date', todayJST);
           break;
         case 'todayCallAssigned':
-          // 当日TEL（担当）（営担あり（「外す」以外） AND 次電日が今日以前）
+          // 当日TEL（担当）（営担あり（「外す」以外） AND 次電日が今日以前 AND 追客不要を含まない）
           query = query
             .not('visit_assignee', 'is', null)
             .neq('visit_assignee', '')
             .neq('visit_assignee', '外す')
-            .lte('next_call_date', todayJST);
+            .lte('next_call_date', todayJST)
+            .not('status', 'ilike', '%追客不要%');
           break;
         case 'todayCall':
           // 当日TEL分（追客中 AND 次電日が今日以前 AND コミュニケーション情報なし AND 営担なし）
@@ -844,13 +845,14 @@ export class SellerService extends BaseRepository {
               .gte('visit_date', todayJST);
           } else if (dynamicCategory.startsWith('todayCallAssigned:')) {
             const assignee = dynamicCategory.replace('todayCallAssigned:', '');
-            // 当日TEL（担当）（営担が指定のイニシャル AND 次電日が今日以前）
+            // 当日TEL（担当）（営担が指定のイニシャル AND 次電日が今日以前 AND 追客不要を含まない）
             query = query
               .not('visit_assignee', 'is', null)
               .neq('visit_assignee', '')
               .neq('visit_assignee', '外す')
               .eq('visit_assignee', assignee)
-              .lte('next_call_date', todayJST);
+              .lte('next_call_date', todayJST)
+              .not('status', 'ilike', '%追客不要%');
           }
           break;
         }
@@ -1512,7 +1514,7 @@ export class SellerService extends BaseRepository {
       .neq('visit_assignee', '外す')
       .lt('visit_date', todayJST);
 
-    // 3. 当日TEL（担当）（営担あり + 次電日が今日以前）
+    // 3. 当日TEL（担当）（営担あり + 次電日が今日以前 + 追客不要を含まない）
     // 訪問日の有無に関係なく、営担があり次電日が今日以前であれば対象
     const { data: todayCallAssignedSellers } = await this.table('sellers')
       .select('id, visit_assignee')
@@ -1520,11 +1522,12 @@ export class SellerService extends BaseRepository {
       .not('visit_assignee', 'is', null)
       .neq('visit_assignee', '')
       .neq('visit_assignee', '外す')
-      .lte('next_call_date', todayJST);
+      .lte('next_call_date', todayJST)
+      .not('status', 'ilike', '%追客不要%');
 
     const todayCallAssignedCount = (todayCallAssignedSellers || []).length;
 
-    // 担当者別カウント（visitAssignedCounts）: 営担あり + 次電日が今日以前の売主
+    // 担当者別カウント（visitAssignedCounts）: 営担あり + 次電日が今日以前 + 追客不要を含まない
     // ステアリングドキュメント定義: 「当日TEL（担当）」= 営担あり（「外す」以外）+ 次電日が今日以前
     const { data: allAssignedSellers } = await this.table('sellers')
       .select('visit_assignee')
@@ -1532,7 +1535,8 @@ export class SellerService extends BaseRepository {
       .not('visit_assignee', 'is', null)
       .neq('visit_assignee', '')
       .neq('visit_assignee', '外す')
-      .lte('next_call_date', todayJST);
+      .lte('next_call_date', todayJST)
+      .not('status', 'ilike', '%追客不要%');
 
     const visitAssignedCounts: Record<string, number> = {};
     (allAssignedSellers || []).forEach((s: any) => {
