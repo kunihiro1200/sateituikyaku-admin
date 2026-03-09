@@ -1157,6 +1157,7 @@ export class EnhancedAutoSyncService {
       next_call_date: mappedData.next_call_date || null,
       pinrich_status: mappedData.pinrich_status || null,
       is_unreachable: this.convertIsUnreachable(row['不通']),
+      unreachable_status: row['不通'] ? String(row['不通']) : null,
       updated_at: new Date().toISOString(),
     };
 
@@ -1348,6 +1349,7 @@ export class EnhancedAutoSyncService {
       next_call_date: mappedData.next_call_date || null,
       pinrich_status: mappedData.pinrich_status || null,
       is_unreachable: this.convertIsUnreachable(row['不通']),
+      unreachable_status: row['不通'] ? String(row['不通']) : null,
     };
 
     // 物件関連フィールドを追加
