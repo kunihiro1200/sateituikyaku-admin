@@ -1555,12 +1555,32 @@ export class SellerService extends BaseRepository {
 
     // 4. 当日TEL分/当日TEL（内容）
     // 追客中/除外後追客中/他決→追客 AND 次電日が今日以前 AND 営担なしの売主を取得
-    const { data: todayCallBaseSellers } = await this.table('sellers')
-      .select('id, visit_assignee, phone_contact_person, preferred_contact_time, contact_method, unreachable_status, inquiry_date, pinrich_status, confidence, exclusion_date, status')
-      .is('deleted_at', null)
-      .or('status.ilike.%追客中%,status.ilike.%除外後追客中%,status.ilike.%他決→追客%')
-      .not('next_call_date', 'is', null)
-      .lte('next_call_date', todayJST);
+    // 「除外後追客中」は「追客中」を含むので ilike('%追客中%') でヒットする
+    // 「他決→追客」は「追客中」を含まないため、別途 eq で取得してマージする
+    const [todayCallBaseResult1, todayCallBaseResult2] = await Promise.all([
+      // 「追客中」「除外後追客中」を含む（ilike）
+      this.table('sellers')
+        .select('id, visit_assignee, phone_contact_person, preferred_contact_time, contact_method, unreachable_status, inquiry_date, pinrich_status, confidence, exclusion_date, status')
+        .is('deleted_at', null)
+        .ilike('status', '%追客中%')
+        .not('next_call_date', 'is', null)
+        .lte('next_call_date', todayJST),
+      // 「他決→追客」（完全一致）
+      this.table('sellers')
+        .select('id, visit_assignee, phone_contact_person, preferred_contact_time, contact_method, unreachable_status, inquiry_date, pinrich_status, confidence, exclusion_date, status')
+        .is('deleted_at', null)
+        .eq('status', '他決→追客')
+        .not('next_call_date', 'is', null)
+        .lte('next_call_date', todayJST),
+    ]);
+    // 重複を除いてマージ（idで重複排除）
+    const allTodayCallBase = [...(todayCallBaseResult1.data || []), ...(todayCallBaseResult2.data || [])];
+    const seenIds = new Set<string>();
+    const todayCallBaseSellers = allTodayCallBase.filter(s => {
+      if (seenIds.has(s.id)) return false;
+      seenIds.add(s.id);
+      return true;
+    });
 
     // 営担がある売主を除外（訪問日の有無に関係なく）
     const filteredTodayCallSellers = (todayCallBaseSellers || []).filter(s => {
