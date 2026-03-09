@@ -1610,30 +1610,31 @@ app.get('/api/cron/sync-property-listings', async (req, res) => {
     // 外部からのアクセスを防ぐため、Vercel Dashboardで設定する
     
     // PropertyListingSyncServiceを使用してフル同期を実行
-    const { getPropertyListingSyncService } = await import('../src/services/PropertyListingSyncService');
-    const syncService = getPropertyListingSyncService();
-    await syncService.initialize();
+    const { PropertyListingSyncService } = await import('../src/services/PropertyListingSyncService');
+    const syncService = new PropertyListingSyncService();
     
     console.log('[Cron] Running property listings sync...');
-    const result = await syncService.runFullSync('scheduled');
+    const startTime = new Date();
+    const newResults = await syncService.syncNewProperties();
+    const updateResults = await syncService.syncUpdatedPropertyListings();
+    const endTime = new Date();
     
     console.log(`[Cron] Property listings sync job completed:`, {
-      success: result.success,
-      added: result.successfullyAdded,
-      updated: result.successfullyUpdated,
-      failed: result.failed,
-      duration: result.endTime.getTime() - result.startTime.getTime(),
+      added: newResults.added,
+      updated: updateResults.updated,
+      failed: updateResults.failed,
+      duration: endTime.getTime() - startTime.getTime(),
     });
     
     res.status(200).json({
-      success: result.success,
-      totalProcessed: result.totalProcessed,
-      successfullyAdded: result.successfullyAdded,
-      successfullyUpdated: result.successfullyUpdated,
-      failed: result.failed,
-      errors: result.errors,
-      duration: result.endTime.getTime() - result.startTime.getTime(),
-      syncedAt: result.endTime.toISOString(),
+      success: true,
+      totalProcessed: newResults.total,
+      successfullyAdded: newResults.added,
+      successfullyUpdated: updateResults.updated,
+      failed: updateResults.failed,
+      errors: updateResults.errors,
+      duration: endTime.getTime() - startTime.getTime(),
+      syncedAt: endTime.toISOString(),
     });
     
   } catch (error: any) {

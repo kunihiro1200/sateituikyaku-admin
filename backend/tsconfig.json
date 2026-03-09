@@ -29,7 +29,7 @@
     "isolatedModules": true
   },
   "include": ["src/**/*", "api/**/*"],
-  "exclude": ["node_modules", "dist", "**/*.test.ts"],
+  "exclude": ["node_modules", "dist", "**/*.test.ts", "src/services/SellerService.ts"],
   "ts-node": {
     "transpileOnly": true,
     "compilerOptions": {

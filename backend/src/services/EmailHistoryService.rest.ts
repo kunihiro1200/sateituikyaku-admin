@@ -76,7 +76,7 @@ export class EmailHistoryService {
         throw new Error(`Failed to save email history: ${response.status} ${errorText}`);
       }
 
-      const result = await response.json();
+      const result = await response.json() as EmailHistoryRecord[];
       return result[0].id;
     } catch (error: any) {
       console.error('Error saving email history:', error);
@@ -108,7 +108,7 @@ export class EmailHistoryService {
         throw new Error(`Failed to fetch email history: ${response.status} ${errorText}`);
       }
 
-      const records = await response.json();
+      const records = await response.json() as EmailHistoryRecord[];
       return records;
     } catch (error: any) {
       console.error('Error fetching email history:', error);
@@ -142,7 +142,7 @@ export class EmailHistoryService {
         return false;
       }
 
-      const records = await response.json();
+      const records = await response.json() as any[];
       return records.length > 0;
     } catch (error: any) {
       console.error('Error checking email history:', error);
@@ -174,7 +174,7 @@ export class EmailHistoryService {
         throw new Error(`Failed to fetch emailed properties: ${response.status} ${errorText}`);
       }
 
-      const records = await response.json();
+      const records = await response.json() as any[];
 
       // Flatten the array of arrays and remove duplicates
       const allProperties = records.flatMap((record: any) => record.property_numbers);

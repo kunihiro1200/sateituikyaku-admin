@@ -24,8 +24,7 @@ async function syncAllProperties() {
   try {
     console.log('📊 Step 1: Syncing new properties from spreadsheet...');
     const newPropertiesResult = await syncService.syncNewProperties();
-    console.log(`✅ Added ${newPropertiesResult.added} new properties`);
-    console.log(`⏭️ Skipped ${newPropertiesResult.skipped} existing properties\n`);
+    console.log(`✅ Added ${newPropertiesResult.added} new properties\n`);
     
     console.log('📊 Step 2: Syncing updates to existing properties...');
     const updatesResult = await syncService.syncUpdatedPropertyListings();

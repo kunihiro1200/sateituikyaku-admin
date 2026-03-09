@@ -4,8 +4,19 @@
  */
 
 import { supabase } from '../config/supabase';
-import { SlackNotifier } from './SlackNotifier';
-import { EmailNotifier } from './EmailNotifier';
+
+// SlackNotifier/EmailNotifier は未実装のためスタブを使用
+class SlackNotifier {
+  async sendAlert(_message: string, _severity: string): Promise<void> {
+    console.log('[SlackNotifier] sendAlert called (stub)');
+  }
+}
+
+class EmailNotifier {
+  async sendAlert(_message: string, _severity: string): Promise<void> {
+    console.log('[EmailNotifier] sendAlert called (stub)');
+  }
+}
 
 interface AlertRule {
   id: string;

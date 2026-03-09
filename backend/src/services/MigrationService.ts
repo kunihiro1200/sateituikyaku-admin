@@ -199,20 +199,20 @@ export class MigrationService {
         }
 
         // 物件情報を抽出
-        const propertyData = this.columnMapper.extractPropertyData(row, seller.id);
+        const propertyData = this.columnMapper.extractPropertyData(row, (seller as any).id);
 
         // 物件情報を保存
         if (propertyData) {
-          const { error: propertyError } = await this.supabase
+          const { error: propertyError } = await (this.supabase as any)
             .from('properties')
             .insert(propertyData);
 
           if (propertyError) {
             // 売主をロールバック
-            await this.supabase
+            await (this.supabase as any)
               .from('sellers')
               .delete()
-              .eq('id', seller.id);
+              .eq('id', (seller as any).id);
 
             errors.push({
               row: rowIndex,

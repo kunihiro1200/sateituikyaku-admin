@@ -203,7 +203,7 @@ export class RollbackService {
     } catch (error: any) {
       await this.logger.logError('unknown', error.message, {
         operation: 'delete_snapshot',
-        snapshotId,
+        metadata: { snapshotId },
       });
       return false;
     }

@@ -42,7 +42,7 @@ async function checkStorageLocationColumn() {
       console.log(`   Column letter: ${columnLetter}\n`);
       
       // サンプルデータを取得（最初の10行）
-      const allData = await sheetsClient.getAllData();
+      const allData = await sheetsClient.readAll();
       const sampleData = allData.slice(0, 10);
       
       console.log(`📊 Sample data (first 10 rows):`);
@@ -52,9 +52,10 @@ async function checkStorageLocationColumn() {
       sampleData.forEach((row, index) => {
         const propertyNumber = row['物件番号'];
         const storageLocation = row[columnName];
+        const storageStr = storageLocation != null ? String(storageLocation) : '';
         
-        if (storageLocation && storageLocation.trim() !== '') {
-          console.log(`   ✅ ${propertyNumber}: ${storageLocation.substring(0, 60)}...`);
+        if (storageStr.trim() !== '') {
+          console.log(`   ✅ ${propertyNumber}: ${storageStr.substring(0, 60)}...`);
           withData++;
         } else {
           console.log(`   ❌ ${propertyNumber}: (empty)`);
@@ -73,7 +74,8 @@ async function checkStorageLocationColumn() {
       
       allData.forEach(row => {
         const storageLocation = row[columnName];
-        if (storageLocation && storageLocation.trim() !== '') {
+        const storageStr = storageLocation != null ? String(storageLocation) : '';
+        if (storageStr.trim() !== '') {
           totalWithData++;
         } else {
           totalWithoutData++;
