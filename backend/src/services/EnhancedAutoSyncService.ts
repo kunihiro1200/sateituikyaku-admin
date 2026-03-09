@@ -327,13 +327,11 @@ export class EnhancedAutoSyncService {
    * アクティブな契約、最近のアクティビティ、アクティブな物件リストをチェック
    */
   private async validateDeletion(sellerNumber: string): Promise<ValidationResult> {
-    const config = this.getDeletionSyncConfig();
-    
     try {
       // 売主情報を取得
       const { data: seller, error } = await this.supabase
         .from('sellers')
-        .select('*')
+        .select('id, seller_number, status')
         .eq('seller_number', sellerNumber)
         .is('deleted_at', null)
         .single();
@@ -346,54 +344,21 @@ export class EnhancedAutoSyncService {
         };
       }
 
-      const details: ValidationResult['details'] = {
-        contractStatus: seller.status,
-      };
-
-      // 1. アクティブな契約をチェック
       // 専任契約中・一般契約中の売主は削除をブロック
       const activeContractStatuses = ['専任契約中', '一般契約中'];
       if (activeContractStatuses.includes(seller.status)) {
-        details.hasActiveContract = true;
         return {
           canDelete: false,
           reason: `Active contract: ${seller.status}`,
           requiresManualReview: true,
-          details,
+          details: { contractStatus: seller.status, hasActiveContract: true },
         };
       }
 
-      // 注意: 以下のチェックは削除済み（2026-01-31）
-      // - 最近のアクティビティチェック（7日以内の更新）
-      // - 将来の電話予定チェック
-      // スプレッドシートから削除されたら即座に削除同期する
-
-      // 2. アクティブな物件リストをチェック
-      const { data: propertyListings, error: listingsError } = await this.supabase
-        .from('property_listings')
-        .select('id')
-        .eq('seller_id', seller.id)
-        .is('deleted_at', null)
-        .limit(1);
-
-      if (!listingsError && propertyListings && propertyListings.length > 0) {
-        details.hasActivePropertyListings = true;
-        
-        if (config.strictValidation) {
-          return {
-            canDelete: false,
-            reason: 'Has active property listings',
-            requiresManualReview: true,
-            details,
-          };
-        }
-      }
-
-      // すべてのチェックをパス
       return {
         canDelete: true,
         requiresManualReview: false,
-        details,
+        details: { contractStatus: seller.status },
       };
 
     } catch (error: any) {
@@ -412,85 +377,31 @@ export class EnhancedAutoSyncService {
    */
   private async executeSoftDelete(sellerNumber: string): Promise<DeletionResult> {
     try {
-      // 売主情報を取得
-      const { data: seller, error: fetchError } = await this.supabase
+      // 売主を完全削除（ハードデリート）
+      const { error: deleteError } = await this.supabase
         .from('sellers')
-        .select('*')
-        .eq('seller_number', sellerNumber)
-        .is('deleted_at', null)
-        .single();
+        .delete()
+        .eq('seller_number', sellerNumber);
 
-      if (fetchError || !seller) {
+      if (deleteError) {
+        console.error(`❌ Failed to delete seller ${sellerNumber}:`, deleteError.message);
         return {
           sellerNumber,
           success: false,
-          error: 'Seller not found',
+          error: `Seller deletion failed: ${deleteError.message}`,
         };
       }
 
-      const deletedAt = new Date();
+      console.log(`✅ ${sellerNumber}: Deleted successfully`);
 
-      // 1. 監査ログにバックアップを作成
-      const { data: auditRecord, error: auditError } = await this.supabase
-        .from('seller_deletion_audit')
-        .insert({
-          seller_id: seller.id,
-          seller_number: sellerNumber,
-          deleted_at: deletedAt.toISOString(),
-          deleted_by: 'auto_sync',
-          reason: 'Removed from spreadsheet',
-          seller_data: seller,
-          can_recover: true,
-        })
-        .select()
-        .single();
-
-      if (auditError) {
-        console.error(`❌ Failed to create audit record for ${sellerNumber}:`, auditError.message);
-        return {
-          sellerNumber,
-          success: false,
-          error: `Audit creation failed: ${auditError.message}`,
-        };
-      }
-
-      // 2. 売主をソフトデリート
-      const { error: sellerDeleteError } = await this.supabase
-        .from('sellers')
-        .update({ deleted_at: deletedAt.toISOString() })
-        .eq('id', seller.id);
-
-      if (sellerDeleteError) {
-        console.error(`❌ Failed to soft delete seller ${sellerNumber}:`, sellerDeleteError.message);
-        return {
-          sellerNumber,
-          success: false,
-          error: `Seller deletion failed: ${sellerDeleteError.message}`,
-        };
-      }
-
-      // 3. 関連物件をカスケードソフトデリート
-      const { error: propertiesDeleteError } = await this.supabase
-        .from('properties')
-        .update({ deleted_at: deletedAt.toISOString() })
-        .eq('seller_id', seller.id);
-
-      if (propertiesDeleteError) {
-        console.warn(`⚠️  Failed to cascade delete properties for ${sellerNumber}:`, propertiesDeleteError.message);
-        // 物件削除失敗は警告のみ（売主は削除済み）
-      }
-
-      console.log(`✅ ${sellerNumber}: Soft deleted successfully`);
-      
       return {
         sellerNumber,
         success: true,
-        auditId: auditRecord.id,
-        deletedAt,
+        deletedAt: new Date(),
       };
 
     } catch (error: any) {
-      console.error(`❌ Soft delete error for ${sellerNumber}:`, error.message);
+      console.error(`❌ Delete error for ${sellerNumber}:`, error.message);
       return {
         sellerNumber,
         success: false,
