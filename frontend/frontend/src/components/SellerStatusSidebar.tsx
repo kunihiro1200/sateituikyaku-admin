@@ -14,6 +14,7 @@ import {
   CategoryCounts,
   isTodayCall,
   isTodayCallWithInfo,
+  getTodayCallWithInfoLabel,
   isUnvaluated,
   isMailingPending,
   isTodayCallNotStarted,
@@ -312,6 +313,11 @@ export default function SellerStatusSidebar({
                       <Box sx={{ width: '100%' }}>
                         <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
                           {seller.sellerNumber}（{seller.name}）
+                          {category === 'todayCallWithInfo' && (
+                            <Typography component="span" variant="caption" sx={{ ml: 0.5, color: 'secondary.main', fontWeight: 'bold' }}>
+                              [{getTodayCallWithInfoLabel(seller)}]
+                            </Typography>
+                          )}
                           {seller.status && (
                             <Typography component="span" variant="caption" sx={{ ml: 0.5, color: 'text.secondary' }}>
                               ({seller.status})
