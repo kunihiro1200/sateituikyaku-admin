@@ -444,9 +444,7 @@ export default function SellerStatusSidebar({
 
       {/* 既存の固定カテゴリー */}
       {renderCategoryButton('visitScheduled', '①訪問予定', '#2e7d32')}
-      {renderCategoryButton('visitCompleted', '②訪問済み', '#1565c0')}
-      {renderCategoryButton('todayCallAssigned', '当日TEL（担当）', '#ff5722')}
-      {renderCategoryButton('todayCall', '①当日TEL分', '#d32f2f')}
+      {renderCategoryButton('todayCall', '③当日TEL分', '#d32f2f')}
       {(() => {
         // todayCallWithInfo のラベルはAPIから取得した全件対象のラベル一覧を優先使用
         // フォールバック: validSellers（表示中の売主のみ）から生成
