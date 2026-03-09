@@ -1527,16 +1527,14 @@ export class SellerService extends BaseRepository {
 
     const todayCallAssignedCount = (todayCallAssignedSellers || []).length;
 
-    // 担当者別カウント（visitAssignedCounts）: 営担あり + 次電日が今日以前 + 追客不要を含まない
-    // ステアリングドキュメント定義: 「当日TEL（担当）」= 営担あり（「外す」以外）+ 次電日が今日以前
+    // 担当者別カウント（visitAssignedCounts）: 営担あり（「外す」以外）の売主の全件数
+    // 次電日条件・追客不要除外は不要（担当に割り当てられている全売主を対象）
     const { data: allAssignedSellers } = await this.table('sellers')
       .select('visit_assignee')
       .is('deleted_at', null)
       .not('visit_assignee', 'is', null)
       .neq('visit_assignee', '')
-      .neq('visit_assignee', '外す')
-      .lte('next_call_date', todayJST)
-      .not('status', 'ilike', '%追客不要%');
+      .neq('visit_assignee', '外す');
 
     const visitAssignedCounts: Record<string, number> = {};
     (allAssignedSellers || []).forEach((s: any) => {
