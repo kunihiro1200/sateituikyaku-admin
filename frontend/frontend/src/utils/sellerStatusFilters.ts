@@ -57,6 +57,7 @@ export interface CategoryCounts {
   pinrichEmpty: number;        // Pinrich空欄（Pinrichカラムが空欄）
   visitAssignedCounts?: Record<string, number>;     // 担当者別件数（全売主）
   todayCallAssignedCounts?: Record<string, number>; // 担当者別当日TEL件数
+  todayCallWithInfoLabels?: string[];               // 当日TEL（内容）のユニークラベル一覧（全件対象）
 }
 
 /**

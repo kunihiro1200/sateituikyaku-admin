@@ -448,11 +448,18 @@ export default function SellerStatusSidebar({
       {renderCategoryButton('todayCallAssigned', '当日TEL（担当）', '#ff5722')}
       {renderCategoryButton('todayCall', '①当日TEL分', '#d32f2f')}
       {(() => {
-        // todayCallWithInfo に該当する売主のラベルをユニークに集める
-        const withInfoSellers = validSellers.filter(isTodayCallWithInfo);
-        const uniqueLabels = [...new Set(withInfoSellers.map(s => getTodayCallWithInfoLabel(s)))];
-        // ラベルから「当日TEL(」プレフィックスを除いた内容部分を抽出
-        const labelContents = uniqueLabels.map(l => l.replace(/^当日TEL\(/, '').replace(/\)$/, ''));
+        // todayCallWithInfo のラベルはAPIから取得した全件対象のラベル一覧を優先使用
+        // フォールバック: validSellers（表示中の売主のみ）から生成
+        let labelContents: string[];
+        if (categoryCounts?.todayCallWithInfoLabels && categoryCounts.todayCallWithInfoLabels.length > 0) {
+          labelContents = categoryCounts.todayCallWithInfoLabels.map(l =>
+            l.replace(/^当日TEL\(/, '').replace(/\)$/, '')
+          );
+        } else {
+          const withInfoSellers = validSellers.filter(isTodayCallWithInfo);
+          const uniqueLabels = [...new Set(withInfoSellers.map(s => getTodayCallWithInfoLabel(s)))];
+          labelContents = uniqueLabels.map(l => l.replace(/^当日TEL\(/, '').replace(/\)$/, ''));
+        }
         const dynamicLabel = labelContents.length > 0
           ? `当日TEL(${labelContents.join(', ')})`
           : '②当日TEL（内容）';

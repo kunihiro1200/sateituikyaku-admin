@@ -1481,6 +1481,7 @@ export class SellerService extends BaseRepository {
     pinrichEmpty: number;
     visitAssignedCounts: Record<string, number>;
     todayCallAssignedCounts: Record<string, number>;
+    todayCallWithInfoLabels: string[];
   }> {
     // JST今日の日付を取得
     const now = new Date();
@@ -1566,12 +1567,21 @@ export class SellerService extends BaseRepository {
     });
 
     // コミュニケーション情報があるものをカウント（当日TEL（内容））
-    const todayCallWithInfoCount = filteredTodayCallSellers.filter(s => {
+    const todayCallWithInfoSellers = filteredTodayCallSellers.filter(s => {
       const hasInfo = (s.phone_contact_person && s.phone_contact_person.trim() !== '') ||
                       (s.preferred_contact_time && s.preferred_contact_time.trim() !== '') ||
                       (s.contact_method && s.contact_method.trim() !== '');
       return hasInfo;
-    }).length;
+    });
+    const todayCallWithInfoCount = todayCallWithInfoSellers.length;
+
+    // 当日TEL（内容）のユニークラベル一覧を生成（表示優先順位: contact_method > preferred_contact_time > phone_contact_person）
+    const todayCallWithInfoLabels = [...new Set(
+      todayCallWithInfoSellers.map(s => {
+        const content = s.contact_method?.trim() || s.preferred_contact_time?.trim() || s.phone_contact_person?.trim() || '';
+        return `当日TEL(${content})`;
+      })
+    )];
 
     // コミュニケーション情報がないものをカウント（当日TEL分）
     const todayCallNoInfoCount = filteredTodayCallSellers.filter(s => {
@@ -1641,6 +1651,7 @@ export class SellerService extends BaseRepository {
       pinrichEmpty: pinrichEmptyCount || 0,
       visitAssignedCounts,
       todayCallAssignedCounts,
+      todayCallWithInfoLabels,
     };
   }
 }
