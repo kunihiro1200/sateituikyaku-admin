@@ -1039,11 +1039,12 @@ export class EnhancedAutoSyncService {
       const serial = parseInt(dateStr, 10);
       if (serial > 1000) { // 1000以上なら日付シリアル値とみなす
         // Excelの基準日: 1899-12-30（1900/2/29バグを考慮）
-        const excelEpoch = new Date(1899, 11, 30);
-        const date = new Date(excelEpoch.getTime() + serial * 86400000);
-        const y = date.getFullYear();
-        const m = String(date.getMonth() + 1).padStart(2, '0');
-        const d = String(date.getDate()).padStart(2, '0');
+        // Date.UTCを使いタイムゾーンの影響を排除
+        const excelEpochMs = Date.UTC(1899, 11, 30);
+        const date = new Date(excelEpochMs + serial * 86400000);
+        const y = date.getUTCFullYear();
+        const m = String(date.getUTCMonth() + 1).padStart(2, '0');
+        const d = String(date.getUTCDate()).padStart(2, '0');
         return `${y}-${m}-${d}`;
       }
     }
