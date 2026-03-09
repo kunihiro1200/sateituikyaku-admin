@@ -525,8 +525,17 @@ router.post('/auto', async (req: Request, res: Response) => {
 /**
  * POST /api/sync/trigger
  * 手動で強化版フル同期をトリガー（全件比較方式）
+ * GitHub Actions等の外部からの呼び出し用（CRON_SECRET認証）
  */
 router.post('/trigger', async (req: Request, res: Response) => {
+  // CRON_SECRET認証チェック
+  const authHeader = req.headers.authorization;
+  const cronSecret = process.env.CRON_SECRET;
+  if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+    console.error('[Sync Trigger] Unauthorized access attempt');
+    return res.status(401).json({ success: false, error: 'Unauthorized' });
+  }
+
   try {
     const { getEnhancedAutoSyncService } = await import('../services/EnhancedAutoSyncService');
     const { getSyncHealthChecker } = await import('../services/SyncHealthChecker');
