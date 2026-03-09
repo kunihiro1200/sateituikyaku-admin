@@ -402,11 +402,10 @@ const hasContactInfo = (seller: Seller | any): boolean => {
   const preferredContactTime = seller.preferredContactTime || seller.preferred_contact_time || '';
   const phoneContactPerson = seller.phoneContactPerson || seller.phone_contact_person || '';
   
-  return (
-    (contactMethod && contactMethod.trim() !== '') ||
-    (preferredContactTime && preferredContactTime.trim() !== '') ||
-    (phoneContactPerson && phoneContactPerson.trim() !== '')
-  );
+  // "null" 文字列も空扱い
+  const isValid = (v: string): boolean => !!(v && v.trim() !== '' && v.trim().toLowerCase() !== 'null');
+  
+  return isValid(contactMethod) || isValid(preferredContactTime) || isValid(phoneContactPerson);
 };
 
 /**
@@ -502,14 +501,17 @@ export const getTodayCallWithInfoLabel = (seller: Seller | any): string => {
   const preferredContactTime = seller.preferredContactTime || seller.preferred_contact_time || '';
   const phoneContactPerson = seller.phoneContactPerson || seller.phone_contact_person || '';
   
+  // "null" 文字列も空扱い
+  const isValid = (v: string): boolean => !!(v && v.trim() !== '' && v.trim().toLowerCase() !== 'null');
+  
   // 優先順位: 連絡方法 > 連絡取りやすい時間 > 電話担当
-  if (contactMethod && contactMethod.trim() !== '') {
+  if (isValid(contactMethod)) {
     return `当日TEL(${contactMethod})`;
   }
-  if (preferredContactTime && preferredContactTime.trim() !== '') {
+  if (isValid(preferredContactTime)) {
     return `当日TEL(${preferredContactTime})`;
   }
-  if (phoneContactPerson && phoneContactPerson.trim() !== '') {
+  if (isValid(phoneContactPerson)) {
     return `当日TEL(${phoneContactPerson})`;
   }
   
