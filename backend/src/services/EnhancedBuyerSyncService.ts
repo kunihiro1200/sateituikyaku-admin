@@ -13,6 +13,7 @@ interface SyncError {
   row: number;
   buyerNumber: string | null;
   message: string;
+  timestamp: string;
 }
 
 export interface EnhancedSyncResult extends SyncResult {
@@ -48,6 +49,8 @@ export class EnhancedBuyerSyncService {
       skipped: 0,
       errors: [],
       duration: 0,
+      totalProcessed: 0,
+      successRate: 0,
       propertyNumberStats: {
         extracted: 0,
         validated: 0,
@@ -134,6 +137,8 @@ export class EnhancedBuyerSyncService {
       skipped: 0,
       errors: [] as SyncError[],
       duration: 0,
+      totalProcessed: 0,
+      successRate: 0,
       propertyNumberStats: {
         extracted: 0,
         validated: 0,
@@ -203,7 +208,8 @@ export class EnhancedBuyerSyncService {
           result.errors.push({
             row: rowNumber,
             buyerNumber: data.buyer_number,
-            message: error.message
+            message: error.message,
+            timestamp: new Date().toISOString(),
           });
         } else {
           if (existing) {
@@ -218,7 +224,8 @@ export class EnhancedBuyerSyncService {
         result.errors.push({
           row: rowNumber,
           buyerNumber: null,
-          message: err.message
+          message: err.message,
+          timestamp: new Date().toISOString(),
         });
       }
     }

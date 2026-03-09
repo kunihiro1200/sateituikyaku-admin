@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Box, Container, CircularProgress, Typography, Alert, Button } from '@mui/material';
 import { useAuthStore } from '../store/authStore';
@@ -9,8 +9,13 @@ export default function AuthCallbackPage() {
   const [error, setError] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(true);
   const [debugInfo, setDebugInfo] = useState<string>('');
+  const hasProcessed = useRef(false);
 
   useEffect(() => {
+    // 既に処理済みの場合はスキップ（二重実行防止）
+    if (hasProcessed.current) return;
+    hasProcessed.current = true;
+
     const processCallback = async () => {
       try {
         console.log('🔵 AuthCallbackPage: Processing authentication callback...');
@@ -22,9 +27,9 @@ export default function AuthCallbackPage() {
         setError(null);
         setDebugInfo('認証情報を確認中...');
 
-        // タイムアウト設定（10秒）
+        // タイムアウト設定（30秒）
         const timeoutPromise = new Promise((_, reject) => {
-          setTimeout(() => reject(new Error('認証処理がタイムアウトしました。もう一度お試しください。')), 10000);
+          setTimeout(() => reject(new Error('認証処理がタイムアウトしました。もう一度お試しください。')), 30000);
         });
 
         await Promise.race([
@@ -41,6 +46,14 @@ export default function AuthCallbackPage() {
         }, 500);
       } catch (err) {
         console.error('❌ AuthCallbackPage: Authentication failed:', err);
+        
+        // タイムアウトエラーでも認証が成功している場合はリダイレクト
+        const currentIsAuthenticated = useAuthStore.getState().isAuthenticated;
+        if (currentIsAuthenticated) {
+          console.log('✅ AuthCallbackPage: Auth state is authenticated despite error, redirecting...');
+          navigate('/', { replace: true });
+          return;
+        }
         
         let errorMessage = '認証処理中にエラーが発生しました。';
         
@@ -64,7 +77,8 @@ export default function AuthCallbackPage() {
     }, 100);
 
     return () => clearTimeout(timer);
-  }, [handleAuthCallback, navigate]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   if (error) {
     return (

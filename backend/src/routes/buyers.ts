@@ -296,7 +296,7 @@ router.post('/:buyerId/email-history', async (req: Request, res: Response) => {
       recipientEmail,
       subject,
       body,
-      sentBy,
+      senderEmail: sentBy,
       emailType,
     });
 

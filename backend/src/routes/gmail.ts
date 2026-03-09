@@ -9,21 +9,22 @@ const buyerService = new BuyerService();
 // 買主へのGmail送信エンドポイント
 router.post('/send-to-buyer', async (req, res) => {
   try {
-    const { buyerId, propertyIds, templateId, customizations } = req.body;
+    const { buyerId, templateId, customizations } = req.body;
 
     // 買主情報を取得
-    const buyer = await buyerService.getBuyerById(buyerId);
+    const buyer = await buyerService.getById(buyerId);
     if (!buyer || !buyer.email) {
       return res.status(404).json({ error: '買主が見つからないか、メールアドレスが登録されていません' });
     }
 
     // メール送信
     const result = await emailService.sendEmailWithImages({
+      sellerId: '',
+      sellerNumber: '',
       to: buyer.email,
       subject: customizations?.subject || 'お問い合わせの物件について',
       body: customizations?.body || '',
-      propertyIds: propertyIds || [],
-      templateId: templateId
+      from: customizations?.from || '',
     });
 
     res.json({ success: true, result });

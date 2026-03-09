@@ -64,8 +64,7 @@ export class RollbackService {
       // ログを記録
       await this.logger.startSyncLog('manual', undefined, {
         operation: 'snapshot_created',
-        snapshotId: snapshot.id,
-        sellerCount,
+        metadata: { snapshotId: snapshot.id, sellerCount },
       });
 
       return {
@@ -110,8 +109,7 @@ export class RollbackService {
       // ログを開始
      await this.logger.startSyncLog('manual', undefined, {
   operation: 'rollback',
-  snapshotId,
-  targetCount: snapshotData.length,
+  metadata: { snapshotId, targetCount: snapshotData.length },
 });
 
       // トランザクション的に処理
@@ -150,8 +148,8 @@ export class RollbackService {
         error.message,
         {
           operation: 'rollback',
-          snapshotId,
           stackTrace: error.stack,
+          metadata: { snapshotId },
         }
       );
 
@@ -233,7 +231,7 @@ export class RollbackService {
     } catch (error: any) {
       await this.logger.logError('unknown', error.message, {
         operation: 'cleanup_snapshots',
-        retentionDays,
+        metadata: { retentionDays },
       });
       return 0;
     }

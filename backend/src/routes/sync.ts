@@ -2,7 +2,7 @@ import express, { Request, Response } from 'express';
 import { sheetsRateLimiter } from '../services/RateLimiter';
 import { createClient } from '@supabase/supabase-js';
 import { SyncLogger } from '../services/SyncLogger';
-import { GoogleSheetsClient } from '../services/GoogleSheetsClient';
+import { GoogleSheetsClient, SheetRow } from '../services/GoogleSheetsClient';
 import { SpreadsheetSyncService } from '../services/SpreadsheetSyncService';
 import { ManualSyncService, SyncMode } from '../services/ManualSyncService';
 import { RollbackService } from '../services/RollbackService';
@@ -255,7 +255,7 @@ router.post('/manual', async (req: Request, res: Response) => {
     
     // 差分を計算
     const diff = await syncService.compareWithCache(
-      cachedData?.data || []
+      (cachedData?.data as SheetRow[]) || []
     );
     
     // 差分を適用（リトライ機能付き）

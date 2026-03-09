@@ -221,7 +221,7 @@ recordingCleanupQueue.on('active', (job: Job<RecordingCleanupJobData>) => {
  * Helper function to add a cleanup job to the queue
  */
 export async function addRecordingCleanupJob(
-  options: RecordingCleanupJobData = {}
+  options: Partial<RecordingCleanupJobData> = {}
 ): Promise<Job<RecordingCleanupJobData>> {
   logger.info('[RecordingCleanup] Adding cleanup job to queue', options);
 
@@ -248,7 +248,7 @@ export async function addRecordingCleanupJob(
  */
 export async function scheduleRecordingCleanup(
   cronExpression: string = '0 2 * * *', // Daily at 2:00 AM
-  options: RecordingCleanupJobData = {}
+  options: Partial<RecordingCleanupJobData> = {}
 ): Promise<Bull.JobId> {
   logger.info('[RecordingCleanup] Scheduling recurring cleanup job', {
     cron: cronExpression,
@@ -364,7 +364,7 @@ export async function getCleanupQueueStats(): Promise<{
  * Run cleanup immediately (for testing or manual execution)
  */
 export async function runCleanupNow(
-  options: RecordingCleanupJobData = {}
+  options: Partial<RecordingCleanupJobData> = {}
 ): Promise<RecordingCleanupJobResult> {
   logger.info('[RecordingCleanup] Running cleanup immediately', options);
 
