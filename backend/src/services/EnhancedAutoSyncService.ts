@@ -858,7 +858,7 @@ export class EnhancedAutoSyncService {
     while (hasMore) {
       const { data: dbSellers, error } = await this.supabase
         .from('sellers')
-        .select('seller_number, status, contract_year_month, visit_assignee, phone_contact_person, preferred_contact_time, contact_method, updated_at')
+        .select('seller_number, status, contract_year_month, visit_assignee, phone_contact_person, preferred_contact_time, contact_method, next_call_date, unreachable_status, updated_at')
         .range(offset, offset + pageSize - 1);
 
       if (error) {
@@ -880,12 +880,17 @@ export class EnhancedAutoSyncService {
 
           // 重要なフィールドを比較
           const sheetContractYearMonth = sheetRow['契約年月 他決は分かった時点'];
-          const sheetVisitAssignee = sheetRow['営担'];
+          // 「外す」は空扱い（nullと同等）
+          const rawSheetVisitAssignee = sheetRow['営担'];
+          const sheetVisitAssignee = (rawSheetVisitAssignee === '外す' || rawSheetVisitAssignee === '') ? null : (rawSheetVisitAssignee || null);
           const sheetStatus = sheetRow['状況（当社）'];
           // コミュニケーションフィールドを追加
           const sheetPhoneContactPerson = sheetRow['電話担当（任意）'];
           const sheetPreferredContactTime = sheetRow['連絡取りやすい日、時間帯'];
           const sheetContactMethod = sheetRow['連絡方法'];
+          // 次電日・不通
+          const sheetNextCallDate = sheetRow['次電日'];
+          const sheetUnreachableStatus = sheetRow['不通'];
 
           // データが異なる場合は更新対象
           let needsUpdate = false;
@@ -893,7 +898,6 @@ export class EnhancedAutoSyncService {
           // contract_year_monthの比較
           if (sheetContractYearMonth && sheetContractYearMonth !== '') {
             const formattedDate = this.formatContractYearMonth(sheetContractYearMonth);
-            // DBの値は YYYY-MM-DD 形式の文字列として比較
             const dbDate = dbSeller.contract_year_month ? String(dbSeller.contract_year_month).substring(0, 10) : null;
             if (formattedDate !== dbDate) {
               needsUpdate = true;
@@ -902,13 +906,30 @@ export class EnhancedAutoSyncService {
             needsUpdate = true;
           }
 
-          // visit_assigneeの比較
-          if (sheetVisitAssignee && sheetVisitAssignee !== dbSeller.visit_assignee) {
+          // visit_assigneeの比較（空→null、「外す」→nullも検出）
+          const dbVisitAssignee = dbSeller.visit_assignee || null;
+          if (sheetVisitAssignee !== dbVisitAssignee) {
             needsUpdate = true;
           }
 
           // statusの比較
           if (sheetStatus && sheetStatus !== dbSeller.status) {
+            needsUpdate = true;
+          }
+
+          // next_call_dateの比較
+          if (sheetNextCallDate) {
+            const formattedNextCallDate = this.formatVisitDate(sheetNextCallDate);
+            const dbNextCallDate = dbSeller.next_call_date ? String(dbSeller.next_call_date).substring(0, 10) : null;
+            if (formattedNextCallDate !== dbNextCallDate) {
+              needsUpdate = true;
+            }
+          }
+
+          // unreachable_statusの比較
+          const dbUnreachableStatus = dbSeller.unreachable_status || '';
+          const sheetUnreachable = sheetUnreachableStatus || '';
+          if (sheetUnreachable !== dbUnreachableStatus) {
             needsUpdate = true;
           }
 
@@ -1166,8 +1187,14 @@ export class EnhancedAutoSyncService {
     if (visitValuationAcquirer) {
       updateData.visit_valuation_acquirer = String(visitValuationAcquirer);
     }
-    if (visitAssignee) {
+    // visit_assigneeは「外す」または空の場合はnullで更新（クリア）
+    if (visitAssignee === '外す' || visitAssignee === '') {
+      updateData.visit_assignee = null;
+    } else if (visitAssignee) {
       updateData.visit_assignee = String(visitAssignee);
+    } else {
+      // スプレッドシートで空欄の場合もnullで更新
+      updateData.visit_assignee = null;
     }
 
     // コミュニケーションフィールドを追加
@@ -1350,8 +1377,13 @@ export class EnhancedAutoSyncService {
     if (visitValuationAcquirer) {
       encryptedData.visit_valuation_acquirer = String(visitValuationAcquirer);
     }
-    if (visitAssignee) {
+    // visit_assigneeは「外す」または空の場合はnullで設定（クリア）
+    if (visitAssignee === '外す' || visitAssignee === '') {
+      encryptedData.visit_assignee = null;
+    } else if (visitAssignee) {
       encryptedData.visit_assignee = String(visitAssignee);
+    } else {
+      encryptedData.visit_assignee = null;
     }
 
     // コミュニケーションフィールドを追加
@@ -1875,19 +1907,31 @@ export class EnhancedAutoSyncService {
       console.log('🔍 SELLER_SYNC_ENABLED:', process.env.SELLER_SYNC_ENABLED);
       console.log('🔍 isSellerSyncEnabled:', isSellerSyncEnabled);
 
-      if (isSellerSyncEnabled) {
-
-
-      console.log('📥 Phase 1: Seller Addition Sync');
-
-      const missingSellers = await this.detectMissingSellers();
-      
+      // additionResult と deletionResult をブロック外で初期化
       let additionResult = {
         totalProcessed: 0,
         successfullyAdded: 0,
         successfullyUpdated: 0,
         failed: 0,
       };
+      let deletionResult: DeletionSyncResult = {
+        totalDetected: 0,
+        successfullyDeleted: 0,
+        failedToDelete: 0,
+        requiresManualReview: 0,
+        deletedSellerNumbers: [],
+        manualReviewSellerNumbers: [],
+        errors: [],
+        startedAt: new Date(),
+        completedAt: new Date(),
+        durationMs: 0,
+      };
+
+      if (isSellerSyncEnabled) {
+
+      console.log('📥 Phase 1: Seller Addition Sync');
+
+      const missingSellers = await this.detectMissingSellers();
 
       if (missingSellers.length > 0) {
         const syncResult = await this.syncMissingSellers(missingSellers);
@@ -1915,19 +1959,6 @@ export class EnhancedAutoSyncService {
       }
 
       // Phase 3: 削除同期 - 削除された売主を検出してソフトデリート
-      let deletionResult: DeletionSyncResult = {
-        totalDetected: 0,
-        successfullyDeleted: 0,
-        failedToDelete: 0,
-        requiresManualReview: 0,
-        deletedSellerNumbers: [],
-        manualReviewSellerNumbers: [],
-        errors: [],
-        startedAt: new Date(),
-        completedAt: new Date(),
-        durationMs: 0,
-      };
-
       if (this.isDeletionSyncEnabled()) {
         console.log('\n🗑️  Phase 3: Seller Deletion Sync');
         const deletedSellers = await this.detectDeletedSellers();
