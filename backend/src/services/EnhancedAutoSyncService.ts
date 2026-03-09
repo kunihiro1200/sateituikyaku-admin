@@ -858,7 +858,7 @@ export class EnhancedAutoSyncService {
     while (hasMore) {
       const { data: dbSellers, error } = await this.supabase
         .from('sellers')
-        .select('seller_number, status, contract_year_month, visit_assignee, phone_contact_person, preferred_contact_time, contact_method, next_call_date, unreachable_status, updated_at')
+        .select('seller_number, status, contract_year_month, visit_assignee, phone_contact_person, preferred_contact_time, contact_method, next_call_date, unreachable_status, inquiry_date, updated_at')
         .range(offset, offset + pageSize - 1);
 
       if (error) {
@@ -888,9 +888,11 @@ export class EnhancedAutoSyncService {
           const sheetPhoneContactPerson = sheetRow['電話担当（任意）'];
           const sheetPreferredContactTime = sheetRow['連絡取りやすい日、時間帯'];
           const sheetContactMethod = sheetRow['連絡方法'];
-          // 次電日・不通
+          // 次電日・不通・反響日付
           const sheetNextCallDate = sheetRow['次電日'];
           const sheetUnreachableStatus = sheetRow['不通'];
+          const sheetInquiryDate = sheetRow['反響日付'];
+          const sheetInquiryYear = sheetRow['反響年'];
 
           // データが異なる場合は更新対象
           let needsUpdate = false;
@@ -953,6 +955,15 @@ export class EnhancedAutoSyncService {
           const sheetContact = sheetContactMethod || '';
           if (sheetContact !== dbContactMethod) {
             needsUpdate = true;
+          }
+
+          // inquiry_dateの比較
+          if (sheetInquiryDate) {
+            const formattedInquiryDate = this.formatInquiryDate(sheetInquiryYear, sheetInquiryDate);
+            const dbInquiryDate = dbSeller.inquiry_date ? String(dbSeller.inquiry_date).substring(0, 10) : null;
+            if (formattedInquiryDate !== dbInquiryDate) {
+              needsUpdate = true;
+            }
           }
 
           if (needsUpdate) {
