@@ -450,20 +450,69 @@ export default function SellerStatusSidebar({
       {(() => {
         // todayCallWithInfo のラベルはAPIから取得した全件対象のラベル一覧を優先使用
         // フォールバック: validSellers（表示中の売主のみ）から生成
-        let labelContents: string[];
-        if (categoryCounts?.todayCallWithInfoLabels && categoryCounts.todayCallWithInfoLabels.length > 0) {
-          labelContents = categoryCounts.todayCallWithInfoLabels.map(l =>
-            l.replace(/^当日TEL\(/, '').replace(/\)$/, '')
-          );
+        let labelCountMap: Record<string, number>;
+        if (categoryCounts?.todayCallWithInfoLabelCounts && Object.keys(categoryCounts.todayCallWithInfoLabelCounts).length > 0) {
+          labelCountMap = categoryCounts.todayCallWithInfoLabelCounts;
         } else {
-          const withInfoSellers = validSellers.filter(isTodayCallWithInfo);
-          const uniqueLabels = [...new Set(withInfoSellers.map(s => getTodayCallWithInfoLabel(s)))];
-          labelContents = uniqueLabels.map(l => l.replace(/^当日TEL\(/, '').replace(/\)$/, ''));
+          // フォールバック: validSellersから生成
+          labelCountMap = {};
+          validSellers.filter(isTodayCallWithInfo).forEach(s => {
+            const label = getTodayCallWithInfoLabel(s);
+            labelCountMap[label] = (labelCountMap[label] || 0) + 1;
+          });
         }
-        const dynamicLabel = labelContents.length > 0
-          ? `当日TEL(${labelContents.join(', ')})`
-          : '②当日TEL（内容）';
-        return renderCategoryButton('todayCallWithInfo', dynamicLabel, '#9c27b0');
+
+        const labels = Object.keys(labelCountMap);
+        if (labels.length === 0) {
+          return renderCategoryButton('todayCallWithInfo', '②当日TEL（内容）', '#9c27b0');
+        }
+
+        // ラベルごとに個別ボタンを表示（件数はlabelCountMapから取得）
+        return (
+          <>
+            {labels.map(label => {
+              const count = labelCountMap[label] || 0;
+              if (count === 0) return null;
+              const isExpanded = expandedCategory === 'todayCallWithInfo';
+              const active = isActive('todayCallWithInfo');
+              return (
+                <Button
+                  key={label}
+                  fullWidth
+                  onClick={() => handleCategoryClick('todayCallWithInfo')}
+                  sx={{
+                    justifyContent: 'space-between',
+                    textAlign: 'left',
+                    fontSize: '0.85rem',
+                    py: 1,
+                    px: 1.5,
+                    color: active || isExpanded ? 'white' : '#9c27b0',
+                    bgcolor: active || isExpanded ? '#9c27b0' : 'transparent',
+                    borderRadius: 1,
+                    '&:hover': {
+                      bgcolor: active || isExpanded ? '#9c27b0' : '#9c27b015',
+                    },
+                  }}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <span>{label}</span>
+                    <Chip
+                      label={count}
+                      size="small"
+                      sx={{
+                        height: 20,
+                        fontSize: '0.7rem',
+                        bgcolor: active || isExpanded ? 'rgba(255,255,255,0.3)' : undefined,
+                        color: active || isExpanded ? 'white' : undefined,
+                      }}
+                    />
+                  </Box>
+                  <ExpandMore />
+                </Button>
+              );
+            })}
+          </>
+        );
       })()}
       {renderCategoryButton('unvaluated', '③未査定', '#ed6c02')}
       {renderCategoryButton('mailingPending', '④査定（郵送）', '#0288d1')}

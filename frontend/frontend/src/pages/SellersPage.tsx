@@ -131,6 +131,7 @@ export default function SellersPage() {
     visitAssignedCounts?: Record<string, number>;
     todayCallAssignedCounts?: Record<string, number>;
     todayCallWithInfoLabels?: string[];
+    todayCallWithInfoLabelCounts?: Record<string, number>;
   }>({
     todayCall: 0,
     todayCallWithInfo: 0,
@@ -144,6 +145,7 @@ export default function SellersPage() {
     visitAssignedCounts: {},
     todayCallAssignedCounts: {},
     todayCallWithInfoLabels: [],
+    todayCallWithInfoLabelCounts: {},
   });
   const [sidebarLoading, setSidebarLoading] = useState(true);
   // 担当者イニシャル一覧（スタッフスプレッドシートから取得）
