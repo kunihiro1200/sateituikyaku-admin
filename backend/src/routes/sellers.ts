@@ -82,8 +82,8 @@ router.get(
     query('confidenceLevel').optional().isIn(['high', 'medium', 'low']).withMessage('Invalid confidence level'),
     query('firstCaller').optional().isString().withMessage('First caller must be a string'),
     query('duplicateConfirmed').optional().isBoolean().withMessage('Duplicate confirmed must be a boolean'),
-    // サイドバーカテゴリフィルター
-    query('statusCategory').optional().isIn(['all', 'todayCall', 'todayCallWithInfo', 'todayCallAssigned', 'visitScheduled', 'visitCompleted', 'unvaluated', 'mailingPending']).withMessage('Invalid status category'),
+    // サイドバーカテゴリフィルター（visitAssigned:xxx, todayCallAssigned:xxx の動的カテゴリも許可）
+    query('statusCategory').optional().isString().withMessage('Invalid status category'),
   ],
   async (req: Request, res: Response) => {
     try {
@@ -117,7 +117,7 @@ router.get(
         firstCaller: req.query.firstCaller as string,
         duplicateConfirmed: req.query.duplicateConfirmed === 'true' ? true : req.query.duplicateConfirmed === 'false' ? false : undefined,
         // サイドバーカテゴリフィルター
-        statusCategory: req.query.statusCategory as 'all' | 'todayCall' | 'todayCallWithInfo' | 'todayCallAssigned' | 'visitScheduled' | 'visitCompleted' | 'unvaluated' | 'mailingPending',
+        statusCategory: req.query.statusCategory as any,
       };
 
       const result = await sellerService.listSellers(params);
