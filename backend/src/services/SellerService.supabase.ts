@@ -1560,14 +1560,14 @@ export class SellerService extends BaseRepository {
     const [todayCallBaseResult1, todayCallBaseResult2] = await Promise.all([
       // 「追客中」「除外後追客中」を含む（ilike）
       this.table('sellers')
-        .select('id, visit_assignee, phone_contact_person, preferred_contact_time, contact_method, unreachable_status, inquiry_date, pinrich_status, confidence, exclusion_date, status')
+        .select('id, visit_assignee, phone_contact_person, preferred_contact_time, contact_method, unreachable_status, inquiry_date, pinrich_status, confidence_level, exclusion_date, status')
         .is('deleted_at', null)
         .ilike('status', '%追客中%')
         .not('next_call_date', 'is', null)
         .lte('next_call_date', todayJST),
       // 「他決→追客」（完全一致）
       this.table('sellers')
-        .select('id, visit_assignee, phone_contact_person, preferred_contact_time, contact_method, unreachable_status, inquiry_date, pinrich_status, confidence, exclusion_date, status')
+        .select('id, visit_assignee, phone_contact_person, preferred_contact_time, contact_method, unreachable_status, inquiry_date, pinrich_status, confidence_level, exclusion_date, status')
         .is('deleted_at', null)
         .eq('status', '他決→追客')
         .not('next_call_date', 'is', null)
@@ -1657,7 +1657,7 @@ export class SellerService extends BaseRepository {
       const unreachable = (s as any).unreachable_status || '';
       if (unreachable && unreachable.trim() !== '') return false;
       // 確度が「ダブり」「D」「AI査定」の場合は除外
-      const confidence = (s as any).confidence || '';
+      const confidence = (s as any).confidence_level || '';
       if (confidence === 'ダブり' || confidence === 'D' || confidence === 'AI査定') return false;
       // 除外日にすること が空かチェック
       const exclusionDate = (s as any).exclusion_date || '';
