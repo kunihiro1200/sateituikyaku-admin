@@ -447,7 +447,17 @@ export default function SellerStatusSidebar({
       {renderCategoryButton('visitCompleted', '②訪問済み', '#1565c0')}
       {renderCategoryButton('todayCallAssigned', '当日TEL（担当）', '#ff5722')}
       {renderCategoryButton('todayCall', '①当日TEL分', '#d32f2f')}
-      {renderCategoryButton('todayCallWithInfo', '②当日TEL（内容）', '#9c27b0')}
+      {(() => {
+        // todayCallWithInfo に該当する売主のラベルをユニークに集める
+        const withInfoSellers = validSellers.filter(isTodayCallWithInfo);
+        const uniqueLabels = [...new Set(withInfoSellers.map(s => getTodayCallWithInfoLabel(s)))];
+        // ラベルから「当日TEL(」プレフィックスを除いた内容部分を抽出
+        const labelContents = uniqueLabels.map(l => l.replace(/^当日TEL\(/, '').replace(/\)$/, ''));
+        const dynamicLabel = labelContents.length > 0
+          ? `当日TEL(${labelContents.join(', ')})`
+          : '②当日TEL（内容）';
+        return renderCategoryButton('todayCallWithInfo', dynamicLabel, '#9c27b0');
+      })()}
       {renderCategoryButton('unvaluated', '③未査定', '#ed6c02')}
       {renderCategoryButton('mailingPending', '④査定（郵送）', '#0288d1')}
       {renderCategoryButton('todayCallNotStarted', '⑦当日TEL_未着手', '#ff9800')}
