@@ -1554,11 +1554,12 @@ export class SellerService extends BaseRepository {
     });
 
     // 4. 当日TEL分/当日TEL（内容）
-    // 追客中 AND 次電日が今日以前 AND 営担なしの売主を取得
+    // 追客中/除外後追客中/他決→追客 AND 次電日が今日以前 AND 営担なしの売主を取得
     const { data: todayCallBaseSellers } = await this.table('sellers')
-      .select('id, visit_assignee, phone_contact_person, preferred_contact_time, contact_method, unreachable_status, inquiry_date, pinrich_status')
+      .select('id, visit_assignee, phone_contact_person, preferred_contact_time, contact_method, unreachable_status, inquiry_date, pinrich_status, confidence, exclusion_date, status')
       .is('deleted_at', null)
-      .ilike('status', '%追客中%')
+      .or('status.ilike.%追客中%,status.ilike.%除外後追客中%,status.ilike.%他決→追客%')
+      .not('next_call_date', 'is', null)
       .lte('next_call_date', todayJST);
 
     // 営担がある売主を除外（訪問日の有無に関係なく）
@@ -1614,16 +1615,33 @@ export class SellerService extends BaseRepository {
       .is('deleted_at', null)
       .eq('mailing_status', '未');
 
-    // 7. 当日TEL_未着手（当日TEL分の条件 + 不通が空欄 + 反響日付が2026/1/1以降）
+    // 7. 当日TEL_未着手（当日TEL分の条件 + 不通が空欄 + 反響日付が2026/1/1以降 + 確度チェック + 除外日チェック）
+    // APPSHEETの「当日TEL分_未着手」条件:
+    // - 状況（当社）= "追客中"（完全一致）
+    // - 営担 = ""
+    // - 不通 = ""
+    // - 確度 <> "ダブり", "D", "AI査定"
+    // - 次電日 <= TODAY()
+    // - 除外日にすること = ""
+    // - 反響日付 >= 2026/1/1（独自設定）
     const todayCallNotStartedCount = filteredTodayCallSellers.filter(s => {
       // コミュニケーション情報が全て空（当日TEL分の条件）
       const hasInfo = (s.phone_contact_person && s.phone_contact_person.trim() !== '') ||
                       (s.preferred_contact_time && s.preferred_contact_time.trim() !== '') ||
                       (s.contact_method && s.contact_method.trim() !== '');
       if (hasInfo) return false;
+      // 状況が「追客中」のみ（完全一致、「除外後追客中」「他決→追客」は除外）
+      const status = (s as any).status || '';
+      if (status !== '追客中') return false;
       // 不通が空欄
       const unreachable = (s as any).unreachable_status || '';
       if (unreachable && unreachable.trim() !== '') return false;
+      // 確度が「ダブり」「D」「AI査定」の場合は除外
+      const confidence = (s as any).confidence || '';
+      if (confidence === 'ダブり' || confidence === 'D' || confidence === 'AI査定') return false;
+      // 除外日にすること が空かチェック
+      const exclusionDate = (s as any).exclusion_date || '';
+      if (exclusionDate && exclusionDate.trim() !== '') return false;
       // 反響日付が2026/1/1以降
       const inquiryDate = (s as any).inquiry_date || '';
       return inquiryDate >= '2026-01-01';

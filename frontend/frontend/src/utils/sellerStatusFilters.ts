@@ -365,27 +365,28 @@ export const getTodayCallAssignedLabel = (seller: Seller | any): string => {
 /**
  * 当日TELの共通条件を判定
  * 
- * 共通条件:
- * - 状況（当社）に「追客中」が含まれる
- * - 次電日が今日以前
+ * APPSHEETの「当日TEL分」条件に合わせた共通ベース:
+ * - 状況（当社）が「追客中」「除外後追客中」「他決→追客」のいずれか
+ * - 次電日が今日以前（かつ空でない）
  * 
  * @param seller 売主データ
  * @returns 当日TELの共通条件を満たすかどうか
  */
 const isTodayCallBase = (seller: Seller | any): boolean => {
-  // ステータスが追客中かチェック（状況（当社）に「追客中」が含まれる）
+  // 状況（当社）が対象ステータスかチェック
   const status = seller.status || seller.situation_company || '';
-  const isFollowingUp = typeof status === 'string' && status.includes('追客中');
+  const targetStatuses = ['追客中', '除外後追客中', '他決→追客'];
+  const isTargetStatus = typeof status === 'string' && targetStatuses.some(s => status.includes(s));
   
-  // 次電日が今日以前かチェック
-  const nextCallDate = seller.nextCallDate || seller.next_call_date;
-  const isNextCallTodayOrBefore = isTodayOrBefore(nextCallDate);
-  
-  if (!isFollowingUp) {
+  if (!isTargetStatus) {
     return false;
   }
   
-  return isNextCallTodayOrBefore;
+  // 次電日が空でないかつ今日以前かチェック
+  const nextCallDate = seller.nextCallDate || seller.next_call_date;
+  if (!nextCallDate) return false;
+  
+  return isTodayOrBefore(nextCallDate);
 };
 
 /**
@@ -618,26 +619,51 @@ export const isMailingPending = (seller: Seller | any): boolean => {
 /**
  * 当日TEL_未着手判定
  * 
- * 条件:
- * - 不通カラム（unreachableStatus）が空欄
- * - 反響日付が2026/1/1以降
- * - 当日TEL分の条件を満たす（追客中 + 次電日が今日以前 + コミュニケーション情報が全て空 + 営担なし）
+ * APPSHEETの「当日TEL分_未着手」条件:
+ * - 反響日付 >= 2026/1/1（独自設定）
+ * - 状況（当社）= "追客中"（完全一致）
+ * - 営担 = ""（isTodayCallで担保）
+ * - 不通 = ""（空欄）
+ * - 確度 <> "ダブり"
+ * - 確度 <> "D"
+ * - 確度 <> "AI査定"
+ * - 次電日 <= TODAY()（isTodayCallBaseで担保）
+ * - コミュニケーション情報が全て空（isTodayCallで担保）
+ * - 除外日にすること = ""（空）
  * 
  * @param seller 売主データ
  * @returns 当日TEL_未着手対象かどうか
  */
 export const isTodayCallNotStarted = (seller: Seller | any): boolean => {
-  // 当日TEL分の基準日: 2026/1/1（文字列比較用）
   const CUTOFF_DATE_STR = '2026-01-01';
   
-  // まず当日TEL分の条件を満たすかチェック
+  // まず当日TEL分の条件を満たすかチェック（営担なし + 追客中系 + 次電日今日以前 + コミュニケーション情報なし）
   if (!isTodayCall(seller)) {
+    return false;
+  }
+  
+  // 状況が「追客中」のみ（完全一致）
+  // 「除外後追客中」「他決→追客」は当日TEL_未着手の対象外
+  const status = seller.status || '';
+  if (status !== '追客中') {
     return false;
   }
   
   // 不通カラムが空欄かチェック
   const unreachableStatus = seller.unreachableStatus || seller.unreachable_status || '';
   if (unreachableStatus && unreachableStatus.trim() !== '') {
+    return false;
+  }
+  
+  // 確度が「ダブり」「D」「AI査定」の場合は除外
+  const confidence = seller.confidence || seller.confidenceLevel || seller.confidence_level || '';
+  if (confidence === 'ダブり' || confidence === 'D' || confidence === 'AI査定') {
+    return false;
+  }
+  
+  // 除外日にすること が空かチェック
+  const exclusionDate = seller.exclusionDate || seller.exclusion_date || '';
+  if (exclusionDate && exclusionDate.trim() !== '') {
     return false;
   }
   
