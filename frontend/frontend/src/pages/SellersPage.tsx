@@ -138,6 +138,8 @@ export default function SellersPage() {
     mailingPending: 0,
     todayCallNotStarted: 0,
     pinrichEmpty: 0,
+    visitAssignedCounts: {},
+    todayCallAssignedCounts: {},
   });
   const [sidebarLoading, setSidebarLoading] = useState(true);
   // 担当者イニシャル一覧（スタッフスプレッドシートから取得）

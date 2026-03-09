@@ -830,6 +830,30 @@ export class SellerService extends BaseRepository {
             // Pinrichが空欄
             .or('pinrich_status.is.null,pinrich_status.eq.');
           break;
+        default: {
+          // visitAssigned:xxx または todayCallAssigned:xxx の動的カテゴリ
+          const dynamicCategory = statusCategory as string;
+          if (dynamicCategory.startsWith('visitAssigned:')) {
+            const assignee = dynamicCategory.replace('visitAssigned:', '');
+            // 訪問予定（営担が指定のイニシャル AND 訪問日が今日以降）
+            query = query
+              .not('visit_assignee', 'is', null)
+              .neq('visit_assignee', '')
+              .neq('visit_assignee', '外す')
+              .eq('visit_assignee', assignee)
+              .gte('visit_date', todayJST);
+          } else if (dynamicCategory.startsWith('todayCallAssigned:')) {
+            const assignee = dynamicCategory.replace('todayCallAssigned:', '');
+            // 当日TEL（担当）（営担が指定のイニシャル AND 次電日が今日以前）
+            query = query
+              .not('visit_assignee', 'is', null)
+              .neq('visit_assignee', '')
+              .neq('visit_assignee', '外す')
+              .eq('visit_assignee', assignee)
+              .lte('next_call_date', todayJST);
+          }
+          break;
+        }
       }
     }
 
