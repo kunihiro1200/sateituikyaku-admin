@@ -841,6 +841,162 @@ export class BuyerService {
   }
 
   /**
+   * エリア・種別・価格で買主をフィルタリングして返す（近隣買主機能用）
+   */
+  async getBuyersByAreas(
+    areas: string[],
+    propertyType: string | null,
+    salesPrice: number | null
+  ): Promise<any[]> {
+    // 全買主を取得
+    const { data: buyers, error } = await this.supabase
+      .from('buyers')
+      .select(`
+        id,
+        buyer_number,
+        name,
+        desired_area,
+        desired_property_type,
+        distribution_type,
+        broker_inquiry,
+        inquiry_source,
+        latest_status,
+        latest_viewing_date,
+        reception_date,
+        inquiry_hearing,
+        viewing_result_follow_up,
+        email,
+        phone_number,
+        property_address,
+        inquiry_property_type,
+        inquiry_price,
+        price_range_house,
+        price_range_apartment,
+        price_range_land
+      `)
+      .order('reception_date', { ascending: false, nullsFirst: false });
+
+    if (error) {
+      throw new Error(`Failed to fetch buyers: ${error.message}`);
+    }
+
+    const allBuyers = buyers || [];
+
+    // エリア番号を抽出（丸数字）
+    const extractAreaNumbers = (areaString: string): string[] => {
+      return areaString.match(/[①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯㊵㊶]/g) || [];
+    };
+
+    // 種別を正規化
+    const normalizePropertyType = (type: string): string => {
+      return type.trim()
+        .replace(/中古/g, '')
+        .replace(/新築/g, '')
+        .replace(/一戸建て/g, '戸建')
+        .replace(/一戸建/g, '戸建')
+        .replace(/戸建て/g, '戸建')
+        .replace(/分譲/g, '')
+        .trim();
+    };
+
+    // 価格帯チェック
+    const matchesPriceRange = (priceRange: string, price: number): boolean => {
+      const cleaned = priceRange
+        .replace(/,/g, '')
+        .replace(/円/g, '')
+        .replace(/万/g, '0000')
+        .replace(/億/g, '00000000')
+        .trim();
+
+      const rangeMatch = cleaned.match(/(\d+)?\s*[〜～\-]\s*(\d+)?/);
+      if (rangeMatch) {
+        const min = rangeMatch[1] ? parseInt(rangeMatch[1], 10) : 0;
+        const max = rangeMatch[2] ? parseInt(rangeMatch[2], 10) : Number.MAX_SAFE_INTEGER;
+        return price >= min && price <= max;
+      }
+      const aboveMatch = cleaned.match(/(\d+)\s*以上/);
+      if (aboveMatch) return price >= parseInt(aboveMatch[1], 10);
+      const belowMatch = cleaned.match(/(\d+)\s*以下/);
+      if (belowMatch) return price <= parseInt(belowMatch[1], 10);
+      return true;
+    };
+
+    const propertyAreaNumbers = extractAreaNumbers(areas.join(''));
+
+    const filtered = allBuyers.filter(buyer => {
+      // 業者問合せ除外
+      const inquirySource = (buyer.inquiry_source || '').trim();
+      const distributionType = (buyer.distribution_type || '').trim();
+      const brokerInquiry = (buyer.broker_inquiry || '').trim();
+      if (
+        inquirySource.includes('業者') ||
+        distributionType.includes('業者') ||
+        (brokerInquiry && brokerInquiry !== '' && brokerInquiry !== '0' && brokerInquiry.toLowerCase() !== 'false')
+      ) return false;
+
+      // 配信種別「要」チェック
+      if (distributionType !== '要') return false;
+
+      // 最新状況チェック（買付・D除外）
+      const latestStatus = (buyer.latest_status || '').trim();
+      if (latestStatus.includes('買付') || latestStatus.includes('D')) return false;
+
+      // エリアチェック
+      const desiredArea = (buyer.desired_area || '').trim();
+      if (desiredArea) {
+        const buyerAreaNumbers = extractAreaNumbers(desiredArea);
+        if (!propertyAreaNumbers.some(a => buyerAreaNumbers.includes(a))) return false;
+      }
+
+      // 種別チェック
+      const desiredType = (buyer.desired_property_type || '').trim();
+      if (desiredType && desiredType !== '指定なし' && propertyType) {
+        const normalizedPropType = normalizePropertyType(propertyType);
+        const normalizedDesiredTypes = desiredType.split(/[,、\s]+/).map(normalizePropertyType);
+        if (!normalizedDesiredTypes.some(dt =>
+          dt === normalizedPropType ||
+          normalizedPropType.includes(dt) ||
+          dt.includes(normalizedPropType)
+        )) return false;
+      }
+
+      // 価格チェック
+      if (salesPrice && propertyType) {
+        const normalizedType = normalizePropertyType(propertyType);
+        let priceRange: string | null = null;
+        if (normalizedType.includes('戸建')) priceRange = buyer.price_range_house;
+        else if (normalizedType.includes('マンション')) priceRange = buyer.price_range_apartment;
+        else if (normalizedType.includes('土地')) priceRange = buyer.price_range_land;
+
+        if (priceRange && priceRange.trim()) {
+          if (!matchesPriceRange(priceRange, salesPrice)) return false;
+        }
+      }
+
+      return true;
+    });
+
+    // NearbyBuyersList の NearbyBuyer インターフェースに合わせて整形
+    return filtered.map(buyer => ({
+      buyer_number: buyer.buyer_number,
+      name: buyer.name,
+      distribution_areas: buyer.desired_area
+        ? (buyer.desired_area.match(/[①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯㊵㊶][^①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯㊵㊶]*/g) || [])
+        : [],
+      latest_status: buyer.latest_status,
+      latest_viewing_date: buyer.latest_viewing_date,
+      reception_date: buyer.reception_date,
+      inquiry_hearing: buyer.inquiry_hearing,
+      viewing_result_follow_up: buyer.viewing_result_follow_up,
+      email: buyer.email,
+      phone_number: buyer.phone_number,
+      property_address: buyer.property_address,
+      inquiry_property_type: buyer.inquiry_property_type,
+      inquiry_price: buyer.inquiry_price,
+    }));
+  }
+
+  /**
    * Get inquiry history for buyer detail page
    * Returns all property inquiries associated with current and past buyer numbers
    * @param buyerId - The buyer ID
