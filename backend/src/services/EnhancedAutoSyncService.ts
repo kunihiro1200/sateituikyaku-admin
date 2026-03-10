@@ -989,7 +989,29 @@ export class EnhancedAutoSyncService {
   private formatVisitDate(value: any): string | null {
     if (!value || value === '') return null;
     
+    // 数値の場合（Excelシリアル値）
+    // ColumnMapper.parseDateと同じロジックを使用
+    if (typeof value === 'number') {
+      const excelEpochMs = Date.UTC(1899, 11, 31); // 1899-12-31 UTC
+      const date = new Date(excelEpochMs + (value - 1) * 86400000);
+      const year = date.getUTCFullYear();
+      const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+      const day = String(date.getUTCDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
+    
     const str = String(value).trim();
+    
+    // 文字列が純粋な数値の場合もシリアル値として処理
+    if (str.match(/^\d+$/) && parseInt(str, 10) > 1000) {
+      const serial = parseInt(str, 10);
+      const excelEpochMs = Date.UTC(1899, 11, 31);
+      const date = new Date(excelEpochMs + (serial - 1) * 86400000);
+      const year = date.getUTCFullYear();
+      const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+      const day = String(date.getUTCDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
     
     // YYYY/MM/DD 形式の場合
     if (str.match(/^\d{4}\/\d{1,2}\/\d{1,2}$/)) {
