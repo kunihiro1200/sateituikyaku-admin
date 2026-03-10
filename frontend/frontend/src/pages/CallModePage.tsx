@@ -308,6 +308,7 @@ const CallModePage = () => {
   const [saving, setSaving] = useState(false);
   const [unreachableStatus, setUnreachableStatus] = useState<string | null>(null);
   const [copiedSellerNumber, setCopiedSellerNumber] = useState(false); // 売主番号コピー完了フラグ
+  const [showNearbyBuyers, setShowNearbyBuyers] = useState(false); // 近隣買主表示フラグ
 
   // 通話メモ入力欄の状態
   const [callMemo, setCallMemo] = useState<string>('');
@@ -2480,11 +2481,16 @@ HP：https://ifoo-oita.com/
           </Button>
           {seller?.id && (
             <Button
+              type="button"
               variant="contained"
               color="secondary"
-              onClick={() => window.open(`/sellers/${seller.id}/nearby-buyers`, '_blank')}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setShowNearbyBuyers(prev => !prev);
+              }}
               sx={{ ml: 1, fontWeight: 'bold' }}
-              title="近隣買主を開く"
+              title="近隣買主を表示/非表示"
             >
               近隣買主
             </Button>
@@ -5105,6 +5111,13 @@ HP：https://ifoo-oita.com/
                 </Grid>
               </Paper>
             </Box>
+
+            {/* 近隣買主セクション */}
+            {showNearbyBuyers && seller?.id && (
+              <CollapsibleSection title="近隣買主" defaultExpanded={true} headerColor="success.light">
+                <NearbyBuyersList sellerId={seller.id} />
+              </CollapsibleSection>
+            )}
 
             {/* 実績セクション */}
             <CollapsibleSection title="実績" defaultExpanded={false} headerColor="success.light">

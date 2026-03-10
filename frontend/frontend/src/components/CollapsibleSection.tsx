@@ -6,6 +6,7 @@ interface CollapsibleSectionProps {
   title: string;
   count?: number;
   defaultExpanded?: boolean;
+  headerColor?: string;
   children: React.ReactNode;
 }
 
@@ -19,6 +20,7 @@ const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
   title,
   count,
   defaultExpanded = false,
+  headerColor,
   children,
 }) => {
   const [expanded, setExpanded] = useState(defaultExpanded);
@@ -35,10 +37,10 @@ const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
           justifyContent: 'space-between',
           alignItems: 'center',
           p: 0.75,
-          bgcolor: 'grey.50',
+          bgcolor: headerColor || 'grey.50',
           cursor: 'pointer',
           '&:hover': {
-            bgcolor: 'grey.100',
+            filter: 'brightness(0.95)',
           },
         }}
         onClick={handleToggle}

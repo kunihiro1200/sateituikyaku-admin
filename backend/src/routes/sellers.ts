@@ -766,4 +766,93 @@ router.get(
   }
 );
 
+/**
+ * 売主の近隣買主リストを取得
+ * GET /api/sellers/:id/nearby-buyers
+ */
+router.get('/:id/nearby-buyers', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    console.log(`🔍 Getting nearby buyers for seller ${id}`);
+
+    const seller = await sellerService.getSeller(id);
+    if (!seller) {
+      return res.status(404).json({
+        error: { code: 'NOT_FOUND', message: 'Seller not found', retryable: false },
+      });
+    }
+
+    if (!seller.propertyAddress) {
+      return res.json({
+        buyers: [],
+        matchedAreas: [],
+        propertyAddress: null,
+        propertyType: null,
+        salesPrice: null,
+        message: '物件住所が設定されていません',
+      });
+    }
+
+    const { PropertyDistributionAreaCalculator } = await import('../services/PropertyDistributionAreaCalculator');
+    const { CityNameExtractor } = await import('../services/CityNameExtractor');
+    const calculator = new PropertyDistributionAreaCalculator();
+    const cityExtractor = new CityNameExtractor();
+
+    const googleMapUrl = (seller as any).googleMapUrl || null;
+    const propertyType = seller.propertyType || null;
+
+    // 査定額の中央値を売出価格として使用
+    let salesPrice: number | null = null;
+    const valuations = [
+      seller.valuationAmount1,
+      seller.valuationAmount2,
+      seller.valuationAmount3,
+    ].filter(v => v !== null && v !== undefined) as number[];
+    if (valuations.length > 0) {
+      valuations.sort((a, b) => a - b);
+      const mid = Math.floor(valuations.length / 2);
+      salesPrice = valuations.length % 2 === 0
+        ? (valuations[mid - 1] + valuations[mid]) / 2
+        : valuations[mid];
+    }
+
+    const city = cityExtractor.extractCityFromAddress(seller.propertyAddress);
+    const result = await calculator.calculateDistributionAreas(googleMapUrl, city, seller.propertyAddress);
+
+    if (!result.areas || result.areas.length === 0) {
+      return res.json({
+        buyers: [],
+        matchedAreas: [],
+        propertyAddress: seller.propertyAddress,
+        propertyType,
+        salesPrice,
+        message: '配布エリアを特定できませんでした',
+      });
+    }
+
+    const { BuyerService } = await import('../services/BuyerService');
+    const buyerService = new BuyerService();
+    const buyers = await buyerService.getBuyersByAreas(result.areas, propertyType, salesPrice);
+
+    console.log(`✅ Found ${buyers.length} nearby buyers for seller ${id}`);
+
+    res.json({
+      buyers,
+      matchedAreas: result.areas,
+      propertyAddress: seller.propertyAddress,
+      propertyType,
+      salesPrice,
+    });
+  } catch (error) {
+    console.error('Get nearby buyers error:', error);
+    res.status(500).json({
+      error: {
+        code: 'GET_NEARBY_BUYERS_ERROR',
+        message: error instanceof Error ? error.message : 'Failed to get nearby buyers',
+        retryable: true,
+      },
+    });
+  }
+});
+
 export default router;
