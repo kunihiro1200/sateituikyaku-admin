@@ -25,7 +25,21 @@ router.get('/', async (req: Request, res: Response) => {
       dateTo,
       sortBy = 'reception_date',
       sortOrder = 'desc',
+      withStatus,
+      calculatedStatus,
     } = req.query;
+
+    // withStatus=true かつ calculatedStatus 指定の場合はステータスフィルタリング
+    if (withStatus === 'true' && calculatedStatus) {
+      const buyers = await buyerService.getBuyersByStatus(calculatedStatus as string);
+      return res.json({ data: buyers, total: buyers.length, page: 1, limit: buyers.length, totalPages: 1 });
+    }
+
+    // withStatus=true の場合はステータス付きで全件取得
+    if (withStatus === 'true') {
+      const buyers = await buyerService.getBuyersWithStatus();
+      return res.json({ data: buyers, total: buyers.length, page: 1, limit: buyers.length, totalPages: 1 });
+    }
 
     const result = await buyerService.getAll({
       page: parseInt(page as string, 10),
@@ -53,6 +67,17 @@ router.get('/stats', async (_req: Request, res: Response) => {
     res.json(stats);
   } catch (error: any) {
     console.error('Error fetching buyer stats:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ステータスカテゴリ一覧取得（サイドバー用）
+router.get('/status-categories', async (_req: Request, res: Response) => {
+  try {
+    const categories = await buyerService.getStatusCategories();
+    res.json(categories);
+  } catch (error: any) {
+    console.error('Error fetching status categories:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -748,6 +773,55 @@ router.put('/:id', async (req: Request, res: Response) => {
       return res.status(404).json({ error: error.message });
     }
     
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 買主を論理削除
+router.delete('/:id', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+    let buyerId = id;
+    if (!isUuid) {
+      const buyer = await buyerService.getByBuyerNumber(id);
+      if (!buyer) {
+        return res.status(404).json({ error: 'Buyer not found' });
+      }
+      buyerId = buyer.id;
+    }
+
+    await buyerService.softDelete(buyerId);
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error('Error deleting buyer:', error);
+    if (error.message === 'Buyer not found') {
+      return res.status(404).json({ error: error.message });
+    }
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 論理削除した買主を復元
+router.post('/:id/restore', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+    let buyerId = id;
+    if (!isUuid) {
+      const buyer = await buyerService.getByBuyerNumber(id, true); // includeDeleted=true
+      if (!buyer) {
+        return res.status(404).json({ error: 'Buyer not found' });
+      }
+      buyerId = buyer.id;
+    }
+
+    const restored = await buyerService.restore(buyerId);
+    res.json(restored);
+  } catch (error: any) {
+    console.error('Error restoring buyer:', error);
     res.status(500).json({ error: error.message });
   }
 });

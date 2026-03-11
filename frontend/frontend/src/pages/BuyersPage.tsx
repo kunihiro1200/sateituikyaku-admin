@@ -26,6 +26,7 @@ import { Search as SearchIcon, Sync as SyncIcon } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import PageNavigation from '../components/PageNavigation';
+import BuyerStatusSidebar from '../components/BuyerStatusSidebar';
 
 interface Buyer {
   id: string;
@@ -42,6 +43,8 @@ interface Buyer {
   next_call_date: string;
   desired_area: string;
   desired_property_type: string;
+  calculated_status?: string;
+  status_color?: string;
 }
 
 export default function BuyersPage() {
@@ -55,6 +58,7 @@ export default function BuyersPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedAssignee, setSelectedAssignee] = useState<string | null>(null);
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
+  const [selectedCalculatedStatus, setSelectedCalculatedStatus] = useState<string | null>(null);
   const [stats, setStats] = useState<{
     total: number;
     byStatus: Record<string, number>;
@@ -65,7 +69,7 @@ export default function BuyersPage() {
   useEffect(() => {
     fetchBuyers();
     fetchStats();
-  }, [page, rowsPerPage, searchQuery, selectedAssignee, selectedStatus]);
+  }, [page, rowsPerPage, searchQuery, selectedAssignee, selectedStatus, selectedCalculatedStatus]);
 
   const fetchBuyers = async () => {
     try {
@@ -79,6 +83,12 @@ export default function BuyersPage() {
       if (searchQuery) params.search = searchQuery;
       if (selectedAssignee) params.assignee = selectedAssignee;
       if (selectedStatus) params.status = selectedStatus;
+
+      // 計算ステータスフィルタが選択されている場合
+      if (selectedCalculatedStatus !== null) {
+        params.withStatus = 'true';
+        params.calculatedStatus = selectedCalculatedStatus;
+      }
 
       const res = await api.get('/api/buyers', { params });
       setBuyers(res.data.data || []);
@@ -137,18 +147,6 @@ export default function BuyersPage() {
     return list;
   }, [stats]);
 
-  // サイドバー用のステータスリスト
-  const statusList = useMemo(() => {
-    if (!stats) return [];
-    const list = [{ key: 'all', label: 'All', count: stats.total }];
-    Object.entries(stats.byStatus)
-      .sort((a, b) => b[1] - a[1])
-      .forEach(([key, count]) => {
-        list.push({ key, label: key, count });
-      });
-    return list;
-  }, [stats]);
-
   return (
     <Container maxWidth="xl" sx={{ py: 3 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
@@ -177,29 +175,15 @@ export default function BuyersPage() {
       <Box sx={{ display: 'flex', gap: 2 }}>
         {/* 左サイドバー */}
         <Paper sx={{ width: 220, flexShrink: 0 }}>
-          <Box sx={{ p: 2, borderBottom: '1px solid #eee' }}>
-            <Typography variant="subtitle1" fontWeight="bold">ステータス</Typography>
-          </Box>
-          <List dense sx={{ maxHeight: 'calc(40vh - 100px)', overflow: 'auto' }}>
-            {statusList.map((item) => (
-              <ListItemButton
-                key={item.key}
-                selected={selectedStatus === item.key || (!selectedStatus && item.key === 'all')}
-                onClick={() => { setSelectedStatus(item.key === 'all' ? null : item.key); setPage(0); }}
-                sx={{ py: 0.5 }}
-              >
-                <ListItemText 
-                  primary={item.label} 
-                  primaryTypographyProps={{ variant: 'body2', noWrap: true }}
-                  sx={{ flex: 1, minWidth: 0 }}
-                />
-                <Badge badgeContent={item.count} color="primary" max={9999} sx={{ ml: 1 }} />
-              </ListItemButton>
-            ))}
-          </List>
-          
+          {/* 計算ステータスサイドバー */}
+          <BuyerStatusSidebar
+            selectedStatus={selectedCalculatedStatus}
+            onStatusSelect={(status) => { setSelectedCalculatedStatus(status); setPage(0); }}
+            totalCount={total}
+          />
+
           <Divider />
-          
+
           <Box sx={{ p: 2, borderBottom: '1px solid #eee' }}>
             <Typography variant="subtitle1" fontWeight="bold">担当者</Typography>
           </Box>
@@ -309,6 +293,13 @@ export default function BuyersPage() {
                               label={buyer.latest_status.substring(0, 20)} 
                               size="small" 
                               sx={{ maxWidth: 150 }}
+                            />
+                          )}
+                          {buyer.calculated_status && (
+                            <Chip
+                              label={buyer.calculated_status.substring(0, 20)}
+                              size="small"
+                              sx={{ maxWidth: 150, mt: 0.5, bgcolor: buyer.status_color || '#cccccc', color: '#fff' }}
                             />
                           )}
                         </TableCell>

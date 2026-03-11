@@ -6,6 +6,7 @@ import { ConflictResolver, ConflictInfo } from './ConflictResolver';
 import { RetryHandler } from './RetryHandler';
 import { BuyerColumnMapper } from './BuyerColumnMapper';
 import { GoogleSheetsClient } from './GoogleSheetsClient';
+import { calculateBuyerStatus } from './BuyerStatusCalculator';
 
 export interface BuyerQueryOptions {
   page?: number;
@@ -99,7 +100,8 @@ export class BuyerService {
 
     let query = this.supabase
       .from('buyers')
-      .select('*', { count: 'exact' });
+      .select('*', { count: 'exact' })
+      .is('deleted_at', null); // 論理削除済みを除外
 
     // 検索
     if (search) {
@@ -173,13 +175,18 @@ export class BuyerService {
   /**
    * 買主番号で買主を取得
    */
-  async getByBuyerNumber(buyerNumber: string): Promise<any | null> {
+  async getByBuyerNumber(buyerNumber: string, includeDeleted: boolean = false): Promise<any | null> {
     console.log(`[BuyerService.getByBuyerNumber] buyerNumber=${buyerNumber}`);
-    const { data, error } = await this.supabase
+    let query = this.supabase
       .from('buyers')
       .select('*')
-      .eq('buyer_number', buyerNumber)
-      .single();
+      .eq('buyer_number', buyerNumber);
+
+    if (!includeDeleted) {
+      query = query.is('deleted_at', null);
+    }
+
+    const { data, error } = await query.single();
 
     if (error) {
       console.log(`[BuyerService.getByBuyerNumber] error:`, error);
@@ -852,7 +859,6 @@ export class BuyerService {
     const { data: buyers, error } = await this.supabase
       .from('buyers')
       .select(`
-        id,
         buyer_number,
         name,
         desired_area,
@@ -868,8 +874,7 @@ export class BuyerService {
         email,
         phone_number,
         property_address,
-        inquiry_property_type,
-        inquiry_price,
+        property_type,
         price_range_house,
         price_range_apartment,
         price_range_land
@@ -937,9 +942,9 @@ export class BuyerService {
       // 配信種別「要」チェック
       if (distributionType !== '要') return false;
 
-      // 最新状況チェック（買付・D除外）
+      // 最新状況チェック（買付・D・E除外）
       const latestStatus = (buyer.latest_status || '').trim();
-      if (latestStatus.includes('買付') || latestStatus.includes('D')) return false;
+      if (latestStatus.includes('買付') || latestStatus.includes('D') || latestStatus.includes('E')) return false;
 
       // エリアチェック
       const desiredArea = (buyer.desired_area || '').trim();
@@ -991,8 +996,8 @@ export class BuyerService {
       email: buyer.email,
       phone_number: buyer.phone_number,
       property_address: buyer.property_address,
-      inquiry_property_type: buyer.inquiry_property_type,
-      inquiry_price: buyer.inquiry_price,
+      inquiry_property_type: buyer.property_type,
+      inquiry_price: null,
     }));
   }
 
@@ -1117,5 +1122,120 @@ export class BuyerService {
     });
 
     return history;
+  }
+
+  /**
+   * ステータス付きで買主リストを取得
+   */
+  async getBuyersWithStatus(options: BuyerQueryOptions = {}): Promise<any[]> {
+    const { data, error } = await this.supabase
+      .from('buyers')
+      .select('*')
+      .is('deleted_at', null)
+      .order('reception_date', { ascending: false, nullsFirst: false });
+
+    if (error) {
+      throw new Error(`Failed to fetch buyers with status: ${error.message}`);
+    }
+
+    const buyers = data || [];
+    return buyers.map(buyer => {
+      const result = calculateBuyerStatus(buyer);
+      return {
+        ...buyer,
+        calculated_status: result.status,
+        status_color: result.color,
+        status_priority: result.priority,
+      };
+    });
+  }
+
+  /**
+   * サイドバー用ステータスカテゴリ一覧を取得
+   */
+  async getStatusCategories(): Promise<Array<{
+    status: string;
+    count: number;
+    color: string;
+    priority: number;
+  }>> {
+    const buyers = await this.getBuyersWithStatus();
+
+    const categoryMap = new Map<string, { count: number; color: string; priority: number }>();
+
+    for (const buyer of buyers) {
+      const status = buyer.calculated_status || '';
+      const existing = categoryMap.get(status);
+      if (existing) {
+        existing.count++;
+      } else {
+        categoryMap.set(status, {
+          count: 1,
+          color: buyer.status_color || '#cccccc',
+          priority: buyer.status_priority || 0,
+        });
+      }
+    }
+
+    const categories = Array.from(categoryMap.entries()).map(([status, info]) => ({
+      status,
+      count: info.count,
+      color: info.color,
+      priority: info.priority,
+    }));
+
+    // 優先度順にソート（優先度が高い＝数値が小さい順）
+    categories.sort((a, b) => {
+      if (a.priority === 0 && b.priority !== 0) return 1;
+      if (b.priority === 0 && a.priority !== 0) return -1;
+      return a.priority - b.priority;
+    });
+
+    return categories;
+  }
+
+  /**
+   * ステータスでフィルタリングして買主を取得
+   */
+  async getBuyersByStatus(status: string, options: BuyerQueryOptions = {}): Promise<any[]> {
+    const buyers = await this.getBuyersWithStatus(options);
+    return buyers.filter(b => b.calculated_status === status);
+  }
+
+  /**
+   * 買主を論理削除
+   */
+  async softDelete(id: string): Promise<void> {
+    const existing = await this.getById(id);
+    if (!existing) {
+      throw new Error('Buyer not found');
+    }
+
+    const { error } = await this.supabase
+      .from('buyers')
+      .update({ deleted_at: new Date().toISOString() })
+      .eq('id', id);
+
+    if (error) {
+      throw new Error(`Failed to delete buyer: ${error.message}`);
+    }
+  }
+
+  /**
+   * 論理削除した買主を復元
+   */
+  async restore(id: string): Promise<any> {
+    const { data, error } = await this.supabase
+      .from('buyers')
+      .update({ deleted_at: null })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      throw new Error(`Failed to restore buyer: ${error.message}`);
+    }
+
+    return data;
   }
 }
