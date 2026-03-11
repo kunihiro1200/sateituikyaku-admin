@@ -210,41 +210,90 @@ export class BuyerSyncService {
           .eq('buyer_number', data.buyer_number)
           .single();
 
-        // Upsert
+        // Upsert（UNIQUE制約が適用されている場合）
+        const syncData = {
+          ...data,
+          last_synced_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        };
+
         const { error } = await this.supabase
           .from('buyers')
-          .upsert(
-            { 
-              ...data, 
-              last_synced_at: new Date().toISOString(),
-              updated_at: new Date().toISOString()
-            },
-            { onConflict: 'buyer_number' }
-          );
+          .upsert(syncData, { onConflict: 'buyer_number' });
 
         if (error) {
-          console.error(`Error syncing row ${rowNumber} (${data.buyer_number}):`, error.message);
-          result.failed++;
-          
-          // Determine error type
-          let errorType = SyncErrorType.UNKNOWN_ERROR;
-          if (error.message.includes('network') || error.message.includes('timeout')) {
-            errorType = SyncErrorType.NETWORK_ERROR;
-          } else if (error.message.includes('database') || error.message.includes('connection')) {
-            errorType = SyncErrorType.DATABASE_ERROR;
-          } else if (error.message.includes('validation') || error.message.includes('constraint')) {
-            errorType = SyncErrorType.VALIDATION_ERROR;
-          } else if (error.message.includes('schema') || error.message.includes('column')) {
-            errorType = SyncErrorType.SCHEMA_ERROR;
+          // error.code と error.details を含む詳細ログ（UNIQUE制約エラー等の根本原因特定のため）
+          console.error(`Error syncing row ${rowNumber} (${data.buyer_number}):`, error.message, error.code, error.details);
+          const errorCode = error.code;
+          const errorDetails = error.details;
+
+          // UNIQUE制約が未適用の場合（PostgreSQL: 42P10）、insert + updateの2段階処理にフォールバック
+          if (errorCode === '42P10' || errorCode === '23505') {
+            console.warn(`Falling back to insert+update for row ${rowNumber} (${data.buyer_number}) due to upsert error: ${errorCode}`);
+            
+            if (existing) {
+              // 既存レコードを更新
+              const { error: updateError } = await this.supabase
+                .from('buyers')
+                .update(syncData)
+                .eq('buyer_number', data.buyer_number);
+              
+              if (updateError) {
+                console.error(`Update fallback failed for row ${rowNumber} (${data.buyer_number}):`, updateError.message);
+                result.failed++;
+                result.errors.push({
+                  row: rowNumber,
+                  buyerNumber: data.buyer_number,
+                  message: updateError.message,
+                  timestamp: new Date().toISOString(),
+                  errorType: SyncErrorType.DATABASE_ERROR
+                });
+              } else {
+                result.updated++;
+              }
+            } else {
+              // 新規レコードを挿入
+              const { error: insertError } = await this.supabase
+                .from('buyers')
+                .insert(syncData);
+              
+              if (insertError) {
+                console.error(`Insert fallback failed for row ${rowNumber} (${data.buyer_number}):`, insertError.message);
+                result.failed++;
+                result.errors.push({
+                  row: rowNumber,
+                  buyerNumber: data.buyer_number,
+                  message: insertError.message,
+                  timestamp: new Date().toISOString(),
+                  errorType: SyncErrorType.DATABASE_ERROR
+                });
+              } else {
+                result.created++;
+              }
+            }
+          } else {
+            result.failed++;
+            
+            // Determine error type
+            let errorType = SyncErrorType.UNKNOWN_ERROR;
+            if (error.message.includes('network') || error.message.includes('timeout')) {
+              errorType = SyncErrorType.NETWORK_ERROR;
+            } else if (error.message.includes('database') || error.message.includes('connection')) {
+              errorType = SyncErrorType.DATABASE_ERROR;
+            } else if (error.message.includes('validation') || error.message.includes('constraint')) {
+              errorType = SyncErrorType.VALIDATION_ERROR;
+            } else if (error.message.includes('schema') || error.message.includes('column')) {
+              errorType = SyncErrorType.SCHEMA_ERROR;
+            }
+            
+            result.errors.push({
+              row: rowNumber,
+              buyerNumber: data.buyer_number,
+              message: error.message,
+              timestamp: new Date().toISOString(),
+              errorType
+            });
           }
-          
-          result.errors.push({
-            row: rowNumber,
-            buyerNumber: data.buyer_number,
-            message: error.message,
-            timestamp: new Date().toISOString(),
-            errorType
-          });
         } else {
           if (existing) {
             result.updated++;
