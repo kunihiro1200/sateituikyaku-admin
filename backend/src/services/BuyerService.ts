@@ -159,7 +159,7 @@ export class BuyerService {
     const { data, error } = await this.supabase
       .from('buyers')
       .select('*')
-      .eq('id', id)
+      .eq('buyer_id', id)
       .single();
 
     if (error) {
@@ -207,7 +207,7 @@ export class BuyerService {
   async search(query: string, limit: number = 20): Promise<any[]> {
     const { data, error } = await this.supabase
       .from('buyers')
-      .select('id, buyer_number, name, phone_number, email, property_number, latest_status, initial_assignee')
+      .select('buyer_id, buyer_number, name, phone_number, email, property_number, latest_status, initial_assignee')
       .or(
         `buyer_number.ilike.%${query}%,name.ilike.%${query}%,phone_number.ilike.%${query}%,property_number.ilike.%${query}%`
       )
@@ -404,7 +404,7 @@ export class BuyerService {
     const { data, error } = await this.supabase
       .from('buyers')
       .update(allowedData)
-      .eq('id', id)
+      .eq('buyer_id', id)
       .select()
       .single();
 
@@ -520,7 +520,7 @@ export class BuyerService {
     const { data, error } = await this.supabase
       .from('buyers')
       .update(allowedData)
-      .eq('id', id)
+      .eq('buyer_id', id)
       .select()
       .single();
 
@@ -549,7 +549,7 @@ export class BuyerService {
           await this.supabase
             .from('buyers')
             .update({ last_synced_at: new Date().toISOString() })
-            .eq('id', id);
+            .eq('buyer_id', id);
 
           syncResult = {
             success: true,
@@ -1214,7 +1214,7 @@ export class BuyerService {
     const { error } = await this.supabase
       .from('buyers')
       .update({ deleted_at: new Date().toISOString() })
-      .eq('id', id);
+      .eq('buyer_id', id);
 
     if (error) {
       throw new Error(`Failed to delete buyer: ${error.message}`);
@@ -1228,7 +1228,7 @@ export class BuyerService {
     const { data, error } = await this.supabase
       .from('buyers')
       .update({ deleted_at: null })
-      .eq('id', id)
+      .eq('buyer_id', id)
       .select()
       .single();
 

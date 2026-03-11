@@ -262,7 +262,7 @@ export default function BuyersPage() {
                   buyers.map((buyer) => {
                     return (
                       <TableRow
-                        key={buyer.id}
+                        key={buyer.buyer_id || buyer.buyer_number}
                         hover
                         sx={{ cursor: 'pointer' }}
                         onClick={() => handleRowClick(buyer.buyer_number)}
