@@ -626,7 +626,7 @@ export default function BuyerDetailPage() {
           {/* New Gmail Send Button with Template Selection */}
           {buyer && (
             <BuyerGmailSendButton
-              buyerId={buyer.id || buyer_number || ''}
+              buyerId={buyer.buyer_id || buyer_number || ''}
               buyerEmail={buyer.email || ''}
               buyerName={buyer.name || ''}
               inquiryHistory={inquiryHistoryTable}
@@ -1241,16 +1241,16 @@ export default function BuyerDetailPage() {
       </Box>
 
       {/* 関連買主セクション */}
-      {buyer?.id && (
+      {buyer?.buyer_id && (
         <Box sx={{ mt: 3 }}>
-          <RelatedBuyersSection buyerId={buyer.id} />
+          <RelatedBuyersSection buyerId={buyer.buyer_id} />
         </Box>
       )}
 
       {/* 統合問合せ履歴 */}
-      {buyer?.id && (
+      {buyer?.buyer_id && (
         <Box sx={{ mt: 3 }}>
-          <UnifiedInquiryHistoryTable buyerId={buyer.id} />
+          <UnifiedInquiryHistoryTable buyerId={buyer.buyer_id} />
         </Box>
       )}
 
@@ -1275,7 +1275,7 @@ export default function BuyerDetailPage() {
         buyerInfo={buyer ? {
           name: buyer.name || '',
           email: buyer.email || '',
-          buyerId: buyer.id || buyer_number || '',
+          buyerId: buyer.buyer_id || buyer_number || '',
         } : undefined}
       />
     </Container>

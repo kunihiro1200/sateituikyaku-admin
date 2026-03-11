@@ -11,5 +11,19 @@
       "src": "/(.*)",
       "dest": "/src/index.ts"
     }
+  ],
+  "crons": [
+    {
+      "path": "/api/cron/buyer-sync",
+      "schedule": "*/10 * * * *"
+    },
+    {
+      "path": "/api/cron/work-task-sync",
+      "schedule": "*/10 * * * *"
+    },
+    {
+      "path": "/api/cron/seller-sync",
+      "schedule": "*/5 * * * *"
+    }
   ]
 }

@@ -27,6 +27,11 @@ export class WorkTaskSyncService {
   private supabase: SupabaseClient;
   private columnMapper: WorkTaskColumnMapper;
   private sheets: sheets_v4.Sheets | null = null;
+  private isSyncing: boolean = false;
+
+  isSyncInProgress(): boolean {
+    return this.isSyncing;
+  }
 
   constructor() {
     const supabaseUrl = process.env.SUPABASE_URL!;
@@ -54,6 +59,7 @@ export class WorkTaskSyncService {
    * 全データを同期
    */
   async syncAll(): Promise<SyncResult> {
+    this.isSyncing = true;
     const startTime = new Date();
     const errors: SyncError[] = [];
     let successCount = 0;
@@ -153,6 +159,8 @@ export class WorkTaskSyncService {
         startTime,
         endTime,
       };
+    } finally {
+      this.isSyncing = false;
     }
   }
 

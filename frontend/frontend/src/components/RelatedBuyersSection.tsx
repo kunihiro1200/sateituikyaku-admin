@@ -152,7 +152,7 @@ const RelatedBuyersSection: React.FC<RelatedBuyersSectionProps> = ({ buyerId }) 
       <div className="space-y-4">
         {relatedBuyers.map((buyer) => (
           <div
-            key={buyer.id}
+            key={buyer.buyer_id || buyer.buyer_number || buyer.id}
             className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors"
           >
             <div className="flex items-start justify-between">

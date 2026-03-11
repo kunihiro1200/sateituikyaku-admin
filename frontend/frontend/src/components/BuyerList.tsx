@@ -45,7 +45,7 @@ export default function BuyerList({ buyers }: BuyerListProps) {
     <List sx={{ width: 400, maxHeight: 500, overflow: 'auto', p: 0 }}>
       {buyers.map((buyer) => (
         <ListItem
-          key={buyer.id}
+          key={buyer.buyer_id || buyer.buyer_number}
           button
           onClick={() => navigate(`/buyers/${buyer.buyer_number}`)}
           sx={{

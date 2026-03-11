@@ -113,7 +113,7 @@ const CompactBuyerList: React.FC<CompactBuyerListProps> = ({
       {/* データ行 */}
       {buyers.map((buyer, index) => (
         <Box
-          key={buyer.id}
+          key={buyer.id || index}
           sx={{
             p: 0.75,
             display: 'flex',

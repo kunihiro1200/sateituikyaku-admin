@@ -24,6 +24,7 @@ import PublicPropertyDetailPage from './pages/PublicPropertyDetailPage';
 import { PropertyListingSyncDashboard } from './pages/PropertyListingSyncDashboard';
 import SharedItemsPage from './pages/SharedItemsPage';
 import SharedItemDetailPage from './pages/SharedItemDetailPage';
+import NearbyBuyersPage from './pages/NearbyBuyersPage';
 import ProtectedRoute from './components/ProtectedRoute';
 import { useAuthStore } from './store/authStore';
 import { GoogleMapsProvider } from './contexts/GoogleMapsContext';
@@ -193,6 +194,14 @@ function App() {
         element={
           <ProtectedRoute>
             <SharedItemDetailPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/sellers/:id/nearby-buyers"
+        element={
+          <ProtectedRoute>
+            <NearbyBuyersPage />
           </ProtectedRoute>
         }
       />

@@ -3,6 +3,9 @@ import { body, query, validationResult } from 'express-validator';
 import { SellerService } from '../services/SellerService.supabase';
 import { authenticate } from '../middleware/auth';
 import { CreateSellerRequest, ListSellersParams } from '../types';
+import { PropertyDistributionAreaCalculator } from '../services/PropertyDistributionAreaCalculator';
+import { CityNameExtractor } from '../services/CityNameExtractor';
+import { BuyerService } from '../services/BuyerService';
 
 const router = Router();
 const sellerService = new SellerService();
@@ -793,8 +796,6 @@ router.get('/:id/nearby-buyers', async (req: Request, res: Response) => {
       });
     }
 
-    const { PropertyDistributionAreaCalculator } = await import('../services/PropertyDistributionAreaCalculator');
-    const { CityNameExtractor } = await import('../services/CityNameExtractor');
     const calculator = new PropertyDistributionAreaCalculator();
     const cityExtractor = new CityNameExtractor();
 
@@ -830,7 +831,6 @@ router.get('/:id/nearby-buyers', async (req: Request, res: Response) => {
       });
     }
 
-    const { BuyerService } = await import('../services/BuyerService');
     const buyerService = new BuyerService();
     const buyers = await buyerService.getBuyersByAreas(result.areas, propertyType, salesPrice);
 

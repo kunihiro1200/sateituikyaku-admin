@@ -81,6 +81,55 @@ router.post(
 );
 
 /**
+ * Get property by seller ID
+ * GET /properties/seller/:sellerId
+ * ⚠️ 重要: /:id より前に定義すること（Expressのルートマッチング順序のため）
+ */
+router.get(
+  '/seller/:sellerId',
+  [param('sellerId').isUUID().withMessage('Invalid seller ID')],
+  async (req: Request, res: Response) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'Validation failed',
+            details: errors.array(),
+            retryable: false,
+          },
+        });
+      }
+
+      const { sellerId } = req.params;
+      const property = await propertyService.getPropertyBySellerId(sellerId);
+
+      if (!property) {
+        return res.status(404).json({
+          error: {
+            code: 'NOT_FOUND',
+            message: 'Property not found for this seller',
+            retryable: false,
+          },
+        });
+      }
+
+      res.json({ property });
+    } catch (error: any) {
+      console.error('Get property by seller error:', error);
+      res.status(500).json({
+        error: {
+          code: 'GET_PROPERTY_ERROR',
+          message: error.message || 'Failed to get property',
+          retryable: true,
+        },
+      });
+    }
+  }
+);
+
+/**
  * Get property by ID
  * GET /properties/:id
  */
@@ -117,54 +166,6 @@ router.get(
       res.json({ property });
     } catch (error: any) {
       console.error('Get property error:', error);
-      res.status(500).json({
-        error: {
-          code: 'GET_PROPERTY_ERROR',
-          message: error.message || 'Failed to get property',
-          retryable: true,
-        },
-      });
-    }
-  }
-);
-
-/**
- * Get property by seller ID
- * GET /properties/seller/:sellerId
- */
-router.get(
-  '/seller/:sellerId',
-  [param('sellerId').isUUID().withMessage('Invalid seller ID')],
-  async (req: Request, res: Response) => {
-    try {
-      const errors = validationResult(req);
-      if (!errors.isEmpty()) {
-        return res.status(400).json({
-          error: {
-            code: 'VALIDATION_ERROR',
-            message: 'Validation failed',
-            details: errors.array(),
-            retryable: false,
-          },
-        });
-      }
-
-      const { sellerId } = req.params;
-      const property = await propertyService.getPropertyBySellerId(sellerId);
-
-      if (!property) {
-        return res.status(404).json({
-          error: {
-            code: 'NOT_FOUND',
-            message: 'Property not found for this seller',
-            retryable: false,
-          },
-        });
-      }
-
-      res.json({ property });
-    } catch (error: any) {
-      console.error('Get property by seller error:', error);
       res.status(500).json({
         error: {
           code: 'GET_PROPERTY_ERROR',

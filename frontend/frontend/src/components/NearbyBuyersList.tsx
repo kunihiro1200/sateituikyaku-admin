@@ -40,6 +40,7 @@ interface NearbyBuyer {
 interface NearbyBuyersListProps {
   sellerId: string;
   propertyNumber?: string;
+  onCountChange?: (count: number) => void;
 }
 
 interface PropertyDetails {
@@ -50,7 +51,7 @@ interface PropertyDetails {
   floorPlan: string | null;
 }
 
-const NearbyBuyersList = ({ sellerId, propertyNumber }: NearbyBuyersListProps) => {
+const NearbyBuyersList = ({ sellerId, propertyNumber, onCountChange }: NearbyBuyersListProps) => {
   const [buyers, setBuyers] = useState<NearbyBuyer[]>([]);
   const [matchedAreas, setMatchedAreas] = useState<string[]>([]);
   const [propertyAddress, setPropertyAddress] = useState<string | null>(null);
@@ -136,6 +137,7 @@ const NearbyBuyersList = ({ sellerId, propertyNumber }: NearbyBuyersListProps) =
         setMatchedAreas(response.data.matchedAreas || []);
         setPropertyAddress(response.data.propertyAddress);
         setPropertyDetails(response.data.propertyDetails || null);
+        if (onCountChange) onCountChange((response.data.buyers || []).length);
         if (propertyNumber) {
           setPropertyNumberState(propertyNumber);
         } else {
@@ -204,11 +206,11 @@ const NearbyBuyersList = ({ sellerId, propertyNumber }: NearbyBuyersListProps) =
       ? `https://property-site-frontend-kappa.vercel.app/public/properties/${effectivePropertyNumber}`
       : '';
     const address = propertyAddress || '物件';
-    const subject = `${address}にご興味のある方へ、ご売却物件のご案内です（内覧可能です）`;
+    const subject = `${address}に興味のあるかた！もうすぐ売り出します！事前に内覧可能です！`;
     let propertyInfoSection = '';
     if (propertyDetails) {
       const infoLines: string[] = [];
-      if (propertyDetails.address) infoLines.push(`所在地: ${propertyDetails.address}`);
+      if (propertyDetails.address) infoLines.push(`住所: ${propertyDetails.address}`);
       if (propertyDetails.landArea) infoLines.push(`土地面積: ${propertyDetails.landArea}㎡`);
       if (propertyDetails.buildingArea) infoLines.push(`建物面積: ${propertyDetails.buildingArea}㎡`);
       if (propertyDetails.buildYear) {
@@ -219,12 +221,13 @@ const NearbyBuyersList = ({ sellerId, propertyNumber }: NearbyBuyersListProps) =
       infoLines.push(`価格: 未定`);
       if (infoLines.length > 0) propertyInfoSection = '\n\n【物件情報】\n' + infoLines.join('\n');
     }
+    const signature = `よろしくお願いいたします。\n×××××××××××××××\n大分市舞鶴町1-3-30\n株式会社いふう\nTEL:097-533-2022\n×××××××××××××××`;
     let bodyTemplate: string;
     if (candidatesWithEmail.length === 1) {
       const buyerName = candidatesWithEmail[0].name || 'お客様';
-      bodyTemplate = `${buyerName}様\nお世話になります。一不動産販売の営業担当です。\n${address}をご売却に出すことになりました。${propertyInfoSection}\n\nもしご興味がございましたら、是非ご内覧することが可能となっておりますので、このメールにご返信頂けますと思います。\n${publicUrl ? `物件詳細: ${publicUrl}\n\n` : ''}よろしくお願いいたします。\n━━━━━━━━━━━━━━━━\n大分市中央町1-3-30\n一不動産販売\nTEL:097-533-2022\n━━━━━━━━━━━━━━━━`;
+      bodyTemplate = `${buyerName}様\nお世話になります。不動産会社の株式会社いふうです。\n${address}を近々売りに出すことになりました！${propertyInfoSection}\n\nもしご興味がございましたら、誰よりも早く内覧することが可能となっておりますので、このメールにご返信頂ければと思います。\n${publicUrl ? `物件詳細：${publicUrl}\n\n` : ''}${signature}`;
     } else {
-      bodyTemplate = `{名前}様\nお世話になります。一不動産販売の営業担当です。\n${address}をご売却に出すことになりました。${propertyInfoSection}\n\nもしご興味がございましたら、是非ご内覧することが可能となっておりますので、このメールにご返信頂けますと思います。\n${publicUrl ? `物件詳細: ${publicUrl}\n\n` : ''}よろしくお願いいたします。\n━━━━━━━━━━━━━━━━\n大分市中央町1-3-30\n一不動産販売\nTEL:097-533-2022\n━━━━━━━━━━━━━━━━`;
+      bodyTemplate = `{氏名}様\nお世話になります。不動産会社の株式会社いふうです。\n${address}を近々売りに出すことになりました！${propertyInfoSection}\n\nもしご興味がございましたら、誰よりも早く内覧することが可能となっておりますので、このメールにご返信頂ければと思います。\n${publicUrl ? `物件詳細：${publicUrl}\n\n` : ''}${signature}`;
     }
     setEmailSubject(subject);
     setEmailBody(bodyTemplate);
@@ -241,7 +244,7 @@ const NearbyBuyersList = ({ sellerId, propertyNumber }: NearbyBuyersListProps) =
       const results = await Promise.allSettled(
         candidatesWithEmail.map(async (candidate) => {
           const buyerName = candidate.name || 'お客様';
-          const personalizedBody = body.replace(/{名前}/g, buyerName);
+          const personalizedBody = body.replace(/{氏名}/g, buyerName);
           return await api.post('/api/emails/send-distribution', {
             recipients: [candidate.email!],
             subject,
@@ -289,7 +292,7 @@ const NearbyBuyersList = ({ sellerId, propertyNumber }: NearbyBuyersListProps) =
     let propertyInfoSection = '';
     if (propertyDetails) {
       const infoLines: string[] = [];
-      if (propertyDetails.address) infoLines.push(`所在地: ${propertyDetails.address}`);
+      if (propertyDetails.address) infoLines.push(`住所: ${propertyDetails.address}`);
       if (propertyDetails.landArea) infoLines.push(`土地面積: ${propertyDetails.landArea}㎡`);
       if (propertyDetails.buildingArea) infoLines.push(`建物面積: ${propertyDetails.buildingArea}㎡`);
       if (propertyDetails.buildYear) {
@@ -300,7 +303,7 @@ const NearbyBuyersList = ({ sellerId, propertyNumber }: NearbyBuyersListProps) =
       infoLines.push(`価格: 未定`);
       if (infoLines.length > 0) propertyInfoSection = '\n\n【物件情報】\n' + infoLines.join('\n');
     }
-    const smsMessage = `${buyerName}様\n一不動産販売です。\n${address}をご売却に出すことになりました。${propertyInfoSection}\n\n是非ご内覧可能です。ご興味がございましたらご返信ください。\n${publicUrl ? `${publicUrl}\n\n` : ''}一不動産販売 TEL:097-533-2022`;
+    const smsMessage = `${buyerName}様\n株式会社いふうです。\n${address}を近々売りに出すことになりました！${propertyInfoSection}\n\n誰よりも早く内覧可能です。ご興味がございましたらご返信ください。\n${publicUrl ? `${publicUrl}\n\n` : ''}株式会社いふう TEL:097-533-2022`;
     try {
       window.open(`sms:${firstCandidate.phone_number}?body=${encodeURIComponent(smsMessage)}`, '_blank');
       setSnackbar({

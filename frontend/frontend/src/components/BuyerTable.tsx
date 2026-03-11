@@ -133,7 +133,7 @@ export default function BuyerTable({ propertyNumber, onBuyerClick }: BuyerTableP
         <TableBody>
           {buyers.map((buyer) => (
             <TableRow
-              key={buyer.id}
+              key={buyer.buyer_id || buyer.buyer_number}
               hover
               onClick={() => handleRowClick(buyer.buyer_number)}
               sx={{ cursor: 'pointer' }}

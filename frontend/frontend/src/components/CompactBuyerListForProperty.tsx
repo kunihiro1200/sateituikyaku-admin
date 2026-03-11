@@ -89,7 +89,7 @@ export default function CompactBuyerListForProperty({
           <Box>
             {displayedBuyers.map((buyer) => (
               <Box
-                key={buyer.id}
+                key={buyer.buyer_number || buyer.id}
                 sx={{
                   mb: 1.5,
                   p: 1.5,

@@ -356,6 +356,9 @@ const CallModePage = () => {
   // 訪問予約セクションへのスクロール用ref
   const appointmentSectionRef = useRef<HTMLDivElement>(null);
 
+  // 近隣買主セクションへのスクロール用ref
+  const nearbyBuyersSectionRef = useRef<HTMLDivElement>(null);
+
   // 画像ペースト機能はRichTextEmailEditorに統合されました
   // 査定計算セクションへのスクロール用ref
   const valuationSectionRef = useRef<HTMLDivElement>(null);
@@ -2487,10 +2490,12 @@ HP：https://ifoo-oita.com/
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                setShowNearbyBuyers(prev => !prev);
+                if (seller?.id) {
+                  window.open(`/sellers/${seller.id}/nearby-buyers`, '_blank');
+                }
               }}
               sx={{ ml: 1, fontWeight: 'bold' }}
-              title="近隣買主を表示/非表示"
+              title="近隣買主を別ページで表示"
             >
               近隣買主
             </Button>
@@ -5114,9 +5119,11 @@ HP：https://ifoo-oita.com/
 
             {/* 近隣買主セクション */}
             {showNearbyBuyers && seller?.id && (
-              <CollapsibleSection title="近隣買主" defaultExpanded={true} headerColor="success.light">
-                <NearbyBuyersList sellerId={seller.id} />
-              </CollapsibleSection>
+              <div ref={nearbyBuyersSectionRef}>
+                <CollapsibleSection title="近隣買主" defaultExpanded={true} headerColor="success.light">
+                  <NearbyBuyersList sellerId={seller.id} />
+                </CollapsibleSection>
+              </div>
             )}
 
             {/* 実績セクション */}

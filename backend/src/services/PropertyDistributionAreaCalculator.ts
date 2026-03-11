@@ -1,7 +1,7 @@
 // 物件配信エリア計算サービス
 import { EnhancedGeolocationService } from './EnhancedGeolocationService';
 import { AreaMapConfigService } from './AreaMapConfigService';
-import { BeppuAreaMappingService } from './BeppuAreaMappingService';
+import { getOitaCityAreas, getBeppuCityAreas } from '../utils/cityAreaMapping';
 
 export interface Coordinates {
   lat: number;
@@ -51,16 +51,17 @@ export interface LocationTestResult {
   discrepancies: string[];
 }
 
+// 別府市の町名→エリア番号マッピング・大分市の町名→エリア番号マッピングは
+// backend/src/utils/cityAreaMapping.ts に定義済み（インポート済み）
+
 export class PropertyDistributionAreaCalculator {
   private geolocationService: EnhancedGeolocationService;
   private areaMapConfigService: AreaMapConfigService;
-  private beppuAreaMappingService: BeppuAreaMappingService;
   private readonly RADIUS_KM: number;
 
   constructor() {
     this.geolocationService = new EnhancedGeolocationService();
     this.areaMapConfigService = new AreaMapConfigService();
-    this.beppuAreaMappingService = new BeppuAreaMappingService();
     // 環境変数から半径を取得、デフォルトは3km
     this.RADIUS_KM = parseFloat(process.env.DISTRIBUTION_AREA_RADIUS_KM || '3');
   }
@@ -85,26 +86,27 @@ export class PropertyDistributionAreaCalculator {
       const normalizedCity = this.normalizeCityName(city);
       
       if (normalizedCity.includes('大分')) {
+        // 大分市は常に㊵を含む
         cityWideAreas.push('㊵');
+        // さらに住所から詳細エリア（①〜⑧）も追加
+        if (address) {
+          const oitaAreas = getOitaCityAreas(address);
+          if (oitaAreas.length > 0) {
+            console.log(`[DistributionArea] Oita detailed areas: ${oitaAreas.join(',')}`);
+            cityWideAreas.push(...oitaAreas);
+          }
+        }
       }
       if (normalizedCity.includes('別府')) {
-        // 別府市の場合、住所から詳細エリアを取得
+        // 別府市は常に㊶を含む
+        cityWideAreas.push('㊶');
+        // さらに住所から詳細エリア（⑨〜⑮、㊷、㊸）も追加
         if (address) {
-          const beppuAreas = await this.beppuAreaMappingService.getDistributionAreasForAddress(address);
-          
-          if (beppuAreas) {
-            console.log(`[DistributionArea] Beppu detailed areas: ${beppuAreas}`);
-            // 別府市の詳細エリア番号をパースして追加
-            const detailedAreas = this.parseAreaNumbers(beppuAreas);
-            cityWideAreas.push(...detailedAreas);
-          } else {
-            // マッピングが見つからない場合は別府市全体にフォールバック
-            console.warn(`[DistributionArea] No detailed mapping found for ${address}, falling back to ㊶`);
-            cityWideAreas.push('㊶');
+          const beppuAreas = getBeppuCityAreas(address);
+          if (beppuAreas.length > 0) {
+            console.log(`[DistributionArea] Beppu detailed areas: ${beppuAreas.join(',')}`);
+            cityWideAreas.push(...beppuAreas);
           }
-        } else {
-          // 住所がない場合は別府市全体
-          cityWideAreas.push('㊶');
         }
       }
     }
@@ -267,25 +269,23 @@ export class PropertyDistributionAreaCalculator {
       if (normalizedCity.includes('大分')) {
         cityWideAreas.push('㊵');
         debugInfo.cityWideMatches.push('㊵ (大分市)');
+        if (address) {
+          const oitaAreas = getOitaCityAreas(address);
+          if (oitaAreas.length > 0) {
+            cityWideAreas.push(...oitaAreas);
+            debugInfo.cityWideMatches.push(`${oitaAreas.join(',')} (大分市詳細エリア)`);
+          }
+        }
       }
       if (normalizedCity.includes('別府')) {
-        // 別府市の場合、住所から詳細エリアを取得
+        cityWideAreas.push('㊶');
+        debugInfo.cityWideMatches.push('㊶ (別府市)');
         if (address) {
-          const beppuAreas = await this.beppuAreaMappingService.getDistributionAreasForAddress(address);
-          
-          if (beppuAreas) {
-            console.log(`[DistributionArea] Beppu detailed areas: ${beppuAreas}`);
-            const detailedAreas = this.parseAreaNumbers(beppuAreas);
-            cityWideAreas.push(...detailedAreas);
-            debugInfo.cityWideMatches.push(`${beppuAreas} (別府市詳細エリア)`);
-          } else {
-            console.warn(`[DistributionArea] No detailed mapping found for ${address}, falling back to ㊶`);
-            cityWideAreas.push('㊶');
-            debugInfo.cityWideMatches.push('㊶ (別府市全体 - フォールバック)');
+          const beppuAreas = getBeppuCityAreas(address);
+          if (beppuAreas.length > 0) {
+            cityWideAreas.push(...beppuAreas);
+            debugInfo.cityWideMatches.push(`${beppuAreas.join(',')} (別府市詳細エリア)`);
           }
-        } else {
-          cityWideAreas.push('㊶');
-          debugInfo.cityWideMatches.push('㊶ (別府市全体)');
         }
       }
     }

@@ -273,6 +273,111 @@ app.get('/api/cron/sync-inquiries', async (req, res) => {
   }
 });
 
+// Cron Job: 買主リストをスプレッドシートからDBに同期（10分ごとに実行）
+app.get('/api/cron/buyer-sync', async (req, res) => {
+  try {
+    console.log('[Cron] Starting buyer sync job...');
+
+    // Vercel Cron Jobの認証チェック
+    const authHeader = req.headers.authorization;
+    if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+      console.error('[Cron] Unauthorized access attempt');
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const { BuyerSyncService } = await import('./services/BuyerSyncService');
+    const buyerSyncService = new BuyerSyncService();
+
+    // 重複防止チェック
+    if (buyerSyncService.isSyncInProgress()) {
+      console.log('[Cron] Buyer sync already in progress, skipping');
+      return res.status(200).json({ success: true, message: 'Sync already in progress, skipped' });
+    }
+
+    const result = await buyerSyncService.syncAll();
+    console.log(`[Cron] Buyer sync completed: ${result.created} created, ${result.updated} updated, ${result.failed} failed`);
+
+    res.status(200).json({
+      success: true,
+      created: result.created,
+      updated: result.updated,
+      failed: result.failed,
+      skipped: result.skipped,
+      duration: result.duration,
+    });
+  } catch (error: any) {
+    console.error('[Cron] Error in buyer sync job:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Cron Job: 業務依頼リストをスプレッドシートからDBに同期（10分ごとに実行）
+app.get('/api/cron/work-task-sync', async (req, res) => {
+  try {
+    console.log('[Cron] Starting work task sync job...');
+
+    // Vercel Cron Jobの認証チェック
+    const authHeader = req.headers.authorization;
+    if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+      console.error('[Cron] Unauthorized access attempt');
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const { WorkTaskSyncService } = await import('./services/WorkTaskSyncService');
+    const workTaskSyncService = new WorkTaskSyncService();
+
+    // 重複防止チェック
+    if (workTaskSyncService.isSyncInProgress()) {
+      console.log('[Cron] Work task sync already in progress, skipping');
+      return res.status(200).json({ success: true, message: 'Sync already in progress, skipped' });
+    }
+
+    const result = await workTaskSyncService.syncAll();
+    console.log(`[Cron] Work task sync completed`);
+
+    res.status(200).json({ success: true, result });
+  } catch (error: any) {
+    console.error('[Cron] Error in work task sync job:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Cron Job: 売主リストをスプレッドシートからDBに同期（5分ごとに実行）
+app.get('/api/cron/seller-sync', async (req, res) => {
+  try {
+    console.log('[Cron] Starting seller sync job...');
+
+    // Vercel Cron Jobの認証チェック
+    const authHeader = req.headers.authorization;
+    if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+      console.error('[Cron] Unauthorized access attempt');
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const { getEnhancedAutoSyncService, isAutoSyncEnabled } = await import('./services/EnhancedAutoSyncService');
+
+    if (!isAutoSyncEnabled()) {
+      console.log('[Cron] Seller auto-sync is disabled (AUTO_SYNC_ENABLED=false)');
+      return res.status(200).json({ success: true, message: 'Auto-sync disabled' });
+    }
+
+    const syncService = getEnhancedAutoSyncService();
+    await syncService.initialize();
+    const result = await syncService.runFullSync('cron');
+    console.log(`[Cron] Seller sync completed: ${result.additionResult.successfullyAdded} added, ${result.additionResult.successfullyUpdated} updated`);
+
+    res.status(200).json({
+      success: true,
+      added: result.additionResult.successfullyAdded,
+      updated: result.additionResult.successfullyUpdated,
+      deleted: result.deletionResult.successfullyDeleted,
+    });
+  } catch (error: any) {
+    console.error('[Cron] Error in seller sync job:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // Routes
 // 認証ルート（ローカルと本番の両方に対応）
 app.use('/auth', authSupabaseRoutes);
@@ -385,6 +490,62 @@ const startServer = async () => {
           console.log('   Will retry in 1 minute...');
         }
       }, 10000); // 10秒後に実行（クォータ制限対策）
+
+      // 買主リスト定期同期を非同期で実行（サーバー起動をブロックしない）
+      setTimeout(async () => {
+        try {
+          const { BuyerSyncService } = await import('./services/BuyerSyncService');
+          const buyerSyncService = new BuyerSyncService();
+          const intervalMinutes = parseInt(process.env.BUYER_SYNC_INTERVAL_MINUTES || '10', 10);
+
+          const runBuyerSync = async () => {
+            if (buyerSyncService.isSyncInProgress()) {
+              console.log('⚠️ Buyer sync already in progress, skipping scheduled run');
+              return;
+            }
+            try {
+              await buyerSyncService.syncAll();
+              console.log('✅ Buyer periodic sync completed');
+            } catch (error: any) {
+              console.error('⚠️ Buyer periodic sync error (non-blocking):', error.message);
+            }
+          };
+
+          await runBuyerSync();
+          setInterval(runBuyerSync, intervalMinutes * 60 * 1000);
+          console.log(`📋 Buyer list periodic sync started (every ${intervalMinutes} minutes)`);
+        } catch (error: any) {
+          console.error('⚠️ Buyer periodic sync failed to start (non-blocking):', error.message);
+        }
+      }, 20000); // 20秒後に実行（売主同期の10秒後に開始してクォータ分散）
+
+      // 業務依頼定期同期を非同期で実行（サーバー起動をブロックしない）
+      setTimeout(async () => {
+        try {
+          const { WorkTaskSyncService } = await import('./services/WorkTaskSyncService');
+          const workTaskSyncService = new WorkTaskSyncService();
+          const intervalMinutes = parseInt(process.env.WORK_TASK_SYNC_INTERVAL_MINUTES || '10', 10);
+
+          const runWorkTaskSync = async () => {
+            if (workTaskSyncService.isSyncInProgress()) {
+              console.log('⚠️ Work task sync already in progress, skipping scheduled run');
+              return;
+            }
+            try {
+              await workTaskSyncService.syncAll();
+              console.log('✅ Work task periodic sync completed');
+            } catch (error: any) {
+              console.error('⚠️ Work task periodic sync error (non-blocking):', error.message);
+            }
+          };
+
+          await runWorkTaskSync();
+          setInterval(runWorkTaskSync, intervalMinutes * 60 * 1000);
+          console.log(`📋 Work task periodic sync started (every ${intervalMinutes} minutes)`);
+        } catch (error: any) {
+          console.error('⚠️ Work task periodic sync failed to start (non-blocking):', error.message);
+        }
+      }, 40000); // 40秒後に実行（買主同期の20秒後、クォータ分散）
 
       // 録音ファイルクリーンアップワーカーを起動（毎日午前2時に実行）
       setTimeout(async () => {
