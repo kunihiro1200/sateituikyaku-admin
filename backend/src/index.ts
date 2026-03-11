@@ -116,7 +116,8 @@ app.use(cors({
     'http://localhost:5174', 
     'http://localhost:5175',
     'http://localhost:3000',  // バックエンド自身も追加
-    'https://sateituikyaku-admin-frontend.vercel.app', // 新しい管理システムフロントエンド
+    'https://sateituikyaku-admin-frontend.vercel.app', // 管理システムフロントエンド（カスタムドメイン）
+    'https://sateituikyaku-admin-frontend-git-main-kunihiro1200s-projects.vercel.app', // Vercel自動生成URL
     'https://property-site-frontend-kappa.vercel.app',  // 公開物件サイト
     'https://new-admin-management-system-v2.vercel.app',  // 社内管理システムフロントエンド
     'https://baikyaku-property-site3.vercel.app'  // 社内管理システムバックエンド
