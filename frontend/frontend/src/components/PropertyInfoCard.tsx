@@ -9,11 +9,13 @@ import {
   Alert,
   Button,
   Link,
+  Snackbar,
 } from '@mui/material';
 import {
   Close as CloseIcon,
   OpenInNew as OpenInNewIcon,
   Launch as LaunchIcon,
+  ContentCopy as ContentCopyIcon,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
@@ -21,6 +23,7 @@ import api from '../services/api';
 interface PropertyFullDetails {
   id: number;
   property_number: string;
+  atbb_status?: string; // atbb_status
   status?: string; // atbb成約済み/非公開
   distribution_date?: string; // 配信日
   address?: string; // 所在地
@@ -40,7 +43,7 @@ interface PropertyFullDetails {
   floor_plan?: string;
   land_area?: number;
   building_area?: number;
-  broker_response?: string; // 業者への対応
+  pre_viewing_notes?: string; // 内覧前伝達事項（物件リストから取得）
 }
 
 interface Buyer {
@@ -56,16 +59,18 @@ interface PropertyInfoCardProps {
   showCloseButton?: boolean;
 }
 
-export default function PropertyInfoCard({ 
-  propertyId, 
-  buyer, 
-  onClose, 
+export default function PropertyInfoCard({
+  propertyId,
+  buyer,
+  onClose,
   showCloseButton = true,
 }: PropertyInfoCardProps) {
   const navigate = useNavigate();
   const [property, setProperty] = useState<PropertyFullDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
 
   useEffect(() => {
     fetchPropertyDetails();
@@ -111,6 +116,24 @@ export default function PropertyInfoCard({
     }
   };
 
+  const handleCopyPropertyNumber = async () => {
+    if (!property?.property_number) return;
+
+    try {
+      await navigator.clipboard.writeText(property.property_number);
+      setSnackbarMessage('物件番号をコピーしました');
+      setSnackbarOpen(true);
+    } catch (err) {
+      console.error('Failed to copy property number:', err);
+      setSnackbarMessage('コピーに失敗しました');
+      setSnackbarOpen(true);
+    }
+  };
+
+  const handleSnackbarClose = () => {
+    setSnackbarOpen(false);
+  };
+
   if (loading) {
     return (
       <Paper sx={{ p: 3, mb: 3, position: 'relative' }}>
@@ -149,26 +172,21 @@ export default function PropertyInfoCard({
   }
 
   return (
-    <Paper 
-      sx={{ 
-        p: 3, 
-        mb: 3, 
+    <Paper
+      sx={{
+        p: 3,
+        mb: 3,
         position: 'relative',
         border: '2px solid',
         borderColor: 'primary.main',
         bgcolor: '#f8f9ff',
       }}
     >
-      {/* Header */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Typography variant="h6" fontWeight="bold" color="primary">
-            物件情報
-          </Typography>
-          <IconButton size="small" onClick={handleNavigateToProperty} color="primary">
-            <OpenInNewIcon fontSize="small" />
-          </IconButton>
-        </Box>
+      {/* Header - 外部リンクアイコンと閉じるボタンのみ */}
+      <Box sx={{ position: 'absolute', top: 8, right: 8, display: 'flex', gap: 0.5 }}>
+        <IconButton size="small" onClick={handleNavigateToProperty} color="primary">
+          <OpenInNewIcon fontSize="small" />
+        </IconButton>
         {showCloseButton && onClose && (
           <IconButton size="small" onClick={onClose}>
             <CloseIcon />
@@ -176,134 +194,106 @@ export default function PropertyInfoCard({
         )}
       </Box>
 
-      {/* 業者への対応日付表示（今日より後の場合のみ） */}
-      {property.broker_response && (() => {
-        try {
-          let brokerDateValue = property.broker_response;
-
-          // Excelシリアル値の場合は変換
-          if (typeof brokerDateValue === 'number' || !isNaN(Number(brokerDateValue))) {
-            const serialNumber = Number(brokerDateValue);
-            const excelEpoch = new Date(1900, 0, 1);
-            const daysOffset = serialNumber - 2; // Excelの1900年うるう年バグ対応
-            brokerDateValue = new Date(excelEpoch.getTime() + daysOffset * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-          }
-
-          // 東京時間で今日の日付を取得
-          const now = new Date();
-          const tokyoNow = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Tokyo' }));
-          const tokyoToday = new Date(tokyoNow.getFullYear(), tokyoNow.getMonth(), tokyoNow.getDate());
-
-          const brokerDate = new Date(brokerDateValue);
-          const tokyoBrokerDate = new Date(brokerDate.getFullYear(), brokerDate.getMonth(), brokerDate.getDate());
-
-          // 今日より後の日付の場合のみ表示
-          if (tokyoBrokerDate > tokyoToday) {
-            const formattedDate = `${tokyoBrokerDate.getFullYear()}/${String(tokyoBrokerDate.getMonth() + 1).padStart(2, '0')}/${String(tokyoBrokerDate.getDate()).padStart(2, '0')}`;
-            return (
-              <Box
-                sx={{
-                  mb: 2,
-                  px: 3,
-                  py: 1.5,
-                  background: '#ffeb3b',
-                  borderRadius: 1,
-                  border: '3px solid #d32f2f',
-                  boxShadow: '0 0 20px rgba(244, 67, 54, 0.6)',
-                  animation: 'blink 1.5s infinite, shake 0.5s infinite',
-                  '@keyframes blink': {
-                    '0%, 100%': { opacity: 1 },
-                    '50%': { opacity: 0.8 },
-                  },
-                  '@keyframes shake': {
-                    '0%, 100%': { transform: 'translateX(0)' },
-                    '25%': { transform: 'translateX(-2px)' },
-                    '75%': { transform: 'translateX(2px)' },
-                  },
-                }}
-              >
-                <Typography
-                  sx={{
-                    color: '#d32f2f',
-                    fontWeight: 'bold',
-                    fontSize: '1.3rem',
-                    letterSpacing: '0.05em',
-                    textAlign: 'center',
-                  }}
-                >
-                  ⚠️ 業者対応: {formattedDate} ⚠️
-                </Typography>
-              </Box>
-            );
-          }
-        } catch (error) {
-          console.error('Failed to parse broker_response date:', error);
-        }
-        return null;
-      })()}
-
       {/* Property Details */}
       <Grid container spacing={2}>
-        {/* 物件番号 */}
+        {/* 1行目: 物件番号 + atbb_status + 配信日 */}
         <Grid item xs={12}>
-          <Typography variant="caption" color="text.secondary">
-            物件番号
-          </Typography>
-          <Typography variant="body1" fontWeight="bold" color="primary.main">
-            {property.property_number}
-          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 3, flexWrap: 'wrap' }}>
+            {/* 物件番号 */}
+            <Box sx={{ flex: '0 0 auto' }}>
+              <Typography variant="caption" color="text.secondary">
+                物件番号
+              </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
+                <Typography variant="body1" fontWeight="bold" color="primary.main">
+                  {property.property_number}
+                </Typography>
+                <IconButton
+                  size="small"
+                  onClick={handleCopyPropertyNumber}
+                  aria-label="物件番号をコピー"
+                  sx={{
+                    padding: '4px',
+                    '&:hover': { bgcolor: 'action.hover' }
+                  }}
+                >
+                  <ContentCopyIcon fontSize="small" />
+                </IconButton>
+              </Box>
+            </Box>
+
+            {/* atbb_status */}
+            {property.atbb_status && (
+              <Box sx={{ flex: '0 0 auto' }}>
+                <Typography variant="caption" color="text.secondary">
+                  ステータス
+                </Typography>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, mt: 0.5 }}>
+                  <Typography
+                    variant="body2"
+                    fontWeight="bold"
+                    color={property.atbb_status.includes('非公開') ? 'error.main' : 'text.secondary'}
+                  >
+                    {property.atbb_status}
+                  </Typography>
+                  {property.atbb_status === '一般・公開中' && (
+                    <Typography
+                      variant="caption"
+                      color="error.main"
+                      sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}
+                    >
+                      ⚠ 一般媒介なので売主様に状況確認してください
+                    </Typography>
+                  )}
+                </Box>
+              </Box>
+            )}
+
+            {/* 配信日 */}
+            {property.distribution_date && (
+              <Box sx={{ flex: '0 0 auto' }}>
+                <Typography variant="caption" color="text.secondary">
+                  配信日
+                </Typography>
+                <Typography variant="body2" sx={{ mt: 0.5 }}>
+                  {formatDate(property.distribution_date)}
+                </Typography>
+              </Box>
+            )}
+          </Box>
         </Grid>
 
-        {/* atbb成約済み/非公開 */}
-        {property.status && (
-          <Grid item xs={12} sm={6}>
-            <Typography variant="caption" color="text.secondary">
-              ステータス
-            </Typography>
-            <Typography variant="body2">
-              {property.status}
-            </Typography>
-          </Grid>
-        )}
+        {/* 2行目: 所在地 + 住居表示 */}
+        <Grid item xs={12}>
+          <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
+            {/* 所在地 */}
+            {property.address && (
+              <Box sx={{ flex: '1 1 45%', minWidth: '200px' }}>
+                <Typography variant="caption" color="text.secondary">
+                  所在地
+                </Typography>
+                <Typography variant="body2" sx={{ mt: 0.5 }}>
+                  {property.address}
+                </Typography>
+              </Box>
+            )}
 
-        {/* 配信日 */}
-        {property.distribution_date && (
-          <Grid item xs={12} sm={6}>
-            <Typography variant="caption" color="text.secondary">
-              配信日
-            </Typography>
-            <Typography variant="body2">
-              {formatDate(property.distribution_date)}
-            </Typography>
-          </Grid>
-        )}
+            {/* 住居表示 */}
+            {property.display_address && (
+              <Box sx={{ flex: '1 1 45%', minWidth: '200px' }}>
+                <Typography variant="caption" color="text.secondary">
+                  住居表示
+                </Typography>
+                <Typography variant="body2" sx={{ mt: 0.5 }}>
+                  {property.display_address}
+                </Typography>
+              </Box>
+            )}
+          </Box>
+        </Grid>
 
-        {/* 所在地 */}
-        {property.address && (
-          <Grid item xs={12}>
-            <Typography variant="caption" color="text.secondary">
-              所在地
-            </Typography>
-            <Typography variant="body2">
-              {property.address}
-            </Typography>
-          </Grid>
-        )}
-
-        {/* 住居表示 */}
-        {property.display_address && (
-          <Grid item xs={12}>
-            <Typography variant="caption" color="text.secondary">
-              住居表示
-            </Typography>
-            <Typography variant="body2">
-              {property.display_address}
-            </Typography>
-          </Grid>
-        )}
-
-        {/* 内覧前伝達事項 */}
-        {buyer?.pre_viewing_notes && (
+        {/* 内覧前伝達事項（物件側から取得） */}
+        {property.pre_viewing_notes && (
           <Grid item xs={12}>
             <Box
               sx={{
@@ -316,9 +306,9 @@ export default function PropertyInfoCard({
               <Typography variant="caption" color="text.secondary" fontWeight="bold">
                 内覧前伝達事項
               </Typography>
-              <Typography 
-                variant="body2" 
-                sx={{ 
+              <Typography
+                variant="body2"
+                sx={{
                   mt: 1,
                   whiteSpace: 'pre-wrap',
                   wordWrap: 'break-word',
@@ -327,7 +317,7 @@ export default function PropertyInfoCard({
                   lineHeight: 1.5,
                 }}
               >
-                {buyer.pre_viewing_notes}
+                {property.pre_viewing_notes}
               </Typography>
             </Box>
           </Grid>
@@ -357,17 +347,66 @@ export default function PropertyInfoCard({
           </Grid>
         )}
 
-        {/* 価格 */}
-        {(property.price || property.listing_price) && (
-          <Grid item xs={12} sm={6}>
-            <Typography variant="caption" color="text.secondary">
-              価格
-            </Typography>
-            <Typography variant="body2" fontWeight="bold">
-              {formatPrice(property.price || property.listing_price)}
-            </Typography>
-          </Grid>
-        )}
+        {/* 価格 + Suumo URL + Google Map */}
+        <Grid item xs={12}>
+          <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+            {/* 価格 */}
+            {(property.price || property.listing_price) && (
+              <Box sx={{ flex: '0 0 auto' }}>
+                <Typography variant="caption" color="text.secondary">
+                  価格
+                </Typography>
+                <Typography variant="body2" fontWeight="bold" sx={{ mt: 0.5 }}>
+                  {formatPrice(property.price || property.listing_price)}
+                </Typography>
+              </Box>
+            )}
+
+            {/* Suumo URL */}
+            {property.suumo_url && (
+              <Box sx={{ flex: '0 0 auto' }}>
+                <Typography variant="caption" color="text.secondary">
+                  Suumo URL
+                </Typography>
+                <Box sx={{ mt: 0.5 }}>
+                  <Link
+                    href={property.suumo_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}
+                  >
+                    <Typography variant="body2">
+                      Suumoで開く
+                    </Typography>
+                    <LaunchIcon fontSize="small" />
+                  </Link>
+                </Box>
+              </Box>
+            )}
+
+            {/* Google Map URL */}
+            {property.google_map_url && (
+              <Box sx={{ flex: '0 0 auto' }}>
+                <Typography variant="caption" color="text.secondary">
+                  Google Map
+                </Typography>
+                <Box sx={{ mt: 0.5 }}>
+                  <Link
+                    href={property.google_map_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}
+                  >
+                    <Typography variant="body2">
+                      地図を開く
+                    </Typography>
+                    <LaunchIcon fontSize="small" />
+                  </Link>
+                </Box>
+              </Box>
+            )}
+          </Box>
+        </Grid>
 
         {/* 月々ローン支払い */}
         {property.monthly_loan_payment && (
@@ -393,70 +432,33 @@ export default function PropertyInfoCard({
           </Grid>
         )}
 
-        {/* 値下げ履歴 */}
-        {property.price_reduction_history && (
+        {/* 値下げ履歴 + 理由 */}
+        {(property.price_reduction_history || property.sale_reason) && (
           <Grid item xs={12}>
-            <Typography variant="caption" color="text.secondary">
-              値下げ履歴
-            </Typography>
-            <Typography variant="body2" sx={{ whiteSpace: 'pre-line' }}>
-              {property.price_reduction_history}
-            </Typography>
-          </Grid>
-        )}
+            <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+              {/* 値下げ履歴 */}
+              {property.price_reduction_history && (
+                <Box sx={{ flex: '1 1 45%', minWidth: '200px' }}>
+                  <Typography variant="caption" color="text.secondary">
+                    値下げ履歴
+                  </Typography>
+                  <Typography variant="body2" sx={{ mt: 0.5, whiteSpace: 'pre-line' }}>
+                    {property.price_reduction_history}
+                  </Typography>
+                </Box>
+              )}
 
-        {/* 理由 */}
-        {property.sale_reason && (
-          <Grid item xs={12}>
-            <Typography variant="caption" color="text.secondary">
-              理由
-            </Typography>
-            <Typography variant="body2">
-              {property.sale_reason}
-            </Typography>
-          </Grid>
-        )}
-
-        {/* Suumo URL */}
-        {property.suumo_url && (
-          <Grid item xs={12}>
-            <Typography variant="caption" color="text.secondary">
-              Suumo URL
-            </Typography>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <Link 
-                href={property.suumo_url} 
-                target="_blank" 
-                rel="noopener noreferrer"
-                sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}
-              >
-                <Typography variant="body2">
-                  Suumoで開く
-                </Typography>
-                <LaunchIcon fontSize="small" />
-              </Link>
-            </Box>
-          </Grid>
-        )}
-
-        {/* Google Map URL */}
-        {property.google_map_url && (
-          <Grid item xs={12}>
-            <Typography variant="caption" color="text.secondary">
-              Google Map
-            </Typography>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <Link 
-                href={property.google_map_url} 
-                target="_blank" 
-                rel="noopener noreferrer"
-                sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}
-              >
-                <Typography variant="body2">
-                  地図を開く
-                </Typography>
-                <LaunchIcon fontSize="small" />
-              </Link>
+              {/* 理由 */}
+              {property.sale_reason && (
+                <Box sx={{ flex: '1 1 45%', minWidth: '200px' }}>
+                  <Typography variant="caption" color="text.secondary">
+                    理由
+                  </Typography>
+                  <Typography variant="body2" sx={{ mt: 0.5 }}>
+                    {property.sale_reason}
+                  </Typography>
+                </Box>
+              )}
             </Box>
           </Grid>
         )}
@@ -531,6 +533,15 @@ export default function PropertyInfoCard({
           物件詳細ページを開く
         </Button>
       </Box>
+
+      {/* Snackbar for copy notification */}
+      <Snackbar
+        open={snackbarOpen}
+        autoHideDuration={2000}
+        onClose={handleSnackbarClose}
+        message={snackbarMessage}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      />
     </Paper>
   );
 }
