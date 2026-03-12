@@ -40,6 +40,7 @@ interface PropertyFullDetails {
   floor_plan?: string;
   land_area?: number;
   building_area?: number;
+  broker_response?: string; // 業者への対応
 }
 
 interface Buyer {
@@ -174,6 +175,72 @@ export default function PropertyInfoCard({
           </IconButton>
         )}
       </Box>
+
+      {/* 業者への対応日付表示（今日より後の場合のみ） */}
+      {property.broker_response && (() => {
+        try {
+          let brokerDateValue = property.broker_response;
+
+          // Excelシリアル値の場合は変換
+          if (typeof brokerDateValue === 'number' || !isNaN(Number(brokerDateValue))) {
+            const serialNumber = Number(brokerDateValue);
+            const excelEpoch = new Date(1900, 0, 1);
+            const daysOffset = serialNumber - 2; // Excelの1900年うるう年バグ対応
+            brokerDateValue = new Date(excelEpoch.getTime() + daysOffset * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+          }
+
+          // 東京時間で今日の日付を取得
+          const now = new Date();
+          const tokyoNow = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Tokyo' }));
+          const tokyoToday = new Date(tokyoNow.getFullYear(), tokyoNow.getMonth(), tokyoNow.getDate());
+
+          const brokerDate = new Date(brokerDateValue);
+          const tokyoBrokerDate = new Date(brokerDate.getFullYear(), brokerDate.getMonth(), brokerDate.getDate());
+
+          // 今日より後の日付の場合のみ表示
+          if (tokyoBrokerDate > tokyoToday) {
+            const formattedDate = `${tokyoBrokerDate.getFullYear()}/${String(tokyoBrokerDate.getMonth() + 1).padStart(2, '0')}/${String(tokyoBrokerDate.getDate()).padStart(2, '0')}`;
+            return (
+              <Box
+                sx={{
+                  mb: 2,
+                  px: 3,
+                  py: 1.5,
+                  background: '#ffeb3b',
+                  borderRadius: 1,
+                  border: '3px solid #d32f2f',
+                  boxShadow: '0 0 20px rgba(244, 67, 54, 0.6)',
+                  animation: 'blink 1.5s infinite, shake 0.5s infinite',
+                  '@keyframes blink': {
+                    '0%, 100%': { opacity: 1 },
+                    '50%': { opacity: 0.8 },
+                  },
+                  '@keyframes shake': {
+                    '0%, 100%': { transform: 'translateX(0)' },
+                    '25%': { transform: 'translateX(-2px)' },
+                    '75%': { transform: 'translateX(2px)' },
+                  },
+                }}
+              >
+                <Typography
+                  sx={{
+                    color: '#d32f2f',
+                    fontWeight: 'bold',
+                    fontSize: '1.3rem',
+                    letterSpacing: '0.05em',
+                    textAlign: 'center',
+                  }}
+                >
+                  ⚠️ 業者対応: {formattedDate} ⚠️
+                </Typography>
+              </Box>
+            );
+          }
+        } catch (error) {
+          console.error('Failed to parse broker_response date:', error);
+        }
+        return null;
+      })()}
 
       {/* Property Details */}
       <Grid container spacing={2}>

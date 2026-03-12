@@ -82,6 +82,17 @@ router.get('/status-categories', async (_req: Request, res: Response) => {
   }
 });
 
+// 次の買主番号を取得（/:id よりも前に定義する必要がある）
+router.get('/next-buyer-number', async (_req: Request, res: Response) => {
+  try {
+    const buyerNumber = await (buyerService as any).generateBuyerNumber();
+    res.json({ buyerNumber });
+  } catch (error: any) {
+    console.error('Error generating buyer number:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // 同期実行
 router.post('/sync', async (_req: Request, res: Response) => {
   try {

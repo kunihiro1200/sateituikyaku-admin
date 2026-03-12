@@ -119,9 +119,12 @@ export class BuyerSyncService {
       console.log(`Found ${headers.length} columns`);
 
       // データ取得（181カラム対応）
+      // UNFORMATTED_VALUE を使用することで、日付セルがシリアル値（数値）で返ってくる
+      // これにより年付きの正確な日付が取得できる
       const dataResponse = await sheets.spreadsheets.values.get({
         spreadsheetId: SPREADSHEET_ID,
         range: `'${SHEET_NAME}'!A2:GZ`,
+        valueRenderOption: 'UNFORMATTED_VALUE',
       });
       const rows = dataResponse.data.values || [];
       console.log(`Found ${rows.length} rows to sync`);
@@ -528,6 +531,7 @@ export class BuyerSyncService {
       const dataResponse = await sheets.spreadsheets.values.get({
         spreadsheetId: SPREADSHEET_ID,
         range: `'${SHEET_NAME}'!A2:GZ`,
+        valueRenderOption: 'UNFORMATTED_VALUE',
       });
       const rows = dataResponse.data.values || [];
       

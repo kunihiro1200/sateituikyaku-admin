@@ -28,7 +28,7 @@ export class BuyerColumnMapper {
    */
   mapSpreadsheetToDatabase(headers: string[], row: any[]): BuyerRecord {
     const result: BuyerRecord = {};
-    
+
     headers.forEach((header, index) => {
       const dbColumn = this.spreadsheetToDb[header];
       if (dbColumn && row[index] !== undefined) {
@@ -102,9 +102,20 @@ export class BuyerColumnMapper {
 
   /**
    * 日付文字列をパース
+   * UNFORMATTED_VALUE で取得した場合、日付セルはシリアル値（数値）で返ってくる
    */
   private parseDate(value: any): string | null {
     if (!value) return null;
+
+    // Googleスプレッドシートの日付シリアル値（数値）の場合
+    // 起算日: 1899/12/30
+    if (typeof value === 'number') {
+      const date = new Date(Date.UTC(1899, 11, 30) + value * 86400000);
+      if (!isNaN(date.getTime())) {
+        return date.toISOString().substring(0, 10);
+      }
+      return null;
+    }
     
     const str = String(value).trim();
     if (!str) return null;
@@ -123,7 +134,8 @@ export class BuyerColumnMapper {
       return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
     }
 
-    // MM/DD (年が省略されている場合は現在の年を使用)
+    // MM/DD（年なし）: UNFORMATTED_VALUE を使えばこのケースは発生しないはずだが念のため残す
+    // この場合は現在年を使用（未来日付になる可能性があるため、同期後に要確認）
     const match3 = str.match(/^(\d{1,2})[\/\-](\d{1,2})$/);
     if (match3) {
       const [, month, day] = match3;
