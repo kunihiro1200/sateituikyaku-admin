@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 強化版自動同期サービス
  * 
  * スプレッドシートからDBへの自動同期を管理します。
@@ -52,10 +52,19 @@ export class EnhancedAutoSyncService {
   private propertySyncHandler: PropertySyncHandler;
   private isInitialized = false;
 
+  // 買主用のGoogle Sheetsクライアント
+  private buyerSheetsClient: GoogleSheetsClient | null = null;
+  private buyerColumnMapper: any | null = null;
+  private isBuyerInitialized = false;
+
   // スプレッドシートキャッシュ（Google Sheets APIクォータ対策）
   private spreadsheetCache: any[] | null = null;
   private spreadsheetCacheExpiry: number = 0;
   private readonly SPREADSHEET_CACHE_TTL = 30 * 60 * 1000; // 30分間キャッシュ（Google Sheets APIクォータ対策）
+
+  // 買主スプレッドシートキャッシュ
+  private buyerSpreadsheetCache: any[] | null = null;
+  private buyerSpreadsheetCacheExpiry: number = 0;
 
   constructor(supabaseUrl: string, supabaseKey: string) {
     this.supabase = createClient(supabaseUrl, supabaseKey);
@@ -1631,6 +1640,155 @@ export class EnhancedAutoSyncService {
   }
 
   /**
+   * Phase 4.8: スプレッドシートから削除された物件を非表示にする同期
+   * - DBにあってスプレッドシートにない物件 → is_hidden = true
+   * - スプレッドシートに再登録された物件（is_hidden=true） → is_hidden = false
+   */
+  async syncHiddenPropertyListings(): Promise<{
+    success: boolean;
+    hidden: number;
+    restored: number;
+    failed: number;
+    duration_ms: number;
+  }> {
+    const startTime = Date.now();
+
+    try {
+      console.log('🙈 Starting hidden property listings sync...');
+
+      // 1. 物件リストスプレッドシートから全物件番号を取得
+      const { GoogleSheetsClient } = await import('./GoogleSheetsClient');
+      const PROPERTY_LIST_SPREADSHEET_ID = '1tI_iXaiLuWBggs5y0RH7qzkbHs9wnLLdRekAmjkhcLY';
+      const PROPERTY_LIST_SHEET_NAME = '物件';
+
+      const sheetsConfig = {
+        spreadsheetId: PROPERTY_LIST_SPREADSHEET_ID,
+        sheetName: PROPERTY_LIST_SHEET_NAME,
+        serviceAccountKeyPath: process.env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH || './google-service-account.json',
+      };
+
+      const sheetsClient = new GoogleSheetsClient(sheetsConfig);
+      await sheetsClient.authenticate();
+      const spreadsheetData = await sheetsClient.readAll();
+
+      const spreadsheetPropertyNumbers = new Set<string>();
+      for (const row of spreadsheetData) {
+        const propertyNumber = String(row['物件番号'] || '').trim();
+        if (propertyNumber) {
+          spreadsheetPropertyNumbers.add(propertyNumber);
+        }
+      }
+
+      console.log(`📊 Spreadsheet properties: ${spreadsheetPropertyNumbers.size}`);
+
+      // 2. DBのproperty_listingsから全物件番号とis_hiddenフラグを取得（ページネーション対応）
+      const dbProperties: Array<{ property_number: string; is_hidden: boolean }> = [];
+      const pageSize = 1000;
+      let offset = 0;
+      let hasMore = true;
+
+      while (hasMore) {
+        const { data, error } = await this.supabase
+          .from('property_listings')
+          .select('property_number, is_hidden')
+          .range(offset, offset + pageSize - 1);
+
+        if (error) {
+          throw new Error(`Failed to read property_listings: ${error.message}`);
+        }
+
+        if (!data || data.length === 0) {
+          hasMore = false;
+        } else {
+          for (const property of data) {
+            if (property.property_number) {
+              dbProperties.push({
+                property_number: property.property_number,
+                is_hidden: property.is_hidden ?? false,
+              });
+            }
+          }
+          offset += pageSize;
+          if (data.length < pageSize) {
+            hasMore = false;
+          }
+        }
+      }
+
+      console.log(`📊 Database properties: ${dbProperties.length}`);
+
+      // 3. DBにあってスプレッドシートにない物件 → is_hidden = true
+      const toHide = dbProperties
+        .filter(p => !spreadsheetPropertyNumbers.has(p.property_number) && !p.is_hidden)
+        .map(p => p.property_number);
+
+      // 4. スプレッドシートに再登録された物件（is_hidden=true） → is_hidden = false
+      const toRestore = dbProperties
+        .filter(p => spreadsheetPropertyNumbers.has(p.property_number) && p.is_hidden)
+        .map(p => p.property_number);
+
+      console.log(`🙈 Properties to hide: ${toHide.length}`);
+      console.log(`👁️  Properties to restore: ${toRestore.length}`);
+
+      let hidden = 0;
+      let restored = 0;
+      let failed = 0;
+
+      // 非表示にする
+      for (const propertyNumber of toHide) {
+        try {
+          const { error } = await this.supabase
+            .from('property_listings')
+            .update({ is_hidden: true })
+            .eq('property_number', propertyNumber);
+
+          if (error) {
+            console.error(`❌ Failed to hide ${propertyNumber}: ${error.message}`);
+            failed++;
+          } else {
+            console.log(`🙈 Hidden: ${propertyNumber}`);
+            hidden++;
+          }
+        } catch (err: any) {
+          console.error(`❌ ${propertyNumber}: ${err.message}`);
+          failed++;
+        }
+      }
+
+      // 再表示する
+      for (const propertyNumber of toRestore) {
+        try {
+          const { error } = await this.supabase
+            .from('property_listings')
+            .update({ is_hidden: false })
+            .eq('property_number', propertyNumber);
+
+          if (error) {
+            console.error(`❌ Failed to restore ${propertyNumber}: ${error.message}`);
+            failed++;
+          } else {
+            console.log(`👁️  Restored: ${propertyNumber}`);
+            restored++;
+          }
+        } catch (err: any) {
+          console.error(`❌ ${propertyNumber}: ${err.message}`);
+          failed++;
+        }
+      }
+
+      const duration_ms = Date.now() - startTime;
+      console.log(`✅ Hidden property sync completed: ${hidden} hidden, ${restored} restored, ${failed} failed`);
+
+      return { success: failed === 0, hidden, restored, failed, duration_ms };
+
+    } catch (error: any) {
+      const duration_ms = Date.now() - startTime;
+      console.error('❌ Hidden property sync failed:', error.message);
+      return { success: false, hidden: 0, restored: 0, failed: 1, duration_ms };
+    }
+  }
+
+  /**
    * Phase 4.7: property_details同期を実行
    * property_listingsに存在するがproperty_detailsに存在しない物件を検出して同期
    */
@@ -2026,6 +2184,55 @@ export class EnhancedAutoSyncService {
         // エラーでも処理を継続
       }
 
+      // Phase 4.8: スプレッドシートから削除された物件の非表示同期
+      console.log('\n🙈 Phase 4.8: Hidden Property Listings Sync');
+      let hiddenPropertySyncResult = {
+        hidden: 0,
+        restored: 0,
+        failed: 0,
+        duration_ms: 0,
+      };
+
+      try {
+        const hpResult = await this.syncHiddenPropertyListings();
+        hiddenPropertySyncResult = {
+          hidden: hpResult.hidden,
+          restored: hpResult.restored,
+          failed: hpResult.failed,
+          duration_ms: hpResult.duration_ms,
+        };
+
+        if (hpResult.hidden > 0 || hpResult.restored > 0) {
+          console.log(`✅ Hidden property sync: ${hpResult.hidden} hidden, ${hpResult.restored} restored`);
+        } else {
+          console.log('✅ No property listing changes to hide/restore');
+        }
+      } catch (error: any) {
+        console.error('⚠️  Hidden property sync error:', error.message);
+        hiddenPropertySyncResult.failed = 1;
+        // エラーでも処理を継続
+      }
+
+      // Phase 5: 買主同期
+      console.log('\n🛒 Phase 5: Buyer Sync');
+      console.log('   Syncing buyers from spreadsheet...');
+
+      let buyerAddedCount = 0;
+      let buyerUpdatedCount = 0;
+      let buyerFailedCount = 0;
+
+      try {
+        const buyerSyncResult = await this.syncBuyers();
+        buyerAddedCount = buyerSyncResult.syncMissingResult?.newSellersCount || 0;
+        buyerUpdatedCount = buyerSyncResult.syncUpdatedResult?.updatedSellersCount || 0;
+        buyerFailedCount = (buyerSyncResult.syncMissingResult?.errors.length || 0) + (buyerSyncResult.syncUpdatedResult?.errors.length || 0);
+        console.log(`✅ Buyer sync completed: ${buyerAddedCount} added, ${buyerUpdatedCount} updated, ${buyerFailedCount} failed`);
+      } catch (error: any) {
+        console.error('⚠️  Buyer sync error:', error.message);
+        buyerFailedCount = 1;
+        // エラーでも処理を継続
+      }
+
       const endTime = new Date();
       const totalDurationMs = endTime.getTime() - startTime.getTime();
 
@@ -2034,7 +2241,8 @@ export class EnhancedAutoSyncService {
       if (additionResult.failed > 0 || 
           deletionResult.failedToDelete > 0 || 
           propertyListingUpdateResult.failed > 0 ||
-          newPropertyAdditionResult.failed > 0) {
+          newPropertyAdditionResult.failed > 0 ||
+          buyerFailedCount > 0) {
         status = 'partial_success';
       }
       if (additionResult.successfullyAdded === 0 && 
@@ -2042,10 +2250,13 @@ export class EnhancedAutoSyncService {
           deletionResult.successfullyDeleted === 0 &&
           propertyListingUpdateResult.updated === 0 &&
           newPropertyAdditionResult.added === 0 &&
+          buyerAddedCount === 0 &&
+          buyerUpdatedCount === 0 &&
           (additionResult.failed > 0 || 
            deletionResult.failedToDelete > 0 || 
            propertyListingUpdateResult.failed > 0 ||
-           newPropertyAdditionResult.failed > 0)) {
+           newPropertyAdditionResult.failed > 0 ||
+           buyerFailedCount > 0)) {
         status = 'failed';
       }
 
@@ -2065,6 +2276,8 @@ export class EnhancedAutoSyncService {
       console.log(`   Property Listings Updated: ${propertyListingUpdateResult.updated}`);
       console.log(`   New Properties Added: ${newPropertyAdditionResult.added}`);
       console.log(`   Property Details Synced: ${propertyDetailsSyncResult.synced}`);
+      console.log(`   Buyers Added: ${buyerAddedCount}`);
+      console.log(`   Buyers Updated: ${buyerUpdatedCount}`);
       console.log(`   Manual Review: ${deletionResult.requiresManualReview}`);
       console.log(`   Duration: ${(totalDurationMs / 1000).toFixed(2)}s`);
 
@@ -2104,6 +2317,943 @@ export class EnhancedAutoSyncService {
       };
     }
   }
+
+
+  // ========================================
+  // 買主同期メソッド
+  // ========================================
+
+  /**
+   * 買主用Google Sheetsクライアントを初期化
+   */
+  async initializeBuyer(): Promise<void> {
+    if (this.isBuyerInitialized) return;
+
+    try {
+      const buyerSpreadsheetId = process.env.GOOGLE_SHEETS_BUYER_SPREADSHEET_ID || process.env.PROPERTY_LISTING_SPREADSHEET_ID!;
+      const buyerSheetName = process.env.GOOGLE_SHEETS_BUYER_SHEET_NAME || '買主リスト';
+      const sheetsConfig = {
+        spreadsheetId: buyerSpreadsheetId,
+        sheetName: buyerSheetName,
+        serviceAccountKeyPath: process.env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH || './google-service-account.json',
+      };
+
+      this.buyerSheetsClient = new GoogleSheetsClient(sheetsConfig);
+      await this.buyerSheetsClient.authenticate();
+
+      // BuyerColumnMapper を動的にインポート
+      const { BuyerColumnMapper } = await import('./BuyerColumnMapper');
+      this.buyerColumnMapper = new BuyerColumnMapper();
+
+      this.isBuyerInitialized = true;
+      console.log('✅ Buyer sync service initialized');
+    } catch (error: any) {
+      console.error('❌ Buyer sync service initialization failed:', error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * 買主スプレッドシートデータを取得（キャッシュ対応）
+   */
+  private async getBuyerSpreadsheetData(forceRefresh: boolean = false): Promise<any[]> {
+    const now = Date.now();
+
+    if (!forceRefresh && this.buyerSpreadsheetCache && now < this.buyerSpreadsheetCacheExpiry) {
+      console.log('📦 Using cached buyer spreadsheet data (valid for', Math.round((this.buyerSpreadsheetCacheExpiry - now) / 1000), 'seconds)');
+      return this.buyerSpreadsheetCache;
+    }
+
+    console.log('🔄 Fetching fresh buyer spreadsheet data...');
+    if (!this.isBuyerInitialized || !this.buyerSheetsClient) {
+      await this.initializeBuyer();
+    }
+
+    const allRows = await this.buyerSheetsClient!.readAll();
+    this.buyerSpreadsheetCache = allRows;
+    this.buyerSpreadsheetCacheExpiry = now + this.SPREADSHEET_CACHE_TTL;
+
+    console.log(`✅ Buyer spreadsheet data cached (${allRows.length} rows, valid for 60 minutes)`);
+    return allRows;
+  }
+
+  /**
+   * 買主スプレッドシートキャッシュをクリア
+   */
+  public clearBuyerSpreadsheetCache(): void {
+    this.buyerSpreadsheetCache = null;
+    this.buyerSpreadsheetCacheExpiry = 0;
+    console.log('🗑️ Buyer spreadsheet cache cleared');
+  }
+
+  /**
+   * DBから全買主番号を取得（ページネーション対応）
+   */
+  private async getAllDbBuyerNumbers(): Promise<Set<string>> {
+    const allBuyerNumbers = new Set<string>();
+    const pageSize = 1000;
+    let offset = 0;
+    let hasMore = true;
+
+    while (hasMore) {
+      const { data, error } = await this.supabase
+        .from('buyers')
+        .select('buyer_number')
+        .range(offset, offset + pageSize - 1);
+
+      if (error) {
+        throw new Error(`Failed to fetch DB buyers: ${error.message}`);
+      }
+
+      if (!data || data.length === 0) {
+        hasMore = false;
+      } else {
+        for (const buyer of data) {
+          if (buyer.buyer_number) {
+            allBuyerNumbers.add(buyer.buyer_number);
+          }
+        }
+        offset += pageSize;
+        if (data.length < pageSize) {
+          hasMore = false;
+        }
+      }
+    }
+
+    return allBuyerNumbers;
+  }
+
+  /**
+   * スプレッドシートにあってDBにない買主番号を検出
+   */
+  async detectMissingBuyers(): Promise<string[]> {
+    if (!this.isBuyerInitialized || !this.buyerSheetsClient) {
+      await this.initializeBuyer();
+    }
+
+    console.log('🔍 Detecting missing buyers (full comparison)...');
+
+    const allRows = await this.getBuyerSpreadsheetData();
+    const sheetBuyerNumbers = new Set<string>();
+
+    for (const row of allRows) {
+      const buyerNumber = row['買主番号'];
+      if (buyerNumber !== null && buyerNumber !== undefined && buyerNumber !== '') {
+        const buyerNumberStr = String(buyerNumber).trim();
+        if (buyerNumberStr) {
+          sheetBuyerNumbers.add(buyerNumberStr);
+        }
+      }
+    }
+    console.log(`📊 Spreadsheet buyers: ${sheetBuyerNumbers.size}`);
+
+    const dbBuyerNumbers = await this.getAllDbBuyerNumbers();
+    console.log(`📊 Database buyers: ${dbBuyerNumbers.size}`);
+
+    const missingBuyers: string[] = [];
+    for (const buyerNumber of sheetBuyerNumbers) {
+      if (!dbBuyerNumbers.has(buyerNumber)) {
+        missingBuyers.push(buyerNumber);
+      }
+    }
+
+    missingBuyers.sort((a, b) => {
+      const numA = parseInt(a, 10);
+      const numB = parseInt(b, 10);
+      return numA - numB;
+    });
+
+    console.log(`🆕 Missing buyers: ${missingBuyers.length}`);
+    if (missingBuyers.length > 0) {
+      console.log(`   First few: ${missingBuyers.slice(0, 5).join(', ')}${missingBuyers.length > 5 ? '...' : ''}`);
+    }
+
+    return missingBuyers;
+  }
+
+  /**
+   * 更新が必要な買主を検出
+   */
+  async detectUpdatedBuyers(): Promise<string[]> {
+    if (!this.isBuyerInitialized || !this.buyerSheetsClient) {
+      await this.initializeBuyer();
+    }
+
+    console.log('🔍 Detecting updated buyers (comparing data)...');
+
+    const allRows = await this.getBuyerSpreadsheetData();
+    const sheetDataByBuyerNumber = new Map<string, any>();
+
+    for (const row of allRows) {
+      const buyerNumber = row['買主番号'];
+      if (buyerNumber !== null && buyerNumber !== undefined && buyerNumber !== '') {
+        const buyerNumberStr = String(buyerNumber).trim();
+        if (buyerNumberStr) {
+          sheetDataByBuyerNumber.set(buyerNumberStr, row);
+        }
+      }
+    }
+    console.log(`📊 Spreadsheet buyers: ${sheetDataByBuyerNumber.size}`);
+
+    const updatedBuyers: string[] = [];
+    const pageSize = 1000;
+    let offset = 0;
+    let hasMore = true;
+    let totalChecked = 0;
+
+    while (hasMore) {
+      const { data: dbBuyers, error } = await this.supabase
+        .from('buyers')
+        .select('buyer_number, latest_viewing_date, viewing_time, follow_up_assignee, latest_status, updated_at')
+        .range(offset, offset + pageSize - 1);
+
+      if (error) {
+        throw new Error(`Failed to fetch DB buyers: ${error.message}`);
+      }
+
+      if (!dbBuyers || dbBuyers.length === 0) {
+        hasMore = false;
+      } else {
+        for (const dbBuyer of dbBuyers) {
+          totalChecked++;
+          const buyerNumber = dbBuyer.buyer_number;
+          const sheetRow = sheetDataByBuyerNumber.get(buyerNumber);
+
+          if (!sheetRow) {
+            continue;
+          }
+
+          const sheetViewingDate = sheetRow['内覧日(最新)'];
+          const sheetViewingTime = sheetRow['内覧時間'];
+          const sheetFollowUpAssignee = sheetRow['後追い担当'];
+          const sheetLatestStatus = sheetRow['最新状況\n'];
+
+          let needsUpdate = false;
+
+          if (sheetViewingDate && sheetViewingDate !== '') {
+            const formattedDate = this.formatBuyerDate(sheetViewingDate);
+            const dbDate = dbBuyer.latest_viewing_date ? String(dbBuyer.latest_viewing_date).substring(0, 10) : null;
+            if (formattedDate !== dbDate) {
+              needsUpdate = true;
+            }
+          } else if (dbBuyer.latest_viewing_date !== null) {
+            needsUpdate = true;
+          }
+
+          if (sheetViewingTime && sheetViewingTime !== dbBuyer.viewing_time) {
+            needsUpdate = true;
+          }
+
+          if (sheetFollowUpAssignee && sheetFollowUpAssignee !== dbBuyer.follow_up_assignee) {
+            needsUpdate = true;
+          }
+
+          if (sheetLatestStatus && sheetLatestStatus !== dbBuyer.latest_status) {
+            needsUpdate = true;
+          }
+
+          if (needsUpdate) {
+            updatedBuyers.push(buyerNumber);
+          }
+        }
+
+        offset += pageSize;
+        if (dbBuyers.length < pageSize) {
+          hasMore = false;
+        }
+      }
+    }
+
+    console.log(`📊 Total buyers checked: ${totalChecked}`);
+    console.log(`🔄 Updated buyers: ${updatedBuyers.length}`);
+    if (updatedBuyers.length > 0) {
+      console.log(`   First few: ${updatedBuyers.slice(0, 5).join(', ')}${updatedBuyers.length > 5 ? '...' : ''}`);
+    }
+
+    return updatedBuyers;
+  }
+
+  /**
+   * 日付を YYYY-MM-DD 形式にフォーマット（買主用）
+   */
+  private formatBuyerDate(value: any): string | null {
+    if (!value || value === '') return null;
+
+    const numValue = Number(value);
+    if (!isNaN(numValue) && numValue > 30000 && numValue < 60000) {
+      try {
+        const excelEpoch = new Date(1899, 11, 30);
+        const date = new Date(excelEpoch.getTime() + numValue * 24 * 60 * 60 * 1000);
+        const year = date.getFullYear();
+        if (year < 1900 || year > 2100) {
+          console.warn(`⚠️ Invalid year from Excel serial: ${year} (serial: ${numValue})`);
+          return null;
+        }
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+      } catch (error: any) {
+        console.warn(`⚠️ Failed to parse Excel serial value: ${numValue} (${error.message})`);
+        return null;
+      }
+    }
+
+    const str = String(value).trim();
+
+    if (str.match(/^\d{4}\/\d{1,2}\/\d{1,2}$/)) {
+      const [year, month, day] = str.split('/');
+      const y = parseInt(year);
+      if (y < 1900 || y > 2100) {
+        console.warn(`⚠️ Invalid year: ${y}`);
+        return null;
+      }
+      return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+    }
+
+    if (str.match(/^\d{4}-\d{1,2}-\d{1,2}$/)) {
+      const [year, month, day] = str.split('-');
+      const y = parseInt(year);
+      if (y < 1900 || y > 2100) {
+        console.warn(`⚠️ Invalid year: ${y}`);
+        return null;
+      }
+      return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+    }
+
+    return null;
+  }
+
+  /**
+   * 不足している買主を同期
+   */
+  async syncMissingBuyers(buyerNumbers: string[]): Promise<SyncResult> {
+    const startTime = new Date();
+    const errors: SyncError[] = [];
+    let newBuyersCount = 0;
+
+    if (!this.isBuyerInitialized || !this.buyerSheetsClient) {
+      await this.initializeBuyer();
+    }
+
+    console.log(`🔄 Syncing ${buyerNumbers.length} missing buyers...`);
+
+    const allRows = await this.getBuyerSpreadsheetData();
+    const rowsByBuyerNumber = new Map<string, any>();
+    for (const row of allRows) {
+      const buyerNumber = row['買主番号'];
+      if (buyerNumber) {
+        rowsByBuyerNumber.set(String(buyerNumber), row);
+      }
+    }
+
+    for (const buyerNumber of buyerNumbers) {
+      const row = rowsByBuyerNumber.get(buyerNumber);
+      if (!row) {
+        errors.push({
+          sellerNumber: buyerNumber,
+          message: 'Row not found in spreadsheet',
+          timestamp: new Date(),
+        });
+        continue;
+      }
+
+      try {
+        await this.syncSingleBuyer(buyerNumber, row);
+        newBuyersCount++;
+        console.log(`✅ ${buyerNumber}: Created`);
+      } catch (error: any) {
+        errors.push({
+          sellerNumber: buyerNumber,
+          message: error.message,
+          timestamp: new Date(),
+        });
+        console.error(`❌ ${buyerNumber}: ${error.message}`);
+      }
+    }
+
+    const endTime = new Date();
+    const result: SyncResult = {
+      success: errors.length === 0,
+      startTime,
+      endTime,
+      newSellersCount: newBuyersCount,
+      updatedSellersCount: 0,
+      errors,
+      missingSellersDetected: buyerNumbers.length,
+      triggeredBy: 'scheduled',
+    };
+
+    console.log(`🎉 Buyer sync completed: ${newBuyersCount} new, ${errors.length} errors`);
+    return result;
+  }
+
+  /**
+   * 既存買主のデータを更新
+   */
+  async syncUpdatedBuyers(buyerNumbers: string[]): Promise<SyncResult> {
+    const startTime = new Date();
+    const errors: SyncError[] = [];
+    let updatedBuyersCount = 0;
+
+    if (!this.isBuyerInitialized || !this.buyerSheetsClient) {
+      await this.initializeBuyer();
+    }
+
+    console.log(`🔄 Updating ${buyerNumbers.length} existing buyers...`);
+
+    // forceRefresh = true でキャッシュを無視して最新データを取得
+    const allRows = await this.getBuyerSpreadsheetData(true);
+    const rowsByBuyerNumber = new Map<string, any>();
+    for (const row of allRows) {
+      const buyerNumber = row['買主番号'];
+      if (buyerNumber) {
+        rowsByBuyerNumber.set(String(buyerNumber), row);
+      }
+    }
+
+    for (const buyerNumber of buyerNumbers) {
+      const row = rowsByBuyerNumber.get(buyerNumber);
+      if (!row) {
+        errors.push({
+          sellerNumber: buyerNumber,
+          message: 'Row not found in spreadsheet',
+          timestamp: new Date(),
+        });
+        continue;
+      }
+
+      try {
+        await this.updateSingleBuyer(buyerNumber, row);
+        updatedBuyersCount++;
+        console.log(`✅ ${buyerNumber}: Updated`);
+      } catch (error: any) {
+        errors.push({
+          sellerNumber: buyerNumber,
+          message: error.message,
+          timestamp: new Date(),
+        });
+        console.error(`❌ ${buyerNumber}: ${error.message}`);
+      }
+    }
+
+    const endTime = new Date();
+    const result: SyncResult = {
+      success: errors.length === 0,
+      startTime,
+      endTime,
+      newSellersCount: 0,
+      updatedSellersCount: updatedBuyersCount,
+      errors,
+      missingSellersDetected: 0,
+      triggeredBy: 'scheduled',
+    };
+
+    console.log(`🎉 Buyer update completed: ${updatedBuyersCount} updated, ${errors.length} errors`);
+    return result;
+  }
+
+  /**
+   * 単一買主の新規同期
+   */
+  private async syncSingleBuyer(buyerNumber: string, row: any): Promise<void> {
+    const mappedData = this.buyerColumnMapper.mapSpreadsheetToDatabase(
+      Object.keys(row),
+      Object.values(row)
+    );
+
+    // name が null/空の場合はデフォルト値を設定（NOT NULL 制約対応）
+    if (!mappedData.name || mappedData.name === null || mappedData.name === 'null' || mappedData.name.trim() === '') {
+      mappedData.name = `買主${buyerNumber}`;
+    }
+
+    const buyerData: any = {
+      buyer_number: buyerNumber,
+      ...mappedData,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+
+    // 既存の買主を確認
+    const { data: existingBuyer, error: checkError } = await this.supabase
+      .from('buyers')
+      .select('buyer_id')
+      .eq('buyer_number', buyerNumber)
+      .maybeSingle();
+
+    if (checkError) {
+      throw new Error(`Failed to check existing buyer: ${checkError.message}`);
+    }
+
+    if (existingBuyer) {
+      // 既存の買主を更新
+      const { error: updateError } = await this.supabase
+        .from('buyers')
+        .update({
+          ...buyerData,
+          created_at: undefined, // created_at は更新しない
+        })
+        .eq('buyer_number', buyerNumber);
+
+      if (updateError) {
+        throw new Error(updateError.message);
+      }
+    } else {
+      // 新規買主を挿入
+      const { error: insertError } = await this.supabase
+        .from('buyers')
+        .insert(buyerData);
+
+      if (insertError) {
+        throw new Error(insertError.message);
+      }
+    }
+  }
+
+  /**
+   * 単一買主を更新
+   */
+  private async updateSingleBuyer(buyerNumber: string, row: any): Promise<void> {
+    const mappedData = this.buyerColumnMapper.mapSpreadsheetToDatabase(
+      Object.keys(row),
+      Object.values(row)
+    );
+
+    const updateData: any = {
+      ...mappedData,
+      updated_at: new Date().toISOString(),
+    };
+
+    // buyer_number と buyer_id は更新しない（主キーとUUID）
+    delete updateData.buyer_number;
+    delete updateData.buyer_id;
+
+    const { error: updateError } = await this.supabase
+      .from('buyers')
+      .update(updateData)
+      .eq('buyer_number', buyerNumber);
+
+    if (updateError) {
+      throw new Error(updateError.message);
+    }
+  }
+
+  /**
+   * DBから全アクティブ買主番号を取得（削除済みを除外）
+   */
+  private async getAllActiveBuyerNumbers(): Promise<Set<string>> {
+    const allBuyerNumbers = new Set<string>();
+    const pageSize = 1000;
+    let offset = 0;
+    let hasMore = true;
+
+    while (hasMore) {
+      const { data, error } = await this.supabase
+        .from('buyers')
+        .select('buyer_number')
+        .is('deleted_at', null) // 削除済みを除外
+        .range(offset, offset + pageSize - 1);
+
+      if (error) {
+        throw new Error(`Failed to fetch active DB buyers: ${error.message}`);
+      }
+
+      if (!data || data.length === 0) {
+        hasMore = false;
+      } else {
+        for (const buyer of data) {
+          if (buyer.buyer_number) {
+            allBuyerNumbers.add(buyer.buyer_number);
+          }
+        }
+        offset += pageSize;
+        if (data.length < pageSize) {
+          hasMore = false;
+        }
+      }
+    }
+
+    return allBuyerNumbers;
+  }
+
+  /**
+   * DBにあってスプレッドシートにない買主番号を検出（削除された買主）
+   */
+  async detectDeletedBuyers(): Promise<string[]> {
+    if (!this.isBuyerInitialized || !this.buyerSheetsClient) {
+      await this.initializeBuyer();
+    }
+
+    console.log('🔍 Detecting deleted buyers (full comparison)...');
+
+    const allRows = await this.getBuyerSpreadsheetData();
+    const sheetBuyerNumbers = new Set<string>();
+
+    for (const row of allRows) {
+      const buyerNumber = row['買主番号'];
+      if (buyerNumber && typeof buyerNumber === 'string') {
+        sheetBuyerNumbers.add(buyerNumber);
+      }
+    }
+    console.log(`📊 Spreadsheet buyers: ${sheetBuyerNumbers.size}`);
+
+    const dbBuyerNumbers = await this.getAllActiveBuyerNumbers();
+    console.log(`📊 Active database buyers: ${dbBuyerNumbers.size}`);
+
+    const deletedBuyers: string[] = [];
+    for (const buyerNumber of dbBuyerNumbers) {
+      if (!sheetBuyerNumbers.has(buyerNumber)) {
+        deletedBuyers.push(buyerNumber);
+      }
+    }
+
+    deletedBuyers.sort((a, b) => {
+      const numA = parseInt(a, 10);
+      const numB = parseInt(b, 10);
+      return numA - numB;
+    });
+
+    console.log(`🗑️ Deleted buyers: ${deletedBuyers.length}`);
+    if (deletedBuyers.length > 0) {
+      console.log(`   First few: ${deletedBuyers.slice(0, 5).join(', ')}${deletedBuyers.length > 5 ? '...' : ''}`);
+    }
+
+    return deletedBuyers;
+  }
+
+  /**
+   * 削除前のバリデーション（買主用）
+   */
+  private async validateBuyerDeletion(buyerNumber: string): Promise<ValidationResult> {
+    try {
+      const { data: buyer, error } = await this.supabase
+        .from('buyers')
+        .select('*')
+        .eq('buyer_number', buyerNumber)
+        .is('deleted_at', null)
+        .single();
+
+      if (error || !buyer) {
+        return {
+          canDelete: false,
+          reason: 'Buyer not found in database',
+          requiresManualReview: false,
+        };
+      }
+
+      const details: ValidationResult['details'] = {};
+
+      // アクティブな問い合わせをチェック
+      const inactiveStatuses = ['成約', '購入済み', ''];
+      if (buyer.latest_status && !inactiveStatuses.includes(buyer.latest_status)) {
+        details.hasActiveInquiries = true;
+        // 買主の場合はアクティブな問い合わせがあっても削除を許可
+      }
+
+      // 最近のアクティビティをチェック（7日以内の更新）
+      if (buyer.updated_at) {
+        const updatedAt = new Date(buyer.updated_at);
+        const now = new Date();
+        const daysSinceUpdate = (now.getTime() - updatedAt.getTime()) / (1000 * 60 * 60 * 24);
+
+        if (daysSinceUpdate <= 7) {
+          details.hasRecentActivity = true;
+          details.lastActivityDate = updatedAt;
+          // 買主の場合は最近のアクティビティがあっても削除を許可
+        }
+      }
+
+      // 買主の場合は常に削除を許可
+      return {
+        canDelete: true,
+        requiresManualReview: false,
+        details,
+      };
+
+    } catch (error: any) {
+      console.error(`❌ Validation error for buyer ${buyerNumber}:`, error.message);
+      return {
+        canDelete: false,
+        reason: `Validation error: ${error.message}`,
+        requiresManualReview: true,
+      };
+    }
+  }
+
+  /**
+   * ソフトデリートを実行（買主用）
+   */
+  private async executeBuyerSoftDelete(buyerNumber: string): Promise<DeletionResult> {
+    try {
+      const { data: buyer, error: fetchError } = await this.supabase
+        .from('buyers')
+        .select('*')
+        .eq('buyer_number', buyerNumber)
+        .is('deleted_at', null)
+        .single();
+
+      if (fetchError || !buyer) {
+        return {
+          sellerNumber: buyerNumber, // DeletionResult は sellerNumber を使用（汎用的な名前）
+          success: false,
+          error: 'Buyer not found',
+        };
+      }
+
+      const deletedAt = new Date();
+
+      // 1. 監査ログにバックアップを作成
+      const { data: auditRecord, error: auditError } = await this.supabase
+        .from('buyer_deletion_audit')
+        .insert({
+          buyer_id: buyer.id,
+          buyer_number: buyerNumber,
+          deleted_at: deletedAt.toISOString(),
+          deleted_by: 'auto_sync',
+          reason: 'Removed from spreadsheet',
+          buyer_data: buyer,
+          can_recover: true,
+        })
+        .select()
+        .single();
+
+      if (auditError) {
+        console.error(`❌ Failed to create audit record for buyer ${buyerNumber}:`, auditError.message);
+        return {
+          sellerNumber: buyerNumber,
+          success: false,
+          error: `Audit creation failed: ${auditError.message}`,
+        };
+      }
+
+      // 2. 買主をソフトデリート
+      const { error: buyerDeleteError } = await this.supabase
+        .from('buyers')
+        .update({ deleted_at: deletedAt.toISOString() })
+        .eq('buyer_number', buyerNumber);
+
+      if (buyerDeleteError) {
+        console.error(`❌ Failed to soft delete buyer ${buyerNumber}:`, buyerDeleteError.message);
+        return {
+          sellerNumber: buyerNumber,
+          success: false,
+          error: `Buyer deletion failed: ${buyerDeleteError.message}`,
+        };
+      }
+
+      console.log(`✅ Buyer ${buyerNumber}: Soft deleted successfully`);
+
+      return {
+        sellerNumber: buyerNumber,
+        success: true,
+        auditId: auditRecord.id,
+        deletedAt,
+      };
+
+    } catch (error: any) {
+      console.error(`❌ Soft delete error for buyer ${buyerNumber}:`, error.message);
+      return {
+        sellerNumber: buyerNumber,
+        success: false,
+        error: error.message,
+      };
+    }
+  }
+
+  /**
+   * 削除された買主を一括同期
+   */
+  async syncDeletedBuyers(buyerNumbers: string[]): Promise<DeletionSyncResult> {
+    const startedAt = new Date();
+    const deletedBuyerNumbers: string[] = [];
+    const manualReviewBuyerNumbers: string[] = [];
+    const errors: Array<{ sellerNumber: string; error: string }> = [];
+
+    console.log(`🗑️ Syncing ${buyerNumbers.length} deleted buyers...`);
+
+    for (const buyerNumber of buyerNumbers) {
+      const validation = await this.validateBuyerDeletion(buyerNumber);
+
+      if (!validation.canDelete) {
+        if (validation.requiresManualReview) {
+          manualReviewBuyerNumbers.push(buyerNumber);
+          console.log(`⚠️ Buyer ${buyerNumber}: Requires manual review - ${validation.reason}`);
+        } else {
+          errors.push({
+            sellerNumber: buyerNumber,
+            error: validation.reason || 'Validation failed',
+          });
+          console.log(`❌ Buyer ${buyerNumber}: ${validation.reason}`);
+        }
+        continue;
+      }
+
+      const result = await this.executeBuyerSoftDelete(buyerNumber);
+
+      if (result.success) {
+        deletedBuyerNumbers.push(buyerNumber);
+      } else {
+        errors.push({
+          sellerNumber: buyerNumber,
+          error: result.error || 'Unknown error',
+        });
+      }
+    }
+
+    const completedAt = new Date();
+    const durationMs = completedAt.getTime() - startedAt.getTime();
+
+    const syncResult: DeletionSyncResult = {
+      totalDetected: buyerNumbers.length,
+      successfullyDeleted: deletedBuyerNumbers.length,
+      failedToDelete: errors.length,
+      requiresManualReview: manualReviewBuyerNumbers.length,
+      deletedSellerNumbers: deletedBuyerNumbers, // DeletionSyncResult は deletedSellerNumbers を使用
+      manualReviewSellerNumbers: manualReviewBuyerNumbers,
+      errors,
+      startedAt,
+      completedAt,
+      durationMs,
+    };
+
+    console.log(`🎉 Buyer deletion sync completed:`);
+    console.log(`   ✅ Deleted: ${deletedBuyerNumbers.length}`);
+    console.log(`   ⚠️ Manual review: ${manualReviewBuyerNumbers.length}`);
+    console.log(`   ❌ Errors: ${errors.length}`);
+
+    return syncResult;
+  }
+
+  /**
+   * 削除された買主を復元
+   */
+  async recoverDeletedBuyer(buyerNumber: string, recoveredBy: string = 'manual'): Promise<RecoveryResult> {
+    try {
+      console.log(`🔄 Attempting to recover buyer: ${buyerNumber}`);
+
+      // 1. 削除監査ログを確認
+      const { data: auditLog, error: auditError } = await this.supabase
+        .from('buyer_deletion_audit')
+        .select('*')
+        .eq('buyer_number', buyerNumber)
+        .is('recovered_at', null)
+        .order('deleted_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (auditError || !auditLog) {
+        console.error(`❌ Audit log not found for buyer ${buyerNumber}`);
+        return {
+          success: false,
+          sellerNumber: buyerNumber, // RecoveryResult は sellerNumber を使用
+          error: 'Audit log not found or buyer was not deleted',
+        };
+      }
+
+      if (!auditLog.can_recover) {
+        console.error(`❌ Recovery not allowed for buyer ${buyerNumber}`);
+        return {
+          success: false,
+          sellerNumber: buyerNumber,
+          error: 'Recovery is not allowed for this buyer',
+        };
+      }
+
+      // 2. 買主を復元（deleted_at を NULL に設定）
+      const { error: buyerRecoverError } = await this.supabase
+        .from('buyers')
+        .update({ deleted_at: null })
+        .eq('buyer_number', buyerNumber);
+
+      if (buyerRecoverError) {
+        console.error(`❌ Failed to recover buyer ${buyerNumber}:`, buyerRecoverError.message);
+        throw new Error(`Failed to recover buyer: ${buyerRecoverError.message}`);
+      }
+
+      console.log(`✅ Buyer ${buyerNumber} recovered`);
+
+      // 3. 監査ログを更新
+      const recoveredAt = new Date().toISOString();
+      const { error: auditUpdateError } = await this.supabase
+        .from('buyer_deletion_audit')
+        .update({
+          recovered_at: recoveredAt,
+          recovered_by: recoveredBy,
+        })
+        .eq('id', auditLog.id);
+
+      const auditRecordUpdated = !auditUpdateError;
+
+      if (auditUpdateError) {
+        console.warn(`⚠️ Warning: Failed to update audit log for buyer ${buyerNumber}:`, auditUpdateError.message);
+      }
+
+      console.log(`🎉 Recovery completed for buyer ${buyerNumber}`);
+
+      return {
+        success: true,
+        sellerNumber: buyerNumber,
+        recoveredAt: new Date(recoveredAt),
+        recoveredBy,
+        details: {
+          buyerRestored: true,
+          auditRecordUpdated,
+        },
+      };
+
+    } catch (error: any) {
+      console.error(`❌ Recovery failed for buyer ${buyerNumber}:`, error.message);
+      return {
+        success: false,
+        sellerNumber: buyerNumber,
+        error: error.message,
+      };
+    }
+  }
+
+  /**
+   * 買主同期のメインメソッド（追加・更新・削除を一括実行）
+   */
+  async syncBuyers(): Promise<{
+    missingBuyers: string[];
+    updatedBuyers: string[];
+    deletedBuyers: string[];
+    syncMissingResult: SyncResult | null;
+    syncUpdatedResult: SyncResult | null;
+    deletionSyncResult: DeletionSyncResult | null;
+  }> {
+    console.log('🔄 Starting buyer sync...');
+
+    const missingBuyers = await this.detectMissingBuyers();
+    const updatedBuyers = await this.detectUpdatedBuyers();
+    const deletedBuyers = await this.detectDeletedBuyers();
+
+    let syncMissingResult: SyncResult | null = null;
+    if (missingBuyers.length > 0) {
+      syncMissingResult = await this.syncMissingBuyers(missingBuyers);
+    }
+
+    let syncUpdatedResult: SyncResult | null = null;
+    if (updatedBuyers.length > 0) {
+      syncUpdatedResult = await this.syncUpdatedBuyers(updatedBuyers);
+    }
+
+    let deletionSyncResult: DeletionSyncResult | null = null;
+    if (deletedBuyers.length > 0) {
+      deletionSyncResult = await this.syncDeletedBuyers(deletedBuyers);
+    }
+
+    console.log('✅ Buyer sync completed');
+
+    return {
+      missingBuyers,
+      updatedBuyers,
+      deletedBuyers,
+      syncMissingResult,
+      syncUpdatedResult,
+      deletionSyncResult,
+    };
+  }
+
 }
 
 // シングルトンインスタンス
