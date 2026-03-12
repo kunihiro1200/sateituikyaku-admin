@@ -104,6 +104,7 @@ app.use(cors({
     'http://localhost:5175',
     'http://localhost:3000',  // 繝舌ャ繧ｯ繧ｨ繝ｳ繝芽・霄ｫ繧りｿｽ蜉
     'https://new-admin-management-system-v2.vercel.app',  // 社内管理システムフロントエンド
+    'https://sateituikyaku-admin-frontend.vercel.app',  // 社内管理システムフロントエンド（新URL）
     'https://property-site-frontend-kappa.vercel.app',  // 譛ｬ逡ｪ迺ｰ蠅・ヵ繝ｭ繝ｳ繝医お繝ｳ繝・    'https://baikyaku-property-site3.vercel.app'  // 譛ｬ逡ｪ迺ｰ蠅・ヰ繝・け繧ｨ繝ｳ繝・  ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
