@@ -222,8 +222,11 @@ export class BuyerService {
    * 買主に紐づく物件リストを取得
    */
   async getLinkedProperties(buyerId: string): Promise<any[]> {
-    // まず買主を取得
-    const buyer = await this.getById(buyerId);
+    // UUIDか買主番号かを判定して買主を取得
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(buyerId);
+    const buyer = isUuid
+      ? await this.getById(buyerId)
+      : await this.getByBuyerNumber(buyerId);
     if (!buyer || !buyer.property_number) {
       return [];
     }
@@ -380,11 +383,16 @@ export class BuyerService {
    * 買主情報を更新
    */
   async update(id: string, updateData: Partial<any>, userId?: string, userEmail?: string): Promise<any> {
-    // 存在確認
-    const existing = await this.getById(id);
+    // UUIDか買主番号かを判定して存在確認
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+    const existing = isUuid
+      ? await this.getById(id)
+      : await this.getByBuyerNumber(id);
     if (!existing) {
       throw new Error('Buyer not found');
     }
+
+    const buyerUuid = existing.buyer_id;
 
     // 更新不可フィールドを除外
     const protectedFields = ['id', 'db_created_at', 'synced_at'];
@@ -402,7 +410,7 @@ export class BuyerService {
     const { data, error } = await this.supabase
       .from('buyers')
       .update(allowedData)
-      .eq('buyer_id', id)
+      .eq('buyer_id', buyerUuid)
       .select()
       .single();
 
@@ -417,7 +425,7 @@ export class BuyerService {
           try {
             await AuditLogService.logFieldUpdate(
               'buyer',
-              id,
+              buyerUuid,
               key,
               existing[key],
               allowedData[key],

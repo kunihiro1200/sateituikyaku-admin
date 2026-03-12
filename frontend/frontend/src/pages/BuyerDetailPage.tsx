@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Container,
@@ -16,10 +16,21 @@ import {
   List,
   ListItem,
   Tooltip,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
 } from '@mui/material';
 import { 
   ArrowBack as ArrowBackIcon,
   Email as EmailIcon,
+  Phone,
+  Image as ImageIcon,
 } from '@mui/icons-material';
 import api, { buyerApi } from '../services/api';
 import PropertyInfoCard from '../components/PropertyInfoCard';
@@ -29,7 +40,9 @@ import RelatedBuyersSection from '../components/RelatedBuyersSection';
 import UnifiedInquiryHistoryTable from '../components/UnifiedInquiryHistoryTable';
 import RelatedBuyerNotificationBadge from '../components/RelatedBuyerNotificationBadge';
 import BuyerGmailSendButton from '../components/BuyerGmailSendButton';
+import ImageSelectorModal from '../components/ImageSelectorModal';
 import { InlineEditableField } from '../components/InlineEditableField';
+import { ConfirmationToAssignee } from '../components/ConfirmationToAssignee';
 import { useStableContainerHeight } from '../hooks/useStableContainerHeight';
 import { useQuickButtonState } from '../hooks/useQuickButtonState';
 import { INQUIRY_SOURCE_OPTIONS } from '../utils/buyerInquirySourceOptions';
@@ -40,8 +53,15 @@ import {
   EMAIL_TYPE_OPTIONS, 
   DISTRIBUTION_TYPE_OPTIONS 
 } from '../utils/buyerFieldOptions';
+import {
+  OTHER_PROPERTY_HEARING_OPTIONS,
+  EMAIL_CONFIRMATION_OPTIONS,
+  PINRICH_OPTIONS,
+  VIEWING_PROMOTION_EMAIL_OPTIONS,
+} from '../utils/buyerDetailFieldOptions';
 import { formatDateTime } from '../utils/dateFormat';
 import { getDisplayName } from '../utils/employeeUtils';
+import { useAuthStore } from '../store/authStore';
 
 interface Buyer {
   [key: string]: any;
@@ -58,6 +78,8 @@ interface PropertyListing {
   sales_assignee?: string;
   contract_date?: string;
   settlement_date?: string;
+  google_map_url?: string;
+  suumo_url?: string;
 }
 
 interface InquiryHistory {
@@ -83,76 +105,58 @@ interface Activity {
   };
 }
 
-// フィールドをセクションごとにグループ化
-// 問合時ヒアリング用クイック入力ボタンの定義
+interface BuyerTemplate {
+  id: string;
+  category: string;
+  type: string;
+  subject: string;
+  content: string;
+}
+
+// 繝輔ぅ繝ｼ繝ｫ繝峨ｒ繧ｻ繧ｯ繧ｷ繝ｧ繝ｳ縺斐→縺ｫ繧ｰ繝ｫ繝ｼ繝怜喧
+// 蝠丞粋譎ゅヲ繧｢繝ｪ繝ｳ繧ｰ逕ｨ繧ｯ繧､繝・け蜈･蜉帙・繧ｿ繝ｳ縺ｮ螳夂ｾｩ
 const INQUIRY_HEARING_QUICK_INPUTS = [
-  { label: '初見か', text: '初見か：' },
-  { label: '希望時期', text: '希望時期：' },
-  { label: '駐車場希望台数', text: '駐車場希望台数：' },
-  { label: 'リフォーム予算', text: 'リフォーム込みの予算（最高額）：' },
-  { label: '持ち家か', text: '持ち家か：' },
-  { label: '他物件', text: '他に気になる物件はあるか？：' },
+  { label: '蛻晁ｦ九°', text: '蛻晁ｦ九°・・ },
+  { label: '蟶梧悍譎よ悄', text: '蟶梧悍譎よ悄・・ },
+  { label: '鬧占ｻ雁ｴ蟶梧悍蜿ｰ謨ｰ', text: '鬧占ｻ雁ｴ蟶梧悍蜿ｰ謨ｰ・・ },
+  { label: '繝ｪ繝輔か繝ｼ繝莠育ｮ・, text: '繝ｪ繝輔か繝ｼ繝霎ｼ縺ｿ縺ｮ莠育ｮ暦ｼ域怙鬮倬｡搾ｼ会ｼ・ },
+  { label: '謖√■螳ｶ縺・, text: '謖√■螳ｶ縺具ｼ・ },
+  { label: '莉也黄莉ｶ', text: '莉悶↓豌励↓縺ｪ繧狗黄莉ｶ縺ｯ縺ゅｋ縺具ｼ滂ｼ・ },
 ];
 
 const BUYER_FIELD_SECTIONS = [
   {
-    title: '問合せ内容',
+    title: '蝠丞粋縺帛・螳ｹ',
     fields: [
-      // 一番上：問合時ヒアリング（全幅）
-      { key: 'inquiry_hearing', label: '問合時ヒアリング', multiline: true, inlineEditable: true, fullWidth: true },
-      // 左の列
-      { key: 'inquiry_email_phone', label: '【問合メール】電話対応', inlineEditable: true, fieldType: 'dropdown', column: 'left' },
-      { key: 'three_calls_confirmed', label: '3回架電確認済み', inlineEditable: true, fieldType: 'dropdown', column: 'left' },
-      { key: 'email_type', label: 'メール種別', inlineEditable: true, fieldType: 'dropdown', column: 'left' },
-      { key: 'distribution_type', label: '配信の有無', inlineEditable: true, fieldType: 'button', column: 'left' },
-      // 右の列
-      { key: 'reception_date', label: '受付日', type: 'date', inlineEditable: true, column: 'right' },
-      { key: 'initial_assignee', label: '初動担当', inlineEditable: true, column: 'right' },
-      { key: 'inquiry_source', label: '問合せ元', inlineEditable: true, column: 'right' },
-      { key: 'next_call_date', label: '次電日', type: 'date', inlineEditable: true, column: 'right' },
+      // 荳逡ｪ荳奇ｼ壼撫蜷域凾繝偵い繝ｪ繝ｳ繧ｰ・亥・蟷・ｼ・      { key: 'inquiry_hearing', label: '蝠丞粋譎ゅヲ繧｢繝ｪ繝ｳ繧ｰ', multiline: true, inlineEditable: true, fullWidth: true },
+      // 蟾ｦ縺ｮ蛻・      { key: 'inquiry_email_phone', label: '縲仙撫蜷医Γ繝ｼ繝ｫ縲鷹崕隧ｱ蟇ｾ蠢・, inlineEditable: true, fieldType: 'dropdown', column: 'left' },
+      { key: 'three_calls_confirmed', label: '3蝗樊楔髮ｻ遒ｺ隱肴ｸ医∩', inlineEditable: true, fieldType: 'dropdown', column: 'left', conditionalDisplay: true, required: true },
+      { key: 'viewing_promotion_email', label: '蜀・ｦｧ菫・ｲ繝｡繝ｼ繝ｫ', inlineEditable: true, fieldType: 'button', column: 'left', conditionalDisplay: true },
+      { key: 'distribution_type', label: '驟堺ｿ｡縺ｮ譛臥┌', inlineEditable: true, fieldType: 'button', column: 'left' },
+      { key: 'pinrich', label: 'Pinrich', inlineEditable: true, fieldType: 'dropdown', column: 'left' },
+      // 蜿ｳ縺ｮ蛻・      { key: 'reception_date', label: '蜿嶺ｻ俶律', type: 'date', inlineEditable: true, column: 'right' },
+      { key: 'initial_assignee', label: '蛻晏虚諡・ｽ・, inlineEditable: true, fieldType: 'button', column: 'right' },
+      { key: 'inquiry_source', label: '蝠丞粋縺帛・', inlineEditable: true, column: 'right' },
+      { key: 'next_call_date', label: '谺｡髮ｻ譌･', type: 'date', inlineEditable: true, column: 'right' },
     ],
   },
   {
-    title: '基本情報',
+    title: '蝓ｺ譛ｬ諠・ｱ',
     fields: [
-      { key: 'buyer_number', label: '買主番号', inlineEditable: true, readOnly: true },
-      { key: 'name', label: '氏名・会社名', inlineEditable: true },
-      { key: 'phone_number', label: '電話番号', inlineEditable: true },
-      { key: 'email', label: 'メールアドレス', inlineEditable: true },
-      { key: 'company_name', label: '法人名', inlineEditable: true },
+      { key: 'buyer_number', label: '雋ｷ荳ｻ逡ｪ蜿ｷ', inlineEditable: true, readOnly: true },
+      { key: 'name', label: '豌丞錐繝ｻ莨夂､ｾ蜷・, inlineEditable: true },
+      { key: 'phone_number', label: '髮ｻ隧ｱ逡ｪ蜿ｷ', inlineEditable: true },
+      { key: 'email', label: '繝｡繝ｼ繝ｫ繧｢繝峨Ξ繧ｹ', inlineEditable: true },
+      { key: 'email_confirmation', label: '繝｡繧｢繝臥｢ｺ隱・, inlineEditable: true, fieldType: 'dropdown', conditionalDisplay: true },
+      { key: 'company_name', label: '豕穂ｺｺ蜷・, inlineEditable: true },
     ],
   },
-  // 希望条件セクションは別ページに移動
-  // 内覧結果・後続対応セクションは別ページに移動
-  {
-    title: 'その他',
-    fields: [
-      { key: 'special_notes', label: '特記事項', multiline: true, inlineEditable: true },
-      { key: 'message_to_assignee', label: '担当への伝言/質問事項', multiline: true, inlineEditable: true },
-      { key: 'confirmation_to_assignee', label: '担当への確認事項', multiline: true, inlineEditable: true },
-      { key: 'family_composition', label: '家族構成', inlineEditable: true },
-      { key: 'must_have_points', label: '譲れない点', multiline: true, inlineEditable: true },
-      { key: 'liked_points', label: '気に入っている点', multiline: true, inlineEditable: true },
-      { key: 'disliked_points', label: 'ダメな点', multiline: true, inlineEditable: true },
-      { key: 'purchase_obstacles', label: '購入時障害となる点', multiline: true, inlineEditable: true },
-      { key: 'next_action', label: '次のアクション', multiline: true, inlineEditable: true },
-    ],
-  },
-  {
-    title: '買付情報',
-    fields: [
-      { key: 'offer_status', label: '買付有無', inlineEditable: true },
-      { key: 'offer_comment', label: '買付コメント', inlineEditable: true },
-      { key: 'offer_property_sheet', label: '買付（物件シート）', inlineEditable: true },
-      { key: 'offer_lost_comment', label: '買付外れコメント', inlineEditable: true },
-      { key: 'offer_lost_chat', label: '買付外れチャット', inlineEditable: true },
-    ],
-  },
-];
+  // 蟶梧悍譚｡莉ｶ繧ｻ繧ｯ繧ｷ繝ｧ繝ｳ縺ｯ蛻･繝壹・繧ｸ縺ｫ遘ｻ蜍・  // 蜀・ｦｧ邨先棡繝ｻ蠕檎ｶ壼ｯｾ蠢懊そ繧ｯ繧ｷ繝ｧ繝ｳ縺ｯ蛻･繝壹・繧ｸ縺ｫ遘ｻ蜍・  // 雋ｷ莉俶ュ蝣ｱ繧ｻ繧ｯ繧ｷ繝ｧ繝ｳ縺ｯ蜀・ｦｧ邨先棡繝壹・繧ｸ縺ｫ遘ｻ蜍・];
 
 export default function BuyerDetailPage() {
   const { buyer_number } = useParams<{ buyer_number: string }>();
   const navigate = useNavigate();
+  const { employee } = useAuthStore();
   const [buyer, setBuyer] = useState<Buyer | null>(null);
   const [linkedProperties, setLinkedProperties] = useState<PropertyListing[]>([]);
   const [inquiryHistory, setInquiryHistory] = useState<InquiryHistory[]>([]);
@@ -170,25 +174,47 @@ export default function BuyerDetailPage() {
     message: '',
     severity: 'success',
   });
+  const [emailTemplates, setEmailTemplates] = useState<BuyerTemplate[]>([]);
+  const [smsTemplates, setSmsTemplates] = useState<BuyerTemplate[]>([]);
+  const [confirmDialog, setConfirmDialog] = useState<{
+    open: boolean;
+    type: 'email' | 'sms' | null;
+    template: BuyerTemplate | null;
+  }>({
+    open: false,
+    type: null,
+    template: null,
+  });
+  const [sendingTemplate, setSendingTemplate] = useState(false);
+  const [editableEmailRecipient, setEditableEmailRecipient] = useState('');
+  const [editableEmailSubject, setEditableEmailSubject] = useState('');
+  const [editableEmailBody, setEditableEmailBody] = useState('');
+  
+  // 繧｢繧ｯ繝・ぅ繝薙ユ繧｣隧ｳ邏ｰ繝繧､繧｢繝ｭ繧ｰ逕ｨ縺ｮ迥ｶ諷・  const [activityDetailOpen, setActivityDetailOpen] = useState(false);
+  const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null);
+  
+  // 繧ｹ繧ｿ繝・ヵ繧､繝九す繝｣繝ｫ逕ｨ縺ｮ迥ｶ諷・  const [staffInitials, setStaffInitials] = useState<string[]>([]);
+  
+  // 逕ｻ蜒城∈謚槭Δ繝ｼ繝繝ｫ逕ｨ縺ｮ迥ｶ諷・  const [imageSelectorOpen, setImageSelectorOpen] = useState(false);
+  const [selectedImages, setSelectedImages] = useState<any[] | null>(null);
+  const [imageError, setImageError] = useState<string>('');
 
-  // クイックボタンの状態管理
-  const { isDisabled: isQuickButtonDisabled, disableButton: disableQuickButton } = useQuickButtonState(buyer_number || '');
+  // 繧ｯ繧､繝・け繝懊ち繝ｳ縺ｮ迥ｶ諷狗ｮ｡逅・  const { isDisabled: isQuickButtonDisabled, disableButton: disableQuickButton } = useQuickButtonState(buyer_number || '');
 
-  // useStableContainerHeightフックを使用して安定した高さ管理
-  const { error: heightError } = useStableContainerHeight({
+  // useStableContainerHeight繝輔ャ繧ｯ繧剃ｽｿ逕ｨ縺励※螳牙ｮ壹＠縺滄ｫ倥＆邂｡逅・  const { error: heightError } = useStableContainerHeight({
     headerHeight: 64,
     padding: 48,
     minHeight: 400,
     debounceDelay: 200,
   });
 
-  // ビューポート高さ計算エラーのハンドリング
+  // 繝薙Η繝ｼ繝昴・繝磯ｫ倥＆險育ｮ励お繝ｩ繝ｼ縺ｮ繝上Φ繝峨Μ繝ｳ繧ｰ
   useEffect(() => {
     if (heightError) {
       console.error('[BuyerDetailPage] Height calculation error:', heightError);
       setSnackbar({
         open: true,
-        message: '画面高さの計算でエラーが発生しました。デフォルト値を使用します。',
+        message: '逕ｻ髱｢鬮倥＆縺ｮ險育ｮ励〒繧ｨ繝ｩ繝ｼ縺檎匱逕溘＠縺ｾ縺励◆縲ゅョ繝輔か繝ｫ繝亥､繧剃ｽｿ逕ｨ縺励∪縺吶・,
         severity: 'warning',
       });
     }
@@ -208,6 +234,8 @@ export default function BuyerDetailPage() {
       fetchInquiryHistoryTable();
       fetchRelatedBuyersCount();
       fetchActivities();
+      fetchTemplates();
+      fetchStaffInitials();
     }
   }, [buyer_number, isValidBuyerNumber]);
 
@@ -230,10 +258,9 @@ export default function BuyerDetailPage() {
   const fetchBuyer = async () => {
     try {
       setLoading(true);
-      // 常にスプレッドシートから最新データを取得（force=true）
-      const res = await api.get(`/api/buyers/${buyer_number}?force=true`);
+      // DB縺九ｉ譛譁ｰ繝・・繧ｿ繧貞叙蠕暦ｼ磯ｫ倬滂ｼ・      const res = await api.get(`/api/buyers/${buyer_number}`);
       setBuyer(res.data);
-      // inquiry_hearingフィールドを強制再レンダリング
+      // inquiry_hearing繝輔ぅ繝ｼ繝ｫ繝峨ｒ蠑ｷ蛻ｶ蜀阪Ξ繝ｳ繝繝ｪ繝ｳ繧ｰ
       setInquiryHearingKey(prev => prev + 1);
     } catch (error) {
       console.error('Failed to fetch buyer:', error);
@@ -242,68 +269,68 @@ export default function BuyerDetailPage() {
     }
   };
 
-  // インライン編集用のフィールド更新ハンドラー
+  // 繧､繝ｳ繝ｩ繧､繝ｳ邱ｨ髮・畑縺ｮ繝輔ぅ繝ｼ繝ｫ繝画峩譁ｰ繝上Φ繝峨Λ繝ｼ
   const handleInlineFieldSave = async (fieldName: string, newValue: any) => {
     if (!buyer) return;
 
     try {
-      // 更新するフィールドのみを送信（DB → スプレッドシートに即座に同期）
-      const result = await buyerApi.update(
+      // 譖ｴ譁ｰ縺吶ｋ繝輔ぅ繝ｼ繝ｫ繝峨・縺ｿ繧帝∽ｿ｡・・B 竊・繧ｹ繝励Ξ繝・ラ繧ｷ繝ｼ繝医↓蜊ｳ蠎ｧ縺ｫ蜷梧悄・・      const result = await buyerApi.update(
         buyer_number!,
         { [fieldName]: newValue },
-        { sync: true, force: true }  // スプレッドシートへの同期を有効化
-      );
-
-      // ローカル状態を更新
+        { sync: true, force: true }  // 繧ｹ繝励Ξ繝・ラ繧ｷ繝ｼ繝医∈縺ｮ蜷梧悄繧呈怏蜉ｹ蛹・      );
+      
+      // 繝ｭ繝ｼ繧ｫ繝ｫ迥ｶ諷九ｒ譖ｴ譁ｰ
       setBuyer(result.buyer);
-
+      
       return { success: true };
     } catch (error: any) {
       console.error('Failed to update field:', error);
       return { 
         success: false, 
-        error: error.response?.data?.error || '更新に失敗しました' 
+        error: error.response?.data?.error || '譖ｴ譁ｰ縺ｫ螟ｱ謨励＠縺ｾ縺励◆' 
       };
     }
   };
 
-  // 問合時ヒアリング用クイック入力ボタンのクリックハンドラー
-  // inquiry_hearingフィールドの強制再レンダリング用キー
+  // 蝠丞粋譎ゅヲ繧｢繝ｪ繝ｳ繧ｰ逕ｨ繧ｯ繧､繝・け蜈･蜉帙・繧ｿ繝ｳ縺ｮ繧ｯ繝ｪ繝・け繝上Φ繝峨Λ繝ｼ
+  // inquiry_hearing繝輔ぅ繝ｼ繝ｫ繝峨・蠑ｷ蛻ｶ蜀阪Ξ繝ｳ繝繝ｪ繝ｳ繧ｰ逕ｨ繧ｭ繝ｼ
   const [inquiryHearingKey, setInquiryHearingKey] = useState(0);
   
   const handleInquiryHearingQuickInput = async (text: string, buttonLabel: string) => {
     if (!buyer) return;
     
-    // ボタンを無効化
-    disableQuickButton(buttonLabel);
+    console.log('[handleInquiryHearingQuickInput] Called with:', { text, buttonLabel });
+    console.log('[handleInquiryHearingQuickInput] Current buyer.inquiry_hearing:', buyer.inquiry_hearing);
     
-    const currentValue = buyer.inquiry_hearing || '';
-    // 新しいテキストを先頭に追加（既存内容がある場合は改行を挟む）
-    const newValue = currentValue 
+    // 迴ｾ蝨ｨ縺ｮ蛟､繧貞叙蠕暦ｼ・uyer縺ｮ譛譁ｰ迥ｶ諷九°繧会ｼ・    const currentValue = buyer.inquiry_hearing || '';
+    
+    // 譁ｰ縺励＞繝・く繧ｹ繝医ｒ蜈磯ｭ縺ｫ霑ｽ蜉・域里蟄伜・螳ｹ縺後≠繧句ｴ蜷医・謾ｹ陦後ｒ謖溘・・・    const newValue = currentValue 
       ? `${text}\n${currentValue}` 
       : text;
     
-    // 先にローカル状態を更新して即座にUIに反映
+    console.log('[handleInquiryHearingQuickInput] New value to save:', newValue);
+    
+    // 蜈医↓繝ｭ繝ｼ繧ｫ繝ｫ迥ｶ諷九ｒ譖ｴ譁ｰ縺励※蜊ｳ蠎ｧ縺ｫUI縺ｫ蜿肴丐
     setBuyer(prev => prev ? { ...prev, inquiry_hearing: newValue } : prev);
-    // キーを更新してInlineEditableFieldを強制再レンダリング
+    // 繧ｭ繝ｼ繧呈峩譁ｰ縺励※InlineEditableField繧貞ｼｷ蛻ｶ蜀阪Ξ繝ｳ繝繝ｪ繝ｳ繧ｰ
     setInquiryHearingKey(prev => prev + 1);
-
-    // DB → スプレッドシートに即座に同期
+    
+    // DB 竊・繧ｹ繝励Ξ繝・ラ繧ｷ繝ｼ繝医↓蜊ｳ蠎ｧ縺ｫ蜷梧悄
     try {
       const result = await buyerApi.update(
         buyer_number!,
         { inquiry_hearing: newValue },
-        { sync: true, force: true }  // スプレッドシート同期を有効化
-      );
-      setBuyer(result.buyer);
+        { sync: true, force: true }  // 繧ｹ繝励Ξ繝・ラ繧ｷ繝ｼ繝亥酔譛溘ｒ譛牙柑蛹・      );
+      
+      console.log('[handleInquiryHearingQuickInput] Save result:', result);
+      
     } catch (error: any) {
       console.error('[handleInquiryHearingQuickInput] Exception:', error);
-      // エラー時は元の値に戻す
-      setBuyer(prev => prev ? { ...prev, inquiry_hearing: currentValue } : prev);
+      // 繧ｨ繝ｩ繝ｼ譎ゅ・蜈・・蛟､縺ｫ謌ｻ縺・      setBuyer(prev => prev ? { ...prev, inquiry_hearing: currentValue } : prev);
       setInquiryHearingKey(prev => prev + 1);
       setSnackbar({
         open: true,
-        message: error.response?.data?.error || '保存に失敗しました',
+        message: error.response?.data?.error || '菫晏ｭ倥↓螟ｱ謨励＠縺ｾ縺励◆',
         severity: 'error'
       });
     }
@@ -311,6 +338,196 @@ export default function BuyerDetailPage() {
 
   const handleCloseSnackbar = () => {
     setSnackbar({ ...snackbar, open: false });
+  };
+
+  const handleEmailTemplateSelect = (templateId: string) => {
+    if (!templateId) return;
+
+    const template = emailTemplates.find(t => t.id === templateId);
+    if (!template) return;
+
+    console.log('[handleEmailTemplateSelect] Selected template:', {
+      id: template.id,
+      category: template.category,
+      type: template.type,
+      subject: template.subject,
+    });
+
+    console.log('[handleEmailTemplateSelect] Linked properties:', linkedProperties);
+    console.log('[handleEmailTemplateSelect] Buyer data:', {
+      buyer_number: buyer?.buyer_number,
+      pre_viewing_notes: buyer?.pre_viewing_notes,
+    });
+
+    // 繝励Ξ繝ｼ繧ｹ繝帙Ν繝繝ｼ繧堤ｽｮ謠幢ｼ・br>繧ｿ繧ｰ繧よ隼陦後↓螟画鋤縺輔ｌ繧具ｼ・    const replacedSubject = replacePlaceholders(template.subject);
+    const replacedContent = replacePlaceholders(template.content);
+
+    // 邱ｨ髮・庄閭ｽ繝輔ぅ繝ｼ繝ｫ繝峨ｒ蛻晄悄蛹・    setEditableEmailRecipient(buyer?.email || '');
+    setEditableEmailSubject(replacedSubject);
+    setEditableEmailBody(replacedContent); // 謾ｹ陦鯉ｼ・n・峨・縺ｾ縺ｾ險ｭ螳・
+    // 遒ｺ隱阪ム繧､繧｢繝ｭ繧ｰ繧定｡ｨ遉ｺ
+    setConfirmDialog({
+      open: true,
+      type: 'email',
+      template: {
+        ...template,
+        subject: replacedSubject,
+        content: replacedContent,
+      },
+    });
+  };
+
+  const handleSmsTemplateSelect = (templateId: string) => {
+    if (!templateId) return;
+
+    const template = smsTemplates.find(t => t.id === templateId);
+    if (!template) return;
+
+    console.log('[handleSmsTemplateSelect] Selected template:', {
+      id: template.id,
+      category: template.category,
+      type: template.type,
+      contentLength: template.content.length,
+    });
+
+    // SMS逕ｨ縺ｫ鄂ｲ蜷阪ｒ邁｡逡･蛹悶＠縺ｦ縺九ｉ繝励Ξ繝ｼ繧ｹ繝帙Ν繝繝ｼ繧堤ｽｮ謠・    const simplifiedContent = simplifySmsSignature(template.content);
+    const replacedContent = replacePlaceholders(simplifiedContent);
+
+    // 繝｡繝・そ繝ｼ繧ｸ髟ｷ縺ｮ讀懆ｨｼ・域律譛ｬ隱朶MS蛻ｶ髯・ 670譁・ｭ暦ｼ・    const isOverLimit = replacedContent.length > 670;
+    
+    if (isOverLimit) {
+      // 繧ｨ繝ｩ繝ｼ繝｡繝・そ繝ｼ繧ｸ繧定｡ｨ遉ｺ縺吶ｋ縺後√ム繧､繧｢繝ｭ繧ｰ繧る幕縺・      setSnackbar({
+        open: true,
+        message: `繝｡繝・そ繝ｼ繧ｸ縺碁聞縺吶℃縺ｾ縺呻ｼ・{replacedContent.length}譁・ｭ・/ 670譁・ｭ怜宛髯撰ｼ峨ょ・螳ｹ繧堤｢ｺ隱阪＠縺ｦ縺上□縺輔＞縲Ａ,
+        severity: 'warning',
+      });
+    }
+
+    // 遒ｺ隱阪ム繧､繧｢繝ｭ繧ｰ繧定｡ｨ遉ｺ・域枚蟄玲焚繧ｪ繝ｼ繝舌・縺ｧ繧り｡ｨ遉ｺ・・    // 遒ｺ隱阪ム繧､繧｢繝ｭ繧ｰ繧定｡ｨ遉ｺ・域枚蟄玲焚繧ｪ繝ｼ繝舌・縺ｧ繧り｡ｨ遉ｺ・・    setConfirmDialog({
+      open: true,
+      type: 'sms',
+      template: {
+        ...template,
+        content: replacedContent,
+      },
+    });
+  };
+
+  const handleConfirmSend = async () => {
+    const { type, template } = confirmDialog;
+    if (!type || !template) return;
+
+    console.log('[handleConfirmSend] Confirm dialog state:', {
+      type,
+      template: {
+        id: template.id,
+        category: template.category,
+        type: template.type,
+        subject: template.subject,
+      },
+    });
+
+    try {
+      setSendingTemplate(true);
+      setConfirmDialog({ open: false, type: null, template: null });
+
+      if (type === 'email') {
+        console.log('[handleConfirmSend] Sending email:', {
+          to: editableEmailRecipient,
+          subject: editableEmailSubject,
+          bodyLength: editableEmailBody.length,
+          hasImages: selectedImages && selectedImages.length > 0,
+          imageCount: selectedImages?.length || 0,
+          templateType: template.type,
+        });
+
+        // 繝｡繝ｼ繝ｫ騾∽ｿ｡API蜻ｼ縺ｳ蜃ｺ縺暦ｼ育判蜒乗ｷｻ莉倥ョ繝ｼ繧ｿ繧る∽ｿ｡・・        // 謾ｹ陦悟､画鋤縺ｯ繝舌ャ繧ｯ繧ｨ繝ｳ繝峨〒蜃ｦ逅・        const response = await api.post(`/api/buyers/${buyer_number}/send-email`, {
+          to: editableEmailRecipient,
+          subject: editableEmailSubject,
+          content: editableEmailBody,  // 謾ｹ陦鯉ｼ・n・峨・縺ｾ縺ｾ騾∽ｿ｡
+          selectedImages: selectedImages || [], // 逕ｻ蜒乗ｷｻ莉倥ョ繝ｼ繧ｿ繧帝∽ｿ｡
+          templateType: template.type, // 繝・Φ繝励Ξ繝ｼ繝育ｨｮ蛻･繧帝∽ｿ｡
+        });
+
+        console.log('[handleConfirmSend] Email sent successfully:', response.data);
+
+        setSnackbar({
+          open: true,
+          message: '繝｡繝ｼ繝ｫ繧帝∽ｿ｡縺励∪縺励◆',
+          severity: 'success',
+        });
+
+        // 逕ｻ蜒城∈謚槭ｒ繧ｯ繝ｪ繧｢
+        setSelectedImages(null);
+        setImageError('');
+
+        // 繧｢繧ｯ繝・ぅ繝薙ユ繧｣繧貞・隱ｭ縺ｿ霎ｼ縺ｿ
+        fetchActivities();
+      } else if (type === 'sms') {
+        // SMS騾∽ｿ｡險倬鹸API蜻ｼ縺ｳ蜃ｺ縺・        await api.post(`/api/buyers/${buyer_number}/send-sms`, {
+          message: template.content,
+          templateType: template.type, // 繝・Φ繝励Ξ繝ｼ繝育ｨｮ蛻･繧帝∽ｿ｡
+        });
+
+        setSnackbar({
+          open: true,
+          message: 'SMS騾∽ｿ｡繧定ｨ倬鹸縺励∪縺励◆',
+          severity: 'success',
+        });
+
+        // SMS繧｢繝励Μ繧帝幕縺・        if (buyer?.phone_number) {
+          const smsLink = `sms:${buyer.phone_number}?body=${encodeURIComponent(template.content)}`;
+          window.location.href = smsLink;
+        }
+
+        // 繧｢繧ｯ繝・ぅ繝薙ユ繧｣繧貞・隱ｭ縺ｿ霎ｼ縺ｿ
+        fetchActivities();
+      }
+    } catch (error: any) {
+      console.error('[handleConfirmSend] Failed to send:', error);
+      console.error('[handleConfirmSend] Error details:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+      });
+      
+      // 繧医ｊ隧ｳ邏ｰ縺ｪ繧ｨ繝ｩ繝ｼ繝｡繝・そ繝ｼ繧ｸ繧定｡ｨ遉ｺ
+      const errorMessage = error.response?.data?.error 
+        || error.response?.data?.message 
+        || error.message 
+        || '騾∽ｿ｡縺ｫ螟ｱ謨励＠縺ｾ縺励◆';
+      
+      setSnackbar({
+        open: true,
+        message: `騾∽ｿ｡繧ｨ繝ｩ繝ｼ: ${errorMessage}`,
+        severity: 'error',
+      });
+    } finally {
+      setSendingTemplate(false);
+    }
+  };
+
+  const handleCancelSend = () => {
+    setConfirmDialog({ open: false, type: null, template: null });
+    setSelectedImages(null);
+    setImageError('');
+  };
+
+  // 逕ｻ蜒城∈謚槭・繧ｿ繝ｳ縺ｮ繝上Φ繝峨Λ繝ｼ
+  const handleOpenImageSelector = () => {
+    setImageSelectorOpen(true);
+  };
+
+  // 逕ｻ蜒城∈謚樒｢ｺ螳壹・繝上Φ繝峨Λ繝ｼ
+  const handleImageSelectionConfirm = (images: any[]) => {
+    setSelectedImages(images);
+    setImageSelectorOpen(false);
+    setImageError('');
+  };
+
+  // 逕ｻ蜒城∈謚槭く繝｣繝ｳ繧ｻ繝ｫ縺ｮ繝上Φ繝峨Λ繝ｼ
+  const handleImageSelectionCancel = () => {
+    setImageSelectorOpen(false);
   };
 
   const fetchLinkedProperties = async () => {
@@ -326,7 +543,8 @@ export default function BuyerDetailPage() {
   const fetchInquiryHistory = async () => {
     try {
       const res = await api.get(`/api/buyers/${buyer_number}/inquiry-history`);
-      const history = res.data || [];
+      // APIは { inquiryHistory: [...] } 形式で返す
+      const history = res.data?.inquiryHistory || res.data || [];
       setInquiryHistory(history);
     } catch (error) {
       console.error('Failed to fetch inquiry history:', error);
@@ -347,6 +565,131 @@ export default function BuyerDetailPage() {
     }
   };
 
+  const fetchTemplates = async () => {
+    try {
+      const res = await api.get('/api/buyers/templates');
+      const templates = res.data || [];
+      
+      // 蜈ｨ縺ｦ縺ｮ繝・Φ繝励Ξ繝ｼ繝医ｒ繝｡繝ｼ繝ｫ縺ｨSMS荳｡譁ｹ縺ｧ菴ｿ逕ｨ蜿ｯ閭ｽ縺ｫ縺吶ｋ
+      // ・医Θ繝ｼ繧ｶ繝ｼ縺後←縺｡繧峨〒繧る∈謚槭〒縺阪ｋ繧医≧縺ｫ・・      setEmailTemplates(templates);
+      setSmsTemplates(templates);
+    } catch (error) {
+      console.error('Failed to fetch templates:', error);
+    }
+  };
+
+  const fetchStaffInitials = async () => {
+    try {
+      const res = await api.get('/api/employees/active-initials');
+      const initials = res.data?.initials || [];
+      setStaffInitials(initials);
+      console.log('[fetchStaffInitials] Fetched staff initials:', initials);
+    } catch (error) {
+      console.error('Failed to fetch staff initials:', error);
+      setStaffInitials([]);
+    }
+  };
+
+  /**
+   * 繝・Φ繝励Ξ繝ｼ繝亥・縺ｮ繝励Ξ繝ｼ繧ｹ繝帙Ν繝繝ｼ繧堤ｽｮ謠・   */
+  const replacePlaceholders = (template: string): string => {
+    if (!buyer) return template;
+
+    let result = template;
+
+    // 雋ｷ荳ｻ諠・ｱ縺ｮ鄂ｮ謠・    result = result.replace(/<<笳乗ｰ丞錐繝ｻ莨夂､ｾ蜷・>/g, buyer.name || '');
+    result = result.replace(/<<豌丞錐>>/g, buyer.name || '');
+    result = result.replace(/<<笳城崕隧ｱ逡ｪ蜿ｷ>>/g, buyer.phone_number || '');
+    result = result.replace(/<<髮ｻ隧ｱ逡ｪ蜿ｷ>>/g, buyer.phone_number || '');
+    result = result.replace(/<<笳上Γ繝ｼ繝ｫ繧｢繝峨Ξ繧ｹ>>/g, buyer.email || '');
+    result = result.replace(/<<繝｡繝ｼ繝ｫ繧｢繝峨Ξ繧ｹ>>/g, buyer.email || '');
+    result = result.replace(/<<雋ｷ荳ｻ逡ｪ蜿ｷ>>/g, buyer.buyer_number || '');
+    result = result.replace(/<<莨夂､ｾ蜷・>/g, buyer.company_name || '');
+    
+    // 蝠上＞蜷医ｏ縺帶ュ蝣ｱ
+    result = result.replace(/<<迚ｩ莉ｶ逡ｪ蜿ｷ>>/g, buyer.property_number || '');
+    result = result.replace(/<<蝠丞粋縺帛・>>/g, buyer.inquiry_source || '');
+    result = result.replace(/<<蜿嶺ｻ俶律>>/g, buyer.reception_date ? new Date(buyer.reception_date).toLocaleDateString('ja-JP') : '');
+    
+    // 蜀・ｦｧ諠・ｱ
+    result = result.replace(/<<蜀・ｦｧ譌･>>/g, buyer.latest_viewing_date ? new Date(buyer.latest_viewing_date).toLocaleDateString('ja-JP') : '');
+    result = result.replace(/<<蜀・ｦｧ譎る俣>>/g, buyer.viewing_time || '');
+    result = result.replace(/<<譎る俣>>/g, buyer.viewing_time || '');
+    
+    // 迚ｩ莉ｶ諠・ｱ・育ｴ舌▼縺・◆迚ｩ莉ｶ縺九ｉ蜿門ｾ暦ｼ・    if (linkedProperties && linkedProperties.length > 0) {
+      const firstProperty = linkedProperties[0];
+      result = result.replace(/<<菴丞ｱ・｡ｨ遉ｺ>>/g, firstProperty.display_address || firstProperty.address || '');
+      result = result.replace(/<<菴丞ｱ・｡ｨ遉ｺPinrich>>/g, firstProperty.display_address || firstProperty.address || '');
+      result = result.replace(/<<蟒ｺ迚ｩ蜷構/萓｡譬ｼ 蜀・ｦｧ迚ｩ莉ｶ縺ｯ襍､陦ｨ遉ｺ・遺・縺ｯ莉也､ｾ迚ｩ莉ｶ・・>/g, firstProperty.property_number || '');
+      result = result.replace(/<<athome URL>>/g, firstProperty.suumo_url || '');
+      
+      // SUUMO URL縺ｮ陦ｨ遉ｺ: URL縺後≠繧句ｴ蜷医・縺ｿ縲郡UUMO: URL縲榊ｽ｢蠑上〒陦ｨ遉ｺ
+      const suumoUrlDisplay = firstProperty.suumo_url ? `SUUMO: ${firstProperty.suumo_url}` : '';
+      result = result.replace(/<<SUUMO縲URL縺ｮ陦ｨ遉ｺ>>/g, suumoUrlDisplay);
+      result = result.replace(/<<SUUMO URL縺ｮ陦ｨ遉ｺ>>/g, suumoUrlDisplay);
+      
+      result = result.replace(/<<SUUMO URL>>/g, firstProperty.suumo_url || '');
+      result = result.replace(/<<GoogleMap>>/g, firstProperty.google_map_url || '');
+      result = result.replace(/<<迴ｾ豕」>>/g, ''); // TODO: 迴ｾ豕√ヵ繧｣繝ｼ繝ｫ繝峨ｒ霑ｽ蜉
+      result = result.replace(/<<骰ｵ遲益>>/g, ''); // TODO: 骰ｵ遲峨ヵ繧｣繝ｼ繝ｫ繝峨ｒ霑ｽ蜉
+      
+      // 迚ｩ莉ｶ隧ｳ邏ｰURL: 蜈ｬ髢狗黄莉ｶ繧ｵ繧､繝医・URL
+      const propertyDetailUrl = `https://property-site-frontend-kappa.vercel.app/public/properties/${firstProperty.property_number}`;
+      result = result.replace(/<<迚ｩ莉ｶ隧ｳ邏ｰURL>>/g, propertyDetailUrl);
+      
+      // 蜀・ｦｧ蜑堺ｼ晞＃莠矩・ 迚ｩ莉ｶ繝ｪ繧ｹ繝医ユ繝ｼ繝悶Ν縺ｮpre_viewing_notes繝輔ぅ繝ｼ繝ｫ繝峨°繧牙叙蠕・      result = result.replace(/<<蜀・ｦｧ蜑堺ｼ晞＃莠矩・>>/g, (firstProperty as any).pre_viewing_notes || '');
+      result = result.replace(/<<蜀・ｦｧ蜑堺ｼ晞＃莠矩・>/g, (firstProperty as any).pre_viewing_notes || '');
+    } else {
+      // 迚ｩ莉ｶ縺檎ｴ舌▼縺・※縺・↑縺・ｴ蜷医・遨ｺ譁・ｭ・      result = result.replace(/<<蜀・ｦｧ蜑堺ｼ晞＃莠矩・>>/g, '');
+      result = result.replace(/<<蜀・ｦｧ蜑堺ｼ晞＃莠矩・>/g, '');
+      result = result.replace(/<<迚ｩ莉ｶ隧ｳ邏ｰURL>>/g, '');
+    }
+    
+    // 繧｢繝ｳ繧ｱ繝ｼ繝・RL・亥崋螳壼､・・    result = result.replace(/<<蜀・ｦｧ繧｢繝ｳ繧ｱ繝ｼ繝・>/g, 'https://forms.gle/xxxxx'); // TODO: 螳滄圀縺ｮURL縺ｫ鄂ｮ縺肴鋤縺・    result = result.replace(/<<荳榊虚逕｣譟ｻ螳壹い繝ｳ繧ｱ繝ｼ繝・>/g, 'https://forms.gle/xxxxx'); // TODO: 螳滄圀縺ｮURL縺ｫ鄂ｮ縺肴鋤縺・    
+    // 諡・ｽ楢・ュ蝣ｱ・育樟蝨ｨ繝ｭ繧ｰ繧､繝ｳ荳ｭ縺ｮ繝ｦ繝ｼ繧ｶ繝ｼ・・    const currentUser = employee || {};
+    result = result.replace(/<<蠕檎ｶ壽球蠖・>/g, buyer.follow_up_assignee || currentUser.name || '');
+    result = result.replace(/<<諡・ｽ楢・錐>>/g, currentUser.name || '');
+    result = result.replace(/<<諡・ｽ灘錐・亥霧讌ｭ・牙錐蜑・>/g, currentUser.name || '');
+    result = result.replace(/<<諡・ｽ楢・崕隧ｱ逡ｪ蜿ｷ>>/g, currentUser.phoneNumber || '');
+    result = result.replace(/<<諡・ｽ灘錐・亥霧讌ｭ・蛾崕隧ｱ逡ｪ蜿ｷ>>/g, currentUser.phoneNumber || '');
+    result = result.replace(/<<諡・ｽ楢・Γ繝ｼ繝ｫ繧｢繝峨Ξ繧ｹ>>/g, currentUser.email || '');
+    result = result.replace(/<<諡・ｽ灘錐・亥霧讌ｭ・峨Γ繝ｼ繝ｫ繧｢繝峨Ξ繧ｹ>>/g, currentUser.email || '');
+    result = result.replace(/<<諡・ｽ灘錐・亥霧讌ｭ・牙崋螳壻ｼ・>/g, '豌ｴ譖懈律'); // TODO: 螳滄圀縺ｮ蝗ｺ螳壻ｼ代ｒ蜿門ｾ・    
+    // 莨夂､ｾ諠・ｱ・亥崋螳壼､・・    result = result.replace(/<<莨夂､ｾ蜷・>/g, '譬ｪ蠑丈ｼ夂､ｾ縺・・縺・);
+    result = result.replace(/<<菴乗園>>/g, '縲・70-0044 螟ｧ蛻・ｸり・鮓ｴ逕ｺ1荳∫岼3-30');
+    result = result.replace(/<<莨夂､ｾ髮ｻ隧ｱ逡ｪ蜿ｷ>>/g, '097-533-2022');
+    result = result.replace(/<<莨夂､ｾ繝｡繝ｼ繝ｫ繧｢繝峨Ξ繧ｹ>>/g, 'tenant@ifoo-oita.com');
+
+    // <br>繧ｿ繧ｰ繧呈隼陦後↓螟画鋤
+    result = result.replace(/<br>/g, '\n');
+    result = result.replace(/<br\/>/g, '\n');
+    result = result.replace(/<br \/>/g, '\n');
+
+    return result;
+  };
+
+  /**
+   * SMS逕ｨ縺ｫ鄂ｲ蜷阪ｒ邁｡逡･蛹・   */
+  const simplifySmsSignature = (content: string): string => {
+    let result = content;
+
+    // 鄂ｲ蜷埼Κ蛻・ｒ邁｡逡･蛹厄ｼ域怙蠕後・鄂ｲ蜷肴ｬ・ｒ莨夂､ｾ蜷阪∽ｽ乗園縲・崕隧ｱ逡ｪ蜿ｷ縲√Γ繧｢繝峨・縺ｿ縺ｫ・・    const signaturePattern = /---+\s*\n([\s\S]*?)$/;
+    const match = result.match(signaturePattern);
+
+    if (match) {
+      // 鄂ｲ蜷埼Κ蛻・ｒ邁｡逡･蛹・      const simplifiedSignature = `
+---
+<<莨夂､ｾ蜷・>
+<<菴乗園>>
+TEL: <<莨夂､ｾ髮ｻ隧ｱ逡ｪ蜿ｷ>>
+Email: <<莨夂､ｾ繝｡繝ｼ繝ｫ繧｢繝峨Ξ繧ｹ>>`;
+
+      result = result.replace(signaturePattern, simplifiedSignature);
+    }
+
+    return result;
+  };
+
   const fetchInquiryHistoryTable = async () => {
     try {
       setIsLoadingHistory(true);
@@ -361,7 +704,7 @@ export default function BuyerDetailPage() {
       const historyData = res.data.inquiryHistory || [];
       setInquiryHistoryTable(historyData);
       
-      // Automatically select properties with "current" status (今回)
+      // Automatically select properties with "current" status (莉雁屓)
       const currentStatusIds = new Set<string>(
         historyData
           .filter((item: InquiryHistoryItem) => item.status === 'current')
@@ -376,8 +719,8 @@ export default function BuyerDetailPage() {
       
       // Display user-friendly error message
       const errorMessage = error.response?.status === 404
-        ? '買主が見つかりませんでした'
-        : error.response?.data?.error || '問い合わせ履歴の取得に失敗しました';
+        ? '雋ｷ荳ｻ縺瑚ｦ九▽縺九ｊ縺ｾ縺帙ｓ縺ｧ縺励◆'
+        : error.response?.data?.error || '蝠上＞蜷医ｏ縺帛ｱ･豁ｴ縺ｮ蜿門ｾ励↓螟ｱ謨励＠縺ｾ縺励◆';
       
       setSnackbar({
         open: true,
@@ -402,7 +745,7 @@ export default function BuyerDetailPage() {
     if (selectedPropertyIds.size === 0) {
       setSnackbar({
         open: true,
-        message: '物件を選択してください',
+        message: '迚ｩ莉ｶ繧帝∈謚槭＠縺ｦ縺上□縺輔＞',
         severity: 'warning',
       });
       return;
@@ -432,7 +775,7 @@ export default function BuyerDetailPage() {
       if (validProperties.length === 0) {
         setSnackbar({
           open: true,
-          message: '選択された物件の情報を取得できませんでした',
+          message: '驕ｸ謚槭＆繧後◆迚ｩ莉ｶ縺ｮ諠・ｱ繧貞叙蠕励〒縺阪∪縺帙ｓ縺ｧ縺励◆',
           severity: 'error',
         });
         return;
@@ -443,7 +786,7 @@ export default function BuyerDetailPage() {
         const failedCount = selectedProperties.length - validProperties.length;
         setSnackbar({
           open: true,
-          message: `${failedCount}件の物件情報を取得できませんでした。取得できた${validProperties.length}件で続行します。`,
+          message: `${failedCount}莉ｶ縺ｮ迚ｩ莉ｶ諠・ｱ繧貞叙蠕励〒縺阪∪縺帙ｓ縺ｧ縺励◆縲ょ叙蠕励〒縺阪◆${validProperties.length}莉ｶ縺ｧ邯夊｡後＠縺ｾ縺吶Ａ,
           severity: 'warning',
         });
       }
@@ -455,8 +798,8 @@ export default function BuyerDetailPage() {
       console.error('Failed to fetch property details:', error);
       
       const errorMessage = error.response?.status === 404
-        ? '物件が見つかりませんでした'
-        : error.response?.data?.error || '物件情報の取得に失敗しました';
+        ? '迚ｩ莉ｶ縺瑚ｦ九▽縺九ｊ縺ｾ縺帙ｓ縺ｧ縺励◆'
+        : error.response?.data?.error || '迚ｩ莉ｶ諠・ｱ縺ｮ蜿門ｾ励↓螟ｱ謨励＠縺ｾ縺励◆';
       
       setSnackbar({
         open: true,
@@ -471,7 +814,7 @@ export default function BuyerDetailPage() {
     setEmailModalOpen(false);
     setSnackbar({
       open: true,
-      message: 'メールを送信しました',
+      message: '繝｡繝ｼ繝ｫ繧帝∽ｿ｡縺励∪縺励◆',
       severity: 'success',
     });
     // Refresh activities to show new email history
@@ -497,7 +840,7 @@ export default function BuyerDetailPage() {
     if (type === 'price') {
       const num = Number(value);
       if (!isNaN(num)) {
-        return `${(num / 10000).toLocaleString()}万円`;
+        return `${(num / 10000).toLocaleString()}荳・・`;
       }
     }
     
@@ -510,18 +853,15 @@ export default function BuyerDetailPage() {
       <Container maxWidth="xl" sx={{ py: 3, px: 2 }}>
         <Box sx={{ textAlign: 'center', py: 8 }}>
           <Typography variant="h5" color="error" gutterBottom>
-            無効な買主番号です
-          </Typography>
+            辟｡蜉ｹ縺ｪ雋ｷ荳ｻ逡ｪ蜿ｷ縺ｧ縺・          </Typography>
           <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-            買主番号は有効な数値、UUID、またはBY_形式である必要があります
-          </Typography>
+            雋ｷ荳ｻ逡ｪ蜿ｷ縺ｯ譛牙柑縺ｪ謨ｰ蛟､縲ゞUID縲√∪縺溘・BY_蠖｢蠑上〒縺ゅｋ蠢・ｦ√′縺ゅｊ縺ｾ縺・          </Typography>
           <Button 
             variant="contained" 
             startIcon={<ArrowBackIcon />} 
             onClick={() => navigate('/buyers')}
           >
-            買主一覧に戻る
-          </Button>
+            雋ｷ荳ｻ荳隕ｧ縺ｫ謌ｻ繧・          </Button>
         </Box>
       </Container>
     );
@@ -538,10 +878,9 @@ export default function BuyerDetailPage() {
   if (!buyer) {
     return (
       <Container maxWidth="xl" sx={{ py: 3, px: 2 }}>
-        <Typography>買主が見つかりませんでした</Typography>
+        <Typography>雋ｷ荳ｻ縺瑚ｦ九▽縺九ｊ縺ｾ縺帙ｓ縺ｧ縺励◆</Typography>
         <Button startIcon={<ArrowBackIcon />} onClick={() => navigate('/buyers')}>
-          一覧に戻る
-        </Button>
+          荳隕ｧ縺ｫ謌ｻ繧・        </Button>
       </Container>
     );
   }
@@ -553,19 +892,19 @@ export default function BuyerDetailPage() {
           <IconButton 
             onClick={() => navigate('/buyers')} 
             sx={{ mr: 2 }}
-            aria-label="買主一覧に戻る"
+            aria-label="雋ｷ荳ｻ荳隕ｧ縺ｫ謌ｻ繧・
           >
             <ArrowBackIcon />
           </IconButton>
           <Typography variant="h5" fontWeight="bold">
-            {buyer.name ? `${buyer.name}様` : buyer.buyer_number}
+            {buyer.name ? `${buyer.name}讒倭 : buyer.buyer_number}
           </Typography>
-          {/* 買主番号（クリックでコピー） */}
+          {/* 雋ｷ荳ｻ逡ｪ蜿ｷ・医け繝ｪ繝・け縺ｧ繧ｳ繝斐・・・*/}
           {buyer.buyer_number && (
             <>
-              <Chip
-                label={buyer.buyer_number}
-                size="small"
+              <Chip 
+                label={buyer.buyer_number} 
+                size="small" 
                 color="primary"
                 onClick={() => {
                   navigator.clipboard.writeText(buyer.buyer_number || '');
@@ -573,10 +912,10 @@ export default function BuyerDetailPage() {
                   setTimeout(() => setCopiedBuyerNumber(false), 1500);
                 }}
                 sx={{ cursor: 'pointer', '&:hover': { opacity: 0.8 } }}
-                title="クリックでコピー"
+                title="繧ｯ繝ｪ繝・け縺ｧ繧ｳ繝斐・"
               />
               {copiedBuyerNumber && (
-                <Typography variant="body2" sx={{ color: 'success.main', fontWeight: 'bold' }}>✓</Typography>
+                <Typography variant="body2" sx={{ color: 'success.main', fontWeight: 'bold' }}>笨・/Typography>
               )}
             </>
           )}
@@ -592,43 +931,98 @@ export default function BuyerDetailPage() {
           />
         </Box>
 
-        {/* ヘッダー右側のボタン */}
-        <Box sx={{ display: 'flex', gap: 1 }}>
-          {/* 問い合わせ履歴ボタン（履歴がある場合のみ表示） */}
+        {/* 繝倥ャ繝繝ｼ蜿ｳ蛛ｴ縺ｮ繝懊ち繝ｳ */}
+        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+          {/* Email騾∽ｿ｡繝峨Ο繝・・繝繧ｦ繝ｳ */}
+          <FormControl size="small" sx={{ minWidth: 150 }}>
+            <InputLabel>Email騾∽ｿ｡</InputLabel>
+            <Select
+              value=""
+              label="Email騾∽ｿ｡"
+              disabled={!buyer?.email || sendingTemplate}
+              onChange={(e) => handleEmailTemplateSelect(e.target.value)}
+            >
+              {emailTemplates.map((template) => (
+                <MenuItem key={template.id} value={template.id}>
+                  {template.type}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
+          {/* SMS騾∽ｿ｡繝峨Ο繝・・繝繧ｦ繝ｳ */}
+          <FormControl size="small" sx={{ minWidth: 150 }}>
+            <InputLabel>SMS騾∽ｿ｡</InputLabel>
+            <Select
+              value=""
+              label="SMS騾∽ｿ｡"
+              disabled={!buyer?.phone_number || sendingTemplate}
+              onChange={(e) => handleSmsTemplateSelect(e.target.value)}
+            >
+              {smsTemplates.map((template) => (
+                <MenuItem key={template.id} value={template.id}>
+                  {template.type}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
+          {/* 髮ｻ隧ｱ逡ｪ蜿ｷ繝懊ち繝ｳ */}
+          {buyer?.phone_number && (
+            <Button
+              variant="contained"
+              color="primary"
+              startIcon={<Phone />}
+              href={`tel:${buyer.phone_number}`}
+              sx={{ fontWeight: 'bold', whiteSpace: 'nowrap' }}
+            >
+              {buyer.phone_number}
+            </Button>
+          )}
+
+          <Divider orientation="vertical" flexItem sx={{ mx: 1 }} />
+
+          {/* 蝠上＞蜷医ｏ縺帛ｱ･豁ｴ繝懊ち繝ｳ・亥ｱ･豁ｴ縺後≠繧句ｴ蜷医・縺ｿ陦ｨ遉ｺ・・*/}
           {inquiryHistoryTable.length > 0 && (
             <Button
               variant="outlined"
               size="medium"
               onClick={() => navigate(`/buyers/${buyer_number}/inquiry-history`)}
-              sx={{ whiteSpace: 'nowrap' }}
+              sx={{
+                whiteSpace: 'nowrap',
+              }}
             >
-              問い合わせ履歴 ({inquiryHistoryTable.length})
+              蝠上＞蜷医ｏ縺帛ｱ･豁ｴ ({inquiryHistoryTable.length})
             </Button>
           )}
-
-          {/* 希望条件ボタン */}
+          
+          {/* 蟶梧悍譚｡莉ｶ繝懊ち繝ｳ */}
           <Button
             variant="outlined"
             size="medium"
             onClick={() => navigate(`/buyers/${buyer_number}/desired-conditions`)}
-            sx={{ whiteSpace: 'nowrap' }}
+            sx={{
+              whiteSpace: 'nowrap',
+            }}
           >
-            希望条件
+            蟶梧悍譚｡莉ｶ
           </Button>
 
-          {/* 内覧ボタン */}
+          {/* 蜀・ｦｧ繝懊ち繝ｳ */}
           <Button
             variant="outlined"
             size="medium"
             onClick={() => navigate(`/buyers/${buyer_number}/viewing-result`)}
-            sx={{ whiteSpace: 'nowrap' }}
+            sx={{
+              whiteSpace: 'nowrap',
+            }}
           >
-            内覧
+            蜀・ｦｧ
           </Button>
         </Box>
       </Box>
 
-      {/* 2カラムレイアウト: 左側に紐づいた物件の詳細情報、右側に買主情報 */}
+      {/* 2繧ｫ繝ｩ繝繝ｬ繧､繧｢繧ｦ繝・ 蟾ｦ蛛ｴ縺ｫ邏舌▼縺・◆迚ｩ莉ｶ縺ｮ隧ｳ邏ｰ諠・ｱ縲∝承蛛ｴ縺ｫ雋ｷ荳ｻ諠・ｱ */}
       <Box
         sx={{
           display: 'flex',
@@ -639,9 +1033,9 @@ export default function BuyerDetailPage() {
           },
         }}
         role="region"
-        aria-label="買主詳細情報の2カラムレイアウト"
+        aria-label="雋ｷ荳ｻ隧ｳ邏ｰ諠・ｱ縺ｮ2繧ｫ繝ｩ繝繝ｬ繧､繧｢繧ｦ繝・
       >
-        {/* 左側: 紐づいた物件の詳細情報 - 独立スクロール */}
+        {/* 蟾ｦ蛛ｴ: 邏舌▼縺・◆迚ｩ莉ｶ縺ｮ隧ｳ邏ｰ諠・ｱ - 迢ｬ遶九せ繧ｯ繝ｭ繝ｼ繝ｫ */}
         <Box 
           sx={{ 
             flex: '0 0 42%', 
@@ -652,7 +1046,7 @@ export default function BuyerDetailPage() {
             pr: 1,
             position: 'sticky',
             top: 16,
-            // カスタムスクロールバースタイル
+            // 繧ｫ繧ｹ繧ｿ繝繧ｹ繧ｯ繝ｭ繝ｼ繝ｫ繝舌・繧ｹ繧ｿ繧､繝ｫ
             '&::-webkit-scrollbar': {
               width: '8px',
             },
@@ -677,15 +1071,15 @@ export default function BuyerDetailPage() {
             },
           }}
           role="complementary"
-          aria-label="物件情報"
+          aria-label="迚ｩ莉ｶ諠・ｱ"
           tabIndex={0}
         >
           <Box>
             <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-              <Typography variant="h6">物件情報</Typography>
+              <Typography variant="h6">迚ｩ莉ｶ諠・ｱ</Typography>
               {linkedProperties.length > 0 && (
                 <Chip 
-                  label={`${linkedProperties.length}件`} 
+                  label={`${linkedProperties.length}莉ｶ`} 
                   size="small" 
                   sx={{ ml: 2 }}
                 />
@@ -704,13 +1098,13 @@ export default function BuyerDetailPage() {
               ))
             ) : (
               <Paper sx={{ p: 3, textAlign: 'center', color: 'text.secondary' }}>
-                <Typography variant="body2">紐づいた物件はありません</Typography>
+                <Typography variant="body2">邏舌▼縺・◆迚ｩ莉ｶ縺ｯ縺ゅｊ縺ｾ縺帙ｓ</Typography>
               </Paper>
             )}
           </Box>
         </Box>
 
-        {/* 右側: 買主詳細情報 - 独立スクロール */}
+        {/* 蜿ｳ蛛ｴ: 雋ｷ荳ｻ隧ｳ邏ｰ諠・ｱ - 迢ｬ遶九せ繧ｯ繝ｭ繝ｼ繝ｫ */}
         <Box 
           sx={{ 
             flex: '1 1 58%', 
@@ -721,7 +1115,7 @@ export default function BuyerDetailPage() {
             pl: 1,
             position: 'sticky',
             top: 16,
-            // カスタムスクロールバースタイル
+            // 繧ｫ繧ｹ繧ｿ繝繧ｹ繧ｯ繝ｭ繝ｼ繝ｫ繝舌・繧ｹ繧ｿ繧､繝ｫ
             '&::-webkit-scrollbar': {
               width: '8px',
             },
@@ -746,23 +1140,22 @@ export default function BuyerDetailPage() {
             },
           }}
           role="main"
-          aria-label="買主情報"
+          aria-label="雋ｷ荳ｻ諠・ｱ"
           tabIndex={0}
         >
-          {/* 重複履歴セクション */}
+          {/* 驥崎､・ｱ･豁ｴ繧ｻ繧ｯ繧ｷ繝ｧ繝ｳ */}
           {inquiryHistory.length > 1 && (
             <Paper sx={{ p: 2, mb: 2, bgcolor: 'warning.light' }}>
               <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                 <Chip 
-                  label={`重複あり (${inquiryHistory.length}件の問合せ履歴)`} 
+                  label={`驥崎､・≠繧・(${inquiryHistory.length}莉ｶ縺ｮ蝠丞粋縺帛ｱ･豁ｴ)`} 
                   color="warning" 
                   size="small"
                   sx={{ fontWeight: 'bold' }}
                 />
               </Box>
               <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
-                この買主は過去に別の買主番号で問い合わせをしています
-              </Typography>
+                縺薙・雋ｷ荳ｻ縺ｯ驕主悉縺ｫ蛻･縺ｮ雋ｷ荳ｻ逡ｪ蜿ｷ縺ｧ蝠上＞蜷医ｏ縺帙ｒ縺励※縺・∪縺・              </Typography>
               <Divider sx={{ my: 1 }} />
               <Box sx={{ maxHeight: 200, overflowY: 'auto' }}>
                 {inquiryHistory.map((history) => (
@@ -780,22 +1173,22 @@ export default function BuyerDetailPage() {
                   >
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
                       <Typography variant="body2" fontWeight="bold">
-                        買主番号: {history.buyerNumber}
+                        雋ｷ荳ｻ逡ｪ蜿ｷ: {history.buyerNumber}
                       </Typography>
                       {history.isCurrent && (
-                        <Chip label="現在" color="primary" size="small" />
+                        <Chip label="迴ｾ蝨ｨ" color="primary" size="small" />
                       )}
                     </Box>
                     <Grid container spacing={1}>
                       {history.propertyNumber && (
                         <Grid item xs={12} sm={6}>
-                          <Typography variant="caption" color="text.secondary">物件番号</Typography>
+                          <Typography variant="caption" color="text.secondary">迚ｩ莉ｶ逡ｪ蜿ｷ</Typography>
                           <Typography variant="body2">{history.propertyNumber}</Typography>
                         </Grid>
                       )}
                       {history.inquiryDate && (
                         <Grid item xs={12} sm={6}>
-                          <Typography variant="caption" color="text.secondary">問合せ日</Typography>
+                          <Typography variant="caption" color="text.secondary">蝠丞粋縺帶律</Typography>
                           <Typography variant="body2">
                             {formatValue(history.inquiryDate, 'date')}
                           </Typography>
@@ -803,13 +1196,13 @@ export default function BuyerDetailPage() {
                       )}
                       {history.inquirySource && (
                         <Grid item xs={12} sm={6}>
-                          <Typography variant="caption" color="text.secondary">問合せ元</Typography>
+                          <Typography variant="caption" color="text.secondary">蝠丞粋縺帛・</Typography>
                           <Typography variant="body2">{history.inquirySource}</Typography>
                         </Grid>
                       )}
                       {history.status && (
                         <Grid item xs={12} sm={6}>
-                          <Typography variant="caption" color="text.secondary">ステータス</Typography>
+                          <Typography variant="caption" color="text.secondary">繧ｹ繝・・繧ｿ繧ｹ</Typography>
                           <Typography variant="body2" sx={{ fontSize: '0.75rem' }}>
                             {history.status.substring(0, 30)}
                           </Typography>
@@ -828,39 +1221,130 @@ export default function BuyerDetailPage() {
               sx={{ 
                 p: 2, 
                 mb: 2,
-                // 内覧結果グループには特別なスタイルを適用
+                // 蜀・ｦｧ邨先棡繧ｰ繝ｫ繝ｼ繝励↓縺ｯ迚ｹ蛻･縺ｪ繧ｹ繧ｿ繧､繝ｫ繧帝←逕ｨ
                 ...(section.isViewingResultGroup && {
-                  bgcolor: 'rgba(33, 150, 243, 0.08)',  // 薄い青色の背景
+                  bgcolor: 'rgba(33, 150, 243, 0.08)',  // 阮・＞髱定牡縺ｮ閭梧勹
                   border: '1px solid',
                   borderColor: 'rgba(33, 150, 243, 0.3)',
                 }),
               }}
             >
-              <Typography 
-                variant="h6" 
-                gutterBottom
-                sx={{
-                  // 内覧結果グループのタイトルを強調
-                  ...(section.isViewingResultGroup && {
-                    color: 'primary.main',
-                    fontWeight: 'bold',
-                  }),
-                }}
-              >
-                {section.title}
-              </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
+                <Typography 
+                  variant="h6" 
+                  sx={{
+                    // 蜀・ｦｧ邨先棡繧ｰ繝ｫ繝ｼ繝励・繧ｿ繧､繝医Ν繧貞ｼｷ隱ｿ
+                    ...(section.isViewingResultGroup && {
+                      color: 'primary.main',
+                      fontWeight: 'bold',
+                    }),
+                  }}
+                >
+                  {section.title}
+                </Typography>
+                {/* 蝠丞粋縺帛・螳ｹ繧ｻ繧ｯ繧ｷ繝ｧ繝ｳ縺ｮ蝣ｴ蜷医∝・蜍墓球蠖薙・蝠丞粋縺帛・繝ｻ蜿嶺ｻ俶律繧定｡ｨ遉ｺ */}
+                {section.title === '蝠丞粋縺帛・螳ｹ' && (
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
+                    {buyer.initial_assignee && (
+                      <Box sx={{ 
+                        display: 'flex', 
+                        alignItems: 'center',
+                        px: 1.5,
+                        py: 0.5,
+                        bgcolor: 'grey.300',
+                        color: 'text.primary',
+                        borderRadius: 1,
+                        fontSize: '0.875rem',
+                        fontWeight: 'bold',
+                      }}>
+                        蛻晏虚・嘴buyer.initial_assignee}
+                      </Box>
+                    )}
+                    {buyer.inquiry_source && (
+                      <Box sx={{ 
+                        display: 'flex', 
+                        alignItems: 'center',
+                        px: 1.5,
+                        py: 0.5,
+                        bgcolor: 'grey.200',
+                        color: 'text.primary',
+                        borderRadius: 1,
+                        fontSize: '0.875rem',
+                      }}>
+                        {buyer.inquiry_source}
+                      </Box>
+                    )}
+                    {buyer.reception_date && (
+                      <Box sx={{ 
+                        display: 'flex', 
+                        alignItems: 'center',
+                        px: 1.5,
+                        py: 0.5,
+                        bgcolor: 'grey.200',
+                        color: 'text.primary',
+                        borderRadius: 1,
+                        fontSize: '0.875rem',
+                      }}>
+                        {new Date(buyer.reception_date).toLocaleDateString('ja-JP')}
+                      </Box>
+                    )}
+                  </Box>
+                )}
+              </Box>
               <Divider sx={{ mb: 2 }} />
               <Grid container spacing={2}>
                 {section.fields.map((field: any) => {
                   const value = buyer[field.key];
                   
-                  // multilineフィールドは全幅で表示
-                  const gridSize = field.multiline ? { xs: 12 } : { xs: 12, sm: 6 };
+                  // 蝠丞粋縺帛・螳ｹ繧ｻ繧ｯ繧ｷ繝ｧ繝ｳ縺ｧ縲∝､縺後≠繧句ｴ蜷医・髱櫁｡ｨ遉ｺ縺ｫ縺吶ｋ繝輔ぅ繝ｼ繝ｫ繝・                  if (section.title === '蝠丞粋縺帛・螳ｹ') {
+                    if (field.key === 'initial_assignee' && buyer.initial_assignee) {
+                      return null; // 蛟､縺後≠繧句ｴ蜷医・髱櫁｡ｨ遉ｺ
+                    }
+                    if (field.key === 'inquiry_source' && buyer.inquiry_source) {
+                      return null; // 蛟､縺後≠繧句ｴ蜷医・髱櫁｡ｨ遉ｺ
+                    }
+                    if (field.key === 'reception_date' && buyer.reception_date) {
+                      return null; // 蛟､縺後≠繧句ｴ蜷医・髱櫁｡ｨ遉ｺ
+                    }
+                  }
+                  
+                  // 繧ｰ繝ｪ繝・ラ繧ｵ繧､繧ｺ縺ｮ豎ｺ螳・                  // 1. fullWidth繝励Ο繝代ユ繧｣縺荊rue縺ｮ蝣ｴ蜷医・蜈ｨ蟷・                  // 2. column繝励Ο繝代ユ繧｣縺後≠繧句ｴ蜷医・蜊雁ｹ・ｼ亥ｷｦ蜿ｳ縺ｮ蛻暦ｼ・                  // 3. multiline繝輔ぅ繝ｼ繝ｫ繝峨・蜈ｨ蟷・                  // 4. 縺昴ｌ莉･螟悶・蜊雁ｹ・                  const gridSize = field.fullWidth 
+                    ? { xs: 12 } 
+                    : field.column 
+                      ? { xs: 12, sm: 6 } 
+                      : field.multiline 
+                        ? { xs: 12 } 
+                        : { xs: 12, sm: 6 };
 
-                  // インライン編集可能なフィールド
-                  if (field.inlineEditable) {
-                    // inquiry_sourceフィールドは特別処理（ドロップダウン）
-                    if (field.key === 'inquiry_source') {
+                  // 雋ｷ莉倥メ繝｣繝・ヨ騾∽ｿ｡・・oogle Chat縺ｸ縺ｮ繝ｪ繝ｳ繧ｯ繝懊ち繝ｳ・・ inlineEditable繝√ぉ繝・け縺ｮ蜑阪↓蜃ｦ逅・                  if (field.key === 'image_chat_sent') {
+                    const GOOGLE_CHAT_URL = 'https://chat.googleapis.com/v1/spaces/AAAA6iEDkiU/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=azlyf21pENCpLLUdJPjnRNXOzsIAP550xebOMVxYRMQ';
+
+                    return (
+                      <Grid item {...gridSize} key={field.key}>
+                        <Box sx={{ mb: 1 }}>
+                          <Typography variant="caption" color="text.primary" sx={{ display: 'block', mb: 0.5 }}>
+                            {field.label}
+                          </Typography>
+                          <Button
+                            variant="contained"
+                            color="primary"
+                            size="medium"
+                            onClick={() => {
+                              window.open(GOOGLE_CHAT_URL, '_blank');
+                            }}
+                            sx={{ 
+                              fontWeight: 'bold',
+                            }}
+                          >
+                            騾∽ｿ｡
+                          </Button>
+                        </Box>
+                      </Grid>
+                    );
+                  }
+
+                  // 繧､繝ｳ繝ｩ繧､繝ｳ邱ｨ髮・庄閭ｽ縺ｪ繝輔ぅ繝ｼ繝ｫ繝・                  if (field.inlineEditable) {
+                    // inquiry_source繝輔ぅ繝ｼ繝ｫ繝峨・迚ｹ蛻･蜃ｦ逅・ｼ医ラ繝ｭ繝・・繝繧ｦ繝ｳ・・                    if (field.key === 'inquiry_source') {
                       const handleFieldSave = async (newValue: any) => {
                         const result = await handleInlineFieldSave(field.key, newValue);
                         if (result && !result.success && result.error) {
@@ -880,14 +1364,12 @@ export default function BuyerDetailPage() {
                             buyerId={buyer?.id || buyer_number}
                             enableConflictDetection={true}
                             showEditIndicator={true}
-                            oneClickDropdown={true}
                           />
                         </Grid>
                       );
                     }
 
-                    // latest_statusフィールドは特別処理（ドロップダウン）
-                    if (field.key === 'latest_status') {
+                    // latest_status繝輔ぅ繝ｼ繝ｫ繝峨・迚ｹ蛻･蜃ｦ逅・ｼ医ラ繝ｭ繝・・繝繧ｦ繝ｳ・・                    if (field.key === 'latest_status') {
                       const handleFieldSave = async (newValue: any) => {
                         const result = await handleInlineFieldSave(field.key, newValue);
                         if (result && !result.success && result.error) {
@@ -907,14 +1389,141 @@ export default function BuyerDetailPage() {
                             buyerId={buyer?.id || buyer_number}
                             enableConflictDetection={true}
                             showEditIndicator={true}
-                            oneClickDropdown={true}
                           />
                         </Grid>
                       );
                     }
 
-                    // inquiry_email_phoneフィールドは特別処理（ドロップダウン）
-                    if (field.key === 'inquiry_email_phone') {
+                    // inquiry_email_phone繝輔ぅ繝ｼ繝ｫ繝峨・迚ｹ蛻･蜃ｦ逅・ｼ域擅莉ｶ莉倥″陦ｨ遉ｺ繝ｻ繝懊ち繝ｳ蠖｢蠑擾ｼ・                    if (field.key === 'inquiry_email_phone') {
+                      // 陦ｨ遉ｺ譚｡莉ｶ・壹悟撫蜷医○蜈・阪↓"繝｡繝ｼ繝ｫ"縺悟性縺ｾ繧後ｋ蝣ｴ蜷医・縺ｿ陦ｨ遉ｺ
+                      const shouldDisplay = buyer.inquiry_source && buyer.inquiry_source.includes('繝｡繝ｼ繝ｫ');
+
+                      if (!shouldDisplay) {
+                        return null; // 譚｡莉ｶ繧呈ｺ縺溘＆縺ｪ縺・ｴ蜷医・陦ｨ遉ｺ縺励↑縺・                      }
+
+                      const handleFieldSave = async (newValue: any) => {
+                        const result = await handleInlineFieldSave(field.key, newValue);
+                        if (result && !result.success && result.error) {
+                          throw new Error(result.error);
+                        }
+                      };
+
+                      // 讓呎ｺ也噪縺ｪ驕ｸ謚櫁い
+                      const standardOptions = ['貂・, '譛ｪ', '荳埼・, '驕主悉縺ｮ繧ゅ・'];
+                      const isStandardValue = standardOptions.includes(value);
+
+                      return (
+                        <Grid item {...gridSize} key={field.key}>
+                          <Box sx={{ mb: 1 }}>
+                            <Typography variant="caption" color="text.primary" sx={{ display: 'block', mb: 0.5 }}>
+                              {field.label}
+                            </Typography>
+                            {isStandardValue || !value ? (
+                              // 讓呎ｺ也噪縺ｪ蛟､縺ｾ縺溘・遨ｺ縺ｮ蝣ｴ蜷医・繝懊ち繝ｳ繧定｡ｨ遉ｺ
+                              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                                {standardOptions.map((option) => (
+                                  <Button
+                                    key={option}
+                                    variant={value === option ? 'contained' : 'outlined'}
+                                    color="primary"
+                                    size="small"
+                                    onClick={() => {
+                                      // 蜷後§繝懊ち繝ｳ繧・蠎ｦ繧ｯ繝ｪ繝・け縺励◆繧牙､繧偵け繝ｪ繧｢
+                                      if (value === option) {
+                                        handleFieldSave('');
+                                      } else {
+                                        handleFieldSave(option);
+                                      }
+                                    }}
+                                    sx={{ flex: '1 1 auto', minWidth: '60px' }}
+                                  >
+                                    {option}
+                                  </Button>
+                                ))}
+                              </Box>
+                            ) : (
+                              // 諠ｳ螳壼､悶・蛟､縺ｮ蝣ｴ蜷医・繝・く繧ｹ繝医→縺励※陦ｨ遉ｺ
+                              <Box sx={{ 
+                                p: 1, 
+                                border: '1px solid', 
+                                borderColor: 'warning.main',
+                                borderRadius: 1,
+                                bgcolor: 'warning.light',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between'
+                              }}>
+                                <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+                                  {value}
+                                </Typography>
+                                <Button
+                                  variant="outlined"
+                                  size="small"
+                                  onClick={() => handleFieldSave('')}
+                                  sx={{ ml: 1 }}
+                                >
+                                  繧ｯ繝ｪ繧｢
+                                </Button>
+                              </Box>
+                            )}
+                          </Box>
+                        </Grid>
+                      );
+                    }
+
+                    // three_calls_confirmed繝輔ぅ繝ｼ繝ｫ繝峨・蜑企勁縺輔ｌ縺ｾ縺励◆・域擅莉ｶ縺瑚､・尅縺吶℃繧九◆繧・撼陦ｨ遉ｺ・・                    if (field.key === 'three_calls_confirmed') {
+                      // 縺薙・繝輔ぅ繝ｼ繝ｫ繝峨・蟶ｸ縺ｫ髱櫁｡ｨ遉ｺ
+                      return null;
+                    }
+
+                    // email_type繝輔ぅ繝ｼ繝ｫ繝峨・蜑企勁縺輔ｌ縺ｾ縺励◆
+
+                    // initial_assignee繝輔ぅ繝ｼ繝ｫ繝峨・迚ｹ蛻･蜃ｦ逅・ｼ医せ繧ｿ繝・ヵ繧､繝九す繝｣繝ｫ繝懊ち繝ｳ蠖｢蠑擾ｼ・                    if (field.key === 'initial_assignee') {
+                      const handleFieldSave = async (newValue: any) => {
+                        const result = await handleInlineFieldSave(field.key, newValue);
+                        if (result && !result.success && result.error) {
+                          throw new Error(result.error);
+                        }
+                      };
+
+                      return (
+                        <Grid item {...gridSize} key={field.key}>
+                          <Box sx={{ mb: 1 }}>
+                            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+                              {field.label}
+                            </Typography>
+                            <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+                              {staffInitials.map((initial) => (
+                                <Button
+                                  key={initial}
+                                  variant={value === initial ? 'contained' : 'outlined'}
+                                  color="primary"
+                                  size="small"
+                                  onClick={() => {
+                                    // 蜷後§繝懊ち繝ｳ繧・蠎ｦ繧ｯ繝ｪ繝・け縺励◆繧牙､繧偵け繝ｪ繧｢
+                                    if (value === initial) {
+                                      handleFieldSave('');
+                                    } else {
+                                      handleFieldSave(initial);
+                                    }
+                                  }}
+                                  sx={{ 
+                                    minWidth: '40px',
+                                    padding: '4px 8px',
+                                    fontSize: '0.75rem',
+                                  }}
+                                >
+                                  {initial}
+                                </Button>
+                              ))}
+                            </Box>
+                          </Box>
+                        </Grid>
+                      );
+                    }
+
+                    // 莉匁ｰ励↓縺ｪ繧狗黄莉ｶ繝偵い繝ｪ繝ｳ繧ｰ
+                    if (field.key === 'other_property_hearing') {
                       const handleFieldSave = async (newValue: any) => {
                         const result = await handleInlineFieldSave(field.key, newValue);
                         if (result && !result.success && result.error) {
@@ -929,19 +1538,17 @@ export default function BuyerDetailPage() {
                             value={value || ''}
                             fieldName={field.key}
                             fieldType="dropdown"
-                            options={INQUIRY_EMAIL_PHONE_OPTIONS}
+                            options={OTHER_PROPERTY_HEARING_OPTIONS}
                             onSave={handleFieldSave}
                             buyerId={buyer?.id || buyer_number}
                             enableConflictDetection={true}
                             showEditIndicator={true}
-                            oneClickDropdown={true}
                           />
                         </Grid>
                       );
                     }
 
-                    // three_calls_confirmedフィールドは特別処理（ドロップダウン）
-                    if (field.key === 'three_calls_confirmed') {
+                    // 蜀・ｦｧ菫・ｲ繝｡繝ｼ繝ｫ荳崎ｦ・                    if (field.key === 'viewing_promotion_email_unnecessary') {
                       const handleFieldSave = async (newValue: any) => {
                         const result = await handleInlineFieldSave(field.key, newValue);
                         if (result && !result.success && result.error) {
@@ -956,19 +1563,187 @@ export default function BuyerDetailPage() {
                             value={value || ''}
                             fieldName={field.key}
                             fieldType="dropdown"
-                            options={THREE_CALLS_CONFIRMED_OPTIONS}
+                            options={VIEWING_PROMOTION_EMAIL_OPTIONS}
                             onSave={handleFieldSave}
                             buyerId={buyer?.id || buyer_number}
                             enableConflictDetection={true}
                             showEditIndicator={true}
-                            oneClickDropdown={true}
                           />
                         </Grid>
                       );
                     }
 
-                    // email_typeフィールドは特別処理（ドロップダウン）
-                    if (field.key === 'email_type') {
+                    // 蜀・ｦｧ菫・ｲ繝｡繝ｼ繝ｫ・域擅莉ｶ莉倥″陦ｨ遉ｺ繝ｻ繝懊ち繝ｳ蠖｢蠑擾ｼ・                    if (field.key === 'viewing_promotion_email') {
+                      // 陦ｨ遉ｺ譚｡莉ｶ・壹悟撫蜷医○蜈・阪↓"繝｡繝ｼ繝ｫ"縺悟性縺ｾ繧後ｋ蝣ｴ蜷医・縺ｿ陦ｨ遉ｺ
+                      const shouldDisplay = buyer.inquiry_source && buyer.inquiry_source.includes('繝｡繝ｼ繝ｫ');
+
+                      if (!shouldDisplay) {
+                        return null; // 譚｡莉ｶ繧呈ｺ縺溘＆縺ｪ縺・ｴ蜷医・陦ｨ遉ｺ縺励↑縺・                      }
+
+                      const handleButtonClick = async (newValue: string) => {
+                        try {
+                          console.log('[viewing_promotion_email] Button clicked, current value:', value, 'new value:', newValue);
+                          
+                          // 蜷後§繝懊ち繝ｳ繧・蠎ｦ繧ｯ繝ｪ繝・け縺励◆繧牙､繧偵け繝ｪ繧｢
+                          const valueToSave = value === newValue ? '' : newValue;
+                          console.log('[viewing_promotion_email] Setting value:', valueToSave);
+                          
+                          const result = await handleInlineFieldSave(field.key, valueToSave);
+                          
+                          if (result && !result.success && result.error) {
+                            setSnackbar({
+                              open: true,
+                              message: result.error,
+                              severity: 'error'
+                            });
+                          } else {
+                            setSnackbar({
+                              open: true,
+                              message: '菫晏ｭ倥＠縺ｾ縺励◆',
+                              severity: 'success'
+                            });
+                          }
+                        } catch (error: any) {
+                          console.error('[viewing_promotion_email] Error:', error);
+                          setSnackbar({
+                            open: true,
+                            message: error.message || '菫晏ｭ倥↓螟ｱ謨励＠縺ｾ縺励◆',
+                            severity: 'error'
+                          });
+                        }
+                      };
+
+                      // 蛟､縺瑚ｨｭ螳壹＆繧後※縺・ｋ蝣ｴ蜷医・騾壼ｸｸ陦ｨ遉ｺ
+                      const hasValue = value === '隕・ || value === '荳崎ｦ・;
+
+                      return (
+                        <Grid item {...gridSize} key={field.key}>
+                          <Box 
+                            sx={{ 
+                              mb: 1,
+                              p: 2,
+                              border: hasValue ? '1px solid' : '3px solid',
+                              borderColor: hasValue ? 'divider' : 'warning.main',
+                              borderRadius: 2,
+                              bgcolor: hasValue ? 'background.paper' : 'warning.light',
+                              boxShadow: hasValue ? 0 : '0 4px 12px rgba(237, 108, 2, 0.3)',
+                              transition: 'all 0.3s ease',
+                            }}
+                          >
+                            <Typography 
+                              variant="subtitle2" 
+                              sx={{ 
+                                display: 'block', 
+                                mb: 1.5,
+                                fontWeight: hasValue ? 'normal' : 'bold',
+                                fontSize: hasValue ? '0.875rem' : '0.95rem',
+                                color: hasValue ? 'text.secondary' : 'text.primary',
+                              }}
+                            >
+                              {field.label}
+                            </Typography>
+                            <Box sx={{ display: 'flex', gap: 1 }}>
+                              <Button
+                                variant={value === '隕・ ? 'contained' : 'outlined'}
+                                color="success"
+                                size={hasValue ? 'medium' : 'large'}
+                                onClick={() => handleButtonClick('隕・)}
+                                sx={{ 
+                                  flex: 1,
+                                  fontWeight: 'bold',
+                                  fontSize: hasValue ? '0.95rem' : '1.1rem',
+                                  py: hasValue ? 1 : 1.5,
+                                  bgcolor: value === '隕・ ? 'success.main' : 'white',
+                                  color: value === '隕・ ? 'white' : 'success.main',
+                                  borderWidth: 2,
+                                  borderColor: 'success.main',
+                                  '&:hover': {
+                                    bgcolor: value === '隕・ ? 'success.dark' : 'success.light',
+                                    borderWidth: 2,
+                                  },
+                                  boxShadow: value === '隕・ ? 3 : 1,
+                                }}
+                              >
+                                隕・                              </Button>
+                              <Button
+                                variant={value === '荳崎ｦ・ ? 'contained' : 'outlined'}
+                                color="error"
+                                size={hasValue ? 'medium' : 'large'}
+                                onClick={() => handleButtonClick('荳崎ｦ・)}
+                                sx={{ 
+                                  flex: 1,
+                                  fontWeight: 'bold',
+                                  fontSize: hasValue ? '0.95rem' : '1.1rem',
+                                  py: hasValue ? 1 : 1.5,
+                                  bgcolor: value === '荳崎ｦ・ ? 'error.main' : 'white',
+                                  color: value === '荳崎ｦ・ ? 'white' : 'error.main',
+                                  borderWidth: 2,
+                                  borderColor: 'error.main',
+                                  '&:hover': {
+                                    bgcolor: value === '荳崎ｦ・ ? 'error.dark' : 'error.light',
+                                    borderWidth: 2,
+                                  },
+                                  boxShadow: value === '荳崎ｦ・ ? 3 : 1,
+                                }}
+                              >
+                                荳崎ｦ・                              </Button>
+                            </Box>
+                          </Box>
+                        </Grid>
+                      );
+                    }
+
+                    // 繝｡繧｢繝臥｢ｺ隱搾ｼ域擅莉ｶ莉倥″陦ｨ遉ｺ・・                    if (field.key === 'email_confirmation') {
+                      // 陦ｨ遉ｺ譚｡莉ｶ・壹Γ繝ｼ繝ｫ繧｢繝峨Ξ繧ｹ縺檎ｩｺ谺・                      const shouldDisplay = !buyer.email || buyer.email.trim() === '';
+
+                      if (!shouldDisplay) {
+                        return null; // 繝｡繝ｼ繝ｫ繧｢繝峨Ξ繧ｹ縺後≠繧句ｴ蜷医・陦ｨ遉ｺ縺励↑縺・                      }
+
+                      const handleFieldSave = async (newValue: any) => {
+                        const result = await handleInlineFieldSave(field.key, newValue);
+                        if (result && !result.success && result.error) {
+                          throw new Error(result.error);
+                        }
+                      };
+
+                      return (
+                        <Grid item xs={12} key={field.key}>
+                          <Box 
+                            sx={{ 
+                              mb: 1,
+                              p: 2,
+                              border: '2px solid',
+                              borderColor: 'error.main',
+                              borderRadius: 1,
+                              bgcolor: 'error.light',
+                              animation: 'pulse 2s ease-in-out infinite',
+                              '@keyframes pulse': {
+                                '0%, 100%': {
+                                  opacity: 1,
+                                },
+                                '50%': {
+                                  opacity: 0.8,
+                                },
+                              },
+                            }}
+                          >
+                            <InlineEditableField
+                              label={field.label}
+                              value={value || ''}
+                              fieldName={field.key}
+                              fieldType="dropdown"
+                              options={EMAIL_CONFIRMATION_OPTIONS}
+                              onSave={handleFieldSave}
+                              buyerId={buyer?.id || buyer_number}
+                              enableConflictDetection={true}
+                              showEditIndicator={true}
+                            />
+                          </Box>
+                        </Grid>
+                      );
+                    }
+
+                    // 繝｡繧｢繝臥｢ｺ隱・                    if (field.key === 'email_confirmation') {
                       const handleFieldSave = async (newValue: any) => {
                         const result = await handleInlineFieldSave(field.key, newValue);
                         if (result && !result.success && result.error) {
@@ -983,19 +1758,108 @@ export default function BuyerDetailPage() {
                             value={value || ''}
                             fieldName={field.key}
                             fieldType="dropdown"
-                            options={EMAIL_TYPE_OPTIONS}
+                            options={EMAIL_CONFIRMATION_OPTIONS}
                             onSave={handleFieldSave}
                             buyerId={buyer?.id || buyer_number}
                             enableConflictDetection={true}
                             showEditIndicator={true}
-                            oneClickDropdown={true}
                           />
                         </Grid>
                       );
                     }
 
-                    // distribution_typeフィールドは特別処理（ドロップダウン）
-                    if (field.key === 'distribution_type') {
+                    // Pinrich・域擅莉ｶ莉倥″蠢・茨ｼ・                    if (field.key === 'pinrich') {
+                      // 蠢・域擅莉ｶ・壹Γ繝ｼ繝ｫ繧｢繝峨Ξ繧ｹ縺悟・蜉帙＆繧後※縺・※縲√°縺､Pinrich縺檎ｩｺ谺・・蝣ｴ蜷・                      const hasEmail = buyer.email && buyer.email.trim() !== '';
+                      const hasValue = value && value.trim() !== '';
+                      const isRequired = hasEmail && !hasValue;
+
+                      const handleFieldSave = async (newValue: any) => {
+                        const result = await handleInlineFieldSave(field.key, newValue);
+                        if (result && !result.success && result.error) {
+                          throw new Error(result.error);
+                        }
+                      };
+
+                      const PINRICH_URL = 'https://pinrich.com/management/hankyo';
+
+                      return (
+                        <Grid item {...gridSize} key={field.key}>
+                          <Box 
+                            sx={{ 
+                              mb: 1,
+                              p: isRequired ? 2 : 0,
+                              border: isRequired ? '3px solid' : 'none',
+                              borderColor: isRequired ? 'error.main' : 'transparent',
+                              borderRadius: 2,
+                              bgcolor: isRequired ? 'error.light' : 'transparent',
+                              boxShadow: isRequired ? '0 4px 12px rgba(211, 47, 47, 0.3)' : 'none',
+                              transition: 'all 0.3s ease',
+                            }}
+                          >
+                            {isRequired && (
+                              <Typography 
+                                variant="subtitle2" 
+                                sx={{ 
+                                  display: 'block', 
+                                  mb: 1,
+                                  fontWeight: 'bold',
+                                  fontSize: '0.95rem',
+                                  color: 'text.primary',
+                                }}
+                              >
+                                <Box 
+                                  component="a" 
+                                  href={PINRICH_URL} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  sx={{ 
+                                    color: 'primary.main',
+                                    textDecoration: 'none',
+                                    '&:hover': {
+                                      textDecoration: 'underline',
+                                    }
+                                  }}
+                                >
+                                  {field.label}
+                                </Box>
+                                {' '}
+                                <span style={{ color: 'red', fontWeight: 'bold' }}>*蠢・・/span>
+                              </Typography>
+                            )}
+                            <InlineEditableField
+                              label={isRequired ? '' : (
+                                <Box 
+                                  component="a" 
+                                  href={PINRICH_URL} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  sx={{ 
+                                    color: 'primary.main',
+                                    textDecoration: 'none',
+                                    fontSize: '0.75rem',
+                                    '&:hover': {
+                                      textDecoration: 'underline',
+                                    }
+                                  }}
+                                >
+                                  {field.label}
+                                </Box>
+                              )}
+                              value={value || ''}
+                              fieldName={field.key}
+                              fieldType="dropdown"
+                              options={PINRICH_OPTIONS}
+                              onSave={handleFieldSave}
+                              buyerId={buyer?.id || buyer_number}
+                              enableConflictDetection={true}
+                              showEditIndicator={true}
+                            />
+                          </Box>
+                        </Grid>
+                      );
+                    }
+
+                    // 蜀・ｦｧ譛ｪ遒ｺ螳・                    // distribution_type繝輔ぅ繝ｼ繝ｫ繝峨・迚ｹ蛻･蜃ｦ逅・ｼ医・繧ｿ繝ｳ蠖｢蠑擾ｼ・                    if (field.key === 'distribution_type') {
                       const handleFieldSave = async (newValue: any) => {
                         const result = await handleInlineFieldSave(field.key, newValue);
                         if (result && !result.success && result.error) {
@@ -1005,69 +1869,84 @@ export default function BuyerDetailPage() {
 
                       return (
                         <Grid item {...gridSize} key={field.key}>
-                          <InlineEditableField
-                            label={field.label}
-                            value={value || ''}
-                            fieldName={field.key}
-                            fieldType="dropdown"
-                            options={DISTRIBUTION_TYPE_OPTIONS}
-                            onSave={handleFieldSave}
-                            buyerId={buyer?.id || buyer_number}
-                            enableConflictDetection={true}
-                            showEditIndicator={true}
-                            oneClickDropdown={true}
-                          />
+                          <Box sx={{ mb: 1 }}>
+                            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+                              {field.label}
+                            </Typography>
+                            <Box sx={{ display: 'flex', gap: 1 }}>
+                              <Button
+                                variant={value === '隕・ ? 'contained' : 'outlined'}
+                                color="primary"
+                                size="small"
+                                onClick={() => {
+                                  // 蜷後§繝懊ち繝ｳ繧・蠎ｦ繧ｯ繝ｪ繝・け縺励◆繧牙､繧偵け繝ｪ繧｢
+                                  if (value === '隕・) {
+                                    handleFieldSave('');
+                                  } else {
+                                    handleFieldSave('隕・);
+                                  }
+                                }}
+                                sx={{ flex: 1 }}
+                              >
+                                隕・                              </Button>
+                              <Button
+                                variant={value === '荳崎ｦ・ ? 'contained' : 'outlined'}
+                                color="primary"
+                                size="small"
+                                onClick={() => {
+                                  // 蜷後§繝懊ち繝ｳ繧・蠎ｦ繧ｯ繝ｪ繝・け縺励◆繧牙､繧偵け繝ｪ繧｢
+                                  if (value === '荳崎ｦ・) {
+                                    handleFieldSave('');
+                                  } else {
+                                    handleFieldSave('荳崎ｦ・);
+                                  }
+                                }}
+                                sx={{ flex: 1 }}
+                              >
+                                荳崎ｦ・                              </Button>
+                            </Box>
+                          </Box>
                         </Grid>
                       );
                     }
 
-                    // その他のフィールド
-                    const handleFieldSave = async (newValue: any) => {
+                    // 縺昴・莉悶・繝輔ぅ繝ｼ繝ｫ繝・                    const handleFieldSave = async (newValue: any) => {
                       const result = await handleInlineFieldSave(field.key, newValue);
                       if (result && !result.success && result.error) {
                         throw new Error(result.error);
                       }
                     };
 
-                    // inquiry_hearingフィールドには常に囲い枠を表示
+                    // inquiry_hearing繝輔ぅ繝ｼ繝ｫ繝峨↓縺ｯ蟶ｸ縺ｫ蝗ｲ縺・棧繧定｡ｨ遉ｺ
                     const isInquiryHearing = field.key === 'inquiry_hearing';
 
                     return (
                       <Grid item {...gridSize} key={field.key}>
-                        {/* 問合時ヒアリング用クイック入力ボタン */}
+                        {/* 蝠丞粋譎ゅヲ繧｢繝ｪ繝ｳ繧ｰ逕ｨ繧ｯ繧､繝・け蜈･蜉帙・繧ｿ繝ｳ */}
                         {isInquiryHearing && (
                           <Box sx={{ mb: 1 }}>
                             <Typography variant="subtitle2" gutterBottom>
-                              ヒアリング項目
+                              繝偵い繝ｪ繝ｳ繧ｰ鬆・岼
                             </Typography>
                             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
                               {INQUIRY_HEARING_QUICK_INPUTS.map((item) => {
-                                const disabled = isQuickButtonDisabled(item.label);
                                 return (
                                   <Tooltip 
                                     key={item.label} 
-                                    title={disabled ? 'このボタンは使用済みです' : item.text} 
+                                    title={item.text} 
                                     arrow
                                   >
-                                    <span>
-                                      <Chip
-                                        label={item.label}
-                                        onClick={() => !disabled && handleInquiryHearingQuickInput(item.text, item.label)}
-                                        size="small"
-                                        clickable={!disabled}
-                                        color="primary"
-                                        variant="outlined"
-                                        disabled={disabled}
-                                        sx={{
-                                          opacity: disabled ? 0.5 : 1,
-                                          cursor: disabled ? 'not-allowed' : 'pointer',
-                                          '&.Mui-disabled': {
-                                            opacity: 0.5,
-                                            pointerEvents: 'auto',
-                                          },
-                                        }}
-                                      />
-                                    </span>
+                                    <Chip
+                                      label={item.label}
+                                      onClick={() => handleInquiryHearingQuickInput(item.text, item.label)}
+                                      size="small"
+                                      clickable
+                                      color="primary"
+                                      variant="outlined"
+                                      sx={{
+                                        cursor: 'pointer',
+                                      }}
+                                    />
                                   </Tooltip>
                                 );
                               })}
@@ -1089,15 +1968,14 @@ export default function BuyerDetailPage() {
                           buyerId={buyer?.id || buyer_number}
                           enableConflictDetection={true}
                           alwaysShowBorder={isInquiryHearing}
-                          borderPlaceholder={isInquiryHearing ? 'ヒアリング内容を入力...' : undefined}
+                          borderPlaceholder={isInquiryHearing ? '繝偵い繝ｪ繝ｳ繧ｰ蜀・ｮｹ繧貞・蜉・..' : undefined}
                           showEditIndicator={!field.readOnly}
                         />
                       </Grid>
                     );
                   }
 
-                  // インライン編集不可のフィールド（通常表示）
-                  return (
+                  // 繧､繝ｳ繝ｩ繧､繝ｳ邱ｨ髮・ｸ榊庄縺ｮ繝輔ぅ繝ｼ繝ｫ繝会ｼ磯壼ｸｸ陦ｨ遉ｺ・・                  return (
                     <Grid item {...gridSize} key={field.key}>
                       <Typography variant="caption" color="text.secondary">
                         {field.label}
@@ -1108,26 +1986,45 @@ export default function BuyerDetailPage() {
                     </Grid>
                   );
                 })}
+                
+                {/* 蝠丞粋縺帛・螳ｹ繧ｻ繧ｯ繧ｷ繝ｧ繝ｳ縺ｮ蝣ｴ蜷医∵球蠖薙∈縺ｮ遒ｺ隱堺ｺ矩・さ繝ｳ繝昴・繝阪Φ繝医ｒ霑ｽ蜉 */}
+                {section.title === '蝠丞粋縺帛・螳ｹ' && linkedProperties.length > 0 && linkedProperties[0].sales_assignee && (
+                  <Grid item xs={12}>
+                    <ConfirmationToAssignee
+                      buyer={buyer}
+                      propertyAssignee={linkedProperties[0].sales_assignee}
+                      onSendSuccess={() => {
+                        setSnackbar({
+                          open: true,
+                          message: '騾∽ｿ｡縺励∪縺励◆',
+                          severity: 'success'
+                        });
+                      }}
+                    />
+                  </Grid>
+                )}
               </Grid>
             </Paper>
           ))}
 
-          {/* メール送信履歴セクション */}
+          {/* 繝｡繝ｼ繝ｫ繝ｻSMS騾∽ｿ｡螻･豁ｴ繧ｻ繧ｯ繧ｷ繝ｧ繝ｳ */}
           <Paper sx={{ p: 2, mb: 2 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
               <EmailIcon sx={{ mr: 1, color: 'primary.main' }} />
-              <Typography variant="h6">メール送信履歴</Typography>
+              <Typography variant="h6">繝｡繝ｼ繝ｫ繝ｻSMS騾∽ｿ｡螻･豁ｴ</Typography>
             </Box>
             <Divider sx={{ mb: 2 }} />
-            {activities.filter(a => a.action === 'email').length > 0 ? (
+            {activities.filter(a => a.action === 'email' || a.action === 'sms').length > 0 ? (
               <List sx={{ maxHeight: 400, overflow: 'auto' }}>
                 {activities
-                  .filter(a => a.action === 'email')
+                  .filter(a => a.action === 'email' || a.action === 'sms')
                   .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
                   .map((activity) => {
                     const metadata = activity.metadata || {};
                     const propertyNumbers = metadata.propertyNumbers || [];
-                    const displayName = activity.employee ? getDisplayName(activity.employee) : '不明';
+                    const displayName = activity.employee ? getDisplayName(activity.employee) : '荳肴・';
+                    const actionLabel = activity.action === 'email' ? 'Email' : 'SMS';
+                    const templateType = metadata.template_type || '荳肴・';
                     
                     return (
                       <ListItem
@@ -1138,12 +2035,28 @@ export default function BuyerDetailPage() {
                           borderBottom: '1px solid',
                           borderColor: 'divider',
                           py: 2,
+                          cursor: 'pointer',
+                          '&:hover': {
+                            bgcolor: 'action.hover',
+                          },
+                        }}
+                        onClick={() => {
+                          setSelectedActivity(activity);
+                          setActivityDetailOpen(true);
                         }}
                       >
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', mb: 1 }}>
-                          <Typography variant="body2" fontWeight="bold">
-                            {metadata.subject || '件名なし'}
-                          </Typography>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Chip 
+                              label={actionLabel} 
+                              size="small" 
+                              color={activity.action === 'email' ? 'primary' : 'secondary'}
+                              sx={{ fontWeight: 'bold' }}
+                            />
+                            <Typography variant="body2" fontWeight="bold">
+                              {templateType}
+                            </Typography>
+                          </Box>
                           <Typography variant="caption" color="text.secondary">
                             {formatDateTime(activity.created_at)}
                           </Typography>
@@ -1151,14 +2064,14 @@ export default function BuyerDetailPage() {
                         
                         <Box sx={{ width: '100%', mb: 1 }}>
                           <Typography variant="caption" color="text.secondary">
-                            送信者: {displayName} ({metadata.senderEmail || '-'})
+                            騾∽ｿ｡閠・ {displayName} ({metadata.sender_email || metadata.sender || '-'})
                           </Typography>
                         </Box>
                         
                         {propertyNumbers.length > 0 && (
                           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 1 }}>
                             <Typography variant="caption" color="text.secondary" sx={{ mr: 1 }}>
-                              物件:
+                              迚ｩ莉ｶ:
                             </Typography>
                             {propertyNumbers.map((pn: string) => (
                               <Chip
@@ -1171,17 +2084,6 @@ export default function BuyerDetailPage() {
                             ))}
                           </Box>
                         )}
-                        
-                        {metadata.preViewingNotes && (
-                          <Box sx={{ width: '100%', mt: 1, p: 1, bgcolor: 'grey.50', borderRadius: 1 }}>
-                            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
-                              内覧前伝達事項:
-                            </Typography>
-                            <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', fontSize: '0.85rem' }}>
-                              {metadata.preViewingNotes}
-                            </Typography>
-                          </Box>
-                        )}
                       </ListItem>
                     );
                   })}
@@ -1189,40 +2091,40 @@ export default function BuyerDetailPage() {
             ) : (
               <Box sx={{ textAlign: 'center', py: 3, color: 'text.secondary' }}>
                 <EmailIcon sx={{ fontSize: 48, opacity: 0.3, mb: 1 }} />
-                <Typography variant="body2">メール送信履歴はありません</Typography>
+                <Typography variant="body2">繝｡繝ｼ繝ｫ繝ｻSMS騾∽ｿ｡螻･豁ｴ縺ｯ縺ゅｊ縺ｾ縺帙ｓ</Typography>
               </Box>
             )}
           </Paper>
         </Box>
       </Box>
 
-      {/* 関連買主セクション */}
+      {/* 髢｢騾｣雋ｷ荳ｻ繧ｻ繧ｯ繧ｷ繝ｧ繝ｳ */}
       {buyer?.buyer_id && (
         <Box sx={{ mt: 3 }}>
           <RelatedBuyersSection buyerId={buyer.buyer_id} />
         </Box>
       )}
 
-      {/* 統合問合せ履歴 */}
+      {/* 邨ｱ蜷亥撫蜷医○螻･豁ｴ */}
       {buyer?.buyer_id && (
         <Box sx={{ mt: 3 }}>
           <UnifiedInquiryHistoryTable buyerId={buyer.buyer_id} />
         </Box>
       )}
 
-      {/* スナックバー */}
+      {/* 繧ｹ繝翫ャ繧ｯ繝舌・ */}
       <Snackbar
         open={snackbar.open}
         autoHideDuration={6000}
         onClose={handleCloseSnackbar}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
       >
         <Alert onClose={handleCloseSnackbar} severity={snackbar.severity} sx={{ width: '100%' }}>
           {snackbar.message}
         </Alert>
       </Snackbar>
 
-      {/* メール送信モーダル */}
+      {/* 繝｡繝ｼ繝ｫ騾∽ｿ｡繝｢繝ｼ繝繝ｫ */}
       <InquiryResponseEmailModal
         isOpen={emailModalOpen}
         onClose={() => setEmailModalOpen(false)}
@@ -1231,8 +2133,221 @@ export default function BuyerDetailPage() {
         buyerInfo={buyer ? {
           name: buyer.name || '',
           email: buyer.email || '',
-          buyerId: buyer.buyer_id || buyer_number || '',
+          buyerId: buyer.id || buyer_number || '',
         } : undefined}
+      />
+
+      {/* 遒ｺ隱阪ム繧､繧｢繝ｭ繧ｰ */}
+      <Dialog
+        open={confirmDialog.open}
+        onClose={handleCancelSend}
+        maxWidth="lg"
+        fullWidth
+      >
+        <DialogTitle>
+          {confirmDialog.type === 'email' ? 'Email騾∽ｿ｡遒ｺ隱・ : 'SMS騾∽ｿ｡遒ｺ隱・}
+        </DialogTitle>
+        <DialogContent>
+          {confirmDialog.type === 'email' && confirmDialog.template && (
+            <Box>
+              <TextField
+                fullWidth
+                label="螳帛・"
+                value={editableEmailRecipient}
+                onChange={(e) => setEditableEmailRecipient(e.target.value)}
+                margin="normal"
+                required
+              />
+              <TextField
+                fullWidth
+                label="莉ｶ蜷・
+                value={editableEmailSubject}
+                onChange={(e) => setEditableEmailSubject(e.target.value)}
+                margin="normal"
+                required
+              />
+              <TextField
+                fullWidth
+                label="譛ｬ譁・
+                value={editableEmailBody}
+                onChange={(e) => setEditableEmailBody(e.target.value)}
+                margin="normal"
+                multiline
+                rows={20}
+                required
+              />
+              
+              {/* 逕ｻ蜒乗ｷｻ莉倥・繧ｿ繝ｳ */}
+              <Box sx={{ mt: 2 }}>
+                <Button
+                  variant="outlined"
+                  startIcon={<ImageIcon />}
+                  onClick={handleOpenImageSelector}
+                  fullWidth
+                >
+                  逕ｻ蜒上ｒ豺ｻ莉・                </Button>
+
+                {selectedImages && Array.isArray(selectedImages) && selectedImages.length > 0 && (
+                  <Box sx={{ mt: 2 }}>
+                    <Alert severity="success">
+                      {selectedImages.length}譫壹・逕ｻ蜒上′驕ｸ謚槭＆繧後∪縺励◆
+                    </Alert>
+                  </Box>
+                )}
+
+                {imageError && (
+                  <Alert severity="error" sx={{ mt: 2 }}>
+                    {imageError}
+                  </Alert>
+                )}
+              </Box>
+            </Box>
+          )}
+          {confirmDialog.type === 'sms' && confirmDialog.template && (
+            <Box>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                螳帛・: {buyer?.phone_number}
+              </Typography>
+              <TextField
+                fullWidth
+                label="繝｡繝・そ繝ｼ繧ｸ"
+                value={confirmDialog.template.content}
+                margin="normal"
+                multiline
+                rows={10}
+                InputProps={{
+                  readOnly: true,
+                }}
+              />
+              <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+                譁・ｭ玲焚: {confirmDialog.template.content.length} / 670
+              </Typography>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCancelSend} disabled={sendingTemplate}>
+            繧ｭ繝｣繝ｳ繧ｻ繝ｫ
+          </Button>
+          <Button
+            onClick={handleConfirmSend}
+            variant="contained"
+            color="primary"
+            disabled={sendingTemplate}
+          >
+            {sendingTemplate ? '騾∽ｿ｡荳ｭ...' : '騾∽ｿ｡'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 繧｢繧ｯ繝・ぅ繝薙ユ繧｣隧ｳ邏ｰ繝繧､繧｢繝ｭ繧ｰ */}
+      <Dialog
+        open={activityDetailOpen}
+        onClose={() => setActivityDetailOpen(false)}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>
+          {selectedActivity?.action === 'email' ? '繝｡繝ｼ繝ｫ騾∽ｿ｡隧ｳ邏ｰ' : 'SMS騾∽ｿ｡隧ｳ邏ｰ'}
+        </DialogTitle>
+        <DialogContent>
+          {selectedActivity && (
+            <Box>
+              <Box sx={{ mb: 2 }}>
+                <Typography variant="body2" color="text.secondary">
+                  遞ｮ蛻･: {selectedActivity.metadata?.template_type || '荳肴・'}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  騾∽ｿ｡譌･譎・ {formatDateTime(selectedActivity.created_at)}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  騾∽ｿ｡閠・ {selectedActivity.employee ? getDisplayName(selectedActivity.employee) : '荳肴・'} ({selectedActivity.metadata?.sender_email || selectedActivity.metadata?.sender || '-'})
+                </Typography>
+              </Box>
+              
+              <Divider sx={{ my: 2 }} />
+              
+              {selectedActivity.action === 'email' && (
+                <>
+                  <Box sx={{ mb: 2 }}>
+                    <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                      莉ｶ蜷・                    </Typography>
+                    <Typography variant="body1">
+                      {selectedActivity.metadata?.subject || '莉ｶ蜷阪↑縺・}
+                    </Typography>
+                  </Box>
+                  
+                  <Box sx={{ mb: 2 }}>
+                    <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                      螳帛・
+                    </Typography>
+                    <Typography variant="body1">
+                      {selectedActivity.metadata?.recipient_email || '-'}
+                    </Typography>
+                  </Box>
+                  
+                  {selectedActivity.metadata?.body && (
+                    <Box sx={{ mb: 2 }}>
+                      <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                        譛ｬ譁・                      </Typography>
+                      <Paper sx={{ p: 2, bgcolor: 'grey.50', maxHeight: 500, overflow: 'auto' }}>
+                        <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
+                          {selectedActivity.metadata.body}
+                        </Typography>
+                      </Paper>
+                    </Box>
+                  )}
+                  
+                  {selectedActivity.metadata?.selected_images > 0 && (
+                    <Box sx={{ mb: 2 }}>
+                      <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                        豺ｻ莉倡判蜒・                      </Typography>
+                      <Typography variant="body2">
+                        {selectedActivity.metadata.selected_images}譫・                      </Typography>
+                    </Box>
+                  )}
+                </>
+              )}
+              
+              {selectedActivity.action === 'sms' && (
+                <>
+                  <Box sx={{ mb: 2 }}>
+                    <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                      螳帛・
+                    </Typography>
+                    <Typography variant="body1">
+                      {selectedActivity.metadata?.recipient_phone || '-'}
+                    </Typography>
+                  </Box>
+                  
+                  {selectedActivity.metadata?.message && (
+                    <Box sx={{ mb: 2 }}>
+                      <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                        繝｡繝・そ繝ｼ繧ｸ
+                      </Typography>
+                      <Paper sx={{ p: 2, bgcolor: 'grey.50', maxHeight: 500, overflow: 'auto' }}>
+                        <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
+                          {selectedActivity.metadata.message}
+                        </Typography>
+                      </Paper>
+                    </Box>
+                  )}
+                </>
+              )}
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setActivityDetailOpen(false)}>
+            髢峨§繧・          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 逕ｻ蜒城∈謚槭Δ繝ｼ繝繝ｫ */}
+      <ImageSelectorModal
+        open={imageSelectorOpen}
+        onConfirm={handleImageSelectionConfirm}
+        onCancel={handleImageSelectionCancel}
       />
     </Container>
   );

@@ -555,7 +555,7 @@ router.get('/:id/conflict-check', async (req: Request, res: Response) => {
       if (!buyer) {
         return res.status(404).json({ error: 'Buyer not found' });
       }
-      buyerId = buyer.id;
+      buyerId = buyer.buyer_id;
     }
 
     // 買主を取得
