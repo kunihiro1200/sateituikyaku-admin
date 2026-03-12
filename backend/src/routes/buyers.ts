@@ -207,21 +207,9 @@ router.post('/', async (req: Request, res: Response) => {
 router.get('/:id/properties', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    
-    // UUIDかどうかで判定
-    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
-    
-    // 買主番号の場合は、まずbuyer_idを取得
-    let buyerId = id;
-    if (!isUuid) {
-      const buyer = await buyerService.getByBuyerNumber(id);
-      if (!buyer) {
-        return res.status(404).json({ error: 'Buyer not found' });
-      }
-      buyerId = buyer.id;
-    }
-    
-    const properties = await buyerService.getLinkedProperties(buyerId);
+
+    // buyer_numberをそのまま使用（UUID判定不要）
+    const properties = await buyerService.getLinkedProperties(id);
     res.json(properties);
   } catch (error: any) {
     console.error('Error fetching linked properties:', error);
@@ -731,26 +719,26 @@ router.put('/:id', async (req: Request, res: Response) => {
 
     // idがUUIDか買主番号かを判定
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
-    let buyerId = id;
+    let buyerNumber = id;
 
     console.log(`[PUT /buyers/:id] id=${id}, isUuid=${isUuid}`);
 
-    // 買主番号の場合はUUIDを取得
-    if (!isUuid) {
-      const buyer = await buyerService.getByBuyerNumber(id);
-      console.log(`[PUT /buyers/:id] getByBuyerNumber result:`, buyer ? `found (id=${buyer.id})` : 'not found');
+    // UUIDの場合は買主番号を取得（後方互換性のため）
+    if (isUuid) {
+      const buyer = await buyerService.getById(id);
+      console.log(`[PUT /buyers/:id] getById result:`, buyer ? `found (buyer_number=${buyer.buyer_number})` : 'not found');
       if (!buyer) {
         return res.status(404).json({ error: 'Buyer not found' });
       }
-      buyerId = buyer.id;
+      buyerNumber = buyer.buyer_number; // buyer_numberを取得
     }
 
-    console.log(`[PUT /buyers/:id] buyerId=${buyerId}`);
+    console.log(`[PUT /buyers/:id] buyerNumber=${buyerNumber}`);
 
     // sync=trueの場合は双方向同期を使用
     if (sync === 'true') {
       const result = await buyerService.updateWithSync(
-        buyerId,
+        buyerNumber,
         sanitizedData,
         userId,
         userEmail,
@@ -775,7 +763,7 @@ router.put('/:id', async (req: Request, res: Response) => {
     }
 
     // 従来の更新（同期なし）
-    const updatedBuyer = await buyerService.update(buyerId, sanitizedData, userId, userEmail);
+    const updatedBuyer = await buyerService.update(buyerNumber, sanitizedData, userId, userEmail);
     res.json(updatedBuyer);
   } catch (error: any) {
     console.error('Error updating buyer:', error);

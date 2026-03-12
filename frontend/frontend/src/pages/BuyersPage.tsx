@@ -27,6 +27,7 @@ import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import PageNavigation from '../components/PageNavigation';
 import BuyerStatusSidebar from '../components/BuyerStatusSidebar';
+import { SECTION_COLORS } from '../theme/sectionColors';
 
 interface Buyer {
   id: string;
@@ -150,11 +151,17 @@ export default function BuyersPage() {
   return (
     <Container maxWidth="xl" sx={{ py: 3 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-        <Typography variant="h5" fontWeight="bold">買主リスト</Typography>
+        <Typography variant="h5" fontWeight="bold" sx={{ color: SECTION_COLORS.buyer.main }}>買主リスト</Typography>
         <Box sx={{ display: 'flex', gap: 1 }}>
           <Button
             variant="contained"
             onClick={() => navigate('/buyers/new')}
+            sx={{
+              backgroundColor: SECTION_COLORS.buyer.main,
+              '&:hover': {
+                backgroundColor: SECTION_COLORS.buyer.dark,
+              },
+            }}
           >
             新規作成
           </Button>
@@ -163,6 +170,14 @@ export default function BuyersPage() {
             startIcon={syncing ? <CircularProgress size={20} /> : <SyncIcon />}
             onClick={handleSync}
             disabled={syncing}
+            sx={{
+              borderColor: SECTION_COLORS.buyer.main,
+              color: SECTION_COLORS.buyer.main,
+              '&:hover': {
+                borderColor: SECTION_COLORS.buyer.dark,
+                backgroundColor: `${SECTION_COLORS.buyer.main}15`,
+              },
+            }}
           >
             {syncing ? '同期中...' : 'スプレッドシートから同期'}
           </Button>
@@ -268,7 +283,7 @@ export default function BuyersPage() {
                         onClick={() => handleRowClick(buyer.buyer_number)}
                       >
                         <TableCell>
-                          <Typography variant="body2" color="primary" fontWeight="bold">
+                          <Typography variant="body2" fontWeight="bold" sx={{ color: SECTION_COLORS.buyer.main }}>
                             {buyer.buyer_number || '-'}
                           </Typography>
                         </TableCell>
@@ -282,7 +297,14 @@ export default function BuyersPage() {
                         <TableCell>{buyer.follow_up_assignee || buyer.initial_assignee || '-'}</TableCell>
                         <TableCell>
                           {buyer.inquiry_confidence && (
-                            <Chip label={buyer.inquiry_confidence} size="small" color="info" />
+                            <Chip 
+                              label={buyer.inquiry_confidence} 
+                              size="small" 
+                              sx={{
+                                backgroundColor: SECTION_COLORS.buyer.light,
+                                color: SECTION_COLORS.buyer.contrastText,
+                              }}
+                            />
                           )}
                         </TableCell>
                         <TableCell>{formatDate(buyer.reception_date)}</TableCell>

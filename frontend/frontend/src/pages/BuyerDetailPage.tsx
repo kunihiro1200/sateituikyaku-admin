@@ -42,6 +42,7 @@ import {
 } from '../utils/buyerFieldOptions';
 import { formatDateTime } from '../utils/dateFormat';
 import { getDisplayName } from '../utils/employeeUtils';
+import { SECTION_COLORS } from '../theme/sectionColors';
 
 interface Buyer {
   [key: string]: any;
@@ -600,14 +601,14 @@ export default function BuyerDetailPage() {
           >
             <ArrowBackIcon />
           </IconButton>
-          <Typography variant="h5" fontWeight="bold">
+          <Typography variant="h5" fontWeight="bold" sx={{ color: SECTION_COLORS.buyer.main }}>
             {buyer.name || buyer.buyer_number}
           </Typography>
           {buyer.inquiry_confidence && (
-            <Chip label={buyer.inquiry_confidence} color="info" sx={{ ml: 2 }} />
+            <Chip label={buyer.inquiry_confidence} sx={{ ml: 2, backgroundColor: SECTION_COLORS.buyer.light, color: SECTION_COLORS.buyer.contrastText }} />
           )}
           {buyer.latest_status && (
-            <Chip label={buyer.latest_status.substring(0, 30)} sx={{ ml: 1 }} />
+            <Chip label={buyer.latest_status.substring(0, 30)} sx={{ ml: 1, backgroundColor: SECTION_COLORS.buyer.dark, color: SECTION_COLORS.buyer.contrastText }} />
           )}
           <RelatedBuyerNotificationBadge 
             count={relatedBuyersCount} 
@@ -930,6 +931,7 @@ export default function BuyerDetailPage() {
                             buyerId={buyer?.id || buyer_number}
                             enableConflictDetection={true}
                             showEditIndicator={true}
+                            oneClickDropdown={true}
                           />
                         </Grid>
                       );
@@ -956,6 +958,7 @@ export default function BuyerDetailPage() {
                             buyerId={buyer?.id || buyer_number}
                             enableConflictDetection={true}
                             showEditIndicator={true}
+                            oneClickDropdown={true}
                           />
                         </Grid>
                       );
@@ -982,6 +985,7 @@ export default function BuyerDetailPage() {
                             buyerId={buyer?.id || buyer_number}
                             enableConflictDetection={true}
                             showEditIndicator={true}
+                            oneClickDropdown={true}
                           />
                         </Grid>
                       );
@@ -1008,6 +1012,7 @@ export default function BuyerDetailPage() {
                             buyerId={buyer?.id || buyer_number}
                             enableConflictDetection={true}
                             showEditIndicator={true}
+                            oneClickDropdown={true}
                           />
                         </Grid>
                       );
@@ -1034,6 +1039,7 @@ export default function BuyerDetailPage() {
                             buyerId={buyer?.id || buyer_number}
                             enableConflictDetection={true}
                             showEditIndicator={true}
+                            oneClickDropdown={true}
                           />
                         </Grid>
                       );
@@ -1060,6 +1066,7 @@ export default function BuyerDetailPage() {
                             buyerId={buyer?.id || buyer_number}
                             enableConflictDetection={true}
                             showEditIndicator={true}
+                            oneClickDropdown={true}
                           />
                         </Grid>
                       );
