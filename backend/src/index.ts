@@ -1,36 +1,22 @@
-import dotenv from 'dotenv';
+﻿import dotenv from 'dotenv';
 import path from 'path';
-import fs from 'fs';
 
-// 最初に環境変数を読み込む（Vercel環境では.envファイルは存在しない）
-try {
-  const envPath = path.resolve(__dirname, '../.env');
-  if (fs.existsSync(envPath)) {
-    console.log('📁 Loading .env from:', envPath);
-    const result = dotenv.config({ path: envPath });
+// 譛蛻昴↓迺ｰ蠅・､画焚繧定ｪｭ縺ｿ霎ｼ繧
+const envPath = path.resolve(__dirname, '../.env');
+console.log('刀 Loading .env from:', envPath);
+const result = dotenv.config({ path: envPath });
 
-    if (result.error) {
-      console.error('❌ Error loading .env file:', result.error);
-    } else {
-      console.log('✅ .env file loaded successfully');
-    }
-  } else {
-    console.log('ℹ️  .env file not found (running in Vercel environment)');
-  }
-} catch (error) {
-  console.error('⚠️ Error checking .env file:', error);
-  console.log('ℹ️  Continuing without .env file (using environment variables)');
-}
-
-// 環境変数のログ出力（デバッグ用）
-if (process.env.NODE_ENV !== 'production') {
-  console.log('🔑 All environment variables starting with GMAIL:');
+if (result.error) {
+  console.error('笶・Error loading .env file:', result.error);
+} else {
+  console.log('笨・.env file loaded successfully');
+  console.log('泊 All environment variables starting with GMAIL:');
   Object.keys(process.env)
     .filter(key => key.startsWith('GMAIL'))
     .forEach(key => {
       console.log(`  ${key}:`, process.env[key] ? `"${process.env[key]?.substring(0, 20)}..."` : 'Missing');
     });
-  console.log('🔑 All environment variables starting with GOOGLE_CALENDAR:');
+  console.log('泊 All environment variables starting with GOOGLE_CALENDAR:');
   Object.keys(process.env)
     .filter(key => key.startsWith('GOOGLE_CALENDAR'))
     .forEach(key => {
@@ -55,6 +41,7 @@ import emailRoutes from './routes/emails';
 import activityLogRoutes from './routes/activityLogs';
 import followUpRoutes from './routes/followUps';
 import appointmentRoutes from './routes/appointments';
+import buyerAppointmentRoutes from './routes/buyer-appointments';
 import summarizeRoutes from './routes/summarize';
 import googleCalendarRoutes from './routes/googleCalendar';
 import employeeRoutes from './routes/employees';
@@ -81,9 +68,8 @@ import publicInquiriesRoutes from './routes/publicInquiries';
 import propertyListingSyncRoutes from './routes/propertyListingSync';
 import geocodeRoutes from './routes/geocode';
 import urlRedirectRoutes from './routes/urlRedirect';
-import sharedItemsRoutes from './routes/sharedItems';
-import smsRoutes from './routes/sms';
 import { activityLogger } from './middleware/activityLogger';
+import { authenticate } from './middleware/auth';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -94,18 +80,18 @@ const initializeConnections = async () => {
     // Test Supabase connection
     const { data, error } = await supabase.from('employees').select('count').limit(1);
     if (error) throw error;
-    console.log('✅ Supabase connection verified');
+    console.log('笨・Supabase connection verified');
   } catch (error) {
-    console.error('⚠️ Supabase connection test failed, but continuing:', error);
+    console.error('笞・・Supabase connection test failed, but continuing:', error);
     // Don't exit, allow the server to start
   }
 
   // Connect to Redis (non-blocking, will fallback to memory store if unavailable)
   try {
     await connectRedis();
-    console.log('✅ Session store initialized');
+    console.log('笨・Session store initialized');
   } catch (error) {
-    console.warn('⚠️ Redis connection failed, using in-memory session store');
+    console.warn('笞・・Redis connection failed, using in-memory session store');
   }
 };
 
@@ -116,21 +102,16 @@ app.use(cors({
     'http://localhost:5173', 
     'http://localhost:5174', 
     'http://localhost:5175',
-    'http://localhost:3000',  // バックエンド自身も追加
-    'https://sateituikyaku-admin-frontend.vercel.app', // 管理システムフロントエンド（カスタムドメイン）
-    'https://sateituikyaku-admin-frontend-git-main-kunihiro1200s-projects.vercel.app', // Vercel自動生成URL
-    'https://property-site-frontend-kappa.vercel.app',  // 公開物件サイト
+    'http://localhost:3000',  // 繝舌ャ繧ｯ繧ｨ繝ｳ繝芽・霄ｫ繧りｿｽ蜉
     'https://new-admin-management-system-v2.vercel.app',  // 社内管理システムフロントエンド
-    'https://baikyaku-property-site3.vercel.app'  // 社内管理システムバックエンド
-  ],
+    'https://property-site-frontend-kappa.vercel.app',  // 譛ｬ逡ｪ迺ｰ蠅・ヵ繝ｭ繝ｳ繝医お繝ｳ繝・    'https://baikyaku-property-site3.vercel.app'  // 譛ｬ逡ｪ迺ｰ蠅・ヰ繝・け繧ｨ繝ｳ繝・  ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 app.use(compression());
 app.use(morgan('dev'));
-app.use(express.json({ limit: '50mb' })); // 画像付きメール対応のため制限を増やす
-app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+app.use(express.json({ limit: '50mb' })); // 逕ｻ蜒丈ｻ倥″繝｡繝ｼ繝ｫ蟇ｾ蠢懊・縺溘ａ蛻ｶ髯舌ｒ蠅励ｄ縺・app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(activityLogger);
 
 // Health check
@@ -138,21 +119,18 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// Cron Job: 問合せをスプレッドシートに同期（1分ごとに実行）
-// ⚠️ 重要: 他のルートより前に定義（より具体的なルートを優先）
-app.get('/api/cron/sync-inquiries', async (req, res) => {
+// Cron Job: 蝠丞粋縺帙ｒ繧ｹ繝励Ξ繝・ラ繧ｷ繝ｼ繝医↓蜷梧悄・・蛻・＃縺ｨ縺ｫ螳溯｡鯉ｼ・// 笞・・驥崎ｦ・ 莉悶・繝ｫ繝ｼ繝医ｈ繧雁燕縺ｫ螳夂ｾｩ・医ｈ繧雁・菴鍋噪縺ｪ繝ｫ繝ｼ繝医ｒ蜆ｪ蜈茨ｼ・app.get('/api/cron/sync-inquiries', async (req, res) => {
   try {
     console.log('[Cron] Starting inquiry sync job...');
     
-    // Vercel Cron Jobの認証チェック
+    // Vercel Cron Job縺ｮ隱崎ｨｼ繝√ぉ繝・け
     const authHeader = req.headers.authorization;
     if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
       console.error('[Cron] Unauthorized access attempt');
       return res.status(401).json({ error: 'Unauthorized' });
     }
     
-    // pending状態の問合せを取得（最大10件）
-    const { data: pendingInquiries, error: fetchError } = await supabase
+    // pending迥ｶ諷九・蝠丞粋縺帙ｒ蜿門ｾ暦ｼ域怙螟ｧ10莉ｶ・・    const { data: pendingInquiries, error: fetchError } = await supabase
       .from('property_inquiries')
       .select('*')
       .eq('sheet_sync_status', 'pending')
@@ -175,19 +153,18 @@ app.get('/api/cron/sync-inquiries', async (req, res) => {
     
     console.log(`[Cron] Found ${pendingInquiries.length} pending inquiries`);
     
-    // Google Sheets認証
+    // Google Sheets隱崎ｨｼ
     const { GoogleSheetsClient } = await import('./services/GoogleSheetsClient');
     const sheetsClient = new GoogleSheetsClient({
       spreadsheetId: process.env.GOOGLE_SHEETS_BUYER_SPREADSHEET_ID!,
-      sheetName: process.env.GOOGLE_SHEETS_BUYER_SHEET_NAME || '買主リスト',
+      sheetName: process.env.GOOGLE_SHEETS_BUYER_SHEET_NAME || '雋ｷ荳ｻ繝ｪ繧ｹ繝・,
       serviceAccountKeyPath: process.env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH || './google-service-account.json',
     });
     
     await sheetsClient.authenticate();
     console.log('[Cron] Google Sheets authenticated');
     
-    // 最大買主番号を取得
-    const { data: latestInquiry } = await supabase
+    // 譛螟ｧ雋ｷ荳ｻ逡ｪ蜿ｷ繧貞叙蠕・    const { data: latestInquiry } = await supabase
       .from('property_inquiries')
       .select('buyer_number')
       .not('buyer_number', 'is', null)
@@ -197,38 +174,36 @@ app.get('/api/cron/sync-inquiries', async (req, res) => {
     
     let nextBuyerNumber = latestInquiry?.buyer_number ? latestInquiry.buyer_number + 1 : 1;
     
-    // 各問合せを同期
-    let syncedCount = 0;
+    // 蜷・撫蜷医○繧貞酔譛・    let syncedCount = 0;
     let failedCount = 0;
     
     for (const inquiry of pendingInquiries) {
       try {
         console.log(`[Cron] Syncing inquiry ${inquiry.id} (${inquiry.name})...`);
         
-        // 電話番号を正規化
+        // 髮ｻ隧ｱ逡ｪ蜿ｷ繧呈ｭ｣隕丞喧
         const normalizedPhone = inquiry.phone.replace(/[^0-9]/g, '');
         
-        // 現在時刻をJST（日本時間）で取得
-        const nowUtc = new Date(inquiry.created_at);
+        // 迴ｾ蝨ｨ譎ょ綾繧谷ST・域律譛ｬ譎る俣・峨〒蜿門ｾ・        const nowUtc = new Date(inquiry.created_at);
         const jstDate = new Date(nowUtc.getTime() + 9 * 60 * 60 * 1000);
         const jstDateString = jstDate.toISOString().replace('T', ' ').substring(0, 19);
         
-        // スプレッドシートに追加
+        // 繧ｹ繝励Ξ繝・ラ繧ｷ繝ｼ繝医↓霑ｽ蜉
         const rowData = {
-          '買主番号': nextBuyerNumber.toString(),
-          '作成日時': jstDateString,
-          '●氏名・会社名': inquiry.name,
-          '●問合時ヒアリング': inquiry.message,
-          '●電話番号\n（ハイフン不要）': normalizedPhone,
-          '●メアド': inquiry.email,
-          '●問合せ元': 'いふう独自サイト',
-          '物件番号': inquiry.property_number || '',
-          '【問合メール】電話対応': '未',
+          '雋ｷ荳ｻ逡ｪ蜿ｷ': nextBuyerNumber.toString(),
+          '菴懈・譌･譎・: jstDateString,
+          '笳乗ｰ丞錐繝ｻ莨夂､ｾ蜷・: inquiry.name,
+          '笳丞撫蜷域凾繝偵い繝ｪ繝ｳ繧ｰ': inquiry.message,
+          '笳城崕隧ｱ逡ｪ蜿ｷ\n・医ワ繧､繝輔Φ荳崎ｦ・ｼ・: normalizedPhone,
+          '笳上Γ繧｢繝・: inquiry.email,
+          '笳丞撫蜷医○蜈・: '縺・・縺・峡閾ｪ繧ｵ繧､繝・,
+          '迚ｩ莉ｶ逡ｪ蜿ｷ': inquiry.property_number || '',
+          '縲仙撫蜷医Γ繝ｼ繝ｫ縲鷹崕隧ｱ蟇ｾ蠢・: '譛ｪ',
         };
         
         await sheetsClient.appendRow(rowData);
         
-        // データベースを更新
+        // 繝・・繧ｿ繝吶・繧ｹ繧呈峩譁ｰ
         await supabase
           .from('property_inquiries')
           .update({ 
@@ -244,7 +219,7 @@ app.get('/api/cron/sync-inquiries', async (req, res) => {
       } catch (error) {
         console.error(`[Cron] Failed to sync inquiry ${inquiry.id}:`, error);
         
-        // 失敗をデータベースに記録
+        // 螟ｱ謨励ｒ繝・・繧ｿ繝吶・繧ｹ縺ｫ險倬鹸
         await supabase
           .from('property_inquiries')
           .update({ 
@@ -275,129 +250,21 @@ app.get('/api/cron/sync-inquiries', async (req, res) => {
   }
 });
 
-// Cron Job: 買主リストをスプレッドシートからDBに同期（10分ごとに実行）
-app.get('/api/cron/buyer-sync', async (req, res) => {
-  try {
-    console.log('[Cron] Starting buyer sync job...');
-
-    // Vercel Cron Jobの認証チェック
-    const authHeader = req.headers.authorization;
-    if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-      console.error('[Cron] Unauthorized access attempt');
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
-
-    const { BuyerSyncService } = await import('./services/BuyerSyncService');
-    const buyerSyncService = new BuyerSyncService();
-
-    // 重複防止チェック
-    if (buyerSyncService.isSyncInProgress()) {
-      console.log('[Cron] Buyer sync already in progress, skipping');
-      return res.status(200).json({ success: true, message: 'Sync already in progress, skipped' });
-    }
-
-    const result = await buyerSyncService.syncAll();
-    console.log(`[Cron] Buyer sync completed: ${result.created} created, ${result.updated} updated, ${result.failed} failed`);
-
-    res.status(200).json({
-      success: true,
-      created: result.created,
-      updated: result.updated,
-      failed: result.failed,
-      skipped: result.skipped,
-      duration: result.duration,
-    });
-  } catch (error: any) {
-    console.error('[Cron] Error in buyer sync job:', error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-// Cron Job: 業務依頼リストをスプレッドシートからDBに同期（10分ごとに実行）
-app.get('/api/cron/work-task-sync', async (req, res) => {
-  try {
-    console.log('[Cron] Starting work task sync job...');
-
-    // Vercel Cron Jobの認証チェック
-    const authHeader = req.headers.authorization;
-    if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-      console.error('[Cron] Unauthorized access attempt');
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
-
-    const { WorkTaskSyncService } = await import('./services/WorkTaskSyncService');
-    const workTaskSyncService = new WorkTaskSyncService();
-
-    // 重複防止チェック
-    if (workTaskSyncService.isSyncInProgress()) {
-      console.log('[Cron] Work task sync already in progress, skipping');
-      return res.status(200).json({ success: true, message: 'Sync already in progress, skipped' });
-    }
-
-    const result = await workTaskSyncService.syncAll();
-    console.log(`[Cron] Work task sync completed`);
-
-    res.status(200).json({ success: true, result });
-  } catch (error: any) {
-    console.error('[Cron] Error in work task sync job:', error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-// Cron Job: 売主リストをスプレッドシートからDBに同期（5分ごとに実行）
-app.get('/api/cron/seller-sync', async (req, res) => {
-  try {
-    console.log('[Cron] Starting seller sync job...');
-
-    // Vercel Cron Jobの認証チェック
-    const authHeader = req.headers.authorization;
-    if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-      console.error('[Cron] Unauthorized access attempt');
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
-
-    const { getEnhancedAutoSyncService, isAutoSyncEnabled } = await import('./services/EnhancedAutoSyncService');
-
-    if (!isAutoSyncEnabled()) {
-      console.log('[Cron] Seller auto-sync is disabled (AUTO_SYNC_ENABLED=false)');
-      return res.status(200).json({ success: true, message: 'Auto-sync disabled' });
-    }
-
-    const syncService = getEnhancedAutoSyncService();
-    await syncService.initialize();
-    const result = await syncService.runFullSync('cron');
-    console.log(`[Cron] Seller sync completed: ${result.additionResult.successfullyAdded} added, ${result.additionResult.successfullyUpdated} updated`);
-
-    res.status(200).json({
-      success: true,
-      added: result.additionResult.successfullyAdded,
-      updated: result.additionResult.successfullyUpdated,
-      deleted: result.deletionResult.successfullyDeleted,
-    });
-  } catch (error: any) {
-    console.error('[Cron] Error in seller sync job:', error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
 // Routes
-// 認証ルート（ローカルと本番の両方に対応）
-app.use('/auth', authSupabaseRoutes);
-app.use('/api/auth', authSupabaseRoutes);  // 本番環境用
+// 隱崎ｨｼ繝ｫ繝ｼ繝茨ｼ医Ο繝ｼ繧ｫ繝ｫ縺ｨ譛ｬ逡ｪ縺ｮ荳｡譁ｹ縺ｫ蟇ｾ蠢懶ｼ・app.use('/auth', authSupabaseRoutes);
+app.use('/api/auth', authSupabaseRoutes);  // 譛ｬ逡ｪ迺ｰ蠅・畑
 app.use('/api/sellers', sellerRoutes);
 app.use('/api/sellers', sellersManagementRoutes);
 app.use('/properties', propertyRoutes);
 app.use('/api/sellers', valuationRoutes);
 app.use('/api/sellers', emailRoutes);
-app.use('/api/emails', emailRoutes);  // 画像添付機能用の追加ルート
-app.use('/api/sellers', followUpRoutes);
+app.use('/api/emails', emailRoutes);  // 逕ｻ蜒乗ｷｻ莉俶ｩ溯・逕ｨ縺ｮ霑ｽ蜉繝ｫ繝ｼ繝・app.use('/api/sellers', followUpRoutes);
 app.use('/appointments', appointmentRoutes);
-app.use('/activity-logs', activityLogRoutes);
-app.use('/api/activity-logs', activityLogRoutes);  // フロントエンド用
+app.use('/api/buyer-appointments', buyerAppointmentRoutes);
+app.use('/api/activity-logs', activityLogRoutes);
 app.use('/summarize', summarizeRoutes);
 app.use('/api/auth/google/calendar', googleCalendarRoutes);
-app.use('/employees', employeeRoutes);
-app.use('/api/employees', employeeRoutes);  // フロントエンド用
+app.use('/api/employees', employeeRoutes);
 app.use('/chat-notifications', chatNotificationRoutes);
 app.use('/api/webhooks', webhookRoutes);
 app.use('/api/integration', integrationRoutes);
@@ -406,7 +273,7 @@ app.use('/cache', cacheRoutes);
 app.use('/api/drive', driveRoutes);
 app.use('/api/work-tasks', workTaskRoutes);
 app.use('/api/property-listings', propertyListingRoutes);
-app.use('/api/buyers', buyerRoutes);
+// 雋ｷ荳ｻ繝ｫ繝ｼ繝医↓隱崎ｨｼ繝溘ラ繝ｫ繧ｦ繧ｧ繧｢繧帝←逕ｨ・医い繧ｯ繝・ぅ繝薙ユ繧｣繝ｭ繧ｰ險倬鹸縺ｮ縺溘ａ・・app.use('/api/buyers', authenticate, buyerRoutes);
 app.use('/api', viewingResultRoutes);
 app.use('/api/calls', callRoutes);
 app.use('/api/validation', validationRoutes);
@@ -414,15 +281,9 @@ app.use('/api/sellers', sellerRecoveryRoutes);
 app.use('/api/inquiry-response', inquiryResponseRoutes);
 app.use('/api/email-templates', emailTemplateRoutes);
 app.use('/api/gmail', gmailRoutes);
-app.use('/api/public/inquiries', publicInquiriesRoutes); // 公開物件問い合わせAPI（認証不要）
-app.use('/api/public', publicPropertiesRoutes); // 公開物件サイト用API（認証不要なので先に登録）
-app.use('/api/geocode', geocodeRoutes); // ジオコーディング座標保存API（認証不要）
-app.use('/api/url-redirect', urlRedirectRoutes); // 短縮URLリダイレクト解決API（認証不要）
-app.use('/api', inquiryHistoryRoutes);
+app.use('/api/public/inquiries', publicInquiriesRoutes); // 蜈ｬ髢狗黄莉ｶ蝠上＞蜷医ｏ縺妁PI・郁ｪ崎ｨｼ荳崎ｦ・ｼ・app.use('/api/public', publicPropertiesRoutes); // 蜈ｬ髢狗黄莉ｶ繧ｵ繧､繝育畑API・郁ｪ崎ｨｼ荳崎ｦ√↑縺ｮ縺ｧ蜈医↓逋ｻ骭ｲ・・app.use('/api/geocode', geocodeRoutes); // 繧ｸ繧ｪ繧ｳ繝ｼ繝・ぅ繝ｳ繧ｰ蠎ｧ讓吩ｿ晏ｭ連PI・郁ｪ崎ｨｼ荳崎ｦ・ｼ・app.use('/api/url-redirect', urlRedirectRoutes); // 遏ｭ邵ｮURL繝ｪ繝繧､繝ｬ繧ｯ繝郁ｧ｣豎ｺAPI・郁ｪ崎ｨｼ荳崎ｦ・ｼ・app.use('/api', inquiryHistoryRoutes);
 app.use('/api/audit-logs', auditLogRoutes);
 app.use('/api/property-listing-sync', propertyListingSyncRoutes);
-app.use('/api/shared-items', sharedItemsRoutes);
-app.use('/api/sms', smsRoutes);
 
 // Error handling middleware
 app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
@@ -439,8 +300,7 @@ app.use((err: Error, req: express.Request, res: express.Response, next: express.
 const startServer = async () => {
   await initializeConnections();
   
-  // SyncQueueを初期化してSellerServiceに設定
-  try {
+  // SyncQueue繧貞・譛溷喧縺励※SellerService縺ｫ險ｭ螳・  try {
     const { SpreadsheetSyncService } = await import('./services/SpreadsheetSyncService');
     const { GoogleSheetsClient } = await import('./services/GoogleSheetsClient');
     const { SyncQueue } = await import('./services/SyncQueue');
@@ -448,7 +308,7 @@ const startServer = async () => {
     
     const sheetsConfig = {
       spreadsheetId: process.env.GOOGLE_SHEETS_SPREADSHEET_ID!,
-      sheetName: process.env.GOOGLE_SHEETS_SHEET_NAME || '売主リスト',
+      sheetName: process.env.GOOGLE_SHEETS_SHEET_NAME || '螢ｲ荳ｻ繝ｪ繧ｹ繝・,
       serviceAccountKeyPath: process.env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH || './google-service-account.json',
     };
     
@@ -458,130 +318,63 @@ const startServer = async () => {
     const spreadsheetSyncService = new SpreadsheetSyncService(sheetsClient, supabase);
     const syncQueue = new SyncQueue(spreadsheetSyncService);
     
-    // SellerServiceのインスタンスにSyncQueueを設定
-    // Note: SellerServiceは各ルートで個別にインスタンス化されるため、
-    // グローバルなインスタンスを作成してエクスポートする必要があります
-    console.log('✅ SyncQueue initialized and ready');
+    // SellerService縺ｮ繧､繝ｳ繧ｹ繧ｿ繝ｳ繧ｹ縺ｫSyncQueue繧定ｨｭ螳・    // Note: SellerService縺ｯ蜷・Ν繝ｼ繝医〒蛟句挨縺ｫ繧､繝ｳ繧ｹ繧ｿ繝ｳ繧ｹ蛹悶＆繧後ｋ縺溘ａ縲・    // 繧ｰ繝ｭ繝ｼ繝舌Ν縺ｪ繧､繝ｳ繧ｹ繧ｿ繝ｳ繧ｹ繧剃ｽ懈・縺励※繧ｨ繧ｯ繧ｹ繝昴・繝医☆繧句ｿ・ｦ√′縺ゅｊ縺ｾ縺・    console.log('笨・SyncQueue initialized and ready');
   } catch (error) {
-    console.error('⚠️ Failed to initialize SyncQueue:', error);
-    // SyncQueue初期化失敗は致命的ではないので続行
-  }
+    console.error('笞・・Failed to initialize SyncQueue:', error);
+    // SyncQueue蛻晄悄蛹門､ｱ謨励・閾ｴ蜻ｽ逧・〒縺ｯ縺ｪ縺・・縺ｧ邯夊｡・  }
   
-  // Vercel環境では app.listen() を呼ばない
-  if (process.env.VERCEL !== '1') {
+  // Vercel迺ｰ蠅・〒縺ｯ app.listen() 繧貞他縺ｰ縺ｪ縺・  if (process.env.VERCEL !== '1') {
     app.listen(PORT, () => {
-      console.log(`🚀 Server running on port ${PORT}`);
-      console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
+      console.log(`噫 Server running on port ${PORT}`);
+      console.log(`投 Environment: ${process.env.NODE_ENV || 'development'}`);
       
-      // 強化版自動同期を非同期で実行（サーバー起動をブロックしない）
-      // デフォルトで有効、明示的にfalseの場合のみ無効
+      // 蠑ｷ蛹也沿閾ｪ蜍募酔譛溘ｒ髱槫酔譛溘〒螳溯｡鯉ｼ医し繝ｼ繝舌・襍ｷ蜍輔ｒ繝悶Ο繝・け縺励↑縺・ｼ・      // 繝・ヵ繧ｩ繝ｫ繝医〒譛牙柑縲∵・遉ｺ逧・↓false縺ｮ蝣ｴ蜷医・縺ｿ辟｡蜉ｹ
       setTimeout(async () => {
         try {
           const { getEnhancedPeriodicSyncManager, isAutoSyncEnabled } = await import('./services/EnhancedAutoSyncService');
           
           if (!isAutoSyncEnabled()) {
-            console.log('📊 Auto-sync is disabled (AUTO_SYNC_ENABLED=false)');
+            console.log('投 Auto-sync is disabled (AUTO_SYNC_ENABLED=false)');
             return;
           }
           
           const periodicSyncManager = getEnhancedPeriodicSyncManager();
           await periodicSyncManager.start();
-          console.log(`📊 Enhanced periodic auto-sync enabled (interval: ${periodicSyncManager.getIntervalMinutes()} minutes)`);
+          console.log(`投 Enhanced periodic auto-sync enabled (interval: ${periodicSyncManager.getIntervalMinutes()} minutes)`);
           console.log('   Using full comparison mode - all missing sellers will be detected');
         } catch (error: any) {
-          console.error('⚠️ Enhanced auto-sync failed (non-blocking):', error.message);
+          console.error('笞・・Enhanced auto-sync failed (non-blocking):', error.message);
           console.log('   Will retry in 1 minute...');
         }
-      }, 10000); // 10秒後に実行（クォータ制限対策）
-
-      // 買主リスト定期同期を非同期で実行（サーバー起動をブロックしない）
-      setTimeout(async () => {
+      }, 10000); // 10遘貞ｾ後↓螳溯｡鯉ｼ医け繧ｩ繝ｼ繧ｿ蛻ｶ髯仙ｯｾ遲厄ｼ・
+      // 骭ｲ髻ｳ繝輔ぃ繧､繝ｫ繧ｯ繝ｪ繝ｼ繝ｳ繧｢繝・・繝ｯ繝ｼ繧ｫ繝ｼ繧定ｵｷ蜍・      setTimeout(async () => {
         try {
-          const { BuyerSyncService } = await import('./services/BuyerSyncService');
-          const buyerSyncService = new BuyerSyncService();
-          const intervalMinutes = parseInt(process.env.BUYER_SYNC_INTERVAL_MINUTES || '10', 10);
-
-          const runBuyerSync = async () => {
-            if (buyerSyncService.isSyncInProgress()) {
-              console.log('⚠️ Buyer sync already in progress, skipping scheduled run');
-              return;
-            }
-            try {
-              await buyerSyncService.syncAll();
-              console.log('✅ Buyer periodic sync completed');
-            } catch (error: any) {
-              console.error('⚠️ Buyer periodic sync error (non-blocking):', error.message);
-            }
-          };
-
-          await runBuyerSync();
-          setInterval(runBuyerSync, intervalMinutes * 60 * 1000);
-          console.log(`📋 Buyer list periodic sync started (every ${intervalMinutes} minutes)`);
+          const { getRecordingCleanupWorker } = await import('./jobs/recordingCleanup');
+          const cleanupWorker = getRecordingCleanupWorker();
+          cleanupWorker.start();
+          const config = cleanupWorker.getConfig();
+          console.log(`ｧｹ Recording cleanup worker started (schedule: ${config.schedule}, retention: ${config.retentionDays} days)`);
         } catch (error: any) {
-          console.error('⚠️ Buyer periodic sync failed to start (non-blocking):', error.message);
+          console.error('笞・・Recording cleanup worker failed to start (non-blocking):', error.message);
         }
-      }, 20000); // 20秒後に実行（売主同期の10秒後に開始してクォータ分散）
-
-      // 業務依頼定期同期を非同期で実行（サーバー起動をブロックしない）
-      setTimeout(async () => {
-        try {
-          const { WorkTaskSyncService } = await import('./services/WorkTaskSyncService');
-          const workTaskSyncService = new WorkTaskSyncService();
-          const intervalMinutes = parseInt(process.env.WORK_TASK_SYNC_INTERVAL_MINUTES || '10', 10);
-
-          const runWorkTaskSync = async () => {
-            if (workTaskSyncService.isSyncInProgress()) {
-              console.log('⚠️ Work task sync already in progress, skipping scheduled run');
-              return;
-            }
-            try {
-              await workTaskSyncService.syncAll();
-              console.log('✅ Work task periodic sync completed');
-            } catch (error: any) {
-              console.error('⚠️ Work task periodic sync error (non-blocking):', error.message);
-            }
-          };
-
-          await runWorkTaskSync();
-          setInterval(runWorkTaskSync, intervalMinutes * 60 * 1000);
-          console.log(`📋 Work task periodic sync started (every ${intervalMinutes} minutes)`);
-        } catch (error: any) {
-          console.error('⚠️ Work task periodic sync failed to start (non-blocking):', error.message);
-        }
-      }, 40000); // 40秒後に実行（買主同期の20秒後、クォータ分散）
-
-      // 録音ファイルクリーンアップワーカーを起動（毎日午前2時に実行）
-      setTimeout(async () => {
-        try {
-          const { scheduleRecordingCleanup } = await import('./jobs/recordingCleanup');
-          await scheduleRecordingCleanup('0 2 * * *', { retentionDays: 90 });
-          console.log(`🧹 Recording cleanup job scheduled (daily at 2:00 AM, retention: 90 days)`);
-        } catch (error: any) {
-          console.error('⚠️ Recording cleanup worker failed to start (non-blocking):', error.message);
-        }
-      }, 10000); // 10秒後に実行
-
-      // 問い合わせ同期ジョブを無効化（APIエンドポイントから直接転記するため）
-      // setTimeout(async () => {
+      }, 10000); // 10遘貞ｾ後↓螳溯｡・
+      // 蝠上＞蜷医ｏ縺帛酔譛溘ず繝ｧ繝悶ｒ辟｡蜉ｹ蛹厄ｼ・PI繧ｨ繝ｳ繝峨・繧､繝ｳ繝医°繧臥峩謗･霆｢險倥☆繧九◆繧・ｼ・      // setTimeout(async () => {
       //   try {
       //     const { getInquirySyncJob } = await import('./jobs/inquirySyncJob');
       //     const inquirySyncJob = getInquirySyncJob();
-      //     await inquirySyncJob.start(5); // 5分ごとに実行
-      //     console.log('📋 Inquiry sync job started (interval: 5 minutes)');
+      //     await inquirySyncJob.start(5); // 5蛻・＃縺ｨ縺ｫ螳溯｡・      //     console.log('搭 Inquiry sync job started (interval: 5 minutes)');
       //   } catch (error: any) {
-      //     console.error('⚠️ Inquiry sync job failed to start (non-blocking):', error.message);
+      //     console.error('笞・・Inquiry sync job failed to start (non-blocking):', error.message);
       //   }
-      // }, 15000); // 15秒後に実行
-      console.log('📋 Inquiry sync job disabled (direct sync from API endpoint)');
+      // }, 15000); // 15遘貞ｾ後↓螳溯｡・      console.log('搭 Inquiry sync job disabled (direct sync from API endpoint)');
     });
   } else {
-    console.log('🚀 Running in Vercel serverless environment');
-    console.log(`📊 Environment: ${process.env.NODE_ENV || 'production'}`);
+    console.log('噫 Running in Vercel serverless environment');
+    console.log(`投 Environment: ${process.env.NODE_ENV || 'production'}`);
   }
 };
 
-// Vercel環境では初期化のみ実行
-if (process.env.VERCEL === '1') {
+// Vercel迺ｰ蠅・〒縺ｯ蛻晄悄蛹悶・縺ｿ螳溯｡・if (process.env.VERCEL === '1') {
   initializeConnections().catch((error) => {
     console.error('Failed to initialize connections:', error);
   });
