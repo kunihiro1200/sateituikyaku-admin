@@ -20,7 +20,6 @@ import {
 import { 
   ArrowBack as ArrowBackIcon,
   Email as EmailIcon,
-  Home as HomeIcon,
 } from '@mui/icons-material';
 import api, { buyerApi } from '../services/api';
 import PropertyInfoCard from '../components/PropertyInfoCard';
@@ -43,7 +42,6 @@ import {
 } from '../utils/buyerFieldOptions';
 import { formatDateTime } from '../utils/dateFormat';
 import { getDisplayName } from '../utils/employeeUtils';
-import { SECTION_COLORS } from '../theme/sectionColors';
 
 interface Buyer {
   [key: string]: any;
@@ -98,6 +96,23 @@ const INQUIRY_HEARING_QUICK_INPUTS = [
 
 const BUYER_FIELD_SECTIONS = [
   {
+    title: '問合せ内容',
+    fields: [
+      // 一番上：問合時ヒアリング（全幅）
+      { key: 'inquiry_hearing', label: '問合時ヒアリング', multiline: true, inlineEditable: true, fullWidth: true },
+      // 左の列
+      { key: 'inquiry_email_phone', label: '【問合メール】電話対応', inlineEditable: true, fieldType: 'dropdown', column: 'left' },
+      { key: 'three_calls_confirmed', label: '3回架電確認済み', inlineEditable: true, fieldType: 'dropdown', column: 'left' },
+      { key: 'email_type', label: 'メール種別', inlineEditable: true, fieldType: 'dropdown', column: 'left' },
+      { key: 'distribution_type', label: '配信の有無', inlineEditable: true, fieldType: 'button', column: 'left' },
+      // 右の列
+      { key: 'reception_date', label: '受付日', type: 'date', inlineEditable: true, column: 'right' },
+      { key: 'initial_assignee', label: '初動担当', inlineEditable: true, column: 'right' },
+      { key: 'inquiry_source', label: '問合せ元', inlineEditable: true, column: 'right' },
+      { key: 'next_call_date', label: '次電日', type: 'date', inlineEditable: true, column: 'right' },
+    ],
+  },
+  {
     title: '基本情報',
     fields: [
       { key: 'buyer_number', label: '買主番号', inlineEditable: true, readOnly: true },
@@ -107,55 +122,8 @@ const BUYER_FIELD_SECTIONS = [
       { key: 'company_name', label: '法人名', inlineEditable: true },
     ],
   },
-  {
-    title: '問合せ・内覧情報',
-    fields: [
-      { key: 'initial_assignee', label: '初動担当', inlineEditable: true },
-      { key: 'follow_up_assignee', label: '後続担当', inlineEditable: true },
-      { key: 'reception_date', label: '受付日', type: 'date', inlineEditable: true },
-      { key: 'inquiry_source', label: '問合せ元', inlineEditable: true },
-      { key: 'inquiry_hearing', label: '問合時ヒアリング', multiline: true, inlineEditable: true },
-      { key: 'inquiry_confidence', label: '問合時確度', inlineEditable: true },
-      { key: 'inquiry_email_phone', label: '【問合メール】電話対応', inlineEditable: true, fieldType: 'dropdown' },
-      { key: 'three_calls_confirmed', label: '3回架電確認済み', inlineEditable: true, fieldType: 'dropdown' },
-      { key: 'email_type', label: 'メール種別', inlineEditable: true, fieldType: 'dropdown' },
-      { key: 'distribution_type', label: '配信種別', inlineEditable: true, fieldType: 'dropdown' },
-      { key: 'owned_home_hearing', label: '持家ヒアリング', inlineEditable: true },
-      { key: 'latest_viewing_date', label: '内覧日(最新)', type: 'date', inlineEditable: true },
-      // viewing_notes は PropertyInfoCard 内に移動
-      { key: 'next_call_date', label: '次電日', type: 'date', inlineEditable: true },
-    ],
-  },
-  {
-    title: '内覧結果・後続対応',
-    isViewingResultGroup: true,  // 特別なグループとしてマーク
-    fields: [
-      { key: 'viewing_result_follow_up', label: '内覧結果・後続対応', multiline: true, inlineEditable: true },
-      { key: 'follow_up_assignee', label: '後続担当', inlineEditable: true },
-      { key: 'latest_status', label: '★最新状況', inlineEditable: true, fieldType: 'dropdown' },
-    ],
-  },
-  {
-    title: '希望条件',
-    fields: [
-      { key: 'desired_timing', label: '希望時期', inlineEditable: true },
-      { key: 'desired_area', label: 'エリア', inlineEditable: true },
-      { key: 'desired_property_type', label: '希望種別', inlineEditable: true },
-      { key: 'desired_building_age', label: '築年数', inlineEditable: true },
-      { key: 'desired_floor_plan', label: '間取り', inlineEditable: true },
-      { key: 'budget', label: '予算', inlineEditable: true },
-      { key: 'price_range_house', label: '価格帯（戸建）', inlineEditable: true },
-      { key: 'price_range_apartment', label: '価格帯（マンション）', inlineEditable: true },
-      { key: 'price_range_land', label: '価格帯（土地）', inlineEditable: true },
-      { key: 'parking_spaces', label: 'P台数', inlineEditable: true },
-      { key: 'hot_spring_required', label: '温泉あり', inlineEditable: true },
-      { key: 'garden_required', label: '庭付き', inlineEditable: true },
-      { key: 'pet_allowed_required', label: 'ペット可', inlineEditable: true },
-      { key: 'good_view_required', label: '眺望良好', inlineEditable: true },
-      { key: 'high_floor_required', label: '高層階', inlineEditable: true },
-      { key: 'corner_room_required', label: '角部屋', inlineEditable: true },
-    ],
-  },
+  // 希望条件セクションは別ページに移動
+  // 内覧結果・後続対応セクションは別ページに移動
   {
     title: 'その他',
     fields: [
@@ -195,8 +163,9 @@ export default function BuyerDetailPage() {
   const [emailModalProperties, setEmailModalProperties] = useState<PropertyListing[]>([]);
   const [activities, setActivities] = useState<Activity[]>([]);
   const [relatedBuyersCount, setRelatedBuyersCount] = useState(0);
-  const [nearbyPropertiesCount, setNearbyPropertiesCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [copiedBuyerNumber, setCopiedBuyerNumber] = useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' | 'warning' }>({
     open: false,
     message: '',
@@ -252,20 +221,6 @@ export default function BuyerDetailPage() {
     }
   };
 
-  const fetchNearbyPropertiesCount = async () => {
-    try {
-      if (linkedProperties.length > 0) {
-        const firstProperty = linkedProperties[0];
-        const res = await api.get(`/api/buyers/${buyer_number}/nearby-properties`, {
-          params: { propertyNumber: firstProperty.property_number }
-        });
-        setNearbyPropertiesCount(res.data.nearbyProperties?.length || 0);
-      }
-    } catch (error) {
-      console.error('Failed to fetch nearby properties count:', error);
-    }
-  };
-
   const scrollToRelatedBuyers = () => {
     const element = document.getElementById('related-buyers-section');
     if (element) {
@@ -276,8 +231,11 @@ export default function BuyerDetailPage() {
   const fetchBuyer = async () => {
     try {
       setLoading(true);
-      const res = await api.get(`/api/buyers/${buyer_number}`);
+      // 常にスプレッドシートから最新データを取得（force=true）
+      const res = await api.get(`/api/buyers/${buyer_number}?force=true`);
       setBuyer(res.data);
+      // inquiry_hearingフィールドを強制再レンダリング
+      setInquiryHearingKey(prev => prev + 1);
     } catch (error) {
       console.error('Failed to fetch buyer:', error);
     } finally {
@@ -290,40 +248,19 @@ export default function BuyerDetailPage() {
     if (!buyer) return;
 
     try {
-      // 更新するフィールドのみを送信（双方向同期を有効化）
+      // 更新するフィールドのみを送信（DBのみに保存、スプレッドシートには保存しない）
       const result = await buyerApi.update(
         buyer_number!,
         { [fieldName]: newValue },
-        { sync: true }  // スプレッドシートへの同期を有効化
+        { sync: false, force: false }  // スプレッドシートへの同期を無効化
       );
-      
-      // 競合がある場合
-      if (result.conflicts && result.conflicts.length > 0) {
-        console.warn('Sync conflict detected:', result.conflicts);
-        setSnackbar({
-          open: true,
-          message: '同期競合が発生しました。スプレッドシートの値が変更されています。',
-          severity: 'warning'
-        });
-        // ローカル状態は更新（DBには保存されている）
-        setBuyer(result.buyer);
-        return { success: true };
-      }
-      
+
       // ローカル状態を更新
       setBuyer(result.buyer);
-      
-      // 同期ステータスを表示
-      if (result.syncStatus === 'pending') {
-        setSnackbar({
-          open: true,
-          message: '保存しました（スプレッドシート同期は保留中）',
-          severity: 'warning'
-        });
-      } else if (result.syncStatus === 'synced') {
-        // 成功時は特にメッセージを表示しない（静かに成功）
-      }
-      
+
+      // 未保存の変更フラグを立てる
+      setHasUnsavedChanges(true);
+
       return { success: true };
     } catch (error: any) {
       console.error('Failed to update field:', error);
@@ -354,16 +291,25 @@ export default function BuyerDetailPage() {
     setBuyer(prev => prev ? { ...prev, inquiry_hearing: newValue } : prev);
     // キーを更新してInlineEditableFieldを強制再レンダリング
     setInquiryHearingKey(prev => prev + 1);
+    // 未保存の変更フラグを立てる
+    setHasUnsavedChanges(true);
     
-    // その後DBに保存
-    const result = await handleInlineFieldSave('inquiry_hearing', newValue);
-    if (result && !result.success && result.error) {
+    // DBのみに保存（スプレッドシートには保存しない）
+    try {
+      const result = await buyerApi.update(
+        buyer_number!,
+        { inquiry_hearing: newValue },
+        { sync: false, force: false }  // スプレッドシート同期を無効化
+      );
+      setBuyer(result.buyer);
+    } catch (error: any) {
+      console.error('[handleInquiryHearingQuickInput] Exception:', error);
       // エラー時は元の値に戻す
       setBuyer(prev => prev ? { ...prev, inquiry_hearing: currentValue } : prev);
       setInquiryHearingKey(prev => prev + 1);
       setSnackbar({
         open: true,
-        message: result.error,
+        message: error.response?.data?.error || '保存に失敗しました',
         severity: 'error'
       });
     }
@@ -382,13 +328,6 @@ export default function BuyerDetailPage() {
       console.error('Failed to fetch linked properties:', error);
     }
   };
-
-  // linkedPropertiesが取得されたら近隣物件数を取得
-  useEffect(() => {
-    if (linkedProperties.length > 0) {
-      fetchNearbyPropertiesCount();
-    }
-  }, [linkedProperties]);
 
   const fetchInquiryHistory = async () => {
     try {
@@ -618,25 +557,41 @@ export default function BuyerDetailPage() {
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
           <IconButton 
-            onClick={() => navigate(-1)} 
+            onClick={() => navigate('/buyers')} 
             sx={{ mr: 2 }}
-            aria-label="戻る"
+            aria-label="買主一覧に戻る"
           >
             <ArrowBackIcon />
           </IconButton>
-          <Typography variant="h5" fontWeight="bold" sx={{ color: SECTION_COLORS.buyer.main }}>
-            {buyer.name || buyer.buyer_number}
+          <Typography variant="h5" fontWeight="bold">
+            {buyer.name ? `${buyer.name}様` : buyer.buyer_number}
           </Typography>
-          {/* ステータス表示: 最新確度を優先、なければ問合せ時確度を表示（頭文字のみ） */}
-          {(() => {
-            const status = buyer.latest_status || buyer.inquiry_confidence;
-            if (!status) return null;
-            // 頭文字を抽出（A, B, C, D, E, AZ, BZ等）
-            const match = status.match(/^[A-Z]+/);
-            const label = match ? match[0] : status.substring(0, 2);
-            const color = buyer.latest_status ? 'secondary' : 'info';
-            return <Chip label={label} color={color} sx={{ ml: 2 }} />;
-          })()}
+          {/* 買主番号（クリックでコピー） */}
+          {buyer.buyer_number && (
+            <>
+              <Chip
+                label={buyer.buyer_number}
+                size="small"
+                color="primary"
+                onClick={() => {
+                  navigator.clipboard.writeText(buyer.buyer_number || '');
+                  setCopiedBuyerNumber(true);
+                  setTimeout(() => setCopiedBuyerNumber(false), 1500);
+                }}
+                sx={{ cursor: 'pointer', '&:hover': { opacity: 0.8 } }}
+                title="クリックでコピー"
+              />
+              {copiedBuyerNumber && (
+                <Typography variant="body2" sx={{ color: 'success.main', fontWeight: 'bold' }}>✓</Typography>
+              )}
+            </>
+          )}
+          {buyer.inquiry_confidence && (
+            <Chip label={buyer.inquiry_confidence} color="info" sx={{ ml: 2 }} />
+          )}
+          {buyer.latest_status && (
+            <Chip label={buyer.latest_status.substring(0, 30)} sx={{ ml: 1 }} />
+          )}
           <RelatedBuyerNotificationBadge 
             count={relatedBuyersCount} 
             onClick={scrollToRelatedBuyers}
@@ -644,84 +599,83 @@ export default function BuyerDetailPage() {
         </Box>
 
         {/* ヘッダー右側のボタン */}
-        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-          {/* 近隣物件ボタン */}
-          {linkedProperties.length > 0 && (
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          {/* 問い合わせ履歴ボタン（履歴がある場合のみ表示） */}
+          {inquiryHistoryTable.length > 0 && (
             <Button
               variant="outlined"
-              size="small"
-              startIcon={<HomeIcon />}
-              onClick={() => {
-                const firstProperty = linkedProperties[0];
-                window.open(`/buyers/${buyer_number}/nearby-properties?propertyNumber=${firstProperty.property_number}`, '_blank');
-              }}
+              size="medium"
+              onClick={() => navigate(`/buyers/${buyer_number}/inquiry-history`)}
+              sx={{ whiteSpace: 'nowrap' }}
             >
-              近隣物件 ({nearbyPropertiesCount})
+              問い合わせ履歴 ({inquiryHistoryTable.length})
             </Button>
           )}
+
+          {/* 希望条件ボタン */}
+          <Button
+            variant="outlined"
+            size="medium"
+            onClick={() => navigate(`/buyers/${buyer_number}/desired-conditions`)}
+            sx={{ whiteSpace: 'nowrap' }}
+          >
+            希望条件
+          </Button>
+
+          {/* 内覧ボタン */}
+          <Button
+            variant="outlined"
+            size="medium"
+            onClick={() => navigate(`/buyers/${buyer_number}/viewing-result`)}
+            sx={{ whiteSpace: 'nowrap' }}
+          >
+            内覧
+          </Button>
+
+          {/* Save ボタン（全データをスプレッドシートに同期） */}
+          <Button
+            variant={hasUnsavedChanges ? "contained" : "outlined"}
+            color={hasUnsavedChanges ? "error" : "primary"}
+            size="medium"
+            onClick={async () => {
+              try {
+                const result = await buyerApi.update(
+                  buyer_number!,
+                  buyer,  // 全フィールドを送信
+                  { sync: true, force: true }  // スプレッドシートへの同期を有効化 + 強制上書き
+                );
+                setBuyer(result.buyer);
+                setHasUnsavedChanges(false);
+                setSnackbar({
+                  open: true,
+                  message: 'スプレッドシートに保存しました',
+                  severity: 'success'
+                });
+              } catch (error: any) {
+                console.error('Failed to save to spreadsheet:', error);
+                setSnackbar({
+                  open: true,
+                  message: 'スプレッドシートへの保存に失敗しました',
+                  severity: 'error'
+                });
+              }
+            }}
+            sx={{
+              whiteSpace: 'nowrap',
+              ...(hasUnsavedChanges && {
+                animation: 'pulse 2s ease-in-out infinite',
+                boxShadow: '0 0 20px rgba(211, 47, 47, 0.6)',
+                '@keyframes pulse': {
+                  '0%, 100%': { boxShadow: '0 0 20px rgba(211, 47, 47, 0.6)' },
+                  '50%': { boxShadow: '0 0 30px rgba(211, 47, 47, 0.9)' },
+                },
+              }),
+            }}
+          >
+            Save {hasUnsavedChanges && '●'}
+          </Button>
         </Box>
       </Box>
-
-      {/* 問い合わせ履歴テーブルセクション */}
-      <Paper sx={{ p: 2, mb: 3 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-          <Typography variant="h6">
-            問い合わせ履歴
-          </Typography>
-          {/* New Gmail Send Button with Template Selection */}
-          {buyer && (
-            <BuyerGmailSendButton
-              buyerId={buyer.buyer_id || buyer_number || ''}
-              buyerEmail={buyer.email || ''}
-              buyerName={buyer.name || ''}
-              inquiryHistory={inquiryHistoryTable}
-              selectedPropertyIds={selectedPropertyIds}
-              size="medium"
-              variant="contained"
-            />
-          )}
-        </Box>
-        <Divider sx={{ mb: 2 }} />
-        
-        {/* Selection Controls - Keep for backward compatibility */}
-        {selectedPropertyIds.size > 0 && (
-          <Box sx={{ display: 'flex', gap: 2, mb: 2, alignItems: 'center' }}>
-            <Typography variant="body2" color="primary" fontWeight="bold">
-              {selectedPropertyIds.size}件選択中
-            </Typography>
-            <Button 
-              variant="outlined" 
-              size="small"
-              onClick={handleClearSelection}
-            >
-              選択をクリア
-            </Button>
-            <Button
-              variant="outlined"
-              size="small"
-              disabled={selectedPropertyIds.size === 0}
-              onClick={handleGmailSend}
-              startIcon={<EmailIcon />}
-            >
-              旧Gmail送信 ({selectedPropertyIds.size}件)
-            </Button>
-          </Box>
-        )}
-
-        {/* Inquiry History Table */}
-        {isLoadingHistory ? (
-          <Box sx={{ textAlign: 'center', py: 4 }}>
-            <CircularProgress />
-          </Box>
-        ) : (
-          <InquiryHistoryTable
-            inquiryHistory={inquiryHistoryTable}
-            selectedPropertyIds={selectedPropertyIds}
-            onSelectionChange={handleSelectionChange}
-            onBuyerClick={handleBuyerClick}
-          />
-        )}
-      </Paper>
 
       {/* 2カラムレイアウト: 左側に紐づいた物件の詳細情報、右側に買主情報 */}
       <Box
@@ -741,7 +695,7 @@ export default function BuyerDetailPage() {
           sx={{ 
             flex: '0 0 42%', 
             minWidth: 0,
-            maxHeight: 'calc(100vh - 200px)',
+            maxHeight: 'calc(100vh - 180px)',
             overflowY: 'auto',
             overflowX: 'hidden',
             pr: 1,
@@ -772,12 +726,12 @@ export default function BuyerDetailPage() {
             },
           }}
           role="complementary"
-          aria-label="物件詳細カード"
+          aria-label="物件情報"
           tabIndex={0}
         >
           <Box>
             <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-              <Typography variant="h6">物件詳細カード</Typography>
+              <Typography variant="h6">物件情報</Typography>
               {linkedProperties.length > 0 && (
                 <Chip 
                   label={`${linkedProperties.length}件`} 
@@ -810,7 +764,7 @@ export default function BuyerDetailPage() {
           sx={{ 
             flex: '1 1 58%', 
             minWidth: 0,
-            maxHeight: 'calc(100vh - 200px)',
+            maxHeight: 'calc(100vh - 180px)',
             overflowY: 'auto',
             overflowX: 'hidden',
             pl: 1,
