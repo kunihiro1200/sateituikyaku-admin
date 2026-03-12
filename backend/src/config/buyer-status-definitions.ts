@@ -45,7 +45,7 @@ export const STATUS_DEFINITIONS: StatusDefinition[] = [
   { priority: 30, status: '担当(R)', description: '担当R', color: '#66ccff' },
   { priority: 31, status: 'ピンリッチ未登録', description: 'ピンリッチに未登録', color: '#99ccff' },
   { priority: 32, status: '内覧促進メール（Pinrich)', description: '内覧促進メール送信対象（Pinrich）', color: '#66ff66' },
-  { priority: 33, status: '要内覧促進客', description: '内覧促進が必要な顧客', color: '#99ff99' },
+  { priority: 16.5, status: '要内覧促進客', description: '内覧促進が必要な顧客', color: '#99ff99' },
   { priority: 34, status: '買付有り、物件不適合の内覧促進客', description: '買付有りだが物件不適合の内覧促進対象', color: '#ccffcc' },
   { priority: 35, status: 'メアド確認必要', description: 'メールアドレスの確認が必要', color: '#ffff66' },
   { priority: 0, status: '', description: '該当なし', color: '#cccccc' },

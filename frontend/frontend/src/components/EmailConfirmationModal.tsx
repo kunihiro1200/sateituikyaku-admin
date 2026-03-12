@@ -89,7 +89,7 @@ export default function EmailConfirmationModal({
           </Typography>
           {recipientCount > 1 && (
             <Typography variant="body2" color="info.main" sx={{ mt: 1 }}>
-              💡 本文中の「{'{名前}'}」は、送信時に各買主の名前に自動置換されます。
+              💡 本文中の「{'{氏名}'}」は、送信時に各買主の氏名に自動置換されます。
             </Typography>
           )}
         </Box>

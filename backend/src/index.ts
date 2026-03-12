@@ -82,6 +82,7 @@ import propertyListingSyncRoutes from './routes/propertyListingSync';
 import geocodeRoutes from './routes/geocode';
 import urlRedirectRoutes from './routes/urlRedirect';
 import sharedItemsRoutes from './routes/sharedItems';
+import smsRoutes from './routes/sms';
 import { activityLogger } from './middleware/activityLogger';
 
 const app = express();
@@ -421,6 +422,7 @@ app.use('/api', inquiryHistoryRoutes);
 app.use('/api/audit-logs', auditLogRoutes);
 app.use('/api/property-listing-sync', propertyListingSyncRoutes);
 app.use('/api/shared-items', sharedItemsRoutes);
+app.use('/api/sms', smsRoutes);
 
 // Error handling middleware
 app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {

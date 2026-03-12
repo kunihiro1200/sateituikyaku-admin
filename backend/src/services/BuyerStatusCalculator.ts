@@ -294,6 +294,7 @@ export function calculateBuyerStatusComplete(buyer: BuyerData): StatusResult {
         isBlank(buyer.broker_inquiry),
         notEquals(buyer.inquiry_source, '配信希望アンケート'),
         not(contains(buyer.inquiry_source, 'ピンリッチ')),
+        not(contains(buyer.inquiry_source, '2件目以降紹介')),
         and(
           notEquals(buyer.inquiry_confidence, 'e（買付物件の問合せ）'),
           notEquals(buyer.inquiry_confidence, 'd（資料送付不要、条件不適合など）'),
