@@ -165,7 +165,6 @@ export default function BuyerDetailPage() {
   const [relatedBuyersCount, setRelatedBuyersCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [copiedBuyerNumber, setCopiedBuyerNumber] = useState(false);
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' | 'warning' }>({
     open: false,
     message: '',
@@ -248,18 +247,15 @@ export default function BuyerDetailPage() {
     if (!buyer) return;
 
     try {
-      // 更新するフィールドのみを送信（DBのみに保存、スプレッドシートには保存しない）
+      // 更新するフィールドのみを送信（DB → スプレッドシートに即座に同期）
       const result = await buyerApi.update(
         buyer_number!,
         { [fieldName]: newValue },
-        { sync: false, force: false }  // スプレッドシートへの同期を無効化
+        { sync: true, force: true }  // スプレッドシートへの同期を有効化
       );
 
       // ローカル状態を更新
       setBuyer(result.buyer);
-
-      // 未保存の変更フラグを立てる
-      setHasUnsavedChanges(true);
 
       return { success: true };
     } catch (error: any) {
@@ -291,15 +287,13 @@ export default function BuyerDetailPage() {
     setBuyer(prev => prev ? { ...prev, inquiry_hearing: newValue } : prev);
     // キーを更新してInlineEditableFieldを強制再レンダリング
     setInquiryHearingKey(prev => prev + 1);
-    // 未保存の変更フラグを立てる
-    setHasUnsavedChanges(true);
-    
-    // DBのみに保存（スプレッドシートには保存しない）
+
+    // DB → スプレッドシートに即座に同期
     try {
       const result = await buyerApi.update(
         buyer_number!,
         { inquiry_hearing: newValue },
-        { sync: false, force: false }  // スプレッドシート同期を無効化
+        { sync: true, force: true }  // スプレッドシート同期を有効化
       );
       setBuyer(result.buyer);
     } catch (error: any) {
@@ -630,49 +624,6 @@ export default function BuyerDetailPage() {
             sx={{ whiteSpace: 'nowrap' }}
           >
             内覧
-          </Button>
-
-          {/* Save ボタン（全データをスプレッドシートに同期） */}
-          <Button
-            variant={hasUnsavedChanges ? "contained" : "outlined"}
-            color={hasUnsavedChanges ? "error" : "primary"}
-            size="medium"
-            onClick={async () => {
-              try {
-                const result = await buyerApi.update(
-                  buyer_number!,
-                  buyer,  // 全フィールドを送信
-                  { sync: true, force: true }  // スプレッドシートへの同期を有効化 + 強制上書き
-                );
-                setBuyer(result.buyer);
-                setHasUnsavedChanges(false);
-                setSnackbar({
-                  open: true,
-                  message: 'スプレッドシートに保存しました',
-                  severity: 'success'
-                });
-              } catch (error: any) {
-                console.error('Failed to save to spreadsheet:', error);
-                setSnackbar({
-                  open: true,
-                  message: 'スプレッドシートへの保存に失敗しました',
-                  severity: 'error'
-                });
-              }
-            }}
-            sx={{
-              whiteSpace: 'nowrap',
-              ...(hasUnsavedChanges && {
-                animation: 'pulse 2s ease-in-out infinite',
-                boxShadow: '0 0 20px rgba(211, 47, 47, 0.6)',
-                '@keyframes pulse': {
-                  '0%, 100%': { boxShadow: '0 0 20px rgba(211, 47, 47, 0.6)' },
-                  '50%': { boxShadow: '0 0 30px rgba(211, 47, 47, 0.9)' },
-                },
-              }),
-            }}
-          >
-            Save {hasUnsavedChanges && '●'}
           </Button>
         </Box>
       </Box>
