@@ -29,7 +29,7 @@ const UnifiedInquiryHistoryTable: React.FC<UnifiedInquiryHistoryTableProps> = ({
       setError(null);
       setErrorCode(null);
       
-      const response = await api.get(`/buyers/${buyerId}/unified-inquiry-history`);
+      const response = await api.get(`/api/buyers/${buyerId}/unified-inquiry-history`);
       setInquiries(response.data.inquiries || []);
       setBuyerNumbers(response.data.buyer_numbers || []);
     } catch (err: any) {

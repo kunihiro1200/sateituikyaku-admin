@@ -30,7 +30,7 @@ const RelatedBuyersSection: React.FC<RelatedBuyersSectionProps> = ({ buyerId }) 
       setError(null);
       setErrorCode(null);
       
-      const response = await api.get(`/buyers/${buyerId}/related`);
+      const response = await api.get(`/api/buyers/${buyerId}/related`);
       setRelatedBuyers(response.data.related_buyers || []);
     } catch (err: any) {
       console.error('Failed to fetch related buyers', err);

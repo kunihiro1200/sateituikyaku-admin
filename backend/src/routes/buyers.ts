@@ -31,8 +31,8 @@ router.get('/', async (req: Request, res: Response) => {
 
     // withStatus=true かつ calculatedStatus 指定の場合はステータスフィルタリング
     if (withStatus === 'true' && calculatedStatus) {
-      const buyers = await buyerService.getBuyersByStatus(calculatedStatus as string);
-      return res.json({ data: buyers, total: buyers.length, page: 1, limit: buyers.length, totalPages: 1 });
+      const result = await buyerService.getBuyersByStatus(calculatedStatus as string);
+      return res.json(result);
     }
 
     // withStatus=true の場合はステータス付きで全件取得
@@ -40,7 +40,6 @@ router.get('/', async (req: Request, res: Response) => {
       const buyers = await buyerService.getBuyersWithStatus();
       return res.json({ data: buyers, total: buyers.length, page: 1, limit: buyers.length, totalPages: 1 });
     }
-
     const result = await buyerService.getAll({
       page: parseInt(page as string, 10),
       limit: parseInt(limit as string, 10),

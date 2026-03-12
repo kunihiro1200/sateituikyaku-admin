@@ -6,7 +6,6 @@ import { ConflictResolver, ConflictInfo } from './ConflictResolver';
 import { RetryHandler } from './RetryHandler';
 import { BuyerColumnMapper } from './BuyerColumnMapper';
 import { GoogleSheetsClient } from './GoogleSheetsClient';
-import { calculateBuyerStatus } from './BuyerStatusCalculator';
 
 export interface BuyerQueryOptions {
   page?: number;
@@ -100,8 +99,7 @@ export class BuyerService {
 
     let query = this.supabase
       .from('buyers')
-      .select('*', { count: 'exact' })
-      .is('deleted_at', null); // 論理削除済みを除外
+      .select('*', { count: 'exact' });
 
     // 検索
     if (search) {
@@ -207,7 +205,7 @@ export class BuyerService {
   async search(query: string, limit: number = 20): Promise<any[]> {
     const { data, error } = await this.supabase
       .from('buyers')
-      .select('buyer_id, buyer_number, name, phone_number, email, property_number, latest_status, initial_assignee')
+      .select('id, buyer_number, name, phone_number, email, property_number, latest_status, initial_assignee')
       .or(
         `buyer_number.ilike.%${query}%,name.ilike.%${query}%,phone_number.ilike.%${query}%,property_number.ilike.%${query}%`
       )
@@ -456,13 +454,17 @@ export class BuyerService {
     // 同期サービスを初期化（認証含む）
     await this.initSyncServices();
 
-    // 存在確認
-    const existing = await this.getById(id);
+    // 存在確認（UUIDか買主番号かを判定）
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+    const existing = isUuid
+      ? await this.getById(id)
+      : await this.getByBuyerNumber(id);
     if (!existing) {
       throw new Error('Buyer not found');
     }
 
     const buyerNumber = existing.buyer_number;
+    const buyerUuid = existing.buyer_id;
 
     // 更新不可フィールドを除外
     const protectedFields = ['id', 'db_created_at', 'synced_at', 'buyer_number'];
@@ -516,11 +518,11 @@ export class BuyerService {
       }
     }
 
-    // DB更新
+    // DB更新（buyer_idカラムを使用）
     const { data, error } = await this.supabase
       .from('buyers')
       .update(allowedData)
-      .eq('buyer_id', id)
+      .eq('buyer_id', buyerUuid)
       .select()
       .single();
 
@@ -549,7 +551,7 @@ export class BuyerService {
           await this.supabase
             .from('buyers')
             .update({ last_synced_at: new Date().toISOString() })
-            .eq('buyer_id', id);
+            .eq('buyer_id', buyerUuid);
 
           syncResult = {
             success: true,
@@ -848,160 +850,6 @@ export class BuyerService {
   }
 
   /**
-   * エリア・種別・価格で買主をフィルタリングして返す（近隣買主機能用）
-   */
-  async getBuyersByAreas(
-    areas: string[],
-    propertyType: string | null,
-    salesPrice: number | null
-  ): Promise<any[]> {
-    // 全買主を取得
-    const { data: buyers, error } = await this.supabase
-      .from('buyers')
-      .select(`
-        buyer_number,
-        name,
-        desired_area,
-        desired_property_type,
-        distribution_type,
-        broker_inquiry,
-        inquiry_source,
-        latest_status,
-        latest_viewing_date,
-        reception_date,
-        inquiry_hearing,
-        viewing_result_follow_up,
-        email,
-        phone_number,
-        property_address,
-        property_type,
-        price_range_house,
-        price_range_apartment,
-        price_range_land
-      `)
-      .order('reception_date', { ascending: false, nullsFirst: false });
-
-    if (error) {
-      throw new Error(`Failed to fetch buyers: ${error.message}`);
-    }
-
-    const allBuyers = buyers || [];
-
-    // エリア番号を抽出（丸数字）
-    const extractAreaNumbers = (areaString: string): string[] => {
-      return areaString.match(/[①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯㊵㊶]/g) || [];
-    };
-
-    // 種別を正規化
-    const normalizePropertyType = (type: string): string => {
-      return type.trim()
-        .replace(/中古/g, '')
-        .replace(/新築/g, '')
-        .replace(/一戸建て/g, '戸建')
-        .replace(/一戸建/g, '戸建')
-        .replace(/戸建て/g, '戸建')
-        .replace(/分譲/g, '')
-        .trim();
-    };
-
-    // 価格帯チェック
-    const matchesPriceRange = (priceRange: string, price: number): boolean => {
-      const cleaned = priceRange
-        .replace(/,/g, '')
-        .replace(/円/g, '')
-        .replace(/万/g, '0000')
-        .replace(/億/g, '00000000')
-        .trim();
-
-      const rangeMatch = cleaned.match(/(\d+)?\s*[〜～\-]\s*(\d+)?/);
-      if (rangeMatch) {
-        const min = rangeMatch[1] ? parseInt(rangeMatch[1], 10) : 0;
-        const max = rangeMatch[2] ? parseInt(rangeMatch[2], 10) : Number.MAX_SAFE_INTEGER;
-        return price >= min && price <= max;
-      }
-      const aboveMatch = cleaned.match(/(\d+)\s*以上/);
-      if (aboveMatch) return price >= parseInt(aboveMatch[1], 10);
-      const belowMatch = cleaned.match(/(\d+)\s*以下/);
-      if (belowMatch) return price <= parseInt(belowMatch[1], 10);
-      return true;
-    };
-
-    const propertyAreaNumbers = extractAreaNumbers(areas.join(''));
-
-    const filtered = allBuyers.filter(buyer => {
-      // 業者問合せ除外
-      const inquirySource = (buyer.inquiry_source || '').trim();
-      const distributionType = (buyer.distribution_type || '').trim();
-      const brokerInquiry = (buyer.broker_inquiry || '').trim();
-      if (
-        inquirySource.includes('業者') ||
-        distributionType.includes('業者') ||
-        (brokerInquiry && brokerInquiry !== '' && brokerInquiry !== '0' && brokerInquiry.toLowerCase() !== 'false')
-      ) return false;
-
-      // 配信種別「要」チェック
-      if (distributionType !== '要') return false;
-
-      // 最新状況チェック（買付・D・E除外）
-      const latestStatus = (buyer.latest_status || '').trim();
-      if (latestStatus.includes('買付') || latestStatus.includes('D') || latestStatus.includes('E')) return false;
-
-      // エリアチェック
-      const desiredArea = (buyer.desired_area || '').trim();
-      if (desiredArea) {
-        const buyerAreaNumbers = extractAreaNumbers(desiredArea);
-        if (!propertyAreaNumbers.some(a => buyerAreaNumbers.includes(a))) return false;
-      }
-
-      // 種別チェック
-      const desiredType = (buyer.desired_property_type || '').trim();
-      if (desiredType && desiredType !== '指定なし' && propertyType) {
-        const normalizedPropType = normalizePropertyType(propertyType);
-        const normalizedDesiredTypes = desiredType.split(/[,、\s]+/).map(normalizePropertyType);
-        if (!normalizedDesiredTypes.some(dt =>
-          dt === normalizedPropType ||
-          normalizedPropType.includes(dt) ||
-          dt.includes(normalizedPropType)
-        )) return false;
-      }
-
-      // 価格チェック
-      if (salesPrice && propertyType) {
-        const normalizedType = normalizePropertyType(propertyType);
-        let priceRange: string | null = null;
-        if (normalizedType.includes('戸建')) priceRange = buyer.price_range_house;
-        else if (normalizedType.includes('マンション')) priceRange = buyer.price_range_apartment;
-        else if (normalizedType.includes('土地')) priceRange = buyer.price_range_land;
-
-        if (priceRange && priceRange.trim()) {
-          if (!matchesPriceRange(priceRange, salesPrice)) return false;
-        }
-      }
-
-      return true;
-    });
-
-    // NearbyBuyersList の NearbyBuyer インターフェースに合わせて整形
-    return filtered.map(buyer => ({
-      buyer_number: buyer.buyer_number,
-      name: buyer.name,
-      distribution_areas: buyer.desired_area
-        ? (buyer.desired_area.match(/[①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯㊵㊶][^①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯㊵㊶]*/g) || [])
-        : [],
-      latest_status: buyer.latest_status,
-      latest_viewing_date: buyer.latest_viewing_date,
-      reception_date: buyer.reception_date,
-      inquiry_hearing: buyer.inquiry_hearing,
-      viewing_result_follow_up: buyer.viewing_result_follow_up,
-      email: buyer.email,
-      phone_number: buyer.phone_number,
-      property_address: buyer.property_address,
-      inquiry_property_type: buyer.property_type,
-      inquiry_price: null,
-    }));
-  }
-
-  /**
    * Get inquiry history for buyer detail page
    * Returns all property inquiries associated with current and past buyer numbers
    * @param buyerId - The buyer ID
@@ -1125,117 +973,395 @@ export class BuyerService {
   }
 
   /**
-   * ステータス付きで買主リストを取得
+   * 配信エリア番号に該当する買主を取得（買主候補と同じ条件でフィルタリング）
    */
-  async getBuyersWithStatus(options: BuyerQueryOptions = {}): Promise<any[]> {
-    const { data, error } = await this.supabase
-      .from('buyers')
-      .select('*')
-      .is('deleted_at', null)
-      .order('reception_date', { ascending: false, nullsFirst: false });
-
-    if (error) {
-      throw new Error(`Failed to fetch buyers with status: ${error.message}`);
+  async getBuyersByAreas(
+    areaNumbers: string[],
+    propertyType?: string | null,
+    salesPrice?: number | null
+  ): Promise<any[]> {
+    if (!areaNumbers || areaNumbers.length === 0) {
+      return [];
     }
 
-    const buyers = data || [];
-    return buyers.map(buyer => {
-      const result = calculateBuyerStatus(buyer);
-      return {
-        ...buyer,
-        calculated_status: result.status,
-        status_color: result.color,
-        status_priority: result.priority,
-      };
+    const allBuyers: any[] = [];
+    const pageSize = 1000;
+    let page = 0;
+    let hasMore = true;
+
+    while (hasMore) {
+      const { data, error } = await this.supabase
+        .from('buyers')
+        .select(`
+          buyer_id,
+          buyer_number,
+          name,
+          latest_status,
+          latest_viewing_date,
+          inquiry_confidence,
+          inquiry_source,
+          distribution_type,
+          distribution_areas,
+          broker_inquiry,
+          desired_area,
+          desired_property_type,
+          price_range_house,
+          price_range_apartment,
+          price_range_land,
+          reception_date,
+          email,
+          phone_number
+        `)
+        .range(page * pageSize, (page + 1) * pageSize - 1);
+
+      if (error) {
+        throw new Error(`Failed to fetch buyers by areas: ${error.message}`);
+      }
+
+      if (data && data.length > 0) {
+        allBuyers.push(...data);
+        if (data.length < pageSize) {
+          hasMore = false;
+        } else {
+          page++;
+        }
+      } else {
+        hasMore = false;
+      }
+    }
+
+    const filteredBuyers = this.filterBuyerCandidates(allBuyers, areaNumbers, propertyType, salesPrice);
+    const sortedBuyers = this.sortBuyersByDateAndConfidence(filteredBuyers);
+
+    return sortedBuyers.map(buyer => ({
+      ...buyer,
+      distribution_areas: this.parseDistributionAreas(buyer.distribution_areas || buyer.desired_area)
+    }));
+  }
+
+  private parseDistributionAreas(distributionAreas: any): string[] {
+    if (!distributionAreas) return [];
+    if (Array.isArray(distributionAreas)) return distributionAreas;
+    if (typeof distributionAreas === 'string') {
+      return distributionAreas.split(/[,\s]+/).map(area => area.trim()).filter(area => area.length > 0);
+    }
+    return [];
+  }
+
+  private filterBuyerCandidates(
+    buyers: any[],
+    propertyAreaNumbers: string[],
+    propertyType?: string | null,
+    salesPrice?: number | null
+  ): any[] {
+    return buyers.filter(buyer => {
+      if (this.shouldExcludeBuyer(buyer)) return false;
+      if (!this.matchesStatus(buyer)) return false;
+      if (!this.matchesAreaCriteria(buyer, propertyAreaNumbers)) return false;
+      if (propertyType && !this.matchesPropertyTypeCriteria(buyer, propertyType)) return false;
+      if (salesPrice && !this.matchesPriceCriteria(buyer, salesPrice, propertyType)) return false;
+      return true;
     });
   }
 
+  private sortBuyersByDateAndConfidence(buyers: any[]): any[] {
+    return buyers.sort((a, b) => {
+      const dateA = a.reception_date ? new Date(a.reception_date).getTime() : 0;
+      const dateB = b.reception_date ? new Date(b.reception_date).getTime() : 0;
+      if (dateA !== dateB) return dateB - dateA;
+
+      const confidenceOrder: { [key: string]: number } = { 'A': 1, 'B': 2, 'C': 3, 'D': 4, 'E': 5, 'F': 6 };
+      const orderA = confidenceOrder[(a.inquiry_confidence || '').trim().toUpperCase()] || 999;
+      const orderB = confidenceOrder[(b.inquiry_confidence || '').trim().toUpperCase()] || 999;
+      return orderA - orderB;
+    });
+  }
+
+  private shouldExcludeBuyer(buyer: any): boolean {
+    if (this.isBusinessInquiry(buyer)) return true;
+    if (!this.hasMinimumCriteria(buyer)) return true;
+    if (!this.hasDistributionRequired(buyer)) return true;
+    return false;
+  }
+
+  private isBusinessInquiry(buyer: any): boolean {
+    const inquirySource = (buyer.inquiry_source || '').trim();
+    const distributionType = (buyer.distribution_type || '').trim();
+    const brokerInquiry = (buyer.broker_inquiry || '').trim();
+    if (inquirySource === '業者問い合わせ' || inquirySource.includes('業者')) return true;
+    if (distributionType === '業者問い合わせ' || distributionType.includes('業者')) return true;
+    if (brokerInquiry && brokerInquiry !== '' && brokerInquiry !== '0' && brokerInquiry.toLowerCase() !== 'false') return true;
+    return false;
+  }
+
+  private hasMinimumCriteria(buyer: any): boolean {
+    const desiredArea = (buyer.desired_area || '').trim();
+    const desiredPropertyType = (buyer.desired_property_type || '').trim();
+    return desiredArea !== '' || desiredPropertyType !== '';
+  }
+
+  private hasDistributionRequired(buyer: any): boolean {
+    return (buyer.distribution_type || '').trim() === '要';
+  }
+
+  private matchesStatus(buyer: any): boolean {
+    const latestStatus = (buyer.latest_status || '').trim();
+    if (latestStatus.includes('成約') || latestStatus.includes('D')) return false;
+    return true;
+  }
+
+  private matchesAreaCriteria(buyer: any, propertyAreaNumbers: string[]): boolean {
+    const desiredArea = (buyer.desired_area || '').trim();
+    if (!desiredArea) return true;
+    if (propertyAreaNumbers.length === 0) return false;
+    const buyerAreaNumbers = this.extractAreaNumbers(desiredArea);
+    return propertyAreaNumbers.some(area => buyerAreaNumbers.includes(area));
+  }
+
+  private matchesPropertyTypeCriteria(buyer: any, propertyType: string | null): boolean {
+    const desiredType = (buyer.desired_property_type || '').trim();
+    if (desiredType === '指定なし') return true;
+    if (!desiredType) return false;
+    if (!propertyType) return false;
+
+    const propertyTypeMap: Record<string, string> = {
+      'land': '土地',
+      'detached_house': '戸建',
+      'apartment': 'マンション',
+    };
+    const japanesePropertyType = propertyTypeMap[propertyType] || propertyType;
+    const normalizedPropertyType = this.normalizePropertyType(japanesePropertyType);
+    const normalizedDesiredTypes = desiredType.split(/[,、\s]+/).map((t: string) => this.normalizePropertyType(t));
+
+    return normalizedDesiredTypes.some((dt: string) =>
+      dt === normalizedPropertyType ||
+      normalizedPropertyType.includes(dt) ||
+      dt.includes(normalizedPropertyType)
+    );
+  }
+
+  private matchesPriceCriteria(buyer: any, salesPrice: number | null, propertyType: string | null): boolean {
+    if (!salesPrice) return true;
+
+    const propertyTypeMap: Record<string, string> = {
+      'land': '土地',
+      'detached_house': '戸建',
+      'apartment': 'マンション',
+    };
+    const japanesePropertyType = propertyTypeMap[propertyType || ''] || propertyType;
+    const normalizedType = this.normalizePropertyType(japanesePropertyType || '');
+
+    let priceRange: string | null = null;
+    if (normalizedType === '戸建' || normalizedType.includes('戸建')) {
+      priceRange = buyer.price_range_house;
+    } else if (normalizedType === 'マンション' || normalizedType.includes('マンション')) {
+      priceRange = buyer.price_range_apartment;
+    } else if (normalizedType === '土地' || normalizedType.includes('土地')) {
+      priceRange = buyer.price_range_land;
+    }
+
+    if (!priceRange || !priceRange.trim()) return true;
+
+    const { min, max } = this.parsePriceRange(priceRange);
+    return salesPrice >= min && salesPrice <= max;
+  }
+
+  private extractAreaNumbers(areaString: string): string[] {
+    return areaString.match(/[①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳]/g) || [];
+  }
+
   /**
-   * サイドバー用ステータスカテゴリ一覧を取得
+   * ステータスごとの買主数をカウント
    */
   async getStatusCategories(): Promise<Array<{
     status: string;
     count: number;
-    color: string;
     priority: number;
+    color: string;
   }>> {
-    const buyers = await this.getBuyersWithStatus();
+    try {
+      const { calculateBuyerStatus } = await import('./BuyerStatusCalculator');
+      const { STATUS_DEFINITIONS } = await import('../config/buyer-status-definitions');
 
-    const categoryMap = new Map<string, { count: number; color: string; priority: number }>();
+      const { data: allBuyers, error } = await this.supabase
+        .from('buyers')
+        .select('*')
+        .is('deleted_at', null);
 
-    for (const buyer of buyers) {
-      const status = buyer.calculated_status || '';
-      const existing = categoryMap.get(status);
-      if (existing) {
-        existing.count++;
-      } else {
-        categoryMap.set(status, {
-          count: 1,
-          color: buyer.status_color || '#cccccc',
-          priority: buyer.status_priority || 0,
+      if (error) throw new Error(`Failed to fetch buyers for status categories: ${error.message}`);
+
+      const statusCountMap = new Map<string, number>();
+      (allBuyers || []).forEach(buyer => {
+        try {
+          const statusResult = calculateBuyerStatus(buyer);
+          const status = statusResult.status || '';
+          statusCountMap.set(status, (statusCountMap.get(status) || 0) + 1);
+        } catch {
+          statusCountMap.set('', (statusCountMap.get('') || 0) + 1);
+        }
+      });
+
+      const categories: Array<{ status: string; count: number; priority: number; color: string }> = [];
+      STATUS_DEFINITIONS.forEach((definition) => {
+        categories.push({
+          status: definition.status,
+          count: statusCountMap.get(definition.status) || 0,
+          priority: definition.priority,
+          color: definition.color
         });
+      });
+
+      const emptyStatusCount = statusCountMap.get('') || 0;
+      if (emptyStatusCount > 0) {
+        categories.push({ status: '', count: emptyStatusCount, priority: 999, color: '#9E9E9E' });
       }
+
+      categories.sort((a, b) => a.priority - b.priority);
+      return categories;
+    } catch (error) {
+      throw new Error(`Failed to get status categories: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
-
-    const categories = Array.from(categoryMap.entries()).map(([status, info]) => ({
-      status,
-      count: info.count,
-      color: info.color,
-      priority: info.priority,
-    }));
-
-    // 優先度順にソート（優先度が高い＝数値が小さい順）
-    categories.sort((a, b) => {
-      if (a.priority === 0 && b.priority !== 0) return 1;
-      if (b.priority === 0 && a.priority !== 0) return -1;
-      return a.priority - b.priority;
-    });
-
-    return categories;
   }
 
   /**
-   * ステータスでフィルタリングして買主を取得
+   * 特定のステータスに該当する買主を取得
    */
-  async getBuyersByStatus(status: string, options: BuyerQueryOptions = {}): Promise<any[]> {
-    const buyers = await this.getBuyersWithStatus(options);
-    return buyers.filter(b => b.calculated_status === status);
+  async getBuyersByStatus(status: string, options: BuyerQueryOptions = {}): Promise<PaginatedResult<any>> {
+    try {
+      const { calculateBuyerStatus } = await import('./BuyerStatusCalculator');
+
+      const { data: allBuyers, error } = await this.supabase
+        .from('buyers')
+        .select('*')
+        .is('deleted_at', null);
+
+      if (error) throw new Error(`Failed to fetch buyers by status: ${error.message}`);
+
+      const filteredBuyers = (allBuyers || [])
+        .map(buyer => {
+          try {
+            const statusResult = calculateBuyerStatus(buyer);
+            return { ...buyer, calculated_status: statusResult.status, status_priority: statusResult.priority };
+          } catch {
+            return { ...buyer, calculated_status: '', status_priority: 999 };
+          }
+        })
+        .filter(buyer => buyer.calculated_status === status);
+
+      const { page = 1, limit = 50, sortBy = 'reception_date', sortOrder = 'desc' } = options;
+      const offset = (page - 1) * limit;
+      const total = filteredBuyers.length;
+      const totalPages = Math.ceil(total / limit);
+
+      filteredBuyers.sort((a, b) => {
+        const aValue = a[sortBy as string];
+        const bValue = b[sortBy as string];
+        if (aValue === null || aValue === undefined) return 1;
+        if (bValue === null || bValue === undefined) return -1;
+        return sortOrder === 'asc' ? (aValue > bValue ? 1 : -1) : (aValue < bValue ? 1 : -1);
+      });
+
+      return { data: filteredBuyers.slice(offset, offset + limit), total, page, limit, totalPages };
+    } catch (error) {
+      throw new Error(`Failed to get buyers by status: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   }
 
   /**
    * 買主を論理削除
    */
-  async softDelete(id: string): Promise<void> {
-    const existing = await this.getById(id);
-    if (!existing) {
-      throw new Error('Buyer not found');
-    }
+  async softDelete(buyerId: string): Promise<void> {
+    const existing = await this.getById(buyerId);
+    if (!existing) throw new Error('Buyer not found');
 
     const { error } = await this.supabase
       .from('buyers')
       .update({ deleted_at: new Date().toISOString() })
-      .eq('buyer_id', id);
+      .eq('buyer_id', buyerId);
 
-    if (error) {
-      throw new Error(`Failed to delete buyer: ${error.message}`);
-    }
+    if (error) throw new Error(`Failed to delete buyer: ${error.message}`);
   }
 
   /**
    * 論理削除した買主を復元
    */
-  async restore(id: string): Promise<any> {
+  async restore(buyerId: string): Promise<any> {
     const { data, error } = await this.supabase
       .from('buyers')
       .update({ deleted_at: null })
-      .eq('buyer_id', id)
+      .eq('buyer_id', buyerId)
       .select()
       .single();
 
-    if (error) {
-      throw new Error(`Failed to restore buyer: ${error.message}`);
+    if (error) throw new Error(`Failed to restore buyer: ${error.message}`);
+    return data;
+  }
+
+  /**
+   * ステータス付きで全買主を取得
+   */
+  async getBuyersWithStatus(): Promise<any[]> {
+    const { calculateBuyerStatus } = await import('./BuyerStatusCalculator');
+
+    const { data: allBuyers, error } = await this.supabase
+      .from('buyers')
+      .select('*')
+      .is('deleted_at', null)
+      .order('reception_date', { ascending: false, nullsFirst: false });
+
+    if (error) throw new Error(`Failed to fetch buyers with status: ${error.message}`);
+
+    return (allBuyers || []).map(buyer => {
+      try {
+        const statusResult = calculateBuyerStatus(buyer);
+        return { ...buyer, calculated_status: statusResult.status, status_priority: statusResult.priority };
+      } catch {
+        return { ...buyer, calculated_status: '', status_priority: 999 };
+      }
+    });
+  }
+
+  private normalizePropertyType(type: string): string {
+    return type.trim()
+      .replace(/中古/g, '')
+      .replace(/新築/g, '')
+      .replace(/一戸建て/g, '戸建')
+      .replace(/一戸建/g, '戸建')
+      .replace(/戸建て/g, '戸建')
+      .replace(/区分/g, '')
+      .trim();
+  }
+
+  private parsePriceRange(priceRange: string): { min: number; max: number } {
+    let min = 0;
+    let max = Number.MAX_SAFE_INTEGER;
+
+    const cleanedRange = priceRange
+      .replace(/,/g, '')
+      .replace(/円/g, '')
+      .replace(/万/g, '0000')
+      .replace(/億/g, '00000000')
+      .trim();
+
+    const rangeMatch = cleanedRange.match(/(\d+)?\s*[〜～-]\s*(\d+)?/);
+    if (rangeMatch) {
+      if (rangeMatch[1]) min = parseInt(rangeMatch[1], 10);
+      if (rangeMatch[2]) max = parseInt(rangeMatch[2], 10);
+      return { min, max };
     }
 
-    return data;
+    const aboveMatch = cleanedRange.match(/(\d+)\s*以上/);
+    if (aboveMatch) { min = parseInt(aboveMatch[1], 10); return { min, max }; }
+
+    const belowMatch = cleanedRange.match(/(\d+)\s*以下/);
+    if (belowMatch) { max = parseInt(belowMatch[1], 10); return { min, max }; }
+
+    const singleMatch = cleanedRange.match(/^(\d+)$/);
+    if (singleMatch) {
+      const value = parseInt(singleMatch[1], 10);
+      return { min: value * 0.8, max: value * 1.2 };
+    }
+
+    return { min, max };
   }
 }
