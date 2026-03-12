@@ -20,6 +20,7 @@ import {
 import { 
   ArrowBack as ArrowBackIcon,
   Email as EmailIcon,
+  Home as HomeIcon,
 } from '@mui/icons-material';
 import api, { buyerApi } from '../services/api';
 import PropertyInfoCard from '../components/PropertyInfoCard';
@@ -194,6 +195,7 @@ export default function BuyerDetailPage() {
   const [emailModalProperties, setEmailModalProperties] = useState<PropertyListing[]>([]);
   const [activities, setActivities] = useState<Activity[]>([]);
   const [relatedBuyersCount, setRelatedBuyersCount] = useState(0);
+  const [nearbyPropertiesCount, setNearbyPropertiesCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' | 'warning' }>({
     open: false,
@@ -247,6 +249,20 @@ export default function BuyerDetailPage() {
       setRelatedBuyersCount(res.data.total_count || 0);
     } catch (error) {
       console.error('Failed to fetch related buyers count:', error);
+    }
+  };
+
+  const fetchNearbyPropertiesCount = async () => {
+    try {
+      if (linkedProperties.length > 0) {
+        const firstProperty = linkedProperties[0];
+        const res = await api.get(`/api/buyers/${buyer_number}/nearby-properties`, {
+          params: { propertyNumber: firstProperty.property_number }
+        });
+        setNearbyPropertiesCount(res.data.nearbyProperties?.length || 0);
+      }
+    } catch (error) {
+      console.error('Failed to fetch nearby properties count:', error);
     }
   };
 
@@ -366,6 +382,13 @@ export default function BuyerDetailPage() {
       console.error('Failed to fetch linked properties:', error);
     }
   };
+
+  // linkedPropertiesが取得されたら近隣物件数を取得
+  useEffect(() => {
+    if (linkedProperties.length > 0) {
+      fetchNearbyPropertiesCount();
+    }
+  }, [linkedProperties]);
 
   const fetchInquiryHistory = async () => {
     try {
@@ -604,18 +627,39 @@ export default function BuyerDetailPage() {
           <Typography variant="h5" fontWeight="bold" sx={{ color: SECTION_COLORS.buyer.main }}>
             {buyer.name || buyer.buyer_number}
           </Typography>
-          {buyer.inquiry_confidence && (
-            <Chip label={buyer.inquiry_confidence} sx={{ ml: 2, backgroundColor: SECTION_COLORS.buyer.light, color: SECTION_COLORS.buyer.contrastText }} />
-          )}
-          {buyer.latest_status && (
-            <Chip label={buyer.latest_status.substring(0, 30)} sx={{ ml: 1, backgroundColor: SECTION_COLORS.buyer.dark, color: SECTION_COLORS.buyer.contrastText }} />
-          )}
+          {/* ステータス表示: 最新確度を優先、なければ問合せ時確度を表示（頭文字のみ） */}
+          {(() => {
+            const status = buyer.latest_status || buyer.inquiry_confidence;
+            if (!status) return null;
+            // 頭文字を抽出（A, B, C, D, E, AZ, BZ等）
+            const match = status.match(/^[A-Z]+/);
+            const label = match ? match[0] : status.substring(0, 2);
+            const color = buyer.latest_status ? 'secondary' : 'info';
+            return <Chip label={label} color={color} sx={{ ml: 2 }} />;
+          })()}
           <RelatedBuyerNotificationBadge 
             count={relatedBuyersCount} 
             onClick={scrollToRelatedBuyers}
           />
         </Box>
 
+        {/* ヘッダー右側のボタン */}
+        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+          {/* 近隣物件ボタン */}
+          {linkedProperties.length > 0 && (
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<HomeIcon />}
+              onClick={() => {
+                const firstProperty = linkedProperties[0];
+                window.open(`/buyers/${buyer_number}/nearby-properties?propertyNumber=${firstProperty.property_number}`, '_blank');
+              }}
+            >
+              近隣物件 ({nearbyPropertiesCount})
+            </Button>
+          )}
+        </Box>
       </Box>
 
       {/* 問い合わせ履歴テーブルセクション */}

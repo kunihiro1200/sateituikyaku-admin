@@ -134,13 +134,14 @@ export class BuyerColumnMapper {
       return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
     }
 
-    // MM/DD（年なし）: UNFORMATTED_VALUE を使えばこのケースは発生しないはずだが念のため残す
-    // この場合は現在年を使用（未来日付になる可能性があるため、同期後に要確認）
+    // MM/DD（年なし）: 前年を使用
+    // 理由: スプレッドシートで年が省略されている場合、通常は前年のデータ
     const match3 = str.match(/^(\d{1,2})[\/\-](\d{1,2})$/);
     if (match3) {
       const [, month, day] = match3;
       const currentYear = new Date().getFullYear();
-      return `${currentYear}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+      const previousYear = currentYear - 1; // 前年を使用
+      return `${previousYear}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
     }
 
     return null;
