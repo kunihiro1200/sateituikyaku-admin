@@ -15,10 +15,10 @@ interface RelatedBuyer {
 }
 
 interface RelatedBuyersSectionProps {
-  buyerId: string;
+  buyerNumber: string;
 }
 
-const RelatedBuyersSection: React.FC<RelatedBuyersSectionProps> = ({ buyerId }) => {
+const RelatedBuyersSection: React.FC<RelatedBuyersSectionProps> = ({ buyerNumber }) => {
   const [relatedBuyers, setRelatedBuyers] = useState<RelatedBuyer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -30,7 +30,7 @@ const RelatedBuyersSection: React.FC<RelatedBuyersSectionProps> = ({ buyerId }) 
       setError(null);
       setErrorCode(null);
       
-      const response = await api.get(`/api/buyers/${buyerId}/related`);
+      const response = await api.get(`/api/buyers/${buyerNumber}/related`);
       setRelatedBuyers(response.data.related_buyers || []);
     } catch (err: any) {
       console.error('Failed to fetch related buyers', err);
@@ -68,7 +68,7 @@ const RelatedBuyersSection: React.FC<RelatedBuyersSectionProps> = ({ buyerId }) 
 
   useEffect(() => {
     fetchRelatedBuyers();
-  }, [buyerId]);
+  }, [buyerNumber]);
 
   if (loading) {
     return (
@@ -152,7 +152,7 @@ const RelatedBuyersSection: React.FC<RelatedBuyersSectionProps> = ({ buyerId }) 
       <div className="space-y-4">
         {relatedBuyers.map((buyer) => (
           <div
-            key={buyer.buyer_id || buyer.buyer_number || buyer.id}
+            key={buyer.buyer_number}
             className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors"
           >
             <div className="flex items-start justify-between">

@@ -13,10 +13,10 @@ interface InquiryHistory {
 }
 
 interface UnifiedInquiryHistoryTableProps {
-  buyerId: string;
+  buyerNumber: string;
 }
 
-const UnifiedInquiryHistoryTable: React.FC<UnifiedInquiryHistoryTableProps> = ({ buyerId }) => {
+const UnifiedInquiryHistoryTable: React.FC<UnifiedInquiryHistoryTableProps> = ({ buyerNumber }) => {
   const [inquiries, setInquiries] = useState<InquiryHistory[]>([]);
   const [buyerNumbers, setBuyerNumbers] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
@@ -29,7 +29,7 @@ const UnifiedInquiryHistoryTable: React.FC<UnifiedInquiryHistoryTableProps> = ({
       setError(null);
       setErrorCode(null);
       
-      const response = await api.get(`/api/buyers/${buyerId}/unified-inquiry-history`);
+      const response = await api.get(`/api/buyers/${buyerNumber}/unified-inquiry-history`);
       setInquiries(response.data.inquiries || []);
       setBuyerNumbers(response.data.buyer_numbers || []);
     } catch (err: any) {
@@ -69,7 +69,7 @@ const UnifiedInquiryHistoryTable: React.FC<UnifiedInquiryHistoryTableProps> = ({
 
   useEffect(() => {
     fetchUnifiedHistory();
-  }, [buyerId]);
+  }, [buyerNumber]);
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);

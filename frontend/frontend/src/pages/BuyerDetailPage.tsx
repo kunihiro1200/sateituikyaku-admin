@@ -85,53 +85,52 @@ interface Activity {
 }
 
 // フィールドをセクションごとにグループ化
-// 問合時ヒアリング用クイック入力ボタンの定義
+// 問合時ヒアリング用クイチE��入力�Eタンの定義
 const INQUIRY_HEARING_QUICK_INPUTS = [
-  { label: '初見か', text: '初見か：' },
-  { label: '希望時期', text: '希望時期：' },
-  { label: '駐車場希望台数', text: '駐車場希望台数：' },
-  { label: 'リフォーム予算', text: 'リフォーム込みの予算（最高額）：' },
-  { label: '持ち家か', text: '持ち家か：' },
-  { label: '他物件', text: '他に気になる物件はあるか？：' },
+  { label: '初見か', text: '初見か�E�E },
+  { label: '希望時期', text: '希望時期�E�E },
+  { label: '駐車場希望台数', text: '駐車場希望台数�E�E },
+  { label: 'リフォーム予箁E, text: 'リフォーム込みの予算（最高額）！E },
+  { label: '持ち家ぁE, text: '持ち家か！E },
+  { label: '他物件', text: '他に気になる物件はあるか？！E },
 ];
 
 const BUYER_FIELD_SECTIONS = [
   {
-    title: '問合せ・内覧情報',
+    title: '問合せ�E冁E��惁E��',
     fields: [
-      { key: 'initial_assignee', label: '初動担当', inlineEditable: true },
-      { key: 'follow_up_assignee', label: '後続担当', inlineEditable: true },
+      { key: 'initial_assignee', label: '初動拁E��E, inlineEditable: true },
+      { key: 'follow_up_assignee', label: '後続担彁E, inlineEditable: true },
       { key: 'reception_date', label: '受付日', type: 'date', inlineEditable: true },
-      { key: 'inquiry_source', label: '問合せ元', inlineEditable: true },
+      { key: 'inquiry_source', label: '問合せ�E', inlineEditable: true },
       { key: 'inquiry_hearing', label: '問合時ヒアリング', multiline: true, inlineEditable: true },
       { key: 'inquiry_confidence', label: '問合時確度', inlineEditable: true },
-      { key: 'inquiry_email_phone', label: '【問合メール】電話対応', inlineEditable: true, fieldType: 'dropdown' },
+      { key: 'inquiry_email_phone', label: '【問合メール】電話対忁E, inlineEditable: true, fieldType: 'dropdown' },
       { key: 'three_calls_confirmed', label: '3回架電確認済み', inlineEditable: true, fieldType: 'dropdown' },
       { key: 'email_type', label: 'メール種別', inlineEditable: true, fieldType: 'dropdown' },
       { key: 'distribution_type', label: '配信種別', inlineEditable: true, fieldType: 'dropdown' },
       { key: 'owned_home_hearing', label: '持家ヒアリング', inlineEditable: true },
-      { key: 'latest_viewing_date', label: '内覧日(最新)', type: 'date', inlineEditable: true },
-      // viewing_notes は PropertyInfoCard 内に移動
-      { key: 'next_call_date', label: '次電日', type: 'date', inlineEditable: true },
+      { key: 'latest_viewing_date', label: '冁E��日(最新)', type: 'date', inlineEditable: true },
+      // viewing_notes は PropertyInfoCard 冁E��移勁E      { key: 'next_call_date', label: '次電日', type: 'date', inlineEditable: true },
     ],
   },
   {
-    title: '基本情報',
+    title: '基本惁E��',
     fields: [
       { key: 'buyer_number', label: '買主番号', inlineEditable: true, readOnly: true },
-      { key: 'name', label: '氏名・会社名', inlineEditable: true },
+      { key: 'name', label: '氏名・会社吁E, inlineEditable: true },
       { key: 'phone_number', label: '電話番号', inlineEditable: true },
       { key: 'email', label: 'メールアドレス', inlineEditable: true },
-      { key: 'company_name', label: '法人名', inlineEditable: true },
+      { key: 'company_name', label: '法人吁E, inlineEditable: true },
     ],
   },
   {
-    title: '内覧結果・後続対応',
-    isViewingResultGroup: true,  // 特別なグループとしてマーク
+    title: '冁E��結果・後続対忁E,
+    isViewingResultGroup: true,  // 特別なグループとしてマ�Eク
     fields: [
-      { key: 'viewing_result_follow_up', label: '内覧結果・後続対応', multiline: true, inlineEditable: true },
-      { key: 'follow_up_assignee', label: '後続担当', inlineEditable: true },
-      { key: 'latest_status', label: '★最新状況', inlineEditable: true, fieldType: 'dropdown' },
+      { key: 'viewing_result_follow_up', label: '冁E��結果・後続対忁E, multiline: true, inlineEditable: true },
+      { key: 'follow_up_assignee', label: '後続担彁E, inlineEditable: true },
+      { key: 'latest_status', label: '☁E��新状況E, inlineEditable: true, fieldType: 'dropdown' },
     ],
   },
   {
@@ -141,29 +140,29 @@ const BUYER_FIELD_SECTIONS = [
       { key: 'desired_area', label: 'エリア', inlineEditable: true },
       { key: 'desired_property_type', label: '希望種別', inlineEditable: true },
       { key: 'desired_building_age', label: '築年数', inlineEditable: true },
-      { key: 'desired_floor_plan', label: '間取り', inlineEditable: true },
-      { key: 'budget', label: '予算', inlineEditable: true },
-      { key: 'price_range_house', label: '価格帯（戸建）', inlineEditable: true },
-      { key: 'price_range_apartment', label: '価格帯（マンション）', inlineEditable: true },
-      { key: 'price_range_land', label: '価格帯（土地）', inlineEditable: true },
+      { key: 'desired_floor_plan', label: '間取めE, inlineEditable: true },
+      { key: 'budget', label: '予箁E, inlineEditable: true },
+      { key: 'price_range_house', label: '価格帯�E�戸建�E�E, inlineEditable: true },
+      { key: 'price_range_apartment', label: '価格帯�E��Eンション�E�E, inlineEditable: true },
+      { key: 'price_range_land', label: '価格帯�E�土地�E�E, inlineEditable: true },
       { key: 'parking_spaces', label: 'P台数', inlineEditable: true },
-      { key: 'hot_spring_required', label: '温泉あり', inlineEditable: true },
+      { key: 'hot_spring_required', label: '温泉あめE, inlineEditable: true },
       { key: 'garden_required', label: '庭付き', inlineEditable: true },
       { key: 'pet_allowed_required', label: 'ペット可', inlineEditable: true },
       { key: 'good_view_required', label: '眺望良好', inlineEditable: true },
-      { key: 'high_floor_required', label: '高層階', inlineEditable: true },
-      { key: 'corner_room_required', label: '角部屋', inlineEditable: true },
+      { key: 'high_floor_required', label: '高層隁E, inlineEditable: true },
+      { key: 'corner_room_required', label: '角部屁E, inlineEditable: true },
     ],
   },
   {
-    title: 'その他',
+    title: 'そ�E仁E,
     fields: [
-      { key: 'special_notes', label: '特記事項', multiline: true, inlineEditable: true },
-      { key: 'message_to_assignee', label: '担当への伝言/質問事項', multiline: true, inlineEditable: true },
-      { key: 'confirmation_to_assignee', label: '担当への確認事項', multiline: true, inlineEditable: true },
-      { key: 'family_composition', label: '家族構成', inlineEditable: true },
-      { key: 'must_have_points', label: '譲れない点', multiline: true, inlineEditable: true },
-      { key: 'liked_points', label: '気に入っている点', multiline: true, inlineEditable: true },
+      { key: 'special_notes', label: '特記事頁E, multiline: true, inlineEditable: true },
+      { key: 'message_to_assignee', label: '拁E��への伝言/質問事頁E, multiline: true, inlineEditable: true },
+      { key: 'confirmation_to_assignee', label: '拁E��への確認事頁E, multiline: true, inlineEditable: true },
+      { key: 'family_composition', label: '家族構�E', inlineEditable: true },
+      { key: 'must_have_points', label: '譲れなぁE��', multiline: true, inlineEditable: true },
+      { key: 'liked_points', label: '気に入ってぁE��点', multiline: true, inlineEditable: true },
       { key: 'disliked_points', label: 'ダメな点', multiline: true, inlineEditable: true },
       { key: 'purchase_obstacles', label: '購入時障害となる点', multiline: true, inlineEditable: true },
       { key: 'next_action', label: '次のアクション', multiline: true, inlineEditable: true },
@@ -173,10 +172,10 @@ const BUYER_FIELD_SECTIONS = [
     title: '買付情報',
     fields: [
       { key: 'offer_status', label: '買付有無', inlineEditable: true },
-      { key: 'offer_comment', label: '買付コメント', inlineEditable: true },
-      { key: 'offer_property_sheet', label: '買付（物件シート）', inlineEditable: true },
-      { key: 'offer_lost_comment', label: '買付外れコメント', inlineEditable: true },
-      { key: 'offer_lost_chat', label: '買付外れチャット', inlineEditable: true },
+      { key: 'offer_comment', label: '買付コメンチE, inlineEditable: true },
+      { key: 'offer_property_sheet', label: '買付（物件シート！E, inlineEditable: true },
+      { key: 'offer_lost_comment', label: '買付外れコメンチE, inlineEditable: true },
+      { key: 'offer_lost_chat', label: '買付外れチャチE��', inlineEditable: true },
     ],
   },
 ];
@@ -201,26 +200,24 @@ export default function BuyerDetailPage() {
     severity: 'success',
   });
 
-  // クイックボタンの状態管理
-  const { isDisabled: isQuickButtonDisabled, disableButton: disableQuickButton } = useQuickButtonState(buyer_number || '');
+  // クイチE��ボタンの状態管琁E  const { isDisabled: isQuickButtonDisabled, disableButton: disableQuickButton } = useQuickButtonState(buyer_number || '');
 
   const [copiedBuyerNumber, setCopiedBuyerNumber] = useState(false);
 
-  // useStableContainerHeightフックを使用して安定した高さ管理
-  const { error: heightError } = useStableContainerHeight({
+  // useStableContainerHeightフックを使用して安定した高さ管琁E  const { error: heightError } = useStableContainerHeight({
     headerHeight: 64,
     padding: 48,
     minHeight: 400,
     debounceDelay: 200,
   });
 
-  // ビューポート高さ計算エラーのハンドリング
+  // ビューポ�Eト高さ計算エラーのハンドリング
   useEffect(() => {
     if (heightError) {
       console.error('[BuyerDetailPage] Height calculation error:', heightError);
       setSnackbar({
         open: true,
-        message: '画面高さの計算でエラーが発生しました。デフォルト値を使用します。',
+        message: '画面高さの計算でエラーが発生しました。デフォルト値を使用します、E,
         severity: 'warning',
       });
     }
@@ -271,44 +268,39 @@ export default function BuyerDetailPage() {
     }
   };
 
-  // インライン編集用のフィールド更新ハンドラー
+  // インライン編雁E��のフィールド更新ハンドラー
   const handleInlineFieldSave = async (fieldName: string, newValue: any) => {
     if (!buyer) return;
 
     try {
-      // 更新するフィールドのみを送信（双方向同期を有効化）
-      const result = await buyerApi.update(
+      // 更新するフィールド�Eみを送信�E�双方向同期を有効化！E      const result = await buyerApi.update(
         buyer_number!,
         { [fieldName]: newValue },
-        { sync: true }  // スプレッドシートへの同期を有効化
-      );
+        { sync: true }  // スプレチE��シートへの同期を有効匁E      );
       
-      // 競合がある場合
-      if (result.conflicts && result.conflicts.length > 0) {
+      // 競合がある場吁E      if (result.conflicts && result.conflicts.length > 0) {
         console.warn('Sync conflict detected:', result.conflicts);
         setSnackbar({
           open: true,
-          message: '同期競合が発生しました。スプレッドシートの値が変更されています。',
+          message: '同期競合が発生しました。スプレチE��シート�E値が変更されてぁE��す、E,
           severity: 'warning'
         });
-        // ローカル状態は更新（DBには保存されている）
-        setBuyer(result.buyer);
+        // ローカル状態�E更新�E�EBには保存されてぁE���E�E        setBuyer(result.buyer);
         return { success: true };
       }
       
       // ローカル状態を更新
       setBuyer(result.buyer);
       
-      // 同期ステータスを表示
+      // 同期スチE�Eタスを表示
       if (result.syncStatus === 'pending') {
         setSnackbar({
           open: true,
-          message: '保存しました（スプレッドシート同期は保留中）',
+          message: '保存しました�E�スプレチE��シート同期�E保留中�E�E,
           severity: 'warning'
         });
       } else if (result.syncStatus === 'synced') {
-        // 成功時は特にメッセージを表示しない（静かに成功）
-      }
+        // 成功時�E特にメチE��ージを表示しなぁE��静かに成功�E�E      }
       
       return { success: true };
     } catch (error: any) {
@@ -320,19 +312,17 @@ export default function BuyerDetailPage() {
     }
   };
 
-  // 問合時ヒアリング用クイック入力ボタンのクリックハンドラー
-  // inquiry_hearingフィールドの強制再レンダリング用キー
+  // 問合時ヒアリング用クイチE��入力�EタンのクリチE��ハンドラー
+  // inquiry_hearingフィールド�E強制再レンダリング用キー
   const [inquiryHearingKey, setInquiryHearingKey] = useState(0);
   
   const handleInquiryHearingQuickInput = async (text: string, buttonLabel: string) => {
     if (!buyer) return;
     
-    // ボタンを無効化
-    disableQuickButton(buttonLabel);
+    // ボタンを無効匁E    disableQuickButton(buttonLabel);
     
     const currentValue = buyer.inquiry_hearing || '';
-    // 新しいテキストを先頭に追加（既存内容がある場合は改行を挟む）
-    const newValue = currentValue 
+    // 新しいチE��ストを先頭に追加�E�既存�E容がある場合�E改行を挟�E�E�E    const newValue = currentValue 
       ? `${text}\n${currentValue}` 
       : text;
     
@@ -341,11 +331,9 @@ export default function BuyerDetailPage() {
     // キーを更新してInlineEditableFieldを強制再レンダリング
     setInquiryHearingKey(prev => prev + 1);
     
-    // その後DBに保存
-    const result = await handleInlineFieldSave('inquiry_hearing', newValue);
+    // そ�E後DBに保孁E    const result = await handleInlineFieldSave('inquiry_hearing', newValue);
     if (result && !result.success && result.error) {
-      // エラー時は元の値に戻す
-      setBuyer(prev => prev ? { ...prev, inquiry_hearing: currentValue } : prev);
+      // エラー時�E允E�E値に戻ぁE      setBuyer(prev => prev ? { ...prev, inquiry_hearing: currentValue } : prev);
       setInquiryHearingKey(prev => prev + 1);
       setSnackbar({
         open: true,
@@ -478,7 +466,7 @@ export default function BuyerDetailPage() {
       if (validProperties.length === 0) {
         setSnackbar({
           open: true,
-          message: '選択された物件の情報を取得できませんでした',
+          message: '選択された物件の惁E��を取得できませんでした',
           severity: 'error',
         });
         return;
@@ -489,7 +477,7 @@ export default function BuyerDetailPage() {
         const failedCount = selectedProperties.length - validProperties.length;
         setSnackbar({
           open: true,
-          message: `${failedCount}件の物件情報を取得できませんでした。取得できた${validProperties.length}件で続行します。`,
+          message: `${failedCount}件の物件惁E��を取得できませんでした。取得できた${validProperties.length}件で続行します。`,
           severity: 'warning',
         });
       }
@@ -502,7 +490,7 @@ export default function BuyerDetailPage() {
       
       const errorMessage = error.response?.status === 404
         ? '物件が見つかりませんでした'
-        : error.response?.data?.error || '物件情報の取得に失敗しました';
+        : error.response?.data?.error || '物件惁E��の取得に失敗しました';
       
       setSnackbar({
         open: true,
@@ -543,7 +531,7 @@ export default function BuyerDetailPage() {
     if (type === 'price') {
       const num = Number(value);
       if (!isNaN(num)) {
-        return `${(num / 10000).toLocaleString()}万円`;
+        return `${(num / 10000).toLocaleString()}丁E�E`;
       }
     }
     
@@ -556,18 +544,15 @@ export default function BuyerDetailPage() {
       <Container maxWidth="xl" sx={{ py: 3, px: 2 }}>
         <Box sx={{ textAlign: 'center', py: 8 }}>
           <Typography variant="h5" color="error" gutterBottom>
-            無効な買主番号です
-          </Typography>
+            無効な買主番号でぁE          </Typography>
           <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-            買主番号は有効な数値、UUID、またはBY_形式である必要があります
-          </Typography>
+            買主番号は有効な数値、UUID、また�EBY_形式である忁E��がありまぁE          </Typography>
           <Button 
             variant="contained" 
             startIcon={<ArrowBackIcon />} 
             onClick={() => navigate('/buyers')}
           >
-            買主一覧に戻る
-          </Button>
+            買主一覧に戻めE          </Button>
         </Box>
       </Container>
     );
@@ -586,8 +571,7 @@ export default function BuyerDetailPage() {
       <Container maxWidth="xl" sx={{ py: 3, px: 2 }}>
         <Typography>買主が見つかりませんでした</Typography>
         <Button startIcon={<ArrowBackIcon />} onClick={() => navigate('/buyers')}>
-          一覧に戻る
-        </Button>
+          一覧に戻めE        </Button>
       </Container>
     );
   }
@@ -599,7 +583,7 @@ export default function BuyerDetailPage() {
           <IconButton 
             onClick={() => navigate(-1)} 
             sx={{ mr: 2 }}
-            aria-label="戻る"
+            aria-label="戻めE
           >
             <ArrowBackIcon />
           </IconButton>
@@ -607,7 +591,7 @@ export default function BuyerDetailPage() {
             {buyer.name || buyer.buyer_number}
           </Typography>
           {buyer.buyer_number && (
-            <Tooltip title={copiedBuyerNumber ? 'コピーしました！' : '買主番号をコピー'}>
+            <Tooltip title={copiedBuyerNumber ? 'コピ�Eしました�E�E : '買主番号をコピ�E'}>
               <Chip
                 label={buyer.buyer_number}
                 size="small"
@@ -653,12 +637,12 @@ export default function BuyerDetailPage() {
             size="medium"
             onClick={() => navigate(`/buyers/${buyer_number}/viewing-result`)}
           >
-            内覧
+            冁E��
           </Button>
         </Box>
       </Box>
 
-      {/* 問い合わせ履歴テーブルセクション */}
+      {/* 問い合わせ履歴チE�Eブルセクション */}
       <Paper sx={{ p: 2, mb: 3 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
           <Typography variant="h6">
@@ -667,7 +651,7 @@ export default function BuyerDetailPage() {
           {/* New Gmail Send Button with Template Selection */}
           {buyer && (
             <BuyerGmailSendButton
-              buyerId={buyer.id || buyer_number || ''}
+              buyerId={buyer_number || ''}
               buyerEmail={buyer.email || ''}
               buyerName={buyer.name || ''}
               inquiryHistory={inquiryHistoryTable}
@@ -719,7 +703,7 @@ export default function BuyerDetailPage() {
         )}
       </Paper>
 
-      {/* 2カラムレイアウト: 左側に紐づいた物件の詳細情報、右側に買主情報 */}
+      {/* 2カラムレイアウチE 左側に紐づぁE��物件の詳細惁E��、右側に買主惁E�� */}
       <Box
         sx={{
           display: 'flex',
@@ -730,9 +714,9 @@ export default function BuyerDetailPage() {
           },
         }}
         role="region"
-        aria-label="買主詳細情報の2カラムレイアウト"
+        aria-label="買主詳細惁E��の2カラムレイアウチE
       >
-        {/* 左側: 紐づいた物件の詳細情報 - 独立スクロール */}
+        {/* 左側: 紐づぁE��物件の詳細惁E�� - 独立スクロール */}
         <Box 
           sx={{ 
             flex: '0 0 42%', 
@@ -743,7 +727,7 @@ export default function BuyerDetailPage() {
             pr: 1,
             position: 'sticky',
             top: 16,
-            // カスタムスクロールバースタイル
+            // カスタムスクロールバ�Eスタイル
             '&::-webkit-scrollbar': {
               width: '8px',
             },
@@ -768,12 +752,12 @@ export default function BuyerDetailPage() {
             },
           }}
           role="complementary"
-          aria-label="物件詳細カード"
+          aria-label="物件詳細カーチE
           tabIndex={0}
         >
           <Box>
             <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-              <Typography variant="h6">物件詳細カード</Typography>
+              <Typography variant="h6">物件詳細カーチE/Typography>
               {linkedProperties.length > 0 && (
                 <Chip 
                   label={`${linkedProperties.length}件`} 
@@ -795,13 +779,13 @@ export default function BuyerDetailPage() {
               ))
             ) : (
               <Paper sx={{ p: 3, textAlign: 'center', color: 'text.secondary' }}>
-                <Typography variant="body2">紐づいた物件はありません</Typography>
+                <Typography variant="body2">紐づぁE��物件はありません</Typography>
               </Paper>
             )}
           </Box>
         </Box>
 
-        {/* 右側: 買主詳細情報 - 独立スクロール */}
+        {/* 右側: 買主詳細惁E�� - 独立スクロール */}
         <Box 
           sx={{ 
             flex: '1 1 58%', 
@@ -812,7 +796,7 @@ export default function BuyerDetailPage() {
             pl: 1,
             position: 'sticky',
             top: 16,
-            // カスタムスクロールバースタイル
+            // カスタムスクロールバ�Eスタイル
             '&::-webkit-scrollbar': {
               width: '8px',
             },
@@ -837,23 +821,22 @@ export default function BuyerDetailPage() {
             },
           }}
           role="main"
-          aria-label="買主情報"
+          aria-label="買主惁E��"
           tabIndex={0}
         >
-          {/* 重複履歴セクション */}
+          {/* 重褁E��歴セクション */}
           {inquiryHistory.length > 1 && (
             <Paper sx={{ p: 2, mb: 2, bgcolor: 'warning.light' }}>
               <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                 <Chip 
-                  label={`重複あり (${inquiryHistory.length}件の問合せ履歴)`} 
+                  label={`重褁E��めE(${inquiryHistory.length}件の問合せ履歴)`} 
                   color="warning" 
                   size="small"
                   sx={{ fontWeight: 'bold' }}
                 />
               </Box>
               <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
-                この買主は過去に別の買主番号で問い合わせをしています
-              </Typography>
+                こ�E買主は過去に別の買主番号で問い合わせをしてぁE��ぁE              </Typography>
               <Divider sx={{ my: 1 }} />
               <Box sx={{ maxHeight: 200, overflowY: 'auto' }}>
                 {inquiryHistory.map((history) => (
@@ -894,13 +877,13 @@ export default function BuyerDetailPage() {
                       )}
                       {history.inquirySource && (
                         <Grid item xs={12} sm={6}>
-                          <Typography variant="caption" color="text.secondary">問合せ元</Typography>
+                          <Typography variant="caption" color="text.secondary">問合せ�E</Typography>
                           <Typography variant="body2">{history.inquirySource}</Typography>
                         </Grid>
                       )}
                       {history.status && (
                         <Grid item xs={12} sm={6}>
-                          <Typography variant="caption" color="text.secondary">ステータス</Typography>
+                          <Typography variant="caption" color="text.secondary">スチE�Eタス</Typography>
                           <Typography variant="body2" sx={{ fontSize: '0.75rem' }}>
                             {history.status.substring(0, 30)}
                           </Typography>
@@ -919,9 +902,9 @@ export default function BuyerDetailPage() {
               sx={{ 
                 p: 2, 
                 mb: 2,
-                // 内覧結果グループには特別なスタイルを適用
+                // 冁E��結果グループには特別なスタイルを適用
                 ...(section.isViewingResultGroup && {
-                  bgcolor: 'rgba(33, 150, 243, 0.08)',  // 薄い青色の背景
+                  bgcolor: 'rgba(33, 150, 243, 0.08)',  // 薁E��青色の背景
                   border: '1px solid',
                   borderColor: 'rgba(33, 150, 243, 0.3)',
                 }),
@@ -931,7 +914,7 @@ export default function BuyerDetailPage() {
                 variant="h6" 
                 gutterBottom
                 sx={{
-                  // 内覧結果グループのタイトルを強調
+                  // 冁E��結果グループ�Eタイトルを強調
                   ...(section.isViewingResultGroup && {
                     color: 'primary.main',
                     fontWeight: 'bold',
@@ -945,13 +928,11 @@ export default function BuyerDetailPage() {
                 {section.fields.map((field: any) => {
                   const value = buyer[field.key];
                   
-                  // multilineフィールドは全幅で表示
+                  // multilineフィールド�E全幁E��表示
                   const gridSize = field.multiline ? { xs: 12 } : { xs: 12, sm: 6 };
 
-                  // インライン編集可能なフィールド
-                  if (field.inlineEditable) {
-                    // inquiry_sourceフィールドは特別処理（ドロップダウン）
-                    if (field.key === 'inquiry_source') {
+                  // インライン編雁E��能なフィールチE                  if (field.inlineEditable) {
+                    // inquiry_sourceフィールド�E特別処琁E��ドロチE�Eダウン�E�E                    if (field.key === 'inquiry_source') {
                       const handleFieldSave = async (newValue: any) => {
                         const result = await handleInlineFieldSave(field.key, newValue);
                         if (result && !result.success && result.error) {
@@ -968,7 +949,7 @@ export default function BuyerDetailPage() {
                             fieldType="dropdown"
                             options={INQUIRY_SOURCE_OPTIONS}
                             onSave={handleFieldSave}
-                            buyerId={buyer?.id || buyer_number}
+                            buyerId={buyer_number}
                             enableConflictDetection={true}
                             showEditIndicator={true}
                           />
@@ -976,8 +957,7 @@ export default function BuyerDetailPage() {
                       );
                     }
 
-                    // latest_statusフィールドは特別処理（ドロップダウン）
-                    if (field.key === 'latest_status') {
+                    // latest_statusフィールド�E特別処琁E��ドロチE�Eダウン�E�E                    if (field.key === 'latest_status') {
                       const handleFieldSave = async (newValue: any) => {
                         const result = await handleInlineFieldSave(field.key, newValue);
                         if (result && !result.success && result.error) {
@@ -994,7 +974,7 @@ export default function BuyerDetailPage() {
                             fieldType="dropdown"
                             options={LATEST_STATUS_OPTIONS}
                             onSave={handleFieldSave}
-                            buyerId={buyer?.id || buyer_number}
+                            buyerId={buyer_number}
                             enableConflictDetection={true}
                             showEditIndicator={true}
                           />
@@ -1002,8 +982,7 @@ export default function BuyerDetailPage() {
                       );
                     }
 
-                    // inquiry_email_phoneフィールドは特別処理（ドロップダウン）
-                    if (field.key === 'inquiry_email_phone') {
+                    // inquiry_email_phoneフィールド�E特別処琁E��ドロチE�Eダウン�E�E                    if (field.key === 'inquiry_email_phone') {
                       const handleFieldSave = async (newValue: any) => {
                         const result = await handleInlineFieldSave(field.key, newValue);
                         if (result && !result.success && result.error) {
@@ -1020,7 +999,7 @@ export default function BuyerDetailPage() {
                             fieldType="dropdown"
                             options={INQUIRY_EMAIL_PHONE_OPTIONS}
                             onSave={handleFieldSave}
-                            buyerId={buyer?.id || buyer_number}
+                            buyerId={buyer_number}
                             enableConflictDetection={true}
                             showEditIndicator={true}
                           />
@@ -1028,8 +1007,7 @@ export default function BuyerDetailPage() {
                       );
                     }
 
-                    // three_calls_confirmedフィールドは特別処理（ドロップダウン）
-                    if (field.key === 'three_calls_confirmed') {
+                    // three_calls_confirmedフィールド�E特別処琁E��ドロチE�Eダウン�E�E                    if (field.key === 'three_calls_confirmed') {
                       const handleFieldSave = async (newValue: any) => {
                         const result = await handleInlineFieldSave(field.key, newValue);
                         if (result && !result.success && result.error) {
@@ -1046,7 +1024,7 @@ export default function BuyerDetailPage() {
                             fieldType="dropdown"
                             options={THREE_CALLS_CONFIRMED_OPTIONS}
                             onSave={handleFieldSave}
-                            buyerId={buyer?.id || buyer_number}
+                            buyerId={buyer_number}
                             enableConflictDetection={true}
                             showEditIndicator={true}
                           />
@@ -1054,8 +1032,7 @@ export default function BuyerDetailPage() {
                       );
                     }
 
-                    // email_typeフィールドは特別処理（ドロップダウン）
-                    if (field.key === 'email_type') {
+                    // email_typeフィールド�E特別処琁E��ドロチE�Eダウン�E�E                    if (field.key === 'email_type') {
                       const handleFieldSave = async (newValue: any) => {
                         const result = await handleInlineFieldSave(field.key, newValue);
                         if (result && !result.success && result.error) {
@@ -1072,7 +1049,7 @@ export default function BuyerDetailPage() {
                             fieldType="dropdown"
                             options={EMAIL_TYPE_OPTIONS}
                             onSave={handleFieldSave}
-                            buyerId={buyer?.id || buyer_number}
+                            buyerId={buyer_number}
                             enableConflictDetection={true}
                             showEditIndicator={true}
                           />
@@ -1080,8 +1057,7 @@ export default function BuyerDetailPage() {
                       );
                     }
 
-                    // distribution_typeフィールドは特別処理（ドロップダウン）
-                    if (field.key === 'distribution_type') {
+                    // distribution_typeフィールド�E特別処琁E��ドロチE�Eダウン�E�E                    if (field.key === 'distribution_type') {
                       const handleFieldSave = async (newValue: any) => {
                         const result = await handleInlineFieldSave(field.key, newValue);
                         if (result && !result.success && result.error) {
@@ -1098,7 +1074,7 @@ export default function BuyerDetailPage() {
                             fieldType="dropdown"
                             options={DISTRIBUTION_TYPE_OPTIONS}
                             onSave={handleFieldSave}
-                            buyerId={buyer?.id || buyer_number}
+                            buyerId={buyer_number}
                             enableConflictDetection={true}
                             showEditIndicator={true}
                           />
@@ -1106,24 +1082,23 @@ export default function BuyerDetailPage() {
                       );
                     }
 
-                    // その他のフィールド
-                    const handleFieldSave = async (newValue: any) => {
+                    // そ�E他�EフィールチE                    const handleFieldSave = async (newValue: any) => {
                       const result = await handleInlineFieldSave(field.key, newValue);
                       if (result && !result.success && result.error) {
                         throw new Error(result.error);
                       }
                     };
 
-                    // inquiry_hearingフィールドには常に囲い枠を表示
+                    // inquiry_hearingフィールドには常に囲ぁE��を表示
                     const isInquiryHearing = field.key === 'inquiry_hearing';
 
                     return (
                       <Grid item {...gridSize} key={field.key}>
-                        {/* 問合時ヒアリング用クイック入力ボタン */}
+                        {/* 問合時ヒアリング用クイチE��入力�Eタン */}
                         {isInquiryHearing && (
                           <Box sx={{ mb: 1 }}>
                             <Typography variant="subtitle2" gutterBottom>
-                              ヒアリング項目
+                              ヒアリング頁E��
                             </Typography>
                             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
                               {INQUIRY_HEARING_QUICK_INPUTS.map((item) => {
@@ -1131,7 +1106,7 @@ export default function BuyerDetailPage() {
                                 return (
                                   <Tooltip 
                                     key={item.label} 
-                                    title={disabled ? 'このボタンは使用済みです' : item.text} 
+                                    title={disabled ? 'こ�Eボタンは使用済みでぁE : item.text} 
                                     arrow
                                   >
                                     <span>
@@ -1171,18 +1146,17 @@ export default function BuyerDetailPage() {
                           }
                           onSave={handleFieldSave}
                           readOnly={field.readOnly === true}
-                          buyerId={buyer?.id || buyer_number}
+                          buyerId={buyer_number}
                           enableConflictDetection={true}
                           alwaysShowBorder={isInquiryHearing}
-                          borderPlaceholder={isInquiryHearing ? 'ヒアリング内容を入力...' : undefined}
+                          borderPlaceholder={isInquiryHearing ? 'ヒアリング冁E��を�E劁E..' : undefined}
                           showEditIndicator={!field.readOnly}
                         />
                       </Grid>
                     );
                   }
 
-                  // インライン編集不可のフィールド（通常表示）
-                  return (
+                  // インライン編雁E��可のフィールド（通常表示�E�E                  return (
                     <Grid item {...gridSize} key={field.key}>
                       <Typography variant="caption" color="text.secondary">
                         {field.label}
@@ -1212,7 +1186,7 @@ export default function BuyerDetailPage() {
                   .map((activity) => {
                     const metadata = activity.metadata || {};
                     const propertyNumbers = metadata.propertyNumbers || [];
-                    const displayName = activity.employee ? getDisplayName(activity.employee) : '不明';
+                    const displayName = activity.employee ? getDisplayName(activity.employee) : '不�E';
                     
                     return (
                       <ListItem
@@ -1227,7 +1201,7 @@ export default function BuyerDetailPage() {
                       >
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', mb: 1 }}>
                           <Typography variant="body2" fontWeight="bold">
-                            {metadata.subject || '件名なし'}
+                            {metadata.subject || '件名なぁE}
                           </Typography>
                           <Typography variant="caption" color="text.secondary">
                             {formatDateTime(activity.created_at)}
@@ -1236,7 +1210,7 @@ export default function BuyerDetailPage() {
                         
                         <Box sx={{ width: '100%', mb: 1 }}>
                           <Typography variant="caption" color="text.secondary">
-                            送信者: {displayName} ({metadata.senderEmail || '-'})
+                            送信老E {displayName} ({metadata.senderEmail || '-'})
                           </Typography>
                         </Box>
                         
@@ -1260,7 +1234,7 @@ export default function BuyerDetailPage() {
                         {metadata.preViewingNotes && (
                           <Box sx={{ width: '100%', mt: 1, p: 1, bgcolor: 'grey.50', borderRadius: 1 }}>
                             <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
-                              内覧前伝達事項:
+                              冁E��前伝達事頁E
                             </Typography>
                             <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', fontSize: '0.85rem' }}>
                               {metadata.preViewingNotes}
@@ -1282,20 +1256,20 @@ export default function BuyerDetailPage() {
       </Box>
 
       {/* 関連買主セクション */}
-      {buyer?.id && (
+      {buyer_number && (
         <Box sx={{ mt: 3 }}>
-          <RelatedBuyersSection buyerId={buyer.id} />
+          <RelatedBuyersSection buyerNumber={buyer_number} />
         </Box>
       )}
 
       {/* 統合問合せ履歴 */}
-      {buyer?.id && (
+      {buyer_number && (
         <Box sx={{ mt: 3 }}>
-          <UnifiedInquiryHistoryTable buyerId={buyer.id} />
+          <UnifiedInquiryHistoryTable buyerNumber={buyer_number} />
         </Box>
       )}
 
-      {/* スナックバー */}
+      {/* スナックバ�E */}
       <Snackbar
         open={snackbar.open}
         autoHideDuration={6000}
@@ -1316,7 +1290,7 @@ export default function BuyerDetailPage() {
         buyerInfo={buyer ? {
           name: buyer.name || '',
           email: buyer.email || '',
-          buyerId: buyer.id || buyer_number || '',
+          buyerId: buyer_number || '',
         } : undefined}
       />
     </Container>

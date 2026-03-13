@@ -249,7 +249,7 @@ export default function BuyerInquiryHistoryPage() {
           {/* Gmail Send Button */}
           {buyer && (
             <BuyerGmailSendButton
-              buyerId={buyer.id || buyer_number || ''}
+              buyerId={buyer_number || ''}
               buyerEmail={buyer.email || ''}
               buyerName={buyer.name || ''}
               inquiryHistory={inquiryHistoryTable}
