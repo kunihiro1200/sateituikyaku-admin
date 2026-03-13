@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Container,
@@ -152,7 +152,7 @@ export default function BuyerViewingResultPage() {
     }
   };
 
-  const handleInlineFieldSave = async (fieldName: string, newValue: any): Promise<void> => {
+  const handleInlineFieldSave = useCallback(async (fieldName: string, newValue: any): Promise<void> => {
     if (!buyer) return;
 
     try {
@@ -172,7 +172,7 @@ export default function BuyerViewingResultPage() {
       console.error('Failed to update field:', error);
       throw new Error(error.response?.data?.error || '更新に失敗しました');
     }
-  };
+  }, [buyer, buyer_number]);
 
   const handleViewingResultQuickInput = async (text: string, buttonLabel: string) => {
     if (!buyer || isQuickInputSaving) return;
@@ -858,7 +858,7 @@ export default function BuyerViewingResultPage() {
                   options={getFilteredLatestStatusOptions()}
                   fieldName="latest_status"
                   buyerId={buyer_number}
-                  enableConflictDetection={true}
+                  enableConflictDetection={false}
                   showEditIndicator={true}
                   oneClickDropdown={true}
                 />
