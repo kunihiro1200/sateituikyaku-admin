@@ -20,6 +20,7 @@ import {
 import { 
   ArrowBack as ArrowBackIcon,
   Email as EmailIcon,
+  ContentCopy as ContentCopyIcon,
 } from '@mui/icons-material';
 import api, { buyerApi } from '../services/api';
 import PropertyInfoCard from '../components/PropertyInfoCard';
@@ -202,6 +203,8 @@ export default function BuyerDetailPage() {
 
   // クイックボタンの状態管理
   const { isDisabled: isQuickButtonDisabled, disableButton: disableQuickButton } = useQuickButtonState(buyer_number || '');
+
+  const [copiedBuyerNumber, setCopiedBuyerNumber] = useState(false);
 
   // useStableContainerHeightフックを使用して安定した高さ管理
   const { error: heightError } = useStableContainerHeight({
@@ -603,6 +606,22 @@ export default function BuyerDetailPage() {
           <Typography variant="h5" fontWeight="bold">
             {buyer.name || buyer.buyer_number}
           </Typography>
+          {buyer.buyer_number && (
+            <Tooltip title={copiedBuyerNumber ? 'コピーしました！' : '買主番号をコピー'}>
+              <Chip
+                label={buyer.buyer_number}
+                size="small"
+                color="primary"
+                icon={<ContentCopyIcon fontSize="small" />}
+                onClick={() => {
+                  navigator.clipboard.writeText(buyer.buyer_number || '');
+                  setCopiedBuyerNumber(true);
+                  setTimeout(() => setCopiedBuyerNumber(false), 1500);
+                }}
+                sx={{ cursor: 'pointer' }}
+              />
+            </Tooltip>
+          )}
           {buyer.inquiry_confidence && (
             <Chip label={buyer.inquiry_confidence} color="info" sx={{ ml: 2 }} />
           )}
@@ -614,7 +633,29 @@ export default function BuyerDetailPage() {
             onClick={scrollToRelatedBuyers}
           />
         </Box>
-
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Button
+            variant="outlined"
+            size="medium"
+            onClick={() => navigate(`/buyers/${buyer_number}/inquiry-history`)}
+          >
+            問い合わせ履歴 ({inquiryHistoryTable.length})
+          </Button>
+          <Button
+            variant="outlined"
+            size="medium"
+            onClick={() => navigate(`/buyers/${buyer_number}/desired-conditions`)}
+          >
+            希望条件
+          </Button>
+          <Button
+            variant="outlined"
+            size="medium"
+            onClick={() => navigate(`/buyers/${buyer_number}/viewing-result`)}
+          >
+            内覧
+          </Button>
+        </Box>
       </Box>
 
       {/* 問い合わせ履歴テーブルセクション */}
