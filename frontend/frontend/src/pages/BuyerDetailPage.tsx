@@ -596,7 +596,7 @@ export default function BuyerDetailPage() {
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
           <IconButton 
-            onClick={() => navigate(-1)} 
+            onClick={() => navigate('/buyers')} 
             sx={{ mr: 2 }}
             aria-label="戻る"
           >
