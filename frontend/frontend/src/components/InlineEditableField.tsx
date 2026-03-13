@@ -23,7 +23,7 @@ import { ConflictNotification } from './ConflictNotification';
 export interface InlineEditableFieldProps {
   value: any;
   fieldName: string;
-  fieldType: 'text' | 'email' | 'phone' | 'date' | 'dropdown' | 'textarea' | 'number';
+  fieldType: 'text' | 'email' | 'phone' | 'date' | 'time' | 'dropdown' | 'textarea' | 'number';
   onSave: (value: any) => Promise<void>;
   validation?: (value: any) => string | null;
   validationRules?: ValidationRule[];
@@ -280,6 +280,16 @@ export const InlineEditableField: React.FC<InlineEditableFieldProps> = memo(({
               </Typography>
             )}
           </FormControl>
+        );
+
+      case 'time':
+        return (
+          <TextField
+            {...commonProps}
+            type="time"
+            InputLabelProps={{ shrink: true }}
+            inputProps={{ step: 300 }}
+          />
         );
 
       case 'date':
