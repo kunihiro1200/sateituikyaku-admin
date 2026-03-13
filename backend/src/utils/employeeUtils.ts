@@ -327,6 +327,34 @@ export class EmployeeUtils extends BaseRepository {
       }
 
       if (matchedEmployees.length === 0) {
+        // フォールバック2: 名前の部分一致で検索（例: sales_assignee="国広" → name="国広智子"）
+        console.log('[EmployeeUtils] Falling back to name partial match');
+        const nameMatches = employees.filter((employee: any) => {
+          return employee.name && employee.name.includes(initials.trim());
+        });
+
+        if (nameMatches.length === 1) {
+          const matched = nameMatches[0];
+          const result: EmployeeLookupResult = {
+            id: matched.id,
+            name: matched.name,
+            email: matched.email,
+            initials: normalizedInitials
+          };
+          console.log('[EmployeeUtils] Employee found via name partial match:', result);
+          return result;
+        } else if (nameMatches.length > 1) {
+          const names = nameMatches.map((e: any) => e.name).join(', ');
+          console.warn(`[EmployeeUtils] Multiple employees match name "${initials}": ${names}. Using first match.`);
+          const matched = nameMatches[0];
+          return {
+            id: matched.id,
+            name: matched.name,
+            email: matched.email,
+            initials: normalizedInitials
+          };
+        }
+
         console.log(`[EmployeeUtils] No employee found with initials: ${normalizedInitials}`);
         return null;
       }

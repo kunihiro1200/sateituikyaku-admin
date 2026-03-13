@@ -5,6 +5,7 @@ import { GoogleAuthService } from '../services/GoogleAuthService';
 import { EmployeeUtils } from '../utils/employeeUtils';
 import { EmailService } from '../services/EmailService';
 import { authenticate } from '../middleware/auth';
+import { decrypt } from '../utils/encryption';
 import { createClient } from '@supabase/supabase-js';
 
 const router = Router();
@@ -206,8 +207,16 @@ router.post(
             .eq('seller_number', propertyNumber)
             .single();
           if (sellerData) {
-            ownerName = sellerData.name || 'なし';
-            ownerPhone = sellerData.phone_number || 'なし';
+            try {
+              ownerName = sellerData.name ? decrypt(sellerData.name) : 'なし';
+            } catch {
+              ownerName = sellerData.name || 'なし';
+            }
+            try {
+              ownerPhone = sellerData.phone_number ? decrypt(sellerData.phone_number) : 'なし';
+            } catch {
+              ownerPhone = sellerData.phone_number || 'なし';
+            }
           }
         }
 
