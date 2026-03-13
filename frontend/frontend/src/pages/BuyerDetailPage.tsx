@@ -651,7 +651,7 @@ export default function BuyerDetailPage() {
           <Button
             variant="outlined"
             size="small"
-            onClick={() => navigate(`/buyers/${buyer_number}/viewing`)}
+            onClick={() => navigate(`/buyers/${buyer_number}/viewing-result`)}
           >
             内覧
           </Button>
