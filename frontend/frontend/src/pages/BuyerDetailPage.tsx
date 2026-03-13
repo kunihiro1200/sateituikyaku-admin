@@ -96,16 +96,6 @@ const INQUIRY_HEARING_QUICK_INPUTS = [
 
 const BUYER_FIELD_SECTIONS = [
   {
-    title: '基本情報',
-    fields: [
-      { key: 'buyer_number', label: '買主番号', inlineEditable: true, readOnly: true },
-      { key: 'name', label: '氏名・会社名', inlineEditable: true },
-      { key: 'phone_number', label: '電話番号', inlineEditable: true },
-      { key: 'email', label: 'メールアドレス', inlineEditable: true },
-      { key: 'company_name', label: '法人名', inlineEditable: true },
-    ],
-  },
-  {
     title: '問合せ・内覧情報',
     fields: [
       { key: 'initial_assignee', label: '初動担当', inlineEditable: true },
@@ -122,6 +112,16 @@ const BUYER_FIELD_SECTIONS = [
       { key: 'latest_viewing_date', label: '内覧日(最新)', type: 'date', inlineEditable: true },
       // viewing_notes は PropertyInfoCard 内に移動
       { key: 'next_call_date', label: '次電日', type: 'date', inlineEditable: true },
+    ],
+  },
+  {
+    title: '基本情報',
+    fields: [
+      { key: 'buyer_number', label: '買主番号', inlineEditable: true, readOnly: true },
+      { key: 'name', label: '氏名・会社名', inlineEditable: true },
+      { key: 'phone_number', label: '電話番号', inlineEditable: true },
+      { key: 'email', label: 'メールアドレス', inlineEditable: true },
+      { key: 'company_name', label: '法人名', inlineEditable: true },
     ],
   },
   {
