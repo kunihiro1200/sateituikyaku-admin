@@ -265,7 +265,7 @@ router.get('/:id/inquiry-history', async (req: Request, res: Response) => {
       if (!buyer) {
         return res.status(404).json({ error: 'Buyer not found' });
       }
-      buyerId = buyer.id;
+      buyerId = buyer.buyer_id;
     }
     
     const inquiryHistory = await buyerService.getInquiryHistory(buyerId);
@@ -349,7 +349,7 @@ router.get('/:buyerId/email-history', async (req: Request, res: Response) => {
       if (!buyer) {
         return res.status(404).json({ error: 'Buyer not found' });
       }
-      actualBuyerId = buyer.id;
+      actualBuyerId = buyer.buyer_id;
     }
     
     const emailHistory = await emailHistoryService.getEmailHistory(actualBuyerId);
@@ -361,7 +361,7 @@ router.get('/:buyerId/email-history', async (req: Request, res: Response) => {
 });
 
 // 関連買主を取得
-router.get('/:id/related', uuidValidationMiddleware('id'), async (req: Request, res: Response) => {
+router.get('/:id/related', async (req: Request, res: Response) => {
   const startTime = Date.now();
   const { id } = req.params;
   
@@ -385,7 +385,7 @@ router.get('/:id/related', uuidValidationMiddleware('id'), async (req: Request, 
           details: { buyer_number: id }
         });
       }
-      buyerId = buyer.id;
+      buyerId = buyer.buyer_id;
       console.log(`[API] Resolved buyer_number ${id} to UUID ${buyerId}`);
     }
     
@@ -465,7 +465,7 @@ router.get('/:id/unified-inquiry-history', uuidValidationMiddleware('id'), async
           details: { buyer_number: id }
         });
       }
-      buyerId = buyer.id;
+      buyerId = buyer.buyer_id;
       console.log(`[API] Resolved buyer_number ${id} to UUID ${buyerId}`);
     }
     
@@ -787,7 +787,7 @@ router.delete('/:id', async (req: Request, res: Response) => {
       if (!buyer) {
         return res.status(404).json({ error: 'Buyer not found' });
       }
-      buyerId = buyer.id;
+      buyerId = buyer.buyer_id;
     }
 
     await buyerService.softDelete(buyerId);
@@ -813,7 +813,7 @@ router.post('/:id/restore', async (req: Request, res: Response) => {
       if (!buyer) {
         return res.status(404).json({ error: 'Buyer not found' });
       }
-      buyerId = buyer.id;
+      buyerId = buyer.buyer_id;
     }
 
     const restored = await buyerService.restore(buyerId);
