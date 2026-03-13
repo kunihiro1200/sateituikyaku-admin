@@ -1,4 +1,4 @@
-﻿/**
+/**
  * 強化版自動同期サービス
  * 
  * スプレッドシートからDBへの自動同期を管理します。
@@ -3195,8 +3195,10 @@ export class EnhancedAutoSyncService {
         recoveredAt: new Date(recoveredAt),
         recoveredBy,
         details: {
-          buyerRestored: true,
+          sellerRestored: false,
+          propertiesRestored: 0,
           auditRecordUpdated,
+          buyerRestored: true,
         },
       };
 
