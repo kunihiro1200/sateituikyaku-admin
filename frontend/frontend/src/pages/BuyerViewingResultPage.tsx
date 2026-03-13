@@ -225,8 +225,17 @@ export default function BuyerViewingResultPage() {
 
     // バリデーション成功時：バックエンドAPIを呼び出してカレンダーに登録
     try {
-      // 内覧日時を取得
-      const viewingDate = new Date(buyer.latest_viewing_date);
+      // 内覧日時を取得（スラッシュ区切り "2025/3/14" をハイフン区切りに変換）
+      const rawViewingDate = buyer.latest_viewing_date?.replace(/\//g, '-') || '';
+      const viewingDate = new Date(rawViewingDate);
+      if (isNaN(viewingDate.getTime())) {
+        setSnackbar({
+          open: true,
+          message: '内覧日が正しい形式ではありません',
+          severity: 'error',
+        });
+        return;
+      }
       const viewingTime = buyer.viewing_time || '14:00';
       
       // 時間をパース
