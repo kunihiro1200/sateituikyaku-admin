@@ -225,9 +225,21 @@ export default function BuyerViewingResultPage() {
 
     // バリデーション成功時：バックエンドAPIを呼び出してカレンダーに登録
     try {
-      // 内覧日時を取得（スラッシュ区切り "2025/3/14" をハイフン区切りに変換）
-      const rawViewingDate = buyer.latest_viewing_date?.replace(/\//g, '-') || '';
-      const viewingDate = new Date(rawViewingDate);
+      // 内覧日時を取得（"2025/3/14" や "2025-3-14" を YYYY-MM-DD 形式に正規化）
+      const rawViewingDate = buyer.latest_viewing_date || '';
+      const dateParts = rawViewingDate.split(/[\/\-]/);
+      if (dateParts.length !== 3) {
+        setSnackbar({
+          open: true,
+          message: '内覧日が正しい形式ではありません',
+          severity: 'error',
+        });
+        return;
+      }
+      const year = dateParts[0].padStart(4, '0');
+      const month = dateParts[1].padStart(2, '0');
+      const day = dateParts[2].padStart(2, '0');
+      const viewingDate = new Date(`${year}-${month}-${day}T00:00:00`);
       if (isNaN(viewingDate.getTime())) {
         setSnackbar({
           open: true,
