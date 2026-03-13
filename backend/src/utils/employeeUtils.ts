@@ -268,7 +268,35 @@ export class EmployeeUtils extends BaseRepository {
       const normalizedInitials = initials.trim().toUpperCase();
       console.log('[EmployeeUtils] Normalized initials:', normalizedInitials);
 
-      // 全従業員を取得
+      // DBのinitialsカラムで直接検索（最優先）
+      const { data: directMatches, error: directError } = await this.table('employees')
+        .select('id, name, email, initials')
+        .eq('is_active', true)
+        .eq('initials', normalizedInitials);
+
+      if (directError) {
+        console.error('[EmployeeUtils] Error fetching employees by initials column:', directError);
+      }
+
+      if (directMatches && directMatches.length > 0) {
+        if (directMatches.length > 1) {
+          const names = directMatches.map((e: any) => e.name).join(', ');
+          console.error(`[EmployeeUtils] DUPLICATE INITIALS DETECTED: "${normalizedInitials}" matches multiple employees: ${names}`);
+          throw new Error(`イニシャル（${initials}）が複数の社員に一致します: ${names}`);
+        }
+        const matched = directMatches[0];
+        const result: EmployeeLookupResult = {
+          id: matched.id,
+          name: matched.name,
+          email: matched.email,
+          initials: normalizedInitials
+        };
+        console.log('[EmployeeUtils] Employee found via initials column:', result);
+        return result;
+      }
+
+      // フォールバック: 全従業員を取得して名前からイニシャルを計算
+      console.log('[EmployeeUtils] Falling back to name-based initials extraction');
       const { data: employees, error } = await this.table('employees')
         .select('id, name, email')
         .eq('is_active', true);
@@ -286,7 +314,7 @@ export class EmployeeUtils extends BaseRepository {
       console.log(`[EmployeeUtils] Searching through ${employees.length} active employees`);
 
       // 名前からイニシャルを抽出してマッチング
-      const matchedEmployees = employees.filter((employee) => {
+      const matchedEmployees = employees.filter((employee: any) => {
         const extractedInitials = this.extractInitials(employee.name);
         return extractedInitials === normalizedInitials;
       });
