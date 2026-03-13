@@ -2,10 +2,12 @@ import { Router, Request, Response } from 'express';
 import { GoogleAuthService } from '../services/GoogleAuthService';
 import { EmployeeUtils } from '../utils/employeeUtils';
 import { authenticate } from '../middleware/auth';
+import { StaffManagementService } from '../services/StaffManagementService';
 
 const router = Router();
 const googleAuthService = new GoogleAuthService();
 const employeeUtils = new EmployeeUtils();
+const staffManagementService = new StaffManagementService();
 
 // 全てのルートに認証を適用
 router.use(authenticate);
@@ -56,34 +58,44 @@ router.get('/active', async (req: Request, res: Response) => {
 
 /**
  * 有効なスタッフのイニシャル一覧を取得（後続担当ボタン用）
- * employeesテーブルのis_active=trueかつinitialsが存在するスタッフを返す
+ * スタッフ管理スプレッドシートのH列「有効」=TRUEのスタッフを返す
+ * スプシ取得失敗時はDBのemployeesテーブルにフォールバック
  */
 router.get('/active-initials', async (req: Request, res: Response) => {
   try {
-    const { data: employees, error } = await employeeUtils['table']('employees')
-      .select('initials, name')
-      .eq('is_active', true)
-      .not('initials', 'is', null)
-      .order('name');
-
-    if (error) throw error;
-
-    const activeInitials = (employees || [])
-      .map((emp: any) => emp.initials)
-      .filter((initial: any) => initial && String(initial).trim() !== '');
-
-    console.log(`[active-initials] Returning ${activeInitials.length} active staff initials from DB:`, activeInitials);
+    // スプシから有効なイニシャルを取得
+    const activeInitials = await staffManagementService.getActiveInitials();
+    console.log(`[active-initials] Returning ${activeInitials.length} active staff initials from spreadsheet:`, activeInitials);
     res.json({ initials: activeInitials });
-  } catch (error: any) {
-    console.error('[active-initials] Error:', error.message, error.stack);
-    res.status(500).json({
-      error: {
-        code: 'GET_ACTIVE_INITIALS_ERROR',
-        message: 'Failed to get active staff initials',
-        detail: error.message,
-        retryable: true,
-      },
-    });
+  } catch (spreadsheetError: any) {
+    console.warn('[active-initials] Spreadsheet fetch failed, falling back to DB:', spreadsheetError.message);
+    // フォールバック: DBのemployeesテーブルから取得
+    try {
+      const { data: employees, error } = await employeeUtils['table']('employees')
+        .select('initials, name')
+        .eq('is_active', true)
+        .not('initials', 'is', null)
+        .order('name');
+
+      if (error) throw error;
+
+      const activeInitials = (employees || [])
+        .map((emp: any) => emp.initials)
+        .filter((initial: any) => initial && String(initial).trim() !== '');
+
+      console.log(`[active-initials] Fallback: Returning ${activeInitials.length} active staff initials from DB:`, activeInitials);
+      res.json({ initials: activeInitials });
+    } catch (dbError: any) {
+      console.error('[active-initials] DB fallback also failed:', dbError.message);
+      res.status(500).json({
+        error: {
+          code: 'GET_ACTIVE_INITIALS_ERROR',
+          message: 'Failed to get active staff initials',
+          detail: dbError.message,
+          retryable: true,
+        },
+      });
+    }
   }
 });
 
