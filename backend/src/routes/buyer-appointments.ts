@@ -48,7 +48,7 @@ router.post(
         });
       }
 
-      const { buyerNumber, startTime, endTime, assignedTo, buyerName, buyerPhone, buyerEmail, viewingMobile, propertyAddress, propertyGoogleMapUrl, inquiryHearing, creatorName } = req.body;
+      const { buyerNumber, startTime, endTime, assignedTo, buyerName, buyerPhone, buyerEmail, viewingMobile, propertyAddress, propertyGoogleMapUrl, inquiryHearing, creatorName, customTitle, customDescription } = req.body;
 
       // 後続担当イニシャルから従業員情報を取得
       console.log('[BuyerAppointments] Looking up assigned employee by initials:', assignedTo);
@@ -120,19 +120,22 @@ router.post(
       }
 
       // カレンダーイベントを作成
+      const defaultTitle = `${viewingMobile || '内覧'} ${propertyAddress || ''} ${buyerName || buyerNumber}`;
+      const defaultDescription =
+        `物件住所: ${propertyAddress || 'なし'}\n` +
+        `GoogleMap: ${propertyGoogleMapUrl || 'なし'}\n` +
+        `\n` +
+        `お客様名: ${buyerName || buyerNumber}\n` +
+        `電話番号: ${buyerPhone || 'なし'}\n` +
+        `問合時ヒアリング: ${inquiryHearing || 'なし'}\n` +
+        `内覧取得者名: ${creatorName || 'なし'}\n` +
+        `\n` +
+        `買主詳細ページ:\n${(process.env.FRONTEND_URL || 'http://localhost:3000').split(',')[0].trim()}/buyers/${buyerNumber}`;
+
       const eventData = {
-        summary: `${viewingMobile || '内覧'} ${propertyAddress || ''} ${buyerName || buyerNumber}`,
+        summary: customTitle || defaultTitle,
         location: propertyAddress || '',
-        description: 
-          `物件住所: ${propertyAddress || 'なし'}\n` +
-          `GoogleMap: ${propertyGoogleMapUrl || 'なし'}\n` +
-          `\n` +
-          `お客様名: ${buyerName || buyerNumber}\n` +
-          `電話番号: ${buyerPhone || 'なし'}\n` +
-          `問合時ヒアリング: ${inquiryHearing || 'なし'}\n` +
-          `内覧取得者名: ${creatorName || 'なし'}\n` +
-          `\n` +
-          `買主詳細ページ:\n${(process.env.FRONTEND_URL || 'http://localhost:3000').split(',')[0].trim()}/buyers/${buyerNumber}`,
+        description: customDescription || defaultDescription,
         startTime: new Date(startTime),
         endTime: new Date(endTime),
       };

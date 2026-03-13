@@ -59,6 +59,8 @@ export default function BuyerViewingResultPage() {
     assignee: string;
     propertyAddress: string;
     googleMapUrl: string;
+    title: string;
+    description: string;
   }>({
     open: false,
     viewingDate: '',
@@ -66,6 +68,8 @@ export default function BuyerViewingResultPage() {
     assignee: '',
     propertyAddress: '',
     googleMapUrl: '',
+    title: '',
+    description: '',
   });
 
   useEffect(() => {
@@ -238,6 +242,16 @@ export default function BuyerViewingResultPage() {
     // 物件情報を取得
     const property = linkedProperties && linkedProperties.length > 0 ? linkedProperties[0] : null;
 
+    // タイトルと説明の初期値を生成
+    const defaultTitle = `${buyer.viewing_mobile || '内覧'} ${property?.address || ''} ${buyer.name || buyer.buyer_number}`.trim();
+    const defaultDescription =
+      `物件住所: ${property?.address || 'なし'}\n` +
+      `GoogleMap: ${property?.google_map_url || 'なし'}\n` +
+      `\n` +
+      `お客様名: ${buyer.name || buyer.buyer_number}\n` +
+      `電話番号: ${buyer.phone_number || 'なし'}\n` +
+      `問合時ヒアリング: ${buyer.inquiry_hearing || 'なし'}`;
+
     // 確認ダイアログを開く
     setCalendarConfirmDialog({
       open: true,
@@ -246,6 +260,8 @@ export default function BuyerViewingResultPage() {
       assignee: buyer.follow_up_assignee || '',
       propertyAddress: property?.address || '',
       googleMapUrl: property?.google_map_url || '',
+      title: defaultTitle,
+      description: defaultDescription,
     });
   };
 
@@ -299,6 +315,8 @@ export default function BuyerViewingResultPage() {
         propertyGoogleMapUrl: property?.google_map_url || '',
         inquiryHearing: buyer.inquiry_hearing || '',
         creatorName: buyer.name,
+        customTitle: calendarConfirmDialog.title,
+        customDescription: calendarConfirmDialog.description,
       });
 
       console.log('[BuyerViewingResultPage] Calendar event created:', response.data);
@@ -308,6 +326,14 @@ export default function BuyerViewingResultPage() {
         message: `後続担当（${buyer.follow_up_assignee}）のGoogleカレンダーに内覧予約を登録しました`,
         severity: 'success',
       });
+
+      // 登録成功後にGoogleカレンダーを開く
+      const calendarEventId = response.data?.calendarEventId;
+      if (calendarEventId) {
+        window.open(`https://calendar.google.com/calendar/r/eventedit/${calendarEventId}`, '_blank');
+      } else {
+        window.open('https://calendar.google.com/calendar/r', '_blank');
+      }
     } catch (error: any) {
       console.error('[BuyerViewingResultPage] Calendar event creation error:', error);
       const errorMessage = error.response?.data?.error?.message || 'カレンダー登録に失敗しました';
@@ -959,26 +985,40 @@ export default function BuyerViewingResultPage() {
       {/* スナックバー */}
       {/* カレンダー登録確認ダイアログ */}
       <Dialog open={calendarConfirmDialog.open} onClose={() => setCalendarConfirmDialog(prev => ({ ...prev, open: false }))} maxWidth="sm" fullWidth>
-        <DialogTitle>📅 Googleカレンダーに登録しますか？</DialogTitle>
+        <DialogTitle>📅 Googleカレンダーに登録</DialogTitle>
         <DialogContent>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mt: 1 }}>
-            <Box>
-              <Typography variant="caption" color="text.secondary">内覧日時</Typography>
-              <Typography variant="body1">{calendarConfirmDialog.viewingDate} {calendarConfirmDialog.viewingTime}</Typography>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
+            <Box sx={{ display: 'flex', gap: 1 }}>
+              <Box sx={{ flex: 1 }}>
+                <Typography variant="caption" color="text.secondary">内覧日時</Typography>
+                <Typography variant="body2">{calendarConfirmDialog.viewingDate} {calendarConfirmDialog.viewingTime}</Typography>
+              </Box>
+              <Box sx={{ flex: 1 }}>
+                <Typography variant="caption" color="text.secondary">後続担当</Typography>
+                <Typography variant="body2">{calendarConfirmDialog.assignee || '（未設定）'}</Typography>
+              </Box>
             </Box>
-            <Box>
-              <Typography variant="caption" color="text.secondary">後続担当</Typography>
-              <Typography variant="body1">{calendarConfirmDialog.assignee || '（未設定）'}</Typography>
-            </Box>
-            <Box>
-              <Typography variant="caption" color="text.secondary">物件住所</Typography>
-              <Typography variant="body1">{calendarConfirmDialog.propertyAddress || '（未設定）'}</Typography>
-            </Box>
+            <TextField
+              label="タイトル"
+              value={calendarConfirmDialog.title}
+              onChange={(e) => setCalendarConfirmDialog(prev => ({ ...prev, title: e.target.value }))}
+              fullWidth
+              size="small"
+            />
+            <TextField
+              label="説明"
+              value={calendarConfirmDialog.description}
+              onChange={(e) => setCalendarConfirmDialog(prev => ({ ...prev, description: e.target.value }))}
+              fullWidth
+              multiline
+              rows={5}
+              size="small"
+            />
           </Box>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setCalendarConfirmDialog(prev => ({ ...prev, open: false }))}>キャンセル</Button>
-          <Button onClick={handleCalendarConfirm} variant="contained" color="primary">保存してカレンダーに登録</Button>
+          <Button onClick={handleCalendarConfirm} variant="contained" color="primary">カレンダーに登録</Button>
         </DialogActions>
       </Dialog>
 
