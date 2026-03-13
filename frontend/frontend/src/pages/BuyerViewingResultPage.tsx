@@ -491,6 +491,20 @@ export default function BuyerViewingResultPage() {
                 }}
                 fieldType="date"
               />
+              {/* クリアボタン（常に表示） */}
+              <Button
+                size="small"
+                variant="outlined"
+                color="error"
+                fullWidth
+                sx={{ mt: 0.5, fontSize: '0.7rem', padding: '2px 4px' }}
+                onClick={async () => {
+                  await handleInlineFieldSave('latest_viewing_date', null);
+                  await handleInlineFieldSave('viewing_time', null);
+                }}
+              >
+                🗑️ 内覧日をクリア
+              </Button>
               {/* カレンダーリンクボタン */}
               {buyer.latest_viewing_date && (
                 <Button
