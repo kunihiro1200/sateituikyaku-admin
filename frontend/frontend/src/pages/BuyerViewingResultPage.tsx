@@ -254,10 +254,21 @@ export default function BuyerViewingResultPage() {
         });
         return;
       }
-      const viewingTime = buyer.viewing_time || '14:00';
+      const rawViewingTime = buyer.viewing_time || '14:00';
       
-      // 時間をパース
-      const [hours, minutes] = viewingTime.split(':').map(Number);
+      // 時間をパース（"14:30" または "1430" 形式に対応）
+      let hours: number, minutes: number;
+      if (rawViewingTime.includes(':')) {
+        [hours, minutes] = rawViewingTime.split(':').map(Number);
+      } else if (/^\d{3,4}$/.test(rawViewingTime.trim())) {
+        // "1430" -> 14時30分, "930" -> 9時30分
+        const t = rawViewingTime.trim().padStart(4, '0');
+        hours = parseInt(t.substring(0, 2), 10);
+        minutes = parseInt(t.substring(2, 4), 10);
+      } else {
+        hours = 14;
+        minutes = 0;
+      }
       viewingDate.setHours(hours, minutes, 0, 0);
       
       // 終了時刻（1時間後）
