@@ -185,12 +185,15 @@ router.post(
         stack: error.stack,
         assignedTo: req.body.assignedTo,
         buyerNumber: req.body.buyerNumber,
+        errorCode: error.code,
+        errorStatus: error.status,
+        errorResponse: error.response?.data,
       });
       
       res.status(500).json({
         error: {
           code: 'CREATE_APPOINTMENT_ERROR',
-          message: 'Failed to create appointment',
+          message: `カレンダー登録に失敗しました: ${error.message}`,
           details: error.message,
           retryable: true,
         },
