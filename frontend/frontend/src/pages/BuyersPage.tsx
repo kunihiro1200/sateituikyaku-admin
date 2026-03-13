@@ -46,6 +46,11 @@ interface Buyer {
   desired_property_type: string;
   calculated_status?: string;
   status_color?: string;
+  // 物件情報
+  property_address?: string;
+  property_type?: string;
+  atbb_status?: string;
+  property_sales_assignee?: string;
 }
 
 export default function BuyersPage() {
@@ -125,6 +130,51 @@ export default function BuyersPage() {
 
   const handleRowClick = (buyerId: string) => {
     navigate(`/buyers/${buyerId}`);
+  };
+
+  // 確度の頭文字のみを抽出（A, B, C, AZ, BZ等）
+  const extractConfidencePrefix = (confidence: string | null | undefined) => {
+    if (!confidence) return '-';
+    // 最初のアルファベット列を抽出（例: A, B, C → A, B, C、AZ, BZ → AZ, BZ）
+    const match = confidence.match(/^([A-Z]+)/);
+    return match ? match[1] : confidence;
+  };
+
+  // atbb_statusの表示を改善
+  const formatAtbbStatus = (atbbStatus: string | null | undefined) => {
+    if (!atbbStatus) return '-';
+
+    // 「専任・公開中」→「専任」
+    if (atbbStatus.includes('専任') && atbbStatus.includes('公開中')) {
+      return '専任';
+    }
+
+    // 「一般・公開中」→「一般」
+    if (atbbStatus.includes('一般') && atbbStatus.includes('公開中')) {
+      return '一般';
+    }
+
+    // その他はそのまま表示
+    return atbbStatus;
+  };
+
+  // 最新確度を優先して表示
+  const getDisplayConfidence = (buyer: Buyer) => {
+    // latest_statusがあれば最新確度を優先
+    if (buyer.latest_status) {
+      return {
+        label: extractConfidencePrefix(buyer.latest_status),
+        color: 'secondary' as const, // 紫色
+      };
+    }
+    // なければ問合時確度
+    if (buyer.inquiry_confidence) {
+      return {
+        label: extractConfidencePrefix(buyer.inquiry_confidence),
+        color: 'info' as const, // 青色
+      };
+    }
+    return null;
   };
 
   const formatDate = (dateStr: string | null | undefined) => {
@@ -255,13 +305,14 @@ export default function BuyersPage() {
                 <TableRow sx={{ bgcolor: '#f5f5f5' }}>
                   <TableCell>買主番号</TableCell>
                   <TableCell>氏名</TableCell>
-                  <TableCell>電話番号</TableCell>
-                  <TableCell>物件番号</TableCell>
+                  <TableCell>物件所在地</TableCell>
+                  <TableCell>物件担当</TableCell>
+                  <TableCell>種別</TableCell>
+                  <TableCell>atbb_status</TableCell>
                   <TableCell>担当</TableCell>
                   <TableCell>確度</TableCell>
                   <TableCell>受付日</TableCell>
                   <TableCell>次電日</TableCell>
-                  <TableCell>ステータス</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -275,6 +326,7 @@ export default function BuyersPage() {
                   </TableRow>
                 ) : (
                   buyers.map((buyer) => {
+                    const displayConfidence = getDisplayConfidence(buyer);
                     return (
                       <TableRow
                         key={buyer.buyer_id || buyer.buyer_number}
@@ -288,43 +340,24 @@ export default function BuyersPage() {
                           </Typography>
                         </TableCell>
                         <TableCell>{buyer.name || '-'}</TableCell>
-                        <TableCell>{buyer.phone_number || '-'}</TableCell>
-                        <TableCell>
-                          {buyer.property_number && (
-                            <Chip label={buyer.property_number} size="small" variant="outlined" />
-                          )}
+                        <TableCell sx={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {buyer.property_address || '-'}
                         </TableCell>
+                        <TableCell>{buyer.property_sales_assignee || '-'}</TableCell>
+                        <TableCell>{buyer.property_type || '-'}</TableCell>
+                        <TableCell>{formatAtbbStatus(buyer.atbb_status)}</TableCell>
                         <TableCell>{buyer.follow_up_assignee || buyer.initial_assignee || '-'}</TableCell>
                         <TableCell>
-                          {buyer.inquiry_confidence && (
+                          {displayConfidence && (
                             <Chip 
-                              label={buyer.inquiry_confidence} 
+                              label={displayConfidence.label} 
                               size="small" 
-                              sx={{
-                                backgroundColor: SECTION_COLORS.buyer.light,
-                                color: SECTION_COLORS.buyer.contrastText,
-                              }}
+                              color={displayConfidence.color}
                             />
                           )}
                         </TableCell>
                         <TableCell>{formatDate(buyer.reception_date)}</TableCell>
                         <TableCell>{formatDate(buyer.next_call_date)}</TableCell>
-                        <TableCell>
-                          {buyer.latest_status && (
-                            <Chip 
-                              label={buyer.latest_status.substring(0, 20)} 
-                              size="small" 
-                              sx={{ maxWidth: 150 }}
-                            />
-                          )}
-                          {buyer.calculated_status && (
-                            <Chip
-                              label={buyer.calculated_status.substring(0, 20)}
-                              size="small"
-                              sx={{ maxWidth: 150, mt: 0.5, bgcolor: buyer.status_color || '#cccccc', color: '#fff' }}
-                            />
-                          )}
-                        </TableCell>
                       </TableRow>
                     );
                   })
