@@ -18,16 +18,13 @@ router.post('/send-to-buyer', async (req, res) => {
     }
 
     // メール送信
-    const result = await emailService.sendEmailWithImages({
-      sellerId: '',
-      sellerNumber: '',
-      to: buyer.email,
+    await emailService.sendEmail({
+      to: [buyer.email],
       subject: customizations?.subject || 'お問い合わせの物件について',
       body: customizations?.body || '',
-      from: customizations?.from || '',
     });
 
-    res.json({ success: true, result });
+    res.json({ success: true });
   } catch (error) {
     console.error('Gmail送信エラー:', error);
     res.status(500).json({ error: 'メール送信に失敗しました' });

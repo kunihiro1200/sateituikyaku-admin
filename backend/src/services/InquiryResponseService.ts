@@ -242,14 +242,14 @@ HP：https://ifoo-oita.com/
     employeeId?: string
   ): Promise<EmailResult> {
     try {
-      // EmailServiceのsendDistributionEmailメソッドを使用
-      const result = await this.emailService.sendDistributionEmail({
-        senderAddress: params.senderAddress,
-        recipients: [params.buyerEmail],
+      // EmailServiceのsendEmailメソッドを使用
+      await this.emailService.sendEmail({
+        to: [params.buyerEmail],
         subject: emailContent.subject,
         body: emailContent.body,
-        propertyNumber: params.propertyNumbers.join(','),
       });
+
+      const result = { success: true };
 
       if (result.success) {
         // Save email history if buyerId is provided
@@ -301,7 +301,7 @@ HP：https://ifoo-oita.com/
       } else {
         return {
           success: false,
-          error: result.message,
+          error: 'Failed to send email',
         };
       }
     } catch (error: any) {
