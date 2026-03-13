@@ -142,13 +142,13 @@ export const employeeApi = {
   // 全従業員の一覧とカレンダー接続状態を取得
   getAll: async (calendarStatus?: string) => {
     const params = calendarStatus ? { calendarStatus } : {};
-    const response = await api.get('/employees', { params });
+    const response = await api.get('/api/employees', { params });
     return response.data;
   },
 
   // 特定の従業員のカレンダー接続状態を取得
   getCalendarStatus: async (employeeId: string) => {
-    const response = await api.get(`/employees/${employeeId}/calendar-status`);
+    const response = await api.get(`/api/employees/${employeeId}/calendar-status`);
     return response.data;
   },
 };

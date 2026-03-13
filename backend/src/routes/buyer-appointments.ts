@@ -1,11 +1,13 @@
 import { Router, Request, Response } from 'express';
 import { body, validationResult } from 'express-validator';
 import { CalendarService } from '../services/CalendarService.supabase';
+import { GoogleAuthService } from '../services/GoogleAuthService';
 import { EmployeeUtils } from '../utils/employeeUtils';
 import { authenticate } from '../middleware/auth';
 
 const router = Router();
 const calendarService = new CalendarService();
+const googleAuthService = new GoogleAuthService();
 const employeeUtils = new EmployeeUtils();
 
 // 全てのルートに認証を適用
@@ -103,6 +105,19 @@ router.post(
         });
       }
       console.log('[BuyerAppointments] Assigned employee email validation passed');
+
+      // Google Calendar接続確認
+      const isCalendarConnected = await googleAuthService.isConnected();
+      if (!isCalendarConnected) {
+        console.error('[BuyerAppointments] Google Calendar not connected');
+        return res.status(400).json({
+          error: {
+            code: 'GOOGLE_AUTH_REQUIRED',
+            message: `会社アカウント（tenant@ifoo-oita.com）がGoogleカレンダーを接続していません。管理者に連絡してください。`,
+            retryable: false,
+          },
+        });
+      }
 
       // カレンダーイベントを作成
       const eventData = {
