@@ -117,7 +117,7 @@ router.post(
           `問合時ヒアリング: ${inquiryHearing || 'なし'}\n` +
           `内覧取得者名: ${creatorName || 'なし'}\n` +
           `\n` +
-          `買主詳細ページ:\n${process.env.FRONTEND_URL || 'http://localhost:3000'}/buyers/${buyerNumber}`,
+          `買主詳細ページ:\n${(process.env.FRONTEND_URL || 'http://localhost:3000').split(',')[0].trim()}/buyers/${buyerNumber}`,
         startTime: new Date(startTime),
         endTime: new Date(endTime),
       };
