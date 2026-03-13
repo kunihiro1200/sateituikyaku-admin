@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Container,
@@ -44,6 +44,7 @@ export default function BuyerViewingResultPage() {
   const { buyer_number } = useParams<{ buyer_number: string }>();
   const navigate = useNavigate();
   const [buyer, setBuyer] = useState<Buyer | null>(null);
+  const buyerRef = useRef<Buyer | null>(null); // handleInlineFieldSave から buyer を参照するための ref
   const [linkedProperties, setLinkedProperties] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [staffInitials, setStaffInitials] = useState<Array<{ label: string; value: string }>>([]);
@@ -113,6 +114,7 @@ export default function BuyerViewingResultPage() {
     try {
       setLoading(true);
       const res = await api.get(`/api/buyers/${buyer_number}`);
+      buyerRef.current = res.data;
       setBuyer(res.data);
     } catch (error) {
       console.error('Failed to fetch buyer:', error);
@@ -153,7 +155,7 @@ export default function BuyerViewingResultPage() {
   };
 
   const handleInlineFieldSave = useCallback(async (fieldName: string, newValue: any): Promise<void> => {
-    if (!buyer) return;
+    if (!buyerRef.current) return;
 
     try {
       console.log(`[BuyerViewingResultPage] Saving field: ${fieldName}, value:`, newValue);
@@ -167,12 +169,13 @@ export default function BuyerViewingResultPage() {
       
       console.log(`[BuyerViewingResultPage] Save result for ${fieldName}:`, result.buyer[fieldName]);
       
+      buyerRef.current = result.buyer;
       setBuyer(result.buyer);
     } catch (error: any) {
       console.error('Failed to update field:', error);
       throw new Error(error.response?.data?.error || '更新に失敗しました');
     }
-  }, [buyer, buyer_number]);
+  }, [buyer_number]);
 
   const handleViewingResultQuickInput = async (text: string, buttonLabel: string) => {
     if (!buyer || isQuickInputSaving) return;
@@ -526,10 +529,10 @@ export default function BuyerViewingResultPage() {
               <InlineEditableField
                 label="内覧日（最新）"
                 value={buyer.latest_viewing_date || ''}
-                onSave={(newValue) => {
+                onSave={useCallback((newValue: any) => {
                   console.log('[BuyerViewingResultPage] InlineEditableField onSave called with:', newValue);
                   return handleInlineFieldSave('latest_viewing_date', newValue);
-                }}
+                }, [handleInlineFieldSave])}
                 fieldType="date"
               />
               {/* クリアボタン（常に表示） */}
@@ -565,7 +568,7 @@ export default function BuyerViewingResultPage() {
               <InlineEditableField
                 label="時間"
                 value={buyer.viewing_time || ''}
-                onSave={(newValue) => handleInlineFieldSave('viewing_time', newValue)}
+                onSave={useCallback((newValue: any) => handleInlineFieldSave('viewing_time', newValue), [handleInlineFieldSave])}
                 fieldType="time"
                 placeholder="例: 14:30"
               />
@@ -823,7 +826,7 @@ export default function BuyerViewingResultPage() {
               label="内覧結果・後続対応"
               fieldName="viewing_result_follow_up"
               value={buyer.viewing_result_follow_up || ''}
-              onSave={(newValue) => handleInlineFieldSave('viewing_result_follow_up', newValue)}
+              onSave={useCallback((newValue: any) => handleInlineFieldSave('viewing_result_follow_up', newValue), [handleInlineFieldSave])}
               fieldType="textarea"
               multiline
               rows={6}
@@ -853,7 +856,7 @@ export default function BuyerViewingResultPage() {
                 <InlineEditableField
                   label={isOfferFailedFlag ? "★最新状況 *必須" : "★最新状況"}
                   value={buyer.latest_status || ''}
-                  onSave={(newValue) => handleInlineFieldSave('latest_status', newValue)}
+                  onSave={useCallback((newValue: any) => handleInlineFieldSave('latest_status', newValue), [handleInlineFieldSave])}
                   fieldType="dropdown"
                   options={getFilteredLatestStatusOptions()}
                   fieldName="latest_status"
@@ -928,7 +931,7 @@ export default function BuyerViewingResultPage() {
                   <InlineEditableField
                     label=""
                     value={buyer.offer_comment || ''}
-                    onSave={(newValue) => handleInlineFieldSave('offer_comment', newValue)}
+                    onSave={useCallback((newValue: any) => handleInlineFieldSave('offer_comment', newValue), [handleInlineFieldSave])}
                     fieldType="textarea"
                     multiline
                     rows={3}
@@ -955,7 +958,7 @@ export default function BuyerViewingResultPage() {
                   <InlineEditableField
                     label=""
                     value={buyer.offer_comment || ''}
-                    onSave={(newValue) => handleInlineFieldSave('offer_comment', newValue)}
+                    onSave={useCallback((newValue: any) => handleInlineFieldSave('offer_comment', newValue), [handleInlineFieldSave])}
                     fieldType="textarea"
                     multiline
                     rows={3}
