@@ -320,6 +320,7 @@ export default function BuyerViewingResultPage() {
         buyerEmail: buyer.email,
         viewingMobile: buyer.viewing_mobile,
         propertyAddress: property?.address || '',
+        propertyNumber: property?.property_number || '',
         propertyGoogleMapUrl: property?.google_map_url || '',
         inquiryHearing: buyer.inquiry_hearing || '',
         creatorName: buyer.name,

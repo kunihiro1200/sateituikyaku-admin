@@ -3,12 +3,20 @@ import { body, validationResult } from 'express-validator';
 import { CalendarService } from '../services/CalendarService.supabase';
 import { GoogleAuthService } from '../services/GoogleAuthService';
 import { EmployeeUtils } from '../utils/employeeUtils';
+import { EmailService } from '../services/EmailService';
 import { authenticate } from '../middleware/auth';
+import { createClient } from '@supabase/supabase-js';
 
 const router = Router();
 const calendarService = new CalendarService();
 const googleAuthService = new GoogleAuthService();
 const employeeUtils = new EmployeeUtils();
+const emailService = new EmailService();
+
+const supabase = createClient(
+  process.env.SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY!
+);
 
 // 全てのルートに認証を適用
 router.use(authenticate);
@@ -48,7 +56,7 @@ router.post(
         });
       }
 
-      const { buyerNumber, startTime, endTime, assignedTo, buyerName, buyerPhone, buyerEmail, viewingMobile, propertyAddress, propertyGoogleMapUrl, inquiryHearing, creatorName, customTitle, customDescription } = req.body;
+      const { buyerNumber, startTime, endTime, assignedTo, buyerName, buyerPhone, buyerEmail, viewingMobile, propertyAddress, propertyGoogleMapUrl, inquiryHearing, creatorName, customTitle, customDescription, propertyNumber } = req.body;
 
       // 後続担当イニシャルから従業員情報を取得
       console.log('[BuyerAppointments] Looking up assigned employee by initials:', assignedTo);
@@ -160,6 +168,62 @@ router.post(
         assignedEmployeeId: assignedEmployee.id,
         assignedEmployeeName: assignedEmployee.name,
       });
+
+      // カレンダー登録成功後にメール通知を送信（失敗してもカレンダー登録は成功扱い）
+      try {
+        const recipients: string[] = [];
+
+        // 1. 後続担当のメールアドレスを追加
+        if (assignedEmployee.email) {
+          recipients.push(assignedEmployee.email);
+        }
+
+        // 2. 物件担当者（sales_assignee）のメールアドレスを取得して追加
+        if (propertyNumber) {
+          const { data: propertyData } = await supabase
+            .from('property_listings')
+            .select('sales_assignee')
+            .eq('property_number', propertyNumber)
+            .single();
+
+          if (propertyData?.sales_assignee) {
+            const salesEmployee = await employeeUtils.getEmployeeByInitials(propertyData.sales_assignee);
+            if (salesEmployee?.email && salesEmployee.email !== assignedEmployee.email) {
+              recipients.push(salesEmployee.email);
+            }
+          }
+        }
+
+        if (recipients.length > 0) {
+          const startDate = new Date(startTime);
+          const endDate = new Date(endTime);
+          const dateStr = startDate.toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' });
+          const startTimeStr = startDate.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
+          const endTimeStr = endDate.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
+
+          const subject = `【内覧予約登録】${buyerName || buyerNumber} - ${propertyAddress || '物件住所未設定'}`;
+          const body = [
+            '内覧予約がGoogleカレンダーに登録されました。',
+            '',
+            `日時: ${dateStr} ${startTimeStr}〜${endTimeStr}`,
+            `お客様名: ${buyerName || buyerNumber}`,
+            `電話番号: ${buyerPhone || 'なし'}`,
+            `物件住所: ${propertyAddress || 'なし'}`,
+            `GoogleMap: ${propertyGoogleMapUrl || 'なし'}`,
+            `後続担当: ${assignedEmployee.name}`,
+            `問合時ヒアリング: ${inquiryHearing || 'なし'}`,
+            '',
+            `買主詳細ページ:`,
+            `${(process.env.FRONTEND_URL || 'http://localhost:3000').split(',')[0].trim()}/buyers/${buyerNumber}`,
+          ].join('\n');
+
+          await emailService.sendEmail({ to: recipients, subject, body });
+          console.log('[BuyerAppointments] Notification email sent to:', recipients);
+        }
+      } catch (emailError: any) {
+        // メール送信失敗はログのみ（カレンダー登録の成功に影響させない）
+        console.error('[BuyerAppointments] Failed to send notification email (non-fatal):', emailError.message);
+      }
 
       res.status(201).json({
         success: true,
