@@ -177,6 +177,35 @@ export default function BuyerViewingResultPage() {
     }
   }, [buyer_number]);
 
+  // JSX内でuseCallbackを使えないため、各フィールド用コールバックをトップレベルで定義
+  const handleSaveLatestViewingDate = useCallback(
+    (newValue: any) => {
+      console.log('[BuyerViewingResultPage] InlineEditableField onSave called with:', newValue);
+      return handleInlineFieldSave('latest_viewing_date', newValue);
+    },
+    [handleInlineFieldSave]
+  );
+
+  const handleSaveViewingTime = useCallback(
+    (newValue: any) => handleInlineFieldSave('viewing_time', newValue),
+    [handleInlineFieldSave]
+  );
+
+  const handleSaveViewingResultFollowUp = useCallback(
+    (newValue: any) => handleInlineFieldSave('viewing_result_follow_up', newValue),
+    [handleInlineFieldSave]
+  );
+
+  const handleSaveLatestStatus = useCallback(
+    (newValue: any) => handleInlineFieldSave('latest_status', newValue),
+    [handleInlineFieldSave]
+  );
+
+  const handleSaveOfferComment = useCallback(
+    (newValue: any) => handleInlineFieldSave('offer_comment', newValue),
+    [handleInlineFieldSave]
+  );
+
   const handleViewingResultQuickInput = async (text: string, buttonLabel: string) => {
     if (!buyer || isQuickInputSaving) return;
     
@@ -530,10 +559,7 @@ export default function BuyerViewingResultPage() {
               <InlineEditableField
                 label="内覧日（最新）"
                 value={buyer.latest_viewing_date || ''}
-                onSave={useCallback((newValue: any) => {
-                  console.log('[BuyerViewingResultPage] InlineEditableField onSave called with:', newValue);
-                  return handleInlineFieldSave('latest_viewing_date', newValue);
-                }, [handleInlineFieldSave])}
+                onSave={handleSaveLatestViewingDate}
                 fieldType="date"
               />
               {/* クリアボタン（常に表示） */}
@@ -569,7 +595,7 @@ export default function BuyerViewingResultPage() {
               <InlineEditableField
                 label="時間"
                 value={buyer.viewing_time || ''}
-                onSave={useCallback((newValue: any) => handleInlineFieldSave('viewing_time', newValue), [handleInlineFieldSave])}
+                onSave={handleSaveViewingTime}
                 fieldType="time"
                 placeholder="例: 14:30"
               />
@@ -827,7 +853,7 @@ export default function BuyerViewingResultPage() {
               label="内覧結果・後続対応"
               fieldName="viewing_result_follow_up"
               value={buyer.viewing_result_follow_up || ''}
-              onSave={useCallback((newValue: any) => handleInlineFieldSave('viewing_result_follow_up', newValue), [handleInlineFieldSave])}
+              onSave={handleSaveViewingResultFollowUp}
               fieldType="textarea"
               multiline
               rows={6}
@@ -857,7 +883,7 @@ export default function BuyerViewingResultPage() {
                 <InlineEditableField
                   label={isOfferFailedFlag ? "★最新状況 *必須" : "★最新状況"}
                   value={buyer.latest_status || ''}
-                  onSave={useCallback((newValue: any) => handleInlineFieldSave('latest_status', newValue), [handleInlineFieldSave])}
+                  onSave={handleSaveLatestStatus}
                   fieldType="dropdown"
                   options={getFilteredLatestStatusOptions()}
                   fieldName="latest_status"
@@ -932,7 +958,7 @@ export default function BuyerViewingResultPage() {
                   <InlineEditableField
                     label=""
                     value={buyer.offer_comment || ''}
-                    onSave={useCallback((newValue: any) => handleInlineFieldSave('offer_comment', newValue), [handleInlineFieldSave])}
+                    onSave={handleSaveOfferComment}
                     fieldType="textarea"
                     multiline
                     rows={3}
@@ -959,7 +985,7 @@ export default function BuyerViewingResultPage() {
                   <InlineEditableField
                     label=""
                     value={buyer.offer_comment || ''}
-                    onSave={useCallback((newValue: any) => handleInlineFieldSave('offer_comment', newValue), [handleInlineFieldSave])}
+                    onSave={handleSaveOfferComment}
                     fieldType="textarea"
                     multiline
                     rows={3}
