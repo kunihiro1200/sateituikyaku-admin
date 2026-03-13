@@ -97,6 +97,16 @@ const INQUIRY_HEARING_QUICK_INPUTS = [
 
 const BUYER_FIELD_SECTIONS = [
   {
+    title: '基本情報',
+    fields: [
+      { key: 'buyer_number', label: '買主番号', inlineEditable: true, readOnly: true },
+      { key: 'name', label: '氏名・会社名', inlineEditable: true },
+      { key: 'phone_number', label: '電話番号', inlineEditable: true },
+      { key: 'email', label: 'メールアドレス', inlineEditable: true },
+      { key: 'company_name', label: '法人名', inlineEditable: true },
+    ],
+  },
+  {
     title: '問合せ・内覧情報',
     fields: [
       { key: 'initial_assignee', label: '初動担当', inlineEditable: true },
@@ -167,16 +177,6 @@ const BUYER_FIELD_SECTIONS = [
       { key: 'offer_property_sheet', label: '買付（物件シート）', inlineEditable: true },
       { key: 'offer_lost_comment', label: '買付外れコメント', inlineEditable: true },
       { key: 'offer_lost_chat', label: '買付外れチャット', inlineEditable: true },
-    ],
-  },
-  {
-    title: '基本情報',
-    fields: [
-      { key: 'buyer_number', label: '買主番号', inlineEditable: true, readOnly: true },
-      { key: 'name', label: '氏名・会社名', inlineEditable: true },
-      { key: 'phone_number', label: '電話番号', inlineEditable: true },
-      { key: 'email', label: 'メールアドレス', inlineEditable: true },
-      { key: 'company_name', label: '法人名', inlineEditable: true },
     ],
   },
 ];
@@ -594,7 +594,7 @@ export default function BuyerDetailPage() {
   return (
     <Container maxWidth="xl" sx={{ py: 3, px: 2 }}>
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
           <IconButton 
             onClick={() => navigate(-1)} 
             sx={{ mr: 2 }}
@@ -632,6 +632,7 @@ export default function BuyerDetailPage() {
             />
           </Tooltip>
         </Box>
+
         <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
           <Button
             variant="outlined"
