@@ -333,8 +333,6 @@ export class BuyerService {
     const newBuyer = {
       ...buyerData,
       buyer_number: buyerNumber,
-      db_created_at: new Date().toISOString(),
-      db_updated_at: new Date().toISOString(),
     };
 
     const { data, error } = await this.supabase
@@ -395,7 +393,7 @@ export class BuyerService {
     const buyerUuid = existing.buyer_id;
 
     // 更新不可フィールドを除外
-    const protectedFields = ['id', 'db_created_at', 'synced_at'];
+    const protectedFields = ['id', 'db_created_at', 'db_updated_at', 'synced_at'];
     const allowedData: any = {};
     
     for (const key in updateData) {
@@ -403,9 +401,6 @@ export class BuyerService {
         allowedData[key] = updateData[key];
       }
     }
-
-    // 更新タイムスタンプを追加
-    allowedData.db_updated_at = new Date().toISOString();
 
     const { data, error } = await this.supabase
       .from('buyers')
@@ -475,7 +470,7 @@ export class BuyerService {
     const buyerUuid = existing.buyer_id;
 
     // 更新不可フィールドを除外
-    const protectedFields = ['id', 'db_created_at', 'synced_at', 'buyer_number'];
+    const protectedFields = ['id', 'db_created_at', 'db_updated_at', 'synced_at', 'buyer_number'];
     const allowedData: any = {};
     
     for (const key in updateData) {
@@ -483,9 +478,6 @@ export class BuyerService {
         allowedData[key] = updateData[key];
       }
     }
-
-    // 更新タイムスタンプを追加
-    allowedData.db_updated_at = new Date().toISOString();
 
     // 競合チェック（forceオプションがない場合、かつ前回同期済みの場合のみ）
     // last_synced_at がない場合は、まだ一度も同期されていないため競合チェックをスキップ
