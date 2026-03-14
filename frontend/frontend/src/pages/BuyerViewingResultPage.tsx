@@ -602,7 +602,7 @@ export default function BuyerViewingResultPage() {
                   <Button
                     size="small"
                     variant={shouldHighlight ? 'contained' : 'outlined'}
-                    color={shouldHighlight ? 'success' : 'primary'}
+                    color={shouldHighlight ? 'error' : 'primary'}
                     fullWidth
                     sx={{
                       mt: 0.5,
@@ -612,9 +612,9 @@ export default function BuyerViewingResultPage() {
                       ...(shouldHighlight && {
                         animation: 'calendarPulse 1.5s ease-in-out infinite',
                         '@keyframes calendarPulse': {
-                          '0%': { boxShadow: '0 0 0 0 rgba(46, 125, 50, 0.5)' },
-                          '70%': { boxShadow: '0 0 0 6px rgba(46, 125, 50, 0)' },
-                          '100%': { boxShadow: '0 0 0 0 rgba(46, 125, 50, 0)' },
+                          '0%': { boxShadow: '0 0 0 0 rgba(211, 47, 47, 0.5)' },
+                          '70%': { boxShadow: '0 0 0 6px rgba(211, 47, 47, 0)' },
+                          '100%': { boxShadow: '0 0 0 0 rgba(211, 47, 47, 0)' },
                         },
                       }),
                     }}
