@@ -428,6 +428,7 @@ export interface ListSellersParams {
   confidenceLevel?: ConfidenceLevel;
   firstCaller?: string;
   duplicateConfirmed?: boolean;
+  valuationNotRequired?: boolean;
   // Deletion sync filter
   includeDeleted?: boolean; // Default: false (exclude deleted sellers)
   // サイドバーカテゴリフィルター

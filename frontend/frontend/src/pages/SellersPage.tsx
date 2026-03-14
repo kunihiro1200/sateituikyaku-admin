@@ -168,6 +168,7 @@ export default function SellersPage() {
   const [inquirySourceFilter, setInquirySourceFilter] = useState('');
   const [confidenceLevelFilter, setConfidenceLevelFilter] = useState('');
   const [showUnreachableOnly, setShowUnreachableOnly] = useState(false);
+  const [showValuationNotRequiredOnly, setShowValuationNotRequiredOnly] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   
   // Status category filter
@@ -299,7 +300,7 @@ export default function SellersPage() {
 
   useEffect(() => {
     fetchSellers();
-  }, [page, rowsPerPage, inquirySourceFilter, confidenceLevelFilter, showUnreachableOnly, selectedCategory]);
+  }, [page, rowsPerPage, inquirySourceFilter, confidenceLevelFilter, showUnreachableOnly, showValuationNotRequiredOnly, selectedCategory]);
 
   const fetchSellers = async () => {
     try {
@@ -320,6 +321,9 @@ export default function SellersPage() {
       }
       if (showUnreachableOnly) {
         params.isUnreachable = true;
+      }
+      if (showValuationNotRequiredOnly) {
+        params.valuationNotRequired = true;
       }
       
       // サイドバーカテゴリフィルター
@@ -542,12 +546,25 @@ export default function SellersPage() {
                 </label>
               </Box>
               
+              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={showValuationNotRequiredOnly}
+                    onChange={(e) => setShowValuationNotRequiredOnly(e.target.checked)}
+                    style={{ marginRight: 8 }}
+                  />
+                  査定不要のみ表示
+                </label>
+              </Box>
+              
               <Button
                 variant="text"
                 onClick={() => {
                   setInquirySourceFilter('');
                   setConfidenceLevelFilter('');
                   setShowUnreachableOnly(false);
+                  setShowValuationNotRequiredOnly(false);
                 }}
                 size="small"
               >

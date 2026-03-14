@@ -1,4 +1,4 @@
-﻿import { BaseRepository } from '../repositories/BaseRepository';
+import { BaseRepository } from '../repositories/BaseRepository';
 import {
   Seller,
   CreateSellerRequest,
@@ -700,6 +700,7 @@ export class SellerService extends BaseRepository {
       sortOrder = 'desc',
       includeDeleted = false, // デフォルトで削除済みを除外
       statusCategory, // サイドバーカテゴリフィルター
+      valuationNotRequired, // 査定不要フィルター
     } = params;
 
     // JST今日の日付を取得
@@ -871,6 +872,9 @@ export class SellerService extends BaseRepository {
     }
     if (nextCallDateTo) {
       query = query.lte('next_call_date', nextCallDateTo);
+    }
+    if (valuationNotRequired === true) {
+      query = query.eq('valuation_not_required', true);
     }
 
     // ソート（inquiry_dateがnullのものは最後に表示、同日の場合は売主番号が大きいほうを最新とする）
