@@ -13,9 +13,9 @@ import {
   Box,
   CircularProgress,
   Alert,
-  Divider,
-  Paper
+  Chip,
 } from '@mui/material';
+import EmailIcon from '@mui/icons-material/Email';
 import { EmailTemplate } from '../types/emailTemplate';
 import api from '../services/api';
 
@@ -26,8 +26,8 @@ interface TemplateSelectionModalProps {
 }
 
 /**
- * Modal for selecting an email template
- * Displays all available templates with names and descriptions
+ * テンプレート選択モーダル
+ * テンプレートをクリックすると即座にメール編集画面へ遷移する
  */
 export default function TemplateSelectionModal({
   open,
@@ -35,19 +35,13 @@ export default function TemplateSelectionModal({
   onCancel
 }: TemplateSelectionModalProps) {
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
-  const [selectedTemplate, setSelectedTemplate] = useState<EmailTemplate | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [previewContent, setPreviewContent] = useState<{ subject: string; body: string } | null>(null);
 
-  // Fetch templates when modal opens
   useEffect(() => {
     if (open) {
       fetchTemplates();
     } else {
-      // Reset state when modal closes
-      setSelectedTemplate(null);
-      setPreviewContent(null);
       setError(null);
     }
   }, [open]);
@@ -66,41 +60,23 @@ export default function TemplateSelectionModal({
     }
   };
 
-  const handleTemplateClick = async (template: EmailTemplate) => {
-    setSelectedTemplate(template);
-    
-    // Fetch preview
-    try {
-      const response = await api.get(`/api/email-templates/${template.id}/preview`);
-      setPreviewContent(response.data);
-    } catch (err: any) {
-      console.error('Failed to fetch preview:', err);
-      setPreviewContent(null);
-    }
-  };
-
-  const handleConfirm = () => {
-    if (selectedTemplate) {
-      onSelect(selectedTemplate);
-    }
-  };
-
-  const handleRetry = () => {
-    fetchTemplates();
+  // テンプレートをクリックしたら即座にメール編集画面へ
+  const handleTemplateClick = (template: EmailTemplate) => {
+    onSelect(template);
   };
 
   return (
     <Dialog
       open={open}
       onClose={onCancel}
-      maxWidth="md"
+      maxWidth="sm"
       fullWidth
     >
-      <DialogTitle>
+      <DialogTitle sx={{ pb: 1 }}>
         メールテンプレートを選択
       </DialogTitle>
-      
-      <DialogContent>
+
+      <DialogContent sx={{ pt: 1 }}>
         {loading && (
           <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
             <CircularProgress />
@@ -108,11 +84,11 @@ export default function TemplateSelectionModal({
         )}
 
         {error && (
-          <Alert 
-            severity="error" 
+          <Alert
+            severity="error"
             sx={{ mb: 2 }}
             action={
-              <Button color="inherit" size="small" onClick={handleRetry}>
+              <Button color="inherit" size="small" onClick={fetchTemplates}>
                 再試行
               </Button>
             }
@@ -128,87 +104,51 @@ export default function TemplateSelectionModal({
         )}
 
         {!loading && !error && templates.length > 0 && (
-          <Box sx={{ display: 'flex', gap: 2 }}>
-            {/* Template List */}
-            <Box sx={{ flex: 1 }}>
-              <Typography variant="subtitle2" gutterBottom>
-                テンプレート一覧
-              </Typography>
-              <List>
-                {templates.map((template) => (
-                  <ListItem key={template.id} disablePadding>
-                    <ListItemButton
-                      selected={selectedTemplate?.id === template.id}
-                      onClick={() => handleTemplateClick(template)}
-                    >
-                      <ListItemText
-                        primary={template.name}
-                        secondary={template.description}
-                      />
-                    </ListItemButton>
-                  </ListItem>
-                ))}
-              </List>
-            </Box>
-
-            {/* Preview */}
-            {selectedTemplate && (
-              <Box sx={{ flex: 1 }}>
-                <Typography variant="subtitle2" gutterBottom>
-                  プレビュー
-                </Typography>
-                <Paper variant="outlined" sx={{ p: 2 }}>
-                  {previewContent ? (
-                    <>
-                      <Typography variant="body2" color="text.secondary" gutterBottom>
-                        件名:
-                      </Typography>
-                      <Typography variant="body1" gutterBottom>
-                        {previewContent.subject}
-                      </Typography>
-                      
-                      <Divider sx={{ my: 2 }} />
-                      
-                      <Typography variant="body2" color="text.secondary" gutterBottom>
-                        本文:
-                      </Typography>
-                      <Typography 
-                        variant="body2" 
-                        sx={{ 
-                          whiteSpace: 'pre-wrap',
-                          maxHeight: 300,
-                          overflow: 'auto'
-                        }}
-                      >
-                        {previewContent.body}
-                      </Typography>
-                    </>
-                  ) : (
-                    <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
-                      <CircularProgress size={24} />
-                    </Box>
-                  )}
-                </Paper>
-                
-                <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
-                  ※ プレビューはサンプルデータで表示されています
-                </Typography>
-              </Box>
-            )}
-          </Box>
+          <>
+            <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block' }}>
+              テンプレートをクリックするとメール編集画面が開きます
+            </Typography>
+            <List disablePadding>
+              {templates.map((template, index) => (
+                <ListItem key={template.id} disablePadding divider={index < templates.length - 1}>
+                  <ListItemButton
+                    onClick={() => handleTemplateClick(template)}
+                    sx={{
+                      py: 1.5,
+                      px: 2,
+                      '&:hover': {
+                        backgroundColor: 'primary.50',
+                        '& .template-icon': { opacity: 1 },
+                      },
+                    }}
+                  >
+                    <ListItemText
+                      primary={
+                        <Typography variant="body1" fontWeight={500}>
+                          {template.name}
+                        </Typography>
+                      }
+                    />
+                    <Chip
+                      icon={<EmailIcon sx={{ fontSize: '14px !important' }} />}
+                      label="使用"
+                      size="small"
+                      color="primary"
+                      variant="outlined"
+                      className="template-icon"
+                      sx={{ opacity: 0, transition: 'opacity 0.15s', ml: 1, flexShrink: 0 }}
+                    />
+                  </ListItemButton>
+                </ListItem>
+              ))}
+            </List>
+          </>
         )}
       </DialogContent>
 
       <DialogActions>
         <Button onClick={onCancel}>
           キャンセル
-        </Button>
-        <Button
-          onClick={handleConfirm}
-          variant="contained"
-          disabled={!selectedTemplate}
-        >
-          このテンプレートを使用
         </Button>
       </DialogActions>
     </Dialog>

@@ -23,8 +23,13 @@ export interface ValidationResult {
     hasActiveContract?: boolean;
     hasRecentActivity?: boolean;
     hasActivePropertyListings?: boolean;
+    hasActiveInquiries?: boolean;
+    hasActiveBuyers?: boolean;
+    buyerRestored?: boolean;
+    auditRecordUpdated?: boolean;
     lastActivityDate?: Date;
     contractStatus?: string;
+    [key: string]: any;
   };
 }
 
@@ -135,6 +140,8 @@ export interface RecoveryResult {
     sellerRestored: boolean;
     propertiesRestored: number;
     auditRecordUpdated: boolean;
+    buyerRestored?: boolean;
+    [key: string]: any;
   };
 }
 

@@ -57,7 +57,7 @@ export class EmailTemplateService {
       return templates;
     } catch (error: any) {
       console.error('[EmailTemplateService] \u30b9\u30d7\u30ec\u30c3\u30c9\u30b7\u30fc\u30c8\u304b\u3089\u306e\u30c6\u30f3\u30d7\u30ec\u30fc\u30c8\u53d6\u5f97\u306b\u5931\u6557:', error.message);
-      return [];
+      throw error;
     }
   }
 

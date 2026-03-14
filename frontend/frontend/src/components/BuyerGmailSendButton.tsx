@@ -139,18 +139,18 @@ export default function BuyerGmailSendButton({
         <Button
           variant={variant}
           size={size}
-          color="primary"
           startIcon={loading ? <CircularProgress size={20} /> : <EmailIcon />}
           onClick={handleClick}
           disabled={isDisabled}
+          sx={{
+            backgroundColor: '#2e7d32',
+            color: '#fff',
+            '&:hover': { backgroundColor: '#1b5e20' },
+            '&:disabled': { backgroundColor: '#a5d6a7', color: '#fff' },
+          }}
         >
           Gmail送信
         </Button>
-        {selectedCount > 0 && (
-          <Typography variant="body2" color="text.secondary">
-            {selectedCount}件選択中
-          </Typography>
-        )}
       </Box>
 
       {/* Template Selection Modal */}
