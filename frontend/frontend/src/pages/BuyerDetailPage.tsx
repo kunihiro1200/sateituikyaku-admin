@@ -101,7 +101,6 @@ const BUYER_FIELD_SECTIONS = [
     fields: [
       { key: 'inquiry_hearing', label: '問合時ヒアリング', multiline: true, inlineEditable: true },
       { key: 'initial_assignee', label: '初動担当', inlineEditable: true },
-      { key: 'follow_up_assignee', label: '後続担当', inlineEditable: true },
       { key: 'reception_date', label: '受付日', type: 'date', inlineEditable: true },
       { key: 'inquiry_source', label: '問合せ元', inlineEditable: true },
       { key: 'inquiry_confidence', label: '問合時確度', inlineEditable: true },
@@ -110,7 +109,6 @@ const BUYER_FIELD_SECTIONS = [
       { key: 'email_type', label: 'メール種別', inlineEditable: true, fieldType: 'dropdown' },
       { key: 'distribution_type', label: '配信種別', inlineEditable: true, fieldType: 'dropdown' },
       { key: 'owned_home_hearing', label: '持家ヒアリング', inlineEditable: true },
-      { key: 'latest_viewing_date', label: '内覧日(最新)', type: 'date', inlineEditable: true },
       // viewing_notes は PropertyInfoCard 内に移動
       { key: 'next_call_date', label: '次電日', type: 'date', inlineEditable: true },
     ],
@@ -123,15 +121,6 @@ const BUYER_FIELD_SECTIONS = [
       { key: 'phone_number', label: '電話番号', inlineEditable: true },
       { key: 'email', label: 'メールアドレス', inlineEditable: true },
       { key: 'company_name', label: '法人名', inlineEditable: true },
-    ],
-  },
-  {
-    title: '内覧結果・後続対応',
-    isViewingResultGroup: true,  // 特別なグループとしてマーク
-    fields: [
-      { key: 'viewing_result_follow_up', label: '内覧結果・後続対応', multiline: true, inlineEditable: true },
-      { key: 'follow_up_assignee', label: '後続担当', inlineEditable: true },
-      { key: 'latest_status', label: '★最新状況', inlineEditable: true, fieldType: 'dropdown' },
     ],
   },
   {
