@@ -668,11 +668,11 @@ export default function PropertyListingDetailPage() {
                   href={`tel:${data.seller_contact}`}
                   startIcon={<PhoneIcon fontSize="small" />}
                   sx={{
-                    borderColor: '#2e7d32',
-                    color: '#2e7d32',
+                    borderColor: '#1565c0',
+                    color: '#1565c0',
                     '&:hover': {
-                      borderColor: '#1b5e20',
-                      backgroundColor: '#2e7d3208',
+                      borderColor: '#0d47a1',
+                      backgroundColor: '#1565c008',
                     },
                   }}
                 >
