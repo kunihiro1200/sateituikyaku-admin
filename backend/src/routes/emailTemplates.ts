@@ -128,26 +128,35 @@ router.post('/:templateId/merge-multiple', async (req, res) => {
       process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY!
     );
 
+    // デバッグログ
+    console.log('[merge-multiple] propertyIds received:', propertyIds);
+    console.log('[merge-multiple] propertyIds type:', typeof propertyIds, Array.isArray(propertyIds));
+
     // UUID で検索
-    const { data: propertiesById } = await supabase
+    const { data: propertiesById, error: uuidError } = await supabase
       .from('property_listings')
-      .select('id, property_number, address, price, google_map_url, athome_url, property_type, land_area, building_area')
+      .select('id, property_number, address, sales_price, price, google_map_url, suumo_url, property_type, land_area, building_area')
       .in('id', propertyIds);
+
+    console.log('[merge-multiple] UUID search result:', propertiesById?.length, 'found, error:', uuidError?.message);
 
     const foundIds = new Set((propertiesById || []).map((p: any) => p.id));
     const missingIds = propertyIds.filter((id: string) => !foundIds.has(id));
+    console.log('[merge-multiple] missingIds:', missingIds);
 
     // 見つからなかった分は property_number で検索
     let propertiesByNumber: any[] = [];
     if (missingIds.length > 0) {
-      const { data } = await supabase
+      const { data, error: numError } = await supabase
         .from('property_listings')
-        .select('id, property_number, address, price, google_map_url, athome_url, property_type, land_area, building_area')
+        .select('id, property_number, address, sales_price, price, google_map_url, suumo_url, property_type, land_area, building_area')
         .in('property_number', missingIds);
+      console.log('[merge-multiple] property_number search result:', data?.length, 'found, error:', numError?.message);
       propertiesByNumber = data || [];
     }
 
     const allProperties = [...(propertiesById || []), ...propertiesByNumber];
+    console.log('[merge-multiple] allProperties total:', allProperties.length);
     if (allProperties.length === 0) {
       return res.status(404).json({ error: 'No valid properties found' });
     }
@@ -158,8 +167,8 @@ router.post('/:templateId/merge-multiple', async (req, res) => {
       address: p.address || '',
       price: p.price,
       googleMapUrl: p.google_map_url || '',
-      athomeUrl: p.athome_url || '',
-      detailUrl: p.athome_url || '',
+      athomeUrl: p.suumo_url || '',
+      detailUrl: p.suumo_url || '',
       propertyType: p.property_type || '',
       landArea: p.land_area,
       buildingArea: p.building_area,
@@ -169,7 +178,7 @@ router.post('/:templateId/merge-multiple', async (req, res) => {
     const legacyProperties = allProperties.map((p: any) => ({
       propertyNumber: p.property_number || '',
       propertyAddress: p.address || '',
-      price: p.price || 0,
+      price: p.sales_price || p.price || 0,
       propertyType: p.property_type || '',
       landArea: p.land_area,
       buildingArea: p.building_area,

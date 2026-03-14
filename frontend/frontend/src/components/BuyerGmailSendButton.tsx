@@ -78,6 +78,7 @@ export default function BuyerGmailSendButton({
     try {
       // 選択された物件IDsを配列に変換
       const propertyIds = Array.from(selectedPropertyIds);
+      console.log('[BuyerGmailSendButton] propertyIds to send:', propertyIds);
       
       // 複数物件のデータを取得してマージ
       const response = await api.post(`/api/email-templates/${template.id}/merge-multiple`, {
