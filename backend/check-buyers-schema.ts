@@ -1,44 +1,30 @@
-import dotenv from 'dotenv';
 import { createClient } from '@supabase/supabase-js';
-
-dotenv.config();
+import * as dotenv from 'dotenv';
+dotenv.config({ path: '.env.local' });
 
 const supabase = createClient(
   process.env.SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
+  process.env.SUPABASE_SERVICE_KEY!
 );
 
-async function checkBuyersSchema() {
-  console.log('=== buyersテーブルのスキーマ確認 ===\n');
+async function main() {
+  // buyer_numberで検索してカラム一覧を確認
+  const { data, error } = await supabase
+    .from('buyers')
+    .select('*')
+    .limit(1);
 
-  try {
-    // 1件だけ取得してカラム名を確認
-    const { data, error } = await supabase
-      .from('buyers')
-      .select('*')
-      .limit(1);
-
-    if (error) {
-      console.error('エラー:', error.message);
-      
-      // テーブルが空の場合、スキーマ情報を取得
-      console.log('\nテーブルが空またはエラーです。PostgreSQLから直接スキーマを確認してください。');
-      return;
-    }
-
-    if (data && data.length > 0) {
-      const columns = Object.keys(data[0]);
-      console.log(`カラム数: ${columns.length}`);
-      console.log('\nカラム一覧:');
-      columns.sort().forEach((col, index) => {
-        console.log(`${(index + 1).toString().padStart(3)}: ${col}`);
-      });
-    } else {
-      console.log('テーブルにデータがありません');
-    }
-  } catch (error: any) {
-    console.error('予期しないエラー:', error.message);
+  if (error) {
+    console.log('ERROR:', error.message);
+  } else if (data && data.length > 0) {
+    console.log('カラム一覧:', Object.keys(data[0]).join(', '));
+    console.log('deleted_at あり:', 'deleted_at' in data[0]);
+    console.log('id あり:', 'id' in data[0]);
+    console.log('buyer_id あり:', 'buyer_id' in data[0]);
+  } else {
+    console.log('データなし（テーブルは存在する）');
   }
+  process.exit(0);
 }
 
-checkBuyersSchema();
+main().catch(console.error);

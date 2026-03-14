@@ -8,6 +8,8 @@ export interface LogFilter {
   dateTo?: Date;
   activityType?: string;
   sellerId?: string;
+  targetType?: string;
+  targetId?: string;
 }
 
 export interface ActivityStatistics {
@@ -68,6 +70,14 @@ export class ActivityLogService extends BaseRepository {
 
     if (filter.sellerId) {
       query = query.eq('target_id', filter.sellerId).eq('target_type', 'seller');
+    }
+
+    if (filter.targetType) {
+      query = query.eq('target_type', filter.targetType);
+    }
+
+    if (filter.targetId) {
+      query = query.eq('target_id', filter.targetId);
     }
 
     const { data, error } = await query.order('created_at', { ascending: false }).limit(1000);
