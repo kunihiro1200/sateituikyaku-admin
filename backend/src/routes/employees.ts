@@ -70,6 +70,8 @@ router.get('/active-initials', async (req: Request, res: Response) => {
   } catch (spreadsheetError: any) {
     console.warn('[active-initials] Spreadsheet fetch failed, falling back to DB:', spreadsheetError.message);
     // フォールバック: DBのemployeesテーブルから取得
+    // 除外すべき不要なイニシャル（スプシで有効=FALSEのもの）
+    const EXCLUDED_INITIALS = ['TENANT', 'GYOSHA', 'tenant', 'gyosha'];
     try {
       const { data: employees, error } = await employeeUtils['table']('employees')
         .select('initials, name')
@@ -81,7 +83,15 @@ router.get('/active-initials', async (req: Request, res: Response) => {
 
       const activeInitials = (employees || [])
         .map((emp: any) => emp.initials)
-        .filter((initial: any) => initial && String(initial).trim() !== '');
+        .filter((initial: any) => {
+          if (!initial || String(initial).trim() === '') return false;
+          const val = String(initial).trim();
+          // 除外リストに含まれるものを除外
+          if (EXCLUDED_INITIALS.includes(val)) return false;
+          // 日本語のみのイニシャルを除外（例: 「生」）
+          if (/^[\u3040-\u30FF\u4E00-\u9FFF]+$/.test(val)) return false;
+          return true;
+        });
 
       console.log(`[active-initials] Fallback: Returning ${activeInitials.length} active staff initials from DB:`, activeInitials);
       res.json({ initials: activeInitials });
