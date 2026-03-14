@@ -1288,12 +1288,7 @@ export default function BuyerDetailPage() {
         </Box>
       )}
 
-      {/* 統合問合せ履歴 */}
-      {buyer_number && (
-        <Box sx={{ mt: 3 }}>
-          <UnifiedInquiryHistoryTable buyerNumber={buyer_number} />
-        </Box>
-      )}
+
 
       {/* スナックバー */}
       <Snackbar
