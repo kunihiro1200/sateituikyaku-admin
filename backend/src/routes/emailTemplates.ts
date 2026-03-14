@@ -45,7 +45,16 @@ router.get('/debug', async (req, res) => {
     });
     const rows = response.data.values || [];
     debug.steps.push(`Got ${rows.length} rows`);
-    debug.templates = rows.slice(0, 5); // 最初の5行だけ返す
+    // C列（区分）の全ユニーク値を確認
+    const categories = [...new Set(rows.map((r: any[]) => (r[0] || '').toString().trim()))];
+    debug.categories = categories;
+    debug.firstRows = rows.slice(0, 10).map((r: any[]) => ({
+      C: r[0], D: r[1], C_charCodes: (r[0] || '').split('').map((c: string) => c.charCodeAt(0))
+    }));
+    // 「買主」でフィルタした結果
+    const buyerRows = rows.filter((r: any[]) => (r[0] || '').toString().trim() === '買主');
+    debug.buyerRowCount = buyerRows.length;
+    debug.templates = rows.slice(0, 5);
   } catch (err: any) {
     debug.error = err.message;
     debug.steps.push(`Error: ${err.message}`);
