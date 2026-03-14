@@ -192,4 +192,58 @@ export class EmailTemplateService {
 
     return { subject, body };
   }
+
+  /**
+   * <<>> 形式のプレースホルダーを実際のデータで置換する
+   * 例: <<住居表示>> → 物件住所, <<●氏名・会社名>> → 買主名
+   */
+  mergeAngleBracketPlaceholders(
+    text: string,
+    buyer: { name?: string; company_name?: string; buyer_number?: string; email?: string; [key: string]: any },
+    properties: Array<{
+      propertyNumber: string;
+      address: string;
+      price?: number;
+      googleMapUrl?: string;
+      athomeUrl?: string;
+      detailUrl?: string;
+      [key: string]: any;
+    }>
+  ): string {
+    let result = text;
+
+    // 買主情報の置換
+    const buyerName = buyer.company_name
+      ? `${buyer.name || ''}・${buyer.company_name}`
+      : (buyer.name || buyer.buyerName || '');
+    result = result.replace(/<<●氏名・会社名>>/g, buyerName);
+    result = result.replace(/<<氏名>>/g, buyer.name || buyer.buyerName || '');
+    result = result.replace(/<<買主番号>>/g, buyer.buyer_number || '');
+    result = result.replace(/<<メールアドレス>>/g, buyer.email || '');
+
+    if (properties.length === 0) return result;
+
+    if (properties.length === 1) {
+      const prop = properties[0];
+      result = result.replace(/<<住居表示>>/g, prop.address || '');
+      result = result.replace(/<<GoogleMap>>/g, prop.googleMapUrl ? `Googleマップ: ${prop.googleMapUrl}` : '');
+      result = result.replace(/<<athome URL>>/g, prop.athomeUrl || '');
+      result = result.replace(/<<物件詳細URL>>/g, prop.detailUrl || prop.athomeUrl || '');
+    } else {
+      const addressList = properties.map((p, i) => `【物件${i + 1}】${p.address || ''}`).join('\n');
+      const mapList = properties.filter(p => p.googleMapUrl).map((p, i) => `【物件${i + 1}】Googleマップ: ${p.googleMapUrl}`).join('\n');
+      const athomeList = properties.filter(p => p.athomeUrl).map(p => p.athomeUrl).join('\n');
+      const detailList = properties.map(p => p.detailUrl || p.athomeUrl || '').filter(Boolean).join('\n');
+      result = result.replace(/<<住居表示>>/g, addressList);
+      result = result.replace(/<<GoogleMap>>/g, mapList ? `Googleマップ:\n${mapList}` : '');
+      result = result.replace(/<<athome URL>>/g, athomeList);
+      result = result.replace(/<<物件詳細URL>>/g, detailList);
+    }
+
+    // 未置換のプレースホルダーを空文字に
+    result = result.replace(/<<SUUMO　URLの表示>>/g, '');
+    result = result.replace(/<<内覧前伝達事項v>>/g, '');
+
+    return result;
+  }
 }
