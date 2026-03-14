@@ -603,10 +603,26 @@ export default function BuyerDetailPage() {
             <ArrowBackIcon />
           </IconButton>
           <Typography variant="h5" fontWeight="bold">
-            {buyer.name || buyer.buyer_number}
+            {buyer.name ? buyer.name + '様' : buyer.buyer_number}
           </Typography>
+          {/* 買主番号コピーChip - 名前の直後に目立つように配置 */}
+          <Tooltip title={copiedBuyerNumber ? 'コピーしました！' : '買主番号をコピー'} arrow>
+            <Chip
+              icon={<ContentCopyIcon fontSize="small" />}
+              label={buyer_number}
+              size="medium"
+              onClick={() => {
+                navigator.clipboard.writeText(buyer_number || '');
+                setCopiedBuyerNumber(true);
+                setTimeout(() => setCopiedBuyerNumber(false), 2000);
+              }}
+              color={copiedBuyerNumber ? 'success' : 'primary'}
+              variant="filled"
+              sx={{ cursor: 'pointer', fontWeight: 'bold', fontSize: '0.9rem' }}
+            />
+          </Tooltip>
           {buyer.inquiry_confidence && (
-            <Chip label={buyer.inquiry_confidence} color="info" sx={{ ml: 2 }} />
+            <Chip label={buyer.inquiry_confidence} color="info" sx={{ ml: 1 }} />
           )}
           {buyer.latest_status && (
             <Chip label={buyer.latest_status.substring(0, 30)} sx={{ ml: 1 }} />
@@ -615,22 +631,6 @@ export default function BuyerDetailPage() {
             count={relatedBuyersCount} 
             onClick={scrollToRelatedBuyers}
           />
-          {/* 買主番号コピーChip */}
-          <Tooltip title={copiedBuyerNumber ? 'コピーしました！' : '買主番号をコピー'} arrow>
-            <Chip
-              icon={<ContentCopyIcon fontSize="small" />}
-              label={buyer_number}
-              size="small"
-              onClick={() => {
-                navigator.clipboard.writeText(buyer_number || '');
-                setCopiedBuyerNumber(true);
-                setTimeout(() => setCopiedBuyerNumber(false), 2000);
-              }}
-              color={copiedBuyerNumber ? 'success' : 'default'}
-              variant="outlined"
-              sx={{ cursor: 'pointer' }}
-            />
-          </Tooltip>
         </Box>
 
         <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
