@@ -102,10 +102,10 @@ router.post('/:templateId/merge', async (req, res) => {
 
 /**
  * Merge template with multiple properties
- * POST /api/email-templates/:templateId/merge-multiple
+ * POST /api/email-templates/:templateId/mergeMultiple
  * Body: { buyer: BuyerData, propertyIds: string[] }
  */
-router.post('/:templateId/merge-multiple', async (req, res) => {
+router.post('/:templateId/mergeMultiple', async (req, res) => {
   try {
     const { templateId } = req.params;
     const { buyer, propertyIds } = req.body;
@@ -128,21 +128,14 @@ router.post('/:templateId/merge-multiple', async (req, res) => {
       process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY!
     );
 
-    // デバッグログ
-    console.log('[merge-multiple] propertyIds received:', propertyIds);
-    console.log('[merge-multiple] propertyIds type:', typeof propertyIds, Array.isArray(propertyIds));
-
     // UUID で検索
     const { data: propertiesById, error: uuidError } = await supabase
       .from('property_listings')
       .select('id, property_number, address, sales_price, price, google_map_url, suumo_url, property_type, land_area, building_area')
       .in('id', propertyIds);
 
-    console.log('[merge-multiple] UUID search result:', propertiesById?.length, 'found, error:', uuidError?.message);
-
     const foundIds = new Set((propertiesById || []).map((p: any) => p.id));
     const missingIds = propertyIds.filter((id: string) => !foundIds.has(id));
-    console.log('[merge-multiple] missingIds:', missingIds);
 
     // 見つからなかった分は property_number で検索
     let propertiesByNumber: any[] = [];
@@ -151,12 +144,10 @@ router.post('/:templateId/merge-multiple', async (req, res) => {
         .from('property_listings')
         .select('id, property_number, address, sales_price, price, google_map_url, suumo_url, property_type, land_area, building_area')
         .in('property_number', missingIds);
-      console.log('[merge-multiple] property_number search result:', data?.length, 'found, error:', numError?.message);
       propertiesByNumber = data || [];
     }
 
     const allProperties = [...(propertiesById || []), ...propertiesByNumber];
-    console.log('[merge-multiple] allProperties total:', allProperties.length);
     if (allProperties.length === 0) {
       return res.status(404).json({ error: 'No valid properties found' });
     }
