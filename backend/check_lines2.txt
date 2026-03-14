@@ -1,0 +1,241 @@
+﻿Total lines: 2515
+361: 
+362: 
+363: export default function BuyerDetailPage() {
+364: 
+365:   const { buyer_number } = useParams<{ buyer_number: string }>();
+366: 
+367:   const navigate = useNavigate();
+368: 
+369:   const [buyer, setBuyer] = useState<Buyer | null>(null);
+370: 
+371:   const [linkedProperties, setLinkedProperties] = useState<PropertyListing[]>([]);
+372: 
+373:   const [inquiryHistory, setInquiryHistory] = useState<InquiryHistory[]>([]);
+374: 
+375:   const [inquiryHistoryTable, setInquiryHistoryTable] = useState<InquiryHistoryItem[]>([]);
+376: 
+377:   const [selectedPropertyIds, setSelectedPropertyIds] = useState<Set<string>>(new Set());
+378: 
+379:   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+380: 
+381:   const [emailModalOpen, setEmailModalOpen] = useState(false);
+382: 
+383:   const [emailModalProperties, setEmailModalProperties] = useState<PropertyListing[]>([]);
+384: 
+385:   const [activities, setActivities] = useState<Activity[]>([]);
+386: 
+387:   const [relatedBuyersCount, setRelatedBuyersCount] = useState(0);
+388: 
+389:   const [loading, setLoading] = useState(true);
+390: 
+391:   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' | 'warning' }
+392: 
+393:     open: false,
+394: 
+395:     message: '',
+396: 
+397:     severity: 'success',
+398: 
+399:   });
+400: 
+401: 
+402: 
+403:   // 繧ｯ繧､繝・縺代・繧ｿ繝ｳ縺ｮ迥ｶ諷狗ｮ｡逅・  const { isDisabled: isQuickButtonDisabled, disableButton: disableQuickButton } = useQuickButtonStat
+404: 
+405: 
+406: 
+407:   // useStableContainerHeight繝輔ャ繧ｯ繧剃ｽｿ逕ｨ縺励※螳牙ｮ壹＠縺滄ｫ倥＆邂｡逅・  const { error: heightError } = useStableContainerHeight({
+408: 
+409:     headerHeight: 64,
+410: 
+411:     padding: 48,
+412: 
+413:     minHeight: 400,
+414: 
+415:     debounceDelay: 200,
+416: 
+417:   });
+418: 
+419: 
+420: 
+421:   // 繝薙Η繝ｼ郢晄亢繝ｻ繝磯ｫ倥＆險育ｮ励お繝ｩ繝ｼ縺ｮ繝上Φ繝峨Μ繝ｳ繧ｰ
+422: 
+423:   useEffect(() => {
+424: 
+425:     if (heightError) {
+426: 
+427:       console.error('[BuyerDetailPage] Height calculation error:', heightError);
+428: 
+429:       setSnackbar({
+430: 
+431:         open: true,
+432: 
+433:         message: '逕ｻ髱｢鬮倥＆縺ｮ險育ｮ励〒繧ｨ繝ｩ繝ｼ縺檎匱逕溘＠縺ｾ縺励◆縲ゅョ繝輔か繝ｫ郢昜ｺ･ﾂ・､繧剃ｽｿ逕ｨ縺励∪邵ｺ蜷ｶﾂ繝ｻ,
+434: 
+435:         severity: 'warning',
+436: 
+437:       });
+438: 
+439:     }
+440: 
+441:   }, [heightError]);
+442: 
+443: 
+444: 
+445:   // Validate buyer_number parameter - support UUID, numeric, and BY_ prefix formats
+446: 
+447:   const isUuid = buyer_number ? /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(buyer_number) : f
+448: 
+449:   const isNumericBuyerNumber = buyer_number ? /^\d+$/.test(buyer_number) : false;
+450: 
+451:   const isByPrefixBuyerNumber = buyer_number ? /^BY_[A-Za-z0-9_]+$/.test(buyer_number) : false;
+452: 
+453:   const isValidBuyerNumber = isUuid || isNumericBuyerNumber || isByPrefixBuyerNumber;
+454: 
+455: 
+456: 
+457:   useEffect(() => {
+458: 
+459:     if (buyer_number && isValidBuyerNumber) {
+460: 
+461:       fetchBuyer();
+462: 
+463:       fetchLinkedProperties();
+464: 
+465:       fetchInquiryHistory();
+466: 
+467:       fetchInquiryHistoryTable();
+468: 
+469:       fetchRelatedBuyersCount();
+470: 
+471:       fetchActivities();
+472: 
+473:     }
+474: 
+475:   }, [buyer_number, isValidBuyerNumber]);
+476: 
+477: 
+478: 
+479:   const fetchRelatedBuyersCount = async () => {
+480: 
+481:     try {
+482: 
+483:       const res = await api.get(`/api/buyers/${buyer_number}/related`);
+484: 
+485:       setRelatedBuyersCount(res.data.total_count || 0);
+486: 
+487:     } catch (error) {
+488: 
+489:       console.error('Failed to fetch related buyers count:', error);
+490: 
+491:     }
+492: 
+493:   };
+494: 
+495: 
+496: 
+497:   const scrollToRelatedBuyers = () => {
+498: 
+499:     const element = document.getElementById('related-buyers-section');
+500: 
+501:     if (element) {
+502: 
+503:       element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+504: 
+505:     }
+506: 
+507:   };
+508: 
+509: 
+510: 
+511:   const fetchBuyer = async () => {
+512: 
+513:     try {
+514: 
+515:       setLoading(true);
+516: 
+517:       const res = await api.get(`/api/buyers/${buyer_number}`);
+518: 
+519:       setBuyer(res.data);
+520: 
+521:     } catch (error) {
+522: 
+523:       console.error('Failed to fetch buyer:', error);
+524: 
+525:     } finally {
+526: 
+527:       setLoading(false);
+528: 
+529:     }
+530: 
+531:   };
+532: 
+533: 
+534: 
+535:   // 繧､繝ｳ繝ｩ繧､繝ｳ邱ｨ髮・逡代・繝輔ぅ繝ｼ繝ｫ繝画峩譁ｰ繝上Φ繝峨Λ繝ｼ
+536: 
+537:   const handleInlineFieldSave = async (fieldName: string, newValue: any) => {
+538: 
+539:     if (!buyer) return;
+540: 
+541: 
+542: 
+543:     try {
+544: 
+545:       // 譖ｴ譁ｰ縺吶ｋ繝輔ぅ繝ｼ繝ｫ郢晏ｳｨ繝ｻ縺ｿ郢ｧ蟶敖竏ｽ・ｿ・｡繝ｻ莠･譖呎婿蜷大酔譛溘ｒ譛牙柑蛹厄ｼ・      const result = await buyerApi.update(
+546: 
+547:         buyer_number!,
+548: 
+549:         { [fieldName]: newValue },
+550: 
+551:         { sync: true }  // 繧ｹ繝励Ξ繝・繝ｩ繧ｷ繝ｼ繝医∈縺ｮ蜷梧悄繧呈怏蜉ｹ蛹・      );
+552: 
+553:       
+554: 
+555:       // 遶ｶ蜷医′縺ゅｋ蝣ｴ蜷・      if (result.conflicts && result.conflicts.length > 0) {
+556: 
+557:         console.warn('Sync conflict detected:', result.conflicts);
+558: 
+559:         setSnackbar({
+560: 
+561:           open: true,
+562: 
+563:           message: '蜷梧悄遶ｶ蜷医′逋ｺ逕溘＠縺ｾ縺励◆縲ゅせ繝励Ξ繝・繝ｩ繧ｷ繝ｼ郢晏現繝ｻ蛟､縺悟､画峩縺輔ｌ縺ｦ縺・竏ｪ邵ｺ蜷ｶﾂ繝ｻ,
+564: 
+565:           severity: 'warning'
+566: 
+567:         });
+568: 
+569:         // 繝ｭ繝ｼ繧ｫ繝ｫ迥ｶ隲ｷ荵昴・譖ｴ譁ｰ繝ｻ繝ｻB縺ｫ縺ｯ菫晏ｭ倥＆繧後※縺・・九・繝ｻ        setBuyer(result.buyer);
+570: 
+571:         return { success: true };
+572: 
+573:       }
+574: 
+575:       
+576: 
+577:       // 繝ｭ繝ｼ繧ｫ繝ｫ迥ｶ諷九ｒ譖ｴ譁ｰ
+578: 
+579:       setBuyer(result.buyer);
+580: 
+581:       
+582: 
+583:       // 蜷梧悄繧ｹ繝・繝ｻ繧ｿ繧ｹ繧定｡ｨ遉ｺ
+584: 
+585:       if (result.syncStatus === 'pending') {
+586: 
+587:         setSnackbar({
+588: 
+589:           open: true,
+590: 
+591:           message: '菫晏ｭ倥＠縺ｾ縺励◆繝ｻ蛹ｻ縺帙・繝ｬ繝・繝ｩ繧ｷ繝ｼ繝亥酔隴帶ｺ倥・菫晉蕗荳ｭ繝ｻ繝ｻ,
+592: 
+593:           severity: 'warning'
+594: 
+595:         });
+596: 
+597:       } else if (result.syncStatus === 'synced') {
+598: 
+599:         // 謌仙粥隴弱ｅ繝ｻ迚ｹ縺ｫ繝｡繝・縺昴・繧ｸ繧定｡ｨ遉ｺ縺励↑縺・・ｼ逎ｯ謦輔°縺ｫ謌仙粥繝ｻ繝ｻ      }
+600: 

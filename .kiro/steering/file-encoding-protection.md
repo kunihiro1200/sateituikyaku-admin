@@ -186,9 +186,9 @@ $OutputEncoding = [System.Text.Encoding]::UTF8
 
 ### ファイル復元時の必須手順
 
-1. **`git checkout`を使用する**
+1. **`git restore --source=<commit>`を使用する**（`git checkout`より安全）
    ```bash
-   git checkout <commit> -- <file>
+   git restore --source=<commit> -- <file>
    ```
 
 2. **`git show`は絶対に使用しない**
@@ -209,8 +209,98 @@ git show f623fde:backend/api/index.ts > backend/api/index.ts
 
 **✅ 正しい方法**:
 ```bash
-git checkout f623fde -- backend/api/index.ts
+git restore --source=f623fde -- backend/api/index.ts
 ```
+
+---
+
+## 🚨 最重要：日本語ファイルの編集ルール（2026年3月追加）
+
+### 問題の背景
+
+`strReplace` ツールや `git` コマンド経由でファイルを書き込むと、Windows環境でShift-JISに変換されてビルドエラーが発生することがある。
+
+**発生したエラー例**:
+```
+BuyerDetailPage.tsx:90:51: ERROR: Unterminated string literal
+```
+
+**原因**: `strReplace` でファイルを編集後、gitコミット時にShift-JIS変換が発生し、日本語文字列が壊れた。
+
+---
+
+### ✅ 日本語を含むファイルの編集手順（必須）
+
+#### ステップ1: `git restore` で正常なUTF-8ファイルを取得
+
+```bash
+git restore --source=<正常なコミット> -- <file>
+```
+
+#### ステップ2: Pythonスクリプトで変更を適用
+
+**❌ 禁止**: `strReplace` ツールで日本語ファイルを直接編集
+**✅ 必須**: Pythonスクリプトを作成してUTF-8で書き込む
+
+```python
+# fix_changes.py
+with open('path/to/file.tsx', 'rb') as f:
+    content = f.read()
+
+text = content.decode('utf-8')
+
+# 変更を適用
+text = text.replace('old_string', 'new_string')
+
+# UTF-8で書き込む（BOMなし）
+with open('path/to/file.tsx', 'wb') as f:
+    f.write(text.encode('utf-8'))
+
+print('Done!')
+```
+
+```bash
+python fix_changes.py
+```
+
+#### ステップ3: エンコーディングを確認してからコミット
+
+```bash
+# BOMなしUTF-8であることを確認
+python -c "
+with open('path/to/file.tsx', 'rb') as f:
+    content = f.read()
+print('BOM check:', repr(content[:3]))  # b'imp' などであればOK（b'\xef\xbb\xbf' はBOM付き）
+"
+```
+
+#### ステップ4: コミット＆プッシュ
+
+```bash
+git add <file>
+git commit -m "fix: description (UTF-8 safe)"
+git push
+```
+
+---
+
+### 📋 日本語ファイル編集時のチェックリスト
+
+- [ ] `strReplace` ツールを使わずPythonスクリプトで変更を適用したか？
+- [ ] `open(..., 'wb')` + `.encode('utf-8')` でUTF-8書き込みしたか？
+- [ ] BOMチェックで `b'\xef\xbb\xbf'` が先頭にないか確認したか？
+- [ ] `getDiagnostics` でエラーがないか確認したか？
+
+---
+
+### ⚠️ `strReplace` が安全な場合と危険な場合
+
+| 状況 | 安全性 | 推奨 |
+|------|--------|------|
+| 英数字のみの変更 | ✅ 安全 | `strReplace` 使用可 |
+| 日本語を含むファイルの変更 | ❌ 危険 | Pythonスクリプト必須 |
+| 日本語文字列を含む行の変更 | ❌ 危険 | Pythonスクリプト必須 |
+| 英語コメントのみの変更 | ✅ 安全 | `strReplace` 使用可 |
 
 ---
 

@@ -1,0 +1,210 @@
+﻿161:     name: string;
+162: 
+163:     initials: string;
+164: 
+165:   };
+166: 
+167: }
+168: 
+169: 
+170: 
+171: // 繝輔ぅ繝ｼ繝ｫ繝峨ｒ繧ｻ繧ｯ繧ｷ繝ｧ繝ｳ縺斐→縺ｫ繧ｰ繝ｫ繝ｼ繝怜喧
+172: 
+173: // 蝠丞粋譎ゅヲ繧｢繝ｪ繝ｳ繧ｰ逕ｨ繧ｯ繧､繝・縺大・陷牙ｸ吶・繧ｿ繝ｳ縺ｮ螳夂ｾｩ
+174: 
+175: const INQUIRY_HEARING_QUICK_INPUTS = [
+176: 
+177:   { label: '蛻晁ｦ九°', text: '蛻晁ｦ九°繝ｻ繝ｻ },
+178: 
+179:   { label: '蟶梧悍譎よ悄', text: '蟶梧悍譎よ悄繝ｻ繝ｻ },
+180: 
+181:   { label: '鬯ｧ蜊・ｻ髮・｣ｰ・ｴ蟶梧悍蜿ｰ謨ｰ', text: '鬯ｧ蜊・ｻ髮・｣ｰ・ｴ蟶梧悍蜿ｰ謨ｰ繝ｻ繝ｻ },
+182: 
+183:   { label: '繝ｪ繝輔か繝ｼ郢晢｣ｰ莠育ｮ・, text: '繝ｪ繝輔か繝ｼ郢晢｣ｰ霎ｼ縺ｿ縺ｮ莠育ｮ暦ｼ域怙鬮倬｡搾ｼ会ｼ・ },
+184: 
+185:   { label: '謖√■螳ｶ縺・, text: '謖√■螳ｶ縺具ｼ・ },
+186: 
+187:   { label: '莉也黄莉ｶ', text: '莉悶↓豌励↓縺ｪ繧狗黄莉ｶ縺ｯ縺ゅｋ縺具ｼ滂ｼ・ },
+188: 
+189: ];
+190: 
+191: 
+192: 
+193: const BUYER_FIELD_SECTIONS = [
+194: 
+195:   {
+196: 
+197:     title: '蝓ｺ譛ｬ諠・・ｰ・ｱ',
+198: 
+199:     fields: [
+200: 
+201:       { key: 'buyer_number', label: '雋ｷ荳ｻ逡ｪ蜿ｷ', inlineEditable: true, readOnly: true },
+202: 
+203:       { key: 'name', label: '豌丞錐繝ｻ莨夂､ｾ蜷・, inlineEditable: true },
+204: 
+205:       { key: 'phone_number', label: '髮ｻ隧ｱ逡ｪ蜿ｷ', inlineEditable: true },
+206: 
+207:       { key: 'email', label: '繝｡繝ｼ繝ｫ繧｢繝峨Ξ繧ｹ', inlineEditable: true },
+208: 
+209:       { key: 'company_name', label: '豕穂ｺｺ蜷・, inlineEditable: true },
+210: 
+211:     ],
+212: 
+213:   },
+214: 
+215:   {
+216: 
+217:     title: '蝠丞粋邵ｺ蟶吶・蜀・・ｦ・ｧ諠・・ｰ・ｱ',
+218: 
+219:     fields: [
+220: 
+221:       { key: 'initial_assignee', label: '蛻晏虚諡・・ｽ繝ｻ, inlineEditable: true },
+222: 
+223:       { key: 'follow_up_assignee', label: '蠕檎ｶ壽球蠖・, inlineEditable: true },
+224: 
+225:       { key: 'reception_date', label: '蜿嶺ｻ俶律', type: 'date', inlineEditable: true },
+226: 
+227:       { key: 'inquiry_source', label: '蝠丞粋邵ｺ蟶帙・', inlineEditable: true },
+228: 
+229:       { key: 'inquiry_hearing', label: '蝠丞粋譎ゅヲ繧｢繝ｪ繝ｳ繧ｰ', multiline: true, inlineEditable: true },
+230: 
+231:       { key: 'inquiry_confidence', label: '蝠丞粋譎ら｢ｺ蠎ｦ', inlineEditable: true },
+232: 
+233:       { key: 'inquiry_email_phone', label: '縲仙撫蜷医Γ繝ｼ繝ｫ縲鷹崕隧ｱ蟇ｾ蠢・, inlineEditable: true, fieldType: 'dropdown' },
+234: 
+235:       { key: 'three_calls_confirmed', label: '3蝗樊楔髮ｻ遒ｺ隱肴ｸ医∩', inlineEditable: true, fieldType: 'dropdown' },
+236: 
+237:       { key: 'email_type', label: '繝｡繝ｼ繝ｫ遞ｮ蛻･', inlineEditable: true, fieldType: 'dropdown' },
+238: 
+239:       { key: 'distribution_type', label: '驟堺ｿ｡遞ｮ蛻･', inlineEditable: true, fieldType: 'dropdown' },
+240: 
+241:       { key: 'owned_home_hearing', label: '謖∝ｮｶ繝偵い繝ｪ繝ｳ繧ｰ', inlineEditable: true },
+242: 
+243:       { key: 'latest_viewing_date', label: '蜀・・ｦ・ｧ譌･(隴崢譁ｰ)', type: 'date', inlineEditable: true },
+244: 
+245:       // viewing_notes 縺ｯ PropertyInfoCard 蜀・竊鍋ｧｻ蜍・      { key: 'next_call_date', label: '谺｡髮ｻ譌･', type: 'date', inlineEditabl
+246: 
+247:     ],
+248: 
+249:   },
+250: 
+251:   {
+252: 
+253:     title: '蜀・・ｦ・ｧ邨先棡繝ｻ蠕檎ｶ壼ｯｾ蠢・,
+254: 
+255:     isViewingResultGroup: true,  // 迚ｹ蛻･縺ｪ繧ｰ繝ｫ繝ｼ繝励→縺励※郢晄ｧｭ繝ｻ繧ｯ
+256: 
+257:     fields: [
+258: 
+259:       { key: 'viewing_result_follow_up', label: '蜀・・ｦ・ｧ邨先棡繝ｻ蠕檎ｶ壼ｯｾ蠢・, multiline: true, inlineEditable: true },
+260: 
+261:       { key: 'follow_up_assignee', label: '蠕檎ｶ壽球蠖・, inlineEditable: true },
+262: 
+263:       { key: 'latest_status', label: '笘・諤呎眠迥ｶ豕・, inlineEditable: true, fieldType: 'dropdown' },
+264: 
+265:     ],
+266: 
+267:   },
+268: 
+269:   {
+270: 
+271:     title: '蟶梧悍譚｡莉ｶ',
+272: 
+273:     fields: [
+274: 
+275:       { key: 'desired_timing', label: '蟶梧悍譎よ悄', inlineEditable: true },
+276: 
+277:       { key: 'desired_area', label: '繧ｨ繝ｪ繧｢', inlineEditable: true },
+278: 
+279:       { key: 'desired_property_type', label: '蟶梧悍遞ｮ蛻･', inlineEditable: true },
+280: 
+281:       { key: 'desired_building_age', label: '遽牙ｹｴ謨ｰ', inlineEditable: true },
+282: 
+283:       { key: 'desired_floor_plan', label: '髢灘叙繧・, inlineEditable: true },
+284: 
+285:       { key: 'budget', label: '莠育ｮ・, inlineEditable: true },
+286: 
+287:       { key: 'price_range_house', label: '萓｡譬ｼ蟶ｯ繝ｻ蝓溯匳蟒ｺ繝ｻ繝ｻ, inlineEditable: true },
+288: 
+289:       { key: 'price_range_apartment', label: '萓｡譬ｼ蟶ｯ繝ｻ蛹ｻ繝ｻ繝ｳ繧ｷ繝ｧ繝ｳ繝ｻ繝ｻ, inlineEditable: true },
+290: 
+291:       { key: 'price_range_land', label: '萓｡譬ｼ蟶ｯ繝ｻ莠･謔・慍繝ｻ繝ｻ, inlineEditable: true },
+292: 
+293:       { key: 'parking_spaces', label: 'P蜿ｰ謨ｰ', inlineEditable: true },
+294: 
+295:       { key: 'hot_spring_required', label: '貂ｩ豕峨≠繧・, inlineEditable: true },
+296: 
+297:       { key: 'garden_required', label: '蠎ｭ莉倥″', inlineEditable: true },
+298: 
+299:       { key: 'pet_allowed_required', label: '繝壹ャ繝亥庄', inlineEditable: true },
+300: 
+301:       { key: 'good_view_required', label: '逵ｺ譛幄憶螂ｽ', inlineEditable: true },
+302: 
+303:       { key: 'high_floor_required', label: '鬮伜ｱ､髫・, inlineEditable: true },
+304: 
+305:       { key: 'corner_room_required', label: '隗帝Κ螻・, inlineEditable: true },
+306: 
+307:     ],
+308: 
+309:   },
+310: 
+311:   {
+312: 
+313:     title: '邵ｺ譏ｴ繝ｻ莉・,
+314: 
+315:     fields: [
+316: 
+317:       { key: 'special_notes', label: '迚ｹ髫ｪ蛟・ｽｺ遏ｩ・ｰ繝ｻ, multiline: true, inlineEditable: true },
+318: 
+319:       { key: 'message_to_assignee', label: '諡・・ｽ阮吮・縺ｮ闔ｨ譎・ｽｨﾂ/雉ｪ陜荳茨ｽｺ遏ｩ・ｰ繝ｻ, multiline: true, inlineEditable: true },
+320: 
+321:       { key: 'confirmation_to_assignee', label: '諡・・ｽ阮吮・縺ｮ遒ｺ髫ｱ蝣ｺ・ｺ遏ｩ・ｰ繝ｻ, multiline: true, inlineEditable: true },
+322: 
+323:       { key: 'family_composition', label: '螳ｶ隴御ｹ暦ｽｧ蛹ｺ繝ｻ', inlineEditable: true },
+324: 
+325:       { key: 'must_have_points', label: '隴ｲ繧後↑縺・縺・, multiline: true, inlineEditable: true },
+326: 
+327:       { key: 'liked_points', label: '豌励↓蜈･縺｣縺ｦ縺・・狗せ', multiline: true, inlineEditable: true },
+328: 
+329:       { key: 'disliked_points', label: '郢敖繝｡縺ｪ轤ｹ', multiline: true, inlineEditable: true },
+330: 
+331:       { key: 'purchase_obstacles', label: '雉ｼ蜈･譎る囿螳ｳ縺ｨ縺ｪ繧狗せ', multiline: true, inlineEditable: true },
+332: 
+333:       { key: 'next_action', label: '谺｡縺ｮ繧｢繧ｯ繧ｷ繝ｧ繝ｳ', multiline: true, inlineEditable: true },
+334: 
+335:     ],
+336: 
+337:   },
+338: 
+339:   {
+340: 
+341:     title: '雋ｷ莉俶ュ蝣ｱ',
+342: 
+343:     fields: [
+344: 
+345:       { key: 'offer_status', label: '雋ｷ莉俶怏辟｡', inlineEditable: true },
+346: 
+347:       { key: 'offer_comment', label: '雋ｷ莉倥さ繝｡繝ｳ繝・, inlineEditable: true },
+348: 
+349:       { key: 'offer_property_sheet', label: '雋ｷ莉假ｼ育黄莉ｶ繧ｷ繝ｼ繝茨ｼ・, inlineEditable: true },
+350: 
+351:       { key: 'offer_lost_comment', label: '雋ｷ莉伜､悶ｌ繧ｳ繝｡繝ｳ繝・, inlineEditable: true },
+352: 
+353:       { key: 'offer_lost_chat', label: '雋ｷ莉伜､悶ｌ繝√Ε繝・繝ｨ', inlineEditable: true },
+354: 
+355:     ],
+356: 
+357:   },
+358: 
+359: ];
+360: 
+361: 
+362: 
+363: export default function BuyerDetailPage() {
+364: 
+365:   const { buyer_number } = useParams<{ buyer_number: string }>();
+366: 
+367:   const navigate = useNavigate();
+368: 
+369:   const [buyer, setBuyer] = useState<Buyer | null>(null);
+370: 

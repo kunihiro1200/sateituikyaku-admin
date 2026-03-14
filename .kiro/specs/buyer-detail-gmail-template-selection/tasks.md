@@ -1,178 +1,64 @@
-# Implementation Plan: Buyer Detail Gmail Template Selection
+# Implementation Plan
 
-## Overview
+- [ ] 1. バグ条件の探索テストを作成
+  - **Property 1: Bug Condition** - スプレッドシートアクセス失敗時に空配列を返すバグ
+  - **CRITICAL**: このテストは未修正コードで実行すること。失敗が確認されればバグの存在が証明される
+  - **DO NOT attempt to fix the test or the code when it fails**
+  - **NOTE**: このテストは期待動作をエンコードしている。修正後にパスすることでバグ解消を確認できる
+  - **GOAL**: バグが存在することを示す反例を見つける
+  - **Scoped PBT Approach**: 決定論的なバグのため、具体的な失敗ケースにスコープを絞る
+  - テスト対象: `backend/src/services/EmailTemplateService.ts` の `getTemplates()` メソッド
+  - バグ条件（`isBugCondition`）: `GoogleSheetsClient.authenticate()` または `spreadsheets.values.get()` が例外をスローし、`catch` ブロックが `return []` で空配列を返す
+  - テストシナリオ1: `authenticate()` が例外をスローするようにモックし、`getTemplates()` が例外をスローすることをアサート（未修正コードでは `[]` を返すため FAIL）
+  - テストシナリオ2: `spreadsheets.values.get()` が例外をスローするようにモックし、`getTemplates()` が例外をスローすることをアサート（未修正コードでは `[]` を返すため FAIL）
+  - テストシナリオ3: `/api/email-templates` エンドポイントが認証失敗時に500を返すことをアサート（未修正コードでは200 OKで `[]` を返すため FAIL）
+  - 未修正コードで実行し、反例を記録する（例: 「認証失敗時に `getTemplates()` が例外をスローせず `[]` を返す」）
+  - **EXPECTED OUTCOME**: テストが FAIL する（これが正しい。バグの存在を証明する）
+  - _Requirements: 1.3_
 
-買主詳細ページのGmail送信機能を改善し、問合せ件数に関わらずメール送信を可能にする。テンプレート選択、物件選択、プレースホルダー置換、送信履歴記録の機能を実装する。
+- [ ] 2. 保全プロパティテストを作成（修正前に実施）
+  - **Property 2: Preservation** - スプレッドシートアクセス成功時の動作保持
+  - **IMPORTANT**: 観察優先メソドロジーに従う
+  - 未修正コードで非バグ条件の入力（スプレッドシートアクセスが成功するケース）の動作を観察する
+  - 観察: スプレッドシートから「買主」区分のテンプレートが正常に取得できる場合、`EmailTemplate[]` が返る
+  - 観察: `mergePlaceholders()` と `mergeMultipleProperties()` は `getTemplates()` の変更に影響されない
+  - 観察: `/api/email-templates/:id/merge-multiple` エンドポイントは `getTemplates()` の変更に影響されない
+  - テストシナリオ1: スプレッドシートアクセスが成功するようにモックし、`getTemplates()` が `EmailTemplate[]` を返すことをアサート
+  - テストシナリオ2: 返却される `EmailTemplate` オブジェクトが `id`・`name`・`description`・`subject`・`body` を持つことをアサート
+  - テストシナリオ3: `mergePlaceholders()` の動作が変更されていないことをアサート
+  - 未修正コードで実行し、テストがパスすることを確認する（ベースライン動作の確認）
+  - **EXPECTED OUTCOME**: テストが PASS する（これが正しい。保全すべきベースライン動作を確認する）
+  - _Requirements: 3.1, 3.2, 3.3_
 
-## Tasks
+- [ ] 3. `getTemplates()` のバグ修正
 
-- [x] 1. データベーススキーマの拡張
-  - email_historyテーブルにtemplate_idとtemplate_nameカラムを追加
-  - マイグレーションファイルを作成
-  - _Requirements: 6.4_
+  - [ ] 3.1 `EmailTemplateService.getTemplates()` の `catch` ブロックを修正
+    - `backend/src/services/EmailTemplateService.ts` を編集する
+    - `catch` ブロック内の `return []` を `throw error` に変更する
+    - エラーログ（`console.error`）は維持する（要件3.4）
+    - 修正前: `return [];`
+    - 修正後: `throw error;`
+    - `backend/src/routes/emailTemplates.ts` の `GET /` ハンドラはすでに `try/catch` を持ち、エラー時に500を返す実装になっているため変更不要
+    - _Bug_Condition: `isBugCondition(input)` where `authenticate()` or `spreadsheets.values.get()` throws Error AND `catch` block returns `[]`_
+    - _Expected_Behavior: `getTemplates()` throws Error when spreadsheet access fails; `/api/email-templates` returns 500_
+    - _Preservation: スプレッドシートアクセスが成功する場合、`EmailTemplate[]` を返す動作は変更しない_
+    - _Requirements: 1.3, 2.1, 2.2, 2.3, 3.1, 3.2, 3.3, 3.4_
 
-- [ ] 2. メールテンプレートの定義と管理
-  - [x] 2.1 EmailTemplateインターフェースとデータ型を定義
-    - TypeScript型定義を作成
-    - プレースホルダーの型定義を含める
-    - _Requirements: 2.2, 2.5_
+  - [ ] 3.2 バグ条件の探索テストが今度はパスすることを確認
+    - **Property 1: Expected Behavior** - スプレッドシートアクセス失敗時のエラー伝播
+    - **IMPORTANT**: タスク1で作成した同じテストを再実行する。新しいテストを書かない
+    - タスク1のテストは期待動作をエンコードしている
+    - このテストがパスすれば、バグが修正されたことが確認できる
+    - 修正後のコードで実行し、全シナリオがパスすることを確認する
+    - **EXPECTED OUTCOME**: テストが PASS する（バグが修正されたことを確認）
+    - _Requirements: 1.3, 2.1_
 
-  - [x] 2.2 初期テンプレートデータを作成
-    - 問合せ返信テンプレート
-    - 内覧案内テンプレート
-    - フォローアップテンプレート
-    - _Requirements: 2.2_
+  - [ ] 3.3 保全テストが引き続きパスすることを確認
+    - **Property 2: Preservation** - スプレッドシートアクセス成功時の動作保持
+    - **IMPORTANT**: タスク2で作成した同じテストを再実行する。新しいテストを書かない
+    - 修正後のコードで実行し、全シナリオが引き続きパスすることを確認する
+    - リグレッションがないことを確認する
+    - **EXPECTED OUTCOME**: テストが PASS する（リグレッションなし）
 
-  - [ ]* 2.3 テンプレート管理のユニットテストを作成
-    - テンプレート取得のテスト
-    - プレースホルダー検証のテスト
-    - _Requirements: 2.2_
-
-- [ ] 3. バックエンドサービスの実装
-  - [x] 3.1 EmailTemplateServiceを実装
-    - getTemplates()メソッド
-    - getTemplateById()メソッド
-    - mergePlaceholders()メソッド
-    - _Requirements: 5.1, 5.2, 5.4_
-
-  - [ ]* 3.2 プレースホルダー置換のプロパティテストを作成
-    - **Property 5: Placeholder replacement completeness**
-    - **Validates: Requirements 5.1, 5.2**
-
-  - [x] 3.3 EmailHistoryServiceを拡張
-    - recordEmailSent()にtemplate情報を追加
-    - getEmailHistory()でtemplate情報を取得
-    - _Requirements: 6.1, 6.2, 6.3, 6.4, 6.5_
-
-  - [ ]* 3.4 メール履歴記録のプロパティテストを作成
-    - **Property 6: Email history recording**
-    - **Validates: Requirements 6.1, 6.2, 6.3, 6.4, 6.5**
-
-  - [x] 3.4 GmailSendServiceを拡張
-    - テンプレートIDを含むメール送信
-    - バリデーション強化
-    - _Requirements: 7.1, 7.2_
-
-- [ ] 4. フロントエンドコンポーネントの実装
-  - [x] 4.1 GmailSendButtonコンポーネントを更新
-    - 問合せ件数に基づく表示ロジック
-    - クリックハンドラーの実装
-    - _Requirements: 1.1, 1.2, 1.3_
-
-  - [ ]* 4.2 ボタン表示のプロパティテストを作成
-    - **Property 1: Button visibility consistency**
-    - **Validates: Requirements 1.1**
-
-  - [x] 4.3 TemplateSelectionModalコンポーネントを作成
-    - テンプレート一覧表示
-    - テンプレートプレビュー
-    - 選択とキャンセル機能
-    - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5_
-
-  - [ ]* 4.4 テンプレート選択のプロパティテストを作成
-    - **Property 2: Template selection completeness**
-    - **Validates: Requirements 2.2, 2.5**
-
-  - [x] 4.5 PropertySelectionModalコンポーネントを作成
-    - 物件一覧表示
-    - デフォルト選択ロジック
-    - 選択とキャンセル機能
-    - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 4.6_
-
-  - [ ]* 4.6 物件選択のプロパティテストを作成
-    - **Property 4: Multiple inquiry default selection**
-    - **Validates: Requirements 4.3**
-
-  - [x] 4.7 EmailCompositionFormコンポーネントを更新
-    - マージされたテンプレートコンテンツの表示
-    - 送信前のプレビュー
-    - 送信とキャンセル機能
-    - _Requirements: 5.3_
-
-- [ ] 5. メールフロー統合
-  - [x] 5.1 単一問合せフローを実装
-    - 自動物件選択ロジック
-    - テンプレート選択 → 作成フォーム
-    - _Requirements: 3.1, 3.2, 3.3_
-
-  - [ ]* 5.2 単一問合せのプロパティテストを作成
-    - **Property 3: Single inquiry auto-selection**
-    - **Validates: Requirements 3.1, 3.2**
-
-  - [x] 5.3 複数問合せフローを実装
-    - 物件選択 → テンプレート選択 → 作成フォーム
-    - デフォルト物件選択ロジック
-    - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 4.6_
-
-  - [x] 5.4 テンプレートと物件データのマージ処理
-    - プレースホルダー置換ロジック
-    - フォールバック値の処理
-    - _Requirements: 5.1, 5.2, 5.3, 5.4_
-
-- [ ] 6. エラーハンドリングとフィードバック
-  - [x] 6.1 ローディング状態の実装
-    - テンプレート読み込み中の表示
-    - メール送信中の表示
-    - _Requirements: 7.1, 7.2_
-
-  - [x] 6.2 エラーメッセージとリトライ機能
-    - テンプレート読み込みエラー
-    - メール送信エラー
-    - リトライボタンの実装
-    - _Requirements: 7.3, 7.5_
-
-  - [ ]* 6.3 エラーハンドリングのプロパティテストを作成
-    - **Property 7: Error feedback provision**
-    - **Validates: Requirements 7.3, 7.5**
-
-  - [x] 6.4 成功通知の実装
-    - メール送信成功メッセージ
-    - 履歴への反映確認
-    - _Requirements: 7.4_
-
-  - [x] 6.5 UI状態管理の実装
-    - 選択中の物件の明示
-    - ボタンの無効化/有効化
-    - _Requirements: 7.6_
-
-- [ ] 7. Checkpoint - 基本機能の動作確認
-  - すべてのテストがパスすることを確認
-  - 単一問合せと複数問合せの両方のフローをテスト
-  - ユーザーに質問があれば確認
-
-- [ ] 8. 統合テストとE2Eテスト
-  - [ ]* 8.1 フルフローの統合テストを作成
-    - ボタンクリック → テンプレート選択 → 送信 → 履歴記録
-    - 単一問合せフロー
-    - 複数問合せフロー
-
-  - [ ]* 8.2 Gmail API統合テストを作成
-    - 実際のメール送信テスト（テスト環境）
-    - エラーハンドリングのテスト
-
-- [ ] 9. UIの最終調整
-  - [ ] 9.1 レスポンシブデザインの確認
-    - モバイル表示の調整
-    - タブレット表示の調整
-
-  - [ ] 9.2 アクセシビリティの確認
-    - キーボードナビゲーション
-    - スクリーンリーダー対応
-
-  - [ ] 9.3 ユーザビリティの改善
-    - ボタン配置の最適化
-    - モーダルのアニメーション
-    - フィードバックの視認性
-
-- [ ] 10. Final checkpoint - 全機能の動作確認
-  - すべてのテストがパスすることを確認
-  - 実際のユーザーフローで動作確認
-  - ユーザーに最終確認
-
-## Notes
-
-- Tasks marked with `*` are optional and can be skipped for faster MVP
-- Each task references specific requirements for traceability
-- Checkpoints ensure incremental validation
-- Property tests validate universal correctness properties
-- Unit tests validate specific examples and edge cases
+- [ ] 4. チェックポイント - 全テストのパスを確認
+  - 全テストがパスすることを確認する。質問があればユーザーに確認する。

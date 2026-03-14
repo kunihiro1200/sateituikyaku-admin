@@ -1,0 +1,101 @@
+﻿ASCII-only additions: 1099
+15: +  FormControl,
+
+16: +  InputLabel,
+
+17: +  Select,
+
+18: +  MenuItem,
+
+19: +  Dialog,
+
+20: +  DialogTitle,
+
+21: +  DialogContent,
+
+22: +  DialogActions,
+
+23: +  TextField,
+
+28: +  Phone,
+
+29: +  Image as ImageIcon,
+
+37: +import ImageSelectorModal from '../components/ImageSelectorModal';
+
+39: +import { ConfirmationToAssignee } from '../components/ConfirmationToAssignee';
+
+47: +import {
+
+48: +  OTHER_PROPERTY_HEARING_OPTIONS,
+
+49: +  EMAIL_CONFIRMATION_OPTIONS,
+
+50: +  PINRICH_OPTIONS,
+
+51: +  VIEWING_PROMOTION_EMAIL_OPTIONS,
+
+52: +} from '../utils/buyerDetailFieldOptions';
+
+55: +import { useAuthStore } from '../store/authStore';
+
+63: +  google_map_url?: string;
+
+64: +  suumo_url?: string;
+
+74: +interface BuyerTemplate {
+
+75: +  id: string;
+
+76: +  category: string;
+
+77: +  type: string;
+
+78: +  subject: string;
+
+79: +  content: string;
+
+80: +}
+
+81: +
+
+162: +      { key: 'pinrich', label: 'Pinrich', inlineEditable: true, fieldType: 'dropdown', column: 'left' },
+
+206: +  const { employee } = useAuthStore();
+
+214: +  const [copiedBuyerNumber, setCopiedBuyerNumber] = useState(false);
+
+220: +  const [emailTemplates, setEmailTemplates] = useState<BuyerTemplate[]>([]);
+
+221: +  const [smsTemplates, setSmsTemplates] = useState<BuyerTemplate[]>([]);
+
+222: +  const [confirmDialog, setConfirmDialog] = useState<{
+
+223: +    open: boolean;
+
+224: +    type: 'email' | 'sms' | null;
+
+225: +    template: BuyerTemplate | null;
+
+226: +  }>({
+
+227: +    open: false,
+
+228: +    type: null,
+
+229: +    template: null,
+
+230: +  });
+
+231: +  const [sendingTemplate, setSendingTemplate] = useState(false);
+
+232: +  const [editableEmailRecipient, setEditableEmailRecipient] = useState('');
+
+233: +  const [editableEmailSubject, setEditableEmailSubject] = useState('');
+
+234: +  const [editableEmailBody, setEditableEmailBody] = useState('');
+
+235: +  
+
+237: +  const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null);
+

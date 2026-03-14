@@ -4549,7 +4549,7 @@ HP：https://ifoo-oita.com/
                         target="_blank"
                         rel="noopener noreferrer"
                         style={{
-                          color: '#1976d2',
+                          color: '#2e7d32',
                           textDecoration: 'underline',
                           fontSize: '0.875rem',
                           wordBreak: 'break-all',
@@ -5148,7 +5148,7 @@ HP：https://ifoo-oita.com/
         <DialogContent>
           {confirmDialog.template && (
             <Box>
-              <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 'bold', color: 'primary.main' }}>
+              <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 'bold', color: 'success.main' }}>
                 {confirmDialog.template.label}
               </Typography>
               

@@ -1,0 +1,108 @@
+﻿Total lines: 1284
+1: import { useState, useEffect } from 'react';
+2: import { useParams, useNavigate } from 'react-router-dom';
+3: import {
+20: import { 
+24: import api, { buyerApi } from '../services/api';
+25: import PropertyInfoCard from '../components/PropertyInfoCard';
+26: import InquiryHistoryTable, { InquiryHistoryItem } from '../components/InquiryHistoryTable';
+27: import { InquiryResponseEmailModal } from '../components/InquiryResponseEmailModal';
+28: import RelatedBuyersSection from '../components/RelatedBuyersSection';
+29: import UnifiedInquiryHistoryTable from '../components/UnifiedInquiryHistoryTable';
+30: import RelatedBuyerNotificationBadge from '../components/RelatedBuyerNotificationBadge';
+31: import BuyerGmailSendButton from '../components/BuyerGmailSendButton';
+32: import { InlineEditableField } from '../components/InlineEditableField';
+33: import { useStableContainerHeight } from '../hooks/useStableContainerHeight';
+34: import { useQuickButtonState } from '../hooks/useQuickButtonState';
+35: import { INQUIRY_SOURCE_OPTIONS } from '../utils/buyerInquirySourceOptions';
+36: import { LATEST_STATUS_OPTIONS } from '../utils/buyerLatestStatusOptions';
+37: import { 
+43: import { formatDateTime } from '../utils/dateFormat';
+44: import { getDisplayName } from '../utils/employeeUtils';
+46: interface Buyer {
+50: interface PropertyListing {
+63: interface InquiryHistory {
+72: interface Activity {
+88: const INQUIRY_HEARING_QUICK_INPUTS = [
+97: const BUYER_FIELD_SECTIONS = [
+183: export default function BuyerDetailPage() {
+184:   const { buyer_number } = useParams<{ buyer_number: string }>();
+185:   const navigate = useNavigate();
+186:   const [buyer, setBuyer] = useState<Buyer | null>(null);
+187:   const [linkedProperties, setLinkedProperties] = useState<PropertyListing[]>([]);
+188:   const [inquiryHistory, setInquiryHistory] = useState<InquiryHistory[]>([]);
+189:   const [inquiryHistoryTable, setInquiryHistoryTable] = useState<InquiryHistoryItem[]>([]);
+190:   const [selectedPropertyIds, setSelectedPropertyIds] = useState<Set<string>>(new Set());
+191:   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+192:   const [emailModalOpen, setEmailModalOpen] = useState(false);
+193:   const [emailModalProperties, setEmailModalProperties] = useState<PropertyListing[]>([]);
+194:   const [activities, setActivities] = useState<Activity[]>([]);
+195:   const [relatedBuyersCount, setRelatedBuyersCount] = useState(0);
+196:   const [loading, setLoading] = useState(true);
+197:   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | '
+204:   const { isDisabled: isQuickButtonDisabled, disableButton: disableQuickButton } = useQuickButtonSta
+207:   const { error: heightError } = useStableContainerHeight({
+227:   const isUuid = buyer_number ? /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.te
+228:   const isNumericBuyerNumber = buyer_number ? /^\d+$/.test(buyer_number) : false;
+229:   const isByPrefixBuyerNumber = buyer_number ? /^BY_[A-Za-z0-9_]+$/.test(buyer_number) : false;
+230:   const isValidBuyerNumber = isUuid || isNumericBuyerNumber || isByPrefixBuyerNumber;
+243:   const fetchRelatedBuyersCount = async () => {
+245:       const res = await api.get(`/api/buyers/${buyer_number}/related`);
+252:   const scrollToRelatedBuyers = () => {
+253:     const element = document.getElementById('related-buyers-section');
+259:   const fetchBuyer = async () => {
+262:       const res = await api.get(`/api/buyers/${buyer_number}`);
+272:   const handleInlineFieldSave = async (fieldName: string, newValue: any) => {
+277:       const result = await buyerApi.update(
+322:   const [inquiryHearingKey, setInquiryHearingKey] = useState(0);
+324:   const handleInquiryHearingQuickInput = async (text: string, buttonLabel: string) => {
+330:     const currentValue = buyer.inquiry_hearing || '';
+332:     const newValue = currentValue 
+342:     const result = await handleInlineFieldSave('inquiry_hearing', newValue);
+355:   const handleCloseSnackbar = () => {
+359:   const fetchLinkedProperties = async () => {
+361:       const res = await api.get(`/api/buyers/${buyer_number}/properties`);
+362:       const properties = res.data || [];
+369:   const fetchInquiryHistory = async () => {
+371:       const res = await api.get(`/api/buyers/${buyer_number}/inquiry-history`);
+372:       const history = res.data || [];
+379:   const fetchActivities = async () => {
+381:       const res = await api.get(`/api/activity-logs`, {
+393:   const fetchInquiryHistoryTable = async () => {
+396:       const res = await api.get(`/api/buyers/${buyer_number}/inquiry-history`);
+404:       const historyData = res.data.inquiryHistory || [];
+408:       const currentStatusIds = new Set<string>(
+421:       const errorMessage = error.response?.status === 404
+435:   const handleSelectionChange = (propertyIds: Set<string>) => {
+439:   const handleClearSelection = () => {
+443:   const handleGmailSend = async () => {
+457:       const selectedProperties = await Promise.all(
+460:             const res = await api.get(`/api/property-listings/${propertyListingId}`);
+472:       const validProperties = selectedProperties.filter(p => p !== null);
+486:         const failedCount = selectedProperties.length - validProperties.length;
+500:       const errorMessage = error.response?.status === 404
+512:   const handleEmailSuccess = () => {
+524:   const handleBuyerClick = (buyerNumber: string) => {
+529:   const formatValue = (value: any, type?: string) => {
+541:       const num = Number(value);
+905:                   const value = buyer[field.key];
+908:                   const gridSize = field.multiline ? { xs: 12 } : { xs: 12, sm: 6 };
+914:                       const handleFieldSave = async (newValue: any) => {
+915:                         const result = await handleInlineFieldSave(field.key, newValue);
+940:                       const handleFieldSave = async (newValue: any) => {
+941:                         const result = await handleInlineFieldSave(field.key, newValue);
+966:                       const handleFieldSave = async (newValue: any) => {
+967:                         const result = await handleInlineFieldSave(field.key, newValue);
+992:                       const handleFieldSave = async (newValue: any) => {
+993:                         const result = await handleInlineFieldSave(field.key, newValue);
+1018:                       const handleFieldSave = async (newValue: any) => {
+1019:                         const result = await handleInlineFieldSave(field.key, newValue);
+1044:                       const handleFieldSave = async (newValue: any) => {
+1045:                         const result = await handleInlineFieldSave(field.key, newValue);
+1069:                     const handleFieldSave = async (newValue: any) => {
+1070:                       const result = await handleInlineFieldSave(field.key, newValue);
+1077:                     const isInquiryHearing = field.key === 'inquiry_hearing';
+1089:                                 const disabled = isQuickButtonDisabled(item.label);
+1172:                     const metadata = activity.metadata || {};
+1173:                     const propertyNumbers = metadata.propertyNumbers || [];
+1174:                     const displayName = activity.employee ? getDisplayName(activity.employee) : '荳肴・'

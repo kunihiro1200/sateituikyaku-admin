@@ -1,0 +1,36 @@
+﻿Total lines: 1284
+96: 
+97: const BUYER_FIELD_SECTIONS = [
+98:   {
+99:     title: '蝓ｺ譛ｬ諠・ｱ',
+100:     fields: [
+101:       { key: 'buyer_number', label: '雋ｷ荳ｻ逡ｪ蜿ｷ', inlineEditable: true, readOnly: true },
+102:       { key: 'name', label: '豌丞錐繝ｻ莨夂､ｾ蜷・, inlineEditable: true },
+103:       { key: 'phone_number', label: '髮ｻ隧ｱ逡ｪ蜿ｷ', inlineEditable: true },
+104:       { key: 'email', label: '繝｡繝ｼ繝ｫ繧｢繝峨Ξ繧ｹ', inlineEditable: true },
+105:       { key: 'company_name', label: '豕穂ｺｺ蜷・, inlineEditable: true },
+106:     ],
+107:   },
+108:   {
+109:     title: '蝠丞粋縺帙・蜀・ｦｧ諠・ｱ',
+110:     fields: [
+111:       { key: 'initial_assignee', label: '蛻晏虚諡・ｽ・, inlineEditable: true },
+112:       { key: 'follow_up_assignee', label: '蠕檎ｶ壽球蠖・, inlineEditable: true },
+113:       { key: 'reception_date', label: '蜿嶺ｻ俶律', type: 'date', inlineEditable: true },
+114:       { key: 'inquiry_source', label: '蝠丞粋縺帛・', inlineEditable: true },
+115:       { key: 'inquiry_hearing', label: '蝠丞粋譎ゅヲ繧｢繝ｪ繝ｳ繧ｰ', multiline: true, inlineEditable: true },
+116:       { key: 'inquiry_confidence', label: '蝠丞粋譎ら｢ｺ蠎ｦ', inlineEditable: true },
+117:       { key: 'inquiry_email_phone', label: '縲仙撫蜷医Γ繝ｼ繝ｫ縲鷹崕隧ｱ蟇ｾ蠢・, inlineEditable: true, fieldType: 'dropdown' },
+118:       { key: 'three_calls_confirmed', label: '3蝗樊楔髮ｻ遒ｺ隱肴ｸ医∩', inlineEditable: true, fieldType: 'dropdown' },
+119:       { key: 'email_type', label: '繝｡繝ｼ繝ｫ遞ｮ蛻･', inlineEditable: true, fieldType: 'dropdown' },
+120:       { key: 'distribution_type', label: '驟堺ｿ｡遞ｮ蛻･', inlineEditable: true, fieldType: 'dropdown' },
+121:       { key: 'owned_home_hearing', label: '謖∝ｮｶ繝偵い繝ｪ繝ｳ繧ｰ', inlineEditable: true },
+122:       { key: 'latest_viewing_date', label: '蜀・ｦｧ譌･(譛譁ｰ)', type: 'date', inlineEditable: true },
+123:       // viewing_notes 縺ｯ PropertyInfoCard 蜀・↓遘ｻ蜍・
+124:       { key: 'next_call_date', label: '谺｡髮ｻ譌･', type: 'date', inlineEditable: true },
+125:     ],
+126:   },
+127:   {
+128:     title: '蜀・ｦｧ邨先棡繝ｻ蠕檎ｶ壼ｯｾ蠢・,
+129:     isViewingResultGroup: true,  // 迚ｹ蛻･縺ｪ繧ｰ繝ｫ繝ｼ繝励→縺励※繝槭・繧ｯ
+130:     fields: [

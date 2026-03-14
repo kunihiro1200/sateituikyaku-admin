@@ -77,6 +77,9 @@ export class PropertyListingService {
         sales_assignee,
         status,
         site_display,
+        distribution_date,
+        contract_date,
+        settlement_date,
         created_at,
         updated_at
       `, { count: 'exact' });
@@ -95,8 +98,10 @@ export class PropertyListingService {
       query = query.eq('property_type', propertyType);
     }
 
-    // ソート
-    query = query.order(orderBy, { ascending: orderDirection === 'asc' });
+    // ソート: distribution_date降順（nullは末尾）、フォールバックはproperty_number降順
+    query = query
+      .order('distribution_date', { ascending: false, nullsFirst: false })
+      .order('property_number', { ascending: false });
 
     // ページネーション
     query = query.range(offset, offset + limit - 1);
