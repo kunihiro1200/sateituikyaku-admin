@@ -95,7 +95,9 @@ export default function BuyerGmailSendButton({
           buyer_number: buyerNumber || '',
           email: buyerEmail
         },
-        propertyIds
+        propertyIds,
+        templateSubject: template.subject,
+        templateBody: template.body,
       });
 
       console.log('[BuyerGmailSendButton] mergeMultiple response:', response.data);

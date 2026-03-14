@@ -176,7 +176,7 @@ router.post('/:templateId/merge', async (req, res) => {
 router.post('/:templateId/mergeMultiple', async (req, res) => {
   try {
     const { templateId } = req.params;
-    const { buyer, propertyIds } = req.body;
+    const { buyer, propertyIds, templateSubject, templateBody } = req.body;
 
     if (!buyer) {
       return res.status(400).json({ error: 'Buyer data is required' });
@@ -185,9 +185,23 @@ router.post('/:templateId/mergeMultiple', async (req, res) => {
       return res.status(400).json({ error: 'Property IDs array is required' });
     }
 
-    const template = await templateService.getTemplateById(templateId);
-    if (!template) {
-      return res.status(404).json({ error: 'Template not found' });
+    // テンプレートデータをリクエストボディから受け取るか、Google Sheetsから取得する
+    let template;
+    if (templateSubject !== undefined && templateBody !== undefined) {
+      // フロントエンドからテンプレートデータが渡された場合はそれを使用（Google Sheetsアクセス不要）
+      template = {
+        id: templateId,
+        name: templateId,
+        description: '',
+        subject: templateSubject,
+        body: templateBody,
+        placeholders: [],
+      };
+    } else {
+      template = await templateService.getTemplateById(templateId);
+      if (!template) {
+        return res.status(404).json({ error: 'Template not found' });
+      }
     }
 
     // Supabase から物件データを取得
