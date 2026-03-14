@@ -40,6 +40,7 @@ import { useAutoSync } from '../hooks/useAutoSync';
 import { useSellerStatus } from '../hooks/useSellerStatus';
 import SellerStatusBadges from '../components/SellerStatusBadges';
 import SellerStatusSidebar from '../components/SellerStatusSidebar';
+import { SECTION_COLORS } from '../theme/sectionColors';
 
 interface Seller {
   id: string;
@@ -389,7 +390,7 @@ export default function SellersPage() {
 
       <Box sx={{ my: 4 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-          <Typography variant="h4" component="h1">
+          <Typography variant="h5" fontWeight="bold" sx={{ color: SECTION_COLORS.seller.main }}>
             売主リスト
           </Typography>
           <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
