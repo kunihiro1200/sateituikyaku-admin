@@ -35,6 +35,7 @@ import RelatedBuyersSection from '../components/RelatedBuyersSection';
 import UnifiedInquiryHistoryTable from '../components/UnifiedInquiryHistoryTable';
 import RelatedBuyerNotificationBadge from '../components/RelatedBuyerNotificationBadge';
 import BuyerGmailSendButton from '../components/BuyerGmailSendButton';
+import { SmsDropdownButton } from '../components/SmsDropdownButton';
 import { InlineEditableField } from '../components/InlineEditableField';
 import { useStableContainerHeight } from '../hooks/useStableContainerHeight';
 import { useQuickButtonState } from '../hooks/useQuickButtonState';
@@ -584,9 +585,7 @@ export default function BuyerDetailPage() {
               sx={{ cursor: 'pointer', fontWeight: 'bold', fontSize: '0.9rem' }}
             />
           </Tooltip>
-          {buyer.inquiry_confidence && (
-            <Chip label={buyer.inquiry_confidence} color="info" sx={{ ml: 1 }} />
-          )}
+
           {buyer.latest_status && (
             <Chip label={buyer.latest_status.substring(0, 30)} sx={{ ml: 1 }} />
           )}
@@ -626,6 +625,15 @@ export default function BuyerDetailPage() {
 
           {/* SMS送信ドロップダウン */}
           {buyer.phone_number && (
+            <SmsDropdownButton
+              phoneNumber={buyer.phone_number}
+              buyerName={buyer.name || 'お客様'}
+              buyerNumber={buyer_number || ''}
+              propertyAddress={linkedProperties[0]?.display_address || linkedProperties[0]?.address || ''}
+              propertyType={linkedProperties[0]?.property_type || ''}
+            />
+          )}
+          {false && buyer.phone_number && (
             <FormControl size="small" sx={{ minWidth: 160 }}>
               <InputLabel>SMS送信</InputLabel>
               <Select
@@ -843,7 +851,7 @@ TEL：097-533-2022`;
             size="small"
             onClick={() => navigate(`/buyers/${buyer_number}/inquiry-history`)}
           >
-            問い合わせ履歴 ({inquiryHistoryTable.length}件)
+            問合履歴{inquiryHistoryTable.length}件
           </Button>
           <Button
             variant="outlined"
