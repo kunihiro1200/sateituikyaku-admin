@@ -218,12 +218,25 @@ router.post('/:templateId/mergeMultiple', async (req, res) => {
 
     if (propError) {
       console.error('Error fetching properties:', propError);
-      return res.status(500).json({ error: 'Failed to fetch property data' });
+      return res.status(500).json({ 
+        error: 'Failed to fetch property data',
+        detail: propError.message,
+        propertyIds,
+      });
     }
 
     const allProperties = properties || [];
+    console.log(`[mergeMultiple] propertyIds=${JSON.stringify(propertyIds)}, found=${allProperties.length}`);
     if (allProperties.length === 0) {
-      return res.status(404).json({ error: 'No valid properties found' });
+      // 物件が見つからない場合でも、物件情報なしでテンプレートをマージして返す
+      let mergedContent = templateService.mergeMultipleProperties(template, buyer, []);
+      mergedContent.subject = templateService.mergeAngleBracketPlaceholders(
+        mergedContent.subject, buyer, []
+      );
+      mergedContent.body = templateService.mergeAngleBracketPlaceholders(
+        mergedContent.body, buyer, []
+      );
+      return res.json(mergedContent);
     }
 
     // <<>> プレースホルダー用データ
