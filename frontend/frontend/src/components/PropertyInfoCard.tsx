@@ -74,11 +74,18 @@ export default function PropertyInfoCard({
 
   useEffect(() => {
     fetchPropertyDetails();
+
+    // 物件リストの変更を検知するため30秒ごとに再フェッチ
+    const intervalId = setInterval(() => {
+      fetchPropertyDetails(true); // バックグラウンド再フェッチ（ローディング表示なし）
+    }, 30000);
+
+    return () => clearInterval(intervalId);
   }, [propertyId]);
 
-  const fetchPropertyDetails = async () => {
+  const fetchPropertyDetails = async (background = false) => {
     try {
-      setLoading(true);
+      if (!background) setLoading(true);
       setError(null);
       const response = await api.get(`/api/property-listings/${propertyId}`);
       setProperty(response.data);
@@ -92,7 +99,7 @@ export default function PropertyInfoCard({
         setError('物件情報の取得に失敗しました');
       }
     } finally {
-      setLoading(false);
+      if (!background) setLoading(false);
     }
   };
 
