@@ -196,7 +196,7 @@ const InquiryHistoryTable: React.FC<InquiryHistoryTableProps> = ({
                     label={item.status === 'current' ? '今回' : '過去'}
                     size="small"
                     sx={{
-                      backgroundColor: item.status === 'current' ? '#2196f3' : '#9e9e9e',
+                      backgroundColor: item.status === 'current' ? '#2e7d32' : '#9e9e9e',
                       color: 'white',
                       fontWeight: 'medium',
                     }}

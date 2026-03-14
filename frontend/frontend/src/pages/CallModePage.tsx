@@ -679,7 +679,7 @@ const CallModePage = () => {
             href={part} 
             target="_blank" 
             rel="noopener noreferrer"
-            style={{ color: '#1976d2', textDecoration: 'underline' }}
+            style={{ color: '#2e7d32', textDecoration: 'underline' }}
           >
             {part}
           </a>
@@ -5010,8 +5010,8 @@ HP：https://ifoo-oita.com/
                   if (activity.type === 'sms') {
                     typeIcon = '💬';
                     typeLabel = 'SMS';
-                    bgcolor = '#e3f2fd';
-                    borderColor = '4px solid #2196f3';
+                    bgcolor = '#e8f5e9';
+                    borderColor = '4px solid #2e7d32';
                   } else if (activity.type === 'email') {
                     typeIcon = '📧';
                     typeLabel = 'Email';

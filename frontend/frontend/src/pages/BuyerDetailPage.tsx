@@ -580,7 +580,7 @@ export default function BuyerDetailPage() {
                 setCopiedBuyerNumber(true);
                 setTimeout(() => setCopiedBuyerNumber(false), 2000);
               }}
-              color={copiedBuyerNumber ? 'success' : 'primary'}
+              color="success"
               variant="filled"
               sx={{ cursor: 'pointer', fontWeight: 'bold', fontSize: '0.9rem' }}
             />
@@ -848,6 +848,7 @@ TEL：097-533-2022`;
 
           <Button
             variant="outlined"
+            color="success"
             size="small"
             onClick={() => navigate(`/buyers/${buyer_number}/inquiry-history`)}
           >
@@ -855,6 +856,7 @@ TEL：097-533-2022`;
           </Button>
           <Button
             variant="outlined"
+            color="success"
             size="small"
             onClick={() => navigate(`/buyers/${buyer_number}/desired-conditions`)}
           >
@@ -862,6 +864,7 @@ TEL：097-533-2022`;
           </Button>
           <Button
             variant="outlined"
+            color="success"
             size="small"
             onClick={() => navigate(`/buyers/${buyer_number}/viewing-result`)}
           >
@@ -1004,7 +1007,7 @@ TEL：097-533-2022`;
                 ...(section.isViewingResultGroup && {
                   bgcolor: 'rgba(33, 150, 243, 0.08)',  // 薄い青色の背景
                   border: '1px solid',
-                  borderColor: 'rgba(33, 150, 243, 0.3)',
+                  borderColor: 'rgba(46, 125, 50, 0.3)',
                 }),
               }}
             >
@@ -1014,7 +1017,7 @@ TEL：097-533-2022`;
                 sx={{
                   // 内覧結果グループのタイトルを強調
                   ...(section.isViewingResultGroup && {
-                    color: 'primary.main',
+                    color: 'success.main',
                     fontWeight: 'bold',
                   }),
                 }}
@@ -1221,7 +1224,7 @@ TEL：097-533-2022`;
                                         onClick={() => !disabled && handleInquiryHearingQuickInput(item.text, item.label)}
                                         size="small"
                                         clickable={!disabled}
-                                        color="primary"
+                                        color="success"
                                         variant="outlined"
                                         disabled={disabled}
                                         sx={{
@@ -1281,7 +1284,7 @@ TEL：097-533-2022`;
           {/* メール送信履歴セクション */}
           <Paper sx={{ p: 2, mb: 2 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-              <EmailIcon sx={{ mr: 1, color: 'primary.main' }} />
+              <EmailIcon sx={{ mr: 1, color: 'success.main' }} />
               <Typography variant="h6">メール送信履歴</Typography>
             </Box>
             <Divider sx={{ mb: 2 }} />

@@ -800,7 +800,7 @@ export default function PropertyListingDetailPage() {
               )}
               {(isViewingInfoEditMode || data.viewing_notes) && (
                 <Grid item xs={12}>
-                  <Box sx={{ bgcolor: '#e3f2fd', p: 2, borderRadius: 1, border: '2px solid #2196f3' }}>
+                  <Box sx={{ bgcolor: '#e8f5e9', p: 2, borderRadius: 1, border: '2px solid #2e7d32' }}>
                     <Typography variant="h6" color="primary.dark" fontWeight="bold" gutterBottom sx={{ fontSize: '1.25rem' }}>
                       📝 内覧の時の伝達事項
                     </Typography>

@@ -178,13 +178,13 @@ export default function PropertyInfoCard({
         mb: 3,
         position: 'relative',
         border: '2px solid',
-        borderColor: 'primary.main',
-        bgcolor: '#f8f9ff',
+        borderColor: 'success.main',
+        bgcolor: '#f1f8f1',
       }}
     >
       {/* Header - 外部リンクアイコンと閉じるボタンのみ */}
       <Box sx={{ position: 'absolute', top: 8, right: 8, display: 'flex', gap: 0.5 }}>
-        <IconButton size="small" onClick={handleNavigateToProperty} color="primary">
+        <IconButton size="small" onClick={handleNavigateToProperty} color="success">
           <OpenInNewIcon fontSize="small" />
         </IconButton>
         {showCloseButton && onClose && (

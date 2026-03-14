@@ -282,9 +282,9 @@ export class EmailService extends BaseRepository {
   <style>
     body { font-family: 'Hiragino Sans', 'Meiryo', sans-serif; line-height: 1.6; color: #333; }
     .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-    .header { background-color: #1976d2; color: white; padding: 20px; text-align: center; }
+    .header { background-color: #2e7d32; color: white; padding: 20px; text-align: center; }
     .content { padding: 20px; background-color: #f5f5f5; }
-    .price { font-size: 24px; font-weight: bold; color: #1976d2; margin: 20px 0; }
+    .price { font-size: 24px; font-weight: bold; color: #2e7d32; margin: 20px 0; }
     .details { background-color: white; padding: 15px; margin: 10px 0; border-radius: 5px; }
     .warning { background-color: #fff3cd; padding: 10px; margin: 10px 0; border-left: 4px solid #ffc107; }
     .footer { text-align: center; padding: 20px; color: #666; font-size: 12px; }

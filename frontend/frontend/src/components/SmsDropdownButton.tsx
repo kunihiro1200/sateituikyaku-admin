@@ -79,14 +79,14 @@ export const SmsDropdownButton: React.FC<SmsDropdownButtonProps> = ({
         size="small"
         sx={{
           '& .MuiButton-root': {
-            backgroundColor: '#90a4ae',
+            backgroundColor: '#2e7d32',
             color: '#fff',
             '&:hover': {
-              backgroundColor: '#78909c',
+              backgroundColor: '#1b5e20',
             },
           },
           '& .MuiButtonGroup-grouped': {
-            borderColor: '#78909c !important',
+            borderColor: '#1b5e20 !important',
           },
         }}
       >

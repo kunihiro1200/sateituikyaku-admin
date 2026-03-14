@@ -278,7 +278,7 @@ export default function NewBuyerPage() {
 
                 {/* 内覧前伝達事項 - 2番目に重要 */}
                 {propertyInfo.pre_viewing_notes && (
-                  <Box sx={{ mb: 3, p: 2, bgcolor: '#e3f2fd', borderRadius: 1, border: '2px solid #2196f3' }}>
+                  <Box sx={{ mb: 3, p: 2, bgcolor: '#e8f5e9', borderRadius: 1, border: '2px solid #2e7d32' }}>
                     <Typography variant="subtitle2" fontWeight="bold" color="primary.main" gutterBottom>
                       📋 内覧前伝達事項
                     </Typography>
