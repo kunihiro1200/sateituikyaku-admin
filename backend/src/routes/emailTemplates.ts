@@ -7,6 +7,54 @@ const router = express.Router();
 const templateService = new EmailTemplateService();
 
 /**
+ * Debug endpoint - Google Sheets認証テスト
+ * GET /api/email-templates/debug
+ */
+router.get('/debug', async (req, res) => {
+  const debug: any = {
+    env: {
+      hasGOOGLE_SERVICE_ACCOUNT_JSON: !!process.env.GOOGLE_SERVICE_ACCOUNT_JSON,
+      GOOGLE_SERVICE_ACCOUNT_JSON_length: process.env.GOOGLE_SERVICE_ACCOUNT_JSON?.length || 0,
+      hasGOOGLE_SERVICE_ACCOUNT_KEY_PATH: !!process.env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH,
+      GOOGLE_SERVICE_ACCOUNT_KEY_PATH: process.env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH || '(not set)',
+      hasGOOGLE_SHEETS_TEMPLATE_SPREADSHEET_ID: !!process.env.GOOGLE_SHEETS_TEMPLATE_SPREADSHEET_ID,
+      GOOGLE_SHEETS_TEMPLATE_SPREADSHEET_ID: process.env.GOOGLE_SHEETS_TEMPLATE_SPREADSHEET_ID || '(not set)',
+    },
+    steps: [] as string[],
+    error: null as string | null,
+    templates: null as any,
+  };
+
+  try {
+    debug.steps.push('Starting authentication...');
+    const { GoogleSheetsClient } = require('../services/GoogleSheetsClient');
+    const spreadsheetId = process.env.GOOGLE_SHEETS_TEMPLATE_SPREADSHEET_ID || '1sIBMhrarUSMcVWlTVVyaNNKaDxmfrxyHJLWv6U-MZxE';
+    const client = new GoogleSheetsClient({
+      spreadsheetId,
+      sheetName: 'テンプレート',
+      serviceAccountKeyPath: process.env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH,
+    });
+    await client.authenticate();
+    debug.steps.push('Authentication successful');
+
+    debug.steps.push('Fetching spreadsheet data...');
+    const sheetsInstance = (client as any).sheets;
+    const response = await sheetsInstance.spreadsheets.values.get({
+      spreadsheetId,
+      range: 'テンプレート!C:F',
+    });
+    const rows = response.data.values || [];
+    debug.steps.push(`Got ${rows.length} rows`);
+    debug.templates = rows.slice(0, 5); // 最初の5行だけ返す
+  } catch (err: any) {
+    debug.error = err.message;
+    debug.steps.push(`Error: ${err.message}`);
+  }
+
+  res.json(debug);
+});
+
+/**
  * Get all available email templates
  * GET /api/email-templates
  */
