@@ -64,7 +64,18 @@ router.get('/', async (req, res) => {
     res.json(templates);
   } catch (error: any) {
     console.error('Error fetching templates:', error);
-    res.status(500).json({ error: 'Failed to fetch email templates' });
+    // 詳細なエラー情報を返す（デバッグ用）
+    res.status(500).json({
+      error: 'Failed to fetch email templates',
+      message: error.message,
+      env: {
+        hasGOOGLE_SERVICE_ACCOUNT_JSON: !!process.env.GOOGLE_SERVICE_ACCOUNT_JSON,
+        hasGOOGLE_SERVICE_ACCOUNT_EMAIL: !!process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
+        hasGOOGLE_PRIVATE_KEY: !!process.env.GOOGLE_PRIVATE_KEY,
+        hasGOOGLE_SERVICE_ACCOUNT_KEY_PATH: !!process.env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH,
+        GOOGLE_SHEETS_TEMPLATE_SPREADSHEET_ID: process.env.GOOGLE_SHEETS_TEMPLATE_SPREADSHEET_ID || '(not set, using default)',
+      }
+    });
   }
 });
 
@@ -176,26 +187,18 @@ router.post('/:templateId/mergeMultiple', async (req, res) => {
       process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY!
     );
 
-    // UUID で検索
-    const { data: propertiesById, error: uuidError } = await supabase
+    // 物件番号で直接検索（propertyIdsは物件番号の配列）
+    const { data: properties, error: propError } = await supabase
       .from('property_listings')
       .select('id, property_number, address, sales_price, price, google_map_url, suumo_url, property_type, land_area, building_area')
-      .in('id', propertyIds);
+      .in('property_number', propertyIds);
 
-    const foundIds = new Set((propertiesById || []).map((p: any) => p.id));
-    const missingIds = propertyIds.filter((id: string) => !foundIds.has(id));
-
-    // 見つからなかった分は property_number で検索
-    let propertiesByNumber: any[] = [];
-    if (missingIds.length > 0) {
-      const { data, error: numError } = await supabase
-        .from('property_listings')
-        .select('id, property_number, address, sales_price, price, google_map_url, suumo_url, property_type, land_area, building_area')
-        .in('property_number', missingIds);
-      propertiesByNumber = data || [];
+    if (propError) {
+      console.error('Error fetching properties:', propError);
+      return res.status(500).json({ error: 'Failed to fetch property data' });
     }
 
-    const allProperties = [...(propertiesById || []), ...propertiesByNumber];
+    const allProperties = properties || [];
     if (allProperties.length === 0) {
       return res.status(404).json({ error: 'No valid properties found' });
     }

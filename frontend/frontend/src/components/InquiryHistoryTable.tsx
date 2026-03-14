@@ -47,19 +47,19 @@ const InquiryHistoryTable: React.FC<InquiryHistoryTableProps> = ({
 
   const handleSelectAll = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.checked) {
-      const allIds = new Set(inquiryHistory.map(item => item.propertyListingId));
+      const allIds = new Set(inquiryHistory.map(item => item.propertyNumber));
       onSelectionChange(allIds);
     } else {
       onSelectionChange(new Set());
     }
   };
 
-  const handleSelectOne = (propertyListingId: string) => {
+  const handleSelectOne = (propertyNumber: string) => {
     const newSelected = new Set(selectedPropertyIds);
-    if (newSelected.has(propertyListingId)) {
-      newSelected.delete(propertyListingId);
+    if (newSelected.has(propertyNumber)) {
+      newSelected.delete(propertyNumber);
     } else {
-      newSelected.add(propertyListingId);
+      newSelected.add(propertyNumber);
     }
     onSelectionChange(newSelected);
   };
@@ -154,11 +154,11 @@ const InquiryHistoryTable: React.FC<InquiryHistoryTableProps> = ({
         </TableHead>
         <TableBody>
           {sortedHistory.map((item) => {
-            const isSelected = selectedPropertyIds.has(item.propertyListingId);
+            const isSelected = selectedPropertyIds.has(item.propertyNumber);
             
             return (
               <TableRow
-                key={item.propertyListingId}
+                key={item.propertyNumber}
                 hover
                 sx={getRowStyle(item, isSelected)}
                 onClick={() => {
@@ -170,7 +170,7 @@ const InquiryHistoryTable: React.FC<InquiryHistoryTableProps> = ({
                 <TableCell padding="checkbox">
                   <Checkbox
                     checked={isSelected}
-                    onChange={() => handleSelectOne(item.propertyListingId)}
+                    onChange={() => handleSelectOne(item.propertyNumber)}
                     onClick={(e) => e.stopPropagation()}
                     inputProps={{ 'aria-label': `物件 ${item.propertyNumber} を選択` }}
                   />

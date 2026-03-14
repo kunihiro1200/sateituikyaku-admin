@@ -373,7 +373,7 @@ export default function BuyerDetailPage() {
       const currentStatusIds = new Set<string>(
         historyData
           .filter((item: InquiryHistoryItem) => item.status === 'current')
-          .map((item: InquiryHistoryItem) => item.propertyListingId)
+          .map((item: InquiryHistoryItem) => item.propertyNumber)
       );
       setSelectedPropertyIds(currentStatusIds);
     } catch (error: any) {
