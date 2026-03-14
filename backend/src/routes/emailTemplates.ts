@@ -207,7 +207,7 @@ router.post('/:templateId/mergeMultiple', async (req, res) => {
     // Supabase から物件データを取得
     const supabase = createClient(
       process.env.SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY!
+      process.env.SUPABASE_SERVICE_KEY!
     );
 
     // 物件番号で直接検索（propertyIdsは物件番号の配列）
