@@ -12,6 +12,8 @@ interface BuyerGmailSendButtonProps {
   buyerId: string;
   buyerEmail: string;
   buyerName: string;
+  buyerCompanyName?: string;
+  buyerNumber?: string;
   inquiryHistory: InquiryHistoryItem[];
   selectedPropertyIds: Set<string>; // チェックボックスで選択された物件ID
   size?: 'small' | 'medium' | 'large';
@@ -28,6 +30,8 @@ export default function BuyerGmailSendButton({
   buyerId,
   buyerEmail,
   buyerName,
+  buyerCompanyName,
+  buyerNumber,
   inquiryHistory,
   selectedPropertyIds,
   size = 'medium',
@@ -79,6 +83,9 @@ export default function BuyerGmailSendButton({
       const response = await api.post(`/api/email-templates/${template.id}/merge-multiple`, {
         buyer: {
           buyerName,
+          name: buyerName,
+          company_name: buyerCompanyName || '',
+          buyer_number: buyerNumber || '',
           email: buyerEmail
         },
         propertyIds

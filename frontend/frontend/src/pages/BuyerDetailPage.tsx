@@ -602,6 +602,8 @@ export default function BuyerDetailPage() {
             buyerId={buyer_number || ''}
             buyerEmail={buyer.email || ''}
             buyerName={buyer.name || ''}
+            buyerCompanyName={buyer.company_name || ''}
+            buyerNumber={buyer_number || ''}
             inquiryHistory={inquiryHistoryTable}
             selectedPropertyIds={selectedPropertyIds}
             size="small"
