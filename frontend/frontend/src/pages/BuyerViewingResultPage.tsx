@@ -591,17 +591,39 @@ export default function BuyerViewingResultPage() {
                 🗑️ 内覧日をクリア
               </Button>
               {/* カレンダーリンクボタン */}
-              {buyer.latest_viewing_date && (
-                <Button
-                  size="small"
-                  variant="outlined"
-                  fullWidth
-                  sx={{ mt: 0.5, fontSize: '0.7rem', padding: '2px 4px' }}
-                  onClick={handleCalendarButtonClick}
-                >
-                  📅 カレンダーで開く
-                </Button>
-              )}
+              {buyer.latest_viewing_date && (() => {
+                // 全条件を満たす場合にボタンを目立たせる
+                const shouldHighlight =
+                  !!buyer.latest_viewing_date &&
+                  !!buyer.viewing_time &&
+                  !!buyer.follow_up_assignee &&
+                  !buyer.viewing_unconfirmed;
+                return (
+                  <Button
+                    size="small"
+                    variant={shouldHighlight ? 'contained' : 'outlined'}
+                    color={shouldHighlight ? 'success' : 'primary'}
+                    fullWidth
+                    sx={{
+                      mt: 0.5,
+                      fontSize: shouldHighlight ? '0.75rem' : '0.7rem',
+                      padding: shouldHighlight ? '4px 8px' : '2px 4px',
+                      fontWeight: shouldHighlight ? 'bold' : 'normal',
+                      ...(shouldHighlight && {
+                        animation: 'calendarPulse 1.5s ease-in-out infinite',
+                        '@keyframes calendarPulse': {
+                          '0%': { boxShadow: '0 0 0 0 rgba(46, 125, 50, 0.5)' },
+                          '70%': { boxShadow: '0 0 0 6px rgba(46, 125, 50, 0)' },
+                          '100%': { boxShadow: '0 0 0 0 rgba(46, 125, 50, 0)' },
+                        },
+                      }),
+                    }}
+                    onClick={handleCalendarButtonClick}
+                  >
+                    📅 カレンダーで開く
+                  </Button>
+                );
+              })()}
             </Box>
 
             {/* 時間 */}
