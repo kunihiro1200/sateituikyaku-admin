@@ -205,7 +205,7 @@ export default function PropertyInfoCard({
                 物件番号
               </Typography>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
-                <Typography variant="body1" fontWeight="bold" color="primary.main">
+                <Typography variant="body1" fontWeight="bold" color="success.main">
                   {property.property_number}
                 </Typography>
                 <IconButton
