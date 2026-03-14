@@ -1,10 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Box,
+  Typography,
   List,
   ListItemButton,
   ListItemText,
-  Typography,
   Badge,
   CircularProgress,
 } from '@mui/material';
@@ -13,29 +13,38 @@ import api from '../services/api';
 interface StatusCategory {
   status: string;
   count: number;
-  color: string;
   priority: number;
+  color: string;
 }
 
-interface Props {
+interface BuyerStatusSidebarProps {
   selectedStatus: string | null;
   onStatusSelect: (status: string | null) => void;
-  totalCount: number;
+  totalCount?: number;
 }
 
-export default function BuyerStatusSidebar({ selectedStatus, onStatusSelect, totalCount }: Props) {
+export default function BuyerStatusSidebar({ selectedStatus, onStatusSelect, totalCount: totalCountProp }: BuyerStatusSidebarProps) {
   const [categories, setCategories] = useState<StatusCategory[]>([]);
   const [loading, setLoading] = useState(true);
+  const [internalTotalCount, setInternalTotalCount] = useState(0);
 
   useEffect(() => {
-    fetchCategories();
+    fetchStatusCategories();
   }, []);
 
-  const fetchCategories = async () => {
+  const fetchStatusCategories = async () => {
     try {
       setLoading(true);
       const res = await api.get('/api/buyers/status-categories');
-      setCategories(res.data || []);
+      const data = res.data as StatusCategory[];
+
+      // 合計数を計算
+      const total = data.reduce((sum, cat) => sum + cat.count, 0);
+      setInternalTotalCount(total);
+
+      // カウントが0より大きいカテゴリのみを表示
+      const filteredCategories = data.filter(cat => cat.count > 0);
+      setCategories(filteredCategories);
     } catch (error) {
       console.error('Failed to fetch status categories:', error);
     } finally {
@@ -43,10 +52,25 @@ export default function BuyerStatusSidebar({ selectedStatus, onStatusSelect, tot
     }
   };
 
-  const isSelected = (status: string | null) => {
-    if (status === null) return selectedStatus === null;
-    return selectedStatus === status;
+  const handleStatusClick = (status: string) => {
+    if (selectedStatus === status) {
+      // 同じステータスをクリックした場合は選択解除
+      onStatusSelect(null);
+    } else {
+      onStatusSelect(status);
+    }
   };
+
+  // props で totalCount が渡された場合はそちらを優先
+  const displayTotalCount = totalCountProp ?? internalTotalCount;
+
+  if (loading) {
+    return (
+      <Box sx={{ p: 2, display: 'flex', justifyContent: 'center', alignItems: 'center', height: 200 }}>
+        <CircularProgress size={24} />
+      </Box>
+    );
+  }
 
   return (
     <Box>
@@ -54,54 +78,71 @@ export default function BuyerStatusSidebar({ selectedStatus, onStatusSelect, tot
         <Typography variant="subtitle1" fontWeight="bold">ステータス</Typography>
       </Box>
 
-      {loading ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
-          <CircularProgress size={20} />
-        </Box>
-      ) : (
-        <List dense sx={{ maxHeight: 'calc(80vh - 120px)', overflow: 'auto' }}>
-          {/* 全件 */}
+      <List dense sx={{ maxHeight: 'calc(40vh - 100px)', overflow: 'auto' }}>
+        {/* All カテゴリ */}
+        <ListItemButton
+          selected={!selectedStatus}
+          onClick={() => onStatusSelect(null)}
+          sx={{ py: 1 }}
+        >
+          <ListItemText
+            primary="All"
+            primaryTypographyProps={{ variant: 'body2', fontWeight: 'bold' }}
+            sx={{ flex: 1, minWidth: 0 }}
+          />
+          <Badge
+            badgeContent={displayTotalCount}
+            color="success"
+            max={9999}
+            sx={{ ml: 1 }}
+          />
+        </ListItemButton>
+
+        {/* ステータスカテゴリ */}
+        {categories.map((category) => (
           <ListItemButton
-            selected={isSelected(null)}
-            onClick={() => onStatusSelect(null)}
-            sx={{ py: 0.5 }}
+            key={category.status}
+            selected={selectedStatus === category.status}
+            onClick={() => handleStatusClick(category.status)}
+            sx={{
+              py: 1,
+              borderLeft: `4px solid ${category.color}`,
+              '&.Mui-selected': {
+                backgroundColor: `${category.color}15`,
+                borderLeft: `4px solid ${category.color}`,
+              },
+              '&:hover': {
+                backgroundColor: `${category.color}10`,
+              }
+            }}
           >
             <ListItemText
-              primary="全件"
-              primaryTypographyProps={{ variant: 'body2', noWrap: true }}
-              sx={{ flex: 1, minWidth: 0 }}
+              primary={category.status || '（未分類）'}
+              primaryTypographyProps={{
+                variant: 'body2',
+                noWrap: true,
+                sx: {
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap'
+                }
+              }}
+              sx={{ flex: 1, minWidth: 0, mr: 1 }}
             />
-            <Badge badgeContent={totalCount} color="primary" max={9999} sx={{ ml: 1 }} />
+            <Badge
+              badgeContent={category.count}
+              sx={{
+                ml: 1,
+                '& .MuiBadge-badge': {
+                  backgroundColor: category.color,
+                  color: '#fff'
+                }
+              }}
+              max={9999}
+            />
           </ListItemButton>
-
-          {/* ステータス別 */}
-          {categories.map((cat) => (
-            <ListItemButton
-              key={cat.status || '__empty__'}
-              selected={isSelected(cat.status)}
-              onClick={() => onStatusSelect(cat.status)}
-              sx={{ py: 0.5 }}
-            >
-              <Box
-                sx={{
-                  width: 8,
-                  height: 8,
-                  borderRadius: '50%',
-                  bgcolor: cat.color,
-                  flexShrink: 0,
-                  mr: 1,
-                }}
-              />
-              <ListItemText
-                primary={cat.status || '（未分類）'}
-                primaryTypographyProps={{ variant: 'body2', noWrap: true }}
-                sx={{ flex: 1, minWidth: 0 }}
-              />
-              <Badge badgeContent={cat.count} color="default" max={9999} sx={{ ml: 1 }} />
-            </ListItemButton>
-          ))}
-        </List>
-      )}
+        ))}
+      </List>
     </Box>
   );
 }
