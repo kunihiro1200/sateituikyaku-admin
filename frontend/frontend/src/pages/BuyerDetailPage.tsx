@@ -21,6 +21,7 @@ import {
   ArrowBack as ArrowBackIcon,
   Email as EmailIcon,
   ContentCopy as ContentCopyIcon,
+  Phone as PhoneIcon,
 } from '@mui/icons-material';
 import api, { buyerApi } from '../services/api';
 import PropertyInfoCard from '../components/PropertyInfoCard';
@@ -622,7 +623,34 @@ export default function BuyerDetailPage() {
           />
         </Box>
 
-        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
+          {/* Gmail送信ボタン */}
+          <BuyerGmailSendButton
+            buyerId={buyer_number || ''}
+            buyerEmail={buyer.email || ''}
+            buyerName={buyer.name || ''}
+            inquiryHistory={inquiryHistoryTable}
+            selectedPropertyIds={selectedPropertyIds}
+            size="small"
+            variant="contained"
+          />
+
+          {/* 電話番号ボタン */}
+          {buyer.phone_number && (
+            <Button
+              variant="contained"
+              color="success"
+              size="small"
+              startIcon={<PhoneIcon />}
+              href={`tel:${buyer.phone_number}`}
+              sx={{ fontWeight: 'bold', whiteSpace: 'nowrap' }}
+            >
+              {buyer.phone_number}
+            </Button>
+          )}
+
+          <Divider orientation="vertical" flexItem sx={{ mx: 0.5 }} />
+
           <Button
             variant="outlined"
             size="small"
