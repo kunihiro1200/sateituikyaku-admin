@@ -22,6 +22,7 @@ import {
   Person as PersonIcon,
 } from '@mui/icons-material';
 import api from '../services/api';
+import { SECTION_COLORS } from '../theme/sectionColors';
 import FrequentlyAskedSection from '../components/FrequentlyAskedSection';
 import PriceSection from '../components/PriceSection';
 import PropertyDetailsSection from '../components/PropertyDetailsSection';
