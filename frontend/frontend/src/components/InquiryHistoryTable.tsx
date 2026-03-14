@@ -161,11 +161,7 @@ const InquiryHistoryTable: React.FC<InquiryHistoryTableProps> = ({
                 key={item.propertyNumber}
                 hover
                 sx={getRowStyle(item, isSelected)}
-                onClick={() => {
-                  if (onBuyerClick && item.buyerNumber) {
-                    onBuyerClick(item.buyerNumber);
-                  }
-                }}
+                onClick={() => handleSelectOne(item.propertyNumber)}
               >
                 <TableCell padding="checkbox">
                   <Checkbox

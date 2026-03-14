@@ -79,6 +79,13 @@ export default function BuyerGmailSendButton({
       // 選択された物件IDsを配列に変換
       const propertyIds = Array.from(selectedPropertyIds);
       
+      console.log('[BuyerGmailSendButton] mergeMultiple request:', {
+        templateId: template.id,
+        propertyIds,
+        buyerName,
+        buyerEmail,
+      });
+      
       // 複数物件のデータを取得してマージ
       const response = await api.post(`/api/email-templates/${template.id}/mergeMultiple`, {
         buyer: {
@@ -91,11 +98,12 @@ export default function BuyerGmailSendButton({
         propertyIds
       });
 
+      console.log('[BuyerGmailSendButton] mergeMultiple response:', response.data);
       setMergedContent(response.data);
       setCompositionModalOpen(true);
     } catch (err: any) {
-      console.error('Failed to merge template:', err);
-      setErrorMessage(err.response?.data?.error || 'テンプレートの準備に失敗しました');
+      console.error('[BuyerGmailSendButton] mergeMultiple error:', err.response?.status, err.response?.data, err.message);
+      setErrorMessage(err.response?.data?.error || `テンプレートの準備に失敗しました: ${err.response?.status || err.message}`);
     } finally {
       setLoading(false);
     }

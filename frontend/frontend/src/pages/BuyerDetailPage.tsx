@@ -334,7 +334,7 @@ export default function BuyerDetailPage() {
   const fetchInquiryHistory = async () => {
     try {
       const res = await api.get(`/api/buyers/${buyer_number}/inquiry-history`);
-      const history = res.data || [];
+      const history = res.data?.inquiryHistory || res.data || [];
       setInquiryHistory(history);
     } catch (error) {
       console.error('Failed to fetch inquiry history:', error);
@@ -1054,6 +1054,22 @@ TEL：097-533-2022`;
                   </Box>
                 ))}
               </Box>
+            </Paper>
+          )}
+
+          {/* 問い合わせ履歴テーブル（物件選択用） */}
+          {inquiryHistoryTable.length > 0 && (
+            <Paper sx={{ p: 2, mb: 2 }}>
+              <Typography variant="h6" gutterBottom>
+                物件選択（Gmail送信用）
+              </Typography>
+              <Divider sx={{ mb: 2 }} />
+              <InquiryHistoryTable
+                inquiryHistory={inquiryHistoryTable}
+                selectedPropertyIds={selectedPropertyIds}
+                onSelectionChange={handleSelectionChange}
+                onBuyerClick={handleBuyerClick}
+              />
             </Paper>
           )}
 
