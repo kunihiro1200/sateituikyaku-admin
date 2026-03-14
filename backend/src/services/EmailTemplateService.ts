@@ -1,227 +1,185 @@
 import { EmailTemplate, TemplateContext, MergedEmailContent, PropertyData, BuyerData } from '../types/emailTemplate';
-import { getEmailTemplates, getEmailTemplateById } from '../config/emailTemplates';
+import { GoogleSheetsClient } from './GoogleSheetsClient';
+
+const TEMPLATE_SPREADSHEET_ID = process.env.GOOGLE_SHEETS_TEMPLATE_SPREADSHEET_ID || '1sIBMhrarUSMcVWlTVVyaNNKaDxmfrxyHJLWv6U-MZxE';
+const TEMPLATE_SHEET_NAME = '\u30c6\u30f3\u30d7\u30ec\u30fc\u30c8';
 
 /**
  * Service for managing email templates and merging them with data
+ * \u30c6\u30f3\u30d7\u30ec\u30fc\u30c8\u306f\u30b9\u30d7\u30ec\u30c3\u30c9\u30b7\u30fc\u30c8\u304b\u3089\u52d5\u7684\u306b\u53d6\u5f97\u3059\u308b
+ * C\u5217=\u533a\u5206, D\u5217=\u7a2e\u5225\uff08\u30bf\u30a4\u30c8\u30eb\uff09, E\u5217=\u4ef6\u540d, F\u5217=\u672c\u6587
  */
 export class EmailTemplateService {
   /**
-   * Get all available email templates
+   * \u30b9\u30d7\u30ec\u30c3\u30c9\u30b7\u30fc\u30c8\u304b\u3089\u8cb7\u4e3b\u7528\u30c6\u30f3\u30d7\u30ec\u30fc\u30c8\u3092\u53d6\u5f97
    */
   async getTemplates(): Promise<EmailTemplate[]> {
-    return getEmailTemplates();
+    try {
+      const client = new GoogleSheetsClient({
+        spreadsheetId: TEMPLATE_SPREADSHEET_ID,
+        sheetName: TEMPLATE_SHEET_NAME,
+        serviceAccountKeyPath: process.env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH,
+      });
+      await client.authenticate();
+
+      // C\uff5eF\u5217\u3092\u53d6\u5f97\uff081\u884c\u76ee\u306f\u30d8\u30c3\u30c0\u30fc\uff09
+      const sheetsInstance = (client as any).sheets;
+      const response = await sheetsInstance.spreadsheets.values.get({
+        spreadsheetId: TEMPLATE_SPREADSHEET_ID,
+        range: `${TEMPLATE_SHEET_NAME}!C:F`,
+      });
+
+      const rows: any[][] = response.data.values || [];
+      const templates: EmailTemplate[] = [];
+
+      // 1\u884c\u76ee\u306f\u30d8\u30c3\u30c0\u30fc\u306a\u306e\u3067\u30b9\u30ad\u30c3\u30d7
+      for (let i = 1; i < rows.length; i++) {
+        const row = rows[i];
+        const category = (row[0] || '').toString().trim(); // C\u5217: \u533a\u5206
+        const type = (row[1] || '').toString().trim();     // D\u5217: \u7a2e\u5225\uff08\u30bf\u30a4\u30c8\u30eb\uff09
+        const subject = (row[2] || '').toString().trim();  // E\u5217: \u4ef6\u540d
+        const body = (row[3] || '').toString().trim();     // F\u5217: \u672c\u6587
+
+        // \u533a\u5206\u304c\u300c\u8cb7\u4e3b\u300d\u306e\u884c\u306e\u307f\u5bfe\u8c61
+        if (category !== '\u8cb7\u4e3b' || !type) continue;
+
+        templates.push({
+          id: `buyer_sheet_${i}`,
+          name: type,
+          description: type,
+          subject,
+          body,
+          placeholders: [],
+        });
+      }
+
+      console.log(`[EmailTemplateService] \u30b9\u30d7\u30ec\u30c3\u30c9\u30b7\u30fc\u30c8\u304b\u3089${templates.length}\u4ef6\u306e\u30c6\u30f3\u30d7\u30ec\u30fc\u30c8\u3092\u53d6\u5f97\u3057\u307e\u3057\u305f`);
+      return templates;
+    } catch (error: any) {
+      console.error('[EmailTemplateService] \u30b9\u30d7\u30ec\u30c3\u30c9\u30b7\u30fc\u30c8\u304b\u3089\u306e\u30c6\u30f3\u30d7\u30ec\u30fc\u30c8\u53d6\u5f97\u306b\u5931\u6557:', error.message);
+      return [];
+    }
   }
 
   /**
    * Get a specific template by ID
    */
   async getTemplateById(templateId: string): Promise<EmailTemplate | null> {
-    const template = getEmailTemplateById(templateId);
-    return template || null;
+    const templates = await this.getTemplates();
+    return templates.find(t => t.id === templateId) || null;
   }
 
   /**
    * Merge template placeholders with actual data
-   * @param template The email template
-   * @param context The context data (buyer and optionally property)
-   * @returns Merged email content with placeholders replaced
    */
   mergePlaceholders(template: EmailTemplate, context: TemplateContext): MergedEmailContent {
     let subject = template.subject;
     let body = template.body;
 
-    // Create a flat map of all available data
     const dataMap = this.createDataMap(context);
 
-    // Replace all placeholders in subject and body
     for (const [key, value] of Object.entries(dataMap)) {
       const placeholder = `{{${key}}}`;
       const replacement = this.formatValue(value);
-      
-      subject = subject.replace(new RegExp(placeholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), replacement);
-      body = body.replace(new RegExp(placeholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), replacement);
+      const escaped = placeholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      subject = subject.replace(new RegExp(escaped, 'g'), replacement);
+      body = body.replace(new RegExp(escaped, 'g'), replacement);
     }
 
-    return {
-      subject,
-      body
-    };
+    return { subject, body };
   }
 
-  /**
-   * Create a flat map of all available data for placeholder replacement
-   */
   private createDataMap(context: TemplateContext): Record<string, any> {
     const dataMap: Record<string, any> = {};
 
-    // Add buyer data
     if (context.buyer) {
       dataMap['buyerName'] = context.buyer.buyerName;
       dataMap['email'] = context.buyer.email;
-      
-      // Add any additional buyer fields
       for (const [key, value] of Object.entries(context.buyer)) {
-        if (key !== 'buyerName' && key !== 'email') {
-          dataMap[key] = value;
-        }
+        if (key !== 'buyerName' && key !== 'email') dataMap[key] = value;
       }
     }
 
-    // Add property data if available
     if (context.property) {
       dataMap['propertyNumber'] = context.property.propertyNumber;
       dataMap['propertyAddress'] = context.property.propertyAddress;
       dataMap['price'] = context.property.price;
-      
-      if (context.property.landArea) {
-        dataMap['landArea'] = context.property.landArea;
-      }
-      if (context.property.buildingArea) {
-        dataMap['buildingArea'] = context.property.buildingArea;
-      }
-      if (context.property.propertyType) {
-        dataMap['propertyType'] = context.property.propertyType;
-      }
-      
-      // Add any additional property fields
       for (const [key, value] of Object.entries(context.property)) {
-        if (!['propertyNumber', 'propertyAddress', 'price', 'landArea', 'buildingArea', 'propertyType'].includes(key)) {
-          dataMap[key] = value;
-        }
+        if (!['propertyNumber', 'propertyAddress', 'price'].includes(key)) dataMap[key] = value;
       }
     }
 
-    // Add any additional context fields
     for (const [key, value] of Object.entries(context)) {
-      if (key !== 'buyer' && key !== 'property') {
-        dataMap[key] = value;
-      }
+      if (key !== 'buyer' && key !== 'property') dataMap[key] = value;
     }
 
     return dataMap;
   }
 
-  /**
-   * Format a value for display in email
-   */
   private formatValue(value: any): string {
-    if (value === null || value === undefined) {
-      return '';
-    }
-
-    // Format numbers with commas
-    if (typeof value === 'number') {
-      return value.toLocaleString('ja-JP');
-    }
-
-    // Format dates
-    if (value instanceof Date) {
-      return value.toLocaleDateString('ja-JP');
-    }
-
-    // Convert to string
+    if (value === null || value === undefined) return '';
+    if (typeof value === 'number') return value.toLocaleString('ja-JP');
+    if (value instanceof Date) return value.toLocaleDateString('ja-JP');
     return String(value);
   }
 
-  /**
-   * Validate that all required placeholders can be filled
-   * @param template The email template
-   * @param context The context data
-   * @returns List of missing placeholders (empty if all can be filled)
-   */
   validatePlaceholders(template: EmailTemplate, context: TemplateContext): string[] {
     const dataMap = this.createDataMap(context);
     const missing: string[] = [];
-
-    for (const placeholder of template.placeholders) {
-      // Remove {{ and }} from placeholder
+    for (const placeholder of (template.placeholders || [])) {
       const key = placeholder.replace(/{{|}}/g, '');
-      
       if (!(key in dataMap) || dataMap[key] === null || dataMap[key] === undefined) {
         missing.push(placeholder);
       }
     }
-
     return missing;
   }
 
-  /**
-   * Get template preview with sample data
-   * @param templateId The template ID
-   * @returns Preview of the template with sample data
-   */
   async getTemplatePreview(templateId: string): Promise<MergedEmailContent | null> {
     const template = await this.getTemplateById(templateId);
-    if (!template) {
-      return null;
-    }
+    if (!template) return null;
 
-    // Create sample context
     const sampleContext: TemplateContext = {
-      buyer: {
-        buyerName: '山田太郎',
-        email: 'sample@example.com'
-      },
+      buyer: { buyerName: '\u5c71\u7530\u592a\u90ce', email: 'sample@example.com' },
       property: {
         propertyNumber: 'AA12345',
-        propertyAddress: '大分県大分市中央町1-2-3',
+        propertyAddress: '\u5927\u5206\u770c\u5927\u5206\u5e02\u4e2d\u592e\u753a1-2-3',
         price: 35000000,
         landArea: 150.5,
         buildingArea: 95.2,
-        propertyType: '戸建て'
+        propertyType: '\u6238\u5efa\u3066'
       }
     };
 
     return this.mergePlaceholders(template, sampleContext);
   }
 
-  /**
-   * Merge template with multiple properties
-   * @param template The email template
-   * @param buyer Buyer data
-   * @param properties Array of property data
-   * @returns Merged email content with multiple properties
-   */
-  mergeMultipleProperties(
-    template: EmailTemplate,
-    buyer: BuyerData,
-    properties: PropertyData[]
-  ): MergedEmailContent {
+  mergeMultipleProperties(template: EmailTemplate, buyer: BuyerData, properties: PropertyData[]): MergedEmailContent {
     let subject = template.subject;
     let body = template.body;
 
-    // Replace buyer placeholders
-    const buyerMap: Record<string, any> = {
-      buyerName: buyer.buyerName,
-      email: buyer.email,
-      ...buyer
-    };
-
+    const buyerMap: Record<string, any> = { buyerName: buyer.buyerName, email: buyer.email, ...buyer };
     for (const [key, value] of Object.entries(buyerMap)) {
       const placeholder = `{{${key}}}`;
       const replacement = this.formatValue(value);
-      
-      subject = subject.replace(new RegExp(placeholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), replacement);
-      body = body.replace(new RegExp(placeholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), replacement);
+      const escaped = placeholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      subject = subject.replace(new RegExp(escaped, 'g'), replacement);
+      body = body.replace(new RegExp(escaped, 'g'), replacement);
     }
 
-    // Format multiple properties section
     const propertiesSection = properties.map((property, index) => {
-      return `
-【物件${index + 1}】
-物件番号: ${property.propertyNumber}
-所在地: ${property.propertyAddress}
-価格: ${this.formatValue(property.price)}円
-${property.propertyType ? `物件種別: ${property.propertyType}` : ''}
-${property.landArea ? `土地面積: ${property.landArea}㎡` : ''}
-${property.buildingArea ? `建物面積: ${property.buildingArea}㎡` : ''}
-      `.trim();
+      return [
+        `\u3010\u7269\u4ef6${index + 1}\u3011`,
+        `\u7269\u4ef6\u756a\u53f7: ${property.propertyNumber}`,
+        `\u6240\u5728\u5730: ${property.propertyAddress}`,
+        `\u4fa1\u683c: ${this.formatValue(property.price)}\u5186`,
+        property.propertyType ? `\u7269\u4ef6\u7a2e\u5225: ${property.propertyType}` : '',
+        property.landArea ? `\u571f\u5730\u9762\u7a4d: ${property.landArea}\u33a1` : '',
+        property.buildingArea ? `\u5efa\u7269\u9762\u7a4d: ${property.buildingArea}\u33a1` : '',
+      ].filter(Boolean).join('\n');
     }).join('\n\n');
 
-    // Replace property placeholders with multiple properties section
-    // If template has {{propertyNumber}}, replace with properties list
     if (body.includes('{{propertyNumber}}') || body.includes('{{propertyAddress}}')) {
-      // Replace first property placeholder with all properties
       body = body.replace(/{{propertyNumber}}[\s\S]*?(?={{|$)/g, propertiesSection);
       body = body.replace(/{{propertyAddress}}/g, '');
       body = body.replace(/{{price}}/g, '');
@@ -229,13 +187,9 @@ ${property.buildingArea ? `建物面積: ${property.buildingArea}㎡` : ''}
       body = body.replace(/{{landArea}}/g, '');
       body = body.replace(/{{buildingArea}}/g, '');
     } else {
-      // Append properties section at the end
       body += '\n\n' + propertiesSection;
     }
 
-    return {
-      subject,
-      body
-    };
+    return { subject, body };
   }
 }
