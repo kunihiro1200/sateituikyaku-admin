@@ -220,6 +220,7 @@ export default function PropertyListingsPage() {
   }, []);
 
   const handleRowClick = (propertyNumber: string) => {
+    console.log('[handleRowClick] called with:', propertyNumber);
     const currentState = {
       page,
       rowsPerPage,
@@ -229,6 +230,7 @@ export default function PropertyListingsPage() {
       lastFilter,
     };
     sessionStorage.setItem('propertyListState', JSON.stringify(currentState));
+    console.log('[handleRowClick] navigating to:', `/property-listings/${propertyNumber}`);
     navigate(`/property-listings/${propertyNumber}`);
   };
 
