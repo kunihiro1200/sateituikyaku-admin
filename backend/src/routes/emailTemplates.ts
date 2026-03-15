@@ -121,19 +121,38 @@ router.post('/property/merge', async (req, res) => {
       return res.status(404).json({ error: 'Property not found', detail: propError?.message });
     }
 
-    // 売主データを取得（seller_number = property_number）
+    // 売主データを取得
+    // property_listings の seller_number を使って sellers テーブルを検索
     // name は暗号化されているため SellerService 経由で復号化して取得
     let sellerName = '';
     try {
-      const { data: sellerRow } = await supabase
-        .from('sellers')
-        .select('id')
-        .eq('seller_number', propertyNumber)
-        .single();
-      if (sellerRow?.id) {
-        const decryptedSeller = await sellerService.getSeller(sellerRow.id);
-        if (decryptedSeller?.name) {
-          sellerName = decryptedSeller.name;
+      // まず property_listings から seller_number を取得
+      const sellerNumber = property.seller_number;
+      if (sellerNumber) {
+        const { data: sellerRow } = await supabase
+          .from('sellers')
+          .select('id')
+          .eq('seller_number', sellerNumber)
+          .single();
+        if (sellerRow?.id) {
+          const decryptedSeller = await sellerService.getSeller(sellerRow.id);
+          if (decryptedSeller?.name) {
+            sellerName = decryptedSeller.name;
+          }
+        }
+      }
+      // seller_number がない場合は property_number で試みる（後方互換）
+      if (!sellerName) {
+        const { data: sellerRow } = await supabase
+          .from('sellers')
+          .select('id')
+          .eq('seller_number', propertyNumber)
+          .single();
+        if (sellerRow?.id) {
+          const decryptedSeller = await sellerService.getSeller(sellerRow.id);
+          if (decryptedSeller?.name) {
+            sellerName = decryptedSeller.name;
+          }
         }
       }
     } catch {
