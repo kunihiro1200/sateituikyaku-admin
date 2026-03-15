@@ -1,4 +1,5 @@
 import { Router, Request, Response } from 'express';
+import { createClient } from '@supabase/supabase-js';
 import { body, query, validationResult } from 'express-validator';
 import { SellerService } from '../services/SellerService.supabase';
 import { authenticate } from '../middleware/auth';
@@ -284,6 +285,45 @@ router.get('/performance-metrics', [
         retryable: true,
       },
     });
+  }
+});
+
+/**
+ * 売主番号（AA12345形式）で売主の名前・住所を取得（軽量エンドポイント）
+ * GET /api/sellers/by-number/:sellerNumber
+ */
+router.get('/by-number/:sellerNumber', async (req: Request, res: Response) => {
+  try {
+    const { sellerNumber } = req.params;
+    const supabase = createClient(
+      process.env.SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_KEY!
+    );
+    const { data, error } = await supabase
+      .from('sellers')
+      .select('id, seller_number, name, property_address')
+      .eq('seller_number', sellerNumber)
+      .single();
+
+    if (error || !data) {
+      return res.status(404).json({ error: 'Seller not found' });
+    }
+
+    // name は暗号化されている可能性があるため SellerService 経由で取得
+    const seller = await sellerService.getSeller(data.id);
+    if (!seller) {
+      return res.status(404).json({ error: 'Seller not found' });
+    }
+
+    res.json({
+      id: seller.id,
+      sellerNumber: seller.sellerNumber,
+      name: seller.name,
+      propertyAddress: seller.propertyAddress,
+    });
+  } catch (error) {
+    console.error('Get seller by number error:', error);
+    res.status(500).json({ error: 'Failed to get seller' });
   }
 });
 

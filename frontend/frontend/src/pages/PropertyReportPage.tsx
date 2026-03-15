@@ -143,7 +143,11 @@ export default function PropertyReportPage() {
         propertyNumber,
         templateId: template.id,
       });
-      const { subject: mergedSubject, body: mergedBody } = mergeResponse.data;
+      const { subject: mergedSubject, body: mergedBody, sellerName } = mergeResponse.data;
+      // 売主名をヘッダーにセット
+      if (sellerName && !reportData.owner_name) {
+        setReportData((prev) => ({ ...prev, owner_name: sellerName }));
+      }
       const subject = encodeURIComponent(mergedSubject || template.subject);
       const body = encodeURIComponent(mergedBody || template.body);
       const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&su=${subject}&body=${body}`;
