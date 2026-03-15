@@ -23,6 +23,7 @@ import {
   Person as PersonIcon,
   Phone as PhoneIcon,
   Email as EmailIcon,
+  Assignment as AssignmentIcon,
 } from '@mui/icons-material';
 import api from '../services/api';
 import { SECTION_COLORS } from '../theme/sectionColors';
@@ -738,6 +739,21 @@ export default function PropertyListingDetailPage() {
           )}
         </Box>
         <Box sx={{ display: 'flex', gap: 2 }}>
+          <Button
+            variant="outlined"
+            startIcon={<AssignmentIcon />}
+            onClick={() => navigate(`/property-listings/${propertyNumber}/report`)}
+            sx={{
+              borderColor: '#7b1fa2',
+              color: '#7b1fa2',
+              '&:hover': {
+                borderColor: '#6a1b9a',
+                backgroundColor: '#7b1fa208',
+              },
+            }}
+          >
+            報告
+          </Button>
           <Button
             variant="outlined"
             startIcon={<PersonIcon />}

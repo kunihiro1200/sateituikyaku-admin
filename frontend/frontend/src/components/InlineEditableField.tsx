@@ -61,6 +61,7 @@ export const InlineEditableField: React.FC<InlineEditableFieldProps> = memo(({
 }) => {
   const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>(null);
   const [isHovered, setIsHovered] = useState(false);
+  const [selectOpen, setSelectOpen] = useState(false);
 
   // Cache field metadata to avoid repeated lookups
   const fieldMetadata = useMemo(() => getFieldMetadata(fieldName), [fieldName]);
@@ -124,6 +125,10 @@ export const InlineEditableField: React.FC<InlineEditableFieldProps> = memo(({
   const handleClick = () => {
     if (isEditable && !isEditing) {
       startEdit();
+      // ドロップダウン型はクリック即座にプルダウンを開く
+      if (fieldType === 'dropdown') {
+        setSelectOpen(true);
+      }
     }
   };
 
@@ -227,6 +232,9 @@ export const InlineEditableField: React.FC<InlineEditableFieldProps> = memo(({
               onChange={(_, newValue) => updateValue(newValue?.value || '')}
               onBlur={handleBlur}
               disabled={isSaving}
+              open={selectOpen}
+              onOpen={() => setSelectOpen(true)}
+              onClose={() => setSelectOpen(false)}
               renderInput={(params) => (
                 <TextField
                   {...params}
@@ -234,6 +242,7 @@ export const InlineEditableField: React.FC<InlineEditableFieldProps> = memo(({
                   error={!!error}
                   helperText={error}
                   sx={{ mt: 0.5 }}
+                  autoFocus
                 />
               )}
               renderGroup={(params) => (
@@ -263,9 +272,12 @@ export const InlineEditableField: React.FC<InlineEditableFieldProps> = memo(({
           <FormControl fullWidth size="small" sx={{ mt: 0.5 }} error={!!error}>
             <Select
               value={editValue ?? ''}
-              onChange={(e) => updateValue(e.target.value)}
+              onChange={(e) => { updateValue(e.target.value); setSelectOpen(false); }}
               onBlur={handleBlur}
               disabled={isSaving}
+              open={selectOpen}
+              onOpen={() => setSelectOpen(true)}
+              onClose={() => setSelectOpen(false)}
             >
               <MenuItem value="">選択してください</MenuItem>
               {options.map((opt) => (

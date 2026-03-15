@@ -15,6 +15,7 @@ import EmployeeCalendarStatusPage from './pages/EmployeeCalendarStatusPage';
 import WorkTasksPage from './pages/WorkTasksPage';
 import PropertyListingsPage from './pages/PropertyListingsPage';
 import PropertyListingDetailPage from './pages/PropertyListingDetailPage';
+import PropertyReportPage from './pages/PropertyReportPage';
 import BuyersPage from './pages/BuyersPage';
 import NewBuyerPage from './pages/NewBuyerPage';
 import BuyerDetailPage from './pages/BuyerDetailPage';
@@ -158,6 +159,14 @@ function App() {
         element={
           <ProtectedRoute>
             <BuyerCandidateListPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/property-listings/:propertyNumber/report"
+        element={
+          <ProtectedRoute>
+            <PropertyReportPage />
           </ProtectedRoute>
         }
       />
