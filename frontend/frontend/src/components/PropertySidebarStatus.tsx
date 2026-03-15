@@ -16,6 +16,7 @@ import {
 } from '@mui/material';
 import { Check as CheckIcon } from '@mui/icons-material';
 import { SECTION_COLORS } from '../theme/sectionColors';
+import { calculatePropertyStatus } from '../utils/propertyListingStatusUtils';
 
 interface PropertyListing {
   id: string;
@@ -34,26 +35,27 @@ interface PropertySidebarStatusProps {
 
 // ステータスの優先順位（表示順）
 const STATUS_PRIORITY: Record<string, number> = {
-  '値下げ未完了': 0,
-  '未報告': 1,
-  '未完了': 2,
-  '非公開予定（確認後）': 3,
-  '一般媒介の掲載確認未': 4,
-  '本日公開予定': 5,
-  'SUUMO URL　要登録': 6,
-  'レインズ登録＋SUUMO登録': 7,
-  '買付申込み（内覧なし）２': 8,
-  '公開前情報': 9,
-  '非公開（配信メールのみ）': 10,
-  '一般公開中物件': 11,
-  'Y専任公開中': 12,
-  '生・専任公開中': 13,
-  '久・専任公開中': 14,
-  'U専任公開中': 15,
-  '林・専任公開中': 16,
-  'K専任公開中': 17,
-  'R専任公開中': 18,
-  'I専任公開中': 19,
+  '要値下げ': 0,
+  '値下げ未完了': 1,
+  '未報告': 2,
+  '未完了': 3,
+  '非公開予定（確認後）': 4,
+  '一般媒介の掲載確認未': 5,
+  '本日公開予定': 6,
+  'SUUMO URL　要登録': 7,
+  'レインズ登録＋SUUMO登録': 8,
+  '買付申込み（内覧なし）２': 9,
+  '公開前情報': 10,
+  '非公開（配信メールのみ）': 11,
+  '一般公開中物件': 12,
+  'Y専任公開中': 13,
+  '生・専任公開中': 14,
+  '久・専任公開中': 15,
+  'U専任公開中': 16,
+  '林・専任公開中': 17,
+  'K専任公開中': 18,
+  'R専任公開中': 19,
+  'I専任公開中': 20,
 };
 
 export default function PropertySidebarStatus({
@@ -74,6 +76,13 @@ export default function PropertySidebarStatus({
     }
 
     listings.forEach(listing => {
+      // calculatePropertyStatusで「要値下げ」を含む正確なステータスを計算
+      const computed = calculatePropertyStatus(listing as any);
+      if (computed.key === 'price_reduction_due') {
+        counts['要値下げ'] = (counts['要値下げ'] || 0) + 1;
+        return;
+      }
+
       const status = listing.sidebar_status || '';
       if (status && status !== '値下げ未完了') {
         counts[status] = (counts[status] || 0) + 1;

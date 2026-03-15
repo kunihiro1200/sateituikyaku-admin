@@ -150,11 +150,13 @@ export default function PropertyListingsPage() {
 
   // ステータス別カウント
   const statusCounts = useMemo(() => {
-    // 簡易修正: すべての物件を表示
     const counts: Record<string, number> = { all: allListings.length };
-    console.log('Status counts:', counts);
+    allListings.forEach(listing => {
+      const status = calculatePropertyStatus(listing, workTaskMap);
+      counts[status.key] = (counts[status.key] || 0) + 1;
+    });
     return counts;
-  }, [allListings]);
+  }, [allListings, workTaskMap]);
 
   // フィルタリング
   const filteredListings = useMemo(() => {

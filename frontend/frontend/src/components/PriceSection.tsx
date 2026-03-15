@@ -6,6 +6,7 @@ interface PriceSectionProps {
   salesPrice?: number;
   listingPrice?: number;
   priceReductionHistory?: string;
+  priceReductionScheduledDate?: string | null;
   onFieldChange: (field: string, value: any) => void;
   editedData: Record<string, any>;
   isEditMode: boolean;
@@ -20,6 +21,7 @@ export default function PriceSection({
   salesPrice,
   listingPrice,
   priceReductionHistory,
+  priceReductionScheduledDate,
   onFieldChange,
   editedData,
   isEditMode,
@@ -32,6 +34,7 @@ export default function PriceSection({
   const displaySalesPrice = editedData.sales_price !== undefined ? editedData.sales_price : salesPrice;
   const displayListingPrice = editedData.listing_price !== undefined ? editedData.listing_price : listingPrice;
   const displayPriceReductionHistory = editedData.price_reduction_history !== undefined ? editedData.price_reduction_history : priceReductionHistory;
+  const displayScheduledDate = editedData.price_reduction_scheduled_date !== undefined ? editedData.price_reduction_scheduled_date : priceReductionScheduledDate;
 
   const [scheduledNotifications, setScheduledNotifications] = useState<any[]>([]);
   const [loadingNotifications, setLoadingNotifications] = useState(false);
@@ -167,6 +170,18 @@ export default function PriceSection({
               sx={{ whiteSpace: 'pre-line' }}
             />
           </Grid>
+          <Grid item xs={12} sm={6}>
+            <Typography variant="body2" color="text.secondary" gutterBottom>
+              値下げ予約日
+            </Typography>
+            <TextField
+              fullWidth
+              type="date"
+              value={displayScheduledDate || ''}
+              onChange={(e) => onFieldChange('price_reduction_scheduled_date', e.target.value || null)}
+              InputLabelProps={{ shrink: true }}
+            />
+          </Grid>
         </Grid>
       ) : (
         <Box>
@@ -186,7 +201,7 @@ export default function PriceSection({
               {formatPrice(displayListingPrice)}
             </Typography>
           </Box>
-          <Box>
+          <Box sx={{ mb: 2 }}>
             <Typography variant="body1" color="text.secondary" gutterBottom sx={{ fontSize: '1.1rem', fontWeight: 'bold' }}>
               値下げ履歴
             </Typography>
@@ -194,6 +209,16 @@ export default function PriceSection({
               {displayPriceReductionHistory || '-'}
             </Typography>
           </Box>
+          {displayScheduledDate && (
+            <Box>
+              <Typography variant="body1" color="text.secondary" gutterBottom sx={{ fontSize: '1.1rem', fontWeight: 'bold' }}>
+                値下げ予約日
+              </Typography>
+              <Typography variant="body1" sx={{ fontSize: '1.1rem', color: new Date(displayScheduledDate) <= new Date() ? '#d32f2f' : 'inherit', fontWeight: new Date(displayScheduledDate) <= new Date() ? 'bold' : 'normal' }}>
+                {displayScheduledDate}
+              </Typography>
+            </Box>
+          )}
 
           {/* Chat送信ボタン */}
           <Box sx={{ mt: 3, pt: 2, borderTop: '1px solid #ddd' }}>

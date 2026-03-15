@@ -825,6 +825,7 @@ export default function PropertyListingDetailPage() {
                   salesPrice={data.price}
                   listingPrice={data.listing_price}
                   priceReductionHistory={data.price_reduction_history}
+                  priceReductionScheduledDate={data.price_reduction_scheduled_date}
                   onFieldChange={handleFieldChange}
                   editedData={editedData}
                   isEditMode={isPriceEditMode}

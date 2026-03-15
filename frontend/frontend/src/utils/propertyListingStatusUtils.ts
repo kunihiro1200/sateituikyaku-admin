@@ -13,6 +13,7 @@ export interface PropertyListing {
   offer_status: string | null;
   report_date: string | null;
   report_assignee: string | null;
+  price_reduction_scheduled_date?: string | null;
   [key: string]: any;
 }
 
@@ -24,6 +25,7 @@ export interface WorkTask {
 
 // ステータスの定義（優先度順）
 export const PROPERTY_STATUS_DEFINITIONS = [
+  { key: 'price_reduction_due', label: '要値下げ', color: '#e65100' },
   { key: 'unreported', label: '未報告', color: '#f44336' },
   { key: 'incomplete', label: '未完了', color: '#ff9800' },
   { key: 'private_pending', label: '非公開予定（確認後）', color: '#9c27b0' },
@@ -85,6 +87,12 @@ export const calculatePropertyStatus = (
   const today = getToday();
   const yesterday = new Date(today);
   yesterday.setDate(yesterday.getDate() - 1);
+
+  // 0. 値下げ予約日が今日以前 → 要値下げ（最高優先度）
+  const priceReductionDate = parseDate(listing.price_reduction_scheduled_date);
+  if (priceReductionDate && priceReductionDate <= today) {
+    return PROPERTY_STATUS_DEFINITIONS.find(s => s.key === 'price_reduction_due')!;
+  }
 
   // 1. 報告日が今日以前で未報告
   const reportDate = parseDate(listing.report_date);
