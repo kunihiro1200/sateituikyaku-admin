@@ -497,20 +497,12 @@ export default function NewBuyerPage() {
 
                 {showBrokerInquiry(companyName) && (
                   <Grid item xs={12} sm={6}>
-                    <FormControl fullWidth>
-                      <InputLabel>業者問合せ</InputLabel>
-                      <Select
-                        value={brokerInquiry}
-                        label="業者問合せ"
-                        onChange={(e) => setBrokerInquiry(e.target.value)}
-                      >
-                        <MenuItem value="">
-                          <em>未選択</em>
-                        </MenuItem>
-                        <MenuItem value="業者問合せ">業者問合せ</MenuItem>
-                        <MenuItem value="業者（両手）">業者（両手）</MenuItem>
-                      </Select>
-                    </FormControl>
+                    <TextField
+                      fullWidth
+                      label="業者問合せ"
+                      value={brokerInquiry}
+                      onChange={(e) => setBrokerInquiry(e.target.value)}
+                    />
                   </Grid>
                 )}
 

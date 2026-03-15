@@ -127,7 +127,7 @@ const BUYER_FIELD_SECTIONS = [
       { key: 'phone_number', label: '電話番号', inlineEditable: true },
       { key: 'email', label: 'メールアドレス', inlineEditable: true },
       { key: 'company_name', label: '法人名', inlineEditable: true },
-      { key: 'broker_inquiry', label: '業者問合せ', inlineEditable: true, fieldType: 'dropdown', conditionalOn: 'company_name' },
+      { key: 'broker_inquiry', label: '業者問合せ', inlineEditable: true, fieldType: 'text', conditionalOn: 'company_name' },
     ],
   },
   {
@@ -1209,11 +1209,7 @@ TEL：097-533-2022`;
                             label={field.label}
                             value={value || ''}
                             fieldName={field.key}
-                            fieldType="dropdown"
-                            options={[
-                              { label: '業者問合せ', value: '業者問合せ' },
-                              { label: '業者（両手）', value: '業者（両手）' },
-                            ]}
+                            fieldType="text"
                             onSave={handleFieldSave}
                             buyerId={buyer_number}
                             enableConflictDetection={true}
