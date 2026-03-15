@@ -40,7 +40,7 @@ export const getActiveEmployees = async (): Promise<Employee[]> => {
 
     // APIから取得
     console.log('📡 Fetching active employees from API');
-    const response = await api.get<{ employees: Employee[] }>('/employees/active');
+    const response = await api.get<{ employees: Employee[] }>('/api/employees/active');
     const employees = response.data.employees;
 
     // キャッシュに保存

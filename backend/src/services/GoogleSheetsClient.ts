@@ -595,6 +595,64 @@ export class GoogleSheetsClient {
   }
 
   /**
+   * 指定行の特定カラムのみを更新（部分更新）
+   * updateRowと異なり、指定したカラムのみを更新し、他のカラムは変更しない
+   */
+  async updateRowPartial(rowIndex: number, row: SheetRow): Promise<void> {
+    this.ensureAuthenticated();
+
+    const headers = await this.getHeaders();
+
+    await sheetsRateLimiter.executeRequest(async () => {
+      const requests: sheets_v4.Schema$Request[] = [];
+
+      // シートIDを取得
+      const spreadsheet = await this.sheets!.spreadsheets.get({
+        spreadsheetId: this.config.spreadsheetId,
+      });
+      const sheet = spreadsheet.data.sheets?.find(
+        s => s.properties?.title === this.config.sheetName
+      );
+      if (!sheet || sheet.properties?.sheetId === undefined) {
+        throw new Error(`Sheet "${this.config.sheetName}" not found`);
+      }
+      const sheetId = sheet.properties.sheetId!;
+
+      for (const [columnName, value] of Object.entries(row)) {
+        const colIndex = headers.indexOf(columnName);
+        if (colIndex === -1) continue;
+
+        requests.push({
+          updateCells: {
+            range: {
+              sheetId,
+              startRowIndex: rowIndex - 1,
+              endRowIndex: rowIndex,
+              startColumnIndex: colIndex,
+              endColumnIndex: colIndex + 1,
+            },
+            rows: [{
+              values: [{
+                userEnteredValue: {
+                  stringValue: value !== null && value !== undefined ? String(value) : '',
+                },
+              }],
+            }],
+            fields: 'userEnteredValue',
+          },
+        });
+      }
+
+      if (requests.length === 0) return;
+
+      await this.sheets!.spreadsheets.batchUpdate({
+        spreadsheetId: this.config.spreadsheetId,
+        requestBody: { requests },
+      });
+    });
+  }
+
+  /**
    * ヘッダーキャッシュをクリア
    */
   clearHeaderCache(): void {
