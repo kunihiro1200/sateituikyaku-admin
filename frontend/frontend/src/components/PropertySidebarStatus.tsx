@@ -131,9 +131,13 @@ export default function PropertySidebarStatus({
     const sortedStatuses = Object.entries(statusCounts)
       .filter(([key]) => key !== 'all' && key !== '')
       .sort((a, b) => {
-        const priorityA = STATUS_PRIORITY[a[0]] ?? 999;
-        const priorityB = STATUS_PRIORITY[b[0]] ?? 999;
-        return priorityA - priorityB;
+        const getPriority = (key: string) => {
+          if (STATUS_PRIORITY[key] !== undefined) return STATUS_PRIORITY[key];
+          // 「未報告 Y」「未報告 I」など担当者付きは「未報告」と同じ優先度
+          if (key.startsWith('未報告')) return 2;
+          return 999;
+        };
+        return getPriority(a[0]) - getPriority(b[0]);
       });
 
     let dividerAdded = false;
@@ -176,9 +180,9 @@ export default function PropertySidebarStatus({
                 sx={{
                   py: 0.5,
                   ...(item.isLowPriority && {
-                    bgcolor: 'rgba(158, 158, 158, 0.08)',
-                    '&:hover': { bgcolor: 'rgba(158, 158, 158, 0.18)' },
-                    '&.Mui-selected': { bgcolor: 'rgba(158, 158, 158, 0.25)' },
+                    bgcolor: 'rgba(0, 188, 212, 0.10)',
+                    '&:hover': { bgcolor: 'rgba(0, 188, 212, 0.20)' },
+                    '&.Mui-selected': { bgcolor: 'rgba(0, 188, 212, 0.28)' },
                   }),
                 }}
               >
