@@ -742,7 +742,7 @@ export default function PropertyListingDetailPage() {
           <Button
             variant="outlined"
             startIcon={<AssignmentIcon />}
-            onClick={() => navigate(`/property-listings/${propertyNumber}/report`)}
+            onClick={() => window.open(`/property-listings/${propertyNumber}/report`, '_blank')}
             sx={{
               borderColor: '#7b1fa2',
               color: '#7b1fa2',
