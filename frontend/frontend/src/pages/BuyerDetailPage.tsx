@@ -127,6 +127,7 @@ const BUYER_FIELD_SECTIONS = [
       { key: 'phone_number', label: '電話番号', inlineEditable: true },
       { key: 'email', label: 'メールアドレス', inlineEditable: true },
       { key: 'company_name', label: '法人名', inlineEditable: true },
+      { key: 'broker_inquiry', label: '業者問合せ', inlineEditable: true, fieldType: 'dropdown', conditionalOn: 'company_name' },
     ],
   },
   {
@@ -1181,6 +1182,38 @@ TEL：097-533-2022`;
                             fieldName={field.key}
                             fieldType="dropdown"
                             options={DISTRIBUTION_TYPE_OPTIONS}
+                            onSave={handleFieldSave}
+                            buyerId={buyer_number}
+                            enableConflictDetection={true}
+                            showEditIndicator={true}
+                          />
+                        </Grid>
+                      );
+                    }
+
+                    // broker_inquiryフィールドは特別処理（条件付きドロップダウン）
+                    if (field.key === 'broker_inquiry') {
+                      // company_name が空の場合は非表示
+                      if (!buyer.company_name || !buyer.company_name.trim()) {
+                        return null;
+                      }
+                      const handleFieldSave = async (newValue: any) => {
+                        const result = await handleInlineFieldSave(field.key, newValue);
+                        if (result && !result.success && result.error) {
+                          throw new Error(result.error);
+                        }
+                      };
+                      return (
+                        <Grid item {...gridSize} key={field.key}>
+                          <InlineEditableField
+                            label={field.label}
+                            value={value || ''}
+                            fieldName={field.key}
+                            fieldType="dropdown"
+                            options={[
+                              { label: '業者問合せ', value: '業者問合せ' },
+                              { label: '業者（両手）', value: '業者（両手）' },
+                            ]}
                             onSave={handleFieldSave}
                             buyerId={buyer_number}
                             enableConflictDetection={true}

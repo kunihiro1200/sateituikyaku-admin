@@ -11,6 +11,10 @@ import {
   Alert,
   CircularProgress,
   Autocomplete,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
 } from '@mui/material';
 import { ArrowBack as ArrowBackIcon } from '@mui/icons-material';
 import api from '../services/api';
@@ -56,6 +60,10 @@ export default function NewBuyerPage() {
   const [email, setEmail] = useState('');
   const [propertyNumberField, setPropertyNumberField] = useState(propertyNumber || '');
   
+  // 法人名・業者問合せ
+  const [companyName, setCompanyName] = useState('');
+  const [brokerInquiry, setBrokerInquiry] = useState('');
+
   // 問合せ情報
   const [receptionDate, setReceptionDate] = useState(new Date().toISOString().split('T')[0]);
   const [inquirySource, setInquirySource] = useState('');
@@ -90,6 +98,11 @@ export default function NewBuyerPage() {
     }
   };
 
+  // 法人名に入力がある場合のみ業者問合せを表示する
+  const showBrokerInquiry = (name: string): boolean => {
+    return Boolean(name && name.trim().length > 0);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -106,6 +119,8 @@ export default function NewBuyerPage() {
         name,
         phone_number: phoneNumber,
         email,
+        company_name: companyName,
+        broker_inquiry: companyName.trim() ? brokerInquiry : '',
         property_number: propertyNumberField,
         reception_date: receptionDate,
         inquiry_source: inquirySource,
@@ -462,6 +477,42 @@ export default function NewBuyerPage() {
                     onChange={(e) => setEmail(e.target.value)}
                   />
                 </Grid>
+
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label="法人名"
+                    value={companyName}
+                    onChange={(e) => {
+                      const newValue = e.target.value;
+                      setCompanyName(newValue);
+                      // 法人名がクリアされた場合は業者問合せをリセット
+                      if (!newValue.trim()) {
+                        setBrokerInquiry('');
+                      }
+                    }}
+                    placeholder="法人の場合は会社名を入力"
+                  />
+                </Grid>
+
+                {showBrokerInquiry(companyName) && (
+                  <Grid item xs={12} sm={6}>
+                    <FormControl fullWidth>
+                      <InputLabel>業者問合せ</InputLabel>
+                      <Select
+                        value={brokerInquiry}
+                        label="業者問合せ"
+                        onChange={(e) => setBrokerInquiry(e.target.value)}
+                      >
+                        <MenuItem value="">
+                          <em>未選択</em>
+                        </MenuItem>
+                        <MenuItem value="業者問合せ">業者問合せ</MenuItem>
+                        <MenuItem value="業者（両手）">業者（両手）</MenuItem>
+                      </Select>
+                    </FormControl>
+                  </Grid>
+                )}
 
                 {/* 問合せ情報 */}
                 <Grid item xs={12}>
