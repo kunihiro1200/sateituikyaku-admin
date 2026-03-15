@@ -210,7 +210,7 @@ export default function PriceSection({
                     size="small"
                     onClick={async () => {
                       try {
-                        await navigator.clipboard.writeText(String(monthlyPayment));
+                        await navigator.clipboard.writeText(toFullWidth(monthlyPayment));
                         setCopiedMonthly(true);
                         setTimeout(() => setCopiedMonthly(false), 2000);
                       } catch {}

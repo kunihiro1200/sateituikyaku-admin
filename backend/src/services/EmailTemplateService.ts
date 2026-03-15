@@ -317,8 +317,8 @@ export class EmailTemplateService {
     const propertyAddress = property['address'] || property['display_address'] || '';
     result = result.replace(/<<住居表示（ATBB登録住所）>>/g, propertyAddress);
 
-    // <<担当名（営業）名前>> → sales_assignee
-    result = result.replace(/<<担当名（営業）名前>>/g, property['sales_assignee'] || '');
+    // <<担当名（営業）名前>> → staffInfo.name（姓名）
+    result = result.replace(/<<担当名（営業）名前>>/g, staffInfo?.name || property['sales_assignee'] || '');
 
     // <<担当名（営業）電話番号/メールアドレス/固定休>> → スタッフ情報
     result = result.replace(/<<担当名（営業）電話番号>>/g, staffInfo?.phone || '');

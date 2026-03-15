@@ -437,7 +437,7 @@ export default function PropertyReportPage() {
                   },
                 }}
               >
-                {getFullName(initial)}
+                {initial}
               </ToggleButton>
             ))}
           </ToggleButtonGroup>
