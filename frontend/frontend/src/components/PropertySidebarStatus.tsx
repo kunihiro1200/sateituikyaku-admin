@@ -59,6 +59,12 @@ const STATUS_PRIORITY: Record<string, number> = {
   'I専任公開中': 28,
 };
 
+// 赤字表示対象ステータス
+const HIGH_PRIORITY_RED_STATUSES = new Set([
+  '要値下げ',
+  '未完了',
+]);
+
 // 優先度低グループ（色付け対象）
 const LOW_PRIORITY_STATUSES = new Set([
   '一般公開中物件',
@@ -106,6 +112,13 @@ export default function PropertySidebarStatus({
     return counts;
   }, [listings, pendingPriceReductionProperties]);
 
+  // 一般媒介（atbb_status === '一般・公開中'）の未完了件数
+  const generalMediationIncompleteCount = useMemo(() => {
+    return listings.filter(l =>
+      l.sidebar_status === '未完了' && l.atbb_status === '一般・公開中'
+    ).length;
+  }, [listings]);
+
   const pendingPriceReductionList = useMemo(() => {
     if (!pendingPriceReductionProperties) return [];
     return listings.filter(l =>
@@ -124,7 +137,7 @@ export default function PropertySidebarStatus({
   };
 
   const statusList = useMemo(() => {
-    const list: Array<{ key: string; label: string; count: number; isLowPriority?: boolean; isDivider?: boolean }> = [
+    const list: Array<{ key: string; label: string; count: number; isLowPriority?: boolean; isDivider?: boolean; isRed?: boolean; isBoldRed?: boolean }> = [
       { key: 'all', label: 'すべて', count: statusCounts.all }
     ];
 
@@ -147,11 +160,14 @@ export default function PropertySidebarStatus({
         list.push({ key: '__divider__', label: '', count: 0, isDivider: true });
         dividerAdded = true;
       }
-      list.push({ key, label: key, count, isLowPriority: isLow });
+      // 一般媒介の未完了は太字赤字、それ以外の高優先度は赤字
+      const isBoldRed = key === '未完了' && generalMediationIncompleteCount > 0;
+      const isRed = HIGH_PRIORITY_RED_STATUSES.has(key);
+      list.push({ key, label: key, count, isLowPriority: isLow, isRed, isBoldRed });
     });
 
     return list;
-  }, [statusCounts]);
+  }, [statusCounts, generalMediationIncompleteCount]);
 
   return (
     <>
@@ -191,7 +207,13 @@ export default function PropertySidebarStatus({
                   primaryTypographyProps={{
                     variant: 'body2',
                     noWrap: true,
-                    sx: item.isLowPriority ? { color: 'text.secondary' } : undefined,
+                    sx: item.isBoldRed
+                      ? { color: 'error.main', fontWeight: 'bold' }
+                      : item.isRed
+                      ? { color: 'error.main' }
+                      : item.isLowPriority
+                      ? { color: 'text.secondary' }
+                      : undefined,
                   }}
                   sx={{ flex: 1, minWidth: 0 }}
                 />
