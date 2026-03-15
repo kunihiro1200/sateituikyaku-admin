@@ -47,16 +47,30 @@ const STATUS_PRIORITY: Record<string, number> = {
   '買付申込み（内覧なし）２': 9,
   '公開前情報': 10,
   '非公開（配信メールのみ）': 11,
-  '一般公開中物件': 12,
-  'Y専任公開中': 13,
-  '生・専任公開中': 14,
-  '久・専任公開中': 15,
-  'U専任公開中': 16,
-  '林・専任公開中': 17,
-  'K専任公開中': 18,
-  'R専任公開中': 19,
-  'I専任公開中': 20,
+  // 優先度低グループ（末尾）
+  '一般公開中物件': 20,
+  'Y専任公開中': 21,
+  '生・専任公開中': 22,
+  '久・専任公開中': 23,
+  'U専任公開中': 24,
+  '林・専任公開中': 25,
+  'K専任公開中': 26,
+  'R専任公開中': 27,
+  'I専任公開中': 28,
 };
+
+// 優先度低グループ（色付け対象）
+const LOW_PRIORITY_STATUSES = new Set([
+  '一般公開中物件',
+  'Y専任公開中',
+  '生・専任公開中',
+  '久・専任公開中',
+  'U専任公開中',
+  '林・専任公開中',
+  'K専任公開中',
+  'R専任公開中',
+  'I専任公開中',
+]);
 
 export default function PropertySidebarStatus({
   listings,
@@ -110,18 +124,26 @@ export default function PropertySidebarStatus({
   };
 
   const statusList = useMemo(() => {
-    const list = [{ key: 'all', label: 'すべて', count: statusCounts.all }];
+    const list: Array<{ key: string; label: string; count: number; isLowPriority?: boolean; isDivider?: boolean }> = [
+      { key: 'all', label: 'すべて', count: statusCounts.all }
+    ];
 
     const sortedStatuses = Object.entries(statusCounts)
       .filter(([key]) => key !== 'all' && key !== '')
       .sort((a, b) => {
-        const priorityA = STATUS_PRIORITY[a[0]] || 999;
-        const priorityB = STATUS_PRIORITY[b[0]] || 999;
+        const priorityA = STATUS_PRIORITY[a[0]] ?? 999;
+        const priorityB = STATUS_PRIORITY[b[0]] ?? 999;
         return priorityA - priorityB;
       });
 
+    let dividerAdded = false;
     sortedStatuses.forEach(([key, count]) => {
-      list.push({ key, label: key, count });
+      const isLow = LOW_PRIORITY_STATUSES.has(key);
+      if (isLow && !dividerAdded) {
+        list.push({ key: '__divider__', label: '', count: 0, isDivider: true });
+        dividerAdded = true;
+      }
+      list.push({ key, label: key, count, isLowPriority: isLow });
     });
 
     return list;
@@ -136,31 +158,53 @@ export default function PropertySidebarStatus({
           </Typography>
         </Box>
         <List dense sx={{ maxHeight: 'calc(100vh - 200px)', overflow: 'auto' }}>
-          {statusList.map((item) => (
-            <ListItemButton
-              key={item.key}
-              selected={selectedStatus === item.key || (!selectedStatus && item.key === 'all')}
-              onClick={() => onStatusChange(item.key === 'all' ? null : item.key)}
-              sx={{ py: 0.5 }}
-            >
-              <ListItemText
-                primary={item.label}
-                primaryTypographyProps={{ variant: 'body2', noWrap: true }}
-                sx={{ flex: 1, minWidth: 0 }}
-              />
-              <Badge
-                badgeContent={item.count}
-                max={9999}
+          {statusList.map((item) => {
+            if (item.isDivider) {
+              return (
+                <Box key="__divider__" sx={{ mx: 1, my: 0.5, borderTop: '2px solid #bbb' }}>
+                  <Typography variant="caption" sx={{ px: 1, color: 'text.secondary', fontSize: '0.7rem' }}>
+                    公開中物件（優先度低）
+                  </Typography>
+                </Box>
+              );
+            }
+            return (
+              <ListItemButton
+                key={item.key}
+                selected={selectedStatus === item.key || (!selectedStatus && item.key === 'all')}
+                onClick={() => onStatusChange(item.key === 'all' ? null : item.key)}
                 sx={{
-                  ml: 1,
-                  '& .MuiBadge-badge': {
-                    backgroundColor: SECTION_COLORS.property.main,
-                    color: SECTION_COLORS.property.contrastText,
-                  },
+                  py: 0.5,
+                  ...(item.isLowPriority && {
+                    bgcolor: 'rgba(158, 158, 158, 0.08)',
+                    '&:hover': { bgcolor: 'rgba(158, 158, 158, 0.18)' },
+                    '&.Mui-selected': { bgcolor: 'rgba(158, 158, 158, 0.25)' },
+                  }),
                 }}
-              />
-            </ListItemButton>
-          ))}
+              >
+                <ListItemText
+                  primary={item.label}
+                  primaryTypographyProps={{
+                    variant: 'body2',
+                    noWrap: true,
+                    sx: item.isLowPriority ? { color: 'text.secondary' } : undefined,
+                  }}
+                  sx={{ flex: 1, minWidth: 0 }}
+                />
+                <Badge
+                  badgeContent={item.count}
+                  max={9999}
+                  sx={{
+                    ml: 1,
+                    '& .MuiBadge-badge': {
+                      backgroundColor: item.isLowPriority ? '#9e9e9e' : SECTION_COLORS.property.main,
+                      color: SECTION_COLORS.property.contrastText,
+                    },
+                  }}
+                />
+              </ListItemButton>
+            );
+          })}
         </List>
 
         {selectedStatus === '値下げ未完了' && pendingPriceReductionList.length > 0 && (
