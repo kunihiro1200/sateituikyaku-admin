@@ -45,7 +45,7 @@ export default function PriceSection({
   const displaySalesPrice = editedData.sales_price !== undefined ? editedData.sales_price : salesPrice;
   const displayListingPrice = editedData.listing_price !== undefined ? editedData.listing_price : listingPrice;
   const actualPrice = editedData.sales_price !== undefined ? editedData.sales_price : salesPriceActual;
-  const showMonthlyPayment = propertyType === '戸建て' || propertyType === 'マンション' || propertyType === '戸' || propertyType === 'マ';
+  const showMonthlyPayment = propertyType === '戸建て' || propertyType === 'マンション' || propertyType === '戸' || propertyType === 'マ' || propertyType === '戸建';
   const monthlyPayment = actualPrice ? calcMonthlyPayment(actualPrice) : null;
   const displayPriceReductionHistory = editedData.price_reduction_history !== undefined ? editedData.price_reduction_history : priceReductionHistory;
   const displayScheduledDate = editedData.price_reduction_scheduled_date !== undefined ? editedData.price_reduction_scheduled_date : priceReductionScheduledDate;
