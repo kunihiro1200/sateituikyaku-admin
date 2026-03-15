@@ -13,12 +13,21 @@ import {
   TextField,
   ToggleButton,
   ToggleButtonGroup,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  List,
+  ListItem,
+  ListItemButton,
+  ListItemText,
+  Divider,
 } from '@mui/material';
-import { ArrowBack as ArrowBackIcon, Save as SaveIcon } from '@mui/icons-material';
+import {
+  ArrowBack as ArrowBackIcon,
+  Save as SaveIcon,
+  Email as EmailIcon,
+} from '@mui/icons-material';
 import api from '../services/api';
 import { SECTION_COLORS } from '../theme/sectionColors';
 
@@ -29,6 +38,13 @@ interface ReportData {
   sales_assignee?: string;
 }
 
+interface EmailTemplate {
+  id: string;
+  name: string;
+  subject: string;
+  body: string;
+}
+
 export default function PropertyReportPage() {
   const { propertyNumber } = useParams<{ propertyNumber: string }>();
   const navigate = useNavigate();
@@ -37,6 +53,8 @@ export default function PropertyReportPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [jimuInitials, setJimuInitials] = useState<string[]>([]);
+  const [templates, setTemplates] = useState<EmailTemplate[]>([]);
+  const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
     message: string;
@@ -47,6 +65,7 @@ export default function PropertyReportPage() {
     if (propertyNumber) {
       fetchData();
       fetchJimuInitials();
+      fetchTemplates();
     }
   }, [propertyNumber]);
 
@@ -59,7 +78,6 @@ export default function PropertyReportPage() {
       setReportData({
         report_date: d.report_date || '',
         report_completed: d.report_completed || 'N',
-        // report_assignee: デフォルトは sales_assignee
         report_assignee: d.report_assignee || d.sales_assignee || '',
         sales_assignee: d.sales_assignee || '',
       });
@@ -77,13 +95,22 @@ export default function PropertyReportPage() {
       setJimuInitials(response.data.initials || []);
     } catch (error) {
       console.error('Failed to fetch jimu initials:', error);
-      // フォールバック: active-initials を使用
       try {
         const fallback = await api.get('/api/employees/active-initials');
         setJimuInitials(fallback.data.initials || []);
       } catch {
         setJimuInitials([]);
       }
+    }
+  };
+
+  const fetchTemplates = async () => {
+    try {
+      const response = await api.get('/api/email-templates/property');
+      setTemplates(response.data || []);
+    } catch (error) {
+      console.error('Failed to fetch property templates:', error);
+      setTemplates([]);
     }
   };
 
@@ -102,6 +129,15 @@ export default function PropertyReportPage() {
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleTemplateSelect = (template: EmailTemplate) => {
+    setTemplateDialogOpen(false);
+    // Gmailの作成画面をURLで開く
+    const subject = encodeURIComponent(template.subject);
+    const body = encodeURIComponent(template.body);
+    const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&su=${subject}&body=${body}`;
+    window.open(gmailUrl, '_blank');
   };
 
   const handleBack = () => {
@@ -161,58 +197,120 @@ export default function PropertyReportPage() {
             }}
             size="small"
           >
-            <ToggleButton value="N" sx={{ px: 3 }}>
-              N
-            </ToggleButton>
-            <ToggleButton value="Y" sx={{ px: 3 }}>
-              Y
-            </ToggleButton>
+            <ToggleButton value="N" sx={{ px: 3 }}>N</ToggleButton>
+            <ToggleButton value="Y" sx={{ px: 3 }}>Y</ToggleButton>
           </ToggleButtonGroup>
         </Box>
 
-        {/* 報告担当 */}
+        {/* 報告担当 - ボックス選択 */}
         <Box sx={{ mb: 4 }}>
           <Typography variant="body2" color="text.secondary" fontWeight="bold" sx={{ mb: 1 }}>
             報告担当
           </Typography>
-          <FormControl fullWidth size="small">
-            <Select
-              value={reportData.report_assignee || ''}
-              onChange={(e) => setReportData((prev) => ({ ...prev, report_assignee: e.target.value }))}
-              displayEmpty
-            >
-              <MenuItem value="">
-                <em>未選択</em>
-              </MenuItem>
-              {jimuInitials.map((initial) => (
-                <MenuItem key={initial} value={initial}>
-                  {initial}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
+          <ToggleButtonGroup
+            value={reportData.report_assignee || ''}
+            exclusive
+            onChange={(_, value) => {
+              setReportData((prev) => ({ ...prev, report_assignee: value ?? '' }));
+            }}
+            size="small"
+            sx={{ flexWrap: 'wrap', gap: 0.5 }}
+          >
+            {jimuInitials.map((initial) => (
+              <ToggleButton
+                key={initial}
+                value={initial}
+                sx={{
+                  px: 2,
+                  minWidth: 48,
+                  fontWeight: 'bold',
+                  '&.Mui-selected': {
+                    backgroundColor: 'primary.main',
+                    color: 'white',
+                    '&:hover': { backgroundColor: 'primary.dark' },
+                  },
+                }}
+              >
+                {initial}
+              </ToggleButton>
+            ))}
+          </ToggleButtonGroup>
           {reportData.sales_assignee && (
-            <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
+            <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
               物件担当: {reportData.sales_assignee}
             </Typography>
           )}
         </Box>
 
-        {/* 保存ボタン */}
-        <Button
-          variant="contained"
-          fullWidth
-          startIcon={saving ? <CircularProgress size={16} /> : <SaveIcon />}
-          onClick={handleSave}
-          disabled={saving}
-          sx={{
-            backgroundColor: SECTION_COLORS.property.main,
-            '&:hover': { backgroundColor: SECTION_COLORS.property.dark },
-          }}
-        >
-          {saving ? '保存中...' : '保存'}
-        </Button>
+        {/* ボタン群 */}
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <Button
+            variant="contained"
+            fullWidth
+            startIcon={saving ? <CircularProgress size={16} /> : <SaveIcon />}
+            onClick={handleSave}
+            disabled={saving}
+            sx={{
+              backgroundColor: SECTION_COLORS.property.main,
+              '&:hover': { backgroundColor: SECTION_COLORS.property.dark },
+            }}
+          >
+            {saving ? '保存中...' : '保存'}
+          </Button>
+
+          <Button
+            variant="outlined"
+            fullWidth
+            startIcon={<EmailIcon />}
+            onClick={() => setTemplateDialogOpen(true)}
+            sx={{
+              borderColor: '#1a73e8',
+              color: '#1a73e8',
+              '&:hover': { borderColor: '#1557b0', backgroundColor: '#1a73e808' },
+            }}
+          >
+            Gmail送信
+          </Button>
+        </Box>
       </Paper>
+
+      {/* テンプレート選択ダイアログ */}
+      <Dialog
+        open={templateDialogOpen}
+        onClose={() => setTemplateDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>メールテンプレートを選択</DialogTitle>
+        <DialogContent dividers sx={{ p: 0 }}>
+          {templates.length === 0 ? (
+            <Box sx={{ p: 3, textAlign: 'center' }}>
+              <Typography color="text.secondary">
+                テンプレートが見つかりません
+              </Typography>
+            </Box>
+          ) : (
+            <List disablePadding>
+              {templates.map((template, index) => (
+                <Box key={template.id}>
+                  <ListItem disablePadding>
+                    <ListItemButton onClick={() => handleTemplateSelect(template)}>
+                      <ListItemText
+                        primary={template.name}
+                        secondary={template.subject}
+                      />
+                    </ListItemButton>
+                  </ListItem>
+                  {index < templates.length - 1 && <Divider />}
+                </Box>
+              ))}
+            </List>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setTemplateDialogOpen(false)}>キャンセル</Button>
+        </DialogActions>
+      </Dialog>
 
       <Snackbar
         open={snackbar.open}

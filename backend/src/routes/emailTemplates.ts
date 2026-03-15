@@ -67,6 +67,20 @@ router.get('/debug', async (req, res) => {
  * Get all available email templates
  * GET /api/email-templates
  */
+/**
+ * 物件区分のテンプレート一覧を取得
+ * GET /api/email-templates/property
+ */
+router.get('/property', async (req, res) => {
+  try {
+    const templates = await templateService.getPropertyTemplates();
+    res.json(templates);
+  } catch (error: any) {
+    console.error('Error fetching property templates:', error);
+    res.status(500).json({ error: 'Failed to fetch property templates', message: error.message });
+  }
+});
+
 router.get('/', async (req, res) => {
   try {
     const templates = await templateService.getTemplates();

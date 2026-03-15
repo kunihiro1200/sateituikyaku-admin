@@ -140,9 +140,11 @@ export class StaffManagementService {
   async getJimuInitials(): Promise<string[]> {
     try {
       const staffData = await this.fetchStaffData();
-      const jimuInitials = staffData
-        .filter(s => s.hasJimu && s.initials && s.initials.trim() !== '')
-        .map(s => s.initials);
+      const jimuInitials = [...new Set(
+        staffData
+          .filter(s => s.hasJimu && s.initials && s.initials.trim() !== '')
+          .map(s => s.initials)
+      )];
       console.log('[StaffManagementService] Jimu initials from spreadsheet:', jimuInitials);
       return jimuInitials;
     } catch (error: any) {
