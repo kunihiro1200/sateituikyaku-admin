@@ -177,6 +177,20 @@ export class StaffManagementService {
     }
   }
 
+  /**
+   * 姓名の部分一致でスタッフ情報を取得
+   * 例: "裏" → "裏天真" にマッチ
+   */
+  async getStaffByNameContains(namePart: string): Promise<StaffInfo | null> {
+    try {
+      const staffData = await this.fetchStaffData();
+      return staffData.find(s => s.name && s.name.includes(namePart)) || null;
+    } catch (error: any) {
+      console.error('[StaffManagementService] Error getting staff by name contains:', error.message);
+      return null;
+    }
+  }
+
   clearCache(): void {
     console.log('[StaffManagementService] Clearing cache');
     this.cache.clear();

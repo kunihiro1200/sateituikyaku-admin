@@ -159,11 +159,16 @@ router.post('/property/merge', async (req, res) => {
       // 売主が見つからない場合は空文字のまま
     }
 
-    // スタッフ情報を取得（sales_assignee のイニシャルで検索）
+    // スタッフ情報を取得（sales_assignee のイニシャルまたは姓名の部分一致で検索）
     let staffInfo = null;
     const salesAssignee = property.sales_assignee;
     if (salesAssignee) {
+      // まずイニシャルで完全一致検索
       staffInfo = await staffService.getStaffByInitials(salesAssignee);
+      // 見つからない場合は姓名の部分一致で検索（例: "裏" → "裏天真"）
+      if (!staffInfo) {
+        staffInfo = await staffService.getStaffByNameContains(salesAssignee);
+      }
     }
 
     // sellerName の末尾「様」を除去（mergePropertyTemplate 内で「様」を付けるため）
