@@ -166,17 +166,20 @@ router.post('/property/merge', async (req, res) => {
       staffInfo = await staffService.getStaffByInitials(salesAssignee);
     }
 
+    // sellerName の末尾「様」を除去（mergePropertyTemplate 内で「様」を付けるため）
+    const sellerNameClean = sellerName.endsWith('様') ? sellerName.slice(0, -1) : sellerName;
+
     // プレースホルダー置換
     const mergedSubject = templateService.mergePropertyTemplate(
       template.subject,
       property,
-      sellerName,
+      sellerNameClean,
       staffInfo
     );
     const mergedBody = templateService.mergePropertyTemplate(
       template.body,
       property,
-      sellerName,
+      sellerNameClean,
       staffInfo
     );
 

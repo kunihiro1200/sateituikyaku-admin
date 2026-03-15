@@ -313,6 +313,10 @@ export class EmailTemplateService {
     // <<●所有者情報>> → 売主氏名 + 様
     result = result.replace(/<<●所有者情報>>/g, sellerName ? `${sellerName}様` : '');
 
+    // <<住居表示（ATBB登録住所）>> → address または display_address
+    const propertyAddress = property['address'] || property['display_address'] || '';
+    result = result.replace(/<<住居表示（ATBB登録住所）>>/g, propertyAddress);
+
     // <<担当名（営業）名前>> → sales_assignee
     result = result.replace(/<<担当名（営業）名前>>/g, property['sales_assignee'] || '');
 

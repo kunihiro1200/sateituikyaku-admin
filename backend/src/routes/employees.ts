@@ -24,7 +24,7 @@ router.get('/staff-debug', async (req: Request, res: Response) => {
     await client.authenticate();
     const rows = await client.readAll();
     const headers = rows.length > 0 ? Object.keys(rows[0]) : [];
-    const sampleRows = rows.slice(0, 5).map((row: any) => ({
+    const sampleRows = rows.map((row: any) => ({
       イニシャル: row['イニシャル'],
       姓名: row['姓名'],
       電話番号: row['電話番号'],
@@ -32,7 +32,6 @@ router.get('/staff-debug', async (req: Request, res: Response) => {
       メアド: row['メアド'],
       有効: row['有効'],
       事務あり: row['事務あり'],
-      allKeys: Object.keys(row),
     }));
     res.json({ headers, sampleRows, totalRows: rows.length });
   } catch (error: any) {
