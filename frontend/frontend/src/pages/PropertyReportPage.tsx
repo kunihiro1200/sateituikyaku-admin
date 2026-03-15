@@ -77,13 +77,24 @@ export default function PropertyReportPage() {
     try {
       const response = await api.get(`/api/property-listings/${propertyNumber}`);
       const d = response.data;
+      // seller_name を優先して使用
+      let ownerName = d.seller_name || '';
+      // seller_name が空の場合は sellers テーブルから取得（復号化済み）
+      if (!ownerName) {
+        try {
+          const sellerRes = await api.get(`/api/sellers/by-number/${propertyNumber}`);
+          ownerName = sellerRes.data?.name || '';
+        } catch {
+          // 売主が見つからない場合は空のまま
+        }
+      }
       setReportData({
         report_date: d.report_date || '',
         report_completed: d.report_completed || 'N',
         report_assignee: d.report_assignee || d.sales_assignee || '',
         sales_assignee: d.sales_assignee || '',
         address: d.address || d.property_address || '',
-        owner_name: d.owner_name || '',
+        owner_name: ownerName,
       });
     } catch (error) {
       console.error('Failed to fetch property data:', error);
@@ -145,7 +156,7 @@ export default function PropertyReportPage() {
       });
       const { subject: mergedSubject, body: mergedBody, sellerName } = mergeResponse.data;
       // 売主名をヘッダーにセット
-      if (sellerName && !reportData.owner_name) {
+      if (sellerName) {
         setReportData((prev) => ({ ...prev, owner_name: sellerName }));
       }
       const subject = encodeURIComponent(mergedSubject || template.subject);

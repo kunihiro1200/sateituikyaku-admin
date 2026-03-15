@@ -2,11 +2,13 @@ import express from 'express';
 import { createClient } from '@supabase/supabase-js';
 import { EmailTemplateService } from '../services/EmailTemplateService';
 import { StaffManagementService } from '../services/StaffManagementService';
+import { SellerService } from '../services/SellerService.supabase';
 import { TemplateContext } from '../types/emailTemplate';
 
 const router = express.Router();
 const templateService = new EmailTemplateService();
 const staffService = new StaffManagementService();
+const sellerService = new SellerService();
 
 /**
  * Debug endpoint - Google Sheets認証テスト
@@ -120,15 +122,19 @@ router.post('/property/merge', async (req, res) => {
     }
 
     // 売主データを取得（seller_number = property_number）
+    // name は暗号化されているため SellerService 経由で復号化して取得
     let sellerName = '';
     try {
-      const { data: seller } = await supabase
+      const { data: sellerRow } = await supabase
         .from('sellers')
-        .select('name')
+        .select('id')
         .eq('seller_number', propertyNumber)
         .single();
-      if (seller?.name) {
-        sellerName = seller.name;
+      if (sellerRow?.id) {
+        const decryptedSeller = await sellerService.getSeller(sellerRow.id);
+        if (decryptedSeller?.name) {
+          sellerName = decryptedSeller.name;
+        }
       }
     } catch {
       // 売主が見つからない場合は空文字のまま

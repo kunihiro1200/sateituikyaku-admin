@@ -18,6 +18,13 @@ interface PropertyDetailsSectionProps {
   isEditMode: boolean;
 }
 
+// 月々ローン支払い計算（元利均等返済、金利3%/年、35年）
+function calcMonthlyPayment(price: number): number {
+  const r = 0.0007916666667; // 月利 = 3% / 12
+  const n = 420; // 35年 * 12ヶ月
+  return price * r * Math.pow(1 + r, n) / (Math.pow(1 + r, n) - 1);
+}
+
 export default function PropertyDetailsSection({
   data,
   editedData,
