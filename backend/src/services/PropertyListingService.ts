@@ -228,10 +228,13 @@ export class PropertyListingService {
       throw new Error(`Failed to update property listing: ${error.message}`);
     }
 
-    // スプレッドシートに書き戻し（非同期・エラーは無視してDBの結果を返す）
-    this.syncToSpreadsheet(propertyNumber, updates).catch(err => {
-      console.error(`[PropertyListingService] Failed to sync to spreadsheet for ${propertyNumber}:`, err);
-    });
+    // スプレッドシートに書き戻し（awaitして確実に実行、エラーはログのみ）
+    try {
+      await this.syncToSpreadsheet(propertyNumber, updates);
+    } catch (err: any) {
+      console.error(`[PropertyListingService] Failed to sync to spreadsheet for ${propertyNumber}:`, err?.message || err);
+      // スプレッドシート同期失敗はDBの結果に影響しない
+    }
 
     return data;
   }
