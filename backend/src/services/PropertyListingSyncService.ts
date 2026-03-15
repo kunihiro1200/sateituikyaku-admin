@@ -614,6 +614,10 @@ export class PropertyListingSyncService {
                 }
               }
 
+              // サイドバーステータスを計算して更新
+              const sidebarStatus = this.calculateSidebarStatus(update.spreadsheet_data);
+              changedFieldsOnly.sidebar_status = sidebarStatus;
+
               // 業務リストから格納先URLを取得（storage_locationが空の場合）
               // キャッシュが事前にロードされているため、API呼び出しは発生しない
               if (!changedFieldsOnly.storage_location || changedFieldsOnly.storage_location === null) {
@@ -1017,7 +1021,10 @@ export class PropertyListingSyncService {
         }
       }
 
-      // 4. Add timestamps
+      // 4. サイドバーステータスを計算
+      propertyData.sidebar_status = this.calculateSidebarStatus(spreadsheetRow);
+
+      // 5. Add timestamps
       propertyData.created_at = new Date().toISOString();
       propertyData.updated_at = new Date().toISOString();
 
@@ -1155,5 +1162,150 @@ export class PropertyListingSyncService {
       await this.logSyncError('new_property_addition', error);
       throw error;
     }
+  }
+}
+      console.error('❌ Sync failed:', error.message);
+      await this.logSyncError('new_property_addition', error);
+      throw error;
+    }
+  }
+
+  // ===========================================================
+  // SIDEBAR STATUS CALCULATION
+  // ===========================================================
+
+  /**
+   * サイドバーステータスを計算
+   * @param row 物件リストスプレッドシートの1行
+   * @param gyomuListData 業務依頼シートの全データ
+   */
+  calculateSidebarStatus(row: any, gyomuListData: any[] = []): string {
+    const propertyNumber = String(row['物件番号'] || '');
+    const atbbStatus = String(row['atbb成約済み/非公開'] || '');
+
+    // ① 未報告（最優先）
+    const reportDate = row['報告日'];
+    if (reportDate && this.isDateBeforeOrToday(reportDate)) {
+      const assignee = row['報告担当_override'] || row['報告担当'] || '';
+      return assignee ? `未報告 ${assignee}` : '未報告';
+    }
+
+    // ② 未完了
+    if (row['確認'] === '未') {
+      return '未完了';
+    }
+
+    // ③ 非公開予定（確認後）
+    if (row['一般媒介非公開（仮）'] === '非公開予定') {
+      return '非公開予定（確認後）';
+    }
+
+    // ④ 一般媒介の掲載確認未
+    if (row['１社掲載'] === '未確認') {
+      return '一般媒介の掲載確認未';
+    }
+
+    // ⑤ 本日公開予定
+    if (atbbStatus.includes('公開前')) {
+      const scheduledDate = this.lookupGyomuList(propertyNumber, gyomuListData, '公開予定日');
+      if (scheduledDate && this.isDateBeforeOrToday(scheduledDate)) {
+        return '本日公開予定';
+      }
+    }
+
+    // ⑥ SUUMO / レインズ登録必要
+    if (atbbStatus === '一般・公開中' || atbbStatus === '専任・公開中') {
+      const scheduledDate = this.lookupGyomuList(propertyNumber, gyomuListData, '公開予定日');
+      const suumoUrl = row['Suumo URL'];
+      const suumoRegistration = row['Suumo登録'];
+
+      if (scheduledDate &&
+          this.isDateBeforeYesterday(scheduledDate) &&
+          !suumoUrl &&
+          suumoRegistration !== 'S不要') {
+        return atbbStatus === '一般・公開中'
+          ? 'SUUMO URL　要登録'
+          : 'レインズ登録＋SUUMO登録';
+      }
+    }
+
+    // ⑦ 買付申込み（内覧なし）２
+    const kaitsukeStatus = row['買付'];
+    if (
+      (kaitsukeStatus === '専任片手' && atbbStatus === '専任・公開中') ||
+      (kaitsukeStatus === '一般他決' && atbbStatus === '一般・公開中') ||
+      (kaitsukeStatus === '専任両手' && atbbStatus === '専任・公開中') ||
+      (kaitsukeStatus === '一般両手' && atbbStatus === '一般・公開中') ||
+      (kaitsukeStatus === '一般片手' && atbbStatus === '一般・公開中')
+    ) {
+      return '買付申込み（内覧なし）２';
+    }
+
+    // ⑧ 公開前情報
+    if (atbbStatus === '一般・公開前' || atbbStatus === '専任・公開前') {
+      return '公開前情報';
+    }
+
+    // ⑨ 非公開（配信メールのみ）
+    if (atbbStatus === '非公開（配信メールのみ）') {
+      return '非公開（配信メールのみ）';
+    }
+
+    // ⑩ 一般公開中物件
+    if (atbbStatus === '一般・公開中') {
+      return '一般公開中物件';
+    }
+
+    // ⑪ 専任・公開中（担当別）
+    if (atbbStatus === '専任・公開中') {
+      const assignee = row['担当名（営業）'];
+      return this.getAssigneeStatus(assignee);
+    }
+
+    return '';
+  }
+
+  private lookupGyomuList(propertyNumber: string, gyomuListData: any[], columnName: string): any {
+    const row = gyomuListData.find(r => r['物件番号'] === propertyNumber);
+    return row ? row[columnName] : null;
+  }
+
+  private isDateBeforeOrToday(dateValue: any): boolean {
+    if (!dateValue) return false;
+    const date = this.parseSidebarDate(dateValue);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return date <= today;
+  }
+
+  private isDateBeforeYesterday(dateValue: any): boolean {
+    if (!dateValue) return false;
+    const date = this.parseSidebarDate(dateValue);
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    yesterday.setHours(0, 0, 0, 0);
+    return date <= yesterday;
+  }
+
+  private parseSidebarDate(dateValue: any): Date {
+    if (typeof dateValue === 'number') {
+      const excelEpoch = new Date(1899, 11, 30);
+      return new Date(excelEpoch.getTime() + dateValue * 86400000);
+    }
+    return new Date(dateValue);
+  }
+
+  private getAssigneeStatus(assignee: string): string {
+    const mapping: Record<string, string> = {
+      '山本': 'Y専任公開中',
+      '生野': '生・専任公開中',
+      '久': '久・専任公開中',
+      '裏': 'U専任公開中',
+      '林': '林・専任公開中',
+      '国広': 'K専任公開中',
+      '木村': 'R専任公開中',
+      '角井': 'I専任公開中',
+    };
+    return mapping[assignee] || '専任・公開中';
   }
 }
