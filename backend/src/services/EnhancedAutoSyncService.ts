@@ -1640,9 +1640,8 @@ export class EnhancedAutoSyncService {
   }
 
   /**
-   * Phase 4.8: スプレッドシートから削除された物件を非表示にする同期
-   * - DBにあってスプレッドシートにない物件 → is_hidden = true
-   * - スプレッドシートに再登録された物件（is_hidden=true） → is_hidden = false
+   * Phase 4.8: スプレッドシートから削除された物件をDBから完全削除する同期
+   * - DBにあってスプレッドシートにない物件 → property_listings と property_details から完全削除
    */
   async syncHiddenPropertyListings(): Promise<{
     success: boolean;
@@ -1654,7 +1653,7 @@ export class EnhancedAutoSyncService {
     const startTime = Date.now();
 
     try {
-      console.log('🙈 Starting hidden property listings sync...');
+      console.log('🗑️  Starting deleted property listings sync...');
 
       // 1. 物件リストスプレッドシートから全物件番号を取得
       const { GoogleSheetsClient } = await import('./GoogleSheetsClient');
@@ -1681,8 +1680,8 @@ export class EnhancedAutoSyncService {
 
       console.log(`📊 Spreadsheet properties: ${spreadsheetPropertyNumbers.size}`);
 
-      // 2. DBのproperty_listingsから全物件番号とis_hiddenフラグを取得（ページネーション対応）
-      const dbProperties: Array<{ property_number: string; is_hidden: boolean }> = [];
+      // 2. DBのproperty_listingsから全物件番号を取得（ページネーション対応）
+      const dbPropertyNumbers: string[] = [];
       const pageSize = 1000;
       let offset = 0;
       let hasMore = true;
@@ -1690,7 +1689,7 @@ export class EnhancedAutoSyncService {
       while (hasMore) {
         const { data, error } = await this.supabase
           .from('property_listings')
-          .select('property_number, is_hidden')
+          .select('property_number')
           .range(offset, offset + pageSize - 1);
 
         if (error) {
@@ -1702,10 +1701,7 @@ export class EnhancedAutoSyncService {
         } else {
           for (const property of data) {
             if (property.property_number) {
-              dbProperties.push({
-                property_number: property.property_number,
-                is_hidden: property.is_hidden ?? false,
-              });
+              dbPropertyNumbers.push(property.property_number);
             }
           }
           offset += pageSize;
@@ -1715,38 +1711,37 @@ export class EnhancedAutoSyncService {
         }
       }
 
-      console.log(`📊 Database properties: ${dbProperties.length}`);
+      console.log(`📊 Database properties: ${dbPropertyNumbers.length}`);
 
-      // 3. DBにあってスプレッドシートにない物件 → is_hidden = true
-      const toHide = dbProperties
-        .filter(p => !spreadsheetPropertyNumbers.has(p.property_number) && !p.is_hidden)
-        .map(p => p.property_number);
+      // 3. DBにあってスプレッドシートにない物件 → 完全削除
+      const toDelete = dbPropertyNumbers.filter(
+        pn => !spreadsheetPropertyNumbers.has(pn)
+      );
 
-      // 4. スプレッドシートに再登録された物件（is_hidden=true） → is_hidden = false
-      const toRestore = dbProperties
-        .filter(p => spreadsheetPropertyNumbers.has(p.property_number) && p.is_hidden)
-        .map(p => p.property_number);
+      console.log(`🗑️  Properties to delete: ${toDelete.length}`);
 
-      console.log(`🙈 Properties to hide: ${toHide.length}`);
-      console.log(`👁️  Properties to restore: ${toRestore.length}`);
-
-      let hidden = 0;
-      let restored = 0;
+      let hidden = 0; // 削除件数（呼び出し元との互換性のためhiddenという名前を維持）
       let failed = 0;
 
-      // 非表示にする
-      for (const propertyNumber of toHide) {
+      for (const propertyNumber of toDelete) {
         try {
+          // property_details も削除
+          await this.supabase
+            .from('property_details')
+            .delete()
+            .eq('property_number', propertyNumber);
+
+          // property_listings を削除
           const { error } = await this.supabase
             .from('property_listings')
-            .update({ is_hidden: true })
+            .delete()
             .eq('property_number', propertyNumber);
 
           if (error) {
-            console.error(`❌ Failed to hide ${propertyNumber}: ${error.message}`);
+            console.error(`❌ Failed to delete ${propertyNumber}: ${error.message}`);
             failed++;
           } else {
-            console.log(`🙈 Hidden: ${propertyNumber}`);
+            console.log(`�️  Deleted: ${propertyNumber}`);
             hidden++;
           }
         } catch (err: any) {
@@ -1755,35 +1750,14 @@ export class EnhancedAutoSyncService {
         }
       }
 
-      // 再表示する
-      for (const propertyNumber of toRestore) {
-        try {
-          const { error } = await this.supabase
-            .from('property_listings')
-            .update({ is_hidden: false })
-            .eq('property_number', propertyNumber);
-
-          if (error) {
-            console.error(`❌ Failed to restore ${propertyNumber}: ${error.message}`);
-            failed++;
-          } else {
-            console.log(`👁️  Restored: ${propertyNumber}`);
-            restored++;
-          }
-        } catch (err: any) {
-          console.error(`❌ ${propertyNumber}: ${err.message}`);
-          failed++;
-        }
-      }
-
       const duration_ms = Date.now() - startTime;
-      console.log(`✅ Hidden property sync completed: ${hidden} hidden, ${restored} restored, ${failed} failed`);
+      console.log(`✅ Deleted property sync completed: ${hidden} deleted, ${failed} failed`);
 
-      return { success: failed === 0, hidden, restored, failed, duration_ms };
+      return { success: failed === 0, hidden, restored: 0, failed, duration_ms };
 
     } catch (error: any) {
       const duration_ms = Date.now() - startTime;
-      console.error('❌ Hidden property sync failed:', error.message);
+      console.error('❌ Deleted property sync failed:', error.message);
       return { success: false, hidden: 0, restored: 0, failed: 1, duration_ms };
     }
   }
@@ -2184,8 +2158,8 @@ export class EnhancedAutoSyncService {
         // エラーでも処理を継続
       }
 
-      // Phase 4.8: スプレッドシートから削除された物件の非表示同期
-      console.log('\n🙈 Phase 4.8: Hidden Property Listings Sync');
+      // Phase 4.8: スプレッドシートから削除された物件の完全削除同期
+      console.log('\n�️  Phase 4.8: Deleted Property Listings Sync');
       let hiddenPropertySyncResult = {
         hidden: 0,
         restored: 0,
@@ -2202,13 +2176,13 @@ export class EnhancedAutoSyncService {
           duration_ms: hpResult.duration_ms,
         };
 
-        if (hpResult.hidden > 0 || hpResult.restored > 0) {
-          console.log(`✅ Hidden property sync: ${hpResult.hidden} hidden, ${hpResult.restored} restored`);
+        if (hpResult.hidden > 0) {
+          console.log(`✅ Deleted property sync: ${hpResult.hidden} deleted`);
         } else {
-          console.log('✅ No property listing changes to hide/restore');
+          console.log('✅ No property listings to delete');
         }
       } catch (error: any) {
-        console.error('⚠️  Hidden property sync error:', error.message);
+        console.error('⚠️  Deleted property sync error:', error.message);
         hiddenPropertySyncResult.failed = 1;
         // エラーでも処理を継続
       }

@@ -607,11 +607,12 @@ export class PropertyListingSyncService {
               );
 
               // Only include changed fields
+              // ⚠️ 重要: mappedUpdatesに存在しないフィールド（スプレッドシートが空欄）はnullとして更新する
               const changedFieldsOnly: any = {};
               for (const dbField of Object.keys(update.changed_fields)) {
-                if (mappedUpdates.hasOwnProperty(dbField)) {
-                  changedFieldsOnly[dbField] = mappedUpdates[dbField];
-                }
+                changedFieldsOnly[dbField] = mappedUpdates.hasOwnProperty(dbField)
+                  ? mappedUpdates[dbField]
+                  : null;
               }
 
               // サイドバーステータスを計算して更新
