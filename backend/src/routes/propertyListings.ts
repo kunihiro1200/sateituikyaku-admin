@@ -165,6 +165,22 @@ router.put('/:propertyNumber', async (req: Request, res: Response) => {
   }
 });
 
+// スプレッドシート同期デバッグ（ヘッダー確認）
+router.get('/debug/spreadsheet-headers', async (req: Request, res: Response) => {
+  try {
+    const headers = await (propertyListingService as any).sheetsClient?.authenticate()
+      .then(() => (propertyListingService as any).sheetsClient?.getHeaders());
+    res.json({
+      sheetsClientInitialized: !!(propertyListingService as any).sheetsClient,
+      spreadsheetId: process.env.PROPERTY_LISTING_SPREADSHEET_ID,
+      sheetName: process.env.PROPERTY_LISTING_SHEET_NAME || '物件',
+      headers: headers || null,
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // 複数物件の買主カウント取得
 router.get('/buyer-counts/batch', async (req: Request, res: Response): Promise<void> => {
   try {

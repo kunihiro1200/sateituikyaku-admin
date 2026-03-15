@@ -4,6 +4,8 @@ import { PropertyDistributionAreaCalculator } from './PropertyDistributionAreaCa
 import { CityNameExtractor } from './CityNameExtractor';
 import { PropertyImageService } from './PropertyImageService';
 import { GeocodingService } from './GeocodingService';
+import { GoogleSheetsClient } from './GoogleSheetsClient';
+import { PropertyListingColumnMapper } from './PropertyListingColumnMapper';
 
 export class PropertyListingService {
   private supabase;
@@ -11,6 +13,8 @@ export class PropertyListingService {
   private cityExtractor: CityNameExtractor;
   private propertyImageService: PropertyImageService;
   private geocodingService: GeocodingService;
+  private sheetsClient: GoogleSheetsClient | null = null;
+  private columnMapper: PropertyListingColumnMapper;
 
   constructor() {
     this.supabase = createClient(
@@ -19,6 +23,7 @@ export class PropertyListingService {
     );
     this.distributionCalculator = new PropertyDistributionAreaCalculator();
     this.cityExtractor = new CityNameExtractor();
+    this.columnMapper = new PropertyListingColumnMapper();
     
     // PropertyImageServiceの設定を環境変数から読み込む
     const folderIdCacheTTLMinutes = parseInt(process.env.FOLDER_ID_CACHE_TTL_MINUTES || '60', 10);
@@ -33,6 +38,16 @@ export class PropertyListingService {
     );
     
     this.geocodingService = new GeocodingService();
+
+    // Google Sheetsクライアントを初期化（PROPERTY_LISTING_SPREADSHEET_IDが設定されている場合のみ）
+    const propertySpreadsheetId = process.env.PROPERTY_LISTING_SPREADSHEET_ID;
+    if (propertySpreadsheetId) {
+      this.sheetsClient = new GoogleSheetsClient({
+        spreadsheetId: propertySpreadsheetId,
+        sheetName: process.env.PROPERTY_LISTING_SHEET_NAME || '物件',
+        serviceAccountKeyPath: process.env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH,
+      });
+    }
   }
 
   async getAll(options: {
@@ -213,7 +228,54 @@ export class PropertyListingService {
       throw new Error(`Failed to update property listing: ${error.message}`);
     }
 
+    // スプレッドシートに書き戻し（非同期・エラーは無視してDBの結果を返す）
+    this.syncToSpreadsheet(propertyNumber, updates).catch(err => {
+      console.error(`[PropertyListingService] Failed to sync to spreadsheet for ${propertyNumber}:`, err);
+    });
+
     return data;
+  }
+
+  // DBの更新内容をスプレッドシートに書き戻す
+  private async syncToSpreadsheet(propertyNumber: string, updates: Record<string, any>): Promise<void> {
+    if (!this.sheetsClient) {
+      console.warn(`[PropertyListingService] sheetsClient is null, skipping sync for ${propertyNumber}. PROPERTY_LISTING_SPREADSHEET_ID=${process.env.PROPERTY_LISTING_SPREADSHEET_ID}`);
+      return;
+    }
+
+    try {
+      console.log(`[PropertyListingService] Starting sync for ${propertyNumber}, updates keys: ${Object.keys(updates).join(', ')}`);
+      await this.sheetsClient.authenticate();
+
+      // DBカラム名 → スプレッドシートカラム名に変換
+      const spreadsheetRow: Record<string, any> = {};
+      const dbToSpreadsheet = (this.columnMapper as any).dbToSpreadsheet as Record<string, string>;
+      for (const [dbColumn, value] of Object.entries(updates)) {
+        const spreadsheetColumn = dbToSpreadsheet[dbColumn];
+        console.log(`[PropertyListingService] Mapping: ${dbColumn} -> ${spreadsheetColumn ?? '(not found)'}`);
+        if (spreadsheetColumn) {
+          spreadsheetRow[spreadsheetColumn] = value ?? '';
+        }
+      }
+
+      if (Object.keys(spreadsheetRow).length === 0) {
+        console.warn(`[PropertyListingService] No spreadsheet columns mapped for updates: ${JSON.stringify(Object.keys(updates))}`);
+        return;
+      }
+
+      // 物件番号で行を検索
+      const rowIndex = await this.sheetsClient.findRowByColumn('物件番号', propertyNumber);
+      if (rowIndex === null) {
+        console.warn(`[PropertyListingService] Property ${propertyNumber} not found in spreadsheet (sheet: ${process.env.PROPERTY_LISTING_SHEET_NAME || '物件'})`);
+        return;
+      }
+
+      await this.sheetsClient.updateRowPartial(rowIndex, spreadsheetRow);
+      console.log(`[PropertyListingService] Synced ${propertyNumber} to spreadsheet (row ${rowIndex}, columns: ${JSON.stringify(spreadsheetRow)})`);
+    } catch (err: any) {
+      console.error(`[PropertyListingService] syncToSpreadsheet error for ${propertyNumber}:`, err?.message || err);
+      throw err;
+    }
   }
 
   async getStats() {
