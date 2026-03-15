@@ -6,6 +6,9 @@ export interface StaffInfo {
   chatWebhook: string | null;
   isActive: boolean;
   hasJimu: boolean;
+  phone: string | null;
+  email: string | null;
+  regularHoliday: string | null;
 }
 
 export interface GetWebhookUrlResult {
@@ -95,12 +98,19 @@ export class StaffManagementService {
         const hasJimuRaw = row['事務あり'];
         const hasJimu = String(hasJimuRaw).toUpperCase() === 'TRUE';
 
+        const phone = row['電話番号'] as string | null;
+        const email = row['メールアドレス'] as string | null;
+        const regularHoliday = row['固定休'] as string | null;
+
         const staff: StaffInfo = {
           initials: initials || '',
           name: name || '',
           chatWebhook: chatWebhook || null,
           isActive,
           hasJimu,
+          phone: phone || null,
+          email: email || null,
+          regularHoliday: regularHoliday || null,
         };
         staffData.push(staff);
 
@@ -150,6 +160,19 @@ export class StaffManagementService {
     } catch (error: any) {
       console.error('[StaffManagementService] Error getting jimu initials:', error.message);
       throw error;
+    }
+  }
+
+  /**
+   * イニシャルでスタッフ情報を取得
+   */
+  async getStaffByInitials(initials: string): Promise<StaffInfo | null> {
+    try {
+      const staffData = await this.fetchStaffData();
+      return staffData.find(s => s.initials === initials) || null;
+    } catch (error: any) {
+      console.error('[StaffManagementService] Error getting staff by initials:', error.message);
+      return null;
     }
   }
 
