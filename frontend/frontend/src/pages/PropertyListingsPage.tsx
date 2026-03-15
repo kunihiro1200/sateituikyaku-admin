@@ -36,37 +36,45 @@ import { InquiryResponseButton } from '../components/InquiryResponseButton';
 import PublicUrlCell from '../components/PublicUrlCell';
 import StatusBadge from '../components/StatusBadge';
 import PublicSiteButtons from '../components/PublicSiteButtons';
-import {
-  PropertyListing,
-  WorkTask,
-  PROPERTY_STATUS_DEFINITIONS,
-  calculatePropertyStatus,
-  calculateStatusCounts,
-  filterByStatus,
-  createWorkTaskMap,
-} from '../utils/propertyListingStatusUtils';
+import PropertySidebarStatus from '../components/PropertySidebarStatus';
 import { getDisplayStatus } from '../utils/atbbStatusDisplayMapper';
 import { SECTION_COLORS } from '../theme/sectionColors';
+
+interface PropertyListing {
+  id: string;
+  property_number?: string;
+  sidebar_status?: string;
+  sales_assignee?: string;
+  property_type?: string;
+  address?: string;
+  display_address?: string;
+  seller_name?: string;
+  buyer_name?: string;
+  contract_date?: string;
+  settlement_date?: string;
+  price?: number;
+  storage_location?: string;
+  atbb_status?: string;
+  [key: string]: any;
+}
 
 export default function PropertyListingsPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  
+
   const [allListings, setAllListings] = useState<PropertyListing[]>([]);
-  const [workTasks, setWorkTasks] = useState<WorkTask[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(50);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedAssignee, setSelectedAssignee] = useState<string | null>(null);
-  const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
+  const [sidebarStatus, setSidebarStatus] = useState<string | null>(null);
   const [selectedPropertyNumber, setSelectedPropertyNumber] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [buyerCounts, setBuyerCounts] = useState<Record<string, number>>({});
   const [highConfidenceProperties, setHighConfidenceProperties] = useState<Set<string>>(new Set());
-  const [buyerFilter, setBuyerFilter] = useState<'all' | 'hasBuyers' | 'highConfidence'>('all');
   const [selectedPropertyNumbers, setSelectedPropertyNumbers] = useState<Set<string>>(new Set());
 
   // 状態を復元
@@ -77,8 +85,7 @@ export default function PropertyListingsPage() {
       if (savedState.rowsPerPage !== undefined) setRowsPerPage(savedState.rowsPerPage);
       if (savedState.searchQuery !== undefined) setSearchQuery(savedState.searchQuery);
       if (savedState.selectedAssignee !== undefined) setSelectedAssignee(savedState.selectedAssignee);
-      if (savedState.selectedStatus !== undefined) setSelectedStatus(savedState.selectedStatus);
-      if (savedState.buyerFilter !== undefined) setBuyerFilter(savedState.buyerFilter);
+      if (savedState.sidebarStatus !== undefined) setSidebarStatus(savedState.sidebarStatus);
     }
   }, [location.state]);
 
@@ -89,54 +96,40 @@ export default function PropertyListingsPage() {
   const fetchAllData = async () => {
     try {
       setLoading(true);
-      
-      // 全件取得（複数回に分けて取得）
+
       const allListingsData: PropertyListing[] = [];
       let offset = 0;
       const limit = 1000;
       let hasMore = true;
-      
+
       console.log('物件データを取得中...');
-      
+
       while (hasMore) {
         const listingsRes = await api.get('/api/property-listings', {
           params: { limit, offset, orderBy: 'distribution_date', orderDirection: 'desc' },
         });
-        
+
         const fetchedData = listingsRes.data.data || [];
         allListingsData.push(...fetchedData);
-        
+
         console.log(`取得: ${offset + 1}～${offset + fetchedData.length}件 / 合計${listingsRes.data.total}件`);
-        
-        // 次のページがあるかチェック
+
         if (fetchedData.length < limit || allListingsData.length >= listingsRes.data.total) {
           hasMore = false;
         } else {
           offset += limit;
         }
       }
-      
-      // 業務依頼データを取得
-      const workTasksRes = await api.get('/api/work-tasks', {
-        params: { limit: 1000, offset: 0 },
-      });
-      
+
       setAllListings(allListingsData);
-      setWorkTasks(workTasksRes.data.data || []);
-      
-      console.log('✅ データ取得成功:', {
-        物件数: allListingsData.length,
-        業務依頼数: workTasksRes.data.data?.length || 0,
-      });
+
+      console.log('✅ データ取得成功:', { 物件数: allListingsData.length });
     } catch (error) {
       console.error('Failed to fetch data:', error);
     } finally {
       setLoading(false);
     }
   };
-
-  // 業務依頼マップを作成
-  const workTaskMap = useMemo(() => createWorkTaskMap(workTasks), [workTasks]);
 
   // 担当者別カウント
   const assigneeCounts = useMemo(() => {
@@ -148,46 +141,24 @@ export default function PropertyListingsPage() {
     return counts;
   }, [allListings]);
 
-  // ステータス別カウント
-  const statusCounts = useMemo(() => {
-    const counts: Record<string, number> = { all: allListings.length };
-    allListings.forEach(listing => {
-      const status = calculatePropertyStatus(listing, workTaskMap);
-      counts[status.key] = (counts[status.key] || 0) + 1;
-    });
-    return counts;
-  }, [allListings, workTaskMap]);
-
   // フィルタリング
   const filteredListings = useMemo(() => {
     let listings = allListings;
-    
+
     // 担当者フィルター
     if (selectedAssignee && selectedAssignee !== 'all') {
-      listings = listings.filter(l => 
-        selectedAssignee === '未設定' 
-          ? !l.sales_assignee 
+      listings = listings.filter(l =>
+        selectedAssignee === '未設定'
+          ? !l.sales_assignee
           : l.sales_assignee === selectedAssignee
       );
     }
-    
-    // ステータスフィルター
-    if (selectedStatus && selectedStatus !== 'all') {
-      listings = filterByStatus(listings, selectedStatus, workTaskMap);
-      console.log(`Status filter: ${selectedStatus}, filtered count: ${listings.length}`);
+
+    // サイドバーステータスフィルター
+    if (sidebarStatus && sidebarStatus !== 'all') {
+      listings = listings.filter(l => l.sidebar_status === sidebarStatus);
     }
-    
-    // 買主フィルター
-    if (buyerFilter === 'hasBuyers') {
-      listings = listings.filter(l => 
-        l.property_number && buyerCounts[l.property_number] > 0
-      );
-    } else if (buyerFilter === 'highConfidence') {
-      listings = listings.filter(l => 
-        l.property_number && highConfidenceProperties.has(l.property_number)
-      );
-    }
-    
+
     // 検索フィルター
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
@@ -198,16 +169,15 @@ export default function PropertyListingsPage() {
         l.buyer_name?.toLowerCase().includes(query)
       );
     }
-    
+
     return listings;
-  }, [allListings, selectedAssignee, selectedStatus, buyerFilter, buyerCounts, highConfidenceProperties, searchQuery, workTaskMap]);
+  }, [allListings, selectedAssignee, sidebarStatus, searchQuery]);
 
   const paginatedListings = useMemo(() => {
     const start = page * rowsPerPage;
     return filteredListings.slice(start, start + rowsPerPage);
   }, [filteredListings, page, rowsPerPage]);
 
-  // 前回取得した物件番号リストを記憶
   const prevPropertyNumbersRef = useRef<string>('');
 
   // 買主カウントを取得
@@ -218,12 +188,8 @@ export default function PropertyListingsPage() {
         .filter(Boolean) as string[];
 
       const propertyNumbersKey = propertyNumbers.sort().join(',');
-      
-      // 前回と同じ物件リストの場合はスキップ
-      if (propertyNumbersKey === prevPropertyNumbersRef.current) {
-        return;
-      }
-      
+
+      if (propertyNumbersKey === prevPropertyNumbersRef.current) return;
       prevPropertyNumbersRef.current = propertyNumbersKey;
 
       if (propertyNumbers.length > 0) {
@@ -231,10 +197,7 @@ export default function PropertyListingsPage() {
           const response = await api.get('/api/property-listings/buyer-counts/batch', {
             params: { propertyNumbers: propertyNumbers.join(',') }
           });
-          setBuyerCounts(prevCounts => ({
-            ...prevCounts,
-            ...response.data
-          }));
+          setBuyerCounts(prevCounts => ({ ...prevCounts, ...response.data }));
         } catch (error) {
           console.error('Failed to fetch buyer counts:', error);
         }
@@ -254,23 +217,18 @@ export default function PropertyListingsPage() {
         console.error('Failed to fetch high confidence properties:', error);
       }
     };
-
     fetchHighConfidenceProperties();
   }, []);
 
   const handleRowClick = (propertyNumber: string) => {
-    // 現在の状態をSession Storageに保存
     const currentState = {
       page,
       rowsPerPage,
       searchQuery,
       selectedAssignee,
-      selectedStatus,
-      buyerFilter,
+      sidebarStatus,
     };
     sessionStorage.setItem('propertyListState', JSON.stringify(currentState));
-    
-    // 新しいページに遷移
     navigate(`/property-listings/${propertyNumber}`);
   };
 
@@ -288,9 +246,7 @@ export default function PropertyListingsPage() {
   const handleSelectAll = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.checked) {
       const allPropertyNumbers = new Set(
-        paginatedListings
-          .map(l => l.property_number)
-          .filter(Boolean) as string[]
+        paginatedListings.map(l => l.property_number).filter(Boolean) as string[]
       );
       setSelectedPropertyNumbers(allPropertyNumbers);
     } else {
@@ -303,7 +259,7 @@ export default function PropertyListingsPage() {
   };
 
   const selectedProperties = useMemo(() => {
-    return allListings.filter(l => 
+    return allListings.filter(l =>
       l.property_number && selectedPropertyNumbers.has(l.property_number)
     );
   }, [allListings, selectedPropertyNumbers]);
@@ -334,135 +290,54 @@ export default function PropertyListingsPage() {
     return list;
   }, [assigneeCounts]);
 
-  // サイドバー用のステータスリスト（件数があるもののみ）
-  const statusList = useMemo(() => {
-    const list = [{ key: 'all', label: 'All', count: statusCounts.all, color: '#666' }];
-    PROPERTY_STATUS_DEFINITIONS.forEach(status => {
-      const count = statusCounts[status.key] || 0;
-      if (count > 0) {
-        list.push({ key: status.key, label: status.label, count, color: status.color });
-      }
-    });
-    return list;
-  }, [statusCounts]);
-
-  // 各行のステータスを取得
-  const getRowStatus = (listing: PropertyListing) => {
-    return calculatePropertyStatus(listing, workTaskMap);
-  };
-
   return (
     <Container maxWidth="xl" sx={{ py: 3 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexDirection: { xs: 'column', sm: 'row' }, gap: 2 }}>
         <Typography variant="h5" fontWeight="bold" sx={{ color: SECTION_COLORS.property.main }}>物件リスト</Typography>
         <PublicSiteButtons />
       </Box>
-      
-      {/* ページナビゲーション */}
+
       <PageNavigation />
 
       <Box sx={{ display: 'flex', gap: 2 }}>
-        {/* 左サイドバー - フィルター */}
-        <Paper sx={{ width: 220, flexShrink: 0 }}>
-          <Box sx={{ p: 2, borderBottom: '1px solid #eee' }}>
-            <Typography variant="subtitle1" fontWeight="bold">買主フィルター</Typography>
-          </Box>
-          <List dense>
-            <ListItemButton
-              selected={buyerFilter === 'all'}
-              onClick={() => { setBuyerFilter('all'); setPage(0); }}
-              sx={{ py: 0.5 }}
-            >
-              <ListItemText primary="すべて" primaryTypographyProps={{ variant: 'body2' }} />
-            </ListItemButton>
-            <ListItemButton
-              selected={buyerFilter === 'hasBuyers'}
-              onClick={() => { setBuyerFilter('hasBuyers'); setPage(0); }}
-              sx={{ py: 0.5 }}
-            >
-              <ListItemText primary="買主あり" primaryTypographyProps={{ variant: 'body2' }} />
-            </ListItemButton>
-            <ListItemButton
-              selected={buyerFilter === 'highConfidence'}
-              onClick={() => { setBuyerFilter('highConfidence'); setPage(0); }}
-              sx={{ py: 0.5 }}
-            >
-              <ListItemText primary="高確度買主あり" primaryTypographyProps={{ variant: 'body2' }} />
-            </ListItemButton>
-          </List>
-          
-          <Divider />
-          
-          <Box sx={{ p: 2, borderBottom: '1px solid #eee' }}>
-            <Typography variant="subtitle1" fontWeight="bold">ステータス</Typography>
-          </Box>
-          <List dense sx={{ maxHeight: 'calc(50vh - 100px)', overflow: 'auto' }}>
-            {statusList.map((item) => (
-              <ListItemButton
-                key={item.key}
-                selected={selectedStatus === item.key || (!selectedStatus && item.key === 'all')}
-                onClick={() => { setSelectedStatus(item.key === 'all' ? null : item.key); setPage(0); }}
-                sx={{ py: 0.5 }}
-              >
-                <Box
-                  sx={{
-                    width: 8,
-                    height: 8,
-                    borderRadius: '50%',
-                    bgcolor: item.color,
-                    mr: 1,
-                    flexShrink: 0,
-                  }}
-                />
-                <ListItemText 
-                  primary={item.label} 
-                  primaryTypographyProps={{ variant: 'body2', noWrap: true }}
-                  sx={{ flex: 1, minWidth: 0 }}
-                />
-                <Badge 
-                  badgeContent={item.count} 
-                  max={9999} 
-                  sx={{ 
-                    ml: 1,
-                    '& .MuiBadge-badge': {
-                      backgroundColor: SECTION_COLORS.property.main,
-                      color: SECTION_COLORS.property.contrastText,
-                    },
-                  }} 
-                />
-              </ListItemButton>
-            ))}
-          </List>
-          
-          <Divider />
-          
-          <Box sx={{ p: 2, borderBottom: '1px solid #eee' }}>
-            <Typography variant="subtitle1" fontWeight="bold">担当者</Typography>
-          </Box>
-          <List dense sx={{ maxHeight: 'calc(50vh - 100px)', overflow: 'auto' }}>
-            {assigneeList.map((item) => (
-              <ListItemButton
-                key={item.key}
-                selected={selectedAssignee === item.key || (!selectedAssignee && item.key === 'all')}
-                onClick={() => { setSelectedAssignee(item.key === 'all' ? null : item.key); setPage(0); }}
-                sx={{ py: 0.5 }}
-              >
-                <ListItemText primary={item.label} primaryTypographyProps={{ variant: 'body2' }} />
-                <Badge 
-                  badgeContent={item.count} 
-                  max={9999} 
-                  sx={{ 
-                    ml: 1,
-                    '& .MuiBadge-badge': {
-                      backgroundColor: SECTION_COLORS.property.main,
-                      color: SECTION_COLORS.property.contrastText,
-                    },
-                  }} 
-                />
-              </ListItemButton>
-            ))}
-          </List>
-        </Paper>
+        {/* 左サイドバー - サイドバーステータス */}
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <PropertySidebarStatus
+            listings={allListings}
+            selectedStatus={sidebarStatus}
+            onStatusChange={(status) => { setSidebarStatus(status); setPage(0); }}
+          />
+
+          {/* 担当者フィルター */}
+          <Paper sx={{ width: 220, flexShrink: 0 }}>
+            <Box sx={{ p: 2, borderBottom: '1px solid #eee' }}>
+              <Typography variant="subtitle1" fontWeight="bold">担当者</Typography>
+            </Box>
+            <List dense sx={{ maxHeight: 'calc(50vh - 100px)', overflow: 'auto' }}>
+              {assigneeList.map((item) => (
+                <ListItemButton
+                  key={item.key}
+                  selected={selectedAssignee === item.key || (!selectedAssignee && item.key === 'all')}
+                  onClick={() => { setSelectedAssignee(item.key === 'all' ? null : item.key); setPage(0); }}
+                  sx={{ py: 0.5 }}
+                >
+                  <ListItemText primary={item.label} primaryTypographyProps={{ variant: 'body2' }} />
+                  <Badge
+                    badgeContent={item.count}
+                    max={9999}
+                    sx={{
+                      ml: 1,
+                      '& .MuiBadge-badge': {
+                        backgroundColor: SECTION_COLORS.property.main,
+                        color: SECTION_COLORS.property.contrastText,
+                      },
+                    }}
+                  />
+                </ListItemButton>
+              ))}
+            </List>
+          </Paper>
+        </Box>
 
         {/* メインコンテンツ */}
         <Box sx={{ flex: 1 }}>
@@ -486,7 +361,6 @@ export default function PropertyListingsPage() {
             />
           </Paper>
 
-          {/* 上部ページネーション */}
           <Box sx={{ mb: 2, display: 'flex', gap: 2, alignItems: 'center' }}>
             <Paper sx={{ flex: 1 }}>
               <TablePagination
@@ -501,24 +375,18 @@ export default function PropertyListingsPage() {
                 labelDisplayedRows={({ from, to, count }) => `${from}-${to} / ${count}件`}
               />
             </Paper>
-            
+
             {selectedPropertyNumbers.size > 0 && (
               <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
                 <Typography variant="body2" sx={{ color: SECTION_COLORS.property.main }}>
                   {selectedPropertyNumbers.size}件選択中
                 </Typography>
-                <Button
-                  size="small"
-                  startIcon={<ClearAllIcon />}
-                  onClick={handleClearSelection}
-                >
+                <Button size="small" startIcon={<ClearAllIcon />} onClick={handleClearSelection}>
                   選択解除
                 </Button>
                 <InquiryResponseButton
                   selectedProperties={selectedProperties}
-                  onSuccess={() => {
-                    handleClearSelection();
-                  }}
+                  onSuccess={() => { handleClearSelection(); }}
                 />
               </Box>
             )}
@@ -555,21 +423,19 @@ export default function PropertyListingsPage() {
                   <TableCell>公開URL</TableCell>
                   <TableCell>格納先URL</TableCell>
                   <TableCell>ATBB状況</TableCell>
-                  <TableCell>ステータス</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={16} align="center">読み込み中...</TableCell>
+                    <TableCell colSpan={15} align="center">読み込み中...</TableCell>
                   </TableRow>
                 ) : paginatedListings.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={16} align="center">物件データが見つかりませんでした</TableCell>
+                    <TableCell colSpan={15} align="center">物件データが見つかりませんでした</TableCell>
                   </TableRow>
                 ) : (
                   paginatedListings.map((listing) => {
-                    const status = getRowStatus(listing);
                     const isSelected = listing.property_number ? selectedPropertyNumbers.has(listing.property_number) : false;
                     return (
                       <TableRow
@@ -590,9 +456,7 @@ export default function PropertyListingsPage() {
                         </TableCell>
                         <TableCell onClick={() => listing.property_number && handleRowClick(listing.property_number)}>{listing.sales_assignee || '-'}</TableCell>
                         <TableCell onClick={() => listing.property_number && handleRowClick(listing.property_number)}>
-                          {listing.property_type && (
-                            <Chip label={listing.property_type} size="small" />
-                          )}
+                          {listing.property_type && <Chip label={listing.property_type} size="small" />}
                         </TableCell>
                         <TableCell onClick={() => listing.property_number && handleRowClick(listing.property_number)} sx={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {listing.address || listing.display_address || '-'}
@@ -612,9 +476,7 @@ export default function PropertyListingsPage() {
                         <TableCell onClick={() => listing.property_number && handleRowClick(listing.property_number)}>{formatDate(listing.settlement_date)}</TableCell>
                         <TableCell onClick={() => listing.property_number && handleRowClick(listing.property_number)}>{formatPrice(listing.price)}</TableCell>
                         <TableCell onClick={(e) => e.stopPropagation()}>
-                          <PublicUrlCell
-                            propertyNumber={listing.property_number}
-                          />
+                          <PublicUrlCell propertyNumber={listing.property_number} />
                         </TableCell>
                         <TableCell onClick={(e) => e.stopPropagation()}>
                           {listing.storage_location ? (
@@ -623,14 +485,7 @@ export default function PropertyListingsPage() {
                               target="_blank"
                               rel="noopener noreferrer"
                               underline="hover"
-                              sx={{
-                                fontSize: '0.875rem',
-                                maxWidth: 150,
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                whiteSpace: 'nowrap',
-                                display: 'inline-block',
-                              }}
+                              sx={{ fontSize: '0.875rem', maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'inline-block' }}
                             >
                               Google Drive
                             </Link>
@@ -640,21 +495,6 @@ export default function PropertyListingsPage() {
                         </TableCell>
                         <TableCell onClick={() => listing.property_number && handleRowClick(listing.property_number)}>
                           {getDisplayStatus(listing.atbb_status) || '-'}
-                        </TableCell>
-                        <TableCell onClick={() => listing.property_number && handleRowClick(listing.property_number)}>
-                          <Chip 
-                            label={status.label} 
-                            size="small" 
-                            sx={{ 
-                              bgcolor: status.color, 
-                              color: 'white',
-                              maxWidth: 150,
-                              '& .MuiChip-label': {
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                              }
-                            }} 
-                          />
                         </TableCell>
                       </TableRow>
                     );
