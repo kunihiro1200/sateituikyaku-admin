@@ -1174,12 +1174,6 @@ export class PropertyListingSyncService {
       throw error;
     }
   }
-}
-      console.error('❌ Sync failed:', error.message);
-      await this.logSyncError('new_property_addition', error);
-      throw error;
-    }
-  }
 
   // ===========================================================
   // SIDEBAR STATUS CALCULATION
