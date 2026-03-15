@@ -33,6 +33,7 @@ import EditableSection from '../components/EditableSection';
 import GmailDistributionButton from '../components/GmailDistributionButton';
 import DistributionAreaField from '../components/DistributionAreaField';
 import EditableUrlField from '../components/EditableUrlField';
+import PropertySidebarStatus from '../components/PropertySidebarStatus';
 
 interface PropertyListing {
   id: number;
@@ -245,6 +246,11 @@ export default function PropertyListingDetailPage() {
 
   const handleFieldChange = (field: string, value: any) => {
     setEditedData((prev) => ({ ...prev, [field]: value }));
+
+    // 売買価格（sales_price）は自動保存しない（保存ボタンで確定）
+    if (field === 'sales_price') {
+      return;
+    }
   };
 
   // Save handlers for each section
@@ -613,6 +619,17 @@ export default function PropertyListingDetailPage() {
 
   return (
     <Container maxWidth="xl" sx={{ py: 3, zoom: '0.6' }}>
+      <Box sx={{ display: 'flex', gap: 2 }}>
+        {/* 左サイドバー - サイドバーステータス */}
+        <PropertySidebarStatus
+          listings={[data]}
+          selectedStatus={data.sidebar_status || null}
+          onStatusChange={() => {}}
+          pendingPriceReductionProperties={new Set()}
+        />
+
+        {/* メインコンテンツ */}
+        <Box sx={{ flex: 1 }}>
       {/* Header */}
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
@@ -1509,6 +1526,8 @@ export default function PropertyListingDetailPage() {
       >
         <Alert severity={snackbar.severity}>{snackbar.message}</Alert>
       </Snackbar>
+        </Box> {/* メインコンテンツ */}
+      </Box> {/* サイドバー + メインコンテンツ */}
     </Container>
   );
 }
