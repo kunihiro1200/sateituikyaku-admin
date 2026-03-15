@@ -1056,6 +1056,11 @@ TEL：097-533-2022`;
                             buyerId={buyer_number}
                             enableConflictDetection={true}
                             showEditIndicator={true}
+                            validation={(newValue) => {
+                              if (buyer.broker_inquiry === '業者問合せ') return null;
+                              if (!newValue || !String(newValue).trim()) return '問合せ元は必須です';
+                              return null;
+                            }}
                           />
                         </Grid>
                       );
