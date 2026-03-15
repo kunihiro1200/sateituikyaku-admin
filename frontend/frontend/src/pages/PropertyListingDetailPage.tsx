@@ -779,6 +779,14 @@ export default function PropertyListingDetailPage() {
             <Typography variant="body1" fontWeight="medium">
               {data.address || data.display_address || '-'}
             </Typography>
+            {data.display_address && data.address && data.display_address !== data.address && (
+              <Box sx={{ mt: 0.5 }}>
+                <Typography variant="body2" color="text.secondary" fontWeight="bold">住居表示</Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {data.display_address}
+                </Typography>
+              </Box>
+            )}
           </Grid>
           <Grid item xs={12} sm={6} md={3}>
             <Typography variant="body2" color="text.secondary" fontWeight="bold">種別</Typography>
@@ -1128,6 +1136,12 @@ export default function PropertyListingDetailPage() {
                     onChange={(e) => handleFieldChange('address', e.target.value)} />
                 ) : (
                   <Typography variant="body1">{data.address || data.display_address || '-'}</Typography>
+                )}
+                {!isBasicInfoEditMode && data.display_address && data.address && data.display_address !== data.address && (
+                  <Box sx={{ mt: 0.5 }}>
+                    <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '0.85rem', color: 'text.secondary', mb: 0.25 }}>住居表示</Typography>
+                    <Typography variant="body2" color="text.secondary">{data.display_address}</Typography>
+                  </Box>
                 )}
               </Grid>
               {data.management_type && (
