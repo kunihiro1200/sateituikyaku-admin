@@ -24,7 +24,8 @@ export interface GetWebhookUrlResult {
  *
  * スプレッドシート構造:
  * - A列: イニシャル
- * - C列: 名字
+ * - D列: 姓名（担当名）
+ * - E列: メアド（メールアドレス）
  * - F列: Chat webhook
  * - H列: 有効（TRUE/FALSE）
  *
@@ -88,7 +89,7 @@ export class StaffManagementService {
     const staffData: StaffInfo[] = [];
     for (const row of rows) {
       const initials = row['イニシャル'] as string;
-      const name = row['名字'] as string;
+      const name = row['姓名'] as string;
       const chatWebhook = row['Chat webhook'] as string | null;
 
       const isActiveRaw = row['有効'];
@@ -99,7 +100,7 @@ export class StaffManagementService {
         const hasJimu = String(hasJimuRaw).toUpperCase() === 'TRUE';
 
         const phone = row['電話番号'] as string | null;
-        const email = row['メールアドレス'] as string | null;
+        const email = row['メアド'] as string | null;
         const regularHoliday = row['固定休'] as string | null;
 
         const staff: StaffInfo = {
