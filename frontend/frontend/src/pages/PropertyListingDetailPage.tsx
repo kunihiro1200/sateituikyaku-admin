@@ -125,11 +125,17 @@ interface PropertyListing {
 }
 
 interface Buyer {
-  id: number;
+  buyer_id?: string;
+  id?: number;
   name: string;
+  buyer_number?: string;
   confidence_level?: string;
+  inquiry_confidence?: string;
   phone?: string;
+  phone_number?: string;
   email?: string;
+  reception_date?: string;
+  latest_viewing_date?: string;
 }
 
 interface WorkTaskData {

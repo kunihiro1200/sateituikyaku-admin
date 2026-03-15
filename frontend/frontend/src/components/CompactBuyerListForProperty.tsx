@@ -10,12 +10,14 @@ import {
 } from '@mui/material';
 
 interface BuyerWithDetails {
-  id: number;
+  buyer_id?: string;
+  id?: number;
   name: string;
   buyer_number: string;
   reception_date?: string;
+  latest_viewing_date?: string;
   viewing_date?: string;
-  has_offer: boolean;
+  has_offer?: boolean;
   inquiry_confidence?: string;
   phone_number?: string;
   email?: string;
@@ -89,7 +91,7 @@ export default function CompactBuyerListForProperty({
           <Box>
             {displayedBuyers.map((buyer) => (
               <Box
-                key={buyer.buyer_number || buyer.id}
+                key={buyer.buyer_number || buyer.buyer_id || buyer.id}
                 sx={{
                   mb: 1.5,
                   p: 1.5,
@@ -117,7 +119,7 @@ export default function CompactBuyerListForProperty({
                     受付: {formatDate(buyer.reception_date)}
                   </Typography>
                   <Typography variant="caption" color="text.secondary">
-                    内覧: {formatDate(buyer.viewing_date)}
+                    内覧: {formatDate(buyer.viewing_date || buyer.latest_viewing_date)}
                   </Typography>
                   {buyer.has_offer && (
                     <Chip label="買付有" size="small" color="success" />

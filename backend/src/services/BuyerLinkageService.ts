@@ -81,7 +81,7 @@ export class BuyerLinkageService {
       let query = this.supabase
         .from('buyers')
         .select(`
-          id,
+          buyer_id,
           buyer_number,
           name,
           phone_number,
@@ -93,6 +93,7 @@ export class BuyerLinkageService {
           next_call_date
         `)
         .ilike('property_number', `%${propertyNumber}%`)
+        .is('deleted_at', null)
         .order(sortBy, { ascending: sortOrder === 'asc' });
 
       if (limit) {
