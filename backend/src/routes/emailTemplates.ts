@@ -68,6 +68,25 @@ router.get('/debug', async (req, res) => {
 });
 
 /**
+ * スタッフ検索デバッグエンドポイント
+ * GET /api/email-templates/staff-debug?name=裏
+ */
+router.get('/staff-debug', async (req, res) => {
+  try {
+    const name = (req.query.name as string) || '裏';
+    const byInitials = await staffService.getStaffByInitials(name);
+    const byNameContains = await staffService.getStaffByNameContains(name);
+    res.json({
+      searchName: name,
+      byInitials,
+      byNameContains,
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
  * Get all available email templates
  * GET /api/email-templates
  */
