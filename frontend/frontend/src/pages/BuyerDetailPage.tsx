@@ -103,13 +103,13 @@ const INQUIRY_HEARING_QUICK_INPUTS = [
 
 const BUYER_FIELD_SECTIONS = [
   {
-    title: '問合せ・内覧情報',
+    title: '問合せ内容',
     fields: [
       { key: 'inquiry_hearing', label: '問合時ヒアリング', multiline: true, inlineEditable: true },
       { key: 'initial_assignee', label: '初動担当', inlineEditable: true },
       { key: 'reception_date', label: '受付日', type: 'date', inlineEditable: true },
       { key: 'inquiry_source', label: '問合せ元', inlineEditable: true },
-      { key: 'inquiry_confidence', label: '問合時確度', inlineEditable: true },
+      { key: 'latest_status', label: '★最新状況', inlineEditable: true },
       { key: 'inquiry_email_phone', label: '【問合メール】電話対応', inlineEditable: true, fieldType: 'dropdown' },
       { key: 'three_calls_confirmed', label: '3回架電確認済み', inlineEditable: true, fieldType: 'dropdown' },
       { key: 'email_type', label: 'メール種別', inlineEditable: true, fieldType: 'dropdown' },
