@@ -1,4 +1,8 @@
-import { Box, Typography, TextField, Grid } from '@mui/material';
+import { useState, useEffect } from 'react';
+import { Box, Typography, TextField, Grid, Button, Collapse } from '@mui/material';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import ExpandLessIcon from '@mui/icons-material/ExpandLess';
+import api from '../services/api';
 
 interface PriceSectionProps {
   salesPrice?: number;
@@ -7,6 +11,11 @@ interface PriceSectionProps {
   onFieldChange: (field: string, value: any) => void;
   editedData: Record<string, any>;
   isEditMode: boolean;
+  propertyNumber: string;
+  salesAssignee?: string;
+  address?: string;
+  onChatSendSuccess: (message: string) => void;
+  onChatSendError: (message: string) => void;
 }
 
 export default function PriceSection({
@@ -16,10 +25,83 @@ export default function PriceSection({
   onFieldChange,
   editedData,
   isEditMode,
+  propertyNumber,
+  salesAssignee,
+  address,
+  onChatSendSuccess,
+  onChatSendError,
 }: PriceSectionProps) {
   const displaySalesPrice = editedData.sales_price !== undefined ? editedData.sales_price : salesPrice;
   const displayListingPrice = editedData.listing_price !== undefined ? editedData.listing_price : listingPrice;
   const displayPriceReductionHistory = editedData.price_reduction_history !== undefined ? editedData.price_reduction_history : priceReductionHistory;
+
+  const [scheduledNotifications, setScheduledNotifications] = useState<any[]>([]);
+  const [loadingNotifications, setLoadingNotifications] = useState(false);
+  const [showScheduleForm, setShowScheduleForm] = useState(false);
+  const [sendingChat, setSendingChat] = useState(false);
+
+  // 値下げ履歴の最新行を検出
+  const getLatestPriceReduction = () => {
+    if (!displayPriceReductionHistory) return null;
+    const lines = displayPriceReductionHistory.split('\n').filter((line: string) => line.trim());
+    return lines.length > 0 ? lines[0] : null;
+  };
+
+  // 売買価格が変更されたかチェック
+  const isPriceChanged = editedData.sales_price !== undefined && editedData.sales_price !== salesPrice;
+
+  // 予約通知を取得
+  useEffect(() => {
+    const fetchScheduledNotifications = async () => {
+      if (!propertyNumber) return;
+      setLoadingNotifications(true);
+      try {
+        const response = await api.get(`/api/property-listings/${propertyNumber}/scheduled-notifications`);
+        setScheduledNotifications(response.data || []);
+      } catch (error) {
+        console.error('Failed to fetch scheduled notifications:', error);
+        setScheduledNotifications([]);
+      } finally {
+        setLoadingNotifications(false);
+      }
+    };
+    fetchScheduledNotifications();
+  }, [propertyNumber]);
+
+  const handleSendPriceReductionChat = async () => {
+    const latestReduction = getLatestPriceReduction();
+    if (!latestReduction) {
+      onChatSendError('値下げ履歴が見つかりません');
+      return;
+    }
+
+    setSendingChat(true);
+    try {
+      const webhookUrl = 'https://chat.googleapis.com/v1/spaces/AAAAw9wyS-o/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=t6SJmZ8af-yyB38DZzAqGOKYI-DnIl6wYtVo-Lyskuk';
+      const propertyUrl = `${window.location.origin}/property-listings/${propertyNumber}`;
+
+      const message = {
+        text: `【値下げ通知】\n${latestReduction}\n${address || ''}\n${propertyUrl}`
+      };
+
+      const response = await fetch(webhookUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(message),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to send message to Google Chat');
+      }
+
+      onChatSendSuccess('値下げ通知を送信しました');
+    } catch (error: any) {
+      console.error('Failed to send price reduction chat:', error);
+      onChatSendError('値下げ通知の送信に失敗しました');
+    } finally {
+      setSendingChat(false);
+    }
+  };
 
   const formatPrice = (price?: number | null) => {
     if (price === null || price === undefined) return '-';
@@ -111,6 +193,37 @@ export default function PriceSection({
             <Typography variant="body1" sx={{ whiteSpace: 'pre-line', fontSize: '1.1rem' }}>
               {displayPriceReductionHistory || '-'}
             </Typography>
+          </Box>
+
+          {/* Chat送信ボタン */}
+          <Box sx={{ mt: 3, pt: 2, borderTop: '1px solid #ddd' }}>
+            <Button
+              fullWidth
+              variant="contained"
+              onClick={handleSendPriceReductionChat}
+              disabled={sendingChat || !getLatestPriceReduction()}
+              sx={{
+                backgroundColor: isPriceChanged && scheduledNotifications.length === 0 ? '#d32f2f' : '#1976d2',
+                '&:hover': {
+                  backgroundColor: isPriceChanged && scheduledNotifications.length === 0 ? '#b71c1c' : '#1565c0',
+                },
+                fontSize: '1.1rem',
+                fontWeight: 'bold',
+                animation: isPriceChanged && scheduledNotifications.length === 0 ? 'pulse 2s infinite' : 'none',
+                '@keyframes pulse': {
+                  '0%': { boxShadow: '0 0 0 0 rgba(211, 47, 47, 0.7)' },
+                  '70%': { boxShadow: '0 0 0 10px rgba(211, 47, 47, 0)' },
+                  '100%': { boxShadow: '0 0 0 0 rgba(211, 47, 47, 0)' },
+                },
+              }}
+            >
+              {sendingChat ? '送信中...' : 'Chat送信'}
+            </Button>
+            {!getLatestPriceReduction() && (
+              <Typography variant="caption" color="error" sx={{ mt: 0.5, display: 'block' }}>
+                値下げ履歴が見つかりません
+              </Typography>
+            )}
           </Box>
         </Box>
       )}
