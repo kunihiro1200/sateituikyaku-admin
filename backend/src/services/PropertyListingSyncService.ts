@@ -471,6 +471,16 @@ export class PropertyListingSyncService {
       // Detect changes between spreadsheet and database
       const changes = this.detectChanges(row, dbProperty);
 
+      // sidebar_statusの再計算結果が現在のDB値と異なる場合も変更として検出
+      const newSidebarStatus = this.calculateSidebarStatus(row);
+      const currentSidebarStatus = dbProperty.sidebar_status || '';
+      if (newSidebarStatus !== currentSidebarStatus) {
+        changes['sidebar_status'] = {
+          old: currentSidebarStatus,
+          new: newSidebarStatus
+        };
+      }
+
       if (Object.keys(changes).length > 0) {
         updates.push({
           property_number: propertyNumber,
