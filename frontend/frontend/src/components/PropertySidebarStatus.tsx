@@ -157,8 +157,7 @@ export default function PropertySidebarStatus({
     sortedStatuses.forEach(([key, count]) => {
       const isLow = LOW_PRIORITY_STATUSES.has(key);
       if (isLow && !dividerAdded) {
-        list.push({ key: '__divider__', label: '', count: 0, isDivider: true });
-        dividerAdded = true;
+        dividerAdded = true; // 区切り線・ラベルは表示しない
       }
       // 一般媒介の未完了は太字赤字、それ以外の高優先度は赤字
       const isBoldRed = key === '未完了' && generalMediationIncompleteCount > 0;
