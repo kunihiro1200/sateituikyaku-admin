@@ -275,27 +275,24 @@ export class BuyerCandidateService {
 
   /**
    * 最新状況によるフィルタリング
-   * - A、B、C、一般を含む場合: 条件を満たす
-   * - それ以外（買付、D、その他）: 除外
+   * - 「買付」または「D」を含む場合: 除外
+   * - それ以外（A/B/C/不明/空欄など）: 対象
    */
   private matchesStatus(buyer: any): boolean {
     const latestStatus = (buyer.latest_status || '').trim();
 
-    // 空欄の場合は除外
-    if (!latestStatus) {
+    // 「買付」を含む場合は除外
+    if (latestStatus.includes('買付')) {
       return false;
     }
 
-    // A、B、C、一般を含む場合は条件を満たす
-    if (latestStatus.includes('A') ||
-        latestStatus.includes('B') ||
-        latestStatus.includes('C') ||
-        latestStatus.includes('一般')) {
-      return true;
+    // 「D」を含む場合は除外
+    if (latestStatus.includes('D')) {
+      return false;
     }
 
-    // それ以外は除外
-    return false;
+    // それ以外は全て対象（空欄・不明・A/B/Cなど）
+    return true;
   }
 
   /**
