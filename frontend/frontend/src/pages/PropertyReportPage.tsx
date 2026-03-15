@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Container,
@@ -68,6 +68,7 @@ interface ReportHistory {
   sent_at: string;
   template_name: string | null;
   subject: string | null;
+  body: string | null;
 }
 
 export default function PropertyReportPage() {
@@ -85,6 +86,8 @@ export default function PropertyReportPage() {
   const [prefetching, setPrefetching] = useState(false);
   const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
   const [reportHistory, setReportHistory] = useState<ReportHistory[]>([]);
+  const [selectedHistory, setSelectedHistory] = useState<ReportHistory | null>(null);
+  const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
     message: string;
@@ -256,7 +259,7 @@ export default function PropertyReportPage() {
       const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&su=${subject}&body=${body}`;
       window.open(gmailUrl, '_blank');
       // 送信後に履歴を記録
-      recordSendHistory(template.name, cached.subject);
+      recordSendHistory(template.name, cached.subject, cached.body);
       return;
     }
 
@@ -273,7 +276,7 @@ export default function PropertyReportPage() {
       const body = encodeURIComponent(mergedBody || template.body);
       const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&su=${subject}&body=${body}`;
       window.open(gmailUrl, '_blank');
-      recordSendHistory(template.name, mergedSubject || template.subject);
+      recordSendHistory(template.name, mergedSubject || template.subject, mergedBody || template.body);
     } catch (error) {
       console.error('Failed to merge template:', error);
       const subject = encodeURIComponent(template.subject);
@@ -283,12 +286,13 @@ export default function PropertyReportPage() {
     }
   };
 
-  const recordSendHistory = async (templateName: string, subject: string) => {
+  const recordSendHistory = async (templateName: string, subject: string, body?: string) => {
     if (!propertyNumber) return;
     try {
       await api.post(`/api/property-listings/${propertyNumber}/report-history`, {
         template_name: templateName,
         subject,
+        body: body || null,
         report_date: reportData.report_date || null,
         report_assignee: reportData.report_assignee || null,
         report_completed: reportData.report_completed || 'N',
@@ -486,7 +490,12 @@ export default function PropertyReportPage() {
               </TableHead>
               <TableBody>
                 {reportHistory.map((h) => (
-                  <TableRow key={h.id}>
+                  <TableRow
+                    key={h.id}
+                    hover
+                    onClick={() => { setSelectedHistory(h); setHistoryDialogOpen(true); }}
+                    sx={{ cursor: 'pointer' }}
+                  >
                     <TableCell>
                       {new Date(h.sent_at).toLocaleString('ja-JP', {
                         month: '2-digit',
@@ -511,6 +520,27 @@ export default function PropertyReportPage() {
           </TableContainer>
         )}
       </Paper>
+
+      {/* 前回メール内容 */}
+      {reportHistory.length > 0 && reportHistory[0].body && (
+        <Paper sx={{ p: 3, mt: 3 }}>
+          <Typography variant="h6" fontWeight="bold" sx={{ mb: 1, color: SECTION_COLORS.property.main }}>
+            前回メール内容
+          </Typography>
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+            {new Date(reportHistory[0].sent_at).toLocaleString('ja-JP', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
+            　{reportHistory[0].template_name || ''}
+          </Typography>
+          {reportHistory[0].subject && (
+            <Typography variant="body2" fontWeight="bold" sx={{ mb: 1 }}>
+              件名: {reportHistory[0].subject}
+            </Typography>
+          )}
+          <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', fontSize: '0.8rem', color: 'text.secondary', maxHeight: 200, overflow: 'auto', bgcolor: '#f9f9f9', p: 1.5, borderRadius: 1 }}>
+            {reportHistory[0].body}
+          </Typography>
+        </Paper>
+      )}
 
       {/* テンプレート選択ダイアログ */}
       <Dialog
@@ -547,6 +577,39 @@ export default function PropertyReportPage() {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setTemplateDialogOpen(false)}>キャンセル</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 送信履歴詳細ダイアログ */}
+      <Dialog open={historyDialogOpen} onClose={() => setHistoryDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>
+          送信履歴の詳細
+          {selectedHistory && (
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+              {new Date(selectedHistory.sent_at).toLocaleString('ja-JP')}　{selectedHistory.template_name || ''}
+            </Typography>
+          )}
+        </DialogTitle>
+        <DialogContent dividers>
+          {selectedHistory?.subject && (
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="body2" color="text.secondary" fontWeight="bold" gutterBottom>件名</Typography>
+              <Typography variant="body2">{selectedHistory.subject}</Typography>
+            </Box>
+          )}
+          {selectedHistory?.body ? (
+            <Box>
+              <Typography variant="body2" color="text.secondary" fontWeight="bold" gutterBottom>本文</Typography>
+              <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', fontSize: '0.85rem', bgcolor: '#f9f9f9', p: 1.5, borderRadius: 1 }}>
+                {selectedHistory.body}
+              </Typography>
+            </Box>
+          ) : (
+            <Typography variant="body2" color="text.secondary">本文データがありません</Typography>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setHistoryDialogOpen(false)}>閉じる</Button>
         </DialogActions>
       </Dialog>
 

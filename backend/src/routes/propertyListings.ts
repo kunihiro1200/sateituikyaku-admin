@@ -796,7 +796,7 @@ router.get('/:propertyNumber/report-history', async (req: Request, res: Response
 router.post('/:propertyNumber/report-history', async (req: Request, res: Response): Promise<void> => {
   try {
     const { propertyNumber } = req.params;
-    const { template_name, subject, report_date, report_assignee, report_completed } = req.body;
+    const { template_name, subject, body, report_date, report_assignee, report_completed } = req.body;
     const supabase = createClient(
       process.env.SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_KEY!
@@ -807,6 +807,7 @@ router.post('/:propertyNumber/report-history', async (req: Request, res: Respons
         property_number: propertyNumber,
         template_name: template_name || null,
         subject: subject || null,
+        body: body || null,
         report_date: report_date || null,
         report_assignee: report_assignee || null,
         report_completed: report_completed || 'N',
