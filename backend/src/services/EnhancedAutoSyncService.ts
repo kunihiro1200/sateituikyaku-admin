@@ -2864,8 +2864,8 @@ export class EnhancedAutoSyncService {
 
     for (const row of allRows) {
       const buyerNumber = row['買主番号'];
-      if (buyerNumber && typeof buyerNumber === 'string') {
-        sheetBuyerNumbers.add(buyerNumber);
+      if (buyerNumber !== null && buyerNumber !== undefined && buyerNumber !== '') {
+        sheetBuyerNumbers.add(String(buyerNumber).trim());
       }
     }
     console.log(`📊 Spreadsheet buyers: ${sheetBuyerNumbers.size}`);
