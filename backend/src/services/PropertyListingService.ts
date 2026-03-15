@@ -80,6 +80,16 @@ export class PropertyListingService {
         distribution_date,
         contract_date,
         settlement_date,
+        sidebar_status,
+        report_date,
+        report_assignee,
+        confirmation,
+        general_mediation_private,
+        single_listing,
+        suumo_url,
+        suumo_registered,
+        offer_status,
+        price_reduction_scheduled_date,
         created_at,
         updated_at
       `, { count: 'exact' });
