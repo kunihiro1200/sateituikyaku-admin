@@ -19,6 +19,7 @@ import {
   Save as SaveIcon,
   OpenInNew as OpenInNewIcon,
   ContentCopy as ContentCopyIcon,
+  Check as CheckIcon,
   Person as PersonIcon,
   Phone as PhoneIcon,
   Email as EmailIcon,
@@ -167,6 +168,7 @@ export default function PropertyListingDetailPage() {
     message: '',
     severity: 'success',
   });
+  const [copiedPropertyNumber, setCopiedPropertyNumber] = useState(false);
 
   // Check for buyer context from navigation state
   const buyerContext = location.state as { buyerId?: string; buyerName?: string; source?: string } | null;
@@ -417,6 +419,8 @@ export default function PropertyListingDetailPage() {
 
     try {
       await navigator.clipboard.writeText(data.property_number);
+      setCopiedPropertyNumber(true);
+      setTimeout(() => setCopiedPropertyNumber(false), 2000);
       setSnackbar({
         open: true,
         message: '物件番号をコピーしました',
@@ -644,10 +648,10 @@ export default function PropertyListingDetailPage() {
               <IconButton
                 size="small"
                 onClick={handleCopyPropertyNumber}
-                sx={{ color: SECTION_COLORS.property.main }}
+                sx={{ color: copiedPropertyNumber ? 'success.main' : SECTION_COLORS.property.main }}
                 title="物件番号をコピー"
               >
-                <ContentCopyIcon fontSize="small" />
+                {copiedPropertyNumber ? <CheckIcon fontSize="small" /> : <ContentCopyIcon fontSize="small" />}
               </IconButton>
               {/* 公開URLボタン */}
               <Button
