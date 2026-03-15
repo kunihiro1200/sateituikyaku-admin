@@ -181,6 +181,38 @@ router.get('/debug/spreadsheet-headers', async (req: Request, res: Response) => 
   }
 });
 
+// スプレッドシート同期デバッグ（物件番号で行検索）
+router.get('/debug/find-row/:propertyNumber', async (req: Request, res: Response) => {
+  try {
+    const { propertyNumber } = req.params;
+    const sheetsClient = (propertyListingService as any).sheetsClient;
+    if (!sheetsClient) {
+      res.json({ error: 'sheetsClient not initialized' });
+      return;
+    }
+    await sheetsClient.authenticate();
+    const rowIndex = await sheetsClient.findRowByColumn('物件番号', propertyNumber);
+    
+    // dbToSpreadsheetマッピングも確認
+    const columnMapper = (propertyListingService as any).columnMapper;
+    const dbToSpreadsheet = (columnMapper as any).dbToSpreadsheet;
+    
+    res.json({
+      propertyNumber,
+      rowIndex,
+      found: rowIndex !== null,
+      sampleMappings: {
+        special_notes: dbToSpreadsheet['special_notes'],
+        status: dbToSpreadsheet['status'],
+        atbb_status: dbToSpreadsheet['atbb_status'],
+        price: dbToSpreadsheet['price'],
+      }
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // 複数物件の買主カウント取得
 router.get('/buyer-counts/batch', async (req: Request, res: Response): Promise<void> => {
   try {
