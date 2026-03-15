@@ -14,6 +14,7 @@ import {
   TablePagination,
   TextField,
   InputAdornment,
+  IconButton,
   Chip,
   List,
   ListItemButton,
@@ -26,7 +27,7 @@ import {
   useMediaQuery,
   useTheme,
 } from '@mui/material';
-import { Search as SearchIcon, ClearAll as ClearAllIcon } from '@mui/icons-material';
+import { Search as SearchIcon, ClearAll as ClearAllIcon, Clear as ClearIcon } from '@mui/icons-material';
 import api from '../services/api';
 import PropertyListingDetailModal from '../components/PropertyListingDetailModal';
 import PageNavigation from '../components/PageNavigation';
@@ -472,6 +473,13 @@ export default function PropertyListingsPage() {
               onChange={(e) => { setSearchQuery(e.target.value); setPage(0); }}
               InputProps={{
                 startAdornment: <InputAdornment position="start"><SearchIcon /></InputAdornment>,
+                endAdornment: searchQuery ? (
+                  <InputAdornment position="end">
+                    <IconButton size="small" onClick={() => { setSearchQuery(''); setPage(0); }}>
+                      <ClearIcon fontSize="small" />
+                    </IconButton>
+                  </InputAdornment>
+                ) : null,
               }}
             />
           </Paper>
