@@ -207,7 +207,7 @@ router.post('/property/merge', async (req, res) => {
       staffInfo
     );
 
-    res.json({ subject: mergedSubject, body: mergedBody, sellerName });
+    res.json({ subject: mergedSubject, body: mergedBody, sellerName, _debug: { salesAssignee: salesAssignee, staffInfoFound: !!staffInfo, staffPhone: staffInfo?.phone || null, staffEmail: staffInfo?.email || null, staffHoliday: staffInfo?.regularHoliday || null } });
   } catch (error: any) {
     console.error('Error merging property template:', error);
     res.status(500).json({ error: 'Failed to merge property template', message: error.message });
