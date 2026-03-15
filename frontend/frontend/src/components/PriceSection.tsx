@@ -2,10 +2,10 @@ import { useState, useEffect } from 'react';
 import { Box, Typography, TextField, Grid, Button, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
 import api from '../services/api';
 
-// 月々ローン支払い計算（元利均等返済、金利3%/年、35年）
+// 月々ローン支払い計算（元利均等返済、金利年3%/12、420回）
 function calcMonthlyPayment(price: number): number {
-  const r = 0.03 / 12;
-  const n = 35 * 12;
+  const r = 0.0007916666667;
+  const n = 420;
   return Math.round(price * r * Math.pow(1 + r, n) / (Math.pow(1 + r, n) - 1));
 }
 
