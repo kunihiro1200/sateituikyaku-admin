@@ -1,7 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Box, Typography, TextField, Grid, Button, Collapse } from '@mui/material';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import ExpandLessIcon from '@mui/icons-material/ExpandLess';
+import { Box, Typography, TextField, Grid, Button, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
 import api from '../services/api';
 
 interface PriceSectionProps {
@@ -39,6 +37,7 @@ export default function PriceSection({
   const [loadingNotifications, setLoadingNotifications] = useState(false);
   const [showScheduleForm, setShowScheduleForm] = useState(false);
   const [sendingChat, setSendingChat] = useState(false);
+  const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
 
   // 値下げ履歴の最新行を検出
   const getLatestPriceReduction = () => {
@@ -76,6 +75,7 @@ export default function PriceSection({
     }
 
     setSendingChat(true);
+    setConfirmDialogOpen(false);
     try {
       const webhookUrl = 'https://chat.googleapis.com/v1/spaces/AAAAw9wyS-o/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=t6SJmZ8af-yyB38DZzAqGOKYI-DnIl6wYtVo-Lyskuk';
       const propertyUrl = `${window.location.origin}/property-listings/${propertyNumber}`;
@@ -200,7 +200,10 @@ export default function PriceSection({
             <Button
               fullWidth
               variant="contained"
-              onClick={handleSendPriceReductionChat}
+              onClick={() => {
+                if (getLatestPriceReduction()) setConfirmDialogOpen(true);
+                else onChatSendError('値下げ履歴が見つかりません');
+              }}
               disabled={sendingChat || !getLatestPriceReduction()}
               sx={{
                 backgroundColor: isPriceChanged && scheduledNotifications.length === 0 ? '#d32f2f' : '#1976d2',
@@ -227,6 +230,30 @@ export default function PriceSection({
           </Box>
         </Box>
       )}
+
+      {/* 送信確認ダイアログ */}
+      <Dialog open={confirmDialogOpen} onClose={() => setConfirmDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Chat送信の確認</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary" gutterBottom>
+            以下の内容をGoogle Chatに送信します：
+          </Typography>
+          <Box sx={{ mt: 1, p: 2, bgcolor: '#f5f5f5', borderRadius: 1, whiteSpace: 'pre-line', fontFamily: 'monospace', fontSize: '0.9rem' }}>
+            {`【値下げ通知】\n${getLatestPriceReduction() || ''}\n${address || ''}\n${window.location.origin}/property-listings/${propertyNumber}`}
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setConfirmDialogOpen(false)}>キャンセル</Button>
+          <Button
+            variant="contained"
+            onClick={handleSendPriceReductionChat}
+            disabled={sendingChat}
+            sx={{ backgroundColor: '#d32f2f', '&:hover': { backgroundColor: '#b71c1c' } }}
+          >
+            {sendingChat ? '送信中...' : '送信する'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }
