@@ -144,6 +144,15 @@ const BUYER_FIELD_SECTIONS = [
       { key: 'next_action', label: '次のアクション', multiline: true, inlineEditable: true },
     ],
   },
+  {
+    title: '内覧結果',
+    isViewingResultGroup: true,
+    fields: [
+      { key: 'latest_status', label: '★最新状況', inlineEditable: true },
+      { key: 'latest_viewing_date', label: '内覧日（最新）', type: 'date', inlineEditable: true },
+      { key: 'viewing_result_follow_up', label: '内覧結果・後続対応', multiline: true, inlineEditable: true },
+    ],
+  },
 ];
 
 export default function BuyerDetailPage() {
@@ -1027,7 +1036,7 @@ TEL：097-533-2022`;
               </Typography>
               <Divider sx={{ mb: 2 }} />
               <Grid container spacing={2}>
-                {section.fields.map((field: any) => {
+                {section.fields.map((field: any, fieldIndex: number) => {
                   const value = buyer[field.key];
                   
                   // multilineフィールドは全幅で表示
@@ -1045,7 +1054,7 @@ TEL：097-533-2022`;
                       };
 
                       return (
-                        <Grid item {...gridSize} key={field.key}>
+                        <Grid item {...gridSize} key={`${section.title}-${field.key}`}>
                           <InlineEditableField
                             label={field.label}
                             value={value || ''}
@@ -1076,7 +1085,7 @@ TEL：097-533-2022`;
                       };
 
                       return (
-                        <Grid item {...gridSize} key={field.key}>
+                        <Grid item {...gridSize} key={`${section.title}-${field.key}`}>
                           <InlineEditableField
                             label={field.label}
                             value={value || ''}
@@ -1102,7 +1111,7 @@ TEL：097-533-2022`;
                       };
 
                       return (
-                        <Grid item {...gridSize} key={field.key}>
+                        <Grid item {...gridSize} key={`${section.title}-${field.key}`}>
                           <InlineEditableField
                             label={field.label}
                             value={value || ''}
@@ -1128,7 +1137,7 @@ TEL：097-533-2022`;
                       };
 
                       return (
-                        <Grid item {...gridSize} key={field.key}>
+                        <Grid item {...gridSize} key={`${section.title}-${field.key}`}>
                           <InlineEditableField
                             label={field.label}
                             value={value || ''}
@@ -1154,7 +1163,7 @@ TEL：097-533-2022`;
                       };
 
                       return (
-                        <Grid item {...gridSize} key={field.key}>
+                        <Grid item {...gridSize} key={`${section.title}-${field.key}`}>
                           <InlineEditableField
                             label={field.label}
                             value={value || ''}
@@ -1180,7 +1189,7 @@ TEL：097-533-2022`;
                       };
 
                       return (
-                        <Grid item {...gridSize} key={field.key}>
+                        <Grid item {...gridSize} key={`${section.title}-${field.key}`}>
                           <InlineEditableField
                             label={field.label}
                             value={value || ''}
@@ -1209,7 +1218,7 @@ TEL：097-533-2022`;
                         }
                       };
                       return (
-                        <Grid item {...gridSize} key={field.key}>
+                        <Grid item {...gridSize} key={`${section.title}-${field.key}`}>
                           <InlineEditableField
                             label={field.label}
                             value={value || ''}
@@ -1236,7 +1245,7 @@ TEL：097-533-2022`;
                     const isInquiryHearing = field.key === 'inquiry_hearing';
 
                     return (
-                      <Grid item {...gridSize} key={field.key}>
+                      <Grid item {...gridSize} key={`${section.title}-${field.key}`}>
                         {/* 問合時ヒアリング用クイック入力ボタン */}
                         {isInquiryHearing && (
                           <Box sx={{ mb: 1 }}>
@@ -1301,7 +1310,7 @@ TEL：097-533-2022`;
 
                   // インライン編集不可のフィールド（通常表示）
                   return (
-                    <Grid item {...gridSize} key={field.key}>
+                    <Grid item {...gridSize} key={`${section.title}-${field.key}`}>
                       <Typography variant="caption" color="text.secondary">
                         {field.label}
                       </Typography>
