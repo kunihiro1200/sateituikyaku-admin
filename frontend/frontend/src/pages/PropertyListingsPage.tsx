@@ -76,6 +76,7 @@ export default function PropertyListingsPage() {
   const [buyerCounts, setBuyerCounts] = useState<Record<string, number>>({});
   const [highConfidenceProperties, setHighConfidenceProperties] = useState<Set<string>>(new Set());
   const [selectedPropertyNumbers, setSelectedPropertyNumbers] = useState<Set<string>>(new Set());
+  const [lastFilter, setLastFilter] = useState<'sidebar' | 'search' | null>(null);
 
   // 状態を復元
   useEffect(() => {
