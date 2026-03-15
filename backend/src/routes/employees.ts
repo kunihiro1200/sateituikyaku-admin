@@ -167,6 +167,29 @@ router.get('/jimu-initials', async (req: Request, res: Response) => {
 });
 
 /**
+ * 事務ありスタッフの一覧（イニシャル + 姓名）を取得（報告担当フルネーム表示用）
+ */
+router.get('/jimu-staff', async (req: Request, res: Response) => {
+  try {
+    const staffData = await staffManagementService['fetchStaffData']();
+    const jimuStaff = staffData
+      .filter((s: any) => s.hasJimu && s.initials && s.initials.trim() !== '')
+      .map((s: any) => ({ initials: s.initials, name: s.name || s.initials }));
+    // 重複除去
+    const seen = new Set<string>();
+    const unique = jimuStaff.filter((s: any) => {
+      if (seen.has(s.initials)) return false;
+      seen.add(s.initials);
+      return true;
+    });
+    res.json({ staff: unique });
+  } catch (error: any) {
+    console.error('[jimu-staff] Failed:', error.message);
+    res.status(500).json({ error: 'Failed to get jimu staff' });
+  }
+});
+
+/**
  * 全従業員の一覧とカレンダー接続状態を取得
  */
 router.get('/', async (req: Request, res: Response) => {

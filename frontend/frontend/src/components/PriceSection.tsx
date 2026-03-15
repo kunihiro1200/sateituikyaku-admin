@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Box, Typography, TextField, Grid, Button, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
+import { Box, Typography, TextField, Grid, Button, Dialog, DialogTitle, DialogContent, DialogActions, Tooltip, IconButton as MuiIconButton } from '@mui/material';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import CheckIcon from '@mui/icons-material/Check';
 import api from '../services/api';
 
 // 月々ローン支払い計算（元利均等返済、金利年3%/12、420回）
@@ -7,6 +9,11 @@ function calcMonthlyPayment(price: number): number {
   const r = 0.0007916666667;
   const n = 420;
   return Math.round(price * r * Math.pow(1 + r, n) / (Math.pow(1 + r, n) - 1));
+}
+
+// 半角数字を全角数字に変換
+function toFullWidth(num: number): string {
+  return num.toLocaleString().replace(/[0-9]/g, (c) => String.fromCharCode(c.charCodeAt(0) + 0xFEE0));
 }
 
 interface PriceSectionProps {
@@ -55,6 +62,7 @@ export default function PriceSection({
   const [showScheduleForm, setShowScheduleForm] = useState(false);
   const [sendingChat, setSendingChat] = useState(false);
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
+  const [copiedMonthly, setCopiedMonthly] = useState(false);
 
   // 値下げ履歴の最新行を検出
   const getLatestPriceReduction = () => {
@@ -193,9 +201,26 @@ export default function PriceSection({
               <Typography variant="body1" color="text.secondary" gutterBottom sx={{ fontSize: '1.1rem', fontWeight: 'bold' }}>
                 月々ローン支払い
               </Typography>
-              <Typography variant="h4" fontWeight="medium" sx={{ fontSize: '1.8rem', color: '#1976d2' }}>
-                ¥{monthlyPayment.toLocaleString()}/月
-              </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Typography variant="h4" fontWeight="medium" sx={{ fontSize: '1.8rem', color: '#1976d2' }}>
+                  ¥{toFullWidth(monthlyPayment)}/月
+                </Typography>
+                <Tooltip title={copiedMonthly ? 'コピーしました' : '数字をコピー'}>
+                  <MuiIconButton
+                    size="small"
+                    onClick={async () => {
+                      try {
+                        await navigator.clipboard.writeText(String(monthlyPayment));
+                        setCopiedMonthly(true);
+                        setTimeout(() => setCopiedMonthly(false), 2000);
+                      } catch {}
+                    }}
+                    sx={{ color: copiedMonthly ? 'success.main' : '#1976d2' }}
+                  >
+                    {copiedMonthly ? <CheckIcon fontSize="small" /> : <ContentCopyIcon fontSize="small" />}
+                  </MuiIconButton>
+                </Tooltip>
+              </Box>
               <Typography variant="caption" color="text.secondary">
                 ※金利3%・35年・元利均等返済
               </Typography>

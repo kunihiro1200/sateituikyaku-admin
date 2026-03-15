@@ -1,4 +1,15 @@
-import { useState, useEffect, useRef } from 'react';
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+PropertyReportPage.tsx を全面書き直し:
+1. 保存ボタンをヘッダーに移動（変更があると光る）
+2. 担当名をフルネームで表示
+3. 報告書一覧（同物件の過去の報告履歴）を表示
+"""
+
+filepath = 'frontend/frontend/src/pages/PropertyReportPage.tsx'
+
+new_content = '''import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Container,
@@ -88,8 +99,8 @@ export default function PropertyReportPage() {
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
     message: string;
-    severity: 'success' | 'error';
-  }>({ open: false, message: '', severity: 'success' });
+    severity: \'success\' | \'error\';
+  }>({ open: false, message: \'\', severity: \'success\' });
 
   // 変更検知
   const hasChanges =
@@ -115,28 +126,28 @@ export default function PropertyReportPage() {
     try {
       const response = await api.get(`/api/property-listings/${propertyNumber}`);
       const d = response.data;
-      let ownerName = d.seller_name || '';
+      let ownerName = d.seller_name || \'\';
       if (!ownerName) {
         try {
           const sellerRes = await api.get(`/api/sellers/by-number/${propertyNumber}`);
-          ownerName = sellerRes.data?.name || '';
+          ownerName = sellerRes.data?.name || \'\';
         } catch {
           // 売主が見つからない場合は空のまま
         }
       }
       const initial: ReportData = {
-        report_date: d.report_date || '',
-        report_completed: d.report_completed || 'N',
-        report_assignee: d.report_assignee || d.sales_assignee || '',
-        sales_assignee: d.sales_assignee || '',
-        address: d.address || d.property_address || '',
+        report_date: d.report_date || \'\',
+        report_completed: d.report_completed || \'N\',
+        report_assignee: d.report_assignee || d.sales_assignee || \'\',
+        sales_assignee: d.sales_assignee || \'\',
+        address: d.address || d.property_address || \'\',
         owner_name: ownerName,
       };
       setReportData(initial);
       setSavedData(initial);
     } catch (error) {
-      console.error('Failed to fetch property data:', error);
-      setSnackbar({ open: true, message: '物件データの取得に失敗しました', severity: 'error' });
+      console.error(\'Failed to fetch property data:\', error);
+      setSnackbar({ open: true, message: \'物件データの取得に失敗しました\', severity: \'error\' });
     } finally {
       setLoading(false);
     }
@@ -144,12 +155,12 @@ export default function PropertyReportPage() {
 
   const fetchJimuInitials = async () => {
     try {
-      const response = await api.get('/api/employees/jimu-initials');
+      const response = await api.get(\'/api/employees/jimu-initials\');
       setJimuInitials(response.data.initials || []);
     } catch (error) {
-      console.error('Failed to fetch jimu initials:', error);
+      console.error(\'Failed to fetch jimu initials:\', error);
       try {
-        const fallback = await api.get('/api/employees/active-initials');
+        const fallback = await api.get(\'/api/employees/active-initials\');
         setJimuInitials(fallback.data.initials || []);
       } catch {
         setJimuInitials([]);
@@ -159,20 +170,20 @@ export default function PropertyReportPage() {
 
   const fetchJimuStaff = async () => {
     try {
-      const response = await api.get('/api/employees/jimu-staff');
+      const response = await api.get(\'/api/employees/jimu-staff\');
       setJimuStaff(response.data.staff || []);
     } catch (error) {
-      console.error('Failed to fetch jimu staff:', error);
+      console.error(\'Failed to fetch jimu staff:\', error);
     }
   };
 
   const fetchTemplates = async () => {
     try {
-      const response = await api.get('/api/email-templates/property');
+      const response = await api.get(\'/api/email-templates/property\');
       setTemplates(response.data || []);
       return response.data || [];
     } catch (error) {
-      console.error('Failed to fetch property templates:', error);
+      console.error(\'Failed to fetch property templates:\', error);
       setTemplates([]);
       return [];
     }
@@ -193,7 +204,7 @@ export default function PropertyReportPage() {
     if (!propertyNumber) return;
     setPrefetching(true);
     try {
-      const tmplResponse = await api.get('/api/email-templates/property');
+      const tmplResponse = await api.get(\'/api/email-templates/property\');
       const tmplList: EmailTemplate[] = tmplResponse.data || [];
       setTemplates(tmplList);
 
@@ -201,7 +212,7 @@ export default function PropertyReportPage() {
       await Promise.all(
         tmplList.map(async (template) => {
           try {
-            const mergeResponse = await api.post('/api/email-templates/property/merge', {
+            const mergeResponse = await api.post(\'/api/email-templates/property/merge\', {
               propertyNumber,
               templateId: template.id,
             });
@@ -215,14 +226,14 @@ export default function PropertyReportPage() {
               setSavedData((prev) => ({ ...prev, owner_name: mergeResponse.data.sellerName }));
             }
           } catch (err) {
-            console.error('Failed to prefetch template:', template.id, err);
+            console.error(\'Failed to prefetch template:\', template.id, err);
             merged[template.id] = { subject: template.subject, body: template.body };
           }
         })
       );
       setMergedTemplates(merged);
     } catch (error) {
-      console.error('Failed to prefetch merged templates:', error);
+      console.error(\'Failed to prefetch merged templates:\', error);
     } finally {
       setPrefetching(false);
     }
@@ -234,13 +245,13 @@ export default function PropertyReportPage() {
     try {
       await api.put(`/api/property-listings/${propertyNumber}`, {
         report_date: reportData.report_date || null,
-        report_completed: reportData.report_completed || 'N',
+        report_completed: reportData.report_completed || \'N\',
         report_assignee: reportData.report_assignee || null,
       });
       setSavedData({ ...reportData });
-      setSnackbar({ open: true, message: '報告情報を保存しました', severity: 'success' });
+      setSnackbar({ open: true, message: \'報告情報を保存しました\', severity: \'success\' });
     } catch (error) {
-      setSnackbar({ open: true, message: '保存に失敗しました', severity: 'error' });
+      setSnackbar({ open: true, message: \'保存に失敗しました\', severity: \'error\' });
     } finally {
       setSaving(false);
     }
@@ -254,14 +265,14 @@ export default function PropertyReportPage() {
       const subject = encodeURIComponent(cached.subject);
       const body = encodeURIComponent(cached.body);
       const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&su=${subject}&body=${body}`;
-      window.open(gmailUrl, '_blank');
+      window.open(gmailUrl, \'_blank\');
       // 送信後に履歴を記録
       recordSendHistory(template.name, cached.subject);
       return;
     }
 
     try {
-      const mergeResponse = await api.post('/api/email-templates/property/merge', {
+      const mergeResponse = await api.post(\'/api/email-templates/property/merge\', {
         propertyNumber,
         templateId: template.id,
       });
@@ -272,14 +283,14 @@ export default function PropertyReportPage() {
       const subject = encodeURIComponent(mergedSubject || template.subject);
       const body = encodeURIComponent(mergedBody || template.body);
       const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&su=${subject}&body=${body}`;
-      window.open(gmailUrl, '_blank');
+      window.open(gmailUrl, \'_blank\');
       recordSendHistory(template.name, mergedSubject || template.subject);
     } catch (error) {
-      console.error('Failed to merge template:', error);
+      console.error(\'Failed to merge template:\', error);
       const subject = encodeURIComponent(template.subject);
       const body = encodeURIComponent(template.body);
       const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&su=${subject}&body=${body}`;
-      window.open(gmailUrl, '_blank');
+      window.open(gmailUrl, \'_blank\');
     }
   };
 
@@ -291,7 +302,7 @@ export default function PropertyReportPage() {
         subject,
         report_date: reportData.report_date || null,
         report_assignee: reportData.report_assignee || null,
-        report_completed: reportData.report_completed || 'N',
+        report_completed: reportData.report_completed || \'N\',
       });
       // 履歴を再取得
       fetchReportHistory();
@@ -313,7 +324,7 @@ export default function PropertyReportPage() {
   if (loading) {
     return (
       <Container maxWidth="sm" sx={{ py: 3 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
+        <Box sx={{ display: \'flex\', justifyContent: \'center\', alignItems: \'center\', minHeight: \'60vh\' }}>
           <CircularProgress />
         </Box>
       </Container>
@@ -323,8 +334,8 @@ export default function PropertyReportPage() {
   return (
     <Container maxWidth="sm" sx={{ py: 3 }}>
       {/* ヘッダー */}
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2, mb: 3 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+      <Box sx={{ display: \'flex\', alignItems: \'center\', justifyContent: \'space-between\', gap: 2, mb: 3 }}>
+        <Box sx={{ display: \'flex\', alignItems: \'center\', gap: 2 }}>
           <IconButton onClick={handleBack} size="large">
             <ArrowBackIcon />
           </IconButton>
@@ -332,7 +343,7 @@ export default function PropertyReportPage() {
             <Typography variant="h5" fontWeight="bold" sx={{ color: SECTION_COLORS.property.main }}>
               報告 - {propertyNumber}
               {reportData.owner_name && (
-                <Typography component="span" variant="h6" sx={{ ml: 2, color: 'text.primary', fontWeight: 'normal' }}>
+                <Typography component="span" variant="h6" sx={{ ml: 2, color: \'text.primary\', fontWeight: \'normal\' }}>
                   {reportData.owner_name}
                 </Typography>
               )}
@@ -353,22 +364,22 @@ export default function PropertyReportPage() {
           disabled={saving || !hasChanges}
           sx={{
             minWidth: 80,
-            backgroundColor: hasChanges ? SECTION_COLORS.property.main : 'grey.400',
-            transition: 'all 0.3s',
+            backgroundColor: hasChanges ? SECTION_COLORS.property.main : \'grey.400\',
+            transition: \'all 0.3s\',
             ...(hasChanges && {
-              animation: 'glow 1.5s ease-in-out infinite',
-              '@keyframes glow': {
-                '0%': { boxShadow: `0 0 0 0 ${SECTION_COLORS.property.main}99` },
-                '70%': { boxShadow: `0 0 0 8px ${SECTION_COLORS.property.main}00` },
-                '100%': { boxShadow: `0 0 0 0 ${SECTION_COLORS.property.main}00` },
+              animation: \'glow 1.5s ease-in-out infinite\',
+              \'@keyframes glow\': {
+                \'0%\': { boxShadow: `0 0 0 0 ${SECTION_COLORS.property.main}99` },
+                \'70%\': { boxShadow: `0 0 0 8px ${SECTION_COLORS.property.main}00` },
+                \'100%\': { boxShadow: `0 0 0 0 ${SECTION_COLORS.property.main}00` },
               },
             }),
-            '&:hover': {
-              backgroundColor: hasChanges ? SECTION_COLORS.property.dark : 'grey.500',
+            \'&:hover\': {
+              backgroundColor: hasChanges ? SECTION_COLORS.property.dark : \'grey.500\',
             },
           }}
         >
-          {saving ? '保存中' : '保存'}
+          {saving ? \'保存中\' : \'保存\'}
         </Button>
       </Box>
 
@@ -382,7 +393,7 @@ export default function PropertyReportPage() {
             type="date"
             fullWidth
             size="small"
-            value={reportData.report_date || ''}
+            value={reportData.report_date || \'\'}
             onChange={(e) => setReportData((prev) => ({ ...prev, report_date: e.target.value }))}
             InputLabelProps={{ shrink: true }}
           />
@@ -394,7 +405,7 @@ export default function PropertyReportPage() {
             報告完了
           </Typography>
           <ToggleButtonGroup
-            value={reportData.report_completed || 'N'}
+            value={reportData.report_completed || \'N\'}
             exclusive
             onChange={(_, value) => {
               if (value !== null) {
@@ -414,13 +425,13 @@ export default function PropertyReportPage() {
             報告担当
           </Typography>
           <ToggleButtonGroup
-            value={reportData.report_assignee || ''}
+            value={reportData.report_assignee || \'\'}
             exclusive
             onChange={(_, value) => {
-              setReportData((prev) => ({ ...prev, report_assignee: value ?? '' }));
+              setReportData((prev) => ({ ...prev, report_assignee: value ?? \'\' }));
             }}
             size="small"
-            sx={{ flexWrap: 'wrap', gap: 0.5 }}
+            sx={{ flexWrap: \'wrap\', gap: 0.5 }}
           >
             {jimuInitials.map((initial) => (
               <ToggleButton
@@ -429,11 +440,11 @@ export default function PropertyReportPage() {
                 sx={{
                   px: 2,
                   minWidth: 64,
-                  fontWeight: 'bold',
-                  '&.Mui-selected': {
-                    backgroundColor: 'primary.main',
-                    color: 'white',
-                    '&:hover': { backgroundColor: 'primary.dark' },
+                  fontWeight: \'bold\',
+                  \'&.Mui-selected\': {
+                    backgroundColor: \'primary.main\',
+                    color: \'white\',
+                    \'&:hover\': { backgroundColor: \'primary.dark\' },
                   },
                 }}
               >
@@ -442,7 +453,7 @@ export default function PropertyReportPage() {
             ))}
           </ToggleButtonGroup>
           {reportData.sales_assignee && (
-            <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+            <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: \'block\' }}>
               物件担当: {reportData.sales_assignee}
             </Typography>
           )}
@@ -455,12 +466,12 @@ export default function PropertyReportPage() {
           startIcon={prefetching ? <CircularProgress size={16} /> : <EmailIcon />}
           onClick={() => setTemplateDialogOpen(true)}
           sx={{
-            borderColor: '#1a73e8',
-            color: '#1a73e8',
-            '&:hover': { borderColor: '#1557b0', backgroundColor: '#1a73e808' },
+            borderColor: \'#1a73e8\',
+            color: \'#1a73e8\',
+            \'&:hover\': { borderColor: \'#1557b0\', backgroundColor: \'#1a73e808\' },
           }}
         >
-          {prefetching ? 'テンプレート準備中...' : 'Gmail送信'}
+          {prefetching ? \'テンプレート準備中...\' : \'Gmail送信\'}
         </Button>
       </Paper>
 
@@ -478,30 +489,30 @@ export default function PropertyReportPage() {
             <Table size="small">
               <TableHead>
                 <TableRow>
-                  <TableCell sx={{ fontWeight: 'bold' }}>送信日時</TableCell>
-                  <TableCell sx={{ fontWeight: 'bold' }}>テンプレート</TableCell>
-                  <TableCell sx={{ fontWeight: 'bold' }}>担当</TableCell>
-                  <TableCell sx={{ fontWeight: 'bold' }}>完了</TableCell>
+                  <TableCell sx={{ fontWeight: \'bold\' }}>送信日時</TableCell>
+                  <TableCell sx={{ fontWeight: \'bold\' }}>テンプレート</TableCell>
+                  <TableCell sx={{ fontWeight: \'bold\' }}>担当</TableCell>
+                  <TableCell sx={{ fontWeight: \'bold\' }}>完了</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {reportHistory.map((h) => (
                   <TableRow key={h.id}>
                     <TableCell>
-                      {new Date(h.sent_at).toLocaleString('ja-JP', {
-                        month: '2-digit',
-                        day: '2-digit',
-                        hour: '2-digit',
-                        minute: '2-digit',
+                      {new Date(h.sent_at).toLocaleString(\'ja-JP\', {
+                        month: \'2-digit\',
+                        day: \'2-digit\',
+                        hour: \'2-digit\',
+                        minute: \'2-digit\',
                       })}
                     </TableCell>
-                    <TableCell>{h.template_name || '-'}</TableCell>
-                    <TableCell>{h.report_assignee ? getFullName(h.report_assignee) : '-'}</TableCell>
+                    <TableCell>{h.template_name || \'-\'}</TableCell>
+                    <TableCell>{h.report_assignee ? getFullName(h.report_assignee) : \'-\'}</TableCell>
                     <TableCell>
                       <Chip
-                        label={h.report_completed === 'Y' ? '完了' : '未完了'}
+                        label={h.report_completed === \'Y\' ? \'完了\' : \'未完了\'}
                         size="small"
-                        color={h.report_completed === 'Y' ? 'success' : 'default'}
+                        color={h.report_completed === \'Y\' ? \'success\' : \'default\'}
                       />
                     </TableCell>
                   </TableRow>
@@ -522,7 +533,7 @@ export default function PropertyReportPage() {
         <DialogTitle>メールテンプレートを選択</DialogTitle>
         <DialogContent dividers sx={{ p: 0 }}>
           {templates.length === 0 ? (
-            <Box sx={{ p: 3, textAlign: 'center' }}>
+            <Box sx={{ p: 3, textAlign: \'center\' }}>
               <Typography color="text.secondary">
                 テンプレートが見つかりません
               </Typography>
@@ -562,3 +573,9 @@ export default function PropertyReportPage() {
     </Container>
   );
 }
+'''
+
+with open(filepath, 'wb') as f:
+    f.write(new_content.encode('utf-8'))
+
+print('Done! PropertyReportPage.tsx updated.')

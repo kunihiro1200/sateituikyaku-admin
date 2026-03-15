@@ -68,7 +68,7 @@ export class StaffManagementService {
     }
   }
 
-  private async fetchStaffData(): Promise<StaffInfo[]> {
+  async fetchStaffData(): Promise<StaffInfo[]> {
     const now = Date.now();
     if (this.cache.size > 0 && now < this.cacheExpiry) {
       console.log('[StaffManagementService] Using cached staff data');

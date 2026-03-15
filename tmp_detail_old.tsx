@@ -19,14 +19,11 @@ import {
   Save as SaveIcon,
   OpenInNew as OpenInNewIcon,
   ContentCopy as ContentCopyIcon,
-  Check as CheckIcon,
   Person as PersonIcon,
   Phone as PhoneIcon,
   Email as EmailIcon,
-  Assignment as AssignmentIcon,
 } from '@mui/icons-material';
 import api from '../services/api';
-import { SECTION_COLORS } from '../theme/sectionColors';
 import FrequentlyAskedSection from '../components/FrequentlyAskedSection';
 import PriceSection from '../components/PriceSection';
 import PropertyDetailsSection from '../components/PropertyDetailsSection';
@@ -35,7 +32,7 @@ import EditableSection from '../components/EditableSection';
 import GmailDistributionButton from '../components/GmailDistributionButton';
 import DistributionAreaField from '../components/DistributionAreaField';
 import EditableUrlField from '../components/EditableUrlField';
-import PropertySidebarStatus from '../components/PropertySidebarStatus';
+import { SECTION_COLORS } from '../theme/sectionColors';
 
 interface PropertyListing {
   id: number;
@@ -126,17 +123,11 @@ interface PropertyListing {
 }
 
 interface Buyer {
-  buyer_id?: string;
-  id?: number;
+  id: number;
   name: string;
-  buyer_number?: string;
   confidence_level?: string;
-  inquiry_confidence?: string;
   phone?: string;
-  phone_number?: string;
   email?: string;
-  reception_date?: string;
-  latest_viewing_date?: string;
 }
 
 interface WorkTaskData {
@@ -175,7 +166,6 @@ export default function PropertyListingDetailPage() {
     message: '',
     severity: 'success',
   });
-  const [copiedPropertyNumber, setCopiedPropertyNumber] = useState(false);
 
   // Check for buyer context from navigation state
   const buyerContext = location.state as { buyerId?: string; buyerName?: string; source?: string } | null;
@@ -255,11 +245,6 @@ export default function PropertyListingDetailPage() {
 
   const handleFieldChange = (field: string, value: any) => {
     setEditedData((prev) => ({ ...prev, [field]: value }));
-
-    // 売買価格（sales_price）は自動保存しない（保存ボタンで確定）
-    if (field === 'sales_price') {
-      return;
-    }
   };
 
   // Save handlers for each section
@@ -423,11 +408,9 @@ export default function PropertyListingDetailPage() {
   // 物件番号コピー機能
   const handleCopyPropertyNumber = async () => {
     if (!data?.property_number) return;
-
+    
     try {
       await navigator.clipboard.writeText(data.property_number);
-      setCopiedPropertyNumber(true);
-      setTimeout(() => setCopiedPropertyNumber(false), 2000);
       setSnackbar({
         open: true,
         message: '物件番号をコピーしました',
@@ -477,7 +460,7 @@ export default function PropertyListingDetailPage() {
   // 買主候補リストページを開く
   const handleOpenBuyerCandidates = () => {
     if (!propertyNumber) return;
-
+    
     // 新しいタブで買主候補リストページを開く
     window.open(
       `/property-listings/${propertyNumber}/buyer-candidates`,
@@ -630,17 +613,6 @@ export default function PropertyListingDetailPage() {
 
   return (
     <Container maxWidth="xl" sx={{ py: 3, zoom: '0.6' }}>
-      <Box sx={{ display: 'flex', gap: 2 }}>
-        {/* 左サイドバー - サイドバーステータス */}
-        <PropertySidebarStatus
-          listings={[data]}
-          selectedStatus={data.sidebar_status || null}
-          onStatusChange={() => {}}
-          pendingPriceReductionProperties={new Set()}
-        />
-
-        {/* メインコンテンツ */}
-        <Box sx={{ flex: 1 }}>
       {/* Header */}
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
@@ -655,10 +627,10 @@ export default function PropertyListingDetailPage() {
               <IconButton
                 size="small"
                 onClick={handleCopyPropertyNumber}
-                sx={{ color: copiedPropertyNumber ? 'success.main' : SECTION_COLORS.property.main }}
+                sx={{ color: SECTION_COLORS.property.main }}
                 title="物件番号をコピー"
               >
-                {copiedPropertyNumber ? <CheckIcon fontSize="small" /> : <ContentCopyIcon fontSize="small" />}
+                <ContentCopyIcon fontSize="small" />
               </IconButton>
               {/* 公開URLボタン */}
               <Button
@@ -696,11 +668,11 @@ export default function PropertyListingDetailPage() {
                   href={`tel:${data.seller_contact}`}
                   startIcon={<PhoneIcon fontSize="small" />}
                   sx={{
-                    borderColor: '#1565c0',
-                    color: '#1565c0',
+                    borderColor: '#2e7d32',
+                    color: '#2e7d32',
                     '&:hover': {
-                      borderColor: '#0d47a1',
-                      backgroundColor: '#1565c008',
+                      borderColor: '#1b5e20',
+                      backgroundColor: '#2e7d3208',
                     },
                   }}
                 >
@@ -741,28 +713,13 @@ export default function PropertyListingDetailPage() {
         <Box sx={{ display: 'flex', gap: 2 }}>
           <Button
             variant="outlined"
-            startIcon={<AssignmentIcon />}
-            onClick={() => window.open(`/property-listings/${propertyNumber}/report`, '_blank')}
-            sx={{
-              borderColor: '#7b1fa2',
-              color: '#7b1fa2',
-              '&:hover': {
-                borderColor: '#6a1b9a',
-                backgroundColor: '#7b1fa208',
-              },
-            }}
-          >
-            報告
-          </Button>
-          <Button
-            variant="outlined"
             startIcon={<PersonIcon />}
             onClick={handleOpenBuyerCandidates}
             sx={{
               borderColor: SECTION_COLORS.property.main,
               color: SECTION_COLORS.property.main,
               '&:hover': {
-                borderColor: SECTION_COLORS.property.main,
+                borderColor: SECTION_COLORS.property.dark,
                 backgroundColor: `${SECTION_COLORS.property.main}08`,
               },
             }}
@@ -773,6 +730,7 @@ export default function PropertyListingDetailPage() {
             propertyNumber={data.property_number}
             propertyAddress={data.address || data.display_address}
             distributionAreas={editedData.distribution_areas !== undefined ? editedData.distribution_areas : data.distribution_areas}
+            isCalculatingAreas={isCalculatingAreas}
             size="medium"
             variant="contained"
           />
@@ -800,20 +758,6 @@ export default function PropertyListingDetailPage() {
             <Typography variant="body2" color="text.secondary" fontWeight="bold">所在地</Typography>
             <Typography variant="body1" fontWeight="medium">
               {data.address || data.display_address || '-'}
-            </Typography>
-            {data.display_address && data.address && data.display_address !== data.address && (
-              <Box sx={{ mt: 0.5 }}>
-                <Typography variant="body2" color="text.secondary" fontWeight="bold">住居表示</Typography>
-                <Typography variant="body2" color="text.secondary">
-                  {data.display_address}
-                </Typography>
-              </Box>
-            )}
-          </Grid>
-          <Grid item xs={12} sm={6} md={3}>
-            <Typography variant="body2" color="text.secondary" fontWeight="bold">売主氏名</Typography>
-            <Typography variant="body1" fontWeight="medium">
-              {data.seller_name || '-'}
             </Typography>
           </Grid>
           <Grid item xs={12} sm={6} md={3}>
@@ -863,17 +807,13 @@ export default function PropertyListingDetailPage() {
               >
                 <PriceSection
                   salesPrice={data.price}
-                  salesPriceActual={editedData.sales_price !== undefined ? editedData.sales_price : data.sales_price}
                   listingPrice={data.listing_price}
-                  propertyType={editedData.property_type !== undefined ? editedData.property_type : data.property_type}
                   priceReductionHistory={data.price_reduction_history}
-                  priceReductionScheduledDate={data.price_reduction_scheduled_date}
                   onFieldChange={handleFieldChange}
                   editedData={editedData}
                   isEditMode={isPriceEditMode}
                   propertyNumber={data.property_number}
                   salesAssignee={data.sales_assignee}
-                  address={data.address}
                   onChatSendSuccess={(message) => setSnackbar({ open: true, message, severity: 'success' })}
                   onChatSendError={(message) => setSnackbar({ open: true, message, severity: 'error' })}
                 />
@@ -1109,30 +1049,25 @@ export default function PropertyListingDetailPage() {
               <Grid item xs={6}>
                 <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '1rem', color: 'text.primary', mb: 0.5 }}>種別</Typography>
                 {isBasicInfoEditMode ? (
-                  <TextField fullWidth size="small"
+                  <TextField
+                    fullWidth
+                    size="small"
                     value={editedData.property_type !== undefined ? editedData.property_type : (data.property_type || '')}
-                    onChange={(e) => handleFieldChange('property_type', e.target.value)} />
+                    onChange={(e) => handleFieldChange('property_type', e.target.value)}
+                  />
                 ) : (
                   <Typography variant="body1">{data.property_type || '-'}</Typography>
                 )}
               </Grid>
               <Grid item xs={6}>
-                <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '1rem', color: 'text.primary', mb: 0.5 }}>売出価格</Typography>
-                {isBasicInfoEditMode ? (
-                  <TextField fullWidth size="small" type="number"
-                    value={editedData.listing_price !== undefined ? editedData.listing_price : (data.listing_price || '')}
-                    onChange={(e) => handleFieldChange('listing_price', e.target.value ? Number(e.target.value) : null)}
-                    InputProps={{ startAdornment: <Typography sx={{ mr: 0.5 }}>¥</Typography> }} />
-                ) : (
-                  <Typography variant="body1">{data.listing_price ? `¥${data.listing_price.toLocaleString()}` : '-'}</Typography>
-                )}
-              </Grid>
-              <Grid item xs={6}>
                 <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '1rem', color: 'text.primary', mb: 0.5 }}>状況</Typography>
                 {isBasicInfoEditMode ? (
-                  <TextField fullWidth size="small"
+                  <TextField
+                    fullWidth
+                    size="small"
                     value={editedData.status !== undefined ? editedData.status : (data.status || '')}
-                    onChange={(e) => handleFieldChange('status', e.target.value)} />
+                    onChange={(e) => handleFieldChange('status', e.target.value)}
+                  />
                 ) : (
                   <Typography variant="body1">{data.status || '-'}</Typography>
                 )}
@@ -1140,9 +1075,12 @@ export default function PropertyListingDetailPage() {
               <Grid item xs={6}>
                 <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '1rem', color: 'text.primary', mb: 0.5 }}>現況</Typography>
                 {isBasicInfoEditMode ? (
-                  <TextField fullWidth size="small"
+                  <TextField
+                    fullWidth
+                    size="small"
                     value={editedData.current_status !== undefined ? editedData.current_status : (data.current_status || '')}
-                    onChange={(e) => handleFieldChange('current_status', e.target.value)} />
+                    onChange={(e) => handleFieldChange('current_status', e.target.value)}
+                  />
                 ) : (
                   <Typography variant="body1">{data.current_status || '-'}</Typography>
                 )}
@@ -1150,38 +1088,61 @@ export default function PropertyListingDetailPage() {
               <Grid item xs={6}>
                 <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '1rem', color: 'text.primary', mb: 0.5 }}>配信日（公開）</Typography>
                 {isBasicInfoEditMode ? (
-                  <TextField fullWidth size="small" type="date"
+                  <TextField
+                    fullWidth
+                    size="small"
+                    type="date"
                     value={editedData.distribution_date !== undefined ? editedData.distribution_date : (data.distribution_date || '')}
                     onChange={(e) => handleFieldChange('distribution_date', e.target.value)}
-                    InputLabelProps={{ shrink: true }} />
+                    InputLabelProps={{ shrink: true }}
+                  />
                 ) : (
                   <Typography variant="body1">{data.distribution_date || '-'}</Typography>
                 )}
               </Grid>
-
+              <Grid item xs={6}>
+                <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '1rem', color: 'text.primary', mb: 0.5 }}>売出価格</Typography>
+                {isBasicInfoEditMode ? (
+                  <TextField
+                    fullWidth
+                    size="small"
+                    type="number"
+                    value={editedData.listing_price !== undefined ? editedData.listing_price : (data.listing_price || '')}
+                    onChange={(e) => handleFieldChange('listing_price', e.target.value ? Number(e.target.value) : null)}
+                    InputProps={{
+                      startAdornment: <Typography sx={{ mr: 0.5 }}>¥</Typography>,
+                    }}
+                  />
+                ) : (
+                  <Typography variant="body1">
+                    {data.listing_price ? `¥${data.listing_price.toLocaleString()}` : '-'}
+                  </Typography>
+                )}
+              </Grid>
               <Grid item xs={12}>
                 <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '1rem', color: 'text.primary', mb: 0.5 }}>所在地</Typography>
                 {isBasicInfoEditMode ? (
-                  <TextField fullWidth size="small"
+                  <TextField
+                    fullWidth
+                    size="small"
                     value={editedData.address !== undefined ? editedData.address : (data.address || data.display_address || '')}
-                    onChange={(e) => handleFieldChange('address', e.target.value)} />
+                    onChange={(e) => handleFieldChange('address', e.target.value)}
+                  />
                 ) : (
                   <Typography variant="body1">{data.address || data.display_address || '-'}</Typography>
                 )}
-                {!isBasicInfoEditMode && data.display_address && data.address && data.display_address !== data.address && (
-                  <Box sx={{ mt: 0.5 }}>
-                    <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '0.85rem', color: 'text.secondary', mb: 0.25 }}>住居表示</Typography>
-                    <Typography variant="body2" color="text.secondary">{data.display_address}</Typography>
-                  </Box>
-                )}
               </Grid>
+              {/* その他情報の非空欄フィールドを統合 */}
               {data.management_type && (
                 <Grid item xs={6}>
                   <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '1rem', color: 'text.primary', mb: 0.5 }}>管理形態</Typography>
                   {isBasicInfoEditMode ? (
-                    <TextField fullWidth size="small"
+                    <TextField
+                      fullWidth
+                      size="small"
                       value={editedData.management_type !== undefined ? editedData.management_type : (data.management_type || '')}
-                      onChange={(e) => handleFieldChange('management_type', e.target.value)} />
+                      onChange={(e) => handleFieldChange('management_type', e.target.value)}
+                    />
                   ) : (
                     <Typography variant="body1">{data.management_type}</Typography>
                   )}
@@ -1191,9 +1152,12 @@ export default function PropertyListingDetailPage() {
                 <Grid item xs={6}>
                   <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '1rem', color: 'text.primary', mb: 0.5 }}>管理会社</Typography>
                   {isBasicInfoEditMode ? (
-                    <TextField fullWidth size="small"
+                    <TextField
+                      fullWidth
+                      size="small"
                       value={editedData.management_company !== undefined ? editedData.management_company : (data.management_company || '')}
-                      onChange={(e) => handleFieldChange('management_company', e.target.value)} />
+                      onChange={(e) => handleFieldChange('management_company', e.target.value)}
+                    />
                   ) : (
                     <Typography variant="body1">{data.management_company}</Typography>
                   )}
@@ -1203,9 +1167,12 @@ export default function PropertyListingDetailPage() {
                 <Grid item xs={6}>
                   <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '1rem', color: 'text.primary', mb: 0.5 }}>ペット相談</Typography>
                   {isBasicInfoEditMode ? (
-                    <TextField fullWidth size="small"
+                    <TextField
+                      fullWidth
+                      size="small"
                       value={editedData.pet_consultation !== undefined ? editedData.pet_consultation : (data.pet_consultation || '')}
-                      onChange={(e) => handleFieldChange('pet_consultation', e.target.value)} />
+                      onChange={(e) => handleFieldChange('pet_consultation', e.target.value)}
+                    />
                   ) : (
                     <Typography variant="body1">{data.pet_consultation}</Typography>
                   )}
@@ -1215,9 +1182,12 @@ export default function PropertyListingDetailPage() {
                 <Grid item xs={6}>
                   <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '1rem', color: 'text.primary', mb: 0.5 }}>温泉</Typography>
                   {isBasicInfoEditMode ? (
-                    <TextField fullWidth size="small"
+                    <TextField
+                      fullWidth
+                      size="small"
                       value={editedData.hot_spring !== undefined ? editedData.hot_spring : (data.hot_spring || '')}
-                      onChange={(e) => handleFieldChange('hot_spring', e.target.value)} />
+                      onChange={(e) => handleFieldChange('hot_spring', e.target.value)}
+                    />
                   ) : (
                     <Typography variant="body1">{data.hot_spring}</Typography>
                   )}
@@ -1227,9 +1197,12 @@ export default function PropertyListingDetailPage() {
                 <Grid item xs={6}>
                   <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '1rem', color: 'text.primary', mb: 0.5 }}>控除利用</Typography>
                   {isBasicInfoEditMode ? (
-                    <TextField fullWidth size="small"
+                    <TextField
+                      fullWidth
+                      size="small"
                       value={editedData.deduction_usage !== undefined ? editedData.deduction_usage : (data.deduction_usage || '')}
-                      onChange={(e) => handleFieldChange('deduction_usage', e.target.value)} />
+                      onChange={(e) => handleFieldChange('deduction_usage', e.target.value)}
+                    />
                   ) : (
                     <Typography variant="body1">{data.deduction_usage}</Typography>
                   )}
@@ -1239,9 +1212,12 @@ export default function PropertyListingDetailPage() {
                 <Grid item xs={6}>
                   <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '1rem', color: 'text.primary', mb: 0.5 }}>引渡方法</Typography>
                   {isBasicInfoEditMode ? (
-                    <TextField fullWidth size="small"
+                    <TextField
+                      fullWidth
+                      size="small"
                       value={editedData.delivery_method !== undefined ? editedData.delivery_method : (data.delivery_method || '')}
-                      onChange={(e) => handleFieldChange('delivery_method', e.target.value)} />
+                      onChange={(e) => handleFieldChange('delivery_method', e.target.value)}
+                    />
                   ) : (
                     <Typography variant="body1">{data.delivery_method}</Typography>
                   )}
@@ -1251,9 +1227,12 @@ export default function PropertyListingDetailPage() {
                 <Grid item xs={6}>
                   <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '1rem', color: 'text.primary', mb: 0.5 }}>仲介業者</Typography>
                   {isBasicInfoEditMode ? (
-                    <TextField fullWidth size="small"
+                    <TextField
+                      fullWidth
+                      size="small"
                       value={editedData.broker !== undefined ? editedData.broker : (data.broker || '')}
-                      onChange={(e) => handleFieldChange('broker', e.target.value)} />
+                      onChange={(e) => handleFieldChange('broker', e.target.value)}
+                    />
                   ) : (
                     <Typography variant="body1">{data.broker}</Typography>
                   )}
@@ -1263,9 +1242,12 @@ export default function PropertyListingDetailPage() {
                 <Grid item xs={6}>
                   <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '1rem', color: 'text.primary', mb: 0.5 }}>司法書士</Typography>
                   {isBasicInfoEditMode ? (
-                    <TextField fullWidth size="small"
+                    <TextField
+                      fullWidth
+                      size="small"
                       value={editedData.judicial_scrivener !== undefined ? editedData.judicial_scrivener : (data.judicial_scrivener || '')}
-                      onChange={(e) => handleFieldChange('judicial_scrivener', e.target.value)} />
+                      onChange={(e) => handleFieldChange('judicial_scrivener', e.target.value)}
+                    />
                   ) : (
                     <Typography variant="body1">{data.judicial_scrivener}</Typography>
                   )}
@@ -1275,9 +1257,12 @@ export default function PropertyListingDetailPage() {
                 <Grid item xs={12}>
                   <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '1rem', color: 'text.primary', mb: 0.5 }}>保存場所</Typography>
                   {isBasicInfoEditMode ? (
-                    <TextField fullWidth size="small"
+                    <TextField
+                      fullWidth
+                      size="small"
                       value={editedData.storage_location !== undefined ? editedData.storage_location : (data.storage_location || '')}
-                      onChange={(e) => handleFieldChange('storage_location', e.target.value)} />
+                      onChange={(e) => handleFieldChange('storage_location', e.target.value)}
+                    />
                   ) : (
                     <Typography variant="body1">{data.storage_location}</Typography>
                   )}
@@ -1302,11 +1287,16 @@ export default function PropertyListingDetailPage() {
             {/* 地図・サイトURL */}
             <Box sx={{ flex: { xs: '1 1 100%', md: '0 0 50%' } }}>
               <Paper sx={{ p: 2, height: '100%' }}>
-                <Box sx={{ mb: 2, pb: 1, borderBottom: `2px solid ${SECTION_COLORS.property.main}` }}>
+                <Box sx={{ 
+                  mb: 2, 
+                  pb: 1, 
+                  borderBottom: `2px solid ${SECTION_COLORS.property.main}`,
+                }}>
                   <Typography variant="h6" gutterBottom fontWeight="bold" sx={{ color: SECTION_COLORS.property.main }}>
                     地図・サイトURL
                   </Typography>
                 </Box>
+                
                 <EditableUrlField
                   label="地図URL"
                   value={data.google_map_url || null}
@@ -1316,50 +1306,82 @@ export default function PropertyListingDetailPage() {
                   onSave={handleUpdateGoogleMapUrl}
                   helperText="物件の位置を示すGoogle Map URLを入力してください"
                 />
+                
                 <Box sx={{ mt: 3 }}>
                   <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
-                    <Typography variant="subtitle1" fontWeight="bold">格納先URL</Typography>
-                    <Button variant="outlined" size="small" onClick={handleAutoRetrieveStorageUrl}
+                    <Typography variant="subtitle1" fontWeight="bold">
+                      格納先URL
+                    </Typography>
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      onClick={handleAutoRetrieveStorageUrl}
                       disabled={retrievingStorageUrl}
                       startIcon={retrievingStorageUrl ? <CircularProgress size={16} /> : null}
-                      sx={{ borderColor: SECTION_COLORS.property.main, color: SECTION_COLORS.property.main,
-                        '&:hover': { borderColor: SECTION_COLORS.property.dark, backgroundColor: `${SECTION_COLORS.property.main}08` } }}>
+                      sx={{
+                        borderColor: SECTION_COLORS.property.main,
+                        color: SECTION_COLORS.property.main,
+                        '&:hover': {
+                          borderColor: SECTION_COLORS.property.dark,
+                          backgroundColor: `${SECTION_COLORS.property.main}08`,
+                        },
+                      }}
+                    >
                       {retrievingStorageUrl ? '取得中...' : '自動取得'}
                     </Button>
                   </Box>
+                  
                   <Box sx={{ mb: 1 }}>
-                    <Typography variant="body2" color="text.secondary">現在のURL:</Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      現在のURL:
+                    </Typography>
                     {data.storage_location ? (
-                      <Link href={data.storage_location} target="_blank" rel="noopener noreferrer"
-                        sx={{ display: 'flex', alignItems: 'center', gap: 0.5, wordBreak: 'break-all', fontSize: '0.875rem' }}>
+                      <Link
+                        href={data.storage_location}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        sx={{ 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          gap: 0.5,
+                          wordBreak: 'break-all',
+                          fontSize: '0.875rem'
+                        }}
+                      >
                         {data.storage_location}
                         <OpenInNewIcon fontSize="small" />
                       </Link>
                     ) : (
-                      <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>未設定</Typography>
+                      <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                        未設定
+                      </Typography>
                     )}
                   </Box>
-                  <EditableUrlField label="" value={data.storage_location || null}
+                  
+                  <EditableUrlField
+                    label=""
+                    value={data.storage_location || null}
                     placeholder="https://drive.google.com/drive/folders/..."
                     urlPattern={GOOGLE_DRIVE_FOLDER_PATTERN}
                     errorMessage="有効なGoogle DriveフォルダURLを入力してください"
                     onSave={handleUpdateStorageLocation}
-                    helperText="物件関連ドキュメントが保存されているGoogle DriveフォルダのURLを入力してください" />
+                    helperText="物件関連ドキュメントが保存されているGoogle DriveフォルダのURLを入力してください"
+                  />
                 </Box>
               </Paper>
             </Box>
+
             {/* 物件詳細情報 */}
             <Box sx={{ flex: { xs: '1 1 100%', md: '0 0 50%' } }}>
-              <EditableSection title="物件詳細情報" isEditMode={isPropertyDetailsEditMode}
+              <EditableSection
+                title="物件詳細情報"
+                isEditMode={isPropertyDetailsEditMode}
                 onEditToggle={() => setIsPropertyDetailsEditMode(!isPropertyDetailsEditMode)}
-                onSave={handleSavePropertyDetails} onCancel={handleCancelPropertyDetails}>
+                onSave={handleSavePropertyDetails}
+                onCancel={handleCancelPropertyDetails}
+              >
                 <PropertyDetailsSection
-                  data={{
-                    ...data,
-                    price: editedData.price !== undefined ? editedData.price : data.price,
-                    sales_price: editedData.sales_price !== undefined ? editedData.sales_price : data.sales_price,
-                    property_type: editedData.property_type !== undefined ? editedData.property_type : data.property_type,
-                  }}
+                  data={data}
                   editedData={editedData}
                   onFieldChange={handleFieldChange}
                   isEditMode={isPropertyDetailsEditMode}
@@ -1369,9 +1391,19 @@ export default function PropertyListingDetailPage() {
           </Box>
 
           {/* 5. 配信エリア番号（全幅） */}
-          <Box sx={{ mb: 2, p: 2, bgcolor: '#e8f5e9', borderRadius: 2, border: '1px solid #a5d6a7' }}>
+          <Box sx={{ 
+            mb: 2,
+            p: 2,
+            bgcolor: '#e8f5e9',
+            borderRadius: 2,
+            border: '1px solid #a5d6a7'
+          }}>
             <Paper sx={{ p: 2 }}>
-              <Box sx={{ mb: 2, pb: 1, borderBottom: `2px solid ${SECTION_COLORS.property.main}` }}>
+              <Box sx={{ 
+                mb: 2, 
+                pb: 1, 
+                borderBottom: `2px solid ${SECTION_COLORS.property.main}`,
+              }}>
                 <Typography variant="h6" gutterBottom fontWeight="bold" sx={{ color: SECTION_COLORS.property.main }}>
                   配信エリア番号
                 </Typography>
@@ -1387,13 +1419,25 @@ export default function PropertyListingDetailPage() {
           </Box>
 
           {/* 6. 売主・買主情報 + 手数料情報 */}
-          <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 2, mb: 2, p: 2,
-            bgcolor: '#fce4ec', borderRadius: 2, border: '1px solid #f48fb1' }}>
+          <Box sx={{ 
+            display: 'flex', 
+            flexDirection: { xs: 'column', md: 'row' }, 
+            gap: 2, 
+            mb: 2,
+            p: 2,
+            bgcolor: '#fce4ec',
+            borderRadius: 2,
+            border: '1px solid #f48fb1'
+          }}>
             {/* 売主・買主情報 */}
             <Box sx={{ flex: { xs: '1 1 100%', md: '0 0 50%' } }}>
-              <EditableSection title="売主・買主情報" isEditMode={isSellerBuyerEditMode}
+              <EditableSection
+                title="売主・買主情報"
+                isEditMode={isSellerBuyerEditMode}
                 onEditToggle={() => setIsSellerBuyerEditMode(!isSellerBuyerEditMode)}
-                onSave={handleSaveSellerBuyer} onCancel={handleCancelSellerBuyer}>
+                onSave={handleSaveSellerBuyer}
+                onCancel={handleCancelSellerBuyer}
+              >
                 <Box sx={{ mb: 3 }}>
                   <Typography variant="subtitle1" fontWeight="bold" gutterBottom>売主</Typography>
                   <Grid container spacing={2}>
@@ -1401,50 +1445,75 @@ export default function PropertyListingDetailPage() {
                       <Grid item xs={12}>
                         <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '1rem', color: 'text.primary', mb: 0.5 }}>名前</Typography>
                         {isSellerBuyerEditMode ? (
-                          <TextField fullWidth size="small"
+                          <TextField
+                            fullWidth
+                            size="small"
                             value={editedData.seller_name !== undefined ? editedData.seller_name : (data.seller_name || '')}
-                            onChange={(e) => handleFieldChange('seller_name', e.target.value)} />
-                        ) : (<Typography variant="body1">{data.seller_name}</Typography>)}
+                            onChange={(e) => handleFieldChange('seller_name', e.target.value)}
+                          />
+                        ) : (
+                          <Typography variant="body1">{data.seller_name}</Typography>
+                        )}
                       </Grid>
                     )}
                     {(isSellerBuyerEditMode || data.seller_address) && (
                       <Grid item xs={12}>
                         <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '1rem', color: 'text.primary', mb: 0.5 }}>住所</Typography>
                         {isSellerBuyerEditMode ? (
-                          <TextField fullWidth size="small"
+                          <TextField
+                            fullWidth
+                            size="small"
                             value={editedData.seller_address !== undefined ? editedData.seller_address : (data.seller_address || '')}
-                            onChange={(e) => handleFieldChange('seller_address', e.target.value)} />
-                        ) : (<Typography variant="body1">{data.seller_address}</Typography>)}
+                            onChange={(e) => handleFieldChange('seller_address', e.target.value)}
+                          />
+                        ) : (
+                          <Typography variant="body1">{data.seller_address}</Typography>
+                        )}
                       </Grid>
                     )}
                     {(isSellerBuyerEditMode || data.seller_contact) && (
                       <Grid item xs={6}>
                         <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '1rem', color: 'text.primary', mb: 0.5 }}>連絡先</Typography>
                         {isSellerBuyerEditMode ? (
-                          <TextField fullWidth size="small"
+                          <TextField
+                            fullWidth
+                            size="small"
                             value={editedData.seller_contact !== undefined ? editedData.seller_contact : (data.seller_contact || '')}
-                            onChange={(e) => handleFieldChange('seller_contact', e.target.value)} />
-                        ) : (<Typography variant="body1">{data.seller_contact}</Typography>)}
+                            onChange={(e) => handleFieldChange('seller_contact', e.target.value)}
+                          />
+                        ) : (
+                          <Typography variant="body1">{data.seller_contact}</Typography>
+                        )}
                       </Grid>
                     )}
                     {(isSellerBuyerEditMode || data.seller_email) && (
                       <Grid item xs={6}>
                         <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '1rem', color: 'text.primary', mb: 0.5 }}>メールアドレス</Typography>
                         {isSellerBuyerEditMode ? (
-                          <TextField fullWidth size="small"
+                          <TextField
+                            fullWidth
+                            size="small"
                             value={editedData.seller_email !== undefined ? editedData.seller_email : (data.seller_email || '')}
-                            onChange={(e) => handleFieldChange('seller_email', e.target.value)} />
-                        ) : (<Typography variant="body1">{data.seller_email}</Typography>)}
+                            onChange={(e) => handleFieldChange('seller_email', e.target.value)}
+                          />
+                        ) : (
+                          <Typography variant="body1">{data.seller_email}</Typography>
+                        )}
                       </Grid>
                     )}
                     {(isSellerBuyerEditMode || data.sale_reason) && (
                       <Grid item xs={12}>
                         <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '1rem', color: 'text.primary', mb: 0.5 }}>売却理由</Typography>
                         {isSellerBuyerEditMode ? (
-                          <TextField fullWidth size="small"
+                          <TextField
+                            fullWidth
+                            size="small"
                             value={editedData.sale_reason !== undefined ? editedData.sale_reason : (data.sale_reason || '')}
-                            onChange={(e) => handleFieldChange('sale_reason', e.target.value)} />
-                        ) : (<Typography variant="body1">{data.sale_reason}</Typography>)}
+                            onChange={(e) => handleFieldChange('sale_reason', e.target.value)}
+                          />
+                        ) : (
+                          <Typography variant="body1">{data.sale_reason}</Typography>
+                        )}
                       </Grid>
                     )}
                   </Grid>
@@ -1456,58 +1525,88 @@ export default function PropertyListingDetailPage() {
                       <Grid item xs={12}>
                         <Typography variant="body2" color="text.secondary" fontWeight="bold">名前</Typography>
                         {isSellerBuyerEditMode ? (
-                          <TextField fullWidth size="small"
+                          <TextField
+                            fullWidth
+                            size="small"
                             value={editedData.buyer_name !== undefined ? editedData.buyer_name : (data.buyer_name || '')}
-                            onChange={(e) => handleFieldChange('buyer_name', e.target.value)} />
-                        ) : (<Typography variant="body1">{data.buyer_name}</Typography>)}
+                            onChange={(e) => handleFieldChange('buyer_name', e.target.value)}
+                          />
+                        ) : (
+                          <Typography variant="body1">{data.buyer_name}</Typography>
+                        )}
                       </Grid>
                     )}
                     {(isSellerBuyerEditMode || data.buyer_address) && (
                       <Grid item xs={12}>
                         <Typography variant="body2" color="text.secondary" fontWeight="bold">住所</Typography>
                         {isSellerBuyerEditMode ? (
-                          <TextField fullWidth size="small"
+                          <TextField
+                            fullWidth
+                            size="small"
                             value={editedData.buyer_address !== undefined ? editedData.buyer_address : (data.buyer_address || '')}
-                            onChange={(e) => handleFieldChange('buyer_address', e.target.value)} />
-                        ) : (<Typography variant="body1">{data.buyer_address}</Typography>)}
+                            onChange={(e) => handleFieldChange('buyer_address', e.target.value)}
+                          />
+                        ) : (
+                          <Typography variant="body1">{data.buyer_address}</Typography>
+                        )}
                       </Grid>
                     )}
                     {(isSellerBuyerEditMode || data.buyer_contact) && (
                       <Grid item xs={12}>
                         <Typography variant="body2" color="text.secondary" fontWeight="bold">連絡先</Typography>
                         {isSellerBuyerEditMode ? (
-                          <TextField fullWidth size="small"
+                          <TextField
+                            fullWidth
+                            size="small"
                             value={editedData.buyer_contact !== undefined ? editedData.buyer_contact : (data.buyer_contact || '')}
-                            onChange={(e) => handleFieldChange('buyer_contact', e.target.value)} />
-                        ) : (<Typography variant="body1">{data.buyer_contact}</Typography>)}
+                            onChange={(e) => handleFieldChange('buyer_contact', e.target.value)}
+                          />
+                        ) : (
+                          <Typography variant="body1">{data.buyer_contact}</Typography>
+                        )}
                       </Grid>
                     )}
                   </Grid>
                 </Box>
               </EditableSection>
             </Box>
+
             {/* 手数料情報 */}
             <Box sx={{ flex: { xs: '1 1 100%', md: '0 0 50%' } }}>
               <Paper sx={{ p: 2, height: '100%' }}>
-                <Box sx={{ mb: 2, pb: 1, borderBottom: `2px solid ${SECTION_COLORS.property.main}` }}>
-                  <Typography variant="h6" gutterBottom fontWeight="bold" sx={{ color: SECTION_COLORS.property.main }}>手数料情報</Typography>
+                <Box sx={{ 
+                  mb: 2, 
+                  pb: 1, 
+                  borderBottom: `2px solid ${SECTION_COLORS.property.main}`,
+                }}>
+                  <Typography variant="h6" gutterBottom fontWeight="bold" sx={{ color: SECTION_COLORS.property.main }}>
+                    手数料情報
+                  </Typography>
                 </Box>
                 <Grid container spacing={2}>
                   <Grid item xs={6}>
                     <Typography variant="body2" color="text.secondary" fontWeight="bold">手数料（計）</Typography>
-                    <Typography variant="body1">{data.total_commission ? `¥${data.total_commission.toLocaleString()}` : '-'}</Typography>
+                    <Typography variant="body1">
+                      {data.total_commission ? `¥${data.total_commission.toLocaleString()}` : '-'}
+                    </Typography>
                   </Grid>
                   <Grid item xs={6}>
                     <Typography variant="body2" color="text.secondary" fontWeight="bold">転売差額</Typography>
-                    <Typography variant="body1">{data.resale_margin ? `¥${data.resale_margin.toLocaleString()}` : '-'}</Typography>
+                    <Typography variant="body1">
+                      {data.resale_margin ? `¥${data.resale_margin.toLocaleString()}` : '-'}
+                    </Typography>
                   </Grid>
                   <Grid item xs={6}>
                     <Typography variant="body2" color="text.secondary" fontWeight="bold">売主から</Typography>
-                    <Typography variant="body1">{data.commission_from_seller ? `¥${data.commission_from_seller.toLocaleString()}` : '-'}</Typography>
+                    <Typography variant="body1">
+                      {data.commission_from_seller ? `¥${data.commission_from_seller.toLocaleString()}` : '-'}
+                    </Typography>
                   </Grid>
                   <Grid item xs={6}>
                     <Typography variant="body2" color="text.secondary" fontWeight="bold">買主から</Typography>
-                    <Typography variant="body1">{data.commission_from_buyer ? `¥${data.commission_from_buyer.toLocaleString()}` : '-'}</Typography>
+                    <Typography variant="body1">
+                      {data.commission_from_buyer ? `¥${data.commission_from_buyer.toLocaleString()}` : '-'}
+                    </Typography>
                   </Grid>
                 </Grid>
               </Paper>
@@ -1516,10 +1615,22 @@ export default function PropertyListingDetailPage() {
 
           {/* 7. 買付情報（全幅・条件付き表示） */}
           {(data.offer_date || data.offer_status || data.offer_amount) && (
-            <Box sx={{ mb: 2, p: 2, bgcolor: '#fff3e0', borderRadius: 2, border: '1px solid #ffb74d' }}>
+            <Box sx={{ 
+              mb: 2,
+              p: 2,
+              bgcolor: '#fff3e0',
+              borderRadius: 2,
+              border: '1px solid #ffb74d'
+            }}>
               <Paper sx={{ p: 2 }}>
-                <Box sx={{ mb: 2, pb: 1, borderBottom: `2px solid ${SECTION_COLORS.property.main}` }}>
-                  <Typography variant="h6" gutterBottom fontWeight="bold" sx={{ color: SECTION_COLORS.property.main }}>買付情報</Typography>
+                <Box sx={{ 
+                  mb: 2, 
+                  pb: 1, 
+                  borderBottom: `2px solid ${SECTION_COLORS.property.main}`,
+                }}>
+                  <Typography variant="h6" gutterBottom fontWeight="bold" sx={{ color: SECTION_COLORS.property.main }}>
+                    買付情報
+                  </Typography>
                 </Box>
                 <Grid container spacing={2}>
                   <Grid item xs={6}>
@@ -1548,17 +1659,37 @@ export default function PropertyListingDetailPage() {
           )}
 
           {/* 8. 添付画像・資料（全幅） */}
-          <Box sx={{ mb: 2, p: 2, bgcolor: '#f1f8e9', borderRadius: 2, border: '1px solid #aed581' }}>
+          <Box sx={{ 
+            mb: 2,
+            p: 2,
+            bgcolor: '#f1f8e9',
+            borderRadius: 2,
+            border: '1px solid #aed581'
+          }}>
             <Paper sx={{ p: 2 }}>
-              <Box sx={{ mb: 2, pb: 1, borderBottom: `2px solid ${SECTION_COLORS.property.main}` }}>
-                <Typography variant="h6" gutterBottom fontWeight="bold" sx={{ color: SECTION_COLORS.property.main }}>添付画像・資料</Typography>
+              <Box sx={{ 
+                mb: 2, 
+                pb: 1, 
+                borderBottom: `2px solid ${SECTION_COLORS.property.main}`,
+              }}>
+                <Typography variant="h6" gutterBottom fontWeight="bold" sx={{ color: SECTION_COLORS.property.main }}>
+                  添付画像・資料
+                </Typography>
               </Box>
               <Grid container spacing={2}>
                 {data.image_url && (
                   <Grid item xs={12} sm={4}>
                     <Box sx={{ border: '1px solid #ddd', borderRadius: 1, p: 2, textAlign: 'center' }}>
-                      <Typography variant="body2" color="text.secondary" gutterBottom>画像</Typography>
-                      <Button variant="outlined" size="small" href={data.image_url} target="_blank" rel="noopener noreferrer">
+                      <Typography variant="body2" color="text.secondary" gutterBottom>
+                        画像
+                      </Typography>
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        href={data.image_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
                         画像を開く
                       </Button>
                     </Box>
@@ -1567,8 +1698,16 @@ export default function PropertyListingDetailPage() {
                 {data.pdf_url && (
                   <Grid item xs={12} sm={4}>
                     <Box sx={{ border: '1px solid #ddd', borderRadius: 1, p: 2, textAlign: 'center' }}>
-                      <Typography variant="body2" color="text.secondary" gutterBottom>PDF</Typography>
-                      <Button variant="outlined" size="small" href={data.pdf_url} target="_blank" rel="noopener noreferrer">
+                      <Typography variant="body2" color="text.secondary" gutterBottom>
+                        PDF
+                      </Typography>
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        href={data.pdf_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
                         PDFを開く
                       </Button>
                     </Box>
@@ -1576,7 +1715,9 @@ export default function PropertyListingDetailPage() {
                 )}
               </Grid>
               {!data.image_url && !data.pdf_url && (
-                <Typography variant="body2" color="text.secondary">添付資料がありません</Typography>
+                <Typography variant="body2" color="text.secondary">
+                  添付資料がありません
+                </Typography>
               )}
             </Paper>
           </Box>
@@ -1590,8 +1731,6 @@ export default function PropertyListingDetailPage() {
       >
         <Alert severity={snackbar.severity}>{snackbar.message}</Alert>
       </Snackbar>
-        </Box> {/* メインコンテンツ */}
-      </Box> {/* サイドバー + メインコンテンツ */}
     </Container>
   );
 }

@@ -8,6 +8,7 @@ import { EnhancedBuyerDistributionService } from '../services/EnhancedBuyerDistr
 import { DataIntegrityDiagnosticService } from '../services/DataIntegrityDiagnosticService';
 import { BuyerCandidateService } from '../services/BuyerCandidateService';
 import { UrlValidator } from '../utils/urlValidator';
+import { createClient } from '@supabase/supabase-js';
 
 const router = Router();
 const propertyListingService = new PropertyListingService();
@@ -762,6 +763,66 @@ router.patch('/:propertyNumber/storage-location', async (req: Request, res: Resp
   } catch (error: any) {
     console.error('Error updating Storage Location:', error);
     res.status(500).json({ error: 'Failed to update Storage Location' });
+  }
+});
+
+// 報告書送信履歴を取得
+router.get('/:propertyNumber/report-history', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { propertyNumber } = req.params;
+    const supabase = createClient(
+      process.env.SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_KEY!
+    );
+    const { data, error } = await supabase
+      .from('property_report_history')
+      .select('*')
+      .eq('property_number', propertyNumber)
+      .order('sent_at', { ascending: false })
+      .limit(50);
+    if (error) {
+      // テーブルが存在しない場合は空配列を返す
+      res.json([]);
+      return;
+    }
+    res.json(data || []);
+  } catch (error: any) {
+    console.error('Error fetching report history:', error);
+    res.json([]);
+  }
+});
+
+// 報告書送信履歴を記録
+router.post('/:propertyNumber/report-history', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { propertyNumber } = req.params;
+    const { template_name, subject, report_date, report_assignee, report_completed } = req.body;
+    const supabase = createClient(
+      process.env.SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_KEY!
+    );
+    const { data, error } = await supabase
+      .from('property_report_history')
+      .insert({
+        property_number: propertyNumber,
+        template_name: template_name || null,
+        subject: subject || null,
+        report_date: report_date || null,
+        report_assignee: report_assignee || null,
+        report_completed: report_completed || 'N',
+        sent_at: new Date().toISOString(),
+      })
+      .select()
+      .single();
+    if (error) {
+      // テーブルが存在しない場合はエラーを無視
+      res.json({ success: false, message: 'Table not found, skipping history record' });
+      return;
+    }
+    res.json({ success: true, data });
+  } catch (error: any) {
+    console.error('Error recording report history:', error);
+    res.json({ success: false });
   }
 });
 
