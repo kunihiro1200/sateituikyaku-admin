@@ -2,9 +2,18 @@ import { useState, useEffect } from 'react';
 import { Box, Typography, TextField, Grid, Button, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
 import api from '../services/api';
 
+// 月々ローン支払い計算（元利均等返済、金利3%/年、35年）
+function calcMonthlyPayment(price: number): number {
+  const r = 0.03 / 12;
+  const n = 35 * 12;
+  return Math.round(price * r * Math.pow(1 + r, n) / (Math.pow(1 + r, n) - 1));
+}
+
 interface PriceSectionProps {
   salesPrice?: number;
+  salesPriceActual?: number;
   listingPrice?: number;
+  propertyType?: string;
   priceReductionHistory?: string;
   priceReductionScheduledDate?: string | null;
   onFieldChange: (field: string, value: any) => void;
@@ -19,7 +28,9 @@ interface PriceSectionProps {
 
 export default function PriceSection({
   salesPrice,
+  salesPriceActual,
   listingPrice,
+  propertyType,
   priceReductionHistory,
   priceReductionScheduledDate,
   onFieldChange,
@@ -33,6 +44,9 @@ export default function PriceSection({
 }: PriceSectionProps) {
   const displaySalesPrice = editedData.sales_price !== undefined ? editedData.sales_price : salesPrice;
   const displayListingPrice = editedData.listing_price !== undefined ? editedData.listing_price : listingPrice;
+  const actualPrice = editedData.sales_price !== undefined ? editedData.sales_price : salesPriceActual;
+  const showMonthlyPayment = propertyType === '戸建て' || propertyType === 'マンション' || propertyType === '戸' || propertyType === 'マ';
+  const monthlyPayment = actualPrice ? calcMonthlyPayment(actualPrice) : null;
   const displayPriceReductionHistory = editedData.price_reduction_history !== undefined ? editedData.price_reduction_history : priceReductionHistory;
   const displayScheduledDate = editedData.price_reduction_scheduled_date !== undefined ? editedData.price_reduction_scheduled_date : priceReductionScheduledDate;
 
@@ -136,26 +150,7 @@ export default function PriceSection({
               }}
             />
           </Grid>
-          <Grid item xs={12} sm={6}>
-            <Typography variant="body2" color="text.secondary" gutterBottom>
-              売出価格
-            </Typography>
-            <TextField
-              fullWidth
-              type="number"
-              value={displayListingPrice || ''}
-              onChange={(e) => onFieldChange('listing_price', e.target.value ? Number(e.target.value) : null)}
-              InputProps={{
-                startAdornment: <Typography sx={{ mr: 1 }}>¥</Typography>,
-              }}
-              sx={{
-                '& .MuiInputBase-input': {
-                  fontSize: '20px',
-                  fontWeight: 'medium',
-                },
-              }}
-            />
-          </Grid>
+
           <Grid item xs={12}>
             <Typography variant="body2" color="text.secondary" gutterBottom>
               値下げ履歴
@@ -193,14 +188,19 @@ export default function PriceSection({
               {formatPrice(displaySalesPrice)}
             </Typography>
           </Box>
-          <Box sx={{ mb: 2 }}>
-            <Typography variant="body1" color="text.secondary" gutterBottom sx={{ fontSize: '1.1rem', fontWeight: 'bold' }}>
-              売出価格
-            </Typography>
-            <Typography variant="h4" fontWeight="medium" sx={{ fontSize: '2rem' }}>
-              {formatPrice(displayListingPrice)}
-            </Typography>
-          </Box>
+          {showMonthlyPayment && monthlyPayment && (
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="body1" color="text.secondary" gutterBottom sx={{ fontSize: '1.1rem', fontWeight: 'bold' }}>
+                月々ローン支払い
+              </Typography>
+              <Typography variant="h4" fontWeight="medium" sx={{ fontSize: '1.8rem', color: '#1976d2' }}>
+                ¥{monthlyPayment.toLocaleString()}/月
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                ※金利3%・35年・元利均等返済
+              </Typography>
+            </Box>
+          )}
           <Box sx={{ mb: 2 }}>
             <Typography variant="body1" color="text.secondary" gutterBottom sx={{ fontSize: '1.1rem', fontWeight: 'bold' }}>
               値下げ履歴

@@ -857,7 +857,9 @@ export default function PropertyListingDetailPage() {
               >
                 <PriceSection
                   salesPrice={data.price}
+                  salesPriceActual={editedData.sales_price !== undefined ? editedData.sales_price : data.sales_price}
                   listingPrice={data.listing_price}
+                  propertyType={editedData.property_type !== undefined ? editedData.property_type : data.property_type}
                   priceReductionHistory={data.price_reduction_history}
                   priceReductionScheduledDate={data.price_reduction_scheduled_date}
                   onFieldChange={handleFieldChange}
@@ -1106,6 +1108,17 @@ export default function PropertyListingDetailPage() {
                     onChange={(e) => handleFieldChange('property_type', e.target.value)} />
                 ) : (
                   <Typography variant="body1">{data.property_type || '-'}</Typography>
+                )}
+              </Grid>
+              <Grid item xs={6}>
+                <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '1rem', color: 'text.primary', mb: 0.5 }}>売出価格</Typography>
+                {isBasicInfoEditMode ? (
+                  <TextField fullWidth size="small" type="number"
+                    value={editedData.listing_price !== undefined ? editedData.listing_price : (data.listing_price || '')}
+                    onChange={(e) => handleFieldChange('listing_price', e.target.value ? Number(e.target.value) : null)}
+                    InputProps={{ startAdornment: <Typography sx={{ mr: 0.5 }}>¥</Typography> }} />
+                ) : (
+                  <Typography variant="body1">{data.listing_price ? `¥${data.listing_price.toLocaleString()}` : '-'}</Typography>
                 )}
               </Grid>
               <Grid item xs={6}>
