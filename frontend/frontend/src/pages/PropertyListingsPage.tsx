@@ -441,29 +441,30 @@ export default function PropertyListingsPage() {
                       <TableRow
                         key={listing.id}
                         hover
+                        onClick={() => listing.property_number && handleRowClick(listing.property_number)}
                         sx={{ cursor: 'pointer', bgcolor: isSelected ? 'action.selected' : 'inherit' }}
                       >
-                        <TableCell padding="checkbox" onClick={(e) => listing.property_number && handleSelectProperty(listing.property_number, e)}>
+                        <TableCell padding="checkbox" onClick={(e) => { e.stopPropagation(); listing.property_number && handleSelectProperty(listing.property_number, e); }}>
                           <Checkbox checked={isSelected} />
                         </TableCell>
-                        <TableCell onClick={() => listing.property_number && handleRowClick(listing.property_number)}>
+                        <TableCell>
                           <Typography variant="body2" sx={{ color: SECTION_COLORS.property.main }} fontWeight="bold">
                             {listing.property_number || '-'}
                           </Typography>
                         </TableCell>
-                        <TableCell onClick={() => listing.property_number && handleRowClick(listing.property_number)}>
+                        <TableCell>
                           <StatusBadge atbbStatus={listing.atbb_status} size={isMobile ? 'small' : 'small'} />
                         </TableCell>
-                        <TableCell onClick={() => listing.property_number && handleRowClick(listing.property_number)}>{listing.sales_assignee || '-'}</TableCell>
-                        <TableCell onClick={() => listing.property_number && handleRowClick(listing.property_number)}>
+                        <TableCell>{listing.sales_assignee || '-'}</TableCell>
+                        <TableCell>
                           {listing.property_type && <Chip label={listing.property_type} size="small" />}
                         </TableCell>
-                        <TableCell onClick={() => listing.property_number && handleRowClick(listing.property_number)} sx={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        <TableCell sx={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {listing.address || listing.display_address || '-'}
                         </TableCell>
-                        <TableCell onClick={() => listing.property_number && handleRowClick(listing.property_number)}>{listing.seller_name || '-'}</TableCell>
-                        <TableCell onClick={() => listing.property_number && handleRowClick(listing.property_number)}>{listing.buyer_name || '-'}</TableCell>
-                        <TableCell onClick={() => listing.property_number && handleRowClick(listing.property_number)}>
+                        <TableCell>{listing.seller_name || '-'}</TableCell>
+                        <TableCell>{listing.buyer_name || '-'}</TableCell>
+                        <TableCell onClick={(e) => e.stopPropagation()}>
                           {listing.property_number && (
                             <BuyerIndicator
                               propertyNumber={listing.property_number}
@@ -472,9 +473,9 @@ export default function PropertyListingsPage() {
                             />
                           )}
                         </TableCell>
-                        <TableCell onClick={() => listing.property_number && handleRowClick(listing.property_number)}>{formatDate(listing.contract_date)}</TableCell>
-                        <TableCell onClick={() => listing.property_number && handleRowClick(listing.property_number)}>{formatDate(listing.settlement_date)}</TableCell>
-                        <TableCell onClick={() => listing.property_number && handleRowClick(listing.property_number)}>{formatPrice(listing.price)}</TableCell>
+                        <TableCell>{formatDate(listing.contract_date)}</TableCell>
+                        <TableCell>{formatDate(listing.settlement_date)}</TableCell>
+                        <TableCell>{formatPrice(listing.price)}</TableCell>
                         <TableCell onClick={(e) => e.stopPropagation()}>
                           <PublicUrlCell propertyNumber={listing.property_number} />
                         </TableCell>
@@ -493,7 +494,7 @@ export default function PropertyListingsPage() {
                             <Typography variant="body2" color="text.secondary">-</Typography>
                           )}
                         </TableCell>
-                        <TableCell onClick={() => listing.property_number && handleRowClick(listing.property_number)}>
+                        <TableCell>
                           {getDisplayStatus(listing.atbb_status) || '-'}
                         </TableCell>
                       </TableRow>
