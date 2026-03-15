@@ -71,8 +71,6 @@ export default function PropertyListingsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedAssignee, setSelectedAssignee] = useState<string | null>(null);
   const [sidebarStatus, setSidebarStatus] = useState<string | null>(null);
-  // 最後に操作されたフィルター（'sidebar' or 'search'）
-  const [lastFilter, setLastFilter] = useState<'sidebar' | 'search'>('sidebar');
   const [selectedPropertyNumber, setSelectedPropertyNumber] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [buyerCounts, setBuyerCounts] = useState<Record<string, number>>({});
@@ -88,7 +86,6 @@ export default function PropertyListingsPage() {
       if (savedState.searchQuery !== undefined) setSearchQuery(savedState.searchQuery);
       if (savedState.selectedAssignee !== undefined) setSelectedAssignee(savedState.selectedAssignee);
       if (savedState.sidebarStatus !== undefined) setSidebarStatus(savedState.sidebarStatus);
-      if (savedState.lastFilter !== undefined) setLastFilter(savedState.lastFilter);
     }
   }, [location.state]);
 
@@ -157,27 +154,22 @@ export default function PropertyListingsPage() {
       );
     }
 
-    // サイドバーと検索は後から操作した方を優先（排他的）
-    if (lastFilter === 'sidebar') {
-      // サイドバーが最後 → サイドバーのみ適用
-      if (sidebarStatus && sidebarStatus !== 'all') {
-        listings = listings.filter(l => l.sidebar_status === sidebarStatus);
-      }
-    } else {
-      // 検索が最後 → 検索のみ適用
-      if (searchQuery.trim()) {
-        const query = searchQuery.toLowerCase();
-        listings = listings.filter(l =>
-          l.property_number?.toLowerCase().includes(query) ||
-          l.address?.toLowerCase().includes(query) ||
-          l.seller_name?.toLowerCase().includes(query) ||
-          l.buyer_name?.toLowerCase().includes(query)
-        );
-      }
+    // サイドバーと検索は排他的（後から操作した方がもう一方をクリアするため、両方独立適用でOK）
+    if (sidebarStatus && sidebarStatus !== 'all') {
+      listings = listings.filter(l => l.sidebar_status === sidebarStatus);
+    }
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      listings = listings.filter(l =>
+        l.property_number?.toLowerCase().includes(query) ||
+        l.address?.toLowerCase().includes(query) ||
+        l.seller_name?.toLowerCase().includes(query) ||
+        l.buyer_name?.toLowerCase().includes(query)
+      );
     }
 
     return listings;
-  }, [allListings, selectedAssignee, sidebarStatus, searchQuery, lastFilter]);
+  }, [allListings, selectedAssignee, sidebarStatus, searchQuery]);
 
   const paginatedListings = useMemo(() => {
     const start = page * rowsPerPage;
@@ -312,7 +304,7 @@ export default function PropertyListingsPage() {
           <PropertySidebarStatus
             listings={allListings}
             selectedStatus={sidebarStatus}
-            onStatusChange={(status) => { setSidebarStatus(status); setLastFilter('sidebar'); setPage(0); }}
+            onStatusChange={(status) => { setSidebarStatus(status); setSearchQuery(''); setLastFilter('sidebar'); setPage(0); }}
           />
 
           {/* 担当者フィルター */}
@@ -354,7 +346,7 @@ export default function PropertyListingsPage() {
               size="small"
               placeholder="Search 物件（物件番号、所在地、売主、買主）"
               value={searchQuery}
-              onChange={(e) => { setSearchQuery(e.target.value); setLastFilter('search'); setPage(0); }}
+              onChange={(e) => { setSearchQuery(e.target.value); setSidebarStatus(null); setLastFilter('search'); setPage(0); }}
               InputProps={{
                 startAdornment: <InputAdornment position="start"><SearchIcon /></InputAdornment>,
                 endAdornment: searchQuery ? (
