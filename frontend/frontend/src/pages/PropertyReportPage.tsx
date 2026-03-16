@@ -95,6 +95,7 @@ export default function PropertyReportPage() {
   const [editTo, setEditTo] = useState('');
   const [editSubject, setEditSubject] = useState('');
   const [editBody, setEditBody] = useState('');
+  const [sending, setSending] = useState(false);
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
     message: string;
@@ -317,20 +318,28 @@ export default function PropertyReportPage() {
     }
   };
 
-  const handleOpenGmail = () => {
-    const to = encodeURIComponent(editTo);
-    const subject = encodeURIComponent(editSubject);
-    const body = encodeURIComponent(editBody);
-    const url = `https://mail.google.com/mail/?view=cm&fs=1&to=${to}&su=${subject}&body=${body}`;
-    window.open(url, '_blank');
-  };
-
-  const handleSendConfirm = async () => {
-    setSendConfirmDialogOpen(false);
-    if (pendingSendHistory) {
-      await recordSendHistory(pendingSendHistory.templateName, editSubject, editBody);
+  const handleSend = async () => {
+    if (!pendingSendHistory) return;
+    setSending(true);
+    try {
+      await api.post(`/api/property-listings/${propertyNumber}/send-report-email`, {
+        to: editTo,
+        subject: editSubject,
+        body: editBody,
+        template_name: pendingSendHistory.templateName,
+        report_date: reportData.report_date || null,
+        report_assignee: reportData.report_assignee || null,
+        report_completed: reportData.report_completed || 'N',
+      });
+      setSendConfirmDialogOpen(false);
+      setPendingSendHistory(null);
+      fetchReportHistory();
+      setSnackbar({ open: true, message: 'メールを送信しました', severity: 'success' });
+    } catch (error: any) {
+      setSnackbar({ open: true, message: error.response?.data?.error || 'メール送信に失敗しました', severity: 'error' });
+    } finally {
+      setSending(false);
     }
-    setPendingSendHistory(null);
   };
 
   const handleSendCancel = () => {
@@ -637,30 +646,31 @@ export default function PropertyReportPage() {
         </DialogActions>
       </Dialog>
 
-      {/* メールプレビュー＆送信確認ダイアログ（左：前回、右：今回） */}
-      <Dialog open={sendConfirmDialogOpen} onClose={handleSendCancel} maxWidth="lg" fullWidth
-        PaperProps={{ sx: { height: '80vh' } }}>
-        <DialogTitle sx={{ pb: 1 }}>
-          メール確認 — {pendingSendHistory?.templateName}
+      {/* メールプレビュー＆送信ダイアログ（左：前回、右：今回） */}
+      <Dialog open={sendConfirmDialogOpen} onClose={handleSendCancel} fullScreen>
+        <DialogTitle sx={{ pb: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Typography variant="h6" fontWeight="bold">メール確認</Typography>
+          <Button onClick={handleSendCancel} color="inherit" size="small">閉じる</Button>
         </DialogTitle>
         <DialogContent dividers sx={{ p: 0, display: 'flex', overflow: 'hidden' }}>
           {/* 左：前回のメール */}
-          <Box sx={{ flex: 1, borderRight: '1px solid', borderColor: 'divider', p: 2, overflow: 'auto', bgcolor: '#fafafa' }}>
-            <Typography variant="caption" fontWeight="bold" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
-              前回のメール
+          <Box sx={{ flex: 1, borderRight: '1px solid', borderColor: 'divider', p: 2, overflow: 'auto', bgcolor: '#fafafa', display: 'flex', flexDirection: 'column' }}>
+            <Typography variant="subtitle2" fontWeight="bold" color="text.secondary" sx={{ mb: 1 }}>
+              {reportHistory.length > 0 && reportHistory[0].template_name
+                ? reportHistory[0].template_name
+                : '前回のメール'}
             </Typography>
             {reportHistory.length > 0 && reportHistory[0].body ? (
               <>
                 <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
                   {new Date(reportHistory[0].sent_at).toLocaleString('ja-JP', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
-                  　{reportHistory[0].template_name || ''}
                 </Typography>
                 {reportHistory[0].subject && (
                   <Typography variant="body2" fontWeight="bold" sx={{ mb: 1 }}>
                     件名: {reportHistory[0].subject}
                   </Typography>
                 )}
-                <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', fontSize: '0.8rem', color: 'text.primary' }}>
+                <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', fontSize: '0.85rem', color: 'text.primary' }}>
                   {reportHistory[0].body}
                 </Typography>
               </>
@@ -673,8 +683,8 @@ export default function PropertyReportPage() {
 
           {/* 右：今回のメール（編集可能） */}
           <Box sx={{ flex: 1, p: 2, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-            <Typography variant="caption" fontWeight="bold" color="text.secondary">
-              今回のメール（編集可能）
+            <Typography variant="subtitle2" fontWeight="bold" color="primary">
+              {pendingSendHistory?.templateName || '今回のメール'}
             </Typography>
             <TextField
               label="宛先"
@@ -697,25 +707,22 @@ export default function PropertyReportPage() {
               value={editBody}
               onChange={(e) => setEditBody(e.target.value)}
               sx={{ flex: 1 }}
-              InputProps={{ sx: { fontSize: '0.8rem', alignItems: 'flex-start' } }}
-              inputProps={{ style: { minHeight: 300 } }}
+              InputProps={{ sx: { fontSize: '0.85rem', alignItems: 'flex-start' } }}
+              inputProps={{ style: { minHeight: 'calc(100vh - 280px)' } }}
             />
+            <Button
+              onClick={handleSend}
+              variant="contained"
+              color="primary"
+              size="large"
+              disabled={sending || !editTo}
+              startIcon={sending ? <CircularProgress size={18} /> : <EmailIcon />}
+              sx={{ mt: 1 }}
+            >
+              {sending ? '送信中...' : '送信'}
+            </Button>
           </Box>
         </DialogContent>
-        <DialogActions sx={{ gap: 1, px: 2 }}>
-          <Button onClick={handleSendCancel} color="inherit">閉じる</Button>
-          <Button
-            onClick={handleOpenGmail}
-            variant="outlined"
-            startIcon={<EmailIcon />}
-            sx={{ borderColor: '#1a73e8', color: '#1a73e8' }}
-          >
-            Gmailで開く
-          </Button>
-          <Button onClick={handleSendConfirm} variant="contained" color="primary">
-            送信済みとして記録
-          </Button>
-        </DialogActions>
       </Dialog>
 
       {/* 送信履歴詳細ダイアログ */}

@@ -9,6 +9,7 @@ import { DataIntegrityDiagnosticService } from '../services/DataIntegrityDiagnos
 import { BuyerCandidateService } from '../services/BuyerCandidateService';
 import { UrlValidator } from '../utils/urlValidator';
 import { createClient } from '@supabase/supabase-js';
+import { EmailService } from '../services/EmailService.supabase';
 
 const router = Router();
 const propertyListingService = new PropertyListingService();
@@ -18,6 +19,7 @@ const buyerDistributionService = new BuyerDistributionService();
 const enhancedBuyerDistributionService = new EnhancedBuyerDistributionService();
 const diagnosticService = new DataIntegrityDiagnosticService();
 const buyerCandidateService = new BuyerCandidateService();
+const emailService = new EmailService();
 
 // 一覧取得
 router.get('/', async (req: Request, res: Response) => {
@@ -824,6 +826,68 @@ router.post('/:propertyNumber/report-history', async (req: Request, res: Respons
   } catch (error: any) {
     console.error('Error recording report history:', error);
     res.json({ success: false });
+  }
+});
+
+// 報告書メール送信
+router.post('/:propertyNumber/send-report-email', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { propertyNumber } = req.params;
+    const { to, subject, body, template_name, report_date, report_assignee, report_completed } = req.body;
+
+    if (!to || !subject || !body) {
+      res.status(400).json({ error: '宛先・件名・本文は必須です' });
+      return;
+    }
+
+    const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!);
+
+    // 売主情報をseller_numberで取得（Gmail OAuth用）
+    const { data: sellerRow } = await supabase
+      .from('sellers')
+      .select('*')
+      .eq('seller_number', propertyNumber)
+      .single();
+
+    if (!sellerRow) {
+      res.status(404).json({ error: '売主が見つかりません' });
+      return;
+    }
+
+    // 宛先を指定して送信（emailフィールドを上書き）
+    const sellerWithTo = { ...sellerRow, email: to };
+    const employeeEmail = req.employee?.email || '';
+    const employeeId = req.employee?.id || '';
+
+    const result = await emailService.sendTemplateEmail(
+      sellerWithTo as any,
+      subject,
+      body,
+      employeeEmail,
+      employeeId,
+    );
+
+    if (!result.success) {
+      res.status(500).json({ error: result.error || 'メール送信に失敗しました' });
+      return;
+    }
+
+    // 送信履歴を記録
+    await supabase.from('property_report_history').insert({
+      property_number: propertyNumber,
+      template_name: template_name || null,
+      subject,
+      body,
+      report_date: report_date || null,
+      report_assignee: report_assignee || null,
+      report_completed: report_completed || 'N',
+      sent_at: new Date().toISOString(),
+    });
+
+    res.json({ success: true, messageId: result.messageId });
+  } catch (error: any) {
+    console.error('Error sending report email:', error);
+    res.status(500).json({ error: error.message || 'メール送信に失敗しました' });
   }
 });
 
