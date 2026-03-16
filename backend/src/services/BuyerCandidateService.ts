@@ -469,10 +469,38 @@ export class BuyerCandidateService {
 
   /**
    * エリア番号を抽出（①②③...の形式）
+   * 数字（例: 40）も丸数字（㊵）に変換してマッチングできるようにする
    */
   private extractAreaNumbers(areaString: string): string[] {
     const circledNumbers = areaString.match(/[①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯㊵㊶]/g) || [];
-    return circledNumbers;
+
+    // 数字を丸数字に変換（例: "40" → "㊵", "41" → "㊶"）
+    const numberMatches = areaString.match(/\b(\d+)\b/g) || [];
+    for (const numStr of numberMatches) {
+      const num = parseInt(numStr, 10);
+      const circled = this.numberToCircled(num);
+      if (circled) {
+        circledNumbers.push(circled);
+      }
+    }
+
+    return [...new Set(circledNumbers)];
+  }
+
+  /**
+   * 数字を丸数字に変換
+   */
+  private numberToCircled(num: number): string | null {
+    if (num >= 1 && num <= 20) {
+      return String.fromCharCode(0x2460 + num - 1); // ①〜⑳
+    }
+    if (num >= 21 && num <= 35) {
+      return String.fromCharCode(0x3251 + num - 21); // ㉑〜㉟
+    }
+    if (num >= 36 && num <= 50) {
+      return String.fromCharCode(0x32B1 + num - 36); // ㊱〜㊿
+    }
+    return null;
   }
 
   /**
@@ -503,19 +531,22 @@ export class BuyerCandidateService {
             detailedAreas.forEach(num => areaNumbers.add(num));
             console.log(`[BuyerCandidateService] Beppu detailed areas for ${address}:`, detailedAreas);
           } else {
-            // マッピングが見つからない場合は別府市全体にフォールバック
+            // マッピングが見つからない場合は別府市全体にフォールバック（⑥と㊶の両方）
             areaNumbers.add('⑥');
-            console.log(`[BuyerCandidateService] No detailed mapping for ${address}, using ⑥`);
+            areaNumbers.add('㊶');
+            console.log(`[BuyerCandidateService] No detailed mapping for ${address}, using ⑥㊶`);
           }
         } catch (error) {
           console.error(`[BuyerCandidateService] Error getting Beppu areas:`, error);
           areaNumbers.add('⑥');
+          areaNumbers.add('㊶');
         }
       }
 
-      // 大分市の場合（デフォルト⑤）
+      // 大分市の場合（⑤と㊵の両方）
       if (address.includes('大分市')) {
         areaNumbers.add('⑤');
+        areaNumbers.add('㊵');
       }
     }
 

@@ -457,7 +457,22 @@ export default function BuyerCandidateListPage() {
                       <TableCell onClick={() => handleBuyerClick(candidate.buyer_number)} sx={{ fontSize: '1rem' }}>
                         <Typography variant="body2">
                           {candidate.desired_area
-                            ? (candidate.desired_area.match(/[①-⑳㉑-㉟㊱-㊿]/g) || []).join('')  || candidate.desired_area
+                            ? (() => {
+                                const area = candidate.desired_area;
+                                // 丸数字を抽出
+                                const circled = (area.match(/[①-⑳㉑-㉟㊱-㊿]/g) || []).join('');
+                                if (circled) return circled;
+                                // 数字を丸数字に変換
+                                const nums = area.match(/\b(\d+)\b/g) || [];
+                                const converted = nums.map((n: string) => {
+                                  const num = parseInt(n, 10);
+                                  if (num >= 1 && num <= 20) return String.fromCharCode(0x2460 + num - 1);
+                                  if (num >= 21 && num <= 35) return String.fromCharCode(0x3251 + num - 21);
+                                  if (num >= 36 && num <= 50) return String.fromCharCode(0x32B1 + num - 36);
+                                  return n;
+                                }).join('');
+                                return converted || area;
+                              })()
                             : '-'}
                         </Typography>
                       </TableCell>
