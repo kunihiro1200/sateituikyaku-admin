@@ -477,7 +477,7 @@ export class BuyerCandidateService {
    * 数字（例: 40）も丸数字（㊵）に変換してマッチングできるようにする
    */
   private extractAreaNumbers(areaString: string): string[] {
-    const circledNumbers = areaString.match(/[①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯㊵㊶]/g) || [];
+    const circledNumbers: string[] = areaString.match(/[①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯㊵㊶]/g) || [];
 
     // 数字を丸数字に変換（例: "40" → "㊵", "41" → "㊶"）
     const numberMatches = areaString.match(/\b(\d+)\b/g) || [];
