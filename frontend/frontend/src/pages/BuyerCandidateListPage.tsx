@@ -91,7 +91,7 @@ export default function BuyerCandidateListPage() {
   };
 
   const handleBuyerClick = (buyerNumber: string) => {
-    navigate(`/buyers/${buyerNumber}`);
+    window.open(`/buyers/${buyerNumber}`, '_blank');
   };
 
   const handleBack = () => {
