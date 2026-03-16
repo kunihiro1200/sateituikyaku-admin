@@ -2785,6 +2785,8 @@ export class EnhancedAutoSyncService {
 
   /**
    * 単一買主を更新
+   * 手動入力優先フィールド（desired_areaなど）は、DBがスプレッドシートより
+   * 後に更新されている場合（db_updated_at > last_synced_at）は上書きしない
    */
   private async updateSingleBuyer(buyerNumber: string, row: any): Promise<void> {
     const mappedData = this.buyerColumnMapper.mapSpreadsheetToDatabase(
@@ -2800,6 +2802,35 @@ export class EnhancedAutoSyncService {
     // buyer_number と buyer_id は更新しない（主キーとUUID）
     delete updateData.buyer_number;
     delete updateData.buyer_id;
+
+    // 手動入力優先フィールド: DBがスプレッドシートより後に更新されていれば上書きしない
+    const manualPriorityFields = ['desired_area'];
+
+    // DBの現在値を取得して比較
+    const { data: existingBuyer } = await this.supabase
+      .from('buyers')
+      .select('db_updated_at, last_synced_at, desired_area')
+      .eq('buyer_number', buyerNumber)
+      .maybeSingle();
+
+    if (existingBuyer) {
+      const dbUpdatedAt = existingBuyer.db_updated_at ? new Date(existingBuyer.db_updated_at) : null;
+      const lastSyncedAt = existingBuyer.last_synced_at ? new Date(existingBuyer.last_synced_at) : null;
+
+      // DBが手動更新されている（db_updated_at > last_synced_at）場合、手動優先フィールドを保護
+      const isManuallyUpdated = dbUpdatedAt && lastSyncedAt
+        ? dbUpdatedAt > lastSyncedAt
+        : dbUpdatedAt && !lastSyncedAt; // last_synced_atがない場合も手動更新とみなす
+
+      if (isManuallyUpdated) {
+        for (const field of manualPriorityFields) {
+          if (field in updateData) {
+            console.log(`[updateSingleBuyer] ${buyerNumber}: ${field} is manually updated (db_updated_at=${existingBuyer.db_updated_at} > last_synced_at=${existingBuyer.last_synced_at}), skipping spreadsheet overwrite`);
+            delete updateData[field];
+          }
+        }
+      }
+    }
 
     const { error: updateError } = await this.supabase
       .from('buyers')

@@ -12,6 +12,9 @@ import {
   Alert,
   Snackbar,
   Tooltip,
+  Checkbox,
+  FormControlLabel,
+  FormGroup,
 } from '@mui/material';
 import { 
   ArrowBack as ArrowBackIcon,
@@ -44,7 +47,7 @@ interface Buyer {
 
 const DESIRED_CONDITIONS_FIELDS = [
   { key: 'desired_timing', label: '希望時期', inlineEditable: true, fieldType: 'text' },
-  { key: 'desired_area', label: '★エリア', inlineEditable: true, fieldType: 'dropdown', options: AREA_OPTIONS },
+  { key: 'desired_area', label: '★エリア', inlineEditable: false, fieldType: 'multiselect', options: AREA_OPTIONS },
   { key: 'desired_property_type', label: '★希望種別', inlineEditable: true, fieldType: 'dropdown', options: DESIRED_PROPERTY_TYPE_OPTIONS },
   { key: 'desired_building_age', label: '★築年数', inlineEditable: true, fieldType: 'dropdown', options: BUILDING_AGE_OPTIONS },
   { key: 'desired_floor_plan', label: '★間取り', inlineEditable: true, fieldType: 'dropdown', options: FLOOR_PLAN_OPTIONS },
@@ -249,7 +252,36 @@ export default function BuyerDesiredConditionsPage() {
                 <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
                   {field.label}
                 </Typography>
-                {field.inlineEditable ? (
+                {field.key === 'desired_area' ? (
+                  <FormGroup>
+                    {(field.options || []).map((opt) => {
+                      const currentValues: string[] = buyer[field.key]
+                        ? buyer[field.key].split(/[,、]/).map((v: string) => v.trim()).filter(Boolean)
+                        : [];
+                      const checked = currentValues.includes(opt.value);
+                      return (
+                        <FormControlLabel
+                          key={opt.value}
+                          control={
+                            <Checkbox
+                              size="small"
+                              checked={checked}
+                              onChange={async () => {
+                                const next = checked
+                                  ? currentValues.filter((v) => v !== opt.value)
+                                  : [...currentValues, opt.value];
+                                await handleInlineFieldSave(field.key, next.join('、'));
+                              }}
+                              sx={{ py: 0.3 }}
+                            />
+                          }
+                          label={<Typography variant="body2">{opt.label}</Typography>}
+                          sx={{ ml: 0 }}
+                        />
+                      );
+                    })}
+                  </FormGroup>
+                ) : field.inlineEditable ? (
                   <InlineEditableField
                     value={buyer[field.key]}
                     onSave={(newValue) => handleInlineFieldSave(field.key, newValue)}
