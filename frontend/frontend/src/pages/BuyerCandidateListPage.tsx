@@ -40,6 +40,7 @@ interface BuyerCandidate {
   email: string | null;
   phone_number: string | null;
   inquiry_property_address: string | null;
+  inquiry_property_price: number | null;
 }
 
 interface BuyerCandidateResponse {
@@ -262,6 +263,13 @@ export default function BuyerCandidateListPage() {
     return 'default';
   };
 
+  // 最新状況からアルファベット部分のみ抽出（例: "追客中A" → "A"）
+  const extractStatusAlpha = (status: string | null): string => {
+    if (!status) return '-';
+    const match = status.match(/[A-Za-z]+/g);
+    return match ? match.join('') : status;
+  };
+
   if (loading) {
     return (
       <Container maxWidth="xl" sx={{ py: 3 }}>
@@ -446,13 +454,20 @@ export default function BuyerCandidateListPage() {
                       </TableCell>
                       <TableCell onClick={() => handleBuyerClick(candidate.buyer_number)}>
                         {candidate.latest_status ? (
-                          <Chip label={candidate.latest_status} size="small" color={getStatusColor(candidate.latest_status)} />
+                          <Chip label={extractStatusAlpha(candidate.latest_status)} size="small" color={getStatusColor(candidate.latest_status)} />
                         ) : '-'}
                       </TableCell>
                       <TableCell onClick={() => handleBuyerClick(candidate.buyer_number)} sx={{ fontSize: '1rem' }}>
-                        <Typography variant="body2" sx={{ maxWidth: 300, overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          {candidate.inquiry_property_address || '-'}
-                        </Typography>
+                        <Box>
+                          <Typography variant="body2" sx={{ maxWidth: 300, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {candidate.inquiry_property_address || '-'}
+                          </Typography>
+                          {candidate.inquiry_property_price != null && (
+                            <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
+                              ¥{candidate.inquiry_property_price.toLocaleString()}
+                            </Typography>
+                          )}
+                        </Box>
                       </TableCell>
                       <TableCell onClick={() => handleBuyerClick(candidate.buyer_number)} sx={{ fontSize: '1rem' }}>
                         <Typography variant="body2">

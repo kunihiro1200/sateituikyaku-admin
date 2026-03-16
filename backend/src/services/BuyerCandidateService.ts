@@ -13,6 +13,7 @@ export interface BuyerCandidate {
   email: string | null;
   phone_number: string | null;
   inquiry_property_address: string | null;
+  inquiry_property_price: number | null;
 }
 
 export interface BuyerCandidateResponse {
@@ -107,9 +108,12 @@ export class BuyerCandidateService {
     // 各買主の問い合わせ物件住所を設定
     const candidatesWithAddress = limitedCandidates.map(b => {
       let inquiryPropertyAddress: string | null = null;
+      let inquiryPropertyPrice: number | null = null;
       if (b.property_number) {
         const firstPropertyNumber = b.property_number.split(',')[0].trim();
-        inquiryPropertyAddress = propertyAddressMap.get(firstPropertyNumber) || null;
+        const info = propertyAddressMap.get(firstPropertyNumber);
+        inquiryPropertyAddress = info?.address || null;
+        inquiryPropertyPrice = info?.price ?? null;
       }
 
       return {
@@ -122,6 +126,7 @@ export class BuyerCandidateService {
         email: b.email,
         phone_number: b.phone_number,
         inquiry_property_address: inquiryPropertyAddress,
+        inquiry_property_price: inquiryPropertyPrice,
       };
     });
 
@@ -139,10 +144,10 @@ export class BuyerCandidateService {
   }
 
   /**
-   * 複数の物件番号に対して住所を一括取得
+   * 複数の物件番号に対して住所と価格を一括取得
    */
-  private async getPropertyAddressesInBatch(propertyNumbers: string[]): Promise<Map<string, string>> {
-    const addressMap = new Map<string, string>();
+  private async getPropertyAddressesInBatch(propertyNumbers: string[]): Promise<Map<string, { address: string; price: number | null }>> {
+    const addressMap = new Map<string, { address: string; price: number | null }>();
 
     if (propertyNumbers.length === 0) {
       return addressMap;
@@ -151,7 +156,7 @@ export class BuyerCandidateService {
     try {
       const { data: properties, error } = await this.supabase
         .from('property_listings')
-        .select('property_number, address')
+        .select('property_number, address, sales_price')
         .in('property_number', propertyNumbers);
 
       if (error) {
@@ -162,7 +167,7 @@ export class BuyerCandidateService {
       if (properties) {
         properties.forEach(p => {
           if (p.property_number && p.address) {
-            addressMap.set(p.property_number, p.address);
+            addressMap.set(p.property_number, { address: p.address, price: p.sales_price ?? null });
           }
         });
       }
