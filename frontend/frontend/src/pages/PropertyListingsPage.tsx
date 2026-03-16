@@ -115,7 +115,7 @@ export default function PropertyListingsPage() {
 
         console.log(`取得: ${offset + 1}～${offset + fetchedData.length}件 / 合計${listingsRes.data.total}件`);
 
-        if (fetchedData.length < limit || allListingsData.length >= listingsRes.data.total) {
+        if (fetchedData.length < limit) {
           hasMore = false;
         } else {
           offset += limit;

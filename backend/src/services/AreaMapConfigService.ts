@@ -128,8 +128,29 @@ export class AreaMapConfigService {
           coordinates: null
         };
 
-        // Extract coordinates if URL exists
-        if (config.googleMapUrl) {
+        // DBに座標が保存されている場合はそれを優先使用（URLからの抽出をスキップ）
+        if (row.coordinates) {
+          try {
+            const dbCoords = typeof row.coordinates === 'string'
+              ? JSON.parse(row.coordinates)
+              : row.coordinates;
+            if (dbCoords && typeof dbCoords.lat === 'number' && typeof dbCoords.lng === 'number') {
+              config.coordinates = { lat: dbCoords.lat, lng: dbCoords.lng };
+              this.logInfo(`Using cached coordinates from DB for area ${config.areaNumber}`, {
+                lat: dbCoords.lat,
+                lng: dbCoords.lng
+              });
+            }
+          } catch (parseError) {
+            this.logWarning('Failed to parse coordinates from DB, will try URL extraction', {
+              areaNumber: config.areaNumber,
+              rawCoordinates: row.coordinates
+            });
+          }
+        }
+
+        // DBに座標がない場合のみ、URLから抽出を試みる
+        if (!config.coordinates && config.googleMapUrl) {
           if (!this.isValidGoogleMapsUrl(config.googleMapUrl)) {
             this.logError('Skipping area due to invalid Google Maps URL', {
               areaNumber: config.areaNumber,
@@ -143,10 +164,23 @@ export class AreaMapConfigService {
             const coords = await this.geolocationService.extractCoordinatesFromUrl(config.googleMapUrl);
             if (coords) {
               config.coordinates = coords;
-              this.logInfo(`Extracted coordinates for area ${config.areaNumber}`, {
+              this.logInfo(`Extracted coordinates from URL for area ${config.areaNumber}`, {
                 lat: coords.lat,
                 lng: coords.lng
               });
+              // 次回以降のためにDBに座標を保存
+              try {
+                await this.supabase
+                  .from('area_map_config')
+                  .update({ coordinates: { lat: coords.lat, lng: coords.lng } })
+                  .eq('id', row.id);
+                this.logInfo(`Saved coordinates to DB for area ${config.areaNumber}`);
+              } catch (saveError) {
+                this.logWarning('Failed to save coordinates to DB (non-critical)', {
+                  areaNumber: config.areaNumber,
+                  error: saveError instanceof Error ? saveError.message : String(saveError)
+                });
+              }
             } else {
               this.logWarning('Failed to extract coordinates', {
                 areaNumber: config.areaNumber,

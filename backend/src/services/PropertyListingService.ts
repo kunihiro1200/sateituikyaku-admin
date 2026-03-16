@@ -89,6 +89,7 @@ export class PropertyListingService {
         special_notes,
         storage_location,
         seller_name,
+        buyer_name,
         sales_assignee,
         status,
         site_display,

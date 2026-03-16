@@ -518,7 +518,6 @@ router.post(
       }
 
       // EmailServiceを使用してメールを送信
-      // @ts-ignore - TypeScript compilation issue, method exists at runtime
       const result = await emailService.sendDistributionEmail({
         senderAddress,
         recipients,
