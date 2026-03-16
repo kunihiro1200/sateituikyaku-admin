@@ -77,6 +77,8 @@ export default function BuyerDesiredConditionsPage() {
   const [selectedAreas, setSelectedAreas] = useState<string[]>([]);
   // ドロップダウンを閉じた時に保存する値を保持する ref
   const pendingAreasRef = useRef<string[] | null>(null);
+  // selectedAreas の最新値を ref で保持（onClose クロージャー問題を回避）
+  const selectedAreasRef = useRef<string[]>([]);
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' | 'warning' }>({
     open: false,
     message: '',
@@ -102,7 +104,9 @@ export default function BuyerDesiredConditionsPage() {
       setBuyer(res.data);
       // desired_area の初期値をローカル state にセット
       const areaVal = res.data?.desired_area || '';
-      setSelectedAreas(areaVal ? areaVal.split(/[,、]/).map((v: string) => v.trim()).filter(Boolean) : []);
+      const initialAreas = areaVal ? areaVal.split(/[,、]/).map((v: string) => v.trim()).filter(Boolean) : [];
+      setSelectedAreas(initialAreas);
+      selectedAreasRef.current = initialAreas;
     } catch (error) {
       console.error('Failed to fetch buyer:', error);
     } finally {
@@ -135,7 +139,9 @@ export default function BuyerDesiredConditionsPage() {
       // desired_area が更新された場合はローカル state も同期
       if (fieldName === 'desired_area' && result.buyer?.desired_area !== undefined) {
         const areaVal = result.buyer.desired_area || '';
-        setSelectedAreas(areaVal ? areaVal.split(/[,、]/).map((v: string) => v.trim()).filter(Boolean) : []);
+        const updatedAreas = areaVal ? areaVal.split(/[,、]/).map((v: string) => v.trim()).filter(Boolean) : [];
+        setSelectedAreas(updatedAreas);
+        selectedAreasRef.current = updatedAreas;
       }
       
       if (result.syncStatus === 'pending') {
@@ -273,16 +279,18 @@ export default function BuyerDesiredConditionsPage() {
                       value={selectedAreas}
                       onChange={(e) => {
                         const selected = e.target.value as string[];
-                        // UIを即時更新
+                        // UIを即時更新し、ref にも最新値を保持
                         setSelectedAreas(selected);
-                        // 保存待ち値を ref に保持（onClose で保存）
+                        selectedAreasRef.current = selected;
                         pendingAreasRef.current = selected;
                       }}
                       onClose={() => {
-                        // ドロップダウンを閉じた時に保存（変更があった場合のみ）
+                        // ドロップダウンを閉じた時に保存
+                        // selectedAreasRef.current を使うことで onChange との順序問題を回避
                         if (pendingAreasRef.current !== null) {
-                          handleInlineFieldSave(field.key, pendingAreasRef.current.join('、'));
+                          const valueToSave = selectedAreasRef.current.join('、');
                           pendingAreasRef.current = null;
+                          handleInlineFieldSave(field.key, valueToSave);
                         }
                       }}
                       input={<OutlinedInput />}
@@ -298,8 +306,11 @@ export default function BuyerDesiredConditionsPage() {
                                 sx={{ height: 20, fontSize: '0.7rem' }}
                                 onDelete={(e) => {
                                   e.stopPropagation();
-                                  const next = selectedAreas.filter((v) => v !== val);
+                                  // selectedAreasRef.current を使って最新値から削除
+                                  const next = selectedAreasRef.current.filter((v) => v !== val);
                                   setSelectedAreas(next);
+                                  selectedAreasRef.current = next;
+                                  pendingAreasRef.current = null;
                                   // チップ削除は即時保存
                                   handleInlineFieldSave(field.key, next.join('、'));
                                 }}
