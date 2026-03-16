@@ -272,11 +272,7 @@ export default function PriceSection({
             >
               {sendingChat ? '送信中...' : 'Chat送信'}
             </Button>
-            {!getLatestPriceReduction() && (
-              <Typography variant="caption" color="error" sx={{ mt: 0.5, display: 'block' }}>
-                値下げ履歴が見つかりません
-              </Typography>
-            )}
+
           </Box>
         </Box>
       )}

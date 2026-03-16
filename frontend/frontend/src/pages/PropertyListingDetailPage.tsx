@@ -860,6 +860,7 @@ export default function PropertyListingDetailPage() {
                 onEditToggle={() => setIsPriceEditMode(!isPriceEditMode)}
                 onSave={handleSavePrice}
                 onCancel={handleCancelPrice}
+                hasChanges={Object.keys(editedData).length > 0}
               >
                 <PriceSection
                   salesPrice={data.sales_price}
