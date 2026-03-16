@@ -862,7 +862,7 @@ export default function PropertyListingDetailPage() {
                 onCancel={handleCancelPrice}
               >
                 <PriceSection
-                  salesPrice={data.price}
+                  salesPrice={data.sales_price}
                   salesPriceActual={editedData.sales_price !== undefined ? editedData.sales_price : data.sales_price}
                   listingPrice={data.listing_price}
                   propertyType={editedData.property_type !== undefined ? editedData.property_type : data.property_type}

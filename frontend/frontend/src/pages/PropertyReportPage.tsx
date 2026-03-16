@@ -105,9 +105,7 @@ export default function PropertyReportPage() {
       fetchData();
       fetchJimuInitials();
       fetchJimuStaff();
-      fetchTemplates().then(() => {
-        prefetchMergedTemplates();
-      });
+      fetchTemplates();
       fetchReportHistory();
     }
   }, [propertyNumber]);
@@ -457,7 +455,12 @@ export default function PropertyReportPage() {
           variant="outlined"
           fullWidth
           startIcon={prefetching ? <CircularProgress size={16} /> : <EmailIcon />}
-          onClick={() => setTemplateDialogOpen(true)}
+          onClick={() => {
+            setTemplateDialogOpen(true);
+            if (Object.keys(mergedTemplates).length === 0 && !prefetching) {
+              prefetchMergedTemplates();
+            }
+          }}
           sx={{
             borderColor: '#1a73e8',
             color: '#1a73e8',
