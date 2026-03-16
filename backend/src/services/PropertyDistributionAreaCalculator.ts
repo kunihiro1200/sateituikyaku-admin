@@ -71,12 +71,14 @@ export class PropertyDistributionAreaCalculator {
    * @param googleMapUrl Google Map URL
    * @param city 市名（オプション）
    * @param address 住所（別府市の詳細エリア判定用、オプション）
+   * @param preloadedCoords DBから取得済みの座標（指定時はURLからの抽出をスキップ）
    * @returns 計算結果
    */
   async calculateDistributionAreas(
     googleMapUrl: string | null | undefined,
     city?: string | null,
-    address?: string | null
+    address?: string | null,
+    preloadedCoords?: { lat: number; lng: number } | null
   ): Promise<DistributionAreaCalculationResult> {
     const radiusAreas: string[] = [];
     const cityWideAreas: string[] = [];
@@ -111,11 +113,15 @@ export class PropertyDistributionAreaCalculator {
       }
     }
 
-    // 2. URLから座標を抽出
-    if (googleMapUrl) {
-      const coords = await this.geolocationService.extractCoordinatesFromUrl(googleMapUrl);
-      
-      if (coords) {
+    // 2. 座標を取得（DBの座標を優先、なければURLから抽出）
+    let resolvedCoords: { lat: number; lng: number } | null = preloadedCoords || null;
+    if (!resolvedCoords && googleMapUrl) {
+      resolvedCoords = await this.geolocationService.extractCoordinatesFromUrl(googleMapUrl);
+    }
+
+    if (resolvedCoords) {
+      const coords = resolvedCoords;
+      if (true) {
         // 3. エリアマップ設定を読み込み
         const areaConfigs = await this.areaMapConfigService.loadAreaMaps();
         

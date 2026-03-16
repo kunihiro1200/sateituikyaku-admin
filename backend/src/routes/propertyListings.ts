@@ -734,10 +734,22 @@ router.post('/:propertyNumber/calculate-distribution-areas', async (req: Request
     const address = property.address || null;
     const city = address ? cityExtractor.extractCityFromAddress(address) : null;
 
+    // DBに座標がある場合はそれを優先使用（URLからの短縮URL展開を回避）
+    const preloadedCoords = (property.latitude && property.longitude)
+      ? { lat: Number(property.latitude), lng: Number(property.longitude) }
+      : null;
+
+    if (preloadedCoords) {
+      console.log(`[DistributionArea] Using DB coordinates: ${preloadedCoords.lat}, ${preloadedCoords.lng}`);
+    } else {
+      console.log(`[DistributionArea] No DB coordinates, will try URL extraction`);
+    }
+
     const result = await calculator.calculateDistributionAreas(
       googleMapUrl,
       city,
-      address
+      address,
+      preloadedCoords
     );
 
     res.json({
