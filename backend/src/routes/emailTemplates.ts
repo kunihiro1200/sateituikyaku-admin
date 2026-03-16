@@ -125,6 +125,7 @@ router.post('/property/merge', async (req, res) => {
     // property_listings の seller_number を使って sellers テーブルを検索
     // name は暗号化されているため SellerService 経由で復号化して取得
     let sellerName = '';
+    let sellerEmail = '';
     try {
       // まず property_listings から seller_number を取得
       const sellerNumber = property.seller_number;
@@ -136,9 +137,8 @@ router.post('/property/merge', async (req, res) => {
           .single();
         if (sellerRow?.id) {
           const decryptedSeller = await sellerService.getSeller(sellerRow.id);
-          if (decryptedSeller?.name) {
-            sellerName = decryptedSeller.name;
-          }
+          if (decryptedSeller?.name) sellerName = decryptedSeller.name;
+          if (decryptedSeller?.email) sellerEmail = decryptedSeller.email;
         }
       }
       // seller_number がない場合は property_number で試みる（後方互換）
@@ -150,9 +150,8 @@ router.post('/property/merge', async (req, res) => {
           .single();
         if (sellerRow?.id) {
           const decryptedSeller = await sellerService.getSeller(sellerRow.id);
-          if (decryptedSeller?.name) {
-            sellerName = decryptedSeller.name;
-          }
+          if (decryptedSeller?.name && !sellerName) sellerName = decryptedSeller.name;
+          if (decryptedSeller?.email && !sellerEmail) sellerEmail = decryptedSeller.email;
         }
       }
     } catch {
@@ -188,7 +187,7 @@ router.post('/property/merge', async (req, res) => {
       staffInfo
     );
 
-    res.json({ subject: mergedSubject, body: mergedBody, sellerName });
+    res.json({ subject: mergedSubject, body: mergedBody, sellerName, sellerEmail });
   } catch (error: any) {
     console.error('Error merging property template:', error);
     res.status(500).json({ error: 'Failed to merge property template', message: error.message });
