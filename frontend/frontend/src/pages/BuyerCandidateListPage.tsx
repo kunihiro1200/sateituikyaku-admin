@@ -188,8 +188,8 @@ export default function BuyerCandidateListPage() {
     setSelectedBuyers(new Set());
   };
 
-  // SMS送信機能
-  const handleSendSms = async () => {
+  // SMS送信機能（sms:リンク方式 - Android Messages Web連携）
+  const handleSendSms = () => {
     if (selectedBuyers.size === 0) {
       setSnackbar({ open: true, message: '買主を選択してください', severity: 'warning' });
       return;
@@ -205,40 +205,24 @@ export default function BuyerCandidateListPage() {
     }
 
     const publicUrl = `https://property-site-frontend-kappa.vercel.app/public/properties/${propertyNumber}`;
-    const address = data.property.address || '物件';
-    const messageTemplate = `{name}様\n\n株式会社いふうです。\n${address}を近々売りに出すことになりました！\n誰よりも早く内覧可能です。ご興味がございましたらご返信ください。\n\n物件詳細: ${publicUrl}\n\n株式会社いふう\nTEL:097-533-2022\n大分市舞鶴町1-3-30STビル１階`;
+    const address = data.property.address || '';
 
-    try {
-      setSnackbar({ open: true, message: `SMS送信中... (${candidatesWithPhone.length}件)`, severity: 'info' });
+    // 1件ずつsms:リンクで開く（Android Messages Web連携）
+    candidatesWithPhone.forEach((candidate, index) => {
+      const name = candidate.name || 'お客様';
+      const message = `${name}様\n\n株式会社いふうです。\n${address}を近々売りに出すことになりました！\n誰よりも早く内覧可能です。ご興味がございましたらご返信ください。\n\n物件詳細: ${publicUrl}\n\n株式会社いふう\nTEL:097-533-2022\n大分市舞鶴町1-3-30STビル1階`;
+      const smsLink = `sms:${candidate.phone_number}?body=${encodeURIComponent(message)}`;
 
-      const recipients = candidatesWithPhone.map(candidate => ({
-        phoneNumber: candidate.phone_number!,
-        name: candidate.name || 'お客様',
-      }));
-
-      const response = await api.post('/api/sms/send-bulk', {
-        recipients,
-        message: messageTemplate,
-      });
-
-      const result = response.data;
-      if (result.failedCount === 0) {
-        setSnackbar({ open: true, message: `SMSを送信しました (${result.successCount}件)\n各買主に個別に送信されました。`, severity: 'success' });
+      if (index === 0) {
+        // 最初の1件はwindow.location.hrefで開く
+        window.location.href = smsLink;
       } else {
-        setSnackbar({ open: true, message: `SMS送信が完了しました\n成功: ${result.successCount}件\n失敗: ${result.failedCount}件`, severity: 'warning' });
+        // 2件目以降はwindow.openで開く
+        window.open(smsLink, '_blank');
       }
+    });
 
-      setSelectedBuyers(new Set());
-    } catch (error: any) {
-      console.error('Failed to send SMS:', error);
-      let errorMessage = 'SMS送信に失敗しました。';
-      if (error.response?.status === 503) {
-        errorMessage = 'SMS送信サービスが設定されていません。管理者に連絡してください。';
-      } else if (error.response?.data?.error) {
-        errorMessage = error.response.data.error;
-      }
-      setSnackbar({ open: true, message: errorMessage, severity: 'error' });
-    }
+    setSelectedBuyers(new Set());
   };
 
   const handleSnackbarClose = () => {
