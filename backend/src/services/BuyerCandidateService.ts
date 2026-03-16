@@ -317,7 +317,7 @@ export class BuyerCandidateService {
       return true;
     }
 
-    if (brokerInquiry && brokerInquiry !== '' && brokerInquiry !== '0' && brokerInquiry.toLowerCase() !== 'false') {
+    if (brokerInquiry && brokerInquiry !== '' && brokerInquiry !== '0' && brokerInquiry.toLowerCase() !== 'false' && brokerInquiry.toLowerCase() !== 'null') {
       return true;
     }
 
