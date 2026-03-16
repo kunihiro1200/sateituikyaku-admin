@@ -10,6 +10,7 @@ import { BuyerCandidateService } from '../services/BuyerCandidateService';
 import { UrlValidator } from '../utils/urlValidator';
 import { createClient } from '@supabase/supabase-js';
 import { EmailService } from '../services/EmailService.supabase';
+import { authenticate } from '../middleware/auth';
 
 const router = Router();
 const propertyListingService = new PropertyListingService();
@@ -830,7 +831,7 @@ router.post('/:propertyNumber/report-history', async (req: Request, res: Respons
 });
 
 // 報告書メール送信
-router.post('/:propertyNumber/send-report-email', async (req: Request, res: Response): Promise<void> => {
+router.post('/:propertyNumber/send-report-email', authenticate, async (req: Request, res: Response): Promise<void> => {
   try {
     const { propertyNumber } = req.params;
     const { to, subject, body, template_name, report_date, report_assignee, report_completed } = req.body;
@@ -858,6 +859,11 @@ router.post('/:propertyNumber/send-report-email', async (req: Request, res: Resp
     const sellerWithTo = { ...sellerRow, email: to };
     const employeeEmail = req.employee?.email || '';
     const employeeId = req.employee?.id || '';
+
+    if (!employeeEmail) {
+      res.status(401).json({ error: '認証が必要です。ログインし直してください。' });
+      return;
+    }
 
     const result = await emailService.sendTemplateEmail(
       sellerWithTo as any,
