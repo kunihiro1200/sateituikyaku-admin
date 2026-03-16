@@ -403,8 +403,7 @@ export default function BuyerCandidateListPage() {
                     />
                   </TableCell>
                   <TableCell sx={{ fontWeight: 'bold', fontSize: '1rem' }}>買主番号</TableCell>
-                  <TableCell sx={{ fontWeight: 'bold', fontSize: '1rem' }}>氏名</TableCell>
-                  <TableCell sx={{ fontWeight: 'bold', fontSize: '1rem' }}>メールアドレス</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold', fontSize: '1rem' }}>氏名 / メール</TableCell>
                   <TableCell sx={{ fontWeight: 'bold', fontSize: '1rem' }}>最新状況</TableCell>
                   <TableCell sx={{ fontWeight: 'bold', fontSize: '1rem' }}>問い合わせ物件住所</TableCell>
                   <TableCell sx={{ fontWeight: 'bold', fontSize: '1rem' }}>希望エリア</TableCell>
@@ -436,10 +435,14 @@ export default function BuyerCandidateListPage() {
                         </Link>
                       </TableCell>
                       <TableCell onClick={() => handleBuyerClick(candidate.buyer_number)} sx={{ fontSize: '1rem' }}>
-                        {candidate.name || '-'}
-                      </TableCell>
-                      <TableCell onClick={() => handleBuyerClick(candidate.buyer_number)} sx={{ fontSize: '1rem' }}>
-                        {candidate.email || '-'}
+                        <Box>
+                          <Typography variant="body1">{candidate.name || '-'}</Typography>
+                          {candidate.email && (
+                            <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
+                              {candidate.email}
+                            </Typography>
+                          )}
+                        </Box>
                       </TableCell>
                       <TableCell onClick={() => handleBuyerClick(candidate.buyer_number)}>
                         {candidate.latest_status ? (
@@ -452,8 +455,10 @@ export default function BuyerCandidateListPage() {
                         </Typography>
                       </TableCell>
                       <TableCell onClick={() => handleBuyerClick(candidate.buyer_number)} sx={{ fontSize: '1rem' }}>
-                        <Typography variant="body2" sx={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          {candidate.desired_area || '-'}
+                        <Typography variant="body2">
+                          {candidate.desired_area
+                            ? (candidate.desired_area.match(/[①-⑳㉑-㉟㊱-㊿]/g) || []).join('')  || candidate.desired_area
+                            : '-'}
                         </Typography>
                       </TableCell>
                       <TableCell onClick={() => handleBuyerClick(candidate.buyer_number)} sx={{ fontSize: '1rem' }}>
