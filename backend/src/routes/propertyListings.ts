@@ -854,6 +854,16 @@ router.post('/:propertyNumber/send-report-email', authenticate, async (req: Requ
     const senderAddress = from || req.employee?.email || 'tenant@ifoo-oita.com';
     const employeeId = req.employee?.id || 'system';
 
+    console.log('[send-report-email] Sending email:', {
+      propertyNumber,
+      to,
+      subject,
+      senderAddress,
+      employeeId,
+      hasGmailRefreshToken: !!process.env.GMAIL_REFRESH_TOKEN,
+      hasGoogleCalendarClientId: !!process.env.GOOGLE_CALENDAR_CLIENT_ID,
+    });
+
     const result = await emailService.sendTemplateEmail(
       dummySeller as any,
       subject,
@@ -864,8 +874,19 @@ router.post('/:propertyNumber/send-report-email', authenticate, async (req: Requ
       senderAddress
     );
 
+    console.log('[send-report-email] Result:', { success: result.success, error: result.error, messageId: result.messageId });
+
     if (!result.success) {
-      res.status(500).json({ error: result.error || 'メール送信に失敗しました' });
+      const errorMsg = result.error || 'メール送信に失敗しました';
+      // Gmail認証エラーの場合は分かりやすいメッセージを返す
+      if (errorMsg.includes('GOOGLE_AUTH_REQUIRED') || errorMsg.includes('認証') || errorMsg.includes('not configured')) {
+        res.status(500).json({ 
+          error: 'Gmail認証が必要です。管理者にGoogle連携の設定を依頼してください。',
+          detail: errorMsg
+        });
+      } else {
+        res.status(500).json({ error: errorMsg });
+      }
       return;
     }
 
@@ -883,7 +904,7 @@ router.post('/:propertyNumber/send-report-email', authenticate, async (req: Requ
 
     res.json({ success: true, messageId: result.messageId });
   } catch (error: any) {
-    console.error('Error sending report email:', error);
+    console.error('[send-report-email] Unexpected error:', error.message, error.stack);
     res.status(500).json({ error: error.message || 'メール送信に失敗しました' });
   }
 });
