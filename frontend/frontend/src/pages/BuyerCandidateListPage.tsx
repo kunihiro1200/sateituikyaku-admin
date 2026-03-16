@@ -309,6 +309,11 @@ export default function BuyerCandidateListPage() {
             </Box>
             <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, ml: 5 }}>
               物件番号: {data.property.property_number}
+              {data.property.distribution_areas && (
+                <Typography component="span" variant="body2" fontWeight="bold" sx={{ ml: 2, color: SECTION_COLORS.property.main }}>
+                  配信エリア: {data.property.distribution_areas}
+                </Typography>
+              )}
             </Typography>
           </Box>
         </Box>
