@@ -13,6 +13,10 @@ import { EmailService } from '../services/EmailService.supabase';
 import { authenticate } from '../middleware/auth';
 
 const router = Router();
+
+// multer: multipart/form-data (添付ファイル) 対応
+import multer from 'multer';
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 const propertyListingService = new PropertyListingService();
 const buyerLinkageService = new BuyerLinkageService();
 const buyerLinkageCache = new BuyerLinkageCache();
@@ -872,10 +876,12 @@ router.post('/:propertyNumber/report-history', async (req: Request, res: Respons
 });
 
 // 報告書メール送信（Gmail API で直接送信 + 送信履歴の記録）
-router.post('/:propertyNumber/send-report-email', authenticate, async (req: Request, res: Response): Promise<void> => {
+// multipart/form-data 対応（添付ファイル・CC をサポート）
+router.post('/:propertyNumber/send-report-email', authenticate, upload.array('attachments', 10), async (req: Request, res: Response): Promise<void> => {
   try {
     const { propertyNumber } = req.params;
-    const { to, subject, body, template_name, report_date, report_assignee, report_completed, from } = req.body;
+    const { to, cc, subject, body, template_name, report_date, report_assignee, report_completed, from } = req.body;
+    const files = req.files as Express.Multer.File[] | undefined;
 
     if (!to || !subject || !body) {
       res.status(400).json({ error: '宛先・件名・本文は必須です' });
@@ -883,6 +889,29 @@ router.post('/:propertyNumber/send-report-email', authenticate, async (req: Requ
     }
 
     const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!);
+
+    const senderAddress = from || req.employee?.email || 'tenant@ifoo-oita.com';
+    const employeeId = req.employee?.id || 'system';
+
+    console.log('[send-report-email] Sending email:', {
+      propertyNumber,
+      to,
+      cc: cc || '(none)',
+      subject,
+      senderAddress,
+      employeeId,
+      attachmentCount: files?.length || 0,
+      hasGmailRefreshToken: !!process.env.GMAIL_REFRESH_TOKEN,
+      hasGoogleCalendarClientId: !!process.env.GOOGLE_CALENDAR_CLIENT_ID,
+    });
+
+    // 添付ファイルを EmailAttachment 形式に変換
+    const attachments = (files || []).map((file) => ({
+      filename: file.originalname,
+      mimeType: file.mimetype,
+      data: file.buffer,
+      cid: `attachment-${Date.now()}-${file.originalname}`,
+    }));
 
     // Gmail API で直接送信
     const dummySeller = {
@@ -896,34 +925,33 @@ router.post('/:propertyNumber/send-report-email', authenticate, async (req: Requ
       updated_at: new Date(),
     };
 
-    const senderAddress = from || req.employee?.email || 'tenant@ifoo-oita.com';
-    const employeeId = req.employee?.id || 'system';
-
-    console.log('[send-report-email] Sending email:', {
-      propertyNumber,
-      to,
-      subject,
-      senderAddress,
-      employeeId,
-      hasGmailRefreshToken: !!process.env.GMAIL_REFRESH_TOKEN,
-      hasGoogleCalendarClientId: !!process.env.GOOGLE_CALENDAR_CLIENT_ID,
-    });
-
-    const result = await emailService.sendTemplateEmail(
-      dummySeller as any,
-      subject,
-      body,
-      senderAddress,
-      employeeId,
-      undefined,
-      senderAddress
-    );
+    let result;
+    if (attachments.length > 0 || cc) {
+      // 添付ファイルまたはCCがある場合は sendEmailWithCcAndAttachments を使用
+      result = await emailService.sendEmailWithCcAndAttachments({
+        to,
+        cc: cc || undefined,
+        subject,
+        body,
+        from: senderAddress,
+        attachments,
+      });
+    } else {
+      result = await emailService.sendTemplateEmail(
+        dummySeller as any,
+        subject,
+        body,
+        senderAddress,
+        employeeId,
+        undefined,
+        senderAddress
+      );
+    }
 
     console.log('[send-report-email] Result:', { success: result.success, error: result.error, messageId: result.messageId });
 
     if (!result.success) {
       const errorMsg = result.error || 'メール送信に失敗しました';
-      // Gmail認証エラーの場合は分かりやすいメッセージを返す
       if (errorMsg.includes('GOOGLE_AUTH_REQUIRED') || errorMsg.includes('認証') || errorMsg.includes('not configured')) {
         res.status(500).json({ 
           error: 'Gmail認証が必要です。管理者にGoogle連携の設定を依頼してください。',

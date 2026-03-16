@@ -168,7 +168,8 @@ export default function GmailDistributionButton({
         recipients: selectedEmails,
         subject: subject,
         body: body,
-        from: senderAddress
+        senderAddress: senderAddress,
+        propertyNumber: propertyNumber
       });
 
       const result = response.data;
