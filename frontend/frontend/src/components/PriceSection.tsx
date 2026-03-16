@@ -137,7 +137,7 @@ export default function PriceSection({
     <Box sx={{ backgroundColor: '#f5f5f5', p: 2, borderRadius: 1 }}>
       {isEditMode ? (
         <Grid container spacing={2}>
-          <Grid item xs={12} sm={6}>
+          <Grid item xs={12}>
             <Typography variant="body2" color="text.secondary" gutterBottom>
               売買価格
             </Typography>
