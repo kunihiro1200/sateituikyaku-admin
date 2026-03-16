@@ -2,6 +2,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { BeppuAreaMappingService } from './BeppuAreaMappingService';
 import { GeolocationService } from './GeolocationService';
+import { getOitaCityAreas, getBeppuCityAreas } from '../utils/cityAreaMapping';
 
 export interface BuyerCandidate {
   buyer_number: string;
@@ -514,51 +515,46 @@ export class BuyerCandidateService {
    * 2. 住所から詳細エリアマッピング（BeppuAreaMappingServiceのみ使用）
    * 3. 市区町のデフォルト（大分市⑤、別府市⑥）
    */
-  private async getAreaNumbersForProperty(property: any): Promise<string[]> {
-    const areaNumbers = new Set<string>();
+  /**
+     * 物件の住所からエリア番号を取得
+     * 1. distribution_areasフィールドから丸数字を抽出
+     * 2. 住所から詳細エリアマッピング（cityAreaMapping使用）
+     * 3. 市全体のデフォルト（大分市㊵、別府市㊶）
+     */
+    private async getAreaNumbersForProperty(property: any): Promise<string[]> {
+      const areaNumbers = new Set<string>();
 
-    // 1. distribution_areasフィールドから丸数字を抽出
-    const distributionAreas = property.distribution_areas || property.distribution_area || '';
-    if (distributionAreas) {
-      const extracted = this.extractAreaNumbers(distributionAreas);
-      extracted.forEach(num => areaNumbers.add(num));
-    }
+      // 1. distribution_areasフィールドから丸数字のみ抽出（数字→丸数字変換は行わない）
+      const distributionAreas = property.distribution_areas || property.distribution_area || '';
+      if (distributionAreas) {
+        const extracted = distributionAreas.match(/[①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯㊵㊶㊷㊸]/g) || [];
+        extracted.forEach((num: string) => areaNumbers.add(num));
+      }
 
-    // 2. 住所から詳細エリアマッピング
-    const address = (property.address || '').trim();
-    if (address) {
-      // 別府市の場合
-      if (address.includes('別府市')) {
-        try {
-          const beppuAreas = await this.beppuAreaMappingService.getDistributionAreasForAddress(address);
-          if (beppuAreas) {
-            const detailedAreas = this.extractAreaNumbers(beppuAreas);
-            detailedAreas.forEach(num => areaNumbers.add(num));
-            console.log(`[BuyerCandidateService] Beppu detailed areas for ${address}:`, detailedAreas);
-          } else {
-            // マッピングが見つからない場合は別府市全体にフォールバック（⑥と㊶の両方）
-            areaNumbers.add('⑥');
-            areaNumbers.add('㊶');
-            console.log(`[BuyerCandidateService] No detailed mapping for ${address}, using ⑥㊶`);
-          }
-        } catch (error) {
-          console.error(`[BuyerCandidateService] Error getting Beppu areas:`, error);
-          areaNumbers.add('⑥');
+      // 2. 住所から詳細エリアマッピング
+      const address = (property.address || '').trim();
+      if (address) {
+        // 大分市の場合: cityAreaMappingで詳細エリア番号を取得 + 市全体㊵
+        if (address.includes('大分市')) {
+          const oitaAreas = getOitaCityAreas(address);
+          oitaAreas.forEach(num => areaNumbers.add(num));
+          areaNumbers.add('㊵');
+          console.log(`[BuyerCandidateService] Oita areas for ${address}:`, oitaAreas);
+        }
+
+        // 別府市の場合: cityAreaMappingで詳細エリア番号を取得 + 市全体㊶
+        if (address.includes('別府市')) {
+          const beppuAreas = getBeppuCityAreas(address);
+          beppuAreas.forEach(num => areaNumbers.add(num));
           areaNumbers.add('㊶');
+          console.log(`[BuyerCandidateService] Beppu areas for ${address}:`, beppuAreas);
         }
       }
 
-      // 大分市の場合（⑤と㊵の両方）
-      if (address.includes('大分市')) {
-        areaNumbers.add('⑤');
-        areaNumbers.add('㊵');
-      }
+      const result = Array.from(areaNumbers);
+      console.log(`[BuyerCandidateService] Final area numbers for property:`, result);
+      return result;
     }
-
-    const result = Array.from(areaNumbers);
-    console.log(`[BuyerCandidateService] Final area numbers for property:`, result);
-    return result;
-  }
 
   /**
    * 物件の座標を取得
