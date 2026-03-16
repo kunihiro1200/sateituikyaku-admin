@@ -71,16 +71,28 @@ export class BuyerCandidateService {
     const propertyCoords = await this.getPropertyCoordinates(property);
     console.log(`[BuyerCandidateService] Property coordinates:`, propertyCoords);
 
-    // 買主を取得（削除済みを除外、最新状況/問合せ時確度でフィルタリング）
-    const { data: buyers, error: buyersError } = await this.supabase
-      .from('buyers')
-      .select('*')
-      .is('deleted_at', null)  // 削除済みを除外
-      .order('reception_date', { ascending: false, nullsFirst: false });
+    // 買主を全件取得（Supabaseの1000件制限を回避するためページネーション）
+    const buyers: any[] = [];
+    const PAGE_SIZE = 1000;
+    let page = 0;
+    while (true) {
+      const { data, error: buyersError } = await this.supabase
+        .from('buyers')
+        .select('*')
+        .is('deleted_at', null)  // 削除済みを除外
+        .order('reception_date', { ascending: false, nullsFirst: false })
+        .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
 
-    if (buyersError) {
-      throw new Error(`Failed to fetch buyers: ${buyersError.message}`);
+      if (buyersError) {
+        throw new Error(`Failed to fetch buyers: ${buyersError.message}`);
+      }
+
+      if (!data || data.length === 0) break;
+      buyers.push(...data);
+      if (data.length < PAGE_SIZE) break;
+      page++;
     }
+    console.log(`[BuyerCandidateService] Total buyers fetched: ${buyers.length}`);
 
     // フィルタリング
     const candidates = await this.filterCandidates(
