@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Container,
@@ -75,8 +75,8 @@ export default function BuyerDesiredConditionsPage() {
   const [loading, setLoading] = useState(true);
   const [copiedBuyerNumber, setCopiedBuyerNumber] = useState(false);
   const [selectedAreas, setSelectedAreas] = useState<string[]>([]);
-  // エリア保存のデバウンス用タイマー ref
-  const areaSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // ドロップダウンを閉じた時に保存する値を保持する ref
+  const pendingAreasRef = useRef<string[] | null>(null);
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' | 'warning' }>({
     open: false,
     message: '',
@@ -109,16 +109,6 @@ export default function BuyerDesiredConditionsPage() {
       setLoading(false);
     }
   };
-
-  // エリア選択をデバウンスして保存（500ms後に最後の値だけ送る）
-  const saveAreasDebounced = useCallback((areas: string[]) => {
-    if (areaSaveTimerRef.current) {
-      clearTimeout(areaSaveTimerRef.current);
-    }
-    areaSaveTimerRef.current = setTimeout(() => {
-      handleInlineFieldSave('desired_area', areas.join('、'));
-    }, 500);
-  }, []);
 
   const handleInlineFieldSave = async (fieldName: string, newValue: any) => {
     if (!buyer) return;
@@ -285,8 +275,15 @@ export default function BuyerDesiredConditionsPage() {
                         const selected = e.target.value as string[];
                         // UIを即時更新
                         setSelectedAreas(selected);
-                        // APIに500msデバウンスして保存（連続選択時の上書き防止）
-                        saveAreasDebounced(selected);
+                        // 保存待ち値を ref に保持（onClose で保存）
+                        pendingAreasRef.current = selected;
+                      }}
+                      onClose={() => {
+                        // ドロップダウンを閉じた時に保存（変更があった場合のみ）
+                        if (pendingAreasRef.current !== null) {
+                          handleInlineFieldSave(field.key, pendingAreasRef.current.join('、'));
+                          pendingAreasRef.current = null;
+                        }
                       }}
                       input={<OutlinedInput />}
                       renderValue={(selected) => (
@@ -303,7 +300,8 @@ export default function BuyerDesiredConditionsPage() {
                                   e.stopPropagation();
                                   const next = selectedAreas.filter((v) => v !== val);
                                   setSelectedAreas(next);
-                                  saveAreasDebounced(next);
+                                  // チップ削除は即時保存
+                                  handleInlineFieldSave(field.key, next.join('、'));
                                 }}
                                 onMouseDown={(e) => e.stopPropagation()}
                               />
