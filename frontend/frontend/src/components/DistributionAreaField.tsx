@@ -56,7 +56,7 @@ export default function DistributionAreaField({
 
     try {
       const response = await api.post(
-        `/properties/${propertyNumber}/calculate-distribution-areas`
+        `/api/property-listings/${propertyNumber}/calculate-distribution-areas`
       );
 
       if (response.data.success && response.data.areas) {

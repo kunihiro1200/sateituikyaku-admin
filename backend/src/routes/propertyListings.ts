@@ -704,6 +704,51 @@ router.post('/:id/unhide-image', async (req: Request, res: Response): Promise<vo
   }
 });
 
+// 配信エリア番号を計算
+router.post('/:propertyNumber/calculate-distribution-areas', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { propertyNumber } = req.params;
+
+    // 物件データを取得
+    const property = await propertyListingService.getByPropertyNumber(propertyNumber);
+    if (!property) {
+      res.status(404).json({ success: false, message: '物件が見つかりません' });
+      return;
+    }
+
+    const googleMapUrl = property.google_map_url;
+    if (!googleMapUrl) {
+      res.status(400).json({ success: false, message: 'GoogleマップURLが設定されていません' });
+      return;
+    }
+
+    const { PropertyDistributionAreaCalculator } = await import('../services/PropertyDistributionAreaCalculator');
+    const { CityNameExtractor } = await import('../services/CityNameExtractor');
+    const calculator = new PropertyDistributionAreaCalculator();
+    const cityExtractor = new CityNameExtractor();
+
+    const address = property.address || null;
+    const city = address ? cityExtractor.extractCityFromAddress(address) : null;
+
+    const result = await calculator.calculateDistributionAreas(
+      googleMapUrl,
+      city,
+      address
+    );
+
+    res.json({
+      success: true,
+      areas: result.formatted,
+      areaList: result.areas,
+      radiusAreas: result.radiusAreas,
+      cityWideAreas: result.cityWideAreas,
+    });
+  } catch (error: any) {
+    console.error('Error calculating distribution areas:', error);
+    res.status(500).json({ success: false, message: error.message || '計算に失敗しました' });
+  }
+});
+
 // Google Map URLを更新
 router.patch('/:propertyNumber/google-map-url', async (req: Request, res: Response): Promise<void> => {
   try {
