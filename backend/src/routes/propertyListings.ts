@@ -542,10 +542,6 @@ router.post('/:propertyNumber/send-distribution-emails', async (req: Request, re
       });
     }
 
-    // EmailServiceをインポート
-    const { EmailService } = await import('../services/EmailService.supabase');
-    const emailService = new EmailService();
-
     // 各受信者にメールを送信
     const results = await Promise.allSettled(
       recipientEmails.map(async (email: string) => {
@@ -843,22 +839,19 @@ router.post('/:propertyNumber/send-report-email', authenticate, async (req: Requ
 
     const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!);
 
-    // 売主情報をseller_numberで取得（Gmail OAuth用）
-    const { data: sellerRow } = await supabase
-      .from('sellers')
-      .select('*')
-      .eq('seller_number', propertyNumber)
-      .single();
-
-    if (!sellerRow) {
-      res.status(404).json({ error: '売主が見つかりません' });
-      return;
-    }
-
-    // 宛先を指定して送信（emailフィールドを上書き）
-    const sellerWithTo = { ...sellerRow, email: to };
     const employeeEmail = req.employee?.email || '';
     const employeeId = req.employee?.id || '';
+
+    // 送信用ダミーsellerオブジェクト（EmailServiceのインターフェースに合わせる）
+    const sellerWithTo = {
+      id: propertyNumber,
+      seller_number: propertyNumber,
+      name: '',
+      email: to,
+      phone_number: '',
+      property_address: '',
+      created_at: new Date(),
+    };
 
     if (!employeeEmail) {
       res.status(401).json({ error: '認証が必要です。ログインし直してください。' });
