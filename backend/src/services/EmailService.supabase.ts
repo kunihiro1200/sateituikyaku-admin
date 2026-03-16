@@ -58,22 +58,22 @@ export class EmailService extends BaseRepository {
     
     // 環境変数の確認
     console.log('🔧 Gmail API Configuration:');
-    console.log('  GMAIL_CLIENT_ID:', process.env.GMAIL_CLIENT_ID ? '✓ Set' : '✗ Missing');
-    console.log('  GMAIL_CLIENT_SECRET:', process.env.GMAIL_CLIENT_SECRET ? '✓ Set' : '✗ Missing');
-    console.log('  GMAIL_REDIRECT_URI:', process.env.GMAIL_REDIRECT_URI ? '✓ Set' : '✗ Missing');
-    console.log('  GMAIL_REFRESH_TOKEN:', process.env.GMAIL_REFRESH_TOKEN ? '✓ Set' : '✗ Missing');
+    console.log('  GMAIL_CLIENT_ID:', process.env.GMAIL_CLIENT_ID || process.env.GOOGLE_CALENDAR_CLIENT_ID ? '✓ Set' : '✗ Missing');
     
     // Gmail API OAuth2クライアントを初期化
-    this.oauth2Client = new google.auth.OAuth2(
-      process.env.GMAIL_CLIENT_ID,
-      process.env.GMAIL_CLIENT_SECRET,
-      process.env.GMAIL_REDIRECT_URI
-    );
+    // GMAIL_CLIENT_ID が設定されている場合はそれを使用、なければ GOOGLE_CALENDAR_CLIENT_ID を使用
+    const clientId = process.env.GMAIL_CLIENT_ID || process.env.GOOGLE_CALENDAR_CLIENT_ID;
+    const clientSecret = process.env.GMAIL_CLIENT_SECRET || process.env.GOOGLE_CALENDAR_CLIENT_SECRET;
+    const redirectUri = process.env.GMAIL_REDIRECT_URI || process.env.GOOGLE_CALENDAR_REDIRECT_URI;
 
-    // リフレッシュトークンを設定
-    this.oauth2Client.setCredentials({
-      refresh_token: process.env.GMAIL_REFRESH_TOKEN,
-    });
+    this.oauth2Client = new google.auth.OAuth2(clientId, clientSecret, redirectUri);
+
+    // GMAIL_REFRESH_TOKEN が設定されている場合はそれを使用
+    if (process.env.GMAIL_REFRESH_TOKEN) {
+      this.oauth2Client.setCredentials({
+        refresh_token: process.env.GMAIL_REFRESH_TOKEN,
+      });
+    }
   }
 
   /**
@@ -267,12 +267,25 @@ export class EmailService extends BaseRepository {
     content: string,
     employeeEmail: string,
     employeeId: string,
-    htmlBody?: string,  // オプション: カスタムHTMLボディ（貼り付けた画像を含む場合）
-    from?: string       // オプション: 送信元メールアドレス
+    htmlBody?: string,
+    from?: string
   ): Promise<EmailResult> {
     try {
       if (!seller.email) {
         throw new Error('Seller email is not set');
+      }
+
+      // GMAIL_REFRESH_TOKEN が未設定の場合、google_calendar_tokens からトークンを取得
+      if (!process.env.GMAIL_REFRESH_TOKEN) {
+        try {
+          const { GoogleAuthService } = await import('./GoogleAuthService');
+          const googleAuthService = new GoogleAuthService();
+          const authenticatedClient = await googleAuthService.getAuthenticatedClient();
+          this.oauth2Client = authenticatedClient;
+        } catch (authError: any) {
+          console.error('Failed to get authenticated client from GoogleAuthService:', authError);
+          throw new Error('Gmail認証が設定されていません。Google連携を行ってください。');
+        }
       }
 
       // fromが指定されていない場合はemployeeEmailを使用（後方互換性）
