@@ -417,6 +417,7 @@ export default function PropertyListingsPage() {
                   <TableCell>種別</TableCell>
                   <TableCell>所在地</TableCell>
                   <TableCell>売主</TableCell>
+                  <TableCell>ATBB状況</TableCell>
                   <TableCell>買主</TableCell>
                   <TableCell>問合せ</TableCell>
                   <TableCell>契約日</TableCell>
@@ -424,17 +425,16 @@ export default function PropertyListingsPage() {
                   <TableCell>売買価格</TableCell>
                   <TableCell>公開URL</TableCell>
                   <TableCell>格納先URL</TableCell>
-                  <TableCell>ATBB状況</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={15} align="center">読み込み中...</TableCell>
+                    <TableCell colSpan={14} align="center">読み込み中...</TableCell>
                   </TableRow>
                 ) : paginatedListings.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={15} align="center">物件データが見つかりませんでした</TableCell>
+                    <TableCell colSpan={14} align="center">物件データが見つかりませんでした</TableCell>
                   </TableRow>
                 ) : (
                   paginatedListings.map((listing) => {
@@ -465,6 +465,7 @@ export default function PropertyListingsPage() {
                           {listing.address || listing.display_address || '-'}
                         </TableCell>
                         <TableCell>{listing.seller_name || '-'}</TableCell>
+                        <TableCell>{getDisplayStatus(listing.atbb_status) || '-'}</TableCell>
                         <TableCell>{listing.buyer_name || '-'}</TableCell>
                         <TableCell onClick={(e) => e.stopPropagation()}>
                           {listing.property_number && (
@@ -495,9 +496,6 @@ export default function PropertyListingsPage() {
                           ) : (
                             <Typography variant="body2" color="text.secondary">-</Typography>
                           )}
-                        </TableCell>
-                        <TableCell>
-                          {getDisplayStatus(listing.atbb_status) || '-'}
                         </TableCell>
                       </TableRow>
                     );
