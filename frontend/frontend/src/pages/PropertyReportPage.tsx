@@ -322,7 +322,7 @@ export default function PropertyReportPage() {
     if (!pendingSendHistory) return;
     setSending(true);
     try {
-      // 送信履歴を記録
+      // Gmail API で直接送信
       await api.post(`/api/property-listings/${propertyNumber}/send-report-email`, {
         to: editTo,
         subject: editSubject,
@@ -333,19 +333,12 @@ export default function PropertyReportPage() {
         report_completed: reportData.report_completed || 'N',
       });
 
-      // Gmailを開く
-      const to = encodeURIComponent(editTo);
-      const subject = encodeURIComponent(editSubject);
-      const body = encodeURIComponent(editBody);
-      const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${to}&su=${subject}&body=${body}`;
-      window.open(gmailUrl, '_blank');
-
       setSendConfirmDialogOpen(false);
       setPendingSendHistory(null);
       fetchReportHistory();
-      setSnackbar({ open: true, message: 'Gmailを開きました（履歴に記録済み）', severity: 'success' });
+      setSnackbar({ open: true, message: 'メールを送信しました', severity: 'success' });
     } catch (error: any) {
-      setSnackbar({ open: true, message: error.response?.data?.error || '履歴の記録に失敗しました', severity: 'error' });
+      setSnackbar({ open: true, message: error.response?.data?.error || 'メール送信に失敗しました', severity: 'error' });
     } finally {
       setSending(false);
     }
@@ -737,7 +730,7 @@ export default function PropertyReportPage() {
               startIcon={sending ? <CircularProgress size={18} /> : <EmailIcon />}
               sx={{ mt: 1 }}
             >
-              {sending ? '処理中...' : 'Gmailで送信'}
+              {sending ? '送信中...' : '送信'}
             </Button>
           </Box>
         </DialogContent>
