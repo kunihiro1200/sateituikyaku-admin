@@ -103,8 +103,12 @@ export class BuyerService {
 
     // 検索
     if (search) {
+      // buyer_numberが数値型の場合はeqで完全一致、それ以外はilikeで部分一致
+      const buyerNumberMatch = /^\d+$/.test(search)
+        ? `buyer_number.eq.${search}`
+        : `buyer_number.ilike.%${search}%`;
       query = query.or(
-        `buyer_number.ilike.%${search}%,name.ilike.%${search}%,phone_number.ilike.%${search}%,property_number.ilike.%${search}%`
+        `${buyerNumberMatch},name.ilike.%${search}%,phone_number.ilike.%${search}%,property_number.ilike.%${search}%`
       );
     }
 
@@ -231,11 +235,14 @@ export class BuyerService {
    * 検索
    */
   async search(query: string, limit: number = 20): Promise<any[]> {
+    const buyerNumberMatch = /^\d+$/.test(query)
+      ? `buyer_number.eq.${query}`
+      : `buyer_number.ilike.%${query}%`;
     const { data, error } = await this.supabase
       .from('buyers')
       .select('id, buyer_number, name, phone_number, email, property_number, latest_status, initial_assignee')
       .or(
-        `buyer_number.ilike.%${query}%,name.ilike.%${query}%,phone_number.ilike.%${query}%,property_number.ilike.%${query}%`
+        `${buyerNumberMatch},name.ilike.%${query}%,phone_number.ilike.%${query}%,property_number.ilike.%${query}%`
       )
       .limit(limit);
 
@@ -673,8 +680,11 @@ export class BuyerService {
       .select('*');
 
     if (search) {
+      const buyerNumberMatch = /^\d+$/.test(search)
+        ? `buyer_number.eq.${search}`
+        : `buyer_number.ilike.%${search}%`;
       query = query.or(
-        `buyer_number.ilike.%${search}%,name.ilike.%${search}%,phone_number.ilike.%${search}%`
+        `${buyerNumberMatch},name.ilike.%${search}%,phone_number.ilike.%${search}%`
       );
     }
     if (status) {
