@@ -74,16 +74,6 @@ export default function GmailDistributionButton({
   };
 
   const handleButtonClick = () => {
-    // Check if distribution_areas is set
-    if (!distributionAreas || distributionAreas.trim() === '') {
-      setSnackbar({
-        open: true,
-        message: '配信エリア番号が設定されていません。物件詳細ページで配信エリア番号を計算・設定してください。',
-        severity: 'warning'
-      });
-      return;
-    }
-    
     // 送信元アドレスが空の場合のみデフォルトに設定
     if (!senderAddress || senderAddress.trim() === '') {
       setSenderAddress(DEFAULT_SENDER);
@@ -299,7 +289,7 @@ export default function GmailDistributionButton({
         onClick={handleButtonClick}
         disabled={loading}
       >
-        公開前、値下げメール配信
+        公開前、値下げメール
       </Button>
 
       <EmailTemplateSelector

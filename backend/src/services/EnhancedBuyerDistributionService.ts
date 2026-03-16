@@ -51,7 +51,7 @@ interface InquiryProperty {
 interface ConsolidatedBuyer {
   email: string;
   buyerNumbers: string[];
-  id: string; // Use first buyer's ID for database queries
+  buyerIds: string[]; // buyer_id (UUID) for buyer_inquiries join
   allDesiredAreas: string;
   mostPermissiveStatus: string;
   propertyTypes: string[];
@@ -136,7 +136,7 @@ export class EnhancedBuyerDistributionService {
         // Get inquiries for all buyer records with this email
         const allInquiries: InquiryProperty[] = [];
         for (const originalRecord of consolidatedBuyer.originalRecords) {
-          const buyerInquiries = inquiryMap.get(originalRecord.id) || [];
+          const buyerInquiries = inquiryMap.get(originalRecord.buyer_id) || [];
           allInquiries.push(...buyerInquiries);
         }
         
@@ -326,7 +326,7 @@ export class EnhancedBuyerDistributionService {
       const { data, error } = await this.supabase
         .from('buyers')
         .select(`
-          id,
+          buyer_id,
           buyer_number,
           email,
           desired_area,
@@ -377,7 +377,7 @@ export class EnhancedBuyerDistributionService {
         emailMap.set(normalizedEmail, {
           email: buyer.email, // Use original casing
           buyerNumbers: [buyer.buyer_number],
-          id: buyer.id, // Use first buyer's ID
+          buyerIds: [buyer.buyer_id], // buyer_id (UUID) for buyer_inquiries join
           allDesiredAreas: buyer.desired_area || '',
           mostPermissiveStatus: buyer.latest_status || '',
           propertyTypes: buyer.desired_property_type ? [buyer.desired_property_type] : [],
@@ -395,6 +395,11 @@ export class EnhancedBuyerDistributionService {
         
         // Add buyer number
         consolidated.buyerNumbers.push(buyer.buyer_number);
+        
+        // Add buyer_id
+        if (buyer.buyer_id && !consolidated.buyerIds.includes(buyer.buyer_id)) {
+          consolidated.buyerIds.push(buyer.buyer_id);
+        }
         
         // Merge desired areas (remove duplicates)
         const existingAreas = new Set(consolidated.allDesiredAreas.split(''));
@@ -802,24 +807,35 @@ export class EnhancedBuyerDistributionService {
         continue;
       }
 
-      // 2. "X万円以下" or "~X万円" - maximum only
-      const maxOnlyMatch = priceRangeText.match(/(?:~|～)?(\d+)万円(?:以下)?$/);
-      if (maxOnlyMatch && !priceRangeText.includes('以上') && !priceRangeText.includes('～') && !priceRangeText.match(/(\d+)万円～(\d+)万円/)) {
-        const maxPrice = parseInt(maxOnlyMatch[1]) * 10000;
-        if (propertyPrice <= maxPrice) {
-          console.log(`[Price Filter] Match found: ${maxPrice.toLocaleString()}円以下, Property: ${propertyPrice.toLocaleString()}円`);
-          return true;
-        }
-        continue;
-      }
-
-      // 3. "X万円～Y万円" or "X～Y万円" - range
-      const rangeMatch = priceRangeText.match(/(\d+)(?:万円)?[～~](\d+)万円/);
+      // 2. "X万円～Y万円" or "X～Y万円" or "～X万円" or "～X" - range or max-only with tilde
+      const rangeMatch = priceRangeText.match(/(\d+)(?:万円)?[～~](\d+)(?:万円)?/);
       if (rangeMatch) {
         const minPrice = parseInt(rangeMatch[1]) * 10000;
         const maxPrice = parseInt(rangeMatch[2]) * 10000;
         if (propertyPrice >= minPrice && propertyPrice <= maxPrice) {
           console.log(`[Price Filter] Match found: ${minPrice.toLocaleString()}円～${maxPrice.toLocaleString()}円, Property: ${propertyPrice.toLocaleString()}円`);
+          return true;
+        }
+        continue;
+      }
+
+      // 3. "~X万円" or "～X万円" or "～X" - maximum only (tilde prefix, no range)
+      const tildeMaxMatch = priceRangeText.match(/^[～~](\d+)(?:万円)?(?:以下)?$/);
+      if (tildeMaxMatch) {
+        const maxPrice = parseInt(tildeMaxMatch[1]) * 10000;
+        if (propertyPrice <= maxPrice) {
+          console.log(`[Price Filter] Match found: ～${maxPrice.toLocaleString()}円以下, Property: ${propertyPrice.toLocaleString()}円`);
+          return true;
+        }
+        continue;
+      }
+
+      // 4. "X万円以下" - maximum only (no tilde)
+      const maxOnlyMatch = priceRangeText.match(/^(\d+)万円以下$/);
+      if (maxOnlyMatch) {
+        const maxPrice = parseInt(maxOnlyMatch[1]) * 10000;
+        if (propertyPrice <= maxPrice) {
+          console.log(`[Price Filter] Match found: ${maxPrice.toLocaleString()}円以下, Property: ${propertyPrice.toLocaleString()}円`);
           return true;
         }
         continue;

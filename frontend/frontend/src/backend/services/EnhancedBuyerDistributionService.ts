@@ -51,7 +51,7 @@ interface InquiryProperty {
 interface ConsolidatedBuyer {
   email: string;
   buyerNumbers: string[];
-  id: string; // Use first buyer's ID for database queries
+  buyerIds: string[]; // buyer_id (UUID) for buyer_inquiries join
   allDesiredAreas: string;
   mostPermissiveStatus: string;
   propertyTypes: string[];
@@ -101,18 +101,8 @@ export class EnhancedBuyerDistributionService {
       // Check if distribution_areas is set
       if (!property.distribution_areas || property.distribution_areas.trim() === '') {
         console.warn(`[EnhancedBuyerDistributionService] Property ${criteria.propertyNumber} has no distribution areas set`);
-        return {
-          emails: [],
-          count: 0,
-          totalBuyers: 0,
-          filteredBuyers: [],
-          appliedFilters: {
-            geographyFilter: true,
-            distributionFilter: true,
-            statusFilter: true,
-            priceRangeFilter: true
-          }
-        };
+        // distribution_areasが未設定の場合、エリアフィルターをスキップして全買主を対象にする
+        console.log(`[EnhancedBuyerDistributionService] Proceeding without distribution area filter`);
       }
 
       // 2. 物件の座標を取得
@@ -145,7 +135,7 @@ export class EnhancedBuyerDistributionService {
         // Get inquiries for all buyer records with this email
         const allInquiries: InquiryProperty[] = [];
         for (const originalRecord of consolidatedBuyer.originalRecords) {
-          const buyerInquiries = inquiryMap.get(originalRecord.id) || [];
+          const buyerInquiries = inquiryMap.get(originalRecord.buyer_id) || [];
           allInquiries.push(...buyerInquiries);
         }
         
@@ -307,7 +297,7 @@ export class EnhancedBuyerDistributionService {
       const { data, error } = await this.supabase
         .from('buyers')
         .select(`
-          id,
+          buyer_id,
           buyer_number,
           email,
           desired_area,
@@ -358,7 +348,7 @@ export class EnhancedBuyerDistributionService {
         emailMap.set(normalizedEmail, {
           email: buyer.email, // Use original casing
           buyerNumbers: [buyer.buyer_number],
-          id: buyer.id, // Use first buyer's ID
+          buyerIds: [buyer.buyer_id], // buyer_id (UUID) for buyer_inquiries join
           allDesiredAreas: buyer.desired_area || '',
           mostPermissiveStatus: buyer.latest_status || '',
           propertyTypes: buyer.desired_property_type ? [buyer.desired_property_type] : [],
@@ -376,6 +366,11 @@ export class EnhancedBuyerDistributionService {
         
         // Add buyer number
         consolidated.buyerNumbers.push(buyer.buyer_number);
+        
+        // Add buyer_id
+        if (buyer.buyer_id && !consolidated.buyerIds.includes(buyer.buyer_id)) {
+          consolidated.buyerIds.push(buyer.buyer_id);
+        }
         
         // Merge desired areas (remove duplicates)
         const existingAreas = new Set(consolidated.allDesiredAreas.split(''));
