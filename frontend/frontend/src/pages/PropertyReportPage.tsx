@@ -339,14 +339,9 @@ export default function PropertyReportPage() {
       setSnackbar({ open: true, message: 'メールを送信しました', severity: 'success' });
     } catch (error: any) {
       const errMsg = error.response?.data?.error || 'メール送信に失敗しました';
-      const isAuthError = errMsg.includes('Gmail認証') || errMsg.includes('GOOGLE_AUTH_REQUIRED');
-      if (isAuthError && pendingSendHistory?.gmailUrl) {
-        // 認証エラーの場合はGmailで開くフォールバック
-        setSnackbar({ open: true, message: 'Gmail認証エラーのため、Gmailを開きます', severity: 'error' });
-        setTimeout(() => window.open(pendingSendHistory.gmailUrl, '_blank'), 1000);
-      } else {
-        setSnackbar({ open: true, message: errMsg, severity: 'error' });
-      }
+      const errDetail = error.response?.data?.detail || '';
+      const fullMsg = errDetail ? `${errMsg} / ${errDetail}` : errMsg;
+      setSnackbar({ open: true, message: fullMsg, severity: 'error' });
     } finally {
       setSending(false);
     }
