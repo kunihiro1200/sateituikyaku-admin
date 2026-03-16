@@ -386,7 +386,7 @@ export default function PropertyReportPage() {
   }
 
   return (
-    <Container maxWidth="sm" sx={{ py: 3 }}>
+    <Container maxWidth="xl" sx={{ py: 3 }}>
       {/* ヘッダー */}
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2, mb: 3 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
@@ -437,176 +437,185 @@ export default function PropertyReportPage() {
         </Button>
       </Box>
 
-      <Paper sx={{ p: 3, mb: 3 }}>
-        {/* 報告日 */}
-        <Box sx={{ mb: 3 }}>
-          <Typography variant="body2" color="text.secondary" fontWeight="bold" sx={{ mb: 1 }}>
-            報告日
-          </Typography>
-          <TextField
-            type="date"
-            fullWidth
-            size="small"
-            value={reportData.report_date || ''}
-            onChange={(e) => setReportData((prev) => ({ ...prev, report_date: e.target.value }))}
-            InputLabelProps={{ shrink: true }}
-          />
-        </Box>
+      {/* 左右2カラムレイアウト */}
+      <Box sx={{ display: 'flex', gap: 3, alignItems: 'flex-start' }}>
+        {/* 左カラム：報告情報 + Gmail送信 */}
+        <Box sx={{ flex: '0 0 380px', minWidth: 0 }}>
+          <Paper sx={{ p: 3 }}>
+            {/* 報告日 */}
+            <Box sx={{ mb: 3 }}>
+              <Typography variant="body2" color="text.secondary" fontWeight="bold" sx={{ mb: 1 }}>
+                報告日
+              </Typography>
+              <TextField
+                type="date"
+                fullWidth
+                size="small"
+                value={reportData.report_date || ''}
+                onChange={(e) => setReportData((prev) => ({ ...prev, report_date: e.target.value }))}
+                InputLabelProps={{ shrink: true }}
+              />
+            </Box>
 
-        {/* 報告完了 */}
-        <Box sx={{ mb: 3 }}>
-          <Typography variant="body2" color="text.secondary" fontWeight="bold" sx={{ mb: 1 }}>
-            報告完了
-          </Typography>
-          <ToggleButtonGroup
-            value={reportData.report_completed || 'N'}
-            exclusive
-            onChange={(_, value) => {
-              if (value !== null) {
-                setReportData((prev) => ({ ...prev, report_completed: value }));
-              }
-            }}
-            size="small"
-          >
-            <ToggleButton value="N" sx={{ px: 3 }}>N</ToggleButton>
-            <ToggleButton value="Y" sx={{ px: 3 }}>Y</ToggleButton>
-          </ToggleButtonGroup>
-        </Box>
-
-        {/* 報告担当 - ボックス選択（フルネーム表示） */}
-        <Box sx={{ mb: 4 }}>
-          <Typography variant="body2" color="text.secondary" fontWeight="bold" sx={{ mb: 1 }}>
-            報告担当
-          </Typography>
-          <ToggleButtonGroup
-            value={reportData.report_assignee || ''}
-            exclusive
-            onChange={(_, value) => {
-              setReportData((prev) => ({ ...prev, report_assignee: value ?? '' }));
-            }}
-            size="small"
-            sx={{ flexWrap: 'wrap', gap: 0.5 }}
-          >
-            {jimuInitials.map((initial) => (
-              <ToggleButton
-                key={initial}
-                value={initial}
-                sx={{
-                  px: 2,
-                  minWidth: 64,
-                  fontWeight: 'bold',
-                  '&.Mui-selected': {
-                    backgroundColor: 'primary.main',
-                    color: 'white',
-                    '&:hover': { backgroundColor: 'primary.dark' },
-                  },
+            {/* 報告完了 */}
+            <Box sx={{ mb: 3 }}>
+              <Typography variant="body2" color="text.secondary" fontWeight="bold" sx={{ mb: 1 }}>
+                報告完了
+              </Typography>
+              <ToggleButtonGroup
+                value={reportData.report_completed || 'N'}
+                exclusive
+                onChange={(_, value) => {
+                  if (value !== null) {
+                    setReportData((prev) => ({ ...prev, report_completed: value }));
+                  }
                 }}
+                size="small"
               >
-                {initial}
-              </ToggleButton>
-            ))}
-          </ToggleButtonGroup>
-          {reportData.sales_assignee && (
-            <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
-              物件担当: {reportData.sales_assignee}
-            </Typography>
-          )}
+                <ToggleButton value="N" sx={{ px: 3 }}>N</ToggleButton>
+                <ToggleButton value="Y" sx={{ px: 3 }}>Y</ToggleButton>
+              </ToggleButtonGroup>
+            </Box>
+
+            {/* 報告担当 */}
+            <Box sx={{ mb: 4 }}>
+              <Typography variant="body2" color="text.secondary" fontWeight="bold" sx={{ mb: 1 }}>
+                報告担当
+              </Typography>
+              <ToggleButtonGroup
+                value={reportData.report_assignee || ''}
+                exclusive
+                onChange={(_, value) => {
+                  setReportData((prev) => ({ ...prev, report_assignee: value ?? '' }));
+                }}
+                size="small"
+                sx={{ flexWrap: 'wrap', gap: 0.5 }}
+              >
+                {jimuInitials.map((initial) => (
+                  <ToggleButton
+                    key={initial}
+                    value={initial}
+                    sx={{
+                      px: 2,
+                      minWidth: 64,
+                      fontWeight: 'bold',
+                      '&.Mui-selected': {
+                        backgroundColor: 'primary.main',
+                        color: 'white',
+                        '&:hover': { backgroundColor: 'primary.dark' },
+                      },
+                    }}
+                  >
+                    {initial}
+                  </ToggleButton>
+                ))}
+              </ToggleButtonGroup>
+              {reportData.sales_assignee && (
+                <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+                  物件担当: {reportData.sales_assignee}
+                </Typography>
+              )}
+            </Box>
+
+            {/* Gmail送信ボタン */}
+            <Button
+              variant="outlined"
+              fullWidth
+              startIcon={prefetching ? <CircularProgress size={16} /> : <EmailIcon />}
+              onClick={() => {
+                setTemplateDialogOpen(true);
+                if (Object.keys(mergedTemplates).length === 0 && !prefetching) {
+                  prefetchMergedTemplates();
+                }
+              }}
+              sx={{
+                borderColor: '#1a73e8',
+                color: '#1a73e8',
+                '&:hover': { borderColor: '#1557b0', backgroundColor: '#1a73e808' },
+              }}
+            >
+              {prefetching ? 'テンプレート準備中...' : 'Gmail送信'}
+            </Button>
+          </Paper>
         </Box>
 
-        {/* Gmail送信ボタン */}
-        <Button
-          variant="outlined"
-          fullWidth
-          startIcon={prefetching ? <CircularProgress size={16} /> : <EmailIcon />}
-          onClick={() => {
-            setTemplateDialogOpen(true);
-            if (Object.keys(mergedTemplates).length === 0 && !prefetching) {
-              prefetchMergedTemplates();
-            }
-          }}
-          sx={{
-            borderColor: '#1a73e8',
-            color: '#1a73e8',
-            '&:hover': { borderColor: '#1557b0', backgroundColor: '#1a73e808' },
-          }}
-        >
-          {prefetching ? 'テンプレート準備中...' : 'Gmail送信'}
-        </Button>
-      </Paper>
-
-      {/* 報告書一覧 */}
-      <Paper sx={{ p: 3 }}>
-        <Typography variant="h6" fontWeight="bold" sx={{ mb: 2, color: SECTION_COLORS.property.main }}>
-          送信履歴
-        </Typography>
-        {reportHistory.length === 0 ? (
-          <Typography variant="body2" color="text.secondary">
-            送信履歴はありません
-          </Typography>
-        ) : (
-          <TableContainer>
-            <Table size="small">
-              <TableHead>
-                <TableRow>
-                  <TableCell sx={{ fontWeight: 'bold' }}>送信日時</TableCell>
-                  <TableCell sx={{ fontWeight: 'bold' }}>テンプレート</TableCell>
-                  <TableCell sx={{ fontWeight: 'bold' }}>担当</TableCell>
-                  <TableCell sx={{ fontWeight: 'bold' }}>完了</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {reportHistory.map((h) => (
-                  <TableRow
-                    key={h.id}
-                    hover
-                    onClick={() => { setSelectedHistory(h); setHistoryDialogOpen(true); }}
-                    sx={{ cursor: 'pointer' }}
-                  >
-                    <TableCell>
-                      {new Date(h.sent_at).toLocaleString('ja-JP', {
-                        month: '2-digit',
-                        day: '2-digit',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
-                    </TableCell>
-                    <TableCell>{h.template_name || '-'}</TableCell>
-                    <TableCell>{h.report_assignee ? getFullName(h.report_assignee) : '-'}</TableCell>
-                    <TableCell>
-                      <Chip
-                        label={h.report_completed === 'Y' ? '完了' : '未完了'}
-                        size="small"
-                        color={h.report_completed === 'Y' ? 'success' : 'default'}
-                      />
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        )}
-      </Paper>
-
-      {/* 前回メール内容 */}
-      {reportHistory.length > 0 && reportHistory[0].body && (
-        <Paper sx={{ p: 3, mt: 3 }}>
-          <Typography variant="h6" fontWeight="bold" sx={{ mb: 1, color: SECTION_COLORS.property.main }}>
-            前回メール内容
-          </Typography>
-          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
-            {new Date(reportHistory[0].sent_at).toLocaleString('ja-JP', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
-            　{reportHistory[0].template_name || ''}
-          </Typography>
-          {reportHistory[0].subject && (
-            <Typography variant="body2" fontWeight="bold" sx={{ mb: 1 }}>
-              件名: {reportHistory[0].subject}
+        {/* 右カラム：送信履歴 + 前回メール内容 */}
+        <Box sx={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 3 }}>
+          {/* 送信履歴 */}
+          <Paper sx={{ p: 3 }}>
+            <Typography variant="h6" fontWeight="bold" sx={{ mb: 2, color: SECTION_COLORS.property.main }}>
+              送信履歴
             </Typography>
+            {reportHistory.length === 0 ? (
+              <Typography variant="body2" color="text.secondary">
+                送信履歴はありません
+              </Typography>
+            ) : (
+              <TableContainer>
+                <Table size="small">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell sx={{ fontWeight: 'bold' }}>送信日時</TableCell>
+                      <TableCell sx={{ fontWeight: 'bold' }}>テンプレート</TableCell>
+                      <TableCell sx={{ fontWeight: 'bold' }}>担当</TableCell>
+                      <TableCell sx={{ fontWeight: 'bold' }}>完了</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {reportHistory.map((h) => (
+                      <TableRow
+                        key={h.id}
+                        hover
+                        onClick={() => { setSelectedHistory(h); setHistoryDialogOpen(true); }}
+                        sx={{ cursor: 'pointer' }}
+                      >
+                        <TableCell>
+                          {new Date(h.sent_at).toLocaleString('ja-JP', {
+                            month: '2-digit',
+                            day: '2-digit',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                        </TableCell>
+                        <TableCell>{h.template_name || '-'}</TableCell>
+                        <TableCell>{h.report_assignee ? getFullName(h.report_assignee) : '-'}</TableCell>
+                        <TableCell>
+                          <Chip
+                            label={h.report_completed === 'Y' ? '完了' : '未完了'}
+                            size="small"
+                            color={h.report_completed === 'Y' ? 'success' : 'default'}
+                          />
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            )}
+          </Paper>
+
+          {/* 前回メール内容 */}
+          {reportHistory.length > 0 && reportHistory[0].body && (
+            <Paper sx={{ p: 3 }}>
+              <Typography variant="h6" fontWeight="bold" sx={{ mb: 1, color: SECTION_COLORS.property.main }}>
+                前回メール内容
+              </Typography>
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+                {new Date(reportHistory[0].sent_at).toLocaleString('ja-JP', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                　{reportHistory[0].template_name || ''}
+              </Typography>
+              {reportHistory[0].subject && (
+                <Typography variant="body2" fontWeight="bold" sx={{ mb: 1 }}>
+                  件名: {reportHistory[0].subject}
+                </Typography>
+              )}
+              <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', fontSize: '0.8rem', color: 'text.secondary', maxHeight: 300, overflow: 'auto', bgcolor: '#f9f9f9', p: 1.5, borderRadius: 1 }}>
+                {reportHistory[0].body}
+              </Typography>
+            </Paper>
           )}
-          <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', fontSize: '0.8rem', color: 'text.secondary', maxHeight: 200, overflow: 'auto', bgcolor: '#f9f9f9', p: 1.5, borderRadius: 1 }}>
-            {reportHistory[0].body}
-          </Typography>
-        </Paper>
-      )}
+        </Box>
+      </Box>
 
       {/* テンプレート選択ダイアログ */}
       <Dialog
