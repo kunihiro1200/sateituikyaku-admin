@@ -298,7 +298,7 @@ export default function GmailDistributionButton({
         onClick={handleButtonClick}
         disabled={loading}
       >
-        Gmailで配信
+        公開前、値下げメール配信
       </Button>
 
       <EmailTemplateSelector
