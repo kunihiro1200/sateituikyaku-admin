@@ -143,9 +143,9 @@ export default function BuyerCandidateListPage() {
     let bodyTemplate: string;
     if (candidatesWithEmail.length === 1) {
       const buyerName = candidatesWithEmail[0].name || 'お客様';
-      bodyTemplate = `${buyerName}様\n\nお世話になります。株式会社いふうの不動産事業部です。\n\n${address}を近々売りに出すことになりました！\nもしご興味がございましたら、誰よりも早く内覧することが可能となっておりますので、このメールにご返信頂けると嬉しいです。\n\n物件詳細: ${publicUrl}\n\nよろしくお願いいたします。\n━━━━━━━━━━━━━━━━\n大分市中央町1-3-30\n株式会社いふう\nTEL:097-533-2022\n━━━━━━━━━━━━━━━━`;
+      bodyTemplate = `${buyerName}様\n\nお世話になります。株式会社いふうの不動産事業部です。\n\n${address}を近々売りに出すことになりました！\nもしご興味がございましたら、誰よりも早く内覧することが可能となっておりますので、このメールにご返信頂けると嬉しいです。\n\n物件詳細: ${publicUrl}\n\nよろしくお願いいたします。\n━━━━━━━━━━━━━━━━\n大分市舞鶴町1-3-30STビル１階\n株式会社いふう\nTEL:097-533-2022\n━━━━━━━━━━━━━━━━`;
     } else {
-      bodyTemplate = `{氏名}様\n\nお世話になります。株式会社いふうの不動産事業部です。\n\n${address}を近々売りに出すことになりました！\nもしご興味がございましたら、誰よりも早く内覧することが可能となっておりますので、このメールにご返信頂けると嬉しいです。\n\n物件詳細: ${publicUrl}\n\nよろしくお願いいたします。\n━━━━━━━━━━━━━━━━\n大分市中央町1-3-30\n株式会社いふう\nTEL:097-533-2022\n━━━━━━━━━━━━━━━━`;
+      bodyTemplate = `{氏名}様\n\nお世話になります。株式会社いふうの不動産事業部です。\n\n${address}を近々売りに出すことになりました！\nもしご興味がございましたら、誰よりも早く内覧することが可能となっておりますので、このメールにご返信頂けると嬉しいです。\n\n物件詳細: ${publicUrl}\n\nよろしくお願いいたします。\n━━━━━━━━━━━━━━━━\n大分市舞鶴町1-3-30STビル１階\n株式会社いふう\nTEL:097-533-2022\n━━━━━━━━━━━━━━━━`;
     }
 
     setEmailSubject(subject);
@@ -207,7 +207,7 @@ export default function BuyerCandidateListPage() {
 
     const publicUrl = `https://property-site-frontend-kappa.vercel.app/public/properties/${propertyNumber}`;
     const address = data.property.address || '物件';
-    const messageTemplate = `{name}様\n\n株式会社いふうです。\n${address}を近々売りに出すことになりました！\n誰よりも早く内覧可能です。ご興味がございましたらご返信ください。\n\n物件詳細: ${publicUrl}\n\n株式会社いふう\nTEL:097-533-2022`;
+    const messageTemplate = `{name}様\n\n株式会社いふうです。\n${address}を近々売りに出すことになりました！\n誰よりも早く内覧可能です。ご興味がございましたらご返信ください。\n\n物件詳細: ${publicUrl}\n\n株式会社いふう\nTEL:097-533-2022\n大分市舞鶴町1-3-30STビル１階`;
 
     try {
       setSnackbar({ open: true, message: `SMS送信中... (${candidatesWithPhone.length}件)`, severity: 'info' });
