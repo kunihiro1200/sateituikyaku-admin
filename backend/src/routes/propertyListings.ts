@@ -826,50 +826,18 @@ router.post('/:propertyNumber/report-history', async (req: Request, res: Respons
   }
 });
 
-// 報告書メール送信
+// 報告書メール送信（送信履歴の記録のみ。実際のメール送信はフロントエンドのGmailリンクで行う）
 router.post('/:propertyNumber/send-report-email', authenticate, async (req: Request, res: Response): Promise<void> => {
   try {
     const { propertyNumber } = req.params;
     const { to, subject, body, template_name, report_date, report_assignee, report_completed } = req.body;
 
-    if (!to || !subject || !body) {
-      res.status(400).json({ error: '宛先・件名・本文は必須です' });
+    if (!subject || !body) {
+      res.status(400).json({ error: '件名・本文は必須です' });
       return;
     }
 
     const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!);
-
-    const employeeEmail = req.employee?.email || '';
-    const employeeId = req.employee?.id || '';
-
-    // 送信用ダミーsellerオブジェクト（EmailServiceのインターフェースに合わせる）
-    const sellerWithTo = {
-      id: propertyNumber,
-      seller_number: propertyNumber,
-      name: '',
-      email: to,
-      phone_number: '',
-      property_address: '',
-      created_at: new Date(),
-    };
-
-    if (!employeeEmail) {
-      res.status(401).json({ error: '認証が必要です。ログインし直してください。' });
-      return;
-    }
-
-    const result = await emailService.sendTemplateEmail(
-      sellerWithTo as any,
-      subject,
-      body,
-      employeeEmail,
-      employeeId,
-    );
-
-    if (!result.success) {
-      res.status(500).json({ error: result.error || 'メール送信に失敗しました' });
-      return;
-    }
 
     // 送信履歴を記録
     await supabase.from('property_report_history').insert({
@@ -883,10 +851,10 @@ router.post('/:propertyNumber/send-report-email', authenticate, async (req: Requ
       sent_at: new Date().toISOString(),
     });
 
-    res.json({ success: true, messageId: result.messageId });
+    res.json({ success: true });
   } catch (error: any) {
-    console.error('Error sending report email:', error);
-    res.status(500).json({ error: error.message || 'メール送信に失敗しました' });
+    console.error('Error recording report email history:', error);
+    res.status(500).json({ error: error.message || '履歴の記録に失敗しました' });
   }
 });
 
