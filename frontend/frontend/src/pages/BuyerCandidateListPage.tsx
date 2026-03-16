@@ -168,11 +168,10 @@ export default function BuyerCandidateListPage() {
         // {氏名}を実際の買主名に置換
         const personalizedBody = body.replace(/\{氏名\}/g, buyerName);
         return await api.post('/api/emails/send-distribution', {
+          senderAddress: 'tenant@ifoo-oita.com',
           recipients: [candidate.email!],
           subject: subject,
           body: personalizedBody,
-          from: 'tenant@ifoo-oita.com',
-          cc: 'tenant@ifoo-oita.com',
         });
       })
     );
