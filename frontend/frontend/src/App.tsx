@@ -30,6 +30,7 @@ import BuyerCandidateListPage from './pages/BuyerCandidateListPage';
 import SharedItemsPage from './pages/SharedItemsPage';
 import SharedItemDetailPage from './pages/SharedItemDetailPage';
 import NearbyBuyersPage from './pages/NearbyBuyersPage';
+import ReinsRegistrationPage from './pages/ReinsRegistrationPage';
 import ProtectedRoute from './components/ProtectedRoute';
 import { useAuthStore } from './store/authStore';
 import { GoogleMapsProvider } from './contexts/GoogleMapsContext';
@@ -167,6 +168,14 @@ function App() {
         element={
           <ProtectedRoute>
             <PropertyReportPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/property-listings/:propertyNumber/reins-registration"
+        element={
+          <ProtectedRoute>
+            <ReinsRegistrationPage />
           </ProtectedRoute>
         }
       />

@@ -742,6 +742,13 @@ export default function PropertyListingDetailPage() {
         <Box sx={{ display: 'flex', gap: 2 }}>
           <Button
             variant="outlined"
+            onClick={() => navigate(`/property-listings/${propertyNumber}/reins-registration`)}
+            sx={{ borderColor: '#1565c0', color: '#1565c0', '&:hover': { borderColor: '#0d47a1', backgroundColor: '#1565c008' } }}
+          >
+            レインズ登録、サイト入力
+          </Button>
+          <Button
+            variant="outlined"
             startIcon={<AssignmentIcon />}
             onClick={() => window.open(`/property-listings/${propertyNumber}/report`, '_blank')}
             sx={{
