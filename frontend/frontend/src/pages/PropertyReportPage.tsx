@@ -91,6 +91,10 @@ export default function PropertyReportPage() {
   const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
   const [sendConfirmDialogOpen, setSendConfirmDialogOpen] = useState(false);
   const [pendingSendHistory, setPendingSendHistory] = useState<{ templateName: string; subject: string; body: string; gmailUrl: string } | null>(null);
+  // 編集中のメール内容
+  const [editTo, setEditTo] = useState('');
+  const [editSubject, setEditSubject] = useState('');
+  const [editBody, setEditBody] = useState('');
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
     message: string;
@@ -272,6 +276,9 @@ export default function PropertyReportPage() {
       const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${to}&su=${subject}&body=${body}`;
       // Gmailを開かずにプレビューダイアログを表示
       setPendingSendHistory({ templateName: template.name, subject: cached.subject, body: cached.body, gmailUrl });
+      setEditTo(cached.sellerEmail || toEmail);
+      setEditSubject(cached.subject);
+      setEditBody(cached.body);
       setSendConfirmDialogOpen(true);
       return;
     }
@@ -292,6 +299,9 @@ export default function PropertyReportPage() {
       const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${to}&su=${subject}&body=${body}`;
       // Gmailを開かずにプレビューダイアログを表示
       setPendingSendHistory({ templateName: template.name, subject: mergedSubject || template.subject, body: mergedBody || template.body, gmailUrl });
+      setEditTo(resolvedEmail);
+      setEditSubject(mergedSubject || template.subject);
+      setEditBody(mergedBody || template.body);
       setSendConfirmDialogOpen(true);
     } catch (error) {
       console.error('Failed to merge template:', error);
@@ -300,20 +310,25 @@ export default function PropertyReportPage() {
       const body = encodeURIComponent(template.body);
       const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${to}&su=${subject}&body=${body}`;
       setPendingSendHistory({ templateName: template.name, subject: template.subject, body: template.body, gmailUrl });
+      setEditTo(toEmail);
+      setEditSubject(template.subject);
+      setEditBody(template.body);
       setSendConfirmDialogOpen(true);
     }
   };
 
   const handleOpenGmail = () => {
-    if (pendingSendHistory) {
-      window.open(pendingSendHistory.gmailUrl, '_blank');
-    }
+    const to = encodeURIComponent(editTo);
+    const subject = encodeURIComponent(editSubject);
+    const body = encodeURIComponent(editBody);
+    const url = `https://mail.google.com/mail/?view=cm&fs=1&to=${to}&su=${subject}&body=${body}`;
+    window.open(url, '_blank');
   };
 
   const handleSendConfirm = async () => {
     setSendConfirmDialogOpen(false);
     if (pendingSendHistory) {
-      await recordSendHistory(pendingSendHistory.templateName, pendingSendHistory.subject, pendingSendHistory.body);
+      await recordSendHistory(pendingSendHistory.templateName, editSubject, editBody);
     }
     setPendingSendHistory(null);
   };
@@ -656,19 +671,35 @@ export default function PropertyReportPage() {
             )}
           </Box>
 
-          {/* 右：今回のメール */}
-          <Box sx={{ flex: 1, p: 2, overflow: 'auto' }}>
-            <Typography variant="caption" fontWeight="bold" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
-              今回のメール
+          {/* 右：今回のメール（編集可能） */}
+          <Box sx={{ flex: 1, p: 2, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+            <Typography variant="caption" fontWeight="bold" color="text.secondary">
+              今回のメール（編集可能）
             </Typography>
-            {pendingSendHistory?.subject && (
-              <Typography variant="body2" fontWeight="bold" sx={{ mb: 1 }}>
-                件名: {pendingSendHistory.subject}
-              </Typography>
-            )}
-            <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', fontSize: '0.8rem', color: 'text.primary' }}>
-              {pendingSendHistory?.body || ''}
-            </Typography>
+            <TextField
+              label="宛先"
+              size="small"
+              fullWidth
+              value={editTo}
+              onChange={(e) => setEditTo(e.target.value)}
+            />
+            <TextField
+              label="件名"
+              size="small"
+              fullWidth
+              value={editSubject}
+              onChange={(e) => setEditSubject(e.target.value)}
+            />
+            <TextField
+              label="本文"
+              multiline
+              fullWidth
+              value={editBody}
+              onChange={(e) => setEditBody(e.target.value)}
+              sx={{ flex: 1 }}
+              InputProps={{ sx: { fontSize: '0.8rem', alignItems: 'flex-start' } }}
+              inputProps={{ style: { minHeight: 300 } }}
+            />
           </Box>
         </DialogContent>
         <DialogActions sx={{ gap: 1, px: 2 }}>
