@@ -45,6 +45,7 @@ interface ReportData {
   sales_assignee?: string;
   address?: string;
   owner_name?: string;
+  owner_email?: string;
 }
 
 interface EmailTemplate {
@@ -82,7 +83,7 @@ export default function PropertyReportPage() {
   const [jimuInitials, setJimuInitials] = useState<string[]>([]);
   const [jimuStaff, setJimuStaff] = useState<StaffInfo[]>([]);
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
-  const [mergedTemplates, setMergedTemplates] = useState<Record<string, { subject: string; body: string; sellerName?: string }>>({});
+  const [mergedTemplates, setMergedTemplates] = useState<Record<string, { subject: string; body: string; sellerName?: string; sellerEmail?: string }>>({});
   const [prefetching, setPrefetching] = useState(false);
   const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
   const [reportHistory, setReportHistory] = useState<ReportHistory[]>([]);
@@ -117,10 +118,12 @@ export default function PropertyReportPage() {
       const response = await api.get(`/api/property-listings/${propertyNumber}`);
       const d = response.data;
       let ownerName = d.seller_name || '';
-      if (!ownerName) {
+      let ownerEmail = d.seller_email || d.email || '';
+      if (!ownerName || !ownerEmail) {
         try {
           const sellerRes = await api.get(`/api/sellers/by-number/${propertyNumber}`);
-          ownerName = sellerRes.data?.name || '';
+          if (!ownerName) ownerName = sellerRes.data?.name || '';
+          if (!ownerEmail) ownerEmail = sellerRes.data?.email || '';
         } catch {
           // 売主が見つからない場合は空のまま
         }
@@ -132,6 +135,7 @@ export default function PropertyReportPage() {
         sales_assignee: d.sales_assignee || '',
         address: d.address || d.property_address || '',
         owner_name: ownerName,
+        owner_email: ownerEmail,
       };
       setReportData(initial);
       setSavedData(initial);
@@ -210,10 +214,15 @@ export default function PropertyReportPage() {
               subject: mergeResponse.data.subject || template.subject,
               body: mergeResponse.data.body || template.body,
               sellerName: mergeResponse.data.sellerName,
+              sellerEmail: mergeResponse.data.sellerEmail,
             };
             if (mergeResponse.data.sellerName) {
               setReportData((prev) => ({ ...prev, owner_name: mergeResponse.data.sellerName }));
               setSavedData((prev) => ({ ...prev, owner_name: mergeResponse.data.sellerName }));
+            }
+            if (mergeResponse.data.sellerEmail) {
+              setReportData((prev) => ({ ...prev, owner_email: mergeResponse.data.sellerEmail }));
+              setSavedData((prev) => ({ ...prev, owner_email: mergeResponse.data.sellerEmail }));
             }
           } catch (err) {
             console.error('Failed to prefetch template:', template.id, err);
@@ -250,13 +259,16 @@ export default function PropertyReportPage() {
   const handleTemplateSelect = async (template: EmailTemplate) => {
     setTemplateDialogOpen(false);
 
+    const toEmail = reportData.owner_email || '';
+
     if (mergedTemplates[template.id]) {
       const cached = mergedTemplates[template.id];
+      const resolvedEmail = cached.sellerEmail || toEmail;
+      const to = encodeURIComponent(resolvedEmail);
       const subject = encodeURIComponent(cached.subject);
       const body = encodeURIComponent(cached.body);
-      const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&su=${subject}&body=${body}`;
+      const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${to}&su=${subject}&body=${body}`;
       window.open(gmailUrl, '_blank');
-      // 送信後に履歴を記録
       recordSendHistory(template.name, cached.subject, cached.body);
       return;
     }
@@ -266,20 +278,23 @@ export default function PropertyReportPage() {
         propertyNumber,
         templateId: template.id,
       });
-      const { subject: mergedSubject, body: mergedBody, sellerName } = mergeResponse.data;
+      const { subject: mergedSubject, body: mergedBody, sellerName, sellerEmail } = mergeResponse.data;
       if (sellerName) {
         setReportData((prev) => ({ ...prev, owner_name: sellerName }));
       }
+      const resolvedEmail = sellerEmail || toEmail;
+      const to = encodeURIComponent(resolvedEmail);
       const subject = encodeURIComponent(mergedSubject || template.subject);
       const body = encodeURIComponent(mergedBody || template.body);
-      const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&su=${subject}&body=${body}`;
+      const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${to}&su=${subject}&body=${body}`;
       window.open(gmailUrl, '_blank');
       recordSendHistory(template.name, mergedSubject || template.subject, mergedBody || template.body);
     } catch (error) {
       console.error('Failed to merge template:', error);
+      const to = encodeURIComponent(toEmail);
       const subject = encodeURIComponent(template.subject);
       const body = encodeURIComponent(template.body);
-      const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&su=${subject}&body=${body}`;
+      const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${to}&su=${subject}&body=${body}`;
       window.open(gmailUrl, '_blank');
     }
   };
