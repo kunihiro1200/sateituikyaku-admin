@@ -74,6 +74,7 @@ export default function BuyerDesiredConditionsPage() {
   const [buyer, setBuyer] = useState<Buyer | null>(null);
   const [loading, setLoading] = useState(true);
   const [copiedBuyerNumber, setCopiedBuyerNumber] = useState(false);
+  const [selectedAreas, setSelectedAreas] = useState<string[]>([]);
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' | 'warning' }>({
     open: false,
     message: '',
@@ -97,6 +98,9 @@ export default function BuyerDesiredConditionsPage() {
       setLoading(true);
       const res = await api.get(`/api/buyers/${buyer_number}`);
       setBuyer(res.data);
+      // desired_area の初期値をローカル state にセット
+      const areaVal = res.data?.desired_area || '';
+      setSelectedAreas(areaVal ? areaVal.split(/[,、]/).map((v: string) => v.trim()).filter(Boolean) : []);
     } catch (error) {
       console.error('Failed to fetch buyer:', error);
     } finally {
@@ -126,6 +130,11 @@ export default function BuyerDesiredConditionsPage() {
       }
       
       setBuyer(result.buyer);
+      // desired_area が更新された場合はローカル state も同期
+      if (fieldName === 'desired_area' && result.buyer?.desired_area !== undefined) {
+        const areaVal = result.buyer.desired_area || '';
+        setSelectedAreas(areaVal ? areaVal.split(/[,、]/).map((v: string) => v.trim()).filter(Boolean) : []);
+      }
       
       if (result.syncStatus === 'pending') {
         setSnackbar({
@@ -259,14 +268,13 @@ export default function BuyerDesiredConditionsPage() {
                   <FormControl fullWidth size="small">
                     <Select
                       multiple
-                      value={
-                        buyer[field.key]
-                          ? buyer[field.key].split(/[,、]/).map((v: string) => v.trim()).filter(Boolean)
-                          : []
-                      }
-                      onChange={async (e) => {
+                      value={selectedAreas}
+                      onChange={(e) => {
                         const selected = e.target.value as string[];
-                        await handleInlineFieldSave(field.key, selected.join('、'));
+                        // UIを即時更新
+                        setSelectedAreas(selected);
+                        // APIに非同期保存
+                        handleInlineFieldSave(field.key, selected.join('、'));
                       }}
                       input={<OutlinedInput />}
                       renderValue={(selected) => (
@@ -286,17 +294,12 @@ export default function BuyerDesiredConditionsPage() {
                       )}
                       MenuProps={{ PaperProps: { style: { maxHeight: 400 } } }}
                     >
-                      {(field.options || []).map((opt) => {
-                        const currentValues: string[] = buyer[field.key]
-                          ? buyer[field.key].split(/[,、]/).map((v: string) => v.trim()).filter(Boolean)
-                          : [];
-                        return (
-                          <MenuItem key={opt.value} value={opt.value} dense>
-                            <Checkbox size="small" checked={currentValues.includes(opt.value)} sx={{ p: 0, mr: 1 }} />
-                            <Typography variant="body2">{opt.label}</Typography>
-                          </MenuItem>
-                        );
-                      })}
+                      {(field.options || []).map((opt) => (
+                        <MenuItem key={opt.value} value={opt.value} dense>
+                          <Checkbox size="small" checked={selectedAreas.includes(opt.value)} sx={{ p: 0, mr: 1 }} />
+                          <Typography variant="body2">{opt.label}</Typography>
+                        </MenuItem>
+                      ))}
                     </Select>
                   </FormControl>
                 ) : field.inlineEditable ? (
