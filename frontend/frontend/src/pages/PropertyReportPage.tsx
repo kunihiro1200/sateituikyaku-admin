@@ -89,6 +89,8 @@ export default function PropertyReportPage() {
   const [reportHistory, setReportHistory] = useState<ReportHistory[]>([]);
   const [selectedHistory, setSelectedHistory] = useState<ReportHistory | null>(null);
   const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
+  const [sendConfirmDialogOpen, setSendConfirmDialogOpen] = useState(false);
+  const [pendingSendHistory, setPendingSendHistory] = useState<{ templateName: string; subject: string; body: string } | null>(null);
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
     message: string;
@@ -269,7 +271,9 @@ export default function PropertyReportPage() {
       const body = encodeURIComponent(cached.body);
       const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${to}&su=${subject}&body=${body}`;
       window.open(gmailUrl, '_blank');
-      recordSendHistory(template.name, cached.subject, cached.body);
+      // 送信確認ダイアログを表示（実際に送信したか確認してから履歴記録）
+      setPendingSendHistory({ templateName: template.name, subject: cached.subject, body: cached.body });
+      setSendConfirmDialogOpen(true);
       return;
     }
 
@@ -288,7 +292,9 @@ export default function PropertyReportPage() {
       const body = encodeURIComponent(mergedBody || template.body);
       const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${to}&su=${subject}&body=${body}`;
       window.open(gmailUrl, '_blank');
-      recordSendHistory(template.name, mergedSubject || template.subject, mergedBody || template.body);
+      // 送信確認ダイアログを表示（実際に送信したか確認してから履歴記録）
+      setPendingSendHistory({ templateName: template.name, subject: mergedSubject || template.subject, body: mergedBody || template.body });
+      setSendConfirmDialogOpen(true);
     } catch (error) {
       console.error('Failed to merge template:', error);
       const to = encodeURIComponent(toEmail);
@@ -296,7 +302,23 @@ export default function PropertyReportPage() {
       const body = encodeURIComponent(template.body);
       const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${to}&su=${subject}&body=${body}`;
       window.open(gmailUrl, '_blank');
+      // エラー時も確認ダイアログを表示
+      setPendingSendHistory({ templateName: template.name, subject: template.subject, body: template.body });
+      setSendConfirmDialogOpen(true);
     }
+  };
+
+  const handleSendConfirm = async () => {
+    setSendConfirmDialogOpen(false);
+    if (pendingSendHistory) {
+      await recordSendHistory(pendingSendHistory.templateName, pendingSendHistory.subject, pendingSendHistory.body);
+    }
+    setPendingSendHistory(null);
+  };
+
+  const handleSendCancel = () => {
+    setSendConfirmDialogOpen(false);
+    setPendingSendHistory(null);
   };
 
   const recordSendHistory = async (templateName: string, subject: string, body?: string) => {
@@ -595,6 +617,20 @@ export default function PropertyReportPage() {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setTemplateDialogOpen(false)}>キャンセル</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 送信確認ダイアログ */}
+      <Dialog open={sendConfirmDialogOpen} onClose={handleSendCancel} maxWidth="xs" fullWidth>
+        <DialogTitle>送信しましたか？</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary">
+            Gmailで実際に送信した場合のみ「送信済み」を押してください。
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleSendCancel} color="inherit">送信していない</Button>
+          <Button onClick={handleSendConfirm} variant="contained" color="primary">送信済み</Button>
         </DialogActions>
       </Dialog>
 
