@@ -67,9 +67,8 @@ export class BuyerCandidateService {
     const propertyAreaNumbers = await this.getAreaNumbersForProperty(property);
     console.log(`[BuyerCandidateService] Property area numbers:`, propertyAreaNumbers);
 
-    // 物件の座標を取得
-    const propertyCoords = await this.getPropertyCoordinates(property);
-    console.log(`[BuyerCandidateService] Property coordinates:`, propertyCoords);
+    // 距離マッチングは現在無効化されているため座標取得をスキップ
+    const propertyCoords = null;
 
     // 買主を全件取得（Supabaseの1000件制限を回避するためページネーション）
     const buyers: any[] = [];
@@ -80,6 +79,9 @@ export class BuyerCandidateService {
         .from('buyers')
         .select('*')
         .is('deleted_at', null)  // 削除済みを除外
+        .eq('distribution_type', '要')  // 配信種別が「要」のみ取得（DBレベルで絞り込み）
+        .not('latest_status', 'like', '%買付%')  // 買付済みを除外
+        .not('latest_status', 'like', '%D%')  // D確度を除外
         .order('reception_date', { ascending: false, nullsFirst: false })
         .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
 
@@ -202,43 +204,23 @@ export class BuyerCandidateService {
     propertyAreaNumbers: string[],
     propertyCoords: { lat: number; lng: number } | null
   ): Promise<any[]> {
-    const filteredBuyers: any[] = [];
+    // 同期フィルタを先に適用して件数を絞る（高速）
+    const preFiltered = buyers.filter(buyer => {
+      if (this.shouldExcludeBuyer(buyer)) return false;
+      if (!this.matchesStatus(buyer)) return false;
+      if (!this.matchesPropertyTypeCriteria(buyer, propertyType)) return false;
+      if (!this.matchesPriceCriteria(buyer, salesPrice, propertyType)) return false;
+      return true;
+    });
 
-    for (const buyer of buyers) {
-      // 1. 除外条件の評価（早期リターン）
-      if (this.shouldExcludeBuyer(buyer)) {
-        continue;
-      }
+    // エリアフィルタ（非同期）を Promise.all で並列実行
+    const areaResults = await Promise.all(
+      preFiltered.map(buyer =>
+        this.matchesAreaCriteriaWithDistance(buyer, propertyAreaNumbers, propertyCoords)
+      )
+    );
 
-      // 2. 最新状況/問合せ時確度フィルタ
-      if (!this.matchesStatus(buyer)) {
-        continue;
-      }
-
-      // 3. エリアフィルタ（距離ベースも含む）
-      const matchesArea = await this.matchesAreaCriteriaWithDistance(
-        buyer,
-        propertyAreaNumbers,
-        propertyCoords
-      );
-      if (!matchesArea) {
-        continue;
-      }
-
-      // 4. 種別フィルタ
-      if (!this.matchesPropertyTypeCriteria(buyer, propertyType)) {
-        continue;
-      }
-
-      // 5. 価格帯フィルタ
-      if (!this.matchesPriceCriteria(buyer, salesPrice, propertyType)) {
-        continue;
-      }
-
-      filteredBuyers.push(buyer);
-    }
-
-    return filteredBuyers;
+    return preFiltered.filter((_, i) => areaResults[i]);
   }
 
   /**
