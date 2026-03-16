@@ -19,6 +19,7 @@ interface DistributionAreaFieldProps {
   googleMapUrl?: string;
   value?: string;
   onChange: (value: string) => void;
+  onCalculatingChange?: (isCalculating: boolean) => void;
   disabled?: boolean;
 }
 
@@ -27,6 +28,7 @@ export default function DistributionAreaField({
   googleMapUrl,
   value = '',
   onChange,
+  onCalculatingChange,
   disabled = false,
 }: DistributionAreaFieldProps) {
   const [calculating, setCalculating] = useState(false);
@@ -50,6 +52,7 @@ export default function DistributionAreaField({
 
     setCalculating(true);
     setError(null);
+    onCalculatingChange?.(true);
 
     try {
       const response = await api.post(
@@ -69,6 +72,7 @@ export default function DistributionAreaField({
       );
     } finally {
       setCalculating(false);
+      onCalculatingChange?.(false);
       setPendingCalculation(false);
     }
   };
