@@ -36,6 +36,7 @@ import GmailDistributionButton from '../components/GmailDistributionButton';
 import DistributionAreaField from '../components/DistributionAreaField';
 import EditableUrlField from '../components/EditableUrlField';
 import PropertySidebarStatus from '../components/PropertySidebarStatus';
+import { getDisplayStatus } from '../utils/atbbStatusDisplayMapper';
 
 interface PropertyListing {
   id: number;
@@ -814,6 +815,12 @@ export default function PropertyListingDetailPage() {
             <Typography variant="body2" color="text.secondary" fontWeight="bold">売主氏名</Typography>
             <Typography variant="body1" fontWeight="medium">
               {data.seller_name || '-'}
+            </Typography>
+          </Grid>
+          <Grid item xs={12} sm={6} md={3}>
+            <Typography variant="body2" color="text.secondary" fontWeight="bold">ATBB状況</Typography>
+            <Typography variant="body1" fontWeight="medium">
+              {getDisplayStatus(data.atbb_status) || '-'}
             </Typography>
           </Grid>
           <Grid item xs={12} sm={6} md={3}>
