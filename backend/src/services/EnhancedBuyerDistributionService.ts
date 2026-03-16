@@ -101,18 +101,9 @@ export class EnhancedBuyerDistributionService {
       // Check if distribution_areas is set
       if (!property.distribution_areas || property.distribution_areas.trim() === '') {
         console.warn(`[EnhancedBuyerDistributionService] Property ${criteria.propertyNumber} has no distribution areas set`);
-        return {
-          emails: [],
-          count: 0,
-          totalBuyers: 0,
-          filteredBuyers: [],
-          appliedFilters: {
-            geographyFilter: true,
-            distributionFilter: true,
-            statusFilter: true,
-            priceRangeFilter: true
-          }
-        };
+        // distribution_areasが未設定の場合、エリアフィルターをスキップして全買主を対象にする
+        // （property_listingsに登録されていない物件の場合、distribution_areasが取得できないため）
+        console.log(`[EnhancedBuyerDistributionService] Proceeding without distribution area filter`);
       }
 
       // 2. 物件の座標を取得
@@ -234,13 +225,13 @@ export class EnhancedBuyerDistributionService {
 
   /**
    * 物件情報を取得
-   * Note: property_listingsテーブルから物件情報を取得する
-   * sellersテーブルには物件詳細情報（google_map_url, price, property_typeなど）が含まれていないため
+   * 1. property_listingsテーブルを優先検索
+   * 2. 見つからない場合はsellersテーブルからフォールバック
    */
   private async fetchProperty(propertyNumber: string): Promise<any> {
     console.log(`[fetchProperty] Looking for property: ${propertyNumber}`);
     
-    // Query property_listings table (primary source for property details)
+    // 1. property_listingsテーブルを優先検索
     const { data: propertyData, error: propertyError } = await this.supabase
       .from('property_listings')
       .select('property_number, google_map_url, address, price, property_type, distribution_areas')
@@ -255,7 +246,6 @@ export class EnhancedBuyerDistributionService {
 
     if (!propertyError && propertyData) {
       console.log(`[fetchProperty] ✓ Found in property_listings table`);
-      // Extract city from address if needed
       const city = this.extractCityFromAddress(propertyData.address);
       return {
         property_number: propertyData.property_number,
@@ -268,8 +258,37 @@ export class EnhancedBuyerDistributionService {
       };
     }
 
-    // Property not found
-    console.log(`[fetchProperty] ✗ Property not found in property_listings table`);
+    // 2. sellersテーブルからフォールバック
+    console.log(`[fetchProperty] Not found in property_listings, trying sellers table...`);
+    const { data: sellerData, error: sellerError } = await this.supabase
+      .from('sellers')
+      .select('seller_number, property_address, property_type, valuation_amount_1')
+      .eq('seller_number', propertyNumber)
+      .single();
+
+    console.log(`[fetchProperty] Sellers table query result:`, {
+      found: !!sellerData,
+      error: sellerError?.message || 'none',
+      errorCode: sellerError?.code || 'none'
+    });
+
+    if (!sellerError && sellerData) {
+      console.log(`[fetchProperty] ✓ Found in sellers table (fallback)`);
+      const city = this.extractCityFromAddress(sellerData.property_address);
+      return {
+        property_number: sellerData.seller_number,
+        google_map_url: null,
+        address: sellerData.property_address,
+        city: city,
+        price: sellerData.valuation_amount_1 || null,
+        property_type: sellerData.property_type,
+        // distribution_areasがない場合は空文字（後続処理でwarningを出す）
+        distribution_areas: ''
+      };
+    }
+
+    // Property not found in either table
+    console.log(`[fetchProperty] ✗ Property not found in property_listings or sellers table`);
     const diagnosticError: any = new Error(`Property not found: ${propertyNumber}`);
     diagnosticError.code = 'PROPERTY_NOT_FOUND';
     diagnosticError.propertyNumber = propertyNumber;
@@ -645,6 +664,9 @@ export class EnhancedBuyerDistributionService {
     allInquiries: InquiryProperty[]
   ): Promise<GeographicMatchResult> {
     
+    // distribution_areasが未設定の場合（property_listingsに未登録の物件）、全買主を対象にする
+    const hasDistributionAreas = propertyDistributionAreas && propertyDistributionAreas.trim() !== '';
+    
     // 1. 問い合わせベースマッチング
     let inquiryMatch: {
       matched: boolean;
@@ -660,10 +682,10 @@ export class EnhancedBuyerDistributionService {
     }
 
     // 2. エリアベースマッチング - 統合されたエリアを使用
-    const areaMatch = this.checkAreaBasedMatch(
-      propertyDistributionAreas,
-      consolidatedBuyer.allDesiredAreas
-    );
+    // distribution_areasが未設定の場合はエリアマッチングをスキップ（全員マッチ扱い）
+    const areaMatch = hasDistributionAreas
+      ? this.checkAreaBasedMatch(propertyDistributionAreas, consolidatedBuyer.allDesiredAreas)
+      : { matched: true, matchedAreas: [] };
 
     // 3. 結果を統合（OR条件）
     if (inquiryMatch.matched && areaMatch.matched) {
