@@ -287,6 +287,13 @@ export default function BuyerDesiredConditionsPage() {
                                 label={opt ? opt.label : val}
                                 size="small"
                                 sx={{ height: 20, fontSize: '0.7rem' }}
+                                onDelete={(e) => {
+                                  e.stopPropagation();
+                                  const next = selectedAreas.filter((v) => v !== val);
+                                  setSelectedAreas(next);
+                                  handleInlineFieldSave(field.key, next.join('、'));
+                                }}
+                                onMouseDown={(e) => e.stopPropagation()}
                               />
                             );
                           })}
