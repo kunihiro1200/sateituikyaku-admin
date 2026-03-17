@@ -179,6 +179,7 @@ export default function PropertyListingDetailPage() {
   const [isSellerBuyerEditMode, setIsSellerBuyerEditMode] = useState(false);
   
   const [salesContractDialog, setSalesContractDialog] = useState(false);
+  const [chatSending, setChatSending] = useState(false);
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
     message: string;
@@ -1694,6 +1695,31 @@ export default function PropertyListingDetailPage() {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setSalesContractDialog(false)}>閉じる</Button>
+          <Button
+            variant="contained"
+            color="primary"
+            disabled={chatSending}
+            onClick={async () => {
+              if (!data?.property_number) return;
+              setChatSending(true);
+              try {
+                const apiBase = import.meta.env.VITE_API_URL || '';
+                const res = await fetch(`${apiBase}/api/property-listings/${data.property_number}/notify-contract-completed`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                });
+                if (!res.ok) throw new Error('送信失敗');
+                setSnackbar({ open: true, message: 'チャットに送信しました', severity: 'success' });
+                setSalesContractDialog(false);
+              } catch (e) {
+                setSnackbar({ open: true, message: 'チャット送信に失敗しました', severity: 'error' });
+              } finally {
+                setChatSending(false);
+              }
+            }}
+          >
+            {chatSending ? '送信中...' : 'チャット送信'}
+          </Button>
         </DialogActions>
       </Dialog>
       <Snackbar
