@@ -20,6 +20,7 @@ import { Search as SearchIcon, Clear as ClearIcon, Add as AddIcon } from '@mui/i
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import PageNavigation from '../components/PageNavigation';
+import { pageDataCache, CACHE_KEYS } from '../store/pageDataCache';
 import { SECTION_COLORS } from '../theme/sectionColors';
 
 interface SharedItem {
@@ -44,7 +45,17 @@ export default function SharedItemsPage() {
     fetchAllSharedItems();
   }, []);
 
-  const fetchAllSharedItems = async () => {
+  const fetchAllSharedItems = async (forceRefresh = false) => {
+    // キャッシュが有効な場合はAPIを叩かない
+    if (!forceRefresh) {
+      const cached = pageDataCache.get<SharedItem[]>(CACHE_KEYS.SHARED_ITEMS);
+      if (cached) {
+        setAllSharedItems(cached);
+        setLoading(false);
+        return;
+      }
+    }
+
     try {
       setLoading(true);
       const response = await api.get('/api/shared-items', {
@@ -55,7 +66,10 @@ export default function SharedItemsPage() {
           orderDirection: 'desc',
         },
       });
-      setAllSharedItems(response.data.data || []);
+      const data = response.data.data || [];
+      // キャッシュに保存（3分間有効）
+      pageDataCache.set(CACHE_KEYS.SHARED_ITEMS, data);
+      setAllSharedItems(data);
     } catch (error) {
       console.error('Failed to fetch shared items:', error);
     } finally {

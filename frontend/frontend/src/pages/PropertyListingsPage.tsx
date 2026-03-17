@@ -40,6 +40,7 @@ import PropertySidebarStatus from '../components/PropertySidebarStatus';
 import { getDisplayStatus } from '../utils/atbbStatusDisplayMapper';
 import { SECTION_COLORS } from '../theme/sectionColors';
 import { calculatePropertyStatus } from '../utils/propertyListingStatusUtils';
+import { pageDataCache, CACHE_KEYS } from '../store/pageDataCache';
 
 interface PropertyListing {
   id: string;
@@ -95,7 +96,17 @@ export default function PropertyListingsPage() {
     fetchAllData();
   }, []);
 
-  const fetchAllData = async () => {
+  const fetchAllData = async (forceRefresh = false) => {
+    // キャッシュが有効な場合はAPIを叩かない
+    if (!forceRefresh) {
+      const cached = pageDataCache.get<PropertyListing[]>(CACHE_KEYS.PROPERTY_LISTINGS);
+      if (cached) {
+        setAllListings(cached);
+        setLoading(false);
+        return;
+      }
+    }
+
     try {
       setLoading(true);
 
@@ -123,6 +134,8 @@ export default function PropertyListingsPage() {
         }
       }
 
+      // キャッシュに保存（3分間有効）
+      pageDataCache.set(CACHE_KEYS.PROPERTY_LISTINGS, allListingsData);
       setAllListings(allListingsData);
 
       console.log('✅ データ取得成功:', { 物件数: allListingsData.length });
@@ -528,7 +541,7 @@ export default function PropertyListingsPage() {
         open={modalOpen}
         onClose={() => { setModalOpen(false); setSelectedPropertyNumber(null); }}
         propertyNumber={selectedPropertyNumber}
-        onUpdate={fetchAllData}
+        onUpdate={() => fetchAllData(true)}
       />
     </Container>
   );

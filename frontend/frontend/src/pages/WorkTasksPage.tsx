@@ -24,6 +24,7 @@ import api from '../services/api';
 import WorkTaskDetailModal from '../components/WorkTaskDetailModal';
 import { WorkTask, getStatusCategories, filterTasksByStatus, calculateTaskStatus } from '../utils/workTaskStatusUtils';
 import PageNavigation from '../components/PageNavigation';
+import { pageDataCache, CACHE_KEYS } from '../store/pageDataCache';
 
 export default function WorkTasksPage() {
   const [allWorkTasks, setAllWorkTasks] = useState<WorkTask[]>([]);
@@ -49,7 +50,17 @@ export default function WorkTasksPage() {
     fetchAllWorkTasks();
   }, []);
 
-  const fetchAllWorkTasks = async () => {
+  const fetchAllWorkTasks = async (forceRefresh = false) => {
+    // キャッシュが有効な場合はAPIを叩かない
+    if (!forceRefresh) {
+      const cached = pageDataCache.get<WorkTask[]>(CACHE_KEYS.WORK_TASKS);
+      if (cached) {
+        setAllWorkTasks(cached);
+        setLoading(false);
+        return;
+      }
+    }
+
     try {
       setLoading(true);
       // 全件取得してフロントエンドでフィルタリング
@@ -61,7 +72,10 @@ export default function WorkTasksPage() {
           orderDirection: 'desc',
         },
       });
-      setAllWorkTasks(response.data.data || []);
+      const data = response.data.data || [];
+      // キャッシュに保存（3分間有効）
+      pageDataCache.set(CACHE_KEYS.WORK_TASKS, data);
+      setAllWorkTasks(data);
     } catch (error) {
       console.error('Failed to fetch work tasks:', error);
     } finally {
@@ -304,7 +318,7 @@ export default function WorkTasksPage() {
         open={modalOpen}
         onClose={handleModalClose}
         propertyNumber={selectedPropertyNumber}
-        onUpdate={fetchAllWorkTasks}
+        onUpdate={() => fetchAllWorkTasks(true)}
       />
     </Container>
   );

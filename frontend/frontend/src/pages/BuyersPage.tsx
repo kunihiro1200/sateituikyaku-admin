@@ -28,6 +28,7 @@ import api from '../services/api';
 import PageNavigation from '../components/PageNavigation';
 import BuyerStatusSidebar from '../components/BuyerStatusSidebar';
 import { SECTION_COLORS } from '../theme/sectionColors';
+import { pageDataCache, CACHE_KEYS } from '../store/pageDataCache';
 
 interface Buyer {
   id: string;
@@ -106,9 +107,17 @@ export default function BuyersPage() {
     }
   };
 
-  const fetchStats = async () => {
+  const fetchStats = async (forceRefresh = false) => {
+    if (!forceRefresh) {
+      const cached = pageDataCache.get<typeof stats>(CACHE_KEYS.BUYERS_STATS);
+      if (cached) {
+        setStats(cached);
+        return;
+      }
+    }
     try {
       const res = await api.get('/api/buyers/stats');
+      pageDataCache.set(CACHE_KEYS.BUYERS_STATS, res.data);
       setStats(res.data);
     } catch (error) {
       console.error('Failed to fetch stats:', error);
@@ -120,7 +129,7 @@ export default function BuyersPage() {
       setSyncing(true);
       await api.post('/api/buyers/sync');
       await fetchBuyers();
-      await fetchStats();
+      await fetchStats(true); // 同期後はキャッシュを無効化して再取得
     } catch (error) {
       console.error('Failed to sync:', error);
     } finally {

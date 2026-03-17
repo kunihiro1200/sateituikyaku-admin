@@ -1,5 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useEffect } from 'react';
+import { warmupApi } from './utils/apiWarmup';
+import { warmupApi } from './utils/apiWarmup';
 import LoginPage from './pages/LoginPage';
 import AuthCallbackPage from './pages/AuthCallbackPage';
 import SellersPage from './pages/SellersPage';
@@ -41,6 +43,8 @@ function App() {
   // アプリ起動時に認証状態を確認
   useEffect(() => {
     checkAuth();
+    // Vercelコールドスタート対策：バックエンドAPIをウォームアップ
+    warmupApi();
   }, [checkAuth]);
   
   return (
