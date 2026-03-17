@@ -27,6 +27,7 @@ import {
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
+import { pageDataCache, CACHE_KEYS } from '../store/pageDataCache';
 import {
   StatusCategory,
   filterSellersByCategory,
@@ -238,7 +239,7 @@ export default function SellersPage() {
           hasChanges: true,
         });
         fetchSellers();
-        fetchSidebarCounts(); // サイドバーカウントも更新
+        fetchSidebarCounts(true); // サイドバーカウントも更新（キャッシュ無効化）
       }
     },
     onSyncError: (error) => {
@@ -257,12 +258,22 @@ export default function SellersPage() {
     return filterSellersByCategory(sellers, selectedCategory);
   };
 
-  // サイドバー用のカテゴリカウントを取得（APIから直接取得）
-  const fetchSidebarCounts = async () => {
+  // サイドバー用のカテゴリカウントを取得（APIから直接取得、キャッシュ付き）
+  const fetchSidebarCounts = async (forceRefresh = false) => {
+    // キャッシュが有効な場合はキャッシュを使用
+    if (!forceRefresh) {
+      const cached = pageDataCache.get(CACHE_KEYS.SELLERS_SIDEBAR_COUNTS);
+      if (cached) {
+        setSidebarCounts(cached as any);
+        setSidebarLoading(false);
+        return;
+      }
+    }
     try {
       setSidebarLoading(true);
       const response = await api.get('/api/sellers/sidebar-counts');
       setSidebarCounts(response.data);
+      pageDataCache.set(CACHE_KEYS.SELLERS_SIDEBAR_COUNTS, response.data);
     } catch (error) {
       console.error('Failed to fetch sidebar counts:', error);
       // エラー時はカウントを0にリセット
@@ -282,11 +293,19 @@ export default function SellersPage() {
     }
   };
 
-  // 担当者イニシャル一覧を取得（DBから直接取得）
+  // 担当者イニシャル一覧を取得（DBから直接取得、キャッシュ付き）
   const fetchAssigneeInitials = async () => {
+    // キャッシュが有効な場合はキャッシュを使用
+    const cached = pageDataCache.get<string[]>(CACHE_KEYS.SELLERS_ASSIGNEE_INITIALS);
+    if (cached) {
+      setAssigneeInitials(cached);
+      return;
+    }
     try {
       const response = await api.get('/api/sellers/assignee-initials');
-      setAssigneeInitials(response.data.initials || []);
+      const initials = response.data.initials || [];
+      setAssigneeInitials(initials);
+      pageDataCache.set(CACHE_KEYS.SELLERS_ASSIGNEE_INITIALS, initials);
     } catch (error: any) {
       console.error('[fetchAssigneeInitials] Failed:', error?.response?.status, error?.response?.data || error?.message);
     }
