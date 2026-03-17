@@ -132,7 +132,7 @@ export default function ReinsRegistrationPage() {
         reins_url: d.reins_url ?? null,
       });
 
-      const employees: Employee[] = empRes.data || [];
+      const employees: Employee[] = empRes.data?.employees || empRes.data || [];
       const assignee = d.sales_assignee ?? '';
       const assigneeEmployee = employees.find(
         (e) => e.initials === assignee || e.name === assignee
