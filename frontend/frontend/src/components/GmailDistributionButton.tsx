@@ -86,15 +86,25 @@ export default function GmailDistributionButton({
 
   // 価格変更テキストを生成
   const generatePriceChangeText = (): string => {
-    if (previousSalesPrice && salesPrice && previousSalesPrice !== salesPrice) {
+    if (previousSalesPrice && salesPrice) {
       const oldMan = Math.floor(previousSalesPrice / 10000);
       const newMan = Math.floor(salesPrice / 10000);
       const diffMan = oldMan - newMan;
       if (diffMan > 0) {
-        return `${oldMan}万円から${newMan}万円に${diffMan}万円値下げしました！問合せが増えることが予想されますので、ご興味のある方はお早めにご連絡ください！`;
+        return `${oldMan}万円 → ${newMan}万円（${diffMan}万円値下げ）`;
+      } else if (diffMan < 0) {
+        return `${oldMan}万円 → ${newMan}万円（${Math.abs(diffMan)}万円値上げ）`;
+      } else {
+        return `${oldMan}万円（価格変更なし）`;
       }
     }
-    return '現状の価格→変更後の価格';
+    if (salesPrice) {
+      return `${Math.floor(salesPrice / 10000)}万円`;
+    }
+    if (previousSalesPrice) {
+      return `${Math.floor(previousSalesPrice / 10000)}万円`;
+    }
+    return '';
   };
 
   // 価格テキストを生成（万円表示）

@@ -13,7 +13,8 @@ export const EMAIL_TEMPLATES: EmailTemplate[] = [
     id: 'price-reduction',
     name: '値下げメール配信',
     subject: '【価格変更】{address}',
-    body: `お世話になっております。
+    body: `{buyerName}様
+お世話になっております。
 
 {address}の物件価格が変更となりました。
 
@@ -26,7 +27,7 @@ export const EMAIL_TEMPLATES: EmailTemplate[] = [
 よろしくお願いいたします。
 
 {signature}`,
-    placeholders: ['address', 'propertyNumber', 'publicUrl', 'priceChangeText', 'signature']
+    placeholders: ['address', 'propertyNumber', 'publicUrl', 'priceChangeText', 'buyerName', 'signature']
   },
   {
     id: 'new-listing',
