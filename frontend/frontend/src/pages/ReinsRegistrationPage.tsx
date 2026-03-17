@@ -135,7 +135,11 @@ export default function ReinsRegistrationPage() {
       const employees: Employee[] = empRes.data?.employees || empRes.data || [];
       const assignee = d.sales_assignee ?? '';
       const assigneeEmployee = employees.find(
-        (e) => e.initials === assignee || e.name === assignee
+        (e) =>
+          e.initials === assignee ||
+          e.name === assignee ||
+          (assignee && e.name.includes(assignee)) ||
+          (assignee && assignee.includes(e.initials || ''))
       );
 
       setEmailTo(d.seller_email ?? '');
