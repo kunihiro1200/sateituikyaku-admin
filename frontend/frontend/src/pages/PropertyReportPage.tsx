@@ -46,6 +46,7 @@ interface ReportData {
   address?: string;
   owner_name?: string;
   owner_email?: string;
+  suumo_url?: string;
 }
 
 interface EmailTemplate {
@@ -106,7 +107,8 @@ export default function PropertyReportPage() {
   const hasChanges =
     reportData.report_date !== savedData.report_date ||
     reportData.report_completed !== savedData.report_completed ||
-    reportData.report_assignee !== savedData.report_assignee;
+    reportData.report_assignee !== savedData.report_assignee ||
+    reportData.suumo_url !== savedData.suumo_url;
 
   useEffect(() => {
     if (propertyNumber) {
@@ -143,6 +145,7 @@ export default function PropertyReportPage() {
         address: d.address || d.property_address || '',
         owner_name: ownerName,
         owner_email: ownerEmail,
+        suumo_url: d.suumo_url || '',
       };
       setReportData(initial);
       setSavedData(initial);
@@ -209,7 +212,7 @@ export default function PropertyReportPage() {
       const tmplList: EmailTemplate[] = tmplResponse.data || [];
       setTemplates(tmplList);
 
-      const merged: Record<string, { subject: string; body: string; sellerName?: string }> = {};
+      const merged: Record<string, { subject: string; body: string; sellerName?: string; sellerEmail?: string }> = {};
       await Promise.all(
         tmplList.map(async (template) => {
           try {
@@ -253,6 +256,7 @@ export default function PropertyReportPage() {
         report_date: reportData.report_date || null,
         report_completed: reportData.report_completed || 'N',
         report_assignee: reportData.report_assignee || null,
+        suumo_url: reportData.suumo_url || null,
       });
       setSavedData({ ...reportData });
       setSnackbar({ open: true, message: '報告情報を保存しました', severity: 'success' });
@@ -526,21 +530,41 @@ export default function PropertyReportPage() {
             <Button
               variant="outlined"
               fullWidth
-              startIcon={prefetching ? <CircularProgress size={16} /> : <EmailIcon />}
-              onClick={() => {
-                setTemplateDialogOpen(true);
-                if (Object.keys(mergedTemplates).length === 0 && !prefetching) {
-                  prefetchMergedTemplates();
-                }
-              }}
+              startIcon={<EmailIcon />}
+              onClick={() => setTemplateDialogOpen(true)}
               sx={{
                 borderColor: '#1a73e8',
                 color: '#1a73e8',
                 '&:hover': { borderColor: '#1557b0', backgroundColor: '#1a73e808' },
               }}
             >
-              {prefetching ? 'テンプレート準備中...' : 'Gmail送信'}
+              Gmail送信
             </Button>
+
+            {/* SUUMO URL */}
+            <Box sx={{ mt: 3 }}>
+              <Typography variant="body2" color="text.secondary" fontWeight="bold" sx={{ mb: 1 }}>
+                SUUMO URL
+              </Typography>
+              <TextField
+                fullWidth
+                size="small"
+                placeholder="https://suumo.jp/..."
+                value={reportData.suumo_url || ''}
+                onChange={(e) => setReportData((prev) => ({ ...prev, suumo_url: e.target.value }))}
+              />
+              {reportData.suumo_url && (
+                <Button
+                  size="small"
+                  href={reportData.suumo_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  sx={{ mt: 0.5, p: 0, minWidth: 0, fontSize: '0.75rem' }}
+                >
+                  開く
+                </Button>
+              )}
+            </Box>
           </Paper>
         </Box>
 

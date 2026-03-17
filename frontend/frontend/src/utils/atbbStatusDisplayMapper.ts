@@ -48,34 +48,7 @@ export function mapAtbbStatusToDisplayStatus(
 
   const originalStatus = atbbStatus;
 
-  // 優先度1: 「公開前」を含む → 「公開前情報」
-  if (atbbStatus.includes('公開前')) {
-    return {
-      displayStatus: '公開前情報',
-      originalStatus,
-      statusType: 'pre_publish'
-    };
-  }
-
-  // 優先度2: 「配信メールのみ」を含む → 「非公開物件」
-  if (atbbStatus.includes('配信メールのみ')) {
-    return {
-      displayStatus: '非公開物件',
-      originalStatus,
-      statusType: 'private'
-    };
-  }
-
-  // 優先度3: 「非公開」を含む（「配信メール」を含まない） → 「成約済み」
-  if (atbbStatus.includes('非公開') && !atbbStatus.includes('配信メール')) {
-    return {
-      displayStatus: '成約済み',
-      originalStatus,
-      statusType: 'sold'
-    };
-  }
-
-  // 優先度4: 上記以外 → 元の値をそのまま表示
+  // 変換なし: 元の値をそのまま表示
   return {
     displayStatus: originalStatus,
     originalStatus,

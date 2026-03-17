@@ -951,10 +951,12 @@ export default function PropertyListingDetailPage() {
                   <MenuItem value=""><em>未設定</em></MenuItem>
                   <MenuItem value="専任・公開中">専任・公開中</MenuItem>
                   <MenuItem value="一般・公開中">一般・公開中</MenuItem>
+                  <MenuItem value="専任・公開前">専任・公開前</MenuItem>
+                  <MenuItem value="一般・公開前">一般・公開前</MenuItem>
+                  <MenuItem value="非公開（専任）">非公開（専任）</MenuItem>
+                  <MenuItem value="非公開（一般）">非公開（一般）</MenuItem>
+                  <MenuItem value="他社物件">他社物件</MenuItem>
                   <MenuItem value="非公開（配信メールのみ）">非公開（配信メールのみ）</MenuItem>
-                  <MenuItem value="非公開案件">非公開案件</MenuItem>
-                  <MenuItem value="atbb成約済み">atbb成約済み</MenuItem>
-                  <MenuItem value="atbb非公開">atbb非公開</MenuItem>
                 </Select>
               </FormControl>
             ) : (
