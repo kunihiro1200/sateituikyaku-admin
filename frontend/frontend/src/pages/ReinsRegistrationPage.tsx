@@ -90,8 +90,7 @@ export default function ReinsRegistrationPage() {
   const [data, setData] = useState<PropertyData | null>(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState<string | null>(null);
-  const [reinsUrl, setReinsUrl] = useState('');
-  const [savingReinsUrl, setSavingReinsUrl] = useState(false);
+
 
   // Gmail送信ダイアログ
   const [gmailOpen, setGmailOpen] = useState(false);
@@ -132,9 +131,7 @@ export default function ReinsRegistrationPage() {
         report_date_setting: d.report_date_setting ?? null,
         reins_url: d.reins_url ?? null,
       });
-      setReinsUrl(d.reins_url ?? '');
 
-      // 担当のメールアドレスを取得
       const employees: Employee[] = empRes.data || [];
       const assignee = d.sales_assignee ?? '';
       const assigneeEmployee = employees.find(
@@ -167,21 +164,7 @@ export default function ReinsRegistrationPage() {
     }
   };
 
-  const handleSaveReinsUrl = async () => {
-    if (!propertyNumber) return;
-    setSavingReinsUrl(true);
-    try {
-      await api.put(`/api/property-listings/${propertyNumber}`, { reins_url: reinsUrl });
-      setData((prev) => prev ? { ...prev, reins_url: reinsUrl } : prev);
-      setSnackbar({ open: true, message: 'レインズURLを保存しました', severity: 'success' });
-    } catch (error) {
-      setSnackbar({ open: true, message: '保存に失敗しました', severity: 'error' });
-    } finally {
-      setSavingReinsUrl(false);
-    }
-  };
-
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+ = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     setAttachments((prev) => [...prev, ...files]);
     if (fileInputRef.current) fileInputRef.current.value = '';
@@ -284,40 +267,14 @@ export default function ReinsRegistrationPage() {
 
               <Divider orientation="vertical" flexItem />
 
-              {/* レインズURL */}
-              <Box sx={{ flex: '2 1 200px' }}>
-                <Typography variant="body2" color="text.secondary" fontWeight="bold" sx={{ mb: 1.5 }}>
-                  レインズURL
-                </Typography>
-                <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-                  <TextField
-                    size="small"
-                    fullWidth
-                    placeholder="https://system.reins.jp/..."
-                    value={reinsUrl}
-                    onChange={(e) => setReinsUrl(e.target.value)}
-                  />
-                  <Button
-                    variant="outlined"
-                    size="small"
-                    onClick={handleSaveReinsUrl}
-                    disabled={savingReinsUrl}
-                    sx={{ whiteSpace: 'nowrap' }}
-                  >
-                    {savingReinsUrl ? <CircularProgress size={16} /> : '保存'}
-                  </Button>
-                  {reinsUrl && (
-                    <IconButton size="small" onClick={() => window.open(reinsUrl, '_blank')}>
-                      <OpenInNewIcon fontSize="small" />
-                    </IconButton>
-                  )}
-                </Box>
+              {/* レインズシステムリンク */}
+              <Box sx={{ flex: '2 1 200px', display: 'flex', alignItems: 'center' }}>
                 <Button
                   variant="text"
                   size="small"
                   endIcon={<OpenInNewIcon fontSize="small" />}
                   onClick={() => window.open('https://system.reins.jp/', '_blank')}
-                  sx={{ mt: 0.5, p: 0 }}
+                  sx={{ p: 0 }}
                 >
                   レインズシステムを開く
                 </Button>
