@@ -129,61 +129,65 @@ export class EnhancedBuyerDistributionService {
       const inquiryMap = await this.fetchAllBuyerInquiries();
       console.log(`[EnhancedBuyerDistributionService] Inquiry history for ${inquiryMap.size} buyers`);
 
-      // 6. 各統合買主にフィルターを適用
-      const filteredBuyers: FilteredBuyer[] = [];
+      // 5.5. 問い合わせ物件の座標を事前に一括並列取得（速度改善）
+      const inquiryCoordsCacheStart = Date.now();
+      const inquiryCoordsCache = await this.buildInquiryCoordinatesCache(inquiryMap);
+      console.log(`[EnhancedBuyerDistributionService] Pre-fetched coordinates for ${inquiryCoordsCache.size} inquiry properties in ${Date.now() - inquiryCoordsCacheStart}ms`);
 
-      for (const consolidatedBuyer of consolidatedBuyers) {
-        // Get inquiries for all buyer records with this email
-        const allInquiries: InquiryProperty[] = [];
-        for (const originalRecord of consolidatedBuyer.originalRecords) {
-          const buyerInquiries = inquiryMap.get(originalRecord.buyer_id) || [];
-          allInquiries.push(...buyerInquiries);
-        }
-        
-        // 地理的フィルター（問い合わせ + エリア）- 統合されたエリアを使用
-        const geoMatch = await this.filterByGeographyConsolidated(
-          propertyCoords,
-          property.distribution_areas,
-          consolidatedBuyer,
-          allInquiries
-        );
+      // 6. 各統合買主にフィルターを適用（Promise.all で並列化）
+      const filterStart = Date.now();
+      const filteredBuyers: FilteredBuyer[] = await Promise.all(
+        consolidatedBuyers.map(async (consolidatedBuyer) => {
+          // Get inquiries for all buyer records with this email
+          const allInquiries: InquiryProperty[] = [];
+          for (const originalRecord of consolidatedBuyer.originalRecords) {
+            const buyerInquiries = inquiryMap.get(originalRecord.buyer_id) || [];
+            allInquiries.push(...buyerInquiries);
+          }
+          
+          // 地理的フィルター（問い合わせ + エリア）- キャッシュ済み座標を使用
+          const geoMatch = await this.filterByGeographyConsolidatedCached(
+            propertyCoords,
+            property.distribution_areas,
+            consolidatedBuyer,
+            allInquiries,
+            inquiryCoordsCache
+          );
 
-        // ログ出力
-        this.logGeographicMatch(consolidatedBuyer.buyerNumbers.join(','), geoMatch);
+          // 配信フラグフィルター - 統合された配信タイプを使用
+          const distMatch = this.filterByDistributionFlagConsolidated(consolidatedBuyer);
 
-        // 配信フラグフィルター - 統合された配信タイプを使用
-        const distMatch = this.filterByDistributionFlagConsolidated(consolidatedBuyer);
+          // ステータスフィルター - 統合されたステータスを使用
+          const statusMatch = this.filterByLatestStatusConsolidated(consolidatedBuyer);
 
-        // ステータスフィルター - 統合されたステータスを使用
-        const statusMatch = this.filterByLatestStatusConsolidated(consolidatedBuyer);
+          // 価格帯フィルター - 統合された価格帯を使用
+          const priceMatch = this.filterByPriceRangeConsolidated(
+            property.price,
+            property.property_type,
+            consolidatedBuyer
+          );
 
-        // 価格帯フィルター - 統合された価格帯を使用
-        const priceMatch = this.filterByPriceRangeConsolidated(
-          property.price,
-          property.property_type,
-          consolidatedBuyer
-        );
-
-        // Use the consolidated buyer's email and data
-        filteredBuyers.push({
-          buyer_number: consolidatedBuyer.buyerNumbers.join(','), // Show all buyer numbers
-          email: consolidatedBuyer.email,
-          desired_area: consolidatedBuyer.allDesiredAreas,
-          distribution_type: consolidatedBuyer.distributionType,
-          latest_status: consolidatedBuyer.mostPermissiveStatus,
-          desired_property_type: consolidatedBuyer.propertyTypes.join('、'),
-          price_range_apartment: consolidatedBuyer.priceRanges.apartment.join(' / '),
-          price_range_house: consolidatedBuyer.priceRanges.house.join(' / '),
-          price_range_land: consolidatedBuyer.priceRanges.land.join(' / '),
-          filterResults: {
-            geography: geoMatch.matched,
-            distribution: distMatch,
-            status: statusMatch,
-            priceRange: priceMatch
-          },
-          geographicMatch: geoMatch
-        });
-      }
+          return {
+            buyer_number: consolidatedBuyer.buyerNumbers.join(','),
+            email: consolidatedBuyer.email,
+            desired_area: consolidatedBuyer.allDesiredAreas,
+            distribution_type: consolidatedBuyer.distributionType,
+            latest_status: consolidatedBuyer.mostPermissiveStatus,
+            desired_property_type: consolidatedBuyer.propertyTypes.join('、'),
+            price_range_apartment: consolidatedBuyer.priceRanges.apartment.join(' / '),
+            price_range_house: consolidatedBuyer.priceRanges.house.join(' / '),
+            price_range_land: consolidatedBuyer.priceRanges.land.join(' / '),
+            filterResults: {
+              geography: geoMatch.matched,
+              distribution: distMatch,
+              status: statusMatch,
+              priceRange: priceMatch
+            },
+            geographicMatch: geoMatch
+          };
+        })
+      );
+      console.log(`[EnhancedBuyerDistributionService] Parallel filtering completed in ${Date.now() - filterStart}ms`);
 
       // 7. 合格した買主を抽出
       const qualifiedBuyers = filteredBuyers.filter(b => 
@@ -656,6 +660,114 @@ export class EnhancedBuyerDistributionService {
     
     if (geoMatch.matchType === 'none') {
       console.log(`  No match (neither inquiry nor area)`);
+    }
+  }
+
+  /**
+   * 問い合わせ物件の座標を事前に一括並列取得してキャッシュ（速度改善）
+   */
+  private async buildInquiryCoordinatesCache(
+    inquiryMap: Map<string, InquiryProperty[]>
+  ): Promise<Map<string, Coordinates | null>> {
+    // 全ユニーク物件番号を収集
+    const uniqueInquiries = new Map<string, InquiryProperty>();
+    for (const inquiries of inquiryMap.values()) {
+      for (const inquiry of inquiries) {
+        if (!uniqueInquiries.has(inquiry.propertyNumber)) {
+          uniqueInquiries.set(inquiry.propertyNumber, inquiry);
+        }
+      }
+    }
+
+    // 並列で座標を取得
+    const entries = Array.from(uniqueInquiries.entries());
+    const results = await Promise.all(
+      entries.map(async ([propertyNumber, inquiry]) => {
+        const coords = await this.geolocationService.getCoordinates(
+          inquiry.googleMapUrl,
+          inquiry.address
+        );
+        return [propertyNumber, coords] as [string, Coordinates | null];
+      })
+    );
+
+    return new Map(results);
+  }
+
+  /**
+   * 統合地理フィルター（キャッシュ済み座標使用版）
+   */
+  private async filterByGeographyConsolidatedCached(
+    propertyCoordinates: Coordinates | null,
+    propertyDistributionAreas: string | null | undefined,
+    consolidatedBuyer: ConsolidatedBuyer,
+    allInquiries: InquiryProperty[],
+    inquiryCoordsCache: Map<string, Coordinates | null>
+  ): Promise<GeographicMatchResult> {
+    const hasDistributionAreas = propertyDistributionAreas && propertyDistributionAreas.trim() !== '';
+
+    // 1. 問い合わせベースマッチング（キャッシュ参照）
+    let inquiryMatch: {
+      matched: boolean;
+      matchedInquiries: { propertyNumber: string; distance: number }[];
+      minDistance?: number;
+    } = { matched: false, matchedInquiries: [], minDistance: undefined };
+
+    if (propertyCoordinates && allInquiries.length > 0) {
+      const matchedInquiries: { propertyNumber: string; distance: number }[] = [];
+      let minDistance = Infinity;
+
+      for (const inquiry of allInquiries) {
+        const inquiryCoords = inquiryCoordsCache.get(inquiry.propertyNumber);
+        if (!inquiryCoords) continue;
+
+        const distance = this.geolocationService.calculateDistance(
+          propertyCoordinates,
+          inquiryCoords
+        );
+
+        if (distance <= 3.0) {
+          matchedInquiries.push({ propertyNumber: inquiry.propertyNumber, distance });
+          minDistance = Math.min(minDistance, distance);
+        }
+      }
+
+      inquiryMatch = {
+        matched: matchedInquiries.length > 0,
+        matchedInquiries,
+        minDistance: matchedInquiries.length > 0 ? minDistance : undefined
+      };
+    }
+
+    // 2. エリアベースマッチング
+    const areaMatch = hasDistributionAreas
+      ? this.checkAreaBasedMatch(propertyDistributionAreas, consolidatedBuyer.allDesiredAreas)
+      : { matched: true, matchedAreas: [] };
+
+    // 3. 結果を統合（OR条件）
+    if (inquiryMatch.matched && areaMatch.matched) {
+      return {
+        matched: true,
+        matchType: 'both',
+        matchedAreas: areaMatch.matchedAreas,
+        matchedInquiries: inquiryMatch.matchedInquiries,
+        minDistance: inquiryMatch.minDistance
+      };
+    } else if (inquiryMatch.matched) {
+      return {
+        matched: true,
+        matchType: 'inquiry',
+        matchedInquiries: inquiryMatch.matchedInquiries,
+        minDistance: inquiryMatch.minDistance
+      };
+    } else if (areaMatch.matched) {
+      return {
+        matched: true,
+        matchType: 'area',
+        matchedAreas: areaMatch.matchedAreas
+      };
+    } else {
+      return { matched: false, matchType: 'none' };
     }
   }
 
