@@ -26,6 +26,8 @@ import {
   Assignment as AssignmentIcon,
 } from '@mui/icons-material';
 import api from '../services/api';
+import { useAuthStore } from '../store/authStore';
+import { buildUpdatedHistory } from '../utils/priceHistoryUtils';
 import { SECTION_COLORS } from '../theme/sectionColors';
 import FrequentlyAskedSection from '../components/FrequentlyAskedSection';
 import PriceSection from '../components/PriceSection';
@@ -149,6 +151,7 @@ export default function PropertyListingDetailPage() {
   const navigate = useNavigate();
   const location = useLocation();
   
+  const { employee } = useAuthStore();
   const [data, setData] = useState<PropertyListing | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -266,8 +269,33 @@ export default function PropertyListingDetailPage() {
   // Save handlers for each section
   const handleSavePrice = async () => {
     if (!propertyNumber || Object.keys(editedData).length === 0) return;
+
+    // 価格変更の検出と値下げ履歴の自動追記
+    const newSalesPrice = editedData.sales_price;
+    const oldSalesPrice = data?.sales_price;
+
+    let dataToSave = { ...editedData };
+
+    if (newSalesPrice !== undefined && newSalesPrice !== null && newSalesPrice !== oldSalesPrice) {
+      const initials = employee?.initials ?? '';
+      const now = new Date();
+      const dateStr = `${now.getMonth() + 1}/${now.getDate()}`;
+      const existingHistory =
+        editedData.price_reduction_history !== undefined
+          ? editedData.price_reduction_history
+          : (data?.price_reduction_history ?? '');
+      const updatedHistory = buildUpdatedHistory(
+        oldSalesPrice,
+        newSalesPrice,
+        initials,
+        existingHistory,
+        dateStr
+      );
+      dataToSave = { ...dataToSave, price_reduction_history: updatedHistory };
+    }
+
     try {
-      await api.put(`/api/property-listings/${propertyNumber}`, editedData);
+      await api.put(`/api/property-listings/${propertyNumber}`, dataToSave);
       setSnackbar({
         open: true,
         message: '価格情報を保存しました',
