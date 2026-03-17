@@ -20,17 +20,28 @@ interface GmailDistributionButtonProps {
   propertyAddress?: string;
   publicUrl?: string;
   distributionAreas?: string;
+  salesPrice?: number;
+  previousSalesPrice?: number;
+  propertyType?: string;
   size?: 'small' | 'medium' | 'large';
   variant?: 'text' | 'outlined' | 'contained';
 }
 
 const DEFAULT_SENDER = 'tenant@ifoo-oita.com';
+const SIGNATURE = `*****************************
+株式会社いふう
+大分市舞鶴町1-3-30
+TEL:097-533-2022
+******************************`;
 
 export default function GmailDistributionButton({
   propertyNumber,
   propertyAddress,
   publicUrl,
   distributionAreas,
+  salesPrice,
+  previousSalesPrice,
+  propertyType,
   size = 'small',
   variant = 'outlined'
 }: GmailDistributionButtonProps) {
@@ -63,14 +74,12 @@ export default function GmailDistributionButton({
         setEmployees(data);
       } catch (error) {
         console.error('Failed to fetch employees:', error);
-        // エラー時はデフォルトアドレスのみ使用
         setEmployees([]);
       }
     };
     fetchEmployees();
   }, []);
 
-  // 送信元アドレスを変更
   const handleSenderAddressChange = (address: string) => {
     setSenderAddress(address);
   };
@@ -88,21 +97,27 @@ export default function GmailDistributionButton({
     return '現状の価格→変更後の価格';
   };
 
-  // 価格変更テキストを生成
-  const generatePriceChangeText = (): string => {
-    if (previousSalesPrice && salesPrice && previousSalesPrice !== salesPrice) {
-      const oldMan = Math.floor(previousSalesPrice / 10000);
-      const newMan = Math.floor(salesPrice / 10000);
-      const diffMan = oldMan - newMan;
-      if (diffMan > 0) {
-        return `${oldMan}万円から${newMan}万円に${diffMan}万円値下げしました！問合せが増えることが予想されますので、ご興味のある方はお早めにご連絡ください！`;
-      }
-    }
-    return '現状の価格→変更後の価格';
+  // 価格テキストを生成（万円表示）
+  const getPriceText = (): string => {
+    const price = salesPrice || previousSalesPrice;
+    if (!price) return '';
+    return `${Math.floor(price / 10000)}万円`;
+  };
+
+  // テンプレートのプレースホルダーを置換
+  const replacePlaceholders = (template: string, buyerName?: string): string => {
+    return template
+      .replace(/\{address\}/g, propertyAddress || '')
+      .replace(/\{propertyNumber\}/g, propertyNumber)
+      .replace(/\{publicUrl\}/g, publicUrl || '')
+      .replace(/\{priceChangeText\}/g, generatePriceChangeText())
+      .replace(/\{propertyType\}/g, propertyType || '')
+      .replace(/\{price\}/g, getPriceText())
+      .replace(/\{signature\}/g, SIGNATURE)
+      .replace(/\{buyerName\}/g, buyerName || '');
   };
 
   const handleButtonClick = () => {
-    // 送信元アドレスが空の場合のみデフォルトに設定
     if (!senderAddress || senderAddress.trim() === '') {
       setSenderAddress(DEFAULT_SENDER);
     }
@@ -114,11 +129,9 @@ export default function GmailDistributionButton({
     setSelectedTemplate(template);
     
     try {
-      // 買主のメールアドレスを取得（拡張版 - 複数条件フィルタリング）
-      // 詳細情報を含めて取得
       const result = await gmailDistributionService.fetchQualifiedBuyerEmailsEnhanced(
         propertyNumber,
-        true // 詳細情報を含める
+        true
       );
       
       if (result.count === 0) {
@@ -131,7 +144,6 @@ export default function GmailDistributionButton({
         return;
       }
 
-      // 買主データを保存してモーダルを開く
       setBuyerData(result);
       setFilterSummaryOpen(true);
       setTemplateSelectorOpen(false);
@@ -151,11 +163,7 @@ export default function GmailDistributionButton({
     if (!selectedTemplate || emails.length === 0) {
       return;
     }
-    
-    // 選択されたメールアドレスを保存
     setSelectedEmails(emails);
-    
-    // フィルタサマリーモーダルを閉じて確認モーダルを開く
     setFilterSummaryOpen(false);
     setConfirmationOpen(true);
   };
@@ -166,26 +174,9 @@ export default function GmailDistributionButton({
     }
 
     try {
-      // 物件データを準備してテンプレートを置換
-      const propertyData = {
-        address: propertyAddress || '',
-        propertyNumber: propertyNumber,
-        publicUrl: publicUrl || ''
-      };
+      const subject = replacePlaceholders(selectedTemplate.subject);
+      const body = replacePlaceholders(selectedTemplate.body);
 
-      // テンプレートのプレースホルダーを置換
-      const subject = selectedTemplate.subject
-        .replace(/\{address\}/g, propertyData.address)
-        .replace(/\{propertyNumber\}/g, propertyData.propertyNumber)
-        .replace(/\{publicUrl\}/g, propertyData.publicUrl);
-      
-      const body = selectedTemplate.body
-        .replace(/\{address\}/g, propertyData.address)
-        .replace(/\{propertyNumber\}/g, propertyData.propertyNumber)
-        .replace(/\{publicUrl\}/g, propertyData.publicUrl)
-        .replace(/\{priceChangeText\}/g, generatePriceChangeText());
-
-      // バックエンドAPIを使用してメール送信
       const response = await api.post('/api/emails/send-distribution', {
         recipients: selectedEmails,
         subject: subject,
@@ -195,14 +186,9 @@ export default function GmailDistributionButton({
       });
 
       const result = response.data;
-
-      // 確認モーダルを閉じる
       setConfirmationOpen(false);
-
-      // 送信元アドレスをデフォルトにリセット
       setSenderAddress(DEFAULT_SENDER);
 
-      // 成功メッセージ
       if (result.failedBatches === 0) {
         setSnackbar({
           open: true,
@@ -218,21 +204,13 @@ export default function GmailDistributionButton({
       }
     } catch (error: any) {
       console.error('Failed to send emails via API:', error);
-      
-      // API失敗時はGmail Web UIへフォールバック
       setSnackbar({
         open: true,
         message: 'API経由での送信に失敗しました。Gmail Web UIで送信します。',
         severity: 'warning'
       });
-
-      // 確認モーダルを閉じる
       setConfirmationOpen(false);
-
-      // 送信元アドレスをデフォルトにリセット
       setSenderAddress(DEFAULT_SENDER);
-
-      // Gmail Web UIへフォールバック
       fallbackToGmailWebUI();
     }
   };
@@ -243,7 +221,6 @@ export default function GmailDistributionButton({
     }
 
     try {
-      // BCC上限チェック
       let emailsToSend = selectedEmails;
       if (isBccLimitExceeded(selectedEmails)) {
         setSnackbar({
@@ -254,36 +231,17 @@ export default function GmailDistributionButton({
         emailsToSend = limitBccRecipients(selectedEmails);
       }
 
-      // 物件データを準備してテンプレートを置換
-      const propertyData = {
-        address: propertyAddress || '',
-        propertyNumber: propertyNumber,
-        publicUrl: publicUrl || ''
-      };
+      const subject = replacePlaceholders(selectedTemplate.subject);
+      const body = replacePlaceholders(selectedTemplate.body);
 
-      // テンプレートのプレースホルダーを置換
-      const subject = selectedTemplate.subject
-        .replace(/\{address\}/g, propertyData.address)
-        .replace(/\{propertyNumber\}/g, propertyData.propertyNumber)
-        .replace(/\{publicUrl\}/g, propertyData.publicUrl);
-      
-      const body = selectedTemplate.body
-        .replace(/\{address\}/g, propertyData.address)
-        .replace(/\{propertyNumber\}/g, propertyData.propertyNumber)
-        .replace(/\{publicUrl\}/g, propertyData.publicUrl)
-        .replace(/\{priceChangeText\}/g, generatePriceChangeText());
-
-      // Gmail Compose URLを生成
       const gmailUrl = generateGmailComposeUrl({
         bcc: emailsToSend.join(','),
         subject: subject,
         body: body
       });
 
-      // Gmailを新しいタブで開く
       const newWindow = window.open(gmailUrl, '_blank');
       
-      // ポップアップブロックチェック
       if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
         setSnackbar({
           open: true,
@@ -293,10 +251,7 @@ export default function GmailDistributionButton({
         return;
       }
 
-      // 送信元アドレスをデフォルトにリセット
       setSenderAddress(DEFAULT_SENDER);
-
-      // 成功メッセージ
       setSnackbar({
         open: true,
         message: `Gmailを開きました (${emailsToSend.length}件の宛先)\n送信元: ${senderAddress}\n\n内容を確認して、Gmailで送信ボタンを押してください。`,
@@ -366,14 +321,8 @@ export default function GmailDistributionButton({
         senderAddress={senderAddress}
         onSenderAddressChange={handleSenderAddressChange}
         employees={employees}
-        subject={selectedTemplate ? selectedTemplate.subject
-          .replace(/\{address\}/g, propertyAddress || '')
-          .replace(/\{propertyNumber\}/g, propertyNumber) : ''}
-        bodyPreview={selectedTemplate ? selectedTemplate.body
-          .replace(/\{address\}/g, propertyAddress || '')
-          .replace(/\{propertyNumber\}/g, propertyNumber)
-          .replace(/\{publicUrl\}/g, publicUrl || '')
-          .replace(/\{priceChangeText\}/g, generatePriceChangeText()) : ''}
+        subject={selectedTemplate ? replacePlaceholders(selectedTemplate.subject) : ''}
+        bodyPreview={selectedTemplate ? replacePlaceholders(selectedTemplate.body) : ''}
       />
 
       <Snackbar

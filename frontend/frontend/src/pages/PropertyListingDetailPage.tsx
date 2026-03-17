@@ -13,6 +13,13 @@ import {
   Grid,
   TextField,
   Link,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  FormControl,
+  Select,
+  MenuItem,
 } from '@mui/material';
 import {
   ArrowBack as ArrowBackIcon,
@@ -119,6 +126,7 @@ interface PropertyListing {
   judicial_scrivener?: string;
   storage_location?: string;
   memo?: string;
+  sales_contract_completed?: string;
   running_cost?: number;
   running_cost_item1?: string;
   running_cost_item2?: string;
@@ -170,6 +178,7 @@ export default function PropertyListingDetailPage() {
   const [isViewingInfoEditMode, setIsViewingInfoEditMode] = useState(false);
   const [isSellerBuyerEditMode, setIsSellerBuyerEditMode] = useState(false);
   
+  const [salesContractDialog, setSalesContractDialog] = useState(false);
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
     message: string;
@@ -812,6 +821,7 @@ export default function PropertyListingDetailPage() {
             distributionAreas={editedData.distribution_areas !== undefined ? editedData.distribution_areas : data.distribution_areas}
             salesPrice={editedData.sales_price !== undefined ? editedData.sales_price : data.sales_price}
             previousSalesPrice={data.sales_price}
+            propertyType={editedData.property_type !== undefined ? editedData.property_type : data.property_type}
             size="medium"
             variant="contained"
           />
@@ -1532,6 +1542,42 @@ export default function PropertyListingDetailPage() {
                 </Box>
               </EditableSection>
             </Box>
+            {/* 売買契約完了 */}
+            <Box sx={{ flex: { xs: '1 1 100%', md: '0 0 50%' } }}>
+              <Paper sx={{ p: 2, mb: 2 }}>
+                <Box sx={{ mb: 2, pb: 1, borderBottom: `2px solid ${SECTION_COLORS.property.main}` }}>
+                  <Typography variant="h6" gutterBottom fontWeight="bold" sx={{ color: SECTION_COLORS.property.main }}>売買契約完了</Typography>
+                </Box>
+                <FormControl fullWidth size="small">
+                  <Select
+                    value={editedData.sales_contract_completed !== undefined ? editedData.sales_contract_completed : (data.sales_contract_completed || '')}
+                    displayEmpty
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      handleFieldChange('sales_contract_completed', val);
+                      if (val === '契約完了したのでネット非公開お願いします。') {
+                        setSalesContractDialog(true);
+                      }
+                    }}
+                  >
+                    <MenuItem value="">（未設定）</MenuItem>
+                    <MenuItem value="契約完了したのでネット非公開お願いします。">契約完了したのでネット非公開お願いします。</MenuItem>
+                  </Select>
+                </FormControl>
+                {(editedData.sales_contract_completed !== undefined ? editedData.sales_contract_completed : (data.sales_contract_completed || '')) === '契約完了したのでネット非公開お願いします。' && (
+                  <Box sx={{ mt: 1 }}>
+                    <Button
+                      variant="contained"
+                      color="warning"
+                      size="small"
+                      onClick={() => setSalesContractDialog(true)}
+                    >
+                      チャット送信メッセージを表示
+                    </Button>
+                  </Box>
+                )}
+              </Paper>
+            </Box>
             {/* 手数料情報 */}
             <Box sx={{ flex: { xs: '1 1 100%', md: '0 0 50%' } }}>
               <Paper sx={{ p: 2, height: '100%' }}>
@@ -1629,6 +1675,27 @@ export default function PropertyListingDetailPage() {
         </Grid>
       </Grid>
 
+      {/* 売買契約完了 チャット送信メッセージダイアログ */}
+      <Dialog open={salesContractDialog} onClose={() => setSalesContractDialog(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>チャット送信メッセージ</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" sx={{ mb: 1 }}>
+            担当は、チャット送信後、下記より物件番号のみを入力してください↓↓
+          </Typography>
+          <Link
+            href="https://docs.google.com/spreadsheets/d/1D3qEGGroXQ17jwF5aoRN5TeSswTxRvoAhHY87bSA56M/edit?gid=534678762#gid=534678762"
+            target="_blank"
+            rel="noopener noreferrer"
+            variant="body2"
+            sx={{ wordBreak: 'break-all' }}
+          >
+            https://docs.google.com/spreadsheets/d/1D3qEGGroXQ17jwF5aoRN5TeSswTxRvoAhHY87bSA56M/edit?gid=534678762#gid=534678762
+          </Link>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setSalesContractDialog(false)}>閉じる</Button>
+        </DialogActions>
+      </Dialog>
       <Snackbar
         open={snackbar.open}
         autoHideDuration={3000}

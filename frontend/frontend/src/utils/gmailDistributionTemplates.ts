@@ -23,24 +23,49 @@ export const EMAIL_TEMPLATES: EmailTemplate[] = [
 
 詳細はお問い合わせください。
 
-よろしくお願いいたします。`,
-    placeholders: ['address', 'propertyNumber', 'publicUrl', 'priceChangeText']
+よろしくお願いいたします。
+
+{signature}`,
+    placeholders: ['address', 'propertyNumber', 'publicUrl', 'priceChangeText', 'signature']
   },
   {
     id: 'new-listing',
     name: '新着物件配信',
     subject: '【新着物件】{address}',
-    body: `お世話になっております。
-
+    body: `{buyerName}様
+いつもお世話になっております。
 新着物件のご案内です。
 
 物件住所: {address}
-物件番号: {propertyNumber}
+種別：{propertyType}
+価格：{price}
+詳細情報：{publicUrl}
 
 詳細はお問い合わせください。
 
-よろしくお願いいたします。`,
-    placeholders: ['address', 'propertyNumber']
+よろしくお願いいたします。
+
+{signature}`,
+    placeholders: ['address', 'propertyNumber', 'publicUrl', 'buyerName', 'propertyType', 'price', 'signature']
+  },
+  {
+    id: 'pre-listing',
+    name: '公開前配信',
+    subject: '【未発表物件】{address}',
+    body: `{buyerName}様
+未発表の物件のご案内です。
+
+物件住所: {address}
+種別：{propertyType}
+価格：{price}
+詳細情報：{publicUrl}
+
+詳細はお問い合わせください。
+
+よろしくお願いいたします。
+
+{signature}`,
+    placeholders: ['address', 'propertyNumber', 'publicUrl', 'buyerName', 'propertyType', 'price', 'signature']
   }
 ];
 
@@ -57,8 +82,8 @@ export function replacePlaceholders(
   let result = template;
   
   Object.entries(data).forEach(([key, value]) => {
-    const placeholder = `{${key}}`;
-    result = result.replace(new RegExp(placeholder.replace(/[{}]/g, '\\$&'), 'g'), value || '');
+    const escaped = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    result = result.replace(new RegExp(`\\{${escaped}\\}`, 'g'), value || '');
   });
   
   return result;
