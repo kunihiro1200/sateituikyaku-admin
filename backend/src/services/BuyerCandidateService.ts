@@ -419,10 +419,10 @@ export class BuyerCandidateService {
         return distance <= 3.0;
       }
 
-      // property_listings から住所と座標を取得
+      // property_listings から住所・座標・google_map_url を取得
       const { data: inquiryProperty, error } = await this.supabase
         .from('property_listings')
-        .select('address, latitude, longitude')
+        .select('address, latitude, longitude, google_map_url')
         .eq('property_number', firstPropertyNumber)
         .single();
 
@@ -433,11 +433,19 @@ export class BuyerCandidateService {
 
       let inquiryCoords: { lat: number; lng: number } | null = null;
 
-      // 1. 座標カラムを優先使用
-      if (inquiryProperty.latitude != null && inquiryProperty.longitude != null) {
+      // 1. google_map_url から座標を抽出（最優先）
+      if (inquiryProperty.google_map_url) {
+        const coords = await this.geolocationService.extractCoordinatesFromUrl(inquiryProperty.google_map_url);
+        if (coords) {
+          inquiryCoords = { lat: coords.lat, lng: coords.lng };
+        }
+      }
+
+      // 2. latitude/longitude カラムを使用
+      if (!inquiryCoords && inquiryProperty.latitude != null && inquiryProperty.longitude != null) {
         inquiryCoords = { lat: inquiryProperty.latitude, lng: inquiryProperty.longitude };
-      } else if (inquiryProperty.address) {
-        // 2. 座標カラムがない場合は GeocodingService にフォールバック
+      } else if (!inquiryCoords && inquiryProperty.address) {
+        // 3. GeocodingService にフォールバック
         const coords = await this.geocodingService.geocodeAddress(inquiryProperty.address);
         if (coords) {
           inquiryCoords = { lat: coords.latitude, lng: coords.longitude };
@@ -622,28 +630,38 @@ export class BuyerCandidateService {
   }
 
   /**
-   * 物件住所から座標を取得（GeocodingService使用）
+   * 物件の座標を取得
+   * 優先順位: 1. google_map_url から抽出 → 2. latitude/longitude カラム → 3. GeocodingService
    */
   private async getPropertyCoordsFromAddress(property: any): Promise<{ lat: number; lng: number } | null> {
     try {
-      // 1. property_listings の latitude/longitude カラムを優先使用（GeocodingService不要）
+      // 1. google_map_url から座標を抽出（最優先）
+      if (property.google_map_url) {
+        const coords = await this.geolocationService.extractCoordinatesFromUrl(property.google_map_url);
+        if (coords) {
+          console.log(`[BuyerCandidateService] Using google_map_url coords for ${property.property_number}: (${coords.lat}, ${coords.lng})`);
+          return { lat: coords.lat, lng: coords.lng };
+        }
+      }
+
+      // 2. latitude/longitude カラムを使用
       if (property.latitude != null && property.longitude != null) {
         console.log(`[BuyerCandidateService] Using stored coords for ${property.property_number}: (${property.latitude}, ${property.longitude})`);
         return { lat: property.latitude, lng: property.longitude };
       }
 
-      // 2. 座標カラムがない場合は GeocodingService にフォールバック
+      // 3. GeocodingService にフォールバック
       const address = (property.address || '').trim();
       if (!address) {
         return null;
       }
 
-      const coords = await this.geocodingService.geocodeAddress(address);
-      if (!coords) {
+      const geocoded = await this.geocodingService.geocodeAddress(address);
+      if (!geocoded) {
         return null;
       }
 
-      return { lat: coords.latitude, lng: coords.longitude };
+      return { lat: geocoded.latitude, lng: geocoded.longitude };
     } catch (error) {
       console.error(`[BuyerCandidateService] Error getting property coords:`, error);
       return null;
