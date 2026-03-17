@@ -810,6 +810,8 @@ export default function PropertyListingDetailPage() {
             propertyAddress={data.address || data.display_address}
             publicUrl={`https://property-site-frontend-kappa.vercel.app/public/properties/${data.property_number}`}
             distributionAreas={editedData.distribution_areas !== undefined ? editedData.distribution_areas : data.distribution_areas}
+            salesPrice={editedData.sales_price !== undefined ? editedData.sales_price : data.sales_price}
+            previousSalesPrice={data.sales_price}
             size="medium"
             variant="contained"
           />

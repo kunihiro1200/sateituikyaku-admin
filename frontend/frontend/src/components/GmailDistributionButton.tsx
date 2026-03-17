@@ -75,6 +75,32 @@ export default function GmailDistributionButton({
     setSenderAddress(address);
   };
 
+  // 価格変更テキストを生成
+  const generatePriceChangeText = (): string => {
+    if (previousSalesPrice && salesPrice && previousSalesPrice !== salesPrice) {
+      const oldMan = Math.floor(previousSalesPrice / 10000);
+      const newMan = Math.floor(salesPrice / 10000);
+      const diffMan = oldMan - newMan;
+      if (diffMan > 0) {
+        return `${oldMan}万円から${newMan}万円に${diffMan}万円値下げしました！問合せが増えることが予想されますので、ご興味のある方はお早めにご連絡ください！`;
+      }
+    }
+    return '現状の価格→変更後の価格';
+  };
+
+  // 価格変更テキストを生成
+  const generatePriceChangeText = (): string => {
+    if (previousSalesPrice && salesPrice && previousSalesPrice !== salesPrice) {
+      const oldMan = Math.floor(previousSalesPrice / 10000);
+      const newMan = Math.floor(salesPrice / 10000);
+      const diffMan = oldMan - newMan;
+      if (diffMan > 0) {
+        return `${oldMan}万円から${newMan}万円に${diffMan}万円値下げしました！問合せが増えることが予想されますので、ご興味のある方はお早めにご連絡ください！`;
+      }
+    }
+    return '現状の価格→変更後の価格';
+  };
+
   const handleButtonClick = () => {
     // 送信元アドレスが空の場合のみデフォルトに設定
     if (!senderAddress || senderAddress.trim() === '') {
@@ -156,7 +182,8 @@ export default function GmailDistributionButton({
       const body = selectedTemplate.body
         .replace(/\{address\}/g, propertyData.address)
         .replace(/\{propertyNumber\}/g, propertyData.propertyNumber)
-        .replace(/\{publicUrl\}/g, propertyData.publicUrl);
+        .replace(/\{publicUrl\}/g, propertyData.publicUrl)
+        .replace(/\{priceChangeText\}/g, generatePriceChangeText());
 
       // バックエンドAPIを使用してメール送信
       const response = await api.post('/api/emails/send-distribution', {
@@ -243,7 +270,8 @@ export default function GmailDistributionButton({
       const body = selectedTemplate.body
         .replace(/\{address\}/g, propertyData.address)
         .replace(/\{propertyNumber\}/g, propertyData.propertyNumber)
-        .replace(/\{publicUrl\}/g, propertyData.publicUrl);
+        .replace(/\{publicUrl\}/g, propertyData.publicUrl)
+        .replace(/\{priceChangeText\}/g, generatePriceChangeText());
 
       // Gmail Compose URLを生成
       const gmailUrl = generateGmailComposeUrl({
@@ -344,7 +372,8 @@ export default function GmailDistributionButton({
         bodyPreview={selectedTemplate ? selectedTemplate.body
           .replace(/\{address\}/g, propertyAddress || '')
           .replace(/\{propertyNumber\}/g, propertyNumber)
-          .replace(/\{publicUrl\}/g, publicUrl || '') : ''}
+          .replace(/\{publicUrl\}/g, publicUrl || '')
+          .replace(/\{priceChangeText\}/g, generatePriceChangeText()) : ''}
       />
 
       <Snackbar
