@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -11,11 +11,11 @@ import {
   CircularProgress,
   List,
   ListItem,
-  ListItemText
+  ListItemText,
+  TextField
 } from '@mui/material';
 import {
   Send as SendIcon,
-  Email as EmailIcon
 } from '@mui/icons-material';
 import SenderAddressSelector from './SenderAddressSelector';
 
@@ -29,6 +29,7 @@ interface DistributionConfirmationModalProps {
   employees: any[];
   subject: string;
   bodyPreview: string;
+  onBodyChange?: (body: string) => void;
 }
 
 export default function DistributionConfirmationModal({
@@ -40,9 +41,23 @@ export default function DistributionConfirmationModal({
   onSenderAddressChange,
   employees,
   subject,
-  bodyPreview
+  bodyPreview,
+  onBodyChange
 }: DistributionConfirmationModalProps) {
   const [sending, setSending] = useState(false);
+  const [editedBody, setEditedBody] = useState(bodyPreview);
+
+  // bodyPreview が変わったら内部 state を更新
+  useEffect(() => {
+    setEditedBody(bodyPreview);
+  }, [bodyPreview]);
+
+  const handleBodyChange = (value: string) => {
+    setEditedBody(value);
+    if (onBodyChange) {
+      onBodyChange(value);
+    }
+  };
 
   const handleConfirm = async () => {
     setSending(true);
@@ -102,27 +117,26 @@ export default function DistributionConfirmationModal({
             </List>
           </Box>
 
-          {/* メール本文プレビュー */}
+          {/* メール本文（編集可能） */}
           <Box sx={{ mb: 2 }}>
             <Typography variant="body2" fontWeight="bold" gutterBottom>
-              メール本文プレビュー
+              メール本文（編集可能）
             </Typography>
-            <Box
-              sx={{
-                p: 2,
-                bgcolor: 'grey.50',
-                borderRadius: 1,
-                border: '1px solid',
-                borderColor: 'grey.300',
-                maxHeight: 200,
-                overflow: 'auto',
-                whiteSpace: 'pre-wrap',
-                fontFamily: 'monospace',
-                fontSize: '0.875rem'
+            <TextField
+              multiline
+              fullWidth
+              minRows={8}
+              maxRows={20}
+              value={editedBody}
+              onChange={(e) => handleBodyChange(e.target.value)}
+              variant="outlined"
+              inputProps={{
+                style: {
+                  fontFamily: 'monospace',
+                  fontSize: '0.875rem',
+                }
               }}
-            >
-              {bodyPreview}
-            </Box>
+            />
           </Box>
 
           <Alert severity="warning" sx={{ mb: 2 }}>
