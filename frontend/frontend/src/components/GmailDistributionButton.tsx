@@ -18,6 +18,7 @@ import api from '../services/api';
 interface GmailDistributionButtonProps {
   propertyNumber: string;
   propertyAddress?: string;
+  publicUrl?: string;
   distributionAreas?: string;
   size?: 'small' | 'medium' | 'large';
   variant?: 'text' | 'outlined' | 'contained';
@@ -28,6 +29,7 @@ const DEFAULT_SENDER = 'tenant@ifoo-oita.com';
 export default function GmailDistributionButton({
   propertyNumber,
   propertyAddress,
+  publicUrl,
   distributionAreas,
   size = 'small',
   variant = 'outlined'
@@ -141,17 +143,20 @@ export default function GmailDistributionButton({
       // 物件データを準備してテンプレートを置換
       const propertyData = {
         address: propertyAddress || '',
-        propertyNumber: propertyNumber
+        propertyNumber: propertyNumber,
+        publicUrl: publicUrl || ''
       };
 
       // テンプレートのプレースホルダーを置換
       const subject = selectedTemplate.subject
         .replace(/\{address\}/g, propertyData.address)
-        .replace(/\{propertyNumber\}/g, propertyData.propertyNumber);
+        .replace(/\{propertyNumber\}/g, propertyData.propertyNumber)
+        .replace(/\{publicUrl\}/g, propertyData.publicUrl);
       
       const body = selectedTemplate.body
         .replace(/\{address\}/g, propertyData.address)
-        .replace(/\{propertyNumber\}/g, propertyData.propertyNumber);
+        .replace(/\{propertyNumber\}/g, propertyData.propertyNumber)
+        .replace(/\{publicUrl\}/g, propertyData.publicUrl);
 
       // バックエンドAPIを使用してメール送信
       const response = await api.post('/api/emails/send-distribution', {
@@ -225,17 +230,20 @@ export default function GmailDistributionButton({
       // 物件データを準備してテンプレートを置換
       const propertyData = {
         address: propertyAddress || '',
-        propertyNumber: propertyNumber
+        propertyNumber: propertyNumber,
+        publicUrl: publicUrl || ''
       };
 
       // テンプレートのプレースホルダーを置換
       const subject = selectedTemplate.subject
         .replace(/\{address\}/g, propertyData.address)
-        .replace(/\{propertyNumber\}/g, propertyData.propertyNumber);
+        .replace(/\{propertyNumber\}/g, propertyData.propertyNumber)
+        .replace(/\{publicUrl\}/g, propertyData.publicUrl);
       
       const body = selectedTemplate.body
         .replace(/\{address\}/g, propertyData.address)
-        .replace(/\{propertyNumber\}/g, propertyData.propertyNumber);
+        .replace(/\{propertyNumber\}/g, propertyData.propertyNumber)
+        .replace(/\{publicUrl\}/g, propertyData.publicUrl);
 
       // Gmail Compose URLを生成
       const gmailUrl = generateGmailComposeUrl({
@@ -335,7 +343,8 @@ export default function GmailDistributionButton({
           .replace(/\{propertyNumber\}/g, propertyNumber) : ''}
         bodyPreview={selectedTemplate ? selectedTemplate.body
           .replace(/\{address\}/g, propertyAddress || '')
-          .replace(/\{propertyNumber\}/g, propertyNumber) : ''}
+          .replace(/\{propertyNumber\}/g, propertyNumber)
+          .replace(/\{publicUrl\}/g, publicUrl || '') : ''}
       />
 
       <Snackbar

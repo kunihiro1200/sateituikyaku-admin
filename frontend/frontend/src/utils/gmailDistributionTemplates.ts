@@ -17,12 +17,14 @@ export const EMAIL_TEMPLATES: EmailTemplate[] = [
 
 {address}の物件価格が変更となりました。
 
-物件番号: {propertyNumber}
+現状の価格→変更後の価格
+
+詳細：{publicUrl}
 
 詳細はお問い合わせください。
 
 よろしくお願いいたします。`,
-    placeholders: ['address', 'propertyNumber']
+    placeholders: ['address', 'propertyNumber', 'publicUrl']
   },
   {
     id: 'new-listing',
