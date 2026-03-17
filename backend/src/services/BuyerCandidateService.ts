@@ -433,23 +433,9 @@ export class BuyerCandidateService {
 
       let inquiryCoords: { lat: number; lng: number } | null = null;
 
-      // 1. google_map_url から座標を抽出（最優先）
-      if (inquiryProperty.google_map_url) {
-        const coords = await this.geolocationService.extractCoordinatesFromUrl(inquiryProperty.google_map_url);
-        if (coords) {
-          inquiryCoords = { lat: coords.lat, lng: coords.lng };
-        }
-      }
-
-      // 2. latitude/longitude カラムを使用
-      if (!inquiryCoords && inquiryProperty.latitude != null && inquiryProperty.longitude != null) {
+      // DBに保存済みの latitude/longitude カラムのみ使用（リアルタイムURL展開は行わない）
+      if (inquiryProperty.latitude != null && inquiryProperty.longitude != null) {
         inquiryCoords = { lat: inquiryProperty.latitude, lng: inquiryProperty.longitude };
-      } else if (!inquiryCoords && inquiryProperty.address) {
-        // 3. GeocodingService にフォールバック
-        const coords = await this.geocodingService.geocodeAddress(inquiryProperty.address);
-        if (coords) {
-          inquiryCoords = { lat: coords.latitude, lng: coords.longitude };
-        }
       }
 
       if (!inquiryCoords) {
@@ -631,37 +617,19 @@ export class BuyerCandidateService {
 
   /**
    * 物件の座標を取得
-   * 優先順位: 1. google_map_url から抽出 → 2. latitude/longitude カラム → 3. GeocodingService
+   * DBに保存済みの latitude/longitude カラムのみ使用（リアルタイムURL展開は行わない）
    */
   private async getPropertyCoordsFromAddress(property: any): Promise<{ lat: number; lng: number } | null> {
     try {
-      // 1. google_map_url から座標を抽出（最優先）
-      if (property.google_map_url) {
-        const coords = await this.geolocationService.extractCoordinatesFromUrl(property.google_map_url);
-        if (coords) {
-          console.log(`[BuyerCandidateService] Using google_map_url coords for ${property.property_number}: (${coords.lat}, ${coords.lng})`);
-          return { lat: coords.lat, lng: coords.lng };
-        }
-      }
-
-      // 2. latitude/longitude カラムを使用
+      // latitude/longitude カラムを使用（DBに保存済みの座標）
       if (property.latitude != null && property.longitude != null) {
         console.log(`[BuyerCandidateService] Using stored coords for ${property.property_number}: (${property.latitude}, ${property.longitude})`);
         return { lat: property.latitude, lng: property.longitude };
       }
 
-      // 3. GeocodingService にフォールバック
-      const address = (property.address || '').trim();
-      if (!address) {
-        return null;
-      }
-
-      const geocoded = await this.geocodingService.geocodeAddress(address);
-      if (!geocoded) {
-        return null;
-      }
-
-      return { lat: geocoded.latitude, lng: geocoded.longitude };
+      // 座標がなければスキップ
+      console.log(`[BuyerCandidateService] No stored coords for ${property.property_number}, skipping distance matching`);
+      return null;
     } catch (error) {
       console.error(`[BuyerCandidateService] Error getting property coords:`, error);
       return null;

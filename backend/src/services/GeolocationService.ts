@@ -66,6 +66,26 @@ export class GeolocationService {
         };
       }
 
+      // パターン4: /search/lat,+lng 形式
+      const pattern4 = /\/search\/(-?\d+\.\d+),\+?(-?\d+\.\d+)/;
+      const match4 = urlToProcess.match(pattern4);
+      if (match4) {
+        return {
+          lat: parseFloat(match4[1]),
+          lng: parseFloat(match4[2])
+        };
+      }
+
+      // パターン5: !3dLAT!4dLNG 形式 (data= パラメータ)
+      const pattern5 = /!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/;
+      const match5 = urlToProcess.match(pattern5);
+      if (match5) {
+        return {
+          lat: parseFloat(match5[1]),
+          lng: parseFloat(match5[2])
+        };
+      }
+
       console.warn(`Could not extract coordinates from URL: ${urlToProcess}`);
       return null;
     } catch (error) {
