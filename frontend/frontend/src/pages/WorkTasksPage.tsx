@@ -266,7 +266,7 @@ export default function WorkTasksPage() {
                           ) : '-'}
                         </TableCell>
                         <TableCell>{formatDate(task.mediation_deadline)}</TableCell>
-                        <TableCell>{task.mediation_completed || '-'}</TableCell>
+                        <TableCell>{formatDate(task.mediation_completed)}</TableCell>
                         <TableCell>{task.mediation_notes || '-'}</TableCell>
                         <TableCell>
                           {status && (
