@@ -526,6 +526,9 @@ router.post('/auto', async (req: Request, res: Response) => {
  * POST /api/sync/trigger
  * 手動で強化版フル同期をトリガー（全件比較方式）
  * GitHub Actions等の外部からの呼び出し用（CRON_SECRET認証）
+ * 
+ * クエリパラメータ:
+ *   ?async=true  → 即座に202を返し、バックグラウンドで同期実行（GAS用）
  */
 router.post('/trigger', async (req: Request, res: Response) => {
   // CRON_SECRET認証チェック
@@ -534,6 +537,34 @@ router.post('/trigger', async (req: Request, res: Response) => {
   if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
     console.error('[Sync Trigger] Unauthorized access attempt');
     return res.status(401).json({ success: false, error: 'Unauthorized' });
+  }
+
+  // 非同期モード: 即座に返してバックグラウンドで実行（GASのタイムアウト対策）
+  const isAsync = req.query.async === 'true';
+  if (isAsync) {
+    res.status(202).json({
+      success: true,
+      message: 'Sync triggered (running in background)',
+      triggeredAt: new Date().toISOString(),
+    });
+
+    // バックグラウンドで同期実行（レスポンス送信後）
+    setImmediate(async () => {
+      try {
+        console.log('[Sync Trigger] Starting background full sync...');
+        const { getEnhancedAutoSyncService } = await import('../services/EnhancedAutoSyncService');
+        const { getSyncHealthChecker } = await import('../services/SyncHealthChecker');
+        const syncService = getEnhancedAutoSyncService();
+        await syncService.initialize();
+        const result = await syncService.runFullSync('manual');
+        const healthChecker = getSyncHealthChecker();
+        await healthChecker.checkAndUpdateHealth();
+        console.log(`[Sync Trigger] Background sync completed: added=${result.additionResult.successfullyAdded}, updated=${result.additionResult.successfullyUpdated}`);
+      } catch (error: any) {
+        console.error('[Sync Trigger] Background sync error:', error.message);
+      }
+    });
+    return;
   }
 
   try {
