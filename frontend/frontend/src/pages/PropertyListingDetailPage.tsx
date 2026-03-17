@@ -23,7 +23,6 @@ import {
 } from '@mui/material';
 import {
   ArrowBack as ArrowBackIcon,
-  Save as SaveIcon,
   OpenInNew as OpenInNewIcon,
   ContentCopy as ContentCopyIcon,
   Check as CheckIcon,
@@ -174,7 +173,6 @@ export default function PropertyListingDetailPage() {
   const { employee } = useAuthStore();
   const [data, setData] = useState<PropertyListing | null>(null);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
   const [editedData, setEditedData] = useState<Record<string, any>>({});
   const [buyers, setBuyers] = useState<Buyer[]>([]);
   const [buyersLoading, setBuyersLoading] = useState(false);
@@ -255,29 +253,6 @@ export default function PropertyListingDetailPage() {
     } catch (error) {
       console.error('Failed to fetch work task data:', error);
       // Don't break the page if work task data is unavailable
-    }
-  };
-
-  const handleSave = async () => {
-    if (!propertyNumber || Object.keys(editedData).length === 0) return;
-    setSaving(true);
-    try {
-      await api.put(`/api/property-listings/${propertyNumber}`, editedData);
-      setSnackbar({
-        open: true,
-        message: '保存しました',
-        severity: 'success',
-      });
-      await fetchPropertyData();
-      setEditedData({});
-    } catch (error) {
-      setSnackbar({
-        open: true,
-        message: '保存に失敗しました',
-        severity: 'error',
-      });
-    } finally {
-      setSaving(false);
     }
   };
 
@@ -868,20 +843,6 @@ export default function PropertyListingDetailPage() {
             size="medium"
             variant="contained"
           />
-          <Button
-            variant="contained"
-            startIcon={saving ? <CircularProgress size={16} /> : <SaveIcon />}
-            onClick={handleSave}
-            disabled={!hasChanges || saving}
-            sx={{
-              backgroundColor: SECTION_COLORS.property.main,
-              '&:hover': {
-                backgroundColor: SECTION_COLORS.property.dark,
-              },
-            }}
-          >
-            {saving ? '保存中...' : '保存'}
-          </Button>
         </Box>
       </Box>
 
