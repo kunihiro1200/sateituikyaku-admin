@@ -12,6 +12,7 @@ export interface EnhancedFilterCriteria {
 
 export interface FilteredBuyer {
   buyer_number: string;
+  name: string | null;
   email: string;
   desired_area: string | null;
   distribution_type: string | null;
@@ -50,6 +51,7 @@ interface InquiryProperty {
 
 interface ConsolidatedBuyer {
   email: string;
+  name: string | null;
   buyerNumbers: string[];
   buyerIds: string[]; // buyer_id (UUID) for buyer_inquiries join
   allDesiredAreas: string;
@@ -169,6 +171,7 @@ export class EnhancedBuyerDistributionService {
 
           return {
             buyer_number: consolidatedBuyer.buyerNumbers.join(','),
+            name: consolidatedBuyer.name,
             email: consolidatedBuyer.email,
             desired_area: consolidatedBuyer.allDesiredAreas,
             distribution_type: consolidatedBuyer.distributionType,
@@ -332,6 +335,7 @@ export class EnhancedBuyerDistributionService {
         .select(`
           buyer_id,
           buyer_number,
+          name,
           email,
           desired_area,
           distribution_type,
@@ -380,6 +384,7 @@ export class EnhancedBuyerDistributionService {
         // First record for this email - initialize
         emailMap.set(normalizedEmail, {
           email: buyer.email, // Use original casing
+          name: buyer.name || null,
           buyerNumbers: [buyer.buyer_number],
           buyerIds: [buyer.buyer_id], // buyer_id (UUID) for buyer_inquiries join
           allDesiredAreas: buyer.desired_area || '',

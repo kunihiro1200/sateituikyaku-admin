@@ -25,6 +25,7 @@ import SenderAddressSelector from './SenderAddressSelector';
 
 interface FilteredBuyer {
   buyer_number: string;
+  name: string | null;
   email: string;
   desired_area: string | null;
   distribution_type: string | null;
@@ -47,7 +48,7 @@ interface FilteredBuyer {
 interface BuyerFilterSummaryModalProps {
   open: boolean;
   onClose: () => void;
-  onConfirm: (selectedEmails: string[]) => void;
+  onConfirm: (selectedBuyers: Array<{ email: string; name: string | null }>) => void;
   buyers: FilteredBuyer[];
   totalBuyers: number;
   senderAddress?: string;
@@ -66,20 +67,23 @@ export default function BuyerFilterSummaryModal({
   employees = []
 }: BuyerFilterSummaryModalProps) {
   const [selectedEmails, setSelectedEmails] = useState<Set<string>>(new Set());
+  // email -> name のマップ
+  const [emailNameMap, setEmailNameMap] = useState<Map<string, string | null>>(new Map());
 
   // 初期化: 全ての条件を満たす買主を選択
   useEffect(() => {
     if (open) {
-      const qualifiedEmails = buyers
-        .filter(b => 
-          b.filterResults.geography &&
-          b.filterResults.distribution &&
-          b.filterResults.status &&
-          b.filterResults.priceRange &&
-          b.email
-        )
-        .map(b => b.email);
-      setSelectedEmails(new Set(qualifiedEmails));
+      const qualifiedBuyers2 = buyers.filter(b => 
+        b.filterResults.geography &&
+        b.filterResults.distribution &&
+        b.filterResults.status &&
+        b.filterResults.priceRange &&
+        b.email
+      );
+      setSelectedEmails(new Set(qualifiedBuyers2.map(b => b.email)));
+      const nameMap = new Map<string, string | null>();
+      buyers.forEach(b => { if (b.email) nameMap.set(b.email, b.name ?? null); });
+      setEmailNameMap(nameMap);
     }
   }, [open, buyers]);
 
@@ -105,7 +109,11 @@ export default function BuyerFilterSummaryModal({
   };
 
   const handleConfirm = () => {
-    onConfirm(Array.from(selectedEmails));
+    const selected = Array.from(selectedEmails).map(email => ({
+      email,
+      name: emailNameMap.get(email) ?? null,
+    }));
+    onConfirm(selected);
   };
 
   const qualifiedBuyers = buyers.filter(b => 
@@ -157,6 +165,9 @@ export default function BuyerFilterSummaryModal({
               </Typography>
               <Typography variant="body2">
                 送信先: {selectedEmails.size}件選択中
+                {selectedEmails.size === 1 && emailNameMap.get(Array.from(selectedEmails)[0]) && (
+                  <span>（{emailNameMap.get(Array.from(selectedEmails)[0])}様）</span>
+                )}
               </Typography>
             </Box>
           )}
@@ -208,6 +219,11 @@ export default function BuyerFilterSummaryModal({
                           <Typography variant="body2">
                             {buyer.buyer_number}
                           </Typography>
+                          {buyer.name && (
+                            <Typography variant="body2" fontWeight="medium">
+                              {buyer.name}
+                            </Typography>
+                          )}
                           <Typography variant="body2" color="text.secondary">
                             {buyer.email}
                           </Typography>

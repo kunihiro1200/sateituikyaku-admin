@@ -51,7 +51,7 @@ export default function GmailDistributionButton({
   const [confirmationOpen, setConfirmationOpen] = useState(false);
   const [buyerData, setBuyerData] = useState<EnhancedBuyerEmailsResponse | null>(null);
   const [selectedTemplate, setSelectedTemplate] = useState<EmailTemplate | null>(null);
-  const [selectedEmails, setSelectedEmails] = useState<string[]>([]);
+  const [selectedBuyers, setSelectedBuyers] = useState<Array<{ email: string; name: string | null }>>([]);
   const [senderAddress, setSenderAddress] = useState<string>(DEFAULT_SENDER);
   const [employees, setEmployees] = useState<any[]>([]);
   const [snackbar, setSnackbar] = useState<{
@@ -169,23 +169,27 @@ export default function GmailDistributionButton({
     }
   };
 
-  const handleFilterSummaryConfirm = (emails: string[]) => {
-    if (!selectedTemplate || emails.length === 0) {
+  const handleFilterSummaryConfirm = (buyers: Array<{ email: string; name: string | null }>) => {
+    if (!selectedTemplate || buyers.length === 0) {
       return;
     }
-    setSelectedEmails(emails);
+    setSelectedBuyers(buyers);
     setFilterSummaryOpen(false);
     setConfirmationOpen(true);
   };
 
   const handleConfirmationConfirm = async () => {
-    if (!selectedTemplate || selectedEmails.length === 0) {
+    if (!selectedTemplate || selectedBuyers.length === 0) {
       return;
     }
 
+    // 1人選択時は名前を使用、複数時は「お客様」
+    const buyerName = selectedBuyers.length === 1 ? (selectedBuyers[0].name || 'お客様') : 'お客様';
+    const selectedEmails = selectedBuyers.map(b => b.email);
+
     try {
-      const subject = replacePlaceholders(selectedTemplate.subject);
-      const body = replacePlaceholders(selectedTemplate.body);
+      const subject = replacePlaceholders(selectedTemplate.subject, buyerName);
+      const body = replacePlaceholders(selectedTemplate.body, buyerName);
 
       const response = await api.post('/api/emails/send-distribution', {
         recipients: selectedEmails,
@@ -221,28 +225,31 @@ export default function GmailDistributionButton({
       });
       setConfirmationOpen(false);
       setSenderAddress(DEFAULT_SENDER);
-      fallbackToGmailWebUI();
+      fallbackToGmailWebUI(buyerName);
     }
   };
 
-  const fallbackToGmailWebUI = () => {
-    if (!selectedTemplate || selectedEmails.length === 0) {
+  const fallbackToGmailWebUI = (buyerName?: string) => {
+    if (!selectedTemplate || selectedBuyers.length === 0) {
       return;
     }
 
+    const resolvedBuyerName = buyerName || (selectedBuyers.length === 1 ? (selectedBuyers[0].name || 'お客様') : 'お客様');
+    const emailsForFallback = selectedBuyers.map(b => b.email);
+
     try {
-      let emailsToSend = selectedEmails;
-      if (isBccLimitExceeded(selectedEmails)) {
+      let emailsToSend = emailsForFallback;
+      if (isBccLimitExceeded(emailsForFallback)) {
         setSnackbar({
           open: true,
           message: `宛先が${MAX_BCC_RECIPIENTS}件を超えています。最初の${MAX_BCC_RECIPIENTS}件のみ追加されます。`,
           severity: 'warning'
         });
-        emailsToSend = limitBccRecipients(selectedEmails);
+        emailsToSend = limitBccRecipients(emailsForFallback);
       }
 
-      const subject = replacePlaceholders(selectedTemplate.subject);
-      const body = replacePlaceholders(selectedTemplate.body);
+      const subject = replacePlaceholders(selectedTemplate.subject, resolvedBuyerName);
+      const body = replacePlaceholders(selectedTemplate.body, resolvedBuyerName);
 
       const gmailUrl = generateGmailComposeUrl({
         bcc: emailsToSend.join(','),
@@ -313,7 +320,7 @@ export default function GmailDistributionButton({
           setSenderAddress(DEFAULT_SENDER);
         }}
         onConfirm={handleFilterSummaryConfirm}
-        buyers={buyerData?.filteredBuyers || []}
+        buyers={(buyerData?.filteredBuyers || []) as any}
         totalBuyers={buyerData?.totalBuyers || 0}
         senderAddress={senderAddress}
         onSenderAddressChange={handleSenderAddressChange}
@@ -327,12 +334,12 @@ export default function GmailDistributionButton({
           setSenderAddress(DEFAULT_SENDER);
         }}
         onConfirm={handleConfirmationConfirm}
-        recipientCount={selectedEmails.length}
+        recipientCount={selectedBuyers.length}
         senderAddress={senderAddress}
         onSenderAddressChange={handleSenderAddressChange}
         employees={employees}
-        subject={selectedTemplate ? replacePlaceholders(selectedTemplate.subject) : ''}
-        bodyPreview={selectedTemplate ? replacePlaceholders(selectedTemplate.body) : ''}
+        subject={selectedTemplate ? replacePlaceholders(selectedTemplate.subject, selectedBuyers.length === 1 ? (selectedBuyers[0].name || 'お客様') : 'お客様') : ''}
+        bodyPreview={selectedTemplate ? replacePlaceholders(selectedTemplate.body, selectedBuyers.length === 1 ? (selectedBuyers[0].name || 'お客様') : 'お客様') : ''}
       />
 
       <Snackbar
