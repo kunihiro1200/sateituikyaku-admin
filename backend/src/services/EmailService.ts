@@ -93,8 +93,11 @@ export class EmailService extends BaseRepository {
       const gmail = google.gmail({ version: 'v1', auth: authClient });
 
       const from = params.from || 'tenant@ifoo-oita.com';
-      // 改行を<br>タグに変換（HTMLメール用）
-      const htmlBody = params.body.replace(/\n/g, '<br>');
+      // URLを<a>タグに変換してからHTMLエスケープ・改行変換
+      const urlToLink = (text: string): string =>
+        text.replace(/(https?:\/\/[^\s\u3000\u3001\u3002\uff01\uff09\u300d\u300f\u3011\u3015\u3017\u3019\u301b\u301f\uff3d\uff5d\u300b\u300f]+)/g,
+          (url) => `<a href="${url}">${url}</a>`);
+      const htmlBody = urlToLink(params.body).replace(/\n/g, '<br>');
 
       const encodedSubject = /^[\x00-\x7F]*$/.test(params.subject)
         ? params.subject

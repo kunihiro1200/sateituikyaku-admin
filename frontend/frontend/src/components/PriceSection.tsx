@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Box, Typography, TextField, Grid, Button, Dialog, DialogTitle, DialogContent, DialogActions, Tooltip, IconButton as MuiIconButton } from '@mui/material';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import CheckIcon from '@mui/icons-material/Check';
@@ -58,7 +58,6 @@ export default function PriceSection({
   const displayScheduledDate = editedData.price_reduction_scheduled_date !== undefined ? editedData.price_reduction_scheduled_date : priceReductionScheduledDate;
 
   const [scheduledNotifications, setScheduledNotifications] = useState<any[]>([]);
-  const [loadingNotifications, setLoadingNotifications] = useState(false);
   const [showScheduleForm, setShowScheduleForm] = useState(false);
   const [sendingChat, setSendingChat] = useState(false);
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
@@ -74,23 +73,6 @@ export default function PriceSection({
   // 売買価格が変更されたかチェック
   const isPriceChanged = editedData.sales_price !== undefined && editedData.sales_price !== salesPrice;
 
-  // 予約通知を取得
-  useEffect(() => {
-    const fetchScheduledNotifications = async () => {
-      if (!propertyNumber) return;
-      setLoadingNotifications(true);
-      try {
-        const response = await api.get(`/api/property-listings/${propertyNumber}/scheduled-notifications`);
-        setScheduledNotifications(response.data || []);
-      } catch (error) {
-        console.error('Failed to fetch scheduled notifications:', error);
-        setScheduledNotifications([]);
-      } finally {
-        setLoadingNotifications(false);
-      }
-    };
-    fetchScheduledNotifications();
-  }, [propertyNumber]);
 
   const handleSendPriceReductionChat = async () => {
     const latestReduction = getLatestPriceReduction();
