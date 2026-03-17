@@ -192,6 +192,7 @@ export default function PropertyListingDetailPage() {
   const [isSellerBuyerEditMode, setIsSellerBuyerEditMode] = useState(false);
   
   const [salesContractDialog, setSalesContractDialog] = useState(false);
+  const [salesContractUrlDialog, setSalesContractUrlDialog] = useState(false);
   const [chatSending, setChatSending] = useState(false);
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
@@ -1803,22 +1804,13 @@ export default function PropertyListingDetailPage() {
         </Grid>
       </Grid>
 
-      {/* 売買契約完了 チャット送信メッセージダイアログ */}
+      {/* 売買契約完了 チャット送信確認ダイアログ（ステップ1） */}
       <Dialog open={salesContractDialog} onClose={() => setSalesContractDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>チャット送信メッセージ</DialogTitle>
+        <DialogTitle>チャット送信</DialogTitle>
         <DialogContent>
-          <Typography variant="body2" sx={{ mb: 1 }}>
-            担当は、チャット送信後、下記より物件番号のみを入力してください↓↓
+          <Typography variant="body2">
+            売買契約完了の通知をチャットに送信しますか？
           </Typography>
-          <Link
-            href="https://docs.google.com/spreadsheets/d/1D3qEGGroXQ17jwF5aoRN5TeSswTxRvoAhHY87bSA56M/edit?gid=534678762#gid=534678762"
-            target="_blank"
-            rel="noopener noreferrer"
-            variant="body2"
-            sx={{ wordBreak: 'break-all' }}
-          >
-            https://docs.google.com/spreadsheets/d/1D3qEGGroXQ17jwF5aoRN5TeSswTxRvoAhHY87bSA56M/edit?gid=534678762#gid=534678762
-          </Link>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setSalesContractDialog(false)}>閉じる</Button>
@@ -1838,6 +1830,7 @@ export default function PropertyListingDetailPage() {
                 if (!res.ok) throw new Error('送信失敗');
                 setSnackbar({ open: true, message: 'チャットに送信しました', severity: 'success' });
                 setSalesContractDialog(false);
+                setSalesContractUrlDialog(true);
               } catch (e) {
                 setSnackbar({ open: true, message: 'チャット送信に失敗しました', severity: 'error' });
               } finally {
@@ -1847,6 +1840,28 @@ export default function PropertyListingDetailPage() {
           >
             {chatSending ? '送信中...' : 'チャット送信'}
           </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 売買契約完了 スプレッドシートURLダイアログ（ステップ2） */}
+      <Dialog open={salesContractUrlDialog} onClose={() => setSalesContractUrlDialog(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>チャット送信メッセージ</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" sx={{ mb: 1 }}>
+            担当は、チャット送信後、下記より物件番号のみを入力してください↓↓
+          </Typography>
+          <Link
+            href="https://docs.google.com/spreadsheets/d/1D3qEGGroXQ17jwF5aoRN5TeSswTxRvoAhHY87bSA56M/edit?gid=534678762#gid=534678762"
+            target="_blank"
+            rel="noopener noreferrer"
+            variant="body2"
+            sx={{ wordBreak: 'break-all' }}
+          >
+            https://docs.google.com/spreadsheets/d/1D3qEGGroXQ17jwF5aoRN5TeSswTxRvoAhHY87bSA56M/edit?gid=534678762#gid=534678762
+          </Link>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setSalesContractUrlDialog(false)}>閉じる</Button>
         </DialogActions>
       </Dialog>
       <Snackbar
