@@ -42,12 +42,20 @@ interface ReportData {
   report_date?: string;
   report_completed?: string;
   report_assignee?: string;
+  report_date_setting?: string; // 報告日設定（する/しない）
   sales_assignee?: string;
   address?: string;
   owner_name?: string;
   owner_email?: string;
   suumo_url?: string;
 }
+
+// 今日からN週間後の日付文字列（YYYY-MM-DD）を返す
+const getDateWeeksLater = (weeks: number): string => {
+  const d = new Date();
+  d.setDate(d.getDate() + weeks * 7);
+  return d.toISOString().split('T')[0];
+};
 
 interface EmailTemplate {
   id: string;
@@ -108,6 +116,7 @@ export default function PropertyReportPage() {
     reportData.report_date !== savedData.report_date ||
     reportData.report_completed !== savedData.report_completed ||
     reportData.report_assignee !== savedData.report_assignee ||
+    reportData.report_date_setting !== savedData.report_date_setting ||
     reportData.suumo_url !== savedData.suumo_url;
 
   useEffect(() => {
@@ -141,6 +150,7 @@ export default function PropertyReportPage() {
         report_date: d.report_date || '',
         report_completed: d.report_completed || 'N',
         report_assignee: d.report_assignee || d.sales_assignee || '',
+        report_date_setting: d.report_date_setting || '',
         sales_assignee: d.sales_assignee || '',
         address: d.address || d.property_address || '',
         owner_name: ownerName,
@@ -256,6 +266,7 @@ export default function PropertyReportPage() {
         report_date: reportData.report_date || null,
         report_completed: reportData.report_completed || 'N',
         report_assignee: reportData.report_assignee || null,
+        report_date_setting: reportData.report_date_setting || null,
         suumo_url: reportData.suumo_url || null,
       });
       setSavedData({ ...reportData });
@@ -403,14 +414,30 @@ export default function PropertyReportPage() {
             <ArrowBackIcon />
           </IconButton>
           <Box>
-            <Typography variant="h5" fontWeight="bold" sx={{ color: SECTION_COLORS.property.main }}>
-              報告 - {propertyNumber}
-              {reportData.owner_name && (
-                <Typography component="span" variant="h6" sx={{ ml: 2, color: 'text.primary', fontWeight: 'normal' }}>
-                  {reportData.owner_name}
-                </Typography>
-              )}
-            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Typography variant="h5" fontWeight="bold" sx={{ color: SECTION_COLORS.property.main }}>
+                報告 - {propertyNumber}
+                {reportData.owner_name && (
+                  <Typography component="span" variant="h6" sx={{ ml: 2, color: 'text.primary', fontWeight: 'normal' }}>
+                    {reportData.owner_name}
+                  </Typography>
+                )}
+              </Typography>
+              {/* Gmail送信ボタン（売主氏名の右） */}
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<EmailIcon />}
+                onClick={() => setTemplateDialogOpen(true)}
+                sx={{
+                  borderColor: '#1a73e8',
+                  color: '#1a73e8',
+                  '&:hover': { borderColor: '#1557b0', backgroundColor: '#1a73e808' },
+                }}
+              >
+                Gmail送信
+              </Button>
+            </Box>
             {reportData.address && (
               <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
                 {reportData.address}
@@ -466,6 +493,32 @@ export default function PropertyReportPage() {
               />
             </Box>
 
+            {/* 報告日設定 */}
+            <Box sx={{ mb: 3 }}>
+              <Typography variant="body2" color="text.secondary" fontWeight="bold" sx={{ mb: 1 }}>
+                報告日設定
+              </Typography>
+              <ToggleButtonGroup
+                value={reportData.report_date_setting || ''}
+                exclusive
+                onChange={(_, value) => {
+                  if (value === null) return;
+                  const newSchedule = value as string;
+                  // 「する」に変更したら報告日を今日から2週間後に自動設定
+                  const newReportDate = newSchedule === 'する' ? getDateWeeksLater(2) : (reportData.report_date || '');
+                  setReportData((prev) => ({
+                    ...prev,
+                    report_date_setting: newSchedule,
+                    report_date: newReportDate,
+                  }));
+                }}
+                size="small"
+              >
+                <ToggleButton value="する" sx={{ px: 3 }}>する</ToggleButton>
+                <ToggleButton value="しない" sx={{ px: 3 }}>しない</ToggleButton>
+              </ToggleButtonGroup>
+            </Box>
+
             {/* 報告完了 */}
             <Box sx={{ mb: 3 }}>
               <Typography variant="body2" color="text.secondary" fontWeight="bold" sx={{ mb: 1 }}>
@@ -476,7 +529,13 @@ export default function PropertyReportPage() {
                 exclusive
                 onChange={(_, value) => {
                   if (value !== null) {
-                    setReportData((prev) => ({ ...prev, report_completed: value }));
+                    // 報告完了がYに変更されたら報告日を2週間後に更新
+                    const newReportDate = value === 'Y' ? getDateWeeksLater(2) : (reportData.report_date || '');
+                    setReportData((prev) => ({
+                      ...prev,
+                      report_completed: value,
+                      report_date: newReportDate,
+                    }));
                   }
                 }}
                 size="small"
@@ -525,21 +584,6 @@ export default function PropertyReportPage() {
                 </Typography>
               )}
             </Box>
-
-            {/* Gmail送信ボタン */}
-            <Button
-              variant="outlined"
-              fullWidth
-              startIcon={<EmailIcon />}
-              onClick={() => setTemplateDialogOpen(true)}
-              sx={{
-                borderColor: '#1a73e8',
-                color: '#1a73e8',
-                '&:hover': { borderColor: '#1557b0', backgroundColor: '#1a73e808' },
-              }}
-            >
-              Gmail送信
-            </Button>
 
             {/* SUUMO URL */}
             <Box sx={{ mt: 3 }}>
