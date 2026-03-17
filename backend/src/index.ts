@@ -47,6 +47,7 @@ import validationRoutes from './routes/validation';
 import cacheRoutes from './routes/cache';
 import driveRoutes from './routes/drive';
 import workTaskRoutes from './routes/workTasks';
+import sharedItemsRoutes from './routes/sharedItems';
 import propertyListingRoutes from './routes/propertyListings';
 import buyerRoutes from './routes/buyers';
 import viewingResultRoutes from './routes/viewingResults';
@@ -284,6 +285,7 @@ app.use('/api/sellers', sellerRecoveryRoutes);
 app.use('/api/inquiry-response', inquiryResponseRoutes);
 app.use('/api/email-templates', emailTemplateRoutes);
 app.use('/api/gmail', gmailRoutes);
+app.use('/api/shared-items', sharedItemsRoutes); // 共有アイテムAPI（認証不要）
 app.use('/api/public/inquiries', publicInquiriesRoutes);
 app.use('/api/public', publicPropertiesRoutes);
 app.use('/api/geocode', geocodeRoutes);
