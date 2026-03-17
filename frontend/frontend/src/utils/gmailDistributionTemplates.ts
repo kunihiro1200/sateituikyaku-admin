@@ -19,6 +19,9 @@ export const EMAIL_TEMPLATES: EmailTemplate[] = [
 {address}の物件価格が変更となりました。
 
 {priceChangeText}
+値下げ後、問合せが増えることが想定されますので、ご興味のある場合はお早めにご連絡ください。
+
+お問合せが増えることが予想されますので、ご興味のある方はお早めにご連絡ください！
 
 詳細：{publicUrl}
 

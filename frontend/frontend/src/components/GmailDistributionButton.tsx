@@ -54,6 +54,7 @@ export default function GmailDistributionButton({
   const [buyerData, setBuyerData] = useState<EnhancedBuyerEmailsResponse | null>(null);
   const [selectedTemplate, setSelectedTemplate] = useState<EmailTemplate | null>(null);
   const [selectedBuyers, setSelectedBuyers] = useState<Array<{ email: string; name: string | null }>>([]);
+  const [editedBody, setEditedBody] = useState<string>('');
   const [senderAddress, setSenderAddress] = useState<string>(DEFAULT_SENDER);
   const [employees, setEmployees] = useState<any[]>([]);
   const [snackbar, setSnackbar] = useState<{
@@ -190,6 +191,9 @@ export default function GmailDistributionButton({
       return;
     }
     setSelectedBuyers(buyers);
+    // 確認モーダル表示時に本文を初期化
+    const buyerName = buyers.length === 1 ? (buyers[0].name || 'お客様') : 'お客様';
+    setEditedBody(replacePlaceholders(selectedTemplate.body, buyerName));
     setFilterSummaryOpen(false);
     setConfirmationOpen(true);
   };
@@ -205,7 +209,8 @@ export default function GmailDistributionButton({
 
     try {
       const subject = replacePlaceholders(selectedTemplate.subject, buyerName);
-      const body = replacePlaceholders(selectedTemplate.body, buyerName);
+      // 編集済み本文があればそれを使用、なければテンプレートから生成
+      const body = editedBody || replacePlaceholders(selectedTemplate.body, buyerName);
 
       const response = await api.post('/api/emails/send-distribution', {
         recipients: selectedEmails,
@@ -265,7 +270,8 @@ export default function GmailDistributionButton({
       }
 
       const subject = replacePlaceholders(selectedTemplate.subject, resolvedBuyerName);
-      const body = replacePlaceholders(selectedTemplate.body, resolvedBuyerName);
+      // 編集済み本文があればそれを使用、なければテンプレートから生成
+      const body = editedBody || replacePlaceholders(selectedTemplate.body, resolvedBuyerName);
 
       const gmailUrl = generateGmailComposeUrl({
         bcc: emailsToSend.join(','),
@@ -355,7 +361,8 @@ export default function GmailDistributionButton({
         onSenderAddressChange={handleSenderAddressChange}
         employees={employees}
         subject={selectedTemplate ? replacePlaceholders(selectedTemplate.subject, selectedBuyers.length === 1 ? (selectedBuyers[0].name || 'お客様') : 'お客様') : ''}
-        bodyPreview={selectedTemplate ? replacePlaceholders(selectedTemplate.body, selectedBuyers.length === 1 ? (selectedBuyers[0].name || 'お客様') : 'お客様') : ''}
+        bodyPreview={editedBody}
+        onBodyChange={setEditedBody}
       />
 
       <Snackbar
