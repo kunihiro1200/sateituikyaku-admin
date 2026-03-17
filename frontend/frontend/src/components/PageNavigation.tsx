@@ -9,6 +9,14 @@ import {
   Share as ShareIcon,
 } from '@mui/icons-material';
 
+const NAV_COLORS = {
+  '/': { main: '#e53935', light: '#ffebee', text: '#e53935' },           // 売主リスト: 赤
+  '/buyers': { main: '#43a047', light: '#e8f5e9', text: '#43a047' },     // 買主リスト: 緑
+  '/property-listings': { main: '#00acc1', light: '#e0f7fa', text: '#00acc1' }, // 物件リスト: 水色
+  '/work-tasks': { main: '#8e24aa', light: '#f3e5f5', text: '#8e24aa' }, // 業務依頼: 紫
+  '/shared-items': { main: '#fb8c00', light: '#fff3e0', text: '#fb8c00' }, // 共有: オレンジ
+};
+
 export default function PageNavigation() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -28,17 +36,29 @@ export default function PageNavigation() {
   return (
     <Box sx={{ mb: 3, display: 'flex', gap: 2, alignItems: 'center' }}>
       <ButtonGroup variant="outlined" size="large">
-        {navItems.map((item) => (
-          <Button
-            key={item.path}
-            onClick={() => navigate(item.path)}
-            variant={location.pathname === item.path ? 'contained' : 'outlined'}
-            startIcon={item.icon}
-            sx={{ minWidth: 150 }}
-          >
-            {item.label}
-          </Button>
-        ))}
+        {navItems.map((item) => {
+          const color = NAV_COLORS[item.path as keyof typeof NAV_COLORS];
+          const isActive = location.pathname === item.path;
+          return (
+            <Button
+              key={item.path}
+              onClick={() => navigate(item.path)}
+              startIcon={item.icon}
+              sx={{
+                minWidth: 150,
+                borderColor: color.main,
+                color: isActive ? '#fff' : color.text,
+                backgroundColor: isActive ? color.main : color.light,
+                '&:hover': {
+                  backgroundColor: isActive ? color.main : `${color.main}22`,
+                  borderColor: color.main,
+                },
+              }}
+            >
+              {item.label}
+            </Button>
+          );
+        })}
       </ButtonGroup>
       <Button
         variant="outlined"
