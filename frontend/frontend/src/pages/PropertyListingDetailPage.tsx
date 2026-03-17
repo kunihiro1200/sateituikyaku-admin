@@ -154,6 +154,18 @@ interface WorkTaskData {
   storage_url?: string;
 }
 
+// 値下げ履歴の最初の行から「前の価格」を取得するヘルパー
+// 形式: "K3/17 1380万→1280万" → 13800000 を返す
+function getPreviousPriceFromHistory(history: string | null | undefined): number | undefined {
+  if (!history) return undefined;
+  const lines = history.split('\n').filter((l: string) => l.trim());
+  if (lines.length === 0) return undefined;
+  const match = lines[0].match(/(\d+(?:\.\d+)?)万→(\d+(?:\.\d+)?)万/);
+  if (!match) return undefined;
+  const prevMan = parseFloat(match[1]);
+  return Math.round(prevMan * 10000);
+}
+
 export default function PropertyListingDetailPage() {
   const { propertyNumber } = useParams<{ propertyNumber: string }>();
   const navigate = useNavigate();
@@ -171,6 +183,7 @@ export default function PropertyListingDetailPage() {
   const [isCalculatingAreas, setIsCalculatingAreas] = useState(false);
   
   // Edit mode states for each section
+  const [isHeaderEditMode, setIsHeaderEditMode] = useState(false);
   const [isPriceEditMode, setIsPriceEditMode] = useState(false);
   const [isBasicInfoEditMode, setIsBasicInfoEditMode] = useState(false);
   const [isPropertyDetailsEditMode, setIsPropertyDetailsEditMode] = useState(false);
@@ -321,6 +334,33 @@ export default function PropertyListingDetailPage() {
       });
       throw error;
     }
+  };
+
+  const handleSaveHeader = async () => {
+    if (!propertyNumber || Object.keys(editedData).length === 0) return;
+    try {
+      await api.put(`/api/property-listings/${propertyNumber}`, editedData);
+      setSnackbar({
+        open: true,
+        message: 'サマリー情報を保存しました',
+        severity: 'success',
+      });
+      await fetchPropertyData();
+      setEditedData({});
+      setIsHeaderEditMode(false);
+    } catch (error) {
+      setSnackbar({
+        open: true,
+        message: '保存に失敗しました',
+        severity: 'error',
+      });
+      throw error;
+    }
+  };
+
+  const handleCancelHeader = () => {
+    setEditedData({});
+    setIsHeaderEditMode(false);
   };
 
   const handleSaveBasicInfo = async () => {
@@ -821,7 +861,8 @@ export default function PropertyListingDetailPage() {
             publicUrl={`https://property-site-frontend-kappa.vercel.app/public/properties/${data.property_number}`}
             distributionAreas={editedData.distribution_areas !== undefined ? editedData.distribution_areas : data.distribution_areas}
             salesPrice={editedData.sales_price !== undefined ? editedData.sales_price : data.sales_price}
-            previousSalesPrice={data.sales_price}
+            previousSalesPrice={getPreviousPriceFromHistory(data.price_reduction_history)}
+            priceReductionHistory={data.price_reduction_history}
             propertyType={editedData.property_type !== undefined ? editedData.property_type : data.property_type}
             size="medium"
             variant="contained"
@@ -845,50 +886,136 @@ export default function PropertyListingDetailPage() {
 
       {/* Property Header - Key Information */}
       <Paper sx={{ p: 2, mb: 3, bgcolor: '#f5f5f5' }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+          <Typography variant="body2" color="text.secondary" fontWeight="bold">物件概要</Typography>
+          <Box sx={{ display: 'flex', gap: 1 }}>
+            {isHeaderEditMode ? (
+              <>
+                <Button size="small" variant="contained" onClick={handleSaveHeader} disabled={Object.keys(editedData).length === 0}>
+                  保存
+                </Button>
+                <Button size="small" variant="outlined" onClick={handleCancelHeader}>
+                  キャンセル
+                </Button>
+              </>
+            ) : (
+              <Button size="small" variant="outlined" onClick={() => setIsHeaderEditMode(true)}>
+                編集
+              </Button>
+            )}
+          </Box>
+        </Box>
         <Grid container spacing={2}>
           <Grid item xs={12} sm={6} md={3}>
             <Typography variant="body2" color="text.secondary" fontWeight="bold">所在地</Typography>
-            <Typography variant="body1" fontWeight="medium">
-              {data.address || data.display_address || '-'}
-            </Typography>
-            {data.display_address && data.address && data.display_address !== data.address && (
-              <Box sx={{ mt: 0.5 }}>
-                <Typography variant="body2" color="text.secondary" fontWeight="bold">住居表示</Typography>
-                <Typography variant="body2" color="text.secondary">
-                  {data.display_address}
-                </Typography>
-              </Box>
+            {isHeaderEditMode ? (
+              <TextField
+                size="small"
+                fullWidth
+                value={editedData.address !== undefined ? editedData.address : (data.address || '')}
+                onChange={(e) => handleFieldChange('address', e.target.value)}
+                sx={{ mt: 0.5 }}
+              />
+            ) : (
+              <Typography variant="body1" fontWeight="medium">
+                {data.address || data.display_address || '-'}
+              </Typography>
             )}
           </Grid>
           <Grid item xs={12} sm={6} md={3}>
             <Typography variant="body2" color="text.secondary" fontWeight="bold">売主氏名</Typography>
-            <Typography variant="body1" fontWeight="medium">
-              {data.seller_name || '-'}
-            </Typography>
+            {isHeaderEditMode ? (
+              <TextField
+                size="small"
+                fullWidth
+                value={editedData.seller_name !== undefined ? editedData.seller_name : (data.seller_name || '')}
+                onChange={(e) => handleFieldChange('seller_name', e.target.value)}
+                sx={{ mt: 0.5 }}
+              />
+            ) : (
+              <Typography variant="body1" fontWeight="medium">
+                {data.seller_name || '-'}
+              </Typography>
+            )}
           </Grid>
           <Grid item xs={12} sm={6} md={3}>
             <Typography variant="body2" color="text.secondary" fontWeight="bold">ATBB状況</Typography>
-            <Typography variant="body1" fontWeight="medium">
-              {getDisplayStatus(data.atbb_status) || '-'}
-            </Typography>
+            {isHeaderEditMode ? (
+              <FormControl size="small" fullWidth sx={{ mt: 0.5 }}>
+                <Select
+                  value={editedData.atbb_status !== undefined ? editedData.atbb_status : (data.atbb_status || '')}
+                  onChange={(e) => handleFieldChange('atbb_status', e.target.value)}
+                  displayEmpty
+                >
+                  <MenuItem value=""><em>未設定</em></MenuItem>
+                  <MenuItem value="専任・公開中">専任・公開中</MenuItem>
+                  <MenuItem value="一般・公開中">一般・公開中</MenuItem>
+                  <MenuItem value="非公開（配信メールのみ）">非公開（配信メールのみ）</MenuItem>
+                  <MenuItem value="非公開案件">非公開案件</MenuItem>
+                  <MenuItem value="atbb成約済み">atbb成約済み</MenuItem>
+                  <MenuItem value="atbb非公開">atbb非公開</MenuItem>
+                </Select>
+              </FormControl>
+            ) : (
+              <Typography variant="body1" fontWeight="medium">
+                {getDisplayStatus(data.atbb_status) || '-'}
+              </Typography>
+            )}
           </Grid>
           <Grid item xs={12} sm={6} md={3}>
             <Typography variant="body2" color="text.secondary" fontWeight="bold">種別</Typography>
-            <Typography variant="body1" fontWeight="medium">
-              {data.property_type || '-'}
-            </Typography>
+            {isHeaderEditMode ? (
+              <FormControl size="small" fullWidth sx={{ mt: 0.5 }}>
+                <Select
+                  value={editedData.property_type !== undefined ? editedData.property_type : (data.property_type || '')}
+                  onChange={(e) => handleFieldChange('property_type', e.target.value)}
+                  displayEmpty
+                >
+                  <MenuItem value=""><em>未設定</em></MenuItem>
+                  <MenuItem value="土地">土地</MenuItem>
+                  <MenuItem value="戸建て">戸建て</MenuItem>
+                  <MenuItem value="マンション">マンション</MenuItem>
+                  <MenuItem value="収益物件">収益物件</MenuItem>
+                  <MenuItem value="その他">その他</MenuItem>
+                </Select>
+              </FormControl>
+            ) : (
+              <Typography variant="body1" fontWeight="medium">
+                {data.property_type || '-'}
+              </Typography>
+            )}
           </Grid>
           <Grid item xs={12} sm={6} md={3}>
             <Typography variant="body2" color="text.secondary" fontWeight="bold">現況</Typography>
-            <Typography variant="body1" fontWeight="medium">
-              {data.current_status || '-'}
-            </Typography>
+            {isHeaderEditMode ? (
+              <TextField
+                size="small"
+                fullWidth
+                value={editedData.current_status !== undefined ? editedData.current_status : (data.current_status || '')}
+                onChange={(e) => handleFieldChange('current_status', e.target.value)}
+                sx={{ mt: 0.5 }}
+              />
+            ) : (
+              <Typography variant="body1" fontWeight="medium">
+                {data.current_status || '-'}
+              </Typography>
+            )}
           </Grid>
           <Grid item xs={12} sm={6} md={3}>
             <Typography variant="body2" color="text.secondary" fontWeight="bold">担当</Typography>
-            <Typography variant="body1" fontWeight="medium">
-              {data.sales_assignee || '-'}
-            </Typography>
+            {isHeaderEditMode ? (
+              <TextField
+                size="small"
+                fullWidth
+                value={editedData.sales_assignee !== undefined ? editedData.sales_assignee : (data.sales_assignee || '')}
+                onChange={(e) => handleFieldChange('sales_assignee', e.target.value)}
+                sx={{ mt: 0.5 }}
+              />
+            ) : (
+              <Typography variant="body1" fontWeight="medium">
+                {data.sales_assignee || '-'}
+              </Typography>
+            )}
           </Grid>
         </Grid>
       </Paper>

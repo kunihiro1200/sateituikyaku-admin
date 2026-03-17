@@ -22,6 +22,7 @@ interface GmailDistributionButtonProps {
   distributionAreas?: string;
   salesPrice?: number;
   previousSalesPrice?: number;
+  priceReductionHistory?: string;
   propertyType?: string;
   size?: 'small' | 'medium' | 'large';
   variant?: 'text' | 'outlined' | 'contained';
@@ -41,6 +42,7 @@ export default function GmailDistributionButton({
   distributionAreas,
   salesPrice,
   previousSalesPrice,
+  priceReductionHistory,
   propertyType,
   size = 'small',
   variant = 'outlined'
@@ -84,10 +86,24 @@ export default function GmailDistributionButton({
     setSenderAddress(address);
   };
 
+  // 値下げ履歴から前の価格を取得するヘルパー
+  const getPrevPriceFromHistory = (history: string | undefined): number | undefined => {
+    if (!history) return undefined;
+    const lines = history.split('\n').filter((l: string) => l.trim());
+    if (lines.length === 0) return undefined;
+    // 形式: "K3/17　1850万→1350万" または "K3/17 1850万→1350万"
+    const match = lines[0].match(/(\d+(?:\.\d+)?)万→(\d+(?:\.\d+)?)万/);
+    if (!match) return undefined;
+    return Math.round(parseFloat(match[1]) * 10000);
+  };
+
   // 価格変更テキストを生成
   const generatePriceChangeText = (): string => {
-    if (previousSalesPrice && salesPrice) {
-      const oldMan = Math.floor(previousSalesPrice / 10000);
+    // previousSalesPrice が未指定の場合、履歴から取得を試みる
+    const prevPrice = previousSalesPrice ?? getPrevPriceFromHistory(priceReductionHistory);
+
+    if (prevPrice && salesPrice) {
+      const oldMan = Math.floor(prevPrice / 10000);
       const newMan = Math.floor(salesPrice / 10000);
       const diffMan = oldMan - newMan;
       if (diffMan > 0) {
@@ -101,8 +117,8 @@ export default function GmailDistributionButton({
     if (salesPrice) {
       return `${Math.floor(salesPrice / 10000)}万円`;
     }
-    if (previousSalesPrice) {
-      return `${Math.floor(previousSalesPrice / 10000)}万円`;
+    if (prevPrice) {
+      return `${Math.floor(prevPrice / 10000)}万円`;
     }
     return '';
   };
