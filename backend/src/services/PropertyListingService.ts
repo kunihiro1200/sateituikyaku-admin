@@ -218,6 +218,28 @@ export class PropertyListingService {
       }
     }
 
+    // report_date が含まれる場合、sidebar_status を再計算
+    if ('report_date' in updates || 'report_assignee' in updates) {
+      try {
+        const current = await this.getByPropertyNumber(propertyNumber);
+        if (current) {
+          const reportDate = updates.report_date !== undefined ? updates.report_date : current.report_date;
+          const reportAssignee = updates.report_assignee !== undefined ? updates.report_assignee : current.report_assignee;
+          if (reportDate) {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const rd = new Date(reportDate);
+            rd.setHours(0, 0, 0, 0);
+            if (rd <= today) {
+              updates.sidebar_status = reportAssignee ? `未報告 ${reportAssignee}` : '未報告';
+            }
+          }
+        }
+      } catch (e) {
+        // sidebar_status 再計算失敗は無視
+      }
+    }
+
     const { data, error } = await this.supabase
       .from('property_listings')
       .update({ ...updates, updated_at: new Date().toISOString() })

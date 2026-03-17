@@ -39,6 +39,7 @@ import PublicSiteButtons from '../components/PublicSiteButtons';
 import PropertySidebarStatus from '../components/PropertySidebarStatus';
 import { getDisplayStatus } from '../utils/atbbStatusDisplayMapper';
 import { SECTION_COLORS } from '../theme/sectionColors';
+import { calculatePropertyStatus } from '../utils/propertyListingStatusUtils';
 
 interface PropertyListing {
   id: string;
@@ -157,7 +158,12 @@ export default function PropertyListingsPage() {
 
     // サイドバーと検索は排他的（後から操作した方がもう一方をクリアするため、両方独立適用でOK）
     if (sidebarStatus && sidebarStatus !== 'all') {
-      listings = listings.filter(l => l.sidebar_status === sidebarStatus);
+      if (sidebarStatus === '要値下げ') {
+        // 「要値下げ」はDBのsidebar_statusに保存されないため、calculatePropertyStatusで判定
+        listings = listings.filter(l => calculatePropertyStatus(l as any).key === 'price_reduction_due');
+      } else {
+        listings = listings.filter(l => l.sidebar_status === sidebarStatus);
+      }
     }
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();

@@ -42,7 +42,6 @@ interface ReportData {
   report_date?: string;
   report_completed?: string;
   report_assignee?: string;
-  report_date_setting?: string; // 報告日設定（する/しない）
   sales_assignee?: string;
   address?: string;
   owner_name?: string;
@@ -116,7 +115,6 @@ export default function PropertyReportPage() {
     reportData.report_date !== savedData.report_date ||
     reportData.report_completed !== savedData.report_completed ||
     reportData.report_assignee !== savedData.report_assignee ||
-    reportData.report_date_setting !== savedData.report_date_setting ||
     reportData.suumo_url !== savedData.suumo_url;
 
   useEffect(() => {
@@ -150,7 +148,6 @@ export default function PropertyReportPage() {
         report_date: d.report_date || '',
         report_completed: d.report_completed || 'N',
         report_assignee: d.report_assignee || d.sales_assignee || '',
-        report_date_setting: d.report_date_setting || '',
         sales_assignee: d.sales_assignee || '',
         address: d.address || d.property_address || '',
         owner_name: ownerName,
@@ -266,7 +263,6 @@ export default function PropertyReportPage() {
         report_date: reportData.report_date || null,
         report_completed: reportData.report_completed || 'N',
         report_assignee: reportData.report_assignee || null,
-        report_date_setting: reportData.report_date_setting || null,
         suumo_url: reportData.suumo_url || null,
       });
       setSavedData({ ...reportData });
@@ -491,32 +487,6 @@ export default function PropertyReportPage() {
                 onChange={(e) => setReportData((prev) => ({ ...prev, report_date: e.target.value }))}
                 InputLabelProps={{ shrink: true }}
               />
-            </Box>
-
-            {/* 報告日設定 */}
-            <Box sx={{ mb: 3 }}>
-              <Typography variant="body2" color="text.secondary" fontWeight="bold" sx={{ mb: 1 }}>
-                報告日設定
-              </Typography>
-              <ToggleButtonGroup
-                value={reportData.report_date_setting || ''}
-                exclusive
-                onChange={(_, value) => {
-                  if (value === null) return;
-                  const newSchedule = value as string;
-                  // 「する」に変更したら報告日を今日から2週間後に自動設定
-                  const newReportDate = newSchedule === 'する' ? getDateWeeksLater(2) : (reportData.report_date || '');
-                  setReportData((prev) => ({
-                    ...prev,
-                    report_date_setting: newSchedule,
-                    report_date: newReportDate,
-                  }));
-                }}
-                size="small"
-              >
-                <ToggleButton value="する" sx={{ px: 3 }}>する</ToggleButton>
-                <ToggleButton value="しない" sx={{ px: 3 }}>しない</ToggleButton>
-              </ToggleButtonGroup>
             </Box>
 
             {/* 報告完了 */}
