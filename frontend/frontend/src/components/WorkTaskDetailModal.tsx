@@ -46,14 +46,42 @@ interface WorkTaskData {
   site_registration_due_date: string;
   site_registration_confirmed: string;
   site_registration_confirmer: string;
+  site_registration_confirm_request_date: string;
+  site_registration_comment: string;
+  site_registration_requester: string;
+  site_registration_requestor: string;
+  site_registration_ok_comment: string;
+  site_registration_ok_sent: string;
   floor_plan: string;
   floor_plan_request_date: string;
   floor_plan_due_date: string;
   floor_plan_completed_date: string;
   floor_plan_confirmer: string;
+  floor_plan_comment: string;
+  floor_plan_ok_comment: string;
+  floor_plan_ok_sent: string;
+  floor_plan_stored_email: string;
+  floor_plan_revision_count: string;
   panorama: string;
   panorama_completed: string;
   site_notes: string;
+  property_type: string;
+  cadastral_map_sales_input: string;
+  cadastral_map_field: string;
+  cadastral_map_url: string;
+  storage_url: string;
+  cw_request_email_site: string;
+  cw_request_email_floor_plan: string;
+  cw_request_email_2f_above: string;
+  cw_person: string;
+  email_distribution: string;
+  pre_distribution_check: string;
+  distribution_date: string;
+  publish_scheduled_date: string;
+  direction_symbol: string;
+  road_dimensions: string;
+  property_list_row_added: string;
+  property_file: string;
   sales_contract_confirmed: string;
   completed_comment_sales: string;
   binding_scheduled_date: string;
@@ -263,22 +291,68 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
     </Box>
   );
 
+  // セクションヘッダー
+  const SectionHeader = ({ label }: { label: string }) => (
+    <Typography variant="body2" sx={{ fontWeight: 700, mt: 2, mb: 1 }}>{label}</Typography>
+  );
+
+  // 赤文字の注記
+  const RedNote = ({ text }: { text: string }) => (
+    <Typography variant="caption" sx={{ color: 'error.main', display: 'block', mb: 1 }}>{text}</Typography>
+  );
+
   // サイト登録セクション
   const SiteRegistrationSection = () => (
     <Box sx={{ p: 2 }}>
       <EditableField label="サイト登録締め日" field="site_registration_deadline" type="date" />
-      <EditableField label="サイト登録依頼日" field="site_registration_request_date" type="date" />
-      <EditableField label="サイト登録納期予定日" field="site_registration_due_date" type="date" />
-      <EditableField label="サイト登録確認" field="site_registration_confirmed" />
-      <EditableButtonSelect label="サイト登録確認者" field="site_registration_confirmer" options={ASSIGNEE_OPTIONS} />
-      <EditableField label="間取図" field="floor_plan" />
-      <EditableField label="間取図依頼日" field="floor_plan_request_date" type="date" />
-      <EditableField label="間取図完了予定" field="floor_plan_due_date" type="date" />
-      <EditableField label="間取図完了日" field="floor_plan_completed_date" type="date" />
-      <EditableButtonSelect label="間取図確認者" field="floor_plan_confirmer" options={ASSIGNEE_OPTIONS} />
-      <EditableField label="パノラマ" field="panorama" />
-      <EditableField label="パノラマ完了" field="panorama_completed" />
+      <EditableField label="種別" field="property_type" />
+
+      <SectionHeader label="【サイト登録依頼】" />
       <EditableField label="サイト備考" field="site_notes" />
+      <EditableField label="地籍測量図・字図（営業入力）" field="cadastral_map_sales_input" />
+      <EditableButtonSelect label="地積測量図、字図" field="cadastral_map_field" options={['格納済み＆スプシに「有、無」を入力済み', '未', '不要']} />
+      <EditableButtonSelect label="字図、地積測量図URL*" field="cadastral_map_url" options={['URL入力済み', '未']} />
+      <RedNote text={'地積測量図や字図を格納→「リンク知っている人全員」\nの共有URLをスプシの「内覧前伝達事項」に貼り付ける'} />
+      <EditableField label="格納先URL" field="storage_url" type="url" />
+      <EditableYesNo label="CWの方へ依頼メール（サイト登録）" field="cw_request_email_site" />
+      <EditableButtonSelect label="CWの方*" field="cw_person" options={['浅沼様（土日OK, 平日は中１日あけて納期）']} />
+      <EditableField label="コメント（サイト登録）" field="site_registration_comment" />
+      <EditableMultilineField label="サイト登録依頼コメント" field="site_registration_requestor" />
+      <EditableField label="パノラマ" field="panorama" />
+      <EditableButtonSelect label="サイト登録依頼者*" field="site_registration_requester" options={['K', 'Y', 'I', '林', '麻', 'U', 'R', '久', '和', 'H']} />
+      <EditableField label="サイト登録納期予定日*" field="site_registration_due_date" type="date" />
+
+      <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mb: 1 }}>CWの方、広瀬さん記入↓↓</Typography>
+      <EditableField label="サイト登録確認依頼日" field="site_registration_confirm_request_date" type="date" />
+
+      <SectionHeader label="【★サイト登録確認】" />
+      <EditableButtonSelect label="サイト登録確認" field="site_registration_confirmed" options={['確認中', '完了', '他']} />
+      <EditableField label="メール配信v" field="email_distribution" />
+
+      <SectionHeader label="【図面作成依頼】" />
+      <EditableButtonSelect label="間取図" field="floor_plan" options={['クラウドワークス', '他', '不要']} />
+      <EditableButtonSelect label="方位記号" field="direction_symbol" options={['確認済', '不要（営業相談済）']} />
+      <EditableField label="コメント（間取図関係）" field="floor_plan_comment" />
+      <EditableField label="道路寸法" field="road_dimensions" />
+      <EditableYesNo label="CWの方へ依頼メール（間取り、区画図）" field="cw_request_email_floor_plan" />
+      <EditableYesNo label="CWの方へ依頼メール（2階以上）" field="cw_request_email_2f_above" />
+      <EditableField label="間取図完了予定*" field="floor_plan_due_date" type="date" />
+
+      <SectionHeader label="【★図面確認】" />
+      <EditableButtonSelect label="間取図確認者*" field="floor_plan_confirmer" options={['K', 'Y', 'I', '林', '麻', 'U', 'R', '久', '和', 'H']} />
+      <EditableField label="間取図確認OK/修正コメント" field="floor_plan_ok_comment" />
+      <EditableYesNo label="間取図確認OK送信*" field="floor_plan_ok_sent" />
+      <EditableButtonSelect label="間取図修正回数" field="floor_plan_revision_count" options={['1', '2', '3', '4']} />
+      <EditableField label="間取図完了日*" field="floor_plan_completed_date" type="date" />
+      <EditableYesNo label="間取図格納済み連絡メール" field="floor_plan_stored_email" />
+
+      <SectionHeader label="【確認後処理】" />
+      <EditableField label="配信日" field="distribution_date" type="date" />
+      <EditableButtonSelect label="物件一覧に行追加*" field="property_list_row_added" options={['追加済', '未']} />
+      <EditableButtonSelect label="物件ファイル" field="property_file" options={['担当に渡し済み', '未']} />
+      <EditableField label="公開予定日" field="publish_scheduled_date" type="date" />
+      <EditableField label="メール配信" field="pre_distribution_check" />
+      <EditableField label="サイト登録締め日v" field="site_registration_deadline" type="date" />
     </Box>
   );
 
