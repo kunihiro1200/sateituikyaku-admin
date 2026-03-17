@@ -309,8 +309,12 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
 
       <SectionHeader label="【サイト登録依頼】" />
       <EditableField label="サイト備考" field="site_notes" />
-      <EditableField label="地籍測量図・字図（営業入力）" field="cadastral_map_sales_input" />
-      <EditableButtonSelect label="地積測量図、字図" field="cadastral_map_field" options={['格納済み＆スプシに「有、無」を入力済み', '未', '不要']} />
+      {getValue('property_type') === '土' && (
+        <>
+          <EditableField label="地籍測量図・字図（営業入力）" field="cadastral_map_sales_input" />
+          <EditableButtonSelect label="地積測量図、字図" field="cadastral_map_field" options={['格納済み＆スプシに「有、無」を入力済み', '未', '不要']} />
+        </>
+      )}
       <EditableButtonSelect label="字図、地積測量図URL*" field="cadastral_map_url" options={['URL入力済み', '未']} />
       <RedNote text={'地積測量図や字図を格納→「リンク知っている人全員」\nの共有URLをスプシの「内覧前伝達事項」に貼り付ける'} />
       <EditableField label="格納先URL" field="storage_url" type="url" />
