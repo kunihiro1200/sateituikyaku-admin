@@ -54,6 +54,7 @@ const REINS_FIELDS: {
 ];
 
 function buildEmailBody(sellerName: string, suumoUrl: string): string {
+  const suumoLine = suumoUrl ? `■SUUMO\n${suumoUrl}` : '■SUUMO';
   return `${sellerName}様
 
 お世話になっております。
@@ -64,8 +65,7 @@ function buildEmailBody(sellerName: string, suumoUrl: string): string {
 
 【各サイトのご案内】
 ■athome
-■SUUMO
-${suumoUrl}
+${suumoLine}
 
 今後、当社全員で、お客様の大切な物件の販売に努めてまいります。
 2週間に1度担当より、進捗状況をご報告させていただきます。
@@ -164,7 +164,7 @@ export default function ReinsRegistrationPage() {
     }
   };
 
- = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     setAttachments((prev) => [...prev, ...files]);
     if (fileInputRef.current) fileInputRef.current.value = '';
