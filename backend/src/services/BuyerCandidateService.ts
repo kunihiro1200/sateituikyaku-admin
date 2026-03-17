@@ -2,6 +2,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { BeppuAreaMappingService } from './BeppuAreaMappingService';
 import { GeolocationService } from './GeolocationService';
+import { GeocodingService } from './GeocodingService';
 import { getOitaCityAreas, getBeppuCityAreas } from '../utils/cityAreaMapping';
 
 export interface BuyerCandidate {
@@ -33,6 +34,8 @@ export class BuyerCandidateService {
   private supabase;
   private beppuAreaMappingService: BeppuAreaMappingService;
   private geolocationService: GeolocationService;
+  private geocodingService: GeocodingService;
+  private geocodingCache: Map<string, { lat: number; lng: number } | null>;
 
   constructor() {
     this.supabase = createClient(
@@ -41,6 +44,8 @@ export class BuyerCandidateService {
     );
     this.beppuAreaMappingService = new BeppuAreaMappingService();
     this.geolocationService = new GeolocationService();
+    this.geocodingService = new GeocodingService();
+    this.geocodingCache = new Map();
   }
 
   /**
@@ -67,8 +72,8 @@ export class BuyerCandidateService {
     const propertyAreaNumbers = await this.getAreaNumbersForProperty(property);
     console.log(`[BuyerCandidateService] Property area numbers:`, propertyAreaNumbers);
 
-    // 距離マッチングは現在無効化されているため座標取得をスキップ
-    const propertyCoords = null;
+    // 物件住所から座標を取得（距離マッチング用）
+    const propertyCoords = await this.getPropertyCoordsFromAddress(property);
 
     // 買主を全件取得（Supabaseの1000件制限を回避するためページネーション）
     const buyers: any[] = [];
@@ -96,8 +101,8 @@ export class BuyerCandidateService {
     }
     console.log(`[BuyerCandidateService] Total buyers fetched: ${buyers.length}`);
 
-    // フィルタリング（同期処理）
-    const candidates = this.filterCandidates(
+    // フィルタリング（非同期処理 - 距離マッチング対応）
+    const candidates = await this.filterCandidatesAsync(
       buyers || [],
       property.property_type,
       property.sales_price,
@@ -212,6 +217,44 @@ export class BuyerCandidateService {
       if (!this.matchesAreaCriteria(buyer, propertyAreaNumbers)) return false;
       return true;
     });
+  }
+
+  /**
+   * 買主候補をフィルタリング（非同期処理 - 距離マッチング対応）
+   * 配信エリアマッチングまたは半役3km距離マッチングのいずれかを満たす買主を返す
+   */
+  private async filterCandidatesAsync(
+    buyers: any[],
+    propertyType: string | null,
+    salesPrice: number | null,
+    propertyAreaNumbers: string[],
+    propertyCoords: { lat: number; lng: number } | null
+  ): Promise<any[]> {
+    const candidates: any[] = [];
+
+    for (const buyer of buyers) {
+      // 既存フィルタを先に適用
+      if (this.shouldExcludeBuyer(buyer)) continue;
+      if (!this.matchesStatus(buyer)) continue;
+      if (!this.matchesPropertyTypeCriteria(buyer, propertyType)) continue;
+      if (!this.matchesPriceCriteria(buyer, salesPrice, propertyType)) continue;
+
+      // 配信エリアマッチング（OR条件の前半）
+      if (this.matchesAreaCriteria(buyer, propertyAreaNumbers)) {
+        candidates.push(buyer);
+        continue; // 距離計算をスキップ（重複計算回避）
+      }
+
+      // 距離マッチング（OR条件の後半）
+      if (propertyCoords) {
+        const matchesByDistance = await this.matchesByInquiryDistance(buyer, propertyCoords, this.geocodingCache);
+        if (matchesByDistance) {
+          candidates.push(buyer);
+        }
+      }
+    }
+
+    return candidates;
   }
 
   /**
@@ -347,12 +390,13 @@ export class BuyerCandidateService {
   }
 
   /**
-   * 買主が問い合わせた物件との距離でマッチング
-   * 買主が以前に問い合わせた物件が近傍3km以内であれば条件を満たす
+   * 買主が問い合わせた物件との距離でマッチング（GeocodingService使用・キャッシュ対応）
+   * 買主が以前に問い合わせた物件が近傇13km以内であれば条件を満たす
    */
   private async matchesByInquiryDistance(
     buyer: any,
-    propertyCoords: { lat: number; lng: number }
+    propertyCoords: { lat: number; lng: number },
+    geocodingCache: Map<string, { lat: number; lng: number } | null>
   ): Promise<boolean> {
     try {
       const inquiryPropertyNumber = (buyer.property_number || '').trim();
@@ -365,32 +409,41 @@ export class BuyerCandidateService {
         return false;
       }
 
+      // キャッシュを確認
+      if (geocodingCache.has(firstPropertyNumber)) {
+        const cachedCoords = geocodingCache.get(firstPropertyNumber);
+        if (!cachedCoords) {
+          return false;
+        }
+        const distance = this.geolocationService.calculateDistance(propertyCoords, cachedCoords);
+        return distance <= 3.0;
+      }
+
+      // property_listings から住所を取得
       const { data: inquiryProperty, error } = await this.supabase
         .from('property_listings')
-        .select('google_map_url')
+        .select('address')
         .eq('property_number', firstPropertyNumber)
         .single();
 
-      if (error || !inquiryProperty || !inquiryProperty.google_map_url) {
+      if (error || !inquiryProperty || !inquiryProperty.address) {
+        geocodingCache.set(firstPropertyNumber, null);
         return false;
       }
 
-      const inquiryCoords = await this.geolocationService.extractCoordinatesFromUrl(
-        inquiryProperty.google_map_url
-      );
-
-      if (!inquiryCoords) {
+      // GeocodingService で座標を取得
+      const coords = await this.geocodingService.geocodeAddress(inquiryProperty.address);
+      if (!coords) {
+        geocodingCache.set(firstPropertyNumber, null);
         return false;
       }
 
-      const distance = this.geolocationService.calculateDistance(
-        propertyCoords,
-        inquiryCoords
-      );
+      const inquiryCoords = { lat: coords.latitude, lng: coords.longitude };
+      geocodingCache.set(firstPropertyNumber, inquiryCoords);
 
+      const distance = this.geolocationService.calculateDistance(propertyCoords, inquiryCoords);
       console.log(`[BuyerCandidateService] Distance from inquiry property ${firstPropertyNumber}: ${distance.toFixed(2)}km`);
 
-      // 3km以内であれば条件を満たす
       return distance <= 3.0;
     } catch (error) {
       console.error(`[BuyerCandidateService] Error in distance matching:`, error);
@@ -554,6 +607,28 @@ export class BuyerCandidateService {
       return coords;
     } catch (error) {
       console.error(`[BuyerCandidateService] Error extracting coordinates:`, error);
+      return null;
+    }
+  }
+
+  /**
+   * 物件住所から座標を取得（GeocodingService使用）
+   */
+  private async getPropertyCoordsFromAddress(property: any): Promise<{ lat: number; lng: number } | null> {
+    try {
+      const address = (property.address || '').trim();
+      if (!address) {
+        return null;
+      }
+
+      const coords = await this.geocodingService.geocodeAddress(address);
+      if (!coords) {
+        return null;
+      }
+
+      return { lat: coords.latitude, lng: coords.longitude };
+    } catch (error) {
+      console.error(`[BuyerCandidateService] Error geocoding property address:`, error);
       return null;
     }
   }
