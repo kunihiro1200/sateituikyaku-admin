@@ -897,4 +897,89 @@ router.get('/:id/nearby-buyers', async (req: Request, res: Response) => {
   }
 });
 
+/**
+ * GET /api/sellers/:id/inquiry-url
+ * 査定書作成シートから反響URLを取得
+ * 条件: G列(反響送付日) が inquiry_detailed_datetime と一致
+ *       かつ E列(物件住所) が property_address と一致
+ * → H列(反響URL) を返す
+ */
+router.get('/:id/inquiry-url', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    const seller = await sellerService.getSeller(id);
+    if (!seller) {
+      return res.status(404).json({ error: 'Seller not found' });
+    }
+
+    const inquiryDatetime = (seller as any).inquiryDetailedDatetime;
+    const propertyAddress = seller.propertyAddress;
+
+    if (!inquiryDatetime && !propertyAddress) {
+      return res.json({ inquiryUrl: null });
+    }
+
+    const { GoogleSheetsClient } = await import('../services/GoogleSheetsClient');
+    const { google } = await import('googleapis');
+
+    const SPREADSHEET_ID = '1wKBRLWbT6pSKa9IlTDabjhjTnfs_GxX6Rn6M6kbio1I';
+    const SHEET_NAME = '査定書作成';
+
+    const client = new GoogleSheetsClient({
+      spreadsheetId: SPREADSHEET_ID,
+      sheetName: SHEET_NAME,
+      serviceAccountKeyPath: process.env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH || './google-service-account.json',
+    });
+    await client.authenticate();
+
+    // E列(物件住所), G列(反響送付日), H列(反響URL) を取得
+    const sheetsInstance = (client as any).sheets;
+    const response = await sheetsInstance.spreadsheets.values.get({
+      spreadsheetId: SPREADSHEET_ID,
+      range: `${SHEET_NAME}!E:H`,
+    });
+
+    const rows: string[][] = response.data.values || [];
+
+    // 正規化: 空白除去
+    const normalize = (s: string) => (s || '').trim();
+
+    // 反響詳細日時を日付文字列に変換（YYYY/M/D 形式で比較）
+    const toDateStr = (dt: string) => {
+      if (!dt) return '';
+      const d = new Date(dt);
+      if (isNaN(d.getTime())) return normalize(dt);
+      return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}`;
+    };
+
+    const sellerDateStr = toDateStr(inquiryDatetime);
+    const sellerAddress = normalize(propertyAddress || '');
+
+    let inquiryUrl: string | null = null;
+
+    for (let i = 1; i < rows.length; i++) {
+      const row = rows[i];
+      const rowAddress = normalize(row[0] || '');   // E列
+      const rowDate = normalize(row[2] || '');       // G列
+      const rowUrl = normalize(row[3] || '');        // H列
+
+      const rowDateStr = toDateStr(rowDate);
+
+      const dateMatch = sellerDateStr && rowDateStr && sellerDateStr === rowDateStr;
+      const addressMatch = sellerAddress && rowAddress && sellerAddress === rowAddress;
+
+      if (dateMatch && addressMatch && rowUrl) {
+        inquiryUrl = rowUrl;
+        break;
+      }
+    }
+
+    res.json({ inquiryUrl });
+  } catch (error) {
+    console.error('Get inquiry URL error:', error);
+    res.status(500).json({ error: 'Failed to get inquiry URL' });
+  }
+});
+
 export default router;

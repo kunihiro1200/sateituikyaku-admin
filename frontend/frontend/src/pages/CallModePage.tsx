@@ -345,6 +345,7 @@ const CallModePage = () => {
   const [snackbarOpen, setSnackbarOpen] = useState(false); // スナックバー表示フラグ
   const [snackbarMessage, setSnackbarMessage] = useState<string>(''); // スナックバーメッセージ
   const [showNearbyBuyers, setShowNearbyBuyers] = useState(false); // 近隣買主表示フラグ
+  const [inquiryUrl, setInquiryUrl] = useState<string | null>(null); // 反響URL
 
   // 通話メモ入力欄の状態
   const [callMemo, setCallMemo] = useState<string>('');
@@ -1064,6 +1065,13 @@ const CallModePage = () => {
       
       setSeller(sellerData);
       setUnreachableStatus(sellerData.unreachableStatus || null);
+
+      // 反響URLを非同期で取得（エラーでも続行）
+      api.get(`/api/sellers/${id}/inquiry-url`).then(r => {
+        setInquiryUrl(r.data.inquiryUrl || null);
+      }).catch(() => {
+        setInquiryUrl(null);
+      });
       
       // 物件データを設定（sellerDataに含まれていない場合は別途取得）
       let propertyData = sellerData.property || null;
@@ -4219,6 +4227,23 @@ HP：https://ifoo-oita.com/
                     つながるオンラインを開く
                   </a>
                 </Box>
+                {/* 反響URL */}
+                {inquiryUrl && (
+                  <Box sx={{ mb: 2, p: 1.5, bgcolor: '#f3e5f5', borderRadius: 1, border: '1px solid #ce93d8' }}>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5, fontWeight: 'bold' }}>
+                      反響URL
+                    </Typography>
+                    <a
+                      href={inquiryUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      style={{ color: '#7b1fa2', fontSize: '0.875rem', wordBreak: 'break-all' }}
+                    >
+                      {inquiryUrl}
+                    </a>
+                  </Box>
+                )}
                 {!property && !editedValuationAmount1 && (
                   <Alert severity="info">
                     物件情報が登録されていないため、査定を実行できません
