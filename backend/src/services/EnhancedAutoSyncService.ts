@@ -1093,6 +1093,8 @@ export class EnhancedAutoSyncService {
     }
     const landArea = row['土（㎡）'];
     const buildingArea = row['建（㎡）'];
+    const landAreaVerified = row['土地（当社調べ）'];
+    const buildingAreaVerified = row['建物（当社調べ）'];
     const buildYear = row['築年'];
     const structure = row['構造'];
     const floorPlan = row['間取り'];
@@ -1111,6 +1113,12 @@ export class EnhancedAutoSyncService {
       updated_at: new Date().toISOString(),
     };
 
+    // 状況（売主）をsellers.current_statusにも保存
+    const currentStatus = row['状況（売主）'];
+    if (currentStatus) {
+      updateData.current_status = String(currentStatus);
+    }
+
     // 物件関連フィールドを追加
     if (propertyAddress) {
       updateData.property_address = String(propertyAddress);
@@ -1125,6 +1133,15 @@ export class EnhancedAutoSyncService {
     const parsedBuildingArea = this.parseNumeric(buildingArea);
     if (parsedBuildingArea !== null) {
       updateData.building_area = parsedBuildingArea;
+    }
+    // 土地（当社調べ）・建物（当社調べ）を同期
+    const parsedLandAreaVerified = this.parseNumeric(landAreaVerified);
+    if (parsedLandAreaVerified !== null) {
+      updateData.land_area_verified = parsedLandAreaVerified;
+    }
+    const parsedBuildingAreaVerified = this.parseNumeric(buildingAreaVerified);
+    if (parsedBuildingAreaVerified !== null) {
+      updateData.building_area_verified = parsedBuildingAreaVerified;
     }
     const parsedBuildYear = this.parseNumeric(buildYear);
     if (parsedBuildYear !== null) {
@@ -1285,6 +1302,8 @@ export class EnhancedAutoSyncService {
     }
     const landArea = row['土（㎡）'];
     const buildingArea = row['建（㎡）'];
+    const landAreaVerified = row['土地（当社調べ）'];
+    const buildingAreaVerified = row['建物（当社調べ）'];
     const buildYear = row['築年'];
     const structure = row['構造'];
     const floorPlan = row['間取り'];
@@ -1303,6 +1322,12 @@ export class EnhancedAutoSyncService {
       comments: row['コメント'] ? String(row['コメント']) : null,
     };
 
+    // 状況（売主）をsellers.current_statusにも保存
+    const currentStatusNew = row['状況（売主）'];
+    if (currentStatusNew) {
+      encryptedData.current_status = String(currentStatusNew);
+    }
+
     // 物件関連フィールドを追加
     if (propertyAddress) {
       encryptedData.property_address = String(propertyAddress);
@@ -1317,6 +1342,15 @@ export class EnhancedAutoSyncService {
     const parsedBuildingArea = this.parseNumeric(buildingArea);
     if (parsedBuildingArea !== null) {
       encryptedData.building_area = parsedBuildingArea;
+    }
+    // 土地（当社調べ）・建物（当社調べ）を同期
+    const parsedLandAreaVerified = this.parseNumeric(landAreaVerified);
+    if (parsedLandAreaVerified !== null) {
+      encryptedData.land_area_verified = parsedLandAreaVerified;
+    }
+    const parsedBuildingAreaVerified = this.parseNumeric(buildingAreaVerified);
+    if (parsedBuildingAreaVerified !== null) {
+      encryptedData.building_area_verified = parsedBuildingAreaVerified;
     }
     const parsedBuildYear = this.parseNumeric(buildYear);
     if (parsedBuildYear !== null) {
@@ -2072,10 +2106,11 @@ export class EnhancedAutoSyncService {
       }
 
 
-      // Phase 4: 作業タスク同期（既存）
+      // Phase 4: 作業タスク同期（GASスクリプトで処理）
       console.log('\n📋 Phase 4: Work Task Sync');
-      // Note: Work task sync is handled elsewhere
-      console.log('✅ Work task sync (handled by existing service)');
+      // Note: Work task sync は GASスクリプト（gas/gyomu-work-task-sync/GyomuWorkTaskSync.gs）で処理
+      // 10分ごとのトリガーで Supabase の work_tasks テーブルに直接 upsert される
+      console.log('✅ Work task sync (handled by GAS script: gas/gyomu-work-task-sync/GyomuWorkTaskSync.gs)');
 
       // Phase 4.5: 物件リスト更新同期（新規追加）
       console.log('\n🏢 Phase 4.5: Property Listing Update Sync');

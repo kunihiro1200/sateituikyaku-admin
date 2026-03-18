@@ -1532,23 +1532,50 @@ const CallModePage = () => {
   };
 
   const handleSaveProperty = async () => {
-    if (!property) return;
+    if (!seller) return;
     
     try {
       setSavingProperty(true);
       setError(null);
       setSuccessMessage(null);
 
-      await api.put(`/properties/${property.id}`, {
-        address: editedPropertyAddress,
-        propertyType: editedPropertyType || null,
-        landArea: editedLandArea ? parseFloat(editedLandArea) : null,
-        buildingArea: editedBuildingArea ? parseFloat(editedBuildingArea) : null,
-        buildYear: editedBuildYear ? parseInt(editedBuildYear, 10) : null,
-        floorPlan: editedFloorPlan || null,
-        structure: editedStructure || null,
-        sellerSituation: editedSellerSituation || null,
-      });
+      if (property) {
+        // propertiesテーブルを更新
+        await api.put(`/properties/${property.id}`, {
+          address: editedPropertyAddress,
+          propertyType: editedPropertyType || null,
+          landArea: editedLandArea ? parseFloat(editedLandArea) : null,
+          buildingArea: editedBuildingArea ? parseFloat(editedBuildingArea) : null,
+          buildYear: editedBuildYear ? parseInt(editedBuildYear, 10) : null,
+          floorPlan: editedFloorPlan || null,
+          structure: editedStructure || null,
+          sellerSituation: editedSellerSituation || null,
+        });
+      } else {
+        // propertyがない場合はsellersテーブルを直接更新
+        await api.put(`/api/sellers/${id}`, {
+          propertyAddress: editedPropertyAddress || null,
+          propertyType: editedPropertyType || null,
+          landArea: editedLandArea ? parseFloat(editedLandArea) : null,
+          buildingArea: editedBuildingArea ? parseFloat(editedBuildingArea) : null,
+          buildYear: editedBuildYear ? parseInt(editedBuildYear, 10) : null,
+          floorPlan: editedFloorPlan || null,
+          structure: editedStructure || null,
+          currentStatus: editedSellerSituation || null,
+        });
+        // ローカル状態も更新
+        setSeller(prev => prev ? {
+          ...prev,
+          propertyAddress: editedPropertyAddress || undefined,
+          propertyType: editedPropertyType || undefined,
+          landArea: editedLandArea ? parseFloat(editedLandArea) : undefined,
+          buildingArea: editedBuildingArea ? parseFloat(editedBuildingArea) : undefined,
+          buildYear: editedBuildYear ? parseInt(editedBuildYear, 10) : undefined,
+          floorPlan: editedFloorPlan || undefined,
+          structure: editedStructure || undefined,
+          currentStatus: editedSellerSituation || undefined,
+        } : prev);
+      }
 
       setSuccessMessage('物件情報を更新しました');
       setEditingProperty(false);
@@ -2799,20 +2826,20 @@ HP：https://ifoo-oita.com/
                   </Typography>
                 )}
               </Box>
-              {property && (
+              {seller && (
                 <Button
                   size="small"
                   onClick={() => {
                     if (editingProperty) {
-                      // キャンセル時は元の値に戻す
-                      setEditedPropertyAddress(property.address || '');
-                      setEditedPropertyType(property.propertyType || '');
-                      setEditedLandArea(property.landArea?.toString() || '');
-                      setEditedBuildingArea(property.buildingArea?.toString() || '');
-                      setEditedBuildYear(property.buildYear?.toString() || '');
-                      setEditedFloorPlan(property.floorPlan || '');
-                      setEditedStructure(property.structure || '');
-                      setEditedSellerSituation(property.sellerSituation || '');
+                      // キャンセル時は元の値に戻す（propertyまたはsellerの値）
+                      setEditedPropertyAddress(property?.address || seller?.propertyAddress || '');
+                      setEditedPropertyType(property?.propertyType || seller?.propertyType || '');
+                      setEditedLandArea((property?.landArea || seller?.landArea)?.toString() || '');
+                      setEditedBuildingArea((property?.buildingArea || seller?.buildingArea)?.toString() || '');
+                      setEditedBuildYear((property?.buildYear || seller?.buildYear)?.toString() || '');
+                      setEditedFloorPlan(property?.floorPlan || seller?.floorPlan || '');
+                      setEditedStructure(property?.structure || seller?.structure || '');
+                      setEditedSellerSituation(property?.sellerSituation || seller?.currentStatus || '');
                     }
                     setEditingProperty(!editingProperty);
                   }}
@@ -2835,8 +2862,8 @@ HP：https://ifoo-oita.com/
                   );
                 }
                 
-                // 編集モードはpropertyオブジェクトがある場合のみ
-                if (property && editingProperty) {
+                // 編集モード（propertyがなくてもsellerの直接フィールドで編集可能）
+                if (editingProperty) {
                   return (
                     // 編集モード
                     <Grid container spacing={2}>
@@ -2960,14 +2987,22 @@ HP：https://ifoo-oita.com/
                 return (
                   <Grid container spacing={2}>
                     <Grid item xs={12}>
-                      <Box sx={{ mb: 2 }}>
-                        <Typography variant="body2" color="text.secondary">
-                          物件住所
-                        </Typography>
-                        <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
-                          {property?.address || seller?.propertyAddress || '未登録'}
-                        </Typography>
-                      </Box>
+                      <InlineEditableField
+                        label="物件住所"
+                        value={property?.address || seller?.propertyAddress || ''}
+                        fieldName="propertyAddress"
+                        fieldType="text"
+                        onSave={async (newValue) => {
+                          if (property) {
+                            await api.put(`/properties/${property.id}`, { address: newValue });
+                          } else {
+                            await api.put(`/api/sellers/${id}`, { propertyAddress: newValue });
+                            setSeller(prev => prev ? { ...prev, propertyAddress: newValue } : prev);
+                          }
+                        }}
+                        buyerId={id}
+                        showEditIndicator={true}
+                      />
                     </Grid>
                     
                     <Grid item xs={12}>
@@ -2992,46 +3027,121 @@ HP：https://ifoo-oita.com/
                       />
                     </Grid>
                     
-                    {(property?.landArea || seller?.landArea) && (
-                      <Grid item xs={12}>
-                        <Box sx={{ mb: 2 }}>
-                          <Typography variant="body2" color="text.secondary">
-                            土地面積
-                          </Typography>
-                          <Typography variant="body1">{property?.landArea || seller?.landArea} m²</Typography>
-                        </Box>
-                      </Grid>
-                    )}
-                    {(property?.buildingArea || seller?.buildingArea) && (
-                      <Grid item xs={12}>
-                        <Box sx={{ mb: 2 }}>
-                          <Typography variant="body2" color="text.secondary">
-                            建物面積
-                          </Typography>
-                          <Typography variant="body1">{property?.buildingArea || seller?.buildingArea} m²</Typography>
-                        </Box>
-                      </Grid>
-                    )}
-                    {(property?.buildYear || seller?.buildYear) && (
-                      <Grid item xs={12}>
-                        <Box sx={{ mb: 2 }}>
-                          <Typography variant="body2" color="text.secondary">
-                            築年
-                          </Typography>
-                          <Typography variant="body1">{property?.buildYear || seller?.buildYear}年</Typography>
-                        </Box>
-                      </Grid>
-                    )}
-                    {(property?.floorPlan || seller?.floorPlan) && (
-                      <Grid item xs={12}>
-                        <Box sx={{ mb: 2 }}>
-                          <Typography variant="body2" color="text.secondary">
-                            間取り
-                          </Typography>
-                          <Typography variant="body1">{property?.floorPlan || seller?.floorPlan}</Typography>
-                        </Box>
-                      </Grid>
-                    )}
+                    <Grid item xs={12}>
+                      <InlineEditableField
+                        label="土地面積 (m²)"
+                        value={(property?.landArea || seller?.landArea)?.toString() || ''}
+                        fieldName="landArea"
+                        fieldType="text"
+                        onSave={async (newValue) => {
+                          const parsed = newValue ? parseFloat(newValue) : null;
+                          if (property) {
+                            await api.put(`/properties/${property.id}`, { landArea: parsed });
+                          } else {
+                            await api.put(`/api/sellers/${id}`, { landArea: parsed });
+                            setSeller(prev => prev ? { ...prev, landArea: parsed ?? undefined } : prev);
+                          }
+                        }}
+                        buyerId={id}
+                        showEditIndicator={true}
+                      />
+                    </Grid>
+                    <Grid item xs={12}>
+                      <InlineEditableField
+                        label="土地面積（当社調べ）(m²)"
+                        value={property?.landAreaVerified?.toString() || seller?.landAreaVerified?.toString() || ''}
+                        fieldName="landAreaVerified"
+                        fieldType="text"
+                        onSave={async (newValue) => {
+                          const parsed = newValue ? parseFloat(newValue) : null;
+                          if (property) {
+                            await api.put(`/properties/${property.id}`, { landAreaVerified: parsed });
+                            setProperty(prev => prev ? { ...prev, landAreaVerified: parsed ?? undefined } : prev);
+                          } else if (seller) {
+                            await api.put(`/sellers/${seller.id}`, { landAreaVerified: parsed });
+                            setSeller(prev => prev ? { ...prev, landAreaVerified: parsed ?? undefined } : prev);
+                          }
+                        }}
+                        buyerId={id}
+                        showEditIndicator={true}
+                      />
+                    </Grid>
+                    <Grid item xs={12}>
+                      <InlineEditableField
+                        label="建物面積 (m²)"
+                        value={(property?.buildingArea || seller?.buildingArea)?.toString() || ''}
+                        fieldName="buildingArea"
+                        fieldType="text"
+                        onSave={async (newValue) => {
+                          const parsed = newValue ? parseFloat(newValue) : null;
+                          if (property) {
+                            await api.put(`/properties/${property.id}`, { buildingArea: parsed });
+                          } else {
+                            await api.put(`/api/sellers/${id}`, { buildingArea: parsed });
+                            setSeller(prev => prev ? { ...prev, buildingArea: parsed ?? undefined } : prev);
+                          }
+                        }}
+                        buyerId={id}
+                        showEditIndicator={true}
+                      />
+                    </Grid>
+                    <Grid item xs={12}>
+                      <InlineEditableField
+                        label="建物面積（当社調べ）(m²)"
+                        value={property?.buildingAreaVerified?.toString() || seller?.buildingAreaVerified?.toString() || ''}
+                        fieldName="buildingAreaVerified"
+                        fieldType="text"
+                        onSave={async (newValue) => {
+                          const parsed = newValue ? parseFloat(newValue) : null;
+                          if (property) {
+                            await api.put(`/properties/${property.id}`, { buildingAreaVerified: parsed });
+                            setProperty(prev => prev ? { ...prev, buildingAreaVerified: parsed ?? undefined } : prev);
+                          } else if (seller) {
+                            await api.put(`/sellers/${seller.id}`, { buildingAreaVerified: parsed });
+                            setSeller(prev => prev ? { ...prev, buildingAreaVerified: parsed ?? undefined } : prev);
+                          }
+                        }}
+                        buyerId={id}
+                        showEditIndicator={true}
+                      />
+                    </Grid>
+                    <Grid item xs={12}>
+                      <InlineEditableField
+                        label="築年"
+                        value={(property?.buildYear || seller?.buildYear)?.toString() || ''}
+                        fieldName="buildYear"
+                        fieldType="text"
+                        onSave={async (newValue) => {
+                          const parsed = newValue ? parseInt(newValue, 10) : null;
+                          if (property) {
+                            await api.put(`/properties/${property.id}`, { buildYear: parsed });
+                          } else {
+                            await api.put(`/api/sellers/${id}`, { buildYear: parsed });
+                            setSeller(prev => prev ? { ...prev, buildYear: parsed ?? undefined } : prev);
+                          }
+                        }}
+                        buyerId={id}
+                        showEditIndicator={true}
+                      />
+                    </Grid>
+                    <Grid item xs={12}>
+                      <InlineEditableField
+                        label="間取り"
+                        value={property?.floorPlan || seller?.floorPlan || ''}
+                        fieldName="floorPlan"
+                        fieldType="text"
+                        onSave={async (newValue) => {
+                          if (property) {
+                            await api.put(`/properties/${property.id}`, { floorPlan: newValue || null });
+                          } else {
+                            await api.put(`/api/sellers/${id}`, { floorPlan: newValue || null });
+                            setSeller(prev => prev ? { ...prev, floorPlan: newValue || undefined } : prev);
+                          }
+                        }}
+                        buyerId={id}
+                        showEditIndicator={true}
+                      />
+                    </Grid>
                     
                     <Grid item xs={12}>
                       <InlineEditableField

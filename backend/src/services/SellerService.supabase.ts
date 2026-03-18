@@ -364,6 +364,12 @@ export class SellerService extends BaseRepository {
     if ((data as any).valuationMethod !== undefined) {
       updates.valuation_method = (data as any).valuationMethod;
     }
+    if ((data as any).landAreaVerified !== undefined) {
+      updates.land_area_verified = (data as any).landAreaVerified;
+    }
+    if ((data as any).buildingAreaVerified !== undefined) {
+      updates.building_area_verified = (data as any).buildingAreaVerified;
+    }
 
     // 競合情報フィールド
     if ((data as any).competitorName !== undefined) {
@@ -1177,6 +1183,8 @@ export class SellerService extends BaseRepository {
         propertyType: seller.property_type,
         landArea: seller.land_area,
         buildingArea: seller.building_area,
+        landAreaVerified: seller.land_area_verified,
+        buildingAreaVerified: seller.building_area_verified,
         buildYear: seller.build_year,
         structure: seller.structure,
         floorPlan: seller.floor_plan,
