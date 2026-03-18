@@ -3063,7 +3063,7 @@ HP：https://ifoo-oita.com/
                         value={(property?.landArea || seller?.landArea)?.toString() || ''}
                         fieldName="landArea"
                         fieldType="text"
-                        readOnly={isLandType}
+                        readOnly={isLandType || !!(property?.landArea || seller?.landArea)}
                         onSave={async (newValue) => {
                           const parsed = newValue ? parseFloat(newValue) : null;
                           if (property) {
@@ -3104,6 +3104,7 @@ HP：https://ifoo-oita.com/
                         value={(property?.buildingArea || seller?.buildingArea)?.toString() || ''}
                         fieldName="buildingArea"
                         fieldType="text"
+                        readOnly={!!(property?.buildingArea || seller?.buildingArea)}
                         onSave={async (newValue) => {
                           const parsed = newValue ? parseFloat(newValue) : null;
                           if (property) {
