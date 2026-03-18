@@ -123,26 +123,35 @@ router.post('/:sellerId/calculate-valuation-amount1', async (req: Request, res: 
       });
     }
 
-    // 物件情報を取得
-    if (!seller.property) {
-      return res.status(404).json({
-        error: {
-          code: 'NOT_FOUND',
-          message: 'Property information not found',
-          retryable: false,
-        },
-      });
+    // 物件情報を取得（seller.property がない場合は seller の直接フィールドから構築）
+    let propertyInfo = seller.property;
+    if (!propertyInfo) {
+      // seller の直接フィールドから PropertyInfo を構築
+      propertyInfo = {
+        id: '',
+        sellerId: seller.id || '',
+        address: seller.propertyAddress || '',
+        propertyType: seller.propertyType || '',
+        landArea: seller.landArea || 0,
+        buildingArea: seller.buildingArea || 0,
+        buildYear: seller.buildYear || 0,
+        structure: seller.structure || '',
+        floorPlan: seller.floorPlan || '',
+        currentStatus: seller.currentStatus || '',
+        sellerSituation: seller.currentStatus || '',
+      } as any;
+      console.log('seller.property is null, using seller direct fields:', propertyInfo);
     }
 
     // 査定額1を計算
-    console.log('🔢 Calculating valuation amount 1 for seller:', seller.id);
-    console.log('📊 Property data:', seller.property);
+    console.log('Calculating valuation amount 1 for seller:', seller.id);
+    console.log('Property data:', propertyInfo);
     const { valuationCalculatorService } = await import('../services/ValuationCalculatorService');
     const valuationAmount1 = await valuationCalculatorService.calculateValuationAmount1(
       seller,
-      seller.property
+      propertyInfo
     );
-    console.log('💰 Calculated valuation amount 1:', valuationAmount1);
+    console.log('Calculated valuation amount 1:', valuationAmount1);
 
     res.json({
       valuationAmount1,
@@ -168,7 +177,7 @@ router.post('/:sellerId/calculate-valuation-amount2', async (req: Request, res: 
     const { sellerId } = req.params;
     const { valuationAmount1 } = req.body;
 
-    if (!valuationAmount1) {
+    if (valuationAmount1 === undefined || valuationAmount1 === null) {
       return res.status(400).json({
         error: {
           code: 'VALIDATION_ERROR',
@@ -221,7 +230,7 @@ router.post('/:sellerId/calculate-valuation-amount3', async (req: Request, res: 
     const { sellerId } = req.params;
     const { valuationAmount1 } = req.body;
 
-    if (!valuationAmount1) {
+    if (valuationAmount1 === undefined || valuationAmount1 === null) {
       return res.status(400).json({
         error: {
           code: 'VALIDATION_ERROR',

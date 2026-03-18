@@ -1683,7 +1683,7 @@ const CallModePage = () => {
 
   // 査定額自動計算関数
   const autoCalculateValuations = useCallback(async (roadPrice: string) => {
-    if (!roadPrice || !id || !property) return;
+    if (!roadPrice || !id) return;
     
     // 手入力値が存在する場合は自動計算をスキップ
     if (isManualValuation) {
