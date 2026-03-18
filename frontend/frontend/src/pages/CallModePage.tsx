@@ -2878,7 +2878,7 @@ HP：https://ifoo-oita.com/
                 </Button>
               )}
             </Box>
-            <Paper sx={{ p: 2, mb: 3 }}>
+            <Paper sx={{ p: 2, mb: 3, bgcolor: '#f0f7f4' }}>
               {(() => {
                 console.log('🏠 [物件情報表示] propInfo:', propInfo); // ← 追加
                 console.log('🏠 [物件情報表示] propInfo.address:', propInfo.address); // ← 追加
@@ -3278,7 +3278,7 @@ HP：https://ifoo-oita.com/
                 </Button>
               )}
             </Box>
-            <Paper sx={{ p: 2, mb: 3 }}>
+            <Paper sx={{ p: 2, mb: 3, bgcolor: '#f0f4ff' }}>
               {seller ? (
                 <>
                   {!editingSeller ? (
@@ -3453,7 +3453,7 @@ HP：https://ifoo-oita.com/
             <Typography variant="h6" gutterBottom>
               📊 ステータス
             </Typography>
-            <Paper sx={{ p: 2, mb: 3 }}>
+            <Paper sx={{ p: 2, mb: 3, bgcolor: '#fffbf0' }}>
               {successMessage && (
                 <Alert severity="success" sx={{ mb: 2 }} onClose={() => setSuccessMessage(null)}>
                   {successMessage}
@@ -3754,7 +3754,7 @@ HP：https://ifoo-oita.com/
                 </Button>
               </Box>
               
-              <Paper sx={{ p: 2, mb: 3 }}>
+              <Paper sx={{ p: 2, mb: 3, bgcolor: '#f0fff4' }}>
                 {appointmentSuccessMessage && (
                   <Alert severity="success" sx={{ mb: 2 }} onClose={() => setAppointmentSuccessMessage(null)}>
                     {appointmentSuccessMessage}
@@ -4214,7 +4214,7 @@ HP：https://ifoo-oita.com/
                   </Box>
                 )}
               </Box>
-              <Paper sx={{ p: 2 }}>
+              <Paper sx={{ p: 2, bgcolor: '#fff8f0' }}>
                 {!property && !editedValuationAmount1 && (
                   <Alert severity="info">
                     物件情報が登録されていないため、査定を実行できません
@@ -4734,7 +4734,7 @@ HP：https://ifoo-oita.com/
                 📌 除外申請
               </Typography>
             </Box>
-            <Paper sx={{ p: 2, mb: 3 }}>
+            <Paper sx={{ p: 2, mb: 3, bgcolor: '#fff0f0' }}>
               <Grid container spacing={2}>
                 <Grid item xs={12}>
                   <InlineEditableField
