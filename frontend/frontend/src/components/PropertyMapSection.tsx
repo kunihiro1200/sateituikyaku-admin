@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import api from '../services/api';
 import { Box, Paper, Typography, CircularProgress } from '@mui/material';
 import { GoogleMap } from '@react-google-maps/api';
 import { useGoogleMaps } from '../contexts/GoogleMapsContext';
@@ -71,11 +72,10 @@ const PropertyMapSection: React.FC<PropertyMapSectionProps> = ({ sellerNumber, p
         console.log('🗺️ [PropertyMapSection] Fetching coordinates for seller:', sellerNumber);
         
         // バックエンドのAPIエンドポイントを呼び出す（売主番号で検索）
-        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
-        const response = await fetch(`${apiUrl}/api/sellers/by-number/${sellerNumber}`);
+        const response = await api.get(`/api/sellers/by-number/${sellerNumber}`);
         
-        if (response.ok) {
-          const data = await response.json();
+        if (response.status === 200) {
+          const data = response.data;
           
           if (data.latitude && data.longitude) {
             // データベースに座標がある場合はそれを使用
@@ -108,13 +108,9 @@ const PropertyMapSection: React.FC<PropertyMapSectionProps> = ({ sellerNumber, p
 
               // バックエンドに座標を保存（次回から高速化）
               try {
-                await fetch(`${apiUrl}/api/sellers/${data.id}/coordinates`, {
-                  method: 'PATCH',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    latitude: location.lat,
-                    longitude: location.lng,
-                  }),
+                await api.patch(`/api/sellers/${data.id}/coordinates`, {
+                  latitude: location.lat,
+                  longitude: location.lng,
                 });
                 console.log('🗺️ [PropertyMapSection] Coordinates saved to database');
               } catch (saveError) {

@@ -835,19 +835,9 @@ const CallModePage = () => {
   useEffect(() => {
     const fetchActiveInitials = async () => {
       try {
-        const response = await fetch('/api/employees/active-initials', {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          },
-        });
-        
-        if (response.ok) {
-          const data = await response.json();
-          setActiveEmployees(data.initials || []);
-          console.log('✅ Loaded active staff initials:', data.initials);
-        } else {
-          console.error('Failed to fetch active staff initials');
-        }
+        const response = await api.get('/api/employees/active-initials');
+        setActiveEmployees(response.data.initials || []);
+        console.log('✅ Loaded active staff initials:', response.data.initials);
       } catch (error) {
         console.error('Error fetching active staff initials:', error);
       }
@@ -959,7 +949,7 @@ const CallModePage = () => {
   // サイドバー用の売主リストを取得する関数
   // サイドバーに表示されるカテゴリの売主のみを取得（全売主ではない）
   const fetchSidebarSellers = useCallback(async () => {
-    console.log('=== サイドバー売主リスト取得開始 ===');
+    console.log('=== サイドバー売主リスト取得開始（バックグラウンド） ===');
     console.log('現在時刻:', new Date().toISOString());
     
     // 認証トークンを確認
@@ -984,28 +974,30 @@ const CallModePage = () => {
     console.log(`📋 営担「${currentVisitAssignee}」の売主のみを取得します`);
     
     try {
-      // 営担でフィルタリングした売主を取得（全件）
-      console.log('📡 営担でフィルタリングした売主を取得中...');
+      // fetchSidebarSellers（pageSize=500）と fetchSidebarCounts を並列取得
+      // メインコンテンツ（売主詳細）はすでに表示済みのため、ここはバックグラウンドで実行
+      console.log('📡 サイドバー売主リストとカウントを並列取得中...');
       
-      const response = await api.get('/api/sellers', {
-        params: {
-          page: 1,
-          pageSize: 500, // バックエンドの最大値は500
-          sortBy: 'next_call_date',
-          sortOrder: 'asc',
-          statusCategory: 'visitScheduled', // 営担でフィルタリングするために使用
-          visitAssignee: currentVisitAssignee,
-        },
-      });
+      const [response] = await Promise.all([
+        api.get('/api/sellers', {
+          params: {
+            page: 1,
+            pageSize: 500, // バックエンドの最大値は500
+            sortBy: 'next_call_date',
+            sortOrder: 'asc',
+            statusCategory: 'visitScheduled', // 営担でフィルタリングするために使用
+            visitAssignee: currentVisitAssignee,
+          },
+        }),
+        // サイドバーカウントを並列で取得
+        fetchSidebarCounts(),
+      ]);
       
       const allSellers = response.data?.data || [];
       console.log('=== サイドバー売主リスト取得完了 ===');
       console.log(`営担「${currentVisitAssignee}」の売主件数:`, allSellers.length);
       
       setSidebarSellers(allSellers);
-      
-      // サイドバーカウントも取得
-      await fetchSidebarCounts();
     } catch (error: any) {
       console.error('❌ サイドバー売主リスト取得エラー:', error);
       setSidebarSellers([]);
@@ -1014,14 +1006,16 @@ const CallModePage = () => {
     }
   }, [fetchSidebarCounts]);
 
-  // サイドバー用の売主リストを取得（sellerが読み込まれた後に実行）
+  // サイドバー用の売主リストを取得（sellerが読み込まれた後にバックグラウンドで実行）
+  // メインコンテンツ（売主詳細）はすでに表示済みのため、サイドバーデータは非ブロッキングで取得
   useEffect(() => {
-    // sellerが読み込まれた後にサイドバーデータを取得
-    // これにより、認証が確実に完了した後にAPIを呼び出す
     console.log('=== サイドバーuseEffect実行 ===');
     console.log('seller:', seller ? seller.sellerNumber : 'null');
     if (seller) {
-      console.log('→ fetchSidebarSellers を呼び出します');
+      console.log('→ fetchSidebarSellers をバックグラウンドで呼び出します');
+      // 非ブロッキング: await しないことでメインコンテンツの表示をブロックしない
+      // サイドバーデータ取得中は sidebarLoading=true でローディングインジケーターを表示
+      setSidebarLoading(true);
       fetchSidebarSellers();
     } else {
       console.log('→ sellerがnullのため、fetchSidebarSellersをスキップ');
