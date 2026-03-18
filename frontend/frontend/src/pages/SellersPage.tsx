@@ -21,7 +21,6 @@ import {
 import {
   Add as AddIcon,
   Search as SearchIcon,
-  Phone as PhoneIcon,
   FilterList as FilterListIcon,
   Clear as ClearIcon,
 } from '@mui/icons-material';
@@ -64,6 +63,11 @@ interface Seller {
   confidenceLevel?: string;
   firstCallerInitials?: string;
   isUnreachable?: boolean;
+  propertyAddress?: string;
+  propertyType?: string;
+  valuationAmount1?: number;
+  visitAssignee?: string;
+  visitAssigneeInitials?: string;
 }
 
 const statusLabels: Record<string, string> = {
@@ -619,26 +623,25 @@ export default function SellersPage() {
                 <TableCell>反響日付</TableCell>
                 <TableCell>サイト</TableCell>
                 <TableCell>確度</TableCell>
-                <TableCell>不通</TableCell>
                 <TableCell>次電日</TableCell>
+                <TableCell>物件所在地</TableCell>
+                <TableCell>種別</TableCell>
+                <TableCell>査定額</TableCell>
+                <TableCell>営担</TableCell>
                 <TableCell>訪問日</TableCell>
                 <TableCell>状況（当社）</TableCell>
-                <TableCell>Pinrich</TableCell>
-                <TableCell>ステータス</TableCell>
-                <TableCell>除外日</TableCell>
-                <TableCell>電話番号</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={13} align="center">
+                  <TableCell colSpan={12} align="center">
                     読み込み中...
                   </TableCell>
                 </TableRow>
               ) : filteredSellers.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={13} align="center">
+                  <TableCell colSpan={12} align="center">
                     売主が見つかりませんでした
                   </TableCell>
                 </TableRow>
@@ -692,17 +695,22 @@ export default function SellersPage() {
                       )}
                     </TableCell>
                     <TableCell>
-                      {seller.unreachable ? (
-                        <Chip label="不通" size="small" color="error" />
-                      ) : (
-                        '-'
-                      )}
-                    </TableCell>
-                    <TableCell>
                       {seller.nextCallDate
                         ? new Date(seller.nextCallDate).toLocaleDateString('ja-JP')
                         : '-'}
                     </TableCell>
+                    <TableCell>
+                      <Typography variant="body2" sx={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {seller.propertyAddress || '-'}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>{seller.propertyType || '-'}</TableCell>
+                    <TableCell>
+                      {seller.valuationAmount1
+                        ? `${Math.round(seller.valuationAmount1 / 10000).toLocaleString()}万円`
+                        : '-'}
+                    </TableCell>
+                    <TableCell>{seller.visitAssigneeInitials || seller.visitAssignee || '-'}</TableCell>
                     <TableCell>
                       {seller.visitDate
                         ? new Date(seller.visitDate).toLocaleDateString('ja-JP')
@@ -714,42 +722,6 @@ export default function SellersPage() {
                         color={getStatusColor(seller.status)}
                         size="small"
                       />
-                    </TableCell>
-                    <TableCell>{seller.pinrichStatus || '-'}</TableCell>
-                    <TableCell>
-                      <SellerStatusCell seller={seller} />
-                    </TableCell>
-                    <TableCell>
-                      {seller.exclusionDate
-                        ? new Date(seller.exclusionDate).toLocaleDateString('ja-JP')
-                        : '-'}
-                    </TableCell>
-                    <TableCell onClick={(e) => e.stopPropagation()}>
-                      {seller.phoneNumber ? (
-                        <Box>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                            <PhoneIcon fontSize="small" color="action" />
-                            <a
-                              href={`tel:${seller.phoneNumber}`}
-                              style={{ textDecoration: 'none', color: 'inherit' }}
-                            >
-                              {seller.phoneNumber}
-                            </a>
-                          </Box>
-                          {seller.lastCallDate && (
-                            <Typography variant="caption" color="text.secondary" sx={{ ml: 2.5 }}>
-                              最終: {new Date(seller.lastCallDate).toLocaleString('ja-JP', {
-                                month: '2-digit',
-                                day: '2-digit',
-                                hour: '2-digit',
-                                minute: '2-digit',
-                              })}
-                            </Typography>
-                          )}
-                        </Box>
-                      ) : (
-                        '-'
-                      )}
                     </TableCell>
                   </TableRow>
                 ))
