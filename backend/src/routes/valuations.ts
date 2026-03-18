@@ -104,8 +104,6 @@ router.get('/:sellerId/valuations', async (req: Request, res: Response) => {
   }
 });
 
-export default router;
-
 /**
  * 査定額1を計算（詳細計算式）
  */
@@ -267,3 +265,4 @@ router.post('/:sellerId/calculate-valuation-amount3', async (req: Request, res: 
     });
   }
 });
+export default router;

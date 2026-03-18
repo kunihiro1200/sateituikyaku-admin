@@ -20,8 +20,12 @@ import {
   DialogContent,
   DialogActions,
   Divider,
+  InputAdornment,
+  IconButton,
+  Tooltip,
+  Snackbar,
 } from '@mui/material';
-import { ArrowBack, Phone, Save, CalendarToday, Email, Image as ImageIcon } from '@mui/icons-material';
+import { ArrowBack, Phone, Save, CalendarToday, Email, Image as ImageIcon, ContentCopy as ContentCopyIcon } from '@mui/icons-material';
 import api, { emailImageApi } from '../services/api';
 import { SECTION_COLORS } from '../theme/sectionColors';
 import { Seller, PropertyInfo, Activity, SellerStatus, ConfidenceLevel, DuplicateMatch, SelectedImages } from '../types';
@@ -308,6 +312,8 @@ const CallModePage = () => {
   const [saving, setSaving] = useState(false);
   const [unreachableStatus, setUnreachableStatus] = useState<string | null>(null);
   const [copiedSellerNumber, setCopiedSellerNumber] = useState(false); // 売主番号コピー完了フラグ
+  const [snackbarOpen, setSnackbarOpen] = useState(false); // スナックバー表示フラグ
+  const [snackbarMessage, setSnackbarMessage] = useState<string>(''); // スナックバーメッセージ
   const [showNearbyBuyers, setShowNearbyBuyers] = useState(false); // 近隣買主表示フラグ
 
   // 通話メモ入力欄の状態
@@ -4265,6 +4271,22 @@ HP：https://ifoo-oita.com/
                                 value={property.address}
                                 InputProps={{
                                   readOnly: true,
+                                  endAdornment: (
+                                    <InputAdornment position="end">
+                                      <Tooltip title="住所をコピー">
+                                        <IconButton
+                                          size="small"
+                                          onClick={() => {
+                                            navigator.clipboard.writeText(property.address || '');
+                                            setSnackbarMessage('住所をコピーしました');
+                                            setSnackbarOpen(true);
+                                          }}
+                                        >
+                                          <ContentCopyIcon fontSize="small" />
+                                        </IconButton>
+                                      </Tooltip>
+                                    </InputAdornment>
+                                  ),
                                 }}
                                 sx={{ flex: 1, minWidth: '400px' }}
                                 label="物件住所（コピー用）"
@@ -5309,6 +5331,15 @@ HP：https://ifoo-oita.com/
         open={imageSelectorOpen}
         onConfirm={handleImageSelectionConfirm}
         onCancel={handleImageSelectionCancel}
+      />
+
+      {/* コピー完了スナックバー */}
+      <Snackbar
+        open={snackbarOpen}
+        autoHideDuration={2000}
+        onClose={() => setSnackbarOpen(false)}
+        message={snackbarMessage}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       />
     </Box>
   );
