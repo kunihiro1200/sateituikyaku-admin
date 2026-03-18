@@ -3033,6 +3033,7 @@ HP：https://ifoo-oita.com/
                         value={(property?.landArea || seller?.landArea)?.toString() || ''}
                         fieldName="landArea"
                         fieldType="text"
+                        readOnly={propInfo.propertyType === 'land'}
                         onSave={async (newValue) => {
                           const parsed = newValue ? parseFloat(newValue) : null;
                           if (property) {
@@ -3066,6 +3067,7 @@ HP：https://ifoo-oita.com/
                         showEditIndicator={true}
                       />
                     </Grid>
+                    {propInfo.propertyType !== 'land' && (
                     <Grid item xs={12}>
                       <InlineEditableField
                         label="建物面積 (m²)"
@@ -3085,6 +3087,8 @@ HP：https://ifoo-oita.com/
                         showEditIndicator={true}
                       />
                     </Grid>
+                    )}
+                    {propInfo.propertyType !== 'land' && (
                     <Grid item xs={12}>
                       <InlineEditableField
                         label="建物面積（当社調べ）(m²)"
@@ -3105,6 +3109,8 @@ HP：https://ifoo-oita.com/
                         showEditIndicator={true}
                       />
                     </Grid>
+                    )}
+                    {propInfo.propertyType !== 'land' && (
                     <Grid item xs={12}>
                       <InlineEditableField
                         label="築年"
@@ -3124,6 +3130,8 @@ HP：https://ifoo-oita.com/
                         showEditIndicator={true}
                       />
                     </Grid>
+                    )}
+                    {propInfo.propertyType !== 'land' && (
                     <Grid item xs={12}>
                       <InlineEditableField
                         label="間取り"
@@ -3142,7 +3150,9 @@ HP：https://ifoo-oita.com/
                         showEditIndicator={true}
                       />
                     </Grid>
+                    )}
                     
+                    {propInfo.propertyType !== 'land' && (
                     <Grid item xs={12}>
                       <InlineEditableField
                         label="構造"
@@ -3164,6 +3174,7 @@ HP：https://ifoo-oita.com/
                         oneClickDropdown={true}
                       />
                     </Grid>
+                    )}
                     
                     <Grid item xs={12}>
                       <InlineEditableField
