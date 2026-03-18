@@ -134,13 +134,11 @@ router.post('/:sellerId/calculate-valuation-amount1', async (req: Request, res: 
         propertyType: seller.propertyType || '',
         landArea: seller.landArea || 0,
         buildingArea: seller.buildingArea || 0,
-        landAreaVerified: seller.landAreaVerified || undefined,
-        buildingAreaVerified: seller.buildingAreaVerified || undefined,
         buildYear: seller.buildYear || 0,
         structure: seller.structure || '',
         floorPlan: seller.floorPlan || '',
-        currentStatus: seller.currentStatus || '',
-        sellerSituation: seller.currentStatus || '',
+        currentStatus: (seller as any).currentStatus || '',
+        sellerSituation: (seller as any).currentStatus || '',
       } as any;
       console.log('seller.property is null, using seller direct fields:', propertyInfo);
     }
