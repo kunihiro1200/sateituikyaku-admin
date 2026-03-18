@@ -429,6 +429,8 @@ const CallModePage = () => {
   const [autoCalculating, setAutoCalculating] = useState(false);
   const [sendingEmail, setSendingEmail] = useState(false);
   const calculationTimerRef = useRef<NodeJS.Timeout | null>(null);
+  // 土地面積警告ダイアログ用の状態
+  const [landAreaWarning, setLandAreaWarning] = useState<string | null>(null);
   
   // 送信元アドレス選択用の状態
   const [senderAddress, setSenderAddress] = useState<string>('tenant@ifoo-oita.com');
@@ -4284,6 +4286,14 @@ HP：https://ifoo-oita.com/
                               const value = e.target.value;
                               setEditedFixedAssetTaxRoadPrice(value);
                               if (value && parseFloat(value) > 0) {
+                                // 土地面積の警告チェック
+                                const land = propInfo.landArea || property?.landArea || seller?.landArea || 0;
+                                const building = propInfo.buildingArea || property?.buildingArea || seller?.buildingArea || 0;
+                                const landNum = parseFloat(String(land)) || 0;
+                                const buildingNum = parseFloat(String(building)) || 0;
+                                if (landNum > 0 && (landNum <= 99 || (buildingNum > 0 && landNum < buildingNum))) {
+                                  setLandAreaWarning(`土地面積が${landNum}㎡（約${Math.round(landNum / 3.306)}坪）ですが確認大丈夫ですか？`);
+                                }
                                 debouncedAutoCalculate(value);
                               }
                             }}
@@ -5193,6 +5203,17 @@ HP：https://ifoo-oita.com/
         </Grid>
       </Box>
       </Box>
+
+      {/* 土地面積警告ダイアログ */}
+      <Dialog open={!!landAreaWarning} onClose={() => setLandAreaWarning(null)}>
+        <DialogTitle>⚠️ 土地面積の確認</DialogTitle>
+        <DialogContent>
+          <Typography>{landAreaWarning}</Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setLandAreaWarning(null)} variant="contained">確認しました</Button>
+        </DialogActions>
+      </Dialog>
 
       {/* 確認ダイアログ */}
       <Dialog 
