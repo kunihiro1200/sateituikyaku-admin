@@ -4215,6 +4215,20 @@ HP：https://ifoo-oita.com/
                 )}
               </Box>
               <Paper sx={{ p: 2, bgcolor: '#fff8f0' }}>
+                {/* つながるオンライン */}
+                <Box sx={{ mb: 2, p: 1.5, bgcolor: '#e8f4fd', borderRadius: 1, border: '1px solid #90caf9' }}>
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5, fontWeight: 'bold' }}>
+                    つながるオンライン
+                  </Typography>
+                  <a
+                    href="https://docs.google.com/spreadsheets/d/1wKBRLWbT6pSKa9IlTDabjhjTnfs_GxX6Rn6M6kbio1I"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ color: '#1976d2', fontSize: '0.875rem', wordBreak: 'break-all' }}
+                  >
+                    つながるオンラインを開く
+                  </a>
+                </Box>
                 {!property && !editedValuationAmount1 && (
                   <Alert severity="info">
                     物件情報が登録されていないため、査定を実行できません
