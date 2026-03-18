@@ -1035,14 +1035,6 @@ const CallModePage = () => {
       console.log('=== loadAllData開始 ===');
       console.log('売主ID:', id);
       
-      // キャッシュをクリアして最新データを取得
-      try {
-        await api.delete(`/cache/seller/${id}`);
-        console.log('✅ キャッシュをクリアしました');
-      } catch (cacheError) {
-        console.log('⚠️ キャッシュクリアに失敗（続行）:', cacheError);
-      }
-      
       // 並列で全データを取得（AI要約以外）
       const [sellerResponse, activitiesResponse, employeesResponse] = await Promise.all([
         api.get(`/api/sellers/${id}`),
@@ -1050,10 +1042,7 @@ const CallModePage = () => {
         api.get('/api/employees'),
       ]);
 
-      console.log('=== APIレスポンス ===');
-      console.log('sellerResponse.data:', JSON.stringify(sellerResponse.data, null, 2));
-      console.log('activitiesResponse:', activitiesResponse.data);
-      console.log('employeesResponse:', employeesResponse.data);
+
 
       // スタッフ一覧を設定
       setEmployees(employeesResponse.data);

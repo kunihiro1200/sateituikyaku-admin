@@ -221,6 +221,15 @@ export class SellerService extends BaseRepository {
    * @param includeDeleted - 削除済み売主も含めるか（デフォルト: false）
    */
   async getSeller(sellerId: string, includeDeleted: boolean = false): Promise<Seller | null> {
+    // キャッシュをチェック（includeDeletedがfalseの場合のみキャッシュを使用）
+    if (!includeDeleted) {
+      const cacheKey = CacheHelper.generateKey('seller', sellerId);
+      const cached = await CacheHelper.get<Seller>(cacheKey);
+      if (cached) {
+        return cached;
+      }
+    }
+
     // 売主情報を取得
     let query = this.table('sellers')
       .select('*')
@@ -246,17 +255,6 @@ export class SellerService extends BaseRepository {
     const { data: properties, error: propertyError } = await propertyQuery;
 
     const decryptedSeller = await this.decryptSeller(seller);
-    
-    console.log('🔍 Decrypted seller:', {
-      id: decryptedSeller.id,
-      sellerNumber: decryptedSeller.sellerNumber,
-      name: decryptedSeller.name,
-      phoneNumber: decryptedSeller.phoneNumber,
-      visitAcquisitionDate: decryptedSeller.visitAcquisitionDate,
-      visitDate: decryptedSeller.visitDate,
-      visitValuationAcquirer: decryptedSeller.visitValuationAcquirer,
-      visitAssignee: decryptedSeller.visitAssignee,
-    });
     
     // 除外日を計算
     const exclusionDate = ExclusionDateCalculator.calculateExclusionDate(
@@ -288,6 +286,12 @@ export class SellerService extends BaseRepository {
         parking: property.parking,
         additionalInfo: property.additional_info,
       };
+    }
+
+    // キャッシュに保存（30秒TTL）
+    if (!includeDeleted) {
+      const cacheKey = CacheHelper.generateKey('seller', sellerId);
+      await CacheHelper.set(cacheKey, decryptedSeller, 30);
     }
 
     return decryptedSeller;
@@ -1098,7 +1102,7 @@ export class SellerService extends BaseRepository {
         phoneNumber: seller.phone_number ? decrypt(seller.phone_number) : '',
         email: seller.email ? decrypt(seller.email) : undefined,
         status: seller.status,
-        confidence: seller.confidence,
+        confidence: seller.confidence_level,
         assignedTo: seller.assigned_to,
         appointmentDate: seller.appointment_date,
         appointmentNotes: seller.appointment_notes,
@@ -1117,7 +1121,7 @@ export class SellerService extends BaseRepository {
         unreachableSince: seller.unreachable_since ? new Date(seller.unreachable_since) : undefined,
         firstCallerInitials: seller.first_caller_initials,
         firstCallerEmployeeId: seller.first_caller_employee_id,
-        confidenceLevel: seller.confidence,
+        confidenceLevel: seller.confidence_level,
         duplicateConfirmed: seller.duplicate_confirmed || false,
         duplicateConfirmedAt: seller.duplicate_confirmed_at ? new Date(seller.duplicate_confirmed_at) : undefined,
         duplicateConfirmedBy: seller.duplicate_confirmed_by,
