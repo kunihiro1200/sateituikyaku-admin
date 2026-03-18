@@ -1730,6 +1730,15 @@ const CallModePage = () => {
         valuationAssignee: assignedBy,
       });
       
+      // ヘッダーに反映するためseller stateを更新
+      setSeller(prev => prev ? {
+        ...prev,
+        valuationAmount1: amount1,
+        valuationAmount2: amount2,
+        valuationAmount3: amount3,
+        valuationAssignee: assignedBy,
+      } : prev);
+
       console.log('Valuation saved:', { amount1, amount2, amount3, assignedBy });
       
     } catch (err: any) {
