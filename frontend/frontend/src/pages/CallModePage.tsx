@@ -4213,20 +4213,17 @@ HP：https://ifoo-oita.com/
               </Box>
               <Paper sx={{ p: 2, bgcolor: '#fff8f0' }}>
 
-                {/* 反響URL */}
+                {/* つながるオンライン査定書（反響URL） */}
                 {inquiryUrl && (
-                  <Box sx={{ mb: 2, p: 1.5, bgcolor: '#f3e5f5', borderRadius: 1, border: '1px solid #ce93d8' }}>
-                    <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5, fontWeight: 'bold' }}>
-                      反響URL
-                    </Typography>
+                  <Box sx={{ mb: 2 }}>
                     <a
                       href={inquiryUrl}
                       target="_blank"
                       rel="noopener noreferrer"
                       onClick={(e) => e.stopPropagation()}
-                      style={{ color: '#7b1fa2', fontSize: '0.875rem', wordBreak: 'break-all' }}
+                      style={{ color: '#1976d2', fontSize: '0.9rem', fontWeight: 'bold', textDecoration: 'underline' }}
                     >
-                      {inquiryUrl}
+                      つながるオンライン査定書
                     </a>
                   </Box>
                 )}
