@@ -223,14 +223,17 @@ export class SellerService extends BaseRepository {
    * @param includeDeleted - 削除済み売主も含めるか（デフォルト: false）
    */
   async getSeller(sellerId: string, includeDeleted: boolean = false): Promise<Seller | null> {
+    const _t0 = Date.now();
     // キャッシュをチェック（includeDeletedがfalseの場合のみキャッシュを使用）
     if (!includeDeleted) {
       const cacheKey = CacheHelper.generateKey('seller', sellerId);
       const cached = await CacheHelper.get<Seller>(cacheKey);
       if (cached) {
+        console.log(`[PERF] getSeller cache hit: ${Date.now() - _t0}ms`);
         return cached;
       }
     }
+    console.log(`[PERF] getSeller cache miss: ${Date.now() - _t0}ms`);
 
     // 売主情報を取得
     let query = this.table('sellers')
@@ -243,6 +246,7 @@ export class SellerService extends BaseRepository {
     }
     
     const { data: seller, error: sellerError } = await query.single();
+    console.log(`[PERF] getSeller DB query: ${Date.now() - _t0}ms`);
 
     if (sellerError || !seller) {
       return null;
@@ -255,6 +259,7 @@ export class SellerService extends BaseRepository {
         .eq('seller_id', sellerId),
       this.decryptSeller(seller),
     ]);
+    console.log(`[PERF] getSeller properties+decrypt: ${Date.now() - _t0}ms`);
     
     // 除外日を計算
     const exclusionDate = ExclusionDateCalculator.calculateExclusionDate(
@@ -1092,12 +1097,14 @@ export class SellerService extends BaseRepository {
    * 売主データを復号化
    */
   private async decryptSeller(seller: any): Promise<Seller> {
+    const _dt0 = Date.now();
     try {
       // イニシャルをフルネームに変換（並列処理で高速化）
       const [visitAssigneeFullName, visitValuationAcquirerFullName] = await Promise.all([
         getEmployeeNameByInitials(seller.visit_assignee),
         getEmployeeNameByInitials(seller.visit_valuation_acquirer),
       ]);
+      console.log(`[PERF] decryptSeller getEmployeeNames: ${Date.now() - _dt0}ms`);
 
       const decrypted = {
         id: seller.id,
@@ -1198,6 +1205,7 @@ export class SellerService extends BaseRepository {
         floorPlan: seller.floor_plan,
       };
       
+      console.log(`[PERF] decryptSeller total: ${Date.now() - _dt0}ms`);
       return decrypted;
     } catch (error) {
       console.error('❌ Decryption error for seller:', seller.id, seller.seller_number);

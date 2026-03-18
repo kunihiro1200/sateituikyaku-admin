@@ -331,8 +331,12 @@ router.get('/by-number/:sellerNumber', async (req: Request, res: Response) => {
  * 売主情報を取得
  */
 router.get('/:id', async (req: Request, res: Response) => {
+  const t0 = Date.now();
+  console.log(`[PERF] GET /api/sellers/${req.params.id} start`);
   try {
     const seller = await sellerService.getSeller(req.params.id);
+    const t1 = Date.now();
+    console.log(`[PERF] getSeller done: ${t1 - t0}ms`);
 
     if (!seller) {
       return res.status(404).json({
@@ -345,6 +349,7 @@ router.get('/:id', async (req: Request, res: Response) => {
     }
 
     res.json(seller);
+    console.log(`[PERF] GET /api/sellers/${req.params.id} total: ${Date.now() - t0}ms`);
   } catch (error) {
     console.error('Get seller error:', error);
     res.status(500).json({
