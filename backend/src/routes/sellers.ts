@@ -900,9 +900,13 @@ router.get('/:id/nearby-buyers', async (req: Request, res: Response) => {
 /**
  * GET /api/sellers/:id/inquiry-url
  * 査定書作成シートから反響URLを取得
- * 条件: G列(反響送付日) が inquiry_detailed_datetime と一致
- *       かつ E列(物件住所) が property_address と一致
- * → H列(反響URL) を返す
+ * 取得範囲: B:E
+ *   B列(index 0) = 日付（反響日付と照合）
+ *   C列(index 1) = 反響URL（取得対象）
+ *   E列(index 3) = 物件住所（照合）
+ * 照合条件:
+ *   B列(日付)の日付部分 = DBの inquiry_date（反響日付）
+ *   かつ E列(物件住所) = DBの property_address
  */
 router.get('/:id/inquiry-url', async (req: Request, res: Response) => {
   try {
@@ -913,15 +917,15 @@ router.get('/:id/inquiry-url', async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Seller not found' });
     }
 
-    const inquiryDatetime = (seller as any).inquiryDetailedDatetime;
+    // 反響日付（inquiry_date）と物件住所で照合
+    const inquiryDate = (seller as any).inquiryDate;
     const propertyAddress = seller.propertyAddress;
 
-    if (!inquiryDatetime && !propertyAddress) {
+    if (!inquiryDate && !propertyAddress) {
       return res.json({ inquiryUrl: null });
     }
 
     const { GoogleSheetsClient } = await import('../services/GoogleSheetsClient');
-    const { google } = await import('googleapis');
 
     const SPREADSHEET_ID = '1wKBRLWbT6pSKa9IlTDabjhjTnfs_GxX6Rn6M6kbio1I';
     const SHEET_NAME = '査定書作成';
@@ -933,11 +937,11 @@ router.get('/:id/inquiry-url', async (req: Request, res: Response) => {
     });
     await client.authenticate();
 
-    // E列(物件住所), G列(反響送付日), H列(反響URL) を取得
+    // B列(日付), C列(反響URL), D列, E列(物件住所) を取得
     const sheetsInstance = (client as any).sheets;
     const response = await sheetsInstance.spreadsheets.values.get({
       spreadsheetId: SPREADSHEET_ID,
-      range: `${SHEET_NAME}!E:H`,
+      range: `${SHEET_NAME}!B:E`,
     });
 
     const rows: string[][] = response.data.values || [];
@@ -945,34 +949,46 @@ router.get('/:id/inquiry-url', async (req: Request, res: Response) => {
     // 正規化: 空白除去
     const normalize = (s: string) => (s || '').trim();
 
-    // 反響詳細日時を日付文字列に変換（YYYY/M/D 形式で比較）
-    const toDateStr = (dt: string) => {
+    // 日付文字列を YYYY/M/D 形式に正規化（時刻は無視）
+    const toDateStr = (dt: string | Date) => {
       if (!dt) return '';
-      const d = new Date(dt);
-      if (isNaN(d.getTime())) return normalize(dt);
+      const d = new Date(dt as any);
+      if (isNaN(d.getTime())) {
+        return normalize(String(dt)).split(' ')[0];
+      }
       return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}`;
     };
 
-    const sellerDateStr = toDateStr(inquiryDatetime);
+    const sellerDateStr = toDateStr(inquiryDate);
     const sellerAddress = normalize(propertyAddress || '');
+
+    console.log(`[inquiry-url] seller inquiry_date: ${inquiryDate} → ${sellerDateStr}`);
+    console.log(`[inquiry-url] seller property_address: ${sellerAddress}`);
 
     let inquiryUrl: string | null = null;
 
     for (let i = 1; i < rows.length; i++) {
       const row = rows[i];
-      const rowAddress = normalize(row[0] || '');   // E列
-      const rowDate = normalize(row[2] || '');       // G列
-      const rowUrl = normalize(row[3] || '');        // H列
+      const rowDate = normalize(row[0] || '');    // B列(index 0) = 日付
+      const rowUrl = normalize(row[1] || '');     // C列(index 1) = 反響URL
+      const rowAddress = normalize(row[3] || ''); // E列(index 3) = 物件住所
+
+      if (!rowUrl) continue;
 
       const rowDateStr = toDateStr(rowDate);
 
       const dateMatch = sellerDateStr && rowDateStr && sellerDateStr === rowDateStr;
       const addressMatch = sellerAddress && rowAddress && sellerAddress === rowAddress;
 
-      if (dateMatch && addressMatch && rowUrl) {
+      if (dateMatch && addressMatch) {
         inquiryUrl = rowUrl;
+        console.log(`[inquiry-url] 一致: row ${i + 1}, url: ${rowUrl}`);
         break;
       }
+    }
+
+    if (!inquiryUrl) {
+      console.log(`[inquiry-url] 一致なし: date=${sellerDateStr}, address=${sellerAddress}`);
     }
 
     res.json({ inquiryUrl });
