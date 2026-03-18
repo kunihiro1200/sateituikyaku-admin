@@ -18,29 +18,34 @@ import { ExclusionDateCalculator } from './ExclusionDateCalculator';
 import { SyncQueue } from './SyncQueue';
 import { createClient } from '@supabase/supabase-js';
 
-// イニシャルからフルネームへのマッピングキャッシュ
-let initialsToNameCache: Map<string, string> | null = null;
-let cacheLastUpdated: number = 0;
-const CACHE_DURATION = 5 * 60 * 1000; // 5分
+// Redis キャッシュキー（Vercel サーバーレス環境でもキャッシュが持続する）
+const EMPLOYEE_INITIALS_CACHE_KEY = 'employees:initials-map';
+const EMPLOYEE_INITIALS_CACHE_TTL = 5 * 60; // 5分（秒単位）
 
 /**
- * スタッフのイニシャルからフルネームを取得
+ * スタッフのイニシャルからフルネームを取得（Redis キャッシュ使用）
+ * Vercel サーバーレス環境ではインメモリキャッシュがコールドスタート時にリセットされるため
+ * Redis キャッシュを使用してパフォーマンスを改善する
  */
 async function getEmployeeNameByInitials(initials: string | null | undefined): Promise<string | null> {
   if (!initials) return null;
 
-  // キャッシュの有効期限をチェック
-  const now = Date.now();
-  if (!initialsToNameCache || (now - cacheLastUpdated) > CACHE_DURATION) {
-    // キャッシュを更新
-    await refreshEmployeeCache();
+  // Redis キャッシュから全従業員マップを取得
+  const cached = await CacheHelper.get<Record<string, string>>(EMPLOYEE_INITIALS_CACHE_KEY);
+  if (cached) {
+    return cached[initials] || null;
   }
 
-  return initialsToNameCache?.get(initials) || null;
+  // キャッシュミス: Supabase から取得してキャッシュに保存
+  await refreshEmployeeCache();
+
+  // 再度キャッシュから取得
+  const refreshed = await CacheHelper.get<Record<string, string>>(EMPLOYEE_INITIALS_CACHE_KEY);
+  return refreshed?.[initials] || null;
 }
 
 /**
- * スタッフ情報のキャッシュを更新
+ * スタッフ情報のキャッシュを更新（Redis に保存）
  */
 async function refreshEmployeeCache(): Promise<void> {
   try {
@@ -59,15 +64,15 @@ async function refreshEmployeeCache(): Promise<void> {
       return;
     }
 
-    initialsToNameCache = new Map();
+    const initialsMap: Record<string, string> = {};
     employees?.forEach((emp: any) => {
       if (emp.initials && emp.name) {
-        initialsToNameCache!.set(emp.initials, emp.name);
+        initialsMap[emp.initials] = emp.name;
       }
     });
 
-    cacheLastUpdated = Date.now();
-    console.log(`✅ Employee initials cache updated: ${initialsToNameCache.size} employees`);
+    await CacheHelper.set(EMPLOYEE_INITIALS_CACHE_KEY, initialsMap, EMPLOYEE_INITIALS_CACHE_TTL);
+    console.log(`✅ Employee initials cache updated in Redis: ${Object.keys(initialsMap).length} employees`);
   } catch (error) {
     console.error('Error refreshing employee cache:', error);
   }
@@ -1099,11 +1104,15 @@ export class SellerService extends BaseRepository {
   private async decryptSeller(seller: any): Promise<Seller> {
     const _dt0 = Date.now();
     try {
-      // イニシャルをフルネームに変換（並列処理で高速化）
-      const [visitAssigneeFullName, visitValuationAcquirerFullName] = await Promise.all([
-        getEmployeeNameByInitials(seller.visit_assignee),
-        getEmployeeNameByInitials(seller.visit_valuation_acquirer),
-      ]);
+      // Redis キャッシュから従業員マップを1回取得してイニシャルを解決（最適化）
+      // キャッシュミス時も refreshEmployeeCache は1回だけ呼ばれる
+      let initialsMap = await CacheHelper.get<Record<string, string>>(EMPLOYEE_INITIALS_CACHE_KEY);
+      if (!initialsMap) {
+        await refreshEmployeeCache();
+        initialsMap = await CacheHelper.get<Record<string, string>>(EMPLOYEE_INITIALS_CACHE_KEY);
+      }
+      const visitAssigneeFullName = seller.visit_assignee ? (initialsMap?.[seller.visit_assignee] || null) : null;
+      const visitValuationAcquirerFullName = seller.visit_valuation_acquirer ? (initialsMap?.[seller.visit_valuation_acquirer] || null) : null;
       console.log(`[PERF] decryptSeller getEmployeeNames: ${Date.now() - _dt0}ms`);
 
       const decrypted = {
