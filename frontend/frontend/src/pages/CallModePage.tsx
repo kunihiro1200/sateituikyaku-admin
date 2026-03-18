@@ -161,6 +161,33 @@ const CallModePage = () => {
     return labels[type] || type;
   };
 
+  /**
+   * 物件種別を正規化する関数
+   * スプレッドシート値（'土', '戸', 'マ' など）を英語値に統一する
+   */
+  const normalizePropertyType = (type: string | undefined): string | undefined => {
+    if (!type) return undefined;
+    const map: Record<string, string> = {
+      // 土地
+      '土': 'land',
+      '土地': 'land',
+      'land': 'land',
+      // 戸建て
+      '戸': 'detached_house',
+      '戸建': 'detached_house',
+      '戸建て': 'detached_house',
+      'detached_house': 'detached_house',
+      // マンション
+      'マ': 'apartment',
+      'マンション': 'apartment',
+      'apartment': 'apartment',
+      // 商業用
+      '商業用': 'commercial',
+      'commercial': 'commercial',
+    };
+    return map[type] ?? type;
+  };
+
   // 状況（売主）を日本語に変換（current_statusフィールド用）
   // データベースには '空き家' と保存されているが、表示は '空（空き家）' とする
   const getSellerSituationLabel = (situation: string): string => {
@@ -189,7 +216,7 @@ const CallModePage = () => {
     if (property) {
       return {
         address: property.address,
-        propertyType: property.propertyType,
+        propertyType: normalizePropertyType(property.propertyType),
         landArea: property.landArea,
         buildingArea: property.buildingArea,
         buildYear: property.buildYear,
@@ -207,7 +234,7 @@ const CallModePage = () => {
                          seller.buildYear || seller.floorPlan || seller.structure;
       return {
         address: seller.propertyAddress,
-        propertyType: seller.propertyType,
+        propertyType: normalizePropertyType(seller.propertyType),
         landArea: seller.landArea,
         buildingArea: seller.buildingArea,
         buildYear: seller.buildYear,
@@ -240,6 +267,9 @@ const CallModePage = () => {
     seller?.structure,
     seller?.currentStatus,
   ]);
+
+  // 種別が「土地」かどうか（propInfo.propertyType は正規化済みなので 'land' のみ比較）
+  const isLandType = propInfo.propertyType === 'land';
 
   const [activities, setActivities] = useState<Activity[]>([]);
   const [callSummary, setCallSummary] = useState<string>('');
@@ -3033,7 +3063,7 @@ HP：https://ifoo-oita.com/
                         value={(property?.landArea || seller?.landArea)?.toString() || ''}
                         fieldName="landArea"
                         fieldType="text"
-                        readOnly={propInfo.propertyType === 'land'}
+                        readOnly={isLandType}
                         onSave={async (newValue) => {
                           const parsed = newValue ? parseFloat(newValue) : null;
                           if (property) {
@@ -3067,7 +3097,7 @@ HP：https://ifoo-oita.com/
                         showEditIndicator={true}
                       />
                     </Grid>
-                    {propInfo.propertyType !== 'land' && (
+                    {!isLandType && (
                     <Grid item xs={12}>
                       <InlineEditableField
                         label="建物面積 (m²)"
@@ -3088,7 +3118,7 @@ HP：https://ifoo-oita.com/
                       />
                     </Grid>
                     )}
-                    {propInfo.propertyType !== 'land' && (
+                    {!isLandType && (
                     <Grid item xs={12}>
                       <InlineEditableField
                         label="建物面積（当社調べ）(m²)"
@@ -3110,7 +3140,7 @@ HP：https://ifoo-oita.com/
                       />
                     </Grid>
                     )}
-                    {propInfo.propertyType !== 'land' && (
+                    {!isLandType && (
                     <Grid item xs={12}>
                       <InlineEditableField
                         label="築年"
@@ -3131,7 +3161,7 @@ HP：https://ifoo-oita.com/
                       />
                     </Grid>
                     )}
-                    {propInfo.propertyType !== 'land' && (
+                    {!isLandType && (
                     <Grid item xs={12}>
                       <InlineEditableField
                         label="間取り"
@@ -3152,7 +3182,7 @@ HP：https://ifoo-oita.com/
                     </Grid>
                     )}
                     
-                    {propInfo.propertyType !== 'land' && (
+                    {!isLandType && (
                     <Grid item xs={12}>
                       <InlineEditableField
                         label="構造"
