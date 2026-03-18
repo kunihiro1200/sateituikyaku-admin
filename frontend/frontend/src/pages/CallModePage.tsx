@@ -57,7 +57,7 @@ import { emailTemplates } from '../utils/emailTemplates';
 import SenderAddressSelector from '../components/SenderAddressSelector';
 import { getActiveEmployees, Employee } from '../services/employeeService';
 import SellerStatusSidebar from '../components/SellerStatusSidebar';
-import { getSenderAddress, saveSenderAddress } from '../utils/senderAddressStorage';
+import { getSenderAddress, saveSenderAddress, validateSenderAddress } from '../utils/senderAddressStorage';
 import { useCallModeQuickButtonState } from '../hooks/useCallModeQuickButtonState';
 import PropertyMapSection from '../components/PropertyMapSection';
 import NearbyBuyersList from '../components/NearbyBuyersList';
@@ -790,61 +790,18 @@ const CallModePage = () => {
 
   // 社員データと送信元アドレスを初期化
   useEffect(() => {
-    const initializeSenderAddress = async () => {
-      try {
-        // 社員データを取得
-        const employeeData = await getActiveEmployees();
-        setActiveEmployees(employeeData);
-        
-        // セッションストレージから送信元アドレスを復元
-        const savedAddress = getSenderAddress();
-        
-        // 有効なメールアドレスのリストを作成
-        const validEmails = [
-          'tenant@ifoo-oita.com',
-          ...employeeData.filter(emp => emp.email).map(emp => emp.email)
-        ];
-        
-        // 保存されたアドレスが有効かどうかを検証
-        const { validateSenderAddress } = await import('../utils/senderAddressStorage');
-        const validatedAddress = validateSenderAddress(savedAddress, validEmails);
-        
-        console.log('=== Sender Address Validation ===');
-        console.log('Saved address:', savedAddress);
-        console.log('Valid emails:', validEmails);
-        console.log('Validated address:', validatedAddress);
-        console.log('Was reset:', validatedAddress !== savedAddress);
-        
-        // 検証済みのアドレスを設定
-        setSenderAddress(validatedAddress);
-        
-        // 無効なアドレスだった場合は、デフォルトアドレスを保存
-        if (validatedAddress !== savedAddress) {
-          saveSenderAddress(validatedAddress);
-          console.log('✅ Reset sender address to default:', validatedAddress);
-        }
-      } catch (error) {
-        console.error('Failed to initialize sender address:', error);
-      }
-    };
-    
-    initializeSenderAddress();
-  }, []);
-
-  // スタッフイニシャル一覧を取得
-  useEffect(() => {
-    const fetchActiveInitials = async () => {
-      try {
-        const response = await api.get('/api/employees/active-initials');
-        setActiveEmployees(response.data.initials || []);
-        console.log('✅ Loaded active staff initials:', response.data.initials);
-      } catch (error) {
-        console.error('Error fetching active staff initials:', error);
-      }
-    };
-    
-    fetchActiveInitials();
-  }, []);
+    // 送信元アドレスを初期化（社員データは loadAllData で取得済み）
+    const savedAddress = getSenderAddress();
+    const validEmails = [
+      'tenant@ifoo-oita.com',
+      ...activeEmployees.filter(emp => emp.email).map(emp => emp.email)
+    ];
+    const validatedAddress = validateSenderAddress(savedAddress, validEmails);
+    setSenderAddress(validatedAddress);
+    if (validatedAddress !== savedAddress) {
+      saveSenderAddress(validatedAddress);
+    }
+  }, [activeEmployees]);
 
   // 訪問統計をロード（visitDateまたはappointmentDateがある場合）
   useEffect(() => {
@@ -1031,26 +988,21 @@ const CallModePage = () => {
       console.log('売主ID:', id);
       
       // 並列で全データを取得（AI要約以外）
-      const [sellerResponse, activitiesResponse, employeesResponse] = await Promise.all([
+      // /api/employees はキャッシュ付きの getActiveEmployees() に統一
+      // propertyData も並列で取得（直列フォールバックを排除）
+      const [sellerResponse, activitiesResponse, employeesData, propertyFallbackResponse] = await Promise.all([
         api.get(`/api/sellers/${id}`),
         api.get(`/api/sellers/${id}/activities`),
-        api.get('/api/employees'),
+        getActiveEmployees(),
+        api.get(`/properties/seller/${id}`).catch(() => null),
       ]);
 
-
-
-      // スタッフ一覧を設定
-      setEmployees(employeesResponse.data);
+      // スタッフ一覧を設定（getActiveEmployees はキャッシュ付き）
+      setEmployees(employeesData as any);
+      setActiveEmployees(employeesData);
 
       // 売主情報を設定
       const sellerData = sellerResponse.data;
-      console.log('=== sellerData詳細 ===');
-      console.log('sellerData:', sellerData);
-      console.log('sellerData.propertyAddress:', sellerData.propertyAddress); // ← 追加
-      console.log('sellerData.property:', sellerData.property);
-      console.log('typeof sellerData.property:', typeof sellerData.property);
-      console.log('sellerData.property === null:', sellerData.property === null);
-      console.log('sellerData.property === undefined:', sellerData.property === undefined);
       
       // 売主データが存在することを確認
       if (!sellerData || !sellerData.id) {
@@ -1067,22 +1019,10 @@ const CallModePage = () => {
         setInquiryUrl(null);
       });
       
-      // 物件データを設定（sellerDataに含まれていない場合は別途取得）
+      // 物件データを設定（sellerData に含まれていれば優先、なければ並列取得済みのデータを使用）
       let propertyData = sellerData.property || null;
-      
-      if (!propertyData) {
-        console.log('⚠️ 売主レスポンスに物件データが含まれていません。別途取得を試みます...');
-        try {
-          const propertyResponse = await api.get(`/properties/seller/${id}`);
-          if (propertyResponse.data && propertyResponse.data.property) {
-            propertyData = propertyResponse.data.property;
-            console.log('✅ 物件データを別途取得しました:', propertyData);
-          } else {
-            console.log('⚠️ 物件データが見つかりませんでした');
-          }
-        } catch (propError) {
-          console.error('❌ 物件データの取得に失敗:', propError);
-        }
+      if (!propertyData && propertyFallbackResponse?.data?.property) {
+        propertyData = propertyFallbackResponse.data.property;
       }
       
       setProperty(propertyData);
