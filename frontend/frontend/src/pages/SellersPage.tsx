@@ -616,7 +616,6 @@ export default function SellersPage() {
               <TableRow>
                 <TableCell>売主番号</TableCell>
                 <TableCell>名前</TableCell>
-                <TableCell>反響年</TableCell>
                 <TableCell>反響日付</TableCell>
                 <TableCell>サイト</TableCell>
                 <TableCell>確度</TableCell>
@@ -633,13 +632,13 @@ export default function SellersPage() {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={14} align="center">
+                  <TableCell colSpan={13} align="center">
                     読み込み中...
                   </TableCell>
                 </TableRow>
               ) : filteredSellers.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={14} align="center">
+                  <TableCell colSpan={13} align="center">
                     売主が見つかりませんでした
                   </TableCell>
                 </TableRow>
@@ -663,7 +662,6 @@ export default function SellersPage() {
                       </Typography>
                     </TableCell>
                     <TableCell>{seller.name}</TableCell>
-                    <TableCell>{seller.inquiryYear || '-'}</TableCell>
                     <TableCell>
                       {formatInquiryDate(seller)}
                     </TableCell>
