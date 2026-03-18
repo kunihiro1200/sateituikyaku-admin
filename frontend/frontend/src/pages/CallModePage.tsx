@@ -4015,7 +4015,35 @@ HP：https://ifoo-oita.com/
                 <Typography variant="h6">💰 査定計算</Typography>
                 {editedValuationAmount1 && (
                   <Box sx={{ display: 'flex', gap: 1 }}>
-                    <Button size="small" onClick={() => setEditingValuation(!editingValuation)}>
+                    <Button size="small" onClick={async () => {
+                      // 編集モードを終了する時（完了ボタン）
+                      if (editingValuation) {
+                        // 固定資産税路線価が空欄になった場合、査定額もクリア
+                        if (!editedFixedAssetTaxRoadPrice || parseFloat(editedFixedAssetTaxRoadPrice) <= 0) {
+                          try {
+                            await api.put(`/api/sellers/${id}`, {
+                              fixedAssetTaxRoadPrice: null,
+                              valuationAmount1: null,
+                              valuationAmount2: null,
+                              valuationAmount3: null,
+                            });
+                            setEditedValuationAmount1('');
+                            setEditedValuationAmount2('');
+                            setEditedValuationAmount3('');
+                            setSeller(prev => prev ? {
+                              ...prev,
+                              fixedAssetTaxRoadPrice: undefined,
+                              valuationAmount1: undefined,
+                              valuationAmount2: undefined,
+                              valuationAmount3: undefined,
+                            } : prev);
+                          } catch (err) {
+                            console.error('Failed to clear valuation:', err);
+                          }
+                        }
+                      }
+                      setEditingValuation(!editingValuation);
+                    }}>
                       {editingValuation ? '完了' : '編集'}
                     </Button>
                     {!editingValuation && (
