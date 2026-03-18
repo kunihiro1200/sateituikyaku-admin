@@ -106,11 +106,7 @@ export class PropertyService {
         .select('*')
         .eq('seller_id', sellerId);
 
-      // Filter out deleted properties by default
-      if (!includeDeleted) {
-        query = query.is('deleted_at', null);
-      }
-
+      // propertiesテーブルにはdeleted_atカラムが存在しないためフィルターなし
       const { data, error } = await query.single();
 
       if (error) {

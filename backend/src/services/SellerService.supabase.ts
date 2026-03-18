@@ -238,14 +238,10 @@ export class SellerService extends BaseRepository {
     }
 
     // 物件情報を取得（.single()ではなく配列で取得）
-    let propertyQuery = this.table('properties')
+    // propertiesテーブルにはdeleted_atカラムが存在しないためフィルターなし
+    const propertyQuery = this.table('properties')
       .select('*')
       .eq('seller_id', sellerId);
-    
-    // デフォルトで削除済み物件を除外
-    if (!includeDeleted) {
-      propertyQuery = propertyQuery.is('deleted_at', null);
-    }
     
     const { data: properties, error: propertyError } = await propertyQuery;
 
