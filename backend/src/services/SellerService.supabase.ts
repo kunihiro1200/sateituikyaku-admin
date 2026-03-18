@@ -361,6 +361,9 @@ export class SellerService extends BaseRepository {
     if (data.valuationAssignedBy !== undefined) {
       updates.valuation_assigned_by = data.valuationAssignedBy;
     }
+    if ((data as any).valuationMethod !== undefined) {
+      updates.valuation_method = (data as any).valuationMethod;
+    }
 
     // 競合情報フィールド
     if ((data as any).competitorName !== undefined) {
