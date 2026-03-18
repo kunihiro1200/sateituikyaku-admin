@@ -16,6 +16,7 @@ import { duplicateDetectionService } from './DuplicateDetectionService';
 import { CalendarService } from './CalendarService.supabase';
 import { ExclusionDateCalculator } from './ExclusionDateCalculator';
 import { SyncQueue } from './SyncQueue';
+import { createClient } from '@supabase/supabase-js';
 
 // イニシャルからフルネームへのマッピングキャッシュ
 let initialsToNameCache: Map<string, string> | null = null;
@@ -43,7 +44,6 @@ async function getEmployeeNameByInitials(initials: string | null | undefined): P
  */
 async function refreshEmployeeCache(): Promise<void> {
   try {
-    const { createClient } = await import('@supabase/supabase-js');
     const supabase = createClient(
       process.env.SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_KEY!
@@ -199,6 +199,8 @@ export class SellerService extends BaseRepository {
     
     // キャッシュを無効化（新しいセラーが追加されたのでリストキャッシュをクリア）
     await CacheHelper.delPattern('sellers:list:*');
+    // サイドバーカウントキャッシュも無効化（新規売主追加により集計が変わる可能性があるため）
+    await CacheHelper.del('sellers:sidebar-counts');
     
     // スプレッドシートに同期（非同期）
     if (this.syncQueue) {
@@ -549,6 +551,8 @@ export class SellerService extends BaseRepository {
     // キャッシュを無効化
     await CacheHelper.del(CacheHelper.generateKey('seller', sellerId));
     await CacheHelper.delPattern('sellers:list:*');
+    // サイドバーカウントキャッシュも無効化（売主データ変更により集計が変わる可能性があるため）
+    await CacheHelper.del('sellers:sidebar-counts');
 
     // スプレッドシートに同期（非同期）
     if (this.syncQueue) {
@@ -1091,9 +1095,11 @@ export class SellerService extends BaseRepository {
    */
   private async decryptSeller(seller: any): Promise<Seller> {
     try {
-      // イニシャルをフルネームに変換（非同期処理）
-      const visitAssigneeFullName = await getEmployeeNameByInitials(seller.visit_assignee);
-      const visitValuationAcquirerFullName = await getEmployeeNameByInitials(seller.visit_valuation_acquirer);
+      // イニシャルをフルネームに変換（並列処理で高速化）
+      const [visitAssigneeFullName, visitValuationAcquirerFullName] = await Promise.all([
+        getEmployeeNameByInitials(seller.visit_assignee),
+        getEmployeeNameByInitials(seller.visit_valuation_acquirer),
+      ]);
 
       const decrypted = {
         id: seller.id,
@@ -1499,6 +1505,30 @@ export class SellerService extends BaseRepository {
     todayCallWithInfoLabels: string[];
     todayCallWithInfoLabelCounts: Record<string, number>;
   }> {
+    // キャッシュキー（固定）
+    const sidebarCacheKey = 'sellers:sidebar-counts';
+
+    // キャッシュをチェック（60秒TTL）
+    const cachedCounts = await CacheHelper.get<{
+      todayCall: number;
+      todayCallWithInfo: number;
+      todayCallAssigned: number;
+      visitScheduled: number;
+      visitCompleted: number;
+      unvaluated: number;
+      mailingPending: number;
+      todayCallNotStarted: number;
+      pinrichEmpty: number;
+      visitAssignedCounts: Record<string, number>;
+      todayCallAssignedCounts: Record<string, number>;
+      todayCallWithInfoLabels: string[];
+      todayCallWithInfoLabelCounts: Record<string, number>;
+    }>(sidebarCacheKey);
+    if (cachedCounts) {
+      console.log('✅ Cache hit for sidebar counts');
+      return cachedCounts;
+    }
+
     // JST今日の日付を取得
     const now = new Date();
     const jstTime = new Date(now.getTime() + (9 * 60 * 60 * 1000));
@@ -1694,7 +1724,7 @@ export class SellerService extends BaseRepository {
       return !pinrich || pinrich.trim() === '';
     }).length;
 
-    return {
+    const sidebarResult = {
       todayCall: todayCallNoInfoCount || 0,
       todayCallWithInfo: todayCallWithInfoCount || 0,
       todayCallAssigned: todayCallAssignedCount || 0,
@@ -1709,6 +1739,11 @@ export class SellerService extends BaseRepository {
       todayCallWithInfoLabels,
       todayCallWithInfoLabelCounts: labelCountMap,
     };
+
+    // キャッシュに保存（60秒TTL）
+    await CacheHelper.set(sidebarCacheKey, sidebarResult, CACHE_TTL.SELLER_LIST);
+
+    return sidebarResult;
   }
 }
 
