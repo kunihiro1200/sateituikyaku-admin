@@ -978,7 +978,12 @@ router.get('/:id/inquiry-url', async (req: Request, res: Response) => {
       const rowDateStr = toDateStr(rowDate);
 
       const dateMatch = sellerDateStr && rowDateStr && sellerDateStr === rowDateStr;
-      const addressMatch = sellerAddress && rowAddress && sellerAddress === rowAddress;
+      // 住所は部分一致で照合（スプレッドシートに「大分県」が含まれるがDBにはない場合に対応）
+      const addressMatch = sellerAddress && rowAddress && (
+        sellerAddress === rowAddress ||
+        rowAddress.includes(sellerAddress) ||
+        sellerAddress.includes(rowAddress)
+      );
 
       if (dateMatch && addressMatch) {
         inquiryUrl = rowUrl;
