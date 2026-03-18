@@ -4217,15 +4217,16 @@ HP：https://ifoo-oita.com/
                   <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5, fontWeight: 'bold' }}>
                     つながるオンライン
                   </Typography>
-                  <a
-                    href="https://docs.google.com/spreadsheets/d/1wKBRLWbT6pSKa9IlTDabjhjTnfs_GxX6Rn6M6kbio1I"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={(e) => { e.stopPropagation(); e.preventDefault(); window.open('https://docs.google.com/spreadsheets/d/1wKBRLWbT6pSKa9IlTDabjhjTnfs_GxX6Rn6M6kbio1I', '_blank', 'noopener,noreferrer'); }}
-                    style={{ color: '#1976d2', fontSize: '0.875rem', wordBreak: 'break-all' }}
+                  <Button
+                    size="small"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      window.open('https://docs.google.com/spreadsheets/d/1wKBRLWbT6pSKa9IlTDabjhjTnfs_GxX6Rn6M6kbio1I', '_blank', 'noopener,noreferrer');
+                    }}
+                    sx={{ color: '#1976d2', fontSize: '0.875rem', textTransform: 'none', p: 0, minWidth: 0, justifyContent: 'flex-start' }}
                   >
                     つながるオンラインを開く
-                  </a>
+                  </Button>
                 </Box>
                 {/* 反響URL */}
                 {inquiryUrl && (
