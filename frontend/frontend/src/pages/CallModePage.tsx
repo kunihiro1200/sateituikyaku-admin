@@ -4212,22 +4212,7 @@ HP：https://ifoo-oita.com/
                 )}
               </Box>
               <Paper sx={{ p: 2, bgcolor: '#fff8f0' }}>
-                {/* つながるオンライン */}
-                <Box sx={{ mb: 2, p: 1.5, bgcolor: '#e8f4fd', borderRadius: 1, border: '1px solid #90caf9' }}>
-                  <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5, fontWeight: 'bold' }}>
-                    つながるオンライン
-                  </Typography>
-                  <Button
-                    size="small"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      window.open('https://docs.google.com/spreadsheets/d/1wKBRLWbT6pSKa9IlTDabjhjTnfs_GxX6Rn6M6kbio1I', '_blank', 'noopener,noreferrer');
-                    }}
-                    sx={{ color: '#1976d2', fontSize: '0.875rem', textTransform: 'none', p: 0, minWidth: 0, justifyContent: 'flex-start' }}
-                  >
-                    つながるオンラインを開く
-                  </Button>
-                </Box>
+
                 {/* 反響URL */}
                 {inquiryUrl && (
                   <Box sx={{ mb: 2, p: 1.5, bgcolor: '#f3e5f5', borderRadius: 1, border: '1px solid #ce93d8' }}>
