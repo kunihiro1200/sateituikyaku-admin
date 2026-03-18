@@ -248,15 +248,13 @@ export class SellerService extends BaseRepository {
       return null;
     }
 
-    // 物件情報を取得（.single()ではなく配列で取得）
-    // propertiesテーブルにはdeleted_atカラムが存在しないためフィルターなし
-    const propertyQuery = this.table('properties')
-      .select('*')
-      .eq('seller_id', sellerId);
-    
-    const { data: properties, error: propertyError } = await propertyQuery;
-
-    const decryptedSeller = await this.decryptSeller(seller);
+    // 物件情報取得と decryptSeller を並列実行（パフォーマンス改善）
+    const [{ data: properties, error: propertyError }, decryptedSeller] = await Promise.all([
+      this.table('properties')
+        .select('*')
+        .eq('seller_id', sellerId),
+      this.decryptSeller(seller),
+    ]);
     
     // 除外日を計算
     const exclusionDate = ExclusionDateCalculator.calculateExclusionDate(
