@@ -4213,6 +4213,7 @@ HP：https://ifoo-oita.com/
                     href="https://docs.google.com/spreadsheets/d/1wKBRLWbT6pSKa9IlTDabjhjTnfs_GxX6Rn6M6kbio1I"
                     target="_blank"
                     rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
                     style={{ color: '#1976d2', fontSize: '0.875rem', wordBreak: 'break-all' }}
                   >
                     つながるオンラインを開く
