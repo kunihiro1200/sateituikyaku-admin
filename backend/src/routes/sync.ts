@@ -539,34 +539,8 @@ router.post('/trigger', async (req: Request, res: Response) => {
     return res.status(401).json({ success: false, error: 'Unauthorized' });
   }
 
-  // 非同期モード: 即座に返してバックグラウンドで実行（GASのタイムアウト対策）
-  const isAsync = req.query.async === 'true';
-  if (isAsync) {
-    res.status(202).json({
-      success: true,
-      message: 'Sync triggered (running in background)',
-      triggeredAt: new Date().toISOString(),
-    });
-
-    // バックグラウンドで同期実行（レスポンス送信後）
-    setImmediate(async () => {
-      try {
-        console.log('[Sync Trigger] Starting background full sync...');
-        const { getEnhancedAutoSyncService } = await import('../services/EnhancedAutoSyncService');
-        const { getSyncHealthChecker } = await import('../services/SyncHealthChecker');
-        const syncService = getEnhancedAutoSyncService();
-        await syncService.initialize();
-        const result = await syncService.runFullSync('manual');
-        const healthChecker = getSyncHealthChecker();
-        await healthChecker.checkAndUpdateHealth();
-        console.log(`[Sync Trigger] Background sync completed: added=${result.additionResult.successfullyAdded}, updated=${result.additionResult.successfullyUpdated}`);
-      } catch (error: any) {
-        console.error('[Sync Trigger] Background sync error:', error.message);
-      }
-    });
-    return;
-  }
-
+  // 同期的に実行（Vercelサーバーレス関数はレスポンス後にsetImmediateが動かないため）
+  // GASのタイムアウトは6分あるので、同期処理が完了するまで待つ
   try {
     const { getEnhancedAutoSyncService } = await import('../services/EnhancedAutoSyncService');
     const { getSyncHealthChecker } = await import('../services/SyncHealthChecker');
