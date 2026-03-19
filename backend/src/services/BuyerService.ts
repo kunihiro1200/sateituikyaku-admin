@@ -1058,6 +1058,7 @@ export class BuyerService {
         viewing_result_follow_up
       `)
       .eq('distribution_type', '要')
+      .is('deleted_at', null)
       .not('latest_status', 'ilike', '%成約%')
       .not('latest_status', 'ilike', '%D%');
 
