@@ -125,12 +125,29 @@ function invalidateListSellersCache(): void {
 
 export class SellerService extends BaseRepository {
   private syncQueue?: SyncQueue;
+  // 全インスタンスで共有するstaticなsyncQueue
+  private static sharedSyncQueue?: SyncQueue;
 
   /**
-   * 同期キューを設定（オプション）
+   * 同期キューを設定（インスタンス）
    */
   setSyncQueue(syncQueue: SyncQueue): void {
     this.syncQueue = syncQueue;
+  }
+
+  /**
+   * 同期キューをグローバルに設定（全インスタンスで共有）
+   */
+  static setSharedSyncQueue(syncQueue: SyncQueue): void {
+    SellerService.sharedSyncQueue = syncQueue;
+    console.log('✅ SellerService: sharedSyncQueue set');
+  }
+
+  /**
+   * 有効なsyncQueueを取得（インスタンス優先、なければshared）
+   */
+  private getActiveSyncQueue(): SyncQueue | undefined {
+    return this.syncQueue ?? SellerService.sharedSyncQueue;
   }
 
   /**
@@ -254,8 +271,9 @@ export class SellerService extends BaseRepository {
     await CacheHelper.del('sellers:sidebar-counts');
     
     // スプレッドシートに同期（非同期）
-    if (this.syncQueue) {
-      await this.syncQueue.enqueue({
+    const activeSyncQueue = this.getActiveSyncQueue();
+    if (activeSyncQueue) {
+      await activeSyncQueue.enqueue({
         type: 'create',
         sellerId: seller.id,
       });
@@ -614,8 +632,9 @@ export class SellerService extends BaseRepository {
     await CacheHelper.del('sellers:sidebar-counts');
 
     // スプレッドシートに同期（非同期）
-    if (this.syncQueue) {
-      await this.syncQueue.enqueue({
+    const activeSyncQueue2 = this.getActiveSyncQueue();
+    if (activeSyncQueue2) {
+      await activeSyncQueue2.enqueue({
         type: 'update',
         sellerId: sellerId,
       });

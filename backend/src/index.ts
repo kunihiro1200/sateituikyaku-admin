@@ -326,6 +326,10 @@ const startServer = async () => {
     const spreadsheetSyncService = new SpreadsheetSyncService(sheetsClient, supabase);
     const syncQueue = new SyncQueue(spreadsheetSyncService);
 
+    // 全てのSellerServiceインスタンスで共有するsyncQueueを設定
+    const { SellerService: SellerServiceClass } = await import('./services/SellerService.supabase');
+    SellerServiceClass.setSharedSyncQueue(syncQueue);
+
     console.log('✅ SyncQueue initialized and ready');
   } catch (error) {
     console.error('⚠️ Failed to initialize SyncQueue:', error);
