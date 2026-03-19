@@ -5175,21 +5175,29 @@ HP：https://ifoo-oita.com/
               <Typography variant="subtitle2" gutterBottom>
                 1番電話
               </Typography>
-              <FormControl fullWidth size="small">
-                <Select
-                  value={editedFirstCallPerson}
-                  onChange={(e) => setEditedFirstCallPerson(e.target.value)}
-                  displayEmpty
-                  sx={{ bgcolor: 'white' }}
+              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                <Button
+                  variant={editedFirstCallPerson === '' ? 'contained' : 'outlined'}
+                  color="inherit"
+                  size="small"
+                  onClick={() => setEditedFirstCallPerson('')}
+                  sx={{ minWidth: 60 }}
                 >
-                  <MenuItem value=""><em>未選択</em></MenuItem>
-                  {activeEmployees.map((emp) => (
-                    <MenuItem key={emp.initials || emp.name} value={emp.initials || ''}>
-                      {emp.initials || emp.name}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+                  未選択
+                </Button>
+                {activeEmployees.map((emp) => (
+                  <Button
+                    key={emp.initials || emp.name}
+                    variant={editedFirstCallPerson === (emp.initials || '') ? 'contained' : 'outlined'}
+                    color="primary"
+                    size="small"
+                    onClick={() => setEditedFirstCallPerson(emp.initials || '')}
+                    sx={{ minWidth: 60 }}
+                  >
+                    {emp.initials || emp.name}
+                  </Button>
+                ))}
+              </Box>
             </Box>
 
             {/* 不通フィールド（inquiry_date >= 2026-01-01の売主のみ表示） */}
