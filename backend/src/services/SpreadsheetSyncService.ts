@@ -71,9 +71,9 @@ export class SpreadsheetSyncService {
       const existingRowIndex = await this.findRowBySellerId(seller.seller_number);
 
       if (existingRowIndex) {
-        // 既存行を更新
-        console.log(`📝 [SpreadsheetSync] Updating existing row ${existingRowIndex}`);
-        await this.sheetsClient.updateRow(existingRowIndex, sheetRow);
+        // 既存行を部分更新（指定カラムのみ更新し、計算列などは変更しない）
+        console.log(`📝 [SpreadsheetSync] Updating existing row ${existingRowIndex} (partial update)`);
+        await this.sheetsClient.updateRowPartial(existingRowIndex, sheetRow);
         console.log(`✅ [SpreadsheetSync] Updated row ${existingRowIndex}`);
         
         // Supabaseの同期時刻を更新
@@ -161,9 +161,11 @@ export class SpreadsheetSyncService {
         }
       }
 
-      // バッチ更新を実行
+      // バッチ更新を実行（部分更新: 指定カラムのみ更新し、計算列などは変更しない）
       if (updates.length > 0) {
-        await this.sheetsClient.batchUpdate(updates);
+        for (const update of updates) {
+          await this.sheetsClient.updateRowPartial(update.rowIndex, update.values);
+        }
       }
 
       // 新規行を追加

@@ -778,7 +778,7 @@ export class EnhancedAutoSyncService {
     while (hasMore) {
       const { data: dbSellers, error } = await this.supabase
         .from('sellers')
-        .select('seller_number, status, contract_year_month, visit_assignee, phone_contact_person, preferred_contact_time, contact_method, next_call_date, unreachable_status, inquiry_date, comments, updated_at')
+        .select('seller_number, status, contract_year_month, visit_assignee, phone_contact_person, preferred_contact_time, contact_method, next_call_date, unreachable_status, inquiry_date, comments, valuation_amount_1, valuation_amount_2, valuation_amount_3, first_call_person, updated_at')
         .range(offset, offset + pageSize - 1);
 
       if (error) {
@@ -890,6 +890,34 @@ export class EnhancedAutoSyncService {
           const dbComments = dbSeller.comments || '';
           const sheetComments = sheetRow['コメント'] || '';
           if (sheetComments !== dbComments) {
+            needsUpdate = true;
+          }
+
+          // first_call_personの比較
+          const dbFirstCallPerson = dbSeller.first_call_person || '';
+          const sheetFirstCallPerson = sheetRow['1番電話'] || '';
+          if (sheetFirstCallPerson !== dbFirstCallPerson) {
+            needsUpdate = true;
+          }
+
+          // 査定額の比較（手動入力優先、なければ自動計算）
+          const sheetVal1Raw = sheetRow['査定額1'] || sheetRow['査定額1（自動計算）v'];
+          const sheetVal2Raw = sheetRow['査定額2'] || sheetRow['査定額2（自動計算）v'];
+          const sheetVal3Raw = sheetRow['査定額3'] || sheetRow['査定額3（自動計算）v'];
+          const sheetVal1 = this.parseNumeric(sheetVal1Raw);
+          const sheetVal2 = this.parseNumeric(sheetVal2Raw);
+          const sheetVal3 = this.parseNumeric(sheetVal3Raw);
+          // スプシは万円単位、DBは円単位
+          const sheetVal1Yen = sheetVal1 !== null ? sheetVal1 * 10000 : null;
+          const sheetVal2Yen = sheetVal2 !== null ? sheetVal2 * 10000 : null;
+          const sheetVal3Yen = sheetVal3 !== null ? sheetVal3 * 10000 : null;
+          if (sheetVal1Yen !== (dbSeller.valuation_amount_1 ?? null)) {
+            needsUpdate = true;
+          }
+          if (sheetVal2Yen !== (dbSeller.valuation_amount_2 ?? null)) {
+            needsUpdate = true;
+          }
+          if (sheetVal3Yen !== (dbSeller.valuation_amount_3 ?? null)) {
             needsUpdate = true;
           }
 
@@ -1189,6 +1217,7 @@ export class EnhancedAutoSyncService {
     const phoneContactPerson = row['電話担当（任意）'];
     const preferredContactTime = row['連絡取りやすい日、時間帯'];
     const contactMethod = row['連絡方法'];
+    const firstCallPerson = row['1番電話'];
     
     if (phoneContactPerson) {
       updateData.phone_contact_person = String(phoneContactPerson);
@@ -1198,6 +1227,9 @@ export class EnhancedAutoSyncService {
     }
     if (contactMethod) {
       updateData.contact_method = String(contactMethod);
+    }
+    if (firstCallPerson !== undefined) {
+      updateData.first_call_person = firstCallPerson ? String(firstCallPerson) : null;
     }
 
     // 査定方法を追加
@@ -1397,6 +1429,7 @@ export class EnhancedAutoSyncService {
     const phoneContactPerson = row['電話担当（任意）'];
     const preferredContactTime = row['連絡取りやすい日、時間帯'];
     const contactMethod = row['連絡方法'];
+    const firstCallPerson = row['1番電話'];
     
     if (phoneContactPerson) {
       encryptedData.phone_contact_person = String(phoneContactPerson);
@@ -1406,6 +1439,9 @@ export class EnhancedAutoSyncService {
     }
     if (contactMethod) {
       encryptedData.contact_method = String(contactMethod);
+    }
+    if (firstCallPerson !== undefined) {
+      encryptedData.first_call_person = firstCallPerson ? String(firstCallPerson) : null;
     }
 
     // 査定方法を追加
