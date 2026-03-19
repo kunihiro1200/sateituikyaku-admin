@@ -1089,7 +1089,7 @@ export class EnhancedAutoSyncService {
   /**
    * 単一の売主を更新
    */
-  private async updateSingleSeller(sellerNumber: string, row: any): Promise<void> {
+  public async updateSingleSeller(sellerNumber: string, row: any): Promise<void> {
     const mappedData = this.columnMapper.mapToDatabase(row);
     
     // 査定額を取得（手入力優先、なければ自動計算）
@@ -1302,7 +1302,7 @@ export class EnhancedAutoSyncService {
   /**
    * 単一の売主を同期
    */
-  private async syncSingleSeller(sellerNumber: string, row: any): Promise<void> {
+  public async syncSingleSeller(sellerNumber: string, row: any): Promise<void> {
     const mappedData = this.columnMapper.mapToDatabase(row);
     
     // 査定額を取得（手入力優先、なければ自動計算）
