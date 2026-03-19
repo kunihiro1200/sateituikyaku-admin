@@ -216,7 +216,8 @@ export class GoogleDriveService extends BaseRepository {
       console.log(`📁 Creating folder "${name}" in parent: ${parentId} (sharedDriveId: ${this.sharedDriveId})`);
       
       // 共有ドライブにフォルダを作成
-      const createParams: any = {
+      // supportsAllDrives: true のみ指定（driveId は files.create では不要）
+      const response = await drive.files.create({
         requestBody: {
           name: name,
           mimeType: 'application/vnd.google-apps.folder',
@@ -224,14 +225,7 @@ export class GoogleDriveService extends BaseRepository {
         },
         fields: 'id, name',
         supportsAllDrives: true,
-      };
-
-      // 共有ドライブの場合は driveId を追加
-      if (this.sharedDriveId) {
-        createParams.driveId = this.sharedDriveId;
-      }
-
-      const response = await drive.files.create(createParams);
+      });
 
       if (!response.data.id) {
         throw new Error('Failed to create folder: No ID returned');
