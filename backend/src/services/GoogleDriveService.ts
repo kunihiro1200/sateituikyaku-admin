@@ -115,28 +115,50 @@ export class GoogleDriveService extends BaseRepository {
     try {
       const drive = await this.getDriveClient();
       
-      console.log(`🔍 Searching for folder starting with "${name}" in parent: ${parentId} (shared drive: ${isSharedDrive})`);
+      console.log(`🔍 Searching for folder starting with "${name}" in parent: ${parentId} (sharedDriveId: ${this.sharedDriveId})`);
       
-      // クエリパラメータを構築
-      const queryParams: any = {
-        q: `'${parentId}' in parents and name contains '${name}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false`,
-        fields: 'files(id, name)',
-      };
+      // 共有ドライブの場合は corpora: 'drive' + driveId が必須
+      // ただし parentId が共有ドライブのルートID（0Aで始まる）の場合は
+      // 'parentId' in parents クエリが使えないため allDrives で検索
+      const isSharedDriveRoot = parentId.startsWith('0A');
       
-      // 共有ドライブの場合
-      if (isSharedDrive && this.sharedDriveId) {
-        queryParams.supportsAllDrives = true;
-        queryParams.includeItemsFromAllDrives = true;
-        queryParams.corpora = 'drive';
-        queryParams.driveId = this.sharedDriveId;
+      let queryParams: any;
+      
+      if (this.sharedDriveId && isSharedDriveRoot) {
+        // 共有ドライブのルート直下を検索
+        queryParams = {
+          q: `name contains '${name}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false`,
+          fields: 'files(id, name)',
+          supportsAllDrives: true,
+          includeItemsFromAllDrives: true,
+          corpora: 'drive',
+          driveId: this.sharedDriveId,
+        };
+      } else if (this.sharedDriveId) {
+        // 共有ドライブ内の特定フォルダ配下を検索
+        queryParams = {
+          q: `'${parentId}' in parents and name contains '${name}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false`,
+          fields: 'files(id, name)',
+          supportsAllDrives: true,
+          includeItemsFromAllDrives: true,
+          corpora: 'drive',
+          driveId: this.sharedDriveId,
+        };
       } else {
         // マイドライブの場合
-        queryParams.corpora = 'user';
+        queryParams = {
+          q: `'${parentId}' in parents and name contains '${name}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false`,
+          fields: 'files(id, name)',
+          corpora: 'user',
+        };
       }
 
+      console.log(`🔍 Query params:`, JSON.stringify(queryParams));
       const response = await drive.files.list(queryParams);
 
       const files = response.data.files;
+      console.log(`🔍 Found ${files?.length || 0} folders matching "${name}"`);
+      
       if (files && files.length > 0) {
         // 売主番号で始まるフォルダを探す（前方一致）
         const matchingFolder = files.find(f => f.name?.startsWith(name));
@@ -368,15 +390,23 @@ export class GoogleDriveService extends BaseRepository {
     try {
       const drive = await this.getDriveClient();
       
-      const response = await drive.files.list({
+      const queryParams: any = {
         q: `'${folderId}' in parents and trashed = false`,
         fields: 'files(id, name, mimeType, size, modifiedTime, webViewLink, webContentLink)',
         orderBy: 'modifiedTime desc',
         supportsAllDrives: true,
         includeItemsFromAllDrives: true,
-        corpora: 'drive',
-        driveId: this.sharedDriveId,
-      });
+      };
+      
+      // 共有ドライブIDが設定されている場合のみ corpora: 'drive' を使用
+      if (this.sharedDriveId) {
+        queryParams.corpora = 'drive';
+        queryParams.driveId = this.sharedDriveId;
+      } else {
+        queryParams.corpora = 'user';
+      }
+
+      const response = await drive.files.list(queryParams);
 
       const files = response.data.files || [];
       
