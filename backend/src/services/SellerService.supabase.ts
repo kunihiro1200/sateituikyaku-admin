@@ -18,36 +18,19 @@ import { ExclusionDateCalculator } from './ExclusionDateCalculator';
 import { SyncQueue } from './SyncQueue';
 import { createClient } from '@supabase/supabase-js';
 
-// Redis キャッシュキー（Vercel サーバーレス環境でもキャッシュが持続する）
-const EMPLOYEE_INITIALS_CACHE_KEY = 'employees:initials-map';
-const EMPLOYEE_INITIALS_CACHE_TTL = 5 * 60; // 5分（秒単位）
+// モジュールレベルのインメモリキャッシュ（プロセス内で持続、Redis 不要）
+// Vercel サーバーレスでは同一プロセス内のリクエスト間でキャッシュが共有される
+let _employeeInitialsMap: Record<string, string> | null = null;
+let _employeeInitialsCachedAt = 0;
+const EMPLOYEE_INITIALS_CACHE_TTL_MS = 5 * 60 * 1000; // 5分
+let _employeeInitialsRefreshing = false; // 重複リフレッシュ防止
 
 /**
- * スタッフのイニシャルからフルネームを取得（Redis キャッシュ使用）
- * Vercel サーバーレス環境ではインメモリキャッシュがコールドスタート時にリセットされるため
- * Redis キャッシュを使用してパフォーマンスを改善する
- */
-async function getEmployeeNameByInitials(initials: string | null | undefined): Promise<string | null> {
-  if (!initials) return null;
-
-  // Redis キャッシュから全従業員マップを取得
-  const cached = await CacheHelper.get<Record<string, string>>(EMPLOYEE_INITIALS_CACHE_KEY);
-  if (cached) {
-    return cached[initials] || null;
-  }
-
-  // キャッシュミス: Supabase から取得してキャッシュに保存
-  await refreshEmployeeCache();
-
-  // 再度キャッシュから取得
-  const refreshed = await CacheHelper.get<Record<string, string>>(EMPLOYEE_INITIALS_CACHE_KEY);
-  return refreshed?.[initials] || null;
-}
-
-/**
- * スタッフ情報のキャッシュを更新（Redis に保存）
+ * スタッフ情報のキャッシュを更新（モジュールレベルのインメモリキャッシュに保存）
  */
 async function refreshEmployeeCache(): Promise<void> {
+  if (_employeeInitialsRefreshing) return; // 重複リフレッシュ防止
+  _employeeInitialsRefreshing = true;
   try {
     const supabase = createClient(
       process.env.SUPABASE_URL!,
@@ -71,11 +54,50 @@ async function refreshEmployeeCache(): Promise<void> {
       }
     });
 
-    await CacheHelper.set(EMPLOYEE_INITIALS_CACHE_KEY, initialsMap, EMPLOYEE_INITIALS_CACHE_TTL);
-    console.log(`✅ Employee initials cache updated in Redis: ${Object.keys(initialsMap).length} employees`);
+    _employeeInitialsMap = initialsMap;
+    _employeeInitialsCachedAt = Date.now();
+    console.log(`✅ Employee initials cache updated (in-memory): ${Object.keys(initialsMap).length} employees`);
   } catch (error) {
     console.error('Error refreshing employee cache:', error);
+  } finally {
+    _employeeInitialsRefreshing = false;
   }
+}
+
+/**
+ * イニシャルマップを取得（キャッシュ有効期限チェック付き）
+ * キャッシュが古い場合はバックグラウンドで更新（stale-while-revalidate）
+ */
+function getInitialsMap(): Record<string, string> {
+  const now = Date.now();
+  if (_employeeInitialsMap && (now - _employeeInitialsCachedAt) < EMPLOYEE_INITIALS_CACHE_TTL_MS) {
+    return _employeeInitialsMap;
+  }
+  // キャッシュが古い or 未初期化 → バックグラウンドで更新（今回は古いデータを返す）
+  refreshEmployeeCache().catch(console.error);
+  return _employeeInitialsMap || {};
+}
+
+// getSeller 用インメモリキャッシュ（30秒TTL）
+const _sellerCache = new Map<string, { data: any; expiresAt: number }>();
+const SELLER_CACHE_TTL_MS = 30 * 1000; // 30秒
+
+function getSellerCache(sellerId: string): any | null {
+  const entry = _sellerCache.get(sellerId);
+  if (!entry) return null;
+  if (Date.now() > entry.expiresAt) {
+    _sellerCache.delete(sellerId);
+    return null;
+  }
+  return entry.data;
+}
+
+function setSellerCache(sellerId: string, data: any): void {
+  _sellerCache.set(sellerId, { data, expiresAt: Date.now() + SELLER_CACHE_TTL_MS });
+}
+
+function invalidateSellerCache(sellerId: string): void {
+  _sellerCache.delete(sellerId);
 }
 
 export class SellerService extends BaseRepository {
@@ -229,12 +251,11 @@ export class SellerService extends BaseRepository {
    */
   async getSeller(sellerId: string, includeDeleted: boolean = false): Promise<Seller | null> {
     const _t0 = Date.now();
-    // キャッシュをチェック（includeDeletedがfalseの場合のみキャッシュを使用）
+    // インメモリキャッシュをチェック（Redis await を排除）
     if (!includeDeleted) {
-      const cacheKey = CacheHelper.generateKey('seller', sellerId);
-      const cached = await CacheHelper.get<Seller>(cacheKey);
+      const cached = getSellerCache(sellerId);
       if (cached) {
-        console.log(`[PERF] getSeller cache hit: ${Date.now() - _t0}ms`);
+        console.log(`[PERF] getSeller cache hit (in-memory): ${Date.now() - _t0}ms`);
         return cached;
       }
     }
@@ -298,10 +319,9 @@ export class SellerService extends BaseRepository {
       };
     }
 
-    // キャッシュに保存（30秒TTL）
+    // インメモリキャッシュに保存（30秒TTL、Redis await を排除）
     if (!includeDeleted) {
-      const cacheKey = CacheHelper.generateKey('seller', sellerId);
-      await CacheHelper.set(cacheKey, decryptedSeller, 30);
+      setSellerCache(sellerId, decryptedSeller);
     }
 
     return decryptedSeller;
@@ -556,7 +576,8 @@ export class SellerService extends BaseRepository {
 
     const decryptedSeller = await this.decryptSeller(seller);
 
-    // キャッシュを無効化
+    // キャッシュを無効化（インメモリ + Redis）
+    invalidateSellerCache(sellerId); // インメモリキャッシュを即座に無効化
     await CacheHelper.del(CacheHelper.generateKey('seller', sellerId));
     await CacheHelper.delPattern('sellers:list:*');
     // サイドバーカウントキャッシュも無効化（売主データ変更により集計が変わる可能性があるため）
@@ -1104,16 +1125,12 @@ export class SellerService extends BaseRepository {
   private async decryptSeller(seller: any): Promise<Seller> {
     const _dt0 = Date.now();
     try {
-      // Redis キャッシュから従業員マップを1回取得してイニシャルを解決（最適化）
-      // キャッシュミス時も refreshEmployeeCache は1回だけ呼ばれる
-      let initialsMap = await CacheHelper.get<Record<string, string>>(EMPLOYEE_INITIALS_CACHE_KEY);
-      if (!initialsMap) {
-        await refreshEmployeeCache();
-        initialsMap = await CacheHelper.get<Record<string, string>>(EMPLOYEE_INITIALS_CACHE_KEY);
-      }
-      const visitAssigneeFullName = seller.visit_assignee ? (initialsMap?.[seller.visit_assignee] || null) : null;
-      const visitValuationAcquirerFullName = seller.visit_valuation_acquirer ? (initialsMap?.[seller.visit_valuation_acquirer] || null) : null;
-      console.log(`[PERF] decryptSeller getEmployeeNames: ${Date.now() - _dt0}ms`);
+      // モジュールレベルのインメモリキャッシュからイニシャルマップを同期的に取得
+      // Redis await を排除してパフォーマンスを改善
+      const initialsMap = getInitialsMap();
+      const visitAssigneeFullName = seller.visit_assignee ? (initialsMap[seller.visit_assignee] || null) : null;
+      const visitValuationAcquirerFullName = seller.visit_valuation_acquirer ? (initialsMap[seller.visit_valuation_acquirer] || null) : null;
+      console.log(`[PERF] decryptSeller getEmployeeNames (sync): ${Date.now() - _dt0}ms`);
 
       const decrypted = {
         id: seller.id,

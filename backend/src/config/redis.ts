@@ -94,7 +94,7 @@ const initRedis = async () => {
     await Promise.race([
       client.connect(),
       new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Connection timeout')), 2000)
+        setTimeout(() => reject(new Error('Connection timeout')), 500)
       ),
     ]);
     
