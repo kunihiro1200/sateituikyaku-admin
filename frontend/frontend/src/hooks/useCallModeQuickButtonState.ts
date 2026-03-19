@@ -103,8 +103,8 @@ export function useCallModeQuickButtonState(
 
     setDisabledButtons((prev) => {
       const newMap = new Map(prev);
-      // Only set to pending if not already disabled
-      if (!newMap.has(buttonId)) {
+      // Only set to pending if not already persisted (saved)
+      if (newMap.get(buttonId) !== 'persisted') {
         newMap.set(buttonId, 'pending');
       }
       return newMap;
@@ -146,11 +146,11 @@ export function useCallModeQuickButtonState(
   }, [sellerId]);
 
   /**
-   * Check if a button is disabled (pending or persisted)
+   * Check if a button is disabled (persisted only - pending allows re-click)
    */
   const isButtonDisabled = useCallback(
     (buttonId: string): boolean => {
-      return disabledButtons.has(buttonId);
+      return disabledButtons.get(buttonId) === 'persisted';
     },
     [disabledButtons]
   );

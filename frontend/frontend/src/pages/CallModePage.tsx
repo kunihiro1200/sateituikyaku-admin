@@ -1424,9 +1424,9 @@ const CallModePage = () => {
       const existingComments = seller?.comments || '';
       const newComment = plainText.trim();
       
-      // 既存のコメントがある場合は改行を挿入
+      // 新規コメントを既存コメントの上（先頭）に追記
       const updatedComments = existingComments
-        ? `${existingComments}\n${newComment}`
+        ? `${newComment}\n${existingComments}`
         : newComment;
 
       // APIリクエスト
