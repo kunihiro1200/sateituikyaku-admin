@@ -1054,7 +1054,12 @@ export class BuyerService {
           price_range_land,
           reception_date,
           email,
-          phone_number
+          phone_number,
+          inquiry_property_type,
+          property_address,
+          inquiry_price,
+          inquiry_hearing,
+          viewing_result_follow_up
         `)
         .range(page * pageSize, (page + 1) * pageSize - 1);
 
