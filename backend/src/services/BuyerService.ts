@@ -1055,9 +1055,9 @@ export class BuyerService {
           reception_date,
           email,
           phone_number,
-          inquiry_property_type,
-          property_address,
-          inquiry_price,
+          property_type,
+          property_number,
+          price,
           inquiry_hearing,
           viewing_result_follow_up
         `)
@@ -1082,9 +1082,30 @@ export class BuyerService {
     const filteredBuyers = this.filterBuyerCandidates(allBuyers, areaNumbers, propertyType, salesPrice);
     const sortedBuyers = this.sortBuyersByDateAndConfidence(filteredBuyers);
 
+    // property_listingsからproperty_addressを取得して付与
+    const propertyNumbers = [...new Set(
+      sortedBuyers.map((b: any) => b.property_number).filter(Boolean)
+    )] as string[];
+
+    let propertyAddressMap: Record<string, string | null> = {};
+    if (propertyNumbers.length > 0) {
+      const { data: properties } = await this.supabase
+        .from('property_listings')
+        .select('property_number, address')
+        .in('property_number', propertyNumbers);
+      if (properties) {
+        properties.forEach((p: any) => {
+          propertyAddressMap[p.property_number] = p.address ?? null;
+        });
+      }
+    }
+
     return sortedBuyers.map(buyer => ({
       ...buyer,
-      distribution_areas: this.parseDistributionAreas(buyer.distribution_areas || buyer.desired_area)
+      distribution_areas: this.parseDistributionAreas(buyer.distribution_areas || buyer.desired_area),
+      inquiry_property_type: buyer.property_type ?? null,
+      inquiry_price: buyer.price ?? null,
+      property_address: propertyAddressMap[buyer.property_number] ?? null,
     }));
   }
 
