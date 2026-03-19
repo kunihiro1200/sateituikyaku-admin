@@ -1103,7 +1103,7 @@ export class BuyerService {
     return sortedBuyers.map(buyer => ({
       ...buyer,
       distribution_areas: this.parseDistributionAreas(buyer.distribution_areas || buyer.desired_area),
-      inquiry_property_type: buyer.property_type ?? null,
+      inquiry_property_type: buyer.desired_property_type ?? null,
       inquiry_price: buyer.price ?? null,
       property_address: propertyAddressMap[buyer.property_number] ?? null,
     }));
