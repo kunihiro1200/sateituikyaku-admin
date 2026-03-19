@@ -487,6 +487,7 @@ const CallModePage = () => {
   const [editedPhoneContactPerson, setEditedPhoneContactPerson] = useState<string>('');
   const [editedPreferredContactTime, setEditedPreferredContactTime] = useState<string>('');
   const [editedContactMethod, setEditedContactMethod] = useState<string>('');
+  const [editedFirstCallPerson, setEditedFirstCallPerson] = useState<string>('');
   const [savingCommunication, setSavingCommunication] = useState(false);
   const isInitialLoadRef = useRef(true); // 初回ロードフラグ
 
@@ -836,6 +837,7 @@ const CallModePage = () => {
       setEditedPhoneContactPerson(seller.phoneContactPerson || '');
       setEditedPreferredContactTime(seller.preferredContactTime || '');
       setEditedContactMethod(seller.contactMethod || '');
+      setEditedFirstCallPerson(seller.firstCallPerson || '');
       isInitialLoadRef.current = true; // 初回ロードフラグをリセット
     }
   }, [seller?.id]); // seller.idが変更されたときのみ実行
@@ -854,7 +856,8 @@ const CallModePage = () => {
     const hasChanges = 
       editedPhoneContactPerson !== (seller.phoneContactPerson || '') ||
       editedPreferredContactTime !== (seller.preferredContactTime || '') ||
-      editedContactMethod !== (seller.contactMethod || '');
+      editedContactMethod !== (seller.contactMethod || '') ||
+      editedFirstCallPerson !== (seller.firstCallPerson || '');
 
     if (!hasChanges) return;
 
@@ -871,6 +874,7 @@ const CallModePage = () => {
           phoneContactPerson: editedPhoneContactPerson || null,
           preferredContactTime: editedPreferredContactTime || null,
           contactMethod: editedContactMethod || null,
+          firstCallPerson: editedFirstCallPerson || null,
         });
 
         console.log('✅ コミュニケーションフィールドを自動保存しました');
@@ -883,7 +887,7 @@ const CallModePage = () => {
     }, 1000); // 1秒のデバウンス
 
     return () => clearTimeout(timeoutId);
-  }, [editedPhoneContactPerson, editedPreferredContactTime, editedContactMethod, seller?.phoneContactPerson, seller?.preferredContactTime, seller?.contactMethod, id]);
+  }, [editedPhoneContactPerson, editedPreferredContactTime, editedContactMethod, editedFirstCallPerson, seller?.phoneContactPerson, seller?.preferredContactTime, seller?.contactMethod, seller?.firstCallPerson, id]);
 
   // サイドバー用のカテゴリカウントを取得（APIから直接取得）
   const fetchSidebarCounts = useCallback(async () => {
@@ -1156,6 +1160,7 @@ const CallModePage = () => {
       setEditedPhoneContactPerson(sellerData.phoneContactPerson || '');
       setEditedPreferredContactTime(sellerData.preferredContactTime || '');
       setEditedContactMethod(sellerData.contactMethod || '');
+      setEditedFirstCallPerson(sellerData.firstCallPerson || '');
 
       // ローディング終了（画面を表示）- employees/activities 取得を待たずに表示
       setLoading(false);
@@ -1377,6 +1382,7 @@ const CallModePage = () => {
         phoneContactPerson: editedPhoneContactPerson || null,
         preferredContactTime: editedPreferredContactTime || null,
         contactMethod: editedContactMethod || null,
+        firstCallPerson: editedFirstCallPerson || null,
       });
 
       // クイックボタンの状態を永続化（pending → persisted）
@@ -1461,6 +1467,9 @@ const CallModePage = () => {
       await api.put(`/api/sellers/${id}`, {
         comments: updatedComments,
       });
+
+      // コメント欄を即時更新（二重保存不要）
+      setEditableComments(updatedComments);
 
       // 成功メッセージ
       setSuccessMessage('コメントを保存しました');
@@ -5144,7 +5153,7 @@ HP：https://ifoo-oita.com/
               {savingMemo ? <CircularProgress size={24} /> : '保存'}
             </Button>
 
-            {/* コメント表示・編集エリア */}
+            {/* コメント表示・編集エリア（新規コメント保存時に自動更新） */}
             <Box sx={{ mb: 2 }}>
               <Typography variant="subtitle2" gutterBottom>
                 コメント
@@ -5159,15 +5168,28 @@ HP：https://ifoo-oita.com/
                 variant="outlined"
                 sx={{ bgcolor: 'white' }}
               />
-              <Button
-                variant="outlined"
-                size="small"
-                disabled={savingComments}
-                onClick={handleSaveComments}
-                sx={{ mt: 1 }}
-              >
-                {savingComments ? <CircularProgress size={16} /> : 'コメントを保存'}
-              </Button>
+            </Box>
+
+            {/* 1番電話フィールド */}
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="subtitle2" gutterBottom>
+                1番電話
+              </Typography>
+              <FormControl fullWidth size="small">
+                <Select
+                  value={editedFirstCallPerson}
+                  onChange={(e) => setEditedFirstCallPerson(e.target.value)}
+                  displayEmpty
+                  sx={{ bgcolor: 'white' }}
+                >
+                  <MenuItem value=""><em>未選択</em></MenuItem>
+                  {activeEmployees.map((emp) => (
+                    <MenuItem key={emp.initials || emp.name} value={emp.initials || ''}>
+                      {emp.initials || emp.name}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
             </Box>
 
             {/* 不通フィールド（inquiry_date >= 2026-01-01の売主のみ表示） */}
