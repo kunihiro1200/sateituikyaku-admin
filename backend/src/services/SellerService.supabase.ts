@@ -502,6 +502,11 @@ export class SellerService extends BaseRepository {
       updates.mail_sent_date = (data as any).mailSentDate;
     }
 
+    // コメントフィールド
+    if ((data as any).comments !== undefined) {
+      updates.comments = (data as any).comments;
+    }
+
     // 除外日を計算（inquiryDateまたはsiteが更新される場合）
     if (data.inquiryDate !== undefined || data.site !== undefined) {
       // 現在の売主データを取得して、更新されないフィールドの値を使用

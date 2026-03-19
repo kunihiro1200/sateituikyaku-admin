@@ -94,6 +94,7 @@ export interface Seller {
   phoneContactPerson?: string; // 電話担当（任意）
   preferredContactTime?: string; // 連絡取りやすい日、時間帯
   contactMethod?: string; // 連絡方法
+  comments?: string; // コメント
   mailingStatus?: string; // 郵送（未、済）
   alternativeMailingAddress?: string;
   
@@ -399,6 +400,7 @@ export interface UpdateSellerRequest {
   phoneContactPerson?: string; // 電話担当（任意）
   preferredContactTime?: string; // 連絡取りやすい日、時間帯
   contactMethod?: string; // 連絡方法
+  comments?: string; // コメント
   // Phase 1 fields
   inquirySource?: string;
   inquiryYear?: number;
