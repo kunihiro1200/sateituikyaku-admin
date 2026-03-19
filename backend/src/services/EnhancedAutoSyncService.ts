@@ -2339,7 +2339,11 @@ export class EnhancedAutoSyncService {
     if (this.isBuyerInitialized) return;
 
     try {
-      const buyerSpreadsheetId = process.env.GOOGLE_SHEETS_BUYER_SPREADSHEET_ID || process.env.PROPERTY_LISTING_SPREADSHEET_ID!;
+      // 修正: .trim() で末尾の不正な文字（\r\n など）を除去し、フォールバックを削除
+      const buyerSpreadsheetId = process.env.GOOGLE_SHEETS_BUYER_SPREADSHEET_ID?.trim();
+      if (!buyerSpreadsheetId) {
+        throw new Error('GOOGLE_SHEETS_BUYER_SPREADSHEET_ID is not set. Cannot initialize buyer sync service.');
+      }
       const buyerSheetName = process.env.GOOGLE_SHEETS_BUYER_SHEET_NAME || '買主リスト';
       const sheetsConfig = {
         spreadsheetId: buyerSpreadsheetId,
@@ -2939,6 +2943,21 @@ export class EnhancedAutoSyncService {
     const dbBuyerNumbers = await this.getAllActiveBuyerNumbers();
     console.log(`📊 Active database buyers: ${dbBuyerNumbers.size}`);
 
+    // 安全ガード1: スプレッドシートから0件の場合は削除処理をスキップ
+    if (sheetBuyerNumbers.size === 0) {
+      console.warn('⚠️ SAFETY GUARD 1: No buyer numbers found in spreadsheet. Skipping deletion to prevent accidental mass deletion.');
+      return [];
+    }
+
+    // 安全ガード2: スプレッドシートの買主数がDBの50%未満の場合は削除処理をスキップ
+    if (dbBuyerNumbers.size > 0) {
+      const ratio = sheetBuyerNumbers.size / dbBuyerNumbers.size;
+      if (ratio < 0.5) {
+        console.warn(`⚠️ SAFETY GUARD 2: Spreadsheet has only ${sheetBuyerNumbers.size} buyers but DB has ${dbBuyerNumbers.size} active buyers (ratio: ${(ratio * 100).toFixed(1)}%). This may indicate a wrong spreadsheet is being used. Skipping deletion.`);
+        return [];
+      }
+    }
+
     const deletedBuyers: string[] = [];
     for (const buyerNumber of dbBuyerNumbers) {
       if (!sheetBuyerNumbers.has(buyerNumber)) {
@@ -3281,7 +3300,16 @@ export class EnhancedAutoSyncService {
 
     let deletionSyncResult: DeletionSyncResult | null = null;
     if (deletedBuyers.length > 0) {
-      deletionSyncResult = await this.syncDeletedBuyers(deletedBuyers);
+      // 安全ガード3: 削除対象がアクティブ買主の10%以上の場合は削除処理をスキップ
+      const activeBuyerCount = (await this.getAllActiveBuyerNumbers()).size;
+      if (activeBuyerCount > 0) {
+        const deletionRatio = deletedBuyers.length / activeBuyerCount;
+        if (deletionRatio >= 0.1) {
+          console.error(`🚨 SAFETY GUARD 3: Deletion target (${deletedBuyers.length}) is ${(deletionRatio * 100).toFixed(1)}% of active buyers (${activeBuyerCount}). This exceeds the 10% threshold. Skipping deletion to prevent accidental mass deletion. Manual review required.`);
+        } else {
+          deletionSyncResult = await this.syncDeletedBuyers(deletedBuyers);
+        }
+      }
     }
 
     console.log('✅ Buyer sync completed');
