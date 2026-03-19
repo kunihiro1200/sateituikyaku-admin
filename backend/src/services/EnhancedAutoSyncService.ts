@@ -3395,16 +3395,9 @@ export class EnhancedAutoSyncService {
         console.log('✅ No missing sellers to sync');
       }
 
-      // Phase 2: 更新同期
-      console.log('\n🔄 Phase 2: Seller Update Sync');
-      const updatedSellers = await this.detectUpdatedSellers();
-      if (updatedSellers.length > 0) {
-        const updateResult = await this.syncUpdatedSellers(updatedSellers);
-        updated = updateResult.updatedSellersCount;
-        errors.push(...updateResult.errors);
-      } else {
-        console.log('✅ No sellers to update');
-      }
+      // Phase 2: 更新同期（GASトリガー時はスキップ：全件比較が重いため）
+      console.log('\n⏭️  Phase 2: Seller Update Sync (Skipped for GAS trigger)');
+      // 更新同期はVercelの定期同期（5分ごと）で実行される
 
       // Phase 3: 削除同期
       if (this.isDeletionSyncEnabled()) {
