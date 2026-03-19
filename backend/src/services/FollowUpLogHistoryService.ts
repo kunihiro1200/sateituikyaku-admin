@@ -148,12 +148,14 @@ export class FollowUpLogHistoryService {
     const dateValue = row[mapping.date];
     let date: Date;
     if (typeof dateValue === 'string') {
-      date = new Date(dateValue);
+      // "2026/03/16 12:14" のような形式をJSTとして解釈
+      const normalized = dateValue.replace(/\//g, '-');
+      date = new Date(normalized);
       if (isNaN(date.getTime())) {
         throw new Error(`Invalid date format: ${dateValue}`);
       }
     } else if (typeof dateValue === 'number') {
-      // Excelのシリアル日付の場合
+      // Excelのシリアル日付（小数部分に時刻情報あり）
       date = this.excelDateToJSDate(dateValue);
     } else {
       throw new Error(`Invalid date value: ${dateValue}`);
@@ -187,24 +189,15 @@ export class FollowUpLogHistoryService {
 
   /**
    * Excelのシリアル日付をJavaScript Dateに変換
-   * @param serial Excelのシリアル日付
-   * @returns JavaScript Date
+   * シリアル値の小数部分に時刻情報が含まれるため、時刻も正確に変換する
+   * @param serial Excelのシリアル日付（小数部分 = 時刻）
+   * @returns JavaScript Date（JST）
    */
   private excelDateToJSDate(serial: number): Date {
-    // Excelの日付は1900年1月1日からの日数
-    // ただし、Excelには1900年がうるう年という誤った仮定があるため、60日以降は1日ずれる
-    const utc_days = Math.floor(serial - 25569);
-    const utc_value = utc_days * 86400;
-    const date_info = new Date(utc_value * 1000);
-
-    return new Date(
-      date_info.getFullYear(),
-      date_info.getMonth(),
-      date_info.getDate(),
-      0,
-      0,
-      0
-    );
+    // Excelのシリアル値をUTCミリ秒に変換
+    // 25569 = 1970/1/1のExcelシリアル値
+    const utc_ms = (serial - 25569) * 86400 * 1000;
+    return new Date(utc_ms);
   }
 
   /**

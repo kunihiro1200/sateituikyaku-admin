@@ -177,10 +177,10 @@ export const FollowUpLogHistoryTable: React.FC<FollowUpLogHistoryTableProps> = (
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">日付</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">コメント</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">担当者（前半）</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">担当者（後半）</th>
-                <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">不在2回目</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">不通のための2度目架電...</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">担当（前半）</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">担当（後半）</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"></th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -189,8 +189,8 @@ export const FollowUpLogHistoryTable: React.FC<FollowUpLogHistoryTableProps> = (
                   <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
                     {formatDate(entry.date)}
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-900 max-w-md">
-                    <div className="line-clamp-3">{entry.comment}</div>
+                  <td className="px-4 py-3 whitespace-nowrap text-center">
+                    <BooleanIndicator value={entry.secondCallDueToNoAnswer} />
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
                     {entry.assigneeFirstHalf}
@@ -198,8 +198,8 @@ export const FollowUpLogHistoryTable: React.FC<FollowUpLogHistoryTableProps> = (
                   <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
                     {entry.assigneeSecondHalf}
                   </td>
-                  <td className="px-4 py-3 whitespace-nowrap text-center">
-                    <BooleanIndicator value={entry.secondCallDueToNoAnswer} />
+                  <td className="px-4 py-3 text-sm text-gray-900 max-w-md">
+                    <div className="line-clamp-3">{entry.comment}</div>
                   </td>
                 </tr>
               ))}
