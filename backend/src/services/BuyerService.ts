@@ -1028,58 +1028,44 @@ export class BuyerService {
       return [];
     }
 
-    const allBuyers: any[] = [];
-    const pageSize = 1000;
-    let page = 0;
-    let hasMore = true;
+    // DBレベルで distribution_type = '要' に絞り込み（最大のボトルネック解消）
+    // latest_status が成約・Dを含むものも除外
+    const { data: allBuyers, error } = await this.supabase
+      .from('buyers')
+      .select(`
+        buyer_id,
+        buyer_number,
+        name,
+        latest_status,
+        latest_viewing_date,
+        inquiry_confidence,
+        inquiry_source,
+        distribution_type,
+        distribution_areas,
+        broker_inquiry,
+        desired_area,
+        desired_property_type,
+        price_range_house,
+        price_range_apartment,
+        price_range_land,
+        reception_date,
+        email,
+        phone_number,
+        property_type,
+        property_number,
+        price,
+        inquiry_hearing,
+        viewing_result_follow_up
+      `)
+      .eq('distribution_type', '要')
+      .not('latest_status', 'ilike', '%成約%')
+      .not('latest_status', 'ilike', '%D%');
 
-    while (hasMore) {
-      const { data, error } = await this.supabase
-        .from('buyers')
-        .select(`
-          buyer_id,
-          buyer_number,
-          name,
-          latest_status,
-          latest_viewing_date,
-          inquiry_confidence,
-          inquiry_source,
-          distribution_type,
-          distribution_areas,
-          broker_inquiry,
-          desired_area,
-          desired_property_type,
-          price_range_house,
-          price_range_apartment,
-          price_range_land,
-          reception_date,
-          email,
-          phone_number,
-          property_type,
-          property_number,
-          price,
-          inquiry_hearing,
-          viewing_result_follow_up
-        `)
-        .range(page * pageSize, (page + 1) * pageSize - 1);
-
-      if (error) {
-        throw new Error(`Failed to fetch buyers by areas: ${error.message}`);
-      }
-
-      if (data && data.length > 0) {
-        allBuyers.push(...data);
-        if (data.length < pageSize) {
-          hasMore = false;
-        } else {
-          page++;
-        }
-      } else {
-        hasMore = false;
-      }
+    if (error) {
+      throw new Error(`Failed to fetch buyers by areas: ${error.message}`);
     }
 
-    const filteredBuyers = this.filterBuyerCandidates(allBuyers, areaNumbers, propertyType, salesPrice);
+    const filteredBuyers = this.filterBuyerCandidates(allBuyers || [], areaNumbers, propertyType, salesPrice);
     const sortedBuyers = this.sortBuyersByDateAndConfidence(filteredBuyers);
 
     // property_listingsからproperty_addressを取得して付与
