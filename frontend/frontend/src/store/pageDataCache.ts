@@ -62,4 +62,12 @@ export const CACHE_KEYS = {
   SELLERS_SIDEBAR_COUNTS: 'sellers_sidebar_counts',
   SELLERS_ASSIGNEE_INITIALS: 'sellers_assignee_initials',
   SELLERS_LIST: 'sellers_list',
+  SELLER_DETAIL: 'seller_detail', // 売主詳細（一覧→通話モードのプリフェッチ用）
 } as const;
+
+/**
+ * 売主詳細キャッシュキーを生成する
+ */
+export function sellerDetailCacheKey(sellerId: string): string {
+  return `${CACHE_KEYS.SELLER_DETAIL}:${sellerId}`;
+}

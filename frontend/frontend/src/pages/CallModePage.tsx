@@ -59,6 +59,7 @@ import { getActiveEmployees, Employee } from '../services/employeeService';
 import SellerStatusSidebar from '../components/SellerStatusSidebar';
 import { getSenderAddress, saveSenderAddress, validateSenderAddress } from '../utils/senderAddressStorage';
 import { useCallModeQuickButtonState } from '../hooks/useCallModeQuickButtonState';
+import { pageDataCache, sellerDetailCacheKey } from '../store/pageDataCache';
 import PropertyMapSection from '../components/PropertyMapSection';
 import NearbyBuyersList from '../components/NearbyBuyersList';
 import CollapsibleSection from '../components/CollapsibleSection';
@@ -987,13 +988,29 @@ const CallModePage = () => {
       console.log('=== loadAllData開始 ===');
       console.log('売主ID:', id);
       
-      // 売主データだけ先に取得して即座に画面表示
-      // employees と property はバックグラウンドで並列取得（画面表示をブロックしない）
-      const sellerResponse = await api.get(`/api/sellers/${id}`);
+      // 一覧ページから遷移した場合、pageDataCache に売主データが既にある可能性がある
+      // キャッシュがあれば即座に画面表示（/api/sellers/:id の待ち時間をゼロにする）
+      const cachedSeller = id ? pageDataCache.get<any>(sellerDetailCacheKey(id)) : null;
 
-      // 売主情報を設定
-      const sellerData = sellerResponse.data;
-      
+      let sellerData: any;
+      if (cachedSeller) {
+        console.log('[PERF] loadAllData: cache hit - using prefetched seller data');
+        sellerData = cachedSeller;
+        // バックグラウンドで最新データを取得してキャッシュと表示を更新
+        api.get(`/api/sellers/${id}`).then((freshResponse) => {
+          const freshData = freshResponse.data;
+          if (freshData && freshData.id) {
+            pageDataCache.set(sellerDetailCacheKey(id!), freshData, 30 * 1000);
+            setSeller(freshData);
+            setUnreachableStatus(freshData.unreachableStatus || null);
+          }
+        }).catch(() => {});
+      } else {
+        // キャッシュなし → 通常通り API を呼び出す
+        const sellerResponse = await api.get(`/api/sellers/${id}`);
+        sellerData = sellerResponse.data;
+      }
+
       // 売主データが存在することを確認
       if (!sellerData || !sellerData.id) {
         throw new Error('売主データが取得できませんでした');

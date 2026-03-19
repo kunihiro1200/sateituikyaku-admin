@@ -26,7 +26,7 @@ import {
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
-import { pageDataCache, CACHE_KEYS } from '../store/pageDataCache';
+import { pageDataCache, CACHE_KEYS, sellerDetailCacheKey } from '../store/pageDataCache';
 import {
   StatusCategory,
   filterSellersByCategory,
@@ -676,6 +676,9 @@ export default function SellersPage() {
                       // スクロール位置と売主IDを保存
                       sessionStorage.setItem('sellersScrollPosition', window.scrollY.toString());
                       sessionStorage.setItem('selectedSellerId', seller.id);
+                      // 一覧で取得済みの売主データをキャッシュに保存（通話モードページのプリフェッチ用）
+                      // CallModePage.tsx でこのキャッシュを使えば /api/sellers/:id の待ち時間をゼロにできる
+                      pageDataCache.set(sellerDetailCacheKey(seller.id), seller, 30 * 1000); // 30秒TTL
                       navigate(`/sellers/${seller.id}/call`);
                     }}
                     sx={{ cursor: 'pointer' }}
