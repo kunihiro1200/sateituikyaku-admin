@@ -100,6 +100,29 @@ function invalidateSellerCache(sellerId: string): void {
   _sellerCache.delete(sellerId);
 }
 
+// listSellers 用インメモリキャッシュ（60秒TTL）
+// Redis が遅い/未接続の場合でも高速レスポンスを返すための前段キャッシュ
+const _listSellersCache = new Map<string, { data: any; expiresAt: number }>();
+const LIST_SELLERS_CACHE_TTL_MS = 60 * 1000; // 60秒
+
+function getListSellersCache(cacheKey: string): any | null {
+  const entry = _listSellersCache.get(cacheKey);
+  if (!entry) return null;
+  if (Date.now() > entry.expiresAt) {
+    _listSellersCache.delete(cacheKey);
+    return null;
+  }
+  return entry.data;
+}
+
+function setListSellersCache(cacheKey: string, data: any): void {
+  _listSellersCache.set(cacheKey, { data, expiresAt: Date.now() + LIST_SELLERS_CACHE_TTL_MS });
+}
+
+function invalidateListSellersCache(): void {
+  _listSellersCache.clear();
+}
+
 export class SellerService extends BaseRepository {
   private syncQueue?: SyncQueue;
 
@@ -225,6 +248,7 @@ export class SellerService extends BaseRepository {
     const decryptedSeller = await this.decryptSeller(seller);
     
     // キャッシュを無効化（新しいセラーが追加されたのでリストキャッシュをクリア）
+    invalidateListSellersCache(); // インメモリリストキャッシュを即座に無効化
     await CacheHelper.delPattern('sellers:list:*');
     // サイドバーカウントキャッシュも無効化（新規売主追加により集計が変わる可能性があるため）
     await CacheHelper.del('sellers:sidebar-counts');
@@ -578,6 +602,7 @@ export class SellerService extends BaseRepository {
 
     // キャッシュを無効化（インメモリ + Redis）
     invalidateSellerCache(sellerId); // インメモリキャッシュを即座に無効化
+    invalidateListSellersCache(); // リストキャッシュも無効化
     await CacheHelper.del(CacheHelper.generateKey('seller', sellerId));
     await CacheHelper.delPattern('sellers:list:*');
     // サイドバーカウントキャッシュも無効化（売主データ変更により集計が変わる可能性があるため）
@@ -766,10 +791,16 @@ export class SellerService extends BaseRepository {
       statusCategory || 'all'
     );
 
-    // キャッシュをチェック
+    // キャッシュをチェック（インメモリ優先、次にRedis）
+    const inMemoryCached = getListSellersCache(cacheKey);
+    if (inMemoryCached) {
+      console.log('✅ Cache hit for sellers list (in-memory)');
+      return inMemoryCached;
+    }
     const cached = await CacheHelper.get<PaginatedResult<Seller>>(cacheKey);
     if (cached) {
       console.log('✅ Cache hit for sellers list');
+      setListSellersCache(cacheKey, cached); // インメモリにも保存
       return cached;
     }
 
@@ -998,7 +1029,8 @@ export class SellerService extends BaseRepository {
       totalPages: Math.ceil((count || 0) / pageSize),
     };
 
-    // キャッシュに保存
+    // キャッシュに保存（インメモリ + Redis）
+    setListSellersCache(cacheKey, result);
     await CacheHelper.set(cacheKey, result, CACHE_TTL.SELLER_LIST);
 
     return result;

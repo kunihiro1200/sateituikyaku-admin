@@ -61,4 +61,5 @@ export const CACHE_KEYS = {
   BUYERS_STATS: 'buyers_stats',
   SELLERS_SIDEBAR_COUNTS: 'sellers_sidebar_counts',
   SELLERS_ASSIGNEE_INITIALS: 'sellers_assignee_initials',
+  SELLERS_LIST: 'sellers_list',
 } as const;

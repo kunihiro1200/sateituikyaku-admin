@@ -242,6 +242,8 @@ export default function SellersPage() {
           recordsDeleted: result.recordsDeleted,
           hasChanges: true,
         });
+        // 売主リストキャッシュを無効化してから再取得
+        pageDataCache.invalidate(CACHE_KEYS.SELLERS_LIST);
         fetchSellers();
         fetchSidebarCounts(true); // サイドバーカウントも更新（キャッシュ無効化）
       }
@@ -353,10 +355,30 @@ export default function SellersPage() {
       if (selectedCategory && selectedCategory !== 'all') {
         params.statusCategory = selectedCategory;
       }
+
+      // キャッシュキー（パラメータを含む）
+      const cacheKey = `${CACHE_KEYS.SELLERS_LIST}:${JSON.stringify(params)}`;
+
+      // キャッシュが有効な場合は即座に表示
+      const cached = pageDataCache.get<{ data: Seller[]; total: number }>(cacheKey);
+      if (cached) {
+        setSellers(cached.data);
+        setTotal(cached.total);
+        setLoading(false);
+        // バックグラウンドで最新データを取得してキャッシュを更新
+        api.get('/api/sellers', { params }).then((response) => {
+          setSellers(response.data.data);
+          setTotal(response.data.total);
+          pageDataCache.set(cacheKey, { data: response.data.data, total: response.data.total }, 60 * 1000);
+        }).catch((err) => console.error('Background sellers refresh failed:', err));
+        return;
+      }
       
       const response = await api.get('/api/sellers', { params });
       setSellers(response.data.data);
       setTotal(response.data.total);
+      // 1分間キャッシュ
+      pageDataCache.set(cacheKey, { data: response.data.data, total: response.data.total }, 60 * 1000);
     } catch (error) {
       console.error('Failed to fetch sellers:', error);
     } finally {
