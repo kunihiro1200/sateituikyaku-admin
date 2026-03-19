@@ -7,6 +7,28 @@ import { ActivityType, ConfidenceLevel } from '../types';
 const router = Router();
 const followUpService = new FollowUpService();
 
+// 活動履歴のインメモリキャッシュ（TTL: 60秒）
+const activitiesCache = new Map<string, { data: any[]; expiresAt: number }>();
+const ACTIVITIES_CACHE_TTL_MS = 60 * 1000; // 60秒
+
+function getActivitiesCache(sellerId: string): any[] | null {
+  const entry = activitiesCache.get(sellerId);
+  if (!entry) return null;
+  if (Date.now() > entry.expiresAt) {
+    activitiesCache.delete(sellerId);
+    return null;
+  }
+  return entry.data;
+}
+
+function setActivitiesCache(sellerId: string, data: any[]): void {
+  activitiesCache.set(sellerId, { data, expiresAt: Date.now() + ACTIVITIES_CACHE_TTL_MS });
+}
+
+function invalidateActivitiesCache(sellerId: string): void {
+  activitiesCache.delete(sellerId);
+}
+
 // 全てのルートに認証を適用
 router.use(authenticate);
 
@@ -44,6 +66,8 @@ router.post(
         result,
         metadata,
       });
+      // 新規活動を記録したのでキャッシュを無効化
+      invalidateActivitiesCache(sellerId);
       res.status(201).json(activity);
     } catch (error) {
       console.error('Record activity error:', error);
@@ -64,7 +88,15 @@ router.post(
 router.get('/:sellerId/activities', async (req: Request, res: Response) => {
   try {
     const { sellerId } = req.params;
+
+    // キャッシュを確認（60秒TTL）
+    const cached = getActivitiesCache(sellerId);
+    if (cached) {
+      return res.json(cached);
+    }
+
     const activities = await followUpService.getActivityHistory(sellerId);
+    setActivitiesCache(sellerId, activities);
     res.json(activities);
   } catch (error) {
     console.error('Get activity history error:', error);
@@ -107,7 +139,8 @@ router.post(
         content,
         metadata,
       });
-
+      // ヒアリング記録したのでキャッシュを無効化
+      invalidateActivitiesCache(sellerId);
       res.status(201).json(activity);
     } catch (error) {
       console.error('Record hearing error:', error);

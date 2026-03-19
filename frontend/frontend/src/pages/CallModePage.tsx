@@ -987,19 +987,9 @@ const CallModePage = () => {
       console.log('=== loadAllData開始 ===');
       console.log('売主ID:', id);
       
-      // 並列で全データを取得（AI要約以外）
-      // /api/employees はキャッシュ付きの getActiveEmployees() に統一
-      // propertyData も並列で取得（直列フォールバックを排除）
-      const [sellerResponse, activitiesResponse, employeesData, propertyFallbackResponse] = await Promise.all([
-        api.get(`/api/sellers/${id}`),
-        api.get(`/api/sellers/${id}/activities`),
-        getActiveEmployees(),
-        api.get(`/properties/seller/${id}`).catch(() => null),
-      ]);
-
-      // スタッフ一覧を設定（getActiveEmployees はキャッシュ付き）
-      setEmployees(employeesData as any);
-      setActiveEmployees(employeesData);
+      // 売主データだけ先に取得して即座に画面表示
+      // employees と property はバックグラウンドで並列取得（画面表示をブロックしない）
+      const sellerResponse = await api.get(`/api/sellers/${id}`);
 
       // 売主情報を設定
       const sellerData = sellerResponse.data;
@@ -1019,11 +1009,8 @@ const CallModePage = () => {
         setInquiryUrl(null);
       });
       
-      // 物件データを設定（sellerData に含まれていれば優先、なければ並列取得済みのデータを使用）
+      // 物件データを設定（sellerData に含まれていれば使用、なければバックグラウンドで後から設定）
       let propertyData = sellerData.property || null;
-      if (!propertyData && propertyFallbackResponse?.data?.property) {
-        propertyData = propertyFallbackResponse.data.property;
-      }
       
       setProperty(propertyData);
       
@@ -1147,45 +1134,76 @@ const CallModePage = () => {
       setEditedPreferredContactTime(sellerData.preferredContactTime || '');
       setEditedContactMethod(sellerData.contactMethod || '');
 
-      // 活動履歴を設定
-      const convertedActivities = activitiesResponse.data.map((activity: any) => ({
-        id: activity.id,
-        sellerId: activity.seller_id || activity.sellerId,
-        employeeId: activity.employee_id || activity.employeeId,
-        type: activity.type,
-        content: activity.content,
-        result: activity.result,
-        metadata: activity.metadata,
-        createdAt: activity.created_at || activity.createdAt,
-        employee: activity.employee,
-      }));
-      setActivities(convertedActivities);
-
-      // ローディング終了（画面を表示）
+      // ローディング終了（画面を表示）- employees/activities 取得を待たずに表示
       setLoading(false);
 
-      // AI要約を非同期で取得（画面表示後にバックグラウンドで実行）
-      // 通話履歴とスプレッドシートコメントの両方を含めて要約
-      const phoneCalls = convertedActivities.filter((a: Activity) => a.type === 'phone_call');
-      const memosToSummarize: string[] = [];
-      
-      // 通話履歴を追加
-      if (phoneCalls.length > 0) {
-        phoneCalls.forEach((call: Activity) => {
-          memosToSummarize.push(call.content);
+      // employees と property フォールバックをバックグラウンドで並列取得
+      Promise.all([
+        getActiveEmployees().then((employeesData) => {
+          setEmployees(employeesData as any);
+          setActiveEmployees(employeesData);
+        }).catch((err) => {
+          console.error('Failed to load employees:', err);
+        }),
+        api.get(`/properties/seller/${id}`).catch(() => null).then((propertyFallbackResponse) => {
+          // sellerData.property がない場合のみフォールバックを使用
+          if (!sellerData.property && propertyFallbackResponse?.data?.property) {
+            const fallbackProperty = propertyFallbackResponse.data.property;
+            setProperty(fallbackProperty);
+            setEditedPropertyAddress(fallbackProperty.address || '');
+            setEditedPropertyType(fallbackProperty.propertyType || '');
+            setEditedLandArea(fallbackProperty.landArea?.toString() || '');
+            setEditedBuildingArea(fallbackProperty.buildingArea?.toString() || '');
+            setEditedBuildYear(fallbackProperty.buildYear?.toString() || '');
+            setEditedFloorPlan(fallbackProperty.floorPlan || '');
+            setEditedStructure(fallbackProperty.structure || '');
+            setEditedSellerSituation(fallbackProperty.sellerSituation || '');
+          }
+        }),
+      ]);
+
+      // 活動履歴をバックグラウンドで取得（3秒かかるため画面表示をブロックしない）
+      api.get(`/api/sellers/${id}/activities`)
+        .then((activitiesResponse) => {
+          const convertedActivities = activitiesResponse.data.map((activity: any) => ({
+            id: activity.id,
+            sellerId: activity.seller_id || activity.sellerId,
+            employeeId: activity.employee_id || activity.employeeId,
+            type: activity.type,
+            content: activity.content,
+            result: activity.result,
+            metadata: activity.metadata,
+            createdAt: activity.created_at || activity.createdAt,
+            employee: activity.employee,
+          }));
+          setActivities(convertedActivities);
+
+          // AI要約を非同期で取得（activities 取得後にバックグラウンドで実行）
+          // 通話履歴とスプレッドシートコメントの両方を含めて要約
+          const phoneCalls = convertedActivities.filter((a: Activity) => a.type === 'phone_call');
+          const memosToSummarize: string[] = [];
+          
+          // 通話履歴を追加
+          if (phoneCalls.length > 0) {
+            phoneCalls.forEach((call: Activity) => {
+              memosToSummarize.push(call.content);
+            });
+          }
+          
+          // 要約するコンテンツがあれば要約を生成
+          if (memosToSummarize.length > 0) {
+            api.post('/summarize/call-memos', { memos: memosToSummarize })
+              .then((summaryResponse) => {
+                setCallSummary(summaryResponse.data.summary);
+              })
+              .catch((err) => {
+                console.error('Failed to generate summary:', err);
+              });
+          }
+        })
+        .catch((err) => {
+          console.error('Failed to load activities:', err);
         });
-      }
-      
-      // 要約するコンテンツがあれば要約を生成
-      if (memosToSummarize.length > 0) {
-        api.post('/summarize/call-memos', { memos: memosToSummarize })
-          .then((summaryResponse) => {
-            setCallSummary(summaryResponse.data.summary);
-          })
-          .catch((err) => {
-            console.error('Failed to generate summary:', err);
-          });
-      }
 
       // 重複検出を非同期で実行（画面表示後にバックグラウンドで実行）
       loadDuplicates();
