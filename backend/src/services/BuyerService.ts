@@ -1166,11 +1166,24 @@ export class BuyerService {
     return true;
   }
 
+  // 別府市エリア番号一覧（㊶別府市全域・㊸別府市広域の判定に使用）
+  private readonly BEPPU_AREA_NUMBERS = ['\u2468', '\u2469', '\u246A', '\u246B', '\u246C', '\u246D', '\u246E', '\u32B7', '\u32B8'];
+  // ⑨=U+2468, ⑩=U+2469, ⑪=U+246A, ⑫=U+246B, ⑬=U+246C, ⑭=U+246D, ⑮=U+246E, ㊷=U+32B7, ㊸=U+32B8
+
   private matchesAreaCriteria(buyer: any, propertyAreaNumbers: string[]): boolean {
     const desiredArea = (buyer.desired_area || '').trim();
     if (!desiredArea) return true;
     if (propertyAreaNumbers.length === 0) return false;
     const buyerAreaNumbers = this.extractAreaNumbers(desiredArea);
+
+    // ㊶（U+32B6）= 別府市全域: 物件が別府市エリア（⑨〜⑮㊷㊸）のいずれかであれば該当
+    const BEPPU_ALL = '\u32B6'; // ㊶
+    if (buyerAreaNumbers.includes(BEPPU_ALL)) {
+      const isBeppuProperty = propertyAreaNumbers.some(a => this.BEPPU_AREA_NUMBERS.includes(a));
+      if (isBeppuProperty) return true;
+    }
+
+    // 通常のエリアマッチング
     return propertyAreaNumbers.some(area => buyerAreaNumbers.includes(area));
   }
 
@@ -1223,7 +1236,8 @@ export class BuyerService {
   }
 
   private extractAreaNumbers(areaString: string): string[] {
-    return areaString.match(/[①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳]/g) || [];
+    // ①〜⑳（U+2460〜U+2473）および㉑〜㊿（U+3251〜U+32BF）の囲み数字を全て抽出
+    return areaString.match(/[\u2460-\u2473\u3251-\u32BF]/g) || [];
   }
 
   /**
