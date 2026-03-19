@@ -15,6 +15,11 @@
       "dest": "/src/index.ts"
     }
   ],
+  "functions": {
+    "src/index.ts": {
+      "maxDuration": 300
+    }
+  },
   "crons": [
     {
       "path": "/api/cron/buyer-sync",
