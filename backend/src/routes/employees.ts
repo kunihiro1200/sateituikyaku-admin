@@ -9,6 +9,10 @@ const googleAuthService = new GoogleAuthService();
 const employeeUtils = new EmployeeUtils();
 const staffManagementService = new StaffManagementService();
 
+// /active インメモリキャッシュ（TTL: 5分）
+let activeEmployeesCache: { data: any[]; expiresAt: number } | null = null;
+const ACTIVE_EMPLOYEES_CACHE_TTL_MS = 5 * 60 * 1000;
+
 /**
  * スタッフスプレッドシートのヘッダー確認用デバッグエンドポイント
  * GET /api/employees/staff-debug
@@ -48,6 +52,11 @@ router.use(authenticate);
  */
 router.get('/active', async (req: Request, res: Response) => {
   try {
+    // キャッシュ確認（5分TTL）
+    if (activeEmployeesCache && Date.now() < activeEmployeesCache.expiresAt) {
+      return res.json({ employees: activeEmployeesCache.data });
+    }
+
     // 有効な社員でメールアドレスが存在するものを取得
     const employees = await employeeUtils.getActiveEmployeesWithEmail();
 
@@ -73,6 +82,7 @@ router.get('/active', async (req: Request, res: Response) => {
     });
 
     console.log(`Returning ${validEmployees.length} active employees (excluding GYOSHA users)`);
+    activeEmployeesCache = { data: validEmployees, expiresAt: Date.now() + ACTIVE_EMPLOYEES_CACHE_TTL_MS };
     res.json({ employees: validEmployees });
   } catch (error) {
     console.error('Get active employees error:', error);

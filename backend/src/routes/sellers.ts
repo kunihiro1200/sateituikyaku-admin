@@ -11,6 +11,28 @@ import { BuyerService } from '../services/BuyerService';
 const router = Router();
 const sellerService = new SellerService();
 
+// duplicates インメモリキャッシュ（TTL: 60秒）
+const duplicatesCache = new Map<string, { data: any[]; expiresAt: number }>();
+const DUPLICATES_CACHE_TTL_MS = 60 * 1000;
+
+function getDuplicatesCache(sellerId: string): any[] | null {
+  const entry = duplicatesCache.get(sellerId);
+  if (!entry) return null;
+  if (Date.now() > entry.expiresAt) {
+    duplicatesCache.delete(sellerId);
+    return null;
+  }
+  return entry.data;
+}
+
+function setDuplicatesCache(sellerId: string, data: any[]): void {
+  duplicatesCache.set(sellerId, { data, expiresAt: Date.now() + DUPLICATES_CACHE_TTL_MS });
+}
+
+function invalidateDuplicatesCache(sellerId: string): void {
+  duplicatesCache.delete(sellerId);
+}
+
 // 全てのルートに認証を適用
 router.use(authenticate);
 
@@ -368,7 +390,13 @@ router.get('/:id', async (req: Request, res: Response) => {
 router.get('/:id/duplicates', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    
+
+    // キャッシュ確認（60秒TTL）
+    const cached = getDuplicatesCache(id);
+    if (cached) {
+      return res.json({ duplicates: cached });
+    }
+
     // 売主情報を取得
     const seller = await sellerService.getSeller(id);
     
@@ -390,6 +418,7 @@ router.get('/:id/duplicates', async (req: Request, res: Response) => {
       id
     );
     
+    setDuplicatesCache(id, duplicates);
     res.json({ duplicates });
   } catch (error) {
     console.error('Get duplicates error:', error);
@@ -522,6 +551,7 @@ router.put('/:id', async (req: Request, res: Response) => {
     } else {
       // 通常の更新
       const seller = await sellerService.updateSeller(req.params.id, req.body);
+      invalidateDuplicatesCache(req.params.id);
       res.json(seller);
     }
   } catch (error) {

@@ -7,6 +7,10 @@ const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY!;
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+// getPropertyBySellerId インメモリキャッシュ（TTL: 60秒）
+const propertyBySellerCache = new Map<string, { data: any; expiresAt: number }>();
+const PROPERTY_BY_SELLER_CACHE_TTL_MS = 60 * 1000;
+
 /**
  * Service for managing property information
  * Handles property types, structures, seller situations, and verified measurements
@@ -100,6 +104,12 @@ export class PropertyService {
    * @returns Property information or null if not found
    */
   async getPropertyBySellerId(sellerId: string, includeDeleted: boolean = false): Promise<PropertyInfo | null> {
+    // キャッシュ確認（60秒TTL）
+    const cacheEntry = propertyBySellerCache.get(sellerId);
+    if (cacheEntry && Date.now() < cacheEntry.expiresAt) {
+      return cacheEntry.data;
+    }
+
     try {
       let query = supabase
         .from('properties')
@@ -111,17 +121,24 @@ export class PropertyService {
 
       if (error) {
         if (error.code === 'PGRST116') {
+          propertyBySellerCache.set(sellerId, { data: null, expiresAt: Date.now() + PROPERTY_BY_SELLER_CACHE_TTL_MS });
           return null;
         }
         console.error('Error getting property by seller:', error);
         throw new Error(`Failed to get property by seller: ${error.message}`);
       }
 
-      return this.mapToPropertyInfo(data);
+      const result = this.mapToPropertyInfo(data);
+      propertyBySellerCache.set(sellerId, { data: result, expiresAt: Date.now() + PROPERTY_BY_SELLER_CACHE_TTL_MS });
+      return result;
     } catch (error) {
       console.error('Get property by seller error:', error);
       throw error;
     }
+  }
+
+  invalidatePropertyBySellerCache(sellerId: string): void {
+    propertyBySellerCache.delete(sellerId);
   }
 
   /**
