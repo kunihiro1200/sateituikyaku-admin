@@ -22,14 +22,19 @@ export interface SellerFolder {
 
 export class GoogleDriveService extends BaseRepository {
   private parentFolderId: string;
+  private sharedDriveId: string;
   private serviceAccountAuth: any = null;
 
   constructor() {
     super();
     this.parentFolderId = process.env.GOOGLE_DRIVE_PARENT_FOLDER_ID || '';
+    this.sharedDriveId = process.env.GOOGLE_SHARED_DRIVE_ID || '';
     
     if (!this.parentFolderId) {
       console.warn('⚠️ GOOGLE_DRIVE_PARENT_FOLDER_ID is not configured');
+    }
+    if (!this.sharedDriveId) {
+      console.warn('⚠️ GOOGLE_SHARED_DRIVE_ID is not configured');
     }
     
     this.initializeServiceAccount();
@@ -119,11 +124,11 @@ export class GoogleDriveService extends BaseRepository {
       };
       
       // 共有ドライブの場合
-      if (isSharedDrive && this.parentFolderId) {
+      if (isSharedDrive && this.sharedDriveId) {
         queryParams.supportsAllDrives = true;
         queryParams.includeItemsFromAllDrives = true;
         queryParams.corpora = 'drive';
-        queryParams.driveId = this.parentFolderId;
+        queryParams.driveId = this.sharedDriveId;
       } else {
         // マイドライブの場合
         queryParams.corpora = 'user';
@@ -370,7 +375,7 @@ export class GoogleDriveService extends BaseRepository {
         supportsAllDrives: true,
         includeItemsFromAllDrives: true,
         corpora: 'drive',
-        driveId: this.parentFolderId,
+        driveId: this.sharedDriveId,
       });
 
       const files = response.data.files || [];
@@ -555,8 +560,8 @@ export class GoogleDriveService extends BaseRepository {
       const drive = await this.getDriveClient();
       
       // 共有ドライブを使用している場合は corpora: 'drive' と driveId を指定
-      // 使用していない場合は corpora: 'user' を指定
-      const isSharedDrive = !!this.parentFolderId;
+      // sharedDriveIdが設定されている場合のみ共有ドライブとして扱う
+      const isSharedDrive = !!this.sharedDriveId;
       
       const queryParams: any = {
         q: `'${folderId}' in parents and trashed = false and (mimeType contains 'image/')`,
@@ -568,7 +573,7 @@ export class GoogleDriveService extends BaseRepository {
       
       if (isSharedDrive) {
         queryParams.corpora = 'drive';
-        queryParams.driveId = this.parentFolderId;
+        queryParams.driveId = this.sharedDriveId;
       } else {
         queryParams.corpora = 'user';
       }
@@ -690,7 +695,7 @@ export class GoogleDriveService extends BaseRepository {
         supportsAllDrives: true,
         includeItemsFromAllDrives: true,
         corpora: 'drive',
-        driveId: this.parentFolderId, // 共有ドライブID
+        driveId: this.sharedDriveId, // 共有ドライブID
       });
 
       const files = response.data.files || [];
@@ -998,9 +1003,9 @@ export class GoogleDriveService extends BaseRepository {
         includeItemsFromAllDrives: true,
       };
       
-      if (isSharedDrive && this.parentFolderId) {
+      if (isSharedDrive && this.sharedDriveId) {
         queryParams.corpora = 'drive';
-        queryParams.driveId = this.parentFolderId;
+        queryParams.driveId = this.sharedDriveId;
       } else {
         queryParams.corpora = 'user';
       }
