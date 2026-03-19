@@ -352,6 +352,10 @@ const CallModePage = () => {
   const [callMemo, setCallMemo] = useState<string>('');
   const [savingMemo, setSavingMemo] = useState(false);
 
+  // コメント直接編集の状態
+  const [editableComments, setEditableComments] = useState<string>('');
+  const [savingComments, setSavingComments] = useState(false);
+
   // ステータス更新用の状態
   const [editedStatus, setEditedStatus] = useState<string>('追客中');
   const [editedConfidence, setEditedConfidence] = useState<ConfidenceLevel>(ConfidenceLevel.B);
@@ -1003,6 +1007,7 @@ const CallModePage = () => {
             pageDataCache.set(sellerDetailCacheKey(id!), freshData, 30 * 1000);
             setSeller(freshData);
             setUnreachableStatus(freshData.unreachableStatus || null);
+            setEditableComments(freshData.comments || '');
           }
         }).catch(() => {});
       } else {
@@ -1018,6 +1023,7 @@ const CallModePage = () => {
       
       setSeller(sellerData);
       setUnreachableStatus(sellerData.unreachableStatus || null);
+      setEditableComments(sellerData.comments || '');
 
       // 反響URLを非同期で取得（エラーでも続行）
       api.get(`/api/sellers/${id}/inquiry-url`).then(r => {
@@ -1401,6 +1407,28 @@ const CallModePage = () => {
       setCallMemo(boldText + '<br>' + callMemo);
     } else {
       setCallMemo(boldText);
+    }
+  };
+
+  // コメント直接編集の保存処理
+  const handleSaveComments = async () => {
+    try {
+      setSavingComments(true);
+      setError(null);
+
+      await api.put(`/api/sellers/${id}`, {
+        comments: editableComments,
+      });
+
+      setSuccessMessage('コメントを保存しました');
+      setTimeout(() => {
+        setSuccessMessage(null);
+      }, 3000);
+    } catch (err: any) {
+      console.error('コメント保存エラー:', err);
+      setError('コメントの保存に失敗しました');
+    } finally {
+      setSavingComments(false);
     }
   };
 
@@ -5116,23 +5144,30 @@ HP：https://ifoo-oita.com/
               {savingMemo ? <CircularProgress size={24} /> : '保存'}
             </Button>
 
-            {/* スプレッドシートコメント表示（読み取り専用） */}
+            {/* コメント表示・編集エリア */}
             <Box sx={{ mb: 2 }}>
               <Typography variant="subtitle2" gutterBottom>
-                スプレッドシートコメント（読み取り専用）
+                コメント
               </Typography>
-              <Paper sx={{ p: 2, bgcolor: 'grey.50' }}>
-                <Typography
-                  variant="body2"
-                  sx={{
-                    whiteSpace: 'pre-wrap',
-                    wordBreak: 'break-word',
-                    color: 'text.secondary',
-                  }}
-                >
-                  {seller?.comments || 'コメントはありません'}
-                </Typography>
-              </Paper>
+              <TextField
+                multiline
+                fullWidth
+                minRows={4}
+                value={editableComments}
+                onChange={(e) => setEditableComments(e.target.value)}
+                placeholder="コメントはありません"
+                variant="outlined"
+                sx={{ bgcolor: 'white' }}
+              />
+              <Button
+                variant="outlined"
+                size="small"
+                disabled={savingComments}
+                onClick={handleSaveComments}
+                sx={{ mt: 1 }}
+              >
+                {savingComments ? <CircularProgress size={16} /> : 'コメントを保存'}
+              </Button>
             </Box>
 
             {/* 不通フィールド（inquiry_date >= 2026-01-01の売主のみ表示） */}
