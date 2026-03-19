@@ -183,7 +183,7 @@ export class FollowUpLogHistoryService {
       assigneeHalf: String(row[mapping.assigneeHalf] || ''),
       firstHalfCompleted: parseBool(row[mapping.firstHalfCompleted]),
       secondHalfCompleted: parseBool(row[mapping.secondHalfCompleted]),
-      secondCallDueToNoAnswer: parseBool(row[mapping.secondCallDueToNoAnswer]),
+      secondCallDueToNoAnswer: String(row[mapping.secondCallDueToNoAnswer] || ''),
     };
   }
 

@@ -21,7 +21,7 @@ export interface FollowUpLogHistoryEntry {
   // ステータスフィールド
   firstHalfCompleted: boolean;         // 前半完了
   secondHalfCompleted: boolean;        // 後半完了
-  secondCallDueToNoAnswer: boolean;    // 不在による2回目架電
+  secondCallDueToNoAnswer: string;     // 不在による2回目架電（担当者イニシャルまたは空）
 }
 
 /**

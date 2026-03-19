@@ -14,7 +14,7 @@ interface FollowUpLogHistoryEntry {
   assigneeHalf: string;
   firstHalfCompleted: boolean;
   secondHalfCompleted: boolean;
-  secondCallDueToNoAnswer: boolean;
+  secondCallDueToNoAnswer: string;
 }
 
 interface FollowUpLogHistoryTableProps {
@@ -96,13 +96,6 @@ export const FollowUpLogHistoryTable: React.FC<FollowUpLogHistoryTableProps> = (
       return dateString;
     }
   };
-
-  // ブール値インジケーター
-  const BooleanIndicator: React.FC<{ value: boolean }> = ({ value }) => (
-    <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full ${value ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-400'}`}>
-      {value ? '✓' : '−'}
-    </span>
-  );
 
   if (loading && !refreshing) {
     return (
@@ -189,8 +182,8 @@ export const FollowUpLogHistoryTable: React.FC<FollowUpLogHistoryTableProps> = (
                   <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
                     {formatDate(entry.date)}
                   </td>
-                  <td className="px-4 py-3 whitespace-nowrap text-center">
-                    <BooleanIndicator value={entry.secondCallDueToNoAnswer} />
+                  <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 text-center">
+                    {entry.secondCallDueToNoAnswer}
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
                     {entry.assigneeFirstHalf}
