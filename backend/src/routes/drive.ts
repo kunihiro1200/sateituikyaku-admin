@@ -72,6 +72,57 @@ router.get('/folders/contents', authenticate, async (req: Request, res: Response
 });
 
 /**
+ * GET /api/drive/debug
+ * デバッグ: 共有ドライブへのアクセス確認
+ */
+router.get('/debug', authenticate, async (req: Request, res: Response) => {
+  try {
+    const { google } = require('googleapis');
+    const parentFolderId = process.env.GOOGLE_DRIVE_PARENT_FOLDER_ID || '';
+    const sharedDriveId = process.env.GOOGLE_SHARED_DRIVE_ID || '';
+    
+    let keyFile: any;
+    if (process.env.GOOGLE_SERVICE_ACCOUNT_JSON) {
+      keyFile = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON);
+      if (keyFile.private_key) keyFile.private_key = keyFile.private_key.replace(/\\n/g, '\n');
+    }
+    
+    const auth = new google.auth.GoogleAuth({
+      credentials: keyFile,
+      scopes: ['https://www.googleapis.com/auth/drive'],
+    });
+    const authClient = await auth.getClient();
+    const drive = google.drive({ version: 'v3', auth: authClient });
+    
+    // 1. 共有ドライブ一覧を取得
+    const drivesRes = await drive.drives.list({ pageSize: 10 });
+    
+    // 2. 親フォルダの情報を取得
+    let folderInfo = null;
+    try {
+      const folderRes = await drive.files.get({
+        fileId: parentFolderId,
+        fields: 'id, name, parents',
+        supportsAllDrives: true,
+      });
+      folderInfo = folderRes.data;
+    } catch (e: any) {
+      folderInfo = { error: e.message };
+    }
+    
+    res.json({
+      parentFolderId,
+      sharedDriveId,
+      serviceAccountEmail: keyFile?.client_email,
+      drives: drivesRes.data.drives,
+      folderInfo,
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message, stack: error.stack });
+  }
+});
+
+/**
  * GET /api/drive/folders/:sellerNumber
  * 売主フォルダの情報を取得（存在しない場合は作成）
  */
