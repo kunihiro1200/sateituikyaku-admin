@@ -194,10 +194,13 @@ export class FollowUpLogHistoryService {
    * @returns JavaScript Date（JST）
    */
   private excelDateToJSDate(serial: number): Date {
-    // Excelのシリアル値をUTCミリ秒に変換
+    // Excelのシリアル値はJST（ローカル時刻）で格納されている
     // 25569 = 1970/1/1のExcelシリアル値
-    const utc_ms = (serial - 25569) * 86400 * 1000;
-    return new Date(utc_ms);
+    // シリアル値をミリ秒に変換（UTC基準）
+    const ms = (serial - 25569) * 86400 * 1000;
+    // JSTはUTC+9なので、9時間分を引いてUTCに変換
+    const JST_OFFSET_MS = 9 * 60 * 60 * 1000;
+    return new Date(ms - JST_OFFSET_MS);
   }
 
   /**
