@@ -252,6 +252,53 @@ app.get('/api/cron/sync-inquiries', async (req, res) => {
   }
 });
 
+// Cron Job: GAS onEditトリガー用 - スプレッドシートの1行分のデータを受け取ってDBを更新
+// ⚠️ 注意: 他のルートより前に設定（authenticateミドルウェアが適用されないようにするため）
+app.post('/api/cron/seller-row', async (req, res) => {
+  try {
+    // CRON_SECRET認証チェック
+    const authHeader = req.headers.authorization;
+    const cronSecret = process.env.CRON_SECRET;
+    if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+      console.error('[Cron seller-row] Unauthorized access attempt');
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const row = req.body;
+    const sellerNumber = row['売主番号'];
+
+    if (!sellerNumber || typeof sellerNumber !== 'string' || !sellerNumber.startsWith('AA')) {
+      return res.status(400).json({ success: false, error: '売主番号が不正です' });
+    }
+
+    console.log(`[Cron seller-row] Processing: ${sellerNumber}`);
+
+    const { getEnhancedAutoSyncService } = await import('./services/EnhancedAutoSyncService');
+    const syncService = getEnhancedAutoSyncService();
+    await syncService.initialize();
+
+    // DBに売主が存在するか確認
+    const { data: existing } = await supabase
+      .from('sellers')
+      .select('seller_number')
+      .eq('seller_number', sellerNumber)
+      .single();
+
+    if (existing) {
+      await syncService.updateSingleSeller(sellerNumber, row);
+      console.log(`✅ [Cron seller-row] Updated: ${sellerNumber}`);
+      res.json({ success: true, action: 'updated', sellerNumber });
+    } else {
+      await syncService.syncSingleSeller(sellerNumber, row);
+      console.log(`✅ [Cron seller-row] Created: ${sellerNumber}`);
+      res.json({ success: true, action: 'created', sellerNumber });
+    }
+  } catch (error: any) {
+    console.error('[Cron seller-row] Error:', error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // Routes
 app.use('/auth', authSupabaseRoutes);
 app.use('/api/auth', authSupabaseRoutes);

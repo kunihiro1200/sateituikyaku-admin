@@ -227,3 +227,169 @@ function testFillInquiryUrls() {
   fillInquiryUrls();
   Logger.log('=== 反響URL更新テスト完了 ===');
 }
+
+/**
+ * onEditトリガー用: スプレッドシートの編集時に即時同期
+ * 
+ * セットアップ方法:
+ *   setupOnEditTrigger() を一度実行してトリガーを登録する
+ * 
+ * エンドポイント: POST /api/cron/seller-row
+ * ※ /api/sync/seller-row ではなく /api/cron/seller-row を使用すること
+ *   （authenticateミドルウェアが適用されないパスに変更済み）
+ */
+
+/**
+ * スプレッドシート編集時に呼び出される関数
+ * 編集された行のデータをバックエンドAPIに送信してDBを即時更新する
+ */
+function onSellerRowEdit(e) {
+  try {
+    var sheet = e.source.getActiveSheet();
+
+    // 「売主リスト」シート以外は無視
+    if (sheet.getName() !== '売主リスト') {
+      return;
+    }
+
+    var range = e.range;
+    var row = range.getRow();
+
+    // ヘッダー行（1行目）は無視
+    if (row <= 1) {
+      return;
+    }
+
+    // 編集された行の全データを取得
+    var lastCol = sheet.getLastColumn();
+    var rowData = sheet.getRange(row, 1, 1, lastCol).getValues()[0];
+    var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+
+    // ヘッダーと値をオブジェクトにマッピング
+    var rowObj = {};
+    for (var i = 0; i < headers.length; i++) {
+      var header = String(headers[i]).trim();
+      if (header) {
+        var val = rowData[i];
+        // Date型は文字列に変換
+        if (val instanceof Date) {
+          var y = val.getFullYear();
+          var mo = String(val.getMonth() + 1).padStart(2, '0');
+          var d = String(val.getDate()).padStart(2, '0');
+          rowObj[header] = y + '/' + mo + '/' + d;
+        } else {
+          rowObj[header] = val !== null && val !== undefined ? String(val) : '';
+        }
+      }
+    }
+
+    // 売主番号が空またはAAで始まらない場合は無視
+    var sellerNumber = rowObj['売主番号'];
+    if (!sellerNumber || !sellerNumber.startsWith('AA')) {
+      return;
+    }
+
+    Logger.log('[onEdit] 売主番号: ' + sellerNumber + ' の行を同期します');
+
+    // バックエンドAPIに送信
+    var url = SELLER_SYNC_CONFIG.BACKEND_URL + '/api/cron/seller-row';
+    var options = {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + SELLER_SYNC_CONFIG.CRON_SECRET
+      },
+      payload: JSON.stringify(rowObj),
+      muteHttpExceptions: true
+    };
+
+    var response = UrlFetchApp.fetch(url, options);
+    var statusCode = response.getResponseCode();
+    var responseText = response.getContentText();
+
+    if (statusCode >= 200 && statusCode < 300) {
+      var result = JSON.parse(responseText);
+      Logger.log('✅ [onEdit] 同期成功: ' + sellerNumber + ' (' + result.action + ')');
+    } else {
+      Logger.log('❌ [onEdit] 同期失敗: HTTP ' + statusCode + ' / ' + responseText);
+    }
+
+  } catch (err) {
+    Logger.log('❌ [onEdit] エラー: ' + err.toString());
+    Logger.log(err.stack);
+  }
+}
+
+/**
+ * onEditトリガーを登録する（一度だけ実行する）
+ */
+function setupOnEditTrigger() {
+  // 既存のonSellerRowEditトリガーを削除
+  var triggers = ScriptApp.getProjectTriggers();
+  for (var i = 0; i < triggers.length; i++) {
+    if (triggers[i].getHandlerFunction() === 'onSellerRowEdit') {
+      ScriptApp.deleteTrigger(triggers[i]);
+      Logger.log('既存のonEditトリガーを削除しました');
+    }
+  }
+
+  // 新しいonEditトリガーを作成
+  ScriptApp.newTrigger('onSellerRowEdit')
+    .forSpreadsheet(SpreadsheetApp.getActiveSpreadsheet())
+    .onEdit()
+    .create();
+
+  Logger.log('✅ onEditトリガーを登録しました（関数: onSellerRowEdit）');
+}
+
+/**
+ * onEditトリガーのテスト（手動実行用）
+ * 指定した売主番号の行データを手動で送信する
+ */
+function testOnEditSync() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName('売主リスト');
+  if (!sheet) {
+    Logger.log('❌ 売主リストシートが見つかりません');
+    return;
+  }
+
+  // 2行目（最初のデータ行）をテスト送信
+  var testRow = 2;
+  var lastCol = sheet.getLastColumn();
+  var rowData = sheet.getRange(testRow, 1, 1, lastCol).getValues()[0];
+  var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+
+  var rowObj = {};
+  for (var i = 0; i < headers.length; i++) {
+    var header = String(headers[i]).trim();
+    if (header) {
+      var val = rowData[i];
+      if (val instanceof Date) {
+        var y = val.getFullYear();
+        var mo = String(val.getMonth() + 1).padStart(2, '0');
+        var d = String(val.getDate()).padStart(2, '0');
+        rowObj[header] = y + '/' + mo + '/' + d;
+      } else {
+        rowObj[header] = val !== null && val !== undefined ? String(val) : '';
+      }
+    }
+  }
+
+  Logger.log('テスト送信データ: ' + JSON.stringify(rowObj).substring(0, 200) + '...');
+
+  var url = SELLER_SYNC_CONFIG.BACKEND_URL + '/api/cron/seller-row';
+  var options = {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + SELLER_SYNC_CONFIG.CRON_SECRET
+    },
+    payload: JSON.stringify(rowObj),
+    muteHttpExceptions: true
+  };
+
+  var response = UrlFetchApp.fetch(url, options);
+  Logger.log('ステータス: ' + response.getResponseCode());
+  Logger.log('レスポンス: ' + response.getContentText());
+}
