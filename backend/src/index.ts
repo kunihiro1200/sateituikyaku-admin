@@ -252,9 +252,9 @@ app.get('/api/cron/sync-inquiries', async (req, res) => {
   }
 });
 
-// Cron Job: GAS onEditトリガー用 - スプレッドシートの1行分のデータを受け取ってDBを更新
-// ⚠️ 注意: 他のルートより前に設定（authenticateミドルウェアが適用されないようにするため）
-app.post('/api/cron/seller-row', async (req, res) => {
+// GAS onEditトリガー用 - スプレッドシートの1行分のデータを受け取ってDBを更新
+// ⚠️ 注意: /api/cron/ パスはVercelが保護するため /api/webhook/ パスを使用
+app.post('/api/webhook/seller-row', async (req, res) => {
   try {
     // CRON_SECRET認証チェック
     const authHeader = req.headers.authorization;

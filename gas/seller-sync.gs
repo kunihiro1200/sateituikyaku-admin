@@ -292,7 +292,7 @@ function onSellerRowEdit(e) {
     Logger.log('[onEdit] 売主番号: ' + sellerNumber + ' の行を同期します');
 
     // バックエンドAPIに送信
-    var url = SELLER_SYNC_CONFIG.BACKEND_URL + '/api/cron/seller-row';
+    var url = SELLER_SYNC_CONFIG.BACKEND_URL + '/api/webhook/seller-row';
     var options = {
       method: 'POST',
       headers: {
@@ -378,7 +378,7 @@ function testOnEditSync() {
 
   Logger.log('テスト送信データ: ' + JSON.stringify(rowObj).substring(0, 200) + '...');
 
-  var url = SELLER_SYNC_CONFIG.BACKEND_URL + '/api/cron/seller-row';
+  var url = SELLER_SYNC_CONFIG.BACKEND_URL + '/api/webhook/seller-row';
   var options = {
     method: 'POST',
     headers: {
