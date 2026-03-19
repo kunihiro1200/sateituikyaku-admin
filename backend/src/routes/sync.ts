@@ -539,46 +539,72 @@ router.post('/trigger', async (req: Request, res: Response) => {
     return res.status(401).json({ success: false, error: 'Unauthorized' });
   }
 
-  // 同期的に実行（Vercelサーバーレス関数はレスポンス後にsetImmediateが動かないため）
+  // sellersOnly=true の場合は売主同期のみ（Phase 1-3）を実行してタイムアウトを回避
   // GASのタイムアウトは6分あるので、同期処理が完了するまで待つ
+  const sellersOnly = req.query.sellersOnly === 'true';
+
   try {
     const { getEnhancedAutoSyncService } = await import('../services/EnhancedAutoSyncService');
     const { getSyncHealthChecker } = await import('../services/SyncHealthChecker');
     
     const syncService = getEnhancedAutoSyncService();
     await syncService.initialize();
-    
-    const result = await syncService.runFullSync('manual');
-    
-    // ヘルスチェックを更新
-    const healthChecker = getSyncHealthChecker();
-    await healthChecker.checkAndUpdateHealth();
 
-    const isSuccess = result.status === 'success' || result.status === 'partial_success';
+    if (sellersOnly) {
+      // 売主のみ同期（Phase 1-3）
+      const result = await syncService.runSellersOnlySync();
 
-    res.json({
-      success: isSuccess,
-      message: isSuccess 
-        ? `Full sync completed: ${result.additionResult.successfullyAdded} added, ${result.deletionResult.successfullyDeleted} deleted`
-        : 'Full sync failed',
-      data: {
-        status: result.status,
-        additionResult: {
-          totalProcessed: result.additionResult.totalProcessed,
-          successfullyAdded: result.additionResult.successfullyAdded,
-          successfullyUpdated: result.additionResult.successfullyUpdated,
-          failed: result.additionResult.failed,
+      // ヘルスチェックを更新
+      const healthChecker = getSyncHealthChecker();
+      await healthChecker.checkAndUpdateHealth();
+
+      res.json({
+        success: result.success,
+        message: result.success
+          ? `Sellers-only sync completed: ${result.added} added, ${result.updated} updated, ${result.deleted} deleted`
+          : 'Sellers-only sync failed',
+        data: {
+          added: result.added,
+          updated: result.updated,
+          deleted: result.deleted,
+          errors: result.errors.length,
+          durationMs: result.durationMs,
         },
-        deletionResult: {
-          totalDetected: result.deletionResult.totalDetected,
-          successfullyDeleted: result.deletionResult.successfullyDeleted,
-          failedToDelete: result.deletionResult.failedToDelete,
-          requiresManualReview: result.deletionResult.requiresManualReview,
+      });
+    } else {
+      // フル同期（全フェーズ）
+      const result = await syncService.runFullSync('manual');
+      
+      // ヘルスチェックを更新
+      const healthChecker = getSyncHealthChecker();
+      await healthChecker.checkAndUpdateHealth();
+
+      const isSuccess = result.status === 'success' || result.status === 'partial_success';
+
+      res.json({
+        success: isSuccess,
+        message: isSuccess 
+          ? `Full sync completed: ${result.additionResult.successfullyAdded} added, ${result.deletionResult.successfullyDeleted} deleted`
+          : 'Full sync failed',
+        data: {
+          status: result.status,
+          additionResult: {
+            totalProcessed: result.additionResult.totalProcessed,
+            successfullyAdded: result.additionResult.successfullyAdded,
+            successfullyUpdated: result.additionResult.successfullyUpdated,
+            failed: result.additionResult.failed,
+          },
+          deletionResult: {
+            totalDetected: result.deletionResult.totalDetected,
+            successfullyDeleted: result.deletionResult.successfullyDeleted,
+            failedToDelete: result.deletionResult.failedToDelete,
+            requiresManualReview: result.deletionResult.requiresManualReview,
+          },
+          duration: result.totalDurationMs,
+          syncedAt: result.syncedAt,
         },
-        duration: result.totalDurationMs,
-        syncedAt: result.syncedAt,
-      },
-    });
+      });
+    }
   } catch (error: any) {
     console.error('Trigger sync error:', error);
     res.status(500).json({

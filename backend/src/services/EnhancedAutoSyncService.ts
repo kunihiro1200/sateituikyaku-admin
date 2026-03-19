@@ -3360,6 +3360,92 @@ export class EnhancedAutoSyncService {
     };
   }
 
+  /**
+   * 売主のみの同期を実行（Phase 1-3のみ）
+   * GASからのトリガー用。物件・買主同期をスキップしてタイムアウトを回避する。
+   */
+  async runSellersOnlySync(): Promise<{
+    success: boolean;
+    added: number;
+    updated: number;
+    deleted: number;
+    errors: any[];
+    durationMs: number;
+  }> {
+    const startTime = new Date();
+    console.log('🔄 Starting sellers-only sync (Phase 1-3)...');
+
+    // キャッシュをクリアして最新データを取得
+    this.clearSpreadsheetCache();
+
+    let added = 0;
+    let updated = 0;
+    let deleted = 0;
+    const errors: any[] = [];
+
+    try {
+      // Phase 1: 追加同期
+      console.log('📥 Phase 1: Seller Addition Sync');
+      const missingSellers = await this.detectMissingSellers();
+      if (missingSellers.length > 0) {
+        const syncResult = await this.syncMissingSellers(missingSellers);
+        added = syncResult.newSellersCount;
+        errors.push(...syncResult.errors);
+      } else {
+        console.log('✅ No missing sellers to sync');
+      }
+
+      // Phase 2: 更新同期
+      console.log('\n🔄 Phase 2: Seller Update Sync');
+      const updatedSellers = await this.detectUpdatedSellers();
+      if (updatedSellers.length > 0) {
+        const updateResult = await this.syncUpdatedSellers(updatedSellers);
+        updated = updateResult.updatedSellersCount;
+        errors.push(...updateResult.errors);
+      } else {
+        console.log('✅ No sellers to update');
+      }
+
+      // Phase 3: 削除同期
+      if (this.isDeletionSyncEnabled()) {
+        console.log('\n🗑️  Phase 3: Seller Deletion Sync');
+        const deletedSellers = await this.detectDeletedSellers();
+        if (deletedSellers.length > 0) {
+          const deletionResult = await this.syncDeletedSellers(deletedSellers);
+          deleted = deletionResult.successfullyDeleted;
+          errors.push(...deletionResult.errors);
+        } else {
+          console.log('✅ No deleted sellers to sync');
+        }
+      } else {
+        console.log('\n⏭️  Phase 3: Seller Deletion Sync (Disabled)');
+      }
+
+      const durationMs = new Date().getTime() - startTime.getTime();
+      console.log(`🎉 Sellers-only sync completed: ${added} added, ${updated} updated, ${deleted} deleted (${durationMs}ms)`);
+
+      return {
+        success: errors.length === 0,
+        added,
+        updated,
+        deleted,
+        errors,
+        durationMs,
+      };
+    } catch (error: any) {
+      console.error('❌ Sellers-only sync failed:', error.message);
+      const durationMs = new Date().getTime() - startTime.getTime();
+      return {
+        success: false,
+        added,
+        updated,
+        deleted,
+        errors: [...errors, { message: error.message }],
+        durationMs,
+      };
+    }
+  }
+
 }
 
 // シングルトンインスタンス
