@@ -578,6 +578,35 @@ export class SellerService extends BaseRepository {
       }
     }
 
+    // assignee fields (call-mode-assignee-section)
+    if ((data as any).unreachableSmsAssignee !== undefined) {
+      updates.unreachable_sms_assignee = (data as any).unreachableSmsAssignee;
+    }
+    if ((data as any).valuationSmsAssignee !== undefined) {
+      updates.valuation_sms_assignee = (data as any).valuationSmsAssignee;
+    }
+    if ((data as any).valuationReasonEmailAssignee !== undefined) {
+      updates.valuation_reason_email_assignee = (data as any).valuationReasonEmailAssignee;
+    }
+    if ((data as any).valuationReason !== undefined) {
+      updates.valuation_reason = (data as any).valuationReason;
+    }
+    if ((data as any).cancelNoticeAssignee !== undefined) {
+      updates.cancel_notice_assignee = (data as any).cancelNoticeAssignee;
+    }
+    if ((data as any).longTermEmailAssignee !== undefined) {
+      updates.long_term_email_assignee = (data as any).longTermEmailAssignee;
+    }
+    if ((data as any).callReminderEmailAssignee !== undefined) {
+      updates.call_reminder_email_assignee = (data as any).callReminderEmailAssignee;
+    }
+    if ((data as any).visitReminderAssignee !== undefined) {
+      updates.visit_reminder_assignee = (data as any).visitReminderAssignee;
+    }
+    if ((data as any).unreachableStatus !== undefined) {
+      updates.unreachable_status = (data as any).unreachableStatus;
+    }
+
     if (Object.keys(updates).length === 0) {
       throw new Error('No fields to update');
     }
