@@ -525,6 +525,11 @@ export class SellerService extends BaseRepository {
       updates.comments = (data as any).comments;
     }
 
+    // 1番電話フィールド
+    if (data.firstCallPerson !== undefined) {
+      updates.first_call_person = data.firstCallPerson;
+    }
+
     // 除外日を計算（inquiryDateまたはsiteが更新される場合）
     if (data.inquiryDate !== undefined || data.site !== undefined) {
       // 現在の売主データを取得して、更新されないフィールドの値を使用
@@ -1075,9 +1080,30 @@ export class SellerService extends BaseRepository {
     // AA12903のような形式の場合、データベースで直接検索
     if (lowerQuery.match(/^aa\d+$/i)) {
       console.log('🚀 Fast path: Searching by seller_number in database');
+
+      // まず完全一致で検索（AA6 → AA6のみ、AA60等を除外）
+      const upperQuery = lowerQuery.toUpperCase();
+      let exactQuery = this.table('sellers')
+        .select('*')
+        .eq('seller_number', upperQuery);
+      if (!includeDeleted) {
+        exactQuery = exactQuery.is('deleted_at', null);
+      }
+      const { data: exactSellers, error: exactError } = await exactQuery;
+      if (exactError) {
+        throw new Error(`Failed to search sellers by exact number: ${exactError.message}`);
+      }
+      if (exactSellers && exactSellers.length > 0) {
+        console.log(`✅ Found exact match for seller_number: ${upperQuery}`);
+        const decryptedSellers = await Promise.all(exactSellers.map(seller => this.decryptSeller(seller)));
+        return decryptedSellers;
+      }
+
+      // 完全一致がなければ前方一致で検索（AA6 → AA60, AA61...）
       let sellerQuery = this.table('sellers')
         .select('*')
-        .ilike('seller_number', `%${lowerQuery}%`)
+        .ilike('seller_number', `${lowerQuery}%`)
+        .order('seller_number', { ascending: true })
         .limit(50);
       
       // デフォルトで削除済みを除外（マイグレーション051で追加済み）
@@ -1104,6 +1130,7 @@ export class SellerService extends BaseRepository {
       let sellerQuery = this.table('sellers')
         .select('*')
         .ilike('seller_number', `%${lowerQuery}%`)
+        .order('seller_number', { ascending: true })
         .limit(50);
       
       // デフォルトで削除済みを除外
@@ -1255,6 +1282,7 @@ export class SellerService extends BaseRepository {
         phoneContactPerson: seller.phone_contact_person,
         preferredContactTime: seller.preferred_contact_time,
         contactMethod: seller.contact_method,
+        firstCallPerson: seller.first_call_person,
         // New call mode fields (migration 032)
         inquiryMedium: seller.inquiry_medium,
         inquiryContent: seller.inquiry_content,
