@@ -1239,7 +1239,7 @@ export class EnhancedAutoSyncService {
     }
 
     // 査定理由（AO列）を追加
-    const valuationReason = row['査定理由'];
+    const valuationReason = row['査定理由（査定サイトから転記）'];
     if (valuationReason !== undefined) {
       updateData.valuation_reason = valuationReason ? String(valuationReason) : null;
     }
@@ -1457,7 +1457,7 @@ export class EnhancedAutoSyncService {
     }
 
     // 査定理由（AO列）を追加
-    const valuationReason = row['査定理由'];
+    const valuationReason = row['査定理由（査定サイトから転記）'];
     if (valuationReason !== undefined) {
       encryptedData.valuation_reason = valuationReason ? String(valuationReason) : null;
     }

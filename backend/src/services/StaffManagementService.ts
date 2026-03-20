@@ -133,9 +133,11 @@ export class StaffManagementService {
   async getActiveInitials(): Promise<string[]> {
     try {
       const staffData = await this.fetchStaffData();
-      const activeInitials = staffData
-        .filter(s => s.isActive && s.initials && s.initials.trim() !== '')
-        .map(s => s.initials);
+      const activeInitials = [...new Set(
+        staffData
+          .filter(s => s.isActive && s.initials && s.initials.trim() !== '')
+          .map(s => s.initials)
+      )];
       console.log('[StaffManagementService] Active initials from spreadsheet:', activeInitials);
       return activeInitials;
     } catch (error: any) {
