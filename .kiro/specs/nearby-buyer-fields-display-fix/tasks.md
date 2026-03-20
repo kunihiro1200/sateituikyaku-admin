@@ -1,0 +1,81 @@
+# Implementation Plan
+
+- [x] 1. バグ条件の探索テストを作成する
+  - **Property 1: Bug Condition** - 欠けているフィールドがAPIレスポンスに含まれない
+  - **CRITICAL**: このテストは未修正コードで必ず FAIL する — 失敗がバグの存在を証明する
+  - **DO NOT attempt to fix the test or the code when it fails**
+  - **NOTE**: このテストは期待動作をエンコードしている — 修正後に PASS することで修正を検証する
+  - **GOAL**: バグが存在することを示すカウンターサンプルを発見する
+  - **Scoped PBT Approach**: 決定論的バグのため、具体的な失敗ケースにスコープを絞る
+  - `getBuyersByAreas()` を直接呼び出し、レスポンスの各買主オブジェクトに以下フィールドが存在するかチェック:
+    - `inquiry_property_type`（種別）
+    - `property_address`（問合せ住所）
+    - `inquiry_price`（価格）
+    - `inquiry_hearing`（ヒアリング）
+    - `viewing_result_follow_up`（内覧結果フォローアップ）
+    - `latest_status`（最新状況）
+    - `latest_viewing_date`（内覧日）
+  - Bug Condition: `isBugCondition(apiResponse)` — レスポンス内の買主オブジェクトに上記7フィールドが `undefined` として存在する
+  - 未修正コードでテストを実行する
+  - **EXPECTED OUTCOME**: テストが FAIL する（バグの存在を証明）
+  - カウンターサンプルを記録する（例: `buyer.inquiry_property_type === undefined`）
+  - テストを作成・実行し、失敗を記録したらタスク完了とする
+  - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 1.6_
+
+- [x] 2. 保全プロパティテストを作成する（修正前に実施）
+  - **Property 2: Preservation** - 既存フィールドの動作が変わらない
+  - **IMPORTANT**: 観察優先メソドロジーに従う
+  - 未修正コードで `getBuyersByAreas()` を呼び出し、既存フィールドの実際の値を観察・記録する:
+    - `buyer_number`（買主番号）
+    - `name`（名前）
+    - `distribution_areas`（配布エリア）
+    - `inquiry_confidence`（確度）
+    - `inquiry_source`（問合せ元）
+    - `distribution_type`（配布種別）
+    - `desired_area`（希望エリア）
+    - `desired_property_type`（希望種別）
+    - `price_range_house` / `price_range_apartment` / `price_range_land`（価格帯）
+    - `reception_date`（受付日）
+    - `email`（メール）
+    - `phone_number`（電話番号）
+  - 観察した動作パターンをプロパティベーステストとして記述する（全ての非バグ条件入力に対して）
+  - 未修正コードでテストを実行する
+  - **EXPECTED OUTCOME**: テストが PASS する（保全すべきベースライン動作を確認）
+  - テストを作成・実行し、PASS を確認したらタスク完了とする
+  - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6_
+
+- [x] 3. 近隣買主候補フィールド表示バグの修正
+
+  - [x] 3.1 `getBuyersByAreas()` の `.select()` に5フィールドを追加する
+    - `backend/src/services/BuyerService.ts` の `getBuyersByAreas()` メソッド（1022行目付近）を修正
+    - 既存の `.select()` 末尾に以下5フィールドを追記する:
+      - `inquiry_property_type`
+      - `property_address`
+      - `inquiry_price`
+      - `inquiry_hearing`
+      - `viewing_result_follow_up`
+    - ※ `latest_status` と `latest_viewing_date` は既にクエリに含まれているため追加不要
+    - _Bug_Condition: `isBugCondition(apiResponse)` — `.select()` に必要フィールドが含まれていないため `undefined` が返る_
+    - _Expected_Behavior: 修正後の全 `getBuyersByAreas()` 呼び出しで7フィールドが `undefined` でなく `null` または値として返る_
+    - _Preservation: 既存フィールド（`buyer_number`, `name`, `distribution_areas` 等）の値・フィルタリング・ソート・メール/SMS送信機能が変わらない_
+    - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 3.1, 3.2, 3.3, 3.4, 3.5, 3.6_
+
+  - [x] 3.2 バグ条件探索テストが PASS することを確認する
+    - **Property 1: Expected Behavior** - 欠けていたフィールドがAPIレスポンスに含まれる
+    - **IMPORTANT**: タスク1で作成した同じテストを再実行する — 新しいテストを書かない
+    - タスク1のテストは期待動作をエンコードしている
+    - このテストが PASS すれば、期待動作が満たされたことを確認できる
+    - タスク1のバグ条件探索テストを実行する
+    - **EXPECTED OUTCOME**: テストが PASS する（バグが修正されたことを確認）
+    - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 2.6_
+
+  - [x] 3.3 保全テストが引き続き PASS することを確認する
+    - **Property 2: Preservation** - 既存フィールドの動作が変わらない
+    - **IMPORTANT**: タスク2で作成した同じテストを再実行する — 新しいテストを書かない
+    - タスク2の保全プロパティテストを実行する
+    - **EXPECTED OUTCOME**: テストが PASS する（リグレッションがないことを確認）
+    - 修正後も全テストが PASS することを確認する（リグレッションなし）
+
+- [x] 4. チェックポイント — 全テストが PASS することを確認する
+  - 全テスト（バグ条件探索テスト・保全テスト）が PASS することを確認する
+  - 疑問点があればユーザーに確認する

@@ -164,6 +164,7 @@ export interface Seller {
   valuationReason?: string;              // 査定理由（AO列）
   longTermEmailAssignee?: string;        // 除外前、長期客メール担当
   callReminderEmailAssignee?: string;    // 当社が電話したというリマインドメール担当
+  visitReminderAssignee?: string;          // 訪問事前通知メール担当
   exclusiveScript?: string;
   priceLossListEntered?: boolean;
   companyIntroduction?: string;

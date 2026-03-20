@@ -151,6 +151,38 @@
 
 ---
 
+## 🚨 最重要：buyersテーブルの主キー定義
+
+**絶対に間違えないでください。**
+
+| カラム名 | 型 | 説明 |
+|---------|-----|------|
+| **`buyer_number`** | **TEXT** | **主キー（買主番号）** ← これが唯一の識別子 |
+
+**❌ 存在しないカラム（絶対に使わない）**:
+- `id` ← 存在しない
+- `buyer_id` ← 存在しない（マイグレーション042で定義されているが実際のDBには存在しない）
+
+**✅ 正しいクエリ例**:
+```typescript
+// 買主を取得
+await supabase.from('buyers').select('buyer_number, name, deleted_at').eq('buyer_number', '4370');
+
+// 買主を更新
+await supabase.from('buyers').update({ deleted_at: null }).eq('buyer_number', '4370');
+```
+
+**❌ 間違ったクエリ例**:
+```typescript
+// ❌ id は存在しない
+await supabase.from('buyers').select('id, buyer_number').eq('id', someId);
+
+// ❌ buyer_id は存在しない
+await supabase.from('buyers').select('buyer_id, buyer_number').eq('buyer_id', someId);
+```
+
+---
+
 ## 📁 関連ファイル
 
 | ファイル | 役割 |
@@ -162,7 +194,8 @@
 
 ---
 
-**最終更新日**: 2026年3月14日
+**最終更新日**: 2026年3月19日
 **作成理由**: 買主新規登録画面の買主番号自動採番ルールを明確化するため
 **更新履歴**:
 - 2026年3月14日: 買主詳細画面と新規登録画面の統合ルールを追加
+- 2026年3月19日: buyersテーブルの主キーは `buyer_number`（`id`・`buyer_id` は存在しない）を明記

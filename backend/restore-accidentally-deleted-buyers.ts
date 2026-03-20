@@ -55,8 +55,8 @@ function askConfirmation(question: string): Promise<boolean> {
 /**
  * 削除済み買主を全件取得
  */
-async function getDeletedBuyers(): Promise<Array<{ id: string; buyer_number: string; name: string | null; deleted_at: string }>> {
-  const allDeleted: Array<{ id: string; buyer_number: string; name: string | null; deleted_at: string }> = [];
+async function getDeletedBuyers(): Promise<Array<{ buyer_number: string; name: string | null; deleted_at: string }>> {
+  const allDeleted: Array<{ buyer_number: string; name: string | null; deleted_at: string }> = [];
   const pageSize = 1000;
   let offset = 0;
   let hasMore = true;
@@ -64,7 +64,7 @@ async function getDeletedBuyers(): Promise<Array<{ id: string; buyer_number: str
   while (hasMore) {
     const { data, error } = await supabase
       .from('buyers')
-      .select('id, buyer_number, name, deleted_at')
+      .select('buyer_number, name, deleted_at')
       .not('deleted_at', 'is', null)
       .order('deleted_at', { ascending: false })
       .range(offset, offset + pageSize - 1);

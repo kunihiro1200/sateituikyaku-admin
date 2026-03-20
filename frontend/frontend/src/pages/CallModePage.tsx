@@ -2313,7 +2313,10 @@ HP：https://ifoo-oita.com/
         // SMS送信後、対応する担当フィールドにログインユーザーのイニシャルを自動セット
         try {
           const assigneeKey = SMS_TEMPLATE_ASSIGNEE_MAP[template.id];
-          const myInitial = employee?.initials || employee?.name || '';
+          // activeEmployeesからログインユーザーのメールでイニシャルを照合（最優先）
+          // employee.initialsはlocalStorageキャッシュで古い場合があるため
+          const myEmployee = activeEmployees.find(e => e.email === employee?.email);
+          const myInitial = myEmployee?.initials || employee?.initials || '';
           if (assigneeKey && myInitial && seller?.id) {
             await api.put(`/api/sellers/${seller.id}`, { [assigneeKey]: myInitial });
             setSeller((prev) => prev ? { ...prev, [assigneeKey as keyof Seller]: myInitial } : prev);
