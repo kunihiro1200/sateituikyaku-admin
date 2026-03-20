@@ -160,9 +160,10 @@ export const AssigneeSection: React.FC<AssigneeSectionProps> = ({ seller, onUpda
               /* ボタン群：全幅で折り返し、各ボタンは同じ幅で並ぶ */
               <Box
                 sx={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fill, minmax(52px, 1fr))',
+                  display: 'flex',
+                  flexWrap: 'wrap',
                   gap: 0.5,
+                  width: '100%',
                 }}
               >
                 {initials.map((initial) => (
