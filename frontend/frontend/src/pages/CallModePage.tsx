@@ -5410,10 +5410,9 @@ HP：https://ifoo-oita.com/
             )}
           </Grid>
         </Grid>
+
       </Box>
       </Box>
-
-
 
       {/* 土地面積警告ダイアログ */}
       <Dialog open={!!landAreaWarning} onClose={() => setLandAreaWarning(null)}>
