@@ -2920,7 +2920,7 @@ HP：https://ifoo-oita.com/
                     if (editingProperty) {
                       // キャンセル時は元の値に戻す（propertyまたはsellerの値）
                       setEditedPropertyAddress(property?.address || seller?.propertyAddress || '');
-                      setEditedPropertyType(property?.propertyType || seller?.propertyType || '');
+                      setEditedPropertyType(normalizePropertyType(property?.propertyType || seller?.propertyType) || '');
                       setEditedLandArea((property?.landArea || seller?.landArea)?.toString() || '');
                       setEditedLandAreaVerified((property?.landAreaVerified || seller?.landAreaVerified)?.toString() || '');
                       setEditedBuildingArea((property?.buildingArea || seller?.buildingArea)?.toString() || '');
@@ -2929,8 +2929,21 @@ HP：https://ifoo-oita.com/
                       setEditedFloorPlan(property?.floorPlan || seller?.floorPlan || '');
                       setEditedStructure(property?.structure || seller?.structure || '');
                       setEditedSellerSituation(property?.sellerSituation || seller?.currentStatus || '');
+                      setEditingProperty(false);
+                    } else {
+                      // 編集開始時に現在の値で初期化
+                      setEditedPropertyAddress(property?.address || seller?.propertyAddress || '');
+                      setEditedPropertyType(normalizePropertyType(property?.propertyType || seller?.propertyType) || '');
+                      setEditedLandArea((property?.landArea || seller?.landArea)?.toString() || '');
+                      setEditedLandAreaVerified((property?.landAreaVerified || seller?.landAreaVerified)?.toString() || '');
+                      setEditedBuildingArea((property?.buildingArea || seller?.buildingArea)?.toString() || '');
+                      setEditedBuildingAreaVerified((property?.buildingAreaVerified || seller?.buildingAreaVerified)?.toString() || '');
+                      setEditedBuildYear((property?.buildYear || seller?.buildYear)?.toString() || '');
+                      setEditedFloorPlan(property?.floorPlan || seller?.floorPlan || '');
+                      setEditedStructure(property?.structure || seller?.structure || '');
+                      setEditedSellerSituation(property?.sellerSituation || seller?.currentStatus || '');
+                      setEditingProperty(true);
                     }
-                    setEditingProperty(!editingProperty);
                   }}
                 >
                   {editingProperty ? 'キャンセル' : '編集'}
