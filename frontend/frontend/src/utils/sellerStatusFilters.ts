@@ -606,8 +606,9 @@ export const isUnvaluated = (seller: Seller | any): boolean => {
   }
   
   // 反響日付が基準日以降かチェック（文字列比較）
-  // inquiryDateまたはinquiryDetailedDatetimeを使用
-  const inquiryDate = seller.inquiryDetailedDatetime || seller.inquiryDate || seller.inquiry_date;
+  // inquiryDate（inquiry_date）を優先する（バックエンドのカウントロジックと一致）
+  // inquiryDetailedDatetime は詳細日時のため、日付比較には inquiry_date を使用
+  const inquiryDate = seller.inquiryDate || seller.inquiry_date || seller.inquiryDetailedDatetime;
   const normalizedInquiryDate = normalizeDateString(inquiryDate);
   
   if (!normalizedInquiryDate) {
