@@ -22,13 +22,13 @@ interface AssigneeFieldConfig {
 }
 
 const ASSIGNEE_FIELDS: AssigneeFieldConfig[] = [
-  { label: '\u4e0d\u901a\u6642S\u30e1\u30fc\u30eb\u62c5\u5f53',                      sellerKey: 'unreachableSmsAssignee',       fieldType: 'assignee' },
-  { label: '\u67fb\u5b9aS\u30e1\u30fc\u30eb\u62c5\u5f53',                        sellerKey: 'valuationSmsAssignee',         fieldType: 'assignee' },
-  { label: '\u67fb\u5b9a\u7406\u7531\u52253\u5f8cE\u30e1\u62c5',                    sellerKey: 'valuationReasonEmailAssignee', fieldType: 'assignee' },
-  { label: '\u67fb\u5b9a\u7406\u7531\uff08\u67fb\u5b9a\u30b5\u30a4\u30c8\u304b\u3089\u8ee2\u8a18\uff09',          sellerKey: 'valuationReason',              fieldType: 'text'     },
-  { label: '\u30ad\u30e3\u30f3\u30bb\u30eb\u6848\u5185\u62c5\u5f53',                     sellerKey: 'cancelNoticeAssignee',         fieldType: 'assignee' },
-  { label: '\u9664\u5916\u524d\u3001\u9577\u671f\u5ba2\u30e1\u30fc\u30eb\u62c5\u5f53',                sellerKey: 'longTermEmailAssignee',        fieldType: 'assignee' },
-  { label: '\u5f53\u793e\u304c\u96fb\u8a71\u3057\u305f\u3068\u3044\u3046\u30ea\u30de\u30a4\u30f3\u30c9\u30e1\u30fc\u30eb\u62c5\u5f53', sellerKey: 'callReminderEmailAssignee',    fieldType: 'assignee' },
+  { label: '不通時Sメール担当',                      sellerKey: 'unreachableSmsAssignee',       fieldType: 'assignee' },
+  { label: '査定Sメール担当',                        sellerKey: 'valuationSmsAssignee',         fieldType: 'assignee' },
+  { label: '査定理由別3後Eメ担',                    sellerKey: 'valuationReasonEmailAssignee', fieldType: 'assignee' },
+  { label: '査定理由（査定サイトから転記）',          sellerKey: 'valuationReason',              fieldType: 'text'     },
+  { label: 'キャンセル案内担当',                     sellerKey: 'cancelNoticeAssignee',         fieldType: 'assignee' },
+  { label: '除外前、長期客メール担当',                sellerKey: 'longTermEmailAssignee',        fieldType: 'assignee' },
+  { label: '当社が電話したというリマインドメール担当', sellerKey: 'callReminderEmailAssignee',    fieldType: 'assignee' },
 ];
 
 export const AssigneeSection: React.FC<AssigneeSectionProps> = ({ seller, onUpdate }) => {
@@ -62,7 +62,7 @@ export const AssigneeSection: React.FC<AssigneeSectionProps> = ({ seller, onUpda
           : [];
         setInitials(initialsArray);
       } catch (err) {
-        console.error('\u30a4\u30cb\u30b7\u30e3\u30eb\u53d6\u5f97\u30a8\u30e9\u30fc:', err);
+        console.error('イニシャル取得エラー:', err);
         setInitials([]);
       }
     };
@@ -86,9 +86,9 @@ export const AssigneeSection: React.FC<AssigneeSectionProps> = ({ seller, onUpda
         await api.put(`/api/sellers/${seller.id}`, { [sellerKey]: value });
         onUpdate({ [sellerKey]: value } as Partial<Seller>);
       } catch (err) {
-        console.error('\u4fdd\u5b58\u30a8\u30e9\u30fc:', err);
+        console.error('保存エラー:', err);
         setLocalValues((prev) => ({ ...prev, [sellerKey]: prevValue }));
-        setSnackbarMessage('\u4fdd\u5b58\u306b\u5931\u6557\u3057\u307e\u3057\u305f\u3002\u3082\u3046\u4e00\u5ea6\u304a\u8a66\u3057\u304f\u3060\u3055\u3044\u3002');
+        setSnackbarMessage('保存に失敗しました。もう一度お試しください。');
         setSnackbarOpen(true);
       }
     },
@@ -114,8 +114,8 @@ export const AssigneeSection: React.FC<AssigneeSectionProps> = ({ seller, onUpda
           await api.put(`/api/sellers/${seller.id}`, { valuationReason: value });
           onUpdate({ valuationReason: value });
         } catch (err) {
-          console.error('\u67fb\u5b9a\u7406\u7531\u4fdd\u5b58\u30a8\u30e9\u30fc:', err);
-          setSnackbarMessage('\u67fb\u5b9a\u7406\u7531\u306e\u4fdd\u5b58\u306b\u5931\u6557\u3057\u307e\u3057\u305f\u3002');
+          console.error('査定理由保存エラー:', err);
+          setSnackbarMessage('査定理由の保存に失敗しました。');
           setSnackbarOpen(true);
         }
       }, 1000);
@@ -132,20 +132,20 @@ export const AssigneeSection: React.FC<AssigneeSectionProps> = ({ seller, onUpda
   return (
     <Box sx={{ mb: 2 }}>
       <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1 }}>
-        \u62c5\u5f53\u8005\u8a2d\u5b9a
+        担当者設定
       </Typography>
 
       {ASSIGNEE_FIELDS.map((field) => {
         const currentValue = localValues[field.sellerKey] as string | null;
 
         return (
-          <Box key={String(field.sellerKey)} sx={{ mb: 1.5 }}>
-            {/* \u30e9\u30d9\u30eb */}
-            <Typography variant="body2" sx={{ mb: 0.5, color: 'text.primary', fontWeight: 500 }}>
+          <Box key={String(field.sellerKey)} sx={{ mb: 2 }}>
+            {/* ラベル（上に大きく表示） */}
+            <Typography variant="body1" sx={{ mb: 0.75, fontWeight: 500 }}>
               {field.label}
             </Typography>
 
-            {/* \u30c6\u30ad\u30b9\u30c8\u5165\u529b\uff08\u67fb\u5b9a\u7406\u7531\uff09 */}
+            {/* テキスト入力（査定理由） */}
             {field.fieldType === 'text' ? (
               <TextField
                 size="small"
@@ -155,12 +155,16 @@ export const AssigneeSection: React.FC<AssigneeSectionProps> = ({ seller, onUpda
                 fullWidth
                 value={valuationReasonText}
                 onChange={(e) => handleValuationReasonChange(e.target.value)}
-                sx={{ fontSize: '0.8rem' }}
-                inputProps={{ style: { fontSize: '0.8rem' } }}
               />
             ) : (
-              /* \u30a4\u30cb\u30b7\u30e3\u30eb\u30dc\u30bf\u30f3\u7fa4 - \u6a2a\u4e26\u3073\u3067\u6298\u308a\u8fd4\u3057 */
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+              /* ボタン群：全幅で折り返し、各ボタンは同じ幅で並ぶ */
+              <Box
+                sx={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(52px, 1fr))',
+                  gap: 0.5,
+                }}
+              >
                 {initials.map((initial) => (
                   <Button
                     key={initial}
@@ -169,10 +173,8 @@ export const AssigneeSection: React.FC<AssigneeSectionProps> = ({ seller, onUpda
                     color={currentValue === initial ? 'primary' : 'inherit'}
                     onClick={() => handleButtonClick(field.sellerKey, initial)}
                     sx={{
-                      minWidth: 40,
-                      px: 1,
-                      py: 0.5,
-                      fontSize: '0.8rem',
+                      py: 0.75,
+                      fontSize: '0.85rem',
                       bgcolor: currentValue === initial ? undefined : 'grey.100',
                       borderColor: 'grey.300',
                     }}
@@ -180,22 +182,19 @@ export const AssigneeSection: React.FC<AssigneeSectionProps> = ({ seller, onUpda
                     {initial}
                   </Button>
                 ))}
-                {/* \u4e0d\u8981\u30dc\u30bf\u30f3 */}
                 <Button
                   size="small"
-                  variant={currentValue === '\u4e0d\u8981' ? 'contained' : 'outlined'}
-                  color={currentValue === '\u4e0d\u8981' ? 'error' : 'inherit'}
-                  onClick={() => handleButtonClick(field.sellerKey, '\u4e0d\u8981')}
+                  variant={currentValue === '不要' ? 'contained' : 'outlined'}
+                  color={currentValue === '不要' ? 'error' : 'inherit'}
+                  onClick={() => handleButtonClick(field.sellerKey, '不要')}
                   sx={{
-                    minWidth: 48,
-                    px: 1,
-                    py: 0.5,
-                    fontSize: '0.8rem',
-                    bgcolor: currentValue === '\u4e0d\u8981' ? undefined : 'grey.100',
+                    py: 0.75,
+                    fontSize: '0.85rem',
+                    bgcolor: currentValue === '不要' ? undefined : 'grey.100',
                     borderColor: 'grey.300',
                   }}
                 >
-                  \u4e0d\u8981
+                  不要
                 </Button>
               </Box>
             )}
