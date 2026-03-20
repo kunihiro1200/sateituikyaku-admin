@@ -584,7 +584,7 @@ const CallModePage = () => {
   const smsTemplates: SMSTemplate[] = [
     {
       id: 'initial_cancellation',
-      label: '初回不通時キャンセル案内',
+      label: '不通時Sメール',
       generator: generateInitialCancellationGuidance,
     },
     {
@@ -2314,9 +2314,25 @@ HP：https://ifoo-oita.com/
         try {
           const assigneeKey = SMS_TEMPLATE_ASSIGNEE_MAP[template.id];
           // activeEmployeesからログインユーザーのメールでイニシャルを照合（最優先）
-          // employee.initialsはlocalStorageキャッシュで古い場合があるため
+          // activeEmployeesが空の場合は/api/employees/active-initialsから取得
+          let myInitial = '';
           const myEmployee = activeEmployees.find(e => e.email === employee?.email);
-          const myInitial = myEmployee?.initials || employee?.initials || '';
+          if (myEmployee?.initials) {
+            myInitial = myEmployee.initials;
+          } else {
+            // フォールバック: active-initialsエンドポイントから取得
+            try {
+              const initialsRes = await api.get('/api/employees/active-initials');
+              const initialsData = initialsRes.data;
+              // active-initialsはイニシャル文字列の配列を返す
+              // ログインユーザーのイニシャルをemployeeServiceから再取得して照合
+              const freshEmployees = await import('../services/employeeService').then(m => m.getActiveEmployees());
+              const freshMe = freshEmployees.find(e => e.email === employee?.email);
+              myInitial = freshMe?.initials || employee?.initials || '';
+            } catch {
+              myInitial = employee?.initials || '';
+            }
+          }
           if (assigneeKey && myInitial && seller?.id) {
             await api.put(`/api/sellers/${seller.id}`, { [assigneeKey]: myInitial });
             setSeller((prev) => prev ? { ...prev, [assigneeKey as keyof Seller]: myInitial } : prev);
