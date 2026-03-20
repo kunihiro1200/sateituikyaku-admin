@@ -1238,6 +1238,12 @@ export class EnhancedAutoSyncService {
       updateData.valuation_method = String(valuationMethod);
     }
 
+    // 査定理由（AO列）を追加
+    const valuationReason = row['査定理由'];
+    if (valuationReason !== undefined) {
+      updateData.valuation_reason = valuationReason ? String(valuationReason) : null;
+    }
+
     // I列「査定額」（テキスト形式）を追加
     // 例: "1900～2200万円", "2000万円前後"
     const valuationText = row['査定額'];
@@ -1448,6 +1454,12 @@ export class EnhancedAutoSyncService {
     const valuationMethod = row['査定方法'];
     if (valuationMethod) {
       encryptedData.valuation_method = String(valuationMethod);
+    }
+
+    // 査定理由（AO列）を追加
+    const valuationReason = row['査定理由'];
+    if (valuationReason !== undefined) {
+      encryptedData.valuation_reason = valuationReason ? String(valuationReason) : null;
     }
 
     // I列「査定額」（テキスト形式）を追加
