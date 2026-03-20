@@ -149,6 +149,13 @@ export interface Seller {
   
   // その他
   cancelNoticeAssignee?: string;
+  // 担当者設定フィールド（call-mode-assignee-section）
+  unreachableSmsAssignee?: string;       // 不通時Sメール担当
+  valuationSmsAssignee?: string;         // 査定Sメール担当
+  valuationReasonEmailAssignee?: string; // 査定理由別３後Eメ担
+  valuationReason?: string;              // 査定理由（AO列）
+  longTermEmailAssignee?: string;        // 除外前、長期客メール担当
+  callReminderEmailAssignee?: string;    // 当社が電話したというリマインドメール担当
   exclusiveScript?: string;
   priceLossListEntered?: boolean;
   companyIntroduction?: string;
@@ -400,6 +407,7 @@ export interface UpdateSellerRequest {
   phoneContactPerson?: string; // 電話担当（任意）
   preferredContactTime?: string; // 連絡取りやすい日、時間帯
   contactMethod?: string; // 連絡方法
+  firstCallPerson?: string | null; // 1番電話
   comments?: string; // コメント
   // Phase 1 fields
   inquirySource?: string;

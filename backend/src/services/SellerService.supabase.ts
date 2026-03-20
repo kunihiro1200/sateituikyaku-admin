@@ -1313,6 +1313,14 @@ export class SellerService extends BaseRepository {
         buildYear: seller.build_year,
         structure: seller.structure,
         floorPlan: seller.floor_plan,
+        // 担当者設定フィールド（call-mode-assignee-section）
+        unreachableSmsAssignee: seller.unreachable_sms_assignee,
+        valuationSmsAssignee: seller.valuation_sms_assignee,
+        valuationReasonEmailAssignee: seller.valuation_reason_email_assignee,
+        valuationReason: seller.valuation_reason,
+        cancelNoticeAssignee: seller.cancel_notice_assignee,
+        longTermEmailAssignee: seller.long_term_email_assignee,
+        callReminderEmailAssignee: seller.call_reminder_email_assignee,
       };
       
       console.log(`[PERF] decryptSeller total: ${Date.now() - _dt0}ms`);

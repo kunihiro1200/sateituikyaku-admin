@@ -46,7 +46,14 @@
     "作成日時": "created_at",
     "更新日時": "updated_at",
     "訪問メモ": "visit_notes",
-    "査定方法": "valuation_method"
+    "査定方法": "valuation_method",
+    "不通時Sメール担当": "unreachable_sms_assignee",
+    "査定Sメール担当": "valuation_sms_assignee",
+    "査定理由別３後Eメ担": "valuation_reason_email_assignee",
+    "査定理由": "valuation_reason",
+    "キャンセル案内担当": "cancel_notice_assignee",
+    "除外前、長期客メール担当": "long_term_email_assignee",
+    "当社が電話したというリマインドメール担当": "call_reminder_email_assignee"
   },
   "databaseToSpreadsheet": {
     "seller_number": "売主番号",
@@ -87,7 +94,14 @@
     "created_at": "作成日時",
     "updated_at": "更新日時",
     "visit_notes": "訪問メモ",
-    "valuation_method": "査定方法"
+    "valuation_method": "査定方法",
+    "unreachable_sms_assignee": "不通時Sメール担当",
+    "valuation_sms_assignee": "査定Sメール担当",
+    "valuation_reason_email_assignee": "査定理由別３後Eメ担",
+    "valuation_reason": "査定理由",
+    "cancel_notice_assignee": "キャンセル案内担当",
+    "long_term_email_assignee": "除外前、長期客メール担当",
+    "call_reminder_email_assignee": "当社が電話したというリマインドメール担当"
   },
   "typeConversions": {
     "valuation_amount_1": "number",

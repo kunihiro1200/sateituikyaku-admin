@@ -33,6 +33,7 @@ import { getDisplayName } from '../utils/employeeUtils';
 import { formatDateTime } from '../utils/dateFormat';
 import CallLogDisplay from '../components/CallLogDisplay';
 import { FollowUpLogHistoryTable } from '../components/FollowUpLogHistoryTable';
+import AssigneeSection from '../components/AssigneeSection';
 import DuplicateIndicatorBadge from '../components/DuplicateIndicatorBadge';
 import DuplicateDetailsModal from '../components/DuplicateDetailsModal';
 import DocumentModal from '../components/DocumentModal';
@@ -2792,6 +2793,14 @@ HP：https://ifoo-oita.com/
           <Box sx={{ width: 280, p: 2, borderBottom: 1, borderColor: 'divider' }}>
             <CallLogDisplay sellerId={id!} />
             
+            {/* 担当者設定セクション */}
+            {seller && (
+              <AssigneeSection
+                seller={seller}
+                onUpdate={(fields) => setSeller((prev) => prev ? { ...prev, ...fields } : prev)}
+              />
+            )}
+
             {/* 追客ログ履歴（APPSHEET） */}
             {seller?.sellerNumber && (
               <FollowUpLogHistoryTable sellerNumber={seller.sellerNumber} />
