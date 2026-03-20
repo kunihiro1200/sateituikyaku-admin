@@ -22,6 +22,7 @@ import {
   isVisitAssignedTo,
   isTodayCallAssignedTo,
   isTodayCallAssigned,
+  isVisitDayBefore,
   isVisitScheduled,
   isVisitCompleted,
 } from '../utils/sellerStatusFilters';
@@ -90,8 +91,10 @@ const filterSellersByCategory = (sellers: any[], category: StatusCategory): any[
       return sellers.filter(isPinrichEmpty);
     case 'todayCallAssigned':
       return sellers.filter(isTodayCallAssigned);
-    case 'visitScheduled':
-      return sellers.filter(isVisitScheduled);
+    case 'visitDayBefore':
+      return sellers.filter(isVisitDayBefore);
+    case 'visitScheduled': // 後方互換性
+      return sellers.filter(isVisitDayBefore);
     case 'visitCompleted':
       return sellers.filter(isVisitCompleted);
     default:
@@ -443,7 +446,7 @@ export default function SellerStatusSidebar({
       </Button>
 
       {/* 既存の固定カテゴリー */}
-      {renderCategoryButton('visitScheduled', '①訪問予定', '#2e7d32')}
+      {renderCategoryButton('visitDayBefore', '①訪問日前日', '#2e7d32')}
       {renderCategoryButton('todayCall', '③当日TEL分', '#d32f2f')}
       {(() => {
         // todayCallWithInfo のラベルはAPIから取得した全件対象のラベル一覧を優先使用

@@ -385,19 +385,19 @@ describe('Property 2: Preservation - 売主データ表示・フィルタリン�
           futureDateArb,
           (visitAssignee, visitDate) => {
             // 訪問予定の条件を満たす売主
-            const visitScheduledSeller = createTestSeller({
+            const visitDayBeforeSeller = createTestSeller({
               visitAssignee,
               visitAssigneeInitials: visitAssignee,
               visitDate,
             });
 
             // 訪問予定として判定されることを確認
-            expect(isVisitScheduled(visitScheduledSeller)).toBe(true);
-            expect(isVisitCompleted(visitScheduledSeller)).toBe(false);
+            expect(isVisitDayBefore(visitDayBeforeSeller)).toBe(true);
+            expect(isVisitCompleted(visitDayBeforeSeller)).toBe(false);
 
             // filterSellersByCategoryでも正しくフィルタリングされることを確認
-            const sellers = [visitScheduledSeller];
-            const filtered = filterSellersByCategory(sellers, 'visitScheduled');
+            const sellers = [visitDayBeforeSeller];
+            const filtered = filterSellersByCategory(sellers, 'visitDayBefore');
             expect(filtered).toHaveLength(1);
           }
         ),
@@ -427,7 +427,7 @@ describe('Property 2: Preservation - 売主データ表示・フィルタリン�
 
             // 訪問済みとして判定されることを確認
             expect(isVisitCompleted(visitCompletedSeller)).toBe(true);
-            expect(isVisitScheduled(visitCompletedSeller)).toBe(false);
+            expect(isVisitDayBefore(visitCompletedSeller)).toBe(false);
 
             // filterSellersByCategoryでも正しくフィルタリングされることを確認
             const sellers = [visitCompletedSeller];
@@ -983,9 +983,9 @@ describe('具体的なシナリオ: 保全動作の確認', () => {
     expect(todayCallWithInfoFiltered).toHaveLength(1);
     expect(todayCallWithInfoFiltered[0].sellerNumber).toBe('AA13502');
 
-    const visitScheduledFiltered = filterSellersByCategory(sellers, 'visitScheduled');
-    expect(visitScheduledFiltered).toHaveLength(1);
-    expect(visitScheduledFiltered[0].sellerNumber).toBe('AA13503');
+    const visitDayBeforeFiltered = filterSellersByCategory(sellers, 'visitDayBefore');
+    expect(visitDayBeforeFiltered).toHaveLength(1);
+    expect(visitDayBeforeFiltered[0].sellerNumber).toBe('AA13503');
 
     const visitCompletedFiltered = filterSellersByCategory(sellers, 'visitCompleted');
     expect(visitCompletedFiltered).toHaveLength(1);

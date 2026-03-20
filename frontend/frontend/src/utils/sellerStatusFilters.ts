@@ -30,16 +30,17 @@
  */
 
 import { Seller } from '../types';
+import { isVisitDayBefore as isVisitDayBeforeUtil, parseDate } from './sellerStatusUtils';
 
 // ステータスカテゴリの型定義
 // todayCall: コミュニケーション情報が全て空の当日TEL（営担なし）
 // todayCallWithInfo: コミュニケーション情報のいずれかに入力がある当日TEL（営担なし）
 // todayCallAssigned: 営担あり + 訪問日なし + 次電日が今日以前
-// visitScheduled: 訪問予定（営担に入力あり、訪問日が今日以降）
+// visitDayBefore: 訪問日前日（訪問日が明日、または木曜訪問の場合は明後日）
 // visitCompleted: 訪問済み（営担に入力あり、訪問日が昨日以前）
 // todayCallNotStarted: 当日TEL_未着手（不通が空欄 + 反響日付が2026/1/1以降）
 // pinrichEmpty: Pinrich空欄（Pinrichカラムが空欄）
-export type StatusCategory = 'all' | 'todayCall' | 'todayCallWithInfo' | 'todayCallAssigned' | 'visitScheduled' | 'visitCompleted' | 'unvaluated' | 'mailingPending' | 'todayCallNotStarted' | 'pinrichEmpty'
+export type StatusCategory = 'all' | 'todayCall' | 'todayCallWithInfo' | 'todayCallAssigned' | 'visitDayBefore' | 'visitCompleted' | 'unvaluated' | 'mailingPending' | 'todayCallNotStarted' | 'pinrichEmpty'
   | `visitAssigned:${string}`      // 担当カテゴリー（例: visitAssigned:Y）
   | `todayCallAssigned:${string}`; // 当日TELサブカテゴリー（例: todayCallAssigned:Y）
 
@@ -49,7 +50,7 @@ export interface CategoryCounts {
   todayCall: number;           // 当日TEL分（コミュニケーション情報なし、営担なし）
   todayCallWithInfo: number;   // 当日TEL（内容）（コミュニケーション情報あり、営担なし）
   todayCallAssigned: number;   // 当日TEL（担当）（営担あり、訪問日なし、次電日が今日以前）
-  visitScheduled: number;      // 訪問予定（営担に入力あり、訪問日が今日以降）
+  visitDayBefore: number;      // 訪問日前日（訪問日が翌営業日）
   visitCompleted: number;      // 訪問済み（営担に入力あり、訪問日が昨日以前）
   unvaluated: number;
   mailingPending: number;
@@ -210,18 +211,20 @@ const isTodayOrAfter = (dateStr: string | Date | undefined | null): boolean => {
 };
 
 /**
- * 訪問予定判定（営担に入力あり、訪問日が今日以降）
+ * 訪問日前日判定
  * 
- * 【サイドバー表示】「訪問予定（イニシャル）」
+ * 【サイドバー表示】「訪問日前日」
  * 
  * 条件:
  * - 営担（visitAssignee）に入力がある
- * - 訪問日（visitDate）が今日以降
+ * - 今日が訪問日の「前営業日」である
+ *   - 通常: 訪問日の1日前
+ *   - 木曜訪問の場合: 2日前（水曜が定休日のため火曜に通知）
  * 
  * @param seller 売主データ
- * @returns 訪問予定対象かどうか
+ * @returns 訪問日前日対象かどうか
  */
-export const isVisitScheduled = (seller: Seller | any): boolean => {
+export const isVisitDayBefore = (seller: Seller | any): boolean => {
   if (!hasVisitAssignee(seller)) {
     return false;
   }
@@ -231,8 +234,21 @@ export const isVisitScheduled = (seller: Seller | any): boolean => {
     return false;
   }
   
-  return isTodayOrAfter(visitDate);
+  // sellerStatusUtils の実装を使用（水曜定休・木曜2日前ロジック）
+  const todayStr = getTodayJSTString();
+  const todayParts = todayStr.split('-');
+  const todayDate = new Date(
+    parseInt(todayParts[0]),
+    parseInt(todayParts[1]) - 1,
+    parseInt(todayParts[2])
+  );
+  todayDate.setHours(0, 0, 0, 0);
+  
+  return isVisitDayBeforeUtil(String(visitDate), todayDate);
 };
+
+// 後方互換性のためのエイリアス（旧 isVisitScheduled）
+export const isVisitScheduled = isVisitDayBefore;
 
 /**
  * 訪問済み判定（営担に入力あり、訪問日が昨日以前）
@@ -764,7 +780,7 @@ export const getCategoryCounts = (sellers: (Seller | any)[]): CategoryCounts => 
     todayCall: sellers.filter(isTodayCall).length,
     todayCallWithInfo: sellers.filter(isTodayCallWithInfo).length,
     todayCallAssigned: sellers.filter(isTodayCallAssigned).length,
-    visitScheduled: sellers.filter(isVisitScheduled).length,
+    visitDayBefore: sellers.filter(isVisitDayBefore).length,
     visitCompleted: sellers.filter(isVisitCompleted).length,
     unvaluated: sellers.filter(isUnvaluated).length,
     mailingPending: sellers.filter(isMailingPending).length,
@@ -803,8 +819,10 @@ export const filterSellersByCategory = (
       return sellers.filter(isTodayCallWithInfo);
     case 'todayCallAssigned':
       return sellers.filter(isTodayCallAssigned);
-    case 'visitScheduled':
-      return sellers.filter(isVisitScheduled);
+    case 'visitDayBefore':
+      return sellers.filter(isVisitDayBefore);
+    case 'visitScheduled': // 後方互換性
+      return sellers.filter(isVisitDayBefore);
     case 'visitCompleted':
       return sellers.filter(isVisitCompleted);
     case 'unvaluated':

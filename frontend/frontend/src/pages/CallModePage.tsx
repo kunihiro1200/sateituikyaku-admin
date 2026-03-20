@@ -952,7 +952,7 @@ const CallModePage = () => {
             pageSize: 500, // バックエンドの最大値は500
             sortBy: 'next_call_date',
             sortOrder: 'asc',
-            statusCategory: 'visitScheduled', // 営担でフィルタリングするために使用
+            statusCategory: 'visitDayBefore', // 営担でフィルタリングするために使用
             visitAssignee: currentVisitAssignee,
           },
         }),

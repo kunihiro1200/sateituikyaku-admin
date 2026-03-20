@@ -1648,7 +1648,7 @@ export class SellerService extends BaseRepository {
     todayCall: number;
     todayCallWithInfo: number;
     todayCallAssigned: number;
-    visitScheduled: number;
+    visitDayBefore: number;
     visitCompleted: number;
     unvaluated: number;
     mailingPending: number;
@@ -1667,7 +1667,7 @@ export class SellerService extends BaseRepository {
       todayCall: number;
       todayCallWithInfo: number;
       todayCallAssigned: number;
-      visitScheduled: number;
+      visitDayBefore: number;
       visitCompleted: number;
       unvaluated: number;
       mailingPending: number;
@@ -1882,7 +1882,7 @@ export class SellerService extends BaseRepository {
       todayCall: todayCallNoInfoCount || 0,
       todayCallWithInfo: todayCallWithInfoCount || 0,
       todayCallAssigned: todayCallAssignedCount || 0,
-      visitScheduled: visitScheduledCount || 0,
+      visitDayBefore: visitDayBeforeCount || 0,
       visitCompleted: visitCompletedCount || 0,
       unvaluated: unvaluatedCount || 0,
       mailingPending: mailingPendingCount || 0,

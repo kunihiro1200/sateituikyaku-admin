@@ -92,7 +92,7 @@ describe('SellerStatusSidebar バグ条件の探索テスト', () => {
    * 
    * EXPECTED: このテストは未修正コードで FAIL する（ボタンが存在しないため）
    */
-  test('訪問予定の売主が存在する場合、「①訪問予定」ボタンが表示される', () => {
+  test('訪問日前日の売主が存在する場合、「①訪問日前日」ボタンが表示される', () => {
     const sellers = [
       createSeller({
         id: 'test-id-2',
@@ -108,7 +108,7 @@ describe('SellerStatusSidebar バグ条件の探索テスト', () => {
       todayCall: 0,
       todayCallWithInfo: 0,
       todayCallAssigned: 0,
-      visitScheduled: 1, // 訪問予定が1件
+      visitDayBefore: 1, // 訪問日前日が1件
       visitCompleted: 0,
       unvaluated: 0,
       mailingPending: 0,
@@ -125,10 +125,10 @@ describe('SellerStatusSidebar バグ条件の探索テスト', () => {
       />
     );
 
-    // 「①訪問予定」ボタンが存在することを確認
+    // 「①訪問日前日」ボタンが存在することを確認
     // 未修正コードではこのボタンが renderAllCategories() に含まれていないため FAIL する
     // 修正後はボタンとサブカテゴリ展開パネルの両方にテキストが存在するため getAllByText を使用
-    const elements = screen.getAllByText('①訪問予定');
+    const elements = screen.getAllByText('①訪問日前日');
     expect(elements.length).toBeGreaterThanOrEqual(1);
   });
 
