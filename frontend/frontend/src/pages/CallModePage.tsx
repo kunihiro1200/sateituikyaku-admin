@@ -3179,7 +3179,7 @@ HP：https://ifoo-oita.com/
                       <Grid item xs={6}>
                         <Typography variant="caption" color="text.secondary">状況（売主）</Typography>
                         <Typography variant="body2">
-                          {SELLER_SITUATION_OPTIONS.find(o => o.value === displayCurrentStatus)?.label || displayCurrentStatus}
+                          {formatCurrentStatusDetailed(displayCurrentStatus)}
                         </Typography>
                       </Grid>
                     )}

@@ -1182,10 +1182,6 @@ export class EnhancedAutoSyncService {
     const floorPlan = row['間取り'];
 
     const updateData: any = {
-      name: mappedData.name ? encrypt(mappedData.name) : null,
-      address: mappedData.address ? encrypt(mappedData.address) : null,
-      phone_number: mappedData.phone_number ? encrypt(mappedData.phone_number) : null,
-      email: mappedData.email ? encrypt(mappedData.email) : null,
       status: mappedData.status || '追客中',
       next_call_date: mappedData.next_call_date || null,
       pinrich_status: mappedData.pinrich_status || null,
@@ -1194,6 +1190,20 @@ export class EnhancedAutoSyncService {
       comments: row['コメント'] ? String(row['コメント']) : null,
       updated_at: new Date().toISOString(),
     };
+
+    // 暗号化フィールドはスプシに値がある場合のみ更新（空欄でDBの既存値を消さない）
+    if (mappedData.name && mappedData.name.trim() !== '') {
+      updateData.name = encrypt(mappedData.name);
+    }
+    if (mappedData.address && mappedData.address.trim() !== '') {
+      updateData.address = encrypt(mappedData.address);
+    }
+    if (mappedData.phone_number && mappedData.phone_number.trim() !== '') {
+      updateData.phone_number = encrypt(mappedData.phone_number);
+    }
+    if (mappedData.email && mappedData.email.trim() !== '') {
+      updateData.email = encrypt(mappedData.email);
+    }
 
     // 状況（売主）をsellers.current_statusにも保存（空欄の場合はnullでクリア）
     const currentStatus = row['状況（売主）'];
