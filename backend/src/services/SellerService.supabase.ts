@@ -873,6 +873,37 @@ export class SellerService extends BaseRepository {
     // サイドバーカテゴリフィルターを適用
     if (statusCategory && statusCategory !== 'all') {
       switch (statusCategory) {
+        case 'visitDayBefore': {
+          // 訪問日前日（営担あり AND 訪問日あり）→ 全件取得してJSでフィルタ
+          // 前営業日ロジック（木曜訪問→2日前、それ以外→1日前）はDBでは表現できないためJS側で処理
+          const { data: visitDayBeforeSellers } = await this.table('sellers')
+            .select('id')
+            .is('deleted_at', null)
+            .not('visit_assignee', 'is', null)
+            .neq('visit_assignee', '')
+            .neq('visit_assignee', '外す')
+            .not('visit_date', 'is', null);
+          // visitDayBefore に該当するIDを計算
+          const visitDayBeforeIds = (visitDayBeforeSellers || []).filter((s: any) => {
+            const vd = (s as any).visit_date;
+            if (!vd) return false;
+            const parts = vd.split('-');
+            if (parts.length !== 3) return false;
+            const visitDate = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+            const dow = visitDate.getDay();
+            const days = dow === 4 ? 2 : 1;
+            const notify = new Date(visitDate);
+            notify.setDate(visitDate.getDate() - days);
+            const notifyStr = `${notify.getFullYear()}-${String(notify.getMonth() + 1).padStart(2, '0')}-${String(notify.getDate()).padStart(2, '0')}`;
+            return notifyStr === todayJST;
+          }).map((s: any) => s.id);
+          if (visitDayBeforeIds.length === 0) {
+            query = query.in('id', ['__no_match__']);
+          } else {
+            query = query.in('id', visitDayBeforeIds);
+          }
+          break;
+        }
         case 'visitScheduled':
           // 訪問予定（営担に入力あり AND 訪問日が今日以降）
           query = query
@@ -919,15 +950,15 @@ export class SellerService extends BaseRepository {
             .or('phone_contact_person.neq.,preferred_contact_time.neq.,contact_method.neq.');
           break;
         case 'unvaluated':
-          // 未査定（追客中 AND 査定額が全て空 AND 反響日付が基準日以降 AND 営担が空）
+          // 未査定（追客中 AND 査定額が全て空 AND 反響日付が基準日以降 AND 営担が空（「外す」含む））
           query = query
             .ilike('status', '%追客中%')
             .gte('inquiry_date', cutoffDate)
-            .or('visit_assignee.is.null,visit_assignee.eq.')
+            .or('visit_assignee.is.null,visit_assignee.eq.,visit_assignee.eq.外す')
             .is('valuation_amount_1', null)
             .is('valuation_amount_2', null)
             .is('valuation_amount_3', null)
-            .neq('mailing_status', '不要');
+            .or('mailing_status.is.null,mailing_status.neq.不要');
           break;
         case 'mailingPending':
           // 査定（郵送）（郵送ステータスが「未」）
@@ -1710,15 +1741,20 @@ export class SellerService extends BaseRepository {
       .not('visit_date', 'is', null);
 
     // 前営業日ロジック: 今日が訪問日の前営業日かどうかを判定
+    // visit_date は "YYYY-MM-DD" 形式。ローカル日付として扱うため T00:00:00 のみ付与（タイムゾーン指定なし）
     const visitDayBeforeCount = (visitAssigneeSellers || []).filter(s => {
       const visitDateStr = s.visit_date;
       if (!visitDateStr) return false;
-      const visitDate = new Date(visitDateStr + 'T00:00:00+09:00');
+      // YYYY-MM-DD をローカル日付として解釈（タイムゾーンオフセットなし）
+      const parts = visitDateStr.split('-');
+      if (parts.length !== 3) return false;
+      const visitDate = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
       const visitDayOfWeek = visitDate.getDay(); // 0=日, 1=月, ..., 4=木, ...
       // 木曜訪問の場合は2日前（火曜）、それ以外は1日前
       const daysBeforeVisit = visitDayOfWeek === 4 ? 2 : 1;
-      const expectedNotifyDate = new Date(visitDate.getTime() - daysBeforeVisit * 24 * 60 * 60 * 1000);
-      const expectedNotifyStr = `${expectedNotifyDate.getUTCFullYear()}-${String(expectedNotifyDate.getUTCMonth() + 1).padStart(2, '0')}-${String(expectedNotifyDate.getUTCDate()).padStart(2, '0')}`;
+      const expectedNotifyDate = new Date(visitDate);
+      expectedNotifyDate.setDate(visitDate.getDate() - daysBeforeVisit);
+      const expectedNotifyStr = `${expectedNotifyDate.getFullYear()}-${String(expectedNotifyDate.getMonth() + 1).padStart(2, '0')}-${String(expectedNotifyDate.getDate()).padStart(2, '0')}`;
       return expectedNotifyStr === todayJST;
     }).length;
 
