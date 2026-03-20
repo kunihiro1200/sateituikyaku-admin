@@ -75,8 +75,8 @@ export const AssigneeSection: React.FC<AssigneeSectionProps> = ({ seller, onUpda
   useEffect(() => {
     const fetchInitials = async () => {
       try {
-        const response = await api.get<string[]>('/api/employees/active-initials');
-        setInitials(response.data);
+        const response = await api.get<{ initials: string[] }>('/api/employees/active-initials');
+        setInitials(response.data.initials ?? []);
       } catch (err) {
         console.error('イニシャル取得エラー:', err);
         setInitials([]);
