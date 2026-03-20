@@ -101,7 +101,7 @@ const getStatusColor = (status: string | null | undefined): 'default' | 'primary
   // 日本語の値の場合、キーワードで判定
   if (status.includes('専任') || status.includes('一般媒介')) return 'success';
   if (status.includes('他決')) return 'warning';
-  if (status.includes('追客')) return 'warning';
+  if (status.includes('追客')) return 'error';
   if (status.includes('訪問')) return 'secondary';
   if (status.includes('失注')) return 'error';
   if (status.includes('契約')) return 'success';
@@ -685,7 +685,7 @@ export default function SellersPage() {
                     data-seller-id={seller.id}
                   >
                     <TableCell>
-                      <Typography variant="body2" fontWeight="bold" color="primary">
+                      <Typography variant="body2" fontWeight="bold" sx={{ color: SECTION_COLORS.seller.main }}>
                         {seller.sellerNumber || '-'}
                       </Typography>
                     </TableCell>

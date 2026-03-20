@@ -437,6 +437,10 @@ export default function SellerStatusSidebar({
           fontSize: '0.85rem',
           py: 1,
           px: 1.5,
+          ...(isActive('all') && {
+            bgcolor: '#d32f2f',
+            '&:hover': { bgcolor: '#c62828' },
+          }),
         }}
       >
         <span>All</span>
