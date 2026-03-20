@@ -2180,16 +2180,6 @@ HP：https://ifoo-oita.com/
       return;
     }
 
-    // Check if button is already disabled
-    const buttonId = `email_${templateId}`;
-    if (isButtonDisabled(buttonId)) {
-      console.log('⚠️ Button is already disabled:', buttonId);
-      return;
-    }
-
-    // クイックボタンクリックを記録（pending状態に設定）
-    handleQuickButtonClick(buttonId);
-
     const template = emailTemplates.find(t => t.id === templateId);
     console.log('Found template:', template);
     
@@ -2379,11 +2369,6 @@ HP：https://ifoo-oita.com/
           const smsLink = `sms:${seller.phoneNumber}?body=${encodeURIComponent(messageContent)}`;
           window.location.href = smsLink;
         }
-      }
-
-      // クイックボタンの状態を永続化（pending → persisted）- メールのみ
-      if (type === 'email') {
-        handleQuickButtonSave();
       }
 
       // 活動履歴を再読み込み
