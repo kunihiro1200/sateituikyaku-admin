@@ -33,7 +33,7 @@ import { getDisplayName } from '../utils/employeeUtils';
 import { formatDateTime } from '../utils/dateFormat';
 import CallLogDisplay from '../components/CallLogDisplay';
 import { FollowUpLogHistoryTable } from '../components/FollowUpLogHistoryTable';
-import AssigneeSection, { SMS_TEMPLATE_ASSIGNEE_MAP } from '../components/AssigneeSection';
+import AssigneeSection, { SMS_TEMPLATE_ASSIGNEE_MAP, EMAIL_TEMPLATE_ASSIGNEE_MAP } from '../components/AssigneeSection';
 import DuplicateIndicatorBadge from '../components/DuplicateIndicatorBadge';
 import DuplicateDetailsModal from '../components/DuplicateDetailsModal';
 import DocumentModal from '../components/DocumentModal';
@@ -2295,7 +2295,39 @@ HP：https://ifoo-oita.com/
             from: senderAddress,  // 送信元アドレスを追加
           });
 
-          setSuccessMessage(hasImages ? `${template.label}を画像付きで送信しました` : `${template.label}を送信しました`);
+          // Email送信後、活動履歴を記録
+          await api.post(`/api/sellers/${id}/activities`, {
+            type: 'email',
+            content: `【${template.label}】を送信`,
+            result: 'sent',
+          });
+
+          setSnackbarMessage(hasImages ? `${template.label}を画像付きで送信しました` : `${template.label}を送信しました`);
+          setSnackbarOpen(true);
+
+          // Email送信後、対応する担当フィールドにログインユーザーのイニシャルを自動セット
+          try {
+            const assigneeKey = EMAIL_TEMPLATE_ASSIGNEE_MAP[template.id];
+            let myInitial = '';
+            const myEmployee = activeEmployees.find(e => e.email === employee?.email);
+            if (myEmployee?.initials) {
+              myInitial = myEmployee.initials;
+            } else {
+              try {
+                const freshEmployees = await import('../services/employeeService').then(m => m.getActiveEmployees());
+                const freshMe = freshEmployees.find(e => e.email === employee?.email);
+                myInitial = freshMe?.initials || employee?.initials || '';
+              } catch {
+                myInitial = employee?.initials || '';
+              }
+            }
+            if (assigneeKey && myInitial && seller?.id) {
+              await api.put(`/api/sellers/${seller.id}`, { [assigneeKey]: myInitial });
+              setSeller((prev) => prev ? { ...prev, [assigneeKey as keyof Seller]: myInitial } : prev);
+            }
+          } catch (assigneeErr) {
+            console.error('Email担当フィールド自動セットエラー:', assigneeErr);
+          }
         }
       } else if (type === 'sms') {
         // 改行プレースホルダーを実際の改行に変換
