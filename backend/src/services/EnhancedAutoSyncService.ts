@@ -778,7 +778,7 @@ export class EnhancedAutoSyncService {
     while (hasMore) {
       const { data: dbSellers, error } = await this.supabase
         .from('sellers')
-        .select('seller_number, status, contract_year_month, visit_assignee, phone_contact_person, preferred_contact_time, contact_method, next_call_date, unreachable_status, inquiry_date, comments, valuation_amount_1, valuation_amount_2, valuation_amount_3, first_call_person, valuation_reason, valuation_method, updated_at')
+        .select('seller_number, status, contract_year_month, visit_assignee, phone_contact_person, preferred_contact_time, contact_method, next_call_date, unreachable_status, inquiry_date, comments, valuation_amount_1, valuation_amount_2, valuation_amount_3, first_call_person, valuation_reason, valuation_method, name, updated_at')
         .range(offset, offset + pageSize - 1);
 
       if (error) {
@@ -911,6 +911,14 @@ export class EnhancedAutoSyncService {
           const dbValuationMethod = dbSeller.valuation_method || '';
           const sheetValuationMethod = sheetRow['査定方法'] || '';
           if (sheetValuationMethod !== dbValuationMethod) {
+            needsUpdate = true;
+          }
+
+          // nameの比較（暗号化フィールドのため直接比較不可）
+          // スプシに name がある場合、DBの name が null/空なら更新対象にする
+          // （氏名未同期の案件を検出するため）
+          const sheetName = sheetRow['名前(漢字のみ）'] || '';
+          if (sheetName && sheetName.trim() !== '' && !dbSeller.name) {
             needsUpdate = true;
           }
 

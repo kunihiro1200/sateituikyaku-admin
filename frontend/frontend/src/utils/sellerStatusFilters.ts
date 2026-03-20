@@ -615,6 +615,25 @@ export const isUnvaluated = (seller: Seller | any): boolean => {
     return false;
   }
   
+  // 当日TEL_未着手の条件を満たす場合は未査定から除外（未着手が優先）
+  // ※ isTodayCallNotStarted は後方で定義されるため、条件をインライン展開
+  // 未着手の追加条件: 不通が空 + 反響日付が2026/1/1以降 + 確度がダブり/D/AI査定でない
+  const NOTSTARTED_CUTOFF = '2026-01-01';
+  const unreachableForCheck = seller.unreachableStatus || seller.unreachable_status || '';
+  const confidenceForCheck = seller.confidence || seller.confidenceLevel || seller.confidence_level || '';
+  const exclusionDateForCheck = seller.exclusionDate || seller.exclusion_date || '';
+  const isNotStarted = isTodayCallBase(seller) &&
+    !hasContactInfo(seller) &&
+    !hasVisitAssignee(seller) &&
+    (seller.status || '') === '追客中' &&
+    (!unreachableForCheck || unreachableForCheck.trim() === '') &&
+    confidenceForCheck !== 'ダブり' && confidenceForCheck !== 'D' && confidenceForCheck !== 'AI査定' &&
+    (!exclusionDateForCheck || exclusionDateForCheck.trim() === '') &&
+    normalizedInquiryDate >= NOTSTARTED_CUTOFF;
+  if (isNotStarted) {
+    return false;
+  }
+
   return normalizedInquiryDate >= CUTOFF_DATE_STR;
 };
 
@@ -685,7 +704,7 @@ export const isTodayCallNotStarted = (seller: Seller | any): boolean => {
   }
   
   // 反響日付が2026/1/1以降かチェック
-  const inquiryDate = seller.inquiryDetailedDatetime || seller.inquiryDate || seller.inquiry_date;
+  const inquiryDate = seller.inquiryDate || seller.inquiry_date || seller.inquiryDetailedDatetime;
   const normalizedInquiryDate = normalizeDateString(inquiryDate);
   
   if (!normalizedInquiryDate) {
