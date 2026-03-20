@@ -5398,20 +5398,22 @@ HP：https://ifoo-oita.com/
             <CollapsibleSection title="実績" defaultExpanded={false} headerColor="success.light">
               <PerformanceMetricsSection />
             </CollapsibleSection>
+
+            {/* 担当者設定セクション */}
+            {seller && (
+              <Box sx={{ mt: 2 }}>
+                <AssigneeSection
+                  seller={seller}
+                  onUpdate={(fields) => setSeller((prev) => prev ? { ...prev, ...fields } : prev)}
+                />
+              </Box>
+            )}
           </Grid>
         </Grid>
       </Box>
       </Box>
 
-      {/* 担当者設定セクション（全幅） */}
-      {seller && (
-        <Box sx={{ mt: 2, px: 3 }}>
-          <AssigneeSection
-            seller={seller}
-            onUpdate={(fields) => setSeller((prev) => prev ? { ...prev, ...fields } : prev)}
-          />
-        </Box>
-      )}
+
 
       {/* 土地面積警告ダイアログ */}
       <Dialog open={!!landAreaWarning} onClose={() => setLandAreaWarning(null)}>
