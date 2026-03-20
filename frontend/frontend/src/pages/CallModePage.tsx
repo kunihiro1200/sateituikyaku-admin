@@ -5430,6 +5430,7 @@ HP：https://ifoo-oita.com/
               <Box sx={{ mt: 2 }}>
                 <AssigneeSection
                   seller={seller}
+                  activities={activities}
                   onUpdate={(fields) => setSeller((prev) => prev ? { ...prev, ...fields } : prev)}
                 />
               </Box>

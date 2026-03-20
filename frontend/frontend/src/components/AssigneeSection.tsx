@@ -20,9 +20,89 @@ export const SMS_TEMPLATE_ASSIGNEE_MAP: Partial<Record<string, keyof Seller>> = 
   visit_reminder:       'visitReminderAssignee',
 };
 
+// EmailテンプレートID → 対応するsellerKeyのマッピング
+export const EMAIL_TEMPLATE_ASSIGNEE_MAP: Partial<Record<string, keyof Seller>> = {
+  ieul_call_cancel:            'cancelNoticeAssignee',
+  ieul_cancel_only:            'cancelNoticeAssignee',
+  lifull_yahoo_call_cancel:    'cancelNoticeAssignee',
+  lifull_yahoo_cancel_only:    'cancelNoticeAssignee',
+  sumai_step_call_cancel:      'cancelNoticeAssignee',
+  sumai_step_cancel_only:      'cancelNoticeAssignee',
+  home4u_call_cancel:          'cancelNoticeAssignee',
+  reason_relocation_3day:      'valuationReasonEmailAssignee',
+  reason_inheritance_3day:     'valuationReasonEmailAssignee',
+  reason_divorce_3day:         'valuationReasonEmailAssignee',
+  reason_loan_3day:            'valuationReasonEmailAssignee',
+  exclusion_long_term:         'longTermEmailAssignee',
+  remind:                      'callReminderEmailAssignee',
+  visit_reminder:              'visitReminderAssignee',
+};
+
+// 活動履歴のラベル → sellerKey（SMS）
+const SMS_LABEL_TO_KEY: Record<string, keyof Seller> = {
+  '不通時Sメール':                       'unreachableSmsAssignee',
+  'キャンセル案内':                       'cancelNoticeAssignee',
+  '査定Sメール':                         'valuationSmsAssignee',
+  '除外前・長期客Sメール':               'longTermEmailAssignee',
+  '当社が電話したというリマインドメール': 'callReminderEmailAssignee',
+  '訪問事前通知メール':                   'visitReminderAssignee',
+};
+
+// 活動履歴のラベル → sellerKey（Email）
+const EMAIL_LABEL_TO_KEY: Record<string, keyof Seller> = {
+  '不通で電話時間確認＆キャンセル案内（イエウール）':     'cancelNoticeAssignee',
+  'キャンセル案内のみ（イエウール）':                     'cancelNoticeAssignee',
+  '不通で電話時間確認＆キャンセル案内（LIFULLとYahoo）': 'cancelNoticeAssignee',
+  'キャンセル案内のみ（LIFULLとYahoo）':                 'cancelNoticeAssignee',
+  '不通で電話時間確認＆キャンセル案内（すまいステップ）': 'cancelNoticeAssignee',
+  'キャンセル案内のみ（すまいステップ）':                 'cancelNoticeAssignee',
+  '不通で電話時間確認＆キャンセル案内（HOME4U）':         'cancelNoticeAssignee',
+  '（査定理由別）住替え先（３日後メール）':               'valuationReasonEmailAssignee',
+  '（査定理由別）相続（３日後メール）':                   'valuationReasonEmailAssignee',
+  '（査定理由別）離婚（３日後メール）':                   'valuationReasonEmailAssignee',
+  '（査定理由別）ローン厳しい（３日後メール）':           'valuationReasonEmailAssignee',
+  '除外前、長期客（お客様いるメール）':                   'longTermEmailAssignee',
+  'リマインド':                                           'callReminderEmailAssignee',
+  '☆訪問前日通知メール':                                 'visitReminderAssignee',
+};
+
+// 活動履歴からsellerKeyごとの送信状態を計算
+export function calcSendStatus(
+  activities: { type: string; content: string }[]
+): Partial<Record<keyof Seller, 'sms' | 'email' | 'both'>> {
+  const smsSent = new Set<keyof Seller>();
+  const emailSent = new Set<keyof Seller>();
+
+  for (const act of activities) {
+    const match = act.content?.match(/^【(.+?)】/);
+    if (!match) continue;
+    const label = match[1];
+    if (act.type === 'sms') {
+      const key = SMS_LABEL_TO_KEY[label];
+      if (key) smsSent.add(key);
+    } else if (act.type === 'email') {
+      const key = EMAIL_LABEL_TO_KEY[label];
+      if (key) emailSent.add(key);
+    }
+  }
+
+  const result: Partial<Record<keyof Seller, 'sms' | 'email' | 'both'>> = {};
+  const allKeys = new Set([...smsSent, ...emailSent]);
+  for (const key of allKeys) {
+    const hasSms = smsSent.has(key);
+    const hasEmail = emailSent.has(key);
+    if (hasSms && hasEmail) result[key] = 'both';
+    else if (hasSms) result[key] = 'sms';
+    else result[key] = 'email';
+  }
+  return result;
+}
+
 interface AssigneeSectionProps {
   seller: Seller;
   onUpdate: (updatedFields: Partial<Seller>) => void;
+  /** 活動履歴（SMS/Email送信状態の色付けに使用） */
+  activities?: { type: string; content: string }[];
   /** SMS送信後に呼び出す: templateId と送信者イニシャルを渡す */
   onSmsTemplateUsed?: (templateId: string, initial: string) => void;
 }
@@ -41,11 +121,14 @@ const ASSIGNEE_FIELDS: AssigneeFieldConfig[] = [
   { label: 'キャンセル案内担当',                     sellerKey: 'cancelNoticeAssignee',         fieldType: 'assignee' },
   { label: '除外前、長期客メール担当',                sellerKey: 'longTermEmailAssignee',        fieldType: 'assignee' },
   { label: '当社が電話したというリマインドメール担当', sellerKey: 'callReminderEmailAssignee',    fieldType: 'assignee' },
-  { label: '訪問事前通知メール担当',                     sellerKey: 'visitReminderAssignee',        fieldType: 'assignee' },
+  { label: '訪問事前通知メール担当',                  sellerKey: 'visitReminderAssignee',        fieldType: 'assignee' },
 ];
 
-export const AssigneeSection: React.FC<AssigneeSectionProps> = ({ seller, onUpdate, onSmsTemplateUsed }) => {
+export const AssigneeSection: React.FC<AssigneeSectionProps> = ({ seller, onUpdate, activities = [], onSmsTemplateUsed }) => {
   const [initials, setInitials] = useState<string[]>([]);
+
+  // 活動履歴からSMS/Email送信状態を計算
+  const sendStatus = calcSendStatus(activities);
 
   const [localValues, setLocalValues] = useState<Partial<Record<keyof Seller, string | null>>>(() => {
     const init: Partial<Record<keyof Seller, string | null>> = {};
@@ -150,15 +233,14 @@ export const AssigneeSection: React.FC<AssigneeSectionProps> = ({ seller, onUpda
 
       {ASSIGNEE_FIELDS.map((field) => {
         const currentValue = localValues[field.sellerKey] as string | null;
+        const status = sendStatus[field.sellerKey];
 
         return (
           <Box key={String(field.sellerKey)} sx={{ mb: 2 }}>
-            {/* ラベル（上に大きく表示） */}
             <Typography variant="body1" sx={{ mb: 0.75, fontWeight: 500 }}>
               {field.label}
             </Typography>
 
-            {/* テキスト入力（査定理由） */}
             {field.fieldType === 'text' ? (
               <TextField
                 size="small"
@@ -170,32 +252,34 @@ export const AssigneeSection: React.FC<AssigneeSectionProps> = ({ seller, onUpda
                 onChange={(e) => handleValuationReasonChange(e.target.value)}
               />
             ) : (
-              /* ボタン群：全幅で折り返し、各ボタンは同じ幅で並ぶ */
-              <Box
-                sx={{
-                  display: 'flex',
-                  flexWrap: 'wrap',
-                  gap: 0.5,
-                  width: '100%',
-                }}
-              >
-                {initials.map((initial) => (
-                  <Button
-                    key={initial}
-                    size="small"
-                    variant={currentValue === initial ? 'contained' : 'outlined'}
-                    color={currentValue === initial ? 'primary' : 'inherit'}
-                    onClick={() => handleButtonClick(field.sellerKey, initial)}
-                    sx={{
-                      py: 0.75,
-                      fontSize: '0.85rem',
-                      bgcolor: currentValue === initial ? undefined : 'grey.100',
-                      borderColor: 'grey.300',
-                    }}
-                  >
-                    {initial}
-                  </Button>
-                ))}
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, width: '100%' }}>
+                {initials.map((initial) => {
+                  const isSelected = currentValue === initial;
+                  // 選択中ボタンの色: SMS→赤、Email→青、両方→オレンジ
+                  let bgColor: string | undefined;
+                  if (isSelected && status === 'sms')   bgColor = '#f44336';
+                  if (isSelected && status === 'email') bgColor = '#1976d2';
+                  if (isSelected && status === 'both')  bgColor = '#ff9800';
+
+                  return (
+                    <Button
+                      key={initial}
+                      size="small"
+                      variant={isSelected ? 'contained' : 'outlined'}
+                      onClick={() => handleButtonClick(field.sellerKey, initial)}
+                      sx={{
+                        py: 0.75,
+                        fontSize: '0.85rem',
+                        bgcolor: isSelected ? (bgColor ?? undefined) : 'grey.100',
+                        borderColor: 'grey.300',
+                        color: isSelected && bgColor ? '#fff' : undefined,
+                        '&:hover': isSelected && bgColor ? { bgcolor: bgColor, opacity: 0.85 } : {},
+                      }}
+                    >
+                      {initial}
+                    </Button>
+                  );
+                })}
                 <Button
                   size="small"
                   variant={currentValue === '不要' ? 'contained' : 'outlined'}
