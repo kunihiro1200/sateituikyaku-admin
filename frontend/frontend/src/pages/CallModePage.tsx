@@ -2319,15 +2319,15 @@ HP：https://ifoo-oita.com/
         setSuccessMessage(`${template.label}を記録しました`);
 
         // SMS送信後、対応する担当フィールドにログインユーザーのイニシャルを自動セット
-        const assigneeKey = SMS_TEMPLATE_ASSIGNEE_MAP[template.id];
-        const myInitial = employee?.initials || employee?.name || '';
-        if (assigneeKey && myInitial && seller?.id) {
-          try {
+        try {
+          const assigneeKey = SMS_TEMPLATE_ASSIGNEE_MAP[template.id];
+          const myInitial = employee?.initials || employee?.name || '';
+          if (assigneeKey && myInitial && seller?.id) {
             await api.put(`/api/sellers/${seller.id}`, { [assigneeKey]: myInitial });
-            setSeller((prev) => prev ? { ...prev, [assigneeKey]: myInitial } : prev);
-          } catch (assigneeErr) {
-            console.error('担当フィールド自動セットエラー:', assigneeErr);
+            setSeller((prev) => prev ? { ...prev, [assigneeKey as keyof Seller]: myInitial } : prev);
           }
+        } catch (assigneeErr) {
+          console.error('担当フィールド自動セットエラー:', assigneeErr);
         }
 
         // SMSアプリを開く
