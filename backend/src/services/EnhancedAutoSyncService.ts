@@ -778,7 +778,7 @@ export class EnhancedAutoSyncService {
     while (hasMore) {
       const { data: dbSellers, error } = await this.supabase
         .from('sellers')
-        .select('seller_number, status, contract_year_month, visit_assignee, phone_contact_person, preferred_contact_time, contact_method, next_call_date, unreachable_status, inquiry_date, comments, valuation_amount_1, valuation_amount_2, valuation_amount_3, first_call_person, updated_at')
+        .select('seller_number, status, contract_year_month, visit_assignee, phone_contact_person, preferred_contact_time, contact_method, next_call_date, unreachable_status, inquiry_date, comments, valuation_amount_1, valuation_amount_2, valuation_amount_3, first_call_person, valuation_reason, valuation_method, updated_at')
         .range(offset, offset + pageSize - 1);
 
       if (error) {
@@ -897,6 +897,20 @@ export class EnhancedAutoSyncService {
           const dbFirstCallPerson = dbSeller.first_call_person || '';
           const sheetFirstCallPerson = sheetRow['一番TEL'] || '';
           if (sheetFirstCallPerson !== dbFirstCallPerson) {
+            needsUpdate = true;
+          }
+
+          // valuation_reasonの比較
+          const dbValuationReason = dbSeller.valuation_reason || '';
+          const sheetValuationReason = sheetRow['査定理由（査定サイトから転記）'] || '';
+          if (sheetValuationReason !== dbValuationReason) {
+            needsUpdate = true;
+          }
+
+          // valuation_methodの比較
+          const dbValuationMethod = dbSeller.valuation_method || '';
+          const sheetValuationMethod = sheetRow['査定方法'] || '';
+          if (sheetValuationMethod !== dbValuationMethod) {
             needsUpdate = true;
           }
 
