@@ -447,6 +447,7 @@ export default function SellerStatusSidebar({
 
       {/* 既存の固定カテゴリー */}
       {renderCategoryButton('visitDayBefore', '①訪問日前日', '#2e7d32')}
+      {renderCategoryButton('visitCompleted', '②訪問済み', '#1565c0')}
       {renderCategoryButton('todayCall', '③当日TEL分', '#d32f2f')}
       {(() => {
         // todayCallWithInfo のラベルはAPIから取得した全件対象のラベル一覧を優先使用

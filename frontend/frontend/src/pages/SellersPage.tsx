@@ -142,7 +142,7 @@ export default function SellersPage() {
     todayCall: 0,
     todayCallWithInfo: 0,
     todayCallAssigned: 0,
-    visitScheduled: 0,
+    visitDayBefore: 0,
     visitCompleted: 0,
     unvaluated: 0,
     mailingPending: 0,

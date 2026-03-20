@@ -1699,14 +1699,28 @@ export class SellerService extends BaseRepository {
       return true;
     };
 
-    // 1. 訪問予定（営担に入力あり AND 訪問日が今日以降）← 最優先
-    const { count: visitScheduledCount } = await this.table('sellers')
-      .select('*', { count: 'exact', head: true })
+    // 1. 訪問日前日（営担に入力あり AND 訪問日あり）← 前営業日ロジックをJSで計算
+    // 木曜訪問の場合は2日前（水曜定休のため火曜に通知）、それ以外は1日前
+    const { data: visitAssigneeSellers } = await this.table('sellers')
+      .select('visit_date, visit_assignee')
       .is('deleted_at', null)
       .not('visit_assignee', 'is', null)
       .neq('visit_assignee', '')
       .neq('visit_assignee', '外す')
-      .gte('visit_date', todayJST);
+      .not('visit_date', 'is', null);
+
+    // 前営業日ロジック: 今日が訪問日の前営業日かどうかを判定
+    const visitDayBeforeCount = (visitAssigneeSellers || []).filter(s => {
+      const visitDateStr = s.visit_date;
+      if (!visitDateStr) return false;
+      const visitDate = new Date(visitDateStr + 'T00:00:00+09:00');
+      const visitDayOfWeek = visitDate.getDay(); // 0=日, 1=月, ..., 4=木, ...
+      // 木曜訪問の場合は2日前（火曜）、それ以外は1日前
+      const daysBeforeVisit = visitDayOfWeek === 4 ? 2 : 1;
+      const expectedNotifyDate = new Date(visitDate.getTime() - daysBeforeVisit * 24 * 60 * 60 * 1000);
+      const expectedNotifyStr = `${expectedNotifyDate.getUTCFullYear()}-${String(expectedNotifyDate.getUTCMonth() + 1).padStart(2, '0')}-${String(expectedNotifyDate.getUTCDate()).padStart(2, '0')}`;
+      return expectedNotifyStr === todayJST;
+    }).length;
 
     // 2. 訪問済み（営担に入力あり AND 訪問日が昨日以前）← 2番目
     const { count: visitCompletedCount } = await this.table('sellers')
