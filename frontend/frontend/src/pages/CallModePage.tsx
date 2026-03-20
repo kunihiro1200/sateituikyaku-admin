@@ -1349,7 +1349,7 @@ const CallModePage = () => {
 
   const handleBack = () => {
     // 未保存のデータがある場合は確認ダイアログを表示
-    if (unifiedComment.trim()) {
+    if (callMemo.trim()) {
       if (window.confirm('入力中のコメントがあります。保存せずに戻りますか？')) {
         navigate(`/sellers/${id}`);
       }
