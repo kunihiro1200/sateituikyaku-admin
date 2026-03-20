@@ -1386,8 +1386,10 @@ const CallModePage = () => {
         firstCallPerson: editedFirstCallPerson || null,
       });
 
-      // クイックボタンの状態を永続化（pending → persisted）
-      handleQuickButtonSave();
+      // クイックボタンの状態を永続化（pending → persisted）- メールのみ
+      if (type === 'email') {
+        handleQuickButtonSave();
+      }
 
       // 保存成功メッセージを表示
       setSuccessMessage('保存しました');
@@ -2227,16 +2229,6 @@ HP：https://ifoo-oita.com/
   const handleSmsTemplateSelect = (templateId: string) => {
     if (!templateId) return;
 
-    // Check if button is already disabled
-    const buttonId = `sms_${templateId}`;
-    if (isButtonDisabled(buttonId)) {
-      console.log('⚠️ Button is already disabled:', buttonId);
-      return;
-    }
-
-    // クイックボタンクリックを記録（pending状態に設定）
-    handleQuickButtonClick(buttonId);
-
     const template = smsTemplates.find(t => t.id === templateId);
     if (!template) return;
 
@@ -2337,8 +2329,10 @@ HP：https://ifoo-oita.com/
         }
       }
 
-      // クイックボタンの状態を永続化（pending → persisted）
-      handleQuickButtonSave();
+      // クイックボタンの状態を永続化（pending → persisted）- メールのみ
+      if (type === 'email') {
+        handleQuickButtonSave();
+      }
 
       // 活動履歴を再読み込み
       const activitiesResponse = await api.get(`/api/sellers/${id}/activities`);
