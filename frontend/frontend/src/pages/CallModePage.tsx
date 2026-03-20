@@ -5201,14 +5201,6 @@ HP：https://ifoo-oita.com/
               </Box>
             </Box>
 
-            {/* 担当者設定セクション */}
-            {seller && (
-              <AssigneeSection
-                seller={seller}
-                onUpdate={(fields) => setSeller((prev) => prev ? {{ ...prev, ...fields }} : prev)}
-              />
-            )}
-
             {/* 不通フィールド（inquiry_date >= 2026-01-01の売主のみ表示） */}
             {seller?.inquiryDate && new Date(seller.inquiryDate) >= new Date('2026-01-01') && (
               <Box sx={{ mb: 2 }}>
@@ -5408,6 +5400,16 @@ HP：https://ifoo-oita.com/
             </CollapsibleSection>
           </Grid>
         </Grid>
+
+        {/* 担当者設定セクション（全幅） */}
+        {seller && (
+          <Box sx={{ mt: 2 }}>
+            <AssigneeSection
+              seller={seller}
+              onUpdate={(fields) => setSeller((prev) => prev ? { ...prev, ...fields } : prev)}
+            />
+          </Box>
+        )}
       </Box>
       </Box>
 
