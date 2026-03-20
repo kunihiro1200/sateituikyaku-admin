@@ -922,10 +922,10 @@ export class EnhancedAutoSyncService {
             needsUpdate = true;
           }
 
-          // property_addressの比較（DBが空欄または「不明」の場合のみ更新）
+          // property_addressの比較（DBが空欄・「不明」・「未入力」の場合のみ更新）
           const dbPropertyAddress = dbSeller.property_address || '';
           const sheetPropertyAddress = sheetRow['物件所在地'] || '';
-          if (sheetPropertyAddress && (dbPropertyAddress === '' || dbPropertyAddress === '不明')) {
+          if (sheetPropertyAddress && (dbPropertyAddress === '' || dbPropertyAddress === '不明' || dbPropertyAddress === '未入力')) {
             needsUpdate = true;
           }
 
