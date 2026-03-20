@@ -2308,7 +2308,8 @@ HP：https://ifoo-oita.com/
           result: 'sent',
         });
 
-        setSuccessMessage(`${template.label}を記録しました`);
+        setSnackbarMessage(`${template.label}を記録しました`);
+        setSnackbarOpen(true);
 
         // SMS送信後、対応する担当フィールドにログインユーザーのイニシャルを自動セット
         try {
