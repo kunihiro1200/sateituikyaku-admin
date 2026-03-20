@@ -2792,14 +2792,6 @@ HP：https://ifoo-oita.com/
           {/* 売主追客ログ（一番上） */}
           <Box sx={{ width: 280, p: 2, borderBottom: 1, borderColor: 'divider' }}>
             <CallLogDisplay sellerId={id!} />
-            
-            {/* 担当者設定セクション */}
-            {seller && (
-              <AssigneeSection
-                seller={seller}
-                onUpdate={(fields) => setSeller((prev) => prev ? { ...prev, ...fields } : prev)}
-              />
-            )}
 
             {/* 追客ログ履歴（APPSHEET） */}
             {seller?.sellerNumber && (
@@ -5208,6 +5200,14 @@ HP：https://ifoo-oita.com/
                 ))}
               </Box>
             </Box>
+
+            {/* 担当者設定セクション */}
+            {seller && (
+              <AssigneeSection
+                seller={seller}
+                onUpdate={(fields) => setSeller((prev) => prev ? {{ ...prev, ...fields }} : prev)}
+              />
+            )}
 
             {/* 不通フィールド（inquiry_date >= 2026-01-01の売主のみ表示） */}
             {seller?.inquiryDate && new Date(seller.inquiryDate) >= new Date('2026-01-01') && (
