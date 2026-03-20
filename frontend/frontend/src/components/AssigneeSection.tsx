@@ -10,9 +10,20 @@ import {
 import api from '../services/api';
 import { Seller } from '../types';
 
+// SMSテンプレートID → 対応するsellerKeyのマッピング
+export const SMS_TEMPLATE_ASSIGNEE_MAP: Partial<Record<string, keyof Seller>> = {
+  initial_cancellation: 'unreachableSmsAssignee',
+  cancellation:         'cancelNoticeAssignee',
+  valuation:            'valuationSmsAssignee',
+  long_term_customer:   'longTermEmailAssignee',
+  call_reminder:        'callReminderEmailAssignee',
+};
+
 interface AssigneeSectionProps {
   seller: Seller;
   onUpdate: (updatedFields: Partial<Seller>) => void;
+  /** SMS送信後に呼び出す: templateId と送信者イニシャルを渡す */
+  onSmsTemplateUsed?: (templateId: string, initial: string) => void;
 }
 
 interface AssigneeFieldConfig {
@@ -31,7 +42,7 @@ const ASSIGNEE_FIELDS: AssigneeFieldConfig[] = [
   { label: '当社が電話したというリマインドメール担当', sellerKey: 'callReminderEmailAssignee',    fieldType: 'assignee' },
 ];
 
-export const AssigneeSection: React.FC<AssigneeSectionProps> = ({ seller, onUpdate }) => {
+export const AssigneeSection: React.FC<AssigneeSectionProps> = ({ seller, onUpdate, onSmsTemplateUsed }) => {
   const [initials, setInitials] = useState<string[]>([]);
 
   const [localValues, setLocalValues] = useState<Partial<Record<keyof Seller, string | null>>>(() => {
@@ -132,7 +143,7 @@ export const AssigneeSection: React.FC<AssigneeSectionProps> = ({ seller, onUpda
   return (
     <Box sx={{ mb: 2 }}>
       <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1 }}>
-        担当者設定
+        メール送信確認
       </Typography>
 
       {ASSIGNEE_FIELDS.map((field) => {

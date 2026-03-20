@@ -33,7 +33,7 @@ import { getDisplayName } from '../utils/employeeUtils';
 import { formatDateTime } from '../utils/dateFormat';
 import CallLogDisplay from '../components/CallLogDisplay';
 import { FollowUpLogHistoryTable } from '../components/FollowUpLogHistoryTable';
-import AssigneeSection from '../components/AssigneeSection';
+import AssigneeSection, { SMS_TEMPLATE_ASSIGNEE_MAP } from '../components/AssigneeSection';
 import DuplicateIndicatorBadge from '../components/DuplicateIndicatorBadge';
 import DuplicateDetailsModal from '../components/DuplicateDetailsModal';
 import DocumentModal from '../components/DocumentModal';
@@ -2317,6 +2317,18 @@ HP：https://ifoo-oita.com/
         });
 
         setSuccessMessage(`${template.label}を記録しました`);
+
+        // SMS送信後、対応する担当フィールドにログインユーザーのイニシャルを自動セット
+        const assigneeKey = SMS_TEMPLATE_ASSIGNEE_MAP[template.id];
+        const myInitial = employee?.initials || employee?.name || '';
+        if (assigneeKey && myInitial && seller?.id) {
+          try {
+            await api.put(`/api/sellers/${seller.id}`, { [assigneeKey]: myInitial });
+            setSeller((prev) => prev ? { ...prev, [assigneeKey]: myInitial } : prev);
+          } catch (assigneeErr) {
+            console.error('担当フィールド自動セットエラー:', assigneeErr);
+          }
+        }
 
         // SMSアプリを開く
         if (seller?.phoneNumber) {
