@@ -907,10 +907,10 @@ export class EnhancedAutoSyncService {
             needsUpdate = true;
           }
 
-          // valuation_methodの比較
+          // valuation_methodの比較（DBが空欄の場合のみ更新）
           const dbValuationMethod = dbSeller.valuation_method || '';
           const sheetValuationMethod = sheetRow['査定方法'] || '';
-          if (sheetValuationMethod !== dbValuationMethod) {
+          if (sheetValuationMethod && dbValuationMethod === '') {
             needsUpdate = true;
           }
 
@@ -922,10 +922,10 @@ export class EnhancedAutoSyncService {
             needsUpdate = true;
           }
 
-          // property_addressの比較
+          // property_addressの比較（DBが空欄または「不明」の場合のみ更新）
           const dbPropertyAddress = dbSeller.property_address || '';
           const sheetPropertyAddress = sheetRow['物件所在地'] || '';
-          if (sheetPropertyAddress !== dbPropertyAddress) {
+          if (sheetPropertyAddress && (dbPropertyAddress === '' || dbPropertyAddress === '不明')) {
             needsUpdate = true;
           }
 
@@ -936,7 +936,7 @@ export class EnhancedAutoSyncService {
             needsUpdate = true;
           }
 
-          // 査定額の比較（手動入力優先、なければ自動計算）
+          // 査定額の比較（DBがnullの場合のみ更新）
           const sheetVal1Raw = sheetRow['査定額1'] || sheetRow['査定額1（自動計算）v'];
           const sheetVal2Raw = sheetRow['査定額2'] || sheetRow['査定額2（自動計算）v'];
           const sheetVal3Raw = sheetRow['査定額3'] || sheetRow['査定額3（自動計算）v'];
@@ -947,13 +947,13 @@ export class EnhancedAutoSyncService {
           const sheetVal1Yen = sheetVal1 !== null ? sheetVal1 * 10000 : null;
           const sheetVal2Yen = sheetVal2 !== null ? sheetVal2 * 10000 : null;
           const sheetVal3Yen = sheetVal3 !== null ? sheetVal3 * 10000 : null;
-          if (sheetVal1Yen !== (dbSeller.valuation_amount_1 ?? null)) {
+          if (sheetVal1Yen !== null && dbSeller.valuation_amount_1 === null) {
             needsUpdate = true;
           }
-          if (sheetVal2Yen !== (dbSeller.valuation_amount_2 ?? null)) {
+          if (sheetVal2Yen !== null && dbSeller.valuation_amount_2 === null) {
             needsUpdate = true;
           }
-          if (sheetVal3Yen !== (dbSeller.valuation_amount_3 ?? null)) {
+          if (sheetVal3Yen !== null && dbSeller.valuation_amount_3 === null) {
             needsUpdate = true;
           }
 
