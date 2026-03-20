@@ -10,10 +10,6 @@ import {
 import api from '../services/api';
 import { Seller } from '../types';
 
-// ============================================================
-// 型定義
-// ============================================================
-
 interface AssigneeSectionProps {
   seller: Seller;
   onUpdate: (updatedFields: Partial<Seller>) => void;
@@ -25,29 +21,19 @@ interface AssigneeFieldConfig {
   fieldType: 'assignee' | 'text';
 }
 
-// ============================================================
-// フィールド定義
-// ============================================================
-
 const ASSIGNEE_FIELDS: AssigneeFieldConfig[] = [
-  { label: '不通時Sメール担当',                      sellerKey: 'unreachableSmsAssignee',       fieldType: 'assignee' },
-  { label: '査定Sメール担当',                        sellerKey: 'valuationSmsAssignee',         fieldType: 'assignee' },
-  { label: '査定理由別３後Eメ担',                    sellerKey: 'valuationReasonEmailAssignee', fieldType: 'assignee' },
-  { label: '査定理由（査定サイトから転記）',          sellerKey: 'valuationReason',              fieldType: 'text'     },
-  { label: 'キャンセル案内担当',                     sellerKey: 'cancelNoticeAssignee',         fieldType: 'assignee' },
-  { label: '除外前、長期客メール担当',                sellerKey: 'longTermEmailAssignee',        fieldType: 'assignee' },
-  { label: '当社が電話したというリマインドメール担当', sellerKey: 'callReminderEmailAssignee',    fieldType: 'assignee' },
+  { label: '\u4e0d\u901a\u6642S\u30e1\u30fc\u30eb\u62c5\u5f53',                      sellerKey: 'unreachableSmsAssignee',       fieldType: 'assignee' },
+  { label: '\u67fb\u5b9aS\u30e1\u30fc\u30eb\u62c5\u5f53',                        sellerKey: 'valuationSmsAssignee',         fieldType: 'assignee' },
+  { label: '\u67fb\u5b9a\u7406\u7531\u52253\u5f8cE\u30e1\u62c5',                    sellerKey: 'valuationReasonEmailAssignee', fieldType: 'assignee' },
+  { label: '\u67fb\u5b9a\u7406\u7531\uff08\u67fb\u5b9a\u30b5\u30a4\u30c8\u304b\u3089\u8ee2\u8a18\uff09',          sellerKey: 'valuationReason',              fieldType: 'text'     },
+  { label: '\u30ad\u30e3\u30f3\u30bb\u30eb\u6848\u5185\u62c5\u5f53',                     sellerKey: 'cancelNoticeAssignee',         fieldType: 'assignee' },
+  { label: '\u9664\u5916\u524d\u3001\u9577\u671f\u5ba2\u30e1\u30fc\u30eb\u62c5\u5f53',                sellerKey: 'longTermEmailAssignee',        fieldType: 'assignee' },
+  { label: '\u5f53\u793e\u304c\u96fb\u8a71\u3057\u305f\u3068\u3044\u3046\u30ea\u30de\u30a4\u30f3\u30c9\u30e1\u30fc\u30eb\u62c5\u5f53', sellerKey: 'callReminderEmailAssignee',    fieldType: 'assignee' },
 ];
 
-// ============================================================
-// AssigneeSection コンポーネント
-// ============================================================
-
 export const AssigneeSection: React.FC<AssigneeSectionProps> = ({ seller, onUpdate }) => {
-  // イニシャル一覧
   const [initials, setInitials] = useState<string[]>([]);
 
-  // 各フィールドのローカル値（seller props から初期化）
   const [localValues, setLocalValues] = useState<Partial<Record<keyof Seller, string | null>>>(() => {
     const init: Partial<Record<keyof Seller, string | null>> = {};
     for (const field of ASSIGNEE_FIELDS) {
@@ -56,38 +42,32 @@ export const AssigneeSection: React.FC<AssigneeSectionProps> = ({ seller, onUpda
     return init;
   });
 
-  // 査定理由テキスト（デバウンス用）
   const [valuationReasonText, setValuationReasonText] = useState<string>(
     (seller.valuationReason as string | undefined) ?? ''
   );
 
-  // エラー Snackbar
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
-
-  // デバウンスタイマー
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // ============================================================
-  // イニシャル一覧の取得
-  // ============================================================
 
   useEffect(() => {
     const fetchInitials = async () => {
       try {
-        const response = await api.get<{ initials: string[] }>('/api/employees/active-initials');
-        setInitials(response.data.initials ?? []);
+        const response = await api.get('/api/employees/active-initials');
+        const data = response.data;
+        const initialsArray = Array.isArray(data)
+          ? data
+          : Array.isArray(data?.initials)
+          ? data.initials
+          : [];
+        setInitials(initialsArray);
       } catch (err) {
-        console.error('イニシャル取得エラー:', err);
+        console.error('\u30a4\u30cb\u30b7\u30e3\u30eb\u53d6\u5f97\u30a8\u30e9\u30fc:', err);
         setInitials([]);
       }
     };
     fetchInitials();
   }, []);
-
-  // ============================================================
-  // seller props が変わったときにローカル値を同期
-  // ============================================================
 
   useEffect(() => {
     const next: Partial<Record<keyof Seller, string | null>> = {};
@@ -98,65 +78,44 @@ export const AssigneeSection: React.FC<AssigneeSectionProps> = ({ seller, onUpda
     setValuationReasonText((seller.valuationReason as string | undefined) ?? '');
   }, [seller]);
 
-  // ============================================================
-  // 担当者フィールドの保存
-  // ============================================================
-
   const saveField = useCallback(
     async (sellerKey: keyof Seller, value: string | null) => {
-      // 楽観的更新前の値を保持
       const prevValue = localValues[sellerKey];
-
-      // ローカル状態を先に更新
       setLocalValues((prev) => ({ ...prev, [sellerKey]: value }));
-
       try {
         await api.put(`/api/sellers/${seller.id}`, { [sellerKey]: value });
         onUpdate({ [sellerKey]: value } as Partial<Seller>);
       } catch (err) {
-        console.error('保存エラー:', err);
-        // 失敗時はローカル状態を元に戻す
+        console.error('\u4fdd\u5b58\u30a8\u30e9\u30fc:', err);
         setLocalValues((prev) => ({ ...prev, [sellerKey]: prevValue }));
-        setSnackbarMessage('保存に失敗しました。もう一度お試しください。');
+        setSnackbarMessage('\u4fdd\u5b58\u306b\u5931\u6557\u3057\u307e\u3057\u305f\u3002\u3082\u3046\u4e00\u5ea6\u304a\u8a66\u3057\u304f\u3060\u3055\u3044\u3002');
         setSnackbarOpen(true);
       }
     },
     [seller.id, localValues, onUpdate]
   );
 
-  // ============================================================
-  // ボタンクリックハンドラ
-  // ============================================================
-
   const handleButtonClick = useCallback(
     (sellerKey: keyof Seller, clickedValue: string) => {
       const current = localValues[sellerKey];
-      // 同じボタンを再クリック → 選択解除（null）
       const newValue = current === clickedValue ? null : clickedValue;
       saveField(sellerKey, newValue);
     },
     [localValues, saveField]
   );
 
-  // ============================================================
-  // 査定理由テキストのデバウンス保存
-  // ============================================================
-
   const handleValuationReasonChange = useCallback(
     (value: string) => {
       setValuationReasonText(value);
       setLocalValues((prev) => ({ ...prev, valuationReason: value }));
-
-      if (debounceTimerRef.current) {
-        clearTimeout(debounceTimerRef.current);
-      }
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
       debounceTimerRef.current = setTimeout(async () => {
         try {
           await api.put(`/api/sellers/${seller.id}`, { valuationReason: value });
           onUpdate({ valuationReason: value });
         } catch (err) {
-          console.error('査定理由保存エラー:', err);
-          setSnackbarMessage('査定理由の保存に失敗しました。');
+          console.error('\u67fb\u5b9a\u7406\u7531\u4fdd\u5b58\u30a8\u30e9\u30fc:', err);
+          setSnackbarMessage('\u67fb\u5b9a\u7406\u7531\u306e\u4fdd\u5b58\u306b\u5931\u6557\u3057\u307e\u3057\u305f\u3002');
           setSnackbarOpen(true);
         }
       }, 1000);
@@ -164,99 +123,86 @@ export const AssigneeSection: React.FC<AssigneeSectionProps> = ({ seller, onUpda
     [seller.id, onUpdate]
   );
 
-  // アンマウント時にタイマーをクリア
   useEffect(() => {
     return () => {
-      if (debounceTimerRef.current) {
-        clearTimeout(debounceTimerRef.current);
-      }
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
     };
   }, []);
 
-  // ============================================================
-  // レンダリング
-  // ============================================================
-
   return (
     <Box sx={{ mb: 2 }}>
-      <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1, color: 'text.secondary' }}>
-        担当者設定
+      <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1 }}>
+        \u62c5\u5f53\u8005\u8a2d\u5b9a
       </Typography>
 
       {ASSIGNEE_FIELDS.map((field) => {
         const currentValue = localValues[field.sellerKey] as string | null;
 
         return (
-          <Box
-            key={String(field.sellerKey)}
-            sx={{
-              display: 'flex',
-              alignItems: 'flex-start',
-              mb: 0.75,
-              gap: 1,
-            }}
-          >
-            {/* ラベル */}
-            <Typography
-              variant="caption"
-              sx={{
-                minWidth: 160,
-                flexShrink: 0,
-                pt: field.fieldType === 'text' ? 1 : 0.5,
-                color: 'text.secondary',
-                fontSize: '0.7rem',
-                lineHeight: 1.3,
-              }}
-            >
+          <Box key={String(field.sellerKey)} sx={{ mb: 1.5 }}>
+            {/* \u30e9\u30d9\u30eb */}
+            <Typography variant="body2" sx={{ mb: 0.5, color: 'text.primary', fontWeight: 500 }}>
               {field.label}
             </Typography>
 
-            {/* テキスト入力（査定理由） */}
+            {/* \u30c6\u30ad\u30b9\u30c8\u5165\u529b\uff08\u67fb\u5b9a\u7406\u7531\uff09 */}
             {field.fieldType === 'text' ? (
               <TextField
                 size="small"
                 multiline
                 minRows={1}
                 maxRows={4}
+                fullWidth
                 value={valuationReasonText}
                 onChange={(e) => handleValuationReasonChange(e.target.value)}
-                sx={{ flex: 1, fontSize: '0.75rem' }}
-                inputProps={{ style: { fontSize: '0.75rem' } }}
+                sx={{ fontSize: '0.8rem' }}
+                inputProps={{ style: { fontSize: '0.8rem' } }}
               />
             ) : (
-              /* イニシャルボタン群 */
+              /* \u30a4\u30cb\u30b7\u30e3\u30eb\u30dc\u30bf\u30f3\u7fa4 - \u6a2a\u4e26\u3073\u3067\u6298\u308a\u8fd4\u3057 */
               <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                {/* 不要ボタン */}
-                <Button
-                  size="small"
-                  variant={currentValue === '不要' ? 'contained' : 'outlined'}
-                  color={currentValue === '不要' ? 'error' : 'inherit'}
-                  onClick={() => handleButtonClick(field.sellerKey, '不要')}
-                  sx={{ minWidth: 'auto', px: 1, py: 0.25, fontSize: '0.7rem' }}
-                >
-                  不要
-                </Button>
-
-                {/* イニシャルボタン */}
                 {initials.map((initial) => (
                   <Button
                     key={initial}
                     size="small"
                     variant={currentValue === initial ? 'contained' : 'outlined'}
-                    color={currentValue === initial ? 'error' : 'inherit'}
+                    color={currentValue === initial ? 'primary' : 'inherit'}
                     onClick={() => handleButtonClick(field.sellerKey, initial)}
-                    sx={{ minWidth: 'auto', px: 1, py: 0.25, fontSize: '0.7rem' }}
+                    sx={{
+                      minWidth: 40,
+                      px: 1,
+                      py: 0.5,
+                      fontSize: '0.8rem',
+                      bgcolor: currentValue === initial ? undefined : 'grey.100',
+                      borderColor: 'grey.300',
+                    }}
                   >
                     {initial}
                   </Button>
                 ))}
+                {/* \u4e0d\u8981\u30dc\u30bf\u30f3 */}
+                <Button
+                  size="small"
+                  variant={currentValue === '\u4e0d\u8981' ? 'contained' : 'outlined'}
+                  color={currentValue === '\u4e0d\u8981' ? 'error' : 'inherit'}
+                  onClick={() => handleButtonClick(field.sellerKey, '\u4e0d\u8981')}
+                  sx={{
+                    minWidth: 48,
+                    px: 1,
+                    py: 0.5,
+                    fontSize: '0.8rem',
+                    bgcolor: currentValue === '\u4e0d\u8981' ? undefined : 'grey.100',
+                    borderColor: 'grey.300',
+                  }}
+                >
+                  \u4e0d\u8981
+                </Button>
               </Box>
             )}
           </Box>
         );
       })}
 
-      {/* エラー Snackbar */}
       <Snackbar
         open={snackbarOpen}
         autoHideDuration={4000}
