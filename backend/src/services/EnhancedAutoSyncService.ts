@@ -778,7 +778,7 @@ export class EnhancedAutoSyncService {
     while (hasMore) {
       const { data: dbSellers, error } = await this.supabase
         .from('sellers')
-        .select('seller_number, status, contract_year_month, visit_assignee, phone_contact_person, preferred_contact_time, contact_method, next_call_date, unreachable_status, inquiry_date, comments, valuation_amount_1, valuation_amount_2, valuation_amount_3, first_call_person, valuation_reason, valuation_method, name, property_address, current_status, updated_at')
+        .select('seller_number, status, contract_year_month, visit_assignee, phone_contact_person, preferred_contact_time, contact_method, next_call_date, unreachable_status, inquiry_date, comments, valuation_amount_1, valuation_amount_2, valuation_amount_3, first_call_person, valuation_reason, valuation_method, name, address, phone_number, email, property_address, current_status, updated_at')
         .range(offset, offset + pageSize - 1);
 
       if (error) {
@@ -839,13 +839,11 @@ export class EnhancedAutoSyncService {
             needsUpdate = true;
           }
 
-          // next_call_dateの比較
-          if (sheetNextCallDate) {
-            const formattedNextCallDate = this.formatVisitDate(sheetNextCallDate);
-            const dbNextCallDate = dbSeller.next_call_date ? String(dbSeller.next_call_date).substring(0, 10) : null;
-            if (formattedNextCallDate !== dbNextCallDate) {
-              needsUpdate = true;
-            }
+          // next_call_dateの比較（スプレッドシートが空欄の場合もDBをクリア）
+          const formattedNextCallDate = sheetNextCallDate ? this.formatVisitDate(sheetNextCallDate) : null;
+          const dbNextCallDate = dbSeller.next_call_date ? String(dbSeller.next_call_date).substring(0, 10) : null;
+          if (formattedNextCallDate !== dbNextCallDate) {
+            needsUpdate = true;
           }
 
           // unreachable_statusの比較
@@ -916,9 +914,29 @@ export class EnhancedAutoSyncService {
 
           // nameの比較（暗号化フィールドのため直接比較不可）
           // スプシに name がある場合、DBの name が null/空なら更新対象にする
-          // （氏名未同期の案件を検出するため）
           const sheetName = sheetRow['名前(漢字のみ）'] || '';
           if (sheetName && sheetName.trim() !== '' && !dbSeller.name) {
+            needsUpdate = true;
+          }
+
+          // phone_numberの比較（暗号化フィールド）
+          // スプシに値がある場合、DBが null なら更新対象にする
+          const sheetPhone = sheetRow['電話番号\nハイフン不要'] || sheetRow['電話番号'] || '';
+          if (sheetPhone && sheetPhone.trim() !== '' && !dbSeller.phone_number) {
+            needsUpdate = true;
+          }
+
+          // emailの比較（暗号化フィールド）
+          // スプシに値がある場合、DBが null なら更新対象にする
+          const sheetEmail = sheetRow['メールアドレス'] || '';
+          if (sheetEmail && sheetEmail.trim() !== '' && !dbSeller.email) {
+            needsUpdate = true;
+          }
+
+          // addressの比較（暗号化フィールド）
+          // スプシに値がある場合、DBが null なら更新対象にする
+          const sheetAddress = sheetRow['依頼者住所(物件所在と異なる場合）'] || '';
+          if (sheetAddress && sheetAddress.trim() !== '' && !dbSeller.address) {
             needsUpdate = true;
           }
 
@@ -1177,11 +1195,9 @@ export class EnhancedAutoSyncService {
       updated_at: new Date().toISOString(),
     };
 
-    // 状況（売主）をsellers.current_statusにも保存
+    // 状況（売主）をsellers.current_statusにも保存（空欄の場合はnullでクリア）
     const currentStatus = row['状況（売主）'];
-    if (currentStatus) {
-      updateData.current_status = String(currentStatus);
-    }
+    updateData.current_status = currentStatus ? String(currentStatus) : null;
 
     // 物件関連フィールドを追加
     if (propertyAddress) {
