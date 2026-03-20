@@ -1349,13 +1349,7 @@ const CallModePage = () => {
 
   const handleBack = () => {
     // 未保存のデータがある場合は確認ダイアログを表示
-    if (callMemo.trim()) {
-      if (window.confirm('入力中のコメントがあります。保存せずに戻りますか？')) {
-        navigate(`/sellers/${id}`);
-      }
-    } else {
-      navigate(`/sellers/${id}`);
-    }
+    navigate(`/sellers/${id}`);
   };
 
   const handleSaveAndExit = async () => {
@@ -1412,10 +1406,10 @@ const CallModePage = () => {
   const appendBoldText = (text: string) => {
     const boldText = `<b>${text}</b>`;
     // 既存のコンテンツがある場合は、先頭に追加して改行を入れる
-    if (callMemo.trim()) {
-      setCallMemo(boldText + '<br>' + callMemo);
+    if (editableComments.trim()) {
+      setEditableComments(boldText + '<br>' + editableComments);
     } else {
-      setCallMemo(boldText);
+      setEditableComments(boldText);
     }
   };
 
@@ -1425,9 +1419,17 @@ const CallModePage = () => {
       setSavingComments(true);
       setError(null);
 
+      // HTMLからプレーンテキストを抽出（<br>を改行に変換）
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = editableComments;
+      const plainText = tempDiv.textContent || tempDiv.innerText || '';
+
       await api.put(`/api/sellers/${id}`, {
-        comments: editableComments,
+        comments: plainText.trim(),
       });
+
+      // stateもプレーンテキストに更新
+      setEditableComments(plainText.trim());
 
       setSuccessMessage('コメントを保存しました');
       setTimeout(() => {
@@ -5173,15 +5175,15 @@ HP：https://ifoo-oita.com/
               </Box>
             </Box>
 
-            {/* 通話メモ入力欄（リッチテキストエディタ） */}
+            {/* コメント入力・編集エリア（直接書き込み可能） */}
             <Box sx={{ mb: 2 }}>
               <Typography variant="subtitle2" gutterBottom>
-                新規コメント
+                コメント
               </Typography>
               <RichTextCommentEditor
-                value={callMemo}
-                onChange={(html) => setCallMemo(html)}
-                placeholder="新規コメントを入力してください..."
+                value={editableComments}
+                onChange={(html) => setEditableComments(html)}
+                placeholder="コメントを入力してください..."
               />
             </Box>
 
@@ -5190,29 +5192,12 @@ HP：https://ifoo-oita.com/
               fullWidth
               variant="contained"
               size="large"
-              disabled={savingMemo || !callMemo.trim()}
-              onClick={handleSaveCallMemo}
+              disabled={savingComments}
+              onClick={handleSaveComments}
               sx={{ mb: 3 }}
             >
-              {savingMemo ? <CircularProgress size={24} /> : '保存'}
+              {savingComments ? <CircularProgress size={24} /> : '保存'}
             </Button>
-
-            {/* コメント表示・編集エリア（新規コメント保存時に自動更新） */}
-            <Box sx={{ mb: 2 }}>
-              <Typography variant="subtitle2" gutterBottom>
-                コメント
-              </Typography>
-              <TextField
-                multiline
-                fullWidth
-                minRows={4}
-                value={editableComments}
-                onChange={(e) => setEditableComments(e.target.value)}
-                placeholder="コメントはありません"
-                variant="outlined"
-                sx={{ bgcolor: 'white' }}
-              />
-            </Box>
 
             {/* 1番電話フィールド */}
             <Box sx={{ mb: 2 }}>
