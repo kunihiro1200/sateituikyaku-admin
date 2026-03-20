@@ -7,9 +7,34 @@ import { CreateSellerRequest, ListSellersParams } from '../types';
 import { PropertyDistributionAreaCalculator } from '../services/PropertyDistributionAreaCalculator';
 import { CityNameExtractor } from '../services/CityNameExtractor';
 import { BuyerService } from '../services/BuyerService';
+import { SpreadsheetSyncService } from '../services/SpreadsheetSyncService';
+import { GoogleSheetsClient } from '../services/GoogleSheetsClient';
 
 const router = Router();
 const sellerService = new SellerService();
+
+/**
+ * SpreadsheetSyncServiceを初期化して返す（Vercelサーバーレス対応）
+ * SyncQueueが使えない環境でも直接スプシ同期できるようにする
+ */
+async function createSpreadsheetSyncService(): Promise<SpreadsheetSyncService | null> {
+  try {
+    const supabase = createClient(
+      process.env.SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_KEY!
+    );
+    const sheetsClient = new GoogleSheetsClient({
+      spreadsheetId: process.env.GOOGLE_SHEETS_SPREADSHEET_ID!,
+      sheetName: process.env.GOOGLE_SHEETS_SHEET_NAME || '売主リスト',
+      serviceAccountKeyPath: process.env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH || './google-service-account.json',
+    });
+    await sheetsClient.authenticate();
+    return new SpreadsheetSyncService(sheetsClient, supabase);
+  } catch (err) {
+    console.error('⚠️ [SpreadsheetSync] Failed to initialize SpreadsheetSyncService:', err);
+    return null;
+  }
+}
 
 // duplicates インメモリキャッシュ（TTL: 60秒）
 const duplicatesCache = new Map<string, { data: any[]; expiresAt: number }>();
@@ -548,11 +573,27 @@ router.put('/:id', async (req: Request, res: Response) => {
         req.employee!.id
       );
       res.json(seller);
+      // スプレッドシートに非同期で同期（レスポンスをブロックしない）
+      createSpreadsheetSyncService().then(syncService => {
+        if (syncService) {
+          syncService.syncToSpreadsheet(req.params.id).catch(e =>
+            console.error('⚠️ [SpreadsheetSync] Sync error (appointment):', e)
+          );
+        }
+      });
     } else {
       // 通常の更新
       const seller = await sellerService.updateSeller(req.params.id, req.body);
       invalidateDuplicatesCache(req.params.id);
       res.json(seller);
+      // スプレッドシートに非同期で同期（レスポンスをブロックしない）
+      createSpreadsheetSyncService().then(syncService => {
+        if (syncService) {
+          syncService.syncToSpreadsheet(req.params.id).catch(e =>
+            console.error('⚠️ [SpreadsheetSync] Sync error:', e)
+          );
+        }
+      });
     }
   } catch (error) {
     console.error('Update seller error:', error);
