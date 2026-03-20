@@ -2929,18 +2929,6 @@ HP：https://ifoo-oita.com/
             </Box>
             <Paper sx={{ p: 2, mb: 3, bgcolor: '#f0f7f4' }}>
               {(() => {
-                console.log('🏠 [物件情報表示] propInfo:', propInfo); // ← 追加
-                console.log('🏠 [物件情報表示] propInfo.address:', propInfo.address); // ← 追加
-                console.log('🏠 [物件情報表示] seller:', seller); // ← 追加
-                console.log('🏠 [物件情報表示] property:', property); // ← 追加
-                if (!propInfo.hasData) {
-                  return (
-                    <Typography variant="body2" color="text.secondary">
-                      物件情報が登録されていません
-                    </Typography>
-                  );
-                }
-                
                 // 編集モード（propertyがなくてもsellerの直接フィールドで編集可能）
                 if (editingProperty) {
                   return (
@@ -3062,13 +3050,37 @@ HP：https://ifoo-oita.com/
                   );
                 }
                 
-                // 表示モード（propertyまたはsellerの直接フィールドから表示）
+                // 表示モード（値がある項目のみ表示）
+                const displayAddress = property?.address || seller?.propertyAddress || '';
+                const displayPropertyType = property?.propertyType || seller?.propertyType || '';
+                const displayLandArea = (property?.landArea || seller?.landArea)?.toString() || '';
+                const displayLandAreaVerified = property?.landAreaVerified?.toString() || seller?.landAreaVerified?.toString() || '';
+                const displayBuildingArea = (property?.buildingArea || seller?.buildingArea)?.toString() || '';
+                const displayBuildingAreaVerified = property?.buildingAreaVerified?.toString() || seller?.buildingAreaVerified?.toString() || '';
+                const displayBuildYear = (property?.buildYear || seller?.buildYear)?.toString() || '';
+                const displayFloorPlan = property?.floorPlan || seller?.floorPlan || '';
+                const displayStructure = property?.structure || seller?.structure || '';
+                const displayCurrentStatus = property?.currentStatus || seller?.currentStatus || '';
+
+                const hasAnyPropertyData = displayAddress || displayPropertyType || displayLandArea || displayLandAreaVerified ||
+                  displayBuildingArea || displayBuildingAreaVerified || displayBuildYear || displayFloorPlan ||
+                  displayStructure || displayCurrentStatus;
+
+                if (!hasAnyPropertyData) {
+                  return (
+                    <Typography variant="body2" color="text.secondary" sx={{ py: 1 }}>
+                      物件情報が登録されていません
+                    </Typography>
+                  );
+                }
+
                 return (
                   <Grid container spacing={2}>
+                    {displayAddress && (
                     <Grid item xs={12}>
                       <InlineEditableField
                         label="物件住所"
-                        value={property?.address || seller?.propertyAddress || ''}
+                        value={displayAddress}
                         fieldName="propertyAddress"
                         fieldType="text"
                         onSave={async (newValue) => {
@@ -3083,11 +3095,13 @@ HP：https://ifoo-oita.com/
                         showEditIndicator={true}
                       />
                     </Grid>
+                    )}
                     
+                    {displayPropertyType && (
                     <Grid item xs={12}>
                       <InlineEditableField
                         label="物件種別"
-                        value={property?.propertyType || seller?.propertyType || ''}
+                        value={displayPropertyType}
                         fieldName="propertyType"
                         fieldType="dropdown"
                         options={PROPERTY_TYPE_OPTIONS}
@@ -3095,7 +3109,6 @@ HP：https://ifoo-oita.com/
                           await api.put(`/api/sellers/${id}`, {
                             propertyType: newValue,
                           });
-                          // ローカル状態を更新
                           setSeller(prev => prev ? { ...prev, propertyType: newValue } : prev);
                           setEditedPropertyType(newValue);
                         }}
@@ -3105,11 +3118,13 @@ HP：https://ifoo-oita.com/
                         oneClickDropdown={true}
                       />
                     </Grid>
+                    )}
                     
+                    {displayLandArea && (
                     <Grid item xs={12}>
                       <InlineEditableField
                         label="土地面積 (m²)"
-                        value={(property?.landArea || seller?.landArea)?.toString() || ''}
+                        value={displayLandArea}
                         fieldName="landArea"
                         fieldType="text"
                         readOnly={isLandType || !!(property?.landArea || seller?.landArea)}
@@ -3126,10 +3141,12 @@ HP：https://ifoo-oita.com/
                         showEditIndicator={true}
                       />
                     </Grid>
+                    )}
+                    {displayLandAreaVerified && (
                     <Grid item xs={12}>
                       <InlineEditableField
                         label="土地面積（当社調べ）(m²)"
-                        value={property?.landAreaVerified?.toString() || seller?.landAreaVerified?.toString() || ''}
+                        value={displayLandAreaVerified}
                         fieldName="landAreaVerified"
                         fieldType="text"
                         onSave={async (newValue) => {
@@ -3146,11 +3163,12 @@ HP：https://ifoo-oita.com/
                         showEditIndicator={true}
                       />
                     </Grid>
-                    {!isLandType && (
+                    )}
+                    {!isLandType && displayBuildingArea && (
                     <Grid item xs={12}>
                       <InlineEditableField
                         label="建物面積 (m²)"
-                        value={(property?.buildingArea || seller?.buildingArea)?.toString() || ''}
+                        value={displayBuildingArea}
                         fieldName="buildingArea"
                         fieldType="text"
                         readOnly={!!(property?.buildingArea || seller?.buildingArea)}
@@ -3168,11 +3186,11 @@ HP：https://ifoo-oita.com/
                       />
                     </Grid>
                     )}
-                    {!isLandType && (
+                    {!isLandType && displayBuildingAreaVerified && (
                     <Grid item xs={12}>
                       <InlineEditableField
                         label="建物面積（当社調べ）(m²)"
-                        value={property?.buildingAreaVerified?.toString() || seller?.buildingAreaVerified?.toString() || ''}
+                        value={displayBuildingAreaVerified}
                         fieldName="buildingAreaVerified"
                         fieldType="text"
                         onSave={async (newValue) => {
@@ -3190,11 +3208,11 @@ HP：https://ifoo-oita.com/
                       />
                     </Grid>
                     )}
-                    {!isLandType && (
+                    {!isLandType && displayBuildYear && (
                     <Grid item xs={12}>
                       <InlineEditableField
                         label="築年"
-                        value={(property?.buildYear || seller?.buildYear)?.toString() || ''}
+                        value={displayBuildYear}
                         fieldName="buildYear"
                         fieldType="text"
                         onSave={async (newValue) => {
@@ -3211,11 +3229,11 @@ HP：https://ifoo-oita.com/
                       />
                     </Grid>
                     )}
-                    {!isLandType && (
+                    {!isLandType && displayFloorPlan && (
                     <Grid item xs={12}>
                       <InlineEditableField
                         label="間取り"
-                        value={property?.floorPlan || seller?.floorPlan || ''}
+                        value={displayFloorPlan}
                         fieldName="floorPlan"
                         fieldType="text"
                         onSave={async (newValue) => {
@@ -3232,11 +3250,11 @@ HP：https://ifoo-oita.com/
                     </Grid>
                     )}
                     
-                    {!isLandType && (
+                    {!isLandType && displayStructure && (
                     <Grid item xs={12}>
                       <InlineEditableField
                         label="構造"
-                        value={property?.structure || seller?.structure || ''}
+                        value={displayStructure}
                         fieldName="structure"
                         fieldType="dropdown"
                         options={STRUCTURE_OPTIONS}
@@ -3244,7 +3262,6 @@ HP：https://ifoo-oita.com/
                           await api.put(`/api/sellers/${id}`, {
                             structure: newValue,
                           });
-                          // ローカル状態を更新
                           setSeller(prev => prev ? { ...prev, structure: newValue } : prev);
                           setEditedStructure(newValue);
                         }}
@@ -3256,10 +3273,11 @@ HP：https://ifoo-oita.com/
                     </Grid>
                     )}
                     
+                    {displayCurrentStatus && (
                     <Grid item xs={12}>
                       <InlineEditableField
                         label="状況（売主）"
-                        value={property?.currentStatus || seller?.currentStatus || ''}
+                        value={displayCurrentStatus}
                         fieldName="currentStatus"
                         fieldType="dropdown"
                         options={SELLER_SITUATION_OPTIONS}
@@ -3267,7 +3285,6 @@ HP：https://ifoo-oita.com/
                           await api.put(`/api/sellers/${id}`, {
                             currentStatus: newValue,
                           });
-                          // ローカル状態を更新
                           setSeller(prev => prev ? { ...prev, currentStatus: newValue } : prev);
                           setEditedSellerSituation(newValue);
                         }}
@@ -3277,6 +3294,7 @@ HP：https://ifoo-oita.com/
                         oneClickDropdown={true}
                       />
                     </Grid>
+                    )}
                   </Grid>
                 );
               })()}
@@ -3284,15 +3302,9 @@ HP：https://ifoo-oita.com/
 
             {/* 地図表示（売主番号が設定されている場合のみ表示） */}
             {(() => {
-              console.log('🗺️ [CallModePage] seller:', seller);
-              console.log('🗺️ [CallModePage] seller.sellerNumber:', seller?.sellerNumber);
-              console.log('🗺️ [CallModePage] seller.propertyAddress:', seller?.propertyAddress);
-              
               if (seller?.sellerNumber) {
                 return <PropertyMapSection sellerNumber={seller.sellerNumber} propertyAddress={property?.address || seller?.propertyAddress} />;
               }
-              
-              console.log('🗺️ [CallModePage] 地図を表示しない（売主番号が未設定）');
               return null;
             })()}
 
