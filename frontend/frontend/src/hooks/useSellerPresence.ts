@@ -34,7 +34,6 @@ export const STALE_THRESHOLD_MS = 30 * 60 * 1000; // 30分
 
 // ============================================================
 // シングルトンチャンネル管理
-// Supabase Presenceは同一チャンネルインスタンスを共有する必要がある
 // ============================================================
 
 let sharedChannel: RealtimeChannel | null = null;
@@ -44,31 +43,35 @@ const stateListeners: Set<() => void> = new Set();
 
 function getOrCreateChannel(): RealtimeChannel {
   if (!sharedChannel) {
+    console.log('[useSellerPresence] チャンネル作成:', CHANNEL_NAME);
     sharedChannel = supabase.channel(CHANNEL_NAME, {
       config: {
         presence: {
-          key: undefined, // Supabaseが自動生成
+          key: undefined,
         },
       },
     });
 
     sharedChannel
       .on('presence', { event: 'sync' }, () => {
+        console.log('[useSellerPresence] presence sync イベント');
         stateListeners.forEach((fn) => fn());
       })
-      .on('presence', { event: 'join' }, () => {
+      .on('presence', { event: 'join' }, ({ key, newPresences }) => {
+        console.log('[useSellerPresence] presence join:', key, newPresences);
         stateListeners.forEach((fn) => fn());
       })
-      .on('presence', { event: 'leave' }, () => {
+      .on('presence', { event: 'leave' }, ({ key, leftPresences }) => {
+        console.log('[useSellerPresence] presence leave:', key, leftPresences);
         stateListeners.forEach((fn) => fn());
       })
-      .subscribe((status) => {
-        console.log('[useSellerPresence] channel status:', status);
+      .subscribe((status, err) => {
+        console.log('[useSellerPresence] channel status:', status, err || '');
         if (status === 'SUBSCRIBED') {
           channelStatus = 'SUBSCRIBED';
           stateListeners.forEach((fn) => fn());
         } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-          console.error('[useSellerPresence] 接続エラー:', status);
+          console.error('[useSellerPresence] 接続エラー:', status, err);
           channelStatus = 'CLOSED';
         } else {
           channelStatus = 'SUBSCRIBING';
@@ -76,12 +79,15 @@ function getOrCreateChannel(): RealtimeChannel {
       });
   }
   subscriberCount++;
+  console.log('[useSellerPresence] subscriberCount:', subscriberCount);
   return sharedChannel;
 }
 
 function releaseChannel() {
   subscriberCount--;
+  console.log('[useSellerPresence] releaseChannel, subscriberCount:', subscriberCount);
   if (subscriberCount <= 0 && sharedChannel) {
+    console.log('[useSellerPresence] チャンネル削除');
     supabase.removeChannel(sharedChannel);
     sharedChannel = null;
     subscriberCount = 0;
@@ -106,9 +112,6 @@ function buildPresenceState(channel: RealtimeChannel): PresenceState {
 // ユーティリティ関数
 // ============================================================
 
-/**
- * entered_at から30分以上経過したレコードを除外する
- */
 export function filterStaleRecords(records: PresenceRecord[]): PresenceRecord[] {
   const now = Date.now();
   return records.filter((r) => {
@@ -117,10 +120,6 @@ export function filterStaleRecords(records: PresenceRecord[]): PresenceRecord[] 
   });
 }
 
-/**
- * プレゼンスバッジのラベルを生成する
- * 例: "林田が入っています" / "林田、田中が入っています"
- */
 export function formatPresenceLabel(records: PresenceRecord[]): string {
   const active = filterStaleRecords(records);
   if (active.length === 0) return '';
@@ -132,10 +131,6 @@ export function formatPresenceLabel(records: PresenceRecord[]): string {
 // フック: 購読専用（SellersPage用）
 // ============================================================
 
-/**
- * Supabase Realtime Presence を購読し、全売主のプレゼンス状態を返す
- * シングルトンチャンネルを使用して、発信側と同じインスタンスを共有する
- */
 export function useSellerPresenceSubscribe(): UseSellerPresenceSubscribeResult {
   const [presenceState, setPresenceState] = useState<PresenceState>({});
   const [isConnected, setIsConnected] = useState(false);
@@ -144,13 +139,14 @@ export function useSellerPresenceSubscribe(): UseSellerPresenceSubscribeResult {
     const channel = getOrCreateChannel();
 
     const refresh = () => {
-      setPresenceState(buildPresenceState(channel));
+      const state = buildPresenceState(channel);
+      console.log('[useSellerPresence] subscribe refresh, state:', state);
+      setPresenceState(state);
       setIsConnected(channelStatus === 'SUBSCRIBED');
     };
 
     stateListeners.add(refresh);
 
-    // 既にSUBSCRIBED状態なら即座に状態を取得
     if (channelStatus === 'SUBSCRIBED') {
       refresh();
     }
@@ -165,20 +161,16 @@ export function useSellerPresenceSubscribe(): UseSellerPresenceSubscribeResult {
 }
 
 // ============================================================
-// フック: 発信専用（SellerDetailPage / CallModePage用）
+// フック: 発信専用（CallModePage用）
 // ============================================================
 
-/**
- * 指定した売主番号のプレゼンスを登録する
- * シングルトンチャンネルを使用して、購読側と同じインスタンスを共有する
- * コンポーネントのアンマウント時に自動的にトラッキングを停止する
- */
 export function useSellerPresenceTrack(
   sellerNumber: string | undefined
 ): UseSellerPresenceTrackResult {
   const { employee } = useAuthStore();
   const [isTracking, setIsTracking] = useState(false);
   const trackedRef = useRef(false);
+  const channelRef = useRef<RealtimeChannel | null>(null);
 
   useEffect(() => {
     if (!sellerNumber || !employee?.name) {
@@ -189,50 +181,47 @@ export function useSellerPresenceTrack(
     console.log('[useSellerPresence] track 開始: sellerNumber=', sellerNumber, 'user=', employee.name);
 
     const channel = getOrCreateChannel();
+    channelRef.current = channel;
 
     const doTrack = async () => {
-      if (channelStatus === 'SUBSCRIBED' && !trackedRef.current) {
-        await channel.track({
+      if (trackedRef.current) return;
+      console.log('[useSellerPresence] doTrack 実行: channelStatus=', channelStatus);
+      try {
+        const result = await channel.track({
           seller_number: sellerNumber,
           user_name: employee.name,
           entered_at: new Date().toISOString(),
         });
+        console.log('[useSellerPresence] track 結果:', result);
         trackedRef.current = true;
         setIsTracking(true);
-        console.log('[useSellerPresence] track 完了: sellerNumber=', sellerNumber);
+      } catch (e) {
+        console.error('[useSellerPresence] track エラー:', e);
       }
     };
 
-    // 既にSUBSCRIBED状態なら即座にtrack
     if (channelStatus === 'SUBSCRIBED') {
       doTrack();
-    } else {
-      // SUBSCRIBED になったらtrackするリスナーを登録
-      const onStatusChange = () => {
-        if (channelStatus === 'SUBSCRIBED') {
-          doTrack();
-        }
-      };
-      stateListeners.add(onStatusChange);
-
-      return () => {
-        stateListeners.delete(onStatusChange);
-        if (trackedRef.current) {
-          channel.untrack();
-          trackedRef.current = false;
-        }
-        setIsTracking(false);
-        releaseChannel();
-      };
     }
 
+    // SUBSCRIBEDになったらtrackするリスナー
+    const onStatusChange = () => {
+      if (channelStatus === 'SUBSCRIBED' && !trackedRef.current) {
+        doTrack();
+      }
+    };
+    stateListeners.add(onStatusChange);
+
     return () => {
-      if (trackedRef.current) {
-        channel.untrack();
+      stateListeners.delete(onStatusChange);
+      if (trackedRef.current && channelRef.current) {
+        console.log('[useSellerPresence] untrack: sellerNumber=', sellerNumber);
+        channelRef.current.untrack();
         trackedRef.current = false;
       }
       setIsTracking(false);
       releaseChannel();
+      channelRef.current = null;
     };
   }, [sellerNumber, employee?.name]);
 
