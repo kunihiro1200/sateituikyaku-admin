@@ -5,6 +5,7 @@ export interface StaffInfo {
   name: string;
   chatWebhook: string | null;
   isActive: boolean;
+  isNormal: boolean;
   hasJimu: boolean;
   phone: string | null;
   email: string | null;
@@ -95,6 +96,9 @@ export class StaffManagementService {
       const isActiveRaw = row['有効'];
       const isActive = String(isActiveRaw).toUpperCase() === 'TRUE';
 
+      const isNormalRaw = row['通常'];
+      const isNormal = String(isNormalRaw).toUpperCase() === 'TRUE';
+
       if (initials || name) {
         const hasJimuRaw = row['事務あり'];
         const hasJimu = String(hasJimuRaw).toUpperCase() === 'TRUE';
@@ -108,6 +112,7 @@ export class StaffManagementService {
           name: name || '',
           chatWebhook: chatWebhook || null,
           isActive,
+          isNormal,
           hasJimu,
           phone: phone || null,
           email: email || null,
@@ -127,21 +132,21 @@ export class StaffManagementService {
   }
 
   /**
-   * 有効なスタッフのイニシャル一覧を取得（H列「有効」=TRUEのもの）
-   * 後続担当ボタン用
+   * 通常スタッフのイニシャル一覧を取得（I列「通常」=TRUEのもの）
+   * メール送信確認セクションのイニシャル選択肢用
    */
   async getActiveInitials(): Promise<string[]> {
     try {
       const staffData = await this.fetchStaffData();
-      const activeInitials = [...new Set(
+      const normalInitials = [...new Set(
         staffData
-          .filter(s => s.isActive && s.initials && s.initials.trim() !== '')
+          .filter(s => s.isNormal && s.initials && s.initials.trim() !== '')
           .map(s => s.initials)
       )];
-      console.log('[StaffManagementService] Active initials from spreadsheet:', activeInitials);
-      return activeInitials;
+      console.log('[StaffManagementService] Normal initials from spreadsheet (I列):', normalInitials);
+      return normalInitials;
     } catch (error: any) {
-      console.error('[StaffManagementService] Error getting active initials:', error.message);
+      console.error('[StaffManagementService] Error getting normal initials:', error.message);
       throw error;
     }
   }
