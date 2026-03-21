@@ -91,10 +91,11 @@ const RichTextCommentEditor = React.forwardRef<RichTextCommentEditorHandle, Rich
     // カーソル位置をテキストオフセットで保存
     const cursorOffsetRef = useRef<number>(-1);
     const isFocusedRef = useRef<boolean>(false);
+    const isInsertingRef = useRef<boolean>(false); // insertAtCursor 実行中フラグ
 
     // 初期値の設定（フォーカス中は上書きしない）
     useEffect(() => {
-      if (editorRef.current && !isFocusedRef.current && editorRef.current.innerHTML !== value) {
+      if (editorRef.current && !isFocusedRef.current && !isInsertingRef.current && editorRef.current.innerHTML !== value) {
         editorRef.current.innerHTML = value;
       }
     }, [value]);
@@ -160,6 +161,7 @@ const RichTextCommentEditor = React.forwardRef<RichTextCommentEditorHandle, Rich
       insertAtCursor: (html: string) => {
         const editor = editorRef.current;
         if (!editor) return;
+        isInsertingRef.current = true;
 
         const offset = cursorOffsetRef.current;
 
@@ -206,6 +208,7 @@ const RichTextCommentEditor = React.forwardRef<RichTextCommentEditorHandle, Rich
               }
 
               handleInput();
+              isInsertingRef.current = false;
               return;
             } catch (e) {
               // フォールバックへ
@@ -216,6 +219,7 @@ const RichTextCommentEditor = React.forwardRef<RichTextCommentEditorHandle, Rich
         // フォールバック: 先頭に追加
         editor.innerHTML = html + editor.innerHTML;
         handleInput();
+        isInsertingRef.current = false;
       },
     }));
 

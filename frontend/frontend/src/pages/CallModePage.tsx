@@ -1433,17 +1433,10 @@ const CallModePage = () => {
       setSavingComments(true);
       setError(null);
 
-      // HTMLからプレーンテキストを抽出（<br>を改行に変換）
-      const tempDiv = document.createElement('div');
-      tempDiv.innerHTML = editableComments;
-      const plainText = tempDiv.textContent || tempDiv.innerText || '';
-
+      // HTMLのまま保存（太字・赤字などの書式を保持）
       await api.put(`/api/sellers/${id}`, {
-        comments: plainText.trim(),
+        comments: editableComments,
       });
-
-      // stateもプレーンテキストに更新
-      setEditableComments(plainText.trim());
 
       setSuccessMessage('コメントを保存しました');
       setTimeout(() => {
