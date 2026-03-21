@@ -5403,7 +5403,7 @@ HP：https://ifoo-oita.com/
             <Box sx={{ maxHeight: 300, overflow: 'auto' }}>
               {/* 活動ログ（電話、SMS、Email） */}
               {activities
-                .filter((activity) => activity.type === 'phone_call' || activity.type === 'sms' || activity.type === 'email')
+                .filter((activity) => activity.type === 'sms' || activity.type === 'email')
                 .slice(0, 10)
                 .map((activity, index) => {
                   const displayName = getDisplayName(activity.employee);
@@ -5451,7 +5451,7 @@ HP：https://ifoo-oita.com/
                     </Paper>
                   );
                 })}
-              {activities.filter((activity) => activity.type === 'phone_call' || activity.type === 'sms' || activity.type === 'email').length === 0 && (
+              {activities.filter((activity) => activity.type === 'sms' || activity.type === 'email').length === 0 && (
                 <Typography variant="body2" color="text.secondary">
                   過去のコミュニケーション履歴はありません
                 </Typography>
