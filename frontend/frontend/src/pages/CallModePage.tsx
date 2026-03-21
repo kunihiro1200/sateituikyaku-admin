@@ -5084,14 +5084,27 @@ HP：https://ifoo-oita.com/
                   </Box>
                 </Grid>
                 <Grid item xs={6}>
-                  <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 1, p: 1, minHeight: 40 }}>
-                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.25 }}>
-                      除外日にすること
-                    </Typography>
-                    <Typography variant="body2" sx={{ fontWeight: 'medium' }}>
-                      {exclusionAction || '－'}
-                    </Typography>
-                  </Box>
+                  <FormControl fullWidth size="small">
+                    <InputLabel>除外日にすること</InputLabel>
+                    <Select
+                      value={exclusionAction}
+                      label="除外日にすること"
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        setExclusionAction(value);
+                        // 除外日が設定されている場合、次電日を除外日に設定
+                        if (value && exclusionDate) {
+                          setEditedNextCallDate(exclusionDate);
+                        }
+                      }}
+                    >
+                      <MenuItem value="">
+                        <em>未選択</em>
+                      </MenuItem>
+                      <MenuItem value="除外日になにかあれば除外">除外日になにかあれば除外</MenuItem>
+                      <MenuItem value="除外日になにもせず除外">除外日になにもせず除外</MenuItem>
+                    </Select>
+                  </FormControl>
                 </Grid>
 
                 {/* ステータスを更新ボタン */}
