@@ -524,27 +524,58 @@ export default function SellersPage() {
 
         {/* サイドバーとメインコンテンツのレイアウト */}
         <Box sx={{ display: 'flex', gap: 2 }}>
-          {/* 左側サイドバー - SellerStatusSidebarコンポーネントを使用 */}
-          <SellerStatusSidebar
-            categoryCounts={categoryCounts}
-            selectedCategory={selectedCategory}
-            onCategorySelect={(category) => {
-              setSelectedCategory(category);
-              setPage(0); // カテゴリが変わったらページを0にリセット
-            }}
-            onCategoryExpand={(category: string) => {
-              fetchExpandedCategorySellers(category);
-            }}
-            isCallMode={false}
-            sellers={sellers}
-            expandedCategorySellers={expandedCategorySellers}
-            expandedCategoryLoading={expandedCategoryLoading}
-            loading={sidebarLoading}
-            assigneeInitials={assigneeInitials}
-          />
+          {/* 左側サイドバー - カテゴリ未選択時のみ表示 */}
+          {selectedCategory === 'all' && (
+            <SellerStatusSidebar
+              categoryCounts={categoryCounts}
+              selectedCategory={selectedCategory}
+              onCategorySelect={(category) => {
+                setSelectedCategory(category);
+                setPage(0); // カテゴリが変わったらページを0にリセット
+              }}
+              onCategoryExpand={(category: string) => {
+                fetchExpandedCategorySellers(category);
+              }}
+              isCallMode={false}
+              sellers={sellers}
+              expandedCategorySellers={expandedCategorySellers}
+              expandedCategoryLoading={expandedCategoryLoading}
+              loading={sidebarLoading}
+              assigneeInitials={assigneeInitials}
+            />
+          )}
 
           {/* メインコンテンツ */}
           <Box sx={{ flex: 1 }}>
+            {/* カテゴリ選択中の場合、上部にカテゴリ名と戻るボタンを表示 */}
+            {selectedCategory !== 'all' && (
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2, p: 1.5, bgcolor: 'grey.100', borderRadius: 1 }}>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={() => {
+                    setSelectedCategory('all');
+                    setPage(0);
+                  }}
+                >
+                  ← 全件表示
+                </Button>
+                <Typography variant="body1" fontWeight="bold">
+                  {selectedCategory === 'visitDayBefore' ? '①訪問日前日' :
+                   selectedCategory === 'visitCompleted' ? '②訪問済み' :
+                   selectedCategory === 'todayCall' ? '③当日TEL分' :
+                   selectedCategory === 'todayCallWithInfo' ? '当日TEL（内容）' :
+                   selectedCategory === 'unvaluated' ? '⑤未査定' :
+                   selectedCategory === 'mailingPending' ? '⑥査定（郵送）' :
+                   selectedCategory === 'todayCallNotStarted' ? '⑦当日TEL_未着手' :
+                   selectedCategory === 'pinrichEmpty' ? '⑧Pinrich空欄' :
+                   typeof selectedCategory === 'string' && selectedCategory.startsWith('visitAssigned:') ? `担当（${selectedCategory.replace('visitAssigned:', '')}）` :
+                   typeof selectedCategory === 'string' && selectedCategory.startsWith('todayCallAssigned:') ? `当日TEL(${selectedCategory.replace('todayCallAssigned:', '')})` :
+                   selectedCategory}
+                </Typography>
+                <Chip label={`${total}件`} size="small" color="primary" />
+              </Box>
+            )}
 
         <Paper sx={{ p: 2, mb: 3 }}>
           <Box sx={{ display: 'flex', gap: 2, mb: showFilters ? 2 : 0 }}>
