@@ -61,7 +61,7 @@ import { getActiveEmployees, Employee } from '../services/employeeService';
 import SellerStatusSidebar from '../components/SellerStatusSidebar';
 import { getSenderAddress, saveSenderAddress, validateSenderAddress } from '../utils/senderAddressStorage';
 import { useCallModeQuickButtonState } from '../hooks/useCallModeQuickButtonState';
-import { pageDataCache, sellerDetailCacheKey } from '../store/pageDataCache';
+import { pageDataCache, sellerDetailCacheKey, CACHE_KEYS } from '../store/pageDataCache';
 import PropertyMapSection from '../components/PropertyMapSection';
 import NearbyBuyersList from '../components/NearbyBuyersList';
 import CollapsibleSection from '../components/CollapsibleSection';
@@ -2539,7 +2539,10 @@ HP：https://ifoo-oita.com/
         <Alert severity="error" sx={{ mb: 2 }}>
           売主情報の読み込みに失敗しました
         </Alert>
-        <Button variant="contained" onClick={() => navigate('/')}>
+        <Button variant="contained" onClick={() => {
+          pageDataCache.invalidate(CACHE_KEYS.SELLERS_LIST);
+          navigate('/');
+        }}>
           一覧に戻る
         </Button>
       </Container>
@@ -2561,7 +2564,10 @@ HP：https://ifoo-oita.com/
         }}
       >
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <Button startIcon={<ArrowBack />} onClick={() => navigate('/')} variant="outlined">
+          <Button startIcon={<ArrowBack />} onClick={() => {
+            pageDataCache.invalidate(CACHE_KEYS.SELLERS_LIST);
+            navigate('/');
+          }} variant="outlined">
             一覧
           </Button>
           {selectedCategory && selectedCategory !== 'all' && (() => {
@@ -2585,6 +2591,7 @@ HP：https://ifoo-oita.com/
                 size="small"
                 onClick={() => {
                   sessionStorage.setItem('selectedStatusCategory', selectedCategory);
+                  pageDataCache.invalidate(CACHE_KEYS.SELLERS_LIST);
                   navigate('/');
                 }}
               >
