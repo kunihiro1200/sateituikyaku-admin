@@ -4471,25 +4471,14 @@ HP：https://ifoo-oita.com/
             <Paper sx={{ p: 2, mb: 3, bgcolor: '#fff0f0' }}>
               <Grid container spacing={2}>
                 <Grid item xs={12}>
-                  <InlineEditableField
-                    label="サイト"
-                    value={seller?.site || ''}
-                    fieldName="site"
-                    fieldType="dropdown"
-                    options={SITE_OPTIONS}
-                    onSave={async (newValue) => {
-                      await api.put(`/api/sellers/${id}`, {
-                        site: newValue,
-                      });
-                      // ローカル状態を更新
-                      setSeller(prev => prev ? { ...prev, site: newValue } : prev);
-                      setEditedSite(newValue);
-                    }}
-                    buyerId={id}
-                    enableConflictDetection={true}
-                    showEditIndicator={true}
-                    oneClickDropdown={true}
-                  />
+                  <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 1, p: 1, minHeight: 40 }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.25 }}>
+                      サイト
+                    </Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 'medium' }}>
+                      {seller?.site || '－'}
+                    </Typography>
+                  </Box>
                 </Grid>
                 
                 <Grid item xs={12}>
