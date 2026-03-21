@@ -722,6 +722,7 @@ export default function SellersPage() {
               <TableRow>
                 <TableCell>売主番号</TableCell>
                 <TableCell>名前</TableCell>
+                <TableCell>対応中</TableCell>
                 {(selectedCategory === 'todayCall' || selectedCategory === 'todayCallNotStarted' || selectedCategory === 'pinrichEmpty') && (
                   <TableCell>担当</TableCell>
                 )}
@@ -741,13 +742,13 @@ export default function SellersPage() {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={(selectedCategory === 'todayCall' || selectedCategory === 'todayCallNotStarted' || selectedCategory === 'pinrichEmpty') ? 14 : 13} align="center">
+                  <TableCell colSpan={(selectedCategory === 'todayCall' || selectedCategory === 'todayCallNotStarted' || selectedCategory === 'pinrichEmpty') ? 15 : 14} align="center">
                     読み込み中...
                   </TableCell>
                 </TableRow>
               ) : filteredSellers.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={(selectedCategory === 'todayCall' || selectedCategory === 'todayCallNotStarted' || selectedCategory === 'pinrichEmpty') ? 14 : 13} align="center">
+                  <TableCell colSpan={(selectedCategory === 'todayCall' || selectedCategory === 'todayCallNotStarted' || selectedCategory === 'pinrichEmpty') ? 15 : 14} align="center">
                     売主が見つかりませんでした
                   </TableCell>
                 </TableRow>
@@ -773,19 +774,20 @@ export default function SellersPage() {
                       <Typography variant="body2" fontWeight="bold" sx={{ color: SECTION_COLORS.seller.main }}>
                         {seller.sellerNumber || '-'}
                       </Typography>
-                      {seller.sellerNumber && (() => {
-                        const label = formatPresenceLabel(presenceState[seller.sellerNumber] || []);
-                        return label ? (
-                          <Chip
-                            label={label}
-                            color="warning"
-                            size="small"
-                            sx={{ mt: 0.5, fontSize: '11px' }}
-                          />
-                        ) : null;
-                      })()}
                     </TableCell>
                     <TableCell>{seller.name}</TableCell>
+                    <TableCell>
+                      {seller.sellerNumber && (() => {
+                        const names = (presenceState[seller.sellerNumber] || [])
+                          .filter(r => {
+                            const enteredAt = new Date(r.entered_at).getTime();
+                            return Date.now() - enteredAt < 30 * 60 * 1000;
+                          })
+                          .map(r => r.user_name)
+                          .join('、');
+                        return names || '-';
+                      })()}
+                    </TableCell>
                     {(selectedCategory === 'todayCall' || selectedCategory === 'todayCallNotStarted' || selectedCategory === 'pinrichEmpty') && (
                       <TableCell>
                         {seller.phoneContactPerson ? (

@@ -13,6 +13,11 @@ export const supabase = createClient(
       persistSession: true,
       detectSessionInUrl: true,
     },
+    realtime: {
+      params: {
+        eventsPerSecond: 10,
+      },
+    },
   }
 );
 
