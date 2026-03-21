@@ -33,7 +33,7 @@ export const useAuthStore = create<AuthState>()(
           redirectTo: `${window.location.origin}/auth/callback`,
           queryParams: {
             access_type: 'offline',
-            prompt: 'select_account', // 'consent'から'select_account'に変更
+            // promptを指定しない → Googleに既存セッションがあれば自動ログイン
           },
         },
       });
@@ -148,7 +148,7 @@ export const useAuthStore = create<AuthState>()(
       console.log('🔍 Checking auth...');
       set({ isLoading: true });
       
-      // Supabase Authからセッションを確認
+      // Supabase Authからセッションを確認（期限切れの場合はrefresh_tokenで自動更新）
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       
       console.log('🔍 Session check:', {
@@ -163,6 +163,26 @@ export const useAuthStore = create<AuthState>()(
       }
 
       if (!session) {
+        // セッションがない場合、refresh_tokenで復元を試みる
+        const storedRefreshToken = localStorage.getItem('refresh_token');
+        if (storedRefreshToken) {
+          console.log('🔄 Trying to refresh session...');
+          const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession({
+            refresh_token: storedRefreshToken,
+          });
+          if (!refreshError && refreshData.session) {
+            console.log('✅ Session refreshed successfully');
+            localStorage.setItem('session_token', refreshData.session.access_token);
+            localStorage.setItem('refresh_token', refreshData.session.refresh_token);
+            try {
+              const response = await api.get('/auth/me');
+              set({ employee: response.data, isAuthenticated: true, isLoading: false });
+              return;
+            } catch {
+              // fallthrough
+            }
+          }
+        }
         console.log('ℹ️ No active session');
         set({ isLoading: false, isAuthenticated: false, employee: null });
         return;
