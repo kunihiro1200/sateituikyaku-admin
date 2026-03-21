@@ -344,9 +344,8 @@ export class SellerService extends BaseRepository {
         !!addr && addr.trim() !== '' && addr.trim() !== '未入力';
       const resolvedAddress =
         isValidAddress(property.property_address) ? property.property_address :
-        isValidAddress(property.address) ? property.address :
         isValidAddress(decryptedSeller.propertyAddress) ? decryptedSeller.propertyAddress :
-        property.property_address || property.address; // 全て無効な場合はそのまま返す
+        null;
       decryptedSeller.property = {
         id: property.id,
         sellerId: property.seller_id,
