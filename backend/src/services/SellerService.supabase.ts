@@ -1750,7 +1750,7 @@ export class SellerService extends BaseRepository {
     // 1. 訪問日前日（営担に入力あり AND 訪問日あり）← 前営業日ロジックをJSで計算
     // 木曜訪問の場合は2日前（水曜定休のため火曜に通知）、それ以外は1日前
     const { data: visitAssigneeSellers } = await this.table('sellers')
-      .select('visit_date, visit_assignee')
+      .select('visit_date, visit_assignee, visit_reminder_assignee')
       .is('deleted_at', null)
       .not('visit_assignee', 'is', null)
       .neq('visit_assignee', '')
@@ -1762,6 +1762,9 @@ export class SellerService extends BaseRepository {
     const visitDayBeforeCount = (visitAssigneeSellers || []).filter(s => {
       const visitDateStr = s.visit_date;
       if (!visitDateStr) return false;
+      // visitReminderAssigneeに値がある場合は除外（通知担当が既に割り当て済み）
+      const reminderAssignee = (s as any).visit_reminder_assignee || '';
+      if (reminderAssignee.trim() !== '') return false;
       // YYYY-MM-DD をローカル日付として解釈（タイムゾーンオフセットなし）
       const parts = visitDateStr.split('-');
       if (parts.length !== 3) return false;
