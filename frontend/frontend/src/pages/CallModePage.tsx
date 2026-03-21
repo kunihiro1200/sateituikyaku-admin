@@ -40,7 +40,7 @@ import DocumentModal from '../components/DocumentModal';
 import ImageSelectorModal from '../components/ImageSelectorModal';
 import { InlineEditableField } from '../components/InlineEditableField';
 import RichTextEmailEditor from '../components/RichTextEmailEditor';
-import RichTextCommentEditor from '../components/RichTextCommentEditor';
+import RichTextCommentEditor, { RichTextCommentEditorHandle } from '../components/RichTextCommentEditor';
 import { PerformanceMetricsSection } from '../components/PerformanceMetricsSection';
 import { useAuthStore } from '../store/authStore';
 import { useSellerPresenceTrack } from '../hooks/useSellerPresence';
@@ -501,6 +501,7 @@ const CallModePage = () => {
   const [savingCommunication, setSavingCommunication] = useState(false);
   const isInitialLoadRef = useRef(true); // 初回ロードフラグ
   const callLogRef = useRef<CallLogDisplayHandle>(null); // 追客ログ更新用ref
+  const commentEditorRef = useRef<RichTextCommentEditorHandle>(null); // コメントエディタ用ref
 
   // サイトオプション
   const siteOptions = [
@@ -1426,14 +1427,18 @@ const CallModePage = () => {
     }
   };
 
-  // クイックボタン用のヘルパー関数：HTMLテキストを先頭に追加
+  // クイックボタン用のヘルパー関数：カーソル位置にHTMLテキストを挿入
   const appendBoldText = (text: string) => {
     const boldText = `<b>${text}</b>`;
-    // 既存のコンテンツがある場合は、先頭に追加して改行を入れる
-    if (editableComments.trim()) {
-      setEditableComments(boldText + '<br>' + editableComments);
+    if (commentEditorRef.current) {
+      commentEditorRef.current.insertAtCursor(boldText);
     } else {
-      setEditableComments(boldText);
+      // refが未設定の場合のフォールバック
+      if (editableComments.trim()) {
+        setEditableComments(boldText + '<br>' + editableComments);
+      } else {
+        setEditableComments(boldText);
+      }
     }
   };
 
@@ -4879,6 +4884,7 @@ HP：https://ifoo-oita.com/
                 コメント
               </Typography>
               <RichTextCommentEditor
+                ref={commentEditorRef}
                 value={editableComments}
                 onChange={(html) => setEditableComments(html)}
                 placeholder="コメントを入力してください..."
