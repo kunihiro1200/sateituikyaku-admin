@@ -1706,8 +1706,11 @@ export class SellerService extends BaseRepository {
     todayCallWithInfoLabels: string[];
     todayCallWithInfoLabelCounts: Record<string, number>;
   }> {
-    // キャッシュキー（固定）
-    const sidebarCacheKey = 'sellers:sidebar-counts';
+    // キャッシュキー（日付を含めることで日付変更時に自動無効化）
+    const now = new Date();
+    const jstTime = new Date(now.getTime() + (9 * 60 * 60 * 1000));
+    const todayJST = `${jstTime.getUTCFullYear()}-${String(jstTime.getUTCMonth() + 1).padStart(2, '0')}-${String(jstTime.getUTCDate()).padStart(2, '0')}`;
+    const sidebarCacheKey = `sellers:sidebar-counts:${todayJST}`;
 
     // キャッシュをチェック（60秒TTL）
     const cachedCounts = await CacheHelper.get<{
@@ -1730,11 +1733,6 @@ export class SellerService extends BaseRepository {
       return cachedCounts;
     }
 
-    // JST今日の日付を取得
-    const now = new Date();
-    const jstTime = new Date(now.getTime() + (9 * 60 * 60 * 1000));
-    const todayJST = `${jstTime.getUTCFullYear()}-${String(jstTime.getUTCMonth() + 1).padStart(2, '0')}-${String(jstTime.getUTCDate()).padStart(2, '0')}`;
-    
     // 未査定の基準日
     const cutoffDate = '2025-12-08';
 
