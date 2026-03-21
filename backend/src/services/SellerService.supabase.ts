@@ -672,16 +672,52 @@ export class SellerService extends BaseRepository {
     // サイドバーカウントキャッシュも無効化（売主データ変更により集計が変わる可能性があるため）
     await CacheHelper.del('sellers:sidebar-counts');
 
-    // スプレッドシートに同期（非同期）
+    // スプレッドシートに同期（非同期・ノンブロッキング）
+    // SyncQueueが利用可能な場合はキュー経由、そうでない場合は直接同期
     const activeSyncQueue2 = this.getActiveSyncQueue();
     if (activeSyncQueue2) {
-      await activeSyncQueue2.enqueue({
+      activeSyncQueue2.enqueue({
         type: 'update',
         sellerId: sellerId,
+      }).catch((err: any) => {
+        console.error('⚠️ SyncQueue enqueue failed, falling back to direct sync:', err);
+        this.syncDirectToSpreadsheet(sellerId);
       });
+    } else {
+      // Vercel環境でSyncQueueが未初期化の場合は直接同期
+      this.syncDirectToSpreadsheet(sellerId);
     }
 
     return decryptedSeller;
+  }
+
+  /**
+   * SyncQueueを使わずスプレッドシートに直接同期（Vercel環境フォールバック用）
+   */
+  private syncDirectToSpreadsheet(sellerId: string): void {
+    (async () => {
+      try {
+        const { SpreadsheetSyncService } = await import('./SpreadsheetSyncService');
+        const { GoogleSheetsClient } = await import('./GoogleSheetsClient');
+
+        const sheetsClient = new GoogleSheetsClient({
+          spreadsheetId: process.env.GOOGLE_SHEETS_SPREADSHEET_ID!,
+          sheetName: process.env.GOOGLE_SHEETS_SHEET_NAME || '売主リスト',
+          serviceAccountKeyPath: process.env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH || './google-service-account.json',
+        });
+        await sheetsClient.authenticate();
+
+        const syncService = new SpreadsheetSyncService(sheetsClient, this.supabase);
+        const result = await syncService.syncToSpreadsheet(sellerId);
+        if (result.success) {
+          console.log(`✅ Direct sync succeeded for seller: ${sellerId}`);
+        } else {
+          console.error(`❌ Direct sync failed for seller: ${sellerId}`, result.error);
+        }
+      } catch (err) {
+        console.error(`❌ Direct sync error for seller: ${sellerId}`, err);
+      }
+    })();
   }
 
   /**
