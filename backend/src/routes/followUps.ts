@@ -72,6 +72,15 @@ router.post(
       // phone_call の場合は売主一覧の lastCalledAt キャッシュも無効化
       if (type === 'phone_call') {
         invalidateListSellersCache();
+        // 売主追客ログスプレッドシートに非同期で追記（失敗してもレスポンスには影響しない）
+        appendCallLogToSpreadsheet(
+          activity.id,
+          sellerId,
+          req.employee!.initials || req.employee!.name,
+          new Date(activity.created_at)
+        ).catch((err: any) => {
+          console.error('[CallLog] Failed to append to spreadsheet:', err.message);
+        });
       }
       res.status(201).json(activity);
     } catch (error) {
@@ -239,5 +248,57 @@ router.put(
     }
   }
 );
+
+/**
+ * 売主追客ログスプレッドシートに通話ログを追記する
+ * スプレッドシートID: 1wKBRLWbT6pSKa9IlTDabjhjTnfs_GxX6Rn6M6kbio1I
+ * シート名: 売主追客ログ
+ * A列: 日付時間（JST）, B列: キー（activity UUID先頭8文字）, C列: 売主番号, E列: 担当イニシャル
+ */
+async function appendCallLogToSpreadsheet(
+  activityId: string,
+  sellerId: string,
+  initials: string,
+  createdAt: Date
+): Promise<void> {
+  // 売主番号を取得
+  const supabase = (await import('../config/supabase')).default;
+  const { data: seller, error } = await supabase
+    .from('sellers')
+    .select('seller_number')
+    .eq('id', sellerId)
+    .single();
+
+  if (error || !seller) {
+    throw new Error(`Seller not found for id: ${sellerId}`);
+  }
+
+  const sellerNumber = seller.seller_number;
+
+  // JST日時文字列を生成
+  const jstDate = new Date(createdAt.getTime() + 9 * 60 * 60 * 1000);
+  const jstDateString = jstDate.toISOString().replace('T', ' ').substring(0, 19);
+
+  // Google Sheets クライアントを初期化
+  const { GoogleSheetsClient } = await import('../services/GoogleSheetsClient');
+  const sheetsClient = new GoogleSheetsClient({
+    spreadsheetId: '1wKBRLWbT6pSKa9IlTDabjhjTnfs_GxX6Rn6M6kbio1I',
+    sheetName: '売主追客ログ',
+    serviceAccountKeyPath: process.env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH || './google-service-account.json',
+  });
+
+  await sheetsClient.authenticate();
+
+  // 追記するデータ（ヘッダーに合わせた列名で指定）
+  const rowData: Record<string, string> = {
+    '日付': jstDateString,
+    '売主追客ログ': activityId.substring(0, 8),
+    '売主番号': sellerNumber,
+    '担当（前半）': initials,
+  };
+
+  await sheetsClient.appendRow(rowData);
+  console.log(`[CallLog] Appended to spreadsheet: ${sellerNumber} by ${initials} at ${jstDateString}`);
+}
 
 export default router;
