@@ -1265,15 +1265,16 @@ export class EnhancedAutoSyncService {
     if (visitValuationAcquirer) {
       updateData.visit_valuation_acquirer = String(visitValuationAcquirer);
     }
-    // visit_assigneeは「外す」または空の場合はnullで更新（クリア）
+    // visit_assigneeの更新ロジック
+    // - 「外す」または空文字の場合はnullでクリア
+    // - 値がある場合はその値で更新
+    // - undefinedの場合（スプシにカラムが存在しない等）は更新しない（DBの既存値を保持）
     if (visitAssignee === '外す' || visitAssignee === '') {
       updateData.visit_assignee = null;
-    } else if (visitAssignee) {
+    } else if (visitAssignee !== undefined && visitAssignee !== null) {
       updateData.visit_assignee = String(visitAssignee);
-    } else {
-      // スプレッドシートで空欄の場合もnullで更新
-      updateData.visit_assignee = null;
     }
+    // visitAssignee が undefined の場合は updateData に含めない（DBの既存値を保持）
 
     // コミュニケーションフィールドを追加
     const phoneContactPerson = row['電話担当（任意）'];
@@ -1484,14 +1485,16 @@ export class EnhancedAutoSyncService {
     if (visitValuationAcquirer) {
       encryptedData.visit_valuation_acquirer = String(visitValuationAcquirer);
     }
-    // visit_assigneeは「外す」または空の場合はnullで設定（クリア）
+    // visit_assigneeの更新ロジック
+    // - 「外す」または空文字の場合はnullでクリア
+    // - 値がある場合はその値で設定
+    // - undefinedの場合（スプシにカラムが存在しない等）は設定しない（DBの既存値を保持）
     if (visitAssignee === '外す' || visitAssignee === '') {
       encryptedData.visit_assignee = null;
-    } else if (visitAssignee) {
+    } else if (visitAssignee !== undefined && visitAssignee !== null) {
       encryptedData.visit_assignee = String(visitAssignee);
-    } else {
-      encryptedData.visit_assignee = null;
     }
+    // visitAssignee が undefined の場合は encryptedData に含めない（DBの既存値を保持）
 
     // コミュニケーションフィールドを追加
     const phoneContactPerson = row['電話担当（任意）'];
