@@ -884,13 +884,14 @@ export class SellerService extends BaseRepository {
         case 'visitDayBefore': {
           // 訪問日前日（営担あり AND 訪問日あり）→ 全件取得してJSでフィルタ
           // 前営業日ロジック（木曜訪問→2日前、それ以外→1日前）はDBでは表現できないためJS側で処理
-          const { data: visitDayBeforeSellers } = await this.table('sellers')
-            .select('id, visit_date')
+          const { data: visitDayBeforeSellers, error: vdbError } = await this.table('sellers')
+            .select('id, visit_date, visit_assignee')
             .is('deleted_at', null)
             .not('visit_assignee', 'is', null)
             .neq('visit_assignee', '')
             .neq('visit_assignee', '外す')
             .not('visit_date', 'is', null);
+          console.log(`[visitDayBefore] todayJST=${todayJST}, candidates=${visitDayBeforeSellers?.length ?? 0}, error=${vdbError?.message}`);
           // visitDayBefore に該当するIDを計算
           const visitDayBeforeIds = (visitDayBeforeSellers || []).filter((s: any) => {
             const vd = (s as any).visit_date;
@@ -903,8 +904,10 @@ export class SellerService extends BaseRepository {
             const notify = new Date(visitDate);
             notify.setDate(visitDate.getDate() - days);
             const notifyStr = `${notify.getFullYear()}-${String(notify.getMonth() + 1).padStart(2, '0')}-${String(notify.getDate()).padStart(2, '0')}`;
+            console.log(`[visitDayBefore] seller=${s.id} visit_date=${vd} dow=${dow} notifyStr=${notifyStr} match=${notifyStr === todayJST}`);
             return notifyStr === todayJST;
           }).map((s: any) => s.id);
+          console.log(`[visitDayBefore] matched IDs: ${visitDayBeforeIds.length}`);
           if (visitDayBeforeIds.length === 0) {
             query = query.in('id', ['__no_match__']);
           } else {
@@ -1127,8 +1130,12 @@ export class SellerService extends BaseRepository {
     };
 
     // キャッシュに保存（インメモリ + Redis）
-    setListSellersCache(cacheKey, result);
-    await CacheHelper.set(cacheKey, result, CACHE_TTL.SELLER_LIST);
+    // 日付依存カテゴリ（visitDayBefore等）はキャッシュしない（日付が変わると結果が変わるため）
+    const skipCache = statusCategory === 'visitDayBefore' || statusCategory === 'visitCompleted';
+    if (!skipCache) {
+      setListSellersCache(cacheKey, result);
+      await CacheHelper.set(cacheKey, result, CACHE_TTL.SELLER_LIST);
+    }
 
     return result;
   }
