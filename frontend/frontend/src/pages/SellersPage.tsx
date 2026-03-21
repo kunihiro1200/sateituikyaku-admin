@@ -175,7 +175,6 @@ export default function SellersPage() {
   const [searchQuery, setSearchQuery] = useState('');
   
   // Phase 1 filters
-  const [inquirySourceFilter, setInquirySourceFilter] = useState('');
   const [confidenceLevelFilter, setConfidenceLevelFilter] = useState('');
   const [inquirySiteFilter, setInquirySiteFilter] = useState('');
   const [propertyTypeFilter, setPropertyTypeFilter] = useState('');
@@ -371,7 +370,7 @@ export default function SellersPage() {
 
   useEffect(() => {
     fetchSellers();
-  }, [page, rowsPerPage, inquirySourceFilter, confidenceLevelFilter, inquirySiteFilter, propertyTypeFilter, statusFilterValue, selectedCategory]);
+  }, [page, rowsPerPage, confidenceLevelFilter, inquirySiteFilter, propertyTypeFilter, statusFilterValue, selectedCategory]);
 
   const fetchSellers = async () => {
     try {
@@ -383,9 +382,6 @@ export default function SellersPage() {
       };
       
       // Add Phase 1 filters
-      if (inquirySourceFilter) {
-        params.inquirySource = inquirySourceFilter;
-      }
       if (confidenceLevelFilter) {
         params.confidenceLevel = confidenceLevelFilter;
       }
@@ -654,21 +650,6 @@ export default function SellersPage() {
             <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
               <TextField
                 select
-                label="問合元"
-                value={inquirySourceFilter}
-                onChange={(e) => setInquirySourceFilter(e.target.value)}
-                sx={{ minWidth: 150 }}
-                size="small"
-              >
-                <MenuItem value="">全て</MenuItem>
-                <MenuItem value="ウ">ウ (ウェブ)</MenuItem>
-                <MenuItem value="L">L (LINE)</MenuItem>
-                <MenuItem value="紹介">紹介</MenuItem>
-                <MenuItem value="チラシ">チラシ</MenuItem>
-              </TextField>
-              
-              <TextField
-                select
                 label="確度"
                 value={confidenceLevelFilter}
                 onChange={(e) => setConfidenceLevelFilter(e.target.value)}
@@ -678,11 +659,11 @@ export default function SellersPage() {
                 <MenuItem value="">全て</MenuItem>
                 <MenuItem value="A">A（売る気あり）</MenuItem>
                 <MenuItem value="B">B（売る気あるがまだ先の話）</MenuItem>
-                <MenuItem value="B_PRIME">B'（売る気は全く無い）</MenuItem>
+                <MenuItem value="B'">B'（売る気は全く無い）</MenuItem>
                 <MenuItem value="C">C（電話が繋がらない）</MenuItem>
                 <MenuItem value="D">D（再建築不可）</MenuItem>
                 <MenuItem value="E">E（収益物件）</MenuItem>
-                <MenuItem value="DUPLICATE">ダブり（重複している）</MenuItem>
+                <MenuItem value="ダブり">ダブり（重複している）</MenuItem>
               </TextField>
               
               <TextField
@@ -696,12 +677,24 @@ export default function SellersPage() {
                 <MenuItem value="">全て</MenuItem>
                 <MenuItem value="ウ">ウ</MenuItem>
                 <MenuItem value="ビ">ビ</MenuItem>
-                <MenuItem value="ス">ス</MenuItem>
-                <MenuItem value="ホ">ホ</MenuItem>
-                <MenuItem value="ア">ア</MenuItem>
+                <MenuItem value="H">H</MenuItem>
+                <MenuItem value="お">お</MenuItem>
+                <MenuItem value="Y">Y</MenuItem>
+                <MenuItem value="す">す</MenuItem>
+                <MenuItem value="a">a</MenuItem>
                 <MenuItem value="L">L</MenuItem>
-                <MenuItem value="紹介">紹介</MenuItem>
-                <MenuItem value="チラシ">チラシ</MenuItem>
+                <MenuItem value="エ">エ</MenuItem>
+                <MenuItem value="近所">近所</MenuItem>
+                <MenuItem value="チ">チ</MenuItem>
+                <MenuItem value="P">P</MenuItem>
+                <MenuItem value="紹">紹</MenuItem>
+                <MenuItem value="リ">リ</MenuItem>
+                <MenuItem value="買">買</MenuItem>
+                <MenuItem value="HP">HP</MenuItem>
+                <MenuItem value="知合">知合</MenuItem>
+                <MenuItem value="at-homeの掲載を見て">at-homeの掲載を見て</MenuItem>
+                <MenuItem value="2件目以降査定">2件目以降査定</MenuItem>
+                <MenuItem value="ロープレ">ロープレ</MenuItem>
               </TextField>
 
               <TextField
@@ -713,9 +706,10 @@ export default function SellersPage() {
                 size="small"
               >
                 <MenuItem value="">全て</MenuItem>
-                <MenuItem value="土">土（土地）</MenuItem>
-                <MenuItem value="戸">戸（戸建て）</MenuItem>
-                <MenuItem value="マ">マ（マンション）</MenuItem>
+                <MenuItem value="土地">土地</MenuItem>
+                <MenuItem value="戸建">戸建</MenuItem>
+                <MenuItem value="マンション">マンション</MenuItem>
+                <MenuItem value="事業用">事業用</MenuItem>
               </TextField>
 
               <TextField
@@ -728,16 +722,25 @@ export default function SellersPage() {
               >
                 <MenuItem value="">全て</MenuItem>
                 <MenuItem value="追客中">追客中</MenuItem>
-                <MenuItem value="専任">専任</MenuItem>
+                <MenuItem value="追客不要(未訪問）">追客不要(未訪問）</MenuItem>
+                <MenuItem value="除外済追客不要">除外済追客不要</MenuItem>
+                <MenuItem value="除外後追客中">除外後追客中</MenuItem>
+                <MenuItem value="専任媒介">専任媒介</MenuItem>
                 <MenuItem value="一般媒介">一般媒介</MenuItem>
-                <MenuItem value="他決">他決</MenuItem>
-                <MenuItem value="追客不要">追客不要</MenuItem>
+                <MenuItem value="リースバック（専任）">リースバック（専任）</MenuItem>
+                <MenuItem value="他決→追客">他決→追客</MenuItem>
+                <MenuItem value="他決→追客不要">他決→追客不要</MenuItem>
+                <MenuItem value="他決→専任">他決→専任</MenuItem>
+                <MenuItem value="他決→一般">他決→一般</MenuItem>
+                <MenuItem value="専任→他社専任">専任→他社専任</MenuItem>
+                <MenuItem value="一般→他決">一般→他決</MenuItem>
+                <MenuItem value="他社買取">他社買取</MenuItem>
+                <MenuItem value="訪問後（担当付）追客不要">訪問後（担当付）追客不要</MenuItem>
               </TextField>
               
               <Button
                 variant="text"
                 onClick={() => {
-                  setInquirySourceFilter('');
                   setConfidenceLevelFilter('');
                   setInquirySiteFilter('');
                   setPropertyTypeFilter('');
