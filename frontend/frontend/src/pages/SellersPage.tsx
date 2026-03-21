@@ -723,9 +723,6 @@ export default function SellersPage() {
                 <TableCell>売主番号</TableCell>
                 <TableCell>名前</TableCell>
                 <TableCell>対応中</TableCell>
-                {(selectedCategory === 'todayCall' || selectedCategory === 'todayCallNotStarted' || selectedCategory === 'pinrichEmpty') && (
-                  <TableCell>担当</TableCell>
-                )}
                 <TableCell>反響日付</TableCell>
                 <TableCell>サイト</TableCell>
                 <TableCell>確度</TableCell>
@@ -736,19 +733,18 @@ export default function SellersPage() {
                 <TableCell>営担</TableCell>
                 <TableCell>訪問日</TableCell>
                 <TableCell>状況（当社）</TableCell>
-                <TableCell>状況（売主）</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={(selectedCategory === 'todayCall' || selectedCategory === 'todayCallNotStarted' || selectedCategory === 'pinrichEmpty') ? 15 : 14} align="center">
+                  <TableCell colSpan={13} align="center">
                     読み込み中...
                   </TableCell>
                 </TableRow>
               ) : filteredSellers.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={(selectedCategory === 'todayCall' || selectedCategory === 'todayCallNotStarted' || selectedCategory === 'pinrichEmpty') ? 15 : 14} align="center">
+                  <TableCell colSpan={13} align="center">
                     売主が見つかりませんでした
                   </TableCell>
                 </TableRow>
@@ -815,13 +811,7 @@ export default function SellersPage() {
                         );
                       })()}
                     </TableCell>
-                    {(selectedCategory === 'todayCall' || selectedCategory === 'todayCallNotStarted' || selectedCategory === 'pinrichEmpty') && (
-                      <TableCell>
-                        {seller.phoneContactPerson ? (
-                          <Chip label={seller.phoneContactPerson} size="small" color="warning" />
-                        ) : '-'}
-                      </TableCell>
-                    )}
+
                     <TableCell>
                       {formatInquiryDate(seller)}
                     </TableCell>
@@ -880,11 +870,7 @@ export default function SellersPage() {
                         size="small"
                       />
                     </TableCell>
-                    <TableCell>
-                      {seller.currentStatus
-                        ? formatCurrentStatusDetailed(seller.currentStatus)
-                        : '-'}
-                    </TableCell>
+
                   </TableRow>
                 ))
               )}
