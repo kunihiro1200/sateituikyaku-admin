@@ -72,6 +72,20 @@ router.get('/debug', async (req, res) => {
  * GET /api/email-templates
  */
 /**
+ * 売主区分のテンプレート一覧を取得
+ * GET /api/email-templates/seller
+ */
+router.get('/seller', async (req, res) => {
+  try {
+    const templates = await templateService.getSellerTemplates();
+    res.json(templates);
+  } catch (error: any) {
+    console.error('Error fetching seller templates:', error);
+    res.status(500).json({ error: 'Failed to fetch seller templates', message: error.message });
+  }
+});
+
+/**
  * 物件区分のテンプレート一覧を取得
  * GET /api/email-templates/property
  */

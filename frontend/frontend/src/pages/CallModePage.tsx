@@ -378,6 +378,10 @@ const CallModePage = () => {
   // テンプレート送信中の状態
   const [sendingTemplate, setSendingTemplate] = useState(false);
 
+  // スプレッドシートから取得した売主用Emailテンプレート
+  const [sellerEmailTemplates, setSellerEmailTemplates] = useState<Array<{id: string; name: string; subject: string; body: string}>>([]);
+  const [sellerEmailTemplatesLoading, setSellerEmailTemplatesLoading] = useState(false);
+
   // 確認ダイアログ用の状態
   const [confirmDialog, setConfirmDialog] = useState<{
     open: boolean;
@@ -635,10 +639,6 @@ const CallModePage = () => {
   const getSortedEmailTemplates = useCallback(() => {
     if (!seller) return emailTemplates;
 
-    console.log('=== getSortedEmailTemplates 実行 ===');
-    console.log('seller.appointmentDate:', seller.appointmentDate);
-    console.log('seller.status:', seller.status);
-
     const templates = [...emailTemplates];
     const priorityTemplates: typeof emailTemplates = [];
     const remainingTemplates: typeof emailTemplates = [];
@@ -800,6 +800,22 @@ const CallModePage = () => {
   useEffect(() => {
     loadAllData();
   }, [id]);
+
+  // スプレッドシートから売主用Emailテンプレートを取得
+  useEffect(() => {
+    const fetchSellerTemplates = async () => {
+      setSellerEmailTemplatesLoading(true);
+      try {
+        const response = await api.get('/api/email-templates/seller');
+        setSellerEmailTemplates(response.data);
+      } catch (err) {
+        console.error('売主テンプレート取得失敗:', err);
+      } finally {
+        setSellerEmailTemplatesLoading(false);
+      }
+    };
+    fetchSellerTemplates();
+  }, []);
 
   // 社員データと送信元アドレスを初期化
   useEffect(() => {
@@ -2186,23 +2202,35 @@ HP：https://ifoo-oita.com/
   };
 
   const handleEmailTemplateSelect = (templateId: string) => {
-    console.log('=== handleEmailTemplateSelect called ===');
-    console.log('templateId:', templateId);
-    console.log('seller?.email:', seller?.email);
-    console.log('sendingTemplate:', sendingTemplate);
-    
-    if (!templateId) {
-      console.log('⚠️ No templateId provided');
+    if (!templateId) return;
+
+    // スプレッドシートテンプレート（seller_sheet_*）を優先検索
+    const sheetTemplate = sellerEmailTemplates.find(t => t.id === templateId);
+    if (sheetTemplate) {
+      const replacedSubject = replaceEmailPlaceholders(sheetTemplate.subject);
+      const replacedContent = replaceEmailPlaceholders(sheetTemplate.body);
+      const htmlContent = replacedContent.replace(/\n/g, '<br>');
+
+      setEditableEmailRecipient(seller?.email || '');
+      setEditableEmailSubject(replacedSubject);
+      setEditableEmailBody(htmlContent);
+
+      setConfirmDialog({
+        open: true,
+        type: 'email',
+        template: {
+          id: sheetTemplate.id,
+          label: sheetTemplate.name,
+          subject: replacedSubject,
+          content: replacedContent,
+        },
+      });
       return;
     }
 
+    // ハードコードテンプレートにフォールバック
     const template = emailTemplates.find(t => t.id === templateId);
-    console.log('Found template:', template);
-    
-    if (!template) {
-      console.log('❌ Template not found');
-      return;
-    }
+    if (!template) return;
 
     // プレースホルダーを置換
     const replacedSubject = replaceEmailPlaceholders(template.subject);
@@ -2215,10 +2243,6 @@ HP：https://ifoo-oita.com/
     setEditableEmailRecipient(seller?.email || '');
     setEditableEmailSubject(replacedSubject);
     setEditableEmailBody(htmlContent);
-
-    console.log('✅ Opening email confirmation dialog');
-    console.log('Recipient:', seller?.email);
-    console.log('Subject:', replacedSubject);
 
     // 確認ダイアログを表示
     setConfirmDialog({
@@ -2773,58 +2797,48 @@ HP：https://ifoo-oita.com/
                 value=""
                 label="Email送信"
                 onChange={(e) => handleEmailTemplateSelect(e.target.value)}
-                disabled={!seller?.email || sendingTemplate}
+                disabled={!seller?.email || sendingTemplate || sellerEmailTemplatesLoading}
                 MenuProps={{
                   PaperProps: {
                     sx: { maxWidth: 500 }
                   }
                 }}
               >
-                {getSortedEmailTemplates()
-                  .filter((template) => {
-                    // サイト別フィルタリング
-                    // sitesが指定されている場合は、現在のサイトがsites配列に含まれているかチェック
-                    if (template.sites && template.sites.length > 0) {
-                      return seller?.site && template.sites.includes(seller.site);
-                    }
-                    // sitesが指定されていない場合は常に表示
-                    return true;
-                  })
-                  .map((template) => (
-                    <MenuItem 
-                      key={template.id} 
-                      value={template.id}
-                      sx={{ 
-                        display: 'flex', 
-                        flexDirection: 'column', 
-                        alignItems: 'flex-start',
-                        py: 1.5,
-                        whiteSpace: 'normal'
+                {sellerEmailTemplates.map((template) => (
+                  <MenuItem
+                    key={template.id}
+                    value={template.id}
+                    sx={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'flex-start',
+                      py: 1.5,
+                      whiteSpace: 'normal'
+                    }}
+                  >
+                    <Typography variant="body2" sx={{ fontWeight: 'bold', mb: 0.5 }}>
+                      {template.name}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
+                      件名: {template.subject}
+                    </Typography>
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                      sx={{
+                        fontSize: '0.7rem',
+                        mt: 0.5,
+                        display: '-webkit-box',
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis'
                       }}
                     >
-                      <Typography variant="body2" sx={{ fontWeight: 'bold', mb: 0.5 }}>
-                        {template.label}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
-                        件名: {template.subject}
-                      </Typography>
-                      <Typography 
-                        variant="caption" 
-                        color="text.secondary" 
-                        sx={{ 
-                          fontSize: '0.7rem',
-                          mt: 0.5,
-                          display: '-webkit-box',
-                          WebkitLineClamp: 2,
-                          WebkitBoxOrient: 'vertical',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis'
-                        }}
-                      >
-                        {template.content}
-                      </Typography>
-                    </MenuItem>
-                  ))}
+                      {template.body}
+                    </Typography>
+                  </MenuItem>
+                ))}
               </Select>
             </FormControl>
 

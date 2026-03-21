@@ -70,6 +70,54 @@ export class EmailTemplateService {
   }
 
   /**
+   * スプレッドシートから売主用テンプレートを取得（区分=「売主」）
+   */
+  async getSellerTemplates(): Promise<EmailTemplate[]> {
+    try {
+      const client = new GoogleSheetsClient({
+        spreadsheetId: TEMPLATE_SPREADSHEET_ID,
+        sheetName: TEMPLATE_SHEET_NAME,
+        serviceAccountKeyPath: process.env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH,
+      });
+      await client.authenticate();
+
+      const sheetsInstance = (client as any).sheets;
+      const response = await sheetsInstance.spreadsheets.values.get({
+        spreadsheetId: TEMPLATE_SPREADSHEET_ID,
+        range: `${TEMPLATE_SHEET_NAME}!C:F`,
+      });
+
+      const rows: any[][] = response.data.values || [];
+      const templates: EmailTemplate[] = [];
+
+      for (let i = 1; i < rows.length; i++) {
+        const row = rows[i];
+        const category = (row[0] || '').toString().trim();
+        const type = (row[1] || '').toString().trim();
+        const subject = (row[2] || '').toString().trim();
+        const body = (row[3] || '').toString().trim();
+
+        if (category !== '売主' || !type) continue;
+
+        templates.push({
+          id: `seller_sheet_${i}`,
+          name: type,
+          description: type,
+          subject,
+          body,
+          placeholders: [],
+        });
+      }
+
+      console.log(`[EmailTemplateService] 売主テンプレート ${templates.length}件取得`);
+      return templates;
+    } catch (error: any) {
+      console.error('[EmailTemplateService] 売主テンプレート取得失敗:', error.message);
+      throw error;
+    }
+  }
+
+  /**
    * スプレッドシートから物件用テンプレートを取得（区分=「物件」）
    */
   async getPropertyTemplates(): Promise<EmailTemplate[]> {
