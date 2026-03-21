@@ -107,11 +107,20 @@ export const generateVisitReminderSMS = (
   property: PropertyInfo | null
 ): string => {
   const name = seller.name || '';
-  const appointmentDate = seller.appointmentDate 
-    ? new Date(seller.appointmentDate) 
-    : null;
   
-  if (!appointmentDate) {
+  // visitDate + visitTime から日時を構築（優先）、なければ appointmentDate を使用
+  let appointmentDate: Date | null = null;
+  if (seller.visitDate) {
+    const dateStr = seller.visitDate instanceof Date
+      ? seller.visitDate.toISOString().split('T')[0]
+      : String(seller.visitDate).split('T')[0];
+    const timeStr = seller.visitTime ? String(seller.visitTime).substring(0, 5) : '00:00';
+    appointmentDate = new Date(`${dateStr}T${timeStr}`);
+  } else if (seller.appointmentDate) {
+    appointmentDate = new Date(seller.appointmentDate);
+  }
+  
+  if (!appointmentDate || isNaN(appointmentDate.getTime())) {
     return `${name}様[改行][改行]訪問予定日時が設定されていません。`;
   }
   
