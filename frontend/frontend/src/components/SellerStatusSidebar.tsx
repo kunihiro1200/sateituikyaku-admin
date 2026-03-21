@@ -113,18 +113,34 @@ const filterSellersByCategory = (sellers: any[], category: StatusCategory): any[
  */
 const getCategoryLabel = (category: StatusCategory): string => {
   switch (category) {
+    case 'visitDayBefore':
+      return '①訪問日前日';
+    case 'visitCompleted':
+      return '②訪問済み';
     case 'todayCall':
-      return '①当日TEL分';
+      return '③当日TEL分';
     case 'todayCallWithInfo':
       return '②当日TEL（内容）';
     case 'unvaluated':
-      return '③未査定';
+      return '⑤未査定';
     case 'mailingPending':
-      return '④査定（郵送）';
+      return '⑥査定（郵送）';
+    case 'todayCallNotStarted':
+      return '⑦当日TEL_未着手';
+    case 'pinrichEmpty':
+      return '⑧Pinrich空欄';
+    case 'todayCallAssigned':
+      return '当日TEL（担当）';
     case 'all':
       return 'All';
     default:
-      return '';
+      if (typeof category === 'string' && category.startsWith('visitAssigned:')) {
+        return `担当（${category.replace('visitAssigned:', '')}）`;
+      }
+      if (typeof category === 'string' && category.startsWith('todayCallAssigned:')) {
+        return `当日TEL(${category.replace('todayCallAssigned:', '')})`;
+      }
+      return category as string;
   }
 };
 
@@ -133,6 +149,10 @@ const getCategoryLabel = (category: StatusCategory): string => {
  */
 const getCategoryColor = (category: StatusCategory): string => {
   switch (category) {
+    case 'visitDayBefore':
+      return '#2e7d32';
+    case 'visitCompleted':
+      return '#1565c0';
     case 'todayCall':
       return 'error.main';
     case 'todayCallWithInfo':
@@ -141,8 +161,17 @@ const getCategoryColor = (category: StatusCategory): string => {
       return 'warning.main';
     case 'mailingPending':
       return 'info.main';
+    case 'todayCallNotStarted':
+      return '#ff9800';
+    case 'pinrichEmpty':
+      return '#795548';
+    case 'todayCallAssigned':
+      return '#ff5722';
     default:
-      return 'text.primary';
+      if (typeof category === 'string' && (category.startsWith('visitAssigned:') || category.startsWith('todayCallAssigned:'))) {
+        return '#ff5722';
+      }
+      return '#555555';
   }
 };
 
@@ -563,17 +592,15 @@ export default function SellerStatusSidebar({
     
     const label = getCategoryLabel(expandedCategory);
     const color = getCategoryColor(expandedCategory);
+    // MUI文字列をHEXに変換（後方互換性）
+    const hexColor = color === 'error.main' ? '#d32f2f' :
+      color === 'secondary.main' ? '#9c27b0' :
+      color === 'warning.main' ? '#ed6c02' :
+      color === 'info.main' ? '#0288d1' : color;
     
     return (
       <Box>
-        {renderCategoryButton(
-          expandedCategory, 
-          label, 
-          color === 'error.main' ? '#d32f2f' :
-          color === 'secondary.main' ? '#9c27b0' :
-          color === 'warning.main' ? '#ed6c02' :
-          color === 'info.main' ? '#0288d1' : '#000'
-        )}
+        {renderCategoryButton(expandedCategory, label, hexColor)}
       </Box>
     );
   };
