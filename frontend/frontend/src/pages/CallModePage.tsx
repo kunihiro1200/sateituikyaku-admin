@@ -4894,27 +4894,6 @@ HP：https://ifoo-oita.com/
                 </Alert>
               )}
 
-              {/* 最終追客情報の表示 */}
-              {(() => {
-                const phoneCalls = activities.filter((a) => a.type === 'phone_call');
-                if (phoneCalls.length > 0) {
-                  const lastCall = phoneCalls[0];
-                  const displayName = getDisplayName(lastCall.employee);
-                  const formattedDate = formatDateTime(lastCall.createdAt);
-                  return (
-                    <Box sx={{ mb: 2, p: 1.5, bgcolor: 'grey.50', borderRadius: 1 }}>
-                      <Typography variant="body2" color="text.secondary" gutterBottom>
-                        最終追客
-                      </Typography>
-                      <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
-                        {displayName} {formattedDate}
-                      </Typography>
-                    </Box>
-                  );
-                }
-                return null;
-              })()}
-
               <Grid container spacing={2}>
                 {/* 状況（当社）+ 次電日 - 横並び1行 */}
                 <Grid item xs={7}>
