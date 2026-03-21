@@ -325,12 +325,13 @@ export default function SellersPage() {
 
   // カテゴリ展開時に全件データを取得（カウントと展開リストのずれを解消）
   const fetchExpandedCategorySellers = async (category: string) => {
-    // キャッシュがあればそれを使用
-    if (expandedCategorySellers[category]) return;
+    // ローディング中は重複リクエストしない
+    if (expandedCategoryLoading[category]) return;
 
+    // キャッシュがあればそれを使用（空配列は除く：カウントと不一致の場合に再取得できるよう）
     const cacheKey = `sidebar_expanded:${category}`;
     const cached = pageDataCache.get<any[]>(cacheKey);
-    if (cached) {
+    if (cached && cached.length > 0) {
       setExpandedCategorySellers(prev => ({ ...prev, [category]: cached }));
       return;
     }
@@ -343,8 +344,10 @@ export default function SellersPage() {
       const response = await api.get('/api/sellers', { params });
       const data = response.data.data || [];
       setExpandedCategorySellers(prev => ({ ...prev, [category]: data }));
-      // 5分キャッシュ
-      pageDataCache.set(cacheKey, data, 5 * 60 * 1000);
+      // 5分キャッシュ（1件以上の場合のみキャッシュ）
+      if (data.length > 0) {
+        pageDataCache.set(cacheKey, data, 5 * 60 * 1000);
+      }
     } catch (error) {
       console.error('Failed to fetch expanded category sellers:', error);
       setExpandedCategorySellers(prev => ({ ...prev, [category]: [] }));

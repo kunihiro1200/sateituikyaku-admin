@@ -885,7 +885,7 @@ export class SellerService extends BaseRepository {
           // 訪問日前日（営担あり AND 訪問日あり）→ 全件取得してJSでフィルタ
           // 前営業日ロジック（木曜訪問→2日前、それ以外→1日前）はDBでは表現できないためJS側で処理
           const { data: visitDayBeforeSellers } = await this.table('sellers')
-            .select('id')
+            .select('id, visit_date')
             .is('deleted_at', null)
             .not('visit_assignee', 'is', null)
             .neq('visit_assignee', '')
