@@ -68,10 +68,14 @@ const RichTextCommentEditor = React.forwardRef<RichTextCommentEditorHandle, Rich
     const editorRef = useRef<HTMLDivElement>(null);
     // blur 時にカーソル位置（Range）を保存する ref
     const savedRangeRef = useRef<Range | null>(null);
+    // エディタがフォーカス中かどうかを追跡する ref
+    const isFocusedRef = useRef<boolean>(false);
 
     // 初期値の設定
+    // 重要: フォーカス中は innerHTML を上書きしない
+    // （上書きすると保存した Range が指すノードが消えてカーソル位置が無効になる）
     useEffect(() => {
-      if (editorRef.current && editorRef.current.innerHTML !== value) {
+      if (editorRef.current && !isFocusedRef.current && editorRef.current.innerHTML !== value) {
         editorRef.current.innerHTML = value;
       }
     }, [value]);
@@ -83,7 +87,12 @@ const RichTextCommentEditor = React.forwardRef<RichTextCommentEditorHandle, Rich
       }
     };
 
-    // blur 時にカーソル位置を保存する
+    // focus 時に isFocusedRef を true にする
+    const handleFocus = () => {
+      isFocusedRef.current = true;
+    };
+
+    // blur 時にカーソル位置を保存し、isFocusedRef を false にする
     const handleBlur = () => {
       const selection = window.getSelection();
       if (selection && selection.rangeCount > 0 && editorRef.current) {
@@ -92,6 +101,7 @@ const RichTextCommentEditor = React.forwardRef<RichTextCommentEditorHandle, Rich
           savedRangeRef.current = range.cloneRange();
         }
       }
+      isFocusedRef.current = false;
     };
 
     // コンテナクリック時にエディタにフォーカス
@@ -207,6 +217,7 @@ const RichTextCommentEditor = React.forwardRef<RichTextCommentEditorHandle, Rich
             ref={editorRef}
             contentEditable={!disabled}
             onInput={handleInput}
+            onFocus={handleFocus}
             onBlur={handleBlur}
             data-placeholder={placeholder}
             suppressContentEditableWarning
