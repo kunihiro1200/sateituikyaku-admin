@@ -778,14 +778,41 @@ export default function SellersPage() {
                     <TableCell>{seller.name}</TableCell>
                     <TableCell>
                       {seller.sellerNumber && (() => {
-                        const names = (presenceState[seller.sellerNumber] || [])
+                        const active = (presenceState[seller.sellerNumber] || [])
                           .filter(r => {
                             const enteredAt = new Date(r.entered_at).getTime();
                             return Date.now() - enteredAt < 30 * 60 * 1000;
-                          })
-                          .map(r => r.user_name)
-                          .join('、');
-                        return names || '-';
+                          });
+                        if (active.length === 0) return '-';
+                        return (
+                          <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+                            {active.map((r, i) => {
+                              // 名字の1文字目を取得（漢字・英字どちらも対応）
+                              const initial = r.user_name ? r.user_name.charAt(0) : '?';
+                              return (
+                                <Box
+                                  key={i}
+                                  sx={{
+                                    width: 24,
+                                    height: 24,
+                                    borderRadius: '50%',
+                                    bgcolor: 'error.main',
+                                    color: 'white',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    fontSize: '0.65rem',
+                                    fontWeight: 'bold',
+                                    flexShrink: 0,
+                                  }}
+                                  title={r.user_name}
+                                >
+                                  {initial}
+                                </Box>
+                              );
+                            })}
+                          </Box>
+                        );
                       })()}
                     </TableCell>
                     {(selectedCategory === 'todayCall' || selectedCategory === 'todayCallNotStarted' || selectedCategory === 'pinrichEmpty') && (
