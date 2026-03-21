@@ -9,6 +9,7 @@ import { GoogleSheetsClient } from './GoogleSheetsClient';
 import { ColumnMapper } from './ColumnMapper';
 import { PropertySyncHandler } from './PropertySyncHandler';
 import { encrypt } from '../utils/encryption';
+import { ExclusionDateCalculator } from './ExclusionDateCalculator';
 import {
   ValidationResult,
   DeletionResult,
@@ -1262,6 +1263,20 @@ export class EnhancedAutoSyncService {
       updateData.inquiry_site = String(inquirySite);
     }
 
+    // 除外日を計算（inquiry_site または inquiry_date が存在する場合）
+    {
+      const siteForCalc = inquirySite ? String(inquirySite) : null;
+      const dateForCalc = inquiryDate ? this.formatInquiryDate(inquiryYear, inquiryDate) : null;
+      if (siteForCalc && dateForCalc) {
+        const exclusionDate = ExclusionDateCalculator.calculateExclusionDate(dateForCalc, siteForCalc);
+        if (exclusionDate !== null) {
+          updateData.exclusion_date = exclusionDate.toISOString().split('T')[0];
+        } else {
+          updateData.exclusion_date = null;
+        }
+      }
+    }
+
     // 訪問関連フィールドを追加
     if (visitAcquisitionDate) {
       updateData.visit_acquisition_date = this.formatVisitDate(visitAcquisitionDate);
@@ -1486,6 +1501,20 @@ export class EnhancedAutoSyncService {
     }
     if (inquirySite) {
       encryptedData.inquiry_site = String(inquirySite);
+    }
+
+    // 除外日を計算（inquiry_site または inquiry_date が存在する場合）
+    {
+      const siteForCalc = inquirySite ? String(inquirySite) : null;
+      const dateForCalc = inquiryDate ? this.formatInquiryDate(inquiryYear, inquiryDate) : null;
+      if (siteForCalc && dateForCalc) {
+        const exclusionDate = ExclusionDateCalculator.calculateExclusionDate(dateForCalc, siteForCalc);
+        if (exclusionDate !== null) {
+          encryptedData.exclusion_date = exclusionDate.toISOString().split('T')[0];
+        } else {
+          encryptedData.exclusion_date = null;
+        }
+      }
     }
 
     // 訪問関連フィールドを追加
