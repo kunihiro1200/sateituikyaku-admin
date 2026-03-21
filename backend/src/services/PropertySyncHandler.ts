@@ -104,7 +104,7 @@ export class PropertySyncHandler {
     // Note: property_type column has NOT NULL constraint, so we use 'その他' as default
     const insertData: any = {
       seller_id: sellerId,
-      property_address: '未入力',
+      property_address: '',
       property_type: 'その他',
     };
 

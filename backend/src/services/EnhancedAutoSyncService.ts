@@ -1358,7 +1358,7 @@ export class EnhancedAutoSyncService {
       .single();
 
     if (seller) {
-      const propertyAddress = row['物件所在地'] || '未入力';
+      const propertyAddress = row['物件所在地'] || '';
       let propertyType = row['種別'];
       if (propertyType) {
         const typeStr = String(propertyType).trim();
@@ -1607,7 +1607,7 @@ export class EnhancedAutoSyncService {
     sellerNumber: string,
     row: any
   ): Promise<void> {
-    const propertyAddress = row['物件所在地'] || '未入力';
+    const propertyAddress = row['物件所在地'] || '';
     const propertyNumber = row['物件番号'] ? String(row['物件番号']) : undefined;
     
     let propertyType = row['種別'];
