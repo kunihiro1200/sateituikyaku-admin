@@ -1167,6 +1167,42 @@ export class SellerService extends BaseRepository {
    * @param query - 検索クエリ
    * @param includeDeleted - 削除済み売主も含めるか（デフォルト: false）
    */
+  /**
+   * 売主リストに lastCalledAt を付与するヘルパー
+   */
+  private async _attachLastCalledAt(sellers: Seller[]): Promise<Seller[]> {
+    if (sellers.length === 0) return sellers;
+    const sellerIds = sellers.map((s: any) => s.id).filter(Boolean);
+    const idToSellerNumber: Record<string, string> = {};
+    for (const s of sellers) {
+      if ((s as any).id && s.sellerNumber) idToSellerNumber[(s as any).id] = s.sellerNumber;
+    }
+    let lastCalledAtMap: Record<string, string> = {};
+    if (sellerIds.length > 0) {
+      try {
+        const { data: latestCalls } = await this.table('activities')
+          .select('seller_id, created_at')
+          .in('seller_id', sellerIds)
+          .eq('type', 'phone_call')
+          .order('created_at', { ascending: false });
+        if (latestCalls) {
+          for (const call of latestCalls) {
+            const sellerNumber = idToSellerNumber[call.seller_id];
+            if (sellerNumber && !lastCalledAtMap[sellerNumber]) {
+              lastCalledAtMap[sellerNumber] = call.created_at;
+            }
+          }
+        }
+      } catch (e) {
+        // 取得失敗時は無視
+      }
+    }
+    return sellers.map((seller: any) => ({
+      ...seller,
+      lastCalledAt: (seller.sellerNumber && lastCalledAtMap[seller.sellerNumber]) || null,
+    }));
+  }
+
   async searchSellers(query: string, includeDeleted: boolean = false): Promise<Seller[]> {
     console.log('🔍 searchSellers called with query:', query);
     
@@ -1192,7 +1228,7 @@ export class SellerService extends BaseRepository {
       if (exactSellers && exactSellers.length > 0) {
         console.log(`✅ Found exact match for seller_number: ${upperQuery}`);
         const decryptedSellers = await Promise.all(exactSellers.map(seller => this.decryptSeller(seller)));
-        return decryptedSellers;
+        return await this._attachLastCalledAt(decryptedSellers);
       }
 
       // 完全一致がなければ前方一致で検索（AA6 → AA60, AA61...）
@@ -1216,7 +1252,7 @@ export class SellerService extends BaseRepository {
       if (sellers && sellers.length > 0) {
         console.log(`✅ Found ${sellers.length} sellers by seller_number`);
         const decryptedSellers = await Promise.all(sellers.map(seller => this.decryptSeller(seller)));
-        return decryptedSellers;
+        return await this._attachLastCalledAt(decryptedSellers);
       }
     }
     
@@ -1243,7 +1279,7 @@ export class SellerService extends BaseRepository {
       if (sellers && sellers.length > 0) {
         console.log(`✅ Found ${sellers.length} sellers by seller_number`);
         const decryptedSellers = await Promise.all(sellers.map(seller => this.decryptSeller(seller)));
-        return decryptedSellers;
+        return await this._attachLastCalledAt(decryptedSellers);
       }
     }
     
@@ -1295,40 +1331,8 @@ export class SellerService extends BaseRepository {
 
     console.log(`🎯 Found ${results.length} matching sellers`);
 
-    // lastCalledAt を付与（listSellers と同じロジック）
-    const sellerIds = results.map((s: any) => s.id).filter(Boolean);
-    const idToSellerNumber: Record<string, string> = {};
-    for (const s of results) {
-      if (s.id && s.sellerNumber) idToSellerNumber[s.id] = s.sellerNumber;
-    }
-    let lastCalledAtMap: Record<string, string> = {};
-    if (sellerIds.length > 0) {
-      try {
-        const { data: latestCalls } = await this.table('activities')
-          .select('seller_id, created_at')
-          .in('seller_id', sellerIds)
-          .eq('type', 'phone_call')
-          .order('created_at', { ascending: false });
-
-        if (latestCalls) {
-          for (const call of latestCalls) {
-            const sellerNumber = idToSellerNumber[call.seller_id];
-            if (sellerNumber && !lastCalledAtMap[sellerNumber]) {
-              lastCalledAtMap[sellerNumber] = call.created_at;
-            }
-          }
-        }
-      } catch (e) {
-        // 取得失敗時は無視（lastCalledAt はオプション）
-      }
-    }
-
-    const resultsWithCallDate = results.map((seller: any) => ({
-      ...seller,
-      lastCalledAt: (seller.sellerNumber && lastCalledAtMap[seller.sellerNumber]) || null,
-    }));
-
-    return resultsWithCallDate;
+    // lastCalledAt を付与（ヘルパーを使用）
+    return await this._attachLastCalledAt(results);
   }
 
   /**
