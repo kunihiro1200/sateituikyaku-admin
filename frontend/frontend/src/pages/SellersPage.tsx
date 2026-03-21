@@ -72,6 +72,7 @@ interface Seller {
   visitAssigneeInitials?: string;
   currentStatus?: string;
   phoneContactPerson?: string;
+  lastCalledAt?: string;
 }
 
 const statusLabels: Record<string, string> = {
@@ -724,6 +725,7 @@ export default function SellersPage() {
                 <TableCell>売主番号</TableCell>
                 <TableCell>名前</TableCell>
                 <TableCell>対応中</TableCell>
+                <TableCell>最終電話</TableCell>
                 <TableCell>反響日付</TableCell>
                 <TableCell>サイト</TableCell>
                 <TableCell>確度</TableCell>
@@ -739,13 +741,13 @@ export default function SellersPage() {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={13} align="center">
+                  <TableCell colSpan={14} align="center">
                     読み込み中...
                   </TableCell>
                 </TableRow>
               ) : filteredSellers.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={13} align="center">
+                  <TableCell colSpan={14} align="center">
                     売主が見つかりませんでした
                   </TableCell>
                 </TableRow>
@@ -811,6 +813,21 @@ export default function SellersPage() {
                           </Box>
                         );
                       })()}
+                    </TableCell>
+
+                    <TableCell>
+                      {seller.lastCalledAt ? (() => {
+                        const d = new Date(seller.lastCalledAt);
+                        const m = d.getMonth() + 1;
+                        const day = d.getDate();
+                        const hh = String(d.getHours()).padStart(2, '0');
+                        const mm = String(d.getMinutes()).padStart(2, '0');
+                        return (
+                          <Typography variant="body2" sx={{ fontSize: '0.75rem', color: 'text.secondary', whiteSpace: 'nowrap' }}>
+                            {m}/{day} {hh}:{mm}
+                          </Typography>
+                        );
+                      })() : '-'}
                     </TableCell>
 
                     <TableCell>

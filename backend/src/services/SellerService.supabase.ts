@@ -1105,26 +1105,45 @@ export class SellerService extends BaseRepository {
       return decrypted;
     }));
 
-    // 各売主の最新通話日時を取得（一時的にコメントアウト）
-    // const sellersWithCallDate = await Promise.all(
-    //   decryptedSellers.map(async (seller) => {
-    //     const { data: latestCall } = await this.table('activities')
-    //       .select('created_at')
-    //       .eq('seller_id', seller.id)
-    //       .eq('type', 'phone_call')
-    //       .order('created_at', { ascending: false })
-    //       .limit(1)
-    //       .single();
+    // 各売主の最新通話日時を一括取得（N+1を避けるため IN クエリで一括取得）
+    // seller_id（UUID）→ sellerNumber のマップを作成
+    const sellerIds = decryptedSellers.map((s: any) => s.id).filter(Boolean);
+    const idToSellerNumber: Record<string, string> = {};
+    for (const s of decryptedSellers) {
+      if (s.id && s.sellerNumber) idToSellerNumber[s.id] = s.sellerNumber;
+    }
+    // lastCalledAtMap のキーは sellerNumber
+    let lastCalledAtMap: Record<string, string> = {};
+    if (sellerIds.length > 0) {
+      try {
+        const { data: latestCalls } = await this.table('activities')
+          .select('seller_id, created_at')
+          .in('seller_id', sellerIds)
+          .eq('type', 'phone_call')
+          .order('created_at', { ascending: false });
 
-    //     return {
-    //       ...seller,
-    //       lastCallDate: latestCall?.created_at || null,
-    //     };
-    //   })
-    // );
+        if (latestCalls) {
+          // 各売主の最新通話日時のみを保持（最初に出てきたものが最新）
+          for (const call of latestCalls) {
+            const sellerNumber = idToSellerNumber[call.seller_id];
+            if (sellerNumber && !lastCalledAtMap[sellerNumber]) {
+              lastCalledAtMap[sellerNumber] = call.created_at;
+            }
+          }
+        }
+      } catch (e) {
+        // 取得失敗時は無視（lastCalledAtはオプション）
+      }
+    }
+
+    // lastCalledAt を各売主に付与（キーは sellerNumber）
+    const sellersWithCallDate = decryptedSellers.map((seller: any) => ({
+      ...seller,
+      lastCalledAt: (seller.sellerNumber && lastCalledAtMap[seller.sellerNumber]) || null,
+    }));
 
     const result = {
-      data: decryptedSellers,
+      data: sellersWithCallDate,
       total: count || 0,
       page,
       pageSize,
