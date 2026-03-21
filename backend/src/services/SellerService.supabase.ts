@@ -339,10 +339,18 @@ export class SellerService extends BaseRepository {
     // 物件情報を追加（カラム名をcamelCaseに変換）
     if (!propertyError && properties && properties.length > 0) {
       const property = properties[0]; // 最初の物件を使用
+      // property_address が '未入力' の場合は sellers.property_address にフォールバック
+      const isValidAddress = (addr: string | null | undefined): boolean =>
+        !!addr && addr.trim() !== '' && addr.trim() !== '未入力';
+      const resolvedAddress =
+        isValidAddress(property.property_address) ? property.property_address :
+        isValidAddress(property.address) ? property.address :
+        isValidAddress(decryptedSeller.propertyAddress) ? decryptedSeller.propertyAddress :
+        property.property_address || property.address; // 全て無効な場合はそのまま返す
       decryptedSeller.property = {
         id: property.id,
         sellerId: property.seller_id,
-        address: property.property_address || property.address, // property_addressを優先
+        address: resolvedAddress, // sellers.property_addressにフォールバック済み
         prefecture: property.prefecture,
         city: property.city,
         propertyType: property.property_type,
@@ -1373,6 +1381,7 @@ export class SellerService extends BaseRepository {
         buildYear: seller.build_year,
         structure: seller.structure,
         floorPlan: seller.floor_plan,
+        currentStatus: seller.current_status, // 状況（売主）
         // 担当者設定フィールド（call-mode-assignee-section）
         unreachableSmsAssignee: seller.unreachable_sms_assignee,
         valuationSmsAssignee: seller.valuation_sms_assignee,
