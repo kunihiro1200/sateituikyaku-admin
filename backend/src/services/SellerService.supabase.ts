@@ -1294,8 +1294,41 @@ export class SellerService extends BaseRepository {
     );
 
     console.log(`🎯 Found ${results.length} matching sellers`);
-    
-    return results;
+
+    // lastCalledAt を付与（listSellers と同じロジック）
+    const sellerIds = results.map((s: any) => s.id).filter(Boolean);
+    const idToSellerNumber: Record<string, string> = {};
+    for (const s of results) {
+      if (s.id && s.sellerNumber) idToSellerNumber[s.id] = s.sellerNumber;
+    }
+    let lastCalledAtMap: Record<string, string> = {};
+    if (sellerIds.length > 0) {
+      try {
+        const { data: latestCalls } = await this.table('activities')
+          .select('seller_id, created_at')
+          .in('seller_id', sellerIds)
+          .eq('type', 'phone_call')
+          .order('created_at', { ascending: false });
+
+        if (latestCalls) {
+          for (const call of latestCalls) {
+            const sellerNumber = idToSellerNumber[call.seller_id];
+            if (sellerNumber && !lastCalledAtMap[sellerNumber]) {
+              lastCalledAtMap[sellerNumber] = call.created_at;
+            }
+          }
+        }
+      } catch (e) {
+        // 取得失敗時は無視（lastCalledAt はオプション）
+      }
+    }
+
+    const resultsWithCallDate = results.map((seller: any) => ({
+      ...seller,
+      lastCalledAt: (seller.sellerNumber && lastCalledAtMap[seller.sellerNumber]) || null,
+    }));
+
+    return resultsWithCallDate;
   }
 
   /**
