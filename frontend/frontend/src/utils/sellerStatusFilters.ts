@@ -234,6 +234,12 @@ export const isVisitDayBefore = (seller: Seller | any): boolean => {
     return false;
   }
   
+  // visitReminderAssigneeに値がある場合は除外（通知担当が既に割り当て済み）
+  const visitReminderAssignee = seller.visitReminderAssignee || seller.visit_reminder_assignee || '';
+  if (visitReminderAssignee.trim() !== '') {
+    return false;
+  }
+  
   // sellerStatusUtils の実装を使用（水曜定休・木曜2日前ロジック）
   const todayStr = getTodayJSTString();
   const todayParts = todayStr.split('-');
