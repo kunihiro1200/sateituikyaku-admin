@@ -7,6 +7,7 @@ import { useAuthStore } from '../store/authStore';
 // ============================================================
 
 export interface PresenceRecord {
+  seller_number: string;
   user_name: string;
   entered_at: string; // ISO 8601
 }
@@ -62,6 +63,9 @@ export function formatPresenceLabel(records: PresenceRecord[]): string {
 
 /**
  * Supabase Realtime Presence を購読し、全売主のプレゼンス状態を返す
+ *
+ * Supabase Presence の presenceState() のキーは Supabase が自動生成するクライアントID。
+ * そのため全エントリーをフラットに展開し、seller_number でグループ化して返す。
  */
 export function useSellerPresenceSubscribe(): UseSellerPresenceSubscribeResult {
   const [presenceState, setPresenceState] = useState<PresenceState>({});
@@ -70,21 +74,26 @@ export function useSellerPresenceSubscribe(): UseSellerPresenceSubscribeResult {
   useEffect(() => {
     const channel = supabase.channel(CHANNEL_NAME);
 
-    channel
-      .on('presence', { event: 'sync' }, () => {
-        const state = channel.presenceState<PresenceRecord>();
-        // presenceState を seller_number → PresenceRecord[] に変換
-        const mapped: PresenceState = {};
-        for (const [key, presences] of Object.entries(state)) {
-          mapped[key] = presences as unknown as PresenceRecord[];
+    const rebuildState = () => {
+      const raw = channel.presenceState<PresenceRecord>();
+      // raw のキーは Supabase クライアントID → 全エントリーをフラット化して seller_number でグループ化
+      const mapped: PresenceState = {};
+      for (const presences of Object.values(raw)) {
+        for (const p of presences as unknown as PresenceRecord[]) {
+          if (!p.seller_number) continue;
+          if (!mapped[p.seller_number]) mapped[p.seller_number] = [];
+          mapped[p.seller_number].push(p);
         }
-        setPresenceState(mapped);
-      })
+      }
+      setPresenceState(mapped);
+    };
+
+    channel
+      .on('presence', { event: 'sync' }, rebuildState)
+      .on('presence', { event: 'join' }, rebuildState)
+      .on('presence', { event: 'leave' }, rebuildState)
       .subscribe((status) => {
         setIsConnected(status === 'SUBSCRIBED');
-        if (status !== 'SUBSCRIBED' && status !== 'CHANNEL_ERROR') {
-          // CHANNEL_ERROR 以外の非接続状態はログ記録
-        }
         if (status === 'CHANNEL_ERROR') {
           console.error('[useSellerPresence] 接続エラー:', status);
         }
@@ -121,6 +130,7 @@ export function useSellerPresenceTrack(
     channel.subscribe(async (status) => {
       if (status === 'SUBSCRIBED') {
         await channel.track({
+          seller_number: sellerNumber,
           user_name: employee.name,
           entered_at: new Date().toISOString(),
         });
