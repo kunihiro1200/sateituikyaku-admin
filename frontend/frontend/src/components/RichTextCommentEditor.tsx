@@ -213,8 +213,8 @@ const RichTextCommentEditor = React.forwardRef<RichTextCommentEditorHandle, Rich
           }
         }
 
-        // フォールバック: 末尾に追加
-        editor.innerHTML = editor.innerHTML + html;
+        // フォールバック: 先頭に追加
+        editor.innerHTML = html + editor.innerHTML;
         handleInput();
       },
     }));
