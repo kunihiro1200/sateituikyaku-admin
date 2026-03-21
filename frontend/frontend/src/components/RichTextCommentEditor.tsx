@@ -123,6 +123,7 @@ const RichTextCommentEditor = React.forwardRef<RichTextCommentEditorHandle, Rich
     };
 
     // ref \u7d4c\u7531\u3067 insertAtCursor \u3092\u516c\u958b\u3059\u308b
+    // ref 経由で insertAtCursor を公開する
     useImperativeHandle(ref, () => ({
       insertAtCursor: (html: string) => {
         const editor = editorRef.current;
@@ -130,20 +131,28 @@ const RichTextCommentEditor = React.forwardRef<RichTextCommentEditorHandle, Rich
 
         try {
           if (savedRangeRef.current) {
-            // \u4fdd\u5b58\u6e08\u307f\u306e\u30ab\u30fc\u30bd\u30eb\u4f4d\u7f6e\u306b\u633f\u5165
+            // focus() 前に savedRangeRef を退避する
+            // （focus() 後に selectionchange が発火して savedRangeRef が上書きされるのを防ぐ）
+            const savedRange = savedRangeRef.current.cloneRange();
+
+            // エディタにフォーカスを戻す（ボタンクリックでフォーカスが外れているため）
+            editor.focus();
+
+            // 退避した Range を使って操作する
+            const range = savedRange;
+
             const selection = window.getSelection();
             selection?.removeAllRanges();
-            selection?.addRange(savedRangeRef.current);
+            selection?.addRange(range);
 
-            const range = savedRangeRef.current;
             range.deleteContents();
 
-            // HTML\u6587\u5b57\u5217\u3092DocumentFragment\u306b\u5909\u63db\u3057\u3066\u633f\u5165
+            // HTML 文字列を DocumentFragment に変換して挿入
             const fragment = range.createContextualFragment(html);
             const lastNode = fragment.lastChild;
             range.insertNode(fragment);
 
-            // \u30ab\u30fc\u30bd\u30eb\u3092\u633f\u5165\u30c6\u30ad\u30b9\u30c8\u306e\u76f4\u5f8c\u306b\u79fb\u52d5
+            // カーソルを挿入テキストの直後に移動
             if (lastNode) {
               range.setStartAfter(lastNode);
               range.collapse(true);
@@ -152,12 +161,33 @@ const RichTextCommentEditor = React.forwardRef<RichTextCommentEditorHandle, Rich
               savedRangeRef.current = range.cloneRange();
             }
           } else {
-            // \u30d5\u30a9\u30fc\u30eb\u30d0\u30c3\u30af: \u30ab\u30fc\u30bd\u30eb\u4f4d\u7f6e\u304c\u672a\u8a2d\u5b9a\u306e\u5834\u5408\u306f\u5148\u982d\u306b\u633f\u5165
-            editor.innerHTML = html + (editor.innerHTML ? '<br>' + editor.innerHTML : '');
+            // フォールバック: カーソル位置が未設定の場合は末尾に追加
+            editor.focus();
+            const selection = window.getSelection();
+            if (selection) {
+              const range = document.createRange();
+              range.selectNodeContents(editor);
+              range.collapse(false);
+              selection.removeAllRanges();
+              selection.addRange(range);
+              range.deleteContents();
+              const fragment = range.createContextualFragment(html);
+              const lastNode = fragment.lastChild;
+              range.insertNode(fragment);
+              if (lastNode) {
+                range.setStartAfter(lastNode);
+                range.collapse(true);
+                selection.removeAllRanges();
+                selection.addRange(range);
+                savedRangeRef.current = range.cloneRange();
+              }
+            } else {
+              editor.innerHTML = editor.innerHTML + html;
+            }
           }
         } catch (e) {
-          // \u30a8\u30e9\u30fc\u6642\u306f\u30d5\u30a9\u30fc\u30eb\u30d0\u30c3\u30af\u3068\u3057\u3066\u5148\u982d\u633f\u5165
-          editor.innerHTML = html + (editor.innerHTML ? '<br>' + editor.innerHTML : '');
+          // エラー時は末尾に追加
+          editor.innerHTML = editor.innerHTML + html;
         }
 
         handleInput();
