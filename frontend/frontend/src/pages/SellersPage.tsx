@@ -727,8 +727,6 @@ export default function SellersPage() {
                 <TableCell>対応中</TableCell>
                 <TableCell>最終電話</TableCell>
                 <TableCell>反響日付</TableCell>
-                <TableCell>サイト</TableCell>
-                <TableCell>確度</TableCell>
                 <TableCell>次電日</TableCell>
                 <TableCell>物件所在地</TableCell>
                 <TableCell>種別</TableCell>
@@ -741,13 +739,13 @@ export default function SellersPage() {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={14} align="center">
+                  <TableCell colSpan={12} align="center">
                     読み込み中...
                   </TableCell>
                 </TableRow>
               ) : filteredSellers.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={14} align="center">
+                  <TableCell colSpan={12} align="center">
                     売主が見つかりませんでした
                   </TableCell>
                 </TableRow>
@@ -832,32 +830,6 @@ export default function SellersPage() {
 
                     <TableCell>
                       {formatInquiryDate(seller)}
-                    </TableCell>
-                    <TableCell>{seller.inquirySite || seller.site || '-'}</TableCell>
-                    <TableCell>
-                      {seller.confidence ? (
-                        <Chip
-                          label={
-                            seller.confidence === 'A' ? 'A' :
-                            seller.confidence === 'B' ? 'B' :
-                            seller.confidence === 'B_PRIME' ? "B'" :
-                            seller.confidence === 'C' ? 'C' :
-                            seller.confidence === 'D' ? 'D' :
-                            seller.confidence === 'E' ? 'E' :
-                            seller.confidence === 'DUPLICATE' ? 'ダブり' :
-                            seller.confidence
-                          }
-                          color={
-                            seller.confidence === 'A' ? 'success' :
-                            seller.confidence === 'B' ? 'info' :
-                            seller.confidence === 'C' ? 'warning' :
-                            'default'
-                          }
-                          size="small"
-                        />
-                      ) : (
-                        '-'
-                      )}
                     </TableCell>
                     <TableCell>
                       {seller.nextCallDate
