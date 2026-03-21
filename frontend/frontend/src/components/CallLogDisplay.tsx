@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useImperativeHandle, forwardRef } from 'react';
 import {
   Box,
   Paper,
@@ -22,6 +22,10 @@ interface CallLogDisplayProps {
   sellerId: string;
 }
 
+export interface CallLogDisplayHandle {
+  reload: () => void;
+}
+
 interface CallLog {
   id: string;
   calledAt: string;
@@ -29,7 +33,7 @@ interface CallLog {
   employeeId: string;
 }
 
-const CallLogDisplay = ({ sellerId }: CallLogDisplayProps) => {
+const CallLogDisplay = forwardRef<CallLogDisplayHandle, CallLogDisplayProps>(({ sellerId }, ref) => {
   const [callLogs, setCallLogs] = useState<CallLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -69,6 +73,10 @@ const CallLogDisplay = ({ sellerId }: CallLogDisplayProps) => {
       setLoading(false);
     }
   };
+
+  useImperativeHandle(ref, () => ({
+    reload: loadCallLogs,
+  }));
 
   const handleRetry = () => {
     loadCallLogs();
@@ -170,5 +178,7 @@ const CallLogDisplay = ({ sellerId }: CallLogDisplayProps) => {
     </Box>
   );
 };
+
+});
 
 export default CallLogDisplay;

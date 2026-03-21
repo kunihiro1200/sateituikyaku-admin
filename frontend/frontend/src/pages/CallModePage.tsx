@@ -31,7 +31,7 @@ import { SECTION_COLORS } from '../theme/sectionColors';
 import { Seller, PropertyInfo, Activity, SellerStatus, ConfidenceLevel, DuplicateMatch, SelectedImages } from '../types';
 import { getDisplayName } from '../utils/employeeUtils';
 import { formatDateTime } from '../utils/dateFormat';
-import CallLogDisplay from '../components/CallLogDisplay';
+import CallLogDisplay, { CallLogDisplayHandle } from '../components/CallLogDisplay';
 import { FollowUpLogHistoryTable } from '../components/FollowUpLogHistoryTable';
 import AssigneeSection, { SMS_TEMPLATE_ASSIGNEE_MAP, EMAIL_TEMPLATE_ASSIGNEE_MAP } from '../components/AssigneeSection';
 import DuplicateIndicatorBadge from '../components/DuplicateIndicatorBadge';
@@ -496,6 +496,7 @@ const CallModePage = () => {
   const [editedFirstCallPerson, setEditedFirstCallPerson] = useState<string>('');
   const [savingCommunication, setSavingCommunication] = useState(false);
   const isInitialLoadRef = useRef(true); // 初回ロードフラグ
+  const callLogRef = useRef<CallLogDisplayHandle>(null); // 追客ログ更新用ref
 
   // サイトオプション
   const siteOptions = [
@@ -2846,7 +2847,22 @@ HP：https://ifoo-oita.com/
             <Button
               variant="contained"
               startIcon={<Phone />}
+              component="a"
               href={`tel:${seller.phoneNumber}`}
+              onClick={async () => {
+                try {
+                  await api.post(`/api/sellers/${id}/activities`, {
+                    type: 'phone_call',
+                    content: `${seller.phoneNumber} に電話`,
+                  });
+                  // 少し待ってからログを更新（DB書き込み完了を待つ）
+                  setTimeout(() => {
+                    callLogRef.current?.reload();
+                  }, 500);
+                } catch (err) {
+                  console.error('追客ログ記録エラー:', err);
+                }
+              }}
               sx={{ 
                 fontWeight: 'bold',
                 backgroundColor: SECTION_COLORS.seller.main,
@@ -2875,7 +2891,7 @@ HP：https://ifoo-oita.com/
         <Box sx={{ flexShrink: 0, overflow: 'auto', borderRight: 1, borderColor: 'divider' }}>
           {/* 売主追客ログ（一番上） */}
           <Box sx={{ width: 280, p: 2, borderBottom: 1, borderColor: 'divider' }}>
-            <CallLogDisplay sellerId={id!} />
+            <CallLogDisplay ref={callLogRef} sellerId={id!} />
 
             {/* 追客ログ履歴（APPSHEET） */}
             {seller?.sellerNumber && (
