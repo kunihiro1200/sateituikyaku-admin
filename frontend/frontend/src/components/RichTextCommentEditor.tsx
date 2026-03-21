@@ -124,18 +124,9 @@ const RichTextCommentEditor = React.forwardRef<RichTextCommentEditorHandle, Rich
       isFocusedRef.current = true;
     };
 
-    const handleBlur = (e: React.FocusEvent) => {
-      // クイックボタン等のエディタ外クリックでblurが発生しても、
-      // relatedTarget がエディタの外（ボタン等）の場合はカーソル位置を保存してフォーカス状態を維持
-      const relatedTarget = e.relatedTarget as Node | null;
-      if (relatedTarget && editorRef.current && !editorRef.current.contains(relatedTarget)) {
-        // エディタ外へのフォーカス移動 → カーソル位置を保存するがisFocusedはtrueのまま
-        saveCursorOffset();
-        // isFocusedRef は true のまま（挿入後に正しい位置に入れるため）
-      } else {
-        saveCursorOffset();
-        isFocusedRef.current = false;
-      }
+    const handleBlur = () => {
+      saveCursorOffset();
+      isFocusedRef.current = false;
     };
 
     // selectionchange でリアルタイムにオフセットを更新
@@ -170,66 +161,35 @@ const RichTextCommentEditor = React.forwardRef<RichTextCommentEditorHandle, Rich
         const editor = editorRef.current;
         if (!editor) return;
 
-        // 挿入直前にも現在のselectionからオフセットを取得（blurより確実）
-        const selection = window.getSelection();
-        if (selection && selection.rangeCount > 0) {
-          const range = selection.getRangeAt(0);
-          if (editor.contains(range.commonAncestorContainer)) {
-            cursorOffsetRef.current = getTextOffset(
-              editor,
-              range.startContainer,
-              range.startOffset
-            );
-          }
-        }
+        // エディタにフォーカスを戻す
+        editor.focus();
 
-        const offset = cursorOffsetRef.current;
-
-        if (offset >= 0) {
-          // テキストオフセットを使って innerHTML に直接挿入
-          const pos = getNodeFromOffset(editor, offset);
-
+        // 保存済みオフセットがある場合はその位置にカーソルを復元してから挿入
+        const savedOffset = cursorOffsetRef.current;
+        if (savedOffset >= 0) {
+          const pos = getNodeFromOffset(editor, savedOffset);
           if (pos) {
-            const range = document.createRange();
             try {
+              const range = document.createRange();
               range.setStart(pos.node, pos.offset);
               range.collapse(true);
-
-              const fragment = range.createContextualFragment(html);
-              const lastNode = fragment.lastChild;
-              range.insertNode(fragment);
-
-              // カーソルを挿入後に移動
-              if (lastNode) {
-                const newRange = document.createRange();
-                newRange.setStartAfter(lastNode);
-                newRange.collapse(true);
-
-                const sel = window.getSelection();
-                if (sel) {
-                  sel.removeAllRanges();
-                  sel.addRange(newRange);
-                }
-
-                // 新しいオフセットを保存
-                cursorOffsetRef.current = getTextOffset(
-                  editor,
-                  newRange.startContainer,
-                  newRange.startOffset
-                );
+              const sel = window.getSelection();
+              if (sel) {
+                sel.removeAllRanges();
+                sel.addRange(range);
               }
-
-              handleInput();
-              return;
             } catch (e) {
-              // フォールバックへ
+              // カーソル復元失敗 → 現在位置のまま続行
             }
           }
         }
 
-        // フォールバック: カーソル位置不明 → 末尾に追加
-        editor.innerHTML = editor.innerHTML + html;
+        // execCommand で挿入（フォーカスがある状態で実行）
+        document.execCommand('insertHTML', false, html);
         handleInput();
+
+        // 新しいカーソル位置を保存
+        saveCursorOffset();
       },
     }));
 
