@@ -3429,267 +3429,6 @@ HP：https://ifoo-oita.com/
               )}
             </Paper>
 
-            {/* ステータス更新セクション */}
-            <Typography variant="h6" gutterBottom>
-              📊 ステータス
-            </Typography>
-            <Paper sx={{ p: 2, mb: 3, bgcolor: '#fffbf0' }}>
-              {successMessage && (
-                <Alert severity="success" sx={{ mb: 2 }} onClose={() => setSuccessMessage(null)}>
-                  {successMessage}
-                </Alert>
-              )}
-
-              {/* 最終追客情報の表示 */}
-              {(() => {
-                const phoneCalls = activities.filter((a) => a.type === 'phone_call');
-                if (phoneCalls.length > 0) {
-                  const lastCall = phoneCalls[0];
-                  const displayName = getDisplayName(lastCall.employee);
-                  const formattedDate = formatDateTime(lastCall.createdAt);
-                  return (
-                    <Box sx={{ mb: 2, p: 1.5, bgcolor: 'grey.50', borderRadius: 1 }}>
-                      <Typography variant="body2" color="text.secondary" gutterBottom>
-                        最終追客
-                      </Typography>
-                      <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
-                        {displayName} {formattedDate}
-                      </Typography>
-                    </Box>
-                  );
-                }
-                return null;
-              })()}
-
-              <Grid container spacing={2}>
-                <Grid item xs={12}>
-                  <FormControl fullWidth size="small">
-                    <InputLabel>状況（当社）</InputLabel>
-                    <Select
-                      value={editedStatus}
-                      label="状況（当社）"
-                      onChange={(e) => setEditedStatus(e.target.value)}
-                    >
-                      <MenuItem value="追客中">追客中</MenuItem>
-                      <MenuItem value="追客不要(未訪問）">追客不要(未訪問）</MenuItem>
-                      <MenuItem value="除外済追客不要">除外済追客不要</MenuItem>
-                      <MenuItem value="除外後追客中">除外後追客中</MenuItem>
-                      <MenuItem value="専任媒介">専任媒介</MenuItem>
-                      <MenuItem value="一般媒介">一般媒介</MenuItem>
-                      <MenuItem value="リースバック（専任）">リースバック（専任）</MenuItem>
-                      <MenuItem value="他決→追客">他決→追客</MenuItem>
-                      <MenuItem value="他決→追客不要">他決→追客不要</MenuItem>
-                      <MenuItem value="他決→専任">他決→専任</MenuItem>
-                      <MenuItem value="他決→一般">他決→一般</MenuItem>
-                      <MenuItem value="専任→他社専任">専任→他社専任</MenuItem>
-                      <MenuItem value="一般→他決">一般→他決</MenuItem>
-                      <MenuItem value="他社買取">他社買取</MenuItem>
-                      <MenuItem value="訪問後（担当付）追客不要">訪問後（担当付）追客不要</MenuItem>
-                    </Select>
-                  </FormControl>
-                </Grid>
-
-                {/* 専任または他決が含まれる場合のみ表示 */}
-                {requiresDecisionDate(editedStatus) && (
-                  <>
-                    <Grid item xs={12}>
-                      <TextField
-                        fullWidth
-                        size="small"
-                        label="専任（他決）決定日"
-                        type="date"
-                        required
-                        value={editedExclusiveDecisionDate}
-                        onChange={(e) => setEditedExclusiveDecisionDate(e.target.value)}
-                        InputLabelProps={{ shrink: true }}
-                        error={!editedExclusiveDecisionDate}
-                        helperText={!editedExclusiveDecisionDate ? '必須項目です' : ''}
-                      />
-                    </Grid>
-                    <Grid item xs={12}>
-                      <FormControl fullWidth size="small" required error={editedCompetitors.length === 0}>
-                        <InputLabel>競合（複数選択可）</InputLabel>
-                        <Select
-                          multiple
-                          value={editedCompetitors}
-                          label="競合（複数選択可）"
-                          onChange={(e) => setEditedCompetitors(typeof e.target.value === 'string' ? [e.target.value] : e.target.value)}
-                          renderValue={(selected) => (
-                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                              {selected.map((value) => (
-                                <Chip key={value} label={value} size="small" />
-                              ))}
-                            </Box>
-                          )}
-                        >
-                          {competitorCompanies.map((company) => (
-                            <MenuItem key={company} value={company}>
-                              {company}
-                            </MenuItem>
-                          ))}
-                        </Select>
-                        {editedCompetitors.length === 0 && (
-                          <Typography variant="caption" color="error" sx={{ mt: 0.5, ml: 1.5 }}>
-                            必須項目です
-                          </Typography>
-                        )}
-                      </FormControl>
-                    </Grid>
-                    <Grid item xs={12}>
-                      <FormControl fullWidth size="small" required error={editedExclusiveOtherDecisionFactors.length === 0}>
-                        <InputLabel>専任・他決要因（複数選択可）</InputLabel>
-                        <Select
-                          multiple
-                          value={editedExclusiveOtherDecisionFactors}
-                          label="専任・他決要因（複数選択可）"
-                          onChange={(e) => setEditedExclusiveOtherDecisionFactors(typeof e.target.value === 'string' ? [e.target.value] : e.target.value)}
-                          renderValue={(selected) => (
-                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                              {selected.map((value) => (
-                                <Chip key={value} label={value} size="small" />
-                              ))}
-                            </Box>
-                          )}
-                        >
-                          {exclusiveOtherDecisionFactorOptions.map((factor) => (
-                            <MenuItem key={factor} value={factor}>
-                              {factor}
-                            </MenuItem>
-                          ))}
-                        </Select>
-                        {editedExclusiveOtherDecisionFactors.length === 0 && (
-                          <Typography variant="caption" color="error" sx={{ mt: 0.5, ml: 1.5 }}>
-                            必須項目です
-                          </Typography>
-                        )}
-                      </FormControl>
-                    </Grid>
-                    
-                    {/* 競合名、理由フィールド */}
-                    <Grid item xs={12}>
-                      <TextField
-                        fullWidth
-                        multiline
-                        rows={4}
-                        size="small"
-                        label="競合名、理由（他決、専任）"
-                        value={editedCompetitorNameAndReason}
-                        onChange={(e) => setEditedCompetitorNameAndReason(e.target.value)}
-                        placeholder="競合他社の名前や、専任・他決になった理由の詳細を記入してください"
-                      />
-                    </Grid>
-                    
-                    {/* GoogleChat通知ボタン - 必須項目が全て入力されている場合のみ表示 */}
-                    {isRequiredFieldsComplete() && (
-                      <Grid item xs={12}>
-                        <Button
-                          fullWidth
-                          variant="contained"
-                          color="success"
-                          onClick={handleSendChatNotification}
-                          disabled={sendingChatNotification}
-                          startIcon={sendingChatNotification ? <CircularProgress size={20} /> : null}
-                        >
-                          {sendingChatNotification ? '送信中...' : `${getStatusLabel(editedStatus)}通知`}
-                        </Button>
-                      </Grid>
-                    )}
-                  </>
-                )}
-
-                <Grid item xs={12}>
-                  <InlineEditableField
-                    label="確度"
-                    value={seller?.confidence || 'B'}
-                    fieldName="confidence"
-                    fieldType="dropdown"
-                    options={CONFIDENCE_OPTIONS}
-                    onSave={async (newValue) => {
-                      await api.put(`/api/sellers/${id}`, {
-                        confidence: newValue,
-                      });
-                      // ローカル状態を更新
-                      setSeller(prev => prev ? { ...prev, confidence: newValue } : prev);
-                      setEditedConfidence(newValue as ConfidenceLevel);
-                    }}
-                    buyerId={id}
-                    enableConflictDetection={true}
-                    showEditIndicator={true}
-                    oneClickDropdown={true}
-                  />
-                </Grid>
-
-                <Grid item xs={12}>
-                  <TextField
-                    fullWidth
-                    size="small"
-                    label="除外日"
-                    type="date"
-                    value={exclusionDate || ''}
-                    InputProps={{
-                      readOnly: true,
-                      sx: {
-                        backgroundColor: '#f5f5f5',
-                        '& input': {
-                          cursor: 'not-allowed',
-                        },
-                      },
-                    }}
-                    InputLabelProps={{ shrink: true }}
-                    helperText="反響日付とサイトから自動計算（編集不可）"
-                  />
-                </Grid>
-
-                <Grid item xs={12}>
-                  <FormControl fullWidth size="small">
-                    <InputLabel>除外日にすること</InputLabel>
-                    <Select
-                      value={exclusionAction}
-                      label="除外日にすること"
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        setExclusionAction(value);
-                        // 除外日が設定されている場合、次電日を除外日に設定
-                        if (value && exclusionDate) {
-                          setEditedNextCallDate(exclusionDate);
-                        }
-                      }}
-                    >
-                      <MenuItem value="">
-                        <em>未選択</em>
-                      </MenuItem>
-                      <MenuItem value="除外日に不通であれば除外">除外日に不通であれば除外</MenuItem>
-                      <MenuItem value="除外日に何もせず除外">除外日に何もせず除外</MenuItem>
-                    </Select>
-                  </FormControl>
-                </Grid>
-
-                <Grid item xs={12}>
-                  <TextField
-                    fullWidth
-                    size="small"
-                    label="次電日"
-                    type="date"
-                    value={editedNextCallDate}
-                    onChange={(e) => setEditedNextCallDate(e.target.value)}
-                    InputLabelProps={{ shrink: true }}
-                  />
-                </Grid>
-
-                <Grid item xs={12}>
-                  <Button
-                    fullWidth
-                    variant="outlined"
-                    startIcon={savingStatus ? <CircularProgress size={20} /> : <Save />}
-                    onClick={handleUpdateStatus}
-                    disabled={savingStatus}
-                  >
-                    {savingStatus ? '更新中...' : 'ステータスを更新'}
-                  </Button>
-                </Grid>
-              </Grid>
-            </Paper>
-
             {/* 訪問予約セクション */}
             <Box ref={appointmentSectionRef} sx={{ scrollMarginTop: '20px' }}>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
@@ -5129,6 +4868,259 @@ HP：https://ifoo-oita.com/
             >
               {savingComments ? <CircularProgress size={24} /> : '保存'}
             </Button>
+
+            {/* ステータス更新セクション */}
+            <Typography variant="h6" gutterBottom>
+              📊 ステータス
+            </Typography>
+            <Paper sx={{ p: 2, mb: 3, bgcolor: '#fffbf0' }}>
+              {successMessage && (
+                <Alert severity="success" sx={{ mb: 2 }} onClose={() => setSuccessMessage(null)}>
+                  {successMessage}
+                </Alert>
+              )}
+
+              {/* 最終追客情報の表示 */}
+              {(() => {
+                const phoneCalls = activities.filter((a) => a.type === 'phone_call');
+                if (phoneCalls.length > 0) {
+                  const lastCall = phoneCalls[0];
+                  const displayName = getDisplayName(lastCall.employee);
+                  const formattedDate = formatDateTime(lastCall.createdAt);
+                  return (
+                    <Box sx={{ mb: 2, p: 1.5, bgcolor: 'grey.50', borderRadius: 1 }}>
+                      <Typography variant="body2" color="text.secondary" gutterBottom>
+                        最終追客
+                      </Typography>
+                      <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
+                        {displayName} {formattedDate}
+                      </Typography>
+                    </Box>
+                  );
+                }
+                return null;
+              })()}
+
+              <Grid container spacing={2}>
+                {/* 状況（当社）- 1行全幅 */}
+                <Grid item xs={12}>
+                  <FormControl fullWidth size="small">
+                    <InputLabel>状況（当社）</InputLabel>
+                    <Select
+                      value={editedStatus}
+                      label="状況（当社）"
+                      onChange={(e) => setEditedStatus(e.target.value)}
+                    >
+                      <MenuItem value="追客中">追客中</MenuItem>
+                      <MenuItem value="追客不要(未訪問）">追客不要(未訪問）</MenuItem>
+                      <MenuItem value="除外済追客不要">除外済追客不要</MenuItem>
+                      <MenuItem value="除外後追客中">除外後追客中</MenuItem>
+                      <MenuItem value="専任媒介">専任媒介</MenuItem>
+                      <MenuItem value="一般媒介">一般媒介</MenuItem>
+                      <MenuItem value="リースバック（専任）">リースバック（専任）</MenuItem>
+                      <MenuItem value="他決→追客">他決→追客</MenuItem>
+                      <MenuItem value="他決→追客不要">他決→追客不要</MenuItem>
+                      <MenuItem value="他決→専任">他決→専任</MenuItem>
+                      <MenuItem value="他決→一般">他決→一般</MenuItem>
+                      <MenuItem value="専任→他社専任">専任→他社専任</MenuItem>
+                      <MenuItem value="一般→他決">一般→他決</MenuItem>
+                      <MenuItem value="他社買取">他社買取</MenuItem>
+                      <MenuItem value="訪問後（担当付）追客不要">訪問後（担当付）追客不要</MenuItem>
+                    </Select>
+                  </FormControl>
+                </Grid>
+
+                {/* 専任または他決が含まれる場合のみ表示 */}
+                {requiresDecisionDate(editedStatus) && (
+                  <>
+                    <Grid item xs={12}>
+                      <TextField
+                        fullWidth
+                        size="small"
+                        label="専任（他決）決定日"
+                        type="date"
+                        required
+                        value={editedExclusiveDecisionDate}
+                        onChange={(e) => setEditedExclusiveDecisionDate(e.target.value)}
+                        InputLabelProps={{ shrink: true }}
+                        error={!editedExclusiveDecisionDate}
+                        helperText={!editedExclusiveDecisionDate ? '必須項目です' : ''}
+                      />
+                    </Grid>
+                    <Grid item xs={12}>
+                      <FormControl fullWidth size="small" required error={editedCompetitors.length === 0}>
+                        <InputLabel>競合（複数選択可）</InputLabel>
+                        <Select
+                          multiple
+                          value={editedCompetitors}
+                          label="競合（複数選択可）"
+                          onChange={(e) => setEditedCompetitors(typeof e.target.value === 'string' ? [e.target.value] : e.target.value)}
+                          renderValue={(selected) => (
+                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                              {selected.map((value) => (
+                                <Chip key={value} label={value} size="small" />
+                              ))}
+                            </Box>
+                          )}
+                        >
+                          {competitorCompanies.map((company) => (
+                            <MenuItem key={company} value={company}>
+                              {company}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                        {editedCompetitors.length === 0 && (
+                          <Typography variant="caption" color="error" sx={{ mt: 0.5, ml: 1.5 }}>
+                            必須項目です
+                          </Typography>
+                        )}
+                      </FormControl>
+                    </Grid>
+                    <Grid item xs={12}>
+                      <FormControl fullWidth size="small" required error={editedExclusiveOtherDecisionFactors.length === 0}>
+                        <InputLabel>専任・他決要因（複数選択可）</InputLabel>
+                        <Select
+                          multiple
+                          value={editedExclusiveOtherDecisionFactors}
+                          label="専任・他決要因（複数選択可）"
+                          onChange={(e) => setEditedExclusiveOtherDecisionFactors(typeof e.target.value === 'string' ? [e.target.value] : e.target.value)}
+                          renderValue={(selected) => (
+                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                              {selected.map((value) => (
+                                <Chip key={value} label={value} size="small" />
+                              ))}
+                            </Box>
+                          )}
+                        >
+                          {exclusiveOtherDecisionFactorOptions.map((factor) => (
+                            <MenuItem key={factor} value={factor}>
+                              {factor}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                        {editedExclusiveOtherDecisionFactors.length === 0 && (
+                          <Typography variant="caption" color="error" sx={{ mt: 0.5, ml: 1.5 }}>
+                            必須項目です
+                          </Typography>
+                        )}
+                      </FormControl>
+                    </Grid>
+                    
+                    {/* 競合名、理由フィールド */}
+                    <Grid item xs={12}>
+                      <TextField
+                        fullWidth
+                        multiline
+                        rows={4}
+                        size="small"
+                        label="競合名、理由（他決、専任）"
+                        value={editedCompetitorNameAndReason}
+                        onChange={(e) => setEditedCompetitorNameAndReason(e.target.value)}
+                        placeholder="競合他社の名前や、専任・他決になった理由の詳細を記入してください"
+                      />
+                    </Grid>
+                    
+                    {/* GoogleChat通知ボタン - 必須項目が全て入力されている場合のみ表示 */}
+                    {isRequiredFieldsComplete() && (
+                      <Grid item xs={12}>
+                        <Button
+                          fullWidth
+                          variant="contained"
+                          color="success"
+                          onClick={handleSendChatNotification}
+                          disabled={sendingChatNotification}
+                          startIcon={sendingChatNotification ? <CircularProgress size={20} /> : null}
+                        >
+                          {sendingChatNotification ? '送信中...' : `${getStatusLabel(editedStatus)}通知`}
+                        </Button>
+                      </Grid>
+                    )}
+                  </>
+                )}
+
+                {/* 次電日 + 確度 - 2カラム */}
+                <Grid item xs={6}>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    label="次電日"
+                    type="date"
+                    value={editedNextCallDate}
+                    onChange={(e) => setEditedNextCallDate(e.target.value)}
+                    InputLabelProps={{ shrink: true }}
+                  />
+                </Grid>
+                <Grid item xs={6}>
+                  <InlineEditableField
+                    label="確度"
+                    value={seller?.confidence || 'B'}
+                    fieldName="confidence"
+                    fieldType="dropdown"
+                    options={CONFIDENCE_OPTIONS}
+                    onSave={async (newValue) => {
+                      await api.put(`/api/sellers/${id}`, {
+                        confidence: newValue,
+                      });
+                      // ローカル状態を更新
+                      setSeller(prev => prev ? { ...prev, confidence: newValue } : prev);
+                      setEditedConfidence(newValue as ConfidenceLevel);
+                    }}
+                    buyerId={id}
+                    enableConflictDetection={true}
+                    showEditIndicator={true}
+                    oneClickDropdown={true}
+                  />
+                </Grid>
+
+                {/* 除外日 + 除外日にすること - 2カラム */}
+                <Grid item xs={6}>
+                  <Box>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+                      除外日
+                    </Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 'medium' }}>
+                      {exclusionDate || '－'}
+                    </Typography>
+                  </Box>
+                </Grid>
+                <Grid item xs={6}>
+                  <FormControl fullWidth size="small">
+                    <InputLabel>除外日にすること</InputLabel>
+                    <Select
+                      value={exclusionAction}
+                      label="除外日にすること"
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        setExclusionAction(value);
+                        // 除外日が設定されている場合、次電日を除外日に設定
+                        if (value && exclusionDate) {
+                          setEditedNextCallDate(exclusionDate);
+                        }
+                      }}
+                    >
+                      <MenuItem value="">
+                        <em>未選択</em>
+                      </MenuItem>
+                      <MenuItem value="除外日に不通であれば除外">除外日に不通であれば除外</MenuItem>
+                      <MenuItem value="除外日に何もせず除外">除外日に何もせず除外</MenuItem>
+                    </Select>
+                  </FormControl>
+                </Grid>
+
+                {/* ステータスを更新ボタン */}
+                <Grid item xs={12}>
+                  <Button
+                    fullWidth
+                    variant="outlined"
+                    startIcon={savingStatus ? <CircularProgress size={20} /> : <Save />}
+                    onClick={handleUpdateStatus}
+                    disabled={savingStatus}
+                  >
+                    {savingStatus ? '更新中...' : 'ステータスを更新'}
+                  </Button>
+                </Grid>
+              </Grid>
+            </Paper>
 
             {/* 1番電話フィールド */}
             <Box sx={{ mb: 2 }}>
