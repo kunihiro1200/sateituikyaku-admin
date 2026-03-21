@@ -1085,14 +1085,12 @@ router.get('/:id/inquiry-url', async (req: Request, res: Response) => {
  */
 router.post('/backfill-inquiry', async (req: Request, res: Response) => {
   try {
-    const { sellerNumber, inquiryId, inquiryDetailedDatetime } = req.body;
+    const { sellerNumber, inquiryId, inquiryDetailedDatetime, siteUrl } = req.body;
 
     if (!sellerNumber) {
       return res.status(400).json({ error: 'sellerNumber is required' });
     }
 
-    // seller_numberでDBを検索
-    const supabase = (sellerService as any).supabase || (sellerService as any).client;
     const { createClient } = await import('@supabase/supabase-js');
     const db = createClient(
       process.env.SUPABASE_URL!,
@@ -1105,6 +1103,9 @@ router.post('/backfill-inquiry', async (req: Request, res: Response) => {
     }
     if (inquiryDetailedDatetime !== undefined && inquiryDetailedDatetime !== null && inquiryDetailedDatetime !== '') {
       updates.inquiry_detailed_datetime = inquiryDetailedDatetime;
+    }
+    if (siteUrl !== undefined && siteUrl !== null && siteUrl !== '') {
+      updates.site_url = String(siteUrl);
     }
 
     if (Object.keys(updates).length === 0) {
