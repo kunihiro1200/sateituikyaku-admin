@@ -40,7 +40,7 @@ import DocumentModal from '../components/DocumentModal';
 import ImageSelectorModal from '../components/ImageSelectorModal';
 import { InlineEditableField } from '../components/InlineEditableField';
 import RichTextEmailEditor from '../components/RichTextEmailEditor';
-import RichTextCommentEditor, { RichTextCommentEditorHandle } from '../components/RichTextCommentEditor';
+import RichTextCommentEditor from '../components/RichTextCommentEditor';
 import { PerformanceMetricsSection } from '../components/PerformanceMetricsSection';
 import { useAuthStore } from '../store/authStore';
 import { useSellerPresenceTrack } from '../hooks/useSellerPresence';
@@ -501,7 +501,6 @@ const CallModePage = () => {
   const [savingCommunication, setSavingCommunication] = useState(false);
   const isInitialLoadRef = useRef(true); // 初回ロードフラグ
   const callLogRef = useRef<CallLogDisplayHandle>(null); // 追客ログ更新用ref
-  const commentEditorRef = useRef<RichTextCommentEditorHandle>(null); // コメントエディタ ref
 
   // サイトオプション
   const siteOptions = [
@@ -1427,16 +1426,34 @@ const CallModePage = () => {
     }
   };
 
+  // クイックボタン用のヘルパー関数：HTMLテキストを先頭に追加
+  const appendBoldText = (text: string) => {
+    const boldText = `<b>${text}</b>`;
+    // 既存のコンテンツがある場合は、先頭に追加して改行を入れる
+    if (editableComments.trim()) {
+      setEditableComments(boldText + '<br>' + editableComments);
+    } else {
+      setEditableComments(boldText);
+    }
+  };
+
   // コメント直接編集の保存処理
   const handleSaveComments = async () => {
     try {
       setSavingComments(true);
       setError(null);
 
-      // HTMLのまま保存（太字・赤字などの書式を保持）
+      // HTMLからプレーンテキストを抽出（<br>を改行に変換）
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = editableComments;
+      const plainText = tempDiv.textContent || tempDiv.innerText || '';
+
       await api.put(`/api/sellers/${id}`, {
-        comments: editableComments,
+        comments: plainText.trim(),
       });
+
+      // stateもプレーンテキストに更新
+      setEditableComments(plainText.trim());
 
       setSuccessMessage('コメントを保存しました');
       setTimeout(() => {
@@ -4502,227 +4519,32 @@ HP：https://ifoo-oita.com/
                     </Typography>
                   </Box>
                 </Grid>
-
-                {/* サイト別除外申請情報 */}
-                {(() => {
-                  const site = seller?.site || editedSite;
-                  const exclusionUrl = getExclusionSiteUrl();
-                  const inquiryDatetime = seller?.inquiryDetailedDatetime || seller?.inquiryDetailedDateTime;
-                  const formattedDatetime = inquiryDatetime
-                    ? (() => {
-                        const d = new Date(inquiryDatetime as string);
-                        return `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-                      })()
-                    : null;
-
-                  if (site === 'ウ') {
-                    // ウ: サイトURL（AP列）の値をリンクとして表示
-                    return seller?.siteUrl ? (
-                      <Grid item xs={12}>
-                        <Box sx={{ bgcolor: '#fff8e1', border: '1px solid #ffe082', borderRadius: 1, p: 1.5 }}>
-                          <a
-                            href={seller.siteUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            style={{ color: '#1565c0', textDecoration: 'underline', wordBreak: 'break-all', fontSize: '0.875rem' }}
-                          >
-                            {seller.siteUrl}
-                          </a>
-                        </Box>
-                      </Grid>
-                    ) : null;
-                  }
-
-                  if (site === 'す') {
-                    return (
-                      <Grid item xs={12}>
-                        <Box sx={{ bgcolor: '#fff8e1', border: '1px solid #ffe082', borderRadius: 1, p: 1.5, display: 'flex', flexDirection: 'column', gap: 0.75 }}>
-                          {/* ID */}
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <Typography variant="body2" color="text.secondary" sx={{ minWidth: 40 }}>ID:</Typography>
-                            {seller?.inquiryId ? (
-                              <>
-                                <Typography variant="body2" sx={{ fontWeight: 'bold' }}>{seller.inquiryId}</Typography>
-                                <IconButton size="small" onClick={() => { navigator.clipboard.writeText(seller.inquiryId!); setSnackbarMessage('IDをコピーしました'); setSnackbarOpen(true); }}>
-                                  <ContentCopyIcon fontSize="inherit" />
-                                </IconButton>
-                              </>
-                            ) : (
-                              <Typography variant="body2" color="text.disabled">未設定</Typography>
-                            )}
-                          </Box>
-                          {/* 反響日時 */}
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <Typography variant="body2" color="text.secondary" sx={{ minWidth: 72 }}>反響日時:</Typography>
-                            {formattedDatetime ? (
-                              <>
-                                <Typography variant="body2">{formattedDatetime}</Typography>
-                                <IconButton size="small" onClick={() => { navigator.clipboard.writeText(formattedDatetime); setSnackbarMessage('反響日時をコピーしました'); setSnackbarOpen(true); }}>
-                                  <ContentCopyIcon fontSize="inherit" />
-                                </IconButton>
-                              </>
-                            ) : (
-                              <Typography variant="body2" color="text.disabled">未設定</Typography>
-                            )}
-                          </Box>
-                          {/* 氏名 */}
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <Typography variant="body2" color="text.secondary" sx={{ minWidth: 40 }}>氏名:</Typography>
-                            {seller?.name ? (
-                              <>
-                                <Typography variant="body2">{seller.name}</Typography>
-                                <IconButton size="small" onClick={() => { navigator.clipboard.writeText(seller.name); setSnackbarMessage('氏名をコピーしました'); setSnackbarOpen(true); }}>
-                                  <ContentCopyIcon fontSize="inherit" />
-                                </IconButton>
-                              </>
-                            ) : (
-                              <Typography variant="body2" color="text.disabled">未設定</Typography>
-                            )}
-                          </Box>
-                          <Typography variant="body2" sx={{ color: '#e65100', fontSize: '0.8rem', mt: 0.5 }}>
-                            上記の「ID」、「反響日付（年/月/日のみ）」、「氏名」の３つをコピーし、ウィンドウズ＋Ｖ　で下記サイト内に貼り付けてください。
-                          </Typography>
-                          {exclusionUrl && (
-                            <a href={exclusionUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#2e7d32', textDecoration: 'underline', fontSize: '0.875rem', wordBreak: 'break-all' }}>
-                              {exclusionUrl}
-                            </a>
-                          )}
-                        </Box>
-                      </Grid>
-                    );
-                  }
-
-                  if (site === 'H') {
-                    return (
-                      <Grid item xs={12}>
-                        <Box sx={{ bgcolor: '#fff8e1', border: '1px solid #ffe082', borderRadius: 1, p: 1.5, display: 'flex', flexDirection: 'column', gap: 0.75 }}>
-                          {/* 反響日時 */}
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <Typography variant="body2" color="text.secondary" sx={{ minWidth: 72 }}>反響日時:</Typography>
-                            {formattedDatetime ? (
-                              <>
-                                <Typography variant="body2">{formattedDatetime}</Typography>
-                                <IconButton size="small" onClick={() => { navigator.clipboard.writeText(formattedDatetime); setSnackbarMessage('反響日時をコピーしました'); setSnackbarOpen(true); }}>
-                                  <ContentCopyIcon fontSize="inherit" />
-                                </IconButton>
-                              </>
-                            ) : (
-                              <Typography variant="body2" color="text.disabled">未設定</Typography>
-                            )}
-                          </Box>
-                          {/* 氏名 */}
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <Typography variant="body2" color="text.secondary" sx={{ minWidth: 40 }}>氏名:</Typography>
-                            {seller?.name ? (
-                              <>
-                                <Typography variant="body2">{seller.name}</Typography>
-                                <IconButton size="small" onClick={() => { navigator.clipboard.writeText(seller.name); setSnackbarMessage('氏名をコピーしました'); setSnackbarOpen(true); }}>
-                                  <ContentCopyIcon fontSize="inherit" />
-                                </IconButton>
-                              </>
-                            ) : (
-                              <Typography variant="body2" color="text.disabled">未設定</Typography>
-                            )}
-                          </Box>
-                          <Typography variant="body2" sx={{ color: '#e65100', fontSize: '0.8rem' }}>
-                            ↑名前は名字のみ下記除外申請サイト内に貼り付けてください
-                          </Typography>
-                          {exclusionUrl && (
-                            <a href={exclusionUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#2e7d32', textDecoration: 'underline', fontSize: '0.875rem', wordBreak: 'break-all' }}>
-                              {exclusionUrl}
-                            </a>
-                          )}
-                        </Box>
-                      </Grid>
-                    );
-                  }
-
-                  if (site === 'Y') {
-                    return (
-                      <Grid item xs={12}>
-                        <Box sx={{ bgcolor: '#fff8e1', border: '1px solid #ffe082', borderRadius: 1, p: 1.5, display: 'flex', flexDirection: 'column', gap: 0.75 }}>
-                          {/* ID */}
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <Typography variant="body2" color="text.secondary" sx={{ minWidth: 40 }}>ID:</Typography>
-                            {seller?.inquiryId ? (
-                              <>
-                                <Typography variant="body2" sx={{ fontWeight: 'bold' }}>{seller.inquiryId}</Typography>
-                                <IconButton size="small" onClick={() => { navigator.clipboard.writeText(seller.inquiryId!); setSnackbarMessage('IDをコピーしました'); setSnackbarOpen(true); }}>
-                                  <ContentCopyIcon fontSize="inherit" />
-                                </IconButton>
-                              </>
-                            ) : (
-                              <Typography variant="body2" color="text.disabled">未設定</Typography>
-                            )}
-                          </Box>
-                          {/* 反響日時 */}
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <Typography variant="body2" color="text.secondary" sx={{ minWidth: 72 }}>反響日時:</Typography>
-                            {formattedDatetime ? (
-                              <>
-                                <Typography variant="body2">{formattedDatetime}</Typography>
-                                <IconButton size="small" onClick={() => { navigator.clipboard.writeText(formattedDatetime); setSnackbarMessage('反響日時をコピーしました'); setSnackbarOpen(true); }}>
-                                  <ContentCopyIcon fontSize="inherit" />
-                                </IconButton>
-                              </>
-                            ) : (
-                              <Typography variant="body2" color="text.disabled">未設定</Typography>
-                            )}
-                          </Box>
-                          {exclusionUrl && (
-                            <a href={exclusionUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#2e7d32', textDecoration: 'underline', fontSize: '0.875rem', wordBreak: 'break-all' }}>
-                              {exclusionUrl}
-                            </a>
-                          )}
-                        </Box>
-                      </Grid>
-                    );
-                  }
-
-                  if (site === 'L') {
-                    return exclusionUrl ? (
-                      <Grid item xs={12}>
-                        <Box sx={{ bgcolor: '#fff8e1', border: '1px solid #ffe082', borderRadius: 1, p: 1.5 }}>
-                          <a href={exclusionUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#2e7d32', textDecoration: 'underline', fontSize: '0.875rem', wordBreak: 'break-all' }}>
-                            {exclusionUrl}
-                          </a>
-                        </Box>
-                      </Grid>
-                    ) : null;
-                  }
-
-                  return null;
-                })()}
                 
                 <Grid item xs={12}>
-                  {/* 除外サイト（す・H・Y・ウ・L 以外のサイト向け） */}
-                  {!['す', 'H', 'Y', 'ウ', 'L'].includes(seller?.site || editedSite) && (
-                    <>
-                      <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
-                        除外サイト
-                      </Typography>
-                      {getExclusionSiteUrl() ? (
-                        <Box sx={{ mt: 1 }}>
-                          <a
-                            href={getExclusionSiteUrl()}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            style={{
-                              color: '#2e7d32',
-                              textDecoration: 'underline',
-                              fontSize: '0.875rem',
-                              wordBreak: 'break-all',
-                            }}
-                          >
-                            {getExclusionSiteUrl()}
-                          </a>
-                        </Box>
-                      ) : (
-                        <Typography variant="body2" color="text.disabled" sx={{ mt: 1 }}>
-                          URLなし（サイトが設定されていません）
-                        </Typography>
-                      )}
-                    </>
+                  {/* 除外サイト */}
+                  <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+                    除外サイト
+                  </Typography>
+                  {getExclusionSiteUrl() ? (
+                    <Box sx={{ mt: 1 }}>
+                      <a
+                        href={getExclusionSiteUrl()}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          color: '#2e7d32',
+                          textDecoration: 'underline',
+                          fontSize: '0.875rem',
+                          wordBreak: 'break-all',
+                        }}
+                      >
+                        {getExclusionSiteUrl()}
+                      </a>
+                    </Box>
+                  ) : (
+                    <Typography variant="body2" color="text.disabled" sx={{ mt: 1 }}>
+                      URLなし（サイトが設定されていません）
+                    </Typography>
                   )}
                   
                   {/* 除外基準 */}
@@ -4788,7 +4610,7 @@ HP：https://ifoo-oita.com/
                   label="B'"
                   onClick={() => {
                     handleQuickButtonClick('call-memo-b-prime');
-                    commentEditorRef.current?.insertAtCursor('<b>価格が知りたかっただけ</b>');
+                    appendBoldText('価格が知りたかっただけ');
                   }}
                   size="small"
                   clickable
@@ -4810,7 +4632,7 @@ HP：https://ifoo-oita.com/
                   label="木２"
                   onClick={() => {
                     handleQuickButtonClick('call-memo-wood-2f');
-                    commentEditorRef.current?.insertAtCursor('<b>木造２F</b>');
+                    appendBoldText('木造２F');
                   }}
                   size="small"
                   clickable
@@ -4832,7 +4654,7 @@ HP：https://ifoo-oita.com/
                   label="土地面積"
                   onClick={() => {
                     handleQuickButtonClick('call-memo-land-area');
-                    commentEditorRef.current?.insertAtCursor('<b>土地面積：だいたい</b>');
+                    appendBoldText('土地面積：だいたい');
                   }}
                   size="small"
                   clickable
@@ -4854,7 +4676,7 @@ HP：https://ifoo-oita.com/
                   label="太陽光"
                   onClick={() => {
                     handleQuickButtonClick('call-memo-solar');
-                    commentEditorRef.current?.insertAtCursor('<b>太陽光付き</b>');
+                    appendBoldText('太陽光付き');
                   }}
                   size="small"
                   clickable
@@ -4876,7 +4698,7 @@ HP：https://ifoo-oita.com/
                   label="一旦机上"
                   onClick={() => {
                     handleQuickButtonClick('call-memo-desk-valuation');
-                    commentEditorRef.current?.insertAtCursor('<b>一旦机上査定して、その後訪問考える</b>');
+                    appendBoldText('一旦机上査定して、その後訪問考える');
                   }}
                   size="small"
                   clickable
@@ -4898,7 +4720,7 @@ HP：https://ifoo-oita.com/
                   label="他社待ち"
                   onClick={() => {
                     handleQuickButtonClick('call-memo-waiting-other');
-                    commentEditorRef.current?.insertAtCursor('<b>まだ他社の査定がでていない</b>');
+                    appendBoldText('まだ他社の査定がでていない');
                   }}
                   size="small"
                   clickable
@@ -4920,7 +4742,7 @@ HP：https://ifoo-oita.com/
                   label="高く驚"
                   onClick={() => {
                     handleQuickButtonClick('call-memo-surprised-high');
-                    commentEditorRef.current?.insertAtCursor('<b>思ったより査定額高かった</b>');
+                    appendBoldText('思ったより査定額高かった');
                   }}
                   size="small"
                   clickable
@@ -4942,7 +4764,7 @@ HP：https://ifoo-oita.com/
                   label="名義"
                   onClick={() => {
                     handleQuickButtonClick('call-memo-ownership');
-                    commentEditorRef.current?.insertAtCursor('<b>本人名義人：本人</b>');
+                    appendBoldText('本人名義人：本人');
                   }}
                   size="small"
                   clickable
@@ -4964,7 +4786,7 @@ HP：https://ifoo-oita.com/
                   label="ローン"
                   onClick={() => {
                     handleQuickButtonClick('call-memo-loan');
-                    commentEditorRef.current?.insertAtCursor('<b>ローン残：</b>');
+                    appendBoldText('ローン残：');
                   }}
                   size="small"
                   clickable
@@ -4986,7 +4808,7 @@ HP：https://ifoo-oita.com/
                   label="売る気あり"
                   onClick={() => {
                     handleQuickButtonClick('call-memo-willing-sell');
-                    commentEditorRef.current?.insertAtCursor('<b>売却には興味あり</b>');
+                    appendBoldText('売却には興味あり');
                   }}
                   size="small"
                   clickable
@@ -5008,7 +4830,7 @@ HP：https://ifoo-oita.com/
                   label="検討中"
                   onClick={() => {
                     handleQuickButtonClick('call-memo-considering');
-                    commentEditorRef.current?.insertAtCursor('<b>検討中</b>');
+                    appendBoldText('検討中');
                   }}
                   size="small"
                   clickable
@@ -5030,7 +4852,7 @@ HP：https://ifoo-oita.com/
                   label="不通"
                   onClick={() => {
                     handleQuickButtonClick('call-memo-unreachable');
-                    commentEditorRef.current?.insertAtCursor('<b>不通</b>');
+                    appendBoldText('不通');
                   }}
                   size="small"
                   clickable
@@ -5057,9 +4879,8 @@ HP：https://ifoo-oita.com/
                 コメント
               </Typography>
               <RichTextCommentEditor
-                ref={commentEditorRef}
                 value={editableComments}
-                onChange={(html: string) => setEditableComments(html)}
+                onChange={(html) => setEditableComments(html)}
                 placeholder="コメントを入力してください..."
               />
             </Box>
@@ -5403,7 +5224,7 @@ HP：https://ifoo-oita.com/
             <Box sx={{ maxHeight: 300, overflow: 'auto' }}>
               {/* 活動ログ（電話、SMS、Email） */}
               {activities
-                .filter((activity) => activity.type === 'sms' || activity.type === 'email')
+                .filter((activity) => activity.type === 'phone_call' || activity.type === 'sms' || activity.type === 'email')
                 .slice(0, 10)
                 .map((activity, index) => {
                   const displayName = getDisplayName(activity.employee);
@@ -5451,7 +5272,7 @@ HP：https://ifoo-oita.com/
                     </Paper>
                   );
                 })}
-              {activities.filter((activity) => activity.type === 'sms' || activity.type === 'email').length === 0 && (
+              {activities.filter((activity) => activity.type === 'phone_call' || activity.type === 'sms' || activity.type === 'email').length === 0 && (
                 <Typography variant="body2" color="text.secondary">
                   過去のコミュニケーション履歴はありません
                 </Typography>
