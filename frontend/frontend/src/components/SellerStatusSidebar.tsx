@@ -275,8 +275,9 @@ export default function SellerStatusSidebar({
     const categoryKey = category as string;
     const isLoadingExpanded = expandedCategoryLoading[categoryKey] ?? false;
     const fullSellers = expandedCategorySellers[categoryKey];
-    const filteredSellers = isExpanded && fullSellers
-      ? fullSellers
+    // ローディング中 or まだAPIデータ未取得（undefined）の場合は空配列にして「読み込み中...」を表示
+    const filteredSellers = isExpanded
+      ? (isLoadingExpanded || fullSellers === undefined ? [] : fullSellers)
       : filterSellersByCategory(validSellers, category);
     
     if (count === 0 && !isExpanded) return null;
