@@ -44,8 +44,8 @@ export class FollowUpService extends BaseRepository {
   /**
    * 追客履歴を取得（時系列順、担当者情報を含む）
    */
-  async getActivityHistory(sellerId: string): Promise<ActivityWithEmployee[]> {
-    const { data: activities, error } = await this.table('activities')
+  async getActivityHistory(sellerId: string, typeFilter?: string): Promise<ActivityWithEmployee[]> {
+    let query = this.table('activities')
       .select(`
         *,
         employees:employee_id (
@@ -56,6 +56,13 @@ export class FollowUpService extends BaseRepository {
       `)
       .eq('seller_id', sellerId)
       .order('created_at', { ascending: false });
+
+    // typeフィルタが指定された場合はDBレベルで絞り込む
+    if (typeFilter) {
+      query = query.eq('type', typeFilter);
+    }
+
+    const { data: activities, error } = await query;
 
     if (error) {
       throw new Error(`Failed to get activity history: ${error.message}`);

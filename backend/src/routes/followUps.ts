@@ -102,15 +102,19 @@ router.post(
 router.get('/:sellerId/activities', async (req: Request, res: Response) => {
   try {
     const { sellerId } = req.params;
+    const typeFilter = req.query.type as string | undefined;
+
+    // キャッシュキーにtypeフィルタを含める
+    const cacheKey = typeFilter ? `${sellerId}:${typeFilter}` : sellerId;
 
     // キャッシュを確認（60秒TTL）
-    const cached = getActivitiesCache(sellerId);
+    const cached = getActivitiesCache(cacheKey);
     if (cached) {
       return res.json(cached);
     }
 
-    const activities = await followUpService.getActivityHistory(sellerId);
-    setActivitiesCache(sellerId, activities);
+    const activities = await followUpService.getActivityHistory(sellerId, typeFilter);
+    setActivitiesCache(cacheKey, activities);
     res.json(activities);
   } catch (error) {
     console.error('Get activity history error:', error);
