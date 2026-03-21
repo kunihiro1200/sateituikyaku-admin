@@ -85,6 +85,31 @@ const initializeConnections = async () => {
   } catch (error) {
     console.warn('⚠️ Redis connection failed, using in-memory session store');
   }
+
+  // Vercel環境でもSyncQueueを初期化（DB→スプレッドシート同期のため）
+  try {
+    const { SpreadsheetSyncService } = await import('./services/SpreadsheetSyncService');
+    const { GoogleSheetsClient } = await import('./services/GoogleSheetsClient');
+    const { SyncQueue } = await import('./services/SyncQueue');
+    const { SellerService: SellerServiceClass } = await import('./services/SellerService.supabase');
+
+    const sheetsConfig = {
+      spreadsheetId: process.env.GOOGLE_SHEETS_SPREADSHEET_ID!,
+      sheetName: process.env.GOOGLE_SHEETS_SHEET_NAME || '売主リスト',
+      serviceAccountKeyPath: process.env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH || './google-service-account.json',
+    };
+
+    const sheetsClient = new GoogleSheetsClient(sheetsConfig);
+    await sheetsClient.authenticate();
+
+    const spreadsheetSyncService = new SpreadsheetSyncService(sheetsClient, supabase);
+    const syncQueue = new SyncQueue(spreadsheetSyncService);
+    SellerServiceClass.setSharedSyncQueue(syncQueue);
+
+    console.log('✅ SyncQueue initialized and ready');
+  } catch (error) {
+    console.error('⚠️ Failed to initialize SyncQueue:', error);
+  }
 };
 
 // Middleware
@@ -410,33 +435,6 @@ app.use((err: Error, req: express.Request, res: express.Response, next: express.
 
 const startServer = async () => {
   await initializeConnections();
-
-  try {
-    const { SpreadsheetSyncService } = await import('./services/SpreadsheetSyncService');
-    const { GoogleSheetsClient } = await import('./services/GoogleSheetsClient');
-    const { SyncQueue } = await import('./services/SyncQueue');
-    const { SellerService } = await import('./services/SellerService.supabase');
-
-    const sheetsConfig = {
-      spreadsheetId: process.env.GOOGLE_SHEETS_SPREADSHEET_ID!,
-      sheetName: process.env.GOOGLE_SHEETS_SHEET_NAME || '売主リスト',
-      serviceAccountKeyPath: process.env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH || './google-service-account.json',
-    };
-
-    const sheetsClient = new GoogleSheetsClient(sheetsConfig);
-    await sheetsClient.authenticate();
-
-    const spreadsheetSyncService = new SpreadsheetSyncService(sheetsClient, supabase);
-    const syncQueue = new SyncQueue(spreadsheetSyncService);
-
-    // 全てのSellerServiceインスタンスで共有するsyncQueueを設定
-    const { SellerService: SellerServiceClass } = await import('./services/SellerService.supabase');
-    SellerServiceClass.setSharedSyncQueue(syncQueue);
-
-    console.log('✅ SyncQueue initialized and ready');
-  } catch (error) {
-    console.error('⚠️ Failed to initialize SyncQueue:', error);
-  }
 
   if (process.env.VERCEL !== '1') {
     app.listen(PORT, () => {
