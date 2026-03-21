@@ -4902,8 +4902,8 @@ HP：https://ifoo-oita.com/
               })()}
 
               <Grid container spacing={2}>
-                {/* 状況（当社）- 1行全幅 */}
-                <Grid item xs={12}>
+                {/* 状況（当社）+ 次電日 - 横並び1行 */}
+                <Grid item xs={7}>
                   <FormControl fullWidth size="small">
                     <InputLabel>状況（当社）</InputLabel>
                     <Select
@@ -4928,6 +4928,17 @@ HP：https://ifoo-oita.com/
                       <MenuItem value="訪問後（担当付）追客不要">訪問後（担当付）追客不要</MenuItem>
                     </Select>
                   </FormControl>
+                </Grid>
+                <Grid item xs={5}>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    label="次電日"
+                    type="date"
+                    value={editedNextCallDate}
+                    onChange={(e) => setEditedNextCallDate(e.target.value)}
+                    InputLabelProps={{ shrink: true }}
+                  />
                 </Grid>
 
                 {/* 専任または他決が含まれる場合のみ表示 */}
@@ -5038,19 +5049,8 @@ HP：https://ifoo-oita.com/
                   </>
                 )}
 
-                {/* 次電日 + 確度 - 2カラム */}
-                <Grid item xs={6}>
-                  <TextField
-                    fullWidth
-                    size="small"
-                    label="次電日"
-                    type="date"
-                    value={editedNextCallDate}
-                    onChange={(e) => setEditedNextCallDate(e.target.value)}
-                    InputLabelProps={{ shrink: true }}
-                  />
-                </Grid>
-                <Grid item xs={6}>
+                {/* 確度 - 1行全幅 */}
+                <Grid item xs={12}>
                   <InlineEditableField
                     label="確度"
                     value={seller?.confidence || 'B'}
@@ -5072,10 +5072,10 @@ HP：https://ifoo-oita.com/
                   />
                 </Grid>
 
-                {/* 除外日 + 除外日にすること - 2カラム */}
+                {/* 除外日 + 除外日にすること - 2カラム（ボックス表示） */}
                 <Grid item xs={6}>
-                  <Box>
-                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+                  <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 1, p: 1, minHeight: 40 }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.25 }}>
                       除外日
                     </Typography>
                     <Typography variant="body2" sx={{ fontWeight: 'medium' }}>
@@ -5084,27 +5084,14 @@ HP：https://ifoo-oita.com/
                   </Box>
                 </Grid>
                 <Grid item xs={6}>
-                  <FormControl fullWidth size="small">
-                    <InputLabel>除外日にすること</InputLabel>
-                    <Select
-                      value={exclusionAction}
-                      label="除外日にすること"
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        setExclusionAction(value);
-                        // 除外日が設定されている場合、次電日を除外日に設定
-                        if (value && exclusionDate) {
-                          setEditedNextCallDate(exclusionDate);
-                        }
-                      }}
-                    >
-                      <MenuItem value="">
-                        <em>未選択</em>
-                      </MenuItem>
-                      <MenuItem value="除外日に不通であれば除外">除外日に不通であれば除外</MenuItem>
-                      <MenuItem value="除外日に何もせず除外">除外日に何もせず除外</MenuItem>
-                    </Select>
-                  </FormControl>
+                  <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 1, p: 1, minHeight: 40 }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.25 }}>
+                      除外日にすること
+                    </Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 'medium' }}>
+                      {exclusionAction || '－'}
+                    </Typography>
+                  </Box>
                 </Grid>
 
                 {/* ステータスを更新ボタン */}
