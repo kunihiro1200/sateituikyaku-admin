@@ -43,6 +43,7 @@ import RichTextEmailEditor from '../components/RichTextEmailEditor';
 import RichTextCommentEditor from '../components/RichTextCommentEditor';
 import { PerformanceMetricsSection } from '../components/PerformanceMetricsSection';
 import { useAuthStore } from '../store/authStore';
+import { useSellerPresenceTrack } from '../hooks/useSellerPresence';
 import { StatusCategory } from '../utils/sellerStatusFilters';
 import {
   generateInitialCancellationGuidance,
@@ -202,6 +203,9 @@ const CallModePage = () => {
   // データ状態
   const [seller, setSeller] = useState<Seller | null>(null);
   const [property, setProperty] = useState<PropertyInfo | null>(null);
+
+  // プレゼンストラッキング（他のユーザーに「この売主を開いている」ことを通知）
+  useSellerPresenceTrack(seller?.sellerNumber);
 
   /**
    * 物件情報を取得するヘルパー関数

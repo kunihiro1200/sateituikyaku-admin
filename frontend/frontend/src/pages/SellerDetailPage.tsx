@@ -32,6 +32,7 @@ import WorkTaskSection from '../components/WorkTaskSection';
 import CallButton from '../components/CallButton';
 import PhoneCallLogDisplay from '../components/PhoneCallLogDisplay';
 import { useAuthStore } from '../store/authStore';
+import { useSellerPresenceTrack } from '../hooks/useSellerPresence';
 import EditableSection from '../components/EditableSection';
 import CollapsibleSection from '../components/CollapsibleSection';
 import CompactBuyerList from '../components/CompactBuyerList';
@@ -112,6 +113,9 @@ const SellerDetailPage = () => {
   const [property, setProperty] = useState<PropertyInfo | null>(null);
   const [buyers, setBuyers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // プレゼンストラッキング（他のユーザーに「この売主を開いている」ことを通知）
+  useSellerPresenceTrack(seller?.sellerNumber);
   const [buyersLoading, setBuyersLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);

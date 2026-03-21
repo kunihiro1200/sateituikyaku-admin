@@ -38,6 +38,7 @@ import { ManualSyncButton } from '../components/ManualSyncButton';
 import { SyncNotification, SyncNotificationData } from '../components/SyncNotification';
 import { useAutoSync } from '../hooks/useAutoSync';
 import { useSellerStatus } from '../hooks/useSellerStatus';
+import { useSellerPresenceSubscribe, formatPresenceLabel } from '../hooks/useSellerPresence';
 import SellerStatusBadges from '../components/SellerStatusBadges';
 import SellerStatusSidebar from '../components/SellerStatusSidebar';
 import { SECTION_COLORS } from '../theme/sectionColors';
@@ -259,6 +260,9 @@ export default function SellersPage() {
       console.error('Auto sync error:', error);
     },
   });
+
+  // プレゼンス購読（他のユーザーがどの売主ページを開いているかをリアルタイム取得）
+  const { presenceState } = useSellerPresenceSubscribe();
 
   // カテゴリ別の売主数をカウント（APIから取得したカウントを使用）
   const categoryCounts = {
@@ -768,6 +772,17 @@ export default function SellersPage() {
                       <Typography variant="body2" fontWeight="bold" sx={{ color: SECTION_COLORS.seller.main }}>
                         {seller.sellerNumber || '-'}
                       </Typography>
+                      {seller.sellerNumber && (() => {
+                        const label = formatPresenceLabel(presenceState[seller.sellerNumber] || []);
+                        return label ? (
+                          <Chip
+                            label={label}
+                            color="warning"
+                            size="small"
+                            sx={{ mt: 0.5, fontSize: '11px' }}
+                          />
+                        ) : null;
+                      })()}
                     </TableCell>
                     <TableCell>{seller.name}</TableCell>
                     {(selectedCategory === 'todayCall' || selectedCategory === 'todayCallNotStarted' || selectedCategory === 'pinrichEmpty') && (
