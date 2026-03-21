@@ -169,11 +169,25 @@ export class ColumnMapper {
         continue;
       }
 
-      const value = sellerData[dbColumn];
+      let value = sellerData[dbColumn];
       
       if (value === null || value === undefined) {
         sheetRow[sheetColumn] = '';
         continue;
+      }
+
+      // commentsフィールドはHTMLタグを除去してプレーンテキストに変換
+      // （ブラウザ表示用にHTMLで保存されているが、スプシにはプレーンテキストが必要）
+      if (dbColumn === 'comments' && typeof value === 'string') {
+        value = value
+          .replace(/<br\s*\/?>/gi, '\n')  // <br>を改行に変換
+          .replace(/<[^>]*>/g, '')         // その他のHTMLタグを除去
+          .replace(/&nbsp;/g, ' ')         // &nbsp;をスペースに変換
+          .replace(/&amp;/g, '&')
+          .replace(/&lt;/g, '<')
+          .replace(/&gt;/g, '>')
+          .replace(/&quot;/g, '"')
+          .trim();
       }
 
       // 型変換（逆方向）
