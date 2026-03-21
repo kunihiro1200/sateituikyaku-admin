@@ -37,10 +37,16 @@ interface SellerStatusSidebarProps {
   selectedCategory?: StatusCategory;
   /** カテゴリ選択時のコールバック（売主リストページで使用） */
   onCategorySelect?: (category: StatusCategory) => void;
+  /** カテゴリ展開時のコールバック（全件データ取得のトリガー） */
+  onCategoryExpand?: (category: string) => void;
   /** 通話モードページかどうか */
   isCallMode?: boolean;
   /** 売主リスト（展開時に表示する売主データ） */
   sellers?: any[];
+  /** カテゴリ別の全件売主データ（展開リスト用） */
+  expandedCategorySellers?: Record<string, any[]>;
+  /** カテゴリ別のローディング状態 */
+  expandedCategoryLoading?: Record<string, boolean>;
   /** ローディング中かどうか */
   loading?: boolean;
   /** スタッフイニシャル一覧（担当者別カテゴリー表示用） */
@@ -145,8 +151,11 @@ export default function SellerStatusSidebar({
   categoryCounts,
   selectedCategory,
   onCategorySelect,
+  onCategoryExpand,
   isCallMode = false,
   sellers = [],
+  expandedCategorySellers = {},
+  expandedCategoryLoading = {},
   loading = false,
   assigneeInitials = [],
 }: SellerStatusSidebarProps) {
@@ -182,6 +191,8 @@ export default function SellerStatusSidebar({
       setExpandedCategory(null);
     } else {
       setExpandedCategory(category);
+      // 全件データ取得をトリガー（カウントと展開リストのずれを解消）
+      onCategoryExpand?.(category as string);
     }
     
     if (!isCallMode) {
@@ -230,7 +241,14 @@ export default function SellerStatusSidebar({
   const renderCategoryButton = (category: StatusCategory, label: string, color: string) => {
     const count = getCount(category);
     const isExpanded = expandedCategory === category;
-    const filteredSellers = filterSellersByCategory(validSellers, category);
+    
+    // 展開時は全件データを優先使用（カウントと展開リストのずれを解消）
+    const categoryKey = category as string;
+    const isLoadingExpanded = expandedCategoryLoading[categoryKey] ?? false;
+    const fullSellers = expandedCategorySellers[categoryKey];
+    const filteredSellers = isExpanded && fullSellers
+      ? fullSellers
+      : filterSellersByCategory(validSellers, category);
     
     if (count === 0 && !isExpanded) return null;
     
@@ -295,9 +313,16 @@ export default function SellerStatusSidebar({
             
             {filteredSellers.length === 0 ? (
               <Box sx={{ p: 2, textAlign: 'center' }}>
-                <Typography variant="body2" color="text.secondary">
-                  該当する売主がいません
-                </Typography>
+                {isLoadingExpanded ? (
+                  <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 1 }}>
+                    <CircularProgress size={16} />
+                    <Typography variant="body2" color="text.secondary">読み込み中...</Typography>
+                  </Box>
+                ) : (
+                  <Typography variant="body2" color="text.secondary">
+                    該当する売主がいません
+                  </Typography>
+                )}
               </Box>
             ) : (
               <List dense disablePadding>

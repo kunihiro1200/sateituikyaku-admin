@@ -189,6 +189,10 @@ export default function SellersPage() {
     return 'all';
   });
 
+  // サイドバー展開時の全件データ（カテゴリ展開時にAPIから取得）
+  const [expandedCategorySellers, setExpandedCategorySellers] = useState<Record<string, any[]>>({});
+  const [expandedCategoryLoading, setExpandedCategoryLoading] = useState<Record<string, boolean>>({});
+
   // 自動同期の通知データ
   const [syncNotificationData, setSyncNotificationData] = useState<SyncNotificationData | null>(null);
   const [syncError, setSyncError] = useState<{ message: string; recoverable: boolean } | null>(null);
@@ -316,6 +320,36 @@ export default function SellersPage() {
       pageDataCache.set(CACHE_KEYS.SELLERS_ASSIGNEE_INITIALS, initials);
     } catch (error: any) {
       console.error('[fetchAssigneeInitials] Failed:', error?.response?.status, error?.response?.data || error?.message);
+    }
+  };
+
+  // カテゴリ展開時に全件データを取得（カウントと展開リストのずれを解消）
+  const fetchExpandedCategorySellers = async (category: string) => {
+    // キャッシュがあればそれを使用
+    if (expandedCategorySellers[category]) return;
+
+    const cacheKey = `sidebar_expanded:${category}`;
+    const cached = pageDataCache.get<any[]>(cacheKey);
+    if (cached) {
+      setExpandedCategorySellers(prev => ({ ...prev, [category]: cached }));
+      return;
+    }
+
+    setExpandedCategoryLoading(prev => ({ ...prev, [category]: true }));
+    try {
+      const params: any = { page: 1, pageSize: 9999, sortBy: 'inquiry_date', sortOrder: 'desc' };
+      // visitAssigned:Y / todayCallAssigned:Y 形式のカテゴリはそのまま渡す
+      params.statusCategory = category;
+      const response = await api.get('/api/sellers', { params });
+      const data = response.data.data || [];
+      setExpandedCategorySellers(prev => ({ ...prev, [category]: data }));
+      // 5分キャッシュ
+      pageDataCache.set(cacheKey, data, 5 * 60 * 1000);
+    } catch (error) {
+      console.error('Failed to fetch expanded category sellers:', error);
+      setExpandedCategorySellers(prev => ({ ...prev, [category]: [] }));
+    } finally {
+      setExpandedCategoryLoading(prev => ({ ...prev, [category]: false }));
     }
   };
 
@@ -495,8 +529,13 @@ export default function SellersPage() {
               setSelectedCategory(category);
               setPage(0); // カテゴリが変わったらページを0にリセット
             }}
+            onCategoryExpand={(category: string) => {
+              fetchExpandedCategorySellers(category);
+            }}
             isCallMode={false}
             sellers={sellers}
+            expandedCategorySellers={expandedCategorySellers}
+            expandedCategoryLoading={expandedCategoryLoading}
             loading={sidebarLoading}
             assigneeInitials={assigneeInitials}
           />
