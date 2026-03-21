@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { body, validationResult } from 'express-validator';
 import { FollowUpService } from '../services/FollowUpService.supabase';
+import { invalidateListSellersCache } from '../services/SellerService.supabase';
 import { authenticate } from '../middleware/auth';
 import { ActivityType, ConfidenceLevel } from '../types';
 
@@ -68,6 +69,10 @@ router.post(
       });
       // 新規活動を記録したのでキャッシュを無効化
       invalidateActivitiesCache(sellerId);
+      // phone_call の場合は売主一覧の lastCalledAt キャッシュも無効化
+      if (type === 'phone_call') {
+        invalidateListSellersCache();
+      }
       res.status(201).json(activity);
     } catch (error) {
       console.error('Record activity error:', error);

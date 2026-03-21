@@ -119,7 +119,7 @@ function setListSellersCache(cacheKey: string, data: any): void {
   _listSellersCache.set(cacheKey, { data, expiresAt: Date.now() + LIST_SELLERS_CACHE_TTL_MS });
 }
 
-function invalidateListSellersCache(): void {
+export function invalidateListSellersCache(): void {
   _listSellersCache.clear();
 }
 
