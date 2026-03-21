@@ -252,7 +252,7 @@ export class PropertyService {
     return {
       id: data.id,
       sellerId: data.seller_id,
-      address: data.address,
+      address: data.property_address || data.address, // property_addressを優先
       prefecture: data.prefecture,
       city: data.city,
       propertyType: data.property_type,

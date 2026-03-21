@@ -192,6 +192,7 @@ export interface Seller {
   buildYear?: number; // 築年
   structure?: string; // 構造
   floorPlan?: string; // 間取り
+  currentStatus?: string; // 状況（売主）：居住中、空き家、賃貸中等
 }
 
 export interface PropertyInfo {

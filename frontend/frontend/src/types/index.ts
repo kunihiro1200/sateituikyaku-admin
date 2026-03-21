@@ -209,6 +209,7 @@ export interface Seller {
   structure?: string; // 構造
   floorPlan?: string; // 間取り
   floor_plan?: string | null; // 間取り - snake_case版
+  currentStatus?: string; // 状況（売主）：居住中、空き家、賃貸中等
 }
 
 export interface DuplicateMatch {

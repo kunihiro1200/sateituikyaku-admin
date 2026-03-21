@@ -131,6 +131,68 @@ await supabase
 
 ---
 
+---
+
+## 🚨 物件住所の取得ルール（最重要）
+
+### propertiesテーブルのカラム構造
+
+`properties` テーブルには `address` カラムは**存在しません**。物件住所は `property_address` カラムに格納されています。
+
+| テーブル | カラム名 | 説明 |
+|---------|---------|------|
+| `sellers` | `property_address` | 物件住所（売主テーブル） |
+| `properties` | `property_address` | 物件住所（物件テーブル） |
+| `properties` | ~~`address`~~ | **存在しない** ← 絶対に使わない |
+
+### 🚨 過去の問題：AA13807の物件住所が「未入力」と表示された
+
+**日付**: 2026年3月21日
+
+**問題**: 通話モードページで物件住所が「未入力」と表示された
+
+**根本原因**: `PropertyService.mapToPropertyInfo()` が `data.address` のみを参照していた。`properties` テーブルには `address` カラムが存在しないため、常に `undefined` になっていた。
+
+**間違っていたコード**:
+```typescript
+// ❌ 間違い（addressカラムは存在しない）
+private mapToPropertyInfo(data: any): PropertyInfo {
+  return {
+    address: data.address,  // ← propertiesテーブルにaddressカラムは存在しない
+    ...
+  };
+}
+```
+
+**修正後のコード**:
+```typescript
+// ✅ 正しい（property_addressを優先）
+private mapToPropertyInfo(data: any): PropertyInfo {
+  return {
+    address: data.property_address || data.address,  // property_addressを優先
+    ...
+  };
+}
+```
+
+### ✅ 物件住所を取得する正しい方法
+
+```typescript
+// ✅ 正しい（property_addressを優先）
+address: data.property_address || data.address,
+
+// ✅ getSeller() での正しい実装（参考）
+address: property.property_address || property.address,
+```
+
+### 📋 物件住所を扱う際のチェックリスト
+
+- [ ] `data.address` だけを参照していないか？
+- [ ] `data.property_address || data.address` の形式で参照しているか？
+- [ ] `PropertyService.mapToPropertyInfo()` を修正した場合、`SellerService.getSeller()` も同じ形式か確認したか？
+
+---
+
 ## まとめ
 
 **絶対に守るべきルール**:
@@ -139,10 +201,13 @@ await supabase
 2. **物件住所は`property_address`** ← スプレッドシートのR列「物件所在地」
 3. **不通は`unreachable_status`** ← 文字列型
 4. **コメントは`comments`**
+5. **`properties`テーブルに`address`カラムは存在しない** ← 必ず`property_address`を使う
 
 **このルールを徹底することで、カラム名の間違いを完全に防止できます。**
 
 ---
 
-**最終更新日**: 2026年1月30日  
-**作成理由**: 売主番号と物件番号の混同を防ぎ、カラム名を明確化するため
+**最終更新日**: 2026年3月21日  
+**作成理由**: 売主番号と物件番号の混同を防ぎ、カラム名を明確化するため  
+**更新履歴**:
+- 2026年3月21日: `properties.address` は存在しない・`property_address` を使うべきというルールを追加（AA13807の物件住所「未入力」問題の再発防止）
