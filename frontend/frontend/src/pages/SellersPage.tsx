@@ -763,7 +763,8 @@ export default function SellersPage() {
                       // 一覧で取得済みの売主データをキャッシュに保存（通話モードページのプリフェッチ用）
                       // CallModePage.tsx でこのキャッシュを使えば /api/sellers/:id の待ち時間をゼロにできる
                       pageDataCache.set(sellerDetailCacheKey(seller.id), seller, 30 * 1000); // 30秒TTL
-                      navigate(`/sellers/${seller.id}/call`);
+                      const categoryParam = selectedCategory && selectedCategory !== 'all' ? `?category=${encodeURIComponent(selectedCategory)}` : '';
+                      navigate(`/sellers/${seller.id}/call${categoryParam}`);
                     }}
                     sx={{ cursor: 'pointer' }}
                     data-seller-id={seller.id}

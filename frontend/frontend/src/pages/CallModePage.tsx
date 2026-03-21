@@ -2563,17 +2563,34 @@ HP：https://ifoo-oita.com/
           <Button startIcon={<ArrowBack />} onClick={() => navigate('/')} variant="outlined">
             一覧
           </Button>
-          <Button
-            variant="outlined"
-            color="error"
-            size="small"
-            onClick={() => {
-              sessionStorage.setItem('selectedStatusCategory', 'todayCall');
-              navigate('/');
-            }}
-          >
-            当日TEL分一覧
-          </Button>
+          {selectedCategory && selectedCategory !== 'all' && (() => {
+            // カテゴリーラベルを生成
+            let label = selectedCategory as string;
+            if (selectedCategory === 'visitDayBefore') label = '訪問日前日';
+            else if (selectedCategory === 'visitCompleted') label = '訪問済み';
+            else if (selectedCategory === 'todayCall') label = '当日TEL分';
+            else if (selectedCategory === 'todayCallWithInfo') label = '当日TEL（内容）';
+            else if (selectedCategory === 'unvaluated') label = '未査定';
+            else if (selectedCategory === 'mailingPending') label = '査定（郵送）';
+            else if (selectedCategory === 'todayCallNotStarted') label = '当日TEL_未着手';
+            else if (selectedCategory === 'pinrichEmpty') label = 'Pinrich空欄';
+            else if (selectedCategory === 'todayCallAssigned') label = '当日TEL（担当）';
+            else if (typeof selectedCategory === 'string' && selectedCategory.startsWith('visitAssigned:')) label = `担当（${selectedCategory.replace('visitAssigned:', '')}）`;
+            else if (typeof selectedCategory === 'string' && selectedCategory.startsWith('todayCallAssigned:')) label = `当日TEL(${selectedCategory.replace('todayCallAssigned:', '')})`;
+            return (
+              <Button
+                variant="outlined"
+                color="error"
+                size="small"
+                onClick={() => {
+                  sessionStorage.setItem('selectedStatusCategory', selectedCategory);
+                  navigate('/');
+                }}
+              >
+                {label}一覧
+              </Button>
+            );
+          })()}
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <Typography variant="h5" fontWeight="bold" sx={{ color: SECTION_COLORS.seller.main }}>{seller?.name || '読み込み中...'}</Typography>
             {seller?.sellerNumber && (
