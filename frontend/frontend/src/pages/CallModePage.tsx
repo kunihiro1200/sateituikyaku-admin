@@ -225,7 +225,6 @@ const CallModePage = () => {
         floorPlan: property.floorPlan,
         structure: property.structure,
         currentStatus: property.currentStatus || property.sellerSituation,
-        hasData: true,
       };
     }
     
@@ -3103,7 +3102,7 @@ HP：https://ifoo-oita.com/
                 const displayBuildYear = (property?.buildYear || seller?.buildYear)?.toString() || '';
                 const displayFloorPlan = property?.floorPlan || seller?.floorPlan || '';
                 const displayStructure = property?.structure || seller?.structure || '';
-                const displayCurrentStatus = property?.currentStatus || seller?.currentStatus || '';
+                const displayCurrentStatus = property?.currentStatus || property?.sellerSituation || seller?.currentStatus || '';
 
                 const hasAnyPropertyData = displayAddress || displayPropertyType || displayLandArea || displayLandAreaVerified ||
                   displayBuildingArea || displayBuildingAreaVerified || displayBuildYear || displayFloorPlan ||
