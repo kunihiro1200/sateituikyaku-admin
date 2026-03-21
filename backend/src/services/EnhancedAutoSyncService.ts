@@ -1295,6 +1295,12 @@ export class EnhancedAutoSyncService {
       updateData.first_call_person = firstCallPerson ? String(firstCallPerson) : null;
     }
 
+    // 訪問事前通知メール担当（CV列）を追加
+    const visitReminderAssignee = row['訪問事前通知メール担当'];
+    if (visitReminderAssignee !== undefined) {
+      updateData.visit_reminder_assignee = visitReminderAssignee ? String(visitReminderAssignee) : null;
+    }
+
     // 査定方法を追加
     const valuationMethod = row['査定方法'];
     if (valuationMethod) {
@@ -1513,6 +1519,12 @@ export class EnhancedAutoSyncService {
     }
     if (firstCallPerson !== undefined) {
       encryptedData.first_call_person = firstCallPerson ? String(firstCallPerson) : null;
+    }
+
+    // 訪問事前通知メール担当（CV列）を追加
+    const visitReminderAssigneeNew = row['訪問事前通知メール担当'];
+    if (visitReminderAssigneeNew !== undefined) {
+      encryptedData.visit_reminder_assignee = visitReminderAssigneeNew ? String(visitReminderAssigneeNew) : null;
     }
 
     // 査定方法を追加
