@@ -124,7 +124,7 @@ router.get(
   '/',
   [
     query('page').optional().isInt({ min: 1 }).withMessage('Page must be a positive integer'),
-    query('pageSize').optional().isInt({ min: 1, max: 500 }).withMessage('Page size must be between 1 and 500'),
+    query('pageSize').optional().isInt({ min: 1, max: 9999 }).withMessage('Page size must be between 1 and 9999'),
     // Phase 1 filter validations
     query('inquirySource').optional().isString().withMessage('Inquiry source must be a string'),
     query('inquiryYearFrom').optional().isInt({ min: 2000 }).withMessage('Inquiry year from must be a valid year'),
