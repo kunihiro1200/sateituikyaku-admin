@@ -118,6 +118,10 @@ export function useSellerPresenceTrack(
   const { employee } = useAuthStore();
   const [isTracking, setIsTracking] = useState(false);
   const trackedRef = useRef(false);
+  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const retryCountRef = useRef(0);
+  const MAX_RETRIES = 5;
 
   useEffect(() => {
     if (!sellerNumber || !employee?.name) {
@@ -125,40 +129,73 @@ export function useSellerPresenceTrack(
       return;
     }
 
-    console.log('[useSellerPresence] track 開始: sellerNumber=', sellerNumber, 'user=', employee.name);
+    const userName = employee.name;
 
-    const channel = supabase.channel(CHANNEL_NAME, {
-      config: { presence: { key: undefined } },
-    });
-
-    trackedRef.current = false;
-
-    channel.subscribe(async (status) => {
-      console.log('[useSellerPresence] track channel status:', status);
-      if (status === 'SUBSCRIBED' && !trackedRef.current) {
-        try {
-          const result = await channel.track({
-            seller_number: sellerNumber,
-            user_name: employee.name,
-            entered_at: new Date().toISOString(),
-          });
-          console.log('[useSellerPresence] track 結果:', result);
-          trackedRef.current = true;
-          setIsTracking(true);
-        } catch (e) {
-          console.error('[useSellerPresence] track エラー:', e);
-        }
+    const connect = () => {
+      // 既存チャンネルをクリーンアップ
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
       }
-    });
+
+      console.log('[useSellerPresence] track 開始: sellerNumber=', sellerNumber, 'user=', userName, 'retry=', retryCountRef.current);
+
+      const channel = supabase.channel(CHANNEL_NAME, {
+        config: { presence: { key: undefined } },
+      });
+      channelRef.current = channel;
+      trackedRef.current = false;
+
+      channel.subscribe(async (status) => {
+        console.log('[useSellerPresence] track channel status:', status);
+
+        if (status === 'SUBSCRIBED' && !trackedRef.current) {
+          retryCountRef.current = 0;
+          try {
+            const result = await channel.track({
+              seller_number: sellerNumber,
+              user_name: userName,
+              entered_at: new Date().toISOString(),
+            });
+            console.log('[useSellerPresence] track 結果:', result);
+            trackedRef.current = true;
+            setIsTracking(true);
+          } catch (e) {
+            console.error('[useSellerPresence] track エラー:', e);
+          }
+        } else if (status === 'TIMED_OUT' || status === 'CHANNEL_ERROR') {
+          retryCountRef.current += 1;
+          if (retryCountRef.current <= MAX_RETRIES) {
+            const delay = Math.min(1000 * Math.pow(2, retryCountRef.current - 1), 30000);
+            console.log('[useSellerPresence] track リトライ予定:', retryCountRef.current, '/', MAX_RETRIES, 'delay=', delay, 'ms');
+            retryTimerRef.current = setTimeout(() => {
+              connect();
+            }, delay);
+          } else {
+            console.warn('[useSellerPresence] track リトライ上限に達しました');
+          }
+        }
+      });
+    };
+
+    connect();
 
     return () => {
       console.log('[useSellerPresence] track: untrack & チャンネル削除');
-      if (trackedRef.current) {
-        channel.untrack();
-        trackedRef.current = false;
+      if (retryTimerRef.current) {
+        clearTimeout(retryTimerRef.current);
+        retryTimerRef.current = null;
       }
+      if (channelRef.current) {
+        if (trackedRef.current) {
+          channelRef.current.untrack();
+          trackedRef.current = false;
+        }
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
+      retryCountRef.current = 0;
       setIsTracking(false);
-      supabase.removeChannel(channel);
     };
   }, [sellerNumber, employee?.name]);
 
