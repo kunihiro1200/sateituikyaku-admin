@@ -47,15 +47,12 @@ const CallLogDisplay = forwardRef<CallLogDisplayHandle, CallLogDisplayProps>(({ 
       setLoading(true);
       setError(null);
 
-      // 既存のactivities APIを使用
-      const response = await api.get(`/api/sellers/${sellerId}/activities`);
+      // phone_callタイプのみをDBレベルで取得（高速化）
+      const response = await api.get(`/api/sellers/${sellerId}/activities?type=phone_call`);
       const activities: Activity[] = response.data;
 
-      // phone_callタイプのみをフィルタリング
-      const phoneCalls = activities.filter((activity) => activity.type === 'phone_call');
-
-      // CallLogビューモデルに変換
-      const logs: CallLog[] = phoneCalls.map((activity) => ({
+      // CallLogビューモデルに変換（全件がphone_callなのでフィルタ不要）
+      const logs: CallLog[] = activities.map((activity) => ({
         id: activity.id,
         calledAt: activity.createdAt,
         employeeName: getDisplayName(activity.employee),
