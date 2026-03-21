@@ -3,7 +3,7 @@ import { Box, IconButton, Tooltip } from '@mui/material';
 import { FormatBold, FormatColorText } from '@mui/icons-material';
 import { styled } from '@mui/material/styles';
 
-// \u30ab\u30fc\u30bd\u30eb\u4f4d\u7f6e\u633f\u5165\u30e1\u30bd\u30c3\u30c9\u3092\u516c\u958b\u3059\u308b\u30cf\u30f3\u30c9\u30eb\u578b
+// カーソル位置挿入メソッドを公開するハンドル型
 export interface RichTextCommentEditorHandle {
   insertAtCursor: (html: string) => void;
 }
@@ -60,72 +60,59 @@ const RichTextCommentEditor = React.forwardRef<RichTextCommentEditorHandle, Rich
     {
       value,
       onChange,
-      placeholder = '\u30b3\u30e1\u30f3\u30c8\u3092\u5165\u529b...',
+      placeholder = 'コメントを入力...',
       disabled = false,
     },
     ref
   ) => {
     const editorRef = useRef<HTMLDivElement>(null);
-    // \u30ab\u30fc\u30bd\u30eb\u4f4d\u7f6e\uff08Range\uff09\u3092\u4fdd\u5b58\u3059\u308bref
-    // selectionchange \u3067\u30ea\u30a2\u30eb\u30bf\u30a4\u30e0\u66f4\u65b0\u3059\u308b\u305f\u3081\u3001blur \u3088\u308a\u5148\u306b\u8a18\u9332\u3055\u308c\u308b
+    // blur 時にカーソル位置（Range）を保存する ref
     const savedRangeRef = useRef<Range | null>(null);
 
-
-    // \u521d\u671f\u5024\u306e\u8a2d\u5b9a
+    // 初期値の設定
     useEffect(() => {
       if (editorRef.current && editorRef.current.innerHTML !== value) {
         editorRef.current.innerHTML = value;
       }
     }, [value]);
 
-    // selectionchange \u30a4\u30d9\u30f3\u30c8\u3067\u30ab\u30fc\u30bd\u30eb\u4f4d\u7f6e\u3092\u30ea\u30a2\u30eb\u30bf\u30a4\u30e0\u4fdd\u5b58
-    // blur \u3088\u308a\u5148\u306b\u767a\u706b\u3059\u308b\u305f\u3081\u3001\u30af\u30a4\u30c3\u30af\u30dc\u30bf\u30f3\u30af\u30ea\u30c3\u30af\u6642\u3082\u30ab\u30fc\u30bd\u30eb\u4f4d\u7f6e\u304c\u4fdd\u6301\u3055\u308c\u308b
-    useEffect(() => {
-      const handleSelectionChange = () => {
-        // insertAtCursor 実行中は上書きしない
-        if (isInsertingRef.current) return;
-        const selection = window.getSelection();
-        if (selection && selection.rangeCount > 0 && editorRef.current) {
-          const range = selection.getRangeAt(0);
-          if (editorRef.current.contains(range.commonAncestorContainer)) {
-            savedRangeRef.current = range.cloneRange();
-          }
-        }
-      };
-
-      document.addEventListener('selectionchange', handleSelectionChange);
-      return () => {
-        document.removeEventListener('selectionchange', handleSelectionChange);
-      };
-    }, []);
-
-    // \u30b3\u30f3\u30c6\u30f3\u30c4\u5909\u66f4\u6642\u306e\u30cf\u30f3\u30c9\u30e9\u30fc
+    // コンテンツ変更時のハンドラー
     const handleInput = () => {
       if (editorRef.current) {
         onChange(editorRef.current.innerHTML);
       }
     };
 
-    // \u30b3\u30f3\u30c6\u30ca\u30af\u30ea\u30c3\u30af\u6642\u306b\u30a8\u30c7\u30a3\u30bf\u306b\u30d5\u30a9\u30fc\u30ab\u30b9
+    // blur 時にカーソル位置を保存する
+    const handleBlur = () => {
+      const selection = window.getSelection();
+      if (selection && selection.rangeCount > 0 && editorRef.current) {
+        const range = selection.getRangeAt(0);
+        if (editorRef.current.contains(range.commonAncestorContainer)) {
+          savedRangeRef.current = range.cloneRange();
+        }
+      }
+    };
+
+    // コンテナクリック時にエディタにフォーカス
     const handleContainerClick = () => {
       if (editorRef.current && !disabled) {
         editorRef.current.focus();
       }
     };
 
-    // \u592a\u5b57\u30dc\u30bf\u30f3\u306e\u30cf\u30f3\u30c9\u30e9\u30fc
+    // 太字ボタンのハンドラー
     const handleBold = () => {
       document.execCommand('bold', false);
       handleInput();
     };
 
-    // \u8d64\u5b57\u30dc\u30bf\u30f3\u306e\u30cf\u30f3\u30c9\u30e9\u30fc
+    // 赤字ボタンのハンドラー
     const handleRedText = () => {
       document.execCommand('foreColor', false, 'red');
       handleInput();
     };
 
-    // ref \u7d4c\u7531\u3067 insertAtCursor \u3092\u516c\u958b\u3059\u308b
     // ref 経由で insertAtCursor を公開する
     useImperativeHandle(ref, () => ({
       insertAtCursor: (html: string) => {
@@ -133,14 +120,14 @@ const RichTextCommentEditor = React.forwardRef<RichTextCommentEditorHandle, Rich
         if (!editor) return;
 
         try {
-          // カーソル位置を退避（focus() 前に必ず退避する）
+          // blur 時に保存したカーソル位置を取得
           const savedRange = savedRangeRef.current ? savedRangeRef.current.cloneRange() : null;
 
           // エディタにフォーカスを戻す
           editor.focus();
 
           if (savedRange) {
-            // 退避した Range を Selection に復元
+            // 保存した Range を Selection に復元
             const selection = window.getSelection();
             if (selection) {
               selection.removeAllRanges();
@@ -200,12 +187,12 @@ const RichTextCommentEditor = React.forwardRef<RichTextCommentEditorHandle, Rich
     return (
       <Box>
         <Box sx={{ mb: 1, display: 'flex', gap: 1 }}>
-          <Tooltip title="\u592a\u5b57">
+          <Tooltip title="太字">
             <IconButton size="small" onClick={handleBold} disabled={disabled}>
               <FormatBold />
             </IconButton>
           </Tooltip>
-          <Tooltip title="\u8d64\u5b57">
+          <Tooltip title="赤字">
             <IconButton size="small" onClick={handleRedText} disabled={disabled}>
               <FormatColorText sx={{ color: 'red' }} />
             </IconButton>
