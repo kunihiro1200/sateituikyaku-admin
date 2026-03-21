@@ -1323,6 +1323,16 @@ export class EnhancedAutoSyncService {
       updateData.visit_reminder_assignee = visitReminderAssignee ? String(visitReminderAssignee) : null;
     }
 
+    // ID（D列）とサイトURL（AP列）を追加
+    const inquiryId = row['ID'];
+    if (inquiryId !== undefined) {
+      updateData.inquiry_id = inquiryId ? String(inquiryId) : null;
+    }
+    const siteUrl = row['サイトURL'];
+    if (siteUrl !== undefined) {
+      updateData.site_url = siteUrl ? String(siteUrl) : null;
+    }
+
     // 査定方法を追加
     const valuationMethod = row['査定方法'];
     if (valuationMethod) {
@@ -1561,6 +1571,16 @@ export class EnhancedAutoSyncService {
     const visitReminderAssigneeNew = row['訪問事前通知メール担当'];
     if (visitReminderAssigneeNew !== undefined) {
       encryptedData.visit_reminder_assignee = visitReminderAssigneeNew ? String(visitReminderAssigneeNew) : null;
+    }
+
+    // ID（D列）とサイトURL（AP列）を追加
+    const inquiryIdNew = row['ID'];
+    if (inquiryIdNew !== undefined) {
+      encryptedData.inquiry_id = inquiryIdNew ? String(inquiryIdNew) : null;
+    }
+    const siteUrlNew = row['サイトURL'];
+    if (siteUrlNew !== undefined) {
+      encryptedData.site_url = siteUrlNew ? String(siteUrlNew) : null;
     }
 
     // 査定方法を追加

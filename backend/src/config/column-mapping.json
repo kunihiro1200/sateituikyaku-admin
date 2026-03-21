@@ -54,7 +54,9 @@
     "キャンセル案内担当": "cancel_notice_assignee",
     "除外前、長期客メール担当": "long_term_email_assignee",
     "当社が電話したというリマインドメール担当": "call_reminder_email_assignee",
-    "訪問事前通知メール担当": "visit_reminder_assignee"
+    "訪問事前通知メール担当": "visit_reminder_assignee",
+    "ID": "inquiry_id",
+    "サイトURL": "site_url"
   },
   "databaseToSpreadsheet": {
     "seller_number": "売主番号",
@@ -103,7 +105,9 @@
     "cancel_notice_assignee": "キャンセル案内担当",
     "long_term_email_assignee": "除外前、長期客メール担当",
     "call_reminder_email_assignee": "当社が電話したというリマインドメール担当",
-    "visit_reminder_assignee": "訪問事前通知メール担当"
+    "visit_reminder_assignee": "訪問事前通知メール担当",
+    "inquiry_id": "ID",
+    "site_url": "サイトURL"
   },
   "typeConversions": {
     "valuation_amount_1": "number",

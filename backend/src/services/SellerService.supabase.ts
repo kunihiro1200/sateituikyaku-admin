@@ -1456,6 +1456,9 @@ export class SellerService extends BaseRepository {
         longTermEmailAssignee: seller.long_term_email_assignee,
         callReminderEmailAssignee: seller.call_reminder_email_assignee,
         visitReminderAssignee: seller.visit_reminder_assignee,
+        // inquiry_id と site_url
+        inquiryId: seller.inquiry_id,
+        siteUrl: seller.site_url,
       };
       
       console.log(`[PERF] decryptSeller total: ${Date.now() - _dt0}ms`);

@@ -4519,32 +4519,187 @@ HP：https://ifoo-oita.com/
                     </Typography>
                   </Box>
                 </Grid>
+
+                {/* サイト別除外申請情報 */}
+                {(() => {
+                  const site = seller?.site || editedSite;
+                  const exclusionUrl = getExclusionSiteUrl();
+                  const inquiryDatetime = seller?.inquiryDetailedDatetime || seller?.inquiryDetailedDateTime;
+                  const formattedDatetime = inquiryDatetime
+                    ? (() => {
+                        const d = new Date(inquiryDatetime as string);
+                        return `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+                      })()
+                    : null;
+
+                  if (site === 'ウ') {
+                    // ウ: サイトURL（AP列）の値のみ表示
+                    return seller?.siteUrl ? (
+                      <Grid item xs={12}>
+                        <Box sx={{ bgcolor: '#fff8e1', border: '1px solid #ffe082', borderRadius: 1, p: 1.5 }}>
+                          <Typography variant="body2" sx={{ wordBreak: 'break-all' }}>
+                            {seller.siteUrl}
+                          </Typography>
+                        </Box>
+                      </Grid>
+                    ) : null;
+                  }
+
+                  if (site === 'す') {
+                    return (
+                      <Grid item xs={12}>
+                        <Box sx={{ bgcolor: '#fff8e1', border: '1px solid #ffe082', borderRadius: 1, p: 1.5, display: 'flex', flexDirection: 'column', gap: 0.75 }}>
+                          {seller?.inquiryId && (
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                              <Typography variant="body2" color="text.secondary" sx={{ minWidth: 40 }}>ID:</Typography>
+                              <Typography variant="body2" sx={{ fontWeight: 'bold' }}>{seller.inquiryId}</Typography>
+                              <IconButton size="small" onClick={() => { navigator.clipboard.writeText(seller.inquiryId!); setSnackbarMessage('IDをコピーしました'); setSnackbarOpen(true); }}>
+                                <ContentCopyIcon fontSize="inherit" />
+                              </IconButton>
+                            </Box>
+                          )}
+                          {formattedDatetime && (
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                              <Typography variant="body2" color="text.secondary" sx={{ minWidth: 72 }}>反響日時:</Typography>
+                              <Typography variant="body2">{formattedDatetime}</Typography>
+                              <IconButton size="small" onClick={() => { navigator.clipboard.writeText(formattedDatetime); setSnackbarMessage('反響日時をコピーしました'); setSnackbarOpen(true); }}>
+                                <ContentCopyIcon fontSize="inherit" />
+                              </IconButton>
+                            </Box>
+                          )}
+                          {seller?.name && (
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                              <Typography variant="body2" color="text.secondary" sx={{ minWidth: 40 }}>氏名:</Typography>
+                              <Typography variant="body2">{seller.name}</Typography>
+                              <IconButton size="small" onClick={() => { navigator.clipboard.writeText(seller.name); setSnackbarMessage('氏名をコピーしました'); setSnackbarOpen(true); }}>
+                                <ContentCopyIcon fontSize="inherit" />
+                              </IconButton>
+                            </Box>
+                          )}
+                          <Typography variant="body2" sx={{ color: '#e65100', fontSize: '0.8rem', mt: 0.5 }}>
+                            上記の「ID」、「反響日付（年/月/日のみ）」、「氏名」の３つをコピーし、ウィンドウズ＋Ｖ　で下記サイト内に貼り付けてください。
+                          </Typography>
+                          {exclusionUrl && (
+                            <a href={exclusionUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#2e7d32', textDecoration: 'underline', fontSize: '0.875rem', wordBreak: 'break-all' }}>
+                              {exclusionUrl}
+                            </a>
+                          )}
+                        </Box>
+                      </Grid>
+                    );
+                  }
+
+                  if (site === 'H') {
+                    return (
+                      <Grid item xs={12}>
+                        <Box sx={{ bgcolor: '#fff8e1', border: '1px solid #ffe082', borderRadius: 1, p: 1.5, display: 'flex', flexDirection: 'column', gap: 0.75 }}>
+                          {formattedDatetime && (
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                              <Typography variant="body2" color="text.secondary" sx={{ minWidth: 72 }}>反響日時:</Typography>
+                              <Typography variant="body2">{formattedDatetime}</Typography>
+                              <IconButton size="small" onClick={() => { navigator.clipboard.writeText(formattedDatetime); setSnackbarMessage('反響日時をコピーしました'); setSnackbarOpen(true); }}>
+                                <ContentCopyIcon fontSize="inherit" />
+                              </IconButton>
+                            </Box>
+                          )}
+                          {seller?.name && (
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                              <Typography variant="body2" color="text.secondary" sx={{ minWidth: 40 }}>氏名:</Typography>
+                              <Typography variant="body2">{seller.name}</Typography>
+                              <IconButton size="small" onClick={() => { navigator.clipboard.writeText(seller.name); setSnackbarMessage('氏名をコピーしました'); setSnackbarOpen(true); }}>
+                                <ContentCopyIcon fontSize="inherit" />
+                              </IconButton>
+                            </Box>
+                          )}
+                          <Typography variant="body2" sx={{ color: '#e65100', fontSize: '0.8rem' }}>
+                            ↑名前は名字のみ下記除外申請サイト内に貼り付けてください
+                          </Typography>
+                          {exclusionUrl && (
+                            <a href={exclusionUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#2e7d32', textDecoration: 'underline', fontSize: '0.875rem', wordBreak: 'break-all' }}>
+                              {exclusionUrl}
+                            </a>
+                          )}
+                        </Box>
+                      </Grid>
+                    );
+                  }
+
+                  if (site === 'Y') {
+                    return (
+                      <Grid item xs={12}>
+                        <Box sx={{ bgcolor: '#fff8e1', border: '1px solid #ffe082', borderRadius: 1, p: 1.5, display: 'flex', flexDirection: 'column', gap: 0.75 }}>
+                          {seller?.inquiryId && (
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                              <Typography variant="body2" color="text.secondary" sx={{ minWidth: 40 }}>ID:</Typography>
+                              <Typography variant="body2" sx={{ fontWeight: 'bold' }}>{seller.inquiryId}</Typography>
+                              <IconButton size="small" onClick={() => { navigator.clipboard.writeText(seller.inquiryId!); setSnackbarMessage('IDをコピーしました'); setSnackbarOpen(true); }}>
+                                <ContentCopyIcon fontSize="inherit" />
+                              </IconButton>
+                            </Box>
+                          )}
+                          {formattedDatetime && (
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                              <Typography variant="body2" color="text.secondary" sx={{ minWidth: 72 }}>反響日時:</Typography>
+                              <Typography variant="body2">{formattedDatetime}</Typography>
+                              <IconButton size="small" onClick={() => { navigator.clipboard.writeText(formattedDatetime); setSnackbarMessage('反響日時をコピーしました'); setSnackbarOpen(true); }}>
+                                <ContentCopyIcon fontSize="inherit" />
+                              </IconButton>
+                            </Box>
+                          )}
+                          {exclusionUrl && (
+                            <a href={exclusionUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#2e7d32', textDecoration: 'underline', fontSize: '0.875rem', wordBreak: 'break-all' }}>
+                              {exclusionUrl}
+                            </a>
+                          )}
+                        </Box>
+                      </Grid>
+                    );
+                  }
+
+                  if (site === 'L') {
+                    return exclusionUrl ? (
+                      <Grid item xs={12}>
+                        <Box sx={{ bgcolor: '#fff8e1', border: '1px solid #ffe082', borderRadius: 1, p: 1.5 }}>
+                          <a href={exclusionUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#2e7d32', textDecoration: 'underline', fontSize: '0.875rem', wordBreak: 'break-all' }}>
+                            {exclusionUrl}
+                          </a>
+                        </Box>
+                      </Grid>
+                    ) : null;
+                  }
+
+                  return null;
+                })()}
                 
                 <Grid item xs={12}>
-                  {/* 除外サイト */}
-                  <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
-                    除外サイト
-                  </Typography>
-                  {getExclusionSiteUrl() ? (
-                    <Box sx={{ mt: 1 }}>
-                      <a
-                        href={getExclusionSiteUrl()}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{
-                          color: '#2e7d32',
-                          textDecoration: 'underline',
-                          fontSize: '0.875rem',
-                          wordBreak: 'break-all',
-                        }}
-                      >
-                        {getExclusionSiteUrl()}
-                      </a>
-                    </Box>
-                  ) : (
-                    <Typography variant="body2" color="text.disabled" sx={{ mt: 1 }}>
-                      URLなし（サイトが設定されていません）
-                    </Typography>
+                  {/* 除外サイト（す・H・Y・ウ・L 以外のサイト向け） */}
+                  {!['す', 'H', 'Y', 'ウ', 'L'].includes(seller?.site || editedSite) && (
+                    <>
+                      <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+                        除外サイト
+                      </Typography>
+                      {getExclusionSiteUrl() ? (
+                        <Box sx={{ mt: 1 }}>
+                          <a
+                            href={getExclusionSiteUrl()}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{
+                              color: '#2e7d32',
+                              textDecoration: 'underline',
+                              fontSize: '0.875rem',
+                              wordBreak: 'break-all',
+                            }}
+                          >
+                            {getExclusionSiteUrl()}
+                          </a>
+                        </Box>
+                      ) : (
+                        <Typography variant="body2" color="text.disabled" sx={{ mt: 1 }}>
+                          URLなし（サイトが設定されていません）
+                        </Typography>
+                      )}
+                    </>
                   )}
                   
                   {/* 除外基準 */}

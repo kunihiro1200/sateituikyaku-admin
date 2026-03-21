@@ -61,6 +61,7 @@ export interface Seller {
   inquirySite?: string; // サイト（ウ、L等）
   inquiryReason?: string; // 査定理由
   siteUrl?: string;
+  inquiryId?: string; // ID（スプシD列）
   numberOfCompanies?: number; // 送信社数
   
   // 物件情報
