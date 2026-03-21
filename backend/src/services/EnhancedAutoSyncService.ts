@@ -778,7 +778,7 @@ export class EnhancedAutoSyncService {
     while (hasMore) {
       const { data: dbSellers, error } = await this.supabase
         .from('sellers')
-        .select('seller_number, status, contract_year_month, visit_assignee, phone_contact_person, preferred_contact_time, contact_method, next_call_date, unreachable_status, inquiry_date, comments, valuation_amount_1, valuation_amount_2, valuation_amount_3, first_call_person, valuation_reason, valuation_method, name, address, phone_number, email, property_address, current_status, updated_at')
+        .select('seller_number, status, contract_year_month, visit_assignee, phone_contact_person, preferred_contact_time, contact_method, next_call_date, unreachable_status, inquiry_date, comments, valuation_amount_1, valuation_amount_2, valuation_amount_3, first_call_person, valuation_reason, valuation_method, name, address, phone_number, email, property_address, current_status, updated_at, visit_reminder_assignee')
         .range(offset, offset + pageSize - 1);
 
       if (error) {
@@ -951,6 +951,13 @@ export class EnhancedAutoSyncService {
           const dbCurrentStatus = dbSeller.current_status || '';
           const sheetCurrentStatus = sheetRow['状況（売主）'] || '';
           if (sheetCurrentStatus !== dbCurrentStatus) {
+            needsUpdate = true;
+          }
+
+          // visit_reminder_assigneeの比較
+          const dbVisitReminderAssignee = dbSeller.visit_reminder_assignee || '';
+          const sheetVisitReminderAssignee = sheetRow['訪問事前通知メール担当'] || '';
+          if (sheetVisitReminderAssignee !== dbVisitReminderAssignee) {
             needsUpdate = true;
           }
 
