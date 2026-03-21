@@ -50,70 +50,27 @@ const ContentEditable = styled('div')(({ theme }) => ({
   '& font[color="red"]': { color: 'red' },
 }));
 
-// ノードのテキストオフセットを取得するヘルパー
-function getTextOffset(root: Node, targetNode: Node, targetOffset: number): number {
-  let offset = 0;
-  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
-  let node = walker.nextNode();
-  while (node) {
-    if (node === targetNode) {
-      return offset + targetOffset;
-    }
-    offset += (node.textContent || '').length;
-    node = walker.nextNode();
-  }
-  return offset;
-}
-
-// テキストオフセットからノードと位置を取得するヘルパー
-function getNodeFromOffset(root: Node, targetOffset: number): { node: Node; offset: number } | null {
-  let offset = 0;
-  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
-  let node = walker.nextNode();
-  while (node) {
-    const len = (node.textContent || '').length;
-    if (offset + len >= targetOffset) {
-      return { node, offset: targetOffset - offset };
-    }
-    offset += len;
-    node = walker.nextNode();
-  }
-  // 末尾
-  if (root.lastChild) {
-    return { node: root, offset: root.childNodes.length };
-  }
-  return null;
-}
-
 const RichTextCommentEditor = React.forwardRef<RichTextCommentEditorHandle, RichTextCommentEditorProps>(
   ({ value, onChange, placeholder = 'コメントを入力...', disabled = false }, ref) => {
     const editorRef = useRef<HTMLDivElement>(null);
-    // カーソル位置をテキストオフセットで保存
-    const cursorOffsetRef = useRef<number>(-1);
     const isFocusedRef = useRef<boolean>(false);
-    const isInsertingRef = useRef<boolean>(false); // insertAtCursor 実行中フラグ
+    const isInsertingRef = useRef<boolean>(false);
+    // カーソル位置を Range として保存（フォーカスが外れた後も使える）
+    const savedRangeRef = useRef<Range | null>(null);
 
-    // 初期値の設定（フォーカス中は上書きしない）
+    // 初期値の設定（フォーカス中・挿入中は上書きしない）
     useEffect(() => {
-      if (editorRef.current && !isFocusedRef.current && !isInsertingRef.current && editorRef.current.innerHTML !== value) {
+      if (
+        editorRef.current &&
+        !isFocusedRef.current &&
+        !isInsertingRef.current &&
+        editorRef.current.innerHTML !== value
+      ) {
         editorRef.current.innerHTML = value;
+        // 値が外部から変わったらカーソル位置をリセット
+        savedRangeRef.current = null;
       }
     }, [value]);
-
-    // 現在のカーソルオフセットを保存
-    const saveCursorOffset = () => {
-      const selection = window.getSelection();
-      if (selection && selection.rangeCount > 0 && editorRef.current) {
-        const range = selection.getRangeAt(0);
-        if (editorRef.current.contains(range.commonAncestorContainer)) {
-          cursorOffsetRef.current = getTextOffset(
-            editorRef.current,
-            range.startContainer,
-            range.startOffset
-          );
-        }
-      }
-    };
 
     const handleInput = () => {
       if (editorRef.current) {
@@ -126,15 +83,28 @@ const RichTextCommentEditor = React.forwardRef<RichTextCommentEditorHandle, Rich
     };
 
     const handleBlur = () => {
-      saveCursorOffset();
+      // フォーカスが外れる直前のカーソル位置を保存
+      const sel = window.getSelection();
+      if (sel && sel.rangeCount > 0 && editorRef.current) {
+        const range = sel.getRangeAt(0);
+        if (editorRef.current.contains(range.commonAncestorContainer)) {
+          savedRangeRef.current = range.cloneRange();
+        }
+      }
       isFocusedRef.current = false;
     };
 
-    // selectionchange でリアルタイムにオフセットを更新
+    // selectionchange でリアルタイムにカーソル位置を保存
     useEffect(() => {
       const onSelectionChange = () => {
-        if (isFocusedRef.current) {
-          saveCursorOffset();
+        if (isFocusedRef.current && editorRef.current) {
+          const sel = window.getSelection();
+          if (sel && sel.rangeCount > 0) {
+            const range = sel.getRangeAt(0);
+            if (editorRef.current.contains(range.commonAncestorContainer)) {
+              savedRangeRef.current = range.cloneRange();
+            }
+          }
         }
       };
       document.addEventListener('selectionchange', onSelectionChange);
@@ -161,62 +131,45 @@ const RichTextCommentEditor = React.forwardRef<RichTextCommentEditorHandle, Rich
       insertAtCursor: (html: string) => {
         const editor = editorRef.current;
         if (!editor) return;
+
         isInsertingRef.current = true;
 
-        const offset = cursorOffsetRef.current;
+        const savedRange = savedRangeRef.current;
 
-        if (offset >= 0) {
-          // テキストオフセットを使って innerHTML に直接挿入
-          // 現在の innerHTML を取得
-          const currentHtml = editor.innerHTML;
+        if (savedRange) {
+          // 保存済みカーソル位置に挿入
+          try {
+            const range = savedRange.cloneRange();
+            range.deleteContents();
 
-          // テキストオフセットを HTML オフセットに変換
-          // テキストノードを走査して挿入位置を特定
-          const pos = getNodeFromOffset(editor, offset);
+            const fragment = range.createContextualFragment(html);
+            const lastNode = fragment.lastChild;
+            range.insertNode(fragment);
 
-          if (pos) {
-            // Range を使って挿入（focus は呼ばない）
-            const range = document.createRange();
-            try {
-              range.setStart(pos.node, pos.offset);
-              range.collapse(true);
+            // 挿入後のカーソル位置を更新
+            if (lastNode) {
+              const newRange = document.createRange();
+              newRange.setStartAfter(lastNode);
+              newRange.collapse(true);
+              savedRangeRef.current = newRange.cloneRange();
 
-              // DocumentFragment を作成して挿入
-              const fragment = range.createContextualFragment(html);
-              const lastNode = fragment.lastChild;
-              range.insertNode(fragment);
-
-              // カーソルを挿入後に移動
-              if (lastNode) {
-                const newRange = document.createRange();
-                newRange.setStartAfter(lastNode);
-                newRange.collapse(true);
-
-                // Selection を更新（focus なし）
-                const sel = window.getSelection();
-                if (sel) {
-                  sel.removeAllRanges();
-                  sel.addRange(newRange);
-                }
-
-                // 新しいオフセットを保存
-                cursorOffsetRef.current = getTextOffset(
-                  editor,
-                  newRange.startContainer,
-                  newRange.startOffset
-                );
+              // Selectionも更新（エディタがフォーカスされていれば見た目にも反映）
+              const sel = window.getSelection();
+              if (sel) {
+                sel.removeAllRanges();
+                sel.addRange(newRange);
               }
-
-              handleInput();
-              isInsertingRef.current = false;
-              return;
-            } catch (e) {
-              // フォールバックへ
             }
+
+            handleInput();
+            isInsertingRef.current = false;
+            return;
+          } catch (e) {
+            // フォールバックへ
           }
         }
 
-        // フォールバック: 先頭に追加
+        // フォールバック: カーソル位置不明 → 先頭に挿入
         editor.innerHTML = html + editor.innerHTML;
         handleInput();
         isInsertingRef.current = false;
