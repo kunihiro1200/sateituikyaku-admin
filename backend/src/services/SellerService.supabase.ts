@@ -885,7 +885,7 @@ export class SellerService extends BaseRepository {
           // 訪問日前日（営担あり AND 訪問日あり）→ 全件取得してJSでフィルタ
           // 前営業日ロジック（木曜訪問→2日前、それ以外→1日前）はDBでは表現できないためJS側で処理
           const { data: visitDayBeforeSellers, error: vdbError } = await this.table('sellers')
-            .select('id, visit_date, visit_assignee')
+            .select('id, visit_date, visit_assignee, visit_reminder_assignee')
             .is('deleted_at', null)
             .not('visit_assignee', 'is', null)
             .neq('visit_assignee', '')
@@ -894,6 +894,9 @@ export class SellerService extends BaseRepository {
           console.log(`[visitDayBefore] todayJST=${todayJST}, candidates=${visitDayBeforeSellers?.length ?? 0}, error=${vdbError?.message}`);
           // visitDayBefore に該当するIDを計算
           const visitDayBeforeIds = (visitDayBeforeSellers || []).filter((s: any) => {
+            // visitReminderAssigneeに値がある場合は除外（通知担当が既に割り当て済み）
+            const reminderAssignee = (s as any).visit_reminder_assignee || '';
+            if (reminderAssignee.trim() !== '') return false;
             const vd = (s as any).visit_date;
             if (!vd) return false;
             const parts = vd.split('-');
