@@ -69,6 +69,8 @@ const RichTextCommentEditor = React.forwardRef<RichTextCommentEditorHandle, Rich
     // \u30ab\u30fc\u30bd\u30eb\u4f4d\u7f6e\uff08Range\uff09\u3092\u4fdd\u5b58\u3059\u308bref
     // selectionchange \u3067\u30ea\u30a2\u30eb\u30bf\u30a4\u30e0\u66f4\u65b0\u3059\u308b\u305f\u3081\u3001blur \u3088\u308a\u5148\u306b\u8a18\u9332\u3055\u308c\u308b
     const savedRangeRef = useRef<Range | null>(null);
+    // insertAtCursor 実行中は selectionchange による savedRangeRef の上書きを防ぐ
+    const isInsertingRef = useRef<boolean>(false);
 
     // \u521d\u671f\u5024\u306e\u8a2d\u5b9a
     useEffect(() => {
@@ -81,6 +83,8 @@ const RichTextCommentEditor = React.forwardRef<RichTextCommentEditorHandle, Rich
     // blur \u3088\u308a\u5148\u306b\u767a\u706b\u3059\u308b\u305f\u3081\u3001\u30af\u30a4\u30c3\u30af\u30dc\u30bf\u30f3\u30af\u30ea\u30c3\u30af\u6642\u3082\u30ab\u30fc\u30bd\u30eb\u4f4d\u7f6e\u304c\u4fdd\u6301\u3055\u308c\u308b
     useEffect(() => {
       const handleSelectionChange = () => {
+        // insertAtCursor 実行中は上書きしない
+        if (isInsertingRef.current) return;
         const selection = window.getSelection();
         if (selection && selection.rangeCount > 0 && editorRef.current) {
           const range = selection.getRangeAt(0);
@@ -129,40 +133,43 @@ const RichTextCommentEditor = React.forwardRef<RichTextCommentEditorHandle, Rich
         const editor = editorRef.current;
         if (!editor) return;
 
+        // selectionchange による savedRangeRef の上書きを防ぐ
+        isInsertingRef.current = true;
+
         try {
-          if (savedRangeRef.current) {
-            // focus() 前に savedRangeRef を退避する
-            // （focus() 後に selectionchange が発火して savedRangeRef が上書きされるのを防ぐ）
-            const savedRange = savedRangeRef.current.cloneRange();
+          // カーソル位置を退避（focus() 前に必ず退避する）
+          const savedRange = savedRangeRef.current ? savedRangeRef.current.cloneRange() : null;
 
-            // エディタにフォーカスを戻す（ボタンクリックでフォーカスが外れているため）
-            editor.focus();
+          // エディタにフォーカスを戻す
+          editor.focus();
 
-            // 退避した Range を使って操作する
-            const range = savedRange;
-
+          if (savedRange) {
+            // 退避した Range を Selection に復元
             const selection = window.getSelection();
-            selection?.removeAllRanges();
-            selection?.addRange(range);
+            if (selection) {
+              selection.removeAllRanges();
+              selection.addRange(savedRange);
+            }
 
-            range.deleteContents();
-
-            // HTML 文字列を DocumentFragment に変換して挿入
-            const fragment = range.createContextualFragment(html);
+            // HTML を DocumentFragment に変換して挿入
+            const fragment = savedRange.createContextualFragment(html);
             const lastNode = fragment.lastChild;
-            range.insertNode(fragment);
+            savedRange.insertNode(fragment);
 
             // カーソルを挿入テキストの直後に移動
             if (lastNode) {
-              range.setStartAfter(lastNode);
-              range.collapse(true);
-              selection?.removeAllRanges();
-              selection?.addRange(range);
-              savedRangeRef.current = range.cloneRange();
+              const newRange = document.createRange();
+              newRange.setStartAfter(lastNode);
+              newRange.collapse(true);
+              const sel = window.getSelection();
+              if (sel) {
+                sel.removeAllRanges();
+                sel.addRange(newRange);
+              }
+              savedRangeRef.current = newRange.cloneRange();
             }
           } else {
             // フォールバック: カーソル位置が未設定の場合は末尾に追加
-            editor.focus();
             const selection = window.getSelection();
             if (selection) {
               const range = document.createRange();
@@ -170,16 +177,16 @@ const RichTextCommentEditor = React.forwardRef<RichTextCommentEditorHandle, Rich
               range.collapse(false);
               selection.removeAllRanges();
               selection.addRange(range);
-              range.deleteContents();
               const fragment = range.createContextualFragment(html);
               const lastNode = fragment.lastChild;
               range.insertNode(fragment);
               if (lastNode) {
-                range.setStartAfter(lastNode);
-                range.collapse(true);
+                const newRange = document.createRange();
+                newRange.setStartAfter(lastNode);
+                newRange.collapse(true);
                 selection.removeAllRanges();
-                selection.addRange(range);
-                savedRangeRef.current = range.cloneRange();
+                selection.addRange(newRange);
+                savedRangeRef.current = newRange.cloneRange();
               }
             } else {
               editor.innerHTML = editor.innerHTML + html;
@@ -188,6 +195,8 @@ const RichTextCommentEditor = React.forwardRef<RichTextCommentEditorHandle, Rich
         } catch (e) {
           // エラー時は末尾に追加
           editor.innerHTML = editor.innerHTML + html;
+        } finally {
+          isInsertingRef.current = false;
         }
 
         handleInput();
