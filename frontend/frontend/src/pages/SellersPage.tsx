@@ -177,8 +177,9 @@ export default function SellersPage() {
   // Phase 1 filters
   const [inquirySourceFilter, setInquirySourceFilter] = useState('');
   const [confidenceLevelFilter, setConfidenceLevelFilter] = useState('');
-  const [showUnreachableOnly, setShowUnreachableOnly] = useState(false);
-  const [showValuationNotRequiredOnly, setShowValuationNotRequiredOnly] = useState(false);
+  const [inquirySiteFilter, setInquirySiteFilter] = useState('');
+  const [propertyTypeFilter, setPropertyTypeFilter] = useState('');
+  const [statusFilterValue, setStatusFilterValue] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   
   // Status category filter
@@ -370,7 +371,7 @@ export default function SellersPage() {
 
   useEffect(() => {
     fetchSellers();
-  }, [page, rowsPerPage, inquirySourceFilter, confidenceLevelFilter, showUnreachableOnly, showValuationNotRequiredOnly, selectedCategory]);
+  }, [page, rowsPerPage, inquirySourceFilter, confidenceLevelFilter, inquirySiteFilter, propertyTypeFilter, statusFilterValue, selectedCategory]);
 
   const fetchSellers = async () => {
     try {
@@ -388,11 +389,14 @@ export default function SellersPage() {
       if (confidenceLevelFilter) {
         params.confidenceLevel = confidenceLevelFilter;
       }
-      if (showUnreachableOnly) {
-        params.isUnreachable = true;
+      if (inquirySiteFilter) {
+        params.inquirySite = inquirySiteFilter;
       }
-      if (showValuationNotRequiredOnly) {
-        params.valuationNotRequired = true;
+      if (propertyTypeFilter) {
+        params.propertyType = propertyTypeFilter;
+      }
+      if (statusFilterValue) {
+        params.statusFilter = statusFilterValue;
       }
       
       // サイドバーカテゴリフィルター
@@ -433,7 +437,11 @@ export default function SellersPage() {
   };
 
   const handleSearch = async () => {
-    if (!searchQuery.trim()) {
+    // 全角数字を半角に変換
+    const normalizedQuery = searchQuery.replace(/[０-９]/g, (c) =>
+      String.fromCharCode(c.charCodeAt(0) - 0xFEE0)
+    );
+    if (!normalizedQuery.trim()) {
       fetchSellers();
       return;
     }
@@ -441,7 +449,7 @@ export default function SellersPage() {
     try {
       setLoading(true);
       const response = await api.get('/api/sellers/search', {
-        params: { q: searchQuery },
+        params: { q: normalizedQuery },
       });
       setSellers(response.data);
       setTotal(response.data.length);
@@ -587,11 +595,20 @@ export default function SellersPage() {
         <Paper sx={{ p: 2, mb: 3 }}>
           <Box sx={{ display: 'flex', gap: 2, mb: showFilters ? 2 : 0 }}>
             <TextField
-              fullWidth
+              sx={{ width: '50%' }}
               placeholder="名前、住所、電話番号で検索"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+              onKeyPress={(e) => {
+                if (e.key === 'Enter') {
+                  // 全角数字を半角に変換してから検索
+                  const normalized = searchQuery.replace(/[０-９]/g, (c) =>
+                    String.fromCharCode(c.charCodeAt(0) - 0xFEE0)
+                  );
+                  setSearchQuery(normalized);
+                  handleSearch();
+                }
+              }}
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">
@@ -612,7 +629,14 @@ export default function SellersPage() {
                         <ClearIcon fontSize="small" />
                       </IconButton>
                     )}
-                    <Button onClick={handleSearch}>検索</Button>
+                    <Button onClick={() => {
+                      // 全角数字を半角に変換してから検索
+                      const normalized = searchQuery.replace(/[０-９]/g, (c) =>
+                        String.fromCharCode(c.charCodeAt(0) - 0xFEE0)
+                      );
+                      setSearchQuery(normalized);
+                      handleSearch();
+                    }}>検索</Button>
                   </InputAdornment>
                 ),
               }}
@@ -661,37 +685,63 @@ export default function SellersPage() {
                 <MenuItem value="DUPLICATE">ダブり（重複している）</MenuItem>
               </TextField>
               
-              <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={showUnreachableOnly}
-                    onChange={(e) => setShowUnreachableOnly(e.target.checked)}
-                    style={{ marginRight: 8 }}
-                  />
-                  不通のみ表示
-                </label>
-              </Box>
-              
-              <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={showValuationNotRequiredOnly}
-                    onChange={(e) => setShowValuationNotRequiredOnly(e.target.checked)}
-                    style={{ marginRight: 8 }}
-                  />
-                  査定不要のみ表示
-                </label>
-              </Box>
+              <TextField
+                select
+                label="サイト"
+                value={inquirySiteFilter}
+                onChange={(e) => setInquirySiteFilter(e.target.value)}
+                sx={{ minWidth: 130 }}
+                size="small"
+              >
+                <MenuItem value="">全て</MenuItem>
+                <MenuItem value="ウ">ウ</MenuItem>
+                <MenuItem value="ビ">ビ</MenuItem>
+                <MenuItem value="ス">ス</MenuItem>
+                <MenuItem value="ホ">ホ</MenuItem>
+                <MenuItem value="ア">ア</MenuItem>
+                <MenuItem value="L">L</MenuItem>
+                <MenuItem value="紹介">紹介</MenuItem>
+                <MenuItem value="チラシ">チラシ</MenuItem>
+              </TextField>
+
+              <TextField
+                select
+                label="種別"
+                value={propertyTypeFilter}
+                onChange={(e) => setPropertyTypeFilter(e.target.value)}
+                sx={{ minWidth: 130 }}
+                size="small"
+              >
+                <MenuItem value="">全て</MenuItem>
+                <MenuItem value="土">土（土地）</MenuItem>
+                <MenuItem value="戸">戸（戸建て）</MenuItem>
+                <MenuItem value="マ">マ（マンション）</MenuItem>
+              </TextField>
+
+              <TextField
+                select
+                label="状況（当社）"
+                value={statusFilterValue}
+                onChange={(e) => setStatusFilterValue(e.target.value)}
+                sx={{ minWidth: 160 }}
+                size="small"
+              >
+                <MenuItem value="">全て</MenuItem>
+                <MenuItem value="追客中">追客中</MenuItem>
+                <MenuItem value="専任">専任</MenuItem>
+                <MenuItem value="一般媒介">一般媒介</MenuItem>
+                <MenuItem value="他決">他決</MenuItem>
+                <MenuItem value="追客不要">追客不要</MenuItem>
+              </TextField>
               
               <Button
                 variant="text"
                 onClick={() => {
                   setInquirySourceFilter('');
                   setConfidenceLevelFilter('');
-                  setShowUnreachableOnly(false);
-                  setShowValuationNotRequiredOnly(false);
+                  setInquirySiteFilter('');
+                  setPropertyTypeFilter('');
+                  setStatusFilterValue('');
                 }}
                 size="small"
               >

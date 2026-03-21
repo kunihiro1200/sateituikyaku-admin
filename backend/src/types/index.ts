@@ -441,6 +441,10 @@ export interface ListSellersParams {
   firstCaller?: string;
   duplicateConfirmed?: boolean;
   valuationNotRequired?: boolean;
+  // 追加フィルター
+  inquirySite?: string;    // サイト
+  propertyType?: string;   // 種別
+  statusFilter?: string;   // 状況（当社）
   // Deletion sync filter
   includeDeleted?: boolean; // Default: false (exclude deleted sellers)
   // サイドバーカテゴリフィルター

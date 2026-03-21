@@ -134,6 +134,9 @@ router.get(
     query('firstCaller').optional().isString().withMessage('First caller must be a string'),
     query('duplicateConfirmed').optional().isBoolean().withMessage('Duplicate confirmed must be a boolean'),
     query('valuationNotRequired').optional().isBoolean().withMessage('Valuation not required must be a boolean'),
+    query('inquirySite').optional().isString().withMessage('Inquiry site must be a string'),
+    query('propertyType').optional().isString().withMessage('Property type must be a string'),
+    query('statusFilter').optional().isString().withMessage('Status filter must be a string'),
     // サイドバーカテゴリフィルター（visitAssigned:xxx, todayCallAssigned:xxx の動的カテゴリも許可）
     query('statusCategory').optional().isString().withMessage('Invalid status category'),
   ],
@@ -169,6 +172,9 @@ router.get(
         firstCaller: req.query.firstCaller as string,
         duplicateConfirmed: req.query.duplicateConfirmed === 'true' ? true : req.query.duplicateConfirmed === 'false' ? false : undefined,
         valuationNotRequired: req.query.valuationNotRequired === 'true' ? true : req.query.valuationNotRequired === 'false' ? false : undefined,
+        inquirySite: req.query.inquirySite as string,
+        propertyType: req.query.propertyType as string,
+        statusFilter: req.query.statusFilter as string,
         // サイドバーカテゴリフィルター
         statusCategory: req.query.statusCategory as any,
       };

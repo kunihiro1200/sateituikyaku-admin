@@ -833,6 +833,9 @@ export class SellerService extends BaseRepository {
       includeDeleted = false, // デフォルトで削除済みを除外
       statusCategory, // サイドバーカテゴリフィルター
       valuationNotRequired, // 査定不要フィルター
+      inquirySite, // サイトフィルター
+      propertyType: propertyTypeFilter, // 種別フィルター
+      statusFilter, // 状況（当社）フィルター
     } = params;
 
     // JST今日の日付を取得
@@ -1050,6 +1053,15 @@ export class SellerService extends BaseRepository {
     }
     if (valuationNotRequired === true) {
       query = query.eq('valuation_not_required', true);
+    }
+    if (inquirySite) {
+      query = query.eq('inquiry_site', inquirySite);
+    }
+    if (propertyTypeFilter) {
+      query = query.eq('property_type', propertyTypeFilter);
+    }
+    if (statusFilter) {
+      query = query.ilike('status', `%${statusFilter}%`);
     }
 
     // ソート（inquiry_dateがnullのものは最後に表示、同日の場合は売主番号が大きいほうを最新とする）
