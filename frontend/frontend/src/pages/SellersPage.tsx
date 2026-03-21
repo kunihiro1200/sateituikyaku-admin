@@ -41,6 +41,7 @@ import { useSellerStatus } from '../hooks/useSellerStatus';
 import SellerStatusBadges from '../components/SellerStatusBadges';
 import SellerStatusSidebar from '../components/SellerStatusSidebar';
 import { SECTION_COLORS } from '../theme/sectionColors';
+import { formatCurrentStatusDetailed } from '../utils/propertyStatusFormatter';
 
 interface Seller {
   id: string;
@@ -68,6 +69,7 @@ interface Seller {
   valuationAmount1?: number;
   visitAssignee?: string;
   visitAssigneeInitials?: string;
+  currentStatus?: string;
 }
 
 const statusLabels: Record<string, string> = {
@@ -652,18 +654,19 @@ export default function SellersPage() {
                 <TableCell>営担</TableCell>
                 <TableCell>訪問日</TableCell>
                 <TableCell>状況（当社）</TableCell>
+                <TableCell>状況（売主）</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={12} align="center">
+                  <TableCell colSpan={13} align="center">
                     読み込み中...
                   </TableCell>
                 </TableRow>
               ) : filteredSellers.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={12} align="center">
+                  <TableCell colSpan={13} align="center">
                     売主が見つかりませんでした
                   </TableCell>
                 </TableRow>
@@ -747,6 +750,11 @@ export default function SellersPage() {
                         color={getStatusColor(seller.status)}
                         size="small"
                       />
+                    </TableCell>
+                    <TableCell>
+                      {seller.currentStatus
+                        ? formatCurrentStatusDetailed(seller.currentStatus)
+                        : '-'}
                     </TableCell>
                   </TableRow>
                 ))
