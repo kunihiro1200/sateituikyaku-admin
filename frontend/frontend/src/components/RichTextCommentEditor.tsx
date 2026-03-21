@@ -66,19 +66,30 @@ const RichTextCommentEditor = React.forwardRef<RichTextCommentEditorHandle, Rich
     ref
   ) => {
     const editorRef = useRef<HTMLDivElement>(null);
-    // blur 時にカーソル位置（Range）を保存する ref
+    // カーソル位置（Range）を保存する ref
+    // mousedown と blur の両方で更新する
     const savedRangeRef = useRef<Range | null>(null);
     // エディタがフォーカス中かどうかを追跡する ref
     const isFocusedRef = useRef<boolean>(false);
 
     // 初期値の設定
     // 重要: フォーカス中は innerHTML を上書きしない
-    // （上書きすると保存した Range が指すノードが消えてカーソル位置が無効になる）
     useEffect(() => {
       if (editorRef.current && !isFocusedRef.current && editorRef.current.innerHTML !== value) {
         editorRef.current.innerHTML = value;
       }
     }, [value]);
+
+    // カーソル位置を保存するヘルパー関数
+    const saveCurrentRange = () => {
+      const selection = window.getSelection();
+      if (selection && selection.rangeCount > 0 && editorRef.current) {
+        const range = selection.getRangeAt(0);
+        if (editorRef.current.contains(range.commonAncestorContainer)) {
+          savedRangeRef.current = range.cloneRange();
+        }
+      }
+    };
 
     // コンテンツ変更時のハンドラー
     const handleInput = () => {
@@ -94,15 +105,23 @@ const RichTextCommentEditor = React.forwardRef<RichTextCommentEditorHandle, Rich
 
     // blur 時にカーソル位置を保存し、isFocusedRef を false にする
     const handleBlur = () => {
-      const selection = window.getSelection();
-      if (selection && selection.rangeCount > 0 && editorRef.current) {
-        const range = selection.getRangeAt(0);
-        if (editorRef.current.contains(range.commonAncestorContainer)) {
-          savedRangeRef.current = range.cloneRange();
-        }
-      }
+      saveCurrentRange();
       isFocusedRef.current = false;
     };
+
+    // selectionchange 時にカーソル位置を保存する
+    // （エディタがフォーカス中のみ）
+    useEffect(() => {
+      const handleSelectionChange = () => {
+        if (isFocusedRef.current) {
+          saveCurrentRange();
+        }
+      };
+      document.addEventListener('selectionchange', handleSelectionChange);
+      return () => {
+        document.removeEventListener('selectionchange', handleSelectionChange);
+      };
+    }, []);
 
     // コンテナクリック時にエディタにフォーカス
     const handleContainerClick = () => {
@@ -130,13 +149,13 @@ const RichTextCommentEditor = React.forwardRef<RichTextCommentEditorHandle, Rich
         if (!editor) return;
 
         try {
-          // blur 時に保存したカーソル位置を取得
+          // 保存したカーソル位置を取得
           const savedRange = savedRangeRef.current ? savedRangeRef.current.cloneRange() : null;
 
-          // エディタにフォーカスを戻す
-          editor.focus();
+          if (savedRange && editor.contains(savedRange.commonAncestorContainer)) {
+            // エディタにフォーカスを戻す
+            editor.focus();
 
-          if (savedRange) {
             // 保存した Range を Selection に復元
             const selection = window.getSelection();
             if (selection) {
@@ -147,6 +166,7 @@ const RichTextCommentEditor = React.forwardRef<RichTextCommentEditorHandle, Rich
             // HTML を DocumentFragment に変換して挿入
             const fragment = savedRange.createContextualFragment(html);
             const lastNode = fragment.lastChild;
+            savedRange.deleteContents();
             savedRange.insertNode(fragment);
 
             // カーソルを挿入テキストの直後に移動
@@ -162,7 +182,8 @@ const RichTextCommentEditor = React.forwardRef<RichTextCommentEditorHandle, Rich
               savedRangeRef.current = newRange.cloneRange();
             }
           } else {
-            // フォールバック: カーソル位置が未設定の場合は末尾に追加
+            // フォールバック: カーソル位置が未設定または無効な場合は末尾に追加
+            editor.focus();
             const selection = window.getSelection();
             if (selection) {
               const range = document.createRange();
