@@ -177,8 +177,6 @@ const CallLogDisplay = forwardRef<CallLogDisplayHandle, CallLogDisplayProps>(({ 
       </TableContainer>
     </Box>
   );
-};
-
 });
 
 export default CallLogDisplay;
