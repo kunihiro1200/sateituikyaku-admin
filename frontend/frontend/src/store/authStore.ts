@@ -59,14 +59,14 @@ export const useAuthStore = create<AuthState>()(
       
       // URLからハッシュフラグメントを確認（Supabase Authはハッシュフラグメントでトークンを返す）
       const hashParams = new URLSearchParams(window.location.hash.substring(1));
-      const accessToken = hashParams.get('access_token');
-      const refreshToken = hashParams.get('refresh_token');
+      const hashAccessToken = hashParams.get('access_token');
+      const hashRefreshToken = hashParams.get('refresh_token');
       const errorParam = hashParams.get('error');
       const errorDescription = hashParams.get('error_description');
 
       console.log('🔵 Hash params:', {
-        hasAccessToken: !!accessToken,
-        hasRefreshToken: !!refreshToken,
+        hasAccessToken: !!hashAccessToken,
+        hasRefreshToken: !!hashRefreshToken,
         error: errorParam,
         errorDescription,
       });
@@ -76,18 +76,36 @@ export const useAuthStore = create<AuthState>()(
         throw new Error(errorDescription || errorParam);
       }
 
-      // Supabase Authからセッションを取得
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      
-      console.log('🔵 Supabase session:', { 
-        hasSession: !!session,
-        hasAccessToken: !!session?.access_token,
-        hasRefreshToken: !!session?.refresh_token,
-        error: sessionError?.message
-      });
+      let session = null;
 
-      if (sessionError) {
-        throw new Error(`セッション取得エラー: ${sessionError.message}`);
+      // ハッシュにトークンがある場合は直接セッションを設定（最優先）
+      if (hashAccessToken) {
+        console.log('🔵 Setting session from URL hash tokens...');
+        const { data, error: setSessionError } = await supabase.auth.setSession({
+          access_token: hashAccessToken,
+          refresh_token: hashRefreshToken || '',
+        });
+        if (!setSessionError && data.session) {
+          session = data.session;
+          console.log('✅ Session set from hash tokens');
+        } else {
+          console.warn('⚠️ Failed to set session from hash:', setSessionError?.message);
+        }
+      }
+
+      // ハッシュにトークンがない場合はgetSession()を試みる
+      if (!session) {
+        const { data: { session: existingSession }, error: sessionError } = await supabase.auth.getSession();
+        
+        console.log('🔵 Supabase getSession:', { 
+          hasSession: !!existingSession,
+          error: sessionError?.message
+        });
+
+        if (sessionError) {
+          throw new Error(`セッション取得エラー: ${sessionError.message}`);
+        }
+        session = existingSession;
       }
 
       if (!session) {
