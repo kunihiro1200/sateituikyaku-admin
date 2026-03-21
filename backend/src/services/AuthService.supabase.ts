@@ -2,6 +2,11 @@ import { BaseRepository } from '../repositories/BaseRepository';
 import { Employee, EmployeeRole } from '../types';
 import { extractDisplayName, GoogleUserMetadata } from '../utils/employeeUtils';
 
+// validateSession のインメモリキャッシュ（5分TTL）
+// Vercel サーバーレスでも同一プロセス内のリクエスト間でキャッシュが共有される
+const _sessionCache = new Map<string, { employee: Employee; expiresAt: number }>();
+const SESSION_CACHE_TTL_MS = 5 * 60 * 1000; // 5分
+
 export class AuthService extends BaseRepository {
 
   /**
@@ -124,6 +129,13 @@ export class AuthService extends BaseRepository {
    * employeesテーブルに登録済み（is_active=true）であればOK
    */
   async validateSession(accessToken: string): Promise<Employee> {
+    // キャッシュをチェック（トークンの先頭32文字をキーに使用）
+    const cacheKey = accessToken.substring(0, 32);
+    const cached = _sessionCache.get(cacheKey);
+    if (cached && Date.now() < cached.expiresAt) {
+      return cached.employee;
+    }
+
     const { data: { user }, error } = await this.supabase.auth.getUser(accessToken);
 
     if (error || !user) {
@@ -137,6 +149,7 @@ export class AuthService extends BaseRepository {
       .single();
 
     if (employee && !employeeError) {
+      _sessionCache.set(cacheKey, { employee, expiresAt: Date.now() + SESSION_CACHE_TTL_MS });
       return employee;
     }
 
@@ -153,6 +166,7 @@ export class AuthService extends BaseRepository {
         await this.table('employees')
           .update({ google_id: user.id })
           .eq('id', employeeByEmail.id);
+        _sessionCache.set(cacheKey, { employee: employeeByEmail, expiresAt: Date.now() + SESSION_CACHE_TTL_MS });
         return employeeByEmail;
       }
     }
