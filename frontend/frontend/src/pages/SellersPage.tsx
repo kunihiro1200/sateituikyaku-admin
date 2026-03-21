@@ -70,6 +70,7 @@ interface Seller {
   visitAssignee?: string;
   visitAssigneeInitials?: string;
   currentStatus?: string;
+  phoneContactPerson?: string;
 }
 
 const statusLabels: Record<string, string> = {
@@ -717,6 +718,9 @@ export default function SellersPage() {
               <TableRow>
                 <TableCell>売主番号</TableCell>
                 <TableCell>名前</TableCell>
+                {(selectedCategory === 'todayCall' || selectedCategory === 'todayCallNotStarted' || selectedCategory === 'pinrichEmpty') && (
+                  <TableCell>担当</TableCell>
+                )}
                 <TableCell>反響日付</TableCell>
                 <TableCell>サイト</TableCell>
                 <TableCell>確度</TableCell>
@@ -733,13 +737,13 @@ export default function SellersPage() {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={13} align="center">
+                  <TableCell colSpan={(selectedCategory === 'todayCall' || selectedCategory === 'todayCallNotStarted' || selectedCategory === 'pinrichEmpty') ? 14 : 13} align="center">
                     読み込み中...
                   </TableCell>
                 </TableRow>
               ) : filteredSellers.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={13} align="center">
+                  <TableCell colSpan={(selectedCategory === 'todayCall' || selectedCategory === 'todayCallNotStarted' || selectedCategory === 'pinrichEmpty') ? 14 : 13} align="center">
                     売主が見つかりませんでした
                   </TableCell>
                 </TableRow>
@@ -766,6 +770,13 @@ export default function SellersPage() {
                       </Typography>
                     </TableCell>
                     <TableCell>{seller.name}</TableCell>
+                    {(selectedCategory === 'todayCall' || selectedCategory === 'todayCallNotStarted' || selectedCategory === 'pinrichEmpty') && (
+                      <TableCell>
+                        {seller.phoneContactPerson ? (
+                          <Chip label={seller.phoneContactPerson} size="small" color="warning" />
+                        ) : '-'}
+                      </TableCell>
+                    )}
                     <TableCell>
                       {formatInquiryDate(seller)}
                     </TableCell>

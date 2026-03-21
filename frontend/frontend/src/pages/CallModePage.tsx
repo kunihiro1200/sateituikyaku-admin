@@ -2559,6 +2559,17 @@ HP：https://ifoo-oita.com/
           <Button startIcon={<ArrowBack />} onClick={() => navigate('/')} variant="outlined">
             一覧
           </Button>
+          <Button
+            variant="outlined"
+            color="error"
+            size="small"
+            onClick={() => {
+              sessionStorage.setItem('selectedStatusCategory', 'todayCall');
+              navigate('/');
+            }}
+          >
+            当日TEL分一覧
+          </Button>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <Typography variant="h5" fontWeight="bold" sx={{ color: SECTION_COLORS.seller.main }}>{seller?.name || '読み込み中...'}</Typography>
             {seller?.sellerNumber && (
