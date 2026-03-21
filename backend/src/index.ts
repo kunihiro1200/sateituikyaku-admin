@@ -252,6 +252,62 @@ app.get('/api/cron/sync-inquiries', async (req, res) => {
   }
 });
 
+// GASバックフィル用: inquiry_id / inquiry_detailed_datetime / site_url を更新
+// CRON_SECRET認証（認証ミドルウェア不要）
+app.post('/api/sellers/backfill-inquiry', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    const cronSecret = process.env.CRON_SECRET;
+    if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const { sellerNumber, inquiryId, inquiryDetailedDatetime, siteUrl } = req.body;
+
+    if (!sellerNumber) {
+      return res.status(400).json({ error: 'sellerNumber is required' });
+    }
+
+    const { createClient } = await import('@supabase/supabase-js');
+    const db = createClient(
+      process.env.SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_KEY!
+    );
+
+    const updates: any = {};
+    if (inquiryId !== undefined && inquiryId !== null && inquiryId !== '') {
+      updates.inquiry_id = String(inquiryId);
+    }
+    if (inquiryDetailedDatetime !== undefined && inquiryDetailedDatetime !== null && inquiryDetailedDatetime !== '') {
+      updates.inquiry_detailed_datetime = inquiryDetailedDatetime;
+    }
+    if (siteUrl !== undefined && siteUrl !== null && siteUrl !== '') {
+      updates.site_url = String(siteUrl);
+    }
+
+    if (Object.keys(updates).length === 0) {
+      return res.status(400).json({ error: 'No fields to update' });
+    }
+
+    const { error } = await db
+      .from('sellers')
+      .update(updates)
+      .eq('seller_number', sellerNumber)
+      .is('deleted_at', null);
+
+    if (error) {
+      console.error(`[backfill-inquiry] ${sellerNumber}: DB error`, error);
+      return res.status(500).json({ error: error.message });
+    }
+
+    console.log(`[backfill-inquiry] ✅ ${sellerNumber}: updated`, updates);
+    res.json({ success: true, sellerNumber, updated: updates });
+  } catch (error: any) {
+    console.error('[backfill-inquiry] error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // GAS onEditトリガー用 - スプレッドシートの1行分のデータを受け取ってDBを更新
 // ⚠️ 注意: /api/cron/ パスはVercelが保護するため /api/webhook/ パスを使用
 app.post('/api/webhook/seller-row', async (req, res) => {

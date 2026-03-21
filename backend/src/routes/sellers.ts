@@ -1079,57 +1079,5 @@ router.get('/:id/inquiry-url', async (req: Request, res: Response) => {
   }
 });
 
-/**
- * POST /api/sellers/backfill-inquiry
- * GASバックフィル用: seller_numberでID・反響詳細日時を更新
- */
-router.post('/backfill-inquiry', async (req: Request, res: Response) => {
-  try {
-    const { sellerNumber, inquiryId, inquiryDetailedDatetime, siteUrl } = req.body;
-
-    if (!sellerNumber) {
-      return res.status(400).json({ error: 'sellerNumber is required' });
-    }
-
-    const { createClient } = await import('@supabase/supabase-js');
-    const db = createClient(
-      process.env.SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_KEY!
-    );
-
-    const updates: any = {};
-    if (inquiryId !== undefined && inquiryId !== null && inquiryId !== '') {
-      updates.inquiry_id = String(inquiryId);
-    }
-    if (inquiryDetailedDatetime !== undefined && inquiryDetailedDatetime !== null && inquiryDetailedDatetime !== '') {
-      updates.inquiry_detailed_datetime = inquiryDetailedDatetime;
-    }
-    if (siteUrl !== undefined && siteUrl !== null && siteUrl !== '') {
-      updates.site_url = String(siteUrl);
-    }
-
-    if (Object.keys(updates).length === 0) {
-      return res.status(400).json({ error: 'No fields to update' });
-    }
-
-    const { error } = await db
-      .from('sellers')
-      .update(updates)
-      .eq('seller_number', sellerNumber)
-      .is('deleted_at', null);
-
-    if (error) {
-      console.error(`[backfill-inquiry] ${sellerNumber}: DB error`, error);
-      return res.status(500).json({ error: error.message });
-    }
-
-    console.log(`[backfill-inquiry] ✅ ${sellerNumber}: updated`, updates);
-    res.json({ success: true, sellerNumber, updated: updates });
-  } catch (error: any) {
-    console.error('[backfill-inquiry] error:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
 export default router;
 
