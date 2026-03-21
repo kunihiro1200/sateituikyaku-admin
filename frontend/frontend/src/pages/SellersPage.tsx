@@ -373,7 +373,6 @@ export default function SellersPage() {
 
   const fetchSellers = async () => {
     try {
-      setLoading(true);
       const params: any = {
         page: page + 1,
         pageSize: rowsPerPage,
@@ -403,12 +402,12 @@ export default function SellersPage() {
       // キャッシュキー（パラメータを含む）
       const cacheKey = `${CACHE_KEYS.SELLERS_LIST}:${JSON.stringify(params)}`;
 
-      // キャッシュが有効な場合は即座に表示
+      // キャッシュが有効な場合はローディングなしで即座に表示
       const cached = pageDataCache.get<{ data: Seller[]; total: number }>(cacheKey);
       if (cached) {
         setSellers(cached.data);
         setTotal(cached.total);
-        setLoading(false);
+        setLoading(false); // キャッシュヒット時はローディングを解除
         // バックグラウンドで最新データを取得してキャッシュを更新
         api.get('/api/sellers', { params }).then((response) => {
           setSellers(response.data.data);
@@ -417,7 +416,9 @@ export default function SellersPage() {
         }).catch((err) => console.error('Background sellers refresh failed:', err));
         return;
       }
-      
+
+      // キャッシュなしの場合のみローディング表示
+      setLoading(true);
       const response = await api.get('/api/sellers', { params });
       setSellers(response.data.data);
       setTotal(response.data.total);
