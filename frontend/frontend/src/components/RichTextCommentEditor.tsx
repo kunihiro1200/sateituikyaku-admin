@@ -89,7 +89,7 @@ const RichTextCommentEditor = React.forwardRef<RichTextCommentEditorHandle, Rich
   ({ value, onChange, placeholder = 'コメントを入力...', disabled = false }, ref) => {
     const editorRef = useRef<HTMLDivElement>(null);
     // カーソル位置をテキストオフセットで保存
-    const cursorOffsetRef = useRef<number | null>(null);
+    const cursorOffsetRef = useRef<number>(-1);
     const isFocusedRef = useRef<boolean>(false);
 
     // 初期値の設定（フォーカス中は上書きしない）
@@ -163,7 +163,7 @@ const RichTextCommentEditor = React.forwardRef<RichTextCommentEditorHandle, Rich
 
         const offset = cursorOffsetRef.current;
 
-        if (offset !== null) {
+        if (offset >= 0) {
           // テキストオフセットを使って innerHTML に直接挿入
           // 現在の innerHTML を取得
           const currentHtml = editor.innerHTML;
