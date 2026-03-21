@@ -69,8 +69,7 @@ const RichTextCommentEditor = React.forwardRef<RichTextCommentEditorHandle, Rich
     // \u30ab\u30fc\u30bd\u30eb\u4f4d\u7f6e\uff08Range\uff09\u3092\u4fdd\u5b58\u3059\u308bref
     // selectionchange \u3067\u30ea\u30a2\u30eb\u30bf\u30a4\u30e0\u66f4\u65b0\u3059\u308b\u305f\u3081\u3001blur \u3088\u308a\u5148\u306b\u8a18\u9332\u3055\u308c\u308b
     const savedRangeRef = useRef<Range | null>(null);
-    // insertAtCursor 実行中は selectionchange による savedRangeRef の上書きを防ぐ
-    const isInsertingRef = useRef<boolean>(false);
+
 
     // \u521d\u671f\u5024\u306e\u8a2d\u5b9a
     useEffect(() => {
@@ -133,9 +132,6 @@ const RichTextCommentEditor = React.forwardRef<RichTextCommentEditorHandle, Rich
         const editor = editorRef.current;
         if (!editor) return;
 
-        // selectionchange による savedRangeRef の上書きを防ぐ
-        isInsertingRef.current = true;
-
         try {
           // カーソル位置を退避（focus() 前に必ず退避する）
           const savedRange = savedRangeRef.current ? savedRangeRef.current.cloneRange() : null;
@@ -195,8 +191,6 @@ const RichTextCommentEditor = React.forwardRef<RichTextCommentEditorHandle, Rich
         } catch (e) {
           // エラー時は末尾に追加
           editor.innerHTML = editor.innerHTML + html;
-        } finally {
-          isInsertingRef.current = false;
         }
 
         handleInput();
@@ -226,6 +220,7 @@ const RichTextCommentEditor = React.forwardRef<RichTextCommentEditorHandle, Rich
             ref={editorRef}
             contentEditable={!disabled}
             onInput={handleInput}
+            onBlur={handleBlur}
             data-placeholder={placeholder}
             suppressContentEditableWarning
           />
