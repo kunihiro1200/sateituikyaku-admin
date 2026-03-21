@@ -1354,7 +1354,9 @@ const CallModePage = () => {
   };
 
   const handleBack = () => {
-    // 未保存のデータがある場合は確認ダイアログを表示
+    // 売主一覧キャッシュを無効化（最終電話などが即時反映されるように）
+    pageDataCache.invalidateByPrefix(CACHE_KEYS.SELLERS_LIST);
+    pageDataCache.invalidate(CACHE_KEYS.SELLERS_SIDEBAR_COUNTS);
     navigate(`/sellers/${id}`);
   };
 

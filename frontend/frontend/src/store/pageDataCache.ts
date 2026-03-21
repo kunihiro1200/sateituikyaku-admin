@@ -40,6 +40,14 @@ class PageDataCache {
     this.cache.delete(key);
   }
 
+  invalidateByPrefix(prefix: string): void {
+    for (const key of this.cache.keys()) {
+      if (key === prefix || key.startsWith(prefix + ':')) {
+        this.cache.delete(key);
+      }
+    }
+  }
+
   invalidateAll(): void {
     this.cache.clear();
   }
