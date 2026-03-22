@@ -104,17 +104,18 @@ export function calculateBuyerStatus(buyer: BuyerData): StatusResult {
       return { status, priority: 4, matchedCondition: '内覧が未確定', color: getStatusColor(status) };
     }
 
-    // Priority 5: 一般媒介_内覧後売主連絡未
+    // Priority 5: 一般媒介_内覧後売主連絡未（内覧日が2026/3/1以降のみ対象）
     if (
       and(
         contains(buyer.viewing_type_general, '一般'),
         isNotBlank(buyer.latest_viewing_date),
         isPast(buyer.latest_viewing_date),
+        isAfterOrEqual(buyer.latest_viewing_date, '2026-03-01'),
         isBlank(buyer.post_viewing_seller_contact)
       )
     ) {
       const status = '一般媒介_内覧後売主連絡未';
-      return { status, priority: 5, matchedCondition: '一般媒介で内覧後の売主連絡が未完了', color: getStatusColor(status) };
+      return { status, priority: 5, matchedCondition: '一般媒介で内覧後の売主連絡が未完了（2026/3/1以降）', color: getStatusColor(status) };
     }
 
     // Priority 6: ⑯当日TEL（次電日が当日以前 かつ 追客担当なし）
