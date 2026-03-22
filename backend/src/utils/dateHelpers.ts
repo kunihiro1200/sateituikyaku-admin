@@ -4,22 +4,50 @@
  * AppSheetのIFSロジックで使用される日付関連の条件判定をサポートします。
  */
 
+const JST_OFFSET_MS = 9 * 60 * 60 * 1000; // UTC+9
+
 /**
- * YYYY-MM-DD 形式の文字列をJSTのローカル日付として解釈する
- * new Date('2026-03-22') はUTC 00:00として解釈されるため、
- * JST（UTC+9）では前日の15:00になってしまう問題を回避する
+ * 任意の日付文字列をJSTの「年/月/日」として解釈し、
+ * その日の JST 00:00:00 に相当する Date オブジェクトを返す。
+ *
+ * - "2026-03-23"                    → JST 2026-03-23
+ * - "2026-03-23T00:00:00+00:00"     → UTC 00:00 = JST 09:00 → JST 日付は 2026-03-23
+ * - "2026-03-22T15:00:00+00:00"     → UTC 15:00 = JST 00:00 → JST 日付は 2026-03-23
+ *
+ * Vercel本番（UTC）でもローカル（JST）でも同じ結果になる。
  */
 function parseDateLocal(date: Date | string): Date {
   if (typeof date === 'string') {
-    // YYYY-MM-DD 形式（タイムゾーンなし）はローカル時刻として解釈
-    // new Date('2026-03-22') はUTC 00:00 → JST 09:00 になるため前日扱いになる問題を回避
-    const match = date.match(/^(\d{4})-(\d{2})-(\d{2})/);
-    if (match) {
-      return new Date(parseInt(match[1]), parseInt(match[2]) - 1, parseInt(match[3]));
+    // タイムゾーン情報なし（YYYY-MM-DD）の場合は JST の日付として扱う
+    const plainMatch = date.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (plainMatch) {
+      // JST 00:00:00 = UTC -9h として Date を作成
+      return new Date(Date.UTC(
+        parseInt(plainMatch[1]),
+        parseInt(plainMatch[2]) - 1,
+        parseInt(plainMatch[3])
+      ) - JST_OFFSET_MS);
+    }
+    // タイムゾーン付き（ISO 8601）の場合は UTC に変換してから JST 日付を取得
+    const d = new Date(date);
+    if (!isNaN(d.getTime())) {
+      const jstMs = d.getTime() + JST_OFFSET_MS;
+      const jst = new Date(jstMs);
+      return new Date(Date.UTC(jst.getUTCFullYear(), jst.getUTCMonth(), jst.getUTCDate()) - JST_OFFSET_MS);
     }
     return new Date(date);
   }
-  return date;
+  // Date オブジェクトの場合も JST 日付に正規化
+  const jstMs = date.getTime() + JST_OFFSET_MS;
+  const jst = new Date(jstMs);
+  return new Date(Date.UTC(jst.getUTCFullYear(), jst.getUTCMonth(), jst.getUTCDate()) - JST_OFFSET_MS);
+}
+
+/**
+ * 今日の JST 00:00:00 に相当する Date を返す
+ */
+function todayJST(): Date {
+  return parseDateLocal(new Date());
 }
 
 /**
@@ -29,12 +57,8 @@ export function isToday(date: Date | string | null | undefined): boolean {
   if (!date) return false;
   const targetDate = parseDateLocal(date);
   if (isNaN(targetDate.getTime())) return false;
-  const today = new Date();
-  return (
-    targetDate.getFullYear() === today.getFullYear() &&
-    targetDate.getMonth() === today.getMonth() &&
-    targetDate.getDate() === today.getDate()
-  );
+  const today = todayJST();
+  return targetDate.getTime() === today.getTime();
 }
 
 /**
@@ -44,13 +68,9 @@ export function isTomorrow(date: Date | string | null | undefined): boolean {
   if (!date) return false;
   const targetDate = parseDateLocal(date);
   if (isNaN(targetDate.getTime())) return false;
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  return (
-    targetDate.getFullYear() === tomorrow.getFullYear() &&
-    targetDate.getMonth() === tomorrow.getMonth() &&
-    targetDate.getDate() === tomorrow.getDate()
-  );
+  const tomorrow = todayJST();
+  tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+  return targetDate.getTime() === tomorrow.getTime();
 }
 
 /**
@@ -60,10 +80,7 @@ export function isPast(date: Date | string | null | undefined): boolean {
   if (!date) return false;
   const targetDate = parseDateLocal(date);
   if (isNaN(targetDate.getTime())) return false;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  targetDate.setHours(0, 0, 0, 0);
-  return targetDate < today;
+  return targetDate < todayJST();
 }
 
 /**
@@ -73,8 +90,9 @@ export function getDayOfWeek(date: Date | string | null | undefined): string | n
   if (!date) return null;
   const targetDate = parseDateLocal(date);
   if (isNaN(targetDate.getTime())) return null;
+  // JST 00:00 として格納されているので UTC の曜日を使う
   const days = ['日曜日', '月曜日', '火曜日', '水曜日', '木曜日', '金曜日', '土曜日'];
-  return days[targetDate.getDay()];
+  return days[targetDate.getUTCDay()];
 }
 
 /**
@@ -91,13 +109,9 @@ export function isDaysFromToday(date: Date | string | null | undefined, days: nu
   if (!date) return false;
   const targetDate = parseDateLocal(date);
   if (isNaN(targetDate.getTime())) return false;
-  const futureDate = new Date();
-  futureDate.setDate(futureDate.getDate() + days);
-  return (
-    targetDate.getFullYear() === futureDate.getFullYear() &&
-    targetDate.getMonth() === futureDate.getMonth() &&
-    targetDate.getDate() === futureDate.getDate()
-  );
+  const futureDate = todayJST();
+  futureDate.setUTCDate(futureDate.getUTCDate() + days);
+  return targetDate.getTime() === futureDate.getTime();
 }
 
 /**
@@ -107,10 +121,7 @@ export function isTodayOrPast(date: Date | string | null | undefined): boolean {
   if (!date) return false;
   const targetDate = parseDateLocal(date);
   if (isNaN(targetDate.getTime())) return false;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  targetDate.setHours(0, 0, 0, 0);
-  return targetDate <= today;
+  return targetDate <= todayJST();
 }
 
 /**
@@ -128,16 +139,13 @@ export function isWithinDaysAgo(
   if (!date) return false;
   const targetDate = parseDateLocal(date);
   if (isNaN(targetDate.getTime())) return false;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  targetDate.setHours(0, 0, 0, 0);
+  const today = todayJST();
 
-  // 経過日数を計算
+  // 経過日数を計算（ms → 日数）
   const diffTime = today.getTime() - targetDate.getTime();
-  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+  const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
 
   // maxDaysAgo日前から minDaysAgo日前までの範囲
-  // 例: isWithinDaysAgo(date, 14, 4) → 4日 <= 経過日数 <= 14日
   return diffDays >= maxDaysAgo && diffDays <= minDaysAgo;
 }
 
@@ -153,7 +161,5 @@ export function isAfterOrEqual(
   if (isNaN(targetDate.getTime())) return false;
   const compDate = parseDateLocal(compareDate);
   if (isNaN(compDate.getTime())) return false;
-  targetDate.setHours(0, 0, 0, 0);
-  compDate.setHours(0, 0, 0, 0);
   return targetDate >= compDate;
 }

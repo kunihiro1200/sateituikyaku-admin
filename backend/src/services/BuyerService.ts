@@ -6,6 +6,8 @@ import { ConflictResolver, ConflictInfo } from './ConflictResolver';
 import { RetryHandler } from './RetryHandler';
 import { BuyerColumnMapper } from './BuyerColumnMapper';
 import { GoogleSheetsClient } from './GoogleSheetsClient';
+import { calculateBuyerStatus } from './BuyerStatusCalculator';
+import { STATUS_DEFINITIONS } from '../config/buyer-status-definitions';
 
 export interface BuyerQueryOptions {
   page?: number;
@@ -1258,8 +1260,6 @@ export class BuyerService {
    */
   private async fetchAllBuyers(): Promise<any[]> {
     const PAGE_SIZE = 1000;
-    const allBuyers: any[] = [];
-    let from = 0;
 
     // ステータス計算と物件情報表示に必要なカラムのみ取得（select('*')より大幅に高速化）
     const BUYER_COLUMNS = [
@@ -1277,19 +1277,38 @@ export class BuyerService {
       'desired_area', 'desired_property_type', 'budget',
     ].join(', ');
 
-    while (true) {
-      const { data, error } = await this.supabase
-        .from('buyers')
-        .select(BUYER_COLUMNS)
-        .is('deleted_at', null)
-        .range(from, from + PAGE_SIZE - 1);
+    // まず件数を取得して並列バッチ数を決定
+    const { count, error: countError } = await this.supabase
+      .from('buyers')
+      .select('*', { count: 'exact', head: true })
+      .is('deleted_at', null);
 
+    if (countError) throw new Error(`Failed to count buyers: ${countError.message}`);
+
+    const totalCount = count || 0;
+    if (totalCount === 0) return [];
+
+    // バッチ範囲を計算して並列取得
+    const batchCount = Math.ceil(totalCount / PAGE_SIZE);
+    const ranges: Array<[number, number]> = [];
+    for (let i = 0; i < batchCount; i++) {
+      ranges.push([i * PAGE_SIZE, (i + 1) * PAGE_SIZE - 1]);
+    }
+
+    const batchResults = await Promise.all(
+      ranges.map(([from, to]) =>
+        this.supabase
+          .from('buyers')
+          .select(BUYER_COLUMNS)
+          .is('deleted_at', null)
+          .range(from, to)
+      )
+    );
+
+    const allBuyers: any[] = [];
+    for (const { data, error } of batchResults) {
       if (error) throw new Error(`Failed to fetch buyers: ${error.message}`);
-      if (!data || data.length === 0) break;
-
-      allBuyers.push(...data);
-      if (data.length < PAGE_SIZE) break;
-      from += PAGE_SIZE;
+      if (data) allBuyers.push(...data);
     }
 
     // 物件番号を収集して property_listings から必要なフィールドを一括取得
@@ -1361,7 +1380,6 @@ export class BuyerService {
       return this.statusCache.buyers;
     }
 
-    const { calculateBuyerStatus } = await import('./BuyerStatusCalculator');
     const allBuyers = await this.fetchAllBuyers();
 
     const buyers = allBuyers.map(buyer => {
@@ -1459,7 +1477,6 @@ export class BuyerService {
   private async buildCategoriesFromBuyers(allBuyers: any[]): Promise<Array<{
     status: string; count: number; priority: number; color: string;
   }>> {
-    const { STATUS_DEFINITIONS } = await import('../config/buyer-status-definitions');
 
     const statusCountMap = new Map<string, number>();
     allBuyers.forEach(buyer => {
@@ -1533,8 +1550,6 @@ export class BuyerService {
     color: string;
   }>> {
     try {
-      const { STATUS_DEFINITIONS } = await import('../config/buyer-status-definitions');
-
       const allBuyers = await this.fetchAllBuyersWithStatus();
 
       const statusCountMap = new Map<string, number>();
@@ -1688,8 +1703,6 @@ export class BuyerService {
    * ステータス付きで全買主を取得
    */
   async getBuyersWithStatus(): Promise<any[]> {
-    const { calculateBuyerStatus } = await import('./BuyerStatusCalculator');
-
     // 1000件制限を回避するため全件取得
     const allBuyers = await this.fetchAllBuyers();
 
