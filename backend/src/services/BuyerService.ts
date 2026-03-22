@@ -46,12 +46,12 @@ export class BuyerService {
   private retryHandler: RetryHandler | null = null;
   private columnMapper: BuyerColumnMapper | null = null;
 
-  // ステータス計算結果のキャッシュ（TTL: 2分）
+  // ステータス計算結果のキャッシュ（TTL: 10分）
   private statusCache: {
     buyers: any[];
     computedAt: number;
   } | null = null;
-  private readonly STATUS_CACHE_TTL = 2 * 60 * 1000; // 2分
+  private readonly STATUS_CACHE_TTL = 10 * 60 * 1000; // 10分
 
   constructor() {
     this.supabase = createClient(
@@ -1303,16 +1303,24 @@ export class BuyerService {
 
     const propertyMap: Record<string, { atbb_status: string; property_address: string | null; sales_assignee: string | null; property_type: string | null }> = {};
     if (propertyNumbers.size > 0) {
-      // 1000件制限を回避するためバッチ処理
+      // バッチを並列で取得（直列→並列化でパフォーマンス改善）
       const propNumArray = Array.from(propertyNumbers);
       const BATCH_SIZE = 500;
+      const batches: string[][] = [];
       for (let i = 0; i < propNumArray.length; i += BATCH_SIZE) {
-        const batch = propNumArray.slice(i, i + BATCH_SIZE);
-        const { data: listings } = await this.supabase
-          .from('property_listings')
-          .select('property_number, atbb_status, address, sales_assignee, property_type')
-          .in('property_number', batch);
+        batches.push(propNumArray.slice(i, i + BATCH_SIZE));
+      }
 
+      const batchResults = await Promise.all(
+        batches.map(batch =>
+          this.supabase
+            .from('property_listings')
+            .select('property_number, atbb_status, address, sales_assignee, property_type')
+            .in('property_number', batch)
+        )
+      );
+
+      for (const { data: listings } of batchResults) {
         if (listings) {
           for (const listing of listings) {
             if (listing.property_number) {
@@ -1367,6 +1375,41 @@ export class BuyerService {
 
     this.statusCache = { buyers, computedAt: now };
     return buyers;
+  }
+
+  /**
+   * ステータスカテゴリのカウントのみを返す（サイドバー初期表示用・高速）
+   * キャッシュがある場合はそこから計算、なければ全件取得して計算しキャッシュに保存
+   */
+  async getStatusCategoriesOnly(): Promise<{
+    categories: Array<{ status: string; count: number; priority: number; color: string }>;
+    normalStaffInitials: string[];
+    fromCache: boolean;
+  }> {
+    const now = Date.now();
+    const fromCache = !!(this.statusCache && (now - this.statusCache.computedAt) < this.STATUS_CACHE_TTL);
+
+    // キャッシュがある場合は即座に返す
+    const allBuyers = await this.fetchAllBuyersWithStatus();
+    const categories = await this.buildCategoriesFromBuyers(allBuyers);
+
+    let normalStaffInitials: string[] = [];
+    try {
+      const { data: staffDataNormal, error: normalError } = await this.supabase
+        .from('employees')
+        .select('initials')
+        .eq('is_normal', true);
+      if (!normalError && staffDataNormal && staffDataNormal.length > 0) {
+        normalStaffInitials = staffDataNormal.map((s: any) => s.initials).filter((i: string) => i);
+      } else {
+        const { data: allStaffData } = await this.supabase.from('employees').select('initials');
+        normalStaffInitials = (allStaffData || []).map((s: any) => s.initials).filter((i: string) => i);
+      }
+    } catch {
+      // employeesテーブルが存在しない場合は空配列
+    }
+
+    return { categories, normalStaffInitials, fromCache };
   }
 
   /**

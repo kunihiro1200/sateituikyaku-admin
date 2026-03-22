@@ -87,6 +87,17 @@ router.get('/status-categories', async (_req: Request, res: Response) => {
   }
 });
 
+// ステータスカテゴリのカウントのみ返す（サイドバー初期表示用・高速）
+router.get('/status-categories-only', async (_req: Request, res: Response) => {
+  try {
+    const result = await buyerService.getStatusCategoriesOnly();
+    res.json(result);
+  } catch (error: any) {
+    console.error('Error fetching status categories only:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // ステータスカテゴリ + 全買主データを一度に返す（フロントエンドキャッシュ用）
 router.get('/status-categories-with-buyers', async (_req: Request, res: Response) => {
   try {
