@@ -1481,8 +1481,8 @@ export class BuyerService {
     const statusCountMap = new Map<string, number>();
     allBuyers.forEach(buyer => {
       let status = buyer.calculated_status || '';
-      if (status.startsWith('⑯当日TEL（') || status.startsWith('⑯当日TEL(')) {
-        status = '⑯当日TEL';
+      if (status.startsWith('当日TEL（') || status.startsWith('当日TEL(')) {
+        status = '当日TEL';
       }
       statusCountMap.set(status, (statusCountMap.get(status) || 0) + 1);
     });
@@ -1555,8 +1555,8 @@ export class BuyerService {
       const statusCountMap = new Map<string, number>();
       allBuyers.forEach(buyer => {
         let status = buyer.calculated_status || '';
-        if (status.startsWith('⑯当日TEL（') || status.startsWith('⑯当日TEL(')) {
-          status = '⑯当日TEL';
+        if (status.startsWith('当日TEL（') || status.startsWith('当日TEL(')) {
+          status = '当日TEL';
         }
         statusCountMap.set(status, (statusCountMap.get(status) || 0) + 1);
       });

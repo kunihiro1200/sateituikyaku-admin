@@ -133,10 +133,8 @@ export default function BuyerStatusSidebar({
         sx={{
           py: 1,
           pl: isTodayCallSub ? 4 : 2,
-          borderLeft: `4px solid ${category.color}`,
           '&.Mui-selected': {
             backgroundColor: `${category.color}15`,
-            borderLeft: `4px solid ${category.color}`,
           },
           '&:hover': {
             backgroundColor: `${category.color}10`,

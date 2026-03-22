@@ -105,7 +105,7 @@ export function calculateBuyerStatus(buyer: BuyerData): StatusResult {
       return { status, priority: 4, matchedCondition: '内覧が未確定', color: getStatusColor(status) };
     }
 
-    // Priority 5: 一般媒介_内覧後売主連絡未（内覧日が2026/3/1以降のみ対象）
+    // Priority 8: 一般媒介_内覧後売主連絡未（内覧日が2026/3/1以降のみ対象）
     // 「一般」という文字列を含む場合が対象
     // atbb_statusに「公開中」が含まれる場合のみ対象（非公開・未公開などは除外）
     if (
@@ -119,10 +119,10 @@ export function calculateBuyerStatus(buyer: BuyerData): StatusResult {
       )
     ) {
       const status = '一般媒介_内覧後売主連絡未';
-      return { status, priority: 5, matchedCondition: '一般媒介で内覧後の売主連絡が未完了（2026/3/1以降）', color: getStatusColor(status) };
+      return { status, priority: 8, matchedCondition: '一般媒介で内覧後の売主連絡が未完了（2026/3/1以降）', color: getStatusColor(status) };
     }
 
-    // Priority 6: ⑯当日TEL（次電日が当日以前 かつ 追客担当なし）
+    // Priority 6: 当日TEL（次電日が当日以前 かつ 追客担当なし）
     // 追客担当がある場合は Priority 23以降の担当者別カテゴリで「当日TEL(林)」として表示
     if (
       and(
@@ -131,11 +131,11 @@ export function calculateBuyerStatus(buyer: BuyerData): StatusResult {
         isBlank(buyer.follow_up_assignee)
       )
     ) {
-      const status = '⑯当日TEL';
-      return { status, priority: 6, matchedCondition: '次電日が当日以前（担当なし）', color: getStatusColor('⑯当日TEL') };
+      const status = '当日TEL';
+      return { status, priority: 6, matchedCondition: '次電日が当日以前（担当なし）', color: getStatusColor('当日TEL') };
     }
 
-    // Priority 7: 問合メール未対応
+    // Priority 5: 問合メール未対応
     // スプレッドシートのIFS式に合わせてOR条件で判定:
     //   1. 電話対応が "未"
     //   2. メール返信が "未"
@@ -155,10 +155,10 @@ export function calculateBuyerStatus(buyer: BuyerData): StatusResult {
       )
     ) {
       const status = '問合メール未対応';
-      return { status, priority: 7, matchedCondition: '問い合わせメールへの対応が未完了', color: getStatusColor(status) };
+      return { status, priority: 5, matchedCondition: '問い合わせメールへの対応が未完了', color: getStatusColor(status) };
     }
 
-    // Priority 8: 3回架電未
+    // Priority 7: 3回架電未
     // 条件: [3回架電確認済み] = "3回架電未" AND ([【問合メール】電話対応] = "不通" OR "未")
     if (
       and(
@@ -170,7 +170,7 @@ export function calculateBuyerStatus(buyer: BuyerData): StatusResult {
       )
     ) {
       const status = '3回架電未';
-      return { status, priority: 8, matchedCondition: '3回架電が未完了', color: getStatusColor(status) };
+      return { status, priority: 7, matchedCondition: '3回架電が未完了', color: getStatusColor(status) };
     }
 
     // Priority 9: Y_内覧後未入力（追加条件あり）
@@ -300,7 +300,7 @@ export function calculateBuyerStatusComplete(buyer: BuyerData): StatusResult {
       if (isNotBlank(buyer.next_call_date) && isTodayOrPast(buyer.next_call_date)) {
         // 次電日が今日以前 → 当日TEL(林) として担当カテゴリのサブ扱い
         const status = `当日TEL(${assignee})`;
-        return { status, priority, matchedCondition: `担当${assignee}: 次電日が当日以前`, color: getStatusColor('⑯当日TEL') };
+        return { status, priority, matchedCondition: `担当${assignee}: 次電日が当日以前`, color: getStatusColor('当日TEL') };
       } else {
         // 通常の担当カテゴリ
         const status = `担当(${assignee})`;

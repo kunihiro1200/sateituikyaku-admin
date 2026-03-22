@@ -50,7 +50,7 @@ describe('バグ条件探索: 問合メール未対応の分類バグ', () => {
 
       // Assert: 未修正コードでは and 条件のため FAIL する → バグの存在を証明
       expect(result.status).toBe('問合メール未対応');
-      expect(result.priority).toBe(7);
+      expect(result.priority).toBe(5);
     });
   });
 
@@ -68,7 +68,7 @@ describe('バグ条件探索: 問合メール未対応の分類バグ', () => {
 
       // Assert: 未修正コードでは and 条件のため FAIL する → バグの存在を証明
       expect(result.status).toBe('問合メール未対応');
-      expect(result.priority).toBe(7);
+      expect(result.priority).toBe(5);
     });
   });
 
@@ -87,7 +87,7 @@ describe('バグ条件探索: 問合メール未対応の分類バグ', () => {
 
       // Assert: 未修正コードでは3番目の条件が未実装のため FAIL する → バグの存在を証明
       expect(result.status).toBe('問合メール未対応');
-      expect(result.priority).toBe(7);
+      expect(result.priority).toBe(5);
     });
   });
 
@@ -106,7 +106,7 @@ describe('バグ条件探索: 問合メール未対応の分類バグ', () => {
 
       // Assert: 未修正コードでは3番目の条件が未実装のため FAIL する → バグの存在を証明
       expect(result.status).toBe('問合メール未対応');
-      expect(result.priority).toBe(7);
+      expect(result.priority).toBe(5);
     });
   });
 
@@ -124,7 +124,7 @@ describe('バグ条件探索: 問合メール未対応の分類バグ', () => {
 
       // Assert: 修正前後ともに PASS する
       expect(result.status).toBe('問合メール未対応');
-      expect(result.priority).toBe(7);
+      expect(result.priority).toBe(5);
     });
   });
 });

@@ -9,8 +9,8 @@
  *   2. 両フィールド空欄の保持: inquiry_email_phone = null, inquiry_email_reply = null → 「問合メール未対応」に分類されない
  *   3. Priority 1 の優先度保持: valuation_survey が入力済み かつ valuation_survey_confirmed が空欄 → 「査定アンケート回答あり」（priority: 1）
  *   4. Priority 2 の優先度保持: broker_survey = "未" → 「業者問合せあり」（priority: 2）
- *   5. Priority 6 の優先度保持: next_call_date が今日以前 かつ follow_up_assignee が空欄 → 「⑯当日TEL」（priority: 6）
- *   6. Priority 8 の保持: three_calls_confirmed = "3回架電未" かつ inquiry_email_phone = "不通" → 「3回架電未」（priority: 8）
+ *   5. Priority 6 の優先度保持: next_call_date が今日以前 かつ follow_up_assignee が空欄 → 「当日TEL」（priority: 6）
+ *   6. Priority 7 の保持: three_calls_confirmed = "3回架電未" かつ inquiry_email_phone = "不通" → 「3回架電未」（priority: 7）
  *
  * Validates: Requirements 3.1, 3.2, 3.4
  */
@@ -114,7 +114,7 @@ describe('保持確認: バグ条件を満たさない入力の動作保持', ()
   });
 
   describe('ケース5: Priority 6 の優先度保持', () => {
-    it('next_call_date が今日以前 かつ follow_up_assignee が空欄 → 「⑯当日TEL」（priority: 6）', () => {
+    it('next_call_date が今日以前 かつ follow_up_assignee が空欄 → 「当日TEL」（priority: 6）', () => {
       // Arrange: Priority 6 の条件を満たす（過去の日付を使用）
       const buyer: BuyerData = {
         ...minimalBuyer,
@@ -129,13 +129,13 @@ describe('保持確認: バグ条件を満たさない入力の動作保持', ()
       const result = calculateBuyerStatus(buyer);
 
       // Assert: Priority 6 が優先されることを確認
-      expect(result.status).toBe('⑯当日TEL');
+      expect(result.status).toBe('当日TEL');
       expect(result.priority).toBe(6);
     });
   });
 
-  describe('ケース6: Priority 8 の保持', () => {
-    it('three_calls_confirmed = "3回架電未" かつ inquiry_email_phone = "不通" → 「3回架電未」（priority: 8）', () => {
+  describe('ケース6: Priority 7 の保持', () => {
+    it('three_calls_confirmed = "3回架電未" かつ inquiry_email_phone = "不通" → 「3回架電未」（priority: 7）', () => {
       // Arrange: Priority 8 の条件を満たす（Priority 1〜7 は満たさない）
       // inquiry_email_phone = "不通" は Priority 7 の条件を満たさないため、Priority 8 に分類される
       const buyer: BuyerData = {
@@ -150,7 +150,7 @@ describe('保持確認: バグ条件を満たさない入力の動作保持', ()
 
       // Assert: Priority 8 に分類されることを確認
       expect(result.status).toBe('3回架電未');
-      expect(result.priority).toBe(8);
+      expect(result.priority).toBe(7);
     });
   });
 });

@@ -17,10 +17,10 @@ export const STATUS_DEFINITIONS: StatusDefinition[] = [
   { priority: 2, status: '業者問合せあり', description: '業者向けアンケートが未回答', color: '#2e7d32' },
   { priority: 3, status: '内覧日前日', description: '内覧日の前日（木曜日は2日前）', color: '#388e3c' },
   { priority: 4, status: '内覧未確定', description: '内覧日が未確定', color: '#43a047' },
-  { priority: 5, status: '一般媒介_内覧後売主連絡未', description: '一般媒介で内覧後の売主連絡が未完了', color: '#2e7d32' },
-  { priority: 6, status: '⑯当日TEL', description: '次電日が当日以前', color: '#388e3c' },
-  { priority: 7, status: '問合メール未対応', description: '問い合わせメールへの対応が未完了', color: '#43a047' },
-  { priority: 8, status: '3回架電未', description: '3回架電が未完了', color: '#4caf50' },
+  { priority: 5, status: '問合メール未対応', description: '問い合わせメールへの対応が未完了', color: '#43a047' },
+  { priority: 6, status: '当日TEL', description: '次電日が当日以前', color: '#388e3c' },
+  { priority: 7, status: '3回架電未', description: '3回架電が未完了', color: '#4caf50' },
+  { priority: 8, status: '一般媒介_内覧後売主連絡未', description: '一般媒介で内覧後の売主連絡が未完了', color: '#2e7d32' },
   { priority: 9, status: 'Y_内覧後未入力', description: '担当Y: 内覧後の入力が未完了', color: '#66bb6a' },
   { priority: 10, status: '生_内覧後未入力', description: '担当生: 内覧後の入力が未完了', color: '#66bb6a' },
   { priority: 11, status: 'U_内覧後未入力', description: '担当U: 内覧後の入力が未完了', color: '#66bb6a' },
@@ -54,9 +54,9 @@ export const STATUS_DEFINITIONS: StatusDefinition[] = [
 export function getStatusColor(status: string): string {
   const definition = STATUS_DEFINITIONS.find(d => d.status === status);
   if (definition) return definition.color;
-  // ⑯当日TEL（Y）のような動的ステータスは ⑯当日TEL の色を使用
-  if (status.startsWith('⑯当日TEL')) {
-    const base = STATUS_DEFINITIONS.find(d => d.status === '⑯当日TEL');
+  // 当日TEL（Y）のような動的ステータスは 当日TEL の色を使用
+  if (status.startsWith('当日TEL')) {
+    const base = STATUS_DEFINITIONS.find(d => d.status === '当日TEL');
     if (base) return base.color;
   }
   return '#cccccc';
