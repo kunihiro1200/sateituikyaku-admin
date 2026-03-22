@@ -1310,7 +1310,17 @@ export class BuyerService {
             return { ...buyer, calculated_status: '', status_priority: 999 };
           }
         })
-        .filter(buyer => buyer.calculated_status === status);
+        .filter(buyer => buyer.calculated_status === status)
+        .filter(buyer => {
+          if (!options.search) return true;
+          const s = options.search.toLowerCase();
+          return (
+            (buyer.buyer_number || '').toLowerCase().includes(s) ||
+            (buyer.name || '').toLowerCase().includes(s) ||
+            (buyer.phone_number || '').toLowerCase().includes(s) ||
+            (buyer.property_number || '').toLowerCase().includes(s)
+          );
+        });
 
       const { page = 1, limit = 50, sortBy = 'reception_date', sortOrder = 'desc' } = options;
       const offset = (page - 1) * limit;
