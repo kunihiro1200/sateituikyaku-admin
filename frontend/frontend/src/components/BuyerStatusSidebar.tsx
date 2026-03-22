@@ -78,7 +78,7 @@ export default function BuyerStatusSidebar({ selectedStatus, onStatusSelect, tot
         <Typography variant="subtitle1" fontWeight="bold">ステータス</Typography>
       </Box>
 
-      <List dense sx={{ maxHeight: 'calc(40vh - 100px)', overflow: 'auto' }}>
+      <List dense sx={{ overflow: 'visible' }}>
         {/* All カテゴリ */}
         <ListItemButton
           selected={!selectedStatus}
@@ -120,12 +120,6 @@ export default function BuyerStatusSidebar({ selectedStatus, onStatusSelect, tot
               primary={category.status || '（未分類）'}
               primaryTypographyProps={{
                 variant: 'body2',
-                noWrap: true,
-                sx: {
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap'
-                }
               }}
               sx={{ flex: 1, minWidth: 0, mr: 1 }}
             />

@@ -2664,7 +2664,7 @@ export class EnhancedAutoSyncService {
       await this.initializeBuyer();
     }
 
-    console.log('🔍 Detecting updated buyers (comparing data)...');
+    console.log('🔍 Detecting updated buyers (full field comparison)...');
 
     const allRows = await this.getBuyerSpreadsheetData();
     const sheetDataByBuyerNumber = new Map<string, any>();
@@ -2680,6 +2680,17 @@ export class EnhancedAutoSyncService {
     }
     console.log(`📊 Spreadsheet buyers: ${sheetDataByBuyerNumber.size}`);
 
+    // 日付型・数値型のDBカラム一覧（BuyerColumnMapperのtypeConversionsから取得）
+    const typeConversions = this.buyerColumnMapper.getTypeConversions();
+    const dateFields = new Set(Object.entries(typeConversions).filter(([, t]) => t === 'date' || t === 'datetime').map(([k]) => k));
+    const numberFields = new Set(Object.entries(typeConversions).filter(([, t]) => t === 'number').map(([k]) => k));
+
+    // 比較対象外のフィールド（主キー・タイムスタンプ・内部管理フィールド）
+    const skipFields = new Set([
+      'buyer_number', 'buyer_id', 'created_at', 'updated_at', 'created_datetime',
+      'db_updated_at', 'last_synced_at', 'deleted_at',
+    ]);
+
     const updatedBuyers: string[] = [];
     const pageSize = 1000;
     let offset = 0;
@@ -2687,9 +2698,10 @@ export class EnhancedAutoSyncService {
     let totalChecked = 0;
 
     while (hasMore) {
+      // 全DBカラムを取得（*）
       const { data: dbBuyers, error } = await this.supabase
         .from('buyers')
-        .select('buyer_number, latest_viewing_date, viewing_time, follow_up_assignee, latest_status, inquiry_email_phone, inquiry_email_reply, next_call_date, updated_at')
+        .select('*')
         .range(offset, offset + pageSize - 1);
 
       if (error) {
@@ -2708,61 +2720,44 @@ export class EnhancedAutoSyncService {
             continue;
           }
 
-          const sheetViewingDate = sheetRow['内覧日(最新)'];
-          const sheetViewingTime = sheetRow['内覧時間'];
-          const sheetFollowUpAssignee = sheetRow['後追い担当'];
-          const sheetLatestStatus = sheetRow['最新状況\n'];
-          const sheetInquiryEmailPhone = sheetRow['【問合メール】電話対応'];
-          const sheetInquiryEmailReply = sheetRow['【問合メール】メール返信'];
-          const sheetNextCallDate = sheetRow['★次電日'];
+          // スプレッドシートの行をDBマッピング形式に変換
+          const mappedSheetData = this.buyerColumnMapper.mapSpreadsheetToDatabase(
+            Object.keys(sheetRow),
+            Object.values(sheetRow)
+          );
 
           let needsUpdate = false;
 
-          if (sheetViewingDate && sheetViewingDate !== '') {
-            const formattedDate = this.formatBuyerDate(sheetViewingDate);
-            const dbDate = dbBuyer.latest_viewing_date ? String(dbBuyer.latest_viewing_date).substring(0, 10) : null;
-            if (formattedDate !== dbDate) {
-              needsUpdate = true;
+          for (const [dbField, sheetValue] of Object.entries(mappedSheetData)) {
+            if (skipFields.has(dbField)) continue;
+
+            const dbValue = dbBuyer[dbField];
+
+            if (dateFields.has(dbField)) {
+              // 日付フィールド: YYYY-MM-DD の先頭10文字で比較
+              const sheetDate = sheetValue ? String(sheetValue).substring(0, 10) : null;
+              const dbDate = dbValue ? String(dbValue).substring(0, 10) : null;
+              if (sheetDate !== dbDate) {
+                needsUpdate = true;
+                break;
+              }
+            } else if (numberFields.has(dbField)) {
+              // 数値フィールド: 数値として比較
+              const sheetNum = sheetValue !== null && sheetValue !== undefined ? Number(sheetValue) : null;
+              const dbNum = dbValue !== null && dbValue !== undefined ? Number(dbValue) : null;
+              if (sheetNum !== dbNum) {
+                needsUpdate = true;
+                break;
+              }
+            } else {
+              // 文字列フィールド: 空文字とnullを同一視して比較
+              const sheetStr = sheetValue !== null && sheetValue !== undefined ? String(sheetValue).trim() : '';
+              const dbStr = dbValue !== null && dbValue !== undefined ? String(dbValue).trim() : '';
+              if (sheetStr !== dbStr) {
+                needsUpdate = true;
+                break;
+              }
             }
-          } else if (dbBuyer.latest_viewing_date !== null) {
-            needsUpdate = true;
-          }
-
-          if (sheetViewingTime && sheetViewingTime !== dbBuyer.viewing_time) {
-            needsUpdate = true;
-          }
-
-          if (sheetFollowUpAssignee && sheetFollowUpAssignee !== dbBuyer.follow_up_assignee) {
-            needsUpdate = true;
-          }
-
-          if (sheetLatestStatus && sheetLatestStatus !== dbBuyer.latest_status) {
-            needsUpdate = true;
-          }
-
-          // 【問合メール】電話対応の変更を検出
-          const dbInquiryEmailPhone = dbBuyer.inquiry_email_phone || '';
-          const sheetInquiryEmailPhoneVal = sheetInquiryEmailPhone || '';
-          if (sheetInquiryEmailPhoneVal !== dbInquiryEmailPhone) {
-            needsUpdate = true;
-          }
-
-          // 【問合メール】メール返信の変更を検出
-          const dbInquiryEmailReply = dbBuyer.inquiry_email_reply || '';
-          const sheetInquiryEmailReplyVal = sheetInquiryEmailReply || '';
-          if (sheetInquiryEmailReplyVal !== dbInquiryEmailReply) {
-            needsUpdate = true;
-          }
-
-          // 次電日の変更を検出
-          if (sheetNextCallDate && sheetNextCallDate !== '') {
-            const formattedNextCallDate = this.formatBuyerDate(sheetNextCallDate);
-            const dbNextCallDate = dbBuyer.next_call_date ? String(dbBuyer.next_call_date).substring(0, 10) : null;
-            if (formattedNextCallDate !== dbNextCallDate) {
-              needsUpdate = true;
-            }
-          } else if (dbBuyer.next_call_date !== null) {
-            needsUpdate = true;
           }
 
           if (needsUpdate) {
