@@ -5,11 +5,28 @@
  */
 
 /**
+ * YYYY-MM-DD 形式の文字列をJSTのローカル日付として解釈する
+ * new Date('2026-03-22') はUTC 00:00として解釈されるため、
+ * JST（UTC+9）では前日の15:00になってしまう問題を回避する
+ */
+function parseDateLocal(date: Date | string): Date {
+  if (typeof date === 'string') {
+    // YYYY-MM-DD 形式の場合はローカル時刻として解釈
+    const match = date.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (match) {
+      return new Date(parseInt(match[1]), parseInt(match[2]) - 1, parseInt(match[3]));
+    }
+    return new Date(date);
+  }
+  return date;
+}
+
+/**
  * 指定された日付が今日かどうかを判定
  */
 export function isToday(date: Date | string | null | undefined): boolean {
   if (!date) return false;
-  const targetDate = typeof date === 'string' ? new Date(date) : date;
+  const targetDate = parseDateLocal(date);
   if (isNaN(targetDate.getTime())) return false;
   const today = new Date();
   return (
@@ -24,7 +41,7 @@ export function isToday(date: Date | string | null | undefined): boolean {
  */
 export function isTomorrow(date: Date | string | null | undefined): boolean {
   if (!date) return false;
-  const targetDate = typeof date === 'string' ? new Date(date) : date;
+  const targetDate = parseDateLocal(date);
   if (isNaN(targetDate.getTime())) return false;
   const tomorrow = new Date();
   tomorrow.setDate(tomorrow.getDate() + 1);
@@ -40,7 +57,7 @@ export function isTomorrow(date: Date | string | null | undefined): boolean {
  */
 export function isPast(date: Date | string | null | undefined): boolean {
   if (!date) return false;
-  const targetDate = typeof date === 'string' ? new Date(date) : date;
+  const targetDate = parseDateLocal(date);
   if (isNaN(targetDate.getTime())) return false;
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -53,7 +70,7 @@ export function isPast(date: Date | string | null | undefined): boolean {
  */
 export function getDayOfWeek(date: Date | string | null | undefined): string | null {
   if (!date) return null;
-  const targetDate = typeof date === 'string' ? new Date(date) : date;
+  const targetDate = parseDateLocal(date);
   if (isNaN(targetDate.getTime())) return null;
   const days = ['日曜日', '月曜日', '火曜日', '水曜日', '木曜日', '金曜日', '土曜日'];
   return days[targetDate.getDay()];
@@ -71,7 +88,7 @@ export function getTodayDayOfWeek(): string {
  */
 export function isDaysFromToday(date: Date | string | null | undefined, days: number): boolean {
   if (!date) return false;
-  const targetDate = typeof date === 'string' ? new Date(date) : date;
+  const targetDate = parseDateLocal(date);
   if (isNaN(targetDate.getTime())) return false;
   const futureDate = new Date();
   futureDate.setDate(futureDate.getDate() + days);
@@ -87,7 +104,7 @@ export function isDaysFromToday(date: Date | string | null | undefined, days: nu
  */
 export function isTodayOrPast(date: Date | string | null | undefined): boolean {
   if (!date) return false;
-  const targetDate = typeof date === 'string' ? new Date(date) : date;
+  const targetDate = parseDateLocal(date);
   if (isNaN(targetDate.getTime())) return false;
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -108,7 +125,7 @@ export function isWithinDaysAgo(
   maxDaysAgo: number
 ): boolean {
   if (!date) return false;
-  const targetDate = typeof date === 'string' ? new Date(date) : date;
+  const targetDate = parseDateLocal(date);
   if (isNaN(targetDate.getTime())) return false;
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -131,7 +148,7 @@ export function isAfterOrEqual(
   compareDate: Date | string
 ): boolean {
   if (!date) return false;
-  const targetDate = typeof date === 'string' ? new Date(date) : date;
+  const targetDate = parseDateLocal(date);
   if (isNaN(targetDate.getTime())) return false;
   const compDate = typeof compareDate === 'string' ? new Date(compareDate) : compareDate;
   if (isNaN(compDate.getTime())) return false;

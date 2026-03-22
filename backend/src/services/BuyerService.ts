@@ -1289,6 +1289,20 @@ export class BuyerService {
         });
       });
 
+      // STATUS_DEFINITIONSにないステータスも追加（担当(林)などの動的ステータス）
+      statusCountMap.forEach((count, status) => {
+        if (status === '') return; // 空ステータスは別途処理済み
+        if (count === 0) return;
+        const alreadyAdded = categories.some(c => c.status === status);
+        if (!alreadyAdded) {
+          // 担当(X)形式の動的ステータス
+          const assigneeMatch = status.match(/^担当\((.+)\)$/);
+          if (assigneeMatch) {
+            categories.push({ status, count, priority: 23, color: '#4caf50' });
+          }
+        }
+      });
+
       const emptyStatusCount = statusCountMap.get('') || 0;
       if (emptyStatusCount > 0) {
         categories.push({ status: '', count: emptyStatusCount, priority: 999, color: '#9E9E9E' });

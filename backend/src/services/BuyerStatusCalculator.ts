@@ -107,7 +107,7 @@ export function calculateBuyerStatus(buyer: BuyerData): StatusResult {
     // Priority 5: 一般媒介_内覧後売主連絡未
     if (
       and(
-        equals(buyer.viewing_type_general, '一般媒介'),
+        contains(buyer.viewing_type_general, '一般'),
         isNotBlank(buyer.latest_viewing_date),
         isPast(buyer.latest_viewing_date),
         isBlank(buyer.post_viewing_seller_contact)
