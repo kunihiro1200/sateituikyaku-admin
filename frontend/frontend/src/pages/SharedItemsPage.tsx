@@ -15,6 +15,9 @@ import {
   InputAdornment,
   IconButton,
   Button,
+  ListItemButton,
+  ListItemText,
+  Badge,
 } from '@mui/material';
 import { Search as SearchIcon, Clear as ClearIcon, Add as AddIcon } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
@@ -40,6 +43,7 @@ export default function SharedItemsPage() {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(50);
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedLocation, setSelectedLocation] = useState<string | null>(null);
 
   useEffect(() => {
     fetchAllSharedItems();
@@ -79,16 +83,35 @@ export default function SharedItemsPage() {
 
   // 検索フィルタリング
   const filteredItems = useMemo(() => {
-    if (!searchQuery.trim()) return allSharedItems;
+    let items = allSharedItems;
+
+    // 共有場フィルター
+    if (selectedLocation) {
+      items = items.filter(item => (item.sharing_location || '') === selectedLocation);
+    }
+
+    if (!searchQuery.trim()) return items;
     
     const query = searchQuery.toLowerCase();
-    return allSharedItems.filter(item => {
+    return items.filter(item => {
       // 全てのフィールドを検索対象にする
       return Object.values(item).some(value => 
         value && String(value).toLowerCase().includes(query)
       );
     });
-  }, [allSharedItems, searchQuery]);
+  }, [allSharedItems, searchQuery, selectedLocation]);
+
+  // サイドバー用カテゴリー集計（出現順を維持）
+  const locationCategories = useMemo(() => {
+    const seen = new Map<string, number>();
+    for (const item of allSharedItems) {
+      const loc = item.sharing_location || '';
+      if (loc) {
+        seen.set(loc, (seen.get(loc) || 0) + 1);
+      }
+    }
+    return Array.from(seen.entries()).map(([label, count]) => ({ label, count }));
+  }, [allSharedItems]);
 
   // ページネーション用
   const paginatedItems = useMemo(() => {
@@ -143,7 +166,69 @@ export default function SharedItemsPage() {
       {/* ページナビゲーション */}
       <PageNavigation />
 
-      <Box sx={{ flex: 1 }}>
+      {/* サイドバー＋メインコンテンツ */}
+      <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
+        {/* サイドバー */}
+        <Paper sx={{ width: 200, flexShrink: 0, alignSelf: 'flex-start' }}>
+          <Box sx={{ p: 2, borderBottom: '1px solid #eee' }}>
+            <Typography variant="subtitle1" fontWeight="bold">共有場</Typography>
+          </Box>
+          {/* All */}
+          <ListItemButton
+            selected={!selectedLocation}
+            onClick={() => { setSelectedLocation(null); setPage(0); }}
+            sx={{ py: 1 }}
+          >
+            <ListItemText
+              primary="All"
+              primaryTypographyProps={{ variant: 'body2', fontWeight: 'bold' }}
+              sx={{ flex: 1, minWidth: 0 }}
+            />
+            <Badge
+              badgeContent={allSharedItems.length}
+              sx={{
+                ml: 1,
+                '& .MuiBadge-badge': { backgroundColor: sharedItemsColor.main, color: '#fff' }
+              }}
+              max={9999}
+            />
+          </ListItemButton>
+          {/* 共有場カテゴリー */}
+          {locationCategories.map(({ label, count }) => (
+            <ListItemButton
+              key={label}
+              selected={selectedLocation === label}
+              onClick={() => { setSelectedLocation(label); setPage(0); }}
+              sx={{
+                py: 1,
+                borderLeft: `4px solid ${sharedItemsColor.main}`,
+                '&.Mui-selected': {
+                  backgroundColor: `${sharedItemsColor.main}15`,
+                },
+                '&:hover': {
+                  backgroundColor: `${sharedItemsColor.main}10`,
+                },
+              }}
+            >
+              <ListItemText
+                primary={label}
+                primaryTypographyProps={{ variant: 'body2' }}
+                sx={{ flex: 1, minWidth: 0, mr: 1 }}
+              />
+              <Badge
+                badgeContent={count}
+                sx={{
+                  ml: 1,
+                  '& .MuiBadge-badge': { backgroundColor: sharedItemsColor.main, color: '#fff' }
+                }}
+                max={9999}
+              />
+            </ListItemButton>
+          ))}
+        </Paper>
+
+        {/* メインコンテンツ */}
+        <Box sx={{ flex: 1, minWidth: 0 }}>
         {/* 検索バー */}
         <Paper sx={{ p: 2, mb: 2 }}>
           <TextField
@@ -254,6 +339,7 @@ export default function SharedItemsPage() {
             labelDisplayedRows={({ from, to, count }) => `${from}-${to} / ${count}件`}
           />
         </TableContainer>
+        </Box>
       </Box>
     </Container>
   );
