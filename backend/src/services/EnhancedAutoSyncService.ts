@@ -387,7 +387,7 @@ export class EnhancedAutoSyncService {
    */
   private async executeSoftDelete(sellerNumber: string): Promise<DeletionResult> {
     try {
-      // 売主を完全削除（ハードデリート）
+      // 売主をDBから完全削除（スプシから削除されたものはDBからも削除）
       const { error: deleteError } = await this.supabase
         .from('sellers')
         .delete()
@@ -402,12 +402,13 @@ export class EnhancedAutoSyncService {
         };
       }
 
+      const deletedAt = new Date().toISOString();
       console.log(`✅ ${sellerNumber}: Deleted successfully`);
 
       return {
         sellerNumber,
         success: true,
-        deletedAt: new Date(),
+        deletedAt: new Date(deletedAt),
       };
 
     } catch (error: any) {
