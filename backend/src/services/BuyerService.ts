@@ -1242,6 +1242,32 @@ export class BuyerService {
   /**
    * ステータスごとの買主数をカウント
    */
+  /**
+   * 全買主を1000件制限を回避して全件取得する
+   */
+  private async fetchAllBuyers(): Promise<any[]> {
+    const PAGE_SIZE = 1000;
+    const allBuyers: any[] = [];
+    let from = 0;
+
+    while (true) {
+      const { data, error } = await this.supabase
+        .from('buyers')
+        .select('*')
+        .is('deleted_at', null)
+        .range(from, from + PAGE_SIZE - 1);
+
+      if (error) throw new Error(`Failed to fetch buyers: ${error.message}`);
+      if (!data || data.length === 0) break;
+
+      allBuyers.push(...data);
+      if (data.length < PAGE_SIZE) break;
+      from += PAGE_SIZE;
+    }
+
+    return allBuyers;
+  }
+
   async getStatusCategories(): Promise<Array<{
     status: string;
     count: number;
@@ -1252,12 +1278,7 @@ export class BuyerService {
       const { calculateBuyerStatus } = await import('./BuyerStatusCalculator');
       const { STATUS_DEFINITIONS } = await import('../config/buyer-status-definitions');
 
-      const { data: allBuyers, error } = await this.supabase
-        .from('buyers')
-        .select('*')
-        .is('deleted_at', null);
-
-      if (error) throw new Error(`Failed to fetch buyers for status categories: ${error.message}`);
+      const allBuyers = await this.fetchAllBuyers();
 
       const statusCountMap = new Map<string, number>();
       (allBuyers || []).forEach(buyer => {
@@ -1324,12 +1345,7 @@ export class BuyerService {
     try {
       const { calculateBuyerStatus } = await import('./BuyerStatusCalculator');
 
-      const { data: allBuyers, error } = await this.supabase
-        .from('buyers')
-        .select('*')
-        .is('deleted_at', null);
-
-      if (error) throw new Error(`Failed to fetch buyers by status: ${error.message}`);
+      const allBuyers = await this.fetchAllBuyers();
 
       const filteredBuyers = (allBuyers || [])
         .map(buyer => {
@@ -1413,22 +1429,24 @@ export class BuyerService {
   async getBuyersWithStatus(): Promise<any[]> {
     const { calculateBuyerStatus } = await import('./BuyerStatusCalculator');
 
-    const { data: allBuyers, error } = await this.supabase
-      .from('buyers')
-      .select('*')
-      .is('deleted_at', null)
-      .order('reception_date', { ascending: false, nullsFirst: false });
+    // 1000件制限を回避するため全件取得
+    const allBuyers = await this.fetchAllBuyers();
 
-    if (error) throw new Error(`Failed to fetch buyers with status: ${error.message}`);
-
-    return (allBuyers || []).map(buyer => {
-      try {
-        const statusResult = calculateBuyerStatus(buyer);
-        return { ...buyer, calculated_status: statusResult.status, status_priority: statusResult.priority };
-      } catch {
-        return { ...buyer, calculated_status: '', status_priority: 999 };
-      }
-    });
+    return allBuyers
+      .sort((a, b) => {
+        if (!a.reception_date && !b.reception_date) return 0;
+        if (!a.reception_date) return 1;
+        if (!b.reception_date) return -1;
+        return b.reception_date.localeCompare(a.reception_date);
+      })
+      .map(buyer => {
+        try {
+          const statusResult = calculateBuyerStatus(buyer);
+          return { ...buyer, calculated_status: statusResult.status, status_priority: statusResult.priority };
+        } catch {
+          return { ...buyer, calculated_status: '', status_priority: 999 };
+        }
+      });
   }
 
   private normalizePropertyType(type: string): string {
