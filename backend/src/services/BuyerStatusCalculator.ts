@@ -136,7 +136,24 @@ export function calculateBuyerStatus(buyer: BuyerData): StatusResult {
     }
 
     // Priority 7: 問合メール未対応
-    if (and(equals(buyer.inquiry_email_phone, '未'), equals(buyer.inquiry_email_reply, '未'))) {
+    // スプレッドシートのIFS式に合わせてOR条件で判定:
+    //   1. 電話対応が "未"
+    //   2. メール返信が "未"
+    //   3. 内覧日が空欄 かつ 電話対応が "不要" かつ メール返信が "未" または空欄
+    if (
+      or(
+        equals(buyer.inquiry_email_phone, '未'),
+        equals(buyer.inquiry_email_reply, '未'),
+        and(
+          isBlank(buyer.latest_viewing_date),
+          equals(buyer.inquiry_email_phone, '不要'),
+          or(
+            equals(buyer.inquiry_email_reply, '未'),
+            isBlank(buyer.inquiry_email_reply)
+          )
+        )
+      )
+    ) {
       const status = '問合メール未対応';
       return { status, priority: 7, matchedCondition: '問い合わせメールへの対応が未完了', color: getStatusColor(status) };
     }
