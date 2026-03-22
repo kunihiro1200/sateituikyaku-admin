@@ -163,12 +163,12 @@ export class BuyerService {
     if (propertyNumbers.length > 0) {
       const { data: properties } = await this.supabase
         .from('property_listings')
-        .select('property_number, address, sales_assignee')
+        .select('property_number, property_address, sales_assignee')
         .in('property_number', propertyNumbers);
       if (properties) {
         properties.forEach((p: any) => {
           propertyMap[p.property_number] = {
-            address: p.address,
+            address: p.property_address,
             sales_assignee: p.sales_assignee,
           };
         });
@@ -1083,11 +1083,11 @@ export class BuyerService {
     if (propertyNumbers.length > 0) {
       const { data: properties } = await this.supabase
         .from('property_listings')
-        .select('property_number, address')
+        .select('property_number, property_address')
         .in('property_number', propertyNumbers);
       if (properties) {
         properties.forEach((p: any) => {
-          propertyAddressMap[p.property_number] = p.address ?? null;
+          propertyAddressMap[p.property_number] = p.property_address ?? null;
         });
       }
     }
