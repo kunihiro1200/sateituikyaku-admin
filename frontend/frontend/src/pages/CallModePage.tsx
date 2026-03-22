@@ -4919,7 +4919,7 @@ HP：https://ifoo-oita.com/
                     }),
                   }}
                 >
-                  {savingComments ? <CircularProgress size={24} /> : (isDirty ? '⚠️ 保存（未保存の変更あり）' : '保存')}
+                  {savingComments ? <CircularProgress size={24} /> : '保存'}
                 </Button>
               );
             })()}
