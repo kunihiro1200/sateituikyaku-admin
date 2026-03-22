@@ -101,14 +101,10 @@ export class BuyerService {
       .from('buyers')
       .select('*', { count: 'exact' });
 
-    // 検索
+    // 検索（buyer_numberはTEXT型なのでilikeで統一）
     if (search) {
-      // buyer_numberが数値型の場合はeqで完全一致、それ以外はilikeで部分一致
-      const buyerNumberMatch = /^\d+$/.test(search)
-        ? `buyer_number.eq.${search}`
-        : `buyer_number.ilike.%${search}%`;
       query = query.or(
-        `${buyerNumberMatch},name.ilike.%${search}%,phone_number.ilike.%${search}%,property_number.ilike.%${search}%`
+        `buyer_number.ilike.%${search}%,name.ilike.%${search}%,phone_number.ilike.%${search}%,property_number.ilike.%${search}%`
       );
     }
 
@@ -686,11 +682,8 @@ export class BuyerService {
       .select('*');
 
     if (search) {
-      const buyerNumberMatch = /^\d+$/.test(search)
-        ? `buyer_number.eq.${search}`
-        : `buyer_number.ilike.%${search}%`;
       query = query.or(
-        `${buyerNumberMatch},name.ilike.%${search}%,phone_number.ilike.%${search}%`
+        `buyer_number.ilike.%${search}%,name.ilike.%${search}%,phone_number.ilike.%${search}%`
       );
     }
     if (status) {
