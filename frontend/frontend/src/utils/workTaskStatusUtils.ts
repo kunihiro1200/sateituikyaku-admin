@@ -41,6 +41,7 @@ export interface StatusCategory {
   label: string;
   count: number;
   deadline?: string; // 最も近い期日（M/D形式）
+  isDeadlinePast?: boolean; // 期日が本日以前かどうか
   filter: (task: WorkTask) => boolean;
 }
 
@@ -268,6 +269,7 @@ export const getStatusCategories = (tasks: WorkTask[]): StatusCategory[] => {
 
   // カテゴリごとの最も近い期日を計算
   const categoryDeadlines: Record<string, string> = {};
+  const categoryDeadlineDates: Record<string, Date> = {};
   Object.entries(deadlineFieldMap).forEach(([categoryKey, field]) => {
     const matchPrefix = categoryDefinitions.find(d => d.key === categoryKey)?.matchPrefix;
     if (!matchPrefix) return;
@@ -278,6 +280,7 @@ export const getStatusCategories = (tasks: WorkTask[]): StatusCategory[] => {
     if (dates.length > 0) {
       const minDate = dates.reduce((a, b) => (a < b ? a : b));
       categoryDeadlines[categoryKey] = formatDateMD(minDate.toISOString());
+      categoryDeadlineDates[categoryKey] = minDate;
     }
   });
 
@@ -299,6 +302,9 @@ export const getStatusCategories = (tasks: WorkTask[]): StatusCategory[] => {
         label: def.label,
         count,
         deadline: categoryDeadlines[def.key],
+        isDeadlinePast: categoryDeadlineDates[def.key]
+          ? categoryDeadlineDates[def.key] <= today()
+          : false,
         filter: (task: WorkTask) => calculateTaskStatus(task).startsWith(def.matchPrefix),
       });
     }

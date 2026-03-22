@@ -160,6 +160,7 @@ export default function WorkTasksPage() {
                 onClick={() => handleCategoryChange(cat.key)}
                 sx={{ 
                   py: 0.5,
+                  bgcolor: cat.isDeadlinePast ? '#fff3e0' : undefined,
                   '&.Mui-selected': { bgcolor: 'action.selected' }
                 }}
               >
