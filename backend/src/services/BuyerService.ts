@@ -1268,11 +1268,7 @@ export class BuyerService {
           if (status.startsWith('⑯当日TEL（') || status.startsWith('⑯当日TEL(')) {
             status = '⑯当日TEL';
           }
-          // 当日TEL(林) のような担当あり当日TELは 担当(林) にまとめる
-          const todayCallWithAssignee = status.match(/^当日TEL\((.+)\)$/);
-          if (todayCallWithAssignee) {
-            status = `担当(${todayCallWithAssignee[1]})`;
-          }
+          // 当日TEL(林) のような担当あり当日TELはそのまま表示（担当(林)にはまとめない）
           statusCountMap.set(status, (statusCountMap.get(status) || 0) + 1);
         } catch {
           statusCountMap.set('', (statusCountMap.get('') || 0) + 1);
@@ -1289,12 +1285,18 @@ export class BuyerService {
         });
       });
 
-      // STATUS_DEFINITIONSにないステータスも追加（担当(林)などの動的ステータス）
+      // STATUS_DEFINITIONSにないステータスも追加（当日TEL(林)、担当(林)などの動的ステータス）
       statusCountMap.forEach((count, status) => {
         if (status === '') return; // 空ステータスは別途処理済み
         if (count === 0) return;
         const alreadyAdded = categories.some(c => c.status === status);
         if (!alreadyAdded) {
+          // 当日TEL(X)形式の動的ステータス（担当あり当日TEL）
+          const todayCallMatch = status.match(/^当日TEL\((.+)\)$/);
+          if (todayCallMatch) {
+            categories.push({ status, count, priority: 23, color: '#388e3c' });
+            return;
+          }
           // 担当(X)形式の動的ステータス
           const assigneeMatch = status.match(/^担当\((.+)\)$/);
           if (assigneeMatch) {
@@ -1339,17 +1341,6 @@ export class BuyerService {
           }
         })
         .filter(buyer => {
-          // ⑯当日TEL でフィルタした場合、担当なしの当日TELのみ
-          if (status === '⑯当日TEL') {
-            return buyer.calculated_status === '⑯当日TEL';
-          }
-          // 担当(林) でフィルタした場合、当日TEL(林) も含める
-          const assigneeMatch = status.match(/^担当\((.+)\)$/);
-          if (assigneeMatch) {
-            const assignee = assigneeMatch[1];
-            return buyer.calculated_status === status ||
-              buyer.calculated_status === `当日TEL(${assignee})`;
-          }
           return buyer.calculated_status === status;
         })
         .filter(buyer => {

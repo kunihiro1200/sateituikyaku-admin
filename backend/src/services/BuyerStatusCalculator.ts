@@ -105,9 +105,10 @@ export function calculateBuyerStatus(buyer: BuyerData): StatusResult {
     }
 
     // Priority 5: 一般媒介_内覧後売主連絡未（内覧日が2026/3/1以降のみ対象）
+    // 「一般・公開中」という文字列を含む場合のみ対象（「一般」だけでは不十分）
     if (
       and(
-        contains(buyer.viewing_type_general, '一般'),
+        contains(buyer.viewing_type_general, '一般・公開中'),
         isNotBlank(buyer.latest_viewing_date),
         isPast(buyer.latest_viewing_date),
         isAfterOrEqual(buyer.latest_viewing_date, '2026-03-01'),
