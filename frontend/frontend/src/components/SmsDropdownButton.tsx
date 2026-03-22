@@ -66,15 +66,17 @@ export const SmsDropdownButton: React.FC<SmsDropdownButtonProps> = ({
     }
 
     if (message) {
-      // SMS履歴をバックエンドに記録（fire-and-forget）
+      const smsLink = `sms:${phoneNumber}?body=${encodeURIComponent(message)}`;
+      // SMS履歴を記録してからSMSアプリを開く（記録失敗時もSMSアプリは開く）
       api.post(`/api/buyers/${buyerNumber}/sms-history`, {
         templateId,
         templateName,
         phoneNumber,
-      }).catch((err: any) => console.warn('SMS履歴記録失敗:', err));
-
-      const smsLink = `sms:${phoneNumber}?body=${encodeURIComponent(message)}`;
-      window.location.href = smsLink;
+      })
+        .catch((err: any) => console.warn('SMS履歴記録失敗:', err))
+        .finally(() => {
+          window.location.href = smsLink;
+        });
     }
   };
 
