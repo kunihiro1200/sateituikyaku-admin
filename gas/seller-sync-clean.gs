@@ -181,9 +181,10 @@ function syncUpdatesToSupabase_(sheetRows) {
     var updateData = {};
     var needsUpdate = false;
 
-    // status
-    var sheetStatus = row['状況（当社）'] || '';
-    if (sheetStatus && sheetStatus !== (dbSeller.status || '')) {
+    // status（空欄の場合はnullでクリア）
+    var sheetStatus = row['状況（当社）'] ? String(row['状況（当社）']) : null;
+    var dbStatus = dbSeller.status || null;
+    if (sheetStatus !== dbStatus) {
       updateData.status = sheetStatus;
       needsUpdate = true;
     }
@@ -456,6 +457,9 @@ function syncUpdatesToSupabase_(sheetRows) {
       errorCount++;
       Logger.log('❌ ' + sellerNumber + ': 更新失敗 - ' + result.error);
     }
+
+    // 更新した行だけ待機（帯域制限対策）
+    Utilities.sleep(100);
 
     // 実行時間チェック: 5分（300秒）を超えたら安全に終了
     var elapsed = (new Date() - phaseStartTime) / 1000;
