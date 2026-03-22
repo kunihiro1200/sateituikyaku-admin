@@ -173,6 +173,7 @@ router.post(
     body('content').notEmpty().withMessage('Content is required'),
     body('htmlBody').optional().isString().withMessage('HTML body must be a string'),
     body('from').optional().isEmail().withMessage('Invalid from email address'),
+    body('attachments').optional().isArray().withMessage('Attachments must be an array'),
   ],
   async (req: Request, res: Response) => {
     try {
@@ -189,7 +190,7 @@ router.post(
       }
 
       const { sellerId } = req.params;
-      const { templateId, to, subject, content, htmlBody, from } = req.body;
+      const { templateId, to, subject, content, htmlBody, from, attachments } = req.body;
 
       // 売主情報を取得
       const seller = await sellerService.getSeller(sellerId);
@@ -216,17 +217,45 @@ router.post(
         });
       }
 
-      // メールを送信（売主オブジェクトのemailを一時的に上書き）
-      const sellerWithUpdatedEmail = { ...seller, email: recipientEmail };
-      const result = await emailService.sendTemplateEmail(
-        sellerWithUpdatedEmail,
-        subject,
-        content,
-        req.employee!.email,
-        req.employee!.id,
-        htmlBody,  // オプション: カスタムHTMLボディ（貼り付けた画像を含む場合）
-        from       // オプション: 送信元メールアドレス
-      );
+      let result;
+
+      // 添付ファイルがある場合は Google Drive から画像データを取得して添付付きで送信
+      if (attachments && Array.isArray(attachments) && attachments.length > 0) {
+        const { GoogleDriveService } = await import('../services/GoogleDriveService');
+        const driveService = new GoogleDriveService();
+
+        const emailAttachments = await Promise.all(
+          attachments.map(async (img: any) => {
+            const fileData = await driveService.getFile(img.id);
+            return {
+              filename: img.name || `image-${img.id}.jpg`,
+              mimeType: fileData.mimeType || 'image/jpeg',
+              data: fileData.data,
+              cid: `attachment-${img.id}`,
+            };
+          })
+        );
+
+        result = await emailService.sendEmailWithCcAndAttachments({
+          to: recipientEmail,
+          subject,
+          body: htmlBody || content,
+          from: from || req.employee!.email,
+          attachments: emailAttachments,
+        });
+      } else {
+        // 添付ファイルなし: 既存フロー（変更なし）
+        const sellerWithUpdatedEmail = { ...seller, email: recipientEmail };
+        result = await emailService.sendTemplateEmail(
+          sellerWithUpdatedEmail,
+          subject,
+          content,
+          req.employee!.email,
+          req.employee!.id,
+          htmlBody,  // オプション: カスタムHTMLボディ（貼り付けた画像を含む場合）
+          from       // オプション: 送信元メールアドレス
+        );
+      }
 
       if (!result.success) {
         return res.status(502).json({

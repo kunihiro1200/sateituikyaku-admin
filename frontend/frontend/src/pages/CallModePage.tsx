@@ -2326,6 +2326,10 @@ HP：https://ifoo-oita.com/
             content: editableEmailBody,
             htmlBody: hasImages ? editableEmailBody : undefined,
             from: senderAddress,  // 送信元アドレスを追加
+            // 画像が選択されている場合のみ attachments を含める
+            ...(selectedImages && Array.isArray(selectedImages) && selectedImages.length > 0
+              ? { attachments: selectedImages }
+              : {}),
           });
 
           // Email送信後、活動履歴を記録
