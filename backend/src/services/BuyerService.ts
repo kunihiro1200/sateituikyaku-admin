@@ -1307,21 +1307,43 @@ export class BuyerService {
       });
 
       // STATUS_DEFINITIONSにないステータスも追加（当日TEL(林)、担当(林)などの動的ステータス）
+      // まず担当(X)を全て収集してpriorityを割り当て
+      const assigneePriorityMap = new Map<string, number>();
+      const knownAssigneePriorities: Record<string, number> = {
+        'Y': 23, 'W': 24, 'U': 25, '生': 26, 'K': 27, '久': 28, 'I': 29, 'R': 30
+      };
+      let dynamicPriority = 31;
+
       statusCountMap.forEach((count, status) => {
-        if (status === '') return; // 空ステータスは別途処理済み
+        if (status === '' || count === 0) return;
+        const assigneeMatch = status.match(/^担当\((.+)\)$/);
+        if (assigneeMatch) {
+          const assignee = assigneeMatch[1];
+          const p = knownAssigneePriorities[assignee] ?? dynamicPriority++;
+          assigneePriorityMap.set(assignee, p);
+        }
+      });
+
+      statusCountMap.forEach((count, status) => {
+        if (status === '') return;
         if (count === 0) return;
         const alreadyAdded = categories.some(c => c.status === status);
         if (!alreadyAdded) {
           // 当日TEL(X)形式の動的ステータス（担当あり当日TEL）
+          // 対応する担当(X)のpriorityに0.5を加算して直後に配置
           const todayCallMatch = status.match(/^当日TEL\((.+)\)$/);
           if (todayCallMatch) {
-            categories.push({ status, count, priority: 23, color: '#388e3c' });
+            const assignee = todayCallMatch[1];
+            const basePriority = assigneePriorityMap.get(assignee) ?? (knownAssigneePriorities[assignee] ?? 23);
+            categories.push({ status, count, priority: basePriority + 0.5, color: '#ff5722' });
             return;
           }
           // 担当(X)形式の動的ステータス
           const assigneeMatch = status.match(/^担当\((.+)\)$/);
           if (assigneeMatch) {
-            categories.push({ status, count, priority: 23, color: '#4caf50' });
+            const assignee = assigneeMatch[1];
+            const p = assigneePriorityMap.get(assignee) ?? (knownAssigneePriorities[assignee] ?? 23);
+            categories.push({ status, count, priority: p, color: '#4caf50' });
           }
         }
       });

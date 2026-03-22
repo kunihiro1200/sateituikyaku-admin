@@ -98,41 +98,45 @@ export default function BuyerStatusSidebar({ selectedStatus, onStatusSelect, tot
         </ListItemButton>
 
         {/* ステータスカテゴリ */}
-        {categories.map((category) => (
-          <ListItemButton
-            key={category.status}
-            selected={selectedStatus === category.status}
-            onClick={() => handleStatusClick(category.status)}
-            sx={{
-              py: 1,
-              borderLeft: `4px solid ${category.color}`,
-              '&.Mui-selected': {
-                backgroundColor: `${category.color}15`,
-                borderLeft: `4px solid ${category.color}`,
-              },
-              '&:hover': {
-                backgroundColor: `${category.color}10`,
-              }
-            }}
-          >
-            <ListItemText
-              primary={category.status || '（未分類）'}
-              primaryTypographyProps={{ variant: 'body2' }}
-              sx={{ flex: 1, minWidth: 0, mr: 1 }}
-            />
-            <Badge
-              badgeContent={category.count}
+        {categories.map((category) => {
+          const isTodayCallSub = /^当日TEL\((.+)\)$/.test(category.status);
+          return (
+            <ListItemButton
+              key={category.status}
+              selected={selectedStatus === category.status}
+              onClick={() => handleStatusClick(category.status)}
               sx={{
-                ml: 1,
-                '& .MuiBadge-badge': {
-                  backgroundColor: category.color,
-                  color: '#fff'
+                py: 1,
+                pl: isTodayCallSub ? 4 : 2,
+                borderLeft: `4px solid ${category.color}`,
+                '&.Mui-selected': {
+                  backgroundColor: `${category.color}15`,
+                  borderLeft: `4px solid ${category.color}`,
+                },
+                '&:hover': {
+                  backgroundColor: `${category.color}10`,
                 }
               }}
-              max={9999}
-            />
-          </ListItemButton>
-        ))}
+            >
+              <ListItemText
+                primary={isTodayCallSub ? `↳ ${category.status}` : (category.status || '（未分類）')}
+                primaryTypographyProps={{ variant: 'body2', color: isTodayCallSub ? 'text.secondary' : 'text.primary' }}
+                sx={{ flex: 1, minWidth: 0, mr: 1 }}
+              />
+              <Badge
+                badgeContent={category.count}
+                sx={{
+                  ml: 1,
+                  '& .MuiBadge-badge': {
+                    backgroundColor: category.color,
+                    color: '#fff'
+                  }
+                }}
+                max={9999}
+              />
+            </ListItemButton>
+          );
+        })}
       </Box>
     </Box>
   );

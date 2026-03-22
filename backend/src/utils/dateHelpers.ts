@@ -11,7 +11,8 @@
  */
 function parseDateLocal(date: Date | string): Date {
   if (typeof date === 'string') {
-    // YYYY-MM-DD 形式の場合はローカル時刻として解釈
+    // YYYY-MM-DD 形式（タイムゾーンなし）はローカル時刻として解釈
+    // new Date('2026-03-22') はUTC 00:00 → JST 09:00 になるため前日扱いになる問題を回避
     const match = date.match(/^(\d{4})-(\d{2})-(\d{2})/);
     if (match) {
       return new Date(parseInt(match[1]), parseInt(match[2]) - 1, parseInt(match[3]));
