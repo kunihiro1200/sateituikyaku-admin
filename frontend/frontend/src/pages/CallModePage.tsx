@@ -2305,10 +2305,17 @@ HP：https://ifoo-oita.com/
     const { type, template } = confirmDialog;
     if (!type || !template) return;
 
+    // 送信前にeditableEmailBodyの値をキャプチャ（ダイアログを閉じる前に取得）
+    const capturedEmailBody = editableEmailBody;
+    const capturedEmailRecipient = editableEmailRecipient;
+    const capturedEmailSubject = editableEmailSubject;
+    const capturedSenderAddress = senderAddress;
+    const capturedSelectedImages = selectedImages;
+
     try {
       setSendingTemplate(true);
       setError(null);
-      setConfirmDialog({ open: false, type: null, template: null });
+      // ダイアログを閉じるのは送信完了後に移動（先に閉じるとRichTextEmailEditorがアンマウントされeditableEmailBodyが空になる）
 
       if (type === 'email') {
         // 査定メールの場合は専用のAPIエンドポイントを使用
@@ -2316,24 +2323,24 @@ HP：https://ifoo-oita.com/
           await handleSendValuationEmail();
         } else {
           // RichTextEmailEditorからHTMLコンテンツを取得
-          // editableEmailBodyには既にHTMLが含まれている（画像のBase64データURLを含む）
-          const hasImages = editableEmailBody.includes('<img');
+          // capturedEmailBodyには既にHTMLが含まれている（画像のBase64データURLを含む）
+          const hasImages = capturedEmailBody.includes('<img');
           
           // SelectedImages オブジェクトを DriveImage[] 配列に変換
           const attachmentImages: DriveImage[] = [];
-          if (selectedImages) {
-            if (selectedImages.exterior) attachmentImages.push(selectedImages.exterior);
-            if (selectedImages.interior) attachmentImages.push(selectedImages.interior);
+          if (capturedSelectedImages) {
+            if (capturedSelectedImages.exterior) attachmentImages.push(capturedSelectedImages.exterior);
+            if (capturedSelectedImages.interior) attachmentImages.push(capturedSelectedImages.interior);
             // other は string[]（IDのみ）なので現時点では除外
           }
 
           const requestPayload = {
             templateId: template.id,
-            to: editableEmailRecipient,
-            subject: editableEmailSubject,
-            content: editableEmailBody,
-            htmlBody: hasImages ? editableEmailBody : undefined,
-            from: senderAddress,  // 送信元アドレスを追加
+            to: capturedEmailRecipient,
+            subject: capturedEmailSubject,
+            content: capturedEmailBody,
+            htmlBody: hasImages ? capturedEmailBody : undefined,
+            from: capturedSenderAddress,  // 送信元アドレスを追加
             // 画像が選択されている場合のみ attachments を含める
             ...(attachmentImages.length > 0
               ? { attachments: attachmentImages }
@@ -2459,6 +2466,8 @@ HP：https://ifoo-oita.com/
       setError(err.response?.data?.error?.message || `${type === 'email' ? 'メール' : 'SMS'}送信に失敗しました`);
     } finally {
       setSendingTemplate(false);
+      // 成功・失敗どちらの場合もダイアログを閉じる
+      setConfirmDialog({ open: false, type: null, template: null });
     }
   };
 
