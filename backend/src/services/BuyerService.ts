@@ -1344,14 +1344,30 @@ export class BuyerService {
     const allBuyers = await this.fetchAllBuyersWithStatus();
     const categories = await this.getStatusCategories();
 
-    // 通常スタッフ（is_normal=true）のイニシャルを取得
-    const { data: staffData } = await this.supabase
-      .from('employees')
-      .select('initials')
-      .eq('is_normal', true);
-    const normalStaffInitials = (staffData || [])
-      .map((s: any) => s.initials)
-      .filter((i: string) => i);
+    // 通常スタッフのイニシャルを取得
+    // is_normalカラムが存在する場合はそれでフィルタ、存在しない場合は全スタッフを返す
+    let normalStaffInitials: string[] = [];
+    try {
+      const { data: staffDataNormal, error: normalError } = await this.supabase
+        .from('employees')
+        .select('initials')
+        .eq('is_normal', true);
+      if (!normalError && staffDataNormal && staffDataNormal.length > 0) {
+        normalStaffInitials = staffDataNormal
+          .map((s: any) => s.initials)
+          .filter((i: string) => i);
+      } else {
+        // is_normalカラムが存在しないか、結果が空の場合は全スタッフを取得
+        const { data: allStaffData } = await this.supabase
+          .from('employees')
+          .select('initials');
+        normalStaffInitials = (allStaffData || [])
+          .map((s: any) => s.initials)
+          .filter((i: string) => i);
+      }
+    } catch {
+      // employeesテーブルが存在しない場合は空配列のまま（フロントエンドでフォールバック）
+    }
 
     return { categories, buyers: allBuyers, normalStaffInitials };
   }

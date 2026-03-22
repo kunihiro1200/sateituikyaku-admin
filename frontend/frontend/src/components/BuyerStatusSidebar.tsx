@@ -114,6 +114,8 @@ export default function BuyerStatusSidebar({
   const normalCategories = categories.filter(cat => !isAssigneeCategory(cat.status));
   const assigneeCategories = categories.filter(cat => {
     if (!isAssigneeCategory(cat.status)) return false;
+    // normalStaffInitialsが空の場合は全担当カテゴリを表示（フォールバック）
+    if (normalStaffInitials.length === 0) return true;
     const initial = extractInitial(cat.status);
     // 当日TEL(X) は担当(X) と同じイニシャルなので同じフィルタを適用
     return normalStaffInitials.includes(initial);
