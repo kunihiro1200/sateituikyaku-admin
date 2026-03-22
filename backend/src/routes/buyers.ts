@@ -933,10 +933,12 @@ router.post('/:buyerNumber/sms-history', async (req: Request, res: Response) => 
     }
 
     // activity_logs に記録
+    // employee_id が NOT NULL のため、未ログイン時は「会社アカウント」のIDをフォールバックとして使用
+    const SYSTEM_EMPLOYEE_ID = '66e35f74-7c31-430d-b235-5ad515581007'; // 会社アカウント
     const { ActivityLogService } = require('../services/ActivityLogService');
     const activityLogService = new ActivityLogService();
     await activityLogService.logActivity({
-      employeeId: (req as any).user?.id || null,
+      employeeId: (req as any).user?.id || SYSTEM_EMPLOYEE_ID,
       action: 'sms',
       targetType: 'buyer',
       targetId: buyerNumber,
