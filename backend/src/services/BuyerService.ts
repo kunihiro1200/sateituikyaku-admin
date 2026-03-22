@@ -1480,10 +1480,9 @@ export class BuyerService {
 
     const statusCountMap = new Map<string, number>();
     allBuyers.forEach(buyer => {
-      let status = buyer.calculated_status || '';
-      if (status.startsWith('当日TEL（') || status.startsWith('当日TEL(')) {
-        status = '当日TEL';
-      }
+      const status = buyer.calculated_status || '';
+      // 当日TEL(Y) 等の担当別サブカテゴリはそのまま保持（担当別セクションで表示するため）
+      // 「当日TEL」（担当なし）は別カテゴリとして独立して集計
       statusCountMap.set(status, (statusCountMap.get(status) || 0) + 1);
     });
 
