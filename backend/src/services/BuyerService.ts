@@ -159,17 +159,19 @@ export class BuyerService {
       buyers.map((b: any) => b.property_number).filter(Boolean)
     )] as string[];
 
-    let propertyMap: Record<string, { address: string | null; sales_assignee: string | null }> = {};
+    let propertyMap: Record<string, { address: string | null; sales_assignee: string | null; property_type: string | null; atbb_status: string | null }> = {};
     if (propertyNumbers.length > 0) {
       const { data: properties } = await this.supabase
         .from('property_listings')
-        .select('property_number, property_address, sales_assignee')
+        .select('property_number, property_address, sales_assignee, property_type, atbb_status')
         .in('property_number', propertyNumbers);
       if (properties) {
         properties.forEach((p: any) => {
           propertyMap[p.property_number] = {
             address: p.property_address,
             sales_assignee: p.sales_assignee,
+            property_type: p.property_type ?? null,
+            atbb_status: p.atbb_status ?? null,
           };
         });
       }
@@ -179,6 +181,8 @@ export class BuyerService {
       ...b,
       property_address: propertyMap[b.property_number]?.address ?? null,
       property_sales_assignee: propertyMap[b.property_number]?.sales_assignee ?? null,
+      property_type: propertyMap[b.property_number]?.property_type ?? null,
+      atbb_status: propertyMap[b.property_number]?.atbb_status ?? null,
     }));
 
     return {
