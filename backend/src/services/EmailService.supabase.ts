@@ -982,11 +982,10 @@ ${bodyHtml}
       const attachments = params.attachments || [];
 
       // 本文をbase64エンコード（日本語文字化け防止）
-      const bodyBase64 = Buffer.from(params.body, 'utf-8')
-        .toString('base64')
-        .replace(/\+/g, '-')
-        .replace(/\//g, '_')
-        .replace(/=+$/, '');
+      // ⚠️ MIMEパート内の本文は標準base64（+, /, = をそのまま使う）
+      // URL-safe変換（replace /\+/g, /\//g）はGmail APIの raw フィールド用であり、
+      // MIMEパート内のbase64には適用してはいけない（文字化けの原因になる）
+      const bodyBase64 = Buffer.from(params.body, 'utf-8').toString('base64');
 
       if (attachments.length > 0) {
         // 添付ファイルあり: multipart/mixed

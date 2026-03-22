@@ -2486,6 +2486,8 @@ HP：https://ifoo-oita.com/
       setSendingTemplate(false);
       // 成功・失敗どちらの場合もダイアログを閉じる
       setConfirmDialog({ open: false, type: null, template: null });
+      // 送信後に選択画像をリセット（次回送信時に前回の添付が残らないようにする）
+      setSelectedImages([]);
     }
   };
 
