@@ -7,6 +7,7 @@ import {
 } from '@mui/material';
 import SmsIcon from '@mui/icons-material/Sms';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
+import api from '../services/api';
 
 interface SmsDropdownButtonProps {
   phoneNumber: string;
@@ -37,7 +38,7 @@ export const SmsDropdownButton: React.FC<SmsDropdownButtonProps> = ({
     setAnchorEl(null);
   };
 
-  const sendSms = (templateId: string) => {
+  const sendSms = (templateId: string, templateName: string) => {
     handleClose();
     const name = buyerName || 'お客様';
     const address = propertyAddress;
@@ -65,6 +66,13 @@ export const SmsDropdownButton: React.FC<SmsDropdownButtonProps> = ({
     }
 
     if (message) {
+      // SMS履歴をバックエンドに記録（fire-and-forget）
+      api.post(`/api/buyers/${buyerNumber}/sms-history`, {
+        templateId,
+        templateName,
+        phoneNumber,
+      }).catch((err: any) => console.warn('SMS履歴記録失敗:', err));
+
       const smsLink = `sms:${phoneNumber}?body=${encodeURIComponent(message)}`;
       window.location.href = smsLink;
     }
@@ -114,17 +122,17 @@ export const SmsDropdownButton: React.FC<SmsDropdownButtonProps> = ({
         transformOrigin={{ vertical: 'top', horizontal: 'left' }}
       >
         {isLand ? [
-          <MenuItem key="land_no_permission" onClick={() => sendSms('land_no_permission')}>資料請求（土）許可不要</MenuItem>,
-          <MenuItem key="minpaku" onClick={() => sendSms('minpaku')}>民泊問合せ</MenuItem>,
-          <MenuItem key="land_need_permission" onClick={() => sendSms('land_need_permission')}>資料請求（土）売主要許可</MenuItem>,
+          <MenuItem key="land_no_permission" onClick={() => sendSms('land_no_permission', '資料請求（土）許可不要')}>資料請求（土）許可不要</MenuItem>,
+          <MenuItem key="minpaku" onClick={() => sendSms('minpaku', '民泊問合せ')}>民泊問合せ</MenuItem>,
+          <MenuItem key="land_need_permission" onClick={() => sendSms('land_need_permission', '資料請求（土）売主要許可')}>資料請求（土）売主要許可</MenuItem>,
         ] : [
-          <MenuItem key="house_mansion" onClick={() => sendSms('house_mansion')}>資料請求（戸・マ）</MenuItem>,
+          <MenuItem key="house_mansion" onClick={() => sendSms('house_mansion', '資料請求（戸・マ）')}>資料請求（戸・マ）</MenuItem>,
         ]}
-        <MenuItem onClick={() => sendSms('offer_no_viewing')}>買付あり内覧NG</MenuItem>
-        <MenuItem onClick={() => sendSms('offer_ok_viewing')}>買付あり内覧OK</MenuItem>
-        <MenuItem onClick={() => sendSms('no_response')}>前回問合せ後反応なし</MenuItem>
-        <MenuItem onClick={() => sendSms('no_response_offer')}>反応なし（買付あり不適合）</MenuItem>
-        <MenuItem onClick={() => sendSms('pinrich')}>物件指定なし（Pinrich）</MenuItem>
+        <MenuItem onClick={() => sendSms('offer_no_viewing', '買付あり内覧NG')}>買付あり内覧NG</MenuItem>
+        <MenuItem onClick={() => sendSms('offer_ok_viewing', '買付あり内覧OK')}>買付あり内覧OK</MenuItem>
+        <MenuItem onClick={() => sendSms('no_response', '前回問合せ後反応なし')}>前回問合せ後反応なし</MenuItem>
+        <MenuItem onClick={() => sendSms('no_response_offer', '反応なし（買付あり不適合）')}>反応なし（買付あり不適合）</MenuItem>
+        <MenuItem onClick={() => sendSms('pinrich', '物件指定なし（Pinrich）')}>物件指定なし（Pinrich）</MenuItem>
       </Menu>
     </>
   );

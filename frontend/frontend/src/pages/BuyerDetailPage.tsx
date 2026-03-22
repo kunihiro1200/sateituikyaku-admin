@@ -1328,16 +1328,17 @@ TEL：097-533-2022`;
           <Paper sx={{ p: 2, mb: 2 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
               <EmailIcon sx={{ mr: 1, color: 'success.main' }} />
-              <Typography variant="h6">メール送信履歴</Typography>
+              <Typography variant="h6">メール・SMS送信履歴</Typography>
             </Box>
             <Divider sx={{ mb: 2 }} />
-            {activities.filter(a => a.action === 'email').length > 0 ? (
+            {activities.filter(a => a.action === 'email' || a.action === 'sms').length > 0 ? (
               <List sx={{ maxHeight: 400, overflow: 'auto' }}>
                 {activities
-                  .filter(a => a.action === 'email')
+                  .filter(a => a.action === 'email' || a.action === 'sms')
                   .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
                   .map((activity) => {
                     const metadata = activity.metadata || {};
+                    const isSms = activity.action === 'sms';
                     const propertyNumbers = metadata.propertyNumbers || [];
                     const displayName = activity.employee ? getDisplayName(activity.employee) : '不明';
                     
@@ -1353,21 +1354,36 @@ TEL：097-533-2022`;
                         }}
                       >
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', mb: 1 }}>
-                          <Typography variant="body2" fontWeight="bold">
-                            {metadata.subject || '件名なし'}
-                          </Typography>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            {isSms ? (
+                              <Chip label="SMS" size="small" color="success" sx={{ height: 20, fontSize: '0.7rem' }} />
+                            ) : (
+                              <Chip label="メール" size="small" color="primary" sx={{ height: 20, fontSize: '0.7rem' }} />
+                            )}
+                            <Typography variant="body2" fontWeight="bold">
+                              {isSms ? (metadata.templateName || 'テンプレート不明') : (metadata.subject || '件名なし')}
+                            </Typography>
+                          </Box>
                           <Typography variant="caption" color="text.secondary">
                             {formatDateTime(activity.created_at)}
                           </Typography>
                         </Box>
+
+                        {isSms ? (
+                          <Box sx={{ width: '100%', mb: 1 }}>
+                            <Typography variant="caption" color="text.secondary">
+                              送信先: {metadata.phoneNumber || '-'}
+                            </Typography>
+                          </Box>
+                        ) : (
+                          <Box sx={{ width: '100%', mb: 1 }}>
+                            <Typography variant="caption" color="text.secondary">
+                              送信者: {displayName} ({metadata.senderEmail || '-'})
+                            </Typography>
+                          </Box>
+                        )}
                         
-                        <Box sx={{ width: '100%', mb: 1 }}>
-                          <Typography variant="caption" color="text.secondary">
-                            送信者: {displayName} ({metadata.senderEmail || '-'})
-                          </Typography>
-                        </Box>
-                        
-                        {propertyNumbers.length > 0 && (
+                        {!isSms && propertyNumbers.length > 0 && (
                           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 1 }}>
                             <Typography variant="caption" color="text.secondary" sx={{ mr: 1 }}>
                               物件:
@@ -1384,7 +1400,7 @@ TEL：097-533-2022`;
                           </Box>
                         )}
                         
-                        {metadata.preViewingNotes && (
+                        {!isSms && metadata.preViewingNotes && (
                           <Box sx={{ width: '100%', mt: 1, p: 1, bgcolor: 'grey.50', borderRadius: 1 }}>
                             <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
                               内覧前伝達事項:

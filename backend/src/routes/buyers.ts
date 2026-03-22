@@ -915,6 +915,62 @@ router.post('/:id/send-sms', async (req: Request, res: Response) => {
   }
 });
 
+// SMS送信履歴を activity_logs に記録
+router.post('/:buyerNumber/sms-history', async (req: Request, res: Response) => {
+  try {
+    const { buyerNumber } = req.params;
+    const { templateId, templateName, phoneNumber } = req.body;
+
+    // 必須フィールドのバリデーション
+    if (!templateId || !templateName || !phoneNumber) {
+      return res.status(400).json({ error: 'templateId, templateName, phoneNumber は必須です' });
+    }
+
+    // 買主の存在確認
+    const buyer = await buyerService.getByBuyerNumber(buyerNumber);
+    if (!buyer) {
+      return res.status(404).json({ error: 'Buyer not found' });
+    }
+
+    // activity_logs に記録
+    const { ActivityLogService } = require('../services/ActivityLogService');
+    const activityLogService = new ActivityLogService();
+    await activityLogService.logActivity({
+      employeeId: (req as any).user?.id || null,
+      action: 'sms',
+      targetType: 'buyer',
+      targetId: buyerNumber,
+      metadata: {
+        templateId,
+        templateName,
+        phoneNumber,
+        buyerNumber,
+      },
+    });
+
+    // 挿入されたレコードのIDを取得
+    const { createClient } = require('@supabase/supabase-js');
+    const supabase = createClient(
+      process.env.SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_KEY!
+    );
+    const { data: logData } = await supabase
+      .from('activity_logs')
+      .select('id')
+      .eq('action', 'sms')
+      .eq('target_type', 'buyer')
+      .eq('target_id', buyerNumber)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    res.json({ success: true, logId: logData?.id || null });
+  } catch (error: any) {
+    console.error('Failed to record SMS history:', error);
+    res.status(500).json({ error: error.message || 'SMS履歴記録に失敗しました' });
+  }
+});
+
 // 担当への確認事項をGoogle Chatに送信
 router.post('/:buyer_number/send-confirmation', async (req: Request, res: Response) => {
   try {
