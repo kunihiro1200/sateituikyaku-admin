@@ -436,10 +436,13 @@ function syncUpdatesToSupabase_(sheetRows) {
       needsUpdate = true;
     }
 
-    // first_call_person（1番電話）
+    // first_call_person（1番電話）: 反響日付が2026/3/20以降の売主のみ同期
     var sheetFirstCallPerson = row['1番電話'] ? String(row['1番電話']) : null;
     var dbFirstCallPerson = dbSeller.first_call_person || null;
-    if (sheetFirstCallPerson !== dbFirstCallPerson) {
+    var inquiryDateForFilter = sheetInquiryDate; // formatDateToISO_済み（YYYY-MM-DD or null）
+    var firstCallPersonCutoff = '2026-03-20';
+    if (sheetFirstCallPerson !== dbFirstCallPerson &&
+        inquiryDateForFilter !== null && inquiryDateForFilter >= firstCallPersonCutoff) {
       updateData.first_call_person = sheetFirstCallPerson;
       needsUpdate = true;
     }
