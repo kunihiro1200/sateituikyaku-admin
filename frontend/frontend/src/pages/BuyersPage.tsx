@@ -17,7 +17,7 @@ import {
   Button,
   CircularProgress,
 } from '@mui/material';
-import { Search as SearchIcon, Sync as SyncIcon } from '@mui/icons-material';
+import { Search as SearchIcon, Sync as SyncIcon, Clear as ClearIcon } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import PageNavigation from '../components/PageNavigation';
@@ -272,13 +272,22 @@ export default function BuyersPage() {
         <Box sx={{ flex: 1 }}>
           <Paper sx={{ p: 2, mb: 2 }}>
             <TextField
-              fullWidth
               size="small"
               placeholder="検索（買主番号、氏名、電話番号、物件番号）"
               value={searchQuery}
               onChange={(e) => { setSearchQuery(e.target.value); setPage(0); }}
+              sx={{ width: '50%' }}
               InputProps={{
                 startAdornment: <InputAdornment position="start"><SearchIcon /></InputAdornment>,
+                endAdornment: searchQuery ? (
+                  <InputAdornment position="end">
+                    <ClearIcon
+                      fontSize="small"
+                      sx={{ cursor: 'pointer', color: 'text.secondary' }}
+                      onClick={() => { setSearchQuery(''); setPage(0); }}
+                    />
+                  </InputAdornment>
+                ) : null,
               }}
             />
           </Paper>
