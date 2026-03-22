@@ -40,6 +40,17 @@ interface BuyerStatusSidebarProps {
   onBuyersLoaded?: (buyers: BuyerWithStatus[]) => void;
 }
 
+// 担当カテゴリかどうか判定（「担当(X)」「当日TEL(X)」形式）
+function isAssigneeCategory(status: string): boolean {
+  return /^担当\((.+)\)$/.test(status) || /^当日TEL\((.+)\)$/.test(status);
+}
+
+// 担当カテゴリからイニシャルを抽出
+function extractInitial(status: string): string {
+  const m = status.match(/^(?:担当|当日TEL)\((.+)\)$/);
+  return m ? m[1] : '';
+}
+
 export default function BuyerStatusSidebar({
   selectedStatus,
   onStatusSelect,
@@ -47,6 +58,7 @@ export default function BuyerStatusSidebar({
   onBuyersLoaded,
 }: BuyerStatusSidebarProps) {
   const [categories, setCategories] = useState<StatusCategory[]>([]);
+  const [normalStaffInitials, setNormalStaffInitials] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [internalTotalCount, setInternalTotalCount] = useState(0);
 
@@ -57,20 +69,18 @@ export default function BuyerStatusSidebar({
   const fetchStatusCategories = async () => {
     try {
       setLoading(true);
-      // 全買主データも一緒に取得してフロントでキャッシュ
       const res = await api.get('/api/buyers/status-categories-with-buyers');
-      const { categories: data, buyers } = res.data as {
+      const { categories: data, buyers, normalStaffInitials: initials } = res.data as {
         categories: StatusCategory[];
         buyers: BuyerWithStatus[];
+        normalStaffInitials: string[];
       };
 
       const total = data.reduce((sum, cat) => sum + cat.count, 0);
       setInternalTotalCount(total);
+      setCategories(data.filter(cat => cat.count > 0));
+      setNormalStaffInitials(initials || []);
 
-      const filteredCategories = data.filter(cat => cat.count > 0);
-      setCategories(filteredCategories);
-
-      // 全買主データを親に渡す
       if (onBuyersLoaded && buyers) {
         onBuyersLoaded(buyers);
       }
@@ -99,6 +109,56 @@ export default function BuyerStatusSidebar({
     );
   }
 
+  // 担当カテゴリと通常カテゴリを分離
+  // 担当カテゴリは通常スタッフ（is_normal=true）のみ表示
+  const normalCategories = categories.filter(cat => !isAssigneeCategory(cat.status));
+  const assigneeCategories = categories.filter(cat => {
+    if (!isAssigneeCategory(cat.status)) return false;
+    const initial = extractInitial(cat.status);
+    // 当日TEL(X) は担当(X) と同じイニシャルなので同じフィルタを適用
+    return normalStaffInitials.includes(initial);
+  });
+
+  const renderCategoryItem = (category: StatusCategory) => {
+    const isTodayCallSub = /^当日TEL\((.+)\)$/.test(category.status);
+    return (
+      <ListItemButton
+        key={category.status}
+        selected={selectedStatus === category.status}
+        onClick={() => handleStatusClick(category.status)}
+        sx={{
+          py: 1,
+          pl: isTodayCallSub ? 4 : 2,
+          borderLeft: `4px solid ${category.color}`,
+          '&.Mui-selected': {
+            backgroundColor: `${category.color}15`,
+            borderLeft: `4px solid ${category.color}`,
+          },
+          '&:hover': {
+            backgroundColor: `${category.color}10`,
+          }
+        }}
+      >
+        <ListItemText
+          primary={isTodayCallSub ? `↳ ${category.status}` : (category.status || '（未分類）')}
+          primaryTypographyProps={{ variant: 'body2', color: isTodayCallSub ? 'text.secondary' : 'text.primary' }}
+          sx={{ flex: 1, minWidth: 0, mr: 1 }}
+        />
+        <Badge
+          badgeContent={category.count}
+          sx={{
+            ml: 1,
+            '& .MuiBadge-badge': {
+              backgroundColor: category.color,
+              color: '#fff'
+            }
+          }}
+          max={9999}
+        />
+      </ListItemButton>
+    );
+  };
+
   return (
     <Box>
       <Box sx={{ p: 2, borderBottom: '1px solid #eee' }}>
@@ -125,46 +185,21 @@ export default function BuyerStatusSidebar({
           />
         </ListItemButton>
 
-        {/* ステータスカテゴリ */}
-        {categories.map((category) => {
-          const isTodayCallSub = /^当日TEL\((.+)\)$/.test(category.status);
-          return (
-            <ListItemButton
-              key={category.status}
-              selected={selectedStatus === category.status}
-              onClick={() => handleStatusClick(category.status)}
-              sx={{
-                py: 1,
-                pl: isTodayCallSub ? 4 : 2,
-                borderLeft: `4px solid ${category.color}`,
-                '&.Mui-selected': {
-                  backgroundColor: `${category.color}15`,
-                  borderLeft: `4px solid ${category.color}`,
-                },
-                '&:hover': {
-                  backgroundColor: `${category.color}10`,
-                }
-              }}
+        {/* 通常ステータスカテゴリ */}
+        {normalCategories.map(renderCategoryItem)}
+
+        {/* 担当カテゴリ（後尾・薄いグレー背景） */}
+        {assigneeCategories.length > 0 && (
+          <Box sx={{ backgroundColor: '#f5f5f5', mt: 1, borderTop: '1px solid #e0e0e0' }}>
+            <Typography
+              variant="caption"
+              sx={{ px: 2, pt: 1, pb: 0.5, display: 'block', color: 'text.secondary', fontWeight: 'bold' }}
             >
-              <ListItemText
-                primary={isTodayCallSub ? `↳ ${category.status}` : (category.status || '（未分類）')}
-                primaryTypographyProps={{ variant: 'body2', color: isTodayCallSub ? 'text.secondary' : 'text.primary' }}
-                sx={{ flex: 1, minWidth: 0, mr: 1 }}
-              />
-              <Badge
-                badgeContent={category.count}
-                sx={{
-                  ml: 1,
-                  '& .MuiBadge-badge': {
-                    backgroundColor: category.color,
-                    color: '#fff'
-                  }
-                }}
-                max={9999}
-              />
-            </ListItemButton>
-          );
-        })}
+              担当別
+            </Typography>
+            {assigneeCategories.map(renderCategoryItem)}
+          </Box>
+        )}
       </Box>
     </Box>
   );

@@ -1339,10 +1339,21 @@ export class BuyerService {
   async getStatusCategoriesWithBuyers(): Promise<{
     categories: Array<{ status: string; count: number; priority: number; color: string }>;
     buyers: any[];
+    normalStaffInitials: string[];
   }> {
     const allBuyers = await this.fetchAllBuyersWithStatus();
     const categories = await this.getStatusCategories();
-    return { categories, buyers: allBuyers };
+
+    // 通常スタッフ（is_normal=true）のイニシャルを取得
+    const { data: staffData } = await this.supabase
+      .from('employees')
+      .select('initials')
+      .eq('is_normal', true);
+    const normalStaffInitials = (staffData || [])
+      .map((s: any) => s.initials)
+      .filter((i: string) => i);
+
+    return { categories, buyers: allBuyers, normalStaffInitials };
   }
 
   async getStatusCategories(): Promise<Array<{
