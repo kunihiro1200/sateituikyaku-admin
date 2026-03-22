@@ -500,6 +500,12 @@ const CallModePage = () => {
   const [editedContactMethod, setEditedContactMethod] = useState<string>('');
   const [editedFirstCallPerson, setEditedFirstCallPerson] = useState<string>('');
   const [savingCommunication, setSavingCommunication] = useState(false);
+
+  // 遷移警告ダイアログ用の状態
+  const [navigationWarningDialog, setNavigationWarningDialog] = useState<{
+    open: boolean;
+    onConfirm: (() => void) | null;
+  }>({ open: false, onConfirm: null });
   const isInitialLoadRef = useRef(true); // 初回ロードフラグ
   const callLogRef = useRef<CallLogDisplayHandle>(null); // 追客ログ更新用ref
   const commentEditorRef = useRef<RichTextCommentEditorHandle>(null); // コメントエディタ用ref
@@ -1376,10 +1382,36 @@ const CallModePage = () => {
   };
 
   const handleBack = () => {
+    // 2026/3/1以降の反響日付で不通入力済み＋1番電話未入力の場合は警告
+    const isAfterMar2026 = seller?.inquiryDate && new Date(seller.inquiryDate) >= new Date('2026-03-01');
+    if (isAfterMar2026 && unreachableStatus && !editedFirstCallPerson) {
+      setNavigationWarningDialog({
+        open: true,
+        onConfirm: () => {
+          pageDataCache.invalidateByPrefix(CACHE_KEYS.SELLERS_LIST);
+          pageDataCache.invalidate(CACHE_KEYS.SELLERS_SIDEBAR_COUNTS);
+          navigate(`/sellers/${id}`);
+        },
+      });
+      return;
+    }
     // 売主一覧キャッシュを無効化（最終電話などが即時反映されるように）
     pageDataCache.invalidateByPrefix(CACHE_KEYS.SELLERS_LIST);
     pageDataCache.invalidate(CACHE_KEYS.SELLERS_SIDEBAR_COUNTS);
     navigate(`/sellers/${id}`);
+  };
+
+  /**
+   * 遷移前に1番電話必須チェックを行うヘルパー
+   * 条件: 反響日付が2026/3/1以降 かつ 不通入力済み かつ 1番電話未入力
+   */
+  const navigateWithWarningCheck = (onConfirm: () => void) => {
+    const isAfterMar2026 = seller?.inquiryDate && new Date(seller.inquiryDate) >= new Date('2026-03-01');
+    if (isAfterMar2026 && unreachableStatus && !editedFirstCallPerson) {
+      setNavigationWarningDialog({ open: true, onConfirm });
+      return;
+    }
+    onConfirm();
   };
 
   const handleSaveAndExit = async () => {
@@ -2693,8 +2725,10 @@ HP：https://ifoo-oita.com/
       >
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
           <Button startIcon={<ArrowBack />} onClick={() => {
-            pageDataCache.invalidate(CACHE_KEYS.SELLERS_LIST);
-            navigate('/');
+            navigateWithWarningCheck(() => {
+              pageDataCache.invalidate(CACHE_KEYS.SELLERS_LIST);
+              navigate('/');
+            });
           }} variant="outlined">
             一覧
           </Button>
@@ -2718,9 +2752,11 @@ HP：https://ifoo-oita.com/
                 color="error"
                 size="small"
                 onClick={() => {
-                  sessionStorage.setItem('selectedStatusCategory', selectedCategory);
-                  pageDataCache.invalidate(CACHE_KEYS.SELLERS_LIST);
-                  navigate('/');
+                  navigateWithWarningCheck(() => {
+                    sessionStorage.setItem('selectedStatusCategory', selectedCategory);
+                    pageDataCache.invalidate(CACHE_KEYS.SELLERS_LIST);
+                    navigate('/');
+                  });
                 }}
               >
                 {label}一覧
@@ -5262,17 +5298,12 @@ HP：https://ifoo-oita.com/
             <Box sx={{ mb: 2 }}>
               <Typography variant="subtitle2" gutterBottom>
                 1番電話
+                {/* 反響日付2026/3/1以降 かつ 不通入力済みの場合は必須表示 */}
+                {seller?.inquiryDate && new Date(seller.inquiryDate) >= new Date('2026-03-01') && unreachableStatus && (
+                  <span style={{ color: 'red', marginLeft: 4 }}>*</span>
+                )}
               </Typography>
               <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                <Button
-                  variant={editedFirstCallPerson === '' ? 'contained' : 'outlined'}
-                  color="inherit"
-                  size="small"
-                  onClick={() => setEditedFirstCallPerson('')}
-                  sx={{ minWidth: 60 }}
-                >
-                  未選択
-                </Button>
                 {activeEmployees.map((emp) => (
                   <Button
                     key={emp.initials || emp.name}
@@ -5688,6 +5719,32 @@ HP：https://ifoo-oita.com/
         onConfirm={handleImageSelectionConfirm}
         onCancel={handleImageSelectionCancel}
       />
+
+      {/* 1番電話未入力警告ダイアログ */}
+      <Dialog open={navigationWarningDialog.open} onClose={() => setNavigationWarningDialog({ open: false, onConfirm: null })}>
+        <DialogTitle>⚠️ 1番電話が未入力です</DialogTitle>
+        <DialogContent>
+          <Typography>
+            不通が入力されていますが、1番電話が未入力です。<br />
+            このまま移動しますか？
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setNavigationWarningDialog({ open: false, onConfirm: null })} color="primary" variant="contained">
+            戻って入力する
+          </Button>
+          <Button
+            onClick={() => {
+              navigationWarningDialog.onConfirm?.();
+              setNavigationWarningDialog({ open: false, onConfirm: null });
+            }}
+            color="error"
+            variant="outlined"
+          >
+            このまま移動する
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* コピー完了スナックバー */}
       <Snackbar
