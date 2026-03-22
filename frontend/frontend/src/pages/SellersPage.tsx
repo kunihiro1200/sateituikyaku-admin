@@ -776,7 +776,7 @@ export default function SellersPage() {
             <TableHead>
               <TableRow>
                 <TableCell>売主番号</TableCell>
-                <TableCell>名前</TableCell>
+                <TableCell sx={{ width: 150 }}>名前</TableCell>
                 <TableCell>対応中</TableCell>
                 <TableCell>最終電話</TableCell>
                 <TableCell>反響日付</TableCell>
