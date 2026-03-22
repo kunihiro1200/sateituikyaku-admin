@@ -358,6 +358,7 @@ const CallModePage = () => {
 
   // コメント直接編集の状態
   const [editableComments, setEditableComments] = useState<string>('');
+  const [savedComments, setSavedComments] = useState<string>(''); // 保存済みコメント（変更検知用）
   const [savingComments, setSavingComments] = useState(false);
 
   // ステータス更新用の状態
@@ -1036,6 +1037,7 @@ const CallModePage = () => {
             setSeller(freshData);
             setUnreachableStatus(freshData.unreachableStatus || null);
             setEditableComments(freshData.comments || '');
+            setSavedComments(freshData.comments || '');
           }
         }).catch(() => {});
       } else {
@@ -1052,6 +1054,7 @@ const CallModePage = () => {
       setSeller(sellerData);
       setUnreachableStatus(sellerData.unreachableStatus || null);
       setEditableComments(sellerData.comments || '');
+      setSavedComments(sellerData.comments || '');
 
       // 反響URLを非同期で取得（エラーでも続行）
       api.get(`/api/sellers/${id}/inquiry-url`).then(r => {
@@ -1454,6 +1457,7 @@ const CallModePage = () => {
       });
 
       setSuccessMessage('コメントを保存しました');
+      setSavedComments(editableComments); // 保存済み状態を更新
       setTimeout(() => {
         setSuccessMessage(null);
       }, 3000);
@@ -1497,6 +1501,7 @@ const CallModePage = () => {
 
       // コメント欄を即時更新（二重保存不要）
       setEditableComments(updatedComments);
+      setSavedComments(updatedComments); // 保存済み状態を更新
 
       // 成功メッセージ
       setSuccessMessage('コメントを保存しました');
@@ -4884,17 +4889,40 @@ HP：https://ifoo-oita.com/
               />
             </Box>
 
-            {/* 保存ボタン */}
-            <Button
-              fullWidth
-              variant="contained"
-              size="large"
-              disabled={savingComments}
-              onClick={handleSaveComments}
-              sx={{ mb: 3 }}
-            >
-              {savingComments ? <CircularProgress size={24} /> : '保存'}
-            </Button>
+            {/* 保存ボタン（未変更時はグレー、変更あり時はオレンジで目立つ） */}
+            {(() => {
+              const isDirty = editableComments !== savedComments;
+              return (
+                <Button
+                  fullWidth
+                  variant={isDirty ? 'contained' : 'outlined'}
+                  size="large"
+                  disabled={savingComments}
+                  onClick={handleSaveComments}
+                  sx={{
+                    mb: 3,
+                    ...(isDirty ? {
+                      backgroundColor: '#ff6d00',
+                      color: '#fff',
+                      fontWeight: 'bold',
+                      boxShadow: '0 0 0 3px rgba(255,109,0,0.4)',
+                      animation: 'pulse-orange 1.5s infinite',
+                      '@keyframes pulse-orange': {
+                        '0%': { boxShadow: '0 0 0 0 rgba(255,109,0,0.5)' },
+                        '70%': { boxShadow: '0 0 0 8px rgba(255,109,0,0)' },
+                        '100%': { boxShadow: '0 0 0 0 rgba(255,109,0,0)' },
+                      },
+                      '&:hover': { backgroundColor: '#e65100' },
+                    } : {
+                      color: '#bdbdbd',
+                      borderColor: '#e0e0e0',
+                    }),
+                  }}
+                >
+                  {savingComments ? <CircularProgress size={24} /> : (isDirty ? '⚠️ 保存（未保存の変更あり）' : '保存')}
+                </Button>
+              );
+            })()}
 
             {/* ステータス更新セクション */}
             <Typography variant="h6" gutterBottom>
