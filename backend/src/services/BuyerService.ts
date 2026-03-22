@@ -1533,9 +1533,11 @@ export class BuyerService {
       }
     });
 
+    // 空文字ステータス（未分類）の件数を STATUS_DEFINITIONS 由来のエントリに反映
     const emptyStatusCount = statusCountMap.get('') || 0;
-    if (emptyStatusCount > 0) {
-      categories.push({ status: '', count: emptyStatusCount, priority: 999, color: '#9E9E9E' });
+    const emptyEntry = categories.find(c => c.status === '');
+    if (emptyEntry) {
+      emptyEntry.count = emptyStatusCount;
     }
 
     categories.sort((a, b) => a.priority - b.priority);
