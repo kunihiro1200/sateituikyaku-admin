@@ -1273,7 +1273,7 @@ export class BuyerService {
       'valuation_survey', 'valuation_survey_confirmed', 'broker_survey',
       'day_of_week', 'pinrich', 'email_confirmation', 'email_confirmation_assignee',
       'viewing_promotion_not_needed', 'viewing_promotion_sender',
-      'past_buyer_list', 'price', 'atbb_status', 'property_number',
+      'past_buyer_list', 'price', 'property_number',
       'desired_area', 'desired_property_type', 'budget',
     ].join(', ');
 
