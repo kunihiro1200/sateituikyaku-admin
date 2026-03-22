@@ -884,6 +884,32 @@ export default function BuyerViewingResultPage() {
                 })}
               </Box>
             </Box>
+            {/* 内覧後売主連絡（atbb_statusが「一般・公開中」の場合のみ表示） */}
+            {linkedProperties?.some((p: any) => p.atbb_status && p.atbb_status.includes('一般') && p.atbb_status.includes('公開中')) && (
+              <Box sx={{ mt: 1, mb: 1 }}>
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5, fontSize: '0.7rem' }}>
+                  内覧後売主連絡
+                </Typography>
+                <Box sx={{ display: 'flex', gap: 0.5 }}>
+                  {(['済', '未', '不要'] as const).map((option) => (
+                    <Button
+                      key={option}
+                      variant={buyer.post_viewing_seller_contact === option ? 'contained' : 'outlined'}
+                      color={option === '済' ? 'success' : option === '未' ? 'error' : 'inherit'}
+                      size="small"
+                      onClick={async () => {
+                        // 同じボタンを2度クリックしたら値をクリア
+                        const newValue = buyer.post_viewing_seller_contact === option ? '' : option;
+                        await handleInlineFieldSave('post_viewing_seller_contact', newValue);
+                      }}
+                      sx={{ fontSize: '0.75rem', padding: '2px 10px' }}
+                    >
+                      {option}
+                    </Button>
+                  ))}
+                </Box>
+              </Box>
+            )}
             <InlineEditableField
               key={`viewing_result_${viewingResultKey}`}
               label="内覧結果・後続対応"
