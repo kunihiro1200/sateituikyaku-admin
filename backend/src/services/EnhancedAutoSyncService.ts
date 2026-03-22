@@ -913,7 +913,7 @@ export class EnhancedAutoSyncService {
 
           // phone_numberの比較（暗号化フィールド）
           // スプシに値がある場合、DBが null なら更新対象にする
-          const sheetPhone = sheetRow['電話番号\nハイフン不要'] || sheetRow['電話番号'] || '';
+          const sheetPhone = String(sheetRow['電話番号\nハイフン不要'] || sheetRow['電話番号'] || '');
           if (sheetPhone && sheetPhone.trim() !== '' && !dbSeller.phone_number) {
             needsUpdate = true;
           }
