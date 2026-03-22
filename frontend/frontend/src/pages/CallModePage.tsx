@@ -2105,6 +2105,8 @@ HP：https://ifoo-oita.com/
     setEditableEmailRecipient(seller.email || '');
     setEditableEmailSubject(subject);
     setEditableEmailBody(body);
+    // テンプレート選択時に選択画像をリセット（前回の添付が残らないようにする）
+    setSelectedImages([]);
   };
 
   // 査定メール送信関数（確認後に実行）
@@ -2219,6 +2221,8 @@ HP：https://ifoo-oita.com/
       setEditableEmailRecipient(seller?.email || '');
       setEditableEmailSubject(replacedSubject);
       setEditableEmailBody(htmlContent);
+      // テンプレート選択時に選択画像をリセット（前回の添付が残らないようにする）
+      setSelectedImages([]);
 
       setConfirmDialog({
         open: true,
@@ -2248,6 +2252,8 @@ HP：https://ifoo-oita.com/
     setEditableEmailRecipient(seller?.email || '');
     setEditableEmailSubject(replacedSubject);
     setEditableEmailBody(htmlContent);
+    // テンプレート選択時に選択画像をリセット（前回の添付が残らないようにする）
+    setSelectedImages([]);
 
     // 確認ダイアログを表示
     setConfirmDialog({
