@@ -173,7 +173,7 @@ export function calculateBuyerStatus(buyer: BuyerData): StatusResult {
       };
     }
 
-    // Priority 10-15: 担当者別内覧後未入力
+    // Priority 10-15: 担当者別内覧後未入力（Y_内覧後未入力と同じ条件: 公開中かつ業者問合せでない）
     const viewingPostInputConditions = [
       { assignee: '生', priority: 10, status: '生_内覧後未入力' },
       { assignee: 'U', priority: 11, status: 'U_内覧後未入力' },
@@ -189,13 +189,15 @@ export function calculateBuyerStatus(buyer: BuyerData): StatusResult {
           equals(buyer.follow_up_assignee, condition.assignee),
           isNotBlank(buyer.latest_viewing_date),
           isPast(buyer.latest_viewing_date),
-          isBlank(buyer.viewing_result_follow_up)
+          isBlank(buyer.viewing_result_follow_up),
+          contains(buyer.atbb_status, '公開中'),
+          notEquals(buyer.broker_inquiry, '業者問合せ')
         )
       ) {
         return {
           status: condition.status,
           priority: condition.priority,
-          matchedCondition: `担当${condition.assignee}: 内覧後の入力が未完了`,
+          matchedCondition: `担当${condition.assignee}: 内覧後の入力が未完了（公開中かつ業者問合せでない）`,
           color: getStatusColor(condition.status),
         };
       }
