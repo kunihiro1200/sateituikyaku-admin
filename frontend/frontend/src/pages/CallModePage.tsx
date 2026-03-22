@@ -801,6 +801,8 @@ const CallModePage = () => {
 
   useEffect(() => {
     loadAllData();
+    // 売主が切り替わったら選択画像をリセット（前の売主の添付が残らないようにする）
+    setSelectedImages([]);
   }, [id]);
 
   // スプレッドシートから売主用Emailテンプレートを取得
