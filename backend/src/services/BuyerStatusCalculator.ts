@@ -117,23 +117,17 @@ export function calculateBuyerStatus(buyer: BuyerData): StatusResult {
       return { status, priority: 5, matchedCondition: '一般媒介で内覧後の売主連絡が未完了', color: getStatusColor(status) };
     }
 
-    // Priority 6: ⑯当日TEL（次電日が当日以前）
-    // 追客担当あり → ⑯当日TEL（Y）のように担当者名付き
-    // 追客担当なし → ⑯当日TEL
+    // Priority 6: ⑯当日TEL（次電日が当日以前 かつ 追客担当なし）
+    // 追客担当がある場合は Priority 23以降の担当者別カテゴリで「当日TEL(林)」として表示
     if (
       and(
         isNotBlank(buyer.next_call_date),
-        isTodayOrPast(buyer.next_call_date)
+        isTodayOrPast(buyer.next_call_date),
+        isBlank(buyer.follow_up_assignee)
       )
     ) {
-      if (isNotBlank(buyer.follow_up_assignee)) {
-        const assignee = buyer.follow_up_assignee || '';
-        const status = `⑯当日TEL（${assignee}）`;
-        return { status, priority: 6, matchedCondition: '次電日が当日以前（担当あり）', color: getStatusColor('⑯当日TEL') };
-      } else {
-        const status = '⑯当日TEL';
-        return { status, priority: 6, matchedCondition: '次電日が当日以前（担当なし）', color: getStatusColor('⑯当日TEL') };
-      }
+      const status = '⑯当日TEL';
+      return { status, priority: 6, matchedCondition: '次電日が当日以前（担当なし）', color: getStatusColor('⑯当日TEL') };
     }
 
     // Priority 7: 問合メール未対応
@@ -243,20 +237,32 @@ export function calculateBuyerStatusComplete(buyer: BuyerData): StatusResult {
     }
 
     // Priority 23-30: 担当者別
-    const assigneeStatuses: Array<{ assignee: string; priority: number; status: string }> = [
-      { assignee: 'Y', priority: 23, status: '担当(Y)' },
-      { assignee: 'W', priority: 24, status: '担当(W)' },
-      { assignee: 'U', priority: 25, status: '担当(U)' },
-      { assignee: '生', priority: 26, status: '担当(生)' },
-      { assignee: 'K', priority: 27, status: '担当(K)' },
-      { assignee: '久', priority: 28, status: '担当(久)' },
-      { assignee: 'I', priority: 29, status: '担当(I)' },
-      { assignee: 'R', priority: 30, status: '担当(R)' },
+    // 次電日が今日以前の場合は「当日TEL(林)」、そうでなければ「担当(林)」
+    // 固定リストにない担当者（林など）も汎用的に対応
+    const knownAssignees: Array<{ assignee: string; priority: number }> = [
+      { assignee: 'Y', priority: 23 },
+      { assignee: 'W', priority: 24 },
+      { assignee: 'U', priority: 25 },
+      { assignee: '生', priority: 26 },
+      { assignee: 'K', priority: 27 },
+      { assignee: '久', priority: 28 },
+      { assignee: 'I', priority: 29 },
+      { assignee: 'R', priority: 30 },
     ];
 
-    for (const item of assigneeStatuses) {
-      if (equals(buyer.follow_up_assignee, item.assignee)) {
-        return { status: item.status, priority: item.priority, matchedCondition: `担当${item.assignee}`, color: getStatusColor(item.status) };
+    if (isNotBlank(buyer.follow_up_assignee)) {
+      const assignee = buyer.follow_up_assignee || '';
+      const known = knownAssignees.find(a => a.assignee === assignee);
+      const priority = known ? known.priority : 23; // 未知の担当者は priority 23 扱い
+
+      if (isNotBlank(buyer.next_call_date) && isTodayOrPast(buyer.next_call_date)) {
+        // 次電日が今日以前 → 当日TEL(林) として担当カテゴリのサブ扱い
+        const status = `当日TEL(${assignee})`;
+        return { status, priority, matchedCondition: `担当${assignee}: 次電日が当日以前`, color: getStatusColor('⑯当日TEL') };
+      } else {
+        // 通常の担当カテゴリ
+        const status = `担当(${assignee})`;
+        return { status, priority, matchedCondition: `担当${assignee}`, color: getStatusColor(`担当(${assignee})`) };
       }
     }
 

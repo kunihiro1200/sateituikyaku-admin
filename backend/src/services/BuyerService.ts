@@ -1264,9 +1264,14 @@ export class BuyerService {
         try {
           const statusResult = calculateBuyerStatus(buyer);
           let status = statusResult.status || '';
-          // ⑯当日TEL（Y）のような動的ステータスは ⑯当日TEL にまとめる
+          // ⑯当日TEL（Y）のような動的ステータスは ⑯当日TEL にまとめる（担当なしの当日TEL）
           if (status.startsWith('⑯当日TEL（') || status.startsWith('⑯当日TEL(')) {
             status = '⑯当日TEL';
+          }
+          // 当日TEL(林) のような担当あり当日TELは 担当(林) にまとめる
+          const todayCallWithAssignee = status.match(/^当日TEL\((.+)\)$/);
+          if (todayCallWithAssignee) {
+            status = `担当(${todayCallWithAssignee[1]})`;
           }
           statusCountMap.set(status, (statusCountMap.get(status) || 0) + 1);
         } catch {
@@ -1320,11 +1325,16 @@ export class BuyerService {
           }
         })
         .filter(buyer => {
-          // ⑯当日TEL でフィルタした場合、担当あり（⑯当日TEL（Y）等）・担当なし（⑯当日TEL）両方をヒットさせる
+          // ⑯当日TEL でフィルタした場合、担当なしの当日TELのみ
           if (status === '⑯当日TEL') {
-            return buyer.calculated_status === '⑯当日TEL' ||
-              buyer.calculated_status.startsWith('⑯当日TEL（') ||
-              buyer.calculated_status.startsWith('⑯当日TEL(');
+            return buyer.calculated_status === '⑯当日TEL';
+          }
+          // 担当(林) でフィルタした場合、当日TEL(林) も含める
+          const assigneeMatch = status.match(/^担当\((.+)\)$/);
+          if (assigneeMatch) {
+            const assignee = assigneeMatch[1];
+            return buyer.calculated_status === status ||
+              buyer.calculated_status === `当日TEL(${assignee})`;
           }
           return buyer.calculated_status === status;
         })
