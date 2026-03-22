@@ -137,13 +137,14 @@ export function calculateBuyerStatus(buyer: BuyerData): StatusResult {
     }
 
     // Priority 8: 3回架電未
+    // 条件: [3回架電確認済み] = "3回架電未" AND ([【問合メール】電話対応] = "不通" OR "未")
     if (
       and(
-        isBlank(buyer.three_calls_confirmed),
-        isBlank(buyer.latest_viewing_date),
-        isBlank(buyer.follow_up_assignee),
-        isBlank(buyer.latest_status),
-        isBlank(buyer.broker_inquiry)
+        equals(buyer.three_calls_confirmed, '3回架電未'),
+        or(
+          equals(buyer.inquiry_email_phone, '不通'),
+          equals(buyer.inquiry_email_phone, '未')
+        )
       )
     ) {
       const status = '3回架電未';
