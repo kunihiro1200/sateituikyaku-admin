@@ -399,9 +399,9 @@ const CallModePage = () => {
   const [editableEmailSubject, setEditableEmailSubject] = useState<string>('');
   const [editableEmailBody, setEditableEmailBody] = useState<string>('');
 
-  // 画像選択モーダル用の状態（Google Drive画像添付用 - 旧機能）
+  // 画像選択モーダル用の状態
   const [imageSelectorOpen, setImageSelectorOpen] = useState(false);
-  const [selectedImages, setSelectedImages] = useState<SelectedImages | null>(null);
+  const [selectedImages, setSelectedImages] = useState<any[]>([]);
   const [imageError, setImageError] = useState<string | null>(null);
 
   // 訪問予約セクションへのスクロール用ref
@@ -2326,12 +2326,30 @@ HP：https://ifoo-oita.com/
           // capturedEmailBodyには既にHTMLが含まれている（画像のBase64データURLを含む）
           const hasImages = capturedEmailBody.includes('<img');
           
-          // SelectedImages オブジェクトを DriveImage[] 配列に変換
-          const attachmentImages: DriveImage[] = [];
-          if (capturedSelectedImages) {
-            if (capturedSelectedImages.exterior) attachmentImages.push(capturedSelectedImages.exterior);
-            if (capturedSelectedImages.interior) attachmentImages.push(capturedSelectedImages.interior);
-            // other は string[]（IDのみ）なので現時点では除外
+          // ImageFile[] を添付ファイル形式に変換
+          // source: 'drive'  → { id, name } でバックエンドがDriveから取得
+          // source: 'local'  → { id, name, base64Data, mimeType } でBase64データを直接送信
+          // source: 'url'    → { id, name, url } でURLを送信
+          const attachmentImages: any[] = [];
+          if (Array.isArray(capturedSelectedImages) && capturedSelectedImages.length > 0) {
+            for (const img of capturedSelectedImages) {
+              if (img.source === 'drive') {
+                attachmentImages.push({ id: img.driveFileId || img.id, name: img.name });
+              } else if (img.source === 'local' && img.previewUrl) {
+                // previewUrl は "data:image/xxx;base64,..." 形式
+                const base64Match = (img.previewUrl as string).match(/^data:([^;]+);base64,(.+)$/);
+                if (base64Match) {
+                  attachmentImages.push({
+                    id: img.id,
+                    name: img.name,
+                    base64Data: base64Match[2],
+                    mimeType: base64Match[1],
+                  });
+                }
+              } else if (img.source === 'url' && img.url) {
+                attachmentImages.push({ id: img.id, name: img.name, url: img.url });
+              }
+            }
           }
 
           const requestPayload = {
@@ -2340,7 +2358,7 @@ HP：https://ifoo-oita.com/
             subject: capturedEmailSubject,
             content: capturedEmailBody,
             htmlBody: hasImages ? capturedEmailBody : undefined,
-            from: capturedSenderAddress,  // 送信元アドレスを追加
+            from: capturedSenderAddress,
             // 画像が選択されている場合のみ attachments を含める
             ...(attachmentImages.length > 0
               ? { attachments: attachmentImages }
@@ -2486,8 +2504,8 @@ HP：https://ifoo-oita.com/
 
   // 画像選択確定のハンドラー（新しい実装）
   const handleImageSelectionConfirm = (images: any[]) => {
-    // 新しい形式の画像データを保存
-    setSelectedImages(images as any);
+    // ImageFile[] をそのまま保存
+    setSelectedImages(images);
     setImageSelectorOpen(false);
     setImageError(null);
   };

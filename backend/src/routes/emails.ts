@@ -230,13 +230,48 @@ router.post(
 
       let result;
 
-      // 添付ファイルがある場合は Google Drive から画像データを取得して添付付きで送信
+      // 添付ファイルがある場合は各ソースに応じてデータを取得して添付付きで送信
       if (attachments && Array.isArray(attachments) && attachments.length > 0) {
         const { GoogleDriveService } = await import('../services/GoogleDriveService');
         const driveService = new GoogleDriveService();
 
         const emailAttachmentsRaw = await Promise.all(
           attachments.map(async (img: any) => {
+            // ローカルファイル（Base64データ）
+            if (img.base64Data) {
+              return {
+                filename: img.name || 'attachment.jpg',
+                mimeType: img.mimeType || 'image/jpeg',
+                data: Buffer.from(img.base64Data, 'base64'),
+                cid: `attachment-${img.id}`,
+              };
+            }
+            // URL指定
+            if (img.url) {
+              try {
+                const https = await import('https');
+                const http = await import('http');
+                const data = await new Promise<Buffer>((resolve, reject) => {
+                  const client = img.url.startsWith('https') ? https : http;
+                  (client as any).get(img.url, (res: any) => {
+                    const chunks: Buffer[] = [];
+                    res.on('data', (chunk: Buffer) => chunks.push(chunk));
+                    res.on('end', () => resolve(Buffer.concat(chunks)));
+                    res.on('error', reject);
+                  }).on('error', reject);
+                });
+                return {
+                  filename: img.name || 'attachment.jpg',
+                  mimeType: 'image/jpeg',
+                  data,
+                  cid: `attachment-${img.id}`,
+                };
+              } catch (urlErr) {
+                console.warn(`⚠️ Could not fetch image from URL: ${img.url}`, urlErr);
+                return null;
+              }
+            }
+            // Google Drive ファイル
             const fileData = await driveService.getFile(img.id);
             if (!fileData) {
               console.warn(`⚠️ Could not fetch file from Google Drive: ${img.id}`);
