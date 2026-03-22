@@ -107,13 +107,16 @@ export function calculateBuyerStatus(buyer: BuyerData): StatusResult {
 
     // Priority 5: 一般媒介_内覧後売主連絡未（内覧日が2026/3/1以降のみ対象）
     // 「一般」という文字列を含む場合が対象
+    // 業者案件（broker_inquiry='業者問合せ' または follow_up_assignee='GYOSHA'）は除外
     if (
       and(
         contains(buyer.viewing_type_general, '一般'),
         isNotBlank(buyer.latest_viewing_date),
         isPast(buyer.latest_viewing_date),
         isAfterOrEqual(buyer.latest_viewing_date, '2026-03-01'),
-        isBlank(buyer.post_viewing_seller_contact)
+        isBlank(buyer.post_viewing_seller_contact),
+        notEquals(buyer.broker_inquiry, '業者問合せ'),
+        notEquals(buyer.follow_up_assignee, 'GYOSHA')
       )
     ) {
       const status = '一般媒介_内覧後売主連絡未';

@@ -1334,18 +1334,20 @@ export class BuyerService {
 
   /**
    * ステータスカテゴリ + 全買主データを一度に返す（フロントエンドキャッシュ用）
-   * これにより、ステータスフィルタ時にバックエンドへの追加リクエストが不要になる
+   * fetchAllBuyersWithStatus を1回だけ呼び、そこからカテゴリも計算する（二重取得を防ぐ）
    */
   async getStatusCategoriesWithBuyers(): Promise<{
     categories: Array<{ status: string; count: number; priority: number; color: string }>;
     buyers: any[];
     normalStaffInitials: string[];
   }> {
+    // 全件取得は1回だけ
     const allBuyers = await this.fetchAllBuyersWithStatus();
-    const categories = await this.getStatusCategories();
+
+    // allBuyers からカテゴリを直接計算（getStatusCategories を呼ばない）
+    const categories = await this.buildCategoriesFromBuyers(allBuyers);
 
     // 通常スタッフのイニシャルを取得
-    // is_normalカラムが存在する場合はそれでフィルタ、存在しない場合は全スタッフを返す
     let normalStaffInitials: string[] = [];
     try {
       const { data: staffDataNormal, error: normalError } = await this.supabase
@@ -1357,7 +1359,6 @@ export class BuyerService {
           .map((s: any) => s.initials)
           .filter((i: string) => i);
       } else {
-        // is_normalカラムが存在しないか、結果が空の場合は全スタッフを取得
         const { data: allStaffData } = await this.supabase
           .from('employees')
           .select('initials');
@@ -1370,6 +1371,79 @@ export class BuyerService {
     }
 
     return { categories, buyers: allBuyers, normalStaffInitials };
+  }
+
+  /**
+   * ステータス計算済み買主リストからカテゴリを構築（内部ヘルパー）
+   */
+  private async buildCategoriesFromBuyers(allBuyers: any[]): Promise<Array<{
+    status: string; count: number; priority: number; color: string;
+  }>> {
+    const { STATUS_DEFINITIONS } = await import('../config/buyer-status-definitions');
+
+    const statusCountMap = new Map<string, number>();
+    allBuyers.forEach(buyer => {
+      let status = buyer.calculated_status || '';
+      if (status.startsWith('⑯当日TEL（') || status.startsWith('⑯当日TEL(')) {
+        status = '⑯当日TEL';
+      }
+      statusCountMap.set(status, (statusCountMap.get(status) || 0) + 1);
+    });
+
+    const categories: Array<{ status: string; count: number; priority: number; color: string }> = [];
+    STATUS_DEFINITIONS.forEach((definition) => {
+      categories.push({
+        status: definition.status,
+        count: statusCountMap.get(definition.status) || 0,
+        priority: definition.priority,
+        color: definition.color
+      });
+    });
+
+    const assigneePriorityMap = new Map<string, number>();
+    const knownAssigneePriorities: Record<string, number> = {
+      'Y': 23, 'W': 24, 'U': 25, '生': 26, 'K': 27, '久': 28, 'I': 29, 'R': 30
+    };
+    let dynamicPriority = 31;
+
+    statusCountMap.forEach((count, status) => {
+      if (status === '' || count === 0) return;
+      const assigneeMatch = status.match(/^担当\((.+)\)$/);
+      if (assigneeMatch) {
+        const assignee = assigneeMatch[1];
+        const p = knownAssigneePriorities[assignee] ?? dynamicPriority++;
+        assigneePriorityMap.set(assignee, p);
+      }
+    });
+
+    statusCountMap.forEach((count, status) => {
+      if (status === '') return;
+      if (count === 0) return;
+      const alreadyAdded = categories.some(c => c.status === status);
+      if (!alreadyAdded) {
+        const todayCallMatch = status.match(/^当日TEL\((.+)\)$/);
+        if (todayCallMatch) {
+          const assignee = todayCallMatch[1];
+          const basePriority = assigneePriorityMap.get(assignee) ?? (knownAssigneePriorities[assignee] ?? 23);
+          categories.push({ status, count, priority: basePriority + 0.5, color: '#ff5722' });
+          return;
+        }
+        const assigneeMatch = status.match(/^担当\((.+)\)$/);
+        if (assigneeMatch) {
+          const assignee = assigneeMatch[1];
+          const p = assigneePriorityMap.get(assignee) ?? (knownAssigneePriorities[assignee] ?? 23);
+          categories.push({ status, count, priority: p, color: '#4caf50' });
+        }
+      }
+    });
+
+    const emptyStatusCount = statusCountMap.get('') || 0;
+    if (emptyStatusCount > 0) {
+      categories.push({ status: '', count: emptyStatusCount, priority: 999, color: '#9E9E9E' });
+    }
+
+    categories.sort((a, b) => a.priority - b.priority);
+    return categories;
   }
 
   async getStatusCategories(): Promise<Array<{
