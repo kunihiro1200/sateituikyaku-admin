@@ -182,7 +182,7 @@ export default function BuyersPage() {
 
       <Box sx={{ display: 'flex', gap: 2 }}>
         {/* 左サイドバー（ステータスのみ） */}
-        <Paper sx={{ width: 220, flexShrink: 0, alignSelf: 'flex-start' }}>
+        <Paper sx={{ width: 220, flexShrink: 0, alignSelf: 'flex-start', maxHeight: 'none', overflow: 'visible' }}>
           <BuyerStatusSidebar
             selectedStatus={selectedCalculatedStatus}
             onStatusSelect={(status) => { setSelectedCalculatedStatus(status); setPage(0); }}

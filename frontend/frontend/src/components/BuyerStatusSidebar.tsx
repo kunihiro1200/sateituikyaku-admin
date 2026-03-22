@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import {
   Box,
   Typography,
-  List,
   ListItemButton,
   ListItemText,
   Badge,
@@ -78,7 +77,7 @@ export default function BuyerStatusSidebar({ selectedStatus, onStatusSelect, tot
         <Typography variant="subtitle1" fontWeight="bold">ステータス</Typography>
       </Box>
 
-      <List dense sx={{ overflow: 'visible' }}>
+      <Box>
         {/* All カテゴリ */}
         <ListItemButton
           selected={!selectedStatus}
@@ -118,9 +117,7 @@ export default function BuyerStatusSidebar({ selectedStatus, onStatusSelect, tot
           >
             <ListItemText
               primary={category.status || '（未分類）'}
-              primaryTypographyProps={{
-                variant: 'body2',
-              }}
+              primaryTypographyProps={{ variant: 'body2' }}
               sx={{ flex: 1, minWidth: 0, mr: 1 }}
             />
             <Badge
@@ -136,7 +133,7 @@ export default function BuyerStatusSidebar({ selectedStatus, onStatusSelect, tot
             />
           </ListItemButton>
         ))}
-      </List>
+      </Box>
     </Box>
   );
 }
