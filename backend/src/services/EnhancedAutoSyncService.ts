@@ -354,17 +354,7 @@ export class EnhancedAutoSyncService {
         };
       }
 
-      // 専任契約中・一般契約中の売主は削除をブロック
-      const activeContractStatuses = ['専任契約中', '一般契約中'];
-      if (activeContractStatuses.includes(seller.status)) {
-        return {
-          canDelete: false,
-          reason: `Active contract: ${seller.status}`,
-          requiresManualReview: true,
-          details: { contractStatus: seller.status, hasActiveContract: true },
-        };
-      }
-
+      // スプシから削除されたものはステータスに関係なく削除を許可
       return {
         canDelete: true,
         requiresManualReview: false,
