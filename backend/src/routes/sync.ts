@@ -541,9 +541,11 @@ router.post('/trigger', async (req: Request, res: Response) => {
 
   // sellersOnly=true の場合は売主同期のみ（Phase 1-3）を実行してタイムアウトを回避
   // deletionOnly=true の場合は削除同期のみ（Phase 3）を実行
+  // additionOnly=true の場合は追加同期のみ（Phase 1）を実行（GASのPhase 2はSupabase直接更新のため）
   // GASのタイムアウトは6分あるので、同期処理が完了するまで待つ
   const sellersOnly = req.query.sellersOnly === 'true';
   const deletionOnly = req.query.deletionOnly === 'true';
+  const additionOnly = req.query.additionOnly === 'true';
 
   try {
     const { getEnhancedAutoSyncService } = await import('../services/EnhancedAutoSyncService');
@@ -552,7 +554,26 @@ router.post('/trigger', async (req: Request, res: Response) => {
     const syncService = getEnhancedAutoSyncService();
     await syncService.initialize();
 
-    if (deletionOnly) {
+    if (additionOnly) {
+      // 追加同期のみ（Phase 1）- GASのPhase 2はSupabase直接更新のため不要
+      console.log('➕ Addition-only sync triggered');
+      syncService.clearSpreadsheetCache();
+      const missingSellers = await syncService.detectMissingSellers();
+      let added = 0;
+      const errors: any[] = [];
+      if (missingSellers.length > 0) {
+        const addResult = await syncService.syncMissingSellers(missingSellers);
+        added = addResult.newSellersCount;
+        errors.push(...addResult.errors);
+      }
+      const healthChecker = getSyncHealthChecker();
+      await healthChecker.checkAndUpdateHealth();
+      return res.json({
+        success: errors.length === 0,
+        message: `Addition-only sync completed: ${added} added`,
+        data: { added, errors: errors.length },
+      });
+    } else if (deletionOnly) {
       // 削除同期のみ（Phase 3）
       console.log('🗑️  Deletion-only sync triggered');
       syncService.clearSpreadsheetCache();

@@ -13,14 +13,14 @@ export interface StatusDefinition {
 }
 
 export const STATUS_DEFINITIONS: StatusDefinition[] = [
-  { priority: 1, status: '査定アンケート回答あり', description: '査定アンケートに回答があり、確認が未完了', color: '#ff0000' },
-  { priority: 2, status: '業者問合せあり', description: '業者向けアンケートが未回答', color: '#ff6600' },
-  { priority: 3, status: '内覧日前日', description: '内覧日の前日（木曜日は2日前）', color: '#ffcc00' },
-  { priority: 4, status: '内覧未確定', description: '内覧日が未確定', color: '#ff9900' },
-  { priority: 5, status: '一般媒介_内覧後売主連絡未', description: '一般媒介で内覧後の売主連絡が未完了', color: '#ff3300' },
-  { priority: 6, status: '⑯当日TEL', description: '次電日が当日以前', color: '#cc0000' },
-  { priority: 7, status: '問合メール未対応', description: '問い合わせメールへの対応が未完了', color: '#ff6666' },
-  { priority: 8, status: '3回架電未', description: '3回架電が未完了', color: '#ff9999' },
+  { priority: 1, status: '査定アンケート回答あり', description: '査定アンケートに回答があり、確認が未完了', color: '#1b5e20' },
+  { priority: 2, status: '業者問合せあり', description: '業者向けアンケートが未回答', color: '#2e7d32' },
+  { priority: 3, status: '内覧日前日', description: '内覧日の前日（木曜日は2日前）', color: '#388e3c' },
+  { priority: 4, status: '内覧未確定', description: '内覧日が未確定', color: '#43a047' },
+  { priority: 5, status: '一般媒介_内覧後売主連絡未', description: '一般媒介で内覧後の売主連絡が未完了', color: '#2e7d32' },
+  { priority: 6, status: '⑯当日TEL', description: '次電日が当日以前', color: '#388e3c' },
+  { priority: 7, status: '問合メール未対応', description: '問い合わせメールへの対応が未完了', color: '#43a047' },
+  { priority: 8, status: '3回架電未', description: '3回架電が未完了', color: '#4caf50' },
   { priority: 9, status: 'Y_内覧後未入力', description: '担当Y: 内覧後の入力が未完了', color: '#66bb6a' },
   { priority: 10, status: '生_内覧後未入力', description: '担当生: 内覧後の入力が未完了', color: '#66bb6a' },
   { priority: 11, status: 'U_内覧後未入力', description: '担当U: 内覧後の入力が未完了', color: '#66bb6a' },
@@ -44,11 +44,11 @@ export const STATUS_DEFINITIONS: StatusDefinition[] = [
   { priority: 29, status: '担当(I)', description: '担当I', color: '#4caf50' },
   { priority: 30, status: '担当(R)', description: '担当R', color: '#4caf50' },
   { priority: 31, status: 'ピンリッチ未登録', description: 'ピンリッチに未登録', color: '#81c784' },
-  { priority: 32, status: '内覧促進メール（Pinrich)', description: '内覧促進メール送信対象（Pinrich）', color: '#66ff66' },
-  { priority: 16.5, status: '要内覧促進客', description: '内覧促進が必要な顧客', color: '#99ff99' },
-  { priority: 34, status: '買付有り、物件不適合の内覧促進客', description: '買付有りだが物件不適合の内覧促進対象', color: '#ccffcc' },
-  { priority: 35, status: 'メアド確認必要', description: 'メールアドレスの確認が必要', color: '#ffff66' },
-  { priority: 0, status: '', description: '該当なし', color: '#cccccc' },
+  { priority: 32, status: '内覧促進メール（Pinrich)', description: '内覧促進メール送信対象（Pinrich）', color: '#a5d6a7' },
+  { priority: 16.5, status: '要内覧促進客', description: '内覧促進が必要な顧客', color: '#c8e6c9' },
+  { priority: 34, status: '買付有り、物件不適合の内覧促進客', description: '買付有りだが物件不適合の内覧促進対象', color: '#e8f5e9' },
+  { priority: 35, status: 'メアド確認必要', description: 'メールアドレスの確認が必要', color: '#388e3c' },
+  { priority: 0, status: '', description: '該当なし', color: '#9E9E9E' },
 ];
 
 export function getStatusColor(status: string): string {

@@ -54,44 +54,299 @@ function postToBackend(path, payload) {
 }
 
 // ============================================================
+// 日付フォーマットユーティリティ
+// ============================================================
+
+/**
+ * 日付値を YYYY-MM-DD 形式に変換
+ * GASのrowToObjectで既にDate→YYYY/MM/DD変換済みなので文字列処理のみ
+ */
+function formatDateToISO_(value) {
+  if (!value || value === '') return null;
+  var str = String(value).trim();
+
+  // YYYY/MM/DD 形式
+  if (str.match(/^\d{4}\/\d{1,2}\/\d{1,2}$/)) {
+    var parts = str.split('/');
+    return parts[0] + '-' + parts[1].padStart(2, '0') + '-' + parts[2].padStart(2, '0');
+  }
+  // YYYY-MM-DD 形式
+  if (str.match(/^\d{4}-\d{1,2}-\d{1,2}$/)) {
+    var parts2 = str.split('-');
+    return parts2[0] + '-' + parts2[1].padStart(2, '0') + '-' + parts2[2].padStart(2, '0');
+  }
+  return null;
+}
+
+// ============================================================
+// Supabase直接更新ユーティリティ
+// ============================================================
+
+/**
+ * Supabaseのsellersテーブルを seller_number で直接PATCH更新（汎用）
+ */
+function patchSellerToSupabase_(sellerNumber, updateData) {
+  var url = SUPABASE_CONFIG.URL + '/rest/v1/sellers?seller_number=eq.' + encodeURIComponent(sellerNumber);
+  var options = {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      'apikey': SUPABASE_CONFIG.SERVICE_KEY,
+      'Authorization': 'Bearer ' + SUPABASE_CONFIG.SERVICE_KEY,
+      'Prefer': 'return=minimal'
+    },
+    payload: JSON.stringify(updateData),
+    muteHttpExceptions: true
+  };
+  var res = UrlFetchApp.fetch(url, options);
+  var code = res.getResponseCode();
+  if (code >= 200 && code < 300) {
+    return { success: true };
+  } else {
+    return { success: false, error: 'HTTP ' + code + ': ' + res.getContentText().substring(0, 300) };
+  }
+}
+
+/**
+ * Supabaseから全売主の更新対象フィールドを取得（ページネーション対応）
+ */
+function fetchAllSellersFromSupabase_() {
+  var allSellers = [];
+  var pageSize = 1000;
+  var offset = 0;
+  var fields = 'seller_number,status,next_call_date,visit_assignee,unreachable_status,comments,phone_contact_person,preferred_contact_time,contact_method,contract_year_month,current_status,pinrich_status';
+
+  while (true) {
+    var url = SUPABASE_CONFIG.URL + '/rest/v1/sellers?select=' + fields +
+      '&deleted_at=is.null' +
+      '&offset=' + offset + '&limit=' + pageSize;
+    var options = {
+      method: 'GET',
+      headers: {
+        'apikey': SUPABASE_CONFIG.SERVICE_KEY,
+        'Authorization': 'Bearer ' + SUPABASE_CONFIG.SERVICE_KEY
+      },
+      muteHttpExceptions: true
+    };
+    var res = UrlFetchApp.fetch(url, options);
+    var code = res.getResponseCode();
+    if (code !== 200) {
+      Logger.log('❌ Supabase取得失敗: HTTP ' + code);
+      return null;
+    }
+    var page = JSON.parse(res.getContentText());
+    if (!page || page.length === 0) break;
+    allSellers = allSellers.concat(page);
+    if (page.length < pageSize) break;
+    offset += pageSize;
+  }
+  return allSellers;
+}
+
+/**
+ * Phase 2: スプレッドシートとSupabaseを直接比較して更新
+ * バックエンドAPIを経由しないためVercelのタイムアウト制限を回避
+ * ※ 暗号化フィールド（name/phone_number/email/address）は更新しない
+ */
+function syncUpdatesToSupabase_(sheetRows) {
+  Logger.log('📥 Phase 2: Supabase直接更新同期開始...');
+
+  // Supabaseから全売主データを取得
+  var dbSellers = fetchAllSellersFromSupabase_();
+  if (!dbSellers) {
+    Logger.log('❌ Supabaseからのデータ取得失敗');
+    return { updated: 0, errors: 0 };
+  }
+  Logger.log('📊 DB売主数: ' + dbSellers.length);
+
+  // DBデータをMapに変換（高速検索用）
+  var dbMap = {};
+  for (var i = 0; i < dbSellers.length; i++) {
+    dbMap[dbSellers[i].seller_number] = dbSellers[i];
+  }
+
+  var updatedCount = 0;
+  var errorCount = 0;
+  var batchRequests = [];
+
+  for (var r = 0; r < sheetRows.length; r++) {
+    var row = sheetRows[r];
+    var sellerNumber = row['売主番号'];
+    if (!sellerNumber || typeof sellerNumber !== 'string' || !sellerNumber.match(/^AA\d+$/)) continue;
+
+    var dbSeller = dbMap[sellerNumber];
+    if (!dbSeller) continue; // DBにない売主はPhase 1（追加）で対応
+
+    // 差分チェックと更新データ構築
+    var updateData = {};
+    var needsUpdate = false;
+
+    // status
+    var sheetStatus = row['状況（当社）'] || '';
+    if (sheetStatus && sheetStatus !== (dbSeller.status || '')) {
+      updateData.status = sheetStatus;
+      needsUpdate = true;
+    }
+
+    // next_call_date
+    var sheetNextCallDate = formatDateToISO_(row['次電日']);
+    var dbNextCallDate = dbSeller.next_call_date ? String(dbSeller.next_call_date).substring(0, 10) : null;
+    if (sheetNextCallDate !== dbNextCallDate) {
+      updateData.next_call_date = sheetNextCallDate; // null でもセット（クリア対応）
+      needsUpdate = true;
+    }
+
+    // visit_assignee（「外す」または空欄 → null）
+    var rawVisitAssignee = row['営担'];
+    var sheetVisitAssignee = (rawVisitAssignee === '外す' || rawVisitAssignee === '' || rawVisitAssignee === undefined) ? null : String(rawVisitAssignee);
+    var dbVisitAssignee = dbSeller.visit_assignee || null;
+    if (sheetVisitAssignee !== dbVisitAssignee) {
+      updateData.visit_assignee = sheetVisitAssignee;
+      needsUpdate = true;
+    }
+
+    // unreachable_status
+    var sheetUnreachable = row['不通'] ? String(row['不通']) : null;
+    var dbUnreachable = dbSeller.unreachable_status || null;
+    if (sheetUnreachable !== dbUnreachable) {
+      updateData.unreachable_status = sheetUnreachable;
+      needsUpdate = true;
+    }
+
+    // comments
+    var sheetComments = row['コメント'] ? String(row['コメント']) : null;
+    var dbComments = dbSeller.comments || null;
+    if (sheetComments !== dbComments) {
+      updateData.comments = sheetComments;
+      needsUpdate = true;
+    }
+
+    // phone_contact_person
+    var sheetPhoneContact = row['電話担当（任意）'] ? String(row['電話担当（任意）']) : null;
+    var dbPhoneContact = dbSeller.phone_contact_person || null;
+    if (sheetPhoneContact !== dbPhoneContact) {
+      updateData.phone_contact_person = sheetPhoneContact;
+      needsUpdate = true;
+    }
+
+    // preferred_contact_time
+    var sheetPreferredTime = row['連絡取りやすい日、時間帯'] ? String(row['連絡取りやすい日、時間帯']) : null;
+    var dbPreferredTime = dbSeller.preferred_contact_time || null;
+    if (sheetPreferredTime !== dbPreferredTime) {
+      updateData.preferred_contact_time = sheetPreferredTime;
+      needsUpdate = true;
+    }
+
+    // contact_method
+    var sheetContactMethod = row['連絡方法'] ? String(row['連絡方法']) : null;
+    var dbContactMethod = dbSeller.contact_method || null;
+    if (sheetContactMethod !== dbContactMethod) {
+      updateData.contact_method = sheetContactMethod;
+      needsUpdate = true;
+    }
+
+    // contract_year_month
+    var sheetContractYM = formatDateToISO_(row['契約年月 他決は分かった時点']);
+    var dbContractYM = dbSeller.contract_year_month ? String(dbSeller.contract_year_month).substring(0, 10) : null;
+    if (sheetContractYM !== dbContractYM) {
+      updateData.contract_year_month = sheetContractYM;
+      needsUpdate = true;
+    }
+
+    // current_status（状況（売主））
+    var sheetCurrentStatus = row['状況（売主）'] ? String(row['状況（売主）']) : null;
+    var dbCurrentStatus = dbSeller.current_status || null;
+    if (sheetCurrentStatus !== dbCurrentStatus) {
+      updateData.current_status = sheetCurrentStatus;
+      needsUpdate = true;
+    }
+
+    // pinrich_status
+    var sheetPinrich = row['Pinrich'] ? String(row['Pinrich']) : null;
+    var dbPinrich = dbSeller.pinrich_status || null;
+    if (sheetPinrich !== dbPinrich) {
+      updateData.pinrich_status = sheetPinrich;
+      needsUpdate = true;
+    }
+
+    if (!needsUpdate) continue;
+
+    updateData.updated_at = new Date().toISOString();
+
+    // Supabaseに直接PATCH
+    var result = patchSellerToSupabase_(sellerNumber, updateData);
+    if (result.success) {
+      updatedCount++;
+      Logger.log('✅ ' + sellerNumber + ': 更新 (' + Object.keys(updateData).filter(function(k){ return k !== 'updated_at'; }).join(', ') + ')');
+    } else {
+      errorCount++;
+      Logger.log('❌ ' + sellerNumber + ': 更新失敗 - ' + result.error);
+    }
+
+    // GASの実行時間制限対策（150ms待機）
+    Utilities.sleep(150);
+  }
+
+  Logger.log('📊 Phase 2完了: 更新 ' + updatedCount + '件 / エラー ' + errorCount + '件');
+  return { updated: updatedCount, errors: errorCount };
+}
+
+// ============================================================
 // メイン同期（10分トリガー）
 // ============================================================
 
 /**
- * 10分ごとに実行: スプレッドシート全体をバックエンドと同期
- * Phase 1-2（追加・更新）と Phase 3（削除）を分けて呼ぶことでタイムアウトを回避
+ * 10分ごとに実行: スプレッドシート全体をSupabaseと直接同期
+ * Phase 2（更新）はSupabaseに直接PATCHしてVercelタイムアウトを回避
+ * Phase 1（追加）・Phase 3（削除）はバックエンドAPIを使用
  */
 function syncSellerList() {
   var startTime = new Date();
   Logger.log('=== 売主リスト同期開始: ' + startTime.toISOString() + ' ===');
 
-  // Phase 1-2: 追加・更新同期
+  // スプレッドシートから全データを読み込む（Phase 1・2で共用）
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName('売主リスト');
+  if (!sheet) {
+    Logger.log('❌ シート「売主リスト」が見つかりません');
+    return;
+  }
+  var lastRow = sheet.getLastRow();
+  var lastCol = sheet.getLastColumn();
+  var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+  var allData = sheet.getRange(2, 1, lastRow - 1, lastCol).getValues();
+  var sheetRows = [];
+  for (var i = 0; i < allData.length; i++) {
+    sheetRows.push(rowToObject(headers, allData[i]));
+  }
+  Logger.log('📊 スプレッドシート行数: ' + sheetRows.length);
+
+  // Phase 1: 追加同期（バックエンドAPI経由 - 暗号化が必要なため）
   try {
-    var response = postToBackend('/api/sync/trigger?sellersOnly=true', {});
+    var response = postToBackend('/api/sync/trigger?additionOnly=true', {});
     var statusCode = response.getResponseCode();
     var responseText = response.getContentText();
     if (statusCode >= 200 && statusCode < 300) {
       var result = JSON.parse(responseText);
-      Logger.log('✅ 追加・更新同期成功');
-      Logger.log('  追加: ' + (result.data ? result.data.added : 0) + '件');
-      Logger.log('  更新: ' + (result.data ? result.data.updated : 0) + '件');
+      Logger.log('✅ 追加同期成功: ' + (result.data ? result.data.added : 0) + '件追加');
     } else {
-      Logger.log('❌ 同期失敗: HTTP ' + statusCode);
-      Logger.log('レスポンス: ' + responseText);
+      Logger.log('⚠️ 追加同期失敗: HTTP ' + statusCode + ' (新規売主は次回以降に同期)');
     }
   } catch (e) {
-    Logger.log('❌ エラー: ' + e.toString());
+    Logger.log('⚠️ 追加同期エラー: ' + e.toString());
   }
 
-  // Phase 3: 削除同期（別リクエストでタイムアウト回避）
+  // Phase 2: 更新同期（Supabase直接PATCH - Vercelタイムアウト回避）
+  var updateResult = syncUpdatesToSupabase_(sheetRows);
+
+  // Phase 3: 削除同期（バックエンドAPI経由）
   try {
     var delResponse = postToBackend('/api/sync/trigger?deletionOnly=true', {});
     var delStatusCode = delResponse.getResponseCode();
     var delResponseText = delResponse.getContentText();
     if (delStatusCode >= 200 && delStatusCode < 300) {
       var delResult = JSON.parse(delResponseText);
-      Logger.log('✅ 削除同期成功');
-      Logger.log('  削除: ' + (delResult.data ? delResult.data.deleted : 0) + '件');
+      Logger.log('✅ 削除同期成功: ' + (delResult.data ? delResult.data.deleted : 0) + '件削除');
     } else {
       Logger.log('❌ 削除同期失敗: HTTP ' + delStatusCode);
       Logger.log('レスポンス: ' + delResponseText);
@@ -201,31 +456,90 @@ function testSellerSync() {
 }
 
 /**
- * 特定の売主を手動で即時同期
- * sellerNumberStr: 例 'AA13814'
+ * 特定の売主を手動で即時同期（Supabase直接PATCH）
+ * sellerNumberStr: 例 'AA907'
  */
 function syncSellerNow(sellerNumberStr) {
   var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('売主リスト');
-  var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-  var sellerNumberCol = headers.indexOf('売主番号');
-  var allData = sheet.getRange(2, 1, sheet.getLastRow() - 1, sheet.getLastColumn()).getValues();
+  if (!sheet) {
+    Logger.log('❌ シート「売主リスト」が見つかりません');
+    return;
+  }
+  var lastRow = sheet.getLastRow();
+  var lastCol = sheet.getLastColumn();
+  var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+
+  // 売主番号列を探す（ループで確実に検索）
+  var sellerNumberCol = -1;
+  for (var i = 0; i < headers.length; i++) {
+    if (String(headers[i]).trim() === '売主番号') {
+      sellerNumberCol = i;
+      break;
+    }
+  }
+  if (sellerNumberCol === -1) {
+    Logger.log('❌ 売主番号列が見つかりません');
+    return;
+  }
+  Logger.log('売主番号列インデックス: ' + sellerNumberCol);
+
+  var allData = sheet.getRange(2, 1, lastRow - 1, lastCol).getValues();
 
   var targetRow = null;
   for (var r = 0; r < allData.length; r++) {
-    if (allData[r][sellerNumberCol] === sellerNumberStr) {
+    var cellVal = String(allData[r][sellerNumberCol] || '').trim();
+    if (cellVal === sellerNumberStr) {
       targetRow = allData[r];
+      Logger.log('✅ ' + sellerNumberStr + ' を行 ' + (r + 2) + ' で発見');
       break;
     }
   }
   if (!targetRow) {
-    Logger.log(sellerNumberStr + ' が見つかりません');
+    Logger.log('❌ ' + sellerNumberStr + ' が見つかりません（全 ' + allData.length + ' 行を検索）');
     return;
   }
 
   var rowObj = rowToObject(headers, targetRow);
-  var response = postToBackend('/api/sync/seller-row', rowObj);
-  Logger.log('ステータス: ' + response.getResponseCode());
-  Logger.log('レスポンス: ' + response.getContentText());
+  Logger.log('次電日: ' + rowObj['次電日']);
+  Logger.log('状況（当社）: ' + rowObj['状況（当社）']);
+
+  // Supabase直接PATCHで更新
+  var updateData = {};
+  var needsUpdate = false;
+
+  var sheetNextCallDate = formatDateToISO_(rowObj['次電日']);
+  if (sheetNextCallDate !== null) {
+    updateData.next_call_date = sheetNextCallDate;
+    needsUpdate = true;
+  }
+
+  var sheetStatus = rowObj['状況（当社）'] || '';
+  if (sheetStatus) {
+    updateData.status = sheetStatus;
+    needsUpdate = true;
+  }
+
+  var rawVisitAssignee = rowObj['営担'];
+  updateData.visit_assignee = (rawVisitAssignee === '外す' || rawVisitAssignee === '' || rawVisitAssignee === undefined) ? null : String(rawVisitAssignee);
+  needsUpdate = true;
+
+  if (rowObj['コメント']) updateData.comments = String(rowObj['コメント']);
+  if (rowObj['不通']) updateData.unreachable_status = String(rowObj['不通']);
+  if (rowObj['Pinrich']) updateData.pinrich_status = String(rowObj['Pinrich']);
+
+  var sheetContractYM = formatDateToISO_(rowObj['契約年月 他決は分かった時点']);
+  if (sheetContractYM !== null) updateData.contract_year_month = sheetContractYM;
+
+  updateData.updated_at = new Date().toISOString();
+
+  Logger.log('更新データ: ' + JSON.stringify(updateData));
+
+  var result = patchSellerToSupabase_(sellerNumberStr, updateData);
+  if (result.success) {
+    Logger.log('✅ ' + sellerNumberStr + ' Supabase更新成功');
+  } else {
+    Logger.log('❌ ' + sellerNumberStr + ' Supabase更新失敗: ' + result.error);
+  }
 }
 
 // ============================================================
@@ -352,6 +666,13 @@ function syncVisitReminderAssignee() {
   }
 
   Logger.log('=== 完了: 成功 ' + successCount + '件 / 失敗 ' + errorCount + '件 ===');
+}
+
+/**
+ * AA907を手動で即時同期（引数なしで実行可能）
+ */
+function syncAA907() {
+  syncSellerNow('AA907');
 }
 
 /**
