@@ -1261,10 +1261,26 @@ export class BuyerService {
     const allBuyers: any[] = [];
     let from = 0;
 
+    // ステータス計算と物件情報表示に必要なカラムのみ取得（select('*')より大幅に高速化）
+    const BUYER_COLUMNS = [
+      'buyer_number', 'buyer_id', 'name', 'phone_number', 'email',
+      'reception_date', 'latest_viewing_date', 'next_call_date',
+      'follow_up_assignee', 'initial_assignee', 'latest_status',
+      'inquiry_confidence', 'inquiry_email_phone', 'inquiry_email_reply',
+      'three_calls_confirmed', 'broker_inquiry', 'inquiry_source',
+      'viewing_result_follow_up', 'viewing_unconfirmed', 'viewing_type_general',
+      'post_viewing_seller_contact', 'notification_sender',
+      'valuation_survey', 'valuation_survey_confirmed', 'broker_survey',
+      'day_of_week', 'pinrich', 'email_confirmation', 'email_confirmation_assignee',
+      'viewing_promotion_not_needed', 'viewing_promotion_sender',
+      'past_buyer_list', 'price', 'atbb_status', 'property_number',
+      'desired_area', 'desired_property_type', 'budget',
+    ].join(', ');
+
     while (true) {
       const { data, error } = await this.supabase
         .from('buyers')
-        .select('*')
+        .select(BUYER_COLUMNS)
         .is('deleted_at', null)
         .range(from, from + PAGE_SIZE - 1);
 
@@ -1276,7 +1292,7 @@ export class BuyerService {
       from += PAGE_SIZE;
     }
 
-    // 物件番号を収集して property_listings から atbb_status を一括取得
+    // 物件番号を収集して property_listings から必要なフィールドを一括取得
     const propertyNumbers = new Set<string>();
     for (const buyer of allBuyers) {
       if (buyer.property_number) {
@@ -1285,28 +1301,45 @@ export class BuyerService {
       }
     }
 
-    const propertyAtbbMap: Record<string, string> = {};
+    const propertyMap: Record<string, { atbb_status: string; property_address: string | null; sales_assignee: string | null; property_type: string | null }> = {};
     if (propertyNumbers.size > 0) {
-      const { data: listings } = await this.supabase
-        .from('property_listings')
-        .select('property_number, atbb_status')
-        .in('property_number', Array.from(propertyNumbers));
+      // 1000件制限を回避するためバッチ処理
+      const propNumArray = Array.from(propertyNumbers);
+      const BATCH_SIZE = 500;
+      for (let i = 0; i < propNumArray.length; i += BATCH_SIZE) {
+        const batch = propNumArray.slice(i, i + BATCH_SIZE);
+        const { data: listings } = await this.supabase
+          .from('property_listings')
+          .select('property_number, atbb_status, property_address, sales_assignee, property_type')
+          .in('property_number', batch);
 
-      if (listings) {
-        for (const listing of listings) {
-          if (listing.property_number) {
-            propertyAtbbMap[listing.property_number] = listing.atbb_status || '';
+        if (listings) {
+          for (const listing of listings) {
+            if (listing.property_number) {
+              propertyMap[listing.property_number] = {
+                atbb_status: listing.atbb_status || '',
+                property_address: listing.property_address ?? null,
+                sales_assignee: listing.sales_assignee ?? null,
+                property_type: listing.property_type ?? null,
+              };
+            }
           }
         }
       }
     }
 
-    // 各買主に紐づく物件の atbb_status を付与（複数物件の場合は最初の物件を使用）
+    // 各買主に紐づく物件の情報を付与（複数物件の場合は最初の物件を使用）
     return allBuyers.map(buyer => {
       if (!buyer.property_number) return buyer;
       const firstPropertyNumber = buyer.property_number.split(',')[0].trim();
-      const atbb_status = propertyAtbbMap[firstPropertyNumber] || '';
-      return { ...buyer, atbb_status };
+      const prop = propertyMap[firstPropertyNumber];
+      return {
+        ...buyer,
+        atbb_status: prop?.atbb_status || '',
+        property_address: prop?.property_address ?? null,
+        property_sales_assignee: prop?.sales_assignee ?? null,
+        property_type: prop?.property_type ?? null,
+      };
     });
   }
 
