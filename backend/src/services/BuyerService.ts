@@ -203,7 +203,7 @@ export class BuyerService {
     const { data, error } = await this.supabase
       .from('buyers')
       .select('*')
-      .eq('buyer_id', id)
+      .eq('buyer_number', id)
       .single();
 
     if (error) {
