@@ -1263,7 +1263,11 @@ export class BuyerService {
       (allBuyers || []).forEach(buyer => {
         try {
           const statusResult = calculateBuyerStatus(buyer);
-          const status = statusResult.status || '';
+          let status = statusResult.status || '';
+          // ⑯当日TEL（Y）のような動的ステータスは ⑯当日TEL にまとめる
+          if (status.startsWith('⑯当日TEL（') || status.startsWith('⑯当日TEL(')) {
+            status = '⑯当日TEL';
+          }
           statusCountMap.set(status, (statusCountMap.get(status) || 0) + 1);
         } catch {
           statusCountMap.set('', (statusCountMap.get('') || 0) + 1);
@@ -1315,7 +1319,15 @@ export class BuyerService {
             return { ...buyer, calculated_status: '', status_priority: 999 };
           }
         })
-        .filter(buyer => buyer.calculated_status === status)
+        .filter(buyer => {
+          // ⑯当日TEL でフィルタした場合、担当あり（⑯当日TEL（Y）等）・担当なし（⑯当日TEL）両方をヒットさせる
+          if (status === '⑯当日TEL') {
+            return buyer.calculated_status === '⑯当日TEL' ||
+              buyer.calculated_status.startsWith('⑯当日TEL（') ||
+              buyer.calculated_status.startsWith('⑯当日TEL(');
+          }
+          return buyer.calculated_status === status;
+        })
         .filter(buyer => {
           if (!options.search) return true;
           const s = options.search.toLowerCase();

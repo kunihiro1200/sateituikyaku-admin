@@ -53,7 +53,13 @@ export const STATUS_DEFINITIONS: StatusDefinition[] = [
 
 export function getStatusColor(status: string): string {
   const definition = STATUS_DEFINITIONS.find(d => d.status === status);
-  return definition?.color || '#cccccc';
+  if (definition) return definition.color;
+  // ⑯当日TEL（Y）のような動的ステータスは ⑯当日TEL の色を使用
+  if (status.startsWith('⑯当日TEL')) {
+    const base = STATUS_DEFINITIONS.find(d => d.status === '⑯当日TEL');
+    if (base) return base.color;
+  }
+  return '#cccccc';
 }
 
 export function getStatusDescription(status: string): string {

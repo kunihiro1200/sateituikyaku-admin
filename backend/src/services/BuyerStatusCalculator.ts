@@ -117,17 +117,23 @@ export function calculateBuyerStatus(buyer: BuyerData): StatusResult {
       return { status, priority: 5, matchedCondition: '一般媒介で内覧後の売主連絡が未完了', color: getStatusColor(status) };
     }
 
-    // Priority 6: ⑯当日TEL
+    // Priority 6: ⑯当日TEL（次電日が当日以前）
+    // 追客担当あり → ⑯当日TEL（Y）のように担当者名付き
+    // 追客担当なし → ⑯当日TEL
     if (
       and(
         isNotBlank(buyer.next_call_date),
-        isTodayOrPast(buyer.next_call_date),
-        isNotBlank(buyer.follow_up_assignee)
+        isTodayOrPast(buyer.next_call_date)
       )
     ) {
-      const assignee = buyer.follow_up_assignee || '';
-      const status = `⑯当日TEL（${assignee}）`;
-      return { status, priority: 6, matchedCondition: '次電日が当日以前', color: getStatusColor('⑯当日TEL') };
+      if (isNotBlank(buyer.follow_up_assignee)) {
+        const assignee = buyer.follow_up_assignee || '';
+        const status = `⑯当日TEL（${assignee}）`;
+        return { status, priority: 6, matchedCondition: '次電日が当日以前（担当あり）', color: getStatusColor('⑯当日TEL') };
+      } else {
+        const status = '⑯当日TEL';
+        return { status, priority: 6, matchedCondition: '次電日が当日以前（担当なし）', color: getStatusColor('⑯当日TEL') };
+      }
     }
 
     // Priority 7: 問合メール未対応
