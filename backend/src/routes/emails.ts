@@ -170,7 +170,7 @@ router.post(
     body('templateId').notEmpty().withMessage('Template ID is required'),
     body('to').optional().isEmail().withMessage('Invalid email address'),
     body('subject').notEmpty().withMessage('Subject is required'),
-    body('content').notEmpty().withMessage('Content is required'),
+    body('content').optional().isString().withMessage('Content must be a string'),
     body('htmlBody').optional().isString().withMessage('HTML body must be a string'),
     body('from').optional().isEmail().withMessage('Invalid from email address'),
     body('attachments').optional().isArray().withMessage('Attachments must be an array'),
@@ -256,7 +256,7 @@ router.post(
         result = await emailService.sendTemplateEmail(
           sellerWithUpdatedEmail,
           subject,
-          content,
+          content || '',
           req.employee!.email,
           req.employee!.id,
           htmlBody,  // オプション: カスタムHTMLボディ（貼り付けた画像を含む場合）

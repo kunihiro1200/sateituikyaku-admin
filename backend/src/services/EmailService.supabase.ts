@@ -390,7 +390,7 @@ export class EmailService extends BaseRepository {
 <body>
   <div class="container">
     <div class="content">
-      <p style="white-space: pre-wrap;">${content}</p>
+      <p style="white-space: pre-wrap;">${content || ''}</p>
     </div>
     <div class="footer">
       <p>このメールは自動送信されています。<br>
