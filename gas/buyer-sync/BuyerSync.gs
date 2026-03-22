@@ -6,29 +6,29 @@
  * - Supabase の buyers テーブルに upsert（buyer_number をキーに）
  * - 10分ごとのトリガーで自動実行
  *
- * セットアップ:
- * 1. このスクリプトをGASエディタに貼り付ける
- * 2. setupTrigger() を一度だけ手動実行してトリガーを設定
- * 3. testSync() で動作確認
+ * ※ 同一GASプロジェクト内の他スクリプトと関数名が衝突しないよう
+ *   全ての変数・関数名に BUYER_ / buyer_ プレフィックスを付けています
  */
 
 // ============================================================
 // 設定
 // ============================================================
-var CONFIG = {
+var BUYER_CONFIG = {
   SPREADSHEET_ID: '1tI_iXaiLuWBggs5y0RH7qzkbHs9wnLLdRekAmjkhcLY',
   SHEET_NAME: '買主リスト',
   SUPABASE_URL: 'https://krxhrbtlgfjzsseegaqq.supabase.co',
   SUPABASE_SERVICE_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtyeGhyYnRsZ2ZqenNzZWVnYXFxIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MzAyMTQxMSwiZXhwIjoyMDc4NTk3NDExfQ.nog3UX9J9OgfqlCIPJt_sU_exE6Ny-nSj_HmwgV3oA8',
   TABLE_NAME: 'buyers',
-  BATCH_SIZE: 100,  // 1回のupsertで送る行数
+  BATCH_SIZE: 100,
   SYNC_INTERVAL_MINUTES: 10
 };
 
 // ============================================================
 // カラムマッピング（buyer-column-mapping.json と同期）
+// spreadsheetToDatabase + spreadsheetToDatabaseExtended の全フィールドを含む
 // ============================================================
-var COLUMN_MAPPING = {
+var BUYER_COLUMN_MAPPING = {
+  // === spreadsheetToDatabase ===
   '削除': 'is_deleted',
   '作成日時': 'created_datetime',
   '初動担当': 'initial_assignee',
@@ -78,18 +78,153 @@ var COLUMN_MAPPING = {
   'a': 'column_a',
   'メアド確認': 'email_confirmed',
   '物件所在地': 'property_address',
-  '公開/非公開': 'public_private'
+  '公開/非公開': 'public_private',
+
+  // === spreadsheetToDatabaseExtended ===
+  '曜日': 'day_of_week',
+  '売却チャンス': 'sale_chance',
+  '特記事項': 'special_notes',
+  '内覧アンケート回答': 'viewing_survey_response',
+  '内覧アンケート確認': 'viewing_survey_confirmed',
+  '担当への伝言/質問事項': 'message_to_assignee',
+  '山本へチャット送信': 'chat_to_yamamoto',
+  '裏へチャット送信': 'chat_to_ura',
+  '内覧形態': 'viewing_type',
+  '担当への確認事項': 'confirmation_to_assignee',
+  '買付コメント（任意）': 'offer_comment',
+  '価格帯（戸建）': 'price_range_house',
+  '価格帯（マンション）': 'price_range_apartment',
+  '価格帯（土地）': 'price_range_land',
+  '買付外れた後連絡未/済': 'post_offer_lost_contact',
+  '●時間': 'viewing_time',
+  '住居表示': 'display_address',
+  '価格': 'price',
+  '通知送信者': 'notification_sender',
+  '●初見': 'first_view',
+  '予算': 'budget',
+  '買付外れチャット': 'offer_lost_chat',
+  '●売主に内覧連絡　未/済': 'seller_viewing_contact',
+  '●買主に内覧連絡　未/済': 'buyer_viewing_contact',
+  '過去買主リスト': 'past_buyer_list',
+  '過去の問合時コメントと物件': 'past_inquiry_comment_property',
+  '過去の最新確度': 'past_latest_confidence',
+  '過去の内覧物件': 'past_viewing_properties',
+  '過去個人情報': 'past_personal_info',
+  '過去希望条件': 'past_desired_conditions',
+  '買付外れコメント': 'offer_lost_comment',
+  '担当出勤曜日': 'assignee_work_days',
+  '内覧前伝達事項': 'pre_viewing_notes',
+  '鍵等': 'key_info',
+  '売却理由': 'sale_reason',
+  '値下げ履歴': 'price_reduction_history',
+  '内覧の時の伝達事項': 'viewing_notes',
+  '駐車場': 'parking',
+  '内覧時駐車場': 'viewing_parking',
+  '買付（物件シート）': 'offer_property_sheet',
+  'Pinrichリンク': 'pinrich_link',
+  '内覧未確定': 'viewing_unconfirmed',
+  '内覧問合進捗': 'viewing_inquiry_progress',
+  '【問合メール】電話対応': 'inquiry_email_phone',
+  '【問合メール】メール返信': 'inquiry_email_reply',
+  'メール種別': 'email_type',
+  '業者問合せ': 'broker_inquiry',
+  '内覧時カレンダー追記': 'viewing_calendar_note',
+  '資料請求メール（戸、マ）': 'document_request_email_house',
+  '資料請求メール（土）許可不要': 'document_request_email_land_no_permission',
+  '資料請求メール（土）売主へ要許可': 'document_request_email_land_permission',
+  '買付あり内覧NG': 'offer_exists_viewing_ng',
+  '買付あり内覧OK': 'offer_exists_viewing_ok',
+  '前回問合せ後反応なし': 'no_response_after_inquiry',
+  '前回問合せ後反応なし（買付あり物件）': 'no_response_offer_exists',
+  '物件指定なし問合せ（Pinrich)': 'no_property_inquiry_pinrich',
+  'メールアドレス確認メール': 'email_confirmation_mail',
+  '民泊問合せ': 'minpaku_inquiry',
+  '内覧促進メール送信者': 'viewing_promotion_sender',
+  'メアド確認メール担当': 'email_confirmation_assignee',
+  '他社物件': 'other_company_property',
+  '買付有無': 'offer_status',
+  '画像': 'image_url',
+  '内覧理由': 'viewing_reason',
+  '家族構成': 'family_composition',
+  '購入する物件の譲れない点（優先順位）': 'must_have_points',
+  'この物件の気に入っている点': 'liked_points',
+  'この物件のダメな点': 'disliked_points',
+  '購入時障害となる点': 'purchase_obstacles',
+  'クロージング': 'closing',
+  '連絡のつきやすい曜日・時間帯': 'preferred_contact_time',
+  '次のアクション': 'next_action',
+  '仮審査': 'pre_approval',
+  '流入元確認（電話）': 'inflow_source_phone',
+  '画像チャット送信': 'image_chat_sent',
+  '内覧アンケート結果': 'viewing_survey_result',
+  'b客の追客': 'b_customer_follow_up',
+  'PDF': 'pdf_url',
+  '内覧促進メール結果': 'viewing_promotion_result',
+  'データ更新': 'data_updated',
+  'キャンペーン該当/未': 'campaign_applicable',
+  '法人名': 'company_name',
+  '他気になる物件ヒアリング': 'other_property_hearing',
+  '問合時持家ヒアリング': 'owned_home_hearing_inquiry',
+  '持家ヒアリング結果': 'owned_home_hearing_result',
+  '買主コピー': 'buyer_copy',
+  '要査定': 'valuation_required',
+  '種別': 'property_type',
+  '所在地': 'location',
+  '現況': 'current_status',
+  '土地面積（不明の場合は空欄）': 'land_area',
+  '建物面積（不明の場合は空欄）': 'building_area',
+  '間取り': 'floor_plan',
+  '築年（西暦）': 'build_year',
+  'リフォーム履歴（その他太陽光等も）': 'renovation_history',
+  '構造': 'structure',
+  '階数': 'floor_count',
+  '他に査定したことある？': 'other_valuation_done',
+  '名義人': 'owner_name',
+  'ローン残': 'loan_balance',
+  '訪問/机上': 'visit_desk',
+  '売主リストコピー': 'seller_list_copy',
+  '売主コピー': 'seller_copy',
+  '他社名': 'other_company_name',
+  '3回架電確認済み': 'three_calls_confirmed',
+  '物件探し/業者決めで参照': 'property_search_reference',
+  '内覧促進メール不要': 'viewing_promotion_not_needed',
+  '①先着順…': 'first_come_first_served',
+  '②相場の参考に…': 'market_reference',
+  '③スムーズ…': 'smooth_process',
+  '【メアド】効果検証': 'email_effect_verification',
+  '武内へメール送信': 'email_to_takeuchi',
+  '角井へメール送信': 'email_to_kadoi',
+  '廣瀬さんから事務へ': 'hirose_to_office',
+  '査定が不要な理由': 'valuation_not_needed_reason',
+  'GoogleMap': 'google_map_url',
+  '内覧コメント確認': 'viewing_comment_confirmed',
+  '国広へチャット送信': 'chat_to_kunihiro',
+  '内覧形態_一般媒介': 'viewing_type_general',
+  '公開前に決定すること多いよ文言': 'pre_release_decision_text',
+  '売主内覧日連絡': 'seller_viewing_date_contact',
+  '売主キャンセル連絡': 'seller_cancel_contact',
+  '持家ヒアリング': 'owned_home_hearing',
+  '査定アンケート': 'valuation_survey',
+  '査定アンケート確認': 'valuation_survey_confirmed',
+  '内覧前ヒアリング': 'pre_viewing_hearing',
+  '内覧前ヒアリング送る？': 'pre_viewing_hearing_send'
 };
 
 // 型変換ルール
-var TYPE_CONVERSIONS = {
+var BUYER_TYPE_CONVERSIONS = {
   'created_datetime': 'datetime',
   'reception_date': 'date',
   'latest_viewing_date': 'date',
   'next_call_date': 'date',
   'campaign_date': 'date',
   'phone_duplicate_count': 'number',
-  'price': 'number'
+  'price': 'number',
+  'land_area': 'number',
+  'building_area': 'number',
+  'build_year': 'number',
+  'floor_count': 'number',
+  'loan_balance': 'number',
+  'budget': 'number'
 };
 
 // ============================================================
@@ -100,11 +235,10 @@ function syncBuyers() {
   Logger.log('=== 買主同期開始: ' + startTime.toISOString() + ' ===');
 
   try {
-    // スプレッドシートからデータ取得
-    var ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
-    var sheet = ss.getSheetByName(CONFIG.SHEET_NAME);
+    var ss = SpreadsheetApp.openById(BUYER_CONFIG.SPREADSHEET_ID);
+    var sheet = ss.getSheetByName(BUYER_CONFIG.SHEET_NAME);
     if (!sheet) {
-      Logger.log('ERROR: シート「' + CONFIG.SHEET_NAME + '」が見つかりません');
+      Logger.log('ERROR: シート「' + BUYER_CONFIG.SHEET_NAME + '」が見つかりません');
       return;
     }
 
@@ -117,56 +251,40 @@ function syncBuyers() {
 
     Logger.log('データ行数: ' + (lastRow - 1));
 
-    // ヘッダー行を取得
-    var headerRange = sheet.getRange(1, 1, 1, lastCol);
-    var headers = headerRange.getValues()[0];
+    var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+    var rawValues = sheet.getRange(2, 1, lastRow - 1, lastCol).getValues();
 
-    // データ行を UNFORMATTED_VALUE で取得（日付をシリアル値として取得）
-    var dataRange = sheet.getRange(2, 1, lastRow - 1, lastCol);
-    var rawValues = dataRange.getValues();
-
-    // 各行をDBレコードに変換
     var records = [];
     var skippedCount = 0;
 
     for (var i = 0; i < rawValues.length; i++) {
-      var row = rawValues[i];
-      var record = mapRowToRecord(headers, row);
-
-      // buyer_number が空の行はスキップ
+      var record = buyerMapRowToRecord(headers, rawValues[i]);
       if (!record.buyer_number) {
         skippedCount++;
         continue;
       }
-
-      // updated_at と last_synced_at を現在時刻で設定
-      var now = new Date().toISOString();
-      record.last_synced_at = now;
-
+      record.last_synced_at = new Date().toISOString();
       records.push(record);
     }
 
     Logger.log('変換済みレコード数: ' + records.length + '（スキップ: ' + skippedCount + '）');
 
-    // バッチに分けてupsert
     var successCount = 0;
     var errorCount = 0;
 
-    for (var j = 0; j < records.length; j += CONFIG.BATCH_SIZE) {
-      var batch = records.slice(j, j + CONFIG.BATCH_SIZE);
-      var result = upsertToSupabase(batch);
-
+    for (var j = 0; j < records.length; j += BUYER_CONFIG.BATCH_SIZE) {
+      var batch = records.slice(j, j + BUYER_CONFIG.BATCH_SIZE);
+      var result = buyerUpsertToSupabase(batch);
       if (result.success) {
         successCount += batch.length;
-        Logger.log('バッチ ' + (Math.floor(j / CONFIG.BATCH_SIZE) + 1) + ': ' + batch.length + '件 upsert成功');
+        Logger.log('バッチ ' + (Math.floor(j / BUYER_CONFIG.BATCH_SIZE) + 1) + ': ' + batch.length + '件 upsert成功');
       } else {
         errorCount += batch.length;
-        Logger.log('バッチ ' + (Math.floor(j / CONFIG.BATCH_SIZE) + 1) + ': エラー - ' + result.error);
+        Logger.log('バッチ ' + (Math.floor(j / BUYER_CONFIG.BATCH_SIZE) + 1) + ': エラー - ' + result.error);
       }
     }
 
-    var endTime = new Date();
-    var duration = (endTime - startTime) / 1000;
+    var duration = (new Date() - startTime) / 1000;
     Logger.log('=== 同期完了: 成功=' + successCount + ', エラー=' + errorCount + ', 所要時間=' + duration + '秒 ===');
 
   } catch (e) {
@@ -178,131 +296,82 @@ function syncBuyers() {
 // ============================================================
 // スプレッドシート行 → DBレコード変換
 // ============================================================
-function mapRowToRecord(headers, row) {
+function buyerMapRowToRecord(headers, row) {
   var record = {};
-
   for (var i = 0; i < headers.length; i++) {
-    var header = headers[i];
-    var dbColumn = COLUMN_MAPPING[header];
+    var dbColumn = BUYER_COLUMN_MAPPING[headers[i]];
     if (!dbColumn) continue;
-
-    var value = row[i];
-    var converted = convertValue(dbColumn, value);
-    // nullでも必ずキーをセット（Supabaseのupsertはバッチ内でキーが揃っている必要がある）
-    record[dbColumn] = converted;
+    record[dbColumn] = buyerConvertValue(dbColumn, row[i]);
   }
-
   return record;
 }
 
 // ============================================================
 // 型変換
 // ============================================================
-function convertValue(column, value) {
-  // 空値はnull
-  if (value === null || value === undefined || value === '') {
-    return null;
-  }
+function buyerConvertValue(column, value) {
+  if (value === null || value === undefined || value === '') return null;
 
-  var type = TYPE_CONVERSIONS[column];
+  var type = BUYER_TYPE_CONVERSIONS[column];
+  if (type === 'date') return buyerParseDate(value);
+  if (type === 'datetime') return buyerParseDatetime(value);
+  if (type === 'number') return buyerParseNumber(value);
 
-  if (type === 'date') {
-    return parseDate(value);
-  }
-
-  if (type === 'datetime') {
-    return parseDatetime(value);
-  }
-
-  if (type === 'number') {
-    return parseNumber(value);
-  }
-
-  // デフォルト: 文字列
   var str = String(value).trim();
   return str === '' ? null : str;
 }
 
-/**
- * 日付変換
- * GASの getValues() は Date オブジェクトを返す場合がある
- */
-function parseDate(value) {
+function buyerParseDate(value) {
   if (!value) return null;
 
-  // GASのDateオブジェクト
   if (value instanceof Date) {
     if (isNaN(value.getTime())) return null;
-    var y = value.getFullYear();
-    var m = String(value.getMonth() + 1).padStart(2, '0');
-    var d = String(value.getDate()).padStart(2, '0');
-    return y + '-' + m + '-' + d;
+    return value.getFullYear() + '-' +
+      String(value.getMonth() + 1).padStart(2, '0') + '-' +
+      String(value.getDate()).padStart(2, '0');
   }
 
-  // 数値（Googleスプレッドシートのシリアル値）
   if (typeof value === 'number') {
-    // 起算日: 1899/12/30
     var date = new Date(Date.UTC(1899, 11, 30) + value * 86400000);
     if (isNaN(date.getTime())) return null;
-    var y2 = date.getUTCFullYear();
-    var m2 = String(date.getUTCMonth() + 1).padStart(2, '0');
-    var d2 = String(date.getUTCDate()).padStart(2, '0');
-    return y2 + '-' + m2 + '-' + d2;
+    return date.getUTCFullYear() + '-' +
+      String(date.getUTCMonth() + 1).padStart(2, '0') + '-' +
+      String(date.getUTCDate()).padStart(2, '0');
   }
 
   var str = String(value).trim();
   if (!str) return null;
 
-  // YYYY/MM/DD or YYYY-MM-DD
   var match = str.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
-  if (match) {
-    return match[1] + '-' + match[2].padStart(2, '0') + '-' + match[3].padStart(2, '0');
-  }
+  if (match) return match[1] + '-' + match[2].padStart(2, '0') + '-' + match[3].padStart(2, '0');
 
-  // MM/DD/YYYY
   var match2 = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
-  if (match2) {
-    return match2[3] + '-' + match2[1].padStart(2, '0') + '-' + match2[2].padStart(2, '0');
-  }
+  if (match2) return match2[3] + '-' + match2[1].padStart(2, '0') + '-' + match2[2].padStart(2, '0');
 
   return null;
 }
 
-/**
- * 日時変換
- */
-function parseDatetime(value) {
+function buyerParseDatetime(value) {
   if (!value) return null;
-
   if (value instanceof Date) {
     if (isNaN(value.getTime())) return null;
     return value.toISOString();
   }
-
   var str = String(value).trim();
   if (!str) return null;
-
-  // YYYY/MM/DD HH:mm:ss
   var match = str.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})\s+(\d{1,2}):(\d{2})(?::(\d{2}))?/);
   if (match) {
-    var sec = match[6] || '00';
     return match[1] + '-' + match[2].padStart(2, '0') + '-' + match[3].padStart(2, '0') +
-           'T' + match[4].padStart(2, '0') + ':' + match[5] + ':' + sec;
+      'T' + match[4].padStart(2, '0') + ':' + match[5] + ':' + (match[6] || '00');
   }
-
   return null;
 }
 
-/**
- * 数値変換
- */
-function parseNumber(value) {
+function buyerParseNumber(value) {
   if (value === null || value === undefined || value === '') return null;
   if (typeof value === 'number') return value;
-
   var str = String(value).replace(/[,，円￥\s]/g, '').trim();
   if (!str) return null;
-
   var num = parseFloat(str);
   return isNaN(num) ? null : num;
 }
@@ -310,31 +379,24 @@ function parseNumber(value) {
 // ============================================================
 // Supabase upsert
 // ============================================================
-function upsertToSupabase(records) {
-  var url = CONFIG.SUPABASE_URL + '/rest/v1/' + CONFIG.TABLE_NAME;
-
+function buyerUpsertToSupabase(records) {
+  var url = BUYER_CONFIG.SUPABASE_URL + '/rest/v1/' + BUYER_CONFIG.TABLE_NAME;
   var options = {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'apikey': CONFIG.SUPABASE_SERVICE_KEY,
-      'Authorization': 'Bearer ' + CONFIG.SUPABASE_SERVICE_KEY,
-      'Prefer': 'resolution=merge-duplicates'  // upsert（重複時は更新）
+      'apikey': BUYER_CONFIG.SUPABASE_SERVICE_KEY,
+      'Authorization': 'Bearer ' + BUYER_CONFIG.SUPABASE_SERVICE_KEY,
+      'Prefer': 'resolution=merge-duplicates'
     },
     payload: JSON.stringify(records),
     muteHttpExceptions: true
   };
-
   try {
     var response = UrlFetchApp.fetch(url, options);
     var statusCode = response.getResponseCode();
-
-    if (statusCode >= 200 && statusCode < 300) {
-      return { success: true };
-    } else {
-      var body = response.getContentText();
-      return { success: false, error: 'HTTP ' + statusCode + ': ' + body };
-    }
+    if (statusCode >= 200 && statusCode < 300) return { success: true };
+    return { success: false, error: 'HTTP ' + statusCode + ': ' + response.getContentText() };
   } catch (e) {
     return { success: false, error: e.toString() };
   }
@@ -343,8 +405,7 @@ function upsertToSupabase(records) {
 // ============================================================
 // トリガー設定（一度だけ手動実行）
 // ============================================================
-function setupTrigger() {
-  // 既存のトリガーを削除
+function buyerSetupTrigger() {
   var triggers = ScriptApp.getProjectTriggers();
   for (var i = 0; i < triggers.length; i++) {
     if (triggers[i].getHandlerFunction() === 'syncBuyers') {
@@ -352,68 +413,47 @@ function setupTrigger() {
       Logger.log('既存トリガーを削除しました');
     }
   }
-
-  // 10分ごとのトリガーを作成
   ScriptApp.newTrigger('syncBuyers')
     .timeBased()
-    .everyMinutes(CONFIG.SYNC_INTERVAL_MINUTES)
+    .everyMinutes(BUYER_CONFIG.SYNC_INTERVAL_MINUTES)
     .create();
-
-  Logger.log('トリガーを設定しました: ' + CONFIG.SYNC_INTERVAL_MINUTES + '分ごとに syncBuyers() を実行');
+  Logger.log('トリガーを設定しました: ' + BUYER_CONFIG.SYNC_INTERVAL_MINUTES + '分ごとに syncBuyers() を実行');
 }
 
 // ============================================================
-// テスト用（手動実行で動作確認）
+// テスト用
 // ============================================================
-function testSync() {
+function buyerTestSync() {
   Logger.log('=== テスト同期開始 ===');
   syncBuyers();
   Logger.log('=== テスト同期完了 ===');
 }
 
-/**
- * 特定の買主番号だけ同期（デバッグ用）
- */
 function syncSingleBuyer(buyerNumber) {
-  var ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
-  var sheet = ss.getSheetByName(CONFIG.SHEET_NAME);
-  if (!sheet) {
-    Logger.log('シートが見つかりません');
-    return;
-  }
+  var ss = SpreadsheetApp.openById(BUYER_CONFIG.SPREADSHEET_ID);
+  var sheet = ss.getSheetByName(BUYER_CONFIG.SHEET_NAME);
+  if (!sheet) { Logger.log('シートが見つかりません'); return; }
 
   var lastRow = sheet.getLastRow();
   var lastCol = sheet.getLastColumn();
   var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
 
-  // buyer_number の列インデックスを探す
   var buyerNumberColIndex = -1;
   for (var i = 0; i < headers.length; i++) {
-    if (headers[i] === '買主番号') {
-      buyerNumberColIndex = i;
-      break;
-    }
+    if (headers[i] === '買主番号') { buyerNumberColIndex = i; break; }
   }
-
-  if (buyerNumberColIndex < 0) {
-    Logger.log('「買主番号」列が見つかりません');
-    return;
-  }
+  if (buyerNumberColIndex < 0) { Logger.log('「買主番号」列が見つかりません'); return; }
 
   var allData = sheet.getRange(2, 1, lastRow - 1, lastCol).getValues();
-
   for (var j = 0; j < allData.length; j++) {
-    var row = allData[j];
-    if (String(row[buyerNumberColIndex]) === String(buyerNumber)) {
-      var record = mapRowToRecord(headers, row);
+    if (String(allData[j][buyerNumberColIndex]) === String(buyerNumber)) {
+      var record = buyerMapRowToRecord(headers, allData[j]);
       record.last_synced_at = new Date().toISOString();
       Logger.log('レコード: ' + JSON.stringify(record));
-
-      var result = upsertToSupabase([record]);
+      var result = buyerUpsertToSupabase([record]);
       Logger.log('結果: ' + JSON.stringify(result));
       return;
     }
   }
-
   Logger.log('買主番号 ' + buyerNumber + ' が見つかりません');
 }
