@@ -2385,39 +2385,72 @@ HP：https://ifoo-oita.com/
 
           await api.post(`/api/sellers/${id}/send-template-email`, requestPayload);
 
-          // Email送信後、活動履歴を記録
-          await api.post(`/api/sellers/${id}/activities`, {
-            type: 'email',
-            content: `【${template.label}】を送信`,
-            result: 'sent',
-          });
-
+          // Gmail送信完了後すぐにUIを更新（ユーザーへのフィードバックを早める）
           setSnackbarMessage(hasImages ? `${template.label}を画像付きで送信しました` : `${template.label}を送信しました`);
           setSnackbarOpen(true);
+          setSendingTemplate(false);
+          setConfirmDialog({ open: false, type: null, template: null });
+          setSelectedImages([]);
 
-          // Email送信後、対応する担当フィールドにログインユーザーのイニシャルを自動セット
-          try {
-            const assigneeKey = EMAIL_TEMPLATE_ASSIGNEE_MAP[template.id];
-            let myInitial = '';
-            const myEmployee = activeEmployees.find(e => e.email === employee?.email);
-            if (myEmployee?.initials) {
-              myInitial = myEmployee.initials;
-            } else {
-              try {
-                const freshEmployees = await import('../services/employeeService').then(m => m.getActiveEmployees());
-                const freshMe = freshEmployees.find(e => e.email === employee?.email);
-                myInitial = freshMe?.initials || employee?.initials || '';
-              } catch {
-                myInitial = employee?.initials || '';
+          // 活動履歴の保存・担当フィールド更新・再取得はバックグラウンドで実行（UIをブロックしない）
+          (async () => {
+            try {
+              // 活動履歴を記録
+              await api.post(`/api/sellers/${id}/activities`, {
+                type: 'email',
+                content: `【${template.label}】を送信`,
+                result: 'sent',
+              });
+
+              // 担当フィールドにログインユーザーのイニシャルを自動セット
+              const assigneeKey = EMAIL_TEMPLATE_ASSIGNEE_MAP[template.id];
+              let myInitial = '';
+              const myEmployee = activeEmployees.find(e => e.email === employee?.email);
+              if (myEmployee?.initials) {
+                myInitial = myEmployee.initials;
+              } else {
+                try {
+                  const freshEmployees = await import('../services/employeeService').then(m => m.getActiveEmployees());
+                  const freshMe = freshEmployees.find(e => e.email === employee?.email);
+                  myInitial = freshMe?.initials || employee?.initials || '';
+                } catch {
+                  myInitial = employee?.initials || '';
+                }
               }
+
+              // 活動履歴保存 + 担当フィールド更新を並列実行
+              const promises: Promise<any>[] = [];
+              if (assigneeKey && myInitial && seller?.id) {
+                promises.push(
+                  api.put(`/api/sellers/${seller.id}`, { [assigneeKey]: myInitial }).then(() => {
+                    setSeller((prev) => prev ? { ...prev, [assigneeKey as keyof Seller]: myInitial } : prev);
+                  })
+                );
+              }
+              // 活動履歴を再取得
+              promises.push(
+                api.get(`/api/sellers/${id}/activities`).then((activitiesResponse) => {
+                  const convertedActivities = activitiesResponse.data.map((activity: any) => ({
+                    id: activity.id,
+                    sellerId: activity.seller_id || activity.sellerId,
+                    employeeId: activity.employee_id || activity.employeeId,
+                    type: activity.type,
+                    content: activity.content,
+                    result: activity.result,
+                    metadata: activity.metadata,
+                    createdAt: activity.created_at || activity.createdAt,
+                    employee: activity.employee,
+                  }));
+                  setActivities(convertedActivities);
+                })
+              );
+              await Promise.all(promises);
+            } catch (bgErr) {
+              console.error('Email送信後バックグラウンド処理エラー:', bgErr);
             }
-            if (assigneeKey && myInitial && seller?.id) {
-              await api.put(`/api/sellers/${seller.id}`, { [assigneeKey]: myInitial });
-              setSeller((prev) => prev ? { ...prev, [assigneeKey as keyof Seller]: myInitial } : prev);
-            }
-          } catch (assigneeErr) {
-            console.error('Email担当フィールド自動セットエラー:', assigneeErr);
-          }
+          })();
+          // バックグラウンド処理を待たずに return（finally でのダブルリセットを防ぐ）
+          return;
         }
       } else if (type === 'sms') {
         // 改行プレースホルダーを実際の改行に変換
