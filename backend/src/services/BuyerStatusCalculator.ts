@@ -55,7 +55,7 @@ export interface BuyerData {
   broker_survey?: string | null;
   day_of_week?: string | null;
   pinrich?: string | null;
-  email_confirmation?: string | null;
+  email_confirmed?: string | null;
   email_confirmation_assignee?: string | null;
   viewing_promotion_not_needed?: string | null;
   viewing_promotion_sender?: string | null;
@@ -376,7 +376,7 @@ export function calculateBuyerStatusComplete(buyer: BuyerData): StatusResult {
         isBlank(buyer.broker_inquiry),
         isBlank(buyer.past_buyer_list),
         isBlank(buyer.email_confirmation_assignee),
-        equals(buyer.email_confirmation, '未確認'),
+        equals(buyer.email_confirmed, '未確認'),
         not(or(contains(buyer.inquiry_confidence, 'D'), contains(buyer.inquiry_confidence, 'd'))),
         not(or(contains(buyer.latest_status, 'D'), contains(buyer.latest_status, 'd')))
       )
