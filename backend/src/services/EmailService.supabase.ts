@@ -981,6 +981,13 @@ ${bodyHtml}
 
       const attachments = params.attachments || [];
 
+      // 本文をbase64エンコード（日本語文字化け防止）
+      const bodyBase64 = Buffer.from(params.body, 'utf-8')
+        .toString('base64')
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_')
+        .replace(/=+$/, '');
+
       if (attachments.length > 0) {
         // 添付ファイルあり: multipart/mixed
         messageParts.push(`Content-Type: multipart/mixed; boundary="${boundary}"`);
@@ -988,9 +995,11 @@ ${bodyHtml}
         messageParts.push(`--${boundary}`);
         const bodyContentType = params.isHtml ? 'text/html; charset=utf-8' : 'text/plain; charset=utf-8';
         messageParts.push(`Content-Type: ${bodyContentType}`);
-        messageParts.push('Content-Transfer-Encoding: 8bit');
+        messageParts.push('Content-Transfer-Encoding: base64');
         messageParts.push('');
-        messageParts.push(params.body);
+        // 76文字ごとに改行（RFC 2045準拠）
+        const bodyLines = bodyBase64.match(/.{1,76}/g) || [];
+        messageParts.push(bodyLines.join('\r\n'));
         messageParts.push('');
 
         for (const attachment of attachments) {
@@ -1006,12 +1015,13 @@ ${bodyHtml}
         }
         messageParts.push(`--${boundary}--`);
       } else {
-        // 添付ファイルなし: text/plain
+        // 添付ファイルなし
         const bodyContentTypePlain = params.isHtml ? 'text/html; charset=utf-8' : 'text/plain; charset=utf-8';
         messageParts.push(`Content-Type: ${bodyContentTypePlain}`);
-        messageParts.push('Content-Transfer-Encoding: 8bit');
+        messageParts.push('Content-Transfer-Encoding: base64');
         messageParts.push('');
-        messageParts.push(params.body);
+        const bodyLinesPlain = bodyBase64.match(/.{1,76}/g) || [];
+        messageParts.push(bodyLinesPlain.join('\r\n'));
       }
 
       const message = messageParts.join('\r\n');
