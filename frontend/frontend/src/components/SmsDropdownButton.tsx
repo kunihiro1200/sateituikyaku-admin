@@ -15,6 +15,7 @@ interface SmsDropdownButtonProps {
   buyerNumber: string;
   propertyAddress: string;
   propertyType: string;
+  onSmsSent?: () => void;
 }
 
 const VIEWING_FORM_BASE = 'https://docs.google.com/forms/d/e/1FAIpQLSefXwsYKryraVM4jtnLgcYtboUg3w-lx7tasftVA47E5jXUlQ/viewform?usp=pp_url';
@@ -26,6 +27,7 @@ export const SmsDropdownButton: React.FC<SmsDropdownButtonProps> = ({
   buyerNumber,
   propertyAddress,
   propertyType,
+  onSmsSent,
 }) => {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const open = Boolean(anchorEl);
@@ -73,9 +75,14 @@ export const SmsDropdownButton: React.FC<SmsDropdownButtonProps> = ({
         templateName,
         phoneNumber,
       })
+        .then(() => {
+          // 記録成功後に親へ通知（履歴再取得のため）
+          onSmsSent?.();
+        })
         .catch((err: any) => console.warn('SMS履歴記録失敗:', err))
         .finally(() => {
-          window.location.href = smsLink;
+          // window.open でSMSアプリを開く（ページ離脱しない）
+          window.open(smsLink, '_self');
         });
     }
   };

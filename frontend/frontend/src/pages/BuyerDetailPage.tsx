@@ -641,6 +641,7 @@ export default function BuyerDetailPage() {
               buyerNumber={buyer_number || ''}
               propertyAddress={linkedProperties[0]?.display_address || linkedProperties[0]?.address || ''}
               propertyType={linkedProperties[0]?.property_type || ''}
+              onSmsSent={fetchActivities}
             />
           )}
           {false && buyer.phone_number && (
