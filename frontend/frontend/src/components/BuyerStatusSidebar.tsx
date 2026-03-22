@@ -113,7 +113,7 @@ export default function BuyerStatusSidebar({
 
   // 担当カテゴリと通常カテゴリを分離
   // 担当カテゴリは通常スタッフ（is_normal=true）のみ表示
-  const normalCategories = categories.filter(cat => !isAssigneeCategory(cat.status));
+  const normalCategories = categories.filter(cat => !isAssigneeCategory(cat.status) && cat.status !== '');
   const assigneeCategories = categories.filter(cat => {
     if (!isAssigneeCategory(cat.status)) return false;
     // normalStaffInitialsが空の場合は全担当カテゴリを表示（フォールバック）
