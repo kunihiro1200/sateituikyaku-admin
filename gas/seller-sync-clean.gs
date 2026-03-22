@@ -167,7 +167,7 @@ function syncUpdatesToSupabase_(sheetRows) {
 
   var updatedCount = 0;
   var errorCount = 0;
-  var batchRequests = [];
+  var phaseStartTime = new Date();
 
   for (var r = 0; r < sheetRows.length; r++) {
     var row = sheetRows[r];
@@ -457,8 +457,12 @@ function syncUpdatesToSupabase_(sheetRows) {
       Logger.log('❌ ' + sellerNumber + ': 更新失敗 - ' + result.error);
     }
 
-    // GASの実行時間制限対策（150ms待機）
-    Utilities.sleep(150);
+    // 実行時間チェック: 5分（300秒）を超えたら安全に終了
+    var elapsed = (new Date() - phaseStartTime) / 1000;
+    if (elapsed > 300) {
+      Logger.log('⚠️ 実行時間制限に近づいたため中断 (' + elapsed.toFixed(0) + '秒経過, ' + r + '/' + sheetRows.length + '件処理済み)');
+      break;
+    }
   }
 
   Logger.log('📊 Phase 2完了: 更新 ' + updatedCount + '件 / エラー ' + errorCount + '件');
