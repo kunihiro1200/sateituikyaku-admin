@@ -772,21 +772,21 @@ export default function SellersPage() {
         </Box>
 
         <TableContainer component={Paper}>
-          <Table>
+          <Table sx={{ tableLayout: 'fixed' }}>
             <TableHead>
               <TableRow>
-                <TableCell>売主番号</TableCell>
-                <TableCell sx={{ width: 150 }}>名前</TableCell>
-                <TableCell>対応中</TableCell>
-                <TableCell>最終電話</TableCell>
-                <TableCell>反響日付</TableCell>
-                <TableCell>次電日</TableCell>
-                <TableCell>物件所在地</TableCell>
-                <TableCell>種別</TableCell>
-                <TableCell>査定額</TableCell>
-                <TableCell>営担</TableCell>
-                <TableCell>訪問日</TableCell>
-                <TableCell>状況（当社）</TableCell>
+                <TableCell sx={{ width: 100 }}>売主番号</TableCell>
+                <TableCell sx={{ width: 120 }}>名前</TableCell>
+                <TableCell sx={{ width: 60 }}>対応中</TableCell>
+                <TableCell sx={{ width: 90 }}>最終電話</TableCell>
+                <TableCell sx={{ width: 90 }}>反響日付</TableCell>
+                <TableCell sx={{ width: 90 }}>次電日</TableCell>
+                <TableCell sx={{ width: 200 }}>物件所在地</TableCell>
+                <TableCell sx={{ width: 60 }}>種別</TableCell>
+                <TableCell sx={{ width: 90 }}>査定額</TableCell>
+                <TableCell sx={{ width: 60 }}>営担</TableCell>
+                <TableCell sx={{ width: 90 }}>訪問日</TableCell>
+                <TableCell sx={{ width: 120 }}>状況（当社）</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
