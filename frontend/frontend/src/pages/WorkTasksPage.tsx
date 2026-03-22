@@ -146,7 +146,7 @@ export default function WorkTasksPage() {
 
       <Box sx={{ display: 'flex', gap: 2 }}>
         {/* 左サイドバー */}
-        <Paper sx={{ width: 220, flexShrink: 0 }}>
+        <Paper sx={{ width: 280, flexShrink: 0 }}>
           <Box sx={{ p: 2, borderBottom: '1px solid #eee' }}>
             <Typography variant="subtitle1" fontWeight="bold">
               業務リスト
@@ -172,6 +172,11 @@ export default function WorkTasksPage() {
                       textOverflow: 'ellipsis',
                       whiteSpace: 'nowrap'
                     }
+                  }}
+                  secondary={cat.deadline ? `締切: ${cat.deadline}` : undefined}
+                  secondaryTypographyProps={{
+                    variant: 'caption',
+                    color: 'error',
                   }}
                 />
                 <Badge

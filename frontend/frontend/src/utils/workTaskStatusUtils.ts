@@ -40,6 +40,7 @@ export interface StatusCategory {
   key: string;
   label: string;
   count: number;
+  deadline?: string; // 最も近い期日（M/D形式）
   filter: (task: WorkTask) => boolean;
 }
 
@@ -258,6 +259,28 @@ export const getStatusCategories = (tasks: WorkTask[]): StatusCategory[] => {
     { key: 'on_hold', label: '保留', matchPrefix: '保留' },
   ];
 
+  // 期日を表示するカテゴリと対応するフィールド
+  const deadlineFieldMap: Record<string, keyof WorkTask> = {
+    sales_contract_confirm: 'sales_contract_deadline',
+    site_registration_request: 'site_registration_deadline',
+    site_delivery_pending: 'site_registration_deadline',
+  };
+
+  // カテゴリごとの最も近い期日を計算
+  const categoryDeadlines: Record<string, string> = {};
+  Object.entries(deadlineFieldMap).forEach(([categoryKey, field]) => {
+    const matchPrefix = categoryDefinitions.find(d => d.key === categoryKey)?.matchPrefix;
+    if (!matchPrefix) return;
+    const dates = tasks
+      .filter(task => calculateTaskStatus(task).startsWith(matchPrefix))
+      .map(task => parseDate(task[field] as string))
+      .filter((d): d is Date => d !== null);
+    if (dates.length > 0) {
+      const minDate = dates.reduce((a, b) => (a < b ? a : b));
+      categoryDeadlines[categoryKey] = formatDateMD(minDate.toISOString());
+    }
+  });
+
   // 件数が0より大きいカテゴリのみ返す
   const categories: StatusCategory[] = [
     {
@@ -275,6 +298,7 @@ export const getStatusCategories = (tasks: WorkTask[]): StatusCategory[] => {
         key: def.key,
         label: def.label,
         count,
+        deadline: categoryDeadlines[def.key],
         filter: (task: WorkTask) => calculateTaskStatus(task).startsWith(def.matchPrefix),
       });
     }
