@@ -16,13 +16,36 @@ interface StatusCategory {
   color: string;
 }
 
+export interface BuyerWithStatus {
+  buyer_number: string;
+  name: string;
+  phone_number: string;
+  email: string;
+  property_number: string;
+  latest_status: string;
+  initial_assignee: string;
+  follow_up_assignee: string;
+  inquiry_confidence: string;
+  reception_date: string;
+  next_call_date: string;
+  calculated_status: string;
+  status_priority: number;
+  [key: string]: any;
+}
+
 interface BuyerStatusSidebarProps {
   selectedStatus: string | null;
   onStatusSelect: (status: string | null) => void;
   totalCount?: number;
+  onBuyersLoaded?: (buyers: BuyerWithStatus[]) => void;
 }
 
-export default function BuyerStatusSidebar({ selectedStatus, onStatusSelect, totalCount: totalCountProp }: BuyerStatusSidebarProps) {
+export default function BuyerStatusSidebar({
+  selectedStatus,
+  onStatusSelect,
+  totalCount: totalCountProp,
+  onBuyersLoaded,
+}: BuyerStatusSidebarProps) {
   const [categories, setCategories] = useState<StatusCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [internalTotalCount, setInternalTotalCount] = useState(0);
@@ -34,16 +57,23 @@ export default function BuyerStatusSidebar({ selectedStatus, onStatusSelect, tot
   const fetchStatusCategories = async () => {
     try {
       setLoading(true);
-      const res = await api.get('/api/buyers/status-categories');
-      const data = res.data as StatusCategory[];
+      // 全買主データも一緒に取得してフロントでキャッシュ
+      const res = await api.get('/api/buyers/status-categories-with-buyers');
+      const { categories: data, buyers } = res.data as {
+        categories: StatusCategory[];
+        buyers: BuyerWithStatus[];
+      };
 
-      // 合計数を計算
       const total = data.reduce((sum, cat) => sum + cat.count, 0);
       setInternalTotalCount(total);
 
-      // カウントが0より大きいカテゴリのみを表示
       const filteredCategories = data.filter(cat => cat.count > 0);
       setCategories(filteredCategories);
+
+      // 全買主データを親に渡す
+      if (onBuyersLoaded && buyers) {
+        onBuyersLoaded(buyers);
+      }
     } catch (error) {
       console.error('Failed to fetch status categories:', error);
     } finally {
@@ -53,14 +83,12 @@ export default function BuyerStatusSidebar({ selectedStatus, onStatusSelect, tot
 
   const handleStatusClick = (status: string) => {
     if (selectedStatus === status) {
-      // 同じステータスをクリックした場合は選択解除
       onStatusSelect(null);
     } else {
       onStatusSelect(status);
     }
   };
 
-  // props で totalCount が渡された場合はそちらを優先
   const displayTotalCount = totalCountProp ?? internalTotalCount;
 
   if (loading) {

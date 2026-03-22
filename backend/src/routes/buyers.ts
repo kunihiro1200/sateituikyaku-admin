@@ -87,6 +87,17 @@ router.get('/status-categories', async (_req: Request, res: Response) => {
   }
 });
 
+// ステータスカテゴリ + 全買主データを一度に返す（フロントエンドキャッシュ用）
+router.get('/status-categories-with-buyers', async (_req: Request, res: Response) => {
+  try {
+    const result = await buyerService.getStatusCategoriesWithBuyers();
+    res.json(result);
+  } catch (error: any) {
+    console.error('Error fetching status categories with buyers:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // 次の買主番号を取得（/:id よりも前に定義する必要がある）
 router.get('/next-buyer-number', async (_req: Request, res: Response) => {
   try {

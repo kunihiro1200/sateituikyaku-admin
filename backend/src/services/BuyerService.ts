@@ -46,6 +46,13 @@ export class BuyerService {
   private retryHandler: RetryHandler | null = null;
   private columnMapper: BuyerColumnMapper | null = null;
 
+  // ステータス計算結果のキャッシュ（TTL: 2分）
+  private statusCache: {
+    buyers: any[];
+    computedAt: number;
+  } | null = null;
+  private readonly STATUS_CACHE_TTL = 2 * 60 * 1000; // 2分
+
   constructor() {
     this.supabase = createClient(
       process.env.SUPABASE_URL!,
@@ -1268,6 +1275,45 @@ export class BuyerService {
     return allBuyers;
   }
 
+  /**
+   * ステータス計算済み全買主をキャッシュ付きで取得（TTL: 2分）
+   * getStatusCategories と getBuyersByStatus で共有して二重計算を防ぐ
+   */
+  private async fetchAllBuyersWithStatus(): Promise<any[]> {
+    const now = Date.now();
+    if (this.statusCache && (now - this.statusCache.computedAt) < this.STATUS_CACHE_TTL) {
+      return this.statusCache.buyers;
+    }
+
+    const { calculateBuyerStatus } = await import('./BuyerStatusCalculator');
+    const allBuyers = await this.fetchAllBuyers();
+
+    const buyers = allBuyers.map(buyer => {
+      try {
+        const statusResult = calculateBuyerStatus(buyer);
+        return { ...buyer, calculated_status: statusResult.status, status_priority: statusResult.priority };
+      } catch {
+        return { ...buyer, calculated_status: '', status_priority: 999 };
+      }
+    });
+
+    this.statusCache = { buyers, computedAt: now };
+    return buyers;
+  }
+
+  /**
+   * ステータスカテゴリ + 全買主データを一度に返す（フロントエンドキャッシュ用）
+   * これにより、ステータスフィルタ時にバックエンドへの追加リクエストが不要になる
+   */
+  async getStatusCategoriesWithBuyers(): Promise<{
+    categories: Array<{ status: string; count: number; priority: number; color: string }>;
+    buyers: any[];
+  }> {
+    const allBuyers = await this.fetchAllBuyersWithStatus();
+    const categories = await this.getStatusCategories();
+    return { categories, buyers: allBuyers };
+  }
+
   async getStatusCategories(): Promise<Array<{
     status: string;
     count: number;
@@ -1275,25 +1321,17 @@ export class BuyerService {
     color: string;
   }>> {
     try {
-      const { calculateBuyerStatus } = await import('./BuyerStatusCalculator');
       const { STATUS_DEFINITIONS } = await import('../config/buyer-status-definitions');
 
-      const allBuyers = await this.fetchAllBuyers();
+      const allBuyers = await this.fetchAllBuyersWithStatus();
 
       const statusCountMap = new Map<string, number>();
-      (allBuyers || []).forEach(buyer => {
-        try {
-          const statusResult = calculateBuyerStatus(buyer);
-          let status = statusResult.status || '';
-          // ⑯当日TEL（Y）のような動的ステータスは ⑯当日TEL にまとめる（担当なしの当日TEL）
-          if (status.startsWith('⑯当日TEL（') || status.startsWith('⑯当日TEL(')) {
-            status = '⑯当日TEL';
-          }
-          // 当日TEL(林) のような担当あり当日TELはそのまま表示（担当(林)にはまとめない）
-          statusCountMap.set(status, (statusCountMap.get(status) || 0) + 1);
-        } catch {
-          statusCountMap.set('', (statusCountMap.get('') || 0) + 1);
+      allBuyers.forEach(buyer => {
+        let status = buyer.calculated_status || '';
+        if (status.startsWith('⑯当日TEL（') || status.startsWith('⑯当日TEL(')) {
+          status = '⑯当日TEL';
         }
+        statusCountMap.set(status, (statusCountMap.get(status) || 0) + 1);
       });
 
       const categories: Array<{ status: string; count: number; priority: number; color: string }> = [];
@@ -1365,22 +1403,11 @@ export class BuyerService {
    */
   async getBuyersByStatus(status: string, options: BuyerQueryOptions = {}): Promise<PaginatedResult<any>> {
     try {
-      const { calculateBuyerStatus } = await import('./BuyerStatusCalculator');
+      // キャッシュ済みステータス計算結果を使用（二重計算を防ぐ）
+      const allBuyers = await this.fetchAllBuyersWithStatus();
 
-      const allBuyers = await this.fetchAllBuyers();
-
-      const filteredBuyers = (allBuyers || [])
-        .map(buyer => {
-          try {
-            const statusResult = calculateBuyerStatus(buyer);
-            return { ...buyer, calculated_status: statusResult.status, status_priority: statusResult.priority };
-          } catch {
-            return { ...buyer, calculated_status: '', status_priority: 999 };
-          }
-        })
-        .filter(buyer => {
-          return buyer.calculated_status === status;
-        })
+      const filteredBuyers = allBuyers
+        .filter(buyer => buyer.calculated_status === status)
         .filter(buyer => {
           if (!options.search) return true;
           const s = options.search.toLowerCase();

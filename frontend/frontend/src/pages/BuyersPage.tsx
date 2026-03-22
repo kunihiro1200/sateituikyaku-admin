@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   Container,
   Box,
@@ -21,7 +21,7 @@ import { Search as SearchIcon, Sync as SyncIcon } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import PageNavigation from '../components/PageNavigation';
-import BuyerStatusSidebar from '../components/BuyerStatusSidebar';
+import BuyerStatusSidebar, { BuyerWithStatus } from '../components/BuyerStatusSidebar';
 import { SECTION_COLORS } from '../theme/sectionColors';
 import { pageDataCache, CACHE_KEYS } from '../store/pageDataCache';
 
@@ -69,6 +69,10 @@ export default function BuyersPage() {
   const [refetchTrigger, setRefetchTrigger] = useState(0);
   const [selectedCalculatedStatus, setSelectedCalculatedStatus] = useState<string | null>(null);
 
+  // サイドバーから取得した全買主データ（フロントキャッシュ）
+  const allBuyersWithStatusRef = useRef<BuyerWithStatus[]>([]);
+  const [sidebarLoaded, setSidebarLoaded] = useState(false);
+
   // 検索入力のdebounce（300ms）
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -83,6 +87,49 @@ export default function BuyersPage() {
     const fetchBuyers = async () => {
       try {
         setLoading(true);
+
+        // ステータスフィルタ選択中 かつ サイドバーデータ読み込み済みの場合はフロント側でフィルタリング
+        if (selectedCalculatedStatus !== null && sidebarLoaded && allBuyersWithStatusRef.current.length > 0) {
+          let filtered = allBuyersWithStatusRef.current.filter(
+            b => b.calculated_status === selectedCalculatedStatus
+          );
+
+          // 検索フィルタ
+          if (debouncedSearch) {
+            const s = normalizeSearch(debouncedSearch).toLowerCase();
+            const isBuyerNumber = /^\d{4,5}$/.test(s);
+            filtered = filtered.filter(b => {
+              if (isBuyerNumber) return (b.buyer_number || '') === s;
+              return (
+                (b.buyer_number || '').toLowerCase().includes(s) ||
+                (b.name || '').toLowerCase().includes(s) ||
+                (b.phone_number || '').toLowerCase().includes(s) ||
+                (b.property_number || '').toLowerCase().includes(s)
+              );
+            });
+          }
+
+          // ソート（受付日降順）
+          filtered.sort((a, b) => {
+            if (!a.reception_date && !b.reception_date) return 0;
+            if (!a.reception_date) return 1;
+            if (!b.reception_date) return -1;
+            return b.reception_date.localeCompare(a.reception_date);
+          });
+
+          const totalCount = filtered.length;
+          const offset = page * rowsPerPage;
+          const paged = filtered.slice(offset, offset + rowsPerPage);
+
+          if (!cancelled) {
+            setBuyers(paged as any[]);
+            setTotal(totalCount);
+            setLoading(false);
+          }
+          return;
+        }
+
+        // 通常取得（ステータスフィルタなし）
         const params: any = {
           page: page + 1,
           limit: rowsPerPage,
@@ -90,11 +137,6 @@ export default function BuyersPage() {
           sortOrder: 'desc',
         };
         if (debouncedSearch) params.search = normalizeSearch(debouncedSearch);
-
-        if (selectedCalculatedStatus !== null) {
-          params.withStatus = 'true';
-          params.calculatedStatus = selectedCalculatedStatus;
-        }
 
         const res = await api.get('/api/buyers', { params });
         if (!cancelled) {
@@ -114,13 +156,21 @@ export default function BuyersPage() {
 
     fetchBuyers();
     return () => { cancelled = true; };
-  }, [page, rowsPerPage, debouncedSearch, selectedCalculatedStatus, refetchTrigger]);
+  }, [page, rowsPerPage, debouncedSearch, selectedCalculatedStatus, refetchTrigger, sidebarLoaded]);
+
+  const handleBuyersLoaded = (buyers: BuyerWithStatus[]) => {
+    allBuyersWithStatusRef.current = buyers;
+    setSidebarLoaded(true);
+  };
 
   const handleSync = async () => {
     try {
       setSyncing(true);
       await api.post('/api/buyers/sync');
       pageDataCache.invalidate(CACHE_KEYS.BUYERS_STATS);
+      // サイドバーキャッシュをリセット
+      allBuyersWithStatusRef.current = [];
+      setSidebarLoaded(false);
       setRefetchTrigger(prev => prev + 1);
     } catch (error) {
       console.error('Failed to sync:', error);
@@ -214,6 +264,7 @@ export default function BuyersPage() {
             selectedStatus={selectedCalculatedStatus}
             onStatusSelect={(status) => { setSelectedCalculatedStatus(status); setPage(0); }}
             totalCount={total}
+            onBuyersLoaded={handleBuyersLoaded}
           />
         </Paper>
 
