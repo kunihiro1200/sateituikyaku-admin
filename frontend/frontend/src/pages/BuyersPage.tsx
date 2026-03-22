@@ -65,44 +65,63 @@ export default function BuyersPage() {
   const [rowsPerPage, setRowsPerPage] = useState(50);
   const [total, setTotal] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [refetchTrigger, setRefetchTrigger] = useState(0);
   const [selectedCalculatedStatus, setSelectedCalculatedStatus] = useState<string | null>(null);
 
+  // 検索入力のdebounce（300ms）
   useEffect(() => {
-    fetchBuyers();
-  }, [page, rowsPerPage, searchQuery, selectedCalculatedStatus]);
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
-  const fetchBuyers = async () => {
-    try {
-      setLoading(true);
-      const params: any = {
-        page: page + 1,
-        limit: rowsPerPage,
-        sortBy: 'reception_date',
-        sortOrder: 'desc',
-      };
-      if (searchQuery) params.search = normalizeSearch(searchQuery);
+  useEffect(() => {
+    let cancelled = false;
 
-      if (selectedCalculatedStatus !== null) {
-        params.withStatus = 'true';
-        params.calculatedStatus = selectedCalculatedStatus;
+    const fetchBuyers = async () => {
+      try {
+        setLoading(true);
+        const params: any = {
+          page: page + 1,
+          limit: rowsPerPage,
+          sortBy: 'reception_date',
+          sortOrder: 'desc',
+        };
+        if (debouncedSearch) params.search = normalizeSearch(debouncedSearch);
+
+        if (selectedCalculatedStatus !== null) {
+          params.withStatus = 'true';
+          params.calculatedStatus = selectedCalculatedStatus;
+        }
+
+        const res = await api.get('/api/buyers', { params });
+        if (!cancelled) {
+          setBuyers(res.data.data || []);
+          setTotal(res.data.total || 0);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          console.error('Failed to fetch buyers:', error);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
+    };
 
-      const res = await api.get('/api/buyers', { params });
-      setBuyers(res.data.data || []);
-      setTotal(res.data.total || 0);
-    } catch (error) {
-      console.error('Failed to fetch buyers:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+    fetchBuyers();
+    return () => { cancelled = true; };
+  }, [page, rowsPerPage, debouncedSearch, selectedCalculatedStatus, refetchTrigger]);
 
   const handleSync = async () => {
     try {
       setSyncing(true);
       await api.post('/api/buyers/sync');
       pageDataCache.invalidate(CACHE_KEYS.BUYERS_STATS);
-      await fetchBuyers();
+      setRefetchTrigger(prev => prev + 1);
     } catch (error) {
       console.error('Failed to sync:', error);
     } finally {
