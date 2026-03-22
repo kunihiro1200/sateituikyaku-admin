@@ -98,12 +98,17 @@ function patchSellerToSupabase_(sellerNumber, updateData) {
     payload: JSON.stringify(updateData),
     muteHttpExceptions: true
   };
-  var res = UrlFetchApp.fetch(url, options);
-  var code = res.getResponseCode();
-  if (code >= 200 && code < 300) {
-    return { success: true };
-  } else {
-    return { success: false, error: 'HTTP ' + code + ': ' + res.getContentText().substring(0, 300) };
+  try {
+    var res = UrlFetchApp.fetch(url, options);
+    var code = res.getResponseCode();
+    if (code >= 200 && code < 300) {
+      return { success: true };
+    } else {
+      return { success: false, error: 'HTTP ' + code + ': ' + res.getContentText().substring(0, 300) };
+    }
+  } catch (e) {
+    // ネットワークエラー（Address unavailable等）は失敗として返し、ループを継続させる
+    return { success: false, error: 'Network error: ' + e.toString() };
   }
 }
 
