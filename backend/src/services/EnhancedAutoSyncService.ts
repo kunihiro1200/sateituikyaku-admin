@@ -2689,7 +2689,7 @@ export class EnhancedAutoSyncService {
     while (hasMore) {
       const { data: dbBuyers, error } = await this.supabase
         .from('buyers')
-        .select('buyer_number, latest_viewing_date, viewing_time, follow_up_assignee, latest_status, updated_at')
+        .select('buyer_number, latest_viewing_date, viewing_time, follow_up_assignee, latest_status, inquiry_email_phone, inquiry_email_reply, next_call_date, updated_at')
         .range(offset, offset + pageSize - 1);
 
       if (error) {
@@ -2712,6 +2712,9 @@ export class EnhancedAutoSyncService {
           const sheetViewingTime = sheetRow['内覧時間'];
           const sheetFollowUpAssignee = sheetRow['後追い担当'];
           const sheetLatestStatus = sheetRow['最新状況\n'];
+          const sheetInquiryEmailPhone = sheetRow['【問合メール】電話対応'];
+          const sheetInquiryEmailReply = sheetRow['【問合メール】メール返信'];
+          const sheetNextCallDate = sheetRow['★次電日'];
 
           let needsUpdate = false;
 
@@ -2734,6 +2737,31 @@ export class EnhancedAutoSyncService {
           }
 
           if (sheetLatestStatus && sheetLatestStatus !== dbBuyer.latest_status) {
+            needsUpdate = true;
+          }
+
+          // 【問合メール】電話対応の変更を検出
+          const dbInquiryEmailPhone = dbBuyer.inquiry_email_phone || '';
+          const sheetInquiryEmailPhoneVal = sheetInquiryEmailPhone || '';
+          if (sheetInquiryEmailPhoneVal !== dbInquiryEmailPhone) {
+            needsUpdate = true;
+          }
+
+          // 【問合メール】メール返信の変更を検出
+          const dbInquiryEmailReply = dbBuyer.inquiry_email_reply || '';
+          const sheetInquiryEmailReplyVal = sheetInquiryEmailReply || '';
+          if (sheetInquiryEmailReplyVal !== dbInquiryEmailReply) {
+            needsUpdate = true;
+          }
+
+          // 次電日の変更を検出
+          if (sheetNextCallDate && sheetNextCallDate !== '') {
+            const formattedNextCallDate = this.formatBuyerDate(sheetNextCallDate);
+            const dbNextCallDate = dbBuyer.next_call_date ? String(dbBuyer.next_call_date).substring(0, 10) : null;
+            if (formattedNextCallDate !== dbNextCallDate) {
+              needsUpdate = true;
+            }
+          } else if (dbBuyer.next_call_date !== null) {
             needsUpdate = true;
           }
 
