@@ -48,6 +48,14 @@ interface Buyer {
   property_sales_assignee?: string;
 }
 
+// 全角英数字・スペースを半角に変換
+function normalizeSearch(str: string): string {
+  return str
+    .replace(/[Ａ-Ｚａ-ｚ０-９]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xFEE0))
+    .replace(/　/g, ' ')
+    .trim();
+}
+
 export default function BuyersPage() {
   const navigate = useNavigate();
   const [buyers, setBuyers] = useState<Buyer[]>([]);
@@ -72,7 +80,7 @@ export default function BuyersPage() {
         sortBy: 'reception_date',
         sortOrder: 'desc',
       };
-      if (searchQuery) params.search = searchQuery;
+      if (searchQuery) params.search = normalizeSearch(searchQuery);
 
       if (selectedCalculatedStatus !== null) {
         params.withStatus = 'true';
