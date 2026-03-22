@@ -163,12 +163,12 @@ export class BuyerService {
     if (propertyNumbers.length > 0) {
       const { data: properties } = await this.supabase
         .from('property_listings')
-        .select('property_number, property_address, sales_assignee, property_type, atbb_status')
+        .select('property_number, address, sales_assignee, property_type, atbb_status')
         .in('property_number', propertyNumbers);
       if (properties) {
         properties.forEach((p: any) => {
           propertyMap[p.property_number] = {
-            address: p.property_address,
+            address: p.address,
             sales_assignee: p.sales_assignee,
             property_type: p.property_type ?? null,
             atbb_status: p.atbb_status ?? null,
@@ -1087,11 +1087,11 @@ export class BuyerService {
     if (propertyNumbers.length > 0) {
       const { data: properties } = await this.supabase
         .from('property_listings')
-        .select('property_number, property_address')
+        .select('property_number, address')
         .in('property_number', propertyNumbers);
       if (properties) {
         properties.forEach((p: any) => {
-          propertyAddressMap[p.property_number] = p.property_address ?? null;
+          propertyAddressMap[p.property_number] = p.address ?? null;
         });
       }
     }
@@ -1271,7 +1271,7 @@ export class BuyerService {
       'viewing_result_follow_up', 'viewing_unconfirmed', 'viewing_type_general',
       'post_viewing_seller_contact', 'notification_sender',
       'valuation_survey', 'valuation_survey_confirmed', 'broker_survey',
-      'day_of_week', 'pinrich', 'email_confirmation', 'email_confirmation_assignee',
+      'day_of_week', 'pinrich', 'email_confirmed', 'email_confirmation_assignee',
       'viewing_promotion_not_needed', 'viewing_promotion_sender',
       'past_buyer_list', 'price', 'property_number',
       'desired_area', 'desired_property_type', 'budget',
@@ -1310,7 +1310,7 @@ export class BuyerService {
         const batch = propNumArray.slice(i, i + BATCH_SIZE);
         const { data: listings } = await this.supabase
           .from('property_listings')
-          .select('property_number, atbb_status, property_address, sales_assignee, property_type')
+          .select('property_number, atbb_status, address, sales_assignee, property_type')
           .in('property_number', batch);
 
         if (listings) {
@@ -1318,7 +1318,7 @@ export class BuyerService {
             if (listing.property_number) {
               propertyMap[listing.property_number] = {
                 atbb_status: listing.atbb_status || '',
-                property_address: listing.property_address ?? null,
+                property_address: listing.address ?? null,
                 sales_assignee: listing.sales_assignee ?? null,
                 property_type: listing.property_type ?? null,
               };
