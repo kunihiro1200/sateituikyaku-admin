@@ -150,7 +150,7 @@ export function isAfterOrEqual(
   if (!date) return false;
   const targetDate = parseDateLocal(date);
   if (isNaN(targetDate.getTime())) return false;
-  const compDate = typeof compareDate === 'string' ? new Date(compareDate) : compareDate;
+  const compDate = parseDateLocal(compareDate);
   if (isNaN(compDate.getTime())) return false;
   targetDate.setHours(0, 0, 0, 0);
   compDate.setHours(0, 0, 0, 0);

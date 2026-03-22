@@ -885,7 +885,7 @@ export default function BuyerViewingResultPage() {
               </Box>
             </Box>
             {/* 内覧後売主連絡（atbb_statusが「一般・公開中」の場合のみ表示） */}
-            {linkedProperties?.some((p: any) => p.atbb_status && p.atbb_status.includes('一般') && p.atbb_status.includes('公開中')) && (
+            {linkedProperties?.some((p: any) => p.atbb_status && p.atbb_status.includes('一般・公開中')) && (
               <Box sx={{ mt: 1, mb: 1 }}>
                 <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5, fontSize: '0.7rem' }}>
                   内覧後売主連絡
