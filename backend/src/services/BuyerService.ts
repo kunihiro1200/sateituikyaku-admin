@@ -101,11 +101,16 @@ export class BuyerService {
       .from('buyers')
       .select('*', { count: 'exact' });
 
-    // 検索（buyer_numberはTEXT型なのでilikeで統一）
+    // 検索（4〜5桁の数字は買主番号の完全一致を優先）
     if (search) {
-      query = query.or(
-        `buyer_number.ilike.%${search}%,name.ilike.%${search}%,phone_number.ilike.%${search}%,property_number.ilike.%${search}%`
-      );
+      const isBuyerNumber = /^\d{4,5}$/.test(search);
+      if (isBuyerNumber) {
+        query = query.eq('buyer_number', search);
+      } else {
+        query = query.or(
+          `buyer_number.ilike.%${search}%,name.ilike.%${search}%,phone_number.ilike.%${search}%,property_number.ilike.%${search}%`
+        );
+      }
     }
 
     // フィルタリング
@@ -1314,6 +1319,10 @@ export class BuyerService {
         .filter(buyer => {
           if (!options.search) return true;
           const s = options.search.toLowerCase();
+          const isBuyerNumber = /^\d{4,5}$/.test(options.search);
+          if (isBuyerNumber) {
+            return (buyer.buyer_number || '') === options.search;
+          }
           return (
             (buyer.buyer_number || '').toLowerCase().includes(s) ||
             (buyer.name || '').toLowerCase().includes(s) ||
