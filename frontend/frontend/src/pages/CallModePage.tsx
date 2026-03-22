@@ -2357,7 +2357,7 @@ HP：https://ifoo-oita.com/
             to: capturedEmailRecipient,
             subject: capturedEmailSubject,
             content: capturedEmailBody,
-            htmlBody: hasImages ? capturedEmailBody : undefined,
+            htmlBody: capturedEmailBody, // 常にHTMLとして渡す（<br>がそのまま表示される問題を修正）
             from: capturedSenderAddress,
             // 画像が選択されている場合のみ attachments を含める
             ...(attachmentImages.length > 0
@@ -2497,6 +2497,8 @@ HP：https://ifoo-oita.com/
     setEditableEmailRecipient('');
     setEditableEmailSubject('');
     setEditableEmailBody('');
+    // キャンセル時も選択画像をリセット（次回送信時に前回の添付が残らないようにする）
+    setSelectedImages([]);
   };
 
   // 画像選択ボタンのハンドラー（新しい実装）
