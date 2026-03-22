@@ -59,29 +59,49 @@ function postToBackend(path, payload) {
 
 /**
  * 10分ごとに実行: スプレッドシート全体をバックエンドと同期
+ * Phase 1-2（追加・更新）と Phase 3（削除）を分けて呼ぶことでタイムアウトを回避
  */
 function syncSellerList() {
   var startTime = new Date();
   Logger.log('=== 売主リスト同期開始: ' + startTime.toISOString() + ' ===');
+
+  // Phase 1-2: 追加・更新同期
   try {
     var response = postToBackend('/api/sync/trigger?sellersOnly=true', {});
     var statusCode = response.getResponseCode();
     var responseText = response.getContentText();
     if (statusCode >= 200 && statusCode < 300) {
       var result = JSON.parse(responseText);
-      var duration = (new Date() - startTime) / 1000;
-      Logger.log('✅ 同期成功');
+      Logger.log('✅ 追加・更新同期成功');
       Logger.log('  追加: ' + (result.data ? result.data.added : 0) + '件');
       Logger.log('  更新: ' + (result.data ? result.data.updated : 0) + '件');
-      Logger.log('  所要時間: ' + duration + '秒');
     } else {
       Logger.log('❌ 同期失敗: HTTP ' + statusCode);
       Logger.log('レスポンス: ' + responseText);
     }
   } catch (e) {
     Logger.log('❌ エラー: ' + e.toString());
-    Logger.log(e.stack);
   }
+
+  // Phase 3: 削除同期（別リクエストでタイムアウト回避）
+  try {
+    var delResponse = postToBackend('/api/sync/trigger?deletionOnly=true', {});
+    var delStatusCode = delResponse.getResponseCode();
+    var delResponseText = delResponse.getContentText();
+    if (delStatusCode >= 200 && delStatusCode < 300) {
+      var delResult = JSON.parse(delResponseText);
+      Logger.log('✅ 削除同期成功');
+      Logger.log('  削除: ' + (delResult.data ? delResult.data.deleted : 0) + '件');
+    } else {
+      Logger.log('❌ 削除同期失敗: HTTP ' + delStatusCode);
+      Logger.log('レスポンス: ' + delResponseText);
+    }
+  } catch (e) {
+    Logger.log('❌ 削除同期エラー: ' + e.toString());
+  }
+
+  var duration = (new Date() - startTime) / 1000;
+  Logger.log('  所要時間: ' + duration + '秒');
   Logger.log('=== 同期完了 ===');
 }
 

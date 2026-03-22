@@ -3542,20 +3542,8 @@ export class EnhancedAutoSyncService {
         console.log('✅ No updated sellers to sync');
       }
 
-      // Phase 3: 削除同期
-      if (this.isDeletionSyncEnabled()) {
-        console.log('\n🗑️  Phase 3: Seller Deletion Sync');
-        const deletedSellers = await this.detectDeletedSellers();
-        if (deletedSellers.length > 0) {
-          const deletionResult = await this.syncDeletedSellers(deletedSellers);
-          deleted = deletionResult.successfullyDeleted;
-          errors.push(...deletionResult.errors);
-        } else {
-          console.log('✅ No deleted sellers to sync');
-        }
-      } else {
-        console.log('\n⏭️  Phase 3: Seller Deletion Sync (Disabled)');
-      }
+      // Phase 3: 削除同期（deletionOnly=true で別途呼ぶため、ここではスキップ）
+      console.log('\n⏭️  Phase 3: Seller Deletion Sync (skipped - use deletionOnly=true)');
 
       const durationMs = new Date().getTime() - startTime.getTime();
       console.log(`🎉 Sellers-only sync completed: ${added} added, ${updated} updated, ${deleted} deleted (${durationMs}ms)`);
