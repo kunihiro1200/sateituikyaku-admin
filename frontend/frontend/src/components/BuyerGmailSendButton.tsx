@@ -18,6 +18,7 @@ interface BuyerGmailSendButtonProps {
   selectedPropertyIds: Set<string>; // チェックボックスで選択された物件ID
   size?: 'small' | 'medium' | 'large';
   variant?: 'text' | 'outlined' | 'contained';
+  onEmailSent?: () => void; // メール送信成功後のコールバック
 }
 
 /**
@@ -35,7 +36,8 @@ export default function BuyerGmailSendButton({
   inquiryHistory,
   selectedPropertyIds,
   size = 'medium',
-  variant = 'contained'
+  variant = 'contained',
+  onEmailSent,
 }: BuyerGmailSendButtonProps) {
   const [loading, setLoading] = useState(false);
   const [templateModalOpen, setTemplateModalOpen] = useState(false);
@@ -134,6 +136,7 @@ export default function BuyerGmailSendButton({
       setSuccessMessage('メールを送信しました');
       setCompositionModalOpen(false);
       resetState();
+      onEmailSent?.();
     } catch (err: any) {
       throw new Error(err.response?.data?.error || 'メールの送信に失敗しました');
     }

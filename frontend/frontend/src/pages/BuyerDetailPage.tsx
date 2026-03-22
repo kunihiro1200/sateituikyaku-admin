@@ -617,6 +617,7 @@ export default function BuyerDetailPage() {
             selectedPropertyIds={selectedPropertyIds}
             size="small"
             variant="contained"
+            onEmailSent={fetchActivities}
           />
 
           {/* 電話番号ボタン */}
