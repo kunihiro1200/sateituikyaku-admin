@@ -15,6 +15,7 @@ import {
   MenuItem,
   FormControl,
   InputLabel,
+  Chip,
 } from '@mui/material';
 import { ArrowBack as ArrowBackIcon } from '@mui/icons-material';
 import api from '../services/api';
@@ -53,6 +54,7 @@ export default function NewBuyerPage() {
   const [propertyInfo, setPropertyInfo] = useState<PropertyInfo | null>(null);
   const [loadingProperty, setLoadingProperty] = useState(false);
   const [nextBuyerNumber, setNextBuyerNumber] = useState<string>('');
+  const [normalInitials, setNormalInitials] = useState<string[]>([]);
 
   // 基本情報
   const [name, setName] = useState('');
@@ -69,6 +71,7 @@ export default function NewBuyerPage() {
   const [inquirySource, setInquirySource] = useState('');
   const [inquiryHearing, setInquiryHearing] = useState('');
   const [inquiryConfidence, setInquiryConfidence] = useState('');
+  const [initialAssignee, setInitialAssignee] = useState('');
   
   // 希望条件
   const [desiredArea, setDesiredArea] = useState('');
@@ -83,6 +86,10 @@ export default function NewBuyerPage() {
     api.get('/api/buyers/next-buyer-number')
       .then(res => setNextBuyerNumber(res.data.buyerNumber))
       .catch(err => console.error('Failed to fetch next buyer number:', err));
+    // 通常スタッフのイニシャル一覧を取得
+    api.get('/api/employees/normal-initials')
+      .then(res => setNormalInitials(res.data.initials || []))
+      .catch(err => console.error('Failed to fetch normal initials:', err));
   }, [propertyNumber]);
 
   const fetchPropertyInfo = async (propNum: string) => {
@@ -126,6 +133,7 @@ export default function NewBuyerPage() {
         inquiry_source: inquirySource,
         inquiry_hearing: inquiryHearing,
         inquiry_confidence: inquiryConfidence,
+        initial_assignee: initialAssignee,
         desired_area: desiredArea,
         desired_property_type: desiredPropertyType,
         budget,
@@ -538,6 +546,26 @@ export default function NewBuyerPage() {
                       />
                     )}
                   />
+                </Grid>
+
+                {/* 初動担当 */}
+                <Grid item xs={12}>
+                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+                    初動担当
+                  </Typography>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                    {normalInitials.map((initial) => (
+                      <Chip
+                        key={initial}
+                        label={initial}
+                        size="small"
+                        onClick={() => setInitialAssignee(initialAssignee === initial ? '' : initial)}
+                        color={initialAssignee === initial ? 'primary' : 'default'}
+                        variant={initialAssignee === initial ? 'filled' : 'outlined'}
+                        sx={{ cursor: 'pointer', fontWeight: initialAssignee === initial ? 'bold' : 'normal' }}
+                      />
+                    ))}
+                  </Box>
                 </Grid>
 
                 <Grid item xs={12}>

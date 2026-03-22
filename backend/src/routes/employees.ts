@@ -150,6 +150,43 @@ router.get('/active-initials', async (req: Request, res: Response) => {
 });
 
 /**
+ * 通常スタッフ（is_normal=true）のイニシャル一覧を取得（初動担当選択用）
+ * DBのemployeesテーブルのis_normal=trueのスタッフを返す
+ */
+router.get('/normal-initials', async (req: Request, res: Response) => {
+  try {
+    const { createClient } = require('@supabase/supabase-js');
+    const supabase = createClient(
+      process.env.SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_KEY!
+    );
+    const { data: employees, error } = await supabase
+      .from('employees')
+      .select('initials')
+      .eq('is_normal', true)
+      .not('initials', 'is', null)
+      .order('initials');
+
+    if (error) throw error;
+
+    const initials = (employees || [])
+      .map((emp: any) => emp.initials)
+      .filter((i: any) => i && String(i).trim() !== '');
+
+    res.json({ initials });
+  } catch (error: any) {
+    console.error('[normal-initials] Failed:', error.message);
+    res.status(500).json({
+      error: {
+        code: 'GET_NORMAL_INITIALS_ERROR',
+        message: 'Failed to get normal staff initials',
+        retryable: true,
+      },
+    });
+  }
+});
+
+/**
  * 事務ありスタッフのイニシャル一覧を取得（報告担当選択用）
  * スタッフ管理スプレッドシートの「事務あり」=TRUEのスタッフを返す
  */

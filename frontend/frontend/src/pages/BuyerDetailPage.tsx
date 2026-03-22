@@ -179,6 +179,15 @@ export default function BuyerDetailPage() {
   // クイックボタンの状態管理
   const { isDisabled: isQuickButtonDisabled, disableButton: disableQuickButton } = useQuickButtonState(buyer_number || '');
 
+  // 通常スタッフのイニシャル一覧（初動担当選択用）
+  const [normalInitials, setNormalInitials] = useState<string[]>([]);
+
+  useEffect(() => {
+    api.get('/api/employees/normal-initials')
+      .then(res => setNormalInitials(res.data.initials || []))
+      .catch(err => console.error('Failed to fetch normal initials:', err));
+  }, []);
+
   // useStableContainerHeightフックを使用して安定した高さ管理
   const { error: heightError } = useStableContainerHeight({
     headerHeight: 64,
@@ -1203,6 +1212,43 @@ TEL：097-533-2022`;
                             enableConflictDetection={true}
                             showEditIndicator={true}
                           />
+                        </Grid>
+                      );
+                    }
+
+                    // initial_assigneeフィールドは特別処理（ボックス選択）
+                    if (field.key === 'initial_assignee') {
+                      return (
+                        <Grid item xs={12} key={`${section.title}-${field.key}`}>
+                          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+                            {field.label}
+                          </Typography>
+                          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                            {normalInitials.map((initial) => (
+                              <Chip
+                                key={initial}
+                                label={initial}
+                                size="small"
+                                onClick={async () => {
+                                  const newValue = buyer.initial_assignee === initial ? '' : initial;
+                                  await handleInlineFieldSave('initial_assignee', newValue);
+                                }}
+                                color={buyer.initial_assignee === initial ? 'primary' : 'default'}
+                                variant={buyer.initial_assignee === initial ? 'filled' : 'outlined'}
+                                sx={{ cursor: 'pointer', fontWeight: buyer.initial_assignee === initial ? 'bold' : 'normal' }}
+                              />
+                            ))}
+                            {/* 現在の値がリストにない場合も表示 */}
+                            {buyer.initial_assignee && !normalInitials.includes(buyer.initial_assignee) && (
+                              <Chip
+                                label={buyer.initial_assignee}
+                                size="small"
+                                color="primary"
+                                variant="filled"
+                                sx={{ fontWeight: 'bold' }}
+                              />
+                            )}
+                          </Box>
                         </Grid>
                       );
                     }
