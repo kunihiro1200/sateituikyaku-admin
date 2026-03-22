@@ -318,7 +318,6 @@ export default function BuyersPage() {
                   <TableCell>物件担当</TableCell>
                   <TableCell>種別</TableCell>
                   <TableCell>atbb_status</TableCell>
-                  <TableCell>担当</TableCell>
                   <TableCell>確度</TableCell>
                   <TableCell>受付日</TableCell>
                   <TableCell>次電日</TableCell>
@@ -327,11 +326,11 @@ export default function BuyersPage() {
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={10} align="center">読み込み中...</TableCell>
+                    <TableCell colSpan={9} align="center">読み込み中...</TableCell>
                   </TableRow>
                 ) : buyers.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={10} align="center">買主データが見つかりませんでした</TableCell>
+                    <TableCell colSpan={9} align="center">買主データが見つかりませんでした</TableCell>
                   </TableRow>
                 ) : (
                   buyers.map((buyer) => {
@@ -355,7 +354,6 @@ export default function BuyersPage() {
                         <TableCell>{buyer.property_sales_assignee || '-'}</TableCell>
                         <TableCell>{buyer.property_type || '-'}</TableCell>
                         <TableCell>{formatAtbbStatus(buyer.atbb_status)}</TableCell>
-                        <TableCell>{buyer.follow_up_assignee || buyer.initial_assignee || '-'}</TableCell>
                         <TableCell>
                           {displayConfidence && (
                             <Chip
