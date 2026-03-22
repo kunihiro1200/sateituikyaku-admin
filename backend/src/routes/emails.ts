@@ -177,8 +177,19 @@ router.post(
   ],
   async (req: Request, res: Response) => {
     try {
+      // デバッグログ: リクエストボディを記録
+      console.log('📧 [send-template-email] Request body keys:', Object.keys(req.body));
+      console.log('📧 [send-template-email] templateId:', req.body.templateId);
+      console.log('📧 [send-template-email] to:', req.body.to);
+      console.log('📧 [send-template-email] subject:', req.body.subject);
+      console.log('📧 [send-template-email] from:', req.body.from);
+      console.log('📧 [send-template-email] attachments count:', req.body.attachments?.length ?? 0);
+      console.log('📧 [send-template-email] content length:', req.body.content?.length ?? 0);
+      console.log('📧 [send-template-email] htmlBody length:', req.body.htmlBody?.length ?? 0);
+
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
+        console.error('📧 [send-template-email] Validation errors:', JSON.stringify(errors.array()));
         return res.status(400).json({
           error: {
             code: 'VALIDATION_ERROR',

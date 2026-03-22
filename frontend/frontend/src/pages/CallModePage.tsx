@@ -2327,7 +2327,7 @@ HP：https://ifoo-oita.com/
             // other は string[]（IDのみ）なので現時点では除外
           }
 
-          await api.post(`/api/sellers/${id}/send-template-email`, {
+          const requestPayload = {
             templateId: template.id,
             to: editableEmailRecipient,
             subject: editableEmailSubject,
@@ -2338,7 +2338,19 @@ HP：https://ifoo-oita.com/
             ...(attachmentImages.length > 0
               ? { attachments: attachmentImages }
               : {}),
+          };
+
+          console.log('📧 [handleConfirmSend] Sending email request:', {
+            templateId: requestPayload.templateId,
+            to: requestPayload.to,
+            subject: requestPayload.subject,
+            from: requestPayload.from,
+            hasHtmlBody: !!requestPayload.htmlBody,
+            contentLength: requestPayload.content?.length ?? 0,
+            attachmentsCount: (requestPayload as any).attachments?.length ?? 0,
           });
+
+          await api.post(`/api/sellers/${id}/send-template-email`, requestPayload);
 
           // Email送信後、活動履歴を記録
           await api.post(`/api/sellers/${id}/activities`, {
@@ -2441,6 +2453,9 @@ HP：https://ifoo-oita.com/
       }));
       setActivities(convertedActivities);
     } catch (err: any) {
+      console.error('📧 [handleConfirmSend] Error:', err);
+      console.error('📧 [handleConfirmSend] Error response:', err.response?.data);
+      console.error('📧 [handleConfirmSend] Error status:', err.response?.status);
       setError(err.response?.data?.error?.message || `${type === 'email' ? 'メール' : 'SMS'}送信に失敗しました`);
     } finally {
       setSendingTemplate(false);
