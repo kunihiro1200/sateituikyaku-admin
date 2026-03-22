@@ -224,9 +224,13 @@ router.post(
         const { GoogleDriveService } = await import('../services/GoogleDriveService');
         const driveService = new GoogleDriveService();
 
-        const emailAttachments = await Promise.all(
+        const emailAttachmentsRaw = await Promise.all(
           attachments.map(async (img: any) => {
             const fileData = await driveService.getFile(img.id);
+            if (!fileData) {
+              console.warn(`⚠️ Could not fetch file from Google Drive: ${img.id}`);
+              return null;
+            }
             return {
               filename: img.name || `image-${img.id}.jpg`,
               mimeType: fileData.mimeType || 'image/jpeg',
@@ -235,6 +239,8 @@ router.post(
             };
           })
         );
+        // nullを除外
+        const emailAttachments = emailAttachmentsRaw.filter((a): a is NonNullable<typeof a> => a !== null);
 
         result = await emailService.sendEmailWithCcAndAttachments({
           to: recipientEmail,
@@ -242,6 +248,7 @@ router.post(
           body: htmlBody || content,
           from: from || req.employee!.email,
           attachments: emailAttachments,
+          isHtml: !!htmlBody,
         });
       } else {
         // 添付ファイルなし: 既存フロー（変更なし）

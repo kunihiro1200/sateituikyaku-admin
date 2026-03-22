@@ -939,6 +939,7 @@ ${bodyHtml}
     body: string;
     from: string;
     attachments?: EmailAttachment[];
+    isHtml?: boolean;
   }): Promise<EmailResult> {
     try {
       // GMAIL_REFRESH_TOKEN が未設定の場合、google_calendar_tokens からトークンを取得
@@ -985,7 +986,8 @@ ${bodyHtml}
         messageParts.push(`Content-Type: multipart/mixed; boundary="${boundary}"`);
         messageParts.push('');
         messageParts.push(`--${boundary}`);
-        messageParts.push('Content-Type: text/plain; charset=utf-8');
+        const bodyContentType = params.isHtml ? 'text/html; charset=utf-8' : 'text/plain; charset=utf-8';
+        messageParts.push(`Content-Type: ${bodyContentType}`);
         messageParts.push('Content-Transfer-Encoding: 8bit');
         messageParts.push('');
         messageParts.push(params.body);
@@ -1005,7 +1007,8 @@ ${bodyHtml}
         messageParts.push(`--${boundary}--`);
       } else {
         // 添付ファイルなし: text/plain
-        messageParts.push('Content-Type: text/plain; charset=utf-8');
+        const bodyContentTypePlain = params.isHtml ? 'text/html; charset=utf-8' : 'text/plain; charset=utf-8';
+        messageParts.push(`Content-Type: ${bodyContentTypePlain}`);
         messageParts.push('Content-Transfer-Encoding: 8bit');
         messageParts.push('');
         messageParts.push(params.body);
