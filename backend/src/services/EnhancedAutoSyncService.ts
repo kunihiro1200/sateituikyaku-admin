@@ -906,7 +906,7 @@ export class EnhancedAutoSyncService {
 
           // nameの比較（暗号化フィールドのため直接比較不可）
           // スプシに name がある場合、DBの name が null/空なら更新対象にする
-          const sheetName = sheetRow['名前(漢字のみ）'] || '';
+          const sheetName = String(sheetRow['名前(漢字のみ）'] || '');
           if (sheetName && sheetName.trim() !== '' && !dbSeller.name) {
             needsUpdate = true;
           }
@@ -920,14 +920,14 @@ export class EnhancedAutoSyncService {
 
           // emailの比較（暗号化フィールド）
           // スプシに値がある場合、DBが null なら更新対象にする
-          const sheetEmail = sheetRow['メールアドレス'] || '';
+          const sheetEmail = String(sheetRow['メールアドレス'] || '');
           if (sheetEmail && sheetEmail.trim() !== '' && !dbSeller.email) {
             needsUpdate = true;
           }
 
           // addressの比較（暗号化フィールド）
           // スプシに値がある場合、DBが null なら更新対象にする
-          const sheetAddress = sheetRow['依頼者住所(物件所在と異なる場合）'] || '';
+          const sheetAddress = String(sheetRow['依頼者住所(物件所在と異なる場合）'] || '');
           if (sheetAddress && sheetAddress.trim() !== '' && !dbSeller.address) {
             needsUpdate = true;
           }
