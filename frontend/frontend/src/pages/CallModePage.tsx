@@ -28,7 +28,7 @@ import {
 import { ArrowBack, Phone, Save, CalendarToday, Email, Image as ImageIcon, ContentCopy as ContentCopyIcon } from '@mui/icons-material';
 import api, { emailImageApi } from '../services/api';
 import { SECTION_COLORS } from '../theme/sectionColors';
-import { Seller, PropertyInfo, Activity, SellerStatus, ConfidenceLevel, DuplicateMatch, SelectedImages } from '../types';
+import { Seller, PropertyInfo, Activity, SellerStatus, ConfidenceLevel, DuplicateMatch, SelectedImages, DriveImage } from '../types';
 import { getDisplayName } from '../utils/employeeUtils';
 import { formatDateTime } from '../utils/dateFormat';
 import CallLogDisplay, { CallLogDisplayHandle } from '../components/CallLogDisplay';
@@ -2319,6 +2319,14 @@ HP：https://ifoo-oita.com/
           // editableEmailBodyには既にHTMLが含まれている（画像のBase64データURLを含む）
           const hasImages = editableEmailBody.includes('<img');
           
+          // SelectedImages オブジェクトを DriveImage[] 配列に変換
+          const attachmentImages: DriveImage[] = [];
+          if (selectedImages) {
+            if (selectedImages.exterior) attachmentImages.push(selectedImages.exterior);
+            if (selectedImages.interior) attachmentImages.push(selectedImages.interior);
+            // other は string[]（IDのみ）なので現時点では除外
+          }
+
           await api.post(`/api/sellers/${id}/send-template-email`, {
             templateId: template.id,
             to: editableEmailRecipient,
@@ -2327,8 +2335,8 @@ HP：https://ifoo-oita.com/
             htmlBody: hasImages ? editableEmailBody : undefined,
             from: senderAddress,  // 送信元アドレスを追加
             // 画像が選択されている場合のみ attachments を含める
-            ...(selectedImages && Array.isArray(selectedImages) && selectedImages.length > 0
-              ? { attachments: selectedImages }
+            ...(attachmentImages.length > 0
+              ? { attachments: attachmentImages }
               : {}),
           });
 
