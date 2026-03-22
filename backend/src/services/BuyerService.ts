@@ -1272,7 +1272,38 @@ export class BuyerService {
       from += PAGE_SIZE;
     }
 
-    return allBuyers;
+    // 物件番号を収集して property_listings から atbb_status を一括取得
+    const propertyNumbers = new Set<string>();
+    for (const buyer of allBuyers) {
+      if (buyer.property_number) {
+        buyer.property_number.split(',').map((n: string) => n.trim()).filter((n: string) => n)
+          .forEach((n: string) => propertyNumbers.add(n));
+      }
+    }
+
+    const propertyAtbbMap: Record<string, string> = {};
+    if (propertyNumbers.size > 0) {
+      const { data: listings } = await this.supabase
+        .from('property_listings')
+        .select('property_number, atbb_status')
+        .in('property_number', Array.from(propertyNumbers));
+
+      if (listings) {
+        for (const listing of listings) {
+          if (listing.property_number) {
+            propertyAtbbMap[listing.property_number] = listing.atbb_status || '';
+          }
+        }
+      }
+    }
+
+    // 各買主に紐づく物件の atbb_status を付与（複数物件の場合は最初の物件を使用）
+    return allBuyers.map(buyer => {
+      if (!buyer.property_number) return buyer;
+      const firstPropertyNumber = buyer.property_number.split(',')[0].trim();
+      const atbb_status = propertyAtbbMap[firstPropertyNumber] || '';
+      return { ...buyer, atbb_status };
+    });
   }
 
   /**

@@ -61,6 +61,7 @@ export interface BuyerData {
   viewing_promotion_sender?: string | null;
   past_buyer_list?: string | null;
   price?: string | null;
+  atbb_status?: string | null;
 }
 
 export interface StatusResult {
@@ -153,9 +154,27 @@ export function calculateBuyerStatus(buyer: BuyerData): StatusResult {
       return { status, priority: 8, matchedCondition: '3回架電が未完了', color: getStatusColor(status) };
     }
 
-    // Priority 9-15: 担当者別内覧後未入力
+    // Priority 9: Y_内覧後未入力（追加条件あり）
+    if (
+      and(
+        equals(buyer.follow_up_assignee, 'Y'),
+        isNotBlank(buyer.latest_viewing_date),
+        isPast(buyer.latest_viewing_date),
+        isBlank(buyer.viewing_result_follow_up),
+        contains(buyer.atbb_status, '公開中'),
+        notEquals(buyer.broker_inquiry, '業者問合せ')
+      )
+    ) {
+      return {
+        status: 'Y_内覧後未入力',
+        priority: 9,
+        matchedCondition: '担当Y: 内覧後の入力が未完了（公開中かつ業者問合せでない）',
+        color: getStatusColor('Y_内覧後未入力'),
+      };
+    }
+
+    // Priority 10-15: 担当者別内覧後未入力
     const viewingPostInputConditions = [
-      { assignee: 'Y', priority: 9, status: 'Y_内覧後未入力' },
       { assignee: '生', priority: 10, status: '生_内覧後未入力' },
       { assignee: 'U', priority: 11, status: 'U_内覧後未入力' },
       { assignee: '久', priority: 12, status: '久_内覧後未入力' },
