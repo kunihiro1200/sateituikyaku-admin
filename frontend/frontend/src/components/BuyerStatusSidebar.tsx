@@ -63,30 +63,51 @@ export default function BuyerStatusSidebar({
   const [internalTotalCount, setInternalTotalCount] = useState(0);
 
   useEffect(() => {
-    fetchStatusCategories();
+    fetchStatusCategoriesTwoPhase();
   }, []);
 
-  const fetchStatusCategories = async () => {
+  // 2段階ロード：まずカウントのみ表示し、バックグラウンドで買主データを取得
+  const fetchStatusCategoriesTwoPhase = async () => {
     try {
       setLoading(true);
-      const res = await api.get('/api/buyers/status-categories-with-buyers');
-      const { categories: data, buyers, normalStaffInitials: initials } = res.data as {
+
+      // Phase 1: カウントのみ先に取得してサイドバーを即座に表示
+      const phase1Res = await api.get('/api/buyers/status-categories-only');
+      const { categories: phase1Data, normalStaffInitials: initials } = phase1Res.data as {
         categories: StatusCategory[];
-        buyers: BuyerWithStatus[];
         normalStaffInitials: string[];
+        fromCache: boolean;
       };
 
-      const total = data.reduce((sum, cat) => sum + cat.count, 0);
+      const total = phase1Data.reduce((sum: number, cat: StatusCategory) => sum + cat.count, 0);
       setInternalTotalCount(total);
-      setCategories(data.filter(cat => cat.count > 0));
+      setCategories(phase1Data.filter((cat: StatusCategory) => cat.count > 0));
       setNormalStaffInitials(initials || []);
+      setLoading(false); // サイドバーをすぐに表示
 
-      if (onBuyersLoaded && buyers) {
-        onBuyersLoaded(buyers);
+      // Phase 2: バックグラウンドで買主データを取得（テーブル表示用）
+      if (onBuyersLoaded) {
+        try {
+          const phase2Res = await api.get('/api/buyers/status-categories-with-buyers');
+          const { buyers, categories: updatedCategories, normalStaffInitials: updatedInitials } = phase2Res.data as {
+            categories: StatusCategory[];
+            buyers: BuyerWithStatus[];
+            normalStaffInitials: string[];
+          };
+
+          // カテゴリも最新データで更新
+          const updatedTotal = updatedCategories.reduce((sum: number, cat: StatusCategory) => sum + cat.count, 0);
+          setInternalTotalCount(updatedTotal);
+          setCategories(updatedCategories.filter((cat: StatusCategory) => cat.count > 0));
+          setNormalStaffInitials(updatedInitials || []);
+
+          onBuyersLoaded(buyers);
+        } catch (phase2Error) {
+          console.error('Failed to fetch buyers data (phase 2):', phase2Error);
+        }
       }
     } catch (error) {
       console.error('Failed to fetch status categories:', error);
-    } finally {
       setLoading(false);
     }
   };
