@@ -81,7 +81,7 @@ export default function SharedItemsPage() {
     }
   };
 
-  // 検索フィルタリング
+  // 検索フィルタリング（日付降順ソート）
   const filteredItems = useMemo(() => {
     let items = allSharedItems;
 
@@ -90,14 +90,23 @@ export default function SharedItemsPage() {
       items = items.filter(item => (item.sharing_location || '') === selectedLocation);
     }
 
-    if (!searchQuery.trim()) return items;
-    
-    const query = searchQuery.toLowerCase();
-    return items.filter(item => {
-      // 全てのフィールドを検索対象にする
-      return Object.values(item).some(value => 
-        value && String(value).toLowerCase().includes(query)
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      items = items.filter(item =>
+        Object.values(item).some(value =>
+          value && String(value).toLowerCase().includes(query)
+        )
       );
+    }
+
+    // 日付降順ソート（共有日 → 日付 の優先順）
+    return [...items].sort((a, b) => {
+      const dateA = a['共有日'] || a['日付'] || '';
+      const dateB = b['共有日'] || b['日付'] || '';
+      if (!dateA && !dateB) return 0;
+      if (!dateA) return 1;
+      if (!dateB) return -1;
+      return new Date(dateB).getTime() - new Date(dateA).getTime();
     });
   }, [allSharedItems, searchQuery, selectedLocation]);
 

@@ -120,6 +120,45 @@ export default function SharedItemDetailPage() {
 
       <Paper sx={{ p: 3 }}>
         <Grid container spacing={3}>
+          {/* 日付 */}
+          <Grid item xs={6}>
+            <Typography variant="caption" color="text.secondary">
+              日付
+            </Typography>
+            <TextField
+              fullWidth
+              type="date"
+              value={formatDateForInput(item['日付'])}
+              disabled
+              sx={{ 
+                mt: 1,
+                '& .MuiInputBase-input.Mui-disabled': {
+                  WebkitTextFillColor: '#000',
+                  color: '#000',
+                }
+              }}
+            />
+          </Grid>
+
+          {/* 入力者 */}
+          <Grid item xs={6}>
+            <Typography variant="caption" color="text.secondary">
+              入力者
+            </Typography>
+            <TextField
+              fullWidth
+              value={item['入力者'] || ''}
+              disabled
+              sx={{ 
+                mt: 1,
+                '& .MuiInputBase-input.Mui-disabled': {
+                  WebkitTextFillColor: '#000',
+                  color: '#000',
+                }
+              }}
+            />
+          </Grid>
+
           {/* タイトル */}
           <Grid item xs={12}>
             <Typography variant="caption" color="text.secondary">
@@ -324,45 +363,6 @@ export default function SharedItemDetailPage() {
             <TextField
               fullWidth
               value={item['ID'] || ''}
-              disabled
-              sx={{ 
-                mt: 1,
-                '& .MuiInputBase-input.Mui-disabled': {
-                  WebkitTextFillColor: '#000',
-                  color: '#000',
-                }
-              }}
-            />
-          </Grid>
-
-          {/* 日付 */}
-          <Grid item xs={12}>
-            <Typography variant="caption" color="text.secondary">
-              日付
-            </Typography>
-            <TextField
-              fullWidth
-              type="date"
-              value={formatDateForInput(item['日付'])}
-              disabled
-              sx={{ 
-                mt: 1,
-                '& .MuiInputBase-input.Mui-disabled': {
-                  WebkitTextFillColor: '#000',
-                  color: '#000',
-                }
-              }}
-            />
-          </Grid>
-
-          {/* 入力者 */}
-          <Grid item xs={12}>
-            <Typography variant="caption" color="text.secondary">
-              入力者
-            </Typography>
-            <TextField
-              fullWidth
-              value={item['入力者'] || ''}
               disabled
               sx={{ 
                 mt: 1,
