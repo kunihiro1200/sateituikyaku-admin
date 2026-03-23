@@ -134,17 +134,19 @@ export default function BuyerNearbyPropertiesPage() {
   // メール本文生成
   const buildEmailBody = (props: PropertyListing[]) => {
     const buyerName = buyer?.name || '';
-    const baseAddr = baseProperty?.address || '';
-    const urls = buildUrlList(props);
-    return `${buyerName}様\nこの度は${baseAddr}のお問合せをいただきありがとうございます。\n近隣の物件として下記物件もございますのでご興味ございましたら、お問合せくださいませ。\n\n${urls}${SIGNATURE_EMAIL}`;
+    const baseAddr = baseProperty?.address || baseProperty?.display_address || '';
+    const baseUrl = baseProperty ? `${PUBLIC_BASE}/${baseProperty.property_number}` : '';
+    const nearbyLines = props.map(p => `${p.display_address || p.address || ''}\n${PUBLIC_BASE}/${p.property_number}`).join('\n\n');
+    return `${buyerName}様\n\nこの度は${baseAddr}のお問合せをいただきありがとうございます。\n近隣の物件として下記物件もございますのでご興味ございましたら、お問合せくださいませ。\n\n【お問合せ物件】\n${baseAddr}\n${baseUrl}\n\n${nearbyLines}${SIGNATURE_EMAIL}`;
   };
 
   // SMS本文生成
   const buildSmsBody = (props: PropertyListing[]) => {
     const buyerName = buyer?.name || '';
-    const baseAddr = baseProperty?.address || '';
-    const urls = buildUrlList(props);
-    return `${buyerName}様\nこの度は${baseAddr}のお問合せをいただきありがとうございます。\n近隣の物件として下記物件もございますのでご興味ございましたら、お問合せくださいませ。\n\n${urls}${SIGNATURE_SMS}`;
+    const baseAddr = baseProperty?.address || baseProperty?.display_address || '';
+    const baseUrl = baseProperty ? `${PUBLIC_BASE}/${baseProperty.property_number}` : '';
+    const nearbyLines = props.map(p => `${p.display_address || p.address || ''}\n${PUBLIC_BASE}/${p.property_number}`).join('\n\n');
+    return `${buyerName}様\n\nこの度は${baseAddr}のお問合せをいただきありがとうございます。\n近隣の物件として下記物件もございますのでご興味ございましたら、お問合せくださいませ。\n\n【お問合せ物件】\n${baseAddr}\n${baseUrl}\n\n${nearbyLines}${SIGNATURE_SMS}`;
   };
 
   const openEmailDialog = () => {
