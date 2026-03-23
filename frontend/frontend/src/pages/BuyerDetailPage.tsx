@@ -903,7 +903,7 @@ TEL：097-533-2022`;
         {/* 左列: 通話履歴 + メール・SMS送信履歴 - 独立スクロール */}
         <Box
           sx={{
-            flex: '0 0 28%',
+            flex: '0 0 18%',
             minWidth: 0,
             height: '100%',
             overflowY: 'auto',
@@ -1091,7 +1091,7 @@ TEL：097-533-2022`;
         {/* 右列: 買主情報フィールド + 関連買主 - 独立スクロール */}
         <Box
           sx={{
-            flex: '1 1 36%',
+            flex: '1 1 46%',
             minWidth: 0,
             height: '100%',
             overflowY: 'auto',
@@ -1461,12 +1461,7 @@ TEL：097-533-2022`;
             </Paper>
           ))}
 
-          {/* 関連買主セクション（右列最下部） */}
-          {buyer_number && (
-            <Box id="related-buyers-section" sx={{ mb: 2 }}>
-              <RelatedBuyersSection buyerNumber={buyer_number} />
-            </Box>
-          )}
+
         </Box>
       </Box>
 
