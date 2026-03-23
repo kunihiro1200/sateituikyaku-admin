@@ -1787,52 +1787,43 @@ export class BuyerService {
       throw new Error(`Base property not found: ${propertyNumber}`);
     }
 
-    // 価格帯を決定
-    const price = baseProperty.price || 0;
-    let minPrice = 0;
-    let maxPrice = 0;
+    const baseLat: number | null = baseProperty.latitude;
+    const baseLng: number | null = baseProperty.longitude;
+    const price: number = baseProperty.price || 0;
+    const propertyType: string = baseProperty.property_type || '';
 
-    if (price < 10000000) {
-      minPrice = 0;
-      maxPrice = 9999999;
-    } else if (price < 30000000) {
-      minPrice = 10000000;
-      maxPrice = 29999999;
-    } else if (price < 50000000) {
-      minPrice = 30000000;
-      maxPrice = 49999999;
-    } else {
-      minPrice = 50000000;
-      maxPrice = 999999999;
+    // 基準物件に座標がない場合は空を返す
+    if (baseLat === null || baseLng === null) {
+      return { baseProperty, nearbyProperties: [] };
     }
 
-    const propertyType = baseProperty.property_type || '';
+    // 価格帯：±500万円（円単位）
+    const RANGE = 5000000;
+    const minPrice = Math.max(0, price - RANGE);
+    const maxPrice = price + RANGE;
 
-    // 住所から市区町村と町名を抽出
-    const address = baseProperty.address || '';
-    let city = '';
-    let town = '';
+    // 半径3kmのバウンディングボックスを計算（簡易近似）
+    // 緯度1度 ≈ 111km、経度1度 ≈ 111km × cos(lat)
+    const RADIUS_KM = 3;
+    const latDelta = RADIUS_KM / 111;
+    const lngDelta = RADIUS_KM / (111 * Math.cos((baseLat * Math.PI) / 180));
 
-    const cityMatch = address.match(/(大分市|別府市|由布市|日出町|杵築市|国東市|豊後高田市|宇佐市|中津市|日田市|竹田市|豊後大野市|臼杵市|津久見市|佐伯市)/);
-    if (cityMatch) {
-      city = cityMatch[1];
-      const afterCity = address.substring(address.indexOf(city) + city.length);
-      const townMatch = afterCity.match(/^([^\d\-\s]+)/);
-      if (townMatch) {
-        let extractedTown = townMatch[1];
-        const azaIndex = extractedTown.indexOf('字');
-        if (azaIndex !== -1) {
-          extractedTown = extractedTown.substring(0, azaIndex);
-        }
-        town = extractedTown;
-      }
-    }
+    const minLat = baseLat - latDelta;
+    const maxLat = baseLat + latDelta;
+    const minLng = baseLng - lngDelta;
+    const maxLng = baseLng + lngDelta;
 
-    // 近隣物件を検索
+    // バウンディングボックス内の物件を取得（座標あり・同種別・価格帯）
     let query = this.supabase
       .from('property_listings')
       .select('*')
       .neq('property_number', propertyNumber)
+      .not('latitude', 'is', null)
+      .not('longitude', 'is', null)
+      .gte('latitude', minLat)
+      .lte('latitude', maxLat)
+      .gte('longitude', minLng)
+      .lte('longitude', maxLng)
       .gte('price', minPrice)
       .lte('price', maxPrice);
 
@@ -1840,24 +1831,48 @@ export class BuyerService {
       query = query.eq('property_type', propertyType);
     }
 
-    if (city && town) {
-      query = query.ilike('address', `%${city}${town}%`);
-    } else if (city) {
-      query = query.ilike('address', `%${city}%`);
-    }
-
-    // ステータス条件：公開中または公開前
-    query = query.or('atbb_status.ilike.%公開中%,atbb_status.ilike.%公開前%');
-
-    const { data: nearbyProperties, error: nearbyError } = await query;
+    const { data: candidates, error: nearbyError } = await query;
 
     if (nearbyError) {
       throw new Error(`Failed to fetch nearby properties: ${nearbyError.message}`);
     }
 
-    return {
-      baseProperty,
-      nearbyProperties: nearbyProperties || [],
+    // ステータスフィルタ：「非公開」を含むものは除外、ただし「非公開（配信メールのみ）」は含める
+    const isValidStatus = (status: string | null): boolean => {
+      if (!status) return true;
+      if (status.includes('非公開（配信メールのみ）')) return true;
+      if (status.includes('非公開')) return false;
+      return true;
     };
+
+    // バウンディングボックスは正方形なので、実際の距離でフィルタリング＋ステータスフィルタ
+    const nearbyProperties = (candidates || []).filter((p: any) => {
+      if (!isValidStatus(p.atbb_status)) return false;
+      const dist = this.calcDistanceKm(baseLat, baseLng, p.latitude, p.longitude);
+      return dist <= RADIUS_KM;
+    });
+
+    // 距離順にソート
+    nearbyProperties.sort((a: any, b: any) => {
+      const da = this.calcDistanceKm(baseLat, baseLng, a.latitude, a.longitude);
+      const db = this.calcDistanceKm(baseLat, baseLng, b.latitude, b.longitude);
+      return da - db;
+    });
+
+    return { baseProperty, nearbyProperties };
+  }
+
+  // Haversine公式で2点間の距離（km）を計算
+  private calcDistanceKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
+    const R = 6371;
+    const dLat = ((lat2 - lat1) * Math.PI) / 180;
+    const dLng = ((lng2 - lng1) * Math.PI) / 180;
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos((lat1 * Math.PI) / 180) *
+        Math.cos((lat2 * Math.PI) / 180) *
+        Math.sin(dLng / 2) *
+        Math.sin(dLng / 2);
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   }
 }

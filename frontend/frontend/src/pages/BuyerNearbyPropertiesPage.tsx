@@ -33,6 +33,8 @@ interface PropertyListing {
   parking?: string;
   property_about?: string;
   pre_viewing_notes?: string;
+  latitude?: number;
+  longitude?: number;
 }
 
 export default function BuyerNearbyPropertiesPage() {
@@ -72,6 +74,26 @@ export default function BuyerNearbyPropertiesPage() {
   const formatPrice = (price: number | null | undefined) => {
     if (!price) return '-';
     return `${(price / 10000).toFixed(0)}万円`;
+  };
+
+  const calcDistanceKm = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
+    const R = 6371;
+    const dLat = ((lat2 - lat1) * Math.PI) / 180;
+    const dLng = ((lng2 - lng1) * Math.PI) / 180;
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos((lat1 * Math.PI) / 180) *
+        Math.cos((lat2 * Math.PI) / 180) *
+        Math.sin(dLng / 2) *
+        Math.sin(dLng / 2);
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  };
+
+  const formatDistance = (property: PropertyListing): string => {
+    if (!baseProperty?.latitude || !baseProperty?.longitude) return '-';
+    if (!property.latitude || !property.longitude) return '-';
+    const d = calcDistanceKm(baseProperty.latitude, baseProperty.longitude, property.latitude, property.longitude);
+    return `${d.toFixed(1)}km`;
   };
 
   const formatPropertyAbout = (property: PropertyListing) => {
@@ -139,13 +161,14 @@ export default function BuyerNearbyPropertiesPage() {
                 <TableCell>間取り</TableCell>
                 {hasApartment && <TableCell>ペット</TableCell>}
                 <TableCell>駐車場</TableCell>
+                <TableCell>距離</TableCell>
                 <TableCell>内覧前伝達事項</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {nearbyProperties.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={hasApartment ? 10 : 9} align="center">
+                  <TableCell colSpan={hasApartment ? 11 : 10} align="center">
                     近隣物件が見つかりませんでした
                   </TableCell>
                 </TableRow>
@@ -178,6 +201,7 @@ export default function BuyerNearbyPropertiesPage() {
                       </TableCell>
                     )}
                     <TableCell>{property.parking || '-'}</TableCell>
+                    <TableCell align="right">{formatDistance(property)}</TableCell>
                     <TableCell
                       sx={{
                         whiteSpace: 'pre-wrap',
