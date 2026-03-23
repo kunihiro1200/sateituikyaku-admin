@@ -798,6 +798,7 @@ export default function PropertyListingDetailPage() {
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
               {data.seller_contact && (
                 <Button
+                  component="a"
                   variant="outlined"
                   size="small"
                   href={`tel:${data.seller_contact}`}
@@ -816,6 +817,7 @@ export default function PropertyListingDetailPage() {
               )}
               {data.seller_email && (
                 <Button
+                  component="a"
                   variant="outlined"
                   size="small"
                   href={`mailto:${data.seller_email}`}
@@ -834,6 +836,7 @@ export default function PropertyListingDetailPage() {
               )}
               {data.seller_contact && (
                 <Button
+                  component="a"
                   variant="outlined"
                   size="small"
                   href={`sms:${data.seller_contact}`}
