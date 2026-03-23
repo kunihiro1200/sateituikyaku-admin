@@ -1049,7 +1049,7 @@ TEL：097-533-2022`;
                         {isSms ? (
                           <Box sx={{ width: '100%', mb: 1 }}>
                             <Typography variant="caption" color="text.secondary">
-                              送信先: {metadata.phoneNumber || '-'}
+                              送信者: {displayName} / 送信先: {metadata.phoneNumber || '-'}
                             </Typography>
                           </Box>
                         ) : (
