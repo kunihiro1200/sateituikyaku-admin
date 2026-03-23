@@ -68,7 +68,6 @@ export default function BuyersPage() {
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [refetchTrigger, setRefetchTrigger] = useState(0);
   const [selectedCalculatedStatus, setSelectedCalculatedStatus] = useState<string | null>(null);
-  const [buyerNumberSearch, setBuyerNumberSearch] = useState('');
 
   // サイドバーから取得した全買主データ（フロントキャッシュ）
   const allBuyersWithStatusRef = useRef<BuyerWithStatus[]>([]);
@@ -266,32 +265,7 @@ export default function BuyersPage() {
         pt: 0,
       }}>
         <PageNavigation />
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: -1 }}>
-          <TextField
-            size="small"
-            placeholder="買主番号"
-            value={buyerNumberSearch}
-            onChange={(e) => setBuyerNumberSearch(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && buyerNumberSearch.trim()) {
-                navigate(`/buyers/${buyerNumberSearch.trim()}`);
-              }
-            }}
-            sx={{ width: 160 }}
-            InputProps={{
-              startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment>,
-              endAdornment: buyerNumberSearch ? (
-                <InputAdornment position="end">
-                  <ClearIcon
-                    fontSize="small"
-                    sx={{ cursor: 'pointer', color: 'text.secondary' }}
-                    onClick={() => setBuyerNumberSearch('')}
-                  />
-                </InputAdornment>
-              ) : null,
-            }}
-          />
-        </Box>
+
       </Box>
 
       <Box sx={{ display: 'flex', gap: 2 }}>

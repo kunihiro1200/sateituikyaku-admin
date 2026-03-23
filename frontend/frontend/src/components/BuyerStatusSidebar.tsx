@@ -67,17 +67,40 @@ export default function BuyerStatusSidebar({
     fetchStatusCategories();
   }, []);
 
-  // 1回のリクエストでカテゴリ + 全買主データを取得
+  // 1回のリクエストでカテゴリ + 全買主データを取得（5分キャッシュ）
   const fetchStatusCategories = async () => {
     try {
       setLoading(true);
 
-      const res = await api.get('/api/buyers/status-categories-with-buyers');
-      const { categories: data, buyers, normalStaffInitials: initials } = res.data as {
+      // キャッシュチェック
+      const cached = pageDataCache.get<{
         categories: StatusCategory[];
         buyers: BuyerWithStatus[];
         normalStaffInitials: string[];
-      };
+      }>(CACHE_KEYS.BUYERS_WITH_STATUS);
+
+      let data: StatusCategory[];
+      let buyers: BuyerWithStatus[];
+      let initials: string[];
+
+      if (cached) {
+        data = cached.categories;
+        buyers = cached.buyers;
+        initials = cached.normalStaffInitials;
+      } else {
+        const res = await api.get('/api/buyers/status-categories-with-buyers');
+        const result = res.data as {
+          categories: StatusCategory[];
+          buyers: BuyerWithStatus[];
+          normalStaffInitials: string[];
+        };
+        data = result.categories;
+        buyers = result.buyers;
+        initials = result.normalStaffInitials;
+
+        // 5分間キャッシュ
+        pageDataCache.set(CACHE_KEYS.BUYERS_WITH_STATUS, result, 5 * 60 * 1000);
+      }
 
       const total = data.reduce((sum: number, cat: StatusCategory) => sum + cat.count, 0);
       setInternalTotalCount(total);
