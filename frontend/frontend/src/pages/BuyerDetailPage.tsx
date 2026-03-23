@@ -946,8 +946,9 @@ TEL：097-533-2022`;
                   .map((activity) => {
                     const metadata = activity.metadata || {};
                     const emp = activity.employee;
+                    // nameから名字を取り出す（例: "国広智子" → "国広"、"国広 智子" → "国広"）
                     const displayName = emp
-                      ? (emp.last_name || getDisplayName(emp))
+                      ? (emp.name ? emp.name.split(/[\s　]/)[0] : (emp.initials || '不明'))
                       : '不明';
                     return (
                       <ListItem
