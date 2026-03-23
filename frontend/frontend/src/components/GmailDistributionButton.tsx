@@ -55,6 +55,19 @@ export default function GmailDistributionButton({
   const [selectedTemplate, setSelectedTemplate] = useState<EmailTemplate | null>(null);
   const [selectedBuyers, setSelectedBuyers] = useState<Array<{ email: string; name: string | null }>>([]);
   const [editedBody, setEditedBody] = useState<string>('');
+  const [selectedImages, setSelectedImages] = useState<Array<{
+    id: string;
+    name: string;
+    source: 'drive' | 'local' | 'url';
+    size: number;
+    mimeType: string;
+    thumbnailUrl?: string;
+    previewUrl: string;
+    driveFileId?: string;
+    localFile?: File;
+    url?: string;
+    base64Data?: string;
+  }>>([]);
   const [senderAddress, setSenderAddress] = useState<string>(DEFAULT_SENDER);
   const [employees, setEmployees] = useState<any[]>([]);
   const [snackbar, setSnackbar] = useState<{
@@ -194,6 +207,7 @@ export default function GmailDistributionButton({
     // 確認モーダル表示時に本文を初期化
     const buyerName = buyers.length === 1 ? (buyers[0].name || 'お客様') : 'お客様';
     setEditedBody(replacePlaceholders(selectedTemplate.body, buyerName));
+    setSelectedImages([]);
     setFilterSummaryOpen(false);
     setConfirmationOpen(true);
   };
@@ -212,17 +226,39 @@ export default function GmailDistributionButton({
       // 編集済み本文があればそれを使用、なければテンプレートから生成
       const body = editedBody || replacePlaceholders(selectedTemplate.body, buyerName);
 
+      // ローカルファイルはBase64に変換してから送信
+      const attachmentsPayload = await Promise.all(
+        selectedImages.map(async (img) => {
+          if (img.source === 'local' && img.localFile) {
+            const base64Data = await new Promise<string>((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onload = () => {
+                const result = reader.result as string;
+                // data:image/jpeg;base64,XXXX → XXXXの部分だけ取り出す
+                resolve(result.split(',')[1] || '');
+              };
+              reader.onerror = reject;
+              reader.readAsDataURL(img.localFile!);
+            });
+            return { ...img, base64Data };
+          }
+          return img;
+        })
+      );
+
       const response = await api.post('/api/emails/send-distribution', {
         recipients: selectedEmails,
         subject: subject,
         body: body,
         senderAddress: senderAddress,
-        propertyNumber: propertyNumber
+        propertyNumber: propertyNumber,
+        attachments: attachmentsPayload.length > 0 ? attachmentsPayload : undefined,
       });
 
       const result = response.data;
       setConfirmationOpen(false);
       setSenderAddress(DEFAULT_SENDER);
+      setSelectedImages([]);
 
       if (result.failedBatches === 0) {
         setSnackbar({
@@ -354,6 +390,7 @@ export default function GmailDistributionButton({
         onClose={() => {
           setConfirmationOpen(false);
           setSenderAddress(DEFAULT_SENDER);
+          setSelectedImages([]);
         }}
         onConfirm={handleConfirmationConfirm}
         recipientCount={selectedBuyers.length}
@@ -363,6 +400,8 @@ export default function GmailDistributionButton({
         subject={selectedTemplate ? replacePlaceholders(selectedTemplate.subject, selectedBuyers.length === 1 ? (selectedBuyers[0].name || 'お客様') : 'お客様') : ''}
         bodyPreview={editedBody}
         onBodyChange={setEditedBody}
+        selectedImages={selectedImages}
+        onImagesChange={setSelectedImages}
       />
 
       <Snackbar

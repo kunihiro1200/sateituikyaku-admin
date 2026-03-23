@@ -1061,6 +1061,11 @@ ${bodyHtml}
     subject: string;
     body: string;
     propertyNumber: string;
+    attachments?: Array<{
+      filename: string;
+      mimeType: string;
+      data: Buffer;
+    }>;
   }): Promise<{
     success: boolean;
     successCount: number;
@@ -1083,6 +1088,7 @@ ${bodyHtml}
 
     const gmail = google.gmail({ version: 'v1', auth: this.oauth2Client });
     const encodedSubject = this.encodeSubject(params.subject);
+    const hasAttachments = params.attachments && params.attachments.length > 0;
 
     let successCount = 0;
     let failedCount = 0;
@@ -1091,26 +1097,70 @@ ${bodyHtml}
     console.log(`  From: ${params.senderAddress}`);
     console.log(`  Subject: ${params.subject}`);
     console.log(`  Property: ${params.propertyNumber}`);
+    if (hasAttachments) {
+      console.log(`  Attachments: ${params.attachments!.length} files`);
+    }
 
     for (const recipient of params.recipients) {
       try {
-        const messageParts = [
-          `From: ${params.senderAddress}`,
-          `To: ${recipient}`,
-          `Subject: ${encodedSubject}`,
-          'MIME-Version: 1.0',
-          'Content-Type: text/plain; charset=utf-8',
-          'Content-Transfer-Encoding: 8bit',
-          '',
-          params.body,
-        ];
+        let encodedMessage: string;
 
-        const message = messageParts.join('\r\n');
-        const encodedMessage = Buffer.from(message)
-          .toString('base64')
-          .replace(/\+/g, '-')
-          .replace(/\//g, '_')
-          .replace(/=+$/, '');
+        if (hasAttachments) {
+          // MIMEマルチパートメッセージを構築
+          const boundary = `boundary_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+          const messageParts = [
+            `From: ${params.senderAddress}`,
+            `To: ${recipient}`,
+            `Subject: ${encodedSubject}`,
+            'MIME-Version: 1.0',
+            `Content-Type: multipart/mixed; boundary="${boundary}"`,
+            '',
+            `--${boundary}`,
+            'Content-Type: text/plain; charset=utf-8',
+            'Content-Transfer-Encoding: 8bit',
+            '',
+            params.body,
+          ];
+
+          for (const attachment of params.attachments!) {
+            const base64Data = attachment.data.toString('base64');
+            messageParts.push(
+              `--${boundary}`,
+              `Content-Type: ${attachment.mimeType}; name="${attachment.filename}"`,
+              'Content-Transfer-Encoding: base64',
+              `Content-Disposition: attachment; filename="${attachment.filename}"`,
+              '',
+              base64Data,
+            );
+          }
+          messageParts.push(`--${boundary}--`);
+
+          const message = messageParts.join('\r\n');
+          encodedMessage = Buffer.from(message)
+            .toString('base64')
+            .replace(/\+/g, '-')
+            .replace(/\//g, '_')
+            .replace(/=+$/, '');
+        } else {
+          // 添付なし（既存ロジック）
+          const messageParts = [
+            `From: ${params.senderAddress}`,
+            `To: ${recipient}`,
+            `Subject: ${encodedSubject}`,
+            'MIME-Version: 1.0',
+            'Content-Type: text/plain; charset=utf-8',
+            'Content-Transfer-Encoding: 8bit',
+            '',
+            params.body,
+          ];
+
+          const message = messageParts.join('\r\n');
+          encodedMessage = Buffer.from(message)
+            .toString('base64')
+            .replace(/\+/g, '-')
+            .replace(/\//g, '_')
+            .replace(/=+$/, '');
+        }
 
         await retryGmailApi(async () => {
           return await gmail.users.messages.send({

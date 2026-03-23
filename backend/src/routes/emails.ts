@@ -583,7 +583,7 @@ router.post(
         });
       }
 
-      const { senderAddress, recipients, subject, body, propertyNumber } = req.body;
+      const { senderAddress, recipients, subject, body, propertyNumber, attachments } = req.body;
 
       // 送信元アドレスのホワイトリスト検証
       const validSenders = [
@@ -599,6 +599,62 @@ router.post(
         });
       }
 
+      // 添付ファイルの処理（画像データをBufferに変換）
+      let processedAttachments: Array<{ filename: string; mimeType: string; data: Buffer }> | undefined;
+      if (attachments && Array.isArray(attachments) && attachments.length > 0) {
+        const { GoogleDriveService } = await import('../services/GoogleDriveService');
+        const driveService = new GoogleDriveService();
+
+        const attachmentsRaw = await Promise.all(
+          attachments.map(async (img: any) => {
+            // ローカルファイル（Base64データ）
+            if (img.base64Data) {
+              return {
+                filename: img.name || 'attachment.jpg',
+                mimeType: img.mimeType || 'image/jpeg',
+                data: Buffer.from(img.base64Data, 'base64'),
+              };
+            }
+            // URL指定
+            if (img.url) {
+              try {
+                const https = await import('https');
+                const http = await import('http');
+                const data = await new Promise<Buffer>((resolve, reject) => {
+                  const client = img.url.startsWith('https') ? https : http;
+                  (client as any).get(img.url, (res: any) => {
+                    const chunks: Buffer[] = [];
+                    res.on('data', (chunk: Buffer) => chunks.push(chunk));
+                    res.on('end', () => resolve(Buffer.concat(chunks)));
+                    res.on('error', reject);
+                  }).on('error', reject);
+                });
+                return {
+                  filename: img.name || 'attachment.jpg',
+                  mimeType: 'image/jpeg',
+                  data,
+                };
+              } catch (urlErr) {
+                console.warn(`⚠️ Could not fetch image from URL: ${img.url}`, urlErr);
+                return null;
+              }
+            }
+            // Google Drive ファイル
+            const fileData = await driveService.getFile(img.id);
+            if (!fileData) {
+              console.warn(`⚠️ Could not fetch file from Google Drive: ${img.id}`);
+              return null;
+            }
+            return {
+              filename: img.name || `image-${img.id}.jpg`,
+              mimeType: fileData.mimeType || 'image/jpeg',
+              data: fileData.data,
+            };
+          })
+        );
+        processedAttachments = attachmentsRaw.filter((a): a is NonNullable<typeof a> => a !== null);
+      }
+
       // EmailServiceを使用してメールを送信
       const result = await emailService.sendDistributionEmail({
         senderAddress,
@@ -606,6 +662,7 @@ router.post(
         subject,
         body,
         propertyNumber: propertyNumber || 'unknown',
+        attachments: processedAttachments,
       });
 
       res.json(result);

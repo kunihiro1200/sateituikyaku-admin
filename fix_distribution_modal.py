@@ -1,4 +1,18 @@
-import { useState, useEffect } from 'react';
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+DistributionConfirmationModal.tsx に画像添付UIを追加
+GmailDistributionButton.tsx に画像添付の状態管理を追加
+"""
+
+# ============================================================
+# 1. DistributionConfirmationModal.tsx
+# ============================================================
+modal_path = 'frontend/frontend/src/components/DistributionConfirmationModal.tsx'
+with open(modal_path, 'rb') as f:
+    content = f.read().decode('utf-8').replace('\r\n', '\n')
+
+new_content = '''import { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -250,3 +264,180 @@ export default function DistributionConfirmationModal({
     </>
   );
 }
+'''
+
+with open(modal_path, 'wb') as f:
+    f.write(new_content.encode('utf-8'))
+print(f'✅ {modal_path} updated')
+
+# ============================================================
+# 2. GmailDistributionButton.tsx - 画像添付の状態管理を追加
+# ============================================================
+button_path = 'frontend/frontend/src/components/GmailDistributionButton.tsx'
+with open(button_path, 'rb') as f:
+    content = f.read().decode('utf-8').replace('\r\n', '\n')
+
+# ImageFile型のimportを追加（既存のimportブロックの後）
+# DistributionConfirmationModalのimportはすでにある
+
+# selectedImages stateを追加
+old_state = '''  const [editedBody, setEditedBody] = useState<string>('');
+  const [senderAddress, setSenderAddress] = useState<string>(DEFAULT_SENDER);'''
+
+new_state = '''  const [editedBody, setEditedBody] = useState<string>('');
+  const [selectedImages, setSelectedImages] = useState<Array<{
+    id: string;
+    name: string;
+    source: 'drive' | 'local' | 'url';
+    size: number;
+    mimeType: string;
+    thumbnailUrl?: string;
+    previewUrl: string;
+    driveFileId?: string;
+    localFile?: File;
+    url?: string;
+    base64Data?: string;
+  }>>([]);
+  const [senderAddress, setSenderAddress] = useState<string>(DEFAULT_SENDER);'''
+
+if old_state in content:
+    content = content.replace(old_state, new_state)
+    print('✅ Added selectedImages state')
+else:
+    print('❌ Could not find state block')
+
+# handleFilterSummaryConfirmでselectedImagesをリセット
+old_filter_confirm = '''  const handleFilterSummaryConfirm = (buyers: Array<{ email: string; name: string | null }>) => {
+    if (!selectedTemplate || buyers.length === 0) {
+      return;
+    }
+    setSelectedBuyers(buyers);
+    // 確認モーダル表示時に本文を初期化
+    const buyerName = buyers.length === 1 ? (buyers[0].name || 'お客様') : 'お客様';
+    setEditedBody(replacePlaceholders(selectedTemplate.body, buyerName));
+    setFilterSummaryOpen(false);
+    setConfirmationOpen(true);
+  };'''
+
+new_filter_confirm = '''  const handleFilterSummaryConfirm = (buyers: Array<{ email: string; name: string | null }>) => {
+    if (!selectedTemplate || buyers.length === 0) {
+      return;
+    }
+    setSelectedBuyers(buyers);
+    // 確認モーダル表示時に本文を初期化
+    const buyerName = buyers.length === 1 ? (buyers[0].name || 'お客様') : 'お客様';
+    setEditedBody(replacePlaceholders(selectedTemplate.body, buyerName));
+    setSelectedImages([]);
+    setFilterSummaryOpen(false);
+    setConfirmationOpen(true);
+  };'''
+
+if old_filter_confirm in content:
+    content = content.replace(old_filter_confirm, new_filter_confirm)
+    print('✅ Updated handleFilterSummaryConfirm')
+else:
+    print('❌ Could not find handleFilterSummaryConfirm')
+
+# handleConfirmationConfirmでattachmentsを送信リクエストに含める
+old_confirm = '''      const response = await api.post('/api/emails/send-distribution', {
+        recipients: selectedEmails,
+        subject: subject,
+        body: body,
+        senderAddress: senderAddress,
+        propertyNumber: propertyNumber
+      });'''
+
+new_confirm = '''      // ローカルファイルはBase64に変換してから送信
+      const attachmentsPayload = await Promise.all(
+        selectedImages.map(async (img) => {
+          if (img.source === 'local' && img.localFile) {
+            const base64Data = await new Promise<string>((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onload = () => {
+                const result = reader.result as string;
+                // data:image/jpeg;base64,XXXX → XXXXの部分だけ取り出す
+                resolve(result.split(',')[1] || '');
+              };
+              reader.onerror = reject;
+              reader.readAsDataURL(img.localFile!);
+            });
+            return { ...img, base64Data };
+          }
+          return img;
+        })
+      );
+
+      const response = await api.post('/api/emails/send-distribution', {
+        recipients: selectedEmails,
+        subject: subject,
+        body: body,
+        senderAddress: senderAddress,
+        propertyNumber: propertyNumber,
+        attachments: attachmentsPayload.length > 0 ? attachmentsPayload : undefined,
+      });'''
+
+if old_confirm in content:
+    content = content.replace(old_confirm, new_confirm)
+    print('✅ Updated handleConfirmationConfirm')
+else:
+    print('❌ Could not find handleConfirmationConfirm')
+
+# onCloseでselectedImagesをリセット（confirmationOpen close）
+old_close1 = '''        onClose={() => {
+          setConfirmationOpen(false);
+          setSenderAddress(DEFAULT_SENDER);
+        }}
+        onConfirm={handleConfirmationConfirm}'''
+
+new_close1 = '''        onClose={() => {
+          setConfirmationOpen(false);
+          setSenderAddress(DEFAULT_SENDER);
+          setSelectedImages([]);
+        }}
+        onConfirm={handleConfirmationConfirm}'''
+
+if old_close1 in content:
+    content = content.replace(old_close1, new_close1)
+    print('✅ Updated confirmation onClose')
+else:
+    print('❌ Could not find confirmation onClose')
+
+# DistributionConfirmationModalにselectedImages/onImagesChangeを渡す
+old_modal_props = '''        subject={selectedTemplate ? replacePlaceholders(selectedTemplate.subject, selectedBuyers.length === 1 ? (selectedBuyers[0].name || 'お客様') : 'お客様') : ''}
+        bodyPreview={editedBody}
+        onBodyChange={setEditedBody}
+      />'''
+
+new_modal_props = '''        subject={selectedTemplate ? replacePlaceholders(selectedTemplate.subject, selectedBuyers.length === 1 ? (selectedBuyers[0].name || 'お客様') : 'お客様') : ''}
+        bodyPreview={editedBody}
+        onBodyChange={setEditedBody}
+        selectedImages={selectedImages}
+        onImagesChange={setSelectedImages}
+      />'''
+
+if old_modal_props in content:
+    content = content.replace(old_modal_props, new_modal_props)
+    print('✅ Updated DistributionConfirmationModal props')
+else:
+    print('❌ Could not find DistributionConfirmationModal props')
+
+# 送信後にselectedImagesをリセット
+old_after_send = '''      const result = response.data;
+      setConfirmationOpen(false);
+      setSenderAddress(DEFAULT_SENDER);'''
+
+new_after_send = '''      const result = response.data;
+      setConfirmationOpen(false);
+      setSenderAddress(DEFAULT_SENDER);
+      setSelectedImages([]);'''
+
+if old_after_send in content:
+    content = content.replace(old_after_send, new_after_send)
+    print('✅ Updated post-send reset')
+else:
+    print('❌ Could not find post-send reset')
+
+with open(button_path, 'wb') as f:
+    f.write(content.encode('utf-8'))
+print(f'✅ {button_path} updated')
+print('All done!')
