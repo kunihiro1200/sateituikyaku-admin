@@ -8,6 +8,7 @@ import {
   CircularProgress,
 } from '@mui/material';
 import api from '../services/api';
+import { pageDataCache, CACHE_KEYS } from '../store/pageDataCache';
 
 interface StatusCategory {
   status: string;

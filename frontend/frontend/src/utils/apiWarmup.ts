@@ -8,13 +8,25 @@ let warmedUp = false;
 export async function warmupApi(): Promise<void> {
   if (warmedUp) return;
 
+  const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+
+  // healthエンドポイントと主要APIを並列でウォームアップ
+  // レスポンスは使わない（サーバーを起こすだけ）
+  const endpoints = [
+    '/health',
+    '/api/sellers/sidebar-counts',
+    '/api/buyers/status-categories-only',
+  ];
+
   try {
-    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
-    // healthエンドポイントにpingを送ってサーバーを起こす
-    await fetch(`${apiUrl}/health`, {
-      method: 'GET',
-      signal: AbortSignal.timeout(5000), // 5秒でタイムアウト
-    });
+    await Promise.allSettled(
+      endpoints.map((path) =>
+        fetch(`${apiUrl}${path}`, {
+          method: 'GET',
+          signal: AbortSignal.timeout(8000),
+        })
+      )
+    );
     warmedUp = true;
     console.log('✅ API warmed up');
   } catch {

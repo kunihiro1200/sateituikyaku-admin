@@ -133,8 +133,8 @@ export default function PropertyListingsPage() {
         }
       }
 
-      // キャッシュに保存（3分間有効）
-      pageDataCache.set(CACHE_KEYS.PROPERTY_LISTINGS, allListingsData);
+      // キャッシュに保存（5分間有効）
+      pageDataCache.set(CACHE_KEYS.PROPERTY_LISTINGS, allListingsData, 5 * 60 * 1000);
       setAllListings(allListingsData);
 
       console.log('✅ データ取得成功:', { 物件数: allListingsData.length });

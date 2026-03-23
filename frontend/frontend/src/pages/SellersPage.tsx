@@ -290,7 +290,7 @@ export default function SellersPage() {
       setSidebarLoading(true);
       const response = await api.get('/api/sellers/sidebar-counts');
       setSidebarCounts(response.data);
-      pageDataCache.set(CACHE_KEYS.SELLERS_SIDEBAR_COUNTS, response.data);
+      pageDataCache.set(CACHE_KEYS.SELLERS_SIDEBAR_COUNTS, response.data, 5 * 60 * 1000);
     } catch (error) {
       console.error('Failed to fetch sidebar counts:', error);
       // エラー時はカウントを0にリセット
@@ -322,7 +322,7 @@ export default function SellersPage() {
       const response = await api.get('/api/sellers/assignee-initials');
       const initials = response.data.initials || [];
       setAssigneeInitials(initials);
-      pageDataCache.set(CACHE_KEYS.SELLERS_ASSIGNEE_INITIALS, initials);
+      pageDataCache.set(CACHE_KEYS.SELLERS_ASSIGNEE_INITIALS, initials, 10 * 60 * 1000);
     } catch (error: any) {
       console.error('[fetchAssigneeInitials] Failed:', error?.response?.status, error?.response?.data || error?.message);
     }
@@ -412,7 +412,7 @@ export default function SellersPage() {
         api.get('/api/sellers', { params }).then((response) => {
           setSellers(response.data.data);
           setTotal(response.data.total);
-          pageDataCache.set(cacheKey, { data: response.data.data, total: response.data.total }, 60 * 1000);
+          pageDataCache.set(cacheKey, { data: response.data.data, total: response.data.total }, 3 * 60 * 1000);
         }).catch((err) => console.error('Background sellers refresh failed:', err));
         return;
       }
@@ -423,7 +423,7 @@ export default function SellersPage() {
       setSellers(response.data.data);
       setTotal(response.data.total);
       // 1分間キャッシュ
-      pageDataCache.set(cacheKey, { data: response.data.data, total: response.data.total }, 60 * 1000);
+      pageDataCache.set(cacheKey, { data: response.data.data, total: response.data.total }, 3 * 60 * 1000);
     } catch (error) {
       console.error('Failed to fetch sellers:', error);
     } finally {

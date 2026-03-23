@@ -169,6 +169,7 @@ export default function BuyersPage() {
       setSyncing(true);
       await api.post('/api/buyers/sync');
       pageDataCache.invalidate(CACHE_KEYS.BUYERS_STATS);
+      pageDataCache.invalidate(CACHE_KEYS.BUYERS_WITH_STATUS); // 買主ステータスキャッシュも無効化
       // サイドバーキャッシュをリセット
       allBuyersWithStatusRef.current = [];
       setSidebarLoaded(false);
