@@ -566,8 +566,8 @@ export default function BuyerDetailPage() {
   }
 
   return (
-    <Container maxWidth="xl" sx={{ py: 3, px: 2 }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
+    <Box sx={{ height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: 1, py: 0.5, flexShrink: 0, borderBottom: '1px solid', borderColor: 'divider' }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
           <IconButton 
             onClick={() => navigate('/buyers')} 
@@ -890,8 +890,9 @@ TEL：097-533-2022`;
       <Box
         sx={{
           display: 'flex',
-          gap: 2,
-          alignItems: 'flex-start',
+          gap: 0,
+          flex: 1,
+          overflow: 'hidden',
           '@media (max-width: 900px)': {
             flexDirection: 'column',
           },
@@ -904,16 +905,15 @@ TEL：097-533-2022`;
           sx={{
             flex: '0 0 28%',
             minWidth: 0,
-            maxHeight: 'calc(100vh - 200px)',
+            height: '100%',
             overflowY: 'auto',
             overflowX: 'hidden',
-            pr: 1,
-            position: 'sticky',
-            top: 16,
-            '&::-webkit-scrollbar': { width: '8px' },
-            '&::-webkit-scrollbar-track': { backgroundColor: 'rgba(0, 0, 0, 0.05)', borderRadius: '4px' },
-            '&::-webkit-scrollbar-thumb': { backgroundColor: 'rgba(0, 0, 0, 0.2)', borderRadius: '4px', '&:hover': { backgroundColor: 'rgba(0, 0, 0, 0.3)' } },
-            '@media (max-width: 900px)': { flex: '1 1 auto', width: '100%', maxHeight: 'none', overflowY: 'visible', position: 'static', pr: 0 },
+            borderRight: '1px solid',
+            borderColor: 'divider',
+            '&::-webkit-scrollbar': { width: '6px' },
+            '&::-webkit-scrollbar-track': { backgroundColor: 'rgba(0, 0, 0, 0.05)' },
+            '&::-webkit-scrollbar-thumb': { backgroundColor: 'rgba(0, 0, 0, 0.2)', borderRadius: '3px' },
+            '@media (max-width: 900px)': { flex: '1 1 auto', width: '100%', height: 'auto', overflowY: 'visible', borderRight: 'none', borderBottom: '1px solid', borderColor: 'divider' },
           }}
           role="complementary"
           aria-label="通話・メール履歴"
@@ -1048,23 +1048,22 @@ TEL：097-533-2022`;
           sx={{
             flex: '0 0 36%',
             minWidth: 0,
-            maxHeight: 'calc(100vh - 200px)',
+            height: '100%',
             overflowY: 'auto',
             overflowX: 'hidden',
-            px: 1,
-            position: 'sticky',
-            top: 16,
-            '&::-webkit-scrollbar': { width: '8px' },
-            '&::-webkit-scrollbar-track': { backgroundColor: 'rgba(0, 0, 0, 0.05)', borderRadius: '4px' },
-            '&::-webkit-scrollbar-thumb': { backgroundColor: 'rgba(0, 0, 0, 0.2)', borderRadius: '4px', '&:hover': { backgroundColor: 'rgba(0, 0, 0, 0.3)' } },
-            '@media (max-width: 900px)': { flex: '1 1 auto', width: '100%', maxHeight: 'none', overflowY: 'visible', position: 'static', px: 0 },
+            borderRight: '1px solid',
+            borderColor: 'divider',
+            '&::-webkit-scrollbar': { width: '6px' },
+            '&::-webkit-scrollbar-track': { backgroundColor: 'rgba(0, 0, 0, 0.05)' },
+            '&::-webkit-scrollbar-thumb': { backgroundColor: 'rgba(0, 0, 0, 0.2)', borderRadius: '3px' },
+            '@media (max-width: 900px)': { flex: '1 1 auto', width: '100%', height: 'auto', overflowY: 'visible', borderRight: 'none', borderBottom: '1px solid', borderColor: 'divider' },
           }}
           role="complementary"
           aria-label="物件詳細カード"
           tabIndex={0}
         >
-          <Box>
-            <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+          <Box sx={{ p: 1 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
               <Typography variant="h6">物件詳細カード</Typography>
               {linkedProperties.length > 0 && (
                 <Chip label={`${linkedProperties.length}件`} size="small" sx={{ ml: 2 }} />
@@ -1094,16 +1093,13 @@ TEL：097-533-2022`;
           sx={{
             flex: '1 1 36%',
             minWidth: 0,
-            maxHeight: 'calc(100vh - 200px)',
+            height: '100%',
             overflowY: 'auto',
             overflowX: 'hidden',
-            pl: 1,
-            position: 'sticky',
-            top: 16,
-            '&::-webkit-scrollbar': { width: '8px' },
-            '&::-webkit-scrollbar-track': { backgroundColor: 'rgba(0, 0, 0, 0.05)', borderRadius: '4px' },
-            '&::-webkit-scrollbar-thumb': { backgroundColor: 'rgba(0, 0, 0, 0.2)', borderRadius: '4px', '&:hover': { backgroundColor: 'rgba(0, 0, 0, 0.3)' } },
-            '@media (max-width: 900px)': { flex: '1 1 auto', width: '100%', maxHeight: 'none', overflowY: 'visible', position: 'static', pl: 0 },
+            '&::-webkit-scrollbar': { width: '6px' },
+            '&::-webkit-scrollbar-track': { backgroundColor: 'rgba(0, 0, 0, 0.05)' },
+            '&::-webkit-scrollbar-thumb': { backgroundColor: 'rgba(0, 0, 0, 0.2)', borderRadius: '3px' },
+            '@media (max-width: 900px)': { flex: '1 1 auto', width: '100%', height: 'auto', overflowY: 'visible' },
           }}
           role="main"
           aria-label="買主情報"
@@ -1500,6 +1496,6 @@ TEL：097-533-2022`;
           buyerId: buyer_number || '',
         } : undefined}
       />
-    </Container>
+    </Box>
   );
 }
