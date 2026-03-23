@@ -67,6 +67,7 @@ import NearbyBuyersList from '../components/NearbyBuyersList';
 import CollapsibleSection from '../components/CollapsibleSection';
 
 import { formatCurrentStatusDetailed } from '../utils/propertyStatusFormatter';
+import PageNavigation from '../components/PageNavigation';
 
 /**
  * SMSテンプレート型定義
@@ -2711,6 +2712,10 @@ HP：https://ifoo-oita.com/
 
   return (
     <Box sx={{ height: '100vh', display: 'flex', flexDirection: 'column', minWidth: '1280px' }}>
+      {/* ナビゲーションバー */}
+      <Box sx={{ position: 'sticky', top: 0, zIndex: 200, bgcolor: 'background.default', borderBottom: '1px solid', borderColor: 'divider', px: 1, py: 0.5, display: 'flex', alignItems: 'flex-end', gap: 1, flexShrink: 0 }}>
+        <PageNavigation />
+      </Box>
       {/* ヘッダー */}
       <Box
         sx={{

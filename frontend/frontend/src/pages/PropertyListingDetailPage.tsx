@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import PageNavigation from '../components/PageNavigation';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import {
   Box,
@@ -698,6 +699,11 @@ export default function PropertyListingDetailPage() {
   }
 
   return (
+    <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+      {/* ナビゲーションバー */}
+      <Box sx={{ position: 'sticky', top: 0, zIndex: 200, bgcolor: 'background.default', borderBottom: '1px solid', borderColor: 'divider', px: 1, py: 0.5, display: 'flex', alignItems: 'flex-end', gap: 1, flexShrink: 0 }}>
+        <PageNavigation />
+      </Box>
     <Box sx={{ py: 2, px: 2, zoom: '0.6' }}>
       <Box sx={{ display: 'flex', gap: 2 }}>
         {/* 左サイドバー - サイドバーステータス */}
@@ -1870,6 +1876,7 @@ export default function PropertyListingDetailPage() {
       </Snackbar>
         </Box> {/* メインコンテンツ */}
       </Box> {/* サイドバー + メインコンテンツ */}
+    </Box>
     </Box>
   );
 }
