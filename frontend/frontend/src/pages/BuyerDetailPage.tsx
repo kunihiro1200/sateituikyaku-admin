@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Container,
@@ -48,6 +48,7 @@ import {
   EMAIL_TYPE_OPTIONS, 
   DISTRIBUTION_TYPE_OPTIONS 
 } from '../utils/buyerFieldOptions';
+import RichTextCommentEditor, { RichTextCommentEditorHandle } from '../components/RichTextCommentEditor';
 import { formatDateTime } from '../utils/dateFormat';
 import { getDisplayName } from '../utils/employeeUtils';
 
@@ -172,6 +173,12 @@ export default function BuyerDetailPage() {
   // クイックボタンの状態管理
   const { isDisabled: isQuickButtonDisabled, disableButton: disableQuickButton } = useQuickButtonState(buyer_number || '');
 
+  // ヒアリング項目用RichTextEditorのref
+  const hearingEditorRef = useRef<RichTextCommentEditorHandle>(null);
+  // ヒアリング項目のローカル編集値（HTML）
+  const [hearingEditValue, setHearingEditValue] = useState<string>('');
+  const [hearingSaving, setHearingSaving] = useState(false);
+
   // 通常スタッフのイニシャル一覧（初動担当選択用）
   const [normalInitials, setNormalInitials] = useState<string[]>([]);
 
@@ -239,10 +246,32 @@ export default function BuyerDetailPage() {
       setLoading(true);
       const res = await api.get(`/api/buyers/${buyer_number}`);
       setBuyer(res.data);
+      // ヒアリング項目の初期値をセット（HTML形式で保存されている場合はそのまま）
+      setHearingEditValue(res.data.inquiry_hearing || '');
     } catch (error) {
       console.error('Failed to fetch buyer:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // ヒアリング項目の保存ハンドラー
+  const handleSaveHearing = async () => {
+    if (!buyer) return;
+    setHearingSaving(true);
+    try {
+      const result = await buyerApi.update(
+        buyer_number!,
+        { inquiry_hearing: hearingEditValue },
+        { sync: true }
+      );
+      setBuyer(result.buyer);
+      setHearingEditValue(result.buyer.inquiry_hearing || '');
+      setSnackbar({ open: true, message: 'ヒアリング項目を保存しました', severity: 'success' });
+    } catch (error: any) {
+      setSnackbar({ open: true, message: error.response?.data?.error || '保存に失敗しました', severity: 'error' });
+    } finally {
+      setHearingSaving(false);
     }
   };
 
@@ -295,39 +324,11 @@ export default function BuyerDetailPage() {
     }
   };
 
-  // 問合時ヒアリング用クイック入力ボタンのクリックハンドラー
-  // inquiry_hearingフィールドの強制再レンダリング用キー
-  const [inquiryHearingKey, setInquiryHearingKey] = useState(0);
-  
-  const handleInquiryHearingQuickInput = async (text: string, buttonLabel: string) => {
-    if (!buyer) return;
-    
-    // ボタンを無効化
+  // 問合時ヒアリング用クイック入力ボタンのクリックハンドラー（RichTextEditor版）
+  const handleHearingQuickInput = (text: string, buttonLabel: string) => {
     disableQuickButton(buttonLabel);
-    
-    const currentValue = buyer.inquiry_hearing || '';
-    // 新しいテキストを先頭に追加（既存内容がある場合は改行を挟む）
-    const newValue = currentValue 
-      ? `${text}\n${currentValue}` 
-      : text;
-    
-    // 先にローカル状態を更新して即座にUIに反映
-    setBuyer(prev => prev ? { ...prev, inquiry_hearing: newValue } : prev);
-    // キーを更新してInlineEditableFieldを強制再レンダリング
-    setInquiryHearingKey(prev => prev + 1);
-    
-    // その後DBに保存
-    const result = await handleInlineFieldSave('inquiry_hearing', newValue);
-    if (result && !result.success && result.error) {
-      // エラー時は元の値に戻す
-      setBuyer(prev => prev ? { ...prev, inquiry_hearing: currentValue } : prev);
-      setInquiryHearingKey(prev => prev + 1);
-      setSnackbar({
-        open: true,
-        message: result.error,
-        severity: 'error'
-      });
-    }
+    // カーソル位置に太字で挿入（カーソルなければ現在位置）
+    hearingEditorRef.current?.insertAtCursor(`<b>${text}</b>`);
   };
 
   const handleCloseSnackbar = () => {
@@ -1422,30 +1423,28 @@ TEL：097-533-2022`;
                       }
                     };
 
-                    // inquiry_hearingフィールドには常に囲い枠を表示
-                    const isInquiryHearing = field.key === 'inquiry_hearing';
-
-                    return (
-                      <Grid item {...gridSize} key={`${section.title}-${field.key}`}>
-                        {/* 問合時ヒアリング用クイック入力ボタン */}
-                        {isInquiryHearing && (
+                    // inquiry_hearingフィールドはRichTextEditorで表示
+                    if (field.key === 'inquiry_hearing') {
+                      return (
+                        <Grid item {...gridSize} key={`${section.title}-${field.key}`}>
+                          {/* 問合時ヒアリング用クイック入力ボタン */}
                           <Box sx={{ mb: 1 }}>
                             <Typography variant="subtitle2" gutterBottom>
                               ヒアリング項目
                             </Typography>
-                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 1 }}>
                               {INQUIRY_HEARING_QUICK_INPUTS.map((item) => {
                                 const disabled = isQuickButtonDisabled(item.label);
                                 return (
-                                  <Tooltip 
-                                    key={item.label} 
-                                    title={disabled ? 'このボタンは使用済みです' : item.text} 
+                                  <Tooltip
+                                    key={item.label}
+                                    title={disabled ? 'このボタンは使用済みです' : item.text}
                                     arrow
                                   >
                                     <span>
                                       <Chip
                                         label={item.label}
-                                        onClick={() => !disabled && handleInquiryHearingQuickInput(item.text, item.label)}
+                                        onClick={() => !disabled && handleHearingQuickInput(item.text, item.label)}
                                         size="small"
                                         clickable={!disabled}
                                         color="success"
@@ -1466,9 +1465,29 @@ TEL：097-533-2022`;
                               })}
                             </Box>
                           </Box>
-                        )}
+                          <RichTextCommentEditor
+                            ref={hearingEditorRef}
+                            value={hearingEditValue}
+                            onChange={(html) => setHearingEditValue(html)}
+                            placeholder="ヒアリング内容を入力..."
+                          />
+                          <Box sx={{ mt: 1, display: 'flex', justifyContent: 'flex-end' }}>
+                            <Button
+                              variant="contained"
+                              size="small"
+                              onClick={handleSaveHearing}
+                              disabled={hearingSaving}
+                            >
+                              {hearingSaving ? '保存中...' : '保存'}
+                            </Button>
+                          </Box>
+                        </Grid>
+                      );
+                    }
+
+                    return (
+                      <Grid item {...gridSize} key={`${section.title}-${field.key}`}>
                         <InlineEditableField
-                          key={isInquiryHearing ? `inquiry_hearing_${inquiryHearingKey}` : field.key}
                           label={field.label}
                           value={value || ''}
                           fieldName={field.key}
@@ -1481,8 +1500,6 @@ TEL：097-533-2022`;
                           readOnly={field.readOnly === true}
                           buyerId={buyer_number}
                           enableConflictDetection={true}
-                          alwaysShowBorder={isInquiryHearing}
-                          borderPlaceholder={isInquiryHearing ? 'ヒアリング内容を入力...' : undefined}
                           showEditIndicator={!field.readOnly}
                         />
                       </Grid>
