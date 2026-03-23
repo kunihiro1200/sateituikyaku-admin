@@ -367,20 +367,19 @@ router.get('/:buyerId/email-history', async (req: Request, res: Response) => {
   try {
     const { buyerId } = req.params;
     
-    // UUIDかどうかで判定
+    // email_history.buyer_id は buyer_number で保存されているため、
+    // UUID が渡された場合は buyer_number に変換する
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(buyerId);
-    
-    // 買主番号の場合は、まずbuyer_idを取得
-    let actualBuyerId = buyerId;
-    if (!isUuid) {
-      const buyer = await buyerService.getByBuyerNumber(buyerId);
+    let buyerNumber = buyerId;
+    if (isUuid) {
+      const buyer = await buyerService.getById(buyerId);
       if (!buyer) {
         return res.status(404).json({ error: 'Buyer not found' });
       }
-      actualBuyerId = buyer.buyer_id;
+      buyerNumber = buyer.buyer_number;
     }
     
-    const emailHistory = await emailHistoryService.getEmailHistory(actualBuyerId);
+    const emailHistory = await emailHistoryService.getEmailHistory(buyerNumber);
     res.json({ emailHistory });
   } catch (error: any) {
     console.error('Error fetching email history:', error);
