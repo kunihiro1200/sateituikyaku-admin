@@ -712,6 +712,7 @@ router.get('/:buyerNumber/nearby-properties', async (req: Request, res: Response
 
 // 個別取得（ID）
 router.get('/:id', async (req: Request, res: Response) => {
+  const t0 = Date.now();
   try {
     const { id } = req.params;
     
@@ -722,13 +723,15 @@ router.get('/:id', async (req: Request, res: Response) => {
       ? await buyerService.getById(id)
       : await buyerService.getByBuyerNumber(id);
     
+    console.log(`[GET /buyers/${id}] ${Date.now() - t0}ms`);
+    
     if (!data) {
       return res.status(404).json({ error: 'Buyer not found' });
     }
 
     res.json(data);
   } catch (error: any) {
-    console.error('Error fetching buyer:', error);
+    console.error(`[GET /buyers/:id] error after ${Date.now() - t0}ms:`, error);
     res.status(500).json({ error: error.message });
   }
 });

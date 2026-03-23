@@ -920,8 +920,24 @@ export class BuyerService {
     propertyId: string;
     propertyListingId: string;
   }>> {
-    // Get the buyer
-    const buyer = await this.getById(buyerId);
+    // buyerIdがUUIDか買主番号かを判定
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(buyerId);
+    
+    // 買主番号の場合は直接DBから取得（getById経由を避けて余分なクエリを削減）
+    let buyer: any;
+    if (isUuid) {
+      buyer = await this.getById(buyerId);
+    } else {
+      const { data, error } = await this.supabase
+        .from('buyers')
+        .select('buyer_number, property_number, reception_date, past_buyer_list')
+        .eq('buyer_number', buyerId)
+        .is('deleted_at', null)
+        .single();
+      if (error && error.code !== 'PGRST116') throw new Error(`Failed to fetch buyer: ${error.message}`);
+      buyer = data;
+    }
+    
     if (!buyer) {
       throw new Error(`Buyer not found: ${buyerId}`);
     }
