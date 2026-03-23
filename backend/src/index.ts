@@ -411,7 +411,7 @@ app.use('/api/validation', validationRoutes);
 app.use('/api/sellers', sellerRecoveryRoutes);
 app.use('/api/inquiry-response', inquiryResponseRoutes);
 app.use('/api/email-templates', emailTemplateRoutes);
-app.use('/api/gmail', gmailRoutes);
+app.use('/api/gmail', authenticate, gmailRoutes);
 app.use('/api/shared-items', sharedItemsRoutes); // 共有アイテムAPI（認証不要）
 app.use('/api/public/inquiries', publicInquiriesRoutes);
 app.use('/api/public', publicPropertiesRoutes);
