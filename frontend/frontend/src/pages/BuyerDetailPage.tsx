@@ -20,6 +20,8 @@ import {
   Select,
   InputLabel,
   MenuItem,
+  TextField,
+  InputAdornment,
 } from '@mui/material';
 import { 
   ArrowBack as ArrowBackIcon,
@@ -27,6 +29,8 @@ import {
   ContentCopy as ContentCopyIcon,
   Phone as PhoneIcon,
   Home as HomeIcon,
+  Search as SearchIcon,
+  Clear as ClearIcon,
 } from '@mui/icons-material';
 import api, { buyerApi } from '../services/api';
 import PropertyInfoCard from '../components/PropertyInfoCard';
@@ -37,6 +41,7 @@ import UnifiedInquiryHistoryTable from '../components/UnifiedInquiryHistoryTable
 import RelatedBuyerNotificationBadge from '../components/RelatedBuyerNotificationBadge';
 import BuyerGmailSendButton from '../components/BuyerGmailSendButton';
 import { SmsDropdownButton } from '../components/SmsDropdownButton';
+import PageNavigation from '../components/PageNavigation';
 import { InlineEditableField } from '../components/InlineEditableField';
 import { useStableContainerHeight } from '../hooks/useStableContainerHeight';
 import { useQuickButtonState } from '../hooks/useQuickButtonState';
@@ -178,6 +183,8 @@ export default function BuyerDetailPage() {
   // ヒアリング項目のローカル編集値（HTML）
   const [hearingEditValue, setHearingEditValue] = useState<string>('');
   const [hearingSaving, setHearingSaving] = useState(false);
+  // 買主番号検索バー用
+  const [buyerNumberSearch, setBuyerNumberSearch] = useState('');
 
   // 通常スタッフのイニシャル一覧（初動担当選択用）
   const [normalInitials, setNormalInitials] = useState<string[]>([]);
@@ -575,6 +582,34 @@ export default function BuyerDetailPage() {
 
   return (
     <Box sx={{ height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      {/* ナビゲーションバー + 買主番号検索バー */}
+      <Box sx={{ position: 'sticky', top: 0, zIndex: 200, bgcolor: 'background.default', borderBottom: '1px solid', borderColor: 'divider', px: 1, py: 0.5, display: 'flex', alignItems: 'center', gap: 1, flexShrink: 0 }}>
+        <PageNavigation />
+        <TextField
+          size="small"
+          placeholder="買主番号"
+          value={buyerNumberSearch}
+          onChange={(e) => setBuyerNumberSearch(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && buyerNumberSearch.trim()) {
+              navigate(`/buyers/${buyerNumberSearch.trim()}`);
+            }
+          }}
+          sx={{ width: 160 }}
+          InputProps={{
+            startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment>,
+            endAdornment: buyerNumberSearch ? (
+              <InputAdornment position="end">
+                <ClearIcon
+                  fontSize="small"
+                  sx={{ cursor: 'pointer', color: 'text.secondary' }}
+                  onClick={() => setBuyerNumberSearch('')}
+                />
+              </InputAdornment>
+            ) : null,
+          }}
+        />
+      </Box>
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: 1, py: 0.5, flexShrink: 0, borderBottom: '1px solid', borderColor: 'divider' }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
           <IconButton 
