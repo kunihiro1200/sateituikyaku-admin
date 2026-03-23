@@ -34,6 +34,7 @@ import {
   Assignment as AssignmentIcon,
   Search as SearchIcon,
   Clear as ClearIcon,
+  Sms as SmsIcon,
 } from '@mui/icons-material';
 import api from '../services/api';
 import { useAuthStore } from '../store/authStore';
@@ -828,7 +829,25 @@ export default function PropertyListingDetailPage() {
                     },
                   }}
                 >
-                  売主へメール
+                  Email
+                </Button>
+              )}
+              {data.seller_contact && (
+                <Button
+                  variant="outlined"
+                  size="small"
+                  href={`sms:${data.seller_contact}`}
+                  startIcon={<SmsIcon fontSize="small" />}
+                  sx={{
+                    borderColor: '#2e7d32',
+                    color: '#2e7d32',
+                    '&:hover': {
+                      borderColor: '#1b5e20',
+                      backgroundColor: '#2e7d3208',
+                    },
+                  }}
+                >
+                  SMS
                 </Button>
               )}
             </Box>
