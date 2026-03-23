@@ -1,4 +1,4 @@
-import { Box, Button, ButtonGroup } from '@mui/material';
+import { Box, Button } from '@mui/material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   People as PeopleIcon,
@@ -35,7 +35,7 @@ export default function PageNavigation() {
 
   return (
     <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-      <ButtonGroup variant="outlined" size="large">
+      <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center' }}>
         {navItems.map((item) => {
           const color = NAV_COLORS[item.path as keyof typeof NAV_COLORS];
           const isActive = item.path === '/'
@@ -44,10 +44,12 @@ export default function PageNavigation() {
           return (
             <Button
               key={item.path}
+              variant="outlined"
+              size="large"
               onClick={() => navigate(item.path)}
               startIcon={item.icon}
               sx={{
-                minWidth: 150,
+                minWidth: 130,
                 borderColor: color.main,
                 color: isActive ? '#fff' : color.text,
                 backgroundColor: isActive ? color.main : color.light,
@@ -61,7 +63,7 @@ export default function PageNavigation() {
             </Button>
           );
         })}
-      </ButtonGroup>
+      </Box>
       <Button
         variant="outlined"
         color="secondary"

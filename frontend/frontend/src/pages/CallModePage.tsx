@@ -2723,7 +2723,7 @@ HP：https://ifoo-oita.com/
           onChange={(e) => setSellerNumberSearch(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === 'Enter' && sellerNumberSearch.trim()) {
-              navigate(`/sellers/${sellerNumberSearch.trim()}`);
+              navigate(`/sellers/${sellerNumberSearch.trim()}/call`);
               setSellerNumberSearch('');
             }
           }}
