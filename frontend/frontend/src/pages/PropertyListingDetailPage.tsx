@@ -21,6 +21,7 @@ import {
   Tooltip,
   Select,
   MenuItem,
+  InputAdornment,
 } from '@mui/material';
 import {
   ArrowBack as ArrowBackIcon,
@@ -31,6 +32,8 @@ import {
   Phone as PhoneIcon,
   Email as EmailIcon,
   Assignment as AssignmentIcon,
+  Search as SearchIcon,
+  Clear as ClearIcon,
 } from '@mui/icons-material';
 import api from '../services/api';
 import { useAuthStore } from '../store/authStore';
@@ -204,6 +207,7 @@ export default function PropertyListingDetailPage() {
   });
   const [copiedPropertyNumber, setCopiedPropertyNumber] = useState(false);
   const [copiedAddress, setCopiedAddress] = useState(false);
+  const [propertyNumberSearch, setPropertyNumberSearch] = useState<string>(''); // 物件番号検索
 
   // Check for buyer context from navigation state
   const buyerContext = location.state as { buyerId?: string; buyerName?: string; source?: string } | null;
@@ -701,8 +705,35 @@ export default function PropertyListingDetailPage() {
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column' }}>
       {/* ナビゲーションバー */}
-      <Box sx={{ position: 'sticky', top: 0, zIndex: 200, bgcolor: 'background.default', borderBottom: '1px solid', borderColor: 'divider', px: 1, py: 0.5, display: 'flex', alignItems: 'flex-end', gap: 1, flexShrink: 0 }}>
+      <Box sx={{ position: 'sticky', top: 0, zIndex: 200, bgcolor: 'background.default', borderBottom: '1px solid', borderColor: 'divider', px: 1, py: 0.5, display: 'flex', alignItems: 'center', gap: 1, flexShrink: 0 }}>
         <PageNavigation />
+        <TextField
+          size="small"
+          placeholder="物件番号で移動"
+          value={propertyNumberSearch}
+          onChange={(e) => setPropertyNumberSearch(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && propertyNumberSearch.trim()) {
+              navigate(`/property-listings/${propertyNumberSearch.trim()}`);
+              setPropertyNumberSearch('');
+            }
+          }}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon fontSize="small" />
+              </InputAdornment>
+            ),
+            endAdornment: propertyNumberSearch ? (
+              <InputAdornment position="end">
+                <IconButton size="small" onClick={() => setPropertyNumberSearch('')}>
+                  <ClearIcon fontSize="small" />
+                </IconButton>
+              </InputAdornment>
+            ) : null,
+          }}
+          sx={{ width: 200 }}
+        />
       </Box>
     <Box sx={{ py: 1, px: 1 }}>
       <Box sx={{ display: 'flex', gap: 2 }}>

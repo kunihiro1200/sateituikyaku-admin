@@ -25,7 +25,7 @@ import {
   Tooltip,
   Snackbar,
 } from '@mui/material';
-import { ArrowBack, Phone, Save, CalendarToday, Email, Image as ImageIcon, ContentCopy as ContentCopyIcon } from '@mui/icons-material';
+import { ArrowBack, Phone, Save, CalendarToday, Email, Image as ImageIcon, ContentCopy as ContentCopyIcon, Search as SearchIcon, Clear as ClearIcon } from '@mui/icons-material';
 import api, { emailImageApi } from '../services/api';
 import { SECTION_COLORS } from '../theme/sectionColors';
 import { Seller, PropertyInfo, Activity, SellerStatus, ConfidenceLevel, DuplicateMatch, SelectedImages, DriveImage } from '../types';
@@ -350,6 +350,7 @@ const CallModePage = () => {
   const [copiedSellerNumber, setCopiedSellerNumber] = useState(false); // 売主番号コピー完了フラグ
   const [snackbarOpen, setSnackbarOpen] = useState(false); // スナックバー表示フラグ
   const [snackbarMessage, setSnackbarMessage] = useState<string>(''); // スナックバーメッセージ
+  const [sellerNumberSearch, setSellerNumberSearch] = useState<string>(''); // 売主番号検索
   const [showNearbyBuyers, setShowNearbyBuyers] = useState(false); // 近隣買主表示フラグ
   const [inquiryUrl, setInquiryUrl] = useState<string | null>(null); // 反響URL
 
@@ -2713,8 +2714,35 @@ HP：https://ifoo-oita.com/
   return (
     <Box sx={{ height: '100vh', display: 'flex', flexDirection: 'column', minWidth: '1280px' }}>
       {/* ナビゲーションバー */}
-      <Box sx={{ position: 'sticky', top: 0, zIndex: 200, bgcolor: 'background.default', borderBottom: '1px solid', borderColor: 'divider', px: 1, py: 0.5, display: 'flex', alignItems: 'flex-end', gap: 1, flexShrink: 0 }}>
+      <Box sx={{ position: 'sticky', top: 0, zIndex: 200, bgcolor: 'background.default', borderBottom: '1px solid', borderColor: 'divider', px: 1, py: 0.5, display: 'flex', alignItems: 'center', gap: 1, flexShrink: 0 }}>
         <PageNavigation />
+        <TextField
+          size="small"
+          placeholder="売主番号で移動"
+          value={sellerNumberSearch}
+          onChange={(e) => setSellerNumberSearch(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && sellerNumberSearch.trim()) {
+              navigate(`/sellers/${sellerNumberSearch.trim()}`);
+              setSellerNumberSearch('');
+            }
+          }}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon fontSize="small" />
+              </InputAdornment>
+            ),
+            endAdornment: sellerNumberSearch ? (
+              <InputAdornment position="end">
+                <IconButton size="small" onClick={() => setSellerNumberSearch('')}>
+                  <ClearIcon fontSize="small" />
+                </IconButton>
+              </InputAdornment>
+            ) : null,
+          }}
+          sx={{ width: 200 }}
+        />
       </Box>
       {/* ヘッダー */}
       <Box

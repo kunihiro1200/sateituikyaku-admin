@@ -39,7 +39,7 @@ export default function PageNavigation() {
         {navItems.map((item) => {
           const color = NAV_COLORS[item.path as keyof typeof NAV_COLORS];
           const isActive = item.path === '/'
-            ? location.pathname === '/'
+            ? location.pathname === '/' || location.pathname.startsWith('/sellers')
             : location.pathname.startsWith(item.path);
           return (
             <Button
