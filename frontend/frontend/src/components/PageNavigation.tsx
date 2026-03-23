@@ -38,7 +38,9 @@ export default function PageNavigation() {
       <ButtonGroup variant="outlined" size="large">
         {navItems.map((item) => {
           const color = NAV_COLORS[item.path as keyof typeof NAV_COLORS];
-          const isActive = location.pathname === item.path;
+          const isActive = item.path === '/'
+            ? location.pathname === '/'
+            : location.pathname.startsWith(item.path);
           return (
             <Button
               key={item.path}
