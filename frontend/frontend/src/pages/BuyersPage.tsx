@@ -88,11 +88,11 @@ export default function BuyersPage() {
       try {
         setLoading(true);
 
-        // ステータスフィルタ選択中 かつ サイドバーデータ読み込み済みの場合はフロント側でフィルタリング
-        if (selectedCalculatedStatus !== null && sidebarLoaded && allBuyersWithStatusRef.current.length > 0) {
-          let filtered = allBuyersWithStatusRef.current.filter(
-            b => b.calculated_status === selectedCalculatedStatus
-          );
+        // サイドバーデータ読み込み済みの場合はフロント側でフィルタリング（APIコール不要）
+        if (sidebarLoaded && allBuyersWithStatusRef.current.length > 0) {
+          let filtered = selectedCalculatedStatus !== null
+            ? allBuyersWithStatusRef.current.filter(b => b.calculated_status === selectedCalculatedStatus)
+            : [...allBuyersWithStatusRef.current];
 
           // 検索フィルタ
           if (debouncedSearch) {
@@ -129,7 +129,7 @@ export default function BuyersPage() {
           return;
         }
 
-        // 通常取得（ステータスフィルタなし）
+        // サイドバー未ロード時のみAPIから取得（初回表示用）
         const params: any = {
           page: page + 1,
           limit: rowsPerPage,
