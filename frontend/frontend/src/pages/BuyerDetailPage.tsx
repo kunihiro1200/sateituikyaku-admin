@@ -22,6 +22,7 @@ import {
   MenuItem,
   TextField,
   InputAdornment,
+  Link,
 } from '@mui/material';
 import { 
   ArrowBack as ArrowBackIcon,
@@ -31,6 +32,7 @@ import {
   Home as HomeIcon,
   Search as SearchIcon,
   Clear as ClearIcon,
+  Launch as LaunchIcon,
 } from '@mui/icons-material';
 import api, { buyerApi } from '../services/api';
 import PropertyInfoCard from '../components/PropertyInfoCard';
@@ -1142,11 +1144,20 @@ TEL：097-533-2022`;
           tabIndex={0}
         >
           <Box sx={{ p: 1 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1, mb: 1 }}>
               <Typography variant="h6">物件詳細カード</Typography>
-              {linkedProperties.length > 0 && (
-                <Chip label={`${linkedProperties.length}件`} size="small" sx={{ ml: 2 }} />
-              )}
+              {linkedProperties.map((lp) => (
+                <Link
+                  key={lp.property_number}
+                  href={`https://property-site-frontend-kappa.vercel.app/public/properties/${lp.property_number}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  sx={{ fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: 0.5 }}
+                >
+                  {`https://property-site-frontend-kappa.vercel.app/public/properties/${lp.property_number}`}
+                  <LaunchIcon sx={{ fontSize: 12 }} />
+                </Link>
+              ))}
             </Box>
             {linkedProperties.length > 0 ? (
               linkedProperties.map((property) => (
