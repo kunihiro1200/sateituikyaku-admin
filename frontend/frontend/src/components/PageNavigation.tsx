@@ -34,7 +34,7 @@ export default function PageNavigation() {
   };
 
   return (
-    <Box sx={{ mb: 3, display: 'flex', gap: 2, alignItems: 'center' }}>
+    <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
       <ButtonGroup variant="outlined" size="large">
         {navItems.map((item) => {
           const color = NAV_COLORS[item.path as keyof typeof NAV_COLORS];
