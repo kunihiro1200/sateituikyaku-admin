@@ -333,6 +333,8 @@ export default function BuyerNearbyPropertiesPage() {
                     key={property.id}
                     hover
                     selected={checkedIds.has(property.property_number)}
+                    sx={{ cursor: 'pointer' }}
+                    onClick={() => window.open(`/property-listings/${property.property_number}`, '_blank', 'noopener,noreferrer')}
                   >
                     <TableCell padding="checkbox" onClick={e => e.stopPropagation()}>
                       <Checkbox
@@ -340,10 +342,7 @@ export default function BuyerNearbyPropertiesPage() {
                         onChange={() => toggleCheck(property.property_number)}
                       />
                     </TableCell>
-                    <TableCell
-                      sx={{ cursor: 'pointer' }}
-                      onClick={() => navigate(`/property-listings/${property.property_number}`)}
-                    >
+                    <TableCell>
                       {property.property_number}
                     </TableCell>
                     <TableCell>{property.display_address || property.address}</TableCell>
