@@ -627,8 +627,19 @@ export default function BuyerDetailPage() {
               color="success"
               size="small"
               startIcon={<PhoneIcon />}
-              href={`tel:${buyer.phone_number}`}
-              sx={{ fontWeight: 'bold', whiteSpace: 'nowrap' }}
+              onClick={async () => {
+                // 通話履歴を記録してから発信
+                try {
+                  await api.post(`/api/buyers/${buyer_number}/call-history`, {
+                    phoneNumber: buyer.phone_number,
+                  });
+                  fetchActivities();
+                } catch (e) {
+                  console.error('通話履歴記録失敗:', e);
+                }
+                window.location.href = `tel:${buyer.phone_number}`;
+              }}
+              sx={{ fontWeight: 'bold', whiteSpace: 'nowrap', cursor: 'pointer' }}
             >
               {buyer.phone_number}
             </Button>
@@ -943,12 +954,15 @@ TEL：097-533-2022`;
                           <Typography variant="caption" color="text.secondary">
                             {formatDateTime(activity.created_at)}
                           </Typography>
-                          <Typography variant="caption" color="text.secondary">
+                          <Typography variant="caption" fontWeight="bold" color="success.main">
                             {displayName}
                           </Typography>
                         </Box>
+                        <Typography variant="caption" color="text.secondary">
+                          📞 {metadata.phoneNumber || '発信'}
+                        </Typography>
                         {(metadata.notes || metadata.memo) && (
-                          <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', fontSize: '0.85rem' }}>
+                          <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', fontSize: '0.85rem', mt: 0.5 }}>
                             {metadata.notes || metadata.memo}
                           </Typography>
                         )}

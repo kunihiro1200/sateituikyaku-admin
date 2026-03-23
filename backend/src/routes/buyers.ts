@@ -914,6 +914,42 @@ router.post('/:id/send-sms', async (req: Request, res: Response) => {
   }
 });
 
+// 通話履歴を activity_logs に記録
+router.post('/:buyerNumber/call-history', async (req: Request, res: Response) => {
+  try {
+    const { buyerNumber } = req.params;
+    const { phoneNumber } = req.body;
+
+    if (!phoneNumber) {
+      return res.status(400).json({ error: 'phoneNumber は必須です' });
+    }
+
+    const buyer = await buyerService.getByBuyerNumber(buyerNumber);
+    if (!buyer) {
+      return res.status(404).json({ error: 'Buyer not found' });
+    }
+
+    const SYSTEM_EMPLOYEE_ID = '66e35f74-7c31-430d-b235-5ad515581007';
+    const { ActivityLogService } = require('../services/ActivityLogService');
+    const activityLogService = new ActivityLogService();
+    await activityLogService.logActivity({
+      employeeId: (req as any).user?.id || SYSTEM_EMPLOYEE_ID,
+      action: 'phone_call',
+      targetType: 'buyer',
+      targetId: buyerNumber,
+      metadata: {
+        phoneNumber,
+        buyerNumber,
+      },
+    });
+
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error('Failed to record call history:', error);
+    res.status(500).json({ error: error.message || '通話履歴記録に失敗しました' });
+  }
+});
+
 // SMS送信履歴を activity_logs に記録
 router.post('/:buyerNumber/sms-history', async (req: Request, res: Response) => {
   try {
