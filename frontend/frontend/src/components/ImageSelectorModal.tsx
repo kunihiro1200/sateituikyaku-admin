@@ -38,8 +38,13 @@ import { emailImageApi } from '../services/api';
 
 interface ImageSelectorModalProps {
   open: boolean;
-  onConfirm: (selectedImages: ImageFile[]) => void;
-  onCancel: () => void;
+  onConfirm?: (selectedImages: ImageFile[]) => void;
+  onCancel?: () => void;
+  // PropertyListingDetailPage から渡される別名props
+  onClose?: () => void;
+  onSelect?: (images: ImageFile[]) => void;
+  sellerNumber?: string;
+  initialSelected?: ImageFile[];
 }
 
 // 統一された画像ファイル型
@@ -77,7 +82,21 @@ const ImageSelectorModal = ({
   open,
   onConfirm,
   onCancel,
+  onClose,
+  onSelect,
+  initialSelected,
 }: ImageSelectorModalProps) => {
+  // onCancel / onClose どちらでも閉じられるように統一
+  const handleCancel = () => {
+    if (onCancel) onCancel();
+    if (onClose) onClose();
+  };
+
+  // onConfirm / onSelect どちらでも確定できるように統一
+  const handleConfirmWrapper = (images: ImageFile[]) => {
+    if (onConfirm) onConfirm(images);
+    if (onSelect) onSelect(images);
+  };
   // タブ管理
   const [activeTab, setActiveTab] = useState<'drive' | 'local' | 'url'>('drive');
   
@@ -301,7 +320,7 @@ const ImageSelectorModal = ({
       return;
     }
 
-    onConfirm(selectedImages);
+    handleConfirmWrapper(selectedImages);
   };
 
   const formatFileSize = (bytes: number): string => {
@@ -419,7 +438,7 @@ const ImageSelectorModal = ({
 
   return (
     <>
-      <Dialog open={open} onClose={onCancel} maxWidth="lg" fullWidth>
+      <Dialog open={open} onClose={handleCancel} maxWidth="lg" fullWidth>
         <DialogTitle>
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -433,7 +452,7 @@ const ImageSelectorModal = ({
                 />
               )}
             </Box>
-            <IconButton onClick={onCancel}>
+            <IconButton onClick={handleCancel}>
               <Close />
             </IconButton>
           </Box>
@@ -623,7 +642,7 @@ const ImageSelectorModal = ({
         </DialogContent>
 
         <DialogActions>
-          <Button onClick={onCancel}>キャンセル</Button>
+          <Button onClick={handleCancel}>キャンセル</Button>
           <Button
             onClick={handleConfirm}
             variant="contained"
