@@ -91,6 +91,7 @@ const rows = await sheets.spreadsheets.values.get({
 | - | `作成日時` | `created_at` | DATETIME | 作成日時 |
 | - | `更新日時` | `updated_at` | DATETIME | 更新日時 |
 | - | `訪問メモ` | `visit_notes` | TEXT | 訪問メモ |
+| - | `1番電話` | `first_call_person` | TEXT | 1番電話担当者名 |
 
 ---
 

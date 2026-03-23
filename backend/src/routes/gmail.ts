@@ -1,9 +1,16 @@
 import { Router } from 'express';
+import multer from 'multer';
 import { EmailService } from '../services/EmailService';
 import { BuyerService } from '../services/BuyerService';
 import { EmailHistoryService } from '../services/EmailHistoryService';
 import { ActivityLogService } from '../services/ActivityLogService';
 import { createClient } from '@supabase/supabase-js';
+
+// 添付ファイルはメモリに保持（25MB上限）
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 25 * 1024 * 1024 },
+});
 
 const router = Router();
 const emailService = new EmailService();
@@ -40,11 +47,15 @@ router.post('/send-to-buyer', async (req, res) => {
 });
 
 // 買主へのGmail送信エンドポイント（新・履歴記録あり）
-router.post('/send', async (req, res) => {
+router.post('/send', upload.array('attachments'), async (req, res) => {
   try {
-    const { buyerId, propertyIds, senderEmail, subject, body } = req.body;
+    // multipart/form-data と JSON の両方に対応
+    const body = req.body;
+    const { buyerId, propertyIds, senderEmail, subject } = body;
+    const bodyText = body.body;
+    const attachments = (req.files as Express.Multer.File[]) || [];
 
-    if (!buyerId || !subject || !body) {
+    if (!buyerId || !subject || !bodyText) {
       return res.status(400).json({ error: 'buyerId, subject, body は必須です' });
     }
 
@@ -58,8 +69,9 @@ router.post('/send', async (req, res) => {
     const result = await emailService.sendBuyerEmail({
       to: buyer.email,
       subject,
-      body,
+      body: bodyText,
       from: senderEmail,
+      attachments,
     });
 
     if (!result.success) {
@@ -91,11 +103,11 @@ router.post('/send', async (req, res) => {
     // email_history テーブルに記録
     try {
       await emailHistoryService.saveEmailHistory({
-        buyerId,
+        buyerId: buyer.buyer_number || buyerId,
         propertyNumbers,
         recipientEmail: buyer.email,
         subject,
-        body,
+        body: bodyText,
         senderEmail: senderEmail || 'tenant@ifoo-oita.com',
         emailType: 'gmail_send',
       });

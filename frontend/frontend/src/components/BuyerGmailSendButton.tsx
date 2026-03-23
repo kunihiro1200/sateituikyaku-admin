@@ -115,23 +115,37 @@ export default function BuyerGmailSendButton({
 
   const handleSendEmail = async (emailData: EmailData) => {
     try {
-      // Get sender email from authenticated employee
       const senderEmail = employee?.email;
       if (!senderEmail) {
         throw new Error('送信者のメールアドレスが取得できません');
       }
 
-      // 選択された物件IDsを配列に変換
       const propertyIds = Array.from(selectedPropertyIds);
+      const files = emailData.attachments || [];
 
-      // Send email via Gmail API
-      await api.post('/api/gmail/send', {
-        buyerId: emailData.buyerId,
-        propertyIds,
-        senderEmail,
-        subject: emailData.subject,
-        body: emailData.body
-      });
+      if (files.length > 0) {
+        // 添付ファイルあり: multipart/form-data で送信
+        const formData = new FormData();
+        formData.append('buyerId', emailData.buyerId);
+        formData.append('subject', emailData.subject);
+        formData.append('body', emailData.body);
+        formData.append('senderEmail', senderEmail);
+        propertyIds.forEach(id => formData.append('propertyIds[]', id));
+        files.forEach(file => formData.append('attachments', file));
+
+        await api.post('/api/gmail/send', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+      } else {
+        // 添付なし: JSON で送信
+        await api.post('/api/gmail/send', {
+          buyerId: emailData.buyerId,
+          propertyIds,
+          senderEmail,
+          subject: emailData.subject,
+          body: emailData.body,
+        });
+      }
 
       setSuccessMessage('メールを送信しました');
       setCompositionModalOpen(false);

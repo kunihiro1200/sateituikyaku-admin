@@ -80,20 +80,20 @@ export class EmailService extends BaseRepository {
     }
   }
   /**
-   * 買主へのメール送信（HTML対応、改行を<br>に変換）
+   * 買主へのメール送信（HTML対応、改行を<br>に変換、添付ファイル対応）
    */
   async sendBuyerEmail(params: {
     to: string;
     subject: string;
     body: string;
     from?: string;
+    attachments?: Express.Multer.File[];
   }): Promise<{ messageId: string; success: boolean; error?: string }> {
     try {
       const authClient = await this.googleAuthService.getAuthenticatedClient();
       const gmail = google.gmail({ version: 'v1', auth: authClient });
 
       const from = params.from || 'tenant@ifoo-oita.com';
-      // URLを<a>タグに変換してからHTMLエスケープ・改行変換
       const urlToLink = (text: string): string =>
         text.replace(/(https?:\/\/[^\s\u3000\u3001\u3002\uff01\uff09\u300d\u300f\u3011\u3015\u3017\u3019\u301b\u301f\uff3d\uff5d\u300b\u300f]+)/g,
           (url) => `<a href="${url}">${url}</a>`);
@@ -103,19 +103,57 @@ export class EmailService extends BaseRepository {
         ? params.subject
         : `=?UTF-8?B?${Buffer.from(params.subject, 'utf-8').toString('base64')}?=`;
 
-      const messageParts = [
-        `From: ${from}`,
-        `To: ${params.to}`,
-        `Subject: ${encodedSubject}`,
-        'MIME-Version: 1.0',
-        'Content-Type: text/html; charset=utf-8',
-        'Content-Transfer-Encoding: quoted-printable',
-        '',
-        htmlBody,
-      ];
+      const files = params.attachments || [];
+      let rawMessage: string;
 
-      const message = messageParts.join('\n');
-      const encodedMessage = Buffer.from(message)
+      if (files.length === 0) {
+        // 添付なし: シンプルな text/html メッセージ
+        const messageParts = [
+          `From: ${from}`,
+          `To: ${params.to}`,
+          `Subject: ${encodedSubject}`,
+          'MIME-Version: 1.0',
+          'Content-Type: text/html; charset=utf-8',
+          'Content-Transfer-Encoding: quoted-printable',
+          '',
+          htmlBody,
+        ];
+        rawMessage = messageParts.join('\n');
+      } else {
+        // 添付あり: multipart/mixed メッセージ
+        const boundary = `boundary_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+        const parts: string[] = [
+          `From: ${from}`,
+          `To: ${params.to}`,
+          `Subject: ${encodedSubject}`,
+          'MIME-Version: 1.0',
+          `Content-Type: multipart/mixed; boundary="${boundary}"`,
+          '',
+          `--${boundary}`,
+          'Content-Type: text/html; charset=utf-8',
+          'Content-Transfer-Encoding: quoted-printable',
+          '',
+          htmlBody,
+        ];
+
+        for (const file of files) {
+          const encodedFilename = `=?UTF-8?B?${Buffer.from(file.originalname, 'utf-8').toString('base64')}?=`;
+          const fileBase64 = file.buffer.toString('base64');
+          parts.push(
+            `--${boundary}`,
+            `Content-Type: ${file.mimetype || 'application/octet-stream'}`,
+            `Content-Disposition: attachment; filename="${encodedFilename}"`,
+            'Content-Transfer-Encoding: base64',
+            '',
+            fileBase64,
+          );
+        }
+
+        parts.push(`--${boundary}--`);
+        rawMessage = parts.join('\n');
+      }
+
+      const encodedMessage = Buffer.from(rawMessage)
         .toString('base64')
         .replace(/\+/g, '-')
         .replace(/\//g, '_')

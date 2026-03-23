@@ -87,6 +87,9 @@ export interface EmailData {
   
   /** Recipient email address */
   recipientEmail: string;
+
+  /** Attachment files (optional) */
+  attachments?: File[];
 }
 
 /**

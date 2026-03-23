@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -10,8 +10,10 @@ import {
   Box,
   Alert,
   CircularProgress,
-  Divider
+  Divider,
+  Chip,
 } from '@mui/material';
+import AttachFileIcon from '@mui/icons-material/AttachFile';
 import { EmailData, MergedEmailContent } from '../types/emailTemplate';
 
 interface BuyerEmailCompositionModalProps {
@@ -46,13 +48,26 @@ export default function BuyerEmailCompositionModal({
   const [body, setBody] = useState(mergedContent.body);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [attachments, setAttachments] = useState<File[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Update content when mergedContent changes
   React.useEffect(() => {
     setSubject(mergedContent.subject);
     setBody(mergedContent.body);
     setError(null);
+    setAttachments([]);
   }, [mergedContent]);
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    setAttachments(prev => [...prev, ...files]);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleRemoveAttachment = (index: number) => {
+    setAttachments(prev => prev.filter((_, i) => i !== index));
+  };
 
   const handleSend = async () => {
     setSending(true);
@@ -61,11 +76,12 @@ export default function BuyerEmailCompositionModal({
     try {
       const emailData: EmailData = {
         buyerId,
-        propertyId: propertyIds.length > 0 ? propertyIds[0] : undefined, // 後方互換性のため
+        propertyId: propertyIds.length > 0 ? propertyIds[0] : undefined,
         templateId,
         subject,
         body,
-        recipientEmail: buyerEmail
+        recipientEmail: buyerEmail,
+        attachments,
       };
 
       await onSend(emailData);
@@ -128,6 +144,41 @@ export default function BuyerEmailCompositionModal({
           onChange={(e) => setBody(e.target.value)}
           disabled={sending}
         />
+
+        {/* 添付ファイル */}
+        <Box sx={{ mt: 2 }}>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+            添付ファイル
+          </Typography>
+          <input
+            type="file"
+            multiple
+            ref={fileInputRef}
+            style={{ display: 'none' }}
+            onChange={handleFileSelect}
+          />
+          <Button
+            variant="outlined"
+            size="small"
+            startIcon={<AttachFileIcon />}
+            onClick={() => fileInputRef.current?.click()}
+            disabled={sending}
+          >
+            ファイルを追加
+          </Button>
+          {attachments.length > 0 && (
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1 }}>
+              {attachments.map((file, index) => (
+                <Chip
+                  key={index}
+                  label={file.name}
+                  size="small"
+                  onDelete={() => handleRemoveAttachment(index)}
+                />
+              ))}
+            </Box>
+          )}
+        </Box>
 
         <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
           ※ 送信前に内容を確認・編集できます

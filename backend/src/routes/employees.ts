@@ -150,29 +150,13 @@ router.get('/active-initials', async (req: Request, res: Response) => {
 });
 
 /**
- * 通常スタッフ（is_normal=true）のイニシャル一覧を取得（初動担当選択用）
- * DBのemployeesテーブルのis_normal=trueのスタッフを返す
+ * 通常スタッフのイニシャル一覧を取得（初動担当選択用）
+ * スタッフ管理スプレッドシートの「通常」列=TRUEのスタッフを返す
  */
 router.get('/normal-initials', async (req: Request, res: Response) => {
   try {
-    const { createClient } = require('@supabase/supabase-js');
-    const supabase = createClient(
-      process.env.SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
-    const { data: employees, error } = await supabase
-      .from('employees')
-      .select('initials')
-      .eq('is_normal', true)
-      .not('initials', 'is', null)
-      .order('initials');
-
-    if (error) throw error;
-
-    const initials = (employees || [])
-      .map((emp: any) => emp.initials)
-      .filter((i: any) => i && String(i).trim() !== '');
-
+    const initials = await staffManagementService.getActiveInitials();
+    console.log(`[normal-initials] Returning ${initials.length} normal staff initials:`, initials);
     res.json({ initials });
   } catch (error: any) {
     console.error('[normal-initials] Failed:', error.message);
