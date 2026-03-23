@@ -340,16 +340,15 @@ export default function BuyerDetailPage() {
       const properties = res.data || [];
       setLinkedProperties(properties);
 
-      // 近隣物件数を取得
+      // 近隣物件数を取得（非同期・ページ表示をブロックしない）
       if (properties.length > 0) {
-        try {
-          const nearbyRes = await api.get(`/api/buyers/${buyer_number}/nearby-properties`, {
-            params: { propertyNumber: properties[0].property_number },
-          });
+        api.get(`/api/buyers/${buyer_number}/nearby-properties`, {
+          params: { propertyNumber: properties[0].property_number },
+        }).then(nearbyRes => {
           setNearbyPropertiesCount(nearbyRes.data.nearbyProperties?.length || 0);
-        } catch {
+        }).catch(() => {
           // 近隣物件取得失敗は無視
-        }
+        });
       }
     } catch (error) {
       console.error('Failed to fetch linked properties:', error);
@@ -357,13 +356,7 @@ export default function BuyerDetailPage() {
   };
 
   const fetchInquiryHistory = async () => {
-    try {
-      const res = await api.get(`/api/buyers/${buyer_number}/inquiry-history`);
-      const history = res.data?.inquiryHistory || res.data || [];
-      setInquiryHistory(history);
-    } catch (error) {
-      console.error('Failed to fetch inquiry history:', error);
-    }
+    // fetchInquiryHistoryTable と統合済み（重複呼び出し防止）
   };
 
   const fetchActivities = async () => {
@@ -393,6 +386,7 @@ export default function BuyerDetailPage() {
       
       const historyData = res.data.inquiryHistory || [];
       setInquiryHistoryTable(historyData);
+      setInquiryHistory(historyData); // fetchInquiryHistory と統合（重複API呼び出し防止）
       
       // Automatically select properties with "current" status (今回)
       const currentStatusIds = new Set<string>(

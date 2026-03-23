@@ -951,31 +951,36 @@ export class BuyerService {
       });
     }
 
-    // Get past buyer numbers and their property numbers
+    // Get past buyer numbers and their property numbers（並列取得）
     const pastBuyerNumbers = this.parsePastBuyerList(buyer.past_buyer_list);
     
-    for (const pastBuyerNumber of pastBuyerNumbers) {
-      // Fetch past buyer data
-      const { data: pastBuyer, error: pastBuyerError } = await this.supabase
-        .from('buyers')
-        .select('buyer_number, property_number, reception_date')
-        .eq('buyer_number', pastBuyerNumber)
-        .single();
+    if (pastBuyerNumbers.length > 0) {
+      const pastBuyerResults = await Promise.all(
+        pastBuyerNumbers.map(pastBuyerNumber =>
+          this.supabase
+            .from('buyers')
+            .select('buyer_number, property_number, reception_date')
+            .eq('buyer_number', pastBuyerNumber)
+            .single()
+        )
+      );
 
-      if (!pastBuyerError && pastBuyer && pastBuyer.property_number) {
-        const pastPropertyNumbers = pastBuyer.property_number
-          .split(',')
-          .map((n: string) => n.trim())
-          .filter((n: string) => n);
-        
-        pastPropertyNumbers.forEach((propNum: string) => {
-          allPropertyNumbers.push(propNum);
-          propertyToBuyerMap.set(propNum, {
-            buyerNumber: pastBuyer.buyer_number,
-            status: 'past',
-            inquiryDate: pastBuyer.reception_date || ''
+      for (const { data: pastBuyer, error: pastBuyerError } of pastBuyerResults) {
+        if (!pastBuyerError && pastBuyer && pastBuyer.property_number) {
+          const pastPropertyNumbers = pastBuyer.property_number
+            .split(',')
+            .map((n: string) => n.trim())
+            .filter((n: string) => n);
+          
+          pastPropertyNumbers.forEach((propNum: string) => {
+            allPropertyNumbers.push(propNum);
+            propertyToBuyerMap.set(propNum, {
+              buyerNumber: pastBuyer.buyer_number,
+              status: 'past',
+              inquiryDate: pastBuyer.reception_date || ''
+            });
           });
-        });
+        }
       }
     }
 
