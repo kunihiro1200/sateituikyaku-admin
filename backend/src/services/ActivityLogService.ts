@@ -50,7 +50,7 @@ export class ActivityLogService extends BaseRepository {
    * ログを取得（フィルタ対応）
    */
   async getLogs(filter: LogFilter): Promise<ActivityLog[]> {
-    let query = this.table('activity_logs').select('*, employee:employees(id, name)');
+    let query = this.table('activity_logs').select('*, employee:employees(id, name, last_name)');
 
     if (filter.employeeId) {
       query = query.eq('employee_id', filter.employeeId);

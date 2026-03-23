@@ -933,7 +933,7 @@ router.post('/:buyerNumber/call-history', async (req: Request, res: Response) =>
     const { ActivityLogService } = require('../services/ActivityLogService');
     const activityLogService = new ActivityLogService();
     await activityLogService.logActivity({
-      employeeId: (req as any).user?.id || SYSTEM_EMPLOYEE_ID,
+      employeeId: (req as any).employee?.id || SYSTEM_EMPLOYEE_ID,
       action: 'phone_call',
       targetType: 'buyer',
       targetId: buyerNumber,

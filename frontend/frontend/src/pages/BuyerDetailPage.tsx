@@ -945,7 +945,10 @@ TEL：097-533-2022`;
                   .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
                   .map((activity) => {
                     const metadata = activity.metadata || {};
-                    const displayName = activity.employee ? getDisplayName(activity.employee) : '不明';
+                    const emp = activity.employee;
+                    const displayName = emp
+                      ? (emp.last_name || getDisplayName(emp))
+                      : '不明';
                     return (
                       <ListItem
                         key={activity.id}
