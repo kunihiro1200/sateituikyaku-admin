@@ -1768,4 +1768,96 @@ export class BuyerService {
 
     return { min, max };
   }
+
+  /**
+   * 近隣物件を取得（類似物件機能）
+   */
+  async getNearbyProperties(propertyNumber: string): Promise<{
+    baseProperty: any;
+    nearbyProperties: any[];
+  }> {
+    // 基準物件を取得
+    const { data: baseProperty, error: baseError } = await this.supabase
+      .from('property_listings')
+      .select('*')
+      .eq('property_number', propertyNumber)
+      .single();
+
+    if (baseError || !baseProperty) {
+      throw new Error(`Base property not found: ${propertyNumber}`);
+    }
+
+    // 価格帯を決定
+    const price = baseProperty.price || 0;
+    let minPrice = 0;
+    let maxPrice = 0;
+
+    if (price < 10000000) {
+      minPrice = 0;
+      maxPrice = 9999999;
+    } else if (price < 30000000) {
+      minPrice = 10000000;
+      maxPrice = 29999999;
+    } else if (price < 50000000) {
+      minPrice = 30000000;
+      maxPrice = 49999999;
+    } else {
+      minPrice = 50000000;
+      maxPrice = 999999999;
+    }
+
+    const propertyType = baseProperty.property_type || '';
+
+    // 住所から市区町村と町名を抽出
+    const address = baseProperty.address || '';
+    let city = '';
+    let town = '';
+
+    const cityMatch = address.match(/(大分市|別府市|由布市|日出町|杵築市|国東市|豊後高田市|宇佐市|中津市|日田市|竹田市|豊後大野市|臼杵市|津久見市|佐伯市)/);
+    if (cityMatch) {
+      city = cityMatch[1];
+      const afterCity = address.substring(address.indexOf(city) + city.length);
+      const townMatch = afterCity.match(/^([^\d\-\s]+)/);
+      if (townMatch) {
+        let extractedTown = townMatch[1];
+        const azaIndex = extractedTown.indexOf('字');
+        if (azaIndex !== -1) {
+          extractedTown = extractedTown.substring(0, azaIndex);
+        }
+        town = extractedTown;
+      }
+    }
+
+    // 近隣物件を検索
+    let query = this.supabase
+      .from('property_listings')
+      .select('*')
+      .neq('property_number', propertyNumber)
+      .gte('price', minPrice)
+      .lte('price', maxPrice);
+
+    if (propertyType) {
+      query = query.eq('property_type', propertyType);
+    }
+
+    if (city && town) {
+      query = query.ilike('address', `%${city}${town}%`);
+    } else if (city) {
+      query = query.ilike('address', `%${city}%`);
+    }
+
+    // ステータス条件：公開中または公開前
+    query = query.or('atbb_status.ilike.%公開中%,atbb_status.ilike.%公開前%');
+
+    const { data: nearbyProperties, error: nearbyError } = await query;
+
+    if (nearbyError) {
+      throw new Error(`Failed to fetch nearby properties: ${nearbyError.message}`);
+    }
+
+    return {
+      baseProperty,
+      nearbyProperties: nearbyProperties || [],
+    };
+  }
 }

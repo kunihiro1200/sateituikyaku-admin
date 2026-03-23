@@ -26,6 +26,7 @@ import {
   Email as EmailIcon,
   ContentCopy as ContentCopyIcon,
   Phone as PhoneIcon,
+  Home as HomeIcon,
 } from '@mui/icons-material';
 import api, { buyerApi } from '../services/api';
 import PropertyInfoCard from '../components/PropertyInfoCard';
@@ -151,6 +152,7 @@ export default function BuyerDetailPage() {
   const navigate = useNavigate();
   const [buyer, setBuyer] = useState<Buyer | null>(null);
   const [linkedProperties, setLinkedProperties] = useState<PropertyListing[]>([]);
+  const [nearbyPropertiesCount, setNearbyPropertiesCount] = useState(0);
   const [inquiryHistory, setInquiryHistory] = useState<InquiryHistory[]>([]);
   const [inquiryHistoryTable, setInquiryHistoryTable] = useState<InquiryHistoryItem[]>([]);
   const [selectedPropertyIds, setSelectedPropertyIds] = useState<Set<string>>(new Set());
@@ -337,6 +339,18 @@ export default function BuyerDetailPage() {
       const res = await api.get(`/api/buyers/${buyer_number}/properties`);
       const properties = res.data || [];
       setLinkedProperties(properties);
+
+      // 近隣物件数を取得
+      if (properties.length > 0) {
+        try {
+          const nearbyRes = await api.get(`/api/buyers/${buyer_number}/nearby-properties`, {
+            params: { propertyNumber: properties[0].property_number },
+          });
+          setNearbyPropertiesCount(nearbyRes.data.nearbyProperties?.length || 0);
+        } catch {
+          // 近隣物件取得失敗は無視
+        }
+      }
     } catch (error) {
       console.error('Failed to fetch linked properties:', error);
     }
@@ -606,6 +620,21 @@ export default function BuyerDetailPage() {
         </Box>
 
         <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
+          {/* 近隣物件ボタン */}
+          {linkedProperties.length > 0 && (
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<HomeIcon />}
+              onClick={() => {
+                const firstProperty = linkedProperties[0];
+                window.open(`/buyers/${buyer_number}/nearby-properties?propertyNumber=${firstProperty.property_number}`, '_blank');
+              }}
+              sx={{ borderRadius: 1 }}
+            >
+              近隣物件 ({nearbyPropertiesCount})
+            </Button>
+          )}
           {/* Gmail送信ボタン */}
           <BuyerGmailSendButton
             buyerId={buyer_number || ''}

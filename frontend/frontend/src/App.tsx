@@ -30,6 +30,7 @@ import { PropertyListingSyncDashboard } from './pages/PropertyListingSyncDashboa
 import BuyerCandidateListPage from './pages/BuyerCandidateListPage';
 import SharedItemsPage from './pages/SharedItemsPage';
 import SharedItemDetailPage from './pages/SharedItemDetailPage';
+import BuyerNearbyPropertiesPage from './pages/BuyerNearbyPropertiesPage';
 import NearbyBuyersPage from './pages/NearbyBuyersPage';
 import ReinsRegistrationPage from './pages/ReinsRegistrationPage';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -251,6 +252,14 @@ function App() {
         element={
           <ProtectedRoute>
             <SharedItemDetailPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/buyers/:buyer_number/nearby-properties"
+        element={
+          <ProtectedRoute>
+            <BuyerNearbyPropertiesPage />
           </ProtectedRoute>
         }
       />

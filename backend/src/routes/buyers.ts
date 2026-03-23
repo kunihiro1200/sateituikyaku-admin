@@ -690,6 +690,24 @@ router.post('/:id/conflict', async (req: Request, res: Response) => {
   }
 });
 
+// 近隣物件取得（類似物件）
+router.get('/:buyerNumber/nearby-properties', async (req: Request, res: Response) => {
+  try {
+    const { buyerNumber } = req.params;
+    const { propertyNumber } = req.query;
+
+    if (!propertyNumber) {
+      return res.status(400).json({ error: 'propertyNumber is required' });
+    }
+
+    const result = await buyerService.getNearbyProperties(propertyNumber as string);
+    res.json(result);
+  } catch (error: any) {
+    console.error('Error fetching nearby properties:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // ===== 汎用ルート（最後に定義する必要がある） =====
 
 // 個別取得（ID）
