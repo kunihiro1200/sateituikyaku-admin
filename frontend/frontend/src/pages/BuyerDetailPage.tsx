@@ -597,7 +597,7 @@ export default function BuyerDetailPage() {
               navigate(`/buyers/${buyerNumberSearch.trim()}`);
             }
           }}
-          sx={{ width: 240 }}
+          sx={{ width: 360 }}
           InputProps={{
             startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment>,
             endAdornment: buyerNumberSearch ? (
