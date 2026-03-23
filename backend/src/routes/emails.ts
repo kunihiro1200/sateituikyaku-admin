@@ -677,4 +677,158 @@ router.post(
   }
 );
 
+
+/**
+ * seller_numberを使ってテンプレートメールを送信（物件詳細ページ用）
+ */
+router.post(
+  '/by-seller-number/:sellerNumber/send-template-email',
+  [
+    body('templateId').notEmpty().withMessage('Template ID is required'),
+    body('to').optional().isEmail().withMessage('Invalid email address'),
+    body('subject').notEmpty().withMessage('Subject is required'),
+    body('content').optional().isString().withMessage('Content must be a string'),
+    body('htmlBody').optional().isString().withMessage('HTML body must be a string'),
+    body('from').optional().isEmail().withMessage('Invalid from email address'),
+    body('attachments').optional().isArray().withMessage('Attachments must be an array'),
+  ],
+  async (req: Request, res: Response) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'Validation failed',
+            details: errors.array(),
+            retryable: false,
+          },
+        });
+      }
+
+      const { sellerNumber } = req.params;
+      const { templateId, to, subject, content, htmlBody, from, attachments } = req.body;
+
+      // seller_numberで売主を検索
+      const { createClient } = await import('@supabase/supabase-js');
+      const supabase = createClient(
+        process.env.SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!
+      );
+      const { data: sellerRow, error: sellerError } = await supabase
+        .from('sellers')
+        .select('*')
+        .eq('seller_number', sellerNumber.toUpperCase())
+        .is('deleted_at', null)
+        .single();
+
+      if (sellerError || !sellerRow) {
+        return res.status(404).json({
+          error: {
+            code: 'NOT_FOUND',
+            message: 'Seller not found',
+            retryable: false,
+          },
+        });
+      }
+
+      // sellerServiceのdecryptSellerを使って復号
+      const seller = await (sellerService as any).decryptSeller(sellerRow);
+
+      const recipientEmail = to || seller.email;
+      if (!recipientEmail) {
+        return res.status(400).json({
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'Recipient email address is required',
+            retryable: false,
+          },
+        });
+      }
+
+      let result;
+
+      const senderEmail = from || req.employee?.email || 'tenant@ifoo-oita.com';
+      const sellerWithEmail = { ...seller, email: recipientEmail } as any;
+
+      if (attachments && Array.isArray(attachments) && attachments.length > 0) {
+        const { GoogleDriveService } = await import('../services/GoogleDriveService');
+        const driveService = new GoogleDriveService();
+
+        const emailAttachmentsRaw = await Promise.all(
+          attachments.map(async (img: any) => {
+            if (img.base64Data) {
+              return {
+                filename: img.name || 'attachment.jpg',
+                mimeType: img.mimeType || 'image/jpeg',
+                data: Buffer.from(img.base64Data, 'base64'),
+                cid: `attachment-${img.id}`,
+              };
+            } else if (img.url) {
+              try {
+                const https = await import('https');
+                const http = await import('http');
+                const data = await new Promise<Buffer>((resolve, reject) => {
+                  const protocol = img.url.startsWith('https') ? https : http;
+                  (protocol as any).get(img.url, (response: any) => {
+                    const chunks: Buffer[] = [];
+                    response.on('data', (chunk: Buffer) => chunks.push(chunk));
+                    response.on('end', () => resolve(Buffer.concat(chunks)));
+                    response.on('error', reject);
+                  });
+                });
+                return { filename: img.name || 'attachment.jpg', mimeType: 'image/jpeg', data, cid: `attachment-${img.id}` };
+              } catch { return null; }
+            } else if (img.id) {
+              const fileData = await driveService.getFile(img.id);
+              if (!fileData) return null;
+              return {
+                filename: img.name || `image-${img.id}.jpg`,
+                mimeType: fileData.mimeType || 'image/jpeg',
+                data: fileData.data,
+                cid: `attachment-${img.id}`,
+              };
+            }
+            return null;
+          })
+        );
+
+        const emailAttachments = emailAttachmentsRaw.filter(Boolean) as any[];
+
+        result = await emailService.sendEmailWithCcAndAttachments({
+          to: recipientEmail,
+          subject,
+          body: htmlBody || content || '',
+          from: senderEmail,
+          attachments: emailAttachments,
+          isHtml: !!htmlBody,
+        });
+      } else {
+        result = await emailService.sendTemplateEmail(
+          sellerWithEmail,
+          subject,
+          content || '',
+          senderEmail,
+          req.employee?.id || 'system',
+          htmlBody,
+          senderEmail
+        );
+      }
+
+      return res.json({
+        success: true,
+        message: 'Email sent successfully',
+        result,
+      });
+    } catch (error: any) {
+      console.error('Error sending template email by seller number:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to send email',
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  }
+);
+
 export default router;
