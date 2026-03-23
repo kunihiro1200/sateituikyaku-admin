@@ -886,7 +886,7 @@ TEL：097-533-2022`;
       </Box>
 
 
-      {/* 2カラムレイアウト: 左側に紐づいた物件の詳細情報、右側に買主情報 */}
+      {/* 3カラムレイアウト: 左列に通話・メール履歴、中央列に物件詳細カード、右列に買主情報 */}
       <Box
         sx={{
           display: 'flex',
@@ -897,12 +897,12 @@ TEL：097-533-2022`;
           },
         }}
         role="region"
-        aria-label="買主詳細情報の2カラムレイアウト"
+        aria-label="買主詳細情報の3カラムレイアウト"
       >
-        {/* 左側: 紐づいた物件の詳細情報 - 独立スクロール */}
-        <Box 
-          sx={{ 
-            flex: '0 0 42%', 
+        {/* 左列: 通話履歴 + メール・SMS送信履歴 - 独立スクロール */}
+        <Box
+          sx={{
+            flex: '0 0 28%',
             minWidth: 0,
             maxHeight: 'calc(100vh - 200px)',
             overflowY: 'auto',
@@ -910,29 +910,154 @@ TEL：097-533-2022`;
             pr: 1,
             position: 'sticky',
             top: 16,
-            // カスタムスクロールバースタイル
-            '&::-webkit-scrollbar': {
-              width: '8px',
-            },
-            '&::-webkit-scrollbar-track': {
-              backgroundColor: 'rgba(0, 0, 0, 0.05)',
-              borderRadius: '4px',
-            },
-            '&::-webkit-scrollbar-thumb': {
-              backgroundColor: 'rgba(0, 0, 0, 0.2)',
-              borderRadius: '4px',
-              '&:hover': {
-                backgroundColor: 'rgba(0, 0, 0, 0.3)',
-              },
-            },
-            '@media (max-width: 900px)': {
-              flex: '1 1 auto',
-              width: '100%',
-              maxHeight: 'none',
-              overflowY: 'visible',
-              position: 'static',
-              pr: 0,
-            },
+            '&::-webkit-scrollbar': { width: '8px' },
+            '&::-webkit-scrollbar-track': { backgroundColor: 'rgba(0, 0, 0, 0.05)', borderRadius: '4px' },
+            '&::-webkit-scrollbar-thumb': { backgroundColor: 'rgba(0, 0, 0, 0.2)', borderRadius: '4px', '&:hover': { backgroundColor: 'rgba(0, 0, 0, 0.3)' } },
+            '@media (max-width: 900px)': { flex: '1 1 auto', width: '100%', maxHeight: 'none', overflowY: 'visible', position: 'static', pr: 0 },
+          }}
+          role="complementary"
+          aria-label="通話・メール履歴"
+          tabIndex={0}
+        >
+          {/* 通話履歴セクション */}
+          <Paper sx={{ p: 2, mb: 2 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+              <PhoneIcon sx={{ mr: 1, color: 'success.main' }} />
+              <Typography variant="h6">通話履歴</Typography>
+            </Box>
+            <Divider sx={{ mb: 2 }} />
+            {activities.filter(a => a.action === 'call' || a.action === 'phone_call').length > 0 ? (
+              <List disablePadding>
+                {activities
+                  .filter(a => a.action === 'call' || a.action === 'phone_call')
+                  .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+                  .map((activity) => {
+                    const metadata = activity.metadata || {};
+                    const displayName = activity.employee ? getDisplayName(activity.employee) : '不明';
+                    return (
+                      <ListItem
+                        key={activity.id}
+                        sx={{ flexDirection: 'column', alignItems: 'flex-start', borderBottom: '1px solid', borderColor: 'divider', py: 1.5 }}
+                      >
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', mb: 0.5 }}>
+                          <Typography variant="caption" color="text.secondary">
+                            {formatDateTime(activity.created_at)}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            {displayName}
+                          </Typography>
+                        </Box>
+                        {(metadata.notes || metadata.memo) && (
+                          <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', fontSize: '0.85rem' }}>
+                            {metadata.notes || metadata.memo}
+                          </Typography>
+                        )}
+                      </ListItem>
+                    );
+                  })}
+              </List>
+            ) : (
+              <Box sx={{ textAlign: 'center', py: 3, color: 'text.secondary' }}>
+                <PhoneIcon sx={{ fontSize: 48, opacity: 0.3, mb: 1 }} />
+                <Typography variant="body2">通話履歴はありません</Typography>
+              </Box>
+            )}
+          </Paper>
+
+          {/* メール・SMS送信履歴セクション */}
+          <Paper sx={{ p: 2, mb: 2 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+              <EmailIcon sx={{ mr: 1, color: 'success.main' }} />
+              <Typography variant="h6">メール・SMS送信履歴</Typography>
+            </Box>
+            <Divider sx={{ mb: 2 }} />
+            {activities.filter(a => a.action === 'email' || a.action === 'sms').length > 0 ? (
+              <List sx={{ maxHeight: 400, overflow: 'auto' }}>
+                {activities
+                  .filter(a => a.action === 'email' || a.action === 'sms')
+                  .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+                  .map((activity) => {
+                    const metadata = activity.metadata || {};
+                    const isSms = activity.action === 'sms';
+                    const propertyNumbers = metadata.propertyNumbers || metadata.property_numbers || [];
+                    const displayName = activity.employee ? getDisplayName(activity.employee) : '不明';
+                    return (
+                      <ListItem
+                        key={activity.id}
+                        sx={{ flexDirection: 'column', alignItems: 'flex-start', borderBottom: '1px solid', borderColor: 'divider', py: 2 }}
+                      >
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', mb: 1 }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            {isSms ? (
+                              <Chip label="SMS" size="small" color="success" sx={{ height: 20, fontSize: '0.7rem' }} />
+                            ) : (
+                              <Chip label="メール" size="small" color="primary" sx={{ height: 20, fontSize: '0.7rem' }} />
+                            )}
+                            <Typography variant="body2" fontWeight="bold">
+                              {isSms ? (metadata.templateName || 'テンプレート不明') : (metadata.subject || '件名なし')}
+                            </Typography>
+                          </Box>
+                          <Typography variant="caption" color="text.secondary">
+                            {formatDateTime(activity.created_at)}
+                          </Typography>
+                        </Box>
+                        {isSms ? (
+                          <Box sx={{ width: '100%', mb: 1 }}>
+                            <Typography variant="caption" color="text.secondary">
+                              送信先: {metadata.phoneNumber || '-'}
+                            </Typography>
+                          </Box>
+                        ) : (
+                          <Box sx={{ width: '100%', mb: 1 }}>
+                            <Typography variant="caption" color="text.secondary">
+                              送信者: {displayName} ({metadata.senderEmail || '-'})
+                            </Typography>
+                          </Box>
+                        )}
+                        {!isSms && propertyNumbers.length > 0 && (
+                          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 1 }}>
+                            <Typography variant="caption" color="text.secondary" sx={{ mr: 1 }}>物件:</Typography>
+                            {propertyNumbers.map((pn: string) => (
+                              <Chip key={pn} label={pn} size="small" variant="outlined" sx={{ height: 20, fontSize: '0.7rem' }} />
+                            ))}
+                          </Box>
+                        )}
+                        {!isSms && metadata.preViewingNotes && (
+                          <Box sx={{ width: '100%', mt: 1, p: 1, bgcolor: 'grey.50', borderRadius: 1 }}>
+                            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>内覧前伝達事項:</Typography>
+                            <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', fontSize: '0.85rem' }}>
+                              {metadata.preViewingNotes}
+                            </Typography>
+                          </Box>
+                        )}
+                      </ListItem>
+                    );
+                  })}
+              </List>
+            ) : (
+              <Box sx={{ textAlign: 'center', py: 3, color: 'text.secondary' }}>
+                <EmailIcon sx={{ fontSize: 48, opacity: 0.3, mb: 1 }} />
+                <Typography variant="body2">メール送信履歴はありません</Typography>
+              </Box>
+            )}
+          </Paper>
+        </Box>
+
+        {/* 中央列: 物件詳細カード - 独立スクロール */}
+        <Box
+          sx={{
+            flex: '0 0 36%',
+            minWidth: 0,
+            maxHeight: 'calc(100vh - 200px)',
+            overflowY: 'auto',
+            overflowX: 'hidden',
+            px: 1,
+            position: 'sticky',
+            top: 16,
+            '&::-webkit-scrollbar': { width: '8px' },
+            '&::-webkit-scrollbar-track': { backgroundColor: 'rgba(0, 0, 0, 0.05)', borderRadius: '4px' },
+            '&::-webkit-scrollbar-thumb': { backgroundColor: 'rgba(0, 0, 0, 0.2)', borderRadius: '4px', '&:hover': { backgroundColor: 'rgba(0, 0, 0, 0.3)' } },
+            '@media (max-width: 900px)': { flex: '1 1 auto', width: '100%', maxHeight: 'none', overflowY: 'visible', position: 'static', px: 0 },
           }}
           role="complementary"
           aria-label="物件詳細カード"
@@ -942,18 +1067,14 @@ TEL：097-533-2022`;
             <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
               <Typography variant="h6">物件詳細カード</Typography>
               {linkedProperties.length > 0 && (
-                <Chip 
-                  label={`${linkedProperties.length}件`} 
-                  size="small" 
-                  sx={{ ml: 2 }}
-                />
+                <Chip label={`${linkedProperties.length}件`} size="small" sx={{ ml: 2 }} />
               )}
             </Box>
             {linkedProperties.length > 0 ? (
               linkedProperties.map((property) => (
                 <Box key={property.id} sx={{ mb: 2 }}>
-                  <PropertyInfoCard 
-                    propertyId={property.property_number} 
+                  <PropertyInfoCard
+                    propertyId={property.property_number}
                     buyer={buyer}
                     onClose={() => {}}
                     showCloseButton={false}
@@ -968,10 +1089,10 @@ TEL：097-533-2022`;
           </Box>
         </Box>
 
-        {/* 右側: 買主詳細情報 - 独立スクロール */}
-        <Box 
-          sx={{ 
-            flex: '1 1 58%', 
+        {/* 右列: 買主情報フィールド + 関連買主 - 独立スクロール */}
+        <Box
+          sx={{
+            flex: '1 1 36%',
             minWidth: 0,
             maxHeight: 'calc(100vh - 200px)',
             overflowY: 'auto',
@@ -979,29 +1100,10 @@ TEL：097-533-2022`;
             pl: 1,
             position: 'sticky',
             top: 16,
-            // カスタムスクロールバースタイル
-            '&::-webkit-scrollbar': {
-              width: '8px',
-            },
-            '&::-webkit-scrollbar-track': {
-              backgroundColor: 'rgba(0, 0, 0, 0.05)',
-              borderRadius: '4px',
-            },
-            '&::-webkit-scrollbar-thumb': {
-              backgroundColor: 'rgba(0, 0, 0, 0.2)',
-              borderRadius: '4px',
-              '&:hover': {
-                backgroundColor: 'rgba(0, 0, 0, 0.3)',
-              },
-            },
-            '@media (max-width: 900px)': {
-              flex: '1 1 auto',
-              width: '100%',
-              maxHeight: 'none',
-              overflowY: 'visible',
-              position: 'static',
-              pl: 0,
-            },
+            '&::-webkit-scrollbar': { width: '8px' },
+            '&::-webkit-scrollbar-track': { backgroundColor: 'rgba(0, 0, 0, 0.05)', borderRadius: '4px' },
+            '&::-webkit-scrollbar-thumb': { backgroundColor: 'rgba(0, 0, 0, 0.2)', borderRadius: '4px', '&:hover': { backgroundColor: 'rgba(0, 0, 0, 0.3)' } },
+            '@media (max-width: 900px)': { flex: '1 1 auto', width: '100%', maxHeight: 'none', overflowY: 'visible', position: 'static', pl: 0 },
           }}
           role="main"
           aria-label="買主情報"
@@ -1363,112 +1465,14 @@ TEL：097-533-2022`;
             </Paper>
           ))}
 
-          {/* メール送信履歴セクション */}
-          <Paper sx={{ p: 2, mb: 2 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-              <EmailIcon sx={{ mr: 1, color: 'success.main' }} />
-              <Typography variant="h6">メール・SMS送信履歴</Typography>
+          {/* 関連買主セクション（右列最下部） */}
+          {buyer_number && (
+            <Box id="related-buyers-section" sx={{ mb: 2 }}>
+              <RelatedBuyersSection buyerNumber={buyer_number} />
             </Box>
-            <Divider sx={{ mb: 2 }} />
-            {activities.filter(a => a.action === 'email' || a.action === 'sms').length > 0 ? (
-              <List sx={{ maxHeight: 400, overflow: 'auto' }}>
-                {activities
-                  .filter(a => a.action === 'email' || a.action === 'sms')
-                  .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-                  .map((activity) => {
-                    const metadata = activity.metadata || {};
-                    const isSms = activity.action === 'sms';
-                    const propertyNumbers = metadata.propertyNumbers || metadata.property_numbers || [];
-                    const displayName = activity.employee ? getDisplayName(activity.employee) : '不明';
-                    
-                    return (
-                      <ListItem
-                        key={activity.id}
-                        sx={{
-                          flexDirection: 'column',
-                          alignItems: 'flex-start',
-                          borderBottom: '1px solid',
-                          borderColor: 'divider',
-                          py: 2,
-                        }}
-                      >
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', mb: 1 }}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            {isSms ? (
-                              <Chip label="SMS" size="small" color="success" sx={{ height: 20, fontSize: '0.7rem' }} />
-                            ) : (
-                              <Chip label="メール" size="small" color="primary" sx={{ height: 20, fontSize: '0.7rem' }} />
-                            )}
-                            <Typography variant="body2" fontWeight="bold">
-                              {isSms ? (metadata.templateName || 'テンプレート不明') : (metadata.subject || '件名なし')}
-                            </Typography>
-                          </Box>
-                          <Typography variant="caption" color="text.secondary">
-                            {formatDateTime(activity.created_at)}
-                          </Typography>
-                        </Box>
-
-                        {isSms ? (
-                          <Box sx={{ width: '100%', mb: 1 }}>
-                            <Typography variant="caption" color="text.secondary">
-                              送信先: {metadata.phoneNumber || '-'}
-                            </Typography>
-                          </Box>
-                        ) : (
-                          <Box sx={{ width: '100%', mb: 1 }}>
-                            <Typography variant="caption" color="text.secondary">
-                              送信者: {displayName} ({metadata.senderEmail || '-'})
-                            </Typography>
-                          </Box>
-                        )}
-                        
-                        {!isSms && propertyNumbers.length > 0 && (
-                          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 1 }}>
-                            <Typography variant="caption" color="text.secondary" sx={{ mr: 1 }}>
-                              物件:
-                            </Typography>
-                            {propertyNumbers.map((pn: string) => (
-                              <Chip
-                                key={pn}
-                                label={pn}
-                                size="small"
-                                variant="outlined"
-                                sx={{ height: 20, fontSize: '0.7rem' }}
-                              />
-                            ))}
-                          </Box>
-                        )}
-                        
-                        {!isSms && metadata.preViewingNotes && (
-                          <Box sx={{ width: '100%', mt: 1, p: 1, bgcolor: 'grey.50', borderRadius: 1 }}>
-                            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
-                              内覧前伝達事項:
-                            </Typography>
-                            <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', fontSize: '0.85rem' }}>
-                              {metadata.preViewingNotes}
-                            </Typography>
-                          </Box>
-                        )}
-                      </ListItem>
-                    );
-                  })}
-              </List>
-            ) : (
-              <Box sx={{ textAlign: 'center', py: 3, color: 'text.secondary' }}>
-                <EmailIcon sx={{ fontSize: 48, opacity: 0.3, mb: 1 }} />
-                <Typography variant="body2">メール送信履歴はありません</Typography>
-              </Box>
-            )}
-          </Paper>
+          )}
         </Box>
       </Box>
-
-      {/* 関連買主セクション */}
-      {buyer_number && (
-        <Box sx={{ mt: 3 }}>
-          <RelatedBuyersSection buyerNumber={buyer_number} />
-        </Box>
-      )}
 
 
 
