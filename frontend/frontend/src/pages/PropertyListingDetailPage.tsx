@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import {
-  Container,
   Box,
   Typography,
   Paper,
@@ -675,17 +674,17 @@ export default function PropertyListingDetailPage() {
 
   if (loading) {
     return (
-      <Container maxWidth="xl" sx={{ py: 3 }}>
+      <Box sx={{ py: 3, px: 2 }}>
         <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
           <CircularProgress />
         </Box>
-      </Container>
+      </Box>
     );
   }
 
   if (!data) {
     return (
-      <Container maxWidth="xl" sx={{ py: 3 }}>
+      <Box sx={{ py: 3, px: 2 }}>
         <Paper sx={{ p: 4, textAlign: 'center' }}>
           <Typography variant="h6" color="text.secondary" gutterBottom>
             物件が見つかりません
@@ -694,12 +693,12 @@ export default function PropertyListingDetailPage() {
             物件リストに戻る
           </Button>
         </Paper>
-      </Container>
+      </Box>
     );
   }
 
   return (
-    <Container maxWidth="xl" sx={{ py: 3, zoom: '0.6' }}>
+    <Box sx={{ py: 2, px: 2, zoom: '0.6' }}>
       <Box sx={{ display: 'flex', gap: 2 }}>
         {/* 左サイドバー - サイドバーステータス */}
         <PropertySidebarStatus
@@ -1861,6 +1860,6 @@ export default function PropertyListingDetailPage() {
       </Snackbar>
         </Box> {/* メインコンテンツ */}
       </Box> {/* サイドバー + メインコンテンツ */}
-    </Container>
+    </Box>
   );
 }
