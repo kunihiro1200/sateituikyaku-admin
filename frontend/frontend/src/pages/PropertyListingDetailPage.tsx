@@ -893,9 +893,19 @@ export default function PropertyListingDetailPage() {
                 sx={{ mt: 0.5 }}
               />
             ) : (
-              <Typography variant="body1" fontWeight="medium">
-                {data.address || data.display_address || '-'}
-              </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                <Typography variant="body1" fontWeight="medium">
+                  {data.address || data.display_address || '-'}
+                </Typography>
+                {(data.address || data.display_address) && (
+                  <Tooltip title={copiedAddress ? 'コピーしました' : '所在地をコピー'}>
+                    <IconButton size="small" onClick={handleCopyAddress}
+                      sx={{ color: copiedAddress ? 'success.main' : 'text.secondary' }}>
+                      {copiedAddress ? <CheckIcon fontSize="small" /> : <ContentCopyIcon fontSize="small" />}
+                    </IconButton>
+                  </Tooltip>
+                )}
+              </Box>
             )}
           </Grid>
           <Grid item xs={12} sm={6} md={3}>
