@@ -628,16 +628,17 @@ export default function BuyerDetailPage() {
               size="small"
               startIcon={<PhoneIcon />}
               onClick={async () => {
-                // 通話履歴を記録してから発信
+                // 発信を先に開始（ページ遷移しないようにwindow.openを使用）
+                window.open(`tel:${buyer.phone_number}`, '_self');
+                // 通話履歴を記録
                 try {
                   await api.post(`/api/buyers/${buyer_number}/call-history`, {
                     phoneNumber: buyer.phone_number,
                   });
-                  fetchActivities();
+                  await fetchActivities();
                 } catch (e) {
                   console.error('通話履歴記録失敗:', e);
                 }
-                window.location.href = `tel:${buyer.phone_number}`;
               }}
               sx={{ fontWeight: 'bold', whiteSpace: 'nowrap', cursor: 'pointer' }}
             >
