@@ -10,12 +10,14 @@ import {
   Button,
   Link,
   Snackbar,
+  Tooltip,
 } from '@mui/material';
 import {
   Close as CloseIcon,
   OpenInNew as OpenInNewIcon,
   Launch as LaunchIcon,
   ContentCopy as ContentCopyIcon,
+  Check as CheckIcon,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
@@ -71,6 +73,8 @@ export default function PropertyInfoCard({
   const [error, setError] = useState<string | null>(null);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
+  const [copiedAddress, setCopiedAddress] = useState(false);
+  const [copiedDisplayAddress, setCopiedDisplayAddress] = useState(false);
 
   useEffect(() => {
     fetchPropertyDetails();
@@ -279,9 +283,20 @@ export default function PropertyInfoCard({
                 <Typography variant="caption" color="text.secondary">
                   所在地
                 </Typography>
-                <Typography variant="body2" sx={{ mt: 0.5 }}>
-                  {property.address}
-                </Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.5 }}>
+                  <Typography variant="body2">
+                    {property.address}
+                  </Typography>
+                  <Tooltip title={copiedAddress ? 'コピーしました' : '所在地をコピー'}>
+                    <IconButton size="small" onClick={async () => {
+                      await navigator.clipboard.writeText(property.address!);
+                      setCopiedAddress(true);
+                      setTimeout(() => setCopiedAddress(false), 2000);
+                    }} sx={{ color: copiedAddress ? 'success.main' : 'text.secondary' }}>
+                      {copiedAddress ? <CheckIcon sx={{ fontSize: 14 }} /> : <ContentCopyIcon sx={{ fontSize: 14 }} />}
+                    </IconButton>
+                  </Tooltip>
+                </Box>
               </Box>
             )}
 
@@ -291,9 +306,20 @@ export default function PropertyInfoCard({
                 <Typography variant="caption" color="text.secondary">
                   住居表示
                 </Typography>
-                <Typography variant="body2" sx={{ mt: 0.5 }}>
-                  {property.display_address}
-                </Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.5 }}>
+                  <Typography variant="body2">
+                    {property.display_address}
+                  </Typography>
+                  <Tooltip title={copiedDisplayAddress ? 'コピーしました' : '住居表示をコピー'}>
+                    <IconButton size="small" onClick={async () => {
+                      await navigator.clipboard.writeText(property.display_address!);
+                      setCopiedDisplayAddress(true);
+                      setTimeout(() => setCopiedDisplayAddress(false), 2000);
+                    }} sx={{ color: copiedDisplayAddress ? 'success.main' : 'text.secondary' }}>
+                      {copiedDisplayAddress ? <CheckIcon sx={{ fontSize: 14 }} /> : <ContentCopyIcon sx={{ fontSize: 14 }} />}
+                    </IconButton>
+                  </Tooltip>
+                </Box>
               </Box>
             )}
           </Box>
