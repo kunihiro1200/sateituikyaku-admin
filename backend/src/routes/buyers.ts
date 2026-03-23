@@ -286,17 +286,17 @@ router.get('/:id/inquiry-history', async (req: Request, res: Response) => {
     // UUIDかどうかで判定
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
     
-    // 買主番号の場合は、まずbuyer_idを取得
-    let buyerId = id;
-    if (!isUuid) {
-      const buyer = await buyerService.getByBuyerNumber(id);
+    // 買主番号の場合はそのまま使用、UUIDの場合は買主番号を取得
+    let buyerNumber = id;
+    if (isUuid) {
+      const buyer = await buyerService.getById(id);
       if (!buyer) {
         return res.status(404).json({ error: 'Buyer not found' });
       }
-      buyerId = buyer.buyer_id;
+      buyerNumber = buyer.buyer_number;
     }
     
-    const inquiryHistory = await buyerService.getInquiryHistory(buyerId);
+    const inquiryHistory = await buyerService.getInquiryHistory(buyerNumber);
     res.json({ inquiryHistory });
   } catch (error: any) {
     console.error('Error fetching inquiry history:', error);

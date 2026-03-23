@@ -200,10 +200,12 @@ export class BuyerService {
    * IDで買主を取得
    */
   async getById(id: string): Promise<any | null> {
+    // UUIDか買主番号かを判定して適切なカラムで検索
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
     const { data, error } = await this.supabase
       .from('buyers')
       .select('*')
-      .eq('buyer_number', id)
+      .eq(isUuid ? 'buyer_id' : 'buyer_number', id)
       .single();
 
     if (error) {
@@ -439,7 +441,7 @@ export class BuyerService {
       throw new Error('Buyer not found');
     }
 
-    const buyerUuid = existing.buyer_id;
+    const buyerNumber = existing.buyer_number;
 
     // 更新不可フィールドを除外
     const protectedFields = ['id', 'db_created_at', 'synced_at'];
@@ -457,7 +459,7 @@ export class BuyerService {
     const { data, error } = await this.supabase
       .from('buyers')
       .update(allowedData)
-      .eq('buyer_id', buyerUuid)
+      .eq('buyer_number', buyerNumber)
       .select()
       .single();
 
@@ -472,7 +474,7 @@ export class BuyerService {
           try {
             await AuditLogService.logFieldUpdate(
               'buyer',
-              buyerUuid,
+              buyerNumber,
               key,
               existing[key],
               allowedData[key],
@@ -519,7 +521,6 @@ export class BuyerService {
     }
 
     const buyerNumber = existing.buyer_number;
-    const buyerUuid = existing.buyer_id;
 
     // 更新不可フィールドを除外
     const protectedFields = ['id', 'db_created_at', 'synced_at', 'buyer_number'];
@@ -573,11 +574,11 @@ export class BuyerService {
       }
     }
 
-    // DB更新（buyer_idカラムを使用）
+    // DB更新（buyer_numberカラムを使用）
     const { data, error } = await this.supabase
       .from('buyers')
       .update(allowedData)
-      .eq('buyer_id', buyerUuid)
+      .eq('buyer_number', buyerNumber)
       .select()
       .single();
 
@@ -606,7 +607,7 @@ export class BuyerService {
           await this.supabase
             .from('buyers')
             .update({ last_synced_at: new Date().toISOString() })
-            .eq('buyer_id', buyerUuid);
+            .eq('buyer_number', buyerNumber);
 
           syncResult = {
             success: true,
