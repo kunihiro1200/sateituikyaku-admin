@@ -81,6 +81,30 @@ export class BuyerColumnMapper {
   }
 
   /**
+   * HTMLタグをプレーンテキストに変換
+   * RichTextEditorで保存されたHTMLをスプレッドシート用にストリップする
+   */
+  private stripHtml(html: string): string {
+    // <br>, <br/>, <br /> を改行に変換
+    let text = html.replace(/<br\s*\/?>/gi, '\n');
+    // <p>タグを改行に変換
+    text = text.replace(/<\/p>/gi, '\n');
+    text = text.replace(/<p[^>]*>/gi, '');
+    // その他のHTMLタグを除去
+    text = text.replace(/<[^>]+>/g, '');
+    // HTMLエンティティをデコード
+    text = text.replace(/&nbsp;/g, ' ');
+    text = text.replace(/&lt;/g, '<');
+    text = text.replace(/&gt;/g, '>');
+    text = text.replace(/&amp;/g, '&');
+    text = text.replace(/&quot;/g, '"');
+    text = text.replace(/&#39;/g, "'");
+    // 連続する改行を最大2つに制限
+    text = text.replace(/\n{3,}/g, '\n\n');
+    return text.trim();
+  }
+
+  /**
    * スプレッドシート出力用に値をフォーマット
    */
   private formatValueForSpreadsheet(column: string, value: any): any {
@@ -95,6 +119,11 @@ export class BuyerColumnMapper {
       if (!isNaN(date.getTime())) {
         return `${date.getFullYear()}/${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getDate()).padStart(2, '0')}`;
       }
+    }
+
+    // HTMLを含む可能性があるフィールドはプレーンテキストに変換
+    if (column === 'inquiry_hearing' && typeof value === 'string' && value.includes('<')) {
+      return this.stripHtml(value);
     }
 
     return value;
