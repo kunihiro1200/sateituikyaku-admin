@@ -121,8 +121,14 @@ export default function BuyerEmailCompositionModal({
         <Divider sx={{ mb: 2 }} />
 
         {error && (
-          <Alert severity="error" sx={{ mb: 2 }}>
+          <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
             {error}
+          </Alert>
+        )}
+
+        {sending && (
+          <Alert severity="info" sx={{ mb: 2 }}>
+            メールを送信中です。しばらくお待ちください...（最大30秒）
           </Alert>
         )}
 

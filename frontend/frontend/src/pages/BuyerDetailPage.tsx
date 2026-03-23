@@ -144,15 +144,6 @@ const BUYER_FIELD_SECTIONS = [
       { key: 'next_action', label: '次のアクション', multiline: true, inlineEditable: true },
     ],
   },
-  {
-    title: '内覧結果',
-    isViewingResultGroup: true,
-    fields: [
-      { key: 'latest_status', label: '★最新状況', inlineEditable: true },
-      { key: 'latest_viewing_date', label: '内覧日（最新）', type: 'date', inlineEditable: true },
-      { key: 'viewing_result_follow_up', label: '内覧結果・後続対応', multiline: true, inlineEditable: true },
-    ],
-  },
 ];
 
 export default function BuyerDetailPage() {

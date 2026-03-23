@@ -65,14 +65,21 @@ router.post('/send', upload.array('attachments'), async (req, res) => {
       return res.status(404).json({ error: '買主が見つからないか、メールアドレスが登録されていません' });
     }
 
-    // メール送信
-    const result = await emailService.sendBuyerEmail({
-      to: buyer.email,
-      subject,
-      body: bodyText,
-      from: senderEmail,
-      attachments,
-    });
+    // メール送信（30秒タイムアウト）
+    const sendWithTimeout = Promise.race([
+      emailService.sendBuyerEmail({
+        to: buyer.email,
+        subject,
+        body: bodyText,
+        from: senderEmail,
+        attachments,
+      }),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('メール送信がタイムアウトしました（30秒）。再度お試しください。')), 30000)
+      ),
+    ]);
+
+    const result = await sendWithTimeout;
 
     if (!result.success) {
       return res.status(500).json({ error: result.error || 'メール送信に失敗しました' });

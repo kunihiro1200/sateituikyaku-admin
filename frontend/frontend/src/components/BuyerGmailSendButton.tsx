@@ -152,7 +152,12 @@ export default function BuyerGmailSendButton({
       resetState();
       onEmailSent?.();
     } catch (err: any) {
-      throw new Error(err.response?.data?.error || 'メールの送信に失敗しました');
+      const errMsg = err.response?.data?.error || err.message || 'メールの送信に失敗しました';
+      // タイムアウトエラーの場合は分かりやすいメッセージに変換
+      const displayMsg = errMsg.includes('タイムアウト') || errMsg.includes('timeout')
+        ? 'メール送信に時間がかかっています。しばらく待ってから再度お試しください。'
+        : errMsg;
+      throw new Error(displayMsg);
     }
   };
 
