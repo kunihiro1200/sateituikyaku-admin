@@ -32,13 +32,13 @@ export class ActivityLogService extends BaseRepository {
    */
   async logActivity(log: Omit<ActivityLog, 'id' | 'createdAt'>): Promise<void> {
     const { error } = await this.table('activity_logs').insert({
-      employee_id: log.employeeId,
+      employee_id: log.employeeId || null,
       action: log.action,
       target_type: log.targetType,
       target_id: log.targetId,
       metadata: log.metadata || {},
-      ip_address: log.ipAddress,
-      user_agent: log.userAgent,
+      ip_address: log.ipAddress || null,  // INET型は空文字列不可
+      user_agent: log.userAgent || null,
     });
 
     if (error) {
@@ -117,8 +117,8 @@ export class ActivityLogService extends BaseRepository {
         email_type: 'inquiry_response',
         pre_viewing_notes: params.preViewingNotes,
       },
-      ipAddress: '',
-      userAgent: '',
+      ipAddress: undefined,
+      userAgent: undefined,
     });
   }
 

@@ -270,7 +270,7 @@ export interface Employee {
 
 export interface ActivityLog {
   id: string;
-  employeeId: string;
+  employeeId?: string;  // nullable（未ログイン時はnull）
   action: string;
   targetType: string;
   targetId: string;
