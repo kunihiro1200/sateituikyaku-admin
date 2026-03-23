@@ -1013,7 +1013,9 @@ TEL：097-533-2022`;
                               <Chip label="メール" size="small" color="primary" sx={{ height: 20, fontSize: '0.7rem' }} />
                             )}
                             <Typography variant="body2" fontWeight="bold">
-                              {isSms ? (metadata.templateName || 'テンプレート不明') : (metadata.subject || '件名なし')}
+                              {isSms
+                                ? (metadata.templateName || 'テンプレート不明')
+                                : (metadata.templateName || metadata.subject || '件名なし')}
                             </Typography>
                           </Box>
                           <Typography variant="caption" color="text.secondary">

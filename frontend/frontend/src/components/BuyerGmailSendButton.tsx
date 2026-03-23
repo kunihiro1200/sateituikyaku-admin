@@ -130,6 +130,7 @@ export default function BuyerGmailSendButton({
         formData.append('subject', emailData.subject);
         formData.append('body', emailData.body);
         formData.append('senderEmail', senderEmail);
+        if (selectedTemplate?.name) formData.append('templateName', selectedTemplate.name);
         propertyIds.forEach(id => formData.append('propertyIds[]', id));
         files.forEach(file => formData.append('attachments', file));
 
@@ -144,6 +145,7 @@ export default function BuyerGmailSendButton({
           senderEmail,
           subject: emailData.subject,
           body: emailData.body,
+          templateName: selectedTemplate?.name,
         });
       }
 

@@ -98,6 +98,7 @@ export class ActivityLogService extends BaseRepository {
     propertyNumbers: string[];
     recipientEmail: string;
     subject: string;
+    templateName?: string;
     senderEmail: string;
     preViewingNotes?: string;
     createdBy: string;
@@ -113,6 +114,7 @@ export class ActivityLogService extends BaseRepository {
         property_numbers: params.propertyNumbers,
         recipient_email: params.recipientEmail,
         subject: params.subject,
+        templateName: params.templateName,
         sender_email: params.senderEmail,
         email_type: 'inquiry_response',
         pre_viewing_notes: params.preViewingNotes,

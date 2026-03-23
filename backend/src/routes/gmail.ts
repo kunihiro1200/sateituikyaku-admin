@@ -51,7 +51,7 @@ router.post('/send', upload.array('attachments'), async (req, res) => {
   try {
     // multipart/form-data と JSON の両方に対応
     const body = req.body;
-    const { buyerId, propertyIds, senderEmail, subject } = body;
+    const { buyerId, propertyIds, senderEmail, subject, templateName } = body;
     const bodyText = body.body;
     const attachments = (req.files as Express.Multer.File[]) || [];
 
@@ -105,7 +105,7 @@ router.post('/send', upload.array('attachments'), async (req, res) => {
     }
 
     // employee_id を取得（未ログイン時は会社アカウントUUIDをフォールバック）
-    const employeeId = (req as any).user?.id || COMPANY_ACCOUNT_UUID;
+    const employeeId = (req as any).employee?.id || COMPANY_ACCOUNT_UUID;
 
     // email_history テーブルに記録
     try {
@@ -130,6 +130,7 @@ router.post('/send', upload.array('attachments'), async (req, res) => {
         propertyNumbers,
         recipientEmail: buyer.email,
         subject,
+        templateName: templateName || undefined,
         senderEmail: senderEmail || 'tenant@ifoo-oita.com',
         createdBy: employeeId,
       });
