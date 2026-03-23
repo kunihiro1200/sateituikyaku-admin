@@ -326,7 +326,6 @@ export default function BuyerDetailPage() {
 
   // 問合時ヒアリング用クイック入力ボタンのクリックハンドラー（RichTextEditor版）
   const handleHearingQuickInput = (text: string, buttonLabel: string) => {
-    disableQuickButton(buttonLabel);
     // カーソル位置に太字で挿入（カーソルなければ現在位置）
     hearingEditorRef.current?.insertAtCursor(`<b>${text}</b>`);
   };
@@ -1433,54 +1432,67 @@ TEL：097-533-2022`;
                               ヒアリング項目
                             </Typography>
                             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 1 }}>
-                              {INQUIRY_HEARING_QUICK_INPUTS.map((item) => {
-                                const disabled = isQuickButtonDisabled(item.label);
-                                return (
-                                  <Tooltip
-                                    key={item.label}
-                                    title={disabled ? 'このボタンは使用済みです' : item.text}
-                                    arrow
-                                  >
-                                    <span>
-                                      <Chip
-                                        label={item.label}
-                                        onClick={() => !disabled && handleHearingQuickInput(item.text, item.label)}
-                                        size="small"
-                                        clickable={!disabled}
-                                        color="success"
-                                        variant="outlined"
-                                        disabled={disabled}
-                                        sx={{
-                                          opacity: disabled ? 0.5 : 1,
-                                          cursor: disabled ? 'not-allowed' : 'pointer',
-                                          '&.Mui-disabled': {
-                                            opacity: 0.5,
-                                            pointerEvents: 'auto',
-                                          },
-                                        }}
-                                      />
-                                    </span>
-                                  </Tooltip>
-                                );
-                              })}
+                              {INQUIRY_HEARING_QUICK_INPUTS.map((item) => (
+                                <Chip
+                                  key={item.label}
+                                  label={item.label}
+                                  onClick={() => handleHearingQuickInput(item.text, item.label)}
+                                  size="small"
+                                  clickable
+                                  color="success"
+                                  variant="outlined"
+                                  sx={{ cursor: 'pointer' }}
+                                />
+                              ))}
                             </Box>
                           </Box>
-                          <RichTextCommentEditor
-                            ref={hearingEditorRef}
-                            value={hearingEditValue}
-                            onChange={(html) => setHearingEditValue(html)}
-                            placeholder="ヒアリング内容を入力..."
-                          />
-                          <Box sx={{ mt: 1, display: 'flex', justifyContent: 'flex-end' }}>
-                            <Button
-                              variant="contained"
-                              size="small"
-                              onClick={handleSaveHearing}
-                              disabled={hearingSaving}
-                            >
-                              {hearingSaving ? '保存中...' : '保存'}
-                            </Button>
-                          </Box>
+                          {(() => {
+                            const isDirty = hearingEditValue !== (buyer?.inquiry_hearing || '');
+                            return (
+                              <>
+                                <Box sx={{
+                                  border: isDirty ? '2px solid #ff6d00' : '2px solid transparent',
+                                  borderRadius: 1,
+                                  transition: 'border-color 0.2s',
+                                }}>
+                                  <RichTextCommentEditor
+                                    ref={hearingEditorRef}
+                                    value={hearingEditValue}
+                                    onChange={(html) => setHearingEditValue(html)}
+                                    placeholder="ヒアリング内容を入力..."
+                                  />
+                                </Box>
+                                <Button
+                                  fullWidth
+                                  variant={isDirty ? 'contained' : 'outlined'}
+                                  size="large"
+                                  onClick={handleSaveHearing}
+                                  disabled={hearingSaving}
+                                  sx={{
+                                    mt: 1,
+                                    ...(isDirty ? {
+                                      backgroundColor: '#ff6d00',
+                                      color: '#fff',
+                                      fontWeight: 'bold',
+                                      boxShadow: '0 0 0 3px rgba(255,109,0,0.4)',
+                                      animation: 'pulse-orange 1.5s infinite',
+                                      '@keyframes pulse-orange': {
+                                        '0%': { boxShadow: '0 0 0 0 rgba(255,109,0,0.5)' },
+                                        '70%': { boxShadow: '0 0 0 8px rgba(255,109,0,0)' },
+                                        '100%': { boxShadow: '0 0 0 0 rgba(255,109,0,0)' },
+                                      },
+                                      '&:hover': { backgroundColor: '#e65100' },
+                                    } : {
+                                      color: '#bdbdbd',
+                                      borderColor: '#e0e0e0',
+                                    }),
+                                  }}
+                                >
+                                  {hearingSaving ? '保存中...' : '保存'}
+                                </Button>
+                              </>
+                            );
+                          })()}
                         </Grid>
                       );
                     }
