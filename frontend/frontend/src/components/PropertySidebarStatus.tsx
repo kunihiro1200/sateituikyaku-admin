@@ -170,10 +170,10 @@ export default function PropertySidebarStatus({
 
   return (
     <>
-      <Paper sx={{ width: 220, flexShrink: 0 }}>
-        <Box sx={{ p: 2, borderBottom: '1px solid #eee' }}>
-          <Typography variant="subtitle1" fontWeight="bold">
-            サイドバーステータス
+      <Paper sx={{ width: 200, flexShrink: 0 }}>
+        <Box sx={{ p: 1.5, borderBottom: '1px solid #eee' }}>
+          <Typography variant="h6" fontWeight="bold" sx={{ fontSize: '1rem' }}>
+            カテゴリー
           </Typography>
         </Box>
         <List dense sx={{ maxHeight: 'calc(100vh - 200px)', overflow: 'auto' }}>
@@ -193,7 +193,7 @@ export default function PropertySidebarStatus({
                 selected={selectedStatus === item.key || (!selectedStatus && item.key === 'all')}
                 onClick={() => onStatusChange(item.key === 'all' ? null : item.key)}
                 sx={{
-                  py: 0.5,
+                  py: 0.75,
                   ...(item.isLowPriority && {
                     bgcolor: 'rgba(0, 188, 212, 0.10)',
                     '&:hover': { bgcolor: 'rgba(0, 188, 212, 0.20)' },

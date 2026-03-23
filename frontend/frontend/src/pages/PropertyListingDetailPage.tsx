@@ -704,7 +704,7 @@ export default function PropertyListingDetailPage() {
       <Box sx={{ position: 'sticky', top: 0, zIndex: 200, bgcolor: 'background.default', borderBottom: '1px solid', borderColor: 'divider', px: 1, py: 0.5, display: 'flex', alignItems: 'flex-end', gap: 1, flexShrink: 0 }}>
         <PageNavigation />
       </Box>
-    <Box sx={{ py: 2, px: 2, zoom: '0.6' }}>
+    <Box sx={{ py: 1, px: 1 }}>
       <Box sx={{ display: 'flex', gap: 2 }}>
         {/* 左サイドバー - サイドバーステータス */}
         <PropertySidebarStatus
@@ -867,8 +867,8 @@ export default function PropertyListingDetailPage() {
       </Box>
 
       {/* Property Header - Key Information */}
-      <Paper sx={{ p: 2, mb: 3, bgcolor: '#f5f5f5' }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+      <Paper sx={{ p: 1.5, mb: 2, bgcolor: '#f5f5f5' }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
           <Typography variant="body2" color="text.secondary" fontWeight="bold">物件概要</Typography>
           <Box sx={{ display: 'flex', gap: 1 }}>
             {isHeaderEditMode ? (
@@ -887,8 +887,8 @@ export default function PropertyListingDetailPage() {
             )}
           </Box>
         </Box>
-        <Grid container spacing={2}>
-          <Grid item xs={12} sm={6} md={3}>
+        <Grid container spacing={1}>
+          <Grid item xs={6} sm={4} md={2}>
             <Typography variant="body2" color="text.secondary" fontWeight="bold">所在地</Typography>
             {isHeaderEditMode ? (
               <TextField
@@ -914,7 +914,7 @@ export default function PropertyListingDetailPage() {
               </Box>
             )}
           </Grid>
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid item xs={6} sm={4} md={2}>
             <Typography variant="body2" color="text.secondary" fontWeight="bold">売主氏名</Typography>
             {isHeaderEditMode ? (
               <TextField
@@ -930,7 +930,7 @@ export default function PropertyListingDetailPage() {
               </Typography>
             )}
           </Grid>
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid item xs={6} sm={4} md={2}>
             <Typography variant="body2" color="text.secondary" fontWeight="bold">ATBB状況</Typography>
             {isHeaderEditMode ? (
               <FormControl size="small" fullWidth sx={{ mt: 0.5 }}>
@@ -956,7 +956,7 @@ export default function PropertyListingDetailPage() {
               </Typography>
             )}
           </Grid>
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid item xs={6} sm={4} md={2}>
             <Typography variant="body2" color="text.secondary" fontWeight="bold">種別</Typography>
             {isHeaderEditMode ? (
               <FormControl size="small" fullWidth sx={{ mt: 0.5 }}>
@@ -979,7 +979,7 @@ export default function PropertyListingDetailPage() {
               </Typography>
             )}
           </Grid>
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid item xs={6} sm={4} md={2}>
             <Typography variant="body2" color="text.secondary" fontWeight="bold">現況</Typography>
             {isHeaderEditMode ? (
               <TextField
@@ -995,7 +995,7 @@ export default function PropertyListingDetailPage() {
               </Typography>
             )}
           </Grid>
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid item xs={6} sm={4} md={2}>
             <Typography variant="body2" color="text.secondary" fontWeight="bold">担当</Typography>
             {isHeaderEditMode ? (
               <TextField
