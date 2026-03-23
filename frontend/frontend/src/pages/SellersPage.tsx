@@ -34,7 +34,6 @@ import {
 } from '../utils/sellerStatusFilters';
 import { formatInquiryDate } from '../utils/inquiryDateFormatter';
 import PageNavigation from '../components/PageNavigation';
-import { ManualSyncButton } from '../components/ManualSyncButton';
 import { SyncNotification, SyncNotificationData } from '../components/SyncNotification';
 import { useAutoSync } from '../hooks/useAutoSync';
 import { useSellerStatus } from '../hooks/useSellerStatus';
@@ -493,32 +492,11 @@ export default function SellersPage() {
             売主リスト
           </Typography>
           <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-            {/* 手動更新ボタン */}
-            <ManualSyncButton
-              onSyncComplete={(result) => {
-                if (result.success) {
-                  setSyncError(null); // エラーをクリア
-                  fetchSellers();
-                }
-              }}
-              onSyncError={(error: any) => {
-                setSyncError({
-                  message: error.message,
-                  recoverable: error.recoverable || false,
-                });
-              }}
-            />
             <Button
               variant="outlined"
               onClick={() => navigate('/settings')}
             >
               設定
-            </Button>
-            <Button
-              variant="outlined"
-              onClick={() => navigate('/activity-logs')}
-            >
-              活動ログ
             </Button>
             <Button
               variant="contained"

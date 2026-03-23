@@ -35,7 +35,6 @@ import BuyerIndicator from '../components/BuyerIndicator';
 import { InquiryResponseButton } from '../components/InquiryResponseButton';
 import PublicUrlCell from '../components/PublicUrlCell';
 import StatusBadge from '../components/StatusBadge';
-import PublicSiteButtons from '../components/PublicSiteButtons';
 import PropertySidebarStatus from '../components/PropertySidebarStatus';
 import { getDisplayStatus } from '../utils/atbbStatusDisplayMapper';
 import { SECTION_COLORS } from '../theme/sectionColors';
@@ -315,7 +314,6 @@ export default function PropertyListingsPage() {
     <Container maxWidth="xl" sx={{ py: 3 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexDirection: { xs: 'column', sm: 'row' }, gap: 2 }}>
         <Typography variant="h5" fontWeight="bold" sx={{ color: SECTION_COLORS.property.main }}>物件リスト</Typography>
-        <PublicSiteButtons />
       </Box>
 
       <PageNavigation />
