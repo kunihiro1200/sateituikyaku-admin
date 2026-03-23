@@ -4,6 +4,7 @@ export class UrlValidator {
     /^https:\/\/maps\.google\.com\/.+/,
     /^https:\/\/www\.google\.com\/maps\/.+/,
     /^https:\/\/goo\.gl\/maps\/.+/,
+    /^https:\/\/maps\.app\.goo\.gl\/.+/,  // 短縮URL形式
   ];
 
   private static readonly GOOGLE_DRIVE_FOLDER_PATTERNS = [
