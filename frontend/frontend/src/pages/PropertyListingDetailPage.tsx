@@ -798,10 +798,9 @@ export default function PropertyListingDetailPage() {
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
               {data.seller_contact && (
                 <Button
-                  component="a"
                   variant="outlined"
                   size="small"
-                  href={`tel:${data.seller_contact}`}
+                  onClick={() => { window.location.href = `tel:${data.seller_contact}`; }}
                   startIcon={<PhoneIcon fontSize="small" />}
                   sx={{
                     borderColor: '#1565c0',
@@ -817,10 +816,9 @@ export default function PropertyListingDetailPage() {
               )}
               {data.seller_email && (
                 <Button
-                  component="a"
                   variant="outlined"
                   size="small"
-                  href={`mailto:${data.seller_email}`}
+                  onClick={() => { window.location.href = `mailto:${data.seller_email}`; }}
                   startIcon={<EmailIcon fontSize="small" />}
                   sx={{
                     borderColor: '#1976d2',
@@ -836,10 +834,9 @@ export default function PropertyListingDetailPage() {
               )}
               {data.seller_contact && (
                 <Button
-                  component="a"
                   variant="outlined"
                   size="small"
-                  href={`sms:${data.seller_contact}`}
+                  onClick={() => { window.location.href = `sms:${data.seller_contact}`; }}
                   startIcon={<SmsIcon fontSize="small" />}
                   sx={{
                     borderColor: '#2e7d32',
