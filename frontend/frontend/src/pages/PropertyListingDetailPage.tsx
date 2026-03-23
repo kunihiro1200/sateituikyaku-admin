@@ -18,6 +18,7 @@ import {
   DialogContent,
   DialogActions,
   FormControl,
+  Tooltip,
   Select,
   MenuItem,
 } from '@mui/material';
@@ -202,6 +203,7 @@ export default function PropertyListingDetailPage() {
     severity: 'success',
   });
   const [copiedPropertyNumber, setCopiedPropertyNumber] = useState(false);
+  const [copiedAddress, setCopiedAddress] = useState(false);
 
   // Check for buyer context from navigation state
   const buyerContext = location.state as { buyerId?: string; buyerName?: string; source?: string } | null;
@@ -476,6 +478,19 @@ export default function PropertyListingDetailPage() {
   };
 
   // 物件番号コピー機能
+  const handleCopyAddress = async () => {
+    const address = data?.address || data?.display_address;
+    if (!address) return;
+    try {
+      await navigator.clipboard.writeText(address);
+      setCopiedAddress(true);
+      setTimeout(() => setCopiedAddress(false), 2000);
+      setSnackbar({ open: true, message: '所在地をコピーしました', severity: 'success' });
+    } catch (error) {
+      console.error('Failed to copy address:', error);
+    }
+  };
+
   const handleCopyPropertyNumber = async () => {
     if (!data?.property_number) return;
 
@@ -1314,7 +1329,17 @@ export default function PropertyListingDetailPage() {
                     value={editedData.address !== undefined ? editedData.address : (data.address || data.display_address || '')}
                     onChange={(e) => handleFieldChange('address', e.target.value)} />
                 ) : (
-                  <Typography variant="body1">{data.address || data.display_address || '-'}</Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                    <Typography variant="body1">{data.address || data.display_address || '-'}</Typography>
+                    {(data.address || data.display_address) && (
+                      <Tooltip title={copiedAddress ? 'コピーしました' : '所在地をコピー'}>
+                        <IconButton size="small" onClick={handleCopyAddress}
+                          sx={{ color: copiedAddress ? 'success.main' : 'text.secondary' }}>
+                          {copiedAddress ? <CheckIcon fontSize="small" /> : <ContentCopyIcon fontSize="small" />}
+                        </IconButton>
+                      </Tooltip>
+                    )}
+                  </Box>
                 )}
                 {!isBasicInfoEditMode && data.display_address && data.address && data.display_address !== data.address && (
                   <Box sx={{ mt: 0.5 }}>
