@@ -113,6 +113,7 @@ export default function PropertyListingsPage() {
       let offset = 0;
       const limit = 1000;
       let hasMore = true;
+      let isFirstBatch = true;
 
       console.log('物件データを取得中...');
 
@@ -126,10 +127,19 @@ export default function PropertyListingsPage() {
 
         console.log(`取得: ${offset + 1}～${offset + fetchedData.length}件 / 合計${listingsRes.data.total}件`);
 
+        // 最初のバッチを取得したら即座に表示（ローディングを解除）
+        if (isFirstBatch) {
+          isFirstBatch = false;
+          setAllListings([...allListingsData]);
+          setLoading(false);
+        }
+
         if (fetchedData.length < limit) {
           hasMore = false;
         } else {
           offset += limit;
+          // バックグラウンドで残りを取得しながら随時更新
+          setAllListings([...allListingsData]);
         }
       }
 
