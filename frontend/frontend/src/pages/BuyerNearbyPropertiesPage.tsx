@@ -137,7 +137,7 @@ export default function BuyerNearbyPropertiesPage() {
     const baseAddr = baseProperty?.address || baseProperty?.display_address || '';
     const baseUrl = baseProperty ? `${PUBLIC_BASE}/${baseProperty.property_number}` : '';
     const nearbyLines = props.map(p => `${p.display_address || p.address || ''}\n${PUBLIC_BASE}/${p.property_number}`).join('\n\n');
-    return `${buyerName}様\n\nこの度は${baseAddr}のお問合せをいただきありがとうございます。\n近隣の物件として下記物件もございますのでご興味ございましたら、お問合せくださいませ。\n\n【お問合せ物件】\n${baseAddr}\n${baseUrl}\n\n${nearbyLines}${SIGNATURE_EMAIL}`;
+    return `${buyerName}様\n\nこの度は${baseAddr}のお問合せをいただきありがとうございます。\n近隣の物件として下記物件もございますのでご興味ございましたら、お問合せくださいませ。\n\n【お問合せ物件】\n${baseAddr}\n${baseUrl}\n\n【近隣物件】\n${nearbyLines}${SIGNATURE_EMAIL}`;
   };
 
   // SMS本文生成
@@ -146,7 +146,7 @@ export default function BuyerNearbyPropertiesPage() {
     const baseAddr = baseProperty?.address || baseProperty?.display_address || '';
     const baseUrl = baseProperty ? `${PUBLIC_BASE}/${baseProperty.property_number}` : '';
     const nearbyLines = props.map(p => `${p.display_address || p.address || ''}\n${PUBLIC_BASE}/${p.property_number}`).join('\n\n');
-    return `${buyerName}様\n\nこの度は${baseAddr}のお問合せをいただきありがとうございます。\n近隣の物件として下記物件もございますのでご興味ございましたら、お問合せくださいませ。\n\n【お問合せ物件】\n${baseAddr}\n${baseUrl}\n\n${nearbyLines}${SIGNATURE_SMS}`;
+    return `${buyerName}様\n\nこの度は${baseAddr}のお問合せをいただきありがとうございます。\n近隣の物件として下記物件もございますのでご興味ございましたら、お問合せくださいませ。\n\n【お問合せ物件】\n${baseAddr}\n${baseUrl}\n\n【近隣物件】\n${nearbyLines}${SIGNATURE_SMS}`;
   };
 
   const openEmailDialog = () => {
