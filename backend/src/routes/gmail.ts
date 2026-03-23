@@ -119,7 +119,7 @@ router.post('/send', upload.array('attachments'), async (req, res) => {
     // activity_logs テーブルに記録
     try {
       await activityLogService.logEmail({
-        buyerId,
+        buyerId: buyer.buyer_number || buyerId,
         propertyNumbers,
         recipientEmail: buyer.email,
         subject,

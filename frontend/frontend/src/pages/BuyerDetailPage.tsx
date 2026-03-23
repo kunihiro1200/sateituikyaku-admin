@@ -1387,7 +1387,7 @@ TEL：097-533-2022`;
                   .map((activity) => {
                     const metadata = activity.metadata || {};
                     const isSms = activity.action === 'sms';
-                    const propertyNumbers = metadata.propertyNumbers || [];
+                    const propertyNumbers = metadata.propertyNumbers || metadata.property_numbers || [];
                     const displayName = activity.employee ? getDisplayName(activity.employee) : '不明';
                     
                     return (
