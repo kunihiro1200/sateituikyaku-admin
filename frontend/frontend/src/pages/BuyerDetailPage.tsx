@@ -45,6 +45,7 @@ import BuyerGmailSendButton from '../components/BuyerGmailSendButton';
 import { SmsDropdownButton } from '../components/SmsDropdownButton';
 import PageNavigation from '../components/PageNavigation';
 import { InlineEditableField } from '../components/InlineEditableField';
+import { SectionSaveButton } from '../components/SectionSaveButton';
 import { useStableContainerHeight } from '../hooks/useStableContainerHeight';
 import { useQuickButtonState } from '../hooks/useQuickButtonState';
 import { INQUIRY_SOURCE_OPTIONS } from '../utils/buyerInquirySourceOptions';
@@ -176,6 +177,11 @@ export default function BuyerDetailPage() {
     message: '',
     severity: 'success',
   });
+
+  // セクション別 DirtyState 管理
+  const [sectionDirtyStates, setSectionDirtyStates] = useState<Record<string, boolean>>({});
+  const [sectionChangedFields, setSectionChangedFields] = useState<Record<string, Record<string, any>>>({});
+  const [sectionSavingStates, setSectionSavingStates] = useState<Record<string, boolean>>({});
 
   // クイックボタンの状態管理
   const { isDisabled: isQuickButtonDisabled, disableButton: disableQuickButton } = useQuickButtonState(buyer_number || '');
@@ -330,6 +336,51 @@ export default function BuyerDetailPage() {
         success: false, 
         error: error.response?.data?.error || '更新に失敗しました' 
       };
+    }
+  };
+
+  // セクション内フィールド変更検知ハンドラー
+  const handleFieldChange = (sectionTitle: string, fieldName: string, newValue: any) => {
+    if (!buyer) return;
+    const originalValue = buyer[fieldName];
+    // 元の値と同じなら変更フィールドから削除
+    const isSameAsOriginal = String(newValue ?? '') === String(originalValue ?? '');
+    setSectionChangedFields(prev => {
+      const sectionFields = { ...(prev[sectionTitle] || {}) };
+      if (isSameAsOriginal) {
+        delete sectionFields[fieldName];
+      } else {
+        sectionFields[fieldName] = newValue;
+      }
+      const isDirty = Object.keys(sectionFields).length > 0;
+      setSectionDirtyStates(prevDirty => ({ ...prevDirty, [sectionTitle]: isDirty }));
+      return { ...prev, [sectionTitle]: sectionFields };
+    });
+  };
+
+  // セクション保存ハンドラー
+  const handleSectionSave = async (sectionTitle: string) => {
+    const changedFields = sectionChangedFields[sectionTitle] || {};
+    if (Object.keys(changedFields).length === 0) return;
+    setSectionSavingStates(prev => ({ ...prev, [sectionTitle]: true }));
+    try {
+      const result = await buyerApi.update(
+        buyer_number!,
+        changedFields,
+        { sync: true }
+      );
+      setBuyer(result.buyer);
+      setSectionDirtyStates(prev => ({ ...prev, [sectionTitle]: false }));
+      setSectionChangedFields(prev => ({ ...prev, [sectionTitle]: {} }));
+      setSnackbar({ open: true, message: '保存しました', severity: 'success' });
+    } catch (error: any) {
+      setSnackbar({
+        open: true,
+        message: error.response?.data?.error || '保存に失敗しました',
+        severity: 'error',
+      });
+    } finally {
+      setSectionSavingStates(prev => ({ ...prev, [sectionTitle]: false }));
     }
   };
 
@@ -1211,19 +1262,25 @@ TEL：097-533-2022`;
                 }),
               }}
             >
-              <Typography 
-                variant="h6" 
-                gutterBottom
-                sx={{
-                  // 内覧結果グループのタイトルを強調
-                  ...(section.isViewingResultGroup && {
-                    color: 'success.main',
-                    fontWeight: 'bold',
-                  }),
-                }}
-              >
-                {section.title}
-              </Typography>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                <Typography 
+                  variant="h6" 
+                  sx={{
+                    // 内覧結果グループのタイトルを強調
+                    ...(section.isViewingResultGroup && {
+                      color: 'success.main',
+                      fontWeight: 'bold',
+                    }),
+                  }}
+                >
+                  {section.title}
+                </Typography>
+                <SectionSaveButton
+                  isDirty={sectionDirtyStates[section.title] || false}
+                  isSaving={sectionSavingStates[section.title] || false}
+                  onSave={() => handleSectionSave(section.title)}
+                />
+              </Box>
               <Divider sx={{ mb: 2 }} />
               <Grid container spacing={2}>
                 {section.fields.map((field: any, fieldIndex: number) => {
@@ -1252,6 +1309,7 @@ TEL：097-533-2022`;
                             fieldType="dropdown"
                             options={INQUIRY_SOURCE_OPTIONS}
                             onSave={handleFieldSave}
+                            onChange={(fieldName, newValue) => handleFieldChange(section.title, fieldName, newValue)}
                             buyerId={buyer_number}
                             enableConflictDetection={true}
                             showEditIndicator={true}
@@ -1283,6 +1341,7 @@ TEL：097-533-2022`;
                             fieldType="dropdown"
                             options={LATEST_STATUS_OPTIONS}
                             onSave={handleFieldSave}
+                            onChange={(fieldName, newValue) => handleFieldChange(section.title, fieldName, newValue)}
                             buyerId={buyer_number}
                             enableConflictDetection={true}
                             showEditIndicator={true}
@@ -1340,6 +1399,7 @@ TEL：097-533-2022`;
                             fieldType="dropdown"
                             options={THREE_CALLS_CONFIRMED_OPTIONS}
                             onSave={handleFieldSave}
+                            onChange={(fieldName, newValue) => handleFieldChange(section.title, fieldName, newValue)}
                             buyerId={buyer_number}
                             enableConflictDetection={true}
                             showEditIndicator={true}
@@ -1366,6 +1426,7 @@ TEL：097-533-2022`;
                             fieldType="dropdown"
                             options={EMAIL_TYPE_OPTIONS}
                             onSave={handleFieldSave}
+                            onChange={(fieldName, newValue) => handleFieldChange(section.title, fieldName, newValue)}
                             buyerId={buyer_number}
                             enableConflictDetection={true}
                             showEditIndicator={true}
@@ -1392,6 +1453,7 @@ TEL：097-533-2022`;
                             fieldType="dropdown"
                             options={DISTRIBUTION_TYPE_OPTIONS}
                             onSave={handleFieldSave}
+                            onChange={(fieldName, newValue) => handleFieldChange(section.title, fieldName, newValue)}
                             buyerId={buyer_number}
                             enableConflictDetection={true}
                             showEditIndicator={true}
@@ -1457,6 +1519,7 @@ TEL：097-533-2022`;
                             fieldName={field.key}
                             fieldType="text"
                             onSave={handleFieldSave}
+                            onChange={(fieldName, newValue) => handleFieldChange(section.title, fieldName, newValue)}
                             buyerId={buyer_number}
                             enableConflictDetection={true}
                             showEditIndicator={true}
@@ -1560,6 +1623,7 @@ TEL：097-533-2022`;
                             'text'
                           }
                           onSave={handleFieldSave}
+                          onChange={(fieldName, newValue) => handleFieldChange(section.title, fieldName, newValue)}
                           readOnly={field.readOnly === true}
                           buyerId={buyer_number}
                           enableConflictDetection={true}

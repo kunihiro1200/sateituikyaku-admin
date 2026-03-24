@@ -38,6 +38,7 @@ export interface InlineEditableFieldProps {
   alwaysShowBorder?: boolean;  // 常に囲い枠を表示するかどうか
   borderPlaceholder?: string;  // 囲い枠内に表示するプレースホルダー
   showEditIndicator?: boolean;  // 編集可能インジケーターを常時表示するか（デフォルト: true）
+  onChange?: (fieldName: string, newValue: any) => void;  // 値変更時のコールバック（保存前）
 }
 
 export const InlineEditableField: React.FC<InlineEditableFieldProps> = memo(({
@@ -58,6 +59,7 @@ export const InlineEditableField: React.FC<InlineEditableFieldProps> = memo(({
   alwaysShowBorder = false,
   borderPlaceholder,
   showEditIndicator = true,
+  onChange,
 }) => {
   const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>(null);
   const [isHovered, setIsHovered] = useState(false);
@@ -107,6 +109,14 @@ export const InlineEditableField: React.FC<InlineEditableFieldProps> = memo(({
     buyerId,
     enableConflictDetection,
   });
+
+  // onChange コールバック付きの値更新ハンドラー
+  const handleChange = (newValue: any) => {
+    updateValue(newValue);
+    if (onChange) {
+      onChange(fieldName, newValue);
+    }
+  };
 
   // Focus input when entering edit mode
   useEffect(() => {
@@ -186,7 +196,7 @@ export const InlineEditableField: React.FC<InlineEditableFieldProps> = memo(({
       inputRef: inputRef,
       value: editValue ?? '',
       onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
-        updateValue(e.target.value),
+        handleChange(e.target.value),
       onBlur: handleBlur,
       onKeyDown: handleKeyDown,
       placeholder,
@@ -229,7 +239,7 @@ export const InlineEditableField: React.FC<InlineEditableFieldProps> = memo(({
               groupBy={(option) => option.category || ''}
               getOptionLabel={(option) => option.label}
               value={options.find(opt => opt.value === editValue) || null}
-              onChange={(_, newValue) => updateValue(newValue?.value || '')}
+              onChange={(_, newValue) => handleChange(newValue?.value || '')}
               onBlur={handleBlur}
               disabled={isSaving}
               open={selectOpen}
@@ -272,7 +282,7 @@ export const InlineEditableField: React.FC<InlineEditableFieldProps> = memo(({
           <FormControl fullWidth size="small" sx={{ mt: 0.5 }} error={!!error}>
             <Select
               value={editValue ?? ''}
-              onChange={(e) => { updateValue(e.target.value); setSelectOpen(false); }}
+              onChange={(e) => { handleChange(e.target.value); setSelectOpen(false); }}
               onBlur={handleBlur}
               disabled={isSaving}
               open={selectOpen}
@@ -456,6 +466,7 @@ export const InlineEditableField: React.FC<InlineEditableFieldProps> = memo(({
     prevProps.alwaysShowBorder === nextProps.alwaysShowBorder &&
     prevProps.borderPlaceholder === nextProps.borderPlaceholder &&
     prevProps.showEditIndicator === nextProps.showEditIndicator &&
+    prevProps.onChange === nextProps.onChange &&
     JSON.stringify(prevProps.options) === JSON.stringify(nextProps.options) &&
     JSON.stringify(prevProps.permissions) === JSON.stringify(nextProps.permissions)
   );
