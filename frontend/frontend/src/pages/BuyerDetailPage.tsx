@@ -1580,11 +1580,11 @@ TEL：097-533-2022`;
                     if (field.key === 'owned_home_hearing_inquiry') {
                       return (
                         <Grid item xs={12} key={`${section.title}-${field.key}`}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <Typography variant="caption" color="text.secondary" sx={{ whiteSpace: 'nowrap', flexShrink: 0 }}>
+                          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                            <Typography variant="caption" color="text.secondary">
                               {field.label}
                             </Typography>
-                            <Box sx={{ display: 'flex', gap: 0.5, flex: 1 }}>
+                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
                               {normalInitials.map((initial) => {
                                 const isSelected = buyer.owned_home_hearing_inquiry === initial;
                                 return (
@@ -1599,7 +1599,8 @@ TEL：097-533-2022`;
                                       await handleInlineFieldSave(field.key, newValue);
                                     }}
                                     sx={{
-                                      flex: 1,
+                                      minWidth: 40,
+                                      px: 1.5,
                                       py: 0.5,
                                       fontWeight: isSelected ? 'bold' : 'normal',
                                       borderRadius: 1,
@@ -1615,7 +1616,7 @@ TEL：097-533-2022`;
                       );
                     }
 
-                    // owned_home_hearing_result フィールドは特別処理（4择ボタン・条件付き表示）
+                    // owned_home_hearing_result フィールドは特別処理（4択ボタン・条件付き表示）
                     if (field.key === 'owned_home_hearing_result') {
                       if (!buyer.owned_home_hearing_inquiry) return null;
                       const RESULT_OPTIONS = ['持家（マンション）', '持家（戸建）', '賃貸', '他不明'];
@@ -1624,49 +1625,47 @@ TEL：097-533-2022`;
                       );
                       return (
                         <Grid item xs={12} key={`${section.title}-${field.key}`}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <Typography variant="caption" color="text.secondary" sx={{ whiteSpace: 'nowrap', flexShrink: 0 }}>
+                          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                            <Typography variant="caption" color="text.secondary">
                               {field.label}
                             </Typography>
-                            <Box sx={{ display: 'flex', flexDirection: 'column', flex: 1, gap: 0.5 }}>
-                              <Box sx={{ display: 'flex', gap: 0.5 }}>
-                                {RESULT_OPTIONS.map((option) => {
-                                  const isSelected = buyer.owned_home_hearing_result === option;
-                                  return (
-                                    <Button
-                                      key={option}
-                                      size="small"
-                                      variant={isSelected ? 'contained' : 'outlined'}
-                                      color="primary"
-                                      onClick={async () => {
-                                        const newValue = isSelected ? '' : option;
-                                        handleFieldChange(section.title, field.key, newValue);
-                                        await handleInlineFieldSave(field.key, newValue);
-                                      }}
-                                      sx={{
-                                        flex: 1,
-                                        py: 0.5,
-                                        fontWeight: isSelected ? 'bold' : 'normal',
-                                        borderRadius: 1,
-                                      }}
-                                    >
-                                      {option}
-                                    </Button>
-                                  );
-                                })}
-                              </Box>
-                              {showValuationText && (
-                                <Typography variant="caption" color="primary.main" sx={{ mt: 0.5 }}>
-                                  机上査定を無料で行っていますがこの後メールで査定額差し上げましょうか？
-                                </Typography>
-                              )}
+                            <Box sx={{ display: 'flex', gap: 0.5 }}>
+                              {RESULT_OPTIONS.map((option) => {
+                                const isSelected = buyer.owned_home_hearing_result === option;
+                                return (
+                                  <Button
+                                    key={option}
+                                    size="small"
+                                    variant={isSelected ? 'contained' : 'outlined'}
+                                    color="primary"
+                                    onClick={async () => {
+                                      const newValue = isSelected ? '' : option;
+                                      handleFieldChange(section.title, field.key, newValue);
+                                      await handleInlineFieldSave(field.key, newValue);
+                                    }}
+                                    sx={{
+                                      flex: 1,
+                                      py: 0.5,
+                                      fontWeight: isSelected ? 'bold' : 'normal',
+                                      borderRadius: 1,
+                                    }}
+                                  >
+                                    {option}
+                                  </Button>
+                                );
+                              })}
                             </Box>
+                            {showValuationText && (
+                              <Typography variant="caption" color="primary.main" sx={{ mt: 0.5 }}>
+                                机上査定を無料で行っていますがこの後メールで査定額差し上げましょうか？
+                              </Typography>
+                            )}
                           </Box>
                         </Grid>
                       );
                     }
 
-                    // valuation_required フィールドは特別処理（2择ボタン・条件付き表示）
+                    // valuation_required フィールドは特別処理（2択ボタン・条件付き表示）
                     if (field.key === 'valuation_required') {
                       const showValuation = ['持家（マンション）', '持家（戸建）'].includes(
                         buyer.owned_home_hearing_result
@@ -1675,11 +1674,11 @@ TEL：097-533-2022`;
                       const VALUATION_OPTIONS = ['要', '不要'];
                       return (
                         <Grid item xs={12} key={`${section.title}-${field.key}`}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <Typography variant="caption" color="text.secondary" sx={{ whiteSpace: 'nowrap', flexShrink: 0 }}>
+                          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                            <Typography variant="caption" color="text.secondary">
                               {field.label}
                             </Typography>
-                            <Box sx={{ display: 'flex', gap: 0.5, flex: 1 }}>
+                            <Box sx={{ display: 'flex', gap: 0.5 }}>
                               {VALUATION_OPTIONS.map((option) => {
                                 const isSelected = buyer.valuation_required === option;
                                 return (
