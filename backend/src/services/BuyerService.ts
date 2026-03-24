@@ -9,6 +9,14 @@ import { GoogleSheetsClient } from './GoogleSheetsClient';
 import { calculateBuyerStatus } from './BuyerStatusCalculator';
 import { STATUS_DEFINITIONS } from '../config/buyer-status-definitions';
 
+// モジュールレベルのキャッシュ（Vercelサーバーレス環境でもインスタンス間で共有される）
+// インスタンス変数だとリクエストごとにリセットされるため、モジュールレベルに移動
+let _moduleLevelStatusCache: {
+  buyers: any[];
+  computedAt: number;
+} | null = null;
+const _MODULE_STATUS_CACHE_TTL = 10 * 60 * 1000; // 10分
+
 export interface BuyerQueryOptions {
   page?: number;
   limit?: number;
@@ -48,12 +56,8 @@ export class BuyerService {
   private retryHandler: RetryHandler | null = null;
   private columnMapper: BuyerColumnMapper | null = null;
 
-  // ステータス計算結果のキャッシュ（TTL: 10分）
-  private statusCache: {
-    buyers: any[];
-    computedAt: number;
-  } | null = null;
-  private readonly STATUS_CACHE_TTL = 10 * 60 * 1000; // 10分
+  // ステータス計算結果のキャッシュはモジュールレベル変数 _moduleLevelStatusCache を使用
+  // （Vercelサーバーレス環境ではインスタンス変数はリクエストごとにリセットされるため）
 
   constructor() {
     this.supabase = createClient(
@@ -1398,8 +1402,8 @@ export class BuyerService {
    */
   private async fetchAllBuyersWithStatus(): Promise<any[]> {
     const now = Date.now();
-    if (this.statusCache && (now - this.statusCache.computedAt) < this.STATUS_CACHE_TTL) {
-      return this.statusCache.buyers;
+    if (_moduleLevelStatusCache && (now - _moduleLevelStatusCache.computedAt) < _MODULE_STATUS_CACHE_TTL) {
+      return _moduleLevelStatusCache.buyers;
     }
 
     const allBuyers = await this.fetchAllBuyers();
@@ -1413,7 +1417,7 @@ export class BuyerService {
       }
     });
 
-    this.statusCache = { buyers, computedAt: now };
+    _moduleLevelStatusCache = { buyers, computedAt: now };
     return buyers;
   }
 
@@ -1427,7 +1431,7 @@ export class BuyerService {
     fromCache: boolean;
   }> {
     const now = Date.now();
-    const fromCache = !!(this.statusCache && (now - this.statusCache.computedAt) < this.STATUS_CACHE_TTL);
+    const fromCache = !!(_moduleLevelStatusCache && (now - _moduleLevelStatusCache.computedAt) < _MODULE_STATUS_CACHE_TTL);
 
     // キャッシュがある場合は即座に返す
     const allBuyers = await this.fetchAllBuyersWithStatus();

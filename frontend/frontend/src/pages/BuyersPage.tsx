@@ -88,9 +88,8 @@ export default function BuyersPage() {
 
     const fetchBuyers = async () => {
       try {
-        setLoading(true);
-
         // サイドバーデータ読み込み済みの場合はフロント側でフィルタリング（APIコール不要）
+        // キャッシュヒット時はsetLoading(true)をスキップして画面のちらつきを防ぐ
         if (sidebarLoaded && allBuyersWithStatusRef.current.length > 0) {
           let filtered = selectedCalculatedStatus !== null
             ? allBuyersWithStatusRef.current.filter(b => b.calculated_status === selectedCalculatedStatus)
@@ -132,6 +131,7 @@ export default function BuyersPage() {
         }
 
         // サイドバー未ロード時のみAPIから取得（初回表示用）
+        setLoading(true);
         const params: any = {
           page: page + 1,
           limit: rowsPerPage,
