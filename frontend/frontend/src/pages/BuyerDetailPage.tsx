@@ -1275,11 +1275,14 @@ TEL：097-533-2022`;
                 >
                   {section.title}
                 </Typography>
-                <SectionSaveButton
-                  isDirty={sectionDirtyStates[section.title] || false}
-                  isSaving={sectionSavingStates[section.title] || false}
-                  onSave={() => handleSectionSave(section.title)}
-                />
+                {/* 「問合せ内容」以外のセクションはヘッダー右上に保存ボタンを表示 */}
+                {section.title !== '問合せ内容' && (
+                  <SectionSaveButton
+                    isDirty={sectionDirtyStates[section.title] || false}
+                    isSaving={sectionSavingStates[section.title] || false}
+                    onSave={() => handleSectionSave(section.title)}
+                  />
+                )}
               </Box>
               <Divider sx={{ mb: 2 }} />
               <Grid container spacing={2}>
@@ -1466,9 +1469,19 @@ TEL：097-533-2022`;
                     if (field.key === 'initial_assignee') {
                       return (
                         <Grid item xs={12} key={`${section.title}-${field.key}`}>
-                          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
-                            {field.label}
-                          </Typography>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
+                            <Typography variant="caption" color="text.secondary">
+                              {field.label}
+                            </Typography>
+                            {/* 「問合せ内容」セクションの保存ボタンは初動担当の右横に配置 */}
+                            {section.title === '問合せ内容' && (
+                              <SectionSaveButton
+                                isDirty={sectionDirtyStates[section.title] || false}
+                                isSaving={sectionSavingStates[section.title] || false}
+                                onSave={() => handleSectionSave(section.title)}
+                              />
+                            )}
+                          </Box>
                           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
                             {normalInitials.map((initial) => (
                               <Chip
