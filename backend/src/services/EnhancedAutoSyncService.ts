@@ -3253,9 +3253,10 @@ export class EnhancedAutoSyncService {
   }
 
   /**
-   * ソフトデリートを実行（買主用）
+   * ハードデリートを実行（買主用）
+   * スプレッドシートに存在しない買主をDBから物理削除する
    */
-  private async executeBuyerSoftDelete(buyerNumber: string): Promise<DeletionResult> {
+  private async executeBuyerHardDelete(buyerNumber: string): Promise<DeletionResult> {
     try {
       const { data: buyer, error: fetchError } = await this.supabase
         .from('buyers')
@@ -3298,14 +3299,14 @@ export class EnhancedAutoSyncService {
         };
       }
 
-      // 2. 買主をソフトデリート
+      // 2. 買主をハードデリート（物理削除）
       const { error: buyerDeleteError } = await this.supabase
         .from('buyers')
-        .update({ deleted_at: deletedAt.toISOString() })
+        .delete()
         .eq('buyer_number', buyerNumber);
 
       if (buyerDeleteError) {
-        console.error(`❌ Failed to soft delete buyer ${buyerNumber}:`, buyerDeleteError.message);
+        console.error(`❌ Failed to hard delete buyer ${buyerNumber}:`, buyerDeleteError.message);
         return {
           sellerNumber: buyerNumber,
           success: false,
@@ -3313,7 +3314,7 @@ export class EnhancedAutoSyncService {
         };
       }
 
-      console.log(`✅ Buyer ${buyerNumber}: Soft deleted successfully`);
+      console.log(`✅ Buyer ${buyerNumber}: Hard deleted successfully`);
 
       return {
         sellerNumber: buyerNumber,
@@ -3323,7 +3324,7 @@ export class EnhancedAutoSyncService {
       };
 
     } catch (error: any) {
-      console.error(`❌ Soft delete error for buyer ${buyerNumber}:`, error.message);
+      console.error(`❌ Hard delete error for buyer ${buyerNumber}:`, error.message);
       return {
         sellerNumber: buyerNumber,
         success: false,
@@ -3360,7 +3361,7 @@ export class EnhancedAutoSyncService {
         continue;
       }
 
-      const result = await this.executeBuyerSoftDelete(buyerNumber);
+      const result = await this.executeBuyerHardDelete(buyerNumber);
 
       if (result.success) {
         deletedBuyerNumbers.push(buyerNumber);
