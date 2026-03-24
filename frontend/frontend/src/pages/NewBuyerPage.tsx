@@ -210,7 +210,25 @@ export default function NewBuyerPage() {
         >
           {propertyNumberField ? '物件詳細に戻る' : '買主リストに戻る'}
         </Button>
-        <Typography variant="h5" fontWeight="bold">新規買主登録</Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+          <Typography variant="h5" fontWeight="bold">新規買主登録</Typography>
+          <Button
+            variant="outlined"
+            color="success"
+            size="small"
+            onClick={() => document.getElementById('section-desired-conditions')?.scrollIntoView({ behavior: 'smooth' })}
+          >
+            希望条件
+          </Button>
+          <Button
+            variant="outlined"
+            color="success"
+            size="small"
+            onClick={() => document.getElementById('section-viewing')?.scrollIntoView({ behavior: 'smooth' })}
+          >
+            内覧
+          </Button>
+        </Box>
       </Box>
 
       {error && (
@@ -698,7 +716,7 @@ export default function NewBuyerPage() {
 
                 {/* 希望条件 */}
                 <Grid item xs={12}>
-                  <Typography variant="h6" gutterBottom sx={{ mt: 2 }}>希望条件</Typography>
+                  <Typography id="section-desired-conditions" variant="h6" gutterBottom sx={{ mt: 2 }}>希望条件</Typography>
                 </Grid>
 
                 {/* エリア（複数選択） */}
@@ -867,7 +885,7 @@ export default function NewBuyerPage() {
 
                 {/* 内覧情報 */}
                 <Grid item xs={12}>
-                  <Typography variant="h6" gutterBottom sx={{ mt: 2 }}>内覧情報（任意）</Typography>
+                  <Typography id="section-viewing" variant="h6" gutterBottom sx={{ mt: 2 }}>内覧情報（任意）</Typography>
                 </Grid>
 
                 <Grid item xs={12} sm={6}>
