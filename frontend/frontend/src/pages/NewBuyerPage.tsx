@@ -118,6 +118,9 @@ export default function NewBuyerPage() {
   const [emailType, setEmailType] = useState('');
   const [distributionType, setDistributionType] = useState('');
   const [ownedHomeHearing, setOwnedHomeHearing] = useState('');
+  const [ownedHomeHearingInquiry, setOwnedHomeHearingInquiry] = useState('');
+  const [ownedHomeHearingResult, setOwnedHomeHearingResult] = useState('');
+  const [valuationRequired, setValuationRequired] = useState('');
   const [nextCallDate, setNextCallDate] = useState('');
 
   // その他
@@ -208,6 +211,9 @@ export default function NewBuyerPage() {
         email_type: emailType || null,
         distribution_type: distributionType || null,
         owned_home_hearing: ownedHomeHearing || null,
+        owned_home_hearing_inquiry: ownedHomeHearingInquiry || null,
+        owned_home_hearing_result: ownedHomeHearingResult || null,
+        valuation_required: valuationRequired || null,
         next_call_date: nextCallDate || null,
         // その他
         special_notes: specialNotes || null,
@@ -851,6 +857,84 @@ export default function NewBuyerPage() {
                     value={ownedHomeHearing}
                     onChange={(e) => setOwnedHomeHearing(e.target.value)}
                   />
+                </Grid>
+
+                {/* 問合時持家ヒアリング */}
+                <Grid item xs={12}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+                    <Typography variant="body2" sx={{ whiteSpace: 'nowrap', flexShrink: 0, minWidth: 120 }}>
+                      問合時持家ヒアリング
+                    </Typography>
+                    <Box sx={{ display: 'flex', gap: 0.5, flex: 1 }}>
+                      {normalInitials.map((initial) => {
+                        const isSelected = ownedHomeHearingInquiry === initial;
+                        return (
+                          <Button
+                            key={initial}
+                            size="small"
+                            variant={isSelected ? 'contained' : 'outlined'}
+                            color="primary"
+                            onClick={() => setOwnedHomeHearingInquiry(isSelected ? '' : initial)}
+                            sx={{ flex: 1, py: 0.5, fontWeight: isSelected ? 'bold' : 'normal', borderRadius: 1 }}
+                          >
+                            {initial}
+                          </Button>
+                        );
+                      })}
+                    </Box>
+                  </Box>
+                </Grid>
+
+                {/* 持家ヒアリング結果 */}
+                <Grid item xs={12}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+                    <Typography variant="body2" sx={{ whiteSpace: 'nowrap', flexShrink: 0, minWidth: 120 }}>
+                      持家ヒアリング結果
+                    </Typography>
+                    <Box sx={{ display: 'flex', gap: 0.5, flex: 1 }}>
+                      {['持家（マンション）', '持家（戸建）', '賃貸', '他不明'].map((option) => {
+                        const isSelected = ownedHomeHearingResult === option;
+                        return (
+                          <Button
+                            key={option}
+                            size="small"
+                            variant={isSelected ? 'contained' : 'outlined'}
+                            color="primary"
+                            onClick={() => setOwnedHomeHearingResult(isSelected ? '' : option)}
+                            sx={{ flex: 1, py: 0.5, fontWeight: isSelected ? 'bold' : 'normal', borderRadius: 1 }}
+                          >
+                            {option}
+                          </Button>
+                        );
+                      })}
+                    </Box>
+                  </Box>
+                </Grid>
+
+                {/* 要査定 */}
+                <Grid item xs={12}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+                    <Typography variant="body2" sx={{ whiteSpace: 'nowrap', flexShrink: 0, minWidth: 120 }}>
+                      要査定
+                    </Typography>
+                    <Box sx={{ display: 'flex', gap: 0.5, flex: 1 }}>
+                      {['要', '不要'].map((option) => {
+                        const isSelected = valuationRequired === option;
+                        return (
+                          <Button
+                            key={option}
+                            size="small"
+                            variant={isSelected ? 'contained' : 'outlined'}
+                            color="primary"
+                            onClick={() => setValuationRequired(isSelected ? '' : option)}
+                            sx={{ flex: 1, py: 0.5, fontWeight: isSelected ? 'bold' : 'normal', borderRadius: 1 }}
+                          >
+                            {option}
+                          </Button>
+                        );
+                      })}
+                    </Box>
+                  </Box>
                 </Grid>
 
                 <Grid item xs={12} sm={6}>

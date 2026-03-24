@@ -125,6 +125,9 @@ const BUYER_FIELD_SECTIONS = [
       { key: 'email_type', label: 'メール種別', inlineEditable: true, fieldType: 'dropdown' },
       { key: 'distribution_type', label: '配信種別', inlineEditable: true, fieldType: 'dropdown' },
       { key: 'owned_home_hearing', label: '持家ヒアリング', inlineEditable: true },
+      { key: 'owned_home_hearing_inquiry', label: '問合時持家ヒアリング', inlineEditable: true, fieldType: 'staffSelect' },
+      { key: 'owned_home_hearing_result', label: '持家ヒアリング結果', inlineEditable: true, fieldType: 'homeHearingResult' },
+      { key: 'valuation_required', label: '要査定', inlineEditable: true, fieldType: 'valuationRequired' },
       // viewing_notes は PropertyInfoCard 内に移動
       { key: 'next_call_date', label: '次電日', type: 'date', inlineEditable: true },
     ],
@@ -1568,6 +1571,140 @@ TEL：097-533-2022`;
                                 </Button>
                               );
                             })}
+                          </Box>
+                        </Grid>
+                      );
+                    }
+
+                    // owned_home_hearing_inquiry フィールドは特別処理（スタッフイニシャル選択）
+                    if (field.key === 'owned_home_hearing_inquiry') {
+                      return (
+                        <Grid item xs={12} key={`${section.title}-${field.key}`}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Typography variant="caption" color="text.secondary" sx={{ whiteSpace: 'nowrap', flexShrink: 0 }}>
+                              {field.label}
+                            </Typography>
+                            <Box sx={{ display: 'flex', gap: 0.5, flex: 1 }}>
+                              {normalInitials.map((initial) => {
+                                const isSelected = buyer.owned_home_hearing_inquiry === initial;
+                                return (
+                                  <Button
+                                    key={initial}
+                                    size="small"
+                                    variant={isSelected ? 'contained' : 'outlined'}
+                                    color="primary"
+                                    onClick={async () => {
+                                      const newValue = isSelected ? '' : initial;
+                                      handleFieldChange(section.title, field.key, newValue);
+                                      await handleInlineFieldSave(field.key, newValue);
+                                    }}
+                                    sx={{
+                                      flex: 1,
+                                      py: 0.5,
+                                      fontWeight: isSelected ? 'bold' : 'normal',
+                                      borderRadius: 1,
+                                    }}
+                                  >
+                                    {initial}
+                                  </Button>
+                                );
+                              })}
+                            </Box>
+                          </Box>
+                        </Grid>
+                      );
+                    }
+
+                    // owned_home_hearing_result フィールドは特別処理（4择ボタン・条件付き表示）
+                    if (field.key === 'owned_home_hearing_result') {
+                      if (!buyer.owned_home_hearing_inquiry) return null;
+                      const RESULT_OPTIONS = ['持家（マンション）', '持家（戸建）', '賃貸', '他不明'];
+                      const showValuationText = ['持家（マンション）', '持家（戸建）'].includes(
+                        buyer.owned_home_hearing_result
+                      );
+                      return (
+                        <Grid item xs={12} key={`${section.title}-${field.key}`}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Typography variant="caption" color="text.secondary" sx={{ whiteSpace: 'nowrap', flexShrink: 0 }}>
+                              {field.label}
+                            </Typography>
+                            <Box sx={{ display: 'flex', flexDirection: 'column', flex: 1, gap: 0.5 }}>
+                              <Box sx={{ display: 'flex', gap: 0.5 }}>
+                                {RESULT_OPTIONS.map((option) => {
+                                  const isSelected = buyer.owned_home_hearing_result === option;
+                                  return (
+                                    <Button
+                                      key={option}
+                                      size="small"
+                                      variant={isSelected ? 'contained' : 'outlined'}
+                                      color="primary"
+                                      onClick={async () => {
+                                        const newValue = isSelected ? '' : option;
+                                        handleFieldChange(section.title, field.key, newValue);
+                                        await handleInlineFieldSave(field.key, newValue);
+                                      }}
+                                      sx={{
+                                        flex: 1,
+                                        py: 0.5,
+                                        fontWeight: isSelected ? 'bold' : 'normal',
+                                        borderRadius: 1,
+                                      }}
+                                    >
+                                      {option}
+                                    </Button>
+                                  );
+                                })}
+                              </Box>
+                              {showValuationText && (
+                                <Typography variant="caption" color="primary.main" sx={{ mt: 0.5 }}>
+                                  机上査定を無料で行っていますがこの後メールで査定額差し上げましょうか？
+                                </Typography>
+                              )}
+                            </Box>
+                          </Box>
+                        </Grid>
+                      );
+                    }
+
+                    // valuation_required フィールドは特別処理（2择ボタン・条件付き表示）
+                    if (field.key === 'valuation_required') {
+                      const showValuation = ['持家（マンション）', '持家（戸建）'].includes(
+                        buyer.owned_home_hearing_result
+                      );
+                      if (!showValuation) return null;
+                      const VALUATION_OPTIONS = ['要', '不要'];
+                      return (
+                        <Grid item xs={12} key={`${section.title}-${field.key}`}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Typography variant="caption" color="text.secondary" sx={{ whiteSpace: 'nowrap', flexShrink: 0 }}>
+                              {field.label}
+                            </Typography>
+                            <Box sx={{ display: 'flex', gap: 0.5, flex: 1 }}>
+                              {VALUATION_OPTIONS.map((option) => {
+                                const isSelected = buyer.valuation_required === option;
+                                return (
+                                  <Button
+                                    key={option}
+                                    size="small"
+                                    variant={isSelected ? 'contained' : 'outlined'}
+                                    color="primary"
+                                    onClick={async () => {
+                                      const newValue = isSelected ? '' : option;
+                                      handleFieldChange(section.title, field.key, newValue);
+                                      await handleInlineFieldSave(field.key, newValue);
+                                    }}
+                                    sx={{
+                                      flex: 1,
+                                      py: 0.5,
+                                      fontWeight: isSelected ? 'bold' : 'normal',
+                                      borderRadius: 1,
+                                    }}
+                                  >
+                                    {option}
+                                  </Button>
+                                );
+                              })}
+                            </Box>
                           </Box>
                         </Grid>
                       );
