@@ -744,8 +744,7 @@ export default function NewBuyerPage() {
                           key={item.label}
                           label={item.label}
                           size="small"
-                          onClick={() => setInquiryHearing((prev) => prev ? prev + '
-' + item.text : item.text)}
+                          onClick={() => setInquiryHearing((prev) => prev ? prev + String.fromCharCode(10) + item.text : item.text)}
                           variant="outlined"
                           sx={{ cursor: 'pointer' }}
                         />
