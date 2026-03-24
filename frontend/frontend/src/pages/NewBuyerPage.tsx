@@ -547,17 +547,23 @@ export default function NewBuyerPage() {
 
                 {showBrokerInquiry(companyName) && (
                   <Grid item xs={12} sm={6}>
-                    <FormControl fullWidth required>
-                      <InputLabel>業者問合せ</InputLabel>
-                      <Select
-                        value={brokerInquiry}
-                        label="業者問合せ"
-                        onChange={(e) => setBrokerInquiry(e.target.value)}
-                      >
-                        <MenuItem value="業者問合せ">業者問合せ</MenuItem>
-                        <MenuItem value="業者（両手）">業者（両手）</MenuItem>
-                      </Select>
-                    </FormControl>
+                    <Box>
+                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+                        業者問合せ <span style={{ color: 'red' }}>*</span>
+                      </Typography>
+                      <Box sx={{ display: 'flex', gap: 1 }}>
+                        {['業者問合せ', '業者（両手）'].map((option) => (
+                          <Chip
+                            key={option}
+                            label={option}
+                            onClick={() => setBrokerInquiry(brokerInquiry === option ? '' : option)}
+                            color={brokerInquiry === option ? 'primary' : 'default'}
+                            variant={brokerInquiry === option ? 'filled' : 'outlined'}
+                            sx={{ cursor: 'pointer', fontWeight: brokerInquiry === option ? 'bold' : 'normal' }}
+                          />
+                        ))}
+                      </Box>
+                    </Box>
                   </Grid>
                 )}
 
