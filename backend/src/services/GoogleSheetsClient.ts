@@ -417,6 +417,21 @@ export class GoogleSheetsClient {
   }
 
   /**
+   * 指定範囲の生データを読み取り（ヘッダー変換なし）
+   * 単一セルの値取得など、ヘッダーが不要な場合に使用する
+   */
+  async readRawRange(range: string): Promise<string[][]> {
+    this.ensureAuthenticated();
+
+    const response = await this.sheets!.spreadsheets.values.get({
+      spreadsheetId: this.config.spreadsheetId,
+      range: `'${this.config.sheetName}'!${range}`,
+    });
+
+    return (response.data.values || []) as string[][];
+  }
+
+  /**
    * 指定範囲のデータを読み取り
    */
   async readRange(range: string): Promise<SheetRow[]> {

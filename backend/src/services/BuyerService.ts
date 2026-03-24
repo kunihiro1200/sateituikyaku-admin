@@ -6,6 +6,7 @@ import { ConflictResolver, ConflictInfo } from './ConflictResolver';
 import { RetryHandler } from './RetryHandler';
 import { BuyerColumnMapper } from './BuyerColumnMapper';
 import { GoogleSheetsClient } from './GoogleSheetsClient';
+import { BuyerNumberSpreadsheetClient } from './BuyerNumberSpreadsheetClient';
 import { calculateBuyerStatus } from './BuyerStatusCalculator';
 import { STATUS_DEFINITIONS } from '../config/buyer-status-definitions';
 
@@ -404,32 +405,36 @@ export class BuyerService {
   }
 
   /**
-   * 買主番号を自動生成（最新の番号+1）
+   * 買主番号採番用スプレッドシートクライアントを初期化
+   */
+  private async initBuyerNumberClient(): Promise<BuyerNumberSpreadsheetClient> {
+    const spreadsheetId = process.env.BUYER_NUMBER_SPREADSHEET_ID;
+    if (!spreadsheetId) {
+      throw new Error('BUYER_NUMBER_SPREADSHEET_ID is not set');
+    }
+
+    const sheetName = process.env.BUYER_NUMBER_SHEET_NAME || '連番';
+    const cell = process.env.BUYER_NUMBER_CELL || 'B2';
+
+    const sheetsClient = new GoogleSheetsClient({
+      spreadsheetId,
+      sheetName,
+      serviceAccountKeyPath: process.env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH,
+      serviceAccountEmail: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
+      privateKey: process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+    });
+
+    await sheetsClient.authenticate();
+
+    return new BuyerNumberSpreadsheetClient(sheetsClient, cell);
+  }
+
+  /**
+   * 買主番号を自動生成（スプレッドシートの連番シートB2セル+1）
    */
   private async generateBuyerNumber(): Promise<string> {
-    // 最新の買主番号を取得
-    const { data, error } = await this.supabase
-      .from('buyers')
-      .select('buyer_number')
-      .order('buyer_number', { ascending: false })
-      .limit(1);
-
-    if (error) {
-      throw new Error(`Failed to generate buyer number: ${error.message}`);
-    }
-
-    if (!data || data.length === 0) {
-      // 最初の買主番号
-      return '1';
-    }
-
-    // 最新の番号を取得して+1
-    const latestNumber = parseInt(data[0].buyer_number, 10);
-    if (isNaN(latestNumber)) {
-      throw new Error('Invalid buyer number format');
-    }
-
-    return String(latestNumber + 1);
+    const client = await this.initBuyerNumberClient();
+    return client.getNextBuyerNumber();
   }
 
   /**
