@@ -73,7 +73,10 @@ export default function BuyersPage() {
   // 初期値：pageDataCacheにキャッシュがあれば即座にロード済みとして扱う
   const cachedData = pageDataCache.get<{ categories: any[]; buyers: BuyerWithStatus[]; normalStaffInitials: string[] }>(CACHE_KEYS.BUYERS_WITH_STATUS);
   const allBuyersWithStatusRef = useRef<BuyerWithStatus[]>(cachedData?.buyers ?? []);
-  const [sidebarLoaded, setSidebarLoaded] = useState(!!cachedData);
+  // sidebarLoadedをrefで管理（stateにするとonBuyersLoaded呼び出しのたびにfetchBuyersが再実行される）
+  const sidebarLoadedRef = useRef<boolean>(!!cachedData);
+  // テーブル再描画用のトリガー（サイドバーデータ取得完了時のみ更新）
+  const [dataReady, setDataReady] = useState(!!cachedData);
 
   // 検索入力のdebounce（300ms）
   useEffect(() => {
@@ -90,7 +93,7 @@ export default function BuyersPage() {
       try {
         // サイドバーデータ読み込み済みの場合はフロント側でフィルタリング（APIコール不要）
         // キャッシュヒット時はsetLoading(true)をスキップして画面のちらつきを防ぐ
-        if (sidebarLoaded && allBuyersWithStatusRef.current.length > 0) {
+        if (sidebarLoadedRef.current && allBuyersWithStatusRef.current.length > 0) {
           let filtered = selectedCalculatedStatus !== null
             ? allBuyersWithStatusRef.current.filter(b => b.calculated_status === selectedCalculatedStatus)
             : [...allBuyersWithStatusRef.current];
@@ -158,11 +161,16 @@ export default function BuyersPage() {
 
     fetchBuyers();
     return () => { cancelled = true; };
-  }, [page, rowsPerPage, debouncedSearch, selectedCalculatedStatus, refetchTrigger, sidebarLoaded]);
+  }, [page, rowsPerPage, debouncedSearch, selectedCalculatedStatus, refetchTrigger, dataReady]);
 
   const handleBuyersLoaded = (buyers: BuyerWithStatus[]) => {
     allBuyersWithStatusRef.current = buyers;
-    setSidebarLoaded(true);
+    if (!sidebarLoadedRef.current) {
+      // 初回ロード時のみdataReadyをtrueにしてfetchBuyersをトリガー
+      sidebarLoadedRef.current = true;
+      setDataReady(true);
+    }
+    // 既にロード済みの場合はrefのみ更新（再レンダリング不要）
   };
 
   const handleSync = async () => {
@@ -173,7 +181,8 @@ export default function BuyersPage() {
       pageDataCache.invalidate(CACHE_KEYS.BUYERS_WITH_STATUS); // 買主ステータスキャッシュも無効化
       // サイドバーキャッシュをリセット
       allBuyersWithStatusRef.current = [];
-      setSidebarLoaded(false);
+      sidebarLoadedRef.current = false;
+      setDataReady(false);
       setRefetchTrigger(prev => prev + 1);
     } catch (error) {
       console.error('Failed to sync:', error);
