@@ -410,6 +410,22 @@ export class BuyerService {
       console.warn(`[BuyerService] Failed to update buyer number cell after registration (buyer_number=${buyerNumber}): ${updateError.message}`);
     }
 
+    // DB保存成功後、買主リストスプレッドシートに新規行を追加
+    // 失敗しても登録自体は成功とする（警告ログのみ）
+    try {
+      await this.initSyncServices();
+      if (this.writeService) {
+        const appendResult = await this.writeService.appendNewBuyer(data);
+        if (!appendResult.success) {
+          console.warn(`[BuyerService] Failed to append new buyer to spreadsheet (buyer_number=${buyerNumber}): ${appendResult.error}`);
+        } else {
+          console.log(`[BuyerService] Successfully appended buyer ${buyerNumber} to spreadsheet`);
+        }
+      }
+    } catch (appendError: any) {
+      console.warn(`[BuyerService] Error appending new buyer to spreadsheet (buyer_number=${buyerNumber}): ${appendError.message}`);
+    }
+
     return data;
   }
 
