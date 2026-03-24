@@ -1533,12 +1533,8 @@ TEL：097-533-2022`;
                       );
                     }
 
-                    // broker_inquiryフィールドは特別処理（チップ選択）
+                    // broker_inquiryフィールドは特別処理（ボックス選択）
                     if (field.key === 'broker_inquiry') {
-                      // company_name が空の場合は非表示
-                      if (!buyer.company_name || !buyer.company_name.trim()) {
-                        return null;
-                      }
                       const BROKER_OPTIONS = ['業者', '個人'];
                       return (
                         <Grid item xs={12} key={`${section.title}-${field.key}`}>
