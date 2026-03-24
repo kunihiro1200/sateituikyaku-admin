@@ -926,26 +926,6 @@ export default function NewBuyerPage() {
                 <Grid item xs={12}>
                   {!registeredBuyerNumber ? (
                     <Box sx={{ mt: 2 }}>
-                      <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', mb: 1.5 }}>
-                        <Button
-                          type="submit"
-                          variant="contained"
-                          color="success"
-                          disabled={loading}
-                          onClick={() => setPostRegistrationAction('desired-conditions')}
-                        >
-                          {loading && postRegistrationAction === 'desired-conditions' ? '登録中...' : '登録して希望条件を入力'}
-                        </Button>
-                        <Button
-                          type="submit"
-                          variant="contained"
-                          color="primary"
-                          disabled={loading}
-                          onClick={() => setPostRegistrationAction('viewing-result')}
-                        >
-                          {loading && postRegistrationAction === 'viewing-result' ? '登録中...' : '登録して内覧を入力'}
-                        </Button>
-                      </Box>
                       <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
                         <Button
                           variant="outlined"
@@ -964,9 +944,8 @@ export default function NewBuyerPage() {
                           type="submit"
                           variant="contained"
                           disabled={loading}
-                          onClick={() => setPostRegistrationAction(null)}
                         >
-                          {loading && !postRegistrationAction ? '登録中...' : '登録'}
+                          {loading ? '登録中...' : '登録'}
                         </Button>
                       </Box>
                     </Box>
