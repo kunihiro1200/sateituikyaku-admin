@@ -103,7 +103,7 @@ function invalidateSellerCache(sellerId: string): void {
 // listSellers 用インメモリキャッシュ（60秒TTL）
 // Redis が遅い/未接続の場合でも高速レスポンスを返すための前段キャッシュ
 const _listSellersCache = new Map<string, { data: any; expiresAt: number }>();
-const LIST_SELLERS_CACHE_TTL_MS = 60 * 1000; // 60秒
+const LIST_SELLERS_CACHE_TTL_MS = 5 * 60 * 1000; // 5分（Vercelコールドスタート対策）
 
 function getListSellersCache(cacheKey: string): any | null {
   const entry = _listSellersCache.get(cacheKey);
@@ -1168,7 +1168,8 @@ export class SellerService extends BaseRepository {
           .select('seller_id, created_at')
           .in('seller_id', sellerIds)
           .eq('type', 'phone_call')
-          .order('created_at', { ascending: false });
+          .order('created_at', { ascending: false })
+          .limit(sellerIds.length * 5); // 各売主最大5件分で十分（最新1件のみ使用）
 
         if (latestCalls) {
           // 各売主の最新通話日時のみを保持（最初に出てきたものが最新）
@@ -1232,7 +1233,8 @@ export class SellerService extends BaseRepository {
           .select('seller_id, created_at')
           .in('seller_id', sellerIds)
           .eq('type', 'phone_call')
-          .order('created_at', { ascending: false });
+          .order('created_at', { ascending: false })
+          .limit(sellerIds.length * 5); // 各売主最大5件分で十分（最新1件のみ使用）
         if (latestCalls) {
           for (const call of latestCalls) {
             const sellerNumber = idToSellerNumber[call.seller_id];

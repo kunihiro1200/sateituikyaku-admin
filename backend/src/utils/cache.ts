@@ -66,7 +66,7 @@ export class CacheHelper {
  * キャッシュTTL定数（秒）
  */
 export const CACHE_TTL = {
-  SELLER_LIST: 60, // 1分
+  SELLER_LIST: 300, // 5分（Vercelコールドスタート対策）
   SELLER_DETAIL: 300, // 5分
   VALUATION: 600, // 10分
   STATISTICS: 300, // 5分
