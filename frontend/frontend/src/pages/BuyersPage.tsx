@@ -59,7 +59,8 @@ function normalizeSearch(str: string): string {
 export default function BuyersPage() {
   const navigate = useNavigate();
   const [buyers, setBuyers] = useState<Buyer[]>([]);
-  const [loading, setLoading] = useState(true);
+  // キャッシュがあれば初期ローディングをスキップ
+  const [loading, setLoading] = useState(!pageDataCache.get(CACHE_KEYS.BUYERS_WITH_STATUS));
   const [syncing, setSyncing] = useState(false);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(50);

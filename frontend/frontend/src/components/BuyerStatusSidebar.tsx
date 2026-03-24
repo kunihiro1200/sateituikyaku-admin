@@ -58,12 +58,32 @@ export default function BuyerStatusSidebar({
   totalCount: totalCountProp,
   onBuyersLoaded,
 }: BuyerStatusSidebarProps) {
-  const [categories, setCategories] = useState<StatusCategory[]>([]);
-  const [normalStaffInitials, setNormalStaffInitials] = useState<string[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [internalTotalCount, setInternalTotalCount] = useState(0);
+  // キャッシュがあれば初期値として使用（再マウント時のちらつきを防ぐ）
+  const _initialCache = pageDataCache.get<{
+    categories: StatusCategory[];
+    buyers: BuyerWithStatus[];
+    normalStaffInitials: string[];
+  }>(CACHE_KEYS.BUYERS_WITH_STATUS);
+
+  const [categories, setCategories] = useState<StatusCategory[]>(
+    _initialCache ? _initialCache.categories.filter((cat: StatusCategory) => cat.count > 0) : []
+  );
+  const [normalStaffInitials, setNormalStaffInitials] = useState<string[]>(
+    _initialCache ? (_initialCache.normalStaffInitials || []) : []
+  );
+  const [loading, setLoading] = useState(!_initialCache);
+  const [internalTotalCount, setInternalTotalCount] = useState(
+    _initialCache ? _initialCache.categories.reduce((sum: number, cat: StatusCategory) => sum + cat.count, 0) : 0
+  );
 
   useEffect(() => {
+    // キャッシュがある場合は onBuyersLoaded を即座に呼ぶ（useEffect内で同期的に）
+    if (_initialCache) {
+      if (onBuyersLoaded) {
+        onBuyersLoaded(_initialCache.buyers);
+      }
+      return;
+    }
     fetchStatusCategories();
   }, []);
 
