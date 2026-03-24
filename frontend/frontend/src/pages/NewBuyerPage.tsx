@@ -24,6 +24,12 @@ import api from '../services/api';
 import { INQUIRY_SOURCE_OPTIONS } from '../utils/buyerInquirySourceOptions';
 import { LATEST_STATUS_OPTIONS } from '../utils/buyerLatestStatusOptions';
 import {
+  INQUIRY_EMAIL_PHONE_OPTIONS,
+  THREE_CALLS_CONFIRMED_OPTIONS,
+  EMAIL_TYPE_OPTIONS,
+  DISTRIBUTION_TYPE_OPTIONS,
+} from '../utils/buyerFieldOptions';
+import {
   AREA_OPTIONS,
   DESIRED_PROPERTY_TYPE_OPTIONS,
   PARKING_SPACES_OPTIONS,
@@ -106,6 +112,25 @@ export default function NewBuyerPage() {
   const [followUpAssignee, setFollowUpAssignee] = useState('');
   const [viewingResultFollowUp, setViewingResultFollowUp] = useState('');
 
+  // 問合せ情報（追加フィールド）
+  const [inquiryEmailPhone, setInquiryEmailPhone] = useState('');
+  const [threeCallsConfirmed, setThreeCallsConfirmed] = useState('');
+  const [emailType, setEmailType] = useState('');
+  const [distributionType, setDistributionType] = useState('');
+  const [ownedHomeHearing, setOwnedHomeHearing] = useState('');
+  const [nextCallDate, setNextCallDate] = useState('');
+
+  // その他
+  const [specialNotes, setSpecialNotes] = useState('');
+  const [messageToAssignee, setMessageToAssignee] = useState('');
+  const [confirmationToAssignee, setConfirmationToAssignee] = useState('');
+  const [familyComposition, setFamilyComposition] = useState('');
+  const [mustHavePoints, setMustHavePoints] = useState('');
+  const [likedPoints, setLikedPoints] = useState('');
+  const [dislikedPoints, setDislikedPoints] = useState('');
+  const [purchaseObstacles, setPurchaseObstacles] = useState('');
+  const [nextAction, setNextAction] = useState('');
+
   useEffect(() => {
     if (propertyNumber) {
       fetchPropertyInfo(propertyNumber);
@@ -177,6 +202,23 @@ export default function NewBuyerPage() {
         viewing_time: viewingTime || null,
         follow_up_assignee: followUpAssignee || null,
         viewing_result_follow_up: viewingResultFollowUp || null,
+        // 問合せ情報（追加）
+        inquiry_email_phone: inquiryEmailPhone || null,
+        three_calls_confirmed: threeCallsConfirmed || null,
+        email_type: emailType || null,
+        distribution_type: distributionType || null,
+        owned_home_hearing: ownedHomeHearing || null,
+        next_call_date: nextCallDate || null,
+        // その他
+        special_notes: specialNotes || null,
+        message_to_assignee: messageToAssignee || null,
+        confirmation_to_assignee: confirmationToAssignee || null,
+        family_composition: familyComposition || null,
+        must_have_points: mustHavePoints || null,
+        liked_points: likedPoints || null,
+        disliked_points: dislikedPoints || null,
+        purchase_obstacles: purchaseObstacles || null,
+        next_action: nextAction || null,
       };
 
       const response = await api.post('/api/buyers', buyerData);
@@ -685,15 +727,39 @@ export default function NewBuyerPage() {
                 </Grid>
 
                 <Grid item xs={12}>
-                  <TextField
-                    fullWidth
-                    label="問合時ヒアリング"
-                    multiline
-                    rows={4}
-                    value={inquiryHearing}
-                    onChange={(e) => setInquiryHearing(e.target.value)}
-                    placeholder="ヒアリング内容を入力してください"
-                  />
+                  <Box sx={{ mb: 1 }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+                      問合時ヒアリング
+                    </Typography>
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 1 }}>
+                      {[
+                        { label: '初見か', text: '初見か：' },
+                        { label: '希望時期', text: '希望時期：' },
+                        { label: '駐車場希望台数', text: '駐車場希望台数：' },
+                        { label: 'リフォーム予算', text: 'リフォーム込みの予算（最高額）：' },
+                        { label: '持ち家か', text: '持ち家か：' },
+                        { label: '他物件', text: '他に気になる物件はあるか？：' },
+                      ].map((item) => (
+                        <Chip
+                          key={item.label}
+                          label={item.label}
+                          size="small"
+                          onClick={() => setInquiryHearing((prev) => prev ? prev + '
+' + item.text : item.text)}
+                          variant="outlined"
+                          sx={{ cursor: 'pointer' }}
+                        />
+                      ))}
+                    </Box>
+                    <TextField
+                      fullWidth
+                      multiline
+                      rows={4}
+                      value={inquiryHearing}
+                      onChange={(e) => setInquiryHearing(e.target.value)}
+                      placeholder="ヒアリング内容を入力してください"
+                    />
+                  </Box>
                 </Grid>
 
                 <Grid item xs={12}>
@@ -712,6 +778,91 @@ export default function NewBuyerPage() {
                       ))}
                     </Select>
                   </FormControl>
+                </Grid>
+
+                {/* 問合せ情報（追加フィールド） */}
+                <Grid item xs={12} sm={6}>
+                  <FormControl fullWidth>
+                    <InputLabel>【問合メール】電話対応</InputLabel>
+                    <Select
+                      value={inquiryEmailPhone}
+                      label="【問合メール】電話対応"
+                      onChange={(e) => setInquiryEmailPhone(e.target.value)}
+                    >
+                      <MenuItem value=""><em>未選択</em></MenuItem>
+                      {INQUIRY_EMAIL_PHONE_OPTIONS.map((opt) => (
+                        <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+
+                <Grid item xs={12} sm={6}>
+                  <FormControl fullWidth>
+                    <InputLabel>3回架電確認済み</InputLabel>
+                    <Select
+                      value={threeCallsConfirmed}
+                      label="3回架電確認済み"
+                      onChange={(e) => setThreeCallsConfirmed(e.target.value)}
+                    >
+                      <MenuItem value=""><em>未選択</em></MenuItem>
+                      {THREE_CALLS_CONFIRMED_OPTIONS.map((opt) => (
+                        <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+
+                <Grid item xs={12} sm={6}>
+                  <FormControl fullWidth>
+                    <InputLabel>メール種別</InputLabel>
+                    <Select
+                      value={emailType}
+                      label="メール種別"
+                      onChange={(e) => setEmailType(e.target.value)}
+                    >
+                      <MenuItem value=""><em>未選択</em></MenuItem>
+                      {EMAIL_TYPE_OPTIONS.map((opt) => (
+                        <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+
+                <Grid item xs={12} sm={6}>
+                  <FormControl fullWidth>
+                    <InputLabel>配信種別</InputLabel>
+                    <Select
+                      value={distributionType}
+                      label="配信種別"
+                      onChange={(e) => setDistributionType(e.target.value)}
+                    >
+                      <MenuItem value=""><em>未選択</em></MenuItem>
+                      {DISTRIBUTION_TYPE_OPTIONS.map((opt) => (
+                        <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label="持家ヒアリング"
+                    value={ownedHomeHearing}
+                    onChange={(e) => setOwnedHomeHearing(e.target.value)}
+                  />
+                </Grid>
+
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label="次電日"
+                    type="date"
+                    value={nextCallDate}
+                    onChange={(e) => setNextCallDate(e.target.value)}
+                    InputLabelProps={{ shrink: true }}
+                  />
                 </Grid>
 
                 {/* 希望条件 */}
@@ -937,6 +1088,98 @@ export default function NewBuyerPage() {
                     value={viewingResultFollowUp}
                     onChange={(e) => setViewingResultFollowUp(e.target.value)}
                     placeholder="内覧結果や後続対応の内容を入力してください"
+                  />
+                </Grid>
+
+                {/* その他 */}
+                <Grid item xs={12}>
+                  <Typography variant="h6" gutterBottom sx={{ mt: 2 }}>その他</Typography>
+                </Grid>
+
+                <Grid item xs={12}>
+                  <TextField
+                    fullWidth
+                    label="特記事項"
+                    multiline
+                    rows={3}
+                    value={specialNotes}
+                    onChange={(e) => setSpecialNotes(e.target.value)}
+                  />
+                </Grid>
+
+                <Grid item xs={12}>
+                  <TextField
+                    fullWidth
+                    label="担当への伝言/質問事項"
+                    multiline
+                    rows={2}
+                    value={messageToAssignee}
+                    onChange={(e) => setMessageToAssignee(e.target.value)}
+                  />
+                </Grid>
+
+                <Grid item xs={12}>
+                  <TextField
+                    fullWidth
+                    label="担当への確認事項"
+                    multiline
+                    rows={2}
+                    value={confirmationToAssignee}
+                    onChange={(e) => setConfirmationToAssignee(e.target.value)}
+                  />
+                </Grid>
+
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label="家族構成"
+                    value={familyComposition}
+                    onChange={(e) => setFamilyComposition(e.target.value)}
+                  />
+                </Grid>
+
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label="譲れない点"
+                    value={mustHavePoints}
+                    onChange={(e) => setMustHavePoints(e.target.value)}
+                  />
+                </Grid>
+
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label="気に入っている点"
+                    value={likedPoints}
+                    onChange={(e) => setLikedPoints(e.target.value)}
+                  />
+                </Grid>
+
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label="ダメな点"
+                    value={dislikedPoints}
+                    onChange={(e) => setDislikedPoints(e.target.value)}
+                  />
+                </Grid>
+
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label="購入時障害となる点"
+                    value={purchaseObstacles}
+                    onChange={(e) => setPurchaseObstacles(e.target.value)}
+                  />
+                </Grid>
+
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label="次のアクション"
+                    value={nextAction}
+                    onChange={(e) => setNextAction(e.target.value)}
                   />
                 </Grid>
 
