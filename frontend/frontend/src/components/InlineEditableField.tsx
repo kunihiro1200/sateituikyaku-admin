@@ -343,11 +343,6 @@ export const InlineEditableField: React.FC<InlineEditableFieldProps> = memo(({
       {label && (
         <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
           {label}
-          {isEditing && (
-            <Typography component="span" variant="caption" color="primary" sx={{ ml: 1 }}>
-              編集中
-            </Typography>
-          )}
         </Typography>
       )}
       
