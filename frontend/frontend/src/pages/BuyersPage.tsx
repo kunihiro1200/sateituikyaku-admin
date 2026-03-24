@@ -70,8 +70,10 @@ export default function BuyersPage() {
   const [selectedCalculatedStatus, setSelectedCalculatedStatus] = useState<string | null>(null);
 
   // サイドバーから取得した全買主データ（フロントキャッシュ）
-  const allBuyersWithStatusRef = useRef<BuyerWithStatus[]>([]);
-  const [sidebarLoaded, setSidebarLoaded] = useState(false);
+  // 初期値：pageDataCacheにキャッシュがあれば即座にロード済みとして扱う
+  const cachedData = pageDataCache.get<{ categories: any[]; buyers: BuyerWithStatus[]; normalStaffInitials: string[] }>(CACHE_KEYS.BUYERS_WITH_STATUS);
+  const allBuyersWithStatusRef = useRef<BuyerWithStatus[]>(cachedData?.buyers ?? []);
+  const [sidebarLoaded, setSidebarLoaded] = useState(!!cachedData);
 
   // 検索入力のdebounce（300ms）
   useEffect(() => {

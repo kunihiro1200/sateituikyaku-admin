@@ -69,46 +69,47 @@ export default function BuyerStatusSidebar({
 
   // 1回のリクエストでカテゴリ + 全買主データを取得（5分キャッシュ）
   const fetchStatusCategories = async () => {
+    // キャッシュチェック（先に確認してloadingをスキップ）
+    const cached = pageDataCache.get<{
+      categories: StatusCategory[];
+      buyers: BuyerWithStatus[];
+      normalStaffInitials: string[];
+    }>(CACHE_KEYS.BUYERS_WITH_STATUS);
+
+    if (cached) {
+      // キャッシュヒット：loadingなしで即座に反映
+      const total = cached.categories.reduce((sum: number, cat: StatusCategory) => sum + cat.count, 0);
+      setInternalTotalCount(total);
+      setCategories(cached.categories.filter((cat: StatusCategory) => cat.count > 0));
+      setNormalStaffInitials(cached.normalStaffInitials || []);
+      setLoading(false);
+      if (onBuyersLoaded) {
+        onBuyersLoaded(cached.buyers);
+      }
+      return;
+    }
+
+    // キャッシュなし：APIから取得
     try {
       setLoading(true);
 
-      // キャッシュチェック
-      const cached = pageDataCache.get<{
+      const res = await api.get('/api/buyers/status-categories-with-buyers');
+      const result = res.data as {
         categories: StatusCategory[];
         buyers: BuyerWithStatus[];
         normalStaffInitials: string[];
-      }>(CACHE_KEYS.BUYERS_WITH_STATUS);
+      };
 
-      let data: StatusCategory[];
-      let buyers: BuyerWithStatus[];
-      let initials: string[];
+      // 5分間キャッシュ
+      pageDataCache.set(CACHE_KEYS.BUYERS_WITH_STATUS, result, 5 * 60 * 1000);
 
-      if (cached) {
-        data = cached.categories;
-        buyers = cached.buyers;
-        initials = cached.normalStaffInitials;
-      } else {
-        const res = await api.get('/api/buyers/status-categories-with-buyers');
-        const result = res.data as {
-          categories: StatusCategory[];
-          buyers: BuyerWithStatus[];
-          normalStaffInitials: string[];
-        };
-        data = result.categories;
-        buyers = result.buyers;
-        initials = result.normalStaffInitials;
-
-        // 5分間キャッシュ
-        pageDataCache.set(CACHE_KEYS.BUYERS_WITH_STATUS, result, 5 * 60 * 1000);
-      }
-
-      const total = data.reduce((sum: number, cat: StatusCategory) => sum + cat.count, 0);
+      const total = result.categories.reduce((sum: number, cat: StatusCategory) => sum + cat.count, 0);
       setInternalTotalCount(total);
-      setCategories(data.filter((cat: StatusCategory) => cat.count > 0));
-      setNormalStaffInitials(initials || []);
+      setCategories(result.categories.filter((cat: StatusCategory) => cat.count > 0));
+      setNormalStaffInitials(result.normalStaffInitials || []);
 
       if (onBuyersLoaded) {
-        onBuyersLoaded(buyers);
+        onBuyersLoaded(result.buyers);
       }
     } catch (error) {
       console.error('Failed to fetch status categories:', error);
