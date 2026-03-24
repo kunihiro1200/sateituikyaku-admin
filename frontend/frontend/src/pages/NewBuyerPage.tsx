@@ -20,6 +20,7 @@ import {
 import { ArrowBack as ArrowBackIcon } from '@mui/icons-material';
 import api from '../services/api';
 import { INQUIRY_SOURCE_OPTIONS } from '../utils/buyerInquirySourceOptions';
+import { LATEST_STATUS_OPTIONS } from '../utils/buyerLatestStatusOptions';
 
 interface PropertyInfo {
   property_number: string;
@@ -46,6 +47,7 @@ interface PropertyInfo {
 
 export default function NewBuyerPage() {
   const navigate = useNavigate();
+  const [registeredBuyerNumber, setRegisteredBuyerNumber] = useState<string | null>(null);
   const [searchParams] = useSearchParams();
   const propertyNumber = searchParams.get('propertyNumber');
 
@@ -70,7 +72,7 @@ export default function NewBuyerPage() {
   const [receptionDate, setReceptionDate] = useState(new Date().toISOString().split('T')[0]);
   const [inquirySource, setInquirySource] = useState('');
   const [inquiryHearing, setInquiryHearing] = useState('');
-  const [inquiryConfidence, setInquiryConfidence] = useState('');
+  const [latestStatus, setLatestStatus] = useState('');
   const [initialAssignee, setInitialAssignee] = useState('');
   
   // 希望条件
@@ -132,21 +134,16 @@ export default function NewBuyerPage() {
         reception_date: receptionDate,
         inquiry_source: inquirySource,
         inquiry_hearing: inquiryHearing,
-        inquiry_confidence: inquiryConfidence,
+        latest_status: latestStatus,
         initial_assignee: initialAssignee,
         desired_area: desiredArea,
         desired_property_type: desiredPropertyType,
         budget,
       };
 
-      await api.post('/api/buyers', buyerData);
-      
-      // 物件番号がある場合は物件詳細ページに戻る
-      if (propertyNumberField) {
-        navigate(`/property-listings/${propertyNumberField}`);
-      } else {
-        navigate('/buyers');
-      }
+      const response = await api.post('/api/buyers', buyerData);
+      const createdBuyerNumber = response.data.buyer_number || nextBuyerNumber;
+      setRegisteredBuyerNumber(createdBuyerNumber);
     } catch (err: any) {
       setError(err.response?.data?.error || '買主の作成に失敗しました');
     } finally {
@@ -177,6 +174,51 @@ export default function NewBuyerPage() {
         <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>
           {error}
         </Alert>
+      )}
+
+      {/* 登録完了後のボタン表示 */}
+      {registeredBuyerNumber && (
+        <Box sx={{ mb: 3, p: 3, bgcolor: 'success.light', borderRadius: 2 }}>
+          <Typography variant="h6" color="success.dark" gutterBottom>
+            ✅ 買主番号 {registeredBuyerNumber} を登録しました
+          </Typography>
+          <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', mt: 2 }}>
+            <Button
+              variant="contained"
+              color="success"
+              onClick={() => navigate(`/buyers/${registeredBuyerNumber}/desired-conditions`)}
+            >
+              希望条件を入力
+            </Button>
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={() => navigate(`/buyers/${registeredBuyerNumber}/viewing-result`)}
+            >
+              内覧を入力
+            </Button>
+            <Button
+              variant="outlined"
+              onClick={() => navigate(`/buyers/${registeredBuyerNumber}`)}
+            >
+              買主詳細を見る
+            </Button>
+            {propertyNumberField && (
+              <Button
+                variant="outlined"
+                onClick={() => navigate(`/property-listings/${propertyNumberField}`)}
+              >
+                物件詳細に戻る
+              </Button>
+            )}
+            <Button
+              variant="outlined"
+              onClick={() => navigate('/buyers')}
+            >
+              買主リストに戻る
+            </Button>
+          </Box>
+        </Box>
       )}
 
       <Grid container spacing={3}>
@@ -505,12 +547,17 @@ export default function NewBuyerPage() {
 
                 {showBrokerInquiry(companyName) && (
                   <Grid item xs={12} sm={6}>
-                    <TextField
-                      fullWidth
-                      label="業者問合せ"
-                      value={brokerInquiry}
-                      onChange={(e) => setBrokerInquiry(e.target.value)}
-                    />
+                    <FormControl fullWidth required>
+                      <InputLabel>業者問合せ</InputLabel>
+                      <Select
+                        value={brokerInquiry}
+                        label="業者問合せ"
+                        onChange={(e) => setBrokerInquiry(e.target.value)}
+                      >
+                        <MenuItem value="業者問合せ">業者問合せ</MenuItem>
+                        <MenuItem value="業者（両手）">業者（両手）</MenuItem>
+                      </Select>
+                    </FormControl>
                   </Grid>
                 )}
 
@@ -580,14 +627,22 @@ export default function NewBuyerPage() {
                   />
                 </Grid>
 
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    fullWidth
-                    label="問合時確度"
-                    value={inquiryConfidence}
-                    onChange={(e) => setInquiryConfidence(e.target.value)}
-                    placeholder="例: A, B, C, S"
-                  />
+                <Grid item xs={12}>
+                  <FormControl fullWidth>
+                    <InputLabel>★最新状況</InputLabel>
+                    <Select
+                      value={latestStatus}
+                      label="★最新状況"
+                      onChange={(e) => setLatestStatus(e.target.value)}
+                    >
+                      <MenuItem value=""><em>未選択</em></MenuItem>
+                      {LATEST_STATUS_OPTIONS.map((option) => (
+                        <MenuItem key={option.value} value={option.value}>
+                          {option.label}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
                 </Grid>
 
                 {/* 希望条件 */}
