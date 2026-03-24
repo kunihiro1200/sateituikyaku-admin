@@ -142,9 +142,16 @@ export const InlineEditableField: React.FC<InlineEditableFieldProps> = memo(({
     }
   };
 
-  // Handle blur to save
+  // Handle blur to save (値が変わっていない場合はキャンセル)
   const handleBlur = async () => {
     if (isEditing && !isSaving) {
+      // 値が変わっていない場合は保存せずキャンセル（空文字エラー防止）
+      const currentVal = editValue ?? '';
+      const originalVal = value ?? '';
+      if (String(currentVal) === String(originalVal)) {
+        cancelEdit();
+        return;
+      }
       await saveValue();
     }
   };

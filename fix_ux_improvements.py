@@ -1,56 +1,39 @@
 #!/usr/bin/env python3
-# 2点のUX改善:
-# 1. InlineEditableField の「編集中」テキストを削除（適用済み）
-# 2. BuyerDetailPage のセクション Paper に isDirty 時の背景色を追加
+# InlineEditableField: handleBlur で値が変わっていない場合はキャンセルする修正
 
-# ===== 2. BuyerDetailPage のセクション Paper に isDirty 背景色を追加 =====
-with open('frontend/frontend/src/pages/BuyerDetailPage.tsx', 'rb') as f:
+with open('frontend/frontend/src/components/InlineEditableField.tsx', 'rb') as f:
     content = f.read()
 text = content.decode('utf-8')
 
-old_paper = """          {BUYER_FIELD_SECTIONS.map((section) => (
-            <Paper 
-              key={section.title} 
-              sx={{ 
-                p: 2, 
-                mb: 2,
-                // 内覧結果グループには特別なスタイルを適用
-                ...(section.isViewingResultGroup && {
-                  bgcolor: 'rgba(33, 150, 243, 0.08)',  // 薄い青色の背景
-                  border: '1px solid',
-                  borderColor: 'rgba(46, 125, 50, 0.3)',
-                }),
-              }}
-            >"""
+# handleBlur を修正: 値が変わっていない場合は cancelEdit を呼ぶ
+old_blur = """  // Handle blur to save
+  const handleBlur = async () => {
+    if (isEditing && !isSaving) {
+      await saveValue();
+    }
+  };"""
 
-new_paper = """          {BUYER_FIELD_SECTIONS.map((section) => (
-            <Paper 
-              key={section.title} 
-              sx={{ 
-                p: 2, 
-                mb: 2,
-                transition: 'background-color 0.3s ease, box-shadow 0.3s ease',
-                // 変更あり（未保存）のセクションは背景色で強調
-                ...(sectionDirtyStates[section.title] && {
-                  bgcolor: 'rgba(255, 152, 0, 0.08)',
-                  boxShadow: '0 0 0 2px rgba(255, 152, 0, 0.4)',
-                }),
-                // 内覧結果グループには特別なスタイルを適用
-                ...(section.isViewingResultGroup && {
-                  bgcolor: 'rgba(33, 150, 243, 0.08)',  // 薄い青色の背景
-                  border: '1px solid',
-                  borderColor: 'rgba(46, 125, 50, 0.3)',
-                }),
-              }}
-            >"""
+new_blur = """  // Handle blur to save (値が変わっていない場合はキャンセル)
+  const handleBlur = async () => {
+    if (isEditing && !isSaving) {
+      // 値が変わっていない場合は保存せずキャンセル（空文字エラー防止）
+      const currentVal = editValue ?? '';
+      const originalVal = value ?? '';
+      if (String(currentVal) === String(originalVal)) {
+        cancelEdit();
+        return;
+      }
+      await saveValue();
+    }
+  };"""
 
-if old_paper in text:
-    text = text.replace(old_paper, new_paper)
-    print('OK: セクション背景色を追加')
+if old_blur in text:
+    text = text.replace(old_blur, new_blur)
+    print('OK: handleBlur に値変更チェックを追加')
 else:
-    print('NG: パターンが見つかりません')
+    print('NG: handleBlur パターンが見つかりません')
 
-with open('frontend/frontend/src/pages/BuyerDetailPage.tsx', 'wb') as f:
+with open('frontend/frontend/src/components/InlineEditableField.tsx', 'wb') as f:
     f.write(text.encode('utf-8'))
 
 print('Done!')

@@ -295,10 +295,14 @@ export default function BuyerDetailPage() {
     if (!buyer) return;
 
     try {
+      // 日付フィールドの空文字は null に変換（timestamp エラー防止）
+      const DATE_FIELDS = ['next_call_date', 'reception_date', 'visit_date', 'contract_date'];
+      const sanitizedValue = DATE_FIELDS.includes(fieldName) && newValue === '' ? null : newValue;
+
       // 更新するフィールドのみを送信（双方向同期を有効化）
       const result = await buyerApi.update(
         buyer_number!,
-        { [fieldName]: newValue },
+        { [fieldName]: sanitizedValue },
         { sync: true }  // スプレッドシートへの同期を有効化
       );
       
@@ -1489,60 +1493,85 @@ TEL：097-533-2022`;
                             )}
                           </Box>
                           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                            {normalInitials.map((initial) => (
-                              <Chip
-                                key={initial}
-                                label={initial}
-                                size="small"
-                                onClick={async () => {
-                                  const newValue = buyer.initial_assignee === initial ? '' : initial;
-                                  await handleInlineFieldSave('initial_assignee', newValue);
-                                }}
-                                color={buyer.initial_assignee === initial ? 'primary' : 'default'}
-                                variant={buyer.initial_assignee === initial ? 'filled' : 'outlined'}
-                                sx={{ cursor: 'pointer', fontWeight: buyer.initial_assignee === initial ? 'bold' : 'normal' }}
-                              />
-                            ))}
+                            {normalInitials.map((initial) => {
+                              const isSelected = buyer.initial_assignee === initial;
+                              return (
+                                <Button
+                                  key={initial}
+                                  size="small"
+                                  variant={isSelected ? 'contained' : 'outlined'}
+                                  color="primary"
+                                  onClick={async () => {
+                                    const newValue = isSelected ? '' : initial;
+                                    await handleInlineFieldSave('initial_assignee', newValue);
+                                  }}
+                                  sx={{
+                                    minWidth: 40,
+                                    px: 1.5,
+                                    py: 0.5,
+                                    fontWeight: isSelected ? 'bold' : 'normal',
+                                    borderRadius: 1,
+                                  }}
+                                >
+                                  {initial}
+                                </Button>
+                              );
+                            })}
                             {/* 現在の値がリストにない場合も表示 */}
                             {buyer.initial_assignee && !normalInitials.includes(buyer.initial_assignee) && (
-                              <Chip
-                                label={buyer.initial_assignee}
+                              <Button
                                 size="small"
+                                variant="contained"
                                 color="primary"
-                                variant="filled"
-                                sx={{ fontWeight: 'bold' }}
-                              />
+                                sx={{ minWidth: 40, px: 1.5, py: 0.5, fontWeight: 'bold', borderRadius: 1 }}
+                              >
+                                {buyer.initial_assignee}
+                              </Button>
                             )}
                           </Box>
                         </Grid>
                       );
                     }
 
-                    // broker_inquiryフィールドは特別処理（条件付きドロップダウン）
+                    // broker_inquiryフィールドは特別処理（チップ選択）
                     if (field.key === 'broker_inquiry') {
                       // company_name が空の場合は非表示
                       if (!buyer.company_name || !buyer.company_name.trim()) {
                         return null;
                       }
-                      const handleFieldSave = async (newValue: any) => {
-                        const result = await handleInlineFieldSave(field.key, newValue);
-                        if (result && !result.success && result.error) {
-                          throw new Error(result.error);
-                        }
-                      };
+                      const BROKER_OPTIONS = ['業者', '個人'];
                       return (
-                        <Grid item {...gridSize} key={`${section.title}-${field.key}`}>
-                          <InlineEditableField
-                            label={field.label}
-                            value={value || ''}
-                            fieldName={field.key}
-                            fieldType="text"
-                            onSave={handleFieldSave}
-                            onChange={(fieldName, newValue) => handleFieldChange(section.title, fieldName, newValue)}
-                            buyerId={buyer_number}
-                            enableConflictDetection={true}
-                            showEditIndicator={true}
-                          />
+                        <Grid item xs={12} key={`${section.title}-${field.key}`}>
+                          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+                            {field.label}
+                          </Typography>
+                          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                            {BROKER_OPTIONS.map((option) => {
+                              const isSelected = buyer.broker_inquiry === option;
+                              return (
+                                <Button
+                                  key={option}
+                                  size="small"
+                                  variant={isSelected ? 'contained' : 'outlined'}
+                                  color="primary"
+                                  onClick={async () => {
+                                    const newValue = isSelected ? '' : option;
+                                    handleFieldChange(section.title, field.key, newValue);
+                                    await handleInlineFieldSave(field.key, newValue);
+                                  }}
+                                  sx={{
+                                    minWidth: 48,
+                                    px: 1.5,
+                                    py: 0.5,
+                                    fontWeight: isSelected ? 'bold' : 'normal',
+                                    borderRadius: 1,
+                                  }}
+                                >
+                                  {option}
+                                </Button>
+                              );
+                            })}
+                          </Box>
                         </Grid>
                       );
                     }
