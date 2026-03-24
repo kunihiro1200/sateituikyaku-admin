@@ -687,28 +687,70 @@ export default function NewBuyerPage() {
 
                 {/* ボタン */}
                 <Grid item xs={12}>
-                  <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end', mt: 2 }}>
-                    <Button
-                      variant="outlined"
-                      onClick={() => {
-                        if (propertyNumberField) {
-                          navigate(`/property-listings/${propertyNumberField}`);
-                        } else {
-                          navigate('/buyers');
-                        }
-                      }}
-                      disabled={loading}
-                    >
-                      キャンセル
-                    </Button>
-                    <Button
-                      type="submit"
-                      variant="contained"
-                      disabled={loading}
-                    >
-                      {loading ? '登録中...' : '登録'}
-                    </Button>
-                  </Box>
+                  {!registeredBuyerNumber ? (
+                    <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end', mt: 2 }}>
+                      <Button
+                        variant="outlined"
+                        onClick={() => {
+                          if (propertyNumberField) {
+                            navigate(`/property-listings/${propertyNumberField}`);
+                          } else {
+                            navigate('/buyers');
+                          }
+                        }}
+                        disabled={loading}
+                      >
+                        キャンセル
+                      </Button>
+                      <Button
+                        type="submit"
+                        variant="contained"
+                        disabled={loading}
+                      >
+                        {loading ? '登録中...' : '登録'}
+                      </Button>
+                    </Box>
+                  ) : (
+                    <Box sx={{ mt: 2, p: 2, bgcolor: 'success.light', borderRadius: 2 }}>
+                      <Typography variant="subtitle1" color="success.dark" fontWeight="bold" gutterBottom>
+                        ✅ 買主番号 {registeredBuyerNumber} を登録しました
+                      </Typography>
+                      <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', mt: 1 }}>
+                        <Button
+                          variant="contained"
+                          color="success"
+                          size="small"
+                          onClick={() => navigate(`/buyers/${registeredBuyerNumber}/desired-conditions`)}
+                        >
+                          希望条件を入力
+                        </Button>
+                        <Button
+                          variant="contained"
+                          color="primary"
+                          size="small"
+                          onClick={() => navigate(`/buyers/${registeredBuyerNumber}/viewing-result`)}
+                        >
+                          内覧を入力
+                        </Button>
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          onClick={() => navigate(`/buyers/${registeredBuyerNumber}`)}
+                        >
+                          買主詳細を見る
+                        </Button>
+                        {propertyNumberField && (
+                          <Button
+                            variant="outlined"
+                            size="small"
+                            onClick={() => navigate(`/property-listings/${propertyNumberField}`)}
+                          >
+                            物件詳細に戻る
+                          </Button>
+                        )}
+                      </Box>
+                    </Box>
+                  )}
                 </Grid>
               </Grid>
             </form>
