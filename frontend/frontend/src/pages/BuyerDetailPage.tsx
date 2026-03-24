@@ -137,7 +137,7 @@ const BUYER_FIELD_SECTIONS = [
       { key: 'phone_number', label: '電話番号', inlineEditable: true },
       { key: 'email', label: 'メールアドレス', inlineEditable: true },
       { key: 'company_name', label: '法人名', inlineEditable: true },
-      { key: 'broker_inquiry', label: '業者問合せ', inlineEditable: true, fieldType: 'text', conditionalOn: 'company_name' },
+      { key: 'broker_inquiry', label: '業者問合せ', inlineEditable: true, fieldType: 'boxSelect' },
     ],
   },
   {
@@ -1300,7 +1300,8 @@ TEL：097-533-2022`;
                   const value = buyer[field.key];
                   
                   // multilineフィールドは全幅で表示
-                  const gridSize = field.multiline ? { xs: 12 } : { xs: 12, sm: 6 };
+                  // company_name は broker_inquiry と同じ行に並べるため xs=6
+                  const gridSize = field.multiline ? { xs: 12 } : field.key === 'company_name' ? { xs: 6 } : { xs: 12, sm: 6 };
 
                   // インライン編集可能なフィールド
                   if (field.inlineEditable) {
@@ -1533,41 +1534,40 @@ TEL：097-533-2022`;
                       );
                     }
 
-                    // broker_inquiryフィールドは特別処理（ボックス選択）
+                    // broker_inquiryフィールドは特別処理（ボックス選択・法人名の右隣xs=6）
                     if (field.key === 'broker_inquiry') {
-                      const BROKER_OPTIONS = ['業者', '個人'];
+                      const BROKER_OPTIONS = ['業者問合せ', '業者（両手）'];
                       return (
-                        <Grid item xs={12} key={`${section.title}-${field.key}`}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <Typography variant="caption" color="text.secondary" sx={{ whiteSpace: 'nowrap', flexShrink: 0 }}>
-                              {field.label}
-                            </Typography>
-                            <Box sx={{ display: 'flex', gap: 0.5, flex: 1 }}>
-                              {BROKER_OPTIONS.map((option) => {
-                                const isSelected = buyer.broker_inquiry === option;
-                                return (
-                                  <Button
-                                    key={option}
-                                    size="small"
-                                    variant={isSelected ? 'contained' : 'outlined'}
-                                    color="primary"
-                                    onClick={async () => {
-                                      const newValue = isSelected ? '' : option;
-                                      handleFieldChange(section.title, field.key, newValue);
-                                      await handleInlineFieldSave(field.key, newValue);
-                                    }}
-                                    sx={{
-                                      flex: 1,
-                                      py: 0.5,
-                                      fontWeight: isSelected ? 'bold' : 'normal',
-                                      borderRadius: 1,
-                                    }}
-                                  >
-                                    {option}
-                                  </Button>
-                                );
-                              })}
-                            </Box>
+                        <Grid item xs={6} key={`${section.title}-${field.key}`}>
+                          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+                            {field.label}
+                          </Typography>
+                          <Box sx={{ display: 'flex', gap: 0.5 }}>
+                            {BROKER_OPTIONS.map((option) => {
+                              const isSelected = buyer.broker_inquiry === option;
+                              return (
+                                <Button
+                                  key={option}
+                                  size="small"
+                                  variant={isSelected ? 'contained' : 'outlined'}
+                                  color="primary"
+                                  onClick={async () => {
+                                    const newValue = isSelected ? '' : option;
+                                    handleFieldChange(section.title, field.key, newValue);
+                                    await handleInlineFieldSave(field.key, newValue);
+                                  }}
+                                  sx={{
+                                    flex: 1,
+                                    py: 0.5,
+                                    fontSize: '0.7rem',
+                                    fontWeight: isSelected ? 'bold' : 'normal',
+                                    borderRadius: 1,
+                                  }}
+                                >
+                                  {option}
+                                </Button>
+                              );
+                            })}
                           </Box>
                         </Grid>
                       );
