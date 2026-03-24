@@ -71,4 +71,5 @@ export const CACHE_TTL = {
   VALUATION: 600, // 10分
   STATISTICS: 300, // 5分
   SESSION: 86400, // 24時間
+  SIDEBAR_COUNTS: 600, // 10分（サイドバーカウント用）
 };

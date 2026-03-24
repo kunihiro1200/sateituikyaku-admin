@@ -2071,7 +2071,7 @@ export class SellerService extends BaseRepository {
     };
 
     // キャッシュに保存（60秒TTL）
-    await CacheHelper.set(sidebarCacheKey, sidebarResult, CACHE_TTL.SELLER_LIST);
+    await CacheHelper.set(sidebarCacheKey, sidebarResult, CACHE_TTL.SIDEBAR_COUNTS);
 
     return sidebarResult;
   }
