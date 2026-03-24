@@ -44,6 +44,7 @@ export class BuyerNumberSpreadsheetClient {
 
       return String(n + 1);
     } catch (error: any) {
+
       // 自分でスローしたエラーはそのまま再スロー
       if (
         error.message?.startsWith('Buyer number cell') 
@@ -51,6 +52,22 @@ export class BuyerNumberSpreadsheetClient {
         throw error;
       }
       const msg = `Failed to access buyer number spreadsheet: ${error.message}`;
+      console.error(`[BuyerNumberSpreadsheetClient] ${msg}`);
+      throw new Error(msg);
+    }
+  }
+
+  /**
+   * 採番スプレッドシートの指定セルを新しい買主番号で更新する
+   * @param buyerNumber 採番した買主番号（文字列）
+   * @throws Error スプレッドシートへの書き込み失敗時
+   */
+  async updateBuyerNumber(buyerNumber: string): Promise<void> {
+    try {
+      await (this.sheetsClient as any).writeRawCell(this.cell, buyerNumber);
+      console.log(`[BuyerNumberSpreadsheetClient] Updated cell ${this.cell} to ${buyerNumber}`);
+    } catch (error: any) {
+      const msg = `Failed to update buyer number cell ${this.cell}: ${error.message}`;
       console.error(`[BuyerNumberSpreadsheetClient] ${msg}`);
       throw new Error(msg);
     }

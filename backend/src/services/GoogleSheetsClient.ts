@@ -432,6 +432,23 @@ export class GoogleSheetsClient {
   }
 
   /**
+   * 指定セルに値を書き込む（ヘッダー変換なし）
+   * 採番セルの更新など、単一セルへの書き込みに使用する
+   */
+  async writeRawCell(cell: string, value: string): Promise<void> {
+    this.ensureAuthenticated();
+
+    await this.sheets!.spreadsheets.values.update({
+      spreadsheetId: this.config.spreadsheetId,
+      range: `'${this.config.sheetName}'!${cell}`,
+      valueInputOption: 'RAW',
+      requestBody: {
+        values: [[value]],
+      },
+    });
+  }
+
+  /**
    * 指定範囲のデータを読み取り
    */
   async readRange(range: string): Promise<SheetRow[]> {

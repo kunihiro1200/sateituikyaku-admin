@@ -401,6 +401,15 @@ export class BuyerService {
       throw new Error(`Failed to create buyer: ${error.message}`);
     }
 
+    // DB保存成功後、採番スプレッドシートのB2セルを更新
+    // 失敗しても登録自体は成功とする（警告ログのみ）
+    try {
+      const client = await this.initBuyerNumberClient();
+      await client.updateBuyerNumber(buyerNumber);
+    } catch (updateError: any) {
+      console.warn(`[BuyerService] Failed to update buyer number cell after registration (buyer_number=${buyerNumber}): ${updateError.message}`);
+    }
+
     return data;
   }
 
