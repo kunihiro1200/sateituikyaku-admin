@@ -70,14 +70,18 @@ export default function BuyersPage() {
   const [refetchTrigger, setRefetchTrigger] = useState(0);
   const [selectedCalculatedStatus, setSelectedCalculatedStatus] = useState<string | null>(null);
 
-  // サイドバーから取得した全買主データ（フロントキャッシュ）
-  // 初期値：pageDataCacheにキャッシュがあれば即座にロード済みとして扱う
+  // キャッシュから初期データを取得
   const cachedData = pageDataCache.get<{ categories: any[]; buyers: BuyerWithStatus[]; normalStaffInitials: string[] }>(CACHE_KEYS.BUYERS_WITH_STATUS);
+  // 全買主データ（フロントキャッシュ）
   const allBuyersWithStatusRef = useRef<BuyerWithStatus[]>(cachedData?.buyers ?? []);
-  // sidebarLoadedをrefで管理（stateにするとonBuyersLoaded呼び出しのたびにfetchBuyersが再実行される）
+  // サイドバーデータ読み込み済みフラグ
   const sidebarLoadedRef = useRef<boolean>(!!cachedData);
-  // テーブル再描画用のトリガー（サイドバーデータ取得完了時のみ更新）
+  // テーブル再描画用のトリガー
   const [dataReady, setDataReady] = useState(!!cachedData);
+  // サイドバー表示用カテゴリ（BuyersPage が管理して prop で渡す）
+  const [sidebarCategories, setSidebarCategories] = useState<any[]>(cachedData?.categories ?? []);
+  const [sidebarNormalStaffInitials, setSidebarNormalStaffInitials] = useState<string[]>(cachedData?.normalStaffInitials ?? []);
+  const [sidebarLoading, setSidebarLoading] = useState(!cachedData);
 
   // 検索入力のdebounce（300ms）
   useEffect(() => {
@@ -134,20 +138,47 @@ export default function BuyersPage() {
           return;
         }
 
-        // サイドバー未ロード時のみAPIから取得（初回表示用）
+        // サイドバー未ロード時: まず最初の50件を即座に表示（プログレッシブローディング）
         setLoading(true);
-        const params: any = {
-          page: page + 1,
-          limit: rowsPerPage,
+        const quickParams: any = {
+          page: 1,
+          limit: 50,
           sortBy: 'reception_date',
           sortOrder: 'desc',
         };
-        if (debouncedSearch) params.search = normalizeSearch(debouncedSearch);
+        if (debouncedSearch) quickParams.search = normalizeSearch(debouncedSearch);
 
-        const res = await api.get('/api/buyers', { params });
+        // 最初の50件を即座に表示
+        const quickRes = await api.get('/api/buyers', { params: quickParams });
         if (!cancelled) {
-          setBuyers(res.data.data || []);
-          setTotal(res.data.total || 0);
+          setBuyers(quickRes.data.data || []);
+          setTotal(quickRes.data.total || 0);
+          setLoading(false);
+        }
+
+        // バックグラウンドで全件取得（キャッシュ保存＆サイドバー更新）
+        if (!sidebarLoadedRef.current) {
+          api.get('/api/buyers/status-categories-with-buyers').then((res) => {
+            if (cancelled) return;
+            const result = res.data as {
+              categories: any[];
+              buyers: BuyerWithStatus[];
+              normalStaffInitials: string[];
+            };
+            // 5分間キャッシュ
+            pageDataCache.set(CACHE_KEYS.BUYERS_WITH_STATUS, result, 5 * 60 * 1000);
+            // サイドバーのカテゴリを更新
+            setSidebarCategories(result.categories);
+            setSidebarNormalStaffInitials(result.normalStaffInitials || []);
+            setSidebarLoading(false);
+            // テーブルも全件データで更新
+            allBuyersWithStatusRef.current = result.buyers;
+            sidebarLoadedRef.current = true;
+            setDataReady(prev => !prev); // トリガー更新
+          }).catch((err) => {
+            console.error('Background fetch failed:', err);
+            setSidebarLoading(false);
+          });
         }
       } catch (error) {
         if (!cancelled) {
@@ -164,15 +195,8 @@ export default function BuyersPage() {
     return () => { cancelled = true; };
   }, [page, rowsPerPage, debouncedSearch, selectedCalculatedStatus, refetchTrigger, dataReady]);
 
-  const handleBuyersLoaded = (buyers: BuyerWithStatus[]) => {
-    allBuyersWithStatusRef.current = buyers;
-    if (!sidebarLoadedRef.current) {
-      // 初回ロード時のみdataReadyをtrueにしてfetchBuyersをトリガー
-      sidebarLoadedRef.current = true;
-      setDataReady(true);
-    }
-    // 既にロード済みの場合はrefのみ更新（再レンダリング不要）
-  };
+  // キャッシュヒット時: サイドバーカテゴリを初期化（useEffect で一度だけ実行）
+  // ※ cachedData がある場合は state 初期値で設定済みなので追加処理不要
 
   const handleSync = async () => {
     try {
@@ -183,6 +207,9 @@ export default function BuyersPage() {
       // サイドバーキャッシュをリセット
       allBuyersWithStatusRef.current = [];
       sidebarLoadedRef.current = false;
+      setSidebarCategories([]);
+      setSidebarNormalStaffInitials([]);
+      setSidebarLoading(true);
       setDataReady(false);
       setRefetchTrigger(prev => prev + 1);
     } catch (error) {
@@ -287,7 +314,9 @@ export default function BuyersPage() {
             selectedStatus={selectedCalculatedStatus}
             onStatusSelect={(status) => { setSelectedCalculatedStatus(status); setPage(0); }}
             totalCount={total}
-            onBuyersLoaded={handleBuyersLoaded}
+            categories={sidebarCategories}
+            normalStaffInitials={sidebarNormalStaffInitials}
+            loading={sidebarLoading}
           />
         </Paper>
 

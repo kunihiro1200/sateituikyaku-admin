@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import {
   Box,
   Typography,
@@ -7,8 +7,6 @@ import {
   Badge,
   CircularProgress,
 } from '@mui/material';
-import api from '../services/api';
-import { pageDataCache, CACHE_KEYS } from '../store/pageDataCache';
 
 interface StatusCategory {
   status: string;
@@ -38,7 +36,10 @@ interface BuyerStatusSidebarProps {
   selectedStatus: string | null;
   onStatusSelect: (status: string | null) => void;
   totalCount?: number;
-  onBuyersLoaded?: (buyers: BuyerWithStatus[]) => void;
+  // 外から渡されるカテゴリデータ（BuyersPage が管理）
+  categories?: StatusCategory[];
+  normalStaffInitials?: string[];
+  loading?: boolean;
 }
 
 // 担当カテゴリかどうか判定（「担当(X)」「当日TEL(X)」形式）
@@ -55,88 +56,11 @@ function extractInitial(status: string): string {
 export default function BuyerStatusSidebar({
   selectedStatus,
   onStatusSelect,
-  totalCount: totalCountProp,
-  onBuyersLoaded,
+  totalCount = 0,
+  categories = [],
+  normalStaffInitials = [],
+  loading = false,
 }: BuyerStatusSidebarProps) {
-  // キャッシュがあれば初期値として使用（再マウント時のちらつきを防ぐ）
-  const _initialCache = pageDataCache.get<{
-    categories: StatusCategory[];
-    buyers: BuyerWithStatus[];
-    normalStaffInitials: string[];
-  }>(CACHE_KEYS.BUYERS_WITH_STATUS);
-
-  const [categories, setCategories] = useState<StatusCategory[]>(
-    _initialCache ? _initialCache.categories.filter((cat: StatusCategory) => cat.count > 0) : []
-  );
-  const [normalStaffInitials, setNormalStaffInitials] = useState<string[]>(
-    _initialCache ? (_initialCache.normalStaffInitials || []) : []
-  );
-  const [loading, setLoading] = useState(!_initialCache);
-  const [internalTotalCount, setInternalTotalCount] = useState(
-    _initialCache ? _initialCache.categories.reduce((sum: number, cat: StatusCategory) => sum + cat.count, 0) : 0
-  );
-
-  useEffect(() => {
-    // キャッシュがある場合は onBuyersLoaded を即座に呼ぶ（useEffect内で同期的に）
-    if (_initialCache) {
-      if (onBuyersLoaded) {
-        onBuyersLoaded(_initialCache.buyers);
-      }
-      return;
-    }
-    fetchStatusCategories();
-  }, []);
-
-  // 1回のリクエストでカテゴリ + 全買主データを取得（5分キャッシュ）
-  const fetchStatusCategories = async () => {
-    // キャッシュチェック（先に確認してloadingをスキップ）
-    const cached = pageDataCache.get<{
-      categories: StatusCategory[];
-      buyers: BuyerWithStatus[];
-      normalStaffInitials: string[];
-    }>(CACHE_KEYS.BUYERS_WITH_STATUS);
-
-    if (cached) {
-      // キャッシュヒット：loadingなしで即座に反映
-      const total = cached.categories.reduce((sum: number, cat: StatusCategory) => sum + cat.count, 0);
-      setInternalTotalCount(total);
-      setCategories(cached.categories.filter((cat: StatusCategory) => cat.count > 0));
-      setNormalStaffInitials(cached.normalStaffInitials || []);
-      setLoading(false);
-      if (onBuyersLoaded) {
-        onBuyersLoaded(cached.buyers);
-      }
-      return;
-    }
-
-    // キャッシュなし：APIから取得
-    try {
-      setLoading(true);
-
-      const res = await api.get('/api/buyers/status-categories-with-buyers');
-      const result = res.data as {
-        categories: StatusCategory[];
-        buyers: BuyerWithStatus[];
-        normalStaffInitials: string[];
-      };
-
-      // 5分間キャッシュ
-      pageDataCache.set(CACHE_KEYS.BUYERS_WITH_STATUS, result, 5 * 60 * 1000);
-
-      const total = result.categories.reduce((sum: number, cat: StatusCategory) => sum + cat.count, 0);
-      setInternalTotalCount(total);
-      setCategories(result.categories.filter((cat: StatusCategory) => cat.count > 0));
-      setNormalStaffInitials(result.normalStaffInitials || []);
-
-      if (onBuyersLoaded) {
-        onBuyersLoaded(result.buyers);
-      }
-    } catch (error) {
-      console.error('Failed to fetch status categories:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleStatusClick = (status: string) => {
     if (selectedStatus === status) {
@@ -145,8 +69,6 @@ export default function BuyerStatusSidebar({
       onStatusSelect(status);
     }
   };
-
-  const displayTotalCount = totalCountProp ?? internalTotalCount;
 
   if (loading) {
     return (
@@ -157,14 +79,12 @@ export default function BuyerStatusSidebar({
   }
 
   // 担当カテゴリと通常カテゴリを分離
-  // 担当カテゴリは通常スタッフ（is_normal=true）のみ表示
-  const normalCategories = categories.filter(cat => !isAssigneeCategory(cat.status) && cat.status !== '');
-  const assigneeCategories = categories.filter(cat => {
+  const filteredCategories = categories.filter((cat: StatusCategory) => cat.count > 0);
+  const normalCategories = filteredCategories.filter(cat => !isAssigneeCategory(cat.status) && cat.status !== '');
+  const assigneeCategories = filteredCategories.filter(cat => {
     if (!isAssigneeCategory(cat.status)) return false;
-    // normalStaffInitialsが空の場合は全担当カテゴリを表示（フォールバック）
     if (normalStaffInitials.length === 0) return true;
     const initial = extractInitial(cat.status);
-    // 当日TEL(X) は担当(X) と同じイニシャルなので同じフィルタを適用
     return normalStaffInitials.includes(initial);
   });
 
@@ -225,7 +145,7 @@ export default function BuyerStatusSidebar({
             sx={{ flex: 1, minWidth: 0 }}
           />
           <Badge
-            badgeContent={displayTotalCount}
+            badgeContent={totalCount}
             color="success"
             max={9999}
             sx={{ ml: 1 }}
