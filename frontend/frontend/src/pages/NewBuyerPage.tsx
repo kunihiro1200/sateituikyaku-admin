@@ -43,11 +43,13 @@ interface PropertyInfo {
   viewing_notes?: string;
   special_notes?: string;
   memo?: string;
+  broker_response?: string | number;
 }
 
 export default function NewBuyerPage() {
   const navigate = useNavigate();
   const [registeredBuyerNumber, setRegisteredBuyerNumber] = useState<string | null>(null);
+  const [postRegistrationAction, setPostRegistrationAction] = useState<'desired-conditions' | 'viewing-result' | null>(null);
   const [searchParams] = useSearchParams();
   const propertyNumber = searchParams.get('propertyNumber');
 
@@ -144,6 +146,11 @@ export default function NewBuyerPage() {
       const response = await api.post('/api/buyers', buyerData);
       const createdBuyerNumber = response.data.buyer_number || nextBuyerNumber;
       setRegisteredBuyerNumber(createdBuyerNumber);
+      // 登録後アクションがある場合は即遷移
+      if (postRegistrationAction) {
+        navigate(`/buyers/${createdBuyerNumber}/${postRegistrationAction}`);
+        return;
+      }
     } catch (err: any) {
       setError(err.response?.data?.error || '買主の作成に失敗しました');
     } finally {
@@ -688,27 +695,54 @@ export default function NewBuyerPage() {
                 {/* ボタン */}
                 <Grid item xs={12}>
                   {!registeredBuyerNumber ? (
-                    <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end', mt: 2 }}>
-                      <Button
-                        variant="outlined"
-                        onClick={() => {
-                          if (propertyNumberField) {
-                            navigate(`/property-listings/${propertyNumberField}`);
-                          } else {
-                            navigate('/buyers');
-                          }
-                        }}
-                        disabled={loading}
-                      >
-                        キャンセル
-                      </Button>
-                      <Button
-                        type="submit"
-                        variant="contained"
-                        disabled={loading}
-                      >
-                        {loading ? '登録中...' : '登録'}
-                      </Button>
+                    <Box sx={{ mt: 2 }}>
+                      <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', mb: 1.5 }}>
+                        <Button
+                          variant="contained"
+                          color="success"
+                          disabled={loading}
+                          onClick={() => {
+                            setPostRegistrationAction('desired-conditions');
+                          }}
+                          type="submit"
+                        >
+                          {loading && postRegistrationAction === 'desired-conditions' ? '登録中...' : '登録して希望条件を入力'}
+                        </Button>
+                        <Button
+                          variant="contained"
+                          color="primary"
+                          disabled={loading}
+                          onClick={() => {
+                            setPostRegistrationAction('viewing-result');
+                          }}
+                          type="submit"
+                        >
+                          {loading && postRegistrationAction === 'viewing-result' ? '登録中...' : '登録して内覧を入力'}
+                        </Button>
+                      </Box>
+                      <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
+                        <Button
+                          variant="outlined"
+                          onClick={() => {
+                            if (propertyNumberField) {
+                              navigate(`/property-listings/${propertyNumberField}`);
+                            } else {
+                              navigate('/buyers');
+                            }
+                          }}
+                          disabled={loading}
+                        >
+                          キャンセル
+                        </Button>
+                        <Button
+                          type="submit"
+                          variant="contained"
+                          disabled={loading}
+                          onClick={() => setPostRegistrationAction(null)}
+                        >
+                          {loading && !postRegistrationAction ? '登録中...' : '登録'}
+                        </Button>
+                      </Box>
                     </Box>
                   ) : (
                     <Box sx={{ mt: 2, p: 2, bgcolor: 'success.light', borderRadius: 2 }}>
