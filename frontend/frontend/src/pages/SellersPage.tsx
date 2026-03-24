@@ -125,7 +125,9 @@ function SellerStatusCell({ seller }: { seller: any }) {
 export default function SellersPage() {
   const navigate = useNavigate();
   const [sellers, setSellers] = useState<Seller[]>([]);
-  const [loading, setLoading] = useState(true);
+  // キャッシュがあれば初期ローディングをスキップ（コールドスタート対策）
+  const _defaultCacheKey = `${CACHE_KEYS.SELLERS_LIST}:${JSON.stringify({ page: 1, pageSize: 50, sortBy: 'inquiry_date', sortOrder: 'desc' })}`;
+  const [loading, setLoading] = useState(!pageDataCache.get(_defaultCacheKey));
   
   // サイドバー用のカテゴリカウント（APIから直接取得）
   const [sidebarCounts, setSidebarCounts] = useState<{
@@ -157,7 +159,7 @@ export default function SellersPage() {
     todayCallWithInfoLabels: [],
     todayCallWithInfoLabelCounts: {},
   });
-  const [sidebarLoading, setSidebarLoading] = useState(true);
+  const [sidebarLoading, setSidebarLoading] = useState(!pageDataCache.get(CACHE_KEYS.SELLERS_SIDEBAR_COUNTS));
   // 担当者イニシャル一覧（スタッフスプレッドシートから取得）
   const [assigneeInitials, setAssigneeInitials] = useState<string[]>([]);  
   // ページ状態をsessionStorageから復元
@@ -290,7 +292,7 @@ export default function SellersPage() {
       setSidebarLoading(true);
       const response = await api.get('/api/sellers/sidebar-counts');
       setSidebarCounts(response.data);
-      pageDataCache.set(CACHE_KEYS.SELLERS_SIDEBAR_COUNTS, response.data, 5 * 60 * 1000);
+      pageDataCache.set(CACHE_KEYS.SELLERS_SIDEBAR_COUNTS, response.data, 15 * 60 * 1000);
     } catch (error) {
       console.error('Failed to fetch sidebar counts:', error);
       // エラー時はカウントを0にリセット
@@ -351,7 +353,7 @@ export default function SellersPage() {
       setExpandedCategorySellers(prev => ({ ...prev, [category]: data }));
       // 5分キャッシュ（1件以上の場合のみキャッシュ）
       if (data.length > 0) {
-        pageDataCache.set(cacheKey, data, 5 * 60 * 1000);
+        pageDataCache.set(cacheKey, data, 15 * 60 * 1000);
       }
     } catch (error) {
       console.error('Failed to fetch expanded category sellers:', error);
@@ -412,7 +414,7 @@ export default function SellersPage() {
         api.get('/api/sellers', { params }).then((response) => {
           setSellers(response.data.data);
           setTotal(response.data.total);
-          pageDataCache.set(cacheKey, { data: response.data.data, total: response.data.total }, 3 * 60 * 1000);
+          pageDataCache.set(cacheKey, { data: response.data.data, total: response.data.total }, 15 * 60 * 1000);
         }).catch((err) => console.error('Background sellers refresh failed:', err));
         return;
       }
@@ -422,8 +424,8 @@ export default function SellersPage() {
       const response = await api.get('/api/sellers', { params });
       setSellers(response.data.data);
       setTotal(response.data.total);
-      // 1分間キャッシュ
-      pageDataCache.set(cacheKey, { data: response.data.data, total: response.data.total }, 3 * 60 * 1000);
+      // 15分間キャッシュ（コールドスタート対策）
+      pageDataCache.set(cacheKey, { data: response.data.data, total: response.data.total }, 15 * 60 * 1000);
     } catch (error) {
       console.error('Failed to fetch sellers:', error);
     } finally {
