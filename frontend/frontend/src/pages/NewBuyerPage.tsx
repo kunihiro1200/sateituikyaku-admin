@@ -227,18 +227,20 @@ export default function NewBuyerPage() {
           </Typography>
           <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', mt: 2 }}>
             <Button
-              variant="contained"
+              variant="outlined"
               color="success"
+              size="small"
               onClick={() => navigate(`/buyers/${registeredBuyerNumber}/desired-conditions`)}
             >
-              希望条件を入力
+              希望条件
             </Button>
             <Button
-              variant="contained"
-              color="primary"
+              variant="outlined"
+              color="success"
+              size="small"
               onClick={() => navigate(`/buyers/${registeredBuyerNumber}/viewing-result`)}
             >
-              内覧を入力
+              内覧
             </Button>
             <Button
               variant="outlined"
@@ -926,24 +928,20 @@ export default function NewBuyerPage() {
                     <Box sx={{ mt: 2 }}>
                       <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', mb: 1.5 }}>
                         <Button
+                          type="submit"
                           variant="contained"
                           color="success"
                           disabled={loading}
-                          onClick={() => {
-                            setPostRegistrationAction('desired-conditions');
-                          }}
-                          type="submit"
+                          onClick={() => setPostRegistrationAction('desired-conditions')}
                         >
                           {loading && postRegistrationAction === 'desired-conditions' ? '登録中...' : '登録して希望条件を入力'}
                         </Button>
                         <Button
+                          type="submit"
                           variant="contained"
                           color="primary"
                           disabled={loading}
-                          onClick={() => {
-                            setPostRegistrationAction('viewing-result');
-                          }}
-                          type="submit"
+                          onClick={() => setPostRegistrationAction('viewing-result')}
                         >
                           {loading && postRegistrationAction === 'viewing-result' ? '登録中...' : '登録して内覧を入力'}
                         </Button>
@@ -979,20 +977,20 @@ export default function NewBuyerPage() {
                       </Typography>
                       <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', mt: 1 }}>
                         <Button
-                          variant="contained"
+                          variant="outlined"
                           color="success"
                           size="small"
                           onClick={() => navigate(`/buyers/${registeredBuyerNumber}/desired-conditions`)}
                         >
-                          希望条件を入力
+                          希望条件
                         </Button>
                         <Button
-                          variant="contained"
-                          color="primary"
+                          variant="outlined"
+                          color="success"
                           size="small"
                           onClick={() => navigate(`/buyers/${registeredBuyerNumber}/viewing-result`)}
                         >
-                          内覧を入力
+                          内覧
                         </Button>
                         <Button
                           variant="outlined"
