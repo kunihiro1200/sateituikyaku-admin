@@ -81,7 +81,7 @@ const initRedis = async () => {
     const client = createClient({
       url: process.env.REDIS_URL || 'redis://localhost:6379',
       socket: {
-        connectTimeout: 2000,
+        connectTimeout: 5000,
         reconnectStrategy: false, // 再接続を無効化
       },
     });
@@ -94,7 +94,7 @@ const initRedis = async () => {
     await Promise.race([
       client.connect(),
       new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Connection timeout')), 500)
+        setTimeout(() => reject(new Error('Connection timeout')), 3000)
       ),
     ]);
     
