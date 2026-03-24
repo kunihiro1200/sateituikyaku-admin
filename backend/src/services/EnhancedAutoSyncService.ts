@@ -770,7 +770,7 @@ export class EnhancedAutoSyncService {
     while (hasMore) {
       const { data: dbSellers, error } = await this.supabase
         .from('sellers')
-        .select('seller_number, status, contract_year_month, visit_assignee, phone_contact_person, preferred_contact_time, contact_method, next_call_date, unreachable_status, inquiry_date, comments, valuation_amount_1, valuation_amount_2, valuation_amount_3, first_call_person, valuation_reason, valuation_method, name, address, phone_number, email, property_address, current_status, updated_at, visit_reminder_assignee')
+        .select('seller_number, status, contract_year_month, visit_assignee, phone_contact_person, preferred_contact_time, contact_method, next_call_date, unreachable_status, inquiry_date, comments, valuation_amount_1, valuation_amount_2, valuation_amount_3, first_call_person, valuation_reason, valuation_method, name, address, phone_number, email, property_address, current_status, updated_at, visit_reminder_assignee, mailing_status')
         .range(offset, offset + pageSize - 1);
 
       if (error) {
@@ -950,6 +950,13 @@ export class EnhancedAutoSyncService {
           const dbVisitReminderAssignee = dbSeller.visit_reminder_assignee || '';
           const sheetVisitReminderAssignee = sheetRow['訪問事前通知メール担当'] || '';
           if (sheetVisitReminderAssignee !== dbVisitReminderAssignee) {
+            needsUpdate = true;
+          }
+
+          // mailing_statusの比較（スプレッドシートが空欄の場合は同期対象外）
+          const dbMailingStatus = dbSeller.mailing_status || '';
+          const sheetMailingStatus = sheetRow['郵送'] || '';
+          if (sheetMailingStatus !== '' && sheetMailingStatus !== dbMailingStatus) {
             needsUpdate = true;
           }
 
@@ -1330,6 +1337,12 @@ export class EnhancedAutoSyncService {
       updateData.valuation_method = String(valuationMethod);
     }
 
+    // 郵送ステータスを追加（空欄の場合は同期しない）
+    const mailingStatus = row['郵送'];
+    if (mailingStatus !== undefined && mailingStatus !== '') {
+      updateData.mailing_status = String(mailingStatus);
+    }
+
     // 査定理由（AO列）を追加
     const valuationReason = row['査定理由（査定サイトから転記）'];
     if (valuationReason !== undefined) {
@@ -1578,6 +1591,12 @@ export class EnhancedAutoSyncService {
     const valuationMethod = row['査定方法'];
     if (valuationMethod) {
       encryptedData.valuation_method = String(valuationMethod);
+    }
+
+    // 郵送ステータスを追加（空欄の場合は設定しない）
+    const mailingStatusNew = row['郵送'];
+    if (mailingStatusNew !== undefined && mailingStatusNew !== '') {
+      encryptedData.mailing_status = String(mailingStatusNew);
     }
 
     // 査定理由（AO列）を追加

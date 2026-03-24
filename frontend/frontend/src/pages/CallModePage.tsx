@@ -496,6 +496,10 @@ const CallModePage = () => {
   const [editedValuationMethod, setEditedValuationMethod] = useState<string>('');
   const [savingValuationMethod, setSavingValuationMethod] = useState(false);
 
+  // 郵送ステータス用の状態
+  const [mailingStatus, setMailingStatus] = useState<string>('');
+  const [savingMailingStatus, setSavingMailingStatus] = useState(false);
+
   // コミュニケーションフィールド用の状態
   const [editedPhoneContactPerson, setEditedPhoneContactPerson] = useState<string>('');
   const [editedPreferredContactTime, setEditedPreferredContactTime] = useState<string>('');
@@ -1192,6 +1196,13 @@ const CallModePage = () => {
 
       // 査定方法の初期化
       setEditedValuationMethod(sellerData.valuationMethod || '');
+
+      // 郵送ステータスの初期化
+      // seller.mailingStatus があればそれを使用、なければ査定方法が「郵送」系の場合は「未」をデフォルト
+      const initialValuationMethod = sellerData.valuationMethod || '';
+      const defaultMailingStatus = sellerData.mailingStatus ||
+        (initialValuationMethod.includes('郵送') ? '未' : '');
+      setMailingStatus(defaultMailingStatus);
 
       // コミュニケーションフィールドの初期化
       setEditedPhoneContactPerson(sellerData.phoneContactPerson || '');
@@ -2006,6 +2017,28 @@ const CallModePage = () => {
     }
   };
 
+  // 郵送ステータス更新ハンドラー
+  const handleMailingStatusChange = async (status: string) => {
+    try {
+      setSavingMailingStatus(true);
+      setError(null);
+
+      await api.put(`/api/sellers/${id}`, {
+        mailingStatus: status,
+      });
+
+      setMailingStatus(status);
+      setSuccessMessage(`郵送ステータスを「${status}」に更新しました`);
+      setTimeout(() => {
+        setSuccessMessage(null);
+      }, 3000);
+    } catch (err: any) {
+      setError(err.response?.data?.error?.message || '郵送ステータスの更新に失敗しました');
+    } finally {
+      setSavingMailingStatus(false);
+    }
+  };
+
   // 査定方法更新ハンドラー
   const handleValuationMethodChange = async (method: string) => {
     try {
@@ -2021,6 +2054,15 @@ const CallModePage = () => {
 
       // ローカル状態を更新
       setEditedValuationMethod(newMethod);
+
+      // 「郵送」系の査定方法が選択された場合、郵送ステータスが未設定なら「未」をデフォルト設定
+      if (newMethod.includes('郵送') && !mailingStatus) {
+        setMailingStatus('未');
+        // DBにも保存
+        await api.put(`/api/sellers/${id}`, {
+          mailingStatus: '未',
+        });
+      }
 
       if (newMethod === '') {
         setSuccessMessage('査定方法を解除しました');
@@ -4223,6 +4265,43 @@ HP：https://ifoo-oita.com/
                       </Box>
                     </Box>
 
+                    {/* 郵送フィールド - 査定方法が「郵送」系の場合のみ表示 */}
+                    {editedValuationMethod.includes('郵送') && (
+                      <Box sx={{ p: 2, bgcolor: 'info.50', border: '1px solid', borderColor: 'info.200', borderRadius: 1, mb: 2 }}>
+                        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                          郵送
+                          {seller?.updatedAt && (
+                            <span style={{ marginLeft: 8, color: '#888', fontSize: '0.75rem' }}>
+                              （{formatDateTime(seller.updatedAt)}）
+                            </span>
+                          )}
+                        </Typography>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Button
+                            variant={mailingStatus === '未' ? 'contained' : 'outlined'}
+                            color="warning"
+                            size="small"
+                            onClick={() => handleMailingStatusChange('未')}
+                            disabled={savingMailingStatus}
+                            sx={{ minWidth: 60 }}
+                          >
+                            未
+                          </Button>
+                          <Button
+                            variant={mailingStatus === '済' ? 'contained' : 'outlined'}
+                            color="success"
+                            size="small"
+                            onClick={() => handleMailingStatusChange('済')}
+                            disabled={savingMailingStatus}
+                            sx={{ minWidth: 60 }}
+                          >
+                            済
+                          </Button>
+                          {savingMailingStatus && <CircularProgress size={20} />}
+                        </Box>
+                      </Box>
+                    )}
+
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
                       {/* valuationTextがある場合はそれを表示、なければ数値から計算 */}
                       {seller?.valuationText ? (
@@ -4332,6 +4411,45 @@ HP：https://ifoo-oita.com/
                           </Box>
                         </Box>
                       </Grid>
+
+                      {/* 郵送フィールド（編集モード） - 査定方法が「郵送」系の場合のみ表示 */}
+                      {editedValuationMethod.includes('郵送') && (
+                        <Grid item xs={12}>
+                          <Box sx={{ p: 2, bgcolor: 'info.50', border: '1px solid', borderColor: 'info.200', borderRadius: 1 }}>
+                            <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                              郵送
+                              {seller?.updatedAt && (
+                                <span style={{ marginLeft: 8, color: '#888', fontSize: '0.75rem' }}>
+                                  （{formatDateTime(seller.updatedAt)}）
+                                </span>
+                              )}
+                            </Typography>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                              <Button
+                                variant={mailingStatus === '未' ? 'contained' : 'outlined'}
+                                color="warning"
+                                size="small"
+                                onClick={() => handleMailingStatusChange('未')}
+                                disabled={savingMailingStatus}
+                                sx={{ minWidth: 60 }}
+                              >
+                                未
+                              </Button>
+                              <Button
+                                variant={mailingStatus === '済' ? 'contained' : 'outlined'}
+                                color="success"
+                                size="small"
+                                onClick={() => handleMailingStatusChange('済')}
+                                disabled={savingMailingStatus}
+                                sx={{ minWidth: 60 }}
+                              >
+                                済
+                              </Button>
+                              {savingMailingStatus && <CircularProgress size={20} />}
+                            </Box>
+                          </Box>
+                        </Grid>
+                      )}
 
                       {/* 査定額表示エリア（編集モード時） */}
                       {editedValuationAmount1 && (

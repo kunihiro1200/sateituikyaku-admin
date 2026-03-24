@@ -56,7 +56,8 @@
     "当社が電話したというリマインドメール担当": "call_reminder_email_assignee",
     "訪問事前通知メール担当": "visit_reminder_assignee",
     "ID": "inquiry_id",
-    "サイトURL": "site_url"
+    "サイトURL": "site_url",
+    "郵送": "mailing_status"
   },
   "databaseToSpreadsheet": {
     "seller_number": "売主番号",
@@ -107,7 +108,8 @@
     "call_reminder_email_assignee": "当社が電話したというリマインドメール担当",
     "visit_reminder_assignee": "訪問事前通知メール担当",
     "inquiry_id": "ID",
-    "site_url": "サイトURL"
+    "site_url": "サイトURL",
+    "mailing_status": "郵送"
   },
   "typeConversions": {
     "valuation_amount_1": "number",
@@ -126,7 +128,8 @@
     "next_call_date": "date",
     "contract_year_month": "date",
     "created_at": "datetime",
-    "updated_at": "datetime"
+    "updated_at": "datetime",
+    "mailing_status": "string"
   },
   "requiredFields": [
     "name"
