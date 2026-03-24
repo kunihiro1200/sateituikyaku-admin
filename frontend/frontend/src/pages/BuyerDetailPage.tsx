@@ -1538,35 +1538,36 @@ TEL：097-533-2022`;
                       const BROKER_OPTIONS = ['業者', '個人'];
                       return (
                         <Grid item xs={12} key={`${section.title}-${field.key}`}>
-                          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
-                            {field.label}
-                          </Typography>
-                          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                            {BROKER_OPTIONS.map((option) => {
-                              const isSelected = buyer.broker_inquiry === option;
-                              return (
-                                <Button
-                                  key={option}
-                                  size="small"
-                                  variant={isSelected ? 'contained' : 'outlined'}
-                                  color="primary"
-                                  onClick={async () => {
-                                    const newValue = isSelected ? '' : option;
-                                    handleFieldChange(section.title, field.key, newValue);
-                                    await handleInlineFieldSave(field.key, newValue);
-                                  }}
-                                  sx={{
-                                    minWidth: 48,
-                                    px: 1.5,
-                                    py: 0.5,
-                                    fontWeight: isSelected ? 'bold' : 'normal',
-                                    borderRadius: 1,
-                                  }}
-                                >
-                                  {option}
-                                </Button>
-                              );
-                            })}
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Typography variant="caption" color="text.secondary" sx={{ whiteSpace: 'nowrap', flexShrink: 0 }}>
+                              {field.label}
+                            </Typography>
+                            <Box sx={{ display: 'flex', gap: 0.5, flex: 1 }}>
+                              {BROKER_OPTIONS.map((option) => {
+                                const isSelected = buyer.broker_inquiry === option;
+                                return (
+                                  <Button
+                                    key={option}
+                                    size="small"
+                                    variant={isSelected ? 'contained' : 'outlined'}
+                                    color="primary"
+                                    onClick={async () => {
+                                      const newValue = isSelected ? '' : option;
+                                      handleFieldChange(section.title, field.key, newValue);
+                                      await handleInlineFieldSave(field.key, newValue);
+                                    }}
+                                    sx={{
+                                      flex: 1,
+                                      py: 0.5,
+                                      fontWeight: isSelected ? 'bold' : 'normal',
+                                      borderRadius: 1,
+                                    }}
+                                  >
+                                    {option}
+                                  </Button>
+                                );
+                              })}
+                            </Box>
                           </Box>
                         </Grid>
                       );
