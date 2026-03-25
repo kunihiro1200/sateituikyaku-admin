@@ -1064,7 +1064,7 @@ router.post('/:propertyNumber/send-chat-to-assignee', async (req: Request, res: 
     );
     const { data: property, error } = await supabase
       .from('property_listings')
-      .select('property_number, address, sales_assignee')
+      .select('property_number, address, sales_assignee, seller_name, seller_contact, seller_email')
       .eq('property_number', propertyNumber)
       .single();
 
@@ -1086,8 +1086,17 @@ router.post('/:propertyNumber/send-chat-to-assignee', async (req: Request, res: 
       return;
     }
 
+    // 物件詳細画面のURL
+    const propertyUrl = `https://sateituikyaku-admin-frontend.vercel.app/property-listings/${property.property_number}`;
+
     // Google Chatにメッセージ送信
-    const chatMessage = `📩 *物件担当への質問・伝言*\n\n物件番号: ${property.property_number}\n所在地: ${property.address || '未設定'}\n担当: ${property.sales_assignee}\n\n${String(message).trim()}`;
+    const sellerInfo = [
+      property.seller_name ? `売主氏名: ${property.seller_name}` : null,
+      property.seller_contact ? `売主電話: ${property.seller_contact}` : null,
+      property.seller_email ? `売主メール: ${property.seller_email}` : null,
+    ].filter(Boolean).join('\n');
+
+    const chatMessage = `📩 *物件担当への質問・伝言*\n\n物件番号: ${property.property_number}\n所在地: ${property.address || '未設定'}\n担当: ${property.sales_assignee}\n${sellerInfo ? sellerInfo + '\n' : ''}物件URL: ${propertyUrl}\n\n${String(message).trim()}`;
     await axios.post(result.webhookUrl, { text: chatMessage });
 
     console.log(`[send-chat-to-assignee] Sent to ${property.sales_assignee} for ${propertyNumber}`);
