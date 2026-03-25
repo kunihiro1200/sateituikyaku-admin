@@ -54,7 +54,6 @@ import { LATEST_STATUS_OPTIONS } from '../utils/buyerLatestStatusOptions';
 import { 
   INQUIRY_EMAIL_PHONE_OPTIONS, 
   THREE_CALLS_CONFIRMED_OPTIONS, 
-  EMAIL_TYPE_OPTIONS, 
 } from '../utils/buyerFieldOptions';
 import RichTextCommentEditor, { RichTextCommentEditorHandle } from '../components/RichTextCommentEditor';
 import { formatDateTime } from '../utils/dateFormat';
@@ -143,7 +142,6 @@ const BUYER_FIELD_SECTIONS = [
       { key: 'latest_status', label: '★最新状況', inlineEditable: true },
       { key: 'inquiry_email_phone', label: '【問合メール】電話対応', inlineEditable: true, fieldType: 'dropdown' },
       { key: 'three_calls_confirmed', label: '3回架電確認済み', inlineEditable: true, fieldType: 'dropdown' },
-      { key: 'email_type', label: 'メール種別', inlineEditable: true, fieldType: 'dropdown' },
       { key: 'confirmation_to_assignee', label: '担当への確認事項', inlineEditable: true, fieldType: 'confirmationToAssignee' },
       { key: 'next_call_date', label: '次電日', type: 'date', inlineEditable: true },
       { key: 'owned_home_hearing_inquiry', label: '問合時持家ヒアリング', inlineEditable: true, fieldType: 'staffSelect' },
@@ -167,6 +165,42 @@ const BUYER_FIELD_SECTIONS = [
 export default function BuyerDetailPage() {
   const { buyer_number } = useParams<{ buyer_number: string }>();
   const navigate = useNavigate();
+
+  // 必須フィールドバリデーション（ページ遷移前チェック）
+  const validateRequiredFields = (): boolean => {
+    if (!buyer) return false;
+
+    const missing: string[] = [];
+
+    // 常に必須
+    if (!buyer.initial_assignee || !String(buyer.initial_assignee).trim()) {
+      missing.push('初動担当');
+    }
+    if (!buyer.inquiry_source || !String(buyer.inquiry_source).trim()) {
+      missing.push('問合せ元');
+    }
+    if (!buyer.latest_status || !String(buyer.latest_status).trim()) {
+      missing.push('★最新状況');
+    }
+
+    // 問合せ元にメールが含まれる場合は inquiry_email_phone も必須
+    const inquirySource = buyer.inquiry_source ? String(buyer.inquiry_source) : '';
+    if (inquirySource.includes('メール')) {
+      if (!buyer.inquiry_email_phone || !String(buyer.inquiry_email_phone).trim()) {
+        missing.push('【問合メール】電話対応');
+      }
+    }
+
+    if (missing.length > 0) {
+      setSnackbar({
+        open: true,
+        message: `以下の必須項目を入力してください：${missing.join('、')}`,
+        severity: 'warning',
+      });
+      return false;
+    }
+    return true;
+  };
   const [buyer, setBuyer] = useState<Buyer | null>(null);
   const [linkedProperties, setLinkedProperties] = useState<PropertyListing[]>([]);
   const [nearbyPropertiesCount, setNearbyPropertiesCount] = useState(0);
@@ -1025,7 +1059,7 @@ TEL：097-533-2022`;
             variant="outlined"
             color="success"
             size="small"
-            onClick={() => navigate(`/buyers/${buyer_number}/inquiry-history`)}
+            onClick={() => { if (validateRequiredFields()) navigate(`/buyers/${buyer_number}/inquiry-history`); }}
           >
             問合履歴{inquiryHistoryTable.length}件
           </Button>
@@ -1033,7 +1067,7 @@ TEL：097-533-2022`;
             variant="outlined"
             color="success"
             size="small"
-            onClick={() => navigate(`/buyers/${buyer_number}/desired-conditions`)}
+            onClick={() => { if (validateRequiredFields()) navigate(`/buyers/${buyer_number}/desired-conditions`); }}
           >
             希望条件
           </Button>
@@ -1041,7 +1075,7 @@ TEL：097-533-2022`;
             variant="outlined"
             color="success"
             size="small"
-            onClick={() => navigate(`/buyers/${buyer_number}/viewing-result`)}
+            onClick={() => { if (validateRequiredFields()) navigate(`/buyers/${buyer_number}/viewing-result`); }}
           >
             内覧
           </Button>
@@ -1480,33 +1514,6 @@ TEL：097-533-2022`;
                               })}
                             </Box>
                           </Box>
-                        </Grid>
-                      );
-                    }
-
-                    // email_typeフィールドは特別処理（ドロップダウン）
-                    if (field.key === 'email_type') {
-                      const handleFieldSave = async (newValue: any) => {
-                        const result = await handleInlineFieldSave(field.key, newValue);
-                        if (result && !result.success && result.error) {
-                          throw new Error(result.error);
-                        }
-                      };
-
-                      return (
-                        <Grid item {...gridSize} key={`${section.title}-${field.key}`}>
-                          <InlineEditableField
-                            label={field.label}
-                            value={value || ''}
-                            fieldName={field.key}
-                            fieldType="dropdown"
-                            options={EMAIL_TYPE_OPTIONS}
-                            onSave={handleFieldSave}
-                            onChange={(fieldName, newValue) => handleFieldChange(section.title, fieldName, newValue)}
-                            buyerId={buyer_number}
-                            enableConflictDetection={true}
-                            showEditIndicator={true}
-                          />
                         </Grid>
                       );
                     }
