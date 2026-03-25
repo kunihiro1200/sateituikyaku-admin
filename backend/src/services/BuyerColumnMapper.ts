@@ -122,7 +122,8 @@ export class BuyerColumnMapper {
     }
 
     // HTMLを含む可能性があるフィールドはプレーンテキストに変換
-    if (column === 'inquiry_hearing' && typeof value === 'string' && value.includes('<')) {
+    const htmlFields = ['inquiry_hearing', 'viewing_result_follow_up', 'message_to_assignee'];
+    if (htmlFields.includes(column) && typeof value === 'string' && value.includes('<')) {
       return this.stripHtml(value);
     }
 
