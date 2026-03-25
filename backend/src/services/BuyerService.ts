@@ -256,16 +256,27 @@ export class BuyerService {
    * 検索
    */
   async search(query: string, limit: number = 20): Promise<any[]> {
-    const buyerNumberMatch = /^\d+$/.test(query)
-      ? `buyer_number.eq.${query}`
-      : `buyer_number.ilike.%${query}%`;
-    const { data, error } = await this.supabase
+    // 数字のみのクエリの場合、buyer_number.eq.{数値} は TEXT型カラムとの型不一致で500エラーになる
+    // そのため、数字のみの場合は .eq() を使って文字列として渡す
+    const isNumericOnly = /^\d+$/.test(query);
+
+    let dbQuery = this.supabase
       .from('buyers')
-      .select('id, buyer_number, name, phone_number, email, property_number, latest_status, initial_assignee')
-      .or(
-        `${buyerNumberMatch},name.ilike.%${query}%,phone_number.ilike.%${query}%,property_number.ilike.%${query}%`
-      )
-      .limit(limit);
+      .select('id, buyer_number, name, phone_number, email, property_number, latest_status, initial_assignee');
+
+    if (isNumericOnly) {
+      // 数字のみ: buyer_number の完全一致（TEXT型として文字列で渡す）+ 他フィールドの部分一致
+      dbQuery = dbQuery.or(
+        `name.ilike.%${query}%,phone_number.ilike.%${query}%,property_number.ilike.%${query}%`
+      ).or(`buyer_number.eq.${query}`);
+    } else {
+      // 文字列を含む: 全フィールドで ilike 検索
+      dbQuery = dbQuery.or(
+        `buyer_number.ilike.%${query}%,name.ilike.%${query}%,phone_number.ilike.%${query}%,property_number.ilike.%${query}%`
+      );
+    }
+
+    const { data, error } = await dbQuery.limit(limit);
 
     if (error) {
       throw new Error(`Failed to search buyers: ${error.message}`);

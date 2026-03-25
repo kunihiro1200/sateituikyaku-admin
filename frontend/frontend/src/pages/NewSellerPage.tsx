@@ -104,7 +104,7 @@ export default function NewSellerPage() {
 
   // 買主コピー
   const [buyerCopyInput, setBuyerCopyInput] = useState('');
-  const [buyerCopyOptions, setBuyerCopyOptions] = useState<Array<{buyerNumber: string; name: string}>>([]);
+  const [buyerCopyOptions, setBuyerCopyOptions] = useState<Array<{buyer_number: string; name: string}>>([]);
   const [buyerCopyLoading, setBuyerCopyLoading] = useState(false);
 
   // 売主情報
@@ -250,10 +250,10 @@ export default function NewSellerPage() {
     }
   };
 
-  const handleBuyerCopySelect = async (option: {buyerNumber: string; name: string} | null) => {
+  const handleBuyerCopySelect = async (option: {buyer_number: string; name: string} | null) => {
     if (!option) return;
     try {
-      const response = await api.get(`/api/buyers/${option.buyerNumber}`);
+      const response = await api.get(`/api/buyers/${option.buyer_number}`);
       const buyer = response.data;
       if (buyer.name) setName(buyer.name);
       if (buyer.phoneNumber || buyer.phone_number) setPhoneNumber(buyer.phoneNumber || buyer.phone_number);
@@ -468,7 +468,7 @@ export default function NewSellerPage() {
               <Grid item xs={12}>
                 <Autocomplete
                   options={buyerCopyOptions}
-                  getOptionLabel={(option) => `${option.buyerNumber} - ${option.name}`}
+                  getOptionLabel={(option) => `${option.buyer_number} - ${option.name}`}
                   loading={buyerCopyLoading}
                   inputValue={buyerCopyInput}
                   onInputChange={(_event, value) => {
@@ -484,7 +484,7 @@ export default function NewSellerPage() {
                     />
                   )}
                   noOptionsText="該当する買主が見つかりません"
-                  isOptionEqualToValue={(option, value) => option.buyerNumber === value.buyerNumber}
+                  isOptionEqualToValue={(option, value) => option.buyer_number === value.buyer_number}
                 />
               </Grid>
               {/* 3. 売主番号 */}
