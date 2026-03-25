@@ -152,7 +152,7 @@ const BUYER_FIELD_SECTIONS = [
       { key: 'latest_status', label: '★最新状況', inlineEditable: true },
       { key: 'distribution_type', label: '配信メール', inlineEditable: true, fieldType: 'buttonSelect', required: true },
       { key: 'pinrich', label: 'Pinrich', inlineEditable: true, fieldType: 'dropdown' },
-      { key: 'pinrich_link', label: 'Pinrichリンク', inlineEditable: false, fieldType: 'pinrichLink' },
+      { key: 'pinrich_link', label: 'Pinrichリンク', inlineEditable: true, fieldType: 'pinrichLink' },
       { key: 'inquiry_email_phone', label: '【問合メール】電話対応', inlineEditable: true, fieldType: 'dropdown' },
       { key: 'three_calls_confirmed', label: '3回架電確認済み', inlineEditable: true, fieldType: 'buttonSelect' },
       { key: 'confirmation_to_assignee', label: '担当への確認事項', inlineEditable: true, fieldType: 'confirmationToAssignee' },
@@ -1591,7 +1591,7 @@ TEL：097-533-2022`;
                     if (field.key === 'distribution_type') {
                       const isDistributionMissing = missingRequiredFields.has('distribution_type');
                       return (
-                        <Grid item xs={12} key={`${section.title}-${field.key}`}>
+                        <Grid item xs={12} sm={6} key={`${section.title}-${field.key}`}>
                           {isDistributionMissing && (
                             <Typography variant="caption" color="error" sx={{ display: 'block', mb: 0.5, fontWeight: 'bold' }}>
                               ⚠ 配信メール（必須）
@@ -1652,7 +1652,7 @@ TEL：097-533-2022`;
                         '受信エラー',
                       ];
                       return (
-                        <Grid item xs={12} key={`${section.title}-${field.key}`}>
+                        <Grid item xs={12} sm={6} key={`${section.title}-${field.key}`}>
                           <FormControl fullWidth size="small">
                             <InputLabel>{field.label}</InputLabel>
                             <Select
