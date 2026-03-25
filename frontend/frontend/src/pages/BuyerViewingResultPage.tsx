@@ -31,13 +31,16 @@ interface Buyer {
 
 // 内覧結果・後続対応用クイック入力ボタンの定義
 const VIEWING_RESULT_QUICK_INPUTS = [
-  { label: '家族構成', text: '■家族構成：' },
-  { label: '譲れない点', text: '■譲れない点：' },
-  { label: '気に入っている点', text: '■気に入っている点：' },
-  { label: '駄目な点', text: '■駄目な点：' },
-  { label: '障害となる点', text: '■障害となる点：' },
-  { label: '次のアクション', text: '■次のアクション：' },
-  { label: '仮審査', text: '■仮審査：' },
+  { label: '内覧理由', text: '内覧理由：' },
+  { label: '家族構成', text: '家族構成：' },
+  { label: '購入物件の譲れない点', text: '購入物件の譲れない点：' },
+  { label: 'この物件の気に入っている点', text: 'この物件の気に入っている点：' },
+  { label: 'この物件の駄目な点', text: 'この物件の駄目な点：' },
+  { label: '購入時障害となる点', text: '購入時障害となる点：' },
+  { label: '仮審査', text: '仮審査：' },
+  { label: '連絡の付きやすい曜日、時間帯', text: '連絡の付きやすい曜日、時間帯：' },
+  { label: '次のアクション', text: '次のアクション：' },
+  { label: 'クロージング', text: 'クロージング：' },
 ];
 
 export default function BuyerViewingResultPage() {

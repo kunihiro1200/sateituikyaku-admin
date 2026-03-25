@@ -111,6 +111,20 @@ const INQUIRY_HEARING_QUICK_INPUTS = [
   { label: '他物件', text: '他に気になる物件はあるか？：' },
 ];
 
+// 担当への伝言/質問事項・内覧結果用クイック入力ボタンの定義
+const ASSIGNEE_MESSAGE_QUICK_INPUTS = [
+  { label: '内覧理由', text: '内覧理由：' },
+  { label: '家族構成', text: '家族構成：' },
+  { label: '購入物件の譲れない点', text: '購入物件の譲れない点：' },
+  { label: 'この物件の気に入っている点', text: 'この物件の気に入っている点：' },
+  { label: 'この物件の駄目な点', text: 'この物件の駄目な点：' },
+  { label: '購入時障害となる点', text: '購入時障害となる点：' },
+  { label: '仮審査', text: '仮審査：' },
+  { label: '連絡の付きやすい曜日、時間帯', text: '連絡の付きやすい曜日、時間帯：' },
+  { label: '次のアクション', text: '次のアクション：' },
+  { label: 'クロージング', text: 'クロージング：' },
+];
+
 // 査定フィールドの選択肢定義
 const PROPERTY_TYPE_OPTIONS = ['戸', 'マ', '土', '収益物件', '他'];
 const CURRENT_STATUS_OPTIONS = ['居', '空', '賃', '他'];
@@ -199,6 +213,11 @@ export default function BuyerDetailPage() {
   // ヒアリング項目のローカル編集値（HTML）
   const [hearingEditValue, setHearingEditValue] = useState<string>('');
   const [hearingSaving, setHearingSaving] = useState(false);
+  // 担当への伝言/質問事項用RichTextEditorのref
+  const messageToAssigneeEditorRef = useRef<RichTextCommentEditorHandle>(null);
+  // 担当への伝言/質問事項のローカル編集値（HTML）
+  const [messageToAssigneeEditValue, setMessageToAssigneeEditValue] = useState<string>('');
+  const [messageToAssigneeSaving, setMessageToAssigneeSaving] = useState(false);
   // 買主番号検索バー用
   const [buyerNumberSearch, setBuyerNumberSearch] = useState('');
 
@@ -271,6 +290,8 @@ export default function BuyerDetailPage() {
       setBuyer(res.data);
       // ヒアリング項目の初期値をセット（HTML形式で保存されている場合はそのまま）
       setHearingEditValue(res.data.inquiry_hearing || '');
+      // 担当への伝言/質問事項の初期値をセット
+      setMessageToAssigneeEditValue(res.data.message_to_assignee || '');
     } catch (error) {
       console.error('Failed to fetch buyer:', error);
     } finally {
@@ -393,6 +414,26 @@ export default function BuyerDetailPage() {
       });
     } finally {
       setSectionSavingStates(prev => ({ ...prev, [sectionTitle]: false }));
+    }
+  };
+
+  // 担当への伝言/質問事項の保存ハンドラー
+  const handleSaveMessageToAssignee = async () => {
+    if (!buyer) return;
+    setMessageToAssigneeSaving(true);
+    try {
+      const result = await buyerApi.update(
+        buyer_number!,
+        { message_to_assignee: messageToAssigneeEditValue },
+        { sync: true }
+      );
+      setBuyer(result.buyer);
+      setMessageToAssigneeEditValue(result.buyer.message_to_assignee || '');
+      setSnackbar({ open: true, message: '担当への伝言/質問事項を保存しました', severity: 'success' });
+    } catch (error: any) {
+      setSnackbar({ open: true, message: error.response?.data?.error || '保存に失敗しました', severity: 'error' });
+    } finally {
+      setMessageToAssigneeSaving(false);
     }
   };
 
@@ -1937,6 +1978,70 @@ TEL：097-533-2022`;
                               </>
                             );
                           })()}
+                        </Grid>
+                      );
+                    }
+
+                    // message_to_assigneeフィールドはRichTextEditorとクイックボタンで表示
+                    if (field.key === 'message_to_assignee') {
+                      const isDirty = messageToAssigneeEditValue !== (buyer?.message_to_assignee || '');
+                      return (
+                        <Grid item xs={12} key={`${section.title}-${field.key}`}>
+                          {/* 担当への伝言/質問事項用クイック入力ボタン */}
+                          <Box sx={{ mb: 1 }}>
+                            <Typography variant="subtitle2" gutterBottom>
+                              {field.label}
+                            </Typography>
+                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 1 }}>
+                              {ASSIGNEE_MESSAGE_QUICK_INPUTS.map((item) => (
+                                <Chip
+                                  key={item.label}
+                                  label={item.label}
+                                  onClick={() => messageToAssigneeEditorRef.current?.insertAtCursor(`<b>${item.text}</b>`)}
+                                  size="small"
+                                  clickable
+                                  color="primary"
+                                  variant="outlined"
+                                  sx={{ cursor: 'pointer' }}
+                                />
+                              ))}
+                            </Box>
+                          </Box>
+                          <Box sx={{
+                            border: isDirty ? '2px solid #ff6d00' : '2px solid transparent',
+                            borderRadius: 1,
+                            transition: 'border-color 0.2s',
+                          }}>
+                            <RichTextCommentEditor
+                              ref={messageToAssigneeEditorRef}
+                              value={messageToAssigneeEditValue}
+                              onChange={(html) => setMessageToAssigneeEditValue(html)}
+                              placeholder="担当への伝言・質問事項を入力..."
+                            />
+                          </Box>
+                          <Button
+                            fullWidth
+                            variant={isDirty ? 'contained' : 'outlined'}
+                            size="large"
+                            onClick={handleSaveMessageToAssignee}
+                            disabled={messageToAssigneeSaving}
+                            sx={{
+                              mt: 1,
+                              ...(isDirty ? {
+                                backgroundColor: '#ff6d00',
+                                color: '#fff',
+                                fontWeight: 'bold',
+                                boxShadow: '0 0 0 3px rgba(255,109,0,0.4)',
+                                animation: 'pulse-orange 1.5s infinite',
+                                '&:hover': { backgroundColor: '#e65100' },
+                              } : {
+                                color: '#bdbdbd',
+                                borderColor: '#e0e0e0',
+                              }),
+                            }}
+                          >
+                            {messageToAssigneeSaving ? '保存中...' : '保存'}
+                          </Button>
                         </Grid>
                       );
                     }
