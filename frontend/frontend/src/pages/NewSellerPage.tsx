@@ -115,8 +115,14 @@ export default function NewSellerPage() {
 
   // 反響情報
   const [inquiryYear, setInquiryYear] = useState(new Date().getFullYear().toString());
-  const [inquiryDate, setInquiryDate] = useState('');
-  const [inquiryDetailedDateTime, setInquiryDetailedDateTime] = useState('');
+  const [inquiryDate, setInquiryDate] = useState(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  });
+  const [inquiryDetailedDateTime, setInquiryDetailedDateTime] = useState(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}T${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+  });
   const [site, setSite] = useState('');
   const [inquiryReason, setInquiryReason] = useState('');
   const [siteUrl, setSiteUrl] = useState('');
