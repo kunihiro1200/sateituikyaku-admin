@@ -41,22 +41,36 @@ export class BuyerLinkageService {
     }
 
     const counts = new Map<string, number>();
+    // 初期化（0件の物件も返す）
+    for (const propNum of propertyNumbers) {
+      counts.set(propNum, 0);
+    }
 
     try {
-      // 各物件番号に対してカウントを取得
-      // property_numberはカンマ区切りで複数の物件番号を含む可能性があるため、LIKEクエリを使用
-      for (const propNum of propertyNumbers) {
-        const { count, error } = await this.supabase
-          .from('buyers')
-          .select('*', { count: 'exact', head: true })
-          .ilike('property_number', `%${propNum}%`)
-          .is('deleted_at', null);  // 削除済み買主を除外
+      // 1回のクエリで全買主のproperty_numberを取得してフロントで集計
+      // property_numberはカンマ区切りで複数の物件番号を含む可能性があるため、
+      // 対象物件番号を含む買主を全件取得してカウントする
+      const { data, error } = await this.supabase
+        .from('buyers')
+        .select('property_number')
+        .is('deleted_at', null)
+        .not('property_number', 'is', null);
 
-        if (error) {
-          console.error(`Failed to count buyers for property ${propNum}:`, error);
-          counts.set(propNum, 0);
-        } else {
-          counts.set(propNum, count || 0);
+      if (error) {
+        console.error('Failed to fetch buyer property numbers:', error);
+        return counts;
+      }
+
+      // 各買主のproperty_numberを解析してカウント
+      const propertyNumberSet = new Set(propertyNumbers);
+      for (const row of data || []) {
+        if (!row.property_number) continue;
+        // property_numberはカンマ区切りで複数含む場合がある
+        const parts = row.property_number.split(',').map((p: string) => p.trim());
+        for (const part of parts) {
+          if (propertyNumberSet.has(part)) {
+            counts.set(part, (counts.get(part) || 0) + 1);
+          }
         }
       }
 
