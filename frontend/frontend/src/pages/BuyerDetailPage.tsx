@@ -1750,42 +1750,36 @@ TEL：097-533-2022`;
                             );
 
                             // 数値入力ヘルパー（－＋ボタン付き）
+                            // 全角数字→半角変換
+                            const toHalfWidth = (str: string) =>
+                              str.replace(/[０-９．]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xFEE0));
+
                             const renderNumberInput = (fieldKey: string, label: string, step: number = 1) => {
                               const isDecimal = step < 1;
-                              const decimals = isDecimal ? 2 : 0;
-                              const formatVal = (v: number) => isDecimal ? v.toFixed(decimals) : String(Math.round(v));
-                              const displayVal = buyer[fieldKey] !== undefined && buyer[fieldKey] !== null && buyer[fieldKey] !== ''
-                                ? (isDecimal ? parseFloat(buyer[fieldKey]).toFixed(decimals) : buyer[fieldKey])
-                                : (isDecimal ? '0.00' : '0');
                               return (
                                 <Grid item xs={12} key={`valuation-field-${fieldKey}`}>
                                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                     <Typography variant="caption" color="text.secondary" sx={{ whiteSpace: 'nowrap', flexShrink: 0 }}>
                                       {label}
                                     </Typography>
-                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flex: 1 }}>
-                                      <TextField
-                                        size="small"
-                                        type="number"
-                                        value={displayVal}
-                                        onChange={(e) => handleFieldChange(section.title, fieldKey, e.target.value)}
-                                        onBlur={async (e) => { await handleInlineFieldSave(fieldKey, e.target.value); }}
-                                        sx={{ flex: 1 }}
-                                        inputProps={{ step, min: 0 }}
-                                      />
-                                      <Button size="small" variant="outlined" onClick={async () => {
-                                        const cur = parseFloat(buyer[fieldKey] || '0');
-                                        const newVal = formatVal(Math.max(0, cur - step));
-                                        handleFieldChange(section.title, fieldKey, newVal);
-                                        await handleInlineFieldSave(fieldKey, newVal);
-                                      }} sx={{ minWidth: 32, px: 0.5 }}>－</Button>
-                                      <Button size="small" variant="outlined" onClick={async () => {
-                                        const cur = parseFloat(buyer[fieldKey] || '0');
-                                        const newVal = formatVal(cur + step);
-                                        handleFieldChange(section.title, fieldKey, newVal);
-                                        await handleInlineFieldSave(fieldKey, newVal);
-                                      }} sx={{ minWidth: 32, px: 0.5 }}>＋</Button>
-                                    </Box>
+                                    <TextField
+                                      size="small"
+                                      value={buyer[fieldKey] ?? ''}
+                                      onChange={(e) => {
+                                        const half = toHalfWidth(e.target.value);
+                                        handleFieldChange(section.title, fieldKey, half);
+                                      }}
+                                      onBlur={async (e) => {
+                                        const half = toHalfWidth(e.target.value);
+                                        const num = parseFloat(half);
+                                        const saved = isNaN(num) ? '' : (isDecimal ? num.toFixed(2) : String(Math.round(num)));
+                                        handleFieldChange(section.title, fieldKey, saved);
+                                        await handleInlineFieldSave(fieldKey, saved);
+                                      }}
+                                      sx={{ flex: 1 }}
+                                      inputProps={{ inputMode: 'decimal' }}
+                                      placeholder={isDecimal ? '0.00' : '0'}
+                                    />
                                   </Box>
                                 </Grid>
                               );
