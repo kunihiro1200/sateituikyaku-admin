@@ -94,7 +94,7 @@ interface Activity {
   metadata: any;
   created_at: string;
   employee?: {
-    id: number;
+    id: string;
     name: string;
     initials: string;
   };
@@ -1205,7 +1205,13 @@ TEL：097-533-2022`;
                     const metadata = activity.metadata || {};
                     const isSms = activity.action === 'sms';
                     const propertyNumbers = metadata.propertyNumbers || metadata.property_numbers || [];
-                    const displayName = activity.employee ? getDisplayName(activity.employee) : '不明';
+                    const displayName = isSms
+                      ? (activity.employee
+                          ? (activity.employee.name
+                              ? activity.employee.name.split(/[\s\u3000]/)[0]
+                              : (activity.employee.initials || '担当者'))
+                          : '担当者')
+                      : (activity.employee ? getDisplayName(activity.employee) : '不明');
                     return (
                       <ListItem
                         key={activity.id}
