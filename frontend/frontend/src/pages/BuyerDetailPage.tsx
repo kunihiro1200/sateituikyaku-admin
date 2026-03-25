@@ -379,11 +379,11 @@ export default function BuyerDetailPage() {
       const DATE_FIELDS = ['next_call_date', 'reception_date', 'visit_date', 'contract_date'];
       const sanitizedValue = DATE_FIELDS.includes(fieldName) && newValue === '' ? null : newValue;
 
-      // 更新するフィールドのみを送信（双方向同期を有効化）
+      // 更新するフィールドのみを送信（DBのみ即時保存、スプシ同期は保存ボタン押下時）
       const result = await buyerApi.update(
         buyer_number!,
         { [fieldName]: sanitizedValue },
-        { sync: true }  // スプレッドシートへの同期を有効化
+        { sync: false }  // スプレッドシート同期はしない（保存ボタン押下時に同期）
       );
       
       // 競合がある場合
@@ -1438,8 +1438,9 @@ TEL：097-533-2022`;
                               </Typography>
                             )}
                             <InlineEditableField
+                              key={`inquiry_source-${isInquirySourceMissing}`}
                               label={isInquirySourceMissing ? '' : field.label}
-                              value={value || ''}
+                              value={buyer[field.key] || ''}
                               fieldName={field.key}
                               fieldType="dropdown"
                               options={INQUIRY_SOURCE_OPTIONS}
@@ -1491,8 +1492,9 @@ TEL：097-533-2022`;
                               </Typography>
                             )}
                             <InlineEditableField
+                              key={`latest_status-${isLatestStatusMissing}`}
                               label={isLatestStatusMissing ? '' : field.label}
-                              value={value || ''}
+                              value={buyer[field.key] || ''}
                               fieldName={field.key}
                               fieldType="dropdown"
                               options={LATEST_STATUS_OPTIONS}
