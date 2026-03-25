@@ -135,13 +135,14 @@ const BUYER_FIELD_SECTIONS = [
   {
     title: '問合せ内容',
     fields: [
+      { key: 'vendor_survey', label: '業者向けアンケート', inlineEditable: true, fieldType: 'buttonSelect' },
       { key: 'inquiry_hearing', label: '問合時ヒアリング', multiline: true, inlineEditable: true },
       { key: 'initial_assignee', label: '初動担当', inlineEditable: true },
       { key: 'reception_date', label: '受付日', type: 'date', inlineEditable: true },
       { key: 'inquiry_source', label: '問合せ元', inlineEditable: true },
       { key: 'latest_status', label: '★最新状況', inlineEditable: true },
       { key: 'inquiry_email_phone', label: '【問合メール】電話対応', inlineEditable: true, fieldType: 'dropdown' },
-      { key: 'three_calls_confirmed', label: '3回架電確認済み', inlineEditable: true, fieldType: 'dropdown' },
+      { key: 'three_calls_confirmed', label: '3回架電確認済み', inlineEditable: true, fieldType: 'buttonSelect' },
       { key: 'confirmation_to_assignee', label: '担当への確認事項', inlineEditable: true, fieldType: 'confirmationToAssignee' },
       { key: 'next_call_date', label: '次電日', type: 'date', inlineEditable: true },
       { key: 'owned_home_hearing_inquiry', label: '問合時持家ヒアリング', inlineEditable: true, fieldType: 'staffSelect' },
@@ -1553,9 +1554,9 @@ TEL：097-533-2022`;
                       );
                     }
 
-                    // three_calls_confirmedフィールドは特別処理（ボタン選択）
-                    if (field.key === 'three_calls_confirmed') {
-                      const THREE_CALLS_BTNS = ['3回架電OK', '3回架電未', '他'];
+                    // vendor_surveyフィールドは特別処理（ボタン選択）
+                    if (field.key === 'vendor_survey') {
+                      const VENDOR_SURVEY_BTNS = ['確認済み', '未'];
                       return (
                         <Grid item xs={12} key={`${section.title}-${field.key}`}>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -1563,8 +1564,53 @@ TEL：097-533-2022`;
                               {field.label}
                             </Typography>
                             <Box sx={{ display: 'flex', gap: 0.5, flex: 1 }}>
+                              {VENDOR_SURVEY_BTNS.map((opt) => {
+                                const isSelected = buyer?.[field.key] === opt;
+                                return (
+                                  <Button
+                                    key={opt}
+                                    size="small"
+                                    variant={isSelected ? 'contained' : 'outlined'}
+                                    color="primary"
+                                    onClick={async () => {
+                                      const newValue = isSelected ? '' : opt;
+                                      setBuyer((prev: any) => prev ? { ...prev, [field.key]: newValue } : prev);
+                                      handleFieldChange(section.title, field.key, newValue);
+                                      handleInlineFieldSave(field.key, newValue).catch(console.error);
+                                    }}
+                                    sx={{
+                                      flex: 1,
+                                      py: 0.5,
+                                      fontWeight: isSelected ? 'bold' : 'normal',
+                                      borderRadius: 1,
+                                    }}
+                                  >
+                                    {opt}
+                                  </Button>
+                                );
+                              })}
+                            </Box>
+                          </Box>
+                        </Grid>
+                      );
+                    }
+
+                    // three_calls_confirmedフィールドは特別処理（inquiry_email_phone=不通のときのみ表示・必須）
+                    if (field.key === 'three_calls_confirmed') {
+                      // inquiry_email_phone が「不通」の場合のみ表示
+                      if (buyer?.inquiry_email_phone !== '不通') {
+                        return null;
+                      }
+                      const THREE_CALLS_BTNS = ['確認済み', '未'];
+                      return (
+                        <Grid item xs={12} key={`${section.title}-${field.key}`}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Typography variant="caption" color="error" sx={{ whiteSpace: 'nowrap', flexShrink: 0, fontWeight: 'bold' }}>
+                              {field.label} *
+                            </Typography>
+                            <Box sx={{ display: 'flex', gap: 0.5, flex: 1 }}>
                               {THREE_CALLS_BTNS.map((opt) => {
-                                const isSelected = value === opt;
+                                const isSelected = buyer?.[field.key] === opt;
                                 return (
                                   <Button
                                     key={opt}

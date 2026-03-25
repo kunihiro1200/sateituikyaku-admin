@@ -115,6 +115,7 @@ export default function NewBuyerPage() {
   // 問合せ情報（追加フィールド）
   const [inquiryEmailPhone, setInquiryEmailPhone] = useState('');
   const [threeCallsConfirmed, setThreeCallsConfirmed] = useState('');
+  const [vendorSurvey, setVendorSurvey] = useState('');
   const [emailType, setEmailType] = useState('');
   const [distributionType, setDistributionType] = useState('');
   const [ownedHomeHearing, setOwnedHomeHearing] = useState('');
@@ -208,6 +209,7 @@ export default function NewBuyerPage() {
         // 問合せ情報（追加）
         inquiry_email_phone: inquiryEmailPhone || null,
         three_calls_confirmed: threeCallsConfirmed || null,
+        vendor_survey: vendorSurvey || null,
         email_type: emailType || null,
         distribution_type: distributionType || null,
         owned_home_hearing: ownedHomeHearing || null,
@@ -732,6 +734,32 @@ export default function NewBuyerPage() {
                   </Box>
                 </Grid>
 
+                {/* 業者向けアンケート */}
+                <Grid item xs={12}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ whiteSpace: 'nowrap', flexShrink: 0 }}>
+                      業者向けアンケート
+                    </Typography>
+                    <Box sx={{ display: 'flex', gap: 0.5, flex: 1 }}>
+                      {['確認済み', '未'].map((opt) => {
+                        const isSelected = vendorSurvey === opt;
+                        return (
+                          <Button
+                            key={opt}
+                            size="small"
+                            variant={isSelected ? 'contained' : 'outlined'}
+                            color="primary"
+                            onClick={() => setVendorSurvey(isSelected ? '' : opt)}
+                            sx={{ flex: 1, py: 0.5, fontWeight: isSelected ? 'bold' : 'normal', borderRadius: 1 }}
+                          >
+                            {opt}
+                          </Button>
+                        );
+                      })}
+                    </Box>
+                  </Box>
+                </Grid>
+
                 <Grid item xs={12}>
                   <Box sx={{ mb: 1 }}>
                     <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
@@ -802,21 +830,33 @@ export default function NewBuyerPage() {
                   </FormControl>
                 </Grid>
 
-                <Grid item xs={12} sm={6}>
-                  <FormControl fullWidth>
-                    <InputLabel>3回架電確認済み</InputLabel>
-                    <Select
-                      value={threeCallsConfirmed}
-                      label="3回架電確認済み"
-                      onChange={(e) => setThreeCallsConfirmed(e.target.value)}
-                    >
-                      <MenuItem value=""><em>未選択</em></MenuItem>
-                      {THREE_CALLS_CONFIRMED_OPTIONS.map((opt) => (
-                        <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                </Grid>
+                {/* 3回架電確認済み: inquiry_email_phone が「不通」のときのみ表示 */}
+                {inquiryEmailPhone === '不通' && (
+                  <Grid item xs={12}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Typography variant="caption" color="error" sx={{ whiteSpace: 'nowrap', flexShrink: 0, fontWeight: 'bold' }}>
+                        3回架電確認済み *
+                      </Typography>
+                      <Box sx={{ display: 'flex', gap: 0.5, flex: 1 }}>
+                        {['確認済み', '未'].map((opt) => {
+                          const isSelected = threeCallsConfirmed === opt;
+                          return (
+                            <Button
+                              key={opt}
+                              size="small"
+                              variant={isSelected ? 'contained' : 'outlined'}
+                              color="primary"
+                              onClick={() => setThreeCallsConfirmed(isSelected ? '' : opt)}
+                              sx={{ flex: 1, py: 0.5, fontWeight: isSelected ? 'bold' : 'normal', borderRadius: 1 }}
+                            >
+                              {opt}
+                            </Button>
+                          );
+                        })}
+                      </Box>
+                    </Box>
+                  </Grid>
+                )}
 
                 <Grid item xs={12} sm={6}>
                   <FormControl fullWidth>
