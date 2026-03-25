@@ -1532,8 +1532,9 @@ TEL：097-533-2022`;
                                     color={opt === '済' ? 'success' : opt === '未' ? 'error' : 'primary'}
                                     onClick={async () => {
                                       const newValue = isSelected ? '' : opt;
+                                      setBuyer((prev: any) => prev ? { ...prev, [field.key]: newValue } : prev);
                                       handleFieldChange(section.title, field.key, newValue);
-                                      await handleInlineFieldSave(field.key, newValue);
+                                      handleInlineFieldSave(field.key, newValue).catch(console.error);
                                     }}
                                     sx={{
                                       flex: 1,
@@ -1572,8 +1573,9 @@ TEL：097-533-2022`;
                                     color="primary"
                                     onClick={async () => {
                                       const newValue = isSelected ? '' : opt;
+                                      setBuyer((prev: any) => prev ? { ...prev, [field.key]: newValue } : prev);
                                       handleFieldChange(section.title, field.key, newValue);
-                                      await handleInlineFieldSave(field.key, newValue);
+                                      handleInlineFieldSave(field.key, newValue).catch(console.error);
                                     }}
                                     sx={{
                                       flex: 1,
@@ -1651,9 +1653,19 @@ TEL：097-533-2022`;
                                   size="small"
                                   variant={isSelected ? 'contained' : 'outlined'}
                                   color="primary"
-                                  onClick={async () => {
+                                  onClick={() => {
                                     const newValue = isSelected ? '' : initial;
-                                    await handleInlineFieldSave('initial_assignee', newValue);
+                                    // 即座にUI更新
+                                    setBuyer((prev: any) => prev ? { ...prev, initial_assignee: newValue } : prev);
+                                    // 必須マーク更新
+                                    setMissingRequiredFields(prev => {
+                                      const next = new Set(prev);
+                                      if (newValue) next.delete('initial_assignee');
+                                      else next.add('initial_assignee');
+                                      return next;
+                                    });
+                                    // バックグラウンドで保存
+                                    handleInlineFieldSave('initial_assignee', newValue).catch(console.error);
                                   }}
                                   sx={{
                                     minWidth: 40,
@@ -1702,8 +1714,9 @@ TEL：097-533-2022`;
                                   color="primary"
                                   onClick={async () => {
                                     const newValue = isSelected ? '' : option;
+                                    setBuyer((prev: any) => prev ? { ...prev, [field.key]: newValue } : prev);
                                     handleFieldChange(section.title, field.key, newValue);
-                                    await handleInlineFieldSave(field.key, newValue);
+                                    handleInlineFieldSave(field.key, newValue).catch(console.error);
                                   }}
                                   sx={{
                                     flex: 1,
@@ -1741,8 +1754,9 @@ TEL：097-533-2022`;
                                     color="primary"
                                     onClick={async () => {
                                       const newValue = isSelected ? '' : initial;
+                                      setBuyer((prev: any) => prev ? { ...prev, [field.key]: newValue } : prev);
                                       handleFieldChange(section.title, field.key, newValue);
-                                      await handleInlineFieldSave(field.key, newValue);
+                                      handleInlineFieldSave(field.key, newValue).catch(console.error);
                                     }}
                                     sx={{
                                       minWidth: 40,
@@ -1786,8 +1800,9 @@ TEL：097-533-2022`;
                                     color="primary"
                                     onClick={async () => {
                                       const newValue = isSelected ? '' : option;
+                                      setBuyer((prev: any) => prev ? { ...prev, [field.key]: newValue } : prev);
                                       handleFieldChange(section.title, field.key, newValue);
-                                      await handleInlineFieldSave(field.key, newValue);
+                                      handleInlineFieldSave(field.key, newValue).catch(console.error);
                                     }}
                                     sx={{
                                       flex: 1,
@@ -1883,11 +1898,9 @@ TEL：097-533-2022`;
                                           color="primary"
                                           onClick={() => {
                                             const newValue = isSelected ? '' : option;
-                                            // UIを即座に更新（awaitしない）
-                                            handleFieldChange(section.title, fieldKey, newValue);
                                             setBuyer((prev: any) => prev ? { ...prev, [fieldKey]: newValue } : prev);
-                                            // 保存はバックグラウンドで実行
-                                            handleInlineFieldSave(fieldKey, newValue);
+                                            handleFieldChange(section.title, fieldKey, newValue);
+                                            handleInlineFieldSave(fieldKey, newValue).catch(console.error);
                                           }}
                                           sx={{ flex: 1, py: 0.5, fontWeight: isSelected ? 'bold' : 'normal', borderRadius: 1 }}
                                         >
@@ -1920,8 +1933,9 @@ TEL：097-533-2022`;
                                         const half = toHalfWidth(e.target.value);
                                         const num = parseFloat(half);
                                         const saved = isNaN(num) ? '' : (isDecimal ? num.toFixed(2) : String(Math.round(num)));
+                                        setBuyer((prev: any) => prev ? { ...prev, [fieldKey]: saved } : prev);
                                         handleFieldChange(section.title, fieldKey, saved);
-                                        await handleInlineFieldSave(fieldKey, saved);
+                                        handleInlineFieldSave(fieldKey, saved).catch(console.error);
                                       }}
                                       sx={{ flex: 1 }}
                                       inputProps={{ inputMode: 'decimal' }}
@@ -1941,10 +1955,8 @@ TEL：097-533-2022`;
                                   fieldName={fieldKey}
                                   multiline={true}
                                   onSave={async (newValue: any) => {
-                                    const result = await handleInlineFieldSave(fieldKey, newValue);
-                                    if (result && !result.success && result.error) {
-                                      throw new Error(result.error);
-                                    }
+                                    setBuyer((prev: any) => prev ? { ...prev, [fieldKey]: newValue } : prev);
+                                    handleInlineFieldSave(fieldKey, newValue).catch(console.error);
                                   }}
                                   onChange={(fn: string, nv: any) => handleFieldChange(section.title, fn, nv)}
                                   buyerId={buyer_number}
@@ -1964,8 +1976,9 @@ TEL：097-533-2022`;
                                     <Select
                                       value={buyer[fieldKey] || ''}
                                       onChange={async (e) => {
+                                        setBuyer((prev: any) => prev ? { ...prev, [fieldKey]: e.target.value } : prev);
                                         handleFieldChange(section.title, fieldKey, e.target.value);
-                                        await handleInlineFieldSave(fieldKey, e.target.value);
+                                        handleInlineFieldSave(fieldKey, e.target.value).catch(console.error);
                                       }}
                                       displayEmpty
                                     >
@@ -2001,9 +2014,8 @@ TEL：097-533-2022`;
 
                     // その他のフィールド
                     const handleFieldSave = async (newValue: any) => {
-                      // UIを即座に更新（楽観的更新）
+                      // UIを即座に更新（楽観的更新）してからAPIをバックグラウンドで保存
                       setBuyer((prev: any) => prev ? { ...prev, [field.key]: newValue } : prev);
-                      // バックグラウンドで保存（awaitしない）
                       handleInlineFieldSave(field.key, newValue).catch(console.error);
                     };
 
