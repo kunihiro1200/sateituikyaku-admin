@@ -111,6 +111,22 @@ const INQUIRY_HEARING_QUICK_INPUTS = [
   { label: '他物件', text: '他に気になる物件はあるか？：' },
 ];
 
+const VALUATION_FIELDS = [
+  { key: 'property_type', label: '種別' },
+  { key: 'location', label: '所在地' },
+  { key: 'current_status', label: '現況' },
+  { key: 'land_area', label: '土地面積（不明の場合は空欄）' },
+  { key: 'building_area', label: '建物面積（不明の場合は空欄）' },
+  { key: 'floor_plan', label: '間取り' },
+  { key: 'build_year', label: '築年（西暦）' },
+  { key: 'renovation_history', label: 'リフォーム履歴（その他太陽光等も）' },
+  { key: 'other_valuation_done', label: '他に査定したことある？' },
+  { key: 'owner_name', label: '名義人' },
+  { key: 'loan_balance', label: 'ローン残' },
+  { key: 'visit_desk', label: '訪問/机上' },
+  { key: 'seller_list_copy', label: '売主リストコピー' },
+];
+
 const BUYER_FIELD_SECTIONS = [
   {
     title: '問合せ内容',
@@ -124,12 +140,10 @@ const BUYER_FIELD_SECTIONS = [
       { key: 'three_calls_confirmed', label: '3回架電確認済み', inlineEditable: true, fieldType: 'dropdown' },
       { key: 'email_type', label: 'メール種別', inlineEditable: true, fieldType: 'dropdown' },
       { key: 'distribution_type', label: '配信種別', inlineEditable: true, fieldType: 'dropdown' },
-      { key: 'owned_home_hearing', label: '持家ヒアリング', inlineEditable: true },
+      { key: 'next_call_date', label: '次電日', type: 'date', inlineEditable: true },
       { key: 'owned_home_hearing_inquiry', label: '問合時持家ヒアリング', inlineEditable: true, fieldType: 'staffSelect' },
       { key: 'owned_home_hearing_result', label: '持家ヒアリング結果', inlineEditable: true, fieldType: 'homeHearingResult' },
       { key: 'valuation_required', label: '要査定', inlineEditable: true, fieldType: 'valuationRequired' },
-      // viewing_notes は PropertyInfoCard 内に移動
-      { key: 'next_call_date', label: '次電日', type: 'date', inlineEditable: true },
     ],
   },
   {
@@ -1673,39 +1687,58 @@ TEL：097-533-2022`;
                       if (!showValuation) return null;
                       const VALUATION_OPTIONS = ['要', '不要'];
                       return (
-                        <Grid item xs={12} key={`${section.title}-${field.key}`}>
-                          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                            <Typography variant="caption" color="text.secondary">
-                              {field.label}
-                            </Typography>
-                            <Box sx={{ display: 'flex', gap: 0.5 }}>
-                              {VALUATION_OPTIONS.map((option) => {
-                                const isSelected = buyer.valuation_required === option;
-                                return (
-                                  <Button
-                                    key={option}
-                                    size="small"
-                                    variant={isSelected ? 'contained' : 'outlined'}
-                                    color="primary"
-                                    onClick={async () => {
-                                      const newValue = isSelected ? '' : option;
-                                      handleFieldChange(section.title, field.key, newValue);
-                                      await handleInlineFieldSave(field.key, newValue);
-                                    }}
-                                    sx={{
-                                      flex: 1,
-                                      py: 0.5,
-                                      fontWeight: isSelected ? 'bold' : 'normal',
-                                      borderRadius: 1,
-                                    }}
-                                  >
-                                    {option}
-                                  </Button>
-                                );
-                              })}
+                        <>
+                          <Grid item xs={12} key={`${section.title}-${field.key}`}>
+                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                              <Typography variant="caption" color="text.secondary">
+                                {field.label}
+                              </Typography>
+                              <Box sx={{ display: 'flex', gap: 0.5 }}>
+                                {VALUATION_OPTIONS.map((option) => {
+                                  const isSelected = buyer.valuation_required === option;
+                                  return (
+                                    <Button
+                                      key={option}
+                                      size="small"
+                                      variant={isSelected ? 'contained' : 'outlined'}
+                                      color="primary"
+                                      onClick={async () => {
+                                        const newValue = isSelected ? '' : option;
+                                        handleFieldChange(section.title, field.key, newValue);
+                                        await handleInlineFieldSave(field.key, newValue);
+                                      }}
+                                      sx={{
+                                        flex: 1,
+                                        py: 0.5,
+                                        fontWeight: isSelected ? 'bold' : 'normal',
+                                        borderRadius: 1,
+                                      }}
+                                    >
+                                      {option}
+                                    </Button>
+                                  );
+                                })}
+                              </Box>
                             </Box>
-                          </Box>
-                        </Grid>
+                          </Grid>
+                          {buyer.valuation_required === '要' && VALUATION_FIELDS.map((vField) => (
+                            <Grid item xs={12} key={`valuation-field-${vField.key}`}>
+                              <InlineEditableField
+                                label={vField.label}
+                                value={buyer[vField.key] || ''}
+                                fieldName={vField.key}
+                                onSave={async (newValue: any) => {
+                                  const result = await handleInlineFieldSave(vField.key, newValue);
+                                  if (result && !result.success && result.error) {
+                                    throw new Error(result.error);
+                                  }
+                                }}
+                                onChange={(fieldName: string, newValue: any) => handleFieldChange(section.title, fieldName, newValue)}
+                                buyerId={buyer_number}
+                              />
+                            </Grid>
+                          ))}
+                        </>
                       );
                     }
 
