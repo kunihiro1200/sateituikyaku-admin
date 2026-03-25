@@ -212,9 +212,13 @@ export class StaffManagementService {
         rows
           .filter((row: any) => {
             const isNormalRaw = row['通常'];
-            return String(isNormalRaw).toUpperCase() === 'TRUE';
+            const isNormal = String(isNormalRaw).toUpperCase() === 'TRUE';
+            if (!isNormal) return false;
+            // メールアドレス（E列）が入っている行のみ（GYOSHA/外す等の特殊行を除外）
+            const email = row['メアド'] || row['メールアドレス'] || row['email'] || '';
+            return String(email).trim() !== '';
           })
-          .map((row: any) => row['イニシャル'] as string)
+          .map((row: any) => (row['スタッフID'] || row['イニシャル']) as string)
           .filter((i: string) => i && i.trim() !== '')
       )] as string[];
 
