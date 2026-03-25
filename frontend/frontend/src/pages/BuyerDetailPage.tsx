@@ -1693,10 +1693,13 @@ TEL：097-533-2022`;
                                       size="small"
                                       variant={isSelected ? 'contained' : 'outlined'}
                                       color="primary"
-                                      onClick={async () => {
+                                      onClick={() => {
                                         const newValue = isSelected ? '' : option;
+                                        // UIを即座に更新
+                                        setBuyer((prev: any) => prev ? { ...prev, valuation_required: newValue } : prev);
                                         handleFieldChange(section.title, field.key, newValue);
-                                        await handleInlineFieldSave(field.key, newValue);
+                                        // 保存はバックグラウンドで実行
+                                        handleInlineFieldSave(field.key, newValue);
                                       }}
                                       sx={{
                                         flex: 1,
@@ -1717,7 +1720,11 @@ TEL：097-533-2022`;
                             const isManshon = propertyType === 'マ';
                             const isTochi = propertyType === '土';
 
-                            // ボタン選択ヘルパー
+                            // 全角数字→半角変換
+                            const toHalfWidth = (str: string) =>
+                              str.replace(/[０-９．]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xFEE0));
+
+                            // ボタン選択ヘルパー（UIを即座に更新し、保存はバックグラウンドで実行）
                             const renderButtonSelect = (fieldKey: string, label: string, options: string[]) => (
                               <Grid item xs={12} key={`valuation-field-${fieldKey}`}>
                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -1733,10 +1740,13 @@ TEL：097-533-2022`;
                                           size="small"
                                           variant={isSelected ? 'contained' : 'outlined'}
                                           color="primary"
-                                          onClick={async () => {
+                                          onClick={() => {
                                             const newValue = isSelected ? '' : option;
+                                            // UIを即座に更新（awaitしない）
                                             handleFieldChange(section.title, fieldKey, newValue);
-                                            await handleInlineFieldSave(fieldKey, newValue);
+                                            setBuyer((prev: any) => prev ? { ...prev, [fieldKey]: newValue } : prev);
+                                            // 保存はバックグラウンドで実行
+                                            handleInlineFieldSave(fieldKey, newValue);
                                           }}
                                           sx={{ flex: 1, py: 0.5, fontWeight: isSelected ? 'bold' : 'normal', borderRadius: 1 }}
                                         >
@@ -1749,11 +1759,7 @@ TEL：097-533-2022`;
                               </Grid>
                             );
 
-                            // 数値入力ヘルパー（－＋ボタン付き）
-                            // 全角数字→半角変換
-                            const toHalfWidth = (str: string) =>
-                              str.replace(/[０-９．]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xFEE0));
-
+                            // 数値入力ヘルパー（直接入力・全角対応）
                             const renderNumberInput = (fieldKey: string, label: string, step: number = 1) => {
                               const isDecimal = step < 1;
                               return (
@@ -1764,10 +1770,10 @@ TEL：097-533-2022`;
                                     </Typography>
                                     <TextField
                                       size="small"
-                                      value={buyer[fieldKey] ?? ''}
+                                      defaultValue={buyer[fieldKey] ?? ''}
                                       onChange={(e) => {
                                         const half = toHalfWidth(e.target.value);
-                                        handleFieldChange(section.title, fieldKey, half);
+                                        e.target.value = half;
                                       }}
                                       onBlur={async (e) => {
                                         const half = toHalfWidth(e.target.value);
@@ -1801,6 +1807,7 @@ TEL：097-533-2022`;
                                   }}
                                   onChange={(fn: string, nv: any) => handleFieldChange(section.title, fn, nv)}
                                   buyerId={buyer_number}
+                                  fieldType="text"
                                 />
                               </Grid>
                             );
