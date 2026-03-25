@@ -53,7 +53,8 @@ import { INQUIRY_SOURCE_OPTIONS } from '../utils/buyerInquirySourceOptions';
 import { LATEST_STATUS_OPTIONS } from '../utils/buyerLatestStatusOptions';
 import { 
   INQUIRY_EMAIL_PHONE_OPTIONS, 
-  THREE_CALLS_CONFIRMED_OPTIONS, 
+  THREE_CALLS_CONFIRMED_OPTIONS,
+  DISTRIBUTION_TYPE_OPTIONS,
 } from '../utils/buyerFieldOptions';
 import RichTextCommentEditor, { RichTextCommentEditorHandle } from '../components/RichTextCommentEditor';
 import { formatDateTime } from '../utils/dateFormat';
@@ -141,6 +142,7 @@ const BUYER_FIELD_SECTIONS = [
       { key: 'reception_date', label: '受付日', type: 'date', inlineEditable: true },
       { key: 'inquiry_source', label: '問合せ元', inlineEditable: true },
       { key: 'latest_status', label: '★最新状況', inlineEditable: true },
+      { key: 'distribution_type', label: '配信メール', inlineEditable: true, fieldType: 'dropdown', required: true },
       { key: 'inquiry_email_phone', label: '【問合メール】電話対応', inlineEditable: true, fieldType: 'dropdown' },
       { key: 'three_calls_confirmed', label: '3回架電確認済み', inlineEditable: true, fieldType: 'buttonSelect' },
       { key: 'confirmation_to_assignee', label: '担当への確認事項', inlineEditable: true, fieldType: 'confirmationToAssignee' },
@@ -205,6 +207,9 @@ export default function BuyerDetailPage() {
     if (!buyer.latest_status || !String(buyer.latest_status).trim()) {
       missing.push('latest_status');
     }
+    if (!buyer.distribution_type || !String(buyer.distribution_type).trim()) {
+      missing.push('distribution_type');
+    }
 
     // 問合せ元にメールが含まれる場合は inquiry_email_phone も必須
     const inquirySource = buyer.inquiry_source ? String(buyer.inquiry_source) : '';
@@ -220,6 +225,7 @@ export default function BuyerDetailPage() {
         initial_assignee: '初動担当',
         inquiry_source: '問合せ元',
         latest_status: '★最新状況',
+        distribution_type: '配信メール',
         inquiry_email_phone: '【問合メール】電話対応',
       };
       const labels = missing.map(k => labelMap[k] || k);
@@ -336,6 +342,9 @@ export default function BuyerDetailPage() {
       }
       if (!res.data.latest_status || !String(res.data.latest_status).trim()) {
         initialMissing.push('latest_status');
+      }
+      if (!res.data.distribution_type || !String(res.data.distribution_type).trim()) {
+        initialMissing.push('distribution_type');
       }
       const src = res.data.inquiry_source ? String(res.data.inquiry_source) : '';
       if (src.includes('メール') && (!res.data.inquiry_email_phone || !String(res.data.inquiry_email_phone).trim())) {
@@ -1550,6 +1559,49 @@ TEL：097-533-2022`;
                               })}
                             </Box>
                           </Box>
+                        </Grid>
+                      );
+                    }
+
+                    // distribution_typeフィールドは特別処理（必須・ドロップダウン）
+                    if (field.key === 'distribution_type') {
+                      const handleDistributionSave = async (newValue: any) => {
+                        setBuyer((prev: any) => prev ? { ...prev, distribution_type: newValue } : prev);
+                        handleFieldChange(section.title, field.key, newValue);
+                        setMissingRequiredFields(prev => {
+                          const next = new Set(prev);
+                          if (newValue && String(newValue).trim()) next.delete('distribution_type');
+                          else next.add('distribution_type');
+                          return next;
+                        });
+                      };
+                      const isDistributionMissing = missingRequiredFields.has('distribution_type');
+                      return (
+                        <Grid item {...gridSize} key={`${section.title}-${field.key}`}>
+                          {isDistributionMissing && (
+                            <Typography variant="caption" color="error" sx={{ display: 'block', mb: 0.5, fontWeight: 'bold' }}>
+                              ⚠ 配信メール（必須）
+                            </Typography>
+                          )}
+                          <InlineEditableField
+                            key={`distribution_type-${isDistributionMissing}`}
+                            label={isDistributionMissing ? '' : field.label}
+                            value={buyer[field.key] || ''}
+                            fieldName={field.key}
+                            fieldType="dropdown"
+                            options={DISTRIBUTION_TYPE_OPTIONS}
+                            onSave={handleDistributionSave}
+                            onChange={(fieldName, newValue) => {
+                              setBuyer((prev: any) => prev ? { ...prev, [fieldName]: newValue } : prev);
+                              if (newValue && String(newValue).trim()) {
+                                setMissingRequiredFields(prev => {
+                                  const next = new Set(prev);
+                                  next.delete('distribution_type');
+                                  return next;
+                                });
+                              }
+                            }}
+                          />
                         </Grid>
                       );
                     }

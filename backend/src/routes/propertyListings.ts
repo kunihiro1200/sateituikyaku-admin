@@ -1043,4 +1043,60 @@ router.post('/:propertyNumber/notify-contract-completed', async (req: Request, r
 });
 
 
+// 担当へCHAT送信
+router.post('/:propertyNumber/send-chat-to-assignee', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { propertyNumber } = req.params;
+    const { message } = req.body;
+
+    if (!message || !String(message).trim()) {
+      res.status(400).json({ error: 'メッセージを入力してください' });
+      return;
+    }
+
+    const { StaffManagementService } = require('../services/StaffManagementService');
+    const axios = require('axios');
+
+    // 物件情報を取得
+    const supabase = createClient(
+      process.env.SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_KEY!
+    );
+    const { data: property, error } = await supabase
+      .from('property_listings')
+      .select('property_number, address, sales_assignee')
+      .eq('property_number', propertyNumber)
+      .single();
+
+    if (error || !property) {
+      res.status(404).json({ error: '物件が見つかりませんでした' });
+      return;
+    }
+
+    if (!property.sales_assignee) {
+      res.status(400).json({ error: '物件担当が設定されていません' });
+      return;
+    }
+
+    // 担当者のWebhook URLを取得
+    const staffService = new StaffManagementService();
+    const result = await staffService.getWebhookUrl(property.sales_assignee);
+    if (!result.success || !result.webhookUrl) {
+      res.status(404).json({ error: result.error || '担当者のChat webhook URLが見つかりませんでした' });
+      return;
+    }
+
+    // Google Chatにメッセージ送信
+    const chatMessage = `📩 *物件担当への質問・伝言*\n\n物件番号: ${property.property_number}\n所在地: ${property.address || '未設定'}\n担当: ${property.sales_assignee}\n\n${String(message).trim()}`;
+    await axios.post(result.webhookUrl, { text: chatMessage });
+
+    console.log(`[send-chat-to-assignee] Sent to ${property.sales_assignee} for ${propertyNumber}`);
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error('[send-chat-to-assignee] Error:', error.message);
+    res.status(500).json({ error: error.message || 'チャット送信に失敗しました' });
+  }
+});
+
+
 export default router;

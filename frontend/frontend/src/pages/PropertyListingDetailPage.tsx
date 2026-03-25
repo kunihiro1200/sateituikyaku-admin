@@ -203,6 +203,8 @@ export default function PropertyListingDetailPage() {
   
   const [salesContractDialog, setSalesContractDialog] = useState(false);
   const [salesContractUrlDialog, setSalesContractUrlDialog] = useState(false);
+  const [chatPanelOpen, setChatPanelOpen] = useState(false);
+  const [chatMessage, setChatMessage] = useState('');
   const [chatSending, setChatSending] = useState(false);
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
@@ -562,6 +564,24 @@ export default function PropertyListingDetailPage() {
         message: '公開URLのコピーに失敗しました',
         severity: 'error',
       });
+    }
+  };
+
+  // 担当へCHAT送信
+  const handleSendChatToAssignee = async () => {
+    if (!chatMessage.trim() || !propertyNumber) return;
+    setChatSending(true);
+    try {
+      await api.post(`/api/property-listings/${propertyNumber}/send-chat-to-assignee`, {
+        message: chatMessage,
+      });
+      setSnackbar({ open: true, message: '担当へチャットを送信しました', severity: 'success' });
+      setChatMessage('');
+      setChatPanelOpen(false);
+    } catch (error: any) {
+      setSnackbar({ open: true, message: error.response?.data?.error || 'チャット送信に失敗しました', severity: 'error' });
+    } finally {
+      setChatSending(false);
     }
   };
 
@@ -926,7 +946,44 @@ export default function PropertyListingDetailPage() {
                   SMS
                 </Button>
               )}
+              {data.sales_assignee && (
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={() => setChatPanelOpen(!chatPanelOpen)}
+                  sx={{
+                    borderColor: '#7b1fa2',
+                    color: '#7b1fa2',
+                    '&:hover': {
+                      borderColor: '#4a148c',
+                      backgroundColor: '#7b1fa208',
+                    },
+                  }}
+                >
+                  担当へCHAT
+                </Button>
+              )}
             </Box>
+            {chatPanelOpen && data.sales_assignee && (
+              <Box sx={{ display: 'flex', gap: 1, mt: 0.5 }}>
+                <TextField
+                  size="small"
+                  placeholder="担当へ質問_伝言"
+                  value={chatMessage}
+                  onChange={(e) => setChatMessage(e.target.value)}
+                  sx={{ flex: 1 }}
+                />
+                <Button
+                  variant="contained"
+                  size="small"
+                  disabled={chatSending || !chatMessage.trim()}
+                  onClick={handleSendChatToAssignee}
+                  sx={{ backgroundColor: '#7b1fa2', '&:hover': { backgroundColor: '#4a148c' } }}
+                >
+                  {chatSending ? <CircularProgress size={16} sx={{ color: 'white' }} /> : '送信'}
+                </Button>
+              </Box>
+            )}
           </Box>
           {buyerContext?.buyerId && buyerContext?.source === 'buyer-detail' && (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
