@@ -166,41 +166,6 @@ export default function BuyerDetailPage() {
   const { buyer_number } = useParams<{ buyer_number: string }>();
   const navigate = useNavigate();
 
-  // 必須フィールドバリデーション（ページ遷移前チェック）
-  const validateRequiredFields = (): boolean => {
-    if (!buyer) return false;
-
-    const missing: string[] = [];
-
-    // 常に必須
-    if (!buyer.initial_assignee || !String(buyer.initial_assignee).trim()) {
-      missing.push('初動担当');
-    }
-    if (!buyer.inquiry_source || !String(buyer.inquiry_source).trim()) {
-      missing.push('問合せ元');
-    }
-    if (!buyer.latest_status || !String(buyer.latest_status).trim()) {
-      missing.push('★最新状況');
-    }
-
-    // 問合せ元にメールが含まれる場合は inquiry_email_phone も必須
-    const inquirySource = buyer.inquiry_source ? String(buyer.inquiry_source) : '';
-    if (inquirySource.includes('メール')) {
-      if (!buyer.inquiry_email_phone || !String(buyer.inquiry_email_phone).trim()) {
-        missing.push('【問合メール】電話対応');
-      }
-    }
-
-    if (missing.length > 0) {
-      setSnackbar({
-        open: true,
-        message: `以下の必須項目を入力してください：${missing.join('、')}`,
-        severity: 'warning',
-      });
-      return false;
-    }
-    return true;
-  };
   const [buyer, setBuyer] = useState<Buyer | null>(null);
   const [linkedProperties, setLinkedProperties] = useState<PropertyListing[]>([]);
   const [nearbyPropertiesCount, setNearbyPropertiesCount] = useState(0);
@@ -219,6 +184,54 @@ export default function BuyerDetailPage() {
     message: '',
     severity: 'success',
   });
+
+  // 必須フィールド未入力ハイライト用
+  const [missingRequiredFields, setMissingRequiredFields] = useState<Set<string>>(new Set());
+
+  // 必須フィールドバリデーション（ページ遷移前チェック）
+  const validateRequiredFields = (): boolean => {
+    if (!buyer) return false;
+
+    const missing: string[] = [];
+
+    // 常に必須
+    if (!buyer.initial_assignee || !String(buyer.initial_assignee).trim()) {
+      missing.push('initial_assignee');
+    }
+    if (!buyer.inquiry_source || !String(buyer.inquiry_source).trim()) {
+      missing.push('inquiry_source');
+    }
+    if (!buyer.latest_status || !String(buyer.latest_status).trim()) {
+      missing.push('latest_status');
+    }
+
+    // 問合せ元にメールが含まれる場合は inquiry_email_phone も必須
+    const inquirySource = buyer.inquiry_source ? String(buyer.inquiry_source) : '';
+    if (inquirySource.includes('メール')) {
+      if (!buyer.inquiry_email_phone || !String(buyer.inquiry_email_phone).trim()) {
+        missing.push('inquiry_email_phone');
+      }
+    }
+
+    if (missing.length > 0) {
+      setMissingRequiredFields(new Set(missing));
+      const labelMap: Record<string, string> = {
+        initial_assignee: '初動担当',
+        inquiry_source: '問合せ元',
+        latest_status: '★最新状況',
+        inquiry_email_phone: '【問合メール】電話対応',
+      };
+      const labels = missing.map(k => labelMap[k] || k);
+      setSnackbar({
+        open: true,
+        message: `以下の必須項目を入力してください：${labels.join('、')}`,
+        severity: 'warning',
+      });
+      return false;
+    }
+    setMissingRequiredFields(new Set());
+    return true;
+  };
 
   // セクション別 DirtyState 管理
   const [sectionDirtyStates, setSectionDirtyStates] = useState<Record<string, boolean>>({});
@@ -1384,25 +1397,38 @@ TEL：097-533-2022`;
                         }
                       };
 
+                      const isInquirySourceMissing = missingRequiredFields.has('inquiry_source');
                       return (
                         <Grid item {...gridSize} key={`${section.title}-${field.key}`}>
-                          <InlineEditableField
-                            label={field.label}
-                            value={value || ''}
-                            fieldName={field.key}
-                            fieldType="dropdown"
-                            options={INQUIRY_SOURCE_OPTIONS}
-                            onSave={handleFieldSave}
-                            onChange={(fieldName, newValue) => handleFieldChange(section.title, fieldName, newValue)}
-                            buyerId={buyer_number}
-                            enableConflictDetection={true}
-                            showEditIndicator={true}
-                            validation={(newValue) => {
-                              if (buyer.broker_inquiry === '業者問合せ') return null;
-                              if (!newValue || !String(newValue).trim()) return '問合せ元は必須です';
-                              return null;
-                            }}
-                          />
+                          <Box sx={{
+                            border: isInquirySourceMissing ? '2px solid #f44336' : 'none',
+                            borderRadius: isInquirySourceMissing ? 1 : 0,
+                            p: isInquirySourceMissing ? 0.5 : 0,
+                            bgcolor: isInquirySourceMissing ? 'rgba(244,67,54,0.05)' : 'transparent',
+                          }}>
+                            {isInquirySourceMissing && (
+                              <Typography variant="caption" color="error" sx={{ fontWeight: 'bold', display: 'block', mb: 0.25 }}>
+                                {field.label} *
+                              </Typography>
+                            )}
+                            <InlineEditableField
+                              label={isInquirySourceMissing ? '' : field.label}
+                              value={value || ''}
+                              fieldName={field.key}
+                              fieldType="dropdown"
+                              options={INQUIRY_SOURCE_OPTIONS}
+                              onSave={handleFieldSave}
+                              onChange={(fieldName, newValue) => handleFieldChange(section.title, fieldName, newValue)}
+                              buyerId={buyer_number}
+                              enableConflictDetection={true}
+                              showEditIndicator={true}
+                              validation={(newValue) => {
+                                if (buyer.broker_inquiry === '業者問合せ') return null;
+                                if (!newValue || !String(newValue).trim()) return '問合せ元は必須です';
+                                return null;
+                              }}
+                            />
+                          </Box>
                         </Grid>
                       );
                     }
@@ -1416,20 +1442,33 @@ TEL：097-533-2022`;
                         }
                       };
 
+                      const isLatestStatusMissing = missingRequiredFields.has('latest_status');
                       return (
                         <Grid item {...gridSize} key={`${section.title}-${field.key}`}>
-                          <InlineEditableField
-                            label={field.label}
-                            value={value || ''}
-                            fieldName={field.key}
-                            fieldType="dropdown"
-                            options={LATEST_STATUS_OPTIONS}
-                            onSave={handleFieldSave}
-                            onChange={(fieldName, newValue) => handleFieldChange(section.title, fieldName, newValue)}
-                            buyerId={buyer_number}
-                            enableConflictDetection={true}
-                            showEditIndicator={true}
-                          />
+                          <Box sx={{
+                            border: isLatestStatusMissing ? '2px solid #f44336' : 'none',
+                            borderRadius: isLatestStatusMissing ? 1 : 0,
+                            p: isLatestStatusMissing ? 0.5 : 0,
+                            bgcolor: isLatestStatusMissing ? 'rgba(244,67,54,0.05)' : 'transparent',
+                          }}>
+                            {isLatestStatusMissing && (
+                              <Typography variant="caption" color="error" sx={{ fontWeight: 'bold', display: 'block', mb: 0.25 }}>
+                                {field.label} *
+                              </Typography>
+                            )}
+                            <InlineEditableField
+                              label={isLatestStatusMissing ? '' : field.label}
+                              value={value || ''}
+                              fieldName={field.key}
+                              fieldType="dropdown"
+                              options={LATEST_STATUS_OPTIONS}
+                              onSave={handleFieldSave}
+                              onChange={(fieldName, newValue) => handleFieldChange(section.title, fieldName, newValue)}
+                              buyerId={buyer_number}
+                              enableConflictDetection={true}
+                              showEditIndicator={true}
+                            />
+                          </Box>
                         </Grid>
                       );
                     }
@@ -1443,9 +1482,15 @@ TEL：097-533-2022`;
                       const INQUIRY_EMAIL_PHONE_BTNS = ['済', '未', '不通', '電話番号なし', '不要'];
                       return (
                         <Grid item xs={12} key={`${section.title}-${field.key}`}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <Typography variant="caption" color="text.secondary" sx={{ whiteSpace: 'nowrap', flexShrink: 0 }}>
-                              {field.label}
+                          <Box sx={{
+                            display: 'flex', alignItems: 'center', gap: 1,
+                            border: missingRequiredFields.has('inquiry_email_phone') ? '2px solid #f44336' : 'none',
+                            borderRadius: missingRequiredFields.has('inquiry_email_phone') ? 1 : 0,
+                            p: missingRequiredFields.has('inquiry_email_phone') ? 0.5 : 0,
+                            bgcolor: missingRequiredFields.has('inquiry_email_phone') ? 'rgba(244,67,54,0.05)' : 'transparent',
+                          }}>
+                            <Typography variant="caption" color={missingRequiredFields.has('inquiry_email_phone') ? 'error' : 'text.secondary'} sx={{ whiteSpace: 'nowrap', flexShrink: 0, fontWeight: missingRequiredFields.has('inquiry_email_phone') ? 'bold' : 'normal' }}>
+                              {field.label}{missingRequiredFields.has('inquiry_email_phone') ? ' *' : ''}
                             </Typography>
                             <Box sx={{ display: 'flex', gap: 0.5, flex: 1 }}>
                               {INQUIRY_EMAIL_PHONE_BTNS.map((opt) => {
@@ -1547,8 +1592,8 @@ TEL：097-533-2022`;
                       return (
                         <Grid item xs={12} key={`${section.title}-${field.key}`}>
                           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
-                            <Typography variant="caption" color="text.secondary">
-                              {field.label}
+                            <Typography variant="caption" color={missingRequiredFields.has('initial_assignee') ? 'error' : 'text.secondary'} sx={{ fontWeight: missingRequiredFields.has('initial_assignee') ? 'bold' : 'normal' }}>
+                              {field.label}{missingRequiredFields.has('initial_assignee') ? ' *' : ''}
                             </Typography>
                             {/* 「問合せ内容」セクションの保存ボタンは初動担当の右横に配置 */}
                             {section.title === '問合せ内容' && (
@@ -1559,7 +1604,16 @@ TEL：097-533-2022`;
                               />
                             )}
                           </Box>
-                          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                          <Box sx={{
+                            display: 'flex', flexWrap: 'wrap', gap: 0.5,
+                            border: missingRequiredFields.has('initial_assignee') ? '2px solid #f44336' : 'none',
+                            borderRadius: missingRequiredFields.has('initial_assignee') ? 1 : 0,
+                            p: missingRequiredFields.has('initial_assignee') ? 0.5 : 0,
+                            bgcolor: missingRequiredFields.has('initial_assignee') ? 'rgba(244,67,54,0.05)' : 'transparent',
+                          }}>
+                            {normalInitials.length === 0 && (
+                              <Typography variant="caption" color="text.secondary">読み込み中...</Typography>
+                            )}
                             {normalInitials.map((initial) => {
                               const isSelected = buyer.initial_assignee === initial;
                               return (
