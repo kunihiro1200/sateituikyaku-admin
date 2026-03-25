@@ -161,34 +161,54 @@ const RichTextCommentEditor = React.forwardRef<RichTextCommentEditorHandle, Rich
         const editor = editorRef.current;
         if (!editor) return;
 
-        // エディタにフォーカスを戻す
-        editor.focus();
-
-        // 保存済みオフセットがある場合はその位置にカーソルを復元してから挿入
         const savedOffset = cursorOffsetRef.current;
+
+        // カーソル位置が保存されている場合：innerHTML を直接操作して挿入
         if (savedOffset >= 0) {
+          // 現在のHTMLをプレーンテキストオフセットで分割して挿入
+          const currentHtml = editor.innerHTML;
+
+          // テキストオフセット → HTML内の文字位置を探す
+          // DOMを使って正確な挿入位置を特定
           const pos = getNodeFromOffset(editor, savedOffset);
           if (pos) {
             try {
               const range = document.createRange();
               range.setStart(pos.node, pos.offset);
               range.collapse(true);
+
+              // 一時的なdivにhtmlをパース
+              const tempDiv = document.createElement('div');
+              tempDiv.innerHTML = html;
+              const fragment = document.createDocumentFragment();
+              while (tempDiv.firstChild) {
+                fragment.appendChild(tempDiv.firstChild);
+              }
+
+              range.insertNode(fragment);
+
+              // カーソルを挿入後の位置に移動
+              range.collapse(false);
               const sel = window.getSelection();
               if (sel) {
                 sel.removeAllRanges();
                 sel.addRange(range);
               }
+
+              onChange(editor.innerHTML);
+              // 新しいカーソル位置を保存
+              saveCursorOffset();
+              return;
             } catch (e) {
-              // カーソル復元失敗 → 現在位置のまま続行
+              // 失敗した場合は先頭挿入にフォールバック
             }
           }
         }
 
-        // execCommand で挿入（フォーカスがある状態で実行）
+        // カーソル位置がない場合：先頭に挿入
+        editor.focus();
         document.execCommand('insertHTML', false, html);
         handleInput();
-
-        // 新しいカーソル位置を保存
         saveCursorOffset();
       },
     }));

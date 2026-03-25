@@ -21,6 +21,7 @@ import {
 import { ArrowBack as ArrowBackIcon } from '@mui/icons-material';
 import api, { buyerApi, employeeApi } from '../services/api';
 import { InlineEditableField } from '../components/InlineEditableField';
+import RichTextCommentEditor, { RichTextCommentEditorHandle } from '../components/RichTextCommentEditor';
 import { LATEST_STATUS_OPTIONS } from '../utils/buyerLatestStatusOptions';
 import { VIEWING_UNCONFIRMED_OPTIONS } from '../utils/buyerDetailFieldOptions';
 import { ValidationService } from '../services/ValidationService';
@@ -55,6 +56,10 @@ export default function BuyerViewingResultPage() {
   const [employees, setEmployees] = useState<any[]>([]);
   const [viewingResultKey, setViewingResultKey] = useState(0);
   const [isQuickInputSaving, setIsQuickInputSaving] = useState(false);
+  // 内覧結果・後続対応 RichTextEditor 用
+  const viewingResultEditorRef = useRef<RichTextCommentEditorHandle>(null);
+  const [viewingResultEditValue, setViewingResultEditValue] = useState<string>('');
+  const [viewingResultSaving, setViewingResultSaving] = useState(false);
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' | 'warning' }>({
     open: false,
     message: '',
@@ -119,6 +124,8 @@ export default function BuyerViewingResultPage() {
       const res = await api.get(`/api/buyers/${buyer_number}`);
       buyerRef.current = res.data;
       setBuyer(res.data);
+      // 内覧結果・後続対応の初期値をセット
+      setViewingResultEditValue(res.data.viewing_result_follow_up || '');
     } catch (error) {
       console.error('Failed to fetch buyer:', error);
     } finally {
@@ -209,52 +216,30 @@ export default function BuyerViewingResultPage() {
     [handleInlineFieldSave]
   );
 
-  const handleViewingResultQuickInput = async (text: string, buttonLabel: string) => {
-    if (!buyer || isQuickInputSaving) return;
-    
-    setIsQuickInputSaving(true);
-    
-    console.log('[handleViewingResultQuickInput] Called with:', { text, buttonLabel });
-    console.log('[handleViewingResultQuickInput] Current buyer.viewing_result_follow_up:', buyer.viewing_result_follow_up);
-    console.log('[handleViewingResultQuickInput] Current value (escaped):', JSON.stringify(buyer.viewing_result_follow_up));
-    
-    // 現在の値を取得
-    const currentValue = buyer.viewing_result_follow_up || '';
-    
-    // 新しいテキストを先頭に追加（既存内容がある場合は改行を挟む）
-    const newValue = currentValue 
-      ? `${text}\n${currentValue}` 
-      : text;
-    
-    console.log('[handleViewingResultQuickInput] New value to save:', newValue);
-    console.log('[handleViewingResultQuickInput] New value (escaped):', JSON.stringify(newValue));
-    
-    // DBのみに保存（スプレッドシートには保存しない）
+  // 内覧結果・後続対応の保存ハンドラー（スプシ同期あり）
+  const handleSaveViewingResult = async () => {
+    if (!buyer) return;
+    setViewingResultSaving(true);
     try {
       const result = await buyerApi.update(
         buyer_number!,
-        { viewing_result_follow_up: newValue },
-        { sync: false, force: false }  // スプレッドシート同期を無効化
+        { viewing_result_follow_up: viewingResultEditValue },
+        { sync: true }  // スプレッドシートへ即同期
       );
-      
-      console.log('[handleViewingResultQuickInput] Save result:', result);
-      console.log('[handleViewingResultQuickInput] Saved value (escaped):', JSON.stringify(result.buyer.viewing_result_follow_up));
-      
-      // 保存後、buyerステートを更新（DBから返された値を使用）
+      buyerRef.current = result.buyer;
       setBuyer(result.buyer);
-      // キーを更新してInlineEditableFieldを強制再レンダリング
-      setViewingResultKey(prev => prev + 1);
-      
+      setViewingResultEditValue(result.buyer.viewing_result_follow_up || '');
+      setSnackbar({ open: true, message: '内覧結果・後続対応を保存しました', severity: 'success' });
     } catch (error: any) {
-      console.error('[handleViewingResultQuickInput] Exception:', error);
-      setSnackbar({
-        open: true,
-        message: error.response?.data?.error || '保存に失敗しました',
-        severity: 'error'
-      });
+      setSnackbar({ open: true, message: error.response?.data?.error || '保存に失敗しました', severity: 'error' });
     } finally {
-      setIsQuickInputSaving(false);
+      setViewingResultSaving(false);
     }
+  };
+
+  const handleViewingResultQuickInput = (text: string) => {
+    // RichTextEditorのカーソル位置に太字で挿入
+    viewingResultEditorRef.current?.insertAtCursor(`<b>${text}</b>`);
   };
 
   const handleCalendarButtonClick = () => {
@@ -862,29 +847,19 @@ export default function BuyerViewingResultPage() {
                 ヒアリング項目
               </Typography>
               <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                {VIEWING_RESULT_QUICK_INPUTS.map((item) => {
-                  return (
-                    <Tooltip 
-                      key={item.label} 
-                      title={item.text} 
-                      arrow
-                    >
-                      <Chip
-                        label={item.label}
-                        onClick={() => handleViewingResultQuickInput(item.text, item.label)}
-                        size="small"
-                        clickable
-                        color="primary"
-                        variant="outlined"
-                        disabled={isQuickInputSaving}
-                        sx={{
-                          cursor: isQuickInputSaving ? 'not-allowed' : 'pointer',
-                          opacity: isQuickInputSaving ? 0.5 : 1,
-                        }}
-                      />
-                    </Tooltip>
-                  );
-                })}
+                {VIEWING_RESULT_QUICK_INPUTS.map((item) => (
+                  <Tooltip key={item.label} title={item.text} arrow>
+                    <Chip
+                      label={item.label}
+                      onClick={() => handleViewingResultQuickInput(item.text)}
+                      size="small"
+                      clickable
+                      color="primary"
+                      variant="outlined"
+                      sx={{ cursor: 'pointer' }}
+                    />
+                  </Tooltip>
+                ))}
               </Box>
             </Box>
             {/* 内覧後売主連絡（atbb_statusが「一般・公開中」の場合のみ表示） */}
@@ -901,7 +876,6 @@ export default function BuyerViewingResultPage() {
                       color={option === '済' ? 'success' : option === '未' ? 'error' : 'inherit'}
                       size="small"
                       onClick={async () => {
-                        // 同じボタンを2度クリックしたら値をクリア
                         const newValue = buyer.post_viewing_seller_contact === option ? '' : option;
                         await handleInlineFieldSave('post_viewing_seller_contact', newValue);
                       }}
@@ -913,16 +887,54 @@ export default function BuyerViewingResultPage() {
                 </Box>
               </Box>
             )}
-            <InlineEditableField
-              key={`viewing_result_${viewingResultKey}`}
-              label="内覧結果・後続対応"
-              fieldName="viewing_result_follow_up"
-              value={buyer.viewing_result_follow_up || ''}
-              onSave={handleSaveViewingResultFollowUp}
-              fieldType="textarea"
-              multiline
-              rows={6}
-            />
+            {/* RichTextEditor + 保存ボタン */}
+            {(() => {
+              const isDirty = viewingResultEditValue !== (buyer?.viewing_result_follow_up || '');
+              return (
+                <>
+                  <Box sx={{
+                    border: isDirty ? '2px solid #ff6d00' : '2px solid transparent',
+                    borderRadius: 1,
+                    transition: 'border-color 0.2s',
+                  }}>
+                    <RichTextCommentEditor
+                      ref={viewingResultEditorRef}
+                      value={viewingResultEditValue}
+                      onChange={(html) => setViewingResultEditValue(html)}
+                      placeholder="内覧結果・後続対応を入力..."
+                    />
+                  </Box>
+                  <Button
+                    fullWidth
+                    variant={isDirty ? 'contained' : 'outlined'}
+                    size="large"
+                    onClick={handleSaveViewingResult}
+                    disabled={viewingResultSaving}
+                    sx={{
+                      mt: 1,
+                      ...(isDirty ? {
+                        backgroundColor: '#ff6d00',
+                        color: '#fff',
+                        fontWeight: 'bold',
+                        boxShadow: '0 0 0 3px rgba(255,109,0,0.4)',
+                        animation: 'pulse-orange 1.5s infinite',
+                        '@keyframes pulse-orange': {
+                          '0%': { boxShadow: '0 0 0 0 rgba(255,109,0,0.5)' },
+                          '70%': { boxShadow: '0 0 0 8px rgba(255,109,0,0)' },
+                          '100%': { boxShadow: '0 0 0 0 rgba(255,109,0,0)' },
+                        },
+                        '&:hover': { backgroundColor: '#e65100' },
+                      } : {
+                        color: '#bdbdbd',
+                        borderColor: '#e0e0e0',
+                      }),
+                    }}
+                  >
+                    {viewingResultSaving ? '保存中...' : '保存'}
+                  </Button>
+                </>
+              );
+            })()}
           </Box>
 
           {/* ★最新状況 */}
