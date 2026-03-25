@@ -325,6 +325,24 @@ export default function BuyerDetailPage() {
       setHearingEditValue(res.data.inquiry_hearing || '');
       // 担当への伝言/質問事項の初期値をセット
       setMessageToAssigneeEditValue(res.data.message_to_assignee || '');
+      // 初回表示時から未入力の必須フィールドをハイライト
+      const initialMissing: string[] = [];
+      if (!res.data.initial_assignee || !String(res.data.initial_assignee).trim()) {
+        initialMissing.push('initial_assignee');
+      }
+      if (!res.data.inquiry_source || !String(res.data.inquiry_source).trim()) {
+        initialMissing.push('inquiry_source');
+      }
+      if (!res.data.latest_status || !String(res.data.latest_status).trim()) {
+        initialMissing.push('latest_status');
+      }
+      const src = res.data.inquiry_source ? String(res.data.inquiry_source) : '';
+      if (src.includes('メール') && (!res.data.inquiry_email_phone || !String(res.data.inquiry_email_phone).trim())) {
+        initialMissing.push('inquiry_email_phone');
+      }
+      if (initialMissing.length > 0) {
+        setMissingRequiredFields(new Set(initialMissing));
+      }
     } catch (error) {
       console.error('Failed to fetch buyer:', error);
     } finally {
