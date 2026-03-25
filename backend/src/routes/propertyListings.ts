@@ -1047,7 +1047,7 @@ router.post('/:propertyNumber/notify-contract-completed', async (req: Request, r
 router.post('/:propertyNumber/send-chat-to-assignee', async (req: Request, res: Response): Promise<void> => {
   try {
     const { propertyNumber } = req.params;
-    const { message } = req.body;
+    const { message, senderName } = req.body;
 
     if (!message || !String(message).trim()) {
       res.status(400).json({ error: 'メッセージを入力してください' });
@@ -1096,7 +1096,8 @@ router.post('/:propertyNumber/send-chat-to-assignee', async (req: Request, res: 
       property.seller_email ? `売主メール: ${property.seller_email}` : null,
     ].filter(Boolean).join('\n');
 
-    const chatMessage = `📩 *物件担当への質問・伝言*\n\n物件番号: ${property.property_number}\n所在地: ${property.address || '未設定'}\n担当: ${property.sales_assignee}\n${sellerInfo ? sellerInfo + '\n' : ''}物件URL: ${propertyUrl}\n\n${String(message).trim()}`;
+    const senderLabel = senderName ? `送信者: ${senderName}` : null;
+    const chatMessage = `📩 *物件担当への質問・伝言*\n\n物件番号: ${property.property_number}\n所在地: ${property.address || '未設定'}\n担当: ${property.sales_assignee}\n${sellerInfo ? sellerInfo + '\n' : ''}物件URL: ${propertyUrl}\n${senderLabel ? senderLabel + '\n' : ''}\n${String(message).trim()}`;
     await axios.post(result.webhookUrl, { text: chatMessage });
 
     console.log(`[send-chat-to-assignee] Sent to ${property.sales_assignee} for ${propertyNumber}`);

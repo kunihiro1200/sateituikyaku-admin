@@ -574,6 +574,7 @@ export default function PropertyListingDetailPage() {
     try {
       await api.post(`/api/property-listings/${propertyNumber}/send-chat-to-assignee`, {
         message: chatMessage,
+        senderName: employee?.name || employee?.initials || '不明',
       });
       setSnackbar({ open: true, message: '担当へチャットを送信しました', severity: 'success' });
       setChatMessage('');
