@@ -1028,7 +1028,14 @@ router.post('/:propertyNumber/notify-contract-completed', async (req: Request, r
       const result = await staffService.getWebhookUrl(property.sales_assignee);
       if (result.success && result.webhookUrl) {
         webhookUrl = result.webhookUrl;
+        console.log(`[notify-contract-completed] Using assignee webhook for ${property.sales_assignee}`);
+      } else {
+        // Webhook URL取得失敗 → フォールバックURLを使用
+        console.warn(`[notify-contract-completed] Failed to get webhook for ${property.sales_assignee}. Using fallback URL.`);
+        // webhookUrl は DEFAULT_WEBHOOK_URL のまま
       }
+    } else {
+      console.log(`[notify-contract-completed] No sales_assignee set for ${propertyNumber}. Using fallback URL.`);
     }
 
     // Google Chatに送信

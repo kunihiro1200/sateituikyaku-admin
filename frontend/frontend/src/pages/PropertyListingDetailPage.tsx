@@ -177,6 +177,14 @@ function getPreviousPriceFromHistory(history: string | null | undefined): number
   return Math.round(prevMan * 10000);
 }
 
+// 表示用日付フォーマット関数
+// null / undefined / 空文字 → '-' を返す
+// 'YYYY-MM-DD' 形式 → 'YYYY/MM/DD' 形式に変換して返す
+const formatDisplayDate = (dateStr: string | null | undefined): string => {
+  if (!dateStr) return '-';
+  return dateStr.replace(/-/g, '/');
+};
+
 export default function PropertyListingDetailPage() {
   const { propertyNumber } = useParams<{ propertyNumber: string }>();
   const navigate = useNavigate();
@@ -1252,6 +1260,24 @@ export default function PropertyListingDetailPage() {
             ) : (
               <Typography variant="body2" fontWeight="medium" sx={{ fontSize: '0.9rem' }}>
                 {data.sales_assignee || '-'}
+              </Typography>
+            )}
+          </Grid>
+          <Grid item xs={6} sm={4} md={2}>
+            <Typography variant="caption" color="text.secondary" fontWeight="bold" sx={{ fontSize: '0.75rem', lineHeight: 1.2 }}>公開日</Typography>
+            {isHeaderEditMode ? (
+              <TextField
+                size="small"
+                fullWidth
+                type="date"
+                value={editedData.distribution_date !== undefined ? editedData.distribution_date : (data.distribution_date || '')}
+                onChange={(e) => handleFieldChange('distribution_date', e.target.value)}
+                sx={{ mt: 0.5 }}
+                InputLabelProps={{ shrink: true }}
+              />
+            ) : (
+              <Typography variant="body2" fontWeight="medium" sx={{ fontSize: '0.9rem' }}>
+                {formatDisplayDate(data.distribution_date)}
               </Typography>
             )}
           </Grid>
