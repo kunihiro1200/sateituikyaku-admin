@@ -5,6 +5,7 @@ import { createClient } from '@supabase/supabase-js';
 import { DataIntegrityDiagnosticService } from './DataIntegrityDiagnosticService';
 import { GoogleSheetsClient } from './GoogleSheetsClient';
 import { PropertyListingColumnMapper } from './PropertyListingColumnMapper';
+import { decrypt } from '../utils/encryption';
 
 export interface SyncResult {
   propertyNumber: string;
@@ -335,7 +336,7 @@ export class PropertyListingSyncService {
     return {
       property_number: seller.property_number,
       seller_number: seller.seller_number,
-      seller_name: seller.name,
+      seller_name: seller.name ? decrypt(seller.name) : null,  // ⚠️ 暗号化フィールドは必ず復号してから保存
       address: seller.address,
       city: seller.city,
       prefecture: seller.prefecture,
