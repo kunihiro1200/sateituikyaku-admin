@@ -136,26 +136,9 @@ export class BuyerWriteService {
         };
       }
 
-      // 現在の行データを取得
-      const rows = await this.sheetsClient.readRange(`${rowNumber}:${rowNumber}`);
-      
-      if (rows.length === 0) {
-        return {
-          success: false,
-          error: `Row ${rowNumber} not found`
-        };
-      }
-
-      // 値を更新
-      const rowData = rows[0];
+      // 変更フィールドのみをスプシに書き込み（数式を壊さないよう部分更新）
       const formattedValues = this.columnMapper.mapDatabaseToSpreadsheet(updates);
-      
-      for (const [spreadsheetColumn, value] of Object.entries(formattedValues)) {
-        rowData[spreadsheetColumn] = value ?? '';
-      }
-
-      // スプレッドシートに書き込み
-      await this.sheetsClient.updateRow(rowNumber, rowData);
+      await this.sheetsClient.updateRowPartial(rowNumber, formattedValues);
 
       return {
         success: true,
