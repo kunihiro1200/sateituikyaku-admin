@@ -83,7 +83,7 @@ router.post(
     body('inquiryDatetime').optional().isISO8601().withMessage('Inquiry datetime must be a valid datetime'),
     body('confidenceLevel').optional().isIn(['high', 'medium', 'low']).withMessage('Invalid confidence level'),
     body('firstCallerInitials').optional().isString().withMessage('First caller initials must be a string'),
-    body('sellerNumber').optional().matches(/^AA\d{5}$/).withMessage('Seller number must be in format AA{5-digit number}'),
+    body('sellerNumber').optional().matches(/^AA\d+$/).withMessage('Seller number must be in format AA{number}'),
   ],
   async (req: Request, res: Response) => {
     try {
@@ -228,6 +228,54 @@ router.get('/assignee-initials', async (req: Request, res: Response) => {
       error: {
         code: 'GET_ASSIGNEE_INITIALS_ERROR',
         message: 'Failed to get assignee initials',
+        retryable: true,
+      },
+    });
+  }
+});
+
+/**
+ * 次の売主番号を取得
+ * 連番シート（ID: 19yAuVYQRm-_zhjYX7M7zjiGbnBibkG77Mpz93sN1xxs）のC2セルを読み取り、
+ * "AA" + (n + 1) 形式で返す
+ */
+router.get('/next-seller-number', async (req: Request, res: Response) => {
+  try {
+    const sheetsClient = new GoogleSheetsClient({
+      spreadsheetId: '19yAuVYQRm-_zhjYX7M7zjiGbnBibkG77Mpz93sN1xxs',
+      sheetName: '連番',
+      serviceAccountKeyPath: process.env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH || './google-service-account.json',
+    });
+    await sheetsClient.authenticate();
+    const values = await sheetsClient.readRawRange('C2');
+    const c2Value = values?.[0]?.[0];
+    if (c2Value === undefined || c2Value === null || c2Value === '') {
+      return res.status(500).json({
+        error: {
+          code: 'NEXT_SELLER_NUMBER_ERROR',
+          message: '連番シートC2の読み取りに失敗しました',
+          retryable: true,
+        },
+      });
+    }
+    const n = parseInt(String(c2Value), 10);
+    if (isNaN(n)) {
+      return res.status(500).json({
+        error: {
+          code: 'NEXT_SELLER_NUMBER_ERROR',
+          message: '連番シートC2の値が数値ではありません',
+          retryable: false,
+        },
+      });
+    }
+    const sellerNumber = 'AA' + String(n + 1);
+    res.json({ sellerNumber });
+  } catch (error) {
+    console.error('Get next seller number error:', error);
+    res.status(500).json({
+      error: {
+        code: 'NEXT_SELLER_NUMBER_ERROR',
+        message: error instanceof Error ? error.message : '次の売主番号の取得に失敗しました',
         retryable: true,
       },
     });

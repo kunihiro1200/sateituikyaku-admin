@@ -261,6 +261,51 @@ export class SellerService extends BaseRepository {
       throw new Error(`Failed to create property: ${propertyError.message}`);
     }
 
+    // 連番シートC2を更新（ベストエフォート）
+    try {
+      const { GoogleSheetsClient } = await import('./GoogleSheetsClient');
+      const renbanClient = new GoogleSheetsClient({
+        spreadsheetId: '19yAuVYQRm-_zhjYX7M7zjiGbnBibkG77Mpz93sN1xxs',
+        sheetName: '連番',
+        serviceAccountKeyPath: process.env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH || './google-service-account.json',
+      });
+      await renbanClient.authenticate();
+      const values = await renbanClient.readRawRange('C2');
+      const currentNum = parseInt(values[0]?.[0] || '0', 10);
+      await renbanClient.writeRawCell('C2', String(currentNum + 1));
+      console.log(`✅ 連番シートC2を更新: ${currentNum} → ${currentNum + 1}`);
+    } catch (err) {
+      console.error('⚠️ 連番シートC2更新失敗（ベストエフォート）:', err);
+    }
+
+    // 売主リストスプレッドシートの最終行に追加（ベストエフォート）
+    try {
+      const { GoogleSheetsClient } = await import('./GoogleSheetsClient');
+      const sellerListClient = new GoogleSheetsClient({
+        spreadsheetId: '1wKBRLWbT6pSKa9IlTDabjhjTnfs_GxX6Rn6M6kbio1I',
+        sheetName: '売主リスト',
+        serviceAccountKeyPath: process.env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH || './google-service-account.json',
+      });
+      await sellerListClient.authenticate();
+
+      // seller-spreadsheet-column-mapping.md に従ってデータを書き込む
+      // B列: seller_number, C列: name, D列: address, E列: phone_number, F列: email
+      await sellerListClient.appendRow({
+        '売主番号': sellerNumber || '',
+        '名前(漢字のみ）': data.name || '',
+        '依頼者住所(物件所在と異なる場合）': data.address || '',
+        '電話番号\nハイフン不要': data.phoneNumber || '',
+        'メールアドレス': data.email || '',
+        '物件所在地': data.property?.address || '',
+        '種別': data.property?.propertyType || '',
+        '反響日付': data.inquiryDate || '',
+        'サイト': data.inquirySource || '',
+      });
+      console.log(`✅ 売主リストスプレッドシートに追加: ${sellerNumber}`);
+    } catch (err) {
+      console.error('⚠️ 売主リストスプレッドシート追加失敗（ベストエフォート）:', err);
+    }
+
     // 復号化して返す
     const decryptedSeller = await this.decryptSeller(seller);
     

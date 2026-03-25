@@ -12,6 +12,7 @@ import {
   Alert,
   Checkbox,
   FormControlLabel,
+  Autocomplete,
 } from '@mui/material';
 import { 
   ArrowBack as ArrowBackIcon,
@@ -92,6 +93,20 @@ export default function NewSellerPage() {
   const [error, setError] = useState('');
   const [duplicateWarning, setDuplicateWarning] = useState<any>(null);
 
+  // 売主番号（自動採番）
+  const [sellerNumber, setSellerNumber] = useState('');
+  const [sellerNumberLoading, setSellerNumberLoading] = useState(false);
+
+  // 売主コピー
+  const [sellerCopyInput, setSellerCopyInput] = useState('');
+  const [sellerCopyOptions, setSellerCopyOptions] = useState<Array<{sellerNumber: string; name: string; id: string}>>([]);
+  const [sellerCopyLoading, setSellerCopyLoading] = useState(false);
+
+  // 買主コピー
+  const [buyerCopyInput, setBuyerCopyInput] = useState('');
+  const [buyerCopyOptions, setBuyerCopyOptions] = useState<Array<{buyerNumber: string; name: string}>>([]);
+  const [buyerCopyLoading, setBuyerCopyLoading] = useState(false);
+
   // 売主情報
   const [name, setName] = useState('');
   const [requestorAddress, setRequestorAddress] = useState('');
@@ -170,6 +185,84 @@ export default function NewSellerPage() {
   const [companyIntroduction, setCompanyIntroduction] = useState('');
   const [propertyIntroduction, setPropertyIntroduction] = useState('');
 
+  // 売主番号取得
+  useEffect(() => {
+    const fetchNextSellerNumber = async () => {
+      setSellerNumberLoading(true);
+      try {
+        const response = await api.get('/api/sellers/next-seller-number');
+        setSellerNumber(response.data.sellerNumber);
+      } catch (err) {
+        console.error('Failed to fetch next seller number:', err);
+        setError('売主番号の取得に失敗しました');
+      } finally {
+        setSellerNumberLoading(false);
+      }
+    };
+    fetchNextSellerNumber();
+  }, []);
+
+  // 売主コピー検索ハンドラ
+  const handleSellerCopySearch = async (query: string) => {
+    if (!query || query.length < 2) {
+      setSellerCopyOptions([]);
+      return;
+    }
+    setSellerCopyLoading(true);
+    try {
+      const response = await api.get(`/api/sellers/search?q=${encodeURIComponent(query)}`);
+      setSellerCopyOptions(response.data || []);
+    } catch (err) {
+      setSellerCopyOptions([]);
+    } finally {
+      setSellerCopyLoading(false);
+    }
+  };
+
+  const handleSellerCopySelect = async (option: {sellerNumber: string; name: string; id: string} | null) => {
+    if (!option) return;
+    try {
+      const response = await api.get(`/api/sellers/by-number/${option.sellerNumber}`);
+      const seller = response.data;
+      if (seller.name) setName(seller.name);
+      if (seller.address) setRequestorAddress(seller.address);
+      if (seller.phoneNumber) setPhoneNumber(seller.phoneNumber);
+      if (seller.email) setEmail(seller.email);
+    } catch (err) {
+      setError('売主情報の取得に失敗しました');
+    }
+  };
+
+  // 買主コピー検索ハンドラ
+  const handleBuyerCopySearch = async (query: string) => {
+    if (!query || query.length < 2) {
+      setBuyerCopyOptions([]);
+      return;
+    }
+    setBuyerCopyLoading(true);
+    try {
+      const response = await api.get(`/api/buyers/search?q=${encodeURIComponent(query)}&limit=20`);
+      setBuyerCopyOptions(response.data || []);
+    } catch (err) {
+      setBuyerCopyOptions([]);
+    } finally {
+      setBuyerCopyLoading(false);
+    }
+  };
+
+  const handleBuyerCopySelect = async (option: {buyerNumber: string; name: string} | null) => {
+    if (!option) return;
+    try {
+      const response = await api.get(`/api/buyers/${option.buyerNumber}`);
+      const buyer = response.data;
+      if (buyer.name) setName(buyer.name);
+      if (buyer.phoneNumber || buyer.phone_number) setPhoneNumber(buyer.phoneNumber || buyer.phone_number);
+      if (buyer.email) setEmail(buyer.email);
+    } catch (err) {
+      setError('買主情報の取得に失敗しました');
+    }
+  };
+
   // 重複チェック（一時的に無効化）
   useEffect(() => {
     const checkDuplicate = async () => {
@@ -217,6 +310,7 @@ export default function NewSellerPage() {
         name,
         address: requestorAddress || propertyAddress, // addressは必須なので、依頼者住所または物件住所を使用
         phoneNumber,
+        sellerNumber: sellerNumber || undefined,
         email: email || undefined,
         
         // 反響情報
@@ -347,6 +441,65 @@ export default function NewSellerPage() {
               基本情報
             </Typography>
             <Grid container spacing={2}>
+              {/* 1. 売主コピー */}
+              <Grid item xs={12}>
+                <Autocomplete
+                  options={sellerCopyOptions}
+                  getOptionLabel={(option) => `${option.sellerNumber} - ${option.name}`}
+                  loading={sellerCopyLoading}
+                  inputValue={sellerCopyInput}
+                  onInputChange={(_event, value) => {
+                    setSellerCopyInput(value);
+                    handleSellerCopySearch(value);
+                  }}
+                  onChange={(_event, value) => handleSellerCopySelect(value)}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="売主コピー（既存の売主番号を入力して情報をコピー）"
+                      placeholder="例: AA910"
+                    />
+                  )}
+                  noOptionsText="該当する売主が見つかりません"
+                  isOptionEqualToValue={(option, value) => option.sellerNumber === value.sellerNumber}
+                />
+              </Grid>
+              {/* 2. 買主コピー */}
+              <Grid item xs={12}>
+                <Autocomplete
+                  options={buyerCopyOptions}
+                  getOptionLabel={(option) => `${option.buyerNumber} - ${option.name}`}
+                  loading={buyerCopyLoading}
+                  inputValue={buyerCopyInput}
+                  onInputChange={(_event, value) => {
+                    setBuyerCopyInput(value);
+                    handleBuyerCopySearch(value);
+                  }}
+                  onChange={(_event, value) => handleBuyerCopySelect(value)}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="買主コピー（既存の買主番号を入力して情報をコピー）"
+                      placeholder="例: 2051"
+                    />
+                  )}
+                  noOptionsText="該当する買主が見つかりません"
+                  isOptionEqualToValue={(option, value) => option.buyerNumber === value.buyerNumber}
+                />
+              </Grid>
+              {/* 3. 売主番号 */}
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  required
+                  label="売主番号"
+                  value={sellerNumber}
+                  InputProps={{ readOnly: true }}
+                  helperText={sellerNumberLoading ? '取得中...' : '自動採番されます'}
+                  disabled={sellerNumberLoading}
+                />
+              </Grid>
+              {/* 4. 名前 */}
               <Grid item xs={12}>
                 <TextField
                   fullWidth
@@ -356,6 +509,7 @@ export default function NewSellerPage() {
                   onChange={(e) => setName(e.target.value)}
                 />
               </Grid>
+              {/* 5. 依頼者住所 */}
               <Grid item xs={12}>
                 <TextField
                   fullWidth
@@ -364,6 +518,7 @@ export default function NewSellerPage() {
                   onChange={(e) => setRequestorAddress(e.target.value)}
                 />
               </Grid>
+              {/* 6. 電話番号 */}
               <Grid item xs={12} sm={6}>
                 <TextField
                   fullWidth
@@ -374,6 +529,7 @@ export default function NewSellerPage() {
                   placeholder="090-1234-5678"
                 />
               </Grid>
+              {/* 7. メールアドレス */}
               <Grid item xs={12} sm={6}>
                 <TextField
                   fullWidth
@@ -1058,7 +1214,7 @@ export default function NewSellerPage() {
             <Button
               type="submit"
               variant="contained"
-              disabled={loading}
+              disabled={loading || !sellerNumber}
             >
               {loading ? '登録中...' : '登録'}
             </Button>
