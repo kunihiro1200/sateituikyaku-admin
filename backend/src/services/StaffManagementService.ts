@@ -37,7 +37,7 @@ export class StaffManagementService {
   private cacheExpiry: number = 0;
   private readonly CACHE_DURATION_MS = 60 * 60 * 1000; // 60分
   private readonly SPREADSHEET_ID = '19yAuVYQRm-_zhjYX7M7zjiGbnBibkG77Mpz93sN1xxs';
-  private readonly SHEET_NAME = 'スタッフ';
+  private readonly SHEET_NAME = 'スタッフチャット';
 
   /**
    * 担当者名からWebhook URLを取得
@@ -47,8 +47,19 @@ export class StaffManagementService {
     try {
       const staffData = await this.fetchStaffData();
 
+      console.log('[StaffManagementService] getWebhookUrl:', {
+        assigneeName,
+        staffCount: staffData.length,
+        staffNames: staffData.map(s => ({ initials: s.initials, name: s.name })),
+      });
+
+      // 完全一致（イニシャルまたは姓名）→ 部分一致（姓名に含まれる）の順で検索
       const staff = staffData.find(
         s => s.initials === assigneeName || s.name === assigneeName
+      ) || staffData.find(
+        s => s.name && s.name.includes(assigneeName)
+      ) || staffData.find(
+        s => assigneeName && s.name && assigneeName.includes(s.name)
       );
 
       if (!staff) {
@@ -76,7 +87,7 @@ export class StaffManagementService {
       return Array.from(this.cache.values());
     }
 
-    console.log('[StaffManagementService] Fetching staff data from spreadsheet');
+    console.log('[StaffManagementService] Fetching staff data from spreadsheet (raw mode)');
 
     const client = new GoogleSheetsClient({
       spreadsheetId: this.SPREADSHEET_ID,
@@ -85,48 +96,69 @@ export class StaffManagementService {
     });
 
     await client.authenticate();
+
+    // ヘッダー行を取得してF列のインデックスを特定
+    const headers = await client.getHeaders();
+    console.log('[StaffManagementService] Sheet headers:', headers);
+
+    // 全行を生データで取得（A列〜F列以降）
     const rows = await client.readAll();
 
     const staffData: StaffInfo[] = [];
     for (const row of rows) {
-      const initials = row['イニシャル'] as string;
-      const name = row['姓名'] as string;
-      const chatWebhook = row['Chat webhook'] as string | null;
+      // ヘッダー名で取得を試みる（複数の候補に対応）
+      const name = (
+        row['姓名'] ||
+        row['名前'] ||
+        row['スタッフ名'] ||
+        row['担当者名'] ||
+        row[headers[0]] // A列
+      ) as string | null;
 
-      const isActiveRaw = row['有効'];
-      const isActive = String(isActiveRaw).toUpperCase() === 'TRUE';
+      // F列（インデックス5）のチャットアドレスを取得
+      // ヘッダー名が不明な場合はインデックスで取得
+      const fColHeader = headers[5]; // F列のヘッダー名
+      const chatWebhook = (
+        row['Chat webhook'] ||
+        row['チャットアドレス'] ||
+        row['chat_webhook'] ||
+        row['Webhook URL'] ||
+        row['webhook'] ||
+        (fColHeader ? row[fColHeader] : null)
+      ) as string | null;
 
-      const isNormalRaw = row['通常'];
-      const isNormal = String(isNormalRaw).toUpperCase() === 'TRUE';
+      // イニシャルはA列またはB列
+      const initials = (
+        row['イニシャル'] ||
+        row[headers[0]] ||
+        row[headers[1]]
+      ) as string | null;
 
-      if (initials || name) {
-        const hasJimuRaw = row['事務あり'];
-        const hasJimu = String(hasJimuRaw).toUpperCase() === 'TRUE';
-
-        const phone = row['電話番号'] as string | null;
-        const email = row['メアド'] as string | null;
-        const regularHoliday = row['固定休'] as string | null;
-
+      if (name || initials) {
         const staff: StaffInfo = {
-          initials: initials || '',
-          name: name || '',
+          initials: String(initials || ''),
+          name: String(name || ''),
           chatWebhook: chatWebhook || null,
-          isActive,
-          isNormal,
-          hasJimu,
-          phone: phone || null,
-          email: email || null,
-          regularHoliday: regularHoliday || null,
+          isActive: true,
+          isNormal: true,
+          hasJimu: false,
+          phone: null,
+          email: null,
+          regularHoliday: null,
         };
         staffData.push(staff);
 
-        if (initials) this.cache.set(initials, staff);
-        if (name) this.cache.set(name, staff);
+        if (initials) this.cache.set(String(initials), staff);
+        if (name) this.cache.set(String(name), staff);
       }
     }
 
     this.cacheExpiry = now + this.CACHE_DURATION_MS;
-    console.log('[StaffManagementService] Fetched staff data:', { count: staffData.length });
+    console.log('[StaffManagementService] Fetched staff data:', {
+      count: staffData.length,
+      headers,
+      sample: staffData.slice(0, 3).map(s => ({ name: s.name, initials: s.initials, hasWebhook: !!s.chatWebhook })),
+    });
 
     return staffData;
   }
