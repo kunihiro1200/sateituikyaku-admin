@@ -1132,6 +1132,21 @@ ${detailUrl}`;
       });
     }
 
+    // チャット送信成功後、confirmation_to_assignee をDBに保存してスプレッドシートに同期（BJ列）
+    try {
+      await buyerService.updateWithSync(
+        buyer_number,
+        { confirmation_to_assignee: confirmationText },
+        'system',
+        'system@example.com',
+        { force: false }
+      );
+      console.log('[send-confirmation] confirmation_to_assignee synced to spreadsheet');
+    } catch (syncError: any) {
+      // 同期失敗はチャット送信の成功には影響しない（ログのみ）
+      console.error('[send-confirmation] Failed to sync confirmation_to_assignee:', syncError.message);
+    }
+
     res.json({
       success: true,
       message: '送信しました'
