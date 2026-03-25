@@ -36,7 +36,11 @@ export class PropertyListingColumnMapper {
       for (const [spreadsheetColumn, value] of Object.entries(rowObject)) {
         const dbColumn = this.spreadsheetToDb[spreadsheetColumn];
         if (dbColumn && value !== undefined) {
-          result[dbColumn] = this.convertValue(dbColumn, value);
+          const converted = this.convertValue(dbColumn, value);
+          // 既に値がある場合はnullで上書きしない（複数列が同じDBカラムにマップされる場合の対策）
+          if (converted !== null || result[dbColumn] === undefined) {
+            result[dbColumn] = converted;
+          }
         }
       }
     }

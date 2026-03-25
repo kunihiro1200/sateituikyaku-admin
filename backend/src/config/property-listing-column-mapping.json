@@ -15,6 +15,7 @@
     "売主から": "commission_from_seller",
     "買主から": "commission_from_buyer",
     "名前(売主）": "seller_name",
+    "●所有者情報": "seller_name",
     "住所(売主）": "seller_address",
     "●連絡先(売主）": "seller_contact",
     "名前（買主）": "buyer_name",
