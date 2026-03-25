@@ -1063,7 +1063,7 @@ router.post('/:buyer_number/send-confirmation', async (req: Request, res: Respon
       });
     }
 
-    const properties = await buyerService.getLinkedProperties(buyer.buyer_id);
+    const properties = await buyerService.getLinkedProperties(buyer.buyer_number);
     if (!properties || properties.length === 0) {
       return res.status(400).json({
         success: false,
