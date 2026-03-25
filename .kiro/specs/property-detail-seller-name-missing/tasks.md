@@ -2,7 +2,7 @@
 
 ## Tasks
 
-- [~] 1. 暗号化文字列検出ロジックのプロパティベーステストを作成する
+- [ ] 1. 暗号化文字列検出ロジックのプロパティベーステストを作成する
   - [ ] 1.1 テストファイル `backend/src/__tests__/isEncryptedValue.pbt.test.ts` を作成する
   - [ ] 1.2 Property 2（Preservation）: 任意の平文を渡すと `isEncryptedValue` が false を返すことを検証するプロパティテストを書く
   - [ ] 1.3 Property 1（Bug Condition）: `encrypt()` で生成した暗号化文字列を渡すと `isEncryptedValue` が true を返すことを検証するプロパティテストを書く

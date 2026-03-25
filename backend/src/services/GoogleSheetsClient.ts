@@ -457,6 +457,7 @@ export class GoogleSheetsClient {
     const response = await this.sheets!.spreadsheets.values.get({
       spreadsheetId: this.config.spreadsheetId,
       range: `${this.config.sheetName}!${range}`,
+      valueRenderOption: 'UNFORMATTED_VALUE',
     });
 
     const rows = response.data.values || [];
@@ -606,7 +607,7 @@ export class GoogleSheetsClient {
     const values = response.data.values || [];
     
     for (let i = 0; i < values.length; i++) {
-      if (values[i][0] === value) {
+      if (String(values[i][0]) === String(value)) {
         return i + 2; // +2 because: +1 for header row, +1 for 0-indexed to 1-indexed
       }
     }
