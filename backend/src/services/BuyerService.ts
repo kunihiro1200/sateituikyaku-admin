@@ -258,7 +258,9 @@ export class BuyerService {
   async search(query: string, limit: number = 20): Promise<any[]> {
     // 数字のみのクエリの場合、buyer_number.eq.{数値} は TEXT型カラムとの型不一致で500エラーになる
     // getAll() と同様に .eq('buyer_number', query) を使って文字列として渡す
+    // ※ buyers テーブルに id カラムは存在しない（主キーは buyer_number）
     const isNumericOnly = /^\d+$/.test(query);
+    const selectFields = 'buyer_number, name, phone_number, email, property_number, latest_status, initial_assignee';
 
     if (isNumericOnly) {
       // 数字のみ: buyer_number の完全一致（.eq() で TEXT型として文字列比較）
@@ -266,12 +268,12 @@ export class BuyerService {
       const [exactMatch, partialMatch] = await Promise.all([
         this.supabase
           .from('buyers')
-          .select('id, buyer_number, name, phone_number, email, property_number, latest_status, initial_assignee')
+          .select(selectFields)
           .eq('buyer_number', query)
           .limit(limit),
         this.supabase
           .from('buyers')
-          .select('id, buyer_number, name, phone_number, email, property_number, latest_status, initial_assignee')
+          .select(selectFields)
           .or(`name.ilike.%${query}%,phone_number.ilike.%${query}%,property_number.ilike.%${query}%`)
           .limit(limit),
       ]);
@@ -297,7 +299,7 @@ export class BuyerService {
       // 文字列を含む: 全フィールドで ilike 検索
       const { data, error } = await this.supabase
         .from('buyers')
-        .select('id, buyer_number, name, phone_number, email, property_number, latest_status, initial_assignee')
+        .select(selectFields)
         .or(
           `buyer_number.ilike.%${query}%,name.ilike.%${query}%,phone_number.ilike.%${query}%,property_number.ilike.%${query}%`
         )
