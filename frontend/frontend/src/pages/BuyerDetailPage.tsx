@@ -379,40 +379,13 @@ export default function BuyerDetailPage() {
       const DATE_FIELDS = ['next_call_date', 'reception_date', 'visit_date', 'contract_date'];
       const sanitizedValue = DATE_FIELDS.includes(fieldName) && newValue === '' ? null : newValue;
 
-      // 更新するフィールドのみを送信（DBのみ即時保存、スプシ同期は保存ボタン押下時）
-      const result = await buyerApi.update(
+      // UIは呼び出し元で楽観的更新済み。DBのみ保存（スプシ同期は保存ボタン押下時）
+      await buyerApi.update(
         buyer_number!,
         { [fieldName]: sanitizedValue },
-        { sync: false }  // スプレッドシート同期はしない（保存ボタン押下時に同期）
+        { sync: false }
       );
-      
-      // 競合がある場合
-      if (result.conflicts && result.conflicts.length > 0) {
-        console.warn('Sync conflict detected:', result.conflicts);
-        setSnackbar({
-          open: true,
-          message: '同期競合が発生しました。スプレッドシートの値が変更されています。',
-          severity: 'warning'
-        });
-        // ローカル状態は更新（DBには保存されている）
-        setBuyer(result.buyer);
-        return { success: true };
-      }
-      
-      // ローカル状態を更新
-      setBuyer(result.buyer);
-      
-      // 同期ステータスを表示
-      if (result.syncStatus === 'pending') {
-        setSnackbar({
-          open: true,
-          message: '保存しました（スプレッドシート同期は保留中）',
-          severity: 'warning'
-        });
-      } else if (result.syncStatus === 'synced') {
-        // 成功時は特にメッセージを表示しない（静かに成功）
-      }
-      
+
       return { success: true };
     } catch (error: any) {
       console.error('Failed to update field:', error);
@@ -2030,11 +2003,8 @@ TEL：097-533-2022`;
                     const handleFieldSave = async (newValue: any) => {
                       // UIを即座に更新（楽観的更新）
                       setBuyer((prev: any) => prev ? { ...prev, [field.key]: newValue } : prev);
-                      // バックグラウンドで保存
-                      const result = await handleInlineFieldSave(field.key, newValue);
-                      if (result && !result.success && result.error) {
-                        throw new Error(result.error);
-                      }
+                      // バックグラウンドで保存（awaitしない）
+                      handleInlineFieldSave(field.key, newValue).catch(console.error);
                     };
 
                     // inquiry_hearingフィールドはRichTextEditorで表示
