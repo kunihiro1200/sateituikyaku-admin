@@ -1554,13 +1554,17 @@ TEL：097-533-2022`;
                       );
                     }
 
-                    // vendor_surveyフィールドは特別処理（ボタン選択）
+                    // vendor_surveyフィールドは特別処理（「未」のときだけボタン選択UIを表示）
                     if (field.key === 'vendor_survey') {
+                      // 「未」のときだけ表示
+                      if (buyer?.vendor_survey !== '未') {
+                        return null;
+                      }
                       const VENDOR_SURVEY_BTNS = ['確認済み', '未'];
                       return (
                         <Grid item xs={12} key={`${section.title}-${field.key}`}>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <Typography variant="caption" color="text.secondary" sx={{ whiteSpace: 'nowrap', flexShrink: 0 }}>
+                            <Typography variant="caption" color="warning.main" sx={{ whiteSpace: 'nowrap', flexShrink: 0, fontWeight: 'bold' }}>
                               {field.label}
                             </Typography>
                             <Box sx={{ display: 'flex', gap: 0.5, flex: 1 }}>
@@ -1571,7 +1575,7 @@ TEL：097-533-2022`;
                                     key={opt}
                                     size="small"
                                     variant={isSelected ? 'contained' : 'outlined'}
-                                    color="primary"
+                                    color={opt === '未' ? 'warning' : 'primary'}
                                     onClick={async () => {
                                       const newValue = isSelected ? '' : opt;
                                       setBuyer((prev: any) => prev ? { ...prev, [field.key]: newValue } : prev);
@@ -1601,7 +1605,7 @@ TEL：097-533-2022`;
                       if (buyer?.inquiry_email_phone !== '不通') {
                         return null;
                       }
-                      const THREE_CALLS_BTNS = ['確認済み', '未'];
+                      const THREE_CALLS_BTNS = ['3回架電OK', '3回架電未', '他'];
                       return (
                         <Grid item xs={12} key={`${section.title}-${field.key}`}>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>

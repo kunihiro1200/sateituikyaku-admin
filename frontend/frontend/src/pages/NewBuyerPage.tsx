@@ -838,7 +838,7 @@ export default function NewBuyerPage() {
                         3回架電確認済み *
                       </Typography>
                       <Box sx={{ display: 'flex', gap: 0.5, flex: 1 }}>
-                        {['確認済み', '未'].map((opt) => {
+                        {['3回架電OK', '3回架電未', '他'].map((opt) => {
                           const isSelected = threeCallsConfirmed === opt;
                           return (
                             <Button
