@@ -77,6 +77,10 @@ export class BuyerColumnMapper {
       return this.parseNumber(value);
     }
 
+    if (type === 'time') {
+      return this.parseTime(value);
+    }
+
     return String(value).trim();
   }
 
@@ -128,6 +132,41 @@ export class BuyerColumnMapper {
     }
 
     return value;
+  }
+
+  /**
+   * 時刻をパース（スプレッドシートのシリアル値 or 文字列）
+   * シリアル値: 0.416667 = 10:00, 0.583333 = 14:00
+   */
+  private parseTime(value: any): string | null {
+    if (value === null || value === undefined || value === '') return null;
+
+    // 数値（シリアル値）の場合
+    if (typeof value === 'number') {
+      const totalMinutes = Math.round(value * 24 * 60);
+      const hours = Math.floor(totalMinutes / 60);
+      const minutes = totalMinutes % 60;
+      return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+    }
+
+    const str = String(value).trim();
+
+    // 数値文字列の場合
+    const num = parseFloat(str);
+    if (!isNaN(num) && num >= 0 && num < 1) {
+      const totalMinutes = Math.round(num * 24 * 60);
+      const hours = Math.floor(totalMinutes / 60);
+      const minutes = totalMinutes % 60;
+      return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+    }
+
+    // "HH:mm" or "HH:mm:ss" 形式
+    const timeMatch = str.match(/^(\d{1,2}):(\d{2})/);
+    if (timeMatch) {
+      return `${timeMatch[1].padStart(2, '0')}:${timeMatch[2]}`;
+    }
+
+    return str || null;
   }
 
   /**

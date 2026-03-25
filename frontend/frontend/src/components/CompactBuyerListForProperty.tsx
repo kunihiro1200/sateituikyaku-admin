@@ -55,6 +55,46 @@ export default function CompactBuyerListForProperty({
     }
   };
 
+  // 内覧時間のフォーマット
+  // スプレッドシートのシリアル値（例: 0.416... = 10:00）や "Sat Dec 30 1899..." のような
+  // 不正な日付文字列を HH:mm 形式に変換する
+  const formatViewingTime = (value?: string) => {
+    if (!value) return '-';
+
+    // 数値文字列（シリアル値）の場合: 0.416667 = 10:00
+    const num = parseFloat(value);
+    if (!isNaN(num) && num >= 0 && num < 1) {
+      const totalMinutes = Math.round(num * 24 * 60);
+      const hours = Math.floor(totalMinutes / 60);
+      const minutes = totalMinutes % 60;
+      return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+    }
+
+    // "HH:mm" や "HH:mm:ss" 形式はそのまま返す
+    if (/^\d{1,2}:\d{2}(:\d{2})?$/.test(value)) {
+      return value.substring(0, 5);
+    }
+
+    // "Sat Dec 30 1899 HH:MM:SS GMT..." のような不正な日付文字列の場合
+    // 1899年12月30日はスプレッドシートのシリアル値0の基準日なので時刻部分だけ抽出
+    const dateObj = new Date(value);
+    if (!isNaN(dateObj.getTime())) {
+      const year = dateObj.getFullYear();
+      // 1899年や1900年の場合はシリアル値由来の不正な日付 → 時刻部分のみ表示
+      if (year <= 1900) {
+        const h = String(dateObj.getHours()).padStart(2, '0');
+        const m = String(dateObj.getMinutes()).padStart(2, '0');
+        return `${h}:${m}`;
+      }
+      // 正常な日付の場合も時刻部分のみ表示
+      const h = String(dateObj.getHours()).padStart(2, '0');
+      const m = String(dateObj.getMinutes()).padStart(2, '0');
+      return `${h}:${m}`;
+    }
+
+    return value;
+  };
+
   // 受付日順にソート（新しい順）
   const sortedBuyers = [...buyers].sort((a, b) => {
     if (!a.reception_date) return 1;
@@ -122,7 +162,7 @@ export default function CompactBuyerListForProperty({
                   <TableCell>{buyer.name}</TableCell>
                   <TableCell>{formatDate(buyer.reception_date)}</TableCell>
                   <TableCell>{formatDate(buyer.latest_viewing_date)}</TableCell>
-                  <TableCell>{buyer.viewing_time || '-'}</TableCell>
+                  <TableCell>{buyer.viewing_time ? formatViewingTime(buyer.viewing_time) : '-'}</TableCell>
                   <TableCell>{buyer.latest_status || '-'}</TableCell>
                 </TableRow>
               ))}
