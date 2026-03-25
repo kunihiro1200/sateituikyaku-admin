@@ -542,10 +542,12 @@ router.post('/trigger', async (req: Request, res: Response) => {
   // sellersOnly=true の場合は売主同期のみ（Phase 1-3）を実行してタイムアウトを回避
   // deletionOnly=true の場合は削除同期のみ（Phase 3）を実行
   // additionOnly=true の場合は追加同期のみ（Phase 1）を実行（GASのPhase 2はSupabase直接更新のため）
+  // buyerDeletionOnly=true の場合は買主削除同期のみを実行（スプシにない買主をDBから物理削除）
   // GASのタイムアウトは6分あるので、同期処理が完了するまで待つ
   const sellersOnly = req.query.sellersOnly === 'true';
   const deletionOnly = req.query.deletionOnly === 'true';
   const additionOnly = req.query.additionOnly === 'true';
+  const buyerDeletionOnly = req.query.buyerDeletionOnly === 'true';
 
   try {
     const { getEnhancedAutoSyncService } = await import('../services/EnhancedAutoSyncService');
@@ -554,7 +556,25 @@ router.post('/trigger', async (req: Request, res: Response) => {
     const syncService = getEnhancedAutoSyncService();
     await syncService.initialize();
 
-    if (additionOnly) {
+    if (buyerDeletionOnly) {
+      // 買主削除同期のみ（スプシにない買主をDBから物理削除）
+      console.log('🗑️  Buyer deletion-only sync triggered');
+      const deletedBuyers = await syncService.detectDeletedBuyers();
+      let deleted = 0;
+      const errors: any[] = [];
+      if (deletedBuyers.length > 0) {
+        const deletionResult = await syncService.syncDeletedBuyers(deletedBuyers);
+        deleted = deletionResult.successfullyDeleted;
+        errors.push(...deletionResult.errors);
+      }
+      const healthChecker = getSyncHealthChecker();
+      await healthChecker.checkAndUpdateHealth();
+      return res.json({
+        success: errors.length === 0,
+        message: `Buyer deletion sync completed: ${deleted} deleted`,
+        data: { deleted, detected: deletedBuyers.length, errors: errors.length },
+      });
+    } else if (additionOnly) {
       // 追加同期のみ（Phase 1）- GASのPhase 2はSupabase直接更新のため不要
       console.log('➕ Addition-only sync triggered');
       syncService.clearSpreadsheetCache();
