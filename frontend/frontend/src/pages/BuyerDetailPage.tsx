@@ -41,6 +41,7 @@ import { InquiryResponseEmailModal } from '../components/InquiryResponseEmailMod
 import RelatedBuyersSection from '../components/RelatedBuyersSection';
 import UnifiedInquiryHistoryTable from '../components/UnifiedInquiryHistoryTable';
 import RelatedBuyerNotificationBadge from '../components/RelatedBuyerNotificationBadge';
+import { ConfirmationToAssignee } from '../components/ConfirmationToAssignee';
 import BuyerGmailSendButton from '../components/BuyerGmailSendButton';
 import { SmsDropdownButton } from '../components/SmsDropdownButton';
 import PageNavigation from '../components/PageNavigation';
@@ -54,7 +55,6 @@ import {
   INQUIRY_EMAIL_PHONE_OPTIONS, 
   THREE_CALLS_CONFIRMED_OPTIONS, 
   EMAIL_TYPE_OPTIONS, 
-  DISTRIBUTION_TYPE_OPTIONS 
 } from '../utils/buyerFieldOptions';
 import RichTextCommentEditor, { RichTextCommentEditorHandle } from '../components/RichTextCommentEditor';
 import { formatDateTime } from '../utils/dateFormat';
@@ -144,7 +144,7 @@ const BUYER_FIELD_SECTIONS = [
       { key: 'inquiry_email_phone', label: '【問合メール】電話対応', inlineEditable: true, fieldType: 'dropdown' },
       { key: 'three_calls_confirmed', label: '3回架電確認済み', inlineEditable: true, fieldType: 'dropdown' },
       { key: 'email_type', label: 'メール種別', inlineEditable: true, fieldType: 'dropdown' },
-      { key: 'distribution_type', label: '配信種別', inlineEditable: true, fieldType: 'dropdown' },
+      { key: 'confirmation_to_assignee', label: '担当への確認事項', inlineEditable: true, fieldType: 'confirmationToAssignee' },
       { key: 'next_call_date', label: '次電日', type: 'date', inlineEditable: true },
       { key: 'owned_home_hearing_inquiry', label: '問合時持家ヒアリング', inlineEditable: true, fieldType: 'staffSelect' },
       { key: 'owned_home_hearing_result', label: '持家ヒアリング結果', inlineEditable: true, fieldType: 'homeHearingResult' },
@@ -160,20 +160,6 @@ const BUYER_FIELD_SECTIONS = [
       { key: 'email', label: 'メールアドレス', inlineEditable: true },
       { key: 'company_name', label: '法人名', inlineEditable: true },
       { key: 'broker_inquiry', label: '業者問合せ', inlineEditable: true, fieldType: 'boxSelect' },
-    ],
-  },
-  {
-    title: 'その他',
-    fields: [
-      { key: 'special_notes', label: '特記事項', multiline: true, inlineEditable: true },
-      { key: 'message_to_assignee', label: '担当への伝言/質問事項', multiline: true, inlineEditable: true },
-      { key: 'confirmation_to_assignee', label: '担当への確認事項', multiline: true, inlineEditable: true },
-      { key: 'family_composition', label: '家族構成', inlineEditable: true },
-      { key: 'must_have_points', label: '譲れない点', multiline: true, inlineEditable: true },
-      { key: 'liked_points', label: '気に入っている点', multiline: true, inlineEditable: true },
-      { key: 'disliked_points', label: 'ダメな点', multiline: true, inlineEditable: true },
-      { key: 'purchase_obstacles', label: '購入時障害となる点', multiline: true, inlineEditable: true },
-      { key: 'next_action', label: '次のアクション', multiline: true, inlineEditable: true },
     ],
   },
 ];
@@ -1498,28 +1484,25 @@ TEL：097-533-2022`;
                       );
                     }
 
-                    // distribution_typeフィールドは特別処理（ドロップダウン）
-                    if (field.key === 'distribution_type') {
-                      const handleFieldSave = async (newValue: any) => {
-                        const result = await handleInlineFieldSave(field.key, newValue);
-                        if (result && !result.success && result.error) {
-                          throw new Error(result.error);
-                        }
-                      };
-
+                    // confirmation_to_assigneeフィールドは ConfirmationToAssignee コンポーネントで表示
+                    // 物件担当者（sales_assignee）が設定されている場合のみ表示
+                    if (field.key === 'confirmation_to_assignee') {
+                      const propertyAssignee = linkedProperties[0]?.sales_assignee || null;
+                      if (!propertyAssignee) return null;
                       return (
-                        <Grid item {...gridSize} key={`${section.title}-${field.key}`}>
-                          <InlineEditableField
-                            label={field.label}
-                            value={value || ''}
-                            fieldName={field.key}
-                            fieldType="dropdown"
-                            options={DISTRIBUTION_TYPE_OPTIONS}
-                            onSave={handleFieldSave}
-                            onChange={(fieldName, newValue) => handleFieldChange(section.title, fieldName, newValue)}
-                            buyerId={buyer_number}
-                            enableConflictDetection={true}
-                            showEditIndicator={true}
+                        <Grid item xs={12} key={`${section.title}-${field.key}`}>
+                          <ConfirmationToAssignee
+                            buyer={{
+                              buyer_number: buyer.buyer_number,
+                              name: buyer.name || '',
+                              property_number: linkedProperties[0]?.property_number || '',
+                              confirmation_to_assignee: buyer.confirmation_to_assignee,
+                            }}
+                            propertyAssignee={propertyAssignee}
+                            onSendSuccess={() => {
+                              fetchBuyer();
+                              setSnackbar({ open: true, message: 'チャットを送信しました', severity: 'success' });
+                            }}
                           />
                         </Grid>
                       );
