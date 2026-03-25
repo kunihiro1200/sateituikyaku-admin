@@ -1750,46 +1750,55 @@ TEL：097-533-2022`;
                             );
 
                             // 数値入力ヘルパー（－＋ボタン付き）
-                            const renderNumberInput = (fieldKey: string, label: string, step: number = 1) => (
-                              <Grid item xs={12} key={`valuation-field-${fieldKey}`}>
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                  <Typography variant="caption" color="text.secondary" sx={{ whiteSpace: 'nowrap', flexShrink: 0 }}>
-                                    {label}
-                                  </Typography>
-                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flex: 1 }}>
-                                    <TextField
-                                      size="small"
-                                      type="number"
-                                      value={buyer[fieldKey] || ''}
-                                      onChange={(e) => handleFieldChange(section.title, fieldKey, e.target.value)}
-                                      onBlur={async (e) => { await handleInlineFieldSave(fieldKey, e.target.value); }}
-                                      sx={{ flex: 1 }}
-                                      inputProps={{ step }}
-                                    />
-                                    <Button size="small" variant="outlined" onClick={async () => {
-                                      const cur = parseFloat(buyer[fieldKey] || '0');
-                                      const newVal = String(Math.max(0, cur - step));
-                                      handleFieldChange(section.title, fieldKey, newVal);
-                                      await handleInlineFieldSave(fieldKey, newVal);
-                                    }} sx={{ minWidth: 32, px: 0.5 }}>－</Button>
-                                    <Button size="small" variant="outlined" onClick={async () => {
-                                      const cur = parseFloat(buyer[fieldKey] || '0');
-                                      const newVal = String(cur + step);
-                                      handleFieldChange(section.title, fieldKey, newVal);
-                                      await handleInlineFieldSave(fieldKey, newVal);
-                                    }} sx={{ minWidth: 32, px: 0.5 }}>＋</Button>
+                            const renderNumberInput = (fieldKey: string, label: string, step: number = 1) => {
+                              const isDecimal = step < 1;
+                              const decimals = isDecimal ? 2 : 0;
+                              const formatVal = (v: number) => isDecimal ? v.toFixed(decimals) : String(Math.round(v));
+                              const displayVal = buyer[fieldKey] !== undefined && buyer[fieldKey] !== null && buyer[fieldKey] !== ''
+                                ? (isDecimal ? parseFloat(buyer[fieldKey]).toFixed(decimals) : buyer[fieldKey])
+                                : (isDecimal ? '0.00' : '0');
+                              return (
+                                <Grid item xs={12} key={`valuation-field-${fieldKey}`}>
+                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                    <Typography variant="caption" color="text.secondary" sx={{ whiteSpace: 'nowrap', flexShrink: 0 }}>
+                                      {label}
+                                    </Typography>
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flex: 1 }}>
+                                      <TextField
+                                        size="small"
+                                        type="number"
+                                        value={displayVal}
+                                        onChange={(e) => handleFieldChange(section.title, fieldKey, e.target.value)}
+                                        onBlur={async (e) => { await handleInlineFieldSave(fieldKey, e.target.value); }}
+                                        sx={{ flex: 1 }}
+                                        inputProps={{ step, min: 0 }}
+                                      />
+                                      <Button size="small" variant="outlined" onClick={async () => {
+                                        const cur = parseFloat(buyer[fieldKey] || '0');
+                                        const newVal = formatVal(Math.max(0, cur - step));
+                                        handleFieldChange(section.title, fieldKey, newVal);
+                                        await handleInlineFieldSave(fieldKey, newVal);
+                                      }} sx={{ minWidth: 32, px: 0.5 }}>－</Button>
+                                      <Button size="small" variant="outlined" onClick={async () => {
+                                        const cur = parseFloat(buyer[fieldKey] || '0');
+                                        const newVal = formatVal(cur + step);
+                                        handleFieldChange(section.title, fieldKey, newVal);
+                                        await handleInlineFieldSave(fieldKey, newVal);
+                                      }} sx={{ minWidth: 32, px: 0.5 }}>＋</Button>
+                                    </Box>
                                   </Box>
-                                </Box>
-                              </Grid>
-                            );
+                                </Grid>
+                              );
+                            };
 
-                            // テキスト入力ヘルパー
+                            // テキスト入力ヘルパー（ロングテキスト）
                             const renderTextInput = (fieldKey: string, label: string) => (
                               <Grid item xs={12} key={`valuation-field-${fieldKey}`}>
                                 <InlineEditableField
                                   label={label}
                                   value={buyer[fieldKey] || ''}
                                   fieldName={fieldKey}
+                                  multiline={true}
                                   onSave={async (newValue: any) => {
                                     const result = await handleInlineFieldSave(fieldKey, newValue);
                                     if (result && !result.success && result.error) {
