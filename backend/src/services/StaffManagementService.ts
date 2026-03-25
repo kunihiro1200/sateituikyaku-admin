@@ -140,30 +140,33 @@ export class StaffManagementService {
     const headers = rows[0] as string[];
     console.log('[StaffManagementService] Headers:', headers);
 
-    // F列（インデックス5）がチャットアドレス
-    const fColIndex = 5;
+    // ヘッダーからF列（Chat webhook）のインデックスを特定
+    const fColIndex = headers.findIndex((h: string) => h === 'Chat webhook') !== -1
+      ? headers.findIndex((h: string) => h === 'Chat webhook')
+      : 5;
+
+    // ヘッダーから姓名列のインデックスを特定
+    const nameColIndex = headers.findIndex((h: string) => h === '姓名' || h === '名前' || h === '氏名');
+
+    console.log('[StaffManagementService] Column indices:', { fColIndex, nameColIndex, headers });
 
     const staffData: StaffInfo[] = [];
     for (let i = 1; i < rows.length; i++) {
       const row = rows[i] as string[];
       if (!row || row.length === 0) continue;
 
-      // A列: イニシャルまたは名前（最初の列）
-      const col0 = row[0]?.trim() || '';
-      // B列
-      const col1 = row[1]?.trim() || '';
+      // A列: イニシャル
+      const initials = row[0]?.trim() || '';
+      // 姓名列（D列相当）: フルネーム
+      const fullName = nameColIndex >= 0 ? (row[nameColIndex]?.trim() || '') : '';
       // F列: チャットアドレス
       const chatWebhook = row[fColIndex]?.trim() || null;
 
-      // 名前として使える値を探す
-      const name = col0 || col1;
-      const initials = col0;
-
-      if (!name) continue;
+      if (!initials && !fullName) continue;
 
       const staff: StaffInfo = {
         initials,
-        name,
+        name: fullName || initials,
         chatWebhook: chatWebhook || null,
         isActive: true,
         isNormal: true,
@@ -174,8 +177,18 @@ export class StaffManagementService {
       };
       staffData.push(staff);
 
+      // イニシャル・フルネーム・姓（最初の2文字）でキャッシュ登録
       if (initials) this.cache.set(initials, staff);
-      if (name && name !== initials) this.cache.set(name, staff);
+      if (fullName) {
+        this.cache.set(fullName, staff);
+        // 姓のみ（最初の2文字）でも登録（「国広」→「国広智子」にマッチ）
+        if (fullName.length >= 2) {
+          const lastName = fullName.substring(0, 2);
+          if (!this.cache.has(lastName)) {
+            this.cache.set(lastName, staff);
+          }
+        }
+      }
     }
 
     this.cacheExpiry = now + this.CACHE_DURATION_MS;
