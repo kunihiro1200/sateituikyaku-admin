@@ -43,6 +43,29 @@ router.get('/staff-debug', async (req: Request, res: Response) => {
   }
 });
 
+/**
+ * チャットシートのデバッグ用エンドポイント
+ * GET /api/employees/chat-debug
+ */
+router.get('/chat-debug', async (req: Request, res: Response) => {
+  try {
+    const staffService = new StaffManagementService();
+    staffService.clearCache();
+    const staffData = await staffService.fetchStaffData();
+    res.json({
+      count: staffData.length,
+      sample: staffData.slice(0, 10).map(s => ({
+        initials: s.initials,
+        name: s.name,
+        hasWebhook: !!s.chatWebhook,
+        webhookPreview: s.chatWebhook?.substring(0, 60),
+      })),
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // 全てのルートに認証を適用
 router.use(authenticate);
 

@@ -30,7 +30,7 @@ export class StaffManagementService {
   private readonly CACHE_DURATION_MS = 60 * 60 * 1000; // 60分
   private readonly SPREADSHEET_ID = '19yAuVYQRm-_zhjYX7M7zjiGbnBibkG77Mpz93sN1xxs';
   private readonly SHEET_NAME = 'スタッフ'; // 通常スタッフ情報（イニシャル等）
-  private readonly CHAT_SHEET_NAME = 'スタッフチャット'; // チャットアドレス専用シート
+  private readonly CHAT_SHEET_NAME = 'スタッフ'; // チャットアドレスも同じシートのF列
 
   /**
    * Google Sheets APIクライアントを作成（GOOGLE_SERVICE_ACCOUNT_JSONを使用）
@@ -111,8 +111,8 @@ export class StaffManagementService {
     const sheets = await this.createSheetsClient();
 
     // ヘッダー行を含む全データを取得（A列〜F列）
-    // シート名を試す順序: スタッフチャット → スタッフ → Sheet1
-    const sheetNamesToTry = [this.CHAT_SHEET_NAME, this.SHEET_NAME, 'Sheet1', 'シート1'];
+    // シート名を試す順序: スタッフ → スタッフチャット → Sheet1
+    const sheetNamesToTry = [this.SHEET_NAME, 'スタッフチャット', 'Sheet1', 'シート1'];
     let rows: string[][] = [];
     let usedSheetName = '';
 
@@ -194,16 +194,32 @@ export class StaffManagementService {
   }
 
   /**
-   * 通常スタッフのイニシャル一覧を取得
+   * 通常スタッフのイニシャル一覧を取得（「スタッフ」シートのI列「通常」=TRUEのもの）
+   * normal-initialsエンドポイント用 - チャットシートとは別のシートを使用
    */
   async getActiveInitials(): Promise<string[]> {
     try {
-      const staffData = await this.fetchStaffData();
-      return [...new Set(
-        staffData
-          .filter(s => s.isNormal && s.initials && s.initials.trim() !== '')
-          .map(s => s.initials)
-      )];
+      const { GoogleSheetsClient } = require('./GoogleSheetsClient');
+      const client = new GoogleSheetsClient({
+        spreadsheetId: this.SPREADSHEET_ID,
+        sheetName: this.SHEET_NAME, // 「スタッフ」シート
+        serviceAccountKeyPath: process.env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH,
+      });
+      await client.authenticate();
+      const rows = await client.readAll();
+
+      const normalInitials = [...new Set(
+        rows
+          .filter((row: any) => {
+            const isNormalRaw = row['通常'];
+            return String(isNormalRaw).toUpperCase() === 'TRUE';
+          })
+          .map((row: any) => row['イニシャル'] as string)
+          .filter((i: string) => i && i.trim() !== '')
+      )] as string[];
+
+      console.log('[StaffManagementService] Normal initials:', normalInitials);
+      return normalInitials;
     } catch (error: any) {
       console.error('[StaffManagementService] Error getting normal initials:', error.message);
       throw error;
@@ -211,16 +227,30 @@ export class StaffManagementService {
   }
 
   /**
-   * 事務ありスタッフのイニシャル一覧を取得
+   * 事務ありスタッフのイニシャル一覧を取得（「スタッフ」シートの「事務あり」=TRUEのもの）
    */
   async getJimuInitials(): Promise<string[]> {
     try {
-      const staffData = await this.fetchStaffData();
-      return [...new Set(
-        staffData
-          .filter(s => s.hasJimu && s.initials && s.initials.trim() !== '')
-          .map(s => s.initials)
-      )];
+      const { GoogleSheetsClient } = require('./GoogleSheetsClient');
+      const client = new GoogleSheetsClient({
+        spreadsheetId: this.SPREADSHEET_ID,
+        sheetName: this.SHEET_NAME, // 「スタッフ」シート
+        serviceAccountKeyPath: process.env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH,
+      });
+      await client.authenticate();
+      const rows = await client.readAll();
+
+      const jimuInitials = [...new Set(
+        rows
+          .filter((row: any) => {
+            const hasJimuRaw = row['事務あり'];
+            return String(hasJimuRaw).toUpperCase() === 'TRUE';
+          })
+          .map((row: any) => row['イニシャル'] as string)
+          .filter((i: string) => i && i.trim() !== '')
+      )] as string[];
+
+      return jimuInitials;
     } catch (error: any) {
       console.error('[StaffManagementService] Error getting jimu initials:', error.message);
       throw error;
