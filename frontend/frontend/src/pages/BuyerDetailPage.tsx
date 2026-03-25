@@ -1445,7 +1445,17 @@ TEL：097-533-2022`;
                               fieldType="dropdown"
                               options={INQUIRY_SOURCE_OPTIONS}
                               onSave={handleFieldSave}
-                              onChange={(fieldName, newValue) => handleFieldChange(section.title, fieldName, newValue)}
+                              onChange={(fieldName, newValue) => {
+                                handleFieldChange(section.title, fieldName, newValue);
+                                // 選択した瞬間に必須マークを消す
+                                if (newValue && String(newValue).trim()) {
+                                  setMissingRequiredFields(prev => {
+                                    const next = new Set(prev);
+                                    next.delete('inquiry_source');
+                                    return next;
+                                  });
+                                }
+                              }}
                               buyerId={buyer_number}
                               enableConflictDetection={false}
                               showEditIndicator={true}
@@ -1499,7 +1509,17 @@ TEL：097-533-2022`;
                               fieldType="dropdown"
                               options={LATEST_STATUS_OPTIONS}
                               onSave={handleFieldSave}
-                              onChange={(fieldName, newValue) => handleFieldChange(section.title, fieldName, newValue)}
+                              onChange={(fieldName, newValue) => {
+                                handleFieldChange(section.title, fieldName, newValue);
+                                // 選択した瞬間に必須マークを消す
+                                if (newValue && String(newValue).trim()) {
+                                  setMissingRequiredFields(prev => {
+                                    const next = new Set(prev);
+                                    next.delete('latest_status');
+                                    return next;
+                                  });
+                                }
+                              }}
                               buyerId={buyer_number}
                               enableConflictDetection={false}
                               showEditIndicator={true}
