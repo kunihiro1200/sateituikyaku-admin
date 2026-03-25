@@ -24,7 +24,7 @@ export interface BuyerSummary {
 
 interface BuyerIndicatorProps {
   propertyNumber: string;
-  buyerCount: number;
+  buyerCount: number | undefined;
   hasHighConfidence: boolean;
 }
 
@@ -62,6 +62,15 @@ export default function BuyerIndicator({
 
   if (buyerCount === 0) {
     return null;
+  }
+
+  // まだ取得中（undefined）の場合はローディング表示
+  if (buyerCount === undefined) {
+    return (
+      <Box ref={anchorEl}>
+        <CircularProgress size={16} />
+      </Box>
+    );
   }
 
   return (

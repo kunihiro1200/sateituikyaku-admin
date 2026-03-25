@@ -487,7 +487,7 @@ export default function PropertyListingsPage() {
                           {listing.property_number && (
                             <BuyerIndicator
                               propertyNumber={listing.property_number}
-                              buyerCount={buyerCounts[listing.property_number] || 0}
+                              buyerCount={buyerCounts[listing.property_number]}
                               hasHighConfidence={highConfidenceProperties.has(listing.property_number)}
                             />
                           )}
