@@ -150,7 +150,9 @@ const BUYER_FIELD_SECTIONS = [
       { key: 'reception_date', label: '受付日', type: 'date', inlineEditable: true },
       { key: 'inquiry_source', label: '問合せ元', inlineEditable: true },
       { key: 'latest_status', label: '★最新状況', inlineEditable: true },
-      { key: 'distribution_type', label: '配信メール', inlineEditable: true, fieldType: 'dropdown', required: true },
+      { key: 'distribution_type', label: '配信メール', inlineEditable: true, fieldType: 'buttonSelect', required: true },
+      { key: 'pinrich', label: 'Pinrich', inlineEditable: true, fieldType: 'dropdown' },
+      { key: 'pinrich_link', label: 'Pinrichリンク', inlineEditable: false, fieldType: 'pinrichLink' },
       { key: 'inquiry_email_phone', label: '【問合メール】電話対応', inlineEditable: true, fieldType: 'dropdown' },
       { key: 'three_calls_confirmed', label: '3回架電確認済み', inlineEditable: true, fieldType: 'buttonSelect' },
       { key: 'confirmation_to_assignee', label: '担当への確認事項', inlineEditable: true, fieldType: 'confirmationToAssignee' },
@@ -1585,45 +1587,107 @@ TEL：097-533-2022`;
                       );
                     }
 
-                    // distribution_typeフィールドは特別処理（必須・ドロップダウン）
+                    // distribution_typeフィールドは特別処理（必須・ボタン選択UI）
                     if (field.key === 'distribution_type') {
-                      const handleDistributionSave = async (newValue: any) => {
-                        setBuyer((prev: any) => prev ? { ...prev, distribution_type: newValue } : prev);
-                        handleFieldChange(section.title, field.key, newValue);
-                        setMissingRequiredFields(prev => {
-                          const next = new Set(prev);
-                          if (newValue && String(newValue).trim()) next.delete('distribution_type');
-                          else next.add('distribution_type');
-                          return next;
-                        });
-                      };
                       const isDistributionMissing = missingRequiredFields.has('distribution_type');
                       return (
-                        <Grid item {...gridSize} key={`${section.title}-${field.key}`}>
+                        <Grid item xs={12} key={`${section.title}-${field.key}`}>
                           {isDistributionMissing && (
                             <Typography variant="caption" color="error" sx={{ display: 'block', mb: 0.5, fontWeight: 'bold' }}>
                               ⚠ 配信メール（必須）
                             </Typography>
                           )}
-                          <InlineEditableField
-                            key={`distribution_type-${isDistributionMissing}`}
-                            label={isDistributionMissing ? '' : field.label}
-                            value={buyer[field.key] || ''}
-                            fieldName={field.key}
-                            fieldType="dropdown"
-                            options={DISTRIBUTION_TYPE_OPTIONS}
-                            onSave={handleDistributionSave}
-                            onChange={(fieldName, newValue) => {
-                              setBuyer((prev: any) => prev ? { ...prev, [fieldName]: newValue } : prev);
-                              if (newValue && String(newValue).trim()) {
-                                setMissingRequiredFields(prev => {
-                                  const next = new Set(prev);
-                                  next.delete('distribution_type');
-                                  return next;
-                                });
-                              }
-                            }}
-                          />
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Typography variant="caption" color={isDistributionMissing ? 'error' : 'text.secondary'} sx={{ whiteSpace: 'nowrap', flexShrink: 0, fontWeight: isDistributionMissing ? 'bold' : 'normal' }}>
+                              {field.label}{isDistributionMissing ? ' *' : ''}
+                            </Typography>
+                            <Box sx={{ display: 'flex', gap: 0.5, flex: 1 }}>
+                              {DISTRIBUTION_TYPE_OPTIONS.map((opt) => {
+                                const isSelected = buyer[field.key] === opt.value;
+                                return (
+                                  <Button
+                                    key={opt.value}
+                                    size="small"
+                                    variant={isSelected ? 'contained' : 'outlined'}
+                                    color="primary"
+                                    onClick={async () => {
+                                      const newValue = isSelected ? '' : opt.value;
+                                      setBuyer((prev: any) => prev ? { ...prev, [field.key]: newValue } : prev);
+                                      handleFieldChange(section.title, field.key, newValue);
+                                      setMissingRequiredFields(prev => {
+                                        const next = new Set(prev);
+                                        if (newValue && String(newValue).trim()) next.delete('distribution_type');
+                                        else next.add('distribution_type');
+                                        return next;
+                                      });
+                                      handleInlineFieldSave(field.key, newValue).catch(console.error);
+                                    }}
+                                    sx={{
+                                      flex: 1,
+                                      py: 0.5,
+                                      fontWeight: isSelected ? 'bold' : 'normal',
+                                      borderRadius: 1,
+                                    }}
+                                  >
+                                    {opt.label}
+                                  </Button>
+                                );
+                              })}
+                            </Box>
+                          </Box>
+                        </Grid>
+                      );
+                    }
+
+                    // pinrichフィールドは特別処理（ドロップダウン）
+                    if (field.key === 'pinrich') {
+                      const PINRICH_OPTIONS = [
+                        '配信中',
+                        'クローズ',
+                        '登録不要（不可）',
+                        '500万以上の設定済み',
+                        '配信拒否（顧客より）',
+                        '登録無し',
+                        '2件目以降',
+                        '受信エラー',
+                      ];
+                      return (
+                        <Grid item xs={12} key={`${section.title}-${field.key}`}>
+                          <FormControl fullWidth size="small">
+                            <InputLabel>{field.label}</InputLabel>
+                            <Select
+                              value={buyer[field.key] || ''}
+                              label={field.label}
+                              onChange={async (e) => {
+                                const newValue = e.target.value;
+                                setBuyer((prev: any) => prev ? { ...prev, [field.key]: newValue } : prev);
+                                handleFieldChange(section.title, field.key, newValue);
+                                handleInlineFieldSave(field.key, newValue).catch(console.error);
+                              }}
+                            >
+                              <MenuItem value=""><em>未選択</em></MenuItem>
+                              {PINRICH_OPTIONS.map((opt) => (
+                                <MenuItem key={opt} value={opt}>{opt}</MenuItem>
+                              ))}
+                            </Select>
+                          </FormControl>
+                        </Grid>
+                      );
+                    }
+
+                    // pinrich_linkフィールドは特別処理（リンク表示）
+                    if (field.key === 'pinrich_link') {
+                      return (
+                        <Grid item xs={12} key={`${section.title}-${field.key}`}>
+                          <Link
+                            href="https://pinrich.com/management/hankyo"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            sx={{ display: 'flex', alignItems: 'center', gap: 0.5, fontSize: '0.875rem' }}
+                          >
+                            Pinrichリンク
+                            <LaunchIcon fontSize="small" />
+                          </Link>
                         </Grid>
                       );
                     }

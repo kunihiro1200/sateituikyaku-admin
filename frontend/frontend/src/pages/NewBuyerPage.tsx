@@ -118,6 +118,7 @@ export default function NewBuyerPage() {
   const [vendorSurvey, setVendorSurvey] = useState('');
   const [emailType, setEmailType] = useState('');
   const [distributionType, setDistributionType] = useState('');
+  const [pinrich, setPinrich] = useState('');
   const [ownedHomeHearing, setOwnedHomeHearing] = useState('');
   const [ownedHomeHearingInquiry, setOwnedHomeHearingInquiry] = useState('');
   const [ownedHomeHearingResult, setOwnedHomeHearingResult] = useState('');
@@ -212,6 +213,7 @@ export default function NewBuyerPage() {
         vendor_survey: vendorSurvey || null,
         email_type: emailType || null,
         distribution_type: distributionType || null,
+        pinrich: pinrich || null,
         owned_home_hearing: ownedHomeHearing || null,
         owned_home_hearing_inquiry: ownedHomeHearingInquiry || null,
         owned_home_hearing_result: ownedHomeHearingResult || null,
@@ -885,6 +887,22 @@ export default function NewBuyerPage() {
                       <MenuItem value=""><em>未選択</em></MenuItem>
                       {DISTRIBUTION_TYPE_OPTIONS.map((opt) => (
                         <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+
+                <Grid item xs={12} sm={6}>
+                  <FormControl fullWidth>
+                    <InputLabel>Pinrich</InputLabel>
+                    <Select
+                      value={pinrich}
+                      label="Pinrich"
+                      onChange={(e) => setPinrich(e.target.value)}
+                    >
+                      <MenuItem value=""><em>未選択</em></MenuItem>
+                      {['配信中', 'クローズ', '登録不要（不可）', '500万以上の設定済み', '配信拒否（顧客より）', '登録無し', '2件目以降', '受信エラー'].map((opt) => (
+                        <MenuItem key={opt} value={opt}>{opt}</MenuItem>
                       ))}
                     </Select>
                   </FormControl>
