@@ -1406,54 +1406,80 @@ TEL：097-533-2022`;
                       if (buyer.inquiry_source && buyer.inquiry_source.includes('電話')) {
                         return null;
                       }
+                      const INQUIRY_EMAIL_PHONE_BTNS = ['済', '未', '不通', '電話番号なし', '不要'];
                       return (
-                        <Grid item {...gridSize} key={`${section.title}-${field.key}`}>
-                          <Box sx={{ mb: 1 }}>
-                            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+                        <Grid item xs={12} key={`${section.title}-${field.key}`}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Typography variant="caption" color="text.secondary" sx={{ whiteSpace: 'nowrap', flexShrink: 0 }}>
                               {field.label}
                             </Typography>
-                            <Box sx={{ display: 'flex', gap: 1 }}>
-                              {['済', '未'].map((opt) => (
-                                <Button
-                                  key={opt}
-                                  size="small"
-                                  variant={value === opt ? 'contained' : 'outlined'}
-                                  color={opt === '済' ? 'success' : 'error'}
-                                  onClick={() => handleInlineFieldSave('inquiry_email_phone', opt)}
-                                  sx={{ minWidth: 48 }}
-                                >
-                                  {opt}
-                                </Button>
-                              ))}
+                            <Box sx={{ display: 'flex', gap: 0.5, flex: 1 }}>
+                              {INQUIRY_EMAIL_PHONE_BTNS.map((opt) => {
+                                const isSelected = value === opt;
+                                return (
+                                  <Button
+                                    key={opt}
+                                    size="small"
+                                    variant={isSelected ? 'contained' : 'outlined'}
+                                    color={opt === '済' ? 'success' : opt === '未' ? 'error' : 'primary'}
+                                    onClick={async () => {
+                                      const newValue = isSelected ? '' : opt;
+                                      handleFieldChange(section.title, field.key, newValue);
+                                      await handleInlineFieldSave(field.key, newValue);
+                                    }}
+                                    sx={{
+                                      flex: 1,
+                                      py: 0.5,
+                                      fontWeight: isSelected ? 'bold' : 'normal',
+                                      borderRadius: 1,
+                                    }}
+                                  >
+                                    {opt}
+                                  </Button>
+                                );
+                              })}
                             </Box>
                           </Box>
                         </Grid>
                       );
                     }
 
-                    // three_calls_confirmedフィールドは特別処理（ドロップダウン）
+                    // three_calls_confirmedフィールドは特別処理（ボタン選択）
                     if (field.key === 'three_calls_confirmed') {
-                      const handleFieldSave = async (newValue: any) => {
-                        const result = await handleInlineFieldSave(field.key, newValue);
-                        if (result && !result.success && result.error) {
-                          throw new Error(result.error);
-                        }
-                      };
-
+                      const THREE_CALLS_BTNS = ['3回架電OK', '3回架電未', '他'];
                       return (
-                        <Grid item {...gridSize} key={`${section.title}-${field.key}`}>
-                          <InlineEditableField
-                            label={field.label}
-                            value={value || ''}
-                            fieldName={field.key}
-                            fieldType="dropdown"
-                            options={THREE_CALLS_CONFIRMED_OPTIONS}
-                            onSave={handleFieldSave}
-                            onChange={(fieldName, newValue) => handleFieldChange(section.title, fieldName, newValue)}
-                            buyerId={buyer_number}
-                            enableConflictDetection={true}
-                            showEditIndicator={true}
-                          />
+                        <Grid item xs={12} key={`${section.title}-${field.key}`}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Typography variant="caption" color="text.secondary" sx={{ whiteSpace: 'nowrap', flexShrink: 0 }}>
+                              {field.label}
+                            </Typography>
+                            <Box sx={{ display: 'flex', gap: 0.5, flex: 1 }}>
+                              {THREE_CALLS_BTNS.map((opt) => {
+                                const isSelected = value === opt;
+                                return (
+                                  <Button
+                                    key={opt}
+                                    size="small"
+                                    variant={isSelected ? 'contained' : 'outlined'}
+                                    color="primary"
+                                    onClick={async () => {
+                                      const newValue = isSelected ? '' : opt;
+                                      handleFieldChange(section.title, field.key, newValue);
+                                      await handleInlineFieldSave(field.key, newValue);
+                                    }}
+                                    sx={{
+                                      flex: 1,
+                                      py: 0.5,
+                                      fontWeight: isSelected ? 'bold' : 'normal',
+                                      borderRadius: 1,
+                                    }}
+                                  >
+                                    {opt}
+                                  </Button>
+                                );
+                              })}
+                            </Box>
+                          </Box>
                         </Grid>
                       );
                     }
