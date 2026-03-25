@@ -70,12 +70,13 @@ jest.mock('../../config/buyer-status-definitions', () => ({
 }));
 
 // Supabase クライアントのモック
-// 修正後のコードは .or().or().limit() チェーンを使うため、
-// mockOr は { or: mockOr, limit: mockLimit } を返す必要がある
+// 修正後のコードは Promise.all で2つのクエリを並列実行する:
+// 1. .select().eq('buyer_number', query).limit() - 完全一致
+// 2. .select().or(...).limit() - 部分一致
 const mockLimit = jest.fn();
-const mockOr = jest.fn();
-mockOr.mockReturnValue({ or: mockOr, limit: mockLimit });
-const mockSelect = jest.fn().mockReturnValue({ or: mockOr });
+const mockEq = jest.fn().mockReturnValue({ limit: mockLimit });
+const mockOr = jest.fn().mockReturnValue({ limit: mockLimit });
+const mockSelect = jest.fn().mockReturnValue({ or: mockOr, eq: mockEq });
 const mockFrom = jest.fn().mockReturnValue({ select: mockSelect });
 
 jest.mock('@supabase/supabase-js', () => ({
@@ -97,9 +98,11 @@ describe('バグ条件探索: 売主新規登録 買主コピー検索バグ', (
     jest.clearAllMocks();
 
     // Supabase チェーンのモックをリセット
-    mockLimit.mockResolvedValue({ data: null, error: null });
-    mockOr.mockReturnValue({ or: mockOr, limit: mockLimit });
-    mockSelect.mockReturnValue({ or: mockOr });
+    // 修正後のコードは Promise.all で2つのクエリを並列実行する
+    mockLimit.mockResolvedValue({ data: [], error: null });
+    mockEq.mockReturnValue({ limit: mockLimit });
+    mockOr.mockReturnValue({ limit: mockLimit });
+    mockSelect.mockReturnValue({ or: mockOr, eq: mockEq });
     mockFrom.mockReturnValue({ select: mockSelect });
 
     // 環境変数を設定
@@ -114,19 +117,9 @@ describe('バグ条件探索: 売主新規登録 買主コピー検索バグ', (
   // ============================================================
   describe('Bug Condition 1: 数字のみの買主番号で buyer_number.eq.{数値} が使われる', () => {
     it('Bug Condition: search("7211") がエラーなく配列を返すこと（修正前は500エラーで失敗する）', async () => {
-      // 期待される動作（修正後）: search("7211") がエラーなく配列を返す
-      // 未修正コードでは: Supabase が型不一致エラーを返し、例外がスローされる
-      //
-      // カウンターサンプル: search("7211") が例外をスローする
+      // 修正後: Promise.all で .eq() と .or() を並列実行するため型不一致エラーが発生しない
+      mockLimit.mockResolvedValue({ data: [], error: null });
 
-      // 修正後のコードは .or().or() チェーンを使うため、型不一致エラーが発生しない
-      // Supabase が正常なレスポンスを返すシミュレーション（修正後の動作）
-      mockLimit.mockResolvedValue({
-        data: [],
-        error: null,
-      });
-
-      // 修正後は正常に配列が返される → このアサーションは PASS
       let result: any[] | null = null;
       let thrownError: Error | null = null;
 
@@ -136,40 +129,34 @@ describe('バグ条件探索: 売主新規登録 買主コピー検索バグ', (
         thrownError = e as Error;
       }
 
-      // 期待される動作: エラーなく配列を返す
-      // 修正後は PASS（例外がスローされない）
-      expect(thrownError).toBeNull(); // ← 修正後は PASS
-      expect(result).not.toBeNull();  // ← 修正後は PASS
-      expect(Array.isArray(result)).toBe(true); // ← 修正後は PASS
+      expect(thrownError).toBeNull();
+      expect(result).not.toBeNull();
+      expect(Array.isArray(result)).toBe(true);
     });
 
     it('Bug Condition: レスポンスの buyer_number フィールドが文字列であること', async () => {
-      // 期待される動作（修正後）: レスポンスの buyer_number が文字列として返される
-      // 未修正コードでは: 500エラーのため buyer_number が返されない
-      //
-      // カウンターサンプル: buyer_number が undefined または null になる
-
-      // 正常なレスポンスをシミュレーション（修正後の動作）
-      mockLimit.mockResolvedValue({
-        data: [
-          {
-            id: 'test-uuid-1234',
-            buyer_number: '7211',
-            name: 'テスト太郎',
-            phone_number: '090-1234-5678',
-            email: 'test@example.com',
-            property_number: 'AA12345',
-            latest_status: '追客中',
-            initial_assignee: 'Y',
-          },
-        ],
-        error: null,
-      });
+      // .eq() クエリが buyer_number: '7211' を返すシミュレーション
+      mockLimit
+        .mockResolvedValueOnce({
+          data: [
+            {
+              id: 'test-uuid-1234',
+              buyer_number: '7211',
+              name: 'テスト太郎',
+              phone_number: '090-1234-5678',
+              email: 'test@example.com',
+              property_number: 'AA12345',
+              latest_status: '追客中',
+              initial_assignee: 'Y',
+            },
+          ],
+          error: null,
+        })
+        .mockResolvedValueOnce({ data: [], error: null });
 
       const result = await buyerService.search('7211');
 
-      // レスポンスの buyer_number が文字列であることを確認
-      expect(result).toHaveLength(1);
+      expect(result.length).toBeGreaterThanOrEqual(1);
       expect(result[0].buyer_number).toBeDefined();
       expect(typeof result[0].buyer_number).toBe('string');
       expect(result[0].buyer_number).toBe('7211');
@@ -177,42 +164,20 @@ describe('バグ条件探索: 売主新規登録 買主コピー検索バグ', (
   });
 
   // ============================================================
-  // Bug Condition 2: .or() フィルタ文字列の型不一致確認
+  // Bug Condition 2: .eq() を使って TEXT型として正しく比較される
   // ============================================================
-  describe('Bug Condition 2: .or() フィルタ文字列の型不一致', () => {
-    it('Bug Condition: 数字のみのクエリで .or() に渡される文字列にシングルクォートが含まれない（型不一致の原因）', async () => {
-      // バグ条件の詳細:
-      // 未修正コード: `buyer_number.eq.${query}` → "buyer_number.eq.7211"
-      // 修正後コード: 別途 .eq('buyer_number', query) を使用
-      //
-      // Supabase の .or() フィルタ形式では:
-      // - buyer_number.eq.7211 → 数値として解釈 → TEXT型と型不一致
-      // - 修正後は .or() に buyer_number.eq.7211 が含まれない
-
+  describe('Bug Condition 2: 修正後は .eq() で TEXT型として正しく比較される', () => {
+    it('Bug Condition: 数字のみのクエリで .eq("buyer_number", query) が呼ばれること', async () => {
       mockLimit.mockResolvedValue({ data: [], error: null });
 
       await buyerService.search('7211');
 
-      // .or() が呼ばれたことを確認
-      expect(mockOr).toHaveBeenCalled();
-
-      const orCallArg = mockOr.mock.calls[0][0] as string;
-
-      // 未修正コード: buyer_number.eq.7211 が含まれる（シングルクォートなし）
-      // 修正後コード: .or() に buyer_number.eq.7211 が含まれない（別途 .eq() を使用）
-      const hasUnquotedEq = /buyer_number\.eq\.\d+/.test(orCallArg);
-
-      // 未修正コードでは true（バグあり）→ このアサーションは FAIL
-      // 修正後は false（バグなし）→ このアサーションは PASS
-      expect(hasUnquotedEq).toBe(false); // ← 未修正コードでは FAIL（バグ条件のカウンターサンプル）
+      // 修正後: .eq('buyer_number', '7211') が呼ばれることを確認
+      expect(mockEq).toHaveBeenCalledWith('buyer_number', '7211');
     });
 
-    it('Bug Condition: 4桁の数字 "1234" でも同様のバグが発生する', async () => {
-      // 修正後のコードは .or().or() チェーンを使うため、型不一致エラーが発生しない
-      mockLimit.mockResolvedValue({
-        data: [],
-        error: null,
-      });
+    it('Bug Condition: 4桁の数字 "1234" でも .eq() が呼ばれること', async () => {
+      mockLimit.mockResolvedValue({ data: [], error: null });
 
       let thrownError: Error | null = null;
       try {
@@ -221,16 +186,12 @@ describe('バグ条件探索: 売主新規登録 買主コピー検索バグ', (
         thrownError = e as Error;
       }
 
-      // 修正後は例外がスローされない → PASS
-      expect(thrownError).toBeNull(); // ← 修正後は PASS
+      expect(thrownError).toBeNull();
+      expect(mockEq).toHaveBeenCalledWith('buyer_number', '1234');
     });
 
-    it('Bug Condition: 5桁の数字 "12345" でも同様のバグが発生する', async () => {
-      // 修正後のコードは .or().or() チェーンを使うため、型不一致エラーが発生しない
-      mockLimit.mockResolvedValue({
-        data: [],
-        error: null,
-      });
+    it('Bug Condition: 5桁の数字 "12345" でも .eq() が呼ばれること', async () => {
+      mockLimit.mockResolvedValue({ data: [], error: null });
 
       let thrownError: Error | null = null;
       try {
@@ -239,8 +200,8 @@ describe('バグ条件探索: 売主新規登録 買主コピー検索バグ', (
         thrownError = e as Error;
       }
 
-      // 修正後は例外がスローされない → PASS
-      expect(thrownError).toBeNull(); // ← 修正後は PASS
+      expect(thrownError).toBeNull();
+      expect(mockEq).toHaveBeenCalledWith('buyer_number', '12345');
     });
   });
 
@@ -248,25 +209,17 @@ describe('バグ条件探索: 売主新規登録 買主コピー検索バグ', (
   // バグ条件サマリー
   // ============================================================
   describe('バグ条件サマリー: isBugCondition(input) = /^\\d+$/.test(input) && input.length >= 2', () => {
-    it('根本原因: search() の buyerNumberMatch が数字クエリに対して buyer_number.eq.{数値} を生成する', async () => {
-      // 根本原因の確認:
-      // BuyerService.search() の実装:
-      //   const buyerNumberMatch = /^\d+$/.test(query)
-      //     ? `buyer_number.eq.${query}`      ← バグ: 数値として解釈される
-      //     : `buyer_number.ilike.%${query}%`;
-      //
-      // 修正後:
-      //   数字のみのクエリに対して .or() ではなく .eq('buyer_number', query) を使用
-
+    it('根本原因修正確認: 数字クエリで .or() に buyer_number.eq.{数値} が含まれないこと', async () => {
       mockLimit.mockResolvedValue({ data: [], error: null });
 
       await buyerService.search('7211');
 
+      // 修正後: .or() の引数に buyer_number.eq.7211 が含まれない
       const orCallArg = mockOr.mock.calls[0][0] as string;
+      expect(orCallArg).not.toContain('buyer_number.eq.7211');
 
-      // 未修正コードでは buyer_number.eq.7211 が含まれる
-      // 修正後は .or() の引数が変わる（buyer_number.eq.7211 が含まれない）
-      expect(orCallArg).not.toContain('buyer_number.eq.7211'); // ← 未修正コードでは FAIL
+      // 代わりに .eq() が呼ばれていること
+      expect(mockEq).toHaveBeenCalledWith('buyer_number', '7211');
     });
   });
 });
