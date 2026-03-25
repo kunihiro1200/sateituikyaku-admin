@@ -48,6 +48,7 @@ import PageNavigation from '../components/PageNavigation';
 import { InlineEditableField } from '../components/InlineEditableField';
 import { SectionSaveButton } from '../components/SectionSaveButton';
 import { useStableContainerHeight } from '../hooks/useStableContainerHeight';
+import { useAuthStore } from '../store/authStore';
 import { useQuickButtonState } from '../hooks/useQuickButtonState';
 import { INQUIRY_SOURCE_OPTIONS } from '../utils/buyerInquirySourceOptions';
 import { LATEST_STATUS_OPTIONS } from '../utils/buyerLatestStatusOptions';
@@ -268,14 +269,19 @@ export default function BuyerDetailPage() {
   // 買主番号検索バー用
   const [buyerNumberSearch, setBuyerNumberSearch] = useState('');
 
+  // ログインユーザー情報（SMS送信者名用）
+  const { employee } = useAuthStore();
+
   // 通常スタッフのイニシャル一覧（初動担当選択用）
   const [normalInitials, setNormalInitials] = useState<string[]>([]);
+
 
   useEffect(() => {
     api.get('/api/employees/normal-initials')
       .then(res => setNormalInitials(res.data.initials || []))
       .catch(err => console.error('Failed to fetch normal initials:', err));
   }, []);
+
 
   // useStableContainerHeightフックを使用して安定した高さ管理
   const { error: heightError } = useStableContainerHeight({
@@ -860,6 +866,7 @@ export default function BuyerDetailPage() {
               buyerNumber={buyer_number || ''}
               propertyAddress={linkedProperties[0]?.display_address || linkedProperties[0]?.address || ''}
               propertyType={linkedProperties[0]?.property_type || ''}
+              senderName={employee?.name || ''}
               onSmsSent={fetchActivities}
             />
           )}
@@ -1206,11 +1213,13 @@ TEL：097-533-2022`;
                     const isSms = activity.action === 'sms';
                     const propertyNumbers = metadata.propertyNumbers || metadata.property_numbers || [];
                     const displayName = isSms
-                      ? (activity.employee
-                          ? (activity.employee.name
-                              ? activity.employee.name.split(/[\s\u3000]/)[0]
-                              : (activity.employee.initials || '担当者'))
-                          : '担当者')
+                      ? (metadata.senderName
+                          ? metadata.senderName
+                          : (activity.employee
+                              ? (activity.employee.name
+                                  ? activity.employee.name.split(/[\s\u3000]/)[0]
+                                  : (activity.employee.initials || '担当者'))
+                              : '担当者'))
                       : (activity.employee ? getDisplayName(activity.employee) : '不明');
                     return (
                       <ListItem

@@ -975,7 +975,7 @@ router.post('/:buyerNumber/call-history', async (req: Request, res: Response) =>
 router.post('/:buyerNumber/sms-history', async (req: Request, res: Response) => {
   try {
     const { buyerNumber } = req.params;
-    const { templateId, templateName, phoneNumber } = req.body;
+    const { templateId, templateName, phoneNumber, senderName } = req.body;
 
     // 必須フィールドのバリデーション
     if (!templateId || !templateName || !phoneNumber) {
@@ -1003,6 +1003,7 @@ router.post('/:buyerNumber/sms-history', async (req: Request, res: Response) => 
         templateName,
         phoneNumber,
         buyerNumber,
+        senderName: senderName || '',
       },
     });
 

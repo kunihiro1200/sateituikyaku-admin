@@ -15,6 +15,7 @@ interface SmsDropdownButtonProps {
   buyerNumber: string;
   propertyAddress: string;
   propertyType: string;
+  senderName?: string;
   onSmsSent?: () => void;
 }
 
@@ -27,6 +28,7 @@ export const SmsDropdownButton: React.FC<SmsDropdownButtonProps> = ({
   buyerNumber,
   propertyAddress,
   propertyType,
+  senderName,
   onSmsSent,
 }) => {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
@@ -74,6 +76,7 @@ export const SmsDropdownButton: React.FC<SmsDropdownButtonProps> = ({
         templateId,
         templateName,
         phoneNumber,
+        senderName: senderName || '',
       })
         .then(() => {
           // 記録成功後に親へ通知（履歴再取得のため）

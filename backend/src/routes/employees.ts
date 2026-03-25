@@ -66,6 +66,45 @@ router.get('/chat-debug', async (req: Request, res: Response) => {
   }
 });
 
+/**
+ * メアドから名字を取得（SMS送信者名表示用・認証不要）
+ * スタッフアカウントシート E列（メアド）→ C列（名字）
+ * GET /api/employees/name-by-email?email=xxx
+ */
+router.get('/name-by-email', async (req: Request, res: Response) => {
+  try {
+    const { email } = req.query;
+    if (!email || typeof email !== 'string') {
+      return res.status(400).json({ error: 'email is required' });
+    }
+
+    const { GoogleSheetsClient } = require('../services/GoogleSheetsClient');
+    const client = new GoogleSheetsClient({
+      spreadsheetId: '19yAuVYQRm-_zhjYX7M7zjiGbnBibkG77Mpz93sN1xxs',
+      sheetName: 'スタッフアカウント',
+      serviceAccountKeyPath: process.env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH,
+    });
+    await client.authenticate();
+    const rows = await client.readAll();
+
+    // E列「メアド」と照合してC列「名字」を返す
+    const matched = rows.find((row: any) => {
+      const rowEmail = (row['メアド'] || row['メールアドレス'] || row['email'] || '').trim().toLowerCase();
+      return rowEmail === email.trim().toLowerCase();
+    });
+
+    if (!matched) {
+      return res.json({ name: null });
+    }
+
+    const name = matched['名字'] || matched['名前'] || matched['氏名'] || null;
+    res.json({ name });
+  } catch (error: any) {
+    console.error('[name-by-email] Error:', error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // 全てのルートに認証を適用
 router.use(authenticate);
 
