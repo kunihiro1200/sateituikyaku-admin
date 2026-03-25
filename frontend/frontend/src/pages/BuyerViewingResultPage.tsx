@@ -224,7 +224,7 @@ export default function BuyerViewingResultPage() {
       const result = await buyerApi.update(
         buyer_number!,
         { viewing_result_follow_up: viewingResultEditValue },
-        { sync: true }  // スプレッドシートへ即同期
+        { sync: true, force: true }  // スプレッドシートへ即同期・競合チェックスキップ
       );
       buyerRef.current = result.buyer;
       setBuyer(result.buyer);

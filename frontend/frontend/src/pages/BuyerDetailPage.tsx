@@ -293,7 +293,7 @@ export default function BuyerDetailPage() {
       const result = await buyerApi.update(
         buyer_number!,
         { inquiry_hearing: hearingEditValue },
-        { sync: true }
+        { sync: true, force: true }  // 競合チェックスキップ
       );
       setBuyer(result.buyer);
       setHearingEditValue(result.buyer.inquiry_hearing || '');
@@ -411,7 +411,7 @@ export default function BuyerDetailPage() {
       const result = await buyerApi.update(
         buyer_number!,
         { message_to_assignee: messageToAssigneeEditValue },
-        { sync: true }
+        { sync: true, force: true }  // 競合チェックスキップ
       );
       setBuyer(result.buyer);
       setMessageToAssigneeEditValue(result.buyer.message_to_assignee || '');
