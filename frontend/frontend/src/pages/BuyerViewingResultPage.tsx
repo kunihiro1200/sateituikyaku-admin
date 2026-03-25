@@ -229,7 +229,8 @@ export default function BuyerViewingResultPage() {
       buyerRef.current = result.buyer;
       setBuyer(result.buyer);
       setViewingResultEditValue(result.buyer.viewing_result_follow_up || '');
-      setSnackbar({ open: true, message: '内覧結果・後続対応を保存しました', severity: 'success' });
+      const syncMsg = result.syncStatus === 'synced' ? '（スプシ同期済み）' : result.syncStatus === 'pending' ? '（スプシ同期保留中）' : '';
+      setSnackbar({ open: true, message: `内覧結果・後続対応を保存しました${syncMsg}`, severity: result.syncStatus === 'synced' ? 'success' : 'warning' });
     } catch (error: any) {
       setSnackbar({ open: true, message: error.response?.data?.error || '保存に失敗しました', severity: 'error' });
     } finally {

@@ -415,7 +415,8 @@ export default function BuyerDetailPage() {
       );
       setBuyer(result.buyer);
       setMessageToAssigneeEditValue(result.buyer.message_to_assignee || '');
-      setSnackbar({ open: true, message: '担当への伝言/質問事項を保存しました', severity: 'success' });
+      const syncMsg = result.syncStatus === 'synced' ? '（スプシ同期済み）' : result.syncStatus === 'pending' ? '（スプシ同期保留中）' : '';
+      setSnackbar({ open: true, message: `担当への伝言/質問事項を保存しました${syncMsg}`, severity: result.syncStatus === 'synced' ? 'success' : 'warning' });
     } catch (error: any) {
       setSnackbar({ open: true, message: error.response?.data?.error || '保存に失敗しました', severity: 'error' });
     } finally {
