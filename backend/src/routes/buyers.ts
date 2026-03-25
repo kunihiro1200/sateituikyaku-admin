@@ -1134,17 +1134,21 @@ ${detailUrl}`;
 
     // チャット送信成功後、confirmation_to_assignee をDBに保存してスプレッドシートに同期（BJ列）
     try {
-      await buyerService.updateWithSync(
+      console.log('[send-confirmation] Starting sync of confirmation_to_assignee for buyer:', buyer_number);
+      const syncResult = await buyerService.updateWithSync(
         buyer_number,
         { confirmation_to_assignee: confirmationText },
         'system',
         'system@example.com',
-        { force: false }
+        { force: true }
       );
-      console.log('[send-confirmation] confirmation_to_assignee synced to spreadsheet');
+      console.log('[send-confirmation] Sync result:', JSON.stringify({
+        syncStatus: syncResult.syncResult.syncStatus,
+        success: syncResult.syncResult.success,
+        error: syncResult.syncResult.error,
+      }));
     } catch (syncError: any) {
-      // 同期失敗はチャット送信の成功には影響しない（ログのみ）
-      console.error('[send-confirmation] Failed to sync confirmation_to_assignee:', syncError.message);
+      console.error('[send-confirmation] Failed to sync confirmation_to_assignee:', syncError.message, syncError.stack?.substring(0, 300));
     }
 
     res.json({
