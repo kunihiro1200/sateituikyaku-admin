@@ -1409,10 +1409,18 @@ TEL：097-533-2022`;
                     // inquiry_sourceフィールドは特別処理（ドロップダウン）
                     if (field.key === 'inquiry_source') {
                       const handleFieldSave = async (newValue: any) => {
-                        const result = await handleInlineFieldSave(field.key, newValue);
-                        if (result && !result.success && result.error) {
-                          throw new Error(result.error);
-                        }
+                        // UIを即座に更新（楽観的更新）
+                        setBuyer((prev: any) => prev ? { ...prev, [field.key]: newValue } : prev);
+                        handleFieldChange(section.title, field.key, newValue);
+                        // 必須フィールドの再チェック
+                        setMissingRequiredFields(prev => {
+                          const next = new Set(prev);
+                          if (newValue && String(newValue).trim()) next.delete('inquiry_source');
+                          else next.add('inquiry_source');
+                          return next;
+                        });
+                        // バックグラウンドで保存
+                        handleInlineFieldSave(field.key, newValue).catch(console.error);
                       };
 
                       const isInquirySourceMissing = missingRequiredFields.has('inquiry_source');
@@ -1438,7 +1446,7 @@ TEL：097-533-2022`;
                               onSave={handleFieldSave}
                               onChange={(fieldName, newValue) => handleFieldChange(section.title, fieldName, newValue)}
                               buyerId={buyer_number}
-                              enableConflictDetection={true}
+                              enableConflictDetection={false}
                               showEditIndicator={true}
                               validation={(newValue) => {
                                 if (buyer.broker_inquiry === '業者問合せ') return null;
@@ -1454,10 +1462,18 @@ TEL：097-533-2022`;
                     // latest_statusフィールドは特別処理（ドロップダウン）
                     if (field.key === 'latest_status') {
                       const handleFieldSave = async (newValue: any) => {
-                        const result = await handleInlineFieldSave(field.key, newValue);
-                        if (result && !result.success && result.error) {
-                          throw new Error(result.error);
-                        }
+                        // UIを即座に更新（楽観的更新）
+                        setBuyer((prev: any) => prev ? { ...prev, [field.key]: newValue } : prev);
+                        handleFieldChange(section.title, field.key, newValue);
+                        // 必須フィールドの再チェック
+                        setMissingRequiredFields(prev => {
+                          const next = new Set(prev);
+                          if (newValue && String(newValue).trim()) next.delete('latest_status');
+                          else next.add('latest_status');
+                          return next;
+                        });
+                        // バックグラウンドで保存
+                        handleInlineFieldSave(field.key, newValue).catch(console.error);
                       };
 
                       const isLatestStatusMissing = missingRequiredFields.has('latest_status');
@@ -1483,7 +1499,7 @@ TEL：097-533-2022`;
                               onSave={handleFieldSave}
                               onChange={(fieldName, newValue) => handleFieldChange(section.title, fieldName, newValue)}
                               buyerId={buyer_number}
-                              enableConflictDetection={true}
+                              enableConflictDetection={false}
                               showEditIndicator={true}
                             />
                           </Box>
@@ -1990,6 +2006,9 @@ TEL：097-533-2022`;
 
                     // その他のフィールド
                     const handleFieldSave = async (newValue: any) => {
+                      // UIを即座に更新（楽観的更新）
+                      setBuyer((prev: any) => prev ? { ...prev, [field.key]: newValue } : prev);
+                      // バックグラウンドで保存
                       const result = await handleInlineFieldSave(field.key, newValue);
                       if (result && !result.success && result.error) {
                         throw new Error(result.error);
@@ -2150,7 +2169,7 @@ TEL：097-533-2022`;
                           onChange={(fieldName, newValue) => handleFieldChange(section.title, fieldName, newValue)}
                           readOnly={field.readOnly === true}
                           buyerId={buyer_number}
-                          enableConflictDetection={true}
+                          enableConflictDetection={false}
                           showEditIndicator={!field.readOnly}
                         />
                       </Grid>
