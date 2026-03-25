@@ -207,6 +207,22 @@ const RichTextCommentEditor = React.forwardRef<RichTextCommentEditorHandle, Rich
 
         // カーソル位置がない場合：先頭に挿入
         editor.focus();
+        // 先頭にカーソルを移動してから挿入
+        const firstChild = editor.firstChild;
+        if (firstChild) {
+          try {
+            const range = document.createRange();
+            range.setStart(firstChild, 0);
+            range.collapse(true);
+            const sel = window.getSelection();
+            if (sel) {
+              sel.removeAllRanges();
+              sel.addRange(range);
+            }
+          } catch (e) {
+            // 失敗時はそのまま
+          }
+        }
         document.execCommand('insertHTML', false, html);
         handleInput();
         saveCursorOffset();
