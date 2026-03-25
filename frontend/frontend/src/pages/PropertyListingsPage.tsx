@@ -24,8 +24,6 @@ import {
   Checkbox,
   Button,
   Link,
-  useMediaQuery,
-  useTheme,
 } from '@mui/material';
 import { Search as SearchIcon, ClearAll as ClearAllIcon, Clear as ClearIcon } from '@mui/icons-material';
 import api from '../services/api';
@@ -34,7 +32,6 @@ import PageNavigation from '../components/PageNavigation';
 import BuyerIndicator from '../components/BuyerIndicator';
 import { InquiryResponseButton } from '../components/InquiryResponseButton';
 import PublicUrlCell from '../components/PublicUrlCell';
-import StatusBadge from '../components/StatusBadge';
 import PropertySidebarStatus from '../components/PropertySidebarStatus';
 import { getDisplayStatus } from '../utils/atbbStatusDisplayMapper';
 import { SECTION_COLORS } from '../theme/sectionColors';
@@ -62,8 +59,6 @@ interface PropertyListing {
 export default function PropertyListingsPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   const [allListings, setAllListings] = useState<PropertyListing[]>([]);
   const [loading, setLoading] = useState(true);
@@ -439,14 +434,12 @@ export default function PropertyListingsPage() {
                     />
                   </TableCell>
                   <TableCell>物件番号</TableCell>
-                  <TableCell>バッジ</TableCell>
                   <TableCell>担当</TableCell>
                   <TableCell>種別</TableCell>
                   <TableCell>所在地</TableCell>
                   <TableCell>売主</TableCell>
                   <TableCell>ATBB状況</TableCell>
                   <TableCell>買主</TableCell>
-                  <TableCell>問合せ</TableCell>
                   <TableCell>契約日</TableCell>
                   <TableCell>決済日</TableCell>
                   <TableCell>売買価格</TableCell>
@@ -457,11 +450,11 @@ export default function PropertyListingsPage() {
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={14} align="center">読み込み中...</TableCell>
+                    <TableCell colSpan={12} align="center">読み込み中...</TableCell>
                   </TableRow>
                 ) : paginatedListings.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={14} align="center">物件データが見つかりませんでした</TableCell>
+                    <TableCell colSpan={12} align="center">物件データが見つかりませんでした</TableCell>
                   </TableRow>
                 ) : (
                   paginatedListings.map((listing) => {
@@ -481,9 +474,6 @@ export default function PropertyListingsPage() {
                             {listing.property_number || '-'}
                           </Typography>
                         </TableCell>
-                        <TableCell>
-                          <StatusBadge atbbStatus={listing.atbb_status} size={isMobile ? 'small' : 'small'} />
-                        </TableCell>
                         <TableCell>{listing.sales_assignee || '-'}</TableCell>
                         <TableCell>
                           {listing.property_type && <Chip label={listing.property_type} size="small" />}
@@ -493,7 +483,6 @@ export default function PropertyListingsPage() {
                         </TableCell>
                         <TableCell>{listing.seller_name || '-'}</TableCell>
                         <TableCell>{getDisplayStatus(listing.atbb_status) || '-'}</TableCell>
-                        <TableCell>{listing.buyer_name || '-'}</TableCell>
                         <TableCell onClick={(e) => e.stopPropagation()}>
                           {listing.property_number && (
                             <BuyerIndicator
