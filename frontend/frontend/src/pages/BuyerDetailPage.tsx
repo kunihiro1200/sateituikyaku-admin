@@ -1975,6 +1975,18 @@ TEL：097-533-2022`;
                     </Grid>
                   );
                 })}
+                {/* セクション下部にも保存ボタンを表示（フィールドが多い場合に上部が見えなくなるため） */}
+                {section.title === '問合せ内容' && (
+                  <Grid item xs={12}>
+                    <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 1 }}>
+                      <SectionSaveButton
+                        isDirty={sectionDirtyStates[section.title] || false}
+                        isSaving={sectionSavingStates[section.title] || false}
+                        onSave={() => handleSectionSave(section.title)}
+                      />
+                    </Box>
+                  </Grid>
+                )}
               </Grid>
             </Paper>
           ))}
