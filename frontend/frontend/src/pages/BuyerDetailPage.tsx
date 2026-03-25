@@ -132,6 +132,13 @@ const FLOOR_PLAN_OPTIONS = ['1R', '1K', '1DK', '1LDK', '2K', '2DK', '2LDK', '3K'
 const VISIT_DESK_OPTIONS = ['机上査定', '訪問査定', '机上査定後訪問査定', '他'];
 const SELLER_LIST_COPY_OPTIONS = ['済', '未'];
 
+// 全角数字を半角数字に変換する
+const toHalfWidth = (str: string): string => {
+  return str.replace(/[０-９]/g, (ch) =>
+    String.fromCharCode(ch.charCodeAt(0) - 0xFEE0)
+  );
+};
+
 const BUYER_FIELD_SECTIONS = [
   {
     title: '問合せ内容',
@@ -733,7 +740,7 @@ export default function BuyerDetailPage() {
           onChange={(e) => setBuyerNumberSearch(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === 'Enter' && buyerNumberSearch.trim()) {
-              navigate(`/buyers/${buyerNumberSearch.trim()}`);
+              navigate(`/buyers/${toHalfWidth(buyerNumberSearch.trim())}`);
             }
           }}
           sx={{ width: 360 }}
