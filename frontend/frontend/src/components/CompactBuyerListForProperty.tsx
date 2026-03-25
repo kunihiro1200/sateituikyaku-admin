@@ -75,21 +75,11 @@ export default function CompactBuyerListForProperty({
       return value.substring(0, 5);
     }
 
-    // "Sat Dec 30 1899 HH:MM:SS GMT..." のような不正な日付文字列の場合
-    // 1899年12月30日はスプレッドシートのシリアル値0の基準日なので時刻部分だけ抽出
-    const dateObj = new Date(value);
-    if (!isNaN(dateObj.getTime())) {
-      const year = dateObj.getFullYear();
-      // 1899年や1900年の場合はシリアル値由来の不正な日付 → 時刻部分のみ表示
-      if (year <= 1900) {
-        const h = String(dateObj.getHours()).padStart(2, '0');
-        const m = String(dateObj.getMinutes()).padStart(2, '0');
-        return `${h}:${m}`;
-      }
-      // 正常な日付の場合も時刻部分のみ表示
-      const h = String(dateObj.getHours()).padStart(2, '0');
-      const m = String(dateObj.getMinutes()).padStart(2, '0');
-      return `${h}:${m}`;
+    // "Sat Dec 30 1899 15:00:00 GMT+0900..." のような不正な日付文字列の場合
+    // new Date() のタイムゾーン変換を避けるため、正規表現で時刻部分を直接抽出する
+    const timeMatch = value.match(/(\d{1,2}):(\d{2}):\d{2}\s+GMT/);
+    if (timeMatch) {
+      return `${timeMatch[1].padStart(2, '0')}:${timeMatch[2]}`;
     }
 
     return value;
