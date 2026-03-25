@@ -1554,17 +1554,18 @@ TEL：097-533-2022`;
                       );
                     }
 
-                    // vendor_surveyフィールドは特別処理（「未」のときだけボタン選択UIを表示）
+                    // vendor_surveyフィールドは特別処理（値が入っている場合は常時表示、「未」のときはオレンジ強調）
                     if (field.key === 'vendor_survey') {
-                      // 「未」のときだけ表示
-                      if (buyer?.vendor_survey !== '未') {
+                      // 値が空の場合は非表示
+                      if (!buyer?.vendor_survey) {
                         return null;
                       }
                       const VENDOR_SURVEY_BTNS = ['確認済み', '未'];
+                      const isUmi = buyer?.vendor_survey === '未';
                       return (
                         <Grid item xs={12} key={`${section.title}-${field.key}`}>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <Typography variant="caption" color="warning.main" sx={{ whiteSpace: 'nowrap', flexShrink: 0, fontWeight: 'bold' }}>
+                            <Typography variant="caption" sx={{ whiteSpace: 'nowrap', flexShrink: 0, fontWeight: 'bold', color: isUmi ? 'warning.main' : 'text.secondary' }}>
                               {field.label}
                             </Typography>
                             <Box sx={{ display: 'flex', gap: 0.5, flex: 1 }}>
@@ -1599,10 +1600,10 @@ TEL：097-533-2022`;
                       );
                     }
 
-                    // three_calls_confirmedフィールドは特別処理（inquiry_email_phone=不通のときのみ表示・必須）
+                    // three_calls_confirmedフィールドは特別処理（inquiry_email_phoneに値があれば常時表示）
                     if (field.key === 'three_calls_confirmed') {
-                      // inquiry_email_phone が「不通」の場合のみ表示
-                      if (buyer?.inquiry_email_phone !== '不通') {
+                      // inquiry_email_phone に値がない場合は非表示
+                      if (!buyer?.inquiry_email_phone) {
                         return null;
                       }
                       const THREE_CALLS_BTNS = ['3回架電OK', '3回架電未', '他'];
