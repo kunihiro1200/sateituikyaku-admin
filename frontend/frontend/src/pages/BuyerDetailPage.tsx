@@ -1692,8 +1692,12 @@ TEL：097-533-2022`;
                       );
                     }
 
-                    // vendor_surveyフィールドは特別処理（常時表示、「未」のときはオレンジ強調）
+                    // vendor_surveyフィールドは特別処理（値がある場合のみ表示、「未」のときはオレンジ強調）
                     if (field.key === 'vendor_survey') {
+                      // 値がない場合は非表示（スプシに入力があった場合のみ表示）
+                      if (!buyer?.vendor_survey || !String(buyer.vendor_survey).trim()) {
+                        return null;
+                      }
                       const VENDOR_SURVEY_BTNS = ['確認済み', '未'];
                       const isUmi = buyer?.vendor_survey === '未';
                       return (
