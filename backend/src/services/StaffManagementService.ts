@@ -29,7 +29,8 @@ export class StaffManagementService {
   private cacheExpiry: number = 0;
   private readonly CACHE_DURATION_MS = 60 * 60 * 1000; // 60分
   private readonly SPREADSHEET_ID = '19yAuVYQRm-_zhjYX7M7zjiGbnBibkG77Mpz93sN1xxs';
-  private readonly SHEET_NAME = 'スタッフチャット';
+  private readonly SHEET_NAME = 'スタッフ'; // 通常スタッフ情報（イニシャル等）
+  private readonly CHAT_SHEET_NAME = 'スタッフチャット'; // チャットアドレス専用シート
 
   /**
    * Google Sheets APIクライアントを作成（GOOGLE_SERVICE_ACCOUNT_JSONを使用）
@@ -110,14 +111,28 @@ export class StaffManagementService {
     const sheets = await this.createSheetsClient();
 
     // ヘッダー行を含む全データを取得（A列〜F列）
-    const response = await sheets.spreadsheets.values.get({
-      spreadsheetId: this.SPREADSHEET_ID,
-      range: `'${this.SHEET_NAME}'!A1:F`,
-    });
+    // シート名を試す順序: スタッフチャット → スタッフ → Sheet1
+    const sheetNamesToTry = [this.CHAT_SHEET_NAME, this.SHEET_NAME, 'Sheet1', 'シート1'];
+    let rows: string[][] = [];
+    let usedSheetName = '';
 
-    const rows = response.data.values || [];
+    for (const sheetName of sheetNamesToTry) {
+      try {
+        const response = await sheets.spreadsheets.values.get({
+          spreadsheetId: this.SPREADSHEET_ID,
+          range: `${sheetName}!A:F`,
+        });
+        rows = (response.data.values || []) as string[][];
+        usedSheetName = sheetName;
+        console.log(`[StaffManagementService] Successfully read sheet: ${sheetName}, rows: ${rows.length}`);
+        break;
+      } catch (e: any) {
+        console.log(`[StaffManagementService] Sheet "${sheetName}" not found, trying next...`);
+      }
+    }
+
     if (rows.length === 0) {
-      console.log('[StaffManagementService] No data found in spreadsheet');
+      console.log('[StaffManagementService] No data found in any sheet');
       return [];
     }
 
