@@ -730,12 +730,14 @@ export class EnhancedBuyerDistributionService {
     }
 
     // Get the appropriate price ranges based on property type
+    // Normalize property type to handle abbreviated forms (戸, マ, 土) and full forms
+    const normalizedType = (propertyType || '').trim();
     let priceRangeTexts: string[] = [];
-    if (propertyType === 'マンション' || propertyType === 'アパート') {
+    if (normalizedType === 'マンション' || normalizedType === 'マ' || normalizedType === 'アパート' || normalizedType === 'apartment') {
       priceRangeTexts = consolidatedBuyer.priceRanges.apartment;
-    } else if (propertyType === '戸建' || propertyType === '戸建て') {
+    } else if (normalizedType === '戸建' || normalizedType === '戸建て' || normalizedType === '戸' || normalizedType === 'detached_house') {
       priceRangeTexts = consolidatedBuyer.priceRanges.house;
-    } else if (propertyType === '土地') {
+    } else if (normalizedType === '土地' || normalizedType === '土' || normalizedType === 'land') {
       priceRangeTexts = consolidatedBuyer.priceRanges.land;
     }
 
@@ -810,32 +812,22 @@ export class EnhancedBuyerDistributionService {
    * 物件種別のマッチングチェック
    */
   private checkPropertyTypeMatch(desiredType: string, actualType: string): boolean {
-    // Normalize types for comparison
-    const normalizedActual = actualType.toLowerCase().trim();
+    // Normalize actual type - handle abbreviated forms (戸, マ, 土) and full forms
+    const normalizeType = (t: string): string => {
+      const s = t.trim();
+      if (s === '戸' || s === '戸建' || s === '戸建て' || s === '一戸建' || s === '一戸建て' || s === 'detached_house') return '戸建';
+      if (s === 'マ' || s === 'マンション' || s === 'アパート' || s === 'apartment') return 'マンション';
+      if (s === '土' || s === '土地' || s === 'land') return '土地';
+      if (s === '収' || s === '収益物件' || s === 'income') return '収益物件';
+      return s;
+    };
+
+    const normalizedActual = normalizeType(actualType);
 
     // Split desired types by common separators (、, ・, /, etc.)
-    const desiredTypes = desiredType.split(/[、・\/,]/).map(t => t.toLowerCase().trim()).filter(t => t);
+    const desiredTypes = desiredType.split(/[、・\/,]/).map(t => normalizeType(t)).filter(t => t);
 
     // Check if any of the desired types match the actual type
-    for (const desired of desiredTypes) {
-      // Exact match
-      if (desired === normalizedActual) {
-        return true;
-      }
-
-      // マンション/アパート are considered the same category
-      if ((desired === 'マンション' || desired === 'アパート') &&
-          (normalizedActual === 'マンション' || normalizedActual === 'アパート')) {
-        return true;
-      }
-
-      // 戸建/戸建て are considered the same
-      if ((desired === '戸建' || desired === '戸建て') &&
-          (normalizedActual === '戸建' || normalizedActual === '戸建て')) {
-        return true;
-      }
-    }
-
-    return false;
+    return desiredTypes.some(desired => desired === normalizedActual);
   }
 }
