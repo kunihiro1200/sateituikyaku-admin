@@ -421,6 +421,9 @@ router.get('/by-number/:sellerNumber', async (req: Request, res: Response) => {
       sellerNumber: seller.sellerNumber,
       name: seller.name,
       propertyAddress: seller.propertyAddress,
+      address: seller.address,
+      phoneNumber: seller.phoneNumber,
+      email: seller.email,
     });
   } catch (error) {
     console.error('Get seller by number error:', error);
