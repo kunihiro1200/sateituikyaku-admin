@@ -17,9 +17,21 @@ const NAV_COLORS = {
   '/shared-items': { main: '#fb8c00', light: '#fff3e0', text: '#fb8c00' }, // 共有: オレンジ
 };
 
-export default function PageNavigation() {
+interface PageNavigationProps {
+  onNavigate?: (url: string) => void;
+}
+
+export default function PageNavigation({ onNavigate }: PageNavigationProps = {}) {
   const navigate = useNavigate();
   const location = useLocation();
+
+  const handleNav = (path: string) => {
+    if (onNavigate) {
+      onNavigate(path);
+    } else {
+      navigate(path);
+    }
+  };
 
   const navItems = [
     { path: '/', label: '売主リスト', icon: <HomeIcon /> },
@@ -46,7 +58,7 @@ export default function PageNavigation() {
               key={item.path}
               variant="outlined"
               size="large"
-              onClick={() => navigate(item.path)}
+              onClick={() => handleNav(item.path)}
               startIcon={item.icon}
               sx={{
                 minWidth: 130,

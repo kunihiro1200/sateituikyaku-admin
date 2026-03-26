@@ -1,0 +1,70 @@
+import {
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
+  Typography,
+  List,
+  ListItem,
+  ListItemText,
+  Box,
+} from '@mui/material';
+import WarningAmberIcon from '@mui/icons-material/WarningAmber';
+
+interface ValidationWarningDialogProps {
+  open: boolean;
+  missingFieldLabels: string[];
+  onProceed: () => void;
+  onStay: () => void;
+}
+
+export function ValidationWarningDialog({
+  open,
+  missingFieldLabels,
+  onProceed,
+  onStay,
+}: ValidationWarningDialogProps) {
+  return (
+    <Dialog open={open} onClose={onStay} maxWidth="sm" fullWidth>
+      <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <WarningAmberIcon color="warning" />
+        必須項目が未入力です
+      </DialogTitle>
+      <DialogContent>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+          以下の項目が未入力です。このまま移動しますか？
+        </Typography>
+        <Box sx={{ bgcolor: 'warning.light', borderRadius: 1, px: 2, py: 1 }}>
+          <List dense disablePadding>
+            {missingFieldLabels.map((label) => (
+              <ListItem key={label} disablePadding sx={{ py: 0.25 }}>
+                <ListItemText
+                  primary={`・${label}`}
+                  primaryTypographyProps={{ variant: 'body2', fontWeight: 'bold' }}
+                />
+              </ListItem>
+            ))}
+          </List>
+        </Box>
+      </DialogContent>
+      <DialogActions sx={{ px: 3, pb: 2, gap: 1 }}>
+        <Button
+          variant="outlined"
+          color="warning"
+          onClick={onProceed}
+        >
+          このまま移動する
+        </Button>
+        <Button
+          variant="contained"
+          color="primary"
+          onClick={onStay}
+          autoFocus
+        >
+          画面に留まる
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+}

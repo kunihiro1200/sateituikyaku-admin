@@ -58,6 +58,7 @@ import {
   DISTRIBUTION_TYPE_OPTIONS,
 } from '../utils/buyerFieldOptions';
 import RichTextCommentEditor, { RichTextCommentEditorHandle } from '../components/RichTextCommentEditor';
+import { ValidationWarningDialog } from '../components/ValidationWarningDialog';
 import { formatDateTime } from '../utils/dateFormat';
 import { getDisplayName } from '../utils/employeeUtils';
 
@@ -201,60 +202,89 @@ export default function BuyerDetailPage() {
   // 必須フィールド未入力ハイライト用
   const [missingRequiredFields, setMissingRequiredFields] = useState<Set<string>>(new Set());
 
-  // 必須フィールドバリデーション（ページ遷移前チェック）
-  const validateRequiredFields = (): boolean => {
-    if (!buyer) return false;
+  // 必須フィールドの表示名マップ
+  const REQUIRED_FIELD_LABEL_MAP: Record<string, string> = {
+    initial_assignee: '初動担当',
+    inquiry_source: '問合せ元',
+    latest_status: '★最新状況',
+    distribution_type: '配信メール',
+    inquiry_email_phone: '【問合メール】電話対応',
+    three_calls_confirmed: '3回架電確認済み',
+    desired_area: 'エリア（希望条件）',
+    budget: '予算（希望条件）',
+    desired_property_type: '希望種別（希望条件）',
+  };
 
-    const missing: string[] = [];
+  // 未入力の必須項目の表示名リストを返す（空配列 = 全て入力済み）
+  const checkMissingFields = (): string[] => {
+    if (!buyer) return [];
+
+    const missingKeys: string[] = [];
 
     // 常に必須
     if (!buyer.initial_assignee || !String(buyer.initial_assignee).trim()) {
-      missing.push('initial_assignee');
+      missingKeys.push('initial_assignee');
     }
     if (!buyer.inquiry_source || !String(buyer.inquiry_source).trim()) {
-      missing.push('inquiry_source');
+      missingKeys.push('inquiry_source');
     }
     if (!buyer.latest_status || !String(buyer.latest_status).trim()) {
-      missing.push('latest_status');
+      missingKeys.push('latest_status');
     }
     if (!buyer.distribution_type || !String(buyer.distribution_type).trim()) {
-      missing.push('distribution_type');
+      missingKeys.push('distribution_type');
     }
 
     // 問合せ元にメールが含まれる場合は inquiry_email_phone も必須
     const inquirySource = buyer.inquiry_source ? String(buyer.inquiry_source) : '';
     if (inquirySource.includes('メール')) {
       if (!buyer.inquiry_email_phone || !String(buyer.inquiry_email_phone).trim()) {
-        missing.push('inquiry_email_phone');
+        missingKeys.push('inquiry_email_phone');
       }
       // inquiry_email_phone に値がある場合は three_calls_confirmed も必須
       if (buyer.inquiry_email_phone && String(buyer.inquiry_email_phone).trim()) {
         if (!buyer.three_calls_confirmed || !String(buyer.three_calls_confirmed).trim()) {
-          missing.push('three_calls_confirmed');
+          missingKeys.push('three_calls_confirmed');
         }
       }
     }
 
-    if (missing.length > 0) {
-      setMissingRequiredFields(new Set(missing));
-      const labelMap: Record<string, string> = {
-        initial_assignee: '初動担当',
-        inquiry_source: '問合せ元',
-        latest_status: '★最新状況',
-        distribution_type: '配信メール',
-        inquiry_email_phone: '【問合メール】電話対応',
-        three_calls_confirmed: '3回架電確認済み',
-      };
-      const labels = missing.map(k => labelMap[k] || k);
-      setSnackbar({
-        open: true,
-        message: `以下の必須項目を入力してください：${labels.join('、')}`,
-        severity: 'warning',
-      });
-      return false;
+    // 配信メールが「要」の場合は希望条件の3項目も必須
+    if (buyer.distribution_type && String(buyer.distribution_type).trim() === '要') {
+      if (!buyer.desired_area || !String(buyer.desired_area).trim()) {
+        missingKeys.push('desired_area');
+      }
+      if (!buyer.budget || !String(buyer.budget).trim()) {
+        missingKeys.push('budget');
+      }
+      if (!buyer.desired_property_type || !String(buyer.desired_property_type).trim()) {
+        missingKeys.push('desired_property_type');
+      }
     }
-    setMissingRequiredFields(new Set());
-    return true;
+
+    // ハイライト用 state を更新
+    setMissingRequiredFields(new Set(missingKeys));
+
+    return missingKeys.map(k => REQUIRED_FIELD_LABEL_MAP[k] || k);
+  };
+
+  // バリデーション警告ダイアログ用 state
+  const [validationDialogOpen, setValidationDialogOpen] = useState(false);
+  const [pendingNavigationUrl, setPendingNavigationUrl] = useState<string>('');
+
+  // バリデーション警告ダイアログ用 missing labels state
+  const [pendingMissingLabels, setPendingMissingLabels] = useState<string[]>([]);
+
+  // 遷移前バリデーション共通ハンドラー
+  const handleNavigate = (url: string) => {
+    const missing = checkMissingFields();
+    if (missing.length > 0) {
+      setPendingNavigationUrl(url);
+      setPendingMissingLabels(missing);
+      setValidationDialogOpen(true);
+    } else {
+      navigate(url);
+    }
   };
 
   // セクション別 DirtyState 管理
@@ -762,7 +792,7 @@ export default function BuyerDetailPage() {
     <Box sx={{ height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       {/* ナビゲーションバー + 買主番号検索バー */}
       <Box sx={{ position: 'sticky', top: 0, zIndex: 200, bgcolor: 'background.default', borderBottom: '1px solid', borderColor: 'divider', px: 1, py: 0.5, display: 'flex', alignItems: 'flex-end', gap: 1, flexShrink: 0 }}>
-        <PageNavigation />
+        <PageNavigation onNavigate={handleNavigate} />
         <TextField
           size="small"
           placeholder="買主番号"
@@ -770,7 +800,7 @@ export default function BuyerDetailPage() {
           onChange={(e) => setBuyerNumberSearch(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === 'Enter' && buyerNumberSearch.trim()) {
-              navigate(`/buyers/${toHalfWidth(buyerNumberSearch.trim())}`);
+              handleNavigate(`/buyers/${toHalfWidth(buyerNumberSearch.trim())}`);
             }
           }}
           sx={{ width: 360 }}
@@ -791,7 +821,7 @@ export default function BuyerDetailPage() {
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: 1, py: 0.5, flexShrink: 0, borderBottom: '1px solid', borderColor: 'divider' }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
           <IconButton 
-            onClick={() => navigate('/buyers')} 
+            onClick={() => handleNavigate('/buyers')} 
             sx={{ mr: 2 }}
             aria-label="戻る"
           >
@@ -1111,7 +1141,7 @@ TEL：097-533-2022`;
             variant="outlined"
             color="success"
             size="small"
-            onClick={() => { if (validateRequiredFields()) navigate(`/buyers/${buyer_number}/inquiry-history`); }}
+            onClick={() => handleNavigate(`/buyers/${buyer_number}/inquiry-history`)}
           >
             問合履歴{inquiryHistoryTable.length}件
           </Button>
@@ -1119,7 +1149,7 @@ TEL：097-533-2022`;
             variant="outlined"
             color="success"
             size="small"
-            onClick={() => { if (validateRequiredFields()) navigate(`/buyers/${buyer_number}/desired-conditions`); }}
+            onClick={() => handleNavigate(`/buyers/${buyer_number}/desired-conditions`)}
           >
             希望条件
           </Button>
@@ -1127,7 +1157,7 @@ TEL：097-533-2022`;
             variant="outlined"
             color="success"
             size="small"
-            onClick={() => { if (validateRequiredFields()) navigate(`/buyers/${buyer_number}/viewing-result`); }}
+            onClick={() => handleNavigate(`/buyers/${buyer_number}/viewing-result`)}
           >
             内覧
           </Button>
@@ -2445,6 +2475,17 @@ TEL：097-533-2022`;
 
 
       {/* スナックバー */}
+      {/* バリデーション警告ダイアログ */}
+      <ValidationWarningDialog
+        open={validationDialogOpen}
+        missingFieldLabels={pendingMissingLabels}
+        onProceed={() => {
+          setValidationDialogOpen(false);
+          navigate(pendingNavigationUrl);
+        }}
+        onStay={() => setValidationDialogOpen(false)}
+      />
+
       <Snackbar
         open={snackbar.open}
         autoHideDuration={6000}
