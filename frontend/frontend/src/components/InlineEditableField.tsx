@@ -289,7 +289,18 @@ export const InlineEditableField: React.FC<InlineEditableFieldProps> = memo(({
           <FormControl fullWidth size="small" sx={{ mt: 0.5 }} error={!!error}>
             <Select
               value={editValue ?? ''}
-              onChange={(e) => { handleChange(e.target.value); setSelectOpen(false); }}
+              onChange={async (e) => {
+                const newVal = e.target.value;
+                updateValue(newVal);
+                setSelectOpen(false);
+                // ドロップダウン選択後は blur が発火しないため直接 onSave を呼ぶ
+                // saveValue() は editValue の古い state を参照するため onSave を直接呼ぶ
+                try {
+                  await onSave(newVal);
+                } catch (err) {
+                  // エラーは handleBlur 経由の saveValue と同様に無視（呼び出し元でハンドル）
+                }
+              }}
               onBlur={handleBlur}
               disabled={isSaving}
               open={selectOpen}
