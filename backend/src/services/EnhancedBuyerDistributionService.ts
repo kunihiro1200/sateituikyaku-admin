@@ -745,9 +745,10 @@ export class EnhancedBuyerDistributionService {
     }
 
     // 2. エリアベースマッチング
+    // distribution_areasが未設定の場合はエリアフィルター不一致（全員通過させない）
     const areaMatch = hasDistributionAreas
       ? this.checkAreaBasedMatch(propertyDistributionAreas, consolidatedBuyer.allDesiredAreas)
-      : { matched: true, matchedAreas: [] };
+      : { matched: false, matchedAreas: [] };
 
     // 3. 結果を統合（OR条件）
     if (inquiryMatch.matched && areaMatch.matched) {
