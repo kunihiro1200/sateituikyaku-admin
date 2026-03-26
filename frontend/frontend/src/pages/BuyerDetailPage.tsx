@@ -1670,6 +1670,23 @@ TEL：097-533-2022`;
                                     color="primary"
                                     onClick={async () => {
                                       const newValue = isSelected ? '' : opt.value;
+
+                                      // 「要」に変更する場合、希望条件の必須チェック
+                                      if (newValue === '要' && buyer) {
+                                        const missingConditions: string[] = [];
+                                        if (!buyer.desired_area || !String(buyer.desired_area).trim()) missingConditions.push('エリア');
+                                        if (!buyer.budget || !String(buyer.budget).trim()) missingConditions.push('予算');
+                                        if (!buyer.desired_property_type || !String(buyer.desired_property_type).trim()) missingConditions.push('希望種別');
+                                        if (missingConditions.length > 0) {
+                                          setSnackbar({
+                                            open: true,
+                                            message: `配信メールを「要」にするには、希望条件の${missingConditions.join('・')}を先に入力してください。「希望条件」ボタンから入力できます。`,
+                                            severity: 'error',
+                                          });
+                                          return; // 保存しない
+                                        }
+                                      }
+
                                       setBuyer((prev: any) => prev ? { ...prev, [field.key]: newValue } : prev);
                                       handleFieldChange(section.title, field.key, newValue);
                                       setMissingRequiredFields(prev => {

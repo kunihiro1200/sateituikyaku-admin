@@ -114,8 +114,46 @@ export default function BuyerDesiredConditionsPage() {
     }
   };
 
+  // 配信メール「要」時の希望条件必須チェック
+  const checkDistributionRequiredFields = (fieldName: string, newValue: any): string | null => {
+    if (!buyer) return null;
+
+    // 保存後の値を仮想的に計算
+    const updatedBuyer = { ...buyer, [fieldName]: newValue };
+
+    // 配信メールが「要」かどうか確認
+    const distributionType = String(updatedBuyer.distribution_type || '').trim();
+    if (distributionType !== '要') return null;
+
+    // エリア・予算・種別の未入力チェック
+    const desiredArea = String(updatedBuyer.desired_area || '').trim();
+    const budget = String(updatedBuyer.budget || '').trim();
+    const desiredPropertyType = String(updatedBuyer.desired_property_type || '').trim();
+
+    const missing: string[] = [];
+    if (!desiredArea) missing.push('エリア');
+    if (!budget) missing.push('予算');
+    if (!desiredPropertyType) missing.push('希望種別');
+
+    if (missing.length > 0) {
+      return `配信メールが「要」の場合、${missing.join('・')}は必須です。希望条件を入力してください。`;
+    }
+    return null;
+  };
+
   const handleInlineFieldSave = async (fieldName: string, newValue: any) => {
     if (!buyer) return;
+
+    // 配信メール「要」時の必須チェック
+    const validationError = checkDistributionRequiredFields(fieldName, newValue);
+    if (validationError) {
+      setSnackbar({
+        open: true,
+        message: validationError,
+        severity: 'error',
+      });
+      return { success: false, error: validationError };
+    }
 
     try {
       const result = await buyerApi.update(
@@ -257,6 +295,22 @@ export default function BuyerDesiredConditionsPage() {
         </Box>
       </Box>
 
+      {/* 配信メール「要」時の必須項目警告バナー */}
+      {buyer.distribution_type === '要' && (
+        (() => {
+          const missingItems: string[] = [];
+          if (!buyer.desired_area) missingItems.push('エリア');
+          if (!buyer.budget) missingItems.push('予算');
+          if (!buyer.desired_property_type) missingItems.push('希望種別');
+          return missingItems.length > 0 ? (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              <strong>配信メールが「要」に設定されています。</strong>
+              以下の必須項目を入力してください：{missingItems.join('・')}
+            </Alert>
+          ) : null;
+        })()
+      )}
+
       {/* 希望条件フィールド */}
       <Paper sx={{ 
         p: 3,
@@ -269,8 +323,27 @@ export default function BuyerDesiredConditionsPage() {
           {DESIRED_CONDITIONS_FIELDS.map((field) => (
             <Grid item xs={12} sm={6} md={4} key={field.key}>
               <Box>
-                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+                <Typography
+                  variant="caption"
+                  color={
+                    buyer.distribution_type === '要' &&
+                    ['desired_area', 'budget', 'desired_property_type'].includes(field.key) &&
+                    !buyer[field.key]
+                      ? 'error'
+                      : 'text.secondary'
+                  }
+                  sx={{ display: 'block', mb: 0.5, fontWeight:
+                    buyer.distribution_type === '要' &&
+                    ['desired_area', 'budget', 'desired_property_type'].includes(field.key) &&
+                    !buyer[field.key]
+                      ? 'bold'
+                      : 'normal'
+                  }}
+                >
                   {field.label}
+                  {buyer.distribution_type === '要' &&
+                   ['desired_area', 'budget', 'desired_property_type'].includes(field.key) &&
+                   !buyer[field.key] && ' ※必須'}
                 </Typography>
                 {field.key === 'desired_area' ? (
                   <FormControl fullWidth size="small">
