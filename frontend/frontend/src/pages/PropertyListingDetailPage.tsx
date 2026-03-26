@@ -518,6 +518,22 @@ export default function PropertyListingDetailPage() {
     setIsSellerBuyerEditMode(false);
   };
 
+  const handleSaveNotes = async () => {
+    if (!propertyNumber) return;
+    const notesData: Record<string, any> = {};
+    if (editedData.special_notes !== undefined) notesData.special_notes = editedData.special_notes;
+    if (editedData.memo !== undefined) notesData.memo = editedData.memo;
+    if (Object.keys(notesData).length === 0) return;
+    try {
+      await api.put(`/api/property-listings/${propertyNumber}`, notesData);
+      setSnackbar({ open: true, message: '特記・備忘録を保存しました', severity: 'success' });
+      await fetchPropertyData();
+      setEditedData({});
+    } catch (error) {
+      setSnackbar({ open: true, message: '保存に失敗しました', severity: 'error' });
+    }
+  };
+
   // 物件番号コピー機能
   const handleCopyAddress = async () => {
     const address = data?.address || data?.display_address;
@@ -1404,6 +1420,17 @@ export default function PropertyListingDetailPage() {
                     placeholder="備忘録を入力してください"
                     sx={{ '& .MuiInputBase-input': { fontSize: '18px', lineHeight: 1.8 } }}
                   />
+                </Box>
+                <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end' }}>
+                  <Button
+                    variant="contained"
+                    size="small"
+                    onClick={handleSaveNotes}
+                    disabled={editedData.special_notes === undefined && editedData.memo === undefined}
+                    sx={{ bgcolor: SECTION_COLORS.property.main }}
+                  >
+                    保存
+                  </Button>
                 </Box>
               </Paper>
             </Box>
