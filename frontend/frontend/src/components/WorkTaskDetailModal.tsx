@@ -310,6 +310,30 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
     <Typography variant="caption" sx={{ color: 'error.main', display: 'block', mb: 1 }}>{text}</Typography>
   );
 
+  // 地積測量図・字図ボタン選択コンポーネント（button-select-layout-rule.md に従った実装）
+  const CADASTRAL_MAP_OPTIONS = ['格納済み＆スプシに「有、無」を入力済み', '未', '不要'];
+  const CadastralMapFieldSelect = () => (
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
+      <Typography variant="caption" color="text.secondary" sx={{ whiteSpace: 'nowrap', flexShrink: 0, fontWeight: 500 }}>
+        地積測量図、字図
+      </Typography>
+      <Box sx={{ display: 'flex', gap: 0.5, flex: 1 }}>
+        {CADASTRAL_MAP_OPTIONS.map((opt) => (
+          <Button
+            key={opt}
+            size="small"
+            variant={getValue('cadastral_map_field') === opt ? 'contained' : 'outlined'}
+            color="primary"
+            onClick={() => handleFieldChange('cadastral_map_field', opt)}
+            sx={{ flex: 1, py: 0.5, fontWeight: getValue('cadastral_map_field') === opt ? 'bold' : 'normal', borderRadius: 1 }}
+          >
+            {opt}
+          </Button>
+        ))}
+      </Box>
+    </Box>
+  );
+
   // サイト登録セクション
   const SiteRegistrationSection = () => (
     <Box sx={{ p: 2 }}>
@@ -320,11 +344,11 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
       <EditableField label="サイト備考" field="site_notes" />
       {getValue('property_type') === '土' && (
         <>
-          <EditableField label="地籍測量図・字図（営業入力）" field="cadastral_map_sales_input" />
-          <EditableButtonSelect label="地積測量図、字図" field="cadastral_map_field" options={['格納済み＆スプシに「有、無」を入力済み', '未', '不要']} />
+          <EditableField label="字図、地積測量図URL*" field="cadastral_map_url" type="url" />
+          <EditableField label="地積測量図・字図（営業入力）" field="cadastral_map_sales_input" />
+          <CadastralMapFieldSelect />
         </>
       )}
-      <EditableButtonSelect label="字図、地積測量図URL*" field="cadastral_map_url" options={['URL入力済み', '未']} />
       <RedNote text={'地積測量図や字図を格納→「リンク知っている人全員」\nの共有URLをスプシの「内覧前伝達事項」に貼り付ける'} />
       <EditableField label="格納先URL" field="storage_url" type="url" />
       <EditableYesNo label="CWの方へ依頼メール（サイト登録）" field="cw_request_email_site" />
