@@ -5211,9 +5211,22 @@ HP：https://ifoo-oita.com/
 
             {/* コメント入力・編集エリア（直接書き込み可能） */}
             <Box sx={{ mb: 2 }}>
-              <Typography variant="subtitle2" gutterBottom>
-                コメント
-              </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.5 }}>
+                <Typography variant="subtitle2">
+                  コメント
+                </Typography>
+                {/* サイトURLリンク（inquiry_site が「ウ」かつ siteUrl が存在する場合のみ表示） */}
+                {seller.site === 'ウ' && seller.siteUrl && seller.siteUrl.trim() !== '' && (
+                  <a
+                    href={seller.siteUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ fontSize: '0.85rem', color: '#1976d2', textDecoration: 'underline' }}
+                  >
+                    サイトURL
+                  </a>
+                )}
+              </Box>
               <RichTextCommentEditor
                 ref={commentEditorRef}
                 value={editableComments}
@@ -5221,6 +5234,17 @@ HP：https://ifoo-oita.com/
                 placeholder="コメントを入力してください..."
               />
             </Box>
+
+            {/* 査定理由フィールド（読み取り専用・常時表示） */}
+            <TextField
+              label="査定理由（査定サイトから転記）"
+              value={seller.valuationReason || '未入力'}
+              fullWidth
+              multiline
+              minRows={2}
+              InputProps={{ readOnly: true }}
+              sx={{ mb: 2 }}
+            />
 
             {/* 保存ボタン（未変更時はグレー、変更あり時はオレンジで目立つ） */}
             {(() => {
