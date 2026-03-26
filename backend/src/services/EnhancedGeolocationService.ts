@@ -214,17 +214,36 @@ export class EnhancedGeolocationService {
       return [];
     }
 
-    // Extract all area numbers using regex
+    // Extract all circled area numbers using regex
     // Supports circled numbers: ①-⑳ (1-20) and ㉑-㊿ (21-50)
     const areaPattern = /[①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳㉑㉒㉓㉔㉕㉖㉗㉘㉙㉚㉛㉜㉝㉞㉟㊱㊲㊳㊴㊵㊶㊷㊸㊹㊺㊻㊼㊽㊾㊿]/g;
-    const matches = desiredAreaText.match(areaPattern);
+    const matches = desiredAreaText.match(areaPattern) || [];
+    const result = new Set<string>(matches);
 
-    if (!matches) {
-      return [];
+    // Also convert plain numbers to circled numbers (e.g. "40" → "㊵", "41" → "㊶")
+    const numberMatches = desiredAreaText.match(/\b(\d+)\b/g) || [];
+    for (const numStr of numberMatches) {
+      const num = parseInt(numStr, 10);
+      const circled = this.numberToCircled(num);
+      if (circled) {
+        result.add(circled);
+      }
     }
 
-    // Remove duplicates and return
-    return Array.from(new Set(matches));
+    return Array.from(result);
+  }
+
+  private numberToCircled(num: number): string | null {
+    if (num >= 1 && num <= 20) {
+      return String.fromCharCode(0x2460 + num - 1); // ①〜⑳
+    }
+    if (num >= 21 && num <= 35) {
+      return String.fromCharCode(0x3251 + num - 21); // ㉑〜㉟
+    }
+    if (num >= 36 && num <= 50) {
+      return String.fromCharCode(0x32B1 + num - 36); // ㊱〜㊿
+    }
+    return null;
   }
 
   /**
