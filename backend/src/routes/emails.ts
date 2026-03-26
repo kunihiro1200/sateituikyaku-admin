@@ -585,6 +585,12 @@ router.post(
 
       const { senderAddress, recipients, subject, body, propertyNumber, attachments } = req.body;
 
+      // recipientsは文字列配列または{email, name}配列のどちらも受け付ける
+      const normalizedRecipients: Array<{ email: string; name: string | null }> = recipients.map((r: any) => {
+        if (typeof r === 'string') return { email: r, name: null };
+        return { email: r.email, name: r.name || null };
+      });
+
       // 送信元アドレスのホワイトリスト検証
       const validSenders = [
         'tenant@ifoo-oita.com',
@@ -658,7 +664,7 @@ router.post(
       // EmailServiceを使用してメールを送信
       const result = await emailService.sendDistributionEmail({
         senderAddress,
-        recipients,
+        recipients: normalizedRecipients,
         subject,
         body,
         propertyNumber: propertyNumber || 'unknown',

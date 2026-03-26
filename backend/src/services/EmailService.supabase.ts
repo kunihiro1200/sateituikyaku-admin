@@ -1057,7 +1057,7 @@ ${bodyHtml}
    */
   async sendDistributionEmail(params: {
     senderAddress: string;
-    recipients: string[];
+    recipients: Array<{ email: string; name: string | null }> | string[];
     subject: string;
     body: string;
     propertyNumber: string;
@@ -1093,7 +1093,13 @@ ${bodyHtml}
     let successCount = 0;
     let failedCount = 0;
 
-    console.log(`📧 Sending distribution email to ${params.recipients.length} recipients`);
+    // recipientsを正規化
+    const normalizedRecipients = params.recipients.map((r: any) => {
+      if (typeof r === 'string') return { email: r, name: null };
+      return { email: r.email, name: r.name || null };
+    });
+
+    console.log(`📧 Sending distribution email to ${normalizedRecipients.length} recipients`);
     console.log(`  From: ${params.senderAddress}`);
     console.log(`  Subject: ${params.subject}`);
     console.log(`  Property: ${params.propertyNumber}`);
@@ -1101,8 +1107,13 @@ ${bodyHtml}
       console.log(`  Attachments: ${params.attachments!.length} files`);
     }
 
-    for (const recipient of params.recipients) {
+    for (const recipient of normalizedRecipients) {
       try {
+        // 各受信者の名前で本文を差し替え（{buyerName}プレースホルダー）
+        const buyerName = recipient.name || 'お客様';
+        const personalizedBody = params.body.replace(/\{buyerName\}/g, buyerName);
+        const personalizedSubject = params.subject.replace(/\{buyerName\}/g, buyerName);
+        const encodedPersonalizedSubject = this.encodeSubject(personalizedSubject);
         let encodedMessage: string;
 
         if (hasAttachments) {
@@ -1110,8 +1121,8 @@ ${bodyHtml}
           const boundary = `boundary_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
           const messageParts = [
             `From: ${params.senderAddress}`,
-            `To: ${recipient}`,
-            `Subject: ${encodedSubject}`,
+            `To: ${recipient.email}`,
+            `Subject: ${encodedPersonalizedSubject}`,
             'MIME-Version: 1.0',
             `Content-Type: multipart/mixed; boundary="${boundary}"`,
             '',
@@ -1119,7 +1130,7 @@ ${bodyHtml}
             'Content-Type: text/plain; charset=utf-8',
             'Content-Transfer-Encoding: 8bit',
             '',
-            params.body,
+            personalizedBody,
           ];
 
           for (const attachment of params.attachments!) {
@@ -1142,16 +1153,16 @@ ${bodyHtml}
             .replace(/\//g, '_')
             .replace(/=+$/, '');
         } else {
-          // 添付なし（既存ロジック）
+          // 添付なし
           const messageParts = [
             `From: ${params.senderAddress}`,
-            `To: ${recipient}`,
-            `Subject: ${encodedSubject}`,
+            `To: ${recipient.email}`,
+            `Subject: ${encodedPersonalizedSubject}`,
             'MIME-Version: 1.0',
             'Content-Type: text/plain; charset=utf-8',
             'Content-Transfer-Encoding: 8bit',
             '',
-            params.body,
+            personalizedBody,
           ];
 
           const message = messageParts.join('\r\n');
@@ -1170,14 +1181,14 @@ ${bodyHtml}
         });
 
         successCount++;
-        console.log(`  ✅ Sent to: ${recipient}`);
+        console.log(`  ✅ Sent to: ${recipient.email} (${buyerName}様)`);
       } catch (error) {
         failedCount++;
-        console.error(`  ❌ Failed to send to ${recipient}:`, error);
+        console.error(`  ❌ Failed to send to ${recipient.email}:`, error);
       }
     }
 
-    const totalCount = params.recipients.length;
+    const totalCount = normalizedRecipients.length;
     const success = failedCount === 0;
 
     console.log(`📊 Distribution email result: ${successCount}/${totalCount} sent`);

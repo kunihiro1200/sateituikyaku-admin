@@ -204,9 +204,9 @@ export default function GmailDistributionButton({
       return;
     }
     setSelectedBuyers(buyers);
-    // 確認モーダル表示時に本文を初期化
-    const buyerName = buyers.length === 1 ? (buyers[0].name || 'お客様') : 'お客様';
-    setEditedBody(replacePlaceholders(selectedTemplate.body, buyerName));
+    // 確認モーダル表示時に本文を初期化（複数時は{buyerName}プレースホルダーのまま表示）
+    const previewName = buyers.length === 1 ? (buyers[0].name || 'お客様') : '{buyerName}';
+    setEditedBody(replacePlaceholders(selectedTemplate.body, previewName));
     setSelectedImages([]);
     setFilterSummaryOpen(false);
     setConfirmationOpen(true);
@@ -217,9 +217,9 @@ export default function GmailDistributionButton({
       return;
     }
 
-    // 1人選択時は名前を使用、複数時は「お客様」
+    // 1人選択時は名前を使用、複数時は「お客様」（バックエンドで個別差し替え）
     const buyerName = selectedBuyers.length === 1 ? (selectedBuyers[0].name || 'お客様') : 'お客様';
-    const selectedEmails = selectedBuyers.map(b => b.email);
+    const selectedEmails = selectedBuyers.map(b => ({ email: b.email, name: b.name || null }));
 
     try {
       const subject = replacePlaceholders(selectedTemplate.subject, buyerName);
@@ -247,9 +247,9 @@ export default function GmailDistributionButton({
       );
 
       const response = await api.post('/api/emails/send-distribution', {
-        recipients: selectedEmails,
+        recipients: selectedEmails,  // {email, name}配列
         subject: subject,
-        body: body,
+        body: body,  // {buyerName}プレースホルダーはバックエンドで個別差し替え
         senderAddress: senderAddress,
         propertyNumber: propertyNumber,
         attachments: attachmentsPayload.length > 0 ? attachmentsPayload : undefined,
