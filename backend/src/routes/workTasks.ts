@@ -84,6 +84,11 @@ router.put('/:propertyNumber', async (req: Request, res: Response) => {
       });
     }
 
+    // DB→スプシ書き戻し（非同期・失敗してもレスポンスには影響しない）
+    workTaskSyncService.writeBackToSpreadsheet(propertyNumber, updates).catch((e) =>
+      console.error('スプシ書き戻しエラー:', e.message)
+    );
+
     return res.json({
       message: '更新が完了しました',
       data: workTask,

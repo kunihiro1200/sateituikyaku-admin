@@ -397,7 +397,25 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
     <Box sx={{ display: 'flex', gap: 0, height: '100%' }}>
       {/* 左側：登録関係 */}
       <Box sx={{ flex: 1, p: 2, borderRight: '2px solid', borderColor: 'divider', overflowY: 'auto' }}>
-        <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#1565c0', mb: 1 }}>【登録関係】</Typography>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+          <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#1565c0' }}>【登録関係】</Typography>
+          <Button
+            onClick={handleSave}
+            variant="contained"
+            color="primary"
+            size="small"
+            disabled={!hasChanges || saving}
+            startIcon={saving ? <CircularProgress size={14} /> : <SaveIcon />}
+            sx={hasChanges ? {
+              animation: 'pulse-save 1s ease-in-out infinite',
+              '@keyframes pulse-save': {
+                '0%': { boxShadow: '0 0 0 0 rgba(25, 118, 210, 0.7)' },
+                '70%': { boxShadow: '0 0 0 8px rgba(25, 118, 210, 0)' },
+                '100%': { boxShadow: '0 0 0 0 rgba(25, 118, 210, 0)' },
+              },
+            } : {}}
+          >{saving ? '保存中...' : '保存'}</Button>
+        </Box>
         <EditableField label="サイト登録締め日" field="site_registration_deadline" type="date" />
         <EditableField label="種別" field="property_type" />
 
@@ -483,7 +501,25 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
 
       {/* 右側：確認関係 */}
       <Box sx={{ flex: 1, p: 2, overflowY: 'auto' }}>
-        <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#2e7d32', mb: 1 }}>【確認関係】</Typography>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+          <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#2e7d32' }}>【確認関係】</Typography>
+          <Button
+            onClick={handleSave}
+            variant="contained"
+            color="success"
+            size="small"
+            disabled={!hasChanges || saving}
+            startIcon={saving ? <CircularProgress size={14} /> : <SaveIcon />}
+            sx={hasChanges ? {
+              animation: 'pulse-save 1s ease-in-out infinite',
+              '@keyframes pulse-save': {
+                '0%': { boxShadow: '0 0 0 0 rgba(46, 125, 50, 0.7)' },
+                '70%': { boxShadow: '0 0 0 8px rgba(46, 125, 50, 0)' },
+                '100%': { boxShadow: '0 0 0 0 rgba(46, 125, 50, 0)' },
+              },
+            } : {}}
+          >{saving ? '保存中...' : '保存'}</Button>
+        </Box>
 
         <SectionHeader label="【★サイト登録確認】" />
         <EditableButtonSelect label="サイト登録確認" field="site_registration_confirmed" options={['確認中', '完了', '他']} />
@@ -694,6 +730,14 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
             color="primary"
             disabled={!hasChanges || saving}
             startIcon={saving ? <CircularProgress size={16} /> : <SaveIcon />}
+            sx={hasChanges ? {
+              animation: 'pulse-save 1s ease-in-out infinite',
+              '@keyframes pulse-save': {
+                '0%': { boxShadow: '0 0 0 0 rgba(25, 118, 210, 0.7)' },
+                '70%': { boxShadow: '0 0 0 10px rgba(25, 118, 210, 0)' },
+                '100%': { boxShadow: '0 0 0 0 rgba(25, 118, 210, 0)' },
+              },
+            } : {}}
           >
             {saving ? '保存中...' : '保存'}
           </Button>

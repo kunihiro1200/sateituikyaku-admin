@@ -48,7 +48,7 @@ export class WorkTaskSyncService {
 
     const auth = new google.auth.GoogleAuth({
       keyFile: process.env.GOOGLE_SERVICE_ACCOUNT_PATH || 'google-service-account.json',
-      scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
+      scopes: ['https://www.googleapis.com/auth/spreadsheets'],
     });
 
     this.sheets = google.sheets({ version: 'v4', auth });
@@ -223,6 +223,91 @@ export class WorkTaskSyncService {
       console.error(`物件番号 ${propertyNumber} の同期エラー:`, error.message);
       return null;
     }
+  }
+
+  /**
+   * DBの変更をスプレッドシートに書き戻す
+   */
+  async writeBackToSpreadsheet(propertyNumber: string, updates: Partial<WorkTaskData>): Promise<void> {
+    try {
+      const sheets = await this.initSheetsClient();
+
+      // ヘッダー行を取得
+      const headerResponse = await sheets.spreadsheets.values.get({
+        spreadsheetId: SPREADSHEET_ID,
+        range: `${SHEET_NAME}!1:1`,
+      });
+      const headers = headerResponse.data.values?.[0] || [];
+
+      // 物件番号列のインデックスを取得
+      const propertyNumberIndex = headers.indexOf('物件番号');
+      if (propertyNumberIndex === -1) throw new Error('物件番号カラムが見つかりません');
+
+      // 全データから対象行番号を検索
+      const dataResponse = await sheets.spreadsheets.values.get({
+        spreadsheetId: SPREADSHEET_ID,
+        range: `${SHEET_NAME}!A:A`,
+      });
+      const colA = dataResponse.data.values || [];
+      const rowIndex = colA.findIndex((r, i) => i > 0 && r[0] === propertyNumber);
+      if (rowIndex === -1) {
+        console.warn(`スプシに物件番号 ${propertyNumber} が見つかりません`);
+        return;
+      }
+      const sheetRowNumber = rowIndex + 1; // 1-indexed
+
+      // DBカラム名→スプシカラム名の逆マッピングを構築
+      const mappingConfig = this.columnMapper.getMappingConfig();
+      const dbToSheet: Record<string, string> = {};
+      for (const [sheetCol, dbCol] of Object.entries(mappingConfig.spreadsheetToDb)) {
+        dbToSheet[dbCol] = sheetCol;
+      }
+
+      // 更新するセルを特定して書き込む
+      const requests: sheets_v4.Schema$ValueRange[] = [];
+      for (const [dbCol, value] of Object.entries(updates)) {
+        const sheetCol = dbToSheet[dbCol];
+        if (!sheetCol) continue;
+        const colIndex = headers.indexOf(sheetCol);
+        if (colIndex === -1) continue;
+
+        // 列番号をA1記法に変換
+        const colLetter = this.columnIndexToLetter(colIndex);
+        const cellRange = `${SHEET_NAME}!${colLetter}${sheetRowNumber}`;
+        requests.push({
+          range: cellRange,
+          values: [[value ?? '']],
+        });
+      }
+
+      if (requests.length === 0) return;
+
+      await sheets.spreadsheets.values.batchUpdate({
+        spreadsheetId: SPREADSHEET_ID,
+        requestBody: {
+          valueInputOption: 'USER_ENTERED',
+          data: requests,
+        },
+      });
+
+      console.log(`スプシ書き戻し完了: ${propertyNumber} (${requests.length}セル)`);
+    } catch (error: any) {
+      console.error(`スプシ書き戻しエラー (${propertyNumber}):`, error.message);
+      // 書き戻し失敗はDBの保存には影響させない（ログのみ）
+    }
+  }
+
+  /**
+   * 列インデックス（0始まり）をA1記法の列文字に変換
+   */
+  private columnIndexToLetter(index: number): string {
+    let letter = '';
+    let n = index;
+    while (n >= 0) {
+      letter = String.fromCharCode((n % 26) + 65) + letter;
+      n = Math.floor(n / 26) - 1;
+    }
+    return letter;
   }
 
   /**
