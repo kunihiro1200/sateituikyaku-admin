@@ -12,11 +12,15 @@ import {
 } from '@mui/material';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 
+// 希望条件の必須フィールドラベル
+const DESIRED_CONDITION_LABELS = ['エリア（希望条件）', '予算（希望条件）', '希望種別（希望条件）'];
+
 interface ValidationWarningDialogProps {
   open: boolean;
   missingFieldLabels: string[];
   onProceed: () => void;
   onStay: () => void;
+  onGoToDesiredConditions?: () => void;
 }
 
 export function ValidationWarningDialog({
@@ -24,7 +28,13 @@ export function ValidationWarningDialog({
   missingFieldLabels,
   onProceed,
   onStay,
+  onGoToDesiredConditions,
 }: ValidationWarningDialogProps) {
+  // 希望条件の必須項目が未入力かどうか
+  const hasDesiredConditionsMissing = missingFieldLabels.some((label) =>
+    DESIRED_CONDITION_LABELS.includes(label)
+  );
+
   return (
     <Dialog open={open} onClose={onStay} maxWidth="sm" fullWidth>
       <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -33,7 +43,7 @@ export function ValidationWarningDialog({
       </DialogTitle>
       <DialogContent>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-          以下の項目が未入力です。このまま移動しますか？
+          以下の項目が未入力です。{hasDesiredConditionsMissing ? '希望条件を入力してください。' : 'このまま移動しますか？'}
         </Typography>
         <Box sx={{ bgcolor: 'warning.light', borderRadius: 1, px: 2, py: 1 }}>
           <List dense disablePadding>
@@ -49,13 +59,25 @@ export function ValidationWarningDialog({
         </Box>
       </DialogContent>
       <DialogActions sx={{ px: 3, pb: 2, gap: 1 }}>
-        <Button
-          variant="outlined"
-          color="warning"
-          onClick={onProceed}
-        >
-          このまま移動する
-        </Button>
+        {hasDesiredConditionsMissing ? (
+          // 希望条件が未入力の場合：「希望条件に移動する」ボタン
+          <Button
+            variant="outlined"
+            color="warning"
+            onClick={onGoToDesiredConditions ?? onProceed}
+          >
+            希望条件に移動する
+          </Button>
+        ) : (
+          // 希望条件以外の未入力の場合：「このまま移動する」ボタン
+          <Button
+            variant="outlined"
+            color="warning"
+            onClick={onProceed}
+          >
+            このまま移動する
+          </Button>
+        )}
         <Button
           variant="contained"
           color="primary"

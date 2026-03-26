@@ -2501,6 +2501,10 @@ TEL：097-533-2022`;
           navigate(pendingNavigationUrl);
         }}
         onStay={() => setValidationDialogOpen(false)}
+        onGoToDesiredConditions={() => {
+          setValidationDialogOpen(false);
+          navigate(`/buyers/${buyer_number}/desired-conditions`);
+        }}
       />
 
       <Snackbar
