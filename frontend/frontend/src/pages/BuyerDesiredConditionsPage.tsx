@@ -104,7 +104,7 @@ export default function BuyerDesiredConditionsPage() {
       setBuyer(res.data);
       // desired_area の初期値をローカル state にセット
       const areaVal = res.data?.desired_area || '';
-      const initialAreas = areaVal ? (areaVal.includes('|') ? areaVal.split('|') : areaVal.split('、')).map((v: string) => v.trim()).filter(Boolean) : [];
+      const initialAreas = areaVal ? areaVal.split('|').map((v: string) => v.trim()).filter(Boolean) : [];
       setSelectedAreas(initialAreas);
       selectedAreasRef.current = initialAreas;
     } catch (error) {
@@ -192,7 +192,7 @@ export default function BuyerDesiredConditionsPage() {
       // desired_area が更新された場合はローカル state も同期
       if (fieldName === 'desired_area' && result.buyer?.desired_area !== undefined) {
         const areaVal = result.buyer.desired_area || '';
-        const updatedAreas = areaVal ? (areaVal.includes('|') ? areaVal.split('|') : areaVal.split('、')).map((v: string) => v.trim()).filter(Boolean) : [];
+        const updatedAreas = areaVal ? areaVal.split('|').map((v: string) => v.trim()).filter(Boolean) : [];
         setSelectedAreas(updatedAreas);
         selectedAreasRef.current = updatedAreas;
       }
