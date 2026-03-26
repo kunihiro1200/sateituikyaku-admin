@@ -170,11 +170,13 @@ export default function BuyerViewingResultPage() {
     try {
       console.log(`[BuyerViewingResultPage] Saving field: ${fieldName}, value:`, newValue);
       
-      // sync: false にして高速化（スプレッドシート同期は自動同期サービスに任せる）
+      // latest_statusの場合のみsync: trueでスプレッドシートに即時同期する
+      // それ以外のフィールドはsync: falseで高速化（自動同期サービスに任せる）
+      const isLatestStatus = fieldName === 'latest_status';
       const result = await buyerApi.update(
         buyer_number!,
         { [fieldName]: newValue },
-        { sync: false }
+        { sync: isLatestStatus }
       );
       
       console.log(`[BuyerViewingResultPage] Save result for ${fieldName}:`, result.buyer[fieldName]);
