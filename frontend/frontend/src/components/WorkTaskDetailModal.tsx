@@ -602,7 +602,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
 
   return (
     <>
-      <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
+      <Dialog open={open} onClose={onClose} fullScreen>
         <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 0 }}>
           <Typography variant="h6">業務詳細 - {propertyNumber || ''}</Typography>
           <IconButton onClick={onClose} size="small"><CloseIcon /></IconButton>
