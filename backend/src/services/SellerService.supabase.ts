@@ -240,18 +240,17 @@ export class SellerService extends BaseRepository {
     // 物件情報を作成
     const { error: propertyError } = await this.table('properties').insert({
       seller_id: seller.id,
-      address: data.property.address,
-      prefecture: data.property.prefecture,
-      city: data.property.city,
-      property_type: data.property.propertyType,
-      land_area: data.property.landArea,
-      building_area: data.property.buildingArea,
-      build_year: data.property.buildYear,
-      structure: data.property.structure,
-      floors: data.property.floors,
-      rooms: data.property.rooms,
-      parking: data.property.parking,
-      additional_info: data.property.additionalInfo,
+      property_address: data.property.address,
+      property_type: data.property.propertyType || '戸建て',
+      land_area: data.property.landArea || null,
+      building_area: data.property.buildingArea || null,
+      land_area_verified: data.property.landAreaVerified || null,
+      building_area_verified: data.property.buildingAreaVerified || null,
+      construction_year: data.property.buildYear || null,
+      structure: data.property.structure || null,
+      floor_plan: data.property.floorPlan || null,
+      current_status: data.property.sellerSituation || null,
+      property_address_ieul_apartment: data.property.propertyAddressForIeulMansion || null,
     });
 
     if (propertyError) {
