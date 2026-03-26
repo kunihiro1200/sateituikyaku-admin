@@ -109,6 +109,7 @@ export default function NewSellerPage() {
   const [sellerCopyInput, setSellerCopyInput] = useState('');
   const [sellerCopyOptions, setSellerCopyOptions] = useState<Array<{sellerNumber: string; name: string; id: string}>>([]);
   const [sellerCopyLoading, setSellerCopyLoading] = useState(false);
+  const [nextCallDateConfirmOpen, setNextCallDateConfirmOpen] = useState(false);
 
   // 社員リスト
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -319,6 +320,13 @@ export default function NewSellerPage() {
     e.preventDefault();
     setError('');
 
+    // 次電日未入力の場合は確認ダイアログを表示
+    if (!nextCallDate && !nextCallDateConfirmOpen) {
+      setNextCallDateConfirmOpen(true);
+      return;
+    }
+    setNextCallDateConfirmOpen(false);
+
     // バリデーション
     if (!name || !phoneNumber) {
       setError('名前、電話番号は必須です');
@@ -335,10 +343,7 @@ export default function NewSellerPage() {
       return;
     }
 
-    if (!nextCallDate) {
-      setError('次電日は必須です');
-      return;
-    }
+
 
     try {
       setLoading(true);
@@ -976,7 +981,6 @@ export default function NewSellerPage() {
               <Grid item xs={12} sm={6}>
                 <TextField
                   fullWidth
-                  required
                   label="次電日"
                   type="date"
                   value={nextCallDate}
@@ -1105,6 +1109,28 @@ export default function NewSellerPage() {
             </Grid>
           </Paper>
 
+
+          {/* 次電日未入力確認ダイアログ */}
+          <Dialog open={nextCallDateConfirmOpen} onClose={() => setNextCallDateConfirmOpen(false)}>
+            <DialogTitle>次電日が未入力です</DialogTitle>
+            <DialogContent>
+              <Typography>次電日が入力されていませんがよろしいですか？</Typography>
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={() => setNextCallDateConfirmOpen(false)}>戻る</Button>
+              <Button
+                variant="contained"
+                onClick={async () => {
+                  setNextCallDateConfirmOpen(false);
+                  // フォームを直接送信
+                  const fakeEvent = { preventDefault: () => {} } as React.FormEvent;
+                  await handleSubmit(fakeEvent);
+                }}
+              >
+                このまま登録する
+              </Button>
+            </DialogActions>
+          </Dialog>
 
           <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
             <Button
