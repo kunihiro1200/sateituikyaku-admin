@@ -621,7 +621,25 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
             >
               業務一覧
             </Button>
-            <Typography variant="h6">業務詳細 - {propertyNumber || ''}</Typography>
+            <Typography variant="h6">業務詳細 -</Typography>
+            <Box
+              onClick={() => { navigator.clipboard.writeText(propertyNumber || ''); }}
+              sx={{
+                cursor: 'pointer',
+                px: 1.5, py: 0.5,
+                bgcolor: '#f5f5f5',
+                border: '1px solid #ddd',
+                borderRadius: 1,
+                fontWeight: 700,
+                fontSize: '1.1rem',
+                userSelect: 'all',
+                '&:hover': { bgcolor: '#e3f2fd', borderColor: '#1565c0' },
+                '&:active': { bgcolor: '#bbdefb' },
+              }}
+              title="クリックでコピー"
+            >
+              {propertyNumber || ''}
+            </Box>
           </Box>
           <IconButton onClick={onClose} size="small"><CloseIcon /></IconButton>
         </DialogTitle>
