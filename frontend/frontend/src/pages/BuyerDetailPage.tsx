@@ -211,8 +211,11 @@ export default function BuyerDetailPage() {
     inquiry_email_phone: '【問合メール】電話対応',
     three_calls_confirmed: '3回架電確認済み',
     desired_area: 'エリア（希望条件）',
-    budget: '予算（希望条件）',
     desired_property_type: '希望種別（希望条件）',
+    price_range_house: '価格帯（戸建）',
+    price_range_apartment: '価格帯（マンション）',
+    price_range_land: '価格帯（土地）',
+    price_range_any: '価格帯（いずれか）',
   };
 
   // 未入力の必須項目の表示名リストを返す（空配列 = 全て入力済み）
@@ -249,17 +252,24 @@ export default function BuyerDetailPage() {
       }
     }
 
-    // 配信メールが「要」の場合は希望条件の3項目も必須
+    // 配信メールが「要」の場合は希望条件の必須チェック
     if (buyer.distribution_type && String(buyer.distribution_type).trim() === '要') {
       if (!buyer.desired_area || !String(buyer.desired_area).trim()) {
         missingKeys.push('desired_area');
       }
-      if (!buyer.budget || !String(buyer.budget).trim()) {
-        missingKeys.push('budget');
-      }
       if (!buyer.desired_property_type || !String(buyer.desired_property_type).trim()) {
         missingKeys.push('desired_property_type');
       }
+      // 希望種別に応じた価格帯チェック
+      const pt = String(buyer.desired_property_type || '').trim();
+      const needsH = pt.includes('戸建て');
+      const needsA = pt.includes('マンション');
+      const needsL = pt.includes('土地');
+      const anyPrice = buyer.price_range_house || buyer.price_range_apartment || buyer.price_range_land;
+      if (needsH && !buyer.price_range_house) missingKeys.push('price_range_house');
+      if (needsA && !buyer.price_range_apartment) missingKeys.push('price_range_apartment');
+      if (needsL && !buyer.price_range_land) missingKeys.push('price_range_land');
+      if (!needsH && !needsA && !needsL && !anyPrice) missingKeys.push('price_range_any');
     }
 
     // ハイライト用 state を更新
