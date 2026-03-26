@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Container,
@@ -122,6 +122,10 @@ export default function NewBuyerPage() {
   const [ownedHomeHearingResult, setOwnedHomeHearingResult] = useState('');
   const [valuationRequired, setValuationRequired] = useState('');
   const [nextCallDate, setNextCallDate] = useState('');
+
+  // チャット送信状態
+  const [chatSending, setChatSending] = useState(false);
+  const [chatSent, setChatSent] = useState(false);
 
   // その他
   const [specialNotes, setSpecialNotes] = useState('');
@@ -685,32 +689,6 @@ export default function NewBuyerPage() {
                   <Typography variant="h6" gutterBottom sx={{ mt: 2 }}>問合せ情報</Typography>
                 </Grid>
 
-                {/* vendor_survey: 常に表示、「未」のときはオレンジ */}
-                <Grid item xs={12}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <Typography variant="caption" sx={{ whiteSpace: 'nowrap', flexShrink: 0, fontWeight: 'bold', color: vendorSurvey === '未' ? 'warning.main' : 'text.secondary' }}>
-                      業者向けアンケート
-                    </Typography>
-                    <Box sx={{ display: 'flex', gap: 0.5, flex: 1 }}>
-                      {['確認済み', '未'].map((opt) => {
-                        const isSelected = vendorSurvey === opt;
-                        return (
-                          <Button
-                            key={opt}
-                            size="small"
-                            variant={isSelected ? 'contained' : 'outlined'}
-                            color={opt === '未' ? 'warning' : 'primary'}
-                            onClick={() => setVendorSurvey(isSelected ? '' : opt)}
-                            sx={{ flex: 1, py: 0.5, fontWeight: isSelected ? 'bold' : 'normal', borderRadius: 1 }}
-                          >
-                            {opt}
-                          </Button>
-                        );
-                      })}
-                    </Box>
-                  </Box>
-                </Grid>
-
                 {/* inquiry_hearing: multiline */}
                 <Grid item xs={12}>
                   <Box sx={{ mb: 1 }}>
@@ -975,88 +953,6 @@ export default function NewBuyerPage() {
                   />
                 </Grid>
 
-                {/* owned_home_hearing_inquiry: normalInitials からのボックス選択 */}
-                <Grid item xs={12}>
-                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                    <Typography variant="caption" color="text.secondary">
-                      問合時持家ヒアリング
-                    </Typography>
-                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                      {normalInitials.map((initial) => {
-                        const isSelected = ownedHomeHearingInquiry === initial;
-                        return (
-                          <Button
-                            key={initial}
-                            size="small"
-                            variant={isSelected ? 'contained' : 'outlined'}
-                            color="primary"
-                            onClick={() => setOwnedHomeHearingInquiry(isSelected ? '' : initial)}
-                            sx={{ minWidth: 40, px: 1.5, py: 0.5, fontWeight: isSelected ? 'bold' : 'normal', borderRadius: 1 }}
-                          >
-                            {initial}
-                          </Button>
-                        );
-                      })}
-                    </Box>
-                  </Box>
-                </Grid>
-
-                {/* owned_home_hearing_result: owned_home_hearing_inquiryに値がない場合は非表示 */}
-                {ownedHomeHearingInquiry && (
-                  <Grid item xs={12}>
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                      <Typography variant="caption" color="text.secondary">
-                        持家ヒアリング結果
-                      </Typography>
-                      <Box sx={{ display: 'flex', gap: 0.5 }}>
-                        {['持家（マンション）', '持家（戸建）', '購貸', '他不明'].map((option) => {
-                          const isSelected = ownedHomeHearingResult === option;
-                          return (
-                            <Button
-                              key={option}
-                              size="small"
-                              variant={isSelected ? 'contained' : 'outlined'}
-                              color="primary"
-                              onClick={() => setOwnedHomeHearingResult(isSelected ? '' : option)}
-                              sx={{ flex: 1, py: 0.5, fontWeight: isSelected ? 'bold' : 'normal', borderRadius: 1 }}
-                            >
-                              {option}
-                            </Button>
-                          );
-                        })}
-                      </Box>
-                    </Box>
-                  </Grid>
-                )}
-
-                {/* valuation_required: 持家（マンション）または持家（戸建）の場合のみ表示 */}
-                {['持家（マンション）', '持家（戸建）'].includes(ownedHomeHearingResult) && (
-                  <Grid item xs={12}>
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                      <Typography variant="caption" color="text.secondary">
-                        要査定
-                      </Typography>
-                      <Box sx={{ display: 'flex', gap: 0.5 }}>
-                        {['要', '不要'].map((option) => {
-                          const isSelected = valuationRequired === option;
-                          return (
-                            <Button
-                              key={option}
-                              size="small"
-                              variant={isSelected ? 'contained' : 'outlined'}
-                              color="primary"
-                              onClick={() => setValuationRequired(isSelected ? '' : option)}
-                              sx={{ flex: 1, py: 0.5, fontWeight: isSelected ? 'bold' : 'normal', borderRadius: 1 }}
-                            >
-                              {option}
-                            </Button>
-                          );
-                        })}
-                      </Box>
-                    </Box>
-                  </Grid>
-                )}
-
                 {/* 希望条件 */}
                 <Grid item xs={12}>
                   <Typography id="section-desired-conditions" variant="h6" gutterBottom sx={{ mt: 2 }}>希望条件</Typography>
@@ -1308,17 +1204,32 @@ export default function NewBuyerPage() {
                     value={messageToAssignee}
                     onChange={(e) => setMessageToAssignee(e.target.value)}
                   />
-                </Grid>
-
-                <Grid item xs={12}>
-                  <TextField
-                    fullWidth
-                    label="担当への確認事項"
-                    multiline
-                    rows={2}
-                    value={confirmationToAssignee}
-                    onChange={(e) => setConfirmationToAssignee(e.target.value)}
-                  />
+                  {/* 入力があれば担当へCHAT送信ボタンを表示 */}
+                  {messageToAssignee.trim() && propertyNumberField && (
+                    <Button
+                      variant="contained"
+                      size="small"
+                      disabled={chatSending}
+                      onClick={async () => {
+                        setChatSending(true);
+                        try {
+                          await api.post(`/api/property-listings/${propertyNumberField}/send-chat-to-assignee`, {
+                            message: messageToAssignee,
+                            senderName: '新規登録',
+                          });
+                          setChatSent(true);
+                          setTimeout(() => setChatSent(false), 3000);
+                        } catch (err) {
+                          console.error('チャット送信失敗:', err);
+                        } finally {
+                          setChatSending(false);
+                        }
+                      }}
+                      sx={{ mt: 1, bgcolor: '#7b1fa2', '&:hover': { bgcolor: '#4a148c' } }}
+                    >
+                      {chatSending ? '送信中...' : chatSent ? '✅ 送信済み' : '担当へCHAT送信'}
+                    </Button>
+                  )}
                 </Grid>
 
                 <Grid item xs={12} sm={6}>
