@@ -815,7 +815,7 @@ export default function BuyerDetailPage() {
           onChange={(e) => setBuyerNumberSearch(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === 'Enter' && buyerNumberSearch.trim()) {
-              handleNavigate(`/buyers/${toHalfWidth(buyerNumberSearch.trim())}`);
+              navigate(`/buyers/${toHalfWidth(buyerNumberSearch.trim())}`);
             }
           }}
           sx={{ width: 360 }}
