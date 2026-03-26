@@ -461,12 +461,9 @@ export class BuyerCandidateService {
   private matchesPropertyTypeCriteria(buyer: any, propertyType: string | null): boolean {
     const desiredType = (buyer.desired_property_type || '').trim();
 
-    if (desiredType === '指定なし') {
+    // 希望種別が空欄または「指定なし」の場合は種別問わず対象
+    if (!desiredType || desiredType === '指定なし') {
       return true;
-    }
-
-    if (!desiredType) {
-      return false;
     }
 
     if (!propertyType) {
