@@ -287,6 +287,11 @@ export default function BuyerDetailPage() {
 
   // 遷移前バリデーション共通ハンドラー
   const handleNavigate = (url: string) => {
+    // 希望条件ページへの遷移はバリデーションをスキップ（入力しに行く正しい遷移）
+    if (url.includes('/desired-conditions')) {
+      navigate(url);
+      return;
+    }
     const missing = checkMissingFields();
     if (missing.length > 0) {
       setPendingNavigationUrl(url);
