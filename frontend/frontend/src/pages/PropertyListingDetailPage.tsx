@@ -248,11 +248,13 @@ export default function PropertyListingDetailPage() {
 
   useEffect(() => {
     if (propertyNumber) {
-      fetchPropertyData();
-      fetchBuyers();
-      fetchWorkTaskData();
+      Promise.allSettled([
+        fetchPropertyData(),
+        fetchBuyers(),
+        fetchWorkTaskData(),
+        getActiveEmployees().then(setActiveEmployees).catch(() => {}),
+      ]);
     }
-    getActiveEmployees().then(setActiveEmployees).catch(() => {});
   }, [propertyNumber]);
 
   const fetchPropertyData = async () => {
@@ -1119,7 +1121,7 @@ export default function PropertyListingDetailPage() {
       </Box>
 
       {/* Property Header - Key Information */}
-      <Paper sx={{ p: 1, mb: 2, bgcolor: '#f5f5f5' }}>
+      <Paper sx={{ p: 1, mb: 2, bgcolor: '#f5f5f5', position: 'sticky', top: 48, zIndex: 100 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
           <Typography variant="body1" color="text.secondary" fontWeight="bold">物件概要</Typography>
           <Box sx={{ display: 'flex', gap: 1 }}>
