@@ -53,7 +53,6 @@ interface ConsolidatedBuyer {
   email: string;
   name: string | null;
   buyerNumbers: string[];
-  buyerIds: string[]; // buyer_id (UUID) for buyer_inquiries join
   allDesiredAreas: string;
   mostPermissiveStatus: string;
   propertyTypes: string[];
@@ -143,7 +142,7 @@ export class EnhancedBuyerDistributionService {
           // Get inquiries for all buyer records with this email
           const allInquiries: InquiryProperty[] = [];
           for (const originalRecord of consolidatedBuyer.originalRecords) {
-            const buyerInquiries = inquiryMap.get(originalRecord.buyer_id) || [];
+            const buyerInquiries = inquiryMap.get(originalRecord.buyer_number) || [];
             allInquiries.push(...buyerInquiries);
           }
           
@@ -333,7 +332,6 @@ export class EnhancedBuyerDistributionService {
       const { data, error } = await this.supabase
         .from('buyers')
         .select(`
-          buyer_id,
           buyer_number,
           name,
           email,
@@ -386,7 +384,6 @@ export class EnhancedBuyerDistributionService {
           email: buyer.email, // Use original casing
           name: buyer.name || null,
           buyerNumbers: [buyer.buyer_number],
-          buyerIds: [buyer.buyer_id], // buyer_id (UUID) for buyer_inquiries join
           allDesiredAreas: buyer.desired_area || '',
           mostPermissiveStatus: buyer.latest_status || '',
           propertyTypes: buyer.desired_property_type ? [buyer.desired_property_type] : [],
@@ -404,11 +401,6 @@ export class EnhancedBuyerDistributionService {
         
         // Add buyer number
         consolidated.buyerNumbers.push(buyer.buyer_number);
-        
-        // Add buyer_id
-        if (buyer.buyer_id && !consolidated.buyerIds.includes(buyer.buyer_id)) {
-          consolidated.buyerIds.push(buyer.buyer_id);
-        }
         
         // Merge desired areas (remove duplicates)
         const existingAreas = new Set(consolidated.allDesiredAreas.split(''));
@@ -510,7 +502,7 @@ export class EnhancedBuyerDistributionService {
     const { data, error } = await this.supabase
       .from('buyer_inquiries')
       .select(`
-        buyer_id,
+        buyer_number,
         property_number,
         property_listings!inner(
           property_number,
@@ -528,10 +520,12 @@ export class EnhancedBuyerDistributionService {
     const inquiryMap = new Map<string, InquiryProperty[]>();
     
     data?.forEach((row: any) => {
-      if (!inquiryMap.has(row.buyer_id)) {
-        inquiryMap.set(row.buyer_id, []);
+      const key = row.buyer_number;
+      if (!key) return;
+      if (!inquiryMap.has(key)) {
+        inquiryMap.set(key, []);
       }
-      inquiryMap.get(row.buyer_id)!.push({
+      inquiryMap.get(key)!.push({
         propertyNumber: row.property_number,
         address: row.property_listings?.address || null,
         googleMapUrl: row.property_listings?.google_map_url || null
