@@ -1886,6 +1886,34 @@ export default function PropertyListingDetailPage() {
                 onChange={(value) => handleFieldChange('distribution_areas', value)}
                 onCalculatingChange={setIsCalculatingAreas}
               />
+              {editedData.distribution_areas !== undefined && (
+                <Box sx={{ mt: 1, display: 'flex', gap: 1 }}>
+                  <Button
+                    size="small"
+                    variant="contained"
+                    color="success"
+                    onClick={async () => {
+                      try {
+                        await api.put(`/api/property-listings/${propertyNumber}`, { distribution_areas: editedData.distribution_areas });
+                        setSnackbar({ open: true, message: '配信エリアを保存しました', severity: 'success' });
+                        await fetchPropertyData();
+                        setEditedData(prev => { const { distribution_areas, ...rest } = prev; return rest; });
+                      } catch {
+                        setSnackbar({ open: true, message: '保存に失敗しました', severity: 'error' });
+                      }
+                    }}
+                  >
+                    保存
+                  </Button>
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    onClick={() => setEditedData(prev => { const { distribution_areas, ...rest } = prev; return rest; })}
+                  >
+                    キャンセル
+                  </Button>
+                </Box>
+              )}
             </Paper>
           </Box>
 

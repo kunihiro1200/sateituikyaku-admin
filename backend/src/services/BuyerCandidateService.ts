@@ -471,7 +471,7 @@ export class BuyerCandidateService {
     }
 
     const normalizedPropertyType = this.normalizePropertyType(propertyType);
-    const normalizedDesiredTypes = desiredType.split(/[,、\s]+/).map((t: string) => this.normalizePropertyType(t));
+    const normalizedDesiredTypes = desiredType.split(/[,、・\s]+/).map((t: string) => this.normalizePropertyType(t));
 
     return normalizedDesiredTypes.some((dt: string) =>
       dt === normalizedPropertyType ||
