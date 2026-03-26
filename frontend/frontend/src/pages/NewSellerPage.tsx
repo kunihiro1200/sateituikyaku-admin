@@ -13,11 +13,17 @@ import {
   Checkbox,
   FormControlLabel,
   Autocomplete,
+  CircularProgress,
+  FormControl,
+  InputLabel,
+  Select,
 } from '@mui/material';
 import { 
   ArrowBack as ArrowBackIcon,
 } from '@mui/icons-material';
 import api from '../services/api';
+import RichTextCommentEditor, { RichTextCommentEditorHandle } from '../components/RichTextCommentEditor';
+import { useRef } from 'react';
 
 const propertyTypes = [
   { value: 'detached_house', label: '戸建て' },
@@ -102,6 +108,11 @@ export default function NewSellerPage() {
   const [sellerCopyOptions, setSellerCopyOptions] = useState<Array<{sellerNumber: string; name: string; id: string}>>([]);
   const [sellerCopyLoading, setSellerCopyLoading] = useState(false);
 
+  // コメント
+  const [comments, setComments] = useState('');
+  const [savingComments, setSavingComments] = useState(false);
+  const commentEditorRef = useRef<RichTextCommentEditorHandle>(null);
+
   // 買主コピー
   const [buyerCopyInput, setBuyerCopyInput] = useState('');
   const [buyerCopyOptions, setBuyerCopyOptions] = useState<Array<{buyer_number: string; name: string}>>([]);
@@ -123,7 +134,7 @@ export default function NewSellerPage() {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}T${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
   });
-  const [site, setSite] = useState('');
+  const [site, setSite] = useState('2件目以降査定');
   const [inquiryReason, setInquiryReason] = useState('');
   const [siteUrl, setSiteUrl] = useState('');
   const [numberOfCompanies, setNumberOfCompanies] = useState('');
@@ -165,7 +176,7 @@ export default function NewSellerPage() {
 
   // ステータス情報
   const [status, setStatus] = useState('following_up');
-  const [confidence, setConfidence] = useState('B');
+  const [confidence, setConfidence] = useState('');
   const [assignedTo, setAssignedTo] = useState('');
 
   // 競合情報
@@ -309,6 +320,11 @@ export default function NewSellerPage() {
       return;
     }
 
+    if (!confidence) {
+      setError('確度は必須です');
+      return;
+    }
+
     try {
       setLoading(true);
 
@@ -349,8 +365,11 @@ export default function NewSellerPage() {
         
         // ステータス
         status: status || 'new',
-        confidence: confidence || 'B',
+        confidence: confidence || undefined,
         assignedTo: assignedTo || undefined,
+
+        // コメント
+        comments: comments || undefined,
 
         // 競合情報
         competitorName: competitorName || undefined,
@@ -788,6 +807,82 @@ export default function NewSellerPage() {
             </Grid>
           </Paper>
 
+          {/* コメントセクション */}
+          <Paper sx={{ p: 3, mb: 3 }}>
+            <Typography variant="h6" gutterBottom>
+              コメント
+            </Typography>
+            <Box>
+              <RichTextCommentEditor
+                ref={commentEditorRef}
+                value={comments}
+                onChange={(html) => setComments(html)}
+                placeholder="コメントを入力してください..."
+              />
+            </Box>
+          </Paper>
+
+          {/* ステータス情報セクション（コメントの直後） */}
+          <Paper sx={{ p: 3, mb: 3 }}>
+            <Typography variant="h6" gutterBottom>
+              ステータス情報
+            </Typography>
+            <Grid container spacing={2}>
+              <Grid item xs={12} sm={6}>
+                <FormControl fullWidth required>
+                  <InputLabel>状況（当社）</InputLabel>
+                  <Select
+                    value={status}
+                    label="状況（当社）"
+                    onChange={(e) => setStatus(e.target.value)}
+                  >
+                    <MenuItem value="追客中">追客中</MenuItem>
+                    <MenuItem value="追客不要(未訪問）">追客不要(未訪問）</MenuItem>
+                    <MenuItem value="除外済追客不要">除外済追客不要</MenuItem>
+                    <MenuItem value="除外後追客中">除外後追客中</MenuItem>
+                    <MenuItem value="専任媒介">専任媒介</MenuItem>
+                    <MenuItem value="一般媒介">一般媒介</MenuItem>
+                    <MenuItem value="リースバック（専任）">リースバック（専任）</MenuItem>
+                    <MenuItem value="他決→追客">他決→追客</MenuItem>
+                    <MenuItem value="他決→追客不要">他決→追客不要</MenuItem>
+                    <MenuItem value="他決→専任">他決→専任</MenuItem>
+                    <MenuItem value="他決→一般">他決→一般</MenuItem>
+                    <MenuItem value="専任→他社専任">専任→他社専任</MenuItem>
+                    <MenuItem value="一般→他決">一般→他決</MenuItem>
+                    <MenuItem value="他社買取">他社買取</MenuItem>
+                    <MenuItem value="訪問後（担当付）追客不要">訪問後（担当付）追客不要</MenuItem>
+                  </Select>
+                </FormControl>
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <FormControl fullWidth required error={!confidence}>
+                  <InputLabel>確度 *</InputLabel>
+                  <Select
+                    value={confidence}
+                    label="確度 *"
+                    onChange={(e) => setConfidence(e.target.value)}
+                  >
+                    <MenuItem value="A">A（売る気あり）</MenuItem>
+                    <MenuItem value="B">B（売る気あるがまだ先の話）</MenuItem>
+                    <MenuItem value="B_PRIME">B'（売る気は全く無い）</MenuItem>
+                    <MenuItem value="C">C（電話が繋がらない）</MenuItem>
+                    <MenuItem value="D">D（再建築不可）</MenuItem>
+                    <MenuItem value="E">E（収益物件）</MenuItem>
+                    <MenuItem value="DUPLICATE">ダブり（重複している）</MenuItem>
+                  </Select>
+                </FormControl>
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  label="担当社員"
+                  value={assignedTo}
+                  onChange={(e) => setAssignedTo(e.target.value)}
+                />
+              </Grid>
+            </Grid>
+          </Paper>
+
           {/* 査定情報セクション */}
           <Paper sx={{ p: 3, mb: 3 }}>
             <Typography variant="h6" gutterBottom>
@@ -966,56 +1061,6 @@ export default function NewSellerPage() {
             </Grid>
           </Paper>
 
-          {/* ステータス情報セクション */}
-          <Paper sx={{ p: 3, mb: 3 }}>
-            <Typography variant="h6" gutterBottom>
-              ステータス情報
-            </Typography>
-            <Grid container spacing={2}>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  select
-                  label="状況"
-                  value={status}
-                  onChange={(e) => setStatus(e.target.value)}
-                >
-                  <MenuItem value="following_up">追客中</MenuItem>
-                  <MenuItem value="appointment_scheduled">訪問予定</MenuItem>
-                  <MenuItem value="visited">訪問済み</MenuItem>
-                  <MenuItem value="exclusive_contract">専任媒介</MenuItem>
-                  <MenuItem value="general_contract">一般媒介</MenuItem>
-                  <MenuItem value="other_decision">他決</MenuItem>
-                  <MenuItem value="follow_up_not_needed">追客不要</MenuItem>
-                </TextField>
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  select
-                  label="確度"
-                  value={confidence}
-                  onChange={(e) => setConfidence(e.target.value)}
-                >
-                  <MenuItem value="A">A（売る気あり）</MenuItem>
-                  <MenuItem value="B">B（売る気あるがまだ先の話）</MenuItem>
-                  <MenuItem value="B_PRIME">B'（売る気は全く無い）</MenuItem>
-                  <MenuItem value="C">C（電話が繋がらない）</MenuItem>
-                  <MenuItem value="D">D（再建築不可）</MenuItem>
-                  <MenuItem value="E">E（収益物件）</MenuItem>
-                  <MenuItem value="DUPLICATE">ダブり（重複している）</MenuItem>
-                </TextField>
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label="担当社員"
-                  value={assignedTo}
-                  onChange={(e) => setAssignedTo(e.target.value)}
-                />
-              </Grid>
-            </Grid>
-          </Paper>
 
           {/* 競合情報セクション */}
           <Paper sx={{ p: 3, mb: 3 }}>
