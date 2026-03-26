@@ -197,7 +197,6 @@ export class SellerService extends BaseRepository {
       phone_number: encryptedPhone,
       email: encryptedEmail || null,
       status: SellerStatus.FOLLOWING_UP,
-      assigned_to: employeeId,
       // Phase 1 fields
       seller_number: sellerNumber,
       inquiry_source: data.inquirySource,
