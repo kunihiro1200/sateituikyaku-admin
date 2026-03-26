@@ -413,18 +413,22 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
       <EditableButtonSelect label="CWの方*" field="cw_person" options={['浅沼様（土日OK, 平日は中１日あけて納期）']} />
       {/* 変更1: メール配信フィールド（site_registration_comment の直前） */}
       <EditableField label="メール配信" field="email_distribution" />
-      {/* 変更2: email_distribution に応じた自動計算テキスト */}
-      {emailDistAutoText && (
-        <Box sx={{ bgcolor: 'info.light', p: 1.5, mb: 1.5, borderRadius: 1 }}>
-          <Typography
-            variant="body2"
-            sx={{ userSelect: 'text', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}
-          >
-            {emailDistAutoText}
-          </Typography>
-        </Box>
-      )}
-      <EditableField label="コメント（サイト登録）" field="site_registration_comment" />
+
+      <Grid container spacing={2} alignItems="flex-start" sx={{ mb: 1.5 }}>
+        <Grid item xs={4}>
+          <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500, pt: 1 }}>コメント（サイト登録）</Typography>
+        </Grid>
+        <Grid item xs={8}>
+          <TextField
+            size="small"
+            value={getValue('site_registration_comment') || ''}
+            onChange={(e) => handleFieldChange('site_registration_comment', e.target.value)}
+            fullWidth
+            multiline
+            minRows={2}
+          />
+        </Grid>
+      </Grid>
       {/* 変更3: site_registration_requestor のデフォルト値 */}
       <Grid container spacing={2} alignItems="flex-start" sx={{ mb: 1.5 }}>
         <Grid item xs={4}>
@@ -614,9 +618,13 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
             variant="scrollable"
             scrollButtons="auto"
             sx={{
-              '& .MuiTab-root': { minWidth: 'auto', px: 2 },
-              '& .Mui-selected': { color: 'error.main' },
-              '& .MuiTabs-indicator': { backgroundColor: 'error.main' },
+              '& .MuiTab-root': { minWidth: 'auto', px: 2, fontWeight: 600 },
+              '& .MuiTab-root:nth-of-type(1)': { color: '#2e7d32' },
+              '& .MuiTab-root:nth-of-type(2)': { color: '#1565c0' },
+              '& .MuiTab-root:nth-of-type(3)': { color: '#e65100' },
+              '& .MuiTab-root:nth-of-type(4)': { color: '#6a1b9a' },
+              '& .Mui-selected': { opacity: 1 },
+              '& .MuiTabs-indicator': { backgroundColor: 'currentColor' },
             }}
           >
             {tabLabels.map((label, index) => (<Tab key={index} label={label} />))}
