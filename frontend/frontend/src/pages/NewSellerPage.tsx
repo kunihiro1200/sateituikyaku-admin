@@ -325,6 +325,11 @@ export default function NewSellerPage() {
       return;
     }
 
+    if (!nextCallDate) {
+      setError('次電日は必須です');
+      return;
+    }
+
     try {
       setLoading(true);
 
@@ -961,30 +966,13 @@ export default function NewSellerPage() {
               <Grid item xs={12} sm={6}>
                 <TextField
                   fullWidth
+                  required
                   label="次電日"
                   type="date"
                   value={nextCallDate}
                   onChange={(e) => setNextCallDate(e.target.value)}
                   InputLabelProps={{ shrink: true }}
                 />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  select
-                  label="確度"
-                  value={confidence}
-                  onChange={(e) => setConfidence(e.target.value)}
-                >
-                  <MenuItem value="">選択なし</MenuItem>
-                  <MenuItem value="A">A（売る気あり）</MenuItem>
-                  <MenuItem value="B">B（売る気あるがまだ先の話）</MenuItem>
-                  <MenuItem value="B_PRIME">B'（売る気は全く無い）</MenuItem>
-                  <MenuItem value="C">C（電話が繋がらない）</MenuItem>
-                  <MenuItem value="D">D（再建築不可）</MenuItem>
-                  <MenuItem value="E">E（収益物件）</MenuItem>
-                  <MenuItem value="DUPLICATE">ダブり（重複している）</MenuItem>
-                </TextField>
               </Grid>
               <Grid item xs={12} sm={6}>
                 <TextField
