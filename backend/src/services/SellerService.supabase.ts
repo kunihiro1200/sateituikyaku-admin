@@ -238,10 +238,19 @@ export class SellerService extends BaseRepository {
     }
 
     // 物件情報を作成
+    // property_typeをDBの日本語値にマッピング
+    const propertyTypeMap: Record<string, string> = {
+      'detached_house': '戸建て',
+      'apartment': 'マンション',
+      'land': '土地',
+      'commercial': '戸建て', // フォールバック
+    };
+    const mappedPropertyType = propertyTypeMap[data.property.propertyType as string] || data.property.propertyType || '戸建て';
+
     const { error: propertyError } = await this.table('properties').insert({
       seller_id: seller.id,
       property_address: data.property.address,
-      property_type: data.property.propertyType || '戸建て',
+      property_type: mappedPropertyType,
       land_area: data.property.landArea || null,
       building_area: data.property.buildingArea || null,
       land_area_verified: data.property.landAreaVerified || null,

@@ -214,6 +214,7 @@ export interface PropertyInfo {
   sellerSituation?: string; // 居住中、空き家、賃貸中、古屋あり、更地
   parking?: boolean;
   additionalInfo?: string;
+  propertyAddressForIeulMansion?: string;
 }
 
 export interface ValuationResult {
