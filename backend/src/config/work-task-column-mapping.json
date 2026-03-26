@@ -78,8 +78,8 @@
     "司法書士": "judicial_scrivener",
     "司法書士連絡先": "judicial_scrivener_contact",
     "口コミカウント用": "review_count_field",
-    "サイト登録依頼先": "site_registration_requester",
-    "サイト登録依頼者": "site_registration_requestor",
+    "サイト登録依頼先": "site_registration_requestor",
+    "サイト登録依頼者": "site_registration_requester",
     "広瀬さんへ依頼": "hirose_request",
     "物件一覧に行追加": "property_list_row_added",
     "物件ファイル": "property_file"
