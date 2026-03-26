@@ -498,11 +498,11 @@ export class BuyerCandidateService {
     let priceRange: string | null = null;
     const normalizedType = this.normalizePropertyType(propertyType || '');
 
-    if (normalizedType === '戸建' || normalizedType.includes('戸建')) {
+    if (normalizedType === '戸建' || normalizedType === '戸' || normalizedType === 'detached_house') {
       priceRange = buyer.price_range_house;
-    } else if (normalizedType === 'マンション' || normalizedType.includes('マンション')) {
+    } else if (normalizedType === 'マンション' || normalizedType === 'マ' || normalizedType === 'アパート' || normalizedType === 'apartment') {
       priceRange = buyer.price_range_apartment;
-    } else if (normalizedType === '土地' || normalizedType.includes('土地')) {
+    } else if (normalizedType === '土地' || normalizedType === '土' || normalizedType === 'land') {
       priceRange = buyer.price_range_land;
     }
 
