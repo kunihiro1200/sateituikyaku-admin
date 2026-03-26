@@ -335,7 +335,65 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
   );
 
   // サイト登録セクション
-  const SiteRegistrationSection = () => (
+  const SiteRegistrationSection = () => {
+    // 変更4: サイト登録納期予定日の初期値ロジック
+    const getDefaultDueDate = () => {
+      const today = new Date();
+      const dayOfWeek = today.getDay(); // 0=日, 1=月, 2=火, 3=水, 4=木, 5=金, 6=土
+      // 火曜(2)の場合は+3日、それ以外は+2日
+      const daysToAdd = dayOfWeek === 2 ? 3 : 2;
+      const result = new Date(today);
+      result.setDate(today.getDate() + daysToAdd);
+      return result.toISOString().split('T')[0];
+    };
+
+    // 変更3: サイト登録依頼コメントのデフォルト値生成ロジック
+    const formatDate = (dateStr: string | null | undefined) => {
+      if (!dateStr) return '';
+      try {
+        const d = new Date(dateStr);
+        return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      } catch { return ''; }
+    };
+
+    const generateDefaultRequestorComment = () => {
+      const propertyNumber = getValue('property_number') || '';
+      const propertyAddress = getValue('property_address') || '';
+      const requestDate = formatDate(getValue('site_registration_request_date'));
+      const requester = getValue('site_registration_requestor') || '';
+      const dueDate = formatDate(getValue('site_registration_due_date') || getDefaultDueDate());
+      const panorama = getValue('panorama') || '';
+      const floorPlanDue = formatDate(getValue('floor_plan_due_date'));
+      const comment = getValue('site_registration_comment') || '';
+      const spreadsheetUrl = getValue('spreadsheet_url') || '';
+      const storageUrl = getValue('storage_url') || '';
+
+      let text = `浅沼様\nお世話になっております。\nサイト登録関係お願いします。\n物件番号：${propertyNumber}\n物件所在地：${propertyAddress}\n当社依頼日：${requestDate}（${requester}）\n当社の希望納期：${dueDate}`;
+      if (panorama) text += `\nパノラマ：${panorama}`;
+      if (floorPlanDue) text += `\n間取図格納時期：${floorPlanDue}`;
+      text += `\nコメント：${comment}\n詳細：${spreadsheetUrl}\n格納先：${storageUrl}\nご不明点等がございましたら、こちらに返信していただければと思います。`;
+      return text;
+    };
+
+    // 変更2: email_distribution の値に応じた自動計算テキスト
+    const getEmailDistributionAutoText = () => {
+      const emailDist = getValue('email_distribution') || '';
+      if (emailDist.includes('即') && emailDist.includes('不要')) {
+        return '公開前配信メールは不要です。確認前に公開お願い致します。公開方法→https://docs.google.com/document/d/145LKr_Q7ftxnRVvNalaKPO1NH_FqncOlOY5bqP5P48c/edit?usp=sharing';
+      }
+      if (emailDist === '新着配信、即公開（期日関係無）') {
+        return '公開前配信メールを「新着配信」に変更して、同時に公開もお願い致します。公開方法→https://docs.google.com/document/d/145LKr_Q7ftxnRVvNalaKPO1NH_FqncOlOY5bqP5P48c/edit?usp=sharing';
+      }
+      return '';
+    };
+
+    const emailDistAutoText = getEmailDistributionAutoText();
+
+    // 変更4: cw_request_email_site が空でない場合は必須表示
+    const isSiteDueDateRequired = !!(getValue('cw_request_email_site'));
+    const siteDueDateLabel = `サイト登録納期予定日${isSiteDueDateRequired ? '*（必須）' : '*'}`;
+
+    return (
     <Box sx={{ p: 2 }}>
       <EditableField label="サイト登録締め日" field="site_registration_deadline" type="date" />
       <EditableField label="種別" field="property_type" />
@@ -353,11 +411,60 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
       <EditableField label="格納先URL" field="storage_url" type="url" />
       <EditableYesNo label="CWの方へ依頼メール（サイト登録）" field="cw_request_email_site" />
       <EditableButtonSelect label="CWの方*" field="cw_person" options={['浅沼様（土日OK, 平日は中１日あけて納期）']} />
+      {/* 変更1: メール配信フィールド（site_registration_comment の直前） */}
+      <EditableField label="メール配信" field="email_distribution" />
+      {/* 変更2: email_distribution に応じた自動計算テキスト */}
+      {emailDistAutoText && (
+        <Box sx={{ bgcolor: 'info.light', p: 1.5, mb: 1.5, borderRadius: 1 }}>
+          <Typography
+            variant="body2"
+            sx={{ userSelect: 'text', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}
+          >
+            {emailDistAutoText}
+          </Typography>
+        </Box>
+      )}
       <EditableField label="コメント（サイト登録）" field="site_registration_comment" />
-      <EditableMultilineField label="サイト登録依頼コメント" field="site_registration_requestor" />
+      {/* 変更3: site_registration_requestor のデフォルト値 */}
+      <Grid container spacing={2} alignItems="flex-start" sx={{ mb: 1.5 }}>
+        <Grid item xs={4}>
+          <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500, pt: 1 }}>サイト登録依頼コメント</Typography>
+        </Grid>
+        <Grid item xs={8}>
+          <TextField
+            size="small"
+            value={getValue('site_registration_requestor') || generateDefaultRequestorComment()}
+            onChange={(e) => handleFieldChange('site_registration_requestor', e.target.value)}
+            fullWidth
+            multiline
+            rows={4}
+          />
+        </Grid>
+      </Grid>
       <EditableField label="パノラマ" field="panorama" />
       <EditableButtonSelect label="サイト登録依頼者*" field="site_registration_requester" options={['K', 'Y', 'I', '林', '麻', 'U', 'R', '久', '和', 'H']} />
-      <EditableField label="サイト登録納期予定日*" field="site_registration_due_date" type="date" />
+      {/* 変更4: サイト登録納期予定日（初期値・必須化） */}
+      <Grid container spacing={2} alignItems="center" sx={{ mb: 1.5 }}>
+        <Grid item xs={4}>
+          <Typography
+            variant="body2"
+            color={isSiteDueDateRequired ? 'error' : 'text.secondary'}
+            sx={{ fontWeight: isSiteDueDateRequired ? 700 : 500 }}
+          >
+            {siteDueDateLabel}
+          </Typography>
+        </Grid>
+        <Grid item xs={8}>
+          <TextField
+            size="small"
+            type="date"
+            value={formatDateForInput(getValue('site_registration_due_date') || getDefaultDueDate())}
+            onChange={(e) => handleFieldChange('site_registration_due_date', e.target.value || null)}
+            fullWidth
+            InputLabelProps={{ shrink: true }}
+          />
+        </Grid>
+      </Grid>
 
       <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mb: 1 }}>CWの方、広瀬さん記入↓↓</Typography>
       <EditableField label="サイト登録確認依頼日" field="site_registration_confirm_request_date" type="date" />
@@ -391,7 +498,8 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
       <EditableField label="メール配信" field="pre_distribution_check" />
       <EditableField label="サイト登録締め日v" field="site_registration_deadline" type="date" />
     </Box>
-  );
+    );
+  };
 
   // 複数行テキストフィールド
   const EditableMultilineField = ({ label, field }: { label: string; field: string }) => (
