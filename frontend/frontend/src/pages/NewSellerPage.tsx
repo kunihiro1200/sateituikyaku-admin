@@ -1068,7 +1068,7 @@ export default function NewSellerPage() {
                   onChange={(e) => setVisitNotes(e.target.value)}
                 />
               </Grid>
-              {visitDate && visitAssignee && (
+              {true && (
                 <Grid item xs={12}>
                   <Button
                     variant="outlined"
