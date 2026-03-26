@@ -227,6 +227,12 @@ export default function BuyerDetailPage() {
       if (!buyer.inquiry_email_phone || !String(buyer.inquiry_email_phone).trim()) {
         missing.push('inquiry_email_phone');
       }
+      // inquiry_email_phone に値がある場合は three_calls_confirmed も必須
+      if (buyer.inquiry_email_phone && String(buyer.inquiry_email_phone).trim()) {
+        if (!buyer.three_calls_confirmed || !String(buyer.three_calls_confirmed).trim()) {
+          missing.push('three_calls_confirmed');
+        }
+      }
     }
 
     if (missing.length > 0) {
@@ -237,6 +243,7 @@ export default function BuyerDetailPage() {
         latest_status: '★最新状況',
         distribution_type: '配信メール',
         inquiry_email_phone: '【問合メール】電話対応',
+        three_calls_confirmed: '3回架電確認済み',
       };
       const labels = missing.map(k => labelMap[k] || k);
       setSnackbar({
@@ -364,6 +371,12 @@ export default function BuyerDetailPage() {
       const src = res.data.inquiry_source ? String(res.data.inquiry_source) : '';
       if (src.includes('メール') && (!res.data.inquiry_email_phone || !String(res.data.inquiry_email_phone).trim())) {
         initialMissing.push('inquiry_email_phone');
+      }
+      // inquiry_email_phone に値がある場合は three_calls_confirmed も必須
+      if (src.includes('メール') && res.data.inquiry_email_phone && String(res.data.inquiry_email_phone).trim()) {
+        if (!res.data.three_calls_confirmed || !String(res.data.three_calls_confirmed).trim()) {
+          initialMissing.push('three_calls_confirmed');
+        }
       }
       if (initialMissing.length > 0) {
         setMissingRequiredFields(new Set(initialMissing));
@@ -1577,6 +1590,12 @@ TEL：097-533-2022`;
                                       const newValue = isSelected ? '' : opt;
                                       setBuyer((prev: any) => prev ? { ...prev, [field.key]: newValue } : prev);
                                       handleFieldChange(section.title, field.key, newValue);
+                                      setMissingRequiredFields(prev => {
+                                        const next = new Set(prev);
+                                        if (newValue && String(newValue).trim()) next.delete('inquiry_email_phone');
+                                        else next.add('inquiry_email_phone');
+                                        return next;
+                                      });
                                       handleInlineFieldSave(field.key, newValue).catch(console.error);
                                     }}
                                     sx={{
@@ -1754,11 +1773,18 @@ TEL：097-533-2022`;
                         return null;
                       }
                       const THREE_CALLS_BTNS = ['3回架電OK', '3回架電未', '他'];
+                      const isThreeCallsMissing = missingRequiredFields.has('three_calls_confirmed');
                       return (
                         <Grid item xs={12} key={`${section.title}-${field.key}`}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <Typography variant="caption" color="error" sx={{ whiteSpace: 'nowrap', flexShrink: 0, fontWeight: 'bold' }}>
-                              {field.label} *
+                          <Box sx={{
+                            display: 'flex', alignItems: 'center', gap: 1,
+                            border: isThreeCallsMissing ? '2px solid #f44336' : 'none',
+                            borderRadius: isThreeCallsMissing ? 1 : 0,
+                            p: isThreeCallsMissing ? 0.5 : 0,
+                            bgcolor: isThreeCallsMissing ? 'rgba(244,67,54,0.05)' : 'transparent',
+                          }}>
+                            <Typography variant="caption" color={isThreeCallsMissing ? 'error' : 'text.secondary'} sx={{ whiteSpace: 'nowrap', flexShrink: 0, fontWeight: isThreeCallsMissing ? 'bold' : 'normal' }}>
+                              {field.label}{isThreeCallsMissing ? ' *' : ''}
                             </Typography>
                             <Box sx={{ display: 'flex', gap: 0.5, flex: 1 }}>
                               {THREE_CALLS_BTNS.map((opt) => {
@@ -1773,6 +1799,12 @@ TEL：097-533-2022`;
                                       const newValue = isSelected ? '' : opt;
                                       setBuyer((prev: any) => prev ? { ...prev, [field.key]: newValue } : prev);
                                       handleFieldChange(section.title, field.key, newValue);
+                                      setMissingRequiredFields(prev => {
+                                        const next = new Set(prev);
+                                        if (newValue && String(newValue).trim()) next.delete('three_calls_confirmed');
+                                        else next.add('three_calls_confirmed');
+                                        return next;
+                                      });
                                       handleInlineFieldSave(field.key, newValue).catch(console.error);
                                     }}
                                     sx={{
