@@ -26,6 +26,7 @@ interface WorkTaskDetailModalProps {
   onClose: () => void;
   propertyNumber: string | null;
   onUpdate?: () => void;
+  initialData?: Partial<WorkTaskData> | null;
 }
 
 interface WorkTaskData {
@@ -109,7 +110,7 @@ interface WorkTaskData {
 
 const ASSIGNEE_OPTIONS = ['K', 'Y', 'I', '生', 'U', 'R', '久', 'H'];
 
-export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onUpdate }: WorkTaskDetailModalProps) {
+export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onUpdate, initialData }: WorkTaskDetailModalProps) {
   const [tabIndex, setTabIndex] = useState(0);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -121,22 +122,30 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
 
   useEffect(() => {
     if (open && propertyNumber) {
-      fetchData();
+      // 一覧データがあれば即座に表示（ローディングなし）
+      if (initialData) {
+        setData(initialData as WorkTaskData);
+        setLoading(false);
+        // バックグラウンドで詳細データを取得（差し替え）
+        fetchData(true);
+      } else {
+        fetchData(false);
+      }
       setEditedData({});
     }
   }, [open, propertyNumber]);
 
-  const fetchData = async () => {
+  const fetchData = async (background = false) => {
     if (!propertyNumber) return;
-    setLoading(true);
+    if (!background) setLoading(true);
     try {
       const response = await api.get(`/api/work-tasks/${propertyNumber}`);
       setData(response.data);
     } catch (error) {
       console.error('Failed to fetch work task:', error);
-      setData(null);
+      if (!background) setData(null);
     } finally {
-      setLoading(false);
+      if (!background) setLoading(false);
     }
   };
 
@@ -146,7 +155,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
     try {
       await api.put(`/api/work-tasks/${propertyNumber}`, editedData);
       setSnackbar({ open: true, message: '保存しました', severity: 'success' });
-      await fetchData();
+      await fetchData(false);
       setEditedData({});
       onUpdate?.();
     } catch (error) {

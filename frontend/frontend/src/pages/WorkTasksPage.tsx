@@ -34,16 +34,19 @@ export default function WorkTasksPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedPropertyNumber, setSelectedPropertyNumber] = useState<string | null>(null);
+  const [selectedTaskData, setSelectedTaskData] = useState<WorkTask | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
 
-  const handleRowClick = (propertyNumber: string) => {
-    setSelectedPropertyNumber(propertyNumber);
+  const handleRowClick = (task: WorkTask) => {
+    setSelectedPropertyNumber(task.property_number);
+    setSelectedTaskData(task);
     setModalOpen(true);
   };
 
   const handleModalClose = () => {
     setModalOpen(false);
     setSelectedPropertyNumber(null);
+    setSelectedTaskData(null);
   };
 
   useEffect(() => {
@@ -268,7 +271,7 @@ export default function WorkTasksPage() {
                       <TableRow 
                         key={task.id} 
                         hover 
-                        onClick={() => task.property_number && handleRowClick(task.property_number)}
+                        onClick={() => task.property_number && handleRowClick(task)}
                         sx={{ cursor: 'pointer' }}
                       >
                         <TableCell>
@@ -324,6 +327,7 @@ export default function WorkTasksPage() {
         open={modalOpen}
         onClose={handleModalClose}
         propertyNumber={selectedPropertyNumber}
+        initialData={selectedTaskData}
         onUpdate={() => fetchAllWorkTasks(true)}
       />
     </Container>

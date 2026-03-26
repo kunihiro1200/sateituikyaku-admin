@@ -64,7 +64,7 @@ export class WorkTaskService {
   }
 
   /**
-   * 一覧取得
+   * 一覧取得（一覧表示に必要なカラムのみ取得してパフォーマンス改善）
    */
   async list(options: ListOptions = {}): Promise<WorkTaskData[]> {
     const {
@@ -76,7 +76,7 @@ export class WorkTaskService {
 
     const { data, error } = await this.supabase
       .from('work_tasks')
-      .select('*')
+      .select('id,property_number,property_address,seller_name,sales_assignee,property_type,mediation_type,mediation_deadline,mediation_completed,mediation_notes,site_registration_confirmed,floor_plan_completed_date,binding_scheduled_date,binding_completed,settlement_date,sales_contract_confirmed,on_hold,created_at,updated_at')
       .order(orderBy, { ascending: orderDirection === 'asc' })
       .range(offset, offset + limit - 1);
 
