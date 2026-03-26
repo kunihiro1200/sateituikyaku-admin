@@ -882,14 +882,15 @@ export default function PropertyListingDetailPage() {
               <Typography variant="h5" fontWeight="bold" sx={{ color: SECTION_COLORS.property.main }}>
                 物件詳細 - {data.property_number}
               </Typography>
-              <IconButton
-                size="small"
-                onClick={handleCopyPropertyNumber}
-                sx={{ color: copiedPropertyNumber ? 'success.main' : SECTION_COLORS.property.main }}
-                title="物件番号をコピー"
-              >
-                {copiedPropertyNumber ? <CheckIcon fontSize="small" /> : <ContentCopyIcon fontSize="small" />}
-              </IconButton>
+              <Tooltip title={copiedPropertyNumber ? 'コピーしました' : '物件番号をコピー'}>
+                <IconButton
+                  size="small"
+                  onClick={handleCopyPropertyNumber}
+                  sx={{ color: copiedPropertyNumber ? 'success.main' : SECTION_COLORS.property.main }}
+                >
+                  {copiedPropertyNumber ? <CheckIcon fontSize="small" /> : <ContentCopyIcon fontSize="small" />}
+                </IconButton>
+              </Tooltip>
               {/* 公開URLボタン */}
               <Button
                 variant="outlined"

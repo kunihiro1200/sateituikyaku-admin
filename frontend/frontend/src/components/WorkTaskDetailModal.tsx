@@ -17,6 +17,7 @@ import {
   Link,
   Snackbar,
   Alert,
+  Chip,
 } from '@mui/material';
 import { Close as CloseIcon, Save as SaveIcon } from '@mui/icons-material';
 import api from '../services/api';
@@ -648,7 +649,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
     <>
       <Dialog open={open} onClose={onClose} fullScreen>
         <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 0 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, overflow: 'hidden' }}>
             <Button
               variant="contained"
               size="small"
@@ -669,12 +670,20 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
                 fontWeight: 700,
                 fontSize: '1.1rem',
                 userSelect: 'all',
+                whiteSpace: 'nowrap',
                 '&:hover': { bgcolor: '#e3f2fd', borderColor: '#1565c0' },
                 '&:active': { bgcolor: '#bbdefb' },
               }}
               title="クリックでコピー"
             >
               {propertyNumber || ''}
+            </Box>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, overflowX: 'auto', flexShrink: 1, flexWrap: 'nowrap' }}>
+              {data?.property_address && <Chip label={data.property_address} size="small" variant="outlined" sx={{ fontSize: '0.75rem' }} />}
+              {data?.property_type && <Chip label={data.property_type} size="small" variant="outlined" sx={{ fontSize: '0.75rem' }} />}
+              {data?.seller_name && <Chip label={data.seller_name} size="small" variant="outlined" sx={{ fontSize: '0.75rem' }} />}
+              {data?.sales_assignee && <Chip label={data.sales_assignee} size="small" variant="outlined" sx={{ fontSize: '0.75rem' }} />}
+              {data?.mediation_type && <Chip label={data.mediation_type} size="small" variant="outlined" sx={{ fontSize: '0.75rem' }} />}
             </Box>
           </Box>
           <IconButton onClick={onClose} size="small"><CloseIcon /></IconButton>
