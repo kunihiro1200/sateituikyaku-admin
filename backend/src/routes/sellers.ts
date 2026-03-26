@@ -665,6 +665,30 @@ router.put('/:id', async (req: Request, res: Response) => {
 });
 
 /**
+ * 売主を削除（ソフトデリート）
+ */
+router.delete('/:id', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const supabase = createClient(
+      process.env.SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_KEY!
+    );
+    const { error } = await supabase
+      .from('sellers')
+      .update({ deleted_at: new Date().toISOString() })
+      .eq('id', id);
+    if (error) {
+      return res.status(500).json({ error: 'Failed to delete seller' });
+    }
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Delete seller error:', error);
+    res.status(500).json({ error: 'Failed to delete seller' });
+  }
+});
+
+/**
  * Phase 1: Mark seller as unreachable
  */
 router.post('/:id/mark-unreachable', async (req: Request, res: Response) => {

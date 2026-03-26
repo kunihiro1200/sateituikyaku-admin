@@ -25,7 +25,7 @@ import {
   Tooltip,
   Snackbar,
 } from '@mui/material';
-import { ArrowBack, Phone, Save, CalendarToday, Email, Image as ImageIcon, ContentCopy as ContentCopyIcon, Search as SearchIcon, Clear as ClearIcon } from '@mui/icons-material';
+import { ArrowBack, Phone, Save, CalendarToday, Email, Image as ImageIcon, ContentCopy as ContentCopyIcon, Search as SearchIcon, Clear as ClearIcon, Delete as DeleteIcon } from '@mui/icons-material';
 import api, { emailImageApi } from '../services/api';
 import { SECTION_COLORS } from '../theme/sectionColors';
 import { Seller, PropertyInfo, Activity, SellerStatus, ConfidenceLevel, DuplicateMatch, SelectedImages, DriveImage } from '../types';
@@ -457,6 +457,8 @@ const CallModePage = () => {
   const [editedVisitValuationAcquirer, setEditedVisitValuationAcquirer] = useState<string>(''); // 訪問査定取得者
   const [editedAppointmentNotes, setEditedAppointmentNotes] = useState<string>('');
   const [savingAppointment, setSavingAppointment] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [employees, setEmployees] = useState<any[]>([]);
 
   // 訪問統計用の状態
@@ -1489,6 +1491,21 @@ const CallModePage = () => {
       } else {
         setEditableComments(boldText);
       }
+    }
+  };
+
+  // 売主削除ハンドラ
+  const handleDeleteSeller = async () => {
+    if (!seller?.id) return;
+    setDeleting(true);
+    try {
+      await api.delete(`/api/sellers/${seller.id}`);
+      setDeleteDialogOpen(false);
+      navigate('/');
+    } catch (err) {
+      console.error('Delete seller error:', err);
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -2909,7 +2926,37 @@ HP：https://ifoo-oita.com/
               近隣買主
             </Button>
           )}
+          {/* 削除ボタン */}
+          {seller?.id && (
+            <Button
+              variant="outlined"
+              color="error"
+              startIcon={<DeleteIcon />}
+              onClick={() => setDeleteDialogOpen(true)}
+              sx={{ ml: 'auto' }}
+              size="small"
+            >
+              削除
+            </Button>
+          )}
         </Box>
+
+        {/* 削除確認ダイアログ */}
+        <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)}>
+          <DialogTitle>売主を削除しますか？</DialogTitle>
+          <DialogContent>
+            <Typography>
+              {seller?.name}（{seller?.sellerNumber}）をDBから削除します。<br />
+              削除後も復元可能ですが、一覧から非表示になります。
+            </Typography>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setDeleteDialogOpen(false)} disabled={deleting}>キャンセル</Button>
+            <Button onClick={handleDeleteSeller} color="error" variant="contained" disabled={deleting}>
+              {deleting ? '削除中...' : '削除する'}
+            </Button>
+          </DialogActions>
+        </Dialog>
 
         {/* 査定額表示（中央） */}
         {/* 優先順位: 1. valuationText（I列テキスト）がある場合はそれを表示 */}
