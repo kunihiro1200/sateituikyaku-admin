@@ -1375,6 +1375,7 @@ export default function PropertyListingDetailPage() {
                 onEditToggle={() => setIsFrequentlyAskedEditMode(!isFrequentlyAskedEditMode)}
                 onSave={handleSaveFrequentlyAsked}
                 onCancel={handleCancelFrequentlyAsked}
+                hasChanges={Object.keys(editedData).length > 0}
               >
                 <FrequentlyAskedSection 
                   data={data} 
@@ -1427,7 +1428,18 @@ export default function PropertyListingDetailPage() {
                     size="small"
                     onClick={handleSaveNotes}
                     disabled={editedData.special_notes === undefined && editedData.memo === undefined}
-                    sx={{ bgcolor: SECTION_COLORS.property.main }}
+                    sx={{
+                      ...(editedData.special_notes !== undefined || editedData.memo !== undefined ? {
+                        backgroundColor: '#d32f2f',
+                        '&:hover': { backgroundColor: '#b71c1c' },
+                        animation: 'pulseSave 1.5s infinite',
+                        '@keyframes pulseSave': {
+                          '0%': { boxShadow: '0 0 0 0 rgba(211, 47, 47, 0.7)' },
+                          '70%': { boxShadow: '0 0 0 8px rgba(211, 47, 47, 0)' },
+                          '100%': { boxShadow: '0 0 0 0 rgba(211, 47, 47, 0)' },
+                        },
+                      } : { bgcolor: SECTION_COLORS.property.main }),
+                    }}
                   >
                     保存
                   </Button>
@@ -1455,6 +1467,7 @@ export default function PropertyListingDetailPage() {
                 onEditToggle={() => setIsViewingInfoEditMode(!isViewingInfoEditMode)}
                 onSave={handleSaveViewingInfo}
                 onCancel={handleCancelViewingInfo}
+                hasChanges={Object.keys(editedData).length > 0}
               >
                 <Grid container spacing={2}>
                   {(isViewingInfoEditMode || data.viewing_key) && (
@@ -1563,6 +1576,7 @@ export default function PropertyListingDetailPage() {
                 onEditToggle={() => setIsBasicInfoEditMode(!isBasicInfoEditMode)}
                 onSave={handleSaveBasicInfo}
                 onCancel={handleCancelBasicInfo}
+                hasChanges={Object.keys(editedData).length > 0}
               >
             <Grid container spacing={2}>
               <Grid item xs={6}>
@@ -1839,7 +1853,8 @@ export default function PropertyListingDetailPage() {
             <Box sx={{ flex: { xs: '1 1 100%', md: '0 0 50%' } }}>
               <EditableSection title="物件詳細情報" isEditMode={isPropertyDetailsEditMode}
                 onEditToggle={() => setIsPropertyDetailsEditMode(!isPropertyDetailsEditMode)}
-                onSave={handleSavePropertyDetails} onCancel={handleCancelPropertyDetails}>
+                onSave={handleSavePropertyDetails} onCancel={handleCancelPropertyDetails}
+                hasChanges={Object.keys(editedData).length > 0}>
                 <PropertyDetailsSection
                   data={{
                     ...data,
@@ -1880,7 +1895,8 @@ export default function PropertyListingDetailPage() {
             <Box sx={{ flex: { xs: '1 1 100%', md: '0 0 50%' } }}>
               <EditableSection title="売主・買主情報" isEditMode={isSellerBuyerEditMode}
                 onEditToggle={() => setIsSellerBuyerEditMode(!isSellerBuyerEditMode)}
-                onSave={handleSaveSellerBuyer} onCancel={handleCancelSellerBuyer}>
+                onSave={handleSaveSellerBuyer} onCancel={handleCancelSellerBuyer}
+                hasChanges={Object.keys(editedData).length > 0}>
                 <Box sx={{ mb: 3 }}>
                   <Typography variant="subtitle1" fontWeight="bold" gutterBottom>売主</Typography>
                   <Grid container spacing={2}>
