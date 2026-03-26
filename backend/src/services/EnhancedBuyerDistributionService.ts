@@ -345,6 +345,8 @@ export class EnhancedBuyerDistributionService {
         `)
         .not('email', 'is', null)
         .neq('email', '')
+        .eq('distribution_type', '要')
+        .is('deleted_at', null)
         .range(from, from + pageSize - 1);
 
       if (error) {
