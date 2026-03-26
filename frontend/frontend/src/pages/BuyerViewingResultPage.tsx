@@ -176,7 +176,7 @@ export default function BuyerViewingResultPage() {
       const result = await buyerApi.update(
         buyer_number!,
         { [fieldName]: newValue },
-        { sync: isLatestStatus }
+        { sync: isLatestStatus, force: isLatestStatus }
       );
       
       console.log(`[BuyerViewingResultPage] Save result for ${fieldName}:`, result.buyer[fieldName]);
