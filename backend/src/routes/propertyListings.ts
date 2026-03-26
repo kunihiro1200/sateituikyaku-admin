@@ -752,6 +752,14 @@ router.post('/:propertyNumber/calculate-distribution-areas', async (req: Request
       preloadedCoords
     );
 
+    // 計算結果をDBに自動保存
+    if (result.formatted) {
+      await propertyListingService.update(propertyNumber, {
+        distribution_areas: result.formatted
+      });
+      console.log(`[DistributionArea] Auto-saved distribution_areas for ${propertyNumber}: ${result.formatted}`);
+    }
+
     res.json({
       success: true,
       areas: result.formatted,
