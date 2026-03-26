@@ -175,7 +175,7 @@ export default function NewSellerPage() {
   const [visitNotes, setVisitNotes] = useState('');
 
   // ステータス情報
-  const [status, setStatus] = useState('following_up');
+  const [status, setStatus] = useState('追客中');
   const [confidence, setConfidence] = useState('');
   const [assignedTo, setAssignedTo] = useState('');
 
