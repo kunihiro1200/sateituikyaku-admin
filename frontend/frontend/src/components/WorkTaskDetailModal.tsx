@@ -360,7 +360,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
       const propertyNumber = getValue('property_number') || '';
       const propertyAddress = getValue('property_address') || '';
       const requestDate = formatDate(getValue('site_registration_request_date'));
-      const requester = getValue('site_registration_requestor') || '';
+      const requester = getValue('site_registration_requester') || '';
       const dueDate = formatDate(getValue('site_registration_due_date') || getDefaultDueDate());
       const panorama = getValue('panorama') || '';
       const floorPlanDue = formatDate(getValue('floor_plan_due_date'));
@@ -433,7 +433,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
         <Grid item xs={8}>
           <TextField
             size="small"
-            value={getValue('site_registration_requestor') || generateDefaultRequestorComment()}
+            value={(() => { const v = getValue('site_registration_requestor'); return (v && String(v).startsWith('浅沼様')) ? v : generateDefaultRequestorComment(); })()}
             onChange={(e) => handleFieldChange('site_registration_requestor', e.target.value)}
             fullWidth
             multiline
