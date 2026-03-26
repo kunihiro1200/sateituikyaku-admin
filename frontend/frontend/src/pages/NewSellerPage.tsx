@@ -20,10 +20,12 @@ import {
 } from '@mui/material';
 import { 
   ArrowBack as ArrowBackIcon,
+  CalendarToday,
 } from '@mui/icons-material';
 import api from '../services/api';
 import RichTextCommentEditor, { RichTextCommentEditorHandle } from '../components/RichTextCommentEditor';
-import { useRef } from 'react';
+import { useRef, useEffect } from 'react';
+import { getActiveEmployees, Employee } from '../services/employeeService';
 
 const propertyTypes = [
   { value: 'detached_house', label: '戸建て' },
@@ -107,6 +109,9 @@ export default function NewSellerPage() {
   const [sellerCopyInput, setSellerCopyInput] = useState('');
   const [sellerCopyOptions, setSellerCopyOptions] = useState<Array<{sellerNumber: string; name: string; id: string}>>([]);
   const [sellerCopyLoading, setSellerCopyLoading] = useState(false);
+
+  // 社員リスト
+  const [employees, setEmployees] = useState<Employee[]>([]);
 
   // コメント
   const [comments, setComments] = useState('');
@@ -217,6 +222,11 @@ export default function NewSellerPage() {
       }
     };
     fetchNextSellerNumber();
+  }, []);
+
+  // 社員リストを取得
+  useEffect(() => {
+    getActiveEmployees().then(setEmployees).catch(console.error);
   }, []);
 
   // 売主コピー検索ハンドラ
@@ -1029,12 +1039,24 @@ export default function NewSellerPage() {
                 />
               </Grid>
               <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label="営担"
-                  value={visitAssignee}
-                  onChange={(e) => setVisitAssignee(e.target.value)}
-                />
+                <FormControl fullWidth>
+                  <InputLabel>営担</InputLabel>
+                  <Select
+                    value={visitAssignee}
+                    label="営担"
+                    onChange={(e) => setVisitAssignee(e.target.value)}
+                  >
+                    <MenuItem value=""><em>未選択</em></MenuItem>
+                    {employees.map((emp) => {
+                      const initials = (emp as any).initials || emp.name || emp.email;
+                      return (
+                        <MenuItem key={(emp as any).id} value={initials}>
+                          {emp.name} ({initials})
+                        </MenuItem>
+                      );
+                    })}
+                  </Select>
+                </FormControl>
               </Grid>
               <Grid item xs={12}>
                 <TextField
@@ -1046,6 +1068,40 @@ export default function NewSellerPage() {
                   onChange={(e) => setVisitNotes(e.target.value)}
                 />
               </Grid>
+              {visitDate && visitAssignee && (
+                <Grid item xs={12}>
+                  <Button
+                    variant="outlined"
+                    startIcon={<CalendarToday />}
+                    onClick={() => {
+                      const dateStr = visitDate;
+                      const timeStr = visitTime || '10:00';
+                      const dateTimeStr = `${dateStr}T${timeStr}:00`;
+                      const date = new Date(dateTimeStr);
+                      const startDateStr = date.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+                      const endDate = new Date(date.getTime() + 60 * 60 * 1000);
+                      const endDateStr = endDate.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+                      const propertyAddr = propertyAddress || '物件所在地未設定';
+                      const title = encodeURIComponent(`【訪問】${propertyAddr}`);
+                      const details = encodeURIComponent(
+                        `売主名: ${name}\n` +
+                        `住所: ${requestorAddress || propertyAddr}\n` +
+                        `電話: ${phoneNumber}\n` +
+                        `\n訪問時注意点: ${visitNotes || 'なし'}`
+                      );
+                      const location = encodeURIComponent(propertyAddr);
+                      const assignedEmployee = employees.find(e =>
+                        (e as any).initials === visitAssignee || e.name === visitAssignee
+                      );
+                      const assignedEmail = (assignedEmployee as any)?.email || '';
+                      const srcParam = assignedEmail ? `&src=${encodeURIComponent(assignedEmail)}` : '';
+                      window.open(`https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${startDateStr}/${endDateStr}&details=${details}&location=${location}${srcParam}`, '_blank');
+                    }}
+                  >
+                    📅 Googleカレンダーに送信
+                  </Button>
+                </Grid>
+              )}
             </Grid>
           </Paper>
 
