@@ -5593,25 +5593,7 @@ HP：https://ifoo-oita.com/
               </Box>
             )}
 
-            {/* AI要約（通話履歴サマリー） */}
-            {callSummary && (
-              <>
-                <Typography variant="h6" gutterBottom>
-                  🤖 通話履歴サマリー（AI要約）
-                </Typography>
-                <Paper sx={{ p: 2, mb: 3, bgcolor: '#e8f5e9', borderLeft: '4px solid #4caf50' }}>
-                  <Typography 
-                    variant="body2" 
-                    sx={{ 
-                      whiteSpace: 'pre-wrap',
-                      wordBreak: 'break-word'
-                    }}
-                  >
-                    {callSummary}
-                  </Typography>
-                </Paper>
-              </>
-            )}
+
 
             {/* 過去の活動ログ */}
             <Typography variant="h6" gutterBottom>

@@ -426,16 +426,6 @@ export class EmailService extends BaseRepository {
 
       console.log(`✅ Template email sent successfully: ${messageId}`);
 
-      // メール送信ログをactivitiesテーブルに保存
-      await this.saveEmailLog(
-        seller.id,
-        employeeId,
-        subject,
-        content,
-        seller.email,
-        messageId
-      );
-
       return {
         messageId,
         sentAt,
