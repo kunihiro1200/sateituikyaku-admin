@@ -1781,7 +1781,11 @@ export default function PropertyListingDetailPage() {
                       value={editedData.storage_location !== undefined ? editedData.storage_location : (data.storage_location || '')}
                       onChange={(e) => handleFieldChange('storage_location', e.target.value)} />
                   ) : (
-                    <Typography variant="body2" sx={{ fontWeight: 600 }}>{data.storage_location}</Typography>
+                    <Link href={data.storage_location} target="_blank" rel="noopener noreferrer"
+                      sx={{ fontSize: '0.75rem', wordBreak: 'break-all', display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                      {data.storage_location}
+                      <OpenInNewIcon sx={{ fontSize: '0.75rem', flexShrink: 0 }} />
+                    </Link>
                   )}
                 </Grid>
               )}
