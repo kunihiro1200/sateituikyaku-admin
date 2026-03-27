@@ -57,7 +57,8 @@
     "訪問事前通知メール担当": "visit_reminder_assignee",
     "ID": "inquiry_id",
     "サイトURL": "site_url",
-    "郵送": "mailing_status"
+    "郵送": "mailing_status",
+    "固定資産税路線価": "fixed_asset_tax_road_price"
   },
   "databaseToSpreadsheet": {
     "seller_number": "売主番号",
@@ -109,7 +110,8 @@
     "visit_reminder_assignee": "訪問事前通知メール担当",
     "inquiry_id": "ID",
     "site_url": "サイトURL",
-    "mailing_status": "郵送"
+    "mailing_status": "郵送",
+    "fixed_asset_tax_road_price": "固定資産税路線価"
   },
   "typeConversions": {
     "valuation_amount_1": "number",
@@ -129,7 +131,8 @@
     "contract_year_month": "date",
     "created_at": "datetime",
     "updated_at": "datetime",
-    "mailing_status": "string"
+    "mailing_status": "string",
+    "fixed_asset_tax_road_price": "number"
   },
   "requiredFields": [
     "name"

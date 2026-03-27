@@ -1370,6 +1370,15 @@ export class EnhancedAutoSyncService {
     if (val2 !== null) updateData.valuation_amount_2 = val2 * 10000;
     if (val3 !== null) updateData.valuation_amount_3 = val3 * 10000;
 
+    // 固定資産税路線価を追加（円/㎡、万円変換不要）
+    const fixedAssetTaxRoadPrice = row['固定資産税路線価'];
+    const parsedFixedAssetTaxRoadPrice = this.parseNumeric(fixedAssetTaxRoadPrice);
+    if (parsedFixedAssetTaxRoadPrice !== null) {
+      updateData.fixed_asset_tax_road_price = parsedFixedAssetTaxRoadPrice;
+    } else if (fixedAssetTaxRoadPrice === '' || fixedAssetTaxRoadPrice === null || fixedAssetTaxRoadPrice === undefined) {
+      updateData.fixed_asset_tax_road_price = null;
+    }
+
     const { error: updateError } = await this.supabase
       .from('sellers')
       .update(updateData)
@@ -1625,6 +1634,13 @@ export class EnhancedAutoSyncService {
     if (val1 !== null) encryptedData.valuation_amount_1 = val1 * 10000;
     if (val2 !== null) encryptedData.valuation_amount_2 = val2 * 10000;
     if (val3 !== null) encryptedData.valuation_amount_3 = val3 * 10000;
+
+    // 固定資産税路線価を追加（円/㎡、万円変換不要）
+    const fixedAssetTaxRoadPriceNew = row['固定資産税路線価'];
+    const parsedFixedAssetTaxRoadPriceNew = this.parseNumeric(fixedAssetTaxRoadPriceNew);
+    if (parsedFixedAssetTaxRoadPriceNew !== null) {
+      encryptedData.fixed_asset_tax_road_price = parsedFixedAssetTaxRoadPriceNew;
+    }
 
     // UPSERT: 既存データがあれば更新、なければ挿入
     const { data: newSeller, error: upsertError } = await this.supabase
