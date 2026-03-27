@@ -652,12 +652,13 @@ router.put('/:id', async (req: Request, res: Response) => {
         }
       });
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error('Update seller error:', error);
     res.status(500).json({
       error: {
         code: 'UPDATE_SELLER_ERROR',
-        message: 'Failed to update seller',
+        message: error?.message || 'Failed to update seller',
+        detail: error?.message,
         retryable: true,
       },
     });
