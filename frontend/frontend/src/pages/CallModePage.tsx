@@ -1444,15 +1444,9 @@ const CallModePage = () => {
       setSaving(true);
       setError(null);
 
-      // 不通ステータスがある場合は売主データを更新
-      if (hasInquiryDate2026 && unreachableStatus) {
-        await api.put(`/api/sellers/${id}`, {
-          unreachableStatus: unreachableStatus,
-        });
-      }
-
-      // コミュニケーションフィールドを保存
+      // 不通・1番電話・コミュニケーションフィールドを保存（条件なしで常に保存）
       await api.put(`/api/sellers/${id}`, {
+        unreachableStatus: unreachableStatus || null,
         phoneContactPerson: editedPhoneContactPerson || null,
         preferredContactTime: editedPreferredContactTime || null,
         contactMethod: editedContactMethod || null,
@@ -5296,16 +5290,7 @@ HP：https://ifoo-oita.com/
               />
             </Box>
 
-            {/* 査定理由フィールド（読み取り専用・常時表示） */}
-            <TextField
-              label="査定理由（査定サイトから転記）"
-              value={seller.valuationReason || '未入力'}
-              fullWidth
-              multiline
-              minRows={2}
-              InputProps={{ readOnly: true }}
-              sx={{ mb: 2 }}
-            />
+            {/* 査定理由フィールド（読み取り専用・常時表示） - 保存ボタンの後に移動 */}
 
             {/* 保存ボタン（未変更時はグレー、変更あり時はオレンジで目立つ） */}
             {(() => {
@@ -5341,6 +5326,82 @@ HP：https://ifoo-oita.com/
                 </Button>
               );
             })()}
+
+            {/* 不通フィールド（コメント保存ボタンの直下） */}
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="subtitle2" gutterBottom>
+                不通
+                {seller?.inquiryDate && new Date(seller.inquiryDate) >= new Date('2026-01-01') && (
+                  <span style={{ color: 'red', marginLeft: 4 }}>*</span>
+                )}
+              </Typography>
+              <Box sx={{ display: 'flex', gap: 1 }}>
+                <Button
+                  variant={unreachableStatus === '不通' ? 'contained' : 'outlined'}
+                  color="error"
+                  size="small"
+                  onClick={() => setUnreachableStatus('不通')}
+                  sx={{ minWidth: 100 }}
+                >
+                  不通
+                </Button>
+                <Button
+                  variant={unreachableStatus === '通電OK' ? 'contained' : 'outlined'}
+                  color="primary"
+                  size="small"
+                  onClick={() => setUnreachableStatus('通電OK')}
+                  sx={{ minWidth: 100 }}
+                >
+                  通電OK
+                </Button>
+                {unreachableStatus && (
+                  <Button
+                    variant="outlined"
+                    color="inherit"
+                    size="small"
+                    onClick={() => setUnreachableStatus(null)}
+                    sx={{ minWidth: 60, color: '#bdbdbd', borderColor: '#e0e0e0' }}
+                  >
+                    クリア
+                  </Button>
+                )}
+              </Box>
+            </Box>
+
+            {/* 1番電話フィールド（不通の直下） */}
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="subtitle2" gutterBottom>
+                1番電話
+                {seller?.inquiryDate && new Date(seller.inquiryDate) >= new Date('2026-03-01') && unreachableStatus && (
+                  <span style={{ color: 'red', marginLeft: 4 }}>*</span>
+                )}
+              </Typography>
+              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                {activeEmployees.map((emp) => (
+                  <Button
+                    key={emp.initials || emp.name}
+                    variant={editedFirstCallPerson === (emp.initials || '') ? 'contained' : 'outlined'}
+                    color="primary"
+                    size="small"
+                    onClick={() => setEditedFirstCallPerson(emp.initials || '')}
+                    sx={{ minWidth: 60 }}
+                  >
+                    {emp.initials || emp.name}
+                  </Button>
+                ))}
+              </Box>
+            </Box>
+
+            {/* 査定理由フィールド（読み取り専用） */}
+            <TextField
+              label="査定理由（査定サイトから転記）"
+              value={seller.valuationReason || '未入力'}
+              fullWidth
+              multiline
+              minRows={2}
+              InputProps={{ readOnly: true }}
+              sx={{ mb: 2 }}
+            />
 
             {/* ステータス更新セクション */}
             <Typography variant="h6" gutterBottom>
@@ -5589,67 +5650,6 @@ HP：https://ifoo-oita.com/
                 </Grid>
               </Grid>
             </Paper>
-
-            {/* 1番電話フィールド */}
-            <Box sx={{ mb: 2 }}>
-              <Typography variant="subtitle2" gutterBottom>
-                1番電話
-                {/* 反響日付2026/3/1以降 かつ 不通入力済みの場合は必須表示 */}
-                {seller?.inquiryDate && new Date(seller.inquiryDate) >= new Date('2026-03-01') && unreachableStatus && (
-                  <span style={{ color: 'red', marginLeft: 4 }}>*</span>
-                )}
-              </Typography>
-              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                {activeEmployees.map((emp) => (
-                  <Button
-                    key={emp.initials || emp.name}
-                    variant={editedFirstCallPerson === (emp.initials || '') ? 'contained' : 'outlined'}
-                    color="primary"
-                    size="small"
-                    onClick={() => setEditedFirstCallPerson(emp.initials || '')}
-                    sx={{ minWidth: 60 }}
-                  >
-                    {emp.initials || emp.name}
-                  </Button>
-                ))}
-              </Box>
-            </Box>
-
-            {/* 不通フィールド（inquiry_date >= 2026-01-01の売主のみ表示） */}
-            {seller?.inquiryDate && new Date(seller.inquiryDate) >= new Date('2026-01-01') && (
-              <Box sx={{ mb: 2 }}>
-                <Typography variant="subtitle2" gutterBottom>
-                  不通 <span style={{ color: 'red' }}>*</span>
-                </Typography>
-                <Box sx={{ display: 'flex', gap: 1 }}>
-                  <Button
-                    variant={unreachableStatus === '不通' ? 'contained' : 'outlined'}
-                    color="error"
-                    size="small"
-                    onClick={() => setUnreachableStatus('不通')}
-                    sx={{ 
-                      minWidth: 100,
-                      maxWidth: 150,
-                    }}
-                  >
-                    不通
-                  </Button>
-                  <Button
-                    variant={unreachableStatus === '通電OK' ? 'contained' : 'outlined'}
-                    color="primary"
-                    size="small"
-                    onClick={() => setUnreachableStatus('通電OK')}
-                    sx={{ 
-                      minWidth: 100,
-                      maxWidth: 150,
-                    }}
-                  >
-                    通電OK
-                  </Button>
-                </Box>
-              </Box>
-            )}
-
 
             {/* コミュニケーション情報セクション */}
             <Box sx={{ mt: 3, mb: 3 }}>
