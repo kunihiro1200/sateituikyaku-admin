@@ -156,6 +156,19 @@ const RichTextCommentEditor = React.forwardRef<RichTextCommentEditorHandle, Rich
       handleInput();
     };
 
+    // キー入力時に太字コンテキストを自動解除するハンドラ
+    // contentEditableでは<b>タグ内にカーソルがあると入力が太字になるため、
+    // 文字入力キーが押された時点で太字状態なら解除する
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+      // 印刷可能文字（通常の文字入力）の場合のみ処理
+      if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        if (typeof document.queryCommandState === 'function' && document.queryCommandState('bold')) {
+          // 太字状態を解除してから文字を入力させる
+          document.execCommand('bold', false);
+        }
+      }
+    };
+
     useImperativeHandle(ref, () => ({
       insertAtCursor: (html: string) => {
         const editor = editorRef.current;
@@ -272,6 +285,7 @@ const RichTextCommentEditor = React.forwardRef<RichTextCommentEditorHandle, Rich
             onInput={handleInput}
             onFocus={handleFocus}
             onBlur={handleBlur}
+            onKeyDown={handleKeyDown}
             data-placeholder={placeholder}
             suppressContentEditableWarning
           />
