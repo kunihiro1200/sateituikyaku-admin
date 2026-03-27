@@ -1165,7 +1165,7 @@ export class EnhancedAutoSyncService {
 
     // 訪問関連フィールドを取得（正しいカラム名を使用）
     const visitAcquisitionDate = row['訪問取得日\n年/月/日'];  // 改行文字を含む
-    const visitDate = row['訪問日 Y/M/D'];
+    const visitDate = row['訪問日 \nY/M/D'];  // スペース+改行文字を含む
     const visitValuationAcquirer = row['訪問査定取得者'];
     const visitAssignee = row['営担'];
 
@@ -1438,7 +1438,7 @@ export class EnhancedAutoSyncService {
 
     // 訪問関連フィールドを取得（正しいカラム名を使用）
     const visitAcquisitionDate = row['訪問取得日\n年/月/日'];  // 改行文字を含む
-    const visitDate = row['訪問日 Y/M/D'];
+    const visitDate = row['訪問日 \nY/M/D'];  // スペース+改行文字を含む
     const visitValuationAcquirer = row['訪問査定取得者'];
     const visitAssignee = row['営担'];
 
