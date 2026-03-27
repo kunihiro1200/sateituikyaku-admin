@@ -35,32 +35,32 @@ export default function FrequentlyAskedSection({ data, editedData, onFieldChange
 
   return (
     <>
-      <Grid container spacing={2}>
+      <Grid container spacing={0.5}>
         {/* 内覧前伝達事項 */}
         {(isEditMode || data.pre_viewing_notes) && (
           <Grid item xs={12}>
-            <Box sx={{ bgcolor: '#fff3cd', p: 2, borderRadius: 1, border: '2px solid #ffc107' }}>
-              <Typography variant="h6" color="warning.dark" fontWeight="bold" gutterBottom sx={{ fontSize: '1.25rem' }}>
+            <Box sx={{ bgcolor: '#fff3cd', p: 1, borderRadius: 1, border: '2px solid #ffc107' }}>
+              <Typography variant="h6" color="warning.dark" fontWeight="bold" gutterBottom sx={{ fontSize: '0.75rem' }}>
                 ⚠️ 内覧前伝達事項
               </Typography>
               {isEditMode ? (
                 <TextField
                   fullWidth
                   multiline
-                  rows={4}
+                  rows={2}
                   value={getValue('pre_viewing_notes')}
                   onChange={(e) => onFieldChange('pre_viewing_notes', e.target.value)}
                   placeholder="内覧前に伝えるべき事項を入力してください"
                   sx={{ 
                     bgcolor: 'white',
-                    '& .MuiInputBase-input': { fontSize: '1.1rem', lineHeight: 1.8 }
+                    '& .MuiInputBase-input': { fontSize: '0.75rem', lineHeight: 1.8 }
                   }}
                 />
               ) : (
                 <Typography 
                   variant="body1" 
                   sx={{ 
-                    fontSize: '1.1rem', 
+                    fontSize: '0.75rem', 
                     lineHeight: 1.8,
                     whiteSpace: 'pre-wrap',
                     wordBreak: 'break-word'
@@ -77,7 +77,7 @@ export default function FrequentlyAskedSection({ data, editedData, onFieldChange
         {(isEditMode || data.property_tax) && (
           <Grid item xs={12} sm={6} md={4}>
             <Box>
-              <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '1rem', color: 'text.primary', mb: 0.5 }}>
+              <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '0.75rem', color: 'text.primary', mb: 0.25 }}>
                 固定資産税
               </Typography>
               {isEditMode ? (
@@ -93,7 +93,7 @@ export default function FrequentlyAskedSection({ data, editedData, onFieldChange
                   }}
                 />
               ) : (
-                <Typography variant="body1">
+                <Typography variant="body2">
                   {data.property_tax ? `¥${data.property_tax.toLocaleString()}` : '-'}
                 </Typography>
               )}
@@ -105,7 +105,7 @@ export default function FrequentlyAskedSection({ data, editedData, onFieldChange
         {(isEditMode || data.management_fee) && (
           <Grid item xs={12} sm={6} md={4}>
             <Box>
-              <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '1rem', color: 'text.primary', mb: 0.5 }}>
+              <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '0.75rem', color: 'text.primary', mb: 0.25 }}>
                 管理費
               </Typography>
               {isEditMode ? (
@@ -121,7 +121,7 @@ export default function FrequentlyAskedSection({ data, editedData, onFieldChange
                   }}
                 />
               ) : (
-                <Typography variant="body1">
+                <Typography variant="body2">
                   {data.management_fee ? `¥${data.management_fee.toLocaleString()}` : '-'}
                 </Typography>
               )}
@@ -133,7 +133,7 @@ export default function FrequentlyAskedSection({ data, editedData, onFieldChange
         {(isEditMode || data.reserve_fund) && (
           <Grid item xs={12} sm={6} md={4}>
             <Box>
-              <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '1rem', color: 'text.primary', mb: 0.5 }}>
+              <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '0.75rem', color: 'text.primary', mb: 0.25 }}>
                 積立金
               </Typography>
               {isEditMode ? (
@@ -149,7 +149,7 @@ export default function FrequentlyAskedSection({ data, editedData, onFieldChange
                   }}
                 />
               ) : (
-                <Typography variant="body1">
+                <Typography variant="body2">
                   {data.reserve_fund ? `¥${data.reserve_fund.toLocaleString()}` : '-'}
                 </Typography>
               )}
@@ -161,7 +161,7 @@ export default function FrequentlyAskedSection({ data, editedData, onFieldChange
         {(isEditMode || data.parking) && (
           <Grid item xs={12} sm={6}>
             <Box>
-              <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '1rem', color: 'text.primary', mb: 0.5 }}>
+              <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '0.75rem', color: 'text.primary', mb: 0.25 }}>
                 駐車場
               </Typography>
               {isEditMode ? (
@@ -173,7 +173,7 @@ export default function FrequentlyAskedSection({ data, editedData, onFieldChange
                   placeholder="駐車場情報を入力してください"
                 />
               ) : (
-                <Typography variant="body1">{data.parking}</Typography>
+                <Typography variant="body2">{data.parking}</Typography>
               )}
             </Box>
           </Grid>
@@ -183,7 +183,7 @@ export default function FrequentlyAskedSection({ data, editedData, onFieldChange
         {(isEditMode || data.delivery) && (
           <Grid item xs={12} sm={6}>
             <Box>
-              <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '1rem', color: 'text.primary', mb: 0.5 }}>
+              <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '0.75rem', color: 'text.primary', mb: 0.25 }}>
                 引渡し
               </Typography>
               {isEditMode ? (
@@ -195,7 +195,7 @@ export default function FrequentlyAskedSection({ data, editedData, onFieldChange
                   placeholder="引渡し情報を入力してください"
                 />
               ) : (
-                <Typography variant="body1">{data.delivery}</Typography>
+                <Typography variant="body2">{data.delivery}</Typography>
               )}
             </Box>
           </Grid>

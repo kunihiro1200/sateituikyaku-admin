@@ -43,9 +43,9 @@ export default function PropertyDetailsSection({
   return (
     <Box>
       {isEditMode ? (
-        <Grid container spacing={2}>
+        <Grid container spacing={0.5}>
           <Grid item xs={6}>
-            <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '1rem', color: 'text.primary', mb: 0.5 }}>
+            <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '0.75rem', color: 'text.primary', mb: 0.25 }}>
               土地面積
             </Typography>
             <TextField
@@ -58,7 +58,7 @@ export default function PropertyDetailsSection({
             />
           </Grid>
           <Grid item xs={6}>
-            <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '1rem', color: 'text.primary', mb: 0.5 }}>
+            <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '0.75rem', color: 'text.primary', mb: 0.25 }}>
               建物面積
             </Typography>
             <TextField
@@ -71,7 +71,7 @@ export default function PropertyDetailsSection({
             />
           </Grid>
           <Grid item xs={6}>
-            <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '1rem', color: 'text.primary', mb: 0.5 }}>
+            <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '0.75rem', color: 'text.primary', mb: 0.25 }}>
               専有面積
             </Typography>
             <TextField
@@ -84,7 +84,7 @@ export default function PropertyDetailsSection({
             />
           </Grid>
           <Grid item xs={6}>
-            <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '1rem', color: 'text.primary', mb: 0.5 }}>
+            <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '0.75rem', color: 'text.primary', mb: 0.25 }}>
               構造
             </Typography>
             <TextField
@@ -95,7 +95,7 @@ export default function PropertyDetailsSection({
             />
           </Grid>
           <Grid item xs={6}>
-            <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '1rem', color: 'text.primary', mb: 0.5 }}>
+            <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '0.75rem', color: 'text.primary', mb: 0.25 }}>
               新築年月
             </Typography>
             <TextField
@@ -106,7 +106,7 @@ export default function PropertyDetailsSection({
             />
           </Grid>
           <Grid item xs={6}>
-            <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '1rem', color: 'text.primary', mb: 0.5 }}>
+            <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '0.75rem', color: 'text.primary', mb: 0.25 }}>
               間取り
             </Typography>
             <TextField
@@ -117,7 +117,7 @@ export default function PropertyDetailsSection({
             />
           </Grid>
           <Grid item xs={6}>
-            <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '1rem', color: 'text.primary', mb: 0.5 }}>
+            <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '0.75rem', color: 'text.primary', mb: 0.25 }}>
               契約日
             </Typography>
             <TextField
@@ -130,7 +130,7 @@ export default function PropertyDetailsSection({
             />
           </Grid>
           <Grid item xs={6}>
-            <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '1rem', color: 'text.primary', mb: 0.5 }}>
+            <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '0.75rem', color: 'text.primary', mb: 0.25 }}>
               決済日
             </Typography>
             <TextField
@@ -144,68 +144,68 @@ export default function PropertyDetailsSection({
           </Grid>
         </Grid>
       ) : (
-        <Grid container spacing={2}>
+        <Grid container spacing={0.5}>
           <Grid item xs={6}>
-            <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '1rem', color: 'text.primary', mb: 0.5 }}>
+            <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '0.75rem', color: 'text.primary', mb: 0.25 }}>
               土地面積
             </Typography>
-            <Typography variant="body1">
+            <Typography variant="body2">
               {formatValue(data.land_area, '㎡')}
             </Typography>
           </Grid>
           <Grid item xs={6}>
-            <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '1rem', color: 'text.primary', mb: 0.5 }}>
+            <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '0.75rem', color: 'text.primary', mb: 0.25 }}>
               建物面積
             </Typography>
-            <Typography variant="body1">
+            <Typography variant="body2">
               {formatValue(data.building_area, '㎡')}
             </Typography>
           </Grid>
           <Grid item xs={6}>
-            <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '1rem', color: 'text.primary', mb: 0.5 }}>
+            <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '0.75rem', color: 'text.primary', mb: 0.25 }}>
               専有面積
             </Typography>
-            <Typography variant="body1">
+            <Typography variant="body2">
               {formatValue(data.exclusive_area, '㎡')}
             </Typography>
           </Grid>
           <Grid item xs={6}>
-            <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '1rem', color: 'text.primary', mb: 0.5 }}>
+            <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '0.75rem', color: 'text.primary', mb: 0.25 }}>
               構造
             </Typography>
-            <Typography variant="body1">
+            <Typography variant="body2">
               {formatValue(data.structure)}
             </Typography>
           </Grid>
           <Grid item xs={6}>
-            <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '1rem', color: 'text.primary', mb: 0.5 }}>
+            <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '0.75rem', color: 'text.primary', mb: 0.25 }}>
               新築年月
             </Typography>
-            <Typography variant="body1">
+            <Typography variant="body2">
               {formatValue(data.construction_year_month)}
             </Typography>
           </Grid>
           <Grid item xs={6}>
-            <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '1rem', color: 'text.primary', mb: 0.5 }}>
+            <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '0.75rem', color: 'text.primary', mb: 0.25 }}>
               間取り
             </Typography>
-            <Typography variant="body1">
+            <Typography variant="body2">
               {formatValue(data.floor_plan)}
             </Typography>
           </Grid>
           <Grid item xs={6}>
-            <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '1rem', color: 'text.primary', mb: 0.5 }}>
+            <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '0.75rem', color: 'text.primary', mb: 0.25 }}>
               契約日
             </Typography>
-            <Typography variant="body1">
+            <Typography variant="body2">
               {formatValue(data.contract_date)}
             </Typography>
           </Grid>
           <Grid item xs={6}>
-            <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '1rem', color: 'text.primary', mb: 0.5 }}>
+            <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '0.75rem', color: 'text.primary', mb: 0.25 }}>
               決済日
             </Typography>
-            <Typography variant="body1">
+            <Typography variant="body2">
               {formatValue(data.settlement_date)}
             </Typography>
           </Grid>

@@ -872,7 +872,7 @@ export default function PropertyListingDetailPage() {
         {/* メインコンテンツ */}
         <Box sx={{ flex: 1 }}>
       {/* Header */}
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
           <IconButton onClick={handleBack} size="large">
             <ArrowBackIcon />
@@ -1067,7 +1067,7 @@ export default function PropertyListingDetailPage() {
                     sx={{
                       color: '#d32f2f',
                       fontWeight: 'bold',
-                      fontSize: '0.8rem',
+                      fontSize: '0.75rem',
                       letterSpacing: '0.05em',
                       textAlign: 'center',
                       whiteSpace: 'nowrap',
@@ -1138,8 +1138,8 @@ export default function PropertyListingDetailPage() {
       </Box>
 
       {/* Property Header - Key Information */}
-      <Paper sx={{ p: 1, mb: 2, bgcolor: '#f5f5f5', position: 'sticky', top: 48, zIndex: 100 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
+      <Paper sx={{ p: 1, mb: 1, bgcolor: '#f5f5f5', position: 'sticky', top: 48, zIndex: 100 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.25 }}>
           <Typography variant="body1" color="text.secondary" fontWeight="bold">物件概要</Typography>
           <Box sx={{ display: 'flex', gap: 1 }}>
             {isHeaderEditMode ? (
@@ -1171,7 +1171,7 @@ export default function PropertyListingDetailPage() {
               />
             ) : (
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                <Typography variant="body2" fontWeight="medium" sx={{ fontSize: '0.8rem' }}>
+                <Typography variant="body2" fontWeight="medium" sx={{ fontSize: '0.75rem' }}>
                   {data.address || data.display_address || '-'}
                 </Typography>
                 {(data.address || data.display_address) && (
@@ -1196,7 +1196,7 @@ export default function PropertyListingDetailPage() {
                 sx={{ mt: 0.5 }}
               />
             ) : (
-              <Typography variant="body2" fontWeight="medium" sx={{ fontSize: '0.8rem' }}>
+              <Typography variant="body2" fontWeight="medium" sx={{ fontSize: '0.75rem' }}>
                 {data.seller_name || '-'}
               </Typography>
             )}
@@ -1222,7 +1222,7 @@ export default function PropertyListingDetailPage() {
                 </Select>
               </FormControl>
             ) : (
-              <Typography variant="body2" fontWeight="medium" sx={{ fontSize: '0.8rem' }}>
+              <Typography variant="body2" fontWeight="medium" sx={{ fontSize: '0.75rem' }}>
                 {getDisplayStatus(data.atbb_status) || '-'}
               </Typography>
             )}
@@ -1245,7 +1245,7 @@ export default function PropertyListingDetailPage() {
                 </Select>
               </FormControl>
             ) : (
-              <Typography variant="body2" fontWeight="medium" sx={{ fontSize: '0.8rem' }}>
+              <Typography variant="body2" fontWeight="medium" sx={{ fontSize: '0.75rem' }}>
                 {data.property_type || '-'}
               </Typography>
             )}
@@ -1261,7 +1261,7 @@ export default function PropertyListingDetailPage() {
                 sx={{ mt: 0.5 }}
               />
             ) : (
-              <Typography variant="body2" fontWeight="medium" sx={{ fontSize: '0.8rem' }}>
+              <Typography variant="body2" fontWeight="medium" sx={{ fontSize: '0.75rem' }}>
                 {data.current_status || '-'}
               </Typography>
             )}
@@ -1277,7 +1277,7 @@ export default function PropertyListingDetailPage() {
                 sx={{ mt: 0.5 }}
               />
             ) : (
-              <Typography variant="body2" fontWeight="medium" sx={{ fontSize: '0.8rem' }}>
+              <Typography variant="body2" fontWeight="medium" sx={{ fontSize: '0.75rem' }}>
                 {data.sales_assignee || '-'}
               </Typography>
             )}
@@ -1295,7 +1295,7 @@ export default function PropertyListingDetailPage() {
                 InputLabelProps={{ shrink: true }}
               />
             ) : (
-              <Typography variant="body2" fontWeight="medium" sx={{ fontSize: '0.8rem' }}>
+              <Typography variant="body2" fontWeight="medium" sx={{ fontSize: '0.75rem' }}>
                 {formatDisplayDate(data.distribution_date)}
               </Typography>
             )}
@@ -1399,8 +1399,8 @@ export default function PropertyListingDetailPage() {
                     特記・備忘録
                   </Typography>
                 </Box>
-                <Box sx={{ mb: 2 }}>
-                  <Typography variant="body2" color="text.secondary" fontWeight="bold" sx={{ fontSize: '1rem' }}>特記</Typography>
+                <Box sx={{ mb: 1 }}>
+                  <Typography variant="body2" color="text.secondary" fontWeight="bold" sx={{ fontSize: '0.75rem' }}>特記</Typography>
                   <TextField
                     fullWidth
                     multiline
@@ -1408,11 +1408,11 @@ export default function PropertyListingDetailPage() {
                     value={editedData.special_notes !== undefined ? editedData.special_notes : (data.special_notes || '')}
                     onChange={(e) => handleFieldChange('special_notes', e.target.value)}
                     placeholder="特記事項を入力してください"
-                    sx={{ '& .MuiInputBase-input': { fontSize: '0.8rem', lineHeight: 1.8 } }}
+                    sx={{ '& .MuiInputBase-input': { fontSize: '0.75rem', lineHeight: 1.8 } }}
                   />
                 </Box>
                 <Box>
-                  <Typography variant="body2" color="text.secondary" fontWeight="bold" sx={{ fontSize: '1rem' }}>備忘録</Typography>
+                  <Typography variant="body2" color="text.secondary" fontWeight="bold" sx={{ fontSize: '0.75rem' }}>備忘録</Typography>
                   <TextField
                     fullWidth
                     multiline
@@ -1420,7 +1420,7 @@ export default function PropertyListingDetailPage() {
                     value={editedData.memo !== undefined ? editedData.memo : (data.memo || '')}
                     onChange={(e) => handleFieldChange('memo', e.target.value)}
                     placeholder="備忘録を入力してください"
-                    sx={{ '& .MuiInputBase-input': { fontSize: '0.8rem', lineHeight: 1.8 } }}
+                    sx={{ '& .MuiInputBase-input': { fontSize: '0.75rem', lineHeight: 1.8 } }}
                   />
                 </Box>
                 <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end' }}>
@@ -1470,7 +1470,7 @@ export default function PropertyListingDetailPage() {
                 onCancel={handleCancelViewingInfo}
                 hasChanges={Object.keys(editedData).length > 0}
               >
-                <Grid container spacing={1}>
+                <Grid container spacing={0.5}>
                   {(isViewingInfoEditMode || data.viewing_key) && (
                     <Grid item xs={12}>
                       <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.75rem', color: 'text.secondary', mb: 0.25 }}>内覧時（鍵等）</Typography>
@@ -1503,7 +1503,7 @@ export default function PropertyListingDetailPage() {
                   )}
                   {(isViewingInfoEditMode || data.viewing_notes) && (
                     <Grid item xs={12}>
-                      <Box sx={{ bgcolor: '#e3f2fd', p: 2, borderRadius: 1, border: '2px solid #2196f3' }}>
+                      <Box sx={{ bgcolor: '#e3f2fd', p: 1, borderRadius: 1, border: '2px solid #2196f3' }}>
                         <Typography variant="subtitle2" color="primary.dark" fontWeight="bold" gutterBottom>
                           📝 内覧の時の伝達事項
                         </Typography>
@@ -1516,14 +1516,14 @@ export default function PropertyListingDetailPage() {
                             onChange={(e) => handleFieldChange('viewing_notes', e.target.value)}
                             sx={{ 
                               bgcolor: 'white',
-                              '& .MuiInputBase-input': { fontSize: '0.85rem', lineHeight: 1.8 }
+                              '& .MuiInputBase-input': { fontSize: '0.75rem', lineHeight: 1.8 }
                             }}
                           />
                         ) : (
                           <Typography 
                             variant="body1"
                             sx={{ 
-                              fontSize: '0.85rem', 
+                              fontSize: '0.75rem', 
                               lineHeight: 1.8,
                               whiteSpace: 'pre-wrap',
                               wordBreak: 'break-word'
@@ -1579,10 +1579,10 @@ export default function PropertyListingDetailPage() {
                 onCancel={handleCancelBasicInfo}
                 hasChanges={Object.keys(editedData).length > 0}
               >
-            <Grid container spacing={1}>
+            <Grid container spacing={0.5}>
               <Grid item xs={6}>
                 <Typography variant="body1" color="text.secondary" sx={{ fontSize: '0.75rem', fontWeight: 'bold' }}>物件番号</Typography>
-                <Typography variant="h6" fontWeight="bold" sx={{ fontSize: '1.25rem' }}>{data.property_number}</Typography>
+                <Typography variant="h6" fontWeight="bold" sx={{ fontSize: '0.75rem' }}>{data.property_number}</Typography>
               </Grid>
               <Grid item xs={6}>
                 <Typography variant="body1" color="text.secondary" sx={{ fontSize: '0.75rem', fontWeight: 'bold' }}>担当</Typography>
@@ -1592,10 +1592,10 @@ export default function PropertyListingDetailPage() {
                     size="small"
                     value={editedData.sales_assignee !== undefined ? editedData.sales_assignee : (data.sales_assignee || '')}
                     onChange={(e) => handleFieldChange('sales_assignee', e.target.value)}
-                    sx={{ '& .MuiInputBase-input': { fontSize: '0.85rem' } }}
+                    sx={{ '& .MuiInputBase-input': { fontSize: '0.75rem' } }}
                   />
                 ) : (
-                  <Typography variant="h6" sx={{ fontSize: '0.85rem' }}>{data.sales_assignee || '-'}</Typography>
+                  <Typography variant="subtitle2" sx={{ fontSize: '0.75rem' }}>{data.sales_assignee || '-'}</Typography>
                 )}
               </Grid>
               <Grid item xs={6}>
@@ -1672,7 +1672,7 @@ export default function PropertyListingDetailPage() {
                 )}
                 {!isBasicInfoEditMode && data.display_address && data.address && data.display_address !== data.address && (
                   <Box sx={{ mt: 0.5 }}>
-                    <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '0.85rem', color: 'text.secondary', mb: 0.25 }}>住居表示</Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '0.75rem', color: 'text.secondary', mb: 0.25 }}>住居表示</Typography>
                     <Typography variant="body2" color="text.secondary">{data.display_address}</Typography>
                   </Box>
                 )}
@@ -1918,7 +1918,7 @@ export default function PropertyListingDetailPage() {
           </Box>
 
           {/* 6. 売主・買主情報 + 手数料情報 */}
-          <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 2, mb: 2, p: 2,
+          <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 2, mb: 1, p: 2,
             bgcolor: '#fce4ec', borderRadius: 2, border: '1px solid #f48fb1' }}>
             {/* 売主・買主情報 */}
             <Box sx={{ flex: { xs: '1 1 100%', md: '0 0 50%' } }}>
@@ -1926,9 +1926,9 @@ export default function PropertyListingDetailPage() {
                 onEditToggle={() => setIsSellerBuyerEditMode(!isSellerBuyerEditMode)}
                 onSave={handleSaveSellerBuyer} onCancel={handleCancelSellerBuyer}
                 hasChanges={Object.keys(editedData).length > 0}>
-                <Box sx={{ mb: 3 }}>
+                <Box sx={{ mb: 1 }}>
                   <Typography variant="subtitle2" fontWeight="bold" gutterBottom>売主</Typography>
-                  <Grid container spacing={1}>
+                  <Grid container spacing={0.5}>
                     {(isSellerBuyerEditMode || data.seller_name) && (
                       <Grid item xs={12}>
                         <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.75rem', color: 'text.secondary', mb: 0.25 }}>名前</Typography>
@@ -1983,7 +1983,7 @@ export default function PropertyListingDetailPage() {
                 </Box>
                 <Box>
                   <Typography variant="subtitle2" fontWeight="bold" gutterBottom>買主</Typography>
-                  <Grid container spacing={1}>
+                  <Grid container spacing={0.5}>
                     {(isSellerBuyerEditMode || data.buyer_name) && (
                       <Grid item xs={12}>
                         <Typography variant="body2" color="text.secondary" fontWeight="bold">名前</Typography>
@@ -2060,7 +2060,7 @@ export default function PropertyListingDetailPage() {
                 <Box sx={{ mb: 1, pb: 0.5, borderBottom: `1px solid ${SECTION_COLORS.property.main}` }}>
                   <Typography variant="subtitle2" fontWeight="bold" sx={{ color: SECTION_COLORS.property.main }}>手数料情報</Typography>
                 </Box>
-                <Grid container spacing={1}>
+                <Grid container spacing={0.5}>
                   <Grid item xs={6}>
                     <Typography variant="body2" color="text.secondary" fontWeight="bold">手数料（計）</Typography>
                     <Typography variant="body2">{data.total_commission ? `¥${data.total_commission.toLocaleString()}` : '-'}</Typography>
@@ -2089,7 +2089,7 @@ export default function PropertyListingDetailPage() {
                 <Box sx={{ mb: 1, pb: 0.5, borderBottom: `1px solid ${SECTION_COLORS.property.main}` }}>
                   <Typography variant="subtitle2" fontWeight="bold" sx={{ color: SECTION_COLORS.property.main }}>買付情報</Typography>
                 </Box>
-                <Grid container spacing={1}>
+                <Grid container spacing={0.5}>
                   <Grid item xs={6}>
                     <Typography variant="body2" color="text.secondary" fontWeight="bold">買付日</Typography>
                     <Typography variant="body2">{data.offer_date || '-'}</Typography>
@@ -2121,7 +2121,7 @@ export default function PropertyListingDetailPage() {
               <Box sx={{ mb: 1, pb: 0.5, borderBottom: `1px solid ${SECTION_COLORS.property.main}` }}>
                 <Typography variant="subtitle2" fontWeight="bold" sx={{ color: SECTION_COLORS.property.main }}>添付画像・資料</Typography>
               </Box>
-              <Grid container spacing={1}>
+              <Grid container spacing={0.5}>
                 {data.image_url && (
                   <Grid item xs={12} sm={4}>
                     <Box sx={{ border: '1px solid #ddd', borderRadius: 1, p: 2, textAlign: 'center' }}>

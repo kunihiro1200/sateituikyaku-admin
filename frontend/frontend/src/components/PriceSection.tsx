@@ -118,7 +118,7 @@ export default function PriceSection({
   return (
     <Box sx={{ backgroundColor: '#f5f5f5', p: 2, borderRadius: 1 }}>
       {isEditMode ? (
-        <Grid container spacing={2}>
+        <Grid container spacing={0.5}>
           <Grid item xs={12}>
             <Typography variant="body2" color="text.secondary" gutterBottom>
               売買価格
@@ -133,7 +133,7 @@ export default function PriceSection({
               }}
               sx={{
                 '& .MuiInputBase-input': {
-                  fontSize: '24px',
+                  fontSize: '1rem',
                   fontWeight: 'bold',
                   color: 'primary.main',
                 },
@@ -148,7 +148,7 @@ export default function PriceSection({
             <TextField
               fullWidth
               multiline
-              rows={3}
+              rows={2}
               value={displayPriceReductionHistory || ''}
               onChange={(e) => onFieldChange('price_reduction_history', e.target.value)}
               placeholder="値下げ履歴を入力してください"
@@ -170,21 +170,21 @@ export default function PriceSection({
         </Grid>
       ) : (
         <Box>
-          <Box sx={{ mb: 2 }}>
-            <Typography variant="body1" color="text.secondary" gutterBottom sx={{ fontSize: '1.1rem', fontWeight: 'bold' }}>
+          <Box sx={{ mb: 1 }}>
+            <Typography variant="body1" color="text.secondary" gutterBottom sx={{ fontSize: '0.75rem', fontWeight: 'bold' }}>
               売買価格
             </Typography>
-            <Typography variant="h3" fontWeight="bold" color="primary.main" sx={{ fontSize: '2.5rem' }}>
+            <Typography variant="h5" fontWeight="bold" color="primary.main" sx={{ fontSize: '1.6rem' }}>
               {formatPrice(displaySalesPrice)}
             </Typography>
           </Box>
           {showMonthlyPayment && monthlyPayment && (
-            <Box sx={{ mb: 2 }}>
-              <Typography variant="body1" color="text.secondary" gutterBottom sx={{ fontSize: '1.1rem', fontWeight: 'bold' }}>
+            <Box sx={{ mb: 1 }}>
+              <Typography variant="body1" color="text.secondary" gutterBottom sx={{ fontSize: '0.75rem', fontWeight: 'bold' }}>
                 月々ローン支払い
               </Typography>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <Typography variant="h4" fontWeight="medium" sx={{ fontSize: '1.8rem', color: '#1976d2' }}>
+                <Typography variant="h6" fontWeight="medium" sx={{ fontSize: '1.2rem', color: '#1976d2' }}>
                   ¥{toFullWidth(monthlyPayment)}/月
                 </Typography>
                 <Tooltip title={copiedMonthly ? 'コピーしました' : '数字をコピー'}>
@@ -208,20 +208,20 @@ export default function PriceSection({
               </Typography>
             </Box>
           )}
-          <Box sx={{ mb: 2 }}>
-            <Typography variant="body1" color="text.secondary" gutterBottom sx={{ fontSize: '1.1rem', fontWeight: 'bold' }}>
+          <Box sx={{ mb: 1 }}>
+            <Typography variant="body1" color="text.secondary" gutterBottom sx={{ fontSize: '0.75rem', fontWeight: 'bold' }}>
               値下げ履歴
             </Typography>
-            <Typography variant="body1" sx={{ whiteSpace: 'pre-line', fontSize: '1.1rem' }}>
+            <Typography variant="body2" sx={{ whiteSpace: 'pre-line', fontSize: '0.75rem' }}>
               {displayPriceReductionHistory || '-'}
             </Typography>
           </Box>
           {displayScheduledDate && (
             <Box>
-              <Typography variant="body1" color="text.secondary" gutterBottom sx={{ fontSize: '1.1rem', fontWeight: 'bold' }}>
+              <Typography variant="body1" color="text.secondary" gutterBottom sx={{ fontSize: '0.75rem', fontWeight: 'bold' }}>
                 値下げ予約日
               </Typography>
-              <Typography variant="body1" sx={{ fontSize: '1.1rem', color: new Date(displayScheduledDate) <= new Date() ? '#d32f2f' : 'inherit', fontWeight: new Date(displayScheduledDate) <= new Date() ? 'bold' : 'normal' }}>
+              <Typography variant="body2" sx={{ fontSize: '0.75rem', color: new Date(displayScheduledDate) <= new Date() ? '#d32f2f' : 'inherit', fontWeight: new Date(displayScheduledDate) <= new Date() ? 'bold' : 'normal' }}>
                 {displayScheduledDate}
               </Typography>
             </Box>
@@ -242,7 +242,7 @@ export default function PriceSection({
                 '&:hover': {
                   backgroundColor: isPriceChanged && scheduledNotifications.length === 0 ? '#b71c1c' : '#1565c0',
                 },
-                fontSize: '1.1rem',
+                fontSize: '0.75rem',
                 fontWeight: 'bold',
                 animation: isPriceChanged && scheduledNotifications.length === 0 ? 'pulse 2s infinite' : 'none',
                 '@keyframes pulse': {
@@ -266,7 +266,7 @@ export default function PriceSection({
           <Typography variant="body2" color="text.secondary" gutterBottom>
             以下の内容をGoogle Chatに送信します：
           </Typography>
-          <Box sx={{ mt: 1, p: 2, bgcolor: '#f5f5f5', borderRadius: 1, whiteSpace: 'pre-line', fontFamily: 'monospace', fontSize: '0.9rem' }}>
+          <Box sx={{ mt: 1, p: 2, bgcolor: '#f5f5f5', borderRadius: 1, whiteSpace: 'pre-line', fontFamily: 'monospace', fontSize: '0.75rem' }}>
             {`【値下げ通知】\n${getLatestPriceReduction() || ''}\n${address || ''}\n${window.location.origin}/property-listings/${propertyNumber}`}
           </Box>
         </DialogContent>

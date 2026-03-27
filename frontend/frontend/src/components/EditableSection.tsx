@@ -45,13 +45,13 @@ const EditableSection: React.FC<EditableSectionProps> = ({
   };
 
   return (
-    <Paper sx={{ p: 2, mb: 2, maxWidth }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
-        <Typography variant="h6" sx={{ fontSize: '1.25rem', fontWeight: 'bold' }}>{title}</Typography>
+    <Paper sx={{ p: 1, mb: 1, maxWidth }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.25 }}>
+        <Typography variant="subtitle2" sx={{ fontSize: '0.75rem', fontWeight: 'bold' }}>{title}</Typography>
         <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
           {!isEditMode ? (
-            <IconButton onClick={onEditToggle} size="medium" title="編集">
-              <EditIcon sx={{ fontSize: '1.5rem' }} />
+            <IconButton onClick={onEditToggle} size="small" title="編集">
+              <EditIcon sx={{ fontSize: '1rem' }} />
             </IconButton>
           ) : (
             <>
@@ -63,7 +63,7 @@ const EditableSection: React.FC<EditableSectionProps> = ({
                 startIcon={isSaving ? <CircularProgress size={16} color="inherit" /> : <SaveIcon />}
                 sx={{
                   fontWeight: 'bold',
-                  fontSize: '0.9rem',
+                  fontSize: '0.75rem',
                   px: 2,
                   ...(hasChanges && !isSaving ? {
                     backgroundColor: '#d32f2f',
@@ -81,11 +81,11 @@ const EditableSection: React.FC<EditableSectionProps> = ({
               </Button>
               <IconButton
                 onClick={onCancel}
-                size="medium"
+                size="small"
                 disabled={isSaving}
                 title="キャンセル"
               >
-                <CancelIcon sx={{ fontSize: '1.5rem' }} />
+                <CancelIcon sx={{ fontSize: '1rem' }} />
               </IconButton>
             </>
           )}
