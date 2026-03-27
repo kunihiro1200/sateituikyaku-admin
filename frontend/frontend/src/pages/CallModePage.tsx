@@ -2760,8 +2760,8 @@ HP：https://ifoo-oita.com/
         <Alert severity="error" sx={{ mb: 2 }}>
           {error}
         </Alert>
-        <Button variant="contained" onClick={handleBack}>
-          売主詳細ページに戻る
+        <Button variant="contained" onClick={() => navigate(-1)}>
+          元のページに戻る
         </Button>
       </Container>
     );
