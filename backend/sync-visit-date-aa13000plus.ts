@@ -87,7 +87,7 @@ async function main() {
 
       // 更新実行
       await syncService.updateSingleSeller(sellerNumber, row);
-      console.log(`✅ ${sellerNumber}: 同期完了 (訪問日: ${visitDate})`);
+      console.log(`✅ ${sellerNumber}: 同期完了 (訪問日スプシ値: ${row['訪問日 Y/M/D']})`);
       successCount++;
     } catch (error: any) {
       console.error(`❌ ${sellerNumber}: エラー - ${error.message}`);

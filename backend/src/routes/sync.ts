@@ -818,6 +818,9 @@ router.post('/seller-row', async (req: Request, res: Response) => {
     const row = req.body;
     const sellerNumber = row['売主番号'];
 
+    // デバッグ: 訪問日フィールドをログ出力
+    console.log(`[seller-row] ${sellerNumber} 訪問日 Y/M/D:`, row['訪問日 Y/M/D'], '(type:', typeof row['訪問日 Y/M/D'], ')');
+
     if (!sellerNumber || typeof sellerNumber !== 'string' || !sellerNumber.startsWith('AA')) {
       return res.status(400).json({ success: false, error: '売主番号が不正です' });
     }
