@@ -1473,7 +1473,7 @@ export default function PropertyListingDetailPage() {
                 <Grid container spacing={0.5}>
                   {(isViewingInfoEditMode || data.viewing_key) && (
                     <Grid item xs={12}>
-                      <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.75rem', color: 'text.secondary', mb: 0.25 }}>内覧時（鍵等）</Typography>
+                      <Typography variant="body2" sx={{ fontWeight: 400, fontSize: '0.7rem', color: 'text.secondary', mb: 0 }}>内覧時（鍵等）</Typography>
                       {isViewingInfoEditMode ? (
                         <TextField
                           fullWidth
@@ -1482,13 +1482,13 @@ export default function PropertyListingDetailPage() {
                           onChange={(e) => handleFieldChange('viewing_key', e.target.value)}
                         />
                       ) : (
-                        <Typography variant="body2">{data.viewing_key}</Typography>
+                        <Typography variant="body2" sx={{ fontWeight: 600 }}>{data.viewing_key}</Typography>
                       )}
                     </Grid>
                   )}
                   {(isViewingInfoEditMode || data.viewing_parking) && (
                     <Grid item xs={12}>
-                      <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.75rem', color: 'text.secondary', mb: 0.25 }}>内覧時駐車場</Typography>
+                      <Typography variant="body2" sx={{ fontWeight: 400, fontSize: '0.7rem', color: 'text.secondary', mb: 0 }}>内覧時駐車場</Typography>
                       {isViewingInfoEditMode ? (
                         <TextField
                           fullWidth
@@ -1497,7 +1497,7 @@ export default function PropertyListingDetailPage() {
                           onChange={(e) => handleFieldChange('viewing_parking', e.target.value)}
                         />
                       ) : (
-                        <Typography variant="body2">{data.viewing_parking}</Typography>
+                        <Typography variant="body2" sx={{ fontWeight: 600 }}>{data.viewing_parking}</Typography>
                       )}
                     </Grid>
                   )}
@@ -1537,7 +1537,7 @@ export default function PropertyListingDetailPage() {
                   )}
                   {(isViewingInfoEditMode || data.viewing_available_date) && (
                     <Grid item xs={6}>
-                      <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.75rem', color: 'text.secondary', mb: 0.25 }}>内覧可能日</Typography>
+                      <Typography variant="body2" sx={{ fontWeight: 400, fontSize: '0.7rem', color: 'text.secondary', mb: 0 }}>内覧可能日</Typography>
                       {isViewingInfoEditMode ? (
                         <TextField
                           fullWidth
@@ -1546,13 +1546,13 @@ export default function PropertyListingDetailPage() {
                           onChange={(e) => handleFieldChange('viewing_available_date', e.target.value)}
                         />
                       ) : (
-                        <Typography variant="body2">{data.viewing_available_date}</Typography>
+                        <Typography variant="body2" sx={{ fontWeight: 600 }}>{data.viewing_available_date}</Typography>
                       )}
                     </Grid>
                   )}
                   {(isViewingInfoEditMode || data.building_viewing) && (
                     <Grid item xs={6}>
-                      <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.75rem', color: 'text.secondary', mb: 0.25 }}>建物内覧</Typography>
+                      <Typography variant="body2" sx={{ fontWeight: 400, fontSize: '0.7rem', color: 'text.secondary', mb: 0 }}>建物内覧</Typography>
                       {isViewingInfoEditMode ? (
                         <TextField
                           fullWidth
@@ -1561,7 +1561,7 @@ export default function PropertyListingDetailPage() {
                           onChange={(e) => handleFieldChange('building_viewing', e.target.value)}
                         />
                       ) : (
-                        <Typography variant="body2">{data.building_viewing}</Typography>
+                        <Typography variant="body2" sx={{ fontWeight: 600 }}>{data.building_viewing}</Typography>
                       )}
                     </Grid>
                   )}
@@ -1599,60 +1599,60 @@ export default function PropertyListingDetailPage() {
                 )}
               </Grid>
               <Grid item xs={6}>
-                <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.75rem', color: 'text.secondary', mb: 0.25 }}>種別</Typography>
+                <Typography variant="body2" sx={{ fontWeight: 400, fontSize: '0.7rem', color: 'text.secondary', mb: 0 }}>種別</Typography>
                 {isBasicInfoEditMode ? (
                   <TextField fullWidth size="small"
                     value={editedData.property_type !== undefined ? editedData.property_type : (data.property_type || '')}
                     onChange={(e) => handleFieldChange('property_type', e.target.value)} />
                 ) : (
-                  <Typography variant="body2">{data.property_type || '-'}</Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 600 }}>{data.property_type || '-'}</Typography>
                 )}
               </Grid>
               <Grid item xs={6}>
-                <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.75rem', color: 'text.secondary', mb: 0.25 }}>売出価格</Typography>
+                <Typography variant="body2" sx={{ fontWeight: 400, fontSize: '0.7rem', color: 'text.secondary', mb: 0 }}>売出価格</Typography>
                 {isBasicInfoEditMode ? (
                   <TextField fullWidth size="small" type="number"
                     value={editedData.listing_price !== undefined ? editedData.listing_price : (data.listing_price || '')}
                     onChange={(e) => handleFieldChange('listing_price', e.target.value ? Number(e.target.value) : null)}
                     InputProps={{ startAdornment: <Typography sx={{ mr: 0.5 }}>¥</Typography> }} />
                 ) : (
-                  <Typography variant="body2">{data.listing_price ? `¥${data.listing_price.toLocaleString()}` : '-'}</Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 600 }}>{data.listing_price ? `¥${data.listing_price.toLocaleString()}` : '-'}</Typography>
                 )}
               </Grid>
               <Grid item xs={6}>
-                <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.75rem', color: 'text.secondary', mb: 0.25 }}>状況</Typography>
+                <Typography variant="body2" sx={{ fontWeight: 400, fontSize: '0.7rem', color: 'text.secondary', mb: 0 }}>状況</Typography>
                 {isBasicInfoEditMode ? (
                   <TextField fullWidth size="small"
                     value={editedData.status !== undefined ? editedData.status : (data.status || '')}
                     onChange={(e) => handleFieldChange('status', e.target.value)} />
                 ) : (
-                  <Typography variant="body2">{data.status || '-'}</Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 600 }}>{data.status || '-'}</Typography>
                 )}
               </Grid>
               <Grid item xs={6}>
-                <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.75rem', color: 'text.secondary', mb: 0.25 }}>現況</Typography>
+                <Typography variant="body2" sx={{ fontWeight: 400, fontSize: '0.7rem', color: 'text.secondary', mb: 0 }}>現況</Typography>
                 {isBasicInfoEditMode ? (
                   <TextField fullWidth size="small"
                     value={editedData.current_status !== undefined ? editedData.current_status : (data.current_status || '')}
                     onChange={(e) => handleFieldChange('current_status', e.target.value)} />
                 ) : (
-                  <Typography variant="body2">{data.current_status || '-'}</Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 600 }}>{data.current_status || '-'}</Typography>
                 )}
               </Grid>
               <Grid item xs={6}>
-                <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.75rem', color: 'text.secondary', mb: 0.25 }}>配信日（公開）</Typography>
+                <Typography variant="body2" sx={{ fontWeight: 400, fontSize: '0.7rem', color: 'text.secondary', mb: 0 }}>配信日（公開）</Typography>
                 {isBasicInfoEditMode ? (
                   <TextField fullWidth size="small" type="date"
                     value={editedData.distribution_date !== undefined ? editedData.distribution_date : (data.distribution_date || '')}
                     onChange={(e) => handleFieldChange('distribution_date', e.target.value)}
                     InputLabelProps={{ shrink: true }} />
                 ) : (
-                  <Typography variant="body2">{data.distribution_date || '-'}</Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 600 }}>{data.distribution_date || '-'}</Typography>
                 )}
               </Grid>
 
               <Grid item xs={12}>
-                <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.75rem', color: 'text.secondary', mb: 0.25 }}>所在地</Typography>
+                <Typography variant="body2" sx={{ fontWeight: 400, fontSize: '0.7rem', color: 'text.secondary', mb: 0 }}>所在地</Typography>
                 {isBasicInfoEditMode ? (
                   <TextField fullWidth size="small"
                     value={editedData.address !== undefined ? editedData.address : (data.address || data.display_address || '')}
@@ -1679,109 +1679,109 @@ export default function PropertyListingDetailPage() {
               </Grid>
               {data.management_type && (
                 <Grid item xs={6}>
-                  <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.75rem', color: 'text.secondary', mb: 0.25 }}>管理形態</Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 400, fontSize: '0.7rem', color: 'text.secondary', mb: 0 }}>管理形態</Typography>
                   {isBasicInfoEditMode ? (
                     <TextField fullWidth size="small"
                       value={editedData.management_type !== undefined ? editedData.management_type : (data.management_type || '')}
                       onChange={(e) => handleFieldChange('management_type', e.target.value)} />
                   ) : (
-                    <Typography variant="body2">{data.management_type}</Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>{data.management_type}</Typography>
                   )}
                 </Grid>
               )}
               {data.management_company && (
                 <Grid item xs={6}>
-                  <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.75rem', color: 'text.secondary', mb: 0.25 }}>管理会社</Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 400, fontSize: '0.7rem', color: 'text.secondary', mb: 0 }}>管理会社</Typography>
                   {isBasicInfoEditMode ? (
                     <TextField fullWidth size="small"
                       value={editedData.management_company !== undefined ? editedData.management_company : (data.management_company || '')}
                       onChange={(e) => handleFieldChange('management_company', e.target.value)} />
                   ) : (
-                    <Typography variant="body2">{data.management_company}</Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>{data.management_company}</Typography>
                   )}
                 </Grid>
               )}
               {data.pet_consultation && (
                 <Grid item xs={6}>
-                  <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.75rem', color: 'text.secondary', mb: 0.25 }}>ペット相談</Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 400, fontSize: '0.7rem', color: 'text.secondary', mb: 0 }}>ペット相談</Typography>
                   {isBasicInfoEditMode ? (
                     <TextField fullWidth size="small"
                       value={editedData.pet_consultation !== undefined ? editedData.pet_consultation : (data.pet_consultation || '')}
                       onChange={(e) => handleFieldChange('pet_consultation', e.target.value)} />
                   ) : (
-                    <Typography variant="body2">{data.pet_consultation}</Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>{data.pet_consultation}</Typography>
                   )}
                 </Grid>
               )}
               {data.hot_spring && (
                 <Grid item xs={6}>
-                  <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.75rem', color: 'text.secondary', mb: 0.25 }}>温泉</Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 400, fontSize: '0.7rem', color: 'text.secondary', mb: 0 }}>温泉</Typography>
                   {isBasicInfoEditMode ? (
                     <TextField fullWidth size="small"
                       value={editedData.hot_spring !== undefined ? editedData.hot_spring : (data.hot_spring || '')}
                       onChange={(e) => handleFieldChange('hot_spring', e.target.value)} />
                   ) : (
-                    <Typography variant="body2">{data.hot_spring}</Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>{data.hot_spring}</Typography>
                   )}
                 </Grid>
               )}
               {data.deduction_usage && (
                 <Grid item xs={6}>
-                  <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.75rem', color: 'text.secondary', mb: 0.25 }}>控除利用</Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 400, fontSize: '0.7rem', color: 'text.secondary', mb: 0 }}>控除利用</Typography>
                   {isBasicInfoEditMode ? (
                     <TextField fullWidth size="small"
                       value={editedData.deduction_usage !== undefined ? editedData.deduction_usage : (data.deduction_usage || '')}
                       onChange={(e) => handleFieldChange('deduction_usage', e.target.value)} />
                   ) : (
-                    <Typography variant="body2">{data.deduction_usage}</Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>{data.deduction_usage}</Typography>
                   )}
                 </Grid>
               )}
               {data.delivery_method && (
                 <Grid item xs={6}>
-                  <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.75rem', color: 'text.secondary', mb: 0.25 }}>引渡方法</Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 400, fontSize: '0.7rem', color: 'text.secondary', mb: 0 }}>引渡方法</Typography>
                   {isBasicInfoEditMode ? (
                     <TextField fullWidth size="small"
                       value={editedData.delivery_method !== undefined ? editedData.delivery_method : (data.delivery_method || '')}
                       onChange={(e) => handleFieldChange('delivery_method', e.target.value)} />
                   ) : (
-                    <Typography variant="body2">{data.delivery_method}</Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>{data.delivery_method}</Typography>
                   )}
                 </Grid>
               )}
               {data.broker && (
                 <Grid item xs={6}>
-                  <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.75rem', color: 'text.secondary', mb: 0.25 }}>仲介業者</Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 400, fontSize: '0.7rem', color: 'text.secondary', mb: 0 }}>仲介業者</Typography>
                   {isBasicInfoEditMode ? (
                     <TextField fullWidth size="small"
                       value={editedData.broker !== undefined ? editedData.broker : (data.broker || '')}
                       onChange={(e) => handleFieldChange('broker', e.target.value)} />
                   ) : (
-                    <Typography variant="body2">{data.broker}</Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>{data.broker}</Typography>
                   )}
                 </Grid>
               )}
               {data.judicial_scrivener && (
                 <Grid item xs={6}>
-                  <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.75rem', color: 'text.secondary', mb: 0.25 }}>司法書士</Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 400, fontSize: '0.7rem', color: 'text.secondary', mb: 0 }}>司法書士</Typography>
                   {isBasicInfoEditMode ? (
                     <TextField fullWidth size="small"
                       value={editedData.judicial_scrivener !== undefined ? editedData.judicial_scrivener : (data.judicial_scrivener || '')}
                       onChange={(e) => handleFieldChange('judicial_scrivener', e.target.value)} />
                   ) : (
-                    <Typography variant="body2">{data.judicial_scrivener}</Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>{data.judicial_scrivener}</Typography>
                   )}
                 </Grid>
               )}
               {data.storage_location && (
                 <Grid item xs={12}>
-                  <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.75rem', color: 'text.secondary', mb: 0.25 }}>保存場所</Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 400, fontSize: '0.7rem', color: 'text.secondary', mb: 0 }}>保存場所</Typography>
                   {isBasicInfoEditMode ? (
                     <TextField fullWidth size="small"
                       value={editedData.storage_location !== undefined ? editedData.storage_location : (data.storage_location || '')}
                       onChange={(e) => handleFieldChange('storage_location', e.target.value)} />
                   ) : (
-                    <Typography variant="body2">{data.storage_location}</Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>{data.storage_location}</Typography>
                   )}
                 </Grid>
               )}
@@ -1931,52 +1931,52 @@ export default function PropertyListingDetailPage() {
                   <Grid container spacing={0.5}>
                     {(isSellerBuyerEditMode || data.seller_name) && (
                       <Grid item xs={12}>
-                        <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.75rem', color: 'text.secondary', mb: 0.25 }}>名前</Typography>
+                        <Typography variant="body2" sx={{ fontWeight: 400, fontSize: '0.7rem', color: 'text.secondary', mb: 0 }}>名前</Typography>
                         {isSellerBuyerEditMode ? (
                           <TextField fullWidth size="small"
                             value={editedData.seller_name !== undefined ? editedData.seller_name : (data.seller_name || '')}
                             onChange={(e) => handleFieldChange('seller_name', e.target.value)} />
-                        ) : (<Typography variant="body2">{data.seller_name}</Typography>)}
+                        ) : (<Typography variant="body2" sx={{ fontWeight: 600 }}>{data.seller_name}</Typography>)}
                       </Grid>
                     )}
                     {(isSellerBuyerEditMode || data.seller_address) && (
                       <Grid item xs={12}>
-                        <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.75rem', color: 'text.secondary', mb: 0.25 }}>住所</Typography>
+                        <Typography variant="body2" sx={{ fontWeight: 400, fontSize: '0.7rem', color: 'text.secondary', mb: 0 }}>住所</Typography>
                         {isSellerBuyerEditMode ? (
                           <TextField fullWidth size="small"
                             value={editedData.seller_address !== undefined ? editedData.seller_address : (data.seller_address || '')}
                             onChange={(e) => handleFieldChange('seller_address', e.target.value)} />
-                        ) : (<Typography variant="body2">{data.seller_address}</Typography>)}
+                        ) : (<Typography variant="body2" sx={{ fontWeight: 600 }}>{data.seller_address}</Typography>)}
                       </Grid>
                     )}
                     {(isSellerBuyerEditMode || data.seller_contact) && (
                       <Grid item xs={6}>
-                        <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.75rem', color: 'text.secondary', mb: 0.25 }}>連絡先</Typography>
+                        <Typography variant="body2" sx={{ fontWeight: 400, fontSize: '0.7rem', color: 'text.secondary', mb: 0 }}>連絡先</Typography>
                         {isSellerBuyerEditMode ? (
                           <TextField fullWidth size="small"
                             value={editedData.seller_contact !== undefined ? editedData.seller_contact : (data.seller_contact || '')}
                             onChange={(e) => handleFieldChange('seller_contact', e.target.value)} />
-                        ) : (<Typography variant="body2">{data.seller_contact}</Typography>)}
+                        ) : (<Typography variant="body2" sx={{ fontWeight: 600 }}>{data.seller_contact}</Typography>)}
                       </Grid>
                     )}
                     {(isSellerBuyerEditMode || data.seller_email) && (
                       <Grid item xs={6}>
-                        <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.75rem', color: 'text.secondary', mb: 0.25 }}>メールアドレス</Typography>
+                        <Typography variant="body2" sx={{ fontWeight: 400, fontSize: '0.7rem', color: 'text.secondary', mb: 0 }}>メールアドレス</Typography>
                         {isSellerBuyerEditMode ? (
                           <TextField fullWidth size="small"
                             value={editedData.seller_email !== undefined ? editedData.seller_email : (data.seller_email || '')}
                             onChange={(e) => handleFieldChange('seller_email', e.target.value)} />
-                        ) : (<Typography variant="body2">{data.seller_email}</Typography>)}
+                        ) : (<Typography variant="body2" sx={{ fontWeight: 600 }}>{data.seller_email}</Typography>)}
                       </Grid>
                     )}
                     {(isSellerBuyerEditMode || data.sale_reason) && (
                       <Grid item xs={12}>
-                        <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.75rem', color: 'text.secondary', mb: 0.25 }}>売却理由</Typography>
+                        <Typography variant="body2" sx={{ fontWeight: 400, fontSize: '0.7rem', color: 'text.secondary', mb: 0 }}>売却理由</Typography>
                         {isSellerBuyerEditMode ? (
                           <TextField fullWidth size="small"
                             value={editedData.sale_reason !== undefined ? editedData.sale_reason : (data.sale_reason || '')}
                             onChange={(e) => handleFieldChange('sale_reason', e.target.value)} />
-                        ) : (<Typography variant="body2">{data.sale_reason}</Typography>)}
+                        ) : (<Typography variant="body2" sx={{ fontWeight: 600 }}>{data.sale_reason}</Typography>)}
                       </Grid>
                     )}
                   </Grid>
@@ -1986,32 +1986,32 @@ export default function PropertyListingDetailPage() {
                   <Grid container spacing={0.5}>
                     {(isSellerBuyerEditMode || data.buyer_name) && (
                       <Grid item xs={12}>
-                        <Typography variant="body2" color="text.secondary" fontWeight="bold">名前</Typography>
+                        <Typography variant="caption" color="text.secondary">名前</Typography>
                         {isSellerBuyerEditMode ? (
                           <TextField fullWidth size="small"
                             value={editedData.buyer_name !== undefined ? editedData.buyer_name : (data.buyer_name || '')}
                             onChange={(e) => handleFieldChange('buyer_name', e.target.value)} />
-                        ) : (<Typography variant="body2">{data.buyer_name}</Typography>)}
+                        ) : (<Typography variant="body2" sx={{ fontWeight: 600 }}>{data.buyer_name}</Typography>)}
                       </Grid>
                     )}
                     {(isSellerBuyerEditMode || data.buyer_address) && (
                       <Grid item xs={12}>
-                        <Typography variant="body2" color="text.secondary" fontWeight="bold">住所</Typography>
+                        <Typography variant="caption" color="text.secondary">住所</Typography>
                         {isSellerBuyerEditMode ? (
                           <TextField fullWidth size="small"
                             value={editedData.buyer_address !== undefined ? editedData.buyer_address : (data.buyer_address || '')}
                             onChange={(e) => handleFieldChange('buyer_address', e.target.value)} />
-                        ) : (<Typography variant="body2">{data.buyer_address}</Typography>)}
+                        ) : (<Typography variant="body2" sx={{ fontWeight: 600 }}>{data.buyer_address}</Typography>)}
                       </Grid>
                     )}
                     {(isSellerBuyerEditMode || data.buyer_contact) && (
                       <Grid item xs={12}>
-                        <Typography variant="body2" color="text.secondary" fontWeight="bold">連絡先</Typography>
+                        <Typography variant="caption" color="text.secondary">連絡先</Typography>
                         {isSellerBuyerEditMode ? (
                           <TextField fullWidth size="small"
                             value={editedData.buyer_contact !== undefined ? editedData.buyer_contact : (data.buyer_contact || '')}
                             onChange={(e) => handleFieldChange('buyer_contact', e.target.value)} />
-                        ) : (<Typography variant="body2">{data.buyer_contact}</Typography>)}
+                        ) : (<Typography variant="body2" sx={{ fontWeight: 600 }}>{data.buyer_contact}</Typography>)}
                       </Grid>
                     )}
                   </Grid>
@@ -2062,20 +2062,20 @@ export default function PropertyListingDetailPage() {
                 </Box>
                 <Grid container spacing={0.5}>
                   <Grid item xs={6}>
-                    <Typography variant="body2" color="text.secondary" fontWeight="bold">手数料（計）</Typography>
-                    <Typography variant="body2">{data.total_commission ? `¥${data.total_commission.toLocaleString()}` : '-'}</Typography>
+                    <Typography variant="caption" color="text.secondary">手数料（計）</Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>{data.total_commission ? `¥${data.total_commission.toLocaleString()}` : '-'}</Typography>
                   </Grid>
                   <Grid item xs={6}>
-                    <Typography variant="body2" color="text.secondary" fontWeight="bold">転売差額</Typography>
-                    <Typography variant="body2">{data.resale_margin ? `¥${data.resale_margin.toLocaleString()}` : '-'}</Typography>
+                    <Typography variant="caption" color="text.secondary">転売差額</Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>{data.resale_margin ? `¥${data.resale_margin.toLocaleString()}` : '-'}</Typography>
                   </Grid>
                   <Grid item xs={6}>
-                    <Typography variant="body2" color="text.secondary" fontWeight="bold">売主から</Typography>
-                    <Typography variant="body2">{data.commission_from_seller ? `¥${data.commission_from_seller.toLocaleString()}` : '-'}</Typography>
+                    <Typography variant="caption" color="text.secondary">売主から</Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>{data.commission_from_seller ? `¥${data.commission_from_seller.toLocaleString()}` : '-'}</Typography>
                   </Grid>
                   <Grid item xs={6}>
-                    <Typography variant="body2" color="text.secondary" fontWeight="bold">買主から</Typography>
-                    <Typography variant="body2">{data.commission_from_buyer ? `¥${data.commission_from_buyer.toLocaleString()}` : '-'}</Typography>
+                    <Typography variant="caption" color="text.secondary">買主から</Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>{data.commission_from_buyer ? `¥${data.commission_from_buyer.toLocaleString()}` : '-'}</Typography>
                   </Grid>
                 </Grid>
               </Paper>
@@ -2091,24 +2091,24 @@ export default function PropertyListingDetailPage() {
                 </Box>
                 <Grid container spacing={0.5}>
                   <Grid item xs={6}>
-                    <Typography variant="body2" color="text.secondary" fontWeight="bold">買付日</Typography>
-                    <Typography variant="body2">{data.offer_date || '-'}</Typography>
+                    <Typography variant="caption" color="text.secondary">買付日</Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>{data.offer_date || '-'}</Typography>
                   </Grid>
                   <Grid item xs={6}>
-                    <Typography variant="body2" color="text.secondary" fontWeight="bold">買付</Typography>
-                    <Typography variant="body2">{data.offer_status || '-'}</Typography>
+                    <Typography variant="caption" color="text.secondary">買付</Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>{data.offer_status || '-'}</Typography>
                   </Grid>
                   <Grid item xs={6}>
-                    <Typography variant="body2" color="text.secondary" fontWeight="bold">金額</Typography>
-                    <Typography variant="body2">{data.offer_amount || '-'}</Typography>
+                    <Typography variant="caption" color="text.secondary">金額</Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>{data.offer_amount || '-'}</Typography>
                   </Grid>
                   <Grid item xs={6}>
-                    <Typography variant="body2" color="text.secondary" fontWeight="bold">会社名</Typography>
-                    <Typography variant="body2">{data.company_name || '-'}</Typography>
+                    <Typography variant="caption" color="text.secondary">会社名</Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>{data.company_name || '-'}</Typography>
                   </Grid>
                   <Grid item xs={12}>
-                    <Typography variant="body2" color="text.secondary" fontWeight="bold">買付コメント</Typography>
-                    <Typography variant="body2">{data.offer_comment || '-'}</Typography>
+                    <Typography variant="caption" color="text.secondary">買付コメント</Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>{data.offer_comment || '-'}</Typography>
                   </Grid>
                 </Grid>
               </Paper>

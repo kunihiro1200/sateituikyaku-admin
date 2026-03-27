@@ -77,7 +77,7 @@ export default function FrequentlyAskedSection({ data, editedData, onFieldChange
         {(isEditMode || data.property_tax) && (
           <Grid item xs={12} sm={6} md={4}>
             <Box>
-              <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '0.75rem', color: 'text.primary', mb: 0.25 }}>
+              <Typography variant="body2" sx={{ fontWeight: 400, fontSize: '0.7rem', color: 'text.secondary', mb: 0 }}>
                 固定資産税
               </Typography>
               {isEditMode ? (
@@ -105,7 +105,7 @@ export default function FrequentlyAskedSection({ data, editedData, onFieldChange
         {(isEditMode || data.management_fee) && (
           <Grid item xs={12} sm={6} md={4}>
             <Box>
-              <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '0.75rem', color: 'text.primary', mb: 0.25 }}>
+              <Typography variant="body2" sx={{ fontWeight: 400, fontSize: '0.7rem', color: 'text.secondary', mb: 0 }}>
                 管理費
               </Typography>
               {isEditMode ? (
@@ -133,7 +133,7 @@ export default function FrequentlyAskedSection({ data, editedData, onFieldChange
         {(isEditMode || data.reserve_fund) && (
           <Grid item xs={12} sm={6} md={4}>
             <Box>
-              <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '0.75rem', color: 'text.primary', mb: 0.25 }}>
+              <Typography variant="body2" sx={{ fontWeight: 400, fontSize: '0.7rem', color: 'text.secondary', mb: 0 }}>
                 積立金
               </Typography>
               {isEditMode ? (
@@ -161,7 +161,7 @@ export default function FrequentlyAskedSection({ data, editedData, onFieldChange
         {(isEditMode || data.parking) && (
           <Grid item xs={12} sm={6}>
             <Box>
-              <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '0.75rem', color: 'text.primary', mb: 0.25 }}>
+              <Typography variant="body2" sx={{ fontWeight: 400, fontSize: '0.7rem', color: 'text.secondary', mb: 0 }}>
                 駐車場
               </Typography>
               {isEditMode ? (
@@ -173,7 +173,7 @@ export default function FrequentlyAskedSection({ data, editedData, onFieldChange
                   placeholder="駐車場情報を入力してください"
                 />
               ) : (
-                <Typography variant="body2">{data.parking}</Typography>
+                <Typography variant="body2" sx={{ fontWeight: 600 }}>{data.parking}</Typography>
               )}
             </Box>
           </Grid>
@@ -183,7 +183,7 @@ export default function FrequentlyAskedSection({ data, editedData, onFieldChange
         {(isEditMode || data.delivery) && (
           <Grid item xs={12} sm={6}>
             <Box>
-              <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '0.75rem', color: 'text.primary', mb: 0.25 }}>
+              <Typography variant="body2" sx={{ fontWeight: 400, fontSize: '0.7rem', color: 'text.secondary', mb: 0 }}>
                 引渡し
               </Typography>
               {isEditMode ? (
@@ -195,7 +195,7 @@ export default function FrequentlyAskedSection({ data, editedData, onFieldChange
                   placeholder="引渡し情報を入力してください"
                 />
               ) : (
-                <Typography variant="body2">{data.delivery}</Typography>
+                <Typography variant="body2" sx={{ fontWeight: 600 }}>{data.delivery}</Typography>
               )}
             </Box>
           </Grid>
