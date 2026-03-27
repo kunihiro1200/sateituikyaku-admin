@@ -2786,7 +2786,11 @@ HP：https://ifoo-oita.com/
           onChange={(e) => setSellerNumberSearch(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === 'Enter' && sellerNumberSearch.trim()) {
-              navigate(`/sellers/${sellerNumberSearch.trim()}/call`);
+              // 全角英数字を半角に変換してから検索
+              const normalized = sellerNumberSearch.trim().replace(/[Ａ-Ｚａ-ｚ０-９]/g, (c) =>
+                String.fromCharCode(c.charCodeAt(0) - 0xFEE0)
+              ).toUpperCase();
+              navigate(`/sellers/${normalized}/call`);
               setSellerNumberSearch('');
             }
           }}
@@ -3179,6 +3183,52 @@ HP：https://ifoo-oita.com/
           {/* 売主追客ログ（一番上） */}
           <Box sx={{ width: 280, p: 2, borderBottom: 1, borderColor: 'divider' }}>
             <CallLogDisplay ref={callLogRef} sellerId={id!} />
+          </Box>
+
+          {/* メール・SMS履歴（追客ログの直下） */}
+          <Box sx={{ width: 280, p: 2, borderBottom: 1, borderColor: 'divider' }}>
+            <Typography variant="subtitle1" sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1, fontWeight: 'bold' }}>
+              📋 メール・SMS履歴
+            </Typography>
+            <Box sx={{ maxHeight: 240, overflow: 'auto' }}>
+              {activities
+                .filter((activity) => activity.type === 'sms' || activity.type === 'email')
+                .slice(0, 10)
+                .map((activity, index) => {
+                  const displayName = getDisplayName(activity.employee);
+                  const formattedDate = formatDateTime(activity.createdAt);
+                  let typeIcon = '📧';
+                  let typeLabel = 'Email';
+                  let bgcolor = '#f3e5f5';
+                  let borderColor = '4px solid #9c27b0';
+                  if (activity.type === 'sms') {
+                    typeIcon = '💬';
+                    typeLabel = 'SMS';
+                    bgcolor = '#e8f5e9';
+                    borderColor = '4px solid #2e7d32';
+                  }
+                  return (
+                    <Paper key={index} sx={{ p: 1, mb: 0.5, bgcolor, borderLeft: borderColor }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.3 }}>
+                        <Typography variant="caption" sx={{ fontWeight: 'bold' }}>
+                          {typeIcon} {typeLabel}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {displayName} {formattedDate}
+                        </Typography>
+                      </Box>
+                      <Typography variant="caption" sx={{ display: 'block' }}>
+                        {activity.content}
+                      </Typography>
+                    </Paper>
+                  );
+                })}
+              {activities.filter((a) => a.type === 'sms' || a.type === 'email').length === 0 && (
+                <Typography variant="caption" color="text.secondary">
+                  メール・SMS履歴はありません
+                </Typography>
+              )}
+            </Box>
           </Box>
 
           {/* 過去の活動ログ（追客ログの直下） */}
@@ -5600,69 +5650,6 @@ HP：https://ifoo-oita.com/
               </Box>
             )}
 
-
-
-            {/* 過去の活動ログ */}
-            <Typography variant="h6" gutterBottom>
-              📋 過去の活動ログ
-            </Typography>
-            <Box sx={{ maxHeight: 300, overflow: 'auto' }}>
-              {/* 活動ログ（電話、SMS、Email） */}
-              {activities
-                .filter((activity) => activity.type === 'phone_call' || activity.type === 'sms' || activity.type === 'email')
-                .slice(0, 10)
-                .map((activity, index) => {
-                  const displayName = getDisplayName(activity.employee);
-                  const formattedDate = formatDateTime(activity.createdAt);
-                  const displayText = `${displayName} ${formattedDate}`;
-                  
-                  let typeIcon = '📞';
-                  let typeLabel = '通話';
-                  let bgcolor = 'grey.50';
-                  let borderColor = 'none';
-                  
-                  if (activity.type === 'sms') {
-                    typeIcon = '💬';
-                    typeLabel = 'SMS';
-                    bgcolor = '#e8f5e9';
-                    borderColor = '4px solid #2e7d32';
-                  } else if (activity.type === 'email') {
-                    typeIcon = '📧';
-                    typeLabel = 'Email';
-                    bgcolor = '#f3e5f5';
-                    borderColor = '4px solid #9c27b0';
-                  }
-
-                  return (
-                    <Paper 
-                      key={index} 
-                      sx={{ 
-                        p: 1.5, 
-                        mb: 1, 
-                        bgcolor: bgcolor,
-                        borderLeft: borderColor
-                      }}
-                    >
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
-                        <Typography variant="caption" sx={{ fontWeight: 'bold' }}>
-                          {typeIcon} {typeLabel}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 'bold' }}>
-                          {displayText}
-                        </Typography>
-                      </Box>
-                      <Typography variant="body2" sx={{ mt: 0.5 }}>
-                        {activity.content}
-                      </Typography>
-                    </Paper>
-                  );
-                })}
-              {activities.filter((activity) => activity.type === 'phone_call' || activity.type === 'sms' || activity.type === 'email').length === 0 && (
-                <Typography variant="body2" color="text.secondary">
-                  過去のコミュニケーション履歴はありません
-                </Typography>
-              )}
-            </Box>
 
             {/* コミュニケーション情報セクション */}
             <Box sx={{ mt: 3, mb: 3 }}>
