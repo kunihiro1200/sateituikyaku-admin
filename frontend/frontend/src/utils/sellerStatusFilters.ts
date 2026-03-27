@@ -558,6 +558,68 @@ const isValuationNotRequired = (seller: Seller | any): boolean => {
 };
 
 /**
+ * 当日TEL_未着手判定
+ * 
+ * APPSHEETの「当日TEL分_未着手」条件:
+ * - 反響日付 >= 2026/1/1（独自設定）
+ * - 状況（当社）= "追客中"（完全一致）
+ * - 営担 = ""（isTodayCallで担保）
+ * - 不通 = ""（空欄）
+ * - 確度 <> "ダブり"
+ * - 確度 <> "D"
+ * - 確度 <> "AI査定"
+ * - 次電日 <= TODAY()（isTodayCallBaseで担保）
+ * - コミュニケーション情報が全て空（isTodayCallで担保）
+ * - 除外日にすること = ""（空）
+ * 
+ * @param seller 売主データ
+ * @returns 当日TEL_未着手対象かどうか
+ */
+export const isTodayCallNotStarted = (seller: Seller | any): boolean => {
+  const CUTOFF_DATE_STR = '2026-01-01';
+  
+  // まず当日TEL分の条件を満たすかチェック（営担なし + 追客中系 + 次電日今日以前 + コミュニケーション情報なし）
+  if (!isTodayCall(seller)) {
+    return false;
+  }
+  
+  // 状況が「追客中」のみ（完全一致）
+  // 「除外後追客中」「他決→追客」は当日TEL_未着手の対象外
+  const status = seller.status || '';
+  if (status !== '追客中') {
+    return false;
+  }
+  
+  // 不通カラムが空欄かチェック
+  const unreachableStatus = seller.unreachableStatus || seller.unreachable_status || '';
+  if (unreachableStatus && unreachableStatus.trim() !== '') {
+    return false;
+  }
+  
+  // 確度が「ダブり」「D」「AI査定」の場合は除外
+  const confidence = seller.confidence || seller.confidenceLevel || seller.confidence_level || '';
+  if (confidence === 'ダブり' || confidence === 'D' || confidence === 'AI査定') {
+    return false;
+  }
+  
+  // 除外日にすること が空かチェック
+  const exclusionDate = seller.exclusionDate || seller.exclusion_date || '';
+  if (exclusionDate && exclusionDate.trim() !== '') {
+    return false;
+  }
+  
+  // 反響日付が2026/1/1以降かチェック
+  const inquiryDate = seller.inquiryDate || seller.inquiry_date || seller.inquiryDetailedDatetime;
+  const normalizedInquiryDate = normalizeDateString(inquiryDate);
+  
+  if (!normalizedInquiryDate) {
+    return false;
+  }
+  
+  return normalizedInquiryDate >= CUTOFF_DATE_STR;
+};
+
+/**
  * 未査定判定
  * 
  * 条件:
@@ -622,21 +684,7 @@ export const isUnvaluated = (seller: Seller | any): boolean => {
   }
   
   // 当日TEL_未着手の条件を満たす場合は未査定から除外（未着手が優先）
-  // ※ isTodayCallNotStarted は後方で定義されるため、条件をインライン展開
-  // 未着手の追加条件: 不通が空 + 反響日付が2026/1/1以降 + 確度がダブり/D/AI査定でない
-  const NOTSTARTED_CUTOFF = '2026-01-01';
-  const unreachableForCheck = seller.unreachableStatus || seller.unreachable_status || '';
-  const confidenceForCheck = seller.confidence || seller.confidenceLevel || seller.confidence_level || '';
-  const exclusionDateForCheck = seller.exclusionDate || seller.exclusion_date || '';
-  const isNotStarted = isTodayCallBase(seller) &&
-    !hasContactInfo(seller) &&
-    !hasVisitAssignee(seller) &&
-    (seller.status || '') === '追客中' &&
-    (!unreachableForCheck || unreachableForCheck.trim() === '') &&
-    confidenceForCheck !== 'ダブり' && confidenceForCheck !== 'D' && confidenceForCheck !== 'AI査定' &&
-    (!exclusionDateForCheck || exclusionDateForCheck.trim() === '') &&
-    normalizedInquiryDate >= NOTSTARTED_CUTOFF;
-  if (isNotStarted) {
+  if (isTodayCallNotStarted(seller)) {
     return false;
   }
 
@@ -656,68 +704,6 @@ export const isUnvaluated = (seller: Seller | any): boolean => {
  */
 export const isMailingPending = (seller: Seller | any): boolean => {
   return seller.mailingStatus === '未';
-};
-
-/**
- * 当日TEL_未着手判定
- * 
- * APPSHEETの「当日TEL分_未着手」条件:
- * - 反響日付 >= 2026/1/1（独自設定）
- * - 状況（当社）= "追客中"（完全一致）
- * - 営担 = ""（isTodayCallで担保）
- * - 不通 = ""（空欄）
- * - 確度 <> "ダブり"
- * - 確度 <> "D"
- * - 確度 <> "AI査定"
- * - 次電日 <= TODAY()（isTodayCallBaseで担保）
- * - コミュニケーション情報が全て空（isTodayCallで担保）
- * - 除外日にすること = ""（空）
- * 
- * @param seller 売主データ
- * @returns 当日TEL_未着手対象かどうか
- */
-export const isTodayCallNotStarted = (seller: Seller | any): boolean => {
-  const CUTOFF_DATE_STR = '2026-01-01';
-  
-  // まず当日TEL分の条件を満たすかチェック（営担なし + 追客中系 + 次電日今日以前 + コミュニケーション情報なし）
-  if (!isTodayCall(seller)) {
-    return false;
-  }
-  
-  // 状況が「追客中」のみ（完全一致）
-  // 「除外後追客中」「他決→追客」は当日TEL_未着手の対象外
-  const status = seller.status || '';
-  if (status !== '追客中') {
-    return false;
-  }
-  
-  // 不通カラムが空欄かチェック
-  const unreachableStatus = seller.unreachableStatus || seller.unreachable_status || '';
-  if (unreachableStatus && unreachableStatus.trim() !== '') {
-    return false;
-  }
-  
-  // 確度が「ダブり」「D」「AI査定」の場合は除外
-  const confidence = seller.confidence || seller.confidenceLevel || seller.confidence_level || '';
-  if (confidence === 'ダブり' || confidence === 'D' || confidence === 'AI査定') {
-    return false;
-  }
-  
-  // 除外日にすること が空かチェック
-  const exclusionDate = seller.exclusionDate || seller.exclusion_date || '';
-  if (exclusionDate && exclusionDate.trim() !== '') {
-    return false;
-  }
-  
-  // 反響日付が2026/1/1以降かチェック
-  const inquiryDate = seller.inquiryDate || seller.inquiry_date || seller.inquiryDetailedDatetime;
-  const normalizedInquiryDate = normalizeDateString(inquiryDate);
-  
-  if (!normalizedInquiryDate) {
-    return false;
-  }
-  
-  return normalizedInquiryDate >= CUTOFF_DATE_STR;
 };
 
 /**
