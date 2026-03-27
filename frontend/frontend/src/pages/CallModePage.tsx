@@ -5446,26 +5446,18 @@ HP：https://ifoo-oita.com/
 
                 {/* 確度 - 1行全幅 */}
                 <Grid item xs={12}>
-                  <InlineEditableField
-                    label="確度"
-                    value={seller?.confidence || 'B'}
-                    fieldName="confidence"
-                    fieldType="dropdown"
-                    options={CONFIDENCE_OPTIONS}
-                    onSave={async (newValue) => {
-                      await api.put(`/api/sellers/${id}`, {
-                        confidence: newValue,
-                      });
-                      // ローカル状態を更新
-                      setSeller(prev => prev ? { ...prev, confidence: newValue } : prev);
-                      setEditedConfidence(newValue as ConfidenceLevel);
-                      // 確度は即時保存のためstatusChangedは変更しない
-                    }}
-                    buyerId={id}
-                    enableConflictDetection={true}
-                    showEditIndicator={true}
-                    oneClickDropdown={true}
-                  />
+                  <FormControl fullWidth size="small">
+                    <InputLabel>確度</InputLabel>
+                    <Select
+                      value={editedConfidence}
+                      label="確度"
+                      onChange={(e) => { setEditedConfidence(e.target.value as ConfidenceLevel); setStatusChanged(true); }}
+                    >
+                      {CONFIDENCE_OPTIONS.map((opt) => (
+                        <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
                 </Grid>
 
                 {/* 除外日 + 除外日にすること - 2カラム（ボックス表示） */}
@@ -5484,7 +5476,7 @@ HP：https://ifoo-oita.com/
                     除外日にすること
                   </Typography>
                   <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                    {['除外日になにかあれば除外', '除外日になにもせず除外'].map((option) => (
+                    {['除外日に不通であれば除外', '除外日になにもせず除外'].map((option) => (
                       <Button
                         key={option}
                         variant={exclusionAction === option ? 'contained' : 'outlined'}
