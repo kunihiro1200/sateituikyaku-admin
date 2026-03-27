@@ -2759,6 +2759,8 @@ HP：https://ifoo-oita.com/
           売主情報の読み込みに失敗しました
         </Alert>
         <Button variant="contained" onClick={() => {
+          sessionStorage.removeItem('sellersScrollPosition');
+          sessionStorage.removeItem('selectedSellerId');
           pageDataCache.invalidate(CACHE_KEYS.SELLERS_LIST);
           navigate('/');
         }}>
@@ -2820,6 +2822,9 @@ HP：https://ifoo-oita.com/
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
           <Button startIcon={<ArrowBack />} onClick={() => {
             navigateWithWarningCheck(() => {
+              // 一覧に戻る時にスクロール位置をリセット（トップに戻る）
+              sessionStorage.removeItem('sellersScrollPosition');
+              sessionStorage.removeItem('selectedSellerId');
               pageDataCache.invalidate(CACHE_KEYS.SELLERS_LIST);
               navigate('/');
             });
@@ -2847,6 +2852,9 @@ HP：https://ifoo-oita.com/
                 size="small"
                 onClick={() => {
                   navigateWithWarningCheck(() => {
+                    // 一覧に戻る時にスクロール位置をリセット（トップに戻る）
+                    sessionStorage.removeItem('sellersScrollPosition');
+                    sessionStorage.removeItem('selectedSellerId');
                     sessionStorage.setItem('selectedStatusCategory', selectedCategory);
                     pageDataCache.invalidate(CACHE_KEYS.SELLERS_LIST);
                     navigate('/');
