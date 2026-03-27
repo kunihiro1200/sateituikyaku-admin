@@ -161,26 +161,26 @@ const RichTextCommentEditor = React.forwardRef<RichTextCommentEditorHandle, Rich
         const editor = editorRef.current;
         if (!editor) return;
 
-        // 現在のDOM選択状態を確認（blur後でもカーソル位置を取得できる）
+        // blur時に保存したオフセット、またはライブのカーソル位置を使用
+        let insertOffset = cursorOffsetRef.current;
+
+        // フォーカスがある場合はライブのカーソル位置を優先
         const currentSelection = window.getSelection();
-        let liveOffset = -1;
         if (currentSelection && currentSelection.rangeCount > 0) {
-          const range = currentSelection.getRangeAt(0);
-          if (editor.contains(range.commonAncestorContainer)) {
-            liveOffset = getTextOffset(editor, range.startContainer, range.startOffset);
+          const selRange = currentSelection.getRangeAt(0);
+          if (editor.contains(selRange.commonAncestorContainer)) {
+            insertOffset = getTextOffset(editor, selRange.startContainer, selRange.startOffset);
           }
         }
 
-        // ライブのカーソル位置を優先、なければ保存済みオフセットを使用
-        const savedOffset = liveOffset >= 0 ? liveOffset : cursorOffsetRef.current;
+        // エディタにフォーカスを当てる
+        editor.focus();
+        isFocusedRef.current = true;
 
-        // カーソル位置が保存されている場合：innerHTML を直接操作して挿入
+        const savedOffset = insertOffset;
+
+        // カーソル位置が保存されている場合：DOM操作で挿入
         if (savedOffset >= 0) {
-          // 現在のHTMLをプレーンテキストオフセットで分割して挿入
-          const currentHtml = editor.innerHTML;
-
-          // テキストオフセット → HTML内の文字位置を探す
-          // DOMを使って正確な挿入位置を特定
           const pos = getNodeFromOffset(editor, savedOffset);
           if (pos) {
             try {
@@ -188,7 +188,7 @@ const RichTextCommentEditor = React.forwardRef<RichTextCommentEditorHandle, Rich
               range.setStart(pos.node, pos.offset);
               range.collapse(true);
 
-              // 一時的なdivにhtmlをパース
+              // htmlをパースしてfragmentを作成
               const tempDiv = document.createElement('div');
               tempDiv.innerHTML = html;
               const fragment = document.createDocumentFragment();
@@ -198,24 +198,42 @@ const RichTextCommentEditor = React.forwardRef<RichTextCommentEditorHandle, Rich
 
               range.insertNode(fragment);
 
-              // カーソルを挿入後の位置に移動
+              // 挿入後のカーソルを太字ノードの外側に移動するため
+              // 挿入位置の直後に空のテキストノードを追加してカーソルをそこに置く
+              const afterNode = document.createTextNode('');
               range.collapse(false);
+              range.insertNode(afterNode);
+
+              // カーソルを空テキストノードに設定（太字コンテキスト外）
               const sel = window.getSelection();
               if (sel) {
+                const newRange = document.createRange();
+                newRange.setStart(afterNode, 0);
+                newRange.collapse(true);
                 sel.removeAllRanges();
-                sel.addRange(range);
+                sel.addRange(newRange);
               }
 
-              // 太字コンテキストが残っている場合は解除（バグ2修正）
-              if (typeof document.queryCommandState === 'function' && document.queryCommandState('bold')) {
-                document.execCommand('bold', false);
-              }
+              // 挿入後のカーソル位置を保存
+              cursorOffsetRef.current = getTextOffset(editor, afterNode, 0);
 
               onChange(editor.innerHTML);
-              // フォーカスを戻してカーソル位置を更新（バグ1修正）
+
+              // フォーカス後に選択範囲を空テキストノードに再設定
+              // （editor.focus()でカーソルがリセットされる場合に備えて）
               editor.focus();
-              isFocusedRef.current = true;
-              saveCursorOffset();
+              const selAfter = window.getSelection();
+              if (selAfter) {
+                try {
+                  const restoreRange = document.createRange();
+                  restoreRange.setStart(afterNode, 0);
+                  restoreRange.collapse(true);
+                  selAfter.removeAllRanges();
+                  selAfter.addRange(restoreRange);
+                } catch (e) {
+                  // 失敗時はそのまま
+                }
+              }
               return;
             } catch (e) {
               // 失敗した場合は先頭挿入にフォールバック
@@ -224,8 +242,6 @@ const RichTextCommentEditor = React.forwardRef<RichTextCommentEditorHandle, Rich
         }
 
         // カーソル位置がない場合：先頭に挿入
-        editor.focus();
-        // 先頭にカーソルを移動してから挿入
         const firstChild = editor.firstChild;
         if (firstChild) {
           try {
@@ -242,13 +258,11 @@ const RichTextCommentEditor = React.forwardRef<RichTextCommentEditorHandle, Rich
           }
         }
         document.execCommand('insertHTML', false, html);
-        // 太字コンテキストが残っている場合は解除（バグ2修正）
+        // 太字コンテキストが残っている場合は解除
         if (typeof document.queryCommandState === 'function' && document.queryCommandState('bold')) {
           document.execCommand('bold', false);
         }
         handleInput();
-        // フォーカスを戻してカーソル位置を更新（バグ1修正）
-        isFocusedRef.current = true;
         saveCursorOffset();
       },
     }));
