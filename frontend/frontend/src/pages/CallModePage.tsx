@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+﻿import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Container,
@@ -1416,7 +1416,7 @@ const CallModePage = () => {
     // 確度が必須条件を満たしているのに未入力の場合は警告
     const isAfterJan2026 = seller?.inquiryDate && new Date(seller.inquiryDate) >= new Date('2026-01-01');
     const isFollowingUp = seller?.status?.includes('追客中');
-    const isNotUnreachable = unreachableStatus !== '不通';
+    const isNotUnreachable = unreachableStatus === '通電OK';
     if (isAfterJan2026 && isFollowingUp && isNotUnreachable && !editedConfidence) {
       setNavigationWarningDialog({
         open: true,
@@ -1458,7 +1458,7 @@ const CallModePage = () => {
     // 確度が必須条件を満たしているのに未入力の場合は警告
     const isAfterJan2026 = seller?.inquiryDate && new Date(seller.inquiryDate) >= new Date('2026-01-01');
     const isFollowingUp = seller?.status?.includes('追客中');
-    const isNotUnreachable = unreachableStatus !== '不通';
+    const isNotUnreachable = unreachableStatus === '通電OK';
     if (isAfterJan2026 && isFollowingUp && isNotUnreachable && !editedConfidence) {
       setNavigationWarningDialog({
         open: true,
@@ -1667,7 +1667,7 @@ const CallModePage = () => {
     // 反響日付が2026/1/1以降 + 追客中 + 不通が「不通」でない場合
     const isAfterJan2026 = seller?.inquiryDate && new Date(seller.inquiryDate) >= new Date('2026-01-01');
     const isFollowingUp = editedStatus?.includes('追客中');
-    const isNotUnreachable = unreachableStatus !== '不通';
+    const isNotUnreachable = unreachableStatus === '通電OK';
     if (isAfterJan2026 && isFollowingUp && isNotUnreachable && !editedConfidence) {
       setError('確度を選択してください');
       return;
@@ -5834,13 +5834,13 @@ HP：https://ifoo-oita.com/
                     !editedConfidence &&
                     !!(seller?.inquiryDate && new Date(seller.inquiryDate) >= new Date('2026-01-01')) &&
                     editedStatus?.includes('追客中') &&
-                    unreachableStatus !== '不通'
+                    unreachableStatus === '通電OK'
                   }>
                     <InputLabel>
                       確度
                       {!!(seller?.inquiryDate && new Date(seller.inquiryDate) >= new Date('2026-01-01')) &&
                         editedStatus?.includes('追客中') &&
-                        unreachableStatus !== '不通' && (
+                        unreachableStatus === '通電OK' && (
                         <span style={{ color: 'red', marginLeft: 4 }}>*</span>
                       )}
                     </InputLabel>
