@@ -374,6 +374,7 @@ const CallModePage = () => {
   const [editedExclusiveOtherDecisionFactors, setEditedExclusiveOtherDecisionFactors] = useState<string[]>([]);
   const [editedCompetitorNameAndReason, setEditedCompetitorNameAndReason] = useState<string>('');
   const [savingStatus, setSavingStatus] = useState(false);
+  const [statusChanged, setStatusChanged] = useState(false); // ステータスセクションの変更検知
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [appointmentSuccessMessage, setAppointmentSuccessMessage] = useState<string | null>(null);
   const [sendingChatNotification, setSendingChatNotification] = useState(false);
@@ -1090,6 +1091,7 @@ const CallModePage = () => {
       console.log('propertyがnullまたはundefined:', !propertyData);
       setEditedStatus(sellerData.status);
       setEditedConfidence(sellerData.confidence || ConfidenceLevel.B);
+      setStatusChanged(false); // 売主データ読み込み時にリセット
       
       // 除外日を設定（YYYY-MM-DD形式に変換）
       if (sellerData.exclusionDate) {
@@ -1650,6 +1652,7 @@ const CallModePage = () => {
       });
 
       setSuccessMessage('ステータスを更新しました');
+      setStatusChanged(false); // 保存成功後にリセット
       
       // 売主情報を再読み込み
       await loadAllData();
@@ -5300,7 +5303,7 @@ HP：https://ifoo-oita.com/
                     <Select
                       value={editedStatus}
                       label="状況（当社）"
-                      onChange={(e) => setEditedStatus(e.target.value)}
+                      onChange={(e) => { setEditedStatus(e.target.value); setStatusChanged(true); }}
                     >
                       <MenuItem value="追客中">追客中</MenuItem>
                       <MenuItem value="追客不要(未訪問）">追客不要(未訪問）</MenuItem>
@@ -5327,7 +5330,7 @@ HP：https://ifoo-oita.com/
                     label="次電日"
                     type="date"
                     value={editedNextCallDate}
-                    onChange={(e) => setEditedNextCallDate(e.target.value)}
+                    onChange={(e) => { setEditedNextCallDate(e.target.value); setStatusChanged(true); }}
                     InputLabelProps={{ shrink: true }}
                   />
                 </Grid>
@@ -5455,6 +5458,7 @@ HP：https://ifoo-oita.com/
                       // ローカル状態を更新
                       setSeller(prev => prev ? { ...prev, confidence: newValue } : prev);
                       setEditedConfidence(newValue as ConfidenceLevel);
+                      setStatusChanged(true);
                     }}
                     buyerId={id}
                     enableConflictDetection={true}
@@ -5492,6 +5496,7 @@ HP：https://ifoo-oita.com/
                           if (value && exclusionDate) {
                             setEditedNextCallDate(exclusionDate);
                           }
+                          setStatusChanged(true);
                         }}
                         sx={{ minWidth: 80 }}
                       >
@@ -5501,14 +5506,33 @@ HP：https://ifoo-oita.com/
                   </Box>
                 </Grid>
 
-                {/* ステータスを更新ボタン */}
+                {/* ステータスを更新ボタン（未変更時はグレー、変更あり時はオレンジでパルスアニメーション） */}
                 <Grid item xs={12}>
                   <Button
                     fullWidth
-                    variant="outlined"
+                    variant={statusChanged ? 'contained' : 'outlined'}
+                    size="large"
                     startIcon={savingStatus ? <CircularProgress size={20} /> : <Save />}
                     onClick={handleUpdateStatus}
-                    disabled={savingStatus}
+                    disabled={savingStatus || !statusChanged}
+                    sx={{
+                      ...(statusChanged ? {
+                        backgroundColor: '#ff6d00',
+                        color: '#fff',
+                        fontWeight: 'bold',
+                        boxShadow: '0 0 0 3px rgba(255,109,0,0.4)',
+                        animation: 'pulse-orange 1.5s infinite',
+                        '@keyframes pulse-orange': {
+                          '0%': { boxShadow: '0 0 0 0 rgba(255,109,0,0.5)' },
+                          '70%': { boxShadow: '0 0 0 8px rgba(255,109,0,0)' },
+                          '100%': { boxShadow: '0 0 0 0 rgba(255,109,0,0)' },
+                        },
+                        '&:hover': { backgroundColor: '#e65100' },
+                      } : {
+                        color: '#bdbdbd',
+                        borderColor: '#e0e0e0',
+                      }),
+                    }}
                   >
                     {savingStatus ? '更新中...' : 'ステータスを更新'}
                   </Button>

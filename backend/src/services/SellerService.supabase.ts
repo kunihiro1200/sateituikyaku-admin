@@ -542,7 +542,7 @@ export class SellerService extends BaseRepository {
 
     // Site field
     if (data.site !== undefined) {
-      updates.site = data.site;
+      updates.inquiry_site = data.site;
     }
 
     // Exclusion action field
@@ -593,12 +593,12 @@ export class SellerService extends BaseRepository {
     if (data.inquiryDate !== undefined || data.site !== undefined) {
       // 現在の売主データを取得して、更新されないフィールドの値を使用
       const { data: currentSeller } = await this.table('sellers')
-        .select('inquiry_date, site')
+        .select('inquiry_date, inquiry_site')
         .eq('id', sellerId)
         .single();
       
       const inquiryDateForCalc = data.inquiryDate !== undefined ? data.inquiryDate : currentSeller?.inquiry_date;
-      const siteForCalc = data.site !== undefined ? data.site : currentSeller?.site;
+      const siteForCalc = data.site !== undefined ? data.site : currentSeller?.inquiry_site;
       
       const exclusionDate = ExclusionDateCalculator.calculateExclusionDate(
         inquiryDateForCalc,
