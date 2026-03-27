@@ -7,7 +7,6 @@ import {
   Alert,
   Button,
   LinearProgress,
-  Collapse,
 } from '@mui/material';
 import {
   EmojiEvents as TrophyIcon,
@@ -28,6 +27,11 @@ interface RankingData {
   updatedAt: string;
 }
 
+interface CallRankingDisplayProps {
+  /** 表示対象のイニシャル一覧（未指定時は全件表示） */
+  allowedInitials?: string[];
+}
+
 // 順位ごとの色設定
 const RANK_COLORS: Record<number, { bg: string; text: string; border: string }> = {
   1: { bg: '#FFF8E1', text: '#F57F17', border: '#FFD54F' },
@@ -39,7 +43,18 @@ const DEFAULT_RANK_COLOR = { bg: '#FAFAFA', text: '#424242', border: '#E0E0E0' }
 
 const DISPLAY_LIMIT = 5;
 
-const CallRankingDisplay = () => {
+// ランキングから除外するイニシャル・文字列
+const EXCLUDED_INITIALS = new Set(['K', 'TENANT']);
+// 除外するイニシャルのパターン（部分一致）
+const EXCLUDED_PATTERNS = ['1度目不通', '不要', '1度目で通電OK'];
+
+function isExcluded(initial: string): boolean {
+  if (EXCLUDED_INITIALS.has(initial)) return true;
+  if (initial.includes('TENANT')) return true;
+  return EXCLUDED_PATTERNS.some((p) => initial.includes(p));
+}
+
+const CallRankingDisplay = ({ allowedInitials }: CallRankingDisplayProps) => {
   const [data, setData] = useState<RankingData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -106,9 +121,29 @@ const CallRankingDisplay = () => {
     );
   }
 
-  const maxCount = data.rankings[0].count;
-  const visibleRankings = expanded ? data.rankings : data.rankings.slice(0, DISPLAY_LIMIT);
-  const hasMore = data.rankings.length > DISPLAY_LIMIT;
+  // 除外フィルタ + allowedInitials フィルタを適用
+  const filteredRankings = data.rankings.filter((entry) => {
+    if (isExcluded(entry.initial)) return false;
+    if (allowedInitials && allowedInitials.length > 0) {
+      return allowedInitials.includes(entry.initial);
+    }
+    return true;
+  });
+
+  if (filteredRankings.length === 0) {
+    return (
+      <Paper sx={{ p: 2, textAlign: 'center', bgcolor: '#FAFAFA' }}>
+        <TrophyIcon sx={{ fontSize: 32, color: 'text.disabled', mb: 0.5 }} />
+        <Typography variant="body2" color="text.secondary">
+          今月はまだ記録がありません
+        </Typography>
+      </Paper>
+    );
+  }
+
+  const maxCount = filteredRankings[0].count;
+  const visibleRankings = expanded ? filteredRankings : filteredRankings.slice(0, DISPLAY_LIMIT);
+  const hasMore = filteredRankings.length > DISPLAY_LIMIT;
 
   return (
     <Box>
@@ -116,7 +151,7 @@ const CallRankingDisplay = () => {
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
         <Typography variant="subtitle2" sx={{ display: 'flex', alignItems: 'center', gap: 0.5, fontWeight: 'bold' }}>
           <TrophyIcon sx={{ fontSize: 18, color: '#F57F17' }} />
-          1番電話ランキング
+          1番電話月間ランキング
           <Typography component="span" variant="caption" color="text.secondary" sx={{ ml: 0.5 }}>
             {formatPeriod(data.period.from)}
           </Typography>

@@ -521,6 +521,7 @@ const CallModePage = () => {
   const [editedFirstCallPerson, setEditedFirstCallPerson] = useState<string>('');
   const [savedFirstCallPerson, setSavedFirstCallPerson] = useState<string>(''); // 保存済み値（変更検知用）
   const [savingCommunication, setSavingCommunication] = useState(false);
+  const [rankingDialogOpen, setRankingDialogOpen] = useState(false); // 1番電話月間ランキングダイアログ
 
   // 遷移警告ダイアログ用の状態
   const [navigationWarningDialog, setNavigationWarningDialog] = useState<{
@@ -3249,10 +3250,7 @@ HP：https://ifoo-oita.com/
             <CallLogDisplay ref={callLogRef} sellerId={id!} />
           </Box>
 
-          {/* 1番電話ランキング */}
-          <Box sx={{ width: 280, p: 2, borderBottom: 1, borderColor: 'divider' }}>
-            <CallRankingDisplay />
-          </Box>
+          {/* 1番電話ランキング - サイドバーから削除（1番電話フィールド横のボタンに移動） */}
 
           {/* メール・SMS履歴（追客ログの直下） */}
           <Box sx={{ width: 280, p: 2, borderBottom: 1, borderColor: 'divider' }}>
@@ -5608,12 +5606,22 @@ HP：https://ifoo-oita.com/
 
             {/* 1番電話フィールド（不通の直下） */}
             <Box sx={{ mb: 2 }}>
-              <Typography variant="subtitle2" gutterBottom>
-                1番電話
-                {seller?.inquiryDate && new Date(seller.inquiryDate) >= new Date('2026-03-01') && unreachableStatus && (
-                  <span style={{ color: 'red', marginLeft: 4 }}>*</span>
-                )}
-              </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                <Typography variant="subtitle2">
+                  1番電話
+                  {seller?.inquiryDate && new Date(seller.inquiryDate) >= new Date('2026-03-01') && unreachableStatus && (
+                    <span style={{ color: 'red', marginLeft: 4 }}>*</span>
+                  )}
+                </Typography>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  onClick={() => setRankingDialogOpen(true)}
+                  sx={{ fontSize: '0.7rem', py: 0.25, px: 1, minWidth: 0 }}
+                >
+                  🏆 1番電話月間ランキング
+                </Button>
+              </Box>
               <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
                 {activeEmployees.map((emp) => (
                   <Button
@@ -6212,6 +6220,23 @@ HP：https://ifoo-oita.com/
         onConfirm={handleImageSelectionConfirm}
         onCancel={handleImageSelectionCancel}
       />
+
+      {/* 1番電話月間ランキングダイアログ */}
+      <Dialog open={rankingDialogOpen} onClose={() => setRankingDialogOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          🏆 1番電話月間ランキング
+        </DialogTitle>
+        <DialogContent>
+          <CallRankingDisplay
+            allowedInitials={activeEmployees
+              .map((e) => e.initials || '')
+              .filter((i) => i !== '')}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setRankingDialogOpen(false)}>閉じる</Button>
+        </DialogActions>
+      </Dialog>
 
       {/* 遷移警告ダイアログ（確度未入力 / 1番電話未入力） */}
       <Dialog open={navigationWarningDialog.open} onClose={() => setNavigationWarningDialog({ open: false, onConfirm: null })}>
