@@ -4799,13 +4799,38 @@ HP：https://ifoo-oita.com/
                           const roadPrice = parseFloat(editedFixedAssetTaxRoadPrice) || 0;
                           const landPrice = (landArea * roadPrice) / 0.6;
 
-                          const buildingArea = property.buildingArea || 0;
+                          // 建物面積: 当社調べ優先
+                          const buildingArea = property.buildingAreaVerified || property.buildingArea || 0;
                           const buildYear = property.buildYear || 0;
-                          const buildingAge = buildYear > 0 ? 2025 - buildYear : 0;
-                          const unitPrice = 176200;
+                          // 築年=0または空欄の場合はデフォルト35年
+                          const buildingAge = buildYear > 0 ? 2025 - buildYear : 35;
+                          const structure = property.structure || '';
+
+                          // 構造に応じた建築単価（デフォルト値）
+                          const unitPrice = (() => {
+                            if (structure === '鉄骨') return 237300;
+                            if (structure === '軽量鉄骨') return 128400;
+                            return 123100; // 木造・空欄・不明・未確認
+                          })();
+
                           const basePrice = unitPrice * buildingArea;
-                          const depreciation = basePrice * 0.9 * buildingAge * 0.031;
-                          const buildingPrice = basePrice - depreciation;
+
+                          // 築年数の上限チェック付き建物価格計算
+                          const buildingPrice = (() => {
+                            if (structure === '鉄骨' || structure === '軽量鉄骨') {
+                              // 鉄骨・軽量鉄骨: 40年以上で残価10%
+                              if (buildingAge >= 40) return basePrice * 0.1;
+                              const rate = structure === '鉄骨' ? 0.015 : 0.025;
+                              return basePrice - basePrice * 0.9 * buildingAge * rate;
+                            } else {
+                              // 木造・空欄・その他: 33年以上で残価10%
+                              if (buildingAge >= 33) return basePrice * 0.1;
+                              return basePrice - basePrice * 0.9 * buildingAge * 0.031;
+                            }
+                          })();
+
+                          // 表示用: 減価償却額（上限チェック後の実際の減価）
+                          const depreciation = basePrice - buildingPrice;
 
                           return (
                             <Grid item xs={12}>
@@ -4858,20 +4883,31 @@ HP：https://ifoo-oita.com/
                                           = ¥{Math.round(basePrice).toLocaleString()}
                                         </Typography>
                                         <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                                          減価償却 = 基準価格 × 0.9 × 築年数 × 0.031
+                                          {buildingAge >= (structure === '鉄骨' || structure === '軽量鉄骨' ? 40 : 33)
+                                            ? `建物価格 = 基準価格 × 0.1（築年数${buildingAge}年 ≥ 上限、残価10%）`
+                                            : `減価償却 = 基準価格 × 0.9 × 築年数 × ${structure === '鉄骨' ? '0.015' : structure === '軽量鉄骨' ? '0.025' : '0.031'}`
+                                          }
                                         </Typography>
                                         <Typography variant="body2" color="text.secondary">
-                                          = ¥{Math.round(basePrice).toLocaleString()} × 0.9 × {buildingAge} × 0.031
+                                          {buildingAge >= (structure === '鉄骨' || structure === '軽量鉄骨' ? 40 : 33)
+                                            ? `= ¥${Math.round(basePrice).toLocaleString()} × 0.1`
+                                            : `= ¥${Math.round(basePrice).toLocaleString()} × 0.9 × ${buildingAge} × ${structure === '鉄骨' ? '0.015' : structure === '軽量鉄骨' ? '0.025' : '0.031'}`
+                                          }
                                         </Typography>
                                         <Typography variant="body2" color="text.secondary">
                                           = ¥{Math.round(depreciation).toLocaleString()}
                                         </Typography>
                                         <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                                          建物価格 = 基準価格 - 減価償却
+                                          {buildingAge >= (structure === '鉄骨' || structure === '軽量鉄骨' ? 40 : 33)
+                                            ? '建物価格 = 基準価格 × 0.1'
+                                            : '建物価格 = 基準価格 - 減価償却'
+                                          }
                                         </Typography>
                                         <Typography variant="body2" color="text.secondary">
-                                          = ¥{Math.round(basePrice).toLocaleString()} - ¥
-                                          {Math.round(depreciation).toLocaleString()}
+                                          {buildingAge >= (structure === '鉄骨' || structure === '軽量鉄骨' ? 40 : 33)
+                                            ? `= ¥${Math.round(basePrice).toLocaleString()} × 0.1`
+                                            : `= ¥${Math.round(basePrice).toLocaleString()} - ¥${Math.round(depreciation).toLocaleString()}`
+                                          }
                                         </Typography>
                                         <Typography variant="body2" color="text.secondary" fontWeight="bold">
                                           = ¥{Math.round(buildingPrice).toLocaleString()}
