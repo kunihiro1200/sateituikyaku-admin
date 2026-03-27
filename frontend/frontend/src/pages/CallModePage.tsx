@@ -2761,6 +2761,7 @@ HP：https://ifoo-oita.com/
         <Button variant="contained" onClick={() => {
           sessionStorage.removeItem('sellersScrollPosition');
           sessionStorage.removeItem('selectedSellerId');
+          sessionStorage.removeItem('sellersPage');
           pageDataCache.invalidate(CACHE_KEYS.SELLERS_LIST);
           navigate('/');
         }}>
@@ -2822,9 +2823,10 @@ HP：https://ifoo-oita.com/
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
           <Button startIcon={<ArrowBack />} onClick={() => {
             navigateWithWarningCheck(() => {
-              // 一覧に戻る時にスクロール位置をリセット（トップに戻る）
+              // 一覧に戻る時にスクロール位置・ページ番号をリセット（トップに戻る）
               sessionStorage.removeItem('sellersScrollPosition');
               sessionStorage.removeItem('selectedSellerId');
+              sessionStorage.removeItem('sellersPage');
               pageDataCache.invalidate(CACHE_KEYS.SELLERS_LIST);
               navigate('/');
             });
@@ -2852,9 +2854,10 @@ HP：https://ifoo-oita.com/
                 size="small"
                 onClick={() => {
                   navigateWithWarningCheck(() => {
-                    // 一覧に戻る時にスクロール位置をリセット（トップに戻る）
+                    // 一覧に戻る時にスクロール位置・ページ番号をリセット（トップに戻る）
                     sessionStorage.removeItem('sellersScrollPosition');
                     sessionStorage.removeItem('selectedSellerId');
+                    sessionStorage.removeItem('sellersPage');
                     sessionStorage.setItem('selectedStatusCategory', selectedCategory);
                     pageDataCache.invalidate(CACHE_KEYS.SELLERS_LIST);
                     navigate('/');

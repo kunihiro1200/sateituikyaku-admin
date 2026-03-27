@@ -1879,82 +1879,8 @@ export class SellerService extends BaseRepository {
     todayCallWithInfoLabels: string[];
     todayCallWithInfoLabelCounts: Record<string, number>;
   }> {
-    try {
-      // seller_sidebar_counts テーブルから1クエリで取得（超高速）
-      const { data: rows, error } = await this.supabase
-        .from('seller_sidebar_counts')
-        .select('category, count, label, assignee')
-        .order('category');
-
-      if (error) throw error;
-      if (!rows || rows.length === 0) {
-        console.log('⚠️ seller_sidebar_counts is empty, falling back to DB queries');
-        return this.getSidebarCountsFallback();
-      }
-
-      // テーブルのデータを集計
-      let todayCall = 0;
-      let todayCallWithInfo = 0;
-      let todayCallAssigned = 0;
-      let visitDayBefore = 0;
-      let visitCompleted = 0;
-      let unvaluated = 0;
-      let mailingPending = 0;
-      let todayCallNotStarted = 0;
-      let pinrichEmpty = 0;
-      const visitAssignedCounts: Record<string, number> = {};
-      const todayCallAssignedCounts: Record<string, number> = {};
-      const todayCallWithInfoLabelCounts: Record<string, number> = {};
-
-      for (const row of rows) {
-        const cnt = Number(row.count) || 0;
-        switch (row.category) {
-          case 'todayCall': todayCall = cnt; break;
-          case 'todayCallWithInfo':
-            todayCallWithInfo += cnt;
-            if (row.label) todayCallWithInfoLabelCounts[row.label] = (todayCallWithInfoLabelCounts[row.label] || 0) + cnt;
-            break;
-          case 'todayCallAssigned':
-            todayCallAssigned += cnt;
-            if (row.assignee) todayCallAssignedCounts[row.assignee] = (todayCallAssignedCounts[row.assignee] || 0) + cnt;
-            break;
-          case 'visitDayBefore': visitDayBefore = cnt; break;
-          case 'visitCompleted':
-            visitCompleted += cnt;
-            if (row.assignee) visitAssignedCounts[row.assignee] = (visitAssignedCounts[row.assignee] || 0) + cnt;
-            break;
-          case 'visitAssigned':
-            if (row.assignee) visitAssignedCounts[row.assignee] = (visitAssignedCounts[row.assignee] || 0) + cnt;
-            break;
-          case 'unvaluated': unvaluated = cnt; break;
-          case 'mailingPending': mailingPending = cnt; break;
-          case 'todayCallNotStarted': todayCallNotStarted = cnt; break;
-          case 'pinrichEmpty': pinrichEmpty = cnt; break;
-        }
-      }
-
-      const todayCallWithInfoLabels = Object.keys(todayCallWithInfoLabelCounts);
-
-      console.log('✅ seller_sidebar_counts から高速取得成功');
-      return {
-        todayCall,
-        todayCallWithInfo,
-        todayCallAssigned,
-        visitDayBefore,
-        visitCompleted,
-        unvaluated,
-        mailingPending,
-        todayCallNotStarted,
-        pinrichEmpty,
-        visitAssignedCounts,
-        todayCallAssignedCounts,
-        todayCallWithInfoLabels,
-        todayCallWithInfoLabelCounts,
-      };
-    } catch (err) {
-      console.error('❌ seller_sidebar_counts 取得失敗、フォールバック実行:', err);
-      return this.getSidebarCountsFallback();
-    }
+    // seller_sidebar_counts テーブルのスキーマが不安定なため、直接フォールバックを使用
+    return this.getSidebarCountsFallback();
   }
 
   /**
