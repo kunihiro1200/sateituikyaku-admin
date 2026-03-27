@@ -524,6 +524,7 @@ const CallModePage = () => {
   // 遷移警告ダイアログ用の状態
   const [navigationWarningDialog, setNavigationWarningDialog] = useState<{
     open: boolean;
+    warningType?: 'firstCall' | 'confidence';
     onConfirm: (() => void) | null;
   }>({ open: false, onConfirm: null });
   const isInitialLoadRef = useRef(true); // 初回ロードフラグ
@@ -1411,11 +1412,29 @@ const CallModePage = () => {
   };
 
   const handleBack = () => {
+    // 確度が必須条件を満たしているのに未入力の場合は警告
+    const isAfterJan2026 = seller?.inquiryDate && new Date(seller.inquiryDate) >= new Date('2026-01-01');
+    const isFollowingUp = seller?.status?.includes('追客中');
+    const isNotUnreachable = unreachableStatus !== '不通';
+    if (isAfterJan2026 && isFollowingUp && isNotUnreachable && !editedConfidence) {
+      setNavigationWarningDialog({
+        open: true,
+        warningType: 'confidence',
+        onConfirm: () => {
+          pageDataCache.invalidateByPrefix(CACHE_KEYS.SELLERS_LIST);
+          pageDataCache.invalidate(CACHE_KEYS.SELLERS_SIDEBAR_COUNTS);
+          navigate(`/sellers/${id}`);
+        },
+      });
+      return;
+    }
+
     // 2026/3/1以降の反響日付で不通入力済み＋1番電話未入力の場合は警告
     const isAfterMar2026 = seller?.inquiryDate && new Date(seller.inquiryDate) >= new Date('2026-03-01');
     if (isAfterMar2026 && unreachableStatus && !editedFirstCallPerson) {
       setNavigationWarningDialog({
         open: true,
+        warningType: 'firstCall',
         onConfirm: () => {
           pageDataCache.invalidateByPrefix(CACHE_KEYS.SELLERS_LIST);
           pageDataCache.invalidate(CACHE_KEYS.SELLERS_SIDEBAR_COUNTS);
@@ -1435,9 +1454,22 @@ const CallModePage = () => {
    * 条件: 反響日付が2026/3/1以降 かつ 不通入力済み かつ 1番電話未入力
    */
   const navigateWithWarningCheck = (onConfirm: () => void) => {
+    // 確度が必須条件を満たしているのに未入力の場合は警告
+    const isAfterJan2026 = seller?.inquiryDate && new Date(seller.inquiryDate) >= new Date('2026-01-01');
+    const isFollowingUp = seller?.status?.includes('追客中');
+    const isNotUnreachable = unreachableStatus !== '不通';
+    if (isAfterJan2026 && isFollowingUp && isNotUnreachable && !editedConfidence) {
+      setNavigationWarningDialog({
+        open: true,
+        warningType: 'confidence',
+        onConfirm,
+      });
+      return;
+    }
+
     const isAfterMar2026 = seller?.inquiryDate && new Date(seller.inquiryDate) >= new Date('2026-03-01');
     if (isAfterMar2026 && unreachableStatus && !editedFirstCallPerson) {
-      setNavigationWarningDialog({ open: true, onConfirm });
+      setNavigationWarningDialog({ open: true, warningType: 'firstCall', onConfirm });
       return;
     }
     onConfirm();
@@ -6175,13 +6207,18 @@ HP：https://ifoo-oita.com/
         onCancel={handleImageSelectionCancel}
       />
 
-      {/* 1番電話未入力警告ダイアログ */}
+      {/* 遷移警告ダイアログ（確度未入力 / 1番電話未入力） */}
       <Dialog open={navigationWarningDialog.open} onClose={() => setNavigationWarningDialog({ open: false, onConfirm: null })}>
-        <DialogTitle>⚠️ 1番電話が未入力です</DialogTitle>
+        <DialogTitle>
+          {navigationWarningDialog.warningType === 'confidence'
+            ? '⚠️ 確度が未入力です'
+            : '⚠️ 1番電話が未入力です'}
+        </DialogTitle>
         <DialogContent>
           <Typography>
-            不通が入力されていますが、1番電話が未入力です。<br />
-            このまま移動しますか？
+            {navigationWarningDialog.warningType === 'confidence'
+              ? <>確度が未入力です。<br />このまま移動しますか？</>
+              : <>不通が入力されていますが、1番電話が未入力です。<br />このまま移動しますか？</>}
           </Typography>
         </DialogContent>
         <DialogActions>
