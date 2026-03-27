@@ -5459,7 +5459,7 @@ HP：https://ifoo-oita.com/
                       // ローカル状態を更新
                       setSeller(prev => prev ? { ...prev, confidence: newValue } : prev);
                       setEditedConfidence(newValue as ConfidenceLevel);
-                      setStatusChanged(true);
+                      // 確度は即時保存のためstatusChangedは変更しない
                     }}
                     buyerId={id}
                     enableConflictDetection={true}
