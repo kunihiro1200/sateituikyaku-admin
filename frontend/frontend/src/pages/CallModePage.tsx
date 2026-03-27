@@ -3182,11 +3182,16 @@ HP：https://ifoo-oita.com/
           </Box>
 
           {/* 過去の活動ログ（追客ログの直下） */}
-          {seller?.sellerNumber && (
-            <Box sx={{ width: 280, p: 2, borderBottom: 1, borderColor: 'divider' }}>
+          <Box sx={{ width: 280, p: 2, borderBottom: 1, borderColor: 'divider' }}>
+            {seller?.sellerNumber ? (
               <FollowUpLogHistoryTable sellerNumber={seller.sellerNumber} />
-            </Box>
-          )}
+            ) : (
+              <div className="mt-2">
+                <h3 className="text-lg font-semibold text-gray-900">過去の活動ログ</h3>
+                <p className="text-sm text-gray-400 mt-2">売主データを読み込み中...</p>
+              </div>
+            )}
+          </Box>
           
           {/* カテゴリー（一番下） */}
           <SellerStatusSidebar
