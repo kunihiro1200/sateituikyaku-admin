@@ -616,11 +616,25 @@ function updateSidebarCounts_(sheetRows) {
     var hasValuation = !!(val1 || val2 || val3);
     var valuationMethod = row['査定方法'] ? String(row['査定方法']) : '';
     var isValuationNotNeeded = valuationMethod === '査定不要';
+    // 当日TEL_未着手の条件を満たす場合は未査定から除外（未着手が優先）
+    var confidence = row['確度'] ? String(row['確度']) : '';
+    var exclusionDate = row['除外日にすること'] ? String(row['除外日にすること']) : '';
+    var isTodayCallNotStarted = (
+      status === '追客中' &&
+      nextCallDate && isTodayOrBefore(nextCallDate) &&
+      !isVisitAssigneeValid &&
+      !hasContactInfo(row) &&
+      !unreachable &&
+      confidence !== 'ダブり' && confidence !== 'D' && confidence !== 'AI査定' &&
+      !exclusionDate &&
+      inquiryDateStr && inquiryDateStr >= cutoffDate2
+    );
     if (status.indexOf('追客中') !== -1 &&
         !hasValuation &&
         !isValuationNotNeeded &&
         !isVisitAssigneeValid &&
-        inquiryDateStr && inquiryDateStr >= cutoffDate) {
+        inquiryDateStr && inquiryDateStr >= cutoffDate &&
+        !isTodayCallNotStarted) {
       counts.unvaluated++;
     }
 

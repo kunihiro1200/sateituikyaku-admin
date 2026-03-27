@@ -2146,7 +2146,7 @@ export class SellerService extends BaseRepository {
 
     // 5. 未査定
     const { data: unvaluatedSellers } = await this.table('sellers')
-      .select('id, valuation_amount_1, valuation_amount_2, valuation_amount_3, visit_assignee, mailing_status')
+      .select('id, status, valuation_amount_1, valuation_amount_2, valuation_amount_3, visit_assignee, mailing_status, inquiry_date, unreachable_status, confidence_level, exclusion_date, next_call_date, phone_contact_person, preferred_contact_time, contact_method')
       .is('deleted_at', null)
       .ilike('status', '%追客中%')
       .gte('inquiry_date', cutoffDate)
@@ -2155,7 +2155,27 @@ export class SellerService extends BaseRepository {
     const unvaluatedCount = (unvaluatedSellers || []).filter(s => {
       const hasNoValuation = !s.valuation_amount_1 && !s.valuation_amount_2 && !s.valuation_amount_3;
       const isNotRequired = s.mailing_status === '不要';
-      return hasNoValuation && !isNotRequired;
+      if (!hasNoValuation || isNotRequired) return false;
+      // 当日TEL_未着手の条件を満たす場合は未査定から除外（未着手が優先）
+      const status = (s as any).status || '';
+      const nextCallDate = (s as any).next_call_date || '';
+      const hasInfo = ((s as any).phone_contact_person?.trim()) ||
+                      ((s as any).preferred_contact_time?.trim()) ||
+                      ((s as any).contact_method?.trim());
+      const unreachable = (s as any).unreachable_status || '';
+      const confidence = (s as any).confidence_level || '';
+      const exclusionDate = (s as any).exclusion_date || '';
+      const inquiryDate = (s as any).inquiry_date || '';
+      const isTodayCallNotStarted = (
+        status === '追客中' &&
+        nextCallDate && nextCallDate <= todayJST &&
+        !hasInfo &&
+        !unreachable &&
+        confidence !== 'ダブり' && confidence !== 'D' && confidence !== 'AI査定' &&
+        !exclusionDate &&
+        inquiryDate >= '2026-01-01'
+      );
+      return !isTodayCallNotStarted;
     }).length;
 
     // 6. 査定（郵送）
