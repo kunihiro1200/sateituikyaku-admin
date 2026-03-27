@@ -161,7 +161,18 @@ const RichTextCommentEditor = React.forwardRef<RichTextCommentEditorHandle, Rich
         const editor = editorRef.current;
         if (!editor) return;
 
-        const savedOffset = cursorOffsetRef.current;
+        // 現在のDOM選択状態を確認（blur後でもカーソル位置を取得できる）
+        const currentSelection = window.getSelection();
+        let liveOffset = -1;
+        if (currentSelection && currentSelection.rangeCount > 0) {
+          const range = currentSelection.getRangeAt(0);
+          if (editor.contains(range.commonAncestorContainer)) {
+            liveOffset = getTextOffset(editor, range.startContainer, range.startOffset);
+          }
+        }
+
+        // ライブのカーソル位置を優先、なければ保存済みオフセットを使用
+        const savedOffset = liveOffset >= 0 ? liveOffset : cursorOffsetRef.current;
 
         // カーソル位置が保存されている場合：innerHTML を直接操作して挿入
         if (savedOffset >= 0) {
@@ -195,8 +206,15 @@ const RichTextCommentEditor = React.forwardRef<RichTextCommentEditorHandle, Rich
                 sel.addRange(range);
               }
 
+              // 太字コンテキストが残っている場合は解除（バグ2修正）
+              if (typeof document.queryCommandState === 'function' && document.queryCommandState('bold')) {
+                document.execCommand('bold', false);
+              }
+
               onChange(editor.innerHTML);
-              // 新しいカーソル位置を保存
+              // フォーカスを戻してカーソル位置を更新（バグ1修正）
+              editor.focus();
+              isFocusedRef.current = true;
               saveCursorOffset();
               return;
             } catch (e) {
@@ -224,7 +242,13 @@ const RichTextCommentEditor = React.forwardRef<RichTextCommentEditorHandle, Rich
           }
         }
         document.execCommand('insertHTML', false, html);
+        // 太字コンテキストが残っている場合は解除（バグ2修正）
+        if (typeof document.queryCommandState === 'function' && document.queryCommandState('bold')) {
+          document.execCommand('bold', false);
+        }
         handleInput();
+        // フォーカスを戻してカーソル位置を更新（バグ1修正）
+        isFocusedRef.current = true;
         saveCursorOffset();
       },
     }));
