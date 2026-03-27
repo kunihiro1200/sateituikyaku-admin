@@ -1649,7 +1649,7 @@ const CallModePage = () => {
         competitors: editedCompetitors.length > 0 ? editedCompetitors.join(', ') : null,
         exclusiveOtherDecisionFactors: editedExclusiveOtherDecisionFactors.length > 0 ? editedExclusiveOtherDecisionFactors : null,
         competitorNameAndReason: editedCompetitorNameAndReason || null,
-        exclusionAction: exclusionAction || null,
+        ...(exclusionAction ? { exclusionAction } : {}),
       });
 
       setSuccessMessage('ステータスを更新しました');
