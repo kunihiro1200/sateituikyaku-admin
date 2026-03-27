@@ -356,6 +356,7 @@ const CallModePage = () => {
   // 通話メモ入力状態（削除済み - 統一コメント欄に統合）
   const [saving, setSaving] = useState(false);
   const [unreachableStatus, setUnreachableStatus] = useState<string | null>(null);
+  const [savedUnreachableStatus, setSavedUnreachableStatus] = useState<string | null>(null); // 保存済み値（変更検知用）
   const [copiedSellerNumber, setCopiedSellerNumber] = useState(false); // 売主番号コピー完了フラグ
   const [snackbarOpen, setSnackbarOpen] = useState(false); // スナックバー表示フラグ
   const [snackbarMessage, setSnackbarMessage] = useState<string>(''); // スナックバーメッセージ
@@ -517,6 +518,7 @@ const CallModePage = () => {
   const [editedPreferredContactTime, setEditedPreferredContactTime] = useState<string>('');
   const [editedContactMethod, setEditedContactMethod] = useState<string>('');
   const [editedFirstCallPerson, setEditedFirstCallPerson] = useState<string>('');
+  const [savedFirstCallPerson, setSavedFirstCallPerson] = useState<string>(''); // 保存済み値（変更検知用）
   const [savingCommunication, setSavingCommunication] = useState(false);
 
   // 遷移警告ダイアログ用の状態
@@ -1078,6 +1080,7 @@ const CallModePage = () => {
       
       setSeller(sellerData);
       setUnreachableStatus(sellerData.unreachableStatus || null);
+      setSavedUnreachableStatus(sellerData.unreachableStatus || null);
       setEditableComments(sellerData.comments || '');
       setSavedComments(sellerData.comments || '');
 
@@ -1221,6 +1224,7 @@ const CallModePage = () => {
       setEditedPreferredContactTime(sellerData.preferredContactTime || '');
       setEditedContactMethod(sellerData.contactMethod || '');
       setEditedFirstCallPerson(sellerData.firstCallPerson || '');
+      setSavedFirstCallPerson(sellerData.firstCallPerson || '');
 
       // ローディング終了（画面を表示）- employees/activities 取得を待たずに表示
       setLoading(false);
@@ -1468,6 +1472,10 @@ const CallModePage = () => {
 
       // 保存成功メッセージを表示
       setSuccessMessage('保存しました');
+      
+      // 保存済み値を更新（ボタンのハイライトをリセット）
+      setSavedUnreachableStatus(unreachableStatus || null);
+      setSavedFirstCallPerson(editedFirstCallPerson || '');
       
       // データを再読み込み
       await loadAllData();
@@ -5505,10 +5513,20 @@ HP：https://ifoo-oita.com/
               onClick={handleSaveAndExit}
               sx={{
                 mb: 2,
-                backgroundColor: '#1565c0',
+                backgroundColor: (unreachableStatus !== savedUnreachableStatus || editedFirstCallPerson !== savedFirstCallPerson)
+                  ? '#e65100'
+                  : '#1565c0',
                 color: '#fff',
                 fontWeight: 'bold',
-                '&:hover': { backgroundColor: '#0d47a1' },
+                boxShadow: (unreachableStatus !== savedUnreachableStatus || editedFirstCallPerson !== savedFirstCallPerson)
+                  ? '0 0 12px 3px rgba(230, 81, 0, 0.6)'
+                  : undefined,
+                transition: 'background-color 0.3s, box-shadow 0.3s',
+                '&:hover': {
+                  backgroundColor: (unreachableStatus !== savedUnreachableStatus || editedFirstCallPerson !== savedFirstCallPerson)
+                    ? '#bf360c'
+                    : '#0d47a1',
+                },
               }}
             >
               {saving ? <CircularProgress size={24} color="inherit" /> : '不通・1番電話を保存'}
