@@ -41,6 +41,7 @@ const ContentEditable = styled('div')(({ theme }) => ({
   color: theme.palette.text.primary,
   whiteSpace: 'pre-wrap',
   wordBreak: 'break-word',
+  fontWeight: 'normal', // デフォルトは常に通常の太さ
   '&:empty:before': {
     content: 'attr(data-placeholder)',
     color: theme.palette.text.disabled,
@@ -160,11 +161,53 @@ const RichTextCommentEditor = React.forwardRef<RichTextCommentEditorHandle, Rich
     // contentEditableでは<b>タグ内にカーソルがあると入力が太字になるため、
     // 文字入力キーが押された時点で太字状態なら解除する
     const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
-      // 印刷可能文字（通常の文字入力）の場合のみ処理
-      if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
-        if (typeof document.queryCommandState === 'function' && document.queryCommandState('bold')) {
-          // 太字状態を解除してから文字を入力させる
-          document.execCommand('bold', false);
+      if (disabled) return;
+
+      const isBold = typeof document.queryCommandState === 'function' && document.queryCommandState('bold');
+      if (!isBold) return;
+
+      // 印刷可能文字またはEnterキーの場合、太字状態を解除
+      const isPrintable = e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey;
+      const isEnter = e.key === 'Enter';
+
+      if (isPrintable) {
+        // 文字入力前に太字を解除（文字はそのまま入力される）
+        document.execCommand('bold', false);
+      } else if (isEnter) {
+        // Enterキー: デフォルトの改行を止めて、太字コンテキスト外に改行を挿入
+        e.preventDefault();
+        // 現在のカーソル位置に改行を挿入（<b>タグの外側に出る）
+        const sel = window.getSelection();
+        if (sel && sel.rangeCount > 0) {
+          const range = sel.getRangeAt(0);
+          // <b>タグの外側に出るため、<b>タグの後ろに改行を挿入
+          // まず<b>タグの外側にカーソルを移動
+          let node: Node | null = range.startContainer;
+          // <b>タグの祖先を探す
+          while (node && node !== editorRef.current) {
+            if (node.nodeName === 'B' || node.nodeName === 'STRONG') {
+              // <b>タグの後ろに改行テキストノードを挿入
+              const br = document.createElement('br');
+              const textNode = document.createTextNode('');
+              if (node.parentNode) {
+                const nextSibling = node.nextSibling;
+                node.parentNode.insertBefore(br, nextSibling);
+                node.parentNode.insertBefore(textNode, nextSibling);
+                // カーソルを新しいテキストノードに移動
+                const newRange = document.createRange();
+                newRange.setStart(textNode, 0);
+                newRange.collapse(true);
+                sel.removeAllRanges();
+                sel.addRange(newRange);
+              }
+              handleInput();
+              return;
+            }
+            node = node.parentNode;
+          }
+          // <b>タグ外の場合は通常の改行
+          document.execCommand('insertLineBreak');
+          handleInput();
         }
       }
     };
