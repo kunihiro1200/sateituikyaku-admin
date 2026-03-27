@@ -1,6 +1,7 @@
 import { GoogleSheetsClient, SheetRow } from './GoogleSheetsClient';
 import { ColumnMapper, SellerData } from './ColumnMapper';
 import { SupabaseClient } from '@supabase/supabase-js';
+import { decrypt } from '../utils/encryption';
 
 export interface SyncResult {
   success: boolean;
@@ -63,8 +64,11 @@ export class SpreadsheetSyncService {
 
       console.log(`✅ [SpreadsheetSync] Found seller: ${seller.seller_number}`);
 
+      // 暗号化フィールドを復号
+      const decryptedSeller = this.decryptSellerFields(seller);
+
       // スプレッドシート形式に変換
-      const sheetRow = this.columnMapper.mapToSheet(seller as SellerData);
+      const sheetRow = this.columnMapper.mapToSheet(decryptedSeller as SellerData);
       console.log(`📋 [SpreadsheetSync] Converted to sheet row`);
 
       // 売主番号で既存行を検索
@@ -141,8 +145,11 @@ export class SpreadsheetSyncService {
 
       for (const seller of sellers) {
         try {
+          // 暗号化フィールドを復号
+          const decryptedSeller = this.decryptSellerFields(seller);
+
           // スプレッドシート形式に変換
-          const sheetRow = this.columnMapper.mapToSheet(seller as SellerData);
+          const sheetRow = this.columnMapper.mapToSheet(decryptedSeller as SellerData);
 
           // 売主番号で既存行を検索
           const existingRowIndex = await this.findRowBySellerId(seller.seller_number);
@@ -194,6 +201,19 @@ export class SpreadsheetSyncService {
         errors: [...errors, { sellerId: 'batch', error: error.message }],
       };
     }
+  }
+
+  /**
+   * 売主の暗号化フィールドを復号する
+   * email は null の場合があるため null-safe に処理する
+   */
+  private decryptSellerFields(seller: any): any {
+    return {
+      ...seller,
+      name: decrypt(seller.name || ''),
+      phone_number: decrypt(seller.phone_number || ''),
+      email: seller.email ? decrypt(seller.email) : seller.email,
+    };
   }
 
   /**
