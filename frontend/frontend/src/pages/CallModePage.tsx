@@ -32,6 +32,7 @@ import { Seller, PropertyInfo, Activity, SellerStatus, ConfidenceLevel, Duplicat
 import { getDisplayName } from '../utils/employeeUtils';
 import { formatDateTime } from '../utils/dateFormat';
 import CallLogDisplay, { CallLogDisplayHandle } from '../components/CallLogDisplay';
+import CallRankingDisplay from '../components/CallRankingDisplay';
 import { FollowUpLogHistoryTable } from '../components/FollowUpLogHistoryTable';
 import AssigneeSection, { SMS_TEMPLATE_ASSIGNEE_MAP, EMAIL_TEMPLATE_ASSIGNEE_MAP } from '../components/AssigneeSection';
 import DuplicateIndicatorBadge from '../components/DuplicateIndicatorBadge';
@@ -3246,6 +3247,11 @@ HP：https://ifoo-oita.com/
           {/* 売主追客ログ（一番上） */}
           <Box sx={{ width: 280, p: 2, borderBottom: 1, borderColor: 'divider' }}>
             <CallLogDisplay ref={callLogRef} sellerId={id!} />
+          </Box>
+
+          {/* 1番電話ランキング */}
+          <Box sx={{ width: 280, p: 2, borderBottom: 1, borderColor: 'divider' }}>
+            <CallRankingDisplay />
           </Box>
 
           {/* メール・SMS履歴（追客ログの直下） */}
