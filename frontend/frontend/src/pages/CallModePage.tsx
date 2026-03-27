@@ -131,6 +131,15 @@ const CONFIDENCE_OPTIONS = [
   { label: 'ダブり（重複している）', value: 'ダブり' },
 ];
 
+// valuationTextが純粋な数値（円単位）の場合、万円単位に変換して表示する
+const formatValuationText = (text: string): string => {
+  const num = Number(text);
+  if (!isNaN(num) && num > 0 && String(num) === text.trim()) {
+    return `${Math.round(num / 10000)}万円`;
+  }
+  return text;
+};
+
 const CallModePage = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -2981,7 +2990,7 @@ HP：https://ifoo-oita.com/
             <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                 <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
-                  {seller.valuationText}
+                  {formatValuationText(seller.valuationText)}
                 </Typography>
                 <Chip 
                   label="当時査定額" 
@@ -4419,7 +4428,7 @@ HP：https://ifoo-oita.com/
                       {/* valuationTextがある場合はそれを表示、なければ数値から計算 */}
                       {seller?.valuationText ? (
                         <Typography variant="h5">
-                          {seller.valuationText}
+                          {formatValuationText(seller.valuationText)}
                         </Typography>
                       ) : (
                         <Typography variant="h5">
