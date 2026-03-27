@@ -305,7 +305,7 @@ export class SellerService extends BaseRepository {
         'メールアドレス': data.email || '',
         '物件所在地': data.property?.address || '',
         '種別': data.property?.propertyType || '',
-        '反響日付': data.inquiryDate || '',
+        '反響日付': (data.inquiryDate instanceof Date ? data.inquiryDate.toISOString().split('T')[0] : data.inquiryDate) || '',
         'サイト': data.inquirySource || '',
       });
       console.log(`✅ 売主リストスプレッドシートに追加: ${sellerNumber}`);
