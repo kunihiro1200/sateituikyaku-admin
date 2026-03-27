@@ -5400,6 +5400,24 @@ HP：https://ifoo-oita.com/
               </Box>
             </Box>
 
+            {/* 不通・1番電話 保存ボタン */}
+            <Button
+              fullWidth
+              variant="contained"
+              size="large"
+              disabled={saving}
+              onClick={handleSaveAndExit}
+              sx={{
+                mb: 2,
+                backgroundColor: '#1565c0',
+                color: '#fff',
+                fontWeight: 'bold',
+                '&:hover': { backgroundColor: '#0d47a1' },
+              }}
+            >
+              {saving ? <CircularProgress size={24} color="inherit" /> : '不通・1番電話を保存'}
+            </Button>
+
             {/* 査定理由フィールド（読み取り専用） */}
             <TextField
               label="査定理由（査定サイトから転記）"
