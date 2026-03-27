@@ -700,6 +700,37 @@ export class SellerService extends BaseRepository {
       .single();
 
     if (error) {
+      // UUIDでなくseller_numberが渡された場合のフォールバック
+      const isUuidError = error.message?.includes('invalid input syntax for type uuid') ||
+                          error.code === '22P02';
+      if (isUuidError) {
+        console.log(`[updateSeller] UUID検索失敗、seller_number でフォールバック: ${sellerId}`);
+        // seller_numberでUUIDを取得してから更新
+        const { data: found } = await this.table('sellers')
+          .select('id')
+          .eq('seller_number', sellerId)
+          .is('deleted_at', null)
+          .single();
+        if (!found) {
+          throw new Error(`Seller not found: ${sellerId}`);
+        }
+        const { data: sellerByNumber, error: error2 } = await this.table('sellers')
+          .update(updates)
+          .eq('id', found.id)
+          .select()
+          .single();
+        if (error2 || !sellerByNumber) {
+          throw new Error(`Failed to update seller: ${error2?.message}`);
+        }
+        const decryptedSeller = await this.decryptSeller(sellerByNumber);
+        invalidateSellerCache(found.id);
+        invalidateListSellersCache();
+        await CacheHelper.del(CacheHelper.generateKey('seller', found.id));
+        await CacheHelper.delPattern('sellers:list:*');
+        await CacheHelper.del('sellers:sidebar-counts');
+        this.syncDirectToSpreadsheet(found.id);
+        return decryptedSeller;
+      }
       console.error('❌ Update seller error:', error);
       throw new Error(`Failed to update seller: ${error.message}`);
     }
