@@ -1483,7 +1483,8 @@ const CallModePage = () => {
 
   // クイックボタン用のヘルパー関数：カーソル位置にHTMLテキストを挿入
   const appendBoldText = (text: string) => {
-    const boldText = `<b>${text}</b>`;
+    // 太字テキストの後に通常フォントのゼロ幅スペースを追加して太字コンテキストを解除
+    const boldText = `<b>${text}</b><span style="font-weight:normal">\u200B</span>`;
     if (commentEditorRef.current) {
       commentEditorRef.current.insertAtCursor(boldText);
     } else {

@@ -198,42 +198,26 @@ const RichTextCommentEditor = React.forwardRef<RichTextCommentEditorHandle, Rich
 
               range.insertNode(fragment);
 
-              // 挿入後のカーソルを太字ノードの外側に移動するため
-              // 挿入位置の直後に空のテキストノードを追加してカーソルをそこに置く
-              const afterNode = document.createTextNode('');
+              // カーソルを挿入後の位置に移動
               range.collapse(false);
-              range.insertNode(afterNode);
-
-              // カーソルを空テキストノードに設定（太字コンテキスト外）
               const sel = window.getSelection();
               if (sel) {
                 const newRange = document.createRange();
-                newRange.setStart(afterNode, 0);
+                newRange.setStart(range.startContainer, range.startOffset);
                 newRange.collapse(true);
                 sel.removeAllRanges();
                 sel.addRange(newRange);
               }
 
               // 挿入後のカーソル位置を保存
-              cursorOffsetRef.current = getTextOffset(editor, afterNode, 0);
+              cursorOffsetRef.current = getTextOffset(
+                editor,
+                range.startContainer,
+                range.startOffset
+              );
 
               onChange(editor.innerHTML);
-
-              // フォーカス後に選択範囲を空テキストノードに再設定
-              // （editor.focus()でカーソルがリセットされる場合に備えて）
               editor.focus();
-              const selAfter = window.getSelection();
-              if (selAfter) {
-                try {
-                  const restoreRange = document.createRange();
-                  restoreRange.setStart(afterNode, 0);
-                  restoreRange.collapse(true);
-                  selAfter.removeAllRanges();
-                  selAfter.addRange(restoreRange);
-                } catch (e) {
-                  // 失敗時はそのまま
-                }
-              }
               return;
             } catch (e) {
               // 失敗した場合は先頭挿入にフォールバック
