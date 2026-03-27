@@ -1462,7 +1462,7 @@ const CallModePage = () => {
       });
 
       // クイックボタンの状態を永続化（pending → persisted）- メールのみ
-      if (type === 'email') {
+      if (confirmDialog.type === 'email') {
         handleQuickButtonSave();
       }
 
