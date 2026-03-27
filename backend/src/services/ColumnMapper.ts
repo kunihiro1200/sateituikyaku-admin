@@ -176,6 +176,13 @@ export class ColumnMapper {
         continue;
       }
 
+      // 査定額フィールド: DBは円単位、スプシは万円単位なので÷10000して戻す
+      if (dbColumn === 'valuation_amount_1' || dbColumn === 'valuation_amount_2' || dbColumn === 'valuation_amount_3') {
+        const numVal = typeof value === 'number' ? value : parseFloat(String(value));
+        sheetRow[sheetColumn] = isNaN(numVal) ? '' : Math.round(numVal / 10000);
+        continue;
+      }
+
       // commentsフィールドはHTMLタグを除去してプレーンテキストに変換
       // （ブラウザ表示用にHTMLで保存されているが、スプシにはプレーンテキストが必要）
       if (dbColumn === 'comments' && typeof value === 'string') {
