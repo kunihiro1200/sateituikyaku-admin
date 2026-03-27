@@ -375,7 +375,7 @@ const CallModePage = () => {
 
   // ステータス更新用の状態
   const [editedStatus, setEditedStatus] = useState<string>('追客中');
-  const [editedConfidence, setEditedConfidence] = useState<ConfidenceLevel>(ConfidenceLevel.B);
+  const [editedConfidence, setEditedConfidence] = useState<ConfidenceLevel | ''>('');
   const [exclusionDate, setExclusionDate] = useState<string>('');
   const [exclusionAction, setExclusionAction] = useState<string>('');
   const [editedNextCallDate, setEditedNextCallDate] = useState<string>('');
@@ -1101,7 +1101,7 @@ const CallModePage = () => {
       console.log('property設定:', propertyData);
       console.log('propertyがnullまたはundefined:', !propertyData);
       setEditedStatus(sellerData.status);
-      setEditedConfidence(sellerData.confidence || ConfidenceLevel.B);
+      setEditedConfidence(sellerData.confidence || '');
       setStatusChanged(false); // 売主データ読み込み時にリセット
       
       // 除外日を設定（YYYY-MM-DD形式に変換）
@@ -1630,6 +1630,16 @@ const CallModePage = () => {
   };
 
   const handleUpdateStatus = async () => {
+    // バリデーション：確度が必須の条件チェック
+    // 反響日付が2026/1/1以降 + 追客中 + 不通が「不通」でない場合
+    const isAfterJan2026 = seller?.inquiryDate && new Date(seller.inquiryDate) >= new Date('2026-01-01');
+    const isFollowingUp = editedStatus?.includes('追客中');
+    const isNotUnreachable = unreachableStatus !== '不通';
+    if (isAfterJan2026 && isFollowingUp && isNotUnreachable && !editedConfidence) {
+      setError('確度を選択してください');
+      return;
+    }
+
     // バリデーション：専任または他決が含まれる場合は決定日、競合、専任・他決要因が必須
     if (requiresDecisionDate(editedStatus)) {
       if (!editedExclusiveDecisionDate) {
@@ -5782,8 +5792,20 @@ HP：https://ifoo-oita.com/
 
                 {/* 確度 - 1行全幅 */}
                 <Grid item xs={12}>
-                  <FormControl fullWidth size="small">
-                    <InputLabel>確度</InputLabel>
+                  <FormControl fullWidth size="small" error={
+                    !editedConfidence &&
+                    !!(seller?.inquiryDate && new Date(seller.inquiryDate) >= new Date('2026-01-01')) &&
+                    editedStatus?.includes('追客中') &&
+                    unreachableStatus !== '不通'
+                  }>
+                    <InputLabel>
+                      確度
+                      {!!(seller?.inquiryDate && new Date(seller.inquiryDate) >= new Date('2026-01-01')) &&
+                        editedStatus?.includes('追客中') &&
+                        unreachableStatus !== '不通' && (
+                        <span style={{ color: 'red', marginLeft: 4 }}>*</span>
+                      )}
+                    </InputLabel>
                     <Select
                       value={editedConfidence}
                       label="確度"
