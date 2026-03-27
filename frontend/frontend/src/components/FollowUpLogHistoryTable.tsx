@@ -109,11 +109,11 @@ export const FollowUpLogHistoryTable: React.FC<FollowUpLogHistoryTableProps> = (
   }
 
   return (
-    <div className="mt-6 border-t-2 border-gray-200 pt-6">
+    <div>
       {/* ヘッダー */}
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h3 className="text-lg font-semibold text-gray-900">追客ログ履歴（APPSHEET）</h3>
+          <h3 className="text-lg font-semibold text-gray-900">過去の活動ログ</h3>
           <p className="text-sm text-gray-500 mt-1">
             過去のAPPSHEETで管理されていた追客活動記録です（参照のみ）
           </p>

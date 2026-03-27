@@ -3179,12 +3179,14 @@ HP：https://ifoo-oita.com/
           {/* 売主追客ログ（一番上） */}
           <Box sx={{ width: 280, p: 2, borderBottom: 1, borderColor: 'divider' }}>
             <CallLogDisplay ref={callLogRef} sellerId={id!} />
-
-            {/* 追客ログ履歴（APPSHEET） */}
-            {seller?.sellerNumber && (
-              <FollowUpLogHistoryTable sellerNumber={seller.sellerNumber} />
-            )}
           </Box>
+
+          {/* 過去の活動ログ（追客ログの直下） */}
+          {seller?.sellerNumber && (
+            <Box sx={{ width: 280, p: 2, borderBottom: 1, borderColor: 'divider' }}>
+              <FollowUpLogHistoryTable sellerNumber={seller.sellerNumber} />
+            </Box>
+          )}
           
           {/* カテゴリー（一番下） */}
           <SellerStatusSidebar

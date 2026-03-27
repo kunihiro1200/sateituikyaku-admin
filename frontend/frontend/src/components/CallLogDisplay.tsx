@@ -154,8 +154,8 @@ const CallLogDisplay = forwardRef<CallLogDisplayHandle, CallLogDisplayProps>(({ 
         </Button>
       </Box>
 
-      <TableContainer component={Paper}>
-        <Table size="small">
+      <TableContainer component={Paper} sx={{ maxHeight: 180, overflow: 'auto' }}>
+        <Table size="small" stickyHeader>
           <TableHead>
             <TableRow>
               <TableCell sx={{ fontWeight: 'bold' }}>日付 ↓</TableCell>
