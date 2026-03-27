@@ -4929,7 +4929,92 @@ HP：https://ifoo-oita.com/
                     </Typography>
                   </Box>
                 </Grid>
-                
+
+                {/* サイト別フィールド表示 */}
+                {seller && (() => {
+                  const site = seller.site || editedSite;
+                  const showFields = ['す', 'L', 'Y', 'H'].includes(site);
+                  if (!showFields) return null;
+
+                  // 反響詳細日時のフォーマット
+                  const detailedDatetime = seller.inquiryDetailedDateTime || seller.inquiryDetailedDatetime;
+                  const formattedDatetime = detailedDatetime
+                    ? new Date(detailedDatetime).toLocaleString('ja-JP', {
+                        year: 'numeric', month: '2-digit', day: '2-digit',
+                        hour: '2-digit', minute: '2-digit', second: '2-digit',
+                      })
+                    : '－';
+
+                  // 名前（姓のみ）
+                  const lastName = seller.name ? seller.name.split(/[\s　]/)[0] : '－';
+
+                  const fieldBox = (label: string, value: string, copyable = true) => (
+                    <Grid item xs={12} key={label}>
+                      <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 1, p: 1 }}>
+                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.25 }}>
+                          {label}
+                        </Typography>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Typography variant="body2" sx={{ fontWeight: 'medium', flex: 1, userSelect: 'text' }}>
+                            {value}
+                          </Typography>
+                          {copyable && value !== '－' && (
+                            <Button
+                              size="small"
+                              variant="outlined"
+                              sx={{ minWidth: 'auto', px: 1, py: 0.25, fontSize: '0.7rem' }}
+                              onClick={() => navigator.clipboard.writeText(value)}
+                            >
+                              コピー
+                            </Button>
+                          )}
+                        </Box>
+                      </Box>
+                    </Grid>
+                  );
+
+                  return (
+                    <>
+                      {/* す・L: IDフィールド表示 */}
+                      {(site === 'す' || site === 'L') && fieldBox('ID', seller.inquiryId || '－')}
+
+                      {/* 全サイト共通: 反響詳細日時 */}
+                      {fieldBox('反響詳細日時', formattedDatetime, false)}
+
+                      {/* 全サイト共通: 名前v */}
+                      {site === 'H'
+                        ? fieldBox('名前v（名字のみ貼り付け）', lastName)
+                        : fieldBox('名前v', seller.name || '－')}
+
+                      {/* L: 電話番号・メールアドレス追加 */}
+                      {site === 'L' && (
+                        <>
+                          {fieldBox('電話番号', seller.phoneNumber || '－')}
+                          {fieldBox('メールアドレスV', seller.email || '－')}
+                        </>
+                      )}
+
+                      {/* す: コピー案内テキスト */}
+                      {site === 'す' && (
+                        <Grid item xs={12}>
+                          <Typography variant="caption" color="text.secondary">
+                            上記の「ID」「反響日付（年/月/日のみ）」「氏名」の3つをコピーし、ウインドウズ＋V で下記サイト内に貼り付けてください。
+                          </Typography>
+                        </Grid>
+                      )}
+
+                      {/* H: コピー案内テキスト */}
+                      {site === 'H' && (
+                        <Grid item xs={12}>
+                          <Typography variant="caption" color="text.secondary">
+                            ↑名前は名字のみ下記除外申請サイト内に貼り付けてください
+                          </Typography>
+                        </Grid>
+                      )}
+                    </>
+                  );
+                })()}
+
                 <Grid item xs={12}>
                   {/* 除外サイト */}
                   <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
