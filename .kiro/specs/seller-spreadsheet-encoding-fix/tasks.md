@@ -32,9 +32,9 @@
   - Mark task complete when tests are written, run, and passing on unfixed code
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5_
 
-- [-] 3. Fix: SpreadsheetSyncService に復号処理を追加
+- [x] 3. Fix: SpreadsheetSyncService に復号処理を追加
 
-  - [-] 3.1 Implement the fix
+  - [x] 3.1 Implement the fix
     - `backend/src/services/SpreadsheetSyncService.ts` に `import { decrypt } from '../utils/encryption';` を追加する
     - クラス内に `private decryptSellerFields(seller: any): any` ヘルパーメソッドを追加する
       - `name: decrypt(seller.name || '')`
@@ -49,20 +49,20 @@
     - _Preservation: 非暗号化フィールド（status・next_call_date・seller_number 等）の書き込み動作は変更しない。email = null の場合はクラッシュしない_
     - _Requirements: 2.1, 2.2, 2.3, 2.4, 3.1, 3.2, 3.3, 3.4, 3.5_
 
-  - [ ] 3.2 Verify bug condition exploration test now passes
+  - [x] 3.2 Verify bug condition exploration test now passes
     - **Property 1: Expected Behavior** - 暗号化フィールドが復号されてスプレッドシートに書き込まれる
     - **IMPORTANT**: Re-run the SAME test from task 1 - do NOT write a new test
     - タスク1で作成した `SpreadsheetSyncService.bug.test.ts` をそのまま再実行する
     - 修正後コードで実行 → **EXPECTED OUTCOME**: Test PASSES（バグが修正されたことを確認）
     - _Requirements: 2.1, 2.2, 2.3, 2.4_
 
-  - [ ] 3.3 Verify preservation tests still pass
+  - [x] 3.3 Verify preservation tests still pass
     - **Property 2: Preservation** - 非暗号化フィールドの書き込み動作が変わらない
     - **IMPORTANT**: Re-run the SAME tests from task 2 - do NOT write new tests
     - タスク2で作成した `SpreadsheetSyncService.preservation.test.ts` をそのまま再実行する
     - 修正後コードで実行 → **EXPECTED OUTCOME**: Tests PASS（リグレッションなしを確認）
     - Confirm all tests still pass after fix (no regressions)
 
-- [~] 4. Checkpoint - Ensure all tests pass
+- [x] 4. Checkpoint - Ensure all tests pass
   - 全テストが通ることを確認する。疑問点があればユーザーに確認する。
   - デプロイ: `git add . && git commit -m "fix: decrypt seller fields before writing to spreadsheet" && git push origin main`
