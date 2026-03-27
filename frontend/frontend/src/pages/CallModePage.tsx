@@ -4040,15 +4040,36 @@ HP：https://ifoo-oita.com/
                         {/* 営担ごとの訪問数 */}
                         {visitStats.statsByEmployee && visitStats.statsByEmployee.length > 0 && (
                           <Box sx={{ mb: 1 }}>
-                            <Typography variant="body2" sx={{ fontSize: '0.875rem' }}>
-                              ［当月訪問数］
-                              {visitStats.statsByEmployee.map((stat: any, index: number) => (
-                                <span key={stat.employeeId}>
-                                  {index > 0 && ' '}
-                                  {stat.initials}: {stat.count}件
-                                </span>
-                              ))}
+                            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+                              ［当月訪問数］合計 {visitStats.totalVisits}件
                             </Typography>
+                            {(() => {
+                              const COLORS = ['#1976d2','#388e3c','#f57c00','#7b1fa2','#c62828','#00838f','#5d4037'];
+                              return visitStats.statsByEmployee
+                                .slice()
+                                .sort((a: any, b: any) => b.count - a.count)
+                                .map((stat: any, index: number) => {
+                                  const pct = visitStats.totalVisits > 0
+                                    ? Math.round((stat.count / visitStats.totalVisits) * 100)
+                                    : 0;
+                                  const color = COLORS[index % COLORS.length];
+                                  return (
+                                    <Box key={stat.employeeId} sx={{ mb: 0.5 }}>
+                                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.25 }}>
+                                        <Typography variant="caption" sx={{ minWidth: 28, fontWeight: 'bold', color }}>
+                                          {stat.initials}
+                                        </Typography>
+                                        <Box sx={{ flex: 1, bgcolor: 'grey.200', borderRadius: 1, height: 10, overflow: 'hidden' }}>
+                                          <Box sx={{ width: `${pct}%`, bgcolor: color, height: '100%', borderRadius: 1, transition: 'width 0.4s ease' }} />
+                                        </Box>
+                                        <Typography variant="caption" sx={{ minWidth: 52, textAlign: 'right', color: 'text.secondary' }}>
+                                          {stat.count}件 ({pct}%)
+                                        </Typography>
+                                      </Box>
+                                    </Box>
+                                  );
+                                });
+                            })()}
                           </Box>
                         )}
                         
@@ -4220,15 +4241,36 @@ HP：https://ifoo-oita.com/
                           
                           {visitStats.statsByEmployee && visitStats.statsByEmployee.length > 0 && (
                             <Box sx={{ mb: 1 }}>
-                              <Typography variant="body2" sx={{ fontSize: '0.875rem' }}>
-                                ［当月訪問数］
-                                {visitStats.statsByEmployee.map((stat: any, index: number) => (
-                                  <span key={stat.employeeId}>
-                                    {index > 0 && ' '}
-                                    {stat.initials}: {stat.count}件
-                                  </span>
-                                ))}
+                              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+                                ［当月訪問数］合計 {visitStats.totalVisits}件
                               </Typography>
+                              {(() => {
+                                const COLORS = ['#1976d2','#388e3c','#f57c00','#7b1fa2','#c62828','#00838f','#5d4037'];
+                                return visitStats.statsByEmployee
+                                  .slice()
+                                  .sort((a: any, b: any) => b.count - a.count)
+                                  .map((stat: any, index: number) => {
+                                    const pct = visitStats.totalVisits > 0
+                                      ? Math.round((stat.count / visitStats.totalVisits) * 100)
+                                      : 0;
+                                    const color = COLORS[index % COLORS.length];
+                                    return (
+                                      <Box key={stat.employeeId} sx={{ mb: 0.5 }}>
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.25 }}>
+                                          <Typography variant="caption" sx={{ minWidth: 28, fontWeight: 'bold', color }}>
+                                            {stat.initials}
+                                          </Typography>
+                                          <Box sx={{ flex: 1, bgcolor: 'grey.200', borderRadius: 1, height: 10, overflow: 'hidden' }}>
+                                            <Box sx={{ width: `${pct}%`, bgcolor: color, height: '100%', borderRadius: 1, transition: 'width 0.4s ease' }} />
+                                          </Box>
+                                          <Typography variant="caption" sx={{ minWidth: 52, textAlign: 'right', color: 'text.secondary' }}>
+                                            {stat.count}件 ({pct}%)
+                                          </Typography>
+                                        </Box>
+                                      </Box>
+                                    );
+                                  });
+                              })()}
                             </Box>
                           )}
                           
