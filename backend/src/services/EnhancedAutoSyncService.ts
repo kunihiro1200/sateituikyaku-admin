@@ -1175,9 +1175,10 @@ export class EnhancedAutoSyncService {
     if (propertyType) {
       const typeStr = String(propertyType).trim();
       const typeMapping: Record<string, string> = {
-        '土': '土地', '戸': '戸建', 'マ': 'マンション', '事': '事業用',
+        '土': '土地', '戸': '戸建て', 'マ': 'マンション', '事': '事業用',
+        '土地': '土地', '戸建': '戸建て', '戸建て': '戸建て', 'マンション': 'マンション', '事業用': '事業用',
       };
-      propertyType = typeMapping[typeStr] || typeStr;
+      propertyType = typeMapping[typeStr] || 'その他';
     }
     const landArea = row['土（㎡）'];
     const buildingArea = row['建（㎡）'];
@@ -1401,9 +1402,10 @@ export class EnhancedAutoSyncService {
       if (propertyType) {
         const typeStr = String(propertyType).trim();
         const typeMapping: Record<string, string> = {
-          '土': '土地', '戸': '戸建', 'マ': 'マンション', '事': '事業用',
+          '土': '土地', '戸': '戸建て', 'マ': 'マンション', '事': '事業用',
+          '土地': '土地', '戸建': '戸建て', '戸建て': '戸建て', 'マンション': 'マンション', '事業用': '事業用',
         };
-        propertyType = typeMapping[typeStr] || typeStr;
+        propertyType = typeMapping[typeStr] || 'その他';
       }
 
       await this.propertySyncHandler.syncProperty(seller.id, {
@@ -1448,9 +1450,10 @@ export class EnhancedAutoSyncService {
     if (propertyType) {
       const typeStr = String(propertyType).trim();
       const typeMapping: Record<string, string> = {
-        '土': '土地', '戸': '戸建', 'マ': 'マンション', '事': '事業用',
+        '土': '土地', '戸': '戸建て', 'マ': 'マンション', '事': '事業用',
+        '土地': '土地', '戸建': '戸建て', '戸建て': '戸建て', 'マンション': 'マンション', '事業用': '事業用',
       };
-      propertyType = typeMapping[typeStr] || typeStr;
+      propertyType = typeMapping[typeStr] || 'その他';
     }
     const landArea = row['土（㎡）'];
     const buildingArea = row['建（㎡）'];
