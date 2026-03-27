@@ -1910,8 +1910,66 @@ export class SellerService extends BaseRepository {
     todayCallWithInfoLabels: string[];
     todayCallWithInfoLabelCounts: Record<string, number>;
   }> {
-    // seller_sidebar_counts テーブルのスキーマが不安定なため、直接フォールバックを使用
-    return this.getSidebarCountsFallback();
+    try {
+      // seller_sidebar_counts テーブルから全行取得（GASが10分ごとに更新）
+      const { data, error } = await this.supabase
+        .from('seller_sidebar_counts')
+        .select('category, count, label, assignee');
+
+      if (error || !data || data.length === 0) {
+        console.log('⚠️ seller_sidebar_counts empty or error, falling back to DB query');
+        return this.getSidebarCountsFallback();
+      }
+
+      // カテゴリ別に集計
+      const result = {
+        todayCall: 0,
+        todayCallWithInfo: 0,
+        todayCallAssigned: 0,
+        visitDayBefore: 0,
+        visitCompleted: 0,
+        unvaluated: 0,
+        mailingPending: 0,
+        todayCallNotStarted: 0,
+        pinrichEmpty: 0,
+        visitAssignedCounts: {} as Record<string, number>,
+        todayCallAssignedCounts: {} as Record<string, number>,
+        todayCallWithInfoLabels: [] as string[],
+        todayCallWithInfoLabelCounts: {} as Record<string, number>,
+      };
+
+      for (const row of data) {
+        const count = row.count || 0;
+        switch (row.category) {
+          case 'todayCall':         result.todayCall = count; break;
+          case 'todayCallWithInfo': result.todayCallWithInfo += count; break;
+          case 'visitDayBefore':    result.visitDayBefore = count; break;
+          case 'visitCompleted':    result.visitCompleted += count; break;
+          case 'unvaluated':        result.unvaluated = count; break;
+          case 'mailingPending':    result.mailingPending = count; break;
+          case 'todayCallNotStarted': result.todayCallNotStarted = count; break;
+          case 'pinrichEmpty':      result.pinrichEmpty = count; break;
+          case 'todayCallAssigned':
+            result.todayCallAssigned += count;
+            if (row.assignee) result.todayCallAssignedCounts[row.assignee] = count;
+            break;
+          case 'todayCallWithInfo':
+            if (row.label) {
+              result.todayCallWithInfoLabelCounts[row.label] = count;
+              if (!result.todayCallWithInfoLabels.includes(row.label)) {
+                result.todayCallWithInfoLabels.push(row.label);
+              }
+            }
+            break;
+        }
+      }
+
+      console.log('✅ seller_sidebar_counts loaded from cache table');
+      return result;
+    } catch (e) {
+      console.error('❌ getSidebarCounts error, falling back:', e);
+      return this.getSidebarCountsFallback();
+    }
   }
 
   /**

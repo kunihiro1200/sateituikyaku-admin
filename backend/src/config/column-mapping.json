@@ -34,7 +34,7 @@
     "電話担当（任意）": "phone_contact_person",
     "連絡取りやすい日、時間帯": "preferred_contact_time",
     "連絡方法": "contact_method",
-    "1番電話": "first_call_person",
+    "一番TEL": "first_call_person",
     "状況（当社）": "status",
     "コメント": "comments",
     "Pinrich": "pinrich_status",
