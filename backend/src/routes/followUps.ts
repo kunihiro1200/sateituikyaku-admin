@@ -101,8 +101,24 @@ router.post(
  */
 router.get('/:sellerId/activities', async (req: Request, res: Response) => {
   try {
-    const { sellerId } = req.params;
+    let { sellerId } = req.params;
     const typeFilter = req.query.type as string | undefined;
+
+    // 売主番号（例: AA13497）が渡された場合、UUIDに変換する
+    const isSellerNumber = /^[A-Z]{2}\d+$/.test(sellerId);
+    if (isSellerNumber) {
+      const supabase = (await import('../config/supabase')).default;
+      const { data: seller } = await supabase
+        .from('sellers')
+        .select('id')
+        .eq('seller_number', sellerId)
+        .is('deleted_at', null)
+        .single();
+      if (!seller) {
+        return res.json([]); // 売主が見つからない場合は空配列を返す
+      }
+      sellerId = seller.id;
+    }
 
     // キャッシュキーにtypeフィルタを含める
     const cacheKey = typeFilter ? `${sellerId}:${typeFilter}` : sellerId;

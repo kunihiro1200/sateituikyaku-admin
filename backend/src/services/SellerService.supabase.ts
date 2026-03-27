@@ -355,7 +355,7 @@ export class SellerService extends BaseRepository {
     }
     console.log(`[PERF] getSeller cache miss: ${Date.now() - _t0}ms`);
 
-    // 売主情報を取得
+    // 売主情報を取得（UUID または 売主番号でフォールバック検索）
     let query = this.table('sellers')
       .select('*')
       .eq('id', sellerId);
@@ -365,11 +365,26 @@ export class SellerService extends BaseRepository {
       query = query.is('deleted_at', null);
     }
     
-    const { data: seller, error: sellerError } = await query.single();
+    let { data: seller, error: sellerError } = await query.single();
     console.log(`[PERF] getSeller DB query: ${Date.now() - _t0}ms`);
 
+    // UUID検索で見つからない場合、seller_number でフォールバック検索
     if (sellerError || !seller) {
-      return null;
+      console.log(`[getSeller] UUID検索失敗、seller_number でフォールバック: ${sellerId}`);
+      let fallbackQuery = this.table('sellers')
+        .select('*')
+        .eq('seller_number', sellerId);
+      if (!includeDeleted) {
+        fallbackQuery = fallbackQuery.is('deleted_at', null);
+      }
+      const { data: fallbackSeller, error: fallbackError } = await fallbackQuery.single();
+      console.log(`[PERF] getSeller fallback DB query: ${Date.now() - _t0}ms`);
+      if (fallbackError || !fallbackSeller) {
+        return null;
+      }
+      seller = fallbackSeller;
+      // seller_number 検索の場合は seller.id を使って物件を取得する
+      sellerId = fallbackSeller.id;
     }
 
     // 物件情報取得と decryptSeller を並列実行（パフォーマンス改善）
