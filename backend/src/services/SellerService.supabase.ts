@@ -1,4 +1,5 @@
 import { BaseRepository } from '../repositories/BaseRepository';
+import * as crypto from 'crypto';
 import {
   Seller,
   CreateSellerRequest,
@@ -197,8 +198,8 @@ export class SellerService extends BaseRepository {
       phone_number: encryptedPhone,
       email: encryptedEmail || null,
       // 重複検出用ハッシュ（SHA-256）
-      phone_number_hash: data.phoneNumber ? require('crypto').createHash('sha256').update(data.phoneNumber).digest('hex') : null,
-      email_hash: data.email ? require('crypto').createHash('sha256').update(data.email).digest('hex') : null,
+      phone_number_hash: data.phoneNumber ? crypto.createHash('sha256').update(data.phoneNumber).digest('hex') : null,
+      email_hash: data.email ? crypto.createHash('sha256').update(data.email).digest('hex') : null,
       status: (data as any).status || SellerStatus.FOLLOWING_UP,
       // Phase 1 fields
       seller_number: sellerNumber,
@@ -461,11 +462,11 @@ export class SellerService extends BaseRepository {
     }
     if (data.phoneNumber !== undefined) {
       updates.phone_number = encrypt(data.phoneNumber);
-      updates.phone_number_hash = data.phoneNumber ? require('crypto').createHash('sha256').update(data.phoneNumber).digest('hex') : null;
+      updates.phone_number_hash = data.phoneNumber ? crypto.createHash('sha256').update(data.phoneNumber).digest('hex') : null;
     }
     if (data.email !== undefined) {
       updates.email = data.email ? encrypt(data.email) : null;
-      updates.email_hash = data.email ? require('crypto').createHash('sha256').update(data.email).digest('hex') : null;
+      updates.email_hash = data.email ? crypto.createHash('sha256').update(data.email).digest('hex') : null;
     }
 
     // 暗号化不要なフィールド

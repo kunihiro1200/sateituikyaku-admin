@@ -650,12 +650,6 @@ router.get('/:id/duplicates', async (req: Request, res: Response) => {
     const duplicates = Array.from(matchMap.values());
     setDuplicatesCache(id, duplicates);
     res.json({ duplicates });
-      });
-    }
-
-    const duplicates = Array.from(matchMap.values());
-    setDuplicatesCache(id, duplicates);
-    res.json({ duplicates });
   } catch (error) {
     console.error('Get duplicates error:', error);
     res.status(500).json({
