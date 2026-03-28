@@ -541,8 +541,8 @@ router.get('/:id/duplicates', async (req: Request, res: Response) => {
       return res.json({ duplicates: cached });
     }
 
-    // 暗号化済みの電話番号・メールアドレスをDBから直接取得
-    // getSeller()は復号済み値を返すため、暗号化済み値が必要なここでは直接DBを参照する
+    // 暗号化済みの電話番号・メールアドレスをDBから直接取得し、復号して渡す
+    // AES-GCMはランダムIVのため暗号化値同士の比較は不可能。平文で比較する必要がある。
     const supabase = createClient(
       process.env.SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_KEY!
@@ -564,11 +564,22 @@ router.get('/:id/duplicates', async (req: Request, res: Response) => {
       });
     }
 
-    // 重複を検出（自分自身を除外）- 暗号化済み値で比較
+    // 暗号化済み値を復号して平文にする
+    const { decrypt } = await import('../utils/encryption');
+    let plainPhone: string | undefined;
+    let plainEmail: string | undefined;
+    try { plainPhone = rawSeller.phone_number ? decrypt(rawSeller.phone_number) : undefined; } catch { /* skip */ }
+    try { plainEmail = rawSeller.email ? decrypt(rawSeller.email) : undefined; } catch { /* skip */ }
+
+    if (!plainPhone && !plainEmail) {
+      return res.json({ duplicates: [] });
+    }
+
+    // 重複を検出（自分自身を除外）- 平文で比較
     const { duplicateDetectionService } = await import('../services/DuplicateDetectionService');
     const duplicates = await duplicateDetectionService.instance.checkDuplicates(
-      rawSeller.phone_number,
-      rawSeller.email,
+      plainPhone,
+      plainEmail,
       id
     );
     

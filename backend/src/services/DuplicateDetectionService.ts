@@ -1,4 +1,5 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { decrypt } from '../utils/encryption';
 
 export interface DuplicateMatch {
   sellerId: string;
@@ -9,6 +10,14 @@ export interface DuplicateMatch {
     email?: string;
     inquiryDate?: Date;
     sellerNumber?: string;
+    confidenceLevel?: string;
+    status?: string;
+    nextCallDate?: string;
+    valuationAmount1?: number;
+    valuationAmount2?: number;
+    valuationAmount3?: number;
+    propertyAddress?: string;
+    comments?: string;
   };
   propertyInfo?: {
     address: string;
@@ -34,7 +43,7 @@ export class DuplicateDetectionService {
   /**
    * Check for duplicate sellers by phone number
    * 
-   * @param phoneNumber - Encrypted phone number to check
+   * @param phoneNumber - Plain text phone number to check
    * @param excludeId - Optional seller ID to exclude from results (for updates)
    * @returns Array of matching sellers
    */
@@ -42,78 +51,14 @@ export class DuplicateDetectionService {
     phoneNumber: string,
     excludeId?: string
   ): Promise<DuplicateMatch[]> {
-    try {
-      let query = this.supabase
-        .from('sellers')
-        .select(`
-          id,
-          name,
-          phone_number,
-          email,
-          inquiry_date,
-          seller_number,
-          confidence_level,
-          status,
-          next_call_date,
-          valuation_amount_1,
-          valuation_amount_2,
-          valuation_amount_3,
-          property_address,
-          comments
-        `)
-        .eq('phone_number', phoneNumber)
-        .is('deleted_at', null);
-
-      if (excludeId) {
-        query = query.neq('id', excludeId);
-      }
-
-      const { data, error } = await query;
-
-      if (error) {
-        console.error('Error checking duplicate by phone:', error);
-        throw new Error(`Failed to check duplicate by phone: ${error.message}`);
-      }
-
-      if (!data || data.length === 0) {
-        return [];
-      }
-
-      return data.map((seller: any) => ({
-        sellerId: seller.id,
-        matchType: 'phone' as const,
-        sellerInfo: {
-          name: seller.name,
-          phoneNumber: seller.phone_number,
-          email: seller.email,
-          inquiryDate: seller.inquiry_date ? new Date(seller.inquiry_date) : undefined,
-          sellerNumber: seller.seller_number,
-          confidenceLevel: seller.confidence_level,
-          status: seller.status,
-          nextCallDate: seller.next_call_date,
-          valuationAmount1: seller.valuation_amount_1,
-          valuationAmount2: seller.valuation_amount_2,
-          valuationAmount3: seller.valuation_amount_3,
-          propertyAddress: seller.property_address,
-          comments: seller.comments,
-        },
-        propertyInfo: seller.property_address
-          ? {
-              address: seller.property_address,
-              propertyType: '',
-            }
-          : undefined,
-      }));
-    } catch (error) {
-      console.error('Check duplicate by phone error:', error);
-      throw error;
-    }
+    // checkDuplicates に委譲（全件復号比較方式）
+    return this.checkDuplicates(phoneNumber, undefined, excludeId);
   }
 
   /**
    * Check for duplicate sellers by email address
    * 
-   * @param email - Encrypted email to check
+   * @param email - Plain text email to check
    * @param excludeId - Optional seller ID to exclude from results (for updates)
    * @returns Array of matching sellers
    */
@@ -121,11 +66,30 @@ export class DuplicateDetectionService {
     email: string,
     excludeId?: string
   ): Promise<DuplicateMatch[]> {
-    try {
-      if (!email) {
-        return [];
-      }
+    // checkDuplicates に委譲（全件復号比較方式）
+    return this.checkDuplicates(undefined, email, excludeId);
+  }
 
+  /**
+   * Check for duplicates by phone and/or email
+   * AES-GCMはランダムIVのため暗号化値同士の比較は不可能。
+   * 全件取得して復号後に平文で比較する。
+   * 
+   * @param phoneNumber - Plain text phone number (from /:id/duplicates endpoint)
+   * @param email - Optional plain text email
+   * @param excludeId - Optional seller ID to exclude from results
+   * @returns Array of matching sellers with combined match types
+   */
+  async checkDuplicates(
+    phoneNumber?: string,
+    email?: string,
+    excludeId?: string
+  ): Promise<DuplicateMatch[]> {
+    try {
+      if (!phoneNumber && !email) return [];
+
+      // 全売主を取得（削除済み除く）
+      // パフォーマンス上の懸念はあるが、AES-GCMの性質上これが唯一の正確な方法
       let query = this.supabase
         .from('sellers')
         .select(`
@@ -144,7 +108,6 @@ export class DuplicateDetectionService {
           property_address,
           comments
         `)
-        .eq('email', email)
         .is('deleted_at', null);
 
       if (excludeId) {
@@ -154,70 +117,84 @@ export class DuplicateDetectionService {
       const { data, error } = await query;
 
       if (error) {
-        console.error('Error checking duplicate by email:', error);
-        throw new Error(`Failed to check duplicate by email: ${error.message}`);
+        console.error('Error fetching sellers for duplicate check:', error);
+        throw new Error(`Failed to fetch sellers: ${error.message}`);
       }
 
-      if (!data || data.length === 0) {
-        return [];
+      if (!data || data.length === 0) return [];
+
+      const matchMap = new Map<string, DuplicateMatch>();
+
+      for (const seller of data) {
+        let phoneMatch = false;
+        let emailMatch = false;
+
+        // 電話番号の復号比較
+        if (phoneNumber && seller.phone_number) {
+          try {
+            const decryptedPhone = decrypt(seller.phone_number);
+            if (decryptedPhone === phoneNumber) phoneMatch = true;
+          } catch {
+            // 復号失敗はスキップ
+          }
+        }
+
+        // メールアドレスの復号比較
+        if (email && seller.email) {
+          try {
+            const decryptedEmail = decrypt(seller.email);
+            if (decryptedEmail === email) emailMatch = true;
+          } catch {
+            // 復号失敗はスキップ
+          }
+        }
+
+        if (!phoneMatch && !emailMatch) continue;
+
+        const matchType: 'phone' | 'email' | 'both' =
+          phoneMatch && emailMatch ? 'both' : phoneMatch ? 'phone' : 'email';
+
+        // 既存エントリがあれば matchType を 'both' に更新
+        const existing = matchMap.get(seller.id);
+        if (existing) {
+          existing.matchType = 'both';
+          continue;
+        }
+
+        // 名前を復号
+        let decryptedName = seller.name;
+        try { decryptedName = seller.name ? decrypt(seller.name) : ''; } catch { /* skip */ }
+
+        matchMap.set(seller.id, {
+          sellerId: seller.id,
+          matchType,
+          sellerInfo: {
+            name: decryptedName,
+            phoneNumber: phoneNumber || '',
+            email: email,
+            inquiryDate: seller.inquiry_date ? new Date(seller.inquiry_date) : undefined,
+            sellerNumber: seller.seller_number,
+            confidenceLevel: seller.confidence_level,
+            status: seller.status,
+            nextCallDate: seller.next_call_date,
+            valuationAmount1: seller.valuation_amount_1,
+            valuationAmount2: seller.valuation_amount_2,
+            valuationAmount3: seller.valuation_amount_3,
+            propertyAddress: seller.property_address,
+            comments: seller.comments,
+          },
+          propertyInfo: seller.property_address
+            ? { address: seller.property_address, propertyType: '' }
+            : undefined,
+        });
       }
 
-      return data.map((seller: any) => ({
-        sellerId: seller.id,
-        matchType: 'email' as const,
-        sellerInfo: {
-          name: seller.name,
-          phoneNumber: seller.phone_number,
-          email: seller.email,
-          inquiryDate: seller.inquiry_date ? new Date(seller.inquiry_date) : undefined,
-          sellerNumber: seller.seller_number,
-          confidenceLevel: seller.confidence_level,
-          status: seller.status,
-          nextCallDate: seller.next_call_date,
-          valuationAmount1: seller.valuation_amount_1,
-          valuationAmount2: seller.valuation_amount_2,
-          valuationAmount3: seller.valuation_amount_3,
-          propertyAddress: seller.property_address,
-          comments: seller.comments,
-        },
-        propertyInfo: seller.property_address
-          ? {
-              address: seller.property_address,
-              propertyType: '',
-            }
-          : undefined,
-      }));
+      return Array.from(matchMap.values());
     } catch (error) {
-      console.error('Check duplicate by email error:', error);
+      console.error('Check duplicates error:', error);
       throw error;
     }
   }
-
-  /**
-   * Check for duplicates by both phone and email
-   * Combines results and marks matches found by both
-   * 
-   * @param phoneNumber - Encrypted phone number to check
-   * @param email - Optional encrypted email to check
-   * @param excludeId - Optional seller ID to exclude from results
-   * @returns Array of matching sellers with combined match types
-   */
-  async checkDuplicates(
-    phoneNumber: string,
-    email?: string,
-    excludeId?: string
-  ): Promise<DuplicateMatch[]> {
-    try {
-      const [phoneMatches, emailMatches] = await Promise.all([
-        this.checkDuplicateByPhone(phoneNumber, excludeId),
-        email ? this.checkDuplicateByEmail(email, excludeId) : Promise.resolve([]),
-      ]);
-
-      // Combine matches and identify those found by both
-      const matchMap = new Map<string, DuplicateMatch>();
-
-      // Add phone matches
-      phoneMatches.forEach((match) => {
         matchMap.set(match.sellerId, match);
       });
 
