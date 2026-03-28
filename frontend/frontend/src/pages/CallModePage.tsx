@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Container,
@@ -131,6 +131,25 @@ const CONFIDENCE_OPTIONS = [
   { label: 'E（収益物件）', value: 'E' },
   { label: 'ダブり（重複している）', value: 'ダブり' },
 ];
+
+// 面積警告判定ロジック（テスト可能な純粋関数）
+export function calcAreaWarning(
+  land: number | null,
+  building: number | null,
+  dismissed: boolean
+): { landRed: boolean; buildingRed: boolean; showWarning: boolean } {
+  if (dismissed) {
+    return { landRed: false, buildingRed: false, showWarning: false };
+  }
+  // 条件1: 両方に値あり かつ 土地 < 建物
+  const condition1 = land !== null && building !== null && land < building;
+  // 条件2: 土地に値あり かつ 土地 <= 99
+  const condition2 = land !== null && land <= 99;
+
+  const landRed = condition1 || condition2;
+  const buildingRed = condition1;
+  return { landRed, buildingRed, showWarning: landRed || buildingRed };
+}
 
 // valuationTextが純粋な数値（円単位）の場合、万円単位に変換して表示する
 const formatValuationText = (text: string): string => {
@@ -283,6 +302,16 @@ const CallModePage = () => {
     seller?.structure,
     seller?.currentStatus,
   ]);
+
+  // 確認済みフラグ（警告を非表示にする）
+  const [areaWarningDismissed, setAreaWarningDismissed] = useState(false);
+
+  // 面積警告の計算
+  const areaWarning = useMemo(() => {
+    const land = parseFloat(String(propInfo.landArea)) || null;
+    const building = parseFloat(String(propInfo.buildingArea)) || null;
+    return calcAreaWarning(land, building, areaWarningDismissed);
+  }, [propInfo.landArea, propInfo.buildingArea, areaWarningDismissed]);
 
   // 種別が「土地」かどうか（propInfo.propertyType は正規化済みなので 'land' のみ比較）
   const isLandType = propInfo.propertyType === 'land';
@@ -3629,15 +3658,37 @@ HP：https://ifoo-oita.com/
                     {displayPropertyType && (
                       <Grid item xs={12}>
                         <Typography variant="caption" color="text.secondary">物件種別</Typography>
-                        <Typography variant="body2">
-                          {PROPERTY_TYPE_OPTIONS.find(o => o.value === displayPropertyType)?.label || displayPropertyType}
-                        </Typography>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                          <Typography variant="body2">
+                            {PROPERTY_TYPE_OPTIONS.find(o => o.value === displayPropertyType)?.label || displayPropertyType}
+                          </Typography>
+                          {areaWarning.showWarning && (
+                            <>
+                              <Typography variant="body2" color="error" sx={{ fontWeight: 'bold' }}>
+                                面積確認してください！
+                              </Typography>
+                              <Button
+                                size="small"
+                                variant="outlined"
+                                color="warning"
+                                onClick={() => setAreaWarningDismissed(true)}
+                              >
+                                確認済み
+                              </Button>
+                            </>
+                          )}
+                          {areaWarningDismissed && (
+                            <Typography variant="body2" color="text.secondary">
+                              面積確認済み
+                            </Typography>
+                          )}
+                        </Box>
                       </Grid>
                     )}
                     {displayLandArea && (
                       <Grid item xs={6}>
                         <Typography variant="caption" color="text.secondary">土地面積 (m²)</Typography>
-                        <Typography variant="body2">{displayLandArea}</Typography>
+                        <Typography variant="body2" sx={{ color: areaWarning.landRed ? 'error.main' : 'inherit' }}>{displayLandArea}</Typography>
                       </Grid>
                     )}
                     {displayLandAreaVerified && (
@@ -3649,7 +3700,7 @@ HP：https://ifoo-oita.com/
                     {!isLandType && displayBuildingArea && (
                       <Grid item xs={6}>
                         <Typography variant="caption" color="text.secondary">建物面積 (m²)</Typography>
-                        <Typography variant="body2">{displayBuildingArea}</Typography>
+                        <Typography variant="body2" sx={{ color: areaWarning.buildingRed ? 'error.main' : 'inherit' }}>{displayBuildingArea}</Typography>
                       </Grid>
                     )}
                     {!isLandType && displayBuildingAreaVerified && (
