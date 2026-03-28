@@ -1,3 +1,13 @@
+# -*- coding: utf-8 -*-
+"""
+EmailTemplateService.bugfix.test.ts に以下のテストを追加するスクリプト:
+- タスク2.3: pre_viewing_notes あり/なしの両ケース（既存）
+- タスク2.3: 他プレースホルダー（<<氏名>>、<<住居表示>>、<<SUUMO　URLの表示>>）の正常動作テスト
+- タスク4.1: 他プレースホルダーが修正前後で同じ結果になることを確認
+- タスク4.1: <<SUUMO　URLの表示>> が空文字に置換されることを確認
+"""
+
+new_content = '''\
 /**
  * バグ修正確認テスト: mergeAngleBracketPlaceholders() の内覧前伝達事項バグ
  *
@@ -21,7 +31,7 @@ describe('バグ修正確認: mergeAngleBracketPlaceholders() の内覧前伝達
   describe('テストシナリオ1: pre_viewing_notes に値がある場合', () => {
     it('内覧前伝達事項の値が結果に含まれること', () => {
       // Arrange
-      const template = '<<氏名>>様\n\n内覧前のご確認事項:\n<<内覧前伝達事項v>>\n\nよろしくお願いします。';
+      const template = '<<氏名>>様\\n\\n内覧前のご確認事項:\\n<<内覧前伝達事項v>>\\n\\nよろしくお願いします。';
       const buyer = {
         name: '田中太郎',
         pre_viewing_notes: '駐車場は右側',
@@ -46,7 +56,7 @@ describe('バグ修正確認: mergeAngleBracketPlaceholders() の内覧前伝達
   describe('テストシナリオ2: pre_viewing_notes に別の値がある場合', () => {
     it('内覧前伝達事項の値が結果に含まれること', () => {
       // Arrange
-      const template = '<<氏名>>様\n\n<<内覧前伝達事項v>>';
+      const template = '<<氏名>>様\\n\\n<<内覧前伝達事項v>>';
       const buyer = {
         name: '山田花子',
         pre_viewing_notes: '玄関の暗証番号は1234です',
@@ -69,7 +79,7 @@ describe('バグ修正確認: mergeAngleBracketPlaceholders() の内覧前伝達
   describe('テストシナリオ3: pre_viewing_notes が空の場合', () => {
     it('<<内覧前伝達事項v>> が空文字に置換されること', () => {
       // Arrange
-      const template = '<<氏名>>様\n\n<<内覧前伝達事項v>>';
+      const template = '<<氏名>>様\\n\\n<<内覧前伝達事項v>>';
       const buyer = {
         name: '鈴木一郎',
         pre_viewing_notes: '',
@@ -92,7 +102,7 @@ describe('バグ修正確認: mergeAngleBracketPlaceholders() の内覧前伝達
   describe('テストシナリオ4: pre_viewing_notes が未定義の場合', () => {
     it('<<内覧前伝達事項v>> が空文字に置換されること', () => {
       // Arrange
-      const template = '<<氏名>>様\n\n<<内覧前伝達事項v>>';
+      const template = '<<氏名>>様\\n\\n<<内覧前伝達事項v>>';
       const buyer = {
         name: '佐藤次郎',
         // pre_viewing_notes は未定義
@@ -115,7 +125,7 @@ describe('バグ修正確認: mergeAngleBracketPlaceholders() の内覧前伝達
   describe('テストシナリオ5: 他プレースホルダーの正常動作確認（タスク2.3）', () => {
     it('<<氏名>> が正しく置換されること', () => {
       // Arrange
-      const template = '<<氏名>>様\n\nよろしくお願いします。';
+      const template = '<<氏名>>様\\n\\nよろしくお願いします。';
       const buyer = {
         name: '田中太郎',
         pre_viewing_notes: '',
@@ -137,7 +147,7 @@ describe('バグ修正確認: mergeAngleBracketPlaceholders() の内覧前伝達
 
     it('<<住居表示>> が正しく置換されること', () => {
       // Arrange
-      const template = '所在地：<<住居表示>>\n\nよろしくお願いします。';
+      const template = '所在地：<<住居表示>>\\n\\nよろしくお願いします。';
       const buyer = {
         name: '田中太郎',
         pre_viewing_notes: '',
@@ -159,7 +169,7 @@ describe('バグ修正確認: mergeAngleBracketPlaceholders() の内覧前伝達
 
     it('<<SUUMO　URLの表示>> が空文字に置換されること', () => {
       // Arrange: SUUMO URLプレースホルダーを含むテンプレート
-      const template = '<<氏名>>様\n\n<<SUUMO　URLの表示>>\n\nよろしくお願いします。';
+      const template = '<<氏名>>様\\n\\n<<SUUMO　URLの表示>>\\n\\nよろしくお願いします。';
       const buyer = {
         name: '田中太郎',
         pre_viewing_notes: '',
@@ -196,7 +206,7 @@ describe('Gmail保全テスト: 他プレースホルダーが修正前後で同
    */
   it('<<氏名>> の置換は pre_viewing_notes の有無に関わらず同じ結果になること', () => {
     // Arrange: <<内覧前伝達事項v>> を含まないテンプレート
-    const template = '<<氏名>>様\n\nよろしくお願いします。';
+    const template = '<<氏名>>様\\n\\nよろしくお願いします。';
     const buyerWithNotes = {
       name: '田中太郎',
       pre_viewing_notes: '駐車場は右側',
@@ -260,7 +270,7 @@ describe('Gmail保全テスト: 他プレースホルダーが修正前後で同
    */
   it('<<SUUMO　URLの表示>> が空文字に置換されること', () => {
     // Arrange
-    const template = '<<氏名>>様\n\n<<SUUMO　URLの表示>>\n\n<<内覧前伝達事項v>>';
+    const template = '<<氏名>>様\\n\\n<<SUUMO　URLの表示>>\\n\\n<<内覧前伝達事項v>>';
     const buyer = {
       name: '田中太郎',
       pre_viewing_notes: '駐車場は右側',
@@ -290,7 +300,7 @@ describe('Gmail保全テスト: 他プレースホルダーが修正前後で同
    */
   it('複数プレースホルダーが同時に正しく置換されること', () => {
     // Arrange: 複数のプレースホルダーを含むテンプレート
-    const template = '<<氏名>>様\n\n所在地：<<住居表示>>\n\n<<SUUMO　URLの表示>>\n\n内覧前のご確認事項:\n<<内覧前伝達事項v>>\n\nよろしくお願いします。';
+    const template = '<<氏名>>様\\n\\n所在地：<<住居表示>>\\n\\n<<SUUMO　URLの表示>>\\n\\n内覧前のご確認事項:\\n<<内覧前伝達事項v>>\\n\\nよろしくお願いします。';
     const buyer = {
       name: '田中太郎',
       pre_viewing_notes: '駐車場は右側をご利用ください',
@@ -316,3 +326,16 @@ describe('Gmail保全テスト: 他プレースホルダーが修正前後で同
     expect(result).not.toContain('<<内覧前伝達事項v>>');
   });
 });
+'''
+
+# UTF-8 で書き込む（BOMなし）
+output_path = 'backend/src/services/__tests__/EmailTemplateService.bugfix.test.ts'
+with open(output_path, 'wb') as f:
+    f.write(new_content.encode('utf-8'))
+
+print(f'Done! Written to {output_path}')
+
+# BOMチェック
+with open(output_path, 'rb') as f:
+    first_bytes = f.read(3)
+print(f'BOM check: {repr(first_bytes)} (should NOT start with b"\\xef\\xbb\\xbf")')
