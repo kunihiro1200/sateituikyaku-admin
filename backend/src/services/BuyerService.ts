@@ -16,7 +16,7 @@ let _moduleLevelStatusCache: {
   buyers: any[];
   computedAt: number;
 } | null = null;
-const _MODULE_STATUS_CACHE_TTL = 10 * 60 * 1000; // 10分
+const _MODULE_STATUS_CACHE_TTL = 30 * 60 * 1000; // 30分
 
 export interface BuyerQueryOptions {
   page?: number;
@@ -1372,38 +1372,50 @@ export class BuyerService {
       'desired_area', 'desired_property_type', 'budget',
     ].join(', ');
 
-    // まず件数を取得して並列バッチ数を決定
-    const { count, error: countError } = await this.supabase
-      .from('buyers')
-      .select('*', { count: 'exact', head: true })
-      .is('deleted_at', null);
+    // count クエリと最初のバッチ（0-999）を並列実行してレイテンシを削減
+    const [countResult, firstBatchResult] = await Promise.all([
+      this.supabase
+        .from('buyers')
+        .select('*', { count: 'exact', head: true })
+        .is('deleted_at', null),
+      this.supabase
+        .from('buyers')
+        .select(BUYER_COLUMNS)
+        .is('deleted_at', null)
+        .range(0, PAGE_SIZE - 1),
+    ]);
 
+    const { count, error: countError } = countResult;
     if (countError) throw new Error(`Failed to count buyers: ${countError.message}`);
+    if (firstBatchResult.error) throw new Error(`Failed to fetch buyers: ${firstBatchResult.error.message}`);
 
     const totalCount = count || 0;
     if (totalCount === 0) return [];
 
-    // バッチ範囲を計算して並列取得
+    const allBuyers: any[] = [...(firstBatchResult.data || [])];
+
+    // 2バッチ目以降を並列取得（既に1バッチ目は取得済み）
     const batchCount = Math.ceil(totalCount / PAGE_SIZE);
-    const ranges: Array<[number, number]> = [];
-    for (let i = 0; i < batchCount; i++) {
-      ranges.push([i * PAGE_SIZE, (i + 1) * PAGE_SIZE - 1]);
-    }
+    if (batchCount > 1) {
+      const remainingRanges: Array<[number, number]> = [];
+      for (let i = 1; i < batchCount; i++) {
+        remainingRanges.push([i * PAGE_SIZE, (i + 1) * PAGE_SIZE - 1]);
+      }
 
-    const batchResults = await Promise.all(
-      ranges.map(([from, to]) =>
-        this.supabase
-          .from('buyers')
-          .select(BUYER_COLUMNS)
-          .is('deleted_at', null)
-          .range(from, to)
-      )
-    );
+      const batchResults = await Promise.all(
+        remainingRanges.map(([from, to]) =>
+          this.supabase
+            .from('buyers')
+            .select(BUYER_COLUMNS)
+            .is('deleted_at', null)
+            .range(from, to)
+        )
+      );
 
-    const allBuyers: any[] = [];
-    for (const { data, error } of batchResults) {
-      if (error) throw new Error(`Failed to fetch buyers: ${error.message}`);
-      if (data) allBuyers.push(...data);
+      for (const { data, error } of batchResults) {
+        if (error) throw new Error(`Failed to fetch buyers: ${error.message}`);
+        if (data) allBuyers.push(...data);
+      }
     }
 
     // 物件番号を収集して property_listings から必要なフィールドを一括取得
@@ -1502,25 +1514,12 @@ export class BuyerService {
     const now = Date.now();
     const fromCache = !!(_moduleLevelStatusCache && (now - _moduleLevelStatusCache.computedAt) < _MODULE_STATUS_CACHE_TTL);
 
-    // キャッシュがある場合は即座に返す
-    const allBuyers = await this.fetchAllBuyersWithStatus();
+    // 全件取得 と employees クエリを並列実行
+    const [allBuyers, normalStaffInitials] = await Promise.all([
+      this.fetchAllBuyersWithStatus(),
+      this.fetchNormalStaffInitials(),
+    ]);
     const categories = await this.buildCategoriesFromBuyers(allBuyers);
-
-    let normalStaffInitials: string[] = [];
-    try {
-      const { data: staffDataNormal, error: normalError } = await this.supabase
-        .from('employees')
-        .select('initials')
-        .eq('is_normal', true);
-      if (!normalError && staffDataNormal && staffDataNormal.length > 0) {
-        normalStaffInitials = staffDataNormal.map((s: any) => s.initials).filter((i: string) => i);
-      } else {
-        const { data: allStaffData } = await this.supabase.from('employees').select('initials');
-        normalStaffInitials = (allStaffData || []).map((s: any) => s.initials).filter((i: string) => i);
-      }
-    } catch {
-      // employeesテーブルが存在しない場合は空配列
-    }
 
     return { categories, normalStaffInitials, fromCache };
   }
@@ -1534,36 +1533,37 @@ export class BuyerService {
     buyers: any[];
     normalStaffInitials: string[];
   }> {
-    // 全件取得は1回だけ
-    const allBuyers = await this.fetchAllBuyersWithStatus();
+    // 全件取得 と employees クエリを並列実行（直列→並列化でパフォーマンス改善）
+    const [allBuyers, normalStaffInitials] = await Promise.all([
+      this.fetchAllBuyersWithStatus(),
+      this.fetchNormalStaffInitials(),
+    ]);
 
     // allBuyers からカテゴリを直接計算（getStatusCategories を呼ばない）
     const categories = await this.buildCategoriesFromBuyers(allBuyers);
 
-    // 通常スタッフのイニシャルを取得
-    let normalStaffInitials: string[] = [];
+    return { categories, buyers: allBuyers, normalStaffInitials };
+  }
+
+  /**
+   * 通常スタッフのイニシャルを取得（内部ヘルパー）
+   */
+  private async fetchNormalStaffInitials(): Promise<string[]> {
     try {
       const { data: staffDataNormal, error: normalError } = await this.supabase
         .from('employees')
         .select('initials')
         .eq('is_normal', true);
       if (!normalError && staffDataNormal && staffDataNormal.length > 0) {
-        normalStaffInitials = staffDataNormal
-          .map((s: any) => s.initials)
-          .filter((i: string) => i);
-      } else {
-        const { data: allStaffData } = await this.supabase
-          .from('employees')
-          .select('initials');
-        normalStaffInitials = (allStaffData || [])
-          .map((s: any) => s.initials)
-          .filter((i: string) => i);
+        return staffDataNormal.map((s: any) => s.initials).filter((i: string) => i);
       }
+      const { data: allStaffData } = await this.supabase
+        .from('employees')
+        .select('initials');
+      return (allStaffData || []).map((s: any) => s.initials).filter((i: string) => i);
     } catch {
-      // employeesテーブルが存在しない場合は空配列のまま（フロントエンドでフォールバック）
+      return [];
     }
-
-    return { categories, buyers: allBuyers, normalStaffInitials };
   }
 
   /**

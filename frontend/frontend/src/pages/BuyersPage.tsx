@@ -174,8 +174,8 @@ export default function BuyersPage() {
               buyers: BuyerWithStatus[];
               normalStaffInitials: string[];
             };
-            // 5分間キャッシュ
-            pageDataCache.set(CACHE_KEYS.BUYERS_WITH_STATUS, result, 5 * 60 * 1000);
+            // 10分間キャッシュ（バックエンドキャッシュTTLと統一）
+            pageDataCache.set(CACHE_KEYS.BUYERS_WITH_STATUS, result, 10 * 60 * 1000);
             // サイドバーのカテゴリを更新
             setSidebarCategories(result.categories);
             setSidebarNormalStaffInitials(result.normalStaffInitials || []);
