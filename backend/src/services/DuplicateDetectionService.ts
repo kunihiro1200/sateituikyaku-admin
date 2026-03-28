@@ -196,26 +196,6 @@ export class DuplicateDetectionService {
       throw error;
     }
   }
-        matchMap.set(match.sellerId, match);
-      });
-
-      // Add or update email matches
-      emailMatches.forEach((match) => {
-        const existing = matchMap.get(match.sellerId);
-        if (existing) {
-          // Found by both phone and email
-          existing.matchType = 'both';
-        } else {
-          matchMap.set(match.sellerId, match);
-        }
-      });
-
-      return Array.from(matchMap.values());
-    } catch (error) {
-      console.error('Check duplicates error:', error);
-      throw error;
-    }
-  }
 
   /**
    * Record duplicate relationship in history table
