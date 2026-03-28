@@ -23,6 +23,47 @@ interface TemplateSelectionModalProps {
   open: boolean;
   onSelect: (template: EmailTemplate) => void;
   onCancel: () => void;
+  propertyType?: string;
+}
+
+/**
+ * 物件種別に応じてテンプレートをフィルタリングする
+ * テンプレート名の括弧（全角・半角）内の文字列で判定する
+ */
+export function filterTemplatesByPropertyType(
+  templates: EmailTemplate[],
+  propertyType?: string
+): EmailTemplate[] {
+  if (!propertyType) return templates;
+
+  // 括弧内の文字列を抽出する
+  function extractBracketContent(name: string): string[] {
+    const fullWidth = name.match(/（[^）]*）/g) || [];
+    const halfWidth = name.match(/\([^)]*\)/g) || [];
+    return [...fullWidth, ...halfWidth].map(m => m.slice(1, -1));
+  }
+
+  return templates.filter(template => {
+    const bracketContents = extractBracketContent(template.name);
+    if (bracketContents.length === 0) return true; // 括弧なし → 常に表示
+
+    const allContent = bracketContents.join('');
+
+    // 戸建て
+    if (propertyType === '戸' || propertyType === '戸建て') {
+      return !allContent.includes('土');
+    }
+    // 土地
+    if (propertyType === '土') {
+      return !allContent.includes('戸') && !allContent.includes('マ');
+    }
+    // マンション
+    if (propertyType === 'マ' || propertyType === 'マンション') {
+      return !allContent.includes('土');
+    }
+
+    return true; // 上記以外の種別 → 全表示
+  });
 }
 
 /**
@@ -32,7 +73,8 @@ interface TemplateSelectionModalProps {
 export default function TemplateSelectionModal({
   open,
   onSelect,
-  onCancel
+  onCancel,
+  propertyType
 }: TemplateSelectionModalProps) {
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
   const [loading, setLoading] = useState(false);
@@ -64,6 +106,9 @@ export default function TemplateSelectionModal({
   const handleTemplateClick = (template: EmailTemplate) => {
     onSelect(template);
   };
+
+  // 物件種別でフィルタリングしたテンプレート一覧
+  const filteredTemplates = filterTemplatesByPropertyType(templates, propertyType);
 
   return (
     <Dialog
@@ -97,20 +142,20 @@ export default function TemplateSelectionModal({
           </Alert>
         )}
 
-        {!loading && !error && templates.length === 0 && (
+        {!loading && !error && filteredTemplates.length === 0 && (
           <Alert severity="info">
             利用可能なテンプレートがありません
           </Alert>
         )}
 
-        {!loading && !error && templates.length > 0 && (
+        {!loading && !error && filteredTemplates.length > 0 && (
           <>
             <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block' }}>
               テンプレートをクリックするとメール編集画面が開きます
             </Typography>
             <List disablePadding>
-              {templates.map((template, index) => (
-                <ListItem key={template.id} disablePadding divider={index < templates.length - 1}>
+              {filteredTemplates.map((template, index) => (
+                <ListItem key={template.id} disablePadding divider={index < filteredTemplates.length - 1}>
                   <ListItemButton
                     onClick={() => handleTemplateClick(template)}
                     sx={{

@@ -921,6 +921,7 @@ export default function BuyerDetailPage() {
             followUpAssignee={buyer.follow_up_assignee || ''}
             inquiryHistory={inquiryHistoryTable}
             selectedPropertyIds={selectedPropertyIds}
+            linkedPropertyType={linkedProperties[0]?.property_type}
             size="small"
             variant="contained"
             onEmailSent={fetchActivities}

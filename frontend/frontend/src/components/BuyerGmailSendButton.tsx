@@ -18,6 +18,7 @@ interface BuyerGmailSendButtonProps {
   followUpAssignee?: string; // 後続担当（署名の担当者情報取得に使用）
   inquiryHistory: InquiryHistoryItem[];
   selectedPropertyIds: Set<string>; // チェックボックスで選択された物件ID
+  linkedPropertyType?: string; // 紐づき物件の種別（テンプレートフィルタリング用）
   size?: 'small' | 'medium' | 'large';
   variant?: 'text' | 'outlined' | 'contained';
   onEmailSent?: () => void; // メール送信成功後のコールバック
@@ -39,6 +40,7 @@ export default function BuyerGmailSendButton({
   followUpAssignee,
   inquiryHistory,
   selectedPropertyIds,
+  linkedPropertyType,
   size = 'medium',
   variant = 'contained',
   onEmailSent,
@@ -205,6 +207,7 @@ export default function BuyerGmailSendButton({
         open={templateModalOpen}
         onSelect={handleTemplateSelect}
         onCancel={handleCancel}
+        propertyType={linkedPropertyType}
       />
 
       {/* Email Composition Modal */}
