@@ -570,6 +570,16 @@ export default function BuyerViewingResultPage() {
             )}
           </>
         )}
+        {/* 物件所在地（紐づき物件が存在しaddressが非空の場合のみ表示） */}
+        {linkedProperties.length > 0 && (linkedProperties[0].property_address || linkedProperties[0].address) && (
+          <Typography
+            variant="body2"
+            color="text.secondary"
+            sx={{ ml: 1 }}
+          >
+            {linkedProperties[0].property_address || linkedProperties[0].address}
+          </Typography>
+        )}
         {/* 内覧前日Eメールボタン（内覧日前日の場合のみ表示） */}
         {isViewingPreDay(buyer) && (
           <Box sx={{ ml: 'auto' }}>

@@ -229,7 +229,11 @@ export default function BuyersPage() {
   };
 
   const handleRowClick = (buyerId: string) => {
-    navigate(`/buyers/${buyerId}`);
+    if (selectedCalculatedStatus === '内覧日前日') {
+      navigate(`/buyers/${buyerId}/viewing`);
+    } else {
+      navigate(`/buyers/${buyerId}`);
+    }
   };
 
   const extractConfidencePrefix = (confidence: string | null | undefined) => {
