@@ -190,10 +190,10 @@ export class SellerService extends BaseRepository {
       data.site
     );
 
-    // 個人情報を暗号化
+    // 個人情報を暗号化（address は暗号化対象外）
     const encryptedData = {
       name: encrypt(data.name),
-      address: encrypt(data.address),
+      address: data.address,
       phone_number: encryptedPhone,
       email: encryptedEmail || null,
       status: (data as any).status || SellerStatus.FOLLOWING_UP,
@@ -449,12 +449,12 @@ export class SellerService extends BaseRepository {
   async updateSeller(sellerId: string, data: UpdateSellerRequest): Promise<Seller> {
     const updates: any = {};
 
-    // 暗号化が必要なフィールド
+    // 暗号化が必要なフィールド（address は暗号化対象外）
     if (data.name !== undefined) {
       updates.name = encrypt(data.name);
     }
     if (data.address !== undefined) {
-      updates.address = encrypt(data.address);
+      updates.address = data.address;
     }
     if (data.phoneNumber !== undefined) {
       updates.phone_number = encrypt(data.phoneNumber);
@@ -510,6 +510,9 @@ export class SellerService extends BaseRepository {
     }
     if (data.valuationAssignedBy !== undefined) {
       updates.valuation_assigned_by = data.valuationAssignedBy;
+    }
+    if ((data as any).valuationAssignee !== undefined) {
+      updates.valuation_assignee = (data as any).valuationAssignee;
     }
     if ((data as any).valuationMethod !== undefined) {
       updates.valuation_method = (data as any).valuationMethod;
