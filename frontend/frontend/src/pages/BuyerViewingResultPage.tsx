@@ -26,6 +26,37 @@ import { LATEST_STATUS_OPTIONS } from '../utils/buyerLatestStatusOptions';
 import { VIEWING_UNCONFIRMED_OPTIONS } from '../utils/buyerDetailFieldOptions';
 import { ValidationService } from '../services/ValidationService';
 import PreDayEmailButton from '../components/PreDayEmailButton';
+import SmsIcon from '@mui/icons-material/Sms';
+
+/**
+ * 内覧前日SMS本文を生成する
+ * 木曜日内覧 → 「明後日の〇月〇日」
+ * それ以外 → 「明日の〇月〇日」
+ */
+function generatePreDaySmsBody(buyer: {
+  name?: string | null;
+  latest_viewing_date?: string | null;
+  viewing_time?: string | null;
+}, propertyAddress: string, googleMapUrl: string): string {
+  const name = buyer.name || 'お客様';
+  const dateStr = buyer.latest_viewing_date || '';
+  const parts = dateStr.includes('/') ? dateStr.split('/') : dateStr.split('-');
+  let dateLabel = '';
+  let dayWord = '明日';
+
+  if (parts.length === 3) {
+    const viewingDate = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+    const month = viewingDate.getMonth() + 1;
+    const day = viewingDate.getDate();
+    dateLabel = `${month}月${day}日`;
+    if (viewingDate.getDay() === 4) dayWord = '明後日'; // 木曜
+  }
+
+  const timeStr = buyer.viewing_time || '';
+  const mapLine = googleMapUrl ? `\n${googleMapUrl}` : '';
+
+  return `【内覧のご連絡　☆返信不可☆】\n${name}様\nお世話になっております。㈱いふうです。\n${dayWord}の${dateLabel} ${timeStr}から${propertyAddress}の内覧をよろしくお願いいたします。${mapLine}\nこのメールは返信不可となっておりますので、何かございましたら下記連絡先へお願いいたします。\n【電話】(10時～18時）*水曜定休\n097-533-2022\n【メールアドレス】\ntenant@ifoo-oita.com\nそれではお会いできるのを楽しみにしております。\n㈱いふう`;
+}
 
 /**
  * 内覧日前日かどうかを判定（BuyerStatusCalculator Priority 3 と同じロジック）
@@ -580,20 +611,61 @@ export default function BuyerViewingResultPage() {
             {linkedProperties[0].property_address || linkedProperties[0].address}
           </Typography>
         )}
-        {/* 内覧前日Eメールボタン（内覧日前日の場合のみ表示） */}
+        {/* 内覧前日ボタン群（内覧日前日の場合のみ表示） */}
         {isViewingPreDay(buyer) && (
-          <Box sx={{ ml: 'auto' }}>
-            <PreDayEmailButton
-              buyerId={buyer_number || ''}
-              buyerEmail={buyer.email || ''}
-              buyerName={buyer.name || ''}
-              buyerCompanyName={buyer.company_name || ''}
-              buyerNumber={buyer_number || ''}
-              preViewingNotes={buyer.pre_viewing_notes || ''}
-              inquiryHistory={[]}
-              selectedPropertyIds={selectedPropertyIds}
-              size="medium"
-            />
+          <Box sx={{ ml: 'auto', display: 'flex', gap: 1, alignItems: 'center' }}>
+            {/* メアドがある場合はEメールボタン */}
+            {buyer.email && (
+              <PreDayEmailButton
+                buyerId={buyer_number || ''}
+                buyerEmail={buyer.email || ''}
+                buyerName={buyer.name || ''}
+                buyerCompanyName={buyer.company_name || ''}
+                buyerNumber={buyer_number || ''}
+                preViewingNotes={buyer.pre_viewing_notes || ''}
+                inquiryHistory={[]}
+                selectedPropertyIds={selectedPropertyIds}
+                size="medium"
+              />
+            )}
+            {/* メアドがない場合（または電話番号がある場合）はSMSボタン */}
+            {!buyer.email && buyer.phone_number && (() => {
+              const property = linkedProperties.length > 0 ? linkedProperties[0] : null;
+              const address = property?.property_address || property?.address || '';
+              const googleMapUrl = property?.google_map_url || '';
+              const smsBody = generatePreDaySmsBody(buyer, address, googleMapUrl);
+              const smsLink = `sms:${buyer.phone_number}?body=${encodeURIComponent(smsBody)}`;
+              return (
+                <Button
+                  variant="contained"
+                  size="medium"
+                  startIcon={<SmsIcon />}
+                  onClick={() => {
+                    api.post(`/api/buyers/${buyer_number}/sms-history`, {
+                      templateId: 'pre_day_viewing',
+                      templateName: '内覧前日SMS',
+                      phoneNumber: buyer.phone_number,
+                      senderName: '',
+                    }).catch(() => {});
+                    window.open(smsLink, '_self');
+                  }}
+                  sx={{
+                    backgroundColor: '#2e7d32',
+                    color: '#fff',
+                    fontWeight: 'bold',
+                    '&:hover': { backgroundColor: '#1b5e20' },
+                    animation: 'preDayPulse 1.5s ease-in-out infinite',
+                    '@keyframes preDayPulse': {
+                      '0%': { boxShadow: '0 0 0 0 rgba(46, 125, 50, 0.6)' },
+                      '70%': { boxShadow: '0 0 0 10px rgba(46, 125, 50, 0)' },
+                      '100%': { boxShadow: '0 0 0 0 rgba(46, 125, 50, 0)' },
+                    },
+                  }}
+                >
+                  内覧前日SMS
+                </Button>
+              );
+            })()}
           </Box>
         )}
       </Box>
