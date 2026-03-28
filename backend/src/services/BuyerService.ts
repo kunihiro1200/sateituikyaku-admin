@@ -1372,8 +1372,8 @@ export class BuyerService {
       'desired_area', 'desired_property_type', 'budget',
     ].join(', ');
 
-    // count クエリと最初のバッチ（0-999）を並列実行してレイテンシを削減
-    const [countResult, firstBatchResult] = await Promise.all([
+    // count クエリ・最初のバッチ・property_listings を全て並列実行
+    const [countResult, firstBatchResult, allListingsResult] = await Promise.all([
       this.supabase
         .from('buyers')
         .select('*', { count: 'exact', head: true })
@@ -1383,6 +1383,10 @@ export class BuyerService {
         .select(BUYER_COLUMNS)
         .is('deleted_at', null)
         .range(0, PAGE_SIZE - 1),
+      // property_listings を buyers 取得と並列で全件取得
+      this.supabase
+        .from('property_listings')
+        .select('property_number, atbb_status, address, sales_assignee, property_type'),
     ]);
 
     const { count, error: countError } = countResult;
@@ -1418,46 +1422,17 @@ export class BuyerService {
       }
     }
 
-    // 物件番号を収集して property_listings から必要なフィールドを一括取得
-    const propertyNumbers = new Set<string>();
-    for (const buyer of allBuyers) {
-      if (buyer.property_number) {
-        buyer.property_number.split(',').map((n: string) => n.trim()).filter((n: string) => n)
-          .forEach((n: string) => propertyNumbers.add(n));
-      }
-    }
-
+    // property_listings のマップを構築（並列取得済み）
     const propertyMap: Record<string, { atbb_status: string; property_address: string | null; sales_assignee: string | null; property_type: string | null }> = {};
-    if (propertyNumbers.size > 0) {
-      // バッチを並列で取得（直列→並列化でパフォーマンス改善）
-      const propNumArray = Array.from(propertyNumbers);
-      const BATCH_SIZE = 500;
-      const batches: string[][] = [];
-      for (let i = 0; i < propNumArray.length; i += BATCH_SIZE) {
-        batches.push(propNumArray.slice(i, i + BATCH_SIZE));
-      }
-
-      const batchResults = await Promise.all(
-        batches.map(batch =>
-          this.supabase
-            .from('property_listings')
-            .select('property_number, atbb_status, address, sales_assignee, property_type')
-            .in('property_number', batch)
-        )
-      );
-
-      for (const { data: listings } of batchResults) {
-        if (listings) {
-          for (const listing of listings) {
-            if (listing.property_number) {
-              propertyMap[listing.property_number] = {
-                atbb_status: listing.atbb_status || '',
-                property_address: listing.address ?? null,
-                sales_assignee: listing.sales_assignee ?? null,
-                property_type: listing.property_type ?? null,
-              };
-            }
-          }
+    if (allListingsResult.data) {
+      for (const listing of allListingsResult.data) {
+        if (listing.property_number) {
+          propertyMap[listing.property_number] = {
+            atbb_status: listing.atbb_status || '',
+            property_address: listing.address ?? null,
+            sales_assignee: listing.sales_assignee ?? null,
+            property_type: listing.property_type ?? null,
+          };
         }
       }
     }
