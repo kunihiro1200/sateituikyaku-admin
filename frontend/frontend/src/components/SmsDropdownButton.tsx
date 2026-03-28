@@ -70,7 +70,7 @@ export const SmsDropdownButton: React.FC<SmsDropdownButtonProps> = ({
       message = `${name}様\n\n先日は${address}のお問い合わせを頂き誠にありがとうございました。\n物件案内がご要望に添えず、大変申し訳ございませんでした。\nその後物件探しのご状況はいかがでしょうか？\nまだ物件をお探しであれば是非いふうにてお手伝い出来ればと存じますのでお気軽にお申し付け下さい。\n\n他に気になる物件がございましたら他社様の物件もご内覧可能です。\n★非公開の物件はこちらから↓↓\n${PUBLIC_SITE_URL}\n引き続き宜しくお願い致します。${preViewingSection}\n\n株式会社 いふう\nTEL：097-533-2022`;
     } else if (templateId === 'pinrich') {
       message = `${name}様\n先日は、ご登録いただきましてありがとうございました！その後物件探しのご状況はいかがでしょうか？\nまだ物件をお探しであれば是非いふうにてお手伝い出来ればと存じますのでお気軽にお申し付け下さい。\n\n他に気になる物件がございましたら他社様の物件もご内覧可能です。\n★非公開の物件はこちらから↓↓\n${PUBLIC_SITE_URL}\n引き続き宜しくお願い致します。${preViewingSection}\n\n株式会社 いふう\nTEL：097-533-2022`;
-    if (templateId === 'house_mansion') {
+    } else if (templateId === 'house_mansion') {
       message = `${name}様\n\nこの度はお問い合わせありがとうございます。\n株式会社いふうと申します。\n\n所在地：${address}\n上記の物件のお問い合わせ、ありがとうございます。\nご不明な点等ございましたら、お気軽にお問い合わせください。${preViewingSection}\n\nまた、ご内覧希望の場合は、こちらからご予約お願いいたします↓↓\n${viewingFormUrl}\n\n★非公開の物件はこちらから↓↓\n${PUBLIC_SITE_URL}\nお気軽にお問い合わせください。\n\nまた、他社物件もご紹介できますので、気になる物件がございましたらお気軽にご連絡ください。\n\n株式会社 いふう\nTEL：097-533-2022`;
     }
 
