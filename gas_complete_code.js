@@ -538,8 +538,23 @@ function updateSidebarCounts_(sheetRows) {
     return dateStr <= todayStr;
   }
 
+  function isValidContactValue(v) {
+    if (!v) return false;
+    var s = String(v).trim();
+    return s !== '' && s.toLowerCase() !== 'null' && s.toLowerCase() !== 'undefined';
+  }
+
   function hasContactInfo(row) {
-    return !!(row['連絡方法'] || row['連絡取りやすい日、時間帯'] || row['電話担当（任意）']);
+    return isValidContactValue(row['連絡方法']) ||
+           isValidContactValue(row['連絡取りやすい日、時間帯']) ||
+           isValidContactValue(row['電話担当（任意）']);
+  }
+
+  function getContactLabel(row) {
+    if (isValidContactValue(row['連絡方法'])) return String(row['連絡方法']).trim();
+    if (isValidContactValue(row['連絡取りやすい日、時間帯'])) return String(row['連絡取りやすい日、時間帯']).trim();
+    if (isValidContactValue(row['電話担当（任意）'])) return String(row['電話担当（任意）']).trim();
+    return '';
   }
 
   // カウント集計
@@ -592,9 +607,10 @@ function updateSidebarCounts_(sheetRows) {
         counts.todayCallAssigned[aKey] = (counts.todayCallAssigned[aKey] || 0) + 1;
       } else if (hasContactInfo(row)) {
         // 当日TEL（内容）
-        var label = row['連絡方法'] || row['連絡取りやすい日、時間帯'] || row['電話担当（任意）'];
-        label = String(label);
-        counts.todayCallWithInfo[label] = (counts.todayCallWithInfo[label] || 0) + 1;
+        var label = getContactLabel(row);
+        if (label) {
+          counts.todayCallWithInfo[label] = (counts.todayCallWithInfo[label] || 0) + 1;
+        }
       } else {
         // 当日TEL分
         counts.todayCall++;
