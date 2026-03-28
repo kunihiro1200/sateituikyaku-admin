@@ -230,7 +230,7 @@ export default function BuyersPage() {
 
   const handleRowClick = (buyerId: string) => {
     if (selectedCalculatedStatus === '内覧日前日') {
-      navigate(`/buyers/${buyerId}/viewing`);
+      navigate(`/buyers/${buyerId}/viewing-result`);
     } else {
       navigate(`/buyers/${buyerId}`);
     }
