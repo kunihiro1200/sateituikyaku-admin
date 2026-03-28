@@ -15,6 +15,7 @@ interface BuyerGmailSendButtonProps {
   buyerCompanyName?: string;
   buyerNumber?: string;
   preViewingNotes?: string;
+  followUpAssignee?: string; // 後続担当（署名の担当者情報取得に使用）
   inquiryHistory: InquiryHistoryItem[];
   selectedPropertyIds: Set<string>; // チェックボックスで選択された物件ID
   size?: 'small' | 'medium' | 'large';
@@ -35,6 +36,7 @@ export default function BuyerGmailSendButton({
   buyerCompanyName,
   buyerNumber,
   preViewingNotes,
+  followUpAssignee,
   inquiryHistory,
   selectedPropertyIds,
   size = 'medium',
@@ -99,6 +101,7 @@ export default function BuyerGmailSendButton({
           buyer_number: buyerNumber || '',
           email: buyerEmail,
           pre_viewing_notes: preViewingNotes || '',
+          follow_up_assignee: followUpAssignee || '',
         },
         propertyIds,
         templateSubject: template.subject,

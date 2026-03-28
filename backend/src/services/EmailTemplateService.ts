@@ -353,7 +353,8 @@ export class EmailTemplateService {
       athomeUrl?: string;
       detailUrl?: string;
       [key: string]: any;
-    }>
+    }>,
+    staffInfo?: { name?: string; phone?: string | null; email?: string | null; regularHoliday?: string | null } | null
   ): string {
     let result = text;
 
@@ -392,6 +393,11 @@ export class EmailTemplateService {
       result = result.replace(/<<内覧日>>/g, formattedDate0);
       result = result.replace(/<<時間>>/g, formattedTime0);
       result = result.replace(/<<内覧アンケート>>/g, '');
+      // <<担当名（営業）>> 系プレースホルダーの置換（staffInfo が渡された場合）
+      result = result.replace(/<<担当名（営業）名前>>/g, staffInfo?.name || '');
+      result = result.replace(/<<担当名（営業）電話番号>>/g, staffInfo?.phone || '');
+      result = result.replace(/<<担当名（営業）メールアドレス>>/g, staffInfo?.email || '');
+      result = result.replace(/<<担当名（営業）固定休>>/g, staffInfo?.regularHoliday || '');
       result = result.replace(/<<[^>]*>>/g, '');
       return result;
     }
@@ -455,6 +461,12 @@ export class EmailTemplateService {
     // <<住居表示Pinrich>> の置換（空欄の場合は非表示）
     const pinrichUrl = buyer.pinrich_url || buyer.pinrichUrl || '';
     result = result.replace(/<<住居表示Pinrich>>/g, pinrichUrl || '');
+
+    // <<担当名（営業）>> 系プレースホルダーの置換（staffInfo が渡された場合）
+    result = result.replace(/<<担当名（営業）名前>>/g, staffInfo?.name || '');
+    result = result.replace(/<<担当名（営業）電話番号>>/g, staffInfo?.phone || '');
+    result = result.replace(/<<担当名（営業）メールアドレス>>/g, staffInfo?.email || '');
+    result = result.replace(/<<担当名（営業）固定休>>/g, staffInfo?.regularHoliday || '');
 
     // 残った未置換の <<...>> を空文字に（安全策）
     result = result.replace(/<<[^>]*>>/g, '');

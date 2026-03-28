@@ -316,3 +316,122 @@ describe('Gmail保全テスト: 他プレースホルダーが修正前後で同
     expect(result).not.toContain('<<内覧前伝達事項v>>');
   });
 });
+
+
+// ===== 署名担当者情報バグ修正確認テスト =====
+
+describe('バグ修正確認: mergeAngleBracketPlaceholders() の担当者情報プレースホルダー（署名TEL・MAIL・固定休）', () => {
+  let service: EmailTemplateService;
+
+  beforeEach(() => {
+    service = new EmailTemplateService();
+  });
+
+  /**
+   * バグ条件探索テスト1: <<担当名（営業）電話番号>> が空文字になるバグ
+   * 未修正コードでは FAIL（バグ確認）、修正後は PASS
+   */
+  it('<<担当名（営業）電話番号>> が staffInfo.phone で置換されること', () => {
+    const template = 'TEL：<<担当名（営業）電話番号>>';
+    const buyer = { name: '田中太郎' };
+    const properties = [{ propertyNumber: 'AA12345', address: '大分市中央町1-2-3' }];
+    const staffInfo = { name: '裏天真', phone: '090-1234-5678', email: 'ura@ifoo.com', regularHoliday: '水曜日' };
+
+    const result = (service as any).mergeAngleBracketPlaceholders(template, buyer, properties, staffInfo);
+
+    expect(result).toContain('090-1234-5678');
+    expect(result).not.toContain('<<担当名（営業）電話番号>>');
+  });
+
+  /**
+   * バグ条件探索テスト2: <<担当名（営業）メールアドレス>> が空文字になるバグ
+   */
+  it('<<担当名（営業）メールアドレス>> が staffInfo.email で置換されること', () => {
+    const template = 'MAIL: <<担当名（営業）メールアドレス>>';
+    const buyer = { name: '田中太郎' };
+    const properties = [{ propertyNumber: 'AA12345', address: '大分市中央町1-2-3' }];
+    const staffInfo = { name: '裏天真', phone: '090-1234-5678', email: 'ura@ifoo.com', regularHoliday: '水曜日' };
+
+    const result = (service as any).mergeAngleBracketPlaceholders(template, buyer, properties, staffInfo);
+
+    expect(result).toContain('ura@ifoo.com');
+    expect(result).not.toContain('<<担当名（営業）メールアドレス>>');
+  });
+
+  /**
+   * バグ条件探索テスト3: <<担当名（営業）固定休>> が空文字になるバグ
+   */
+  it('<<担当名（営業）固定休>> が staffInfo.regularHoliday で置換されること', () => {
+    const template = '固定休：<<担当名（営業）固定休>>';
+    const buyer = { name: '田中太郎' };
+    const properties = [{ propertyNumber: 'AA12345', address: '大分市中央町1-2-3' }];
+    const staffInfo = { name: '裏天真', phone: '090-1234-5678', email: 'ura@ifoo.com', regularHoliday: '水曜日' };
+
+    const result = (service as any).mergeAngleBracketPlaceholders(template, buyer, properties, staffInfo);
+
+    expect(result).toContain('水曜日');
+    expect(result).not.toContain('<<担当名（営業）固定休>>');
+  });
+
+  /**
+   * バグ条件探索テスト4: 署名全体のテスト（内覧後お礼メール相当）
+   */
+  it('署名全体の担当者情報プレースホルダーが正しく置換されること', () => {
+    const template = `***************************
+株式会社 いふう
+<<担当名（営業）名前>>
+〒870-0044大分市舞鶴町1丁目3-30
+TEL：<<担当名（営業）電話番号>>
+FAX：097-529-7160
+MAIL: <<担当名（営業）メールアドレス>>
+固定休：<<担当名（営業）固定休>>
+HP：https://ifoo-oita.com/
+***************************`;
+    const buyer = { name: '田中太郎' };
+    const properties = [{ propertyNumber: 'AA12345', address: '大分市中央町1-2-3' }];
+    const staffInfo = { name: '裏天真', phone: '090-1234-5678', email: 'ura@ifoo.com', regularHoliday: '水曜日' };
+
+    const result = (service as any).mergeAngleBracketPlaceholders(template, buyer, properties, staffInfo);
+
+    expect(result).toContain('裏天真');
+    expect(result).toContain('090-1234-5678');
+    expect(result).toContain('ura@ifoo.com');
+    expect(result).toContain('水曜日');
+    expect(result).not.toContain('<<担当名（営業）名前>>');
+    expect(result).not.toContain('<<担当名（営業）電話番号>>');
+    expect(result).not.toContain('<<担当名（営業）メールアドレス>>');
+    expect(result).not.toContain('<<担当名（営業）固定休>>');
+  });
+
+  /**
+   * 保全テスト: staffInfo なしの場合は空文字に置換されること（既存動作維持）
+   */
+  it('staffInfo が渡されない場合、担当者情報プレースホルダーは空文字に置換されること', () => {
+    const template = 'TEL：<<担当名（営業）電話番号>>\nMAIL: <<担当名（営業）メールアドレス>>';
+    const buyer = { name: '田中太郎' };
+    const properties = [{ propertyNumber: 'AA12345', address: '大分市中央町1-2-3' }];
+
+    const result = (service as any).mergeAngleBracketPlaceholders(template, buyer, properties);
+
+    expect(result).not.toContain('<<担当名（営業）電話番号>>');
+    expect(result).not.toContain('<<担当名（営業）メールアドレス>>');
+    expect(result).toContain('TEL：');
+    expect(result).toContain('MAIL: ');
+  });
+
+  /**
+   * 保全テスト: 既存の買主情報・物件情報プレースホルダーは引き続き正常に動作すること
+   */
+  it('staffInfo を渡しても既存の買主情報・物件情報プレースホルダーは正常に置換されること', () => {
+    const template = '<<氏名>>様\n所在地：<<住居表示>>\nTEL：<<担当名（営業）電話番号>>';
+    const buyer = { name: '田中太郎' };
+    const properties = [{ propertyNumber: 'AA12345', address: '大分市中央町1-2-3' }];
+    const staffInfo = { name: '裏天真', phone: '090-1234-5678', email: 'ura@ifoo.com', regularHoliday: '水曜日' };
+
+    const result = (service as any).mergeAngleBracketPlaceholders(template, buyer, properties, staffInfo);
+
+    expect(result).toContain('田中太郎様');
+    expect(result).toContain('大分市中央町1-2-3');
+    expect(result).toContain('090-1234-5678');
+  });
+});

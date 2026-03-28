@@ -385,12 +385,21 @@ router.post('/:templateId/mergeMultiple', async (req, res) => {
     console.log(`[mergeMultiple] propertyIds=${JSON.stringify(propertyIds)}, found=${allProperties.length}`);
     if (allProperties.length === 0) {
       // 物件が見つからない場合でも、物件情報なしでテンプレートをマージして返す
+      // follow_up_assignee でスタッフ情報を取得
+      let staffInfoForMerge = null;
+      const followUpAssignee = buyer.follow_up_assignee;
+      if (followUpAssignee) {
+        staffInfoForMerge = await staffService.getStaffByInitials(followUpAssignee);
+        if (!staffInfoForMerge) {
+          staffInfoForMerge = await staffService.getStaffByNameContains(followUpAssignee);
+        }
+      }
       let mergedContent = templateService.mergeMultipleProperties(template, buyer, []);
       mergedContent.subject = templateService.mergeAngleBracketPlaceholders(
-        mergedContent.subject, buyer, []
+        mergedContent.subject, buyer, [], staffInfoForMerge
       );
       mergedContent.body = templateService.mergeAngleBracketPlaceholders(
-        mergedContent.body, buyer, []
+        mergedContent.body, buyer, [], staffInfoForMerge
       );
       return res.json(mergedContent);
     }
@@ -418,13 +427,23 @@ router.post('/:templateId/mergeMultiple', async (req, res) => {
       buildingArea: p.building_area,
     }));
 
+    // follow_up_assignee でスタッフ情報を取得
+    let staffInfoForMerge = null;
+    const followUpAssignee = buyer.follow_up_assignee;
+    if (followUpAssignee) {
+      staffInfoForMerge = await staffService.getStaffByInitials(followUpAssignee);
+      if (!staffInfoForMerge) {
+        staffInfoForMerge = await staffService.getStaffByNameContains(followUpAssignee);
+      }
+    }
+
     // {{}} 形式を置換してから <<>> 形式を置換
     let mergedContent = templateService.mergeMultipleProperties(template, buyer, legacyProperties);
     mergedContent.subject = templateService.mergeAngleBracketPlaceholders(
-      mergedContent.subject, buyer, propertyDataForPlaceholders
+      mergedContent.subject, buyer, propertyDataForPlaceholders, staffInfoForMerge
     );
     mergedContent.body = templateService.mergeAngleBracketPlaceholders(
-      mergedContent.body, buyer, propertyDataForPlaceholders
+      mergedContent.body, buyer, propertyDataForPlaceholders, staffInfoForMerge
     );
 
     res.json(mergedContent);
