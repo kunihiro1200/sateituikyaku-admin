@@ -177,9 +177,18 @@ export class ColumnMapper {
       }
 
       // 査定額フィールド: DBは円単位、スプシは万円単位なので÷10000して戻す
+      // CB列（査定額1/2/3）と自動計算列（査定額1（自動計算）v等）の両方に書き込む
       if (dbColumn === 'valuation_amount_1' || dbColumn === 'valuation_amount_2' || dbColumn === 'valuation_amount_3') {
         const numVal = typeof value === 'number' ? value : parseFloat(String(value));
-        sheetRow[sheetColumn] = isNaN(numVal) ? '' : Math.round(numVal / 10000);
+        const manEn = isNaN(numVal) ? '' : Math.round(numVal / 10000);
+        sheetRow[sheetColumn] = manEn;
+        // 自動計算列にも同じ値を書き込む（DBとスプシの値を一致させるため）
+        const autoColumnMap: Record<string, string> = {
+          'valuation_amount_1': '査定額1（自動計算）v',
+          'valuation_amount_2': '査定額2（自動計算）v',
+          'valuation_amount_3': '査定額3（自動計算）v',
+        };
+        sheetRow[autoColumnMap[dbColumn]] = manEn;
         continue;
       }
 
