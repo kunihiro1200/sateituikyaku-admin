@@ -1,4 +1,5 @@
-import { Box, Button } from '@mui/material';
+import { useState } from 'react';
+import { Box, Button, Drawer, IconButton, List, ListItem, ListItemButton, ListItemIcon, ListItemText, useMediaQuery, useTheme } from '@mui/material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   People as PeopleIcon,
@@ -7,6 +8,7 @@ import {
   Assignment as AssignmentIcon,
   Public as PublicIcon,
   Share as ShareIcon,
+  Menu as MenuIcon,
 } from '@mui/icons-material';
 
 const NAV_COLORS = {
@@ -24,6 +26,9 @@ interface PageNavigationProps {
 export default function PageNavigation({ onNavigate }: PageNavigationProps = {}) {
   const navigate = useNavigate();
   const location = useLocation();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   const handleNav = (path: string) => {
     if (onNavigate) {
@@ -31,6 +36,7 @@ export default function PageNavigation({ onNavigate }: PageNavigationProps = {})
     } else {
       navigate(path);
     }
+    setDrawerOpen(false);
   };
 
   const navItems = [
@@ -43,16 +49,80 @@ export default function PageNavigation({ onNavigate }: PageNavigationProps = {})
 
   const handlePublicSiteClick = () => {
     window.open('/public/properties', '_blank');
+    setDrawerOpen(false);
   };
 
+  const isActive = (path: string) =>
+    path === '/'
+      ? location.pathname === '/' || location.pathname.startsWith('/sellers')
+      : location.pathname.startsWith(path);
+
+  // モバイル: ハンバーガーアイコン + Drawer
+  if (isMobile) {
+    return (
+      <>
+        <IconButton
+          onClick={() => setDrawerOpen(true)}
+          aria-label="メニューを開く"
+          sx={{ minHeight: 44, minWidth: 44 }}
+        >
+          <MenuIcon />
+        </IconButton>
+        <Drawer
+          anchor="left"
+          open={drawerOpen}
+          onClose={() => setDrawerOpen(false)}
+        >
+          <List sx={{ width: 240, pt: 1 }}>
+            {navItems.map((item) => {
+              const color = NAV_COLORS[item.path as keyof typeof NAV_COLORS];
+              const active = isActive(item.path);
+              return (
+                <ListItem key={item.path} disablePadding>
+                  <ListItemButton
+                    onClick={() => handleNav(item.path)}
+                    sx={{
+                      minHeight: 44,
+                      backgroundColor: active ? color.main : color.light,
+                      color: active ? '#fff' : color.text,
+                      '&:hover': {
+                        backgroundColor: active ? color.main : `${color.main}22`,
+                      },
+                      mb: 0.5,
+                    }}
+                  >
+                    <ListItemIcon sx={{ color: 'inherit', minWidth: 36 }}>
+                      {item.icon}
+                    </ListItemIcon>
+                    <ListItemText primary={item.label} />
+                  </ListItemButton>
+                </ListItem>
+              );
+            })}
+            <ListItem disablePadding>
+              <ListItemButton
+                onClick={handlePublicSiteClick}
+                sx={{ minHeight: 44 }}
+              >
+                <ListItemIcon sx={{ minWidth: 36 }}>
+                  <PublicIcon />
+                </ListItemIcon>
+                <ListItemText primary="公開物件サイト" />
+              </ListItemButton>
+            </ListItem>
+          </List>
+        </Drawer>
+      </>
+    );
+  }
+
+  // デスクトップ: 既存の横並びボタン群
   return (
     <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
       <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center' }}>
         {navItems.map((item) => {
           const color = NAV_COLORS[item.path as keyof typeof NAV_COLORS];
-          const isActive = item.path === '/'
-            ? location.pathname === '/' || location.pathname.startsWith('/sellers')
-            : location.pathname.startsWith(item.path);
+          const active = isActive(item.path);
           return (
             <Button
               key={item.path}
@@ -63,10 +133,10 @@ export default function PageNavigation({ onNavigate }: PageNavigationProps = {})
               sx={{
                 minWidth: 130,
                 borderColor: color.main,
-                color: isActive ? '#fff' : color.text,
-                backgroundColor: isActive ? color.main : color.light,
+                color: active ? '#fff' : color.text,
+                backgroundColor: active ? color.main : color.light,
                 '&:hover': {
-                  backgroundColor: isActive ? color.main : `${color.main}22`,
+                  backgroundColor: active ? color.main : `${color.main}22`,
                   borderColor: color.main,
                 },
               }}

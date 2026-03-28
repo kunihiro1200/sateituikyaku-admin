@@ -17,12 +17,20 @@ import {
   InputAdornment,
   MenuItem,
   IconButton,
+  Card,
+  CardContent,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
+  useTheme,
+  useMediaQuery,
 } from '@mui/material';
 import {
   Add as AddIcon,
   Search as SearchIcon,
   FilterList as FilterListIcon,
   Clear as ClearIcon,
+  ExpandMore as ExpandMoreIcon,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
@@ -124,6 +132,8 @@ function SellerStatusCell({ seller }: { seller: any }) {
 
 export default function SellersPage() {
   const navigate = useNavigate();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [sellers, setSellers] = useState<Seller[]>([]);
   // キャッシュがあれば初期ローディングをスキップ（コールドスタート対策）
   const _defaultCacheKey = `${CACHE_KEYS.SELLERS_LIST}:${JSON.stringify({ page: 1, pageSize: 50, sortBy: 'inquiry_date', sortOrder: 'desc' })}`;
@@ -470,7 +480,7 @@ export default function SellersPage() {
   const filteredSellers = sellers;
 
   return (
-    <Container maxWidth="xl">
+    <Container maxWidth="xl" sx={isMobile ? { overflowX: 'hidden', px: 1 } : {}}>
       {/* 自動同期通知 */}
       <SyncNotification
         data={syncNotificationData}
@@ -513,10 +523,38 @@ export default function SellersPage() {
         {/* ページナビゲーション */}
         <PageNavigation />
 
+        {/* モバイル：ステータスサイドバーをアコーディオンで表示 */}
+        {isMobile && (
+          <Accordion sx={{ mb: 2 }}>
+            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+              <Typography variant="body1" fontWeight="bold">ステータスフィルター</Typography>
+            </AccordionSummary>
+            <AccordionDetails sx={{ p: 1 }}>
+              <SellerStatusSidebar
+                categoryCounts={categoryCounts}
+                selectedCategory={selectedCategory}
+                onCategorySelect={(category) => {
+                  setSelectedCategory(category);
+                  setPage(0);
+                }}
+                onCategoryExpand={(category: string) => {
+                  fetchExpandedCategorySellers(category);
+                }}
+                isCallMode={false}
+                sellers={sellers}
+                expandedCategorySellers={expandedCategorySellers}
+                expandedCategoryLoading={expandedCategoryLoading}
+                loading={sidebarLoading}
+                assigneeInitials={assigneeInitials}
+              />
+            </AccordionDetails>
+          </Accordion>
+        )}
+
         {/* サイドバーとメインコンテンツのレイアウト */}
         <Box sx={{ display: 'flex', gap: 2 }}>
-          {/* 左側サイドバー - カテゴリ未選択時のみ表示 */}
-          {selectedCategory === 'all' && (
+          {/* 左側サイドバー - デスクトップのみ・カテゴリ未選択時のみ表示 */}
+          {!isMobile && selectedCategory === 'all' && (
             <SellerStatusSidebar
               categoryCounts={categoryCounts}
               selectedCategory={selectedCategory}
@@ -537,7 +575,7 @@ export default function SellersPage() {
           )}
 
           {/* メインコンテンツ */}
-          <Box sx={{ flex: 1 }}>
+          <Box sx={{ flex: 1, minWidth: 0 }}>
             {/* カテゴリ選択中の場合、上部にカテゴリ名と戻るボタンを表示 */}
             {selectedCategory !== 'all' && (
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2, p: 1.5, bgcolor: 'grey.100', borderRadius: 1 }}>
@@ -571,7 +609,8 @@ export default function SellersPage() {
         <Paper sx={{ p: 2, mb: 3 }}>
           <Box sx={{ display: 'flex', gap: 2, mb: showFilters ? 2 : 0 }}>
             <TextField
-              sx={{ width: '50%' }}
+              sx={isMobile ? { flex: 1 } : { width: '50%' }}
+              fullWidth={isMobile}
               placeholder="名前、住所、電話番号で検索"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -734,7 +773,8 @@ export default function SellersPage() {
           )}
         </Paper>
 
-        {/* 上部ページネーション */}
+        {/* 上部ページネーション（デスクトップのみ） */}
+        {!isMobile && (
         <Box sx={{ mb: 2 }}>
           <Paper>
             <TablePagination
@@ -750,7 +790,100 @@ export default function SellersPage() {
             />
           </Paper>
         </Box>
+        )}
 
+        {/* モバイル：カードリスト表示 */}
+        {isMobile ? (
+          <Box>
+            {loading ? (
+              <Typography align="center" sx={{ py: 4, fontSize: '14px' }}>読み込み中...</Typography>
+            ) : filteredSellers.length === 0 ? (
+              <Typography align="center" sx={{ py: 4, fontSize: '14px' }}>売主が見つかりませんでした</Typography>
+            ) : (
+              filteredSellers.map((seller: any) => (
+                <Card
+                  key={seller.id}
+                  data-seller-id={seller.id}
+                  onClick={() => {
+                    sessionStorage.setItem('sellersScrollPosition', window.scrollY.toString());
+                    sessionStorage.setItem('selectedSellerId', seller.id);
+                    pageDataCache.set(sellerDetailCacheKey(seller.id), seller, 30 * 1000);
+                    const categoryParam = selectedCategory && selectedCategory !== 'all' ? `?category=${encodeURIComponent(selectedCategory)}` : '';
+                    navigate(`/sellers/${seller.id}/call${categoryParam}`);
+                  }}
+                  sx={{
+                    mb: 1,
+                    cursor: 'pointer',
+                    minHeight: 44,
+                    '&:hover': { bgcolor: 'grey.50' },
+                  }}
+                >
+                  <CardContent sx={{ py: 1.5, px: 2, '&:last-child': { pb: 1.5 } }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 0.5 }}>
+                      <Typography
+                        variant="body2"
+                        fontWeight="bold"
+                        sx={{ color: SECTION_COLORS.seller.main, fontSize: '14px' }}
+                      >
+                        {seller.sellerNumber || '-'}
+                      </Typography>
+                      <Chip
+                        label={statusLabels[seller.status] || seller.status || '-'}
+                        color={getStatusColor(seller.status)}
+                        size="small"
+                        sx={{ fontSize: '12px', height: 22 }}
+                      />
+                    </Box>
+                    <Typography
+                      variant="body1"
+                      fontWeight="bold"
+                      sx={{ fontSize: '14px', mb: 0.5 }}
+                    >
+                      {seller.name || '-'}
+                    </Typography>
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                      sx={{
+                        fontSize: '14px',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                        mb: 0.5,
+                      }}
+                    >
+                      {seller.propertyAddress || '-'}
+                    </Typography>
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                      sx={{ fontSize: '14px' }}
+                    >
+                      次電:{' '}
+                      {seller.nextCallDate
+                        ? new Date(seller.nextCallDate).toLocaleDateString('ja-JP')
+                        : '-'}
+                    </Typography>
+                  </CardContent>
+                </Card>
+              ))
+            )}
+            {/* モバイル下部ページネーション */}
+            <Paper sx={{ mt: 1 }}>
+              <TablePagination
+                rowsPerPageOptions={[25, 50, 100]}
+                component="div"
+                count={total}
+                rowsPerPage={rowsPerPage}
+                page={page}
+                onPageChange={handleChangePage}
+                onRowsPerPageChange={handleChangeRowsPerPage}
+                labelRowsPerPage="件数:"
+                labelDisplayedRows={({ from, to, count }) => `${from}-${to} / ${count}件`}
+              />
+            </Paper>
+          </Box>
+        ) : (
         <TableContainer component={Paper}>
           <Table sx={{ tableLayout: 'fixed' }}>
             <TableHead>
@@ -911,6 +1044,7 @@ export default function SellersPage() {
             labelDisplayedRows={({ from, to, count }) => `${from}-${to} / ${count}件`}
           />
         </TableContainer>
+        )}
           </Box>
         </Box>
       </Box>

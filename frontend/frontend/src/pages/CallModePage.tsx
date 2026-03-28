@@ -24,8 +24,13 @@ import {
   IconButton,
   Tooltip,
   Snackbar,
+  useTheme,
+  useMediaQuery,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
 } from '@mui/material';
-import { ArrowBack, Phone, Save, CalendarToday, Email, Image as ImageIcon, ContentCopy as ContentCopyIcon, Search as SearchIcon, Clear as ClearIcon, Delete as DeleteIcon } from '@mui/icons-material';
+import { ArrowBack, Phone, Save, CalendarToday, Email, Image as ImageIcon, ContentCopy as ContentCopyIcon, Search as SearchIcon, Clear as ClearIcon, Delete as DeleteIcon, ExpandMore as ExpandMoreIcon, Sms as SmsIcon } from '@mui/icons-material';
 import api, { emailImageApi } from '../services/api';
 import { SECTION_COLORS } from '../theme/sectionColors';
 import { Seller, PropertyInfo, Activity, SellerStatus, ConfidenceLevel, DuplicateMatch, SelectedImages, DriveImage } from '../types';
@@ -164,6 +169,10 @@ const CallModePage = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { employee } = useAuthStore();
+
+  // モバイル判定
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   // クイックボタン無効化機能の初期化
   const {
@@ -2926,7 +2935,7 @@ HP：https://ifoo-oita.com/
   }
 
   return (
-    <Box sx={{ height: '100vh', display: 'flex', flexDirection: 'column', minWidth: '1280px' }}>
+    <Box sx={{ height: '100vh', display: 'flex', flexDirection: 'column', minWidth: isMobile ? 0 : '1280px', overflowX: isMobile ? 'hidden' : undefined }}>
       {/* ナビゲーションバー */}
       <Box sx={{ position: 'sticky', top: 0, zIndex: 200, bgcolor: 'background.default', borderBottom: '1px solid', borderColor: 'divider', px: 1, py: 0.5, display: 'flex', alignItems: 'center', gap: 1, flexShrink: 0 }}>
         <PageNavigation />
@@ -3398,19 +3407,23 @@ HP：https://ifoo-oita.com/
           </Box>
           
           {/* カテゴリー（一番下） */}
-          <SellerStatusSidebar
-            currentSeller={seller}
-            isCallMode={true}
-            sellers={sidebarSellers}
-            loading={sidebarLoading}
-            categoryCounts={{
-              all: sidebarSellers.length,
-              ...sidebarCounts,
-            }}
-            selectedCategory={selectedCategory}
-            selectedVisitAssignee={selectedVisitAssignee}
-            onCategorySelect={handleCategorySelect}
-          />
+          {!isMobile && (
+            <Box data-testid="seller-status-sidebar">
+              <SellerStatusSidebar
+                currentSeller={seller}
+                isCallMode={true}
+                sellers={sidebarSellers}
+                loading={sidebarLoading}
+                categoryCounts={{
+                  all: sidebarSellers.length,
+                  ...sidebarCounts,
+                }}
+                selectedCategory={selectedCategory}
+                selectedVisitAssignee={selectedVisitAssignee}
+                onCategorySelect={handleCategorySelect}
+              />
+            </Box>
+          )}
         </Box>
         
         {/* メインコンテンツエリア */}
@@ -3419,15 +3432,85 @@ HP：https://ifoo-oita.com/
           {/* 左側：情報表示エリア（50%） */}
           <Grid
             item
-            xs={6}
+            xs={isMobile ? 12 : 6}
             sx={{
-              height: '100%',
+              height: isMobile ? 'auto' : '100%',
               overflow: 'auto',
-              borderRight: 1,
+              borderRight: isMobile ? 0 : 1,
               borderColor: 'divider',
-              p: 3,
+              p: isMobile ? 1 : 3,
+              pb: isMobile ? '140px' : 3,
             }}
           >
+            {/* モバイル：売主基本情報固定ヘッダー */}
+            {isMobile && seller && (
+              <Box
+                sx={{
+                  position: 'sticky',
+                  top: 0,
+                  zIndex: 100,
+                  bgcolor: 'background.paper',
+                  borderBottom: '1px solid',
+                  borderColor: 'divider',
+                  p: 1,
+                  mb: 1,
+                }}
+              >
+                <Typography variant="subtitle1" fontWeight="bold" sx={{ fontSize: '1rem' }}>
+                  {seller.name}
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.85rem' }}>
+                  {seller.phoneNumber}
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.85rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {seller.propertyAddress || propInfo.address || '物件住所未登録'}
+                </Typography>
+              </Box>
+            )}
+            {/* モバイル：コメント入力エリア（fullWidth） */}
+            {isMobile && (
+              <Accordion defaultExpanded sx={{ mb: 1 }}>
+                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                  <Typography variant="subtitle1" fontWeight="bold">📝 コメント入力</Typography>
+                </AccordionSummary>
+                <AccordionDetails sx={{ p: 1 }}>
+                  <RichTextCommentEditor
+                    ref={commentEditorRef}
+                    value={editableComments}
+                    onChange={(html) => setEditableComments(html)}
+                    placeholder="コメントを入力してください..."
+                  />
+                  {(() => {
+                    const isDirty = editableComments !== savedComments;
+                    return (
+                      <Button
+                        fullWidth
+                        variant={isDirty ? 'contained' : 'outlined'}
+                        size="large"
+                        disabled={savingComments}
+                        onClick={handleSaveComments}
+                        sx={{
+                          mt: 1,
+                          minHeight: 44,
+                          ...(isDirty ? {
+                            backgroundColor: '#ff6d00',
+                            color: '#fff',
+                            fontWeight: 'bold',
+                            '&:hover': { backgroundColor: '#e65100' },
+                          } : {
+                            color: '#bdbdbd',
+                            borderColor: '#e0e0e0',
+                          }),
+                        }}
+                      >
+                        {savingComments ? <CircularProgress size={24} /> : '保存'}
+                      </Button>
+                    );
+                  })()}
+                </AccordionDetails>
+              </Accordion>
+            )}
+
             {/* 物件情報 */}
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
@@ -5360,6 +5443,7 @@ HP：https://ifoo-oita.com/
               height: '100%',
               overflow: 'auto',
               p: 3,
+              display: isMobile ? 'none' : undefined,
             }}
           >
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
@@ -6191,6 +6275,75 @@ HP：https://ifoo-oita.com/
 
       </Box>
       </Box>
+
+      {/* モバイル：固定フッター（電話・SMSボタン） */}
+      {isMobile && seller?.phoneNumber && (
+        <Box
+          sx={{
+            position: 'fixed',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            zIndex: 300,
+            bgcolor: 'background.paper',
+            borderTop: '1px solid',
+            borderColor: 'divider',
+            p: 1,
+            display: 'flex',
+            gap: 1,
+          }}
+        >
+          <Button
+            variant="contained"
+            startIcon={<Phone />}
+            component="a"
+            href={`tel:${seller.phoneNumber}`}
+            onClick={async () => {
+              try {
+                await api.post(`/api/sellers/${id}/activities`, {
+                  type: 'phone_call',
+                  content: `${seller.phoneNumber} に電話`,
+                });
+                setTimeout(() => {
+                  callLogRef.current?.reload();
+                }, 500);
+              } catch (err) {
+                console.error('追客ログ記録エラー:', err);
+              }
+            }}
+            sx={{
+              flex: 1,
+              minHeight: 56,
+              fontWeight: 'bold',
+              fontSize: '1rem',
+              backgroundColor: SECTION_COLORS.seller.main,
+              color: SECTION_COLORS.seller.contrastText,
+              '&:hover': { backgroundColor: SECTION_COLORS.seller.dark },
+            }}
+          >
+            電話
+          </Button>
+          <Button
+            variant="outlined"
+            startIcon={<SmsIcon />}
+            sx={{
+              flex: 1,
+              minHeight: 56,
+              fontWeight: 'bold',
+              fontSize: '1rem',
+              borderColor: SECTION_COLORS.seller.main,
+              color: SECTION_COLORS.seller.main,
+            }}
+            onClick={() => {
+              // SMSテンプレート選択ダイアログを開く（既存のSMS機能を利用）
+              const smsSelect = document.querySelector('[data-sms-select]') as HTMLElement;
+              if (smsSelect) smsSelect.click();
+            }}
+          >
+            SMS
+          </Button>
+        </Box>
+      )}
 
       {/* 土地面積警告ダイアログ */}
       <Dialog open={!!landAreaWarning} onClose={() => setLandAreaWarning(null)}>

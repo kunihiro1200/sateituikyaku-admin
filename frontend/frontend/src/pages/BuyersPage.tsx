@@ -16,8 +16,15 @@ import {
   Chip,
   Button,
   CircularProgress,
+  Card,
+  CardContent,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
+  useTheme,
+  useMediaQuery,
 } from '@mui/material';
-import { Search as SearchIcon, Sync as SyncIcon, Clear as ClearIcon } from '@mui/icons-material';
+import { Search as SearchIcon, Sync as SyncIcon, Clear as ClearIcon, ExpandMore as ExpandMoreIcon } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import PageNavigation from '../components/PageNavigation';
@@ -58,6 +65,8 @@ function normalizeSearch(str: string): string {
 
 export default function BuyersPage() {
   const navigate = useNavigate();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [buyers, setBuyers] = useState<Buyer[]>([]);
   // キャッシュがあれば初期ローディングをスキップ
   const [loading, setLoading] = useState(!pageDataCache.get(CACHE_KEYS.BUYERS_WITH_STATUS));
@@ -262,7 +271,7 @@ export default function BuyersPage() {
   };
 
   return (
-    <Container maxWidth="xl" sx={{ py: 3 }}>
+    <Container maxWidth="xl" sx={isMobile ? { overflowX: 'hidden', px: 1, py: 2 } : { py: 3 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
         <Typography variant="h5" fontWeight="bold" sx={{ color: SECTION_COLORS.buyer.main }}>買主リスト</Typography>
         <Box sx={{ display: 'flex', gap: 1 }}>
@@ -307,28 +316,49 @@ export default function BuyersPage() {
 
       </Box>
 
+      {/* モバイル：ステータスサイドバーをアコーディオンで表示 */}
+      {isMobile && (
+        <Accordion sx={{ mb: 2 }}>
+          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+            <Typography variant="body1" fontWeight="bold">ステータスフィルター</Typography>
+          </AccordionSummary>
+          <AccordionDetails sx={{ p: 1 }}>
+            <BuyerStatusSidebar
+              selectedStatus={selectedCalculatedStatus}
+              onStatusSelect={(status) => { setSelectedCalculatedStatus(status); setPage(0); }}
+              totalCount={total}
+              categories={sidebarCategories}
+              normalStaffInitials={sidebarNormalStaffInitials}
+              loading={sidebarLoading}
+            />
+          </AccordionDetails>
+        </Accordion>
+      )}
+
       <Box sx={{ display: 'flex', gap: 2 }}>
-        {/* 左サイドバー（ステータスのみ） */}
-        <Paper sx={{ width: 220, flexShrink: 0, alignSelf: 'flex-start', maxHeight: 'none', overflow: 'visible' }}>
-          <BuyerStatusSidebar
-            selectedStatus={selectedCalculatedStatus}
-            onStatusSelect={(status) => { setSelectedCalculatedStatus(status); setPage(0); }}
-            totalCount={total}
-            categories={sidebarCategories}
-            normalStaffInitials={sidebarNormalStaffInitials}
-            loading={sidebarLoading}
-          />
-        </Paper>
+        {/* 左サイドバー（ステータスのみ）- デスクトップのみ */}
+        {!isMobile && (
+          <Paper sx={{ width: 220, flexShrink: 0, alignSelf: 'flex-start', maxHeight: 'none', overflow: 'visible' }}>
+            <BuyerStatusSidebar
+              selectedStatus={selectedCalculatedStatus}
+              onStatusSelect={(status) => { setSelectedCalculatedStatus(status); setPage(0); }}
+              totalCount={total}
+              categories={sidebarCategories}
+              normalStaffInitials={sidebarNormalStaffInitials}
+              loading={sidebarLoading}
+            />
+          </Paper>
+        )}
 
         {/* メインコンテンツ */}
-        <Box sx={{ flex: 1 }}>
+        <Box sx={{ flex: 1, minWidth: 0 }}>
           <Paper sx={{ p: 2, mb: 2 }}>
             <TextField
               size="small"
               placeholder="検索（買主番号、氏名、電話番号、物件番号）"
               value={searchQuery}
               onChange={(e) => { setSearchQuery(e.target.value); setPage(0); }}
-              sx={{ width: '50%' }}
+              sx={isMobile ? { width: '100%' } : { width: '50%' }}
               InputProps={{
                 startAdornment: <InputAdornment position="start"><SearchIcon /></InputAdornment>,
                 endAdornment: searchQuery ? (
@@ -344,22 +374,112 @@ export default function BuyersPage() {
             />
           </Paper>
 
-          <Box sx={{ mb: 2 }}>
-            <Paper>
-              <TablePagination
-                rowsPerPageOptions={[25, 50, 100]}
-                component="div"
-                count={total}
-                rowsPerPage={rowsPerPage}
-                page={page}
-                onPageChange={(_, newPage) => setPage(newPage)}
-                onRowsPerPageChange={(e) => { setRowsPerPage(parseInt(e.target.value, 10)); setPage(0); }}
-                labelRowsPerPage="表示件数:"
-                labelDisplayedRows={({ from, to, count }) => `${from}-${to} / ${count}件`}
-              />
-            </Paper>
-          </Box>
+          {/* 上部ページネーション（デスクトップのみ） */}
+          {!isMobile && (
+            <Box sx={{ mb: 2 }}>
+              <Paper>
+                <TablePagination
+                  rowsPerPageOptions={[25, 50, 100]}
+                  component="div"
+                  count={total}
+                  rowsPerPage={rowsPerPage}
+                  page={page}
+                  onPageChange={(_, newPage) => setPage(newPage)}
+                  onRowsPerPageChange={(e) => { setRowsPerPage(parseInt(e.target.value, 10)); setPage(0); }}
+                  labelRowsPerPage="表示件数:"
+                  labelDisplayedRows={({ from, to, count }) => `${from}-${to} / ${count}件`}
+                />
+              </Paper>
+            </Box>
+          )}
 
+          {/* モバイル：カードリスト表示 */}
+          {isMobile ? (
+            <Box>
+              {loading ? (
+                <Typography align="center" sx={{ py: 4, fontSize: '14px' }}>読み込み中...</Typography>
+              ) : buyers.length === 0 ? (
+                <Typography align="center" sx={{ py: 4, fontSize: '14px' }}>買主データが見つかりませんでした</Typography>
+              ) : (
+                buyers.map((buyer) => {
+                  const displayConfidence = getDisplayConfidence(buyer);
+                  return (
+                    <Card
+                      key={buyer.buyer_number}
+                      onClick={() => handleRowClick(buyer.buyer_number)}
+                      sx={{
+                        mb: 1,
+                        cursor: 'pointer',
+                        minHeight: 44,
+                        '&:hover': { bgcolor: 'grey.50' },
+                      }}
+                    >
+                      <CardContent sx={{ py: 1.5, px: 2, '&:last-child': { pb: 1.5 } }}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 0.5 }}>
+                          <Typography
+                            variant="body2"
+                            fontWeight="bold"
+                            sx={{ color: SECTION_COLORS.buyer.main, fontSize: '14px' }}
+                          >
+                            {buyer.buyer_number || '-'}
+                          </Typography>
+                          {displayConfidence && (
+                            <Chip
+                              label={displayConfidence.label}
+                              size="small"
+                              sx={{ height: 22, fontSize: '12px', ...displayConfidence.sx }}
+                            />
+                          )}
+                        </Box>
+                        <Typography
+                          variant="body1"
+                          fontWeight="bold"
+                          sx={{ fontSize: '14px', mb: 0.5 }}
+                        >
+                          {buyer.name || '-'}
+                        </Typography>
+                        <Typography
+                          variant="body2"
+                          color="text.secondary"
+                          sx={{
+                            fontSize: '14px',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                            mb: 0.5,
+                          }}
+                        >
+                          {buyer.desired_area || '-'}
+                        </Typography>
+                        <Typography
+                          variant="body2"
+                          color="text.secondary"
+                          sx={{ fontSize: '14px' }}
+                        >
+                          次電: {formatDate(buyer.next_call_date)}
+                        </Typography>
+                      </CardContent>
+                    </Card>
+                  );
+                })
+              )}
+              {/* モバイル下部ページネーション */}
+              <Paper sx={{ mt: 1 }}>
+                <TablePagination
+                  rowsPerPageOptions={[25, 50, 100]}
+                  component="div"
+                  count={total}
+                  rowsPerPage={rowsPerPage}
+                  page={page}
+                  onPageChange={(_, newPage) => setPage(newPage)}
+                  onRowsPerPageChange={(e) => { setRowsPerPage(parseInt(e.target.value, 10)); setPage(0); }}
+                  labelRowsPerPage="件数:"
+                  labelDisplayedRows={({ from, to, count }) => `${from}-${to} / ${count}件`}
+                />
+              </Paper>
+            </Box>
+          ) : (
+          /* デスクトップ：テーブル表示 */
           <TableContainer component={Paper}>
             <Table size="small">
               <TableHead>
@@ -435,6 +555,7 @@ export default function BuyersPage() {
               labelDisplayedRows={({ from, to, count }) => `${from}-${to} / ${count}件`}
             />
           </TableContainer>
+          )}
         </Box>
       </Box>
     </Container>

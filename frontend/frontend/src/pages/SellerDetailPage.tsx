@@ -21,7 +21,13 @@ import {
   DialogContent,
   DialogActions,
   Link,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
+  useTheme,
+  useMediaQuery,
 } from '@mui/material';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { ArrowBack, Save, Warning, Phone, Sms } from '@mui/icons-material';
 import api, { employeeApi } from '../services/api';
 import { Seller, PropertyInfo, SellerStatus, ConfidenceLevel } from '../types';
@@ -108,6 +114,8 @@ const SellerDetailPage = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { employee } = useAuthStore();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   
   const [seller, setSeller] = useState<Seller | null>(null);
   const [property, setProperty] = useState<PropertyInfo | null>(null);
@@ -692,7 +700,9 @@ const SellerDetailPage = () => {
   };
 
   return (
-    <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+    <Container maxWidth="lg" sx={{ mt: isMobile ? 2 : 4, mb: 4, pb: isMobile ? '80px' : 0 }}>
+      {/* デスクトップ用ヘッダー（モバイルでは非表示） */}
+      {!isMobile && (
       <Box sx={{ mb: 3, display: 'flex', alignItems: 'center', gap: 2 }}>
         <Button
           startIcon={<ArrowBack />}
@@ -725,6 +735,24 @@ const SellerDetailPage = () => {
           →コメント
         </Button>
       </Box>
+      )}
+
+      {/* モバイル用ヘッダー */}
+      {isMobile && (
+        <Box sx={{ mb: 2 }}>
+          <Typography variant="h6" component="h1" sx={{ fontWeight: 'bold' }}>
+            売主詳細
+          </Typography>
+          {isTodayCall() && (
+            <Chip label="当日TEL" color="error" size="small" sx={{ fontWeight: 'bold', mr: 1 }} />
+          )}
+          <Chip
+            label={getStatusLabel(seller.status)}
+            color={getStatusColor(seller.status)}
+            size="small"
+          />
+        </Box>
+      )}
 
       {error && (
         <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
@@ -738,7 +766,7 @@ const SellerDetailPage = () => {
         </Alert>
       )}
 
-      <Grid container spacing={0.5}>
+      <Grid container spacing={isMobile ? 1 : 0.5}>
         {/* 第1行: 査定情報（全幅） */}
         <Grid item xs={12}>
           <Paper sx={{ p: 1 }}>
@@ -769,7 +797,82 @@ const SellerDetailPage = () => {
         </Grid>
 
         {/* 第2行: 管理情報 + 物件情報 */}
-        <Grid item xs={12} md={6}>
+        <Grid item xs={12} md={isMobile ? 12 : 6}>
+          {isMobile ? (
+            <Accordion defaultExpanded>
+              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                <Typography sx={{ fontWeight: 600 }}>管理情報</Typography>
+              </AccordionSummary>
+              <AccordionDetails sx={{ p: 1 }}>
+                <Grid container spacing={2}>
+                  <Grid item xs={12}>
+                    <FormControl fullWidth size="small" sx={{ '& .MuiInputBase-root': { minHeight: '44px' } }}>
+                      <InputLabel>ステータス</InputLabel>
+                      <Select
+                        value={editedStatus}
+                        label="ステータス"
+                        onChange={(e) => setEditedStatus(e.target.value as SellerStatus)}
+                      >
+                        <MenuItem value={SellerStatus.FOLLOWING_UP}>追客中</MenuItem>
+                        <MenuItem value={SellerStatus.APPOINTMENT_SCHEDULED}>訪問査定予定</MenuItem>
+                        <MenuItem value={SellerStatus.VISITED}>訪問済み</MenuItem>
+                        <MenuItem value={SellerStatus.EXCLUSIVE_CONTRACT}>専任媒介</MenuItem>
+                        <MenuItem value={SellerStatus.GENERAL_CONTRACT}>一般媒介</MenuItem>
+                        <MenuItem value={SellerStatus.CONTRACTED}>契約済み</MenuItem>
+                        <MenuItem value={SellerStatus.OTHER_DECISION}>他決</MenuItem>
+                        <MenuItem value={SellerStatus.FOLLOW_UP_NOT_NEEDED}>追客不要</MenuItem>
+                        <MenuItem value={SellerStatus.LOST}>失注</MenuItem>
+                      </Select>
+                    </FormControl>
+                  </Grid>
+                  <Grid item xs={12}>
+                    <TextField
+                      fullWidth
+                      label="次電日"
+                      type="date"
+                      value={editedNextCallDate}
+                      onChange={(e) => setEditedNextCallDate(e.target.value)}
+                      InputLabelProps={{ shrink: true }}
+                      inputProps={{ style: { minHeight: '44px' } }}
+                    />
+                  </Grid>
+                  <Grid item xs={12}>
+                    <TextField
+                      fullWidth
+                      label="担当社員ID"
+                      value={editedAssignedTo}
+                      onChange={(e) => setEditedAssignedTo(e.target.value)}
+                      inputProps={{ style: { minHeight: '44px' } }}
+                    />
+                  </Grid>
+                  <Grid item xs={12}>
+                    <TextField
+                      fullWidth
+                      label="メールアドレス"
+                      type="email"
+                      value={editedEmail}
+                      onChange={(e) => setEditedEmail(e.target.value)}
+                      inputProps={{ style: { minHeight: '44px' } }}
+                    />
+                  </Grid>
+                  <Grid item xs={12}>
+                    <ViewingNotesField
+                      value={editedViewingNotes}
+                      onChange={setEditedViewingNotes}
+                      disabled={saving}
+                    />
+                  </Grid>
+                  <Grid item xs={12}>
+                    <LatestStatusDropdown
+                      value={editedLatestStatus}
+                      onChange={setEditedLatestStatus}
+                      disabled={saving}
+                    />
+                  </Grid>
+                </Grid>
+              </AccordionDetails>
+            </Accordion>
+          ) : (
           <Paper sx={{ p: 1, mb: 0.5 }}>
             <Typography variant="h6" sx={{ fontSize: '15px', fontWeight: 600, mb: 0.5 }}>
               管理情報
@@ -995,10 +1098,58 @@ const SellerDetailPage = () => {
               </Grid>
             </Grid>
           </Paper>
+          )}
         </Grid>
 
         {/* 第2行: 物件情報 */}
-        <Grid item xs={12} md={6}>
+        <Grid item xs={12} md={isMobile ? 12 : 6}>
+          {isMobile ? (
+            <Accordion>
+              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                <Typography sx={{ fontWeight: 600 }}>物件情報</Typography>
+              </AccordionSummary>
+              <AccordionDetails sx={{ p: 1 }}>
+                {property ? (
+                  <>
+                    <Box sx={{ mb: 1 }}>
+                      <Typography variant="caption" color="text.secondary">物件住所</Typography>
+                      <Typography variant="body2">{property.address}</Typography>
+                    </Box>
+                    <Box sx={{ mb: 1 }}>
+                      <Typography variant="caption" color="text.secondary">物件種別</Typography>
+                      <Typography variant="body2">{getPropertyTypeLabel(property.propertyType)}</Typography>
+                    </Box>
+                    {property.landArea && (
+                      <Box sx={{ mb: 1 }}>
+                        <Typography variant="caption" color="text.secondary">土地面積</Typography>
+                        <Typography variant="body2">{property.landArea} m²</Typography>
+                      </Box>
+                    )}
+                    {property.buildingArea && (
+                      <Box sx={{ mb: 1 }}>
+                        <Typography variant="caption" color="text.secondary">建物面積</Typography>
+                        <Typography variant="body2">{property.buildingArea} m²</Typography>
+                      </Box>
+                    )}
+                    {property.buildYear && (
+                      <Box sx={{ mb: 1 }}>
+                        <Typography variant="caption" color="text.secondary">築年</Typography>
+                        <Typography variant="body2">{property.buildYear}年</Typography>
+                      </Box>
+                    )}
+                    {property.floorPlan && (
+                      <Box sx={{ mb: 1 }}>
+                        <Typography variant="caption" color="text.secondary">間取り</Typography>
+                        <Typography variant="body2">{property.floorPlan}</Typography>
+                      </Box>
+                    )}
+                  </>
+                ) : (
+                  <Typography variant="body2" color="text.secondary">物件情報が登録されていません</Typography>
+                )}
+              </AccordionDetails>
+            </Accordion>
+          ) : (
           <EditableSection
             title="物件情報"
             isEditing={editingProperty}
@@ -1165,6 +1316,7 @@ const SellerDetailPage = () => {
               </Typography>
             )}
           </EditableSection>
+          )}
         </Grid>
 
         {/* 第3行: 買主リスト（全幅） */}
@@ -1179,7 +1331,43 @@ const SellerDetailPage = () => {
         </Grid>
 
         {/* 第4行: 売主情報 */}
-        <Grid item xs={12} md={6}>
+        <Grid item xs={12} md={isMobile ? 12 : 6}>
+          {isMobile ? (
+            <Accordion>
+              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                <Typography sx={{ fontWeight: 600 }}>売主情報</Typography>
+              </AccordionSummary>
+              <AccordionDetails sx={{ p: 1 }}>
+                <Box sx={{ mb: 1 }}>
+                  <Typography variant="caption" color="text.secondary">売主番号</Typography>
+                  <Typography variant="body2" color="primary" fontWeight="bold">{seller.sellerNumber}</Typography>
+                </Box>
+                <Box sx={{ mb: 1 }}>
+                  <Typography variant="caption" color="text.secondary">氏名</Typography>
+                  <Typography variant="body2">{seller.name}</Typography>
+                </Box>
+                <Box sx={{ mb: 1 }}>
+                  <Typography variant="caption" color="text.secondary">電話番号</Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Link href={`tel:${seller.phoneNumber}`} sx={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                      <Phone fontSize="small" />
+                      <Typography variant="body2">{seller.phoneNumber}</Typography>
+                    </Link>
+                  </Box>
+                </Box>
+                <Box sx={{ mb: 1 }}>
+                  <Typography variant="caption" color="text.secondary">住所</Typography>
+                  <Typography variant="body2">{seller.address}</Typography>
+                </Box>
+                {seller.email && (
+                  <Box sx={{ mb: 1 }}>
+                    <Typography variant="caption" color="text.secondary">メールアドレス</Typography>
+                    <Typography variant="body2">{seller.email}</Typography>
+                  </Box>
+                )}
+              </AccordionDetails>
+            </Accordion>
+          ) : (
           <EditableSection
             title="売主情報"
             isEditing={editingBasicInfo}
@@ -1404,6 +1592,7 @@ const SellerDetailPage = () => {
               </Box>
             </>
           </EditableSection>
+          )}
         </Grid>
 
         {/* Google Chat通知 */}
@@ -1978,6 +2167,43 @@ const SellerDetailPage = () => {
           </Button>
         </DialogActions>
       </Dialog>
+      {/* モバイル用固定フッター */}
+      {isMobile && (
+        <Box
+          sx={{
+            position: 'fixed',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            bgcolor: 'background.paper',
+            borderTop: '1px solid',
+            borderColor: 'divider',
+            p: 1.5,
+            display: 'flex',
+            gap: 1,
+            zIndex: 1200,
+            boxShadow: '0 -2px 8px rgba(0,0,0,0.1)',
+          }}
+        >
+          <Button
+            startIcon={<ArrowBack />}
+            onClick={() => navigate('/')}
+            variant="outlined"
+            sx={{ flex: 1, minHeight: '44px' }}
+          >
+            戻る
+          </Button>
+          <Button
+            variant="contained"
+            startIcon={saving ? <CircularProgress size={20} /> : <Save />}
+            onClick={handleSave}
+            disabled={saving}
+            sx={{ flex: 1, minHeight: '44px' }}
+          >
+            保存
+          </Button>
+        </Box>
+      )}
     </Container>
   );
 };

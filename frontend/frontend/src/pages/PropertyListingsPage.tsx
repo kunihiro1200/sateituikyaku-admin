@@ -24,6 +24,10 @@ import {
   Checkbox,
   Button,
   Link,
+  Card,
+  CardContent,
+  useTheme,
+  useMediaQuery,
 } from '@mui/material';
 import { Search as SearchIcon, ClearAll as ClearAllIcon, Clear as ClearIcon } from '@mui/icons-material';
 import api from '../services/api';
@@ -59,6 +63,8 @@ interface PropertyListing {
 export default function PropertyListingsPage() {
   const navigate = useNavigate();
   const location = useLocation();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   const [allListings, setAllListings] = useState<PropertyListing[]>([]);
   const [loading, setLoading] = useState(true);
@@ -316,7 +322,7 @@ export default function PropertyListingsPage() {
   }, [assigneeCounts]);
 
   return (
-    <Container maxWidth="xl" sx={{ py: 3 }}>
+    <Container maxWidth="xl" sx={isMobile ? { overflowX: 'hidden', px: 1, py: 2 } : { py: 3 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexDirection: { xs: 'column', sm: 'row' }, gap: 2 }}>
         <Typography variant="h5" fontWeight="bold" sx={{ color: SECTION_COLORS.property.main }}>物件リスト</Typography>
       </Box>
@@ -324,8 +330,8 @@ export default function PropertyListingsPage() {
       <PageNavigation />
 
       <Box sx={{ display: 'flex', gap: 2 }}>
-        {/* 左サイドバー - サイドバーステータス */}
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+        {/* 左サイドバー - サイドバーステータス（デスクトップのみ） */}
+        <Box sx={{ display: isMobile ? 'none' : 'flex', flexDirection: 'column', gap: 2 }}>
           <PropertySidebarStatus
             listings={allListings}
             selectedStatus={sidebarStatus}
@@ -416,7 +422,7 @@ export default function PropertyListingsPage() {
             )}
           </Box>
 
-          <TableContainer component={Paper}>
+          <TableContainer component={Paper} sx={isMobile ? { display: 'none' } : {}}>
             <Table size="small">
               <TableHead>
                 <TableRow sx={{ bgcolor: '#f5f5f5' }}>
@@ -531,6 +537,88 @@ export default function PropertyListingsPage() {
               labelDisplayedRows={({ from, to, count }) => `${from}-${to} / ${count}件`}
             />
           </TableContainer>
+
+          {/* モバイル：カードリスト表示 */}
+          {isMobile && (
+            <Box>
+              {loading ? (
+                <Typography align="center" sx={{ py: 4, fontSize: '14px' }}>読み込み中...</Typography>
+              ) : paginatedListings.length === 0 ? (
+                <Typography align="center" sx={{ py: 4, fontSize: '14px' }}>物件データが見つかりませんでした</Typography>
+              ) : (
+                paginatedListings.map((listing) => {
+                  const propertyStatus = calculatePropertyStatus(listing as any);
+                  return (
+                    <Card
+                      key={listing.id}
+                      onClick={() => listing.property_number && handleRowClick(listing.property_number)}
+                      sx={{
+                        mb: 1,
+                        cursor: 'pointer',
+                        minHeight: 44,
+                        '&:hover': { bgcolor: 'grey.50' },
+                      }}
+                    >
+                      <CardContent sx={{ py: 1.5, px: 2, '&:last-child': { pb: 1.5 } }}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 0.5 }}>
+                          <Typography
+                            variant="body2"
+                            fontWeight="bold"
+                            sx={{ color: SECTION_COLORS.property.main, fontSize: '14px' }}
+                          >
+                            {listing.property_number || '-'}
+                          </Typography>
+                          <Chip
+                            label={propertyStatus.label}
+                            size="small"
+                            sx={{ height: 22, fontSize: '12px', bgcolor: propertyStatus.color, color: '#fff' }}
+                          />
+                        </Box>
+                        <Typography
+                          variant="body2"
+                          sx={{
+                            fontSize: '14px',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                            mb: 0.5,
+                          }}
+                        >
+                          {listing.address || listing.display_address || '-'}
+                        </Typography>
+                        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                          {listing.property_type && (
+                            <Chip label={listing.property_type} size="small" sx={{ height: 20, fontSize: '12px' }} />
+                          )}
+                          <Typography
+                            variant="body2"
+                            color="text.secondary"
+                            sx={{ fontSize: '14px' }}
+                          >
+                            {formatPrice(listing.price)}
+                          </Typography>
+                        </Box>
+                      </CardContent>
+                    </Card>
+                  );
+                })
+              )}
+              {/* モバイル下部ページネーション */}
+              <Paper sx={{ mt: 1 }}>
+                <TablePagination
+                  rowsPerPageOptions={[25, 50, 100]}
+                  component="div"
+                  count={filteredListings.length}
+                  rowsPerPage={rowsPerPage}
+                  page={page}
+                  onPageChange={(_, newPage) => setPage(newPage)}
+                  onRowsPerPageChange={(e) => { setRowsPerPage(parseInt(e.target.value, 10)); setPage(0); }}
+                  labelRowsPerPage="件数:"
+                  labelDisplayedRows={({ from, to, count }) => `${from}-${to} / ${count}件`}
+                />
+              </Paper>
+            </Box>
+          )}
         </Box>
       </Box>
 

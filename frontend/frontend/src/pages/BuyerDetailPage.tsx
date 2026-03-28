@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useTheme, useMediaQuery } from '@mui/material';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Container,
@@ -181,6 +182,8 @@ const BUYER_FIELD_SECTIONS = [
 export default function BuyerDetailPage() {
   const { buyer_number } = useParams<{ buyer_number: string }>();
   const navigate = useNavigate();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   const [buyer, setBuyer] = useState<Buyer | null>(null);
   const [linkedProperties, setLinkedProperties] = useState<PropertyListing[]>([]);
@@ -837,8 +840,23 @@ export default function BuyerDetailPage() {
           }}
         />
       </Box>
+      {/* モバイル時: 戻るボタンを画面上部に常時表示 */}
+      {isMobile && (
+        <Box sx={{ px: 1, py: 0.5, flexShrink: 0, borderBottom: '1px solid', borderColor: 'divider' }}>
+          <Button
+            startIcon={<ArrowBackIcon />}
+            onClick={() => handleNavigate('/buyers')}
+            variant="outlined"
+            size="small"
+            sx={{ minHeight: 44 }}
+          >
+            買主一覧に戻る
+          </Button>
+        </Box>
+      )}
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: 1, py: 0.5, flexShrink: 0, borderBottom: '1px solid', borderColor: 'divider' }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          {!isMobile && (
           <IconButton 
             onClick={() => handleNavigate('/buyers')} 
             sx={{ mr: 2 }}
@@ -846,6 +864,7 @@ export default function BuyerDetailPage() {
           >
             <ArrowBackIcon />
           </IconButton>
+          )}
           <Typography variant="h5" fontWeight="bold">
             {buyer.name ? buyer.name + '様' : buyer.buyer_number}
           </Typography>
@@ -1193,6 +1212,7 @@ TEL：097-533-2022`;
           gap: 0,
           flex: 1,
           overflow: 'hidden',
+          flexDirection: isMobile ? 'column' : 'row',
           '@media (max-width: 900px)': {
             flexDirection: 'column',
           },
@@ -1426,6 +1446,12 @@ TEL：097-533-2022`;
             '&::-webkit-scrollbar-track': { backgroundColor: 'rgba(0, 0, 0, 0.05)' },
             '&::-webkit-scrollbar-thumb': { backgroundColor: 'rgba(0, 0, 0, 0.2)', borderRadius: '3px' },
             '@media (max-width: 900px)': { flex: '1 1 auto', width: '100%', height: 'auto', overflowY: 'visible' },
+            // isMobile 時: 入力フィールドの minHeight を 44px に設定
+            ...(isMobile && {
+              '& .MuiInputBase-root': { minHeight: 44 },
+              '& .MuiOutlinedInput-root': { minHeight: 44 },
+              '& .MuiSelect-select': { minHeight: 44, display: 'flex', alignItems: 'center' },
+            }),
           }}
           role="main"
           aria-label="買主情報"
@@ -1476,13 +1502,14 @@ TEL：097-533-2022`;
                 )}
               </Box>
               <Divider sx={{ mb: 2 }} />
-              <Grid container spacing={2}>
+              <Grid container spacing={isMobile ? 1 : 2}>
                 {section.fields.map((field: any, fieldIndex: number) => {
                   const value = buyer[field.key];
                   
                   // multilineフィールドは全幅で表示
                   // company_name は broker_inquiry と同じ行に並べるため xs=6
-                  const gridSize = field.multiline ? { xs: 12 } : field.key === 'company_name' ? { xs: 6 } : { xs: 12, sm: 6 };
+                  // isMobile 時は全フィールドを xs=12 の1カラムに
+                  const gridSize = isMobile ? { xs: 12 } : (field.multiline ? { xs: 12 } : field.key === 'company_name' ? { xs: 6 } : { xs: 12, sm: 6 });
 
                   // インライン編集可能なフィールド
                   if (field.inlineEditable) {
