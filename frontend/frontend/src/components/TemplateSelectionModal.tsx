@@ -24,6 +24,8 @@ interface TemplateSelectionModalProps {
   onSelect: (template: EmailTemplate) => void;
   onCancel: () => void;
   propertyType?: string;
+  brokerInquiry?: string;
+  latestViewingDate?: string;
 }
 
 /**
@@ -67,6 +69,58 @@ export function filterTemplatesByPropertyType(
 }
 
 /**
+ * 業者問合せ・内覧日などの条件に応じてテンプレートをフィルタリングする
+ */
+export function filterTemplatesByConditions(
+  templates: EmailTemplate[],
+  brokerInquiry?: string,
+  latestViewingDate?: string
+): EmailTemplate[] {
+  const now = new Date();
+  const jstOffset = 9 * 60 * 60000;
+  const today = new Date(now.getTime() + (now.getTimezoneOffset() * 60000) + jstOffset);
+  today.setHours(0, 0, 0, 0);
+
+  let viewingDate: Date | null = null;
+  if (latestViewingDate) {
+    const parts = latestViewingDate.includes('/')
+      ? latestViewingDate.split('/')
+      : latestViewingDate.split('-');
+    if (parts.length === 3) {
+      viewingDate = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+      viewingDate.setHours(0, 0, 0, 0);
+    }
+  }
+
+  const isBrokerInquiry = brokerInquiry === '業者問合せ';
+
+  return templates.filter(template => {
+    const name = template.name;
+
+    if (isBrokerInquiry) {
+      return name === '業者（内覧確定）' || name === '民泊問合せ' || name === '空';
+    }
+
+    if (name === '業者（内覧確定）') return false;
+
+    if (name === '内覧後御礼メール') {
+      if (!viewingDate) return false;
+      return viewingDate.getTime() <= today.getTime();
+    }
+
+    if (name === '☆内覧前日通知メール') {
+      if (!viewingDate) return false;
+      const twoDaysBefore = new Date(viewingDate);
+      twoDaysBefore.setDate(viewingDate.getDate() - 2);
+      twoDaysBefore.setHours(0, 0, 0, 0);
+      return today.getTime() >= twoDaysBefore.getTime();
+    }
+
+    return true;
+  });
+}
+
+/**
  * テンプレート選択モーダル
  * テンプレートをクリックすると即座にメール編集画面へ遷移する
  */
@@ -74,7 +128,9 @@ export default function TemplateSelectionModal({
   open,
   onSelect,
   onCancel,
-  propertyType
+  propertyType,
+  brokerInquiry,
+  latestViewingDate,
 }: TemplateSelectionModalProps) {
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
   const [loading, setLoading] = useState(false);
@@ -107,8 +163,9 @@ export default function TemplateSelectionModal({
     onSelect(template);
   };
 
-  // 物件種別でフィルタリングしたテンプレート一覧
-  const filteredTemplates = filterTemplatesByPropertyType(templates, propertyType);
+  // 物件種別・業者問合せ・内覧日でフィルタリング
+  const filteredByType = filterTemplatesByPropertyType(templates, propertyType);
+  const filteredTemplates = filterTemplatesByConditions(filteredByType, brokerInquiry, latestViewingDate);
 
   return (
     <Dialog

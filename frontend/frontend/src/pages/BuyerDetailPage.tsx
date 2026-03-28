@@ -922,6 +922,8 @@ export default function BuyerDetailPage() {
             inquiryHistory={inquiryHistoryTable}
             selectedPropertyIds={selectedPropertyIds}
             linkedPropertyType={linkedProperties[0]?.property_type}
+            brokerInquiry={buyer.broker_inquiry || ''}
+            latestViewingDate={buyer.latest_viewing_date || ''}
             size="small"
             variant="contained"
             onEmailSent={fetchActivities}

@@ -19,6 +19,8 @@ interface BuyerGmailSendButtonProps {
   inquiryHistory: InquiryHistoryItem[];
   selectedPropertyIds: Set<string>; // チェックボックスで選択された物件ID
   linkedPropertyType?: string; // 紐づき物件の種別（テンプレートフィルタリング用）
+  brokerInquiry?: string;      // 業者問合せフィールド
+  latestViewingDate?: string;  // 内覧日（最新）
   size?: 'small' | 'medium' | 'large';
   variant?: 'text' | 'outlined' | 'contained';
   onEmailSent?: () => void; // メール送信成功後のコールバック
@@ -41,6 +43,8 @@ export default function BuyerGmailSendButton({
   inquiryHistory,
   selectedPropertyIds,
   linkedPropertyType,
+  brokerInquiry,
+  latestViewingDate,
   size = 'medium',
   variant = 'contained',
   onEmailSent,
@@ -208,6 +212,8 @@ export default function BuyerGmailSendButton({
         onSelect={handleTemplateSelect}
         onCancel={handleCancel}
         propertyType={linkedPropertyType}
+        brokerInquiry={brokerInquiry}
+        latestViewingDate={latestViewingDate}
       />
 
       {/* Email Composition Modal */}

@@ -25,7 +25,7 @@
 
 1. THE Report_History_Table SHALL 常に5行を表示する（送信履歴の件数に関わらず）
 2. WHEN 送信履歴が5件未満の場合、THE Report_History_Table SHALL 不足分の行を空行（ダッシュ「-」）で埋めて表示する
-3. WHEN 送信履歴が5件を超える場合、THE Report_History_Table SHALL 最新5件のみを表示する
+3. WHEN 送信履歴が5件を超える場合、THE Report_History_Table SHALL 5行固定で表示し、残りの履歴はスクロールで閲覧できるようにする
 4. THE Report_History_Table SHALL 各行に「送信日時」「テンプレート」「担当」「完了」の4列を表示する
 5. WHEN 空行をクリックした場合、THE Report_History_Table SHALL 何も起こらない（クリックイベントを無視する）
 6. WHEN 送信履歴が0件の場合、THE Report_History_Table SHALL 5行全てを空行として表示する（「送信履歴はありません」のメッセージは表示しない）
