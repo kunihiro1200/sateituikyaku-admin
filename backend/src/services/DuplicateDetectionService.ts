@@ -1,5 +1,4 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { decrypt } from '../utils/encryption';
 
 export interface DuplicateMatch {
   sellerId: string;
@@ -124,6 +123,8 @@ export class DuplicateDetectionService {
       if (!data || data.length === 0) return [];
 
       const matchMap = new Map<string, DuplicateMatch>();
+
+      const { decrypt } = await import('../utils/encryption');
 
       for (const seller of data) {
         let phoneMatch = false;
