@@ -49,16 +49,16 @@ export function filterTemplatesByPropertyType(
 
     const allContent = bracketContents.join('');
 
-    // 戸建て
-    if (propertyType === '戸' || propertyType === '戸建て') {
+    // 戸建て（「戸」を含む種別: 戸, 戸建て, 戸建 など）
+    if (propertyType.includes('戸')) {
       return !allContent.includes('土');
     }
-    // 土地
-    if (propertyType === '土') {
+    // 土地（「土」を含む種別: 土, 土地 など）
+    if (propertyType.includes('土')) {
       return !allContent.includes('戸') && !allContent.includes('マ');
     }
-    // マンション
-    if (propertyType === 'マ' || propertyType === 'マンション') {
+    // マンション（「マ」を含む種別: マ, マンション など）
+    if (propertyType.includes('マ')) {
       return !allContent.includes('土');
     }
 
