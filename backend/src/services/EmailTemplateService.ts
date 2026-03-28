@@ -397,11 +397,32 @@ export class EmailTemplateService {
     result = result.replace(/<<SUUMO URL>>/g, '');
     result = result.replace(/<<内覧前伝達事項v>>/g, buyer.pre_viewing_notes || '');
 
-    // 内覧日・時間の置換
+    // 内覧日・時間の置換（フォーマット変換）
     const latestViewingDate = buyer.latest_viewing_date || buyer.latestViewingDate || '';
     const viewingTime = buyer.viewing_time || buyer.viewingTime || '';
-    result = result.replace(/<<内覧日>>/g, latestViewingDate);
-    result = result.replace(/<<時間>>/g, viewingTime);
+
+    // 内覧日を「●月●日」形式に変換
+    let formattedDate = latestViewingDate;
+    if (latestViewingDate) {
+      // "2026/3/30" or "2026-03-30" or ISO形式に対応
+      const dateMatch = latestViewingDate.match(/(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
+      if (dateMatch) {
+        formattedDate = `${parseInt(dateMatch[2])}月${parseInt(dateMatch[3])}日`;
+      }
+    }
+
+    // 時間を「〇〇時〇〇分」形式に変換
+    let formattedTime = viewingTime;
+    if (viewingTime) {
+      // "14:00" or "14:00:00" 形式に対応
+      const timeMatch = viewingTime.match(/(\d{1,2}):(\d{2})/);
+      if (timeMatch) {
+        formattedTime = `${parseInt(timeMatch[1])}時${timeMatch[2]}分`;
+      }
+    }
+
+    result = result.replace(/<<内覧日>>/g, formattedDate);
+    result = result.replace(/<<時間>>/g, formattedTime);
 
     // <<住居表示Pinrich>> の置換（空欄の場合は非表示）
     const pinrichUrl = buyer.pinrich_url || buyer.pinrichUrl || '';
