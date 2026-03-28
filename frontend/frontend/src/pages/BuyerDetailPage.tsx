@@ -163,7 +163,7 @@ const BUYER_FIELD_SECTIONS = [
       { key: 'owned_home_hearing_result', label: '持家ヒアリング結果', inlineEditable: true, fieldType: 'homeHearingResult' },
       { key: 'valuation_required', label: '要査定', inlineEditable: true, fieldType: 'valuationRequired' },
       { key: 'notification_sender', label: '通知送信者', inlineEditable: true },
-      { key: 'viewing_type', label: '内覧形態', inlineEditable: true },
+      { key: 'viewing_mobile', label: '内覧形態', inlineEditable: true },
     ],
   },
   {
