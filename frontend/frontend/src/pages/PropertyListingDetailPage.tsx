@@ -1010,11 +1010,19 @@ export default function PropertyListingDetailPage() {
                     open={Boolean(templateMenuAnchor)}
                     onClose={() => setTemplateMenuAnchor(null)}
                   >
-                    {propertyEmailTemplates.map((tmpl) => (
-                      <MenuItem key={tmpl.id} onClick={() => handleSelectPropertyEmailTemplate(tmpl.id)}>
-                        {tmpl.name}
-                      </MenuItem>
-                    ))}
+                    {propertyEmailTemplates
+                      .filter((tmpl) => {
+                        // 「一般媒介」を含むテンプレートは atbb_status に「一般媒介」が含まれる場合のみ表示
+                        if (tmpl.name.includes('一般媒介')) {
+                          return (data.atbb_status || '').includes('一般媒介');
+                        }
+                        return true;
+                      })
+                      .map((tmpl) => (
+                        <MenuItem key={tmpl.id} onClick={() => handleSelectPropertyEmailTemplate(tmpl.id)}>
+                          {tmpl.name}
+                        </MenuItem>
+                      ))}
                   </Menu>
                 </>
               )}
