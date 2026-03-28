@@ -332,9 +332,8 @@ export class EmailTemplateService {
       body = body.replace(/{{propertyType}}/g, '');
       body = body.replace(/{{landArea}}/g, '');
       body = body.replace(/{{buildingArea}}/g, '');
-    } else {
-      body += '\n\n' + propertiesSection;
     }
+    // プレースホルダーがない場合は物件情報を末尾に追加しない
 
     return { subject, body };
   }

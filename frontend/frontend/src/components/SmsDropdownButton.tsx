@@ -49,6 +49,9 @@ export const SmsDropdownButton: React.FC<SmsDropdownButtonProps> = ({
     const name = buyerName || 'お客様';
     const address = propertyAddress;
     const viewingFormUrl = `${VIEWING_FORM_BASE}&entry.267319544=${buyerNumber}&entry.2056434590=${encodeURIComponent(address)}`;
+    const preViewingSection = preViewingNotes
+      ? `\n\n【内覧前のご確認事項】\n${preViewingNotes}`
+      : '';
     let message = '';
 
     if (templateId === 'land_no_permission') {
