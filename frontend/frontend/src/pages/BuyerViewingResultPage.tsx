@@ -650,15 +650,15 @@ export default function BuyerViewingResultPage() {
                     window.open(smsLink, '_self');
                   }}
                   sx={{
-                    backgroundColor: '#2e7d32',
+                    backgroundColor: '#e65100',
                     color: '#fff',
                     fontWeight: 'bold',
-                    '&:hover': { backgroundColor: '#1b5e20' },
+                    '&:hover': { backgroundColor: '#bf360c' },
                     animation: 'preDayPulse 1.5s ease-in-out infinite',
                     '@keyframes preDayPulse': {
-                      '0%': { boxShadow: '0 0 0 0 rgba(46, 125, 50, 0.6)' },
-                      '70%': { boxShadow: '0 0 0 10px rgba(46, 125, 50, 0)' },
-                      '100%': { boxShadow: '0 0 0 0 rgba(46, 125, 50, 0)' },
+                      '0%': { boxShadow: '0 0 0 0 rgba(230, 81, 0, 0.6)' },
+                      '70%': { boxShadow: '0 0 0 10px rgba(230, 81, 0, 0)' },
+                      '100%': { boxShadow: '0 0 0 0 rgba(230, 81, 0, 0)' },
                     },
                   }}
                 >

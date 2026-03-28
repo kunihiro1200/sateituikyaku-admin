@@ -63,37 +63,7 @@ export default function PreDayEmailButton({
       const template = templates.find((t) => t.name === PRE_DAY_TEMPLATE_NAME);
 
       if (!template) {
-        // フォールバック: スプレッドシートにテンプレートがない場合はハードコードの件名・本文を使用
-        const fallbackTemplate: EmailTemplate = {
-          id: 'pre_day_fallback',
-          name: PRE_DAY_TEMPLATE_NAME,
-          description: PRE_DAY_TEMPLATE_NAME,
-          subject: '内覧のご連絡',
-          body: `{{buyerName}}様\n\nお世話になっております。㈱いふうです。\n明日の内覧をよろしくお願いいたします。\n\n株式会社 いふう\nTEL：097-533-2022`,
-          placeholders: [],
-        };
-        setSelectedTemplate(fallbackTemplate);
-        const propertyIds = Array.from(selectedPropertyIds);
-        const mergeRes = await api.post(`/api/email-templates/pre_day_fallback/mergeMultiple`, {
-          buyer: {
-            buyerName,
-            name: buyerName,
-            company_name: buyerCompanyName || '',
-            buyer_number: buyerNumber || '',
-            email: buyerEmail,
-            pre_viewing_notes: preViewingNotes || '',
-          },
-          propertyIds,
-          templateSubject: fallbackTemplate.subject,
-          templateBody: fallbackTemplate.body,
-        }).catch(() => ({
-          data: {
-            subject: fallbackTemplate.subject.replace('{{buyerName}}', buyerName),
-            body: fallbackTemplate.body.replace('{{buyerName}}', buyerName),
-          }
-        }));
-        setMergedContent(mergeRes.data);
-        setCompositionModalOpen(true);
+        setErrorMessage(`${PRE_DAY_TEMPLATE_NAME}テンプレートが見つかりません。スプレッドシートのテンプレートシートに「買主」区分で「${PRE_DAY_TEMPLATE_NAME}」を追加してください。`);
         return;
       }
 
@@ -178,16 +148,16 @@ export default function PreDayEmailButton({
         onClick={handleClick}
         disabled={isDisabled}
         sx={{
-          backgroundColor: '#1565c0',
+          backgroundColor: '#e65100',
           color: '#fff',
           fontWeight: 'bold',
-          '&:hover': { backgroundColor: '#0d47a1' },
-          '&:disabled': { backgroundColor: '#90caf9', color: '#fff' },
+          '&:hover': { backgroundColor: '#bf360c' },
+          '&:disabled': { backgroundColor: '#ffccbc', color: '#fff' },
           animation: isDisabled ? 'none' : 'preDayPulse 1.5s ease-in-out infinite',
           '@keyframes preDayPulse': {
-            '0%': { boxShadow: '0 0 0 0 rgba(21, 101, 192, 0.6)' },
-            '70%': { boxShadow: '0 0 0 10px rgba(21, 101, 192, 0)' },
-            '100%': { boxShadow: '0 0 0 0 rgba(21, 101, 192, 0)' },
+            '0%': { boxShadow: '0 0 0 0 rgba(230, 81, 0, 0.6)' },
+            '70%': { boxShadow: '0 0 0 10px rgba(230, 81, 0, 0)' },
+            '100%': { boxShadow: '0 0 0 0 rgba(230, 81, 0, 0)' },
           },
         }}
       >
