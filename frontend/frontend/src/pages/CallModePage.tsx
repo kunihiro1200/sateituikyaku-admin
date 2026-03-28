@@ -829,6 +829,26 @@ const CallModePage = () => {
     }
   }, [seller, editedSite]);
 
+  /**
+   * 査定メール送信用テンプレートを取得する関数
+   * seller.valuationReason に「相続」が含まれる場合は相続テンプレートのみを返す
+   * 含まれない場合は相続以外テンプレートのみを返す
+   * フィルタリング後0件の場合は全テンプレートをフォールバックとして返す
+   */
+  const getValuationEmailTemplates = useCallback(() => {
+    const INHERITANCE_KEYWORD = '相続';
+    const INHERITANCE_TEMPLATE_NAME = '査定額案内メール（相続）';
+    const NON_INHERITANCE_TEMPLATE_NAME = '査定額案内メール（相続以外）';
+
+    const isInheritance = seller?.valuationReason?.includes(INHERITANCE_KEYWORD) ?? false;
+    const targetName = isInheritance ? INHERITANCE_TEMPLATE_NAME : NON_INHERITANCE_TEMPLATE_NAME;
+
+    const filtered = sellerEmailTemplates.filter((t: any) => t.name === targetName);
+
+    // フォールバック: フィルタリング結果が0件の場合は全テンプレートを返す
+    return filtered.length > 0 ? filtered : sellerEmailTemplates;
+  }, [seller?.valuationReason, sellerEmailTemplates]);
+
   useEffect(() => {
     loadAllData();
     // 売主が切り替わったら選択画像をリセット（前の売主の添付が残らないようにする）
@@ -4397,15 +4417,22 @@ HP：https://ifoo-oita.com/
                       {editingValuation ? '完了' : '編集'}
                     </Button>
                     {!editingValuation && (
-                      <Button
-                        size="small"
-                        variant="outlined"
-                        startIcon={<Email />}
-                        onClick={handleShowValuationEmailConfirm}
-                        disabled={sendingEmail}
-                      >
-                        査定メール送信
-                      </Button>
+                      <FormControl size="small" sx={{ minWidth: 160 }}>
+                        <InputLabel>査定メール送信</InputLabel>
+                        <Select
+                          value=""
+                          label="査定メール送信"
+                          onChange={(e) => handleEmailTemplateSelect(e.target.value as string)}
+                          disabled={!seller?.email || sellerEmailTemplatesLoading}
+                          startAdornment={<Email sx={{ mr: 0.5, fontSize: 18 }} />}
+                        >
+                          {getValuationEmailTemplates().map((template: any) => (
+                            <MenuItem key={template.id} value={template.id}>
+                              {template.name}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
                     )}
                   </Box>
                 )}
