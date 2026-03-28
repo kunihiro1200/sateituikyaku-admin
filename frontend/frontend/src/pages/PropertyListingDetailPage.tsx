@@ -21,6 +21,7 @@ import {
   Tooltip,
   Select,
   MenuItem,
+  Menu,
   InputAdornment,
   Chip,
 } from '@mui/material';
@@ -36,6 +37,7 @@ import {
   Search as SearchIcon,
   Clear as ClearIcon,
   Sms as SmsIcon,
+  ArrowDropDown as ArrowDropDownIcon,
 } from '@mui/icons-material';
 import api from '../services/api';
 import RichTextEmailEditor from '../components/RichTextEmailEditor';
@@ -227,6 +229,11 @@ export default function PropertyListingDetailPage() {
   const [copiedAddress, setCopiedAddress] = useState(false);
   const [propertyNumberSearch, setPropertyNumberSearch] = useState<string>(''); // 物件番号検索
 
+  // 物件テンプレート（非報告）関連の状態
+  const [propertyEmailTemplates, setPropertyEmailTemplates] = useState<Array<{id: string; name: string; subject: string; body: string}>>([]);
+  const [propertyEmailTemplatesLoading, setPropertyEmailTemplatesLoading] = useState(false);
+  const [templateMenuAnchor, setTemplateMenuAnchor] = useState<null | HTMLElement>(null);
+
   // メール送信関連の状態
   const [emailDialog, setEmailDialog] = useState<{
     open: boolean;
@@ -254,8 +261,24 @@ export default function PropertyListingDetailPage() {
         fetchWorkTaskData(),
         getActiveEmployees().then(setActiveEmployees).catch(() => {}),
       ]);
+      // 物件テンプレート（非報告）を事前取得
+      fetchPropertyEmailTemplates();
     }
   }, [propertyNumber]);
+
+  // 物件テンプレート（非報告）を取得する関数
+  const fetchPropertyEmailTemplates = async () => {
+    setPropertyEmailTemplatesLoading(true);
+    try {
+      const response = await api.get('/api/email-templates/property-non-report');
+      setPropertyEmailTemplates(response.data);
+    } catch (err) {
+      console.error('[PropertyListingDetailPage] 物件テンプレート取得失敗:', err);
+      // エラー時はボタンを非活性のまま維持（テンプレートは空のまま）
+    } finally {
+      setPropertyEmailTemplatesLoading(false);
+    }
+  };
 
   const fetchPropertyData = async () => {
     if (!propertyNumber) return;
@@ -633,6 +656,26 @@ export default function PropertyListingDetailPage() {
     setEmailDialog({ open: true, subject, body, recipient: data.seller_email });
   };
 
+  // 物件テンプレートを選択してプレースホルダー置換後にダイアログを開く
+  const handleSelectPropertyEmailTemplate = async (templateId: string) => {
+    setTemplateMenuAnchor(null);
+    if (!data?.seller_email || !propertyNumber) return;
+    try {
+      const response = await api.post('/api/email-templates/property/merge', {
+        propertyNumber,
+        templateId,
+      });
+      const { subject, body } = response.data;
+      setEditableEmailRecipient(data.seller_email);
+      setEditableEmailSubject(subject || '');
+      setEditableEmailBody((body || '').replace(/\n/g, '<br>'));
+      setSelectedImages([]);
+      setEmailDialog({ open: true, subject: subject || '', body: body || '', recipient: data.seller_email });
+    } catch (err: any) {
+      setSnackbar({ open: true, message: 'テンプレートの取得に失敗しました', severity: 'error' });
+    }
+  };
+
   // メール送信実行
   const handleSendEmail = async () => {
     if (!propertyNumber) return;
@@ -939,22 +982,41 @@ export default function PropertyListingDetailPage() {
                 </Button>
               )}
               {data.seller_email && (
-                <Button
-                  variant="outlined"
-                  size="small"
-                  onClick={handleOpenEmailDialog}
-                  startIcon={<EmailIcon fontSize="small" />}
-                  sx={{
-                    borderColor: '#1976d2',
-                    color: '#1976d2',
-                    '&:hover': {
-                      borderColor: '#115293',
-                      backgroundColor: '#1976d208',
-                    },
-                  }}
-                >
-                  Email
-                </Button>
+                <>
+                  {/* Email送信ドロップダウンボタン（物件テンプレート） */}
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    onClick={(e) => {
+                      if (!data.seller_email) return;
+                      setTemplateMenuAnchor(e.currentTarget);
+                    }}
+                    disabled={!data.seller_email || propertyEmailTemplatesLoading || propertyEmailTemplates.length === 0}
+                    startIcon={propertyEmailTemplatesLoading ? <CircularProgress size={14} /> : <EmailIcon fontSize="small" />}
+                    endIcon={<ArrowDropDownIcon fontSize="small" />}
+                    sx={{
+                      borderColor: '#1976d2',
+                      color: '#1976d2',
+                      '&:hover': {
+                        borderColor: '#115293',
+                        backgroundColor: '#1976d208',
+                      },
+                    }}
+                  >
+                    Email送信
+                  </Button>
+                  <Menu
+                    anchorEl={templateMenuAnchor}
+                    open={Boolean(templateMenuAnchor)}
+                    onClose={() => setTemplateMenuAnchor(null)}
+                  >
+                    {propertyEmailTemplates.map((tmpl) => (
+                      <MenuItem key={tmpl.id} onClick={() => handleSelectPropertyEmailTemplate(tmpl.id)}>
+                        {tmpl.name}
+                      </MenuItem>
+                    ))}
+                  </Menu>
+                </>
               )}
               {data.seller_contact && (
                 <Button

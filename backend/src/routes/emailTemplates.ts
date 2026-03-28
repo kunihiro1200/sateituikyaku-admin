@@ -100,6 +100,21 @@ router.get('/property', async (req, res) => {
 });
 
 /**
+ * 物件区分のテンプレート一覧を取得（「報告」を含まないもの）
+ * 物件詳細画面のEmail送信ボタン向け
+ * GET /api/email-templates/property-non-report
+ */
+router.get('/property-non-report', async (req, res) => {
+  try {
+    const templates = await templateService.getPropertyNonReportTemplates();
+    res.json(templates);
+  } catch (error: any) {
+    console.error('Error fetching property non-report templates:', error);
+    res.status(500).json({ error: 'Failed to fetch property non-report templates', message: error.message });
+  }
+});
+
+/**
  * 物件報告メール用テンプレートをプレースホルダー置換して返す
  * POST /api/email-templates/property/merge
  * Body: { propertyNumber: string, templateId: string }
