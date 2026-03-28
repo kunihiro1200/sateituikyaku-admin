@@ -25,6 +25,7 @@ import RichTextCommentEditor, { RichTextCommentEditorHandle } from '../component
 import { LATEST_STATUS_OPTIONS } from '../utils/buyerLatestStatusOptions';
 import { VIEWING_UNCONFIRMED_OPTIONS } from '../utils/buyerDetailFieldOptions';
 import { ValidationService } from '../services/ValidationService';
+import PreDayEmailButton from '../components/PreDayEmailButton';
 
 interface Buyer {
   [key: string]: any;
@@ -50,6 +51,7 @@ export default function BuyerViewingResultPage() {
   const [buyer, setBuyer] = useState<Buyer | null>(null);
   const buyerRef = useRef<Buyer | null>(null); // handleInlineFieldSave から buyer を参照するための ref
   const [linkedProperties, setLinkedProperties] = useState<any[]>([]);
+  const [selectedPropertyIds, setSelectedPropertyIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [staffInitials, setStaffInitials] = useState<Array<{ label: string; value: string }>>([]);
   const [copiedBuyerNumber, setCopiedBuyerNumber] = useState(false);
@@ -138,6 +140,13 @@ export default function BuyerViewingResultPage() {
       const res = await api.get(`/api/buyers/${buyer_number}/properties`);
       const properties = res.data || [];
       setLinkedProperties(properties);
+      // 紐づいた物件を全て選択済みとして初期化
+      const ids = new Set<string>(
+        properties
+          .map((p: any) => p.id || p.property_listing_id)
+          .filter(Boolean)
+      );
+      setSelectedPropertyIds(ids);
     } catch (error) {
       console.error('Failed to fetch linked properties:', error);
     }
@@ -526,6 +535,22 @@ export default function BuyerViewingResultPage() {
               <Typography variant="body2" sx={{ ml: 1, color: 'success.main', fontWeight: 'bold' }}>✓</Typography>
             )}
           </>
+        )}
+        {/* 内覧前日Eメールボタン（calculated_status === '内覧日前日' の場合のみ表示） */}
+        {buyer.calculated_status === '内覧日前日' && (
+          <Box sx={{ ml: 'auto' }}>
+            <PreDayEmailButton
+              buyerId={buyer_number || ''}
+              buyerEmail={buyer.email || ''}
+              buyerName={buyer.name || ''}
+              buyerCompanyName={buyer.company_name || ''}
+              buyerNumber={buyer_number || ''}
+              preViewingNotes={buyer.pre_viewing_notes || ''}
+              inquiryHistory={[]}
+              selectedPropertyIds={selectedPropertyIds}
+              size="medium"
+            />
+          </Box>
         )}
       </Box>
 
