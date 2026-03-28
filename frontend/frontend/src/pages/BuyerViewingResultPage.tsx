@@ -669,6 +669,15 @@ export default function BuyerViewingResultPage() {
                 </Button>
               );
             })()}
+            {/* 内覧日前日一覧ボタン */}
+            <Button
+              variant="outlined"
+              color="success"
+              size="medium"
+              onClick={() => navigate('/buyers?status=内覧日前日')}
+            >
+              内覧日前日一覧
+            </Button>
           </Box>
         )}
       </Box>

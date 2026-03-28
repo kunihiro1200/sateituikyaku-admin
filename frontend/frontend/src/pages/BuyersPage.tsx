@@ -25,7 +25,7 @@ import {
   useMediaQuery,
 } from '@mui/material';
 import { Search as SearchIcon, Sync as SyncIcon, Clear as ClearIcon, ExpandMore as ExpandMoreIcon } from '@mui/icons-material';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../services/api';
 import PageNavigation from '../components/PageNavigation';
 import BuyerStatusSidebar, { BuyerWithStatus } from '../components/BuyerStatusSidebar';
@@ -65,6 +65,8 @@ function normalizeSearch(str: string): string {
 
 export default function BuyersPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const initialStatus = searchParams.get('status');
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [buyers, setBuyers] = useState<Buyer[]>([]);
@@ -77,7 +79,7 @@ export default function BuyersPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [refetchTrigger, setRefetchTrigger] = useState(0);
-  const [selectedCalculatedStatus, setSelectedCalculatedStatus] = useState<string | null>(null);
+  const [selectedCalculatedStatus, setSelectedCalculatedStatus] = useState<string | null>(initialStatus);
 
   // キャッシュから初期データを取得
   const cachedData = pageDataCache.get<{ categories: any[]; buyers: BuyerWithStatus[]; normalStaffInitials: string[] }>(CACHE_KEYS.BUYERS_WITH_STATUS);
