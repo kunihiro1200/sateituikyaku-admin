@@ -541,14 +541,15 @@ router.get('/:id/duplicates', async (req: Request, res: Response) => {
       return res.json({ duplicates: cached });
     }
 
-    // 暗号化済みの電話番号・メールアドレスをDBから直接取得し、復号して渡す
     const supabase = createClient(
       process.env.SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_KEY!
     );
+
+    // 対象売主のハッシュを取得
     const { data: rawSeller, error: rawError } = await supabase
       .from('sellers')
-      .select('id, phone_number, email')
+      .select('id, phone_number_hash, email_hash')
       .eq('id', id)
       .is('deleted_at', null)
       .single();
@@ -559,66 +560,96 @@ router.get('/:id/duplicates', async (req: Request, res: Response) => {
       });
     }
 
-    // 復号して平文を取得
-    const { decrypt } = await import('../utils/encryption');
-    let plainPhone: string | undefined;
-    let plainEmail: string | undefined;
-    try { plainPhone = rawSeller.phone_number ? decrypt(rawSeller.phone_number) : undefined; } catch { /* skip */ }
-    try { plainEmail = rawSeller.email ? decrypt(rawSeller.email) : undefined; } catch { /* skip */ }
+    const { phone_number_hash, email_hash } = rawSeller;
 
-    if (!plainPhone && !plainEmail) {
+    if (!phone_number_hash && !email_hash) {
       return res.json({ duplicates: [] });
     }
 
-    // Vercelタイムアウト対策: 最大100件に絞って復号比較
-    // 全件取得は10秒タイムアウトを超えるため件数を制限
-    const { data: allSellers, error: allError } = await supabase
-      .from('sellers')
-      .select('id, seller_number, name, phone_number, email, inquiry_date, confidence_level, status, next_call_date, valuation_amount_1, valuation_amount_2, valuation_amount_3, property_address, comments')
-      .is('deleted_at', null)
-      .neq('id', id)
-      .order('inquiry_date', { ascending: false })
-      .limit(100);
-
-    if (allError || !allSellers) {
-      return res.json({ duplicates: [] });
-    }
-
+    // ハッシュ同士で比較（インデックスが効くため高速）
     const matchMap = new Map<string, any>();
-    for (const seller of allSellers) {
-      let phoneMatch = false;
-      let emailMatch = false;
-      if (plainPhone && seller.phone_number) {
-        try { if (decrypt(seller.phone_number) === plainPhone) phoneMatch = true; } catch { /* skip */ }
-      }
-      if (plainEmail && seller.email) {
-        try { if (decrypt(seller.email) === plainEmail) emailMatch = true; } catch { /* skip */ }
-      }
-      if (!phoneMatch && !emailMatch) continue;
 
-      const matchType = phoneMatch && emailMatch ? 'both' : phoneMatch ? 'phone' : 'email';
-      let decryptedName = seller.name;
-      try { decryptedName = seller.name ? decrypt(seller.name) : ''; } catch { /* skip */ }
+    // 電話番号ハッシュで検索
+    if (phone_number_hash) {
+      const { data: phoneMatches } = await supabase
+        .from('sellers')
+        .select('id, seller_number, name, phone_number, email, inquiry_date, confidence_level, status, next_call_date, valuation_amount_1, valuation_amount_2, valuation_amount_3, property_address, comments')
+        .eq('phone_number_hash', phone_number_hash)
+        .neq('id', id)
+        .is('deleted_at', null);
 
-      matchMap.set(seller.id, {
-        sellerId: seller.id,
-        matchType,
-        sellerInfo: {
-          name: decryptedName,
-          phoneNumber: plainPhone || '',
-          email: plainEmail,
-          inquiryDate: seller.inquiry_date ? new Date(seller.inquiry_date) : undefined,
-          sellerNumber: seller.seller_number,
-          confidenceLevel: seller.confidence_level,
-          status: seller.status,
-          nextCallDate: seller.next_call_date,
-          valuationAmount1: seller.valuation_amount_1,
-          valuationAmount2: seller.valuation_amount_2,
-          valuationAmount3: seller.valuation_amount_3,
-          propertyAddress: seller.property_address,
-          comments: seller.comments,
-        },
-        propertyInfo: seller.property_address ? { address: seller.property_address, propertyType: '' } : undefined,
+      if (phoneMatches) {
+        const { decrypt } = await import('../utils/encryption');
+        for (const seller of phoneMatches) {
+          let decryptedName = '';
+          try { decryptedName = seller.name ? decrypt(seller.name) : ''; } catch { /* skip */ }
+          matchMap.set(seller.id, {
+            sellerId: seller.id,
+            matchType: 'phone' as const,
+            sellerInfo: {
+              name: decryptedName,
+              phoneNumber: '',
+              inquiryDate: seller.inquiry_date ? new Date(seller.inquiry_date) : undefined,
+              sellerNumber: seller.seller_number,
+              confidenceLevel: seller.confidence_level,
+              status: seller.status,
+              nextCallDate: seller.next_call_date,
+              valuationAmount1: seller.valuation_amount_1,
+              valuationAmount2: seller.valuation_amount_2,
+              valuationAmount3: seller.valuation_amount_3,
+              propertyAddress: seller.property_address,
+              comments: seller.comments,
+            },
+            propertyInfo: seller.property_address ? { address: seller.property_address, propertyType: '' } : undefined,
+          });
+        }
+      }
+    }
+
+    // メールハッシュで検索
+    if (email_hash) {
+      const { data: emailMatches } = await supabase
+        .from('sellers')
+        .select('id, seller_number, name, phone_number, email, inquiry_date, confidence_level, status, next_call_date, valuation_amount_1, valuation_amount_2, valuation_amount_3, property_address, comments')
+        .eq('email_hash', email_hash)
+        .neq('id', id)
+        .is('deleted_at', null);
+
+      if (emailMatches) {
+        const { decrypt } = await import('../utils/encryption');
+        for (const seller of emailMatches) {
+          if (matchMap.has(seller.id)) {
+            matchMap.get(seller.id).matchType = 'both';
+          } else {
+            let decryptedName = '';
+            try { decryptedName = seller.name ? decrypt(seller.name) : ''; } catch { /* skip */ }
+            matchMap.set(seller.id, {
+              sellerId: seller.id,
+              matchType: 'email' as const,
+              sellerInfo: {
+                name: decryptedName,
+                phoneNumber: '',
+                inquiryDate: seller.inquiry_date ? new Date(seller.inquiry_date) : undefined,
+                sellerNumber: seller.seller_number,
+                confidenceLevel: seller.confidence_level,
+                status: seller.status,
+                nextCallDate: seller.next_call_date,
+                valuationAmount1: seller.valuation_amount_1,
+                valuationAmount2: seller.valuation_amount_2,
+                valuationAmount3: seller.valuation_amount_3,
+                propertyAddress: seller.property_address,
+                comments: seller.comments,
+              },
+              propertyInfo: seller.property_address ? { address: seller.property_address, propertyType: '' } : undefined,
+            });
+          }
+        }
+      }
+    }
+
+    const duplicates = Array.from(matchMap.values());
+    setDuplicatesCache(id, duplicates);
+    res.json({ duplicates });
       });
     }
 
