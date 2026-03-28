@@ -3675,7 +3675,7 @@ HP：https://ifoo-oita.com/
                                 color="warning"
                                 onClick={() => setAreaWarningDismissed(true)}
                               >
-                                確認済み
+                                面積を確認しました
                               </Button>
                             </>
                           )}
@@ -4907,7 +4907,7 @@ HP：https://ifoo-oita.com/
                                   onClick={() => setAreaWarningDismissed(true)}
                                   sx={{ fontWeight: 'bold', whiteSpace: 'nowrap' }}
                                 >
-                                  確認済み
+                                  面積を確認しました
                                 </Button>
                               </>
                             )}
