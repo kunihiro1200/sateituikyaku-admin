@@ -355,6 +355,14 @@ export interface DuplicateMatch {
     email?: string;
     inquiryDate?: Date;
     sellerNumber?: string;
+    confidenceLevel?: string;
+    status?: string;
+    nextCallDate?: string;
+    valuationAmount1?: number;
+    valuationAmount2?: number;
+    valuationAmount3?: number;
+    propertyAddress?: string;
+    comments?: string;
   };
   propertyInfo?: {
     address: string;

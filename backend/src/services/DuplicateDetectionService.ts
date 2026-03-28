@@ -52,12 +52,17 @@ export class DuplicateDetectionService {
           email,
           inquiry_date,
           seller_number,
-          properties (
-            property_address,
-            property_type
-          )
+          confidence_level,
+          status,
+          next_call_date,
+          valuation_amount_1,
+          valuation_amount_2,
+          valuation_amount_3,
+          property_address,
+          comments
         `)
-        .eq('phone_number', phoneNumber);
+        .eq('phone_number', phoneNumber)
+        .is('deleted_at', null);
 
       if (excludeId) {
         query = query.neq('id', excludeId);
@@ -83,13 +88,21 @@ export class DuplicateDetectionService {
           email: seller.email,
           inquiryDate: seller.inquiry_date ? new Date(seller.inquiry_date) : undefined,
           sellerNumber: seller.seller_number,
+          confidenceLevel: seller.confidence_level,
+          status: seller.status,
+          nextCallDate: seller.next_call_date,
+          valuationAmount1: seller.valuation_amount_1,
+          valuationAmount2: seller.valuation_amount_2,
+          valuationAmount3: seller.valuation_amount_3,
+          propertyAddress: seller.property_address,
+          comments: seller.comments,
         },
-        propertyInfo: seller.properties?.[0]
-  ? {
-      address: seller.properties[0].address,
-      propertyType: seller.properties[0].property_type,
-    }
-  : undefined,
+        propertyInfo: seller.property_address
+          ? {
+              address: seller.property_address,
+              propertyType: '',
+            }
+          : undefined,
       }));
     } catch (error) {
       console.error('Check duplicate by phone error:', error);
@@ -122,12 +135,17 @@ export class DuplicateDetectionService {
           email,
           inquiry_date,
           seller_number,
-          properties (
-            property_address,
-            property_type
-          )
+          confidence_level,
+          status,
+          next_call_date,
+          valuation_amount_1,
+          valuation_amount_2,
+          valuation_amount_3,
+          property_address,
+          comments
         `)
-        .eq('email', email);
+        .eq('email', email)
+        .is('deleted_at', null);
 
       if (excludeId) {
         query = query.neq('id', excludeId);
@@ -153,11 +171,19 @@ export class DuplicateDetectionService {
           email: seller.email,
           inquiryDate: seller.inquiry_date ? new Date(seller.inquiry_date) : undefined,
           sellerNumber: seller.seller_number,
+          confidenceLevel: seller.confidence_level,
+          status: seller.status,
+          nextCallDate: seller.next_call_date,
+          valuationAmount1: seller.valuation_amount_1,
+          valuationAmount2: seller.valuation_amount_2,
+          valuationAmount3: seller.valuation_amount_3,
+          propertyAddress: seller.property_address,
+          comments: seller.comments,
         },
-        propertyInfo: seller.properties?.[0]
+        propertyInfo: seller.property_address
           ? {
-              address: seller.properties[0].property_address || seller.properties[0].address,
-              propertyType: seller.properties[0].property_type,
+              address: seller.property_address,
+              propertyType: '',
             }
           : undefined,
       }));
