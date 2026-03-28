@@ -111,7 +111,7 @@ export default function BuyersPage() {
         // キャッシュヒット時はsetLoading(true)をスキップして画面のちらつきを防ぐ
         if (sidebarLoadedRef.current && allBuyersWithStatusRef.current.length > 0) {
           let filtered = selectedCalculatedStatus !== null
-            ? allBuyersWithStatusRef.current.filter(b => b.calculated_status === selectedCalculatedStatus)
+            ? allBuyersWithStatusRef.current.filter(b => b.calculated_status === selectedCalculatedStatus || (b.calculated_status || '').startsWith(selectedCalculatedStatus + '('))
             : [...allBuyersWithStatusRef.current];
 
           // 検索フィルタ
