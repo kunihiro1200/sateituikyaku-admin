@@ -60,6 +60,7 @@
     "ID": "inquiry_id",
     "サイトURL": "site_url",
     "郵送": "mailing_status",
+    "除外日にすること": "exclusion_action",
     "固定資産税路線価": "fixed_asset_tax_road_price"
   },
   "databaseToSpreadsheet": {
@@ -115,6 +116,7 @@
     "inquiry_id": "ID",
     "site_url": "サイトURL",
     "mailing_status": "郵送",
+    "exclusion_action": "除外日にすること",
     "fixed_asset_tax_road_price": "固定資産税路線価"
   },
   "typeConversions": {

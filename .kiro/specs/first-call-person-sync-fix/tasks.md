@@ -65,6 +65,6 @@
     - **EXPECTED OUTCOME**: Tests PASS (confirms no regressions)
     - Confirm all tests still pass after fix (no regressions)
 
-- [-] 4. Checkpoint - Ensure all tests pass
+- [x] 4. Checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
   - デプロイ: `git add . && git commit -m "fix: 1番電話フィールドの同期バグ修正（カラム名不一致）" && git push origin main`

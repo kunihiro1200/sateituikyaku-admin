@@ -208,11 +208,23 @@ export class SpreadsheetSyncService {
    * email は null の場合があるため null-safe に処理する
    */
   private decryptSellerFields(seller: any): any {
+    // address は暗号化対象外だが、過去に誤って暗号化されたデータが存在する可能性があるため
+    // try-catch で復号を試み、失敗した場合（平文の場合）はそのまま返す
+    const safeDecryptAddress = (value: string | null | undefined): string | null | undefined => {
+      if (!value) return value;
+      try {
+        return decrypt(value);
+      } catch {
+        return value; // 平文の場合はそのまま返す
+      }
+    };
+
     return {
       ...seller,
       name: decrypt(seller.name || ''),
       phone_number: decrypt(seller.phone_number || ''),
       email: seller.email ? decrypt(seller.email) : seller.email,
+      address: safeDecryptAddress(seller.address),
     };
   }
 

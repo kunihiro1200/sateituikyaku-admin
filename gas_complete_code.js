@@ -264,12 +264,17 @@ function syncUpdatesToSupabase_(sheetRows) {
     var sheetVisitNotes = row['訪問メモ'] ? String(row['訪問メモ']) : null;
     if (sheetVisitNotes !== (dbSeller.visit_notes || null)) { updateData.visit_notes = sheetVisitNotes; needsUpdate = true; }
 
-    var sheetFirstCallPerson = row['1番電話'] ? String(row['1番電話']) : null;
+    var sheetFirstCallPerson = row['一番TEL'] ? String(row['一番TEL']) : null;
     var dbFirstCallPerson = dbSeller.first_call_person || null;
-    var firstCallPersonCutoff = '2026-03-20';
-    if (sheetFirstCallPerson !== dbFirstCallPerson &&
-        sheetInquiryDate !== null && sheetInquiryDate >= firstCallPersonCutoff) {
+    if (sheetFirstCallPerson !== dbFirstCallPerson) {
       updateData.first_call_person = sheetFirstCallPerson;
+      needsUpdate = true;
+    }
+
+    var sheetExclusionAction = row['除外日にすること'] ? String(row['除外日にすること']) : null;
+    var dbExclusionAction = dbSeller.exclusion_action || null;
+    if (sheetExclusionAction !== dbExclusionAction) {
+      updateData.exclusion_action = sheetExclusionAction;
       needsUpdate = true;
     }
 
