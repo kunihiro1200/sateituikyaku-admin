@@ -90,14 +90,7 @@ export class ValuationCalculatorService extends BaseRepository {
       return this.getDefaultConstructionPrice(structure);
     }
 
-    // まずハードコードされた価格データから取得を試みる
-    const hardcodedPrice = this.getHardcodedConstructionPrice(buildYear, structure);
-    if (hardcodedPrice) {
-      console.log('✅ Got price from hardcoded data:', hardcodedPrice);
-      return hardcodedPrice;
-    }
-
-    // データベースから建築価格を取得
+    // データベースから建築価格を取得（DBが正とする）
     const { data, error } = await this.table('construction_prices')
       .select('*')
       .eq('year', buildYear)
@@ -106,23 +99,15 @@ export class ValuationCalculatorService extends BaseRepository {
     console.log('📊 Database query result:', { data, error: error?.message });
 
     if (error || !data) {
-      console.log('⚠️ No data found for year, trying nearest year');
-      // データが見つからない場合は最も近い年のデータを取得
-      const { data: nearestData } = await this.table('construction_prices')
-        .select('*')
-        .order('year', { ascending: false })
-        .limit(1)
-        .single();
-
-      console.log('📊 Nearest data:', nearestData);
-
-      if (!nearestData) {
-        // フォールバック値
-        console.log('⚠️ No nearest data, using default');
-        return this.getDefaultConstructionPrice(structure);
+      console.log('⚠️ No data found for year, using hardcoded fallback');
+      // DBにデータがない場合はハードコードテーブルにフォールバック
+      const hardcodedPrice = this.getHardcodedConstructionPrice(buildYear, structure);
+      if (hardcodedPrice) {
+        console.log('✅ Got price from hardcoded fallback:', hardcodedPrice);
+        return hardcodedPrice;
       }
-
-      return this.getPriceByStructure(nearestData, structure);
+      console.log('⚠️ No hardcoded data, using default');
+      return this.getDefaultConstructionPrice(structure);
     }
 
     const price = this.getPriceByStructure(data, structure);
