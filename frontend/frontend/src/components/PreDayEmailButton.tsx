@@ -7,7 +7,7 @@ import { EmailTemplate, EmailData, MergedEmailContent } from '../types/emailTemp
 import api from '../services/api';
 import { useAuthStore } from '../store/authStore';
 
-const PRE_DAY_TEMPLATE_NAME = '★内覧前日通知メール';
+const PRE_DAY_TEMPLATE_NAME = '☆内覧前日通知メール';
 
 interface PreDayEmailButtonProps {
   buyerId: string;
