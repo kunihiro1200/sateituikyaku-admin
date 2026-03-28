@@ -12,7 +12,7 @@
   - 既存の `getPropertyTemplates()` を参考に、C列「区分」が「物件」かつD列「種別」に「報告」を含まない行のみ返すフィルタロジックを実装する
   - _Requirements: 1.1, 1.2_
 
-  - [ ]* 1.1 `getPropertyNonReportTemplates` のプロパティテストを作成する
+  - [-]* 1.1 `getPropertyNonReportTemplates` のプロパティテストを作成する
     - **Property 1: 非報告テンプレートのフィルタリング**
     - **Validates: Requirements 1.1, 1.2**
     - fast-check を使用し、任意のテンプレート行配列に対して、返却結果が全て `category === '物件'` かつ `!type.includes('報告')` であることを検証する（numRuns: 100）
@@ -23,7 +23,7 @@
   - Google Sheets API 接続失敗時は HTTP 500 とエラーメッセージを返す
   - _Requirements: 1.3, 1.4_
 
-  - [ ]* 2.1 エンドポイントのユニットテストを作成する
+  - [~]* 2.1 エンドポイントのユニットテストを作成する
     - 正常系：テンプレート一覧を返すこと
     - 異常系：Google Sheets API 失敗時に 500 を返すこと
     - _Requirements: 1.3, 1.4_
@@ -40,7 +40,7 @@
   - テンプレート取得失敗時はコンソールにエラーを記録し、ボタンを非活性のまま維持する
   - _Requirements: 5.1, 5.2_
 
-  - [ ]* 4.1 `seller_email` が空の場合のボタン無効化プロパティテストを作成する
+  - [~]* 4.1 `seller_email` が空の場合のボタン無効化プロパティテストを作成する
     - **Property 2: seller_email が空の場合のボタン無効化**
     - **Validates: Requirements 2.2**
     - fast-check を使用し、`seller_email` が空文字列・undefined・null の場合に Email送信ボタンが disabled であることを検証する（numRuns: 100）
@@ -82,7 +82,7 @@
   - `SenderAddressSelector` でアドレス変更時に `saveSenderAddress()` が呼び出されることを確認する
   - _Requirements: 4.1, 4.2_
 
-  - [ ]* 9.1 送信元アドレスのラウンドトリップ プロパティテストを作成する
+  - [~]* 9.1 送信元アドレスのラウンドトリップ プロパティテストを作成する
     - **Property 4: 送信元アドレスのラウンドトリップ**
     - **Validates: Requirements 4.1, 4.2**
     - fast-check を使用し、任意の有効なメールアドレスに対して `saveSenderAddress(addr)` → `getSenderAddress()` が同じアドレスを返すことを検証する（numRuns: 100）
