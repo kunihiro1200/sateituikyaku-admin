@@ -79,6 +79,7 @@ export default function PropertyListingsPage() {
   const [highConfidenceProperties, setHighConfidenceProperties] = useState<Set<string>>(new Set());
   const [selectedPropertyNumbers, setSelectedPropertyNumbers] = useState<Set<string>>(new Set());
   const [lastFilter, setLastFilter] = useState<'sidebar' | 'search' | null>(null);
+  const [isLoadingAll, setIsLoadingAll] = useState(true);
 
   // 状態を復元
   useEffect(() => {
@@ -102,6 +103,7 @@ export default function PropertyListingsPage() {
       const cached = pageDataCache.get<PropertyListing[]>(CACHE_KEYS.PROPERTY_LISTINGS);
       if (cached) {
         setAllListings(cached);
+        setIsLoadingAll(false);
         setLoading(false);
         return;
       }
@@ -147,6 +149,7 @@ export default function PropertyListingsPage() {
       // キャッシュに保存（5分間有効）
       pageDataCache.set(CACHE_KEYS.PROPERTY_LISTINGS, allListingsData, 5 * 60 * 1000);
       setAllListings(allListingsData);
+      setIsLoadingAll(false);
 
       console.log('✅ データ取得成功:', { 物件数: allListingsData.length });
     } catch (error) {
@@ -375,8 +378,9 @@ export default function PropertyListingsPage() {
             <TextField
               fullWidth
               size="small"
-              placeholder="Search 物件（物件番号、所在地、売主、買主）"
+              placeholder={isLoadingAll ? "読み込み中... 完了後に検索できます" : "Search 物件（物件番号、所在地、売主、買主）"}
               value={searchQuery}
+              disabled={isLoadingAll}
               onChange={(e) => { setSearchQuery(e.target.value); setSidebarStatus(null); setLastFilter('search'); setPage(0); }}
               InputProps={{
                 startAdornment: <InputAdornment position="start"><SearchIcon /></InputAdornment>,
