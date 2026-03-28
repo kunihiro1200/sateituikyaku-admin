@@ -38,6 +38,7 @@ import {
 } from '@mui/icons-material';
 import api from '../services/api';
 import ImageSelectorModal from '../components/ImageSelectorModal';
+import CompactBuyerListForProperty from '../components/CompactBuyerListForProperty';
 import { SECTION_COLORS } from '../theme/sectionColors';
 
 interface ReportData {
@@ -82,6 +83,18 @@ interface ReportHistory {
   body: string | null;
 }
 
+
+// 送信履歴テーブルの表示行を生成するヘルパー関数
+// 5件未満の場合は null で埋めて rowCount 件にする
+// 5件超の場合はそのまま全件返す
+const getDisplayRows = (history: ReportHistory[], rowCount: number = 5): (ReportHistory | null)[] => {
+  const rows: (ReportHistory | null)[] = [...history];
+  while (rows.length < rowCount) {
+    rows.push(null);
+  }
+  return rows;
+};
+
 export default function PropertyReportPage() {
   const { propertyNumber } = useParams<{ propertyNumber: string }>();
   const navigate = useNavigate();
@@ -110,6 +123,8 @@ export default function PropertyReportPage() {
   const [imageSelectorOpen, setImageSelectorOpen] = useState(false);
   const [selectedImages, setSelectedImages] = useState<any[]>([]);
   const [imageError, setImageError] = useState<string | null>(null);
+  const [buyers, setBuyers] = useState<any[]>([]);
+  const [buyersLoading, setBuyersLoading] = useState(false);
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
     message: string;
@@ -130,6 +145,7 @@ export default function PropertyReportPage() {
       fetchJimuStaff();
       fetchTemplates();
       fetchReportHistory();
+      fetchBuyers();
     }
   }, [propertyNumber]);
 
@@ -214,6 +230,20 @@ export default function PropertyReportPage() {
     } catch (error) {
       // 報告履歴が取得できない場合は空のまま（エラー表示しない）
       setReportHistory([]);
+    }
+  };
+
+  const fetchBuyers = async () => {
+    if (!propertyNumber) return;
+    setBuyersLoading(true);
+    try {
+      const response = await api.get(`/api/property-listings/${propertyNumber}/buyers`);
+      setBuyers(response.data || []);
+    } catch (error) {
+      // エラーは無視して空リストを表示（要件2.5）
+      setBuyers([]);
+    } finally {
+      setBuyersLoading(false);
     }
   };
 
@@ -664,28 +694,31 @@ export default function PropertyReportPage() {
 
         {/* 右カラム：送信履歴 + 前回メール内容 */}
         <Box sx={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 3 }}>
-          {/* 送信履歴 */}
+          {/* 送信履歴（5行固定表示） */}
           <Paper sx={{ p: 3 }}>
             <Typography variant="h6" fontWeight="bold" sx={{ mb: 2, color: SECTION_COLORS.property.main }}>
               送信履歴
             </Typography>
-            {reportHistory.length === 0 ? (
-              <Typography variant="body2" color="text.secondary">
-                送信履歴はありません
-              </Typography>
-            ) : (
-              <TableContainer>
-                <Table size="small">
-                  <TableHead>
-                    <TableRow>
-                      <TableCell sx={{ fontWeight: 'bold' }}>送信日時</TableCell>
-                      <TableCell sx={{ fontWeight: 'bold' }}>テンプレート</TableCell>
-                      <TableCell sx={{ fontWeight: 'bold' }}>担当</TableCell>
-                      <TableCell sx={{ fontWeight: 'bold' }}>完了</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {reportHistory.map((h) => (
+            <TableContainer sx={{ maxHeight: 220, overflow: 'auto' }}>
+              <Table size="small" stickyHeader>
+                <TableHead>
+                  <TableRow>
+                    <TableCell sx={{ fontWeight: 'bold' }}>送信日時</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold' }}>テンプレート</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold' }}>担当</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold' }}>完了</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {getDisplayRows(reportHistory).map((h, index) =>
+                    h === null ? (
+                      <TableRow key={`empty-${index}`} sx={{ cursor: 'default' }}>
+                        <TableCell>-</TableCell>
+                        <TableCell>-</TableCell>
+                        <TableCell>-</TableCell>
+                        <TableCell>-</TableCell>
+                      </TableRow>
+                    ) : (
                       <TableRow
                         key={h.id}
                         hover
@@ -710,11 +743,11 @@ export default function PropertyReportPage() {
                           />
                         </TableCell>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            )}
+                    )
+                  )}
+                </TableBody>
+              </Table>
+            </TableContainer>
           </Paper>
 
           {/* 前回メール内容 */}
@@ -737,6 +770,13 @@ export default function PropertyReportPage() {
               </Typography>
             </Paper>
           )}
+
+          {/* 買主一覧 */}
+          <CompactBuyerListForProperty
+            buyers={buyers}
+            propertyNumber={propertyNumber || ''}
+            loading={buyersLoading}
+          />
         </Box>
       </Box>
 
