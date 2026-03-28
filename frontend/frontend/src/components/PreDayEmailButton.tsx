@@ -47,14 +47,9 @@ export default function PreDayEmailButton({
 
   const { employee } = useAuthStore();
 
-  const isDisabled = selectedPropertyIds.size === 0 || loading;
+  const isDisabled = loading;
 
   const handleClick = async () => {
-    if (selectedPropertyIds.size === 0) {
-      setErrorMessage('物件を選択してください');
-      return;
-    }
-
     setLoading(true);
     try {
       // テンプレート一覧を取得して '★内覧前日通知メール' のみ使用
