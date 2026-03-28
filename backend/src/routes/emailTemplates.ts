@@ -337,7 +337,7 @@ router.post('/:templateId/mergeMultiple', async (req, res) => {
     if (!buyer) {
       return res.status(400).json({ error: 'Buyer data is required' });
     }
-    if (!propertyIds || !Array.isArray(propertyIds) || propertyIds.length === 0) {
+    if (!propertyIds || !Array.isArray(propertyIds)) {
       return res.status(400).json({ error: 'Property IDs array is required' });
     }
 
