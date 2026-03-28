@@ -541,10 +541,20 @@ router.get('/:id/duplicates', async (req: Request, res: Response) => {
       return res.json({ duplicates: cached });
     }
 
-    // 売主情報を取得
-    const seller = await sellerService.getSeller(id);
-    
-    if (!seller) {
+    // 暗号化済みの電話番号・メールアドレスをDBから直接取得
+    // getSeller()は復号済み値を返すため、暗号化済み値が必要なここでは直接DBを参照する
+    const supabase = createClient(
+      process.env.SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_KEY!
+    );
+    const { data: rawSeller, error: rawError } = await supabase
+      .from('sellers')
+      .select('id, phone_number, email')
+      .eq('id', id)
+      .is('deleted_at', null)
+      .single();
+
+    if (rawError || !rawSeller) {
       return res.status(404).json({
         error: {
           code: 'SELLER_NOT_FOUND',
@@ -553,12 +563,12 @@ router.get('/:id/duplicates', async (req: Request, res: Response) => {
         },
       });
     }
-    
-    // 重複を検出（自分自身を除外）
+
+    // 重複を検出（自分自身を除外）- 暗号化済み値で比較
     const { duplicateDetectionService } = await import('../services/DuplicateDetectionService');
     const duplicates = await duplicateDetectionService.instance.checkDuplicates(
-      seller.phoneNumber,
-      seller.email,
+      rawSeller.phone_number,
+      rawSeller.email,
       id
     );
     
