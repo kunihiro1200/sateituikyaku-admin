@@ -3028,13 +3028,6 @@ HP：https://ifoo-oita.com/
                 )}
               </>
             )}
-            {/* 重複インジケーター */}
-            {!duplicatesLoading && duplicates.length > 0 && (
-              <DuplicateIndicatorBadge
-                duplicateCount={duplicates.length}
-                onClick={handleOpenDuplicateModal}
-              />
-            )}
           </Box>
           <Button
             startIcon={<CalendarToday />}
@@ -3420,6 +3413,7 @@ HP：https://ifoo-oita.com/
                   📍 物件情報
                 </Typography>
                 {seller && (seller.inquiryDetailedDateTime || seller.inquiryDetailedDatetime || seller.inquiryDate) && (
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   <Typography variant="body2" color="text.secondary" sx={{ display: 'flex', alignItems: 'center' }}>
                     反響日：
                     <Typography component="span" variant="body2" sx={{ fontWeight: 'bold', ml: 0.5 }}>
@@ -3441,6 +3435,14 @@ HP：https://ifoo-oita.com/
                       })()}
                     </Typography>
                   </Typography>
+                  {/* 重複インジケーター */}
+                  {!duplicatesLoading && duplicates.length > 0 && (
+                    <DuplicateIndicatorBadge
+                      duplicateCount={duplicates.length}
+                      onClick={handleOpenDuplicateModal}
+                    />
+                  )}
+                  </Box>
                 )}
               </Box>
               {seller && (
