@@ -228,7 +228,8 @@ export default function BuyerDetailPage() {
     if (!buyer.initial_assignee || !String(buyer.initial_assignee).trim()) {
       missingKeys.push('initial_assignee');
     }
-    if (!buyer.inquiry_source || !String(buyer.inquiry_source).trim()) {
+    // broker_inquiryが「業者問合せ」の場合はinquiry_sourceを必須としない
+    if (buyer.broker_inquiry !== '業者問合せ' && (!buyer.inquiry_source || !String(buyer.inquiry_source).trim())) {
       missingKeys.push('inquiry_source');
     }
     if (!buyer.latest_status || !String(buyer.latest_status).trim()) {
@@ -404,7 +405,8 @@ export default function BuyerDetailPage() {
       if (!res.data.initial_assignee || !String(res.data.initial_assignee).trim()) {
         initialMissing.push('initial_assignee');
       }
-      if (!res.data.inquiry_source || !String(res.data.inquiry_source).trim()) {
+      // broker_inquiryが「業者問合せ」の場合はinquiry_sourceを必須としない
+      if (res.data.broker_inquiry !== '業者問合せ' && (!res.data.inquiry_source || !String(res.data.inquiry_source).trim())) {
         initialMissing.push('inquiry_source');
       }
       if (!res.data.latest_status || !String(res.data.latest_status).trim()) {
