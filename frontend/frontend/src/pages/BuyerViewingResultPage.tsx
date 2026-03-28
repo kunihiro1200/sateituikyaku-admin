@@ -27,6 +27,40 @@ import { VIEWING_UNCONFIRMED_OPTIONS } from '../utils/buyerDetailFieldOptions';
 import { ValidationService } from '../services/ValidationService';
 import PreDayEmailButton from '../components/PreDayEmailButton';
 
+/**
+ * 内覧日前日かどうかを判定（BuyerStatusCalculator Priority 3 と同じロジック）
+ * - 木曜内覧 → 2日前（火曜）に表示
+ * - それ以外 → 1日前に表示
+ * - broker_inquiry === '業者問合せ' は除外
+ * - notification_sender が入力済みは除外
+ */
+function isViewingPreDay(buyer: { latest_viewing_date?: string | null; broker_inquiry?: string | null; notification_sender?: string | null }): boolean {
+  if (!buyer.latest_viewing_date) return false;
+  if (buyer.broker_inquiry === '業者問合せ') return false;
+  if (buyer.notification_sender && buyer.notification_sender.trim() !== '') return false;
+
+  const dateStr = buyer.latest_viewing_date;
+  const parts = dateStr.includes('/') ? dateStr.split('/') : dateStr.split('-');
+  if (parts.length !== 3) return false;
+  const viewingDate = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+  viewingDate.setHours(0, 0, 0, 0);
+  if (isNaN(viewingDate.getTime())) return false;
+
+  // JST で今日の日付を取得
+  const now = new Date();
+  const jstOffset = 9 * 60 * 60000;
+  const today = new Date(now.getTime() + (now.getTimezoneOffset() * 60000) + jstOffset);
+  today.setHours(0, 0, 0, 0);
+
+  const dayOfWeek = viewingDate.getDay(); // 0=日, 4=木
+  const daysBeforeTarget = dayOfWeek === 4 ? 2 : 1;
+  const targetDate = new Date(viewingDate);
+  targetDate.setDate(viewingDate.getDate() - daysBeforeTarget);
+  targetDate.setHours(0, 0, 0, 0);
+
+  return today.getTime() === targetDate.getTime();
+}
+
 interface Buyer {
   [key: string]: any;
 }
@@ -536,8 +570,8 @@ export default function BuyerViewingResultPage() {
             )}
           </>
         )}
-        {/* 内覧前日Eメールボタン（calculated_status === '内覧日前日' の場合のみ表示） */}
-        {buyer.calculated_status === '内覧日前日' && (
+        {/* 内覧前日Eメールボタン（内覧日前日の場合のみ表示） */}
+        {isViewingPreDay(buyer) && (
           <Box sx={{ ml: 'auto' }}>
             <PreDayEmailButton
               buyerId={buyer_number || ''}
