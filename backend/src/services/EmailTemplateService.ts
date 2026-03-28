@@ -386,6 +386,13 @@ export class EmailTemplateService {
       result = result.replace(/<<物件詳細URL>>/g, detailList);
     }
 
+    // 内覧アンケートURLを生成して置換
+    // フォーマット: ベースURL + 買主番号 + 物件住所
+    const viewingFormBase = 'https://docs.google.com/forms/d/e/1FAIpQLSefXwsYKryraVM4jtnLgcYtboUg3w-lx7tasftVA47E5jXUlQ/viewform?usp=pp_url';
+    const firstAddress = properties.length > 0 ? (properties[0].address || '') : '';
+    const viewingFormUrl = `${viewingFormBase}&entry.267319544=${buyer.buyer_number || ''}&entry.2056434590=${encodeURIComponent(firstAddress)}`;
+    result = result.replace(/<<内覧アンケート>>/g, viewingFormUrl);
+
     // 未置換のプレースホルダーを空文字に
     result = result.replace(/<<SUUMO　URLの表示>>/g, '');
     result = result.replace(/<<内覧前伝達事項v>>/g, buyer.pre_viewing_notes || '');

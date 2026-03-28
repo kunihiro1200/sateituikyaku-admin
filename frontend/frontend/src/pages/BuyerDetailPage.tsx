@@ -894,6 +894,7 @@ export default function BuyerDetailPage() {
             buyerName={buyer.name || ''}
             buyerCompanyName={buyer.company_name || ''}
             buyerNumber={buyer_number || ''}
+            preViewingNotes={buyer.pre_viewing_notes || ''}
             inquiryHistory={inquiryHistoryTable}
             selectedPropertyIds={selectedPropertyIds}
             size="small"

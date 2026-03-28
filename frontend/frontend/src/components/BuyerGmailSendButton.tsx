@@ -14,6 +14,7 @@ interface BuyerGmailSendButtonProps {
   buyerName: string;
   buyerCompanyName?: string;
   buyerNumber?: string;
+  preViewingNotes?: string;
   inquiryHistory: InquiryHistoryItem[];
   selectedPropertyIds: Set<string>; // チェックボックスで選択された物件ID
   size?: 'small' | 'medium' | 'large';
@@ -33,6 +34,7 @@ export default function BuyerGmailSendButton({
   buyerName,
   buyerCompanyName,
   buyerNumber,
+  preViewingNotes,
   inquiryHistory,
   selectedPropertyIds,
   size = 'medium',
@@ -95,7 +97,8 @@ export default function BuyerGmailSendButton({
           name: buyerName,
           company_name: buyerCompanyName || '',
           buyer_number: buyerNumber || '',
-          email: buyerEmail
+          email: buyerEmail,
+          pre_viewing_notes: preViewingNotes || '',
         },
         propertyIds,
         templateSubject: template.subject,
