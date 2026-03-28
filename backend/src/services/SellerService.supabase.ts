@@ -2133,9 +2133,20 @@ export class SellerService extends BaseRepository {
     const todayCallWithInfoCount = todayCallWithInfoSellers.length;
 
     const labelCountMap: Record<string, number> = {};
+    // "null"文字列も空扱いにするヘルパー
+    const isValidValue = (v: string | null | undefined): boolean =>
+      !!(v && v.trim() !== '' && v.trim().toLowerCase() !== 'null');
     todayCallWithInfoSellers.forEach(s => {
-      const content = s.contact_method?.trim() || s.preferred_contact_time?.trim() || s.phone_contact_person?.trim() || '';
-      const label = `当日TEL(${content})`;
+      // フロントエンドのgetTodayCallWithInfoLabelと同じ優先順位で判定
+      let content = '';
+      if (isValidValue(s.contact_method)) {
+        content = s.contact_method!.trim();
+      } else if (isValidValue(s.preferred_contact_time)) {
+        content = s.preferred_contact_time!.trim();
+      } else if (isValidValue(s.phone_contact_person)) {
+        content = s.phone_contact_person!.trim();
+      }
+      const label = content ? `当日TEL(${content})` : '当日TEL（内容）';
       labelCountMap[label] = (labelCountMap[label] || 0) + 1;
     });
     const todayCallWithInfoLabels = Object.keys(labelCountMap);
