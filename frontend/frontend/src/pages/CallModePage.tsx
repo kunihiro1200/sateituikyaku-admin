@@ -4885,6 +4885,39 @@ HP：https://ifoo-oita.com/
                         />
                       </Grid>
 
+                      {/* 面積確認警告（査定担当の右側） */}
+                      {(areaWarning.showWarning || areaWarningDismissed) && (
+                        <Grid item xs={12} md={8}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, height: '100%', pt: 1 }}>
+                            {areaWarning.showWarning && (
+                              <>
+                                <Typography
+                                  variant="body1"
+                                  color="error"
+                                  sx={{ fontWeight: 'bold', fontSize: '1rem' }}
+                                >
+                                  ⚠️ 面積確認してください！
+                                </Typography>
+                                <Button
+                                  size="small"
+                                  variant="contained"
+                                  color="warning"
+                                  onClick={() => setAreaWarningDismissed(true)}
+                                  sx={{ fontWeight: 'bold', whiteSpace: 'nowrap' }}
+                                >
+                                  確認済み
+                                </Button>
+                              </>
+                            )}
+                            {areaWarningDismissed && (
+                              <Typography variant="body2" color="text.secondary">
+                                ✅ 面積確認済み
+                              </Typography>
+                            )}
+                          </Box>
+                        </Grid>
+                      )}
+
                       {/* 手入力査定額セクション */}
                       <Grid item xs={12}>
                         <Divider sx={{ my: 2 }} />
