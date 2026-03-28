@@ -3118,6 +3118,9 @@ HP：https://ifoo-oita.com/
               {seller?.name}（{seller?.sellerNumber}）をDBから削除します。<br />
               削除後も復元可能ですが、一覧から非表示になります。
             </Typography>
+            <Typography sx={{ color: 'error.main', fontWeight: 'bold', mt: 1 }}>
+              売主リスト（スプシ）も1行削除してください
+            </Typography>
           </DialogContent>
           <DialogActions>
             <Button onClick={() => setDeleteDialogOpen(false)} disabled={deleting}>キャンセル</Button>

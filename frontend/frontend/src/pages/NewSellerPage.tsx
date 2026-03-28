@@ -144,7 +144,7 @@ export default function NewSellerPage() {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}T${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
   });
-  const [site, setSite] = useState('2件目以降査定');
+  const [site, setSite] = useState('');
   const [inquiryReason, setInquiryReason] = useState('');
   const [siteUrl, setSiteUrl] = useState('');
   const [numberOfCompanies, setNumberOfCompanies] = useState('');
@@ -260,6 +260,8 @@ export default function NewSellerPage() {
       if (seller.address) setRequestorAddress(seller.address);
       if (seller.phoneNumber) setPhoneNumber(seller.phoneNumber);
       if (seller.email) setEmail(seller.email);
+      // 売主コピー時はサイトを「2件目以降査定」にデフォルト設定
+      setSite('2件目以降査定');
     } catch (err) {
       setError('売主情報の取得に失敗しました');
     }
@@ -344,6 +346,11 @@ export default function NewSellerPage() {
 
     if (!confidence) {
       setError('確度は必須です');
+      return;
+    }
+
+    if (!site) {
+      setError('サイトは必須です');
       return;
     }
 
@@ -630,9 +637,12 @@ export default function NewSellerPage() {
                 <TextField
                   select
                   fullWidth
-                  label="サイト"
+                  label="サイト *"
                   value={site}
                   onChange={(e) => setSite(e.target.value)}
+                  required
+                  error={!site}
+                  helperText={!site ? 'サイトは必須です' : ''}
                 >
                   <MenuItem value="">選択してください</MenuItem>
                   {siteOptions.map((option) => (
