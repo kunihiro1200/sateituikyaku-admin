@@ -99,7 +99,7 @@ function fetchAllSellersFromSupabase_() {
   var allSellers = [];
   var pageSize = 1000;
   var offset = 0;
-  var fields = 'seller_number,status,next_call_date,visit_assignee,unreachable_status,comments,phone_contact_person,preferred_contact_time,contact_method,contract_year_month,current_status,pinrich_status,visit_reminder_assignee,property_address,land_area,building_area,build_year,structure,floor_plan,inquiry_date,valuation_method,valuation_amount_1,valuation_amount_2,valuation_amount_3,visit_acquisition_date,visit_date,visit_time,visit_valuation_acquirer,valuation_assignee,confidence_level,competitor_name,competitor_name_and_reason,exclusive_other_decision_factor,visit_notes,first_call_person';
+  var fields = 'seller_number,status,next_call_date,visit_assignee,unreachable_status,comments,phone_contact_person,preferred_contact_time,contact_method,contract_year_month,current_status,pinrich_status,visit_reminder_assignee,property_address,land_area,building_area,build_year,structure,floor_plan,inquiry_date,valuation_method,valuation_amount_1,valuation_amount_2,valuation_amount_3,visit_acquisition_date,visit_date,visit_time,visit_valuation_acquirer,valuation_assignee,confidence_level,competitor_name,competitor_name_and_reason,exclusive_other_decision_factor,visit_notes,first_call_person,exclusion_action';
   while (true) {
     var url = SUPABASE_CONFIG.URL + '/rest/v1/sellers?select=' + fields +
       '&deleted_at=is.null&offset=' + offset + '&limit=' + pageSize;
@@ -138,6 +138,17 @@ function syncUpdatesToSupabase_(sheetRows) {
   for (var i = 0; i < dbSellers.length; i++) {
     dbMap[dbSellers[i].seller_number] = dbSellers[i];
   }
+
+  // 反響日付の降順（新しい順）にソートして直近の売主を優先処理
+  sheetRows.sort(function(a, b) {
+    var dateA = formatDateToISO_(a['反響日付']) || '';
+    var dateB = formatDateToISO_(b['反響日付']) || '';
+    if (dateB > dateA) return 1;
+    if (dateB < dateA) return -1;
+    return 0;
+  });
+  Logger.log('📅 反響日付の降順にソート完了');
+
   var updatedCount = 0;
   var errorCount = 0;
   var phaseStartTime = new Date();
