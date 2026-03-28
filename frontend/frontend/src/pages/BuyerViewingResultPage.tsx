@@ -623,6 +623,8 @@ export default function BuyerViewingResultPage() {
                 buyerCompanyName={buyer.company_name || ''}
                 buyerNumber={buyer_number || ''}
                 preViewingNotes={buyer.pre_viewing_notes || ''}
+                latestViewingDate={buyer.latest_viewing_date || ''}
+                viewingTime={buyer.viewing_time || ''}
                 inquiryHistory={[]}
                 selectedPropertyIds={selectedPropertyIds}
                 size="medium"

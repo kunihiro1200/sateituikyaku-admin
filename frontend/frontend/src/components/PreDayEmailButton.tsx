@@ -16,6 +16,8 @@ interface PreDayEmailButtonProps {
   buyerCompanyName?: string;
   buyerNumber?: string;
   preViewingNotes?: string;
+  latestViewingDate?: string;
+  viewingTime?: string;
   inquiryHistory: InquiryHistoryItem[];
   selectedPropertyIds: Set<string>;
   size?: 'small' | 'medium' | 'large';
@@ -34,6 +36,8 @@ export default function PreDayEmailButton({
   buyerCompanyName,
   buyerNumber,
   preViewingNotes,
+  latestViewingDate,
+  viewingTime,
   selectedPropertyIds,
   size = 'medium',
   onEmailSent,
@@ -74,6 +78,8 @@ export default function PreDayEmailButton({
           buyer_number: buyerNumber || '',
           email: buyerEmail,
           pre_viewing_notes: preViewingNotes || '',
+          latest_viewing_date: latestViewingDate || '',
+          viewing_time: viewingTime || '',
         },
         propertyIds,
         templateSubject: template.subject,

@@ -394,7 +394,21 @@ export class EmailTemplateService {
 
     // 未置換のプレースホルダーを空文字に
     result = result.replace(/<<SUUMO　URLの表示>>/g, '');
+    result = result.replace(/<<SUUMO URL>>/g, '');
     result = result.replace(/<<内覧前伝達事項v>>/g, buyer.pre_viewing_notes || '');
+
+    // 内覧日・時間の置換
+    const latestViewingDate = buyer.latest_viewing_date || buyer.latestViewingDate || '';
+    const viewingTime = buyer.viewing_time || buyer.viewingTime || '';
+    result = result.replace(/<<内覧日>>/g, latestViewingDate);
+    result = result.replace(/<<時間>>/g, viewingTime);
+
+    // <<住居表示Pinrich>> の置換（空欄の場合は非表示）
+    const pinrichUrl = buyer.pinrich_url || buyer.pinrichUrl || '';
+    result = result.replace(/<<住居表示Pinrich>>/g, pinrichUrl || '');
+
+    // 残った未置換の <<...>> を空文字に（安全策）
+    result = result.replace(/<<[^>]*>>/g, '');
 
     return result;
   }
