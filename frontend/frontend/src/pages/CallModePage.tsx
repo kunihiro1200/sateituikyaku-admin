@@ -522,6 +522,7 @@ const CallModePage = () => {
   const [savedFirstCallPerson, setSavedFirstCallPerson] = useState<string>(''); // 保存済み値（変更検知用）
   const [savingCommunication, setSavingCommunication] = useState(false);
   const [rankingDialogOpen, setRankingDialogOpen] = useState(false); // 1番電話月間ランキングダイアログ
+  const [normalInitials, setNormalInitials] = useState<string[]>([]); // スプシ「通常=TRUE」のイニシャル一覧
 
   // 遷移警告ダイアログ用の状態
   const [navigationWarningDialog, setNavigationWarningDialog] = useState<{
@@ -1239,6 +1240,13 @@ const CallModePage = () => {
           setActiveEmployees(employeesData);
         }).catch((err) => {
           console.error('Failed to load employees:', err);
+        }),
+        // スプシ「通常=TRUE」のイニシャル一覧を取得（1番電話ボタン用）
+        api.get('/api/employees/active-initials').then((res) => {
+          const initials: string[] = res.data?.initials || [];
+          setNormalInitials(initials);
+        }).catch((err) => {
+          console.error('Failed to load normal initials:', err);
         }),
         api.get(`/properties/seller/${id}`).catch(() => null).then((propertyFallbackResponse) => {
           // sellerData.property がない場合のみフォールバックを使用
@@ -5623,16 +5631,16 @@ HP：https://ifoo-oita.com/
                 </Button>
               </Box>
               <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                {activeEmployees.map((emp) => (
+                {normalInitials.map((initial) => (
                   <Button
-                    key={emp.initials || emp.name}
-                    variant={editedFirstCallPerson === (emp.initials || '') ? 'contained' : 'outlined'}
+                    key={initial}
+                    variant={editedFirstCallPerson === initial ? 'contained' : 'outlined'}
                     color="primary"
                     size="small"
-                    onClick={() => setEditedFirstCallPerson(emp.initials || '')}
+                    onClick={() => setEditedFirstCallPerson(initial)}
                     sx={{ minWidth: 60 }}
                   >
-                    {emp.initials || emp.name}
+                    {initial}
                   </Button>
                 ))}
               </Box>
@@ -6228,9 +6236,7 @@ HP：https://ifoo-oita.com/
         </DialogTitle>
         <DialogContent>
           <CallRankingDisplay
-            allowedInitials={activeEmployees
-              .map((e) => e.initials || '')
-              .filter((i) => i !== '')}
+            allowedInitials={normalInitials}
           />
         </DialogContent>
         <DialogActions>
