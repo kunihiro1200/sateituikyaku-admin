@@ -110,7 +110,8 @@ export class StaffManagementService {
 
     const sheets = await this.createSheetsClient();
 
-    // ヘッダー行を含む全データを取得（A列〜F列）
+    // ヘッダー行を含む全データを取得（A列〜U列）
+    // G列: 電話番号, E列: メアド, U列: 固定休 を含めるため範囲を拡張
     // シート名を試す順序: スタッフ → スタッフチャット → Sheet1
     const sheetNamesToTry = [this.SHEET_NAME, 'スタッフチャット', 'Sheet1', 'シート1'];
     let rows: string[][] = [];
@@ -120,7 +121,7 @@ export class StaffManagementService {
       try {
         const response = await sheets.spreadsheets.values.get({
           spreadsheetId: this.SPREADSHEET_ID,
-          range: `${sheetName}!A:F`,
+          range: `${sheetName}!A:U`,
         });
         rows = (response.data.values || []) as string[][];
         usedSheetName = sheetName;
@@ -148,7 +149,13 @@ export class StaffManagementService {
     // ヘッダーから姓名列のインデックスを特定
     const nameColIndex = headers.findIndex((h: string) => h === '姓名' || h === '名前' || h === '氏名');
 
-    console.log('[StaffManagementService] Column indices:', { fColIndex, nameColIndex, headers });
+    // ヘッダーから電話番号・メアド・固定休のインデックスを特定
+    // G列: 電話番号, E列: メアド, U列: 固定休
+    const phoneColIndex = headers.findIndex((h: string) => h === '電話番号');
+    const emailColIndex = headers.findIndex((h: string) => h === 'メアド' || h === 'メールアドレス' || h === 'email');
+    const holidayColIndex = headers.findIndex((h: string) => h === '固定休');
+
+    console.log('[StaffManagementService] Column indices:', { fColIndex, nameColIndex, phoneColIndex, emailColIndex, holidayColIndex, headers });
 
     const staffData: StaffInfo[] = [];
     for (let i = 1; i < rows.length; i++) {
@@ -161,6 +168,12 @@ export class StaffManagementService {
       const fullName = nameColIndex >= 0 ? (row[nameColIndex]?.trim() || '') : '';
       // F列: チャットアドレス
       const chatWebhook = row[fColIndex]?.trim() || null;
+      // G列: 電話番号
+      const phone = phoneColIndex >= 0 ? (row[phoneColIndex]?.trim() || null) : null;
+      // E列: メアド
+      const email = emailColIndex >= 0 ? (row[emailColIndex]?.trim() || null) : null;
+      // U列: 固定休
+      const regularHoliday = holidayColIndex >= 0 ? (row[holidayColIndex]?.trim() || null) : null;
 
       if (!initials && !fullName) continue;
 
@@ -171,9 +184,9 @@ export class StaffManagementService {
         isActive: true,
         isNormal: true,
         hasJimu: false,
-        phone: null,
-        email: null,
-        regularHoliday: null,
+        phone,
+        email,
+        regularHoliday,
       };
       staffData.push(staff);
 
