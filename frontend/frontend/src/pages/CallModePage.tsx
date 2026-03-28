@@ -511,6 +511,22 @@ const CallModePage = () => {
   const [editedSite, setEditedSite] = useState<string>('');
   const [savingSite, setSavingSite] = useState(false);
 
+  // サイトに応じてフィルタリングされた売主用Emailテンプレート
+  const filteredSellerEmailTemplates = useMemo(() => {
+    const site = seller?.site || editedSite;
+    const SITE_TEMPLATE_RULES: { keyword: string; sites: string[] }[] = [
+      { keyword: 'イエウール',     sites: ['ウ'] },
+      { keyword: 'LIFULLとYahoo', sites: ['L', 'Y'] },
+      { keyword: 'すまいステップ', sites: ['す'] },
+      { keyword: 'HOME4U',         sites: ['H'] },
+    ];
+    return sellerEmailTemplates.filter(t => {
+      const rule = SITE_TEMPLATE_RULES.find(r => t.name.includes(r.keyword));
+      if (!rule) return true; // サイト指定なし → 全サイトで表示
+      return rule.sites.includes(site);
+    });
+  }, [sellerEmailTemplates, seller?.site, editedSite]);
+
   // 査定計算用の状態
   const [editingValuation, setEditingValuation] = useState(false);
   const [editedFixedAssetTaxRoadPrice, setEditedFixedAssetTaxRoadPrice] = useState<string>('');
@@ -3208,7 +3224,7 @@ HP：https://ifoo-oita.com/
                   }
                 }}
               >
-                {sellerEmailTemplates.map((template) => (
+                {filteredSellerEmailTemplates.map((template) => (
                   <MenuItem
                     key={template.id}
                     value={template.id}
