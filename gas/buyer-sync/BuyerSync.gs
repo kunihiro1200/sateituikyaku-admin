@@ -207,7 +207,8 @@ var BUYER_COLUMN_MAPPING = {
   '査定アンケート': 'valuation_survey',
   '査定アンケート確認': 'valuation_survey_confirmed',
   '内覧前ヒアリング': 'pre_viewing_hearing',
-  '内覧前ヒアリング送る？': 'pre_viewing_hearing_send'
+  '内覧前ヒアリング送る？': 'pre_viewing_hearing_send',
+  '業者向けアンケート': 'vendor_survey'
 };
 
 // 型変換ルール
