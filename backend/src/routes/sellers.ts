@@ -570,14 +570,15 @@ router.get('/:id/duplicates', async (req: Request, res: Response) => {
       return res.json({ duplicates: [] });
     }
 
-    // 全売主を取得して復号後に平文比較（AES-GCMはランダムIVのため暗号化値比較は不可）
-    // Vercelタイムアウト対策: 最大500件に制限
+    // Vercelタイムアウト対策: 最大100件に絞って復号比較
+    // 全件取得は10秒タイムアウトを超えるため件数を制限
     const { data: allSellers, error: allError } = await supabase
       .from('sellers')
       .select('id, seller_number, name, phone_number, email, inquiry_date, confidence_level, status, next_call_date, valuation_amount_1, valuation_amount_2, valuation_amount_3, property_address, comments')
       .is('deleted_at', null)
       .neq('id', id)
-      .limit(500);
+      .order('inquiry_date', { ascending: false })
+      .limit(100);
 
     if (allError || !allSellers) {
       return res.json({ duplicates: [] });
