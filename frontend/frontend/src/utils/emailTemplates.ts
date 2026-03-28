@@ -17,7 +17,7 @@ export const emailTemplates: EmailTemplate[] = [
     id: 'visit_thank_you',
     label: '訪問査定後御礼メール',
     subject: '御礼（㈱いふうの<<営担>>でございます。）',
-    order: 17,
+    order: 18,
     content: `<<名前(漢字のみ）>>様
 
 お世話になっております。㈱いふうの<<営担>>です。
@@ -48,7 +48,7 @@ HP：https://ifoo-oita.com/
     id: 'web_meeting_offer',
     label: 'WEB打合せどうですかメール',
     subject: '<<物件所在地>>の件で売却までの流れのご説明',
-    order: 18,
+    order: 19,
     content: `<<名前(漢字のみ）>>様
 
 お世話になっております。㈱いふうです。
@@ -404,10 +404,34 @@ HP：https://ifoo-oita.com/
 ***************************`
   },
   {
+    id: 'home4u_cancel_only',
+    label: 'キャンセル案内のみ（HOME4U）',
+    subject: '【HOME4U】査定依頼の件',
+    sites: ['H'], // HOME4U専用
+    order: 10,
+    content: `<<名前(漢字のみ）>>様
+
+お世話になっております。株式会社いふうです。
+
+HOME4Uより査定依頼をいただきましたが、お電話が繋がりませんでした。
+
+査定が不要な場合は、お手数ですがその旨ご連絡ください。
+
+***************************
+株式会社 いふう
+（実績はこちら：bit.ly/4l8lWFF）
+〒870-0044大分市舞鶴町1丁目3-30
+TEL：097-533-2022
+FAX：097-529-7160
+MAIL：tenant@ifoo-oita.com
+HP：https://ifoo-oita.com/
+***************************`
+  },
+  {
     id: 'visit_reminder',
     label: '☆訪問前日通知メール',
     subject: '明日の訪問査定のご確認',
-    order: 10,
+    order: 11,
     content: `<<名前(漢字のみ）>>様
 
 お世話になっております。株式会社いふうです。
@@ -482,7 +506,7 @@ HP：https://ifoo-oita.com/
     id: 'reason_relocation_3day',
     label: '（査定理由別）住替え先（３日後メール）',
     subject: '住み替え先のご相談',
-    order: 11,
+    order: 12,
     content: `<<名前(漢字のみ）>>様
 
 お世話になっております。株式会社いふうです。
@@ -507,7 +531,7 @@ HP：https://ifoo-oita.com/
     id: 'reason_inheritance_3day',
     label: '（査定理由別）相続（３日後メール）',
     subject: '相続に関するご相談',
-    order: 12,
+    order: 13,
     content: `<<名前(漢字のみ）>>様
 
 お世話になっております。株式会社いふうです。
@@ -532,7 +556,7 @@ HP：https://ifoo-oita.com/
     id: 'reason_divorce_3day',
     label: '（査定理由別）離婚（３日後メール）',
     subject: '不動産売却のご相談',
-    order: 13,
+    order: 14,
     content: `<<名前(漢字のみ）>>様
 
 お世話になっております。株式会社いふうです。
@@ -555,7 +579,7 @@ HP：https://ifoo-oita.com/
     id: 'reason_loan_3day',
     label: '（査定理由別）ローン厳しい（３日後メール）',
     subject: '住宅ローンのご相談',
-    order: 14,
+    order: 15,
     content: `<<名前(漢字のみ）>>様
 
 お世話になっております。株式会社いふうです。
@@ -580,7 +604,7 @@ HP：https://ifoo-oita.com/
     id: 'exclusion_long_term',
     label: '除外前、長期客（お客様いるメール）',
     subject: '購入希望のお客様がいらっしゃいます',
-    order: 15,
+    order: 16,
     content: `<<名前(漢字のみ）>>様
 
 お世話になっております。株式会社いふうです。
@@ -603,7 +627,7 @@ HP：https://ifoo-oita.com/
     id: 'remind',
     label: 'リマインド',
     subject: 'お電話させていただきました',
-    order: 16,
+    order: 17,
     content: `<<名前(漢字のみ）>>様
 
 お世話になっております。株式会社いふうです。
@@ -628,7 +652,7 @@ HP：https://ifoo-oita.com/
     id: 'inheritance_registration',
     label: '相続登記（きざし様へご案内）',
     subject: '相続登記のご案内',
-    order: 19,
+    order: 20,
     content: `<<名前(漢字のみ）>>様
 
 お世話になっております。株式会社いふうです。
@@ -653,7 +677,7 @@ HP：https://ifoo-oita.com/
     id: 'other_decision_reason_inquiry',
     label: '他決になった理由お伺いメール',
     subject: 'ご意見をお聞かせください',
-    order: 20,
+    order: 21,
     content: `<<名前(漢字のみ）>>様
 
 お世話になっております。株式会社いふうです。

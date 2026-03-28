@@ -700,7 +700,13 @@ const CallModePage = () => {
   const getSortedEmailTemplates = useCallback(() => {
     if (!seller) return emailTemplates;
 
-    const templates = [...emailTemplates];
+    // サイトによるフィルタリング: sitesが指定されているテンプレートは、売主のサイトが一致する場合のみ表示
+    const sellerSite = seller.site || editedSite;
+    const filteredTemplates = emailTemplates.filter(t =>
+      !t.sites || t.sites.includes(sellerSite)
+    );
+
+    const templates = [...filteredTemplates];
     const priorityTemplates: typeof emailTemplates = [];
     const remainingTemplates: typeof emailTemplates = [];
 
@@ -773,7 +779,7 @@ const CallModePage = () => {
 
     // 優先テンプレート + 残りのテンプレート
     return [...priorityTemplates, ...remainingTemplates];
-  }, [seller]);
+  }, [seller, editedSite]);
 
   /**
    * テキスト内のURLをクリック可能なリンクに変換する関数
