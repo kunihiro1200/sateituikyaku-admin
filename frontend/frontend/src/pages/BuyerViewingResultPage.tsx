@@ -627,6 +627,7 @@ export default function BuyerViewingResultPage() {
                 viewingTime={buyer.viewing_time || ''}
                 inquiryHistory={[]}
                 selectedPropertyIds={selectedPropertyIds}
+                propertyNumbers={linkedProperties.map((p: any) => p.property_number).filter(Boolean)}
                 size="medium"
               />
             )}

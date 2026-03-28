@@ -20,6 +20,7 @@ interface PreDayEmailButtonProps {
   viewingTime?: string;
   inquiryHistory: InquiryHistoryItem[];
   selectedPropertyIds: Set<string>;
+  propertyNumbers?: string[]; // property_number の配列（mergeMultiple用）
   size?: 'small' | 'medium' | 'large';
   onEmailSent?: () => void;
 }
@@ -39,6 +40,7 @@ export default function PreDayEmailButton({
   latestViewingDate,
   viewingTime,
   selectedPropertyIds,
+  propertyNumbers,
   size = 'medium',
   onEmailSent,
 }: PreDayEmailButtonProps) {
@@ -69,7 +71,10 @@ export default function PreDayEmailButton({
       setSelectedTemplate(template);
 
       // mergeMultiple でテンプレートをマージ
-      const propertyIds = Array.from(selectedPropertyIds);
+      // propertyNumbers（property_number）が渡されていればそれを使用、なければselectedPropertyIds
+      const propertyIds = propertyNumbers && propertyNumbers.length > 0
+        ? propertyNumbers
+        : Array.from(selectedPropertyIds);
       const mergeRes = await api.post(`/api/email-templates/${template.id}/mergeMultiple`, {
         buyer: {
           buyerName,
