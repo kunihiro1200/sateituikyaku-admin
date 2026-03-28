@@ -366,7 +366,35 @@ export class EmailTemplateService {
     result = result.replace(/<<買主番号>>/g, buyer.buyer_number || '');
     result = result.replace(/<<メールアドレス>>/g, buyer.email || '');
 
-    if (properties.length === 0) return result;
+    if (properties.length === 0) {
+      // 物件なしの場合、物件関連プレースホルダーを空文字に置換
+      result = result.replace(/<<住居表示>>/g, '');
+      result = result.replace(/<<住居表示Pinrich>>/g, '');
+      result = result.replace(/<<GoogleMap>>/g, '');
+      result = result.replace(/<<athome URL>>/g, '');
+      result = result.replace(/<<物件詳細URL>>/g, '');
+      result = result.replace(/<<SUUMO　URLの表示>>/g, '');
+      result = result.replace(/<<SUUMO URL>>/g, '');
+      result = result.replace(/<<内覧前伝達事項v>>/g, buyer.pre_viewing_notes || '');
+      // 内覧日・時間の置換
+      const latestViewingDate0 = buyer.latest_viewing_date || buyer.latestViewingDate || '';
+      const viewingTime0 = buyer.viewing_time || buyer.viewingTime || '';
+      let formattedDate0 = latestViewingDate0;
+      if (latestViewingDate0) {
+        const dateMatch0 = latestViewingDate0.match(/(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
+        if (dateMatch0) formattedDate0 = `${parseInt(dateMatch0[2])}月${parseInt(dateMatch0[3])}日`;
+      }
+      let formattedTime0 = viewingTime0;
+      if (viewingTime0) {
+        const timeMatch0 = viewingTime0.match(/(\d{1,2}):(\d{2})/);
+        if (timeMatch0) formattedTime0 = `${parseInt(timeMatch0[1])}時${timeMatch0[2]}分`;
+      }
+      result = result.replace(/<<内覧日>>/g, formattedDate0);
+      result = result.replace(/<<時間>>/g, formattedTime0);
+      result = result.replace(/<<内覧アンケート>>/g, '');
+      result = result.replace(/<<[^>]*>>/g, '');
+      return result;
+    }
 
     if (properties.length === 1) {
       const prop = properties[0];
