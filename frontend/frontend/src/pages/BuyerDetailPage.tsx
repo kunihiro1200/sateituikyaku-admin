@@ -937,6 +937,7 @@ export default function BuyerDetailPage() {
               propertyType={linkedProperties[0]?.property_type || ''}
               senderName={employee?.name || ''}
               onSmsSent={fetchActivities}
+              preViewingNotes={buyer.pre_viewing_notes || ''}
             />
           )}
           {false && buyer.phone_number && (

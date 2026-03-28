@@ -295,7 +295,7 @@ export class EmailTemplateService {
    */
   mergeAngleBracketPlaceholders(
     text: string,
-    buyer: { name?: string; company_name?: string; buyer_number?: string; email?: string; [key: string]: any },
+    buyer: { name?: string; company_name?: string; buyer_number?: string; email?: string; pre_viewing_notes?: string; [key: string]: any },
     properties: Array<{
       propertyNumber: string;
       address: string;
@@ -338,7 +338,7 @@ export class EmailTemplateService {
 
     // 未置換のプレースホルダーを空文字に
     result = result.replace(/<<SUUMO　URLの表示>>/g, '');
-    result = result.replace(/<<内覧前伝達事項v>>/g, '');
+    result = result.replace(/<<内覧前伝達事項v>>/g, buyer.pre_viewing_notes || '');
 
     return result;
   }
