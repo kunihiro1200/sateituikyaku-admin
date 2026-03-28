@@ -135,7 +135,66 @@ export class ValuationCalculatorService extends BaseRepository {
    * データベースが利用できない場合のフォールバック
    */
   private getHardcodedConstructionPrice(year: number, structure: string): number | null {
+    // スプレッドシート「建築価格」シートのデータ（1965〜2025年）
+    // 列: 木造, 軽量鉄骨, 鉄筋コンクリート, 鉄骨鉄筋コンクリート, 鉄骨
     const priceData: { [key: number]: { wood: number; lightSteel: number; steel: number; rc: number; src: number } } = {
+      1965: { wood: 16800,  lightSteel: 17900,  steel: 17900,  rc: 30300,  src: 45000  },
+      1966: { wood: 18200,  lightSteel: 17800,  steel: 17800,  rc: 30600,  src: 42400  },
+      1967: { wood: 19900,  lightSteel: 19600,  steel: 19600,  rc: 33700,  src: 43600  },
+      1968: { wood: 22200,  lightSteel: 21700,  steel: 21700,  rc: 36200,  src: 48600  },
+      1969: { wood: 24900,  lightSteel: 23600,  steel: 23600,  rc: 39000,  src: 50900  },
+      1970: { wood: 28000,  lightSteel: 26100,  steel: 26100,  rc: 42900,  src: 54300  },
+      1971: { wood: 31200,  lightSteel: 30300,  steel: 30300,  rc: 47200,  src: 61200  },
+      1972: { wood: 34200,  lightSteel: 32400,  steel: 32400,  rc: 50200,  src: 61600  },
+      1973: { wood: 45300,  lightSteel: 42200,  steel: 42200,  rc: 64300,  src: 77600  },
+      1974: { wood: 61800,  lightSteel: 55700,  steel: 55700,  rc: 90100,  src: 113000 },
+      1975: { wood: 67700,  lightSteel: 60500,  steel: 60500,  rc: 97400,  src: 126400 },
+      1976: { wood: 70300,  lightSteel: 62100,  steel: 62100,  rc: 98200,  src: 114600 },
+      1977: { wood: 74100,  lightSteel: 65300,  steel: 65300,  rc: 102000, src: 121800 },
+      1978: { wood: 77900,  lightSteel: 70100,  steel: 70100,  rc: 105900, src: 122400 },
+      1979: { wood: 82500,  lightSteel: 75400,  steel: 75400,  rc: 114300, src: 128900 },
+      1980: { wood: 92500,  lightSteel: 84100,  steel: 84100,  rc: 129700, src: 149400 },
+      1981: { wood: 98300,  lightSteel: 91700,  steel: 91700,  rc: 138700, src: 161800 },
+      1982: { wood: 101300, lightSteel: 94400,  steel: 94400,  rc: 143200, src: 166900 },
+      1983: { wood: 104400, lightSteel: 97200,  steel: 97200,  rc: 147800, src: 172200 },
+      1984: { wood: 106800, lightSteel: 99500,  steel: 99500,  rc: 151200, src: 176100 },
+      1985: { wood: 109300, lightSteel: 101900, steel: 101900, rc: 154700, src: 180200 },
+      1986: { wood: 111900, lightSteel: 104300, steel: 104300, rc: 158300, src: 184400 },
+      1987: { wood: 114500, lightSteel: 106700, steel: 106700, rc: 161900, src: 188700 },
+      1988: { wood: 117200, lightSteel: 109200, steel: 109200, rc: 165600, src: 193000 },
+      1989: { wood: 120000, lightSteel: 111800, steel: 111800, rc: 169400, src: 197400 },
+      1990: { wood: 122900, lightSteel: 114500, steel: 114500, rc: 173300, src: 201900 },
+      1991: { wood: 125800, lightSteel: 117200, steel: 117200, rc: 177300, src: 206500 },
+      1992: { wood: 128800, lightSteel: 120000, steel: 120000, rc: 181400, src: 211200 },
+      1993: { wood: 131900, lightSteel: 122900, steel: 122900, rc: 185600, src: 216000 },
+      1994: { wood: 135100, lightSteel: 125900, steel: 125900, rc: 189900, src: 221000 },
+      1995: { wood: 138300, lightSteel: 128900, steel: 128900, rc: 194300, src: 226100 },
+      1996: { wood: 141600, lightSteel: 132000, steel: 132000, rc: 198800, src: 231300 },
+      1997: { wood: 145000, lightSteel: 135100, steel: 135100, rc: 203400, src: 236700 },
+      1998: { wood: 148500, lightSteel: 138400, steel: 138400, rc: 208100, src: 242200 },
+      1999: { wood: 152100, lightSteel: 141700, steel: 141700, rc: 212900, src: 247800 },
+      2000: { wood: 155800, lightSteel: 145100, steel: 145100, rc: 217800, src: 253600 },
+      2001: { wood: 153000, lightSteel: 142600, steel: 142600, rc: 213900, src: 249000 },
+      2002: { wood: 150300, lightSteel: 140100, steel: 140100, rc: 210100, src: 244500 },
+      2003: { wood: 147600, lightSteel: 137700, steel: 137700, rc: 206400, src: 240100 },
+      2004: { wood: 145000, lightSteel: 135300, steel: 135300, rc: 202800, src: 235800 },
+      2005: { wood: 142400, lightSteel: 132900, steel: 132900, rc: 199200, src: 231600 },
+      2006: { wood: 139900, lightSteel: 130500, steel: 130500, rc: 195700, src: 227500 },
+      2007: { wood: 137400, lightSteel: 128200, steel: 128200, rc: 192300, src: 223500 },
+      2008: { wood: 135000, lightSteel: 125900, steel: 125900, rc: 188900, src: 219600 },
+      2009: { wood: 132700, lightSteel: 123700, steel: 123700, rc: 185600, src: 215800 },
+      2010: { wood: 130400, lightSteel: 121500, steel: 121500, rc: 182400, src: 212100 },
+      2011: { wood: 135000, lightSteel: 135000, steel: 135000, rc: 197000, src: 265400 },
+      2012: { wood: 157600, lightSteel: 155600, steel: 155600, rc: 193900, src: 223300 },
+      2013: { wood: 159900, lightSteel: 164300, steel: 164300, rc: 203800, src: 258500 },
+      2014: { wood: 163000, lightSteel: 176400, steel: 176400, rc: 228000, src: 276200 },
+      2015: { wood: 165400, lightSteel: 197300, steel: 197300, rc: 240200, src: 262200 },
+      2016: { wood: 165900, lightSteel: 204100, steel: 204100, rc: 254200, src: 308300 },
+      2017: { wood: 166700, lightSteel: 214600, steel: 214600, rc: 265500, src: 350400 },
+      2018: { wood: 168500, lightSteel: 214100, steel: 214100, rc: 263100, src: 304200 },
+      2019: { wood: 170100, lightSteel: 228800, steel: 228800, rc: 285600, src: 363300 },
+      2020: { wood: 172000, lightSteel: 230200, steel: 230200, rc: 277000, src: 279200 },
+      2021: { wood: 172200, lightSteel: 227300, steel: 227300, rc: 288300, src: 338400 },
       2022: { wood: 176200, lightSteel: 241500, steel: 241500, rc: 277500, src: 434400 },
       2023: { wood: 204100, lightSteel: 366700, steel: 281100, rc: 366700, src: 314300 },
       2024: { wood: 204100, lightSteel: 366700, steel: 281100, rc: 366700, src: 314300 },
@@ -250,20 +309,18 @@ export class ValuationCalculatorService extends BaseRepository {
       const depreciation = basePrice * 0.9 * buildingAge * 0.031;
       return basePrice - depreciation;
     } else if (structure === '鉄骨') {
-      // 鉄骨の場合：40年で残存価値10%
-      // 減価率 = 0.9 / 40 = 0.0225
+      // 鉄骨の場合：スプレッドシートの計算式に合わせて減価率0.015を使用
       if (buildingAge >= 40) {
         return basePrice * 0.1;
       }
-      const depreciation = basePrice * 0.9 * buildingAge * 0.0225;
+      const depreciation = basePrice * 0.9 * buildingAge * 0.015;
       return basePrice - depreciation;
     } else if (structure === '軽量鉄骨') {
-      // 軽量鉄骨の場合：40年で残存価値10%
-      // 減価率 = 0.9 / 40 = 0.0225
+      // 軽量鉄骨の場合：スプレッドシートの計算式に合わせて減価率0.025を使用
       if (buildingAge >= 40) {
         return basePrice * 0.1;
       }
-      const depreciation = basePrice * 0.9 * buildingAge * 0.0225;
+      const depreciation = basePrice * 0.9 * buildingAge * 0.025;
       return basePrice - depreciation;
     }
 
