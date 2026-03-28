@@ -6236,7 +6236,7 @@ HP：https://ifoo-oita.com/
         </DialogTitle>
         <DialogContent>
           <CallRankingDisplay
-            allowedInitials={normalInitials}
+            allowedInitials={normalInitials.filter((i) => i !== 'K')}
           />
         </DialogContent>
         <DialogActions>
