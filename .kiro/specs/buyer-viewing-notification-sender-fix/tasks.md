@@ -13,7 +13,7 @@
   - 既存フィールド（`latest_viewing_date`、`viewing_result_follow_up` 等）が存在するセクションを確認し、同じセクションに追加する
   - _Requirements: 2.1, 2.2, 3.4_
 
-  - [ ]* 1.1 `BUYER_FIELD_SECTIONS` に `notification_sender` と `viewing_type` が含まれることを確認するユニットテストを追加する
+  - [-]* 1.1 `BUYER_FIELD_SECTIONS` に `notification_sender` と `viewing_type` が含まれることを確認するユニットテストを追加する
     - `BUYER_FIELD_SECTIONS` のいずれかのセクションに `key: 'notification_sender'` のフィールドが存在すること
     - `BUYER_FIELD_SECTIONS` のいずれかのセクションに `key: 'viewing_type'` のフィールドが存在すること
     - 既存フィールド（`latest_viewing_date` 等）が引き続き存在すること
@@ -46,17 +46,17 @@
     - `broker_inquiry = '業者問合せ'`、`notification_sender = null`、`latest_viewing_date = 明日` → ステータスが「内覧日前日」以外であることを確認（既存ロジックの保持）
     - _Requirements: 2.3, 3.1, 3.2, 3.3_
 
-  - [ ]* 2.2 Property 1 のプロパティベーステストを追加する
+  - [~]* 2.2 Property 1 のプロパティベーステストを追加する
     - **Property 1: 通知送信者入力済みの場合は内覧日前日カテゴリーから除外される**
     - **Validates: Requirements 2.3**
     - `fast-check` を使用し、非空の `notification_sender` と「業者問合せ」以外の `broker_inquiry` の任意の組み合わせで `status !== '内覧日前日'` を検証する（numRuns: 100）
 
-  - [ ]* 2.3 Property 2 のプロパティベーステストを追加する
+  - [~]* 2.3 Property 2 のプロパティベーステストを追加する
     - **Property 2: 通知送信者が空欄の場合は内覧日前日カテゴリーに表示され続ける**
     - **Validates: Requirements 3.1, 3.2**
     - `fast-check` を使用し、空欄の `notification_sender`（null/undefined/空文字）と「業者問合せ」以外の `broker_inquiry` の任意の組み合わせで `status === '内覧日前日'` を検証する（numRuns: 100）
 
-  - [ ]* 2.4 Property 3 のプロパティベーステストを追加する
+  - [~]* 2.4 Property 3 のプロパティベーステストを追加する
     - **Property 3: 業者問合せの場合は内覧日前日カテゴリーから除外され続ける**
     - **Validates: Requirements 3.3**
     - `fast-check` を使用し、任意の `notification_sender` と `broker_inquiry = '業者問合せ'` の組み合わせで `status !== '内覧日前日'` を検証する（numRuns: 100）

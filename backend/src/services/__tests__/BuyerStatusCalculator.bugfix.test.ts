@@ -18,7 +18,7 @@
  * Validates: Requirements 1.1, 1.2
  */
 
-import { describe, it, expect } from 'vitest';
+// jest では describe, it, expect はグローバルに利用可能
 import { calculateBuyerStatus, BuyerData } from '../BuyerStatusCalculator';
 
 // ============================================================
@@ -504,5 +504,147 @@ describe('バグ修正確認: notification_sender が入力済みの場合は「
 
     // Assert: broker_inquiry = '業者問合せ' の場合は「内覧日前日」にならないこと（既存ロジック保持）
     expect(result.status).not.toBe('内覧日前日');
+  });
+});
+
+// ============================================================
+// タスク2-2〜2-4: プロパティベーステスト
+// ============================================================
+
+import * as fc from 'fast-check';
+
+// ============================================================
+// テスト用ヘルパー: 明日の内覧日を持つ買主データを生成する
+// ============================================================
+
+/**
+ * 明日の内覧日を持つ最小限の買主データを生成する
+ * Priority 1〜2 の条件を満たさないよう設定
+ */
+function makeTomorrowViewingBuyer(overrides: Partial<BuyerData> = {}): BuyerData {
+  return {
+    ...minimalBuyer,
+    latest_viewing_date: tomorrow(),
+    ...overrides,
+  };
+}
+
+// ============================================================
+// Property 1: 通知送信者入力済みの場合は内覧日前日カテゴリーから除外される
+// Feature: buyer-viewing-notification-sender-fix, Property 1
+// Validates: Requirements 2.3
+// ============================================================
+
+describe('Property 1: 通知送信者入力済みの場合は内覧日前日カテゴリーから除外される', () => {
+  /**
+   * **Validates: Requirements 2.3**
+   *
+   * 非空の notification_sender と「業者問合せ」以外の broker_inquiry の
+   * 任意の組み合わせで status !== '内覧日前日' を検証する
+   */
+  it('非空の notification_sender と「業者問合せ」以外の broker_inquiry の任意の組み合わせで status !== "内覧日前日"', () => {
+    // 明日が木曜日の場合はスキップ（木曜日は2日後が対象のため）
+    const tomorrowDayOfWeek = dayOfWeekFromToday(1);
+    if (tomorrowDayOfWeek === '木曜日') {
+      console.log('明日は木曜日のため、このプロパティテストはスキップします');
+      return;
+    }
+
+    // Feature: buyer-viewing-notification-sender-fix, Property 1: 通知送信者入力済みの場合は内覧日前日カテゴリーから除外される
+    fc.assert(
+      fc.property(
+        // 非空の notification_sender（1文字以上の任意の文字列）
+        fc.string({ minLength: 1, maxLength: 50 }),
+        // 「業者問合せ」以外の broker_inquiry（null, '', undefined, '個人', 'SUUMO' など）
+        fc.constantFrom(null, '', '個人', 'SUUMO', '業者（両手）', '業者（片手）'),
+        (notificationSender, brokerInquiry) => {
+          const buyer = makeTomorrowViewingBuyer({
+            notification_sender: notificationSender,
+            broker_inquiry: brokerInquiry,
+          });
+          const result = calculateBuyerStatus(buyer);
+          // 通知送信者が入力済みの場合、「内覧日前日」にならないこと
+          return result.status !== '内覧日前日';
+        }
+      ),
+      { numRuns: 100 }
+    );
+  });
+});
+
+// ============================================================
+// Property 2: 通知送信者が空欄の場合は内覧日前日カテゴリーに表示され続ける
+// Feature: buyer-viewing-notification-sender-fix, Property 2
+// Validates: Requirements 3.1, 3.2
+// ============================================================
+
+describe('Property 2: 通知送信者が空欄の場合は内覧日前日カテゴリーに表示され続ける', () => {
+  /**
+   * **Validates: Requirements 3.1, 3.2**
+   *
+   * 空欄の notification_sender（null/undefined/空文字）と「業者問合せ」以外の broker_inquiry の
+   * 任意の組み合わせで、latest_viewing_date = 明日（木曜日以外）の場合に status === '内覧日前日' を検証する
+   */
+  it('空欄の notification_sender と「業者問合せ」以外の broker_inquiry で、明日（木曜日以外）の内覧日の場合 status === "内覧日前日"', () => {
+    // 明日が木曜日の場合はスキップ（木曜日は2日後が対象のため）
+    const tomorrowDayOfWeek = dayOfWeekFromToday(1);
+    if (tomorrowDayOfWeek === '木曜日') {
+      console.log('明日は木曜日のため、このプロパティテストはスキップします');
+      return;
+    }
+
+    // Feature: buyer-viewing-notification-sender-fix, Property 2: 通知送信者が空欄の場合は内覧日前日カテゴリーに表示され続ける
+    fc.assert(
+      fc.property(
+        // 空欄の notification_sender（null または空文字）
+        fc.constantFrom(null, ''),
+        // 「業者問合せ」以外の broker_inquiry
+        fc.constantFrom(null, '', '個人', 'SUUMO', '業者（両手）', '業者（片手）'),
+        (notificationSender, brokerInquiry) => {
+          const buyer = makeTomorrowViewingBuyer({
+            notification_sender: notificationSender,
+            broker_inquiry: brokerInquiry,
+          });
+          const result = calculateBuyerStatus(buyer);
+          // 通知送信者が空欄の場合、「内覧日前日」になること
+          return result.status === '内覧日前日';
+        }
+      ),
+      { numRuns: 100 }
+    );
+  });
+});
+
+// ============================================================
+// Property 3: 業者問合せの場合は内覧日前日カテゴリーから除外され続ける
+// Feature: buyer-viewing-notification-sender-fix, Property 3
+// Validates: Requirements 3.3
+// ============================================================
+
+describe('Property 3: 業者問合せの場合は内覧日前日カテゴリーから除外され続ける', () => {
+  /**
+   * **Validates: Requirements 3.3**
+   *
+   * 任意の notification_sender と broker_inquiry = '業者問合せ' の
+   * 組み合わせで status !== '内覧日前日' を検証する
+   */
+  it('任意の notification_sender と broker_inquiry = "業者問合せ" の組み合わせで status !== "内覧日前日"', () => {
+    // Feature: buyer-viewing-notification-sender-fix, Property 3: 業者問合せの場合は内覧日前日カテゴリーから除外され続ける
+    fc.assert(
+      fc.property(
+        // 任意の notification_sender（null, '', または任意の文字列）
+        fc.constantFrom(null, '', '山田', '鈴木', '田中'),
+        (notificationSender) => {
+          const buyer = makeTomorrowViewingBuyer({
+            notification_sender: notificationSender,
+            broker_inquiry: '業者問合せ',
+          });
+          const result = calculateBuyerStatus(buyer);
+          // 業者問合せの場合、「内覧日前日」にならないこと
+          return result.status !== '内覧日前日';
+        }
+      ),
+      { numRuns: 100 }
+    );
   });
 });
