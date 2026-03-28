@@ -194,6 +194,27 @@ export const InlineEditableField: React.FC<InlineEditableFieldProps> = memo(({
       }
     }
 
+    if (fieldType === 'time' && value) {
+      const strVal = String(value);
+      // 数値文字列（シリアル値）の場合: 0.416667 = 10:00
+      const num = parseFloat(strVal);
+      if (!isNaN(num) && num >= 0 && num < 1) {
+        const totalMinutes = Math.round(num * 24 * 60);
+        const h = Math.floor(totalMinutes / 60);
+        const m = totalMinutes % 60;
+        return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+      }
+      // "HH:mm" や "HH:mm:ss" 形式
+      if (/^\d{1,2}:\d{2}(:\d{2})?$/.test(strVal)) {
+        return strVal.substring(0, 5);
+      }
+      // "Sat Dec 30 1899 15:00:00 GMT+0900..." のような不正な日付文字列
+      const timeMatch = strVal.match(/(\d{1,2}):(\d{2}):\d{2}\s+GMT/);
+      if (timeMatch) {
+        return `${timeMatch[1].padStart(2, '0')}:${timeMatch[2]}`;
+      }
+    }
+
     return String(value);
   };
 
