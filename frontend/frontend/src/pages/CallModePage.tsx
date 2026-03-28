@@ -837,16 +837,31 @@ const CallModePage = () => {
    */
   const getValuationEmailTemplates = useCallback(() => {
     const INHERITANCE_KEYWORD = '相続';
-    const INHERITANCE_TEMPLATE_NAME = '査定額案内メール（相続）';
-    const NON_INHERITANCE_TEMPLATE_NAME = '査定額案内メール（相続以外）';
-
+    // スプシのテンプレート名に合わせて部分一致で判定（全角・半角括弧どちらにも対応）
     const isInheritance = seller?.valuationReason?.includes(INHERITANCE_KEYWORD) ?? false;
-    const targetName = isInheritance ? INHERITANCE_TEMPLATE_NAME : NON_INHERITANCE_TEMPLATE_NAME;
 
-    const filtered = sellerEmailTemplates.filter((t: any) => t.name === targetName);
+    // 「査定額案内メール」を含むテンプレートのみ対象
+    const valuationTemplates = sellerEmailTemplates.filter((t: any) =>
+      t.name?.includes('査定額案内メール')
+    );
 
-    // フォールバック: フィルタリング結果が0件の場合は全テンプレートを返す
-    return filtered.length > 0 ? filtered : sellerEmailTemplates;
+    if (valuationTemplates.length === 0) {
+      return sellerEmailTemplates;
+    }
+
+    if (isInheritance) {
+      // 「相続」を含み「相続以外」を含まないテンプレート
+      const filtered = valuationTemplates.filter((t: any) =>
+        t.name?.includes('相続') && !t.name?.includes('相続以外')
+      );
+      return filtered.length > 0 ? filtered : valuationTemplates;
+    } else {
+      // 「相続以外」を含むテンプレート
+      const filtered = valuationTemplates.filter((t: any) =>
+        t.name?.includes('相続以外')
+      );
+      return filtered.length > 0 ? filtered : valuationTemplates;
+    }
   }, [seller?.valuationReason, sellerEmailTemplates]);
 
   useEffect(() => {
