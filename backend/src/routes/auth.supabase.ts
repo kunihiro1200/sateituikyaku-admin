@@ -237,4 +237,33 @@ router.post('/refresh', async (req: Request, res: Response) => {
   }
 });
 
+/**
+ * ログインユーザーのイニシャルを取得（スプシのスタッフシートから）
+ */
+router.get('/my-initials', async (req: Request, res: Response) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.json({ initials: null });
+    }
+    const token = authHeader.substring(7);
+    const employee = await authService.validateSession(token);
+    const email = employee?.email;
+    if (!email) return res.json({ initials: null });
+
+    // DBのinitialsカラムを確認
+    const dbInitials = (employee as any)?.initials;
+    if (dbInitials) return res.json({ initials: dbInitials });
+
+    // スプシのスタッフシートからメールでイニシャルを取得
+    const { StaffManagementService } = await import('../services/StaffManagementService');
+    const staffService = new StaffManagementService();
+    const initials = await staffService.getInitialsByEmail(email);
+    res.json({ initials: initials || null });
+  } catch (error) {
+    console.error('Get my initials error:', error);
+    res.json({ initials: null });
+  }
+});
+
 export default router;
