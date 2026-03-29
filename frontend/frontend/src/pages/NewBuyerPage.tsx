@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Container,
@@ -126,6 +126,16 @@ export default function NewBuyerPage() {
   const [valuationRequired, setValuationRequired] = useState('');
   const [nextCallDate, setNextCallDate] = useState('');
 
+  // 売主コピー
+  const [sellerCopyInput, setSellerCopyInput] = useState('');
+  const [sellerCopyOptions, setSellerCopyOptions] = useState<Array<{sellerNumber: string; name: string; id: string}>>([]);
+  const [sellerCopyLoading, setSellerCopyLoading] = useState(false);
+
+  // 買主コピー
+  const [buyerCopyInput, setBuyerCopyInput] = useState('');
+  const [buyerCopyOptions, setBuyerCopyOptions] = useState<Array<{buyer_number: string; name: string}>>([]);
+  const [buyerCopyLoading, setBuyerCopyLoading] = useState(false);
+
   // チャット送信状態
   const [chatSending, setChatSending] = useState(false);
   const [chatSent, setChatSent] = useState(false);
@@ -165,6 +175,69 @@ export default function NewBuyerPage() {
       setPropertyInfo(null);
     } finally {
       setLoadingProperty(false);
+    }
+  };
+
+
+  // 売主コピー検索ハンドラ
+  const handleSellerCopySearch = async (query: string) => {
+    if (!query || query.length < 2) {
+      setSellerCopyOptions([]);
+      return;
+    }
+    setSellerCopyLoading(true);
+    try {
+      const response = await api.get(`/api/sellers/search?q=${encodeURIComponent(query)}`);
+      setSellerCopyOptions(response.data || []);
+    } catch (err) {
+      setSellerCopyOptions([]);
+    } finally {
+      setSellerCopyLoading(false);
+    }
+  };
+
+  const handleSellerCopySelect = async (option: {sellerNumber: string; name: string; id: string} | null) => {
+    if (!option) return;
+    try {
+      const response = await api.get(`/api/sellers/by-number/${option.sellerNumber}`);
+      const seller = response.data;
+      if (seller.name) setName(seller.name);
+      if (seller.phoneNumber) setPhoneNumber(seller.phoneNumber);
+      if (seller.email) setEmail(seller.email);
+      setInquirySource('売主');
+    } catch (err) {
+      setError('売主情報の取得に失敗しました');
+    }
+  };
+
+  // 買主コピー検索ハンドラ
+  const handleBuyerCopySearch = async (query: string) => {
+    if (!query || query.length < 2) {
+      setBuyerCopyOptions([]);
+      return;
+    }
+    setBuyerCopyLoading(true);
+    try {
+      const response = await api.get(`/api/buyers/search?q=${encodeURIComponent(query)}&limit=20`);
+      setBuyerCopyOptions(response.data || []);
+    } catch (err) {
+      setBuyerCopyOptions([]);
+    } finally {
+      setBuyerCopyLoading(false);
+    }
+  };
+
+  const handleBuyerCopySelect = async (option: {buyer_number: string; name: string} | null) => {
+    if (!option) return;
+    try {
+      const response = await api.get(`/api/buyers/${option.buyer_number}`);
+      const buyer = response.data;
+      if (buyer.name) setName(buyer.name);
+      if (buyer.phoneNumber || buyer.phone_number) setPhoneNumber(buyer.phoneNumber || buyer.phone_number);
+      if (buyer.email) setEmail(buyer.email);
+      setInquirySource('2件目以降');
+    } catch (err) {
+      setError('買主情報の取得に失敗しました');
     }
   };
 
@@ -609,6 +682,72 @@ export default function NewBuyerPage() {
                 {/* 基本情報 */}
                 <Grid item xs={12}>
                   <Typography variant="h6" gutterBottom>基本情報</Typography>
+                </Grid>
+
+                {/* 売主コピー */}
+                <Grid item xs={12}>
+                  <Autocomplete
+                    options={sellerCopyOptions}
+                    getOptionLabel={(option) => `${option.sellerNumber} - ${option.name}`}
+                    loading={sellerCopyLoading}
+                    inputValue={sellerCopyInput}
+                    onInputChange={(_event, value) => {
+                      setSellerCopyInput(value);
+                      handleSellerCopySearch(value);
+                    }}
+                    onChange={(_event, value) => handleSellerCopySelect(value)}
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        label="売主コピー（既存の売主番号を入力して情報をコピー）"
+                        placeholder="例: AA910"
+                        InputProps={{
+                          ...params.InputProps,
+                          endAdornment: (
+                            <>
+                              {sellerCopyLoading ? <CircularProgress color="inherit" size={20} /> : null}
+                              {params.InputProps.endAdornment}
+                            </>
+                          ),
+                        }}
+                      />
+                    )}
+                    noOptionsText="該当する売主が見つかりません"
+                    isOptionEqualToValue={(option, value) => option.sellerNumber === value.sellerNumber}
+                  />
+                </Grid>
+
+                {/* 買主コピー */}
+                <Grid item xs={12}>
+                  <Autocomplete
+                    options={buyerCopyOptions}
+                    getOptionLabel={(option) => `${option.buyer_number} - ${option.name}`}
+                    loading={buyerCopyLoading}
+                    inputValue={buyerCopyInput}
+                    onInputChange={(_event, value) => {
+                      setBuyerCopyInput(value);
+                      handleBuyerCopySearch(value);
+                    }}
+                    onChange={(_event, value) => handleBuyerCopySelect(value)}
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        label="買主コピー（既存の買主番号を入力して情報をコピー）"
+                        placeholder="例: 2051"
+                        InputProps={{
+                          ...params.InputProps,
+                          endAdornment: (
+                            <>
+                              {buyerCopyLoading ? <CircularProgress color="inherit" size={20} /> : null}
+                              {params.InputProps.endAdornment}
+                            </>
+                          ),
+                        }}
+                      />
+                    )}
+                    noOptionsText="該当する買主が見つかりません"
+                    isOptionEqualToValue={(option, value) => option.buyer_number === value.buyer_number}
+                  />
                 </Grid>
 
                 <Grid item xs={12} sm={6}>
