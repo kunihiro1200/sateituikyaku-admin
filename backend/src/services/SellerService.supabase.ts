@@ -481,13 +481,24 @@ export class SellerService extends BaseRepository {
       // visit_assignee にも同期（訪問統計・サイドバー表示で使用）
       updates.visit_assignee = data.assignedTo;
     }
+    // visitAssignee を直接指定した場合（訪問予約フォームから）
+    if ((data as any).visitAssignee !== undefined) {
+      updates.visit_assignee = (data as any).visitAssignee;
+    }
+    // visitDate/visitTime を直接指定した場合（訪問予約フォームから、タイムゾーン変換なし）
+    if ((data as any).visitDate !== undefined) {
+      updates.visit_date = (data as any).visitDate; // YYYY-MM-DD形式のまま保存
+    }
+    if ((data as any).visitTime !== undefined) {
+      updates.visit_time = (data as any).visitTime; // HH:mm:ss形式のまま保存
+    }
     if (data.nextCallDate !== undefined) {
       updates.next_call_date = data.nextCallDate;
     }
     if (data.appointmentDate !== undefined) {
       updates.appointment_date = data.appointmentDate;
-      // appointmentDateをvisit_dateとvisit_timeに分割して保存
-      if (data.appointmentDate) {
+      // appointmentDateをvisit_dateとvisit_timeに分割して保存（visitDate未指定の場合のみ）
+      if (data.appointmentDate && (data as any).visitDate === undefined) {
         const appointmentDateObj = new Date(data.appointmentDate);
         updates.visit_date = appointmentDateObj.toISOString().split('T')[0]; // YYYY-MM-DD
         const hours = appointmentDateObj.getHours().toString().padStart(2, '0');

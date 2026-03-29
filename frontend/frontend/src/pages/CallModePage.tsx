@@ -1942,14 +1942,21 @@ const CallModePage = () => {
       setSuccessMessage(null);
       setAppointmentSuccessMessage(null);
 
-      // datetime-localの値をISO形式に変換
-      const appointmentDateISO = editedAppointmentDate 
-        ? new Date(editedAppointmentDate).toISOString() 
-        : null;
+      // datetime-localの値からvisit_date（YYYY-MM-DD）とvisit_time（HH:mm:ss）を抽出
+      // タイムゾーン変換せずローカル時刻のまま使用
+      let visitDateStr: string | null = null;
+      let visitTimeStr: string | null = null;
+      if (editedAppointmentDate) {
+        // editedAppointmentDate は "YYYY-MM-DDTHH:mm" 形式
+        const [datePart, timePart] = editedAppointmentDate.split('T');
+        visitDateStr = datePart; // YYYY-MM-DD
+        visitTimeStr = timePart ? `${timePart}:00` : '00:00:00'; // HH:mm:ss
+      }
 
       console.log('Saving appointment:', {
-        appointmentDate: appointmentDateISO,
-        assignedTo: editedAssignedTo,
+        visitDate: visitDateStr,
+        visitTime: visitTimeStr,
+        visitAssignee: editedAssignedTo,
         visitValuationAcquirer: editedVisitValuationAcquirer,
         appointmentNotes: editedAppointmentNotes,
       });
@@ -1979,8 +1986,9 @@ const CallModePage = () => {
       }
 
       await api.put(`/api/sellers/${id}`, {
-        appointmentDate: appointmentDateISO,
-        assignedTo: editedAssignedTo || null,
+        visitDate: visitDateStr,
+        visitTime: visitTimeStr,
+        visitAssignee: editedAssignedTo || null,
         visitValuationAcquirer: acquirer || null,
         appointmentNotes: editedAppointmentNotes || null,
       });
@@ -4174,32 +4182,37 @@ HP：https://ifoo-oita.com/
                   onClick={() => {
                     if (editingAppointment) {
                       // キャンセル時は元の値に戻す
-                      // ローカル時刻でdatetime-local形式に変換
-                      const toLocalDateTimeStr = (dateStr: string) => {
-                        const d = new Date(dateStr);
+                      // キャンセル時: visitDateを優先、なければappointmentDateを使用
+                      let cancelDateLocal = '';
+                      if (seller?.visitDate) {
+                        const dateStr = typeof seller.visitDate === 'string'
+                          ? seller.visitDate.split('T')[0]
+                          : (seller.visitDate as any).toISOString().split('T')[0];
+                        const timeStr = seller.visitTime || '00:00';
+                        cancelDateLocal = `${dateStr}T${timeStr.substring(0, 5)}`;
+                      } else if (seller?.appointmentDate) {
+                        const d = new Date(seller.appointmentDate);
                         const pad = (n: number) => String(n).padStart(2, '0');
-                        return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-                      };
-                      const appointmentDateLocal = seller?.appointmentDate 
-                        ? toLocalDateTimeStr(seller.appointmentDate)
-                        : '';
-                      setEditedAppointmentDate(appointmentDateLocal);
-                      setEditedAssignedTo(seller?.assignedTo || '');
+                        cancelDateLocal = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+                      }
+                      setEditedAppointmentDate(cancelDateLocal);
+                      setEditedAssignedTo(seller?.visitAssignee || seller?.assignedTo || '');
                       setEditedVisitValuationAcquirer(seller?.visitValuationAcquirer || '');
                       setEditedAppointmentNotes(seller?.appointmentNotes || '');
                     } else {
                       // 編集モードに入る時に現在の値を設定
-                      // visitDateとvisitTimeがあればそれを使用、なければappointmentDateを使用
+                      // visitDateとvisitTimeがあればそれを使用（文字列のまま、タイムゾーン変換なし）
                       let appointmentDateLocal = '';
                       if (seller?.visitDate) {
-                        // visitDateとvisitTimeから日時を構築
-                        const visitDateObj = new Date(seller.visitDate);
-                        const dateStr = visitDateObj.toISOString().split('T')[0]; // YYYY-MM-DD
-                        const timeStr = seller.visitTime || '00:00:00';
+                        // visit_date は YYYY-MM-DD 形式の文字列
+                        const dateStr = typeof seller.visitDate === 'string'
+                          ? seller.visitDate.split('T')[0]  // Date型の場合も考慮
+                          : (seller.visitDate as any).toISOString().split('T')[0];
+                        const timeStr = seller.visitTime || '00:00';
                         const timeOnly = timeStr.substring(0, 5); // HH:mm
                         appointmentDateLocal = `${dateStr}T${timeOnly}`;
                       } else if (seller?.appointmentDate) {
-                        // ローカル時刻でdatetime-local形式に変換（toISOStringはUTCを返すため）
+                        // appointmentDateはUTCなのでローカル時刻に変換
                         const d = new Date(seller.appointmentDate);
                         const pad = (n: number) => String(n).padStart(2, '0');
                         appointmentDateLocal = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
