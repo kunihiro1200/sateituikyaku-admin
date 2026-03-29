@@ -236,18 +236,34 @@ router.get('/normal-initials', async (req: Request, res: Response) => {
  * メールアドレスからイニシャルを取得（スプシのスタッフシートから）
  * ログインユーザーのイニシャルを確実に取得するために使用
  */
-router.get('/initials-by-email', authenticate, async (req: Request, res: Response) => {
+router.get('/initials-by-email', async (req: Request, res: Response) => {
   try {
-    const email = req.employee?.email;
+    // 認証ヘッダーからemailを取得（authenticateミドルウェアなし）
+    const authHeader = req.headers.authorization;
+    let email = '';
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      try {
+        const token = authHeader.substring(7);
+        const { AuthService } = await import('../services/AuthService.supabase');
+        const authService = new AuthService();
+        const employee = await authService.validateSession(token);
+        email = employee?.email || '';
+      } catch { /* ignore */ }
+    }
     if (!email) return res.json({ initials: null });
 
     // DBのinitialsカラムを確認
-    const dbInitials = (req.employee as any)?.initials;
-    if (dbInitials) return res.json({ initials: dbInitials });
+    const { createClient } = await import('@supabase/supabase-js');
+    const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+    const { data: emp } = await supabase.from('employees').select('initials').ilike('email', email).single();
+    if (emp?.initials) {
+      console.log(`[initials-by-email] DB hit: email=${email} → initials=${emp.initials}`);
+      return res.json({ initials: emp.initials });
+    }
 
     // スプシのスタッフシートからメールでイニシャルを取得
     const initials = await staffManagementService.getInitialsByEmail(email);
-    console.log(`[initials-by-email] email=${email} → initials=${initials}`);
+    console.log(`[initials-by-email] Spreadsheet: email=${email} → initials=${initials}`);
     res.json({ initials: initials || null });
   } catch (error: any) {
     console.error('[initials-by-email] Failed:', error.message);
