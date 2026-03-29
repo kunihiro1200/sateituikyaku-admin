@@ -446,8 +446,8 @@ export default function BuyerDetailPage() {
       if (src.includes('メール') && (!res.data.inquiry_email_phone || !String(res.data.inquiry_email_phone).trim())) {
         initialMissing.push('inquiry_email_phone');
       }
-      // inquiry_email_phone に値がある場合は three_calls_confirmed も必須
-      if (src.includes('メール') && res.data.inquiry_email_phone && String(res.data.inquiry_email_phone).trim()) {
+      // inquiry_email_phone が「不通」の場合のみ three_calls_confirmed を必須
+      if (src.includes('メール') && String(res.data.inquiry_email_phone).trim() === '不通') {
         if (!res.data.three_calls_confirmed || !String(res.data.three_calls_confirmed).trim()) {
           initialMissing.push('three_calls_confirmed');
         }
