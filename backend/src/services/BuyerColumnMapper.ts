@@ -117,12 +117,25 @@ export class BuyerColumnMapper {
     }
 
     const type = this.typeConversions[column];
-    
+
+    // date型: タイムゾーンずれを防ぐため文字列パースで処理
+    // new Date("YYYY-MM-DD") はUTC 00:00として解釈されるため、UTC-X環境で1日ずれる
     if (type === 'date' && value) {
+      const str = String(value);
+      const match = str.match(/^(\d{4})-(\d{2})-(\d{2})/);
+      if (match) {
+        return `${match[1]}/${match[2]}/${match[3]}`;
+      }
+      // フォールバック: Dateオブジェクトで処理
       const date = new Date(value);
       if (!isNaN(date.getTime())) {
         return `${date.getFullYear()}/${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getDate()).padStart(2, '0')}`;
       }
+    }
+
+    // time型: "HH:mm"形式をそのまま返す
+    if (type === 'time' && value) {
+      return String(value);
     }
 
     // HTMLを含む可能性があるフィールドはプレーンテキストに変換

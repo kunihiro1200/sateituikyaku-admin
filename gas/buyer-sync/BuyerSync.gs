@@ -265,6 +265,9 @@ function syncBuyers() {
         continue;
       }
       record.last_synced_at = new Date().toISOString();
+      // db_updated_atを除外（バックエンドの db_updated_at > last_synced_at 保護ロジックを機能させるため）
+      // GASのupsertがdb_updated_atを上書きすると、次回以降の保護ロジックが機能しなくなる
+      delete record.db_updated_at;
       records.push(record);
     }
 
