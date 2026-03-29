@@ -4358,26 +4358,9 @@ HP：https://ifoo-oita.com/
                     {/* 訪問情報（2行グリッドレイアウト） */}
                     {(seller?.visitDate || seller?.visitAssignee || seller?.visitValuationAcquirer || seller?.visitAcquisitionDate) && (
                       <Box sx={{ mb: 2, p: 2, bgcolor: 'info.lighter', borderRadius: 1 }}>
-                        {/* 1行目: 訪問日 | 営担 */}
+                        {/* 1行目: 営担 */}
                         <Grid container spacing={2} sx={{ mb: 2 }}>
-                          <Grid item xs={6}>
-                            <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.75rem', mb: 0.5 }}>
-                              訪問日
-                            </Typography>
-                            <Typography variant="body1" sx={{ fontSize: '0.875rem', fontWeight: 'bold' }}>
-                              {seller?.visitDate ? (
-                                new Date(seller.visitDate).toLocaleString('ja-JP', {
-                                  year: 'numeric',
-                                  month: '2-digit',
-                                  day: '2-digit',
-                                  weekday: 'short',
-                                  hour: '2-digit',
-                                  minute: '2-digit'
-                                })
-                              ) : '未設定'}
-                            </Typography>
-                          </Grid>
-                          <Grid item xs={6}>
+                          <Grid item xs={12}>
                             <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.75rem', mb: 0.5 }}>
                               営担
                             </Typography>
