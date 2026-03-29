@@ -478,6 +478,8 @@ export class SellerService extends BaseRepository {
     }
     if (data.assignedTo !== undefined) {
       updates.assigned_to = data.assignedTo;
+      // visit_assignee にも同期（訪問統計・サイドバー表示で使用）
+      updates.visit_assignee = data.assignedTo;
     }
     if (data.nextCallDate !== undefined) {
       updates.next_call_date = data.nextCallDate;
