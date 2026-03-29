@@ -121,7 +121,6 @@ const ASSIGNEE_FIELDS: AssigneeFieldConfig[] = [
   { label: 'キャンセル案内担当',                     sellerKey: 'cancelNoticeAssignee',         fieldType: 'assignee' },
   { label: '除外前、長期客メール担当',                sellerKey: 'longTermEmailAssignee',        fieldType: 'assignee' },
   { label: '当社が電話したというリマインドメール担当', sellerKey: 'callReminderEmailAssignee',    fieldType: 'assignee' },
-  { label: '訪問事前通知メール担当',                  sellerKey: 'visitReminderAssignee',        fieldType: 'assignee' },
 ];
 
 export const AssigneeSection: React.FC<AssigneeSectionProps> = ({ seller, onUpdate, activities = [], onSmsTemplateUsed }) => {

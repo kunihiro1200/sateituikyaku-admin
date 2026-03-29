@@ -5658,13 +5658,9 @@ HP：https://ifoo-oita.com/
               <Typography variant="h6">
                 📝 コメント
               </Typography>
-              {/* 通知送信者（☆訪問前日通知メール送信済み OR visitReminderAssignee に値がある場合に表示） */}
+              {/* 通知送信者（visitReminderAssigneeに値がある場合のみ表示） */}
               {(() => {
-                const hasVisitReminderEmailHistory = activities.some(
-                  (act) => act.type === 'email' && act.content?.includes('☆訪問前日通知メール')
-                );
-                const showVisitReminderSender =
-                  hasVisitReminderEmailHistory || !!(seller?.visitReminderAssignee);
+                const showVisitReminderSender = !!(seller?.visitReminderAssignee);
                 if (!showVisitReminderSender) return null;
                 return (
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
