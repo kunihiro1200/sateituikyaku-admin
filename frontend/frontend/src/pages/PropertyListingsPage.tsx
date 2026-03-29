@@ -148,6 +148,7 @@ export default function PropertyListingsPage() {
 
       // キャッシュに保存（5分間有効）
       pageDataCache.set(CACHE_KEYS.PROPERTY_LISTINGS, allListingsData, 5 * 60 * 1000);
+      // allListingsとisLoadingAllを同時に更新することでRenderを1回にまとめる
       setAllListings(allListingsData);
       setIsLoadingAll(false);
 
@@ -169,8 +170,10 @@ export default function PropertyListingsPage() {
     return counts;
   }, [allListings]);
 
-  // フィルタリング
+  // フィルタリング（全件読み込み完了前は検索を適用しない）
   const filteredListings = useMemo(() => {
+    // 全件読み込み中は検索・フィルターを適用しない（途中データで検索させない）
+    if (isLoadingAll && searchQuery.trim()) return allListings;
     let listings = allListings;
 
     // 担当者フィルター（常に適用）
