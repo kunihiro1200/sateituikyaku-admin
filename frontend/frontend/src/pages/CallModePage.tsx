@@ -2046,8 +2046,12 @@ const CallModePage = () => {
           const propertyAddress = property?.address || seller?.address || '物件所在地未設定';
           const calTitle = encodeURIComponent(`【訪問】${propertyAddress}`);
           const calLocation = encodeURIComponent(propertyAddress);
-          const calDetails = encodeURIComponent(`売主名: ${seller?.name || ''}
-電話: ${seller?.phoneNumber || ''}`);
+          const calDetails = encodeURIComponent(
+            `売主名: ${seller?.name || ''}\n` +
+            `電話: ${seller?.phoneNumber || ''}\n` +
+            `\n通話モードページ:\n${window.location.href}` +
+            (seller?.comments ? `\n\nコメント:\n${seller.comments}` : '')
+          );
 
           // 営担のメールアドレスを取得
           const assignedToValue = editedAssignedTo || seller?.visitAssignee || seller?.assignedTo;
@@ -4421,6 +4425,7 @@ HP：https://ifoo-oita.com/
                                 `通話モードページ:\n${callModeUrl}\n` +
                                 `\n` +
                                 `訪問時注意点: ${seller.appointmentNotes || 'なし'}\n` +
+                                (seller.comments ? `\nコメント:\n${seller.comments}\n` : '') +
                                 `\n` +
                                 `コミュニケーション履歴（通話した内容）:\n${recentActivities || '履歴なし'}`
                               );
