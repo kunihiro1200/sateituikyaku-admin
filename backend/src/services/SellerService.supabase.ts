@@ -1579,7 +1579,7 @@ export class SellerService extends BaseRepository {
         // Comments field
         comments: seller.comments,
         // Visit appointment fields
-        visitDate: seller.visit_date ? new Date(seller.visit_date) : undefined,
+        visitDate: seller.visit_date || undefined, // 文字列のまま返す（YYYY-MM-DD形式、タイムゾーン変換なし）
         visitTime: seller.visit_time,
         visitAcquisitionDate: seller.visit_acquisition_date ? new Date(seller.visit_acquisition_date) : undefined,
         // イニシャルをフルネームに変換（フォールバック付き）
