@@ -80,6 +80,7 @@ export default function PropertyListingsPage() {
   const [selectedPropertyNumbers, setSelectedPropertyNumbers] = useState<Set<string>>(new Set());
   const [lastFilter, setLastFilter] = useState<'sidebar' | 'search' | null>(null);
   const [isLoadingAll, setIsLoadingAll] = useState(true);
+  const isFetchingRef = useRef(false); // 二重フェッチ防止フラグ
 
   // 状態を復元
   useEffect(() => {
@@ -98,6 +99,9 @@ export default function PropertyListingsPage() {
   }, []);
 
   const fetchAllData = async (forceRefresh = false) => {
+    // 二重フェッチ防止（キャッシュヒット時は除く）
+    if (isFetchingRef.current && !forceRefresh) return;
+
     // キャッシュが有効な場合はAPIを叩かない
     if (!forceRefresh) {
       const cached = pageDataCache.get<PropertyListing[]>(CACHE_KEYS.PROPERTY_LISTINGS);
@@ -109,8 +113,11 @@ export default function PropertyListingsPage() {
       }
     }
 
+    isFetchingRef.current = true;
+
     try {
       setLoading(true);
+      setIsLoadingAll(true); // フェッチ開始時に必ずtrueにリセット
 
       const allListingsData: PropertyListing[] = [];
       let offset = 0;
@@ -157,6 +164,7 @@ export default function PropertyListingsPage() {
       console.error('Failed to fetch data:', error);
     } finally {
       setLoading(false);
+      isFetchingRef.current = false;
     }
   };
 
@@ -173,7 +181,7 @@ export default function PropertyListingsPage() {
   // フィルタリング（全件読み込み完了前は検索を適用しない）
   const filteredListings = useMemo(() => {
     // 全件読み込み中は検索・フィルターを適用しない（途中データで検索させない）
-    if (isLoadingAll && searchQuery.trim()) return allListings;
+    if (isLoadingAll && searchQuery.trim()) return [];
     let listings = allListings;
 
     // 担当者フィルター（常に適用）
@@ -381,12 +389,19 @@ export default function PropertyListingsPage() {
             <TextField
               fullWidth
               size="small"
-              placeholder={isLoadingAll ? "読み込み中... 完了後に検索できます" : "Search 物件（物件番号、所在地、売主、買主）"}
+              placeholder="Search 物件（物件番号、所在地、売主、買主）"
               value={searchQuery}
-              disabled={isLoadingAll}
               onChange={(e) => { setSearchQuery(e.target.value); setSidebarStatus(null); setLastFilter('search'); setPage(0); }}
               InputProps={{
-                startAdornment: <InputAdornment position="start"><SearchIcon /></InputAdornment>,
+                startAdornment: (
+                  <InputAdornment position="start">
+                    {isLoadingAll && searchQuery.trim() ? (
+                      <Typography variant="caption" color="text.secondary" sx={{ fontSize: '11px', whiteSpace: 'nowrap' }}>検索中...</Typography>
+                    ) : (
+                      <SearchIcon />
+                    )}
+                  </InputAdornment>
+                ),
                 endAdornment: searchQuery ? (
                   <InputAdornment position="end">
                     <IconButton size="small" onClick={() => { setSearchQuery(''); setPage(0); }}>
@@ -467,7 +482,9 @@ export default function PropertyListingsPage() {
                   </TableRow>
                 ) : paginatedListings.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={12} align="center">物件データが見つかりませんでした</TableCell>
+                    <TableCell colSpan={12} align="center">
+                      {isLoadingAll && searchQuery.trim() ? '検索中...' : '物件データが見つかりませんでした'}
+                    </TableCell>
                   </TableRow>
                 ) : (
                   paginatedListings.map((listing) => {
@@ -551,7 +568,9 @@ export default function PropertyListingsPage() {
               {loading ? (
                 <Typography align="center" sx={{ py: 4, fontSize: '14px' }}>読み込み中...</Typography>
               ) : paginatedListings.length === 0 ? (
-                <Typography align="center" sx={{ py: 4, fontSize: '14px' }}>物件データが見つかりませんでした</Typography>
+                <Typography align="center" sx={{ py: 4, fontSize: '14px' }}>
+                  {isLoadingAll && searchQuery.trim() ? '検索中...' : '物件データが見つかりませんでした'}
+                </Typography>
               ) : (
                 paginatedListings.map((listing) => {
                   const propertyStatus = calculatePropertyStatus(listing as any);
