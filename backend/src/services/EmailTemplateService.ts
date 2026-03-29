@@ -110,6 +110,35 @@ export class EmailTemplateService {
       }
 
       console.log(`[EmailTemplateService] 売主テンプレート ${templates.length}件取得`);
+
+      // 指定順序でソート
+      const SELLER_TEMPLATE_ORDER = [
+        '査定額案内メール',
+        '不通で電話時間確認',
+        'キャンセル案内のみ',
+        '住替え先',
+        '相続（３日後',
+        '離婚',
+        'ローン厳しい',
+        '除外前',
+        'リマインド',
+        'WEB打合せ',
+        '訪問前日',
+        '訪問査定後御礼',
+        '相続登記',
+        '他決になった理由',
+        '他決→追客（3ヶ月',
+        '他決→追客（6ヶ月',
+      ];
+
+      templates.sort((a, b) => {
+        const aIdx = SELLER_TEMPLATE_ORDER.findIndex(keyword => a.name.includes(keyword));
+        const bIdx = SELLER_TEMPLATE_ORDER.findIndex(keyword => b.name.includes(keyword));
+        const aOrder = aIdx === -1 ? 999 : aIdx;
+        const bOrder = bIdx === -1 ? 999 : bIdx;
+        return aOrder - bOrder;
+      });
+
       return templates;
     } catch (error: any) {
       console.error('[EmailTemplateService] 売主テンプレート取得失敗:', error.message);
