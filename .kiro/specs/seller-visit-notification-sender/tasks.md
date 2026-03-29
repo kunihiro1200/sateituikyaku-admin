@@ -54,7 +54,7 @@ Gmail送信完了時の自動保存は `EMAIL_TEMPLATE_ASSIGNEE_MAP['visit_remin
   - `getDiagnostics` でエラーがないことを確認する
   - 疑問点があればユーザーに確認する
 
-- [-] 6. git push でデプロイ
+- [x] 6. git push でデプロイ
   - `git add .` → `git commit -m "feat: add visit reminder notification sender field to CallModePage"` → `git push origin main`
   - Vercel の自動デプロイで `sateituikyaku-admin-frontend` と `baikyaku-property-site3` の両方がデプロイされることを確認
   - _要件: 1.1〜1.5, 2.1〜2.7, 3.1〜3.5, 4.1〜4.4, 5.1〜5.4, 6.1〜6.7_

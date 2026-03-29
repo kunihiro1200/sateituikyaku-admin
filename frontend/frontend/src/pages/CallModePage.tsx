@@ -2662,7 +2662,7 @@ HP：https://ifoo-oita.com/
             attachmentsCount: (requestPayload as any).attachments?.length ?? 0,
           });
 
-          await api.post(`/api/sellers/${id}/send-template-email`, requestPayload);
+          const emailResponse = await api.post(`/api/sellers/${id}/send-template-email`, requestPayload);
 
           // Gmail送信完了後すぐにUIを更新（ユーザーへのフィードバックを早める）
           setSnackbarMessage(hasImages ? `${template.label}を画像付きで送信しました` : `${template.label}を送信しました`);
@@ -2672,6 +2672,11 @@ HP：https://ifoo-oita.com/
           setSelectedImages([]);
 
           // 活動履歴の保存・担当フィールド更新・再取得はバックグラウンドで実行（UIをブロックしない）
+          // バックエンドがassigneeを自動セット済みなので、レスポンスでUIを更新
+          const { senderInitials: autoInitial, assigneeKey: autoAssigneeKey } = emailResponse.data || {};
+          if (autoAssigneeKey && autoInitial && seller) {
+            setSeller((prev) => prev ? { ...prev, [autoAssigneeKey as keyof Seller]: autoInitial } : prev);
+          }
           (async () => {
             try {
               // 活動履歴を記録
@@ -2681,30 +2686,32 @@ HP：https://ifoo-oita.com/
                 result: 'sent',
               });
 
-              // 担当フィールドにログインユーザーのイニシャルを自動セット
-              const assigneeKey = EMAIL_TEMPLATE_ASSIGNEE_MAP[template.id];
-              let myInitial = '';
-              const myEmployee = activeEmployees.find(e => e.email === employee?.email);
-              if (myEmployee?.initials) {
-                myInitial = myEmployee.initials;
-              } else {
-                try {
-                  const freshEmployees = await import('../services/employeeService').then(m => m.getActiveEmployees());
-                  const freshMe = freshEmployees.find(e => e.email === employee?.email);
-                  myInitial = freshMe?.initials || employee?.initials || '';
-                } catch {
-                  myInitial = employee?.initials || '';
-                }
-              }
-
-              // 活動履歴保存 + 担当フィールド更新を並列実行
+              // 活動履歴保存後の並列処理
               const promises: Promise<any>[] = [];
-              if (assigneeKey && myInitial && seller?.id) {
-                promises.push(
-                  api.put(`/api/sellers/${seller.id}`, { [assigneeKey]: myInitial }).then(() => {
-                    setSeller((prev) => prev ? { ...prev, [assigneeKey as keyof Seller]: myInitial } : prev);
-                  })
-                );
+              // バックエンドで既にassigneeをセット済みのため、フロントエンドでの重複PUTは不要
+              // （フォールバック: バックエンドがinitialsを持っていない場合のみ実行）
+              if (!autoInitial) {
+                const assigneeKey = EMAIL_TEMPLATE_ASSIGNEE_MAP[template.id];
+                let myInitial = '';
+                const myEmployee = activeEmployees.find(e => e.email === employee?.email);
+                if (myEmployee?.initials) {
+                  myInitial = myEmployee.initials;
+                } else {
+                  try {
+                    const freshEmployees = await import('../services/employeeService').then(m => m.getActiveEmployees());
+                    const freshMe = freshEmployees.find(e => e.email === employee?.email);
+                    myInitial = freshMe?.initials || employee?.initials || '';
+                  } catch {
+                    myInitial = employee?.initials || '';
+                  }
+                }
+                if (assigneeKey && myInitial && seller?.id) {
+                  promises.push(
+                    api.put(`/api/sellers/${seller.id}`, { [assigneeKey]: myInitial }).then(() => {
+                      setSeller((prev) => prev ? { ...prev, [assigneeKey as keyof Seller]: myInitial } : prev);
+                    })
+                  );
+                }
               }
               // 活動履歴を再取得
               promises.push(

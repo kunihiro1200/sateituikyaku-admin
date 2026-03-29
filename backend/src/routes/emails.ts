@@ -320,11 +320,36 @@ router.post(
         });
       }
 
+      // templateIdに対応するassigneeフィールドを自動セット（バックエンドで確実に処理）
+      const EMAIL_TEMPLATE_ASSIGNEE_MAP: Record<string, string> = {
+        visit_reminder: 'visitReminderAssignee',
+        remind: 'callReminderEmailAssignee',
+        exclusion_long_term: 'longTermEmailAssignee',
+        ieul_call_cancel: 'cancelNoticeAssignee',
+        ieul_cancel_only: 'cancelNoticeAssignee',
+        reason_relocation_3day: 'valuationReasonEmailAssignee',
+        reason_inheritance_3day: 'valuationReasonEmailAssignee',
+        reason_divorce_3day: 'valuationReasonEmailAssignee',
+        reason_loan_3day: 'valuationReasonEmailAssignee',
+      };
+      const assigneeKey = EMAIL_TEMPLATE_ASSIGNEE_MAP[templateId];
+      const senderInitials = (req.employee as any)?.initials || '';
+      if (assigneeKey && senderInitials && sellerId) {
+        try {
+          await sellerService.updateSeller(sellerId, { [assigneeKey]: senderInitials }, req.employee!.id);
+          console.log(`📧 [send-template-email] Auto-set ${assigneeKey}=${senderInitials} for seller ${sellerId}`);
+        } catch (assigneeErr) {
+          console.warn(`📧 [send-template-email] Failed to auto-set ${assigneeKey}:`, assigneeErr);
+        }
+      }
+
       res.json({
         messageId: result.messageId,
         sentAt: result.sentAt,
         success: true,
         templateId,
+        senderInitials,
+        assigneeKey: assigneeKey || null,
       });
     } catch (error) {
       console.error('Send template email error:', error);
