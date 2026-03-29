@@ -141,4 +141,29 @@ router.get('/me', authenticate, (req: Request, res: Response) => {
   res.json(req.employee);
 });
 
+/**
+ * ログインユーザーのイニシャルを取得（スプシのスタッフシートから）
+ */
+router.get('/my-initials', authenticate, async (req: Request, res: Response) => {
+  try {
+    const email = req.employee?.email;
+    if (!email) {
+      return res.json({ initials: null });
+    }
+    // まずDBのinitialsカラムを確認
+    const dbInitials = (req.employee as any)?.initials;
+    if (dbInitials) {
+      return res.json({ initials: dbInitials });
+    }
+    // DBにない場合はスプシのスタッフシートから取得
+    const { StaffManagementService } = await import('../services/StaffManagementService');
+    const staffService = new StaffManagementService();
+    const initials = await staffService.getInitialsByEmail(email);
+    res.json({ initials: initials || null });
+  } catch (error) {
+    console.error('Get my initials error:', error);
+    res.json({ initials: null });
+  }
+});
+
 export default router;

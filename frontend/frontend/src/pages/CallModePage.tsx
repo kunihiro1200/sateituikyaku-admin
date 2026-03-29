@@ -577,6 +577,7 @@ const CallModePage = () => {
   const [savingCommunication, setSavingCommunication] = useState(false);
   const [rankingDialogOpen, setRankingDialogOpen] = useState(false); // 1番電話月間ランキングダイアログ
   const [normalInitials, setNormalInitials] = useState<string[]>([]); // スプシ「通常=TRUE」のイニシャル一覧
+  const [myInitials, setMyInitials] = useState<string>(''); // ログインユーザーのイニシャル（スプシから取得）
 
   // 遷移警告ダイアログ用の状態
   const [navigationWarningDialog, setNavigationWarningDialog] = useState<{
@@ -1365,6 +1366,13 @@ const CallModePage = () => {
           setNormalInitials(initials);
         }).catch((err) => {
           console.error('Failed to load normal initials:', err);
+        }),
+        // ログインユーザーのイニシャルをスプシから取得
+        api.get('/api/auth/my-initials').then((res) => {
+          if (res.data?.initials) setMyInitials(res.data.initials);
+        }).catch(() => { /* ignore */ }),
+        // ダミー（元のcatch節を維持するため）
+        Promise.resolve().then(() => {
         }),
         api.get(`/properties/seller/${id}`).catch(() => null).then((propertyFallbackResponse) => {
           // sellerData.property がない場合のみフォールバックを使用
@@ -2635,24 +2643,11 @@ HP：https://ifoo-oita.com/
           }
 
           // 送信者イニシャルをフロントエンドで解決してバックエンドに渡す
-          let resolvedSenderInitials = '';
-          {
-            // 1. activeEmployeesからメールでマッチング
-            const myEmp = activeEmployees.find(e => e.email === employee?.email);
-            if (myEmp?.initials) {
-              resolvedSenderInitials = myEmp.initials;
-            } else if (employee?.initials) {
-              // 2. authStoreのemployee.initials
-              resolvedSenderInitials = employee.initials;
-            } else {
-              // 3. normalInitialsの中からactiveEmployeesで照合
-              try {
-                const freshEmps = await import('../services/employeeService').then(m => m.getActiveEmployees());
-                const freshMe = freshEmps.find(e => e.email === employee?.email);
-                if (freshMe?.initials) resolvedSenderInitials = freshMe.initials;
-              } catch { /* ignore */ }
-            }
-          }
+          // myInitials（ページロード時に/api/auth/my-initialsから取得済み）を最優先で使用
+          const resolvedSenderInitials = myInitials
+            || activeEmployees.find(e => e.email === employee?.email)?.initials
+            || (employee as any)?.initials
+            || '';
 
           const requestPayload = {
             templateId: template.id,
