@@ -84,7 +84,6 @@ HP：https://ifoo-oita.com/
     label: '査定額案内メール(相続）',
     subject: '<<物件所在地>>の机上査定のご案内（株式会社いふう）',
     order: 1,
-
     content: `<<名前(漢字のみ）>> 様
 
 この度は査定依頼を頂きまして誠に有難うございます。
@@ -457,7 +456,7 @@ HP：https://ifoo-oita.com/
     id: 'other_decision_3month',
     label: '他決→追客（3ヶ月目）',
     subject: 'その後のご状況確認',
-    order: 22,
+    order: 15,
     content: `<<名前(漢字のみ）>>様
 
 お世話になっております。株式会社いふうです。
@@ -482,7 +481,7 @@ HP：https://ifoo-oita.com/
     id: 'other_decision_6month',
     label: '他決→追客（6ヶ月目）',
     subject: 'その後のご状況確認',
-    order: 23,
+    order: 16,
     content: `<<名前(漢字のみ）>>様
 
 お世話になっております。株式会社いふうです。
@@ -507,7 +506,7 @@ HP：https://ifoo-oita.com/
     id: 'reason_relocation_3day',
     label: '（査定理由別）住替え先（３日後メール）',
     subject: '住み替え先のご相談',
-    order: 12,
+    order: 4,
     content: `<<名前(漢字のみ）>>様
 
 お世話になっております。株式会社いふうです。
@@ -532,7 +531,7 @@ HP：https://ifoo-oita.com/
     id: 'reason_inheritance_3day',
     label: '（査定理由別）相続（３日後メール）',
     subject: '相続に関するご相談',
-    order: 13,
+    order: 5,
     content: `<<名前(漢字のみ）>>様
 
 お世話になっております。株式会社いふうです。
@@ -557,7 +556,7 @@ HP：https://ifoo-oita.com/
     id: 'reason_divorce_3day',
     label: '（査定理由別）離婚（３日後メール）',
     subject: '不動産売却のご相談',
-    order: 14,
+    order: 6,
     content: `<<名前(漢字のみ）>>様
 
 お世話になっております。株式会社いふうです。
@@ -580,7 +579,7 @@ HP：https://ifoo-oita.com/
     id: 'reason_loan_3day',
     label: '（査定理由別）ローン厳しい（３日後メール）',
     subject: '住宅ローンのご相談',
-    order: 15,
+    order: 7,
     content: `<<名前(漢字のみ）>>様
 
 お世話になっております。株式会社いふうです。
@@ -605,7 +604,7 @@ HP：https://ifoo-oita.com/
     id: 'exclusion_long_term',
     label: '除外前、長期客（お客様いるメール）',
     subject: '購入希望のお客様がいらっしゃいます',
-    order: 16,
+    order: 8,
     content: `<<名前(漢字のみ）>>様
 
 お世話になっております。株式会社いふうです。
@@ -628,7 +627,7 @@ HP：https://ifoo-oita.com/
     id: 'remind',
     label: 'リマインド',
     subject: 'お電話させていただきました',
-    order: 17,
+    order: 9,
     content: `<<名前(漢字のみ）>>様
 
 お世話になっております。株式会社いふうです。
@@ -653,7 +652,7 @@ HP：https://ifoo-oita.com/
     id: 'inheritance_registration',
     label: '相続登記（きざし様へご案内）',
     subject: '相続登記のご案内',
-    order: 20,
+    order: 13,
     content: `<<名前(漢字のみ）>>様
 
 お世話になっております。株式会社いふうです。
@@ -678,7 +677,7 @@ HP：https://ifoo-oita.com/
     id: 'other_decision_reason_inquiry',
     label: '他決になった理由お伺いメール',
     subject: 'ご意見をお聞かせください',
-    order: 21,
+    order: 14,
     content: `<<名前(漢字のみ）>>様
 
 お世話になっております。株式会社いふうです。
