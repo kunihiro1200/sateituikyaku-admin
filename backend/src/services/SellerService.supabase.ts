@@ -493,10 +493,8 @@ export class SellerService extends BaseRepository {
         const hours = appointmentDateObj.getHours().toString().padStart(2, '0');
         const minutes = appointmentDateObj.getMinutes().toString().padStart(2, '0');
         updates.visit_time = `${hours}:${minutes}:00`; // HH:mm:ss
-      } else {
-        updates.visit_date = null;
-        updates.visit_time = null;
       }
+      // appointmentDateがnullの場合はvisit_date/visit_timeを変更しない（意図しない消去を防ぐ）
     }
     if (data.appointmentNotes !== undefined) {
       updates.appointment_notes = data.appointmentNotes;

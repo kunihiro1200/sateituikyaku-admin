@@ -4158,8 +4158,14 @@ HP：https://ifoo-oita.com/
                   onClick={() => {
                     if (editingAppointment) {
                       // キャンセル時は元の値に戻す
+                      // ローカル時刻でdatetime-local形式に変換
+                      const toLocalDateTimeStr = (dateStr: string) => {
+                        const d = new Date(dateStr);
+                        const pad = (n: number) => String(n).padStart(2, '0');
+                        return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+                      };
                       const appointmentDateLocal = seller?.appointmentDate 
-                        ? new Date(seller.appointmentDate).toISOString().slice(0, 16)
+                        ? toLocalDateTimeStr(seller.appointmentDate)
                         : '';
                       setEditedAppointmentDate(appointmentDateLocal);
                       setEditedAssignedTo(seller?.assignedTo || '');
@@ -4177,7 +4183,10 @@ HP：https://ifoo-oita.com/
                         const timeOnly = timeStr.substring(0, 5); // HH:mm
                         appointmentDateLocal = `${dateStr}T${timeOnly}`;
                       } else if (seller?.appointmentDate) {
-                        appointmentDateLocal = new Date(seller.appointmentDate).toISOString().slice(0, 16);
+                        // ローカル時刻でdatetime-local形式に変換（toISOStringはUTCを返すため）
+                        const d = new Date(seller.appointmentDate);
+                        const pad = (n: number) => String(n).padStart(2, '0');
+                        appointmentDateLocal = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
                       }
                       setEditedAppointmentDate(appointmentDateLocal);
                       setEditedAssignedTo(seller?.visitAssignee || seller?.assignedTo || '');
