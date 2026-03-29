@@ -1989,10 +1989,22 @@ const CallModePage = () => {
         }
       }
 
-      // 訪問取得日の自動設定: 未設定の場合のみ今日の日付をセット
-      const visitAcquisitionDateToSave = seller?.visitAcquisitionDate
-        ? undefined  // 既存値がある場合は送信しない（上書きしない）
-        : new Date().toLocaleDateString('ja-JP', { timeZone: 'Asia/Tokyo', year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\//g, '-');  // 未設定の場合は今日の日付（JST）
+      // 訪問取得日の自動設定
+      // - visitDate が null（訪問日を削除）の場合: visitAcquisitionDate もクリア
+      // - visitDate があり visitAcquisitionDate が未設定の場合: 今日の日付を自動設定
+      // - visitDate があり visitAcquisitionDate が設定済みの場合: 上書きしない
+      let visitAcquisitionDateToSave: string | null | undefined = undefined;
+      if (!visitDateStr) {
+        // 訪問日が空欄 → 訪問取得日もクリア
+        visitAcquisitionDateToSave = null;
+      } else if (!seller?.visitAcquisitionDate) {
+        // 訪問日あり、訪問取得日が未設定 → 今日の日付（JST）を自動設定
+        const now = new Date();
+        const jstOffset = 9 * 60; // JST = UTC+9
+        const jstDate = new Date(now.getTime() + (jstOffset - now.getTimezoneOffset()) * 60000);
+        visitAcquisitionDateToSave = jstDate.toISOString().slice(0, 10); // YYYY-MM-DD
+      }
+      // それ以外（既存値あり）は undefined のまま → 送信しない
 
       await api.put(`/api/sellers/${id}`, {
         visitDate: visitDateStr,
