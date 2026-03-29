@@ -1773,6 +1773,7 @@ export class SellerService extends BaseRepository {
       .select(`
         id,
         visit_assignee,
+        assigned_to,
         visit_date
       `)
       .gte('visit_date', startDateStr)
@@ -1801,6 +1802,10 @@ export class SellerService extends BaseRepository {
       if (emp.name) {
         employeeMap.set(emp.name, { id: emp.id, name: emp.name, initials: emp.initials || emp.name });
       }
+      // メールアドレスでもマッピング（assigned_to はメールアドレスの場合がある）
+      if (emp.email) {
+        employeeMap.set(emp.email, { id: emp.id, name: emp.name || emp.email, initials: emp.initials || emp.name || emp.email });
+      }
     }
 
     // 営担ごとの訪問数を集計
@@ -1808,8 +1813,8 @@ export class SellerService extends BaseRepository {
     let totalVisits = 0;
 
     for (const seller of sellers || []) {
-      // visit_assigneeを使用
-      const assignee = (seller as any).visit_assignee;
+      // visit_assignee を優先、なければ assigned_to を使用
+      const assignee = (seller as any).visit_assignee || (seller as any).assigned_to;
       
       if (assignee) {
         // イニシャルまたは名前から従業員情報を取得
