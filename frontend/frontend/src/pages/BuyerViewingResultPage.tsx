@@ -696,41 +696,43 @@ export default function BuyerViewingResultPage() {
                 内覧日前日一覧
               </Button>
             </Box>
-            {/* 通知送信者ボタン群（内覧前日ボタンの下に表示） */}
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-              <Typography variant="caption" color="text.secondary" sx={{ whiteSpace: 'nowrap', flexShrink: 0 }}>
-                通知送信者:
-              </Typography>
-              {normalInitials.map((initial) => {
-                const isSelected = buyer.notification_sender === initial;
-                return (
-                  <Button
-                    key={initial}
-                    size="small"
-                    variant={isSelected ? 'contained' : 'outlined'}
-                    color="primary"
-                    onClick={async () => {
-                      const newValue = isSelected ? '' : initial;
-                      await handleInlineFieldSave('notification_sender', newValue);
-                    }}
-                    sx={{ minWidth: 36, px: 1, py: 0.3, fontSize: '0.75rem', fontWeight: isSelected ? 'bold' : 'normal', borderRadius: 1 }}
-                  >
-                    {initial}
-                  </Button>
-                );
-              })}
-              {/* 現在の値がリストにない場合も表示 */}
-              {buyer.notification_sender && !normalInitials.includes(buyer.notification_sender) && (
+          </Box>
+        )}
+        {/* 通知送信者ボタン群（内覧前日かどうかに関わらず常に表示） */}
+        {(isViewingPreDay(buyer) || buyer.notification_sender) && (
+          <Box sx={{ ml: isViewingPreDay(buyer) ? 0 : 'auto', display: 'flex', alignItems: 'center', gap: 0.5 }}>
+            <Typography variant="caption" color="text.secondary" sx={{ whiteSpace: 'nowrap', flexShrink: 0 }}>
+              通知送信者:
+            </Typography>
+            {normalInitials.map((initial) => {
+              const isSelected = buyer.notification_sender === initial;
+              return (
                 <Button
+                  key={initial}
                   size="small"
-                  variant="contained"
+                  variant={isSelected ? 'contained' : 'outlined'}
                   color="primary"
-                  sx={{ minWidth: 36, px: 1, py: 0.3, fontSize: '0.75rem', fontWeight: 'bold', borderRadius: 1 }}
+                  onClick={async () => {
+                    const newValue = isSelected ? '' : initial;
+                    await handleInlineFieldSave('notification_sender', newValue);
+                  }}
+                  sx={{ minWidth: 36, px: 1, py: 0.3, fontSize: '0.75rem', fontWeight: isSelected ? 'bold' : 'normal', borderRadius: 1 }}
                 >
-                  {buyer.notification_sender}
+                  {initial}
                 </Button>
-              )}
-            </Box>
+              );
+            })}
+            {/* 現在の値がリストにない場合も表示 */}
+            {buyer.notification_sender && !normalInitials.includes(buyer.notification_sender) && (
+              <Button
+                size="small"
+                variant="contained"
+                color="primary"
+                sx={{ minWidth: 36, px: 1, py: 0.3, fontSize: '0.75rem', fontWeight: 'bold', borderRadius: 1 }}
+              >
+                {buyer.notification_sender}
+              </Button>
+            )}
           </Box>
         )}
       </Box>
