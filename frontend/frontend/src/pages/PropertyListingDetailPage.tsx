@@ -59,6 +59,8 @@ import DistributionAreaField from '../components/DistributionAreaField';
 import EditableUrlField from '../components/EditableUrlField';
 import PropertySidebarStatus from '../components/PropertySidebarStatus';
 import { getDisplayStatus } from '../utils/atbbStatusDisplayMapper';
+import PurchaseStatusBadge from '../components/PurchaseStatusBadge';
+import { getPurchaseStatusText, hasBuyerPurchaseStatus } from '../utils/purchaseStatusUtils';
 
 interface PropertyListing {
   id: number;
@@ -161,6 +163,7 @@ interface Buyer {
   email?: string;
   reception_date?: string;
   latest_viewing_date?: string;
+  latest_status?: string;
 }
 
 interface WorkTaskData {
@@ -934,6 +937,13 @@ export default function PropertyListingDetailPage() {
                   {copiedPropertyNumber ? <CheckIcon fontSize="small" /> : <ContentCopyIcon fontSize="small" />}
                 </IconButton>
               </Tooltip>
+              {/* 買付状況バッジ */}
+              <PurchaseStatusBadge
+                statusText={getPurchaseStatusText(
+                  buyers.find(b => hasBuyerPurchaseStatus(b.latest_status))?.latest_status,
+                  data.offer_status
+                )}
+              />
               {/* 公開URLボタン */}
               <Button
                 variant="outlined"

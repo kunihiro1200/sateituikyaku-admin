@@ -21,6 +21,8 @@ import {
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
+import PurchaseStatusBadge from './PurchaseStatusBadge';
+import { getPurchaseStatusText } from '../utils/purchaseStatusUtils';
 
 interface PropertyFullDetails {
   id: number;
@@ -194,6 +196,10 @@ export default function PropertyInfoCard({
         bgcolor: '#f1f8f1',
       }}
     >
+      {/* 買付状況バッジ - 最上部に表示 */}
+      <PurchaseStatusBadge
+        statusText={getPurchaseStatusText(buyer?.latest_status, null)}
+      />
       {/* Header - 外部リンクアイコンと閉じるボタンのみ */}
       <Box sx={{ position: 'absolute', top: 8, right: 8, display: 'flex', gap: 0.5 }}>
         <IconButton size="small" onClick={handleNavigateToProperty} color="success">

@@ -21,6 +21,8 @@ import {
 } from '@mui/material';
 import { ArrowBack as ArrowBackIcon } from '@mui/icons-material';
 import api from '../services/api';
+import PurchaseStatusBadge from '../components/PurchaseStatusBadge';
+import { getPurchaseStatusText } from '../utils/purchaseStatusUtils';
 import { INQUIRY_SOURCE_OPTIONS } from '../utils/buyerInquirySourceOptions';
 import { LATEST_STATUS_OPTIONS } from '../utils/buyerLatestStatusOptions';
 import {
@@ -60,6 +62,7 @@ interface PropertyInfo {
   special_notes?: string;
   memo?: string;
   broker_response?: string | number;
+  offer_status?: string; // 買付フィールド
 }
 
 export default function NewBuyerPage() {
@@ -342,6 +345,10 @@ export default function NewBuyerPage() {
         {/* 左側: 物件情報 */}
         <Grid item xs={12} md={5}>
           <Paper sx={{ p: 3, position: 'sticky', top: 16 }}>
+            {/* 買付状況バッジ - 物件情報エリアの最上部に表示 */}
+            <PurchaseStatusBadge
+              statusText={getPurchaseStatusText(latestStatus, propertyInfo?.offer_status)}
+            />
             <Typography variant="h6" gutterBottom>物件情報</Typography>
             
             <TextField
