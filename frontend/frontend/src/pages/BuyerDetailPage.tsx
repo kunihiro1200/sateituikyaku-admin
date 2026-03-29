@@ -271,8 +271,8 @@ export default function BuyerDetailPage() {
       if (!buyer.inquiry_email_phone || !String(buyer.inquiry_email_phone).trim()) {
         missingKeys.push('inquiry_email_phone');
       }
-      // inquiry_email_phone に値がある場合は three_calls_confirmed も必須
-      if (buyer.inquiry_email_phone && String(buyer.inquiry_email_phone).trim()) {
+      // inquiry_email_phone が「不通」の場合のみ three_calls_confirmed を必須
+      if (String(buyer.inquiry_email_phone).trim() === '不通') {
         if (!buyer.three_calls_confirmed || !String(buyer.three_calls_confirmed).trim()) {
           missingKeys.push('three_calls_confirmed');
         }
