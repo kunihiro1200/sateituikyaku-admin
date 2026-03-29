@@ -2661,18 +2661,24 @@ HP：https://ifoo-oita.com/
           }
 
           // 送信者イニシャルをフロントエンドで解決してバックエンドに渡す
-          // BuyerViewingResultPageと同じ方法: employee?.initial || employee?.name
-          let resolvedSenderInitials = myInitials
-            || (employee as any)?.initial
-            || activeEmployees.find(e => e.email === employee?.email)?.initials
-            || (employee as any)?.initials
-            || '';
-          // フォールバック: SMSと同じ方法（active-initials + getActiveEmployees）
+          // myInitialsが設定済みならそれを使用、なければその場で取得
+          let resolvedSenderInitials = myInitials || '';
+          if (!resolvedSenderInitials) {
+            // その場で/api/employees/initials-by-emailを呼んで取得
+            try {
+              const initialsRes = await api.get('/api/employees/initials-by-email');
+              if (initialsRes.data?.initials) {
+                resolvedSenderInitials = initialsRes.data.initials;
+                setMyInitials(resolvedSenderInitials); // 次回のために保存
+              }
+            } catch { /* ignore */ }
+          }
+          // さらにフォールバック: SMSと同じ方法
           if (!resolvedSenderInitials && employee?.email) {
             try {
               const freshEmployees = await import('../services/employeeService').then(m => m.getActiveEmployees());
               const freshMe = freshEmployees.find(e => e.email === employee?.email);
-              resolvedSenderInitials = freshMe?.initials || '';
+              resolvedSenderInitials = freshMe?.initials || (employee as any)?.initials || '';
             } catch { /* ignore */ }
           }
 
