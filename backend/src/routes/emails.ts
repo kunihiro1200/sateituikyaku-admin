@@ -333,8 +333,12 @@ router.post(
         reason_loan_3day: 'valuationReasonEmailAssignee',
       };
       const assigneeKey = EMAIL_TEMPLATE_ASSIGNEE_MAP[templateId];
-      // req.employee.initialsがnullの場合、employeeUtilsからメールでイニシャルを取得
-      let senderInitials = (req.employee as any)?.initials || '';
+      // フロントエンドから送信者イニシャルを受け取る（最優先）
+      let senderInitials = (req.body.senderInitials || '').trim();
+      console.log(`📧 [send-template-email] senderInitials from request: "${senderInitials}", employee.initials: "${(req.employee as any)?.initials}"`);
+      // フォールバック1: req.employee.initials
+      if (!senderInitials) senderInitials = (req.employee as any)?.initials || '';
+      // フォールバック2: employeeUtils
       if (!senderInitials && req.employee?.email) {
         try {
           const { EmployeeUtils } = await import('../utils/employeeUtils');
@@ -342,19 +346,19 @@ router.post(
           const activeEmps = await empUtils.getActiveEmployeesWithEmail();
           const matched = activeEmps.find(e => e.email?.toLowerCase() === req.employee!.email?.toLowerCase());
           if (matched?.initials) senderInitials = matched.initials;
-          console.log(`📧 [send-template-email] Resolved initials via employeeUtils: ${senderInitials} for email: ${req.employee.email}`);
+          console.log(`📧 [send-template-email] Resolved initials via employeeUtils: ${senderInitials}`);
         } catch (empErr) {
           console.warn('📧 [send-template-email] Failed to resolve initials via employeeUtils:', empErr);
         }
       }
-      // さらにフォールバック: StaffManagementServiceのスプシデータからメールでイニシャルを取得
+      // フォールバック3: StaffManagementService（スプシから取得）
       if (!senderInitials && req.employee?.email) {
         try {
           const { StaffManagementService } = await import('../services/StaffManagementService');
           const staffService = new StaffManagementService();
           const resolved = await staffService.getInitialsByEmail(req.employee.email);
           if (resolved) senderInitials = resolved;
-          console.log(`📧 [send-template-email] Resolved initials via StaffManagementService.getInitialsByEmail: ${senderInitials} for email: ${req.employee.email}`);
+          console.log(`📧 [send-template-email] Resolved initials via StaffManagementService.getInitialsByEmail: ${senderInitials}`);
         } catch (staffErr) {
           console.warn('📧 [send-template-email] Failed to resolve initials via StaffManagementService:', staffErr);
         }

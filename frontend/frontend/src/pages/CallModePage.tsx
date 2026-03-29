@@ -2634,6 +2634,26 @@ HP：https://ifoo-oita.com/
             }
           }
 
+          // 送信者イニシャルをフロントエンドで解決してバックエンドに渡す
+          let resolvedSenderInitials = '';
+          {
+            // 1. activeEmployeesからメールでマッチング
+            const myEmp = activeEmployees.find(e => e.email === employee?.email);
+            if (myEmp?.initials) {
+              resolvedSenderInitials = myEmp.initials;
+            } else if (employee?.initials) {
+              // 2. authStoreのemployee.initials
+              resolvedSenderInitials = employee.initials;
+            } else {
+              // 3. normalInitialsの中からactiveEmployeesで照合
+              try {
+                const freshEmps = await import('../services/employeeService').then(m => m.getActiveEmployees());
+                const freshMe = freshEmps.find(e => e.email === employee?.email);
+                if (freshMe?.initials) resolvedSenderInitials = freshMe.initials;
+              } catch { /* ignore */ }
+            }
+          }
+
           const requestPayload = {
             templateId: template.id,
             to: capturedEmailRecipient,
@@ -2641,6 +2661,7 @@ HP：https://ifoo-oita.com/
             content: capturedEmailBody,
             htmlBody: capturedEmailBody, // 常にHTMLとして渡す（<br>がそのまま表示される問題を修正）
             from: capturedSenderAddress,
+            senderInitials: resolvedSenderInitials, // 送信者イニシャル（バックエンドで自動セット用）
             // 画像が選択されている場合のみ attachments を含める
             ...(attachmentImages.length > 0
               ? { attachments: attachmentImages }
