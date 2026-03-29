@@ -2904,24 +2904,26 @@ HP：https://ifoo-oita.com/
         // SMS送信後、対応する担当フィールドにログインユーザーのイニシャルを自動セット
         try {
           const assigneeKey = SMS_TEMPLATE_ASSIGNEE_MAP[template.id];
-          // activeEmployeesからログインユーザーのメールでイニシャルを照合（最優先）
-          // activeEmployeesが空の場合は/api/employees/active-initialsから取得
+          // 最優先: /api/employees/initials-by-emailでログインユーザーのイニシャルを確実に取得
+          // （activeEmployeesはスプシの「通常=TRUE」スタッフのみのため、全アカウントが含まれるとは限らない）
           let myInitial = '';
-          const myEmployee = activeEmployees.find(e => e.email === employee?.email);
-          if (myEmployee?.initials) {
-            myInitial = myEmployee.initials;
-          } else {
-            // フォールバック: active-initialsエンドポイントから取得
-            try {
-              const initialsRes = await api.get('/api/employees/active-initials');
-              const initialsData = initialsRes.data;
-              // active-initialsはイニシャル文字列の配列を返す
-              // ログインユーザーのイニシャルをemployeeServiceから再取得して照合
-              const freshEmployees = await import('../services/employeeService').then(m => m.getActiveEmployees());
-              const freshMe = freshEmployees.find(e => e.email === employee?.email);
-              myInitial = freshMe?.initials || employee?.initials || '';
-            } catch {
-              myInitial = employee?.initials || '';
+          try {
+            const initialsRes = await api.get('/api/employees/initials-by-email');
+            if (initialsRes.data?.initials) {
+              myInitial = initialsRes.data.initials;
+            }
+          } catch { /* ignore */ }
+          // フォールバック: activeEmployeesからメールで照合
+          if (!myInitial) {
+            const myEmployee = activeEmployees.find(e => e.email === employee?.email);
+            if (myEmployee?.initials) {
+              myInitial = myEmployee.initials;
+            } else {
+              try {
+                const freshEmployees = await import('../services/employeeService').then(m => m.getActiveEmployees());
+                const freshMe = freshEmployees.find(e => e.email === employee?.email);
+                myInitial = freshMe?.initials || '';
+              } catch { /* ignore */ }
             }
           }
           if (assigneeKey && myInitial && seller?.id) {
