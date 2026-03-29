@@ -272,13 +272,27 @@ export default function BuyerViewingResultPage() {
     try {
       console.log(`[BuyerViewingResultPage] Saving field: ${fieldName}, value:`, newValue);
       
-      // latest_statusの場合のみsync: trueでスプレッドシートに即時同期する
-      // それ以外のフィールドはsync: falseで高速化（自動同期サービスに任せる）
-      const isLatestStatus = fieldName === 'latest_status';
+      // 内覧関連フィールドとlatest_statusはsync: trueでスプレッドシートに即時同期する
+      const SYNC_FIELDS = [
+        'latest_status',
+        'latest_viewing_date',
+        'viewing_time',
+        'follow_up_assignee',
+        'viewing_unconfirmed',
+        'viewing_result_follow_up',
+        'pre_viewing_notes',
+        'viewing_notes',
+        'pre_viewing_hearing',
+        'seller_viewing_contact',
+        'buyer_viewing_contact',
+        'notification_sender',
+        'inquiry_hearing',
+      ];
+      const shouldSync = SYNC_FIELDS.includes(fieldName);
       const result = await buyerApi.update(
         buyer_number!,
         { [fieldName]: newValue },
-        { sync: isLatestStatus, force: isLatestStatus }
+        { sync: shouldSync, force: shouldSync }
       );
       
       console.log(`[BuyerViewingResultPage] Save result for ${fieldName}:`, result.buyer[fieldName]);
