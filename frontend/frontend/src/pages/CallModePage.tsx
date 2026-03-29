@@ -2779,7 +2779,7 @@ HP：https://ifoo-oita.com/
           // SMSと全く同じロジックを使用（SMSは動作確認済み）
           {
             const assigneeKeyForDirect = EMAIL_TEMPLATE_ASSIGNEE_MAP[template.id];
-            console.log('📧 [visitReminder] assigneeKeyForDirect:', assigneeKeyForDirect, 'seller?.id:', seller?.id);
+            console.log('📧 [visitReminder] template.id:', template.id, 'template.label:', template.label, 'assigneeKeyForDirect:', assigneeKeyForDirect, 'seller?.id:', seller?.id);
             if (assigneeKeyForDirect && seller?.id) {
               let directInitial = '';
               // SMS と同じ方法でイニシャルを取得
