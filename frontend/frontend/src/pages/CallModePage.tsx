@@ -2778,7 +2778,12 @@ HP：https://ifoo-oita.com/
           // autoInitialの有無に関わらず常に実行（確実に保存するため）
           // SMSと全く同じロジックを使用（SMSは動作確認済み）
           {
-            const assigneeKeyForDirect = EMAIL_TEMPLATE_ASSIGNEE_MAP[template.id];
+            // template.idはスプシ由来の場合'seller sheet XX'形式になるため
+            // EMAIL_TEMPLATE_ASSIGNEE_MAPのキーにマッチしない場合はlabelで判定
+            let assigneeKeyForDirect = EMAIL_TEMPLATE_ASSIGNEE_MAP[template.id] as string | undefined;
+            if (!assigneeKeyForDirect && template.label === '☆訪問前日通知メール') {
+              assigneeKeyForDirect = 'visitReminderAssignee';
+            }
             console.log('📧 [visitReminder] template.id:', template.id, 'template.label:', template.label, 'assigneeKeyForDirect:', assigneeKeyForDirect, 'seller?.id:', seller?.id);
             if (assigneeKeyForDirect && seller?.id) {
               let directInitial = '';
@@ -2826,7 +2831,8 @@ HP：https://ifoo-oita.com/
               // バックエンドで既にassigneeをセット済みのため、フロントエンドでの重複PUTは不要
               // （フォールバック: バックエンドがinitialsを持っていない場合のみ実行）
               if (!autoInitial) {
-                const assigneeKey = EMAIL_TEMPLATE_ASSIGNEE_MAP[template.id];
+                const assigneeKey = (EMAIL_TEMPLATE_ASSIGNEE_MAP[template.id] as string | undefined)
+                  || (template.label === '☆訪問前日通知メール' ? 'visitReminderAssignee' : undefined);
                 let myInitial = '';
                 // 最優先: /api/employees/initials-by-emailで確実に取得
                 try {
