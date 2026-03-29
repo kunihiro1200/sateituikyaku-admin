@@ -233,6 +233,29 @@ router.get('/normal-initials', async (req: Request, res: Response) => {
 });
 
 /**
+ * メールアドレスからイニシャルを取得（スプシのスタッフシートから）
+ * ログインユーザーのイニシャルを確実に取得するために使用
+ */
+router.get('/initials-by-email', authenticate, async (req: Request, res: Response) => {
+  try {
+    const email = req.employee?.email;
+    if (!email) return res.json({ initials: null });
+
+    // DBのinitialsカラムを確認
+    const dbInitials = (req.employee as any)?.initials;
+    if (dbInitials) return res.json({ initials: dbInitials });
+
+    // スプシのスタッフシートからメールでイニシャルを取得
+    const initials = await staffManagementService.getInitialsByEmail(email);
+    console.log(`[initials-by-email] email=${email} → initials=${initials}`);
+    res.json({ initials: initials || null });
+  } catch (error: any) {
+    console.error('[initials-by-email] Failed:', error.message);
+    res.json({ initials: null });
+  }
+});
+
+/**
  * 事務ありスタッフのイニシャル一覧を取得（報告担当選択用）
  * スタッフ管理スプレッドシートの「事務あり」=TRUEのスタッフを返す
  */

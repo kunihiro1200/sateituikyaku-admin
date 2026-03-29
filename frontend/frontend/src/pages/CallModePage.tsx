@@ -1368,8 +1368,8 @@ const CallModePage = () => {
         }).catch((err) => {
           console.error('Failed to load normal initials:', err);
         }),
-        // ログインユーザーのイニシャルをスプシから取得
-        api.get('/api/auth/my-initials').then((res) => {
+        // ログインユーザーのイニシャルをスプシから取得（確実なエンドポイント）
+        api.get('/api/employees/initials-by-email').then((res) => {
           if (res.data?.initials) setMyInitials(res.data.initials);
         }).catch(() => { /* ignore */ }),
         // ダミー（元のcatch節を維持するため）
