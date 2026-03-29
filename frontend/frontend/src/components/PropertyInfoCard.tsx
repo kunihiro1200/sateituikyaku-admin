@@ -124,7 +124,7 @@ export default function PropertyInfoCard({
 
   const handleNavigateToProperty = () => {
     if (property) {
-      navigate(`/property-listings/${property.property_number}`);
+      window.open(`/property-listings/${property.property_number}`, '_blank');
     }
   };
 

@@ -62,6 +62,10 @@ export class CalendarService extends BaseRepository {
           dateTime: eventData.endTime.toISOString(),
           timeZone: 'Asia/Tokyo',
         },
+        // スタッフをゲストとして招待（会社アカウントのカレンダーに作成し、スタッフに共有）
+        attendees: [
+          { email: employeeEmail },
+        ],
         reminders: {
           useDefault: false,
           overrides: [
@@ -71,10 +75,10 @@ export class CalendarService extends BaseRepository {
         },
       };
 
-      // スタッフのメールアドレスをcalendarIdとして使用
+      // 会社アカウント自身のカレンダー（primary）に作成し、スタッフをゲスト招待
       console.log('[CalendarService] Creating Google Calendar event for employee (using company account: tenant@ifoo-oita.com)');
       console.log('[CalendarService] Employee ID:', employeeId);
-      console.log('[CalendarService] Target calendar (email):', employeeEmail);
+      console.log('[CalendarService] Inviting employee as attendee:', employeeEmail);
       console.log('[CalendarService] Event details:', {
         summary: event.summary,
         location: event.location,
@@ -83,7 +87,8 @@ export class CalendarService extends BaseRepository {
       });
       
       const response = await calendar.events.insert({
-        calendarId: employeeEmail,
+        calendarId: 'primary',
+        sendUpdates: 'all', // ゲストに招待メールを送信
         requestBody: event,
       });
 
