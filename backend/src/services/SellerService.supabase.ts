@@ -1584,7 +1584,7 @@ export class SellerService extends BaseRepository {
         // Visit appointment fields
         visitDate: seller.visit_date || undefined, // 文字列のまま返す（YYYY-MM-DD形式、タイムゾーン変換なし）
         visitTime: seller.visit_time,
-        visitAcquisitionDate: seller.visit_acquisition_date ? new Date(seller.visit_acquisition_date) : undefined,
+        visitAcquisitionDate: seller.visit_acquisition_date || undefined, // 文字列のまま返す（YYYY-MM-DD形式、タイムゾーン変換なし）
         // イニシャルをフルネームに変換（フォールバック付き）
         visitAssignee: visitAssigneeFullName || seller.visit_assignee || undefined,
         visitAssigneeInitials: seller.visit_assignee || undefined, // 元のイニシャルを保持
