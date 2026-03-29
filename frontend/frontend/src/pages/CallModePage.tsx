@@ -2651,11 +2651,19 @@ HP：https://ifoo-oita.com/
           }
 
           // 送信者イニシャルをフロントエンドで解決してバックエンドに渡す
-          // myInitials（ページロード時に/api/auth/my-initialsから取得済み）を最優先で使用
-          const resolvedSenderInitials = myInitials
+          // SMSと同じフォールバックロジックを使用
+          let resolvedSenderInitials = myInitials
             || activeEmployees.find(e => e.email === employee?.email)?.initials
             || (employee as any)?.initials
             || '';
+          // フォールバック: SMSと同じ方法（active-initials + getActiveEmployees）
+          if (!resolvedSenderInitials && employee?.email) {
+            try {
+              const freshEmployees = await import('../services/employeeService').then(m => m.getActiveEmployees());
+              const freshMe = freshEmployees.find(e => e.email === employee?.email);
+              resolvedSenderInitials = freshMe?.initials || '';
+            } catch { /* ignore */ }
+          }
 
           const requestPayload = {
             templateId: template.id,
