@@ -4399,7 +4399,7 @@ HP：https://ifoo-oita.com/
                             </Typography>
                             <Typography variant="body2" sx={{ fontSize: '0.875rem' }}>
                               {seller?.visitAcquisitionDate ? (
-                                new Date(seller.visitAcquisitionDate).toLocaleDateString('ja-JP', {
+                                new Date(seller.visitAcquisitionDate + 'T00:00:00+09:00').toLocaleDateString('ja-JP', {
                                   year: 'numeric',
                                   month: '2-digit',
                                   day: '2-digit'
