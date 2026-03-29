@@ -2014,6 +2014,8 @@ const CallModePage = () => {
         appointmentNotes: editedAppointmentNotes || null,
         // visitDateが空の場合はappointmentDateもクリア（表示フォールバックを防ぐ）
         ...(!visitDateStr && { appointmentDate: null }),
+        // visitAssigneeが空の場合はassignedToもクリア（表示フォールバックを防ぐ）
+        ...(!editedAssignedTo && { assignedTo: null }),
         ...(visitAcquisitionDateToSave !== undefined && { visitAcquisitionDate: visitAcquisitionDateToSave }),
       });
 
@@ -4558,7 +4560,8 @@ HP：https://ifoo-oita.com/
                           setEditedAppointmentDate(newDate);
                           
                           // 訪問査定日時が入力された場合、現在のログインユーザーを訪問査定取得者に自動設定
-                          if (newDate && employee?.email) {
+                          // ただし、訪問査定取得者が既に設定済みの場合は上書きしない
+                          if (newDate && employee?.email && !editedVisitValuationAcquirer) {
                             try {
                               // 現在のログインユーザーのメールアドレスからスタッフを検索
                               const currentStaff = employees.find(emp => emp.email === employee.email);
