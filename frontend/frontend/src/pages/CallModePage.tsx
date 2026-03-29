@@ -2781,8 +2781,19 @@ HP：https://ifoo-oita.com/
             // template.idはスプシ由来の場合'seller sheet XX'形式になるため
             // EMAIL_TEMPLATE_ASSIGNEE_MAPのキーにマッチしない場合はlabelで判定
             let assigneeKeyForDirect = EMAIL_TEMPLATE_ASSIGNEE_MAP[template.id] as string | undefined;
-            if (!assigneeKeyForDirect && template.label === '☆訪問前日通知メール') {
-              assigneeKeyForDirect = 'visitReminderAssignee';
+            if (!assigneeKeyForDirect) {
+              // ラベルによるフォールバック判定（スプシ由来テンプレート対応）
+              if (template.label === '☆訪問前日通知メール' || template.label.includes('訪問前日')) {
+                assigneeKeyForDirect = 'visitReminderAssignee';
+              } else if (template.label === 'リマインド' || template.label.includes('リマインド')) {
+                assigneeKeyForDirect = 'callReminderEmailAssignee';
+              } else if (template.label.includes('キャンセル')) {
+                assigneeKeyForDirect = 'cancelNoticeAssignee';
+              } else if (template.label.includes('査定額案内') || template.label.includes('査定理由')) {
+                assigneeKeyForDirect = 'valuationReasonEmailAssignee';
+              } else if (template.label.includes('長期客') || template.label.includes('除外前')) {
+                assigneeKeyForDirect = 'longTermEmailAssignee';
+              }
             }
             console.log('📧 [visitReminder] template.id:', template.id, 'template.label:', template.label, 'assigneeKeyForDirect:', assigneeKeyForDirect, 'seller?.id:', seller?.id);
             if (assigneeKeyForDirect && seller?.id) {
@@ -2831,8 +2842,20 @@ HP：https://ifoo-oita.com/
               // バックエンドで既にassigneeをセット済みのため、フロントエンドでの重複PUTは不要
               // （フォールバック: バックエンドがinitialsを持っていない場合のみ実行）
               if (!autoInitial) {
-                const assigneeKey = (EMAIL_TEMPLATE_ASSIGNEE_MAP[template.id] as string | undefined)
-                  || (template.label === '☆訪問前日通知メール' ? 'visitReminderAssignee' : undefined);
+                let assigneeKey = EMAIL_TEMPLATE_ASSIGNEE_MAP[template.id] as string | undefined;
+                if (!assigneeKey) {
+                  if (template.label === '☆訪問前日通知メール' || template.label.includes('訪問前日')) {
+                    assigneeKey = 'visitReminderAssignee';
+                  } else if (template.label === 'リマインド' || template.label.includes('リマインド')) {
+                    assigneeKey = 'callReminderEmailAssignee';
+                  } else if (template.label.includes('キャンセル')) {
+                    assigneeKey = 'cancelNoticeAssignee';
+                  } else if (template.label.includes('査定額案内') || template.label.includes('査定理由')) {
+                    assigneeKey = 'valuationReasonEmailAssignee';
+                  } else if (template.label.includes('長期客') || template.label.includes('除外前')) {
+                    assigneeKey = 'longTermEmailAssignee';
+                  }
+                }
                 let myInitial = '';
                 // 最優先: /api/employees/initials-by-emailで確実に取得
                 try {
