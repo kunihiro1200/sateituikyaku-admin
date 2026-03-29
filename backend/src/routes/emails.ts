@@ -347,9 +347,22 @@ router.post(
           console.warn('📧 [send-template-email] Failed to resolve initials via employeeUtils:', empErr);
         }
       }
+      // さらにフォールバック: StaffManagementServiceのスプシデータからメールでイニシャルを取得
+      if (!senderInitials && req.employee?.email) {
+        try {
+          const { StaffManagementService } = await import('../services/StaffManagementService');
+          const staffService = new StaffManagementService();
+          const staffData = await (staffService as any).fetchStaffData();
+          const matchedStaff = staffData.find((s: any) => s.email?.toLowerCase() === req.employee!.email?.toLowerCase());
+          if (matchedStaff?.initials) senderInitials = matchedStaff.initials;
+          console.log(`📧 [send-template-email] Resolved initials via StaffManagementService: ${senderInitials} for email: ${req.employee.email}`);
+        } catch (staffErr) {
+          console.warn('📧 [send-template-email] Failed to resolve initials via StaffManagementService:', staffErr);
+        }
+      }
       if (assigneeKey && senderInitials && sellerId) {
         try {
-          await sellerService.updateSeller(sellerId, { [assigneeKey]: senderInitials }, req.employee!.id);
+          await sellerService.updateSeller(sellerId, { [assigneeKey]: senderInitials } as any);
           console.log(`📧 [send-template-email] Auto-set ${assigneeKey}=${senderInitials} for seller ${sellerId}`);
         } catch (assigneeErr) {
           console.warn(`📧 [send-template-email] Failed to auto-set ${assigneeKey}:`, assigneeErr);
