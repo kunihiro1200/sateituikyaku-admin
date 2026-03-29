@@ -331,31 +331,36 @@ export default function BuyerViewingResultPage() {
   const handleCalendarButtonClick = () => {
     if (!buyer) return;
 
-    // バリデーション実行
-    const validationResult = ValidationService.validateRequiredFields(
-      buyer,
-      linkedProperties
-    );
-
-    // バリデーション失敗時
-    if (!validationResult.isValid) {
-      const errorMessage = ValidationService.getValidationErrorMessage(
-        validationResult.errors
-      );
-      setSnackbar({
-        open: true,
-        message: errorMessage,
-        severity: 'warning',
-      });
-      return;
-    }
-
     // 物件情報を取得
     const property = linkedProperties && linkedProperties.length > 0 ? linkedProperties[0] : null;
 
-    // タイトルと説明の初期値を生成
-    const defaultTitle = `${buyer.viewing_type || buyer.viewing_type_general || '内覧'} ${property?.address || ''} ${buyer.name || buyer.buyer_number}`.trim();
-    const defaultDescription =
+    // 内覧日時を組み立て
+    const rawDate = buyer.latest_viewing_date || '';
+    const rawTime = buyer.viewing_time || '14:00';
+    const numParts = rawDate.match(/\d+/g);
+
+    let startDateStr = '';
+    let endDateStr = '';
+
+    if (numParts && numParts.length >= 3) {
+      const year = numParts[0].padStart(4, '0');
+      const month = numParts[1].padStart(2, '0');
+      const day = numParts[2].padStart(2, '0');
+
+      let hours = 14, minutes = 0;
+      if (rawTime.includes(':')) {
+        [hours, minutes] = rawTime.split(':').map(Number);
+      }
+
+      const pad = (n: number) => String(n).padStart(2, '0');
+      startDateStr = `${year}${month}${day}T${pad(hours)}${pad(minutes)}00`;
+      const endHours = hours + 1;
+      endDateStr = `${year}${month}${day}T${pad(endHours)}${pad(minutes)}00`;
+    }
+
+    // タイトルと説明を生成
+    const title = `${buyer.viewing_type || buyer.viewing_type_general || '内覧'} ${property?.address || ''} ${buyer.name || buyer.buyer_number}`.trim();
+    const description =
       `物件住所: ${property?.address || 'なし'}\n` +
       `GoogleMap: ${property?.google_map_url || 'なし'}\n` +
       `\n` +
@@ -363,17 +368,18 @@ export default function BuyerViewingResultPage() {
       `電話番号: ${buyer.phone_number || 'なし'}\n` +
       `問合時ヒアリング: ${buyer.inquiry_hearing || 'なし'}`;
 
-    // 確認ダイアログを開く
-    setCalendarConfirmDialog({
-      open: true,
-      viewingDate: buyer.latest_viewing_date || '',
-      viewingTime: buyer.viewing_time || '14:00',
-      assignee: buyer.follow_up_assignee || '',
-      propertyAddress: property?.address || '',
-      googleMapUrl: property?.google_map_url || '',
-      title: defaultTitle,
-      description: defaultDescription,
+    // Googleカレンダー新規イベント作成URLを直接開く
+    const params = new URLSearchParams({
+      action: 'TEMPLATE',
+      text: title,
+      details: description,
+      location: property?.address || '',
     });
+    if (startDateStr && endDateStr) {
+      params.append('dates', `${startDateStr}/${endDateStr}`);
+    }
+
+    window.open(`https://calendar.google.com/calendar/render?${params.toString()}`, '_blank');
   };
 
   const handleCalendarConfirm = async () => {
@@ -440,12 +446,7 @@ export default function BuyerViewingResultPage() {
       });
 
       // 登録成功後にGoogleカレンダーを開く
-      const calendarEventId = response.data?.calendarEventId;
-      if (calendarEventId) {
-        window.open(`https://calendar.google.com/calendar/r/eventedit/${calendarEventId}`, '_blank');
-      } else {
-        window.open('https://calendar.google.com/calendar/r', '_blank');
-      }
+      window.open('https://calendar.google.com/calendar/r', '_blank');
     } catch (error: any) {
       console.error('[BuyerViewingResultPage] Calendar event creation error:', error);
       const errorMessage = error.response?.data?.error?.message || 'カレンダー登録に失敗しました';
