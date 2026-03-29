@@ -2772,17 +2772,28 @@ HP：https://ifoo-oita.com/
           }
           // バックエンドがイニシャルを取得できなかった場合、フロントエンドで直接保存（買主側と同じ方式）
           // autoInitialの有無に関わらず常に実行（確実に保存するため）
+          // SMSと全く同じロジックを使用（SMSは動作確認済み）
           {
             const assigneeKeyForDirect = EMAIL_TEMPLATE_ASSIGNEE_MAP[template.id];
             if (assigneeKeyForDirect && seller?.id) {
-              try {
-                const initialsRes = await api.get('/api/employees/initials-by-email');
-                const directInitial = initialsRes.data?.initials || '';
-                if (directInitial) {
+              let directInitial = '';
+              // SMS と同じ方法でイニシャルを取得
+              const myEmpForEmail = activeEmployees.find(e => e.email === employee?.email);
+              if (myEmpForEmail?.initials) {
+                directInitial = myEmpForEmail.initials;
+              } else {
+                try {
+                  const freshEmps = await import('../services/employeeService').then(m => m.getActiveEmployees());
+                  const freshMe = freshEmps.find(e => e.email === employee?.email);
+                  directInitial = freshMe?.initials || (employee as any)?.initials || '';
+                } catch { /* ignore */ }
+              }
+              if (directInitial && seller?.id) {
+                try {
                   await api.put(`/api/sellers/${seller.id}`, { [assigneeKeyForDirect]: directInitial });
                   setSeller((prev) => prev ? { ...prev, [assigneeKeyForDirect as keyof Seller]: directInitial } : prev);
-                }
-              } catch { /* ignore */ }
+                } catch { /* ignore */ }
+              }
             }
           }
           (async () => {
