@@ -96,7 +96,7 @@ export default function PropertyInfoCard({
   // この物件に紐づく買主の中に「買」を含むlatest_statusの人がいるか確認
   const fetchPropertyBuyerPurchaseStatus = async () => {
     try {
-      const response = await api.get(/api/property-listings//buyers);
+      const response = await api.get(`/api/property-listings/${propertyId}/buyers`);
       const buyers: any[] = response.data || [];
       const buyerWithPurchase = buyers.find((b: any) => b.latest_status && b.latest_status.includes('買'));
       setPropertyHasBuyerPurchase(buyerWithPurchase ? buyerWithPurchase.latest_status : null);
