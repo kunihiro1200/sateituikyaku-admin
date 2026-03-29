@@ -220,6 +220,40 @@ export class StaffManagementService {
   }
 
   /**
+   * メールアドレスからスタッフIDを取得（「スタッフ」シートのE列「メアド」で照合）
+   */
+  async getInitialsByEmail(email: string): Promise<string | null> {
+    try {
+      const { GoogleSheetsClient } = require('./GoogleSheetsClient');
+      const client = new GoogleSheetsClient({
+        spreadsheetId: this.SPREADSHEET_ID,
+        sheetName: this.SHEET_NAME,
+        serviceAccountKeyPath: process.env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH,
+      });
+      await client.authenticate();
+      const rows = await client.readAll();
+
+      const normalizedEmail = email.toLowerCase().trim();
+      const matched = rows.find((row: any) => {
+        const rowEmail = (row['メアド'] || row['メールアドレス'] || row['email'] || '').toLowerCase().trim();
+        return rowEmail === normalizedEmail;
+      });
+
+      if (matched) {
+        const initials = (matched['スタッフID'] || matched['イニシャル'] || '').trim();
+        console.log(`[StaffManagementService] Found initials "${initials}" for email: ${email}`);
+        return initials || null;
+      }
+
+      console.log(`[StaffManagementService] No staff found for email: ${email}`);
+      return null;
+    } catch (error: any) {
+      console.error('[StaffManagementService] Error getting initials by email:', error.message);
+      return null;
+    }
+  }
+
+  /**
    * 通常スタッフのイニシャル一覧を取得（「スタッフ」シートのI列「通常」=TRUEのもの）
    * normal-initialsエンドポイント用 - チャットシートとは別のシートを使用
    */

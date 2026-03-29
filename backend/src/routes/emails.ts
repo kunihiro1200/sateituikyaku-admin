@@ -352,10 +352,9 @@ router.post(
         try {
           const { StaffManagementService } = await import('../services/StaffManagementService');
           const staffService = new StaffManagementService();
-          const staffData = await (staffService as any).fetchStaffData();
-          const matchedStaff = staffData.find((s: any) => s.email?.toLowerCase() === req.employee!.email?.toLowerCase());
-          if (matchedStaff?.initials) senderInitials = matchedStaff.initials;
-          console.log(`📧 [send-template-email] Resolved initials via StaffManagementService: ${senderInitials} for email: ${req.employee.email}`);
+          const resolved = await staffService.getInitialsByEmail(req.employee.email);
+          if (resolved) senderInitials = resolved;
+          console.log(`📧 [send-template-email] Resolved initials via StaffManagementService.getInitialsByEmail: ${senderInitials} for email: ${req.employee.email}`);
         } catch (staffErr) {
           console.warn('📧 [send-template-email] Failed to resolve initials via StaffManagementService:', staffErr);
         }
