@@ -648,8 +648,8 @@ export default function BuyerViewingResultPage() {
                   }}
                 />
               )}
-              {/* メアドがない場合（または電話番号がある場合）はSMSボタン */}
-              {!buyer.email && buyer.phone_number && (() => {
+              {/* 電話番号がある場合はSMSボタン */}
+              {buyer.phone_number && (() => {
                 const property = linkedProperties.length > 0 ? linkedProperties[0] : null;
                 const address = property?.property_address || property?.address || '';
                 const googleMapUrl = property?.google_map_url || '';
