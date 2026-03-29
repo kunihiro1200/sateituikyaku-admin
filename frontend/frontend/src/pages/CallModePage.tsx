@@ -962,13 +962,13 @@ const CallModePage = () => {
     }
   }, [activeEmployees]);
 
-  // 訪問統計を取得（訪問日がある場合はその月、なければ当月）
+  // 訪問統計を取得（常に当月の統計を表示）
   const loadVisitStats = async () => {
-    // visitDateまたはappointmentDateがあればその月、なければ当月を使用
-    const visitDateValue = (seller as any)?.visitDate || seller?.appointmentDate;
-    const month = visitDateValue
-      ? new Date(visitDateValue).toISOString().slice(0, 7)
-      : new Date().toISOString().slice(0, 7); // 当月（YYYY-MM形式）
+    // 常に当月の統計を表示（JSTで当月を計算）
+    const now = new Date();
+    const jstOffset = 9 * 60 * 60 * 1000;
+    const jstNow = new Date(now.getTime() + jstOffset);
+    const month = jstNow.toISOString().slice(0, 7); // YYYY-MM形式（JST）
     
     try {
       setLoadingVisitStats(true);
@@ -985,13 +985,12 @@ const CallModePage = () => {
     }
   };
 
-  // 訪問統計をロード（visitDate/appointmentDateがある場合）
+  // 訪問統計をロード（sellerがロードされたら常に当月の統計を表示）
   useEffect(() => {
-    const visitDateValue = (seller as any)?.visitDate || seller?.appointmentDate;
-    if (visitDateValue) {
+    if (seller) {
       loadVisitStats();
     }
-  }, [(seller as any)?.visitDate, seller?.appointmentDate]);
+  }, [seller?.id]);
 
   // キーボードショートカット
   useEffect(() => {
