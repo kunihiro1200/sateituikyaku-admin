@@ -247,7 +247,7 @@ function syncUpdatesToSupabase_(sheetRows) {
     var dbVisitAcqDate = dbSeller.visit_acquisition_date ? String(dbSeller.visit_acquisition_date).substring(0, 10) : null;
     if (sheetVisitAcqDate !== dbVisitAcqDate) { updateData.visit_acquisition_date = sheetVisitAcqDate; needsUpdate = true; }
 
-    var sheetVisitDate = formatDateToISO_(row['訪問日 \nY/M/D'] || row['訪問日']);
+    var sheetVisitDate = formatDateToISO_(row['訪問日 Y/M/D'] || row['訪問日 \nY/M/D'] || row['訪問日']);
     var dbVisitDate = dbSeller.visit_date ? String(dbSeller.visit_date).substring(0, 10) : null;
     if (sheetVisitDate !== dbVisitDate) { updateData.visit_date = sheetVisitDate; needsUpdate = true; }
 
@@ -736,4 +736,130 @@ function updateSidebarCounts_(sheetRows) {
   }
 
   Logger.log('📊 サイドバーカウント更新完了: 合計 ' + upsertRows.length + '行');
+}
+
+// ============================================================
+// 手動一括同期: 訪問日 Y/M/D に値がある売主を全件同期
+// GASエディタから手動実行してください
+// ============================================================
+
+function syncVisitDateSellers() {
+  var startTime = new Date();
+  Logger.log('=== 訪問日一括同期開始: ' + startTime.toISOString() + ' ===');
+
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName('売主リスト');
+  if (!sheet) {
+    Logger.log('❌ シート「売主リスト」が見つかりません');
+    return;
+  }
+
+  var lastRow = sheet.getLastRow();
+  var lastCol = sheet.getLastColumn();
+  var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+  var allData = sheet.getRange(2, 1, lastRow - 1, lastCol).getValues();
+
+  // 訪問日 Y/M/D 列のインデックスを取得
+  var visitDateColIndex = headers.indexOf('訪問日 Y/M/D');
+  if (visitDateColIndex === -1) {
+    Logger.log('❌ 「訪問日 Y/M/D」列が見つかりません。ヘッダー一覧: ' + headers.join(', '));
+    return;
+  }
+  Logger.log('✅ 「訪問日 Y/M/D」列: ' + (visitDateColIndex + 1) + '列目');
+
+  // 訪問日がある行のみ抽出
+  var visitRows = [];
+  for (var i = 0; i < allData.length; i++) {
+    var visitDateVal = allData[i][visitDateColIndex];
+    if (visitDateVal && visitDateVal !== '') {
+      visitRows.push(rowToObject(headers, allData[i]));
+    }
+  }
+  Logger.log('📊 訪問日あり: ' + visitRows.length + '件');
+
+  // 反響日付の降順にソート
+  visitRows.sort(function(a, b) {
+    var dateA = formatDateToISO_(a['反響日付']) || '';
+    var dateB = formatDateToISO_(b['反響日付']) || '';
+    if (dateB > dateA) return 1;
+    if (dateB < dateA) return -1;
+    return 0;
+  });
+
+  // Supabaseから全売主を取得
+  var dbSellers = fetchAllSellersFromSupabase_();
+  if (!dbSellers) {
+    Logger.log('❌ Supabaseからのデータ取得失敗');
+    return;
+  }
+  var dbMap = {};
+  for (var j = 0; j < dbSellers.length; j++) {
+    dbMap[dbSellers[j].seller_number] = dbSellers[j];
+  }
+
+  var updatedCount = 0;
+  var errorCount = 0;
+  var skippedCount = 0;
+
+  for (var r = 0; r < visitRows.length; r++) {
+    var row = visitRows[r];
+    var sellerNumber = row['売主番号'];
+    if (!sellerNumber || typeof sellerNumber !== 'string' || !sellerNumber.match(/^AA\d+$/)) {
+      skippedCount++;
+      continue;
+    }
+    var dbSeller = dbMap[sellerNumber];
+    if (!dbSeller) {
+      Logger.log('⚠️ ' + sellerNumber + ': DBに存在しない（スキップ）');
+      skippedCount++;
+      continue;
+    }
+
+    var sheetVisitDate = formatDateToISO_(row['訪問日 Y/M/D']);
+    var dbVisitDate = dbSeller.visit_date ? String(dbSeller.visit_date).substring(0, 10) : null;
+
+    var rawVisitAssignee = row['営担'];
+    var sheetVisitAssignee = (rawVisitAssignee === '外す' || rawVisitAssignee === '' || rawVisitAssignee === undefined) ? null : String(rawVisitAssignee);
+
+    var sheetVisitValAcq = row['訪問査定取得者'] ? String(row['訪問査定取得者']) : null;
+    var sheetVisitAcqDate = formatDateToISO_(row['訪問取得日\n年/月/日'] || row['訪問取得日']);
+    var sheetVisitTime = row['訪問時間'] ? String(row['訪問時間']) : null;
+
+    var updateData = {};
+    var needsUpdate = false;
+
+    if (sheetVisitDate !== dbVisitDate) { updateData.visit_date = sheetVisitDate; needsUpdate = true; }
+    if (sheetVisitAssignee !== (dbSeller.visit_assignee || null)) { updateData.visit_assignee = sheetVisitAssignee; needsUpdate = true; }
+    if (sheetVisitValAcq !== (dbSeller.visit_valuation_acquirer || null)) { updateData.visit_valuation_acquirer = sheetVisitValAcq; needsUpdate = true; }
+    if (sheetVisitAcqDate !== (dbSeller.visit_acquisition_date ? String(dbSeller.visit_acquisition_date).substring(0, 10) : null)) { updateData.visit_acquisition_date = sheetVisitAcqDate; needsUpdate = true; }
+    if (sheetVisitTime !== (dbSeller.visit_time || null)) { updateData.visit_time = sheetVisitTime; needsUpdate = true; }
+
+    if (!needsUpdate) {
+      skippedCount++;
+      continue;
+    }
+
+    updateData.updated_at = new Date().toISOString();
+    var result = patchSellerToSupabase_(sellerNumber, updateData);
+    if (result.success) {
+      updatedCount++;
+      Logger.log('✅ ' + sellerNumber + ': 更新 (' + Object.keys(updateData).filter(function(k){ return k !== 'updated_at'; }).join(', ') + ')');
+    } else {
+      errorCount++;
+      Logger.log('❌ ' + sellerNumber + ': 更新失敗 - ' + result.error);
+    }
+
+    Utilities.sleep(50);
+
+    // 実行時間制限チェック（5分）
+    var elapsed = (new Date() - startTime) / 1000;
+    if (elapsed > 280) {
+      Logger.log('⚠️ 実行時間制限に近づいたため中断 (' + r + '/' + visitRows.length + '件処理済み)');
+      break;
+    }
+  }
+
+  Logger.log('=== 訪問日一括同期完了 ===');
+  Logger.log('更新: ' + updatedCount + '件 / エラー: ' + errorCount + '件 / スキップ: ' + skippedCount + '件');
+  Logger.log('所要時間: ' + ((new Date() - startTime) / 1000).toFixed(1) + '秒');
 }
