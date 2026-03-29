@@ -2031,7 +2031,40 @@ const CallModePage = () => {
         setError('データの再読み込みに失敗しました。ページを更新してください。');
       }
 
-      // カレンダーイベントはバックエンドで自動的に作成されます
+      // 訪問日が設定されている場合、カレンダーを自動で開く
+      if (visitDateStr) {
+        try {
+          // visitDateStr (YYYY-MM-DD) と visitTimeStr (HH:mm:ss) からDateを生成
+          const timeStr = visitTimeStr || '00:00:00';
+          const [hh, mm] = timeStr.split(':');
+          const dateTimeStr = `${visitDateStr}T${hh.padStart(2,'0')}:${mm.padStart(2,'0')}:00`;
+          const date = new Date(dateTimeStr);
+          const startDateStr2 = date.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+          const endDate2 = new Date(date.getTime() + 60 * 60 * 1000);
+          const endDateStr2 = endDate2.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+
+          const propertyAddress = property?.address || seller?.address || '物件所在地未設定';
+          const calTitle = encodeURIComponent(`【訪問】${propertyAddress}`);
+          const calLocation = encodeURIComponent(propertyAddress);
+          const calDetails = encodeURIComponent(`売主名: ${seller?.name || ''}
+電話: ${seller?.phoneNumber || ''}`);
+
+          // 営担のメールアドレスを取得
+          const assignedToValue = editedAssignedTo || seller?.visitAssignee || seller?.assignedTo;
+          const assignedEmployee = employees.find((e: any) =>
+            e.name === assignedToValue || e.initials === assignedToValue || e.email === assignedToValue
+          );
+          const assignedEmail = assignedEmployee?.email || '';
+          const srcParam = assignedEmail ? `&src=${encodeURIComponent(assignedEmail)}` : '';
+
+          window.open(
+            `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${calTitle}&dates=${startDateStr2}/${endDateStr2}&details=${calDetails}&location=${calLocation}${srcParam}`,
+            '_blank'
+          );
+        } catch (calError) {
+          console.error('❌ カレンダーを開けませんでした:', calError);
+        }
+      }
     } catch (err: any) {
       console.error('❌ Failed to save appointment:', err);
       const errorMessage = err.response?.data?.error?.message || '訪問予約情報の更新に失敗しました';
