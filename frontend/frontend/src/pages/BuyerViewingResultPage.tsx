@@ -136,6 +136,8 @@ export default function BuyerViewingResultPage() {
   });
   const [isOfferFailedFlag, setIsOfferFailedFlag] = useState(false); // 買付外れましたフラグ
   const [normalInitials, setNormalInitials] = useState<string[]>([]);
+  const [calendarOpened, setCalendarOpened] = useState(false); // カレンダーを開いたかどうか
+  const [leaveWarningDialog, setLeaveWarningDialog] = useState<{ open: boolean; targetUrl: string }>({ open: false, targetUrl: '' });
   const [calendarConfirmDialog, setCalendarConfirmDialog] = useState<{
     open: boolean;
     viewingDate: string;
@@ -193,6 +195,23 @@ export default function BuyerViewingResultPage() {
       .then(res => setNormalInitials(res.data.initials || []))
       .catch(err => console.error('Failed to fetch normal initials:', err));
   }, []);
+
+  // カレンダー必須チェック: 内覧日・時間・後続担当あり かつ 内覧未確定空欄
+  const needsCalendar = !!(
+    buyer?.latest_viewing_date &&
+    buyer?.viewing_time &&
+    buyer?.follow_up_assignee &&
+    !buyer?.viewing_unconfirmed
+  );
+
+  // 離脱ガード: カレンダー未開封の場合に警告
+  const guardedNavigate = (url: string) => {
+    if (needsCalendar && !calendarOpened) {
+      setLeaveWarningDialog({ open: true, targetUrl: url });
+    } else {
+      navigate(url);
+    }
+  };
 
   const fetchBuyer = async () => {
     try {
@@ -380,6 +399,7 @@ export default function BuyerViewingResultPage() {
     }
 
     window.open(`https://calendar.google.com/calendar/render?${params.toString()}`, '_blank');
+    setCalendarOpened(true);
   };
 
   const handleCalendarConfirm = async () => {
@@ -567,7 +587,7 @@ export default function BuyerViewingResultPage() {
     return (
       <Container maxWidth="xl" sx={{ py: 3, px: 2 }}>
         <Typography>買主が見つかりませんでした</Typography>
-        <Button startIcon={<ArrowBackIcon />} onClick={() => navigate(`/buyers/${buyer_number}`)}>
+        <Button startIcon={<ArrowBackIcon />} onClick={() => guardedNavigate(`/buyers/${buyer_number}`)}>
           買主詳細に戻る
         </Button>
       </Container>
@@ -579,7 +599,7 @@ export default function BuyerViewingResultPage() {
       {/* ヘッダー */}
       <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
         <IconButton 
-          onClick={() => navigate(`/buyers/${buyer_number}`)} 
+          onClick={() => guardedNavigate(`/buyers/${buyer_number}`)} 
           sx={{ mr: 2 }}
           aria-label="買主詳細に戻る"
         >
@@ -692,7 +712,7 @@ export default function BuyerViewingResultPage() {
                 variant="outlined"
                 color="success"
                 size="medium"
-                onClick={() => navigate('/buyers?status=内覧日前日')}
+                onClick={() => guardedNavigate('/buyers?status=内覧日前日')}
               >
                 内覧日前日一覧
               </Button>
@@ -1356,6 +1376,33 @@ export default function BuyerViewingResultPage() {
           {snackbar.message}
         </Alert>
       </Snackbar>
+
+      {/* カレンダー未開封の離脱警告ダイアログ */}
+      <Dialog open={leaveWarningDialog.open} onClose={() => setLeaveWarningDialog({ open: false, targetUrl: '' })} maxWidth="xs" fullWidth>
+        <DialogTitle sx={{ color: 'error.main' }}>⚠️ カレンダー登録が未完了です</DialogTitle>
+        <DialogContent>
+          <Typography>
+            内覧日・時間・後続担当が設定されていますが、まだ「カレンダーで開く」ボタンを押していません。
+          </Typography>
+          <Typography sx={{ mt: 1 }}>
+            このままページを離れますか？
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setLeaveWarningDialog({ open: false, targetUrl: '' })}>
+            このページに留まる
+          </Button>
+          <Button
+            color="error"
+            onClick={() => {
+              setLeaveWarningDialog({ open: false, targetUrl: '' });
+              navigate(leaveWarningDialog.targetUrl);
+            }}
+          >
+            このまま離れる
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Container>
   );
 }
