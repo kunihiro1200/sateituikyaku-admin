@@ -78,9 +78,12 @@ export default function PropertyInfoCard({
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [copiedAddress, setCopiedAddress] = useState(false);
   const [copiedDisplayAddress, setCopiedDisplayAddress] = useState(false);
+  // この物件に「買」を含むlatest_statusの買主がいるか
+  const [propertyHasBuyerPurchase, setPropertyHasBuyerPurchase] = useState<string | null>(null);
 
   useEffect(() => {
     fetchPropertyDetails();
+    fetchPropertyBuyerPurchaseStatus();
 
     // 物件リストの変更を検知するため30秒ごとに再フェッチ
     const intervalId = setInterval(() => {
@@ -89,6 +92,18 @@ export default function PropertyInfoCard({
 
     return () => clearInterval(intervalId);
   }, [propertyId]);
+
+  // この物件に紐づく買主の中に「買」を含むlatest_statusの人がいるか確認
+  const fetchPropertyBuyerPurchaseStatus = async () => {
+    try {
+      const response = await api.get(/api/property-listings//buyers);
+      const buyers: any[] = response.data || [];
+      const buyerWithPurchase = buyers.find((b: any) => b.latest_status && b.latest_status.includes('買'));
+      setPropertyHasBuyerPurchase(buyerWithPurchase ? buyerWithPurchase.latest_status : null);
+    } catch {
+      // エラー時は非表示のまま
+    }
+  };
 
   const fetchPropertyDetails = async (background = false) => {
     try {
@@ -196,9 +211,12 @@ export default function PropertyInfoCard({
         bgcolor: '#f1f8f1',
       }}
     >
-      {/* 買付状況バッジ - 最上部に表示 */}
+      {/* 買付状況バッジ - 最上部に表示（この物件に買付買主がいれば全員に表示） */}
       <PurchaseStatusBadge
-        statusText={getPurchaseStatusText(buyer?.latest_status, property?.offer_status)}
+        statusText={getPurchaseStatusText(
+          propertyHasBuyerPurchase || buyer?.latest_status,
+          property?.offer_status
+        )}
       />
       {/* Header - 外部リンクアイコンと閉じるボタンのみ */}
       <Box sx={{ position: 'absolute', top: 8, right: 8, display: 'flex', gap: 0.5 }}>
