@@ -2779,24 +2779,36 @@ HP：https://ifoo-oita.com/
           // SMSと全く同じロジックを使用（SMSは動作確認済み）
           {
             const assigneeKeyForDirect = EMAIL_TEMPLATE_ASSIGNEE_MAP[template.id];
+            console.log('📧 [visitReminder] assigneeKeyForDirect:', assigneeKeyForDirect, 'seller?.id:', seller?.id);
             if (assigneeKeyForDirect && seller?.id) {
               let directInitial = '';
               // SMS と同じ方法でイニシャルを取得
               const myEmpForEmail = activeEmployees.find(e => e.email === employee?.email);
+              console.log('📧 [visitReminder] employee?.email:', employee?.email, 'activeEmployees.length:', activeEmployees.length, 'myEmpForEmail:', myEmpForEmail);
               if (myEmpForEmail?.initials) {
                 directInitial = myEmpForEmail.initials;
               } else {
                 try {
+                  // SMSと同じフォールバック: active-initialsを呼んでからgetActiveEmployees
+                  await api.get('/api/employees/active-initials');
                   const freshEmps = await import('../services/employeeService').then(m => m.getActiveEmployees());
                   const freshMe = freshEmps.find(e => e.email === employee?.email);
                   directInitial = freshMe?.initials || (employee as any)?.initials || '';
-                } catch { /* ignore */ }
+                  console.log('📧 [visitReminder] freshMe:', freshMe, 'directInitial:', directInitial);
+                } catch (e) {
+                  console.error('📧 [visitReminder] fallback error:', e);
+                  directInitial = (employee as any)?.initials || '';
+                }
               }
+              console.log('📧 [visitReminder] directInitial:', directInitial);
               if (directInitial && seller?.id) {
                 try {
                   await api.put(`/api/sellers/${seller.id}`, { [assigneeKeyForDirect]: directInitial });
                   setSeller((prev) => prev ? { ...prev, [assigneeKeyForDirect as keyof Seller]: directInitial } : prev);
-                } catch { /* ignore */ }
+                  console.log('📧 [visitReminder] saved successfully:', directInitial);
+                } catch (e) {
+                  console.error('📧 [visitReminder] save error:', e);
+                }
               }
             }
           }
