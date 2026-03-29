@@ -1989,12 +1989,18 @@ const CallModePage = () => {
         }
       }
 
+      // 訪問取得日の自動設定: 未設定の場合のみ今日の日付をセット
+      const visitAcquisitionDateToSave = seller?.visitAcquisitionDate
+        ? undefined  // 既存値がある場合は送信しない（上書きしない）
+        : new Date().toISOString().slice(0, 10);  // 未設定の場合は今日の日付
+
       await api.put(`/api/sellers/${id}`, {
         visitDate: visitDateStr,
         visitTime: visitTimeStr,
         visitAssignee: editedAssignedTo || null,
         visitValuationAcquirer: acquirer || null,
         appointmentNotes: editedAppointmentNotes || null,
+        ...(visitAcquisitionDateToSave !== undefined && { visitAcquisitionDate: visitAcquisitionDateToSave }),
       });
 
       setAppointmentSuccessMessage('訪問予約情報を更新しました');

@@ -492,6 +492,9 @@ export class SellerService extends BaseRepository {
     if ((data as any).visitTime !== undefined) {
       updates.visit_time = (data as any).visitTime; // HH:mm:ss形式のまま保存
     }
+    if ((data as any).visitAcquisitionDate !== undefined) {
+      updates.visit_acquisition_date = (data as any).visitAcquisitionDate; // YYYY-MM-DD形式のまま保存
+    }
     if (data.nextCallDate !== undefined) {
       updates.next_call_date = data.nextCallDate;
     }
