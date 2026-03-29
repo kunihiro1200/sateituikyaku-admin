@@ -27,6 +27,7 @@ import { VIEWING_UNCONFIRMED_OPTIONS } from '../utils/buyerDetailFieldOptions';
 import { ValidationService } from '../services/ValidationService';
 import PreDayEmailButton from '../components/PreDayEmailButton';
 import SmsIcon from '@mui/icons-material/Sms';
+import { useAuthStore } from '../store/authStore';
 
 /**
  * 内覧前日SMS本文を生成する
@@ -113,6 +114,7 @@ const VIEWING_RESULT_QUICK_INPUTS = [
 export default function BuyerViewingResultPage() {
   const { buyer_number } = useParams<{ buyer_number: string }>();
   const navigate = useNavigate();
+  const { employee } = useAuthStore();
   const [buyer, setBuyer] = useState<Buyer | null>(null);
   const buyerRef = useRef<Buyer | null>(null); // handleInlineFieldSave から buyer を参照するための ref
   const [linkedProperties, setLinkedProperties] = useState<any[]>([]);
@@ -133,6 +135,7 @@ export default function BuyerViewingResultPage() {
     severity: 'success',
   });
   const [isOfferFailedFlag, setIsOfferFailedFlag] = useState(false); // 買付外れましたフラグ
+  const [normalInitials, setNormalInitials] = useState<string[]>([]);
   const [calendarConfirmDialog, setCalendarConfirmDialog] = useState<{
     open: boolean;
     viewingDate: string;
@@ -184,6 +187,12 @@ export default function BuyerViewingResultPage() {
       });
     }
   }, [linkedProperties]);
+
+  useEffect(() => {
+    api.get('/api/employees/normal-initials')
+      .then(res => setNormalInitials(res.data.initials || []))
+      .catch(err => console.error('Failed to fetch normal initials:', err));
+  }, []);
 
   const fetchBuyer = async () => {
     try {
@@ -613,71 +622,115 @@ export default function BuyerViewingResultPage() {
         )}
         {/* 内覧前日ボタン群（内覧日前日の場合のみ表示） */}
         {isViewingPreDay(buyer) && (
-          <Box sx={{ ml: 'auto', display: 'flex', gap: 1, alignItems: 'center' }}>
-            {/* メアドがある場合はEメールボタン */}
-            {buyer.email && (
-              <PreDayEmailButton
-                buyerId={buyer_number || ''}
-                buyerEmail={buyer.email || ''}
-                buyerName={buyer.name || ''}
-                buyerCompanyName={buyer.company_name || ''}
-                buyerNumber={buyer_number || ''}
-                preViewingNotes={buyer.pre_viewing_notes || ''}
-                latestViewingDate={buyer.latest_viewing_date || ''}
-                viewingTime={buyer.viewing_time || ''}
-                inquiryHistory={[]}
-                selectedPropertyIds={selectedPropertyIds}
-                propertyNumbers={linkedProperties.map((p: any) => p.property_number).filter(Boolean)}
-                size="medium"
-              />
-            )}
-            {/* メアドがない場合（または電話番号がある場合）はSMSボタン */}
-            {!buyer.email && buyer.phone_number && (() => {
-              const property = linkedProperties.length > 0 ? linkedProperties[0] : null;
-              const address = property?.property_address || property?.address || '';
-              const googleMapUrl = property?.google_map_url || '';
-              const smsBody = generatePreDaySmsBody(buyer, address, googleMapUrl);
-              const smsLink = `sms:${buyer.phone_number}?body=${encodeURIComponent(smsBody)}`;
-              return (
-                <Button
-                  variant="contained"
+          <Box sx={{ ml: 'auto', display: 'flex', flexDirection: 'column', gap: 1, alignItems: 'flex-end' }}>
+            <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+              {/* メアドがある場合はEメールボタン */}
+              {buyer.email && (
+                <PreDayEmailButton
+                  buyerId={buyer_number || ''}
+                  buyerEmail={buyer.email || ''}
+                  buyerName={buyer.name || ''}
+                  buyerCompanyName={buyer.company_name || ''}
+                  buyerNumber={buyer_number || ''}
+                  preViewingNotes={buyer.pre_viewing_notes || ''}
+                  latestViewingDate={buyer.latest_viewing_date || ''}
+                  viewingTime={buyer.viewing_time || ''}
+                  inquiryHistory={[]}
+                  selectedPropertyIds={selectedPropertyIds}
+                  propertyNumbers={linkedProperties.map((p: any) => p.property_number).filter(Boolean)}
                   size="medium"
-                  startIcon={<SmsIcon />}
-                  onClick={() => {
-                    api.post(`/api/buyers/${buyer_number}/sms-history`, {
-                      templateId: 'pre_day_viewing',
-                      templateName: '内覧前日SMS',
-                      phoneNumber: buyer.phone_number,
-                      senderName: '',
-                    }).catch(() => {});
-                    window.open(smsLink, '_self');
+                  onEmailSent={async () => {
+                    // メール送信後、ログイン中のスタッフのイニシャルを通知送信者に自動設定
+                    const senderInitial = employee?.initial || employee?.name || '';
+                    if (senderInitial) {
+                      await handleInlineFieldSave('notification_sender', senderInitial);
+                    }
                   }}
-                  sx={{
-                    backgroundColor: '#e65100',
-                    color: '#fff',
-                    fontWeight: 'bold',
-                    '&:hover': { backgroundColor: '#bf360c' },
-                    animation: 'preDayPulse 1.5s ease-in-out infinite',
-                    '@keyframes preDayPulse': {
-                      '0%': { boxShadow: '0 0 0 0 rgba(230, 81, 0, 0.6)' },
-                      '70%': { boxShadow: '0 0 0 10px rgba(230, 81, 0, 0)' },
-                      '100%': { boxShadow: '0 0 0 0 rgba(230, 81, 0, 0)' },
-                    },
-                  }}
+                />
+              )}
+              {/* メアドがない場合（または電話番号がある場合）はSMSボタン */}
+              {!buyer.email && buyer.phone_number && (() => {
+                const property = linkedProperties.length > 0 ? linkedProperties[0] : null;
+                const address = property?.property_address || property?.address || '';
+                const googleMapUrl = property?.google_map_url || '';
+                const smsBody = generatePreDaySmsBody(buyer, address, googleMapUrl);
+                const smsLink = `sms:${buyer.phone_number}?body=${encodeURIComponent(smsBody)}`;
+                return (
+                  <Button
+                    variant="contained"
+                    size="medium"
+                    startIcon={<SmsIcon />}
+                    onClick={() => {
+                      api.post(`/api/buyers/${buyer_number}/sms-history`, {
+                        templateId: 'pre_day_viewing',
+                        templateName: '内覧前日SMS',
+                        phoneNumber: buyer.phone_number,
+                        senderName: '',
+                      }).catch(() => {});
+                      window.open(smsLink, '_self');
+                    }}
+                    sx={{
+                      backgroundColor: '#e65100',
+                      color: '#fff',
+                      fontWeight: 'bold',
+                      '&:hover': { backgroundColor: '#bf360c' },
+                      animation: 'preDayPulse 1.5s ease-in-out infinite',
+                      '@keyframes preDayPulse': {
+                        '0%': { boxShadow: '0 0 0 0 rgba(230, 81, 0, 0.6)' },
+                        '70%': { boxShadow: '0 0 0 10px rgba(230, 81, 0, 0)' },
+                        '100%': { boxShadow: '0 0 0 0 rgba(230, 81, 0, 0)' },
+                      },
+                    }}
+                  >
+                    内覧前日SMS
+                  </Button>
+                );
+              })()}
+              {/* 内覧日前日一覧ボタン */}
+              <Button
+                variant="outlined"
+                color="success"
+                size="medium"
+                onClick={() => navigate('/buyers?status=内覧日前日')}
+              >
+                内覧日前日一覧
+              </Button>
+            </Box>
+            {/* 通知送信者ボタン群（内覧前日ボタンの下に表示） */}
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+              <Typography variant="caption" color="text.secondary" sx={{ whiteSpace: 'nowrap', flexShrink: 0 }}>
+                通知送信者:
+              </Typography>
+              {normalInitials.map((initial) => {
+                const isSelected = buyer.notification_sender === initial;
+                return (
+                  <Button
+                    key={initial}
+                    size="small"
+                    variant={isSelected ? 'contained' : 'outlined'}
+                    color="primary"
+                    onClick={async () => {
+                      const newValue = isSelected ? '' : initial;
+                      await handleInlineFieldSave('notification_sender', newValue);
+                    }}
+                    sx={{ minWidth: 36, px: 1, py: 0.3, fontSize: '0.75rem', fontWeight: isSelected ? 'bold' : 'normal', borderRadius: 1 }}
+                  >
+                    {initial}
+                  </Button>
+                );
+              })}
+              {/* 現在の値がリストにない場合も表示 */}
+              {buyer.notification_sender && !normalInitials.includes(buyer.notification_sender) && (
+                <Button
+                  size="small"
+                  variant="contained"
+                  color="primary"
+                  sx={{ minWidth: 36, px: 1, py: 0.3, fontSize: '0.75rem', fontWeight: 'bold', borderRadius: 1 }}
                 >
-                  内覧前日SMS
+                  {buyer.notification_sender}
                 </Button>
-              );
-            })()}
-            {/* 内覧日前日一覧ボタン */}
-            <Button
-              variant="outlined"
-              color="success"
-              size="medium"
-              onClick={() => navigate('/buyers?status=内覧日前日')}
-            >
-              内覧日前日一覧
-            </Button>
+              )}
+            </Box>
           </Box>
         )}
       </Box>
@@ -778,18 +831,6 @@ export default function BuyerViewingResultPage() {
                 onSave={handleSaveViewingTime}
                 fieldType="time"
                 placeholder="例: 14:30"
-              />
-            </Box>
-
-            {/* 通知送信者 */}
-            <Box sx={{ width: '200px', flexShrink: 0 }}>
-              <InlineEditableField
-                label="通知送信者"
-                fieldName="notification_sender"
-                value={buyer.notification_sender || ''}
-                onSave={(newValue) => handleInlineFieldSave('notification_sender', newValue)}
-                fieldType="text"
-                placeholder="例: 山田"
               />
             </Box>
 
