@@ -505,6 +505,7 @@ const CallModePage = () => {
   const [editedAppointmentDate, setEditedAppointmentDate] = useState<string>('');
   const [editedAssignedTo, setEditedAssignedTo] = useState<string>('');
   const [editedVisitValuationAcquirer, setEditedVisitValuationAcquirer] = useState<string>(''); // 訪問査定取得者
+  const [originalVisitValuationAcquirer, setOriginalVisitValuationAcquirer] = useState<string | null>(null); // 編集開始時の元の値（nullは未設定、''はクリア済み）
   const [editedAppointmentNotes, setEditedAppointmentNotes] = useState<string>('');
   const [savingAppointment, setSavingAppointment] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -1298,6 +1299,7 @@ const CallModePage = () => {
       setEditedAppointmentDate(appointmentDateLocal);
       setEditedAssignedTo(sellerData.assignedTo || '');
       setEditedVisitValuationAcquirer(sellerData.visitValuationAcquirer || '');
+      setOriginalVisitValuationAcquirer(sellerData.visitValuationAcquirer ?? null); // 元の値を保存（nullは未設定）
       setEditedAppointmentNotes(sellerData.appointmentNotes || '');
 
       // 査定情報の初期化
@@ -1961,8 +1963,11 @@ const CallModePage = () => {
       });
 
       // editedVisitValuationAcquirer が空の場合のフォールバック
+      // 重要: originalVisitValuationAcquirer が null/undefined の場合（新規設定）のみ自動設定
+      // ユーザーが意図的にクリアした場合（元の値があって空にした）はフォールバックしない
       let acquirer = editedVisitValuationAcquirer;
-      if (!acquirer && employee?.email) {
+      const isNewAppointment = originalVisitValuationAcquirer === null || originalVisitValuationAcquirer === undefined;
+      if (!acquirer && isNewAppointment && employee?.email) {
         // 1. employees ステートから検索
         const staffFromState = employees.find((emp: any) => emp.email === employee.email);
         if (staffFromState) {
@@ -4206,6 +4211,7 @@ HP：https://ifoo-oita.com/
                       setEditedAppointmentDate(cancelDateLocal);
                       setEditedAssignedTo(seller?.visitAssignee || seller?.assignedTo || '');
                       setEditedVisitValuationAcquirer(seller?.visitValuationAcquirer || '');
+                      setOriginalVisitValuationAcquirer(seller?.visitValuationAcquirer ?? null);
                       setEditedAppointmentNotes(seller?.appointmentNotes || '');
                     } else {
                       // 編集モードに入る時に現在の値を設定
@@ -4228,6 +4234,7 @@ HP：https://ifoo-oita.com/
                       setEditedAppointmentDate(appointmentDateLocal);
                       setEditedAssignedTo(seller?.visitAssignee || seller?.assignedTo || '');
                       setEditedVisitValuationAcquirer(seller?.visitValuationAcquirer || '');
+                      setOriginalVisitValuationAcquirer(seller?.visitValuationAcquirer ?? null);
                       setEditedAppointmentNotes(seller?.appointmentNotes || '');
                     }
                     setEditingAppointment(!editingAppointment);
