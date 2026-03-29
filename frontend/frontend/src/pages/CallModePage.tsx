@@ -2736,7 +2736,8 @@ HP：https://ifoo-oita.com/
             setSeller((prev) => prev ? { ...prev, [autoAssigneeKey as keyof Seller]: autoInitial } : prev);
           }
           // バックエンドがイニシャルを取得できなかった場合、フロントエンドで直接保存（買主側と同じ方式）
-          if (!autoInitial) {
+          // autoInitialの有無に関わらず常に実行（確実に保存するため）
+          {
             const assigneeKeyForDirect = EMAIL_TEMPLATE_ASSIGNEE_MAP[template.id];
             if (assigneeKeyForDirect && seller?.id) {
               try {
