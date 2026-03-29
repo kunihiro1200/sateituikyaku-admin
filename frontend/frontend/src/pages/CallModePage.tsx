@@ -961,6 +961,34 @@ const CallModePage = () => {
     }
   }, [activeEmployees]);
 
+  // 訪問統計を取得
+  const loadVisitStats = async () => {
+    // visitDateまたはappointmentDateを使用
+    const visitDateValue = (seller as any)?.visitDate || seller?.appointmentDate;
+    if (!visitDateValue) {
+      console.log('No visit date, skipping visit stats');
+      return;
+    }
+    
+    try {
+      setLoadingVisitStats(true);
+      
+      // 訪問日から月を取得
+      const visitDate = new Date(visitDateValue);
+      const month = visitDate.toISOString().slice(0, 7); // YYYY-MM形式
+      
+      console.log('Loading visit stats for month:', month);
+      const response = await api.get(`/api/sellers/visit-stats?month=${month}`);
+      console.log('Visit stats loaded:', response.data);
+      setVisitStats(response.data);
+    } catch (err: any) {
+      console.error('Failed to load visit stats:', err);
+      console.error('Error details:', err.response?.data);
+    } finally {
+      setLoadingVisitStats(false);
+    }
+  };
+
   // 訪問統計をロード（visitDateまたはappointmentDateがある場合）
   useEffect(() => {
     const visitDateValue = (seller as any)?.visitDate || seller?.appointmentDate;
@@ -1738,33 +1766,6 @@ const CallModePage = () => {
     }
   };
 
-  // 訪問統計を取得
-  const loadVisitStats = async () => {
-    // visitDateまたはappointmentDateを使用
-    const visitDateValue = (seller as any)?.visitDate || seller?.appointmentDate;
-    if (!visitDateValue) {
-      console.log('No visit date, skipping visit stats');
-      return;
-    }
-    
-    try {
-      setLoadingVisitStats(true);
-      
-      // 訪問日から月を取得
-      const visitDate = new Date(visitDateValue);
-      const month = visitDate.toISOString().slice(0, 7); // YYYY-MM形式
-      
-      console.log('Loading visit stats for month:', month);
-      const response = await api.get(`/api/sellers/visit-stats?month=${month}`);
-      console.log('Visit stats loaded:', response.data);
-      setVisitStats(response.data);
-    } catch (err: any) {
-      console.error('Failed to load visit stats:', err);
-      console.error('Error details:', err.response?.data);
-    } finally {
-      setLoadingVisitStats(false);
-    }
-  };
 
   const handleUpdateStatus = async () => {
     // バリデーション：確度が必須の条件チェック
@@ -1950,10 +1951,34 @@ const CallModePage = () => {
         appointmentNotes: editedAppointmentNotes,
       });
 
+      // editedVisitValuationAcquirer が空の場合のフォールバック
+      let acquirer = editedVisitValuationAcquirer;
+      if (!acquirer && employee?.email) {
+        // 1. employees ステートから検索
+        const staffFromState = employees.find((emp: any) => emp.email === employee.email);
+        if (staffFromState) {
+          acquirer = staffFromState.initials || staffFromState.name || staffFromState.email;
+        } else {
+          // 2. getActiveEmployees() を呼び出して再検索
+          try {
+            const freshEmployees = await getActiveEmployees();
+            const freshStaff = freshEmployees.find((emp) => emp.email === employee.email);
+            if (freshStaff) {
+              acquirer = freshStaff.initials || freshStaff.name || freshStaff.email;
+            } else {
+              // 3. employee.initials を使用
+              acquirer = (employee as any).initials || '';
+            }
+          } catch {
+            acquirer = (employee as any).initials || '';
+          }
+        }
+      }
+
       await api.put(`/api/sellers/${id}`, {
         appointmentDate: appointmentDateISO,
         assignedTo: editedAssignedTo || null,
-        visitValuationAcquirer: editedVisitValuationAcquirer || null,
+        visitValuationAcquirer: acquirer || null,
         appointmentNotes: editedAppointmentNotes || null,
       });
 
