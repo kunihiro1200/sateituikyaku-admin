@@ -1992,7 +1992,7 @@ const CallModePage = () => {
       // 訪問取得日の自動設定: 未設定の場合のみ今日の日付をセット
       const visitAcquisitionDateToSave = seller?.visitAcquisitionDate
         ? undefined  // 既存値がある場合は送信しない（上書きしない）
-        : new Date().toISOString().slice(0, 10);  // 未設定の場合は今日の日付
+        : new Date().toLocaleDateString('ja-JP', { timeZone: 'Asia/Tokyo', year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\//g, '-');  // 未設定の場合は今日の日付（JST）
 
       await api.put(`/api/sellers/${id}`, {
         visitDate: visitDateStr,
