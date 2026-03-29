@@ -2787,32 +2787,32 @@ HP：https://ifoo-oita.com/
             console.log('📧 [visitReminder] template.id:', template.id, 'template.label:', template.label, 'assigneeKeyForDirect:', assigneeKeyForDirect, 'seller?.id:', seller?.id);
             if (assigneeKeyForDirect && seller?.id) {
               let directInitial = '';
-              // SMS と同じ方法でイニシャルを取得
-              const myEmpForEmail = activeEmployees.find(e => e.email === employee?.email);
-              console.log('📧 [visitReminder] employee?.email:', employee?.email, 'activeEmployees.length:', activeEmployees.length, 'myEmpForEmail:', myEmpForEmail);
-              if (myEmpForEmail?.initials) {
-                directInitial = myEmpForEmail.initials;
-              } else {
-                try {
-                  // SMSと同じフォールバック: active-initialsを呼んでからgetActiveEmployees
-                  await api.get('/api/employees/active-initials');
-                  const freshEmps = await import('../services/employeeService').then(m => m.getActiveEmployees());
-                  const freshMe = freshEmps.find(e => e.email === employee?.email);
-                  directInitial = freshMe?.initials || (employee as any)?.initials || '';
-                  console.log('📧 [visitReminder] freshMe:', freshMe, 'directInitial:', directInitial);
-                } catch (e) {
-                  console.error('📧 [visitReminder] fallback error:', e);
-                  directInitial = (employee as any)?.initials || '';
+              // 最優先: /api/employees/initials-by-emailでログインユーザーのイニシャルを確実に取得
+              try {
+                const initialsRes = await api.get('/api/employees/initials-by-email');
+                if (initialsRes.data?.initials) {
+                  directInitial = initialsRes.data.initials;
+                }
+              } catch { /* ignore */ }
+              // フォールバック: activeEmployeesからメールで照合
+              if (!directInitial) {
+                const myEmpForEmail = activeEmployees.find(e => e.email === employee?.email);
+                if (myEmpForEmail?.initials) {
+                  directInitial = myEmpForEmail.initials;
+                } else {
+                  try {
+                    const freshEmps = await import('../services/employeeService').then(m => m.getActiveEmployees());
+                    const freshMe = freshEmps.find(e => e.email === employee?.email);
+                    directInitial = freshMe?.initials || '';
+                  } catch { /* ignore */ }
                 }
               }
-              console.log('📧 [visitReminder] directInitial:', directInitial);
               if (directInitial && seller?.id) {
                 try {
                   await api.put(`/api/sellers/${seller.id}`, { [assigneeKeyForDirect]: directInitial });
                   setSeller((prev) => prev ? { ...prev, [assigneeKeyForDirect as keyof Seller]: directInitial } : prev);
-                  console.log('📧 [visitReminder] saved successfully:', directInitial);
                 } catch (e) {
-                  console.error('📧 [visitReminder] save error:', e);
+                  console.error('📧 [email assignee] save error:', e);
                 }
               }
             }
@@ -2848,10 +2848,8 @@ HP：https://ifoo-oita.com/
                     try {
                       const freshEmployees = await import('../services/employeeService').then(m => m.getActiveEmployees());
                       const freshMe = freshEmployees.find(e => e.email === employee?.email);
-                      myInitial = freshMe?.initials || (employee as any)?.initials || '';
-                    } catch {
-                      myInitial = (employee as any)?.initials || '';
-                    }
+                      myInitial = freshMe?.initials || '';
+                    } catch { /* ignore */ }
                   }
                 }
                 if (assigneeKey && myInitial && seller?.id) {
