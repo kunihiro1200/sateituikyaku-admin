@@ -712,7 +712,7 @@ export default function NewBuyerPage() {
                         }}
                       />
                     )}
-                    noOptionsText="該当する売主が見つかりません"
+                    noOptionsText={sellerCopyLoading ? '検索中...' : '該当する売主が見つかりません'}
                     isOptionEqualToValue={(option, value) => option.sellerNumber === value.sellerNumber}
                   />
                 </Grid>
@@ -745,7 +745,7 @@ export default function NewBuyerPage() {
                         }}
                       />
                     )}
-                    noOptionsText="該当する買主が見つかりません"
+                    noOptionsText={buyerCopyLoading ? '検索中...' : '該当する買主が見つかりません'}
                     isOptionEqualToValue={(option, value) => option.buyer_number === value.buyer_number}
                   />
                 </Grid>
