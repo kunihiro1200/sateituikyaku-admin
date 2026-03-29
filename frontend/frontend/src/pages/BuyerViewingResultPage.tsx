@@ -724,7 +724,14 @@ export default function BuyerViewingResultPage() {
                   size="medium"
                   onEmailSent={async () => {
                     // メール送信後、ログイン中のスタッフのイニシャルを通知送信者に自動設定
-                    const senderInitial = employee?.initial || employee?.name || '';
+                    // /api/employees/initials-by-emailでイニシャルを取得（スプシから確実に取得）
+                    let senderInitial = '';
+                    try {
+                      const res = await api.get('/api/employees/initials-by-email');
+                      senderInitial = res.data?.initials || '';
+                    } catch { /* ignore */ }
+                    // フォールバック: employee.initialまたのnameを使用
+                    if (!senderInitial) senderInitial = (employee as any)?.initial || '';
                     if (senderInitial) {
                       await handleInlineFieldSave('notification_sender', senderInitial);
                     }

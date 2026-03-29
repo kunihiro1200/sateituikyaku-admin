@@ -2721,6 +2721,20 @@ HP：https://ifoo-oita.com/
           if (autoAssigneeKey && autoInitial && seller) {
             setSeller((prev) => prev ? { ...prev, [autoAssigneeKey as keyof Seller]: autoInitial } : prev);
           }
+          // バックエンドがイニシャルを取得できなかった場合、フロントエンドで直接保存（買主側と同じ方式）
+          if (!autoInitial) {
+            const assigneeKeyForDirect = EMAIL_TEMPLATE_ASSIGNEE_MAP[template.id];
+            if (assigneeKeyForDirect && seller?.id) {
+              try {
+                const initialsRes = await api.get('/api/employees/initials-by-email');
+                const directInitial = initialsRes.data?.initials || '';
+                if (directInitial) {
+                  await api.put(`/api/sellers/${seller.id}`, { [assigneeKeyForDirect]: directInitial });
+                  setSeller((prev) => prev ? { ...prev, [assigneeKeyForDirect as keyof Seller]: directInitial } : prev);
+                }
+              } catch { /* ignore */ }
+            }
+          }
           (async () => {
             try {
               // 活動履歴を記録
