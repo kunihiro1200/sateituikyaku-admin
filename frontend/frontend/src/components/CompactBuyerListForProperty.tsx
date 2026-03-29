@@ -153,7 +153,14 @@ export default function CompactBuyerListForProperty({
                   <TableCell>{formatDate(buyer.reception_date)}</TableCell>
                   <TableCell>{formatDate(buyer.latest_viewing_date)}</TableCell>
                   <TableCell>{buyer.viewing_time ? formatViewingTime(buyer.viewing_time) : '-'}</TableCell>
-                  <TableCell>{buyer.latest_status || '-'}</TableCell>
+                  <TableCell
+                    sx={buyer.latest_status && buyer.latest_status.includes('買') ? {
+                      color: 'error.main',
+                      fontWeight: 'bold',
+                    } : {}}
+                  >
+                    {buyer.latest_status || '-'}
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
