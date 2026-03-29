@@ -2650,8 +2650,9 @@ HP：https://ifoo-oita.com/
           }
 
           // 送信者イニシャルをフロントエンドで解決してバックエンドに渡す
-          // SMSと同じフォールバックロジックを使用
+          // BuyerViewingResultPageと同じ方法: employee?.initial || employee?.name
           let resolvedSenderInitials = myInitials
+            || (employee as any)?.initial
             || activeEmployees.find(e => e.email === employee?.email)?.initials
             || (employee as any)?.initials
             || '';
