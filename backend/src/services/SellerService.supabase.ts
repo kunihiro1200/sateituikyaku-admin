@@ -1370,28 +1370,37 @@ export class SellerService extends BaseRepository {
     if (lowerQuery.match(/^aa\d+$/i)) {
       console.log('🚀 Fast path: Searching by seller_number in database');
 
-      // まず完全一致で検索（AA6 → AA6のみ、AA60等を除外）
+      // 売主番号はAA + 5桁ゼロパディング形式（例: AA01949）
+      // 入力がAA1949の場合、AA01949に変換して検索する
       const upperQuery = lowerQuery.toUpperCase();
-      let exactQuery = this.table('sellers')
-        .select('*')
-        .eq('seller_number', upperQuery);
-      if (!includeDeleted) {
-        exactQuery = exactQuery.is('deleted_at', null);
-      }
-      const { data: exactSellers, error: exactError } = await exactQuery;
-      if (exactError) {
-        throw new Error(`Failed to search sellers by exact number: ${exactError.message}`);
-      }
-      if (exactSellers && exactSellers.length > 0) {
-        console.log(`✅ Found exact match for seller_number: ${upperQuery}`);
-        const decryptedSellers = await Promise.all(exactSellers.map(seller => this.decryptSeller(seller)));
-        return await this._attachLastCalledAt(decryptedSellers);
+      const numPart = upperQuery.replace(/^AA/i, '');
+      const paddedQuery = `AA${numPart.padStart(5, '0')}`;
+
+      // ゼロパディングあり・なし両方で完全一致検索
+      const exactCandidates = [...new Set([upperQuery, paddedQuery])];
+      for (const candidate of exactCandidates) {
+        let exactQuery = this.table('sellers')
+          .select('*')
+          .eq('seller_number', candidate);
+        if (!includeDeleted) {
+          exactQuery = exactQuery.is('deleted_at', null);
+        }
+        const { data: exactSellers, error: exactError } = await exactQuery;
+        if (exactError) {
+          throw new Error(`Failed to search sellers by exact number: ${exactError.message}`);
+        }
+        if (exactSellers && exactSellers.length > 0) {
+          console.log(`✅ Found exact match for seller_number: ${candidate}`);
+          const decryptedSellers = await Promise.all(exactSellers.map(seller => this.decryptSeller(seller)));
+          return await this._attachLastCalledAt(decryptedSellers);
+        }
       }
 
-      // 完全一致がなければ前方一致で検索（AA6 → AA60, AA61...）
+      // 完全一致がなければ前方一致で検索（ゼロパディング済みのprefixで検索）
+      const prefixForSearch = numPart.length >= 5 ? paddedQuery : upperQuery;
       let sellerQuery = this.table('sellers')
         .select('*')
-        .ilike('seller_number', `${lowerQuery}%`)
+        .ilike('seller_number', `${prefixForSearch}%`)
         .order('seller_number', { ascending: true })
         .limit(50);
       
