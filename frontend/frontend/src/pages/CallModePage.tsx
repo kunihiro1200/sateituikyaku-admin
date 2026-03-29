@@ -3408,7 +3408,67 @@ HP：https://ifoo-oita.com/
               </div>
             )}
           </Box>
-          
+
+          {/* 通知送信者フィールド（☆訪問前日通知メール送信済み OR visitReminderAssignee に値がある場合に表示） */}
+          {(() => {
+            const hasVisitReminderEmailHistory = activities.some(
+              (act) => act.type === 'email' && act.content?.includes('☆訪問前日通知メール')
+            );
+            const showVisitReminderSender =
+              hasVisitReminderEmailHistory || !!(seller?.visitReminderAssignee);
+            if (!showVisitReminderSender) return null;
+            return (
+              <Box sx={{ width: 280, p: 2, borderBottom: 1, borderColor: 'divider' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    sx={{ whiteSpace: 'nowrap', flexShrink: 0 }}
+                  >
+                    通知送信者
+                  </Typography>
+                  <Box sx={{ display: 'flex', gap: 0.5, flex: 1 }}>
+                    {normalInitials.map((initial) => {
+                      const isSelected = seller?.visitReminderAssignee === initial;
+                      return (
+                        <Button
+                          key={initial}
+                          size="small"
+                          variant={isSelected ? 'contained' : 'outlined'}
+                          color="primary"
+                          onClick={async () => {
+                            const newValue = isSelected ? '' : initial;
+                            if (!seller?.id) return;
+                            try {
+                              await api.put(`/api/sellers/${seller.id}`, {
+                                visitReminderAssignee: newValue,
+                              });
+                              setSeller((prev) =>
+                                prev ? { ...prev, visitReminderAssignee: newValue } : prev
+                              );
+                            } catch (err) {
+                              console.error('通知送信者保存エラー:', err);
+                              setSnackbarMessage('通知送信者の保存に失敗しました');
+                              setSnackbarOpen(true);
+                            }
+                          }}
+                          sx={{
+                            flex: 1,
+                            py: 0.5,
+                            fontWeight: isSelected ? 'bold' : 'normal',
+                            borderRadius: 1,
+                          }}
+                        >
+                          {initial}
+                        </Button>
+                      );
+                    })}
+                  </Box>
+                </Box>
+              </Box>
+            );
+          })()}
+
           {/* カテゴリー（一番下） */}
           {!isMobile && (
             <Box data-testid="seller-status-sidebar">

@@ -17,7 +17,7 @@ export const emailTemplates: EmailTemplate[] = [
     id: 'visit_thank_you',
     label: '訪問査定後御礼メール',
     subject: '御礼（㈱いふうの<<営担>>でございます。）',
-    order: 18,
+    order: 12,
     content: `<<名前(漢字のみ）>>様
 
 お世話になっております。㈱いふうの<<営担>>です。
@@ -48,7 +48,7 @@ HP：https://ifoo-oita.com/
     id: 'web_meeting_offer',
     label: 'WEB打合せどうですかメール',
     subject: '<<物件所在地>>の件で売却までの流れのご説明',
-    order: 19,
+    order: 10,
     content: `<<名前(漢字のみ）>>様
 
 お世話になっております。㈱いふうです。
@@ -84,6 +84,7 @@ HP：https://ifoo-oita.com/
     label: '査定額案内メール(相続）',
     subject: '<<物件所在地>>の机上査定のご案内（株式会社いふう）',
     order: 1,
+
     content: `<<名前(漢字のみ）>> 様
 
 この度は査定依頼を頂きまして誠に有難うございます。
@@ -232,7 +233,7 @@ HP：https://ifoo-oita.com/
     label: '不通で電話時間確認＆キャンセル案内（イエウール）',
     subject: '【イエウール】査定依頼の件',
     sites: ['ウ'], // イエウール専用
-    order: 3,
+    order: 2,
     content: `<<名前(漢字のみ）>>様
 
 お世話になっております。株式会社いふうです。
@@ -258,7 +259,7 @@ HP：https://ifoo-oita.com/
     label: 'キャンセル案内のみ（イエウール）',
     subject: '【イエウール】査定依頼の件',
     sites: ['ウ'], // イエウール専用
-    order: 4,
+    order: 3,
     content: `<<名前(漢字のみ）>>様
 
 お世話になっております。株式会社いふうです。
@@ -282,7 +283,7 @@ HP：https://ifoo-oita.com/
     label: '不通で電話時間確認＆キャンセル案内（LIFULLとYahoo）',
     subject: '【LIFULL/Yahoo】査定依頼の件',
     sites: ['L', 'Y'], // LIFULL/Yahoo専用
-    order: 5,
+    order: 2,
     content: `<<名前(漢字のみ）>>様
 
 お世話になっております。株式会社いふうです。
@@ -308,7 +309,7 @@ HP：https://ifoo-oita.com/
     label: 'キャンセル案内のみ（LIFULLとYahoo）',
     subject: '【LIFULL/Yahoo】査定依頼の件',
     sites: ['L', 'Y'], // LIFULL/Yahoo専用
-    order: 6,
+    order: 3,
     content: `<<名前(漢字のみ）>>様
 
 お世話になっております。株式会社いふうです。
@@ -332,7 +333,7 @@ HP：https://ifoo-oita.com/
     label: '不通で電話時間確認＆キャンセル案内（すまいステップ）',
     subject: '【すまいステップ】査定依頼の件',
     sites: ['す'], // すまいステップ専用
-    order: 7,
+    order: 2,
     content: `<<名前(漢字のみ）>>様
 
 お世話になっております。株式会社いふうです。
@@ -358,7 +359,7 @@ HP：https://ifoo-oita.com/
     label: 'キャンセル案内のみ（すまいステップ）',
     subject: '【すまいステップ】査定依頼の件',
     sites: ['す'], // すまいステップ専用
-    order: 8,
+    order: 3,
     content: `<<名前(漢字のみ）>>様
 
 お世話になっております。株式会社いふうです。
