@@ -984,13 +984,13 @@ const CallModePage = () => {
     }
   };
 
-  // 訪問統計をロード（訪問予約フォームを開いた時、またはvisitDate/appointmentDateがある場合）
+  // 訪問統計をロード（visitDate/appointmentDateがある場合）
   useEffect(() => {
     const visitDateValue = (seller as any)?.visitDate || seller?.appointmentDate;
-    if (editingAppointment || visitDateValue) {
+    if (visitDateValue) {
       loadVisitStats();
     }
-  }, [editingAppointment, (seller as any)?.visitDate, seller?.appointmentDate]);
+  }, [(seller as any)?.visitDate, seller?.appointmentDate]);
 
   // キーボードショートカット
   useEffect(() => {
@@ -4185,6 +4185,10 @@ HP：https://ifoo-oita.com/
                       setEditedAppointmentNotes(seller?.appointmentNotes || '');
                     }
                     setEditingAppointment(!editingAppointment);
+                    // 訪問予約フォームを開く時に当月の統計をロード
+                    if (!editingAppointment) {
+                      loadVisitStats();
+                    }
                   }}
                 >
                   {editingAppointment ? 'キャンセル' : '編集'}
