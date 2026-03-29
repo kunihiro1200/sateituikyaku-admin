@@ -333,7 +333,20 @@ router.post(
         reason_loan_3day: 'valuationReasonEmailAssignee',
       };
       const assigneeKey = EMAIL_TEMPLATE_ASSIGNEE_MAP[templateId];
-      const senderInitials = (req.employee as any)?.initials || '';
+      // req.employee.initialsがnullの場合、employeeUtilsからメールでイニシャルを取得
+      let senderInitials = (req.employee as any)?.initials || '';
+      if (!senderInitials && req.employee?.email) {
+        try {
+          const { EmployeeUtils } = await import('../utils/employeeUtils');
+          const empUtils = new EmployeeUtils();
+          const activeEmps = await empUtils.getActiveEmployeesWithEmail();
+          const matched = activeEmps.find(e => e.email?.toLowerCase() === req.employee!.email?.toLowerCase());
+          if (matched?.initials) senderInitials = matched.initials;
+          console.log(`📧 [send-template-email] Resolved initials via employeeUtils: ${senderInitials} for email: ${req.employee.email}`);
+        } catch (empErr) {
+          console.warn('📧 [send-template-email] Failed to resolve initials via employeeUtils:', empErr);
+        }
+      }
       if (assigneeKey && senderInitials && sellerId) {
         try {
           await sellerService.updateSeller(sellerId, { [assigneeKey]: senderInitials }, req.employee!.id);
