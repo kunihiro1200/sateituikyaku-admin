@@ -781,6 +781,18 @@ export default function BuyerViewingResultPage() {
               />
             </Box>
 
+            {/* 通知送信者 */}
+            <Box sx={{ width: '200px', flexShrink: 0 }}>
+              <InlineEditableField
+                label="通知送信者"
+                fieldName="notification_sender"
+                value={buyer.notification_sender || ''}
+                onSave={(newValue) => handleInlineFieldSave('notification_sender', newValue)}
+                fieldType="text"
+                placeholder="例: 山田"
+              />
+            </Box>
+
             {/* 内覧形態（条件付き表示：内覧日が入力されている場合のみ表示） */}
             {(() => {
               // 内覧日が入力されているかチェック
