@@ -961,21 +961,16 @@ const CallModePage = () => {
     }
   }, [activeEmployees]);
 
-  // 訪問統計を取得
+  // 訪問統計を取得（訪問日がある場合はその月、なければ当月）
   const loadVisitStats = async () => {
-    // visitDateまたはappointmentDateを使用
+    // visitDateまたはappointmentDateがあればその月、なければ当月を使用
     const visitDateValue = (seller as any)?.visitDate || seller?.appointmentDate;
-    if (!visitDateValue) {
-      console.log('No visit date, skipping visit stats');
-      return;
-    }
+    const month = visitDateValue
+      ? new Date(visitDateValue).toISOString().slice(0, 7)
+      : new Date().toISOString().slice(0, 7); // 当月（YYYY-MM形式）
     
     try {
       setLoadingVisitStats(true);
-      
-      // 訪問日から月を取得
-      const visitDate = new Date(visitDateValue);
-      const month = visitDate.toISOString().slice(0, 7); // YYYY-MM形式
       
       console.log('Loading visit stats for month:', month);
       const response = await api.get(`/api/sellers/visit-stats?month=${month}`);
@@ -989,13 +984,13 @@ const CallModePage = () => {
     }
   };
 
-  // 訪問統計をロード（visitDateまたはappointmentDateがある場合）
+  // 訪問統計をロード（訪問予約フォームを開いた時、またはvisitDate/appointmentDateがある場合）
   useEffect(() => {
     const visitDateValue = (seller as any)?.visitDate || seller?.appointmentDate;
-    if (visitDateValue) {
+    if (editingAppointment || visitDateValue) {
       loadVisitStats();
     }
-  }, [(seller as any)?.visitDate, seller?.appointmentDate]);
+  }, [editingAppointment, (seller as any)?.visitDate, seller?.appointmentDate]);
 
   // キーボードショートカット
   useEffect(() => {
