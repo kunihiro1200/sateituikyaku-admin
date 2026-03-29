@@ -26,22 +26,20 @@ export const PurchaseStatusBadge: React.FC<PurchaseStatusBadgeProps> = ({ status
         display: 'inline-flex',
         alignItems: 'center',
         gap: 0.5,
-        bgcolor: 'error.light',   // 赤背景
-        color: 'error.main',      // 赤文字
-        px: 2,
+        bgcolor: 'error.main',    // 濃い赤背景
+        color: 'white',           // 白文字
+        px: 1.5,
         py: 0.5,
         borderRadius: 1,
-        border: '1px solid',
-        borderColor: 'error.main',
       }}
     >
       {/* 警告アイコンで視覚的強調 */}
-      <WarningAmberIcon sx={{ fontSize: '1.1rem' }} />
+      <WarningAmberIcon sx={{ fontSize: '1.1rem', color: 'white' }} />
       <Typography
         sx={{
           fontWeight: 'bold',     // 太字
-          fontSize: '1.1rem',     // フォントサイズ
-          color: 'error.main',    // 赤文字
+          fontSize: '1rem',       // フォントサイズ
+          color: 'white',         // 白文字
         }}
       >
         {statusText}

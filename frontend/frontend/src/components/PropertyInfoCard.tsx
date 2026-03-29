@@ -198,7 +198,7 @@ export default function PropertyInfoCard({
     >
       {/* 買付状況バッジ - 最上部に表示 */}
       <PurchaseStatusBadge
-        statusText={getPurchaseStatusText(buyer?.latest_status, null)}
+        statusText={getPurchaseStatusText(buyer?.latest_status, property?.offer_status)}
       />
       {/* Header - 外部リンクアイコンと閉じるボタンのみ */}
       <Box sx={{ position: 'absolute', top: 8, right: 8, display: 'flex', gap: 0.5 }}>

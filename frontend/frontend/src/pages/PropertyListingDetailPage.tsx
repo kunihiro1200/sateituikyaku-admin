@@ -938,7 +938,6 @@ export default function PropertyListingDetailPage() {
                 </IconButton>
               </Tooltip>
               {/* 買付状況バッジ */}
-              {console.log('[DEBUG] offer_status:', data.offer_status, 'buyers:', buyers.length)}
               <PurchaseStatusBadge
                 statusText={getPurchaseStatusText(
                   buyers.find(b => hasBuyerPurchaseStatus(b.latest_status))?.latest_status,
