@@ -2012,6 +2012,8 @@ const CallModePage = () => {
         visitAssignee: editedAssignedTo || null,
         visitValuationAcquirer: acquirer || null,
         appointmentNotes: editedAppointmentNotes || null,
+        // visitDateが空の場合はappointmentDateもクリア（表示フォールバックを防ぐ）
+        ...(!visitDateStr && { appointmentDate: null }),
         ...(visitAcquisitionDateToSave !== undefined && { visitAcquisitionDate: visitAcquisitionDateToSave }),
       });
 
