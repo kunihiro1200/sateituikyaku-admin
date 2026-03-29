@@ -128,6 +128,10 @@ router.post('/sync', async (_req: Request, res: Response) => {
     }
 
     const result = await buyerSyncService.syncAll();
+    
+    // 同期後にバックエンドのステータスキャッシュをクリア（新規買主が一覧に反映されるよう）
+    buyerService.clearStatusCache();
+    
     res.json(result);
   } catch (error: any) {
     console.error('Error syncing buyers:', error);

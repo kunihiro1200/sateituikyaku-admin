@@ -42,7 +42,7 @@ Supabaseマイグレーションでカラムを冪等に追加し、既存の `h
 - [x] 3. チェックポイント - 全テストが通ることを確認
   - 全テストが通ることを確認し、疑問点があればユーザーに確認する。
 
-- [-] 4. git push でデプロイ
+- [x] 4. git push でデプロイ
   - `git add .` → `git commit -m "feat: add notification_sender field to BuyerViewingResultPage"` → `git push origin main`
   - Vercel の自動デプロイで `sateituikyaku-admin-frontend` と `baikyaku-property-site3` の両方がデプロイされることを確認
   - _要件: 1.1〜1.6, 2.1, 3.1〜3.3_

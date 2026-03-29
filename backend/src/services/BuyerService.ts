@@ -1743,6 +1743,14 @@ export class BuyerService {
   /**
    * 買主を論理削除
    */
+  /**
+   * バックエンドのモジュールレベルキャッシュをクリアする
+   * 同期後など、最新データを強制取得したい場合に呼び出す
+   */
+  clearStatusCache(): void {
+    _moduleLevelStatusCache = null;
+  }
+
   async softDelete(buyerId: string): Promise<void> {
     const existing = await this.getById(buyerId);
     if (!existing) throw new Error('Buyer not found');
