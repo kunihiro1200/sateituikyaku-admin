@@ -2737,16 +2737,24 @@ HP：https://ifoo-oita.com/
               if (!autoInitial) {
                 const assigneeKey = EMAIL_TEMPLATE_ASSIGNEE_MAP[template.id];
                 let myInitial = '';
-                const myEmployee = activeEmployees.find(e => e.email === employee?.email);
-                if (myEmployee?.initials) {
-                  myInitial = myEmployee.initials;
-                } else {
-                  try {
-                    const freshEmployees = await import('../services/employeeService').then(m => m.getActiveEmployees());
-                    const freshMe = freshEmployees.find(e => e.email === employee?.email);
-                    myInitial = freshMe?.initials || employee?.initials || '';
-                  } catch {
-                    myInitial = employee?.initials || '';
+                // 最優先: /api/employees/initials-by-emailで確実に取得
+                try {
+                  const initialsRes = await api.get('/api/employees/initials-by-email');
+                  if (initialsRes.data?.initials) myInitial = initialsRes.data.initials;
+                } catch { /* ignore */ }
+                // フォールバック: activeEmployeesから取得
+                if (!myInitial) {
+                  const myEmployee = activeEmployees.find(e => e.email === employee?.email);
+                  if (myEmployee?.initials) {
+                    myInitial = myEmployee.initials;
+                  } else {
+                    try {
+                      const freshEmployees = await import('../services/employeeService').then(m => m.getActiveEmployees());
+                      const freshMe = freshEmployees.find(e => e.email === employee?.email);
+                      myInitial = freshMe?.initials || (employee as any)?.initials || '';
+                    } catch {
+                      myInitial = (employee as any)?.initials || '';
+                    }
                   }
                 }
                 if (assigneeKey && myInitial && seller?.id) {
