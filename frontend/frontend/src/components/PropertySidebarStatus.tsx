@@ -57,6 +57,7 @@ const STATUS_PRIORITY: Record<string, number> = {
   'K専任公開中': 26,
   'R専任公開中': 27,
   'I専任公開中': 28,
+  '専任・公開中': 29,
 };
 
 // 赤字表示対象ステータス
@@ -77,6 +78,19 @@ const HIGH_PRIORITY_BG_STATUSES = new Set([
   'SUUMO URL\u3000要登録',
   'レインズ登録＋SUUMO登録',
 ]);
+
+// sales_assignee → 専任公開中ステータス名のマッピング
+// sidebar_statusが古いデータ（'専任・公開中'）の場合にフロントで分解する
+const ASSIGNEE_TO_SENIN_STATUS: Record<string, string> = {
+  '山本': 'Y専任公開中',
+  '生野': '生・専任公開中',
+  '久': '久・専任公開中',
+  '裏': 'U専任公開中',
+  '林': '林・専任公開中',
+  '国広': 'K専任公開中',
+  '木村': 'R専任公開中',
+  '角井': 'I専任公開中',
+};
 
 
 export default function PropertySidebarStatus({
@@ -106,7 +120,14 @@ export default function PropertySidebarStatus({
 
       const status = listing.sidebar_status || '';
       if (status && status !== '値下げ未完了') {
-        counts[status] = (counts[status] || 0) + 1;
+        // 「専任・公開中」はsales_assigneeで担当者別に分解して表示
+        if (status === '専任・公開中') {
+          const assignee = listing.sales_assignee || '';
+          const assigneeStatus = ASSIGNEE_TO_SENIN_STATUS[assignee] || '専任・公開中';
+          counts[assigneeStatus] = (counts[assigneeStatus] || 0) + 1;
+        } else {
+          counts[status] = (counts[status] || 0) + 1;
+        }
       }
     });
 
