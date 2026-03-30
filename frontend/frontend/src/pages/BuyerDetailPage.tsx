@@ -142,6 +142,20 @@ const toHalfWidth = (str: string): string => {
   );
 };
 
+// 保存ボタン押下時にまとめて保存するフィールドのセット
+const SAVE_BUTTON_FIELDS = new Set([
+  'inquiry_email_phone',
+  'distribution_type',
+  'pinrich',
+  'broker_survey',
+  'three_calls_confirmed',
+  'initial_assignee',
+  'owned_home_hearing_inquiry',
+  'owned_home_hearing_result',
+  'valuation_required',
+  'broker_inquiry',
+]);
+
 const BUYER_FIELD_SECTIONS = [
   {
     title: '問合せ内容',
@@ -221,6 +235,15 @@ export default function BuyerDetailPage() {
     price_range_apartment: '価格帯（マンション）',
     price_range_land: '価格帯（土地）',
     price_range_any: '価格帯（いずれか）',
+    owned_home_hearing_result: '持家ヒアリング結果',
+  };
+
+  // owned_home_hearing_result が必須かどうかを判定するヘルパー
+  // AND([受付日]>="2026/3/30", ISNOTBLANK([問合時持家ヒアリング]))
+  const isHomeHearingResultRequired = (data: any): boolean => {
+    if (!data.reception_date) return false;
+    if (new Date(data.reception_date) < new Date('2026-03-30')) return false;
+    return !!(data.owned_home_hearing_inquiry && String(data.owned_home_hearing_inquiry).trim());
   };
 
   // latest_status が必須かどうかを判定するヘルパー
@@ -328,6 +351,11 @@ export default function BuyerDetailPage() {
       if (needsA && !buyer.price_range_apartment) missingKeys.push('price_range_apartment');
       if (needsL && !buyer.price_range_land) missingKeys.push('price_range_land');
       if (!needsH && !needsA && !needsL && !anyPrice) missingKeys.push('price_range_any');
+    }
+
+    // 持家ヒアリング結果：条件付き必須
+    if (isHomeHearingResultRequired(buyer) && (!buyer.owned_home_hearing_result || !String(buyer.owned_home_hearing_result).trim())) {
+      missingKeys.push('owned_home_hearing_result');
     }
 
     // ハイライト用 state を更新
@@ -490,6 +518,10 @@ export default function BuyerDetailPage() {
           initialMissing.push('three_calls_confirmed');
         }
       }
+      // 持家ヒアリング結果：条件付き必須
+      if (isHomeHearingResultRequired(res.data) && (!res.data.owned_home_hearing_result || !String(res.data.owned_home_hearing_result).trim())) {
+        initialMissing.push('owned_home_hearing_result');
+      }
       if (initialMissing.length > 0) {
         setMissingRequiredFields(new Set(initialMissing));
       }
@@ -588,7 +620,16 @@ export default function BuyerDetailPage() {
       setBuyer(result.buyer);
       setSectionDirtyStates(prev => ({ ...prev, [sectionTitle]: false }));
       setSectionChangedFields(prev => ({ ...prev, [sectionTitle]: {} }));
-      setSnackbar({ open: true, message: '保存しました', severity: 'success' });
+      // スプシ同期失敗時は警告表示
+      if (result?.syncStatus === 'pending' || result?.syncStatus === 'failed') {
+        setSnackbar({
+          open: true,
+          message: 'DBへの保存は完了しましたが、スプレッドシートへの同期に失敗しました',
+          severity: 'warning',
+        });
+      } else {
+        setSnackbar({ open: true, message: '保存しました', severity: 'success' });
+      }
     } catch (error: any) {
       setSnackbar({
         open: true,
@@ -1784,7 +1825,7 @@ TEL：097-533-2022`;
                                         else next.add('inquiry_email_phone');
                                         return next;
                                       });
-                                      handleInlineFieldSave(field.key, newValue).catch(console.error);
+                                      // SAVE_BUTTON_FIELDS に含まれるため handleInlineFieldSave は呼ばない
                                     }}
                                     sx={{
                                       flex: 1,
@@ -1853,7 +1894,7 @@ TEL：097-533-2022`;
                                         else next.add('distribution_type');
                                         return next;
                                       });
-                                      handleInlineFieldSave(field.key, newValue).catch(console.error);
+                                      // SAVE_BUTTON_FIELDS に含まれるため handleInlineFieldSave は呼ばない
                                     }}
                                     sx={{
                                       flex: 1,
@@ -1895,7 +1936,7 @@ TEL：097-533-2022`;
                                 const newValue = e.target.value;
                                 setBuyer((prev: any) => prev ? { ...prev, [field.key]: newValue } : prev);
                                 handleFieldChange(section.title, field.key, newValue);
-                                handleInlineFieldSave(field.key, newValue).catch(console.error);
+                                // SAVE_BUTTON_FIELDS に含まれるため handleInlineFieldSave は呼ばない
                               }}
                             >
                               <MenuItem value=""><em>未選択</em></MenuItem>
@@ -1952,7 +1993,7 @@ TEL：097-533-2022`;
                                       const newValue = isSelected ? '' : opt;
                                       setBuyer((prev: any) => prev ? { ...prev, [field.key]: newValue } : prev);
                                       handleFieldChange(section.title, field.key, newValue);
-                                      handleInlineFieldSave(field.key, newValue).catch(console.error);
+                                      // SAVE_BUTTON_FIELDS に含まれるため handleInlineFieldSave は呼ばない
                                     }}
                                     sx={{
                                       flex: 1,
@@ -2010,7 +2051,7 @@ TEL：097-533-2022`;
                                         else next.add('three_calls_confirmed');
                                         return next;
                                       });
-                                      handleInlineFieldSave(field.key, newValue).catch(console.error);
+                                      // SAVE_BUTTON_FIELDS に含まれるため handleInlineFieldSave は呼ばない
                                     }}
                                     sx={{
                                       flex: 1,
@@ -2092,6 +2133,8 @@ TEL：097-533-2022`;
                                     const newValue = isSelected ? '' : initial;
                                     // 即座にUI更新
                                     setBuyer((prev: any) => prev ? { ...prev, initial_assignee: newValue } : prev);
+                                    // sectionChangedFieldsに記録（保存ボタン押下時にまとめて保存するため）
+                                    handleFieldChange(section.title, 'initial_assignee', newValue);
                                     // 必須マーク更新
                                     setMissingRequiredFields(prev => {
                                       const next = new Set(prev);
@@ -2099,8 +2142,7 @@ TEL：097-533-2022`;
                                       else next.add('initial_assignee');
                                       return next;
                                     });
-                                    // バックグラウンドで保存
-                                    handleInlineFieldSave('initial_assignee', newValue).catch(console.error);
+                                    // SAVE_BUTTON_FIELDS に含まれるため handleInlineFieldSave は呼ばない
                                   }}
                                   sx={{
                                     minWidth: 40,
@@ -2151,7 +2193,7 @@ TEL：097-533-2022`;
                                     const newValue = isSelected ? '' : option;
                                     setBuyer((prev: any) => prev ? { ...prev, [field.key]: newValue } : prev);
                                     handleFieldChange(section.title, field.key, newValue);
-                                    handleInlineFieldSave(field.key, newValue).catch(console.error);
+                                    // SAVE_BUTTON_FIELDS に含まれるため handleInlineFieldSave は呼ばない
                                   }}
                                   sx={{
                                     flex: 1,
@@ -2191,7 +2233,7 @@ TEL：097-533-2022`;
                                       const newValue = isSelected ? '' : initial;
                                       setBuyer((prev: any) => prev ? { ...prev, [field.key]: newValue } : prev);
                                       handleFieldChange(section.title, field.key, newValue);
-                                      handleInlineFieldSave(field.key, newValue).catch(console.error);
+                                      // SAVE_BUTTON_FIELDS に含まれるため handleInlineFieldSave は呼ばない
                                     }}
                                     sx={{
                                       minWidth: 40,
@@ -2218,11 +2260,18 @@ TEL：097-533-2022`;
                       const showValuationText = ['持家（マンション）', '持家（戸建）'].includes(
                         buyer.owned_home_hearing_result
                       );
+                      const isResultMissing = missingRequiredFields.has('owned_home_hearing_result');
                       return (
                         <Grid item xs={12} key={`${section.title}-${field.key}`}>
-                          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                            <Typography variant="caption" color="text.secondary">
-                              {field.label}
+                          <Box sx={{
+                            display: 'flex', flexDirection: 'column', gap: 0.5,
+                            border: isResultMissing ? '2px solid #f44336' : 'none',
+                            borderRadius: isResultMissing ? 1 : 0,
+                            p: isResultMissing ? 0.5 : 0,
+                            bgcolor: isResultMissing ? 'rgba(244,67,54,0.05)' : 'transparent',
+                          }}>
+                            <Typography variant="caption" color={isResultMissing ? 'error' : 'text.secondary'} sx={{ fontWeight: isResultMissing ? 'bold' : 'normal' }}>
+                              {field.label}{isResultMissing ? ' *' : ''}
                             </Typography>
                             <Box sx={{ display: 'flex', gap: 0.5 }}>
                               {RESULT_OPTIONS.map((option) => {
@@ -2237,7 +2286,13 @@ TEL：097-533-2022`;
                                       const newValue = isSelected ? '' : option;
                                       setBuyer((prev: any) => prev ? { ...prev, [field.key]: newValue } : prev);
                                       handleFieldChange(section.title, field.key, newValue);
-                                      handleInlineFieldSave(field.key, newValue).catch(console.error);
+                                      setMissingRequiredFields(prev => {
+                                        const next = new Set(prev);
+                                        if (newValue && String(newValue).trim()) next.delete('owned_home_hearing_result');
+                                        else next.add('owned_home_hearing_result');
+                                        return next;
+                                      });
+                                      // SAVE_BUTTON_FIELDS に含まれるため handleInlineFieldSave は呼ばない
                                     }}
                                     sx={{
                                       flex: 1,
@@ -2289,8 +2344,7 @@ TEL：097-533-2022`;
                                         // UIを即座に更新
                                         setBuyer((prev: any) => prev ? { ...prev, valuation_required: newValue } : prev);
                                         handleFieldChange(section.title, field.key, newValue);
-                                        // 保存はバックグラウンドで実行
-                                        handleInlineFieldSave(field.key, newValue);
+                                        // SAVE_BUTTON_FIELDS に含まれるため handleInlineFieldSave は呼ばない
                                       }}
                                       sx={{
                                         flex: 1,
