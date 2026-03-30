@@ -3555,18 +3555,18 @@ HP：https://ifoo-oita.com/
       )}
 
       {/* メインコンテンツ（サイドバー + 追客ログ + 左右2分割） */}
-      <Box sx={{ flex: 1, overflow: 'hidden', display: 'flex' }}>
-        {/* サイドバー */}
-        <Box sx={{ flexShrink: 0, overflow: 'auto', borderRight: 1, borderColor: 'divider' }}>
+      <Box sx={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: isMobile ? 'column' : 'row' }}>
+        {/* サイドバー（追客ログ）- スマホ時はorder:2（最後）で表示 */}
+        <Box sx={{ flexShrink: 0, overflow: 'auto', borderRight: isMobile ? 0 : 1, borderBottom: isMobile ? 1 : 0, borderColor: 'divider', order: isMobile ? 2 : 0 }}>
           {/* 売主追客ログ（一番上） */}
-          <Box sx={{ width: 280, p: 2, borderBottom: 1, borderColor: 'divider' }}>
+          <Box sx={{ width: isMobile ? '100%' : 280, p: 2, borderBottom: 1, borderColor: 'divider' }}>
             <CallLogDisplay ref={callLogRef} sellerId={id!} />
           </Box>
 
           {/* 1番電話ランキング - サイドバーから削除（1番電話フィールド横のボタンに移動） */}
 
           {/* メール・SMS履歴（追客ログの直下） */}
-          <Box sx={{ width: 280, p: 2, borderBottom: 1, borderColor: 'divider' }}>
+          <Box sx={{ width: isMobile ? '100%' : 280, p: 2, borderBottom: 1, borderColor: 'divider' }}>
             <Typography variant="subtitle1" sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1, fontWeight: 'bold' }}>
               📋 メール・SMS履歴
             </Typography>
@@ -3612,7 +3612,7 @@ HP：https://ifoo-oita.com/
           </Box>
 
           {/* 過去の活動ログ（追客ログの直下） */}
-          <Box sx={{ width: 280, p: 2, borderBottom: 1, borderColor: 'divider' }}>
+          <Box sx={{ width: isMobile ? '100%' : 280, p: 2, borderBottom: 1, borderColor: 'divider' }}>
             {seller?.sellerNumber ? (
               <FollowUpLogHistoryTable sellerNumber={seller.sellerNumber} />
             ) : (
@@ -3644,23 +3644,25 @@ HP：https://ifoo-oita.com/
         </Box>
         
         {/* メインコンテンツエリア */}
-        <Box sx={{ flex: 1, overflow: 'hidden' }}>
-        <Grid container sx={{ height: '100%' }}>
-          {/* 左側：情報表示エリア（50%） */}
+        <Box sx={{ flex: 1, overflow: isMobile ? 'auto' : 'hidden' }}>
+        <Grid container sx={{ height: isMobile ? 'auto' : '100%', flexDirection: isMobile ? 'column' : 'row' }}>
+          {/* 左側：情報表示エリア（50%）- スマホ時はコメントの後（order:1） */}
           <Grid
             item
-            xs={isMobile ? 12 : 6}
+            xs={12}
+            md={6}
             sx={{
               height: isMobile ? 'auto' : '100%',
-              overflow: 'auto',
+              overflow: isMobile ? 'visible' : 'auto',
               borderRight: isMobile ? 0 : 1,
               borderColor: 'divider',
               p: isMobile ? 1 : 3,
               pb: isMobile ? '80px' : 3,
+              order: isMobile ? 1 : 0,
             }}
           >
-            {/* モバイル：売主基本情報固定ヘッダー */}
-            {isMobile && seller && (
+            {/* モバイル：売主基本情報固定ヘッダー（非表示 - ヘッダーに名前があるため） */}
+            {false && isMobile && seller && (
               <Box
                 sx={{
                   position: 'sticky',
@@ -5653,15 +5655,16 @@ HP：https://ifoo-oita.com/
             </Paper>
           </Grid>
 
-          {/* 右側：統一コメント欄エリア（50%）- スマホ時は先頭に全幅表示 */}
+          {/* 右側：統一コメント欄エリア（50%）- スマホ時は最初に全幅表示（order:0） */}
           <Grid
             item
-            xs={isMobile ? 12 : 6}
+            xs={12}
+            md={6}
             sx={{
               height: isMobile ? 'auto' : '100%',
-              overflow: 'auto',
+              overflow: isMobile ? 'visible' : 'auto',
               p: isMobile ? 1 : 3,
-              order: isMobile ? -1 : 0,
+              order: isMobile ? 0 : 1,
             }}
           >
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2, flexWrap: 'wrap' }}>
