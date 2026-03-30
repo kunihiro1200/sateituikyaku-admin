@@ -3559,9 +3559,9 @@ HP：https://ifoo-oita.com/
       )}
 
       {/* メインコンテンツ（サイドバー + 追客ログ + 左右2分割） */}
-      <Box sx={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: isMobile ? 'column' : 'row' }}>
+      <Box sx={{ flex: 1, overflow: isMobile ? 'auto' : 'hidden', display: 'flex', flexDirection: isMobile ? 'column' : 'row' }}>
         {/* サイドバー（追客ログ）- スマホ時はorder:2（最後）で表示 */}
-        <Box sx={{ flexShrink: 0, overflow: 'auto', borderRight: isMobile ? 0 : 1, borderBottom: isMobile ? 1 : 0, borderColor: 'divider', order: isMobile ? 2 : 0 }}>
+        <Box sx={{ flexShrink: 0, overflow: isMobile ? 'visible' : 'auto', borderRight: isMobile ? 0 : 1, borderTop: isMobile ? 1 : 0, borderColor: 'divider', order: isMobile ? 2 : 0 }}>
           {/* 売主追客ログ（一番上） */}
           {isMobile && (
             <Box
@@ -3657,7 +3657,7 @@ HP：https://ifoo-oita.com/
         </Box>
         
         {/* メインコンテンツエリア */}
-        <Box sx={{ flex: 1, overflow: isMobile ? 'auto' : 'hidden' }}>
+        <Box sx={{ flex: isMobile ? 'none' : 1, overflow: isMobile ? 'visible' : 'hidden' }}>
         <Grid container sx={{ height: isMobile ? 'auto' : '100%', flexDirection: isMobile ? 'column' : 'row' }}>
           {/* 左側：情報表示エリア（50%）- スマホ時はコメントの後（order:1） */}
           <Grid

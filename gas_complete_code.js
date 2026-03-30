@@ -17,14 +17,22 @@ var SUPABASE_CONFIG = {
 // ============================================================
 function rowToObject(headers, rowData) {
   var obj = {};
+  // 反響詳細日時は時刻情報が必要なため、Dateオブジェクトをそのまま保持する列
+  var datetimeColumns = { '反響詳細日時': true };
   for (var j = 0; j < headers.length; j++) {
     if (headers[j] === '') continue;
     var val = rowData[j];
     if (val instanceof Date) {
-      obj[headers[j]] = (val.getTime() === 0) ? '' :
-        val.getFullYear() + '/' +
-        String(val.getMonth() + 1).padStart(2, '0') + '/' +
-        String(val.getDate()).padStart(2, '0');
+      if (val.getTime() === 0) {
+        obj[headers[j]] = '';
+      } else if (datetimeColumns[headers[j]]) {
+        // 日時列はDateオブジェクトをそのまま保持（syncUpdatesToSupabase_でtoISOString()する）
+        obj[headers[j]] = val;
+      } else {
+        obj[headers[j]] = val.getFullYear() + '/' +
+          String(val.getMonth() + 1).padStart(2, '0') + '/' +
+          String(val.getDate()).padStart(2, '0');
+      }
     } else {
       obj[headers[j]] = val;
     }
@@ -95,7 +103,7 @@ function fetchAllSellersFromSupabase_() {
   var allSellers = [];
   var pageSize = 1000;
   var offset = 0;
-  var fields = 'seller_number,status,next_call_date,visit_assignee,unreachable_status,comments,phone_contact_person,preferred_contact_time,contact_method,contract_year_month,current_status,pinrich_status,visit_reminder_assignee,property_address,land_area,building_area,build_year,structure,floor_plan,inquiry_date,valuation_method,valuation_amount_1,valuation_amount_2,valuation_amount_3,visit_acquisition_date,visit_date,visit_time,visit_valuation_acquirer,valuation_assignee,confidence_level,competitor_name,competitor_name_and_reason,exclusive_other_decision_factor,visit_notes,first_call_person,exclusion_action';
+  var fields = 'seller_number,status,next_call_date,visit_assignee,unreachable_status,comments,phone_contact_person,preferred_contact_time,contact_method,contract_year_month,current_status,pinrich_status,visit_reminder_assignee,property_address,land_area,building_area,build_year,structure,floor_plan,inquiry_date,inquiry_detailed_datetime,valuation_method,valuation_amount_1,valuation_amount_2,valuation_amount_3,visit_acquisition_date,visit_date,visit_time,visit_valuation_acquirer,valuation_assignee,confidence_level,competitor_name,competitor_name_and_reason,exclusive_other_decision_factor,visit_notes,first_call_person,exclusion_action';
   while (true) {
     var url = SUPABASE_CONFIG.URL + '/rest/v1/sellers?select=' + fields +
       '&deleted_at=is.null&offset=' + offset + '&limit=' + pageSize;
