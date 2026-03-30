@@ -1328,6 +1328,28 @@ export class EnhancedAutoSyncService {
       updateData.unreachable_sms_assignee = unreachableSmsAssignee ? String(unreachableSmsAssignee) : null;
     }
 
+    // メール送信確認セクションの残りフィールドを追加
+    const valuationSmsAssignee = row['査定Sメール担当'];
+    if (valuationSmsAssignee !== undefined) {
+      updateData.valuation_sms_assignee = valuationSmsAssignee ? String(valuationSmsAssignee) : null;
+    }
+    const valuationReasonEmailAssignee = row['査定理由別３後Eメ担'];
+    if (valuationReasonEmailAssignee !== undefined) {
+      updateData.valuation_reason_email_assignee = valuationReasonEmailAssignee ? String(valuationReasonEmailAssignee) : null;
+    }
+    const cancelNoticeAssignee = row['キャンセル案内担当'];
+    if (cancelNoticeAssignee !== undefined) {
+      updateData.cancel_notice_assignee = cancelNoticeAssignee ? String(cancelNoticeAssignee) : null;
+    }
+    const longTermEmailAssignee = row['除外前、長期客メール担当'];
+    if (longTermEmailAssignee !== undefined) {
+      updateData.long_term_email_assignee = longTermEmailAssignee ? String(longTermEmailAssignee) : null;
+    }
+    const callReminderEmailAssignee = row['当社が電話したというリマインドメール担当'];
+    if (callReminderEmailAssignee !== undefined) {
+      updateData.call_reminder_email_assignee = callReminderEmailAssignee ? String(callReminderEmailAssignee) : null;
+    }
+
     // ID（D列）とサイトURL（AP列）を追加
     const inquiryId = row['ID'];
     if (inquiryId !== undefined) {
@@ -1599,6 +1621,28 @@ export class EnhancedAutoSyncService {
     const unreachableSmsAssigneeNew = row['不通時Sメール担当'];
     if (unreachableSmsAssigneeNew !== undefined) {
       encryptedData.unreachable_sms_assignee = unreachableSmsAssigneeNew ? String(unreachableSmsAssigneeNew) : null;
+    }
+
+    // メール送信確認セクションの残りフィールドを追加
+    const valuationSmsAssigneeNew = row['査定Sメール担当'];
+    if (valuationSmsAssigneeNew !== undefined) {
+      encryptedData.valuation_sms_assignee = valuationSmsAssigneeNew ? String(valuationSmsAssigneeNew) : null;
+    }
+    const valuationReasonEmailAssigneeNew = row['査定理由別３後Eメ担'];
+    if (valuationReasonEmailAssigneeNew !== undefined) {
+      encryptedData.valuation_reason_email_assignee = valuationReasonEmailAssigneeNew ? String(valuationReasonEmailAssigneeNew) : null;
+    }
+    const cancelNoticeAssigneeNew = row['キャンセル案内担当'];
+    if (cancelNoticeAssigneeNew !== undefined) {
+      encryptedData.cancel_notice_assignee = cancelNoticeAssigneeNew ? String(cancelNoticeAssigneeNew) : null;
+    }
+    const longTermEmailAssigneeNew = row['除外前、長期客メール担当'];
+    if (longTermEmailAssigneeNew !== undefined) {
+      encryptedData.long_term_email_assignee = longTermEmailAssigneeNew ? String(longTermEmailAssigneeNew) : null;
+    }
+    const callReminderEmailAssigneeNew = row['当社が電話したというリマインドメール担当'];
+    if (callReminderEmailAssigneeNew !== undefined) {
+      encryptedData.call_reminder_email_assignee = callReminderEmailAssigneeNew ? String(callReminderEmailAssigneeNew) : null;
     }
 
     // ID（D列）とサイトURL（AP列）を追加

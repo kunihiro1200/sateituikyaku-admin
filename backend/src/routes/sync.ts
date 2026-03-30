@@ -800,6 +800,46 @@ router.get('/periodic/status', async (req: Request, res: Response) => {
 
 
 /**
+ * GET /api/sync/sellers-by-inquiry-date?from=2026-01-01
+ * GAS一括同期用: 指定日以降の反響日付を持つ売主番号リストを返す
+ * GASはこのリストを使って seller-row を1件ずつ呼び出す
+ */
+router.get('/sellers-by-inquiry-date', async (req: Request, res: Response) => {
+  const authHeader = req.headers.authorization;
+  const cronSecret = process.env.CRON_SECRET;
+  if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+    return res.status(401).json({ success: false, error: 'Unauthorized' });
+  }
+
+  const from = req.query.from as string;
+  if (!from || !/^\d{4}-\d{2}-\d{2}$/.test(from)) {
+    return res.status(400).json({ success: false, error: 'fromパラメータが必要です（例: 2026-01-01）' });
+  }
+
+  try {
+    const { createClient } = await import('@supabase/supabase-js');
+    const supabaseClient = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!);
+
+    const { data, error } = await supabaseClient
+      .from('sellers')
+      .select('seller_number')
+      .gte('inquiry_date', from)
+      .is('deleted_at', null)
+      .order('inquiry_date', { ascending: true })
+      .limit(10000);
+
+    if (error) throw new Error(error.message);
+
+    const sellerNumbers = (data || []).map((s: any) => s.seller_number);
+    console.log(`[sellers-by-inquiry-date] from=${from} → ${sellerNumbers.length}件`);
+    res.json({ success: true, count: sellerNumbers.length, sellerNumbers });
+  } catch (error: any) {
+    console.error('[sellers-by-inquiry-date] Error:', error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
  * POST /api/sync/seller-row
  * GAS onEditトリガー用: スプレッドシートの1行分のデータを受け取ってDBを更新
  * 
