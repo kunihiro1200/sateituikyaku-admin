@@ -243,14 +243,45 @@ export default function BuyerDetailPage() {
     return true;
   };
 
+  // 初動担当の条件付き必須判定
+  // AND([受付日]>="2026/3/30", OR([_THISROW_BEFORE].[inquiry_email_phone]<>[inquiry_email_phone], AND(ISNOTBLANK([inquiry_hearing]),[inquiry_hearing]<>[_THISROW_BEFORE].[inquiry_hearing])))
+  const isInitialAssigneeConditionallyRequired = (
+    currentBuyer: any,
+    changedFields: Record<string, any>
+  ): boolean => {
+    if (!currentBuyer?.reception_date) return false;
+    const receptionDate = new Date(currentBuyer.reception_date);
+    if (receptionDate < new Date('2026-03-30')) return false;
+
+    // inquiry_email_phone が変更されたか
+    const emailPhoneChanged =
+      'inquiry_email_phone' in changedFields &&
+      changedFields.inquiry_email_phone !== initialInquiryEmailPhoneRef.current;
+
+    // inquiry_hearing が変更されかつ空でないか
+    const hearingNewValue = 'inquiry_hearing' in changedFields
+      ? changedFields.inquiry_hearing
+      : currentBuyer.inquiry_hearing;
+    const hearingChanged =
+      'inquiry_hearing' in changedFields &&
+      changedFields.inquiry_hearing !== initialInquiryHearingRef.current;
+    const hearingFilledAndChanged =
+      hearingChanged && hearingNewValue && String(hearingNewValue).trim().length > 0;
+
+    return emailPhoneChanged || Boolean(hearingFilledAndChanged);
+  };
+
   // 未入力の必須項目の表示名リストを返す（空配列 = 全て入力済み）
   const checkMissingFields = (): string[] => {
     if (!buyer) return [];
 
     const missingKeys: string[] = [];
 
-    // 常に必須
-    if (!buyer.initial_assignee || !String(buyer.initial_assignee).trim()) {
+    // 初動担当：常時必須 OR 条件付き必須（重複追加なし）
+    const allChangedFields = Object.values(sectionChangedFields)
+      .reduce((acc: Record<string, any>, fields) => ({ ...acc, ...fields }), {});
+    const conditionallyRequired = isInitialAssigneeConditionallyRequired(buyer, allChangedFields);
+    if (!buyer.initial_assignee || !String(buyer.initial_assignee).trim() || conditionallyRequired) {
       missingKeys.push('initial_assignee');
     }
     // broker_inquiryが「業者問合せ」の場合はinquiry_sourceを必須としない
@@ -336,6 +367,10 @@ export default function BuyerDetailPage() {
 
   // クイックボタンの状態管理
   const { isDisabled: isQuickButtonDisabled, disableButton: disableQuickButton } = useQuickButtonState(buyer_number || '');
+
+  // 変更前の値を保持（_THISROW_BEFORE相当）
+  const initialInquiryEmailPhoneRef = useRef<string>('');
+  const initialInquiryHearingRef = useRef<string>('');
 
   // ヒアリング項目用RichTextEditorのref
   const hearingEditorRef = useRef<RichTextCommentEditorHandle>(null);
@@ -424,6 +459,9 @@ export default function BuyerDetailPage() {
       setBuyer(res.data);
       // ヒアリング項目の初期値をセット（HTML形式で保存されている場合はそのまま）
       setHearingEditValue(res.data.inquiry_hearing || '');
+      // 変更前の値として記録（_THISROW_BEFORE相当）
+      initialInquiryEmailPhoneRef.current = res.data.inquiry_email_phone || '';
+      initialInquiryHearingRef.current = res.data.inquiry_hearing || '';
       // 担当への伝言/質問事項の初期値をセット
       setMessageToAssigneeEditValue(res.data.message_to_assignee || '');
       // 初回表示時から未入力の必須フィールドをハイライト
