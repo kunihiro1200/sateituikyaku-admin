@@ -2010,7 +2010,6 @@ export class SellerService extends BaseRepository {
         const count = row.count || 0;
         switch (row.category) {
           case 'todayCall':         result.todayCall = count; break;
-          case 'todayCallWithInfo': result.todayCallWithInfo += count; break;
           case 'visitDayBefore':    result.visitDayBefore = count; break;
           case 'visitCompleted':    result.visitCompleted += count; break;
           case 'unvaluated':        result.unvaluated = count; break;
@@ -2022,6 +2021,7 @@ export class SellerService extends BaseRepository {
             if (row.assignee) result.todayCallAssignedCounts[row.assignee] = count;
             break;
           case 'todayCallWithInfo':
+            result.todayCallWithInfo += count;
             if (row.label) {
               // labelはコンテンツ部分のみ（例: "U", "Eメール"）なので、フルラベル形式に変換
               const fullLabel = `当日TEL(${row.label})`;
