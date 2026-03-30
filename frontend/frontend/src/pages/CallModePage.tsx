@@ -3178,17 +3178,21 @@ HP：https://ifoo-oita.com/
       {/* ヘッダー */}
       <Box
         sx={{
-          p: 1.5,
+          px: 1,
+          py: isMobile ? 0.5 : 1.5,
           borderBottom: 1,
           borderColor: 'divider',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
           bgcolor: 'background.paper',
+          flexWrap: isMobile ? 'wrap' : 'nowrap',
+          gap: isMobile ? 0.5 : 0,
+          minHeight: isMobile ? 0 : undefined,
         }}
       >
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <Button startIcon={<ArrowBack />} onClick={() => {
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: isMobile ? 0.5 : 2, flexWrap: isMobile ? 'wrap' : 'nowrap' }}>
+          <Button startIcon={<ArrowBack />} size={isMobile ? 'small' : 'medium'} onClick={() => {
             navigateWithWarningCheck(() => {
               // 一覧に戻る時にスクロール位置・ページ番号をリセット（トップに戻る）
               sessionStorage.removeItem('sellersScrollPosition');
@@ -3236,7 +3240,11 @@ HP：https://ifoo-oita.com/
             );
           })()}
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Typography variant="h5" fontWeight="bold" sx={{ color: SECTION_COLORS.seller.main }}>{seller?.name || '読み込み中...'}</Typography>
+            <Typography
+                variant={isMobile ? 'body1' : 'h5'}
+                fontWeight="bold"
+                sx={{ color: SECTION_COLORS.seller.main, fontSize: isMobile ? '0.95rem' : undefined }}
+              >{seller?.name || '読み込み中...'}</Typography>
             {seller?.sellerNumber && (
               <>
                 <Chip 
@@ -3268,8 +3276,9 @@ HP：https://ifoo-oita.com/
             startIcon={<CalendarToday />}
             onClick={scrollToAppointmentSection}
             variant="outlined"
+            size={isMobile ? 'small' : 'medium'}
             sx={{ 
-              ml: 2,
+              ml: isMobile ? 0 : 2,
               borderColor: SECTION_COLORS.seller.main,
               color: SECTION_COLORS.seller.main,
               '&:hover': {
@@ -3293,7 +3302,8 @@ HP：https://ifoo-oita.com/
                   window.open(`/sellers/${seller.id}/nearby-buyers`, '_blank');
                 }
               }}
-              sx={{ ml: 1, fontWeight: 'bold' }}
+              size={isMobile ? 'small' : 'medium'}
+              sx={{ ml: isMobile ? 0 : 1, fontWeight: 'bold' }}
               title="近隣買主を別ページで表示"
             >
               近隣買主
@@ -3334,11 +3344,11 @@ HP：https://ifoo-oita.com/
           </DialogActions>
         </Dialog>
 
-        {/* 査定額表示（中央） */}
+        {/* 査定額表示（中央）- スマホ時は非表示 */}
         {/* 優先順位: 1. valuationText（I列テキスト）がある場合はそれを表示 */}
         {/*          2. 手入力または自動計算の数値査定額がある場合はそれを表示 */}
         {/*          3. どちらもない場合は「査定額未設定」 */}
-        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mx: 2 }}>
+        <Box sx={{ display: isMobile ? 'none' : 'flex', flexDirection: 'column', alignItems: 'center', mx: 2 }}>
           {seller?.valuationText ? (
             // I列「査定額」テキスト形式がある場合（例：「1900～2200万円」）を最優先
             <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
@@ -3646,7 +3656,7 @@ HP：https://ifoo-oita.com/
               borderRight: isMobile ? 0 : 1,
               borderColor: 'divider',
               p: isMobile ? 1 : 3,
-              pb: isMobile ? '140px' : 3,
+              pb: isMobile ? '80px' : 3,
             }}
           >
             {/* モバイル：売主基本情報固定ヘッダー */}
@@ -3674,8 +3684,8 @@ HP：https://ifoo-oita.com/
                 </Typography>
               </Box>
             )}
-            {/* モバイル：コメント入力エリア（fullWidth） */}
-            {isMobile && (
+            {/* モバイル：コメント入力エリア（右側コメント欄に統合したため非表示） */}
+            {false && isMobile && (
               <Accordion defaultExpanded sx={{ mb: 1 }}>
                 <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                   <Typography variant="subtitle1" fontWeight="bold">📝 コメント入力</Typography>
@@ -5643,15 +5653,15 @@ HP：https://ifoo-oita.com/
             </Paper>
           </Grid>
 
-          {/* 右側：統一コメント欄エリア（50%） */}
+          {/* 右側：統一コメント欄エリア（50%）- スマホ時は先頭に全幅表示 */}
           <Grid
             item
-            xs={6}
+            xs={isMobile ? 12 : 6}
             sx={{
-              height: '100%',
+              height: isMobile ? 'auto' : '100%',
               overflow: 'auto',
-              p: 3,
-              display: isMobile ? 'none' : undefined,
+              p: isMobile ? 1 : 3,
+              order: isMobile ? -1 : 0,
             }}
           >
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2, flexWrap: 'wrap' }}>
