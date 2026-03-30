@@ -1314,18 +1314,41 @@ export class SellerService extends BaseRepository {
       }
     }
 
+    // todayCallWithInfo:xxx の場合、ラベルでJS側フィルタリング
+    let finalSellers = decryptedSellers;
+    if (typeof statusCategory === 'string' && statusCategory.startsWith('todayCallWithInfo:')) {
+      const targetLabel = statusCategory.replace('todayCallWithInfo:', '');
+      const isValidVal = (v: string | null | undefined): boolean =>
+        !!(v && v.trim() !== '' && v.trim().toLowerCase() !== 'null');
+      finalSellers = decryptedSellers.filter((s: any) => {
+        const parts: string[] = [];
+        const phone = s.phoneContactPerson || s.phone_contact_person || '';
+        const preferred = s.preferredContactTime || s.preferred_contact_time || '';
+        const contact = s.contactMethod || s.contact_method || '';
+        if (isValidVal(phone)) parts.push(phone.trim());
+        if (isValidVal(preferred)) parts.push(preferred.trim());
+        if (isValidVal(contact)) parts.push(contact.trim());
+        const label = parts.length > 0 ? `当日TEL(${parts.join('・')})` : '当日TEL（内容）';
+        return label === targetLabel;
+      });
+    }
+
     // lastCalledAt を各売主に付与（キーは sellerNumber）
-    const sellersWithCallDate = decryptedSellers.map((seller: any) => ({
+    const sellersWithCallDate = finalSellers.map((seller: any) => ({
       ...seller,
       lastCalledAt: (seller.sellerNumber && lastCalledAtMap[seller.sellerNumber]) || null,
     }));
 
     const result = {
       data: sellersWithCallDate,
-      total: count || 0,
+      total: (typeof statusCategory === 'string' && statusCategory.startsWith('todayCallWithInfo:'))
+        ? sellersWithCallDate.length
+        : (count || 0),
       page,
       pageSize,
-      totalPages: Math.ceil((count || 0) / pageSize),
+      totalPages: Math.ceil(((typeof statusCategory === 'string' && statusCategory.startsWith('todayCallWithInfo:'))
+        ? sellersWithCallDate.length
+        : (count || 0)) / pageSize),
     };
 
     // キャッシュに保存（インメモリ + Redis）
