@@ -143,7 +143,7 @@ const getCategoryLabel = (category: StatusCategory): string => {
       return 'All';
     default:
       if (typeof category === 'string' && category.startsWith('visitAssigned:')) {
-        return `担当（${category.replace('visitAssigned:', '')}）`;
+        return `担当(${category.replace('visitAssigned:', '')})`;
       }
       if (typeof category === 'string' && category.startsWith('todayCallAssigned:')) {
         return `当日TEL(${category.replace('todayCallAssigned:', '')})`;
@@ -179,7 +179,10 @@ const getCategoryColor = (category: StatusCategory): string => {
     case 'todayCallAssigned':
       return '#ff5722';
     default:
-      if (typeof category === 'string' && (category.startsWith('visitAssigned:') || category.startsWith('todayCallAssigned:'))) {
+      if (typeof category === 'string' && category.startsWith('visitAssigned:')) {
+        return '#4caf50';
+      }
+      if (typeof category === 'string' && category.startsWith('todayCallAssigned:')) {
         return '#ff5722';
       }
       if (typeof category === 'string' && category.startsWith('todayCallWithInfo:')) {
@@ -467,18 +470,18 @@ export default function SellerStatusSidebar({
 
       return (
         <Box key={assignee}>
-          {/* 担当（Y）メインカテゴリー */}
+          {/* 担当(Y)メインカテゴリー */}
           {renderCategoryButton(
             `visitAssigned:${assignee}` as StatusCategory,
-            `担当（${assignee}）`,
-            '#ff5722'
+            `担当(${assignee})`,
+            '#4caf50'
           )}
-          {/* 当日TEL(Y)サブカテゴリー（インデント付き） */}
+          {/* ↳ 当日TEL(Y)サブカテゴリー（インデント付き） */}
           {todayCallCount > 0 && (
             <Box sx={{ pl: 2 }}>
               {renderCategoryButton(
                 `todayCallAssigned:${assignee}` as StatusCategory,
-                `当日TEL(${assignee})`,
+                `↳ 当日TEL(${assignee})`,
                 '#ff5722'
               )}
             </Box>
