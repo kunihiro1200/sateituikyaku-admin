@@ -1129,7 +1129,32 @@ export default function PropertyListingDetailPage() {
               <Typography variant="body2" color="text.secondary">
                 買主から遷移:
               </Typography>
-<EditableSection
+              <Button
+                variant="outlined"
+                size="small"
+                onClick={() => navigate(`/buyers/${buyerContext.buyerId}`)}
+                startIcon={<PersonIcon fontSize="small" />}
+                sx={{ borderColor: SECTION_COLORS.buyer.main, color: SECTION_COLORS.buyer.main }}
+              >
+                {buyerContext.buyerName || buyerContext.buyerId}
+              </Button>
+            </Box>
+          )}
+        </Box>
+      </Box>
+
+      {/* メインコンテンツエリア */}
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+        {/* 1. 価格情報 + 買主リスト */}
+        <Box sx={{ 
+          display: 'flex', 
+          flexDirection: { xs: 'column', md: 'row' }, 
+          gap: 1, 
+          mb: 1 
+        }}>
+          {/* 価格情報 */}
+          <Box sx={{ flex: { xs: '1 1 100%', md: '0 0 33%' } }}>
+            <EditableSection
                 title="価格情報"
                 isEditMode={isPriceEditMode}
                 onEditToggle={() => setIsPriceEditMode(!isPriceEditMode)}

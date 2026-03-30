@@ -20,21 +20,28 @@ function rowToObject(headers, rowData) {
   // 反響詳細日時は時刻情報が必要なため、Dateオブジェクトをそのまま保持する列
   var datetimeColumns = { '反響詳細日時': true };
   for (var j = 0; j < headers.length; j++) {
-    if (headers[j] === '') continue;
+    // ヘッダー名を正規化（trim処理）
+    var headerName = String(headers[j]).trim();
+    if (headerName === '') continue;
     var val = rowData[j];
     if (val instanceof Date) {
       if (val.getTime() === 0) {
-        obj[headers[j]] = '';
-      } else if (datetimeColumns[headers[j]]) {
+        obj[headerName] = '';
+      } else if (datetimeColumns[headerName]) {
         // 日時列はDateオブジェクトをそのまま保持（syncUpdatesToSupabase_でtoISOString()する）
-        obj[headers[j]] = val;
+        obj[headerName] = val;
       } else {
-        obj[headers[j]] = val.getFullYear() + '/' +
+        obj[headerName] = val.getFullYear() + '/' +
           String(val.getMonth() + 1).padStart(2, '0') + '/' +
           String(val.getDate()).padStart(2, '0');
       }
     } else {
-      obj[headers[j]] = val;
+      // 売主番号は必ず文字列型に変換（数値型のまま保持すると、別のGASで文字列連結バグが発生する）
+      if (headerName === '売主番号' && val !== null && val !== undefined && val !== '') {
+        obj[headerName] = String(val);
+      } else {
+        obj[headerName] = val;
+      }
     }
   }
   return obj;
@@ -167,8 +174,9 @@ function syncUpdatesToSupabase_(sheetRows) {
     var dbNextCallDate = dbSeller.next_call_date ? String(dbSeller.next_call_date).substring(0, 10) : null;
     if (sheetNextCallDate !== dbNextCallDate) { updateData.next_call_date = sheetNextCallDate; needsUpdate = true; }
     var rawVisitAssignee = row['営担'];
-    var sheetVisitAssignee = (rawVisitAssignee === '外す' || rawVisitAssignee === '' || rawVisitAssignee === undefined) ? null : String(rawVisitAssignee);
-    if (sheetVisitAssignee !== (dbSeller.visit_assignee || null)) { updateData.visit_assignee = sheetVisitAssignee; needsUpdate = true; }
+    var sheetVisitAssignee = (!rawVisitAssignee || rawVisitAssignee === '外す') ? null : String(rawVisitAssignee);
+    var dbVisitAssignee = dbSeller.visit_assignee || null;
+    if (sheetVisitAssignee !== dbVisitAssignee) { updateData.visit_assignee = sheetVisitAssignee; needsUpdate = true; }
     var sheetUnreachable = row['不通'] ? String(row['不通']) : null;
     if (sheetUnreachable !== (dbSeller.unreachable_status || null)) { updateData.unreachable_status = sheetUnreachable; needsUpdate = true; }
     var sheetComments = row['コメント'] ? String(row['コメント']) : null;
@@ -424,7 +432,7 @@ function syncSellerNow(sellerNumberStr) {
   var sheetStatus = rowObj['状況（当社）'] || '';
   if (sheetStatus) updateData.status = sheetStatus;
   var rawVisitAssignee = rowObj['営担'];
-  updateData.visit_assignee = (rawVisitAssignee === '外す' || rawVisitAssignee === '' || rawVisitAssignee === undefined) ? null : String(rawVisitAssignee);
+  updateData.visit_assignee = (!rawVisitAssignee || rawVisitAssignee === '外す') ? null : String(rawVisitAssignee);
   if (rowObj['コメント']) updateData.comments = String(rowObj['コメント']);
   if (rowObj['不通']) updateData.unreachable_status = String(rowObj['不通']);
   if (rowObj['Pinrich']) updateData.pinrich_status = String(rowObj['Pinrich']);
@@ -659,8 +667,9 @@ function syncVisitDateSellers() {
     var dbVisitDate = dbSeller.visit_date ? String(dbSeller.visit_date).substring(0, 10) : null;
     if (sheetVisitDate !== dbVisitDate) { updateData.visit_date = sheetVisitDate; needsUpdate = true; }
     var rawVisitAssignee = row['営担'];
-    var sheetVisitAssignee = (rawVisitAssignee === '外す' || rawVisitAssignee === '' || rawVisitAssignee === undefined) ? null : String(rawVisitAssignee);
-    if (sheetVisitAssignee !== (dbSeller.visit_assignee || null)) { updateData.visit_assignee = sheetVisitAssignee; needsUpdate = true; }
+    var sheetVisitAssignee = (!rawVisitAssignee || rawVisitAssignee === '外す') ? null : String(rawVisitAssignee);
+    var dbVisitAssignee = dbSeller.visit_assignee || null;
+    if (sheetVisitAssignee !== dbVisitAssignee) { updateData.visit_assignee = sheetVisitAssignee; needsUpdate = true; }
     var sheetVisitValAcq = row['訪問査定取得者'] ? String(row['訪問査定取得者']) : null;
     if (sheetVisitValAcq !== (dbSeller.visit_valuation_acquirer || null)) { updateData.visit_valuation_acquirer = sheetVisitValAcq; needsUpdate = true; }
     var sheetVisitAcqDate = formatDateToISO_(row['訪問取得日\n年/月/日'] || row['訪問取得日']);
