@@ -155,6 +155,23 @@ export default function SharedItemsPage() {
 
   return (
     <Container maxWidth="xl" sx={{ py: 3 }}>
+      {/* APPSHEETへの誘導バナー */}
+      <Box sx={{
+        bgcolor: '#d32f2f',
+        color: '#fff',
+        py: 1.5,
+        px: 3,
+        mb: 2,
+        borderRadius: 1,
+        textAlign: 'center',
+        fontWeight: 'bold',
+        fontSize: '1.1rem',
+        letterSpacing: '0.05em',
+        boxShadow: '0 2px 8px rgba(211,47,47,0.4)',
+      }}>
+        ⚠️ APPSHEETを御利用ください！！（修繕中）
+      </Box>
+
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
         <Typography variant="h5" fontWeight="bold" sx={{ color: sharedItemsColor.main }}>
           共有（社内共有事項管理）
