@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { useTheme, useMediaQuery } from '@mui/material';
 import PageNavigation from '../components/PageNavigation';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import {
@@ -192,8 +191,6 @@ const formatDisplayDate = (dateStr: string | null | undefined): string => {
 };
 
 export default function PropertyListingDetailPage() {
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const { propertyNumber } = useParams<{ propertyNumber: string }>();
   const navigate = useNavigate();
   const location = useLocation();
@@ -920,10 +917,9 @@ export default function PropertyListingDetailPage() {
 
         {/* メインコンテンツ */}
         <Box sx={{ flex: 1 }}>
-            {/* Header */}
-      {/* モバイル時: 戻るボタンを画面上部に独立して表示 */}
+      {/* モバイル時: 戻るボタンを画面上部に常時表示 */}
       {isMobile && (
-        <Box sx={{ px: 1, py: 0.5, mb: 1, borderBottom: '1px solid', borderColor: 'divider' }}>
+        <Box sx={{ px: 1, py: 0.5, flexShrink: 0, borderBottom: '1px solid', borderColor: 'divider' }}>
           <Button
             startIcon={<ArrowBackIcon />}
             onClick={handleBack}
@@ -935,7 +931,8 @@ export default function PropertyListingDetailPage() {
           </Button>
         </Box>
       )}
-      <Box sx={{ display: 'flex', alignItems: isMobile ? 'flex-start' : 'center', justifyContent: 'space-between', mb: 1, flexWrap: isMobile ? 'wrap' : 'nowrap', gap: isMobile ? 0.5 : 0 }}>
+      {/* Header */}
+      <Box sx={{ display: 'flex', alignItems: isMobile ? 'flex-start' : 'center', justifyContent: 'space-between', px: 1, py: 0.5, flexShrink: 0, borderBottom: '1px solid', borderColor: 'divider', flexWrap: isMobile ? 'wrap' : 'nowrap', gap: isMobile ? 0.5 : 0, mb: isMobile ? 0 : 1 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: isMobile ? 0.5 : 2, flexWrap: isMobile ? 'wrap' : 'nowrap' }}>
           {!isMobile && (
           <IconButton onClick={handleBack} size="large">
@@ -943,8 +940,15 @@ export default function PropertyListingDetailPage() {
           </IconButton>
           )}
           <Box>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-              <Typography variant={isMobile ? 'body1' : 'h6'} fontWeight="bold" sx={{ color: SECTION_COLORS.property.main, fontSize: isMobile ? '0.95rem' : undefined }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Typography 
+                variant={isMobile ? 'body1' : 'h6'} 
+                fontWeight="bold" 
+                sx={{ 
+                  color: SECTION_COLORS.property.main,
+                  fontSize: isMobile ? '0.95rem' : undefined 
+                }}
+              >
                 物件詳細 - {data.property_number}
               </Typography>
               <Tooltip title={copiedPropertyNumber ? 'コピーしました' : '物件番号をコピー'}>
@@ -964,7 +968,6 @@ export default function PropertyListingDetailPage() {
                 )}
               />
               {/* 公開URLボタン */}
-              {!isMobile && (
               <Button
                 variant="outlined"
                 size="small"
@@ -982,8 +985,6 @@ export default function PropertyListingDetailPage() {
               >
                 公開URL
               </Button>
-              )}
-              {!isMobile && (
               <IconButton
                 size="small"
                 onClick={handleCopyPublicUrl}
@@ -992,35 +993,32 @@ export default function PropertyListingDetailPage() {
               >
                 <ContentCopyIcon fontSize="small" />
               </IconButton>
-              )}
             </Box>
             {/* 売主連絡先ボタン */}
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5, flexWrap: 'wrap' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
               {data.seller_contact && (
                 <Button
-                  variant={isMobile ? 'contained' : 'outlined'}
+                  variant="outlined"
                   size="small"
                   onClick={() => { window.location.href = `tel:${data.seller_contact}`; }}
                   startIcon={<PhoneIcon fontSize="small" />}
                   sx={{
                     borderColor: '#1565c0',
-                    color: isMobile ? 'white' : '#1565c0',
-                    backgroundColor: isMobile ? '#1565c0' : 'transparent',
+                    color: '#1565c0',
                     '&:hover': {
                       borderColor: '#0d47a1',
-                      backgroundColor: isMobile ? '#0d47a1' : '#1565c008',
+                      backgroundColor: '#1565c008',
                     },
-                    py: isMobile ? 0.5 : undefined,
                   }}
                 >
-                  {isMobile ? 'TEL' : '売主TEL'}
+                  売主TEL
                 </Button>
               )}
               {data.seller_email && (
                 <>
                   {/* Email送信ドロップダウンボタン（物件テンプレート） */}
                   <Button
-                    variant={isMobile ? 'contained' : 'outlined'}
+                    variant="outlined"
                     size="small"
                     onClick={(e) => {
                       if (!data.seller_email) return;
@@ -1028,19 +1026,17 @@ export default function PropertyListingDetailPage() {
                     }}
                     disabled={!data.seller_email || propertyEmailTemplatesLoading || propertyEmailTemplates.length === 0}
                     startIcon={propertyEmailTemplatesLoading ? <CircularProgress size={14} /> : <EmailIcon fontSize="small" />}
-                    endIcon={!isMobile && <ArrowDropDownIcon fontSize="small" />}
+                    endIcon={<ArrowDropDownIcon fontSize="small" />}
                     sx={{
                       borderColor: '#1976d2',
-                      color: isMobile ? 'white' : '#1976d2',
-                      backgroundColor: isMobile ? '#1976d2' : 'transparent',
+                      color: '#1976d2',
                       '&:hover': {
                         borderColor: '#115293',
-                        backgroundColor: isMobile ? '#115293' : '#1976d208',
+                        backgroundColor: '#1976d208',
                       },
-                      py: isMobile ? 0.5 : undefined,
                     }}
                   >
-                    {isMobile ? 'EMAIL' : 'Email送信'}
+                    Email送信
                   </Button>
                   <Menu
                     anchorEl={templateMenuAnchor}
@@ -1065,19 +1061,17 @@ export default function PropertyListingDetailPage() {
               )}
               {data.seller_contact && (
                 <Button
-                  variant={isMobile ? 'contained' : 'outlined'}
+                  variant="outlined"
                   size="small"
                   onClick={() => { window.location.href = `sms:${data.seller_contact}`; }}
                   startIcon={<SmsIcon fontSize="small" />}
                   sx={{
                     borderColor: '#2e7d32',
-                    color: isMobile ? 'white' : '#2e7d32',
-                    backgroundColor: isMobile ? '#2e7d32' : 'transparent',
+                    color: '#2e7d32',
                     '&:hover': {
                       borderColor: '#1b5e20',
-                      backgroundColor: isMobile ? '#1b5e20' : '#2e7d3208',
+                      backgroundColor: '#2e7d3208',
                     },
-                    py: isMobile ? 0.5 : undefined,
                   }}
                 >
                   SMS
@@ -1085,18 +1079,16 @@ export default function PropertyListingDetailPage() {
               )}
               {data.sales_assignee && (
                 <Button
-                  variant={isMobile ? 'contained' : 'outlined'}
+                  variant="outlined"
                   size="small"
                   onClick={() => setChatPanelOpen(!chatPanelOpen)}
                   sx={{
                     borderColor: '#7b1fa2',
-                    color: isMobile ? 'white' : '#7b1fa2',
-                    backgroundColor: isMobile ? '#7b1fa2' : 'transparent',
+                    color: '#7b1fa2',
                     '&:hover': {
                       borderColor: '#4a148c',
-                      backgroundColor: isMobile ? '#4a148c' : '#7b1fa208',
+                      backgroundColor: '#7b1fa208',
                     },
-                    py: isMobile ? 0.5 : undefined,
                   }}
                 >
                   担当へCHAT
@@ -1129,32 +1121,309 @@ export default function PropertyListingDetailPage() {
               <Typography variant="body2" color="text.secondary">
                 買主から遷移:
               </Typography>
-              <Button
-                variant="outlined"
-                size="small"
-                onClick={() => navigate(`/buyers/${buyerContext.buyerId}`)}
-                startIcon={<PersonIcon fontSize="small" />}
-                sx={{ borderColor: SECTION_COLORS.buyer.main, color: SECTION_COLORS.buyer.main }}
-              >
-                {buyerContext.buyerName || buyerContext.buyerId}
-              </Button>
+              <Typography variant="body2" fontWeight="medium" sx={{ color: SECTION_COLORS.property.main }}>
+                {buyerContext.buyerName || `買主ID: ${buyerContext.buyerId}`}
+              </Typography>
             </Box>
           )}
         </Box>
+
+        {/* 業者対応マーク - ヘッダー中央 */}
+        {data.broker_response && (() => {
+          try {
+            let brokerDateValue: any = data.broker_response;
+            if (typeof brokerDateValue === 'number' || !isNaN(Number(brokerDateValue))) {
+              const serialNumber = Number(brokerDateValue);
+              const excelEpoch = new Date(1900, 0, 1);
+              const daysOffset = serialNumber - 2;
+              brokerDateValue = new Date(excelEpoch.getTime() + daysOffset * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+            }
+            const now = new Date();
+            const tokyoNow = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Tokyo' }));
+            const tokyoToday = new Date(tokyoNow.getFullYear(), tokyoNow.getMonth(), tokyoNow.getDate());
+            const brokerDate = new Date(brokerDateValue);
+            const tokyoBrokerDate = new Date(brokerDate.getFullYear(), brokerDate.getMonth(), brokerDate.getDate());
+            if (tokyoBrokerDate > tokyoToday) {
+              const formattedDate = `${tokyoBrokerDate.getFullYear()}/${String(tokyoBrokerDate.getMonth() + 1).padStart(2, '0')}/${String(tokyoBrokerDate.getDate()).padStart(2, '0')}`;
+              return (
+                <Box
+                  sx={{
+                    px: 3,
+                    py: 1,
+                    background: '#ffeb3b',
+                    borderRadius: 1,
+                    border: '3px solid #d32f2f',
+                    boxShadow: '0 0 20px rgba(244, 67, 54, 0.6)',
+                    animation: 'blink 1.5s infinite, shake 0.5s infinite',
+                    '@keyframes blink': {
+                      '0%, 100%': { opacity: 1 },
+                      '50%': { opacity: 0.8 },
+                    },
+                    '@keyframes shake': {
+                      '0%, 100%': { transform: 'translateX(0)' },
+                      '25%': { transform: 'translateX(-2px)' },
+                      '75%': { transform: 'translateX(2px)' },
+                    },
+                  }}
+                >
+                  <Typography
+                    sx={{
+                      color: '#d32f2f',
+                      fontWeight: 'bold',
+                      fontSize: '0.75rem',
+                      letterSpacing: '0.05em',
+                      textAlign: 'center',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    ⚠️ 業者対応: {formattedDate} ⚠️
+                  </Typography>
+                </Box>
+              );
+            }
+          } catch (e) {
+            console.error('Failed to parse broker_response date:', e);
+          }
+          return null;
+        })()}
+
+        <Box sx={{ display: 'flex', gap: 2 }}>
+          <Button
+            variant="outlined"
+            onClick={() => window.open(`/property-listings/${propertyNumber}/reins-registration`, '_blank', 'noopener,noreferrer')}
+            sx={{ borderColor: '#1565c0', color: '#1565c0', '&:hover': { borderColor: '#0d47a1', backgroundColor: '#1565c008' } }}
+          >
+            レインズ登録、サイト入力
+          </Button>
+          <Button
+            variant="outlined"
+            startIcon={<AssignmentIcon />}
+            onClick={() => window.open(`/property-listings/${propertyNumber}/report`, '_blank')}
+            sx={{
+              borderColor: '#7b1fa2',
+              color: '#7b1fa2',
+              '&:hover': {
+                borderColor: '#6a1b9a',
+                backgroundColor: '#7b1fa208',
+              },
+            }}
+          >
+            報告
+          </Button>
+          <Button
+            variant="outlined"
+            startIcon={<PersonIcon />}
+            onClick={handleOpenBuyerCandidates}
+            sx={{
+              borderColor: SECTION_COLORS.property.main,
+              color: SECTION_COLORS.property.main,
+              '&:hover': {
+                borderColor: SECTION_COLORS.property.main,
+                backgroundColor: `${SECTION_COLORS.property.main}08`,
+              },
+            }}
+          >
+            買主候補リスト
+          </Button>
+          <GmailDistributionButton
+            propertyNumber={data.property_number}
+            propertyAddress={data.address || data.display_address}
+            publicUrl={`https://property-site-frontend-kappa.vercel.app/public/properties/${data.property_number}`}
+            distributionAreas={editedData.distribution_areas !== undefined ? editedData.distribution_areas : data.distribution_areas}
+            salesPrice={editedData.sales_price !== undefined ? editedData.sales_price : data.sales_price}
+            previousSalesPrice={getPreviousPriceFromHistory(data.price_reduction_history)}
+            priceReductionHistory={data.price_reduction_history}
+            propertyType={editedData.property_type !== undefined ? editedData.property_type : data.property_type}
+            size="medium"
+            variant="contained"
+          />
+        </Box>
       </Box>
 
-      {/* メインコンテンツエリア */}
-      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-        {/* 1. 価格情報 + 買主リスト */}
-        <Box sx={{ 
-          display: 'flex', 
-          flexDirection: { xs: 'column', md: 'row' }, 
-          gap: 1, 
-          mb: 1 
-        }}>
-          {/* 価格情報 */}
-          <Box sx={{ flex: { xs: '1 1 100%', md: '0 0 33%' } }}>
-            <EditableSection
+      {/* Property Header - Key Information */}
+      <Paper sx={{ p: 1, mb: 1, bgcolor: '#f5f5f5', position: 'sticky', top: 48, zIndex: 100 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.25 }}>
+          <Typography variant="body1" color="text.secondary" fontWeight="bold">物件概要</Typography>
+          <Box sx={{ display: 'flex', gap: 1 }}>
+            {isHeaderEditMode ? (
+              <>
+                <Button size="small" variant="contained" onClick={handleSaveHeader} disabled={Object.keys(editedData).length === 0}>
+                  保存
+                </Button>
+                <Button size="small" variant="outlined" onClick={handleCancelHeader}>
+                  キャンセル
+                </Button>
+              </>
+            ) : (
+              <Button size="small" variant="outlined" onClick={() => setIsHeaderEditMode(true)}>
+                編集
+              </Button>
+            )}
+          </Box>
+        </Box>
+        <Grid container spacing={0.5} alignItems="flex-start" sx={{ flexWrap: 'nowrap', overflowX: 'auto' }}>
+          <Grid item xs={6} sm={4} md={true} sx={{ minWidth: 120, flex: '1 1 0' }}>
+            <Typography variant="caption" color="text.secondary" fontWeight="bold" sx={{ fontSize: '0.75rem', lineHeight: 1.2 }}>所在地</Typography>
+            {isHeaderEditMode ? (
+              <TextField
+                size="small"
+                fullWidth
+                value={editedData.address !== undefined ? editedData.address : (data.address || '')}
+                onChange={(e) => handleFieldChange('address', e.target.value)}
+                sx={{ mt: 0.5 }}
+              />
+            ) : (
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                <Typography variant="body2" fontWeight="medium" sx={{ fontSize: '0.75rem' }}>
+                  {data.address || data.display_address || '-'}
+                </Typography>
+                {(data.address || data.display_address) && (
+                  <Tooltip title={copiedAddress ? 'コピーしました' : '所在地をコピー'}>
+                    <IconButton size="small" onClick={handleCopyAddress}
+                      sx={{ color: copiedAddress ? 'success.main' : 'text.secondary' }}>
+                      {copiedAddress ? <CheckIcon fontSize="small" /> : <ContentCopyIcon fontSize="small" />}
+                    </IconButton>
+                  </Tooltip>
+                )}
+              </Box>
+            )}
+          </Grid>
+          <Grid item xs={6} sm={4} md={true} sx={{ minWidth: 120, flex: '1 1 0' }}>
+            <Typography variant="caption" color="text.secondary" fontWeight="bold" sx={{ fontSize: '0.75rem', lineHeight: 1.2 }}>売主氏名</Typography>
+            {isHeaderEditMode ? (
+              <TextField
+                size="small"
+                fullWidth
+                value={editedData.seller_name !== undefined ? editedData.seller_name : (data.seller_name || '')}
+                onChange={(e) => handleFieldChange('seller_name', e.target.value)}
+                sx={{ mt: 0.5 }}
+              />
+            ) : (
+              <Typography variant="body2" fontWeight="medium" sx={{ fontSize: '0.75rem' }}>
+                {data.seller_name || '-'}
+              </Typography>
+            )}
+          </Grid>
+          <Grid item xs={6} sm={4} md={true} sx={{ minWidth: 120, flex: '1 1 0' }}>
+            <Typography variant="caption" color="text.secondary" fontWeight="bold" sx={{ fontSize: '0.75rem', lineHeight: 1.2 }}>ATBB状況</Typography>
+            {isHeaderEditMode ? (
+              <FormControl size="small" fullWidth sx={{ mt: 0.5 }}>
+                <Select
+                  value={editedData.atbb_status !== undefined ? editedData.atbb_status : (data.atbb_status || '')}
+                  onChange={(e) => handleFieldChange('atbb_status', e.target.value)}
+                  displayEmpty
+                >
+                  <MenuItem value=""><em>未設定</em></MenuItem>
+                  <MenuItem value="専任・公開中">専任・公開中</MenuItem>
+                  <MenuItem value="一般・公開中">一般・公開中</MenuItem>
+                  <MenuItem value="専任・公開前">専任・公開前</MenuItem>
+                  <MenuItem value="一般・公開前">一般・公開前</MenuItem>
+                  <MenuItem value="非公開（専任）">非公開（専任）</MenuItem>
+                  <MenuItem value="非公開（一般）">非公開（一般）</MenuItem>
+                  <MenuItem value="他社物件">他社物件</MenuItem>
+                  <MenuItem value="非公開（配信メールのみ）">非公開（配信メールのみ）</MenuItem>
+                </Select>
+              </FormControl>
+            ) : (
+              <Typography variant="body2" fontWeight="medium" sx={{ fontSize: '0.75rem' }}>
+                {getDisplayStatus(data.atbb_status) || '-'}
+              </Typography>
+            )}
+          </Grid>
+          <Grid item xs={6} sm={4} md={true} sx={{ minWidth: 120, flex: '1 1 0' }}>
+            <Typography variant="caption" color="text.secondary" fontWeight="bold" sx={{ fontSize: '0.75rem', lineHeight: 1.2 }}>種別</Typography>
+            {isHeaderEditMode ? (
+              <FormControl size="small" fullWidth sx={{ mt: 0.5 }}>
+                <Select
+                  value={editedData.property_type !== undefined ? editedData.property_type : (data.property_type || '')}
+                  onChange={(e) => handleFieldChange('property_type', e.target.value)}
+                  displayEmpty
+                >
+                  <MenuItem value=""><em>未設定</em></MenuItem>
+                  <MenuItem value="土地">土地</MenuItem>
+                  <MenuItem value="戸建て">戸建て</MenuItem>
+                  <MenuItem value="マンション">マンション</MenuItem>
+                  <MenuItem value="収益物件">収益物件</MenuItem>
+                  <MenuItem value="その他">その他</MenuItem>
+                </Select>
+              </FormControl>
+            ) : (
+              <Typography variant="body2" fontWeight="medium" sx={{ fontSize: '0.75rem' }}>
+                {data.property_type || '-'}
+              </Typography>
+            )}
+          </Grid>
+          <Grid item xs={6} sm={4} md={true} sx={{ minWidth: 120, flex: '1 1 0' }}>
+            <Typography variant="caption" color="text.secondary" fontWeight="bold" sx={{ fontSize: '0.75rem', lineHeight: 1.2 }}>現況</Typography>
+            {isHeaderEditMode ? (
+              <TextField
+                size="small"
+                fullWidth
+                value={editedData.current_status !== undefined ? editedData.current_status : (data.current_status || '')}
+                onChange={(e) => handleFieldChange('current_status', e.target.value)}
+                sx={{ mt: 0.5 }}
+              />
+            ) : (
+              <Typography variant="body2" fontWeight="medium" sx={{ fontSize: '0.75rem' }}>
+                {data.current_status || '-'}
+              </Typography>
+            )}
+          </Grid>
+          <Grid item xs={6} sm={4} md={true} sx={{ minWidth: 120, flex: '1 1 0' }}>
+            <Typography variant="caption" color="text.secondary" fontWeight="bold" sx={{ fontSize: '0.75rem', lineHeight: 1.2 }}>担当</Typography>
+            {isHeaderEditMode ? (
+              <TextField
+                size="small"
+                fullWidth
+                value={editedData.sales_assignee !== undefined ? editedData.sales_assignee : (data.sales_assignee || '')}
+                onChange={(e) => handleFieldChange('sales_assignee', e.target.value)}
+                sx={{ mt: 0.5 }}
+              />
+            ) : (
+              <Typography variant="body2" fontWeight="medium" sx={{ fontSize: '0.75rem' }}>
+                {data.sales_assignee || '-'}
+              </Typography>
+            )}
+          </Grid>
+          <Grid item xs={6} sm={4} md={true} sx={{ minWidth: 120, flex: '1 1 0' }}>
+            <Typography variant="caption" color="text.secondary" fontWeight="bold" sx={{ fontSize: '0.75rem', lineHeight: 1.2 }}>公開日</Typography>
+            {isHeaderEditMode ? (
+              <TextField
+                size="small"
+                fullWidth
+                type="date"
+                value={editedData.distribution_date !== undefined ? editedData.distribution_date : (data.distribution_date || '')}
+                onChange={(e) => handleFieldChange('distribution_date', e.target.value)}
+                sx={{ mt: 0.5 }}
+                InputLabelProps={{ shrink: true }}
+              />
+            ) : (
+              <Typography variant="body2" fontWeight="medium" sx={{ fontSize: '0.75rem' }}>
+                {formatDisplayDate(data.distribution_date)}
+              </Typography>
+            )}
+          </Grid>
+        </Grid>
+      </Paper>
+
+      {/* Main Content */}
+      <Grid container spacing={3}>
+        {/* Full Width Content */}
+        <Grid item xs={12}>
+          {/* 1. 価格情報 + 買主リスト */}
+          <Box sx={{ 
+            display: 'flex', 
+            flexDirection: { xs: 'column', md: 'row' }, 
+            gap: 1, 
+            mb: 1,
+            p: 1,
+            bgcolor: '#f8f9fa',
+            borderRadius: 2,
+            border: '1px solid #e0e0e0'
+          }}>
+            {/* 価格情報 */}
+            <Box sx={{ flex: { xs: '1 1 100%', md: '0 0 33%' } }}>
+              <EditableSection
                 title="価格情報"
                 isEditMode={isPriceEditMode}
                 onEditToggle={() => setIsPriceEditMode(!isPriceEditMode)}
@@ -2141,7 +2410,7 @@ export default function PropertyListingDetailPage() {
         <Alert severity={snackbar.severity}>{snackbar.message}</Alert>
       </Snackbar>
         </Box> {/* メインコンテンツ */}
-      </Box> {/* サイドバーとメインコンテンツ */}
+      </Box> {/* サイドバー + メインコンテンツ */}
     </Box>
     </Box>
   );
