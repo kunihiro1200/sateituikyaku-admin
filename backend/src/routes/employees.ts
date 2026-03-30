@@ -300,28 +300,43 @@ router.get('/jimu-initials', async (req: Request, res: Response) => {
 
 /**
  * 事務ありスタッフの一覧（イニシャル + 姓名 + メールアドレス）を取得（報告担当フルネーム表示用）
- * メールアドレスが空欄のスタッフはレスポンスから除外する
+ * getJimuInitials() と同じ GoogleSheetsClient を使い「事務あり」=TRUE の行を直接取得する。
+ * メールアドレスが空欄のスタッフはレスポンスから除外する。
  */
 router.get('/jimu-staff', async (req: Request, res: Response) => {
   try {
-    const staffData = await staffManagementService['fetchStaffData']();
-    const jimuStaff = staffData
-      .filter((s: any) => s.hasJimu && s.initials && s.initials.trim() !== '')
-      // メールアドレスが空欄のスタッフを除外する
-      .filter((s: any) => s.email && s.email.trim() !== '')
-      .map((s: any) => ({
-        initials: s.initials,
-        name: s.name || s.initials,
-        email: s.email || undefined,
-      }));
-    // 重複除去
-    const seen = new Set<string>();
-    const unique = jimuStaff.filter((s: any) => {
-      if (seen.has(s.initials)) return false;
-      seen.add(s.initials);
-      return true;
+    const { GoogleSheetsClient } = require('../services/GoogleSheetsClient');
+    const client = new GoogleSheetsClient({
+      spreadsheetId: '19yAuVYQRm-_zhjYX7M7zjiGbnBibkG77Mpz93sN1xxs',
+      sheetName: 'スタッフ',
+      serviceAccountKeyPath: process.env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH,
     });
-    res.json({ staff: unique });
+    await client.authenticate();
+    const rows = await client.readAll();
+
+    const seen = new Set<string>();
+    const jimuStaff: { initials: string; name: string; email: string }[] = [];
+
+    for (const row of rows) {
+      // 「事務あり」列が TRUE のスタッフのみ対象
+      const hasJimu = String(row['事務あり'] || '').toUpperCase() === 'TRUE';
+      if (!hasJimu) continue;
+
+      const initials = (row['イニシャル'] || row['スタッフID'] || '').trim();
+      if (!initials || seen.has(initials)) continue;
+
+      const name = (row['姓名'] || row['名前'] || row['氏名'] || initials).trim();
+      const email = (row['メアド'] || row['メールアドレス'] || row['email'] || '').trim();
+
+      // メールアドレスが空欄のスタッフは除外する
+      if (!email) continue;
+
+      seen.add(initials);
+      jimuStaff.push({ initials, name, email });
+    }
+
+    console.log(`[jimu-staff] Returning ${jimuStaff.length} jimu staff with email`);
+    res.json({ staff: jimuStaff });
   } catch (error: any) {
     console.error('[jimu-staff] Failed:', error.message);
     res.status(500).json({ error: 'Failed to get jimu staff' });
