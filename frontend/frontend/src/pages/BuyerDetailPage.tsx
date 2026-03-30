@@ -24,6 +24,10 @@ import {
   TextField,
   InputAdornment,
   Link,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from '@mui/material';
 import { 
   ArrowBack as ArrowBackIcon,
@@ -34,6 +38,7 @@ import {
   Search as SearchIcon,
   Clear as ClearIcon,
   Launch as LaunchIcon,
+  Delete as DeleteIcon,
 } from '@mui/icons-material';
 import api, { buyerApi } from '../services/api';
 import PropertyInfoCard from '../components/PropertyInfoCard';
@@ -422,6 +427,10 @@ export default function BuyerDetailPage() {
   // 通常スタッフのイニシャル一覧（初動担当選択用）
   const [normalInitials, setNormalInitials] = useState<string[]>([]);
 
+  // 削除ダイアログ用の状態
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
 
   useEffect(() => {
     api.get('/api/employees/normal-initials')
@@ -675,6 +684,26 @@ export default function BuyerDetailPage() {
 
   const handleCloseSnackbar = () => {
     setSnackbar({ ...snackbar, open: false });
+  };
+
+  // 買主削除ハンドラー
+  const handleDeleteBuyer = async () => {
+    if (!buyer?.buyer_id) return;
+    setDeleting(true);
+    try {
+      await api.delete(`/api/buyers/${buyer.buyer_id}`);
+      setDeleteDialogOpen(false);
+      navigate('/buyers');
+    } catch (err) {
+      console.error('Delete buyer error:', err);
+      setSnackbar({
+        open: true,
+        message: '削除に失敗しました',
+        severity: 'error',
+      });
+    } finally {
+      setDeleting(false);
+    }
   };
 
   const fetchLinkedProperties = async () => {
@@ -1359,6 +1388,20 @@ TEL：097-533-2022`;
               sx={{ color: '#7b1fa2', borderColor: '#7b1fa2', '&:hover': { borderColor: '#4a148c', color: '#4a148c' } }}
             >
               業者問合せ一覧
+            </Button>
+          )}
+
+          {/* 削除ボタン */}
+          {buyer?.buyer_id && (
+            <Button
+              variant="outlined"
+              color="error"
+              startIcon={<DeleteIcon />}
+              onClick={() => setDeleteDialogOpen(true)}
+              sx={{ ml: 'auto' }}
+              size="small"
+            >
+              削除
             </Button>
           )}
         </Box>
@@ -2845,6 +2888,26 @@ TEL：097-533-2022`;
           {snackbar.message}
         </Alert>
       </Snackbar>
+
+      {/* 削除確認ダイアログ */}
+      <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)}>
+        <DialogTitle>買主を削除しますか？</DialogTitle>
+        <DialogContent>
+          <Typography>
+            {buyer?.name}（{buyer?.buyer_number}）をDBから削除します。<br />
+            削除後も復元可能ですが、一覧から非表示になります。
+          </Typography>
+          <Typography sx={{ color: 'error.main', fontWeight: 'bold', mt: 1 }}>
+            買主リスト（スプシ）も1行削除してください
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteDialogOpen(false)} disabled={deleting}>キャンセル</Button>
+          <Button onClick={handleDeleteBuyer} color="error" variant="contained" disabled={deleting}>
+            {deleting ? '削除中...' : '削除する'}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* メール送信モーダル */}
       <InquiryResponseEmailModal
