@@ -565,10 +565,11 @@ export default function BuyerDetailPage() {
       const sanitizedValue = DATE_FIELDS.includes(fieldName) && newValue === '' ? null : newValue;
 
       // DBへの保存と同時にスプシへの同期も実行
+      // force=true を付与して競合チェックをスキップ（last_synced_at が設定されている場合の409エラーを回避）
       const result = await buyerApi.update(
         buyer_number!,
         { [fieldName]: sanitizedValue },
-        { sync: true }
+        { sync: true, force: true }
       );
 
       // 同期失敗の通知（DBへの保存は成功）
@@ -615,10 +616,11 @@ export default function BuyerDetailPage() {
     if (Object.keys(changedFields).length === 0) return;
     setSectionSavingStates(prev => ({ ...prev, [sectionTitle]: true }));
     try {
+      // force=true を付与して競合チェックをスキップ（last_synced_at が設定されている場合の409エラーを回避）
       const result = await buyerApi.update(
         buyer_number!,
         changedFields,
-        { sync: true }
+        { sync: true, force: true }
       );
       setBuyer(result.buyer);
       setSectionDirtyStates(prev => ({ ...prev, [sectionTitle]: false }));

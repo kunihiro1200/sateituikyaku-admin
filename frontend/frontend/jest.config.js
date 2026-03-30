@@ -5,7 +5,13 @@ module.exports = {
   testMatch: ['**/__tests__/**/*.test.ts', '**/__tests__/**/*.test.tsx', '**/src/**/*.test.ts', '**/src/**/*.test.tsx'],
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json'],
   transform: {
-    '^.+\\.(ts|tsx)$': 'ts-jest',
+    '^.+\\.(ts|tsx)$': ['ts-jest', {
+      tsconfig: {
+        jsx: 'react',
+        esModuleInterop: true,
+        allowSyntheticDefaultImports: true,
+      },
+    }],
   },
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
@@ -24,4 +30,7 @@ module.exports = {
       },
     },
   },
+  transformIgnorePatterns: [
+    'node_modules/(?!(react-device-detect)/)',
+  ],
 };

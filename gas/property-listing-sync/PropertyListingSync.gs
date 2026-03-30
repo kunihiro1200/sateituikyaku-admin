@@ -30,25 +30,34 @@ var CONFIG = {
 // ============================================================
 var COLUMN_MAPPING = {
   '担当名（営業）': 'sales_assignee',
+  '担当名(営業)': 'sales_assignee',  // 半角括弧版も追加
   '物件番号': 'property_number',
   '種別': 'property_type',
   '契約日': 'contract_date',
   '決済日': 'settlement_date',
   '所在地': 'address',
   '住居表示（ATBB登録住所）': 'display_address',
+  '住居表示(ATBB登録住所)': 'display_address',  // 半角括弧版も追加
   '土地面積': 'land_area',
   '建物面積': 'building_area',
   '売買価格': 'sales_price',
   '手数料（計）': 'total_commission',
+  '手数料(計)': 'total_commission',  // 半角括弧版も追加
   '転売差額': 'resale_margin',
   '売主から': 'commission_from_seller',
   '買主から': 'commission_from_buyer',
   '名前(売主）': 'seller_name',
+  '名前(売主)': 'seller_name',  // 半角括弧版も追加
   '住所(売主）': 'seller_address',
+  '住所(売主)': 'seller_address',  // 半角括弧版も追加
   '●連絡先(売主）': 'seller_contact',
+  '●連絡先(売主)': 'seller_contact',  // 半角括弧版も追加
   '名前（買主）': 'buyer_name',
+  '名前(買主)': 'buyer_name',  // 半角括弧版も追加
   '住所（買主）': 'buyer_address',
+  '住所(買主)': 'buyer_address',  // 半角括弧版も追加
   '連絡先（買主）': 'buyer_contact',
+  '連絡先(買主)': 'buyer_contact',  // 半角括弧版も追加
   '仲介業者': 'broker',
   '保存場所': 'storage_location',
   '司法書士': 'judicial_scrivener',
@@ -59,6 +68,7 @@ var COLUMN_MAPPING = {
   '事務担当名': 'admin_assignee',
   '理由': 'reason',
   '配信日【公開）': 'distribution_date',
+  '配信日【公開)': 'distribution_date',  // 半角括弧版も追加
   '構造': 'structure',
   '売上表に物件番号入力': 'sales_table_input',
   '新築年月': 'construction_year_month',
@@ -92,6 +102,7 @@ var COLUMN_MAPPING = {
   '●現況': 'current_status',
   '引渡し': 'delivery',
   '●内覧時（鍵等）': 'viewing_key',
+  '●内覧時(鍵等)': 'viewing_key',  // 半角括弧版も追加
   '●所有者情報': 'owner_info',
   '●内覧時駐車場': 'viewing_parking',
   '固定資産税': 'property_tax',
@@ -108,18 +119,23 @@ var COLUMN_MAPPING = {
   '買付日': 'offer_date',
   '買付': 'offer_status',
   '会社名\n（連絡先も）': 'company_name',
+  '会社名\n(連絡先も)': 'company_name',  // 半角括弧版も追加
   '金額（満額⇒〇〇円）': 'offer_amount',
+  '金額(満額⇒〇〇円)': 'offer_amount',  // 半角括弧版も追加
   '買付提出\n（一般の場合）': 'offer_submission',
+  '買付提出\n(一般の場合)': 'offer_submission',  // 半角括弧版も追加
   '特記事項': 'special_notes_offer',
   'チャット送信': 'chat_sent',
   '買付コメント': 'offer_comment',
   '画像': 'image_url',
   'PDF': 'pdf_url',
   'チャット送信（価格変更/公開非公開）': 'chat_sent_price_change',
+  'チャット送信(価格変更/公開非公開)': 'chat_sent_price_change',  // 半角括弧版も追加
   '値下げ配信メール日２': 'price_reduction_email_date2',
   '★送金/現金': 'payment_method',
   '★台帳作成依頼': 'ledger_request',
   '★口コミ画像（任意）': 'review_image',
+  '★口コミ画像(任意)': 'review_image',  // 半角括弧版も追加
   '担当へ質問_伝言': 'question_to_assignee',
   '物件資料処分': 'property_disposal',
   'レインズ証明書メール済み': 'reins_certificate_email',
@@ -137,6 +153,7 @@ var COLUMN_MAPPING = {
   '買付あり': 'offer_exists',
   '訪問後_査定額1': 'post_visit_valuation1',
   '一般媒介非公開（仮）': 'general_mediation_private',
+  '一般媒介非公開(仮)': 'general_mediation_private',  // 半角括弧版も追加
   '１社掲載': 'single_listing',
   '販売計画': 'sales_plan',
   '備忘録': 'memo',
@@ -289,8 +306,29 @@ function mapRowToRecord(headers, row) {
 
   for (var i = 0; i < headers.length; i++) {
     var header = headers[i];
-    var dbColumn = COLUMN_MAPPING[header];
-    if (!dbColumn) continue;
+    
+    // ヘッダー名を正規化（スペース除去、全角括弧→半角括弧統一）
+    var normalizedHeader = normalizeHeader(header);
+    
+    // 正規化されたヘッダーでマッピングを試行
+    var dbColumn = COLUMN_MAPPING[normalizedHeader];
+    
+    // 正規化されたヘッダーでマッチしない場合、元のヘッダーでも試行（後方互換性）
+    if (!dbColumn) {
+      dbColumn = COLUMN_MAPPING[header];
+    }
+    
+    if (!dbColumn) {
+      // デバッグ用: マッピングされないヘッダーをログ出力（初回のみ）
+      if (!mapRowToRecord.loggedHeaders) {
+        mapRowToRecord.loggedHeaders = {};
+      }
+      if (!mapRowToRecord.loggedHeaders[header]) {
+        Logger.log('未マッピングヘッダー: "' + header + '" (正規化後: "' + normalizedHeader + '")');
+        mapRowToRecord.loggedHeaders[header] = true;
+      }
+      continue;
+    }
 
     var value = row[i];
     var converted = convertValue(dbColumn, value);
@@ -299,6 +337,22 @@ function mapRowToRecord(headers, row) {
   }
 
   return record;
+}
+
+/**
+ * ヘッダー名を正規化
+ * - 前後のスペースを除去
+ * - 全角括弧（）を半角括弧()に統一
+ */
+function normalizeHeader(header) {
+  if (!header) return '';
+  
+  var normalized = String(header).trim();
+  
+  // 全角括弧を半角括弧に変換
+  normalized = normalized.replace(/（/g, '(').replace(/）/g, ')');
+  
+  return normalized;
 }
 
 // ============================================================

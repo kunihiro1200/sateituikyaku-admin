@@ -48,6 +48,7 @@ import { getActiveEmployees } from '../services/employeeService';
 import { getSenderAddress, saveSenderAddress } from '../utils/senderAddressStorage';
 import { useAuthStore } from '../store/authStore';
 import { buildUpdatedHistory } from '../utils/priceHistoryUtils';
+import { isMobile } from 'react-device-detect';
 import { SECTION_COLORS } from '../theme/sectionColors';
 import FrequentlyAskedSection from '../components/FrequentlyAskedSection';
 import PriceSection from '../components/PriceSection';
