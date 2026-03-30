@@ -299,14 +299,21 @@ router.get('/jimu-initials', async (req: Request, res: Response) => {
 });
 
 /**
- * 事務ありスタッフの一覧（イニシャル + 姓名）を取得（報告担当フルネーム表示用）
+ * 事務ありスタッフの一覧（イニシャル + 姓名 + メールアドレス）を取得（報告担当フルネーム表示用）
+ * メールアドレスが空欄のスタッフはレスポンスから除外する
  */
 router.get('/jimu-staff', async (req: Request, res: Response) => {
   try {
     const staffData = await staffManagementService['fetchStaffData']();
     const jimuStaff = staffData
       .filter((s: any) => s.hasJimu && s.initials && s.initials.trim() !== '')
-      .map((s: any) => ({ initials: s.initials, name: s.name || s.initials }));
+      // メールアドレスが空欄のスタッフを除外する
+      .filter((s: any) => s.email && s.email.trim() !== '')
+      .map((s: any) => ({
+        initials: s.initials,
+        name: s.name || s.initials,
+        email: s.email || undefined,
+      }));
     // 重複除去
     const seen = new Set<string>();
     const unique = jimuStaff.filter((s: any) => {

@@ -930,6 +930,7 @@ ${bodyHtml}
     from: string;
     attachments?: EmailAttachment[];
     isHtml?: boolean;
+    replyTo?: string;  // 返信先メールアドレス（Reply-Toヘッダー用）
   }): Promise<EmailResult> {
     try {
       // GMAIL_REFRESH_TOKEN が未設定の場合、google_calendar_tokens からトークンを取得
@@ -961,6 +962,10 @@ ${bodyHtml}
         `From: ${params.from}`,
         `To: ${params.to}`,
       ];
+      // Reply-To ヘッダーを From の直後に追加（replyTo が指定された場合のみ）
+      if (params.replyTo && params.replyTo.trim() !== '') {
+        messageParts.push(`Reply-To: ${params.replyTo}`);
+      }
       if (params.cc) {
         messageParts.push(`Cc: ${params.cc}`);
       }

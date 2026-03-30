@@ -36,6 +36,12 @@ import {
   Email as EmailIcon,
   Image as ImageIcon,
 } from '@mui/icons-material';
+import {
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+} from '@mui/material';
 import api from '../services/api';
 import ImageSelectorModal from '../components/ImageSelectorModal';
 import CompactBuyerListForProperty from '../components/CompactBuyerListForProperty';
@@ -69,6 +75,8 @@ interface EmailTemplate {
 interface StaffInfo {
   initials: string;
   name: string;
+  // タスク5.1: jimu-staff APIのレスポンス型にemailを追加
+  email?: string;
 }
 
 interface ReportHistory {
@@ -118,6 +126,8 @@ export default function PropertyReportPage() {
   const [editTo, setEditTo] = useState('');
   const [editSubject, setEditSubject] = useState('');
   const [editBody, setEditBody] = useState('');
+  // 返信先（Reply-To）選択状態（タスク5.2）
+  const [editReplyTo, setEditReplyTo] = useState('');
   const [sending, setSending] = useState(false);
   // 画像添付用ステート
   const [imageSelectorOpen, setImageSelectorOpen] = useState(false);
@@ -130,6 +140,16 @@ export default function PropertyReportPage() {
     message: string;
     severity: 'success' | 'error';
   }>({ open: false, message: '', severity: 'success' });
+
+  // sendConfirmDialogOpen が true になったとき、report_assignee に対応するスタッフのメールをデフォルト設定（タスク5.2）
+  useEffect(() => {
+    if (sendConfirmDialogOpen) {
+      const assignee = reportData.report_assignee || '';
+      const matchedStaff = jimuStaff.find((s) => s.initials === assignee);
+      // 対応するスタッフが存在しない場合は空文字列
+      setEditReplyTo(matchedStaff?.email || '');
+    }
+  }, [sendConfirmDialogOpen]);
 
   // 変更検知
   const hasChanges =
@@ -416,6 +436,10 @@ export default function PropertyReportPage() {
         formData.append('report_date', reportData.report_date || '');
         formData.append('report_assignee', reportData.report_assignee || '');
         formData.append('report_completed', reportData.report_completed || 'N');
+        // 返信先が選択されている場合のみ replyTo を追加（タスク5.3）
+        if (editReplyTo) {
+          formData.append('replyTo', editReplyTo);
+        }
 
         const localAttachments = attachmentImages.filter((a: any) => a.base64Data);
         const driveOrUrlAttachments = attachmentImages.filter((a: any) => !a.base64Data);
@@ -448,12 +472,16 @@ export default function PropertyReportPage() {
           report_date: reportData.report_date || null,
           report_assignee: reportData.report_assignee || null,
           report_completed: reportData.report_completed || 'N',
+          // 返信先が選択されている場合のみ replyTo を含める（タスク5.3）
+          ...(editReplyTo ? { replyTo: editReplyTo } : {}),
         });
       }
 
       setSendConfirmDialogOpen(false);
       setPendingSendHistory(null);
       setSelectedImages([]);
+      // 返信先もリセット（タスク5.2）
+      setEditReplyTo('');
       fetchReportHistory();
       setSnackbar({ open: true, message: 'メールを送信しました', severity: 'success' });
     } catch (error: any) {
@@ -471,6 +499,8 @@ export default function PropertyReportPage() {
     setPendingSendHistory(null);
     setSelectedImages([]);
     setImageError(null);
+    // 返信先もリセット（タスク5.2）
+    setEditReplyTo('');
   };
 
   const recordSendHistory = async (templateName: string, subject: string, body?: string) => {
@@ -865,6 +895,30 @@ export default function PropertyReportPage() {
               value={editTo}
               onChange={(e) => setEditTo(e.target.value)}
             />
+            {/* 返信先（Reply-To）選択フィールド（タスク5.2） */}
+            <FormControl size="small" fullWidth>
+              <InputLabel id="reply-to-label">返信先（Reply-To）</InputLabel>
+              <Select
+                labelId="reply-to-label"
+                label="返信先（Reply-To）"
+                value={editReplyTo}
+                onChange={(e) => setEditReplyTo(e.target.value)}
+                displayEmpty
+              >
+                {/* 未選択状態のプレースホルダー */}
+                <MenuItem value="">
+                  <em>選択なし（送信元と同じ）</em>
+                </MenuItem>
+                {/* スタッフ一覧：「氏名 <メールアドレス>」形式で表示 */}
+                {jimuStaff
+                  .filter((s) => s.email)
+                  .map((s) => (
+                    <MenuItem key={s.initials} value={s.email}>
+                      {s.name} &lt;{s.email}&gt;
+                    </MenuItem>
+                  ))}
+              </Select>
+            </FormControl>
             <TextField
               label="件名"
               size="small"

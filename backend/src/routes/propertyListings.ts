@@ -900,7 +900,7 @@ router.post('/:propertyNumber/report-history', async (req: Request, res: Respons
 router.post('/:propertyNumber/send-report-email', authenticate, upload.array('attachments', 10), async (req: Request, res: Response): Promise<void> => {
   try {
     const { propertyNumber } = req.params;
-    const { to, cc, subject, body, template_name, report_date, report_assignee, report_completed, from } = req.body;
+    const { to, cc, subject, body, template_name, report_date, report_assignee, report_completed, from, replyTo } = req.body;
     const files = req.files as Express.Multer.File[] | undefined;
 
     if (!to || !subject || !body) {
@@ -920,6 +920,7 @@ router.post('/:propertyNumber/send-report-email', authenticate, upload.array('at
       subject,
       senderAddress,
       employeeId,
+      replyTo: replyTo || '(none)',
       attachmentCount: files?.length || 0,
       hasGmailRefreshToken: !!process.env.GMAIL_REFRESH_TOKEN,
       hasGoogleCalendarClientId: !!process.env.GOOGLE_CALENDAR_CLIENT_ID,
@@ -955,6 +956,20 @@ router.post('/:propertyNumber/send-report-email', authenticate, upload.array('at
         body,
         from: senderAddress,
         attachments,
+        // replyTo が指定されている場合は Reply-To ヘッダーを設定する
+        replyTo: replyTo || undefined,
+      });
+    } else if (replyTo) {
+      // 添付・CCなしでも replyTo が指定されている場合は sendEmailWithCcAndAttachments を使用
+      // （sendTemplateEmail は Reply-To ヘッダーをサポートしていないため）
+      result = await emailService.sendEmailWithCcAndAttachments({
+        to,
+        cc: undefined,
+        subject,
+        body,
+        from: senderAddress,
+        attachments: [],
+        replyTo,
       });
     } else {
       result = await emailService.sendTemplateEmail(
