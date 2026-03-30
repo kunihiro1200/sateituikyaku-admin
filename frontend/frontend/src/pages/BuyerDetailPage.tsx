@@ -240,10 +240,8 @@ export default function BuyerDetailPage() {
   };
 
   // owned_home_hearing_result が必須かどうかを判定するヘルパー
-  // AND([受付日]>="2026/3/30", ISNOTBLANK([問合時持家ヒアリング]))
+  // ISNOTBLANK([問合時持家ヒアリング]) のみ（受付日条件なし）
   const isHomeHearingResultRequired = (data: any): boolean => {
-    if (!data.reception_date) return false;
-    if (new Date(data.reception_date) < new Date('2026-03-30')) return false;
     return !!(data.owned_home_hearing_inquiry && String(data.owned_home_hearing_inquiry).trim());
   };
 

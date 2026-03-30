@@ -841,19 +841,30 @@ export default function SellersPage() {
                     >
                       {seller.name || '-'}
                     </Typography>
-                    <Typography
-                      variant="body2"
-                      color="text.secondary"
-                      sx={{
-                        fontSize: '14px',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
-                        mb: 0.5,
-                      }}
-                    >
-                      {seller.propertyAddress || '-'}
-                    </Typography>
+                    <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', mb: 0.5 }}>
+                      <Typography
+                        variant="body2"
+                        color="text.secondary"
+                        sx={{
+                          fontSize: '14px',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                          flex: 1,
+                        }}
+                      >
+                        {seller.propertyAddress || '-'}
+                      </Typography>
+                      {seller.propertyType && (
+                        <Typography
+                          variant="body2"
+                          color="text.secondary"
+                          sx={{ fontSize: '12px', whiteSpace: 'nowrap', flexShrink: 0 }}
+                        >
+                          {seller.propertyType}
+                        </Typography>
+                      )}
+                    </Box>
                     <Typography
                       variant="body2"
                       color="text.secondary"
