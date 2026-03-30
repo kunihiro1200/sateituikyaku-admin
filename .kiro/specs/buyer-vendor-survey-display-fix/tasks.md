@@ -2,7 +2,7 @@
 
 ## 1. バグ条件探索テスト（修正前に実行）
 
-- [ ] 1. バグ条件探索テストを作成・実行
+- [x] 1. バグ条件探索テストを作成・実行
   - **Property 1: Bug Condition** - フィールド名不一致によるバグ
   - **重要**: このテストは修正前のコードで実行し、失敗を確認する
   - **失敗が期待される**: 修正前のコードでバグが存在することを確認するため
@@ -19,7 +19,7 @@
 
 ## 2. 保存プロパティテスト（修正前に実行）
 
-- [ ] 2. 保存プロパティテストを作成・実行（修正前）
+- [x] 2. 保存プロパティテストを作成・実行（修正前）
   - **Property 2: Preservation** - 他のフィールドの動作保持
   - **重要**: 観察優先の方法論に従う
   - 修正前のコードで他のフィールド（問合時ヒアリング、初動担当、Pinrichなど）の動作を観察する
@@ -32,7 +32,7 @@
 
 ## 3. フィールド名の統一修正
 
-- [ ] 3.1 BuyerDetailPage.tsxのフィールド名を修正
+- [x] 3.1 BuyerDetailPage.tsxのフィールド名を修正
   - フィールド定義の修正: `broker_survey` → `vendor_survey`
     - 行150: `'broker_survey'` → `'vendor_survey'`
     - 行163: `{ key: 'broker_survey', ...}` → `{ key: 'vendor_survey', ...}`
@@ -45,7 +45,7 @@
   - _Preservation: 他のフィールド（問合時ヒアリング、初動担当など）の表示・編集機能が変更されない_
   - _Requirements: 2.1, 2.3, 3.1, 3.2_
 
-- [ ] 3.2 NewBuyerPage.tsxのフィールド名を修正
+- [x] 3.2 NewBuyerPage.tsxのフィールド名を修正
   - フィールド定義の修正: `broker_survey` → `vendor_survey`
     - 行91: `{ key: 'broker_survey', ...}` → `{ key: 'vendor_survey', ...}`
   - 条件付き表示ロジックの修正: `broker_survey` → `vendor_survey`

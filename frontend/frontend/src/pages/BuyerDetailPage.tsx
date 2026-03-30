@@ -147,7 +147,7 @@ const SAVE_BUTTON_FIELDS = new Set([
   'inquiry_email_phone',
   'distribution_type',
   'pinrich',
-  'broker_survey',
+  'vendor_survey',
   'three_calls_confirmed',
   'initial_assignee',
   'owned_home_hearing_inquiry',
@@ -160,7 +160,7 @@ const BUYER_FIELD_SECTIONS = [
   {
     title: '問合せ内容',
     fields: [
-      { key: 'broker_survey', label: '業者向けアンケート', inlineEditable: true, fieldType: 'buttonSelect' },
+      { key: 'vendor_survey', label: '業者向けアンケート', inlineEditable: true, fieldType: 'buttonSelect' },
       { key: 'inquiry_hearing', label: '問合時ヒアリング', multiline: true, inlineEditable: true },
       { key: 'initial_assignee', label: '初動担当', inlineEditable: true },
       { key: 'reception_date', label: '受付日', type: 'date', inlineEditable: true },
@@ -2007,14 +2007,14 @@ TEL：097-533-2022`;
                       );
                     }
 
-                    // broker_surveyフィールドは特別処理（値がある場合のみ表示、「未」のときはオレンジ強調）
-                    if (field.key === 'broker_survey') {
+                    // vendor_surveyフィールドは特別処理（値がある場合のみ表示、「未」のときはオレンジ強調）
+                    if (field.key === 'vendor_survey') {
                       // 値がない場合は非表示（スプシに入力があった場合のみ表示）
-                      if (!buyer?.broker_survey || !String(buyer.broker_survey).trim()) {
+                      if (!buyer?.vendor_survey || !String(buyer.vendor_survey).trim()) {
                         return null;
                       }
                       const VENDOR_SURVEY_BTNS = ['確認済み', '未'];
-                      const isUmi = buyer?.broker_survey === '未';
+                      const isUmi = buyer?.vendor_survey === '未';
                       return (
                         <Grid item xs={12} key={`${section.title}-${field.key}`}>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
