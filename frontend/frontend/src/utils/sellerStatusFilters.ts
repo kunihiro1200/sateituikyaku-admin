@@ -41,8 +41,9 @@ import { isVisitDayBefore as isVisitDayBeforeUtil, parseDate } from './sellerSta
 // todayCallNotStarted: 当日TEL_未着手（不通が空欄 + 反響日付が2026/1/1以降）
 // pinrichEmpty: Pinrich空欄（Pinrichカラムが空欄）
 export type StatusCategory = 'all' | 'todayCall' | 'todayCallWithInfo' | 'todayCallAssigned' | 'visitDayBefore' | 'visitCompleted' | 'unvaluated' | 'mailingPending' | 'todayCallNotStarted' | 'pinrichEmpty'
-  | `visitAssigned:${string}`      // 担当カテゴリー（例: visitAssigned:Y）
-  | `todayCallAssigned:${string}`; // 当日TELサブカテゴリー（例: todayCallAssigned:Y）
+  | `visitAssigned:${string}`        // 担当カテゴリー（例: visitAssigned:Y）
+  | `todayCallAssigned:${string}`    // 当日TELサブカテゴリー（例: todayCallAssigned:Y）
+  | `todayCallWithInfo:${string}`;   // 当日TEL（内容）ラベル別カテゴリー（例: todayCallWithInfo:当日TEL(I・Eメール)）
 
 // カテゴリカウントのインターフェース
 export interface CategoryCounts {
@@ -824,6 +825,10 @@ export const filterSellersByCategory = (
   if (typeof category === 'string' && category.startsWith('todayCallAssigned:')) {
     const assignee = category.replace('todayCallAssigned:', '');
     return sellers.filter(s => isTodayCallAssignedTo(s, assignee));
+  }
+  if (typeof category === 'string' && category.startsWith('todayCallWithInfo:')) {
+    const targetLabel = category.replace('todayCallWithInfo:', '');
+    return sellers.filter(s => isTodayCallWithInfo(s) && getTodayCallWithInfoLabel(s) === targetLabel);
   }
 
   switch (category) {

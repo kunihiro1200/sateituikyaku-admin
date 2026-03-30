@@ -81,6 +81,10 @@ const filterSellersByCategory = (sellers: any[], category: StatusCategory): any[
     const assignee = category.replace('todayCallAssigned:', '');
     return sellers.filter(s => isTodayCallAssignedTo(s, assignee));
   }
+  if (typeof category === 'string' && category.startsWith('todayCallWithInfo:')) {
+    const targetLabel = category.replace('todayCallWithInfo:', '');
+    return sellers.filter(s => isTodayCallWithInfo(s) && getTodayCallWithInfoLabel(s) === targetLabel);
+  }
 
   switch (category) {
     case 'todayCall':
@@ -140,6 +144,9 @@ const getCategoryLabel = (category: StatusCategory): string => {
       if (typeof category === 'string' && category.startsWith('todayCallAssigned:')) {
         return `当日TEL(${category.replace('todayCallAssigned:', '')})`;
       }
+      if (typeof category === 'string' && category.startsWith('todayCallWithInfo:')) {
+        return category.replace('todayCallWithInfo:', '');
+      }
       return category as string;
   }
 };
@@ -170,6 +177,9 @@ const getCategoryColor = (category: StatusCategory): string => {
     default:
       if (typeof category === 'string' && (category.startsWith('visitAssigned:') || category.startsWith('todayCallAssigned:'))) {
         return '#ff5722';
+      }
+      if (typeof category === 'string' && category.startsWith('todayCallWithInfo:')) {
+        return '#9c27b0';
       }
       return '#555555';
   }
@@ -279,6 +289,10 @@ export default function SellerStatusSidebar({
     const filteredSellers = isExpanded
       ? (isLoadingExpanded || fullSellers === undefined ? [] : fullSellers)
       : filterSellersByCategory(validSellers, category);
+    // todayCallWithInfo: プレフィックスのカテゴリはラベルでフィルタリング（展開時も適用）
+    const displaySellers = (isExpanded && typeof category === 'string' && category.startsWith('todayCallWithInfo:'))
+      ? filteredSellers.filter((s: any) => getTodayCallWithInfoLabel(s) === category.replace('todayCallWithInfo:', ''))
+      : filteredSellers;
     
     if (count === 0 && !isExpanded) return null;
     
@@ -341,7 +355,7 @@ export default function SellerStatusSidebar({
               </Typography>
             </Box>
             
-            {filteredSellers.length === 0 ? (
+            {displaySellers.length === 0 ? (
               <Box sx={{ p: 2, textAlign: 'center' }}>
                 {isLoadingExpanded ? (
                   <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 1 }}>
@@ -356,7 +370,7 @@ export default function SellerStatusSidebar({
               </Box>
             ) : (
               <List dense disablePadding>
-                {filteredSellers.map((seller, index) => (
+                {displaySellers.map((seller, index) => (
                   <Box key={seller.id}>
                     <ListItem
                       sx={{ 
@@ -411,7 +425,7 @@ export default function SellerStatusSidebar({
                         </Box>
                       </Box>
                     </ListItem>
-                    {index < filteredSellers.length - 1 && <Divider />}
+                    {index < displaySellers.length - 1 && <Divider />}
                   </Box>
                 ))}
               </List>
@@ -528,18 +542,20 @@ export default function SellerStatusSidebar({
         }
 
         // ラベルごとに個別ボタンを表示（件数はlabelCountMapから取得）
+        // 各ラベルを独立したカテゴリキー todayCallWithInfo:${label} として扱う
         return (
           <>
             {labels.map(label => {
               const count = labelCountMap[label] || 0;
               if (count === 0) return null;
-              const isExpanded = expandedCategory === 'todayCallWithInfo';
-              const active = isActive('todayCallWithInfo');
+              const categoryKey = `todayCallWithInfo:${label}` as StatusCategory;
+              const isExpanded = expandedCategory === categoryKey;
+              const active = isActive(categoryKey);
               return (
                 <Button
                   key={label}
                   fullWidth
-                  onClick={() => handleCategoryClick('todayCallWithInfo')}
+                  onClick={() => handleCategoryClick(categoryKey)}
                   sx={{
                     justifyContent: 'space-between',
                     textAlign: 'left',
@@ -567,7 +583,7 @@ export default function SellerStatusSidebar({
                       }}
                     />
                   </Box>
-                  <ExpandMore />
+                  {isExpanded ? <ExpandLess /> : <ExpandMore />}
                 </Button>
               );
             })}

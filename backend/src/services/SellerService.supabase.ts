@@ -1168,7 +1168,7 @@ export class SellerService extends BaseRepository {
             .or('pinrich_status.is.null,pinrich_status.eq.');
           break;
         default: {
-          // visitAssigned:xxx または todayCallAssigned:xxx の動的カテゴリ
+          // visitAssigned:xxx または todayCallAssigned:xxx または todayCallWithInfo:xxx の動的カテゴリ
           const dynamicCategory = statusCategory as string;
           if (dynamicCategory.startsWith('visitAssigned:')) {
             const assignee = dynamicCategory.replace('visitAssigned:', '');
@@ -1189,6 +1189,14 @@ export class SellerService extends BaseRepository {
               .eq('visit_assignee', assignee)
               .lte('next_call_date', todayJST)
               .not('status', 'ilike', '%追客不要%');
+          } else if (dynamicCategory.startsWith('todayCallWithInfo:')) {
+            // 当日TEL（内容）ラベル別（追客中 AND 次電日が今日以前 AND 営担なし AND コミュニケーション情報あり）
+            // ラベルによる絞り込みはJS側で行う（DBクエリでは当日TEL（内容）全件を取得）
+            query = query
+              .or('visit_assignee.is.null,visit_assignee.eq.,visit_assignee.eq.外す')
+              .lte('next_call_date', todayJST)
+              .or('status.ilike.%追客中%,status.ilike.%除外後追客中%,status.ilike.%他決→追客%')
+              .or('phone_contact_person.not.is.null,preferred_contact_time.not.is.null,contact_method.not.is.null');
           }
           break;
         }
@@ -1322,7 +1330,7 @@ export class SellerService extends BaseRepository {
 
     // キャッシュに保存（インメモリ + Redis）
     // 日付依存カテゴリ（visitDayBefore等）はキャッシュしない（日付が変わると結果が変わるため）
-    const skipCache = statusCategory === 'visitDayBefore' || statusCategory === 'visitCompleted';
+    const skipCache = statusCategory === 'visitDayBefore' || statusCategory === 'visitCompleted' || (typeof statusCategory === 'string' && statusCategory.startsWith('todayCallWithInfo:'));
     if (!skipCache) {
       setListSellersCache(cacheKey, result);
       await CacheHelper.set(cacheKey, result, CACHE_TTL.SELLER_LIST);
@@ -2171,16 +2179,12 @@ export class SellerService extends BaseRepository {
     const isValidValue = (v: string | null | undefined): boolean =>
       !!(v && v.trim() !== '' && v.trim().toLowerCase() !== 'null');
     todayCallWithInfoSellers.forEach(s => {
-      // フロントエンドのgetTodayCallWithInfoLabelと同じ優先順位で判定
-      let content = '';
-      if (isValidValue(s.contact_method)) {
-        content = s.contact_method!.trim();
-      } else if (isValidValue(s.preferred_contact_time)) {
-        content = s.preferred_contact_time!.trim();
-      } else if (isValidValue(s.phone_contact_person)) {
-        content = s.phone_contact_person!.trim();
-      }
-      const label = content ? `当日TEL(${content})` : '当日TEL（内容）';
+      // フロントエンドのgetTodayCallWithInfoLabelと同じロジック（全フィールドを・で結合）
+      const parts: string[] = [];
+      if (isValidValue(s.phone_contact_person)) parts.push(s.phone_contact_person!.trim());
+      if (isValidValue(s.preferred_contact_time)) parts.push(s.preferred_contact_time!.trim());
+      if (isValidValue(s.contact_method)) parts.push(s.contact_method!.trim());
+      const label = parts.length > 0 ? `当日TEL(${parts.join('・')})` : '当日TEL（内容）';
       labelCountMap[label] = (labelCountMap[label] || 0) + 1;
     });
     const todayCallWithInfoLabels = Object.keys(labelCountMap);
