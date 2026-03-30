@@ -412,6 +412,10 @@ export default function BuyerDetailPage() {
   const [messageToAssigneeSaving, setMessageToAssigneeSaving] = useState(false);
   // 買主番号検索バー用
   const [buyerNumberSearch, setBuyerNumberSearch] = useState('');
+  // スマホ時のアコーディオン開閉状態
+  const [mobileCallLogOpen, setMobileCallLogOpen] = useState(false);
+  const [mobilePropertyCardOpen, setMobilePropertyCardOpen] = useState(false);
+  const [mobileBuyerInfoOpen, setMobileBuyerInfoOpen] = useState(true); // 買主情報はデフォルト展開
 
   // ログインユーザー情報（SMS送信者名用）
   const { employee } = useAuthStore();
@@ -955,8 +959,8 @@ export default function BuyerDetailPage() {
           </Button>
         </Box>
       )}
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: 1, py: 0.5, flexShrink: 0, borderBottom: '1px solid', borderColor: 'divider' }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+      <Box sx={{ display: 'flex', alignItems: isMobile ? 'flex-start' : 'center', justifyContent: 'space-between', px: 1, py: 0.5, flexShrink: 0, borderBottom: '1px solid', borderColor: 'divider', flexWrap: isMobile ? 'wrap' : 'nowrap', gap: isMobile ? 0.5 : 0 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: isMobile ? 0.5 : 2, flexWrap: isMobile ? 'wrap' : 'nowrap' }}>
           {!isMobile && (
           <IconButton 
             onClick={() => handleNavigate('/buyers')} 
@@ -966,7 +970,11 @@ export default function BuyerDetailPage() {
             <ArrowBackIcon />
           </IconButton>
           )}
-          <Typography variant="h5" fontWeight="bold">
+          <Typography
+            variant={isMobile ? 'body1' : 'h5'}
+            fontWeight="bold"
+            sx={{ fontSize: isMobile ? '0.95rem' : undefined }}
+          >
             {buyer.name ? buyer.name + '様' : buyer.buyer_number}
           </Typography>
           {/* 買主番号コピーChip - 名前の直後に目立つように配置 */}
@@ -1362,7 +1370,7 @@ TEL：097-533-2022`;
           display: 'flex',
           gap: 0,
           flex: 1,
-          overflow: 'hidden',
+          overflow: isMobile ? 'auto' : 'hidden',
           flexDirection: isMobile ? 'column' : 'row',
           '@media (max-width: 900px)': {
             flexDirection: 'column',
@@ -1376,20 +1384,30 @@ TEL：097-533-2022`;
           sx={{
             flex: '0 0 18%',
             minWidth: 0,
-            height: '100%',
-            overflowY: 'auto',
+            height: isMobile ? 'auto' : '100%',
+            overflowY: isMobile ? 'visible' : 'auto',
             overflowX: 'hidden',
-            borderRight: '1px solid',
+            borderRight: isMobile ? 'none' : '1px solid',
             borderColor: 'divider',
             '&::-webkit-scrollbar': { width: '6px' },
             '&::-webkit-scrollbar-track': { backgroundColor: 'rgba(0, 0, 0, 0.05)' },
             '&::-webkit-scrollbar-thumb': { backgroundColor: 'rgba(0, 0, 0, 0.2)', borderRadius: '3px' },
-            '@media (max-width: 900px)': { flex: '1 1 auto', width: '100%', height: 'auto', overflowY: 'visible', borderRight: 'none', borderBottom: '1px solid', borderColor: 'divider' },
+            '@media (max-width: 900px)': { flex: '1 1 auto', width: '100%', height: 'auto', overflowY: 'visible', borderRight: 'none' },
           }}
           role="complementary"
           aria-label="通話・メール履歴"
           tabIndex={0}
         >
+          {isMobile && (
+            <Box
+              onClick={() => setMobileCallLogOpen(!mobileCallLogOpen)}
+              sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: 1.5, bgcolor: '#f5f5f5', cursor: 'pointer', borderBottom: '1px solid', borderColor: 'divider', borderTop: '1px solid', borderTopColor: 'divider' }}
+            >
+              <Typography variant="subtitle2" fontWeight="bold">📞 通話・メール履歴</Typography>
+              <span style={{ transform: mobileCallLogOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: '0.2s', display: 'inline-block' }}>▼</span>
+            </Box>
+          )}
+          <Box sx={{ display: isMobile && !mobileCallLogOpen ? 'none' : undefined }}>
           {/* 通話履歴セクション */}
           <Paper sx={{ p: 2, mb: 2 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
@@ -1529,6 +1547,7 @@ TEL：097-533-2022`;
               </Box>
             )}
           </Paper>
+          </Box>{/* スマホ時通話履歴開閉Box */}
         </Box>
 
         {/* 中央列: 物件詳細カード - 独立スクロール */}
@@ -1536,20 +1555,30 @@ TEL：097-533-2022`;
           sx={{
             flex: '0 0 36%',
             minWidth: 0,
-            height: '100%',
-            overflowY: 'auto',
+            height: isMobile ? 'auto' : '100%',
+            overflowY: isMobile ? 'visible' : 'auto',
             overflowX: 'hidden',
-            borderRight: '1px solid',
+            borderRight: isMobile ? 'none' : '1px solid',
             borderColor: 'divider',
             '&::-webkit-scrollbar': { width: '6px' },
             '&::-webkit-scrollbar-track': { backgroundColor: 'rgba(0, 0, 0, 0.05)' },
             '&::-webkit-scrollbar-thumb': { backgroundColor: 'rgba(0, 0, 0, 0.2)', borderRadius: '3px' },
-            '@media (max-width: 900px)': { flex: '1 1 auto', width: '100%', height: 'auto', overflowY: 'visible', borderRight: 'none', borderBottom: '1px solid', borderColor: 'divider' },
+            '@media (max-width: 900px)': { flex: '1 1 auto', width: '100%', height: 'auto', overflowY: 'visible', borderRight: 'none' },
           }}
           role="complementary"
           aria-label="物件詳細カード"
           tabIndex={0}
         >
+          {isMobile && (
+            <Box
+              onClick={() => setMobilePropertyCardOpen(!mobilePropertyCardOpen)}
+              sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: 1.5, bgcolor: '#e8f5e9', cursor: 'pointer', borderBottom: '1px solid', borderColor: 'divider', borderTop: '1px solid', borderTopColor: 'divider' }}
+            >
+              <Typography variant="subtitle2" fontWeight="bold">🏠 物件詳細カード</Typography>
+              <span style={{ transform: mobilePropertyCardOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: '0.2s', display: 'inline-block' }}>▼</span>
+            </Box>
+          )}
+          <Box sx={{ display: isMobile && !mobilePropertyCardOpen ? 'none' : undefined }}>
           <Box sx={{ p: 1 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1, mb: 1 }}>
               <Typography variant="h6">物件詳細カード</Typography>
@@ -1583,6 +1612,7 @@ TEL：097-533-2022`;
               </Paper>
             )}
           </Box>
+          </Box>{/* スマホ時物件カード開閉Box */}
         </Box>
 
         {/* 右列: 買主情報フィールド + 関連買主 - 独立スクロール */}
