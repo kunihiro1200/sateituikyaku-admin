@@ -1322,6 +1322,12 @@ export class EnhancedAutoSyncService {
       updateData.visit_reminder_assignee = visitReminderAssignee ? String(visitReminderAssignee) : null;
     }
 
+    // 不通時Sメール担当を追加
+    const unreachableSmsAssignee = row['不通時Sメール担当'];
+    if (unreachableSmsAssignee !== undefined) {
+      updateData.unreachable_sms_assignee = unreachableSmsAssignee ? String(unreachableSmsAssignee) : null;
+    }
+
     // ID（D列）とサイトURL（AP列）を追加
     const inquiryId = row['ID'];
     if (inquiryId !== undefined) {
@@ -1587,6 +1593,12 @@ export class EnhancedAutoSyncService {
     const visitReminderAssigneeNew = row['訪問事前通知メール担当'];
     if (visitReminderAssigneeNew !== undefined) {
       encryptedData.visit_reminder_assignee = visitReminderAssigneeNew ? String(visitReminderAssigneeNew) : null;
+    }
+
+    // 不通時Sメール担当を追加
+    const unreachableSmsAssigneeNew = row['不通時Sメール担当'];
+    if (unreachableSmsAssigneeNew !== undefined) {
+      encryptedData.unreachable_sms_assignee = unreachableSmsAssigneeNew ? String(unreachableSmsAssigneeNew) : null;
     }
 
     // ID（D列）とサイトURL（AP列）を追加
