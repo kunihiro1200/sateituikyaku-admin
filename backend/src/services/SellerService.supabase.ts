@@ -2020,6 +2020,9 @@ export class SellerService extends BaseRepository {
             result.todayCallAssigned += count;
             if (row.assignee) result.todayCallAssignedCounts[row.assignee] = count;
             break;
+          case 'visitAssigned':
+            if (row.assignee) result.visitAssignedCounts[row.assignee] = count;
+            break;
           case 'todayCallWithInfo':
             result.todayCallWithInfo += count;
             if (row.label) {

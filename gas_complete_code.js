@@ -453,7 +453,7 @@ function updateSidebarCounts_(sheetRows) {
 
   var counts = {
     todayCall: 0, todayCallWithInfo: {}, todayCallAssigned: {},
-    visitDayBefore: 0, visitCompleted: {}, unvaluated: 0,
+    visitDayBefore: 0, visitCompleted: {}, visitAssigned: {}, unvaluated: 0,
     mailingPending: 0, todayCallNotStarted: 0, pinrichEmpty: 0
   };
   var cutoffDate = '2025-12-08';
@@ -477,6 +477,11 @@ function updateSidebarCounts_(sheetRows) {
     if (isVisitAssigneeValid && visitDateStr && visitDateStr < todayStr) {
       var assigneeKey = String(visitAssignee);
       counts.visitCompleted[assigneeKey] = (counts.visitCompleted[assigneeKey] || 0) + 1;
+    }
+    // 営担がいる全売主をカウント（担当(Y)などの親カテゴリ用）
+    if (isVisitAssigneeValid) {
+      var vaKey = String(visitAssignee);
+      counts.visitAssigned[vaKey] = (counts.visitAssigned[vaKey] || 0) + 1;
     }
     if (status.indexOf('追客中') !== -1 && nextCallDate && isTodayOrBefore(nextCallDate)) {
       if (isVisitAssigneeValid) {
@@ -526,6 +531,9 @@ function updateSidebarCounts_(sheetRows) {
   }
   for (var va in counts.visitCompleted) {
     upsertRows.push({ category: 'visitCompleted', count: counts.visitCompleted[va], label: null, assignee: va, updated_at: now });
+  }
+  for (var vas in counts.visitAssigned) {
+    upsertRows.push({ category: 'visitAssigned', count: counts.visitAssigned[vas], label: null, assignee: vas, updated_at: now });
   }
 
   var delUrl = SUPABASE_CONFIG.URL + '/rest/v1/seller_sidebar_counts?category=neq.___never___';
