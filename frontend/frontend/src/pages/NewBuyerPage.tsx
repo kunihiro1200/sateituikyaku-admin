@@ -288,7 +288,7 @@ export default function NewBuyerPage() {
         // 問合せ情報（追加）
         inquiry_email_phone: inquiryEmailPhone || null,
         three_calls_confirmed: threeCallsConfirmed || null,
-        vendor_survey: vendorSurvey || null,
+        broker_survey: vendorSurvey || null,
         email_type: emailType || null,
         distribution_type: distributionType || null,
         pinrich: pinrich || null,

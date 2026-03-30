@@ -179,7 +179,7 @@
     "査定アンケート確認": "valuation_survey_confirmed",
     "内覧前ヒアリング": "pre_viewing_hearing",
     "内覧前ヒアリング送る？": "pre_viewing_hearing_send",
-    "業者向けアンケート": "vendor_survey"
+    "業者向けアンケート": "broker_survey"
   },
   "typeConversions": {
     "created_datetime": "datetime",

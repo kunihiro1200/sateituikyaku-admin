@@ -22,7 +22,6 @@ import {
   ListItemButton,
   ListItemText,
   Divider,
-  Chip,
   Table,
   TableBody,
   TableCell,
@@ -128,6 +127,7 @@ export default function PropertyReportPage() {
   const [editBody, setEditBody] = useState('');
   // 返信先（Reply-To）選択状態（タスク5.2）
   const [editReplyTo, setEditReplyTo] = useState('');
+  const [emailJustSent, setEmailJustSent] = useState(false);
   const [sending, setSending] = useState(false);
   // 画像添付用ステート
   const [imageSelectorOpen, setImageSelectorOpen] = useState(false);
@@ -483,6 +483,7 @@ export default function PropertyReportPage() {
       // 返信先もリセット（タスク5.2）
       setEditReplyTo('');
       fetchReportHistory();
+      setEmailJustSent(true);
       setSnackbar({ open: true, message: 'メールを送信しました', severity: 'success' });
     } catch (error: any) {
       const errMsg = error.response?.data?.error || 'メール送信に失敗しました';
@@ -638,17 +639,26 @@ export default function PropertyReportPage() {
                 value={reportData.report_completed || 'N'}
                 exclusive
                 onChange={(_, value) => {
-                  if (value !== null) {
-                    // 報告完了がYに変更されたら報告日を2週間後に更新
-                    const newReportDate = value === 'Y' ? getDateWeeksLater(2) : (reportData.report_date || '');
-                    setReportData((prev) => ({
-                      ...prev,
-                      report_completed: value,
-                      report_date: newReportDate,
-                    }));
-                  }
+                  setEmailJustSent(false); // ハイライト解除
+                  // value が null の場合は同じボタンを再クリック（Y→Y）
+                  const effectiveValue = value ?? (reportData.report_completed || 'N');
+                  const newReportDate = effectiveValue === 'Y' ? getDateWeeksLater(2) : (reportData.report_date || '');
+                  setReportData((prev) => ({
+                    ...prev,
+                    report_completed: effectiveValue,
+                    report_date: newReportDate,
+                  }));
                 }}
                 size="small"
+                sx={emailJustSent ? {
+                  animation: 'reportCompletedGlow 1.5s ease-in-out infinite',
+                  '@keyframes reportCompletedGlow': {
+                    '0%': { boxShadow: '0 0 0 0 #ff980099' },
+                    '70%': { boxShadow: '0 0 0 10px #ff980000' },
+                    '100%': { boxShadow: '0 0 0 0 #ff980000' },
+                  },
+                  borderRadius: 1,
+                } : {}}
               >
                 <ToggleButton value="N" sx={{ px: 3 }}>N</ToggleButton>
                 <ToggleButton value="Y" sx={{ px: 3 }}>Y</ToggleButton>
@@ -736,14 +746,12 @@ export default function PropertyReportPage() {
                     <TableCell sx={{ fontWeight: 'bold' }}>送信日時</TableCell>
                     <TableCell sx={{ fontWeight: 'bold' }}>テンプレート</TableCell>
                     <TableCell sx={{ fontWeight: 'bold' }}>担当</TableCell>
-                    <TableCell sx={{ fontWeight: 'bold' }}>完了</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {getDisplayRows(reportHistory).map((h, index) =>
                     h === null ? (
                       <TableRow key={`empty-${index}`} sx={{ cursor: 'default' }}>
-                        <TableCell>-</TableCell>
                         <TableCell>-</TableCell>
                         <TableCell>-</TableCell>
                         <TableCell>-</TableCell>
@@ -765,13 +773,6 @@ export default function PropertyReportPage() {
                         </TableCell>
                         <TableCell>{h.template_name || '-'}</TableCell>
                         <TableCell>{h.report_assignee ? getFullName(h.report_assignee) : '-'}</TableCell>
-                        <TableCell>
-                          <Chip
-                            label={h.report_completed === 'Y' ? '完了' : '未完了'}
-                            size="small"
-                            color={h.report_completed === 'Y' ? 'success' : 'default'}
-                          />
-                        </TableCell>
                       </TableRow>
                     )
                   )}
