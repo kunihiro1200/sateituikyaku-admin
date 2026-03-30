@@ -2141,7 +2141,7 @@ export default function PropertyListingDetailPage() {
         <Alert severity={snackbar.severity}>{snackbar.message}</Alert>
       </Snackbar>
         </Box> {/* メインコンテンツ */}
-      </Box> {/* サイドバー + メインコンテンツ */}
+      </Box> {/* サイドバーとメインコンテンツ */}
     </Box>
     </Box>
   );
