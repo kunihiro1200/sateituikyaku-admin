@@ -75,6 +75,9 @@ export default function PropertyListingsPage() {
   const [sidebarStatus, setSidebarStatus] = useState<string | null>(null);
   const [selectedPropertyNumber, setSelectedPropertyNumber] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
+  // スマホ時のアコーディオン開閉状態
+  const [mobileStatusOpen, setMobileStatusOpen] = useState(false);
+  const [mobileAssigneeOpen, setMobileAssigneeOpen] = useState(false);
   const [buyerCounts, setBuyerCounts] = useState<Record<string, number>>({});
   const [highConfidenceProperties, setHighConfidenceProperties] = useState<Set<string>>(new Set());
   const [selectedPropertyNumbers, setSelectedPropertyNumbers] = useState<Set<string>>(new Set());
@@ -337,15 +340,67 @@ export default function PropertyListingsPage() {
 
   return (
     <Container maxWidth="xl" sx={isMobile ? { overflowX: 'hidden', px: 1, py: 2 } : { py: 3 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexDirection: { xs: 'column', sm: 'row' }, gap: 2 }}>
-        <Typography variant="h5" fontWeight="bold" sx={{ color: SECTION_COLORS.property.main }}>物件リスト</Typography>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: isMobile ? 1 : 2, flexDirection: { xs: 'row', sm: 'row' }, gap: 1 }}>
+        <Typography variant={isMobile ? 'subtitle1' : 'h5'} fontWeight="bold" sx={{ color: SECTION_COLORS.property.main }}>物件リスト</Typography>
+        {/* スマホ時：ステータス・担当者フィルターボタン */}
+        {isMobile && (
+          <Box sx={{ display: 'flex', gap: 0.5 }}>
+            <Button
+              size="small"
+              variant={sidebarStatus && sidebarStatus !== 'all' ? 'contained' : 'outlined'}
+              onClick={() => setMobileStatusOpen(!mobileStatusOpen)}
+              sx={{ fontSize: '0.75rem', py: 0.5, color: sidebarStatus && sidebarStatus !== 'all' ? '#fff' : SECTION_COLORS.property.main, borderColor: SECTION_COLORS.property.main, bgcolor: sidebarStatus && sidebarStatus !== 'all' ? SECTION_COLORS.property.main : undefined }}
+            >
+              ステータス {mobileStatusOpen ? '▲' : '▼'}
+            </Button>
+            <Button
+              size="small"
+              variant={selectedAssignee ? 'contained' : 'outlined'}
+              onClick={() => setMobileAssigneeOpen(!mobileAssigneeOpen)}
+              sx={{ fontSize: '0.75rem', py: 0.5, color: selectedAssignee ? '#fff' : SECTION_COLORS.property.main, borderColor: SECTION_COLORS.property.main, bgcolor: selectedAssignee ? SECTION_COLORS.property.main : undefined }}
+            >
+              担当者 {mobileAssigneeOpen ? '▲' : '▼'}
+            </Button>
+          </Box>
+        )}
       </Box>
 
       <PageNavigation />
 
-      <Box sx={{ display: 'flex', gap: 2 }}>
-        {/* 左サイドバー - サイドバーステータス（デスクトップのみ） */}
-        <Box sx={{ display: isMobile ? 'none' : 'flex', flexDirection: 'column', gap: 2 }}>
+      <Box sx={{ display: 'flex', gap: 2, flexDirection: isMobile ? 'column' : 'row' }}>
+        {/* 左サイドバー - サイドバーステータス */}
+        {/* スマホ時はアコーディオンで表示 */}
+        {isMobile ? (
+          <Box sx={{ width: '100%', mb: 1 }}>
+            {mobileStatusOpen && (
+              <Paper sx={{ mb: 1, p: 1 }}>
+                <PropertySidebarStatus
+                  listings={allListings}
+                  selectedStatus={sidebarStatus}
+                  onStatusChange={(status) => { setSidebarStatus(status); setSearchQuery(''); setLastFilter('sidebar'); setPage(0); setMobileStatusOpen(false); }}
+                />
+              </Paper>
+            )}
+            {mobileAssigneeOpen && (
+              <Paper sx={{ mb: 1 }}>
+                <List dense sx={{ maxHeight: 300, overflow: 'auto' }}>
+                  {assigneeList.map((item) => (
+                    <ListItemButton
+                      key={item.key}
+                      selected={selectedAssignee === item.key || (!selectedAssignee && item.key === 'all')}
+                      onClick={() => { setSelectedAssignee(item.key === 'all' ? null : item.key); setPage(0); setMobileAssigneeOpen(false); }}
+                      sx={{ py: 0.5 }}
+                    >
+                      <ListItemText primary={item.label} primaryTypographyProps={{ variant: 'body2' }} />
+                      <Badge badgeContent={item.count} max={9999} sx={{ ml: 1, '& .MuiBadge-badge': { backgroundColor: SECTION_COLORS.property.main, color: SECTION_COLORS.property.contrastText } }} />
+                    </ListItemButton>
+                  ))}
+                </List>
+              </Paper>
+            )}
+          </Box>
+        ) : (
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
           <PropertySidebarStatus
             listings={allListings}
             selectedStatus={sidebarStatus}
@@ -382,6 +437,7 @@ export default function PropertyListingsPage() {
             </List>
           </Paper>
         </Box>
+        )}
 
         {/* メインコンテンツ */}
         <Box sx={{ flex: 1 }}>
