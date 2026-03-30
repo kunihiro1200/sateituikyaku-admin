@@ -66,9 +66,20 @@ const HIGH_PRIORITY_RED_STATUSES = new Set([
   '要値下げ',
 ]);
 
-// 優先度低グループ（色付け対象）
-const LOW_PRIORITY_STATUSES = new Set([
-  '一般公開中物件',
+// 「買付申し込み」より上の優先度高グループ（薄い背景色対象）
+const HIGH_PRIORITY_BG_STATUSES = new Set([
+  '未完了',
+  '本日公開予定',
+  '要値下げ',
+  '値下げ未完了',
+  '未報告',
+  '一般媒介の掲載確認未',
+  'SUUMO URL\u3000要登録',
+  'レインズ登録＋SUUMO登録',
+]);
+
+// 専任公開中グループ（atbb_status === '専任・公開中' のもののみ表示）
+const SENIN_ASSIGNEE_STATUSES = new Set([
   'Y専任公開中',
   '生・専任公開中',
   '久・専任公開中',
@@ -106,7 +117,14 @@ export default function PropertySidebarStatus({
 
       const status = listing.sidebar_status || '';
       if (status && status !== '値下げ未完了') {
-        counts[status] = (counts[status] || 0) + 1;
+        // 専任公開中カテゴリーはatbb_status === '専任・公開中' のもののみカウント
+        if (SENIN_ASSIGNEE_STATUSES.has(status)) {
+          if (listing.atbb_status === '専任・公開中') {
+            counts[status] = (counts[status] || 0) + 1;
+          }
+        } else {
+          counts[status] = (counts[status] || 0) + 1;
+        }
       }
     });
 
@@ -138,7 +156,7 @@ export default function PropertySidebarStatus({
   };
 
   const statusList = useMemo(() => {
-    const list: Array<{ key: string; label: string; count: number; isLowPriority?: boolean; isDivider?: boolean; isRed?: boolean; isBoldRed?: boolean }> = [
+    const list: Array<{ key: string; label: string; count: number; isHighPriorityBg?: boolean; isDivider?: boolean; isRed?: boolean; isBoldRed?: boolean }> = [
       { key: 'all', label: 'すべて', count: statusCounts.all }
     ];
 
@@ -148,22 +166,19 @@ export default function PropertySidebarStatus({
         const getPriority = (key: string) => {
           if (STATUS_PRIORITY[key] !== undefined) return STATUS_PRIORITY[key];
           // 「未報告 Y」「未報告 I」など担当者付きは「未報告」と同じ優先度
-          if (key.startsWith('未報告')) return 2;
+          if (key.startsWith('未報告')) return 4;
           return 999;
         };
         return getPriority(a[0]) - getPriority(b[0]);
       });
 
-    let dividerAdded = false;
     sortedStatuses.forEach(([key, count]) => {
-      const isLow = LOW_PRIORITY_STATUSES.has(key);
-      if (isLow && !dividerAdded) {
-        dividerAdded = true; // 区切り線・ラベルは表示しない
-      }
+      // 「買付申し込み」(優先度8)より上のカテゴリーに薄い背景色
+      const isHighBg = HIGH_PRIORITY_BG_STATUSES.has(key) || key.startsWith('未報告');
       // 一般媒介の未完了は太字赤字、それ以外の高優先度は赤字
       const isBoldRed = key === '未完了' && generalMediationIncompleteCount > 0;
       const isRed = HIGH_PRIORITY_RED_STATUSES.has(key);
-      list.push({ key, label: key, count, isLowPriority: isLow, isRed, isBoldRed });
+      list.push({ key, label: key, count, isHighPriorityBg: isHighBg, isRed, isBoldRed });
     });
 
     return list;
@@ -195,10 +210,10 @@ export default function PropertySidebarStatus({
                 onClick={() => onStatusChange(item.key === 'all' ? null : item.key)}
                 sx={{
                   py: 0.75,
-                  ...(item.isLowPriority && {
-                    bgcolor: 'rgba(0, 188, 212, 0.10)',
-                    '&:hover': { bgcolor: 'rgba(0, 188, 212, 0.20)' },
-                    '&.Mui-selected': { bgcolor: 'rgba(0, 188, 212, 0.28)' },
+                  ...(item.isHighPriorityBg && {
+                    bgcolor: 'rgba(255, 243, 224, 0.8)',
+                    '&:hover': { bgcolor: 'rgba(255, 224, 178, 0.8)' },
+                    '&.Mui-selected': { bgcolor: 'rgba(255, 204, 128, 0.6)' },
                   }),
                 }}
               >
@@ -211,8 +226,6 @@ export default function PropertySidebarStatus({
                       ? { color: 'error.main', fontWeight: 'bold' }
                       : item.isRed
                       ? { color: 'error.main' }
-                      : item.isLowPriority
-                      ? { color: 'text.secondary' }
                       : undefined,
                   }}
                   sx={{ flex: 1, minWidth: 0 }}
@@ -223,7 +236,7 @@ export default function PropertySidebarStatus({
                   sx={{
                     ml: 1,
                     '& .MuiBadge-badge': {
-                      backgroundColor: item.isLowPriority ? '#9e9e9e' : SECTION_COLORS.property.main,
+                      backgroundColor: SECTION_COLORS.property.main,
                       color: SECTION_COLORS.property.contrastText,
                     },
                   }}
