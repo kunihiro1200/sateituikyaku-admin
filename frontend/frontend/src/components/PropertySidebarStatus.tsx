@@ -78,17 +78,6 @@ const HIGH_PRIORITY_BG_STATUSES = new Set([
   'レインズ登録＋SUUMO登録',
 ]);
 
-// 専任公開中グループ（atbb_status === '専任・公開中' のもののみ表示）
-const SENIN_ASSIGNEE_STATUSES = new Set([
-  'Y専任公開中',
-  '生・専任公開中',
-  '久・専任公開中',
-  'U専任公開中',
-  '林・専任公開中',
-  'K専任公開中',
-  'R専任公開中',
-  'I専任公開中',
-]);
 
 export default function PropertySidebarStatus({
   listings,
@@ -117,14 +106,7 @@ export default function PropertySidebarStatus({
 
       const status = listing.sidebar_status || '';
       if (status && status !== '値下げ未完了') {
-        // 専任公開中カテゴリーはatbb_status === '専任・公開中' のもののみカウント
-        if (SENIN_ASSIGNEE_STATUSES.has(status)) {
-          if (listing.atbb_status === '専任・公開中') {
-            counts[status] = (counts[status] || 0) + 1;
-          }
-        } else {
-          counts[status] = (counts[status] || 0) + 1;
-        }
+        counts[status] = (counts[status] || 0) + 1;
       }
     });
 

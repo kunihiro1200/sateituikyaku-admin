@@ -20,7 +20,6 @@ import {
   ListItemButton,
   ListItemText,
   Badge,
-  Divider,
   Checkbox,
   Button,
   Link,
@@ -71,13 +70,11 @@ export default function PropertyListingsPage() {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(50);
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedAssignee, setSelectedAssignee] = useState<string | null>(null);
   const [sidebarStatus, setSidebarStatus] = useState<string | null>(null);
   const [selectedPropertyNumber, setSelectedPropertyNumber] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   // スマホ時のアコーディオン開閉状態
   const [mobileStatusOpen, setMobileStatusOpen] = useState(false);
-  const [mobileAssigneeOpen, setMobileAssigneeOpen] = useState(false);
   const [buyerCounts, setBuyerCounts] = useState<Record<string, number>>({});
   const [highConfidenceProperties, setHighConfidenceProperties] = useState<Set<string>>(new Set());
   const [selectedPropertyNumbers, setSelectedPropertyNumbers] = useState<Set<string>>(new Set());
@@ -92,7 +89,6 @@ export default function PropertyListingsPage() {
       if (savedState.page !== undefined) setPage(savedState.page);
       if (savedState.rowsPerPage !== undefined) setRowsPerPage(savedState.rowsPerPage);
       if (savedState.searchQuery !== undefined) setSearchQuery(savedState.searchQuery);
-      if (savedState.selectedAssignee !== undefined) setSelectedAssignee(savedState.selectedAssignee);
       if (savedState.sidebarStatus !== undefined) setSidebarStatus(savedState.sidebarStatus);
     }
   }, [location.state]);
@@ -171,30 +167,10 @@ export default function PropertyListingsPage() {
     }
   };
 
-  // 担当者別カウント
-  const assigneeCounts = useMemo(() => {
-    const counts: Record<string, number> = { all: allListings.length };
-    allListings.forEach(listing => {
-      const key = listing.sales_assignee || '未設定';
-      counts[key] = (counts[key] || 0) + 1;
-    });
-    return counts;
-  }, [allListings]);
-
   // フィルタリング（全件読み込み完了前は検索を適用しない）
   const filteredListings = useMemo(() => {
-    // 全件読み込み中は検索・フィルターを適用しない（途中データで検索させない）
     if (isLoadingAll && searchQuery.trim()) return [];
     let listings = allListings;
-
-    // 担当者フィルター（常に適用）
-    if (selectedAssignee && selectedAssignee !== 'all') {
-      listings = listings.filter(l =>
-        selectedAssignee === '未設定'
-          ? !l.sales_assignee
-          : l.sales_assignee === selectedAssignee
-      );
-    }
 
     // サイドバーと検索は排他的（後から操作した方がもう一方をクリアするため、両方独立適用でOK）
     if (sidebarStatus && sidebarStatus !== 'all') {
@@ -216,7 +192,7 @@ export default function PropertyListingsPage() {
     }
 
     return listings;
-  }, [allListings, selectedAssignee, sidebarStatus, searchQuery]);
+  }, [allListings, sidebarStatus, searchQuery]);
 
   const paginatedListings = useMemo(() => {
     const start = page * rowsPerPage;
@@ -267,11 +243,17 @@ export default function PropertyListingsPage() {
 
   const handleRowClick = (propertyNumber: string) => {
     console.log('[handleRowClick] called with:', propertyNumber);
+
+    // 「未報告」カテゴリー選択中は報告ページへ直接遷移
+    if (sidebarStatus && sidebarStatus.startsWith('未報告')) {
+      navigate(`/property-listings/${propertyNumber}/report`);
+      return;
+    }
+
     const currentState = {
       page,
       rowsPerPage,
       searchQuery,
-      selectedAssignee,
       sidebarStatus,
       lastFilter,
     };
@@ -326,18 +308,6 @@ export default function PropertyListingsPage() {
     return `${(price / 10000).toLocaleString()}万円`;
   };
 
-  // サイドバー用の担当者リスト
-  const assigneeList = useMemo(() => {
-    const list = [{ key: 'all', label: 'All', count: assigneeCounts.all }];
-    Object.entries(assigneeCounts)
-      .filter(([key]) => key !== 'all')
-      .sort((a, b) => b[1] - a[1])
-      .forEach(([key, count]) => {
-        list.push({ key, label: key, count });
-      });
-    return list;
-  }, [assigneeCounts]);
-
   return (
     <Container maxWidth="xl" sx={isMobile ? { overflowX: 'hidden', px: 1, py: 2 } : { py: 3 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: isMobile ? 1 : 2, flexDirection: { xs: 'row', sm: 'row' }, gap: 1 }}>
@@ -352,14 +322,6 @@ export default function PropertyListingsPage() {
               sx={{ fontSize: '0.75rem', py: 0.5, color: sidebarStatus && sidebarStatus !== 'all' ? '#fff' : SECTION_COLORS.property.main, borderColor: SECTION_COLORS.property.main, bgcolor: sidebarStatus && sidebarStatus !== 'all' ? SECTION_COLORS.property.main : undefined }}
             >
               ステータス {mobileStatusOpen ? '▲' : '▼'}
-            </Button>
-            <Button
-              size="small"
-              variant={selectedAssignee ? 'contained' : 'outlined'}
-              onClick={() => setMobileAssigneeOpen(!mobileAssigneeOpen)}
-              sx={{ fontSize: '0.75rem', py: 0.5, color: selectedAssignee ? '#fff' : SECTION_COLORS.property.main, borderColor: SECTION_COLORS.property.main, bgcolor: selectedAssignee ? SECTION_COLORS.property.main : undefined }}
-            >
-              担当者 {mobileAssigneeOpen ? '▲' : '▼'}
             </Button>
           </Box>
         )}
@@ -381,23 +343,6 @@ export default function PropertyListingsPage() {
                 />
               </Paper>
             )}
-            {mobileAssigneeOpen && (
-              <Paper sx={{ mb: 1 }}>
-                <List dense sx={{ maxHeight: 300, overflow: 'auto' }}>
-                  {assigneeList.map((item) => (
-                    <ListItemButton
-                      key={item.key}
-                      selected={selectedAssignee === item.key || (!selectedAssignee && item.key === 'all')}
-                      onClick={() => { setSelectedAssignee(item.key === 'all' ? null : item.key); setPage(0); setMobileAssigneeOpen(false); }}
-                      sx={{ py: 0.5 }}
-                    >
-                      <ListItemText primary={item.label} primaryTypographyProps={{ variant: 'body2' }} />
-                      <Badge badgeContent={item.count} max={9999} sx={{ ml: 1, '& .MuiBadge-badge': { backgroundColor: SECTION_COLORS.property.main, color: SECTION_COLORS.property.contrastText } }} />
-                    </ListItemButton>
-                  ))}
-                </List>
-              </Paper>
-            )}
           </Box>
         ) : (
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -406,36 +351,6 @@ export default function PropertyListingsPage() {
             selectedStatus={sidebarStatus}
             onStatusChange={(status) => { setSidebarStatus(status); setSearchQuery(''); setLastFilter('sidebar'); setPage(0); }}
           />
-
-          {/* 担当者フィルター */}
-          <Paper sx={{ width: 220, flexShrink: 0 }}>
-            <Box sx={{ p: 2, borderBottom: '1px solid #eee' }}>
-              <Typography variant="subtitle1" fontWeight="bold">担当者</Typography>
-            </Box>
-            <List dense sx={{ maxHeight: 'calc(50vh - 100px)', overflow: 'auto' }}>
-              {assigneeList.map((item) => (
-                <ListItemButton
-                  key={item.key}
-                  selected={selectedAssignee === item.key || (!selectedAssignee && item.key === 'all')}
-                  onClick={() => { setSelectedAssignee(item.key === 'all' ? null : item.key); setPage(0); }}
-                  sx={{ py: 0.5 }}
-                >
-                  <ListItemText primary={item.label} primaryTypographyProps={{ variant: 'body2' }} />
-                  <Badge
-                    badgeContent={item.count}
-                    max={9999}
-                    sx={{
-                      ml: 1,
-                      '& .MuiBadge-badge': {
-                        backgroundColor: SECTION_COLORS.property.main,
-                        color: SECTION_COLORS.property.contrastText,
-                      },
-                    }}
-                  />
-                </ListItemButton>
-              ))}
-            </List>
-          </Paper>
         </Box>
         )}
 
