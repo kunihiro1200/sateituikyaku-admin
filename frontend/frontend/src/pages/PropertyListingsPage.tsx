@@ -25,10 +25,13 @@ import {
   Link,
   Card,
   CardContent,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
   useTheme,
   useMediaQuery,
 } from '@mui/material';
-import { Search as SearchIcon, ClearAll as ClearAllIcon, Clear as ClearIcon } from '@mui/icons-material';
+import { Search as SearchIcon, ClearAll as ClearAllIcon, Clear as ClearIcon, ExpandMore as ExpandMoreIcon } from '@mui/icons-material';
 import api from '../services/api';
 import PropertyListingDetailModal from '../components/PropertyListingDetailModal';
 import PageNavigation from '../components/PageNavigation';
@@ -74,7 +77,7 @@ export default function PropertyListingsPage() {
   const [selectedPropertyNumber, setSelectedPropertyNumber] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   // スマホ時のアコーディオン開閉状態
-  const [mobileStatusOpen, setMobileStatusOpen] = useState(false);
+  const [mobileAccordionExpanded, setMobileAccordionExpanded] = useState(false);
   const [buyerCounts, setBuyerCounts] = useState<Record<string, number>>({});
   const [highConfidenceProperties, setHighConfidenceProperties] = useState<Set<string>>(new Set());
   const [selectedPropertyNumbers, setSelectedPropertyNumbers] = useState<Set<string>>(new Set());
@@ -324,39 +327,59 @@ export default function PropertyListingsPage() {
     <Container maxWidth="xl" sx={isMobile ? { overflowX: 'hidden', px: 1, py: 2 } : { py: 3 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: isMobile ? 1 : 2, flexDirection: { xs: 'row', sm: 'row' }, gap: 1 }}>
         <Typography variant={isMobile ? 'subtitle1' : 'h5'} fontWeight="bold" sx={{ color: SECTION_COLORS.property.main }}>物件リスト</Typography>
-        {/* スマホ時：ステータス・担当者フィルターボタン */}
-        {isMobile && (
-          <Box sx={{ display: 'flex', gap: 0.5 }}>
-            <Button
-              size="small"
-              variant={sidebarStatus && sidebarStatus !== 'all' ? 'contained' : 'outlined'}
-              onClick={() => setMobileStatusOpen(!mobileStatusOpen)}
-              sx={{ fontSize: '0.75rem', py: 0.5, color: sidebarStatus && sidebarStatus !== 'all' ? '#fff' : SECTION_COLORS.property.main, borderColor: SECTION_COLORS.property.main, bgcolor: sidebarStatus && sidebarStatus !== 'all' ? SECTION_COLORS.property.main : undefined }}
-            >
-              ステータス {mobileStatusOpen ? '▲' : '▼'}
-            </Button>
-          </Box>
-        )}
+
       </Box>
 
       <PageNavigation />
 
       <Box sx={{ display: 'flex', gap: 2, flexDirection: isMobile ? 'column' : 'row' }}>
         {/* 左サイドバー - サイドバーステータス */}
-        {/* スマホ時はアコーディオンで表示 */}
-        {isMobile ? (
-          <Box sx={{ width: '100%', mb: 1 }}>
-            {mobileStatusOpen && (
-              <Paper sx={{ mb: 1, p: 1 }}>
-                <PropertySidebarStatus
-                  listings={allListings}
-                  selectedStatus={sidebarStatus}
-                  onStatusChange={(status) => { setSidebarStatus(status); setSearchQuery(''); setLastFilter('sidebar'); setPage(0); setMobileStatusOpen(false); }}
-                />
-              </Paper>
-            )}
-          </Box>
-        ) : (
+        {/* モバイル：ステータスサイドバーをアコーディオンで表示 */}
+        {isMobile && (
+          <Accordion
+            expanded={mobileAccordionExpanded}
+            onChange={(_, expanded) => setMobileAccordionExpanded(expanded)}
+            sx={{ mb: 1 }}
+          >
+            <AccordionSummary
+              expandIcon={<ExpandMoreIcon />}
+              sx={
+                sidebarStatus && sidebarStatus !== 'all'
+                  ? { bgcolor: `${SECTION_COLORS.property.main}15` }
+                  : {}
+              }
+            >
+              <Typography variant="body1" fontWeight="bold">
+                ステータスフィルター
+                {sidebarStatus && sidebarStatus !== 'all' && (
+                  <Typography
+                    component="span"
+                    variant="caption"
+                    sx={{ ml: 1, color: SECTION_COLORS.property.main }}
+                  >
+                    ({sidebarStatus})
+                  </Typography>
+                )}
+              </Typography>
+            </AccordionSummary>
+            <AccordionDetails sx={{ p: 1 }}>
+              <PropertySidebarStatus
+                listings={allListings}
+                selectedStatus={sidebarStatus}
+                onStatusChange={(status) => {
+                  setSidebarStatus(status);
+                  setSearchQuery('');
+                  setLastFilter('sidebar');
+                  setPage(0);
+                  setMobileAccordionExpanded(false);
+                }}
+              />
+            </AccordionDetails>
+          </Accordion>
+        )}
+
+        {/* デスクトップ：サイドバー形式 */}
+        {!isMobile && (
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
           <PropertySidebarStatus
             listings={allListings}

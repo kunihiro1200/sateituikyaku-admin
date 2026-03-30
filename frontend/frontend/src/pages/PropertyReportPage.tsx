@@ -28,6 +28,8 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  useTheme,
+  useMediaQuery,
 } from '@mui/material';
 import {
   ArrowBack as ArrowBackIcon,
@@ -105,6 +107,8 @@ const getDisplayRows = (history: ReportHistory[], rowCount: number = 5): (Report
 export default function PropertyReportPage() {
   const { propertyNumber } = useParams<{ propertyNumber: string }>();
   const navigate = useNavigate();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   const [reportData, setReportData] = useState<ReportData>({});
   const [savedData, setSavedData] = useState<ReportData>({});
@@ -545,7 +549,14 @@ export default function PropertyReportPage() {
   return (
     <Container maxWidth="xl" sx={{ py: 3 }}>
       {/* ヘッダー */}
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2, mb: 3 }}>
+      <Box sx={{
+        display: 'flex',
+        flexDirection: isMobile ? 'column' : 'row',
+        alignItems: isMobile ? 'flex-start' : 'center',
+        justifyContent: 'space-between',
+        gap: 2,
+        mb: 3,
+      }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
           <IconButton onClick={handleBack} size="large">
             <ArrowBackIcon />
@@ -611,9 +622,9 @@ export default function PropertyReportPage() {
       </Box>
 
       {/* 左右2カラムレイアウト */}
-      <Box sx={{ display: 'flex', gap: 3, alignItems: 'flex-start' }}>
+      <Box sx={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 3, alignItems: 'flex-start' }}>
         {/* 左カラム：報告情報 + Gmail送信 */}
-        <Box sx={{ flex: '0 0 380px', minWidth: 0 }}>
+        <Box sx={isMobile ? { width: '100%' } : { flex: '0 0 380px', minWidth: 0 }}>
           <Paper sx={{ p: 3 }}>
             {/* 報告日 */}
             <Box sx={{ mb: 3 }}>
@@ -739,7 +750,7 @@ export default function PropertyReportPage() {
             <Typography variant="h6" fontWeight="bold" sx={{ mb: 2, color: SECTION_COLORS.property.main }}>
               送信履歴
             </Typography>
-            <TableContainer sx={{ maxHeight: 220, overflow: 'auto' }}>
+            <TableContainer sx={{ maxHeight: isMobile ? 'none' : 220, overflow: 'auto', overflowX: 'auto' }}>
               <Table size="small" stickyHeader>
                 <TableHead>
                   <TableRow>
