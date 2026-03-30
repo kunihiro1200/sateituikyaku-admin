@@ -1620,14 +1620,14 @@ TEL：097-533-2022`;
           sx={{
             flex: '1 1 46%',
             minWidth: 0,
-            height: '100%',
-            overflowY: 'auto',
+            height: isMobile ? 'auto' : '100%',
+            overflowY: isMobile ? 'visible' : 'auto',
             overflowX: 'hidden',
+            order: isMobile ? -1 : 0,
             '&::-webkit-scrollbar': { width: '6px' },
             '&::-webkit-scrollbar-track': { backgroundColor: 'rgba(0, 0, 0, 0.05)' },
             '&::-webkit-scrollbar-thumb': { backgroundColor: 'rgba(0, 0, 0, 0.2)', borderRadius: '3px' },
             '@media (max-width: 900px)': { flex: '1 1 auto', width: '100%', height: 'auto', overflowY: 'visible' },
-            // isMobile 時: 入力フィールドの minHeight を 44px に設定
             ...(isMobile && {
               '& .MuiInputBase-root': { minHeight: 44 },
               '& .MuiOutlinedInput-root': { minHeight: 44 },
@@ -1638,6 +1638,16 @@ TEL：097-533-2022`;
           aria-label="買主情報"
           tabIndex={0}
         >
+          {isMobile && (
+            <Box
+              onClick={() => setMobileBuyerInfoOpen(!mobileBuyerInfoOpen)}
+              sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: 1.5, bgcolor: '#e3f2fd', cursor: 'pointer', borderBottom: '1px solid', borderColor: 'divider' }}
+            >
+              <Typography variant="subtitle2" fontWeight="bold">👤 買主情報</Typography>
+              <span style={{ transform: mobileBuyerInfoOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: '0.2s', display: 'inline-block' }}>▼</span>
+            </Box>
+          )}
+          <Box sx={{ display: isMobile && !mobileBuyerInfoOpen ? 'none' : undefined }}>
 
 
           {BUYER_FIELD_SECTIONS.map((section) => (
@@ -2748,7 +2758,7 @@ TEL：097-533-2022`;
             </Paper>
           ))}
 
-
+          </Box>{/* スマホ時買主情報開閉Box */}
         </Box>
       </Box>
 

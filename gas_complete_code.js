@@ -440,6 +440,28 @@ function syncSellerNow(sellerNumberStr) {
 }
 
 function syncAA907() { syncSellerNow('AA907'); }
+function syncAA13837() { syncSellerNow('AA13837'); }
+
+// AA13837の反響詳細日時をDBに反映する専用関数
+function syncAA13837InquiryDatetime() {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('売主リスト');
+  if (!sheet) { Logger.log('❌ シート「売主リスト」が見つかりません'); return; }
+  var lastRow = sheet.getLastRow();
+  var lastCol = sheet.getLastColumn();
+  var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+  var allData = sheet.getRange(2, 1, lastRow - 1, lastCol).getValues();
+  var sheetRows = [];
+  for (var i = 0; i < allData.length; i++) {
+    var row = rowToObject(headers, allData[i]);
+    if (String(row['売主番号'] || '') === 'AA13837') {
+      sheetRows.push(row);
+      break;
+    }
+  }
+  if (sheetRows.length === 0) { Logger.log('❌ AA13837が見つかりません'); return; }
+  Logger.log('✅ AA13837を発見。syncUpdatesToSupabase_で同期します...');
+  syncUpdatesToSupabase_(sheetRows);
+}
 
 // ============================================================
 // サイドバーカウント更新（seller_sidebar_counts テーブルへ書き込み）
