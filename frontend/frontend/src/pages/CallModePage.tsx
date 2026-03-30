@@ -577,6 +577,10 @@ const CallModePage = () => {
   const [savedFirstCallPerson, setSavedFirstCallPerson] = useState<string>(''); // 保存済み値（変更検知用）
   const [savingCommunication, setSavingCommunication] = useState(false);
   const [rankingDialogOpen, setRankingDialogOpen] = useState(false); // 1番電話月間ランキングダイアログ
+  // スマホ時のアコーディオン開閉状態
+  const [mobileCommentOpen, setMobileCommentOpen] = useState(true); // コメント（デフォルト展開）
+  const [mobilePropertyOpen, setMobilePropertyOpen] = useState(false); // 物件情報
+  const [mobileCallLogOpen, setMobileCallLogOpen] = useState(false); // 追客ログ
   const [normalInitials, setNormalInitials] = useState<string[]>([]); // スプシ「通常=TRUE」のイニシャル一覧
   const [myInitials, setMyInitials] = useState<string>(''); // ログインユーザーのイニシャル（スプシから取得）
 
@@ -3559,14 +3563,23 @@ HP：https://ifoo-oita.com/
         {/* サイドバー（追客ログ）- スマホ時はorder:2（最後）で表示 */}
         <Box sx={{ flexShrink: 0, overflow: 'auto', borderRight: isMobile ? 0 : 1, borderBottom: isMobile ? 1 : 0, borderColor: 'divider', order: isMobile ? 2 : 0 }}>
           {/* 売主追客ログ（一番上） */}
-          <Box sx={{ width: isMobile ? '100%' : 280, p: 2, borderBottom: 1, borderColor: 'divider' }}>
+          {isMobile && (
+            <Box
+              onClick={() => setMobileCallLogOpen(!mobileCallLogOpen)}
+              sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: 1.5, bgcolor: '#f5f5f5', cursor: 'pointer', borderBottom: 1, borderColor: 'divider' }}
+            >
+              <Typography variant="subtitle2" fontWeight="bold">📞 追客ログ</Typography>
+              <ExpandMoreIcon sx={{ transform: mobileCallLogOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: '0.2s' }} />
+            </Box>
+          )}
+          <Box sx={{ width: isMobile ? '100%' : 280, p: 2, borderBottom: 1, borderColor: 'divider', display: isMobile && !mobileCallLogOpen ? 'none' : undefined }}>
             <CallLogDisplay ref={callLogRef} sellerId={id!} />
           </Box>
 
           {/* 1番電話ランキング - サイドバーから削除（1番電話フィールド横のボタンに移動） */}
 
           {/* メール・SMS履歴（追客ログの直下） */}
-          <Box sx={{ width: isMobile ? '100%' : 280, p: 2, borderBottom: 1, borderColor: 'divider' }}>
+          <Box sx={{ width: isMobile ? '100%' : 280, p: 2, borderBottom: 1, borderColor: 'divider', display: isMobile && !mobileCallLogOpen ? 'none' : undefined }}>
             <Typography variant="subtitle1" sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1, fontWeight: 'bold' }}>
               📋 メール・SMS履歴
             </Typography>
@@ -3612,7 +3625,7 @@ HP：https://ifoo-oita.com/
           </Box>
 
           {/* 過去の活動ログ（追客ログの直下） */}
-          <Box sx={{ width: isMobile ? '100%' : 280, p: 2, borderBottom: 1, borderColor: 'divider' }}>
+          <Box sx={{ width: isMobile ? '100%' : 280, p: 2, borderBottom: 1, borderColor: 'divider', display: isMobile && !mobileCallLogOpen ? 'none' : undefined }}>
             {seller?.sellerNumber ? (
               <FollowUpLogHistoryTable sellerNumber={seller.sellerNumber} />
             ) : (
@@ -3656,11 +3669,21 @@ HP：https://ifoo-oita.com/
               overflow: isMobile ? 'visible' : 'auto',
               borderRight: isMobile ? 0 : 1,
               borderColor: 'divider',
-              p: isMobile ? 1 : 3,
+              p: isMobile ? 0 : 3,
               pb: isMobile ? '80px' : 3,
               order: isMobile ? 1 : 0,
             }}
           >
+            {isMobile && (
+              <Box
+                onClick={() => setMobilePropertyOpen(!mobilePropertyOpen)}
+                sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: 1.5, bgcolor: '#f3e5f5', cursor: 'pointer', borderBottom: 1, borderColor: 'divider' }}
+              >
+                <Typography variant="subtitle2" fontWeight="bold">📍 物件情報・売主情報</Typography>
+                <ExpandMoreIcon sx={{ transform: mobilePropertyOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: '0.2s' }} />
+              </Box>
+            )}
+            <Box sx={{ display: isMobile && !mobilePropertyOpen ? 'none' : undefined, p: isMobile ? 1 : 0, pb: isMobile ? '80px' : 0 }}>
             {/* モバイル：売主基本情報固定ヘッダー（非表示 - ヘッダーに名前があるため） */}
             {false && isMobile && seller && (
               <Box
@@ -5653,6 +5676,7 @@ HP：https://ifoo-oita.com/
                 </Grid>
               </Grid>
             </Paper>
+            </Box>{/* スマホ時物件情報開閉Box */}
           </Grid>
 
           {/* 右側：統一コメント欄エリア（50%）- スマホ時は最初に全幅表示（order:0） */}
@@ -5663,12 +5687,22 @@ HP：https://ifoo-oita.com/
             sx={{
               height: isMobile ? 'auto' : '100%',
               overflow: isMobile ? 'visible' : 'auto',
-              p: isMobile ? 1 : 3,
+              p: isMobile ? 0 : 3,
               order: isMobile ? 0 : 1,
             }}
           >
+            {isMobile && (
+              <Box
+                onClick={() => setMobileCommentOpen(!mobileCommentOpen)}
+                sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: 1.5, bgcolor: '#e3f2fd', cursor: 'pointer', borderBottom: 1, borderColor: 'divider' }}
+              >
+                <Typography variant="subtitle2" fontWeight="bold">📝 コメント</Typography>
+                <ExpandMoreIcon sx={{ transform: mobileCommentOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: '0.2s' }} />
+              </Box>
+            )}
+            <Box sx={{ display: isMobile && !mobileCommentOpen ? 'none' : undefined, p: isMobile ? 1 : 0 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2, flexWrap: 'wrap' }}>
-              <Typography variant="h6">
+              <Typography variant="h6" sx={{ display: isMobile ? 'none' : undefined }}>
                 📝 コメント
               </Typography>
               {/* 通知送信者（visitReminderAssigneeに値がある場合のみ表示） */}
@@ -6544,6 +6578,7 @@ HP：https://ifoo-oita.com/
                 />
               </Box>
             )}
+            </Box>{/* スマホ時コメント開閉Box */}
           </Grid>
         </Grid>
 

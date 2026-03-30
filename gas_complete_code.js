@@ -236,6 +236,28 @@ function syncUpdatesToSupabase_(sheetRows) {
     if (sheetVisitNotes !== (dbSeller.visit_notes || null)) { updateData.visit_notes = sheetVisitNotes; needsUpdate = true; }
     var sheetFirstCallPerson = row['一番TEL'] ? String(row['一番TEL']) : null;
     if (sheetFirstCallPerson !== (dbSeller.first_call_person || null)) { updateData.first_call_person = sheetFirstCallPerson; needsUpdate = true; }
+    // 反響詳細日時（inquiry_detailed_datetime）の同期
+    var sheetInquiryDetailedDatetime = null;
+    var rawDetailedDatetime = row['反響詳細日時'];
+    if (rawDetailedDatetime && rawDetailedDatetime !== '') {
+      var dtStr = String(rawDetailedDatetime).trim();
+      // Dateオブジェクトの場合はISOStringに変換
+      if (rawDetailedDatetime instanceof Date) {
+        sheetInquiryDetailedDatetime = rawDetailedDatetime.toISOString();
+      } else if (dtStr.match(/^\d{4}\/\d{1,2}\/\d{1,2}\s+\d{1,2}:\d{2}(:\d{2})?$/)) {
+        // "YYYY/MM/DD HH:mm" or "YYYY/MM/DD HH:mm:ss" 形式
+        var normalized = dtStr.replace(/\//g, '-');
+        sheetInquiryDetailedDatetime = new Date(normalized).toISOString();
+      } else if (dtStr.match(/^\d{4}-\d{1,2}-\d{1,2}T/)) {
+        // すでにISO形式
+        sheetInquiryDetailedDatetime = dtStr;
+      }
+    }
+    var dbInquiryDetailedDatetime = dbSeller.inquiry_detailed_datetime ? String(dbSeller.inquiry_detailed_datetime) : null;
+    // 秒以下を無視して比較（スプレッドシートは秒精度まで）
+    var sheetDtCompare = sheetInquiryDetailedDatetime ? sheetInquiryDetailedDatetime.substring(0, 16) : null;
+    var dbDtCompare = dbInquiryDetailedDatetime ? dbInquiryDetailedDatetime.substring(0, 16) : null;
+    if (sheetDtCompare !== dbDtCompare) { updateData.inquiry_detailed_datetime = sheetInquiryDetailedDatetime; needsUpdate = true; }
     var sheetExclusionAction = row['除外日にすること'] ? String(row['除外日にすること']) : null;
     if (sheetExclusionAction !== (dbSeller.exclusion_action || null)) { updateData.exclusion_action = sheetExclusionAction; needsUpdate = true; }
     if (!needsUpdate) continue;
