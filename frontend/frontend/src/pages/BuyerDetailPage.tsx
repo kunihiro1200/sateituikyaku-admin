@@ -178,6 +178,7 @@ const BUYER_FIELD_SECTIONS = [
       { key: 'valuation_required', label: '要査定', inlineEditable: true, fieldType: 'valuationRequired' },
       { key: 'notification_sender', label: '通知送信者', inlineEditable: true },
       { key: 'viewing_mobile', label: '内覧形態', inlineEditable: true },
+      { key: 'post_viewing_seller_contact', label: '内覧後売主連絡', inlineEditable: true, fieldType: 'buttonSelect' },
     ],
   },
   {
@@ -2034,6 +2035,47 @@ TEL：097-533-2022`;
                                       setBuyer((prev: any) => prev ? { ...prev, [field.key]: newValue } : prev);
                                       handleFieldChange(section.title, field.key, newValue);
                                       // SAVE_BUTTON_FIELDS に含まれるため handleInlineFieldSave は呼ばない
+                                    }}
+                                    sx={{
+                                      flex: 1,
+                                      py: 0.5,
+                                      fontWeight: isSelected ? 'bold' : 'normal',
+                                      borderRadius: 1,
+                                    }}
+                                  >
+                                    {opt}
+                                  </Button>
+                                );
+                              })}
+                            </Box>
+                          </Box>
+                        </Grid>
+                      );
+                    }
+
+                    // post_viewing_seller_contactフィールドは特別処理（ボタン選択・即時保存）
+                    if (field.key === 'post_viewing_seller_contact') {
+                      const POST_VIEWING_OPTIONS = ['済', '未', '不要'];
+                      return (
+                        <Grid item xs={12} key={`${section.title}-${field.key}`}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Typography variant="caption" color="text.secondary" sx={{ whiteSpace: 'nowrap', flexShrink: 0 }}>
+                              {field.label}
+                            </Typography>
+                            <Box sx={{ display: 'flex', gap: 0.5, flex: 1 }}>
+                              {POST_VIEWING_OPTIONS.map((opt) => {
+                                const isSelected = buyer?.[field.key] === opt;
+                                return (
+                                  <Button
+                                    key={opt}
+                                    size="small"
+                                    variant={isSelected ? 'contained' : 'outlined'}
+                                    color="primary"
+                                    onClick={async () => {
+                                      const newValue = isSelected ? '' : opt;
+                                      setBuyer((prev: any) => prev ? { ...prev, [field.key]: newValue } : prev);
+                                      handleFieldChange(section.title, field.key, newValue);
+                                      await handleInlineFieldSave(field.key, newValue);
                                     }}
                                     sx={{
                                       flex: 1,

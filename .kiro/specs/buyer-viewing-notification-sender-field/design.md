@@ -1,102 +1,124 @@
-# 設計ドキュメント：内覧ページへの「通知送信者」フィールド追加
+# 設計書：内覧後売主連絡フィールド（buyer-viewing-notification-sender-field）
 
 ## 概要
 
-買主リストの内覧ページ（`BuyerViewingResultPage`）に「通知送信者」（`notification_sender`）フィールドを追加する。
+買主リストの内覧ページ（`BuyerViewingResultPage`）および買主詳細ページ（`BuyerDetailPage`）に「内覧後売主連絡」フィールドを追加する。スプレッドシートのV列に対応し、一般媒介物件の内覧後における売主への連絡状況をシステム上で管理できるようにする。
 
-このフィールドはスプレッドシートのBS列に対応し、`buyer-column-mapping.json` の `spreadsheetToDatabaseExtended` には既に `"通知送信者": "notification_sender"` が定義済みである。また、`BuyerDetailPage.tsx` の `BUYER_FIELD_SECTIONS` にも既に `notification_sender` が存在する。
-
-本機能の実装範囲は**内覧ページへの入力フィールド追加のみ**であり、既存の同期ロジック・型定義・ステータス計算ロジックは変更しない。
+あわせて、`BuyerStatusCalculator` に「一般媒介_内覧後売主連絡未」サイドバーカテゴリーを追加し、対応漏れを防ぐ。
 
 ---
 
 ## アーキテクチャ
 
-### システム全体の構成
-
-```
-フロントエンド（BuyerViewingResultPage）
-  ↓ PUT /api/buyers/:buyer_number
-バックエンド（BuyerService）
-  ↓ UPDATE buyers SET notification_sender = ?
-Supabase（buyers テーブル）
-  ↓ GAS 定期同期（10分ごと）
-スプレッドシート（BS列：通知送信者）
-```
-
-### データフロー
-
 ```mermaid
-sequenceDiagram
-  participant U as ユーザー
-  participant FE as BuyerViewingResultPage
-  participant API as PUT /api/buyers/:buyer_number
-  participant DB as buyers テーブル
-  participant GAS as GAS 定期同期
-
-  U->>FE: 「通知送信者」フィールドに値を入力
-  FE->>API: { notification_sender: "山田" }
-  API->>DB: UPDATE buyers SET notification_sender = '山田'
-  API-->>FE: 更新後の buyer オブジェクト
-  FE->>FE: 表示値を更新（isViewingPreDay 再評価）
-  Note over FE: notification_sender が入力済みのため<br/>内覧前日ボタン群が非表示になる
-  GAS->>DB: 10分ごとに定期同期（スプシ→DB）
+graph TD
+    A[BuyerViewingResultPage] -->|PUT /api/buyers/:id| B[buyers.ts ルート]
+    C[BuyerDetailPage] -->|PUT /api/buyers/:id| B
+    B --> D[BuyerService.updateWithSync]
+    D --> E[Supabase buyers テーブル]
+    D --> F[BuyerSyncService → スプシV列]
+    G[GAS 10分定期同期] -->|POST /api/buyers/sync| B
+    H[BuyerStatusCalculator] --> I[一般媒介_内覧後売主連絡未 判定]
+    I --> J[BuyerStatusSidebar]
 ```
+
+変更は既存のアーキテクチャパターンに完全に準拠する。新しいAPIエンドポイントは不要で、既存の `PUT /api/buyers/:id` を使用する。
 
 ---
 
 ## コンポーネントとインターフェース
 
-### 変更対象ファイル
+### フロントエンド
 
-| ファイル | 変更内容 |
-|---------|---------|
-| `frontend/frontend/src/pages/BuyerViewingResultPage.tsx` | 「通知送信者」フィールドの追加（`InlineEditableField` 使用） |
-| `backend/supabase/migrations/20260328_add_notification_sender_to_buyers.sql` | `notification_sender` カラムの追加（冪等マイグレーション） |
+#### BuyerViewingResultPage.tsx
 
-### 変更不要なファイル（既存実装を維持）
+`post_viewing_seller_contact` フィールドを表示・編集するボタン選択UIを追加する。
 
-| ファイル | 理由 |
-|---------|------|
-| `backend/src/config/buyer-column-mapping.json` | `spreadsheetToDatabaseExtended` に既に定義済み |
-| `frontend/frontend/src/pages/BuyerDetailPage.tsx` | `BUYER_FIELD_SECTIONS` に既に定義済み |
-| `frontend/frontend/src/types/index.ts` | `Buyer` 型に `notification_sender?: string` が既に定義済み |
-| `backend/src/services/BuyerService.ts` | `notification_sender` が許可フィールドリストに既に含まれている |
-| `backend/src/services/BuyerStatusCalculator.ts` | `isBlank(buyer.notification_sender)` の判定ロジックが既に実装済み |
+**表示条件**:
+```typescript
+const showPostViewingSellerContact =
+  (buyer.viewing_mobile && buyer.viewing_mobile.includes('一般')) ||
+  (buyer.viewing_type_general && buyer.viewing_type_general.includes('一般'));
+```
 
-### フロントエンド実装詳細
+**必須条件判定**:
+```typescript
+const isPostViewingSellerContactRequired = (buyer: Buyer): boolean => {
+  // mediation_type === "一般・公開中"
+  // latest_viewing_date >= "2025-07-05"
+  // latest_viewing_date <= today
+  // viewing_result_follow_up が非空
+};
+```
 
-#### 追加するフィールド
-
-内覧情報セクション（内覧日・時間・後続担当・内覧未確定が並ぶ `Box` 内）に `InlineEditableField` を追加する。
-
+**UIレイアウト**（`button-select-layout-rule.md` 準拠）:
 ```tsx
-{/* 通知送信者 */}
-<Box sx={{ width: '200px', flexShrink: 0 }}>
-  <InlineEditableField
-    label="通知送信者"
-    fieldName="notification_sender"
-    value={buyer.notification_sender || ''}
-    onSave={(newValue) => handleInlineFieldSave('notification_sender', newValue)}
-    fieldType="text"
-    placeholder="例: 山田"
-  />
+<Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+  <Typography variant="caption" color="text.secondary"
+    sx={{ whiteSpace: 'nowrap', flexShrink: 0 }}>
+    内覧後売主連絡{isRequired ? '*' : ''}
+  </Typography>
+  <Box sx={{ display: 'flex', gap: 0.5, flex: 1 }}>
+    {['済', '未', '不要'].map((option) => (
+      <Button key={option} size="small"
+        variant={buyer.post_viewing_seller_contact === option ? 'contained' : 'outlined'}
+        sx={{ flex: 1, py: 0.5 }}
+        onClick={() => handleSelect(option)}
+      >
+        {option}
+      </Button>
+    ))}
+  </Box>
 </Box>
 ```
 
-#### 保存ハンドラー
+#### BuyerDetailPage.tsx
 
-既存の `handleInlineFieldSave` を使用する（新規コールバック不要）。`notification_sender` は `latest_status` と異なり、スプレッドシートへの即時同期は不要（GAS の定期同期に任せる）。
+`BUYER_FIELD_SECTIONS` の「問合せ内容」セクションに追加する。
 
 ```typescript
-// 既存の handleInlineFieldSave がそのまま使用可能
-// sync: false（デフォルト）で高速保存
-await buyerApi.update(buyer_number!, { notification_sender: newValue }, { sync: false });
+{ key: 'post_viewing_seller_contact', label: '内覧後売主連絡', inlineEditable: true, fieldType: 'buttonSelect' },
 ```
 
-#### isViewingPreDay との連携
+#### BuyerStatusSidebar.tsx
 
-`isViewingPreDay` 関数は既に `notification_sender` を参照している。フィールドを保存すると `setBuyer(result.buyer)` が呼ばれ、`buyer` ステートが更新されるため、内覧前日ボタン群の表示/非表示が自動的に再評価される。
+変更不要。`BuyerStatusCalculator` が返すステータス文字列をそのまま表示する既存の仕組みで対応できる。
+
+### バックエンド
+
+#### BuyerStatusCalculator.ts
+
+既存の Priority 8 の条件を要件定義書の仕様に合わせて更新する。
+
+**条件A**（`latest_viewing_date >= "2025-08-01"` AND `< today` AND `viewing_result_follow_up` 空 AND `viewing_type_general` 非空）:
+```typescript
+and(
+  isNotBlank(buyer.viewing_type_general),
+  isNotBlank(buyer.latest_viewing_date),
+  isPast(buyer.latest_viewing_date),
+  isAfterOrEqual(buyer.latest_viewing_date, '2025-08-01'),
+  isBlank(buyer.viewing_result_follow_up)
+)
+```
+
+**条件B**（`post_viewing_seller_contact === "未"`）:
+```typescript
+equals(buyer.post_viewing_seller_contact, '未')
+```
+
+最終的な判定: `or(条件A, 条件B)`
+
+#### buyer-column-mapping.json
+
+`spreadsheetToDatabaseExtended` セクションに追加（既に `spreadsheetToDatabase` に存在するため、重複しないよう確認済み）:
+
+> 注意: 調査の結果、`spreadsheetToDatabase` セクションに `"内覧後売主連絡": "post_viewing_seller_contact"` が既に存在する。追加作業は不要。
+
+#### GAS BUYER_COLUMN_MAPPING
+
+```javascript
+'内覧後売主連絡': 'post_viewing_seller_contact'
+```
 
 ---
 
@@ -104,49 +126,57 @@ await buyerApi.update(buyer_number!, { notification_sender: newValue }, { sync: 
 
 ### buyers テーブル
 
-| カラム名 | 型 | 説明 |
-|---------|-----|------|
-| `notification_sender` | TEXT | 通知送信者（スプレッドシートBS列に対応） |
-
-### マイグレーション
-
 ```sql
--- backend/supabase/migrations/20260328_add_notification_sender_to_buyers.sql
-ALTER TABLE buyers ADD COLUMN IF NOT EXISTS notification_sender TEXT;
+ALTER TABLE buyers ADD COLUMN IF NOT EXISTS post_viewing_seller_contact TEXT;
 ```
 
-`IF NOT EXISTS` を使用することで冪等性を保証する。
+**有効な値**: `'済'` / `'未'` / `'不要'` / `NULL`（未選択）
 
-### スプレッドシートとのマッピング
+### BuyerData インターフェース（BuyerStatusCalculator.ts）
 
-| 方向 | スプレッドシート列 | DBカラム | 定義場所 |
-|------|-----------------|---------|---------|
-| スプシ→DB | BS列「通知送信者」 | `notification_sender` | `buyer-column-mapping.json` の `spreadsheetToDatabaseExtended`（既定義） |
-| DB→スプシ | BS列「通知送信者」 | `notification_sender` | GAS の `BUYER_COLUMN_MAPPING`（既定義） |
+既に `post_viewing_seller_contact?: string | null` が定義済みであることを確認済み。
 
 ---
 
 ## 正確性プロパティ
 
-*プロパティとは、システムの全ての有効な実行において成立すべき特性や振る舞いのことである。プロパティは人間が読める仕様と機械で検証可能な正確性保証の橋渡しとなる。*
+*プロパティとは、システムの全ての有効な実行において成立すべき特性・振る舞いのことである。人間が読める仕様と機械で検証可能な正確性保証の橋渡しとなる形式的な記述である。*
 
-### プロパティ 1: 通知送信者の保存ラウンドトリップ
+### Property 1: 表示条件の正確性
 
-*任意の* 有効な文字列値（空文字を含む）を `notification_sender` として保存した場合、その後 `GET /api/buyers/:buyer_number` で取得した買主データの `notification_sender` フィールドが保存した値と一致すること。
+*For any* 買主データに対して、`viewing_mobile` または `viewing_type_general` に「一般」が含まれる場合かつその場合に限り、`post_viewing_seller_contact` フィールドが表示される。
 
-**Validates: Requirements 1.3, 1.4, 1.5, 2.1**
+**Validates: Requirements 1.1, 1.2, 5.2**
 
-### プロパティ 2: 通知送信者入力済みの場合は内覧前日判定が false
+### Property 2: 保存ラウンドトリップ
 
-*任意の* 非空文字列を `notification_sender` として持つ買主に対して、`isViewingPreDay` 関数が `false` を返すこと（内覧日・`broker_inquiry` の値に関わらず）。
+*For any* 有効な値（`'済'`・`'未'`・`'不要'`・空文字）に対して、`PUT /api/buyers/:id` で `post_viewing_seller_contact` を保存した後に `GET /api/buyers/:id` で取得した値が保存した値と一致する。
 
-**Validates: Requirements 5.1, 5.2, 5.4**
+**Validates: Requirements 1.6, 1.7, 4.5, 5.3, 5.4**
 
-### プロパティ 3: 通知送信者空欄かつ内覧前日条件を満たす場合は内覧前日判定が true
+### Property 3: ボタン選択トグル
 
-*任意の* `notification_sender` が空欄（null または空文字）で、`broker_inquiry` が「業者問合せ」以外で、内覧日が翌日（木曜内覧の場合は2日後）である買主に対して、`isViewingPreDay` 関数が `true` を返すこと。
+*For any* 現在の選択状態と選択操作に対して、既に選択済みのボタンを再クリックすると値が空になり、未選択のボタンをクリックするとその値が選択される。
 
-**Validates: Requirements 5.3**
+**Validates: Requirements 1.4, 1.5**
+
+### Property 4: 必須判定ロジックの正確性
+
+*For any* 買主データに対して、`mediation_type === "一般・公開中"` AND `latest_viewing_date >= "2025-07-05"` AND `latest_viewing_date <= today` AND `viewing_result_follow_up` が非空、の全条件を満たす場合かつその場合に限り、`post_viewing_seller_contact` が必須と判定される。
+
+**Validates: Requirements 2.1, 2.4**
+
+### Property 5: サイドバーカテゴリー件数の正確性
+
+*For any* 買主データセットに対して、サイドバーに表示される「一般媒介_内覧後売主連絡未」の件数が、条件A（`latest_viewing_date >= "2025-08-01"` AND `< today` AND `viewing_result_follow_up` 空 AND `viewing_type_general` 非空）または条件B（`post_viewing_seller_contact === "未"`）を満たす買主の実際の件数と一致する。件数が0の場合はカテゴリーが表示されない。
+
+**Validates: Requirements 3.2, 3.3, 3.5**
+
+### Property 6: サイドバーフィルタリングの正確性
+
+*For any* 買主データセットに対して、「一般媒介_内覧後売主連絡未」カテゴリーを選択した場合、表示される買主が全て条件A または条件B を満たし、かつ条件を満たす全ての買主が表示される。
+
+**Validates: Requirements 3.4**
 
 ---
 
@@ -154,105 +184,110 @@ ALTER TABLE buyers ADD COLUMN IF NOT EXISTS notification_sender TEXT;
 
 ### フロントエンド
 
-| エラーケース | 対応 |
-|------------|------|
-| API 保存失敗 | `InlineEditableField` の既存エラーハンドリングにより、エラーメッセージを表示して編集前の値に戻す |
-| ネットワークエラー | 同上 |
+- **保存失敗時**: 既存の `snackbar` 機構でエラーメッセージを表示する（`severity: 'error'`）
+- **必須バリデーション**: 必須条件を満たす状態で空欄のまま保存操作が行われた場合、エラーメッセージを表示する
+- **表示条件未満足**: フィールド自体を非表示にする（エラーなし）
 
 ### バックエンド
 
-| エラーケース | 対応 |
-|------------|------|
-| `notification_sender` カラムが存在しない | マイグレーション実行で解決 |
-| 不正な値（型エラー等） | `BuyerService` の既存バリデーションで処理 |
+- `post_viewing_seller_contact` は TEXT 型で `NULL` 許容。不正な値が渡された場合は既存の `BuyerService.update` のバリデーション機構に委ねる
+- `BuyerStatusCalculator` 内の条件判定は既存の `and`/`or`/`isBlank`/`isNotBlank` ヘルパーを使用し、例外が発生しても `try/catch` で `''` を返す既存の安全機構が適用される
 
 ---
 
 ## テスト戦略
 
-### ユニットテスト（例示テスト）
+### ユニットテスト
 
-以下の具体的なケースを確認する：
+以下の具体的なケースをユニットテストで検証する:
 
-- 内覧ページに「通知送信者」ラベルが表示されること
-- `buyer-column-mapping.json` の `spreadsheetToDatabaseExtended` に `"通知送信者": "notification_sender"` が定義されていること
-- `BuyerDetailPage.tsx` の `BUYER_FIELD_SECTIONS` に `notification_sender` が定義されていること
-- `frontend/frontend/src/types/index.ts` の `Buyer` 型に `notification_sender` が定義されていること
-- マイグレーションファイルが `backend/supabase/migrations/` に存在すること
-- マイグレーションが `ADD COLUMN IF NOT EXISTS` を使用していること
+- `BuyerStatusCalculator` の「一般媒介_内覧後売主連絡未」判定
+  - 条件Aのみ満たす場合 → ステータスが「一般媒介_内覧後売主連絡未」
+  - 条件Bのみ満たす場合 → ステータスが「一般媒介_内覧後売主連絡未」
+  - 両条件を満たさない場合 → ステータスが「一般媒介_内覧後売主連絡未」でない
+  - `latest_viewing_date` が `"2025-07-31"` の場合（境界値）→ 条件Aを満たさない
+  - `latest_viewing_date` が `"2025-08-01"` の場合（境界値）→ 条件Aを満たす
+- 必須判定ヘルパー関数
+  - `latest_viewing_date` が `"2025-07-04"` の場合 → 必須でない
+  - `latest_viewing_date` が `"2025-07-05"` の場合 → 必須条件の一つを満たす
+  - `viewing_result_follow_up` が空の場合 → 必須でない
 
 ### プロパティベーステスト
 
-各プロパティに対して最低 100 回のランダム入力でテストを実施する。
+各プロパティを `fast-check`（TypeScript）を使用してプロパティベーステストとして実装する。最低100回のイテレーションを実行する。
 
-**使用ライブラリ**: `fast-check`（既存プロジェクトで使用済み）
-
-#### プロパティ 1 の実装方針
+**テストタグ形式**: `Feature: buyer-viewing-notification-sender-field, Property {番号}: {プロパティ名}`
 
 ```typescript
-// Feature: buyer-viewing-notification-sender-field, Property 1: 通知送信者の保存ラウンドトリップ
-fc.assert(
-  fc.asyncProperty(
-    fc.string(), // 任意の文字列（空文字含む）
-    async (notificationSender) => {
-      // 保存
-      await buyerApi.update(buyerNumber, { notification_sender: notificationSender });
-      // 取得
-      const result = await buyerApi.get(buyerNumber);
-      // 検証
-      expect(result.notification_sender).toBe(notificationSender);
-    }
-  ),
-  { numRuns: 100 }
-);
+// Property 1: 表示条件の正確性
+// Feature: buyer-viewing-notification-sender-field, Property 1: 表示条件の正確性
+fc.assert(fc.property(
+  fc.record({
+    viewing_mobile: fc.option(fc.string()),
+    viewing_type_general: fc.option(fc.string()),
+  }),
+  (buyer) => {
+    const shouldShow = shouldShowPostViewingSellerContact(buyer);
+    const hasGeneral =
+      (buyer.viewing_mobile?.includes('一般') ?? false) ||
+      (buyer.viewing_type_general?.includes('一般') ?? false);
+    return shouldShow === hasGeneral;
+  }
+), { numRuns: 100 });
+
+// Property 2: 保存ラウンドトリップ
+// Feature: buyer-viewing-notification-sender-field, Property 2: 保存ラウンドトリップ
+fc.assert(fc.property(
+  fc.constantFrom('済', '未', '不要', ''),
+  async (value) => {
+    await api.put(`/api/buyers/${testBuyerNumber}`, { post_viewing_seller_contact: value });
+    const result = await api.get(`/api/buyers/${testBuyerNumber}`);
+    return result.data.post_viewing_seller_contact === (value || null);
+  }
+), { numRuns: 100 });
+
+// Property 4: 必須判定ロジックの正確性
+// Feature: buyer-viewing-notification-sender-field, Property 4: 必須判定ロジックの正確性
+fc.assert(fc.property(
+  fc.record({
+    mediation_type: fc.string(),
+    latest_viewing_date: fc.option(fc.string()),
+    viewing_result_follow_up: fc.option(fc.string()),
+  }),
+  (buyer) => {
+    const isRequired = isPostViewingSellerContactRequired(buyer);
+    const expected =
+      buyer.mediation_type === '一般・公開中' &&
+      isDateOnOrAfter(buyer.latest_viewing_date, '2025-07-05') &&
+      isDateOnOrBefore(buyer.latest_viewing_date, today()) &&
+      !!buyer.viewing_result_follow_up?.trim();
+    return isRequired === expected;
+  }
+), { numRuns: 100 });
+
+// Property 5: サイドバーカテゴリー件数の正確性
+// Feature: buyer-viewing-notification-sender-field, Property 5: サイドバーカテゴリー件数の正確性
+fc.assert(fc.property(
+  fc.array(fc.record({
+    viewing_type_general: fc.option(fc.string()),
+    latest_viewing_date: fc.option(fc.string()),
+    viewing_result_follow_up: fc.option(fc.string()),
+    post_viewing_seller_contact: fc.option(fc.constantFrom('済', '未', '不要')),
+  })),
+  (buyers) => {
+    const expected = buyers.filter(b =>
+      matchesConditionA(b) || matchesConditionB(b)
+    ).length;
+    const categories = calculateStatusCategories(buyers);
+    const category = categories.find(c => c.status === '一般媒介_内覧後売主連絡未');
+    return expected === 0
+      ? category === undefined
+      : category?.count === expected;
+  }
+), { numRuns: 100 });
 ```
 
-#### プロパティ 2 の実装方針
+### 統合テスト
 
-```typescript
-// Feature: buyer-viewing-notification-sender-field, Property 2: 通知送信者入力済みの場合は内覧前日判定が false
-fc.assert(
-  fc.property(
-    fc.string({ minLength: 1 }), // 非空文字列
-    fc.option(fc.string()),       // 任意の broker_inquiry
-    fc.option(fc.string()),       // 任意の latest_viewing_date
-    (notificationSender, brokerInquiry, latestViewingDate) => {
-      const buyer = {
-        notification_sender: notificationSender,
-        broker_inquiry: brokerInquiry,
-        latest_viewing_date: latestViewingDate,
-      };
-      expect(isViewingPreDay(buyer)).toBe(false);
-    }
-  ),
-  { numRuns: 100 }
-);
-```
-
-#### プロパティ 3 の実装方針
-
-```typescript
-// Feature: buyer-viewing-notification-sender-field, Property 3: 通知送信者空欄かつ内覧前日条件を満たす場合は内覧前日判定が true
-fc.assert(
-  fc.property(
-    fc.constantFrom(null, ''), // 空欄の notification_sender
-    fc.string().filter(s => s !== '業者問合せ'), // 業者問合せ以外の broker_inquiry
-    (notificationSender, brokerInquiry) => {
-      const tomorrowDate = getTomorrowDateString(); // 木曜日以外の翌日
-      const buyer = {
-        notification_sender: notificationSender,
-        broker_inquiry: brokerInquiry,
-        latest_viewing_date: tomorrowDate,
-      };
-      expect(isViewingPreDay(buyer)).toBe(true);
-    }
-  ),
-  { numRuns: 100 }
-);
-```
-
-### デュアルテストアプローチ
-
-- **ユニットテスト**: 具体的な例・エッジケース・エラー条件を検証
-- **プロパティテスト**: 全入力に対して成立すべき普遍的な性質を検証
-- 両者は補完的であり、どちらも必要
+- `PUT /api/buyers/:id` で `post_viewing_seller_contact` を更新後、`GET /api/buyers/:id` で値が反映されていることを確認
+- `GET /api/buyers/status-categories` のレスポンスに「一般媒介_内覧後売主連絡未」が含まれることを確認（該当データが存在する場合）

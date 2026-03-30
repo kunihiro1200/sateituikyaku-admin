@@ -159,7 +159,7 @@ export default function PropertySidebarStatus({
   };
 
   const statusList = useMemo(() => {
-    const list: Array<{ key: string; label: string; count: number; isHighPriorityBg?: boolean; isDivider?: boolean; isRed?: boolean; isBoldRed?: boolean }> = [
+    const list: Array<{ key: string; label: string; count: number; isHighPriorityBg?: boolean; isSeninBg?: boolean; isDivider?: boolean; isRed?: boolean; isBoldRed?: boolean }> = [
       { key: 'all', label: 'すべて', count: statusCounts.all }
     ];
 
@@ -177,11 +177,13 @@ export default function PropertySidebarStatus({
 
     sortedStatuses.forEach(([key, count]) => {
       // 「買付申し込み」(優先度8)より上のカテゴリーに薄い背景色
-      const isHighBg = HIGH_PRIORITY_BG_STATUSES.has(key) || key.startsWith('未報告');
+      // 専任公開中系（X専任公開中）にも薄い背景色
+      const isSeninBg = key.endsWith('専任公開中') || key === '専任・公開中';
+      const isHighBg = !isSeninBg && (HIGH_PRIORITY_BG_STATUSES.has(key) || key.startsWith('未報告'));
       // 一般媒介の未完了は太字赤字、それ以外の高優先度は赤字
       const isBoldRed = key === '未完了' && generalMediationIncompleteCount > 0;
       const isRed = HIGH_PRIORITY_RED_STATUSES.has(key);
-      list.push({ key, label: key, count, isHighPriorityBg: isHighBg, isRed, isBoldRed });
+      list.push({ key, label: key, count, isHighPriorityBg: isHighBg, isSeninBg, isRed, isBoldRed });
     });
 
     return list;
@@ -217,6 +219,11 @@ export default function PropertySidebarStatus({
                     bgcolor: 'rgba(255, 243, 224, 0.8)',
                     '&:hover': { bgcolor: 'rgba(255, 224, 178, 0.8)' },
                     '&.Mui-selected': { bgcolor: 'rgba(255, 204, 128, 0.6)' },
+                  }),
+                  ...(item.isSeninBg && {
+                    bgcolor: 'rgba(227, 242, 253, 0.8)',
+                    '&:hover': { bgcolor: 'rgba(187, 222, 251, 0.8)' },
+                    '&.Mui-selected': { bgcolor: 'rgba(144, 202, 249, 0.6)' },
                   }),
                 }}
               >
