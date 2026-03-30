@@ -35,9 +35,9 @@
   - Mark task complete when tests are written, run, and passing on unfixed code
   - _Requirements: 2.5, 3.1, 3.2, 3.3, 3.4_
 
-- [-] 3. Fix getTodayCallWithInfoLabel() in sellerStatusFilters.ts
+- [x] 3. Fix getTodayCallWithInfoLabel() in sellerStatusFilters.ts
 
-  - [-] 3.1 Implement the fix
+  - [x] 3.1 Implement the fix
     - File: `frontend/frontend/src/utils/sellerStatusFilters.ts`
     - Function: `getTodayCallWithInfoLabel()`
     - 優先順位チェーンで最初の値のみ返す実装を削除する
@@ -49,7 +49,7 @@
     - _Preservation: 有効なフィールドが1つの場合は `当日TEL(値)` を返す、全て空の場合は `当日TEL（内容）` を返す_
     - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 3.1, 3.2, 3.3, 3.4_
 
-  - [ ] 3.2 Verify bug condition exploration test now passes
+  - [x] 3.2 Verify bug condition exploration test now passes
     - **Property 1: Expected Behavior** - 複数コミュニケーション情報の結合表示
     - **IMPORTANT**: Re-run the SAME test from task 1 - do NOT write a new test
     - The test from task 1 encodes the expected behavior
@@ -58,13 +58,13 @@
     - **EXPECTED OUTCOME**: Test PASSES (confirms bug is fixed)
     - _Requirements: 2.1, 2.2, 2.3, 2.4_
 
-  - [ ] 3.3 Verify preservation tests still pass
+  - [x] 3.3 Verify preservation tests still pass
     - **Property 2: Preservation** - 単一コミュニケーション情報の表示
     - **IMPORTANT**: Re-run the SAME tests from task 2 - do NOT write new tests
     - Run preservation property tests from step 2
     - **EXPECTED OUTCOME**: Tests PASS (confirms no regressions)
     - Confirm all tests still pass after fix (no regressions)
 
-- [~] 4. Checkpoint - Ensure all tests pass
+- [x] 4. Checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
   - デプロイ: `git push origin main` でVercelに自動デプロイされる
