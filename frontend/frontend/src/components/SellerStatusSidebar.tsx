@@ -60,7 +60,11 @@ const getSellerCategory = (seller: Seller | any): StatusCategory | null => {
   if (!seller) return null;
   
   if (isTodayCall(seller)) return 'todayCall';
-  if (isTodayCallWithInfo(seller)) return 'todayCallWithInfo';
+  if (isTodayCallWithInfo(seller)) {
+    // ラベル別カテゴリキーを返す（例: todayCallWithInfo:当日TEL(U)）
+    const label = getTodayCallWithInfoLabel(seller);
+    return `todayCallWithInfo:${label}` as StatusCategory;
+  }
   if (isUnvaluated(seller)) return 'unvaluated';
   if (isMailingPending(seller)) return 'mailingPending';
   
