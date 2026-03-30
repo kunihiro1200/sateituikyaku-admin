@@ -509,7 +509,8 @@ function updateSidebarCounts_(sheetRows) {
       counts.visitCompleted[assigneeKey] = (counts.visitCompleted[assigneeKey] || 0) + 1;
     }
     // 営担がいる全売主をカウント（担当(Y)などの親カテゴリ用）
-    if (isVisitAssigneeValid) {
+    // 一般媒介・専任媒介は除外
+    if (isVisitAssigneeValid && status.indexOf('一般媒介') === -1 && status.indexOf('専任媒介') === -1) {
       var vaKey = String(visitAssignee);
       counts.visitAssigned[vaKey] = (counts.visitAssigned[vaKey] || 0) + 1;
     }

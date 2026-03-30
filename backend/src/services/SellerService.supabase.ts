@@ -1172,12 +1172,14 @@ export class SellerService extends BaseRepository {
           const dynamicCategory = statusCategory as string;
           if (dynamicCategory.startsWith('visitAssigned:')) {
             const assignee = dynamicCategory.replace('visitAssigned:', '');
-            // 担当者別（営担が指定のイニシャルの全売主）
+            // 担当者別（営担が指定のイニシャルの全売主、一般媒介・専任媒介は除外）
             query = query
               .not('visit_assignee', 'is', null)
               .neq('visit_assignee', '')
               .neq('visit_assignee', '外す')
-              .eq('visit_assignee', assignee);
+              .eq('visit_assignee', assignee)
+              .not('status', 'ilike', '%一般媒介%')
+              .not('status', 'ilike', '%専任媒介%');
           } else if (dynamicCategory.startsWith('todayCallAssigned:')) {
             const assignee = dynamicCategory.replace('todayCallAssigned:', '');
             // 当日TEL（担当）（営担が指定のイニシャル AND 次電日が今日以前 AND 追客不要を含まない）
@@ -2152,7 +2154,9 @@ export class SellerService extends BaseRepository {
       .is('deleted_at', null)
       .not('visit_assignee', 'is', null)
       .neq('visit_assignee', '')
-      .neq('visit_assignee', '外す');
+      .neq('visit_assignee', '外す')
+      .not('status', 'ilike', '%一般媒介%')
+      .not('status', 'ilike', '%専任媒介%');
 
     const visitAssignedCounts: Record<string, number> = {};
     (allAssignedSellers || []).forEach((s: any) => {
