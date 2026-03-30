@@ -468,22 +468,87 @@ export default function SellerStatusSidebar({
       // 担当者に該当する売主がいない場合は表示しない
       if (assignedCount === 0 && todayCallCount === 0) return null;
 
+      const parentCategory = `visitAssigned:${assignee}` as StatusCategory;
+      const subCategory = `todayCallAssigned:${assignee}` as StatusCategory;
+      const parentColor = '#4caf50';
+      const subColor = '#ff5722';
+      const isParentActive = isActive(parentCategory);
+      const isParentExpanded = expandedCategory === parentCategory;
+      const isSubActive = isActive(subCategory);
+      const isSubExpanded = expandedCategory === subCategory;
+
       return (
         <Box key={assignee}>
-          {/* 担当(Y)メインカテゴリー */}
-          {renderCategoryButton(
-            `visitAssigned:${assignee}` as StatusCategory,
-            `担当(${assignee})`,
-            '#4caf50'
-          )}
+          {/* 担当(Y)メインカテゴリー - assignedCountを直接使用してrenderCategoryButtonのcount===0チェックを回避 */}
+          <Button
+            fullWidth
+            onClick={() => handleCategoryClick(parentCategory)}
+            sx={{
+              justifyContent: 'space-between',
+              textAlign: 'left',
+              fontSize: '0.85rem',
+              py: 1,
+              px: 1.5,
+              color: isParentActive || isParentExpanded ? 'white' : parentColor,
+              bgcolor: isParentActive || isParentExpanded ? parentColor : 'transparent',
+              borderRadius: 1,
+              '&:hover': {
+                bgcolor: isParentActive || isParentExpanded ? parentColor : `${parentColor}15`,
+              }
+            }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <span>担当({assignee})</span>
+              {assignedCount > 0 && (
+                <Chip
+                  label={assignedCount}
+                  size="small"
+                  sx={{
+                    height: 20,
+                    fontSize: '0.7rem',
+                    bgcolor: isParentActive || isParentExpanded ? 'rgba(255,255,255,0.3)' : undefined,
+                    color: isParentActive || isParentExpanded ? 'white' : undefined,
+                  }}
+                />
+              )}
+            </Box>
+            {isParentExpanded ? <ExpandLess /> : <ExpandMore />}
+          </Button>
           {/* ↳ 当日TEL(Y)サブカテゴリー（インデント付き） */}
           {todayCallCount > 0 && (
             <Box sx={{ pl: 2 }}>
-              {renderCategoryButton(
-                `todayCallAssigned:${assignee}` as StatusCategory,
-                `↳ 当日TEL(${assignee})`,
-                '#ff5722'
-              )}
+              <Button
+                fullWidth
+                onClick={() => handleCategoryClick(subCategory)}
+                sx={{
+                  justifyContent: 'space-between',
+                  textAlign: 'left',
+                  fontSize: '0.85rem',
+                  py: 1,
+                  px: 1.5,
+                  color: isSubActive || isSubExpanded ? 'white' : subColor,
+                  bgcolor: isSubActive || isSubExpanded ? subColor : 'transparent',
+                  borderRadius: 1,
+                  '&:hover': {
+                    bgcolor: isSubActive || isSubExpanded ? subColor : `${subColor}15`,
+                  }
+                }}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <span>↳ 当日TEL({assignee})</span>
+                  <Chip
+                    label={todayCallCount}
+                    size="small"
+                    sx={{
+                      height: 20,
+                      fontSize: '0.7rem',
+                      bgcolor: isSubActive || isSubExpanded ? 'rgba(255,255,255,0.3)' : undefined,
+                      color: isSubActive || isSubExpanded ? 'white' : undefined,
+                    }}
+                  />
+                </Box>
+                {isSubExpanded ? <ExpandLess /> : <ExpandMore />}
+              </Button>
             </Box>
           )}
         </Box>
