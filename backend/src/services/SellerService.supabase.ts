@@ -1172,13 +1172,12 @@ export class SellerService extends BaseRepository {
           const dynamicCategory = statusCategory as string;
           if (dynamicCategory.startsWith('visitAssigned:')) {
             const assignee = dynamicCategory.replace('visitAssigned:', '');
-            // 訪問予定（営担が指定のイニシャル AND 訪問日が今日以降）
+            // 担当者別（営担が指定のイニシャルの全売主）
             query = query
               .not('visit_assignee', 'is', null)
               .neq('visit_assignee', '')
               .neq('visit_assignee', '外す')
-              .eq('visit_assignee', assignee)
-              .gte('visit_date', todayJST);
+              .eq('visit_assignee', assignee);
           } else if (dynamicCategory.startsWith('todayCallAssigned:')) {
             const assignee = dynamicCategory.replace('todayCallAssigned:', '');
             // 当日TEL（担当）（営担が指定のイニシャル AND 次電日が今日以前 AND 追客不要を含まない）
