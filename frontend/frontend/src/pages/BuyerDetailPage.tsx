@@ -2231,7 +2231,23 @@ TEL：097-533-2022`;
                                     color="primary"
                                     onClick={async () => {
                                       const newValue = isSelected ? '' : initial;
-                                      setBuyer((prev: any) => prev ? { ...prev, [field.key]: newValue } : prev);
+                                      setBuyer((prev: any) => {
+                                        if (!prev) return prev;
+                                        const updated = { ...prev, [field.key]: newValue };
+                                        // owned_home_hearing_inquiry が変わったら owned_home_hearing_result の必須状態を再計算
+                                        setMissingRequiredFields(prevMissing => {
+                                          const next = new Set(prevMissing);
+                                          if (isHomeHearingResultRequired(updated)) {
+                                            if (!updated.owned_home_hearing_result || !String(updated.owned_home_hearing_result).trim()) {
+                                              next.add('owned_home_hearing_result');
+                                            }
+                                          } else {
+                                            next.delete('owned_home_hearing_result');
+                                          }
+                                          return next;
+                                        });
+                                        return updated;
+                                      });
                                       handleFieldChange(section.title, field.key, newValue);
                                       // SAVE_BUTTON_FIELDS に含まれるため handleInlineFieldSave は呼ばない
                                     }}
@@ -2288,8 +2304,13 @@ TEL：097-533-2022`;
                                       handleFieldChange(section.title, field.key, newValue);
                                       setMissingRequiredFields(prev => {
                                         const next = new Set(prev);
-                                        if (newValue && String(newValue).trim()) next.delete('owned_home_hearing_result');
-                                        else next.add('owned_home_hearing_result');
+                                        if (newValue && String(newValue).trim()) {
+                                          next.delete('owned_home_hearing_result');
+                                        } else if (isHomeHearingResultRequired(buyer)) {
+                                          next.add('owned_home_hearing_result');
+                                        } else {
+                                          next.delete('owned_home_hearing_result');
+                                        }
                                         return next;
                                       });
                                       // SAVE_BUTTON_FIELDS に含まれるため handleInlineFieldSave は呼ばない
