@@ -2023,9 +2023,11 @@ export class SellerService extends BaseRepository {
             break;
           case 'todayCallWithInfo':
             if (row.label) {
-              result.todayCallWithInfoLabelCounts[row.label] = count;
-              if (!result.todayCallWithInfoLabels.includes(row.label)) {
-                result.todayCallWithInfoLabels.push(row.label);
+              // labelはコンテンツ部分のみ（例: "U", "Eメール"）なので、フルラベル形式に変換
+              const fullLabel = `当日TEL(${row.label})`;
+              result.todayCallWithInfoLabelCounts[fullLabel] = count;
+              if (!result.todayCallWithInfoLabels.includes(fullLabel)) {
+                result.todayCallWithInfoLabels.push(fullLabel);
               }
             }
             break;
