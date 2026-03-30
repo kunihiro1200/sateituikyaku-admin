@@ -53,6 +53,7 @@ export interface BuyerData {
   valuation_survey?: string | null;
   valuation_survey_confirmed?: string | null;
   broker_survey?: string | null;
+  vendor_survey?: string | null;
   day_of_week?: string | null;
   pinrich?: string | null;
   email_confirmed?: string | null;
@@ -80,7 +81,7 @@ export function calculateBuyerStatus(buyer: BuyerData): StatusResult {
     }
 
     // Priority 2: 業者問合せあり
-    if (equals(buyer.broker_survey, '未')) {
+    if (equals(buyer.vendor_survey, '未')) {
       const status = '業者問合せあり';
       return { status, priority: 2, matchedCondition: '業者向けアンケート = 未', color: getStatusColor(status) };
     }
