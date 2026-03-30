@@ -513,34 +513,36 @@ export const isTodayCallWithInfo = (seller: Seller | any): boolean => {
 /**
  * 当日TEL（内容）の表示ラベルを取得
  * 
- * コミュニケーション情報の優先順位:
- * 1. 連絡方法 (contact_method) → 当日TEL(Eメール)
+ * コミュニケーション情報の表示順:
+ * 1. 電話担当 (phone_contact_person) → 当日TEL(Y)
  * 2. 連絡取りやすい時間 (preferred_contact_time) → 当日TEL(午前中)
- * 3. 電話担当 (phone_contact_person) → 当日TEL(Y)
+ * 3. 連絡方法 (contact_method) → 当日TEL(Eメール)
+ * 
+ * 複数のフィールドに値がある場合は・で結合して表示する
+ * 例: phone_contact_person="I", contact_method="Eメール" → 当日TEL(I・Eメール)
  * 
  * @param seller 売主データ
- * @returns 表示ラベル（例: "当日TEL(Eメール)"）
+ * @returns 表示ラベル（例: "当日TEL(I・Eメール)"）
  */
 export const getTodayCallWithInfoLabel = (seller: Seller | any): string => {
   const contactMethod = seller.contactMethod || seller.contact_method || '';
   const preferredContactTime = seller.preferredContactTime || seller.preferred_contact_time || '';
   const phoneContactPerson = seller.phoneContactPerson || seller.phone_contact_person || '';
-  
+
   // "null" 文字列も空扱い
   const isValid = (v: string): boolean => !!(v && v.trim() !== '' && v.trim().toLowerCase() !== 'null');
-  
-  // 優先順位: 連絡方法 > 連絡取りやすい時間 > 電話担当
-  if (isValid(contactMethod)) {
-    return `当日TEL(${contactMethod})`;
+
+  // 表示順: 電話担当・連絡取りやすい時間・連絡方法
+  const parts: string[] = [];
+  if (isValid(phoneContactPerson)) parts.push(phoneContactPerson);
+  if (isValid(preferredContactTime)) parts.push(preferredContactTime);
+  if (isValid(contactMethod)) parts.push(contactMethod);
+
+  if (parts.length === 0) {
+    return '当日TEL（内容）';
   }
-  if (isValid(preferredContactTime)) {
-    return `当日TEL(${preferredContactTime})`;
-  }
-  if (isValid(phoneContactPerson)) {
-    return `当日TEL(${phoneContactPerson})`;
-  }
-  
-  return '当日TEL（内容）';
+
+  return `当日TEL(${parts.join('・')})`;
 };
 
 /**
