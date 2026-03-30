@@ -2271,9 +2271,22 @@ TEL：097-533-2022`;
                                   color="primary"
                                   onClick={async () => {
                                     const newValue = isSelected ? '' : option;
-                                    setBuyer((prev: any) => prev ? { ...prev, [field.key]: newValue } : prev);
+                                    // 業者問合せ選択時は配信メールを「不要」に自動セット（UI即時反映）
+                                    setBuyer((prev: any) => {
+                                      if (!prev) return prev;
+                                      const updated: any = { ...prev, [field.key]: newValue };
+                                      if (newValue === '業者問合せ') {
+                                        updated.distribution_type = '不要';
+                                      }
+                                      return updated;
+                                    });
                                     handleFieldChange(section.title, field.key, newValue);
-                                    // SAVE_BUTTON_FIELDS に含まれるため handleInlineFieldSave は呼ばない
+                                    // 業者問合せ選択時は distribution_type も即時保存
+                                    if (newValue === '業者問合せ') {
+                                      handleFieldChange('問合せ内容', 'distribution_type', '不要');
+                                      await handleInlineFieldSave('distribution_type', '不要');
+                                    }
+                                    // SAVE_BUTTON_FIELDS に含まれるため broker_inquiry 自体の handleInlineFieldSave は呼ばない
                                   }}
                                   sx={{
                                     flex: 1,

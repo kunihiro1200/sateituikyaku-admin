@@ -831,7 +831,14 @@ export default function NewBuyerPage() {
                           <Chip
                             key={option}
                             label={option}
-                            onClick={() => setBrokerInquiry(brokerInquiry === option ? '' : option)}
+                            onClick={() => {
+                              const newVal = brokerInquiry === option ? '' : option;
+                              setBrokerInquiry(newVal);
+                              // 業者問合せ選択時は配信メールを「不要」に自動セット
+                              if (newVal === '業者問合せ') {
+                                setDistributionType('不要');
+                              }
+                            }}
                             color={brokerInquiry === option ? 'primary' : 'default'}
                             variant={brokerInquiry === option ? 'filled' : 'outlined'}
                             sx={{ cursor: 'pointer', fontWeight: brokerInquiry === option ? 'bold' : 'normal' }}
