@@ -456,13 +456,15 @@ export default function SellerStatusSidebar({
         )].sort() as string[];
 
     return initials.map(assignee => {
-      // APIから取得した全件カウントを優先して使用
-      const assignedCount = categoryCounts?.visitAssignedCounts
-        ? (categoryCounts.visitAssignedCounts[assignee] ?? 0)
+      // APIから取得した全件カウントを優先して使用（undefinedの場合はvalidSellersからフォールバック）
+      const apiAssignedCount = categoryCounts?.visitAssignedCounts?.[assignee];
+      const assignedCount = apiAssignedCount !== undefined
+        ? apiAssignedCount
         : validSellers.filter(s => isVisitAssignedTo(s, assignee)).length;
 
-      const todayCallCount = categoryCounts?.todayCallAssignedCounts
-        ? (categoryCounts.todayCallAssignedCounts[assignee] ?? 0)
+      const apiTodayCallCount = categoryCounts?.todayCallAssignedCounts?.[assignee];
+      const todayCallCount = apiTodayCallCount !== undefined
+        ? apiTodayCallCount
         : validSellers.filter(s => isTodayCallAssignedTo(s, assignee)).length;
 
       // 担当者に該当する売主がいない場合は表示しない
