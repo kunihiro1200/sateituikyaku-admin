@@ -108,14 +108,14 @@ export function calculateBuyerStatus(buyer: BuyerData): StatusResult {
     }
 
     // Priority 8: 一般媒介_内覧後売主連絡未
-    // 条件A: 内覧日が2025/8/1以降かつ今日未満 かつ 内覧結果・後続対応が空 かつ 内覧形態_一般媒介が非空
+    // 条件A: 内覧日が2025/8/1以降かつ今日未満 かつ 内覧形態_一般媒介が非空 かつ 内覧後売主連絡が未入力（内覧結果の有無は問わない）
     // 条件B: 内覧後売主連絡 = "未"
     const conditionA = and(
       isNotBlank(buyer.viewing_type_general),
       isNotBlank(buyer.latest_viewing_date),
       isPast(buyer.latest_viewing_date),
       isAfterOrEqual(buyer.latest_viewing_date, '2025-08-01'),
-      isBlank(buyer.viewing_result_follow_up)
+      isBlank(buyer.post_viewing_seller_contact)
     );
     const conditionB = equals(buyer.post_viewing_seller_contact, '未');
     if (or(conditionA, conditionB)) {
