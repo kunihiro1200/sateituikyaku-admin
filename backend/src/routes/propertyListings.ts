@@ -1170,34 +1170,87 @@ router.put('/:propertyNumber/confirmation', async (req: Request, res: Response):
   }
 });
 
-// 事務へチャットを送信
+// 事務へチャット送信（物件担当がいる場合は担当へ、いない場合は事務チャットへ）
 router.post('/:propertyNumber/send-chat-to-office', async (req: Request, res: Response): Promise<void> => {
   try {
     const { propertyNumber } = req.params;
     const { message, senderName } = req.body;
 
-    if (!message) {
-      res.status(400).json({ 
-        error: 'メッセージは必須です',
-        code: 'MISSING_MESSAGE'
-      });
+    if (!message || !String(message).trim()) {
+      res.status(400).json({ error: 'メッセージを入力してください' });
       return;
     }
 
-    console.log(`[send-chat-to-office] Sending chat to office for ${propertyNumber}`);
+    const { StaffManagementService } = require('../services/StaffManagementService');
+    const axios = require('axios');
 
-    await propertyListingService.sendChatToOffice(propertyNumber, message, senderName || '不明');
+    // 物件情報を取得
+    const supabase = createClient(
+      process.env.SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_KEY!
+    );
+    const { data: property, error } = await supabase
+      .from('property_listings')
+      .select('property_number, address, sales_assignee, seller_name, seller_contact, seller_email')
+      .eq('property_number', propertyNumber)
+      .single();
 
-    res.json({ 
-      success: true,
-      message: '事務へチャットを送信しました'
-    });
+    if (error || !property) {
+      res.status(404).json({ error: '物件が見つかりませんでした' });
+      return;
+    }
+
+    const staffService = new StaffManagementService();
+    const propertyUrl = `https://sateituikyaku-admin-frontend.vercel.app/property-listings/${property.property_number}`;
+
+    // 売主情報
+    const sellerInfo = [
+      property.seller_name ? `売主氏名: ${property.seller_name}` : null,
+      property.seller_contact ? `売主電話: ${property.seller_contact}` : null,
+      property.seller_email ? `売主メール: ${property.seller_email}` : null,
+    ].filter(Boolean).join('\n');
+
+    const senderLabel = senderName ? `送信者: ${senderName}` : null;
+
+    // 物件担当がいる場合は担当へ送信
+    if (property.sales_assignee) {
+      const result = await staffService.getWebhookUrl(property.sales_assignee);
+      if (result.success && result.webhookUrl) {
+        const chatMessage = `📩 *事務への質問・伝言*\n\n物件番号: ${property.property_number}\n所在地: ${property.address || '未設定'}\n担当: ${property.sales_assignee}\n${sellerInfo ? sellerInfo + '\n' : ''}物件URL: ${propertyUrl}\n${senderLabel ? senderLabel + '\n' : ''}\n${String(message).trim()}`;
+        await axios.post(result.webhookUrl, { text: chatMessage });
+        
+        console.log(`[send-chat-to-office] Sent to assignee ${property.sales_assignee} for ${propertyNumber}`);
+        
+        // 確認フィールドを「未」に自動設定
+        await supabase
+          .from('property_listings')
+          .update({ confirmation: '未' })
+          .eq('property_number', propertyNumber);
+        
+        res.json({ success: true });
+        return;
+      }
+    }
+
+    // 物件担当がいない場合は事務チャットへ送信
+    console.log(`[send-chat-to-office] No assignee for ${propertyNumber}, sending to office chat`);
+    
+    const officeWebhookUrl = 'https://chat.googleapis.com/v1/spaces/AAAAlknS4P0/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=61OklKGHQpRoIFhiI00wGZPmcRHd4oY_BV47uQGMWbg';
+    const chatMessage = `📩 *事務への質問・伝言*\n\n物件番号: ${property.property_number}\n所在地: ${property.address || '未設定'}\n担当: 未設定\n${sellerInfo ? sellerInfo + '\n' : ''}物件URL: ${propertyUrl}\n${senderLabel ? senderLabel + '\n' : ''}\n${String(message).trim()}`;
+
+    await axios.post(officeWebhookUrl, { text: chatMessage });
+    console.log(`[send-chat-to-office] Sent to office chat for ${propertyNumber}`);
+
+    // 確認フィールドを「未」に自動設定
+    await supabase
+      .from('property_listings')
+      .update({ confirmation: '未' })
+      .eq('property_number', propertyNumber);
+
+    res.json({ success: true });
   } catch (error: any) {
-    console.error('[send-chat-to-office] Error:', error);
-    res.status(500).json({ 
-      error: error.message || 'チャット送信に失敗しました',
-      code: 'INTERNAL_ERROR'
-    });
+    console.error('[send-chat-to-office] Error:', error.message);
+    res.status(500).json({ error: error.message || 'チャット送信に失敗しました' });
   }
 });
 
