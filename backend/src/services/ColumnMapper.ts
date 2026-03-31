@@ -79,6 +79,9 @@ export class ColumnMapper {
       if (value === null || value === undefined || value === '') {
         // 「氏名」フィールドが空の場合は「不明」を設定
         if (dbColumn === 'name') {
+          // ⚠️ 警告: 名前フィールドが空です
+          const sellerNumber = sheetRow['売主番号'] || 'unknown';
+          console.warn(`⚠️  WARNING: Name field is empty for seller ${sellerNumber}. Setting to "不明".`);
           dbData[dbColumn] = '不明';
         } else {
           dbData[dbColumn] = null;

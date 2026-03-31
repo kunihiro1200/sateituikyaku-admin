@@ -503,6 +503,9 @@ router.get('/:id', async (req: Request, res: Response) => {
     const seller = await sellerService.getSeller(req.params.id);
     const t1 = Date.now();
     console.log(`[PERF] getSeller done: ${t1 - t0}ms`);
+    
+    // デバッグ: inquiry_idの値を確認
+    console.log(`[DEBUG] seller.inquiryId: ${seller?.inquiryId}, seller.inquirySite: ${seller?.inquirySite}`);
 
     if (!seller) {
       return res.status(404).json({
