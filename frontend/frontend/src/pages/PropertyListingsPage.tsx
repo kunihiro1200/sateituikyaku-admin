@@ -198,6 +198,12 @@ export default function PropertyListingsPage() {
       } else if (sidebarStatus === '要値下げ') {
         // 「要値下げ」はDBのsidebar_statusに保存されないため、calculatePropertyStatusで判定
         listings = listings.filter(l => calculatePropertyStatus(l as any).key === 'price_reduction_due');
+      } else if (sidebarStatus.startsWith('未報告')) {
+        // 「未報告」または「未報告{担当者名}」：calculatePropertyStatusで動的に判定
+        listings = listings.filter(l => {
+          const status = calculatePropertyStatus(l as any, workTaskMap);
+          return status.label === sidebarStatus;
+        });
       } else if (['Y専任公開中', '生・専任公開中', '久・専任公開中', 'U専任公開中', '林・専任公開中', 'K専任公開中', 'R専任公開中', 'I専任公開中'].includes(sidebarStatus)) {
         // 担当者別専任公開中：sidebar_statusが一致するか、古いデータ('専任・公開中')でsales_assigneeが一致するものを含む
         const assigneeMap: Record<string, string> = {
@@ -225,7 +231,7 @@ export default function PropertyListingsPage() {
     }
 
     return listings;
-  }, [allListings, sidebarStatus, searchQuery]);
+  }, [allListings, sidebarStatus, searchQuery, workTaskMap]);
 
   // workTaskMapを作成（useMemoで最適化）
   const workTaskMap = useMemo(() => {
