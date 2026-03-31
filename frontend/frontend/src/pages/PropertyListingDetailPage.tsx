@@ -734,6 +734,7 @@ export default function PropertyListingDetailPage() {
   // URL patterns for validation
   const GOOGLE_MAP_URL_PATTERN = /^https:\/\/(maps\.google\.com|www\.google\.com\/maps|goo\.gl\/maps|maps\.app\.goo\.gl)\/.+/;
   const GOOGLE_DRIVE_FOLDER_PATTERN = /^https:\/\/drive\.google\.com\/drive\/(u\/\d+\/)?folders\/.+/;
+  const SUUMO_URL_PATTERN = /^https:\/\/suumo\.jp\/.+/;
 
   // URL update handlers
   const handleUpdateGoogleMapUrl = async (newUrl: string) => {
@@ -789,6 +790,35 @@ export default function PropertyListingDetailPage() {
       setSnackbar({
         open: true,
         message: error.response?.data?.error || '格納先URLの更新に失敗しました',
+        severity: 'error',
+      });
+      throw error;
+    }
+  };
+
+  const handleUpdateSuumoUrl = async (newUrl: string) => {
+    try {
+      await api.put(
+        `/api/property-listings/${propertyNumber}`,
+        { suumo_url: newUrl }
+      );
+      
+      // Update local state
+      setData(prev => prev ? {
+        ...prev,
+        suumo_url: newUrl
+      } : null);
+      
+      // Show success message
+      setSnackbar({
+        open: true,
+        message: 'Suumo URLを更新しました',
+        severity: 'success',
+      });
+    } catch (error: any) {
+      setSnackbar({
+        open: true,
+        message: error.response?.data?.error || 'Suumo URLの更新に失敗しました',
         severity: 'error',
       });
       throw error;
@@ -1925,6 +1955,15 @@ export default function PropertyListingDetailPage() {
                   errorMessage="有効なGoogle Map URLを入力してください"
                   onSave={handleUpdateGoogleMapUrl}
                   helperText="物件の位置を示すGoogle Map URLを入力してください"
+                />
+                <EditableUrlField
+                  label="Suumo URL"
+                  value={data.suumo_url || null}
+                  placeholder="https://suumo.jp/..."
+                  urlPattern={SUUMO_URL_PATTERN}
+                  errorMessage="有効なSuumo URLを入力してください"
+                  onSave={handleUpdateSuumoUrl}
+                  helperText="Suumo掲載URLを入力してください"
                 />
                 <Box sx={{ mt: 3 }}>
                   <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
