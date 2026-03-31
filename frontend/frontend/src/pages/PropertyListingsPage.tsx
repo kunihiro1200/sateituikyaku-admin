@@ -205,10 +205,16 @@ export default function PropertyListingsPage() {
         listings = listings.filter(l => calculatePropertyStatus(l as any).key === 'price_reduction_due');
       } else if (sidebarStatus.startsWith('未報告')) {
         // 「未報告」または「未報告{担当者名}」：calculatePropertyStatusで動的に判定
+        console.log('[Filter] 未報告フィルター開始:', { sidebarStatus, totalListings: listings.length });
         listings = listings.filter(l => {
           const status = calculatePropertyStatus(l as any, workTaskMap);
-          return status.label === sidebarStatus;
+          const match = status.label === sidebarStatus;
+          if (match) {
+            console.log('[Filter] マッチ:', { property_number: l.property_number, status: status.label, report_assignee: l.report_assignee });
+          }
+          return match;
         });
+        console.log('[Filter] 未報告フィルター結果:', listings.length);
       } else if (['Y専任公開中', '生・専任公開中', '久・専任公開中', 'U専任公開中', '林・専任公開中', 'K専任公開中', 'R専任公開中', 'I専任公開中'].includes(sidebarStatus)) {
         // 担当者別専任公開中：sidebar_statusが一致するか、古いデータ('専任・公開中')でsales_assigneeが一致するものを含む
         const assigneeMap: Record<string, string> = {

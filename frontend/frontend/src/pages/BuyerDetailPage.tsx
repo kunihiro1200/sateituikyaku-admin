@@ -247,7 +247,9 @@ export default function BuyerDetailPage() {
   // owned_home_hearing_result が必須かどうかを判定するヘルパー
   // ISNOTBLANK([問合時持家ヒアリング]) のみ（受付日条件なし）
   const isHomeHearingResultRequired = (data: any): boolean => {
-    return !!(data.owned_home_hearing_inquiry && String(data.owned_home_hearing_inquiry).trim());
+    if (!data.owned_home_hearing_inquiry) return false;
+    const trimmed = String(data.owned_home_hearing_inquiry).trim();
+    return trimmed.length > 0;
   };
 
   // latest_status が必須かどうかを判定するヘルパー
