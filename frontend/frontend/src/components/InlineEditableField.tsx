@@ -39,6 +39,7 @@ export interface InlineEditableFieldProps {
   borderPlaceholder?: string;  // 囲い枠内に表示するプレースホルダー
   showEditIndicator?: boolean;  // 編集可能インジケーターを常時表示するか（デフォルト: true）
   onChange?: (fieldName: string, newValue: any) => void;  // 値変更時のコールバック（保存前）
+  highlighted?: boolean;  // フィールドを強調表示するかどうか
 }
 
 export const InlineEditableField: React.FC<InlineEditableFieldProps> = memo(({
@@ -60,6 +61,7 @@ export const InlineEditableField: React.FC<InlineEditableFieldProps> = memo(({
   borderPlaceholder,
   showEditIndicator = true,
   onChange,
+  highlighted = false,
 }) => {
   const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>(null);
   const [isHovered, setIsHovered] = useState(false);
@@ -380,7 +382,15 @@ export const InlineEditableField: React.FC<InlineEditableFieldProps> = memo(({
   return (
     <Box sx={{ mb: 1 }}>
       {label && (
-        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+        <Typography 
+          variant="caption" 
+          color={highlighted ? '#f57c00' : 'text.secondary'}
+          sx={{ 
+            display: 'block', 
+            mb: 0.5,
+            fontWeight: highlighted ? 600 : 400,
+          }}
+        >
           {label}
         </Typography>
       )}
@@ -408,19 +418,25 @@ export const InlineEditableField: React.FC<InlineEditableFieldProps> = memo(({
             borderRadius: 1,
             cursor: isEditable ? 'pointer' : 'default',
             border: '1px solid',
+            // 強調表示の場合は太いボーダーと目立つ色
+            borderWidth: highlighted ? 2 : 1,
             // 編集可能フィールドには常時ボーダーを表示（showEditIndicator有効時）
-            borderColor: isEditable && showEditIndicator
-              ? (isHovered ? 'primary.main' : 'rgba(0, 0, 0, 0.23)')
-              : (alwaysShowBorder 
-                  ? (isEditable && isHovered ? 'primary.main' : 'rgba(0, 0, 0, 0.23)')
-                  : (isEditable && isHovered ? 'primary.main' : 'transparent')),
-            bgcolor: isEditable && isHovered ? 'action.hover' : 
-                     (alwaysShowBorder || (isEditable && showEditIndicator) ? 'background.paper' : 'transparent'),
+            borderColor: highlighted 
+              ? (isHovered ? '#ff9800' : '#ffa726')  // オレンジ系の目立つ色
+              : (isEditable && showEditIndicator
+                ? (isHovered ? 'primary.main' : 'rgba(0, 0, 0, 0.23)')
+                : (alwaysShowBorder 
+                    ? (isEditable && isHovered ? 'primary.main' : 'rgba(0, 0, 0, 0.23)')
+                    : (isEditable && isHovered ? 'primary.main' : 'transparent'))),
+            bgcolor: highlighted
+              ? (isHovered ? '#fff3e0' : '#fff8e1')  // 薄いオレンジの背景
+              : (isEditable && isHovered ? 'action.hover' : 
+                 (alwaysShowBorder || (isEditable && showEditIndicator) ? 'background.paper' : 'transparent')),
             transition: 'all 0.2s ease',
             minHeight: (alwaysShowBorder || showEditIndicator) && fieldType === 'textarea' ? 120 : 36,
             '&:hover': isEditable ? {
-              borderColor: 'primary.main',
-              bgcolor: 'action.hover',
+              borderColor: highlighted ? '#ff9800' : 'primary.main',
+              bgcolor: highlighted ? '#fff3e0' : 'action.hover',
             } : {},
           }}
         >

@@ -2824,6 +2824,7 @@ TEL：097-533-2022`;
                           buyerId={buyer_number}
                           enableConflictDetection={false}
                           showEditIndicator={!field.readOnly}
+                          highlighted={field.key === 'next_call_date'}
                         />
                       </Grid>
                     );
