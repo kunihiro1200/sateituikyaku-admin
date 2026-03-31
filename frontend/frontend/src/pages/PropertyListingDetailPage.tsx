@@ -259,7 +259,7 @@ export default function PropertyListingDetailPage() {
   const [activeEmployees, setActiveEmployees] = useState<any[]>([]);
 
   // 確認フィールド関連の状態
-  const [confirmation, setConfirmation] = useState<'未' | '済'>('未');
+  const [confirmation, setConfirmation] = useState<'未' | '済' | null>(null);
   const [confirmationUpdating, setConfirmationUpdating] = useState(false);
 
   // Check for buyer context from navigation state
@@ -298,8 +298,8 @@ export default function PropertyListingDetailPage() {
     try {
       const response = await api.get(`/api/property-listings/${propertyNumber}`);
       setData(response.data);
-      // 確認フィールドを設定
-      setConfirmation(response.data.confirmation || '未');
+      // 確認フィールドを設定（nullの場合はそのまま）
+      setConfirmation(response.data.confirmation);
     } catch (error) {
       console.error('Failed to fetch property data:', error);
       setSnackbar({
@@ -1618,24 +1618,31 @@ export default function PropertyListingDetailPage() {
           <Box sx={{ mb: 1, p: 1, bgcolor: '#fff8e1', borderRadius: 1, border: '1px solid #ffe082' }}>
             <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
               <Typography variant="body2" fontWeight="bold">確認:</Typography>
-              <ButtonGroup size="small" disabled={confirmationUpdating}>
-                <Button
-                  variant={confirmation === '未' ? 'contained' : 'outlined'}
-                  onClick={() => handleUpdateConfirmation('未')}
-                  aria-label="確認を未に設定"
-                  aria-pressed={confirmation === '未'}
-                >
-                  未
-                </Button>
-                <Button
-                  variant={confirmation === '済' ? 'contained' : 'outlined'}
-                  onClick={() => handleUpdateConfirmation('済')}
-                  aria-label="確認を済に設定"
-                  aria-pressed={confirmation === '済'}
-                >
-                  済
-                </Button>
-              </ButtonGroup>
+              {confirmation !== null && (
+                <ButtonGroup size="small" disabled={confirmationUpdating}>
+                  <Button
+                    variant={confirmation === '未' ? 'contained' : 'outlined'}
+                    onClick={() => handleUpdateConfirmation('未')}
+                    aria-label="確認を未に設定"
+                    aria-pressed={confirmation === '未'}
+                  >
+                    未
+                  </Button>
+                  <Button
+                    variant={confirmation === '済' ? 'contained' : 'outlined'}
+                    onClick={() => handleUpdateConfirmation('済')}
+                    aria-label="確認を済に設定"
+                    aria-pressed={confirmation === '済'}
+                  >
+                    済
+                  </Button>
+                </ButtonGroup>
+              )}
+              {confirmation === null && (
+                <Typography variant="body2" color="text.secondary">
+                  （事務へCHAT送信後に表示されます）
+                </Typography>
+              )}
               {/* スクリーンリーダー用のaria-live領域 */}
               <Box
                 role="status"
