@@ -1187,6 +1187,8 @@ export default function PropertyListingDetailPage() {
                   placeholder="担当へ質問_伝言"
                   value={chatMessage}
                   onChange={(e) => setChatMessage(e.target.value)}
+                  multiline
+                  rows={3}
                   sx={{ flex: 1 }}
                 />
                 <Button
@@ -1207,6 +1209,8 @@ export default function PropertyListingDetailPage() {
                   placeholder="事務へ質問_伝言"
                   value={chatToOfficeMessage}
                   onChange={(e) => setChatToOfficeMessage(e.target.value)}
+                  multiline
+                  rows={3}
                   sx={{ flex: 1 }}
                 />
                 <Button
