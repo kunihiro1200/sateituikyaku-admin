@@ -79,7 +79,7 @@
     - _Requirements: 2.4, 2.5, 9.1, 9.4, 9.5_
 
 - [x] 7. フロントエンド：物件詳細画面のSuumo URLフィールド
-  - [-] 7.1 PropertyListingDetailPageにSuumo URLフィールドを追加
+  - [x] 7.1 PropertyListingDetailPageにSuumo URLフィールドを追加
     - `frontend/frontend/src/pages/PropertyListingDetailPage.tsx`を編集
     - 「地図・サイトURL」セクションにSuumo URLフィールドを追加
     - EditableUrlFieldコンポーネントを使用
@@ -92,8 +92,8 @@
     - 空欄時の「未設定」表示をテスト
     - _Requirements: 5.4, 5.5, 5.6, 5.8_
 
-- [ ] 8. フロントエンド：Gmail送信時のSuumo URL埋め込み
-  - [ ] 8.1 buildEmailBody()関数を拡張
+- [x] 8. フロントエンド：Gmail送信時のSuumo URL埋め込み
+  - [x] 8.1 buildEmailBody()関数を拡張
     - `frontend/frontend/src/utils/emailBuilder.ts`（または該当ファイル）を編集
     - メール本文テンプレートに「■SUUMO」セクションを追加
     - Suumo URLが存在する場合のみURLを埋め込む
@@ -109,16 +109,16 @@
     - メール本文フォーマットをテスト
     - _Requirements: 8.2, 8.3, 8.4, 8.5_
 
-- [ ] 9. Checkpoint - フロントエンドの動作確認
+- [x] 9. Checkpoint - フロントエンドの動作確認
   - 全てのテストが通ることを確認し、質問があればユーザーに確認する
 
-- [ ] 10. 統合とワイヤリング
-  - [ ] 10.1 ReinsRegistrationPageにPropertyHeaderInfoを統合
+- [x] 10. 統合とワイヤリング
+  - [x] 10.1 ReinsRegistrationPageにPropertyHeaderInfoを統合
     - ヘッダー情報を物件番号の下に配置
     - APIから物件データを取得してヘッダーに表示
     - _Requirements: 1.7_
   
-  - [ ] 10.2 エラーハンドリングの統合
+  - [x] 10.2 エラーハンドリングの統合
     - データベース更新失敗時のSnackbar表示を実装
     - スプレッドシート同期失敗時のログ記録を実装
     - _Requirements: 9.1, 9.2, 9.4, 9.5_
@@ -131,19 +131,19 @@
     - **Property 7: スプレッドシート同期失敗時のエラーログ**
     - **Validates: Requirements 9.2, 9.5**
 
-- [ ] 11. UI/UXの最終調整
-  - [ ] 11.1 Material-UIスタイルの適用
+- [x] 11. UI/UXの最終調整
+  - [x] 11.1 Material-UIスタイルの適用
     - 既存フィールドと一貫したスタイルを適用
     - レスポンシブデザインを実装（モバイル・デスクトップ）
     - フォーカス時のハイライトを実装
     - _Requirements: 10.1, 10.2, 10.3, 10.4, 10.5_
   
-  - [ ] 11.2 Snackbar通知の実装
+  - [x] 11.2 Snackbar通知の実装
     - 保存成功時の緑色Snackbarを実装
     - エラー時の赤色Snackbarを実装
     - _Requirements: 10.6, 10.7_
 
-- [ ] 12. 最終Checkpoint - 全機能の動作確認
+- [x] 12. 最終Checkpoint - 全機能の動作確認
   - 全てのテストが通ることを確認し、質問があればユーザーに確認する
 
 ## 注意事項
