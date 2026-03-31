@@ -31,6 +31,7 @@ interface PropertySidebarStatusProps {
   onStatusChange: (status: string | null) => void;
   pendingPriceReductionProperties?: Set<string>;
   onCompletePriceReduction?: (propertyNumber: string) => void;
+  workTaskMap?: Map<string, Date | null>;
 }
 
 // ステータスの優先順位（表示順）
@@ -99,6 +100,7 @@ export default function PropertySidebarStatus({
   onStatusChange,
   pendingPriceReductionProperties,
   onCompletePriceReduction,
+  workTaskMap,
 }: PropertySidebarStatusProps) {
   const [showCompleteDialog, setShowCompleteDialog] = useState(false);
   const [completing, setCompleting] = useState<string | null>(null);
@@ -112,12 +114,22 @@ export default function PropertySidebarStatus({
 
     listings.forEach(listing => {
       // calculatePropertyStatusで「要値下げ」を含む正確なステータスを計算
-      const computed = calculatePropertyStatus(listing as any);
+      // workTaskMapを渡すことで、条件6のSuumo URLチェックが正しく実行される
+      const computed = calculatePropertyStatus(listing as any, workTaskMap);
       if (computed.key === 'price_reduction_due') {
         counts['要値下げ'] = (counts['要値下げ'] || 0) + 1;
         return;
       }
 
+      // workTaskMapが渡されている場合は、computedステータスを使用
+      // これにより、Suumo URLが入力されている物件が「レインズ登録＋SUUMO登録」から除外される
+      if (workTaskMap) {
+        const statusLabel = computed.label;
+        counts[statusLabel] = (counts[statusLabel] || 0) + 1;
+        return;
+      }
+
+      // workTaskMapがない場合は、従来通りsidebar_statusを使用（後方互換性）
       const status = listing.sidebar_status || '';
       if (status && status !== '値下げ未完了') {
         // 「専任・公開中」はsales_assigneeで担当者別に分解して表示
@@ -132,7 +144,7 @@ export default function PropertySidebarStatus({
     });
 
     return counts;
-  }, [listings, pendingPriceReductionProperties]);
+  }, [listings, pendingPriceReductionProperties, workTaskMap]);
 
   // 一般媒介（atbb_status === '一般・公開中'）の未完了件数
   const generalMediationIncompleteCount = useMemo(() => {

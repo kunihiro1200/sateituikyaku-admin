@@ -41,7 +41,7 @@ import PublicUrlCell from '../components/PublicUrlCell';
 import PropertySidebarStatus from '../components/PropertySidebarStatus';
 import { getDisplayStatus } from '../utils/atbbStatusDisplayMapper';
 import { SECTION_COLORS } from '../theme/sectionColors';
-import { calculatePropertyStatus } from '../utils/propertyListingStatusUtils';
+import { calculatePropertyStatus, createWorkTaskMap } from '../utils/propertyListingStatusUtils';
 import { pageDataCache, CACHE_KEYS } from '../store/pageDataCache';
 
 interface PropertyListing {
@@ -62,6 +62,12 @@ interface PropertyListing {
   [key: string]: any;
 }
 
+interface WorkTask {
+  property_number: string;
+  publish_scheduled_date: string | null;
+  [key: string]: any;
+}
+
 export default function PropertyListingsPage() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -69,6 +75,7 @@ export default function PropertyListingsPage() {
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   const [allListings, setAllListings] = useState<PropertyListing[]>([]);
+  const [workTasks, setWorkTasks] = useState<WorkTask[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(50);
@@ -155,6 +162,13 @@ export default function PropertyListingsPage() {
         }
       }
 
+      // 業務依頼データを取得
+      console.log('業務依頼データを取得中...');
+      const workTasksRes = await api.get('/api/work-tasks');
+      const workTasksData = workTasksRes.data || [];
+      setWorkTasks(workTasksData);
+      console.log('✅ 業務依頼データ取得成功:', { 件数: workTasksData.length });
+
       // キャッシュに保存（5分間有効）
       pageDataCache.set(CACHE_KEYS.PROPERTY_LISTINGS, allListingsData, 5 * 60 * 1000);
       // allListingsとisLoadingAllを同時に更新することでRenderを1回にまとめる
@@ -208,6 +222,11 @@ export default function PropertyListingsPage() {
 
     return listings;
   }, [allListings, sidebarStatus, searchQuery]);
+
+  // workTaskMapを作成（useMemoで最適化）
+  const workTaskMap = useMemo(() => {
+    return createWorkTaskMap(workTasks);
+  }, [workTasks]);
 
   const paginatedListings = useMemo(() => {
     const start = page * rowsPerPage;
@@ -384,6 +403,7 @@ export default function PropertyListingsPage() {
                   setPage(0);
                   setMobileAccordionExpanded(false);
                 }}
+                workTaskMap={workTaskMap}
               />
             </AccordionDetails>
           </Accordion>
@@ -396,6 +416,7 @@ export default function PropertyListingsPage() {
             listings={allListings}
             selectedStatus={sidebarStatus}
             onStatusChange={(status) => { setSidebarStatus(status); setSearchQuery(''); setLastFilter('sidebar'); setPage(0); }}
+            workTaskMap={workTaskMap}
           />
         </Box>
         )}
@@ -590,7 +611,7 @@ export default function PropertyListingsPage() {
                 </Typography>
               ) : (
                 paginatedListings.map((listing) => {
-                  const propertyStatus = calculatePropertyStatus(listing as any);
+                  const propertyStatus = calculatePropertyStatus(listing as any, workTaskMap);
                   return (
                     <Card
                       key={listing.id}

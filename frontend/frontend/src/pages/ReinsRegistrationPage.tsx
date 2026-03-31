@@ -165,8 +165,51 @@ export default function ReinsRegistrationPage() {
     setData((prev) => prev ? { ...prev, [field]: value } : prev);
     setUpdating(field);
     try {
-      await api.put(`/api/property-listings/${propertyNumber}`, { [field]: value });
-      setSnackbar({ open: true, message: '保存しました', severity: 'success' });
+      // 報告日設定が変更された場合、報告日を自動計算
+      if (field === 'report_date_setting') {
+        let reportDate: string | null = null;
+        
+        if (value === 'する') {
+          // 本日+14日を計算
+          const today = new Date();
+          const futureDate = new Date(today);
+          futureDate.setDate(futureDate.getDate() + 14);
+          reportDate = futureDate.toISOString().split('T')[0];
+          
+          // UIを更新
+          setData((prev) => prev ? { ...prev, report_date_setting: value } : prev);
+          
+          // 報告日設定と報告日の両方を保存
+          await api.put(`/api/property-listings/${propertyNumber}`, { 
+            report_date_setting: value,
+            report_date: reportDate
+          });
+          
+          setSnackbar({ open: true, message: `保存しました（報告日: ${reportDate}）`, severity: 'success' });
+        } else if (value === 'しない') {
+          // 報告日をクリア
+          reportDate = null;
+          
+          // UIを更新
+          setData((prev) => prev ? { ...prev, report_date_setting: value } : prev);
+          
+          // 報告日設定と報告日の両方を保存
+          await api.put(`/api/property-listings/${propertyNumber}`, { 
+            report_date_setting: value,
+            report_date: reportDate
+          });
+          
+          setSnackbar({ open: true, message: '保存しました（報告日をクリア）', severity: 'success' });
+        } else {
+          // その他の値の場合は報告日設定のみ保存
+          await api.put(`/api/property-listings/${propertyNumber}`, { [field]: value });
+          setSnackbar({ open: true, message: '保存しました', severity: 'success' });
+        }
+      } else {
+        // 報告日設定以外のフィールドは通常通り保存
+        await api.put(`/api/property-listings/${propertyNumber}`, { [field]: value });
+        setSnackbar({ open: true, message: '保存しました', severity: 'success' });
+      }
     } catch (error) {
       setData((prev) => prev ? { ...prev, [field]: prevValue } : prev);
       setSnackbar({ open: true, message: '保存に失敗しました', severity: 'error' });
