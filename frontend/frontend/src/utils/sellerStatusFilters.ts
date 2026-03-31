@@ -358,9 +358,9 @@ export const isTodayCallAssigned = (seller: Seller | any): boolean => {
     return false;
   }
   
-  // 追客不要が含まれる場合は対象外
+  // 追客不要、専任媒介、一般媒介が含まれる場合は対象外
   const status = seller.status || '';
-  if (status.includes('追客不要')) {
+  if (status.includes('追客不要') || status.includes('専任媒介') || status.includes('一般媒介')) {
     return false;
   }
   
@@ -390,7 +390,7 @@ export const getTodayCallAssignedLabel = (seller: Seller | any): string => {
  * 
  * 修正後の条件:
  * - 状況（当社）に「追客」という文字列が含まれる（部分一致）
- * - ただし「追客不要」を含む場合は除外
+ * - ただし「追客不要」「専任媒介」「一般媒介」を含む場合は除外
  * - 次電日が今日以前（かつ空でない）
  * 
  * @param seller 売主データ
@@ -405,8 +405,8 @@ const isTodayCallBase = (seller: Seller | any): boolean => {
     return false;
   }
   
-  // 「追客不要」が含まれる場合は対象外
-  if (status.includes('追客不要')) {
+  // 「追客不要」「専任媒介」「一般媒介」が含まれる場合は対象外
+  if (status.includes('追客不要') || status.includes('専任媒介') || status.includes('一般媒介')) {
     return false;
   }
   
