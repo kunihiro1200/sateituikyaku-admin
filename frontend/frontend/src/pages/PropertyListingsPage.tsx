@@ -259,12 +259,7 @@ export default function PropertyListingsPage() {
   const handleRowClick = (propertyNumber: string) => {
     console.log('[handleRowClick] called with:', propertyNumber);
 
-    // 「未報告」カテゴリー選択中は報告ページへ直接遷移
-    if (sidebarStatus && sidebarStatus.startsWith('未報告')) {
-      navigate(`/property-listings/${propertyNumber}/report`);
-      return;
-    }
-
+    // 状態を保存（全ての遷移で共通）
     const currentState = {
       page,
       rowsPerPage,
@@ -273,6 +268,22 @@ export default function PropertyListingsPage() {
       lastFilter,
     };
     sessionStorage.setItem('propertyListState', JSON.stringify(currentState));
+
+    // 「未報告」カテゴリー選択中は報告ページへ直接遷移
+    if (sidebarStatus && sidebarStatus.startsWith('未報告')) {
+      console.log('[handleRowClick] 報告ページへ直接遷移');
+      navigate(`/property-listings/${propertyNumber}/report`);
+      return;
+    }
+
+    // 「レインズ登録＋SUUMO登録」カテゴリー選択中はレインズ登録ページへ直接遷移
+    if (sidebarStatus === 'レインズ登録＋SUUMO登録') {
+      console.log('[handleRowClick] レインズ登録ページへ直接遷移');
+      navigate(`/property-listings/${propertyNumber}/reins-registration`);
+      return;
+    }
+
+    // その他は物件詳細ページへ遷移
     console.log('[handleRowClick] navigating to:', `/property-listings/${propertyNumber}`);
     navigate(`/property-listings/${propertyNumber}`);
   };
