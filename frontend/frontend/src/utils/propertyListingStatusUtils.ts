@@ -130,10 +130,10 @@ export const calculatePropertyStatus = (
     return PROPERTY_STATUS_DEFINITIONS.find(s => s.key === 'price_reduction_due')!;
   }
 
-  // 1. 報告日が設定されていて、かつ未来の場合のみ未報告
-  // 報告日が空欄（null）の物件は未報告カテゴリに含めない
+  // 1. 報告日が設定されていて、かつ今日以前の場合のみ未報告
+  // 報告日が空欄（null）または将来の日付の物件は未報告カテゴリに含めない
   const reportDate = parseDate(listing.report_date);
-  if (reportDate && reportDate > today) {
+  if (reportDate && reportDate <= today) {
     const assigneeInitial = getAssigneeInitial(listing.report_assignee);
     return {
       key: 'unreported',
