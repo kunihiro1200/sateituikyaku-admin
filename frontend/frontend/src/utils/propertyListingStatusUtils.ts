@@ -99,6 +99,22 @@ export const createWorkTaskMap = (workTasks: WorkTask[]): Map<string, Date | nul
   return map;
 };
 
+// 担当者名をイニシャルに変換
+const getAssigneeInitial = (assignee: string | null | undefined): string => {
+  if (!assignee) return '';
+  const initialMap: Record<string, string> = {
+    '山本': 'Y',
+    '生野': '生',
+    '久': '久',
+    '裏': 'U',
+    '林': '林',
+    '国広': 'K',
+    '木村': 'R',
+    '角井': 'I',
+  };
+  return initialMap[assignee] || assignee;
+};
+
 // 物件のステータスを計算
 export const calculatePropertyStatus = (
   listing: PropertyListing,
@@ -117,10 +133,10 @@ export const calculatePropertyStatus = (
   // 1. 報告日が未設定または未来で未報告
   const reportDate = parseDate(listing.report_date);
   if (!reportDate || reportDate > today) {
-    const assignee = listing.report_assignee || '';
+    const assigneeInitial = getAssigneeInitial(listing.report_assignee);
     return {
       key: 'unreported',
-      label: `未報告${assignee}`,
+      label: `未報告${assigneeInitial}`,
       color: '#f44336'
     };
   }
@@ -196,18 +212,18 @@ export const calculatePropertyStatus = (
 
   // 11. 専任公開中（担当者別）
   if (isExclusivePublic) {
-    const assignee = listing.sales_assignee || '';
+    const assigneeInitial = getAssigneeInitial(listing.sales_assignee);
     const assigneeMap: Record<string, string> = {
-      '山本': 'exclusive_y',
-      '生野': 'exclusive_ikuno',
+      'Y': 'exclusive_y',
+      '生': 'exclusive_ikuno',
       '久': 'exclusive_hisa',
-      '裏': 'exclusive_u',
+      'U': 'exclusive_u',
       '林': 'exclusive_hayashi',
-      '国広': 'exclusive_k',
-      '木村': 'exclusive_r',
-      '角井': 'exclusive_i',
+      'K': 'exclusive_k',
+      'R': 'exclusive_r',
+      'I': 'exclusive_i',
     };
-    const statusKey = assigneeMap[assignee];
+    const statusKey = assigneeMap[assigneeInitial];
     if (statusKey) {
       return PROPERTY_STATUS_DEFINITIONS.find(s => s.key === statusKey)!;
     }
