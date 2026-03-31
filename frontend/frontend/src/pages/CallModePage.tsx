@@ -415,6 +415,7 @@ const CallModePage = () => {
   // ステータス更新用の状態
   const [editedStatus, setEditedStatus] = useState<string>('追客中');
   const [editedConfidence, setEditedConfidence] = useState<ConfidenceLevel | ''>('');
+  const [editedExclusiveOtherDecisionMeeting, setEditedExclusiveOtherDecisionMeeting] = useState<string>('');
   const [exclusionDate, setExclusionDate] = useState<string>('');
   const [exclusionAction, setExclusionAction] = useState<string>('');
   const [editedNextCallDate, setEditedNextCallDate] = useState<string>('');
@@ -1229,6 +1230,7 @@ const CallModePage = () => {
       console.log('propertyがnullまたはundefined:', !propertyData);
       setEditedStatus(sellerData.status);
       setEditedConfidence(sellerData.confidence || '');
+      setEditedExclusiveOtherDecisionMeeting(sellerData.exclusiveOtherDecisionMeeting || '');
       setStatusChanged(false); // 売主データ読み込み時にリセット
       
       // 除外日を設定（YYYY-MM-DD形式に変換）
@@ -1810,6 +1812,7 @@ const CallModePage = () => {
       await api.put(`/api/sellers/${id}`, {
         status: editedStatus,
         confidence: editedConfidence,
+        exclusiveOtherDecisionMeeting: editedExclusiveOtherDecisionMeeting || null,
         nextCallDate: editedNextCallDate || null,
         exclusiveDecisionDate: editedExclusiveDecisionDate || null,
         competitors: editedCompetitors.length > 0 ? editedCompetitors.join(', ') : null,
@@ -6414,6 +6417,22 @@ HP：https://ifoo-oita.com/
                       </Grid>
                     )}
                   </>
+                )}
+
+                {/* 専任他決打合せ - 確度の上に配置 */}
+                {requiresDecisionDate(editedStatus) && (
+                  <Grid item xs={12}>
+                    <TextField
+                      fullWidth
+                      multiline
+                      rows={3}
+                      size="small"
+                      label="専任他決打合せ"
+                      value={editedExclusiveOtherDecisionMeeting}
+                      onChange={(e) => { setEditedExclusiveOtherDecisionMeeting(e.target.value); setStatusChanged(true); }}
+                      placeholder="専任・他決・一般に関する打合せ内容を記入してください"
+                    />
+                  </Grid>
                 )}
 
                 {/* 確度 - 1行全幅 */}

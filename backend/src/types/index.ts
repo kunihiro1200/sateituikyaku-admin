@@ -122,7 +122,7 @@ export interface Seller {
   valuationAssignee?: string; // 査定担当
   phoneAssignee?: string; // 電話担当
   contractYearMonth?: Date;
-  exclusiveOtherDecisionMeeting?: string; // 専任他決打合せ
+  exclusive_other_decision_meeting?: string; // 専任他決打合せ
   
   // 競合・他決情報
   competitorNameAndReason?: string;

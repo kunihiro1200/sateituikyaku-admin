@@ -1408,6 +1408,12 @@ export class EnhancedAutoSyncService {
       updateData.fixed_asset_tax_road_price = null;
     }
 
+    // 専任他決打合せを追加（CZ列、列104、0-indexed: 103）
+    const exclusiveOtherDecisionMeeting = row['専任他決打合せ'];
+    if (exclusiveOtherDecisionMeeting !== undefined) {
+      updateData.exclusive_other_decision_meeting = exclusiveOtherDecisionMeeting ? String(exclusiveOtherDecisionMeeting) : null;
+    }
+
     const { error: updateError } = await this.supabase
       .from('sellers')
       .update(updateData)
@@ -1699,6 +1705,12 @@ export class EnhancedAutoSyncService {
     const parsedFixedAssetTaxRoadPriceNew = this.parseNumeric(fixedAssetTaxRoadPriceNew);
     if (parsedFixedAssetTaxRoadPriceNew !== null) {
       encryptedData.fixed_asset_tax_road_price = parsedFixedAssetTaxRoadPriceNew;
+    }
+
+    // 専任他決打合せを追加（CZ列、列104、0-indexed: 103）
+    const exclusiveOtherDecisionMeeting = row['専任他決打合せ'];
+    if (exclusiveOtherDecisionMeeting !== undefined) {
+      encryptedData.exclusive_other_decision_meeting = exclusiveOtherDecisionMeeting ? String(exclusiveOtherDecisionMeeting) : null;
     }
 
     // UPSERT: 既存データがあれば更新、なければ挿入
