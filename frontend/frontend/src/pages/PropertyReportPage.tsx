@@ -792,6 +792,13 @@ export default function PropertyReportPage() {
             </TableContainer>
           </Paper>
 
+          {/* 買主一覧 */}
+          <CompactBuyerListForProperty
+            buyers={buyers}
+            propertyNumber={propertyNumber || ''}
+            loading={buyersLoading}
+          />
+
           {/* 前回メール内容 */}
           {reportHistory.length > 0 && reportHistory[0].body && (
             <Paper sx={{ p: 3 }}>
@@ -812,13 +819,6 @@ export default function PropertyReportPage() {
               </Typography>
             </Paper>
           )}
-
-          {/* 買主一覧 */}
-          <CompactBuyerListForProperty
-            buyers={buyers}
-            propertyNumber={propertyNumber || ''}
-            loading={buyersLoading}
-          />
         </Box>
       </Box>
 
