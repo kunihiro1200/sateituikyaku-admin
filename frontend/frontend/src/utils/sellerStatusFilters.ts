@@ -747,6 +747,13 @@ export const isVisitAssignedTo = (seller: Seller | any, assignee: string): boole
   if (!assignee || assignee.trim() === '' || assignee.trim() === '外す') {
     return false;
   }
+  
+  // 「他社買取」を含む売主を除外
+  const status = seller.status || '';
+  if (typeof status === 'string' && status.includes('他社買取')) {
+    return false;
+  }
+  
   // visitAssigneeInitials（元のイニシャル）を優先して比較
   // visitAssigneeはフルネームに変換されている場合があるため
   // visitAssignee（camelCase）も参照（APIレスポンスの形式に対応）
@@ -777,10 +784,16 @@ export const isTodayCallAssignedTo = (seller: Seller | any, assignee: string): b
  * @returns ユニークな担当者イニシャルの配列（ソート済み）
  */
 export const getUniqueAssignees = (sellers: (Seller | any)[]): string[] => {
+  // 「他社買取」を含む売主を除外してから担当者を抽出
+  const filteredSellers = sellers.filter(s => {
+    const status = s.status || '';
+    return !(typeof status === 'string' && status.includes('他社買取'));
+  });
+  
   // visitAssigneeInitials（元のイニシャル）を優先して使用
   // visitAssigneeはフルネームに変換されている場合があるため
   // visitAssignee（camelCase）も参照（APIレスポンスの形式に対応）
-  const assignees = sellers
+  const assignees = filteredSellers
     .map(s => s.visitAssigneeInitials || s.visit_assignee || s.visitAssignee || '')
     .filter(a => a && a.trim() !== '' && a.trim() !== '外す');
   return [...new Set(assignees)].sort();
