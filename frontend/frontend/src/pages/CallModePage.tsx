@@ -6422,16 +6422,25 @@ HP：https://ifoo-oita.com/
                 {/* 専任他決打合せ - 確度の上に配置 */}
                 {requiresDecisionDate(editedStatus) && (
                   <Grid item xs={12}>
-                    <TextField
-                      fullWidth
-                      multiline
-                      rows={3}
-                      size="small"
-                      label="専任他決打合せ"
-                      value={editedExclusiveOtherDecisionMeeting}
-                      onChange={(e) => { setEditedExclusiveOtherDecisionMeeting(e.target.value); setStatusChanged(true); }}
-                      placeholder="専任・他決・一般に関する打合せ内容を記入してください"
-                    />
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                        専任他決打合せ
+                      </Typography>
+                      <Button
+                        variant={editedExclusiveOtherDecisionMeeting === '完了' ? 'contained' : 'outlined'}
+                        size="small"
+                        onClick={() => {
+                          setEditedExclusiveOtherDecisionMeeting('完了');
+                          setStatusChanged(true);
+                        }}
+                        sx={{ minWidth: '80px' }}
+                      >
+                        完了
+                      </Button>
+                      {editedExclusiveOtherDecisionMeeting === '完了' && (
+                        <Chip label="完了済み" size="small" color="success" />
+                      )}
+                    </Box>
                   </Grid>
                 )}
 
