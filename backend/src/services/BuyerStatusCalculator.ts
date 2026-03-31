@@ -109,19 +109,23 @@ export function calculateBuyerStatus(buyer: BuyerData): StatusResult {
     }
 
     // Priority 8: 一般媒介_内覧後売主連絡未
-    // 条件A: 内覧日が2025/8/1以降かつ今日未満 かつ 内覧形態_一般媒介が非空 かつ 内覧後売主連絡が未入力（内覧結果の有無は問わない）
-    // 条件B: 内覧後売主連絡 = "未"
+    // 条件A: 内覧日が2025/8/1以降かつ今日未満 かつ 内覧形態_一般媒介が非空 かつ 内覧後売主連絡が未入力 かつ atbb_statusに"公開中"が含まれる
+    // 条件B: 内覧後売主連絡 = "未" かつ atbb_statusに"公開中"が含まれる
     const conditionA = and(
       isNotBlank(buyer.viewing_type_general),
       isNotBlank(buyer.latest_viewing_date),
       isPast(buyer.latest_viewing_date),
       isAfterOrEqual(buyer.latest_viewing_date, '2025-08-01'),
-      isBlank(buyer.post_viewing_seller_contact)
+      isBlank(buyer.post_viewing_seller_contact),
+      contains(buyer.atbb_status, '公開中')
     );
-    const conditionB = equals(buyer.post_viewing_seller_contact, '未');
+    const conditionB = and(
+      equals(buyer.post_viewing_seller_contact, '未'),
+      contains(buyer.atbb_status, '公開中')
+    );
     if (or(conditionA, conditionB)) {
       const status = '一般媒介_内覧後売主連絡未';
-      return { status, priority: 8, matchedCondition: '一般媒介で内覧後の売主連絡が未完了', color: getStatusColor(status) };
+      return { status, priority: 8, matchedCondition: '一般媒介で内覧後の売主連絡が未完了（公開中のみ）', color: getStatusColor(status) };
     }
 
     // Priority 6: 当日TEL（次電日が当日以前 かつ 追客担当なし）
