@@ -58,7 +58,28 @@ function invalidateDuplicatesCache(sellerId: string): void {
   duplicatesCache.delete(sellerId);
 }
 
-// 全てのルートに認証を適用
+// 認証不要のエンドポイントを先に定義
+/**
+ * サイドバー用の売主カテゴリカウントを取得
+ * 各カテゴリの条件に合う売主のみを取得してカウント
+ */
+router.get('/sidebar-counts', async (req: Request, res: Response) => {
+  try {
+    const counts = await sellerService.getSidebarCounts();
+    res.json(counts);
+  } catch (error) {
+    console.error('Get sidebar counts error:', error);
+    res.status(500).json({
+      error: {
+        code: 'SIDEBAR_COUNTS_ERROR',
+        message: 'Failed to get sidebar counts',
+        retryable: true,
+      },
+    });
+  }
+});
+
+// 全てのルートに認証を適用（sidebar-countsの後に配置）
 router.use(authenticate);
 
 /**
@@ -193,26 +214,6 @@ router.get(
     }
   }
 );
-
-/**
- * サイドバー用の売主カテゴリカウントを取得
- * 各カテゴリの条件に合う売主のみを取得してカウント
- */
-router.get('/sidebar-counts', async (req: Request, res: Response) => {
-  try {
-    const counts = await sellerService.getSidebarCounts();
-    res.json(counts);
-  } catch (error) {
-    console.error('Get sidebar counts error:', error);
-    res.status(500).json({
-      error: {
-        code: 'SIDEBAR_COUNTS_ERROR',
-        message: 'Failed to get sidebar counts',
-        retryable: true,
-      },
-    });
-  }
-});
 
 /**
  * 担当者（visit_assignee）のユニーク一覧を取得
