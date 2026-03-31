@@ -136,7 +136,8 @@ export default function PropertySidebarStatus({
         
         // 「未報告」も常にcalculatePropertyStatusで判定（報告日が動的に変更されるため）
         if (computed.key === 'unreported') {
-          const label = computed.label; // 「未報告」または「未報告{担当者名}」
+          // スペースを除去して統一（「未報告 林」→「未報告林」）
+          const label = computed.label.replace(/\s+/g, '');
           counts[label] = (counts[label] || 0) + 1;
           return;
         }
