@@ -77,12 +77,17 @@ export default function PropertyHeaderInfo({
           物件概要
         </Typography>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-          <Typography variant="body2" fontWeight="bold" color="primary.main">
+          <Typography 
+            variant="h6" 
+            fontWeight="bold" 
+            color="primary.main"
+            sx={{ fontSize: '1.25rem' }}
+          >
             {propertyNumber}
           </Typography>
           <Tooltip title={copied ? 'コピーしました' : '物件番号をコピー'}>
             <IconButton
-              size="small"
+              size="medium"
               onClick={handleCopy}
               onKeyDown={handleKeyDown}
               aria-label="物件番号をコピー"
@@ -91,7 +96,7 @@ export default function PropertyHeaderInfo({
                 '&:hover': { bgcolor: 'action.hover' }
               }}
             >
-              {copied ? <CheckIcon fontSize="small" /> : <ContentCopyIcon fontSize="small" />}
+              {copied ? <CheckIcon /> : <ContentCopyIcon />}
             </IconButton>
           </Tooltip>
         </Box>
