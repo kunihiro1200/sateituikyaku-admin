@@ -1225,7 +1225,7 @@ export class SellerService extends BaseRepository {
       query = query.eq('inquiry_site', inquirySite); // 修正: site → inquiry_site（正しいカラム名）
     }
     if (propertyTypeFilter) {
-      query = query.eq('種別', propertyTypeFilter); // 修正: property_type → 種別
+      query = query.eq('property_type', propertyTypeFilter); // 修正: 種別 → property_type（正しいカラム名）
     }
     if (statusFilter) {
       query = query.eq('status', statusFilter); // 修正: ilike → eq（完全一致）
