@@ -145,6 +145,8 @@ const getCategoryLabel = (category: StatusCategory): string => {
       return '一般';
     case 'visitOtherDecision':
       return '訪問後他決';
+    case 'unvisitedOtherDecision':
+      return '未訪問他決';
     case 'all':
       return 'All';
     default:
@@ -190,6 +192,8 @@ const getCategoryColor = (category: StatusCategory): string => {
       return '#1565c0';
     case 'visitOtherDecision':
       return '#ff9800';
+    case 'unvisitedOtherDecision':
+      return '#ff5722';
     default:
       if (typeof category === 'string' && category.startsWith('visitAssigned:')) {
         return '#4caf50';
@@ -687,11 +691,12 @@ export default function SellerStatusSidebar({
         {renderAssigneeCategories()}
       </Box>
 
-      {/* 専任・一般・訪問後他決カテゴリー（区切り線付き） */}
+      {/* 専任・一般・訪問後他決・未訪問他決カテゴリー（区切り線付き） */}
       <Box sx={{ mt: 0.5, pt: 0.5, borderTop: '1px solid', borderColor: 'grey.200', bgcolor: '#f5f5f5', borderRadius: 1, px: 0.5 }}>
         {renderCategoryButton('exclusive', '専任', '#2e7d32')}
         {renderCategoryButton('general', '一般', '#1565c0')}
         {renderCategoryButton('visitOtherDecision', '訪問後他決', '#ff9800')}
+        {renderCategoryButton('unvisitedOtherDecision', '未訪問他決', '#ff5722')}
       </Box>
     </Box>
   );

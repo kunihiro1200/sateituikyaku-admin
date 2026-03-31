@@ -2010,6 +2010,7 @@ export class SellerService extends BaseRepository {
     exclusive: number;
     general: number;
     visitOtherDecision: number;
+    unvisitedOtherDecision: number;
     visitAssignedCounts: Record<string, number>;
     todayCallAssignedCounts: Record<string, number>;
     todayCallWithInfoLabels: string[];
@@ -2040,6 +2041,7 @@ export class SellerService extends BaseRepository {
         exclusive: 0,
         general: 0,
         visitOtherDecision: 0,
+        unvisitedOtherDecision: 0,
         visitAssignedCounts: {} as Record<string, number>,
         todayCallAssignedCounts: {} as Record<string, number>,
         todayCallWithInfoLabels: [] as string[],
@@ -2059,6 +2061,7 @@ export class SellerService extends BaseRepository {
           case 'exclusive':         result.exclusive = count; break;
           case 'general':           result.general = count; break;
           case 'visitOtherDecision': result.visitOtherDecision = count; break;
+          case 'unvisitedOtherDecision': result.unvisitedOtherDecision = count; break;
           case 'todayCallAssigned':
             result.todayCallAssigned += count;
             if (row.assignee) result.todayCallAssignedCounts[row.assignee] = count;
@@ -2105,6 +2108,7 @@ export class SellerService extends BaseRepository {
     exclusive: number;
     general: number;
     visitOtherDecision: number;
+    unvisitedOtherDecision: number;
     visitAssignedCounts: Record<string, number>;
     todayCallAssignedCounts: Record<string, number>;
     todayCallWithInfoLabels: string[];

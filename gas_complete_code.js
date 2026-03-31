@@ -514,10 +514,12 @@ function updateSidebarCounts_(sheetRows) {
   var counts = {
     todayCall: 0, todayCallWithInfo: {}, todayCallAssigned: {},
     visitDayBefore: 0, visitCompleted: {}, visitAssigned: {}, unvaluated: 0,
-    mailingPending: 0, todayCallNotStarted: 0, pinrichEmpty: 0
+    mailingPending: 0, todayCallNotStarted: 0, pinrichEmpty: 0,
+    exclusive: 0, general: 0, visitOtherDecision: 0, unvisitedOtherDecision: 0
   };
   var cutoffDate = '2025-12-08';
   var cutoffDate2 = '2026-01-01';
+  var generalCutoffDate = '2025-06-23';
 
   for (var i = 0; i < sheetRows.length; i++) {
     var row = sheetRows[i];
@@ -574,6 +576,41 @@ function updateSidebarCounts_(sheetRows) {
       counts.unvaluated++;
     }
     if (mailingStatus === '未') { counts.mailingPending++; }
+
+    // 専任他決打合せカテゴリ（3つの新カテゴリ）
+    var exclusiveOtherDecisionMeeting = row['専任他決打合せ'] ? String(row['専任他決打合せ']) : '';
+    var contractYearMonth = formatDateToISO_(row['契約年月 他決は分かった時点']);
+
+    // 専任カテゴリ: 専任他決打合せ ≠ "完了" AND 次電日 ≠ 今日 AND 状況（当社） IN ("専任媒介", "他決→専任", "リースバック（専任）")
+    if (exclusiveOtherDecisionMeeting !== '完了' &&
+        nextCallDate && nextCallDate !== todayStr &&
+        (status === '専任媒介' || status === '他決→専任' || status === 'リースバック（専任）')) {
+      counts.exclusive++;
+    }
+
+    // 一般カテゴリ: 専任他決打合せ ≠ "完了" AND 次電日 ≠ 今日 AND 状況（当社） = "一般媒介" AND 契約年月 >= "2025-06-23"
+    if (exclusiveOtherDecisionMeeting !== '完了' &&
+        nextCallDate && nextCallDate !== todayStr &&
+        status === '一般媒介' &&
+        contractYearMonth && contractYearMonth >= generalCutoffDate) {
+      counts.general++;
+    }
+
+    // 訪問後他決カテゴリ: 専任他決打合せ ≠ "完了" AND 次電日 ≠ 今日 AND 状況（当社） IN ("他決→追客", "他決→追客不要", "一般→他決", "他社買取") AND 営担 ≠ ""
+    if (exclusiveOtherDecisionMeeting !== '完了' &&
+        nextCallDate && nextCallDate !== todayStr &&
+        (status === '他決→追客' || status === '他決→追客不要' || status === '一般→他決' || status === '他社買取') &&
+        isVisitAssigneeValid) {
+      counts.visitOtherDecision++;
+    }
+
+    // 未訪問他決カテゴリ: 専任他決打合せ ≠ "完了" AND 次電日 ≠ 今日 AND 状況（当社） IN ("他決→追客", "他決→追客不要", "一般→他決") AND 営担 = ""
+    if (exclusiveOtherDecisionMeeting !== '完了' &&
+        nextCallDate && nextCallDate !== todayStr &&
+        (status === '他決→追客' || status === '他決→追客不要' || status === '一般→他決') &&
+        !isVisitAssigneeValid) {
+      counts.unvisitedOtherDecision++;
+    }
   }
 
   var upsertRows = [];
@@ -584,6 +621,10 @@ function updateSidebarCounts_(sheetRows) {
   upsertRows.push({ category: 'mailingPending', count: counts.mailingPending, label: null, assignee: null, updated_at: now });
   upsertRows.push({ category: 'todayCallNotStarted', count: counts.todayCallNotStarted, label: null, assignee: null, updated_at: now });
   upsertRows.push({ category: 'pinrichEmpty', count: counts.pinrichEmpty, label: null, assignee: null, updated_at: now });
+  upsertRows.push({ category: 'exclusive', count: counts.exclusive, label: null, assignee: null, updated_at: now });
+  upsertRows.push({ category: 'general', count: counts.general, label: null, assignee: null, updated_at: now });
+  upsertRows.push({ category: 'visitOtherDecision', count: counts.visitOtherDecision, label: null, assignee: null, updated_at: now });
+  upsertRows.push({ category: 'unvisitedOtherDecision', count: counts.unvisitedOtherDecision, label: null, assignee: null, updated_at: now });
   for (var assignee in counts.todayCallAssigned) {
     upsertRows.push({ category: 'todayCallAssigned', count: counts.todayCallAssigned[assignee], label: null, assignee: assignee, updated_at: now });
   }
