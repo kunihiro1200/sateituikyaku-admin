@@ -19,7 +19,7 @@ import {
   OutlinedInput,
   Checkbox,
 } from '@mui/material';
-import { ArrowBack as ArrowBackIcon } from '@mui/icons-material';
+import { ArrowBack as ArrowBackIcon, OpenInNew } from '@mui/icons-material';
 import api from '../services/api';
 import PurchaseStatusBadge from '../components/PurchaseStatusBadge';
 import { getPurchaseStatusText } from '../utils/purchaseStatusUtils';
@@ -435,6 +435,24 @@ export default function NewBuyerPage() {
               statusText={getPurchaseStatusText(latestStatus, propertyInfo?.offer_status)}
             />
             <Typography variant="h6" gutterBottom>物件情報</Typography>
+            
+            {/* 物件詳細リンクボタン */}
+            {propertyInfo && !loadingProperty && propertyNumberField && (
+              <Button
+                variant="outlined"
+                size="small"
+                fullWidth
+                startIcon={<OpenInNew />}
+                component="a"
+                href={`/property-listings/${propertyInfo.property_number}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="物件詳細を新しいタブで開く"
+                sx={{ mb: 2 }}
+              >
+                物件詳細を見る
+              </Button>
+            )}
             
             <TextField
               fullWidth
