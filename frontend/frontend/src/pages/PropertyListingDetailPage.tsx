@@ -62,7 +62,6 @@ import PropertySidebarStatus from '../components/PropertySidebarStatus';
 import { getDisplayStatus } from '../utils/atbbStatusDisplayMapper';
 import PurchaseStatusBadge from '../components/PurchaseStatusBadge';
 import { getPurchaseStatusText, hasBuyerPurchaseStatus } from '../utils/purchaseStatusUtils';
-import PropertyHeaderInfo from '../components/PropertyHeaderInfo';
 
 interface PropertyListing {
   id: number;
@@ -1253,18 +1252,35 @@ export default function PropertyListingDetailPage() {
         </Box>
       </Box>
 
-      {/* Property Header - PropertyHeaderInfo Component */}
-      <PropertyHeaderInfo
-        address={data.address || data.display_address || null}
-        salesPrice={data.sales_price || null}
-        salesAssignee={data.sales_assignee || null}
-        propertyNumber={data.property_number}
-      />
-
       {/* Property Header - Key Information */}
       <Paper sx={{ p: 1, mb: 1, bgcolor: '#f5f5f5', position: 'sticky', top: 48, zIndex: 100 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.25 }}>
-          <Typography variant="body1" color="text.secondary" fontWeight="bold">詳細情報</Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Typography variant="body1" color="text.secondary" fontWeight="bold">物件情報</Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+              <Typography 
+                variant="h6" 
+                fontWeight="bold" 
+                color="primary.main"
+                sx={{ fontSize: '1.25rem' }}
+              >
+                {data.property_number}
+              </Typography>
+              <Tooltip title={copiedPropertyNumber ? 'コピーしました' : '物件番号をコピー'}>
+                <IconButton
+                  size="medium"
+                  onClick={handleCopyPropertyNumber}
+                  aria-label="物件番号をコピー"
+                  sx={{ 
+                    color: copiedPropertyNumber ? 'success.main' : 'primary.main',
+                    '&:hover': { bgcolor: 'action.hover' }
+                  }}
+                >
+                  {copiedPropertyNumber ? <CheckIcon /> : <ContentCopyIcon />}
+                </IconButton>
+              </Tooltip>
+            </Box>
+          </Box>
           <Box sx={{ display: 'flex', gap: 1 }}>
             {isHeaderEditMode ? (
               <>
@@ -1421,6 +1437,26 @@ export default function PropertyListingDetailPage() {
             ) : (
               <Typography variant="body2" fontWeight="medium" sx={{ fontSize: '0.75rem' }}>
                 {formatDisplayDate(data.distribution_date)}
+              </Typography>
+            )}
+          </Grid>
+          <Grid item xs={6} sm={4} md={true} sx={{ minWidth: 120, flex: '1 1 0' }}>
+            <Typography variant="caption" color="text.secondary" fontWeight="bold" sx={{ fontSize: '0.75rem', lineHeight: 1.2 }}>売買価格</Typography>
+            {isHeaderEditMode ? (
+              <TextField
+                size="small"
+                fullWidth
+                type="number"
+                value={editedData.sales_price !== undefined ? editedData.sales_price : (data.sales_price || '')}
+                onChange={(e) => handleFieldChange('sales_price', e.target.value ? Number(e.target.value) : null)}
+                sx={{ mt: 0.5 }}
+                InputProps={{
+                  endAdornment: <Typography variant="caption" sx={{ ml: 0.5 }}>円</Typography>
+                }}
+              />
+            ) : (
+              <Typography variant="body2" fontWeight="bold" sx={{ fontSize: '0.75rem', color: data.sales_price ? 'text.primary' : 'text.disabled' }}>
+                {data.sales_price ? `${Math.round(data.sales_price / 10000).toLocaleString()}万円` : '価格応談'}
               </Typography>
             )}
           </Grid>
