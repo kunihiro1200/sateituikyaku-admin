@@ -68,7 +68,7 @@ export default function PropertyHeaderInfo({
       }}
     >
       {/* ヘッダー：物件概要 + 物件番号（コピー機能付き） */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'center', mb: 1.5, gap: 2 }}>
         <Typography
           variant="subtitle2"
           color="text.secondary"
