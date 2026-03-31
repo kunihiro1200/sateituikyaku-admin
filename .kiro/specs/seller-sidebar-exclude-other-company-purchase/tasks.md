@@ -35,10 +35,11 @@
     - `getUniqueAssignees()` のテストケースを追加
     - _Requirements: 1.1, 1.3, 1.4, 1.5, 2.4, 3.2_
 
-- [ ] 2. バックエンドのカウント計算を更新
+- [x] 2. バックエンドのカウント計算を更新
   - [x] 2.1 `getSidebarCountsFallback()` に「他社買取」除外条件を追加
     - `backend/src/services/SellerService.supabase.ts` の `getSidebarCountsFallback()` メソッドを修正
-    - visitAssignedCountsの計算時に `.not('status', 'ilike', '%他社買取%')` を追加
+    - **visitAssignedCountsの計算時に `.not('status', 'ilike', '%他社買取%')` を追加** ← ✅ 完了
+    - **todayCallAssignedCountsの計算時に `.not('status', 'ilike', '%他社買取%')` を追加** ← ✅ 完了
     - エラーハンドリングを実装（データ取得失敗時はデフォルト値を返す）
     - _Requirements: 1.2, 2.1, 2.3_
   
@@ -47,10 +48,11 @@
     - **Validates: Requirements 1.2, 2.1, 2.3**
     - fast-checkを使用して、「他社買取」を含む売主がカウントに含まれないことを検証
 
-- [ ] 3. バックエンドのリスト取得を更新
+- [x] 3. バックエンドのリスト取得を更新
   - [x] 3.1 `listSellers()` の `visitAssigned:xxx` カテゴリ処理に「他社買取」除外条件を追加
     - `backend/src/services/SellerService.supabase.ts` の `listSellers()` メソッドを修正
-    - visitAssignedカテゴリの処理時に `.not('status', 'ilike', '%他社買取%')` を追加
+    - **visitAssignedカテゴリの処理時に `.not('status', 'ilike', '%他社買取%')` を追加** ← ✅ 完了
+    - **todayCallAssignedカテゴリの処理時に `.not('status', 'ilike', '%他社買取%')` を追加** ← ✅ 完了
     - エラーハンドリングを実装（クエリエラー時は空の結果を返す）
     - _Requirements: 1.3, 3.1, 3.4_
   
