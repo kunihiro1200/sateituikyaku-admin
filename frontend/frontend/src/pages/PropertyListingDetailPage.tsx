@@ -219,8 +219,11 @@ export default function PropertyListingDetailPage() {
   const [salesContractDialog, setSalesContractDialog] = useState(false);
   const [salesContractUrlDialog, setSalesContractUrlDialog] = useState(false);
   const [chatPanelOpen, setChatPanelOpen] = useState(false);
+  const [chatToOfficePanelOpen, setChatToOfficePanelOpen] = useState(false);
   const [chatMessage, setChatMessage] = useState('');
+  const [chatToOfficeMessage, setChatToOfficeMessage] = useState('');
   const [chatSending, setChatSending] = useState(false);
+  const [chatToOfficeSending, setChatToOfficeSending] = useState(false);
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
     message: string;
@@ -646,19 +649,33 @@ export default function PropertyListingDetailPage() {
     }
   };
 
+  // 事務へCHATパネルをトグル
+  const handleToggleChatToOfficePanel = () => {
+    setChatToOfficePanelOpen(!chatToOfficePanelOpen);
+    if (!chatToOfficePanelOpen) {
+      // パネルを開く時、メッセージをクリア
+      setChatToOfficeMessage('');
+    }
+  };
+
   // 事務へCHAT送信
   const handleSendChatToOffice = async () => {
-    if (!propertyNumber) return;
+    if (!chatToOfficeMessage.trim() || !propertyNumber) return;
+    setChatToOfficeSending(true);
     try {
       await api.post(`/api/property-listings/${propertyNumber}/send-chat-to-office`, {
-        message: '',
+        message: chatToOfficeMessage,
         senderName: employee?.name || employee?.initials || '不明',
       });
       // 確認フィールドを「未」に自動設定
       setConfirmation('未');
       setSnackbar({ open: true, message: '事務へチャットを送信しました', severity: 'success' });
+      setChatToOfficeMessage('');
+      setChatToOfficePanelOpen(false);
     } catch (error: any) {
       setSnackbar({ open: true, message: error.response?.data?.error || 'チャット送信に失敗しました', severity: 'error' });
+    } finally {
+      setChatToOfficeSending(false);
     }
   };
 
@@ -1146,14 +1163,16 @@ export default function PropertyListingDetailPage() {
                   </Button>
                 )}
                 <Button
-                  variant="contained"
+                  variant="outlined"
                   size="small"
-                  onClick={handleSendChatToOffice}
+                  onClick={handleToggleChatToOfficePanel}
                   aria-label="事務担当者へチャットを送信"
                   sx={{
-                    bgcolor: '#7b1fa2',
+                    borderColor: '#7b1fa2',
+                    color: '#7b1fa2',
                     '&:hover': {
-                      bgcolor: '#4a148c',
+                      borderColor: '#4a148c',
+                      backgroundColor: '#7b1fa208',
                     },
                   }}
                 >
@@ -1178,6 +1197,26 @@ export default function PropertyListingDetailPage() {
                   sx={{ backgroundColor: '#7b1fa2', '&:hover': { backgroundColor: '#4a148c' } }}
                 >
                   {chatSending ? <CircularProgress size={16} sx={{ color: 'white' }} /> : '送信'}
+                </Button>
+              </Box>
+            )}
+            {chatToOfficePanelOpen && (
+              <Box sx={{ display: 'flex', gap: 1, mt: 0.5 }}>
+                <TextField
+                  size="small"
+                  placeholder="事務へ質問_伝言"
+                  value={chatToOfficeMessage}
+                  onChange={(e) => setChatToOfficeMessage(e.target.value)}
+                  sx={{ flex: 1 }}
+                />
+                <Button
+                  variant="contained"
+                  size="small"
+                  disabled={chatToOfficeSending || !chatToOfficeMessage.trim()}
+                  onClick={handleSendChatToOffice}
+                  sx={{ backgroundColor: '#7b1fa2', '&:hover': { backgroundColor: '#4a148c' } }}
+                >
+                  {chatToOfficeSending ? <CircularProgress size={16} sx={{ color: 'white' }} /> : '送信'}
                 </Button>
               </Box>
             )}
