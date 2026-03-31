@@ -144,7 +144,10 @@ export default function PropertySidebarStatus({
       }
 
       // sidebar_statusが存在する場合はそれを使用
-      if (status && status !== '値下げ未完了') {
+      // ただし「未報告」系は除外（動的判定済み）
+      // スペースを除去してから判定（「未報告 林」も「未報告林」も除外）
+      const normalizedStatus = status.replace(/\s+/g, '');
+      if (status && status !== '値下げ未完了' && !normalizedStatus.startsWith('未報告')) {
         // 「専任・公開中」はsales_assigneeで担当者別に分解して表示
         if (status === '専任・公開中') {
           const assignee = listing.sales_assignee || '';
