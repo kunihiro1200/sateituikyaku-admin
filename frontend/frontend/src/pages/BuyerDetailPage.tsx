@@ -338,7 +338,8 @@ export default function BuyerDetailPage() {
     }
 
     // 配信メールが「要」の場合は希望条件の必須チェック
-    if (buyer.distribution_type && String(buyer.distribution_type).trim() === '要') {
+    // 業者問合せの場合は配信メールを送らないため、希望条件は不要
+    if (buyer.broker_inquiry !== '業者問合せ' && buyer.distribution_type && String(buyer.distribution_type).trim() === '要') {
       if (!buyer.desired_area || !String(buyer.desired_area).trim()) {
         missingKeys.push('desired_area');
       }

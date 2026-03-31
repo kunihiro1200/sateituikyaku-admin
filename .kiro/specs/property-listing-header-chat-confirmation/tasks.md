@@ -86,7 +86,7 @@
     - _要件: 4.2_
 
 - [-] 3. フロントエンド - 確認フィールドUI実装
-  - [ ] 3.1 PropertyListingsPageに確認フィールドトグルボタンを追加
+  - [x] 3.1 PropertyListingsPageに確認フィールドトグルボタンを追加
     - 「未」「済」ボタンの実装
     - 現在選択されている値の視覚的表示
     - ボタンクリック時のハンドラー実装
@@ -98,7 +98,7 @@
     - **検証: 要件 5.2, 5.3**
     - テストファイル: `frontend/frontend/src/__tests__/property-listing-confirmation-toggle.property.test.ts`
   
-  - [ ] 3.2 確認フィールド更新時の成功通知を実装
+  - [x] 3.2 確認フィールド更新時の成功通知を実装
     - Snackbarコンポーネントでの通知表示
     - エラー時の通知表示
     - _要件: 5.5, 8.2_
@@ -108,27 +108,27 @@
     - **検証: 要件 5.5**
     - テストファイル: `frontend/frontend/src/__tests__/property-listing-confirmation-notification.property.test.ts`
   
-  - [ ] 3.3 確認フィールドのアクセシビリティ対応
+  - [x] 3.3 確認フィールドのアクセシビリティ対応
     - aria-labelの設定
     - aria-pressedの設定
     - aria-live領域の実装
     - _要件: 10.2, 10.3_
 
 - [-] 4. フロントエンド - ヘッダーボタンレイアウト変更
-  - [ ] 4.1 PropertyListingsPageのヘッダーボタンを2行レイアウトに変更
+  - [x] 4.1 PropertyListingsPageのヘッダーボタンを2行レイアウトに変更
     - 第1行: 「売主TEL」「EMAIL送信」「SMS」「公開URL」
     - 第2行: 「担当へCHAT」「事務へCHAT」
     - レスポンシブ対応（flexWrap）
     - _要件: 1.1, 1.2, 1.3, 1.4_
   
-  - [ ] 4.2 「事務へCHAT」ボタンを実装
+  - [x] 4.2 「事務へCHAT」ボタンを実装
     - ボタンコンポーネントの追加
     - クリックハンドラーの実装
     - チャット送信API呼び出し
     - 確認フィールドの自動更新
     - _要件: 2.1, 2.2, 2.3, 2.4_
   
-  - [ ] 4.3 「事務へCHAT」ボタンのアクセシビリティ対応
+  - [x] 4.3 「事務へCHAT」ボタンのアクセシビリティ対応
     - aria-labelの設定
     - _要件: 10.1_
   
