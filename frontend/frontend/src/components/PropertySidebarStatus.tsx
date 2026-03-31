@@ -124,11 +124,20 @@ export default function PropertySidebarStatus({
       // sidebar_statusを基本として使用（DBに保存されている値）
       const status = listing.sidebar_status || '';
       
-      // 「要値下げ」は常にcalculatePropertyStatusで判定（DBに保存されないため）
+      // 動的に判定が必要なステータス（DBに保存されない、または常に再計算が必要）
       if (workTaskMap) {
         const computed = calculatePropertyStatus(listing as any, workTaskMap);
+        
+        // 「要値下げ」は常にcalculatePropertyStatusで判定（DBに保存されないため）
         if (computed.key === 'price_reduction_due') {
           counts['要値下げ'] = (counts['要値下げ'] || 0) + 1;
+          return;
+        }
+        
+        // 「未報告」も常にcalculatePropertyStatusで判定（報告日が動的に変更されるため）
+        if (computed.key === 'unreported') {
+          const label = computed.label; // 「未報告」または「未報告{担当者名}」
+          counts[label] = (counts[label] || 0) + 1;
           return;
         }
       }

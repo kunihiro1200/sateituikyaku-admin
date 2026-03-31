@@ -1,6 +1,6 @@
 # Implementation Plan
 
-- [ ] 1. Write bug condition exploration test
+- [x] 1. Write bug condition exploration test
   - **Property 1: Bug Condition** - 報告日設定済み物件が「未報告」に誤表示
   - **CRITICAL**: This test MUST FAIL on unfixed code - failure confirms the bug exists
   - **DO NOT attempt to fix the test or the code when it fails**
@@ -15,7 +15,7 @@
   - Mark task complete when test is written, run, and failure is documented
   - _Requirements: 1.1, 1.2_
 
-- [ ] 2. Write preservation property tests (BEFORE implementing fix)
+- [x] 2. Write preservation property tests (BEFORE implementing fix)
   - **Property 2: Preservation** - 他のステータス判定ロジックの保存
   - **IMPORTANT**: Follow observation-first methodology
   - Observe behavior on UNFIXED code for non-buggy inputs (listings with various status conditions)
@@ -27,9 +27,9 @@
   - Mark task complete when tests are written, run, and passing on unfixed code
   - _Requirements: 3.1, 3.2, 3.3_
 
-- [ ] 3. Fix for 報告日判定ロジックの反転
+- [x] 3. Fix for 報告日判定ロジックの反転
 
-  - [ ] 3.1 Implement the fix
+  - [x] 3.1 Implement the fix
     - `frontend/frontend/src/utils/propertyListingStatusUtils.ts` の104-113行目を修正
     - 判定条件を反転: `if (reportDate && reportDate <= today)` → `if (!reportDate || reportDate > today)`
     - コメントを修正: `// 1. 報告日が今日以前で未報告` → `// 1. 報告日が未設定または未来で未報告`
@@ -40,7 +40,7 @@
     - _Preservation: Preservation Requirements from design - 他のステータス判定ロジック（値下げ予定、確認ステータス、公開/非公開など）が変更されないこと_
     - _Requirements: 2.1, 2.2, 2.3, 3.1, 3.2, 3.3_
 
-  - [ ] 3.2 Verify bug condition exploration test now passes
+  - [x] 3.2 Verify bug condition exploration test now passes
     - **Property 1: Expected Behavior** - 報告日未設定または未来の物件のみ「未報告」に表示
     - **IMPORTANT**: Re-run the SAME test from task 1 - do NOT write a new test
     - The test from task 1 encodes the expected behavior
@@ -49,12 +49,12 @@
     - **EXPECTED OUTCOME**: Test PASSES (confirms bug is fixed)
     - _Requirements: 2.1, 2.2, 2.3_
 
-  - [ ] 3.3 Verify preservation tests still pass
+  - [x] 3.3 Verify preservation tests still pass
     - **Property 2: Preservation** - 他のステータス判定ロジックの保存
     - **IMPORTANT**: Re-run the SAME tests from task 2 - do NOT write new tests
     - Run preservation property tests from step 2
     - **EXPECTED OUTCOME**: Tests PASS (confirms no regressions)
     - Confirm all tests still pass after fix (no regressions)
 
-- [ ] 4. Checkpoint - Ensure all tests pass
+- [x] 4. Checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.

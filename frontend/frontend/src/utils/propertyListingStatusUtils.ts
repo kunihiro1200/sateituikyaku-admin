@@ -59,6 +59,19 @@ const getToday = (): Date => {
 const parseDate = (dateStr: string | null | undefined): Date | null => {
   if (!dateStr) return null;
   try {
+    // YYYY-MM-DD形式の日付文字列をローカルタイムゾーンで解析
+    const parts = dateStr.split('-');
+    if (parts.length === 3) {
+      const year = parseInt(parts[0], 10);
+      const month = parseInt(parts[1], 10) - 1; // 月は0始まり
+      const day = parseInt(parts[2], 10);
+      const date = new Date(year, month, day);
+      if (isNaN(date.getTime())) return null;
+      date.setHours(0, 0, 0, 0);
+      return date;
+    }
+    
+    // フォールバック: 通常の日付解析
     const date = new Date(dateStr);
     if (isNaN(date.getTime())) return null;
     date.setHours(0, 0, 0, 0);
@@ -101,9 +114,9 @@ export const calculatePropertyStatus = (
     return PROPERTY_STATUS_DEFINITIONS.find(s => s.key === 'price_reduction_due')!;
   }
 
-  // 1. 報告日が今日以前で未報告
+  // 1. 報告日が未設定または未来で未報告
   const reportDate = parseDate(listing.report_date);
-  if (reportDate && reportDate <= today) {
+  if (!reportDate || reportDate > today) {
     const assignee = listing.report_assignee || '';
     return {
       key: 'unreported',
