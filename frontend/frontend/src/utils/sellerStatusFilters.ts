@@ -40,7 +40,10 @@ import { isVisitDayBefore as isVisitDayBeforeUtil, parseDate } from './sellerSta
 // visitCompleted: 訪問済み（営担に入力あり、訪問日が昨日以前）
 // todayCallNotStarted: 当日TEL_未着手（不通が空欄 + 反響日付が2026/1/1以降）
 // pinrichEmpty: Pinrich空欄（Pinrichカラムが空欄）
-export type StatusCategory = 'all' | 'todayCall' | 'todayCallWithInfo' | 'todayCallAssigned' | 'visitDayBefore' | 'visitCompleted' | 'unvaluated' | 'mailingPending' | 'todayCallNotStarted' | 'pinrichEmpty'
+// exclusive: 専任カテゴリー（専任他決打合せ <> "完了" + 次電日 <> TODAY() + 状況が専任媒介関連）
+// general: 一般カテゴリー（専任他決打合せ <> "完了" + 次電日 <> TODAY() + 状況が一般媒介 + 契約年月 >= 2025/6/23）
+// visitOtherDecision: 訪問後他決カテゴリー（専任他決打合せ <> "完了" + 次電日 <> TODAY() + 状況が他決関連 + 営担あり）
+export type StatusCategory = 'all' | 'todayCall' | 'todayCallWithInfo' | 'todayCallAssigned' | 'visitDayBefore' | 'visitCompleted' | 'unvaluated' | 'mailingPending' | 'todayCallNotStarted' | 'pinrichEmpty' | 'exclusive' | 'general' | 'visitOtherDecision'
   | `visitAssigned:${string}`        // 担当カテゴリー（例: visitAssigned:Y）
   | `todayCallAssigned:${string}`    // 当日TELサブカテゴリー（例: todayCallAssigned:Y）
   | `todayCallWithInfo:${string}`;   // 当日TEL（内容）ラベル別カテゴリー（例: todayCallWithInfo:当日TEL(I・Eメール)）
@@ -57,6 +60,9 @@ export interface CategoryCounts {
   mailingPending: number;
   todayCallNotStarted: number; // 当日TEL_未着手（不通が空欄 + 反響日付が2026/1/1以降）
   pinrichEmpty: number;        // Pinrich空欄（Pinrichカラムが空欄）
+  exclusive: number;           // 専任カテゴリー（専任他決打合せ <> "完了" + 次電日 <> TODAY() + 状況が専任媒介関連）
+  general: number;             // 一般カテゴリー（専任他決打合せ <> "完了" + 次電日 <> TODAY() + 状況が一般媒介 + 契約年月 >= 2025/6/23）
+  visitOtherDecision: number;  // 訪問後他決カテゴリー（専任他決打合せ <> "完了" + 次電日 <> TODAY() + 状況が他決関連 + 営担あり）
   visitAssignedCounts?: Record<string, number>;     // 担当者別件数（全売主）
   todayCallAssignedCounts?: Record<string, number>; // 担当者別当日TEL件数
   todayCallWithInfoLabels?: string[];               // 当日TEL（内容）のユニークラベル一覧（全件対象）
@@ -741,6 +747,132 @@ export const isPinrichEmpty = (seller: Seller | any): boolean => {
 };
 
 /**
+ * 専任カテゴリー判定
+ * 
+ * 条件:
+ * - exclusive_other_decision_meeting <> "完了"
+ * - next_call_date <> TODAY()
+ * - status IN ("専任媒介", "他決→専任", "リースバック（専任）")
+ * 
+ * @param seller 売主データ
+ * @returns 専任カテゴリー対象かどうか
+ * 
+ * Requirements: 1.2
+ */
+export const isExclusive = (seller: Seller | any): boolean => {
+  // 専任他決打合せが「完了」の場合は除外
+  const exclusiveOtherDecisionMeeting = seller.exclusiveOtherDecisionMeeting || seller.exclusive_other_decision_meeting || '';
+  if (exclusiveOtherDecisionMeeting === '完了') {
+    return false;
+  }
+  
+  // 次電日が今日の場合は除外
+  const nextCallDate = seller.nextCallDate || seller.next_call_date;
+  if (isTodayOrBefore(nextCallDate)) {
+    return false;
+  }
+  
+  // 状況（当社）が専任媒介関連かチェック
+  const status = seller.status || '';
+  return status === '専任媒介' || status === '他決→専任' || status === 'リースバック（専任）';
+};
+
+/**
+ * 一般カテゴリー判定
+ * 
+ * 条件:
+ * - exclusive_other_decision_meeting <> "完了"
+ * - next_call_date <> TODAY()
+ * - status = "一般媒介"
+ * - contract_year_month >= "2025/6/23"
+ * 
+ * @param seller 売主データ
+ * @returns 一般カテゴリー対象かどうか
+ * 
+ * Requirements: 2.2
+ */
+export const isGeneral = (seller: Seller | any): boolean => {
+  // 専任他決打合せが「完了」の場合は除外
+  const exclusiveOtherDecisionMeeting = seller.exclusiveOtherDecisionMeeting || seller.exclusive_other_decision_meeting || '';
+  if (exclusiveOtherDecisionMeeting === '完了') {
+    return false;
+  }
+  
+  // 次電日が今日の場合は除外
+  const nextCallDate = seller.nextCallDate || seller.next_call_date;
+  if (isTodayOrBefore(nextCallDate)) {
+    return false;
+  }
+  
+  // 状況（当社）が一般媒介かチェック
+  const status = seller.status || '';
+  if (status !== '一般媒介') {
+    return false;
+  }
+  
+  // 契約年月が2025/6/23以降かチェック
+  const contractYearMonth = seller.contractYearMonth || seller.contract_year_month;
+  if (!contractYearMonth) {
+    return false;
+  }
+  
+  const cutoffDate = '2025-06-23';
+  const normalizedContractDate = normalizeDateString(contractYearMonth);
+  if (!normalizedContractDate) {
+    return false;
+  }
+  
+  return normalizedContractDate >= cutoffDate;
+};
+
+/**
+ * 訪問後他決カテゴリー判定
+ * 
+ * 条件:
+ * - exclusive_other_decision_meeting <> "完了"
+ * - next_call_date <> TODAY()
+ * - status IN ("他決→追客", "他決→追客不要", "一般→他決", "他社買取")
+ * - visit_assignee <> ""
+ * 
+ * @param seller 売主データ
+ * @returns 訪問後他決カテゴリー対象かどうか
+ * 
+ * Requirements: 3.2
+ */
+export const isVisitOtherDecision = (seller: Seller | any): boolean => {
+  // 専任他決打合せが「完了」の場合は除外
+  const exclusiveOtherDecisionMeeting = seller.exclusiveOtherDecisionMeeting || seller.exclusive_other_decision_meeting || '';
+  if (exclusiveOtherDecisionMeeting === '完了') {
+    return false;
+  }
+  
+  // 次電日が今日の場合は除外
+  const nextCallDate = seller.nextCallDate || seller.next_call_date;
+  if (isTodayOrBefore(nextCallDate)) {
+    return false;
+  }
+  
+  // 状況（当社）が他決関連かチェック
+  const status = seller.status || '';
+  const isOtherDecisionStatus = 
+    status === '他決→追客' || 
+    status === '他決→追客不要' || 
+    status === '一般→他決' || 
+    status === '他社買取';
+  if (!isOtherDecisionStatus) {
+    return false;
+  }
+  
+  // 営担に入力があるかチェック
+  const visitAssignee = seller.visitAssigneeInitials || seller.visit_assignee || seller.visitAssignee || '';
+  if (!visitAssignee || visitAssignee.trim() === '' || visitAssignee.trim() === '外す') {
+    return false;
+  }
+  
+  return true;
+};
+
+/**
  * 特定の担当者（イニシャル）に該当する売主を判定
  * 
  * @param seller 売主データ
@@ -810,7 +942,7 @@ export const getUniqueAssignees = (sellers: (Seller | any)[]): string[] => {
  * @param sellers 売主リスト
  * @returns 各カテゴリの件数
  * 
- * Requirements: 4.1, 4.2, 4.3
+ * Requirements: 4.1, 4.2, 4.3, 1.3, 2.3, 3.3
  */
 export const getCategoryCounts = (sellers: (Seller | any)[]): CategoryCounts => {
   return {
@@ -824,6 +956,9 @@ export const getCategoryCounts = (sellers: (Seller | any)[]): CategoryCounts => 
     mailingPending: sellers.filter(isMailingPending).length,
     todayCallNotStarted: sellers.filter(isTodayCallNotStarted).length,
     pinrichEmpty: sellers.filter(isPinrichEmpty).length,
+    exclusive: sellers.filter(isExclusive).length,
+    general: sellers.filter(isGeneral).length,
+    visitOtherDecision: sellers.filter(isVisitOtherDecision).length,
   };
 };
 
@@ -834,7 +969,7 @@ export const getCategoryCounts = (sellers: (Seller | any)[]): CategoryCounts => 
  * @param category 選択されたカテゴリ
  * @returns フィルタリングされた売主リスト
  * 
- * Requirements: 1.3, 2.3, 3.3, 5.2
+ * Requirements: 1.3, 2.3, 3.3, 5.2, 5.1, 5.2, 5.3
  */
 export const filterSellersByCategory = (
   sellers: (Seller | any)[],
@@ -875,6 +1010,12 @@ export const filterSellersByCategory = (
       return sellers.filter(isTodayCallNotStarted);
     case 'pinrichEmpty':
       return sellers.filter(isPinrichEmpty);
+    case 'exclusive':
+      return sellers.filter(isExclusive);
+    case 'general':
+      return sellers.filter(isGeneral);
+    case 'visitOtherDecision':
+      return sellers.filter(isVisitOtherDecision);
     case 'all':
     default:
       return sellers;

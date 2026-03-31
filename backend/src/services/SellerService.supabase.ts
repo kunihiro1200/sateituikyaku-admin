@@ -1169,6 +1169,31 @@ export class SellerService extends BaseRepository {
             // Pinrichが空欄
             .or('pinrich_status.is.null,pinrich_status.eq.');
           break;
+        case 'exclusive':
+          // 専任カテゴリー（専任他決打合せ <> "完了" + 次電日 <> TODAY() + 状況が専任媒介関連）
+          query = query
+            .neq('exclusive_other_decision_meeting', '完了')
+            .gt('next_call_date', todayJST)
+            .in('status', ['専任媒介', '他決→専任', 'リースバック（専任）']);
+          break;
+        case 'general':
+          // 一般カテゴリー（専任他決打合せ <> "完了" + 次電日 <> TODAY() + 状況が一般媒介 + 契約年月 >= 2025/6/23）
+          query = query
+            .neq('exclusive_other_decision_meeting', '完了')
+            .gt('next_call_date', todayJST)
+            .eq('status', '一般媒介')
+            .gte('contract_year_month', '2025-06-23');
+          break;
+        case 'visitOtherDecision':
+          // 訪問後他決カテゴリー（専任他決打合せ <> "完了" + 次電日 <> TODAY() + 状況が他決関連 + 営担あり）
+          query = query
+            .neq('exclusive_other_decision_meeting', '完了')
+            .gt('next_call_date', todayJST)
+            .in('status', ['他決→追客', '他決→追客不要', '一般→他決', '他社買取'])
+            .not('visit_assignee', 'is', null)
+            .neq('visit_assignee', '')
+            .neq('visit_assignee', '外す');
+          break;
         default: {
           // visitAssigned:xxx または todayCallAssigned:xxx または todayCallWithInfo:xxx の動的カテゴリ
           const dynamicCategory = statusCategory as string;
@@ -1982,6 +2007,9 @@ export class SellerService extends BaseRepository {
     mailingPending: number;
     todayCallNotStarted: number;
     pinrichEmpty: number;
+    exclusive: number;
+    general: number;
+    visitOtherDecision: number;
     visitAssignedCounts: Record<string, number>;
     todayCallAssignedCounts: Record<string, number>;
     todayCallWithInfoLabels: string[];
@@ -2009,6 +2037,9 @@ export class SellerService extends BaseRepository {
         mailingPending: 0,
         todayCallNotStarted: 0,
         pinrichEmpty: 0,
+        exclusive: 0,
+        general: 0,
+        visitOtherDecision: 0,
         visitAssignedCounts: {} as Record<string, number>,
         todayCallAssignedCounts: {} as Record<string, number>,
         todayCallWithInfoLabels: [] as string[],
@@ -2025,6 +2056,9 @@ export class SellerService extends BaseRepository {
           case 'mailingPending':    result.mailingPending = count; break;
           case 'todayCallNotStarted': result.todayCallNotStarted = count; break;
           case 'pinrichEmpty':      result.pinrichEmpty = count; break;
+          case 'exclusive':         result.exclusive = count; break;
+          case 'general':           result.general = count; break;
+          case 'visitOtherDecision': result.visitOtherDecision = count; break;
           case 'todayCallAssigned':
             result.todayCallAssigned += count;
             if (row.assignee) result.todayCallAssignedCounts[row.assignee] = count;
@@ -2068,6 +2102,9 @@ export class SellerService extends BaseRepository {
     mailingPending: number;
     todayCallNotStarted: number;
     pinrichEmpty: number;
+    exclusive: number;
+    general: number;
+    visitOtherDecision: number;
     visitAssignedCounts: Record<string, number>;
     todayCallAssignedCounts: Record<string, number>;
     todayCallWithInfoLabels: string[];
@@ -2090,6 +2127,9 @@ export class SellerService extends BaseRepository {
       mailingPending: number;
       todayCallNotStarted: number;
       pinrichEmpty: number;
+      exclusive: number;
+      general: number;
+      visitOtherDecision: number;
       visitAssignedCounts: Record<string, number>;
       todayCallAssignedCounts: Record<string, number>;
       todayCallWithInfoLabels: string[];
@@ -2309,6 +2349,34 @@ export class SellerService extends BaseRepository {
       return !pinrich || pinrich.trim() === '';
     }).length;
 
+    // 9. 専任カテゴリー
+    const { count: exclusiveCount } = await this.table('sellers')
+      .select('*', { count: 'exact', head: true })
+      .is('deleted_at', null)
+      .neq('exclusive_other_decision_meeting', '完了')
+      .gt('next_call_date', todayJST)
+      .in('status', ['専任媒介', '他決→専任', 'リースバック（専任）']);
+
+    // 10. 一般カテゴリー
+    const { count: generalCount } = await this.table('sellers')
+      .select('*', { count: 'exact', head: true })
+      .is('deleted_at', null)
+      .neq('exclusive_other_decision_meeting', '完了')
+      .gt('next_call_date', todayJST)
+      .eq('status', '一般媒介')
+      .gte('contract_year_month', '2025-06-23');
+
+    // 11. 訪問後他決カテゴリー
+    const { count: visitOtherDecisionCount } = await this.table('sellers')
+      .select('*', { count: 'exact', head: true })
+      .is('deleted_at', null)
+      .neq('exclusive_other_decision_meeting', '完了')
+      .gt('next_call_date', todayJST)
+      .in('status', ['他決→追客', '他決→追客不要', '一般→他決', '他社買取'])
+      .not('visit_assignee', 'is', null)
+      .neq('visit_assignee', '')
+      .neq('visit_assignee', '外す');
+
     const sidebarResult = {
       todayCall: todayCallNoInfoCount || 0,
       todayCallWithInfo: todayCallWithInfoCount || 0,
@@ -2319,6 +2387,9 @@ export class SellerService extends BaseRepository {
       mailingPending: mailingPendingCount || 0,
       todayCallNotStarted: todayCallNotStartedCount || 0,
       pinrichEmpty: pinrichEmptyCount || 0,
+      exclusive: exclusiveCount || 0,
+      general: generalCount || 0,
+      visitOtherDecision: visitOtherDecisionCount || 0,
       visitAssignedCounts,
       todayCallAssignedCounts,
       todayCallWithInfoLabels,

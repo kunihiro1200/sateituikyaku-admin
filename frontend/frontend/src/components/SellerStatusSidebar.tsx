@@ -139,6 +139,12 @@ const getCategoryLabel = (category: StatusCategory): string => {
       return '⑧Pinrich空欄';
     case 'todayCallAssigned':
       return '当日TEL（担当）';
+    case 'exclusive':
+      return '専任';
+    case 'general':
+      return '一般';
+    case 'visitOtherDecision':
+      return '訪問後他決';
     case 'all':
       return 'All';
     default:
@@ -178,6 +184,12 @@ const getCategoryColor = (category: StatusCategory): string => {
       return '#795548';
     case 'todayCallAssigned':
       return '#ff5722';
+    case 'exclusive':
+      return '#2e7d32';
+    case 'general':
+      return '#1565c0';
+    case 'visitOtherDecision':
+      return '#ff9800';
     default:
       if (typeof category === 'string' && category.startsWith('visitAssigned:')) {
         return '#4caf50';
@@ -673,6 +685,13 @@ export default function SellerStatusSidebar({
       {/* assigneeInitialsが空でもsellersから動的取得するため常に表示 */}
       <Box sx={{ mt: 0.5, pt: 0.5, borderTop: '1px solid', borderColor: 'grey.200', bgcolor: '#fff8f5', borderRadius: 1, px: 0.5 }}>
         {renderAssigneeCategories()}
+      </Box>
+
+      {/* 専任・一般・訪問後他決カテゴリー（区切り線付き） */}
+      <Box sx={{ mt: 0.5, pt: 0.5, borderTop: '1px solid', borderColor: 'grey.200', bgcolor: '#f5f5f5', borderRadius: 1, px: 0.5 }}>
+        {renderCategoryButton('exclusive', '専任', '#2e7d32')}
+        {renderCategoryButton('general', '一般', '#1565c0')}
+        {renderCategoryButton('visitOtherDecision', '訪問後他決', '#ff9800')}
       </Box>
     </Box>
   );
