@@ -6290,7 +6290,21 @@ HP：https://ifoo-oita.com/
                     type="date"
                     value={editedNextCallDate}
                     onChange={(e) => { setEditedNextCallDate(e.target.value); setStatusChanged(true); }}
-                    InputLabelProps={{ shrink: true }}
+                    InputLabelProps={{ 
+                      shrink: true,
+                      sx: { fontWeight: 'bold', fontSize: '1.1rem' }
+                    }}
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        backgroundColor: '#fff9c4', // 薄い黄色の背景
+                        '&:hover': {
+                          backgroundColor: '#fff59d', // ホバー時は少し濃い黄色
+                        },
+                        '&.Mui-focused': {
+                          backgroundColor: '#fff59d', // フォーカス時も少し濃い黄色
+                        }
+                      }
+                    }}
                   />
                 </Grid>
 
