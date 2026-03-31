@@ -118,24 +118,19 @@ export default function PropertySidebarStatus({
     }
 
     listings.forEach(listing => {
-      // calculatePropertyStatusで「要値下げ」を含む正確なステータスを計算
-      // workTaskMapを渡すことで、条件6のSuumo URLチェックが正しく実行される
-      const computed = calculatePropertyStatus(listing as any, workTaskMap);
-      if (computed.key === 'price_reduction_due') {
-        counts['要値下げ'] = (counts['要値下げ'] || 0) + 1;
-        return;
-      }
-
-      // workTaskMapが渡されている場合は、computedステータスを使用
-      // これにより、Suumo URLが入力されている物件が「レインズ登録＋SUUMO登録」から除外される
-      if (workTaskMap) {
-        const statusLabel = computed.label;
-        counts[statusLabel] = (counts[statusLabel] || 0) + 1;
-        return;
-      }
-
-      // workTaskMapがない場合は、従来通りsidebar_statusを使用（後方互換性）
+      // sidebar_statusを基本として使用（DBに保存されている値）
       const status = listing.sidebar_status || '';
+      
+      // 「要値下げ」は常にcalculatePropertyStatusで判定（DBに保存されないため）
+      if (workTaskMap) {
+        const computed = calculatePropertyStatus(listing as any, workTaskMap);
+        if (computed.key === 'price_reduction_due') {
+          counts['要値下げ'] = (counts['要値下げ'] || 0) + 1;
+          return;
+        }
+      }
+
+      // sidebar_statusが存在する場合はそれを使用
       if (status && status !== '値下げ未完了') {
         // 「専任・公開中」はsales_assigneeで担当者別に分解して表示
         if (status === '専任・公開中') {
