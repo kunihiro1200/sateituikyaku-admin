@@ -59,6 +59,7 @@ export interface Seller {
   requestorAddress?: string; // 依頼者住所
   
   // 反響情報
+  inquiryId?: string; // 問い合わせID（スプシD列）
   inquiryYear?: number;
   inquiryDate?: Date | string; // 反響日付
   inquiryDetailedDateTime?: Date;
