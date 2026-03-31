@@ -194,6 +194,7 @@ export default function PropertySidebarStatus({
 
     const sortedStatuses = Object.entries(statusCounts)
       .filter(([key]) => key !== 'all' && key !== '')
+      .filter(([key, count]) => count > 0)
       .sort((a, b) => {
         const getPriority = (key: string) => {
           if (STATUS_PRIORITY[key] !== undefined) return STATUS_PRIORITY[key];

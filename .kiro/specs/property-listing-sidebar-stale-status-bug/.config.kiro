@@ -1,0 +1,5 @@
+{
+  "specType": "bugfix",
+  "workflowType": "requirements-first",
+  "featureName": "property-listing-sidebar-stale-status-bug"
+}
