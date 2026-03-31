@@ -1747,6 +1747,14 @@ TEL：097-533-2022`;
                 {section.fields.map((field: any, fieldIndex: number) => {
                   const value = buyer[field.key];
                   
+                  // 「持家ヒアリング結果」フィールドは「問合時持家ヒアリング」が「不要」または「未」の場合は非表示
+                  if (field.key === 'owned_home_hearing_result') {
+                    const inquiry = buyer.owned_home_hearing_inquiry;
+                    if (inquiry === '不要' || inquiry === '未') {
+                      return null; // フィールドを非表示
+                    }
+                  }
+                  
                   // multilineフィールドは全幅で表示
                   // company_name は broker_inquiry と同じ行に並べるため xs=6
                   // isMobile 時は全フィールドを xs=12 の1カラムに
