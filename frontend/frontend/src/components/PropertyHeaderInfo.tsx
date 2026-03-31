@@ -67,6 +67,36 @@ export default function PropertyHeaderInfo({
         border: '1px solid #e0e0e0',
       }}
     >
+      {/* ヘッダー：物件概要 + 物件番号（コピー機能付き） */}
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
+        <Typography
+          variant="subtitle2"
+          color="text.secondary"
+          fontWeight="bold"
+        >
+          物件概要
+        </Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+          <Typography variant="body2" fontWeight="bold" color="primary.main">
+            {propertyNumber}
+          </Typography>
+          <Tooltip title={copied ? 'コピーしました' : '物件番号をコピー'}>
+            <IconButton
+              size="small"
+              onClick={handleCopy}
+              onKeyDown={handleKeyDown}
+              aria-label="物件番号をコピー"
+              sx={{ 
+                color: copied ? 'success.main' : 'primary.main',
+                '&:hover': { bgcolor: 'action.hover' }
+              }}
+            >
+              {copied ? <CheckIcon fontSize="small" /> : <ContentCopyIcon fontSize="small" />}
+            </IconButton>
+          </Tooltip>
+        </Box>
+      </Box>
+
       <Box
         sx={{
           display: 'flex',
@@ -122,39 +152,6 @@ export default function PropertyHeaderInfo({
           <Typography variant="body2" color={salesAssignee ? 'text.primary' : 'text.disabled'}>
             {salesAssignee || '未設定'}
           </Typography>
-        </Box>
-
-        {/* 物件番号（コピー機能付き） */}
-        <Box sx={{ flex: { xs: '1 1 100%', sm: '1 1 150px' }, display: 'flex', alignItems: 'flex-end' }}>
-          <Box>
-            <Typography
-              variant="caption"
-              color="text.secondary"
-              fontWeight="bold"
-              sx={{ display: 'block', mb: 0.5 }}
-            >
-              物件番号
-            </Typography>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-              <Typography variant="body2" fontWeight="bold">
-                {propertyNumber}
-              </Typography>
-              <Tooltip title={copied ? 'コピーしました' : '物件番号をコピー'}>
-                <IconButton
-                  size="small"
-                  onClick={handleCopy}
-                  onKeyDown={handleKeyDown}
-                  aria-label="物件番号をコピー"
-                  sx={{ 
-                    color: copied ? 'success.main' : 'primary.main',
-                    '&:hover': { bgcolor: 'action.hover' }
-                  }}
-                >
-                  {copied ? <CheckIcon fontSize="small" /> : <ContentCopyIcon fontSize="small" />}
-                </IconButton>
-              </Tooltip>
-            </Box>
-          </Box>
         </Box>
       </Box>
 
