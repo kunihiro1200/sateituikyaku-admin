@@ -358,8 +358,13 @@ export const isTodayCallAssigned = (seller: Seller | any): boolean => {
     return false;
   }
   
-  // 追客不要、専任媒介、一般媒介が含まれる場合は対象外
+  // 状況（当社）に「追客中」が含まれるかチェック
   const status = seller.status || '';
+  if (!status.includes('追客中')) {
+    return false;
+  }
+  
+  // 追客不要、専任媒介、一般媒介が含まれる場合は対象外
   if (status.includes('追客不要') || status.includes('専任媒介') || status.includes('一般媒介')) {
     return false;
   }

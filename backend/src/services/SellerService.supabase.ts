@@ -1186,13 +1186,14 @@ export class SellerService extends BaseRepository {
               .not('status', 'ilike', '%他社買取%');
           } else if (dynamicCategory.startsWith('todayCallAssigned:')) {
             const assignee = dynamicCategory.replace('todayCallAssigned:', '');
-            // 当日TEL（担当）（営担が指定のイニシャル AND 次電日が今日以前 AND 追客不要を含まない AND 専任媒介・一般媒介・他社買取を除外）
+            // 当日TEL（担当）（営担が指定のイニシャル AND 次電日が今日以前 AND 追客中を含む AND 追客不要を含まない AND 専任媒介・一般媒介・他社買取を除外）
             query = query
               .not('visit_assignee', 'is', null)
               .neq('visit_assignee', '')
               .neq('visit_assignee', '外す')
               .eq('visit_assignee', assignee)
               .lte('next_call_date', todayJST)
+              .ilike('status', '%追客中%')
               .not('status', 'ilike', '%追客不要%')
               .not('status', 'ilike', '%専任媒介%')
               .not('status', 'ilike', '%一般媒介%')
@@ -2152,6 +2153,7 @@ export class SellerService extends BaseRepository {
       .neq('visit_assignee', '')
       .neq('visit_assignee', '外す')
       .lte('next_call_date', todayJST)
+      .ilike('status', '%追客中%')
       .not('status', 'ilike', '%追客不要%')
       .not('status', 'ilike', '%専任媒介%')
       .not('status', 'ilike', '%一般媒介%')
