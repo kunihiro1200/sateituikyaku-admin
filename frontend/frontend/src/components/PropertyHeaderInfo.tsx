@@ -1,15 +1,12 @@
-import { Box, Typography, Paper, IconButton, Tooltip, Button, ButtonGroup, Snackbar, Alert } from '@mui/material';
+import { Box, Typography, Paper, IconButton, Tooltip } from '@mui/material';
 import { ContentCopy as ContentCopyIcon, Check as CheckIcon } from '@mui/icons-material';
 import { useState } from 'react';
-import api from '../services/api';
 
 interface PropertyHeaderInfoProps {
   address: string | null;
   salesPrice: number | null;
   salesAssignee: string | null;
   propertyNumber: string;
-  confirmation?: '未' | '済';
-  onConfirmationUpdate?: (confirmation: '未' | '済') => void;
 }
 
 /**
@@ -30,16 +27,8 @@ export default function PropertyHeaderInfo({
   salesPrice,
   salesAssignee,
   propertyNumber,
-  confirmation = '未',
-  onConfirmationUpdate,
 }: PropertyHeaderInfoProps) {
   const [copied, setCopied] = useState(false);
-  const [confirmationUpdating, setConfirmationUpdating] = useState(false);
-  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
-    open: false,
-    message: '',
-    severity: 'success',
-  });
 
   // 物件番号をクリップボードにコピー
   const handleCopy = async () => {
@@ -60,46 +49,6 @@ export default function PropertyHeaderInfo({
     }
   };
 
-  // 確認フィールド更新
-  const handleUpdateConfirmation = async (value: '未' | '済') => {
-    setConfirmationUpdating(true);
-    try {
-      await api.put(`/api/property-listings/${propertyNumber}/confirmation`, { confirmation: value });
-      if (onConfirmationUpdate) {
-        onConfirmationUpdate(value);
-      }
-      setSnackbar({ open: true, message: `確認を「${value}」に更新しました`, severity: 'success' });
-    } catch (error: any) {
-      setSnackbar({ 
-        open: true, 
-        message: error.response?.data?.error || '確認の更新に失敗しました', 
-        severity: 'error' 
-      });
-    } finally {
-      setConfirmationUpdating(false);
-    }
-  };
-
-  // 事務へCHAT送信
-  const handleSendChatToOffice = async () => {
-    try {
-      await api.post(`/api/property-listings/${propertyNumber}/send-chat-to-office`, {
-        message: '',
-        senderName: '担当者',
-      });
-      // 確認フィールドを「未」に自動設定
-      if (onConfirmationUpdate) {
-        onConfirmationUpdate('未');
-      }
-      setSnackbar({ open: true, message: '事務へチャットを送信しました', severity: 'success' });
-    } catch (error: any) {
-      setSnackbar({ 
-        open: true, 
-        message: error.response?.data?.error || 'チャット送信に失敗しました', 
-        severity: 'error' 
-      });
-    }
-  };
   // 売買価格を万円単位でカンマ区切りにフォーマット
   const formatPrice = (price: number | null): string => {
     if (price === null || price === undefined) {
@@ -213,62 +162,6 @@ export default function PropertyHeaderInfo({
           </Box>
         </Box>
 
-        {/* ヘッダーボタン（2行レイアウト） */}
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, mt: 2 }}>
-          {/* 第1行: 売主TEL、EMAIL送信、SMS、公開URL */}
-          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-            <Button variant="outlined" size="small">売主TEL</Button>
-            <Button variant="outlined" size="small">EMAIL送信</Button>
-            <Button variant="outlined" size="small">SMS</Button>
-            <Button variant="outlined" size="small">公開URL</Button>
-          </Box>
-          
-          {/* 第2行: 担当へCHAT、事務へCHAT */}
-          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-            <Button variant="contained" size="small">担当へCHAT</Button>
-            <Button 
-              variant="contained" 
-              size="small"
-              onClick={handleSendChatToOffice}
-              aria-label="事務担当者へチャットを送信"
-            >
-              事務へCHAT
-            </Button>
-          </Box>
-        </Box>
-
-        {/* 確認フィールドトグル */}
-        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', mt: 2 }}>
-          <Typography variant="body2" fontWeight="bold">確認:</Typography>
-          <ButtonGroup size="small" disabled={confirmationUpdating}>
-            <Button
-              variant={confirmation === '未' ? 'contained' : 'outlined'}
-              onClick={() => handleUpdateConfirmation('未')}
-              aria-label="確認を未に設定"
-              aria-pressed={confirmation === '未'}
-            >
-              未
-            </Button>
-            <Button
-              variant={confirmation === '済' ? 'contained' : 'outlined'}
-              onClick={() => handleUpdateConfirmation('済')}
-              aria-label="確認を済に設定"
-              aria-pressed={confirmation === '済'}
-            >
-              済
-            </Button>
-          </ButtonGroup>
-          {/* スクリーンリーダー用のaria-live領域 */}
-          <Box
-            role="status"
-            aria-live="polite"
-            aria-atomic="true"
-            sx={{ position: 'absolute', left: '-10000px', width: '1px', height: '1px', overflow: 'hidden' }}
-          >
-            {confirmationUpdating && `確認を${confirmation}に更新中`}
-          </Box>
-        </Box>
-
         {/* スクリーンリーダー用のaria-live領域（コピー通知） */}
         <Box
           role="status"
@@ -285,22 +178,6 @@ export default function PropertyHeaderInfo({
           {copied && '物件番号をコピーしました'}
         </Box>
       </Paper>
-
-      {/* 成功・エラー通知 */}
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={3000}
-        onClose={() => setSnackbar({ ...snackbar, open: false })}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-      >
-        <Alert 
-          onClose={() => setSnackbar({ ...snackbar, open: false })} 
-          severity={snackbar.severity}
-          sx={{ width: '100%' }}
-        >
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
     </>
   );
 }

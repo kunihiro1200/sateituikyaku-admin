@@ -1209,4 +1209,98 @@ export class PropertyListingService {
       throw error;
     }
   }
+
+  /**
+   * 確認フィールドを更新
+   */
+  async updateConfirmation(propertyNumber: string, confirmation: '未' | '済'): Promise<void> {
+    // バリデーション
+    if (!['未', '済'].includes(confirmation)) {
+      throw new Error('確認フィールドは「未」または「済」のみ有効です');
+    }
+
+    console.log(`[PropertyListingService] Updating confirmation for ${propertyNumber} to ${confirmation}`);
+
+    // DBを更新
+    const { error } = await this.supabase
+      .from('property_listings')
+      .update({ 
+        confirmation,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('property_number', propertyNumber);
+
+    if (error) {
+      console.error(`[PropertyListingService] Failed to update confirmation for ${propertyNumber}:`, error);
+      throw new Error('確認フィールドの更新に失敗しました');
+    }
+
+    console.log(`[PropertyListingService] Successfully updated confirmation for ${propertyNumber}`);
+
+    // スプレッドシート同期をキューに追加（確認フィールド専用）
+    if (this.syncQueue) {
+      try {
+        await this.syncQueue.enqueue({
+          type: 'update_confirmation',
+          propertyNumber,
+          confirmation,
+        });
+        console.log(`[PropertyListingService] Enqueued confirmation sync for ${propertyNumber}`);
+      } catch (err: any) {
+        console.error(`[PropertyListingService] Failed to enqueue confirmation sync for ${propertyNumber}:`, err?.message || err);
+        // エンキュー失敗はDBの結果に影響しない
+      }
+    }
+  }
+
+  /**
+   * 事務へチャットを送信
+   */
+  async sendChatToOffice(propertyNumber: string, message: string, senderName: string): Promise<void> {
+    console.log(`[PropertyListingService] Sending chat to office for property ${propertyNumber}`);
+
+    // チャットアドレスを取得（担当へCHATと同じアドレス）
+    const chatAddress = await this.getChatAddress(propertyNumber);
+    
+    // チャットアプリケーションを開く
+    await this.openChatApplication(chatAddress, message, senderName);
+
+    // 確認フィールドを「未」に自動設定
+    await this.updateConfirmation(propertyNumber, '未');
+
+    console.log(`[PropertyListingService] Successfully sent chat to office for ${propertyNumber}`);
+  }
+
+  /**
+   * チャットアドレスを取得
+   */
+  private async getChatAddress(propertyNumber: string): Promise<string> {
+    const { data, error } = await this.supabase
+      .from('property_listings')
+      .select('sales_assignee')
+      .eq('property_number', propertyNumber)
+      .single();
+
+    if (error || !data) {
+      throw new Error('物件情報の取得に失敗しました');
+    }
+
+    // 担当者のチャットアドレスを返す
+    // TODO: 実際のチャットアドレスの形式に合わせて調整
+    return `chat://assignee/${data.sales_assignee}`;
+  }
+
+  /**
+   * チャットアプリケーションを開く
+   */
+  private async openChatApplication(address: string, message: string, senderName: string): Promise<void> {
+    // TODO: チャットアプリケーションのAPIを呼び出す
+    // 実装は既存の「担当へCHAT」と同じパターンを使用
+    console.log(`[PropertyListingService] Opening chat application: ${address}`);
+    console.log(`[PropertyListingService] Message: ${message}`);
+    console.log(`[PropertyListingService] Sender: ${senderName}`);
+    
+    // 実際のチャットAPI呼び出しをここに実装
+    // 例: await chatApiClient.sendMessage({ address, message, senderName });
+  }
 }

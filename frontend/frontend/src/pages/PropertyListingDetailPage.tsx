@@ -24,6 +24,7 @@ import {
   Menu,
   InputAdornment,
   Chip,
+  ButtonGroup,
 } from '@mui/material';
 import {
   ArrowBack as ArrowBackIcon,
@@ -254,6 +255,10 @@ export default function PropertyListingDetailPage() {
   const [senderAddress, setSenderAddress] = useState<string>(getSenderAddress());
   const [activeEmployees, setActiveEmployees] = useState<any[]>([]);
 
+  // 確認フィールド関連の状態
+  const [confirmation, setConfirmation] = useState<'未' | '済'>('未');
+  const [confirmationUpdating, setConfirmationUpdating] = useState(false);
+
   // Check for buyer context from navigation state
   const buyerContext = location.state as { buyerId?: string; buyerName?: string; source?: string } | null;
 
@@ -290,6 +295,8 @@ export default function PropertyListingDetailPage() {
     try {
       const response = await api.get(`/api/property-listings/${propertyNumber}`);
       setData(response.data);
+      // 確認フィールドを設定
+      setConfirmation(response.data.confirmation || '未');
     } catch (error) {
       console.error('Failed to fetch property data:', error);
       setSnackbar({
@@ -639,6 +646,36 @@ export default function PropertyListingDetailPage() {
     }
   };
 
+  // 事務へCHAT送信
+  const handleSendChatToOffice = async () => {
+    if (!propertyNumber) return;
+    try {
+      await api.post(`/api/property-listings/${propertyNumber}/send-chat-to-office`, {
+        message: '',
+        senderName: employee?.name || employee?.initials || '不明',
+      });
+      // 確認フィールドを「未」に自動設定
+      setConfirmation('未');
+      setSnackbar({ open: true, message: '事務へチャットを送信しました', severity: 'success' });
+    } catch (error: any) {
+      setSnackbar({ open: true, message: error.response?.data?.error || 'チャット送信に失敗しました', severity: 'error' });
+    }
+  };
+
+  // 確認フィールド更新
+  const handleUpdateConfirmation = async (value: '未' | '済') => {
+    setConfirmationUpdating(true);
+    try {
+      await api.put(`/api/property-listings/${propertyNumber}/confirmation`, { confirmation: value });
+      setConfirmation(value);
+      setSnackbar({ open: true, message: `確認を「${value}」に更新しました`, severity: 'success' });
+    } catch (error: any) {
+      setSnackbar({ open: true, message: error.response?.data?.error || '確認の更新に失敗しました', severity: 'error' });
+    } finally {
+      setConfirmationUpdating(false);
+    }
+  };
+
   // 公開URLを新しいタブで開く
   const handleOpenPublicUrl = () => {
     if (!data?.property_number) return;
@@ -979,133 +1016,150 @@ export default function PropertyListingDetailPage() {
                   data.offer_status
                 )}
               />
-              {/* 公開URLボタン */}
-              <Button
-                variant="outlined"
-                size="small"
-                onClick={handleOpenPublicUrl}
-                endIcon={<OpenInNewIcon fontSize="small" />}
-                sx={{
-                  ml: 1,
-                  borderColor: SECTION_COLORS.property.main,
-                  color: SECTION_COLORS.property.main,
-                  '&:hover': {
-                    borderColor: SECTION_COLORS.property.dark,
-                    backgroundColor: `${SECTION_COLORS.property.main}08`,
-                  },
-                }}
-              >
-                公開URL
-              </Button>
-              <IconButton
-                size="small"
-                onClick={handleCopyPublicUrl}
-                sx={{ color: SECTION_COLORS.property.main }}
-                title="公開URLをコピー"
-              >
-                <ContentCopyIcon fontSize="small" />
-              </IconButton>
             </Box>
-            {/* 売主連絡先ボタン */}
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
-              {data.seller_contact && (
-                <Button
-                  variant="outlined"
-                  size="small"
-                  onClick={() => { window.location.href = `tel:${data.seller_contact}`; }}
-                  startIcon={<PhoneIcon fontSize="small" />}
-                  sx={{
-                    borderColor: '#1565c0',
-                    color: '#1565c0',
-                    '&:hover': {
-                      borderColor: '#0d47a1',
-                      backgroundColor: '#1565c008',
-                    },
-                  }}
-                >
-                  売主TEL
-                </Button>
-              )}
-              {data.seller_email && (
-                <>
-                  {/* Email送信ドロップダウンボタン（物件テンプレート） */}
+            {/* ヘッダーボタン（2行レイアウト） */}
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, mt: 0.5 }}>
+              {/* 第1行: 売主TEL、EMAIL送信、SMS、公開URL */}
+              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                {data.seller_contact && (
                   <Button
                     variant="outlined"
                     size="small"
-                    onClick={(e) => {
-                      if (!data.seller_email) return;
-                      setTemplateMenuAnchor(e.currentTarget);
-                    }}
-                    disabled={!data.seller_email || propertyEmailTemplatesLoading || propertyEmailTemplates.length === 0}
-                    startIcon={propertyEmailTemplatesLoading ? <CircularProgress size={14} /> : <EmailIcon fontSize="small" />}
-                    endIcon={<ArrowDropDownIcon fontSize="small" />}
+                    onClick={() => { window.location.href = `tel:${data.seller_contact}`; }}
+                    startIcon={<PhoneIcon fontSize="small" />}
                     sx={{
-                      borderColor: '#1976d2',
-                      color: '#1976d2',
+                      borderColor: '#1565c0',
+                      color: '#1565c0',
                       '&:hover': {
-                        borderColor: '#115293',
-                        backgroundColor: '#1976d208',
+                        borderColor: '#0d47a1',
+                        backgroundColor: '#1565c008',
                       },
                     }}
                   >
-                    Email送信
+                    売主TEL
                   </Button>
-                  <Menu
-                    anchorEl={templateMenuAnchor}
-                    open={Boolean(templateMenuAnchor)}
-                    onClose={() => setTemplateMenuAnchor(null)}
+                )}
+                {data.seller_email && (
+                  <>
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      onClick={(e) => {
+                        if (!data.seller_email) return;
+                        setTemplateMenuAnchor(e.currentTarget);
+                      }}
+                      disabled={!data.seller_email || propertyEmailTemplatesLoading || propertyEmailTemplates.length === 0}
+                      startIcon={propertyEmailTemplatesLoading ? <CircularProgress size={14} /> : <EmailIcon fontSize="small" />}
+                      endIcon={<ArrowDropDownIcon fontSize="small" />}
+                      sx={{
+                        borderColor: '#1976d2',
+                        color: '#1976d2',
+                        '&:hover': {
+                          borderColor: '#115293',
+                          backgroundColor: '#1976d208',
+                        },
+                      }}
+                    >
+                      Email送信
+                    </Button>
+                    <Menu
+                      anchorEl={templateMenuAnchor}
+                      open={Boolean(templateMenuAnchor)}
+                      onClose={() => setTemplateMenuAnchor(null)}
+                    >
+                      {propertyEmailTemplates
+                        .filter((tmpl) => {
+                          if (tmpl.name.includes('一般媒介')) {
+                            return (data.atbb_status || '').includes('一般媒介');
+                          }
+                          return true;
+                        })
+                        .map((tmpl) => (
+                          <MenuItem key={tmpl.id} onClick={() => handleSelectPropertyEmailTemplate(tmpl.id)}>
+                            {tmpl.name}
+                          </MenuItem>
+                        ))}
+                    </Menu>
+                  </>
+                )}
+                {data.seller_contact && (
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    onClick={() => { window.location.href = `sms:${data.seller_contact}`; }}
+                    startIcon={<SmsIcon fontSize="small" />}
+                    sx={{
+                      borderColor: '#2e7d32',
+                      color: '#2e7d32',
+                      '&:hover': {
+                        borderColor: '#1b5e20',
+                        backgroundColor: '#2e7d3208',
+                      },
+                    }}
                   >
-                    {propertyEmailTemplates
-                      .filter((tmpl) => {
-                        // 「一般媒介」を含むテンプレートは atbb_status に「一般媒介」が含まれる場合のみ表示
-                        if (tmpl.name.includes('一般媒介')) {
-                          return (data.atbb_status || '').includes('一般媒介');
-                        }
-                        return true;
-                      })
-                      .map((tmpl) => (
-                        <MenuItem key={tmpl.id} onClick={() => handleSelectPropertyEmailTemplate(tmpl.id)}>
-                          {tmpl.name}
-                        </MenuItem>
-                      ))}
-                  </Menu>
-                </>
-              )}
-              {data.seller_contact && (
+                    SMS
+                  </Button>
+                )}
                 <Button
                   variant="outlined"
                   size="small"
-                  onClick={() => { window.location.href = `sms:${data.seller_contact}`; }}
-                  startIcon={<SmsIcon fontSize="small" />}
+                  onClick={handleOpenPublicUrl}
+                  endIcon={<OpenInNewIcon fontSize="small" />}
                   sx={{
-                    borderColor: '#2e7d32',
-                    color: '#2e7d32',
+                    borderColor: SECTION_COLORS.property.main,
+                    color: SECTION_COLORS.property.main,
                     '&:hover': {
-                      borderColor: '#1b5e20',
-                      backgroundColor: '#2e7d3208',
+                      borderColor: SECTION_COLORS.property.dark,
+                      backgroundColor: `${SECTION_COLORS.property.main}08`,
                     },
                   }}
                 >
-                  SMS
+                  公開URL
                 </Button>
-              )}
-              {data.sales_assignee && (
-                <Button
-                  variant="outlined"
+                <IconButton
                   size="small"
-                  onClick={() => setChatPanelOpen(!chatPanelOpen)}
+                  onClick={handleCopyPublicUrl}
+                  sx={{ color: SECTION_COLORS.property.main }}
+                  title="公開URLをコピー"
+                >
+                  <ContentCopyIcon fontSize="small" />
+                </IconButton>
+              </Box>
+              
+              {/* 第2行: 担当へCHAT、事務へCHAT */}
+              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                {data.sales_assignee && (
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    onClick={() => setChatPanelOpen(!chatPanelOpen)}
+                    sx={{
+                      borderColor: '#7b1fa2',
+                      color: '#7b1fa2',
+                      '&:hover': {
+                        borderColor: '#4a148c',
+                        backgroundColor: '#7b1fa208',
+                      },
+                    }}
+                  >
+                    担当へCHAT
+                  </Button>
+                )}
+                <Button
+                  variant="contained"
+                  size="small"
+                  onClick={handleSendChatToOffice}
+                  aria-label="事務担当者へチャットを送信"
                   sx={{
-                    borderColor: '#7b1fa2',
-                    color: '#7b1fa2',
+                    bgcolor: '#7b1fa2',
                     '&:hover': {
-                      borderColor: '#4a148c',
-                      backgroundColor: '#7b1fa208',
+                      bgcolor: '#4a148c',
                     },
                   }}
                 >
-                  担当へCHAT
+                  事務へCHAT
                 </Button>
-              )}
+              </Box>
             </Box>
             {chatPanelOpen && data.sales_assignee && (
               <Box sx={{ display: 'flex', gap: 1, mt: 0.5 }}>
@@ -1514,6 +1568,40 @@ export default function PropertyListingDetailPage() {
                 propertyNumber={data.property_number}
                 loading={buyersLoading}
               />
+            </Box>
+          </Box>
+
+          {/* 確認フィールド（よく聞かれる項目の上） */}
+          <Box sx={{ mb: 1, p: 1, bgcolor: '#fff8e1', borderRadius: 1, border: '1px solid #ffe082' }}>
+            <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+              <Typography variant="body2" fontWeight="bold">確認:</Typography>
+              <ButtonGroup size="small" disabled={confirmationUpdating}>
+                <Button
+                  variant={confirmation === '未' ? 'contained' : 'outlined'}
+                  onClick={() => handleUpdateConfirmation('未')}
+                  aria-label="確認を未に設定"
+                  aria-pressed={confirmation === '未'}
+                >
+                  未
+                </Button>
+                <Button
+                  variant={confirmation === '済' ? 'contained' : 'outlined'}
+                  onClick={() => handleUpdateConfirmation('済')}
+                  aria-label="確認を済に設定"
+                  aria-pressed={confirmation === '済'}
+                >
+                  済
+                </Button>
+              </ButtonGroup>
+              {/* スクリーンリーダー用のaria-live領域 */}
+              <Box
+                role="status"
+                aria-live="polite"
+                aria-atomic="true"
+                sx={{ position: 'absolute', left: '-10000px', width: '1px', height: '1px', overflow: 'hidden' }}
+              >
+                {confirmationUpdating && `確認を${confirmation}に更新中`}
+              </Box>
             </Box>
           </Box>
 

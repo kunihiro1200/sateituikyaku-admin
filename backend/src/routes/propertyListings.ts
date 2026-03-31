@@ -1138,5 +1138,68 @@ router.post('/:propertyNumber/send-chat-to-assignee', async (req: Request, res: 
   }
 });
 
+// 確認フィールドを更新
+router.put('/:propertyNumber/confirmation', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { propertyNumber } = req.params;
+    const { confirmation } = req.body;
+
+    // バリデーション
+    if (!confirmation || !['未', '済'].includes(confirmation)) {
+      res.status(400).json({ 
+        error: '確認フィールドは「未」または「済」のみ有効です',
+        code: 'INVALID_CONFIRMATION_VALUE'
+      });
+      return;
+    }
+
+    console.log(`[confirmation] Updating confirmation for ${propertyNumber} to ${confirmation}`);
+
+    await propertyListingService.updateConfirmation(propertyNumber, confirmation);
+
+    res.json({ 
+      success: true,
+      message: `確認を「${confirmation}」に更新しました`
+    });
+  } catch (error: any) {
+    console.error('[confirmation] Error:', error);
+    res.status(500).json({ 
+      error: error.message || '確認の更新に失敗しました',
+      code: 'INTERNAL_ERROR'
+    });
+  }
+});
+
+// 事務へチャットを送信
+router.post('/:propertyNumber/send-chat-to-office', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { propertyNumber } = req.params;
+    const { message, senderName } = req.body;
+
+    if (!message) {
+      res.status(400).json({ 
+        error: 'メッセージは必須です',
+        code: 'MISSING_MESSAGE'
+      });
+      return;
+    }
+
+    console.log(`[send-chat-to-office] Sending chat to office for ${propertyNumber}`);
+
+    await propertyListingService.sendChatToOffice(propertyNumber, message, senderName || '不明');
+
+    res.json({ 
+      success: true,
+      message: '事務へチャットを送信しました'
+    });
+  } catch (error: any) {
+    console.error('[send-chat-to-office] Error:', error);
+    res.status(500).json({ 
+      error: error.message || 'チャット送信に失敗しました',
+      code: 'INTERNAL_ERROR'
+    });
+  }
+});
+
 
 export default router;

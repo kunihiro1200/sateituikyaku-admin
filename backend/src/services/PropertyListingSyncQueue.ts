@@ -1,8 +1,9 @@
 import { PropertyListingSpreadsheetSync } from './PropertyListingSpreadsheetSync';
 
 export interface PropertySyncOperation {
-  type: 'update';
+  type: 'update' | 'update_confirmation';
   propertyNumber: string;
+  confirmation?: '未' | '済'; // update_confirmationの場合に使用
   retryCount: number;
   createdAt: Date;
 }
@@ -121,6 +122,13 @@ export class PropertyListingSyncQueue {
     switch (operation.type) {
       case 'update':
         await this.syncService.syncToSpreadsheet(operation.propertyNumber);
+        break;
+
+      case 'update_confirmation':
+        if (!operation.confirmation) {
+          throw new Error('confirmation is required for update_confirmation operation');
+        }
+        await this.syncService.syncConfirmationToSpreadsheet(operation.propertyNumber, operation.confirmation);
         break;
 
       default:

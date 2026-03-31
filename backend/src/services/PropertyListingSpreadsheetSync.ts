@@ -145,4 +145,95 @@ export class PropertyListingSpreadsheetSync {
       'Suumo URL': property.suumo_url || '',
     };
   }
+
+  /**
+   * 確認フィールドをスプレッドシートに同期（DQ列、列番号120）
+   * 
+   * @param propertyNumber 物件番号
+   * @param confirmation 確認値（「未」または「済」）
+   */
+  async syncConfirmationToSpreadsheet(propertyNumber: string, confirmation: '未' | '済'): Promise<void> {
+    try {
+      console.log(`📝 [PropertyListingSpreadsheetSync] Syncing confirmation for ${propertyNumber} to ${confirmation}`);
+
+      // 物件番号から行番号を取得
+      const rowIndex = await this.findRowIndex(propertyNumber);
+      if (!rowIndex) {
+        throw new Error(`物件番号 ${propertyNumber} が見つかりません`);
+      }
+
+      // DQ列（列番号120）を更新
+      const range = `物件!DQ${rowIndex}`;
+      await this.sheetsClient.writeRawCell(range, confirmation);
+
+      console.log(`✅ [PropertyListingSpreadsheetSync] Successfully synced confirmation for ${propertyNumber}`);
+    } catch (error: any) {
+      console.error(`❌ [PropertyListingSpreadsheetSync] Error syncing confirmation for ${propertyNumber}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * スプレッドシートから確認フィールドを同期（DQ列 → DB）
+   */
+  async syncConfirmationFromSpreadsheet(): Promise<{ updatedCount: number; errorCount: number }> {
+    try {
+      console.log(`🔄 [PropertyListingSpreadsheetSync] Starting confirmation sync from spreadsheet`);
+
+      // DQ列（列番号120）を取得（B列の物件番号も含む）
+      const range = '物件!B:DQ';
+      const rows = await this.sheetsClient.readRawRange(range);
+
+      if (!rows || rows.length === 0) {
+        console.log(`⚠️ [PropertyListingSpreadsheetSync] No data found in spreadsheet`);
+        return { updatedCount: 0, errorCount: 0 };
+      }
+
+      let updatedCount = 0;
+      let errorCount = 0;
+
+      // ヘッダー行をスキップ
+      for (let i = 1; i < rows.length; i++) {
+        const row = rows[i];
+        const propertyNumber = row[0]; // B列（0-indexed: 0）
+        const confirmation = row[119]; // DQ列（0-indexed: 119）
+
+        if (!propertyNumber) continue;
+
+        // バリデーション
+        if (confirmation && !['未', '済'].includes(confirmation)) {
+          console.error(`❌ [PropertyListingSpreadsheetSync] Invalid confirmation value: ${propertyNumber} → ${confirmation}`);
+          errorCount++;
+          continue;
+        }
+
+        // DBを更新
+        try {
+          const { error } = await this.supabase
+            .from('property_listings')
+            .update({ 
+              confirmation: confirmation || '未', // 空欄の場合は「未」
+              updated_at: new Date().toISOString(),
+            })
+            .eq('property_number', propertyNumber);
+
+          if (error) {
+            console.error(`❌ [PropertyListingSpreadsheetSync] DB update error for ${propertyNumber}:`, error);
+            errorCount++;
+          } else {
+            updatedCount++;
+          }
+        } catch (error) {
+          console.error(`❌ [PropertyListingSpreadsheetSync] Sync error for ${propertyNumber}:`, error);
+          errorCount++;
+        }
+      }
+
+      console.log(`✅ [PropertyListingSpreadsheetSync] Confirmation sync completed: ${updatedCount} updated, ${errorCount} errors`);
+      return { updatedCount, errorCount };
+    } catch (error: any) {
+      console.error(`❌ [PropertyListingSpreadsheetSync] Error syncing confirmation from spreadsheet:`, error);
+      throw error;
+    }
+  }
 }
