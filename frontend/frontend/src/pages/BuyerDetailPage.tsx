@@ -249,7 +249,10 @@ export default function BuyerDetailPage() {
   const isHomeHearingResultRequired = (data: any): boolean => {
     if (!data.owned_home_hearing_inquiry) return false;
     const trimmed = String(data.owned_home_hearing_inquiry).trim();
-    return trimmed.length > 0;
+    if (trimmed.length === 0) return false;
+    // 「不要」または「未」の場合は必須扱いにしない
+    if (trimmed === '不要' || trimmed === '未') return false;
+    return true;
   };
 
   // latest_status が必須かどうかを判定するヘルパー
@@ -2355,6 +2358,7 @@ TEL：097-533-2022`;
 
                     // owned_home_hearing_inquiry フィールドは特別処理（スタッフイニシャル選択）
                     if (field.key === 'owned_home_hearing_inquiry') {
+                      const SPECIAL_OPTIONS = ['不要', '未'];  // 追加
                       return (
                         <Grid item xs={12} key={`${section.title}-${field.key}`}>
                           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
@@ -2401,6 +2405,48 @@ TEL：097-533-2022`;
                                     }}
                                   >
                                     {initial}
+                                  </Button>
+                                );
+                              })}
+                              {/* 「不要」「未」ボタンを追加 */}
+                              {SPECIAL_OPTIONS.map((option) => {
+                                const isSelected = buyer.owned_home_hearing_inquiry === option;
+                                return (
+                                  <Button
+                                    key={option}
+                                    size="small"
+                                    variant={isSelected ? 'contained' : 'outlined'}
+                                    color="secondary"  // イニシャルと区別するため異なる色
+                                    onClick={async () => {
+                                      const newValue = isSelected ? '' : option;
+                                      setBuyer((prev: any) => {
+                                        if (!prev) return prev;
+                                        const updated = { ...prev, [field.key]: newValue };
+                                        // 必須状態を再計算
+                                        setMissingRequiredFields(prevMissing => {
+                                          const next = new Set(prevMissing);
+                                          if (isHomeHearingResultRequired(updated)) {
+                                            if (!updated.owned_home_hearing_result || !String(updated.owned_home_hearing_result).trim()) {
+                                              next.add('owned_home_hearing_result');
+                                            }
+                                          } else {
+                                            next.delete('owned_home_hearing_result');
+                                          }
+                                          return next;
+                                        });
+                                        return updated;
+                                      });
+                                      handleFieldChange(section.title, field.key, newValue);
+                                    }}
+                                    sx={{
+                                      minWidth: 60,
+                                      px: 1.5,
+                                      py: 0.5,
+                                      fontWeight: isSelected ? 'bold' : 'normal',
+                                      borderRadius: 1,
+                                    }}
+                                  >
+                                    {option}
                                   </Button>
                                 );
                               })}
