@@ -6,6 +6,8 @@ import { PropertyImageService } from './PropertyImageService';
 import { GeocodingService } from './GeocodingService';
 import { GoogleSheetsClient } from './GoogleSheetsClient';
 import { PropertyListingColumnMapper } from './PropertyListingColumnMapper';
+import { PropertyListingSyncQueue } from './PropertyListingSyncQueue';
+import { PropertyListingSpreadsheetSync } from './PropertyListingSpreadsheetSync';
 
 export class PropertyListingService {
   private supabase;
@@ -15,6 +17,7 @@ export class PropertyListingService {
   private geocodingService: GeocodingService;
   private sheetsClient: GoogleSheetsClient | null = null;
   private columnMapper: PropertyListingColumnMapper;
+  private syncQueue: PropertyListingSyncQueue | null = null;
 
   constructor() {
     this.supabase = createClient(
@@ -47,6 +50,11 @@ export class PropertyListingService {
         sheetName: process.env.PROPERTY_LISTING_SHEET_NAME || '物件',
         serviceAccountKeyPath: process.env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH,
       });
+
+      // PropertyListingSyncQueueを初期化（スプレッドシート同期用）
+      const spreadsheetSync = new PropertyListingSpreadsheetSync(this.sheetsClient, this.supabase);
+      this.syncQueue = new PropertyListingSyncQueue(spreadsheetSync);
+      console.log('[PropertyListingService] PropertyListingSyncQueue initialized');
     }
   }
 
@@ -257,6 +265,20 @@ export class PropertyListingService {
     } catch (err: any) {
       console.error(`[PropertyListingService] Failed to sync to spreadsheet for ${propertyNumber}:`, err?.message || err);
       // スプレッドシート同期失敗はDBの結果に影響しない
+    }
+
+    // SyncQueueに同期タスクをエンキュー（即時同期）
+    if (this.syncQueue) {
+      try {
+        await this.syncQueue.enqueue({
+          type: 'update',
+          propertyNumber,
+        });
+        console.log(`[PropertyListingService] Enqueued sync task for ${propertyNumber}`);
+      } catch (err: any) {
+        console.error(`[PropertyListingService] Failed to enqueue sync task for ${propertyNumber}:`, err?.message || err);
+        // エンキュー失敗はDBの結果に影響しない
+      }
     }
 
     return data;

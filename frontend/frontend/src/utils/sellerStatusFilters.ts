@@ -388,20 +388,25 @@ export const getTodayCallAssignedLabel = (seller: Seller | any): string => {
 /**
  * 当日TELの共通条件を判定
  * 
- * APPSHEETの「当日TEL分」条件に合わせた共通ベース:
- * - 状況（当社）が「追客中」「除外後追客中」「他決→追客」のいずれか
+ * 修正後の条件:
+ * - 状況（当社）に「追客」という文字列が含まれる（部分一致）
+ * - ただし「追客不要」を含む場合は除外
  * - 次電日が今日以前（かつ空でない）
  * 
  * @param seller 売主データ
  * @returns 当日TELの共通条件を満たすかどうか
  */
 const isTodayCallBase = (seller: Seller | any): boolean => {
-  // 状況（当社）が対象ステータスかチェック
+  // 状況（当社）に「追客」が含まれるかチェック（部分一致）
   const status = seller.status || seller.situation_company || '';
-  const targetStatuses = ['追客中', '除外後追客中', '他決→追客'];
-  const isTargetStatus = typeof status === 'string' && targetStatuses.some(s => status.includes(s));
   
-  if (!isTargetStatus) {
+  // 「追客」が含まれない場合は対象外
+  if (typeof status !== 'string' || !status.includes('追客')) {
+    return false;
+  }
+  
+  // 「追客不要」が含まれる場合は対象外
+  if (status.includes('追客不要')) {
     return false;
   }
   

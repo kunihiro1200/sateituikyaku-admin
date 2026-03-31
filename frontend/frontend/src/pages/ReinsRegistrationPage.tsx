@@ -24,6 +24,7 @@ import EmailIcon from '@mui/icons-material/Email';
 import AttachFileIcon from '@mui/icons-material/AttachFile';
 import CloseIcon from '@mui/icons-material/Close';
 import api from '../services/api';
+import PropertyHeaderInfo from '../components/PropertyHeaderInfo';
 
 interface PropertyData {
   seller_name?: string;
@@ -34,6 +35,8 @@ interface PropertyData {
   cc_assignee?: string | null;
   report_date_setting?: string | null;
   reins_url?: string | null;
+  address?: string | null;
+  sales_price?: number | null;
 }
 
 interface Employee {
@@ -90,6 +93,7 @@ export default function ReinsRegistrationPage() {
   const [data, setData] = useState<PropertyData | null>(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState<string | null>(null);
+  const [suumoUrlInput, setSuumoUrlInput] = useState('');
 
 
   // Gmail送信ダイアログ
@@ -130,7 +134,10 @@ export default function ReinsRegistrationPage() {
         cc_assignee: d.cc_assignee ?? null,
         report_date_setting: d.report_date_setting ?? null,
         reins_url: d.reins_url ?? null,
+        address: d.address ?? null,
+        sales_price: d.sales_price ?? null,
       });
+      setSuumoUrlInput(d.suumo_url ?? '');
 
       const employees: Employee[] = empRes.data?.employees || empRes.data || [];
       const assignee = d.sales_assignee ?? '';
@@ -165,6 +172,43 @@ export default function ReinsRegistrationPage() {
       setSnackbar({ open: true, message: '保存に失敗しました', severity: 'error' });
     } finally {
       setUpdating(null);
+    }
+  };
+
+  const handleSaveSuumoUrl = async () => {
+    if (!propertyNumber || !data) return;
+    
+    // URL形式バリデーション
+    const SUUMO_URL_PATTERN = /^https:\/\/suumo\.jp\/.+/;
+    if (suumoUrlInput && !SUUMO_URL_PATTERN.test(suumoUrlInput)) {
+      setSnackbar({ 
+        open: true, 
+        message: '有効なSuumo URLを入力してください（https://suumo.jp/...）', 
+        severity: 'error' 
+      });
+      return;
+    }
+
+    const prevValue = data.suumo_url;
+    setData((prev) => prev ? { ...prev, suumo_url: suumoUrlInput } : prev);
+    setUpdating('suumo_url');
+    try {
+      await api.put(`/api/property-listings/${propertyNumber}`, { suumo_url: suumoUrlInput });
+      setSnackbar({ open: true, message: 'Suumo URLを保存しました', severity: 'success' });
+      // メール本文を更新
+      setEmailBody(buildEmailBody(data.seller_name ?? '売主', suumoUrlInput));
+    } catch (error) {
+      setData((prev) => prev ? { ...prev, suumo_url: prevValue } : prev);
+      setSuumoUrlInput(prevValue ?? '');
+      setSnackbar({ open: true, message: 'Suumo URLの保存に失敗しました', severity: 'error' });
+    } finally {
+      setUpdating(null);
+    }
+  };
+
+  const handleOpenSuumoUrl = () => {
+    if (suumoUrlInput) {
+      window.open(suumoUrlInput, '_blank');
     }
   };
 
@@ -246,6 +290,13 @@ export default function ReinsRegistrationPage() {
         </Box>
       ) : (
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          {/* PropertyHeaderInfo - 物件番号の下に配置 */}
+          <PropertyHeaderInfo
+            address={data?.address ?? null}
+            salesPrice={data?.sales_price ?? null}
+            salesAssignee={data?.sales_assignee ?? null}
+          />
+
           {/* レインズ証明書メール済み + レインズURL（横並び） */}
           <Paper sx={{ p: 3 }}>
             <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
@@ -283,6 +334,45 @@ export default function ReinsRegistrationPage() {
                   レインズシステムを開く
                 </Button>
               </Box>
+            </Box>
+          </Paper>
+
+          {/* Suumo URLフィールド */}
+          <Paper sx={{ p: 3 }}>
+            <Typography variant="body2" color="text.secondary" fontWeight="bold" sx={{ mb: 1.5 }}>
+              Suumo URL
+            </Typography>
+            <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
+              <TextField
+                fullWidth
+                size="small"
+                placeholder="https://suumo.jp/..."
+                value={suumoUrlInput}
+                onChange={(e) => setSuumoUrlInput(e.target.value)}
+                disabled={updating === 'suumo_url'}
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter') {
+                    handleSaveSuumoUrl();
+                  }
+                }}
+              />
+              <Button
+                variant="contained"
+                onClick={handleSaveSuumoUrl}
+                disabled={updating === 'suumo_url'}
+                sx={{ minWidth: 80 }}
+              >
+                {updating === 'suumo_url' ? <CircularProgress size={16} /> : '保存'}
+              </Button>
+              <Button
+                variant="outlined"
+                onClick={handleOpenSuumoUrl}
+                disabled={!suumoUrlInput || updating === 'suumo_url'}
+                endIcon={<OpenInNewIcon />}
+                sx={{ minWidth: 80 }}
+              >
+                開く
+              </Button>
             </Box>
           </Paper>
 
