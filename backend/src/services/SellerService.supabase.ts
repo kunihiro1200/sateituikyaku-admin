@@ -1222,13 +1222,13 @@ export class SellerService extends BaseRepository {
       query = query.eq('valuation_not_required', true);
     }
     if (inquirySite) {
-      query = query.eq('inquiry_site', inquirySite);
+      query = query.eq('site', inquirySite); // 修正: inquiry_site → site
     }
     if (propertyTypeFilter) {
-      query = query.eq('property_type', propertyTypeFilter);
+      query = query.eq('種別', propertyTypeFilter); // 修正: property_type → 種別
     }
     if (statusFilter) {
-      query = query.ilike('status', `%${statusFilter}%`);
+      query = query.eq('status', statusFilter); // 修正: ilike → eq（完全一致）
     }
 
     // ソート（inquiry_dateがnullのものは最後に表示、同日の場合は売主番号が大きいほうを最新とする）
