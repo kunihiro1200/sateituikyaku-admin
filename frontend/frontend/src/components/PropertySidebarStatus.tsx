@@ -113,6 +113,9 @@ export default function PropertySidebarStatus({
 
     const counts: Record<string, number> = { all: listings.length };
 
+    // 「未完了」カテゴリ: confirmation === '未' の物件をカウント
+    counts['未完了'] = listings.filter(l => l.confirmation === '未').length;
+
     if (pendingPriceReductionProperties && pendingPriceReductionProperties.size > 0) {
       counts['値下げ未完了'] = pendingPriceReductionProperties.size;
     }

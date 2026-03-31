@@ -59,6 +59,7 @@ interface PropertyListing {
   price?: number;
   storage_location?: string;
   atbb_status?: string;
+  confirmation?: '未' | '済';
   [key: string]: any;
 }
 
@@ -191,7 +192,10 @@ export default function PropertyListingsPage() {
 
     // サイドバーと検索は排他的（後から操作した方がもう一方をクリアするため、両方独立適用でOK）
     if (sidebarStatus && sidebarStatus !== 'all') {
-      if (sidebarStatus === '要値下げ') {
+      if (sidebarStatus === '未完了') {
+        // 「未完了」：confirmation === '未' の物件をフィルタリング
+        listings = listings.filter(l => l.confirmation === '未');
+      } else if (sidebarStatus === '要値下げ') {
         // 「要値下げ」はDBのsidebar_statusに保存されないため、calculatePropertyStatusで判定
         listings = listings.filter(l => calculatePropertyStatus(l as any).key === 'price_reduction_due');
       } else if (['Y専任公開中', '生・専任公開中', '久・専任公開中', 'U専任公開中', '林・専任公開中', 'K専任公開中', 'R専任公開中', 'I専任公開中'].includes(sidebarStatus)) {
