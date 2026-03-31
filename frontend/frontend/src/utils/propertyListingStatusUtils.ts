@@ -71,6 +71,13 @@ const parseDate = (dateStr: string | null | undefined): Date | null => {
 // 業務依頼テーブルから公開予定日を取得するためのマップを作成
 export const createWorkTaskMap = (workTasks: WorkTask[]): Map<string, Date | null> => {
   const map = new Map<string, Date | null>();
+  
+  // workTasksが配列でない場合のガード
+  if (!Array.isArray(workTasks)) {
+    console.warn('createWorkTaskMap: workTasks is not an array', workTasks);
+    return map;
+  }
+  
   workTasks.forEach(task => {
     if (task.property_number) {
       map.set(task.property_number, parseDate(task.publish_scheduled_date));
