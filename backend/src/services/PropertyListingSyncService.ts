@@ -1225,9 +1225,12 @@ export class PropertyListingSyncService {
       const suumoUrl = row['Suumo URL'];
       const suumoRegistration = row['Suumo登録'];
 
+      // 🚨 修正: SUUMO URLが空であることを厳密にチェック
+      const isSuumoUrlEmpty = !suumoUrl || (typeof suumoUrl === 'string' && suumoUrl.trim() === '');
+
       if (scheduledDate &&
           this.isDateBeforeYesterday(scheduledDate) &&
-          !suumoUrl &&
+          isSuumoUrlEmpty &&
           suumoRegistration !== 'S不要') {
         return atbbStatus === '一般・公開中'
           ? 'SUUMO URL　要登録'
