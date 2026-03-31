@@ -106,6 +106,11 @@ export default function PropertySidebarStatus({
   const [completing, setCompleting] = useState<string | null>(null);
 
   const statusCounts = useMemo(() => {
+    // listingsが配列でない場合のガード
+    if (!Array.isArray(listings)) {
+      return { all: 0 };
+    }
+
     const counts: Record<string, number> = { all: listings.length };
 
     if (pendingPriceReductionProperties && pendingPriceReductionProperties.size > 0) {
@@ -148,13 +153,14 @@ export default function PropertySidebarStatus({
 
   // 一般媒介（atbb_status === '一般・公開中'）の未完了件数
   const generalMediationIncompleteCount = useMemo(() => {
+    if (!Array.isArray(listings)) return 0;
     return listings.filter(l =>
       l.sidebar_status === '未完了' && l.atbb_status === '一般・公開中'
     ).length;
   }, [listings]);
 
   const pendingPriceReductionList = useMemo(() => {
-    if (!pendingPriceReductionProperties) return [];
+    if (!pendingPriceReductionProperties || !Array.isArray(listings)) return [];
     return listings.filter(l =>
       l.property_number && pendingPriceReductionProperties.has(l.property_number)
     );
