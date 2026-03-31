@@ -980,7 +980,7 @@ export default function PropertyListingDetailPage() {
                   fontSize: isMobile ? '0.95rem' : undefined 
                 }}
               >
-                物件詳細 - {data.property_number}
+                {data.property_number}
               </Typography>
               <Tooltip title={copiedPropertyNumber ? 'コピーしました' : '物件番号をコピー'}>
                 <IconButton

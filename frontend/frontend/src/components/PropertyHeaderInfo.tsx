@@ -1,9 +1,12 @@
-import { Box, Typography, Paper } from '@mui/material';
+import { Box, Typography, Paper, IconButton, Tooltip } from '@mui/material';
+import { ContentCopy as ContentCopyIcon, Check as CheckIcon } from '@mui/icons-material';
+import { useState } from 'react';
 
 interface PropertyHeaderInfoProps {
   address: string | null;
   salesPrice: number | null;
   salesAssignee: string | null;
+  propertyNumber: string;
 }
 
 /**
@@ -23,7 +26,28 @@ export default function PropertyHeaderInfo({
   address,
   salesPrice,
   salesAssignee,
+  propertyNumber,
 }: PropertyHeaderInfoProps) {
+  const [copied, setCopied] = useState(false);
+
+  // 物件番号をクリップボードにコピー
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(propertyNumber);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (error) {
+      console.error('Failed to copy:', error);
+    }
+  };
+
+  // キーボード操作でコピー
+  const handleKeyDown = (event: React.KeyboardEvent) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      handleCopy();
+    }
+  };
   // 売買価格を万円単位でカンマ区切りにフォーマット
   const formatPrice = (price: number | null): string => {
     if (price === null || price === undefined) {
@@ -99,6 +123,55 @@ export default function PropertyHeaderInfo({
             {salesAssignee || '未設定'}
           </Typography>
         </Box>
+
+        {/* 物件番号（コピー機能付き） */}
+        <Box sx={{ flex: { xs: '1 1 100%', sm: '1 1 150px' }, display: 'flex', alignItems: 'flex-end' }}>
+          <Box>
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              fontWeight="bold"
+              sx={{ display: 'block', mb: 0.5 }}
+            >
+              物件番号
+            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+              <Typography variant="body2" fontWeight="bold">
+                {propertyNumber}
+              </Typography>
+              <Tooltip title={copied ? 'コピーしました' : '物件番号をコピー'}>
+                <IconButton
+                  size="small"
+                  onClick={handleCopy}
+                  onKeyDown={handleKeyDown}
+                  aria-label="物件番号をコピー"
+                  sx={{ 
+                    color: copied ? 'success.main' : 'primary.main',
+                    '&:hover': { bgcolor: 'action.hover' }
+                  }}
+                >
+                  {copied ? <CheckIcon fontSize="small" /> : <ContentCopyIcon fontSize="small" />}
+                </IconButton>
+              </Tooltip>
+            </Box>
+          </Box>
+        </Box>
+      </Box>
+
+      {/* スクリーンリーダー用のaria-live領域 */}
+      <Box
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        sx={{
+          position: 'absolute',
+          left: '-10000px',
+          width: '1px',
+          height: '1px',
+          overflow: 'hidden',
+        }}
+      >
+        {copied && '物件番号をコピーしました'}
       </Box>
     </Paper>
   );

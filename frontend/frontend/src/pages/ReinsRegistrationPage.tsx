@@ -27,6 +27,7 @@ import api from '../services/api';
 import PropertyHeaderInfo from '../components/PropertyHeaderInfo';
 
 interface PropertyData {
+  property_number?: string;
   seller_name?: string;
   seller_email?: string;
   sales_assignee?: string;
@@ -338,6 +339,7 @@ export default function ReinsRegistrationPage() {
             address={data?.address ?? null}
             salesPrice={data?.sales_price ?? null}
             salesAssignee={data?.sales_assignee ?? null}
+            propertyNumber={data?.property_number ?? ''}
           />
 
           {/* レインズ証明書メール済み + レインズURL（横並び） */}
