@@ -185,6 +185,11 @@ export default function PropertyListingsPage() {
     }
   };
 
+  // workTaskMapを作成（useMemoで最適化）
+  const workTaskMap = useMemo(() => {
+    return createWorkTaskMap(workTasks);
+  }, [workTasks]);
+
   // フィルタリング（全件読み込み完了前は検索を適用しない）
   const filteredListings = useMemo(() => {
     if (isLoadingAll && searchQuery.trim()) return [];
@@ -232,11 +237,6 @@ export default function PropertyListingsPage() {
 
     return listings;
   }, [allListings, sidebarStatus, searchQuery, workTaskMap]);
-
-  // workTaskMapを作成（useMemoで最適化）
-  const workTaskMap = useMemo(() => {
-    return createWorkTaskMap(workTasks);
-  }, [workTasks]);
 
   const paginatedListings = useMemo(() => {
     const start = page * rowsPerPage;
