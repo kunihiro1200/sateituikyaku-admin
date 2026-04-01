@@ -1250,7 +1250,10 @@ router.post('/:propertyNumber/send-chat-to-office', async (req: Request, res: Re
     // スプレッドシートへ直接同期（キューを使わず即座に実行）
     try {
       const { PropertyListingSpreadsheetSync } = await import('../services/PropertyListingSpreadsheetSync');
-      const syncService = new PropertyListingSpreadsheetSync();
+      const { GoogleSheetsClient } = await import('../services/GoogleSheetsClient');
+      
+      const sheetsClient = new GoogleSheetsClient();
+      const syncService = new PropertyListingSpreadsheetSync(sheetsClient, supabase);
       await syncService.syncConfirmationToSpreadsheet(propertyNumber, '未');
       console.log(`[send-chat-to-office] Successfully synced confirmation to spreadsheet for ${propertyNumber}`);
     } catch (syncError: any) {

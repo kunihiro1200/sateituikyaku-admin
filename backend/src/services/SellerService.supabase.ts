@@ -1182,6 +1182,7 @@ export class SellerService extends BaseRepository {
             .or('exclusive_other_decision_meeting.is.null,exclusive_other_decision_meeting.neq.完了')
             .neq('next_call_date', todayJST)
             .eq('status', '一般媒介')
+            .not('contract_year_month', 'is', null)
             .gte('contract_year_month', '2025-06-23');
           break;
         case 'visitOtherDecision':
