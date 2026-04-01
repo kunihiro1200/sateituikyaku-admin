@@ -206,12 +206,6 @@ export class PropertyService {
         if (sellerError) {
           console.error('Warning: Failed to sync verified area to sellers table:', sellerError);
           // エラーでも処理は続行（propertiesテーブルの更新は成功しているため）
-        } else {
-          // 🚨 即時スプレッドシート同期（非同期・バックグラウンド）
-          // awaitしないことで、保存処理をブロックしない
-          this.syncToSpreadsheetAsync(data.seller_id).catch(error => {
-            console.error('Warning: Failed to sync to spreadsheet:', error);
-          });
         }
       }
 
@@ -273,33 +267,6 @@ export class PropertyService {
    * 
    * @param sellerId - Seller ID
    */
-  private async syncToSpreadsheetAsync(sellerId: string): Promise<void> {
-    try {
-      const { SpreadsheetSyncService } = await import('./SpreadsheetSyncService');
-      const { GoogleSheetsClient } = await import('./GoogleSheetsClient');
-      
-      const spreadsheetId = process.env.GOOGLE_SHEETS_SPREADSHEET_ID;
-      const sheetName = process.env.GOOGLE_SHEETS_SHEET_NAME || '売主リスト';
-      
-      if (!spreadsheetId) {
-        console.warn('[PropertyService] GOOGLE_SHEETS_SPREADSHEET_ID not configured, skipping spreadsheet sync');
-        return;
-      }
-      
-      const sheetsClient = new GoogleSheetsClient({
-        spreadsheetId,
-        sheetName,
-      });
-      const syncService = new SpreadsheetSyncService(sheetsClient, supabase);
-      await syncService.syncToSpreadsheet(sellerId);
-      console.log(`✅ [PropertyService] Synced verified area to spreadsheet for seller: ${sellerId}`);
-    } catch (error: any) {
-      // エラーをログに記録するが、例外をスローしない（バックグラウンド処理のため）
-      console.error(`❌ [PropertyService] Failed to sync to spreadsheet for seller ${sellerId}:`, error);
-    }
-  }
-
-
   /**
    * Validate structure type
    * 
