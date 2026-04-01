@@ -602,6 +602,12 @@ const SellerDetailPage = () => {
     if (status === 'UNVISITEDOTHERDECISION') {
       return '未訪問他決';
     }
+    if (status === 'EXCLUSIVE') {
+      return '専任';
+    }
+    if (status === 'GENERAL') {
+      return '一般';
+    }
     
     // スプレッドシートから同期された日本語の値をそのまま表示
     if (status && typeof status === 'string' && !Object.values(SellerStatus).includes(status as SellerStatus)) {
@@ -626,6 +632,12 @@ const SellerDetailPage = () => {
     // 英語表記の色を判定
     if (status === 'VISITOTHERDECISION' || status === 'UNVISITEDOTHERDECISION') {
       return 'warning';
+    }
+    if (status === 'EXCLUSIVE') {
+      return 'success';
+    }
+    if (status === 'GENERAL') {
+      return 'success';
     }
     
     // スプレッドシートから同期された日本語の値の色を判定
