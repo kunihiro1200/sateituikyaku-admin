@@ -191,6 +191,24 @@ export class PropertyService {
         throw new Error(`Failed to update property: ${error.message}`);
       }
 
+      // 🚨 重要：sellersテーブルも同時に更新（スプレッドシート同期用）
+      // land_area_verified と building_area_verified をsellersテーブルにも保存
+      if (data.seller_id && (updates.landAreaVerified !== undefined || updates.buildingAreaVerified !== undefined)) {
+        const sellerUpdateData: any = {};
+        if (updates.landAreaVerified !== undefined) sellerUpdateData.land_area_verified = updates.landAreaVerified;
+        if (updates.buildingAreaVerified !== undefined) sellerUpdateData.building_area_verified = updates.buildingAreaVerified;
+        
+        const { error: sellerError } = await supabase
+          .from('sellers')
+          .update(sellerUpdateData)
+          .eq('id', data.seller_id);
+        
+        if (sellerError) {
+          console.error('Warning: Failed to sync verified area to sellers table:', sellerError);
+          // エラーでも処理は続行（propertiesテーブルの更新は成功しているため）
+        }
+      }
+
       // Clear seller cache since property is part of seller data
       if (data.seller_id) {
         await CacheHelper.del(`seller:${data.seller_id}`);
