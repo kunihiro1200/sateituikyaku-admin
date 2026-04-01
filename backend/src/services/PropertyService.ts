@@ -278,8 +278,13 @@ export class PropertyService {
       const { SpreadsheetSyncService } = await import('./SpreadsheetSyncService');
       const { GoogleSheetsClient } = await import('./GoogleSheetsClient');
       
-      const spreadsheetId = process.env.GOOGLE_SHEETS_SPREADSHEET_ID!;
+      const spreadsheetId = process.env.GOOGLE_SHEETS_SPREADSHEET_ID;
       const sheetName = process.env.GOOGLE_SHEETS_SHEET_NAME || '売主リスト';
+      
+      if (!spreadsheetId) {
+        console.warn('[PropertyService] GOOGLE_SHEETS_SPREADSHEET_ID not configured, skipping spreadsheet sync');
+        return;
+      }
       
       const sheetsClient = new GoogleSheetsClient({
         spreadsheetId,
@@ -289,8 +294,8 @@ export class PropertyService {
       await syncService.syncToSpreadsheet(sellerId);
       console.log(`✅ [PropertyService] Synced verified area to spreadsheet for seller: ${sellerId}`);
     } catch (error: any) {
+      // エラーをログに記録するが、例外をスローしない（バックグラウンド処理のため）
       console.error(`❌ [PropertyService] Failed to sync to spreadsheet for seller ${sellerId}:`, error);
-      throw error;
     }
   }
 
