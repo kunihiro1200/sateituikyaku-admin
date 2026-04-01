@@ -279,7 +279,7 @@ export class PropertyService {
       const { GoogleSheetsClient } = await import('./GoogleSheetsClient');
       
       const sheetsClient = new GoogleSheetsClient();
-      const syncService = new SpreadsheetSyncService(sheetsClient, this.supabase);
+      const syncService = new SpreadsheetSyncService(sheetsClient, supabase);
       await syncService.syncToSpreadsheet(sellerId);
       console.log(`✅ [PropertyService] Synced verified area to spreadsheet for seller: ${sellerId}`);
     } catch (error: any) {
