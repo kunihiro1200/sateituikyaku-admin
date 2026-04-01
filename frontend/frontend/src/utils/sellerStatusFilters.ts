@@ -893,17 +893,16 @@ export const isUnvisitedOtherDecision = (seller: Seller | any): boolean => {
     return false;
   }
   
-  // 次電日が今日の場合は除外（GAS・バックエンドと条件を統一）
+  // 次電日が今日以前の場合は除外（GAS・バックエンドと条件を統一）
+  // バックエンド: .gt('next_call_date', todayJST) = 次電日 > 今日
+  // GAS: nextCallDate !== todayStr = 次電日 ≠ 今日
+  // フロントエンド: 次電日 > 今日（今日以前を除外）
   const nextCallDate = seller.nextCallDate || seller.next_call_date;
   const todayStr = getTodayJSTString();
   const normalizedNextCallDate = normalizeDateString(nextCallDate);
   
-  // デバッグログ
-  if (seller.sellerNumber && seller.sellerNumber.startsWith('AA')) {
-    console.log(`[未訪問他決] ${seller.sellerNumber}: nextCallDate=${nextCallDate}, normalized=${normalizedNextCallDate}, today=${todayStr}, excluded=${!normalizedNextCallDate || normalizedNextCallDate === todayStr}`);
-  }
-  
-  if (!normalizedNextCallDate || normalizedNextCallDate === todayStr) {
+  // 次電日が空、または今日以前の場合は除外
+  if (!normalizedNextCallDate || normalizedNextCallDate <= todayStr) {
     return false;
   }
   
