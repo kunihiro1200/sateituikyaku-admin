@@ -105,7 +105,14 @@ export default function PropertyListingsPage() {
   }, [location.state]);
 
   useEffect(() => {
-    fetchAllData();
+    // 確認フィールドが更新された場合は再取得
+    const needsRefresh = sessionStorage.getItem('propertyListingsNeedsRefresh');
+    if (needsRefresh === 'true') {
+      sessionStorage.removeItem('propertyListingsNeedsRefresh');
+      fetchAllData(true); // キャッシュをクリアして再取得
+    } else {
+      fetchAllData();
+    }
   }, []);
 
   const fetchAllData = async (forceRefresh = false) => {

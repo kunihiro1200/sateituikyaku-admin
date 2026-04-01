@@ -686,6 +686,9 @@ export default function PropertyListingDetailPage() {
       await api.put(`/api/property-listings/${propertyNumber}/confirmation`, { confirmation: value });
       setConfirmation(value);
       setSnackbar({ open: true, message: `確認を「${value}」に更新しました`, severity: 'success' });
+      
+      // 物件リストページに戻ったときに再取得するためのフラグを設定
+      sessionStorage.setItem('propertyListingsNeedsRefresh', 'true');
     } catch (error: any) {
       setSnackbar({ open: true, message: error.response?.data?.error || '確認の更新に失敗しました', severity: 'error' });
     } finally {
