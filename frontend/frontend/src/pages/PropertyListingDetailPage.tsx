@@ -63,6 +63,7 @@ import PropertySidebarStatus from '../components/PropertySidebarStatus';
 import { getDisplayStatus } from '../utils/atbbStatusDisplayMapper';
 import PurchaseStatusBadge from '../components/PurchaseStatusBadge';
 import { getPurchaseStatusText, hasBuyerPurchaseStatus } from '../utils/purchaseStatusUtils';
+import { pageDataCache, CACHE_KEYS } from '../store/pageDataCache';
 
 interface PropertyListing {
   id: number;
@@ -686,6 +687,9 @@ export default function PropertyListingDetailPage() {
       await api.put(`/api/property-listings/${propertyNumber}/confirmation`, { confirmation: value });
       setConfirmation(value);
       setSnackbar({ open: true, message: `確認を「${value}」に更新しました`, severity: 'success' });
+      
+      // 物件リストのキャッシュをクリア（最重要）
+      pageDataCache.delete(CACHE_KEYS.PROPERTY_LISTINGS);
       
       // 物件リストページに戻ったときに再取得するためのフラグを設定
       sessionStorage.setItem('propertyListingsNeedsRefresh', 'true');
