@@ -278,7 +278,13 @@ export class PropertyService {
       const { SpreadsheetSyncService } = await import('./SpreadsheetSyncService');
       const { GoogleSheetsClient } = await import('./GoogleSheetsClient');
       
-      const sheetsClient = new GoogleSheetsClient();
+      const spreadsheetId = process.env.GOOGLE_SHEETS_SPREADSHEET_ID!;
+      const sheetName = process.env.GOOGLE_SHEETS_SHEET_NAME || '売主リスト';
+      
+      const sheetsClient = new GoogleSheetsClient({
+        spreadsheetId,
+        sheetName,
+      });
       const syncService = new SpreadsheetSyncService(sheetsClient, supabase);
       await syncService.syncToSpreadsheet(sellerId);
       console.log(`✅ [PropertyService] Synced verified area to spreadsheet for seller: ${sellerId}`);
