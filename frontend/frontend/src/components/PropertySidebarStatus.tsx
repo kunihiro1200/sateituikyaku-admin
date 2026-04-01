@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import {
   Box,
   Typography,
@@ -105,6 +105,17 @@ export default function PropertySidebarStatus({
   const [showCompleteDialog, setShowCompleteDialog] = useState(false);
   const [completing, setCompleting] = useState<string | null>(null);
 
+  // マウント/アンマウントログ
+  useEffect(() => {
+    console.log('[PropertySidebarStatus] マウント:', {
+      listingsの件数: listings.length,
+      未完了: listings.filter(l => l.confirmation === '未').length
+    });
+    return () => {
+      console.log('[PropertySidebarStatus] アンマウント');
+    };
+  }, []);
+
   const statusCounts = useMemo(() => {
     console.log('[PropertySidebarStatus] statusCounts再計算:', {
       listingsの型: Array.isArray(listings) ? 'array' : typeof listings,
@@ -206,6 +217,11 @@ export default function PropertySidebarStatus({
   };
 
   const statusList = useMemo(() => {
+    console.log('[PropertySidebarStatus] statusList再計算開始:', {
+      statusCounts,
+      未完了カウント: statusCounts['未完了']
+    });
+    
     const list: Array<{ key: string; label: string; count: number; isHighPriorityBg?: boolean; isSeninBg?: boolean; isDivider?: boolean; isRed?: boolean; isBoldRed?: boolean }> = [
       { key: 'all', label: 'すべて', count: statusCounts.all }
     ];
@@ -232,6 +248,12 @@ export default function PropertySidebarStatus({
       const isBoldRed = key === '未完了' && generalMediationIncompleteCount > 0;
       const isRed = HIGH_PRIORITY_RED_STATUSES.has(key);
       list.push({ key, label: key, count, isHighPriorityBg: isHighBg, isSeninBg, isRed, isBoldRed });
+    });
+
+    console.log('[PropertySidebarStatus] statusList生成完了:', {
+      リスト件数: list.length,
+      未完了アイテム: list.find(item => item.key === '未完了'),
+      全アイテム: list.map(item => ({ key: item.key, count: item.count }))
     });
 
     return list;

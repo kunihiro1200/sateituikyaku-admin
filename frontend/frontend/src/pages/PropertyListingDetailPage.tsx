@@ -695,9 +695,11 @@ export default function PropertyListingDetailPage() {
       sessionStorage.setItem('propertyListingsNeedsRefresh', 'true');
       
       // 即座にサイドバーを更新するためのイベントを発火
+      console.log('[PropertyListingDetailPage] イベント発火:', { propertyNumber, confirmation: value });
       window.dispatchEvent(new CustomEvent('propertyConfirmationUpdated', { 
         detail: { propertyNumber, confirmation: value } 
       }));
+      console.log('[PropertyListingDetailPage] イベント発火完了');
     } catch (error: any) {
       setSnackbar({ open: true, message: error.response?.data?.error || '確認の更新に失敗しました', severity: 'error' });
     } finally {
