@@ -36,7 +36,7 @@ export class PropertyService {
           building_area: propertyData.buildingArea,
           land_area_verified: propertyData.landAreaVerified,
           building_area_verified: propertyData.buildingAreaVerified,
-          build_year: propertyData.buildYear,
+          construction_year: propertyData.buildYear,
           structure: propertyData.structure,
           floor_plan: propertyData.floorPlan,
           floors: propertyData.floors,
@@ -163,7 +163,7 @@ export class PropertyService {
         updateData.land_area_verified = updates.landAreaVerified;
       if (updates.buildingAreaVerified !== undefined)
         updateData.building_area_verified = updates.buildingAreaVerified;
-      if (updates.buildYear !== undefined) updateData.build_year = updates.buildYear;
+      if (updates.buildYear !== undefined) updateData.construction_year = updates.buildYear;
       if (updates.structure !== undefined) updateData.structure = updates.structure;
       if (updates.floorPlan !== undefined) updateData.floor_plan = updates.floorPlan;
       if (updates.floors !== undefined) updateData.floors = updates.floors;
@@ -258,7 +258,7 @@ export class PropertyService {
       buildingArea: data.building_area,
       landAreaVerified: data.land_area_verified,
       buildingAreaVerified: data.building_area_verified,
-      buildYear: data.build_year,
+      buildYear: data.construction_year,
       structure: data.structure,
       floorPlan: data.floor_plan,
       floors: data.floors,
