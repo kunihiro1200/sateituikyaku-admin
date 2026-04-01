@@ -65,6 +65,19 @@ function postToBackend(path, payload) {
 // ============================================================
 function formatDateToISO_(value) {
   if (!value || value === '') return null;
+  
+  // 数値（Excelシリアル値）の場合
+  if (typeof value === 'number') {
+    // Excelのシリアル値を日付に変換（1900年1月1日からの日数）
+    var excelEpoch = new Date(1899, 11, 30); // 1899年12月30日
+    var days = value > 60 ? value - 1 : value; // Excelの1900年閏年バグ対応
+    var date = new Date(excelEpoch.getTime() + days * 24 * 60 * 60 * 1000);
+    var year = date.getFullYear();
+    var month = String(date.getMonth() + 1).padStart(2, '0');
+    var day = String(date.getDate()).padStart(2, '0');
+    return year + '-' + month + '-' + day;
+  }
+  
   var str = String(value).trim();
   if (str.match(/^\d{4}\/\d{1,2}\/\d{1,2}$/)) {
     var parts = str.split('/');
