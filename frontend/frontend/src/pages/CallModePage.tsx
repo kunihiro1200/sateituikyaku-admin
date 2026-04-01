@@ -4690,14 +4690,6 @@ HP：https://ifoo-oita.com/
                                 {initial}
                               </Button>
                             ))}
-                            <Button
-                              variant={editedAssignedTo === '' ? 'contained' : 'outlined'}
-                              onClick={() => setEditedAssignedTo('')}
-                              size="small"
-                              color="secondary"
-                            >
-                              クリア
-                            </Button>
                           </Box>
                         )}
                       </Box>

@@ -271,15 +271,15 @@ export class StaffManagementService {
       const normalInitials = [...new Set(
         rows
           .filter((row: any) => {
-            const isNormalRaw = row['通常'];
-            const isNormal = String(isNormalRaw).toUpperCase() === 'TRUE';
-            return isNormal;
+            const hazusuIriRaw = row['外す入'];
+            const hazusuIri = String(hazusuIriRaw).toUpperCase() === 'TRUE';
+            return hazusuIri;
           })
           .map((row: any) => (row['スタッフID'] || row['イニシャル']) as string)
           .filter((i: string) => i && i.trim() !== '')
       )] as string[];
 
-      console.log('[StaffManagementService] Normal initials:', normalInitials);
+      console.log('[StaffManagementService] Normal initials (外す入=TRUE):', normalInitials);
       return normalInitials;
     } catch (error: any) {
       console.error('[StaffManagementService] Error getting normal initials:', error.message);
