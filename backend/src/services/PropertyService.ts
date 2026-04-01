@@ -207,16 +207,11 @@ export class PropertyService {
           console.error('Warning: Failed to sync verified area to sellers table:', sellerError);
           // エラーでも処理は続行（propertiesテーブルの更新は成功しているため）
         } else {
-          // 🚨 即時スプレッドシート同期
-          try {
-            const { SpreadsheetSyncService } = await import('./SpreadsheetSyncService');
-            const syncService = new SpreadsheetSyncService();
-            await syncService.syncToSpreadsheet(data.seller_id);
-            console.log(`✅ [PropertyService] Synced verified area to spreadsheet for seller: ${data.seller_id}`);
-          } catch (syncError: any) {
-            console.error('Warning: Failed to sync to spreadsheet:', syncError);
-            // エラーでも処理は続行（データベースの更新は成功しているため）
-          }
+          // 🚨 即時スプレッドシート同期（非同期・バックグラウンド）
+          // awaitしないことで、保存処理をブロックしない
+          this.syncToSpreadsheetAsync(data.seller_id).catch(error => {
+            console.error('Warning: Failed to sync to spreadsheet:', error);
+          });
         }
       }
 
@@ -270,6 +265,24 @@ export class PropertyService {
   validatePropertyType(propertyType: string): boolean {
     const validTypes = Object.values(PropertyType);
     return validTypes.includes(propertyType as PropertyType);
+  }
+
+  /**
+   * スプレッドシートに非同期で同期（バックグラウンド処理）
+   * awaitしないことで、保存処理をブロックしない
+   * 
+   * @param sellerId - Seller ID
+   */
+  private async syncToSpreadsheetAsync(sellerId: string): Promise<void> {
+    try {
+      const { SpreadsheetSyncService } = await import('./SpreadsheetSyncService');
+      const syncService = new SpreadsheetSyncService();
+      await syncService.syncToSpreadsheet(sellerId);
+      console.log(`✅ [PropertyService] Synced verified area to spreadsheet for seller: ${sellerId}`);
+    } catch (error: any) {
+      console.error(`❌ [PropertyService] Failed to sync to spreadsheet for seller ${sellerId}:`, error);
+      throw error;
+    }
   }
 
   /**
