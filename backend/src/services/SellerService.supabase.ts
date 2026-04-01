@@ -1177,12 +1177,13 @@ export class SellerService extends BaseRepository {
             .in('status', ['専任媒介', '他決→専任', 'リースバック（専任）']);
           break;
         case 'general':
-          // 一般カテゴリー（専任他決打合せ <> "完了" + 次電日 <> TODAY() + 状況が一般媒介 + 契約年月 >= 2025/6/23 または null）
+          // 一般カテゴリー（専任他決打合せ <> "完了" + 次電日 <> TODAY() + 状況が一般媒介 + 契約年月 >= 2025/6/23）
           query = query
             .or('exclusive_other_decision_meeting.is.null,exclusive_other_decision_meeting.neq.完了')
             .neq('next_call_date', todayJST)
             .eq('status', '一般媒介')
-            .or('contract_year_month.is.null,contract_year_month.gte.2025-06-23');
+            .not('contract_year_month', 'is', null)
+            .gte('contract_year_month', '2025-06-23');
           break;
         case 'visitOtherDecision':
           // 訪問後他決カテゴリー（専任他決打合せ <> "完了" + 次電日 <> TODAY() + 状況が他決関連 + 営担あり）
