@@ -308,6 +308,8 @@ const CallModePage = () => {
     };
   }, [
     property, 
+    property?.landAreaVerified,
+    property?.buildingAreaVerified,
     seller?.propertyAddress,
     seller?.propertyType,
     seller?.landArea,
