@@ -104,17 +104,22 @@ export default function PropertyListingsPage() {
     }
   }, [location.state]);
 
+  // 初回マウント時のデータ取得
   useEffect(() => {
-    // 確認フィールドが更新された場合は再取得
+    fetchAllData();
+  }, []);
+
+  // sessionStorageフラグをチェック（ページ遷移時）
+  useEffect(() => {
     const needsRefresh = sessionStorage.getItem('propertyListingsNeedsRefresh');
     if (needsRefresh === 'true') {
       sessionStorage.removeItem('propertyListingsNeedsRefresh');
       fetchAllData(true); // キャッシュをクリアして再取得
-    } else {
-      fetchAllData();
     }
+  }, [location.pathname]);
 
-    // confirmation更新イベントをリッスン
+  // confirmation更新イベントをリッスン
+  useEffect(() => {
     const handleConfirmationUpdate = (event: CustomEvent) => {
       const { propertyNumber, confirmation } = event.detail;
       
@@ -126,6 +131,9 @@ export default function PropertyListingsPage() {
             : listing
         )
       );
+      
+      // キャッシュも無効化
+      pageDataCache.invalidate(CACHE_KEYS.PROPERTY_LISTINGS);
     };
 
     window.addEventListener('propertyConfirmationUpdated', handleConfirmationUpdate as EventListener);
@@ -133,7 +141,7 @@ export default function PropertyListingsPage() {
     return () => {
       window.removeEventListener('propertyConfirmationUpdated', handleConfirmationUpdate as EventListener);
     };
-  }, [location.pathname]); // ← location.pathnameを追加
+  }, []);
 
   const fetchAllData = async (forceRefresh = false) => {
     // 二重フェッチ防止（キャッシュヒット時は除く）
