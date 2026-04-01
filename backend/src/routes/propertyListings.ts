@@ -1247,6 +1247,20 @@ router.post('/:propertyNumber/send-chat-to-office', async (req: Request, res: Re
       .update({ confirmation: '未' })
       .eq('property_number', propertyNumber);
 
+    // スプレッドシートへの同期をキューに追加
+    const { PropertyListingSyncQueue } = await import('../services/PropertyListingSyncQueue');
+    const { PropertyListingSpreadsheetSync } = await import('../services/PropertyListingSpreadsheetSync');
+    const syncService = new PropertyListingSpreadsheetSync();
+    const syncQueue = new PropertyListingSyncQueue(syncService);
+    await syncQueue.enqueue({
+      type: 'update_confirmation',
+      propertyNumber,
+      confirmation: '未',
+      retryCount: 0,
+      createdAt: new Date(),
+    });
+    console.log(`[send-chat-to-office] Queued confirmation sync for ${propertyNumber}`);
+
     res.json({ success: true });
   } catch (error: any) {
     console.error('[send-chat-to-office] Error:', error.message);
