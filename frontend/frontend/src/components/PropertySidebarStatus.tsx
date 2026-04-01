@@ -219,7 +219,8 @@ export default function PropertySidebarStatus({
   const statusList = useMemo(() => {
     console.log('[PropertySidebarStatus] statusList再計算開始:', {
       statusCounts,
-      未完了カウント: statusCounts['未完了']
+      未完了カウント: statusCounts['未完了'],
+      statusCountsの参照: Object.keys(statusCounts).length
     });
     
     const list: Array<{ key: string; label: string; count: number; isHighPriorityBg?: boolean; isSeninBg?: boolean; isDivider?: boolean; isRed?: boolean; isBoldRed?: boolean }> = [
@@ -228,7 +229,10 @@ export default function PropertySidebarStatus({
 
     const sortedStatuses = Object.entries(statusCounts)
       .filter(([key]) => key !== 'all' && key !== '')
-      .filter(([key, count]) => count > 0)
+      .filter(([key, count]) => {
+        console.log(`[PropertySidebarStatus] フィルタリング: ${key} = ${count}`);
+        return count > 0;
+      })
       .sort((a, b) => {
         const getPriority = (key: string) => {
           if (STATUS_PRIORITY[key] !== undefined) return STATUS_PRIORITY[key];
@@ -238,6 +242,8 @@ export default function PropertySidebarStatus({
         };
         return getPriority(a[0]) - getPriority(b[0]);
       });
+
+    console.log('[PropertySidebarStatus] フィルタリング後のステータス:', sortedStatuses);
 
     sortedStatuses.forEach(([key, count]) => {
       // 「買付申し込み」(優先度8)より上のカテゴリーに薄い背景色
@@ -257,7 +263,7 @@ export default function PropertySidebarStatus({
     });
 
     return list;
-  }, [statusCounts, generalMediationIncompleteCount]);
+  }, [statusCounts, generalMediationIncompleteCount, listings]);
 
   return (
     <>
