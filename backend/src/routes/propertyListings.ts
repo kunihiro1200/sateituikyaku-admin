@@ -1247,19 +1247,16 @@ router.post('/:propertyNumber/send-chat-to-office', async (req: Request, res: Re
       .update({ confirmation: '未' })
       .eq('property_number', propertyNumber);
 
-    // スプレッドシートへの同期をキューに追加
-    const { PropertyListingSyncQueue } = await import('../services/PropertyListingSyncQueue');
-    const { PropertyListingSpreadsheetSync } = await import('../services/PropertyListingSpreadsheetSync');
-    const syncService = new PropertyListingSpreadsheetSync();
-    const syncQueue = new PropertyListingSyncQueue(syncService);
-    await syncQueue.enqueue({
-      type: 'update_confirmation',
-      propertyNumber,
-      confirmation: '未',
-      retryCount: 0,
-      createdAt: new Date(),
-    });
-    console.log(`[send-chat-to-office] Queued confirmation sync for ${propertyNumber}`);
+    // スプレッドシートへ直接同期（キューを使わず即座に実行）
+    try {
+      const { PropertyListingSpreadsheetSync } = await import('../services/PropertyListingSpreadsheetSync');
+      const syncService = new PropertyListingSpreadsheetSync();
+      await syncService.syncConfirmationToSpreadsheet(propertyNumber, '未');
+      console.log(`[send-chat-to-office] Successfully synced confirmation to spreadsheet for ${propertyNumber}`);
+    } catch (syncError: any) {
+      console.error(`[send-chat-to-office] Failed to sync confirmation to spreadsheet for ${propertyNumber}:`, syncError);
+      // 同期エラーでもレスポンスは成功を返す（チャット送信は成功しているため）
+    }
 
     res.json({ success: true });
   } catch (error: any) {
