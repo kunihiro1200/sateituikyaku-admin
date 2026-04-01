@@ -123,17 +123,27 @@ export default function PropertyListingsPage() {
     const handleConfirmationUpdate = (event: CustomEvent) => {
       const { propertyNumber, confirmation } = event.detail;
       
+      console.log('[PropertyListingsPage] confirmation更新イベント受信:', { propertyNumber, confirmation });
+      
       // ローカルステートを即座に更新
-      setAllListings(prevListings => 
-        prevListings.map(listing => 
+      setAllListings(prevListings => {
+        const updated = prevListings.map(listing => 
           listing.property_number === propertyNumber 
             ? { ...listing, confirmation } 
             : listing
-        )
-      );
+        );
+        
+        console.log('[PropertyListingsPage] ローカルステート更新後:', {
+          物件数: updated.length,
+          未完了: updated.filter(l => l.confirmation === '未').length
+        });
+        
+        return updated;
+      });
       
       // キャッシュも無効化
       pageDataCache.invalidate(CACHE_KEYS.PROPERTY_LISTINGS);
+      console.log('[PropertyListingsPage] キャッシュ無効化完了');
     };
 
     window.addEventListener('propertyConfirmationUpdated', handleConfirmationUpdate as EventListener);

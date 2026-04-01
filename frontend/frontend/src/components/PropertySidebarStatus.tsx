@@ -106,6 +106,11 @@ export default function PropertySidebarStatus({
   const [completing, setCompleting] = useState<string | null>(null);
 
   const statusCounts = useMemo(() => {
+    console.log('[PropertySidebarStatus] statusCounts再計算:', {
+      listingsの型: Array.isArray(listings) ? 'array' : typeof listings,
+      件数: Array.isArray(listings) ? listings.length : 0
+    });
+    
     // listingsが配列でない場合のガード
     if (!Array.isArray(listings)) {
       return { all: 0 };
@@ -118,12 +123,13 @@ export default function PropertySidebarStatus({
     counts['未完了'] = incompleteListings.length;
     
     // デバッグログ
-    if (incompleteListings.length > 0) {
-      console.log('[PropertySidebarStatus] 未完了の物件:', incompleteListings.map(l => ({
+    console.log('[PropertySidebarStatus] 未完了カウント:', {
+      未完了件数: incompleteListings.length,
+      物件: incompleteListings.map(l => ({
         property_number: l.property_number,
         confirmation: l.confirmation
-      })));
-    }
+      }))
+    });
 
     if (pendingPriceReductionProperties && pendingPriceReductionProperties.size > 0) {
       counts['値下げ未完了'] = pendingPriceReductionProperties.size;
