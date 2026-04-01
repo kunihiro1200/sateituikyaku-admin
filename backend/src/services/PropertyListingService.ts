@@ -1252,8 +1252,10 @@ export class PropertyListingService {
       const sheetsClient = new GoogleSheetsClient({
         spreadsheetId: propertySpreadsheetId,
         sheetName: process.env.PROPERTY_LISTING_SHEET_NAME || '物件',
-        serviceAccountKeyPath: process.env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH,
+        serviceAccountKeyPath: process.env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH || './google-service-account.json',
       });
+      
+      await sheetsClient.authenticate();
       const syncService = new PropertyListingSpreadsheetSync(sheetsClient, this.supabase);
       await syncService.syncConfirmationToSpreadsheet(propertyNumber, confirmation);
       console.log(`[PropertyListingService] Successfully synced confirmation to spreadsheet for ${propertyNumber}`);
