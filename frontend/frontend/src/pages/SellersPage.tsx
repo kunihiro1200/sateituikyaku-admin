@@ -598,6 +598,10 @@ export default function SellersPage() {
                    selectedCategory === 'mailingPending' ? '⑥査定（郵送）' :
                    selectedCategory === 'todayCallNotStarted' ? '⑦当日TEL_未着手' :
                    selectedCategory === 'pinrichEmpty' ? '⑧Pinrich空欄' :
+                   selectedCategory === 'exclusive' ? '専任' :
+                   selectedCategory === 'general' ? '一般' :
+                   selectedCategory === 'visitOtherDecision' ? '訪問後他決' :
+                   selectedCategory === 'unvisitedOtherDecision' ? '未訪問他決' :
                    typeof selectedCategory === 'string' && selectedCategory.startsWith('visitAssigned:') ? `担当（${selectedCategory.replace('visitAssigned:', '')}）` :
                    typeof selectedCategory === 'string' && selectedCategory.startsWith('todayCallAssigned:') ? `当日TEL(${selectedCategory.replace('todayCallAssigned:', '')})` :
                    selectedCategory}
