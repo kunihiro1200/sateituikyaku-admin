@@ -1367,8 +1367,8 @@ const CallModePage = () => {
         }).catch((err) => {
           console.error('Failed to load employees:', err);
         }),
-        // スプシ「通常=TRUE」のイニシャル一覧を取得（1番電話ボタン用）
-        api.get('/api/employees/active-initials').then((res) => {
+        // スプシ「通常=TRUE」のイニシャル一覧を取得（営担ボタン選択用）
+        api.get('/api/employees/normal-initials').then((res) => {
           const initials: string[] = res.data?.initials || [];
           setNormalInitials(initials);
         }).catch((err) => {
@@ -4672,27 +4672,35 @@ HP：https://ifoo-oita.com/
                       />
                     </Grid>
                     <Grid item xs={12}>
-                      <FormControl fullWidth size="small">
-                        <InputLabel>営担</InputLabel>
-                        <Select
-                          value={editedAssignedTo}
-                          label="営担"
-                          onChange={(e) => setEditedAssignedTo(e.target.value)}
-                        >
-                          <MenuItem value="">
-                            <em>未選択</em>
-                          </MenuItem>
-                          {employees.map((employee) => {
-                            // データベースのinitialsを使用
-                            const initials = employee.initials || employee.name || employee.email;
-                            return (
-                              <MenuItem key={employee.id} value={initials}>
-                                {employee.name} ({initials})
-                              </MenuItem>
-                            );
-                          })}
-                        </Select>
-                      </FormControl>
+                      <Box>
+                        <Typography variant="subtitle2" sx={{ mb: 1 }}>営担</Typography>
+                        {normalInitials.length === 0 ? (
+                          <Alert severity="warning">
+                            通常スタッフが登録されていません。管理者に連絡してください。
+                          </Alert>
+                        ) : (
+                          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                            {normalInitials.map((initial) => (
+                              <Button
+                                key={initial}
+                                variant={editedAssignedTo === initial ? 'contained' : 'outlined'}
+                                onClick={() => setEditedAssignedTo(initial)}
+                                size="small"
+                              >
+                                {initial}
+                              </Button>
+                            ))}
+                            <Button
+                              variant={editedAssignedTo === '' ? 'contained' : 'outlined'}
+                              onClick={() => setEditedAssignedTo('')}
+                              size="small"
+                              color="secondary"
+                            >
+                              クリア
+                            </Button>
+                          </Box>
+                        )}
+                      </Box>
                     </Grid>
                     <Grid item xs={12}>
                       <FormControl fullWidth size="small">

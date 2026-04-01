@@ -753,6 +753,31 @@ router.put('/:id', async (req: Request, res: Response) => {
       }
     }
     
+    // Validate visitAssignee if provided (営担検証)
+    if (req.body.visitAssignee !== undefined && req.body.visitAssignee !== null && req.body.visitAssignee !== '') {
+      const supabase = createClient(
+        process.env.SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_KEY!
+      );
+      const { data: employee, error } = await supabase
+        .from('employees')
+        .select('initials')
+        .eq('initials', req.body.visitAssignee)
+        .eq('is_normal', true)
+        .eq('is_active', true)
+        .single();
+      
+      if (error || !employee) {
+        return res.status(400).json({
+          error: {
+            code: 'INVALID_VISIT_ASSIGNEE',
+            message: '無効な営担です',
+            retryable: false,
+          },
+        });
+      }
+    }
+    
     // Optional: Check valuation amount order (warning only, not blocking)
     if (req.body.valuationAmount1 && req.body.valuationAmount2) {
       const amount1 = Number(req.body.valuationAmount1);
