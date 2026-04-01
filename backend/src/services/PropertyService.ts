@@ -28,7 +28,7 @@ export class PropertyService {
         .from('properties')
         .insert({
           seller_id: propertyData.sellerId,
-          address: propertyData.address,
+          property_address: propertyData.address, // addressフィールドをproperty_addressカラムにマッピング
           prefecture: propertyData.prefecture,
           city: propertyData.city,
           property_type: propertyData.propertyType,
@@ -74,10 +74,7 @@ export class PropertyService {
         .select('*')
         .eq('id', propertyId);
 
-      // Filter out deleted properties by default
-      if (!includeDeleted) {
-        query = query.is('deleted_at', null);
-      }
+      // propertiesテーブルにはdeleted_atカラムが存在しないためフィルターなし
 
       const { data, error } = await query.single();
 
@@ -155,7 +152,8 @@ export class PropertyService {
     try {
       const updateData: any = {};
 
-      if (updates.address !== undefined) updateData.address = updates.address;
+      // addressフィールドをproperty_addressカラムにマッピング
+      if (updates.address !== undefined) updateData.property_address = updates.address;
       if (updates.prefecture !== undefined) updateData.prefecture = updates.prefecture;
       if (updates.city !== undefined) updateData.city = updates.city;
       if (updates.propertyType !== undefined) updateData.property_type = updates.propertyType;
@@ -252,7 +250,7 @@ export class PropertyService {
     return {
       id: data.id,
       sellerId: data.seller_id,
-      address: data.property_address || data.address, // property_addressを優先
+      address: data.property_address, // property_addressカラムのみを使用（addressカラムは存在しない）
       prefecture: data.prefecture,
       city: data.city,
       propertyType: data.property_type,
