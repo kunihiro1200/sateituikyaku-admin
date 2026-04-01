@@ -108,11 +108,13 @@ export default function PropertySidebarStatus({
   const statusCounts = useMemo(() => {
     console.log('[PropertySidebarStatus] statusCounts再計算:', {
       listingsの型: Array.isArray(listings) ? 'array' : typeof listings,
-      件数: Array.isArray(listings) ? listings.length : 0
+      件数: Array.isArray(listings) ? listings.length : 0,
+      listings参照: listings
     });
     
     // listingsが配列でない場合のガード
     if (!Array.isArray(listings)) {
+      console.error('[PropertySidebarStatus] listingsが配列ではありません:', listings);
       return { all: 0 };
     }
 
@@ -125,6 +127,7 @@ export default function PropertySidebarStatus({
     // デバッグログ
     console.log('[PropertySidebarStatus] 未完了カウント:', {
       未完了件数: incompleteListings.length,
+      全物件数: listings.length,
       物件: incompleteListings.map(l => ({
         property_number: l.property_number,
         confirmation: l.confirmation

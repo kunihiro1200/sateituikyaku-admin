@@ -466,6 +466,7 @@ export default function PropertyListingsPage() {
             </AccordionSummary>
             <AccordionDetails sx={{ p: 1 }}>
               <PropertySidebarStatus
+                key={`sidebar-mobile-${allListings.length}-${allListings.filter(l => l.confirmation === '未').length}`}
                 listings={allListings}
                 selectedStatus={sidebarStatus}
                 onStatusChange={(status) => {
@@ -485,6 +486,7 @@ export default function PropertyListingsPage() {
         {!isMobile && (
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
           <PropertySidebarStatus
+            key={`sidebar-${allListings.length}-${allListings.filter(l => l.confirmation === '未').length}`}
             listings={allListings}
             selectedStatus={sidebarStatus}
             onStatusChange={(status) => { setSidebarStatus(status); setSearchQuery(''); setLastFilter('sidebar'); setPage(0); }}
