@@ -3068,7 +3068,7 @@ HP：https://ifoo-oita.com/
   const requiresDecisionDate = (status: string): boolean => {
     if (!status) return false;
     const label = getStatusLabel(status);
-    return label.includes('専任') || label.includes('他決') || label.includes('一般媒介');
+    return label.includes('専任') || label.includes('他決');
   };
 
   // 必須項目が全て入力されているかチェック
