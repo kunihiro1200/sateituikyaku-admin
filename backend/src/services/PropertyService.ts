@@ -223,6 +223,25 @@ export class PropertyService {
         
         // PropertyBySellerキャッシュも無効化
         this.invalidatePropertyBySellerCache(data.seller_id);
+        
+        // 🚨 重要：スプレッドシートに即時同期（SellerServiceのSyncQueueを使用）
+        // PropertyServiceはSyncQueueを持たないため、SellerServiceのSyncQueueを使用
+        try {
+          const { SellerService } = await import('./SellerService.supabase');
+          const syncQueue = (SellerService as any).sharedSyncQueue;
+          if (syncQueue) {
+            await syncQueue.enqueue({
+              type: 'update',
+              sellerId: data.seller_id,
+            });
+            console.log(`✅ PropertyService: Enqueued seller ${data.seller_id} for spreadsheet sync`);
+          } else {
+            console.warn('⚠️ PropertyService: SyncQueue not available, skipping spreadsheet sync');
+          }
+        } catch (syncError) {
+          console.error('⚠️ PropertyService: Failed to enqueue spreadsheet sync:', syncError);
+          // 同期失敗はエラーにしない（ベストエフォート）
+        }
       }
 
       return this.mapToPropertyInfo(data);
