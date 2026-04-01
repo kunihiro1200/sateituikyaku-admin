@@ -655,6 +655,18 @@ export class GoogleSheetsClient {
         const colIndex = headers.indexOf(columnName);
         if (colIndex === -1) continue;
 
+        // 値の型に応じて適切なフィールドを設定
+        let userEnteredValue: any;
+        if (value === null || value === undefined || value === '') {
+          userEnteredValue = { stringValue: '' };
+        } else if (typeof value === 'number') {
+          userEnteredValue = { numberValue: value };
+        } else if (typeof value === 'boolean') {
+          userEnteredValue = { boolValue: value };
+        } else {
+          userEnteredValue = { stringValue: String(value) };
+        }
+
         requests.push({
           updateCells: {
             range: {
@@ -666,9 +678,7 @@ export class GoogleSheetsClient {
             },
             rows: [{
               values: [{
-                userEnteredValue: {
-                  stringValue: value !== null && value !== undefined ? String(value) : '',
-                },
+                userEnteredValue,
               }],
             }],
             fields: 'userEnteredValue',
