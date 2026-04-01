@@ -206,6 +206,17 @@ export class PropertyService {
         if (sellerError) {
           console.error('Warning: Failed to sync verified area to sellers table:', sellerError);
           // エラーでも処理は続行（propertiesテーブルの更新は成功しているため）
+        } else {
+          // 🚨 即時スプレッドシート同期
+          try {
+            const { SpreadsheetSyncService } = await import('./SpreadsheetSyncService');
+            const syncService = new SpreadsheetSyncService();
+            await syncService.syncToSpreadsheet(data.seller_id);
+            console.log(`✅ [PropertyService] Synced verified area to spreadsheet for seller: ${data.seller_id}`);
+          } catch (syncError: any) {
+            console.error('Warning: Failed to sync to spreadsheet:', syncError);
+            // エラーでも処理は続行（データベースの更新は成功しているため）
+          }
         }
       }
 
