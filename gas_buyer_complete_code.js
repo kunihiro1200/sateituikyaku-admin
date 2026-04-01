@@ -123,7 +123,6 @@ function updateBuyerSidebarCounts_() {
   
   var counts = {
     todayCall: 0,
-    todayCallWithInfo: {},
     todayCallAssigned: {},
     assigned: {}
   };
@@ -133,9 +132,11 @@ function updateBuyerSidebarCounts_() {
     var buyerNumber = row['買主番号'];
     if (!buyerNumber || typeof buyerNumber !== 'string' || !buyerNumber.match(/^BB\d+$/)) continue;
     
-    var status = String(row['状況'] || '');
-    var nextCallDate = formatDateToISO_(row['次電日']);
-    var assignee = row['担当'];
+    var status = String(row['★最新状況\n'] || '');
+    var nextCallDate = formatDateToISO_(row['★次電日']);
+    var initialAssignee = row['初動担当'];
+    var followUpAssignee = row['後続担当'];
+    var assignee = followUpAssignee || initialAssignee;
     var isAssigneeValid = assignee && assignee !== '外す';
     
     // 担当（担当別）カテゴリ
@@ -150,12 +151,6 @@ function updateBuyerSidebarCounts_() {
         // 当日TEL（担当別）
         var aKey = String(assignee);
         counts.todayCallAssigned[aKey] = (counts.todayCallAssigned[aKey] || 0) + 1;
-      } else if (hasContactInfo(row)) {
-        // 当日TEL（内容）
-        var label = getContactLabel(row);
-        if (label) {
-          counts.todayCallWithInfo[label] = (counts.todayCallWithInfo[label] || 0) + 1;
-        }
       } else {
         // 当日TEL分（担当なし）
         counts.todayCall++;
@@ -185,17 +180,6 @@ function updateBuyerSidebarCounts_() {
       count: counts.todayCallAssigned[assignee],
       label: '',  // null → '' に変換
       assignee: assignee,
-      updated_at: now
-    });
-  }
-  
-  // 当日TEL（内容）
-  for (var infoLabel in counts.todayCallWithInfo) {
-    upsertRows.push({
-      category: 'todayCallWithInfo',
-      count: counts.todayCallWithInfo[infoLabel],
-      label: infoLabel,
-      assignee: '',  // null → '' に変換
       updated_at: now
     });
   }
@@ -282,7 +266,7 @@ function fetchAllBuyersFromSupabase_() {
   var allBuyers = [];
   var pageSize = 1000;
   var offset = 0;
-  var fields = 'buyer_number,status,next_call_date,assignee,comments,phone_contact_person,preferred_contact_time,contact_method,inquiry_date';
+  var fields = 'buyer_number,latest_status,next_call_date,initial_assignee,follow_up_assignee,comments,reception_date';
   while (true) {
     var url = SUPABASE_CONFIG.URL + '/rest/v1/buyers?select=' + fields +
       '&deleted_at=is.null&offset=' + offset + '&limit=' + pageSize;
@@ -340,26 +324,24 @@ function syncUpdatesToSupabase_(sheetRows) {
     if (!dbBuyer) continue;
     var updateData = {};
     var needsUpdate = false;
-    var sheetStatus = row['状況'] ? String(row['状況']) : null;
-    if (sheetStatus !== (dbBuyer.status || null)) { updateData.status = sheetStatus; needsUpdate = true; }
-    var sheetNextCallDate = formatDateToISO_(row['次電日']);
+    var sheetStatus = row['★最新状況\n'] ? String(row['★最新状況\n']) : null;
+    if (sheetStatus !== (dbBuyer.latest_status || null)) { updateData.latest_status = sheetStatus; needsUpdate = true; }
+    var sheetNextCallDate = formatDateToISO_(row['★次電日']);
     var dbNextCallDate = dbBuyer.next_call_date ? String(dbBuyer.next_call_date).substring(0, 10) : null;
     if (sheetNextCallDate !== dbNextCallDate) { updateData.next_call_date = sheetNextCallDate; needsUpdate = true; }
-    var rawAssignee = row['担当'];
-    var sheetAssignee = rawAssignee ? String(rawAssignee) : null;
-    var dbAssignee = dbBuyer.assignee || null;
-    if (sheetAssignee !== dbAssignee) { updateData.assignee = sheetAssignee; needsUpdate = true; }
-    var sheetComments = row['コメント'] ? String(row['コメント']) : null;
+    var rawInitialAssignee = row['初動担当'];
+    var sheetInitialAssignee = rawInitialAssignee ? String(rawInitialAssignee) : null;
+    var dbInitialAssignee = dbBuyer.initial_assignee || null;
+    if (sheetInitialAssignee !== dbInitialAssignee) { updateData.initial_assignee = sheetInitialAssignee; needsUpdate = true; }
+    var rawFollowUpAssignee = row['後続担当'];
+    var sheetFollowUpAssignee = rawFollowUpAssignee ? String(rawFollowUpAssignee) : null;
+    var dbFollowUpAssignee = dbBuyer.follow_up_assignee || null;
+    if (sheetFollowUpAssignee !== dbFollowUpAssignee) { updateData.follow_up_assignee = sheetFollowUpAssignee; needsUpdate = true; }
+    var sheetComments = row['★内覧結果・後続対応'] ? String(row['★内覧結果・後続対応']) : null;
     if (sheetComments !== (dbBuyer.comments || null)) { updateData.comments = sheetComments; needsUpdate = true; }
-    var sheetPhoneContact = row['電話担当（任意）'] ? String(row['電話担当（任意）']) : null;
-    if (sheetPhoneContact !== (dbBuyer.phone_contact_person || null)) { updateData.phone_contact_person = sheetPhoneContact; needsUpdate = true; }
-    var sheetPreferredTime = row['連絡取りやすい日、時間帯'] ? String(row['連絡取りやすい日、時間帯']) : null;
-    if (sheetPreferredTime !== (dbBuyer.preferred_contact_time || null)) { updateData.preferred_contact_time = sheetPreferredTime; needsUpdate = true; }
-    var sheetContactMethod = row['連絡方法'] ? String(row['連絡方法']) : null;
-    if (sheetContactMethod !== (dbBuyer.contact_method || null)) { updateData.contact_method = sheetContactMethod; needsUpdate = true; }
-    var sheetInquiryDate = formatDateToISO_(row['反響日付']);
-    var dbInquiryDate = dbBuyer.inquiry_date ? String(dbBuyer.inquiry_date).substring(0, 10) : null;
-    if (sheetInquiryDate !== dbInquiryDate) { updateData.inquiry_date = sheetInquiryDate; needsUpdate = true; }
+    var sheetReceptionDate = formatDateToISO_(row['受付日']);
+    var dbReceptionDate = dbBuyer.reception_date ? String(dbBuyer.reception_date).substring(0, 10) : null;
+    if (sheetReceptionDate !== dbReceptionDate) { updateData.reception_date = sheetReceptionDate; needsUpdate = true; }
     if (!needsUpdate) continue;
     updateData.updated_at = new Date().toISOString();
     var result = patchBuyerToSupabase_(buyerNumber, updateData);
