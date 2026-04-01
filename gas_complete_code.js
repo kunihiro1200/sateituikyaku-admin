@@ -705,8 +705,8 @@ function updateSidebarCounts_(sheetRows) {
       counts.visitCompleted[assigneeKey] = (counts.visitCompleted[assigneeKey] || 0) + 1;
     }
     // 営担がいる全売主をカウント（担当(Y)などの親カテゴリ用）
-    // 一般媒介・専任媒介・追客不要は除外
-    if (isVisitAssigneeValid && status.indexOf('一般媒介') === -1 && status.indexOf('専任媒介') === -1 && status.indexOf('追客不要') === -1) {
+    // 一般媒介・専任媒介・追客不要・他社買取は除外
+    if (isVisitAssigneeValid && status.indexOf('一般媒介') === -1 && status.indexOf('専任媒介') === -1 && status.indexOf('追客不要') === -1 && status.indexOf('他社買取') === -1) {
       var vaKey = String(visitAssignee);
       counts.visitAssigned[vaKey] = (counts.visitAssigned[vaKey] || 0) + 1;
     }
@@ -747,14 +747,14 @@ function updateSidebarCounts_(sheetRows) {
 
     // 専任カテゴリ: 専任他決打合せ ≠ "完了" AND 次電日 ≠ 今日 AND 状況（当社） IN ("専任媒介", "他決→専任", "リースバック（専任）")
     if (exclusiveOtherDecisionMeeting !== '完了' &&
-        nextCallDate && nextCallDate !== todayStr &&
+        (!nextCallDate || nextCallDate !== todayStr) &&
         (status === '専任媒介' || status === '他決→専任' || status === 'リースバック（専任）')) {
       counts.exclusive++;
     }
 
     // 一般カテゴリ: 専任他決打合せ ≠ "完了" AND 次電日 ≠ 今日 AND 状況（当社） = "一般媒介" AND 契約年月 >= "2025-06-23"
     if (exclusiveOtherDecisionMeeting !== '完了' &&
-        nextCallDate && nextCallDate !== todayStr &&
+        (!nextCallDate || nextCallDate !== todayStr) &&
         status === '一般媒介' &&
         contractYearMonth && contractYearMonth >= generalCutoffDate) {
       counts.general++;
@@ -762,7 +762,7 @@ function updateSidebarCounts_(sheetRows) {
 
     // 訪問後他決カテゴリ: 専任他決打合せ ≠ "完了" AND 次電日 ≠ 今日 AND 状況（当社） IN ("他決→追客", "他決→追客不要", "一般→他決", "他社買取") AND 営担 ≠ ""
     if (exclusiveOtherDecisionMeeting !== '完了' &&
-        nextCallDate && nextCallDate !== todayStr &&
+        (!nextCallDate || nextCallDate !== todayStr) &&
         (status === '他決→追客' || status === '他決→追客不要' || status === '一般→他決' || status === '他社買取') &&
         isVisitAssigneeValid) {
       counts.visitOtherDecision++;

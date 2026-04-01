@@ -276,6 +276,63 @@ if (nextCallDate !== todayStr) { ... }
 
 ---
 
+## 🚨 2026年4月2日の修正：次電日条件とvisitAssigned除外条件
+
+### 問題1: 専任・一般・訪問後他決カテゴリのカウント不一致
+
+**症状**: サイドバーのカウント数が一覧より2件少ない
+
+**根本原因**: GASコードが `nextCallDate && nextCallDate !== todayStr` という条件を使用していたため、次電日が空の売主を除外していた
+
+**修正内容**:
+```javascript
+// ❌ 変更前（次電日が空の売主を除外）
+if (exclusiveOtherDecisionMeeting !== '完了' &&
+    nextCallDate && nextCallDate !== todayStr &&
+    ...) {
+  counts.exclusive++;
+}
+
+// ✅ 変更後（次電日が空 OR 次電日≠今日）
+if (exclusiveOtherDecisionMeeting !== '完了' &&
+    (!nextCallDate || nextCallDate !== todayStr) &&
+    ...) {
+  counts.exclusive++;
+}
+```
+
+**適用カテゴリ**: 専任、一般、訪問後他決の3カテゴリ全て
+
+---
+
+### 問題2: 担当(イニシャル)親カテゴリのカウント不一致
+
+**症状**: サイドバーの「担当(Y)」等のカウント数が一覧と異なる
+
+**根本原因**: GASコードが「他社買取」を除外していなかったが、フロントエンドは除外していた
+
+**修正内容**:
+```javascript
+// ❌ 変更前（他社買取を除外していない）
+if (isVisitAssigneeValid && 
+    status.indexOf('一般媒介') === -1 && 
+    status.indexOf('専任媒介') === -1 && 
+    status.indexOf('追客不要') === -1) {
+  counts.visitAssigned[vaKey] = (counts.visitAssigned[vaKey] || 0) + 1;
+}
+
+// ✅ 変更後（他社買取も除外）
+if (isVisitAssigneeValid && 
+    status.indexOf('一般媒介') === -1 && 
+    status.indexOf('専任媒介') === -1 && 
+    status.indexOf('追客不要') === -1 && 
+    status.indexOf('他社買取') === -1) {
+  counts.visitAssigned[vaKey] = (counts.visitAssigned[vaKey] || 0) + 1;
+}
+```
+
+---
+
 ## 🎯 まとめ
 
 **GASコードの更新は3ステップ**:
@@ -293,6 +350,9 @@ if (nextCallDate !== todayStr) { ... }
 
 ---
 
-**最終更新日**: 2026年3月26日  
+**最終更新日**: 2026年4月2日  
 **作成理由**: GASコードの更新手順を明確化し、同じ間違いを繰り返さないため
+**更新履歴**:
+- 2026年3月26日: 初版作成
+- 2026年4月2日: 次電日条件の修正（次電日が空 OR 次電日≠今日）とvisitAssigned除外条件の修正（他社買取を追加）を追記
 

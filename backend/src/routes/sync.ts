@@ -542,12 +542,14 @@ router.post('/trigger', async (req: Request, res: Response) => {
   // sellersOnly=true の場合は売主同期のみ（Phase 1-3）を実行してタイムアウトを回避
   // deletionOnly=true の場合は削除同期のみ（Phase 3）を実行
   // additionOnly=true の場合は追加同期のみ（Phase 1）を実行（GASのPhase 2はSupabase直接更新のため）
-  // buyerDeletionOnly=true の場合は買主削除同期のみを実行（スプシにない買主をDBから物理削除）
+  // buyerAddition=true の場合は買主追加同期のみを実行（スプシにあってDBにない買主を追加）
+  // buyerDeletion=true の場合は買主削除同期のみを実行（スプシにない買主をDBから物理削除）
   // GASのタイムアウトは6分あるので、同期処理が完了するまで待つ
   const sellersOnly = req.query.sellersOnly === 'true';
   const deletionOnly = req.query.deletionOnly === 'true';
   const additionOnly = req.query.additionOnly === 'true';
-  const buyerDeletionOnly = req.query.buyerDeletionOnly === 'true';
+  const buyerAddition = req.query.buyerAddition === 'true';
+  const buyerDeletion = req.query.buyerDeletion === 'true';
 
   try {
     const { getEnhancedAutoSyncService } = await import('../services/EnhancedAutoSyncService');
@@ -556,9 +558,29 @@ router.post('/trigger', async (req: Request, res: Response) => {
     const syncService = getEnhancedAutoSyncService();
     await syncService.initialize();
 
-    if (buyerDeletionOnly) {
+    if (buyerAddition && additionOnly) {
+      // 買主追加同期のみ（スプシにあってDBにない買主を追加）
+      console.log('➕ Buyer addition-only sync triggered');
+      syncService.clearBuyerSpreadsheetCache();
+      const missingBuyers = await syncService.detectMissingBuyers();
+      let added = 0;
+      const errors: any[] = [];
+      if (missingBuyers.length > 0) {
+        const addResult = await syncService.syncMissingBuyers(missingBuyers);
+        added = addResult.newSellersCount;
+        errors.push(...addResult.errors);
+      }
+      const healthChecker = getSyncHealthChecker();
+      await healthChecker.checkAndUpdateHealth();
+      return res.json({
+        success: errors.length === 0,
+        message: `Buyer addition sync completed: ${added} added`,
+        data: { added, errors: errors.length },
+      });
+    } else if (buyerDeletion && deletionOnly) {
       // 買主削除同期のみ（スプシにない買主をDBから物理削除）
       console.log('🗑️  Buyer deletion-only sync triggered');
+      syncService.clearBuyerSpreadsheetCache();
       const deletedBuyers = await syncService.detectDeletedBuyers();
       let deleted = 0;
       const errors: any[] = [];
