@@ -769,7 +769,9 @@ export const isExclusive = (seller: Seller | any): boolean => {
   
   // 次電日が今日の場合は除外
   const nextCallDate = seller.nextCallDate || seller.next_call_date;
-  if (isTodayOrBefore(nextCallDate)) {
+  const todayStr = getTodayJSTString();
+  const normalizedNextCallDate = normalizeDateString(nextCallDate);
+  if (!normalizedNextCallDate || normalizedNextCallDate === todayStr) {
     return false;
   }
   
@@ -801,7 +803,9 @@ export const isGeneral = (seller: Seller | any): boolean => {
   
   // 次電日が今日の場合は除外
   const nextCallDate = seller.nextCallDate || seller.next_call_date;
-  if (isTodayOrBefore(nextCallDate)) {
+  const todayStr = getTodayJSTString();
+  const normalizedNextCallDate = normalizeDateString(nextCallDate);
+  if (!normalizedNextCallDate || normalizedNextCallDate === todayStr) {
     return false;
   }
   
@@ -849,7 +853,9 @@ export const isVisitOtherDecision = (seller: Seller | any): boolean => {
   
   // 次電日が今日の場合は除外
   const nextCallDate = seller.nextCallDate || seller.next_call_date;
-  if (isTodayOrBefore(nextCallDate)) {
+  const todayStr = getTodayJSTString();
+  const normalizedNextCallDate = normalizeDateString(nextCallDate);
+  if (!normalizedNextCallDate || normalizedNextCallDate === todayStr) {
     return false;
   }
   
