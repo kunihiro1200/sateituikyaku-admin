@@ -917,9 +917,9 @@ export const isUnvisitedOtherDecision = (seller: Seller | any): boolean => {
     return false;
   }
   
-  // 営担が空かチェック（「外す」も空扱い）
+  // 営担が空かチェック（「外す」も空欄扱い）
   const visitAssignee = seller.visitAssigneeInitials || seller.visit_assignee || seller.visitAssignee || '';
-  if (visitAssignee && visitAssignee.trim() !== '') {
+  if (visitAssignee && visitAssignee.trim() !== '' && visitAssignee.trim() !== '外す') {
     return false;
   }
   

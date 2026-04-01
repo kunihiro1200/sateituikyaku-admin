@@ -692,7 +692,7 @@ function updateSidebarCounts_(sheetRows) {
     var status = String(row['状況（当社）'] || '');
     var nextCallDate = formatDateToISO_(row['次電日']);
     var visitAssignee = row['営担'];
-    var isVisitAssigneeValid = visitAssignee && visitAssignee !== '';  // 「外す」は担当ありとして扱う
+    var isVisitAssigneeValid = visitAssignee && visitAssignee !== '' && visitAssignee !== '外す';  // 「外す」は空欄扱い
     var visitDateStr = formatDateToISO_(row['訪問日 \nY/M/D'] || row['訪問日']);
     var inquiryDateStr = formatDateToISO_(row['反響日付']);
     var unreachable = row['不通'] ? String(row['不通']) : '';
