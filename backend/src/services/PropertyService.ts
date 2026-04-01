@@ -287,7 +287,7 @@ export class PropertyService {
       throw error;
     }
   }
-  }
+
 
   /**
    * Validate structure type
