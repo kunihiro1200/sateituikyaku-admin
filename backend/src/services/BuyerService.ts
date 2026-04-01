@@ -1521,6 +1521,140 @@ export class BuyerService {
   }
 
   /**
+   * サイドバー用のカテゴリカウントを取得（高速版）
+   * buyer_sidebar_counts テーブルから1クエリで高速取得。
+   * テーブルが空または取得失敗の場合は重いDBクエリにフォールバック。
+   */
+  async getSidebarCounts(): Promise<{
+    categories: Array<{ status: string; count: number; priority: number; color: string }>;
+    normalStaffInitials: string[];
+  }> {
+    try {
+      // buyer_sidebar_counts テーブルから全行取得（GASが10分ごとに更新）
+      const { data, error } = await this.supabase
+        .from('buyer_sidebar_counts')
+        .select('category, count, label, assignee');
+
+      if (error || !data || data.length === 0) {
+        console.log('⚠️ buyer_sidebar_counts empty or error, falling back to DB query');
+        return this.getSidebarCountsFallback();
+      }
+
+      // カテゴリ別に集計
+      const categoryCounts: Record<string, number> = {};
+      
+      for (const row of data) {
+        const count = row.count || 0;
+        
+        switch (row.category) {
+          case 'todayCall':
+            // 当日TEL分（担当なし）
+            categoryCounts['当日TEL'] = (categoryCounts['当日TEL'] || 0) + count;
+            break;
+          case 'todayCallAssigned':
+            // 当日TEL（担当別）
+            if (row.assignee) {
+              const status = `当日TEL(${row.assignee})`;
+              categoryCounts[status] = count;
+            }
+            break;
+          case 'todayCallWithInfo':
+            // 当日TEL（内容）
+            if (row.label) {
+              const status = `当日TEL(${row.label})`;
+              categoryCounts[status] = count;
+            }
+            break;
+          case 'assigned':
+            // 担当（担当別）
+            if (row.assignee) {
+              const status = `担当(${row.assignee})`;
+              categoryCounts[status] = count;
+            }
+            break;
+        }
+      }
+
+      // STATUS_DEFINITIONSに基づいてカテゴリを構築
+      const categories: Array<{ status: string; count: number; priority: number; color: string }> = [];
+      
+      STATUS_DEFINITIONS.forEach((definition) => {
+        categories.push({
+          status: definition.status,
+          count: categoryCounts[definition.status] || 0,
+          priority: definition.priority,
+          color: definition.color
+        });
+      });
+
+      // 動的ステータス（当日TEL(X)、担当(X)）を追加
+      const assigneePriorityMap = new Map<string, number>();
+      const knownAssigneePriorities: Record<string, number> = {
+        'Y': 23, 'W': 24, 'U': 25, '生': 26, 'K': 27, '久': 28, 'I': 29, 'R': 30
+      };
+      let dynamicPriority = 31;
+
+      // 担当(X)のpriorityを割り当て
+      Object.keys(categoryCounts).forEach(status => {
+        const assigneeMatch = status.match(/^担当\((.+)\)$/);
+        if (assigneeMatch) {
+          const assignee = assigneeMatch[1];
+          const p = knownAssigneePriorities[assignee] ?? dynamicPriority++;
+          assigneePriorityMap.set(assignee, p);
+        }
+      });
+
+      // 動的ステータスを追加
+      Object.keys(categoryCounts).forEach(status => {
+        const count = categoryCounts[status];
+        if (count === 0) return;
+        
+        const alreadyAdded = categories.some(c => c.status === status);
+        if (!alreadyAdded) {
+          const todayCallMatch = status.match(/^当日TEL\((.+)\)$/);
+          if (todayCallMatch) {
+            const assignee = todayCallMatch[1];
+            const basePriority = assigneePriorityMap.get(assignee) ?? (knownAssigneePriorities[assignee] ?? 23);
+            categories.push({ status, count, priority: basePriority + 0.5, color: '#ff5722' });
+            return;
+          }
+          
+          const assigneeMatch = status.match(/^担当\((.+)\)$/);
+          if (assigneeMatch) {
+            const assignee = assigneeMatch[1];
+            const p = assigneePriorityMap.get(assignee) ?? (knownAssigneePriorities[assignee] ?? 23);
+            categories.push({ status, count, priority: p, color: '#4caf50' });
+          }
+        }
+      });
+
+      categories.sort((a, b) => a.priority - b.priority);
+
+      // 通常スタッフのイニシャルを取得
+      const normalStaffInitials = await this.fetchNormalStaffInitials();
+
+      console.log('✅ buyer_sidebar_counts loaded from cache table');
+      return { categories, normalStaffInitials };
+    } catch (e) {
+      console.error('❌ getSidebarCounts error, falling back:', e);
+      return this.getSidebarCountsFallback();
+    }
+  }
+
+  /**
+   * サイドバーカウントのフォールバック（重いDBクエリ版）
+   * buyer_sidebar_counts テーブルが空または取得失敗時に使用
+   */
+  private async getSidebarCountsFallback(): Promise<{
+    categories: Array<{ status: string; count: number; priority: number; color: string }>;
+    normalStaffInitials: string[];
+  }> {
+    console.log('⚠️ Using fallback: getStatusCategoriesWithBuyers');
+    // 従来の重いクエリにフォールバック
+    return this.getStatusCategoriesWithBuyers();
+  }
+
+  /**
    * 通常スタッフのイニシャルを取得（内部ヘルパー）
    */
   private async fetchNormalStaffInitials(): Promise<string[]> {

@@ -109,6 +109,17 @@ router.get('/status-categories-with-buyers', async (_req: Request, res: Response
   }
 });
 
+// サイドバーカウントのみを高速取得（buyer_sidebar_countsテーブルから）
+router.get('/sidebar-counts', async (_req: Request, res: Response) => {
+  try {
+    const result = await buyerService.getSidebarCounts();
+    res.json(result);
+  } catch (error: any) {
+    console.error('Error fetching sidebar counts:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // 次の買主番号を取得（/:id よりも前に定義する必要がある）
 router.get('/next-buyer-number', async (_req: Request, res: Response) => {
   try {
