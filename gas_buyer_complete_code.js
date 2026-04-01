@@ -30,10 +30,9 @@ function rowToObject(headers, rowData) {
           String(val.getDate()).padStart(2, '0');
       }
     } else {
-      // 買主番号は必ず文字列型に変換し、BBプレフィックスを追加
+      // 買主番号は必ず文字列型に変換（BBプレフィックスは付けない）
       if (headerName === '買主番号' && val !== null && val !== undefined && val !== '') {
-        var strVal = String(val);
-        obj[headerName] = strVal.match(/^BB\d+$/) ? strVal : 'BB' + strVal;
+        obj[headerName] = String(val);
       } else {
         obj[headerName] = val;
       }
@@ -131,7 +130,7 @@ function updateBuyerSidebarCounts_() {
   for (var i = 0; i < sheetRows.length; i++) {
     var row = sheetRows[i];
     var buyerNumber = row['買主番号'];
-    if (!buyerNumber || typeof buyerNumber !== 'string' || !buyerNumber.match(/^BB\d+$/)) continue;
+    if (!buyerNumber || typeof buyerNumber !== 'string') continue;
     
     var status = String(row['★最新状況\n'] || '');
     var nextCallDate = formatDateToISO_(row['★次電日']);
@@ -320,7 +319,7 @@ function syncUpdatesToSupabase_(sheetRows) {
   for (var r = 0; r < sheetRows.length; r++) {
     var row = sheetRows[r];
     var buyerNumber = row['買主番号'];
-    if (!buyerNumber || typeof buyerNumber !== 'string' || !buyerNumber.match(/^BB\d+$/)) continue;
+    if (!buyerNumber || typeof buyerNumber !== 'string') continue;
     var dbBuyer = dbMap[buyerNumber];
     if (!dbBuyer) continue;
     var updateData = {};
