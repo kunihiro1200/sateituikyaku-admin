@@ -893,9 +893,11 @@ export const isUnvisitedOtherDecision = (seller: Seller | any): boolean => {
     return false;
   }
   
-  // 次電日が今日の場合は除外
+  // 次電日が今日の場合は除外（GAS・バックエンドと条件を統一）
   const nextCallDate = seller.nextCallDate || seller.next_call_date;
-  if (isTodayOrBefore(nextCallDate)) {
+  const todayStr = getTodayJSTString();
+  const normalizedNextCallDate = normalizeDateString(nextCallDate);
+  if (!normalizedNextCallDate || normalizedNextCallDate === todayStr) {
     return false;
   }
   
