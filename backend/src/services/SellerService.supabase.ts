@@ -97,7 +97,7 @@ function setSellerCache(sellerId: string, data: any): void {
   _sellerCache.set(sellerId, { data, expiresAt: Date.now() + SELLER_CACHE_TTL_MS });
 }
 
-function invalidateSellerCache(sellerId: string): void {
+export function invalidateSellerCache(sellerId: string): void {
   _sellerCache.delete(sellerId);
 }
 

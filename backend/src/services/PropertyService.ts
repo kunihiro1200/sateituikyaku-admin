@@ -213,6 +213,16 @@ export class PropertyService {
       if (data.seller_id) {
         await CacheHelper.del(`seller:${data.seller_id}`);
         await CacheHelper.delPattern('sellers:list*');
+        
+        // 🚨 重要：SellerServiceのインメモリキャッシュも無効化
+        // PropertyServiceがpropertiesテーブルを更新した場合、
+        // SellerService.getSeller()が返すpropertyオブジェクトも古くなるため
+        const { invalidateSellerCache, invalidateListSellersCache } = await import('./SellerService.supabase');
+        invalidateSellerCache(data.seller_id);
+        invalidateListSellersCache();
+        
+        // PropertyBySellerキャッシュも無効化
+        this.invalidatePropertyBySellerCache(data.seller_id);
       }
 
       return this.mapToPropertyInfo(data);
