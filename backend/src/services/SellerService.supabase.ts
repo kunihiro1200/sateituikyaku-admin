@@ -2143,6 +2143,7 @@ export class SellerService extends BaseRepository {
       exclusive: number;
       general: number;
       visitOtherDecision: number;
+      unvisitedOtherDecision: number;
       visitAssignedCounts: Record<string, number>;
       todayCallAssignedCounts: Record<string, number>;
       todayCallWithInfoLabels: string[];
