@@ -187,7 +187,7 @@ function syncUpdatesToSupabase_(sheetRows) {
     var dbNextCallDate = dbSeller.next_call_date ? String(dbSeller.next_call_date).substring(0, 10) : null;
     if (sheetNextCallDate !== dbNextCallDate) { updateData.next_call_date = sheetNextCallDate; needsUpdate = true; }
     var rawVisitAssignee = row['営担'];
-    var sheetVisitAssignee = (!rawVisitAssignee || rawVisitAssignee === '外す') ? null : String(rawVisitAssignee);
+    var sheetVisitAssignee = rawVisitAssignee ? String(rawVisitAssignee) : null;
     var dbVisitAssignee = dbSeller.visit_assignee || null;
     if (sheetVisitAssignee !== dbVisitAssignee) { updateData.visit_assignee = sheetVisitAssignee; needsUpdate = true; }
     var sheetUnreachable = row['不通'] ? String(row['不通']) : null;
@@ -445,7 +445,7 @@ function syncSellerNow(sellerNumberStr) {
   var sheetStatus = rowObj['状況（当社）'] || '';
   if (sheetStatus) updateData.status = sheetStatus;
   var rawVisitAssignee = rowObj['営担'];
-  updateData.visit_assignee = (!rawVisitAssignee || rawVisitAssignee === '外す') ? null : String(rawVisitAssignee);
+  updateData.visit_assignee = rawVisitAssignee ? String(rawVisitAssignee) : null;
   if (rowObj['コメント']) updateData.comments = String(rowObj['コメント']);
   if (rowObj['不通']) updateData.unreachable_status = String(rowObj['不通']);
   if (rowObj['Pinrich']) updateData.pinrich_status = String(rowObj['Pinrich']);
@@ -482,6 +482,157 @@ function syncAA13837InquiryDatetime() {
   if (sheetRows.length === 0) { Logger.log('❌ AA13837が見つかりません'); return; }
   Logger.log('✅ AA13837を発見。syncUpdatesToSupabase_で同期します...');
   syncUpdatesToSupabase_(sheetRows);
+}
+
+// ============================================================
+// AA9484の状態確認（デバッグ用）
+// ============================================================
+function checkAA9484() {
+  Logger.log('=== AA9484の状態確認 ===');
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('売主リスト');
+  if (!sheet) { Logger.log('❌ シート「売主リスト」が見つかりません'); return; }
+  
+  var lastRow = sheet.getLastRow();
+  var lastCol = sheet.getLastColumn();
+  var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+  var allData = sheet.getRange(2, 1, lastRow - 1, lastCol).getValues();
+  
+  // 売主番号と営担の列インデックスを取得
+  var sellerNumberColIndex = -1;
+  var visitAssigneeColIndex = -1;
+  for (var i = 0; i < headers.length; i++) {
+    if (String(headers[i]).trim() === '売主番号') sellerNumberColIndex = i;
+    if (String(headers[i]).trim() === '営担') visitAssigneeColIndex = i;
+  }
+  
+  if (sellerNumberColIndex === -1 || visitAssigneeColIndex === -1) {
+    Logger.log('❌ 必要な列が見つかりません');
+    return;
+  }
+  
+  // AA9484を検索
+  for (var i = 0; i < allData.length; i++) {
+    var sellerNumber = allData[i][sellerNumberColIndex];
+    if (String(sellerNumber).trim() === 'AA9484') {
+      var visitAssignee = allData[i][visitAssigneeColIndex];
+      Logger.log('✅ AA9484を発見（行 ' + (i + 2) + '）');
+      Logger.log('   営担の値: "' + visitAssignee + '"');
+      Logger.log('   型: ' + typeof visitAssignee);
+      Logger.log('   空かどうか: ' + (visitAssignee === '' || visitAssignee === null || visitAssignee === undefined));
+      Logger.log('   「外す」かどうか: ' + (String(visitAssignee).trim() === '外す'));
+      return;
+    }
+  }
+  
+  Logger.log('❌ AA9484が見つかりません');
+}
+
+// ============================================================
+// 営業担当が「外す」の売主を一括同期
+// ============================================================
+function syncVisitAssigneeRemove() {
+  Logger.log('=== 営業担当「外す」一括同期開始 ===');
+  var startTime = new Date();
+  
+  // スプレッドシートから全データを取得
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('売主リスト');
+  if (!sheet) { Logger.log('❌ シート「売主リスト」が見つかりません'); return; }
+  var lastRow = sheet.getLastRow();
+  var lastCol = sheet.getLastColumn();
+  var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+  var allData = sheet.getRange(2, 1, lastRow - 1, lastCol).getValues();
+  
+  // 営担列のインデックスを取得
+  var visitAssigneeColIndex = -1;
+  for (var i = 0; i < headers.length; i++) {
+    if (String(headers[i]).trim() === '営担') {
+      visitAssigneeColIndex = i;
+      break;
+    }
+  }
+  if (visitAssigneeColIndex === -1) {
+    Logger.log('❌ 営担列が見つかりません');
+    return;
+  }
+  
+  // 営担が「外す」の売主を抽出
+  var targetRows = [];
+  for (var i = 0; i < allData.length; i++) {
+    var row = rowToObject(headers, allData[i]);
+    var sellerNumber = row['売主番号'];
+    if (!sellerNumber || typeof sellerNumber !== 'string' || !sellerNumber.match(/^AA\d+$/)) continue;
+    
+    var visitAssignee = allData[i][visitAssigneeColIndex];
+    if (visitAssignee && String(visitAssignee).trim() === '外す') {
+      targetRows.push(row);
+      Logger.log('📝 対象: ' + sellerNumber + ' (営担=外す)');
+    }
+  }
+  
+  Logger.log('📊 営担「外す」の売主数: ' + targetRows.length + '件');
+  
+  if (targetRows.length === 0) {
+    Logger.log('✅ 同期対象なし');
+    return;
+  }
+  
+  // DBから全売主を取得
+  var dbSellers = fetchAllSellersFromSupabase_();
+  if (!dbSellers) {
+    Logger.log('❌ Supabaseからのデータ取得失敗');
+    return;
+  }
+  
+  var dbMap = {};
+  for (var i = 0; i < dbSellers.length; i++) {
+    dbMap[dbSellers[i].seller_number] = dbSellers[i];
+  }
+  
+  // 同期処理
+  var updatedCount = 0;
+  var skippedCount = 0;
+  var errorCount = 0;
+  
+  for (var i = 0; i < targetRows.length; i++) {
+    var row = targetRows[i];
+    var sellerNumber = row['売主番号'];
+    var dbSeller = dbMap[sellerNumber];
+    
+    if (!dbSeller) {
+      Logger.log('⚠️ ' + sellerNumber + ': DBに存在しません（スキップ）');
+      skippedCount++;
+      continue;
+    }
+    
+    // DBの営担が既に「外す」の場合はスキップ
+    if (dbSeller.visit_assignee === '外す') {
+      Logger.log('⏭️ ' + sellerNumber + ': 既に「外す」（スキップ）');
+      skippedCount++;
+      continue;
+    }
+    
+    // 営担を「外す」に更新
+    var updateData = {
+      visit_assignee: '外す',
+      updated_at: new Date().toISOString()
+    };
+    
+    var result = patchSellerToSupabase_(sellerNumber, updateData);
+    if (result.success) {
+      updatedCount++;
+      Logger.log('✅ ' + sellerNumber + ': 営担を「外す」に更新（旧値: ' + (dbSeller.visit_assignee || 'null') + '）');
+    } else {
+      errorCount++;
+      Logger.log('❌ ' + sellerNumber + ': 更新失敗 - ' + result.error);
+    }
+    
+    Utilities.sleep(100); // API制限対策
+  }
+  
+  var duration = (new Date() - startTime) / 1000;
+  Logger.log('📊 同期完了: 更新 ' + updatedCount + '件 / スキップ ' + skippedCount + '件 / エラー ' + errorCount + '件');
+  Logger.log('⏱️ 所要時間: ' + duration.toFixed(1) + '秒');
+  Logger.log('=== 営業担当「外す」一括同期完了 ===');
 }
 
 // ============================================================
@@ -721,7 +872,7 @@ function syncVisitDateSellers() {
     var dbVisitDate = dbSeller.visit_date ? String(dbSeller.visit_date).substring(0, 10) : null;
     if (sheetVisitDate !== dbVisitDate) { updateData.visit_date = sheetVisitDate; needsUpdate = true; }
     var rawVisitAssignee = row['営担'];
-    var sheetVisitAssignee = (!rawVisitAssignee || rawVisitAssignee === '外す') ? null : String(rawVisitAssignee);
+    var sheetVisitAssignee = rawVisitAssignee ? String(rawVisitAssignee) : null;
     var dbVisitAssignee = dbSeller.visit_assignee || null;
     if (sheetVisitAssignee !== dbVisitAssignee) { updateData.visit_assignee = sheetVisitAssignee; needsUpdate = true; }
     var sheetVisitValAcq = row['訪問査定取得者'] ? String(row['訪問査定取得者']) : null;

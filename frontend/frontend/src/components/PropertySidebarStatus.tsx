@@ -114,7 +114,16 @@ export default function PropertySidebarStatus({
     const counts: Record<string, number> = { all: listings.length };
 
     // 「未完了」カテゴリ: confirmation === '未' の物件をカウント
-    counts['未完了'] = listings.filter(l => l.confirmation === '未').length;
+    const incompleteListings = listings.filter(l => l.confirmation === '未');
+    counts['未完了'] = incompleteListings.length;
+    
+    // デバッグログ
+    if (incompleteListings.length > 0) {
+      console.log('[PropertySidebarStatus] 未完了の物件:', incompleteListings.map(l => ({
+        property_number: l.property_number,
+        confirmation: l.confirmation
+      })));
+    }
 
     if (pendingPriceReductionProperties && pendingPriceReductionProperties.size > 0) {
       counts['値下げ未完了'] = pendingPriceReductionProperties.size;

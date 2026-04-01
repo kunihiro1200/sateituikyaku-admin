@@ -151,6 +151,10 @@ export default function PropertyListingsPage() {
     if (!forceRefresh) {
       const cached = pageDataCache.get<PropertyListing[]>(CACHE_KEYS.PROPERTY_LISTINGS);
       if (cached) {
+        console.log('[PropertyListingsPage] キャッシュからデータを取得:', {
+          件数: cached.length,
+          未完了: cached.filter(l => l.confirmation === '未').length
+        });
         setAllListings(cached);
         setIsLoadingAll(false);
         setLoading(false);
@@ -210,6 +214,11 @@ export default function PropertyListingsPage() {
       // allListingsとisLoadingAllを同時に更新することでRenderを1回にまとめる
       setAllListings(allListingsData);
       setIsLoadingAll(false);
+
+      console.log('[PropertyListingsPage] APIからデータを取得:', {
+        物件数: allListingsData.length,
+        未完了: allListingsData.filter(l => l.confirmation === '未').length
+      });
 
       console.log('✅ データ取得成功:', { 物件数: allListingsData.length });
     } catch (error) {
