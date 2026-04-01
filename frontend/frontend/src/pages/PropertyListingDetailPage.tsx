@@ -689,7 +689,7 @@ export default function PropertyListingDetailPage() {
       setSnackbar({ open: true, message: `確認を「${value}」に更新しました`, severity: 'success' });
       
       // 物件リストのキャッシュをクリア（最重要）
-      pageDataCache.delete(CACHE_KEYS.PROPERTY_LISTINGS);
+      pageDataCache.invalidate(CACHE_KEYS.PROPERTY_LISTINGS);
       
       // 物件リストページに戻ったときに再取得するためのフラグを設定
       sessionStorage.setItem('propertyListingsNeedsRefresh', 'true');
