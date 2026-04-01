@@ -1048,7 +1048,6 @@ export class SellerService extends BaseRepository {
             .is('deleted_at', null)
             .not('visit_assignee', 'is', null)
             .neq('visit_assignee', '')
-            .neq('visit_assignee', '外す')
             .not('visit_date', 'is', null);
           console.log(`[visitDayBefore] todayJST=${todayJST}, candidates=${visitDayBeforeSellers?.length ?? 0}, error=${vdbError?.message}`);
           // visitDayBefore に該当するIDを計算
@@ -1096,7 +1095,6 @@ export class SellerService extends BaseRepository {
           query = query
             .not('visit_assignee', 'is', null)
             .neq('visit_assignee', '')
-            .neq('visit_assignee', '外す')
             .lte('next_call_date', todayJST)
             .not('status', 'ilike', '%追客不要%')
             .not('status', 'ilike', '%専任媒介%')

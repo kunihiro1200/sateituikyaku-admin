@@ -792,9 +792,9 @@ export class EnhancedAutoSyncService {
 
           // 重要なフィールドを比較
           const sheetContractYearMonth = sheetRow['契約年月 他決は分かった時点'];
-          // 「外す」は空扱い（nullと同等）
+          // 「外す」を有効な値として扱う
           const rawSheetVisitAssignee = sheetRow['営担'];
-          const sheetVisitAssignee = (rawSheetVisitAssignee === '外す' || rawSheetVisitAssignee === '') ? null : (rawSheetVisitAssignee || null);
+          const sheetVisitAssignee = (rawSheetVisitAssignee === '') ? null : (rawSheetVisitAssignee || null);
           const sheetStatus = sheetRow['状況（当社）'];
           // コミュニケーションフィールドを追加
           const sheetPhoneContactPerson = sheetRow['電話担当（任意）'];
@@ -1287,10 +1287,10 @@ export class EnhancedAutoSyncService {
       updateData.visit_valuation_acquirer = String(visitValuationAcquirer);
     }
     // visit_assigneeの更新ロジック
-    // - 「外す」または空文字の場合はnullでクリア
-    // - 値がある場合はその値で更新
+    // - 空文字の場合はnullでクリア
+    // - 値がある場合はその値で更新（「外す」を含む）
     // - undefinedの場合（スプシにカラムが存在しない等）は更新しない（DBの既存値を保持）
-    if (visitAssignee === '外す' || visitAssignee === '') {
+    if (visitAssignee === '') {
       updateData.visit_assignee = null;
     } else if (visitAssignee !== undefined && visitAssignee !== null) {
       updateData.visit_assignee = String(visitAssignee);
@@ -1588,10 +1588,10 @@ export class EnhancedAutoSyncService {
       encryptedData.visit_valuation_acquirer = String(visitValuationAcquirer);
     }
     // visit_assigneeの更新ロジック
-    // - 「外す」または空文字の場合はnullでクリア
-    // - 値がある場合はその値で設定
+    // - 空文字の場合はnullでクリア
+    // - 値がある場合はその値で設定（「外す」を含む）
     // - undefinedの場合（スプシにカラムが存在しない等）は設定しない（DBの既存値を保持）
-    if (visitAssignee === '外す' || visitAssignee === '') {
+    if (visitAssignee === '') {
       encryptedData.visit_assignee = null;
     } else if (visitAssignee !== undefined && visitAssignee !== null) {
       encryptedData.visit_assignee = String(visitAssignee);

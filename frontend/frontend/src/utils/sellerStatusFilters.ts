@@ -192,15 +192,15 @@ const isYesterdayOrBefore = (dateStr: string | Date | undefined | null): boolean
 
 /**
  * 営担（visitAssignee）に有効な入力があるかどうかを判定
- * 「外す」は担当なしと同じ扱い
+ * 「外す」は有効な営業担当の値として扱う
  */
 const hasVisitAssignee = (seller: Seller | any): boolean => {
   // visitAssigneeInitials（元のイニシャル）を優先して確認
   // visitAssigneeはフルネームに変換されている場合があるため
   // visitAssignee（camelCase）も参照（APIレスポンスの形式に対応）
   const visitAssignee = seller.visitAssigneeInitials || seller.visit_assignee || seller.visitAssignee || '';
-  // 空文字または「外す」の場合は担当なしとみなす
-  if (!visitAssignee || visitAssignee.trim() === '' || visitAssignee.trim() === '外す') {
+  // 空文字の場合は担当なしとみなす
+  if (!visitAssignee || visitAssignee.trim() === '') {
     return false;
   }
   return true;
@@ -674,8 +674,7 @@ export const isUnvaluated = (seller: Seller | any): boolean => {
   // 営担に値がある場合は未査定として表示しない
   const hasAssignee = (seller.visitAssigneeInitials || seller.visit_assignee || seller.visitAssignee) && 
                       typeof (seller.visitAssigneeInitials || seller.visit_assignee || seller.visitAssignee) === 'string' && 
-                      (seller.visitAssigneeInitials || seller.visit_assignee || seller.visitAssignee).trim() !== '' &&
-                      (seller.visitAssigneeInitials || seller.visit_assignee || seller.visitAssignee).trim() !== '外す';
+                      (seller.visitAssigneeInitials || seller.visit_assignee || seller.visitAssignee).trim() !== '';
   if (hasAssignee) {
     return false;
   }
@@ -917,9 +916,9 @@ export const isUnvisitedOtherDecision = (seller: Seller | any): boolean => {
     return false;
   }
   
-  // 営担が空かチェック（「外す」も空欄扱い）
+  // 営担が空かチェック
   const visitAssignee = seller.visitAssigneeInitials || seller.visit_assignee || seller.visitAssignee || '';
-  if (visitAssignee && visitAssignee.trim() !== '' && visitAssignee.trim() !== '外す') {
+  if (visitAssignee && visitAssignee.trim() !== '') {
     return false;
   }
   
@@ -934,8 +933,8 @@ export const isUnvisitedOtherDecision = (seller: Seller | any): boolean => {
  * @returns 指定した担当者に割り当てられているかどうか
  */
 export const isVisitAssignedTo = (seller: Seller | any, assignee: string): boolean => {
-  // 空文字や「外す」は担当なしと同じ扱い
-  if (!assignee || assignee.trim() === '' || assignee.trim() === '外す') {
+  // 空文字は担当なしと同じ扱い
+  if (!assignee || assignee.trim() === '') {
     return false;
   }
   
@@ -986,7 +985,7 @@ export const getUniqueAssignees = (sellers: (Seller | any)[]): string[] => {
   // visitAssignee（camelCase）も参照（APIレスポンスの形式に対応）
   const assignees = filteredSellers
     .map(s => s.visitAssigneeInitials || s.visit_assignee || s.visitAssignee || '')
-    .filter(a => a && a.trim() !== '' && a.trim() !== '外す');
+    .filter(a => a && a.trim() !== '');
   return [...new Set(assignees)].sort();
 };
 
