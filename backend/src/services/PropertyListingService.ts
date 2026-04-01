@@ -1237,19 +1237,18 @@ export class PropertyListingService {
 
     console.log(`[PropertyListingService] Successfully updated confirmation for ${propertyNumber}`);
 
-    // スプレッドシート同期をキューに追加（確認フィールド専用）
-    if (this.syncQueue) {
-      try {
-        await this.syncQueue.enqueue({
-          type: 'update_confirmation',
-          propertyNumber,
-          confirmation,
-        });
-        console.log(`[PropertyListingService] Enqueued confirmation sync for ${propertyNumber}`);
-      } catch (err: any) {
-        console.error(`[PropertyListingService] Failed to enqueue confirmation sync for ${propertyNumber}:`, err?.message || err);
-        // エンキュー失敗はDBの結果に影響しない
-      }
+    // スプレッドシートへ直接同期（キューを使わず即座に実行）
+    try {
+      const { PropertyListingSpreadsheetSync } = await import('./PropertyListingSpreadsheetSync');
+      const { GoogleSheetsClient } = await import('./GoogleSheetsClient');
+      
+      const sheetsClient = new GoogleSheetsClient();
+      const syncService = new PropertyListingSpreadsheetSync(sheetsClient, this.supabase);
+      await syncService.syncConfirmationToSpreadsheet(propertyNumber, confirmation);
+      console.log(`[PropertyListingService] Successfully synced confirmation to spreadsheet for ${propertyNumber}`);
+    } catch (syncError: any) {
+      console.error(`[PropertyListingService] Failed to sync confirmation to spreadsheet for ${propertyNumber}:`, syncError);
+      // 同期エラーでもDB更新は成功しているため、エラーをスローしない
     }
   }
 
