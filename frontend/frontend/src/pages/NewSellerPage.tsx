@@ -28,7 +28,7 @@ import {
 } from '@mui/icons-material';
 import api from '../services/api';
 import RichTextCommentEditor, { RichTextCommentEditorHandle } from '../components/RichTextCommentEditor';
-import { useRef, useEffect } from 'react';
+import { useRef } from 'react';
 import { getActiveEmployees, Employee } from '../services/employeeService';
 
 const propertyTypes = [
