@@ -897,6 +897,12 @@ export const isUnvisitedOtherDecision = (seller: Seller | any): boolean => {
   const nextCallDate = seller.nextCallDate || seller.next_call_date;
   const todayStr = getTodayJSTString();
   const normalizedNextCallDate = normalizeDateString(nextCallDate);
+  
+  // デバッグログ
+  if (seller.sellerNumber && seller.sellerNumber.startsWith('AA')) {
+    console.log(`[未訪問他決] ${seller.sellerNumber}: nextCallDate=${nextCallDate}, normalized=${normalizedNextCallDate}, today=${todayStr}, excluded=${!normalizedNextCallDate || normalizedNextCallDate === todayStr}`);
+  }
+  
   if (!normalizedNextCallDate || normalizedNextCallDate === todayStr) {
     return false;
   }
