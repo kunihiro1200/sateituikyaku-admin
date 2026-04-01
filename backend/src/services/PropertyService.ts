@@ -276,13 +276,17 @@ export class PropertyService {
   private async syncToSpreadsheetAsync(sellerId: string): Promise<void> {
     try {
       const { SpreadsheetSyncService } = await import('./SpreadsheetSyncService');
-      const syncService = new SpreadsheetSyncService();
+      const { GoogleSheetsClient } = await import('./GoogleSheetsClient');
+      
+      const sheetsClient = new GoogleSheetsClient();
+      const syncService = new SpreadsheetSyncService(sheetsClient, this.supabase);
       await syncService.syncToSpreadsheet(sellerId);
       console.log(`✅ [PropertyService] Synced verified area to spreadsheet for seller: ${sellerId}`);
     } catch (error: any) {
       console.error(`❌ [PropertyService] Failed to sync to spreadsheet for seller ${sellerId}:`, error);
       throw error;
     }
+  }
   }
 
   /**
