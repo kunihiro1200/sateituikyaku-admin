@@ -250,12 +250,69 @@ useEffect(() => {
 
 ## ✅ 完了条件
 
-- [ ] BB14の「確認」フィールドを「未」→「済」に変更後、別のタブに移動して戻っても、「未完了：1」が表示されない
-- [ ] 「未完了」をクリックしても「データがありません」と表示されない
-- [ ] キャッシュが正しくクリアされる
+- [x] BB14の「確認」フィールドを「未」→「済」に変更後、別のタブに移動して戻っても、「未完了：1」が表示されない
+- [x] 「未完了」をクリックしても「データがありません」と表示されない
+- [x] キャッシュが正しくクリアされる
+
+---
+
+## 🎯 最終的な解決策
+
+### 真の根本原因
+
+**useMemoの依存配列の不備**
+
+`PropertySidebarStatus.tsx` の `statusList` useMemo が `listings` を依存配列に含めていなかったため、`listings` が変更されても `statusList` が再計算されず、古いカウントが表示され続けていた。
+
+### 修正内容
+
+**ファイル**: `frontend/frontend/src/components/PropertySidebarStatus.tsx`
+
+**変更箇所**: 243行目
+
+```typescript
+// ❌ 修正前
+const statusList = useMemo(() => {
+  // ...
+}, [statusCounts, generalMediationIncompleteCount]);
+
+// ✅ 修正後
+const statusList = useMemo(() => {
+  // ...
+}, [statusCounts, generalMediationIncompleteCount, listings]);
+```
+
+### 修正理由
+
+1. `statusCounts` は `listings` に依存している
+2. `statusList` は `statusCounts` に依存している
+3. しかし、`statusList` の依存配列に `listings` が含まれていなかった
+4. 結果として、`listings` が変更されても `statusList` が再計算されず、古い `statusCounts` を参照し続けていた
+
+### テスト結果
+
+✅ 「未完了：1」が正しく消えることを確認  
+✅ データベースに0件の場合、サイドバーに表示されないことを確認  
+✅ 本番環境で動作確認完了
+
+---
+
+## 📚 再発防止策
+
+**ステアリングドキュメント作成**: `.kiro/steering/react-usememo-dependencies.md`
+
+このドキュメントには以下のルールが記載されています：
+
+1. **useMemo内で参照している全てのデータを依存配列に含める**
+2. **別のuseMemoの結果を使用する場合、元のデータも依存配列に含める**
+3. **ESLintの `react-hooks/exhaustive-deps` 警告を無視しない**
+
+今後、useMemoを使用する際は、このステアリングドキュメントを参照してください。
 
 ---
 
 **作成日**: 2026年4月1日  
 **バグ発見日**: 2026年4月1日  
-**優先度**: 高（ユーザー体験に直接影響）
+**修正完了日**: 2026年4月1日  
+**優先度**: 高（ユーザー体験に直接影響）  
+**修正コミット**: f238f572
