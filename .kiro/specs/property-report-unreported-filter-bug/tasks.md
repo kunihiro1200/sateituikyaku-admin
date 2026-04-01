@@ -1,4 +1,4 @@
-# Implementation Plan
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                # Implementation Plan
 
 - [x] 1. Write bug condition exploration test
   - **Property 1: Bug Condition** - 報告日設定済み物件が「未報告」に誤表示

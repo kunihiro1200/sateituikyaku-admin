@@ -1180,7 +1180,7 @@ export class SellerService extends BaseRepository {
           // 一般カテゴリー（専任他決打合せ <> "完了" + 次電日 <> TODAY() + 状況が一般媒介 + 契約年月 >= 2025/6/23）
           query = query
             .neq('exclusive_other_decision_meeting', '完了')
-            .gt('next_call_date', todayJST)
+            .neq('next_call_date', todayJST)
             .eq('status', '一般媒介')
             .gte('contract_year_month', '2025-06-23');
           break;
