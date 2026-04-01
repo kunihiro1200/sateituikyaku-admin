@@ -595,6 +595,14 @@ const SellerDetailPage = () => {
   };
 
   const getStatusLabel = (status: SellerStatus | string): string => {
+    // スプレッドシートから同期された英語の値を日本語に変換
+    if (status === 'VISITOTHERDECISION') {
+      return '訪問後他決';
+    }
+    if (status === 'UNVISITEDOTHERDECISION') {
+      return '未訪問他決';
+    }
+    
     // スプレッドシートから同期された日本語の値をそのまま表示
     if (status && typeof status === 'string' && !Object.values(SellerStatus).includes(status as SellerStatus)) {
       return status;
@@ -615,6 +623,11 @@ const SellerDetailPage = () => {
   };
 
   const getStatusColor = (status: SellerStatus | string): 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning' => {
+    // 英語表記の色を判定
+    if (status === 'VISITOTHERDECISION' || status === 'UNVISITEDOTHERDECISION') {
+      return 'warning';
+    }
+    
     // スプレッドシートから同期された日本語の値の色を判定
     if (status && typeof status === 'string' && !Object.values(SellerStatus).includes(status as SellerStatus)) {
       if (status.includes('専任') || status.includes('一般媒介')) return 'success';
