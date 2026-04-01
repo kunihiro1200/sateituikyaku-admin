@@ -1172,14 +1172,14 @@ export class SellerService extends BaseRepository {
         case 'exclusive':
           // 専任カテゴリー（専任他決打合せ <> "完了" + 次電日 <> TODAY() + 状況が専任媒介関連）
           query = query
-            .neq('exclusive_other_decision_meeting', '完了')
+            .or('exclusive_other_decision_meeting.is.null,exclusive_other_decision_meeting.neq.完了')
             .neq('next_call_date', todayJST)
             .in('status', ['専任媒介', '他決→専任', 'リースバック（専任）']);
           break;
         case 'general':
           // 一般カテゴリー（専任他決打合せ <> "完了" + 次電日 <> TODAY() + 状況が一般媒介 + 契約年月 >= 2025/6/23）
           query = query
-            .neq('exclusive_other_decision_meeting', '完了')
+            .or('exclusive_other_decision_meeting.is.null,exclusive_other_decision_meeting.neq.完了')
             .neq('next_call_date', todayJST)
             .eq('status', '一般媒介')
             .gte('contract_year_month', '2025-06-23');
@@ -1187,7 +1187,7 @@ export class SellerService extends BaseRepository {
         case 'visitOtherDecision':
           // 訪問後他決カテゴリー（専任他決打合せ <> "完了" + 次電日 <> TODAY() + 状況が他決関連 + 営担あり）
           query = query
-            .neq('exclusive_other_decision_meeting', '完了')
+            .or('exclusive_other_decision_meeting.is.null,exclusive_other_decision_meeting.neq.完了')
             .neq('next_call_date', todayJST)
             .in('status', ['他決→追客', '他決→追客不要', '一般→他決', '他社買取'])
             .not('visit_assignee', 'is', null)
@@ -1197,7 +1197,7 @@ export class SellerService extends BaseRepository {
         case 'unvisitedOtherDecision':
           // 未訪問他決カテゴリー（専任他決打合せ <> "完了" + 次電日 <> TODAY() + 状況が他決関連 + 営担なし）
           query = query
-            .neq('exclusive_other_decision_meeting', '完了')
+            .or('exclusive_other_decision_meeting.is.null,exclusive_other_decision_meeting.neq.完了')
             .neq('next_call_date', todayJST)
             .in('status', ['他決→追客', '他決→追客不要', '一般→他決'])
             .or('visit_assignee.is.null,visit_assignee.eq.,visit_assignee.eq.外す');
