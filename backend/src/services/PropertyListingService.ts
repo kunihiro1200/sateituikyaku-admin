@@ -1242,9 +1242,17 @@ export class PropertyListingService {
       const { PropertyListingSpreadsheetSync } = await import('./PropertyListingSpreadsheetSync');
       const { GoogleSheetsClient } = await import('./GoogleSheetsClient');
       
+      // 物件リストスプレッドシートIDを使用（売主リストではない）
+      const propertySpreadsheetId = process.env.PROPERTY_LISTING_SPREADSHEET_ID;
+      if (!propertySpreadsheetId) {
+        console.warn('[PropertyListingService] PROPERTY_LISTING_SPREADSHEET_ID not set, skipping spreadsheet sync');
+        return;
+      }
+      
       const sheetsClient = new GoogleSheetsClient({
-        spreadsheetId: process.env.GOOGLE_SHEETS_SPREADSHEET_ID || '',
-        sheetName: '物件',
+        spreadsheetId: propertySpreadsheetId,
+        sheetName: process.env.PROPERTY_LISTING_SHEET_NAME || '物件',
+        serviceAccountKeyPath: process.env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH,
       });
       const syncService = new PropertyListingSpreadsheetSync(sheetsClient, this.supabase);
       await syncService.syncConfirmationToSpreadsheet(propertyNumber, confirmation);

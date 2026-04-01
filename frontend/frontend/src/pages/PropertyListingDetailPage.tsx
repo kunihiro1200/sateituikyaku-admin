@@ -689,6 +689,11 @@ export default function PropertyListingDetailPage() {
       
       // 物件リストページに戻ったときに再取得するためのフラグを設定
       sessionStorage.setItem('propertyListingsNeedsRefresh', 'true');
+      
+      // 即座にサイドバーを更新するためのイベントを発火
+      window.dispatchEvent(new CustomEvent('propertyConfirmationUpdated', { 
+        detail: { propertyNumber, confirmation: value } 
+      }));
     } catch (error: any) {
       setSnackbar({ open: true, message: error.response?.data?.error || '確認の更新に失敗しました', severity: 'error' });
     } finally {

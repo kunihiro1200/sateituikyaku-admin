@@ -2391,6 +2391,15 @@ export class SellerService extends BaseRepository {
       .neq('visit_assignee', '')
       .neq('visit_assignee', '外す');
 
+    // 12. 未訪問他決カテゴリー
+    const { count: unvisitedOtherDecisionCount } = await this.table('sellers')
+      .select('*', { count: 'exact', head: true })
+      .is('deleted_at', null)
+      .neq('exclusive_other_decision_meeting', '完了')
+      .gt('next_call_date', todayJST)
+      .in('status', ['他決→追客', '他決→追客不要', '一般→他決', '他社買取'])
+      .or('visit_assignee.is.null,visit_assignee.eq.,visit_assignee.eq.外す');
+
     const sidebarResult = {
       todayCall: todayCallNoInfoCount || 0,
       todayCallWithInfo: todayCallWithInfoCount || 0,
@@ -2404,6 +2413,7 @@ export class SellerService extends BaseRepository {
       exclusive: exclusiveCount || 0,
       general: generalCount || 0,
       visitOtherDecision: visitOtherDecisionCount || 0,
+      unvisitedOtherDecision: unvisitedOtherDecisionCount || 0,
       visitAssignedCounts,
       todayCallAssignedCounts,
       todayCallWithInfoLabels,

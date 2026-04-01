@@ -113,6 +113,26 @@ export default function PropertyListingsPage() {
     } else {
       fetchAllData();
     }
+
+    // confirmation更新イベントをリッスン
+    const handleConfirmationUpdate = (event: CustomEvent) => {
+      const { propertyNumber, confirmation } = event.detail;
+      
+      // ローカルステートを即座に更新
+      setAllListings(prevListings => 
+        prevListings.map(listing => 
+          listing.property_number === propertyNumber 
+            ? { ...listing, confirmation } 
+            : listing
+        )
+      );
+    };
+
+    window.addEventListener('propertyConfirmationUpdated', handleConfirmationUpdate as EventListener);
+    
+    return () => {
+      window.removeEventListener('propertyConfirmationUpdated', handleConfirmationUpdate as EventListener);
+    };
   }, []);
 
   const fetchAllData = async (forceRefresh = false) => {
