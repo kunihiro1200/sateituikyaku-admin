@@ -133,7 +133,7 @@ export default function PropertyListingsPage() {
     return () => {
       window.removeEventListener('propertyConfirmationUpdated', handleConfirmationUpdate as EventListener);
     };
-  }, []);
+  }, [location.pathname]); // ← location.pathnameを追加
 
   const fetchAllData = async (forceRefresh = false) => {
     // 二重フェッチ防止（キャッシュヒット時は除く）
