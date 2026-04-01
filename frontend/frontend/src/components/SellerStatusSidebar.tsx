@@ -25,6 +25,7 @@ import {
   isVisitDayBefore,
   isVisitScheduled,
   isVisitCompleted,
+  isUnvisitedOtherDecision,
 } from '../utils/sellerStatusFilters';
 import { Seller } from '../types';
 
@@ -111,6 +112,8 @@ const filterSellersByCategory = (sellers: any[], category: StatusCategory): any[
       return sellers.filter(isVisitDayBefore);
     case 'visitCompleted':
       return sellers.filter(isVisitCompleted);
+    case 'unvisitedOtherDecision':
+      return sellers.filter(isUnvisitedOtherDecision);
     default:
       return sellers;
   }
