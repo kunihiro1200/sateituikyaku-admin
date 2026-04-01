@@ -196,7 +196,7 @@ export class PropertyListingSpreadsheetSync {
       for (let i = 1; i < rows.length; i++) {
         const row = rows[i];
         const propertyNumber = row[0]; // B列（0-indexed: 0）
-        const confirmation = row[119]; // DQ列（0-indexed: 119）
+        const confirmation = row[118]; // DQ列（0-indexed: 118、B列から開始のため120-2=118）
 
         if (!propertyNumber) continue;
 
