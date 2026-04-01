@@ -31,7 +31,7 @@ export class PropertyService {
           property_address: propertyData.address, // addressフィールドをproperty_addressカラムにマッピング
           prefecture: propertyData.prefecture,
           city: propertyData.city,
-          property_type: propertyData.propertyType,
+          property_type: this.normalizePropertyTypeToJapanese(propertyData.propertyType || null), // 日本語に変換
           land_area: propertyData.landArea,
           building_area: propertyData.buildingArea,
           land_area_verified: propertyData.landAreaVerified,
@@ -156,7 +156,12 @@ export class PropertyService {
       if (updates.address !== undefined) updateData.property_address = updates.address;
       if (updates.prefecture !== undefined) updateData.prefecture = updates.prefecture;
       if (updates.city !== undefined) updateData.city = updates.city;
-      if (updates.propertyType !== undefined) updateData.property_type = updates.propertyType;
+      
+      // propertyTypeを日本語に変換（チェック制約対応）
+      if (updates.propertyType !== undefined) {
+        updateData.property_type = this.normalizePropertyTypeToJapanese(updates.propertyType);
+      }
+      
       if (updates.landArea !== undefined) updateData.land_area = updates.landArea;
       if (updates.buildingArea !== undefined) updateData.building_area = updates.buildingArea;
       if (updates.landAreaVerified !== undefined)
@@ -197,6 +202,34 @@ export class PropertyService {
       console.error('Update property error:', error);
       throw error;
     }
+  }
+
+  /**
+   * 物件種別を日本語に正規化（チェック制約対応）
+   * 英語値・略語・日本語を全て日本語に統一
+   */
+  private normalizePropertyTypeToJapanese(type: string | null): string | null {
+    if (!type) return null;
+    
+    const map: Record<string, string> = {
+      // 英語値 → 日本語
+      'land': '土地',
+      'detached_house': '戸建て',
+      'apartment': 'マンション',
+      'commercial': '商業用',
+      // 略語 → 日本語
+      '土': '土地',
+      '戸': '戸建て',
+      'マ': 'マンション',
+      // 日本語（そのまま）
+      '土地': '土地',
+      '戸建': '戸建て',
+      '戸建て': '戸建て',
+      'マンション': 'マンション',
+      '商業用': '商業用',
+    };
+    
+    return map[type] || type;
   }
 
   /**

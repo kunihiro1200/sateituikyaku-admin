@@ -1186,22 +1186,21 @@ export class SellerService extends BaseRepository {
             .gte('contract_year_month', '2025-06-23');
           break;
         case 'visitOtherDecision':
-          // 訪問後他決カテゴリー（専任他決打合せ <> "完了" + 次電日 <> TODAY() + 状況が他決関連 + 営担あり）
+          // 訪問後他決カテゴリー（専任他決打合せ <> "完了" + 次電日 <> TODAY() + 状況が他決関連 + 営担あり（「外す」含む））
           query = query
             .or('exclusive_other_decision_meeting.is.null,exclusive_other_decision_meeting.neq.完了')
             .or(`next_call_date.is.null,next_call_date.neq.${todayJST}`)
             .in('status', ['他決→追客', '他決→追客不要', '一般→他決', '他社買取'])
             .not('visit_assignee', 'is', null)
-            .neq('visit_assignee', '')
-            .neq('visit_assignee', '外す');
+            .neq('visit_assignee', '');
           break;
         case 'unvisitedOtherDecision':
           // 未訪問他決カテゴリー（専任他決打合せ <> "完了" + 次電日 <> TODAY() + 状況が他決関連 + 営担なし）
           query = query
             .or('exclusive_other_decision_meeting.is.null,exclusive_other_decision_meeting.neq.完了')
             .or(`next_call_date.is.null,next_call_date.neq.${todayJST}`)
-            .in('status', ['他決→追客', '他決→追客不要', '一般→他決'])
-            .or('visit_assignee.is.null,visit_assignee.eq.,visit_assignee.eq.外す');
+            .in('status', ['他決→追客', '他決→追客不要', '一般→他決', '他社買取'])
+            .or('visit_assignee.is.null,visit_assignee.eq.');
           break;
         default: {
           // visitAssigned:xxx または todayCallAssigned:xxx または todayCallWithInfo:xxx の動的カテゴリ
@@ -2380,7 +2379,7 @@ export class SellerService extends BaseRepository {
       .eq('status', '一般媒介')
       .gte('contract_year_month', '2025-06-23');
 
-    // 11. 訪問後他決カテゴリー
+    // 11. 訪問後他決カテゴリー（営担あり（「外す」含む））
     const { count: visitOtherDecisionCount } = await this.table('sellers')
       .select('*', { count: 'exact', head: true })
       .is('deleted_at', null)
@@ -2388,17 +2387,16 @@ export class SellerService extends BaseRepository {
       .gt('next_call_date', todayJST)
       .in('status', ['他決→追客', '他決→追客不要', '一般→他決', '他社買取'])
       .not('visit_assignee', 'is', null)
-      .neq('visit_assignee', '')
-      .neq('visit_assignee', '外す');
+      .neq('visit_assignee', '');
 
-    // 12. 未訪問他決カテゴリー
+    // 12. 未訪問他決カテゴリー（営担なし）
     const { count: unvisitedOtherDecisionCount } = await this.table('sellers')
       .select('*', { count: 'exact', head: true })
       .is('deleted_at', null)
       .neq('exclusive_other_decision_meeting', '完了')
       .gt('next_call_date', todayJST)
       .in('status', ['他決→追客', '他決→追客不要', '一般→他決', '他社買取'])
-      .or('visit_assignee.is.null,visit_assignee.eq.,visit_assignee.eq.外す');
+      .or('visit_assignee.is.null,visit_assignee.eq.');
 
     const sidebarResult = {
       todayCall: todayCallNoInfoCount || 0,

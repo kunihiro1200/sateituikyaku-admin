@@ -63,7 +63,8 @@ export interface CategoryCounts {
   pinrichEmpty: number;        // Pinrich空欄（Pinrichカラムが空欄）
   exclusive: number;           // 専任カテゴリー（専任他決打合せ <> "完了" + 次電日 <> TODAY() + 状況が専任媒介関連）
   general: number;             // 一般カテゴリー（専任他決打合せ <> "完了" + 次電日 <> TODAY() + 状況が一般媒介 + 契約年月 >= 2025/6/23）
-  visitOtherDecision: number;  // 訪問後他決カテゴリー（専任他決打合せ <> "完了" + 次電日 <> TODAY() + 状況が他決関連 + 営担あり）
+  visitOtherDecision: number;  // 訪問後他決カテゴリー（専任他決打合せ <> "完了" + 次電日 <> TODAY() + 状況が他決関連 + 営担あり（「外す」含む））
+  unvisitedOtherDecision: number; // 未訪問他決カテゴリー（専任他決打合せ <> "完了" + 次電日 <> TODAY() + 状況が他決関連 + 営担なし）
   visitAssignedCounts?: Record<string, number>;     // 担当者別件数（全売主）
   todayCallAssignedCounts?: Record<string, number>; // 担当者別当日TEL件数
   todayCallWithInfoLabels?: string[];               // 当日TEL（内容）のユニークラベル一覧（全件対象）
@@ -833,7 +834,7 @@ export const isGeneral = (seller: Seller | any): boolean => {
  * - exclusive_other_decision_meeting <> "完了"
  * - next_call_date <> TODAY()
  * - status IN ("他決→追客", "他決→追客不要", "一般→他決", "他社買取")
- * - visit_assignee <> ""
+ * - visit_assignee <> "" （「外す」は担当ありとして扱う）
  * 
  * @param seller 売主データ
  * @returns 訪問後他決カテゴリー対象かどうか
@@ -864,9 +865,54 @@ export const isVisitOtherDecision = (seller: Seller | any): boolean => {
     return false;
   }
   
-  // 営担に入力があるかチェック
+  // 営担に入力があるかチェック（「外す」は担当ありとして扱う）
   const visitAssignee = seller.visitAssigneeInitials || seller.visit_assignee || seller.visitAssignee || '';
-  if (!visitAssignee || visitAssignee.trim() === '' || visitAssignee.trim() === '外す') {
+  if (!visitAssignee || visitAssignee.trim() === '') {
+    return false;
+  }
+  
+  return true;
+};
+
+/**
+ * 未訪問他決カテゴリー判定
+ * 
+ * 条件:
+ * - exclusive_other_decision_meeting <> "完了"
+ * - next_call_date <> TODAY()
+ * - status IN ("他決→追客", "他決→追客不要", "一般→他決", "他社買取")
+ * - visit_assignee = "" （営担なし）
+ * 
+ * @param seller 売主データ
+ * @returns 未訪問他決カテゴリー対象かどうか
+ */
+export const isUnvisitedOtherDecision = (seller: Seller | any): boolean => {
+  // 専任他決打合せが「完了」の場合は除外
+  const exclusiveOtherDecisionMeeting = seller.exclusiveOtherDecisionMeeting || seller.exclusive_other_decision_meeting || '';
+  if (exclusiveOtherDecisionMeeting === '完了') {
+    return false;
+  }
+  
+  // 次電日が今日の場合は除外
+  const nextCallDate = seller.nextCallDate || seller.next_call_date;
+  if (isTodayOrBefore(nextCallDate)) {
+    return false;
+  }
+  
+  // 状況（当社）が他決関連かチェック
+  const status = seller.status || '';
+  const isOtherDecisionStatus = 
+    status === '他決→追客' || 
+    status === '他決→追客不要' || 
+    status === '一般→他決' || 
+    status === '他社買取';
+  if (!isOtherDecisionStatus) {
+    return false;
+  }
+  
+  // 営担が空かチェック（「外す」も空扱い）
+  const visitAssignee = seller.visitAssigneeInitials || seller.visit_assignee || seller.visitAssignee || '';
+  if (visitAssignee && visitAssignee.trim() !== '') {
     return false;
   }
   
@@ -960,6 +1006,7 @@ export const getCategoryCounts = (sellers: (Seller | any)[]): CategoryCounts => 
     exclusive: sellers.filter(isExclusive).length,
     general: sellers.filter(isGeneral).length,
     visitOtherDecision: sellers.filter(isVisitOtherDecision).length,
+    unvisitedOtherDecision: sellers.filter(isUnvisitedOtherDecision).length,
   };
 };
 
@@ -1017,6 +1064,8 @@ export const filterSellersByCategory = (
       return sellers.filter(isGeneral);
     case 'visitOtherDecision':
       return sellers.filter(isVisitOtherDecision);
+    case 'unvisitedOtherDecision':
+      return sellers.filter(isUnvisitedOtherDecision);
     case 'all':
     default:
       return sellers;

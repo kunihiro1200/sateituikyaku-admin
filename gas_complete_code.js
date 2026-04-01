@@ -692,7 +692,7 @@ function updateSidebarCounts_(sheetRows) {
     var status = String(row['状況（当社）'] || '');
     var nextCallDate = formatDateToISO_(row['次電日']);
     var visitAssignee = row['営担'];
-    var isVisitAssigneeValid = visitAssignee && visitAssignee !== '外す';
+    var isVisitAssigneeValid = visitAssignee && visitAssignee !== '';  // 「外す」は担当ありとして扱う
     var visitDateStr = formatDateToISO_(row['訪問日 \nY/M/D'] || row['訪問日']);
     var inquiryDateStr = formatDateToISO_(row['反響日付']);
     var unreachable = row['不通'] ? String(row['不通']) : '';
@@ -768,10 +768,10 @@ function updateSidebarCounts_(sheetRows) {
       counts.visitOtherDecision++;
     }
 
-    // 未訪問他決カテゴリ: 専任他決打合せ ≠ "完了" AND 次電日 ≠ 今日 AND 状況（当社） IN ("他決→追客", "他決→追客不要", "一般→他決") AND 営担 = ""
+    // 未訪問他決カテゴリ: 専任他決打合せ ≠ "完了" AND 次電日 ≠ 今日 AND 状況（当社） IN ("他決→追客", "他決→追客不要", "一般→他決", "他社買取") AND 営担 = ""
     if (exclusiveOtherDecisionMeeting !== '完了' &&
         (!nextCallDate || nextCallDate !== todayStr) &&
-        (status === '他決→追客' || status === '他決→追客不要' || status === '一般→他決') &&
+        (status === '他決→追客' || status === '他決→追客不要' || status === '一般→他決' || status === '他社買取') &&
         !isVisitAssigneeValid) {
       counts.unvisitedOtherDecision++;
     }
