@@ -1242,7 +1242,10 @@ export class PropertyListingService {
       const { PropertyListingSpreadsheetSync } = await import('./PropertyListingSpreadsheetSync');
       const { GoogleSheetsClient } = await import('./GoogleSheetsClient');
       
-      const sheetsClient = new GoogleSheetsClient();
+      const sheetsClient = new GoogleSheetsClient({
+        spreadsheetId: process.env.GOOGLE_SHEETS_SPREADSHEET_ID || '',
+        sheetName: '物件',
+      });
       const syncService = new PropertyListingSpreadsheetSync(sheetsClient, this.supabase);
       await syncService.syncConfirmationToSpreadsheet(propertyNumber, confirmation);
       console.log(`[PropertyListingService] Successfully synced confirmation to spreadsheet for ${propertyNumber}`);

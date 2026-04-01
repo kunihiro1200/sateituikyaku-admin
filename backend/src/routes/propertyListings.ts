@@ -1252,7 +1252,10 @@ router.post('/:propertyNumber/send-chat-to-office', async (req: Request, res: Re
       const { PropertyListingSpreadsheetSync } = await import('../services/PropertyListingSpreadsheetSync');
       const { GoogleSheetsClient } = await import('../services/GoogleSheetsClient');
       
-      const sheetsClient = new GoogleSheetsClient();
+      const sheetsClient = new GoogleSheetsClient({
+        spreadsheetId: process.env.GOOGLE_SHEETS_SPREADSHEET_ID || '',
+        sheetName: '物件',
+      });
       const syncService = new PropertyListingSpreadsheetSync(sheetsClient, supabase);
       await syncService.syncConfirmationToSpreadsheet(propertyNumber, '未');
       console.log(`[send-chat-to-office] Successfully synced confirmation to spreadsheet for ${propertyNumber}`);
