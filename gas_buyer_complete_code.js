@@ -30,9 +30,10 @@ function rowToObject(headers, rowData) {
           String(val.getDate()).padStart(2, '0');
       }
     } else {
-      // 買主番号は必ず文字列型に変換
+      // 買主番号は必ず文字列型に変換し、BBプレフィックスを追加
       if (headerName === '買主番号' && val !== null && val !== undefined && val !== '') {
-        obj[headerName] = String(val);
+        var strVal = String(val);
+        obj[headerName] = strVal.match(/^BB\d+$/) ? strVal : 'BB' + strVal;
       } else {
         obj[headerName] = val;
       }
@@ -395,7 +396,9 @@ function syncBuyerList() {
   var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
   var allData = sheet.getRange(2, 1, lastRow - 1, lastCol).getValues();
   var sheetRows = [];
-  for (var i = 0; i < allData.length; i++) { sheetRows.push(rowToObject(headers, allData[i])); }
+  for (var i = 0; i < allData.length; i++) {
+    sheetRows.push(rowToObject(headers, allData[i]));
+  }
   Logger.log('📊 スプレッドシート行数: ' + sheetRows.length);
   
   // Phase 1: 追加同期（スプレッドシートにあってDBにない買主を追加）
