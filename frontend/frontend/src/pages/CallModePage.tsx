@@ -2274,7 +2274,7 @@ const CallModePage = () => {
       console.log('🚀 autoCalculateValuationsを実行');
       autoCalculateValuations(roadPrice);
     }, 1000);
-  }, [autoCalculateValuations]);
+  }, []); // 依存配列を空にして、autoCalculateValuationsの最新版を常に参照
 
   // 手入力査定額を保存する関数
   const handleSaveManualValuation = async () => {
