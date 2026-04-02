@@ -124,7 +124,8 @@ function updateBuyerSidebarCounts_() {
   var counts = {
     todayCall: 0,
     todayCallAssigned: {},
-    assigned: {}
+    assigned: {},
+    inquiryEmailNotResponded: 0  // 問合せメール未対応
   };
   
   for (var i = 0; i < sheetRows.length; i++) {
@@ -138,6 +139,12 @@ function updateBuyerSidebarCounts_() {
     var followUpAssignee = row['後続担当'];
     var assignee = followUpAssignee || initialAssignee;
     var isAssigneeValid = assignee && assignee !== '外す';
+    var inquiryEmailPhone = row['【問合メール】電話対応'] ? String(row['【問合メール】電話対応']) : '';
+    
+    // 問合せメール未対応カテゴリ
+    if (inquiryEmailPhone === '未') {
+      counts.inquiryEmailNotResponded++;
+    }
     
     // 担当（担当別）カテゴリ
     if (isAssigneeValid) {
@@ -161,6 +168,15 @@ function updateBuyerSidebarCounts_() {
   // Supabaseに保存
   var upsertRows = [];
   var now = new Date().toISOString();
+  
+  // 問合せメール未対応
+  upsertRows.push({
+    category: 'inquiryEmailNotResponded',
+    count: counts.inquiryEmailNotResponded,
+    label: '',
+    assignee: '',
+    updated_at: now
+  });
   
   // 当日TEL分（担当なし）
   upsertRows.push({
