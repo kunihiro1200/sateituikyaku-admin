@@ -10,6 +10,7 @@ import { ColumnMapper } from './ColumnMapper';
 import { PropertySyncHandler } from './PropertySyncHandler';
 import { encrypt } from '../utils/encryption';
 import { ExclusionDateCalculator } from './ExclusionDateCalculator';
+import * as crypto from 'crypto';
 import {
   ValidationResult,
   DeletionResult,
@@ -1207,9 +1208,13 @@ export class EnhancedAutoSyncService {
     }
     if (mappedData.phone_number && mappedData.phone_number.trim() !== '') {
       updateData.phone_number = encrypt(mappedData.phone_number);
+      // 重複検出用ハッシュ（SHA-256）
+      updateData.phone_number_hash = crypto.createHash('sha256').update(mappedData.phone_number).digest('hex');
     }
     if (mappedData.email && mappedData.email.trim() !== '') {
       updateData.email = encrypt(mappedData.email);
+      // 重複検出用ハッシュ（SHA-256）
+      updateData.email_hash = crypto.createHash('sha256').update(mappedData.email).digest('hex');
     }
 
     // 状況（売主）をsellers.current_statusにも保存（空欄の場合はnullでクリア）
@@ -1503,6 +1508,9 @@ export class EnhancedAutoSyncService {
       address: mappedData.address ? encrypt(mappedData.address) : null,
       phone_number: mappedData.phone_number ? encrypt(mappedData.phone_number) : null,
       email: mappedData.email ? encrypt(mappedData.email) : null,
+      // 重複検出用ハッシュ（SHA-256）
+      phone_number_hash: mappedData.phone_number ? crypto.createHash('sha256').update(mappedData.phone_number).digest('hex') : null,
+      email_hash: mappedData.email ? crypto.createHash('sha256').update(mappedData.email).digest('hex') : null,
       status: mappedData.status || '追客中',
       next_call_date: mappedData.next_call_date || null,
       pinrich_status: mappedData.pinrich_status || null,
