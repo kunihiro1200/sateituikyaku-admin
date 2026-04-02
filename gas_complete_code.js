@@ -123,7 +123,7 @@ function fetchAllSellersFromSupabase_() {
   var allSellers = [];
   var pageSize = 1000;
   var offset = 0;
-  var fields = 'seller_number,status,next_call_date,visit_assignee,unreachable_status,comments,phone_contact_person,preferred_contact_time,contact_method,contract_year_month,current_status,pinrich_status,visit_reminder_assignee,property_address,land_area,building_area,build_year,structure,floor_plan,inquiry_date,inquiry_detailed_datetime,valuation_method,valuation_amount_1,valuation_amount_2,valuation_amount_3,visit_acquisition_date,visit_date,visit_time,visit_valuation_acquirer,valuation_assignee,confidence_level,competitor_name,competitor_name_and_reason,exclusive_other_decision_factor,visit_notes,first_call_person,exclusion_action';
+  var fields = 'seller_number,status,next_call_date,visit_assignee,unreachable_status,comments,phone_contact_person,preferred_contact_time,contact_method,contract_year_month,current_status,pinrich_status,visit_reminder_assignee,property_address,land_area,building_area,build_year,structure,floor_plan,inquiry_date,inquiry_detailed_datetime,valuation_method,valuation_amount_1,valuation_amount_2,valuation_amount_3,visit_acquisition_date,visit_date,visit_time,visit_valuation_acquirer,valuation_assignee,confidence_level,competitor_name,competitor_name_and_reason,exclusive_other_decision_factor,visit_notes,first_call_person,exclusion_action,unreachable_sms_assignee,valuation_sms_assignee,valuation_reason_email_assignee,valuation_reason,cancel_notice_assignee,long_term_email_assignee,call_reminder_email_assignee,inquiry_id,site_url,mailing_status,fixed_asset_tax_road_price,exclusive_other_decision_meeting,land_area_verified,building_area_verified,valuation_text';
   while (true) {
     var url = SUPABASE_CONFIG.URL + '/rest/v1/sellers?select=' + fields +
       '&deleted_at=is.null&offset=' + offset + '&limit=' + pageSize;
@@ -289,6 +289,71 @@ function syncUpdatesToSupabase_(sheetRows) {
     if (sheetDtCompare !== dbDtCompare) { updateData.inquiry_detailed_datetime = sheetInquiryDetailedDatetime; needsUpdate = true; }
     var sheetExclusionAction = row['除外日にすること'] ? String(row['除外日にすること']) : null;
     if (sheetExclusionAction !== (dbSeller.exclusion_action || null)) { updateData.exclusion_action = sheetExclusionAction; needsUpdate = true; }
+    
+    // 🚨 追加: 15個の不足フィールドの同期処理
+    // 1. unreachable_sms_assignee（不通時Sメール担当）
+    var sheetUnreachableSms = row['不通時Sメール担当'] ? String(row['不通時Sメール担当']) : null;
+    if (sheetUnreachableSms !== (dbSeller.unreachable_sms_assignee || null)) { updateData.unreachable_sms_assignee = sheetUnreachableSms; needsUpdate = true; }
+    
+    // 2. valuation_sms_assignee（査定Sメール担当）
+    var sheetValuationSms = row['査定Sメール担当'] ? String(row['査定Sメール担当']) : null;
+    if (sheetValuationSms !== (dbSeller.valuation_sms_assignee || null)) { updateData.valuation_sms_assignee = sheetValuationSms; needsUpdate = true; }
+    
+    // 3. valuation_reason_email_assignee（査定理由別３後Eメ担）
+    var sheetValReasonEmail = row['査定理由別３後Eメ担'] ? String(row['査定理由別３後Eメ担']) : null;
+    if (sheetValReasonEmail !== (dbSeller.valuation_reason_email_assignee || null)) { updateData.valuation_reason_email_assignee = sheetValReasonEmail; needsUpdate = true; }
+    
+    // 4. valuation_reason（査定理由）
+    var sheetValReason = row['査定理由'] ? String(row['査定理由']) : null;
+    if (sheetValReason !== (dbSeller.valuation_reason || null)) { updateData.valuation_reason = sheetValReason; needsUpdate = true; }
+    
+    // 5. cancel_notice_assignee（キャンセル案内担当）
+    var sheetCancelNotice = row['キャンセル案内担当'] ? String(row['キャンセル案内担当']) : null;
+    if (sheetCancelNotice !== (dbSeller.cancel_notice_assignee || null)) { updateData.cancel_notice_assignee = sheetCancelNotice; needsUpdate = true; }
+    
+    // 6. long_term_email_assignee（除外前、長期客メール担当）
+    var sheetLongTermEmail = row['除外前、長期客メール担当'] ? String(row['除外前、長期客メール担当']) : null;
+    if (sheetLongTermEmail !== (dbSeller.long_term_email_assignee || null)) { updateData.long_term_email_assignee = sheetLongTermEmail; needsUpdate = true; }
+    
+    // 7. call_reminder_email_assignee（当社が電話したというリマインドメール担当）
+    var sheetCallReminderEmail = row['当社が電話したというリマインドメール担当'] ? String(row['当社が電話したというリマインドメール担当']) : null;
+    if (sheetCallReminderEmail !== (dbSeller.call_reminder_email_assignee || null)) { updateData.call_reminder_email_assignee = sheetCallReminderEmail; needsUpdate = true; }
+    
+    // 8. inquiry_id（ID）
+    var sheetInquiryId = row['ID'] ? String(row['ID']) : null;
+    if (sheetInquiryId !== (dbSeller.inquiry_id || null)) { updateData.inquiry_id = sheetInquiryId; needsUpdate = true; }
+    
+    // 9. site_url（サイトURL）
+    var sheetSiteUrl = row['サイトURL'] ? String(row['サイトURL']) : null;
+    if (sheetSiteUrl !== (dbSeller.site_url || null)) { updateData.site_url = sheetSiteUrl; needsUpdate = true; }
+    
+    // 10. mailing_status（郵送）
+    var sheetMailingStatus = row['郵送'] ? String(row['郵送']) : null;
+    if (sheetMailingStatus !== (dbSeller.mailing_status || null)) { updateData.mailing_status = sheetMailingStatus; needsUpdate = true; }
+    
+    // 11. fixed_asset_tax_road_price（固定資産税路線価）
+    var sheetFixedAssetTax = (row['固定資産税路線価'] !== '' && row['固定資産税路線価'] !== undefined && row['固定資産税路線価'] !== null) ? parseFloat(row['固定資産税路線価']) : null;
+    var dbFixedAssetTax = (dbSeller.fixed_asset_tax_road_price !== null && dbSeller.fixed_asset_tax_road_price !== undefined) ? parseFloat(dbSeller.fixed_asset_tax_road_price) : null;
+    if (sheetFixedAssetTax !== dbFixedAssetTax) { updateData.fixed_asset_tax_road_price = sheetFixedAssetTax; needsUpdate = true; }
+    
+    // 12. exclusive_other_decision_meeting（専任他決打合せ）
+    var sheetExclusiveOther = row['専任他決打合せ'] ? String(row['専任他決打合せ']) : null;
+    if (sheetExclusiveOther !== (dbSeller.exclusive_other_decision_meeting || null)) { updateData.exclusive_other_decision_meeting = sheetExclusiveOther; needsUpdate = true; }
+    
+    // 13. land_area_verified（土地（当社調べ））
+    var sheetLandVerified = (row['土地（当社調べ）'] !== '' && row['土地（当社調べ）'] !== undefined && row['土地（当社調べ）'] !== null) ? parseFloat(row['土地（当社調べ）']) : null;
+    var dbLandVerified = (dbSeller.land_area_verified !== null && dbSeller.land_area_verified !== undefined) ? parseFloat(dbSeller.land_area_verified) : null;
+    if (sheetLandVerified !== dbLandVerified) { updateData.land_area_verified = sheetLandVerified; needsUpdate = true; }
+    
+    // 14. building_area_verified（建物（当社調べ））
+    var sheetBuildingVerified = (row['建物（当社調べ）'] !== '' && row['建物（当社調べ）'] !== undefined && row['建物（当社調べ）'] !== null) ? parseFloat(row['建物（当社調べ）']) : null;
+    var dbBuildingVerified = (dbSeller.building_area_verified !== null && dbSeller.building_area_verified !== undefined) ? parseFloat(dbSeller.building_area_verified) : null;
+    if (sheetBuildingVerified !== dbBuildingVerified) { updateData.building_area_verified = sheetBuildingVerified; needsUpdate = true; }
+    
+    // 15. valuation_text（査定額）- AA4504の問題を解決
+    var sheetValuationText = row['査定額'] ? String(row['査定額']) : null;
+    if (sheetValuationText !== (dbSeller.valuation_text || null)) { updateData.valuation_text = sheetValuationText; needsUpdate = true; }
+    
     if (!needsUpdate) continue;
     updateData.updated_at = new Date().toISOString();
     var result = patchSellerToSupabase_(sellerNumber, updateData);

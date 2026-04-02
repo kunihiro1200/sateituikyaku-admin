@@ -62,7 +62,8 @@
     "郵送": "mailing_status",
     "除外日にすること": "exclusion_action",
     "固定資産税路線価": "fixed_asset_tax_road_price",
-    "専任他決打合せ": "exclusive_other_decision_meeting"
+    "専任他決打合せ": "exclusive_other_decision_meeting",
+    "査定額": "valuation_text"
   },
   "databaseToSpreadsheet": {
     "seller_number": "売主番号",
@@ -119,7 +120,8 @@
     "mailing_status": "郵送",
     "exclusion_action": "除外日にすること",
     "fixed_asset_tax_road_price": "固定資産税路線価",
-    "exclusive_other_decision_meeting": "専任他決打合せ"
+    "exclusive_other_decision_meeting": "専任他決打合せ",
+    "valuation_text": "査定額"
   },
   "typeConversions": {
     "valuation_amount_1": "number",
@@ -143,7 +145,8 @@
     "updated_at": "datetime",
     "mailing_status": "string",
     "fixed_asset_tax_road_price": "number",
-    "exclusive_other_decision_meeting": "string"
+    "exclusive_other_decision_meeting": "string",
+    "valuation_text": "string"
   },
   "requiredFields": [
     "name"
