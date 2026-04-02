@@ -57,6 +57,7 @@ interface ReportData {
   owner_name?: string;
   owner_email?: string;
   suumo_url?: string;
+  report_memo?: string;
 }
 
 // 今日からN週間後の日付文字列（YYYY-MM-DD）を返す
@@ -160,7 +161,8 @@ export default function PropertyReportPage() {
     reportData.report_date !== savedData.report_date ||
     reportData.report_completed !== savedData.report_completed ||
     reportData.report_assignee !== savedData.report_assignee ||
-    reportData.suumo_url !== savedData.suumo_url;
+    reportData.suumo_url !== savedData.suumo_url ||
+    reportData.report_memo !== savedData.report_memo;
 
   useEffect(() => {
     if (propertyNumber) {
@@ -199,6 +201,7 @@ export default function PropertyReportPage() {
         owner_name: ownerName,
         owner_email: ownerEmail,
         suumo_url: d.suumo_url || '',
+        report_memo: d.report_memo || '',
       };
       setReportData(initial);
       setSavedData(initial);
@@ -324,6 +327,7 @@ export default function PropertyReportPage() {
         report_completed: reportData.report_completed || 'N',
         report_assignee: reportData.report_assignee || null,
         suumo_url: reportData.suumo_url || null,
+        report_memo: reportData.report_memo || null,
       });
       setSavedData({ ...reportData });
       setSnackbar({ open: true, message: '報告情報を保存しました', severity: 'success' });
@@ -739,6 +743,22 @@ export default function PropertyReportPage() {
                   開く
                 </Button>
               )}
+            </Box>
+
+            {/* 報告_メモ */}
+            <Box sx={{ mt: 3 }}>
+              <Typography variant="body2" color="text.secondary" fontWeight="bold" sx={{ mb: 1 }}>
+                報告_メモ
+              </Typography>
+              <TextField
+                fullWidth
+                multiline
+                minRows={3}
+                maxRows={10}
+                placeholder="報告に関するメモを入力..."
+                value={reportData.report_memo || ''}
+                onChange={(e) => setReportData((prev) => ({ ...prev, report_memo: e.target.value }))}
+              />
             </Box>
           </Paper>
         </Box>

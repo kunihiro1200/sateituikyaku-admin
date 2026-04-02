@@ -314,7 +314,7 @@ export class PropertyService {
    * @returns true if valid
    */
   validateSellerSituation(situation: string): boolean {
-    const validSituations = ['居', '空', '賃', '古有', '更'];
+    const validSituations = ['居', '空', '賃', '古有', '更', '他'];
     return validSituations.includes(situation);
   }
 
