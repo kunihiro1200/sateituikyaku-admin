@@ -1066,7 +1066,8 @@ export default function BuyerDetailPage() {
             buyerName={buyer.name || ''}
             buyerCompanyName={buyer.company_name || ''}
             buyerNumber={buyer_number || ''}
-            preViewingNotes={linkedProperties[0]?.pre_viewing_notes || ''} {/* 物件リストテーブルから取得 */}
+            {/* 物件リストテーブルから取得 */}
+            preViewingNotes={linkedProperties[0]?.pre_viewing_notes || ''}
             followUpAssignee={buyer.follow_up_assignee || ''}
             inquiryHistory={inquiryHistoryTable}
             selectedPropertyIds={selectedPropertyIds}
@@ -1114,7 +1115,8 @@ export default function BuyerDetailPage() {
               propertyType={linkedProperties[0]?.property_type || ''}
               senderName={employee?.name || ''}
               onSmsSent={fetchActivities}
-              preViewingNotes={linkedProperties[0]?.pre_viewing_notes || ''} {/* 物件リストテーブルから取得 */}
+              {/* 物件リストテーブルから取得 */}
+              preViewingNotes={linkedProperties[0]?.pre_viewing_notes || ''}
             />
           )}
           {false && buyer.phone_number && (
