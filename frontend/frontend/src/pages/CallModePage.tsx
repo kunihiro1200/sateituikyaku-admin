@@ -1230,8 +1230,11 @@ const CallModePage = () => {
     const hasValuation2 = seller.valuationAmount2 != null;
     const hasValuation3 = seller.valuationAmount3 != null;
     
-    if (roadPrice && (!hasValuation2 || !hasValuation3)) {
-      console.log('ページリロード後の査定額再計算を実行', { roadPrice, hasValuation2, hasValuation3 });
+    // 物件情報が存在するかチェック（土地面積が必須）
+    const hasPropertyInfo = propInfo.landArea != null;
+    
+    if (roadPrice && (!hasValuation2 || !hasValuation3) && hasPropertyInfo) {
+      console.log('ページリロード後の査定額再計算を実行', { roadPrice, hasValuation2, hasValuation3, hasPropertyInfo });
       
       // 1秒後に再計算を実行（初期化完了を待つ）
       const timer = setTimeout(() => {
@@ -1239,8 +1242,10 @@ const CallModePage = () => {
       }, 1000);
       
       return () => clearTimeout(timer);
+    } else if (roadPrice && (!hasValuation2 || !hasValuation3) && !hasPropertyInfo) {
+      console.log('物件情報が不足しているため、ページリロード後の再計算をスキップ', { hasPropertyInfo });
     }
-  }, [seller?.id, autoCalculateValuations]); // seller.idとautoCalculateValuationsが変更された時のみ実行
+  }, [seller?.id, propInfo.landArea, autoCalculateValuations]); // seller.id、propInfo.landArea、autoCalculateValuationsが変更された時のみ実行
 
   const loadAllData = async () => {
     setLoading(true);
