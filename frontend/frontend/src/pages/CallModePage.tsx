@@ -1204,6 +1204,27 @@ const CallModePage = () => {
     }
   }, [seller, fetchSidebarSellers]);
 
+  // デバウンスタイマーのクリーンアップ（コンポーネントのアンマウント時）
+  useEffect(() => {
+    return () => {
+      if (calculationTimerRef.current) {
+        clearTimeout(calculationTimerRef.current);
+      }
+    };
+  }, []);
+
+  // ページリロード後の査定額再計算（固定資産税路線価が存在する場合）
+  useEffect(() => {
+    // 初回ロード時のみ実行（seller が読み込まれた後）
+    if (seller && editedFixedAssetTaxRoadPrice && !isManualValuation) {
+      console.log('ページリロード後の査定額再計算を実行');
+      // 査定額が全て存在しない場合のみ再計算
+      if (!editedValuationAmount1 && !editedValuationAmount2 && !editedValuationAmount3) {
+        autoCalculateValuations(editedFixedAssetTaxRoadPrice);
+      }
+    }
+  }, [seller?.id]); // seller.id が変更された時のみ実行（初回ロード時）
+
   const loadAllData = async () => {
     setLoading(true);
     setError(null);
@@ -2187,23 +2208,41 @@ const CallModePage = () => {
       });
       
       // 査定額1を計算
-      const response1 = await api.post(`/api/sellers/${id}/calculate-valuation-amount1`);
-      const amount1 = response1.data.valuationAmount1;
-      setEditedValuationAmount1(amount1.toString());
+      let amount1: number;
+      try {
+        const response1 = await api.post(`/api/sellers/${id}/calculate-valuation-amount1`);
+        amount1 = response1.data.valuationAmount1;
+        setEditedValuationAmount1(amount1.toString());
+      } catch (err: any) {
+        console.error('Failed to calculate valuation amount 1:', err);
+        throw new Error('査定額1の計算に失敗しました');
+      }
       
-      // 査定額2を計算
-      const response2 = await api.post(`/api/sellers/${id}/calculate-valuation-amount2`, {
-        valuationAmount1: amount1,
-      });
-      const amount2 = response2.data.valuationAmount2;
-      setEditedValuationAmount2(amount2.toString());
+      // 査定額2を計算（査定額1が失敗しても続行）
+      let amount2: number | null = null;
+      try {
+        const response2 = await api.post(`/api/sellers/${id}/calculate-valuation-amount2`, {
+          valuationAmount1: amount1,
+        });
+        amount2 = response2.data.valuationAmount2;
+        setEditedValuationAmount2(amount2.toString());
+      } catch (err: any) {
+        console.error('Failed to calculate valuation amount 2:', err);
+        // 査定額2の計算が失敗しても続行
+      }
       
-      // 査定額3を計算
-      const response3 = await api.post(`/api/sellers/${id}/calculate-valuation-amount3`, {
-        valuationAmount1: amount1,
-      });
-      const amount3 = response3.data.valuationAmount3;
-      setEditedValuationAmount3(amount3.toString());
+      // 査定額3を計算（査定額2が失敗しても続行）
+      let amount3: number | null = null;
+      try {
+        const response3 = await api.post(`/api/sellers/${id}/calculate-valuation-amount3`, {
+          valuationAmount1: amount1,
+        });
+        amount3 = response3.data.valuationAmount3;
+        setEditedValuationAmount3(amount3.toString());
+      } catch (err: any) {
+        console.error('Failed to calculate valuation amount 3:', err);
+        // 査定額3の計算が失敗しても続行
+      }
       
       // 計算した査定額と査定担当者をデータベースに保存
       await api.put(`/api/sellers/${id}`, {
@@ -2217,8 +2256,8 @@ const CallModePage = () => {
       setSeller(prev => prev ? {
         ...prev,
         valuationAmount1: amount1,
-        valuationAmount2: amount2,
-        valuationAmount3: amount3,
+        valuationAmount2: amount2 || prev.valuationAmount2,
+        valuationAmount3: amount3 || prev.valuationAmount3,
         valuationAssignee: assignedBy,
       } : prev);
 
@@ -5266,16 +5305,8 @@ HP：https://ifoo-oita.com/
                             }}
                             helperText={autoCalculating ? '計算中...' : '値を入力すると1秒後に自動的に査定額が計算されます'}
                           />
-                          <Box sx={{ display: 'flex', gap: 1, mt: 0.5, alignItems: 'center' }}>
-                            <Button
-                              size="small"
-                              href="https://www.chikamap.jp/chikamap/Portal?mid=216"
-                              target="_blank"
-                              rel="noopener noreferrer"
-                            >
-                              路線価を確認
-                            </Button>
-                            {property?.address && (
+                          {property?.address && (
+                            <Box sx={{ display: 'flex', gap: 1, mt: 0.5, alignItems: 'center' }}>
                               <TextField
                                 size="small"
                                 value={property.address}
@@ -5301,8 +5332,16 @@ HP：https://ifoo-oita.com/
                                 sx={{ flex: 1, minWidth: '400px' }}
                                 label="物件住所（コピー用）"
                               />
-                            )}
-                          </Box>
+                              <Button
+                                size="small"
+                                href="https://www.chikamap.jp/chikamap/Portal?mid=216"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                              >
+                                路線価を確認
+                              </Button>
+                            </Box>
+                          )}
                         </Box>
                       </Grid>
 

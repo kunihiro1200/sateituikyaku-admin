@@ -67,6 +67,11 @@ export class SpreadsheetSyncService {
       // 暗号化フィールドを復号
       const decryptedSeller = this.decryptSellerFields(seller);
 
+      // 査定担当をイニシャルに変換
+      if (decryptedSeller.valuation_assignee) {
+        decryptedSeller.valuation_assignee = this.convertToInitials(decryptedSeller.valuation_assignee);
+      }
+
       // スプレッドシート形式に変換
       const sheetRow = this.columnMapper.mapToSheet(decryptedSeller as SellerData);
       console.log(`📋 [SpreadsheetSync] Converted to sheet row`);
@@ -148,6 +153,11 @@ export class SpreadsheetSyncService {
           // 暗号化フィールドを復号
           const decryptedSeller = this.decryptSellerFields(seller);
 
+          // 査定担当をイニシャルに変換
+          if (decryptedSeller.valuation_assignee) {
+            decryptedSeller.valuation_assignee = this.convertToInitials(decryptedSeller.valuation_assignee);
+          }
+
           // スプレッドシート形式に変換
           const sheetRow = this.columnMapper.mapToSheet(decryptedSeller as SellerData);
 
@@ -226,6 +236,84 @@ export class SpreadsheetSyncService {
       email: seller.email ? decrypt(seller.email) : seller.email,
       address: safeDecryptAddress(seller.address),
     };
+  }
+
+  /**
+   * フルネームをイニシャルに変換
+   * @param fullName フルネーム（例: "山田太郎", "Yamada Taro"）
+   * @returns イニシャル（例: "Y"）
+   */
+  private convertToInitials(fullName: string): string {
+    if (!fullName || fullName.trim() === '') {
+      return '';
+    }
+
+    const trimmed = fullName.trim();
+    
+    // スペースで分割（姓と名を分離）
+    const parts = trimmed.split(/\s+/);
+    
+    if (parts.length === 0) {
+      return '';
+    }
+    
+    // 姓（最初の部分）を取得
+    const surname = parts[0];
+    
+    // 日本語（漢字・ひらがな・カタカナ）の場合
+    if (/^[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/.test(surname)) {
+      // 姓の最初の1文字をローマ字に変換
+      const firstChar = surname.charAt(0);
+      return this.convertKanaToRomaji(firstChar).toUpperCase();
+    }
+    
+    // 英語（アルファベット）の場合
+    if (/^[A-Za-z]/.test(surname)) {
+      // 姓の最初の1文字を大文字にして返す
+      return surname.charAt(0).toUpperCase();
+    }
+    
+    // その他の場合は最初の1文字をそのまま返す
+    return surname.charAt(0);
+  }
+
+  /**
+   * 日本語の文字をローマ字に変換（簡易版）
+   * @param char 日本語の文字
+   * @returns ローマ字
+   */
+  private convertKanaToRomaji(char: string): string {
+    const kanaToRomaji: { [key: string]: string } = {
+      // ひらがな
+      'あ': 'A', 'い': 'I', 'う': 'U', 'え': 'E', 'お': 'O',
+      'か': 'K', 'き': 'K', 'く': 'K', 'け': 'K', 'こ': 'K',
+      'さ': 'S', 'し': 'S', 'す': 'S', 'せ': 'S', 'そ': 'S',
+      'た': 'T', 'ち': 'T', 'つ': 'T', 'て': 'T', 'と': 'T',
+      'な': 'N', 'に': 'N', 'ぬ': 'N', 'ね': 'N', 'の': 'N',
+      'は': 'H', 'ひ': 'H', 'ふ': 'H', 'へ': 'H', 'ほ': 'H',
+      'ま': 'M', 'み': 'M', 'む': 'M', 'め': 'M', 'も': 'M',
+      'や': 'Y', 'ゆ': 'Y', 'よ': 'Y',
+      'ら': 'R', 'り': 'R', 'る': 'R', 'れ': 'R', 'ろ': 'R',
+      'わ': 'W', 'を': 'W', 'ん': 'N',
+      // カタカナ
+      'ア': 'A', 'イ': 'I', 'ウ': 'U', 'エ': 'E', 'オ': 'O',
+      'カ': 'K', 'キ': 'K', 'ク': 'K', 'ケ': 'K', 'コ': 'K',
+      'サ': 'S', 'シ': 'S', 'ス': 'S', 'セ': 'S', 'ソ': 'S',
+      'タ': 'T', 'チ': 'T', 'ツ': 'T', 'テ': 'T', 'ト': 'T',
+      'ナ': 'N', 'ニ': 'N', 'ヌ': 'N', 'ネ': 'N', 'ノ': 'N',
+      'ハ': 'H', 'ヒ': 'H', 'フ': 'H', 'ヘ': 'H', 'ホ': 'H',
+      'マ': 'M', 'ミ': 'M', 'ム': 'M', 'メ': 'M', 'モ': 'M',
+      'ヤ': 'Y', 'ユ': 'Y', 'ヨ': 'Y',
+      'ラ': 'R', 'リ': 'R', 'ル': 'R', 'レ': 'R', 'ロ': 'R',
+      'ワ': 'W', 'ヲ': 'W', 'ン': 'N',
+      // 漢字（主要な姓の読み）
+      '山': 'Y', '田': 'T', '佐': 'S', '藤': 'F', '鈴': 'S',
+      '高': 'T', '橋': 'H', '渡': 'W', '伊': 'I', '中': 'N',
+      '小': 'K', '林': 'H', '加': 'K', '木': 'K', '斎': 'S',
+      '松': 'M', '井': 'I', '清': 'K', '森': 'M',
+    };
+    
+    return kanaToRomaji[char] || char.charAt(0).toUpperCase();
   }
 
   /**
