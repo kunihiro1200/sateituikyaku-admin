@@ -4921,7 +4921,7 @@ HP：https://ifoo-oita.com/
                   <Button 
                     size="small" 
                     disabled={autoCalculating}
-                    onClick={async () => {
+                    onClick={() => {
                       console.log('🔘 編集/完了ボタンがクリックされました。現在のeditingValuation:', editingValuation);
                       
                       // 編集モードを開始する時（編集ボタン）
@@ -4934,127 +4934,128 @@ HP：https://ifoo-oita.com/
                       // 編集モードを終了する時（完了ボタン）
                       console.log('✅ 編集モードを終了します');
                       
-                      // 🚨 重要：編集モードを即座に終了（ボタンの反応を良くするため）
+                      // 🚨 最重要：編集モードを即座に終了（同期的に実行）
                       setEditingValuation(false);
                       
-                      // 固定資産税路線価が変更されている場合、査定額を再計算
-                      if (editedFixedAssetTaxRoadPrice && parseFloat(editedFixedAssetTaxRoadPrice) > 0) {
-                        console.log('🔄 固定資産税路線価が設定されているため、査定額を再計算します:', editedFixedAssetTaxRoadPrice);
-                        
-                        // 🚨 重要：自動計算モードに切り替え
-                        setIsManualValuation(false);
-                        
-                        // 🚨 重要：autoCalculateValuations関数を呼び出す代わりに、ここで直接計算処理を実行
-                        // （Reactの状態更新が非同期のため、setIsManualValuation(false)の直後にautoCalculateValuationsを呼び出すと、
-                        //  関数内のisManualValuationチェックで古い値（true）を参照してしまう）
-                        try {
-                          setAutoCalculating(true);
+                      // 🚨 重要：バックグラウンドで査定額の計算を実行（非同期）
+                      // この処理は編集モードの終了とは独立して実行される
+                      (async () => {
+                        // 固定資産税路線価が変更されている場合、査定額を再計算
+                        if (editedFixedAssetTaxRoadPrice && parseFloat(editedFixedAssetTaxRoadPrice) > 0) {
+                          console.log('🔄 固定資産税路線価が設定されているため、査定額を再計算します:', editedFixedAssetTaxRoadPrice);
                           
-                          // 査定担当者を設定（現在のユーザー）
-                          const assignedBy = employee?.name || '';
-                          setValuationAssignee(assignedBy);
+                          // 🚨 重要：自動計算モードに切り替え
+                          setIsManualValuation(false);
                           
-                          const roadPriceValue = parseFloat(editedFixedAssetTaxRoadPrice);
-                          
-                          // まず固定資産税路線価を保存
-                          await api.put(`/api/sellers/${id}`, {
-                            fixedAssetTaxRoadPrice: roadPriceValue,
-                          });
-                          
-                          // 🚨 重要：計算APIに固定資産税路線価を渡す（キャッシュの古い値を使わないため）
-                          // 査定額1を計算
-                          let amount1: number;
                           try {
-                            const response1 = await api.post(`/api/sellers/${id}/calculate-valuation-amount1`, {
+                            setAutoCalculating(true);
+                            
+                            // 査定担当者を設定（現在のユーザー）
+                            const assignedBy = employee?.name || '';
+                            setValuationAssignee(assignedBy);
+                            
+                            const roadPriceValue = parseFloat(editedFixedAssetTaxRoadPrice);
+                            
+                            // まず固定資産税路線価を保存
+                            await api.put(`/api/sellers/${id}`, {
                               fixedAssetTaxRoadPrice: roadPriceValue,
                             });
-                            amount1 = response1.data.valuationAmount1;
-                            setEditedValuationAmount1(amount1.toString());
-                          } catch (err: any) {
-                            console.error('Failed to calculate valuation amount 1:', err);
-                            throw new Error('査定額1の計算に失敗しました');
-                          }
-                          
-                          // 査定額2を計算
-                          let amount2: number | null = null;
-                          try {
-                            const response2 = await api.post(`/api/sellers/${id}/calculate-valuation-amount2`, {
+                            
+                            // 🚨 重要：計算APIに固定資産税路線価を渡す（キャッシュの古い値を使わないため）
+                            // 査定額1を計算
+                            let amount1: number;
+                            try {
+                              const response1 = await api.post(`/api/sellers/${id}/calculate-valuation-amount1`, {
+                                fixedAssetTaxRoadPrice: roadPriceValue,
+                              });
+                              amount1 = response1.data.valuationAmount1;
+                              setEditedValuationAmount1(amount1.toString());
+                            } catch (err: any) {
+                              console.error('Failed to calculate valuation amount 1:', err);
+                              throw new Error('査定額1の計算に失敗しました');
+                            }
+                            
+                            // 査定額2を計算
+                            let amount2: number | null = null;
+                            try {
+                              const response2 = await api.post(`/api/sellers/${id}/calculate-valuation-amount2`, {
+                                valuationAmount1: amount1,
+                                fixedAssetTaxRoadPrice: roadPriceValue,
+                              });
+                              amount2 = response2.data.valuationAmount2;
+                              setEditedValuationAmount2(amount2.toString());
+                            } catch (err: any) {
+                              console.error('Failed to calculate valuation amount 2:', err);
+                            }
+                            
+                            // 査定額3を計算
+                            let amount3: number | null = null;
+                            try {
+                              const response3 = await api.post(`/api/sellers/${id}/calculate-valuation-amount3`, {
+                                valuationAmount1: amount1,
+                                fixedAssetTaxRoadPrice: roadPriceValue,
+                              });
+                              amount3 = response3.data.valuationAmount3;
+                              setEditedValuationAmount3(amount3.toString());
+                            } catch (err: any) {
+                              console.error('Failed to calculate valuation amount 3:', err);
+                            }
+                            
+                            // 計算した査定額と査定担当者をデータベースに保存
+                            await api.put(`/api/sellers/${id}`, {
                               valuationAmount1: amount1,
-                              fixedAssetTaxRoadPrice: roadPriceValue,
+                              valuationAmount2: amount2,
+                              valuationAmount3: amount3,
+                              valuationAssignee: assignedBy,
                             });
-                            amount2 = response2.data.valuationAmount2;
-                            setEditedValuationAmount2(amount2.toString());
-                          } catch (err: any) {
-                            console.error('Failed to calculate valuation amount 2:', err);
-                          }
-                          
-                          // 査定額3を計算
-                          let amount3: number | null = null;
-                          try {
-                            const response3 = await api.post(`/api/sellers/${id}/calculate-valuation-amount3`, {
+                            
+                            // ヘッダーに反映するためseller stateを更新
+                            setSeller(prev => prev ? {
+                              ...prev,
+                              fixedAssetTaxRoadPrice: roadPriceValue,
                               valuationAmount1: amount1,
-                              fixedAssetTaxRoadPrice: roadPriceValue,
-                            });
-                            amount3 = response3.data.valuationAmount3;
-                            setEditedValuationAmount3(amount3.toString());
-                          } catch (err: any) {
-                            console.error('Failed to calculate valuation amount 3:', err);
-                          }
-                          
-                          // 計算した査定額と査定担当者をデータベースに保存
-                          await api.put(`/api/sellers/${id}`, {
-                            valuationAmount1: amount1,
-                            valuationAmount2: amount2,
-                            valuationAmount3: amount3,
-                            valuationAssignee: assignedBy,
-                          });
-                          
-                          // ヘッダーに反映するためseller stateを更新
-                          setSeller(prev => prev ? {
-                            ...prev,
-                            fixedAssetTaxRoadPrice: roadPriceValue,
-                            valuationAmount1: amount1,
-                            valuationAmount2: amount2 || prev.valuationAmount2,
-                            valuationAmount3: amount3 || prev.valuationAmount3,
-                            valuationAssignee: assignedBy,
-                          } : prev);
+                              valuationAmount2: amount2 || prev.valuationAmount2,
+                              valuationAmount3: amount3 || prev.valuationAmount3,
+                              valuationAssignee: assignedBy,
+                            } : prev);
 
-                          console.log('Valuation saved:', { amount1, amount2, amount3, assignedBy });
-                          
-                        } catch (err: any) {
-                          console.error('Auto calculation failed:', err);
-                          setError('査定額の計算に失敗しました: ' + (err.response?.data?.error?.message || err.message));
-                          // エラー時は編集モードに戻す
-                          setEditingValuation(true);
-                        } finally {
-                          setAutoCalculating(false);
+                            console.log('Valuation saved:', { amount1, amount2, amount3, assignedBy });
+                            
+                          } catch (err: any) {
+                            console.error('Auto calculation failed:', err);
+                            setError('査定額の計算に失敗しました: ' + (err.response?.data?.error?.message || err.message));
+                            // エラー時は編集モードに戻す
+                            setEditingValuation(true);
+                          } finally {
+                            setAutoCalculating(false);
+                          }
+                        } else {
+                          // 固定資産税路線価が空欄になった場合、査定額もクリア
+                          console.log('🗑️ 固定資産税路線価が空欄のため、査定額をクリアします');
+                          try {
+                            await api.put(`/api/sellers/${id}`, {
+                              fixedAssetTaxRoadPrice: null,
+                              valuationAmount1: null,
+                              valuationAmount2: null,
+                              valuationAmount3: null,
+                            });
+                            setEditedValuationAmount1('');
+                            setEditedValuationAmount2('');
+                            setEditedValuationAmount3('');
+                            setSeller(prev => prev ? {
+                              ...prev,
+                              fixedAssetTaxRoadPrice: undefined,
+                              valuationAmount1: undefined,
+                              valuationAmount2: undefined,
+                              valuationAmount3: undefined,
+                            } : prev);
+                          } catch (err) {
+                            console.error('Failed to clear valuation:', err);
+                            // エラー時は編集モードに戻す
+                            setEditingValuation(true);
+                          }
                         }
-                      } else {
-                        // 固定資産税路線価が空欄になった場合、査定額もクリア
-                        console.log('🗑️ 固定資産税路線価が空欄のため、査定額をクリアします');
-                        try {
-                          await api.put(`/api/sellers/${id}`, {
-                            fixedAssetTaxRoadPrice: null,
-                            valuationAmount1: null,
-                            valuationAmount2: null,
-                            valuationAmount3: null,
-                          });
-                          setEditedValuationAmount1('');
-                          setEditedValuationAmount2('');
-                          setEditedValuationAmount3('');
-                          setSeller(prev => prev ? {
-                            ...prev,
-                            fixedAssetTaxRoadPrice: undefined,
-                            valuationAmount1: undefined,
-                            valuationAmount2: undefined,
-                            valuationAmount3: undefined,
-                          } : prev);
-                        } catch (err) {
-                          console.error('Failed to clear valuation:', err);
-                          // エラー時は編集モードに戻す
-                          setEditingValuation(true);
-                        }
-                      }
+                      })();
                     }}>
                       {autoCalculating ? '処理中...' : (editingValuation ? '完了' : '編集')}
                     </Button>
