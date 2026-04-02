@@ -1,29 +1,58 @@
 # 買主リスト「配信メール」ボタン注意喚起タイミング修正
 
-## Introduction
+## 問題
 
-買主リストの「配信メール」ボタンにおいて、注意喚起が表示されるタイミングが不適切なバグを修正します。現在はボタンを押した時点で注意喚起が表示され、ボタンが押せない状態になっていますが、正しくはボタンを押してから別ページに遷移する際に注意喚起を表示すべきです。
+「配信メール」ボタンを「要」に変更しようとすると、ボタンを押した時点で注意喚起が表示され、値を変更できない。
 
-## Bug Analysis
+## 修正内容
 
-### Current Behavior (Defect)
+`frontend/frontend/src/pages/BuyerDetailPage.tsx`の`distribution_type`ボタンの`onClick`ハンドラーから即時バリデーションを削除。
 
-1.1 WHEN ユーザーが「配信メール」ボタンで「要」を選択し、希望条件（エリア・予算・希望種別）が未入力の場合 THEN システムはボタンを押した時点で即座に注意喚起を表示し、値の変更を阻止する
+**修正前**:
+```typescript
+onClick={async () => {
+  const newValue = isSelected ? '' : opt.value;
+  
+  // 「要」に変更する場合、希望条件の必須チェック
+  if (newValue === '要' && buyer) {
+    const missingConditions: string[] = [];
+    if (!buyer.desired_area || !String(buyer.desired_area).trim()) missingConditions.push('エリア');
+    if (!buyer.budget || !String(buyer.budget).trim()) missingConditions.push('予算');
+    if (!buyer.desired_property_type || !String(buyer.desired_property_type).trim()) missingConditions.push('希望種別');
+    if (missingConditions.length > 0) {
+      setSnackbar({
+        open: true,
+        message: `配信メールを「要」にするには、希望条件の${missingConditions.join('・')}を先に入力してください。「希望条件」ボタンから入力できます。`,
+        severity: 'error',
+      });
+      return; // 保存しない
+    }
+  }
+  
+  setBuyer((prev: any) => prev ? { ...prev, [field.key]: newValue } : prev);
+  handleFieldChange(section.title, field.key, newValue);
+}}
+```
 
-1.2 WHEN 注意喚起が表示された場合 THEN システムは「配信メール」の値を「要」に変更せず、ボタンが押せない状態になる
+**修正後**:
+```typescript
+onClick={async () => {
+  const newValue = isSelected ? '' : opt.value;
+  
+  // 🚨 修正: 「要」に変更する際の即時バリデーションを削除
+  // ページ遷移時にバリデーションを実行する（handleNavigate関数）
+  
+  setBuyer((prev: any) => prev ? { ...prev, [field.key]: newValue } : prev);
+  handleFieldChange(section.title, field.key, newValue);
+}}
+```
 
-### Expected Behavior (Correct)
+## 結果
 
-2.1 WHEN ユーザーが「配信メール」ボタンで「要」を選択した場合 THEN システムは希望条件の入力状態に関係なく、ボタンを押せるようにし、値を「要」に変更する
+- ✅ ボタンを押した時点で値を「要」に変更できるようになった
+- ✅ ページ遷移時のバリデーションは既存の`handleNavigate`関数で実行される
+- ✅ 希望条件ページへの遷移時はバリデーションをスキップする
 
-2.2 WHEN ユーザーが「配信メール」を「要」に変更した後、別ページに遷移しようとした場合 THEN システムは希望条件（エリア・予算・希望種別）が未入力であれば、ページ遷移前に注意喚起を表示する
+## 日付
 
-2.3 WHEN ページ遷移前の注意喚起が表示された場合 THEN システムはユーザーに「希望条件を入力してください」というメッセージを表示し、ページ遷移を阻止する
-
-### Unchanged Behavior (Regression Prevention)
-
-3.1 WHEN ユーザーが「配信メール」を「不要」に変更した場合 THEN システムは引き続き希望条件のチェックを行わず、値を即座に変更する
-
-3.2 WHEN ユーザーが「配信メール」を「要」に変更し、希望条件が全て入力済みの場合 THEN システムは引き続き注意喚起を表示せず、値を即座に変更する
-
-3.3 WHEN ユーザーが「配信メール」以外のフィールドを編集した場合 THEN システムは引き続き既存の動作を維持する
+2026年4月2日

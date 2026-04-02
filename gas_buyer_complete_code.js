@@ -166,8 +166,8 @@ function updateBuyerSidebarCounts_() {
   upsertRows.push({
     category: 'todayCall',
     count: counts.todayCall,
-    label: null,
-    assignee: null,
+    label: '',
+    assignee: '',
     updated_at: now
   });
   
@@ -176,7 +176,7 @@ function updateBuyerSidebarCounts_() {
     upsertRows.push({
       category: 'todayCallAssigned',
       count: counts.todayCallAssigned[assignee],
-      label: null,
+      label: '',
       assignee: assignee,
       updated_at: now
     });
@@ -187,7 +187,7 @@ function updateBuyerSidebarCounts_() {
     upsertRows.push({
       category: 'assigned',
       count: counts.assigned[assignedKey],
-      label: null,
+      label: '',
       assignee: assignedKey,
       updated_at: now
     });
