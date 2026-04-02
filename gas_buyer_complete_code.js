@@ -265,6 +265,18 @@ function updateBuyerSidebarCounts_() {
 // ============================================================
 // Supabase直接更新ユーティリティ
 // ============================================================
+
+/**
+ * 値を正規化する（空文字列、undefined、空白文字列をnullに変換）
+ * @param {*} value - 正規化する値
+ * @return {*} 正規化された値（nullまたは元の値）
+ */
+function normalizeValue(value) {
+  if (value === null || value === undefined || value === '') return null;
+  if (typeof value === 'string' && value.trim() === '') return null;
+  return value;
+}
+
 function patchBuyerToSupabase_(buyerNumber, updateData) {
   var url = SUPABASE_CONFIG.URL + '/rest/v1/buyers?buyer_number=eq.' + encodeURIComponent(buyerNumber);
   var options = {
@@ -353,34 +365,118 @@ function syncUpdatesToSupabase_(sheetRows) {
     if (!dbBuyer) continue;
     var updateData = {};
     var needsUpdate = false;
+    
+    // 最新状況
     var sheetStatus = row['★最新状況\n'] ? String(row['★最新状況\n']) : null;
-    if (sheetStatus !== (dbBuyer.latest_status || null)) { updateData.latest_status = sheetStatus; needsUpdate = true; }
+    var normalizedSheetStatus = normalizeValue(sheetStatus);
+    var normalizedDbStatus = normalizeValue(dbBuyer.latest_status);
+    if (normalizedSheetStatus !== normalizedDbStatus) {
+      updateData.latest_status = normalizedSheetStatus;
+      needsUpdate = true;
+      if (normalizedSheetStatus === null && normalizedDbStatus !== null) {
+        Logger.log('  🗑️ ' + buyerNumber + ': 最新状況を削除 (旧値: ' + normalizedDbStatus + ')');
+      }
+    }
+    
+    // 次電日
     var sheetNextCallDate = formatDateToISO_(row['★次電日']);
     var dbNextCallDate = dbBuyer.next_call_date ? String(dbBuyer.next_call_date).substring(0, 10) : null;
-    if (sheetNextCallDate !== dbNextCallDate) { updateData.next_call_date = sheetNextCallDate; needsUpdate = true; }
+    var normalizedSheetNextCallDate = normalizeValue(sheetNextCallDate);
+    var normalizedDbNextCallDate = normalizeValue(dbNextCallDate);
+    if (normalizedSheetNextCallDate !== normalizedDbNextCallDate) {
+      updateData.next_call_date = normalizedSheetNextCallDate;
+      needsUpdate = true;
+      if (normalizedSheetNextCallDate === null && normalizedDbNextCallDate !== null) {
+        Logger.log('  🗑️ ' + buyerNumber + ': 次電日を削除 (旧値: ' + normalizedDbNextCallDate + ')');
+      }
+    }
+    
+    // 初動担当
     var initialAssignee = row['初動担当'];
     var followUpAssignee = row['後続担当'];
     var sheetInitialAssignee = initialAssignee ? String(initialAssignee) : null;
     var sheetFollowUpAssignee = followUpAssignee ? String(followUpAssignee) : null;
-    var dbInitialAssignee = dbBuyer.initial_assignee || null;
-    var dbFollowUpAssignee = dbBuyer.follow_up_assignee || null;
-    if (sheetInitialAssignee !== dbInitialAssignee) { updateData.initial_assignee = sheetInitialAssignee; needsUpdate = true; }
-    if (sheetFollowUpAssignee !== dbFollowUpAssignee) { updateData.follow_up_assignee = sheetFollowUpAssignee; needsUpdate = true; }
+    var normalizedSheetInitialAssignee = normalizeValue(sheetInitialAssignee);
+    var normalizedDbInitialAssignee = normalizeValue(dbBuyer.initial_assignee);
+    if (normalizedSheetInitialAssignee !== normalizedDbInitialAssignee) {
+      updateData.initial_assignee = normalizedSheetInitialAssignee;
+      needsUpdate = true;
+      if (normalizedSheetInitialAssignee === null && normalizedDbInitialAssignee !== null) {
+        Logger.log('  🗑️ ' + buyerNumber + ': 初動担当を削除 (旧値: ' + normalizedDbInitialAssignee + ')');
+      }
+    }
+    
+    // 後続担当
+    var normalizedSheetFollowUpAssignee = normalizeValue(sheetFollowUpAssignee);
+    var normalizedDbFollowUpAssignee = normalizeValue(dbBuyer.follow_up_assignee);
+    if (normalizedSheetFollowUpAssignee !== normalizedDbFollowUpAssignee) {
+      updateData.follow_up_assignee = normalizedSheetFollowUpAssignee;
+      needsUpdate = true;
+      if (normalizedSheetFollowUpAssignee === null && normalizedDbFollowUpAssignee !== null) {
+        Logger.log('  🗑️ ' + buyerNumber + ': 後続担当を削除 (旧値: ' + normalizedDbFollowUpAssignee + ')');
+      }
+    }
+    
+    // 問合メール電話対応
     var sheetInquiryEmailPhone = row['【問合メール】電話対応'] ? String(row['【問合メール】電話対応']) : null;
-    var dbInquiryEmailPhone = dbBuyer.inquiry_email_phone || null;
-    if (sheetInquiryEmailPhone !== dbInquiryEmailPhone) { updateData.inquiry_email_phone = sheetInquiryEmailPhone; needsUpdate = true; }
+    var normalizedSheetInquiryEmailPhone = normalizeValue(sheetInquiryEmailPhone);
+    var normalizedDbInquiryEmailPhone = normalizeValue(dbBuyer.inquiry_email_phone);
+    if (normalizedSheetInquiryEmailPhone !== normalizedDbInquiryEmailPhone) {
+      updateData.inquiry_email_phone = normalizedSheetInquiryEmailPhone;
+      needsUpdate = true;
+      if (normalizedSheetInquiryEmailPhone === null && normalizedDbInquiryEmailPhone !== null) {
+        Logger.log('  🗑️ ' + buyerNumber + ': 問合メール電話対応を削除 (旧値: ' + normalizedDbInquiryEmailPhone + ')');
+      }
+    }
+    
+    // 3回架電確認済み
     var sheetThreeCallsConfirmed = row['3回架電確認済み'] ? String(row['3回架電確認済み']) : null;
-    var dbThreeCallsConfirmed = dbBuyer.three_calls_confirmed || null;
-    if (sheetThreeCallsConfirmed !== dbThreeCallsConfirmed) { updateData.three_calls_confirmed = sheetThreeCallsConfirmed; needsUpdate = true; }
+    var normalizedSheetThreeCallsConfirmed = normalizeValue(sheetThreeCallsConfirmed);
+    var normalizedDbThreeCallsConfirmed = normalizeValue(dbBuyer.three_calls_confirmed);
+    if (normalizedSheetThreeCallsConfirmed !== normalizedDbThreeCallsConfirmed) {
+      updateData.three_calls_confirmed = normalizedSheetThreeCallsConfirmed;
+      needsUpdate = true;
+      if (normalizedSheetThreeCallsConfirmed === null && normalizedDbThreeCallsConfirmed !== null) {
+        Logger.log('  🗑️ ' + buyerNumber + ': 3回架電確認済みを削除 (旧値: ' + normalizedDbThreeCallsConfirmed + ')');
+      }
+    }
+    
+    // 受付日
     var sheetReceptionDate = formatDateToISO_(row['受付日']);
     var dbReceptionDate = dbBuyer.reception_date ? String(dbBuyer.reception_date).substring(0, 10) : null;
-    if (sheetReceptionDate !== dbReceptionDate) { updateData.reception_date = sheetReceptionDate; needsUpdate = true; }
+    var normalizedSheetReceptionDate = normalizeValue(sheetReceptionDate);
+    var normalizedDbReceptionDate = normalizeValue(dbReceptionDate);
+    if (normalizedSheetReceptionDate !== normalizedDbReceptionDate) {
+      updateData.reception_date = normalizedSheetReceptionDate;
+      needsUpdate = true;
+      if (normalizedSheetReceptionDate === null && normalizedDbReceptionDate !== null) {
+        Logger.log('  🗑️ ' + buyerNumber + ': 受付日を削除 (旧値: ' + normalizedDbReceptionDate + ')');
+      }
+    }
+    
+    // 配信種別
     var sheetDistributionType = row['配信種別'] ? String(row['配信種別']) : null;
-    var dbDistributionType = dbBuyer.distribution_type || null;
-    if (sheetDistributionType !== dbDistributionType) { updateData.distribution_type = sheetDistributionType; needsUpdate = true; }
+    var normalizedSheetDistributionType = normalizeValue(sheetDistributionType);
+    var normalizedDbDistributionType = normalizeValue(dbBuyer.distribution_type);
+    if (normalizedSheetDistributionType !== normalizedDbDistributionType) {
+      updateData.distribution_type = normalizedSheetDistributionType;
+      needsUpdate = true;
+      if (normalizedSheetDistributionType === null && normalizedDbDistributionType !== null) {
+        Logger.log('  🗑️ ' + buyerNumber + ': 配信種別を削除 (旧値: ' + normalizedDbDistributionType + ')');
+      }
+    }
+    
+    // エリア
     var sheetDesiredArea = row['★エリア'] ? String(row['★エリア']) : null;
-    var dbDesiredArea = dbBuyer.desired_area || null;
-    if (sheetDesiredArea !== dbDesiredArea) { updateData.desired_area = sheetDesiredArea; needsUpdate = true; }
+    var normalizedSheetDesiredArea = normalizeValue(sheetDesiredArea);
+    var normalizedDbDesiredArea = normalizeValue(dbBuyer.desired_area);
+    if (normalizedSheetDesiredArea !== normalizedDbDesiredArea) {
+      updateData.desired_area = normalizedSheetDesiredArea;
+      needsUpdate = true;
+      if (normalizedSheetDesiredArea === null && normalizedDbDesiredArea !== null) {
+        Logger.log('  🗑️ ' + buyerNumber + ': エリアを削除 (旧値: ' + normalizedDbDesiredArea + ')');
+      }
+    }
     if (!needsUpdate) continue;
     updateData.updated_at = new Date().toISOString();
     var result = patchBuyerToSupabase_(buyerNumber, updateData);
