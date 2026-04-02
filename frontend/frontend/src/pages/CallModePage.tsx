@@ -335,39 +335,6 @@ const CallModePage = () => {
   // 種別が「土地」かどうか（propInfo.propertyType は正規化済みなので 'land' のみ比較）
   const isLandType = propInfo.propertyType === 'land';
 
-  /**
-   * ステータスセクションをコメントセクションより先に表示するかどうかを判定
-   * 
-   * 対象ステータス値（9つ）:
-   * - 一般媒介
-   * - 専任媒介
-   * - 他決→追客
-   * - 他決→追客不要
-   * - 他決→専任
-   * - 他決→一般
-   * - リースバック（専任）
-   * - 専任→他社専任
-   * - 一般→他決
-   */
-  const shouldShowStatusFirst = useMemo(() => {
-    const currentStatus = editedStatus || seller?.status || '';
-    const targetStatuses = [
-      '一般媒介',
-      '専任媒介',
-      '他決→追客',
-      '他決→追客不要',
-      '他決→専任',
-      '他決→一般',
-      'リースバック（専任）',
-      '専任→他社専任',
-      '一般→他決',
-    ];
-    const result = targetStatuses.some(status => currentStatus.includes(status));
-    console.log('🔍 [shouldShowStatusFirst] currentStatus:', currentStatus);
-    console.log('🔍 [shouldShowStatusFirst] result:', result);
-    return result;
-  }, [seller?.status, editedStatus]);
-
   const [activities, setActivities] = useState<Activity[]>([]);
   const [callSummary, setCallSummary] = useState<string>('');
   
@@ -6090,1032 +6057,511 @@ HP：https://ifoo-oita.com/
                     }),
                     ...(getButtonState('call-memo-considering') === 'persisted' && {
                       backgroundColor: '#e0e0e0',
+                      textDecoration: 'line-through',
+                      color: 'text.disabled',
+                    }),
+                  }}
+                />
+                <Chip
+                  label="不通"
+                  onClick={() => {
+                    handleQuickButtonClick('call-memo-unreachable');
+                    appendBoldText('不通');
+                  }}
+                  size="small"
+                  clickable
+                  disabled={isButtonDisabled('call-memo-unreachable')}
+                  sx={{
+                    ...(getButtonState('call-memo-unreachable') === 'pending' && {
+                      backgroundColor: '#fff9c4',
+                      textDecoration: 'line-through',
+                      color: 'text.secondary',
+                    }),
+                    ...(getButtonState('call-memo-unreachable') === 'persisted' && {
+                      backgroundColor: '#e0e0e0',
+                      textDecoration: 'line-through',
+                      color: 'text.disabled',
+                    }),
+                  }}
+                />
+              </Box>
+            </Box>
 
-            {/* ステータスセクションとコメントセクションの順序を条件分岐で制御 */
-            {shouldShowStatusFirst ? (
-              <>
-                {/* ステータス更新セクション（先に表示） */}
-                                  ? '#e65100'
-                                  : '#1565c0',
-                                color: '#fff',
-                                fontWeight: 'bold',
-                                boxShadow: (unreachableStatus !== savedUnreachableStatus || editedFirstCallPerson !== savedFirstCallPerson)
-                                  ? '0 0 12px 3px rgba(230, 81, 0, 0.6)'
-                                  : undefined,
-                                transition: 'background-color 0.3s, box-shadow 0.3s',
-                                '&:hover': {
-                                  backgroundColor: (unreachableStatus !== savedUnreachableStatus || editedFirstCallPerson !== savedFirstCallPerson)
-                                    ? '#bf360c'
-                                    : '#0d47a1',
-                                },
-                              }}
-                            >
-                              {saving ? <CircularProgress size={24} color="inherit" /> : '不通・1番電話を保存'}
-                            </Button>
-                
-                            {/* 査定理由フィールド（読み取り専用） */}
-                            <TextField
-                              label="査定理由（査定サイトから転記）"
-                              value={seller.valuationReason || '未入力'}
-                              fullWidth
-                              multiline
-                              minRows={2}
-                              InputProps={{ readOnly: true }}
-                              sx={{ mb: 2 }}
-                            />
-                
-                            {/* ステータス更新セクション */}
-                            <Typography variant="h6" gutterBottom>
-                              📊 ステータス
-                            </Typography>
-                            <Paper sx={{ p: 2, mb: 3, bgcolor: '#fffbf0' }}>
-                              {successMessage && (
-                                <Alert severity="success" sx={{ mb: 2 }} onClose={() => setSuccessMessage(null)}>
-                                  {successMessage}
-                                </Alert>
-                              )}
-                
-                              <Grid container spacing={2}>
-                                {/* 状況（当社）+ 次電日 - 横並び1行 */}
-                                <Grid item xs={7}>
-                                  <FormControl fullWidth size="small">
-                                    <InputLabel>状況（当社）</InputLabel>
-                                    <Select
-                                      value={editedStatus}
-                                      label="状況（当社）"
-                                      onChange={(e) => { setEditedStatus(e.target.value); setStatusChanged(true); }}
-                                    >
-                                      <MenuItem value="追客中">追客中</MenuItem>
-                                      <MenuItem value="追客不要(未訪問）">追客不要(未訪問）</MenuItem>
-                                      <MenuItem value="除外済追客不要">除外済追客不要</MenuItem>
-                                      <MenuItem value="除外後追客中">除外後追客中</MenuItem>
-                                      <MenuItem value="専任媒介">専任媒介</MenuItem>
-                                      <MenuItem value="一般媒介">一般媒介</MenuItem>
-                                      <MenuItem value="リースバック（専任）">リースバック（専任）</MenuItem>
-                                      <MenuItem value="他決→追客">他決→追客</MenuItem>
-                                      <MenuItem value="他決→追客不要">他決→追客不要</MenuItem>
-                                      <MenuItem value="他決→専任">他決→専任</MenuItem>
-                                      <MenuItem value="他決→一般">他決→一般</MenuItem>
-                                      <MenuItem value="専任→他社専任">専任→他社専任</MenuItem>
-                                      <MenuItem value="一般→他決">一般→他決</MenuItem>
-                                      <MenuItem value="他社買取">他社買取</MenuItem>
-                                      <MenuItem value="訪問後（担当付）追客不要">訪問後（担当付）追客不要</MenuItem>
-                                    </Select>
-                                  </FormControl>
-                                </Grid>
-                                <Grid item xs={5}>
-                                  <TextField
-                                    fullWidth
-                                    size="small"
-                                    label="次電日"
-                                    type="date"
-                                    value={editedNextCallDate}
-                                    onChange={(e) => { setEditedNextCallDate(e.target.value); setStatusChanged(true); }}
-                                    InputLabelProps={{ 
-                                      shrink: true,
-                                      sx: { fontWeight: 'bold', fontSize: '1.1rem' }
-                                    }}
-                                    sx={{
-                                      '& .MuiOutlinedInput-root': {
-                                        backgroundColor: '#fff9c4', // 薄い黄色の背景
-                                        '&:hover': {
-                                          backgroundColor: '#fff59d', // ホバー時は少し濃い黄色
-                                        },
-                                        '&.Mui-focused': {
-                                          backgroundColor: '#fff59d', // フォーカス時も少し濃い黄色
-                                        }
-                                      }
-                                    }}
-                                  />
-                                </Grid>
-                
-                                {/* 専任または他決が含まれる場合のみ表示 */}
-                                {requiresDecisionDate(editedStatus) && (
-                                  <>
-                                    <Grid item xs={12}>
-                                      <TextField
-                                        fullWidth
-                                        size="small"
-                                        label="専任（他決）決定日"
-                                        type="date"
-                                        required
-                                        value={editedExclusiveDecisionDate}
-                                        onChange={(e) => setEditedExclusiveDecisionDate(e.target.value)}
-                                        InputLabelProps={{ shrink: true }}
-                                        error={!editedExclusiveDecisionDate}
-                                        helperText={!editedExclusiveDecisionDate ? '必須項目です' : ''}
-                                      />
-                                    </Grid>
-                                    <Grid item xs={12}>
-                                      <FormControl fullWidth size="small" required error={editedCompetitors.length === 0}>
-                                        <InputLabel>競合（複数選択可）</InputLabel>
-                                        <Select
-                                          multiple
-                                          value={editedCompetitors}
-                                          label="競合（複数選択可）"
-                                          onChange={(e) => setEditedCompetitors(typeof e.target.value === 'string' ? [e.target.value] : e.target.value)}
-                                          renderValue={(selected) => (
-                                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                                              {selected.map((value) => (
-                                                <Chip key={value} label={value} size="small" />
-                                              ))}
-                                            </Box>
-                                          )}
-                                        >
-                                          {competitorCompanies.map((company) => (
-                                            <MenuItem key={company} value={company}>
-                                              {company}
-                                            </MenuItem>
-                                          ))}
-                                        </Select>
-                                        {editedCompetitors.length === 0 && (
-                                          <Typography variant="caption" color="error" sx={{ mt: 0.5, ml: 1.5 }}>
-                                            必須項目です
-                                          </Typography>
-                                        )}
-                                      </FormControl>
-                                    </Grid>
-                                    <Grid item xs={12}>
-                                      <FormControl fullWidth size="small" required error={editedExclusiveOtherDecisionFactors.length === 0}>
-                                        <InputLabel>専任・他決要因（複数選択可）</InputLabel>
-                                        <Select
-                                          multiple
-                                          value={editedExclusiveOtherDecisionFactors}
-                                          label="専任・他決要因（複数選択可）"
-                                          onChange={(e) => setEditedExclusiveOtherDecisionFactors(typeof e.target.value === 'string' ? [e.target.value] : e.target.value)}
-                                          renderValue={(selected) => (
-                                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                                              {selected.map((value) => (
-                                                <Chip key={value} label={value} size="small" />
-                                              ))}
-                                            </Box>
-                                          )}
-                                        >
-                                          {exclusiveOtherDecisionFactorOptions.map((factor) => (
-                                            <MenuItem key={factor} value={factor}>
-                                              {factor}
-                                            </MenuItem>
-                                          ))}
-                                        </Select>
-                                        {editedExclusiveOtherDecisionFactors.length === 0 && (
-                                          <Typography variant="caption" color="error" sx={{ mt: 0.5, ml: 1.5 }}>
-                                            必須項目です
-                                          </Typography>
-                                        )}
-                                      </FormControl>
-                                    </Grid>
-                                    
-                                    {/* 競合名、理由フィールド */}
-                                    <Grid item xs={12}>
-                                      <TextField
-                                        fullWidth
-                                        multiline
-                                        rows={4}
-                                        size="small"
-                                        label="競合名、理由（他決、専任）"
-                                        value={editedCompetitorNameAndReason}
-                                        onChange={(e) => setEditedCompetitorNameAndReason(e.target.value)}
-                                        placeholder="競合他社の名前や、専任・他決になった理由の詳細を記入してください"
-                                      />
-                                    </Grid>
-                                    
-                                    {/* GoogleChat通知ボタン - 必須項目が全て入力されている場合のみ表示 */}
-                                    {isRequiredFieldsComplete() && (
-                                      <Grid item xs={12}>
-                                        <Button
-                                          fullWidth
-                                          variant="contained"
-                                          color="success"
-                                          onClick={handleSendChatNotification}
-                                          disabled={sendingChatNotification}
-                                          startIcon={sendingChatNotification ? <CircularProgress size={20} /> : null}
-                                        >
-                                          {sendingChatNotification ? '送信中...' : `${getStatusLabel(editedStatus)}通知`}
-                                        </Button>
-                                      </Grid>
-                                    )}
-                                  </>
-                                )}
-                
-                                {/* 専任他決打合せ - 確度の上に配置 */}
-                                {requiresDecisionDate(editedStatus) && (
-                                  <Grid item xs={12}>
-                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                      <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                                        専任他決打合せ
-                                      </Typography>
-                                      <Button
-                                        variant={editedExclusiveOtherDecisionMeeting === '完了' ? 'contained' : 'outlined'}
-                                        size="small"
-                                        onClick={() => {
-                                          setEditedExclusiveOtherDecisionMeeting('完了');
-                                          setStatusChanged(true);
-                                        }}
-                                        sx={{ minWidth: '80px' }}
-                                      >
-                                        完了
-                                      </Button>
-                                      {editedExclusiveOtherDecisionMeeting === '完了' && (
-                                        <Chip label="完了済み" size="small" color="success" />
-                                      )}
-                                    </Box>
-                                  </Grid>
-                                )}
-                
-                                {/* 確度 - 1行全幅 */}
-                                <Grid item xs={12}>
-                                  <FormControl fullWidth size="small" error={
-                                    !editedConfidence &&
-                                    !!(seller?.inquiryDate && new Date(seller.inquiryDate) >= new Date('2026-01-01')) &&
-                                    editedStatus?.includes('追客中') &&
-                                    unreachableStatus === '通電OK'
-                                  }>
-                                    <InputLabel>
-                                      確度
-                                      {!!(seller?.inquiryDate && new Date(seller.inquiryDate) >= new Date('2026-01-01')) &&
-                                        editedStatus?.includes('追客中') &&
-                                        unreachableStatus === '通電OK' && (
-                                        <span style={{ color: 'red', marginLeft: 4 }}>*</span>
-                                      )}
-                                    </InputLabel>
-                                    <Select
-                                      value={editedConfidence}
-                                      label="確度"
-                                      onChange={(e) => { setEditedConfidence(e.target.value as ConfidenceLevel); setStatusChanged(true); }}
-                                    >
-                                      {CONFIDENCE_OPTIONS.map((opt) => (
-                                        <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>
-                                      ))}
-                                    </Select>
-                                  </FormControl>
-                                </Grid>
-                
-                                {/* 除外日 + 除外日にすること - 2カラム（ボックス表示） */}
-                                <Grid item xs={6}>
-                                  <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 1, p: 1, minHeight: 40 }}>
-                                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.25 }}>
-                                      除外日
-                                    </Typography>
-                                    <Typography variant="body2" sx={{ fontWeight: 'medium' }}>
-                                      {exclusionDate || '－'}
-                                    </Typography>
-                                  </Box>
-                                </Grid>
-                                <Grid item xs={12}>
-                                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
-                                    除外日にすること
-                                  </Typography>
-                                  <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                                    {['除外日に不通であれば除外', '除外日になにもせず除外'].map((option) => (
-                                      <Button
-                                        key={option}
-                                        variant={exclusionAction === option ? 'contained' : 'outlined'}
-                                        color={exclusionAction === option ? 'primary' : 'inherit'}
-                                        size="small"
-                                        onClick={() => {
-                                          const value = exclusionAction === option ? '' : option;
-                                          setExclusionAction(value);
-                                          // 除外日が設定されている場合、次電日を除外日に設定
-                                          if (value && exclusionDate) {
-                                            setEditedNextCallDate(exclusionDate);
-                                          }
-                                          setStatusChanged(true);
-                                        }}
-                                        sx={{ minWidth: 80 }}
-                                      >
-                                        {option}
-                                      </Button>
-                                    ))}
-                                  </Box>
-                                </Grid>
-                
-                                {/* ステータスを更新ボタン（未変更時はグレー、変更あり時はオレンジでパルスアニメーション） */}
-                                <Grid item xs={12}>
-                                  <Button
-                                    fullWidth
-                                    variant={statusChanged ? 'contained' : 'outlined'}
-                                    size="large"
-                                    startIcon={savingStatus ? <CircularProgress size={20} /> : <Save />}
-                                    onClick={handleUpdateStatus}
-                                    disabled={savingStatus || !statusChanged}
-                                    sx={{
-                                      ...(statusChanged ? {
-                                        backgroundColor: '#ff6d00',
-                                        color: '#fff',
-                                        fontWeight: 'bold',
-                                        boxShadow: '0 0 0 3px rgba(255,109,0,0.4)',
-                                        animation: 'pulse-orange 1.5s infinite',
-                                        '@keyframes pulse-orange': {
-                                          '0%': { boxShadow: '0 0 0 0 rgba(255,109,0,0.5)' },
-                                          '70%': { boxShadow: '0 0 0 8px rgba(255,109,0,0)' },
-                                          '100%': { boxShadow: '0 0 0 0 rgba(255,109,0,0)' },
-                                        },
-                                        '&:hover': { backgroundColor: '#e65100' },
-                                      } : {
-                                        color: '#bdbdbd',
-                                        borderColor: '#e0e0e0',
-                                      }),
-                                    }}
-                                  >
-                                    {savingStatus ? '更新中...' : 'ステータスを更新'}
-                                  </Button>
-                                </Grid>
-                              </Grid>
-                            </Paper>
+            {/* コメント入力・編集エリア（直接書き込み可能） */}
+            <Box sx={{ mb: 2 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.5 }}>
+                <Typography variant="subtitle2">
+                  コメント
+                </Typography>
+                {/* サイトURLリンク（inquiry_site が「ウ」かつ siteUrl が存在する場合のみ表示） */}
+                {seller.site === 'ウ' && seller.siteUrl && seller.siteUrl.trim() !== '' && (
+                  <a
+                    href={seller.siteUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ fontSize: '0.85rem', color: '#1976d2', textDecoration: 'underline' }}
+                  >
+                    サイトURL
+                  </a>
+                )}
+              </Box>
+              <RichTextCommentEditor
+                ref={commentEditorRef}
+                value={editableComments}
+                onChange={(html) => setEditableComments(html)}
+                placeholder="コメントを入力してください..."
+              />
+            </Box>
 
-                {/* コメント入力・編集エリア（後に表示） */}
-                                      textDecoration: 'line-through',
-                                      color: 'text.disabled',
-                                    }),
-                                  }}
-                                />
-                                <Chip
-                                  label="不通"
-                                  onClick={() => {
-                                    handleQuickButtonClick('call-memo-unreachable');
-                                    appendBoldText('不通');
-                                  }}
-                                  size="small"
-                                  clickable
-                                  disabled={isButtonDisabled('call-memo-unreachable')}
-                                  sx={{
-                                    ...(getButtonState('call-memo-unreachable') === 'pending' && {
-                                      backgroundColor: '#fff9c4',
-                                      textDecoration: 'line-through',
-                                      color: 'text.secondary',
-                                    }),
-                                    ...(getButtonState('call-memo-unreachable') === 'persisted' && {
-                                      backgroundColor: '#e0e0e0',
-                                      textDecoration: 'line-through',
-                                      color: 'text.disabled',
-                                    }),
-                                  }}
-                                />
-                              </Box>
-                            </Box>
-                
-                            {/* コメント入力・編集エリア（直接書き込み可能） */}
-                            <Box sx={{ mb: 2 }}>
-                              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.5 }}>
-                                <Typography variant="subtitle2">
-                                  コメント
-                                </Typography>
-                                {/* サイトURLリンク（inquiry_site が「ウ」かつ siteUrl が存在する場合のみ表示） */}
-                                {seller.site === 'ウ' && seller.siteUrl && seller.siteUrl.trim() !== '' && (
-                                  <a
-                                    href={seller.siteUrl}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    style={{ fontSize: '0.85rem', color: '#1976d2', textDecoration: 'underline' }}
-                                  >
-                                    サイトURL
-                                  </a>
-                                )}
-                              </Box>
-                              <RichTextCommentEditor
-                                ref={commentEditorRef}
-                                value={editableComments}
-                                onChange={(html) => setEditableComments(html)}
-                                placeholder="コメントを入力してください..."
-                              />
-                            </Box>
-                
-                            {/* 査定理由フィールド（読み取り専用・常時表示） - 保存ボタンの後に移動 */}
-                
-                            {/* 保存ボタン（未変更時はグレー、変更あり時はオレンジで目立つ） */}
-                            {(() => {
-                              const isDirty = editableComments !== savedComments;
-                              return (
-                                <Button
-                                  fullWidth
-                                  variant={isDirty ? 'contained' : 'outlined'}
-                                  size="large"
-                                  disabled={savingComments}
-                                  onClick={handleSaveComments}
-                                  sx={{
-                                    mb: 3,
-                                    ...(isDirty ? {
-                                      backgroundColor: '#ff6d00',
-                                      color: '#fff',
-                                      fontWeight: 'bold',
-                                      boxShadow: '0 0 0 3px rgba(255,109,0,0.4)',
-                                      animation: 'pulse-orange 1.5s infinite',
-                                      '@keyframes pulse-orange': {
-                                        '0%': { boxShadow: '0 0 0 0 rgba(255,109,0,0.5)' },
-                                        '70%': { boxShadow: '0 0 0 8px rgba(255,109,0,0)' },
-                                        '100%': { boxShadow: '0 0 0 0 rgba(255,109,0,0)' },
-                                      },
-                                      '&:hover': { backgroundColor: '#e65100' },
-                                    } : {
-                                      color: '#bdbdbd',
-                                      borderColor: '#e0e0e0',
-                                    }),
-                                  }}
-                                >
-                                  {savingComments ? <CircularProgress size={24} /> : '保存'}
-                                </Button>
-                              );
-                            })()}
-                
-                            {/* 不通フィールド（コメント保存ボタンの直下） */}
-                            <Box sx={{ mb: 2 }}>
-                              <Typography variant="subtitle2" gutterBottom>
-                                不通
-                                {seller?.inquiryDate && new Date(seller.inquiryDate) >= new Date('2026-01-01') && (
-                                  <span style={{ color: 'red', marginLeft: 4 }}>*</span>
-                                )}
-                              </Typography>
-                              <Box sx={{ display: 'flex', gap: 1 }}>
-                                <Button
-                                  variant={unreachableStatus === '不通' ? 'contained' : 'outlined'}
-                                  color="error"
-                                  size="small"
-                                  onClick={() => setUnreachableStatus('不通')}
-                                  sx={{ minWidth: 100 }}
-                                >
-                                  不通
-                                </Button>
-                                <Button
-                                  variant={unreachableStatus === '通電OK' ? 'contained' : 'outlined'}
-                                  color="primary"
-                                  size="small"
-                                  onClick={() => setUnreachableStatus('通電OK')}
-                                  sx={{ minWidth: 100 }}
-                                >
-                                  通電OK
-                                </Button>
-                                {unreachableStatus && (
-                                  <Button
-                                    variant="outlined"
-                                    color="inherit"
-                                    size="small"
-                                    onClick={() => setUnreachableStatus(null)}
-                                    sx={{ minWidth: 60, color: '#bdbdbd', borderColor: '#e0e0e0' }}
-                                  >
-                                    クリア
-                                  </Button>
-                                )}
-                              </Box>
-                            </Box>
-                
-                            {/* 1番電話フィールド（不通の直下） */}
-                            <Box sx={{ mb: 2 }}>
-                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
-                                <Typography variant="subtitle2">
-                                  1番電話
-                                  {seller?.inquiryDate && new Date(seller.inquiryDate) >= new Date('2026-03-01') && unreachableStatus && (
-                                    <span style={{ color: 'red', marginLeft: 4 }}>*</span>
-                                  )}
-                                </Typography>
-                                <Button
-                                  size="small"
-                                  variant="outlined"
-                                  onClick={() => setRankingDialogOpen(true)}
-                                  sx={{ fontSize: '0.7rem', py: 0.25, px: 1, minWidth: 0 }}
-                                >
-                                  🏆 1番電話月間ランキング
-                                </Button>
-                              </Box>
-                              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                                {normalInitials.map((initial) => (
-                                  <Button
-                                    key={initial}
-                                    variant={editedFirstCallPerson === initial ? 'contained' : 'outlined'}
-                                    color="primary"
-                                    size="small"
-                                    onClick={() => setEditedFirstCallPerson(initial)}
-                                    sx={{ minWidth: 60 }}
-                                  >
-                                    {initial}
-                                  </Button>
-                                ))}
-                              </Box>
-                            </Box>
-                
-                            {/* 不通・1番電話 保存ボタン */}
-                            <Button
-                              fullWidth
-                              variant="contained"
-                              size="large"
-                              disabled={saving}
-                              onClick={handleSaveAndExit}
-                              sx={{
-                                mb: 2,
-                                backgroundColor: (unreachableStatus !== savedUnreachableStatus || editedFirstCallPerson !== savedFirstCallPerson)
-              </>
-            ) : (
-              <>
-                {/* コメント入力・編集エリア（先に表示） */}
-                                      textDecoration: 'line-through',
-                                      color: 'text.disabled',
-                                    }),
-                                  }}
-                                />
-                                <Chip
-                                  label="不通"
-                                  onClick={() => {
-                                    handleQuickButtonClick('call-memo-unreachable');
-                                    appendBoldText('不通');
-                                  }}
-                                  size="small"
-                                  clickable
-                                  disabled={isButtonDisabled('call-memo-unreachable')}
-                                  sx={{
-                                    ...(getButtonState('call-memo-unreachable') === 'pending' && {
-                                      backgroundColor: '#fff9c4',
-                                      textDecoration: 'line-through',
-                                      color: 'text.secondary',
-                                    }),
-                                    ...(getButtonState('call-memo-unreachable') === 'persisted' && {
-                                      backgroundColor: '#e0e0e0',
-                                      textDecoration: 'line-through',
-                                      color: 'text.disabled',
-                                    }),
-                                  }}
-                                />
-                              </Box>
-                            </Box>
-                
-                            {/* コメント入力・編集エリア（直接書き込み可能） */}
-                            <Box sx={{ mb: 2 }}>
-                              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.5 }}>
-                                <Typography variant="subtitle2">
-                                  コメント
-                                </Typography>
-                                {/* サイトURLリンク（inquiry_site が「ウ」かつ siteUrl が存在する場合のみ表示） */}
-                                {seller.site === 'ウ' && seller.siteUrl && seller.siteUrl.trim() !== '' && (
-                                  <a
-                                    href={seller.siteUrl}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    style={{ fontSize: '0.85rem', color: '#1976d2', textDecoration: 'underline' }}
-                                  >
-                                    サイトURL
-                                  </a>
-                                )}
-                              </Box>
-                              <RichTextCommentEditor
-                                ref={commentEditorRef}
-                                value={editableComments}
-                                onChange={(html) => setEditableComments(html)}
-                                placeholder="コメントを入力してください..."
-                              />
-                            </Box>
-                
-                            {/* 査定理由フィールド（読み取り専用・常時表示） - 保存ボタンの後に移動 */}
-                
-                            {/* 保存ボタン（未変更時はグレー、変更あり時はオレンジで目立つ） */}
-                            {(() => {
-                              const isDirty = editableComments !== savedComments;
-                              return (
-                                <Button
-                                  fullWidth
-                                  variant={isDirty ? 'contained' : 'outlined'}
-                                  size="large"
-                                  disabled={savingComments}
-                                  onClick={handleSaveComments}
-                                  sx={{
-                                    mb: 3,
-                                    ...(isDirty ? {
-                                      backgroundColor: '#ff6d00',
-                                      color: '#fff',
-                                      fontWeight: 'bold',
-                                      boxShadow: '0 0 0 3px rgba(255,109,0,0.4)',
-                                      animation: 'pulse-orange 1.5s infinite',
-                                      '@keyframes pulse-orange': {
-                                        '0%': { boxShadow: '0 0 0 0 rgba(255,109,0,0.5)' },
-                                        '70%': { boxShadow: '0 0 0 8px rgba(255,109,0,0)' },
-                                        '100%': { boxShadow: '0 0 0 0 rgba(255,109,0,0)' },
-                                      },
-                                      '&:hover': { backgroundColor: '#e65100' },
-                                    } : {
-                                      color: '#bdbdbd',
-                                      borderColor: '#e0e0e0',
-                                    }),
-                                  }}
-                                >
-                                  {savingComments ? <CircularProgress size={24} /> : '保存'}
-                                </Button>
-                              );
-                            })()}
-                
-                            {/* 不通フィールド（コメント保存ボタンの直下） */}
-                            <Box sx={{ mb: 2 }}>
-                              <Typography variant="subtitle2" gutterBottom>
-                                不通
-                                {seller?.inquiryDate && new Date(seller.inquiryDate) >= new Date('2026-01-01') && (
-                                  <span style={{ color: 'red', marginLeft: 4 }}>*</span>
-                                )}
-                              </Typography>
-                              <Box sx={{ display: 'flex', gap: 1 }}>
-                                <Button
-                                  variant={unreachableStatus === '不通' ? 'contained' : 'outlined'}
-                                  color="error"
-                                  size="small"
-                                  onClick={() => setUnreachableStatus('不通')}
-                                  sx={{ minWidth: 100 }}
-                                >
-                                  不通
-                                </Button>
-                                <Button
-                                  variant={unreachableStatus === '通電OK' ? 'contained' : 'outlined'}
-                                  color="primary"
-                                  size="small"
-                                  onClick={() => setUnreachableStatus('通電OK')}
-                                  sx={{ minWidth: 100 }}
-                                >
-                                  通電OK
-                                </Button>
-                                {unreachableStatus && (
-                                  <Button
-                                    variant="outlined"
-                                    color="inherit"
-                                    size="small"
-                                    onClick={() => setUnreachableStatus(null)}
-                                    sx={{ minWidth: 60, color: '#bdbdbd', borderColor: '#e0e0e0' }}
-                                  >
-                                    クリア
-                                  </Button>
-                                )}
-                              </Box>
-                            </Box>
-                
-                            {/* 1番電話フィールド（不通の直下） */}
-                            <Box sx={{ mb: 2 }}>
-                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
-                                <Typography variant="subtitle2">
-                                  1番電話
-                                  {seller?.inquiryDate && new Date(seller.inquiryDate) >= new Date('2026-03-01') && unreachableStatus && (
-                                    <span style={{ color: 'red', marginLeft: 4 }}>*</span>
-                                  )}
-                                </Typography>
-                                <Button
-                                  size="small"
-                                  variant="outlined"
-                                  onClick={() => setRankingDialogOpen(true)}
-                                  sx={{ fontSize: '0.7rem', py: 0.25, px: 1, minWidth: 0 }}
-                                >
-                                  🏆 1番電話月間ランキング
-                                </Button>
-                              </Box>
-                              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                                {normalInitials.map((initial) => (
-                                  <Button
-                                    key={initial}
-                                    variant={editedFirstCallPerson === initial ? 'contained' : 'outlined'}
-                                    color="primary"
-                                    size="small"
-                                    onClick={() => setEditedFirstCallPerson(initial)}
-                                    sx={{ minWidth: 60 }}
-                                  >
-                                    {initial}
-                                  </Button>
-                                ))}
-                              </Box>
-                            </Box>
-                
-                            {/* 不通・1番電話 保存ボタン */}
-                            <Button
-                              fullWidth
-                              variant="contained"
-                              size="large"
-                              disabled={saving}
-                              onClick={handleSaveAndExit}
-                              sx={{
-                                mb: 2,
-                                backgroundColor: (unreachableStatus !== savedUnreachableStatus || editedFirstCallPerson !== savedFirstCallPerson)
+            {/* 査定理由フィールド（読み取り専用・常時表示） - 保存ボタンの後に移動 */}
 
-                {/* ステータス更新セクション（後に表示） */}
-                                  ? '#e65100'
-                                  : '#1565c0',
-                                color: '#fff',
-                                fontWeight: 'bold',
-                                boxShadow: (unreachableStatus !== savedUnreachableStatus || editedFirstCallPerson !== savedFirstCallPerson)
-                                  ? '0 0 12px 3px rgba(230, 81, 0, 0.6)'
-                                  : undefined,
-                                transition: 'background-color 0.3s, box-shadow 0.3s',
-                                '&:hover': {
-                                  backgroundColor: (unreachableStatus !== savedUnreachableStatus || editedFirstCallPerson !== savedFirstCallPerson)
-                                    ? '#bf360c'
-                                    : '#0d47a1',
-                                },
-                              }}
-                            >
-                              {saving ? <CircularProgress size={24} color="inherit" /> : '不通・1番電話を保存'}
-                            </Button>
-                
-                            {/* 査定理由フィールド（読み取り専用） */}
-                            <TextField
-                              label="査定理由（査定サイトから転記）"
-                              value={seller.valuationReason || '未入力'}
-                              fullWidth
-                              multiline
-                              minRows={2}
-                              InputProps={{ readOnly: true }}
-                              sx={{ mb: 2 }}
-                            />
-                
-                            {/* ステータス更新セクション */}
-                            <Typography variant="h6" gutterBottom>
-                              📊 ステータス
-                            </Typography>
-                            <Paper sx={{ p: 2, mb: 3, bgcolor: '#fffbf0' }}>
-                              {successMessage && (
-                                <Alert severity="success" sx={{ mb: 2 }} onClose={() => setSuccessMessage(null)}>
-                                  {successMessage}
-                                </Alert>
-                              )}
-                
-                              <Grid container spacing={2}>
-                                {/* 状況（当社）+ 次電日 - 横並び1行 */}
-                                <Grid item xs={7}>
-                                  <FormControl fullWidth size="small">
-                                    <InputLabel>状況（当社）</InputLabel>
-                                    <Select
-                                      value={editedStatus}
-                                      label="状況（当社）"
-                                      onChange={(e) => { setEditedStatus(e.target.value); setStatusChanged(true); }}
-                                    >
-                                      <MenuItem value="追客中">追客中</MenuItem>
-                                      <MenuItem value="追客不要(未訪問）">追客不要(未訪問）</MenuItem>
-                                      <MenuItem value="除外済追客不要">除外済追客不要</MenuItem>
-                                      <MenuItem value="除外後追客中">除外後追客中</MenuItem>
-                                      <MenuItem value="専任媒介">専任媒介</MenuItem>
-                                      <MenuItem value="一般媒介">一般媒介</MenuItem>
-                                      <MenuItem value="リースバック（専任）">リースバック（専任）</MenuItem>
-                                      <MenuItem value="他決→追客">他決→追客</MenuItem>
-                                      <MenuItem value="他決→追客不要">他決→追客不要</MenuItem>
-                                      <MenuItem value="他決→専任">他決→専任</MenuItem>
-                                      <MenuItem value="他決→一般">他決→一般</MenuItem>
-                                      <MenuItem value="専任→他社専任">専任→他社専任</MenuItem>
-                                      <MenuItem value="一般→他決">一般→他決</MenuItem>
-                                      <MenuItem value="他社買取">他社買取</MenuItem>
-                                      <MenuItem value="訪問後（担当付）追客不要">訪問後（担当付）追客不要</MenuItem>
-                                    </Select>
-                                  </FormControl>
-                                </Grid>
-                                <Grid item xs={5}>
-                                  <TextField
-                                    fullWidth
-                                    size="small"
-                                    label="次電日"
-                                    type="date"
-                                    value={editedNextCallDate}
-                                    onChange={(e) => { setEditedNextCallDate(e.target.value); setStatusChanged(true); }}
-                                    InputLabelProps={{ 
-                                      shrink: true,
-                                      sx: { fontWeight: 'bold', fontSize: '1.1rem' }
-                                    }}
-                                    sx={{
-                                      '& .MuiOutlinedInput-root': {
-                                        backgroundColor: '#fff9c4', // 薄い黄色の背景
-                                        '&:hover': {
-                                          backgroundColor: '#fff59d', // ホバー時は少し濃い黄色
-                                        },
-                                        '&.Mui-focused': {
-                                          backgroundColor: '#fff59d', // フォーカス時も少し濃い黄色
-                                        }
-                                      }
-                                    }}
-                                  />
-                                </Grid>
-                
-                                {/* 専任または他決が含まれる場合のみ表示 */}
-                                {requiresDecisionDate(editedStatus) && (
-                                  <>
-                                    <Grid item xs={12}>
-                                      <TextField
-                                        fullWidth
-                                        size="small"
-                                        label="専任（他決）決定日"
-                                        type="date"
-                                        required
-                                        value={editedExclusiveDecisionDate}
-                                        onChange={(e) => setEditedExclusiveDecisionDate(e.target.value)}
-                                        InputLabelProps={{ shrink: true }}
-                                        error={!editedExclusiveDecisionDate}
-                                        helperText={!editedExclusiveDecisionDate ? '必須項目です' : ''}
-                                      />
-                                    </Grid>
-                                    <Grid item xs={12}>
-                                      <FormControl fullWidth size="small" required error={editedCompetitors.length === 0}>
-                                        <InputLabel>競合（複数選択可）</InputLabel>
-                                        <Select
-                                          multiple
-                                          value={editedCompetitors}
-                                          label="競合（複数選択可）"
-                                          onChange={(e) => setEditedCompetitors(typeof e.target.value === 'string' ? [e.target.value] : e.target.value)}
-                                          renderValue={(selected) => (
-                                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                                              {selected.map((value) => (
-                                                <Chip key={value} label={value} size="small" />
-                                              ))}
-                                            </Box>
-                                          )}
-                                        >
-                                          {competitorCompanies.map((company) => (
-                                            <MenuItem key={company} value={company}>
-                                              {company}
-                                            </MenuItem>
-                                          ))}
-                                        </Select>
-                                        {editedCompetitors.length === 0 && (
-                                          <Typography variant="caption" color="error" sx={{ mt: 0.5, ml: 1.5 }}>
-                                            必須項目です
-                                          </Typography>
-                                        )}
-                                      </FormControl>
-                                    </Grid>
-                                    <Grid item xs={12}>
-                                      <FormControl fullWidth size="small" required error={editedExclusiveOtherDecisionFactors.length === 0}>
-                                        <InputLabel>専任・他決要因（複数選択可）</InputLabel>
-                                        <Select
-                                          multiple
-                                          value={editedExclusiveOtherDecisionFactors}
-                                          label="専任・他決要因（複数選択可）"
-                                          onChange={(e) => setEditedExclusiveOtherDecisionFactors(typeof e.target.value === 'string' ? [e.target.value] : e.target.value)}
-                                          renderValue={(selected) => (
-                                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                                              {selected.map((value) => (
-                                                <Chip key={value} label={value} size="small" />
-                                              ))}
-                                            </Box>
-                                          )}
-                                        >
-                                          {exclusiveOtherDecisionFactorOptions.map((factor) => (
-                                            <MenuItem key={factor} value={factor}>
-                                              {factor}
-                                            </MenuItem>
-                                          ))}
-                                        </Select>
-                                        {editedExclusiveOtherDecisionFactors.length === 0 && (
-                                          <Typography variant="caption" color="error" sx={{ mt: 0.5, ml: 1.5 }}>
-                                            必須項目です
-                                          </Typography>
-                                        )}
-                                      </FormControl>
-                                    </Grid>
-                                    
-                                    {/* 競合名、理由フィールド */}
-                                    <Grid item xs={12}>
-                                      <TextField
-                                        fullWidth
-                                        multiline
-                                        rows={4}
-                                        size="small"
-                                        label="競合名、理由（他決、専任）"
-                                        value={editedCompetitorNameAndReason}
-                                        onChange={(e) => setEditedCompetitorNameAndReason(e.target.value)}
-                                        placeholder="競合他社の名前や、専任・他決になった理由の詳細を記入してください"
-                                      />
-                                    </Grid>
-                                    
-                                    {/* GoogleChat通知ボタン - 必須項目が全て入力されている場合のみ表示 */}
-                                    {isRequiredFieldsComplete() && (
-                                      <Grid item xs={12}>
-                                        <Button
-                                          fullWidth
-                                          variant="contained"
-                                          color="success"
-                                          onClick={handleSendChatNotification}
-                                          disabled={sendingChatNotification}
-                                          startIcon={sendingChatNotification ? <CircularProgress size={20} /> : null}
-                                        >
-                                          {sendingChatNotification ? '送信中...' : `${getStatusLabel(editedStatus)}通知`}
-                                        </Button>
-                                      </Grid>
-                                    )}
-                                  </>
-                                )}
-                
-                                {/* 専任他決打合せ - 確度の上に配置 */}
-                                {requiresDecisionDate(editedStatus) && (
-                                  <Grid item xs={12}>
-                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                      <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                                        専任他決打合せ
-                                      </Typography>
-                                      <Button
-                                        variant={editedExclusiveOtherDecisionMeeting === '完了' ? 'contained' : 'outlined'}
-                                        size="small"
-                                        onClick={() => {
-                                          setEditedExclusiveOtherDecisionMeeting('完了');
-                                          setStatusChanged(true);
-                                        }}
-                                        sx={{ minWidth: '80px' }}
-                                      >
-                                        完了
-                                      </Button>
-                                      {editedExclusiveOtherDecisionMeeting === '完了' && (
-                                        <Chip label="完了済み" size="small" color="success" />
-                                      )}
-                                    </Box>
-                                  </Grid>
-                                )}
-                
-                                {/* 確度 - 1行全幅 */}
-                                <Grid item xs={12}>
-                                  <FormControl fullWidth size="small" error={
-                                    !editedConfidence &&
-                                    !!(seller?.inquiryDate && new Date(seller.inquiryDate) >= new Date('2026-01-01')) &&
-                                    editedStatus?.includes('追客中') &&
-                                    unreachableStatus === '通電OK'
-                                  }>
-                                    <InputLabel>
-                                      確度
-                                      {!!(seller?.inquiryDate && new Date(seller.inquiryDate) >= new Date('2026-01-01')) &&
-                                        editedStatus?.includes('追客中') &&
-                                        unreachableStatus === '通電OK' && (
-                                        <span style={{ color: 'red', marginLeft: 4 }}>*</span>
-                                      )}
-                                    </InputLabel>
-                                    <Select
-                                      value={editedConfidence}
-                                      label="確度"
-                                      onChange={(e) => { setEditedConfidence(e.target.value as ConfidenceLevel); setStatusChanged(true); }}
-                                    >
-                                      {CONFIDENCE_OPTIONS.map((opt) => (
-                                        <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>
-                                      ))}
-                                    </Select>
-                                  </FormControl>
-                                </Grid>
-                
-                                {/* 除外日 + 除外日にすること - 2カラム（ボックス表示） */}
-                                <Grid item xs={6}>
-                                  <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 1, p: 1, minHeight: 40 }}>
-                                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.25 }}>
-                                      除外日
-                                    </Typography>
-                                    <Typography variant="body2" sx={{ fontWeight: 'medium' }}>
-                                      {exclusionDate || '－'}
-                                    </Typography>
-                                  </Box>
-                                </Grid>
-                                <Grid item xs={12}>
-                                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
-                                    除外日にすること
-                                  </Typography>
-                                  <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                                    {['除外日に不通であれば除外', '除外日になにもせず除外'].map((option) => (
-                                      <Button
-                                        key={option}
-                                        variant={exclusionAction === option ? 'contained' : 'outlined'}
-                                        color={exclusionAction === option ? 'primary' : 'inherit'}
-                                        size="small"
-                                        onClick={() => {
-                                          const value = exclusionAction === option ? '' : option;
-                                          setExclusionAction(value);
-                                          // 除外日が設定されている場合、次電日を除外日に設定
-                                          if (value && exclusionDate) {
-                                            setEditedNextCallDate(exclusionDate);
-                                          }
-                                          setStatusChanged(true);
-                                        }}
-                                        sx={{ minWidth: 80 }}
-                                      >
-                                        {option}
-                                      </Button>
-                                    ))}
-                                  </Box>
-                                </Grid>
-                
-                                {/* ステータスを更新ボタン（未変更時はグレー、変更あり時はオレンジでパルスアニメーション） */}
-                                <Grid item xs={12}>
-                                  <Button
-                                    fullWidth
-                                    variant={statusChanged ? 'contained' : 'outlined'}
-                                    size="large"
-                                    startIcon={savingStatus ? <CircularProgress size={20} /> : <Save />}
-                                    onClick={handleUpdateStatus}
-                                    disabled={savingStatus || !statusChanged}
-                                    sx={{
-                                      ...(statusChanged ? {
-                                        backgroundColor: '#ff6d00',
-                                        color: '#fff',
-                                        fontWeight: 'bold',
-                                        boxShadow: '0 0 0 3px rgba(255,109,0,0.4)',
-                                        animation: 'pulse-orange 1.5s infinite',
-                                        '@keyframes pulse-orange': {
-                                          '0%': { boxShadow: '0 0 0 0 rgba(255,109,0,0.5)' },
-                                          '70%': { boxShadow: '0 0 0 8px rgba(255,109,0,0)' },
-                                          '100%': { boxShadow: '0 0 0 0 rgba(255,109,0,0)' },
-                                        },
-                                        '&:hover': { backgroundColor: '#e65100' },
-                                      } : {
-                                        color: '#bdbdbd',
-                                        borderColor: '#e0e0e0',
-                                      }),
-                                    }}
-                                  >
-                                    {savingStatus ? '更新中...' : 'ステータスを更新'}
-                                  </Button>
-                                </Grid>
-                              </Grid>
-                            </Paper>
-              </>
-            )}
+            {/* 保存ボタン（未変更時はグレー、変更あり時はオレンジで目立つ） */}
+            {(() => {
+              const isDirty = editableComments !== savedComments;
+              return (
+                <Button
+                  fullWidth
+                  variant={isDirty ? 'contained' : 'outlined'}
+                  size="large"
+                  disabled={savingComments}
+                  onClick={handleSaveComments}
+                  sx={{
+                    mb: 3,
+                    ...(isDirty ? {
+                      backgroundColor: '#ff6d00',
+                      color: '#fff',
+                      fontWeight: 'bold',
+                      boxShadow: '0 0 0 3px rgba(255,109,0,0.4)',
+                      animation: 'pulse-orange 1.5s infinite',
+                      '@keyframes pulse-orange': {
+                        '0%': { boxShadow: '0 0 0 0 rgba(255,109,0,0.5)' },
+                        '70%': { boxShadow: '0 0 0 8px rgba(255,109,0,0)' },
+                        '100%': { boxShadow: '0 0 0 0 rgba(255,109,0,0)' },
+                      },
+                      '&:hover': { backgroundColor: '#e65100' },
+                    } : {
+                      color: '#bdbdbd',
+                      borderColor: '#e0e0e0',
+                    }),
+                  }}
+                >
+                  {savingComments ? <CircularProgress size={24} /> : '保存'}
+                </Button>
+              );
+            })()}
 
+            {/* 不通フィールド（コメント保存ボタンの直下） */}
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="subtitle2" gutterBottom>
+                不通
+                {seller?.inquiryDate && new Date(seller.inquiryDate) >= new Date('2026-01-01') && (
+                  <span style={{ color: 'red', marginLeft: 4 }}>*</span>
+                )}
+              </Typography>
+              <Box sx={{ display: 'flex', gap: 1 }}>
+                <Button
+                  variant={unreachableStatus === '不通' ? 'contained' : 'outlined'}
+                  color="error"
+                  size="small"
+                  onClick={() => setUnreachableStatus('不通')}
+                  sx={{ minWidth: 100 }}
+                >
+                  不通
+                </Button>
+                <Button
+                  variant={unreachableStatus === '通電OK' ? 'contained' : 'outlined'}
+                  color="primary"
+                  size="small"
+                  onClick={() => setUnreachableStatus('通電OK')}
+                  sx={{ minWidth: 100 }}
+                >
+                  通電OK
+                </Button>
+                {unreachableStatus && (
+                  <Button
+                    variant="outlined"
+                    color="inherit"
+                    size="small"
+                    onClick={() => setUnreachableStatus(null)}
+                    sx={{ minWidth: 60, color: '#bdbdbd', borderColor: '#e0e0e0' }}
+                  >
+                    クリア
+                  </Button>
+                )}
+              </Box>
+            </Box>
+
+            {/* 1番電話フィールド（不通の直下） */}
+            <Box sx={{ mb: 2 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                <Typography variant="subtitle2">
+                  1番電話
+                  {seller?.inquiryDate && new Date(seller.inquiryDate) >= new Date('2026-03-01') && unreachableStatus && (
+                    <span style={{ color: 'red', marginLeft: 4 }}>*</span>
+                  )}
+                </Typography>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  onClick={() => setRankingDialogOpen(true)}
+                  sx={{ fontSize: '0.7rem', py: 0.25, px: 1, minWidth: 0 }}
+                >
+                  🏆 1番電話月間ランキング
+                </Button>
+              </Box>
+              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                {normalInitials.map((initial) => (
+                  <Button
+                    key={initial}
+                    variant={editedFirstCallPerson === initial ? 'contained' : 'outlined'}
+                    color="primary"
+                    size="small"
+                    onClick={() => setEditedFirstCallPerson(initial)}
+                    sx={{ minWidth: 60 }}
+                  >
+                    {initial}
+                  </Button>
+                ))}
+              </Box>
+            </Box>
+
+            {/* 不通・1番電話 保存ボタン */}
+            <Button
+              fullWidth
+              variant="contained"
+              size="large"
+              disabled={saving}
+              onClick={handleSaveAndExit}
+              sx={{
+                mb: 2,
+                backgroundColor: (unreachableStatus !== savedUnreachableStatus || editedFirstCallPerson !== savedFirstCallPerson)
+                  ? '#e65100'
+                  : '#1565c0',
+                color: '#fff',
+                fontWeight: 'bold',
+                boxShadow: (unreachableStatus !== savedUnreachableStatus || editedFirstCallPerson !== savedFirstCallPerson)
+                  ? '0 0 12px 3px rgba(230, 81, 0, 0.6)'
+                  : undefined,
+                transition: 'background-color 0.3s, box-shadow 0.3s',
+                '&:hover': {
+                  backgroundColor: (unreachableStatus !== savedUnreachableStatus || editedFirstCallPerson !== savedFirstCallPerson)
+                    ? '#bf360c'
+                    : '#0d47a1',
+                },
+              }}
+            >
+              {saving ? <CircularProgress size={24} color="inherit" /> : '不通・1番電話を保存'}
+            </Button>
+
+            {/* 査定理由フィールド（読み取り専用） */}
+            <TextField
+              label="査定理由（査定サイトから転記）"
+              value={seller.valuationReason || '未入力'}
+              fullWidth
+              multiline
+              minRows={2}
+              InputProps={{ readOnly: true }}
+              sx={{ mb: 2 }}
+            />
+
+            {/* ステータス更新セクション */}
+            <Typography variant="h6" gutterBottom>
+              📊 ステータス
+            </Typography>
+            <Paper sx={{ p: 2, mb: 3, bgcolor: '#fffbf0' }}>
+              {successMessage && (
+                <Alert severity="success" sx={{ mb: 2 }} onClose={() => setSuccessMessage(null)}>
+                  {successMessage}
+                </Alert>
+              )}
+
+              <Grid container spacing={2}>
+                {/* 状況（当社）+ 次電日 - 横並び1行 */}
+                <Grid item xs={7}>
+                  <FormControl fullWidth size="small">
+                    <InputLabel>状況（当社）</InputLabel>
+                    <Select
+                      value={editedStatus}
+                      label="状況（当社）"
+                      onChange={(e) => { setEditedStatus(e.target.value); setStatusChanged(true); }}
+                    >
+                      <MenuItem value="追客中">追客中</MenuItem>
+                      <MenuItem value="追客不要(未訪問）">追客不要(未訪問）</MenuItem>
+                      <MenuItem value="除外済追客不要">除外済追客不要</MenuItem>
+                      <MenuItem value="除外後追客中">除外後追客中</MenuItem>
+                      <MenuItem value="専任媒介">専任媒介</MenuItem>
+                      <MenuItem value="一般媒介">一般媒介</MenuItem>
+                      <MenuItem value="リースバック（専任）">リースバック（専任）</MenuItem>
+                      <MenuItem value="他決→追客">他決→追客</MenuItem>
+                      <MenuItem value="他決→追客不要">他決→追客不要</MenuItem>
+                      <MenuItem value="他決→専任">他決→専任</MenuItem>
+                      <MenuItem value="他決→一般">他決→一般</MenuItem>
+                      <MenuItem value="専任→他社専任">専任→他社専任</MenuItem>
+                      <MenuItem value="一般→他決">一般→他決</MenuItem>
+                      <MenuItem value="他社買取">他社買取</MenuItem>
+                      <MenuItem value="訪問後（担当付）追客不要">訪問後（担当付）追客不要</MenuItem>
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid item xs={5}>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    label="次電日"
+                    type="date"
+                    value={editedNextCallDate}
+                    onChange={(e) => { setEditedNextCallDate(e.target.value); setStatusChanged(true); }}
+                    InputLabelProps={{ 
+                      shrink: true,
+                      sx: { fontWeight: 'bold', fontSize: '1.1rem' }
+                    }}
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        backgroundColor: '#fff9c4', // 薄い黄色の背景
+                        '&:hover': {
+                          backgroundColor: '#fff59d', // ホバー時は少し濃い黄色
+                        },
+                        '&.Mui-focused': {
+                          backgroundColor: '#fff59d', // フォーカス時も少し濃い黄色
+                        }
+                      }
+                    }}
+                  />
+                </Grid>
+
+                {/* 専任または他決が含まれる場合のみ表示 */}
+                {requiresDecisionDate(editedStatus) && (
+                  <>
+                    <Grid item xs={12}>
+                      <TextField
+                        fullWidth
+                        size="small"
+                        label="専任（他決）決定日"
+                        type="date"
+                        required
+                        value={editedExclusiveDecisionDate}
+                        onChange={(e) => setEditedExclusiveDecisionDate(e.target.value)}
+                        InputLabelProps={{ shrink: true }}
+                        error={!editedExclusiveDecisionDate}
+                        helperText={!editedExclusiveDecisionDate ? '必須項目です' : ''}
+                      />
+                    </Grid>
+                    <Grid item xs={12}>
+                      <FormControl fullWidth size="small" required error={editedCompetitors.length === 0}>
+                        <InputLabel>競合（複数選択可）</InputLabel>
+                        <Select
+                          multiple
+                          value={editedCompetitors}
+                          label="競合（複数選択可）"
+                          onChange={(e) => setEditedCompetitors(typeof e.target.value === 'string' ? [e.target.value] : e.target.value)}
+                          renderValue={(selected) => (
+                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                              {selected.map((value) => (
+                                <Chip key={value} label={value} size="small" />
+                              ))}
+                            </Box>
+                          )}
+                        >
+                          {competitorCompanies.map((company) => (
+                            <MenuItem key={company} value={company}>
+                              {company}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                        {editedCompetitors.length === 0 && (
+                          <Typography variant="caption" color="error" sx={{ mt: 0.5, ml: 1.5 }}>
+                            必須項目です
+                          </Typography>
+                        )}
+                      </FormControl>
+                    </Grid>
+                    <Grid item xs={12}>
+                      <FormControl fullWidth size="small" required error={editedExclusiveOtherDecisionFactors.length === 0}>
+                        <InputLabel>専任・他決要因（複数選択可）</InputLabel>
+                        <Select
+                          multiple
+                          value={editedExclusiveOtherDecisionFactors}
+                          label="専任・他決要因（複数選択可）"
+                          onChange={(e) => setEditedExclusiveOtherDecisionFactors(typeof e.target.value === 'string' ? [e.target.value] : e.target.value)}
+                          renderValue={(selected) => (
+                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                              {selected.map((value) => (
+                                <Chip key={value} label={value} size="small" />
+                              ))}
+                            </Box>
+                          )}
+                        >
+                          {exclusiveOtherDecisionFactorOptions.map((factor) => (
+                            <MenuItem key={factor} value={factor}>
+                              {factor}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                        {editedExclusiveOtherDecisionFactors.length === 0 && (
+                          <Typography variant="caption" color="error" sx={{ mt: 0.5, ml: 1.5 }}>
+                            必須項目です
+                          </Typography>
+                        )}
+                      </FormControl>
+                    </Grid>
+                    
+                    {/* 競合名、理由フィールド */}
+                    <Grid item xs={12}>
+                      <TextField
+                        fullWidth
+                        multiline
+                        rows={4}
+                        size="small"
+                        label="競合名、理由（他決、専任）"
+                        value={editedCompetitorNameAndReason}
+                        onChange={(e) => setEditedCompetitorNameAndReason(e.target.value)}
+                        placeholder="競合他社の名前や、専任・他決になった理由の詳細を記入してください"
+                      />
+                    </Grid>
+                    
+                    {/* GoogleChat通知ボタン - 必須項目が全て入力されている場合のみ表示 */}
+                    {isRequiredFieldsComplete() && (
+                      <Grid item xs={12}>
+                        <Button
+                          fullWidth
+                          variant="contained"
+                          color="success"
+                          onClick={handleSendChatNotification}
+                          disabled={sendingChatNotification}
+                          startIcon={sendingChatNotification ? <CircularProgress size={20} /> : null}
+                        >
+                          {sendingChatNotification ? '送信中...' : `${getStatusLabel(editedStatus)}通知`}
+                        </Button>
+                      </Grid>
+                    )}
+                  </>
+                )}
+
+                {/* 専任他決打合せ - 確度の上に配置 */}
+                {requiresDecisionDate(editedStatus) && (
+                  <Grid item xs={12}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                        専任他決打合せ
+                      </Typography>
+                      <Button
+                        variant={editedExclusiveOtherDecisionMeeting === '完了' ? 'contained' : 'outlined'}
+                        size="small"
+                        onClick={() => {
+                          setEditedExclusiveOtherDecisionMeeting('完了');
+                          setStatusChanged(true);
+                        }}
+                        sx={{ minWidth: '80px' }}
+                      >
+                        完了
+                      </Button>
+                      {editedExclusiveOtherDecisionMeeting === '完了' && (
+                        <Chip label="完了済み" size="small" color="success" />
+                      )}
+                    </Box>
+                  </Grid>
+                )}
+
+                {/* 確度 - 1行全幅 */}
+                <Grid item xs={12}>
+                  <FormControl fullWidth size="small" error={
+                    !editedConfidence &&
+                    !!(seller?.inquiryDate && new Date(seller.inquiryDate) >= new Date('2026-01-01')) &&
+                    editedStatus?.includes('追客中') &&
+                    unreachableStatus === '通電OK'
+                  }>
+                    <InputLabel>
+                      確度
+                      {!!(seller?.inquiryDate && new Date(seller.inquiryDate) >= new Date('2026-01-01')) &&
+                        editedStatus?.includes('追客中') &&
+                        unreachableStatus === '通電OK' && (
+                        <span style={{ color: 'red', marginLeft: 4 }}>*</span>
+                      )}
+                    </InputLabel>
+                    <Select
+                      value={editedConfidence}
+                      label="確度"
+                      onChange={(e) => { setEditedConfidence(e.target.value as ConfidenceLevel); setStatusChanged(true); }}
+                    >
+                      {CONFIDENCE_OPTIONS.map((opt) => (
+                        <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+
+                {/* 除外日 + 除外日にすること - 2カラム（ボックス表示） */}
+                <Grid item xs={6}>
+                  <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 1, p: 1, minHeight: 40 }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.25 }}>
+                      除外日
+                    </Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 'medium' }}>
+                      {exclusionDate || '－'}
+                    </Typography>
+                  </Box>
+                </Grid>
+                <Grid item xs={12}>
+                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+                    除外日にすること
+                  </Typography>
+                  <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                    {['除外日に不通であれば除外', '除外日になにもせず除外'].map((option) => (
+                      <Button
+                        key={option}
+                        variant={exclusionAction === option ? 'contained' : 'outlined'}
+                        color={exclusionAction === option ? 'primary' : 'inherit'}
+                        size="small"
+                        onClick={() => {
+                          const value = exclusionAction === option ? '' : option;
+                          setExclusionAction(value);
+                          // 除外日が設定されている場合、次電日を除外日に設定
+                          if (value && exclusionDate) {
+                            setEditedNextCallDate(exclusionDate);
+                          }
+                          setStatusChanged(true);
+                        }}
+                        sx={{ minWidth: 80 }}
+                      >
+                        {option}
+                      </Button>
+                    ))}
+                  </Box>
+                </Grid>
+
+                {/* ステータスを更新ボタン（未変更時はグレー、変更あり時はオレンジでパルスアニメーション） */}
+                <Grid item xs={12}>
+                  <Button
+                    fullWidth
+                    variant={statusChanged ? 'contained' : 'outlined'}
+                    size="large"
+                    startIcon={savingStatus ? <CircularProgress size={20} /> : <Save />}
+                    onClick={handleUpdateStatus}
+                    disabled={savingStatus || !statusChanged}
+                    sx={{
+                      ...(statusChanged ? {
+                        backgroundColor: '#ff6d00',
+                        color: '#fff',
+                        fontWeight: 'bold',
+                        boxShadow: '0 0 0 3px rgba(255,109,0,0.4)',
+                        animation: 'pulse-orange 1.5s infinite',
+                        '@keyframes pulse-orange': {
+                          '0%': { boxShadow: '0 0 0 0 rgba(255,109,0,0.5)' },
+                          '70%': { boxShadow: '0 0 0 8px rgba(255,109,0,0)' },
+                          '100%': { boxShadow: '0 0 0 0 rgba(255,109,0,0)' },
+                        },
+                        '&:hover': { backgroundColor: '#e65100' },
+                      } : {
+                        color: '#bdbdbd',
+                        borderColor: '#e0e0e0',
+                      }),
+                    }}
+                  >
+                    {savingStatus ? '更新中...' : 'ステータスを更新'}
+                  </Button>
+                </Grid>
+              </Grid>
+            </Paper>
 
             {/* コミュニケーション情報セクション */}
             <Box sx={{ mt: 3, mb: 3 }}>
