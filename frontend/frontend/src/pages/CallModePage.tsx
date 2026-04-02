@@ -4934,6 +4934,14 @@ HP：https://ifoo-oita.com/
                       // 固定資産税路線価が変更されている場合、査定額を再計算
                       if (editedFixedAssetTaxRoadPrice && parseFloat(editedFixedAssetTaxRoadPrice) > 0) {
                         console.log('🔄 固定資産税路線価が設定されているため、査定額を再計算します:', editedFixedAssetTaxRoadPrice);
+                        
+                        // 🚨 重要：自動計算モードに切り替えてから再計算
+                        console.log('🔄 isManualValuationをfalseに設定します');
+                        setIsManualValuation(false);
+                        
+                        // 少し待ってから再計算（状態更新を確実に反映させるため）
+                        await new Promise(resolve => setTimeout(resolve, 100));
+                        
                         await autoCalculateValuations(editedFixedAssetTaxRoadPrice);
                       } else {
                         // 固定資産税路線価が空欄になった場合、査定額もクリア
