@@ -4920,6 +4920,7 @@ HP：https://ifoo-oita.com/
                 {editedValuationAmount1 && (
                   <Box sx={{ display: 'flex', gap: 1 }}>
                     <Button size="small" onClick={async () => {
+                      console.log('🔘 編集ボタンがクリックされました。現在のeditingValuation:', editingValuation);
                       // 編集モードを終了する時（完了ボタン）
                       if (editingValuation) {
                         // 固定資産税路線価が空欄になった場合、査定額もクリア
@@ -4946,6 +4947,7 @@ HP：https://ifoo-oita.com/
                           }
                         }
                       }
+                      console.log('🔄 editingValuationを切り替えます:', !editingValuation);
                       setEditingValuation(!editingValuation);
                     }}>
                       {editingValuation ? '完了' : '編集'}
@@ -5138,7 +5140,16 @@ HP：https://ifoo-oita.com/
                 )}
 
                 {/* 査定額が未設定、または編集モードの場合：詳細な編集画面 */}
-                {(!editedValuationAmount1 || editingValuation) && property && (
+                {(() => {
+                  const shouldShowEditFields = (!editedValuationAmount1 || editingValuation) && property;
+                  console.log('📝 編集フィールド表示条件:', {
+                    editedValuationAmount1,
+                    editingValuation,
+                    property: !!property,
+                    shouldShowEditFields
+                  });
+                  return shouldShowEditFields;
+                })() && (
                   <Box>
                     <Grid container spacing={3}>
                       {/* 査定方法ボタン（編集モード） - 一番上に配置 */}
