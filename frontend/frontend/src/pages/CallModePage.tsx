@@ -4918,7 +4918,10 @@ HP：https://ifoo-oita.com/
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
                 <Typography variant="h6">💰 査定計算</Typography>
                 <Box sx={{ display: 'flex', gap: 1 }}>
-                  <Button size="small" onClick={async () => {
+                  <Button 
+                    size="small" 
+                    disabled={autoCalculating}
+                    onClick={async () => {
                       console.log('🔘 編集/完了ボタンがクリックされました。現在のeditingValuation:', editingValuation);
                       
                       // 編集モードを開始する時（編集ボタン）
@@ -5048,7 +5051,7 @@ HP：https://ifoo-oita.com/
                       
                       setEditingValuation(false);
                     }}>
-                      {editingValuation ? '完了' : '編集'}
+                      {autoCalculating ? '処理中...' : (editingValuation ? '完了' : '編集')}
                     </Button>
                     {!editingValuation && editedValuationAmount1 && (
                       <FormControl size="small" sx={{ minWidth: 160 }}>
