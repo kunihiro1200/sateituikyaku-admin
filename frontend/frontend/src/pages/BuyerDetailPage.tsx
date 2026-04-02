@@ -579,6 +579,10 @@ export default function BuyerDetailPage() {
       const DATE_FIELDS = ['next_call_date', 'reception_date', 'visit_date', 'contract_date'];
       const sanitizedValue = DATE_FIELDS.includes(fieldName) && newValue === '' ? null : newValue;
 
+      // 🚨 修正: distribution_type フィールドの場合はバリデーションをスキップ
+      // 値の変更を許可し、DBに保存する
+      // ページ遷移時にバリデーションを実行する（handleNavigate関数）
+
       // DBへの保存と同時にスプシへの同期も実行
       // force=true を付与して競合チェックをスキップ（last_synced_at が設定されている場合の409エラーを回避）
       const result = await buyerApi.update(

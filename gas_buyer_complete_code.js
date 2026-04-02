@@ -159,8 +159,6 @@ function updateBuyerSidebarCounts_() {
   }
   
   // Supabaseに保存
-  // 🚨 重要: label と assignee が null の場合は空文字列 '' に変換
-  // （buyer_sidebar_counts テーブルの主キーが (category, label, assignee) で NOT NULL のため）
   var upsertRows = [];
   var now = new Date().toISOString();
   
@@ -168,8 +166,8 @@ function updateBuyerSidebarCounts_() {
   upsertRows.push({
     category: 'todayCall',
     count: counts.todayCall,
-    label: '',  // null → '' に変換
-    assignee: '',  // null → '' に変換
+    label: null,
+    assignee: null,
     updated_at: now
   });
   
@@ -178,7 +176,7 @@ function updateBuyerSidebarCounts_() {
     upsertRows.push({
       category: 'todayCallAssigned',
       count: counts.todayCallAssigned[assignee],
-      label: '',  // null → '' に変換
+      label: null,
       assignee: assignee,
       updated_at: now
     });
@@ -189,7 +187,7 @@ function updateBuyerSidebarCounts_() {
     upsertRows.push({
       category: 'assigned',
       count: counts.assigned[assignedKey],
-      label: '',  // null → '' に変換
+      label: null,
       assignee: assignedKey,
       updated_at: now
     });
@@ -266,7 +264,7 @@ function fetchAllBuyersFromSupabase_() {
   var allBuyers = [];
   var pageSize = 1000;
   var offset = 0;
-  var fields = 'buyer_number,latest_status,next_call_date,initial_assignee,follow_up_assignee,comments,reception_date';
+  var fields = 'buyer_number,latest_status,next_call_date,initial_assignee,follow_up_assignee,viewing_result_follow_up,reception_date';
   while (true) {
     var url = SUPABASE_CONFIG.URL + '/rest/v1/buyers?select=' + fields +
       '&deleted_at=is.null&offset=' + offset + '&limit=' + pageSize;
@@ -338,7 +336,7 @@ function syncUpdatesToSupabase_(sheetRows) {
     var dbFollowUpAssignee = dbBuyer.follow_up_assignee || null;
     if (sheetFollowUpAssignee !== dbFollowUpAssignee) { updateData.follow_up_assignee = sheetFollowUpAssignee; needsUpdate = true; }
     var sheetComments = row['★内覧結果・後続対応'] ? String(row['★内覧結果・後続対応']) : null;
-    if (sheetComments !== (dbBuyer.comments || null)) { updateData.comments = sheetComments; needsUpdate = true; }
+    if (sheetComments !== (dbBuyer.viewing_result_follow_up || null)) { updateData.viewing_result_follow_up = sheetComments; needsUpdate = true; }
     var sheetReceptionDate = formatDateToISO_(row['受付日']);
     var dbReceptionDate = dbBuyer.reception_date ? String(dbBuyer.reception_date).substring(0, 10) : null;
     if (sheetReceptionDate !== dbReceptionDate) { updateData.reception_date = sheetReceptionDate; needsUpdate = true; }
