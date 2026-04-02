@@ -436,6 +436,17 @@ const CallModePage = () => {
   const [savingStatus, setSavingStatus] = useState(false);
   const [statusChanged, setStatusChanged] = useState(false); // ステータスセクションの変更検知
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  
+  // 保存済み値（変更検知用）
+  const [savedStatus, setSavedStatus] = useState<string>('追客中');
+  const [savedConfidence, setSavedConfidence] = useState<ConfidenceLevel | ''>('');
+  const [savedExclusiveOtherDecisionMeeting, setSavedExclusiveOtherDecisionMeeting] = useState<string>('');
+  const [savedNextCallDate, setSavedNextCallDate] = useState<string>('');
+  const [savedExclusiveDecisionDate, setSavedExclusiveDecisionDate] = useState<string>('');
+  const [savedCompetitors, setSavedCompetitors] = useState<string[]>([]);
+  const [savedExclusiveOtherDecisionFactors, setSavedExclusiveOtherDecisionFactors] = useState<string[]>([]);
+  const [savedCompetitorNameAndReason, setSavedCompetitorNameAndReason] = useState<string>('');
+  
   const [appointmentSuccessMessage, setAppointmentSuccessMessage] = useState<string | null>(null);
   const [sendingChatNotification, setSendingChatNotification] = useState(false);
 
@@ -1243,6 +1254,11 @@ const CallModePage = () => {
       setEditedExclusiveOtherDecisionMeeting(sellerData.exclusiveOtherDecisionMeeting || '');
       setStatusChanged(false); // 売主データ読み込み時にリセット
       
+      // 保存済み値を初期化（変更検知用）
+      setSavedStatus(sellerData.status);
+      setSavedConfidence(sellerData.confidence || '');
+      setSavedExclusiveOtherDecisionMeeting(sellerData.exclusiveOtherDecisionMeeting || '');
+      
       // 除外日を設定（YYYY-MM-DD形式に変換）
       if (sellerData.exclusionDate) {
         const exclusionDateObj = new Date(sellerData.exclusionDate);
@@ -1256,28 +1272,35 @@ const CallModePage = () => {
       setExclusionAction(sellerData.exclusionAction || '');
       
       setEditedNextCallDate(sellerData.nextCallDate || '');
+      setSavedNextCallDate(sellerData.nextCallDate || '');
       
       // 専任（他決）決定日を設定
       if (sellerData.contractYearMonth) {
         const decisionDateObj = new Date(sellerData.contractYearMonth);
         const formattedDecisionDate = decisionDateObj.toISOString().split('T')[0];
         setEditedExclusiveDecisionDate(formattedDecisionDate);
+        setSavedExclusiveDecisionDate(formattedDecisionDate);
       } else {
         setEditedExclusiveDecisionDate('');
+        setSavedExclusiveDecisionDate('');
       }
       
       // 競合を設定（カンマ区切り文字列を配列に変換）
       if (sellerData.competitorName) {
         const competitorsArray = sellerData.competitorName.split(',').map((c: string) => c.trim()).filter((c: string) => c);
         setEditedCompetitors(competitorsArray);
+        setSavedCompetitors(competitorsArray);
       } else {
         setEditedCompetitors([]);
+        setSavedCompetitors([]);
       }
       
       setEditedExclusiveOtherDecisionFactors(sellerData.exclusiveOtherDecisionFactors || []);
+      setSavedExclusiveOtherDecisionFactors(sellerData.exclusiveOtherDecisionFactors || []);
       
       // 競合名、理由を設定
       setEditedCompetitorNameAndReason(sellerData.competitorNameAndReason || '');
+      setSavedCompetitorNameAndReason(sellerData.competitorNameAndReason || '');
 
       // 売主情報の初期化
       setEditedName(sellerData.name || '');
@@ -1662,9 +1685,6 @@ const CallModePage = () => {
       setSavedUnreachableStatus(unreachableStatus || null);
       setSavedFirstCallPerson(editedFirstCallPerson || '');
       
-      // データを再読み込み
-      await loadAllData();
-      
       // 成功メッセージを3秒後に消す
       setTimeout(() => {
         setSuccessMessage(null);
@@ -1834,8 +1854,15 @@ const CallModePage = () => {
       setSuccessMessage('ステータスを更新しました');
       setStatusChanged(false); // 保存成功後にリセット
       
-      // 売主情報を再読み込み
-      await loadAllData();
+      // 保存した値をローカルステートに反映（loadAllData()を削除して画面フラッシュを防止）
+      setSavedStatus(editedStatus);
+      setSavedConfidence(editedConfidence);
+      setSavedExclusiveOtherDecisionMeeting(editedExclusiveOtherDecisionMeeting);
+      setSavedNextCallDate(editedNextCallDate);
+      setSavedExclusiveDecisionDate(editedExclusiveDecisionDate);
+      setSavedCompetitors(editedCompetitors);
+      setSavedExclusiveOtherDecisionFactors(editedExclusiveOtherDecisionFactors);
+      setSavedCompetitorNameAndReason(editedCompetitorNameAndReason);
     } catch (err: any) {
       setError(err.response?.data?.error?.message || 'ステータスの更新に失敗しました');
     } finally {

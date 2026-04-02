@@ -295,7 +295,7 @@ function fetchAllBuyersFromSupabase_() {
   var allBuyers = [];
   var pageSize = 1000;
   var offset = 0;
-  var fields = 'buyer_number,latest_status,next_call_date,initial_assignee,follow_up_assignee,inquiry_email_phone,three_calls_confirmed,reception_date';
+  var fields = 'buyer_number,latest_status,next_call_date,initial_assignee,follow_up_assignee,inquiry_email_phone,three_calls_confirmed,reception_date,distribution_type,desired_area';
   while (true) {
     var url = SUPABASE_CONFIG.URL + '/rest/v1/buyers?select=' + fields +
       '&deleted_at=is.null&offset=' + offset + '&limit=' + pageSize;
@@ -375,6 +375,12 @@ function syncUpdatesToSupabase_(sheetRows) {
     var sheetReceptionDate = formatDateToISO_(row['受付日']);
     var dbReceptionDate = dbBuyer.reception_date ? String(dbBuyer.reception_date).substring(0, 10) : null;
     if (sheetReceptionDate !== dbReceptionDate) { updateData.reception_date = sheetReceptionDate; needsUpdate = true; }
+    var sheetDistributionType = row['配信種別'] ? String(row['配信種別']) : null;
+    var dbDistributionType = dbBuyer.distribution_type || null;
+    if (sheetDistributionType !== dbDistributionType) { updateData.distribution_type = sheetDistributionType; needsUpdate = true; }
+    var sheetDesiredArea = row['★エリア'] ? String(row['★エリア']) : null;
+    var dbDesiredArea = dbBuyer.desired_area || null;
+    if (sheetDesiredArea !== dbDesiredArea) { updateData.desired_area = sheetDesiredArea; needsUpdate = true; }
     if (!needsUpdate) continue;
     updateData.updated_at = new Date().toISOString();
     var result = patchBuyerToSupabase_(buyerNumber, updateData);
