@@ -1213,42 +1213,6 @@ const CallModePage = () => {
     };
   }, []);
 
-  // ページリロード後の査定額再計算（固定資産税路線価が存在する場合）
-  useEffect(() => {
-    // 初回ロード時のみ実行（seller が読み込まれた後）
-    if (!seller?.id) return;
-    
-    // 手入力査定額が存在する場合はスキップ
-    const hasManualValuation = seller.manualValuationAmount1 || seller.manualValuationAmount2 || seller.manualValuationAmount3;
-    if (hasManualValuation) {
-      console.log('Manual valuation exists, skipping page reload recalculation');
-      return;
-    }
-    
-    // 固定資産税路線価が存在し、査定額2または3が空の場合のみ再計算
-    const roadPrice = seller.fixedAssetTaxRoadPrice;
-    const hasValuation2 = seller.valuationAmount2 != null;
-    const hasValuation3 = seller.valuationAmount3 != null;
-    
-    // 物件情報が存在するかチェック（土地面積が必須）
-    // propertyまたはsellerから土地面積を取得
-    const landArea = property?.landArea || seller.landArea;
-    const hasPropertyInfo = landArea != null;
-    
-    if (roadPrice && (!hasValuation2 || !hasValuation3) && hasPropertyInfo) {
-      console.log('ページリロード後の査定額再計算を実行', { roadPrice, hasValuation2, hasValuation3, hasPropertyInfo, landArea });
-      
-      // 1秒後に再計算を実行（初期化完了を待つ）
-      const timer = setTimeout(() => {
-        autoCalculateValuations(roadPrice.toString());
-      }, 1000);
-      
-      return () => clearTimeout(timer);
-    } else if (roadPrice && (!hasValuation2 || !hasValuation3) && !hasPropertyInfo) {
-      console.log('物件情報が不足しているため、ページリロード後の再計算をスキップ', { hasPropertyInfo });
-    }
-  }, [seller?.id, property?.landArea, seller?.landArea, autoCalculateValuations]); // seller.id、property.landArea、seller.landArea、autoCalculateValuationsが変更された時のみ実行
-
   const loadAllData = async () => {
     setLoading(true);
     setError(null);
