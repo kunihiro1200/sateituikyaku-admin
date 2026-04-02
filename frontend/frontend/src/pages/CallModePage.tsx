@@ -2260,6 +2260,14 @@ const CallModePage = () => {
   }, [id, employee, isManualValuation]);
 
   // デバウンス付き自動計算関数
+  // autoCalculateValuationsの最新版を保持するref
+  const autoCalculateValuationsRef = useRef(autoCalculateValuations);
+  
+  // autoCalculateValuationsが変更されたらrefを更新
+  useEffect(() => {
+    autoCalculateValuationsRef.current = autoCalculateValuations;
+  }, [autoCalculateValuations]);
+
   const debouncedAutoCalculate = useCallback((roadPrice: string) => {
     console.log('🕐 debouncedAutoCalculate呼び出し:', roadPrice);
     // 既存のタイマーをクリア
@@ -2272,9 +2280,9 @@ const CallModePage = () => {
     console.log('⏱️ 1秒後にautoCalculateValuationsを実行するタイマーを設定');
     calculationTimerRef.current = setTimeout(() => {
       console.log('🚀 autoCalculateValuationsを実行');
-      autoCalculateValuations(roadPrice);
+      autoCalculateValuationsRef.current(roadPrice);
     }, 1000);
-  }, []); // 依存配列を空にして、autoCalculateValuationsの最新版を常に参照
+  }, []); // 依存配列を空にして、refを通じて最新版を参照
 
   // 手入力査定額を保存する関数
   const handleSaveManualValuation = async () => {
