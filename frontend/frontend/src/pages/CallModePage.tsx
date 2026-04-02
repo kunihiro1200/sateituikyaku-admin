@@ -1220,10 +1220,11 @@ const CallModePage = () => {
       console.log('ページリロード後の査定額再計算を実行');
       // 査定額2または3が空欄の場合、全て再計算
       if (!editedValuationAmount2 || !editedValuationAmount3) {
-        autoCalculateValuations(editedFixedAssetTaxRoadPrice);
+        // autoCalculateValuationsを直接呼び出すのではなく、debouncedAutoCalculateを使用
+        debouncedAutoCalculate(editedFixedAssetTaxRoadPrice);
       }
     }
-  }, [seller?.id, autoCalculateValuations, editedFixedAssetTaxRoadPrice, isManualValuation, editedValuationAmount2, editedValuationAmount3]); // 依存配列を追加
+  }, [seller?.id]); // seller.idが変更された時のみ実行（初回ロード時）
 
   const loadAllData = async () => {
     setLoading(true);
