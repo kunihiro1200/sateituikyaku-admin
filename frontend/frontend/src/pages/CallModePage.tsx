@@ -4920,35 +4920,48 @@ HP：https://ifoo-oita.com/
                 {editedValuationAmount1 && (
                   <Box sx={{ display: 'flex', gap: 1 }}>
                     <Button size="small" onClick={async () => {
-                      console.log('🔘 編集ボタンがクリックされました。現在のeditingValuation:', editingValuation);
+                      console.log('🔘 編集/完了ボタンがクリックされました。現在のeditingValuation:', editingValuation);
+                      
+                      // 編集モードを開始する時（編集ボタン）
+                      if (!editingValuation) {
+                        console.log('📝 編集モードを開始します');
+                        setEditingValuation(true);
+                        return;
+                      }
+                      
                       // 編集モードを終了する時（完了ボタン）
-                      if (editingValuation) {
+                      console.log('✅ 編集モードを終了します');
+                      
+                      // 固定資産税路線価が変更されている場合、査定額を再計算
+                      if (editedFixedAssetTaxRoadPrice && parseFloat(editedFixedAssetTaxRoadPrice) > 0) {
+                        console.log('🔄 固定資産税路線価が設定されているため、査定額を再計算します:', editedFixedAssetTaxRoadPrice);
+                        await autoCalculateValuations(editedFixedAssetTaxRoadPrice);
+                      } else {
                         // 固定資産税路線価が空欄になった場合、査定額もクリア
-                        if (!editedFixedAssetTaxRoadPrice || parseFloat(editedFixedAssetTaxRoadPrice) <= 0) {
-                          try {
-                            await api.put(`/api/sellers/${id}`, {
-                              fixedAssetTaxRoadPrice: null,
-                              valuationAmount1: null,
-                              valuationAmount2: null,
-                              valuationAmount3: null,
-                            });
-                            setEditedValuationAmount1('');
-                            setEditedValuationAmount2('');
-                            setEditedValuationAmount3('');
-                            setSeller(prev => prev ? {
-                              ...prev,
-                              fixedAssetTaxRoadPrice: undefined,
-                              valuationAmount1: undefined,
-                              valuationAmount2: undefined,
-                              valuationAmount3: undefined,
-                            } : prev);
-                          } catch (err) {
-                            console.error('Failed to clear valuation:', err);
-                          }
+                        console.log('🗑️ 固定資産税路線価が空欄のため、査定額をクリアします');
+                        try {
+                          await api.put(`/api/sellers/${id}`, {
+                            fixedAssetTaxRoadPrice: null,
+                            valuationAmount1: null,
+                            valuationAmount2: null,
+                            valuationAmount3: null,
+                          });
+                          setEditedValuationAmount1('');
+                          setEditedValuationAmount2('');
+                          setEditedValuationAmount3('');
+                          setSeller(prev => prev ? {
+                            ...prev,
+                            fixedAssetTaxRoadPrice: undefined,
+                            valuationAmount1: undefined,
+                            valuationAmount2: undefined,
+                            valuationAmount3: undefined,
+                          } : prev);
+                        } catch (err) {
+                          console.error('Failed to clear valuation:', err);
                         }
                       }
-                      console.log('🔄 editingValuationを切り替えます:', !editingValuation);
-                      setEditingValuation(!editingValuation);
+                      
+                      setEditingValuation(false);
                     }}>
                       {editingValuation ? '完了' : '編集'}
                     </Button>
