@@ -6,6 +6,7 @@ import { EmailHistoryService } from '../services/EmailHistoryService';
 import { relatedBuyerService } from '../services/RelatedBuyerService';
 import { uuidValidationMiddleware } from '../middleware/uuidValidator';
 import { ValidationError, NotFoundError, ServiceError } from '../errors';
+import { authenticate } from '../middleware/auth';
 
 const router = Router();
 const buyerService = new BuyerService();
@@ -119,6 +120,9 @@ router.get('/sidebar-counts', async (_req: Request, res: Response) => {
     res.status(500).json({ error: error.message });
   }
 });
+
+// 全てのルートに認証を適用（sidebar-countsの後に配置）
+router.use(authenticate);
 
 // 次の買主番号を取得（/:id よりも前に定義する必要がある）
 router.get('/next-buyer-number', async (_req: Request, res: Response) => {

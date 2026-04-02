@@ -404,7 +404,7 @@ app.use('/cache', cacheRoutes);
 app.use('/api/drive', driveRoutes);
 app.use('/api/work-tasks', workTaskRoutes);
 app.use('/api/property-listings', propertyListingRoutes);
-app.use('/api/buyers', authenticate, buyerRoutes);
+app.use('/api/buyers', buyerRoutes);
 app.use('/api', viewingResultRoutes);
 app.use('/api/calls', callRoutes);
 app.use('/api/validation', validationRoutes);
