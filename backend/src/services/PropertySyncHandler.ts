@@ -161,7 +161,11 @@ export class PropertySyncHandler {
     }
 
     if (data.structure !== undefined) {
-      updateData.structure = data.structure || null;
+      // properties.structure の CHECK制約: ('木造', '軽量鉄骨', '鉄骨', '他') のみ許可
+      // 無効な値（"済", "木造２F建て", "未", "不要", "木造平屋", "不明" など）は null にマッピング
+      const validStructures = ['木造', '軽量鉄骨', '鉄骨', '他'];
+      const structureValue = data.structure ? String(data.structure).trim() : null;
+      updateData.structure = (structureValue && validStructures.includes(structureValue)) ? structureValue : null;
     }
 
     if (data.seller_situation !== undefined) {
