@@ -192,9 +192,23 @@ export class BuyerColumnMapper {
     // Googleスプレッドシートの日付シリアル値（数値）の場合
     // 起算日: 1899/12/30
     if (typeof value === 'number') {
-      const date = new Date(Date.UTC(1899, 11, 30) + value * 86400000);
+      // 異常な値をチェック（1900年1月1日 = 1, 2100年12月31日 = 73413）
+      if (value < 1 || value > 100000) {
+        console.warn(`[BuyerColumnMapper] Invalid date serial value: ${value}`);
+        return null;
+      }
+      
+      // Excelシリアル値を日付に変換
+      // 1900年1月1日を起点として日数を加算
+      const excelEpoch = new Date(1899, 11, 30); // 1899年12月30日
+      const days = value > 60 ? value - 1 : value; // 1900年のうるう年バグ対応
+      const date = new Date(excelEpoch.getTime() + days * 86400000);
+      
       if (!isNaN(date.getTime())) {
-        return date.toISOString().substring(0, 10);
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
       }
       return null;
     }
@@ -235,13 +249,20 @@ export class BuyerColumnMapper {
   private parseDatetime(value: any): string | null {
     if (!value) return null;
     
+    // 数値（Excelシリアル値）の場合は、parseDate()を使用してYYYY-MM-DDに変換
+    if (typeof value === 'number') {
+      const dateStr = this.parseDate(value);
+      return dateStr ? `${dateStr}T00:00:00.000Z` : null;
+    }
+    
     const str = String(value).trim();
     if (!str) return null;
 
-    // Try to parse as ISO date
-    const date = new Date(str);
-    if (!isNaN(date.getTime())) {
-      return date.toISOString();
+    // 数値文字列の場合もExcelシリアル値として扱う
+    const num = parseFloat(str);
+    if (!isNaN(num) && num >= 1 && num <= 100000) {
+      const dateStr = this.parseDate(num);
+      return dateStr ? `${dateStr}T00:00:00.000Z` : null;
     }
 
     // YYYY/MM/DD HH:mm:ss
@@ -249,6 +270,21 @@ export class BuyerColumnMapper {
     if (match) {
       const [, year, month, day, hour, minute, second = '00'] = match;
       return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T${hour.padStart(2, '0')}:${minute}:${second}`;
+    }
+
+    // YYYY/MM/DD or YYYY-MM-DD（時刻なし）
+    const dateMatch = str.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/);
+    if (dateMatch) {
+      const [, year, month, day] = dateMatch;
+      return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T00:00:00.000Z`;
+    }
+
+    // ISO形式の日付文字列（YYYY-MM-DDTHH:mm:ss.sssZ）
+    if (str.match(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/)) {
+      const date = new Date(str);
+      if (!isNaN(date.getTime())) {
+        return date.toISOString();
+      }
     }
 
     return null;
