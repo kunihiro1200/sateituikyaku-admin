@@ -1547,6 +1547,10 @@ export class BuyerService {
         const count = row.count || 0;
         
         switch (row.category) {
+          case 'inquiryEmailNotResponded':
+            // 問合せメール未対応
+            categoryCounts['問合せメール未対応'] = count;
+            break;
           case 'todayCall':
             // 当日TEL分（担当なし）
             categoryCounts['当日TEL'] = (categoryCounts['当日TEL'] || 0) + count;

@@ -1,6 +1,5 @@
-// ============================================================
-// 設定
-// ============================================================
+﻿// ============================================================
+// 險ｭ螳・// ============================================================
 var BUYER_SYNC_CONFIG = {
   BACKEND_URL: 'https://sateituikyaku-admin-backend.vercel.app',
   CRON_SECRET: 'a0z8ahNnFyUY+BXloL5JsotDTbuu9b5L6UApoflR59s=',
@@ -13,7 +12,7 @@ var SUPABASE_CONFIG = {
 };
 
 // ============================================================
-// ユーティリティ
+// 繝ｦ繝ｼ繝・ぅ繝ｪ繝・ぅ
 // ============================================================
 function rowToObject(headers, rowData) {
   var obj = {};
@@ -30,8 +29,8 @@ function rowToObject(headers, rowData) {
           String(val.getDate()).padStart(2, '0');
       }
     } else {
-      // 買主番号は必ず文字列型に変換
-      if (headerName === '買主番号' && val !== null && val !== undefined && val !== '') {
+      // 雋ｷ荳ｻ逡ｪ蜿ｷ縺ｯ蠢・★譁・ｭ怜・蝙九↓螟画鋤
+      if (headerName === '雋ｷ荳ｻ逡ｪ蜿ｷ' && val !== null && val !== undefined && val !== '') {
         obj[headerName] = String(val);
       } else {
         obj[headerName] = val;
@@ -44,8 +43,7 @@ function rowToObject(headers, rowData) {
 function formatDateToISO_(value) {
   if (!value || value === '') return null;
   
-  // 数値（Excelシリアル値）の場合
-  if (typeof value === 'number') {
+  // 謨ｰ蛟､・・xcel繧ｷ繝ｪ繧｢繝ｫ蛟､・峨・蝣ｴ蜷・  if (typeof value === 'number') {
     var excelEpoch = new Date(1899, 11, 30);
     var days = value > 60 ? value - 1 : value;
     var date = new Date(excelEpoch.getTime() + days * 24 * 60 * 60 * 1000);
@@ -84,29 +82,28 @@ function isValidContactValue(v) {
 }
 
 function hasContactInfo(row) {
-  return isValidContactValue(row['連絡方法']) ||
-    isValidContactValue(row['連絡取りやすい日、時間帯']) ||
-    isValidContactValue(row['電話担当（任意）']);
+  return isValidContactValue(row['騾｣邨｡譁ｹ豕・]) ||
+    isValidContactValue(row['騾｣邨｡蜿悶ｊ繧・☆縺・律縲∵凾髢灘ｸｯ']) ||
+    isValidContactValue(row['髮ｻ隧ｱ諡・ｽ難ｼ井ｻｻ諢擾ｼ・]);
 }
 
 function getContactLabel(row) {
   var parts = [];
-  if (isValidContactValue(row['電話担当（任意）'])) parts.push(String(row['電話担当（任意）']).trim());
-  if (isValidContactValue(row['連絡取りやすい日、時間帯'])) parts.push(String(row['連絡取りやすい日、時間帯']).trim());
-  if (isValidContactValue(row['連絡方法'])) parts.push(String(row['連絡方法']).trim());
-  return parts.join('・');
+  if (isValidContactValue(row['髮ｻ隧ｱ諡・ｽ難ｼ井ｻｻ諢擾ｼ・])) parts.push(String(row['髮ｻ隧ｱ諡・ｽ難ｼ井ｻｻ諢擾ｼ・]).trim());
+  if (isValidContactValue(row['騾｣邨｡蜿悶ｊ繧・☆縺・律縲∵凾髢灘ｸｯ'])) parts.push(String(row['騾｣邨｡蜿悶ｊ繧・☆縺・律縲∵凾髢灘ｸｯ']).trim());
+  if (isValidContactValue(row['騾｣邨｡譁ｹ豕・])) parts.push(String(row['騾｣邨｡譁ｹ豕・]).trim());
+  return parts.join('繝ｻ');
 }
 
 // ============================================================
-// サイドバーカウント更新（buyer_sidebar_counts テーブルへ書き込み）
-// ============================================================
+// 繧ｵ繧､繝峨ヰ繝ｼ繧ｫ繧ｦ繝ｳ繝域峩譁ｰ・・uyer_sidebar_counts 繝・・繝悶Ν縺ｸ譖ｸ縺崎ｾｼ縺ｿ・・// ============================================================
 function updateBuyerSidebarCounts_() {
-  Logger.log('📊 買主サイドバーカウント更新開始...');
+  Logger.log('投 雋ｷ荳ｻ繧ｵ繧､繝峨ヰ繝ｼ繧ｫ繧ｦ繝ｳ繝域峩譁ｰ髢句ｧ・..');
   
   var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var sheet = ss.getSheetByName('買主リスト');
+  var sheet = ss.getSheetByName('雋ｷ荳ｻ繝ｪ繧ｹ繝・);
   if (!sheet) {
-    Logger.log('❌ シート「買主リスト」が見つかりません');
+    Logger.log('笶・繧ｷ繝ｼ繝医瑚ｲｷ荳ｻ繝ｪ繧ｹ繝医阪′隕九▽縺九ｊ縺ｾ縺帙ｓ');
     return;
   }
   
@@ -119,117 +116,90 @@ function updateBuyerSidebarCounts_() {
     sheetRows.push(rowToObject(headers, allData[i]));
   }
   
-  Logger.log('📊 スプレッドシート行数: ' + sheetRows.length);
+  Logger.log('投 繧ｹ繝励Ξ繝・ラ繧ｷ繝ｼ繝郁｡梧焚: ' + sheetRows.length);
   
   var counts = {
     todayCall: 0,
     todayCallWithInfo: {},
     todayCallAssigned: {},
-    assigned: {},
-    inquiryEmailNotResponded: 0
+    assigned: {}
   };
   
   for (var i = 0; i < sheetRows.length; i++) {
     var row = sheetRows[i];
-    var buyerNumber = row['買主番号'];
-    if (!buyerNumber || typeof buyerNumber !== 'string') continue;
+    var buyerNumber = row['雋ｷ荳ｻ逡ｪ蜿ｷ'];
+    if (!buyerNumber || typeof buyerNumber !== 'string' || !buyerNumber.match(/^BB\d+$/)) continue;
     
-    var status = String(row['★最新状況\n'] || '');
-    var nextCallDate = formatDateToISO_(row['★次電日']);
-    var initialAssignee = row['初動担当'];
-    var followUpAssignee = row['後続担当'];
-    var assignee = followUpAssignee || initialAssignee;
-    var isAssigneeValid = assignee && assignee !== '外す';
-    var inquiryEmailPhone = String(row['【問合メール】電話対応'] || '');
+    var status = String(row['迥ｶ豕・] || '');
+    var nextCallDate = formatDateToISO_(row['谺｡髮ｻ譌･']);
+    var assignee = row['諡・ｽ・];
+    var isAssigneeValid = assignee && assignee !== '螟悶☆';
     
-    // 問合せメール未対応カテゴリ
-    if (inquiryEmailPhone === '未') {
-      counts.inquiryEmailNotResponded++;
-    }
-    
-    // 担当（担当別）カテゴリ
+    // 諡・ｽ難ｼ域球蠖灘挨・峨き繝・ざ繝ｪ
     if (isAssigneeValid) {
       var assigneeKey = String(assignee);
       counts.assigned[assigneeKey] = (counts.assigned[assigneeKey] || 0) + 1;
     }
     
-    // 当日TEL分カテゴリ
-    if (status.indexOf('追客中') !== -1 && nextCallDate && isTodayOrBefore(nextCallDate)) {
+    // 蠖捺律TEL蛻・き繝・ざ繝ｪ
+    if (status.indexOf('霑ｽ螳｢荳ｭ') !== -1 && nextCallDate && isTodayOrBefore(nextCallDate)) {
       if (isAssigneeValid) {
-        // 当日TEL（担当別）
-        var aKey = String(assignee);
+        // 蠖捺律TEL・域球蠖灘挨・・        var aKey = String(assignee);
         counts.todayCallAssigned[aKey] = (counts.todayCallAssigned[aKey] || 0) + 1;
       } else if (hasContactInfo(row)) {
-        // 当日TEL（内容）
-        var label = getContactLabel(row);
+        // 蠖捺律TEL・亥・螳ｹ・・        var label = getContactLabel(row);
         if (label) {
           counts.todayCallWithInfo[label] = (counts.todayCallWithInfo[label] || 0) + 1;
         }
       } else {
-        // 当日TEL分（担当なし）
-        counts.todayCall++;
+        // 蠖捺律TEL蛻・ｼ域球蠖薙↑縺暦ｼ・        counts.todayCall++;
       }
     }
   }
   
-  // Supabaseに保存
-  // 🚨 重要: label と assignee が null の場合は空文字列 '' に変換
-  // （buyer_sidebar_counts テーブルの主キーが (category, label, assignee) で NOT NULL のため）
-  var upsertRows = [];
+  // Supabase縺ｫ菫晏ｭ・  // 圷 驥崎ｦ・ label 縺ｨ assignee 縺・null 縺ｮ蝣ｴ蜷医・遨ｺ譁・ｭ怜・ '' 縺ｫ螟画鋤
+  // ・・uyer_sidebar_counts 繝・・繝悶Ν縺ｮ荳ｻ繧ｭ繝ｼ縺・(category, label, assignee) 縺ｧ NOT NULL 縺ｮ縺溘ａ・・  var upsertRows = [];
   var now = new Date().toISOString();
   
-  // 当日TEL分（担当なし）
-  upsertRows.push({
+  // 蠖捺律TEL蛻・ｼ域球蠖薙↑縺暦ｼ・  upsertRows.push({
     category: 'todayCall',
     count: counts.todayCall,
-    label: '',  // null → '' に変換
-    assignee: '',  // null → '' に変換
+    label: '',  // null 竊・'' 縺ｫ螟画鋤
+    assignee: '',  // null 竊・'' 縺ｫ螟画鋤
     updated_at: now
   });
   
-  // 問合せメール未対応
-  upsertRows.push({
-    category: 'inquiryEmailNotResponded',
-    count: counts.inquiryEmailNotResponded,
-    label: '',
-    assignee: '',
-    updated_at: now
-  });
-  
-  // 当日TEL（担当別）
-  for (var assignee in counts.todayCallAssigned) {
+  // 蠖捺律TEL・域球蠖灘挨・・  for (var assignee in counts.todayCallAssigned) {
     upsertRows.push({
       category: 'todayCallAssigned',
       count: counts.todayCallAssigned[assignee],
-      label: '',  // null → '' に変換
+      label: '',  // null 竊・'' 縺ｫ螟画鋤
       assignee: assignee,
       updated_at: now
     });
   }
   
-  // 当日TEL（内容）
-  for (var infoLabel in counts.todayCallWithInfo) {
+  // 蠖捺律TEL・亥・螳ｹ・・  for (var infoLabel in counts.todayCallWithInfo) {
     upsertRows.push({
       category: 'todayCallWithInfo',
       count: counts.todayCallWithInfo[infoLabel],
       label: infoLabel,
-      assignee: '',  // null → '' に変換
+      assignee: '',  // null 竊・'' 縺ｫ螟画鋤
       updated_at: now
     });
   }
   
-  // 担当（担当別）
-  for (var assignedKey in counts.assigned) {
+  // 諡・ｽ難ｼ域球蠖灘挨・・  for (var assignedKey in counts.assigned) {
     upsertRows.push({
       category: 'assigned',
       count: counts.assigned[assignedKey],
-      label: '',  // null → '' に変換
+      label: '',  // null 竊・'' 縺ｫ螟画鋤
       assignee: assignedKey,
       updated_at: now
     });
   }
   
-  // 既存データを削除
+  // 譌｢蟄倥ョ繝ｼ繧ｿ繧貞炎髯､
   var delUrl = SUPABASE_CONFIG.URL + '/rest/v1/buyer_sidebar_counts?category=neq.___never___';
   UrlFetchApp.fetch(delUrl, {
     method: 'DELETE',
@@ -241,7 +211,7 @@ function updateBuyerSidebarCounts_() {
     muteHttpExceptions: true
   });
   
-  // 新しいデータを挿入
+  // 譁ｰ縺励＞繝・・繧ｿ繧呈諺蜈･
   var batchSize = 500;
   for (var b = 0; b < upsertRows.length; b += batchSize) {
     var batch = upsertRows.slice(b, b + batchSize);
@@ -258,56 +228,52 @@ function updateBuyerSidebarCounts_() {
     });
     var insCode = insRes.getResponseCode();
     if (insCode >= 200 && insCode < 300) {
-      Logger.log('✅ buyer_sidebar_counts INSERT成功: ' + batch.length + '件');
+      Logger.log('笨・buyer_sidebar_counts INSERT謌仙粥: ' + batch.length + '莉ｶ');
     } else {
-      Logger.log('❌ buyer_sidebar_counts INSERT失敗: HTTP ' + insCode + ' / ' + insRes.getContentText().substring(0, 200));
+      Logger.log('笶・buyer_sidebar_counts INSERT螟ｱ謨・ HTTP ' + insCode + ' / ' + insRes.getContentText().substring(0, 200));
     }
   }
   
-  Logger.log('📊 買主サイドバーカウント更新完了: 合計 ' + upsertRows.length + '行');
+  Logger.log('投 雋ｷ荳ｻ繧ｵ繧､繝峨ヰ繝ｼ繧ｫ繧ｦ繝ｳ繝域峩譁ｰ螳御ｺ・ 蜷郁ｨ・' + upsertRows.length + '陦・);
 }
 
 // ============================================================
-// メイン同期（10分トリガー）
-// ============================================================
+// 繝｡繧､繝ｳ蜷梧悄・・0蛻・ヨ繝ｪ繧ｬ繝ｼ・・// ============================================================
 function syncBuyerList() {
   var startTime = new Date();
-  Logger.log('=== 買主リスト同期開始: ' + startTime.toISOString() + ' ===');
+  Logger.log('=== 雋ｷ荳ｻ繝ｪ繧ｹ繝亥酔譛滄幕蟋・ ' + startTime.toISOString() + ' ===');
   
-  // TODO: 買主データの同期処理を実装
-  // 現在は未実装のため、サイドバーカウント更新のみ実行
-  
-  // サイドバーカウント更新
+  // TODO: 雋ｷ荳ｻ繝・・繧ｿ縺ｮ蜷梧悄蜃ｦ逅・ｒ螳溯｣・  // 迴ｾ蝨ｨ縺ｯ譛ｪ螳溯｣・・縺溘ａ縲√し繧､繝峨ヰ繝ｼ繧ｫ繧ｦ繝ｳ繝域峩譁ｰ縺ｮ縺ｿ螳溯｡・  
+  // 繧ｵ繧､繝峨ヰ繝ｼ繧ｫ繧ｦ繝ｳ繝域峩譁ｰ
   updateBuyerSidebarCounts_();
   
   var duration = (new Date() - startTime) / 1000;
-  Logger.log('  所要時間: ' + duration + '秒');
-  Logger.log('=== 同期完了 ===');
+  Logger.log('  謇隕∵凾髢・ ' + duration + '遘・);
+  Logger.log('=== 蜷梧悄螳御ｺ・===');
 }
 
 // ============================================================
-// トリガー設定（初回のみ手動実行）
-// ============================================================
+// 繝医Μ繧ｬ繝ｼ險ｭ螳夲ｼ亥・蝗槭・縺ｿ謇句虚螳溯｡鯉ｼ・// ============================================================
 function setupBuyerSyncTrigger() {
   var triggers = ScriptApp.getProjectTriggers();
   for (var i = 0; i < triggers.length; i++) {
     if (triggers[i].getHandlerFunction() === 'syncBuyerList') {
       ScriptApp.deleteTrigger(triggers[i]);
-      Logger.log('既存トリガーを削除しました');
+      Logger.log('譌｢蟄倥ヨ繝ｪ繧ｬ繝ｼ繧貞炎髯､縺励∪縺励◆');
     }
   }
   ScriptApp.newTrigger('syncBuyerList')
     .timeBased()
     .everyMinutes(BUYER_SYNC_CONFIG.SYNC_INTERVAL_MINUTES)
     .create();
-  Logger.log('✅ トリガーを設定しました: ' + BUYER_SYNC_CONFIG.SYNC_INTERVAL_MINUTES + '分ごと');
+  Logger.log('笨・繝医Μ繧ｬ繝ｼ繧定ｨｭ螳壹＠縺ｾ縺励◆: ' + BUYER_SYNC_CONFIG.SYNC_INTERVAL_MINUTES + '蛻・＃縺ｨ');
 }
 
 // ============================================================
-// テスト・デバッグ用
+// 繝・せ繝医・繝・ヰ繝・げ逕ｨ
 // ============================================================
 function testBuyerSync() {
-  Logger.log('=== テスト同期開始 ===');
+  Logger.log('=== 繝・せ繝亥酔譛滄幕蟋・===');
   syncBuyerList();
-  Logger.log('=== テスト同期完了 ===');
+  Logger.log('=== 繝・せ繝亥酔譛溷ｮ御ｺ・===');
 }

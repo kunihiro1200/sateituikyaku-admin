@@ -100,12 +100,13 @@ export class PropertySyncHandler {
     }
 
     // Create new property only if none exists
-    // Note: property_address column has NOT NULL constraint, so we use '未入力' as default
-    // Note: property_type column has NOT NULL constraint, so we use 'その他' as default
+    // Note: property_address column has NOT NULL constraint, so we use '' as default
+    // Note: property_type column has NOT NULL constraint and CHECK constraint
+    // Allowed values: '戸建て', '土地', 'マンション'
     const insertData: any = {
       seller_id: sellerId,
       property_address: '',
-      property_type: 'その他',
+      property_type: '土地',  // デフォルトは '土地'（制約: '戸建て', '土地', 'マンション'のみ）
     };
 
     const { data: newProperty, error: createError } = await this.supabase
