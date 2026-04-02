@@ -759,6 +759,33 @@ export default function PropertyReportPage() {
                 value={reportData.report_memo || ''}
                 onChange={(e) => setReportData((prev) => ({ ...prev, report_memo: e.target.value }))}
               />
+              {/* 報告_メモ専用保存ボタン */}
+              <Button
+                variant="contained"
+                size="small"
+                startIcon={saving ? <CircularProgress size={14} /> : <SaveIcon />}
+                onClick={handleSave}
+                disabled={saving || !hasChanges}
+                sx={{
+                  mt: 1,
+                  minWidth: 80,
+                  backgroundColor: hasChanges ? SECTION_COLORS.property.main : 'grey.400',
+                  transition: 'all 0.3s',
+                  ...(hasChanges && {
+                    animation: 'glowMemo 1.5s ease-in-out infinite',
+                    '@keyframes glowMemo': {
+                      '0%': { boxShadow: `0 0 0 0 ${SECTION_COLORS.property.main}99` },
+                      '70%': { boxShadow: `0 0 0 8px ${SECTION_COLORS.property.main}00` },
+                      '100%': { boxShadow: `0 0 0 0 ${SECTION_COLORS.property.main}00` },
+                    },
+                  }),
+                  '&:hover': {
+                    backgroundColor: hasChanges ? SECTION_COLORS.property.dark : 'grey.500',
+                  },
+                }}
+              >
+                {saving ? '保存中' : '保存'}
+              </Button>
             </Box>
           </Paper>
         </Box>
