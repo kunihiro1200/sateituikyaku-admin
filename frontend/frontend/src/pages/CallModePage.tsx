@@ -1906,7 +1906,7 @@ const CallModePage = () => {
         // propertiesテーブルを更新
         await api.put(`/properties/${property.id}`, {
           address: editedPropertyAddress,
-          propertyType: editedPropertyType || null,
+          propertyType: normalizePropertyType(editedPropertyType) || null,
           landArea: editedLandArea ? parseFloat(editedLandArea) : null,
           landAreaVerified: editedLandAreaVerified ? parseFloat(editedLandAreaVerified) : null,
           buildingArea: editedBuildingArea ? parseFloat(editedBuildingArea) : null,
@@ -1920,7 +1920,7 @@ const CallModePage = () => {
         // propertyがない場合はsellersテーブルを直接更新
         await api.put(`/api/sellers/${id}`, {
           propertyAddress: editedPropertyAddress || null,
-          propertyType: editedPropertyType || null,
+          propertyType: normalizePropertyType(editedPropertyType) || null,
           landArea: editedLandArea ? parseFloat(editedLandArea) : null,
           landAreaVerified: editedLandAreaVerified ? parseFloat(editedLandAreaVerified) : null,
           buildingArea: editedBuildingArea ? parseFloat(editedBuildingArea) : null,
@@ -1934,7 +1934,7 @@ const CallModePage = () => {
         setSeller(prev => prev ? {
           ...prev,
           propertyAddress: editedPropertyAddress || undefined,
-          propertyType: editedPropertyType || undefined,
+          propertyType: normalizePropertyType(editedPropertyType) || undefined,
           landArea: editedLandArea ? parseFloat(editedLandArea) : undefined,
           landAreaVerified: editedLandAreaVerified ? parseFloat(editedLandAreaVerified) : undefined,
           buildingArea: editedBuildingArea ? parseFloat(editedBuildingArea) : undefined,
