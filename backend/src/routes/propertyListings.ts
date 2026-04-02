@@ -1131,6 +1131,24 @@ router.post('/:propertyNumber/send-chat-to-assignee', async (req: Request, res: 
     await axios.post(result.webhookUrl, { text: chatMessage });
 
     console.log(`[send-chat-to-assignee] Sent to ${property.sales_assignee} for ${propertyNumber}`);
+    // CHAT送信履歴を保存
+    try {
+      await supabase
+        .from('property_chat_history')
+        .insert({
+          property_number: propertyNumber,
+          recipient_type: 'assignee',
+          recipient_name: property.sales_assignee || '',
+          message: String(message).trim(),
+          sender_label: senderLabel || null,
+          sent_at: new Date().toISOString(),
+        });
+      console.log(`[send-chat-to-assignee] Chat history saved for ${propertyNumber}`);
+    } catch (historyError: any) {
+      console.error(`[send-chat-to-assignee] Failed to save chat history:`, historyError);
+      // 履歴保存エラーでもレスポンスは成功を返す
+    }
+
     res.json({ success: true });
   } catch (error: any) {
     console.error('[send-chat-to-assignee] Error:', error.message);
@@ -1271,5 +1289,31 @@ router.post('/:propertyNumber/send-chat-to-office', async (req: Request, res: Re
   }
 });
 
+
+
+// CHAT送信履歴取得API
+router.get('/:propertyNumber/chat-history', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { propertyNumber } = req.params;
+    
+    // property_chat_historyテーブルから履歴を取得（新しい順）
+    const { data: history, error } = await supabase
+      .from('property_chat_history')
+      .select('*')
+      .eq('property_number', propertyNumber)
+      .order('sent_at', { ascending: false });
+    
+    if (error) {
+      console.error('[get-chat-history] Error:', error);
+      res.status(500).json({ error: 'CHAT送信履歴の取得に失敗しました' });
+      return;
+    }
+    
+    res.json({ history: history || [] });
+  } catch (error: any) {
+    console.error('[get-chat-history] Error:', error.message);
+    res.status(500).json({ error: error.message || 'CHAT送信履歴の取得に失敗しました' });
+  }
+});
 
 export default router;
