@@ -307,7 +307,7 @@ function fetchAllBuyersFromSupabase_() {
   var allBuyers = [];
   var pageSize = 1000;
   var offset = 0;
-  var fields = 'buyer_number,latest_status,next_call_date,initial_assignee,follow_up_assignee,inquiry_email_phone,three_calls_confirmed,reception_date,distribution_type,desired_area';
+  var fields = 'buyer_number,latest_status,next_call_date,initial_assignee,follow_up_assignee,inquiry_email_phone,three_calls_confirmed,reception_date,distribution_type,desired_area,viewing_date,viewing_time,viewing_mobile,latest_viewing_date,post_viewing_seller_contact,viewing_promotion_email';
   while (true) {
     var url = SUPABASE_CONFIG.URL + '/rest/v1/buyers?select=' + fields +
       '&deleted_at=is.null&offset=' + offset + '&limit=' + pageSize;
@@ -475,6 +475,80 @@ function syncUpdatesToSupabase_(sheetRows) {
       needsUpdate = true;
       if (normalizedSheetDesiredArea === null && normalizedDbDesiredArea !== null) {
         Logger.log('  🗑️ ' + buyerNumber + ': エリアを削除 (旧値: ' + normalizedDbDesiredArea + ')');
+      }
+    }
+    
+    // 内覧日（最新）
+    var sheetViewingDate = formatDateToISO_(row['内覧日（最新）']);
+    var dbViewingDate = dbBuyer.viewing_date ? String(dbBuyer.viewing_date).substring(0, 10) : null;
+    var normalizedSheetViewingDate = normalizeValue(sheetViewingDate);
+    var normalizedDbViewingDate = normalizeValue(dbViewingDate);
+    if (normalizedSheetViewingDate !== normalizedDbViewingDate) {
+      updateData.viewing_date = normalizedSheetViewingDate;
+      needsUpdate = true;
+      if (normalizedSheetViewingDate === null && normalizedDbViewingDate !== null) {
+        Logger.log('  🗑️ ' + buyerNumber + ': 内覧日を削除 (旧値: ' + normalizedDbViewingDate + ')');
+      }
+    }
+    
+    // 時間
+    var sheetViewingTime = row['時間'] ? String(row['時間']) : null;
+    var normalizedSheetViewingTime = normalizeValue(sheetViewingTime);
+    var normalizedDbViewingTime = normalizeValue(dbBuyer.viewing_time);
+    if (normalizedSheetViewingTime !== normalizedDbViewingTime) {
+      updateData.viewing_time = normalizedSheetViewingTime;
+      needsUpdate = true;
+      if (normalizedSheetViewingTime === null && normalizedDbViewingTime !== null) {
+        Logger.log('  🗑️ ' + buyerNumber + ': 内覧時間を削除 (旧値: ' + normalizedDbViewingTime + ')');
+      }
+    }
+    
+    // 内覧形態
+    var sheetViewingMobile = row['内覧形態'] ? String(row['内覧形態']) : null;
+    var normalizedSheetViewingMobile = normalizeValue(sheetViewingMobile);
+    var normalizedDbViewingMobile = normalizeValue(dbBuyer.viewing_mobile);
+    if (normalizedSheetViewingMobile !== normalizedDbViewingMobile) {
+      updateData.viewing_mobile = normalizedSheetViewingMobile;
+      needsUpdate = true;
+      if (normalizedSheetViewingMobile === null && normalizedDbViewingMobile !== null) {
+        Logger.log('  🗑️ ' + buyerNumber + ': 内覧形態を削除 (旧値: ' + normalizedDbViewingMobile + ')');
+      }
+    }
+    
+    // 最新内覧日
+    var sheetLatestViewingDate = formatDateToISO_(row['最新内覧日']);
+    var dbLatestViewingDate = dbBuyer.latest_viewing_date ? String(dbBuyer.latest_viewing_date).substring(0, 10) : null;
+    var normalizedSheetLatestViewingDate = normalizeValue(sheetLatestViewingDate);
+    var normalizedDbLatestViewingDate = normalizeValue(dbLatestViewingDate);
+    if (normalizedSheetLatestViewingDate !== normalizedDbLatestViewingDate) {
+      updateData.latest_viewing_date = normalizedSheetLatestViewingDate;
+      needsUpdate = true;
+      if (normalizedSheetLatestViewingDate === null && normalizedDbLatestViewingDate !== null) {
+        Logger.log('  🗑️ ' + buyerNumber + ': 最新内覧日を削除 (旧値: ' + normalizedDbLatestViewingDate + ')');
+      }
+    }
+    
+    // 内覧後売主連絡
+    var sheetPostViewingSellerContact = row['内覧後売主連絡'] ? String(row['内覧後売主連絡']) : null;
+    var normalizedSheetPostViewingSellerContact = normalizeValue(sheetPostViewingSellerContact);
+    var normalizedDbPostViewingSellerContact = normalizeValue(dbBuyer.post_viewing_seller_contact);
+    if (normalizedSheetPostViewingSellerContact !== normalizedDbPostViewingSellerContact) {
+      updateData.post_viewing_seller_contact = normalizedSheetPostViewingSellerContact;
+      needsUpdate = true;
+      if (normalizedSheetPostViewingSellerContact === null && normalizedDbPostViewingSellerContact !== null) {
+        Logger.log('  🗑️ ' + buyerNumber + ': 内覧後売主連絡を削除 (旧値: ' + normalizedDbPostViewingSellerContact + ')');
+      }
+    }
+    
+    // 内覧促進メール
+    var sheetViewingPromotionEmail = row['内覧促進メール'] ? String(row['内覧促進メール']) : null;
+    var normalizedSheetViewingPromotionEmail = normalizeValue(sheetViewingPromotionEmail);
+    var normalizedDbViewingPromotionEmail = normalizeValue(dbBuyer.viewing_promotion_email);
+    if (normalizedSheetViewingPromotionEmail !== normalizedDbViewingPromotionEmail) {
+      updateData.viewing_promotion_email = normalizedSheetViewingPromotionEmail;
+      needsUpdate = true;
+      if (normalizedSheetViewingPromotionEmail === null && normalizedDbViewingPromotionEmail !== null) {
+        Logger.log('  🗑️ ' + buyerNumber + ': 内覧促進メールを削除 (旧値: ' + normalizedDbViewingPromotionEmail + ')');
       }
     }
     if (!needsUpdate) continue;
