@@ -4934,6 +4934,9 @@ HP：https://ifoo-oita.com/
                       // 編集モードを終了する時（完了ボタン）
                       console.log('✅ 編集モードを終了します');
                       
+                      // 🚨 重要：編集モードを即座に終了（ボタンの反応を良くするため）
+                      setEditingValuation(false);
+                      
                       // 固定資産税路線価が変更されている場合、査定額を再計算
                       if (editedFixedAssetTaxRoadPrice && parseFloat(editedFixedAssetTaxRoadPrice) > 0) {
                         console.log('🔄 固定資産税路線価が設定されているため、査定額を再計算します:', editedFixedAssetTaxRoadPrice);
@@ -5021,6 +5024,8 @@ HP：https://ifoo-oita.com/
                         } catch (err: any) {
                           console.error('Auto calculation failed:', err);
                           setError('査定額の計算に失敗しました: ' + (err.response?.data?.error?.message || err.message));
+                          // エラー時は編集モードに戻す
+                          setEditingValuation(true);
                         } finally {
                           setAutoCalculating(false);
                         }
@@ -5046,10 +5051,10 @@ HP：https://ifoo-oita.com/
                           } : prev);
                         } catch (err) {
                           console.error('Failed to clear valuation:', err);
+                          // エラー時は編集モードに戻す
+                          setEditingValuation(true);
                         }
                       }
-                      
-                      setEditingValuation(false);
                     }}>
                       {autoCalculating ? '処理中...' : (editingValuation ? '完了' : '編集')}
                     </Button>
