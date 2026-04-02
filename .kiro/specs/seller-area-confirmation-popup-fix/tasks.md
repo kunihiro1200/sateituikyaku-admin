@@ -1,6 +1,6 @@
 # Implementation Plan
 
-- [ ] 1. Write bug condition exploration test
+- [x] 1. Write bug condition exploration test
   - **Property 1: Bug Condition** - 土地面積警告確認後の再表示
   - **CRITICAL**: This test MUST FAIL on unfixed code - failure confirms the bug exists
   - **DO NOT attempt to fix the test or the code when it fails**
@@ -15,7 +15,7 @@
   - Mark task complete when test is written, run, and failure is documented
   - _Requirements: 1.1, 1.2, 1.3, 1.4_
 
-- [ ] 2. Write preservation property tests (BEFORE implementing fix)
+- [x] 2. Write preservation property tests (BEFORE implementing fix)
   - **Property 2: Preservation** - 既存動作の保持
   - **IMPORTANT**: Follow observation-first methodology
   - Observe behavior on UNFIXED code for non-buggy inputs
@@ -28,7 +28,7 @@
 
 - [ ] 3. Fix for 土地面積確認ポップアップ繰り返し表示問題
 
-  - [ ] 3.1 Implement the fix
+  - [x] 3.1 Implement the fix
     - `landAreaWarningConfirmed`という新しいステート変数を追加（初期値は`sessionStorage`から取得）
     - 警告表示条件を修正：`landAreaWarningConfirmed`が`true`の場合は警告を表示しない
     - 「確認しました」ボタンのハンドラー修正：`setLandAreaWarningConfirmed(true)`と`sessionStorage.setItem()`を実行
@@ -38,7 +38,7 @@
     - _Preservation: 土地面積が100㎡以上かつ建物面積以上の場合は警告を表示しない、自動計算機能は継続する、ページリロード時は確認状態をリセットする_
     - _Requirements: 2.1, 2.2, 2.3, 2.4, 3.1, 3.2, 3.3, 3.4_
 
-  - [ ] 3.2 Verify bug condition exploration test now passes
+  - [x] 3.2 Verify bug condition exploration test now passes
     - **Property 1: Expected Behavior** - 土地面積警告確認後の再表示防止
     - **IMPORTANT**: Re-run the SAME test from task 1 - do NOT write a new test
     - The test from task 1 encodes the expected behavior
@@ -47,12 +47,12 @@
     - **EXPECTED OUTCOME**: Test PASSES (confirms bug is fixed)
     - _Requirements: 2.1, 2.2, 2.3, 2.4_
 
-  - [ ] 3.3 Verify preservation tests still pass
+  - [x] 3.3 Verify preservation tests still pass
     - **Property 2: Preservation** - 既存動作の保持
     - **IMPORTANT**: Re-run the SAME tests from task 2 - do NOT write new tests
     - Run preservation property tests from step 2
     - **EXPECTED OUTCOME**: Tests PASS (confirms no regressions)
     - Confirm all tests still pass after fix (no regressions)
 
-- [ ] 4. Checkpoint - Ensure all tests pass
+- [x] 4. Checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.

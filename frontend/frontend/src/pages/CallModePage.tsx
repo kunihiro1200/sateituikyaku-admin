@@ -571,6 +571,12 @@ const CallModePage = () => {
   const calculationTimerRef = useRef<NodeJS.Timeout | null>(null);
   // 土地面積警告ダイアログ用の状態
   const [landAreaWarning, setLandAreaWarning] = useState<string | null>(null);
+  // 土地面積警告確認済みフラグ（sessionStorageから初期化）
+  const [landAreaWarningConfirmed, setLandAreaWarningConfirmed] = useState<boolean>(() => {
+    if (!id) return false;
+    const stored = sessionStorage.getItem(`landAreaWarningConfirmed_${id}`);
+    return stored === 'true';
+  });
   
   // 送信元アドレス選択用の状態
   const [senderAddress, setSenderAddress] = useState<string>('tenant@ifoo-oita.com');
@@ -1043,6 +1049,15 @@ const CallModePage = () => {
       isInitialLoadRef.current = true; // 初回ロードフラグをリセット
     }
   }, [seller?.id]); // seller.idが変更されたときのみ実行
+
+  // 売主が変更されたときに土地面積警告確認状態をリセット
+  useEffect(() => {
+    if (seller?.id) {
+      // sessionStorageから確認状態を読み込む
+      const stored = sessionStorage.getItem(`landAreaWarningConfirmed_${seller.id}`);
+      setLandAreaWarningConfirmed(stored === 'true');
+    }
+  }, [seller?.id]);
 
   // コミュニケーションフィールドの自動保存
   useEffect(() => {
@@ -5232,13 +5247,15 @@ HP：https://ifoo-oita.com/
                               const value = e.target.value;
                               setEditedFixedAssetTaxRoadPrice(value);
                               if (value && parseFloat(value) > 0) {
-                                // 土地面積の警告チェック
-                                const land = propInfo.landArea || property?.landArea || seller?.landArea || 0;
-                                const building = propInfo.buildingArea || property?.buildingArea || seller?.buildingArea || 0;
-                                const landNum = parseFloat(String(land)) || 0;
-                                const buildingNum = parseFloat(String(building)) || 0;
-                                if (landNum > 0 && (landNum <= 99 || (buildingNum > 0 && landNum < buildingNum))) {
-                                  setLandAreaWarning(`土地面積が${landNum}㎡（約${Math.round(landNum / 3.306)}坪）ですが確認大丈夫ですか？`);
+                                // 土地面積の警告チェック（確認済みの場合は表示しない）
+                                if (!landAreaWarningConfirmed) {
+                                  const land = propInfo.landArea || property?.landArea || seller?.landArea || 0;
+                                  const building = propInfo.buildingArea || property?.buildingArea || seller?.buildingArea || 0;
+                                  const landNum = parseFloat(String(land)) || 0;
+                                  const buildingNum = parseFloat(String(building)) || 0;
+                                  if (landNum > 0 && (landNum <= 99 || (buildingNum > 0 && landNum < buildingNum))) {
+                                    setLandAreaWarning(`土地面積が${landNum}㎡（約${Math.round(landNum / 3.306)}坪）ですが確認大丈夫ですか？`);
+                                  }
                                 }
                                 debouncedAutoCalculate(value);
                               }
@@ -6764,7 +6781,18 @@ HP：https://ifoo-oita.com/
           <Typography>{landAreaWarning}</Typography>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setLandAreaWarning(null)} variant="contained">確認しました</Button>
+          <Button 
+            onClick={() => {
+              setLandAreaWarning(null);
+              setLandAreaWarningConfirmed(true);
+              if (seller?.id) {
+                sessionStorage.setItem(`landAreaWarningConfirmed_${seller.id}`, 'true');
+              }
+            }} 
+            variant="contained"
+          >
+            確認しました
+          </Button>
         </DialogActions>
       </Dialog>
 
