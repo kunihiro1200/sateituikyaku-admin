@@ -4948,15 +4948,20 @@ HP：https://ifoo-oita.com/
                           const assignedBy = employee?.name || '';
                           setValuationAssignee(assignedBy);
                           
+                          const roadPriceValue = parseFloat(editedFixedAssetTaxRoadPrice);
+                          
                           // まず固定資産税路線価を保存
                           await api.put(`/api/sellers/${id}`, {
-                            fixedAssetTaxRoadPrice: parseFloat(editedFixedAssetTaxRoadPrice),
+                            fixedAssetTaxRoadPrice: roadPriceValue,
                           });
                           
+                          // 🚨 重要：計算APIに固定資産税路線価を渡す（キャッシュの古い値を使わないため）
                           // 査定額1を計算
                           let amount1: number;
                           try {
-                            const response1 = await api.post(`/api/sellers/${id}/calculate-valuation-amount1`);
+                            const response1 = await api.post(`/api/sellers/${id}/calculate-valuation-amount1`, {
+                              fixedAssetTaxRoadPrice: roadPriceValue,
+                            });
                             amount1 = response1.data.valuationAmount1;
                             setEditedValuationAmount1(amount1.toString());
                           } catch (err: any) {
@@ -4969,6 +4974,7 @@ HP：https://ifoo-oita.com/
                           try {
                             const response2 = await api.post(`/api/sellers/${id}/calculate-valuation-amount2`, {
                               valuationAmount1: amount1,
+                              fixedAssetTaxRoadPrice: roadPriceValue,
                             });
                             amount2 = response2.data.valuationAmount2;
                             setEditedValuationAmount2(amount2.toString());
@@ -4981,6 +4987,7 @@ HP：https://ifoo-oita.com/
                           try {
                             const response3 = await api.post(`/api/sellers/${id}/calculate-valuation-amount3`, {
                               valuationAmount1: amount1,
+                              fixedAssetTaxRoadPrice: roadPriceValue,
                             });
                             amount3 = response3.data.valuationAmount3;
                             setEditedValuationAmount3(amount3.toString());
@@ -4999,6 +5006,7 @@ HP：https://ifoo-oita.com/
                           // ヘッダーに反映するためseller stateを更新
                           setSeller(prev => prev ? {
                             ...prev,
+                            fixedAssetTaxRoadPrice: roadPriceValue,
                             valuationAmount1: amount1,
                             valuationAmount2: amount2 || prev.valuationAmount2,
                             valuationAmount3: amount3 || prev.valuationAmount3,

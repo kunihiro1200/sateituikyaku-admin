@@ -110,6 +110,7 @@ router.get('/:sellerId/valuations', async (req: Request, res: Response) => {
 router.post('/:sellerId/calculate-valuation-amount1', async (req: Request, res: Response) => {
   try {
     const { sellerId } = req.params;
+    const { fixedAssetTaxRoadPrice } = req.body; // リクエストボディから固定資産税路線価を取得
 
     // 売主情報を取得
     const seller = await sellerService.getSeller(sellerId);
@@ -121,6 +122,12 @@ router.post('/:sellerId/calculate-valuation-amount1', async (req: Request, res: 
           retryable: false,
         },
       });
+    }
+
+    // 🚨 重要：リクエストボディで固定資産税路線価が指定されている場合、それを優先
+    if (fixedAssetTaxRoadPrice !== undefined && fixedAssetTaxRoadPrice !== null) {
+      seller.fixedAssetTaxRoadPrice = fixedAssetTaxRoadPrice;
+      console.log('Using fixedAssetTaxRoadPrice from request body:', fixedAssetTaxRoadPrice);
     }
 
     // 物件情報を取得（seller.property がない場合は seller の直接フィールドから構築）
