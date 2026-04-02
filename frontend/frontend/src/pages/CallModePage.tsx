@@ -1218,12 +1218,12 @@ const CallModePage = () => {
     // 初回ロード時のみ実行（seller が読み込まれた後）
     if (seller && editedFixedAssetTaxRoadPrice && !isManualValuation) {
       console.log('ページリロード後の査定額再計算を実行');
-      // 査定額が全て存在しない場合のみ再計算
-      if (!editedValuationAmount1 && !editedValuationAmount2 && !editedValuationAmount3) {
+      // 査定額2または3が空欄の場合、全て再計算
+      if (!editedValuationAmount2 || !editedValuationAmount3) {
         autoCalculateValuations(editedFixedAssetTaxRoadPrice);
       }
     }
-  }, [seller?.id]); // seller.id が変更された時のみ実行（初回ロード時）
+  }, [seller?.id, autoCalculateValuations, editedFixedAssetTaxRoadPrice, isManualValuation, editedValuationAmount2, editedValuationAmount3]); // 依存配列を追加
 
   const loadAllData = async () => {
     setLoading(true);
@@ -2269,17 +2269,21 @@ const CallModePage = () => {
     } finally {
       setAutoCalculating(false);
     }
-  }, [id, employee, property, isManualValuation]);
+  }, [id, employee, isManualValuation]);
 
   // デバウンス付き自動計算関数
   const debouncedAutoCalculate = useCallback((roadPrice: string) => {
+    console.log('🕐 debouncedAutoCalculate呼び出し:', roadPrice);
     // 既存のタイマーをクリア
     if (calculationTimerRef.current) {
+      console.log('⏹️ 既存のタイマーをクリア');
       clearTimeout(calculationTimerRef.current);
     }
     
     // 新しいタイマーを設定（1秒後に実行）
+    console.log('⏱️ 1秒後にautoCalculateValuationsを実行するタイマーを設定');
     calculationTimerRef.current = setTimeout(() => {
+      console.log('🚀 autoCalculateValuationsを実行');
       autoCalculateValuations(roadPrice);
     }, 1000);
   }, [autoCalculateValuations]);
@@ -5284,8 +5288,10 @@ HP：https://ifoo-oita.com/
                             value={editedFixedAssetTaxRoadPrice}
                             onChange={(e) => {
                               const value = e.target.value;
+                              console.log('🔄 固定資産税路線価が変更されました:', value);
                               setEditedFixedAssetTaxRoadPrice(value);
                               if (value && parseFloat(value) > 0) {
+                                console.log('✅ debouncedAutoCalculateを呼び出します');
                                 // 土地面積の警告チェック（確認済みの場合は表示しない）
                                 if (!landAreaWarningConfirmed) {
                                   const land = propInfo.landArea || property?.landArea || seller?.landArea || 0;
@@ -5297,6 +5303,8 @@ HP：https://ifoo-oita.com/
                                   }
                                 }
                                 debouncedAutoCalculate(value);
+                              } else {
+                                console.log('❌ 値が空または0のため、debouncedAutoCalculateをスキップ');
                               }
                             }}
                             disabled={autoCalculating}
