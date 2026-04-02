@@ -310,7 +310,7 @@ export class SpreadsheetSyncService {
       '山': 'Y', '田': 'T', '佐': 'S', '藤': 'F', '鈴': 'S',
       '高': 'T', '橋': 'H', '渡': 'W', '伊': 'I', '中': 'N',
       '小': 'K', '林': 'H', '加': 'K', '木': 'K', '斎': 'S',
-      '松': 'M', '井': 'I', '清': 'K', '森': 'M',
+      '松': 'M', '井': 'I', '清': 'K', '森': 'M', '国': 'K',
     };
     
     return kanaToRomaji[char] || char.charAt(0).toUpperCase();
