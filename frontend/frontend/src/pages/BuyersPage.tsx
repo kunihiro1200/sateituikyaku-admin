@@ -138,16 +138,24 @@ export default function BuyersPage() {
                 // サイドバーのカテゴリキーを日本語の表示名に変換
                 const displayName = categoryKeyToDisplayName[selectedCalculatedStatus] || selectedCalculatedStatus;
                 
+                console.log(`[BuyersPage] Checking buyer ${b.buyer_number}: calculated_status="${b.calculated_status}", displayName="${displayName}"`);
+                
                 // 完全一致または部分一致（担当者別カテゴリ対応）
                 // 例: displayName = "担当" の場合、"担当(林)" や "担当(Y)" にマッチ
                 // 例: displayName = "内覧日前日" の場合、"内覧日前日" に完全一致
                 const matches = b.calculated_status === displayName || b.calculated_status?.startsWith(displayName + '(');
+                
+                if (matches) {
+                  console.log(`[BuyersPage] ✅ Match found: ${b.buyer_number}`);
+                }
+                
                 return matches;
               })
             : [...allBuyersWithStatusRef.current];
 
 
           console.log('[BuyersPage] filtered.length:', filtered.length);
+          console.log('[BuyersPage] filtered buyers:', filtered.slice(0, 5).map(b => ({ buyer_number: b.buyer_number, calculated_status: b.calculated_status })));
 
           // 検索フィルタ
           if (debouncedSearch) {
