@@ -2166,13 +2166,33 @@ export class SellerService extends BaseRepository {
     };
 
     // 1. 訪問日前日（営担に入力あり AND 訪問日あり）← 前営業日ロジックをJSで計算
-    const { data: visitAssigneeSellers } = await this.table('sellers')
-      .select('visit_date, visit_assignee, visit_reminder_assignee')
-      .is('deleted_at', null)
-      .not('visit_assignee', 'is', null)
-      .neq('visit_assignee', '')
-      // 「外す」は有効な営業担当として扱う
-      .not('visit_date', 'is', null);
+    // 🚨 重要：Supabaseのデフォルトは1000件までなので、全件取得するためにページネーション処理を追加
+    let visitAssigneeSellers: any[] = [];
+    let page = 0;
+    const pageSize = 1000;
+    
+    while (true) {
+      const { data, error } = await this.table('sellers')
+        .select('visit_date, visit_assignee, visit_reminder_assignee')
+        .is('deleted_at', null)
+        .not('visit_assignee', 'is', null)
+        .neq('visit_assignee', '')
+        // 「外す」は有効な営業担当として扱う
+        .not('visit_date', 'is', null)
+        .range(page * pageSize, (page + 1) * pageSize - 1);
+      
+      if (error) {
+        console.error('❌ visitAssigneeSellers取得エラー:', error);
+        break;
+      }
+      
+      if (!data || data.length === 0) break;
+      
+      visitAssigneeSellers = visitAssigneeSellers.concat(data);
+      
+      if (data.length < pageSize) break;
+      page++;
+    }
 
     const visitDayBeforeCount = (visitAssigneeSellers || []).filter(s => {
       const visitDateStr = s.visit_date;
@@ -2203,31 +2223,70 @@ export class SellerService extends BaseRepository {
       .lt('visit_date', todayJST);
 
     // 3. 当日TEL（担当）
-    const { data: todayCallAssignedSellers } = await this.table('sellers')
-      .select('id, visit_assignee')
-      .is('deleted_at', null)
-      .not('visit_assignee', 'is', null)
-      .neq('visit_assignee', '')
-      // 「外す」は有効な営業担当として扱う
-      .lte('next_call_date', todayJST)
-      .ilike('status', '%追客中%')
-      .not('status', 'ilike', '%追客不要%')
-      .not('status', 'ilike', '%専任媒介%')
-      .not('status', 'ilike', '%一般媒介%')
-      .not('status', 'ilike', '%他社買取%');
+    // 🚨 重要：全件取得のためにページネーション処理を追加
+    let todayCallAssignedSellers: any[] = [];
+    page = 0;
+    
+    while (true) {
+      const { data, error } = await this.table('sellers')
+        .select('id, visit_assignee')
+        .is('deleted_at', null)
+        .not('visit_assignee', 'is', null)
+        .neq('visit_assignee', '')
+        // 「外す」は有効な営業担当として扱う
+        .lte('next_call_date', todayJST)
+        .ilike('status', '%追客中%')
+        .not('status', 'ilike', '%追客不要%')
+        .not('status', 'ilike', '%専任媒介%')
+        .not('status', 'ilike', '%一般媒介%')
+        .not('status', 'ilike', '%他社買取%')
+        .range(page * pageSize, (page + 1) * pageSize - 1);
+      
+      if (error) {
+        console.error('❌ todayCallAssignedSellers取得エラー:', error);
+        break;
+      }
+      
+      if (!data || data.length === 0) break;
+      
+      todayCallAssignedSellers = todayCallAssignedSellers.concat(data);
+      
+      if (data.length < pageSize) break;
+      page++;
+    }
 
     const todayCallAssignedCount = (todayCallAssignedSellers || []).length;
 
-    const { data: allAssignedSellers } = await this.table('sellers')
-      .select('visit_assignee')
-      .is('deleted_at', null)
-      .not('visit_assignee', 'is', null)
-      .neq('visit_assignee', '')
-      // 「外す」は有効な営業担当として扱う
-      .not('status', 'ilike', '%一般媒介%')
-      .not('status', 'ilike', '%専任媒介%')
-      .not('status', 'ilike', '%追客不要%')
-      .not('status', 'ilike', '%他社買取%');
+    // 担当(イニシャル)親カテゴリ
+    // 🚨 重要：全件取得のためにページネーション処理を追加
+    let allAssignedSellers: any[] = [];
+    page = 0;
+    
+    while (true) {
+      const { data, error } = await this.table('sellers')
+        .select('visit_assignee')
+        .is('deleted_at', null)
+        .not('visit_assignee', 'is', null)
+        .neq('visit_assignee', '')
+        // 「外す」は有効な営業担当として扱う
+        .not('status', 'ilike', '%一般媒介%')
+        .not('status', 'ilike', '%専任媒介%')
+        .not('status', 'ilike', '%追客不要%')
+        .not('status', 'ilike', '%他社買取%')
+        .range(page * pageSize, (page + 1) * pageSize - 1);
+      
+      if (error) {
+        console.error('❌ allAssignedSellers取得エラー:', error);
+        break;
+      }
+      
+      if (!data || data.length === 0) break;
+      
+      allAssignedSellers = allAssignedSellers.concat(data);
+      
+      if (data.length < pageSize) break;
+      page++;
+    }
 
     const visitAssignedCounts: Record<string, number> = {};
     (allAssignedSellers || []).forEach((s: any) => {
