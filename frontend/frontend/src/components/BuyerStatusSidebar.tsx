@@ -153,13 +153,9 @@ export default function BuyerStatusSidebar({
   const handleStatusClick = (status: string) => {
     console.log('[BuyerStatusSidebar] handleStatusClick called with status:', status);
     console.log('[BuyerStatusSidebar] selectedStatus before:', selectedStatus);
-    if (selectedStatus === status) {
-      console.log('[BuyerStatusSidebar] Deselecting status');
-      onStatusSelect(null);
-    } else {
-      console.log('[BuyerStatusSidebar] Selecting status:', status);
-      onStatusSelect(status);
-    }
+    // 常に選択状態を維持（選択解除しない）
+    console.log('[BuyerStatusSidebar] Selecting status:', status);
+    onStatusSelect(status);
   };
 
   if (loading) {
