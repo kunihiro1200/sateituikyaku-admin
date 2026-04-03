@@ -75,7 +75,7 @@ router.post('/send', upload.array('attachments'), async (req, res) => {
         attachments,
       }),
       new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('メール送信がタイムアウトしました（30秒）。再度お試しください。')), 30000)
+        setTimeout(() => reject(new Error('メール送信がタイムアウトしました（30秒）。ネットワーク接続を確認してください。')), 30000)
       ),
     ]);
 
@@ -141,8 +141,37 @@ router.post('/send', upload.array('attachments'), async (req, res) => {
 
     res.json({ success: true });
   } catch (error: any) {
-    console.error('[gmail/send] エラー:', error);
-    res.status(500).json({ error: 'メール送信に失敗しました' });
+    console.error('[gmail/send] 詳細エラー:', {
+      buyerId,
+      subject,
+      bodyLength: bodyText?.length || 0,
+      senderEmail,
+      attachmentsCount: attachments?.length || 0,
+      errorMessage: error.message,
+      errorStack: error.stack,
+      errorCode: error.code,
+    });
+    
+    // エラー種別に応じたレスポンス
+    if (error.message === 'GOOGLE_AUTH_REQUIRED') {
+      return res.status(401).json({ 
+        error: 'Google認証が必要です。管理者に連絡してください。',
+        code: 'GOOGLE_AUTH_REQUIRED',
+      });
+    }
+    
+    if (error.code === 'quotaExceeded' || error.code === 'rateLimitExceeded') {
+      return res.status(429).json({ 
+        error: 'Gmail APIの送信制限に達しました。しばらく待ってから再度お試しください。',
+        code: 'QUOTA_EXCEEDED',
+      });
+    }
+    
+    res.status(500).json({ 
+      error: 'メール送信に失敗しました',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined,
+      code: 'EMAIL_SEND_ERROR',
+    });
   }
 });
 

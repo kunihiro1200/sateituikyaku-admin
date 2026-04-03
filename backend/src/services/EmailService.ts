@@ -167,10 +167,15 @@ export class EmailService extends BaseRepository {
       console.log(`[EmailService] Buyer email sent successfully to: ${params.to}`);
       return { messageId: response.data.id || '', success: true };
     } catch (error: any) {
-      console.error('[EmailService] Failed to send buyer email:', {
+      console.error('[EmailService] sendBuyerEmail エラー:', {
         to: params.to,
         subject: params.subject,
-        error: error.message,
+        bodyLength: params.body?.length || 0,
+        attachmentsCount: params.attachments?.length || 0,
+        errorMessage: error.message,
+        errorStack: error.stack,
+        errorCode: error.code,
+        errorDetails: error.response?.data,
       });
       return { messageId: '', success: false, error: error.message };
     }

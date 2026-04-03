@@ -89,9 +89,9 @@ export class GoogleAuthService extends BaseRepository {
     const redirectUri = process.env.GOOGLE_CALENDAR_REDIRECT_URI;
 
     console.log('🔍 Google Calendar ENV Check:', {
-      clientId: clientId ? '✓ Set' : '✗ Missing',
-      clientSecret: clientSecret ? '✓ Set' : '✗ Missing',
-      redirectUri: redirectUri ? '✓ Set' : '✗ Missing',
+      clientId: clientId ? `✓ Set (${clientId.substring(0, 4)}...)` : '✗ Missing',
+      clientSecret: clientSecret ? `✓ Set (${clientSecret.substring(0, 4)}...)` : '✗ Missing',
+      redirectUri: redirectUri ? `✓ Set (${redirectUri})` : '✗ Missing',
     });
 
     if (!clientId || !clientSecret || !redirectUri) {
@@ -229,6 +229,10 @@ export class GoogleAuthService extends BaseRepository {
 
     try {
       const accountId = await this.getCompanyAccountId();
+      
+      console.log('[GoogleAuthService] 会社アカウントトークン取得開始:', {
+        companyAccountId: accountId,
+      });
 
       // データベースから会社アカウントのリフレッシュトークンを取得
       const { data: tokenData, error } = await this.table(
@@ -239,8 +243,14 @@ export class GoogleAuthService extends BaseRepository {
         .single();
 
       if (error || !tokenData) {
+        console.error('[GoogleAuthService] 会社アカウントトークンが見つかりません:', {
+          companyAccountId: accountId,
+          error: error?.message,
+        });
         throw new Error('GOOGLE_AUTH_REQUIRED');
       }
+      
+      console.log('[GoogleAuthService] 会社アカウントトークン取得成功');
 
       // リフレッシュトークンを復号化
       const refreshToken = decrypt(tokenData.encrypted_refresh_token);
@@ -259,7 +269,12 @@ export class GoogleAuthService extends BaseRepository {
 
       return token;
     } catch (error: any) {
-      console.error('Get access token error:', error);
+      console.error('[GoogleAuthService] 認証エラー:', {
+        companyAccountId: this.companyAccountId,
+        errorMessage: error.message,
+        errorStack: error.stack,
+        errorCode: error.code,
+      });
 
       // 認証エラーの場合は特別なエラーコードを返す
       if (
