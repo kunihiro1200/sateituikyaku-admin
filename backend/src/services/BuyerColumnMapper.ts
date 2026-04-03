@@ -53,13 +53,23 @@ export class BuyerColumnMapper {
   mapDatabaseToSpreadsheet(record: BuyerRecord): Record<string, any> {
     const result: Record<string, any> = {};
     
+    console.log(`[BuyerColumnMapper] mapDatabaseToSpreadsheet called with:`, JSON.stringify(record, null, 2));
+    console.log(`[BuyerColumnMapper] dbToSpreadsheet mapping:`, JSON.stringify(this.dbToSpreadsheet, null, 2));
+    
     for (const [dbColumn, value] of Object.entries(record)) {
       const spreadsheetColumn = this.dbToSpreadsheet[dbColumn];
+      console.log(`[BuyerColumnMapper] Mapping ${dbColumn} -> ${spreadsheetColumn}`);
+      
       if (spreadsheetColumn) {
-        result[spreadsheetColumn] = this.formatValueForSpreadsheet(dbColumn, value);
+        const formattedValue = this.formatValueForSpreadsheet(dbColumn, value);
+        console.log(`[BuyerColumnMapper] Formatted value for ${spreadsheetColumn}:`, formattedValue);
+        result[spreadsheetColumn] = formattedValue;
+      } else {
+        console.warn(`[BuyerColumnMapper] No mapping found for DB column: ${dbColumn}`);
       }
     }
 
+    console.log(`[BuyerColumnMapper] Final result:`, JSON.stringify(result, null, 2));
     return result;
   }
 

@@ -126,25 +126,35 @@ export class BuyerWriteService {
    */
   async updateFields(buyerNumber: string, updates: Record<string, any>): Promise<WriteResult> {
     try {
+      console.log(`[BuyerWriteService] updateFields called for buyer ${buyerNumber}`);
+      console.log(`[BuyerWriteService] Updates:`, JSON.stringify(updates, null, 2));
+      
       // 行番号を検索
       const rowNumber = await this.findRowByBuyerNumber(buyerNumber);
       
       if (!rowNumber) {
+        console.error(`[BuyerWriteService] Buyer ${buyerNumber} not found in spreadsheet`);
         return {
           success: false,
           error: `Buyer ${buyerNumber} not found in spreadsheet`
         };
       }
 
+      console.log(`[BuyerWriteService] Found buyer at row ${rowNumber}`);
+
       // 変更フィールドのみをスプシに書き込み（数式を壊さないよう部分更新）
       const formattedValues = this.columnMapper.mapDatabaseToSpreadsheet(updates);
+      console.log(`[BuyerWriteService] Formatted values for spreadsheet:`, JSON.stringify(formattedValues, null, 2));
+      
       await this.sheetsClient.updateRowPartial(rowNumber, formattedValues);
+      console.log(`[BuyerWriteService] Successfully updated row ${rowNumber}`);
 
       return {
         success: true,
         rowNumber
       };
     } catch (error: any) {
+      console.error(`[BuyerWriteService] Error updating buyer ${buyerNumber}:`, error);
       return {
         success: false,
         error: error.message || 'Unknown error occurred'
