@@ -2179,7 +2179,10 @@ export class SellerService extends BaseRepository {
       if (!visitDateStr) return false;
       const reminderAssignee = (s as any).visit_reminder_assignee || '';
       if (reminderAssignee.trim() !== '') return false;
-      const parts = visitDateStr.split('-');
+      
+      // 🚨 重要：TIMESTAMP形式（YYYY-MM-DDTHH:MM:SS または YYYY-MM-DD HH:MM:SS）から日付部分のみを抽出
+      const visitDateOnly = visitDateStr.split('T')[0].split(' ')[0];
+      const parts = visitDateOnly.split('-');
       if (parts.length !== 3) return false;
       const visitDate = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
       const visitDayOfWeek = visitDate.getDay();
