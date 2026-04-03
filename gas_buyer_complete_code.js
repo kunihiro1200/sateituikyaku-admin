@@ -126,7 +126,8 @@ function updateBuyerSidebarCounts_() {
     todayCallWithInfo: {},
     todayCallAssigned: {},
     assigned: {},
-    inquiryEmailNotResponded: 0
+    inquiryEmailNotResponded: 0,
+    viewingDayBefore: 0  // 内覧日前日カテゴリ
   };
   
   for (var i = 0; i < sheetRows.length; i++) {
@@ -141,6 +142,22 @@ function updateBuyerSidebarCounts_() {
     var assignee = followUpAssignee || initialAssignee;
     var isAssigneeValid = assignee && assignee !== '外す';
     var inquiryEmailPhone = String(row['【問合メール】電話対応'] || '');
+    
+    // 内覧日前日カテゴリ
+    var viewingDate = formatDateToISO_(row['内覧日（最新）']);
+    if (isAssigneeValid && viewingDate) {
+      var vDate = new Date(viewingDate + 'T00:00:00');
+      var vDay = vDate.getDay();
+      var daysBeforeViewing = (vDay === 4) ? 2 : 1;  // 木曜内覧のみ2日前、それ以外は1日前
+      var notifyDate = new Date(vDate);
+      notifyDate.setDate(notifyDate.getDate() - daysBeforeViewing);
+      var today = new Date();
+      today.setHours(0, 0, 0, 0);
+      notifyDate.setHours(0, 0, 0, 0);
+      if (notifyDate.getTime() === today.getTime()) {
+        counts.viewingDayBefore++;
+      }
+    }
     
     // 担当（担当別）カテゴリ
     if (isAssigneeValid) {
@@ -172,6 +189,15 @@ function updateBuyerSidebarCounts_() {
   // （buyer_sidebar_counts テーブルの主キーが (category, label, assignee) で NOT NULL のため）
   var upsertRows = [];
   var now = new Date().toISOString();
+  
+  // 内覧日前日
+  upsertRows.push({
+    category: 'viewingDayBefore',
+    count: counts.viewingDayBefore,
+    label: '',
+    assignee: '',
+    updated_at: now
+  });
   
   // 当日TEL分（担当なし）
   upsertRows.push({
