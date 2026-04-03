@@ -231,7 +231,9 @@ export function calculateBuyerStatus(buyer: BuyerData): StatusResult {
 
     return calculateBuyerStatusComplete(buyer);
   } catch (error) {
-    console.error('[calculateBuyerStatus] Error:', error);
+    console.error('[calculateBuyerStatus] Error for buyer:', buyer.buyer_number, error);
+    console.error('[calculateBuyerStatus] Error stack:', (error as Error).stack);
+    console.error('[calculateBuyerStatus] Buyer data:', JSON.stringify(buyer, null, 2));
     return { status: '', priority: 0, matchedCondition: 'エラー', color: '#cccccc' };
   }
 }
@@ -411,7 +413,8 @@ export function calculateBuyerStatusComplete(buyer: BuyerData): StatusResult {
 
     return { status: '', priority: 0, matchedCondition: '該当なし', color: '#cccccc' };
   } catch (error) {
-    console.error('Status calculation error:', error);
+    console.error('[calculateBuyerStatusComplete] Error for buyer:', buyer.buyer_number, error);
+    console.error('[calculateBuyerStatusComplete] Error stack:', (error as Error).stack);
     return { status: '', priority: 0, matchedCondition: 'Error', color: '#cccccc' };
   }
 }
