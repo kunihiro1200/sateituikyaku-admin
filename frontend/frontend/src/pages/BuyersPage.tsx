@@ -81,6 +81,23 @@ export default function BuyersPage() {
   const [refetchTrigger, setRefetchTrigger] = useState(0);
   const [selectedCalculatedStatus, setSelectedCalculatedStatus] = useState<string | null>(initialStatus);
 
+  // サイドバーのカテゴリキーを日本語の表示名に変換するマッピング
+  const categoryKeyToDisplayName: Record<string, string> = {
+    'visitDayBefore': '内覧日前日',
+    'visitCompleted': '訪問済み',
+    'todayCall': '当日TEL',
+    'todayCallWithInfo': '当日TEL（内容）',
+    'unvaluated': '未査定',
+    'mailingPending': '査定（郵送）',
+    'todayCallNotStarted': '当日TEL_未着手',
+    'pinrichEmpty': 'Pinrich空欄',
+    'todayCallAssigned': '当日TEL（担当）',
+    'exclusive': '専任',
+    'general': '一般',
+    'visitOtherDecision': '訪問後他決',
+    'unvisitedOtherDecision': '未訪問他決',
+  };
+
   // キャッシュから初期データを取得
   const cachedData = pageDataCache.get<{ categories: any[]; buyers: BuyerWithStatus[]; normalStaffInitials: string[] }>(CACHE_KEYS.BUYERS_WITH_STATUS);
   // 全買主データ（フロントキャッシュ）
@@ -111,7 +128,12 @@ export default function BuyersPage() {
         // キャッシュヒット時はsetLoading(true)をスキップして画面のちらつきを防ぐ
         if (sidebarLoadedRef.current && allBuyersWithStatusRef.current.length > 0) {
           let filtered = selectedCalculatedStatus !== null
-            ? allBuyersWithStatusRef.current.filter(b => b.calculated_status === selectedCalculatedStatus)
+            ? allBuyersWithStatusRef.current.filter(b => {
+                // サイドバーのカテゴリキーを日本語の表示名に変換
+                const displayName = categoryKeyToDisplayName[selectedCalculatedStatus] || selectedCalculatedStatus;
+                // 完全一致または部分一致（担当者別カテゴリ対応）
+                return b.calculated_status === displayName || b.calculated_status?.startsWith(displayName);
+              })
             : [...allBuyersWithStatusRef.current];
 
           // 検索フィルタ
