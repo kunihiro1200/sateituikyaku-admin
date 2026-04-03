@@ -1046,15 +1046,33 @@ export class SellerService extends BaseRepository {
           // 前営業日ロジック（木曜訪問→2日前、それ以外→1日前）はDBでは表現できないためJS側で処理
           
           // 🚨 重要: ページネーション処理を追加（Supabaseのデフォルト制限1000件を超える場合に対応）
-          const visitDayBeforeSellers = await this.fetchAllRows(
-            this.table('sellers')
+          let visitDayBeforeSellers: any[] = [];
+          let vdbPage = 0;
+          const vdbPageSize = 1000;
+          
+          while (true) {
+            const { data, error } = await this.table('sellers')
               .select('id, visit_date, visit_assignee, visit_reminder_assignee')
               .is('deleted_at', null)
               .not('visit_assignee', 'is', null)
               .neq('visit_assignee', '')
               // 「外す」は有効な営業担当として扱う
               .not('visit_date', 'is', null)
-          );
+              .range(vdbPage * vdbPageSize, (vdbPage + 1) * vdbPageSize - 1);
+            
+            if (error) {
+              console.error('❌ visitDayBeforeSellers取得エラー:', error);
+              break;
+            }
+            
+            if (!data || data.length === 0) break;
+            
+            visitDayBeforeSellers = visitDayBeforeSellers.concat(data);
+            
+            if (data.length < vdbPageSize) break;
+            vdbPage++;
+          }
+          
           console.log(`[visitDayBefore] todayJST=${todayJST}, candidates=${visitDayBeforeSellers?.length ?? 0}`);
           // visitDayBefore に該当するIDを計算
           const visitDayBeforeIds = (visitDayBeforeSellers || []).filter((s: any) => {

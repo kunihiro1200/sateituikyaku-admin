@@ -89,12 +89,12 @@ export function calculateBuyerStatus(buyer: BuyerData): StatusResult {
     // Priority 3: 内覧日前日（業者問合せは除外、通知送信者が入力済みの場合も除外）
     if (
       and(
-        isNotBlank(buyer.latest_viewing_date),
+        isNotBlank(buyer.viewing_date),
         not(equals(buyer.broker_inquiry, '業者問合せ')),
         isBlank(buyer.notification_sender),
         or(
-          and(isTomorrow(buyer.latest_viewing_date), not(equals(getDayOfWeek(buyer.latest_viewing_date), '木曜日'))),
-          and(isDaysFromToday(buyer.latest_viewing_date, 2), equals(getDayOfWeek(buyer.latest_viewing_date), '木曜日'))
+          and(isTomorrow(buyer.viewing_date), not(equals(getDayOfWeek(buyer.viewing_date), '木曜日'))),
+          and(isDaysFromToday(buyer.viewing_date, 2), equals(getDayOfWeek(buyer.viewing_date), '木曜日'))
         )
       )
     ) {
