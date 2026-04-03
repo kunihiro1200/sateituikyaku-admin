@@ -485,12 +485,9 @@ export class SellerService extends BaseRepository {
     if ((data as any).visitAssignee !== undefined) {
       updates.visit_assignee = (data as any).visitAssignee;
     }
-    // visitDate/visitTime を直接指定した場合（訪問予約フォームから、タイムゾーン変換なし）
+    // visitDate を直接指定した場合（訪問予約フォームから、TIMESTAMP型として保存）
     if ((data as any).visitDate !== undefined) {
-      updates.visit_date = (data as any).visitDate; // YYYY-MM-DD形式のまま保存
-    }
-    if ((data as any).visitTime !== undefined) {
-      updates.visit_time = (data as any).visitTime; // HH:mm:ss形式のまま保存
+      updates.visit_date = (data as any).visitDate; // TIMESTAMP形式（YYYY-MM-DD HH:mm:ss）
     }
     if ((data as any).visitAcquisitionDate !== undefined) {
       updates.visit_acquisition_date = (data as any).visitAcquisitionDate; // YYYY-MM-DD形式のまま保存
@@ -500,15 +497,19 @@ export class SellerService extends BaseRepository {
     }
     if (data.appointmentDate !== undefined) {
       updates.appointment_date = data.appointmentDate;
-      // appointmentDateをvisit_dateとvisit_timeに分割して保存（visitDate未指定の場合のみ）
+      // appointmentDateをvisit_date（TIMESTAMP型）に変換して保存（visitDate未指定の場合のみ）
       if (data.appointmentDate && (data as any).visitDate === undefined) {
         const appointmentDateObj = new Date(data.appointmentDate);
-        updates.visit_date = appointmentDateObj.toISOString().split('T')[0]; // YYYY-MM-DD
+        // TIMESTAMP形式（YYYY-MM-DD HH:mm:ss）で保存
+        const year = appointmentDateObj.getFullYear();
+        const month = (appointmentDateObj.getMonth() + 1).toString().padStart(2, '0');
+        const day = appointmentDateObj.getDate().toString().padStart(2, '0');
         const hours = appointmentDateObj.getHours().toString().padStart(2, '0');
         const minutes = appointmentDateObj.getMinutes().toString().padStart(2, '0');
-        updates.visit_time = `${hours}:${minutes}:00`; // HH:mm:ss
+        const seconds = appointmentDateObj.getSeconds().toString().padStart(2, '0');
+        updates.visit_date = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
       }
-      // appointmentDateがnullの場合はvisit_date/visit_timeを変更しない（意図しない消去を防ぐ）
+      // appointmentDateがnullの場合はvisit_dateを変更しない（意図しない消去を防ぐ）
     }
     if (data.appointmentNotes !== undefined) {
       updates.appointment_notes = data.appointmentNotes;
@@ -1653,8 +1654,7 @@ export class SellerService extends BaseRepository {
         // Comments field
         comments: seller.comments,
         // Visit appointment fields
-        visitDate: seller.visit_date || undefined, // 文字列のまま返す（YYYY-MM-DD形式、タイムゾーン変換なし）
-        visitTime: seller.visit_time,
+        visitDate: seller.visit_date || undefined, // TIMESTAMP型（ISO 8601形式: YYYY-MM-DDTHH:mm:ss.sssZ）
         visitAcquisitionDate: seller.visit_acquisition_date || undefined, // 文字列のまま返す（YYYY-MM-DD形式、タイムゾーン変換なし）
         // イニシャルをフルネームに変換（フォールバック付き）
         visitAssignee: visitAssigneeFullName || seller.visit_assignee || undefined,

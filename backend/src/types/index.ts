@@ -101,8 +101,7 @@ export interface Seller {
   
   // 訪問査定情報
   visitAcquisitionDate?: Date;
-  visitDate?: Date;
-  visitTime?: string;
+  visitDate?: Date; // TIMESTAMP型（日時を含む）
   visitDayOfWeek?: string;
   visitAssignee?: string; // 営担（フルネームに変換済み）
   visitAssigneeInitials?: string; // 営担の元のイニシャル（フィルタリング用）
@@ -320,8 +319,7 @@ export interface ValuationInfo {
 
 export interface VisitInfo {
   visitAcquisitionDate?: Date;
-  visitDate?: Date;
-  visitTime?: string;
+  visitDate?: Date; // TIMESTAMP型（日時を含む）
   visitDayOfWeek?: string;
   visitAssignee?: string;
   visitAcquiredBy?: string;
