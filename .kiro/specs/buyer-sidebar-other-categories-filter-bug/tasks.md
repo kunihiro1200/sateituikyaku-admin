@@ -70,12 +70,12 @@
     - **EXPECTED OUTCOME**: Tests PASS (confirms no regressions)
     - Confirm all tests still pass after fix (no regressions)
 
-- [-] 4. Integration testing on buyer list page
+- [x] 4. Integration testing on buyer list page
   - Test clicking "②内覧済み" category shows 1546 buyers
   - Test clicking "担当(Y)" category shows 210 buyers
   - Test clicking "担当(林)" category shows correct buyers
   - Test sidebar counts match list display counts
   - Test existing search and pagination functionality still works
 
-- [ ] 5. Checkpoint - Ensure all tests pass
+- [x] 5. Checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
