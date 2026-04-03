@@ -14,6 +14,12 @@ import { authenticate } from '../middleware/auth';
 
 const router = Router();
 
+// Supabaseクライアントを初期化
+const supabase = createClient(
+  process.env.SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_KEY!
+);
+
 // multer: multipart/form-data (添付ファイル) 対応
 import multer from 'multer';
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
