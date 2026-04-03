@@ -36,7 +36,7 @@ const BUYER_COLUMN_MAPPING_BUGGY: Record<string, string> = {
   '受付日': 'reception_date',
   '●氏名・会社名': 'name',
   '建物名/価格 内覧物件は赤表示（★は他社物件）': 'building_name_price',
-  '●内覧日(最新）': 'latest_viewing_date',
+  '●内覧日(最新）': 'viewing_date',
   '●希望時期': 'desired_timing',
   '後続担当': 'follow_up_assignee',
   '再問合\n（内覧）': 're_inquiry_viewing',

@@ -487,7 +487,7 @@ export interface Buyer {
   // 日付情報
   created_datetime?: string | Date;
   reception_date?: string | Date;
-  latest_viewing_date?: string | Date;
+  viewing_date?: string | Date;
   next_call_date?: string | Date;
   campaign_date?: string | Date;
   

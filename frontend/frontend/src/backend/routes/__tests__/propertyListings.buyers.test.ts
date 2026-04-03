@@ -26,7 +26,7 @@ describe('Property 6: Buyer count display format', () => {
             latest_status: fc.constantFrom('新規', '追客中', '商談中', '成約', 'キャンセル'),
             inquiry_confidence: fc.constantFrom('S', 'A', 'B', 'C', 'D'),
             reception_date: fc.date().map(d => d.toISOString()),
-            latest_viewing_date: fc.option(fc.date().map(d => d.toISOString()), { nil: null }),
+            viewing_date: fc.option(fc.date().map(d => d.toISOString()), { nil: null }),
             next_call_date: fc.option(fc.date().map(d => d.toISOString()), { nil: null })
           }),
           { minLength: 0, maxLength: 50 }
@@ -75,7 +75,7 @@ describe('Property 6: Buyer count display format', () => {
             latest_status: fc.constantFrom('新規', '追客中', '商談中', '成約', 'キャンセル'),
             inquiry_confidence: fc.constantFrom('S', 'A', 'B', 'C', 'D'),
             reception_date: fc.date().map(d => d.toISOString()),
-            latest_viewing_date: fc.option(fc.date().map(d => d.toISOString()), { nil: null }),
+            viewing_date: fc.option(fc.date().map(d => d.toISOString()), { nil: null }),
             next_call_date: fc.option(fc.date().map(d => d.toISOString()), { nil: null })
           }),
           { minLength: 0, maxLength: 50 }
@@ -114,7 +114,7 @@ describe('Property 6: Buyer count display format', () => {
             latest_status: fc.constantFrom('新規', '追客中', '商談中', '成約', 'キャンセル'),
             inquiry_confidence: fc.constantFrom('S', 'A', 'B', 'C', 'D'),
             reception_date: fc.date().map(d => d.toISOString()),
-            latest_viewing_date: fc.option(fc.date().map(d => d.toISOString()), { nil: null }),
+            viewing_date: fc.option(fc.date().map(d => d.toISOString()), { nil: null }),
             next_call_date: fc.option(fc.date().map(d => d.toISOString()), { nil: null })
           }),
           { minLength: 2, maxLength: 50 }
@@ -161,7 +161,7 @@ describe('Property 6: Buyer count display format', () => {
             latest_status: fc.constantFrom('新規', '追客中', '商談中', '成約', 'キャンセル'),
             inquiry_confidence: fc.constantFrom('S', 'A', 'B', 'C', 'D'),
             reception_date: fc.date().map(d => d.toISOString()),
-            latest_viewing_date: fc.option(fc.date().map(d => d.toISOString()), { nil: null }),
+            viewing_date: fc.option(fc.date().map(d => d.toISOString()), { nil: null }),
             next_call_date: fc.option(fc.date().map(d => d.toISOString()), { nil: null })
           }),
           { minLength: 0, maxLength: 100 }

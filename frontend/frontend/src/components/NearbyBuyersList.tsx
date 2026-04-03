@@ -26,7 +26,7 @@ interface NearbyBuyer {
   name: string;
   distribution_areas: string[];
   latest_status: string;
-  latest_viewing_date: string;
+  viewing_date: string;
   reception_date?: string;
   inquiry_hearing?: string;
   viewing_result_follow_up?: string;
@@ -110,7 +110,7 @@ const NearbyBuyersList = ({ sellerId, propertyNumber, onCountChange }: NearbyBuy
       if (aValue == null && bValue == null) return 0;
       if (aValue == null) return 1;
       if (bValue == null) return -1;
-      if (sortConfig.key === 'latest_viewing_date') {
+      if (sortConfig.key === 'viewing_date') {
         const aDate = new Date(aValue as string).getTime();
         const bDate = new Date(bValue as string).getTime();
         return sortConfig.direction === 'asc' ? aDate - bDate : bDate - aDate;
@@ -394,8 +394,8 @@ const NearbyBuyersList = ({ sellerId, propertyNumber, onCountChange }: NearbyBuy
               <TableCell sx={{ cursor: 'pointer', userSelect: 'none' }} onClick={() => handleSort('latest_status')}>
                 最新状況{getSortIcon('latest_status')}
               </TableCell>
-              <TableCell sx={{ cursor: 'pointer', userSelect: 'none' }} onClick={() => handleSort('latest_viewing_date')}>
-                内覧日{getSortIcon('latest_viewing_date')}
+              <TableCell sx={{ cursor: 'pointer', userSelect: 'none' }} onClick={() => handleSort('viewing_date')}>
+                内覧日{getSortIcon('viewing_date')}
               </TableCell>
             </TableRow>
           </TableHead>
@@ -473,7 +473,7 @@ const NearbyBuyersList = ({ sellerId, propertyNumber, onCountChange }: NearbyBuy
                   </TableCell>
                   <TableCell>{buyer.latest_status || '-'}</TableCell>
                   <TableCell>
-                    {buyer.latest_viewing_date ? new Date(buyer.latest_viewing_date).toLocaleDateString('ja-JP') : '-'}
+                    {buyer.viewing_date ? new Date(buyer.viewing_date).toLocaleDateString('ja-JP') : '-'}
                   </TableCell>
                 </TableRow>
               );

@@ -57,7 +57,7 @@ const fieldNameLabels: Record<string, string> = {
   inquiry_source: '問合せ元',
   inquiry_hearing: '問合時ヒアリング',
   inquiry_confidence: '問合時確度',
-  latest_viewing_date: '内覧日(最新)',
+  viewing_date: '内覧日(最新)',
   latest_status: '★最新状況',
   viewing_result_follow_up: '内覧結果・後続対応',
   next_call_date: '次電日',

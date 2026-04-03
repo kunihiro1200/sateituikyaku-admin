@@ -168,7 +168,7 @@ interface Buyer {
   phone_number?: string;
   email?: string;
   reception_date?: string;
-  latest_viewing_date?: string;
+  viewing_date?: string;
   latest_status?: string;
 }
 

@@ -1072,7 +1072,7 @@ export default function BuyerDetailPage() {
             selectedPropertyIds={selectedPropertyIds}
             linkedPropertyType={linkedProperties[0]?.property_type}
             brokerInquiry={buyer.broker_inquiry || ''}
-            latestViewingDate={buyer.latest_viewing_date || ''}
+            viewingDate={buyer.viewing_date || ''}
             size="small"
             variant="contained"
             onEmailSent={fetchActivities}
@@ -1359,7 +1359,7 @@ TEL：097-533-2022`;
 
           {/* 問合メール未対応一覧ボタン */}
           {(buyer.inquiry_email_phone === '未' || buyer.inquiry_email_reply === '未' ||
-            (!buyer.latest_viewing_date && buyer.inquiry_email_phone === '不要' &&
+            (!buyer.viewing_date && buyer.inquiry_email_phone === '不要' &&
               (!buyer.inquiry_email_reply || buyer.inquiry_email_reply === '未'))) && (
             <Button
               variant="outlined"

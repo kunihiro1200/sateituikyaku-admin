@@ -108,7 +108,7 @@ export default function NewBuyerPage() {
   const [parkingSpaces, setParkingSpaces] = useState('');
 
   // 内覧情報
-  const [latestViewingDate, setLatestViewingDate] = useState('');
+  const [viewingDate, setLatestViewingDate] = useState('');
   const [viewingTime, setViewingTime] = useState('');
   const [followUpAssignee, setFollowUpAssignee] = useState('');
   const [viewingResultFollowUp, setViewingResultFollowUp] = useState('');
@@ -293,7 +293,7 @@ export default function NewBuyerPage() {
         price_range_land: priceRangeLand,
         parking_spaces: parkingSpaces,
         // 内覧情報
-        latest_viewing_date: latestViewingDate || null,
+        viewing_date: viewingDate || null,
         viewing_time: viewingTime || null,
         follow_up_assignee: followUpAssignee || null,
         viewing_result_follow_up: viewingResultFollowUp || null,
@@ -1315,7 +1315,7 @@ export default function NewBuyerPage() {
                     fullWidth
                     label="内覧日"
                     type="date"
-                    value={latestViewingDate}
+                    value={viewingDate}
                     onChange={(e) => setLatestViewingDate(e.target.value)}
                     InputLabelProps={{ shrink: true }}
                   />

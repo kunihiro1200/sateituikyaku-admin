@@ -8,7 +8,7 @@ describe('ValidationService', () => {
     it('蜈ｨ縺ｦ縺ｮ蠢・医ヵ繧｣繝ｼ繝ｫ繝峨′遨ｺ縺ｮ蝣ｴ蜷医√ヰ繝ｪ繝・・繧ｷ繝ｧ繝ｳ縺悟､ｱ謨励☆繧・, () => {
       const buyer = {
         buyer_number: '6666',
-        latest_viewing_date: '',
+        viewing_date: '',
         viewing_time: '',
         viewing_mobile: '',
         follow_up_assignee: '',
@@ -27,7 +27,7 @@ describe('ValidationService', () => {
     it('蜈ｨ縺ｦ縺ｮ蠢・医ヵ繧｣繝ｼ繝ｫ繝峨′蜈･蜉帙＆繧後※縺・ｋ蝣ｴ蜷医√ヰ繝ｪ繝・・繧ｷ繝ｧ繝ｳ縺梧・蜉溘☆繧・, () => {
       const buyer = {
         buyer_number: '6666',
-        latest_viewing_date: '2026-02-10',
+        viewing_date: '2026-02-10',
         viewing_time: '14:30',
         viewing_mobile: '縲仙・隕ｧ_蟆ゑｼ郁・遉ｾ迚ｩ莉ｶ・峨・,
         follow_up_assignee: 'Y',
@@ -43,7 +43,7 @@ describe('ValidationService', () => {
     it('蟆ゆｻｻ迚ｩ莉ｶ縺ｮ蝣ｴ蜷医∝・隕ｧ蠖｢諷九′譛ｪ蜈･蜉帙□縺ｨ繧ｨ繝ｩ繝ｼ縺ｫ縲悟・隕ｧ蠖｢諷九阪′蜷ｫ縺ｾ繧後ｋ', () => {
       const buyer = {
         buyer_number: '6666',
-        latest_viewing_date: '2026-02-10',
+        viewing_date: '2026-02-10',
         viewing_time: '14:30',
         viewing_mobile: '',
         follow_up_assignee: 'Y',
@@ -59,7 +59,7 @@ describe('ValidationService', () => {
     it('荳闊ｬ蟐剃ｻ狗黄莉ｶ縺ｮ蝣ｴ蜷医∝・隕ｧ蠖｢諷九′譛ｪ蜈･蜉帙□縺ｨ繧ｨ繝ｩ繝ｼ縺ｫ縲悟・隕ｧ蠖｢諷祇荳闊ｬ蟐剃ｻ九阪′蜷ｫ縺ｾ繧後ｋ', () => {
       const buyer = {
         buyer_number: '6666',
-        latest_viewing_date: '2026-02-10',
+        viewing_date: '2026-02-10',
         viewing_time: '14:30',
         viewing_mobile: '',
         follow_up_assignee: 'Y',
@@ -75,7 +75,7 @@ describe('ValidationService', () => {
     it('迚ｩ莉ｶ縺檎ｴ舌▼縺・※縺・↑縺・ｴ蜷医∝・隕ｧ蠖｢諷九・繝√ぉ繝・け縺ｯ繧ｹ繧ｭ繝・・縺輔ｌ繧・, () => {
       const buyer = {
         buyer_number: '6666',
-        latest_viewing_date: '2026-02-10',
+        viewing_date: '2026-02-10',
         viewing_time: '14:30',
         viewing_mobile: '',
         follow_up_assignee: 'Y',

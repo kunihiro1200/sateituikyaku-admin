@@ -9,7 +9,7 @@ interface Buyer {
   name?: string;
   phone_number?: string;
   email?: string;
-  latest_viewing_date: string;
+  viewing_date: string;
   viewing_time: string;
   follow_up_assignee: string;
   pre_viewing_notes?: string;
@@ -32,7 +32,7 @@ export class CalendarLinkGenerator {
    */
   static generateCalendarLink(buyer: Buyer, employees: Employee[]): string {
     // 内覧日時を取得
-    const viewingDate = new Date(buyer.latest_viewing_date);
+    const viewingDate = new Date(buyer.viewing_date);
     const viewingTime = buyer.viewing_time || '14:00';
 
     // 時間をパース

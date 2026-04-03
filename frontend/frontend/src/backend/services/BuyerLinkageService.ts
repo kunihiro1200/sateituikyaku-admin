@@ -10,12 +10,12 @@ export interface BuyerSummary {
   latest_status: string;
   inquiry_confidence: string;
   reception_date: string;
-  latest_viewing_date: string | null;
+  viewing_date: string | null;
   next_call_date: string | null;
 }
 
 export interface BuyerListOptions {
-  sortBy?: 'reception_date' | 'inquiry_confidence' | 'latest_viewing_date';
+  sortBy?: 'reception_date' | 'inquiry_confidence' | 'viewing_date';
   sortOrder?: 'asc' | 'desc';
   limit?: number;
 }

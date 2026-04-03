@@ -11,7 +11,7 @@ describe('CalendarLinkGenerator', () => {
         name: '螻ｱ逕ｰ螟ｪ驛・,
         phone_number: '090-1234-5678',
         email: 'yamada@example.com',
-        latest_viewing_date: '2026-02-10',
+        viewing_date: '2026-02-10',
         viewing_time: '14:30',
         follow_up_assignee: 'Y',
         pre_viewing_notes: '繝・せ繝育畑繝｡繝｢',
@@ -30,7 +30,7 @@ describe('CalendarLinkGenerator', () => {
       const buyer = {
         buyer_number: '6666',
         name: '螻ｱ逕ｰ螟ｪ驛・,
-        latest_viewing_date: '2026-02-10',
+        viewing_date: '2026-02-10',
         viewing_time: '14:30',
         follow_up_assignee: 'Y',
       };
@@ -52,7 +52,7 @@ describe('CalendarLinkGenerator', () => {
         name: '螻ｱ逕ｰ螟ｪ驛・,
         phone_number: '090-1234-5678',
         email: 'yamada@example.com',
-        latest_viewing_date: '2026-02-10',
+        viewing_date: '2026-02-10',
         viewing_time: '14:30',
         follow_up_assignee: 'Y',
         pre_viewing_notes: '繝・せ繝育畑繝｡繝｢',
@@ -75,7 +75,7 @@ describe('CalendarLinkGenerator', () => {
       const buyer = {
         buyer_number: '6666',
         name: '螻ｱ逕ｰ螟ｪ驛・,
-        latest_viewing_date: '2026-02-10',
+        viewing_date: '2026-02-10',
         viewing_time: '14:30',
         follow_up_assignee: 'Z', // 蟄伜惠縺励↑縺・う繝九す繝｣繝ｫ
       };
@@ -92,7 +92,7 @@ describe('CalendarLinkGenerator', () => {
       const buyer = {
         buyer_number: '6666',
         name: '螻ｱ逕ｰ螟ｪ驛・,
-        latest_viewing_date: '2026-02-10',
+        viewing_date: '2026-02-10',
         viewing_time: '',
         follow_up_assignee: 'Y',
       };

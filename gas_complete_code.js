@@ -829,14 +829,21 @@ function updateSidebarCounts_(sheetRows) {
     var nextCallDate = formatDateToISO_(row['次電日']);
     var visitAssignee = row['営担'];
     var isVisitAssigneeValid = visitAssignee && visitAssignee !== '';  // 「外す」を有効な値として扱う
-    var visitDateStr = formatDateToISO_(row['訪問日 \nY/M/D'] || row['訪問日']);
+    
+    // 🚨 重要：訪問日を3つの列から取得（優先順位: 訪問日 \nY/M/D > 訪問日 Y/M/D > 訪問日）
+    var rawVisitDate = row['訪問日 \nY/M/D'] || row['訪問日 Y/M/D'] || row['訪問日'];
+    var visitDateStr = formatDateToISO_(rawVisitDate);
+    
     var inquiryDateStr = formatDateToISO_(row['反響日付']);
     var unreachable = row['不通'] ? String(row['不通']) : '';
     var pinrich = row['Pinrich'] ? String(row['Pinrich']) : '';
     var mailingStatus = row['郵送ステータス'] ? String(row['郵送ステータス']) : '';
 
-    if (isVisitAssigneeValid && visitDateStr && isVisitDayBefore(visitDateStr)) { counts.visitDayBefore++; }
-    if (isVisitAssigneeValid && visitDateStr && visitDateStr < todayStr) {
+    // 🚨 重要：visitDateStrがTIMESTAMP形式の場合、日付部分のみを抽出
+    // ISO 8601形式（YYYY-MM-DDTHH:MM:SS）またはスペース区切り（YYYY-MM-DD HH:MM:SS）に対応
+    var visitDateOnly = visitDateStr ? visitDateStr.split('T')[0].split(' ')[0] : null;
+    if (isVisitAssigneeValid && visitDateOnly && isVisitDayBefore(visitDateOnly)) { counts.visitDayBefore++; }
+    if (isVisitAssigneeValid && visitDateOnly && visitDateOnly < todayStr) {
       var assigneeKey = String(visitAssignee);
       counts.visitCompleted[assigneeKey] = (counts.visitCompleted[assigneeKey] || 0) + 1;
     }

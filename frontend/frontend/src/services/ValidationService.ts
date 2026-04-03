@@ -9,7 +9,7 @@ interface Buyer {
   name?: string;
   phone_number?: string;
   email?: string;
-  latest_viewing_date?: string;
+  viewing_date?: string;
   viewing_time?: string;
   viewing_mobile?: string;
   follow_up_assignee?: string;
@@ -42,7 +42,7 @@ export class ValidationService {
     const errors: string[] = [];
 
     // 内覧日のチェック
-    if (!buyer.latest_viewing_date || buyer.latest_viewing_date.trim() === '') {
+    if (!buyer.viewing_date || buyer.viewing_date.trim() === '') {
       errors.push('内覧日（最新）');
     }
 

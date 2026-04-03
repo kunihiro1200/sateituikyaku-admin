@@ -78,11 +78,11 @@ export function generateCalendarDescription(
  */
 function generatePreDaySmsBody(buyer: {
   name?: string | null;
-  latest_viewing_date?: string | null;
+  viewing_date?: string | null;
   viewing_time?: string | null;
 }, propertyAddress: string, googleMapUrl: string): string {
   const name = buyer.name || 'お客様';
-  const dateStr = buyer.latest_viewing_date || '';
+  const dateStr = buyer.viewing_date || '';
   const parts = dateStr.includes('/') ? dateStr.split('/') : dateStr.split('-');
   let dateLabel = '';
   let dayWord = '明日';
@@ -108,12 +108,12 @@ function generatePreDaySmsBody(buyer: {
  * - broker_inquiry === '業者問合せ' は除外
  * - notification_sender が入力済みは除外
  */
-function isViewingPreDay(buyer: { latest_viewing_date?: string | null; broker_inquiry?: string | null; notification_sender?: string | null }): boolean {
-  if (!buyer.latest_viewing_date) return false;
+function isViewingPreDay(buyer: { viewing_date?: string | null; broker_inquiry?: string | null; notification_sender?: string | null }): boolean {
+  if (!buyer.viewing_date) return false;
   if (buyer.broker_inquiry === '業者問合せ') return false;
   if (buyer.notification_sender && buyer.notification_sender.trim() !== '') return false;
 
-  const dateStr = buyer.latest_viewing_date;
+  const dateStr = buyer.viewing_date;
   const parts = dateStr.includes('/') ? dateStr.split('/') : dateStr.split('-');
   if (parts.length !== 3) return false;
   const viewingDate = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
@@ -213,7 +213,7 @@ export default function BuyerViewingResultPage() {
   useEffect(() => {
     if (buyer) {
       console.log('[BuyerViewingResultPage] Buyer state updated:', {
-        latest_viewing_date: buyer.latest_viewing_date,
+        viewing_date: buyer.viewing_date,
         viewing_time: buyer.viewing_time,
         follow_up_assignee: buyer.follow_up_assignee,
       });
@@ -317,7 +317,7 @@ export default function BuyerViewingResultPage() {
       // 内覧関連フィールドとlatest_statusはsync: trueでスプレッドシートに即時同期する
       const SYNC_FIELDS = [
         'latest_status',
-        'latest_viewing_date',
+        'viewing_date',
         'viewing_time',
         'follow_up_assignee',
         'viewing_unconfirmed',
@@ -352,7 +352,7 @@ export default function BuyerViewingResultPage() {
   const handleSaveLatestViewingDate = useCallback(
     (newValue: any) => {
       console.log('[BuyerViewingResultPage] InlineEditableField onSave called with:', newValue);
-      return handleInlineFieldSave('latest_viewing_date', newValue);
+      return handleInlineFieldSave('viewing_date', newValue);
     },
     [handleInlineFieldSave]
   );
@@ -411,7 +411,7 @@ export default function BuyerViewingResultPage() {
     const property = linkedProperties && linkedProperties.length > 0 ? linkedProperties[0] : null;
 
     // 内覧日時を組み立て
-    const rawDate = buyer.latest_viewing_date || '';
+    const rawDate = buyer.viewing_date || '';
     const rawTime = buyer.viewing_time || '14:00';
     const numParts = rawDate.match(/\d+/g);
 
@@ -470,7 +470,7 @@ export default function BuyerViewingResultPage() {
     setCalendarConfirmDialog(prev => ({ ...prev, open: false }));
 
     try {
-      const rawViewingDate = buyer.latest_viewing_date || '';
+      const rawViewingDate = buyer.viewing_date || '';
       const numParts = rawViewingDate.match(/\d+/g);
       if (!numParts || numParts.length < 3) {
         setSnackbar({ open: true, message: `内覧日の形式が不正です（値: "${rawViewingDate}"）`, severity: 'error' });
@@ -717,7 +717,7 @@ export default function BuyerViewingResultPage() {
                   buyerCompanyName={buyer.company_name || ''}
                   buyerNumber={buyer_number || ''}
                   preViewingNotes={buyer.pre_viewing_notes || ''}
-                  latestViewingDate={buyer.latest_viewing_date || ''}
+                  viewingDate={buyer.viewing_date || ''}
                   viewingTime={buyer.viewing_time || ''}
                   inquiryHistory={[]}
                   selectedPropertyIds={selectedPropertyIds}
@@ -848,7 +848,7 @@ export default function BuyerViewingResultPage() {
             <Box sx={{ width: '280px', flexShrink: 0 }}>
               <InlineEditableField
                 label="内覧日（最新）"
-                value={buyer.latest_viewing_date || ''}
+                value={buyer.viewing_date || ''}
                 onSave={handleSaveLatestViewingDate}
                 fieldType="date"
               />
@@ -874,17 +874,17 @@ export default function BuyerViewingResultPage() {
                   } catch (cancelError: any) {
                     console.warn('[BuyerViewingResultPage] Cancel notification failed (non-fatal):', cancelError.message);
                   }
-                  await handleInlineFieldSave('latest_viewing_date', null);
+                  await handleInlineFieldSave('viewing_date', null);
                   await handleInlineFieldSave('viewing_time', null);
                 }}
               >
                 🗑️ 内覧日をクリア
               </Button>
               {/* カレンダーリンクボタン */}
-              {buyer.latest_viewing_date && (() => {
+              {buyer.viewing_date && (() => {
                 // 全条件を満たす場合にボタンを目立たせる
                 const shouldHighlight =
-                  !!buyer.latest_viewing_date &&
+                  !!buyer.viewing_date &&
                   !!buyer.viewing_time &&
                   !!buyer.follow_up_assignee &&
                   !buyer.viewing_unconfirmed;
@@ -930,7 +930,7 @@ export default function BuyerViewingResultPage() {
             {/* 内覧形態（条件付き表示：内覧日が入力されている場合のみ表示） */}
             {(() => {
               // 内覧日が入力されているかチェック
-              const hasViewingDate = buyer.latest_viewing_date && buyer.latest_viewing_date.trim() !== '';
+              const hasViewingDate = buyer.viewing_date && buyer.viewing_date.trim() !== '';
               
               // 内覧日が入力されていない場合は表示しない
               if (!hasViewingDate) {
@@ -1176,8 +1176,8 @@ export default function BuyerViewingResultPage() {
               const isPostViewingSellerContactRequired = (() => {
                 const mediationType = linkedProperties?.find((p: any) => p.atbb_status)?.atbb_status || '';
                 if (mediationType !== '一般・公開中') return false;
-                if (!buyer.latest_viewing_date) return false;
-                const viewingDate = new Date(buyer.latest_viewing_date);
+                if (!buyer.viewing_date) return false;
+                const viewingDate = new Date(buyer.viewing_date);
                 if (isNaN(viewingDate.getTime())) return false;
                 const minDate = new Date('2025-07-05');
                 const today = new Date();
