@@ -1359,13 +1359,13 @@ export class BuyerService {
     // ステータス計算と物件情報表示に必要なカラムのみ取得（select('*')より大幅に高速化）
     const BUYER_COLUMNS = [
       'buyer_number', 'buyer_id', 'name', 'phone_number', 'email',
-      'reception_date', 'latest_viewing_date', 'next_call_date',
+      'reception_date', 'latest_viewing_date', 'viewing_date', 'next_call_date',
       'follow_up_assignee', 'initial_assignee', 'latest_status',
       'inquiry_confidence', 'inquiry_email_phone', 'inquiry_email_reply',
       'three_calls_confirmed', 'broker_inquiry', 'inquiry_source',
       'viewing_result_follow_up', 'viewing_unconfirmed', 'viewing_type_general',
       'post_viewing_seller_contact', 'notification_sender',
-      'valuation_survey', 'valuation_survey_confirmed', 'broker_survey',
+      'valuation_survey', 'valuation_survey_confirmed', 'broker_survey', 'vendor_survey',
       'day_of_week', 'pinrich', 'email_confirmed', 'email_confirmation_assignee',
       'viewing_promotion_not_needed', 'viewing_promotion_sender',
       'past_buyer_list', 'price', 'property_number',
