@@ -36,6 +36,7 @@ export interface BuyerData {
   email?: string | null;
   reception_date?: Date | string | null;
   latest_viewing_date?: Date | string | null;
+  viewing_date?: Date | string | null;
   next_call_date?: Date | string | null;
   follow_up_assignee?: string | null;
   latest_status?: string | null;
