@@ -717,8 +717,8 @@ function syncUpdatesToSupabase_(sheetRows) {
       }
     }
     
-    // 時間
-    var sheetViewingTime = row['時間'] ? String(row['時間']) : null;
+    // 時間（●時間列、BP列）
+    var sheetViewingTime = row['●時間'] ? String(row['●時間']) : null;
     var normalizedSheetViewingTime = normalizeValue(sheetViewingTime);
     var normalizedDbViewingTime = normalizeValue(dbBuyer.viewing_time);
     if (normalizedSheetViewingTime !== normalizedDbViewingTime) {
