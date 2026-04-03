@@ -1504,7 +1504,7 @@ export class BuyerService {
    * buyer_sidebar_counts テーブルからカテゴリを取得し、全買主データも返す
    */
   async getStatusCategoriesWithBuyers(): Promise<{
-    categories: Array<{ status: string; count: number; priority: number; color: string }>;
+    categories: any;
     buyers: any[];
     normalStaffInitials: string[];
   }> {
@@ -1514,10 +1514,13 @@ export class BuyerService {
       this.fetchAllBuyersWithStatus(),
     ]);
 
+    // 通常スタッフのイニシャルを取得
+    const normalStaffInitials = await this.fetchNormalStaffInitials();
+
     return {
-      categories: sidebarData.categories,
+      categories: sidebarData, // categoryCounts オブジェクトをそのまま返す
       buyers: allBuyers,
-      normalStaffInitials: sidebarData.normalStaffInitials
+      normalStaffInitials
     };
   }
 
@@ -1526,10 +1529,7 @@ export class BuyerService {
    * buyer_sidebar_counts テーブルから1クエリで高速取得。
    * テーブルが空または取得失敗の場合は重いDBクエリにフォールバック。
    */
-  async getSidebarCounts(): Promise<{
-    categories: Array<{ status: string; count: number; priority: number; color: string }>;
-    normalStaffInitials: string[];
-  }> {
+  async getSidebarCounts(): Promise<any> {
     try {
       // buyer_sidebar_counts テーブルから全行取得（GASが10分ごとに更新）
       const { data, error } = await this.supabase
@@ -1541,109 +1541,95 @@ export class BuyerService {
         return this.getSidebarCountsFallback();
       }
 
-      // カテゴリ別に集計
-      const categoryCounts: Record<string, number> = {};
+      // カテゴリカウントオブジェクトを構築（フロントエンドが期待する形式）
+      const result: any = {
+        all: 0,
+        visitDayBefore: 0,
+        visitCompleted: 0,
+        todayCall: 0,
+        todayCallWithInfo: 0,
+        unvaluated: 0,
+        mailingPending: 0,
+        todayCallNotStarted: 0,
+        pinrichEmpty: 0,
+        exclusive: 0,
+        general: 0,
+        visitOtherDecision: 0,
+        unvisitedOtherDecision: 0,
+        visitAssignedCounts: {} as Record<string, number>,
+        todayCallAssignedCounts: {} as Record<string, number>,
+        todayCallWithInfoLabelCounts: {} as Record<string, number>,
+      };
       
       for (const row of data) {
         const count = row.count || 0;
         
         switch (row.category) {
           case 'viewingDayBefore':
-            // 内覧日前日
-            categoryCounts['内覧日前日'] = count;
+            result.visitDayBefore = count;
             break;
           case 'inquiryEmailNotResponded':
-            // 問合せメール未対応
-            categoryCounts['問合せメール未対応'] = count;
+            // 問合せメール未対応（必要に応じて追加）
             break;
           case 'todayCall':
-            // 当日TEL分（担当なし）
-            categoryCounts['当日TEL'] = (categoryCounts['当日TEL'] || 0) + count;
+            result.todayCall = count;
             break;
           case 'todayCallAssigned':
-            // 当日TEL（担当別）
             if (row.assignee) {
-              const status = `当日TEL(${row.assignee})`;
-              categoryCounts[status] = count;
+              result.todayCallAssignedCounts[row.assignee] = count;
             }
             break;
           case 'todayCallWithInfo':
-            // 当日TEL（内容）
             if (row.label) {
-              const status = `当日TEL(${row.label})`;
-              categoryCounts[status] = count;
+              result.todayCallWithInfoLabelCounts[row.label] = count;
             }
             break;
           case 'assigned':
-            // 担当（担当別）
             if (row.assignee) {
-              const status = `担当(${row.assignee})`;
-              categoryCounts[status] = count;
+              result.visitAssignedCounts[row.assignee] = count;
             }
+            break;
+          case 'visitCompleted':
+            result.visitCompleted = count;
+            break;
+          case 'unvaluated':
+            result.unvaluated = count;
+            break;
+          case 'mailingPending':
+            result.mailingPending = count;
+            break;
+          case 'todayCallNotStarted':
+            result.todayCallNotStarted = count;
+            break;
+          case 'pinrichEmpty':
+            result.pinrichEmpty = count;
+            break;
+          case 'exclusive':
+            result.exclusive = count;
+            break;
+          case 'general':
+            result.general = count;
+            break;
+          case 'visitOtherDecision':
+            result.visitOtherDecision = count;
+            break;
+          case 'unvisitedOtherDecision':
+            result.unvisitedOtherDecision = count;
             break;
         }
       }
 
-      // STATUS_DEFINITIONSに基づいてカテゴリを構築
-      const categories: Array<{ status: string; count: number; priority: number; color: string }> = [];
-      
-      STATUS_DEFINITIONS.forEach((definition) => {
-        categories.push({
-          status: definition.status,
-          count: categoryCounts[definition.status] || 0,
-          priority: definition.priority,
-          color: definition.color
-        });
-      });
-
-      // 動的ステータス（当日TEL(X)、担当(X)）を追加
-      const assigneePriorityMap = new Map<string, number>();
-      const knownAssigneePriorities: Record<string, number> = {
-        'Y': 23, 'W': 24, 'U': 25, '生': 26, 'K': 27, '久': 28, 'I': 29, 'R': 30
-      };
-      let dynamicPriority = 31;
-
-      // 担当(X)のpriorityを割り当て
-      Object.keys(categoryCounts).forEach(status => {
-        const assigneeMatch = status.match(/^担当\((.+)\)$/);
-        if (assigneeMatch) {
-          const assignee = assigneeMatch[1];
-          const p = knownAssigneePriorities[assignee] ?? dynamicPriority++;
-          assigneePriorityMap.set(assignee, p);
+      // 全件数を計算
+      result.all = Object.values(result).reduce((sum: number, val: any) => {
+        if (typeof val === 'number') return sum + val;
+        if (typeof val === 'object' && val !== null) {
+          return sum + Object.values(val).reduce((s: number, v: any) => s + (typeof v === 'number' ? v : 0), 0);
         }
-      });
+        return sum;
+      }, 0);
 
-      // 動的ステータスを追加
-      Object.keys(categoryCounts).forEach(status => {
-        const count = categoryCounts[status];
-        if (count === 0) return;
-        
-        const alreadyAdded = categories.some(c => c.status === status);
-        if (!alreadyAdded) {
-          const todayCallMatch = status.match(/^当日TEL\((.+)\)$/);
-          if (todayCallMatch) {
-            const assignee = todayCallMatch[1];
-            const basePriority = assigneePriorityMap.get(assignee) ?? (knownAssigneePriorities[assignee] ?? 23);
-            categories.push({ status, count, priority: basePriority + 0.5, color: '#ff5722' });
-            return;
-          }
-          
-          const assigneeMatch = status.match(/^担当\((.+)\)$/);
-          if (assigneeMatch) {
-            const assignee = assigneeMatch[1];
-            const p = assigneePriorityMap.get(assignee) ?? (knownAssigneePriorities[assignee] ?? 23);
-            categories.push({ status, count, priority: p, color: '#4caf50' });
-          }
-        }
-      });
-
-      categories.sort((a, b) => a.priority - b.priority);
-
-      // 通常スタッフのイニシャルを取得
-      const normalStaffInitials = await this.fetchNormalStaffInitials();
-
-      console.log('✅ buyer_sidebar_counts loaded from cache table');
-      return { categories, normalStaffInitials };
+      console.log('✅ buyer_sidebar_counts loaded from cache table:', result);
+      return result;
     } catch (e) {
       console.error('❌ getSidebarCounts error, falling back:', e);
       return this.getSidebarCountsFallback();
@@ -1654,13 +1640,69 @@ export class BuyerService {
    * サイドバーカウントのフォールバック（重いDBクエリ版）
    * buyer_sidebar_counts テーブルが空または取得失敗時に使用
    */
-  private async getSidebarCountsFallback(): Promise<{
-    categories: Array<{ status: string; count: number; priority: number; color: string }>;
-    normalStaffInitials: string[];
-  }> {
-    console.log('⚠️ Using fallback: getStatusCategoriesWithBuyers');
-    // 従来の重いクエリにフォールバック
-    return this.getStatusCategoriesWithBuyers();
+  private async getSidebarCountsFallback(): Promise<any> {
+    console.log('⚠️ Using fallback: calculating from all buyers');
+    
+    // 全買主データを取得してステータスを計算
+    const allBuyers = await this.fetchAllBuyersWithStatus();
+    
+    // カテゴリカウントオブジェクトを構築
+    const result: any = {
+      all: allBuyers.length,
+      visitDayBefore: 0,
+      visitCompleted: 0,
+      todayCall: 0,
+      todayCallWithInfo: 0,
+      unvaluated: 0,
+      mailingPending: 0,
+      todayCallNotStarted: 0,
+      pinrichEmpty: 0,
+      exclusive: 0,
+      general: 0,
+      visitOtherDecision: 0,
+      unvisitedOtherDecision: 0,
+      visitAssignedCounts: {} as Record<string, number>,
+      todayCallAssignedCounts: {} as Record<string, number>,
+      todayCallWithInfoLabelCounts: {} as Record<string, number>,
+    };
+    
+    // 各買主のステータスをカウント
+    allBuyers.forEach((buyer: any) => {
+      const status = buyer.calculated_status || '';
+      
+      // カテゴリキーへのマッピング
+      if (status === '内覧日前日') {
+        result.visitDayBefore++;
+      } else if (status === '内覧済み' || status.startsWith('内覧済み(')) {
+        result.visitCompleted++;
+      } else if (status === '当日TEL') {
+        result.todayCall++;
+      } else if (status.startsWith('当日TEL(') && !status.startsWith('当日TEL（')) {
+        // 当日TEL(Y) などの担当別
+        const match = status.match(/^当日TEL\((.+)\)$/);
+        if (match) {
+          const assignee = match[1];
+          result.todayCallAssignedCounts[assignee] = (result.todayCallAssignedCounts[assignee] || 0) + 1;
+        }
+      } else if (status.startsWith('当日TEL（')) {
+        // 当日TEL（内容）
+        const match = status.match(/^当日TEL（(.+)）$/);
+        if (match) {
+          const label = match[1];
+          result.todayCallWithInfoLabelCounts[label] = (result.todayCallWithInfoLabelCounts[label] || 0) + 1;
+        }
+      } else if (status.startsWith('担当(')) {
+        // 担当(Y) などの担当別
+        const match = status.match(/^担当\((.+)\)$/);
+        if (match) {
+          const assignee = match[1];
+          result.visitAssignedCounts[assignee] = (result.visitAssignedCounts[assignee] || 0) + 1;
+        }
+      }
+      // 他のカテゴリも同様に追加可能
+    });
+    
+    return result;
   }
 
   /**

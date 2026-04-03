@@ -205,7 +205,7 @@ export default function BuyersPage() {
             
             // キャッシュデータを構築
             const cacheData = {
-              categoryCounts: sidebarResult,
+              categoryCounts: sidebarResult, // APIから直接categoryCounts形式で返される
               buyers: buyersResult.buyers,
               normalStaffInitials: buyersResult.normalStaffInitials || []
             };
