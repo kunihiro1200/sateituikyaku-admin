@@ -1468,7 +1468,8 @@ export class BuyerService {
       try {
         const statusResult = calculateBuyerStatus(buyer);
         return { ...buyer, calculated_status: statusResult.status, status_priority: statusResult.priority };
-      } catch {
+      } catch (error) {
+        console.error(`[BuyerService] Error calculating status for buyer ${buyer.buyer_number}:`, error);
         return { ...buyer, calculated_status: '', status_priority: 999 };
       }
     });
