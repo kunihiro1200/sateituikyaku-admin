@@ -113,7 +113,7 @@ router.get('/status-categories-with-buyers', async (_req: Request, res: Response
 // サイドバーカウントのみを高速取得（buyer_sidebar_countsテーブルから）
 router.get('/sidebar-counts', async (_req: Request, res: Response) => {
   try {
-    const result = await buyerService.getStatusCategoriesWithBuyers();
+    const result = await buyerService.getSidebarCounts();
     res.json(result);
   } catch (error: any) {
     console.error('Error fetching sidebar counts:', error);
