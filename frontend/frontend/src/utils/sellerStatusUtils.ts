@@ -91,10 +91,15 @@ export function isVisitDayBefore(
   visitDateStr: string | null,
   today: Date
 ): boolean {
-  // 🚨 防御的プログラミング: visit_dateにスペースが含まれる場合、最初の日付のみを抽出
-  if (visitDateStr && typeof visitDateStr === 'string' && visitDateStr.includes(' ')) {
-    const parts = visitDateStr.split(' ');
-    visitDateStr = parts[0]; // 最初の日付のみを使用
+  // 🚨 TIMESTAMP型対応: visit_dateから日付部分のみを抽出
+  // visit_date は "YYYY-MM-DD HH:MM:SS" または "YYYY-MM-DDTHH:MM:SS.000Z" 形式
+  if (visitDateStr && typeof visitDateStr === 'string') {
+    // スペースまたはTで分割して日付部分のみを取得
+    if (visitDateStr.includes(' ')) {
+      visitDateStr = visitDateStr.split(' ')[0]; // "YYYY-MM-DD HH:MM:SS" → "YYYY-MM-DD"
+    } else if (visitDateStr.includes('T')) {
+      visitDateStr = visitDateStr.split('T')[0]; // "YYYY-MM-DDTHH:MM:SS.000Z" → "YYYY-MM-DD"
+    }
   }
   
   const visitDate = parseDate(visitDateStr);
