@@ -1547,6 +1547,10 @@ export class BuyerService {
         const count = row.count || 0;
         
         switch (row.category) {
+          case 'viewingDayBefore':
+            // 内覧日前日
+            categoryCounts['内覧日前日'] = count;
+            break;
           case 'inquiryEmailNotResponded':
             // 問合せメール未対応
             categoryCounts['問合せメール未対応'] = count;

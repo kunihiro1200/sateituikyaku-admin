@@ -144,7 +144,7 @@ function updateBuyerSidebarCounts_() {
     var inquiryEmailPhone = String(row['【問合メール】電話対応'] || '');
     
     // 内覧日前日カテゴリ
-    var viewingDate = formatDateToISO_(row['内覧日（最新）']);
+    var viewingDate = formatDateToISO_(row['●内覧日(最新）']);
     if (isAssigneeValid && viewingDate) {
       var vDate = new Date(viewingDate + 'T00:00:00');
       var vDay = vDate.getDay();
@@ -520,7 +520,7 @@ function syncUpdatesToSupabase_(sheetRows) {
     }
     
     // 内覧日（最新）
-    var sheetViewingDate = formatDateToISO_(row['内覧日（最新）']);
+    var sheetViewingDate = formatDateToISO_(row['●内覧日(最新）']);
     var dbViewingDate = dbBuyer.viewing_date ? String(dbBuyer.viewing_date).substring(0, 10) : null;
     var normalizedSheetViewingDate = normalizeValue(sheetViewingDate);
     var normalizedDbViewingDate = normalizeValue(dbViewingDate);
