@@ -1632,7 +1632,7 @@ export class BuyerService {
           return sum + Object.values(val).reduce((s: number, v: any) => s + (typeof v === 'number' ? v : 0), 0);
         }
         return sum;
-      }, 0);
+      }, 0 as number);
 
       console.log('✅ buyer_sidebar_counts loaded from cache table:', result);
       return result;

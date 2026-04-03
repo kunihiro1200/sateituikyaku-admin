@@ -136,10 +136,11 @@ export default function BuyersPage() {
             ? allBuyersWithStatusRef.current.filter(b => {
                 // サイドバーのカテゴリキーを日本語の表示名に変換
                 const displayName = categoryKeyToDisplayName[selectedCalculatedStatus] || selectedCalculatedStatus;
-                console.log('[BuyersPage] displayName:', displayName);
-                console.log('[BuyersPage] b.calculated_status:', b.calculated_status);
+                console.log('[BuyersPage] Filtering buyer:', b.buyer_number, 'calculated_status:', b.calculated_status, 'displayName:', displayName);
                 // 完全一致または部分一致（担当者別カテゴリ対応）
-                return b.calculated_status === displayName || b.calculated_status?.startsWith(displayName);
+                const matches = b.calculated_status === displayName || b.calculated_status?.startsWith(displayName);
+                console.log('[BuyersPage] Match result:', matches);
+                return matches;
               })
             : [...allBuyersWithStatusRef.current];
 
