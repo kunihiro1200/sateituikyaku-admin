@@ -1590,7 +1590,12 @@ export class BuyerService {
             }
             break;
           case 'visitCompleted':
-            result.visitCompleted = count;
+            if (row.assignee) {
+              // 担当者別の内覧済みカウントを合計
+              result.visitCompleted += count;
+            } else {
+              result.visitCompleted = count;
+            }
             break;
           case 'unvaluated':
             result.unvaluated = count;
