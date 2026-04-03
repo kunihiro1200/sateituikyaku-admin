@@ -1044,14 +1044,18 @@ export class SellerService extends BaseRepository {
         case 'visitDayBefore': {
           // 訪問日前日（営担あり AND 訪問日あり）→ 全件取得してJSでフィルタ
           // 前営業日ロジック（木曜訪問→2日前、それ以外→1日前）はDBでは表現できないためJS側で処理
-          const { data: visitDayBeforeSellers, error: vdbError } = await this.table('sellers')
-            .select('id, visit_date, visit_assignee, visit_reminder_assignee')
-            .is('deleted_at', null)
-            .not('visit_assignee', 'is', null)
-            .neq('visit_assignee', '')
-            // 「外す」は有効な営業担当として扱う
-            .not('visit_date', 'is', null);
-          console.log(`[visitDayBefore] todayJST=${todayJST}, candidates=${visitDayBeforeSellers?.length ?? 0}, error=${vdbError?.message}`);
+          
+          // 🚨 重要: ページネーション処理を追加（Supabaseのデフォルト制限1000件を超える場合に対応）
+          const visitDayBeforeSellers = await this.fetchAllRows(
+            this.table('sellers')
+              .select('id, visit_date, visit_assignee, visit_reminder_assignee')
+              .is('deleted_at', null)
+              .not('visit_assignee', 'is', null)
+              .neq('visit_assignee', '')
+              // 「外す」は有効な営業担当として扱う
+              .not('visit_date', 'is', null)
+          );
+          console.log(`[visitDayBefore] todayJST=${todayJST}, candidates=${visitDayBeforeSellers?.length ?? 0}`);
           // visitDayBefore に該当するIDを計算
           const visitDayBeforeIds = (visitDayBeforeSellers || []).filter((s: any) => {
             // visitReminderAssigneeに値がある場合は除外（通知担当が既に割り当て済み）
