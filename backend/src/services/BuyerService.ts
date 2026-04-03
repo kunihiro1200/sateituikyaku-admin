@@ -1501,23 +1501,24 @@ export class BuyerService {
 
   /**
    * ステータスカテゴリ + 全買主データを一度に返す（フロントエンドキャッシュ用）
-   * fetchAllBuyersWithStatus を1回だけ呼び、そこからカテゴリも計算する（二重取得を防ぐ）
+   * buyer_sidebar_counts テーブルからカテゴリを取得し、全買主データも返す
    */
   async getStatusCategoriesWithBuyers(): Promise<{
     categories: Array<{ status: string; count: number; priority: number; color: string }>;
     buyers: any[];
     normalStaffInitials: string[];
   }> {
-    // 全件取得 と employees クエリを並列実行（直列→並列化でパフォーマンス改善）
-    const [allBuyers, normalStaffInitials] = await Promise.all([
+    // サイドバーカウント（buyer_sidebar_countsテーブルから）と全買主データを並列取得
+    const [sidebarData, allBuyers] = await Promise.all([
+      this.getSidebarCounts(),
       this.fetchAllBuyersWithStatus(),
-      this.fetchNormalStaffInitials(),
     ]);
 
-    // allBuyers からカテゴリを直接計算（getStatusCategories を呼ばない）
-    const categories = await this.buildCategoriesFromBuyers(allBuyers);
-
-    return { categories, buyers: allBuyers, normalStaffInitials };
+    return {
+      categories: sidebarData.categories,
+      buyers: allBuyers,
+      normalStaffInitials: sidebarData.normalStaffInitials
+    };
   }
 
   /**
