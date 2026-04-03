@@ -487,6 +487,8 @@ router.get('/by-number/:sellerNumber', async (req: Request, res: Response) => {
       address: seller.address,
       phoneNumber: seller.phoneNumber,
       email: seller.email,
+      visitDate: seller.visitDate,
+      visitAssignee: seller.visitAssignee,
     });
   } catch (error) {
     console.error('Get seller by number error:', error);
