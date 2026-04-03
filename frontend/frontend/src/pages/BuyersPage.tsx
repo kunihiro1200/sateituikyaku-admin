@@ -288,7 +288,9 @@ export default function BuyersPage() {
   };
 
   const handleRowClick = (buyerId: string) => {
-    if (selectedCalculatedStatus === '内覧日前日') {
+    // selectedCalculatedStatusはカテゴリキー（例: 'visitDayBefore'）なので、日本語表示名に変換して比較
+    const displayName = categoryKeyToDisplayName[selectedCalculatedStatus || ''] || selectedCalculatedStatus;
+    if (displayName === '内覧日前日') {
       navigate(`/buyers/${buyerId}/viewing-result`);
     } else {
       navigate(`/buyers/${buyerId}`);
