@@ -128,6 +128,11 @@ export default function BuyersPage() {
         // サイドバーデータ読み込み済みの場合はフロント側でフィルタリング（APIコール不要）
         // キャッシュヒット時はsetLoading(true)をスキップして画面のちらつきを防ぐ
         if (sidebarLoadedRef.current && allBuyersWithStatusRef.current.length > 0) {
+          console.log('[BuyersPage] フィルタリング開始');
+          console.log('[BuyersPage] selectedCalculatedStatus:', selectedCalculatedStatus);
+          console.log('[BuyersPage] allBuyersWithStatusRef.current.length:', allBuyersWithStatusRef.current.length);
+          console.log('[BuyersPage] 最初の5件のcalculated_status:', allBuyersWithStatusRef.current.slice(0, 5).map(b => ({ buyer_number: b.buyer_number, calculated_status: b.calculated_status })));
+          
           let filtered = selectedCalculatedStatus !== null
             ? allBuyersWithStatusRef.current.filter(b => {
                 // サイドバーのカテゴリキーを日本語の表示名に変換
