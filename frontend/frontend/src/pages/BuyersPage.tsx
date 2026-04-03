@@ -128,14 +128,22 @@ export default function BuyersPage() {
         // サイドバーデータ読み込み済みの場合はフロント側でフィルタリング（APIコール不要）
         // キャッシュヒット時はsetLoading(true)をスキップして画面のちらつきを防ぐ
         if (sidebarLoadedRef.current && allBuyersWithStatusRef.current.length > 0) {
+          console.log('[BuyersPage] フィルタリング開始');
+          console.log('[BuyersPage] selectedCalculatedStatus:', selectedCalculatedStatus);
+          console.log('[BuyersPage] allBuyersWithStatusRef.current.length:', allBuyersWithStatusRef.current.length);
+          
           let filtered = selectedCalculatedStatus !== null
             ? allBuyersWithStatusRef.current.filter(b => {
                 // サイドバーのカテゴリキーを日本語の表示名に変換
                 const displayName = categoryKeyToDisplayName[selectedCalculatedStatus] || selectedCalculatedStatus;
+                console.log('[BuyersPage] displayName:', displayName);
+                console.log('[BuyersPage] b.calculated_status:', b.calculated_status);
                 // 完全一致または部分一致（担当者別カテゴリ対応）
                 return b.calculated_status === displayName || b.calculated_status?.startsWith(displayName);
               })
             : [...allBuyersWithStatusRef.current];
+
+          console.log('[BuyersPage] filtered.length:', filtered.length);
 
           // 検索フィルタ
           if (debouncedSearch) {
