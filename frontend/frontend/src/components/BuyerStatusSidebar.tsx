@@ -151,9 +151,13 @@ export default function BuyerStatusSidebar({
 }: BuyerStatusSidebarProps) {
 
   const handleStatusClick = (status: string) => {
+    console.log('[BuyerStatusSidebar] handleStatusClick called with status:', status);
+    console.log('[BuyerStatusSidebar] selectedStatus before:', selectedStatus);
     if (selectedStatus === status) {
+      console.log('[BuyerStatusSidebar] Deselecting status');
       onStatusSelect(null);
     } else {
+      console.log('[BuyerStatusSidebar] Selecting status:', status);
       onStatusSelect(status);
     }
   };
