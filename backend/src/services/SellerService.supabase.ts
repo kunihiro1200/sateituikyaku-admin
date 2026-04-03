@@ -1049,6 +1049,7 @@ export class SellerService extends BaseRepository {
             .is('deleted_at', null)
             .not('visit_assignee', 'is', null)
             .neq('visit_assignee', '')
+            // 「外す」は有効な営業担当として扱う
             .not('visit_date', 'is', null);
           console.log(`[visitDayBefore] todayJST=${todayJST}, candidates=${visitDayBeforeSellers?.length ?? 0}, error=${vdbError?.message}`);
           // visitDayBefore に該当するIDを計算
@@ -1058,7 +1059,9 @@ export class SellerService extends BaseRepository {
             if (reminderAssignee.trim() !== '') return false;
             const vd = (s as any).visit_date;
             if (!vd) return false;
-            const parts = vd.split('-');
+            // TIMESTAMP型対応: 日付部分のみを抽出
+            const visitDateOnly = vd.split('T')[0].split(' ')[0];
+            const parts = visitDateOnly.split('-');
             if (parts.length !== 3) return false;
             const visitDate = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
             const dow = visitDate.getDay();
