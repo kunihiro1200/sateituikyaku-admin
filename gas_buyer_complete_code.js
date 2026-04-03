@@ -44,14 +44,6 @@ function rowToObject(headers, rowData) {
 function formatDateToISO_(value) {
   if (!value || value === '') return null;
   
-  // Date型の場合（最優先で処理）
-  if (value instanceof Date) {
-    var year = value.getFullYear();
-    var month = String(value.getMonth() + 1).padStart(2, '0');
-    var day = String(value.getDate()).padStart(2, '0');
-    return year + '-' + month + '-' + day;
-  }
-  
   // 数値（Excelシリアル値）の場合
   if (typeof value === 'number') {
     var excelEpoch = new Date(1899, 11, 30);
@@ -315,8 +307,7 @@ function fetchAllBuyersFromSupabase_() {
   var allBuyers = [];
   var pageSize = 1000;
   var offset = 0;
-  // viewing_dateを一時的に削除（Supabaseのスキーマキャッシュ問題のため）
-  var fields = 'buyer_number,latest_status,next_call_date,initial_assignee,follow_up_assignee,inquiry_email_phone,three_calls_confirmed,reception_date,distribution_type,desired_area,viewing_time,viewing_mobile,viewing_date,post_viewing_seller_contact,viewing_promotion_email';
+  var fields = 'buyer_number,latest_status,next_call_date,initial_assignee,follow_up_assignee,inquiry_email_phone,three_calls_confirmed,reception_date,distribution_type,desired_area,viewing_date,viewing_time,viewing_mobile,latest_viewing_date,post_viewing_seller_contact,viewing_promotion_email';
   while (true) {
     var url = SUPABASE_CONFIG.URL + '/rest/v1/buyers?select=' + fields +
       '&deleted_at=is.null&offset=' + offset + '&limit=' + pageSize;
@@ -332,7 +323,6 @@ function fetchAllBuyersFromSupabase_() {
     var code = res.getResponseCode();
     if (code !== 200) {
       Logger.log('❌ Supabase取得失敗: HTTP ' + code);
-      Logger.log('❌ エラー詳細: ' + res.getContentText().substring(0, 500));
       return null;
     }
     var page = JSON.parse(res.getContentText());
@@ -356,20 +346,6 @@ function syncUpdatesToSupabase_(sheetRows) {
   for (var i = 0; i < dbBuyers.length; i++) {
     dbMap[dbBuyers[i].buyer_number] = dbBuyers[i];
   }
-  // 🚨 重要: 買主7282を最優先で処理するため、先頭に移動
-  var buyer7282Index = -1;
-  for (var i = 0; i < sheetRows.length; i++) {
-    if (sheetRows[i]['買主番号'] === '7282') {
-      buyer7282Index = i;
-      break;
-    }
-  }
-  if (buyer7282Index !== -1) {
-    var buyer7282 = sheetRows.splice(buyer7282Index, 1)[0];
-    sheetRows.unshift(buyer7282);
-    Logger.log('🔍 買主7282を先頭に移動しました');
-  }
-  
   sheetRows.sort(function(a, b) {
     var dateA = formatDateToISO_(a['受付日']) || '';
     var dateB = formatDateToISO_(b['受付日']) || '';
@@ -385,20 +361,6 @@ function syncUpdatesToSupabase_(sheetRows) {
     var row = sheetRows[r];
     var buyerNumber = row['買主番号'];
     if (!buyerNumber || typeof buyerNumber !== 'string') continue;
-    
-    // 🚨 デバッグ: 買主7282の処理を追跡
-    if (buyerNumber === '7282') {
-      Logger.log('🔍 [DEBUG] 買主7282を処理中 (行' + (r + 1) + ')');
-      Logger.log('  内覧日（最新）: ' + row['●内覧日(最新）']);
-      Logger.log('  時間: ' + row['●時間']);
-      // 全てのキーを確認
-      var keys = Object.keys(row);
-      Logger.log('  利用可能なキー数: ' + keys.length);
-      // 「内覧」を含むキーを探す
-      var viewingKeys = keys.filter(function(k) { return k.indexOf('内覧') !== -1; });
-      Logger.log('  「内覧」を含むキー: ' + JSON.stringify(viewingKeys));
-    }
-    
     var dbBuyer = dbMap[buyerNumber];
     if (!dbBuyer) continue;
     var updateData = {};
@@ -517,35 +479,20 @@ function syncUpdatesToSupabase_(sheetRows) {
     }
     
     // 内覧日（最新）
-    // 注意: viewing_dateはSupabaseのスキーマキャッシュ問題のため、
-    // 現在はDBから取得していません。updateDataには追加しますが、
-    // 比較はスキップします。
-    var sheetViewingDate = formatDateToISO_(row['●内覧日(最新）']);
-    if (sheetViewingDate) {
-      updateData.viewing_date = sheetViewingDate;
+    var sheetViewingDate = formatDateToISO_(row['内覧日（最新）']);
+    var dbViewingDate = dbBuyer.viewing_date ? String(dbBuyer.viewing_date).substring(0, 10) : null;
+    var normalizedSheetViewingDate = normalizeValue(sheetViewingDate);
+    var normalizedDbViewingDate = normalizeValue(dbViewingDate);
+    if (normalizedSheetViewingDate !== normalizedDbViewingDate) {
+      updateData.viewing_date = normalizedSheetViewingDate;
       needsUpdate = true;
-      Logger.log('  📅 ' + buyerNumber + ': 内覧日を設定 (' + sheetViewingDate + ')');
-    }
-    
-    // 時間（BP列「●時間」）
-    var rawViewingTime = row['●時間'];
-    var sheetViewingTime = null;
-    if (rawViewingTime) {
-      if (typeof rawViewingTime === 'number') {
-        // Excelシリアル値の場合、時刻部分を抽出
-        var hours = Math.floor(rawViewingTime * 24);
-        var minutes = Math.floor((rawViewingTime * 24 * 60) % 60);
-        sheetViewingTime = String(hours).padStart(2, '0') + ':' + String(minutes).padStart(2, '0');
-      } else if (rawViewingTime instanceof Date) {
-        // Date型の場合
-        var hours = rawViewingTime.getHours();
-        var minutes = rawViewingTime.getMinutes();
-        sheetViewingTime = String(hours).padStart(2, '0') + ':' + String(minutes).padStart(2, '0');
-      } else {
-        // 文字列の場合はそのまま使用
-        sheetViewingTime = String(rawViewingTime);
+      if (normalizedSheetViewingDate === null && normalizedDbViewingDate !== null) {
+        Logger.log('  🗑️ ' + buyerNumber + ': 内覧日を削除 (旧値: ' + normalizedDbViewingDate + ')');
       }
     }
+    
+    // 時間
+    var sheetViewingTime = row['時間'] ? String(row['時間']) : null;
     var normalizedSheetViewingTime = normalizeValue(sheetViewingTime);
     var normalizedDbViewingTime = normalizeValue(dbBuyer.viewing_time);
     if (normalizedSheetViewingTime !== normalizedDbViewingTime) {
@@ -553,8 +500,6 @@ function syncUpdatesToSupabase_(sheetRows) {
       needsUpdate = true;
       if (normalizedSheetViewingTime === null && normalizedDbViewingTime !== null) {
         Logger.log('  🗑️ ' + buyerNumber + ': 内覧時間を削除 (旧値: ' + normalizedDbViewingTime + ')');
-      } else {
-        Logger.log('  🕐 ' + buyerNumber + ': 内覧時間を設定 (' + normalizedSheetViewingTime + ')');
       }
     }
     
@@ -571,15 +516,15 @@ function syncUpdatesToSupabase_(sheetRows) {
     }
     
     // 最新内覧日
-    var sheetViewingDate = formatDateToISO_(row['最新内覧日']);
-    var dbViewingDate = dbBuyer.viewing_date ? String(dbBuyer.viewing_date).substring(0, 10) : null;
-    var normalizedSheetViewingDate = normalizeValue(sheetViewingDate);
-    var normalizedDbViewingDate = normalizeValue(dbViewingDate);
-    if (normalizedSheetViewingDate !== normalizedDbViewingDate) {
-      updateData.viewing_date = normalizedSheetViewingDate;
+    var sheetLatestViewingDate = formatDateToISO_(row['最新内覧日']);
+    var dbLatestViewingDate = dbBuyer.latest_viewing_date ? String(dbBuyer.latest_viewing_date).substring(0, 10) : null;
+    var normalizedSheetLatestViewingDate = normalizeValue(sheetLatestViewingDate);
+    var normalizedDbLatestViewingDate = normalizeValue(dbLatestViewingDate);
+    if (normalizedSheetLatestViewingDate !== normalizedDbLatestViewingDate) {
+      updateData.latest_viewing_date = normalizedSheetLatestViewingDate;
       needsUpdate = true;
-      if (normalizedSheetViewingDate === null && normalizedDbViewingDate !== null) {
-        Logger.log('  🗑️ ' + buyerNumber + ': 最新内覧日を削除 (旧値: ' + normalizedDbViewingDate + ')');
+      if (normalizedSheetLatestViewingDate === null && normalizedDbLatestViewingDate !== null) {
+        Logger.log('  🗑️ ' + buyerNumber + ': 最新内覧日を削除 (旧値: ' + normalizedDbLatestViewingDate + ')');
       }
     }
     
@@ -608,13 +553,6 @@ function syncUpdatesToSupabase_(sheetRows) {
     }
     if (!needsUpdate) continue;
     updateData.updated_at = new Date().toISOString();
-    
-    // 🚨 デバッグ: 買主7282の更新内容を記録
-    if (buyerNumber === '7282') {
-      Logger.log('🔍 [DEBUG] 買主7282を更新します');
-      Logger.log('  更新内容: ' + JSON.stringify(updateData));
-    }
-    
     var result = patchBuyerToSupabase_(buyerNumber, updateData);
     if (result.success) {
       updatedCount++;
@@ -625,9 +563,8 @@ function syncUpdatesToSupabase_(sheetRows) {
     }
     Utilities.sleep(100);
     var elapsed = (new Date() - phaseStartTime) / 1000;
-    if (elapsed > 240) {  // 4分（240秒）で警告
+    if (elapsed > 300) {
       Logger.log('⚠️ 実行時間制限に近づいたため中断 (' + elapsed.toFixed(0) + '秒経過, ' + r + '/' + sheetRows.length + '件処理済み)');
-      Logger.log('⚠️ 買主7282（行4686）まで到達: ' + (r >= 4685 ? 'はい' : 'いいえ'));
       break;
     }
   }
@@ -665,11 +602,6 @@ function syncBuyerList() {
   var lastRow = sheet.getLastRow();
   var lastCol = sheet.getLastColumn();
   var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
-  
-  // 🚨 デバッグ: 列Iと列BPのヘッダー名を確認
-  Logger.log('🔍 [DEBUG] 列I（9列目）のヘッダー: "' + headers[8] + '"');
-  Logger.log('� [DEBUG] 列BP（68列目）のヘッダー: "' + headers[67] + '"');
-  
   var allData = sheet.getRange(2, 1, lastRow - 1, lastCol).getValues();
   var sheetRows = [];
   for (var i = 0; i < allData.length; i++) { sheetRows.push(rowToObject(headers, allData[i])); }
