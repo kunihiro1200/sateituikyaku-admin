@@ -288,7 +288,7 @@ export function calculateBuyerStatusComplete(buyer: BuyerData): StatusResult {
     }
 
     // Priority 23-30: 担当者別
-    // 次電日が今日以前の場合は「当日TEL(林)」、そうでなければ「担当(林)」
+    // 内覧日が過去の場合は「内覧済み(林)」、次電日が今日以前の場合は「当日TEL(林)」、そうでなければ「担当(林)」
     // 固定リストにない担当者（林など）も汎用的に対応
     const knownAssignees: Array<{ assignee: string; priority: number }> = [
       { assignee: 'Y', priority: 23 },
@@ -306,15 +306,37 @@ export function calculateBuyerStatusComplete(buyer: BuyerData): StatusResult {
       const known = knownAssignees.find(a => a.assignee === assignee);
       const priority = known ? known.priority : 23; // 未知の担当者は priority 23 扱い
 
+      // Priority 36: 内覧済み(イニシャル) - 内覧日が過去の場合
+      if (isNotBlank(buyer.viewing_date) && isPast(buyer.viewing_date)) {
+        const status = `内覧済み(${assignee})`;
+        console.log(`[calculateBuyerStatusComplete] Priority 36: ${status} for buyer:`, buyer.buyer_number);
+        return { status, priority: 36, matchedCondition: `内覧済み(${assignee})`, color: getStatusColor('内覧済み') };
+      }
+
       if (isNotBlank(buyer.next_call_date) && isTodayOrPast(buyer.next_call_date)) {
         // 次電日が今日以前 → 当日TEL(林) として担当カテゴリのサブ扱い
         const status = `当日TEL(${assignee})`;
         return { status, priority, matchedCondition: `担当${assignee}: 次電日が当日以前`, color: getStatusColor('当日TEL') };
       } else {
-        // 通常の担当カテゴリ
+        // Priority 37: 担当(イニシャル) - 通常の担当カテゴリ
         const status = `担当(${assignee})`;
-        return { status, priority, matchedCondition: `担当${assignee}`, color: getStatusColor(`担当(${assignee})`) };
+        console.log(`[calculateBuyerStatusComplete] Priority 37: ${status} for buyer:`, buyer.buyer_number);
+        return { status, priority: 37, matchedCondition: `担当${assignee}`, color: getStatusColor(`担当(${assignee})`) };
       }
+    }
+
+    // Priority 38: 内覧済み（担当者なし）
+    // 条件: viewing_dateが過去の日付 かつ follow_up_assigneeが存在しない
+    if (
+      and(
+        isNotBlank(buyer.viewing_date),
+        isPast(buyer.viewing_date),
+        isBlank(buyer.follow_up_assignee)
+      )
+    ) {
+      const status = '内覧済み';
+      console.log(`[calculateBuyerStatusComplete] Priority 38: ${status} for buyer:`, buyer.buyer_number);
+      return { status, priority: 38, matchedCondition: '内覧済み', color: getStatusColor(status) };
     }
 
     // Priority 31: ピンリッチ未登録
@@ -410,6 +432,9 @@ export function calculateBuyerStatusComplete(buyer: BuyerData): StatusResult {
       const status = 'メアド確認必要';
       return { status, priority: 35, matchedCondition: 'メールアドレスの確認が必要', color: getStatusColor(status) };
     }
+
+    // Priority 36-38 are now integrated into Priority 23-30 section above
+    // No additional logic needed here - all assignee-based statuses are handled in Priority 23-30
 
     return { status: '', priority: 0, matchedCondition: '該当なし', color: '#cccccc' };
   } catch (error) {

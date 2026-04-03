@@ -26,7 +26,7 @@
   - Mark task complete when tests are written, run, and passing on unfixed code
   - _Requirements: 3.1, 3.2, 3.3_
 
-- [~] 3. Fix for 買主「内覧日前日」フィルタバグ
+- [x] 3. Fix for 買主「内覧日前日」フィルタバグ
 
   - [x] 3.1 Implement the fix
     - `BuyerStatusCalculator.calculateBuyerStatus()` の「内覧日前日」判定ロジックを修正
@@ -40,7 +40,7 @@
     - _Preservation: 他のサイドバーカテゴリ（「当日TEL」「業者問合せあり」など）のフィルタリングが正常に動作し続ける_
     - _Requirements: 2.1, 2.2, 2.3, 3.1, 3.2, 3.3_
 
-  - [~] 3.2 Verify bug condition exploration test now passes
+  - [x] 3.2 Verify bug condition exploration test now passes
     - **Property 1: Expected Behavior** - 内覧日前日カテゴリのフィルタリング一致
     - **IMPORTANT**: Re-run the SAME test from task 1 - do NOT write a new test
     - The test from task 1 encodes the expected behavior
@@ -49,7 +49,7 @@
     - **EXPECTED OUTCOME**: Test PASSES (confirms bug is fixed)
     - _Requirements: Expected Behavior Properties from design_
 
-  - [~] 3.3 Verify preservation tests still pass
+  - [x] 3.3 Verify preservation tests still pass
     - **Property 2: Preservation** - 他のカテゴリのフィルタリング
     - **IMPORTANT**: Re-run the SAME tests from task 2 - do NOT write new tests
     - Run preservation property tests from step 2

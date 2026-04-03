@@ -56,19 +56,22 @@ describe('買主「内覧日前日」フィルタバグ - バグ条件探索', (
     // ステップ1: サイドバーカウントを取得
     console.log('📊 ステップ1: サイドバーカウントを取得');
     const sidebarCounts = await buyerService.getSidebarCounts();
-    const viewingDayBeforeCategory = sidebarCounts.categories.find(
-      c => c.status === '内覧日前日'
-    );
-    const sidebarCount = viewingDayBeforeCategory?.count || 0;
+    const sidebarCount = sidebarCounts.visitDayBefore || 0;
     console.log(`  ✅ サイドバーカウント: ${sidebarCount}件`);
 
     // ステップ2: 一覧フィルタリングを実行
     console.log('\n📋 ステップ2: 一覧フィルタリングを実行');
-    const listResult = await buyerService.getBuyersByStatus('内覧日前日', {
-      page: 1,
-      limit: 100, // 十分な件数を取得
-    });
-    console.log(`  ✅ 一覧表示件数: ${listResult.total}件`);
+    let listResult;
+    try {
+      listResult = await buyerService.getBuyersByStatus('内覧日前日', {
+        page: 1,
+        limit: 100, // 十分な件数を取得
+      });
+      console.log(`  ✅ 一覧表示件数: ${listResult.total}件`);
+    } catch (error) {
+      console.error('  ❌ 一覧フィルタリングエラー:', error);
+      throw error;
+    }
 
     // ステップ3: buyer_sidebar_counts テーブルから直接取得
     console.log('\n🗄️  ステップ3: buyer_sidebar_counts テーブルから直接取得');
@@ -82,13 +85,21 @@ describe('買主「内覧日前日」フィルタバグ - バグ条件探索', (
 
     // ステップ4: 一覧表示の買主番号を確認
     console.log('\n🔢 ステップ4: 一覧表示の買主番号を確認');
-    console.log(`  買主番号: ${listResult.data.map(b => b.buyer_number).join(', ')}`);
+    if (listResult && listResult.data) {
+      console.log(`  買主番号: ${listResult.data.map(b => b.buyer_number).join(', ')}`);
+    } else {
+      console.log('  ⚠️ listResult.data が undefined');
+    }
 
     // ステップ5: 各買主の calculated_status を確認
     console.log('\n🏷️  ステップ5: 各買主の calculated_status を確認');
-    listResult.data.slice(0, 5).forEach(buyer => {
-      console.log(`  - ${buyer.buyer_number}: ${buyer.calculated_status}`);
-    });
+    if (listResult && listResult.data && listResult.data.length > 0) {
+      listResult.data.slice(0, 5).forEach(buyer => {
+        console.log(`  - ${buyer.buyer_number}: ${buyer.calculated_status}`);
+      });
+    } else {
+      console.log('  ⚠️ listResult.data が空または undefined');
+    }
 
     // ステップ6: バグの証明
     console.log('\n🚨 ステップ6: バグの証明');
@@ -206,14 +217,15 @@ describe('買主「内覧日前日」フィルタバグ - バグ条件探索', (
 
     console.log(`\n🔢 手動計算結果:`);
     console.log(`  - 「内覧日前日」条件を満たす買主: ${viewingDayBeforeBuyers.length}件`);
-    console.log(`  - 買主番号: ${viewingDayBeforeBuyers.map(b => b.buyer_number).join(', ')}`);
+    if (viewingDayBeforeBuyers.length > 0) {
+      console.log(`  - 買主番号: ${viewingDayBeforeBuyers.map(b => b.buyer_number).join(', ')}`);
+    } else {
+      console.log(`  - 買主番号: なし`);
+    }
 
     // サイドバーカウントと比較
     const sidebarCounts = await buyerService.getSidebarCounts();
-    const viewingDayBeforeCategory = sidebarCounts.categories.find(
-      c => c.status === '内覧日前日'
-    );
-    const sidebarCount = viewingDayBeforeCategory?.count || 0;
+    const sidebarCount = sidebarCounts.visitDayBefore || 0;
 
     console.log(`\n📊 比較:`);
     console.log(`  - サイドバーカウント: ${sidebarCount}件`);
