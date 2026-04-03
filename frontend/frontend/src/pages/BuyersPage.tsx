@@ -83,8 +83,8 @@ export default function BuyersPage() {
 
   // サイドバーのカテゴリキーを日本語の表示名に変換するマッピング
   const categoryKeyToDisplayName: Record<string, string> = {
-    'viewingDayBefore': '内覧日前日',  // ✅ 買主用（viewing）
-    'viewingCompleted': '内覧済み',    // ✅ 買主用（viewing）
+    'visitDayBefore': '内覧日前日',  // ✅ 買主用（バックエンドと一致）
+    'visitCompleted': '内覧済み',    // ✅ 買主用（バックエンドと一致）
     'todayCall': '当日TEL',
     'todayCallWithInfo': '当日TEL（内容）',
     'unvaluated': '未査定',
@@ -92,11 +92,11 @@ export default function BuyersPage() {
     'todayCallNotStarted': '当日TEL_未着手',
     'pinrichEmpty': 'Pinrich空欄',
     'todayCallAssigned': '当日TEL（担当）',
-    'viewingAssigned': '担当',  // ✅ 買主用（viewing）
+    'visitAssigned': '担当',  // ✅ 買主用（バックエンドと一致）
     'exclusive': '専任',
     'general': '一般',
-    'viewingOtherDecision': '内覧後他決',  // ✅ 買主用（viewing）
-    'unviewedOtherDecision': '未内覧他決',  // ✅ 買主用（viewing）
+    'visitOtherDecision': '内覧後他決',  // ✅ 買主用（バックエンドと一致）
+    'unvisitedOtherDecision': '未内覧他決',  // ✅ 買主用（バックエンドと一致）
   };
 
   // キャッシュから初期データを取得
