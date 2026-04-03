@@ -167,10 +167,17 @@ export default function BuyersPage() {
           setLoading(false);
         }
 
-        // バックグラウンドで全件データを取得（サイドバーカウントも含む）
+        // バックグラウンドでサイドバーカウントと全件データを並列取得
         if (!sidebarLoadedRef.current) {
-          api.get('/api/buyers/status-categories-with-buyers').then((buyersRes) => {
+          Promise.all([
+            api.get('/api/buyers/sidebar-counts'),
+            api.get('/api/buyers/status-categories-with-buyers')
+          ]).then(([sidebarRes, buyersRes]) => {
             if (cancelled) return;
+            const sidebarResult = sidebarRes.data as {
+              categories: any[];
+              normalStaffInitials: string[];
+            };
             const buyersResult = buyersRes.data as {
               categories: any[];
               buyers: BuyerWithStatus[];
@@ -178,9 +185,9 @@ export default function BuyersPage() {
             };
             // 10分間キャッシュ（バックエンドキャッシュTTLと統一）
             pageDataCache.set(CACHE_KEYS.BUYERS_WITH_STATUS, buyersResult, 10 * 60 * 1000);
-            // サイドバーのカテゴリを更新
-            setSidebarCategories(buyersResult.categories);
-            setSidebarNormalStaffInitials(buyersResult.normalStaffInitials || []);
+            // サイドバーのカテゴリを更新（高速エンドポイントから取得）
+            setSidebarCategories(sidebarResult.categories);
+            setSidebarNormalStaffInitials(sidebarResult.normalStaffInitials || []);
             setSidebarLoading(false);
             // テーブルも全件データで更新
             allBuyersWithStatusRef.current = buyersResult.buyers;
