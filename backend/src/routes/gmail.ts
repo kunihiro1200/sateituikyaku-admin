@@ -142,11 +142,11 @@ router.post('/send', upload.array('attachments'), async (req, res) => {
     res.json({ success: true });
   } catch (error: any) {
     console.error('[gmail/send] 詳細エラー:', {
-      buyerId,
-      subject,
-      bodyLength: bodyText?.length || 0,
-      senderEmail,
-      attachmentsCount: attachments?.length || 0,
+      buyerId: body.buyerId,
+      subject: body.subject,
+      bodyLength: body.body?.length || 0,
+      senderEmail: body.senderEmail,
+      attachmentsCount: (req.files as Express.Multer.File[])?.length || 0,
       errorMessage: error.message,
       errorStack: error.stack,
       errorCode: error.code,
