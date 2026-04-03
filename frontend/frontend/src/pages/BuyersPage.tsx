@@ -89,8 +89,8 @@ export default function BuyersPage() {
   const sidebarLoadedRef = useRef<boolean>(!!cachedData);
   // テーブル再描画用のトリガー
   const [dataReady, setDataReady] = useState(!!cachedData);
-  // サイドバー表示用カテゴリ（BuyersPage が管理して prop で渡す）
-  const [sidebarCategories, setSidebarCategories] = useState<any[]>(cachedData?.categories ?? []);
+  // サイドバー表示用カウント（BuyersPage が管理して prop で渡す）
+  const [sidebarCounts, setSidebarCounts] = useState<any>(cachedData?.categoryCounts ?? null);
   const [sidebarNormalStaffInitials, setSidebarNormalStaffInitials] = useState<string[]>(cachedData?.normalStaffInitials ?? []);
   const [sidebarLoading, setSidebarLoading] = useState(!cachedData);
 
@@ -174,10 +174,7 @@ export default function BuyersPage() {
             api.get('/api/buyers/status-categories-with-buyers')
           ]).then(([sidebarRes, buyersRes]) => {
             if (cancelled) return;
-            const sidebarResult = sidebarRes.data as {
-              categories: any[];
-              normalStaffInitials: string[];
-            };
+            const sidebarResult = sidebarRes.data;
             const buyersResult = buyersRes.data as {
               categories: any[];
               buyers: BuyerWithStatus[];
@@ -185,9 +182,9 @@ export default function BuyersPage() {
             };
             // 10分間キャッシュ（バックエンドキャッシュTTLと統一）
             pageDataCache.set(CACHE_KEYS.BUYERS_WITH_STATUS, buyersResult, 10 * 60 * 1000);
-            // サイドバーのカテゴリを更新（高速エンドポイントから取得）
-            setSidebarCategories(sidebarResult.categories);
-            setSidebarNormalStaffInitials(sidebarResult.normalStaffInitials || []);
+            // サイドバーのカウントを更新（高速エンドポイントから取得）
+            setSidebarCounts(sidebarResult);
+            setSidebarNormalStaffInitials(buyersResult.normalStaffInitials || []);
             setSidebarLoading(false);
             // テーブルも全件データで更新
             allBuyersWithStatusRef.current = buyersResult.buyers;
@@ -225,7 +222,7 @@ export default function BuyersPage() {
       // サイドバーキャッシュをリセット
       allBuyersWithStatusRef.current = [];
       sidebarLoadedRef.current = false;
-      setSidebarCategories([]);
+      setSidebarCounts(null);
       setSidebarNormalStaffInitials([]);
       setSidebarLoading(true);
       setDataReady(false);
@@ -340,7 +337,7 @@ export default function BuyersPage() {
               selectedStatus={selectedCalculatedStatus}
               onStatusSelect={(status) => { setSelectedCalculatedStatus(status); setPage(0); }}
               totalCount={total}
-              categories={sidebarCategories}
+              categoryCounts={sidebarCounts}
               normalStaffInitials={sidebarNormalStaffInitials}
               loading={sidebarLoading}
             />
@@ -356,7 +353,7 @@ export default function BuyersPage() {
               selectedStatus={selectedCalculatedStatus}
               onStatusSelect={(status) => { setSelectedCalculatedStatus(status); setPage(0); }}
               totalCount={total}
-              categories={sidebarCategories}
+              categoryCounts={sidebarCounts}
               normalStaffInitials={sidebarNormalStaffInitials}
               loading={sidebarLoading}
             />
