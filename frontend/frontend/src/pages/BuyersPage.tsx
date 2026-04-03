@@ -128,21 +128,19 @@ export default function BuyersPage() {
         // サイドバーデータ読み込み済みの場合はフロント側でフィルタリング（APIコール不要）
         // キャッシュヒット時はsetLoading(true)をスキップして画面のちらつきを防ぐ
         if (sidebarLoadedRef.current && allBuyersWithStatusRef.current.length > 0) {
-          console.log('[BuyersPage] フィルタリング開始');
-          console.log('[BuyersPage] selectedCalculatedStatus:', selectedCalculatedStatus);
-          console.log('[BuyersPage] allBuyersWithStatusRef.current.length:', allBuyersWithStatusRef.current.length);
-          
           let filtered = selectedCalculatedStatus !== null
             ? allBuyersWithStatusRef.current.filter(b => {
                 // サイドバーのカテゴリキーを日本語の表示名に変換
                 const displayName = categoryKeyToDisplayName[selectedCalculatedStatus] || selectedCalculatedStatus;
-                console.log('[BuyersPage] Filtering buyer:', b.buyer_number, 'calculated_status:', b.calculated_status, 'displayName:', displayName);
+                
                 // 完全一致または部分一致（担当者別カテゴリ対応）
-                const matches = b.calculated_status === displayName || b.calculated_status?.startsWith(displayName);
-                console.log('[BuyersPage] Match result:', matches);
+                // 例: displayName = "担当" の場合、"担当(林)" や "担当(Y)" にマッチ
+                // 例: displayName = "内覧日前日" の場合、"内覧日前日" に完全一致
+                const matches = b.calculated_status === displayName || b.calculated_status?.startsWith(displayName + '(');
                 return matches;
               })
             : [...allBuyersWithStatusRef.current];
+
 
           console.log('[BuyersPage] filtered.length:', filtered.length);
 
