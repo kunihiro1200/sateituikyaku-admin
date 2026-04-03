@@ -1232,10 +1232,6 @@ const CallModePage = () => {
         // バックグラウンドで最新データを取得してキャッシュと表示を更新
         api.get(`/api/sellers/${id}`).then((freshResponse) => {
           const freshData = freshResponse.data;
-          console.log('🔍 [DEBUG] Fresh seller data received:', {
-            visitDate: freshData?.visitDate,
-            visitAssignee: freshData?.visitAssignee,
-          });
           if (freshData && freshData.id) {
             pageDataCache.set(sellerDetailCacheKey(id!), freshData, 30 * 1000);
             setSeller(freshData);
@@ -1248,10 +1244,6 @@ const CallModePage = () => {
         // キャッシュなし → 通常通り API を呼び出す
         const sellerResponse = await api.get(`/api/sellers/${id}`);
         sellerData = sellerResponse.data;
-        console.log('🔍 [DEBUG] Seller data received from API:', {
-          visitDate: sellerData?.visitDate,
-          visitAssignee: sellerData?.visitAssignee,
-        });
       }
 
       // 売主データが存在することを確認
@@ -1259,10 +1251,6 @@ const CallModePage = () => {
         throw new Error('売主データが取得できませんでした');
       }
       
-      console.log('🔍 [DEBUG] Setting seller state:', {
-        visitDate: sellerData?.visitDate,
-        visitAssignee: sellerData?.visitAssignee,
-      });
       setSeller(sellerData);
       setUnreachableStatus(sellerData.unreachableStatus || null);
       setSavedUnreachableStatus(sellerData.unreachableStatus || null);
@@ -4518,17 +4506,13 @@ HP：https://ifoo-oita.com/
                             {seller.visitDate ? (
                               // visit_date (TIMESTAMP型) から日時を抽出して表示
                               (() => {
-                                console.log('🔍 [DEBUG] Rendering visitDate:', seller.visitDate);
                                 const visitDateTime = new Date(seller.visitDate);
-                                console.log('🔍 [DEBUG] Parsed Date object:', visitDateTime);
                                 const year = visitDateTime.getFullYear();
                                 const month = String(visitDateTime.getMonth() + 1).padStart(2, '0');
                                 const day = String(visitDateTime.getDate()).padStart(2, '0');
                                 const hours = String(visitDateTime.getHours()).padStart(2, '0');
                                 const minutes = String(visitDateTime.getMinutes()).padStart(2, '0');
-                                const formatted = `${year}/${month}/${day} ${hours}:${minutes}`;
-                                console.log('🔍 [DEBUG] Formatted date:', formatted);
-                                return formatted;
+                                return `${year}/${month}/${day} ${hours}:${minutes}`;
                               })()
                             ) : (
                               // フォールバック: appointmentDateを使用
