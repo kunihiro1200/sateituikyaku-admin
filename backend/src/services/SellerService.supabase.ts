@@ -2168,7 +2168,7 @@ export class SellerService extends BaseRepository {
       .is('deleted_at', null)
       .not('visit_assignee', 'is', null)
       .neq('visit_assignee', '')
-      .neq('visit_assignee', '外す')
+      // 「外す」は有効な営業担当として扱う
       .not('visit_date', 'is', null);
 
     const visitDayBeforeCount = (visitAssigneeSellers || []).filter(s => {
@@ -2193,7 +2193,7 @@ export class SellerService extends BaseRepository {
       .is('deleted_at', null)
       .not('visit_assignee', 'is', null)
       .neq('visit_assignee', '')
-      .neq('visit_assignee', '外す')
+      // 「外す」は有効な営業担当として扱う
       .lt('visit_date', todayJST);
 
     // 3. 当日TEL（担当）
@@ -2202,7 +2202,7 @@ export class SellerService extends BaseRepository {
       .is('deleted_at', null)
       .not('visit_assignee', 'is', null)
       .neq('visit_assignee', '')
-      .neq('visit_assignee', '外す')
+      // 「外す」は有効な営業担当として扱う
       .lte('next_call_date', todayJST)
       .ilike('status', '%追客中%')
       .not('status', 'ilike', '%追客不要%')
@@ -2217,7 +2217,7 @@ export class SellerService extends BaseRepository {
       .is('deleted_at', null)
       .not('visit_assignee', 'is', null)
       .neq('visit_assignee', '')
-      .neq('visit_assignee', '外す')
+      // 「外す」は有効な営業担当として扱う
       .not('status', 'ilike', '%一般媒介%')
       .not('status', 'ilike', '%専任媒介%')
       .not('status', 'ilike', '%追客不要%')
