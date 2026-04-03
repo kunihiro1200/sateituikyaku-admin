@@ -154,9 +154,24 @@ function updateBuyerSidebarCounts_() {
       var today = new Date();
       today.setHours(0, 0, 0, 0);
       notifyDate.setHours(0, 0, 0, 0);
+      
+      // 🚨 デバッグ: 買主7277, 7278, 7254の内覧日前日判定を記録
+      if (buyerNumber === '7277' || buyerNumber === '7278' || buyerNumber === '7254') {
+        Logger.log('  🔍 [DEBUG] ' + buyerNumber + ': 内覧日=' + viewingDate + ', 担当=' + assignee);
+        Logger.log('    今日=' + today.toISOString().substring(0, 10) + ', 通知日=' + notifyDate.toISOString().substring(0, 10));
+        Logger.log('    内覧日の曜日=' + vDay + ', 通知日の計算=' + daysBeforeViewing + '日前');
+        Logger.log('    今日が通知日か？ ' + (notifyDate.getTime() === today.getTime()));
+      }
+      
       if (notifyDate.getTime() === today.getTime()) {
         counts.viewingDayBefore++;
+        Logger.log('  ✅ ' + buyerNumber + ': 内覧日前日カテゴリに追加');
       }
+    } else if (buyerNumber === '7277' || buyerNumber === '7278' || buyerNumber === '7254') {
+      // デバッグ: 条件を満たさない理由を記録
+      Logger.log('  ⚠️ [DEBUG] ' + buyerNumber + ': 内覧日前日カテゴリの条件を満たさない');
+      Logger.log('    担当有効？ ' + isAssigneeValid + ' (担当=' + assignee + ')');
+      Logger.log('    内覧日？ ' + viewingDate);
     }
     
     // 担当（担当別）カテゴリ
