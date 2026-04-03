@@ -1626,13 +1626,13 @@ export class BuyerService {
       }
 
       // 全件数を計算
-      result.all = Object.values(result).reduce((sum: number, val: any) => {
+      result.all = (Object.values(result) as any[]).reduce((sum: number, val: any): number => {
         if (typeof val === 'number') return sum + val;
         if (typeof val === 'object' && val !== null) {
-          return sum + Object.values(val).reduce((s: number, v: any) => s + (typeof v === 'number' ? v : 0), 0);
+          return sum + (Object.values(val) as any[]).reduce((s: number, v: any): number => s + (typeof v === 'number' ? v : 0), 0);
         }
         return sum;
-      }, 0 as number);
+      }, 0);
 
       console.log('✅ buyer_sidebar_counts loaded from cache table:', result);
       return result;
