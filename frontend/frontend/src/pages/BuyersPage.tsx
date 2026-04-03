@@ -99,7 +99,7 @@ export default function BuyersPage() {
   };
 
   // キャッシュから初期データを取得
-  const cachedData = pageDataCache.get<{ categories: any[]; buyers: BuyerWithStatus[]; normalStaffInitials: string[] }>(CACHE_KEYS.BUYERS_WITH_STATUS);
+  const cachedData = pageDataCache.get<{ categoryCounts: any; buyers: BuyerWithStatus[]; normalStaffInitials: string[] }>(CACHE_KEYS.BUYERS_WITH_STATUS);
   // 全買主データ（フロントキャッシュ）
   const allBuyersWithStatusRef = useRef<BuyerWithStatus[]>(cachedData?.buyers ?? []);
   // サイドバーデータ読み込み済みフラグ
@@ -202,12 +202,22 @@ export default function BuyersPage() {
               buyers: BuyerWithStatus[];
               normalStaffInitials: string[];
             };
+            
+            // キャッシュデータを構築
+            const cacheData = {
+              categoryCounts: sidebarResult,
+              buyers: buyersResult.buyers,
+              normalStaffInitials: buyersResult.normalStaffInitials || []
+            };
+            
             // 10分間キャッシュ（バックエンドキャッシュTTLと統一）
-            pageDataCache.set(CACHE_KEYS.BUYERS_WITH_STATUS, buyersResult, 10 * 60 * 1000);
+            pageDataCache.set(CACHE_KEYS.BUYERS_WITH_STATUS, cacheData, 10 * 60 * 1000);
+            
             // サイドバーのカウントを更新（高速エンドポイントから取得）
             setSidebarCounts(sidebarResult);
             setSidebarNormalStaffInitials(buyersResult.normalStaffInitials || []);
             setSidebarLoading(false);
+            
             // テーブルも全件データで更新
             allBuyersWithStatusRef.current = buyersResult.buyers;
             sidebarLoadedRef.current = true;
