@@ -1083,9 +1083,24 @@ export class EnhancedAutoSyncService {
   /**
    * 訪問日を YYYY-MM-DD 形式にフォーマット
    * YYYY/MM/DD または YYYY-MM-DD 形式の日付を標準化
+   * 
+   * 🚨 修正: スペース区切りの複数日付を処理
+   * 例: "2026/04/04 1899/12/30" → "2026-04-04"（最初の日付のみ抽出）
    */
   private formatVisitDate(value: any): string | null {
     if (!value || value === '') return null;
+    
+    // 文字列の場合、スペースで区切られた複数の日付をチェック
+    if (typeof value === 'string') {
+      const trimmed = value.trim();
+      
+      // スペースが含まれる場合、最初の日付のみを抽出
+      if (trimmed.includes(' ')) {
+        const firstDate = trimmed.split(' ')[0];
+        // 再帰的に最初の日付をフォーマット
+        return this.formatVisitDate(firstDate);
+      }
+    }
     
     // 数値の場合（Excelシリアル値）
     // ColumnMapper.parseDateと同じロジックを使用
@@ -1134,6 +1149,53 @@ export class EnhancedAutoSyncService {
   }
 
   /**
+   * 訪問時間を HH:MM 形式にフォーマット
+   * 
+   * 🚨 新規追加: 訪問時間のパース処理
+   * - Excelシリアル値（0.0～1.0）を時刻（HH:MM）に変換
+   * - 日付形式（YYYY/MM/DD）が含まれる場合は無視してnullを返す
+   * - 既に時刻形式（HH:MM）の場合はそのまま返す
+   */
+  private formatVisitTime(value: any): string | null {
+    if (!value || value === '') return null;
+    
+    const str = String(value).trim();
+    
+    // 日付形式（YYYY/MM/DD または YYYY-MM-DD）が含まれる場合は無視
+    if (str.match(/\d{4}[/-]\d{1,2}[/-]\d{1,2}/)) {
+      return null;
+    }
+    
+    // 既に時刻形式（HH:MM または HH:MM:SS）の場合はそのまま返す
+    if (str.match(/^\d{1,2}:\d{2}(:\d{2})?$/)) {
+      const parts = str.split(':');
+      const hours = parts[0].padStart(2, '0');
+      const minutes = parts[1];
+      return `${hours}:${minutes}`;
+    }
+    
+    // 数値の場合（Excelシリアル値: 0.0～1.0）
+    if (typeof value === 'number' && value >= 0 && value < 1) {
+      // Excelシリアル値を時刻に変換
+      const totalMinutes = Math.round(value * 24 * 60);
+      const hours = Math.floor(totalMinutes / 60);
+      const minutes = totalMinutes % 60;
+      return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+    }
+    
+    // 文字列が小数の場合もシリアル値として処理
+    if (str.match(/^0\.\d+$/)) {
+      const serial = parseFloat(str);
+      const totalMinutes = Math.round(serial * 24 * 60);
+      const hours = Math.floor(totalMinutes / 60);
+      const minutes = totalMinutes % 60;
+      return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+    }
+    
+    return null;
+  }
+
+  /**
    * 不通フラグをbooleanに変換
    * スプレッドシートの「不通」カラムの値:
    * - 空欄 → false
@@ -1167,6 +1229,7 @@ export class EnhancedAutoSyncService {
     // 訪問関連フィールドを取得（正しいカラム名を使用）
     const visitAcquisitionDate = row['訪問取得日\n年/月/日'];  // 改行文字を含む
     const visitDate = row['訪問日 Y/M/D'];
+    const visitTime = row['訪問時間'];  // 訪問時間を追加
     const visitValuationAcquirer = row['訪問査定取得者'];
     const visitAssignee = row['営担'];
 
@@ -1287,6 +1350,9 @@ export class EnhancedAutoSyncService {
     }
     if (visitDate) {
       updateData.visit_date = this.formatVisitDate(visitDate);
+    }
+    if (visitTime) {
+      updateData.visit_time = this.formatVisitTime(visitTime);
     }
     if (visitValuationAcquirer) {
       updateData.visit_valuation_acquirer = String(visitValuationAcquirer);
@@ -1480,6 +1546,7 @@ export class EnhancedAutoSyncService {
     // 訪問関連フィールドを取得（正しいカラム名を使用）
     const visitAcquisitionDate = row['訪問取得日\n年/月/日'];  // 改行文字を含む
     const visitDate = row['訪問日 Y/M/D'];
+    const visitTime = row['訪問時間'];  // 訪問時間を追加
     const visitValuationAcquirer = row['訪問査定取得者'];
     const visitAssignee = row['営担'];
 
@@ -1591,6 +1658,9 @@ export class EnhancedAutoSyncService {
     }
     if (visitDate) {
       encryptedData.visit_date = this.formatVisitDate(visitDate);
+    }
+    if (visitTime) {
+      encryptedData.visit_time = this.formatVisitTime(visitTime);
     }
     if (visitValuationAcquirer) {
       encryptedData.visit_valuation_acquirer = String(visitValuationAcquirer);

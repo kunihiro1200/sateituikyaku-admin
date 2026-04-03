@@ -1,6 +1,6 @@
 # Implementation Plan
 
-- [ ] 1. Write bug condition exploration test
+- [x] 1. Write bug condition exploration test
   - **Property 1: Bug Condition** - 訪問日・訪問時間の異常形式検出
   - **CRITICAL**: This test MUST FAIL on unfixed code - failure confirms the bug exists
   - **DO NOT attempt to fix the test or the code when it fails**
@@ -18,7 +18,7 @@
   - Mark task complete when test is written, run, and failure is documented
   - _Requirements: 1.1, 1.2, 1.3_
 
-- [ ] 2. Write preservation property tests (BEFORE implementing fix)
+- [x] 2. Write preservation property tests (BEFORE implementing fix)
   - **Property 2: Preservation** - 訪問日・訪問時間以外のフィールドの同期処理
   - **IMPORTANT**: Follow observation-first methodology
   - Observe behavior on UNFIXED code for non-buggy inputs (正常な形式の訪問日・訪問時間)
@@ -32,9 +32,9 @@
   - Mark task complete when tests are written, run, and passing on unfixed code
   - _Requirements: 3.1, 3.2, 3.3, 3.4_
 
-- [ ] 3. Fix for 訪問日・訪問時間形式修正
+- [x] 3. Fix for 訪問日・訪問時間形式修正
 
-  - [ ] 3.1 Implement backend fix in EnhancedAutoSyncService.ts
+  - [x] 3.1 Implement backend fix in EnhancedAutoSyncService.ts
     - Modify `formatVisitDate()` to extract first date when input contains space (e.g., `2026/04/04 1899/12/30` → `2026/04/04`)
     - Add new function `formatVisitTime()` to parse visit_time:
       - Convert Excel serial value (0.0～1.0) to time format (HH:MM)
@@ -47,7 +47,7 @@
     - _Preservation: Other fields (name, phone_number, valuation_amount, etc.) sync logic unchanged (from design)_
     - _Requirements: 2.1, 2.2, 3.1, 3.2, 3.3, 3.4_
 
-  - [ ] 3.2 Implement frontend validation in sellerStatusFilters.ts
+  - [x] 3.2 Implement frontend validation in sellerStatusFilters.ts
     - Add visit_date format validation in `isVisitDayBefore()`:
       - Extract first date if visit_date contains space
       - Return false if date format is invalid (defensive programming)
@@ -56,7 +56,7 @@
     - _Preservation: Other sidebar category logic unchanged (from design)_
     - _Requirements: 2.3, 3.4_
 
-  - [ ] 3.3 Implement frontend validation in sellerStatusUtils.ts
+  - [x] 3.3 Implement frontend validation in sellerStatusUtils.ts
     - Add visit_date format validation in `isVisitDayBefore()`:
       - Extract first date if visit_date contains space
       - Return false if date format is invalid (defensive programming)
@@ -65,7 +65,7 @@
     - _Preservation: Other status calculation logic unchanged (from design)_
     - _Requirements: 2.3, 3.4_
 
-  - [ ] 3.4 Create database migration script
+  - [x] 3.4 Create database migration script
     - Create `backend/fix-visit-date-time-format.ts` script
     - Search for sellers with visit_date containing space
     - Extract first date and update visit_date
@@ -76,7 +76,7 @@
     - _Expected_Behavior: Existing malformed data is corrected (from design)_
     - _Requirements: 2.4_
 
-  - [ ] 3.5 Verify bug condition exploration test now passes
+  - [x] 3.5 Verify bug condition exploration test now passes
     - **Property 1: Expected Behavior** - 訪問日・訪問時間の正しい形式での保存
     - **IMPORTANT**: Re-run the SAME test from task 1 - do NOT write a new test
     - The test from task 1 encodes the expected behavior
@@ -85,7 +85,7 @@
     - **EXPECTED OUTCOME**: Test PASSES (confirms bug is fixed)
     - _Requirements: Expected Behavior Properties from design (2.1, 2.2, 2.3)_
 
-  - [ ] 3.6 Verify preservation tests still pass
+  - [x] 3.6 Verify preservation tests still pass
     - **Property 2: Preservation** - 訪問日・訪問時間以外のフィールドの同期処理
     - **IMPORTANT**: Re-run the SAME tests from task 2 - do NOT write new tests
     - Run preservation property tests from step 2
@@ -93,5 +93,5 @@
     - Confirm all tests still pass after fix (no regressions)
     - _Requirements: Preservation Requirements from design (3.1, 3.2, 3.3, 3.4)_
 
-- [ ] 4. Checkpoint - Ensure all tests pass
+- [x] 4. Checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.

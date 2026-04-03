@@ -91,6 +91,12 @@ export function isVisitDayBefore(
   visitDateStr: string | null,
   today: Date
 ): boolean {
+  // 🚨 防御的プログラミング: visit_dateにスペースが含まれる場合、最初の日付のみを抽出
+  if (visitDateStr && typeof visitDateStr === 'string' && visitDateStr.includes(' ')) {
+    const parts = visitDateStr.split(' ');
+    visitDateStr = parts[0]; // 最初の日付のみを使用
+  }
+  
   const visitDate = parseDate(visitDateStr);
   if (!visitDate) {
     return false;

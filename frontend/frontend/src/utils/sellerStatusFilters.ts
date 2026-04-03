@@ -238,9 +238,15 @@ export const isVisitDayBefore = (seller: Seller | any): boolean => {
     return false;
   }
   
-  const visitDate = seller.visitDate || seller.visit_date;
+  let visitDate = seller.visitDate || seller.visit_date;
   if (!visitDate) {
     return false;
+  }
+  
+  // 🚨 防御的プログラミング: visit_dateにスペースが含まれる場合、最初の日付のみを抽出
+  if (typeof visitDate === 'string' && visitDate.includes(' ')) {
+    const parts = visitDate.split(' ');
+    visitDate = parts[0]; // 最初の日付のみを使用
   }
   
   // visitReminderAssigneeに値がある場合は除外（通知担当が既に割り当て済み）
@@ -259,7 +265,13 @@ export const isVisitDayBefore = (seller: Seller | any): boolean => {
   );
   todayDate.setHours(0, 0, 0, 0);
   
-  return isVisitDayBeforeUtil(String(visitDate), todayDate);
+  // 日付形式が不正な場合はfalseを返す（防御的プログラミング）
+  try {
+    return isVisitDayBeforeUtil(String(visitDate), todayDate);
+  } catch (error) {
+    console.error('[isVisitDayBefore] Invalid visit_date format:', visitDate, error);
+    return false;
+  }
 };
 
 // 後方互換性のためのエイリアス（旧 isVisitScheduled）
