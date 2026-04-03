@@ -48,12 +48,13 @@ router.post('/send-to-buyer', async (req, res) => {
 
 // 買主へのGmail送信エンドポイント（新・履歴記録あり）
 router.post('/send', upload.array('attachments'), async (req, res) => {
+  // multipart/form-data と JSON の両方に対応
+  const body = req.body;
+  const { buyerId, propertyIds, senderEmail, subject, templateName } = body;
+  const bodyText = body.body;
+  const attachments = (req.files as Express.Multer.File[]) || [];
+  
   try {
-    // multipart/form-data と JSON の両方に対応
-    const body = req.body;
-    const { buyerId, propertyIds, senderEmail, subject, templateName } = body;
-    const bodyText = body.body;
-    const attachments = (req.files as Express.Multer.File[]) || [];
 
     if (!buyerId || !subject || !bodyText) {
       return res.status(400).json({ error: 'buyerId, subject, body は必須です' });
@@ -142,11 +143,11 @@ router.post('/send', upload.array('attachments'), async (req, res) => {
     res.json({ success: true });
   } catch (error: any) {
     console.error('[gmail/send] 詳細エラー:', {
-      buyerId: body.buyerId,
-      subject: body.subject,
-      bodyLength: body.body?.length || 0,
-      senderEmail: body.senderEmail,
-      attachmentsCount: (req.files as Express.Multer.File[])?.length || 0,
+      buyerId: buyerId,
+      subject: subject,
+      bodyLength: bodyText?.length || 0,
+      senderEmail: senderEmail,
+      attachmentsCount: attachments?.length || 0,
       errorMessage: error.message,
       errorStack: error.stack,
       errorCode: error.code,
