@@ -64,6 +64,9 @@ import { getDisplayStatus } from '../utils/atbbStatusDisplayMapper';
 import PurchaseStatusBadge from '../components/PurchaseStatusBadge';
 import { getPurchaseStatusText, hasBuyerPurchaseStatus } from '../utils/purchaseStatusUtils';
 import { pageDataCache, CACHE_KEYS } from '../store/pageDataCache';
+import ChatHistorySection from '../components/ChatHistorySection';
+import { fetchChatHistory }ervice';
+import { ChatHistoryItem } from '../types/chatHistory'; from '../services/chatHistoryS
 
 interface PropertyListing {
   id: number;

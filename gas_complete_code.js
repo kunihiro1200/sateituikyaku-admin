@@ -17,8 +17,8 @@ var SUPABASE_CONFIG = {
 // ============================================================
 function rowToObject(headers, rowData) {
   var obj = {};
-  // 反響詳細日時は時刻情報が必要なため、Dateオブジェクトをそのまま保持する列
-  var datetimeColumns = { '反響詳細日時': true };
+  // 反響詳細日時と訪問時間は時刻情報が必要なため、Dateオブジェクトをそのまま保持する列
+  var datetimeColumns = { '反響詳細日時': true, '訪問時間': true };
   for (var j = 0; j < headers.length; j++) {
     // ヘッダー名を正規化（trim処理）
     var headerName = String(headers[j]).trim();
@@ -28,7 +28,7 @@ function rowToObject(headers, rowData) {
       if (val.getTime() === 0) {
         obj[headerName] = '';
       } else if (datetimeColumns[headerName]) {
-        // 日時列はDateオブジェクトをそのまま保持（syncUpdatesToSupabase_でtoISOString()する）
+        // 日時列・時刻列はDateオブジェクトをそのまま保持
         obj[headerName] = val;
       } else {
         obj[headerName] = val.getFullYear() + '/' +
@@ -123,7 +123,7 @@ function fetchAllSellersFromSupabase_() {
   var allSellers = [];
   var pageSize = 1000;
   var offset = 0;
-  var fields = 'seller_number,status,next_call_date,visit_assignee,unreachable_status,comments,phone_contact_person,preferred_contact_time,contact_method,contract_year_month,current_status,pinrich_status,visit_reminder_assignee,property_address,land_area,building_area,build_year,structure,floor_plan,inquiry_date,inquiry_detailed_datetime,valuation_method,valuation_amount_1,valuation_amount_2,valuation_amount_3,visit_acquisition_date,visit_date,visit_time,visit_valuation_acquirer,valuation_assignee,confidence_level,competitor_name,competitor_name_and_reason,exclusive_other_decision_factor,visit_notes,first_call_person,exclusion_action,unreachable_sms_assignee,valuation_sms_assignee,valuation_reason_email_assignee,valuation_reason,cancel_notice_assignee,long_term_email_assignee,call_reminder_email_assignee,inquiry_id,site_url,mailing_status,fixed_asset_tax_road_price,exclusive_other_decision_meeting,land_area_verified,building_area_verified,valuation_text';
+  var fields = 'seller_number,status,next_call_date,visit_assignee,unreachable_status,comments,phone_contact_person,preferred_contact_time,contact_method,contract_year_month,current_status,pinrich_status,visit_reminder_assignee,property_address,land_area,building_area,build_year,structure,floor_plan,inquiry_date,inquiry_detailed_datetime,valuation_method,valuation_amount_1,valuation_amount_2,valuation_amount_3,visit_acquisition_date,visit_date,visit_valuation_acquirer,valuation_assignee,confidence_level,competitor_name,competitor_name_and_reason,exclusive_other_decision_factor,visit_notes,first_call_person,exclusion_action,unreachable_sms_assignee,valuation_sms_assignee,valuation_reason_email_assignee,valuation_reason,cancel_notice_assignee,long_term_email_assignee,call_reminder_email_assignee,inquiry_id,site_url,mailing_status,fixed_asset_tax_road_price,exclusive_other_decision_meeting,land_area_verified,building_area_verified,valuation_text';
   while (true) {
     var url = SUPABASE_CONFIG.URL + '/rest/v1/sellers?select=' + fields +
       '&deleted_at=is.null&offset=' + offset + '&limit=' + pageSize;
@@ -244,11 +244,82 @@ function syncUpdatesToSupabase_(sheetRows) {
     var sheetVisitAcqDate = formatDateToISO_(row['訪問取得日\n年/月/日'] || row['訪問取得日']);
     var dbVisitAcqDate = dbSeller.visit_acquisition_date ? String(dbSeller.visit_acquisition_date).substring(0, 10) : null;
     if (sheetVisitAcqDate !== dbVisitAcqDate) { updateData.visit_acquisition_date = sheetVisitAcqDate; needsUpdate = true; }
-    var sheetVisitDate = formatDateToISO_(row['訪問日 Y/M/D'] || row['訪問日 \nY/M/D'] || row['訪問日']);
-    var dbVisitDate = dbSeller.visit_date ? String(dbSeller.visit_date).substring(0, 10) : null;
-    if (sheetVisitDate !== dbVisitDate) { updateData.visit_date = sheetVisitDate; needsUpdate = true; }
-    var sheetVisitTime = row['訪問時間'] ? String(row['訪問時間']) : null;
-    if (sheetVisitTime !== (dbSeller.visit_time || null)) { updateData.visit_time = sheetVisitTime; needsUpdate = true; }
+    // 🚨 訪問日時の処理（TIMESTAMP型に統合）
+    // スプレッドシートの「訪問日 Y/M/D」と「訪問時間」を結合してTIMESTAMPとして保存
+    var rawVisitDate = row['訪問日 Y/M/D'] || row['訪問日 \nY/M/D'] || row['訪問日'];
+    var rawVisitTime = row['訪問時間'];
+    var sheetVisitDateTime = null;
+    
+    if (rawVisitDate && rawVisitDate !== '') {
+      // 訪問日をYYYY/MM/DD形式に変換
+      var visitDateStr = formatDateToISO_(rawVisitDate);
+      if (visitDateStr) {
+        // YYYY-MM-DD形式をYYYY/MM/DD形式に変換
+        visitDateStr = visitDateStr.replace(/-/g, '/');
+        sheetVisitDateTime = visitDateStr;  // 例: 2026/04/04
+        
+        // 訪問時間が存在する場合、時刻を追加
+        if (rawVisitTime && rawVisitTime !== '') {
+          var timeStr = null;
+          
+          // Dateオブジェクトの場合、時刻部分のみを抽出
+          if (rawVisitTime instanceof Date) {
+            var hours = rawVisitTime.getHours();
+            var minutes = rawVisitTime.getMinutes();
+            timeStr = String(hours).padStart(2, '0') + ':' + String(minutes).padStart(2, '0') + ':00';
+          } else {
+            var visitTimeStr = String(rawVisitTime).trim();
+            // 日付形式（YYYY/MM/DD または YYYY-MM-DD）が含まれる場合は無視
+            if (!visitTimeStr.match(/\d{4}[/-]\d{1,2}[/-]\d{1,2}/)) {
+              // 既に時刻形式（HH:MM または HH:MM:SS）の場合はそのまま使用
+              if (visitTimeStr.match(/^\d{1,2}:\d{2}(:\d{2})?$/)) {
+                var parts = visitTimeStr.split(':');
+                var hours2 = parts[0].padStart(2, '0');
+                var minutes2 = parts[1];
+                var seconds = parts[2] || '00';
+                timeStr = hours2 + ':' + minutes2 + ':' + seconds;
+              }
+              // 数値の場合（Excelシリアル値: 0.0～1.0）
+              else if (typeof rawVisitTime === 'number' && rawVisitTime >= 0 && rawVisitTime < 1) {
+                var totalMinutes = Math.round(rawVisitTime * 24 * 60);
+                var hours3 = Math.floor(totalMinutes / 60);
+                var minutes3 = totalMinutes % 60;
+                timeStr = String(hours3).padStart(2, '0') + ':' + String(minutes3).padStart(2, '0') + ':00';
+              }
+              // 文字列が小数の場合もシリアル値として処理
+              else if (visitTimeStr.match(/^0\.\d+$/)) {
+                var serial = parseFloat(visitTimeStr);
+                var totalMinutes2 = Math.round(serial * 24 * 60);
+                var hours4 = Math.floor(totalMinutes2 / 60);
+                var minutes4 = totalMinutes2 % 60;
+                timeStr = String(hours4).padStart(2, '0') + ':' + String(minutes4).padStart(2, '0') + ':00';
+              }
+            }
+          }
+          
+          // 時刻が取得できた場合、日付と結合
+          if (timeStr) {
+            sheetVisitDateTime += ' ' + timeStr;  // 例: 2026/04/04 10:00:00
+          }
+        }
+      }
+    }
+    
+    // データベースのvisit_dateと比較（TIMESTAMP型）
+    var dbVisitDateTime = dbSeller.visit_date ? String(dbSeller.visit_date).substring(0, 19) : null;
+    // YYYY-MM-DD HH:MM:SS形式をYYYY/MM/DD HH:MM:SS形式に変換して比較
+    if (dbVisitDateTime) {
+      dbVisitDateTime = dbVisitDateTime.replace(/-/g, '/').replace('T', ' ');
+    }
+    if (sheetVisitDateTime !== dbVisitDateTime) { 
+      // YYYY/MM/DD HH:MM:SS形式をYYYY-MM-DD HH:MM:SS形式に変換してデータベースに保存
+      if (sheetVisitDateTime) {
+        updateData.visit_date = sheetVisitDateTime.replace(/\//g, '-'); 
+      } else {
+        updateData.visit_date = null;
+      }
+      needsUpdate = true; 
+    }
     var sheetVisitValAcq = row['訪問査定取得者'] ? String(row['訪問査定取得者']) : null;
     if (sheetVisitValAcq !== (dbSeller.visit_valuation_acquirer || null)) { updateData.visit_valuation_acquirer = sheetVisitValAcq; needsUpdate = true; }
     var sheetValAssignee = row['査定担当'] ? String(row['査定担当']) : null;

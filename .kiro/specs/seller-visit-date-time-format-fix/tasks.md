@@ -93,5 +93,55 @@
     - Confirm all tests still pass after fix (no regressions)
     - _Requirements: Preservation Requirements from design (3.1, 3.2, 3.3, 3.4)_
 
-- [x] 4. Checkpoint - Ensure all tests pass
-  - Ensure all tests pass, ask the user if questions arise.
+- [ ] 5. データベース構造変更（TIMESTAMP型への移行）
+
+  - [x] 5.1 Create database migration script
+    - Create `backend/migrations/migrate-visit-date-to-timestamp.sql`
+    - Step 1: Add temporary column `visit_datetime` as TIMESTAMP
+    - Step 2: Migrate existing data: Combine `visit_date` and `visit_time` into `visit_datetime`
+      - Example: `visit_date='2026-04-04'`, `visit_time='10:00'` → `visit_datetime='2026-04-04 10:00:00'`
+      - Handle null values: If `visit_time` is null, use `visit_date` only
+    - Step 3: Drop `visit_time` column
+    - Step 4: Rename `visit_datetime` to `visit_date`
+    - _Requirements: データベース構造の変更_
+
+  - [x] 5.2 Update GAS sync logic
+    - Modify `gas_complete_code.js` `syncUpdatesToSupabase_()` function
+    - Combine `訪問日 Y/M/D` and `訪問時間` columns into single TIMESTAMP
+    - Extract time from Date object using `getHours()` and `getMinutes()`
+    - Format as `YYYY/MM/DD HH:MM:SS` (e.g., `2026/04/04 10:00:00`)
+    - Save to `visit_date` column only (no more `visit_time`)
+    - _Requirements: GAS同期処理の修正_
+
+  - [x] 5.3 Update backend SellerService
+    - Modify `backend/src/services/SellerService.supabase.ts`
+    - Update `decryptSeller()` to handle `visit_date` as TIMESTAMP
+    - Remove `visitTime` field from response
+    - Return `visitDate` as ISO 8601 format (e.g., `2026-04-04T10:00:00.000Z`)
+    - _Requirements: バックエンドAPIの修正_
+
+  - [x] 5.4 Update frontend display logic
+    - Modify `frontend/frontend/src/pages/CallModePage.tsx`
+    - Extract date and time from `visitDate` TIMESTAMP
+    - Display as `YYYY/MM/DD HH:MM` format (e.g., `2026/04/04 10:00`)
+    - Update `frontend/frontend/src/utils/sellerStatusFilters.ts` to extract date part from TIMESTAMP
+    - _Requirements: フロントエンド表示の修正_
+
+  - [x] 5.5 Update TypeScript types
+    - Modify `backend/src/types/index.ts` Seller interface
+    - Change `visitDate` to TIMESTAMP type
+    - Remove `visitTime` field
+    - Update frontend types accordingly
+    - _Requirements: 型定義の更新_
+
+  - [ ] 5.6 Run database migration
+    - Execute `backend/migrations/migrate-visit-date-to-timestamp.sql` on production database
+    - Verify all existing data is migrated correctly
+    - Check that no data is lost during migration
+    - _Requirements: データベースマイグレーションの実行_
+
+- [ ] 6. Checkpoint - Verify TIMESTAMP migration
+  - Run all tests to ensure TIMESTAMP型への移行が正しく動作することを確認
+  - Verify AA13729 displays `2026/04/04 10:00` in CallModePage
+  - Verify AA13729 appears in 訪問日前日 sidebar category
+  - Ask user if questions arise

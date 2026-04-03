@@ -102,9 +102,8 @@ export interface Seller {
   
   // 訪問査定情報
   visitAcquisitionDate?: string | Date;
-  visitDate?: string | Date;
-  visit_date?: string | null; // スプレッドシートAB列（訪問日 Y/M/D）
-  visitTime?: string;
+  visitDate?: string | Date; // TIMESTAMP型（日時を含む）
+  visit_date?: string | null; // スプレッドシートAB列（訪問日 Y/M/D）- TIMESTAMP型
   visitDayOfWeek?: string;
   visitAssignee?: string; // 営担（フルネームに変換済み）
   visitAssigneeInitials?: string; // 営担の元のイニシャル（フィルタリング用）

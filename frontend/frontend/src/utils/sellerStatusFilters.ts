@@ -243,10 +243,15 @@ export const isVisitDayBefore = (seller: Seller | any): boolean => {
     return false;
   }
   
-  // 🚨 防御的プログラミング: visit_dateにスペースが含まれる場合、最初の日付のみを抽出
-  if (typeof visitDate === 'string' && visitDate.includes(' ')) {
-    const parts = visitDate.split(' ');
-    visitDate = parts[0]; // 最初の日付のみを使用
+  // 🚨 TIMESTAMP型対応: visit_dateから日付部分のみを抽出
+  // visit_date は "YYYY-MM-DD HH:MM:SS" または "YYYY-MM-DDTHH:MM:SS.000Z" 形式
+  if (typeof visitDate === 'string') {
+    // スペースまたはTで分割して日付部分のみを取得
+    if (visitDate.includes(' ')) {
+      visitDate = visitDate.split(' ')[0]; // "YYYY-MM-DD HH:MM:SS" → "YYYY-MM-DD"
+    } else if (visitDate.includes('T')) {
+      visitDate = visitDate.split('T')[0]; // "YYYY-MM-DDTHH:MM:SS.000Z" → "YYYY-MM-DD"
+    }
   }
   
   // visitReminderAssigneeに値がある場合は除外（通知担当が既に割り当て済み）

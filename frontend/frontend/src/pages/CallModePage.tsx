@@ -1232,6 +1232,10 @@ const CallModePage = () => {
         // バックグラウンドで最新データを取得してキャッシュと表示を更新
         api.get(`/api/sellers/${id}`).then((freshResponse) => {
           const freshData = freshResponse.data;
+          console.log('🔍 [DEBUG] Fresh seller data received:', {
+            visitDate: freshData?.visitDate,
+            visitAssignee: freshData?.visitAssignee,
+          });
           if (freshData && freshData.id) {
             pageDataCache.set(sellerDetailCacheKey(id!), freshData, 30 * 1000);
             setSeller(freshData);
@@ -1244,6 +1248,10 @@ const CallModePage = () => {
         // キャッシュなし → 通常通り API を呼び出す
         const sellerResponse = await api.get(`/api/sellers/${id}`);
         sellerData = sellerResponse.data;
+        console.log('🔍 [DEBUG] Seller data received from API:', {
+          visitDate: sellerData?.visitDate,
+          visitAssignee: sellerData?.visitAssignee,
+        });
       }
 
       // 売主データが存在することを確認
@@ -1251,6 +1259,10 @@ const CallModePage = () => {
         throw new Error('売主データが取得できませんでした');
       }
       
+      console.log('🔍 [DEBUG] Setting seller state:', {
+        visitDate: sellerData?.visitDate,
+        visitAssignee: sellerData?.visitAssignee,
+      });
       setSeller(sellerData);
       setUnreachableStatus(sellerData.unreachableStatus || null);
       setSavedUnreachableStatus(sellerData.unreachableStatus || null);
@@ -1355,9 +1367,17 @@ const CallModePage = () => {
       setEditedSellerSituation(propertyData?.sellerSituation || sellerData.currentStatus || '');
 
       // 訪問予約情報の初期化
-      // ISO形式の日時をdatetime-local形式に変換 (YYYY-MM-DDTHH:mm)
-      const appointmentDateLocal = sellerData.appointmentDate 
-        ? new Date(sellerData.appointmentDate).toISOString().slice(0, 16)
+      // TIMESTAMP型対応: visit_dateから日時を抽出してdatetime-local形式に変換 (YYYY-MM-DDTHH:mm)
+      const appointmentDateLocal = sellerData.visitDate
+        ? (() => {
+            const visitDateTime = new Date(sellerData.visitDate);
+            const year = visitDateTime.getFullYear();
+            const month = String(visitDateTime.getMonth() + 1).padStart(2, '0');
+            const day = String(visitDateTime.getDate()).padStart(2, '0');
+            const hours = String(visitDateTime.getHours()).padStart(2, '0');
+            const minutes = String(visitDateTime.getMinutes()).padStart(2, '0');
+            return `${year}-${month}-${day}T${hours}:${minutes}`;
+          })()
         : '';
       setEditedAppointmentDate(appointmentDateLocal);
       setEditedAssignedTo(sellerData.assignedTo || '');
@@ -2011,20 +2031,18 @@ const CallModePage = () => {
       setSuccessMessage(null);
       setAppointmentSuccessMessage(null);
 
-      // datetime-localの値からvisit_date（YYYY-MM-DD）とvisit_time（HH:mm:ss）を抽出
+      // datetime-localの値からvisit_date（TIMESTAMP型: YYYY-MM-DD HH:mm:ss）を生成
       // タイムゾーン変換せずローカル時刻のまま使用
-      let visitDateStr: string | null = null;
-      let visitTimeStr: string | null = null;
+      let visitDateTimeStr: string | null = null;
       if (editedAppointmentDate) {
         // editedAppointmentDate は "YYYY-MM-DDTHH:mm" 形式
         const [datePart, timePart] = editedAppointmentDate.split('T');
-        visitDateStr = datePart; // YYYY-MM-DD
-        visitTimeStr = timePart ? `${timePart}:00` : '00:00:00'; // HH:mm:ss
+        const timeWithSeconds = timePart ? `${timePart}:00` : '00:00:00';
+        visitDateTimeStr = `${datePart} ${timeWithSeconds}`; // YYYY-MM-DD HH:mm:ss
       }
 
       console.log('Saving appointment:', {
-        visitDate: visitDateStr,
-        visitTime: visitTimeStr,
+        visitDate: visitDateTimeStr,
         visitAssignee: editedAssignedTo,
         visitValuationAcquirer: editedVisitValuationAcquirer,
         appointmentNotes: editedAppointmentNotes,
@@ -2062,7 +2080,7 @@ const CallModePage = () => {
       // - visitDate があり visitAcquisitionDate が未設定の場合: 今日の日付を自動設定
       // - visitDate があり visitAcquisitionDate が設定済みの場合: 上書きしない
       let visitAcquisitionDateToSave: string | null | undefined = undefined;
-      if (!visitDateStr) {
+      if (!visitDateTimeStr) {
         // 訪問日が空欄 → 訪問取得日もクリア
         visitAcquisitionDateToSave = null;
       } else if (!seller?.visitAcquisitionDate) {
@@ -2075,13 +2093,12 @@ const CallModePage = () => {
       // それ以外（既存値あり）は undefined のまま → 送信しない
 
       await api.put(`/api/sellers/${id}`, {
-        visitDate: visitDateStr,
-        visitTime: visitTimeStr,
+        visitDate: visitDateTimeStr,
         visitAssignee: editedAssignedTo || null,
         visitValuationAcquirer: acquirer || null,
         appointmentNotes: editedAppointmentNotes || null,
         // visitDateが空の場合はappointmentDateもクリア（表示フォールバックを防ぐ）
-        ...(!visitDateStr && { appointmentDate: null }),
+        ...(!visitDateTimeStr && { appointmentDate: null }),
         // visitAssigneeが空の場合はassignedToもクリア（表示フォールバックを防ぐ）
         ...(!editedAssignedTo && { assignedTo: null }),
         ...(visitAcquisitionDateToSave !== undefined && { visitAcquisitionDate: visitAcquisitionDateToSave }),
@@ -2100,13 +2117,10 @@ const CallModePage = () => {
       }
 
       // 訪問日が設定されている場合、カレンダーを自動で開く
-      if (visitDateStr) {
+      if (visitDateTimeStr) {
         try {
-          // visitDateStr (YYYY-MM-DD) と visitTimeStr (HH:mm:ss) からDateを生成
-          const timeStr = visitTimeStr || '00:00:00';
-          const [hh, mm] = timeStr.split(':');
-          const dateTimeStr = `${visitDateStr}T${hh.padStart(2,'0')}:${mm.padStart(2,'0')}:00`;
-          const date = new Date(dateTimeStr);
+          // visitDateTimeStr (YYYY-MM-DD HH:mm:ss) からDateを生成
+          const date = new Date(visitDateTimeStr.replace(' ', 'T'));
           const startDateStr2 = date.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
           const endDate2 = new Date(date.getTime() + 60 * 60 * 1000);
           const endDateStr2 = endDate2.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
@@ -4431,11 +4445,14 @@ HP：https://ifoo-oita.com/
                       // キャンセル時: visitDateを優先、なければappointmentDateを使用
                       let cancelDateLocal = '';
                       if (seller?.visitDate) {
-                        const dateStr = typeof seller.visitDate === 'string'
-                          ? seller.visitDate.split('T')[0]
-                          : (seller.visitDate as any).toISOString().split('T')[0];
-                        const timeStr = seller.visitTime || '00:00';
-                        cancelDateLocal = `${dateStr}T${timeStr.substring(0, 5)}`;
+                        // visit_date (TIMESTAMP型) から日時を抽出
+                        const visitDateTime = new Date(seller.visitDate);
+                        const year = visitDateTime.getFullYear();
+                        const month = String(visitDateTime.getMonth() + 1).padStart(2, '0');
+                        const day = String(visitDateTime.getDate()).padStart(2, '0');
+                        const hours = String(visitDateTime.getHours()).padStart(2, '0');
+                        const minutes = String(visitDateTime.getMinutes()).padStart(2, '0');
+                        cancelDateLocal = `${year}-${month}-${day}T${hours}:${minutes}`;
                       } else if (seller?.appointmentDate) {
                         const d = new Date(seller.appointmentDate);
                         const pad = (n: number) => String(n).padStart(2, '0');
@@ -4448,16 +4465,17 @@ HP：https://ifoo-oita.com/
                       setEditedAppointmentNotes(seller?.appointmentNotes || '');
                     } else {
                       // 編集モードに入る時に現在の値を設定
-                      // visitDateとvisitTimeがあればそれを使用（文字列のまま、タイムゾーン変換なし）
+                      // visitDateがあればそれを使用（TIMESTAMP型から日時を抽出）
                       let appointmentDateLocal = '';
                       if (seller?.visitDate) {
-                        // visit_date は YYYY-MM-DD 形式の文字列
-                        const dateStr = typeof seller.visitDate === 'string'
-                          ? seller.visitDate.split('T')[0]  // Date型の場合も考慮
-                          : (seller.visitDate as any).toISOString().split('T')[0];
-                        const timeStr = seller.visitTime || '00:00';
-                        const timeOnly = timeStr.substring(0, 5); // HH:mm
-                        appointmentDateLocal = `${dateStr}T${timeOnly}`;
+                        // visit_date (TIMESTAMP型) から日時を抽出
+                        const visitDateTime = new Date(seller.visitDate);
+                        const year = visitDateTime.getFullYear();
+                        const month = String(visitDateTime.getMonth() + 1).padStart(2, '0');
+                        const day = String(visitDateTime.getDate()).padStart(2, '0');
+                        const hours = String(visitDateTime.getHours()).padStart(2, '0');
+                        const minutes = String(visitDateTime.getMinutes()).padStart(2, '0');
+                        appointmentDateLocal = `${year}-${month}-${day}T${hours}:${minutes}`;
                       } else if (seller?.appointmentDate) {
                         // appointmentDateはUTCなのでローカル時刻に変換
                         const d = new Date(seller.appointmentDate);
@@ -4498,15 +4516,20 @@ HP：https://ifoo-oita.com/
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                           <Typography variant="body1" sx={{ fontWeight: 'bold', fontSize: '1.1rem' }}>
                             {seller.visitDate ? (
-                              // visit_dateとvisit_timeを使用
-                              <>
-                                {new Date(seller.visitDate).toLocaleDateString('ja-JP', {
-                                  year: 'numeric',
-                                  month: '2-digit',
-                                  day: '2-digit',
-                                })}
-                                {seller.visitTime && ` ${seller.visitTime}`}
-                              </>
+                              // visit_date (TIMESTAMP型) から日時を抽出して表示
+                              (() => {
+                                console.log('🔍 [DEBUG] Rendering visitDate:', seller.visitDate);
+                                const visitDateTime = new Date(seller.visitDate);
+                                console.log('🔍 [DEBUG] Parsed Date object:', visitDateTime);
+                                const year = visitDateTime.getFullYear();
+                                const month = String(visitDateTime.getMonth() + 1).padStart(2, '0');
+                                const day = String(visitDateTime.getDate()).padStart(2, '0');
+                                const hours = String(visitDateTime.getHours()).padStart(2, '0');
+                                const minutes = String(visitDateTime.getMinutes()).padStart(2, '0');
+                                const formatted = `${year}/${month}/${day} ${hours}:${minutes}`;
+                                console.log('🔍 [DEBUG] Formatted date:', formatted);
+                                return formatted;
+                              })()
                             ) : (
                               // フォールバック: appointmentDateを使用
                               new Date(seller.appointmentDate!).toLocaleString('ja-JP', {
