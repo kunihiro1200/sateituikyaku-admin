@@ -181,10 +181,15 @@
     "内覧前ヒアリング送る？": "pre_viewing_hearing_send",
     "業者向けアンケート": "vendor_survey"
   },
+  "databaseToSpreadsheet": {
+    "viewing_date": "●内覧日(最新）",
+    "viewing_time": "●時間"
+  },
   "typeConversions": {
     "created_datetime": "datetime",
     "reception_date": "date",
     "latest_viewing_date": "date",
+    "viewing_date": "date",
     "next_call_date": "date",
     "campaign_date": "date",
     "phone_duplicate_count": "number",

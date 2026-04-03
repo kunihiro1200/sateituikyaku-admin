@@ -16,10 +16,18 @@ export class BuyerColumnMapper {
       ...columnMapping.spreadsheetToDatabase,
       ...columnMapping.spreadsheetToDatabaseExtended
     };
-    this.dbToSpreadsheet = {};
-    for (const [key, value] of Object.entries(this.spreadsheetToDb)) {
-      this.dbToSpreadsheet[value] = key;
+    
+    // databaseToSpreadsheetセクションが存在する場合はそれを使用、なければ自動生成
+    if (columnMapping.databaseToSpreadsheet && Object.keys(columnMapping.databaseToSpreadsheet).length > 0) {
+      this.dbToSpreadsheet = columnMapping.databaseToSpreadsheet;
+    } else {
+      // 自動生成（後方互換性）
+      this.dbToSpreadsheet = {};
+      for (const [key, value] of Object.entries(this.spreadsheetToDb)) {
+        this.dbToSpreadsheet[value] = key;
+      }
     }
+    
     this.typeConversions = columnMapping.typeConversions;
   }
 
