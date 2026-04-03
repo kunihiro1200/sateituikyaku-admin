@@ -90,6 +90,9 @@ export default function BuyerStatusSidebar({
 
   const renderCategoryItem = (category: StatusCategory) => {
     const isTodayCallSub = /^当日TEL\((.+)\)$/.test(category.status);
+    const isVisitCompletedSub = /^訪問済み\((.+)\)$/.test(category.status);
+    const isIndented = isTodayCallSub || isVisitCompletedSub;
+    
     return (
       <ListItemButton
         key={category.status}
@@ -97,7 +100,7 @@ export default function BuyerStatusSidebar({
         onClick={() => handleStatusClick(category.status)}
         sx={{
           py: 1,
-          pl: isTodayCallSub ? 4 : 2,
+          pl: isIndented ? 4 : 2,
           '&.Mui-selected': {
             backgroundColor: `${category.color}15`,
           },
@@ -107,8 +110,8 @@ export default function BuyerStatusSidebar({
         }}
       >
         <ListItemText
-          primary={isTodayCallSub ? `↳ ${category.status}` : (category.status || '（未分類）')}
-          primaryTypographyProps={{ variant: 'body2', color: isTodayCallSub ? 'text.secondary' : 'text.primary' }}
+          primary={isIndented ? `↳ ${category.status}` : (category.status || '（未分類）')}
+          primaryTypographyProps={{ variant: 'body2', color: isIndented ? 'text.secondary' : 'text.primary' }}
           sx={{ flex: 1, minWidth: 0, mr: 1 }}
         />
         <Badge
