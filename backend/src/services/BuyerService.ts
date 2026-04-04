@@ -1608,9 +1608,13 @@ export class BuyerService {
       }, 0);
 
       console.log('✅ buyer_sidebar_counts loaded from cache table:', result);
+      console.log('🔍 [DEBUG] assignedCounts:', result.assignedCounts);
+      console.log('🔍 [DEBUG] todayCallAssignedCounts:', result.todayCallAssignedCounts);
       
       // categories配列を構築（awaitを削除 - buildCategoriesFromCountsは同期関数）
       const categories = this.buildCategoriesFromCounts(result);
+      console.log('🔍 [DEBUG] buildCategoriesFromCounts returned:', categories.length, 'categories');
+      console.log('🔍 [DEBUG] categories:', JSON.stringify(categories, null, 2));
       
       // 通常スタッフのイニシャルを取得
       const normalStaffInitials = await this.fetchNormalStaffInitials();
