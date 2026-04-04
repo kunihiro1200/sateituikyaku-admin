@@ -313,16 +313,19 @@ export function calculateBuyerStatusComplete(buyer: BuyerData): StatusResult {
         return { status, priority: 36, matchedCondition: `内覧済み(${assignee})`, color: getStatusColor('内覧済み') };
       }
 
+      // 次電日が今日以前の場合は「当日TEL(イニシャル)」
       if (isNotBlank(buyer.next_call_date) && isTodayOrPast(buyer.next_call_date)) {
         // 次電日が今日以前 → 当日TEL(林) として担当カテゴリのサブ扱い
         const status = `当日TEL(${assignee})`;
+        console.log(`[calculateBuyerStatusComplete] Priority 23-30: ${status} for buyer:`, buyer.buyer_number);
         return { status, priority, matchedCondition: `担当${assignee}: 次電日が当日以前`, color: getStatusColor('当日TEL') };
-      } else {
-        // Priority 37: 担当(イニシャル) - 通常の担当カテゴリ
-        const status = `担当(${assignee})`;
-        console.log(`[calculateBuyerStatusComplete] Priority 37: ${status} for buyer:`, buyer.buyer_number);
-        return { status, priority: 37, matchedCondition: `担当${assignee}`, color: getStatusColor(`担当(${assignee})`) };
       }
+      
+      // Priority 37: 担当(イニシャル) - 通常の担当カテゴリ
+      // latest_status や next_call_date が null でも、follow_up_assignee があれば担当カテゴリに分類
+      const status = `担当(${assignee})`;
+      console.log(`[calculateBuyerStatusComplete] Priority 37: ${status} for buyer:`, buyer.buyer_number);
+      return { status, priority: 37, matchedCondition: `担当${assignee}`, color: getStatusColor(`担当(${assignee})`) };
     }
 
     // Priority 38: 内覧済み（担当者なし）
