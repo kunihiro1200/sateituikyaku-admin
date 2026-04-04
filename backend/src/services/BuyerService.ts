@@ -1532,6 +1532,8 @@ export class BuyerService {
    */
   async getSidebarCounts(): Promise<any> {
     try {
+      console.log('🔍 [BuyerService] getSidebarCounts called - checking buyer_sidebar_counts table');
+      
       // buyer_sidebar_counts テーブルから全行取得（GASが10分ごとに更新）
       const { data, error } = await this.supabase
         .from('buyer_sidebar_counts')
