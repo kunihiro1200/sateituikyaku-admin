@@ -1516,16 +1516,14 @@ export class BuyerService {
     ]);
 
     console.log('🔍 [DEBUG] getStatusCategoriesWithBuyers - sidebarData:', JSON.stringify(sidebarData, null, 2));
-    console.log('🔍 [DEBUG] getStatusCategoriesWithBuyers - sidebarData.categories:', sidebarData.categories);
+    console.log('🔍 [DEBUG] getStatusCategoriesWithBuyers - sidebarData.categoryCounts:', sidebarData.categoryCounts);
     console.log('🔍 [DEBUG] getStatusCategoriesWithBuyers - sidebarData.normalStaffInitials:', sidebarData.normalStaffInitials);
 
-    // 通常スタッフのイニシャルを取得
-    const normalStaffInitials = await this.fetchNormalStaffInitials();
-
+    // ✅ 修正: categoryCounts形式で返す（categories配列に変換しない）
     return {
-      categories: sidebarData.categories, // ✅ categories配列を返す（コミットffad04a7の修正を復元）
+      categories: sidebarData.categoryCounts, // categoryCounts形式のまま返す
       buyers: allBuyers,
-      normalStaffInitials
+      normalStaffInitials: sidebarData.normalStaffInitials
     };
   }
 
@@ -1535,7 +1533,7 @@ export class BuyerService {
    * テーブルが空または取得失敗の場合は重いDBクエリにフォールバック。
    */
   async getSidebarCounts(): Promise<{
-    categories: Array<{ status: string; count: number; priority: number; color: string }>;
+    categoryCounts: any;
     normalStaffInitials: string[];
   }> {
     try {
@@ -1615,15 +1613,11 @@ export class BuyerService {
       console.log('🔍 [DEBUG] assignedCounts:', result.assignedCounts);
       console.log('🔍 [DEBUG] todayCallAssignedCounts:', result.todayCallAssignedCounts);
       
-      // categories配列を構築（awaitを削除 - buildCategoriesFromCountsは同期関数）
-      const categories = this.buildCategoriesFromCounts(result);
-      console.log('🔍 [DEBUG] buildCategoriesFromCounts returned:', categories.length, 'categories');
-      console.log('🔍 [DEBUG] categories:', JSON.stringify(categories, null, 2));
-      
       // 通常スタッフのイニシャルを取得
       const normalStaffInitials = await this.fetchNormalStaffInitials();
       
-      return { categories, normalStaffInitials };
+      // ✅ 修正: categoryCounts形式で返す（categories配列ではなく）
+      return { categoryCounts: result, normalStaffInitials };
     } catch (e) {
       console.error('❌ getSidebarCounts error, falling back:', e);
       return this.getSidebarCountsFallback();
@@ -1635,7 +1629,7 @@ export class BuyerService {
    * buyer_sidebar_counts テーブルが空または取得失敗時に使用
    */
   private async getSidebarCountsFallback(): Promise<{
-    categories: Array<{ status: string; count: number; priority: number; color: string }>;
+    categoryCounts: any;
     normalStaffInitials: string[];
   }> {
     console.log('⚠️ Using fallback: calculating from all buyers');
@@ -1681,13 +1675,11 @@ export class BuyerService {
       // - 内覧済み、未査定、査定（郵送）、当日TEL未着手、Pinrich空欄、専任、一般、訪問後他決、未訪問他決、当日TEL（内容）
     });
     
-    // categories配列を構築（awaitを削除 - buildCategoriesFromCountsは同期関数）
-    const categories = this.buildCategoriesFromCounts(result);
-    
     // 通常スタッフのイニシャルを取得
     const normalStaffInitials = await this.fetchNormalStaffInitials();
     
-    return { categories, normalStaffInitials };
+    // ✅ 修正: categoryCounts形式で返す（categories配列ではなく）
+    return { categoryCounts: result, normalStaffInitials };
   }
 
   /**
