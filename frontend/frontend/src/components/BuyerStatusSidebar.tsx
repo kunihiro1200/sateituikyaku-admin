@@ -171,7 +171,10 @@ export default function BuyerStatusSidebar({
       <ListItemButton
         key={category.key}
         selected={selectedStatus === category.key}
-        onClick={() => handleStatusClick(category.key)}
+        onClick={(e) => {
+          e.stopPropagation(); // イベント伝播を停止
+          handleStatusClick(category.key);
+        }}
         sx={{
           py: 1,
           pl: isIndented ? 4 : 2,
