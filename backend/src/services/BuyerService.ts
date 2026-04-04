@@ -1545,23 +1545,13 @@ export class BuyerService {
       }
 
       // カテゴリカウントオブジェクトを構築（フロントエンドが期待する形式）
+      // 🚨 重要：買主リスト専用のキーのみを含める（売主専用のキーは削除）
       const result: any = {
         all: 0,
-        viewingDayBefore: 0,  // ✅ 修正: visitDayBefore → viewingDayBefore（フロントエンドと一致）
-        visitCompleted: 0,
-        todayCall: 0,
-        todayCallWithInfo: 0,
-        unvaluated: 0,
-        mailingPending: 0,
-        todayCallNotStarted: 0,
-        pinrichEmpty: 0,
-        exclusive: 0,
-        general: 0,
-        visitOtherDecision: 0,
-        unvisitedOtherDecision: 0,
-        assignedCounts: {} as Record<string, number>,  // ✅ 修正: visitAssignedCounts → assignedCounts（フロントエンドと一致）
-        todayCallAssignedCounts: {} as Record<string, number>,
-        todayCallWithInfoLabelCounts: {} as Record<string, number>,
+        viewingDayBefore: 0,  // ✅ 買主用：内覧日前日
+        todayCall: 0,          // ✅ 買主用：当日TEL
+        assignedCounts: {} as Record<string, number>,  // ✅ 買主用：担当別
+        todayCallAssignedCounts: {} as Record<string, number>,  // ✅ 買主用：当日TEL担当別
       };
       
       for (const row of data) {
@@ -1589,41 +1579,19 @@ export class BuyerService {
             break;
           case 'assigned':
             if (row.assignee) {
-              result.assignedCounts[row.assignee] = count;  // ✅ 修正: visitAssignedCounts → assignedCounts
+              result.assignedCounts[row.assignee] = count;  // ✅ 買主用：担当別
             }
             break;
-          case 'visitCompleted':
-            if (row.assignee) {
-              // 担当者別の内覧済みカウントを合計
-              result.visitCompleted += count;
-            } else {
-              result.visitCompleted = count;
-            }
-            break;
-          case 'unvaluated':
-            result.unvaluated = count;
-            break;
-          case 'mailingPending':
-            result.mailingPending = count;
-            break;
-          case 'todayCallNotStarted':
-            result.todayCallNotStarted = count;
-            break;
-          case 'pinrichEmpty':
-            result.pinrichEmpty = count;
-            break;
-          case 'exclusive':
-            result.exclusive = count;
-            break;
-          case 'general':
-            result.general = count;
-            break;
-          case 'visitOtherDecision':
-            result.visitOtherDecision = count;
-            break;
-          case 'unvisitedOtherDecision':
-            result.unvisitedOtherDecision = count;
-            break;
+          // 🚨 売主専用のカテゴリは削除（買主リストには不要）
+          // - visitCompleted（訪問済み）
+          // - unvaluated（未査定）
+          // - mailingPending（査定（郵送））
+          // - todayCallNotStarted（当日TEL未着手）
+          // - pinrichEmpty（Pinrich空欄）
+          // - exclusive（専任）
+          // - general（一般）
+          // - visitOtherDecision（訪問後他決）
+          // - unvisitedOtherDecision（未訪問他決）
         }
       }
 
@@ -1655,59 +1623,41 @@ export class BuyerService {
     const allBuyers = await this.fetchAllBuyersWithStatus();
     
     // カテゴリカウントオブジェクトを構築
+    // 🚨 重要：買主リスト専用のキーのみを含める（売主専用のキーは削除）
     const result: any = {
       all: allBuyers.length,
-      viewingDayBefore: 0,  // ✅ 修正: visitDayBefore → viewingDayBefore
-      visitCompleted: 0,
-      todayCall: 0,
-      todayCallWithInfo: 0,
-      unvaluated: 0,
-      mailingPending: 0,
-      todayCallNotStarted: 0,
-      pinrichEmpty: 0,
-      exclusive: 0,
-      general: 0,
-      visitOtherDecision: 0,
-      unvisitedOtherDecision: 0,
-      assignedCounts: {} as Record<string, number>,  // ✅ 修正: visitAssignedCounts → assignedCounts
-      todayCallAssignedCounts: {} as Record<string, number>,
-      todayCallWithInfoLabelCounts: {} as Record<string, number>,
+      viewingDayBefore: 0,  // ✅ 買主用：内覧日前日
+      todayCall: 0,          // ✅ 買主用：当日TEL
+      assignedCounts: {} as Record<string, number>,  // ✅ 買主用：担当別
+      todayCallAssignedCounts: {} as Record<string, number>,  // ✅ 買主用：当日TEL担当別
     };
     
     // 各買主のステータスをカウント
     allBuyers.forEach((buyer: any) => {
       const status = buyer.calculated_status || '';
       
-      // カテゴリキーへのマッピング
+      // カテゴリキーへのマッピング（買主リスト専用）
       if (status === '内覧日前日') {
-        result.viewingDayBefore++;  // ✅ 修正: visitDayBefore → viewingDayBefore
-      } else if (status === '内覧済み' || status.startsWith('内覧済み(')) {
-        result.visitCompleted++;
+        result.viewingDayBefore++;  // ✅ 買主用：内覧日前日
       } else if (status === '当日TEL') {
-        result.todayCall++;
-      } else if (status.startsWith('当日TEL(') && !status.startsWith('当日TEL（')) {
+        result.todayCall++;  // ✅ 買主用：当日TEL
+      } else if (status.startsWith('当日TEL(')) {
         // 当日TEL(Y) などの担当別
         const match = status.match(/^当日TEL\((.+)\)$/);
         if (match) {
           const assignee = match[1];
           result.todayCallAssignedCounts[assignee] = (result.todayCallAssignedCounts[assignee] || 0) + 1;
         }
-      } else if (status.startsWith('当日TEL（')) {
-        // 当日TEL（内容）
-        const match = status.match(/^当日TEL（(.+)）$/);
-        if (match) {
-          const label = match[1];
-          result.todayCallWithInfoLabelCounts[label] = (result.todayCallWithInfoLabelCounts[label] || 0) + 1;
-        }
       } else if (status.startsWith('担当(')) {
         // 担当(Y) などの担当別
         const match = status.match(/^担当\((.+)\)$/);
         if (match) {
           const assignee = match[1];
-          result.assignedCounts[assignee] = (result.assignedCounts[assignee] || 0) + 1;  // ✅ 修正: visitAssignedCounts → assignedCounts
+          result.assignedCounts[assignee] = (result.assignedCounts[assignee] || 0) + 1;  // ✅ 買主用：担当別
         }
       }
-      // 他のカテゴリも同様に追加可能
+      // 🚨 売主専用のカテゴリは削除（買主リストには不要）
+      // - 内覧済み、未査定、査定（郵送）、当日TEL未着手、Pinrich空欄、専任、一般、訪問後他決、未訪問他決、当日TEL（内容）
     });
     
     return result;
