@@ -87,6 +87,7 @@ export default function BuyersPage() {
     'visitCompleted': '内覧済み',    // ✅ 買主用（バックエンドと一致）
     'todayCall': '当日TEL',
     'todayCallWithInfo': '当日TEL（内容）',
+    'threeCallUnchecked': '３回架電未',  // ✅ 買主用（新規追加）
     'unvaluated': '未査定',
     'mailingPending': '査定（郵送）',
     'todayCallNotStarted': '当日TEL_未着手',
