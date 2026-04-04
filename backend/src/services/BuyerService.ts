@@ -1931,17 +1931,38 @@ export class BuyerService {
       const allBuyers = await this.fetchAllBuyersWithStatus();
 
       // 担当カテゴリのパターンマッチング
-      // フロントエンドから2つの形式が渡される可能性がある:
-      // 1. assigned:Y（サイドバーから）
-      // 2. 担当(Y)（フロントエンドのフィルタリング後）
+      // フロントエンドから3つの形式が渡される可能性がある:
+      // 1. assigned:Y（サイドバーの親カテゴリから）
+      // 2. todayCallAssigned:Y（サイドバーのサブカテゴリから）
+      // 3. 担当(Y)（フロントエンドのフィルタリング後）
       const assignedPattern1 = /^assigned:(.+)$/;  // assigned:Y 形式
       const assignedPattern2 = /^担当\((.+)\)$/;   // 担当(Y) 形式
+      const todayCallAssignedPattern = /^todayCallAssigned:(.+)$/;  // todayCallAssigned:Y 形式
       const assignedMatch1 = status.match(assignedPattern1);
       const assignedMatch2 = status.match(assignedPattern2);
+      const todayCallAssignedMatch = status.match(todayCallAssignedPattern);
 
       let filteredBuyers: any[];
 
-      if (assignedMatch1 || assignedMatch2) {
+      if (todayCallAssignedMatch) {
+        // 当日TEL(担当)カテゴリの場合
+        const assignee = todayCallAssignedMatch[1]; // 'Y', 'I', '久', '外す' など
+        
+        console.log(`[getBuyersByStatus] 当日TEL(担当)カテゴリ検出: assignee=${assignee}, status=${status}`);
+        
+        filteredBuyers = allBuyers.filter(buyer => {
+          // calculated_status が "当日TEL(Y)" の形式で一致する買主を表示
+          const matches = buyer.calculated_status === `当日TEL(${assignee})`;
+          
+          if (matches) {
+            console.log(`  ✅ ${buyer.buyer_number}: calculated_status=${buyer.calculated_status}`);
+          }
+          
+          return matches;
+        });
+        
+        console.log(`[getBuyersByStatus] 当日TEL(${assignee})フィルタ結果: ${filteredBuyers.length}件`);
+      } else if (assignedMatch1 || assignedMatch2) {
         // 担当カテゴリの場合、follow_up_assignee または initial_assignee でフィルタリング
         const assignee = assignedMatch1 ? assignedMatch1[1] : assignedMatch2![1]; // 'Y', 'I', '久', '外す' など
         
