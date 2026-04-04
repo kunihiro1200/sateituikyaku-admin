@@ -97,7 +97,7 @@
     - `BuyersPage.tsx` のフィルタリングロジックを修正
     - `assigned:Y` の場合、`b.follow_up_assignee === assignee || (!b.follow_up_assignee && b.initial_assignee === assignee)` でフィルタリング（バックエンドと完全に同じロジック）
     - デバッグログを追加（`follow_up_assignee`と`initial_assignee`の値を出力）
-  - [ ] 7.3 本番環境での動作確認
+  - [x] 7.3 本番環境での動作確認
     - デプロイ後、本番環境で「担当(Y)」カテゴリをクリック
     - 正しい件数の買主が表示されることを確認
     - フィルタリングログで正しいマッチが確認されることを確認

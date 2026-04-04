@@ -182,6 +182,7 @@
     "業者向けアンケート": "vendor_survey"
   },
   "databaseToSpreadsheet": {
+    "buyer_number": "買主番号",
     "viewing_date": "●内覧日(最新）",
     "viewing_time": "●時間",
     "notification_sender": "通知送信者",
