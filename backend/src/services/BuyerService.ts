@@ -1930,17 +1930,22 @@ export class BuyerService {
       // キャッシュ済みステータス計算結果を使用（二重計算を防ぐ）
       const allBuyers = await this.fetchAllBuyersWithStatus();
 
-      // 担当カテゴリのパターンマッチング（例: 担当(Y), 担当(I), 担当(久), 担当(外す)）
-      const assignedPattern = /^担当\((.+)\)$/;
-      const assignedMatch = status.match(assignedPattern);
+      // 担当カテゴリのパターンマッチング
+      // フロントエンドから2つの形式が渡される可能性がある:
+      // 1. assigned:Y（サイドバーから）
+      // 2. 担当(Y)（フロントエンドのフィルタリング後）
+      const assignedPattern1 = /^assigned:(.+)$/;  // assigned:Y 形式
+      const assignedPattern2 = /^担当\((.+)\)$/;   // 担当(Y) 形式
+      const assignedMatch1 = status.match(assignedPattern1);
+      const assignedMatch2 = status.match(assignedPattern2);
 
       let filteredBuyers: any[];
 
-      if (assignedMatch) {
+      if (assignedMatch1 || assignedMatch2) {
         // 担当カテゴリの場合、follow_up_assignee または initial_assignee でフィルタリング
-        const assignee = assignedMatch[1]; // 'Y', 'I', '久', '外す' など
+        const assignee = assignedMatch1 ? assignedMatch1[1] : assignedMatch2![1]; // 'Y', 'I', '久', '外す' など
         
-        console.log(`[getBuyersByStatus] 担当カテゴリ検出: assignee=${assignee}`);
+        console.log(`[getBuyersByStatus] 担当カテゴリ検出: assignee=${assignee}, status=${status}`);
         
         filteredBuyers = allBuyers.filter(buyer => {
           // follow_up_assignee または initial_assignee が一致する買主を全て表示
