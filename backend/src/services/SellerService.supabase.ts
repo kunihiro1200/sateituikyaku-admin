@@ -1572,13 +1572,24 @@ export class SellerService extends BaseRepository {
         }
       }
 
-      // 完全一致がなければ前方一致で検索（ゼロパディング済みのprefixで検索）
-      const prefixForSearch = numPart.length >= 5 ? paddedQuery : upperQuery;
-      let sellerQuery = this.table('sellers')
-        .select('*')
-        .ilike('seller_number', `${prefixForSearch}%`)
-        .order('seller_number', { ascending: true })
-        .limit(50);
+      // 完全一致がなければ前方一致で検索
+      // 数字部分が5桁未満の場合、ゼロパディングありとなしの両方で検索
+      let sellerQuery;
+      if (numPart.length < 5) {
+        // 例: FI6 → FI6%（FI2にマッチ）またはFI00006%（FI00006にマッチ）
+        sellerQuery = this.table('sellers')
+          .select('*')
+          .or(`seller_number.ilike.${upperQuery}%,seller_number.ilike.${paddedQuery}%`)
+          .order('seller_number', { ascending: true })
+          .limit(50);
+      } else {
+        // 数字部分が5桁以上の場合、そのまま検索
+        sellerQuery = this.table('sellers')
+          .select('*')
+          .ilike('seller_number', `${upperQuery}%`)
+          .order('seller_number', { ascending: true })
+          .limit(50);
+      }
       
       // デフォルトで削除済みを除外（マイグレーション051で追加済み）
       if (!includeDeleted) {
