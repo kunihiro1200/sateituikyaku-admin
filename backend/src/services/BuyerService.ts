@@ -1545,7 +1545,7 @@ export class BuyerService {
       // カテゴリカウントオブジェクトを構築（フロントエンドが期待する形式）
       const result: any = {
         all: 0,
-        visitDayBefore: 0,
+        viewingDayBefore: 0,  // ✅ 修正: visitDayBefore → viewingDayBefore（フロントエンドと一致）
         visitCompleted: 0,
         todayCall: 0,
         todayCallWithInfo: 0,
@@ -1557,7 +1557,7 @@ export class BuyerService {
         general: 0,
         visitOtherDecision: 0,
         unvisitedOtherDecision: 0,
-        visitAssignedCounts: {} as Record<string, number>,
+        assignedCounts: {} as Record<string, number>,  // ✅ 修正: visitAssignedCounts → assignedCounts（フロントエンドと一致）
         todayCallAssignedCounts: {} as Record<string, number>,
         todayCallWithInfoLabelCounts: {} as Record<string, number>,
       };
@@ -1567,7 +1567,7 @@ export class BuyerService {
         
         switch (row.category) {
           case 'viewingDayBefore':
-            result.visitDayBefore = count;
+            result.viewingDayBefore = count;  // ✅ 修正: visitDayBefore → viewingDayBefore
             break;
           case 'inquiryEmailNotResponded':
             // 問合せメール未対応（必要に応じて追加）
@@ -1587,7 +1587,7 @@ export class BuyerService {
             break;
           case 'assigned':
             if (row.assignee) {
-              result.visitAssignedCounts[row.assignee] = count;
+              result.assignedCounts[row.assignee] = count;  // ✅ 修正: visitAssignedCounts → assignedCounts
             }
             break;
           case 'visitCompleted':
@@ -1655,7 +1655,7 @@ export class BuyerService {
     // カテゴリカウントオブジェクトを構築
     const result: any = {
       all: allBuyers.length,
-      visitDayBefore: 0,
+      viewingDayBefore: 0,  // ✅ 修正: visitDayBefore → viewingDayBefore
       visitCompleted: 0,
       todayCall: 0,
       todayCallWithInfo: 0,
@@ -1667,7 +1667,7 @@ export class BuyerService {
       general: 0,
       visitOtherDecision: 0,
       unvisitedOtherDecision: 0,
-      visitAssignedCounts: {} as Record<string, number>,
+      assignedCounts: {} as Record<string, number>,  // ✅ 修正: visitAssignedCounts → assignedCounts
       todayCallAssignedCounts: {} as Record<string, number>,
       todayCallWithInfoLabelCounts: {} as Record<string, number>,
     };
@@ -1678,7 +1678,7 @@ export class BuyerService {
       
       // カテゴリキーへのマッピング
       if (status === '内覧日前日') {
-        result.visitDayBefore++;
+        result.viewingDayBefore++;  // ✅ 修正: visitDayBefore → viewingDayBefore
       } else if (status === '内覧済み' || status.startsWith('内覧済み(')) {
         result.visitCompleted++;
       } else if (status === '当日TEL') {
@@ -1702,7 +1702,7 @@ export class BuyerService {
         const match = status.match(/^担当\((.+)\)$/);
         if (match) {
           const assignee = match[1];
-          result.visitAssignedCounts[assignee] = (result.visitAssignedCounts[assignee] || 0) + 1;
+          result.assignedCounts[assignee] = (result.assignedCounts[assignee] || 0) + 1;  // ✅ 修正: visitAssignedCounts → assignedCounts
         }
       }
       // 他のカテゴリも同様に追加可能
