@@ -238,12 +238,13 @@ export default function BuyerViewingResultPage() {
       .catch(err => console.error('Failed to fetch normal initials:', err));
   }, []);
 
-  // カレンダー必須チェック: 内覧日・時間・後続担当あり かつ 内覧未確定空欄
+  // カレンダー必須チェック: 内覧日・時間・後続担当あり かつ 内覧未確定空欄 かつ 通知送信者空欄
   const needsCalendar = !!(
     buyer?.viewing_date &&
     buyer?.viewing_time &&
     buyer?.follow_up_assignee &&
-    !buyer?.viewing_unconfirmed
+    !buyer?.viewing_unconfirmed &&
+    !buyer?.notification_sender
   );
 
   // 離脱ガード: カレンダー未開封の場合に警告
