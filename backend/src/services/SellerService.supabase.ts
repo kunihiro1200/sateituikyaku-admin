@@ -1541,15 +1541,16 @@ export class SellerService extends BaseRepository {
     const lowerQuery = query.toLowerCase().trim();
     
     // 売主番号での検索を優先（暗号化されていないので高速）
-    // AA12903のような形式の場合、データベースで直接検索
-    if (lowerQuery.match(/^aa\d+$/i)) {
+    // AA12903、FI123、BB456のような形式の場合、データベースで直接検索
+    if (lowerQuery.match(/^[a-z]{2}\d+$/i)) {
       console.log('🚀 Fast path: Searching by seller_number in database');
 
-      // 売主番号はAA + 5桁ゼロパディング形式（例: AA01949）
+      // 売主番号は2文字プレフィックス + 5桁ゼロパディング形式（例: AA01949、FI00123）
       // 入力がAA1949の場合、AA01949に変換して検索する
       const upperQuery = lowerQuery.toUpperCase();
-      const numPart = upperQuery.replace(/^AA/i, '');
-      const paddedQuery = `AA${numPart.padStart(5, '0')}`;
+      const prefix = upperQuery.match(/^[a-z]{2}/i)?.[0] || 'AA';
+      const numPart = upperQuery.replace(/^[a-z]{2}/i, '');
+      const paddedQuery = `${prefix}${numPart.padStart(5, '0')}`;
 
       // ゼロパディングあり・なし両方で完全一致検索
       const exactCandidates = [...new Set([upperQuery, paddedQuery])];

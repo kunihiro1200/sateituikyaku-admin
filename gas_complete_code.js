@@ -176,7 +176,7 @@ function syncUpdatesToSupabase_(sheetRows) {
   for (var r = 0; r < sheetRows.length; r++) {
     var row = sheetRows[r];
     var sellerNumber = row['売主番号'];
-    if (!sellerNumber || typeof sellerNumber !== 'string' || !sellerNumber.match(/^AA\d+$/)) continue;
+    if (!sellerNumber || typeof sellerNumber !== 'string' || !sellerNumber.match(/^[A-Z]{2}\d+$/)) continue;
     var dbSeller = dbMap[sellerNumber];
     if (!dbSeller) continue;
     var updateData = {};
@@ -696,7 +696,7 @@ function syncVisitAssigneeRemove() {
   for (var i = 0; i < allData.length; i++) {
     var row = rowToObject(headers, allData[i]);
     var sellerNumber = row['売主番号'];
-    if (!sellerNumber || typeof sellerNumber !== 'string' || !sellerNumber.match(/^AA\d+$/)) continue;
+    if (!sellerNumber || typeof sellerNumber !== 'string' || !sellerNumber.match(/^[A-Z]{2}\d+$/)) continue;
     
     var visitAssignee = allData[i][visitAssigneeColIndex];
     if (visitAssignee && String(visitAssignee).trim() === '外す') {
@@ -824,7 +824,7 @@ function updateSidebarCounts_(sheetRows) {
   for (var i = 0; i < sheetRows.length; i++) {
     var row = sheetRows[i];
     var sellerNumber = row['売主番号'];
-    if (!sellerNumber || typeof sellerNumber !== 'string' || !sellerNumber.match(/^AA\d+$/)) continue;
+    if (!sellerNumber || typeof sellerNumber !== 'string' || !sellerNumber.match(/^[A-Z]{2}\d+$/)) continue;
     var status = String(row['状況（当社）'] || '');
     var nextCallDate = formatDateToISO_(row['次電日']);
     var visitAssignee = row['営担'];
@@ -1006,7 +1006,7 @@ function syncVisitDateSellers() {
   for (var r = 0; r < visitRows.length; r++) {
     var row = visitRows[r];
     var sellerNumber = row['売主番号'];
-    if (!sellerNumber || typeof sellerNumber !== 'string' || !sellerNumber.match(/^AA\d+$/)) { skippedCount++; continue; }
+    if (!sellerNumber || typeof sellerNumber !== 'string' || !sellerNumber.match(/^[A-Z]{2}\d+$/)) { skippedCount++; continue; }
     var dbSeller = dbMap[sellerNumber];
     if (!dbSeller) { skippedCount++; continue; }
     var updateData = {};
