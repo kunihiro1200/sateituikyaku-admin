@@ -83,7 +83,7 @@ export default function BuyersPage() {
 
   // サイドバーのカテゴリキーを日本語の表示名に変換するマッピング
   const categoryKeyToDisplayName: Record<string, string> = {
-    'visitDayBefore': '内覧日前日',  // ✅ 買主用（バックエンドと一致）
+    'viewingDayBefore': '内覧日前日',  // ✅ 買主用（バックエンドと一致）
     'visitCompleted': '内覧済み',    // ✅ 買主用（バックエンドと一致）
     'todayCall': '当日TEL',
     'todayCallWithInfo': '当日TEL（内容）',
@@ -136,14 +136,33 @@ export default function BuyersPage() {
           let filtered = selectedCalculatedStatus !== null
             ? allBuyersWithStatusRef.current.filter(b => {
                 // サイドバーのカテゴリキーを日本語の表示名に変換
-                const displayName = categoryKeyToDisplayName[selectedCalculatedStatus] || selectedCalculatedStatus;
+                let displayName = categoryKeyToDisplayName[selectedCalculatedStatus] || selectedCalculatedStatus;
                 
-                console.log(`[BuyersPage] Checking buyer ${b.buyer_number}: calculated_status="${b.calculated_status}", displayName="${displayName}"`);
+                // 担当者別カテゴリ（assigned:Y, todayCallAssigned:I など）の処理
+                if (selectedCalculatedStatus.startsWith('assigned:')) {
+                  const assignee = selectedCalculatedStatus.replace('assigned:', '');
+                  displayName = `担当(${assignee})`;
+                } else if (selectedCalculatedStatus.startsWith('todayCallAssigned:')) {
+                  const assignee = selectedCalculatedStatus.replace('todayCallAssigned:', '');
+                  displayName = `当日TEL(${assignee})`;
+                }
                 
-                // 完全一致または部分一致（担当者別カテゴリ対応）
-                // 例: displayName = "担当" の場合、"担当(林)" や "担当(Y)" にマッチ
-                // 例: displayName = "内覧日前日" の場合、"内覧日前日" に完全一致
-                const matches = b.calculated_status === displayName || b.calculated_status?.startsWith(displayName + '(');
+                console.log(`[BuyersPage] Checking buyer ${b.buyer_number}: calculated_status="${b.calculated_status}", displayName="${displayName}", selectedCalculatedStatus="${selectedCalculatedStatus}"`);
+                
+                // バックエンドのcalculated_statusは既に日本語（例: "内覧日前日", "担当(Y)", "当日TEL(林)"）
+                // フィルタリングは日本語の表示名で直接比較
+                let matches = false;
+                
+                if (displayName === '内覧日前日' || displayName === '内覧済み' || displayName === '当日TEL') {
+                  // 基本カテゴリ: 完全一致
+                  matches = b.calculated_status === displayName;
+                } else if (displayName.startsWith('担当(') || displayName.startsWith('当日TEL(') || displayName.startsWith('内覧済み(')) {
+                  // 担当者別カテゴリ: 完全一致（例: "担当(Y)" === "担当(Y)"）
+                  matches = b.calculated_status === displayName;
+                } else {
+                  // その他のカテゴリ: 完全一致または部分一致
+                  matches = b.calculated_status === displayName || b.calculated_status?.startsWith(displayName + '(');
+                }
                 
                 if (matches) {
                   console.log(`[BuyersPage] ✅ Match found: ${b.buyer_number}`);
@@ -226,17 +245,17 @@ export default function BuyersPage() {
             
             // キャッシュデータを構築
             const cacheData = {
-              categoryCounts: sidebarResult, // APIから直接categoryCounts形式で返される
+              categoryCounts: sidebarResult.categoryCounts, // ✅ 修正: sidebarResult.categoryCounts を使用
               buyers: buyersResult.buyers,
-              normalStaffInitials: buyersResult.normalStaffInitials || []
+              normalStaffInitials: sidebarResult.normalStaffInitials || buyersResult.normalStaffInitials || []
             };
             
             // 10分間キャッシュ（バックエンドキャッシュTTLと統一）
             pageDataCache.set(CACHE_KEYS.BUYERS_WITH_STATUS, cacheData, 10 * 60 * 1000);
             
             // サイドバーのカウントを更新（高速エンドポイントから取得）
-            setSidebarCounts(sidebarResult);
-            setSidebarNormalStaffInitials(buyersResult.normalStaffInitials || []);
+            setSidebarCounts(sidebarResult.categoryCounts); // ✅ 修正: categoryCounts のみを渡す
+            setSidebarNormalStaffInitials(sidebarResult.normalStaffInitials || buyersResult.normalStaffInitials || []); // ✅ 修正: sidebarResult.normalStaffInitials を優先
             setSidebarLoading(false);
             
             // テーブルも全件データで更新
