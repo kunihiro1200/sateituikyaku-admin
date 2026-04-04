@@ -872,7 +872,7 @@ function updateSidebarCounts_(sheetRows) {
     var val3 = row['査定額3'] || row['査定額3（自動計算）v'];
     var hasValuation = !!(val1 || val2 || val3);
     var valuationMethod = row['査定方法'] ? String(row['査定方法']) : '';
-    var isValuationNotNeeded = valuationMethod === '査定不要';
+    var isValuationNotNeeded = valuationMethod === '不要';  // 🚨 修正: '査定不要' → '不要'
     var confidence = row['確度'] ? String(row['確度']) : '';
     var exclusionDate = row['除外日にすること'] ? String(row['除外日にすること']) : '';
     var isTodayCallNotStarted = (status === '追客中' && nextCallDate && isTodayOrBefore(nextCallDate) &&
