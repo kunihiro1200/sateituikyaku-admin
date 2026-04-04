@@ -157,7 +157,7 @@ function updateBuyerSidebarCounts_() {
     var buyerNumber = row['買主番号'];
     if (!buyerNumber || typeof buyerNumber !== 'string') continue;
     
-    var status = String(row['★最新状況\n'] || '');
+    var status = String(row['★最新状況'] || '');
     var nextCallDate = formatDateToISO_(row['★次電日']);
     var initialAssignee = row['初動担当'];
     var followUpAssignee = row['後続担当'];
@@ -416,7 +416,7 @@ function syncUpdatesToSupabase_(sheetRows) {
     var needsUpdate = false;
     
     // 最新状況
-    var sheetStatus = row['★最新状況\n'] ? String(row['★最新状況\n']) : null;
+    var sheetStatus = row['★最新状況'] ? String(row['★最新状況']) : null;
     var normalizedSheetStatus = normalizeValue(sheetStatus);
     var normalizedDbStatus = normalizeValue(dbBuyer.latest_status);
     if (normalizedSheetStatus !== normalizedDbStatus) {
