@@ -141,7 +141,7 @@ export default function BuyerStatusSidebar({
     }
   });
   
-  // ３回架電未カテゴリ（新規）- 当日TELの下にインデント表示
+  // ３回架電未カテゴリ（新規）- 独立したカテゴリ（サブカテゴリではない）
   const threeCallUncheckedCount = categoryCounts.threeCallUnchecked ?? 0;
   if (threeCallUncheckedCount > 0) {
     categoryList.push({
@@ -149,8 +149,6 @@ export default function BuyerStatusSidebar({
       label: '３回架電未',
       count: threeCallUncheckedCount,
       color: getCategoryColor('threeCallUnchecked'),
-      isSubCategory: true,
-      parentKey: 'todayCall',
     });
   }
 
