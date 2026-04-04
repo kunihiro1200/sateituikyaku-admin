@@ -1151,6 +1151,7 @@ export class SellerService extends BaseRepository {
         case 'unvaluated': {
           // 未査定（追客中 AND 査定額が全て空 AND 反響日付が基準日以降 AND 営担が空（「外す」含む））
           // 🚨 重要: 当日TEL_未着手の条件を満たす売主は除外する（getSidebarCountsFallback()と同じロジック）
+          // 🚨 重要: valuation_method（査定方法）が「不要」の売主も除外する
           
           // まず全件取得（ページネーション対応）
           let unvaluatedCandidates: any[] = [];
@@ -1159,7 +1160,7 @@ export class SellerService extends BaseRepository {
           
           while (true) {
             const { data, error } = await this.table('sellers')
-              .select('id, status, valuation_amount_1, valuation_amount_2, valuation_amount_3, visit_assignee, mailing_status, inquiry_date, unreachable_status, confidence_level, exclusion_date, next_call_date, phone_contact_person, preferred_contact_time, contact_method')
+              .select('id, status, valuation_amount_1, valuation_amount_2, valuation_amount_3, visit_assignee, valuation_method, inquiry_date, unreachable_status, confidence_level, exclusion_date, next_call_date, phone_contact_person, preferred_contact_time, contact_method')
               .is('deleted_at', null)
               .ilike('status', '%追客中%')
               .gte('inquiry_date', cutoffDate)
@@ -1167,7 +1168,6 @@ export class SellerService extends BaseRepository {
               .is('valuation_amount_1', null)
               .is('valuation_amount_2', null)
               .is('valuation_amount_3', null)
-              .or('mailing_status.is.null,mailing_status.neq.不要')
               .range(uvPage * uvPageSize, (uvPage + 1) * uvPageSize - 1);
             
             if (error) {
@@ -1186,7 +1186,8 @@ export class SellerService extends BaseRepository {
           // JavaScriptで当日TEL_未着手の条件を満たす売主を除外
           const unvaluatedIds = unvaluatedCandidates.filter(s => {
             const hasNoValuation = !s.valuation_amount_1 && !s.valuation_amount_2 && !s.valuation_amount_3;
-            const isNotRequired = s.mailing_status === '不要';
+            const valuationMethod = s.valuation_method || '';
+            const isNotRequired = valuationMethod === '不要';
             if (!hasNoValuation || isNotRequired) return false;
             
             // 当日TEL_未着手の条件を満たす場合は除外（未着手が優先）
@@ -2444,7 +2445,7 @@ export class SellerService extends BaseRepository {
 
     // 5. 未査定
     const { data: unvaluatedSellers } = await this.table('sellers')
-      .select('id, status, valuation_amount_1, valuation_amount_2, valuation_amount_3, visit_assignee, mailing_status, inquiry_date, unreachable_status, confidence_level, exclusion_date, next_call_date, phone_contact_person, preferred_contact_time, contact_method')
+      .select('id, status, valuation_amount_1, valuation_amount_2, valuation_amount_3, visit_assignee, valuation_method, inquiry_date, unreachable_status, confidence_level, exclusion_date, next_call_date, phone_contact_person, preferred_contact_time, contact_method')
       .is('deleted_at', null)
       .ilike('status', '%追客中%')
       .gte('inquiry_date', cutoffDate)
@@ -2452,7 +2453,8 @@ export class SellerService extends BaseRepository {
 
     const unvaluatedCount = (unvaluatedSellers || []).filter(s => {
       const hasNoValuation = !s.valuation_amount_1 && !s.valuation_amount_2 && !s.valuation_amount_3;
-      const isNotRequired = s.mailing_status === '不要';
+      const valuationMethod = (s as any).valuation_method || '';
+      const isNotRequired = valuationMethod === '不要';
       if (!hasNoValuation || isNotRequired) return false;
       // 当日TEL_未着手の条件を満たす場合は未査定から除外（未着手が優先）
       const status = (s as any).status || '';
