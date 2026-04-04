@@ -1148,17 +1148,80 @@ export class SellerService extends BaseRepository {
             // コミュニケーション情報のいずれかに入力あり
             .or('phone_contact_person.neq.,preferred_contact_time.neq.,contact_method.neq.');
           break;
-        case 'unvaluated':
+        case 'unvaluated': {
           // 未査定（追客中 AND 査定額が全て空 AND 反響日付が基準日以降 AND 営担が空（「外す」含む））
-          query = query
-            .ilike('status', '%追客中%')
-            .gte('inquiry_date', cutoffDate)
-            .or('visit_assignee.is.null,visit_assignee.eq.,visit_assignee.eq.外す')
-            .is('valuation_amount_1', null)
-            .is('valuation_amount_2', null)
-            .is('valuation_amount_3', null)
-            .or('mailing_status.is.null,mailing_status.neq.不要');
+          // 🚨 重要: 当日TEL_未着手の条件を満たす売主は除外する（getSidebarCountsFallback()と同じロジック）
+          
+          // まず全件取得（ページネーション対応）
+          let unvaluatedCandidates: any[] = [];
+          let uvPage = 0;
+          const uvPageSize = 1000;
+          
+          while (true) {
+            const { data, error } = await this.table('sellers')
+              .select('id, status, valuation_amount_1, valuation_amount_2, valuation_amount_3, visit_assignee, mailing_status, inquiry_date, unreachable_status, confidence_level, exclusion_date, next_call_date, phone_contact_person, preferred_contact_time, contact_method')
+              .is('deleted_at', null)
+              .ilike('status', '%追客中%')
+              .gte('inquiry_date', cutoffDate)
+              .or('visit_assignee.is.null,visit_assignee.eq.,visit_assignee.eq.外す')
+              .is('valuation_amount_1', null)
+              .is('valuation_amount_2', null)
+              .is('valuation_amount_3', null)
+              .or('mailing_status.is.null,mailing_status.neq.不要')
+              .range(uvPage * uvPageSize, (uvPage + 1) * uvPageSize - 1);
+            
+            if (error) {
+              console.error('❌ unvaluatedCandidates取得エラー:', error);
+              break;
+            }
+            
+            if (!data || data.length === 0) break;
+            
+            unvaluatedCandidates = unvaluatedCandidates.concat(data);
+            
+            if (data.length < uvPageSize) break;
+            uvPage++;
+          }
+          
+          // JavaScriptで当日TEL_未着手の条件を満たす売主を除外
+          const unvaluatedIds = unvaluatedCandidates.filter(s => {
+            const hasNoValuation = !s.valuation_amount_1 && !s.valuation_amount_2 && !s.valuation_amount_3;
+            const isNotRequired = s.mailing_status === '不要';
+            if (!hasNoValuation || isNotRequired) return false;
+            
+            // 当日TEL_未着手の条件を満たす場合は除外（未着手が優先）
+            const status = s.status || '';
+            const nextCallDate = s.next_call_date || '';
+            const hasInfo = (s.phone_contact_person?.trim()) ||
+                            (s.preferred_contact_time?.trim()) ||
+                            (s.contact_method?.trim());
+            const unreachable = s.unreachable_status || '';
+            const confidence = s.confidence_level || '';
+            const exclusionDate = s.exclusion_date || '';
+            const inquiryDate = s.inquiry_date || '';
+            
+            const isTodayCallNotStarted = (
+              status === '追客中' &&
+              nextCallDate && nextCallDate <= todayJST &&
+              !hasInfo &&
+              !unreachable &&
+              confidence !== 'ダブり' && confidence !== 'D' && confidence !== 'AI査定' &&
+              !exclusionDate &&
+              inquiryDate >= '2026-01-01'
+            );
+            
+            return !isTodayCallNotStarted;
+          }).map(s => s.id);
+          
+          console.log(`[unvaluated] matched IDs: ${unvaluatedIds.length}`);
+          
+          if (unvaluatedIds.length === 0) {
+            query = query.in('id', ['__no_match__']);
+          } else {
+            query = query.in('id', unvaluatedIds);
+          }
           break;
+        }
         case 'mailingPending':
           // 査定（郵送）（郵送ステータスが「未」）
           query = query.eq('mailing_status', '未');
