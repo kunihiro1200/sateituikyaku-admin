@@ -213,12 +213,12 @@ function updateBuyerSidebarCounts_() {
     }
     
     // 当日TEL分カテゴリ
-    if (status.indexOf('追客中') !== -1 && nextCallDate && isTodayOrBefore(nextCallDate)) {
+    if (nextCallDate && isTodayOrBefore(nextCallDate)) {
       if (isAssigneeValid) {
         // 当日TEL（担当別）
         var aKey = String(assignee);
         counts.todayCallAssigned[aKey] = (counts.todayCallAssigned[aKey] || 0) + 1;
-      } else {
+      } else if (!hasContactInfo(row)) {
         // 当日TEL分（担当なし、コミュニケーション情報なし）
         counts.todayCall++;
       }
@@ -628,6 +628,18 @@ function syncUpdatesToSupabase_(sheetRows) {
       needsUpdate = true;
       if (normalizedSheetViewingMobile === null && normalizedDbViewingMobile !== null) {
         Logger.log('  🗑️ ' + buyerNumber + ': 内覧形態を削除 (旧値: ' + normalizedDbViewingMobile + ')');
+      }
+    }
+    
+    // 内覧形態_一般媒介
+    var sheetViewingTypeGeneral = row['内覧形態_一般媒介'] ? String(row['内覧形態_一般媒介']) : null;
+    var normalizedSheetViewingTypeGeneral = normalizeValue(sheetViewingTypeGeneral);
+    var normalizedDbViewingTypeGeneral = normalizeValue(dbBuyer.viewing_type_general);
+    if (normalizedSheetViewingTypeGeneral !== normalizedDbViewingTypeGeneral) {
+      updateData.viewing_type_general = normalizedSheetViewingTypeGeneral;
+      needsUpdate = true;
+      if (normalizedSheetViewingTypeGeneral === null && normalizedDbViewingTypeGeneral !== null) {
+        Logger.log('  🗑️ ' + buyerNumber + ': 内覧形態_一般媒介を削除 (旧値: ' + normalizedDbViewingTypeGeneral + ')');
       }
     }
     

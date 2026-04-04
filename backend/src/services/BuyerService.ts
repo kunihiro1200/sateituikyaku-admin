@@ -1930,22 +1930,53 @@ export class BuyerService {
       // キャッシュ済みステータス計算結果を使用（二重計算を防ぐ）
       const allBuyers = await this.fetchAllBuyersWithStatus();
 
-      const filteredBuyers = allBuyers
-        .filter(buyer => buyer.calculated_status === status)
-        .filter(buyer => {
-          if (!options.search) return true;
-          const s = options.search.toLowerCase();
-          const isBuyerNumber = /^\d{4,5}$/.test(options.search);
-          if (isBuyerNumber) {
-            return (buyer.buyer_number || '') === options.search;
-          }
-          return (
-            (buyer.buyer_number || '').toLowerCase().includes(s) ||
-            (buyer.name || '').toLowerCase().includes(s) ||
-            (buyer.phone_number || '').toLowerCase().includes(s) ||
-            (buyer.property_number || '').toLowerCase().includes(s)
+      // 担当カテゴリのパターンマッチング（例: 担当(Y), 担当(I), 担当(久), 担当(外す)）
+      const assignedPattern = /^担当\((.+)\)$/;
+      const assignedMatch = status.match(assignedPattern);
+
+      let filteredBuyers: any[];
+
+      if (assignedMatch) {
+        // 担当カテゴリの場合、follow_up_assignee または initial_assignee でフィルタリング
+        const assignee = assignedMatch[1]; // 'Y', 'I', '久', '外す' など
+        
+        console.log(`[getBuyersByStatus] 担当カテゴリ検出: assignee=${assignee}`);
+        
+        filteredBuyers = allBuyers.filter(buyer => {
+          // follow_up_assignee または initial_assignee が一致する買主を全て表示
+          const matches = (
+            buyer.follow_up_assignee === assignee ||
+            (!buyer.follow_up_assignee && buyer.initial_assignee === assignee)
           );
+          
+          if (matches) {
+            console.log(`  ✅ ${buyer.buyer_number}: follow_up_assignee=${buyer.follow_up_assignee}, initial_assignee=${buyer.initial_assignee}, calculated_status=${buyer.calculated_status}`);
+          }
+          
+          return matches;
         });
+        
+        console.log(`[getBuyersByStatus] 担当(${assignee})フィルタ結果: ${filteredBuyers.length}件`);
+      } else {
+        // 既存のロジック（calculated_statusでフィルタリング）
+        filteredBuyers = allBuyers.filter(buyer => buyer.calculated_status === status);
+      }
+
+      // 検索フィルタを適用
+      filteredBuyers = filteredBuyers.filter(buyer => {
+        if (!options.search) return true;
+        const s = options.search.toLowerCase();
+        const isBuyerNumber = /^\d{4,5}$/.test(options.search);
+        if (isBuyerNumber) {
+          return (buyer.buyer_number || '') === options.search;
+        }
+        return (
+          (buyer.buyer_number || '').toLowerCase().includes(s) ||
+          (buyer.name || '').toLowerCase().includes(s) ||
+          (buyer.phone_number || '').toLowerCase().includes(s) ||
+          (buyer.property_number || '').toLowerCase().includes(s)
+        );
+      });
 
       const { page = 1, limit = 50, sortBy = 'reception_date', sortOrder = 'desc' } = options;
       const offset = (page - 1) * limit;

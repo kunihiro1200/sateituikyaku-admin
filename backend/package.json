@@ -28,7 +28,8 @@
     "test-single-image": "ts-node test-single-image-only.ts",
     "diagnose-sync": "ts-node diagnose-auto-sync-status.ts",
     "pre-deploy": "ts-node pre-deployment-check.ts",
-    "diagnose-comments": "ts-node diagnose-comments-display.ts"
+    "diagnose-comments": "ts-node diagnose-comments-display.ts",
+    "test:buyer-assigned-y": "ts-node test-buyer-assigned-y-filter-bug.ts"
   },
   "keywords": [
     "real-estate",

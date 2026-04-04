@@ -125,12 +125,15 @@ export default function BuyersPage() {
 
     const fetchBuyers = async () => {
       try {
+        console.log('[BuyersPage] fetchBuyers called');
+        console.log('[BuyersPage] sidebarLoadedRef.current:', sidebarLoadedRef.current);
+        console.log('[BuyersPage] allBuyersWithStatusRef.current.length:', allBuyersWithStatusRef.current.length);
+        console.log('[BuyersPage] selectedCalculatedStatus:', selectedCalculatedStatus);
+        
         // サイドバーデータ読み込み済みの場合はフロント側でフィルタリング（APIコール不要）
         // キャッシュヒット時はsetLoading(true)をスキップして画面のちらつきを防ぐ
         if (sidebarLoadedRef.current && allBuyersWithStatusRef.current.length > 0) {
-          console.log('[BuyersPage] フィルタリング開始');
-          console.log('[BuyersPage] selectedCalculatedStatus:', selectedCalculatedStatus);
-          console.log('[BuyersPage] allBuyersWithStatusRef.current.length:', allBuyersWithStatusRef.current.length);
+          console.log('[BuyersPage] ✅ フィルタリング開始');
           console.log('[BuyersPage] 最初の5件のcalculated_status:', allBuyersWithStatusRef.current.slice(0, 5).map(b => ({ buyer_number: b.buyer_number, calculated_status: b.calculated_status })));
           
           let filtered = selectedCalculatedStatus !== null
@@ -238,6 +241,11 @@ export default function BuyersPage() {
               buyers: buyersResult.buyers,
               normalStaffInitials: sidebarResult.normalStaffInitials || buyersResult.normalStaffInitials || []
             };
+            
+            console.log('[BuyersPage] 🔍 buyersResult.buyers サンプル（最初の3件）:');
+            buyersResult.buyers.slice(0, 3).forEach(b => {
+              console.log(`  - ${b.buyer_number}: calculated_status="${b.calculated_status}", follow_up_assignee="${b.follow_up_assignee}", next_call_date="${b.next_call_date}"`);
+            });
             
             // 10分間キャッシュ（バックエンドキャッシュTTLと統一）
             pageDataCache.set(CACHE_KEYS.BUYERS_WITH_STATUS, cacheData, 10 * 60 * 1000);
