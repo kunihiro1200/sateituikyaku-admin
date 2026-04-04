@@ -1519,7 +1519,7 @@ export class BuyerService {
     const normalStaffInitials = await this.fetchNormalStaffInitials();
 
     return {
-      categories: sidebarData, // categoryCounts オブジェクトをそのまま返す
+      categories: sidebarData.categories, // ✅ categories配列を返す（コミットffad04a7の修正を復元）
       buyers: allBuyers,
       normalStaffInitials
     };
@@ -1530,7 +1530,10 @@ export class BuyerService {
    * buyer_sidebar_counts テーブルから1クエリで高速取得。
    * テーブルが空または取得失敗の場合は重いDBクエリにフォールバック。
    */
-  async getSidebarCounts(): Promise<any> {
+  async getSidebarCounts(): Promise<{
+    categories: Array<{ status: string; count: number; priority: number; color: string }>;
+    normalStaffInitials: string[];
+  }> {
     try {
       console.log('🔍 [BuyerService] getSidebarCounts called - checking buyer_sidebar_counts table');
       
@@ -1605,7 +1608,14 @@ export class BuyerService {
       }, 0);
 
       console.log('✅ buyer_sidebar_counts loaded from cache table:', result);
-      return result;
+      
+      // categories配列を構築
+      const categories = await this.buildCategoriesFromCounts(result);
+      
+      // 通常スタッフのイニシャルを取得
+      const normalStaffInitials = await this.fetchNormalStaffInitials();
+      
+      return { categories, normalStaffInitials };
     } catch (e) {
       console.error('❌ getSidebarCounts error, falling back:', e);
       return this.getSidebarCountsFallback();
@@ -1616,7 +1626,10 @@ export class BuyerService {
    * サイドバーカウントのフォールバック（重いDBクエリ版）
    * buyer_sidebar_counts テーブルが空または取得失敗時に使用
    */
-  private async getSidebarCountsFallback(): Promise<any> {
+  private async getSidebarCountsFallback(): Promise<{
+    categories: Array<{ status: string; count: number; priority: number; color: string }>;
+    normalStaffInitials: string[];
+  }> {
     console.log('⚠️ Using fallback: calculating from all buyers');
     
     // 全買主データを取得してステータスを計算
@@ -1660,7 +1673,13 @@ export class BuyerService {
       // - 内覧済み、未査定、査定（郵送）、当日TEL未着手、Pinrich空欄、専任、一般、訪問後他決、未訪問他決、当日TEL（内容）
     });
     
-    return result;
+    // categories配列を構築
+    const categories = await this.buildCategoriesFromCounts(result);
+    
+    // 通常スタッフのイニシャルを取得
+    const normalStaffInitials = await this.fetchNormalStaffInitials();
+    
+    return { categories, normalStaffInitials };
   }
 
   /**
@@ -1682,6 +1701,56 @@ export class BuyerService {
     } catch {
       return [];
     }
+  }
+
+  /**
+   * カテゴリカウントオブジェクトからcategories配列を構築（内部ヘルパー）
+   */
+  private async buildCategoriesFromCounts(counts: any): Promise<Array<{
+    status: string; count: number; priority: number; color: string;
+  }>> {
+    const categories: Array<{ status: string; count: number; priority: number; color: string }> = [];
+    
+    // 基本カテゴリ
+    categories.push({
+      status: '内覧日前日',
+      count: counts.viewingDayBefore || 0,
+      priority: 3,
+      color: '#d32f2f'
+    });
+    
+    categories.push({
+      status: '当日TEL',
+      count: counts.todayCall || 0,
+      priority: 16,
+      color: '#555555'
+    });
+    
+    // 担当別カテゴリ
+    if (counts.assignedCounts) {
+      Object.entries(counts.assignedCounts).forEach(([assignee, count]) => {
+        categories.push({
+          status: `担当(${assignee})`,
+          count: count as number,
+          priority: 100,
+          color: '#4caf50'
+        });
+      });
+    }
+    
+    // 当日TEL担当別カテゴリ
+    if (counts.todayCallAssignedCounts) {
+      Object.entries(counts.todayCallAssignedCounts).forEach(([assignee, count]) => {
+        categories.push({
+          status: `当日TEL(${assignee})`,
+          count: count as number,
+          priority: 101,
+          color: '#ff5722'
+        });
+      });
+    }
+    
+    return categories;
   }
 
   /**
