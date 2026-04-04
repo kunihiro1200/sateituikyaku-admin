@@ -597,11 +597,12 @@ export const getTodayCallWithInfoLabel = (seller: Seller | any): string => {
 
 /**
  * 査定不要かどうかを判定
- * 郵送ステータスが「不要」の場合は査定不要とみなす
+ * 査定方法が「不要」の場合は査定不要とみなす
  */
 const isValuationNotRequired = (seller: Seller | any): boolean => {
-  // mailingStatusが「不要」の場合は査定不要
-  if (seller.mailingStatus === '不要') return true;
+  // valuationMethodが「不要」の場合は査定不要
+  // 🚨 重要: mailingStatus（郵送ステータス）ではなく、valuationMethod（査定方法）をチェック
+  if (seller.valuationMethod === '不要' || seller.valuation_method === '不要') return true;
   
   // 他の査定不要条件があればここに追加
   // 例: seller.valuationNotRequired === true
