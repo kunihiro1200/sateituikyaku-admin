@@ -1609,8 +1609,8 @@ export class BuyerService {
 
       console.log('✅ buyer_sidebar_counts loaded from cache table:', result);
       
-      // categories配列を構築
-      const categories = await this.buildCategoriesFromCounts(result);
+      // categories配列を構築（awaitを削除 - buildCategoriesFromCountsは同期関数）
+      const categories = this.buildCategoriesFromCounts(result);
       
       // 通常スタッフのイニシャルを取得
       const normalStaffInitials = await this.fetchNormalStaffInitials();
@@ -1673,8 +1673,8 @@ export class BuyerService {
       // - 内覧済み、未査定、査定（郵送）、当日TEL未着手、Pinrich空欄、専任、一般、訪問後他決、未訪問他決、当日TEL（内容）
     });
     
-    // categories配列を構築
-    const categories = await this.buildCategoriesFromCounts(result);
+    // categories配列を構築（awaitを削除 - buildCategoriesFromCountsは同期関数）
+    const categories = this.buildCategoriesFromCounts(result);
     
     // 通常スタッフのイニシャルを取得
     const normalStaffInitials = await this.fetchNormalStaffInitials();
@@ -1706,9 +1706,9 @@ export class BuyerService {
   /**
    * カテゴリカウントオブジェクトからcategories配列を構築（内部ヘルパー）
    */
-  private async buildCategoriesFromCounts(counts: any): Promise<Array<{
+  private buildCategoriesFromCounts(counts: any): Array<{
     status: string; count: number; priority: number; color: string;
-  }>> {
+  }> {
     const categories: Array<{ status: string; count: number; priority: number; color: string }> = [];
     
     // 基本カテゴリ
