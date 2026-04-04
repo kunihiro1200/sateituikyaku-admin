@@ -305,8 +305,6 @@ export class EnhancedAutoSyncService {
       const numB = parseInt(b.substring(2), 10);
       return numA - numB;
     });
-      return numA - numB;
-    });
 
     console.log(`🗑️  Deleted sellers: ${deletedSellers.length}`);
     if (deletedSellers.length > 0) {
