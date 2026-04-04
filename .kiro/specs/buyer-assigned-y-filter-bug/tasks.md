@@ -68,3 +68,37 @@
     - `assigned:Y` の場合、`follow_up_assignee` または `initial_assignee` でフィルタリング（バックエンドと同じロジック）
     - `todayCallAssigned:Y` の場合、`calculated_status === '当日TEL(Y)'` でフィルタリング
     - デバッグログを追加
+
+- [x] 6. 本番環境での「データなし」問題の再発（2回目）
+  - [x] 6.1 根本原因の特定（2回目）
+    - 修正後も本番環境で「データなし」が表示される
+    - 原因: フロントエンドのフィルタリングロジックで `(!b.follow_up_assignee && b.initial_assignee === assignee)` という条件を使用していた
+    - この条件は「`follow_up_assignee`が空の場合のみ`initial_assignee`をチェック」という意味
+    - しかし、実際には`follow_up_assignee`と`initial_assignee`の両方が設定されている買主も存在する
+    - そのため、`follow_up_assignee`が設定されている買主は、`initial_assignee`がチェックされず、フィルタリングから漏れる
+  - [x] 6.2 フロントエンドのフィルタリングロジックを再修正
+    - `BuyersPage.tsx` のフィルタリングロジックを修正
+    - `assigned:Y` の場合、`follow_up_assignee === assignee || initial_assignee === assignee` でフィルタリング（バックエンドと完全に同じロジック）
+    - `(!b.follow_up_assignee && b.initial_assignee === assignee)` の条件を削除
+  - [x] 6.3 本番環境での動作確認
+    - デプロイ後、本番環境で「担当(Y)」カテゴリをクリック
+    - ✅ 253件の買主が正しく表示される
+    - ✅ フィルタリングログで多数のマッチが確認される
+    - ✅ 修正が成功
+
+- [ ] 7. 本番環境での「データなし」問題の再発（3回目）
+  - [x] 7.1 根本原因の特定（3回目）
+    - 修正後も本番環境で「データなし」が表示される
+    - 原因: フロントエンドのフィルタリングロジックで `b.follow_up_assignee === assignee || b.initial_assignee === assignee` という条件を使用していた
+    - しかし、バックエンドのロジックは `buyer.follow_up_assignee === assignee || (!buyer.follow_up_assignee && buyer.initial_assignee === assignee)` である
+    - つまり、**`follow_up_assignee`が優先され、`follow_up_assignee`が空の場合のみ`initial_assignee`をチェックする**
+    - フロントエンドのロジックは両方をORで結合していたため、バックエンドと異なる結果になっていた
+  - [x] 7.2 フロントエンドのフィルタリングロジックを再々修正
+    - `BuyersPage.tsx` のフィルタリングロジックを修正
+    - `assigned:Y` の場合、`b.follow_up_assignee === assignee || (!b.follow_up_assignee && b.initial_assignee === assignee)` でフィルタリング（バックエンドと完全に同じロジック）
+    - デバッグログを追加（`follow_up_assignee`と`initial_assignee`の値を出力）
+  - [ ] 7.3 本番環境での動作確認
+    - デプロイ後、本番環境で「担当(Y)」カテゴリをクリック
+    - 正しい件数の買主が表示されることを確認
+    - フィルタリングログで正しいマッチが確認されることを確認
+

@@ -213,13 +213,14 @@ function updateBuyerSidebarCounts_() {
     }
     
     // 当日TEL分カテゴリ
+    // スプレッドシートの数式: AND(ISBLANK([後続担当]),[★次電日] <= TODAY(),ISNOTBLANK([★次電日])),"⑯当日TEL"
     if (nextCallDate && isTodayOrBefore(nextCallDate)) {
       if (isAssigneeValid) {
-        // 当日TEL（担当別）
+        // 当日TEL（担当別）: AND(ISNOTBLANK([後続担当]),ISNOTBLANK([★次電日]),[★次電日] <= TODAY())
         var aKey = String(assignee);
         counts.todayCallAssigned[aKey] = (counts.todayCallAssigned[aKey] || 0) + 1;
-      } else if (!hasContactInfo(row)) {
-        // 当日TEL分（担当なし、コミュニケーション情報なし）
+      } else {
+        // 当日TEL分（担当なし）: 後続担当が空 + 次電日が今日以前
         counts.todayCall++;
       }
     }

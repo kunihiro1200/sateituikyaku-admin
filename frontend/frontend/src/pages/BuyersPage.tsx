@@ -141,24 +141,35 @@ export default function BuyersPage() {
                 // 担当者別カテゴリ（assigned:Y, todayCallAssigned:I など）の処理
                 if (selectedCalculatedStatus.startsWith('assigned:')) {
                   const assignee = selectedCalculatedStatus.replace('assigned:', '');
-                  // バックエンドと同じロジック: follow_up_assignee または initial_assignee のいずれかが一致すればOK
+                  // バックエンドと同じロジック: follow_up_assignee が一致、または follow_up_assignee が空で initial_assignee が一致
                   const matches = (
                     b.follow_up_assignee === assignee ||
-                    b.initial_assignee === assignee
+                    (!b.follow_up_assignee && b.initial_assignee === assignee)
                   );
                   
                   if (matches) {
-                    console.log(`[BuyersPage] ✅ 担当(${assignee}) Match: ${b.buyer_number}`);
+                    console.log(`[BuyersPage] ✅ 担当(${assignee}) Match: ${b.buyer_number}, follow_up_assignee=${b.follow_up_assignee}, initial_assignee=${b.initial_assignee}`);
                   }
                   
                   return matches;
                 } else if (selectedCalculatedStatus.startsWith('todayCallAssigned:')) {
                   const assignee = selectedCalculatedStatus.replace('todayCallAssigned:', '');
-                  // calculated_status が "当日TEL(Y)" の形式で一致する買主を表示
-                  const matches = b.calculated_status === `当日TEL(${assignee})`;
+                  // バックエンドと同じロジック: follow_up_assignee が一致 AND next_call_date が今日以前
+                  const today = new Date();
+                  today.setHours(0, 0, 0, 0);
+                  const nextCallDate = b.next_call_date ? new Date(b.next_call_date) : null;
+                  if (nextCallDate) {
+                    nextCallDate.setHours(0, 0, 0, 0);
+                  }
+                  
+                  const matches = (
+                    b.follow_up_assignee === assignee &&
+                    nextCallDate !== null &&
+                    nextCallDate <= today
+                  );
                   
                   if (matches) {
-                    console.log(`[BuyersPage] ✅ 当日TEL(${assignee}) Match: ${b.buyer_number}`);
+                    console.log(`[BuyersPage] ✅ 当日TEL(${assignee}) Match: ${b.buyer_number}, next_call_date: ${b.next_call_date}`);
                   }
                   
                   return matches;
