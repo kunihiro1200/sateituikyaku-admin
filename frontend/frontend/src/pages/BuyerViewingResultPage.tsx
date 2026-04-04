@@ -240,7 +240,7 @@ export default function BuyerViewingResultPage() {
 
   // カレンダー必須チェック: 内覧日・時間・後続担当あり かつ 内覧未確定空欄
   const needsCalendar = !!(
-    buyer?.latest_viewing_date &&
+    buyer?.viewing_date &&
     buyer?.viewing_time &&
     buyer?.follow_up_assignee &&
     !buyer?.viewing_unconfirmed
@@ -1172,7 +1172,7 @@ export default function BuyerViewingResultPage() {
               if (!showPostViewingSellerContact) return null;
 
               // 必須条件判定
-              // mediation_type === "一般・公開中" AND latest_viewing_date >= "2025-07-05" AND <= today AND viewing_result_follow_up が非空
+              // mediation_type === "一般・公開中" AND viewing_date >= "2025-07-05" AND <= today AND viewing_result_follow_up が非空
               const isPostViewingSellerContactRequired = (() => {
                 const mediationType = linkedProperties?.find((p: any) => p.atbb_status)?.atbb_status || '';
                 if (mediationType !== '一般・公開中') return false;

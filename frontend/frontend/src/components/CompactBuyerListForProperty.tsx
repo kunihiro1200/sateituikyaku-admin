@@ -19,7 +19,7 @@ interface BuyerWithDetails {
   name: string;
   buyer_number: string;
   reception_date?: string;
-  latest_viewing_date?: string;
+  viewing_date?: string;
   viewing_time?: string;
   latest_status?: string;
   has_offer?: boolean;
@@ -151,7 +151,7 @@ export default function CompactBuyerListForProperty({
                 >
                   <TableCell>{buyer.name}</TableCell>
                   <TableCell>{formatDate(buyer.reception_date)}</TableCell>
-                  <TableCell>{formatDate(buyer.latest_viewing_date)}</TableCell>
+                  <TableCell>{formatDate(buyer.viewing_date)}</TableCell>
                   <TableCell>{buyer.viewing_time ? formatViewingTime(buyer.viewing_time) : '-'}</TableCell>
                   <TableCell
                     sx={buyer.latest_status && buyer.latest_status.includes('買') ? {
