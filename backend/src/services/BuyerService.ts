@@ -1372,6 +1372,8 @@ export class BuyerService {
       'desired_area', 'desired_property_type', 'budget',
     ].join(', ');
 
+    console.log('🔍 [DEBUG] fetchAllBuyers - BUYER_COLUMNS:', BUYER_COLUMNS);
+
     // count クエリ・最初のバッチ・property_listings を全て並列実行
     const [countResult, firstBatchResult, allListingsResult] = await Promise.all([
       this.supabase
@@ -1466,10 +1468,22 @@ export class BuyerService {
 
     const buyers = allBuyers.map(buyer => {
       try {
+        // 🚨 デバッグ: 買主7176のデータを記録
+        if (buyer.buyer_number === '7176') {
+          console.log('🔍 [DEBUG] Buyer 7176 data before calculateBuyerStatus:', JSON.stringify(buyer, null, 2));
+        }
+        
         const statusResult = calculateBuyerStatus(buyer);
+        
+        // 🚨 デバッグ: 買主7176のステータス計算結果を記録
+        if (buyer.buyer_number === '7176') {
+          console.log('🔍 [DEBUG] Buyer 7176 statusResult:', JSON.stringify(statusResult, null, 2));
+        }
+        
         return { ...buyer, calculated_status: statusResult.status, status_priority: statusResult.priority };
       } catch (error) {
         console.error(`[BuyerService] Error calculating status for buyer ${buyer.buyer_number}:`, error);
+        console.error(`[BuyerService] Buyer data:`, JSON.stringify(buyer, null, 2));
         return { ...buyer, calculated_status: '', status_priority: 999 };
       }
     });
