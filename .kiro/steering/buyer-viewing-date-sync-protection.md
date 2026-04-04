@@ -7,9 +7,46 @@
 
 ---
 
-## ✅ 成功している設定（2026年4月4日時点）
+## ✅ 成功している設定（2026年4月5日時点）
 
-### 1. `buyer-column-mapping.json`の`databaseToSpreadsheet`セクション
+### 1. `buyer-column-mapping.json`の`spreadsheetToDatabase`セクション（最重要）
+
+**ファイル**: `backend/src/config/buyer-column-mapping.json`
+
+```json
+"spreadsheetToDatabase": {
+  "●内覧日(最新）": "viewing_date",
+  "●時間": "viewing_time"
+}
+```
+
+**🚨 最重要**:
+- ✅ `"●内覧日(最新）"` → `viewing_date` ← **絶対に`latest_viewing_date`にしてはいけない**
+- ✅ `"●時間"` → `viewing_time` ← **この設定も絶対に変更しない**
+- ✅ 半角カッコ `(` と `）` を使用（全角カッコではない）
+- ✅ スプレッドシートの**I列**に対応
+
+**過去の失敗例**:
+```json
+// ❌ 絶対にこうしてはいけない（2026年4月5日以前の誤った設定）
+"spreadsheetToDatabase": {
+  "●内覧日(最新）": "latest_viewing_date"  // ← これが原因で即時同期が壊れた
+}
+```
+
+**なぜ`latest_viewing_date`にしてはいけないのか**:
+1. ブラウザUIで保存 → DBの`viewing_date`に保存 → スプレッドシートに即時同期
+2. GASの定期同期 → スプレッドシートから読み取り → DBの`latest_viewing_date`に保存（`viewing_date`は更新されない）
+3. 次回のGAS同期で`viewing_date`がnullに上書きされる
+
+**正しい動作**:
+1. ブラウザUIで保存 → DBの`viewing_date`に保存 → スプレッドシートに即時同期
+2. GASの定期同期 → スプレッドシートから読み取り → DBの`viewing_date`に保存（一貫性が保たれる）
+3. 次回のGAS同期でも`viewing_date`が維持される
+
+---
+
+### 2. `buyer-column-mapping.json`の`databaseToSpreadsheet`セクション
 
 **ファイル**: `backend/src/config/buyer-column-mapping.json`
 
@@ -25,6 +62,11 @@
 - ✅ `viewing_time` → `"●時間"` ← **この設定も絶対に変更しない**
 - ✅ 半角カッコ `(` と `）` を使用（全角カッコではない）
 - ✅ スプレッドシートの**I列**に対応
+
+**マッピングの一貫性**:
+- `spreadsheetToDatabase`: `"●内覧日(最新）"` → `viewing_date`
+- `databaseToSpreadsheet`: `viewing_date` → `"●内覧日(最新）"`
+- **両方向で`viewing_date`を使用することが絶対条件**
 
 ---
 
@@ -127,7 +169,28 @@ async updateFields(buyerNumber: string, updates: Record<string, any>): Promise<W
 
 ## 🚨 絶対にやってはいけないこと
 
-### ❌ 禁止1: `databaseToSpreadsheet`セクションを削除
+### ❌ 禁止1: `spreadsheetToDatabase`で`latest_viewing_date`を使用
+
+```json
+// ❌ 絶対にこうしてはいけない
+"spreadsheetToDatabase": {
+  "●内覧日(最新）": "latest_viewing_date"  // ← これが原因で即時同期が壊れる
+}
+```
+
+**理由**: DB→スプレッドシートは`viewing_date`を使用するが、スプレッドシート→DBは`latest_viewing_date`を使用すると、マッピングが不一致になり、GASの定期同期で`viewing_date`がnullに上書きされる
+
+**正しい設定**:
+```json
+// ✅ 正しい
+"spreadsheetToDatabase": {
+  "●内覧日(最新）": "viewing_date"  // ← viewing_dateで統一
+}
+```
+
+---
+
+### ❌ 禁止2: `databaseToSpreadsheet`セクションを削除
 
 ```json
 // ❌ 絶対にこうしてはいけない
@@ -138,7 +201,7 @@ async updateFields(buyerNumber: string, updates: Record<string, any>): Promise<W
 
 ---
 
-### ❌ 禁止2: カラム名を変更
+### ❌ 禁止3: カラム名を変更
 
 ```json
 // ❌ 絶対にこうしてはいけない
@@ -152,7 +215,7 @@ async updateFields(buyerNumber: string, updates: Record<string, any>): Promise<W
 
 ---
 
-### ❌ 禁止3: デバッグログを削除
+### ❌ 禁止4: デバッグログを削除
 
 ```typescript
 // ❌ 絶対にこうしてはいけない
@@ -167,7 +230,7 @@ async updateFields(buyerNumber: string, updates: Record<string, any>): Promise<W
 
 ---
 
-### ❌ 禁止4: `BuyerColumnMapper`のコンストラクタを変更
+### ❌ 禁止5: `BuyerColumnMapper`のコンストラクタを変更
 
 ```typescript
 // ❌ 絶対にこうしてはいけない
@@ -188,6 +251,7 @@ constructor() {
 
 `buyer-column-mapping.json`または`BuyerColumnMapper.ts`を変更する前に、以下を確認：
 
+- [ ] `spreadsheetToDatabase`セクションで`viewing_date`を`latest_viewing_date`に変更していないか？
 - [ ] `databaseToSpreadsheet`セクションを削除していないか？
 - [ ] `viewing_date`のマッピングを変更していないか？
 - [ ] `viewing_time`のマッピングを変更していないか？
@@ -209,6 +273,7 @@ code backend/src/config/buyer-column-mapping.json
 ```
 
 **確認ポイント**:
+- `spreadsheetToDatabase`セクションで`"●内覧日(最新）"`が`viewing_date`にマッピングされているか？（`latest_viewing_date`ではない）
 - `databaseToSpreadsheet`セクションが存在するか？
 - `viewing_date`のマッピングが正しいか？
 
@@ -303,7 +368,7 @@ git show 8f368190:backend/src/services/BuyerColumnMapper.ts > backend/src/servic
 
 ---
 
-**最終更新日**: 2026年4月4日  
+**最終更新日**: 2026年4月5日  
 **作成理由**: 買主内覧日の即時同期が何度も壊れているため、成功した設定を保護する  
-**成功時のコミット**: `8f368190`, `b1377876`
+**成功時のコミット**: `8f368190`, `b1377876`, `ebc76e2b`（2026年4月5日：`spreadsheetToDatabase`の`viewing_date`マッピング統一）
 

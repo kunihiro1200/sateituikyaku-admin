@@ -1,0 +1,45 @@
+name: Validate Buyer Column Mapping
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'backend/src/config/buyer-column-mapping.json'
+      - 'backend/src/services/BuyerColumnMapper.ts'
+      - 'backend/src/services/BuyerWriteService.ts'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'backend/src/config/buyer-column-mapping.json'
+      - 'backend/src/services/BuyerColumnMapper.ts'
+      - 'backend/src/services/BuyerWriteService.ts'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+      
+      - name: Install dependencies
+        run: |
+          cd backend
+          npm install
+      
+      - name: Validate buyer viewing date mapping
+        run: |
+          cd backend
+          npx ts-node test-buyer-viewing-date-mapping-validation.ts
+      
+      - name: Check validation result
+        if: failure()
+        run: |
+          echo "❌ 買主内覧日マッピング検証に失敗しました"
+          echo "🚨 .kiro/steering/buyer-viewing-date-sync-protection.md を参照してください"
+          exit 1
