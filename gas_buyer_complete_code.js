@@ -489,9 +489,9 @@ function syncUpdatesToSupabase_(sheetRows) {
     // 問合メール電話対応
     var sheetInquiryEmailPhone = row['【問合メール】電話対応'] ? String(row['【問合メール】電話対応']) : null;
     var normalizedSheetInquiryEmailPhone = normalizeValue(sheetInquiryEmailPhone);
-    var normalizedDbInquiryEmailPhone = normalizeValue(dbBuyer.inquiry_email_phone);
+    var normalizedDbInquiryEmailPhone = normalizeValue(dbBuyer.inquiry_email_phone_response);
     if (normalizedSheetInquiryEmailPhone !== normalizedDbInquiryEmailPhone) {
-      updateData.inquiry_email_phone = normalizedSheetInquiryEmailPhone;
+      updateData.inquiry_email_phone_response = normalizedSheetInquiryEmailPhone;
       needsUpdate = true;
       if (normalizedSheetInquiryEmailPhone === null && normalizedDbInquiryEmailPhone !== null) {
         Logger.log('  🗑️ ' + buyerNumber + ': 問合メール電話対応を削除 (旧値: ' + normalizedDbInquiryEmailPhone + ')');
@@ -501,9 +501,9 @@ function syncUpdatesToSupabase_(sheetRows) {
     // 3回架電確認済み
     var sheetThreeCallsConfirmed = row['3回架電確認済み'] ? String(row['3回架電確認済み']) : null;
     var normalizedSheetThreeCallsConfirmed = normalizeValue(sheetThreeCallsConfirmed);
-    var normalizedDbThreeCallsConfirmed = normalizeValue(dbBuyer.three_calls_confirmed);
+    var normalizedDbThreeCallsConfirmed = normalizeValue(dbBuyer.three_call_confirmed);
     if (normalizedSheetThreeCallsConfirmed !== normalizedDbThreeCallsConfirmed) {
-      updateData.three_calls_confirmed = normalizedSheetThreeCallsConfirmed;
+      updateData.three_call_confirmed = normalizedSheetThreeCallsConfirmed;
       needsUpdate = true;
       if (normalizedSheetThreeCallsConfirmed === null && normalizedDbThreeCallsConfirmed !== null) {
         Logger.log('  🗑️ ' + buyerNumber + ': 3回架電確認済みを削除 (旧値: ' + normalizedDbThreeCallsConfirmed + ')');

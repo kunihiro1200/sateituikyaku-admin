@@ -28,6 +28,7 @@ export interface BuyerQueryOptions {
   dateTo?: string;
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
+  statusCategory?: 'all' | 'todayCall' | 'threeCallUnchecked' | 'viewingDayBefore' | 'assigned' | 'todayCallAssigned';
 }
 
 export interface SyncResult {
@@ -107,6 +108,7 @@ export class BuyerService {
       dateTo,
       sortBy = 'reception_date',
       sortOrder = 'desc',
+      statusCategory,
     } = options;
 
     const offset = (page - 1) * limit;
@@ -139,6 +141,62 @@ export class BuyerService {
     }
     if (dateTo) {
       query = query.lte('reception_date', dateTo);
+    }
+
+    // サイドバーカテゴリフィルター
+    if (statusCategory && statusCategory !== 'all') {
+      const todayStr = new Date().toISOString().split('T')[0];
+      
+      switch (statusCategory) {
+        case 'todayCall': {
+          // 当日TEL: 後続担当が空 AND 次電日が空でない AND 次電日 <= 今日
+          query = query
+            .is('follow_up_assignee', null)
+            .not('next_call_date', 'is', null)
+            .lte('next_call_date', todayStr);
+          break;
+        }
+        
+        case 'threeCallUnchecked': {
+          // ３回架電未: ３回架電確認済み = "3回架電未" AND (【問合メール】電話対応 = "不通" OR "未")
+          query = query
+            .eq('three_call_confirmed', '3回架電未')
+            .or('inquiry_email_phone_response.eq.不通,inquiry_email_phone_response.eq.未');
+          break;
+        }
+        
+        case 'viewingDayBefore': {
+          // 内覧日前日: viewing_date が空でない AND broker_inquiry ≠ "業者問合せ" AND notification_sender が空
+          // 今日が内覧日の前営業日（木曜内覧のみ2日前、それ以外は1日前）
+          // ※ 日付計算はJavaScript側で行う必要があるため、全件取得してフィルタ
+          query = query
+            .not('viewing_date', 'is', null)
+            .neq('broker_inquiry', '業者問合せ')
+            .is('notification_sender', null);
+          break;
+        }
+        
+        default: {
+          // 動的カテゴリ（assigned:xxx, todayCallAssigned:xxx）
+          const dynamicCategory = statusCategory as string;
+          
+          if (dynamicCategory.startsWith('assigned:')) {
+            // 担当(イニシャル): follow_up_assignee または initial_assignee = イニシャル
+            const assigneeInitial = dynamicCategory.replace('assigned:', '');
+            query = query.or(
+              `follow_up_assignee.eq.${assigneeInitial},initial_assignee.eq.${assigneeInitial}`
+            );
+          } else if (dynamicCategory.startsWith('todayCallAssigned:')) {
+            // 当日TEL(イニシャル): follow_up_assignee = イニシャル AND 次電日が空でない AND 次電日 <= 今日
+            const assigneeInitial = dynamicCategory.replace('todayCallAssigned:', '');
+            query = query
+              .eq('follow_up_assignee', assigneeInitial)
+              .not('next_call_date', 'is', null)
+              .lte('next_call_date', todayStr);
+          }
+          break;
+        }
+      }
     }
 
     // ソート（受付日が空欄のものは一番後ろに配置）

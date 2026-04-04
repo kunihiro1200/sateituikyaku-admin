@@ -28,6 +28,7 @@ router.get('/', async (req: Request, res: Response) => {
       sortOrder = 'desc',
       withStatus,
       calculatedStatus,
+      statusCategory,
     } = req.query;
 
     // withStatus=true かつ calculatedStatus 指定の場合はステータスフィルタリング
@@ -57,6 +58,7 @@ router.get('/', async (req: Request, res: Response) => {
       dateTo: dateTo as string,
       sortBy: sortBy as string,
       sortOrder: sortOrder as 'asc' | 'desc',
+      statusCategory: statusCategory as any,
     });
 
     res.json(result);

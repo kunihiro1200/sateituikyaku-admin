@@ -10,7 +10,7 @@
 
 ### Phase 1: データベースマイグレーション
 
-- [ ] 1.1 マイグレーションファイルの作成
+- [x] 1.1 マイグレーションファイルの作成
   - ファイル: `backend/supabase/migrations/YYYYMMDDHHMMSS_add_buyer_three_call_fields.sql`
   - 内容:
     - `buyers.three_call_confirmed` カラムを追加（TEXT型）
@@ -18,12 +18,12 @@
     - インデックスを追加（検索パフォーマンス向上）
     - コメントを追加
 
-- [ ] 1.2 ローカル環境でテスト
+- [x] 1.2 ローカル環境でテスト
   - `npx supabase migration up` を実行
   - カラムが追加されることを確認
   - インデックスが作成されることを確認
 
-- [ ] 1.3 本番環境にデプロイ
+- [-] 1.3 本番環境にデプロイ
   - `npx supabase db push` を実行
   - 本番データベースにカラムが追加されることを確認
 
@@ -36,7 +36,7 @@
   - FC列「３回架電確認済み」の存在を確認
   - 「【問合メール】電話対応」列の位置を確認（列名を正確に記録）
 
-- [ ] 2.2 `syncBuyerList()` の修正
+- [x] 2.2 `syncBuyerList()` の修正
   - ファイル: `gas_buyer_complete_code.js`
   - 追加内容:
     - FC列「３回架電確認済み」の同期処理
@@ -44,7 +44,7 @@
     - `normalizeValue()` を使用した値の正規化
     - `updateData` への追加
 
-- [ ] 2.3 `updateBuyerSidebarCounts_()` の修正
+- [x] 2.3 `updateBuyerSidebarCounts_()` の修正
   - ファイル: `gas_buyer_complete_code.js`
   - 追加内容:
     - カウント変数の初期化（`todayCall`, `threeCallUnchecked`）
@@ -81,7 +81,7 @@
 
 ### Phase 3: バックエンドAPIの実装
 
-- [ ] 3.1 `BuyerService.listBuyers()` の修正
+- [x] 3.1 `BuyerService.listBuyers()` の修正
   - ファイル: `backend/src/services/BuyerService.ts`
   - 追加内容:
     - `statusCategory === 'todayCall'` のフィルタリング条件
@@ -99,7 +99,7 @@
     - `three_call_confirmed = '3回架電未'` の買主のみが返されることを確認
     - `inquiry_email_phone_response = '不通' OR '未'` の買主のみが返されることを確認
 
-- [ ] 3.3 本番環境にデプロイ
+- [-] 3.3 本番環境にデプロイ
   - `git add .`
   - `git commit -m "feat: 買主リスト「当日TEL」「３回架電未」カテゴリ追加（バックエンド）"`
   - `git push origin main`
@@ -109,7 +109,7 @@
 
 ### Phase 4: フロントエンドの実装
 
-- [ ] 4.1 `BuyerStatusSidebar.tsx` の修正
+- [x] 4.1 `BuyerStatusSidebar.tsx` の修正
   - ファイル: `frontend/frontend/src/components/BuyerStatusSidebar.tsx`
   - 追加内容:
     - `statusList` useMemoに「当日TEL」カテゴリを追加
