@@ -149,20 +149,9 @@ export default function BuyersPage() {
                 
                 console.log(`[BuyersPage] Checking buyer ${b.buyer_number}: calculated_status="${b.calculated_status}", displayName="${displayName}", selectedCalculatedStatus="${selectedCalculatedStatus}"`);
                 
-                // バックエンドのcalculated_statusは既に日本語（例: "内覧日前日", "担当(Y)", "当日TEL(林)"）
+                // バックエンドのcalculated_statusは既に日本語（例: "内覧日前日", "担当(Y)", "当日TEL(Y)"）
                 // フィルタリングは日本語の表示名で直接比較
-                let matches = false;
-                
-                if (displayName === '内覧日前日' || displayName === '内覧済み' || displayName === '当日TEL') {
-                  // 基本カテゴリ: 完全一致
-                  matches = b.calculated_status === displayName;
-                } else if (displayName.startsWith('担当(') || displayName.startsWith('当日TEL(') || displayName.startsWith('内覧済み(')) {
-                  // 担当者別カテゴリ: 完全一致（例: "担当(Y)" === "担当(Y)"）
-                  matches = b.calculated_status === displayName;
-                } else {
-                  // その他のカテゴリ: 完全一致または部分一致
-                  matches = b.calculated_status === displayName || b.calculated_status?.startsWith(displayName + '(');
-                }
+                const matches = b.calculated_status === displayName;
                 
                 if (matches) {
                   console.log(`[BuyersPage] ✅ Match found: ${b.buyer_number}`);
