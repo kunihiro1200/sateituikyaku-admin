@@ -718,7 +718,48 @@ function syncUpdatesToSupabase_(sheetRows) {
     }
     
     // 時間（●時間列、BP列）
-    var sheetViewingTime = row['●時間'] ? String(row['●時間']) : null;
+    var rawViewingTime = row['●時間'];
+    var sheetViewingTime = null;
+    
+    if (rawViewingTime && rawViewingTime !== '') {
+      // Dateオブジェクトの場合、時刻部分のみを抽出
+      if (rawViewingTime instanceof Date) {
+        var hours = rawViewingTime.getHours();
+        var minutes = rawViewingTime.getMinutes();
+        sheetViewingTime = String(hours).padStart(2, '0') + ':' + String(minutes).padStart(2, '0');
+      } else {
+        var viewingTimeStr = String(rawViewingTime).trim();
+        // 日付形式（YYYY/MM/DD または YYYY-MM-DD）が含まれる場合は無視
+        if (!viewingTimeStr.match(/\d{4}[/-]\d{1,2}[/-]\d{1,2}/)) {
+          // 既に時刻形式（HH:MM または HH:MM:SS）の場合はそのまま使用
+          if (viewingTimeStr.match(/^\d{1,2}:\d{2}(:\d{2})?$/)) {
+            var parts = viewingTimeStr.split(':');
+            var hours2 = parts[0].padStart(2, '0');
+            var minutes2 = parts[1];
+            sheetViewingTime = hours2 + ':' + minutes2;
+          }
+          // 数値の場合（Excelシリアル値: 0.0～1.0）
+          else if (typeof rawViewingTime === 'number' && rawViewingTime >= 0 && rawViewingTime < 1) {
+            var totalMinutes = Math.round(rawViewingTime * 24 * 60);
+            var hours3 = Math.floor(totalMinutes / 60);
+            var minutes3 = totalMinutes % 60;
+            sheetViewingTime = String(hours3).padStart(2, '0') + ':' + String(minutes3).padStart(2, '0');
+          }
+          // 文字列が小数の場合もシリアル値として処理
+          else if (viewingTimeStr.match(/^0\.\d+$/)) {
+            var serial = parseFloat(viewingTimeStr);
+            var totalMinutes2 = Math.round(serial * 24 * 60);
+            var hours4 = Math.floor(totalMinutes2 / 60);
+            var minutes4 = totalMinutes2 % 60;
+            sheetViewingTime = String(hours4).padStart(2, '0') + ':' + String(minutes4).padStart(2, '0');
+          } else {
+            // その他の場合は文字列として扱う
+            sheetViewingTime = viewingTimeStr;
+          }
+        }
+      }
+    }
+    
     var normalizedSheetViewingTime = normalizeValue(sheetViewingTime);
     var normalizedDbViewingTime = normalizeValue(dbBuyer.viewing_time);
     if (normalizedSheetViewingTime !== normalizedDbViewingTime) {
