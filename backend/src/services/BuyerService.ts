@@ -1515,6 +1515,10 @@ export class BuyerService {
       this.fetchAllBuyersWithStatus(),
     ]);
 
+    console.log('🔍 [DEBUG] getStatusCategoriesWithBuyers - sidebarData:', JSON.stringify(sidebarData, null, 2));
+    console.log('🔍 [DEBUG] getStatusCategoriesWithBuyers - sidebarData.categories:', sidebarData.categories);
+    console.log('🔍 [DEBUG] getStatusCategoriesWithBuyers - sidebarData.normalStaffInitials:', sidebarData.normalStaffInitials);
+
     // 通常スタッフのイニシャルを取得
     const normalStaffInitials = await this.fetchNormalStaffInitials();
 
