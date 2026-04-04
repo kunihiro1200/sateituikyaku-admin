@@ -149,7 +149,8 @@ function updateBuyerSidebarCounts_() {
     todayCall: 0,
     todayCallAssigned: {},
     assigned: {},
-    viewingDayBefore: 0  // 内覧日前日カテゴリ
+    viewingDayBefore: 0,  // 内覧日前日カテゴリ
+    threeCallUnchecked: 0  // ３回架電未カテゴリ（新規）
   };
   
   for (var i = 0; i < sheetRows.length; i++) {
@@ -224,6 +225,16 @@ function updateBuyerSidebarCounts_() {
         counts.todayCall++;
       }
     }
+    
+    // ３回架電未カテゴリ（新規）
+    // 条件: ３回架電確認済み = "3回架電未" AND (【問合メール】電話対応 = "不通" OR "未")
+    var threeCallConfirmed = row['3回架電確認済み'] ? String(row['3回架電確認済み']) : '';
+    var inquiryEmailPhoneResponse = row['【問合メール】電話対応'] ? String(row['【問合メール】電話対応']) : '';
+    
+    if (threeCallConfirmed === '3回架電未' &&
+        (inquiryEmailPhoneResponse === '不通' || inquiryEmailPhoneResponse === '未')) {
+      counts.threeCallUnchecked++;
+    }
   }
   
   // Supabaseに保存
@@ -246,6 +257,15 @@ function updateBuyerSidebarCounts_() {
   upsertRows.push({
     category: 'todayCall',
     count: counts.todayCall,
+    label: '',
+    assignee: '',
+    updated_at: now
+  });
+  
+  // ３回架電未（新規）
+  upsertRows.push({
+    category: 'threeCallUnchecked',
+    count: counts.threeCallUnchecked,
     label: '',
     assignee: '',
     updated_at: now

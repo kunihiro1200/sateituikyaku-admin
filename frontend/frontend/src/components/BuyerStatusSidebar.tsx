@@ -11,6 +11,7 @@ interface CategoryCounts {
   all?: number;
   viewingDayBefore?: number;
   todayCall?: number;
+  threeCallUnchecked?: number;  // ３回架電未カテゴリ（新規）
   assignedCounts?: Record<string, number>;
   todayCallAssignedCounts?: Record<string, number>;
 }
@@ -49,6 +50,8 @@ function getCategoryColor(category: string): string {
       return '#d32f2f'; // 赤
     case 'todayCall':
       return '#555555'; // グレー
+    case 'threeCallUnchecked':
+      return '#d32f2f'; // 赤
     case 'todayCallAssigned':
       return '#ff5722'; // オレンジ
     default:
@@ -69,6 +72,8 @@ function getCategoryLabel(category: string): string {
       return '②内覧日前日';
     case 'todayCall':
       return '⑯当日TEL';
+    case 'threeCallUnchecked':
+      return '３回架電未';
     case 'todayCallAssigned':
       return '当日TEL（担当）';
     default:
@@ -135,6 +140,19 @@ export default function BuyerStatusSidebar({
       });
     }
   });
+  
+  // ３回架電未カテゴリ（新規）- 当日TELの下にインデント表示
+  const threeCallUncheckedCount = categoryCounts.threeCallUnchecked ?? 0;
+  if (threeCallUncheckedCount > 0) {
+    categoryList.push({
+      key: 'threeCallUnchecked',
+      label: '３回架電未',
+      count: threeCallUncheckedCount,
+      color: getCategoryColor('threeCallUnchecked'),
+      isSubCategory: true,
+      parentKey: 'todayCall',
+    });
+  }
 
   // 担当者別カテゴリ（assignedCounts）- 親カテゴリ
   if (categoryCounts.assignedCounts) {

@@ -1569,6 +1569,7 @@ export class BuyerService {
         all: 0,
         viewingDayBefore: 0,  // ✅ 買主用：内覧日前日
         todayCall: 0,          // ✅ 買主用：当日TEL
+        threeCallUnchecked: 0, // ✅ 買主用：３回架電未（新規）
         assignedCounts: {} as Record<string, number>,  // ✅ 買主用：担当別
         todayCallAssignedCounts: {} as Record<string, number>,  // ✅ 買主用：当日TEL担当別
       };
@@ -1585,6 +1586,9 @@ export class BuyerService {
             break;
           case 'todayCall':
             result.todayCall = count;
+            break;
+          case 'threeCallUnchecked':
+            result.threeCallUnchecked = count;  // ✅ 新規：３回架電未
             break;
           case 'todayCallAssigned':
             if (row.assignee) {
@@ -1657,6 +1661,7 @@ export class BuyerService {
       all: allBuyers.length,
       viewingDayBefore: 0,  // ✅ 買主用：内覧日前日
       todayCall: 0,          // ✅ 買主用：当日TEL
+      threeCallUnchecked: 0, // ✅ 買主用：３回架電未（新規）
       assignedCounts: {} as Record<string, number>,  // ✅ 買主用：担当別
       todayCallAssignedCounts: {} as Record<string, number>,  // ✅ 買主用：当日TEL担当別
     };
@@ -1670,6 +1675,8 @@ export class BuyerService {
         result.viewingDayBefore++;  // ✅ 買主用：内覧日前日
       } else if (status === '当日TEL') {
         result.todayCall++;  // ✅ 買主用：当日TEL
+      } else if (status === '3回架電未') {
+        result.threeCallUnchecked++;  // ✅ 買主用：３回架電未（新規）
       } else if (status.startsWith('当日TEL(')) {
         // 当日TEL(Y) などの担当別
         const match = status.match(/^当日TEL\((.+)\)$/);
@@ -1962,6 +1969,22 @@ export class BuyerService {
         });
         
         console.log(`[getBuyersByStatus] 当日TEL(${assignee})フィルタ結果: ${filteredBuyers.length}件`);
+      } else if (status === 'threeCallUnchecked') {
+        // ３回架電未カテゴリの場合（新規）
+        console.log(`[getBuyersByStatus] ３回架電未カテゴリ検出: status=${status}`);
+        
+        filteredBuyers = allBuyers.filter(buyer => {
+          // calculated_status が "3回架電未" の買主を表示
+          const matches = buyer.calculated_status === '3回架電未';
+          
+          if (matches) {
+            console.log(`  ✅ ${buyer.buyer_number}: calculated_status=${buyer.calculated_status}`);
+          }
+          
+          return matches;
+        });
+        
+        console.log(`[getBuyersByStatus] ３回架電未フィルタ結果: ${filteredBuyers.length}件`);
       } else if (assignedMatch1 || assignedMatch2) {
         // 担当カテゴリの場合、follow_up_assignee または initial_assignee でフィルタリング
         const assignee = assignedMatch1 ? assignedMatch1[1] : assignedMatch2![1]; // 'Y', 'I', '久', '外す' など
