@@ -25,9 +25,20 @@ function rowToObject(headers, rowData) {
       if (val.getTime() === 0) {
         obj[headerName] = '';
       } else {
-        obj[headerName] = val.getFullYear() + '/' +
-          String(val.getMonth() + 1).padStart(2, '0') + '/' +
-          String(val.getDate()).padStart(2, '0');
+        // 🚨 重要: ●時間列の場合は時刻部分のみを抽出（HH:MM:SS形式）
+        if (headerName === '●時間') {
+          var hours = val.getHours();
+          var minutes = val.getMinutes();
+          var seconds = val.getSeconds();
+          obj[headerName] = String(hours).padStart(2, '0') + ':' + 
+                           String(minutes).padStart(2, '0') + ':' + 
+                           String(seconds).padStart(2, '0');
+        } else {
+          // 日付列の場合は日付部分のみを抽出（YYYY/MM/DD形式）
+          obj[headerName] = val.getFullYear() + '/' +
+            String(val.getMonth() + 1).padStart(2, '0') + '/' +
+            String(val.getDate()).padStart(2, '0');
+        }
       }
     } else {
       // 買主番号は必ず文字列型に変換
@@ -134,42 +145,11 @@ function updateBuyerSidebarCounts_() {
     return dateStr <= todayStr;
   }
   
-  function isValidContactValue(v) {
-    if (!v) return false;
-    var s = String(v).trim();
-    return s !== '' && s.toLowerCase() !== 'null' && s.toLowerCase() !== 'undefined';
-  }
-  
-  function hasContactInfo(row) {
-    return isValidContactValue(row['連絡方法']) ||
-      isValidContactValue(row['連絡取りやすい日、時間帯']) ||
-      isValidContactValue(row['電話担当（任意）']);
-  }
-  
-  function getContactLabel(row) {
-    var parts = [];
-    if (isValidContactValue(row['電話担当（任意）'])) parts.push(String(row['電話担当（任意）']).trim());
-    if (isValidContactValue(row['連絡取りやすい日、時間帯'])) parts.push(String(row['連絡取りやすい日、時間帯']).trim());
-    if (isValidContactValue(row['連絡方法'])) parts.push(String(row['連絡方法']).trim());
-    return parts.join('・');
-  }
-  
   var counts = {
     todayCall: 0,
-    todayCallWithInfo: {},
     todayCallAssigned: {},
     assigned: {},
-    inquiryEmailNotResponded: 0,
-    viewingDayBefore: 0,  // 内覧日前日カテゴリ
-    visitCompleted: {},   // 内覧済み（担当別）
-    unvaluated: 0,        // 未査定
-    mailingPending: 0,    // 査定（郵送）
-    todayCallNotStarted: 0,  // 当日TEL未着手
-    pinrichEmpty: 0,      // Pinrich空欄
-    exclusive: 0,         // 専任
-    general: 0,           // 一般
-    visitOtherDecision: 0,  // 内覧後他決
-    unvisitedOtherDecision: 0  // 未内覧他決
+    viewingDayBefore: 0  // 内覧日前日カテゴリ
   };
   
   for (var i = 0; i < sheetRows.length; i++) {
@@ -183,7 +163,6 @@ function updateBuyerSidebarCounts_() {
     var followUpAssignee = row['後続担当'];
     var assignee = followUpAssignee || initialAssignee;
     var isAssigneeValid = assignee && assignee !== '外す';
-    var inquiryEmailPhone = String(row['【問合メール】電話対応'] || '');
     
     // 内覧日前日カテゴリ
     // 🚨 重要: バックエンドの条件と完全一致させる
@@ -233,71 +212,17 @@ function updateBuyerSidebarCounts_() {
       counts.assigned[assigneeKey] = (counts.assigned[assigneeKey] || 0) + 1;
     }
     
-    // 内覧済みカテゴリ（担当別）
-    // 条件: 後続担当または初動担当がいる AND 内覧日が昨日以前
-    if (isAssigneeValid && viewingDate && viewingDate < todayStr) {
-      var assigneeKey2 = String(assignee);
-      counts.visitCompleted[assigneeKey2] = (counts.visitCompleted[assigneeKey2] || 0) + 1;
-    }
-    
     // 当日TEL分カテゴリ
     if (status.indexOf('追客中') !== -1 && nextCallDate && isTodayOrBefore(nextCallDate)) {
       if (isAssigneeValid) {
         // 当日TEL（担当別）
         var aKey = String(assignee);
         counts.todayCallAssigned[aKey] = (counts.todayCallAssigned[aKey] || 0) + 1;
-      } else if (hasContactInfo(row)) {
-        // 当日TEL（内容）
-        var label = getContactLabel(row);
-        if (label) {
-          counts.todayCallWithInfo[label] = (counts.todayCallWithInfo[label] || 0) + 1;
-        }
       } else {
-        // 当日TEL分（担当なし）
+        // 当日TEL分（担当なし、コミュニケーション情報なし）
         counts.todayCall++;
-        
-        // 当日TEL未着手カテゴリ
-        // 条件: 不通が空欄 AND 反響日付が2026/1/1以降
-        var unreachable = row['不通'] ? String(row['不通']) : '';
-        var receptionDate = formatDateToISO_(row['受付日']);
-        if (!unreachable && receptionDate && receptionDate >= '2026-01-01') {
-          counts.todayCallNotStarted++;
-        }
-        
-        // Pinrich空欄カテゴリ
-        // 条件: Pinrichが空欄
-        var pinrich = row['Pinrich'] ? String(row['Pinrich']) : '';
-        if (!pinrich) {
-          counts.pinrichEmpty++;
-        }
       }
     }
-    
-    // 未査定カテゴリ
-    // 条件: 追客中 AND 査定額が全て空 AND 査定不要ではない AND 担当なし AND 反響日付が2025/12/8以降
-    var val1 = row['査定額1'] || row['査定額1（自動計算）'];
-    var val2 = row['査定額2'] || row['査定額2（自動計算）'];
-    var val3 = row['査定額3'] || row['査定額3（自動計算）'];
-    var hasValuation = !!(val1 || val2 || val3);
-    var valuationMethod = row['査定方法'] ? String(row['査定方法']) : '';
-    var isValuationNotNeeded = valuationMethod === '査定不要';
-    var receptionDate2 = formatDateToISO_(row['受付日']);
-    
-    if (status.indexOf('追客中') !== -1 && !hasValuation && !isValuationNotNeeded &&
-        !isAssigneeValid && receptionDate2 && receptionDate2 >= '2025-12-08') {
-      counts.unvaluated++;
-    }
-    
-    // 査定（郵送）カテゴリ
-    // 条件: 郵送ステータスが「未」
-    var mailingStatus = row['郵送ステータス'] ? String(row['郵送ステータス']) : '';
-    if (mailingStatus === '未') {
-      counts.mailingPending++;
-    }
-    
-    // 専任他決打合せカテゴリ（4つの新カテゴリ）
-    // 買主には「専任他決打合せ」フィールドがないため、これらのカテゴリは常に0
-    // しかし、フロントエンドが期待しているため、カウント変数は初期化済み（0のまま）
   }
   
   // Supabaseに保存
@@ -325,87 +250,6 @@ function updateBuyerSidebarCounts_() {
     updated_at: now
   });
   
-  // 問合せメール未対応
-  upsertRows.push({
-    category: 'inquiryEmailNotResponded',
-    count: counts.inquiryEmailNotResponded,
-    label: '',
-    assignee: '',
-    updated_at: now
-  });
-  
-  // 未査定
-  upsertRows.push({
-    category: 'unvaluated',
-    count: counts.unvaluated,
-    label: '',
-    assignee: '',
-    updated_at: now
-  });
-  
-  // 査定（郵送）
-  upsertRows.push({
-    category: 'mailingPending',
-    count: counts.mailingPending,
-    label: '',
-    assignee: '',
-    updated_at: now
-  });
-  
-  // 当日TEL未着手
-  upsertRows.push({
-    category: 'todayCallNotStarted',
-    count: counts.todayCallNotStarted,
-    label: '',
-    assignee: '',
-    updated_at: now
-  });
-  
-  // Pinrich空欄
-  upsertRows.push({
-    category: 'pinrichEmpty',
-    count: counts.pinrichEmpty,
-    label: '',
-    assignee: '',
-    updated_at: now
-  });
-  
-  // 専任
-  upsertRows.push({
-    category: 'exclusive',
-    count: counts.exclusive,
-    label: '',
-    assignee: '',
-    updated_at: now
-  });
-  
-  // 一般
-  upsertRows.push({
-    category: 'general',
-    count: counts.general,
-    label: '',
-    assignee: '',
-    updated_at: now
-  });
-  
-  // 内覧後他決
-  upsertRows.push({
-    category: 'visitOtherDecision',
-    count: counts.visitOtherDecision,
-    label: '',
-    assignee: '',
-    updated_at: now
-  });
-  
-  // 未内覧他決
-  upsertRows.push({
-    category: 'unvisitedOtherDecision',
-    count: counts.unvisitedOtherDecision,
-    label: '',
-    assignee: '',
-    updated_at: now
-  });
-  
   // 当日TEL（担当別）
   for (var assignee in counts.todayCallAssigned) {
     upsertRows.push({
@@ -413,28 +257,6 @@ function updateBuyerSidebarCounts_() {
       count: counts.todayCallAssigned[assignee],
       label: '',
       assignee: assignee,
-      updated_at: now
-    });
-  }
-  
-  // 当日TEL（内容）
-  for (var infoLabel in counts.todayCallWithInfo) {
-    upsertRows.push({
-      category: 'todayCallWithInfo',
-      count: counts.todayCallWithInfo[infoLabel],
-      label: infoLabel,
-      assignee: '',
-      updated_at: now
-    });
-  }
-  
-  // 内覧済み（担当別）
-  for (var va in counts.visitCompleted) {
-    upsertRows.push({
-      category: 'visitCompleted',
-      count: counts.visitCompleted[va],
-      label: '',
-      assignee: va,
       updated_at: now
     });
   }
@@ -721,6 +543,16 @@ function syncUpdatesToSupabase_(sheetRows) {
     var rawViewingTime = row['●時間'];
     var sheetViewingTime = null;
     
+    // 🚨 デバッグ: 買主7282の時間データを記録
+    if (buyerNumber === '7282') {
+      Logger.log('  🕐 [DEBUG] 時間（生データ）: ' + rawViewingTime);
+      Logger.log('    型: ' + typeof rawViewingTime);
+      Logger.log('    Date型か: ' + (rawViewingTime instanceof Date));
+      Logger.log('    空文字か: ' + (rawViewingTime === ''));
+      Logger.log('    nullか: ' + (rawViewingTime === null));
+      Logger.log('    undefinedか: ' + (rawViewingTime === undefined));
+    }
+    
     if (rawViewingTime && rawViewingTime !== '') {
       // Dateオブジェクトの場合、時刻部分のみを抽出
       if (rawViewingTime instanceof Date) {
@@ -760,14 +592,31 @@ function syncUpdatesToSupabase_(sheetRows) {
       }
     }
     
+    // 🚨 デバッグ: 買主7282の時間変換結果を記録
+    if (buyerNumber === '7282') {
+      Logger.log('  🕐 [DEBUG] 時間（変換後）: ' + sheetViewingTime);
+    }
+    
     var normalizedSheetViewingTime = normalizeValue(sheetViewingTime);
     var normalizedDbViewingTime = normalizeValue(dbBuyer.viewing_time);
+    
+    // 🚨 デバッグ: 買主7282の正規化後の値を記録
+    if (buyerNumber === '7282') {
+      Logger.log('  � [DEBUG] 時間（正規化後）: ' + normalizedSheetViewingTime);
+      Logger.log('  🕐 [DEBUG] DB時間（正規化後）: ' + normalizedDbViewingTime);
+      Logger.log('  🕐 [DEBUG] 更新が必要か: ' + (normalizedSheetViewingTime !== normalizedDbViewingTime));
+    }
+    
     if (normalizedSheetViewingTime !== normalizedDbViewingTime) {
       updateData.viewing_time = normalizedSheetViewingTime;
       needsUpdate = true;
       if (normalizedSheetViewingTime === null && normalizedDbViewingTime !== null) {
         Logger.log('  🗑️ ' + buyerNumber + ': 内覧時間を削除 (旧値: ' + normalizedDbViewingTime + ')');
+      } else if (buyerNumber === '7282') {
+        Logger.log('  ✅ ' + buyerNumber + ': 内覧時間を更新 (新値: ' + normalizedSheetViewingTime + ', 旧値: ' + normalizedDbViewingTime + ')');
       }
+    } else if (buyerNumber === '7282') {
+      Logger.log('  ℹ️ ' + buyerNumber + ': 内覧時間は変更なし (' + normalizedSheetViewingTime + ')');
     }
     
     // 内覧形態

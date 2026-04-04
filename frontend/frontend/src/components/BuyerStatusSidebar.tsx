@@ -9,23 +9,10 @@ import {
 
 interface CategoryCounts {
   all?: number;
+  viewingDayBefore?: number;
   todayCall?: number;
-  todayCallWithInfo?: number;
-  todayCallAssigned?: number;
-  visitDayBefore?: number;
-  visitCompleted?: number;
-  unvaluated?: number;
-  mailingPending?: number;
-  todayCallNotStarted?: number;
-  pinrichEmpty?: number;
-  exclusive?: number;
-  general?: number;
-  visitOtherDecision?: number;
-  unvisitedOtherDecision?: number;
-  visitAssignedCounts?: Record<string, number>;
+  assignedCounts?: Record<string, number>;
   todayCallAssignedCounts?: Record<string, number>;
-  todayCallWithInfoLabels?: string[];
-  todayCallWithInfoLabelCounts?: Record<string, number>;
 }
 
 export interface BuyerWithStatus {
@@ -58,41 +45,18 @@ interface BuyerStatusSidebarProps {
 // カテゴリの色を取得
 function getCategoryColor(category: string): string {
   switch (category) {
-    case 'visitDayBefore':
-      return '#2e7d32';
-    case 'visitCompleted':
-      return '#1565c0';
+    case 'viewingDayBefore':
+      return '#d32f2f'; // 赤
     case 'todayCall':
-      return '#d32f2f';
-    case 'todayCallWithInfo':
-      return '#9c27b0';
-    case 'unvaluated':
-      return '#ed6c02';
-    case 'mailingPending':
-      return '#0288d1';
-    case 'todayCallNotStarted':
-      return '#ff9800';
-    case 'pinrichEmpty':
-      return '#795548';
+      return '#555555'; // グレー
     case 'todayCallAssigned':
-      return '#ff5722';
-    case 'exclusive':
-      return '#2e7d32';
-    case 'general':
-      return '#1565c0';
-    case 'visitOtherDecision':
-      return '#ff9800';
-    case 'unvisitedOtherDecision':
-      return '#ff5722';
+      return '#ff5722'; // オレンジ
     default:
-      if (category.startsWith('visitAssigned:')) {
-        return '#4caf50';
+      if (category.startsWith('assigned:')) {
+        return '#4caf50'; // 緑（担当）
       }
       if (category.startsWith('todayCallAssigned:')) {
-        return '#ff5722';
-      }
-      if (category.startsWith('todayCallWithInfo:')) {
-        return '#9c27b0';
+        return '#ff5722'; // オレンジ（当日TEL担当）
       }
       return '#555555';
   }
@@ -101,41 +65,18 @@ function getCategoryColor(category: string): string {
 // カテゴリの表示名を取得
 function getCategoryLabel(category: string): string {
   switch (category) {
-    case 'visitDayBefore':
-      return '①内覧日前日';
-    case 'visitCompleted':
-      return '②内覧済み';
+    case 'viewingDayBefore':
+      return '②内覧日前日';
     case 'todayCall':
-      return '③当日TEL分';
-    case 'todayCallWithInfo':
-      return '④当日TEL（内容）';
-    case 'unvaluated':
-      return '⑤未査定';
-    case 'mailingPending':
-      return '⑥査定（郵送）';
-    case 'todayCallNotStarted':
-      return '⑦当日TEL_未着手';
-    case 'pinrichEmpty':
-      return '⑧Pinrich空欄';
+      return '⑯当日TEL';
     case 'todayCallAssigned':
       return '当日TEL（担当）';
-    case 'exclusive':
-      return '専任';
-    case 'general':
-      return '一般';
-    case 'visitOtherDecision':
-      return '内覧後他決';
-    case 'unvisitedOtherDecision':
-      return '未内覧他決';
     default:
-      if (category.startsWith('visitAssigned:')) {
-        return `担当(${category.replace('visitAssigned:', '')})`;
+      if (category.startsWith('assigned:')) {
+        return `担当(${category.replace('assigned:', '')})`;
       }
       if (category.startsWith('todayCallAssigned:')) {
         return `当日TEL(${category.replace('todayCallAssigned:', '')})`;
-      }
-      if (category.startsWith('todayCallWithInfo:')) {
-        return category.replace('todayCallWithInfo:', '');
       }
       return category;
   }
@@ -175,22 +116,12 @@ export default function BuyerStatusSidebar({
   }
 
   // カテゴリリストを構築
-  const categoryList: Array<{ key: string; label: string; count: number; color: string }> = [];
+  const categoryList: Array<{ key: string; label: string; count: number; color: string; isSubCategory?: boolean; parentKey?: string }> = [];
 
   // 固定カテゴリ
   const fixedCategories = [
-    'visitDayBefore',
-    'visitCompleted',
+    'viewingDayBefore',
     'todayCall',
-    'todayCallWithInfo',
-    'unvaluated',
-    'mailingPending',
-    'todayCallNotStarted',
-    'pinrichEmpty',
-    'exclusive',
-    'general',
-    'visitOtherDecision',
-    'unvisitedOtherDecision',
   ];
 
   fixedCategories.forEach(key => {
@@ -205,55 +136,36 @@ export default function BuyerStatusSidebar({
     }
   });
 
-  // 担当者別カテゴリ（visitAssignedCounts）
-  if (categoryCounts.visitAssignedCounts) {
-    Object.entries(categoryCounts.visitAssignedCounts).forEach(([assignee, count]) => {
+  // 担当者別カテゴリ（assignedCounts）- 親カテゴリ
+  if (categoryCounts.assignedCounts) {
+    Object.entries(categoryCounts.assignedCounts).forEach(([assignee, count]) => {
       if (count > 0 && normalStaffInitials.includes(assignee)) {
-        const key = `visitAssigned:${assignee}`;
+        const key = `assigned:${assignee}`;
         categoryList.push({
           key,
           label: getCategoryLabel(key),
           count,
           color: getCategoryColor(key),
         });
+        
+        // サブカテゴリ: 当日TEL(イニシャル)
+        const todayCallCount = categoryCounts.todayCallAssignedCounts?.[assignee] ?? 0;
+        if (todayCallCount > 0) {
+          categoryList.push({
+            key: `todayCallAssigned:${assignee}`,
+            label: `当日TEL(${assignee})`,
+            count: todayCallCount,
+            color: getCategoryColor('todayCallAssigned'),
+            isSubCategory: true,
+            parentKey: key,
+          });
+        }
       }
     });
   }
 
-  // 当日TEL担当者別カテゴリ（todayCallAssignedCounts）
-  if (categoryCounts.todayCallAssignedCounts) {
-    Object.entries(categoryCounts.todayCallAssignedCounts).forEach(([assignee, count]) => {
-      if (count > 0 && normalStaffInitials.includes(assignee)) {
-        const key = `todayCallAssigned:${assignee}`;
-        categoryList.push({
-          key,
-          label: getCategoryLabel(key),
-          count,
-          color: getCategoryColor(key),
-        });
-      }
-    });
-  }
-
-  // 当日TEL（内容）ラベル別カテゴリ
-  if (categoryCounts.todayCallWithInfoLabelCounts) {
-    Object.entries(categoryCounts.todayCallWithInfoLabelCounts).forEach(([label, count]) => {
-      if (count > 0) {
-        const key = `todayCallWithInfo:${label}`;
-        categoryList.push({
-          key,
-          label: getCategoryLabel(key),
-          count,
-          color: getCategoryColor(key),
-        });
-      }
-    });
-  }
-
-  const renderCategoryItem = (category: { key: string; label: string; count: number; color: string }) => {
-    const isTodayCallSub = category.key.startsWith('todayCallAssigned:');
-    const isVisitCompletedSub = category.key.startsWith('visitCompleted:');
-    const isIndented = isTodayCallSub || isVisitCompletedSub;
+  const renderCategoryItem = (category: { key: string; label: string; count: number; color: string; isSubCategory?: boolean; parentKey?: string }) => {
+    const isIndented = category.isSubCategory === true;
     
     return (
       <ListItemButton
