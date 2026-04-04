@@ -183,7 +183,22 @@
   },
   "databaseToSpreadsheet": {
     "viewing_date": "●内覧日(最新）",
-    "viewing_time": "●時間"
+    "viewing_time": "●時間",
+    "notification_sender": "通知送信者",
+    "broker_inquiry": "業者問合せ",
+    "viewing_mobile": "内覧形態",
+    "viewing_type_general": "内覧形態_一般媒介",
+    "property_address": "物件所在地",
+    "google_map_url": "GoogleMap",
+    "name": "●氏名・会社名",
+    "phone_number": "●電話番号\n（ハイフン不要）",
+    "inquiry_hearing": "●問合時ヒアリング",
+    "viewing_result_follow_up": "★内覧結果・後続対応",
+    "latest_status": "★最新状況\n",
+    "viewing_unconfirmed": "内覧未確定",
+    "seller_viewing_contact": "●売主に内覧連絡　未/済",
+    "buyer_viewing_contact": "●買主に内覧連絡　未/済",
+    "post_viewing_seller_contact": "内覧後売主連絡"
   },
   "typeConversions": {
     "created_datetime": "datetime",
