@@ -31,7 +31,7 @@ import { useAuthStore } from '../store/authStore';
 
 /**
  * カレンダーイベントのタイトルを生成する
- * - viewing_type（専任物件用）を優先し、空の場合は viewing_type_general（一般媒介用）を使用
+ * - viewing_mobile（専任物件用）を優先し、空の場合は viewing_type_general（一般媒介用）を使用
  * - 「立会」を含み「立会不要」を含まない場合のみ末尾に（買主氏名）を追加
  */
 export function generateCalendarTitle(
@@ -436,7 +436,7 @@ export default function BuyerViewingResultPage() {
 
     // タイトルと説明を生成
     const title = generateCalendarTitle(
-      buyer.viewing_type,
+      buyer.viewing_mobile,
       buyer.viewing_type_general,
       property?.address,
       buyer.name
@@ -510,7 +510,7 @@ export default function BuyerViewingResultPage() {
         buyerName: buyer.name,
         buyerPhone: buyer.phone_number,
         buyerEmail: buyer.email,
-        viewingMobile: buyer.viewing_type || buyer.viewing_type_general,
+        viewingMobile: buyer.viewing_mobile || buyer.viewing_type_general,
         propertyAddress: property?.address || '',
         propertyNumber: property?.property_number || '',
         propertyGoogleMapUrl: property?.google_map_url || '',
@@ -959,7 +959,7 @@ export default function BuyerViewingResultPage() {
               // 専任物件の場合
               if (hasExclusiveProperty) {
                 // 必須条件：内覧日が入力されているが、内覧形態が未入力の場合
-                const hasValue = buyer.viewing_type && buyer.viewing_type.trim() !== '';
+                const hasValue = buyer.viewing_mobile && buyer.viewing_mobile.trim() !== '';
                 const isRequired = !hasValue;
 
                 const VIEWING_FORM_EXCLUSIVE_OPTIONS = [
@@ -989,13 +989,13 @@ export default function BuyerViewingResultPage() {
                         {VIEWING_FORM_EXCLUSIVE_OPTIONS.map((option) => (
                           <Button
                             key={option}
-                            variant={buyer.viewing_type === option ? 'contained' : 'outlined'}
+                            variant={buyer.viewing_mobile === option ? 'contained' : 'outlined'}
                             color="primary"
                             size="small"
                             onClick={async () => {
                               // 同じボタンを2度クリックしたら値をクリア
-                              const newValue = buyer.viewing_type === option ? '' : option;
-                              await handleInlineFieldSave('viewing_type', newValue);
+                              const newValue = buyer.viewing_mobile === option ? '' : option;
+                              await handleInlineFieldSave('viewing_mobile', newValue);
                             }}
                             sx={{ 
                               justifyContent: 'flex-start',
