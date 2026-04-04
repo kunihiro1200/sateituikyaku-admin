@@ -84,14 +84,11 @@
     - プッシュ: main
     - Vercel自動デプロイ: 進行中
 
-- [ ] 6. Final verification in production
+- [x] 6. Final verification in production
   - **✅ マイグレーションSQL修正完了**: `cancellation_notice` → `cancel_notice_assignee`に修正
-  - **実行手順**: `SUPABASE-MIGRATION-INSTRUCTIONS.md`を参照
-  - **マイグレーションSQL**: `backend/supabase/migrations/20260405000002_fix_varchar_limits_and_add_visit_time.sql`
-  - Supabase SQL Editorでマイグレーションを実行
-  - GASコードをGoogle Apps Scriptエディタにコピー
-  - `syncSellerList`を手動実行してAA13846とFI00006を同期
-  - ブラウザで売主リストページを開く
-  - 「FI6」で検索してFI00006が表示されることを確認
-  - 「FI2」で検索してFI2とFI00002が表示されることを確認
-  - 「AA13501」で検索して正常に動作することを確認（回帰テスト）
+  - **✅ マイグレーション実行完了**: Supabase SQL Editorで実行済み
+  - **✅ GAS同期完了**: AA13846とFI00006を同期済み
+  - **✅ 本番環境で動作確認完了**:
+    - 「FI6」で検索 → FI00006が表示される ✅
+    - 「FI2」で検索 → FI2とFI00002が表示される ✅
+    - 「AA13501」で検索 → 正常に動作する（回帰テスト）✅
