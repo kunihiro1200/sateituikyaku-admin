@@ -331,6 +331,16 @@ export default function BuyerViewingResultPage() {
         'notification_sender',
         'inquiry_hearing',
         'post_viewing_seller_contact',
+        'viewing_mobile',
+        'viewing_type_general',
+        'offer_comment',
+        'build_year',
+        'renovation_history',
+        'other_valuation_done',
+        'owner_name',
+        'loan_balance',
+        'visit_desk',
+        'seller_list_copy',
       ];
       const shouldSync = SYNC_FIELDS.includes(fieldName);
       const result = await buyerApi.update(
