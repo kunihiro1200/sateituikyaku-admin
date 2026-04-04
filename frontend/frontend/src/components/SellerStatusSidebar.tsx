@@ -612,8 +612,9 @@ export default function SellerStatusSidebar({
       </Button>
 
       {/* 既存の固定カテゴリー */}
-      {renderCategoryButton('visitDayBefore', '①訪問日前日', '#2e7d32')}
-      {renderCategoryButton('todayCall', '③当日TEL分', '#d32f2f')}
+      {renderCategoryButton('todayCallNotStarted', '当日TEL_未着手', '#ff9800')}
+      {renderCategoryButton('unvaluated', '未査定', '#ed6c02')}
+      {renderCategoryButton('todayCall', '当日TEL分', '#d32f2f')}
       {(() => {
         // todayCallWithInfo のラベルはAPIから取得した全件対象のラベル一覧を優先使用
         // フォールバック: validSellers（表示中の売主のみ）から生成
@@ -631,7 +632,7 @@ export default function SellerStatusSidebar({
 
         const labels = Object.keys(labelCountMap);
         if (labels.length === 0) {
-          return renderCategoryButton('todayCallWithInfo', '②当日TEL（内容）', '#9c27b0');
+          return renderCategoryButton('todayCallWithInfo', '当日TEL（内容）', '#9c27b0');
         }
 
         // ラベルごとに個別ボタンを表示（件数はlabelCountMapから取得）
@@ -683,19 +684,18 @@ export default function SellerStatusSidebar({
           </>
         );
       })()}
-      {renderCategoryButton('unvaluated', '③未査定', '#ed6c02')}
-      {renderCategoryButton('mailingPending', '④査定（郵送）', '#0288d1')}
-      {renderCategoryButton('todayCallNotStarted', '⑦当日TEL_未着手', '#ff9800')}
-      {renderCategoryButton('pinrichEmpty', '⑧Pinrich空欄', '#795548')}
 
-      {/* 担当者別カテゴリー（動的生成・区切り線付き） */}
+      {/* 担当者別カテゴリー（動的生成・区切り線なし） */}
       {/* assigneeInitialsが空でもsellersから動的取得するため常に表示 */}
-      <Box sx={{ mt: 0.5, pt: 0.5, borderTop: '1px solid', borderColor: 'grey.200', bgcolor: '#fff8f5', borderRadius: 1, px: 0.5 }}>
+      <Box sx={{ mt: 0.5 }}>
         {renderAssigneeCategories()}
       </Box>
 
-      {/* 専任・一般・訪問後他決・未訪問他決カテゴリー（区切り線付き） */}
+      {/* その他のカテゴリー（区切り線付き） */}
       <Box sx={{ mt: 0.5, pt: 0.5, borderTop: '1px solid', borderColor: 'grey.200', bgcolor: '#f5f5f5', borderRadius: 1, px: 0.5 }}>
+        {renderCategoryButton('visitDayBefore', '訪問日前日', '#2e7d32')}
+        {renderCategoryButton('mailingPending', '査定（郵送）', '#0288d1')}
+        {renderCategoryButton('pinrichEmpty', 'Pinrich空欄', '#795548')}
         {renderCategoryButton('exclusive', '専任', '#2e7d32')}
         {renderCategoryButton('general', '一般', '#1565c0')}
         {renderCategoryButton('visitOtherDecision', '訪問後他決', '#ff9800')}
