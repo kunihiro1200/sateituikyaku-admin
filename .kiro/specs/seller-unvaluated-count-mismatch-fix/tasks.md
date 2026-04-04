@@ -29,6 +29,10 @@
   - [x] 3.2.1 `getCategoryLabel()`メソッドから①②③⑦⑧を削除
   - [x] 3.2.2 全カテゴリのラベルを更新
 
+- [x] 3.3 フロントエンドフィルター関数の修正
+  - [x] 3.3.1 `isValuationNotRequired()`関数で`mailingStatus`ではなく`valuationMethod`をチェック
+  - [x] 3.3.2 バックエンドロジックと一致させる
+
 ## Phase 4: デプロイ
 
 - [x] 4.1 git commit & push

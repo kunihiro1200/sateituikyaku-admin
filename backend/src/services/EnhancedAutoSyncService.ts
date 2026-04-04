@@ -209,7 +209,8 @@ export class EnhancedAutoSyncService {
     
     for (const row of allRows) {
       const sellerNumber = row['売主番号'];
-      if (sellerNumber && typeof sellerNumber === 'string' && sellerNumber.startsWith('AA')) {
+      // 🚨 修正: 任意の2文字アルファベットプレフィックス + 数字の形式に対応（AA12903、FI123、BB456等）
+      if (sellerNumber && typeof sellerNumber === 'string' && /^[A-Z]{2}\d+$/.test(sellerNumber)) {
         sheetSellerNumbers.add(sellerNumber);
       }
     }
@@ -227,10 +228,20 @@ export class EnhancedAutoSyncService {
       }
     }
 
-    // 売主番号でソート
+    // 売主番号でソート（プレフィックス + 数字でソート）
     missingSellers.sort((a, b) => {
-      const numA = parseInt(a.replace('AA', ''), 10);
-      const numB = parseInt(b.replace('AA', ''), 10);
+      // プレフィックス（最初の2文字）を抽出
+      const prefixA = a.substring(0, 2);
+      const prefixB = b.substring(0, 2);
+      
+      // プレフィックスが異なる場合はプレフィックスでソート
+      if (prefixA !== prefixB) {
+        return prefixA.localeCompare(prefixB);
+      }
+      
+      // プレフィックスが同じ場合は数字部分でソート
+      const numA = parseInt(a.substring(2), 10);
+      const numB = parseInt(b.substring(2), 10);
       return numA - numB;
     });
 
@@ -259,7 +270,8 @@ export class EnhancedAutoSyncService {
     
     for (const row of allRows) {
       const sellerNumber = row['売主番号'];
-      if (sellerNumber && typeof sellerNumber === 'string' && sellerNumber.startsWith('AA')) {
+      // 🚨 修正: 任意の2文字アルファベットプレフィックス + 数字の形式に対応（AA12903、FI123、BB456等）
+      if (sellerNumber && typeof sellerNumber === 'string' && /^[A-Z]{2}\d+$/.test(sellerNumber)) {
         sheetSellerNumbers.add(sellerNumber);
       }
     }
@@ -277,10 +289,22 @@ export class EnhancedAutoSyncService {
       }
     }
 
-    // 売主番号でソート
+    // 売主番号でソート（プレフィックス + 数字でソート）
     deletedSellers.sort((a, b) => {
-      const numA = parseInt(a.replace('AA', ''), 10);
-      const numB = parseInt(b.replace('AA', ''), 10);
+      // プレフィックス（最初の2文字）を抽出
+      const prefixA = a.substring(0, 2);
+      const prefixB = b.substring(0, 2);
+      
+      // プレフィックスが異なる場合はプレフィックスでソート
+      if (prefixA !== prefixB) {
+        return prefixA.localeCompare(prefixB);
+      }
+      
+      // プレフィックスが同じ場合は数字部分でソート
+      const numA = parseInt(a.substring(2), 10);
+      const numB = parseInt(b.substring(2), 10);
+      return numA - numB;
+    });
       return numA - numB;
     });
 
@@ -755,7 +779,8 @@ export class EnhancedAutoSyncService {
     
     for (const row of allRows) {
       const sellerNumber = row['売主番号'];
-      if (sellerNumber && typeof sellerNumber === 'string' && sellerNumber.startsWith('AA')) {
+      // 🚨 修正: 任意の2文字アルファベットプレフィックス + 数字の形式に対応（AA12903、FI123、BB456等）
+      if (sellerNumber && typeof sellerNumber === 'string' && /^[A-Z]{2}\d+$/.test(sellerNumber)) {
         sheetDataBySellerNumber.set(sellerNumber, row);
       }
     }

@@ -503,7 +503,8 @@ function onEditTrigger(e) {
     if (sellerNumberColIndex === -1) { Logger.log('⚠️ 売主番号列が見つかりません'); return; }
     var rowData = sheet.getRange(editedRow, 1, 1, sheet.getLastColumn()).getValues()[0];
     var sellerNumber = rowData[sellerNumberColIndex];
-    if (!sellerNumber || typeof sellerNumber !== 'string' || !sellerNumber.startsWith('AA')) return;
+    // 🚨 修正: 任意の2文字アルファベットプレフィックス + 数字の形式に対応（AA12903、FI123、BB456等）
+    if (!sellerNumber || typeof sellerNumber !== 'string' || !sellerNumber.match(/^[A-Z]{2}\d+$/)) return;
     var rowObj = rowToObject(headers, rowData);
     Logger.log('📝 編集検知: ' + sellerNumber + ' (行 ' + editedRow + ')');
     var response = postToBackend('/api/sync/seller-row', rowObj);
