@@ -198,7 +198,14 @@
     "viewing_unconfirmed": "内覧未確定",
     "seller_viewing_contact": "●売主に内覧連絡　未/済",
     "buyer_viewing_contact": "●買主に内覧連絡　未/済",
-    "post_viewing_seller_contact": "内覧後売主連絡"
+    "post_viewing_seller_contact": "内覧後売主連絡",
+    "follow_up_assignee": "後続担当",
+    "pre_viewing_notes": "内覧前伝達事項",
+    "viewing_notes": "内覧の時の伝達事項",
+    "pre_viewing_hearing": "内覧前ヒアリング",
+    "offer_comment": "買付コメント（任意）",
+    "company_name": "法人名",
+    "email": "●メアド"
   },
   "typeConversions": {
     "created_datetime": "datetime",
