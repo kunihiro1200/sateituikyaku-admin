@@ -141,10 +141,10 @@ export default function BuyersPage() {
                 // 担当者別カテゴリ（assigned:Y, todayCallAssigned:I など）の処理
                 if (selectedCalculatedStatus.startsWith('assigned:')) {
                   const assignee = selectedCalculatedStatus.replace('assigned:', '');
-                  // バックエンドと同じロジック: follow_up_assignee または initial_assignee でフィルタリング
+                  // バックエンドと同じロジック: follow_up_assignee または initial_assignee のいずれかが一致すればOK
                   const matches = (
                     b.follow_up_assignee === assignee ||
-                    (!b.follow_up_assignee && b.initial_assignee === assignee)
+                    b.initial_assignee === assignee
                   );
                   
                   if (matches) {
