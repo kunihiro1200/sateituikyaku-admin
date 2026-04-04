@@ -57,3 +57,14 @@
 
 - [x] 4. Checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
+
+- [x] 5. 本番環境での「データなし」問題の調査と修正
+  - [x] 5.1 根本原因の特定
+    - ローカルテストは成功（211件一致）
+    - 本番環境で「データなし」が表示される
+    - 原因: フロントエンドのフィルタリングロジックが `calculated_status` と比較していたが、`calculated_status` は最も優先度の高いステータスを返すため、「担当(Y)」ではなく「内覧日前日」や「当日TEL(Y)」などが返されていた
+  - [x] 5.2 フロントエンドのフィルタリングロジックを修正
+    - `BuyersPage.tsx` のフィルタリングロジックを修正
+    - `assigned:Y` の場合、`follow_up_assignee` または `initial_assignee` でフィルタリング（バックエンドと同じロジック）
+    - `todayCallAssigned:Y` の場合、`calculated_status === '当日TEL(Y)'` でフィルタリング
+    - デバッグログを追加

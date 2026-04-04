@@ -138,29 +138,46 @@ export default function BuyersPage() {
           
           let filtered = selectedCalculatedStatus !== null
             ? allBuyersWithStatusRef.current.filter(b => {
-                // サイドバーのカテゴリキーを日本語の表示名に変換
-                let displayName = categoryKeyToDisplayName[selectedCalculatedStatus] || selectedCalculatedStatus;
-                
                 // 担当者別カテゴリ（assigned:Y, todayCallAssigned:I など）の処理
                 if (selectedCalculatedStatus.startsWith('assigned:')) {
                   const assignee = selectedCalculatedStatus.replace('assigned:', '');
-                  displayName = `担当(${assignee})`;
+                  // バックエンドと同じロジック: follow_up_assignee または initial_assignee でフィルタリング
+                  const matches = (
+                    b.follow_up_assignee === assignee ||
+                    (!b.follow_up_assignee && b.initial_assignee === assignee)
+                  );
+                  
+                  if (matches) {
+                    console.log(`[BuyersPage] ✅ 担当(${assignee}) Match: ${b.buyer_number}`);
+                  }
+                  
+                  return matches;
                 } else if (selectedCalculatedStatus.startsWith('todayCallAssigned:')) {
                   const assignee = selectedCalculatedStatus.replace('todayCallAssigned:', '');
-                  displayName = `当日TEL(${assignee})`;
+                  // calculated_status が "当日TEL(Y)" の形式で一致する買主を表示
+                  const matches = b.calculated_status === `当日TEL(${assignee})`;
+                  
+                  if (matches) {
+                    console.log(`[BuyersPage] ✅ 当日TEL(${assignee}) Match: ${b.buyer_number}`);
+                  }
+                  
+                  return matches;
+                } else {
+                  // サイドバーのカテゴリキーを日本語の表示名に変換
+                  const displayName = categoryKeyToDisplayName[selectedCalculatedStatus] || selectedCalculatedStatus;
+                  
+                  console.log(`[BuyersPage] Checking buyer ${b.buyer_number}: calculated_status="${b.calculated_status}", displayName="${displayName}", selectedCalculatedStatus="${selectedCalculatedStatus}"`);
+                  
+                  // バックエンドのcalculated_statusは既に日本語（例: "内覧日前日", "担当(Y)", "当日TEL(Y)"）
+                  // フィルタリングは日本語の表示名で直接比較
+                  const matches = b.calculated_status === displayName;
+                  
+                  if (matches) {
+                    console.log(`[BuyersPage] ✅ Match found: ${b.buyer_number}`);
+                  }
+                  
+                  return matches;
                 }
-                
-                console.log(`[BuyersPage] Checking buyer ${b.buyer_number}: calculated_status="${b.calculated_status}", displayName="${displayName}", selectedCalculatedStatus="${selectedCalculatedStatus}"`);
-                
-                // バックエンドのcalculated_statusは既に日本語（例: "内覧日前日", "担当(Y)", "当日TEL(Y)"）
-                // フィルタリングは日本語の表示名で直接比較
-                const matches = b.calculated_status === displayName;
-                
-                if (matches) {
-                  console.log(`[BuyersPage] ✅ Match found: ${b.buyer_number}`);
-                }
-                
-                return matches;
               })
             : [...allBuyersWithStatusRef.current];
 
