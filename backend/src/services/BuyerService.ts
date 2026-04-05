@@ -1722,96 +1722,10 @@ export class BuyerService {
     categoryCounts: any;
     normalStaffInitials: string[];
   }> {
-    try {
-      console.log('🔍 [BuyerService] getSidebarCounts called - checking buyer_sidebar_counts table');
-      
-      // buyer_sidebar_counts テーブルから全行取得（GASが10分ごとに更新）
-      const { data, error } = await this.supabase
-        .from('buyer_sidebar_counts')
-        .select('category, count, label, assignee');
-
-      if (error || !data || data.length === 0) {
-        console.log('⚠️ buyer_sidebar_counts empty or error, falling back to DB query');
-        return this.getSidebarCountsFallback();
-      }
-
-      // カテゴリカウントオブジェクトを構築（フロントエンドが期待する形式）
-      // 🚨 重要：買主リスト専用のキーのみを含める（売主専用のキーは削除）
-      const result: any = {
-        all: 0,
-        viewingDayBefore: 0,  // ✅ 買主用：内覧日前日
-        todayCall: 0,          // ✅ 買主用：当日TEL
-        threeCallUnchecked: 0, // ✅ 買主用：３回架電未（新規）
-        assignedCounts: {} as Record<string, number>,  // ✅ 買主用：担当別
-        todayCallAssignedCounts: {} as Record<string, number>,  // ✅ 買主用：当日TEL担当別
-      };
-      
-      for (const row of data) {
-        const count = row.count || 0;
-        
-        switch (row.category) {
-          case 'viewingDayBefore':
-            result.viewingDayBefore = count;  // ✅ 修正: visitDayBefore → viewingDayBefore
-            break;
-          case 'inquiryEmailNotResponded':
-            // 問合せメール未対応（必要に応じて追加）
-            break;
-          case 'todayCall':
-            result.todayCall = count;
-            break;
-          case 'threeCallUnchecked':
-            result.threeCallUnchecked = count;  // ✅ 新規：３回架電未
-            break;
-          case 'todayCallAssigned':
-            if (row.assignee) {
-              result.todayCallAssignedCounts[row.assignee] = count;
-            }
-            break;
-          case 'todayCallWithInfo':
-            if (row.label) {
-              result.todayCallWithInfoLabelCounts[row.label] = count;
-            }
-            break;
-          case 'assigned':
-            if (row.assignee) {
-              result.assignedCounts[row.assignee] = count;  // ✅ 買主用：担当別
-            }
-            break;
-          // 🚨 売主専用のカテゴリは削除（買主リストには不要）
-          // - visitCompleted（訪問済み）
-          // - unvaluated（未査定）
-          // - mailingPending（査定（郵送））
-          // - todayCallNotStarted（当日TEL未着手）
-          // - pinrichEmpty（Pinrich空欄）
-          // - exclusive（専任）
-          // - general（一般）
-          // - visitOtherDecision（訪問後他決）
-          // - unvisitedOtherDecision（未訪問他決）
-        }
-      }
-
-      // 全件数を計算
-      result.all = (Object.values(result) as any[]).reduce((sum: number, val: any): number => {
-        if (typeof val === 'number') return sum + val;
-        if (typeof val === 'object' && val !== null) {
-          return sum + (Object.values(val) as any[]).reduce((s: number, v: any): number => s + (typeof v === 'number' ? v : 0), 0);
-        }
-        return sum;
-      }, 0);
-
-      console.log('✅ buyer_sidebar_counts loaded from cache table:', result);
-      console.log('🔍 [DEBUG] assignedCounts:', result.assignedCounts);
-      console.log('🔍 [DEBUG] todayCallAssignedCounts:', result.todayCallAssignedCounts);
-      
-      // 通常スタッフのイニシャルを取得
-      const normalStaffInitials = await this.fetchNormalStaffInitials();
-      
-      // ✅ 修正: categoryCounts形式で返す（categories配列ではなく）
-      return { categoryCounts: result, normalStaffInitials };
-    } catch (e) {
-      console.error('❌ getSidebarCounts error, falling back:', e);
-      return this.getSidebarCountsFallback();
-    }
+    // 🚨 重要：buyer_sidebar_countsテーブルへの依存を削除
+    // 常に動的計算を使用することで、サイドバーと一覧のカウントを一致させる
+    console.log('🔍 [BuyerService] getSidebarCounts called - using dynamic calculation');
+    return this.getSidebarCountsFallback();
   }
 
   /**
