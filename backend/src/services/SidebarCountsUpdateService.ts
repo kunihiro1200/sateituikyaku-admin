@@ -10,8 +10,8 @@ import { CacheHelper } from '../utils/cache';
 export class SidebarCountsUpdateService {
   private supabase;
 
-  constructor() {
-    this.supabase = createClient(
+  constructor(supabaseClient?: any) {
+    this.supabase = supabaseClient || createClient(
       process.env.SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
