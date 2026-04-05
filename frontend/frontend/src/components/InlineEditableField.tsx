@@ -396,9 +396,12 @@ export const InlineEditableField: React.FC<InlineEditableFieldProps> = memo(({
         );
 
       case 'date':
+        // HTML5 date input requires YYYY-MM-DD format
+        const dateValue = editValue ? String(editValue).split('T')[0] : '';
         return (
           <TextField
             {...commonProps}
+            value={dateValue}
             type="date"
             InputLabelProps={{ shrink: true }}
           />
