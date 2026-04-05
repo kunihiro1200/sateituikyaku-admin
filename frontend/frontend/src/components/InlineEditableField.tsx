@@ -156,8 +156,17 @@ export const InlineEditableField: React.FC<InlineEditableFieldProps> = memo(({
           return;
         }
         // 元の値がnullまたは有効な日付で、新しい値が空文字の場合は「削除」として保存
+        // 空文字をnullに変換してから保存
         if (value !== '' && currentVal === '') {
-          await saveValue();
+          // editValueをnullに更新してから保存
+          updateValue(null);
+          // updateValueは非同期ではないが、stateの更新は次のレンダリングで反映されるため
+          // 直接onSaveを呼び出す
+          try {
+            await onSave(null);
+          } catch (err) {
+            // エラーハンドリングはonSave内で行われる
+          }
           return;
         }
       }
