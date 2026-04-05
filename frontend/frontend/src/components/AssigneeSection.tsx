@@ -74,14 +74,18 @@ export function calcSendStatus(
   const emailSent = new Set<keyof Seller>();
 
   for (const act of activities) {
+    console.log('[calcSendStatus] Processing activity:', act);
     const match = act.content?.match(/^【(.+?)】/);
     if (!match) continue;
     const label = match[1];
+    console.log('[calcSendStatus] Matched label:', label);
     if (act.type === 'sms') {
       const key = SMS_LABEL_TO_KEY[label];
+      console.log('[calcSendStatus] SMS - Mapped key:', key);
       if (key) smsSent.add(key);
     } else if (act.type === 'email') {
       const key = EMAIL_LABEL_TO_KEY[label];
+      console.log('[calcSendStatus] Email - Mapped key:', key);
       if (key) emailSent.add(key);
     }
   }
@@ -95,6 +99,7 @@ export function calcSendStatus(
     else if (hasSms) result[key] = 'sms';
     else result[key] = 'email';
   }
+  console.log('[calcSendStatus] Final sendStatus:', result);
   return result;
 }
 

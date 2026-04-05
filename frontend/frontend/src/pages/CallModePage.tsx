@@ -3025,6 +3025,9 @@ HP：https://ifoo-oita.com/
         // SMS送信後、対応する担当フィールドにログインユーザーのイニシャルを自動セット
         try {
           const assigneeKey = SMS_TEMPLATE_ASSIGNEE_MAP[template.id];
+          console.log('[handleConfirmSend] Template ID:', template.id);
+          console.log('[handleConfirmSend] Template label:', template.label);
+          console.log('[handleConfirmSend] Assignee key:', assigneeKey);
           // 最優先: /api/employees/initials-by-emailでログインユーザーのイニシャルを確実に取得
           // （activeEmployeesはスプシの「通常=TRUE」スタッフのみのため、全アカウントが含まれるとは限らない）
           let myInitial = '';
@@ -3047,7 +3050,9 @@ HP：https://ifoo-oita.com/
               } catch { /* ignore */ }
             }
           }
+          console.log('[handleConfirmSend] My initial:', myInitial);
           if (assigneeKey && myInitial && seller?.id) {
+            console.log('[handleConfirmSend] API payload:', { [assigneeKey]: myInitial });
             await api.put(`/api/sellers/${seller.id}`, { [assigneeKey]: myInitial });
             setSeller((prev) => prev ? { ...prev, [assigneeKey as keyof Seller]: myInitial } : prev);
           }
