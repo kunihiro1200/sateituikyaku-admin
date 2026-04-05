@@ -3089,19 +3089,6 @@ HP：https://ifoo-oita.com/
         // この分岐は到達しない（確認ダイアログをスキップするため）
         console.warn('handleConfirmSend: SMS送信は handleSmsTemplateSelect() で処理されます');
         return;
-
-        // SMS送信後、対応する担当フィールドにログインユーザーのイニシャルを自動セット
-        try {
-          const assigneeKey = SMS_TEMPLATE_ASSIGNEE_MAP[template.id];
-          console.log('[handleConfirmSend] Template ID:', template.id);
-          console.log('[handleConfirmSend] Template label:', template.label);
-          console.log('[handleConfirmSend] Assignee key:', assigneeKey);
-          // 最優先: /api/employees/initials-by-emailでログインユーザーのイニシャルを確実に取得
-      } else if (type === 'sms') {
-        // SMS送信は handleSmsTemplateSelect() で直接実行されるため、
-        // この分岐は到達しない（確認ダイアログをスキップするため）
-        console.warn('handleConfirmSend: SMS送信は handleSmsTemplateSelect() で処理されます');
-        return;
       }
 
       // 活動履歴を再読み込み
