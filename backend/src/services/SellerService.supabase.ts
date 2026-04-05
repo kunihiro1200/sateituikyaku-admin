@@ -794,6 +794,15 @@ export class SellerService extends BaseRepository {
     // サイドバーカウントキャッシュも無効化（売主データ変更により集計が変わる可能性があるため）
     await CacheHelper.del('sellers:sidebar-counts');
 
+    // サイドバーカウント更新（非同期、ノンブロッキング）
+    if (this.shouldUpdateSellerSidebarCounts(updates)) {
+      const { SidebarCountsUpdateService } = await import('./SidebarCountsUpdateService');
+      const sidebarService = new SidebarCountsUpdateService(this.supabase);
+      sidebarService.updateSellerSidebarCounts(sellerId).catch(err => {
+        console.error('⚠️ Failed to update seller sidebar counts:', err);
+      });
+    }
+
     // スプレッドシートに同期（非同期・ノンブロッキング）
     // SyncQueueが利用可能な場合はキュー経由、そうでない場合は直接同期
     const activeSyncQueue2 = this.getActiveSyncQueue();
@@ -840,6 +849,17 @@ export class SellerService extends BaseRepository {
         console.error(`❌ Direct sync error for seller: ${sellerId}`, err);
       }
     })();
+  }
+
+  /**
+   * サイドバーカウント更新が必要かどうかを判定
+   * @param updates 更新データ
+   * @returns サイドバーカウント更新が必要な場合はtrue
+   */
+  private shouldUpdateSellerSidebarCounts(updates: any): boolean {
+    // サイドバーカテゴリーに影響するフィールド
+    const sidebarFields = ['next_call_date', 'visit_assignee', 'visit_date', 'status'];
+    return sidebarFields.some(field => field in updates);
   }
 
   /**

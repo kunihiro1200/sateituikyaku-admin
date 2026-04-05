@@ -560,6 +560,17 @@ export class BuyerService {
   }
 
   /**
+   * サイドバーカウント更新が必要かどうかを判定
+   * @param updateData 更新データ
+   * @returns サイドバーカウント更新が必要な場合はtrue
+   */
+  private shouldUpdateBuyerSidebarCounts(updateData: Partial<any>): boolean {
+    // サイドバーカテゴリーに影響するフィールド
+    const sidebarFields = ['next_call_date', 'follow_up_assignee', 'viewing_date', 'notification_sender'];
+    return sidebarFields.some(field => field in updateData);
+  }
+
+  /**
    * 買主情報を更新
    */
   async update(id: string, updateData: Partial<any>, userId?: string, userEmail?: string): Promise<any> {
@@ -618,6 +629,15 @@ export class BuyerService {
           }
         }
       }
+    }
+
+    // サイドバーカウント更新（非同期、ノンブロッキング）
+    if (this.shouldUpdateBuyerSidebarCounts(allowedData)) {
+      const { SidebarCountsUpdateService } = await import('./SidebarCountsUpdateService');
+      const sidebarService = new SidebarCountsUpdateService(this.supabase);
+      sidebarService.updateBuyerSidebarCounts(buyerNumber).catch(err => {
+        console.error('⚠️ Failed to update buyer sidebar counts:', err);
+      });
     }
 
     return data;
