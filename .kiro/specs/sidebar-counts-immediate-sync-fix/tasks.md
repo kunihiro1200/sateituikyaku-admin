@@ -37,7 +37,7 @@
   - Mark task complete when tests are written, run, and passing on unfixed code
   - _Requirements: 3.1, 3.2, 3.3, 3.4_
 
-- [ ] 3. Fix for サイドバーカウント即時反映
+- [x] 3. Fix for サイドバーカウント即時反映
 
   - [x] 3.1 サイドバーカウント更新サービスの作成
     - `backend/src/services/SidebarCountsUpdateService.ts`を新規作成
@@ -64,7 +64,7 @@
     - 条件付き実行: サイドバーカテゴリーに影響するフィールドが更新された場合のみ実行
     - _Requirements: 2.3_
 
-  - [ ] 3.4 Verify bug condition exploration test now passes
+  - [x] 3.4 Verify bug condition exploration test now passes
     - **Property 1: Expected Behavior** - サイドバーカウント即時反映
     - **IMPORTANT**: Re-run the SAME test from task 1 - do NOT write a new test
     - The test from task 1 encodes the expected behavior
@@ -73,12 +73,12 @@
     - **EXPECTED OUTCOME**: Test PASSES (confirms bug is fixed)
     - _Requirements: Expected Behavior Properties from design_
 
-  - [ ] 3.5 Verify preservation tests still pass
+  - [x] 3.5 Verify preservation tests still pass
     - **Property 2: Preservation** - GAS同期の維持
     - **IMPORTANT**: Re-run the SAME tests from task 2 - do NOT write new tests
     - Run preservation property tests from step 2
     - **EXPECTED OUTCOME**: Tests PASS (confirms no regressions)
     - Confirm all tests still pass after fix (no regressions)
 
-- [ ] 4. Checkpoint - Ensure all tests pass
+- [x] 4. Checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.

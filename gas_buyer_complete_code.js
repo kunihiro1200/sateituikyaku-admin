@@ -157,6 +157,42 @@ function patchBuyerToSupabase_(buyerNumber, updateData) {
   }
 }
 
+// 🚨 新規追加: バッチ更新関数（複数の買主を1回のHTTPリクエストで更新）
+function patchBuyersBatchToSupabase_(buyersData) {
+  // buyersData: [{ buyer_number, updateData }, ...]
+  var url = BUYER_SYNC_CONFIG.BACKEND_URL + '/api/buyers/batch';
+  
+  // API Keyを環境変数から取得
+  var apiKey = PropertiesService.getScriptProperties().getProperty('GAS_API_KEY');
+  if (!apiKey) {
+    Logger.log('❌ GAS_API_KEY is not set in Script Properties');
+    return { success: false, error: 'GAS_API_KEY is not configured' };
+  }
+  
+  var options = {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-API-Key': apiKey  // API Key認証ヘッダー
+    },
+    payload: JSON.stringify({ buyers: buyersData }),
+    muteHttpExceptions: true
+  };
+  
+  try {
+    var res = UrlFetchApp.fetch(url, options);
+    var code = res.getResponseCode();
+    if (code >= 200 && code < 300) {
+      var result = JSON.parse(res.getContentText());
+      return { success: true, result: result };
+    } else {
+      return { success: false, error: 'HTTP ' + code + ': ' + res.getContentText().substring(0, 300) };
+    }
+  } catch (e) {
+    return { success: false, error: 'Network error: ' + e.toString() };
+  }
+}
+
 function fetchAllBuyersFromSupabase_() {
   var allBuyers = [];
   var pageSize = 1000;
@@ -208,9 +244,15 @@ function syncUpdatesToSupabase_(sheetRows) {
     return 0;
   });
   Logger.log('📅 受付日の降順にソート完了');
+  
   var updatedCount = 0;
   var errorCount = 0;
   var phaseStartTime = new Date();
+  
+  // 🚨 バッチ処理: 100件ずつまとめて更新
+  var BATCH_SIZE = 100;
+  var batchData = [];
+  
   for (var r = 0; r < sheetRows.length; r++) {
     var row = sheetRows[r];
     var buyerNumber = row['買主番号'];
@@ -570,22 +612,51 @@ function syncUpdatesToSupabase_(sheetRows) {
       }
     }
     if (!needsUpdate) continue;
+    
+    // 🚨 バッチ処理: 更新データをバッチに追加
     updateData.updated_at = new Date().toISOString();
-    var result = patchBuyerToSupabase_(buyerNumber, updateData);
-    if (result.success) {
-      updatedCount++;
-      Logger.log('✅ ' + buyerNumber + ': 更新 (' + Object.keys(updateData).filter(function(k){ return k !== 'updated_at'; }).join(', ') + ')');
-    } else {
-      errorCount++;
-      Logger.log('❌ ' + buyerNumber + ': 更新失敗 - ' + result.error);
+    batchData.push({
+      buyer_number: buyerNumber,
+      updates: updateData
+    });
+    
+    // バッチサイズに達したら送信
+    if (batchData.length >= BATCH_SIZE) {
+      Logger.log('📦 バッチ送信: ' + batchData.length + '件');
+      var batchResult = patchBuyersBatchToSupabase_(batchData);
+      if (batchResult.success) {
+        updatedCount += batchResult.updated;
+        errorCount += batchResult.errors;
+        Logger.log('✅ バッチ更新完了: ' + batchResult.updated + '件成功 / ' + batchResult.errors + '件失敗');
+      } else {
+        errorCount += batchData.length;
+        Logger.log('❌ バッチ更新失敗: ' + batchResult.error);
+      }
+      batchData = []; // バッチをクリア
+      Utilities.sleep(500); // バッチ送信後に少し待機
     }
-    Utilities.sleep(100);
+    
     var elapsed = (new Date() - phaseStartTime) / 1000;
     if (elapsed > 300) {
       Logger.log('⚠️ 実行時間制限に近づいたため中断 (' + elapsed.toFixed(0) + '秒経過, ' + r + '/' + sheetRows.length + '件処理済み)');
       break;
     }
   }
+  
+  // 🚨 残りのバッチを送信
+  if (batchData.length > 0) {
+    Logger.log('📦 最終バッチ送信: ' + batchData.length + '件');
+    var finalBatchResult = patchBuyersBatchToSupabase_(batchData);
+    if (finalBatchResult.success) {
+      updatedCount += finalBatchResult.updated;
+      errorCount += finalBatchResult.errors;
+      Logger.log('✅ 最終バッチ更新完了: ' + finalBatchResult.updated + '件成功 / ' + finalBatchResult.errors + '件失敗');
+    } else {
+      errorCount += batchData.length;
+      Logger.log('❌ 最終バッチ更新失敗: ' + finalBatchResult.error);
+    }
+  }
+  
   Logger.log('📊 Phase 2完了: 更新 ' + updatedCount + '件 / エラー ' + errorCount + '件');
   return { updated: updatedCount, errors: errorCount };
 }

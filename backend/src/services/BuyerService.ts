@@ -662,9 +662,16 @@ export class BuyerService {
     
     if (this.shouldUpdateBuyerSidebarCounts(allowedData)) {
       console.log('[BuyerService] Triggering sidebar counts update for buyer:', buyerNumber);
+      console.log('[BuyerService] Old buyer data (before update):', JSON.stringify({
+        buyer_number: existing.buyer_number,
+        next_call_date: existing.next_call_date,
+        follow_up_assignee: existing.follow_up_assignee,
+        viewing_date: existing.viewing_date
+      }, null, 2));
       const { SidebarCountsUpdateService } = await import('./SidebarCountsUpdateService');
       const sidebarService = new SidebarCountsUpdateService(this.supabase);
-      sidebarService.updateBuyerSidebarCounts(buyerNumber).catch(err => {
+      // 更新前のデータを渡す
+      sidebarService.updateBuyerSidebarCounts(buyerNumber, existing).catch(err => {
         console.error('⚠️ Failed to update buyer sidebar counts:', err);
       });
     } else {
@@ -876,6 +883,61 @@ export class BuyerService {
       syncResult
     };
   }
+
+  /**
+   * 複数の買主情報をバッチ更新（GAS用）
+   * @param buyers 買主データの配列 [{ buyer_number, updateData }, ...]
+   * @param userId ユーザーID
+   * @param userEmail ユーザーメール
+   * @returns バッチ更新結果
+   */
+  async updateBatch(
+    buyers: Array<{ buyer_number: string; updateData: Partial<any> }>,
+    userId?: string,
+    userEmail?: string
+  ): Promise<{ success: number; failed: number; results: Array<{ buyer_number: string; success: boolean; error?: string }> }> {
+    console.log('[BuyerService.updateBatch] ===== START =====');
+    console.log('[BuyerService.updateBatch] buyers count:', buyers.length);
+
+    const results: Array<{ buyer_number: string; success: boolean; error?: string }> = [];
+    let successCount = 0;
+    let failedCount = 0;
+
+    // 各買主を順次更新
+    for (const buyer of buyers) {
+      try {
+        const { buyer_number, updateData } = buyer;
+        
+        // updateメソッドを呼び出し（サイドバーカウント更新も含む）
+        await this.update(buyer_number, updateData, userId, userEmail);
+        
+        results.push({
+          buyer_number,
+          success: true
+        });
+        successCount++;
+      } catch (error: any) {
+        console.error(`[BuyerService.updateBatch] Failed to update buyer ${buyer.buyer_number}:`, error);
+        results.push({
+          buyer_number: buyer.buyer_number,
+          success: false,
+          error: error.message
+        });
+        failedCount++;
+      }
+    }
+
+    console.log('[BuyerService.updateBatch] ===== END =====');
+    console.log('[BuyerService.updateBatch] Success:', successCount);
+    console.log('[BuyerService.updateBatch] Failed:', failedCount);
+
+    return {
+      success: successCount,
+      failed: failedCount,
+      results
+    };
+  }
+
   async getExportData(options: BuyerQueryOptions = {}): Promise<any[]> {
     const { search, status, assignee, dateFrom, dateTo } = options;
 

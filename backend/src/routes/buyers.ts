@@ -140,6 +140,48 @@ function authenticateOrApiKey(req: Request, res: Response, next: NextFunction) {
   return authenticate(req, res, next);
 }
 
+// 🚨 重要: GAS用のバッチ更新エンドポイント（API Key認証）
+// router.use(authenticate)よりも前に定義する必要がある
+router.put('/batch', authenticateOrApiKey, async (req: Request, res: Response) => {
+  try {
+    const { buyers } = req.body;
+
+    console.log('[PUT /buyers/batch] ===== START =====');
+    console.log('[PUT /buyers/batch] buyers count:', buyers?.length || 0);
+
+    // 基本的なバリデーション
+    if (!buyers || !Array.isArray(buyers) || buyers.length === 0) {
+      return res.status(400).json({ error: 'buyers array is required and must not be empty' });
+    }
+
+    // バッチサイズ制限（1回のリクエストで最大100件）
+    if (buyers.length > 100) {
+      return res.status(400).json({ error: 'Maximum 100 buyers per batch request' });
+    }
+
+    // Get user info from request (set by auth middleware)
+    const userId = (req as any).user?.id || 'system';
+    const userEmail = (req as any).user?.email || 'system@example.com';
+
+    // バッチ更新を実行
+    const results = await buyerService.updateBatch(buyers, userId, userEmail);
+
+    console.log('[PUT /buyers/batch] Batch update completed');
+    console.log('[PUT /buyers/batch] Success:', results.success);
+    console.log('[PUT /buyers/batch] Failed:', results.failed);
+
+    res.json({
+      success: results.success,
+      failed: results.failed,
+      total: buyers.length,
+      results: results.results
+    });
+  } catch (error: any) {
+    console.error('[PUT /buyers/batch] Error in batch update:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // 🚨 重要: GAS用のPUT /api/buyers/:id エンドポイント（API Key認証）
 // router.use(authenticate)よりも前に定義する必要がある
 router.put('/:id', authenticateOrApiKey, async (req: Request, res: Response) => {
@@ -864,6 +906,7 @@ router.get('/:id', async (req: Request, res: Response) => {
     console.error(`[GET /buyers/:id] error after ${Date.now() - t0}ms:`, error);
     res.status(500).json({ error: error.message });
   }
+});
 
 // 買主を論理削除
 router.delete('/:id', async (req: Request, res: Response) => {
