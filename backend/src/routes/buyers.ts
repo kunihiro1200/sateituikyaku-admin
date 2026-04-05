@@ -1,5 +1,5 @@
 // 買主リストのAPIルート
-import { Router, Request, Response } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import { BuyerService } from '../services/BuyerService';
 import { BuyerSyncService } from '../services/BuyerSyncService';
 import { EmailHistoryService } from '../services/EmailHistoryService';
@@ -7,6 +7,7 @@ import { relatedBuyerService } from '../services/RelatedBuyerService';
 import { uuidValidationMiddleware } from '../middleware/uuidValidator';
 import { ValidationError, NotFoundError, ServiceError } from '../errors';
 import { authenticate } from '../middleware/auth';
+import { apiKeyAuth } from '../middleware/apiKeyAuth';
 
 const router = Router();
 const buyerService = new BuyerService();
@@ -125,6 +126,20 @@ router.get('/sidebar-counts', async (_req: Request, res: Response) => {
 
 // 全てのルートに認証を適用（sidebar-countsの後に配置）
 router.use(authenticate);
+
+// JWT認証またはAPI Key認証のいずれかを許可するミドルウェア
+function authenticateOrApiKey(req: Request, res: Response, next: NextFunction) {
+  // まずJWT認証を試みる
+  authenticate(req, res, (err?: any) => {
+    if (!err) {
+      // JWT認証成功
+      return next();
+    }
+    
+    // JWT認証失敗の場合、API Key認証を試みる
+    apiKeyAuth(req, res, next);
+  });
+}
 
 // 次の買主番号を取得（/:id よりも前に定義する必要がある）
 router.get('/next-buyer-number', async (_req: Request, res: Response) => {
@@ -753,8 +768,8 @@ router.get('/:id', async (req: Request, res: Response) => {
   }
 });
 
-// 買主情報更新
-router.put('/:id', async (req: Request, res: Response) => {
+// 買主情報更新（JWT認証またはAPI Key認証）
+router.put('/:id', authenticateOrApiKey, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const updateData = req.body;

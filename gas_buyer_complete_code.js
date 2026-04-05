@@ -109,229 +109,6 @@ function getContactLabel(row) {
 }
 
 // ============================================================
-// サイドバーカウント更新（buyer_sidebar_counts テーブルへ書き込み）
-// ============================================================
-function updateBuyerSidebarCounts_() {
-  Logger.log('📊 買主サイドバーカウント更新開始...');
-  
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var sheet = ss.getSheetByName('買主リスト');
-  if (!sheet) {
-    Logger.log('❌ シート「買主リスト」が見つかりません');
-    return;
-  }
-  
-  var lastRow = sheet.getLastRow();
-  var lastCol = sheet.getLastColumn();
-  var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
-  var allData = sheet.getRange(2, 1, lastRow - 1, lastCol).getValues();
-  var sheetRows = [];
-  for (var i = 0; i < allData.length; i++) {
-    sheetRows.push(rowToObject(headers, allData[i]));
-  }
-  
-  Logger.log('📊 スプレッドシート行数: ' + sheetRows.length);
-  
-  // 今日の日付を取得（YYYY-MM-DD形式）
-  var today = new Date();
-  today.setHours(0, 0, 0, 0);
-  var todayStr = today.getFullYear() + '-' +
-    String(today.getMonth() + 1).padStart(2, '0') + '-' +
-    String(today.getDate()).padStart(2, '0');
-  
-  // ヘルパー関数
-  function isTodayOrBefore(dateStr) {
-    if (!dateStr) return false;
-    return dateStr <= todayStr;
-  }
-  
-  var counts = {
-    todayCall: 0,
-    todayCallAssigned: {},
-    assigned: {},
-    viewingDayBefore: 0,  // 内覧日前日カテゴリ
-    threeCallUnchecked: 0  // ３回架電未カテゴリ（新規）
-  };
-  
-  for (var i = 0; i < sheetRows.length; i++) {
-    var row = sheetRows[i];
-    var buyerNumber = row['買主番号'];
-    if (!buyerNumber || typeof buyerNumber !== 'string') continue;
-    
-    var status = String(row['★最新状況'] || '');
-    var nextCallDate = formatDateToISO_(row['★次電日']);
-    var initialAssignee = row['初動担当'];
-    var followUpAssignee = row['後続担当'];
-    var assignee = followUpAssignee || initialAssignee;
-    var isAssigneeValid = assignee && assignee !== '外す';
-    
-    // 内覧日前日カテゴリ
-    // 🚨 重要: バックエンドの条件と完全一致させる
-    // 条件:
-    // 1. viewing_date が空でない
-    // 2. broker_inquiry が「業者問合せ」でない
-    // 3. notification_sender が空である（通知送信者が未入力）
-    // 4. 日付計算（明日または木曜日の場合は2日後）
-    var viewingDate = formatDateToISO_(row['●内覧日(最新）']);
-    var brokerInquiry = String(row['業者問合せ'] || '');
-    var notificationSender = String(row['通知送信者'] || '');
-    
-    if (viewingDate && brokerInquiry !== '業者問合せ' && !notificationSender) {
-      var vDate = new Date(viewingDate + 'T00:00:00');
-      var vDay = vDate.getDay();
-      var daysBeforeViewing = (vDay === 4) ? 2 : 1;  // 木曜内覧のみ2日前、それ以外は1日前
-      var notifyDate = new Date(vDate);
-      notifyDate.setDate(notifyDate.getDate() - daysBeforeViewing);
-      var today = new Date();
-      today.setHours(0, 0, 0, 0);
-      notifyDate.setHours(0, 0, 0, 0);
-      
-      // 🚨 デバッグ: 買主7277, 7278, 7254の内覧日前日判定を記録
-      if (buyerNumber === '7277' || buyerNumber === '7278' || buyerNumber === '7254') {
-        Logger.log('  🔍 [DEBUG] ' + buyerNumber + ': 内覧日=' + viewingDate + ', 業者問合せ=' + brokerInquiry + ', 通知送信者=' + notificationSender);
-        Logger.log('    今日=' + today.toISOString().substring(0, 10) + ', 通知日=' + notifyDate.toISOString().substring(0, 10));
-        Logger.log('    内覧日の曜日=' + vDay + ', 通知日の計算=' + daysBeforeViewing + '日前');
-        Logger.log('    今日が通知日か？ ' + (notifyDate.getTime() === today.getTime()));
-      }
-      
-      if (notifyDate.getTime() === today.getTime()) {
-        counts.viewingDayBefore++;
-        // 🚨 重要: 全ての買主をログに記録（デバッグ用）
-        Logger.log('  ✅ ' + buyerNumber + ': 内覧日前日カテゴリに追加 (内覧日=' + viewingDate + ', 通知日=' + notifyDate.toISOString().substring(0, 10) + ')');
-      }
-    } else if (buyerNumber === '7277' || buyerNumber === '7278' || buyerNumber === '7254') {
-      // デバッグ: 条件を満たさない理由を記録
-      Logger.log('  ⚠️ [DEBUG] ' + buyerNumber + ': 内覧日前日カテゴリの条件を満たさない');
-      Logger.log('    内覧日？ ' + viewingDate);
-      Logger.log('    業者問合せ？ ' + brokerInquiry + ' (業者問合せでない: ' + (brokerInquiry !== '業者問合せ') + ')');
-      Logger.log('    通知送信者？ ' + notificationSender + ' (空: ' + (!notificationSender) + ')');
-    }
-    
-    // 担当（担当別）カテゴリ
-    if (isAssigneeValid) {
-      var assigneeKey = String(assignee);
-      counts.assigned[assigneeKey] = (counts.assigned[assigneeKey] || 0) + 1;
-    }
-    
-    // 当日TEL分カテゴリ
-    // スプレッドシートの数式: AND(ISBLANK([後続担当]),[★次電日] <= TODAY(),ISNOTBLANK([★次電日])),"⑯当日TEL"
-    if (nextCallDate && isTodayOrBefore(nextCallDate)) {
-      if (isAssigneeValid) {
-        // 当日TEL（担当別）: AND(ISNOTBLANK([後続担当]),ISNOTBLANK([★次電日]),[★次電日] <= TODAY())
-        var aKey = String(assignee);
-        counts.todayCallAssigned[aKey] = (counts.todayCallAssigned[aKey] || 0) + 1;
-      } else {
-        // 当日TEL分（担当なし）: 後続担当が空 + 次電日が今日以前
-        counts.todayCall++;
-      }
-    }
-    
-    // ３回架電未カテゴリ（新規）
-    // 条件: ３回架電確認済み = "3回架電未" AND (【問合メール】電話対応 = "不通" OR "未")
-    var threeCallConfirmed = row['3回架電確認済み'] ? String(row['3回架電確認済み']) : '';
-    var inquiryEmailPhoneResponse = row['【問合メール】電話対応'] ? String(row['【問合メール】電話対応']) : '';
-    
-    if (threeCallConfirmed === '3回架電未' &&
-        (inquiryEmailPhoneResponse === '不通' || inquiryEmailPhoneResponse === '未')) {
-      counts.threeCallUnchecked++;
-    }
-  }
-  
-  // Supabaseに保存
-  // 🚨 重要: label と assignee が null の場合は空文字列 '' に変換
-  // （buyer_sidebar_counts テーブルの主キーが (category, label, assignee) で NOT NULL のため）
-  var upsertRows = [];
-  var now = new Date().toISOString();
-  
-  // 内覧日前日
-  Logger.log('📊 [DEBUG] viewingDayBefore count before insert: ' + counts.viewingDayBefore);
-  upsertRows.push({
-    category: 'viewingDayBefore',
-    count: counts.viewingDayBefore,
-    label: '',
-    assignee: '',
-    updated_at: now
-  });
-  
-  // 当日TEL分（担当なし）
-  upsertRows.push({
-    category: 'todayCall',
-    count: counts.todayCall,
-    label: '',
-    assignee: '',
-    updated_at: now
-  });
-  
-  // ３回架電未（新規）
-  upsertRows.push({
-    category: 'threeCallUnchecked',
-    count: counts.threeCallUnchecked,
-    label: '',
-    assignee: '',
-    updated_at: now
-  });
-  
-  // 当日TEL（担当別）
-  for (var assignee in counts.todayCallAssigned) {
-    upsertRows.push({
-      category: 'todayCallAssigned',
-      count: counts.todayCallAssigned[assignee],
-      label: '',
-      assignee: assignee,
-      updated_at: now
-    });
-  }
-  
-  // 担当（担当別）
-  for (var assignedKey in counts.assigned) {
-    upsertRows.push({
-      category: 'assigned',
-      count: counts.assigned[assignedKey],
-      label: '',
-      assignee: assignedKey,
-      updated_at: now
-    });
-  }
-  
-  // 既存データを削除
-  var delUrl = SUPABASE_CONFIG.URL + '/rest/v1/buyer_sidebar_counts?category=neq.___never___';
-  UrlFetchApp.fetch(delUrl, {
-    method: 'DELETE',
-    headers: {
-      'apikey': SUPABASE_CONFIG.SERVICE_KEY,
-      'Authorization': 'Bearer ' + SUPABASE_CONFIG.SERVICE_KEY,
-      'Prefer': 'return=minimal'
-    },
-    muteHttpExceptions: true
-  });
-  
-  // 新しいデータを挿入
-  var batchSize = 500;
-  for (var b = 0; b < upsertRows.length; b += batchSize) {
-    var batch = upsertRows.slice(b, b + batchSize);
-    var insRes = UrlFetchApp.fetch(SUPABASE_CONFIG.URL + '/rest/v1/buyer_sidebar_counts', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'apikey': SUPABASE_CONFIG.SERVICE_KEY,
-        'Authorization': 'Bearer ' + SUPABASE_CONFIG.SERVICE_KEY,
-        'Prefer': 'return=minimal'
-      },
-      payload: JSON.stringify(batch),
-      muteHttpExceptions: true
-    });
-    var insCode = insRes.getResponseCode();
-    if (insCode >= 200 && insCode < 300) {
-      Logger.log('✅ buyer_sidebar_counts INSERT成功: ' + batch.length + '件');
-    } else {
-      Logger.log('❌ buyer_sidebar_counts INSERT失敗: HTTP ' + insCode + ' / ' + insRes.getContentText().substring(0, 200));
-    }
-  }
-  
-  Logger.log('📊 買主サイドバーカウント更新完了: 合計 ' + upsertRows.length + '行');
-}
-
-// ============================================================
 // Supabase直接更新ユーティリティ
 // ============================================================
 
@@ -347,14 +124,22 @@ function normalizeValue(value) {
 }
 
 function patchBuyerToSupabase_(buyerNumber, updateData) {
-  var url = SUPABASE_CONFIG.URL + '/rest/v1/buyers?buyer_number=eq.' + encodeURIComponent(buyerNumber);
+  // 🚨 重要: バックエンドAPIを呼び出してサイドバーカウントを即時更新
+  // Supabaseに直接アクセスせず、バックエンドAPI経由で更新する
+  var url = BUYER_SYNC_CONFIG.BACKEND_URL + '/api/buyers/' + encodeURIComponent(buyerNumber);
+  
+  // API Keyを環境変数から取得
+  var apiKey = PropertiesService.getScriptProperties().getProperty('GAS_API_KEY');
+  if (!apiKey) {
+    Logger.log('❌ GAS_API_KEY is not set in Script Properties');
+    return { success: false, error: 'GAS_API_KEY is not configured' };
+  }
+  
   var options = {
-    method: 'PATCH',
+    method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
-      'apikey': SUPABASE_CONFIG.SERVICE_KEY,
-      'Authorization': 'Bearer ' + SUPABASE_CONFIG.SERVICE_KEY,
-      'Prefer': 'return=minimal'
+      'X-API-Key': apiKey  // API Key認証ヘッダー
     },
     payload: JSON.stringify(updateData),
     muteHttpExceptions: true
@@ -866,9 +651,6 @@ function syncBuyerList() {
       Logger.log('❌ 削除同期失敗: HTTP ' + delStatusCode);
     }
   } catch (e) { Logger.log('❌ 削除同期エラー: ' + e.toString()); }
-  
-  // サイドバーカウント更新
-  updateBuyerSidebarCounts_();
   
   var duration = (new Date() - startTime) / 1000;
   Logger.log('  所要時間: ' + duration + '秒');
