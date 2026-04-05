@@ -263,7 +263,7 @@ export default function BuyersPage() {
             
             // キャッシュデータを構築
             const cacheData = {
-              categoryCounts: sidebarResult.categoryCounts, // ✅ 修正: sidebarResult.categoryCounts を使用
+              categoryCounts: sidebarResult, // ✅ 修正: sidebarResult 自体が categoryCounts オブジェクト
               buyers: buyersResult.buyers,
               normalStaffInitials: sidebarResult.normalStaffInitials || buyersResult.normalStaffInitials || []
             };
@@ -277,7 +277,7 @@ export default function BuyersPage() {
             pageDataCache.set(CACHE_KEYS.BUYERS_WITH_STATUS, cacheData, 10 * 60 * 1000);
             
             // サイドバーのカウントを更新（高速エンドポイントから取得）
-            setSidebarCounts(sidebarResult.categoryCounts); // ✅ 修正: categoryCounts のみを渡す
+            setSidebarCounts(sidebarResult); // ✅ 修正: sidebarResult 自体が categoryCounts オブジェクト
             setSidebarNormalStaffInitials(sidebarResult.normalStaffInitials || buyersResult.normalStaffInitials || []); // ✅ 修正: sidebarResult.normalStaffInitials を優先
             setSidebarLoading(false);
             
