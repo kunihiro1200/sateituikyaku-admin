@@ -207,7 +207,10 @@ export default function BuyerStatusSidebar({
       >
         <ListItemText
           primary={isIndented ? `↳ ${category.label}` : category.label}
-          primaryTypographyProps={{ variant: 'body2', color: isIndented ? 'text.secondary' : 'text.primary' }}
+          primaryTypographyProps={{ 
+            variant: 'body2', 
+            color: isTodayCallAssignedCategory ? '#d32f2f' : (isIndented ? 'text.secondary' : 'text.primary')
+          }}
           sx={{ flex: 1, minWidth: 0, mr: 1 }}
         />
         <Badge

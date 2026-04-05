@@ -537,40 +537,39 @@ export default function SellerStatusSidebar({
           </Button>
           {/* ↳ 当日TEL(Y)サブカテゴリー（インデント付き） */}
           {todayCallCount > 0 && (
-            <Box sx={{ pl: 2 }}>
-              <Button
-                fullWidth
-                onClick={() => handleCategoryClick(subCategory)}
-                sx={{
-                  justifyContent: 'space-between',
-                  textAlign: 'left',
-                  fontSize: '0.85rem',
-                  py: 1,
-                  px: 1.5,
-                  color: isSubActive || isSubExpanded ? 'white' : subColor,
-                  bgcolor: isSubActive || isSubExpanded ? subColor : '#e8f5e9',
-                  borderRadius: 1,
-                  '&:hover': {
-                    bgcolor: isSubActive || isSubExpanded ? subColor : `${subColor}15`,
-                  }
-                }}
-              >
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <span>↳ 当日TEL({assignee})</span>
-                  <Chip
-                    label={todayCallCount}
-                    size="small"
-                    sx={{
-                      height: 20,
-                      fontSize: '0.7rem',
-                      bgcolor: isSubActive || isSubExpanded ? 'rgba(255,255,255,0.3)' : undefined,
-                      color: isSubActive || isSubExpanded ? 'white' : undefined,
-                    }}
-                  />
-                </Box>
-                {isSubExpanded ? <ExpandLess /> : <ExpandMore />}
-              </Button>
-            </Box>
+            <Button
+              fullWidth
+              onClick={() => handleCategoryClick(subCategory)}
+              sx={{
+                justifyContent: 'space-between',
+                textAlign: 'left',
+                fontSize: '0.85rem',
+                py: 1,
+                px: 1.5,
+                ml: 2,
+                color: isSubActive || isSubExpanded ? 'white' : subColor,
+                bgcolor: isSubActive || isSubExpanded ? subColor : '#e8f5e9',
+                borderRadius: 1,
+                '&:hover': {
+                  bgcolor: isSubActive || isSubExpanded ? subColor : `${subColor}15`,
+                }
+              }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <span>↳ 当日TEL({assignee})</span>
+                <Chip
+                  label={todayCallCount}
+                  size="small"
+                  sx={{
+                    height: 20,
+                    fontSize: '0.7rem',
+                    bgcolor: isSubActive || isSubExpanded ? 'rgba(255,255,255,0.3)' : undefined,
+                    color: isSubActive || isSubExpanded ? 'white' : undefined,
+                  }}
+                />
+              </Box>
+              {isSubExpanded ? <ExpandLess /> : <ExpandMore />}
+            </Button>
           )}
         </Box>
       );
