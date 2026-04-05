@@ -156,17 +156,14 @@ export default function BuyersPage() {
                 } else if (selectedCalculatedStatus.startsWith('todayCallAssigned:')) {
                   const assignee = selectedCalculatedStatus.replace('todayCallAssigned:', '');
                   // バックエンドと同じロジック: follow_up_assignee が一致 AND next_call_date が今日以前
-                  const today = new Date();
-                  today.setHours(0, 0, 0, 0);
-                  const nextCallDate = b.next_call_date ? new Date(b.next_call_date) : null;
-                  if (nextCallDate) {
-                    nextCallDate.setHours(0, 0, 0, 0);
-                  }
+                  // タイムゾーン問題を回避するため、YYYY-MM-DD形式の文字列比較を使用
+                  const todayStr = new Date().toISOString().split('T')[0];
+                  const nextCallDateStr = b.next_call_date ? new Date(b.next_call_date).toISOString().split('T')[0] : null;
                   
                   const matches = (
                     b.follow_up_assignee === assignee &&
-                    nextCallDate !== null &&
-                    nextCallDate <= today
+                    nextCallDateStr !== null &&
+                    nextCallDateStr <= todayStr
                   );
                   
                   if (matches) {
