@@ -163,22 +163,23 @@ export class SidebarCountsUpdateService {
    */
   private determineBuyerCategories(buyer: any): Array<{ category: string; assignee: string | null }> {
     const categories: Array<{ category: string; assignee: string | null }> = [];
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    // タイムゾーンを考慮した今日の日付（YYYY-MM-DD形式の文字列で比較）
+    const todayStr = new Date().toISOString().split('T')[0];
 
-    console.log(`[determineBuyerCategories] buyer_number=${buyer.buyer_number}, today=${today.toISOString().split('T')[0]}`);
+    console.log(`[determineBuyerCategories] buyer_number=${buyer.buyer_number}, today=${todayStr}`);
     console.log(`[determineBuyerCategories] follow_up_assignee="${buyer.follow_up_assignee}", next_call_date="${buyer.next_call_date}"`);
 
     // 内覧日前日
     if (buyer.viewing_date && !buyer.broker_inquiry && !buyer.notification_sender) {
-      const viewingDate = new Date(buyer.viewing_date);
-      viewingDate.setHours(0, 0, 0, 0);
-      const viewingDay = viewingDate.getDay();
+      const viewingDateStr = new Date(buyer.viewing_date).toISOString().split('T')[0];
+      const viewingDate = new Date(viewingDateStr + 'T00:00:00Z');
+      const viewingDay = viewingDate.getUTCDay();
       const daysBeforeViewing = viewingDay === 4 ? 2 : 1;
       const notifyDate = new Date(viewingDate);
-      notifyDate.setDate(notifyDate.getDate() - daysBeforeViewing);
+      notifyDate.setUTCDate(notifyDate.getUTCDate() - daysBeforeViewing);
+      const notifyDateStr = notifyDate.toISOString().split('T')[0];
 
-      if (today.getTime() === notifyDate.getTime()) {
+      if (todayStr === notifyDateStr) {
         categories.push({ category: 'viewingDayBefore', assignee: null });
       }
     }
@@ -186,11 +187,10 @@ export class SidebarCountsUpdateService {
     // 当日TEL
     console.log(`[determineBuyerCategories] Checking todayCall: !follow_up_assignee=${!buyer.follow_up_assignee}, has next_call_date=${!!buyer.next_call_date}`);
     if (!buyer.follow_up_assignee && buyer.next_call_date) {
-      const nextCallDate = new Date(buyer.next_call_date);
-      nextCallDate.setHours(0, 0, 0, 0);
-      console.log(`[determineBuyerCategories] next_call_date=${nextCallDate.toISOString().split('T')[0]}, today=${today.toISOString().split('T')[0]}`);
-      console.log(`[determineBuyerCategories] nextCallDate <= today: ${nextCallDate.getTime() <= today.getTime()}`);
-      if (nextCallDate.getTime() <= today.getTime()) {
+      const nextCallDateStr = new Date(buyer.next_call_date).toISOString().split('T')[0];
+      console.log(`[determineBuyerCategories] next_call_date=${nextCallDateStr}, today=${todayStr}`);
+      console.log(`[determineBuyerCategories] nextCallDateStr <= todayStr: ${nextCallDateStr <= todayStr}`);
+      if (nextCallDateStr <= todayStr) {
         console.log(`[determineBuyerCategories] Adding todayCall category`);
         categories.push({ category: 'todayCall', assignee: null });
       }
@@ -203,9 +203,8 @@ export class SidebarCountsUpdateService {
 
       // 当日TEL(イニシャル)
       if (buyer.next_call_date) {
-        const nextCallDate = new Date(buyer.next_call_date);
-        nextCallDate.setHours(0, 0, 0, 0);
-        if (nextCallDate.getTime() <= today.getTime()) {
+        const nextCallDateStr = new Date(buyer.next_call_date).toISOString().split('T')[0];
+        if (nextCallDateStr <= todayStr) {
           categories.push({ category: 'todayCallAssigned', assignee });
         }
       }
@@ -220,40 +219,41 @@ export class SidebarCountsUpdateService {
    */
   private determineSellerCategories(seller: any): Array<{ category: string; assignee: string | null }> {
     const categories: Array<{ category: string; assignee: string | null }> = [];
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    // タイムゾーンを考慮した今日の日付（YYYY-MM-DD形式の文字列で比較）
+    const todayStr = new Date().toISOString().split('T')[0];
 
     // 訪問日前日
     if (seller.visit_assignee && seller.visit_date) {
-      const visitDate = new Date(seller.visit_date);
-      visitDate.setHours(0, 0, 0, 0);
-      const visitDay = visitDate.getDay();
+      const visitDateStr = new Date(seller.visit_date).toISOString().split('T')[0];
+      const visitDate = new Date(visitDateStr + 'T00:00:00Z');
+      const visitDay = visitDate.getUTCDay();
       const daysBeforeVisit = visitDay === 4 ? 2 : 1;
       const notifyDate = new Date(visitDate);
-      notifyDate.setDate(notifyDate.getDate() - daysBeforeVisit);
+      notifyDate.setUTCDate(notifyDate.getUTCDate() - daysBeforeVisit);
+      const notifyDateStr = notifyDate.toISOString().split('T')[0];
 
-      if (today.getTime() === notifyDate.getTime()) {
+      if (todayStr === notifyDateStr) {
         categories.push({ category: 'visitDayBefore', assignee: null });
       }
     }
 
     // 訪問済み
     if (seller.visit_assignee && seller.visit_date) {
-      const visitDate = new Date(seller.visit_date);
-      visitDate.setHours(0, 0, 0, 0);
-      const yesterday = new Date(today);
+      const visitDateStr = new Date(seller.visit_date).toISOString().split('T')[0];
+      // 昨日の日付を計算
+      const yesterday = new Date();
       yesterday.setDate(yesterday.getDate() - 1);
+      const yesterdayStr = yesterday.toISOString().split('T')[0];
 
-      if (visitDate.getTime() <= yesterday.getTime()) {
+      if (visitDateStr <= yesterdayStr) {
         categories.push({ category: 'visitCompleted', assignee: seller.visit_assignee });
       }
     }
 
     // 当日TEL分
     if (seller.status?.includes('追客中') && seller.next_call_date && !seller.visit_assignee) {
-      const nextCallDate = new Date(seller.next_call_date);
-      nextCallDate.setHours(0, 0, 0, 0);
-      if (nextCallDate.getTime() <= today.getTime()) {
+      const nextCallDateStr = new Date(seller.next_call_date).toISOString().split('T')[0];
+      if (nextCallDateStr <= todayStr) {
         const hasContactInfo = seller.contact_method || seller.preferred_contact_time || seller.phone_contact_person;
         if (!hasContactInfo) {
           categories.push({ category: 'todayCall', assignee: null });
@@ -270,9 +270,8 @@ export class SidebarCountsUpdateService {
 
         // 当日TEL(イニシャル)
         if (seller.next_call_date) {
-          const nextCallDate = new Date(seller.next_call_date);
-          nextCallDate.setHours(0, 0, 0, 0);
-          if (nextCallDate.getTime() <= today.getTime()) {
+          const nextCallDateStr = new Date(seller.next_call_date).toISOString().split('T')[0];
+          if (nextCallDateStr <= todayStr) {
             categories.push({ category: 'todayCallAssigned', assignee: seller.visit_assignee });
           }
         }
