@@ -548,7 +548,7 @@ export default function SellerStatusSidebar({
                   py: 1,
                   px: 1.5,
                   color: isSubActive || isSubExpanded ? 'white' : subColor,
-                  bgcolor: isSubActive || isSubExpanded ? subColor : 'transparent',
+                  bgcolor: isSubActive || isSubExpanded ? subColor : '#e8f5e9',
                   borderRadius: 1,
                   '&:hover': {
                     bgcolor: isSubActive || isSubExpanded ? subColor : `${subColor}15`,
