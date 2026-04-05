@@ -20,26 +20,35 @@ export class SidebarCountsUpdateService {
   /**
    * 買主サイドバーカウントを更新
    * 
-   * @param buyerId 買主ID
+   * @param buyerNumberOrId 買主番号または買主ID
    */
-  async updateBuyerSidebarCounts(buyerId: string): Promise<void> {
+  async updateBuyerSidebarCounts(buyerNumberOrId: string): Promise<void> {
     try {
-      console.log(`[SidebarCountsUpdateService] Updating buyer sidebar counts for buyer ${buyerId}`);
+      console.log(`[SidebarCountsUpdateService] Updating buyer sidebar counts for buyer ${buyerNumberOrId}`);
 
+      // 買主番号かUUIDかを判定
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(buyerNumberOrId);
+      
       // 買主データを取得
-      const { data: buyer, error } = await this.supabase
+      const query = this.supabase
         .from('buyers')
-        .select('*')
-        .eq('id', buyerId)
-        .single();
+        .select('*');
+      
+      if (isUuid) {
+        query.eq('id', buyerNumberOrId);
+      } else {
+        query.eq('buyer_number', buyerNumberOrId);
+      }
+      
+      const { data: buyer, error } = await query.single();
 
       if (error || !buyer) {
-        console.error(`[SidebarCountsUpdateService] Failed to fetch buyer ${buyerId}:`, error);
+        console.error(`[SidebarCountsUpdateService] Failed to fetch buyer ${buyerNumberOrId}:`, error);
         return;
       }
 
       // 更新前のカテゴリーを取得（実装は後で）
-      const oldCategories = await this.getBuyerCategories(buyerId);
+      const oldCategories = await this.getBuyerCategories(buyer.id);
 
       // 更新後のカテゴリーを判定
       const newCategories = this.determineBuyerCategories(buyer);
@@ -47,7 +56,7 @@ export class SidebarCountsUpdateService {
       // 差分を計算
       const { added, removed } = this.calculateCategoryDiff(oldCategories, newCategories);
 
-      console.log(`[SidebarCountsUpdateService] Buyer ${buyerId} category changes:`, {
+      console.log(`[SidebarCountsUpdateService] Buyer ${buyerNumberOrId} category changes:`, {
         added,
         removed
       });
@@ -75,26 +84,35 @@ export class SidebarCountsUpdateService {
   /**
    * 売主サイドバーカウントを更新
    * 
-   * @param sellerId 売主ID
+   * @param sellerNumberOrId 売主番号または売主ID
    */
-  async updateSellerSidebarCounts(sellerId: string): Promise<void> {
+  async updateSellerSidebarCounts(sellerNumberOrId: string): Promise<void> {
     try {
-      console.log(`[SidebarCountsUpdateService] Updating seller sidebar counts for seller ${sellerId}`);
+      console.log(`[SidebarCountsUpdateService] Updating seller sidebar counts for seller ${sellerNumberOrId}`);
 
+      // 売主番号かUUIDかを判定
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(sellerNumberOrId);
+      
       // 売主データを取得
-      const { data: seller, error } = await this.supabase
+      const query = this.supabase
         .from('sellers')
-        .select('*')
-        .eq('id', sellerId)
-        .single();
+        .select('*');
+      
+      if (isUuid) {
+        query.eq('id', sellerNumberOrId);
+      } else {
+        query.eq('seller_number', sellerNumberOrId);
+      }
+      
+      const { data: seller, error } = await query.single();
 
       if (error || !seller) {
-        console.error(`[SidebarCountsUpdateService] Failed to fetch seller ${sellerId}:`, error);
+        console.error(`[SidebarCountsUpdateService] Failed to fetch seller ${sellerNumberOrId}:`, error);
         return;
       }
 
       // 更新前のカテゴリーを取得（実装は後で）
-      const oldCategories = await this.getSellerCategories(sellerId);
+      const oldCategories = await this.getSellerCategories(seller.id);
 
       // 更新後のカテゴリーを判定
       const newCategories = this.determineSellerCategories(seller);
@@ -102,7 +120,7 @@ export class SidebarCountsUpdateService {
       // 差分を計算
       const { added, removed } = this.calculateCategoryDiff(oldCategories, newCategories);
 
-      console.log(`[SidebarCountsUpdateService] Seller ${sellerId} category changes:`, {
+      console.log(`[SidebarCountsUpdateService] Seller ${sellerNumberOrId} category changes:`, {
         added,
         removed
       });
@@ -269,18 +287,26 @@ export class SidebarCountsUpdateService {
   }
 
   /**
-   * 買主の更新前カテゴリーを取得（実装は後で）
+   * 買主の更新前カテゴリーを取得
+   * 
+   * buyer_sidebar_countsテーブルから現在のカテゴリーを取得する代わりに、
+   * 初回は空配列を返して全てのカテゴリーを「追加」として扱う
    */
   private async getBuyerCategories(buyerId: string): Promise<Array<{ category: string; assignee: string | null }>> {
-    // TODO: 実装
+    // 初回は空配列を返す（全てのカテゴリーを「追加」として扱う）
+    // 将来的には、buyer_sidebar_countsテーブルから取得することも可能
     return [];
   }
 
   /**
-   * 売主の更新前カテゴリーを取得（実装は後で）
+   * 売主の更新前カテゴリーを取得
+   * 
+   * seller_sidebar_countsテーブルから現在のカテゴリーを取得する代わりに、
+   * 初回は空配列を返して全てのカテゴリーを「追加」として扱う
    */
   private async getSellerCategories(sellerId: string): Promise<Array<{ category: string; assignee: string | null }>> {
-    // TODO: 実装
+    // 初回は空配列を返す（全てのカテゴリーを「追加」として扱う）
+    // 将来的には、seller_sidebar_countsテーブルから取得することも可能
     return [];
   }
 
