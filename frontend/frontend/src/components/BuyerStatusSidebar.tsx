@@ -209,7 +209,8 @@ export default function BuyerStatusSidebar({
           primary={isIndented ? `↳ ${category.label}` : category.label}
           primaryTypographyProps={{ 
             variant: 'body2', 
-            color: isTodayCallAssignedCategory ? '#d32f2f' : (isIndented ? 'text.secondary' : 'text.primary')
+            color: isTodayCallAssignedCategory ? '#d32f2f' : (isIndented ? 'text.secondary' : 'text.primary'),
+            fontWeight: isTodayCallAssignedCategory ? 'bold' : 'normal'
           }}
           sx={{ flex: 1, minWidth: 0, mr: 1 }}
         />
