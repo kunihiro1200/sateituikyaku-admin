@@ -574,16 +574,24 @@ export class BuyerService {
    * 買主情報を更新
    */
   async update(id: string, updateData: Partial<any>, userId?: string, userEmail?: string): Promise<any> {
+    console.log('[BuyerService.update] ===== START =====');
+    console.log('[BuyerService.update] id:', id);
+    console.log('[BuyerService.update] updateData:', JSON.stringify(updateData, null, 2));
+    
     // UUIDか買主番号かを判定して存在確認
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+    console.log('[BuyerService.update] isUuid:', isUuid);
+    
     const existing = isUuid
       ? await this.getById(id)
       : await this.getByBuyerNumber(id);
     if (!existing) {
+      console.error('[BuyerService.update] Buyer not found');
       throw new Error('Buyer not found');
     }
 
     const buyerNumber = existing.buyer_number;
+    console.log('[BuyerService.update] buyerNumber:', buyerNumber);
 
     // 更新不可フィールドを除外
     const protectedFields = ['id', 'db_created_at', 'synced_at'];
@@ -594,6 +602,8 @@ export class BuyerService {
         allowedData[key] = updateData[key];
       }
     }
+
+    console.log('[BuyerService.update] allowedData:', JSON.stringify(allowedData, null, 2));
 
     // 手動更新時刻を記録（スプレッドシート同期による上書きを防ぐため）
     allowedData.db_updated_at = new Date().toISOString();
@@ -606,8 +616,11 @@ export class BuyerService {
       .single();
 
     if (error) {
+      console.error('[BuyerService.update] Database update failed:', error);
       throw new Error(`Failed to update buyer: ${error.message}`);
     }
+
+    console.log('[BuyerService.update] Database update successful');
 
     // Log audit trail for each changed field
     if (userId && userEmail) {
@@ -649,6 +662,7 @@ export class BuyerService {
       console.log('[BuyerService] Sidebar counts update not needed');
     }
 
+    console.log('[BuyerService.update] ===== END =====');
     return data;
   }
 

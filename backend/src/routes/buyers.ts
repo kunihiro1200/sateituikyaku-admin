@@ -760,6 +760,11 @@ router.put('/:id', async (req: Request, res: Response) => {
     const updateData = req.body;
     const { force, sync } = req.query;
 
+    console.log('[PUT /buyers/:id] ===== START =====');
+    console.log('[PUT /buyers/:id] id:', id);
+    console.log('[PUT /buyers/:id] updateData:', JSON.stringify(updateData, null, 2));
+    console.log('[PUT /buyers/:id] query params:', { force, sync });
+
     // 基本的なバリデーション
     if (!updateData || Object.keys(updateData).length === 0) {
       return res.status(400).json({ error: 'Update data is required' });
@@ -801,6 +806,7 @@ router.put('/:id', async (req: Request, res: Response) => {
 
     // sync=trueの場合は双方向同期を使用
     if (sync === 'true') {
+      console.log('[PUT /buyers/:id] Using updateWithSync (sync=true)');
       const result = await buyerService.updateWithSync(
         buyerNumber,
         sanitizedData,
@@ -827,10 +833,12 @@ router.put('/:id', async (req: Request, res: Response) => {
     }
 
     // 従来の更新（同期なし）
+    console.log('[PUT /buyers/:id] Using update (sync=false or not specified)');
     const updatedBuyer = await buyerService.update(buyerNumber, sanitizedData, userId, userEmail);
+    console.log('[PUT /buyers/:id] Update completed successfully');
     res.json(updatedBuyer);
   } catch (error: any) {
-    console.error('Error updating buyer:', error);
+    console.error('[PUT /buyers/:id] Error updating buyer:', error);
     
     if (error.message === 'Buyer not found') {
       return res.status(404).json({ error: error.message });
