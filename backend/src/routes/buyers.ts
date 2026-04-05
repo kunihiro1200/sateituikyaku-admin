@@ -124,9 +124,6 @@ router.get('/sidebar-counts', async (_req: Request, res: Response) => {
   }
 });
 
-// 全てのルートに認証を適用（sidebar-countsの後に配置）
-router.use(authenticate);
-
 // JWT認証またはAPI Key認証のいずれかを許可するミドルウェア
 function authenticateOrApiKey(req: Request, res: Response, next: NextFunction) {
   // まずAPI Keyの存在を確認
@@ -142,6 +139,105 @@ function authenticateOrApiKey(req: Request, res: Response, next: NextFunction) {
   console.log('[authenticateOrApiKey] No API Key, using JWT auth');
   return authenticate(req, res, next);
 }
+
+// 🚨 重要: GAS用のPUT /api/buyers/:id エンドポイント（API Key認証）
+// router.use(authenticate)よりも前に定義する必要がある
+router.put('/:id', authenticateOrApiKey, async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const updateData = req.body;
+    const { force, sync } = req.query;
+
+    console.log('[PUT /buyers/:id] ===== START =====');
+    console.log('[PUT /buyers/:id] id:', id);
+    console.log('[PUT /buyers/:id] updateData:', JSON.stringify(updateData, null, 2));
+    console.log('[PUT /buyers/:id] query params:', { force, sync });
+
+    // 基本的なバリデーション
+    if (!updateData || Object.keys(updateData).length === 0) {
+      return res.status(400).json({ error: 'Update data is required' });
+    }
+
+    // 更新不可フィールドを自動的に除外（エラーにせず、単に無視する）
+    const protectedFields = ['id', 'db_created_at', 'synced_at', 'created_at', 'updated_at'];
+    const sanitizedData = { ...updateData };
+    protectedFields.forEach(field => {
+      delete sanitizedData[field];
+    });
+
+    // 除外後にデータが空になった場合はエラー
+    if (Object.keys(sanitizedData).length === 0) {
+      return res.status(400).json({ error: 'No valid fields to update' });
+    }
+
+    // Get user info from request (set by auth middleware)
+    const userId = (req as any).user?.id || 'system';
+    const userEmail = (req as any).user?.email || 'system@example.com';
+
+    // idがUUIDか買主番号かを判定
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+    let buyerNumber = id;
+
+    console.log(`[PUT /buyers/:id] id=${id}, isUuid=${isUuid}`);
+
+    // UUIDの場合は買主番号を取得（後方互換性のため）
+    if (isUuid) {
+      const buyer = await buyerService.getById(id);
+      console.log(`[PUT /buyers/:id] getById result:`, buyer ? `found (buyer_number=${buyer.buyer_number})` : 'not found');
+      if (!buyer) {
+        return res.status(404).json({ error: 'Buyer not found' });
+      }
+      buyerNumber = buyer.buyer_number; // buyer_numberを取得
+    }
+
+    console.log(`[PUT /buyers/:id] buyerNumber=${buyerNumber}`);
+
+    // sync=trueの場合は双方向同期を使用
+    if (sync === 'true') {
+      console.log('[PUT /buyers/:id] Using updateWithSync (sync=true)');
+      const result = await buyerService.updateWithSync(
+        buyerNumber,
+        sanitizedData,
+        userId,
+        userEmail,
+        { force: force === 'true' }
+      );
+
+      // 競合がある場合は409を返す
+      if (result.syncResult.conflict && result.syncResult.conflict.length > 0) {
+        return res.status(409).json({
+          error: 'Conflict detected',
+          buyer: result.buyer,
+          syncStatus: result.syncResult.syncStatus,
+          conflicts: result.syncResult.conflict
+        });
+      }
+
+      return res.json({
+        ...result.buyer,
+        syncStatus: result.syncResult.syncStatus,
+        syncError: result.syncResult.error
+      });
+    }
+
+    // 従来の更新（同期なし）
+    console.log('[PUT /buyers/:id] Using update (sync=false or not specified)');
+    const updatedBuyer = await buyerService.update(buyerNumber, sanitizedData, userId, userEmail);
+    console.log('[PUT /buyers/:id] Update completed successfully');
+    res.json(updatedBuyer);
+  } catch (error: any) {
+    console.error('[PUT /buyers/:id] Error updating buyer:', error);
+    
+    if (error.message === 'Buyer not found') {
+      return res.status(404).json({ error: error.message });
+    }
+    
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 全てのルートに認証を適用（sidebar-countsの後、PUT /:id の後に配置）
+router.use(authenticate);
 
 // 次の買主番号を取得（/:id よりも前に定義する必要がある）
 router.get('/next-buyer-number', async (_req: Request, res: Response) => {
@@ -768,102 +864,6 @@ router.get('/:id', async (req: Request, res: Response) => {
     console.error(`[GET /buyers/:id] error after ${Date.now() - t0}ms:`, error);
     res.status(500).json({ error: error.message });
   }
-});
-
-// 買主情報更新（JWT認証またはAPI Key認証）
-router.put('/:id', authenticateOrApiKey, async (req: Request, res: Response) => {
-  try {
-    const { id } = req.params;
-    const updateData = req.body;
-    const { force, sync } = req.query;
-
-    console.log('[PUT /buyers/:id] ===== START =====');
-    console.log('[PUT /buyers/:id] id:', id);
-    console.log('[PUT /buyers/:id] updateData:', JSON.stringify(updateData, null, 2));
-    console.log('[PUT /buyers/:id] query params:', { force, sync });
-
-    // 基本的なバリデーション
-    if (!updateData || Object.keys(updateData).length === 0) {
-      return res.status(400).json({ error: 'Update data is required' });
-    }
-
-    // 更新不可フィールドを自動的に除外（エラーにせず、単に無視する）
-    const protectedFields = ['id', 'db_created_at', 'synced_at', 'created_at', 'updated_at'];
-    const sanitizedData = { ...updateData };
-    protectedFields.forEach(field => {
-      delete sanitizedData[field];
-    });
-
-    // 除外後にデータが空になった場合はエラー
-    if (Object.keys(sanitizedData).length === 0) {
-      return res.status(400).json({ error: 'No valid fields to update' });
-    }
-
-    // Get user info from request (set by auth middleware)
-    const userId = (req as any).user?.id || 'system';
-    const userEmail = (req as any).user?.email || 'system@example.com';
-
-    // idがUUIDか買主番号かを判定
-    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
-    let buyerNumber = id;
-
-    console.log(`[PUT /buyers/:id] id=${id}, isUuid=${isUuid}`);
-
-    // UUIDの場合は買主番号を取得（後方互換性のため）
-    if (isUuid) {
-      const buyer = await buyerService.getById(id);
-      console.log(`[PUT /buyers/:id] getById result:`, buyer ? `found (buyer_number=${buyer.buyer_number})` : 'not found');
-      if (!buyer) {
-        return res.status(404).json({ error: 'Buyer not found' });
-      }
-      buyerNumber = buyer.buyer_number; // buyer_numberを取得
-    }
-
-    console.log(`[PUT /buyers/:id] buyerNumber=${buyerNumber}`);
-
-    // sync=trueの場合は双方向同期を使用
-    if (sync === 'true') {
-      console.log('[PUT /buyers/:id] Using updateWithSync (sync=true)');
-      const result = await buyerService.updateWithSync(
-        buyerNumber,
-        sanitizedData,
-        userId,
-        userEmail,
-        { force: force === 'true' }
-      );
-
-      // 競合がある場合は409を返す
-      if (result.syncResult.conflict && result.syncResult.conflict.length > 0) {
-        return res.status(409).json({
-          error: 'Conflict detected',
-          buyer: result.buyer,
-          syncStatus: result.syncResult.syncStatus,
-          conflicts: result.syncResult.conflict
-        });
-      }
-
-      return res.json({
-        ...result.buyer,
-        syncStatus: result.syncResult.syncStatus,
-        syncError: result.syncResult.error
-      });
-    }
-
-    // 従来の更新（同期なし）
-    console.log('[PUT /buyers/:id] Using update (sync=false or not specified)');
-    const updatedBuyer = await buyerService.update(buyerNumber, sanitizedData, userId, userEmail);
-    console.log('[PUT /buyers/:id] Update completed successfully');
-    res.json(updatedBuyer);
-  } catch (error: any) {
-    console.error('[PUT /buyers/:id] Error updating buyer:', error);
-    
-    if (error.message === 'Buyer not found') {
-      return res.status(404).json({ error: error.message });
-    }
-    
-    res.status(500).json({ error: error.message });
-  }
-});
 
 // 買主を論理削除
 router.delete('/:id', async (req: Request, res: Response) => {
