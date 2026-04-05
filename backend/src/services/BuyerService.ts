@@ -632,12 +632,21 @@ export class BuyerService {
     }
 
     // サイドバーカウント更新（非同期、ノンブロッキング）
+    console.log('[BuyerService] Checking if sidebar counts update is needed:', {
+      shouldUpdate: this.shouldUpdateBuyerSidebarCounts(allowedData),
+      allowedData: Object.keys(allowedData),
+      buyerNumber
+    });
+    
     if (this.shouldUpdateBuyerSidebarCounts(allowedData)) {
+      console.log('[BuyerService] Triggering sidebar counts update for buyer:', buyerNumber);
       const { SidebarCountsUpdateService } = await import('./SidebarCountsUpdateService');
       const sidebarService = new SidebarCountsUpdateService(this.supabase);
       sidebarService.updateBuyerSidebarCounts(buyerNumber).catch(err => {
         console.error('⚠️ Failed to update buyer sidebar counts:', err);
       });
+    } else {
+      console.log('[BuyerService] Sidebar counts update not needed');
     }
 
     return data;
