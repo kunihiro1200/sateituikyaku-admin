@@ -640,6 +640,10 @@ export class BuyerService {
 
     console.log('[BuyerService.update] Database update successful');
 
+    // 🆕 キャッシュを無効化（サイドバーが即座に更新されるように）
+    invalidateBuyerStatusCache();
+    console.log('[BuyerService.update] Buyer status cache invalidated');
+
     // Log audit trail for each changed field
     if (userId && userEmail) {
       for (const key in allowedData) {

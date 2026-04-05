@@ -1,6 +1,6 @@
 // 買主リストのAPIルート
 import { Router, Request, Response, NextFunction } from 'express';
-import { BuyerService } from '../services/BuyerService';
+import { BuyerService, invalidateBuyerStatusCache } from '../services/BuyerService';
 import { BuyerSyncService } from '../services/BuyerSyncService';
 import { EmailHistoryService } from '../services/EmailHistoryService';
 import { relatedBuyerService } from '../services/RelatedBuyerService';
@@ -253,6 +253,10 @@ router.put('/:id', authenticateOrApiKey, async (req: Request, res: Response) => 
       userEmail,
       { force: force === 'true' }
     );
+
+    // 🆕 キャッシュを無効化（サイドバーが即座に更新されるように）
+    invalidateBuyerStatusCache();
+    console.log('[PUT /buyers/:id] Buyer status cache invalidated');
 
     // 競合がある場合は409を返す
     if (result.syncResult.conflict && result.syncResult.conflict.length > 0) {
