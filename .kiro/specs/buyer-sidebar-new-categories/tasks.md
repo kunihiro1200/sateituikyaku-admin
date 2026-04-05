@@ -45,11 +45,11 @@
 - [ ] 5.3 Backend APIのレスポンスが正しいか確認
 - [ ] 5.4 Frontendで各カテゴリが赤字で表示されるか確認
 - [ ] 5.5 各カテゴリをクリックして正しくフィルタリングされるか確認
-- [-] 5.6 本番環境にデプロイ（Backend + Frontend）
+- [x] 5.6 本番環境にデプロイ（Backend + Frontend）
 - [ ] 5.7 本番環境で動作確認
 
 ## Phase 6: ドキュメント更新
 
-- [ ] 6.1 `buyer-sidebar-status-definition.md`に新カテゴリの定義を追加
-- [ ] 6.2 `gas-sidebar-counts-update-guide.md`に新カテゴリの追加手順を記録
-- [ ] 6.3 README.mdを更新（必要に応じて）
+- [x] 6.1 `buyer-sidebar-status-definition.md`に新カテゴリの定義を追加
+- [x] 6.2 `gas-sidebar-counts-update-guide.md`に新カテゴリの追加手順を記録
+- [x] 6.3 README.mdを更新（必要に応じて）
