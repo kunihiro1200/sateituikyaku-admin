@@ -52,13 +52,15 @@ export class SidebarCountsUpdateService {
         removed
       });
 
-      // カウントを更新（データベース関数は後で実装）
+      // カウントを更新
       for (const category of removed) {
-        console.log(`[SidebarCountsUpdateService] Would decrement buyer category: ${category}`);
+        console.log(`[SidebarCountsUpdateService] Decrementing buyer category: ${category.category}, assignee: ${category.assignee}`);
+        await this.incrementBuyerSidebarCount(category.category, category.assignee, -1);
       }
 
       for (const category of added) {
-        console.log(`[SidebarCountsUpdateService] Would increment buyer category: ${category}`);
+        console.log(`[SidebarCountsUpdateService] Incrementing buyer category: ${category.category}, assignee: ${category.assignee}`);
+        await this.incrementBuyerSidebarCount(category.category, category.assignee, 1);
       }
 
       // Redisキャッシュを無効化
@@ -105,13 +107,15 @@ export class SidebarCountsUpdateService {
         removed
       });
 
-      // カウントを更新（データベース関数は後で実装）
+      // カウントを更新
       for (const category of removed) {
-        console.log(`[SidebarCountsUpdateService] Would decrement seller category: ${category}`);
+        console.log(`[SidebarCountsUpdateService] Decrementing seller category: ${category.category}, assignee: ${category.assignee}`);
+        await this.incrementSellerSidebarCount(category.category, category.assignee, -1);
       }
 
       for (const category of added) {
-        console.log(`[SidebarCountsUpdateService] Would increment seller category: ${category}`);
+        console.log(`[SidebarCountsUpdateService] Incrementing seller category: ${category.category}, assignee: ${category.assignee}`);
+        await this.incrementSellerSidebarCount(category.category, category.assignee, 1);
       }
 
       // Redisキャッシュを無効化
@@ -278,5 +282,125 @@ export class SidebarCountsUpdateService {
   private async getSellerCategories(sellerId: string): Promise<Array<{ category: string; assignee: string | null }>> {
     // TODO: 実装
     return [];
+  }
+
+  /**
+   * 買主サイドバーカウントを増減
+   */
+  private async incrementBuyerSidebarCount(category: string, assignee: string | null, delta: number): Promise<void> {
+    try {
+      const key = assignee || '';
+      
+      // 既存のレコードを取得
+      const { data: existing, error: fetchError } = await this.supabase
+        .from('buyer_sidebar_counts')
+        .select('*')
+        .eq('category', category)
+        .eq('assignee', key)
+        .maybeSingle();
+
+      if (fetchError) {
+        console.error(`[SidebarCountsUpdateService] Error fetching buyer sidebar count:`, fetchError);
+        return;
+      }
+
+      if (existing) {
+        // 既存レコードを更新
+        const newCount = Math.max(0, (existing.count || 0) + delta);
+        const { error: updateError } = await this.supabase
+          .from('buyer_sidebar_counts')
+          .update({ 
+            count: newCount,
+            updated_at: new Date().toISOString()
+          })
+          .eq('category', category)
+          .eq('assignee', key);
+
+        if (updateError) {
+          console.error(`[SidebarCountsUpdateService] Error updating buyer sidebar count:`, updateError);
+        } else {
+          console.log(`[SidebarCountsUpdateService] Updated buyer sidebar count: ${category}/${key} = ${newCount}`);
+        }
+      } else if (delta > 0) {
+        // 新規レコードを作成（deltaが正の場合のみ）
+        const { error: insertError } = await this.supabase
+          .from('buyer_sidebar_counts')
+          .insert({
+            category,
+            assignee: key,
+            label: '',
+            count: delta,
+            updated_at: new Date().toISOString()
+          });
+
+        if (insertError) {
+          console.error(`[SidebarCountsUpdateService] Error inserting buyer sidebar count:`, insertError);
+        } else {
+          console.log(`[SidebarCountsUpdateService] Inserted buyer sidebar count: ${category}/${key} = ${delta}`);
+        }
+      }
+    } catch (error) {
+      console.error(`[SidebarCountsUpdateService] Error in incrementBuyerSidebarCount:`, error);
+    }
+  }
+
+  /**
+   * 売主サイドバーカウントを増減
+   */
+  private async incrementSellerSidebarCount(category: string, assignee: string | null, delta: number): Promise<void> {
+    try {
+      const key = assignee || '';
+      
+      // 既存のレコードを取得
+      const { data: existing, error: fetchError } = await this.supabase
+        .from('seller_sidebar_counts')
+        .select('*')
+        .eq('category', category)
+        .eq('assignee', key)
+        .maybeSingle();
+
+      if (fetchError) {
+        console.error(`[SidebarCountsUpdateService] Error fetching seller sidebar count:`, fetchError);
+        return;
+      }
+
+      if (existing) {
+        // 既存レコードを更新
+        const newCount = Math.max(0, (existing.count || 0) + delta);
+        const { error: updateError } = await this.supabase
+          .from('seller_sidebar_counts')
+          .update({ 
+            count: newCount,
+            updated_at: new Date().toISOString()
+          })
+          .eq('category', category)
+          .eq('assignee', key);
+
+        if (updateError) {
+          console.error(`[SidebarCountsUpdateService] Error updating seller sidebar count:`, updateError);
+        } else {
+          console.log(`[SidebarCountsUpdateService] Updated seller sidebar count: ${category}/${key} = ${newCount}`);
+        }
+      } else if (delta > 0) {
+        // 新規レコードを作成（deltaが正の場合のみ）
+        const { error: insertError } = await this.supabase
+          .from('seller_sidebar_counts')
+          .insert({
+            category,
+            assignee: key,
+            label: '',
+            count: delta,
+            updated_at: new Date().toISOString()
+          });
+
+        if (insertError) {
+          console.error(`[SidebarCountsUpdateService] Error inserting seller sidebar count:`, insertError);
+        } else {
+          console.log(`[SidebarCountsUpdateService] Inserted seller sidebar count: ${category}/${key} = ${delta}`);
+        }
+      }
+    } catch (error) {
+      console.error(`[SidebarCountsUpdateService] Error in incrementSellerSidebarCount:`, error);
+    }
   }
 }
