@@ -30,14 +30,17 @@ export class SidebarCountsUpdateService {
       const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(buyerNumberOrId);
       
       // 買主データを取得
-      const query = this.supabase
+      let query = this.supabase
         .from('buyers')
         .select('*');
       
       if (isUuid) {
-        query.eq('id', buyerNumberOrId);
+        query = query.eq('buyer_id', buyerNumberOrId);
       } else {
-        query.eq('buyer_number', buyerNumberOrId);
+        // buyer_numberは数値型なので、文字列を数値に変換
+        const buyerNumberInt = parseInt(buyerNumberOrId, 10);
+        console.log(`[SidebarCountsUpdateService] Converted buyer_number to int: ${buyerNumberInt}`);
+        query = query.eq('buyer_number', buyerNumberInt);
       }
       
       const { data: buyer, error } = await query.single();
@@ -47,8 +50,10 @@ export class SidebarCountsUpdateService {
         return;
       }
 
+      console.log(`[SidebarCountsUpdateService] Found buyer: buyer_id=${buyer.buyer_id}, buyer_number=${buyer.buyer_number}`);
+
       // 更新前のカテゴリーを取得（実装は後で）
-      const oldCategories = await this.getBuyerCategories(buyer.id);
+      const oldCategories = await this.getBuyerCategories(buyer.buyer_id);
 
       // 更新後のカテゴリーを判定
       const newCategories = this.determineBuyerCategories(buyer);

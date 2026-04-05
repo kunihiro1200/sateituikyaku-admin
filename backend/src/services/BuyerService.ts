@@ -285,11 +285,16 @@ export class BuyerService {
    * 買主番号で買主を取得
    */
   async getByBuyerNumber(buyerNumber: string, includeDeleted: boolean = false): Promise<any | null> {
-    console.log(`[BuyerService.getByBuyerNumber] buyerNumber=${buyerNumber}`);
+    console.log(`[BuyerService.getByBuyerNumber] buyerNumber=${buyerNumber} (type: ${typeof buyerNumber})`);
+    
+    // buyer_numberは数値型なので、文字列を数値に変換
+    const buyerNumberInt = parseInt(buyerNumber, 10);
+    console.log(`[BuyerService.getByBuyerNumber] converted to int: ${buyerNumberInt}`);
+    
     let query = this.supabase
       .from('buyers')
       .select('*')
-      .eq('buyer_number', buyerNumber);
+      .eq('buyer_number', buyerNumberInt);
 
     if (!includeDeleted) {
       query = query.is('deleted_at', null);
@@ -305,7 +310,7 @@ export class BuyerService {
       throw new Error(`Failed to fetch buyer: ${error.message}`);
     }
 
-    console.log(`[BuyerService.getByBuyerNumber] found buyer id=${data?.id}`);
+    console.log(`[BuyerService.getByBuyerNumber] found buyer buyer_id=${data?.buyer_id}`);
     return data;
   }
 
@@ -608,10 +613,14 @@ export class BuyerService {
     // 手動更新時刻を記録（スプレッドシート同期による上書きを防ぐため）
     allowedData.db_updated_at = new Date().toISOString();
 
+    // buyer_numberは数値型なので、数値に変換
+    const buyerNumberInt = parseInt(buyerNumber, 10);
+    console.log('[BuyerService.update] buyerNumberInt:', buyerNumberInt);
+
     const { data, error } = await this.supabase
       .from('buyers')
       .update(allowedData)
-      .eq('buyer_number', buyerNumber)
+      .eq('buyer_number', buyerNumberInt)
       .select()
       .single();
 
