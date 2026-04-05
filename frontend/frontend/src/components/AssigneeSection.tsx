@@ -39,6 +39,8 @@ export const EMAIL_TEMPLATE_ASSIGNEE_MAP: Partial<Record<string, keyof Seller>> 
 };
 
 // 活動履歴のラベル → sellerKey（SMS）
+// 🚨 重要: SMSの「キャンセル案内」は cancelNoticeAssignee にのみマッピング
+// valuationReasonEmailAssignee には絶対にマッピングしない
 const SMS_LABEL_TO_KEY: Record<string, keyof Seller> = {
   '不通時Sメール':                       'unreachableSmsAssignee',
   'キャンセル案内':                       'cancelNoticeAssignee',
@@ -79,14 +81,23 @@ export function calcSendStatus(
     if (!match) continue;
     const label = match[1];
     console.log('[calcSendStatus] Matched label:', label);
+    
     if (act.type === 'sms') {
       const key = SMS_LABEL_TO_KEY[label];
       console.log('[calcSendStatus] SMS - Mapped key:', key);
-      if (key) smsSent.add(key);
+      if (key) {
+        smsSent.add(key);
+        // 🚨 重要: SMSの「キャンセル案内」は cancelNoticeAssignee にのみ追加
+        // valuationReasonEmailAssignee には絶対に追加しない
+        console.log('[calcSendStatus] SMS - Added to smsSent:', key);
+      }
     } else if (act.type === 'email') {
       const key = EMAIL_LABEL_TO_KEY[label];
       console.log('[calcSendStatus] Email - Mapped key:', key);
-      if (key) emailSent.add(key);
+      if (key) {
+        emailSent.add(key);
+        console.log('[calcSendStatus] Email - Added to emailSent:', key);
+      }
     }
   }
 
@@ -95,6 +106,15 @@ export function calcSendStatus(
   for (const key of allKeys) {
     const hasSms = smsSent.has(key);
     const hasEmail = emailSent.has(key);
+    
+    // 🚨 重要: valuationReasonEmailAssignee は Email のみ許可（SMS は許可しない）
+    // SMSの「キャンセル案内」が誤って valuationReasonEmailAssignee にマッピングされるのを防ぐ
+    if (key === 'valuationReasonEmailAssignee' && hasSms && !hasEmail) {
+      // SMS のみの場合は無視（Email が必要）
+      console.log('[calcSendStatus] Filtered out SMS-only for valuationReasonEmailAssignee');
+      continue;
+    }
+    
     if (hasSms && hasEmail) result[key] = 'both';
     else if (hasSms) result[key] = 'sms';
     else result[key] = 'email';
