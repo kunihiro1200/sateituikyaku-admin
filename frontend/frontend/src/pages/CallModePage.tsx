@@ -2720,37 +2720,113 @@ HP：https://ifoo-oita.com/
     });
   };
 
-  const handleSmsTemplateSelect = (templateId: string) => {
+  const handleSmsTemplateSelect = async (templateId: string) => {
     if (!templateId) return;
 
     const template = smsTemplates.find(t => t.id === templateId);
     if (!template) return;
 
     try {
+      // エラーチェック1: 電話番号が空
+      if (!seller?.phoneNumber) {
+        setError('電話番号が設定されていません');
+        return;
+      }
+
       // generator関数を使用してメッセージ内容を生成
       // 訪問後御礼メールの場合は従業員データを渡す
       const generatedContent = template.id === 'post_visit_thank_you'
         ? template.generator(seller!, property, employees)
         : template.generator(seller!, property);
       
-      // メッセージ長の検証（日本語SMS制限: 670文字）
+      // エラーチェック2: メッセージ長の検証（日本語SMS制限: 670文字）
       const messageLength = convertLineBreaks(generatedContent).length;
       if (messageLength > 670) {
-        setError(`メッセージが長すぎます（${messageLength}文字 / 670文字制限）。内容を確認してください。`);
+        setError(`メッセージが長すぎます（${messageLength}文字 / 670文字制限）`);
         return;
       }
       
-      // 確認ダイアログを表示（生成されたコンテンツを含む）
-      setConfirmDialog({
-        open: true,
-        type: 'sms',
-        template: {
-          ...template,
-          content: generatedContent,
-        },
+      // 改行プレースホルダーを実際の改行に変換
+      const messageContent = convertLineBreaks(generatedContent);
+      
+      // 活動履歴を記録（非同期、エラーが発生してもSMS送信は継続）
+      try {
+        await api.post(`/api/sellers/${id}/activities`, {
+          type: 'sms',
+          content: `【${template.label}】を送信`,
+          result: 'sent',
+        });
+      } catch (activityErr) {
+        console.error('活動履歴の記録に失敗しました:', activityErr);
+        // エラーをログに記録するが、処理は継続
+      }
+
+      // 担当フィールドを自動セット（非同期、エラーが発生してもSMS送信は継続）
+      try {
+        const assigneeKey = SMS_TEMPLATE_ASSIGNEE_MAP[template.id];
+        if (assigneeKey && seller?.id) {
+          // イニシャルを取得
+          let myInitial = '';
+          try {
+            const initialsRes = await api.get('/api/employees/initials-by-email');
+            if (initialsRes.data?.initials) {
+              myInitial = initialsRes.data.initials;
+            }
+          } catch { /* ignore */ }
+          
+          // フォールバック: activeEmployeesから取得
+          if (!myInitial) {
+            const myEmployee = activeEmployees.find(e => e.email === employee?.email);
+            if (myEmployee?.initials) {
+              myInitial = myEmployee.initials;
+            } else {
+              try {
+                const freshEmployees = await import('../services/employeeService').then(m => m.getActiveEmployees());
+                const freshMe = freshEmployees.find(e => e.email === employee?.email);
+                myInitial = freshMe?.initials || '';
+              } catch { /* ignore */ }
+            }
+          }
+          
+          if (myInitial) {
+            await api.put(`/api/sellers/${seller.id}`, { [assigneeKey]: myInitial });
+            setSeller((prev) => prev ? { ...prev, [assigneeKey as keyof Seller]: myInitial } : prev);
+          }
+        }
+      } catch (assigneeErr) {
+        console.error('担当フィールド自動セットに失敗しました:', assigneeErr);
+        // エラーをログに記録するが、処理は継続
+      }
+
+      // SMSアプリを開く
+      const smsLink = `sms:${seller.phoneNumber}?body=${encodeURIComponent(messageContent)}`;
+      window.location.href = smsLink;
+      
+      // 成功メッセージを表示
+      setSnackbarMessage(`${template.label}を記録しました`);
+      setSnackbarOpen(true);
+      
+      // 活動履歴を再読み込み（バックグラウンドで実行）
+      api.get(`/api/sellers/${id}/activities`).then((activitiesResponse) => {
+        const convertedActivities = activitiesResponse.data.map((activity: any) => ({
+          id: activity.id,
+          sellerId: activity.seller_id || activity.sellerId,
+          employeeId: activity.employee_id || activity.employeeId,
+          type: activity.type,
+          content: activity.content,
+          result: activity.result,
+          metadata: activity.metadata,
+          createdAt: activity.created_at || activity.createdAt,
+          employee: activity.employee,
+        }));
+        setActivities(convertedActivities);
+      }).catch((err) => {
+        console.error('活動履歴の再読み込みに失敗しました:', err);
       });
+      
     } catch (err: any) {
-      setError('メッセージの生成に失敗しました: ' + (err.message || '不明なエラー'));
+      setError('メッセージの生成に失敗しました');
+      console.error('SMS送信エラー:', err);
     }
   };
 
@@ -3009,18 +3085,10 @@ HP：https://ifoo-oita.com/
           return;
         }
       } else if (type === 'sms') {
-        // 改行プレースホルダーを実際の改行に変換
-        const messageContent = convertLineBreaks(template.content);
-        
-        // テンプレート選択を記録
-        await api.post(`/api/sellers/${id}/activities`, {
-          type: 'sms',
-          content: `【${template.label}】を送信`,
-          result: 'sent',
-        });
-
-        setSnackbarMessage(`${template.label}を記録しました`);
-        setSnackbarOpen(true);
+        // SMS送信は handleSmsTemplateSelect() で直接実行されるため、
+        // この分岐は到達しない（確認ダイアログをスキップするため）
+        console.warn('handleConfirmSend: SMS送信は handleSmsTemplateSelect() で処理されます');
+        return;
 
         // SMS送信後、対応する担当フィールドにログインユーザーのイニシャルを自動セット
         try {
@@ -3029,42 +3097,11 @@ HP：https://ifoo-oita.com/
           console.log('[handleConfirmSend] Template label:', template.label);
           console.log('[handleConfirmSend] Assignee key:', assigneeKey);
           // 最優先: /api/employees/initials-by-emailでログインユーザーのイニシャルを確実に取得
-          // （activeEmployeesはスプシの「通常=TRUE」スタッフのみのため、全アカウントが含まれるとは限らない）
-          let myInitial = '';
-          try {
-            const initialsRes = await api.get('/api/employees/initials-by-email');
-            if (initialsRes.data?.initials) {
-              myInitial = initialsRes.data.initials;
-            }
-          } catch { /* ignore */ }
-          // フォールバック: activeEmployeesからメールで照合
-          if (!myInitial) {
-            const myEmployee = activeEmployees.find(e => e.email === employee?.email);
-            if (myEmployee?.initials) {
-              myInitial = myEmployee.initials;
-            } else {
-              try {
-                const freshEmployees = await import('../services/employeeService').then(m => m.getActiveEmployees());
-                const freshMe = freshEmployees.find(e => e.email === employee?.email);
-                myInitial = freshMe?.initials || '';
-              } catch { /* ignore */ }
-            }
-          }
-          console.log('[handleConfirmSend] My initial:', myInitial);
-          if (assigneeKey && myInitial && seller?.id) {
-            console.log('[handleConfirmSend] API payload:', { [assigneeKey]: myInitial });
-            await api.put(`/api/sellers/${seller.id}`, { [assigneeKey]: myInitial });
-            setSeller((prev) => prev ? { ...prev, [assigneeKey as keyof Seller]: myInitial } : prev);
-          }
-        } catch (assigneeErr) {
-          console.error('担当フィールド自動セットエラー:', assigneeErr);
-        }
-
-        // SMSアプリを開く
-        if (seller?.phoneNumber) {
-          const smsLink = `sms:${seller.phoneNumber}?body=${encodeURIComponent(messageContent)}`;
-          window.location.href = smsLink;
-        }
+      } else if (type === 'sms') {
+        // SMS送信は handleSmsTemplateSelect() で直接実行されるため、
+        // この分岐は到達しない（確認ダイアログをスキップするため）
+        console.warn('handleConfirmSend: SMS送信は handleSmsTemplateSelect() で処理されます');
+        return;
       }
 
       // 活動履歴を再読み込み
