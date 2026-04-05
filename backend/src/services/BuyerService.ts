@@ -1731,10 +1731,36 @@ export class BuyerService {
     categoryCounts: any;
     normalStaffInitials: string[];
   }> {
-    // 🚨 重要：buyer_sidebar_countsテーブルへの依存を削除
-    // 常に動的計算を使用することで、サイドバーと一覧のカウントを一致させる
-    console.log('🔍 [BuyerService] getSidebarCounts called - using dynamic calculation');
-    return this.getSidebarCountsFallback();
+    // 🚨 重要：buyer_sidebar_countsテーブルから新カテゴリを取得
+    console.log('🔍 [BuyerService] getSidebarCounts called - fetching from buyer_sidebar_counts table');
+    
+    try {
+      // buyer_sidebar_countsテーブルから新カテゴリを取得
+      const { data: sidebarCounts, error } = await this.supabase
+        .from('buyer_sidebar_counts')
+        .select('*');
+      
+      if (error) {
+        console.error('❌ Error fetching buyer_sidebar_counts:', error);
+        return this.getSidebarCountsFallback();
+      }
+      
+      // 動的計算でベースカウントを取得
+      const fallbackResult = await this.getSidebarCountsFallback();
+      
+      // 新カテゴリをマージ
+      if (sidebarCounts && sidebarCounts.length > 0) {
+        sidebarCounts.forEach((row: any) => {
+          fallbackResult.categoryCounts[row.category] = row.count;
+        });
+        console.log('✅ Merged new categories from buyer_sidebar_counts table');
+      }
+      
+      return fallbackResult;
+    } catch (error) {
+      console.error('❌ Exception in getSidebarCounts:', error);
+      return this.getSidebarCountsFallback();
+    }
   }
 
   /**
@@ -2080,6 +2106,14 @@ export class BuyerService {
         });
         
         console.log(`[getBuyersByStatus] ３回架電未フィルタ結果: ${filteredBuyers.length}件`);
+      } else if (status === 'inquiryEmailUnanswered' || status === 'brokerInquiry' || 
+                 status === 'generalViewingSellerContactPending' || status === 'viewingPromotionRequired' || 
+                 status === 'pinrichUnregistered') {
+        // 新カテゴリの場合（2026年4月追加）
+        // これらのカテゴリはGASで計算されたカウントのみを使用し、フィルタリングは実装しない
+        console.log(`[getBuyersByStatus] 新カテゴリ検出: status=${status}`);
+        console.log(`[getBuyersByStatus] 新カテゴリはフィルタリング未実装のため、空配列を返します`);
+        filteredBuyers = [];
       } else if (assignedMatch1 || assignedMatch2) {
         // 担当カテゴリの場合、follow_up_assignee または initial_assignee でフィルタリング
         const assignee = assignedMatch1 ? assignedMatch1[1] : assignedMatch2![1]; // 'Y', 'I', '久', '外す' など

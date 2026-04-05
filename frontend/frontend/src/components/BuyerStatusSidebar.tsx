@@ -14,6 +14,13 @@ interface CategoryCounts {
   threeCallUnchecked?: number;  // ３回架電未カテゴリ（新規）
   assignedCounts?: Record<string, number>;
   todayCallAssignedCounts?: Record<string, number>;
+  
+  // 新規追加（2026年4月）
+  inquiryEmailUnanswered?: number;  // 問合メール未対応
+  brokerInquiry?: number;  // 業者問合せあり
+  generalViewingSellerContactPending?: number;  // 一般媒介_内覧後売主連絡未
+  viewingPromotionRequired?: number;  // 要内覧促進客
+  pinrichUnregistered?: number;  // ピンリッチ未登録
 }
 
 export interface BuyerWithStatus {
@@ -54,6 +61,17 @@ function getCategoryColor(category: string): string {
       return '#d32f2f'; // 赤
     case 'todayCallAssigned':
       return '#ff5722'; // オレンジ
+    // 新規追加（2026年4月）- 全て赤字
+    case 'inquiryEmailUnanswered':
+      return '#d32f2f'; // 赤
+    case 'brokerInquiry':
+      return '#d32f2f'; // 赤
+    case 'generalViewingSellerContactPending':
+      return '#d32f2f'; // 赤
+    case 'viewingPromotionRequired':
+      return '#d32f2f'; // 赤
+    case 'pinrichUnregistered':
+      return '#d32f2f'; // 赤
     default:
       if (category.startsWith('assigned:')) {
         return '#4caf50'; // 緑（担当）
@@ -76,6 +94,17 @@ function getCategoryLabel(category: string): string {
       return '３回架電未';
     case 'todayCallAssigned':
       return '当日TEL（担当）';
+    // 新規追加（2026年4月）
+    case 'inquiryEmailUnanswered':
+      return '問合メール未対応';
+    case 'brokerInquiry':
+      return '業者問合せあり';
+    case 'generalViewingSellerContactPending':
+      return '一般媒介_内覧後売主連絡未';
+    case 'viewingPromotionRequired':
+      return '要内覧促進客';
+    case 'pinrichUnregistered':
+      return 'ピンリッチ未登録';
     default:
       if (category.startsWith('assigned:')) {
         return `担当(${category.replace('assigned:', '')})`;
@@ -151,6 +180,27 @@ export default function BuyerStatusSidebar({
       color: getCategoryColor('threeCallUnchecked'),
     });
   }
+  
+  // 新規追加カテゴリ（2026年4月）- 全て赤字で表示
+  const newCategories = [
+    'inquiryEmailUnanswered',
+    'brokerInquiry',
+    'generalViewingSellerContactPending',
+    'viewingPromotionRequired',
+    'pinrichUnregistered',
+  ];
+  
+  newCategories.forEach(key => {
+    const count = (categoryCounts as any)[key] ?? 0;
+    if (count > 0) {
+      categoryList.push({
+        key,
+        label: getCategoryLabel(key),
+        count,
+        color: getCategoryColor(key),
+      });
+    }
+  });
 
   // 担当者別カテゴリ（assignedCounts）- 親カテゴリ
   if (categoryCounts.assignedCounts) {

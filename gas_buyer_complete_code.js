@@ -723,6 +723,11 @@ function syncBuyerList() {
     }
   } catch (e) { Logger.log('❌ 削除同期エラー: ' + e.toString()); }
   
+  // サイドバーカウント更新
+  try {
+    updateBuyerSidebarCounts_();
+  } catch (e) { Logger.log('❌ サイドバーカウント更新エラー: ' + e.toString()); }
+  
   var duration = (new Date() - startTime) / 1000;
   Logger.log('  所要時間: ' + duration + '秒');
   Logger.log('=== 同期完了 ===');
@@ -753,4 +758,206 @@ function testBuyerSync() {
   Logger.log('=== テスト同期開始 ===');
   syncBuyerList();
   Logger.log('=== テスト同期完了 ===');
+}
+
+
+// ============================================================
+// サイドバーカウント更新（新規追加 - 2026年4月）
+// ============================================================
+
+/**
+ * 買主リストサイドバーのカウントを更新する
+ * 5つの新カテゴリ：問合メール未対応、業者問合せあり、一般媒介_内覧後売主連絡未、要内覧促進客、ピンリッチ未登録
+ */
+function updateBuyerSidebarCounts_() {
+  try {
+    Logger.log('📊 サイドバーカウント更新開始...');
+    
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheet = ss.getSheetByName('買主リスト');
+    if (!sheet) {
+      Logger.log('❌ シート「買主リスト」が見つかりません');
+      return;
+    }
+    
+    var lastRow = sheet.getLastRow();
+    var lastCol = sheet.getLastColumn();
+    var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+    var allData = sheet.getRange(2, 1, lastRow - 1, lastCol).getValues();
+    
+    // 今日の日付（YYYY-MM-DD形式）
+    var today = new Date();
+    var todayStr = today.getFullYear() + '-' +
+      String(today.getMonth() + 1).padStart(2, '0') + '-' +
+      String(today.getDate()).padStart(2, '0');
+    
+    // 14日前と4日前の日付を計算
+    var fourteenDaysAgo = new Date(today);
+    fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
+    var fourteenDaysAgoStr = fourteenDaysAgo.getFullYear() + '-' +
+      String(fourteenDaysAgo.getMonth() + 1).padStart(2, '0') + '-' +
+      String(fourteenDaysAgo.getDate()).padStart(2, '0');
+    
+    var fourDaysAgo = new Date(today);
+    fourDaysAgo.setDate(fourDaysAgo.getDate() - 4);
+    var fourDaysAgoStr = fourDaysAgo.getFullYear() + '-' +
+      String(fourDaysAgo.getMonth() + 1).padStart(2, '0') + '-' +
+      String(fourDaysAgo.getDate()).padStart(2, '0');
+    
+    // 一般媒介カットオフ日（2026-03-20）
+    var generalCutoffDate = '2026-03-20';
+    
+    // カウント変数の初期化
+    var counts = {
+      inquiryEmailUnanswered: 0,
+      brokerInquiry: 0,
+      generalViewingSellerContactPending: 0,
+      viewingPromotionRequired: 0,
+      pinrichUnregistered: 0
+    };
+    
+    // 各行をチェック
+    for (var i = 0; i < allData.length; i++) {
+      var row = rowToObject(headers, allData[i]);
+      var buyerNumber = row['買主番号'];
+      if (!buyerNumber || typeof buyerNumber !== 'string') continue;
+      
+      // 1. 問合メール未対応
+      var inquiryEmailPhone = row['【問合メール】電話対応'] ? String(row['【問合メール】電話対応']) : '';
+      var inquiryEmailReply = row['【問合メール】メール返信'] ? String(row['【問合メール】メール返信']) : '';
+      var viewingDate = formatDateToISO_(row['●内覧日(最新）']);
+      
+      // 条件1: 【問合メール】電話対応 = "未"
+      if (inquiryEmailPhone === '未') {
+        counts.inquiryEmailUnanswered++;
+        continue;
+      }
+      
+      // 条件2: 【問合メール】メール返信 = "未"
+      if (inquiryEmailReply === '未') {
+        counts.inquiryEmailUnanswered++;
+        continue;
+      }
+      
+      // 条件3: 複合条件
+      if (!viewingDate &&
+          (inquiryEmailPhone === '不要' || inquiryEmailPhone === '不要') &&
+          (inquiryEmailReply === '未' || !inquiryEmailReply)) {
+        counts.inquiryEmailUnanswered++;
+        continue;
+      }
+      
+      // 2. 業者問合せあり
+      var brokerSurvey = row['業者向けアンケート'] ? String(row['業者向けアンケート']) : '';
+      if (brokerSurvey === '未') {
+        counts.brokerInquiry++;
+      }
+      
+      // 3. 一般媒介_内覧後売主連絡未
+      var viewingTypeGeneral = row['内覧形態_一般媒介'] ? String(row['内覧形態_一般媒介']) : '';
+      var postViewingSellerContact = row['内覧後売主連絡'] ? String(row['内覧後売主連絡']) : '';
+      
+      // 条件1: 日付範囲条件
+      if (viewingDate &&
+          viewingDate >= generalCutoffDate &&
+          viewingDate < todayStr &&
+          viewingTypeGeneral &&
+          (postViewingSellerContact === '未' || !postViewingSellerContact)) {
+        counts.generalViewingSellerContactPending++;
+        continue;
+      }
+      
+      // 条件2: 直接条件
+      if (postViewingSellerContact === '未') {
+        counts.generalViewingSellerContactPending++;
+        continue;
+      }
+      
+      // 4. 要内覧促進客
+      var receptionDate = formatDateToISO_(row['受付日']);
+      var followUpAssignee = row['後続担当'] ? String(row['後続担当']) : '';
+      var latestStatus = row['★最新状況'] ? String(row['★最新状況']) : '';
+      var viewingPromotionUnnecessary = row['内覧促進メール不要'] ? String(row['内覧促進メール不要']) : '';
+      var viewingPromotionSender = row['内覧促進メール送信者'] ? String(row['内覧促進メール送信者']) : '';
+      var brokerInquiry = row['業者問合せ'] ? String(row['業者問合せ']) : '';
+      var inquirySource = row['●問合せ元'] ? String(row['●問合せ元']) : '';
+      var inquiryConfidence = row['●問合時確度'] ? String(row['●問合時確度']) : '';
+      
+      if (receptionDate &&
+          receptionDate >= fourteenDaysAgoStr &&
+          receptionDate <= fourDaysAgoStr &&
+          !viewingDate &&
+          !followUpAssignee &&
+          !latestStatus &&
+          viewingPromotionUnnecessary !== '不要' &&
+          !viewingPromotionSender &&
+          !brokerInquiry &&
+          inquirySource !== '配信希望アンケート' &&
+          inquirySource.indexOf('ピンリッチ') === -1 &&
+          inquiryConfidence !== 'e（買付物件の問合せ）' &&
+          inquiryConfidence !== 'd（資料送付不要、条件不適合など）' &&
+          inquiryConfidence !== 'b（内覧検討）') {
+        counts.viewingPromotionRequired++;
+      }
+      
+      // 5. ピンリッチ未登録
+      var pinrich = row['Pinrich'] ? String(row['Pinrich']) : '';
+      var email = row['●メアド'] ? String(row['●メアド']) : '';
+      
+      // 条件1: Pinrichが空
+      if (!pinrich && email && !brokerInquiry) {
+        counts.pinrichUnregistered++;
+        continue;
+      }
+      
+      // 条件2: Pinrich = "登録無し"
+      if (pinrich === '登録無し' && email && !brokerInquiry) {
+        counts.pinrichUnregistered++;
+      }
+    }
+    
+    Logger.log('📊 カウント結果:');
+    Logger.log('  問合メール未対応: ' + counts.inquiryEmailUnanswered);
+    Logger.log('  業者問合せあり: ' + counts.brokerInquiry);
+    Logger.log('  一般媒介_内覧後売主連絡未: ' + counts.generalViewingSellerContactPending);
+    Logger.log('  要内覧促進客: ' + counts.viewingPromotionRequired);
+    Logger.log('  ピンリッチ未登録: ' + counts.pinrichUnregistered);
+    
+    // Supabaseに保存
+    var upsertRows = [];
+    var now = new Date().toISOString();
+    upsertRows.push({ category: 'inquiryEmailUnanswered', count: counts.inquiryEmailUnanswered, label: null, assignee: null, updated_at: now });
+    upsertRows.push({ category: 'brokerInquiry', count: counts.brokerInquiry, label: null, assignee: null, updated_at: now });
+    upsertRows.push({ category: 'generalViewingSellerContactPending', count: counts.generalViewingSellerContactPending, label: null, assignee: null, updated_at: now });
+    upsertRows.push({ category: 'viewingPromotionRequired', count: counts.viewingPromotionRequired, label: null, assignee: null, updated_at: now });
+    upsertRows.push({ category: 'pinrichUnregistered', count: counts.pinrichUnregistered, label: null, assignee: null, updated_at: now });
+    
+    // Supabaseに一括挿入
+    for (var j = 0; j < upsertRows.length; j++) {
+      var url = SUPABASE_CONFIG.URL + '/rest/v1/buyer_sidebar_counts';
+      var options = {
+        method: 'POST',
+        headers: {
+          'apikey': SUPABASE_CONFIG.SERVICE_KEY,
+          'Authorization': 'Bearer ' + SUPABASE_CONFIG.SERVICE_KEY,
+          'Content-Type': 'application/json',
+          'Prefer': 'resolution=merge-duplicates'
+        },
+        payload: JSON.stringify(upsertRows[j]),
+        muteHttpExceptions: true
+      };
+      var res = UrlFetchApp.fetch(url, options);
+      var code = res.getResponseCode();
+      if (code >= 200 && code < 300) {
+        Logger.log('✅ ' + upsertRows[j].category + ': ' + upsertRows[j].count + '件');
+      } else {
+        Logger.log('❌ ' + upsertRows[j].category + ' 保存失敗: HTTP ' + code);
+      }
+    }
+    
+    Logger.log('📊 サイドバーカウント更新完了');
+  } catch (error) {
+    Logger.log('❌ [ERROR] updateBuyerSidebarCounts_: ' + error.message);
+    Logger.log(error.stack);
+  }
 }
