@@ -18,6 +18,15 @@ let _moduleLevelStatusCache: {
 } | null = null;
 const _MODULE_STATUS_CACHE_TTL = 30 * 60 * 1000; // 30分
 
+/**
+ * 買主ステータスキャッシュを無効化（外部から呼び出し可能）
+ * 買主データ更新時に呼び出してキャッシュをクリアする
+ */
+export function invalidateBuyerStatusCache(): void {
+  _moduleLevelStatusCache = null;
+  console.log('[BuyerService] Buyer status cache invalidated');
+}
+
 export interface BuyerQueryOptions {
   page?: number;
   limit?: number;

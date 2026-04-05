@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { CacheHelper } from '../utils/cache';
 import { isTomorrow, isDaysFromToday, getDayOfWeek } from '../utils/dateHelpers';
+import { invalidateBuyerStatusCache } from './BuyerService';
 
 /**
  * サイドバーカウント即時更新サービス
@@ -89,6 +90,9 @@ export class SidebarCountsUpdateService {
       // Redisキャッシュを無効化
       await CacheHelper.del('buyers:sidebar-counts');
       console.log(`[SidebarCountsUpdateService] Invalidated buyer sidebar counts cache`);
+
+      // 🚨 重要：インメモリキャッシュも無効化
+      invalidateBuyerStatusCache();
 
     } catch (error) {
       console.error(`[SidebarCountsUpdateService] Error updating buyer sidebar counts:`, error);
