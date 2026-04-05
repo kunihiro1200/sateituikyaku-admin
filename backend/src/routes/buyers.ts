@@ -134,10 +134,12 @@ function authenticateOrApiKey(req: Request, res: Response, next: NextFunction) {
   
   if (apiKey) {
     // API Keyが存在する場合、API Key認証を試みる
+    console.log('[authenticateOrApiKey] API Key detected, using API Key auth');
     return apiKeyAuth(req, res, next);
   }
   
   // API Keyが存在しない場合、JWT認証を試みる
+  console.log('[authenticateOrApiKey] No API Key, using JWT auth');
   return authenticate(req, res, next);
 }
 
