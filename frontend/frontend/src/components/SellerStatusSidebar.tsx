@@ -511,7 +511,7 @@ export default function SellerStatusSidebar({
               py: 1,
               px: 1.5,
               color: isParentActive || isParentExpanded ? 'white' : parentColor,
-              bgcolor: isParentActive || isParentExpanded ? parentColor : 'transparent',
+              bgcolor: isParentActive || isParentExpanded ? parentColor : '#e8f5e9',
               borderRadius: 1,
               '&:hover': {
                 bgcolor: isParentActive || isParentExpanded ? parentColor : `${parentColor}15`,
