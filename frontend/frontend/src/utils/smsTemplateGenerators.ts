@@ -232,8 +232,8 @@ export const generateCallReminderSMS = (
  * プレースホルダーを売主情報に基づいて置き換える
  * 
  * サポートされているプレースホルダー:
- * - `<<当社住所>>`: 売主番号に「FI」が含まれる場合は福岡支店の住所（プレフィックスなし）、それ以外は大分本社の住所（「住所：」プレフィックス付き）
- * - `<<売買実績ｖ>>`: 売主番号に「FI」が含まれる場合は空文字列、それ以外は売買実績URL
+ * - `<<当社住所>>`: 売主番号に「FI」が含まれる場合は福岡支店の住所、それ以外は大分本社の住所（両方とも「住所：」プレフィックスなし）
+ * - `<<売買実績ｖ>>` または `<<売買実績v>>`: 売主番号に「FI」が含まれる場合は空文字列、それ以外は売買実績URL
  * 
  * 条件分岐ロジック:
  * - 売主番号に「FI」が含まれるかを判定（大文字・小文字を区別しない）
@@ -256,7 +256,7 @@ export const generateCallReminderSMS = (
  * const seller = { sellerNumber: 'AA13501', name: '佐藤花子' };
  * const message = '<<当社住所>>です。<<売買実績ｖ>>';
  * const result = replacePlaceholders(message, seller);
- * // 結果: '住所：大分市舞鶴町1-3-30STビル１Fです。売買実績はこちら：https://property-site-frontend-kappa.vercel.app/public/properties?view=map'
+ * // 結果: '大分市舞鶴町1-3-30STビル１Fです。売買実績はこちら：https://property-site-frontend-kappa.vercel.app/public/properties?view=map'
  * ```
  */
 export const replacePlaceholders = (
@@ -289,14 +289,16 @@ export const replacePlaceholders = (
     if (hasFI) {
       result = result.replace(/<<当社住所>>/g, '福岡市中央区六本松４丁目３－２');
     } else {
-      result = result.replace(/<<当社住所>>/g, '住所：大分市舞鶴町1-3-30STビル１F');
+      result = result.replace(/<<当社住所>>/g, '大分市舞鶴町1-3-30STビル１F');
     }
     
-    // <<売買実績ｖ>>の置換
+    // <<売買実績ｖ>>の置換（全角「ｖ」と半角「v」の両方に対応）
     if (hasFI) {
       result = result.replace(/<<売買実績ｖ>>/g, '');
+      result = result.replace(/<<売買実績v>>/g, '');
     } else {
       result = result.replace(/<<売買実績ｖ>>/g, '売買実績はこちら：https://property-site-frontend-kappa.vercel.app/public/properties?view=map');
+      result = result.replace(/<<売買実績v>>/g, '売買実績はこちら：https://property-site-frontend-kappa.vercel.app/public/properties?view=map');
     }
     
     return result;
@@ -313,8 +315,9 @@ export const replacePlaceholders = (
  */
 const replaceWithDefaults = (message: string): string => {
   let result = message;
-  result = result.replace(/<<当社住所>>/g, '住所：大分市舞鶴町1-3-30STビル１F');
+  result = result.replace(/<<当社住所>>/g, '大分市舞鶴町1-3-30STビル１F');
   result = result.replace(/<<売買実績ｖ>>/g, '売買実績はこちら：https://property-site-frontend-kappa.vercel.app/public/properties?view=map');
+  result = result.replace(/<<売買実績v>>/g, '売買実績はこちら：https://property-site-frontend-kappa.vercel.app/public/properties?view=map');
   return result;
 };
 

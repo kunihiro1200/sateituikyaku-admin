@@ -10,9 +10,16 @@ describe('replacePlaceholders', () => {
       expect(result).toBe('福岡市中央区六本松４丁目３－２です。');
     });
 
-    it('<<売買実績ｖ>>を空文字列に置き換える', () => {
+    it('<<売買実績ｖ>>を空文字列に置き換える（全角v）', () => {
       const seller: Partial<Seller> = { sellerNumber: 'FI12345' };
       const message = '<<売買実績ｖ>>';
+      const result = replacePlaceholders(message, seller as Seller);
+      expect(result).toBe('');
+    });
+
+    it('<<売買実績v>>を空文字列に置き換える（半角v）', () => {
+      const seller: Partial<Seller> = { sellerNumber: 'FI12345' };
+      const message = '<<売買実績v>>';
       const result = replacePlaceholders(message, seller as Seller);
       expect(result).toBe('');
     });
@@ -51,12 +58,19 @@ describe('replacePlaceholders', () => {
       const seller: Partial<Seller> = { sellerNumber: 'AA13501' };
       const message = '<<当社住所>>です。';
       const result = replacePlaceholders(message, seller as Seller);
-      expect(result).toBe('住所：大分市舞鶴町1-3-30STビル１Fです。');
+      expect(result).toBe('大分市舞鶴町1-3-30STビル１Fです。');
     });
 
-    it('<<売買実績ｖ>>を売買実績URLに置き換える', () => {
+    it('<<売買実績ｖ>>を売買実績URLに置き換える（全角v）', () => {
       const seller: Partial<Seller> = { sellerNumber: 'AA13501' };
       const message = '<<売買実績ｖ>>';
+      const result = replacePlaceholders(message, seller as Seller);
+      expect(result).toBe('売買実績はこちら：https://property-site-frontend-kappa.vercel.app/public/properties?view=map');
+    });
+
+    it('<<売買実績v>>を売買実績URLに置き換える（半角v）', () => {
+      const seller: Partial<Seller> = { sellerNumber: 'AA13501' };
+      const message = '<<売買実績v>>';
       const result = replacePlaceholders(message, seller as Seller);
       expect(result).toBe('売買実績はこちら：https://property-site-frontend-kappa.vercel.app/public/properties?view=map');
     });
@@ -65,7 +79,7 @@ describe('replacePlaceholders', () => {
       const seller: Partial<Seller> = { sellerNumber: 'AA13501' };
       const message = '<<当社住所>>です。<<売買実績ｖ>>';
       const result = replacePlaceholders(message, seller as Seller);
-      expect(result).toBe('住所：大分市舞鶴町1-3-30STビル１Fです。売買実績はこちら：https://property-site-frontend-kappa.vercel.app/public/properties?view=map');
+      expect(result).toBe('大分市舞鶴町1-3-30STビル１Fです。売買実績はこちら：https://property-site-frontend-kappa.vercel.app/public/properties?view=map');
     });
   });
 
@@ -74,34 +88,34 @@ describe('replacePlaceholders', () => {
       const seller: Partial<Seller> = { sellerNumber: null as any };
       const message = '<<当社住所>>です。<<売買実績ｖ>>';
       const result = replacePlaceholders(message, seller as Seller);
-      expect(result).toBe('住所：大分市舞鶴町1-3-30STビル１Fです。売買実績はこちら：https://property-site-frontend-kappa.vercel.app/public/properties?view=map');
+      expect(result).toBe('大分市舞鶴町1-3-30STビル１Fです。売買実績はこちら：https://property-site-frontend-kappa.vercel.app/public/properties?view=map');
     });
 
     it('売主番号がundefinedの場合、デフォルト値（大分本社）を使用', () => {
       const seller: Partial<Seller> = { sellerNumber: undefined };
       const message = '<<当社住所>>です。<<売買実績ｖ>>';
       const result = replacePlaceholders(message, seller as Seller);
-      expect(result).toBe('住所：大分市舞鶴町1-3-30STビル１Fです。売買実績はこちら：https://property-site-frontend-kappa.vercel.app/public/properties?view=map');
+      expect(result).toBe('大分市舞鶴町1-3-30STビル１Fです。売買実績はこちら：https://property-site-frontend-kappa.vercel.app/public/properties?view=map');
     });
 
     it('売主番号が空文字列の場合、デフォルト値（大分本社）を使用', () => {
       const seller: Partial<Seller> = { sellerNumber: '' };
       const message = '<<当社住所>>です。<<売買実績ｖ>>';
       const result = replacePlaceholders(message, seller as Seller);
-      expect(result).toBe('住所：大分市舞鶴町1-3-30STビル１Fです。売買実績はこちら：https://property-site-frontend-kappa.vercel.app/public/properties?view=map');
+      expect(result).toBe('大分市舞鶴町1-3-30STビル１Fです。売買実績はこちら：https://property-site-frontend-kappa.vercel.app/public/properties?view=map');
     });
 
     it('売主番号が空白文字列の場合、デフォルト値（大分本社）を使用', () => {
       const seller: Partial<Seller> = { sellerNumber: '   ' };
       const message = '<<当社住所>>です。<<売買実績ｖ>>';
       const result = replacePlaceholders(message, seller as Seller);
-      expect(result).toBe('住所：大分市舞鶴町1-3-30STビル１Fです。売買実績はこちら：https://property-site-frontend-kappa.vercel.app/public/properties?view=map');
+      expect(result).toBe('大分市舞鶴町1-3-30STビル１Fです。売買実績はこちら：https://property-site-frontend-kappa.vercel.app/public/properties?view=map');
     });
 
     it('売主オブジェクトがnullの場合、デフォルト値（大分本社）を使用', () => {
       const message = '<<当社住所>>です。<<売買実績ｖ>>';
       const result = replacePlaceholders(message, null as any);
-      expect(result).toBe('住所：大分市舞鶴町1-3-30STビル１Fです。売買実績はこちら：https://property-site-frontend-kappa.vercel.app/public/properties?view=map');
+      expect(result).toBe('大分市舞鶴町1-3-30STビル１Fです。売買実績はこちら：https://property-site-frontend-kappa.vercel.app/public/properties?view=map');
     });
   });
 
@@ -110,14 +124,14 @@ describe('replacePlaceholders', () => {
       const seller: Partial<Seller> = { sellerNumber: 'AA13501' };
       const message = '<<当社住所>>です。[改行]よろしくお願いします。';
       const result = replacePlaceholders(message, seller as Seller);
-      expect(result).toBe('住所：大分市舞鶴町1-3-30STビル１Fです。[改行]よろしくお願いします。');
+      expect(result).toBe('大分市舞鶴町1-3-30STビル１Fです。[改行]よろしくお願いします。');
     });
 
     it('複数の[改行]プレースホルダーがそのまま保持される', () => {
       const seller: Partial<Seller> = { sellerNumber: 'AA13501' };
       const message = '<<当社住所>>です。[改行][改行]よろしくお願いします。';
       const result = replacePlaceholders(message, seller as Seller);
-      expect(result).toBe('住所：大分市舞鶴町1-3-30STビル１Fです。[改行][改行]よろしくお願いします。');
+      expect(result).toBe('大分市舞鶴町1-3-30STビル１Fです。[改行][改行]よろしくお願いします。');
     });
   });
 
@@ -126,7 +140,7 @@ describe('replacePlaceholders', () => {
       const seller: Partial<Seller> = { sellerNumber: 'AA13501' };
       const message = '<<当社住所>>です。<<未知のプレースホルダー>>';
       const result = replacePlaceholders(message, seller as Seller);
-      expect(result).toBe('住所：大分市舞鶴町1-3-30STビル１Fです。<<未知のプレースホルダー>>');
+      expect(result).toBe('大分市舞鶴町1-3-30STビル１Fです。<<未知のプレースホルダー>>');
     });
   });
 
@@ -144,7 +158,7 @@ describe('replacePlaceholders', () => {
       const seller: Partial<Seller> = { sellerNumber: 'AA13501' };
       const message = '<<当社住所>>です。<<当社住所>>までお越しください。';
       const result = replacePlaceholders(message, seller as Seller);
-      expect(result).toBe('住所：大分市舞鶴町1-3-30STビル１Fです。住所：大分市舞鶴町1-3-30STビル１Fまでお越しください。');
+      expect(result).toBe('大分市舞鶴町1-3-30STビル１Fです。大分市舞鶴町1-3-30STビル１Fまでお越しください。');
     });
 
     it('全ての<<売買実績ｖ>>が置き換えられる', () => {
