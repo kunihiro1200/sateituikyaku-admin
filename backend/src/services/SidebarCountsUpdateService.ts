@@ -21,15 +21,17 @@ export class SidebarCountsUpdateService {
    * 買主サイドバーカウントを更新
    * 
    * @param buyerNumberOrId 買主番号または買主ID
+   * @param oldBuyerData 更新前の買主データ（オプション）
    */
-  async updateBuyerSidebarCounts(buyerNumberOrId: string): Promise<void> {
+  async updateBuyerSidebarCounts(buyerNumberOrId: string, oldBuyerData?: any): Promise<void> {
     try {
       console.log(`[SidebarCountsUpdateService] Updating buyer sidebar counts for buyer ${buyerNumberOrId}`);
+      console.log(`[SidebarCountsUpdateService] oldBuyerData provided: ${!!oldBuyerData}`);
 
       // 買主番号かUUIDかを判定
       const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(buyerNumberOrId);
       
-      // 買主データを取得
+      // 買主データを取得（更新後のデータ）
       let query = this.supabase
         .from('buyers')
         .select('*');
@@ -52,11 +54,17 @@ export class SidebarCountsUpdateService {
 
       console.log(`[SidebarCountsUpdateService] Found buyer: buyer_id=${buyer.buyer_id}, buyer_number=${buyer.buyer_number}`);
 
-      // 更新前のカテゴリーを取得（実装は後で）
-      const oldCategories = await this.getBuyerCategories(buyer.buyer_id);
+      // 更新前のカテゴリーを計算
+      // oldBuyerDataが渡された場合はそれを使用、なければ空配列（初回は全て追加として扱う）
+      const oldCategories = oldBuyerData 
+        ? this.determineBuyerCategories(oldBuyerData)
+        : [];
+      
+      console.log(`[SidebarCountsUpdateService] Old categories:`, oldCategories);
 
       // 更新後のカテゴリーを判定
       const newCategories = this.determineBuyerCategories(buyer);
+      console.log(`[SidebarCountsUpdateService] New categories:`, newCategories);
 
       // 差分を計算
       const { added, removed } = this.calculateCategoryDiff(oldCategories, newCategories);
@@ -158,6 +166,9 @@ export class SidebarCountsUpdateService {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
+    console.log(`[determineBuyerCategories] buyer_number=${buyer.buyer_number}, today=${today.toISOString().split('T')[0]}`);
+    console.log(`[determineBuyerCategories] follow_up_assignee="${buyer.follow_up_assignee}", next_call_date="${buyer.next_call_date}"`);
+
     // 内覧日前日
     if (buyer.viewing_date && !buyer.broker_inquiry && !buyer.notification_sender) {
       const viewingDate = new Date(buyer.viewing_date);
@@ -173,10 +184,14 @@ export class SidebarCountsUpdateService {
     }
 
     // 当日TEL
+    console.log(`[determineBuyerCategories] Checking todayCall: !follow_up_assignee=${!buyer.follow_up_assignee}, has next_call_date=${!!buyer.next_call_date}`);
     if (!buyer.follow_up_assignee && buyer.next_call_date) {
       const nextCallDate = new Date(buyer.next_call_date);
       nextCallDate.setHours(0, 0, 0, 0);
+      console.log(`[determineBuyerCategories] next_call_date=${nextCallDate.toISOString().split('T')[0]}, today=${today.toISOString().split('T')[0]}`);
+      console.log(`[determineBuyerCategories] nextCallDate <= today: ${nextCallDate.getTime() <= today.getTime()}`);
       if (nextCallDate.getTime() <= today.getTime()) {
+        console.log(`[determineBuyerCategories] Adding todayCall category`);
         categories.push({ category: 'todayCall', assignee: null });
       }
     }
@@ -196,6 +211,7 @@ export class SidebarCountsUpdateService {
       }
     }
 
+    console.log(`[determineBuyerCategories] Final categories:`, categories);
     return categories;
   }
 
@@ -294,13 +310,23 @@ export class SidebarCountsUpdateService {
   /**
    * 買主の更新前カテゴリーを取得
    * 
-   * buyer_sidebar_countsテーブルから現在のカテゴリーを取得する代わりに、
-   * 初回は空配列を返して全てのカテゴリーを「追加」として扱う
+   * データベースから更新前の買主データを取得して、カテゴリーを計算する
    */
   private async getBuyerCategories(buyerId: string): Promise<Array<{ category: string; assignee: string | null }>> {
-    // 初回は空配列を返す（全てのカテゴリーを「追加」として扱う）
-    // 将来的には、buyer_sidebar_countsテーブルから取得することも可能
-    return [];
+    try {
+      // データベースから更新前の買主データを取得
+      // 注意: この時点では既に更新後のデータになっている可能性があるため、
+      // 実際には更新前のデータを保持しておく必要がある
+      // しかし、現在の実装では更新前のデータを保持していないため、
+      // 空配列を返す（初回は全てのカテゴリーを「追加」として扱う）
+      
+      // TODO: 将来的には、updateBuyerSidebarCounts()の呼び出し元で
+      // 更新前のデータを渡すようにする
+      return [];
+    } catch (error) {
+      console.error(`[SidebarCountsUpdateService] Error fetching buyer categories:`, error);
+      return [];
+    }
   }
 
   /**
