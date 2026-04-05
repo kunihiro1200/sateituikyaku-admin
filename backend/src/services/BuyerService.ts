@@ -1731,47 +1731,22 @@ export class BuyerService {
     categoryCounts: any;
     normalStaffInitials: string[];
   }> {
-    // 🚨 重要：buyer_sidebar_countsテーブルから新カテゴリを取得
-    console.log('🔍 [BuyerService] getSidebarCounts called - fetching from buyer_sidebar_counts table');
+    // 🚨 重要：buyersテーブルから動的に計算（buyer_sidebar_countsテーブルは使用しない）
+    console.log('🔍 [BuyerService] getSidebarCounts called - calculating dynamically from buyers table');
     
-    try {
-      // buyer_sidebar_countsテーブルから新カテゴリを取得
-      const { data: sidebarCounts, error } = await this.supabase
-        .from('buyer_sidebar_counts')
-        .select('*');
-      
-      if (error) {
-        console.error('❌ Error fetching buyer_sidebar_counts:', error);
-        return this.getSidebarCountsFallback();
-      }
-      
-      // 動的計算でベースカウントを取得
-      const fallbackResult = await this.getSidebarCountsFallback();
-      
-      // 新カテゴリをマージ
-      if (sidebarCounts && sidebarCounts.length > 0) {
-        sidebarCounts.forEach((row: any) => {
-          fallbackResult.categoryCounts[row.category] = row.count;
-        });
-        console.log('✅ Merged new categories from buyer_sidebar_counts table');
-      }
-      
-      return fallbackResult;
-    } catch (error) {
-      console.error('❌ Exception in getSidebarCounts:', error);
-      return this.getSidebarCountsFallback();
-    }
+    // 直接フォールバック（動的計算）を呼び出す
+    return this.getSidebarCountsFallback();
   }
 
   /**
-   * サイドバーカウントのフォールバック（重いDBクエリ版）
-   * buyer_sidebar_counts テーブルが空または取得失敗時に使用
+   * サイドバーカウントを動的に計算（buyersテーブルから）
+   * 全買主データを取得してステータスを計算し、カテゴリ別にカウント
    */
   private async getSidebarCountsFallback(): Promise<{
     categoryCounts: any;
     normalStaffInitials: string[];
   }> {
-    console.log('⚠️ Using fallback: calculating from all buyers');
+    console.log('📊 Calculating sidebar counts dynamically from all buyers');
     
     // 全買主データを取得してステータスを計算
     const allBuyers = await this.fetchAllBuyersWithStatus();
@@ -1785,7 +1760,17 @@ export class BuyerService {
       threeCallUnchecked: 0, // ✅ 買主用：３回架電未（新規）
       assignedCounts: {} as Record<string, number>,  // ✅ 買主用：担当別
       todayCallAssignedCounts: {} as Record<string, number>,  // ✅ 買主用：当日TEL担当別
+      // 🆕 新カテゴリ（2026年4月）
+      inquiryEmailUnanswered: 0,  // 問合メール未対応
+      brokerInquiry: 0,  // 業者問合せあり
+      generalViewingSellerContactPending: 0,  // 一般媒介_内覧後売主連絡未
+      viewingPromotionRequired: 0,  // 要内覧促進客
+      pinrichUnregistered: 0,  // ピンリッチ未登録
     };
+    
+    // 今日の日付（YYYY-MM-DD形式）
+    const today = new Date();
+    const todayStr = today.toISOString().split('T')[0];
     
     // 各買主のステータスをカウント
     allBuyers.forEach((buyer: any) => {
@@ -1815,6 +1800,102 @@ export class BuyerService {
       }
       // 🚨 売主専用のカテゴリは削除（買主リストには不要）
       // - 内覧済み、未査定、査定（郵送）、当日TEL未着手、Pinrich空欄、専任、一般、訪問後他決、未訪問他決、当日TEL（内容）
+      
+      // 🆕 新カテゴリの条件式（2026年4月）
+      
+      // 1. 問合メール未対応
+      const inquiryEmailPhone = buyer.inquiry_email_phone || '';
+      const inquiryEmailReply = buyer.inquiry_email_reply || '';
+      const viewingDate = buyer.viewing_date || '';
+      
+      if (
+        inquiryEmailPhone === '未' ||
+        inquiryEmailReply === '未' ||
+        (
+          !viewingDate &&
+          (inquiryEmailPhone === '不要' || inquiryEmailPhone === '不要') &&
+          (inquiryEmailReply === '未' || !inquiryEmailReply)
+        )
+      ) {
+        result.inquiryEmailUnanswered++;
+      }
+      
+      // 2. 業者問合せあり
+      const brokerSurvey = buyer.broker_survey || '';
+      if (brokerSurvey === '未') {
+        result.brokerInquiry++;
+      }
+      
+      // 3. 一般媒介_内覧後売主連絡未
+      const viewingTypeGeneral = buyer.viewing_type_general || '';
+      const postViewingSellerContact = buyer.post_viewing_seller_contact || '';
+      
+      if (
+        (
+          viewingDate >= '2026-03-20' &&
+          viewingDate < todayStr &&
+          viewingTypeGeneral &&
+          (postViewingSellerContact === '未' || !postViewingSellerContact)
+        ) ||
+        postViewingSellerContact === '未'
+      ) {
+        result.generalViewingSellerContactPending++;
+      }
+      
+      // 4. 要内覧促進客
+      const receptionDate = buyer.reception_date || '';
+      const followUpAssignee = buyer.follow_up_assignee || '';
+      const latestStatus = buyer.latest_status || '';
+      const viewingPromotionUnnecessary = buyer.viewing_promotion_unnecessary || '';
+      const viewingPromotionSender = buyer.viewing_promotion_sender || '';
+      const brokerInquiryField = buyer.broker_inquiry || '';
+      const inquirySource = buyer.inquiry_source || '';
+      const inquiryConfidence = buyer.inquiry_confidence || '';
+      
+      if (receptionDate) {
+        const receptionDateObj = new Date(receptionDate);
+        const fourteenDaysAgo = new Date(today);
+        fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
+        const fourDaysAgo = new Date(today);
+        fourDaysAgo.setDate(fourDaysAgo.getDate() - 4);
+        
+        if (
+          receptionDateObj >= fourteenDaysAgo &&
+          receptionDateObj <= fourDaysAgo &&
+          !viewingDate &&
+          !followUpAssignee &&
+          !latestStatus &&
+          viewingPromotionUnnecessary !== '不要' &&
+          !viewingPromotionSender &&
+          !brokerInquiryField &&
+          inquirySource !== '配信希望アンケート' &&
+          !inquirySource.includes('ピンリッチ') &&
+          inquiryConfidence !== 'e（買付物件の問合せ）' &&
+          inquiryConfidence !== 'd（資料送付不要、条件不適合など）' &&
+          inquiryConfidence !== 'b（内覧検討）'
+        ) {
+          result.viewingPromotionRequired++;
+        }
+      }
+      
+      // 5. ピンリッチ未登録
+      const pinrich = buyer.pinrich_status || '';
+      const email = buyer.email || '';
+      
+      if (
+        (
+          !pinrich &&
+          email &&
+          !brokerInquiryField
+        ) ||
+        (
+          pinrich === '登録無し' &&
+          email &&
+          !brokerInquiryField
+        )
+      ) {
+        result.pinrichUnregistered++;
+      }
     });
     
     // 通常スタッフのイニシャルを取得
