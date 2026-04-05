@@ -60,6 +60,7 @@ import {
   generateLongTermCustomerSMS,
   generateCallReminderSMS,
   convertLineBreaks,
+  replacePlaceholders,
 } from '../utils/smsTemplateGenerators';
 import { emailTemplates } from '../utils/emailTemplates';
 import SenderAddressSelector from '../components/SenderAddressSelector';
@@ -2657,6 +2658,10 @@ HP：https://ifoo-oita.com/
       customerIntroText = `以前査定のご依頼をいただいた${property.address || ''}で売却のご予定はございますでしょうか？ こちらの周辺でお探しのお客様よりお問い合わせをいただきました。`;
     }
     result = result.replace(/<<お客様紹介文言>>/g, customerIntroText);
+
+    // 🚨 重要: 条件付きプレースホルダー（<<当社住所>>、<<売買実績ｖ>>）を置換
+    // replacePlaceholders()を使用して、売主番号に応じた値に置換
+    result = replacePlaceholders(result, seller);
 
     return result;
   };
