@@ -2,18 +2,14 @@
   "version": 2,
   "builds": [
     {
-      "src": "src/index.ts",
-      "use": "@vercel/node",
-      "config": {
-        "includeFiles": ["src/**/*", "google-service-account.json"],
-        "maxDuration": 300
-      }
+      "src": "package.json",
+      "use": "@vercel/node"
     }
   ],
   "routes": [
     {
       "src": "/(.*)",
-      "dest": "/src/index.ts"
+      "dest": "/dist/index.js"
     }
   ],
   "crons": [
