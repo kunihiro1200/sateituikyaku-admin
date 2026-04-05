@@ -129,16 +129,16 @@ router.use(authenticate);
 
 // JWT認証またはAPI Key認証のいずれかを許可するミドルウェア
 function authenticateOrApiKey(req: Request, res: Response, next: NextFunction) {
-  // まずJWT認証を試みる
-  authenticate(req, res, (err?: any) => {
-    if (!err) {
-      // JWT認証成功
-      return next();
-    }
-    
-    // JWT認証失敗の場合、API Key認証を試みる
-    apiKeyAuth(req, res, next);
-  });
+  // まずAPI Keyの存在を確認
+  const apiKey = req.headers['x-api-key'];
+  
+  if (apiKey) {
+    // API Keyが存在する場合、API Key認証を試みる
+    return apiKeyAuth(req, res, next);
+  }
+  
+  // API Keyが存在しない場合、JWT認証を試みる
+  return authenticate(req, res, next);
 }
 
 // 次の買主番号を取得（/:id よりも前に定義する必要がある）
