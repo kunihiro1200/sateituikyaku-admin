@@ -232,7 +232,7 @@ export const generateCallReminderSMS = (
  * プレースホルダーを売主情報に基づいて置き換える
  * 
  * サポートされているプレースホルダー:
- * - `<<当社住所>>`: 売主番号に「FI」が含まれる場合は福岡支店の住所、それ以外は大分本社の住所
+ * - `<<当社住所>>`: 売主番号に「FI」が含まれる場合は福岡支店の住所（プレフィックスなし）、それ以外は大分本社の住所（「住所：」プレフィックス付き）
  * - `<<売買実績ｖ>>`: 売主番号に「FI」が含まれる場合は空文字列、それ以外は売買実績URL
  * 
  * 条件分岐ロジック:
@@ -248,7 +248,7 @@ export const generateCallReminderSMS = (
  * const seller = { sellerNumber: 'FI12345', name: '山田太郎' };
  * const message = '<<当社住所>>です。<<売買実績ｖ>>';
  * const result = replacePlaceholders(message, seller);
- * // 結果: '住所：福岡市中央区六本松４丁目３－２です。'
+ * // 結果: '福岡市中央区六本松４丁目３－２です。'
  * ```
  * 
  * @example
@@ -287,7 +287,7 @@ export const replacePlaceholders = (
     
     // <<当社住所>>の置換
     if (hasFI) {
-      result = result.replace(/<<当社住所>>/g, '住所：福岡市中央区六本松４丁目３－２');
+      result = result.replace(/<<当社住所>>/g, '福岡市中央区六本松４丁目３－２');
     } else {
       result = result.replace(/<<当社住所>>/g, '住所：大分市舞鶴町1-3-30STビル１F');
     }

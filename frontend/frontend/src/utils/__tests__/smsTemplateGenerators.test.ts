@@ -7,7 +7,7 @@ describe('replacePlaceholders', () => {
       const seller: Partial<Seller> = { sellerNumber: 'FI12345' };
       const message = '<<当社住所>>です。';
       const result = replacePlaceholders(message, seller as Seller);
-      expect(result).toBe('住所：福岡市中央区六本松４丁目３－２です。');
+      expect(result).toBe('福岡市中央区六本松４丁目３－２です。');
     });
 
     it('<<売買実績ｖ>>を空文字列に置き換える', () => {
@@ -21,28 +21,28 @@ describe('replacePlaceholders', () => {
       const seller: Partial<Seller> = { sellerNumber: 'fi12345' };
       const message = '<<当社住所>>です。';
       const result = replacePlaceholders(message, seller as Seller);
-      expect(result).toBe('住所：福岡市中央区六本松４丁目３－２です。');
+      expect(result).toBe('福岡市中央区六本松４丁目３－２です。');
     });
 
     it('大文字・小文字を区別しない（Fi）', () => {
       const seller: Partial<Seller> = { sellerNumber: 'Fi12345' };
       const message = '<<当社住所>>です。';
       const result = replacePlaceholders(message, seller as Seller);
-      expect(result).toBe('住所：福岡市中央区六本松４丁目３－２です。');
+      expect(result).toBe('福岡市中央区六本松４丁目３－２です。');
     });
 
     it('大文字・小文字を区別しない（fI）', () => {
       const seller: Partial<Seller> = { sellerNumber: 'fI12345' };
       const message = '<<当社住所>>です。';
       const result = replacePlaceholders(message, seller as Seller);
-      expect(result).toBe('住所：福岡市中央区六本松４丁目３－２です。');
+      expect(result).toBe('福岡市中央区六本松４丁目３－２です。');
     });
 
     it('複数のプレースホルダーを同時に置き換える', () => {
       const seller: Partial<Seller> = { sellerNumber: 'FI12345' };
       const message = '<<当社住所>>です。<<売買実績ｖ>>';
       const result = replacePlaceholders(message, seller as Seller);
-      expect(result).toBe('住所：福岡市中央区六本松４丁目３－２です。');
+      expect(result).toBe('福岡市中央区六本松４丁目３－２です。');
     });
   });
 
