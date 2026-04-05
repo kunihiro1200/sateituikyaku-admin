@@ -150,14 +150,14 @@ export const InlineEditableField: React.FC<InlineEditableFieldProps> = memo(({
       // 日付フィールドの場合、空文字とnullを区別して比較
       if (fieldType === 'date') {
         const currentVal = editValue ?? '';
-        // 元の値がnullまたは有効な日付で、新しい値が空文字の場合は「削除」として保存
-        if ((value === null || value !== '') && currentVal === '') {
-          await saveValue();
-          return;
-        }
         // 元の値が空文字で新しい値も空文字の場合は「変更なし」
         if (value === '' && currentVal === '') {
           cancelEdit();
+          return;
+        }
+        // 元の値がnullまたは有効な日付で、新しい値が空文字の場合は「削除」として保存
+        if (value !== '' && currentVal === '') {
+          await saveValue();
           return;
         }
       }
