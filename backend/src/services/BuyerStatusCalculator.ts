@@ -288,6 +288,7 @@ export function calculateBuyerStatusComplete(buyer: BuyerData): StatusResult {
     }
 
     // Priority 23-30: 担当者別
+    // 🚨 重要：次電日が今日以前の場合は「当日TEL(イニシャル)」を優先（内覧済みよりも優先）
     // 内覧日が過去の場合は「内覧済み(林)」、次電日が今日以前の場合は「当日TEL(林)」、そうでなければ「担当(林)」
     // 固定リストにない担当者（林など）も汎用的に対応
     const knownAssignees: Array<{ assignee: string; priority: number }> = [
@@ -306,19 +307,19 @@ export function calculateBuyerStatusComplete(buyer: BuyerData): StatusResult {
       const known = knownAssignees.find(a => a.assignee === assignee);
       const priority = known ? known.priority : 23; // 未知の担当者は priority 23 扱い
 
-      // Priority 36: 内覧済み(イニシャル) - 内覧日が過去の場合
-      if (isNotBlank(buyer.viewing_date) && isPast(buyer.viewing_date)) {
-        const status = `内覧済み(${assignee})`;
-        console.log(`[calculateBuyerStatusComplete] Priority 36: ${status} for buyer:`, buyer.buyer_number);
-        return { status, priority: 36, matchedCondition: `内覧済み(${assignee})`, color: getStatusColor('内覧済み') };
-      }
-
-      // 次電日が今日以前の場合は「当日TEL(イニシャル)」
+      // 🚨 重要：次電日が今日以前の場合は「当日TEL(イニシャル)」を最優先（内覧済みよりも優先）
       if (isNotBlank(buyer.next_call_date) && isTodayOrPast(buyer.next_call_date)) {
         // 次電日が今日以前 → 当日TEL(林) として担当カテゴリのサブ扱い
         const status = `当日TEL(${assignee})`;
         console.log(`[calculateBuyerStatusComplete] Priority 23-30: ${status} for buyer:`, buyer.buyer_number);
         return { status, priority, matchedCondition: `担当${assignee}: 次電日が当日以前`, color: getStatusColor('当日TEL') };
+      }
+
+      // Priority 36: 内覧済み(イニシャル) - 内覧日が過去の場合（次電日が今日以前でない場合のみ）
+      if (isNotBlank(buyer.viewing_date) && isPast(buyer.viewing_date)) {
+        const status = `内覧済み(${assignee})`;
+        console.log(`[calculateBuyerStatusComplete] Priority 36: ${status} for buyer:`, buyer.buyer_number);
+        return { status, priority: 36, matchedCondition: `内覧済み(${assignee})`, color: getStatusColor('内覧済み') };
       }
       
       // Priority 37: 担当(イニシャル) - 通常の担当カテゴリ
