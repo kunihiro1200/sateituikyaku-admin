@@ -183,6 +183,7 @@ export default function BuyerStatusSidebar({
   const renderCategoryItem = (category: { key: string; label: string; count: number; color: string; isSubCategory?: boolean; parentKey?: string }) => {
     const isIndented = category.isSubCategory === true;
     const isAssignedCategory = category.key.startsWith('assigned:') && !category.isSubCategory;
+    const isTodayCallAssignedCategory = category.key.startsWith('todayCallAssigned:');
     
     return (
       <ListItemButton
@@ -195,7 +196,7 @@ export default function BuyerStatusSidebar({
         sx={{
           py: 1,
           pl: isIndented ? 4 : 2,
-          backgroundColor: isAssignedCategory ? '#e8f5e9' : 'transparent',
+          backgroundColor: (isAssignedCategory || isTodayCallAssignedCategory) ? '#e8f5e9' : 'transparent',
           '&.Mui-selected': {
             backgroundColor: `${category.color}15`,
           },
