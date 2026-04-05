@@ -234,39 +234,41 @@ router.put('/:id', authenticateOrApiKey, async (req: Request, res: Response) => 
 
     console.log(`[PUT /buyers/:id] buyerNumber=${buyerNumber}`);
 
-    // sync=trueの場合は双方向同期を使用
-    if (sync === 'true') {
-      console.log('[PUT /buyers/:id] Using updateWithSync (sync=true)');
-      const result = await buyerService.updateWithSync(
-        buyerNumber,
-        sanitizedData,
-        userId,
-        userEmail,
-        { force: force === 'true' }
-      );
+    // 🚨 重要：デフォルトで即時同期を有効にする（sync=false の場合のみ同期なし）
+    // これにより、DBで編集した内容が即座にスプレッドシートに反映される
+    if (sync === 'false') {
+      // sync=falseが明示的に指定された場合のみ、同期なしで更新
+      console.log('[PUT /buyers/:id] Using update (sync=false explicitly specified)');
+      const updatedBuyer = await buyerService.update(buyerNumber, sanitizedData, userId, userEmail);
+      console.log('[PUT /buyers/:id] Update completed successfully (no sync)');
+      return res.json(updatedBuyer);
+    }
 
-      // 競合がある場合は409を返す
-      if (result.syncResult.conflict && result.syncResult.conflict.length > 0) {
-        return res.status(409).json({
-          error: 'Conflict detected',
-          buyer: result.buyer,
-          syncStatus: result.syncResult.syncStatus,
-          conflicts: result.syncResult.conflict
-        });
-      }
+    // デフォルト：即時同期を使用（sync=true または sync未指定）
+    console.log('[PUT /buyers/:id] Using updateWithSync (default or sync=true)');
+    const result = await buyerService.updateWithSync(
+      buyerNumber,
+      sanitizedData,
+      userId,
+      userEmail,
+      { force: force === 'true' }
+    );
 
-      return res.json({
-        ...result.buyer,
+    // 競合がある場合は409を返す
+    if (result.syncResult.conflict && result.syncResult.conflict.length > 0) {
+      return res.status(409).json({
+        error: 'Conflict detected',
+        buyer: result.buyer,
         syncStatus: result.syncResult.syncStatus,
-        syncError: result.syncResult.error
+        conflicts: result.syncResult.conflict
       });
     }
 
-    // 従来の更新（同期なし）
-    console.log('[PUT /buyers/:id] Using update (sync=false or not specified)');
-    const updatedBuyer = await buyerService.update(buyerNumber, sanitizedData, userId, userEmail);
-    console.log('[PUT /buyers/:id] Update completed successfully');
-    res.json(updatedBuyer);
+    res.json({
+      ...result.buyer,
+      syncStatus: result.syncResult.syncStatus,
+      syncError: result.syncResult.error
+    });
   } catch (error: any) {
     console.error('[PUT /buyers/:id] Error updating buyer:', error);
     
