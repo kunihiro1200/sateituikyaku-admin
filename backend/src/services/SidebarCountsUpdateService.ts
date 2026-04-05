@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { CacheHelper } from '../utils/cache';
+import { isTomorrow, isDaysFromToday, getDayOfWeek } from '../utils/dateHelpers';
 
 /**
  * サイドバーカウント即時更新サービス
@@ -169,17 +170,18 @@ export class SidebarCountsUpdateService {
     console.log(`[determineBuyerCategories] buyer_number=${buyer.buyer_number}, today=${todayStr}`);
     console.log(`[determineBuyerCategories] follow_up_assignee="${buyer.follow_up_assignee}", next_call_date="${buyer.next_call_date}"`);
 
-    // 内覧日前日
-    if (buyer.viewing_date && !buyer.broker_inquiry && !buyer.notification_sender) {
-      const viewingDateStr = new Date(buyer.viewing_date).toISOString().split('T')[0];
-      const viewingDate = new Date(viewingDateStr + 'T00:00:00Z');
-      const viewingDay = viewingDate.getUTCDay();
-      const daysBeforeViewing = viewingDay === 4 ? 2 : 1;
-      const notifyDate = new Date(viewingDate);
-      notifyDate.setUTCDate(notifyDate.getUTCDate() - daysBeforeViewing);
-      const notifyDateStr = notifyDate.toISOString().split('T')[0];
-
-      if (todayStr === notifyDateStr) {
+    // 内覧日前日（dateHelpers.tsの関数を使用してタイムゾーン問題を回避）
+    if (buyer.viewing_date && buyer.broker_inquiry !== '業者問合せ' && !buyer.notification_sender) {
+      const dayOfWeek = getDayOfWeek(buyer.viewing_date);
+      const isThursday = dayOfWeek === '木曜日';
+      
+      // 木曜内覧の場合は2日前（火曜）、それ以外は1日前
+      const isViewingDayBefore = isThursday 
+        ? isDaysFromToday(buyer.viewing_date, 2)
+        : isTomorrow(buyer.viewing_date);
+      
+      if (isViewingDayBefore) {
+        console.log(`[determineBuyerCategories] Adding viewingDayBefore category (viewing_date=${buyer.viewing_date}, dayOfWeek=${dayOfWeek})`);
         categories.push({ category: 'viewingDayBefore', assignee: null });
       }
     }
@@ -222,17 +224,18 @@ export class SidebarCountsUpdateService {
     // タイムゾーンを考慮した今日の日付（YYYY-MM-DD形式の文字列で比較）
     const todayStr = new Date().toISOString().split('T')[0];
 
-    // 訪問日前日
+    // 訪問日前日（dateHelpers.tsの関数を使用してタイムゾーン問題を回避）
     if (seller.visit_assignee && seller.visit_date) {
-      const visitDateStr = new Date(seller.visit_date).toISOString().split('T')[0];
-      const visitDate = new Date(visitDateStr + 'T00:00:00Z');
-      const visitDay = visitDate.getUTCDay();
-      const daysBeforeVisit = visitDay === 4 ? 2 : 1;
-      const notifyDate = new Date(visitDate);
-      notifyDate.setUTCDate(notifyDate.getUTCDate() - daysBeforeVisit);
-      const notifyDateStr = notifyDate.toISOString().split('T')[0];
-
-      if (todayStr === notifyDateStr) {
+      const dayOfWeek = getDayOfWeek(seller.visit_date);
+      const isThursday = dayOfWeek === '木曜日';
+      
+      // 木曜訪問の場合は2日前（火曜）、それ以外は1日前
+      const isVisitDayBefore = isThursday 
+        ? isDaysFromToday(seller.visit_date, 2)
+        : isTomorrow(seller.visit_date);
+      
+      if (isVisitDayBefore) {
+        console.log(`[determineSellerCategories] Adding visitDayBefore category (visit_date=${seller.visit_date}, dayOfWeek=${dayOfWeek})`);
         categories.push({ category: 'visitDayBefore', assignee: null });
       }
     }
