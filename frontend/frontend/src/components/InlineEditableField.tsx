@@ -147,24 +147,32 @@ export const InlineEditableField: React.FC<InlineEditableFieldProps> = memo(({
   // Handle blur to save (値が変わっていない場合はキャンセル)
   const handleBlur = async () => {
     if (isEditing && !isSaving) {
+      console.log('[InlineEditableField.handleBlur] fieldType:', fieldType, 'editValue:', editValue, 'value:', value);
+      
       // 日付フィールドの場合、空文字とnullを区別して比較
       if (fieldType === 'date') {
         const currentVal = editValue ?? '';
+        console.log('[InlineEditableField.handleBlur] date field - currentVal:', currentVal, 'value:', value);
+        
         // 元の値が空文字で新しい値も空文字の場合は「変更なし」
         if (value === '' && currentVal === '') {
+          console.log('[InlineEditableField.handleBlur] No change (both empty) - canceling');
           cancelEdit();
           return;
         }
         // 元の値がnullまたは有効な日付で、新しい値が空文字の場合は「削除」として保存
         // 空文字をnullに変換してから保存
         if (value !== '' && currentVal === '') {
+          console.log('[InlineEditableField.handleBlur] Deleting date field - calling onSave(null)');
           // editValueをnullに更新してから保存
           updateValue(null);
           // updateValueは非同期ではないが、stateの更新は次のレンダリングで反映されるため
           // 直接onSaveを呼び出す
           try {
             await onSave(null);
+            console.log('[InlineEditableField.handleBlur] onSave(null) completed successfully');
           } catch (err) {
+            console.error('[InlineEditableField.handleBlur] onSave(null) failed:', err);
             // エラーハンドリングはonSave内で行われる
           }
           return;
@@ -175,9 +183,11 @@ export const InlineEditableField: React.FC<InlineEditableFieldProps> = memo(({
       const currentVal = editValue ?? '';
       const originalVal = value ?? '';
       if (String(currentVal) === String(originalVal)) {
+        console.log('[InlineEditableField.handleBlur] No change - canceling');
         cancelEdit();
         return;
       }
+      console.log('[InlineEditableField.handleBlur] Calling saveValue()');
       await saveValue();
     }
   };
