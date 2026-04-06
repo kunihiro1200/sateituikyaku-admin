@@ -251,13 +251,20 @@ export class BuyerService {
       }
     }
 
-    const enrichedData = buyers.map((b: any) => ({
-      ...b,
-      property_address: propertyMap[b.property_number]?.address ?? null,
-      property_sales_assignee: propertyMap[b.property_number]?.sales_assignee ?? null,
-      property_type: propertyMap[b.property_number]?.property_type ?? null,
-      atbb_status: propertyMap[b.property_number]?.atbb_status ?? null,
-    }));
+    const enrichedData = buyers.map((b: any) => {
+      // calculated_statusを計算
+      const statusResult = calculateBuyerStatus(b);
+      
+      return {
+        ...b,
+        calculated_status: statusResult.status,
+        status_priority: statusResult.priority,
+        property_address: propertyMap[b.property_number]?.address ?? null,
+        property_sales_assignee: propertyMap[b.property_number]?.sales_assignee ?? null,
+        property_type: propertyMap[b.property_number]?.property_type ?? null,
+        atbb_status: propertyMap[b.property_number]?.atbb_status ?? null,
+      };
+    });
 
     return {
       data: enrichedData,
