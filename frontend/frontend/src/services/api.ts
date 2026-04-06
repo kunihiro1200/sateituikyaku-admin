@@ -222,6 +222,10 @@ export const buyerApi = {
     data: Record<string, any>,
     options?: BuyerUpdateOptions
   ): Promise<BuyerUpdateResult> => {
+    console.log('[buyerApi.update] id:', id);
+    console.log('[buyerApi.update] data:', JSON.stringify(data, null, 2));
+    console.log('[buyerApi.update] options:', options);
+    
     const params = new URLSearchParams();
     if (options?.sync) params.append('sync', 'true');
     if (options?.force) params.append('force', 'true');
