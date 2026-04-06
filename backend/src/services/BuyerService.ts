@@ -1832,8 +1832,8 @@ export class BuyerService {
       }
       
       // 2. 業者問合せあり
-      const brokerSurvey = buyer.broker_survey || '';
-      if (brokerSurvey === '未') {
+      const vendorSurvey = buyer.vendor_survey || '';
+      if (vendorSurvey === '未') {
         result.brokerInquiry++;
       }
       
