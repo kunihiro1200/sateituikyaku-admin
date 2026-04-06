@@ -163,33 +163,7 @@ export const InlineEditableField: React.FC<InlineEditableFieldProps> = memo(({
       // blur処理開始フラグを立てる
       isBlurringRef.current = true;
       
-      // 日付フィールドの場合、空文字とnullを区別して比較
-      if (fieldType === 'date') {
-        // editValueが空文字、null、またはundefinedの場合は「削除」として扱う
-        const isEmpty = editValue === '' || editValue === null || editValue === undefined;
-        const hadValue = value !== '' && value !== null && value !== undefined;
-        
-        // 元の値が空で新しい値も空の場合は「変更なし」
-        if (!hadValue && isEmpty) {
-          isBlurringRef.current = false;
-          cancelEdit();
-          return;
-        }
-        
-        // 元の値があって新しい値が空の場合は「削除」として保存
-        if (hadValue && isEmpty) {
-          try {
-            await onSave(null);
-          } catch (err) {
-            console.error('[InlineEditableField.handleBlur] onSave(null) failed:', err);
-          } finally {
-            isBlurringRef.current = false;
-          }
-          return;
-        }
-      }
-      
-      // 日付フィールド以外、または日付フィールドで通常の変更の場合は既存のロジック
+      // 値が変わっていない場合はキャンセル
       const currentVal = editValue ?? '';
       const originalVal = value ?? '';
       if (String(currentVal) === String(originalVal)) {
@@ -197,6 +171,7 @@ export const InlineEditableField: React.FC<InlineEditableFieldProps> = memo(({
         cancelEdit();
         return;
       }
+      
       try {
         await saveValue();
       } finally {
@@ -412,6 +387,11 @@ export const InlineEditableField: React.FC<InlineEditableFieldProps> = memo(({
             value={dateValue}
             type="date"
             InputLabelProps={{ shrink: true }}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+              // 空文字の場合はnullを設定（timestampエラーを防ぐ）
+              const newValue = e.target.value === '' ? null : e.target.value;
+              handleChange(newValue);
+            }}
           />
         );
 
