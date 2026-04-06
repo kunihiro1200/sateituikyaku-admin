@@ -229,60 +229,79 @@ export default function BuyersPage() {
           setLoading(false);
         }
 
-        // バックグラウンドでサイドバーカウントと全件データを並列取得
+        // 初回ロード時：サイドバーカウントのみを高速取得（Requirements 5.1: 5秒以内）
         if (!sidebarLoadedRef.current) {
-          const fetchStartTime = Date.now();  // Requirements 5.4: 処理開始時刻
+          const fetchStartTime = Date.now();
           
-          Promise.all([
-            api.get('/api/buyers/sidebar-counts'),
-            api.get('/api/buyers/status-categories-with-buyers')
-          ]).then(([sidebarRes, buyersRes]) => {
-            if (cancelled) return;
-            
-            const sidebarDuration = Date.now() - fetchStartTime;
-            console.log(`[INFO] Sidebar counts and buyers data fetched in ${sidebarDuration}ms`);  // Requirements 5.1
-            
-            // Requirements 5.2: 5秒超過時の警告ログ
-            if (sidebarDuration > 5000) {
-              console.warn(`[WARN] Sidebar fetch took ${sidebarDuration}ms (> 5000ms)`);
-            }
-            
-            const sidebarResult = sidebarRes.data;
-            const buyersResult = buyersRes.data as {
-              categories: any[];
-              buyers: BuyerWithStatus[];
-              normalStaffInitials: string[];
-            };
-            
-            // キャッシュデータを構築
-            const cacheData = {
-              categoryCounts: sidebarResult.categoryCounts,
-              buyers: buyersResult.buyers,
-              normalStaffInitials: sidebarResult.normalStaffInitials || buyersResult.normalStaffInitials || []
-            };
-            
-            console.log('[BuyersPage] 🔍 buyersResult.buyers サンプル（最初の3件）:');
-            buyersResult.buyers.slice(0, 3).forEach(b => {
-              console.log(`  - ${b.buyer_number}: calculated_status="${b.calculated_status}", follow_up_assignee="${b.follow_up_assignee}", next_call_date="${b.next_call_date}"`);
+          // ステップ1: サイドバーカウントを高速取得（300ms程度）
+          api.get('/api/buyers/sidebar-counts')
+            .then((sidebarRes) => {
+              if (cancelled) return;
+              
+              const sidebarDuration = Date.now() - fetchStartTime;
+              console.log(`[INFO] Sidebar counts fetched in ${sidebarDuration}ms`);  // Requirements 5.1
+              
+              // Requirements 5.2: 5秒超過時の警告ログ
+              if (sidebarDuration > 5000) {
+                console.warn(`[WARN] Sidebar fetch took ${sidebarDuration}ms (> 5000ms)`);
+              }
+              
+              const sidebarResult = sidebarRes.data;
+              
+              // サイドバーのカウントを即座に更新（高速表示）
+              setSidebarCounts(sidebarResult.categoryCounts);
+              setSidebarNormalStaffInitials(sidebarResult.normalStaffInitials || []);
+              setSidebarLoading(false);
+              sidebarLoadedRef.current = true;
+              
+              console.log('[INFO] Sidebar displayed. Starting background fetch for full buyers data...');
+              
+              // ステップ2: 全件データをバックグラウンドで非同期取得（23秒かかるがサイドバー表示をブロックしない）
+              const bgFetchStartTime = Date.now();
+              api.get('/api/buyers/status-categories-with-buyers')
+                .then((buyersRes) => {
+                  if (cancelled) return;
+                  
+                  const bgFetchDuration = Date.now() - bgFetchStartTime;
+                  console.log(`[INFO] Background buyers data fetched in ${bgFetchDuration}ms`);
+                  
+                  const buyersResult = buyersRes.data as {
+                    categories: any[];
+                    buyers: BuyerWithStatus[];
+                    normalStaffInitials: string[];
+                  };
+                  
+                  console.log('[BuyersPage] 🔍 buyersResult.buyers サンプル（最初の3件）:');
+                  buyersResult.buyers.slice(0, 3).forEach(b => {
+                    console.log(`  - ${b.buyer_number}: calculated_status="${b.calculated_status}", follow_up_assignee="${b.follow_up_assignee}", next_call_date="${b.next_call_date}"`);
+                  });
+                  
+                  // キャッシュデータを構築
+                  const cacheData = {
+                    categoryCounts: sidebarResult.categoryCounts,
+                    buyers: buyersResult.buyers,
+                    normalStaffInitials: sidebarResult.normalStaffInitials || buyersResult.normalStaffInitials || []
+                  };
+                  
+                  // 10分間キャッシュ（バックエンドキャッシュTTLと統一）
+                  pageDataCache.set(CACHE_KEYS.BUYERS_WITH_STATUS, cacheData, 10 * 60 * 1000);
+                  
+                  // テーブルも全件データで更新
+                  allBuyersWithStatusRef.current = buyersResult.buyers;
+                  setDataReady(prev => !prev); // トリガー更新
+                  
+                  console.log('[INFO] Background fetch completed. Table data updated.');
+                })
+                .catch((err) => {
+                  console.error('[ERROR] Background buyers fetch failed:', err);  // Requirements 5.3
+                  console.error('[ERROR] Stack trace:', (err as Error).stack);  // Requirements 5.3
+                });
+            })
+            .catch((err) => {
+              console.error('[ERROR] Sidebar fetch failed:', err);  // Requirements 5.3
+              console.error('[ERROR] Stack trace:', (err as Error).stack);  // Requirements 5.3
+              setSidebarLoading(false);
             });
-            
-            // 10分間キャッシュ（バックエンドキャッシュTTLと統一）
-            pageDataCache.set(CACHE_KEYS.BUYERS_WITH_STATUS, cacheData, 10 * 60 * 1000);
-            
-            // サイドバーのカウントを更新（高速エンドポイントから取得）
-            setSidebarCounts(sidebarResult.categoryCounts);
-            setSidebarNormalStaffInitials(sidebarResult.normalStaffInitials || buyersResult.normalStaffInitials || []);
-            setSidebarLoading(false);
-            
-            // テーブルも全件データで更新
-            allBuyersWithStatusRef.current = buyersResult.buyers;
-            sidebarLoadedRef.current = true;
-            setDataReady(prev => !prev); // トリガー更新
-          }).catch((err) => {
-            console.error('[ERROR] Background fetch failed:', err);  // Requirements 5.3
-            console.error('[ERROR] Stack trace:', (err as Error).stack);  // Requirements 5.3
-            setSidebarLoading(false);
-          });
         }
       } catch (error) {
         if (!cancelled) {
@@ -297,7 +316,7 @@ export default function BuyersPage() {
 
     fetchBuyers();
     return () => { cancelled = true; };
-  }, [page, rowsPerPage, debouncedSearch, selectedCalculatedStatus, refetchTrigger, dataReady]);
+  }, [page, rowsPerPage, debouncedSearch, selectedCalculatedStatus, refetchTrigger]);
 
   // キャッシュヒット時: サイドバーカテゴリを初期化（useEffect で一度だけ実行）
   // ※ cachedData がある場合は state 初期値で設定済みなので追加処理不要
