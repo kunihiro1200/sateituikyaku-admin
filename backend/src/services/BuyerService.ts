@@ -1863,6 +1863,9 @@ export class BuyerService {
       const inquirySource = buyer.inquiry_source || '';
       const inquiryConfidence = buyer.inquiry_confidence || '';
       
+      // broker_inquiry が空（null, '', 'null'）かチェック
+      const isBrokerInquiryEmpty = !brokerInquiryField || brokerInquiryField === 'null';
+      
       if (receptionDate) {
         const receptionDateObj = new Date(receptionDate);
         const fourteenDaysAgo = new Date(today);
@@ -1878,7 +1881,7 @@ export class BuyerService {
           !latestStatus &&
           viewingPromotionNotNeeded !== '不要' &&
           !viewingPromotionSender &&
-          !brokerInquiryField &&
+          isBrokerInquiryEmpty &&
           inquirySource !== '配信希望アンケート' &&
           !inquirySource.includes('ピンリッチ') &&
           !inquirySource.includes('2件目以降紹介') &&
@@ -1898,12 +1901,12 @@ export class BuyerService {
         (
           !pinrich &&
           email &&
-          !brokerInquiryField
+          isBrokerInquiryEmpty
         ) ||
         (
           pinrich === '登録無し' &&
           email &&
-          !brokerInquiryField
+          isBrokerInquiryEmpty
         )
       ) {
         result.pinrichUnregistered++;
