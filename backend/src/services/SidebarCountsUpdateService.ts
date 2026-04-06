@@ -92,7 +92,7 @@ export class SidebarCountsUpdateService {
       console.log(`[SidebarCountsUpdateService] Invalidated buyer sidebar counts cache`);
 
       // 🚨 重要：インメモリキャッシュも無効化
-      invalidateBuyerStatusCache();
+      await invalidateBuyerStatusCache();
 
     } catch (error) {
       console.error(`[SidebarCountsUpdateService] Error updating buyer sidebar counts:`, error);

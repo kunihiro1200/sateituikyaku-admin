@@ -766,3 +766,486 @@ function testBuyerSync() {
   syncBuyerList();
   Logger.log('=== テスト同期完了 ===');
 }
+
+
+// ============================================================
+// サイドバーカウント事前計算（10分トリガー）
+// ============================================================
+/**
+ * 買主サイドバーカウントを事前計算してbuyer_sidebar_countsテーブルに保存
+ * 10分ごとのトリガーで実行される
+ */
+function updateBuyerSidebarCounts_() {
+  var startTime = new Date();
+  Logger.log('=== 買主サイドバーカウント更新開始: ' + startTime.toISOString() + ' ===');
+  
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheet = ss.getSheetByName('買主リスト');
+    if (!sheet) {
+      Logger.log('❌ シート「買主リスト」が見つかりません');
+      return;
+    }
+    
+    var lastRow = sheet.getLastRow();
+    var lastCol = sheet.getLastColumn();
+    var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+    var allData = sheet.getRange(2, 1, lastRow - 1, lastCol).getValues();
+    
+    // 今日の日付（YYYY-MM-DD形式）
+    var today = new Date();
+    var todayStr = today.getFullYear() + '-' +
+      String(today.getMonth() + 1).padStart(2, '0') + '-' +
+      String(today.getDate()).padStart(2, '0');
+    Logger.log('📅 今日の日付: ' + todayStr);
+    
+    // カウントを初期化
+    var counts = {
+      viewingDayBefore: 0,
+      todayCall: 0,
+      assignedCounts: {},
+      todayCallAssignedCounts: {}
+    };
+    
+    // 各買主のカテゴリーを判定
+    Logger.log('🔍 各買主のカテゴリーを判定中... (全' + allData.length + '件)');
+    
+    for (var i = 0; i < allData.length; i++) {
+      var row = rowToObject(headers, allData[i]);
+      
+      // 内覧日前日
+      var viewingDate = formatDateToISO_(row['●内覧日(最新）']);
+      var brokerInquiry = row['業者問合せ'];
+      var notificationSender = row['通知送信者'];
+      
+      if (viewingDate && !brokerInquiry && !notificationSender) {
+        var viewingDateObj = new Date(viewingDate + 'T00:00:00Z');
+        var viewingDay = viewingDateObj.getUTCDay();
+        var daysBeforeViewing = viewingDay === 4 ? 2 : 1;
+        var notifyDate = new Date(viewingDateObj);
+        notifyDate.setUTCDate(notifyDate.getUTCDate() - daysBeforeViewing);
+        var notifyDateStr = notifyDate.getFullYear() + '-' +
+          String(notifyDate.getMonth() + 1).padStart(2, '0') + '-' +
+          String(notifyDate.getDate()).padStart(2, '0');
+        
+        if (todayStr === notifyDateStr) {
+          counts.viewingDayBefore++;
+        }
+      }
+      
+      // 当日TEL（後続担当が空 + 次電日が今日以前）
+      var followUpAssignee = row['後続担当'];
+      var nextCallDate = formatDateToISO_(row['次電日']);
+      
+      if (!followUpAssignee && nextCallDate && nextCallDate <= todayStr) {
+        counts.todayCall++;
+      }
+      
+      // 担当(イニシャル)
+      var initialAssignee = row['初回担当'];
+      var assignee = followUpAssignee || initialAssignee;
+      
+      if (assignee) {
+        counts.assignedCounts[assignee] = (counts.assignedCounts[assignee] || 0) + 1;
+        
+        // 当日TEL(イニシャル)（後続担当が空でない + 次電日が今日以前）
+        if (followUpAssignee && nextCallDate && nextCallDate <= todayStr) {
+          counts.todayCallAssignedCounts[followUpAssignee] = (counts.todayCallAssignedCounts[followUpAssignee] || 0) + 1;
+        }
+      }
+    }
+    
+    Logger.log('📊 計算されたカウント:');
+    Logger.log('  内覧日前日: ' + counts.viewingDayBefore);
+    Logger.log('  当日TEL: ' + counts.todayCall);
+    Logger.log('  担当(イニシャル): ' + JSON.stringify(counts.assignedCounts));
+    Logger.log('  当日TEL(イニシャル): ' + JSON.stringify(counts.todayCallAssignedCounts));
+    
+    // buyer_sidebar_countsテーブルを全削除
+    Logger.log('🗑️  既存のbuyer_sidebar_countsを削除...');
+    var deleteUrl = SUPABASE_CONFIG.URL + '/rest/v1/buyer_sidebar_counts?category=neq.___never___';
+    var deleteOptions = {
+      method: 'delete',
+      headers: {
+        'apikey': SUPABASE_CONFIG.SERVICE_KEY,
+        'Authorization': 'Bearer ' + SUPABASE_CONFIG.SERVICE_KEY,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=minimal'
+      },
+      muteHttpExceptions: true
+    };
+    var deleteResponse = UrlFetchApp.fetch(deleteUrl, deleteOptions);
+    if (deleteResponse.getResponseCode() >= 200 && deleteResponse.getResponseCode() < 300) {
+      Logger.log('✅ 削除完了');
+    } else {
+      Logger.log('❌ 削除エラー: ' + deleteResponse.getContentText());
+      return;
+    }
+    
+    // 新しいカウントを挿入
+    Logger.log('📝 新しいカウントを挿入...');
+    var now = new Date().toISOString();
+    var rows = [];
+    
+    // 内覧日前日
+    if (counts.viewingDayBefore > 0) {
+      rows.push({
+        category: 'viewingDayBefore',
+        count: counts.viewingDayBefore,
+        label: '',
+        assignee: '',
+        updated_at: now
+      });
+    }
+    
+    // 当日TEL
+    if (counts.todayCall > 0) {
+      rows.push({
+        category: 'todayCall',
+        count: counts.todayCall,
+        label: '',
+        assignee: '',
+        updated_at: now
+      });
+    }
+    
+    // 担当(イニシャル)
+    for (var assigneeKey in counts.assignedCounts) {
+      rows.push({
+        category: 'assigned',
+        count: counts.assignedCounts[assigneeKey],
+        label: '',
+        assignee: assigneeKey,
+        updated_at: now
+      });
+    }
+    
+    // 当日TEL(イニシャル)
+    for (var assigneeKey2 in counts.todayCallAssignedCounts) {
+      rows.push({
+        category: 'todayCallAssigned',
+        count: counts.todayCallAssignedCounts[assigneeKey2],
+        label: '',
+        assignee: assigneeKey2,
+        updated_at: now
+      });
+    }
+    
+    if (rows.length > 0) {
+      var insertUrl = SUPABASE_CONFIG.URL + '/rest/v1/buyer_sidebar_counts';
+      var insertOptions = {
+        method: 'post',
+        headers: {
+          'apikey': SUPABASE_CONFIG.SERVICE_KEY,
+          'Authorization': 'Bearer ' + SUPABASE_CONFIG.SERVICE_KEY,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=minimal'
+        },
+        payload: JSON.stringify(rows),
+        muteHttpExceptions: true
+      };
+      var insertResponse = UrlFetchApp.fetch(insertUrl, insertOptions);
+      if (insertResponse.getResponseCode() >= 200 && insertResponse.getResponseCode() < 300) {
+        Logger.log('✅ ' + rows.length + '件のカウントを挿入しました');
+      } else {
+        Logger.log('❌ 挿入エラー: ' + insertResponse.getContentText());
+        return;
+      }
+    }
+    
+    var duration = (new Date() - startTime) / 1000;
+    Logger.log('✅ 買主サイドバーカウント更新完了！ (所要時間: ' + duration + '秒)');
+    
+  } catch (error) {
+    Logger.log('❌ エラー: ' + error.toString());
+    Logger.log('スタックトレース: ' + error.stack);
+  }
+}
+
+
+// ============================================================
+// サイドバーカウント更新（10分トリガー）
+// ============================================================
+/**
+ * buyer_sidebar_countsテーブルを更新
+ * 全買主データを読み取り、各カテゴリーの件数を計算してテーブルに保存
+ */
+function updateBuyerSidebarCounts_() {
+  var startTime = new Date();
+  Logger.log('=== サイドバーカウント更新開始: ' + startTime.toISOString() + ' ===');
+  
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheet = ss.getSheetByName('買主リスト');
+    if (!sheet) {
+      Logger.log('❌ シート「買主リスト」が見つかりません');
+      return;
+    }
+    
+    var lastRow = sheet.getLastRow();
+    var lastCol = sheet.getLastColumn();
+    var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+    var allData = sheet.getRange(2, 1, lastRow - 1, lastCol).getValues();
+    
+    // 今日の日付（YYYY-MM-DD形式）
+    var today = new Date();
+    var todayStr = today.getFullYear() + '-' +
+      String(today.getMonth() + 1).padStart(2, '0') + '-' +
+      String(today.getDate()).padStart(2, '0');
+    
+    Logger.log('📅 今日の日付: ' + todayStr);
+    Logger.log('📊 全買主: ' + allData.length + '件');
+    
+    // カウントを初期化
+    var counts = {
+      viewingDayBefore: 0,
+      todayCall: 0,
+      threeCallUnchecked: 0,
+      assignedCounts: {},
+      todayCallAssignedCounts: {},
+      inquiryEmailUnanswered: 0,
+      brokerInquiry: 0,
+      generalViewingSellerContactPending: 0,
+      viewingPromotionRequired: 0,
+      pinrichUnregistered: 0
+    };
+    
+    // 各買主のカテゴリーを判定
+    for (var i = 0; i < allData.length; i++) {
+      var row = rowToObject(headers, allData[i]);
+      
+      // 内覧日前日
+      var viewingDate = formatDateToISO_(row['●内覧日(最新）']);
+      if (viewingDate && !row['業者問合せ'] && !row['通知送信者']) {
+        var viewingDateObj = new Date(viewingDate + 'T00:00:00Z');
+        var viewingDay = viewingDateObj.getUTCDay();
+        var daysBeforeViewing = viewingDay === 4 ? 2 : 1;
+        var notifyDate = new Date(viewingDateObj);
+        notifyDate.setUTCDate(notifyDate.getUTCDate() - daysBeforeViewing);
+        var notifyDateStr = notifyDate.getFullYear() + '-' +
+          String(notifyDate.getMonth() + 1).padStart(2, '0') + '-' +
+          String(notifyDate.getDate()).padStart(2, '0');
+        
+        if (todayStr === notifyDateStr) {
+          counts.viewingDayBefore++;
+        }
+      }
+      
+      // 当日TEL（後続担当が空 + 次電日が今日以前）
+      var followUpAssignee = row['後続担当'];
+      var nextCallDate = formatDateToISO_(row['次電日']);
+      if (!followUpAssignee && nextCallDate && nextCallDate <= todayStr) {
+        counts.todayCall++;
+      }
+      
+      // 3回架電未
+      var threeCallsConfirmed = row['3回架電確認'];
+      if (!threeCallsConfirmed) {
+        counts.threeCallUnchecked++;
+      }
+      
+      // 担当(イニシャル)
+      var assignee = followUpAssignee || row['初回担当'];
+      if (assignee) {
+        counts.assignedCounts[assignee] = (counts.assignedCounts[assignee] || 0) + 1;
+        
+        // 当日TEL(イニシャル)（後続担当が空でない + 次電日が今日以前）
+        if (followUpAssignee && nextCallDate && nextCallDate <= todayStr) {
+          counts.todayCallAssignedCounts[followUpAssignee] = (counts.todayCallAssignedCounts[followUpAssignee] || 0) + 1;
+        }
+      }
+      
+      // 問合メール未対応
+      if (row['問合信頼度'] && !row['問合メール電話'] && !row['問合メール返信']) {
+        counts.inquiryEmailUnanswered++;
+      }
+      
+      // 業者問合せあり
+      if (row['業者問合せ']) {
+        counts.brokerInquiry++;
+      }
+      
+      // 一般媒介_内覧後売主連絡未
+      if (row['内覧形態_一般媒介'] && !row['内覧後売主連絡']) {
+        counts.generalViewingSellerContactPending++;
+      }
+      
+      // 要内覧促進客
+      if (!row['内覧促進不要'] && !row['内覧促進送信者']) {
+        counts.viewingPromotionRequired++;
+      }
+      
+      // ピンリッチ未登録
+      if (!row['ピンリッチ']) {
+        counts.pinrichUnregistered++;
+      }
+    }
+    
+    Logger.log('📊 計算されたカウント:');
+    Logger.log('  内覧日前日: ' + counts.viewingDayBefore);
+    Logger.log('  当日TEL: ' + counts.todayCall);
+    Logger.log('  3回架電未: ' + counts.threeCallUnchecked);
+    Logger.log('  担当(イニシャル): ' + JSON.stringify(counts.assignedCounts));
+    Logger.log('  当日TEL(イニシャル): ' + JSON.stringify(counts.todayCallAssignedCounts));
+    Logger.log('  問合メール未対応: ' + counts.inquiryEmailUnanswered);
+    Logger.log('  業者問合せあり: ' + counts.brokerInquiry);
+    Logger.log('  一般媒介_内覧後売主連絡未: ' + counts.generalViewingSellerContactPending);
+    Logger.log('  要内覧促進客: ' + counts.viewingPromotionRequired);
+    Logger.log('  ピンリッチ未登録: ' + counts.pinrichUnregistered);
+    
+    // Supabaseに保存
+    var now = new Date().toISOString();
+    var rows = [];
+    
+    // 内覧日前日
+    if (counts.viewingDayBefore > 0) {
+      rows.push({
+        category: 'viewingDayBefore',
+        count: counts.viewingDayBefore,
+        label: '',
+        assignee: '',
+        updated_at: now
+      });
+    }
+    
+    // 当日TEL
+    if (counts.todayCall > 0) {
+      rows.push({
+        category: 'todayCall',
+        count: counts.todayCall,
+        label: '',
+        assignee: '',
+        updated_at: now
+      });
+    }
+    
+    // 3回架電未
+    if (counts.threeCallUnchecked > 0) {
+      rows.push({
+        category: 'threeCallUnchecked',
+        count: counts.threeCallUnchecked,
+        label: '',
+        assignee: '',
+        updated_at: now
+      });
+    }
+    
+    // 担当(イニシャル)
+    for (var assigneeKey in counts.assignedCounts) {
+      rows.push({
+        category: 'assigned',
+        count: counts.assignedCounts[assigneeKey],
+        label: '',
+        assignee: assigneeKey,
+        updated_at: now
+      });
+    }
+    
+    // 当日TEL(イニシャル)
+    for (var assigneeKey2 in counts.todayCallAssignedCounts) {
+      rows.push({
+        category: 'todayCallAssigned',
+        count: counts.todayCallAssignedCounts[assigneeKey2],
+        label: '',
+        assignee: assigneeKey2,
+        updated_at: now
+      });
+    }
+    
+    // 問合メール未対応
+    if (counts.inquiryEmailUnanswered > 0) {
+      rows.push({
+        category: 'inquiryEmailUnanswered',
+        count: counts.inquiryEmailUnanswered,
+        label: '',
+        assignee: '',
+        updated_at: now
+      });
+    }
+    
+    // 業者問合せあり
+    if (counts.brokerInquiry > 0) {
+      rows.push({
+        category: 'brokerInquiry',
+        count: counts.brokerInquiry,
+        label: '',
+        assignee: '',
+        updated_at: now
+      });
+    }
+    
+    // 一般媒介_内覧後売主連絡未
+    if (counts.generalViewingSellerContactPending > 0) {
+      rows.push({
+        category: 'generalViewingSellerContactPending',
+        count: counts.generalViewingSellerContactPending,
+        label: '',
+        assignee: '',
+        updated_at: now
+      });
+    }
+    
+    // 要内覧促進客
+    if (counts.viewingPromotionRequired > 0) {
+      rows.push({
+        category: 'viewingPromotionRequired',
+        count: counts.viewingPromotionRequired,
+        label: '',
+        assignee: '',
+        updated_at: now
+      });
+    }
+    
+    // ピンリッチ未登録
+    if (counts.pinrichUnregistered > 0) {
+      rows.push({
+        category: 'pinrichUnregistered',
+        count: counts.pinrichUnregistered,
+        label: '',
+        assignee: '',
+        updated_at: now
+      });
+    }
+    
+    // Supabaseに保存（全削除 → 挿入）
+    var deleteUrl = SUPABASE_CONFIG.URL + '/rest/v1/buyer_sidebar_counts?category=neq.___never___';
+    var deleteOptions = {
+      method: 'delete',
+      headers: {
+        'apikey': SUPABASE_CONFIG.SERVICE_KEY,
+        'Authorization': 'Bearer ' + SUPABASE_CONFIG.SERVICE_KEY,
+        'Content-Type': 'application/json'
+      },
+      muteHttpExceptions: true
+    };
+    
+    var deleteResponse = UrlFetchApp.fetch(deleteUrl, deleteOptions);
+    Logger.log('🗑️  既存データ削除: ' + deleteResponse.getResponseCode());
+    
+    if (rows.length > 0) {
+      var insertUrl = SUPABASE_CONFIG.URL + '/rest/v1/buyer_sidebar_counts';
+      var insertOptions = {
+        method: 'post',
+        headers: {
+          'apikey': SUPABASE_CONFIG.SERVICE_KEY,
+          'Authorization': 'Bearer ' + SUPABASE_CONFIG.SERVICE_KEY,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=minimal'
+        },
+        payload: JSON.stringify(rows),
+        muteHttpExceptions: true
+      };
+      
+      var insertResponse = UrlFetchApp.fetch(insertUrl, insertOptions);
+      Logger.log('📝 新データ挿入: ' + insertResponse.getResponseCode() + ' (' + rows.length + '件)');
+    }
+    
+    var endTime = new Date();
+    var duration = (endTime - startTime) / 1000;
+    Logger.log('✅ サイドバーカウント更新完了: ' + duration + '秒');
+    
+  } catch (e) {
+    Logger.log('❌ エラー: ' + e.toString());
+    Logger.log('スタックトレース: ' + e.stack);
+  }
+}

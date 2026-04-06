@@ -255,7 +255,7 @@ router.put('/:id', authenticateOrApiKey, async (req: Request, res: Response) => 
     );
 
     // 🆕 キャッシュを無効化（サイドバーが即座に更新されるように）
-    invalidateBuyerStatusCache();
+    await invalidateBuyerStatusCache();
     console.log('[PUT /buyers/:id] Buyer status cache invalidated');
 
     // 競合がある場合は409を返す
@@ -308,7 +308,7 @@ router.post('/sync', async (_req: Request, res: Response) => {
     const result = await buyerSyncService.syncAll();
     
     // 🆕 キャッシュを無効化（サイドバーが即座に更新されるように）
-    invalidateBuyerStatusCache();
+    await invalidateBuyerStatusCache();
     console.log('[POST /buyers/sync] Buyer status cache invalidated');
     
     res.json(result);

@@ -21,10 +21,34 @@ const _MODULE_STATUS_CACHE_TTL = 30 * 60 * 1000; // 30分
 /**
  * 買主ステータスキャッシュを無効化（外部から呼び出し可能）
  * 買主データ更新時に呼び出してキャッシュをクリアする
+ * 
+ * 🆕 buyer_sidebar_countsテーブルもクリアして、次回アクセス時に動的計算を強制
  */
-export function invalidateBuyerStatusCache(): void {
+export async function invalidateBuyerStatusCache(): Promise<void> {
   _moduleLevelStatusCache = null;
   console.log('[BuyerService] Buyer status cache invalidated');
+  
+  // buyer_sidebar_countsテーブルをクリア（次回アクセス時に動的計算を強制）
+  try {
+    const { createClient } = await import('@supabase/supabase-js');
+    const supabase = createClient(
+      process.env.SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_KEY!
+    );
+    
+    const { error } = await supabase
+      .from('buyer_sidebar_counts')
+      .delete()
+      .neq('category', '___never___'); // 全件削除
+    
+    if (error) {
+      console.error('[BuyerService] Failed to clear buyer_sidebar_counts:', error);
+    } else {
+      console.log('[BuyerService] buyer_sidebar_counts table cleared - next access will recalculate');
+    }
+  } catch (e) {
+    console.error('[BuyerService] Error clearing buyer_sidebar_counts:', e);
+  }
 }
 
 export interface BuyerQueryOptions {
@@ -648,7 +672,7 @@ export class BuyerService {
     console.log('[BuyerService.update] Database update successful');
 
     // 🆕 キャッシュを無効化（サイドバーが即座に更新されるように）
-    invalidateBuyerStatusCache();
+    await invalidateBuyerStatusCache();
     console.log('[BuyerService.update] Buyer status cache invalidated');
 
     // Log audit trail for each changed field
@@ -1745,16 +1769,71 @@ export class BuyerService {
     const startTime = Date.now();  // 処理開始時刻（Requirements 5.1）
     
     try {
-      // 🚨 重要：buyersテーブルから動的に計算（buyer_sidebar_countsテーブルは使用しない）
-      console.log('🔍 [BuyerService] getSidebarCounts called - calculating dynamically from buyers table');
+      // まずbuyer_sidebar_countsテーブルから取得を試みる（高速）
+      console.log('🔍 [BuyerService] getSidebarCounts called - trying buyer_sidebar_counts table first');
       
-      // 直接フォールバック（動的計算）を呼び出す
+      const { data, error } = await this.supabase
+        .from('buyer_sidebar_counts')
+        .select('*');
+      
+      // テーブルにデータがある場合は高速パスを使用
+      if (!error && data && data.length > 0) {
+        const duration = Date.now() - startTime;
+        console.log(`[INFO] getSidebarCounts from table completed in ${duration}ms`);
+        
+        // カウントを集計
+        const categoryCounts: any = {
+          all: 0,
+          viewingDayBefore: 0,
+          todayCall: 0,
+          threeCallUnchecked: 0,
+          assignedCounts: {} as Record<string, number>,
+          todayCallAssignedCounts: {} as Record<string, number>,
+          inquiryEmailUnanswered: 0,
+          brokerInquiry: 0,
+          generalViewingSellerContactPending: 0,
+          viewingPromotionRequired: 0,
+          pinrichUnregistered: 0,
+        };
+        
+        for (const row of data) {
+          if (row.category === 'viewingDayBefore') {
+            categoryCounts.viewingDayBefore = row.count || 0;
+          } else if (row.category === 'todayCall') {
+            categoryCounts.todayCall = row.count || 0;
+          } else if (row.category === 'threeCallUnchecked') {
+            categoryCounts.threeCallUnchecked = row.count || 0;
+          } else if (row.category === 'assigned' && row.assignee) {
+            categoryCounts.assignedCounts[row.assignee] = row.count || 0;
+          } else if (row.category === 'todayCallAssigned' && row.assignee) {
+            categoryCounts.todayCallAssignedCounts[row.assignee] = row.count || 0;
+          } else if (row.category === 'inquiryEmailUnanswered') {
+            categoryCounts.inquiryEmailUnanswered = row.count || 0;
+          } else if (row.category === 'brokerInquiry') {
+            categoryCounts.brokerInquiry = row.count || 0;
+          } else if (row.category === 'generalViewingSellerContactPending') {
+            categoryCounts.generalViewingSellerContactPending = row.count || 0;
+          } else if (row.category === 'viewingPromotionRequired') {
+            categoryCounts.viewingPromotionRequired = row.count || 0;
+          } else if (row.category === 'pinrichUnregistered') {
+            categoryCounts.pinrichUnregistered = row.count || 0;
+          }
+        }
+        
+        // 通常スタッフのイニシャルを取得
+        const normalStaffInitials = await this.fetchNormalStaffInitials();
+        
+        return { categoryCounts, normalStaffInitials };
+      }
+      
+      // テーブルが空または取得失敗の場合は動的計算にフォールバック
+      console.log('⚠️ buyer_sidebar_counts empty or error, falling back to dynamic calculation');
       const result = await this.getSidebarCountsFallback();
       
       const duration = Date.now() - startTime;  // 処理時間
       
       // Requirements 5.1: 処理時間をログに記録
-      console.log(`[INFO] getSidebarCounts completed in ${duration}ms`);
+      console.log(`[INFO] getSidebarCounts (fallback) completed in ${duration}ms`);
       
       // Requirements 5.2: 5秒超過時の警告ログ
       if (duration > 5000) {
