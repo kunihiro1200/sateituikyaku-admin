@@ -1897,9 +1897,12 @@ export class BuyerService {
       const pinrich = buyer.pinrich || '';
       const email = buyer.email || '';
       
+      // pinrich が空（null, '', 'null'）かチェック
+      const isPinrichEmpty = !pinrich || pinrich === 'null';
+      
       if (
         (
-          !pinrich &&
+          isPinrichEmpty &&
           email &&
           isBrokerInquiryEmpty
         ) ||

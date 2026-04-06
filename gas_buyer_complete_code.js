@@ -197,7 +197,7 @@ function fetchAllBuyersFromSupabase_() {
   var allBuyers = [];
   var pageSize = 1000;
   var offset = 0;
-  var fields = 'buyer_number,latest_status,next_call_date,initial_assignee,follow_up_assignee,inquiry_email_phone,three_calls_confirmed,reception_date,distribution_type,desired_area,viewing_date,viewing_time,viewing_mobile,latest_viewing_date,post_viewing_seller_contact,viewing_promotion_email,notification_sender,pre_viewing_notes,viewing_notes,pre_viewing_hearing,offer_comment,company_name,email';
+  var fields = 'buyer_number,latest_status,next_call_date,initial_assignee,follow_up_assignee,inquiry_email_phone,three_calls_confirmed,reception_date,distribution_type,desired_area,viewing_date,viewing_time,viewing_mobile,latest_viewing_date,post_viewing_seller_contact,viewing_promotion_email,notification_sender,pre_viewing_notes,viewing_notes,pre_viewing_hearing,inquiry_hearing,offer_comment,company_name,email';
   while (true) {
     var url = SUPABASE_CONFIG.URL + '/rest/v1/buyers?select=' + fields +
       '&deleted_at=is.null&offset=' + offset + '&limit=' + pageSize;
@@ -573,6 +573,18 @@ function syncUpdatesToSupabase_(sheetRows) {
       needsUpdate = true;
       if (normalizedSheetPreViewingHearing === null && normalizedDbPreViewingHearing !== null) {
         Logger.log('  🗑️ ' + buyerNumber + ': 内覧前ヒアリングを削除 (旧値: ' + normalizedDbPreViewingHearing + ')');
+      }
+    }
+    
+    // ●問合時ヒアリング
+    var sheetInquiryHearing = row['●問合時ヒアリング'] ? String(row['●問合時ヒアリング']) : null;
+    var normalizedSheetInquiryHearing = normalizeValue(sheetInquiryHearing);
+    var normalizedDbInquiryHearing = normalizeValue(dbBuyer.inquiry_hearing);
+    if (normalizedSheetInquiryHearing !== normalizedDbInquiryHearing) {
+      updateData.inquiry_hearing = normalizedSheetInquiryHearing;
+      needsUpdate = true;
+      if (normalizedSheetInquiryHearing === null && normalizedDbInquiryHearing !== null) {
+        Logger.log('  🗑️ ' + buyerNumber + ': ●問合時ヒアリングを削除 (旧値: ' + normalizedDbInquiryHearing + ')');
       }
     }
     
