@@ -1,48 +1,49 @@
 import { createClient } from '@supabase/supabase-js';
 import * as dotenv from 'dotenv';
+import { calculateBuyerStatus } from './src/services/BuyerStatusCalculator';
 
-dotenv.config({ path: 'backend/.env' });
+dotenv.config();
 
-const supabaseUrl = process.env.SUPABASE_URL!;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-
-const supabase = createClient(supabaseUrl, supabaseKey);
+const supabase = createClient(
+  process.env.SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_KEY!
+);
 
 async function checkBuyerSidebarCounts() {
-  console.log('📊 buyer_sidebar_counts テーブルを確認中...\n');
-
-  // viewingDayBefore カテゴリのデータを取得
-  const { data, error } = await supabase
-    .from('buyer_sidebar_counts')
-    .select('*')
-    .eq('category', 'viewingDayBefore')
-    .order('updated_at', { ascending: false });
-
-  if (error) {
-    console.error('❌ エラー:', error.message);
-    return;
-  }
-
-  if (!data || data.length === 0) {
-    console.log('⚠️  viewingDayBefore カテゴリのデータが見つかりません');
-    console.log('   GASの testBuyerSync を実行してください');
-    return;
-  }
-
-  console.log('✅ viewingDayBefore カテゴリのデータが見つかりました:\n');
-  console.log('category          | count | label | assignee | updated_at');
-  console.log('------------------|-------|-------|----------|-------------------');
+  console.log('[check-buyer-sidebar-counts] ===== START =====');
   
-  data.forEach(row => {
-    const category = row.category.padEnd(17);
-    const count = String(row.count).padEnd(5);
-    const label = (row.label || '').padEnd(5);
-    const assignee = (row.assignee || '').padEnd(8);
-    const updatedAt = new Date(row.updated_at).toLocaleString('ja-JP');
-    console.log(`${category} | ${count} | ${label} | ${assignee} | ${updatedAt}`);
+  // 全買主を取得
+  const { data: buyers, error } = await supabase
+    .from('buyers')
+    .select('*');
+  
+  if (error) {
+    console.error('[check-buyer-sidebar-counts] Error:', error);
+    return;
+  }
+  
+  console.log(`[check-buyer-sidebar-counts] Total buyers: ${buyers.length}`);
+  
+  // 各買主のステータスを計算
+  const buyersWithStatus = buyers.map(b => {
+    const statusResult = calculateBuyerStatus(b);
+    return {
+      ...b,
+      calculated_status: statusResult.status,
+      status_priority: statusResult.priority,
+    };
   });
-
-  console.log('\n✅ データベース確認完了');
+  
+  // 「３回架電未」カテゴリの買主を抽出
+  const threeCallUncheckedBuyers = buyersWithStatus.filter(b => b.calculated_status === '3回架電未');
+  
+  console.log(`[check-buyer-sidebar-counts] 「３回架電未」カテゴリの買主数: ${threeCallUncheckedBuyers.length}`);
+  console.log('[check-buyer-sidebar-counts] 「３回架電未」カテゴリの買主:');
+  threeCallUncheckedBuyers.forEach(b => {
+    console.log(`  - ${b.buyer_number}: ${b.name}, three_calls_confirmed="${b.three_calls_confirmed}", inquiry_email_phone="${b.inquiry_email_phone}"`);
+  });
+  
+  console.log('[check-buyer-sidebar-counts] ===== END =====');
 }
 
-checkBuyerSidebarCounts().catch(console.error);
+checkBuyerSidebarCounts();
