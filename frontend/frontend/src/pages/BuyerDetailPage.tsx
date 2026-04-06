@@ -574,7 +574,9 @@ export default function BuyerDetailPage() {
     try {
       // 日付フィールドの空文字は null に変換（timestamp エラー防止）
       const DATE_FIELDS = ['next_call_date', 'reception_date', 'visit_date', 'contract_date'];
+      console.log('[handleInlineFieldSave] fieldName:', fieldName, 'newValue:', newValue, 'type:', typeof newValue);
       const sanitizedValue = DATE_FIELDS.includes(fieldName) && newValue === '' ? null : newValue;
+      console.log('[handleInlineFieldSave] sanitizedValue:', sanitizedValue, 'type:', typeof sanitizedValue);
 
       // 🚨 修正: distribution_type フィールドの場合はバリデーションをスキップ
       // 値の変更を許可し、DBに保存する
