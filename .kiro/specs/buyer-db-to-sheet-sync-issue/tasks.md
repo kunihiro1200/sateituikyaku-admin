@@ -1,6 +1,6 @@
 # Implementation Plan
 
-- [ ] 1. Bug Condition探索テストを作成（修正前）
+- [x] 1. Bug Condition探索テストを作成（修正前）
   - **Property 1: Bug Condition** - inquiry_hearingフィールドの即時同期不具合
   - **重要**: このテストは未修正コードで実行し、失敗することを確認する（失敗＝バグの存在を証明）
   - **修正しようとしない**: テストが失敗しても、テストやコードを修正しない
@@ -21,7 +21,7 @@
   - テストを作成・実行し、失敗を記録したらタスク完了とする
   - _Requirements: 1.1, 1.2, 1.3_
 
-- [ ] 2. Preservation property testsを作成（修正前）
+- [x] 2. Preservation property testsを作成（修正前）
   - **Property 2: Preservation** - 他のフィールドの同期機能保持
   - **重要**: 観察優先の方法論に従う
   - 未修正コードで非バグ入力（`inquiry_hearing`以外のフィールド）の動作を観察する
@@ -35,9 +35,9 @@
   - 未修正コードでテストを作成・実行し、パスしたらタスク完了とする
   - _Requirements: 3.1, 3.2, 3.3, 3.4_
 
-- [ ] 3. inquiry_hearingフィールドの即時同期不具合を修正
+- [x] 3. inquiry_hearingフィールドの即時同期不具合を修正
 
-  - [ ] 3.1 根本原因の特定と修正実装
+  - [x] 3.1 根本原因の特定と修正実装
     - タスク1のデバッグログから根本原因を特定
     - `backend/src/services/BuyerColumnMapper.ts`の`mapDatabaseToSpreadsheet`メソッドを確認
     - `buyer-column-mapping.json`の`databaseToSpreadsheet`セクションに`"inquiry_hearing": "●問合時ヒアリング"`が存在するか確認
@@ -49,7 +49,7 @@
     - _Preservation: 他のフィールドの同期機能、数式保護機能、HTMLストリップ処理が変更されない（Preservation Requirements from design）_
     - _Requirements: 2.1, 2.2, 2.3, 2.4, 3.1, 3.2, 3.3, 3.4_
 
-  - [ ] 3.2 Bug condition探索テストが成功することを確認
+  - [x] 3.2 Bug condition探索テストが成功することを確認
     - **Property 1: Expected Behavior** - inquiry_hearingフィールドの即時同期
     - **重要**: タスク1と同じテストを再実行する - 新しいテストを作成しない
     - タスク1のテストは期待される動作をエンコードしている
@@ -58,12 +58,12 @@
     - **期待される結果**: テストがパスする（バグが修正されたことを確認）
     - _Requirements: Expected Behavior Properties from design (2.1, 2.2, 2.3, 2.4)_
 
-  - [ ] 3.3 Preservation testsが引き続きパスすることを確認
+  - [x] 3.3 Preservation testsが引き続きパスすることを確認
     - **Property 2: Preservation** - 他のフィールドの同期機能保持
     - **重要**: タスク2と同じテストを再実行する - 新しいテストを作成しない
     - タスク2のpreservation property testsを再実行
     - **期待される結果**: テストがパスする（リグレッションがないことを確認）
     - 修正後も全てのテストがパスすることを確認（リグレッションなし）
 
-- [ ] 4. Checkpoint - 全てのテストがパスすることを確認
+- [x] 4. Checkpoint - 全てのテストがパスすることを確認
   - 全てのテストがパスすることを確認し、疑問点があればユーザーに質問する

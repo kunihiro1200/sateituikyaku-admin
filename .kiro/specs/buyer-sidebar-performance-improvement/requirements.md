@@ -1,230 +1,82 @@
-# 買主リストサイドバー表示速度改善 - 要件定義書
+# Requirements Document
 
 ## Introduction
 
-買主リストページのサイドバーカテゴリー表示に時間がかかっている問題を解決します。売主リストでは同じ問題をGASで事前計算する方式で解決し、表示速度が大幅に改善されました。買主リストにも同じアーキテクチャを適用し、サイドバーの初回表示を1秒以内に完了させます。
+買主リストページのサイドバー表示が初回アクセス時に15秒かかる問題を解決し、5秒以内に短縮する。一覧表はすぐに表示されるが、サイドバーのカテゴリカウント（「内覧日前日」「当日TEL」など）の計算に時間がかかっている。
 
 ## Glossary
 
-- **System**: 買主リスト管理システム
-- **GAS**: Google Apps Script（スプレッドシート同期処理）
-- **Sidebar**: 買主リストページの左側に表示されるステータスカテゴリー一覧
-- **Pre-calculation**: GASによる事前計算処理（10分ごとに実行）
-- **buyer_sidebar_counts**: サイドバーカウントを保存するデータベーステーブル
+- **Buyer_Sidebar**: 買主リストページの左側に表示されるステータスカテゴリ一覧とカウント表示
+- **Category_Count**: 各ステータスカテゴリに該当する買主の件数（例: 内覧日前日: 5件）
+- **Status_Calculation**: 買主データから calculated_status を計算する処理
+- **Database_Query**: Supabase の buyers テーブルからデータを取得するクエリ
+- **Cache**: Redis または Node.js メモリ上に保存される一時データ
+- **Initial_Load**: ユーザーが買主リストページに初めてアクセスした時の読み込み処理
 
 ## Requirements
 
-### Requirement 1: サイドバーカウントの高速取得
+### Requirement 1: サイドバー初回表示時間の短縮
 
-**User Story:** As a ユーザー, I want サイドバーカテゴリーが即座に表示される, so that 買主リストページの初回ロードが高速になる
-
-#### Acceptance Criteria
-
-1. WHEN 買主リストページを開く, THE System SHALL サイドバーカウントを1秒以内に表示する
-2. THE System SHALL `buyer_sidebar_counts`テーブルから事前計算済みのカウントを取得する
-3. THE System SHALL 全買主データの取得を待たずにサイドバーを表示する
-4. WHEN サイドバーカウントが存在しない, THE System SHALL フォールバック処理として全買主データから計算する
-
----
-
-### Requirement 2: GASによる事前計算処理
-
-**User Story:** As a システム, I want サイドバーカウントを10分ごとに事前計算する, so that フロントエンドの負荷を軽減できる
+**User Story:** As a ユーザー, I want サイドバーが5秒以内に表示される, so that ページ遷移後すぐに作業を開始できる
 
 #### Acceptance Criteria
 
-1. THE GAS SHALL 10分ごとに`updateBuyerSidebarCounts_()`関数を実行する
-2. THE GAS SHALL 全買主データを読み取り、各カテゴリーの件数を計算する
-3. THE GAS SHALL 計算結果を`buyer_sidebar_counts`テーブルに保存する
-4. THE GAS SHALL 以下のカテゴリーのカウントを計算する:
-   - `viewingDayBefore`（内覧日前日）
-   - `todayCall`（当日TEL）
-   - `todayCallAssigned`（当日TEL（担当別））
-   - `assigned`（担当（担当別））
+1. WHEN ユーザーが買主リストページに初めてアクセスする, THE Buyer_Sidebar SHALL 5秒以内にカテゴリカウントを表示する
+2. WHEN サイドバーカウントを計算する, THE System SHALL 全買主データの取得とステータス計算を並列実行する
+3. WHEN Database_Query を実行する, THE System SHALL 必要最小限のカラムのみを SELECT する
+4. WHEN Status_Calculation を実行する, THE System SHALL バッチ処理で複数買主のステータスを一度に計算する
 
----
+### Requirement 2: キャッシュ戦略の最適化
 
-### Requirement 3: バックエンドAPIの実装
-
-**User Story:** As a フロントエンド, I want サイドバーカウントを取得するAPIエンドポイント, so that 高速にカウントを表示できる
+**User Story:** As a システム, I want サイドバーカウントを効率的にキャッシュする, so that 2回目以降のアクセスが高速になる
 
 #### Acceptance Criteria
 
-1. THE System SHALL `/api/buyers/sidebar-counts`エンドポイントを提供する
-2. WHEN エンドポイントが呼び出される, THE System SHALL `buyer_sidebar_counts`テーブルからカウントを取得する
-3. THE System SHALL 以下の形式でレスポンスを返す:
-   ```json
-   {
-     "viewingDayBefore": 2,
-     "todayCall": 5,
-     "todayCallAssigned": { "Y": 3, "I": 2 },
-     "assigned": { "Y": 150, "I": 200 }
-   }
-   ```
-4. WHEN `buyer_sidebar_counts`テーブルが空, THE System SHALL フォールバック処理として全買主データから計算する
+1. WHEN サイドバーカウントを計算する, THE System SHALL 計算結果を10分間キャッシュする
+2. WHEN 買主データが更新される, THE Cache SHALL 自動的に無効化される
+3. WHEN キャッシュが存在する, THE System SHALL Database_Query を実行せずにキャッシュから返す
+4. WHEN キャッシュが期限切れの場合, THE System SHALL バックグラウンドで再計算してキャッシュを更新する
 
----
+### Requirement 3: プログレッシブローディングの実装
 
-### Requirement 4: フロントエンドの並列取得
-
-**User Story:** As a フロントエンド, I want サイドバーカウントと全買主データを並列取得する, so that 初回ロードが高速になる
+**User Story:** As a ユーザー, I want サイドバーが段階的に表示される, so that 待ち時間を感じにくくなる
 
 #### Acceptance Criteria
 
-1. THE System SHALL サイドバーカウント取得と全買主データ取得を並列実行する
-2. THE System SHALL サイドバーカウントを先に表示する（プログレッシブローディング）
-3. THE System SHALL 全買主データの取得完了を待たずにサイドバーを表示する
-4. WHEN 全買主データの取得が完了, THE System SHALL カテゴリー展開時に詳細データを表示する
+1. WHEN ページが読み込まれる, THE Buyer_Sidebar SHALL まず「読み込み中」インジケーターを表示する
+2. WHEN カテゴリカウントが計算される, THE Buyer_Sidebar SHALL 計算完了したカテゴリから順次表示する
+3. WHEN 一覧表が表示される, THE System SHALL サイドバーの計算完了を待たずに一覧表を表示する
+4. WHEN サイドバー計算が5秒を超える, THE System SHALL タイムアウトエラーを表示する
 
----
+### Requirement 4: データベースクエリの最適化
 
-### Requirement 5: キャッシュ戦略
-
-**User Story:** As a システム, I want サイドバーカウントをキャッシュする, so that 2回目以降のアクセスがさらに高速になる
+**User Story:** As a システム, I want 買主データ取得クエリを最適化する, so that データベース負荷を削減できる
 
 #### Acceptance Criteria
 
-1. THE System SHALL サイドバーカウントを10分間キャッシュする
-2. WHEN キャッシュが有効, THE System SHALL キャッシュからカウントを返す
-3. WHEN キャッシュが無効, THE System SHALL `buyer_sidebar_counts`テーブルから取得する
-4. WHEN 買主データが更新される, THE System SHALL サイドバーカウントキャッシュを無効化する
+1. WHEN 全買主データを取得する, THE Database_Query SHALL ステータス計算に必要なカラムのみを SELECT する
+2. WHEN 買主データをフィルタリングする, THE Database_Query SHALL deleted_at IS NULL 条件をインデックスで高速化する
+3. WHEN 複数のカテゴリカウントを計算する, THE System SHALL 1回のクエリで全カテゴリのカウントを取得する
+4. WHEN データベース接続が遅い, THE System SHALL 接続プールを使用して接続を再利用する
 
----
+### Requirement 5: パフォーマンス監視とロギング
 
-### Requirement 6: 既存機能の完全保護
-
-**User Story:** As a システム, I want 既存のコードを一切変更しない, so that 動作中の機能を絶対に壊さない
+**User Story:** As a 開発者, I want サイドバー表示時間を監視する, so that パフォーマンス劣化を早期に検知できる
 
 #### Acceptance Criteria
 
-1. THE System SHALL 既存のGASコード（`gas_buyer_complete_code.js`）を変更しない
-2. THE System SHALL 既存の買主データ同期処理を変更しない
-3. THE System SHALL 既存のフィールド同期処理を変更しない
-4. THE System SHALL 既存のカテゴリー定義を変更しない
-5. THE System SHALL サイドバーのフィルタリングロジック（`BuyerStatusSidebar.tsx`）を変更しない
-6. THE System SHALL 既存のAPIエンドポイント（`/api/buyers`, `/api/buyers/status-categories-with-buyers`）を変更しない
-7. THE System SHALL 新規エンドポイント追加のみを行う（既存エンドポイントは変更しない）
-8. THE System SHALL 売主リストの成功パターンをそのままコピーする（新しい実装は避ける）
+1. WHEN サイドバーカウントを計算する, THE System SHALL 処理時間をログに記録する
+2. WHEN 処理時間が5秒を超える, THE System SHALL 警告ログを出力する
+3. WHEN エラーが発生する, THE System SHALL エラー内容とスタックトレースをログに記録する
+4. WHEN パフォーマンス測定を実行する, THE System SHALL 各処理ステップの所要時間を記録する
 
-#### 変更禁止ファイル一覧
+### Requirement 6: 後方互換性の維持
 
-**絶対に変更してはいけないファイル**:
-- ❌ `gas_buyer_complete_code.js` - 買主リスト用GAS
-- ❌ `frontend/src/components/BuyerStatusSidebar.tsx` - サイドバーコンポーネント
-- ❌ `backend/src/routes/buyers.ts` - 既存の買主APIルート（新規エンドポイント追加のみOK）
-- ❌ `.kiro/steering/buyer-sidebar-status-definition.md` - カテゴリー定義
-
-**変更可能なファイル**（最小限の変更のみ）:
-- ✅ `frontend/src/pages/BuyersPage.tsx` - 並列取得の最適化のみ
-- ✅ `backend/src/routes/buyers.ts` - 新規エンドポイント追加のみ
-- ✅ `backend/src/services/BuyerService.ts` - 新規メソッド追加のみ
-
----
-
-### Requirement 7: エラーハンドリング
-
-**User Story:** As a システム, I want サイドバーカウント取得エラーを適切に処理する, so that ユーザーに影響を与えない
+**User Story:** As a システム, I want 既存の機能を壊さない, so that 他のページに影響を与えない
 
 #### Acceptance Criteria
 
-1. WHEN `buyer_sidebar_counts`テーブルが空, THE System SHALL フォールバック処理として全買主データから計算する
-2. WHEN APIエラーが発生, THE System SHALL カウントを0にリセットする
-3. WHEN GAS実行エラーが発生, THE System SHALL 次回の10分トリガーで再実行する
-4. THE System SHALL エラーログを記録する
-
----
-
-### Requirement 8: パフォーマンス要件
-
-**User Story:** As a ユーザー, I want サイドバーが即座に表示される, so that ストレスなく買主リストを閲覧できる
-
-#### Acceptance Criteria
-
-1. THE System SHALL サイドバーカウントを1秒以内に表示する
-2. THE System SHALL 初回ロード時に最初の50件を即座に表示する
-3. THE System SHALL バックグラウンドでサイドバーカウントと全件データを並列取得する
-4. THE System SHALL 10分間キャッシュを使用して2回目以降のアクセスを高速化する
-
----
-
-## 参考実装
-
-### 売主リストの成功事例
-
-**ファイル**: `gas_complete_code.js`
-
-**関数**: `updateSidebarCounts_()`
-
-**テーブル**: `seller_sidebar_counts`
-
-**アーキテクチャ**:
-1. GASが10分ごとに`updateSidebarCounts_()`を実行
-2. 全売主データを読み取り、各カテゴリーの件数を計算
-3. 計算結果を`seller_sidebar_counts`テーブルに保存
-4. フロントエンドは`/api/sellers/sidebar-counts`から高速取得
-5. 初回表示が1秒以内に完了
-
-### 買主リストの現状
-
-**ファイル**: `gas_buyer_complete_code.js`
-
-**関数**: `updateBuyerSidebarCounts_()`（既に実装済み）
-
-**テーブル**: `buyer_sidebar_counts`（既に存在）
-
-**問題点**:
-- フロントエンドが`/api/buyers/sidebar-counts`と`/api/buyers/status-categories-with-buyers`の2つのAPIを並列呼び出し
-- 全買主データの取得を待ってからサイドバーを表示
-- 初回ロードに時間がかかる
-
-### 改善方針
-
-1. **GASコードは変更しない**（既に`updateBuyerSidebarCounts_()`が実装済み）
-2. **バックエンドAPIを実装**（`/api/buyers/sidebar-counts`エンドポイント）
-3. **フロントエンドを修正**（並列取得 + プログレッシブローディング）
-4. **キャッシュ戦略を適用**（10分間キャッシュ）
-
----
-
-## 制約条件
-
-### 🚨 最重要：既存機能の完全保護
-
-1. **GASコードは絶対に変更しない**
-   - `gas_buyer_complete_code.js`は一切触らない
-   - 既に動作している同期処理を壊さない
-   - `updateBuyerSidebarCounts_()`関数は既に実装済み
-
-2. **サイドバーロジックは絶対に変更しない**
-   - `BuyerStatusSidebar.tsx`のフィルタリングロジックを変更しない
-   - カテゴリー定義（`buyer-sidebar-status-definition.md`）を変更しない
-   - 既存のカテゴリーキー（`viewingDayBefore`, `todayCall`等）を変更しない
-
-3. **買主データ取得ロジックは変更しない**
-   - `/api/buyers`エンドポイントは変更しない
-   - `/api/buyers/status-categories-with-buyers`エンドポイントは変更しない
-   - 既存のフィルタリング・ソート処理を変更しない
-
-4. **最小限の変更のみ**
-   - 表示速度の改善のみに集中
-   - 新規エンドポイント追加のみ（既存エンドポイントは変更しない）
-   - フロントエンドは並列取得の最適化のみ
-
-5. **売主リストと同じアーキテクチャを踏襲**
-   - 実績のある方式を採用
-   - 売主リストの成功パターンをコピー
-   - 新しい実装は避ける
-
----
-
-## 期待される改善
-
-- サイドバーの初回表示が即座に完了（1秒以内）
-- GASが10分ごとにサイドバーカウントを更新
-- フロントエンドはテーブルから高速取得
-- 2回目以降のアクセスはキャッシュから即座に表示
-
----
-
-**最終更新日**: 2026年4月5日  
-**作成理由**: 買主リストサイドバーの表示速度を改善し、売主リストと同じ高速表示を実現するため
+1. WHEN サイドバーカウントAPIを変更する, THE System SHALL 既存のレスポンス形式を維持する
+2. WHEN キャッシュ戦略を変更する, THE System SHALL 既存のキャッシュキーと互換性を保つ
+3. WHEN ステータス計算ロジックを変更する, THE System SHALL 計算結果が既存と一致することを確認する
+4. WHEN 買主データ更新時, THE System SHALL サイドバーカウントが即座に反映されることを確認する

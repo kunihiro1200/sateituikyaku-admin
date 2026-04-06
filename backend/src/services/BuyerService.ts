@@ -1750,6 +1750,125 @@ export class BuyerService {
   }
 
   /**
+   * サイドバーカウント計算専用：必要最小限のカラムのみ取得（高速化）
+   */
+  private async fetchBuyersForSidebarCounts(): Promise<any[]> {
+    const PAGE_SIZE = 1000;
+
+    // サイドバーカウント計算に必要な最小限のカラムのみ取得（Requirements 4.1）
+    const SIDEBAR_COLUMNS = [
+      'buyer_number',
+      'reception_date',
+      'latest_viewing_date',
+      'viewing_date',
+      'next_call_date',
+      'follow_up_assignee',
+      'initial_assignee',
+      'latest_status',
+      'inquiry_confidence',
+      'inquiry_email_phone',
+      'inquiry_email_reply',
+      'three_calls_confirmed',
+      'broker_inquiry',
+      'inquiry_source',
+      'viewing_result_follow_up',
+      'viewing_unconfirmed',
+      'viewing_type_general',
+      'post_viewing_seller_contact',
+      'notification_sender',
+      'valuation_survey',
+      'valuation_survey_confirmed',
+      'broker_survey',
+      'vendor_survey',
+      'day_of_week',
+      'pinrich',
+      'email_confirmed',
+      'email_confirmation_assignee',
+      'viewing_promotion_not_needed',
+      'viewing_promotion_sender',
+      'past_buyer_list',
+      'property_number',
+    ].join(', ');
+
+    // count クエリ・最初のバッチ・property_listings を全て並列実行
+    const [countResult, firstBatchResult, allListingsResult] = await Promise.all([
+      this.supabase
+        .from('buyers')
+        .select('*', { count: 'exact', head: true })
+        .is('deleted_at', null),
+      this.supabase
+        .from('buyers')
+        .select(SIDEBAR_COLUMNS)
+        .is('deleted_at', null)
+        .range(0, PAGE_SIZE - 1),
+      // property_listings を buyers 取得と並列で全件取得
+      this.supabase
+        .from('property_listings')
+        .select('property_number, atbb_status, sales_assignee, property_type'),
+    ]);
+
+    const { count, error: countError } = countResult;
+    if (countError) throw new Error(`Failed to count buyers: ${countError.message}`);
+    if (firstBatchResult.error) throw new Error(`Failed to fetch buyers: ${firstBatchResult.error.message}`);
+
+    const totalCount = count || 0;
+    if (totalCount === 0) return [];
+
+    const allBuyers: any[] = [...(firstBatchResult.data || [])];
+
+    // 2バッチ目以降を並列取得（既に1バッチ目は取得済み）
+    const batchCount = Math.ceil(totalCount / PAGE_SIZE);
+    if (batchCount > 1) {
+      const remainingRanges: Array<[number, number]> = [];
+      for (let i = 1; i < batchCount; i++) {
+        remainingRanges.push([i * PAGE_SIZE, (i + 1) * PAGE_SIZE - 1]);
+      }
+
+      const batchResults = await Promise.all(
+        remainingRanges.map(([from, to]) =>
+          this.supabase
+            .from('buyers')
+            .select(SIDEBAR_COLUMNS)
+            .is('deleted_at', null)
+            .range(from, to)
+        )
+      );
+
+      for (const { data, error } of batchResults) {
+        if (error) throw new Error(`Failed to fetch buyers: ${error.message}`);
+        if (data) allBuyers.push(...data);
+      }
+    }
+
+    // property_listings のマップを構築（並列取得済み）
+    const propertyMap: Record<string, { atbb_status: string; sales_assignee: string | null; property_type: string | null }> = {};
+    if (allListingsResult.data) {
+      for (const listing of allListingsResult.data) {
+        if (listing.property_number) {
+          propertyMap[listing.property_number] = {
+            atbb_status: listing.atbb_status || '',
+            sales_assignee: listing.sales_assignee ?? null,
+            property_type: listing.property_type ?? null,
+          };
+        }
+      }
+    }
+
+    // 各買主に紐づく物件の情報を付与（複数物件の場合は最初の物件を使用）
+    return allBuyers.map(buyer => {
+      if (!buyer.property_number) return buyer;
+      const firstPropertyNumber = buyer.property_number.split(',')[0].trim();
+      const prop = propertyMap[firstPropertyNumber];
+      return {
+        ...buyer,
+        atbb_status: prop?.atbb_status || '',
+        property_sales_assignee: prop?.sales_assignee ?? null,
+        property_type: prop?.property_type ?? null,
+      };
+    });
+  }
+
+  /**
    * サイドバーカウントを動的に計算（buyersテーブルから）
    * 全買主データを取得してステータスを計算し、カテゴリ別にカウント
    */
@@ -1759,8 +1878,19 @@ export class BuyerService {
   }> {
     console.log('📊 Calculating sidebar counts dynamically from all buyers');
     
-    // 全買主データを取得してステータスを計算
-    const allBuyers = await this.fetchAllBuyersWithStatus();
+    // サイドバーカウント専用の軽量クエリを使用（Requirements 4.1）
+    const allBuyersRaw = await this.fetchBuyersForSidebarCounts();
+    
+    // ステータスを計算
+    const allBuyers = allBuyersRaw.map(buyer => {
+      try {
+        const statusResult = calculateBuyerStatus(buyer);
+        return { ...buyer, calculated_status: statusResult.status, status_priority: statusResult.priority };
+      } catch (error) {
+        console.error(`[BuyerService] Error calculating status for buyer ${buyer.buyer_number}:`, error);
+        return { ...buyer, calculated_status: '', status_priority: 999 };
+      }
+    });
     
     // カテゴリカウントオブジェクトを構築
     // 🚨 重要：買主リスト専用のキーのみを含める（売主専用のキーは削除）
