@@ -25,6 +25,15 @@ export const INQUIRY_EMAIL_PHONE_OPTIONS: FieldOption[] = [
 ];
 
 /**
+ * 【問合メール】メール返信の選択肢
+ */
+export const INQUIRY_EMAIL_REPLY_OPTIONS: FieldOption[] = [
+  { value: '済', label: '済' },
+  { value: '未', label: '未' },
+  { value: '不要', label: '不要' },
+];
+
+/**
  * 3回架電確認済みの選択肢
  */
 export const THREE_CALLS_CONFIRMED_OPTIONS: FieldOption[] = [

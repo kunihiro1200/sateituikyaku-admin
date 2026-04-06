@@ -60,6 +60,7 @@ import { INQUIRY_SOURCE_OPTIONS } from '../utils/buyerInquirySourceOptions';
 import { LATEST_STATUS_OPTIONS } from '../utils/buyerLatestStatusOptions';
 import { 
   INQUIRY_EMAIL_PHONE_OPTIONS, 
+  INQUIRY_EMAIL_REPLY_OPTIONS,
   THREE_CALLS_CONFIRMED_OPTIONS,
   DISTRIBUTION_TYPE_OPTIONS,
 } from '../utils/buyerFieldOptions';
@@ -150,6 +151,7 @@ const toHalfWidth = (str: string): string => {
 // 保存ボタン押下時にまとめて保存するフィールドのセット
 const SAVE_BUTTON_FIELDS = new Set([
   'inquiry_email_phone',
+  'inquiry_email_reply',
   'distribution_type',
   'pinrich',
   'vendor_survey',
@@ -175,6 +177,7 @@ const BUYER_FIELD_SECTIONS = [
       { key: 'pinrich', label: 'Pinrich', inlineEditable: true, fieldType: 'dropdown' },
       { key: 'pinrich_link', label: 'Pinrichリンク', inlineEditable: true, fieldType: 'pinrichLink' },
       { key: 'inquiry_email_phone', label: '【問合メール】電話対応', inlineEditable: true, fieldType: 'dropdown' },
+      { key: 'inquiry_email_reply', label: '【問合メール】メール返信', inlineEditable: true, fieldType: 'buttonSelect' },
       { key: 'three_calls_confirmed', label: '3回架電確認済み', inlineEditable: true, fieldType: 'buttonSelect' },
       { key: 'confirmation_to_assignee', label: '担当への確認事項', inlineEditable: true, fieldType: 'confirmationToAssignee' },
       { key: 'next_call_date', label: '次電日', type: 'date', inlineEditable: true },
@@ -231,6 +234,7 @@ export default function BuyerDetailPage() {
     latest_status: '★最新状況',
     distribution_type: '配信メール',
     inquiry_email_phone: '【問合メール】電話対応',
+    inquiry_email_reply: '【問合メール】メール返信',
     three_calls_confirmed: '3回架電確認済み',
     desired_area: 'エリア（希望条件）',
     desired_property_type: '希望種別（希望条件）',
