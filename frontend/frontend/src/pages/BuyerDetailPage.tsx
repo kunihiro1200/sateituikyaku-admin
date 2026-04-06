@@ -243,6 +243,26 @@ export default function BuyerDetailPage() {
     price_range_land: '価格帯（土地）',
     price_range_any: '価格帯（いずれか）',
     owned_home_hearing_result: '持家ヒアリング結果',
+    pinrich: 'Pinrich',
+  };
+
+  // Pinrich が必須かどうかを判定するヘルパー
+  // AND(ISNOTBLANK([メールアドレス]), ISBLANK([業者問合せ]))
+  const isPinrichRequired = (data: any): boolean => {
+    if (!data) return false;
+    
+    // 条件1: メールアドレスが空白でないこと
+    if (!data.email) return false;
+    const emailTrimmed = String(data.email).trim();
+    if (emailTrimmed.length === 0) return false;
+
+    // 条件2: 業者問合せが空白であること
+    if (data.broker_inquiry) {
+      const brokerTrimmed = String(data.broker_inquiry).trim();
+      if (brokerTrimmed.length > 0) return false;
+    }
+
+    return true;
   };
 
   // owned_home_hearing_result が必須かどうかを判定するヘルパー
@@ -390,6 +410,12 @@ export default function BuyerDetailPage() {
       missingKeys.push('owned_home_hearing_result');
     }
 
+    // Pinrich：条件付き必須
+    if (isPinrichRequired(buyer) && 
+        (!buyer.pinrich || !String(buyer.pinrich).trim() || buyer.pinrich === '未選択')) {
+      missingKeys.push('pinrich');
+    }
+
     // ハイライト用 state を更新
     setMissingRequiredFields(new Set(missingKeys));
 
@@ -504,6 +530,13 @@ export default function BuyerDetailPage() {
     }
   }, [buyer_number, isValidBuyerNumber]);
 
+  // Pinrich の動的バリデーション
+  useEffect(() => {
+    if (buyer) {
+      checkMissingFields();
+    }
+  }, [buyer?.email, buyer?.broker_inquiry, buyer?.pinrich]);
+
   const fetchRelatedBuyersCount = async () => {
     try {
       const res = await api.get(`/api/buyers/${buyer_number}/related`);
@@ -561,6 +594,11 @@ export default function BuyerDetailPage() {
       // 持家ヒアリング結果：条件付き必須
       if (isHomeHearingResultRequired(res.data) && (!res.data.owned_home_hearing_result || !String(res.data.owned_home_hearing_result).trim())) {
         initialMissing.push('owned_home_hearing_result');
+      }
+      // Pinrich：条件付き必須
+      if (isPinrichRequired(res.data) && 
+          (!res.data.pinrich || !String(res.data.pinrich).trim() || res.data.pinrich === '未選択')) {
+        initialMissing.push('pinrich');
       }
       if (initialMissing.length > 0) {
         setMissingRequiredFields(new Set(initialMissing));

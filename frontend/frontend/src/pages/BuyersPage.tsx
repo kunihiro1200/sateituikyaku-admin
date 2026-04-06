@@ -83,26 +83,26 @@ export default function BuyersPage() {
 
   // サイドバーのカテゴリキーを日本語の表示名に変換するマッピング
   const categoryKeyToDisplayName: Record<string, string> = {
-    'viewingDayBefore': '内覧日前日',  // ✅ 買主用（バックエンドと一致）
-    'visitCompleted': '内覧済み',    // ✅ 買主用（バックエンドと一致）
+    'viewingDayBefore': '内覧日前日',
+    'visitCompleted': '内覧済み',
     'todayCall': '当日TEL',
     'todayCallWithInfo': '当日TEL（内容）',
-    'threeCallUnchecked': '3回架電未',  // ✅ 買主用（新規追加）
-    'inquiryEmailUnanswered': '問合メール未対応',  // ✅ 買主用（新規追加 2026年4月）
-    'brokerInquiry': '業者問合せあり',  // ✅ 買主用（新規追加 2026年4月）
-    'generalViewingSellerContactPending': '一般媒介_内覧後売主連絡未',  // ✅ 買主用（新規追加 2026年4月）
-    'viewingPromotionRequired': '要内覧促進客',  // ✅ 買主用（新規追加 2026年4月）
-    'pinrichUnregistered': 'ピンリッチ未登録',  // ✅ 買主用（新規追加 2026年4月）
+    'threeCallUnchecked': '3回架電未',
+    'inquiryEmailUnanswered': '問合メール未対応',
+    'brokerInquiry': '業者問合せあり',
+    'generalViewingSellerContactPending': '一般媒介_内覧後売主連絡未',
+    'viewingPromotionRequired': '要内覧促進客',
+    'pinrichUnregistered': 'ピンリッチ未登録',
     'unvaluated': '未査定',
     'mailingPending': '査定（郵送）',
     'todayCallNotStarted': '当日TEL_未着手',
     'pinrichEmpty': 'Pinrich空欄',
     'todayCallAssigned': '当日TEL（担当）',
-    'visitAssigned': '担当',  // ✅ 買主用（バックエンドと一致）
+    'visitAssigned': '担当',
     'exclusive': '専任',
     'general': '一般',
-    'visitOtherDecision': '内覧後他決',  // ✅ 買主用（バックエンドと一致）
-    'unvisitedOtherDecision': '未内覧他決',  // ✅ 買主用（バックエンドと一致）
+    'visitOtherDecision': '内覧後他決',
+    'unvisitedOtherDecision': '未内覧他決',
   };
 
   // キャッシュから初期データを取得
@@ -131,17 +131,9 @@ export default function BuyersPage() {
 
     const fetchBuyers = async () => {
       try {
-        console.log('[BuyersPage] fetchBuyers called');
-        console.log('[BuyersPage] sidebarLoadedRef.current:', sidebarLoadedRef.current);
-        console.log('[BuyersPage] allBuyersWithStatusRef.current.length:', allBuyersWithStatusRef.current.length);
-        console.log('[BuyersPage] selectedCalculatedStatus:', selectedCalculatedStatus);
-        
         // サイドバーデータ読み込み済みの場合はフロント側でフィルタリング（APIコール不要）
         // キャッシュヒット時はsetLoading(true)をスキップして画面のちらつきを防ぐ
         if (sidebarLoadedRef.current && allBuyersWithStatusRef.current.length > 0) {
-          console.log('[BuyersPage] ✅ フィルタリング開始');
-          console.log('[BuyersPage] 最初の5件のcalculated_status:', allBuyersWithStatusRef.current.slice(0, 5).map(b => ({ buyer_number: b.buyer_number, calculated_status: b.calculated_status })));
-          
           let filtered = selectedCalculatedStatus !== null
             ? allBuyersWithStatusRef.current.filter(b => {
                 // 担当者別カテゴリ（assigned:Y, todayCallAssigned:I など）の処理
@@ -152,10 +144,6 @@ export default function BuyersPage() {
                     b.follow_up_assignee === assignee ||
                     (!b.follow_up_assignee && b.initial_assignee === assignee)
                   );
-                  
-                  if (matches) {
-                    console.log(`[BuyersPage] ✅ 担当(${assignee}) Match: ${b.buyer_number}, follow_up_assignee=${b.follow_up_assignee}, initial_assignee=${b.initial_assignee}`);
-                  }
                   
                   return matches;
                 } else if (selectedCalculatedStatus.startsWith('todayCallAssigned:')) {
@@ -174,40 +162,19 @@ export default function BuyersPage() {
                     nextCallDateStr <= todayStr
                   );
                   
-                  if (matches) {
-                    console.log(`[BuyersPage] ✅ 当日TEL(${assignee}) Match: ${b.buyer_number}, next_call_date: ${b.next_call_date}, todayStr: ${todayStr}`);
-                  }
-                  
                   return matches;
                 } else {
                   // サイドバーのカテゴリキーを日本語の表示名に変換
                   const displayName = categoryKeyToDisplayName[selectedCalculatedStatus] || selectedCalculatedStatus;
                   
-                  console.log(`[BuyersPage] Checking buyer ${b.buyer_number}: calculated_status="${b.calculated_status}", displayName="${displayName}", selectedCalculatedStatus="${selectedCalculatedStatus}"`);
-                  
-                  // デバッグ：文字列の長さと文字コードを出力
-                  if (b.calculated_status && displayName) {
-                    console.log(`[BuyersPage] Length check: calculated_status.length=${b.calculated_status.length}, displayName.length=${displayName.length}`);
-                    console.log(`[BuyersPage] Char codes: calculated_status=[${Array.from(b.calculated_status).map(c => c.charCodeAt(0)).join(',')}]`);
-                    console.log(`[BuyersPage] Char codes: displayName=[${Array.from(displayName).map(c => c.charCodeAt(0)).join(',')}]`);
-                  }
-                  
                   // バックエンドのcalculated_statusは既に日本語（例: "内覧日前日", "担当(Y)", "当日TEL(Y)"）
                   // フィルタリングは日本語の表示名で直接比較
                   const matches = b.calculated_status === displayName;
-                  
-                  if (matches) {
-                    console.log(`[BuyersPage] ✅ Match found: ${b.buyer_number}`);
-                  }
                   
                   return matches;
                 }
               })
             : [...allBuyersWithStatusRef.current];
-
-
-          console.log('[BuyersPage] filtered.length:', filtered.length);
-          console.log('[BuyersPage] filtered buyers:', filtered.slice(0, 5).map(b => ({ buyer_number: b.buyer_number, calculated_status: b.calculated_status })));
 
           // 検索フィルタ
           if (debouncedSearch) {
