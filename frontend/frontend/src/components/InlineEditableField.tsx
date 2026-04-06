@@ -66,6 +66,9 @@ export const InlineEditableField: React.FC<InlineEditableFieldProps> = memo(({
   const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>(null);
   const [isHovered, setIsHovered] = useState(false);
   const [selectOpen, setSelectOpen] = useState(false);
+  
+  // handleBlurの重複呼び出しを防ぐためのフラグ
+  const isBlurringRef = useRef(false);
 
   // Cache field metadata to avoid repeated lookups
   const fieldMetadata = useMemo(() => getFieldMetadata(fieldName), [fieldName]);
@@ -146,7 +149,13 @@ export const InlineEditableField: React.FC<InlineEditableFieldProps> = memo(({
 
   // Handle blur to save (値が変わっていない場合はキャンセル)
   const handleBlur = async () => {
-    console.log('[InlineEditableField.handleBlur] START - isEditing:', isEditing, 'isSaving:', isSaving);
+    console.log('[InlineEditableField.handleBlur] START - isEditing:', isEditing, 'isSaving:', isSaving, 'isBlurring:', isBlurringRef.current);
+    
+    // 既にblur処理中の場合は何もしない（重複呼び出しを防ぐ）
+    if (isBlurringRef.current) {
+      console.log('[InlineEditableField.handleBlur] Already blurring - skipping');
+      return;
+    }
     
     // 既に保存処理中の場合は何もしない（重複呼び出しを防ぐ）
     if (isSaving) {
@@ -155,6 +164,9 @@ export const InlineEditableField: React.FC<InlineEditableFieldProps> = memo(({
     }
     
     if (isEditing && !isSaving) {
+      // blur処理開始フラグを立てる
+      isBlurringRef.current = true;
+      
       console.log('[InlineEditableField.handleBlur] fieldType:', fieldType, 'editValue:', editValue, 'value:', value);
       
       // 日付フィールドの場合、空文字とnullを区別して比較
@@ -165,6 +177,7 @@ export const InlineEditableField: React.FC<InlineEditableFieldProps> = memo(({
         // 元の値が空文字で新しい値も空文字の場合は「変更なし」
         if (value === '' && currentVal === '') {
           console.log('[InlineEditableField.handleBlur] No change (both empty) - canceling');
+          isBlurringRef.current = false;
           cancelEdit();
           return;
         }
@@ -184,6 +197,9 @@ export const InlineEditableField: React.FC<InlineEditableFieldProps> = memo(({
           } catch (err) {
             console.error('[InlineEditableField.handleBlur] onSave(null) failed:', err);
             // エラーハンドリングはonSave内で行われる
+          } finally {
+            // blur処理終了フラグをリセット
+            isBlurringRef.current = false;
           }
           return;
         }
@@ -194,11 +210,17 @@ export const InlineEditableField: React.FC<InlineEditableFieldProps> = memo(({
       const originalVal = value ?? '';
       if (String(currentVal) === String(originalVal)) {
         console.log('[InlineEditableField.handleBlur] No change - canceling');
+        isBlurringRef.current = false;
         cancelEdit();
         return;
       }
       console.log('[InlineEditableField.handleBlur] Calling saveValue()');
-      await saveValue();
+      try {
+        await saveValue();
+      } finally {
+        // blur処理終了フラグをリセット
+        isBlurringRef.current = false;
+      }
     }
   };
 
