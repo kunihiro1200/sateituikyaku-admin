@@ -185,6 +185,13 @@ export default function BuyersPage() {
                   
                   console.log(`[BuyersPage] Checking buyer ${b.buyer_number}: calculated_status="${b.calculated_status}", displayName="${displayName}", selectedCalculatedStatus="${selectedCalculatedStatus}"`);
                   
+                  // デバッグ：文字列の長さと文字コードを出力
+                  if (b.calculated_status && displayName) {
+                    console.log(`[BuyersPage] Length check: calculated_status.length=${b.calculated_status.length}, displayName.length=${displayName.length}`);
+                    console.log(`[BuyersPage] Char codes: calculated_status=[${Array.from(b.calculated_status).map(c => c.charCodeAt(0)).join(',')}]`);
+                    console.log(`[BuyersPage] Char codes: displayName=[${Array.from(displayName).map(c => c.charCodeAt(0)).join(',')}]`);
+                  }
+                  
                   // バックエンドのcalculated_statusは既に日本語（例: "内覧日前日", "担当(Y)", "当日TEL(Y)"）
                   // フィルタリングは日本語の表示名で直接比較
                   const matches = b.calculated_status === displayName;
