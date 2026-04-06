@@ -169,8 +169,8 @@ export class BuyerService {
         case 'threeCallUnchecked': {
           // ３回架電未: ３回架電確認済み = "3回架電未" AND (【問合メール】電話対応 = "不通" OR "未")
           query = query
-            .eq('three_call_confirmed', '3回架電未')
-            .or('inquiry_email_phone_response.eq.不通,inquiry_email_phone_response.eq.未');
+            .eq('three_calls_confirmed', '3回架電未')
+            .or('inquiry_email_phone.eq.不通,inquiry_email_phone.eq.未');
           break;
         }
         
