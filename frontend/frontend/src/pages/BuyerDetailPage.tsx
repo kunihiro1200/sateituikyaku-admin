@@ -242,13 +242,34 @@ export default function BuyerDetailPage() {
   };
 
   // owned_home_hearing_result が必須かどうかを判定するヘルパー
-  // ISNOTBLANK([問合時持家ヒアリング]) のみ（受付日条件なし）
+  // AND([受付日]>="2026/3/30", ISNOTBLANK([問合時持家ヒアリング]))
   const isHomeHearingResultRequired = (data: any): boolean => {
+    // 条件1: 受付日が2026-03-30以降であること
+    if (!data.reception_date) return false;
+    
+    try {
+      const receptionDate = new Date(data.reception_date);
+      // Invalid Dateのチェック
+      if (isNaN(receptionDate.getTime())) {
+        console.error('Invalid reception_date:', data.reception_date);
+        return false;
+      }
+      
+      const thresholdDate = new Date('2026-03-30');
+      if (receptionDate < thresholdDate) return false;
+    } catch (error) {
+      console.error('Date comparison error:', error);
+      return false;
+    }
+
+    // 条件2: 問合時持家ヒアリングが空白でないこと
     if (!data.owned_home_hearing_inquiry) return false;
     const trimmed = String(data.owned_home_hearing_inquiry).trim();
     if (trimmed.length === 0) return false;
-    // 「不要」または「未」の場合は必須扱いにしない
+    
+    // 条件3: 「不要」または「未」の場合は必須扱いにしない
     if (trimmed === '不要' || trimmed === '未') return false;
+
     return true;
   };
 
@@ -1740,14 +1761,6 @@ TEL：097-533-2022`;
                 {section.fields.map((field: any, fieldIndex: number) => {
                   const value = buyer[field.key];
                   
-                  // 「持家ヒアリング結果」フィールドは「問合時持家ヒアリング」が「不要」または「未」の場合は非表示
-                  if (field.key === 'owned_home_hearing_result') {
-                    const inquiry = buyer.owned_home_hearing_inquiry;
-                    if (inquiry === '不要' || inquiry === '未') {
-                      return null; // フィールドを非表示
-                    }
-                  }
-                  
                   // multilineフィールドは全幅で表示
                   // company_name は broker_inquiry と同じ行に並べるため xs=6
                   // isMobile 時は全フィールドを xs=12 の1カラムに
@@ -2446,7 +2459,11 @@ TEL：097-533-2022`;
 
                     // owned_home_hearing_result フィールドは特別処理（4択ボタン・条件付き表示）
                     if (field.key === 'owned_home_hearing_result') {
-                      if (!buyer.owned_home_hearing_inquiry) return null;
+                      const inquiry = buyer.owned_home_hearing_inquiry;
+                      // 問合時持家ヒアリングが空、「不要」、「未」の場合は非表示
+                      if (!inquiry || inquiry === '不要' || inquiry === '未') {
+                        return null;
+                      }
                       const RESULT_OPTIONS = ['持家（マンション）', '持家（戸建）', '賃貸', '他不明'];
                       const showValuationText = ['持家（マンション）', '持家（戸建）'].includes(
                         buyer.owned_home_hearing_result
@@ -2456,10 +2473,6 @@ TEL：097-533-2022`;
                         <Grid item xs={12} key={`${section.title}-${field.key}`}>
                           <Box sx={{
                             display: 'flex', flexDirection: 'column', gap: 0.5,
-                            border: isResultMissing ? '2px solid #f44336' : 'none',
-                            borderRadius: isResultMissing ? 1 : 0,
-                            p: isResultMissing ? 0.5 : 0,
-                            bgcolor: isResultMissing ? 'rgba(244,67,54,0.05)' : 'transparent',
                           }}>
                             <Typography variant="caption" color={isResultMissing ? 'error' : 'text.secondary'} sx={{ fontWeight: isResultMissing ? 'bold' : 'normal' }}>
                               {field.label}{isResultMissing ? ' *' : ''}
@@ -2495,6 +2508,8 @@ TEL：097-533-2022`;
                                       py: 0.5,
                                       fontWeight: isSelected ? 'bold' : 'normal',
                                       borderRadius: 1,
+                                      // 必須条件を満たしているが未選択の場合は赤枠
+                                      border: isResultMissing && !isSelected ? '2px solid red' : undefined,
                                     }}
                                   >
                                     {option}
