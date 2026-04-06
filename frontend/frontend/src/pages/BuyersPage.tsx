@@ -87,7 +87,7 @@ export default function BuyersPage() {
     'visitCompleted': '内覧済み',    // ✅ 買主用（バックエンドと一致）
     'todayCall': '当日TEL',
     'todayCallWithInfo': '当日TEL（内容）',
-    'threeCallUnchecked': '３回架電未',  // ✅ 買主用（新規追加）
+    'threeCallUnchecked': '3回架電未',  // ✅ 買主用（新規追加）
     'inquiryEmailUnanswered': '問合メール未対応',  // ✅ 買主用（新規追加 2026年4月）
     'brokerInquiry': '業者問合せあり',  // ✅ 買主用（新規追加 2026年4月）
     'generalViewingSellerContactPending': '一般媒介_内覧後売主連絡未',  // ✅ 買主用（新規追加 2026年4月）
