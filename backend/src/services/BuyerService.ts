@@ -1857,7 +1857,7 @@ export class BuyerService {
       const receptionDate = buyer.reception_date || '';
       const followUpAssignee = buyer.follow_up_assignee || '';
       const latestStatus = buyer.latest_status || '';
-      const viewingPromotionUnnecessary = buyer.viewing_promotion_unnecessary || '';
+      const viewingPromotionNotNeeded = buyer.viewing_promotion_not_needed || '';
       const viewingPromotionSender = buyer.viewing_promotion_sender || '';
       const brokerInquiryField = buyer.broker_inquiry || '';
       const inquirySource = buyer.inquiry_source || '';
@@ -1876,11 +1876,12 @@ export class BuyerService {
           !latestViewingDate &&
           !followUpAssignee &&
           !latestStatus &&
-          viewingPromotionUnnecessary !== '不要' &&
+          viewingPromotionNotNeeded !== '不要' &&
           !viewingPromotionSender &&
           !brokerInquiryField &&
           inquirySource !== '配信希望アンケート' &&
           !inquirySource.includes('ピンリッチ') &&
+          !inquirySource.includes('2件目以降紹介') &&
           inquiryConfidence !== 'e（買付物件の問合せ）' &&
           inquiryConfidence !== 'd（資料送付不要、条件不適合など）' &&
           inquiryConfidence !== 'b（内覧検討）'
@@ -1890,7 +1891,7 @@ export class BuyerService {
       }
       
       // 5. ピンリッチ未登録
-      const pinrich = buyer.pinrich_status || '';
+      const pinrich = buyer.pinrich || '';
       const email = buyer.email || '';
       
       if (
