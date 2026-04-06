@@ -306,6 +306,11 @@ router.post('/sync', async (_req: Request, res: Response) => {
     }
 
     const result = await buyerSyncService.syncAll();
+    
+    // 🆕 キャッシュを無効化（サイドバーが即座に更新されるように）
+    invalidateBuyerStatusCache();
+    console.log('[POST /buyers/sync] Buyer status cache invalidated');
+    
     res.json(result);
   } catch (error: any) {
     console.error('Error syncing buyers:', error);
