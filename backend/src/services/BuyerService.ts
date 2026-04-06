@@ -1813,105 +1813,17 @@ export class BuyerService {
       // - 内覧済み、未査定、査定（郵送）、当日TEL未着手、Pinrich空欄、専任、一般、訪問後他決、未訪問他決、当日TEL（内容）
       
       // 🆕 新カテゴリの条件式（2026年4月）
+      // ✅ 修正：calculated_statusを使用してカウント（優先度を考慮）
       
-      // 1. 問合メール未対応
-      const inquiryEmailPhone = buyer.inquiry_email_phone || '';
-      const inquiryEmailReply = buyer.inquiry_email_reply || '';
-      const latestViewingDate = buyer.latest_viewing_date || '';
-      
-      if (
-        inquiryEmailPhone === '未' ||
-        inquiryEmailReply === '未' ||
-        (
-          !latestViewingDate &&
-          (inquiryEmailPhone === '不要' || inquiryEmailPhone === '不要') &&
-          (inquiryEmailReply === '未' || !inquiryEmailReply)
-        )
-      ) {
+      if (status === '問合メール未対応') {
         result.inquiryEmailUnanswered++;
-      }
-      
-      // 2. 業者問合せあり
-      const vendorSurvey = buyer.vendor_survey || '';
-      if (vendorSurvey === '未') {
+      } else if (status === '業者問合せあり') {
         result.brokerInquiry++;
-      }
-      
-      // 3. 一般媒介_内覧後売主連絡未
-      const viewingTypeGeneral = buyer.viewing_type_general || '';
-      const postViewingSellerContact = buyer.post_viewing_seller_contact || '';
-      
-      if (
-        (
-          latestViewingDate >= '2026-03-20' &&
-          latestViewingDate < todayStr &&
-          viewingTypeGeneral &&
-          (postViewingSellerContact === '未' || !postViewingSellerContact)
-        ) ||
-        postViewingSellerContact === '未'
-      ) {
+      } else if (status === '一般媒介_内覧後売主連絡未') {
         result.generalViewingSellerContactPending++;
-      }
-      
-      // 4. 要内覧促進客
-      const receptionDate = buyer.reception_date || '';
-      const followUpAssignee = buyer.follow_up_assignee || '';
-      const latestStatus = buyer.latest_status || '';
-      const viewingPromotionNotNeeded = buyer.viewing_promotion_not_needed || '';
-      const viewingPromotionSender = buyer.viewing_promotion_sender || '';
-      const brokerInquiryField = buyer.broker_inquiry || '';
-      const inquirySource = buyer.inquiry_source || '';
-      const inquiryConfidence = buyer.inquiry_confidence || '';
-      
-      // broker_inquiry が空（null, '', 'null'）かチェック
-      const isBrokerInquiryEmpty = !brokerInquiryField || brokerInquiryField === 'null';
-      
-      if (receptionDate) {
-        const receptionDateObj = new Date(receptionDate);
-        const fourteenDaysAgo = new Date(today);
-        fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
-        const fourDaysAgo = new Date(today);
-        fourDaysAgo.setDate(fourDaysAgo.getDate() - 4);
-        
-        if (
-          receptionDateObj >= fourteenDaysAgo &&
-          receptionDateObj <= fourDaysAgo &&
-          !latestViewingDate &&
-          !followUpAssignee &&
-          !latestStatus &&
-          viewingPromotionNotNeeded !== '不要' &&
-          !viewingPromotionSender &&
-          isBrokerInquiryEmpty &&
-          inquirySource !== '配信希望アンケート' &&
-          !inquirySource.includes('ピンリッチ') &&
-          !inquirySource.includes('2件目以降紹介') &&
-          inquiryConfidence !== 'e（買付物件の問合せ）' &&
-          inquiryConfidence !== 'd（資料送付不要、条件不適合など）' &&
-          inquiryConfidence !== 'b（内覧検討）'
-        ) {
-          result.viewingPromotionRequired++;
-        }
-      }
-      
-      // 5. ピンリッチ未登録
-      const pinrich = buyer.pinrich || '';
-      const email = buyer.email || '';
-      
-      // pinrich が空（null, '', 'null'）かチェック
-      const isPinrichEmpty = !pinrich || pinrich === 'null';
-      
-      if (
-        (
-          isPinrichEmpty &&
-          email &&
-          isBrokerInquiryEmpty
-        ) ||
-        (
-          pinrich === '登録無し' &&
-          email &&
-          isBrokerInquiryEmpty
-        )
-      ) {
+      } else if (status === '要内覧促進客') {
+        result.viewingPromotionRequired++;
+      } else if (status === 'ピンリッチ未登録') {
         result.pinrichUnregistered++;
       }
     });
