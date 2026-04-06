@@ -1810,13 +1810,13 @@ export class BuyerService {
       // 1. 問合メール未対応
       const inquiryEmailPhone = buyer.inquiry_email_phone || '';
       const inquiryEmailReply = buyer.inquiry_email_reply || '';
-      const viewingDate = buyer.viewing_date || '';
+      const latestViewingDate = buyer.latest_viewing_date || '';
       
       if (
         inquiryEmailPhone === '未' ||
         inquiryEmailReply === '未' ||
         (
-          !viewingDate &&
+          !latestViewingDate &&
           (inquiryEmailPhone === '不要' || inquiryEmailPhone === '不要') &&
           (inquiryEmailReply === '未' || !inquiryEmailReply)
         )
