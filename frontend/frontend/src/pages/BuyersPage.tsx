@@ -88,6 +88,11 @@ export default function BuyersPage() {
     'todayCall': '当日TEL',
     'todayCallWithInfo': '当日TEL（内容）',
     'threeCallUnchecked': '３回架電未',  // ✅ 買主用（新規追加）
+    'inquiryEmailUnanswered': '問合メール未対応',  // ✅ 買主用（新規追加 2026年4月）
+    'brokerInquiry': '業者問合せあり',  // ✅ 買主用（新規追加 2026年4月）
+    'generalViewingSellerContactPending': '一般媒介_内覧後売主連絡未',  // ✅ 買主用（新規追加 2026年4月）
+    'viewingPromotionRequired': '要内覧促進客',  // ✅ 買主用（新規追加 2026年4月）
+    'pinrichUnregistered': 'ピンリッチ未登録',  // ✅ 買主用（新規追加 2026年4月）
     'unvaluated': '未査定',
     'mailingPending': '査定（郵送）',
     'todayCallNotStarted': '当日TEL_未着手',
