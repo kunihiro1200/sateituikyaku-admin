@@ -778,18 +778,12 @@ export class BuyerService {
     }
 
     // DB更新（buyer_numberカラムを使用）
-    console.log('[updateWithSync] Before DB update - buyerNumber:', buyerNumber);
-    console.log('[updateWithSync] allowedData:', JSON.stringify(allowedData, null, 2));
-    
     const { data, error } = await this.supabase
       .from('buyers')
       .update(allowedData)
       .eq('buyer_number', buyerNumber)
       .select()
       .single();
-
-    console.log('[updateWithSync] After DB update - error:', error);
-    console.log('[updateWithSync] After DB update - data:', data ? 'success' : 'null');
 
     if (error) {
       throw new Error(`Failed to update buyer: ${error.message}`);

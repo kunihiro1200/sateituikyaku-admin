@@ -1,3 +1,8 @@
+---
+inclusion: fileMatch
+fileMatchPattern: "**/seller*.{ts,tsx,js,md}"
+---
+
 # 売主テーブルのカラム定義（絶対に間違えないルール）
 
 ## ⚠️ 重要：売主の識別子

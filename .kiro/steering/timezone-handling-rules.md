@@ -1,3 +1,8 @@
+---
+inclusion: fileMatch
+fileMatchPattern: "**/*{date,time,Date,Time}*.{ts,tsx,js}"
+---
+
 # タイムゾーン処理ルール（絶対に間違えないルール）
 
 ## ⚠️ 重要：日本時間（JST）での日付比較

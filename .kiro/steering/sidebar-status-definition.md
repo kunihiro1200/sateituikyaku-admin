@@ -1,3 +1,8 @@
+---
+inclusion: fileMatch
+fileMatchPattern: "**/seller*.{ts,tsx,js,md}"
+---
+
 # サイドバーステータス定義（絶対に間違えないルール）
 
 ## ⚠️ 重要：サイドバーステータスの定義

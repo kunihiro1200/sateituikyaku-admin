@@ -1,3 +1,7 @@
+---
+inclusion: manual
+---
+
 # React useMemoの依存配列ルール（絶対に守るべきルール）
 
 ## ⚠️ 重要：useMemoの依存配列には参照元のデータを必ず含める

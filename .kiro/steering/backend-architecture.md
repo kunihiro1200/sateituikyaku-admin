@@ -1,6 +1,10 @@
 ---
 inclusion: always
 ---
+---
+inclusion: fileMatch
+fileMatchPattern: "backend/**/*.{ts,js}"
+---
 
 # バックエンドアーキテクチャ定義
 

@@ -149,17 +149,13 @@ export const InlineEditableField: React.FC<InlineEditableFieldProps> = memo(({
 
   // Handle blur to save (値が変わっていない場合はキャンセル)
   const handleBlur = async () => {
-    console.log('[InlineEditableField.handleBlur] START - isEditing:', isEditing, 'isSaving:', isSaving, 'isBlurring:', isBlurringRef.current);
-    
     // 既にblur処理中の場合は何もしない（重複呼び出しを防ぐ）
     if (isBlurringRef.current) {
-      console.log('[InlineEditableField.handleBlur] Already blurring - skipping');
       return;
     }
     
     // 既に保存処理中の場合は何もしない（重複呼び出しを防ぐ）
     if (isSaving) {
-      console.log('[InlineEditableField.handleBlur] Already saving - skipping');
       return;
     }
     
@@ -167,38 +163,26 @@ export const InlineEditableField: React.FC<InlineEditableFieldProps> = memo(({
       // blur処理開始フラグを立てる
       isBlurringRef.current = true;
       
-      console.log('[InlineEditableField.handleBlur] fieldType:', fieldType, 'editValue:', editValue, 'value:', value);
-      
       // 日付フィールドの場合、空文字とnullを区別して比較
       if (fieldType === 'date') {
-        const currentVal = editValue ?? '';
-        console.log('[InlineEditableField.handleBlur] date field - currentVal:', currentVal, 'value:', value);
+        // editValueが空文字、null、またはundefinedの場合は「削除」として扱う
+        const isEmpty = editValue === '' || editValue === null || editValue === undefined;
+        const hadValue = value !== '' && value !== null && value !== undefined;
         
-        // 元の値が空文字で新しい値も空文字の場合は「変更なし」
-        if (value === '' && currentVal === '') {
-          console.log('[InlineEditableField.handleBlur] No change (both empty) - canceling');
+        // 元の値が空で新しい値も空の場合は「変更なし」
+        if (!hadValue && isEmpty) {
           isBlurringRef.current = false;
           cancelEdit();
           return;
         }
-        // 元の値がnullまたは有効な日付で、新しい値が空文字の場合は「削除」として保存
-        // 空文字をnullに変換してから保存
-        if (value !== '' && currentVal === '') {
-          console.log('[InlineEditableField.handleBlur] Deleting date field - calling onSave(null)');
-          // editValueをnullに更新してから保存
-          updateValue(null);
-          // updateValueは非同期ではないが、stateの更新は次のレンダリングで反映されるため
-          // 直接onSaveを呼び出す
+        
+        // 元の値があって新しい値が空の場合は「削除」として保存
+        if (hadValue && isEmpty) {
           try {
             await onSave(null);
-            console.log('[InlineEditableField.handleBlur] onSave(null) completed successfully');
-            // 編集モードを終了（重複呼び出しを防ぐ）
-            cancelEdit();
           } catch (err) {
             console.error('[InlineEditableField.handleBlur] onSave(null) failed:', err);
-            // エラーハンドリングはonSave内で行われる
           } finally {
-            // blur処理終了フラグをリセット
             isBlurringRef.current = false;
           }
           return;
@@ -209,12 +193,10 @@ export const InlineEditableField: React.FC<InlineEditableFieldProps> = memo(({
       const currentVal = editValue ?? '';
       const originalVal = value ?? '';
       if (String(currentVal) === String(originalVal)) {
-        console.log('[InlineEditableField.handleBlur] No change - canceling');
         isBlurringRef.current = false;
         cancelEdit();
         return;
       }
-      console.log('[InlineEditableField.handleBlur] Calling saveValue()');
       try {
         await saveValue();
       } finally {

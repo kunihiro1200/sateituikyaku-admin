@@ -1,3 +1,7 @@
+---
+inclusion: manual
+---
+
 # GAS rowToObject関数の時刻列処理ルール（絶対に守るべきルール）
 
 ## ⚠️ 重要：時刻列のDate型処理

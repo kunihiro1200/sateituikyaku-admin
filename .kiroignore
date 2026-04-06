@@ -1,0 +1,14 @@
+# 大きなファイルをKiroのコンテキストから除外
+gas_buyer_complete_code.js
+gas_seller_complete_code.js
+
+# 完了済みのSpecファイル（必要に応じてコメントアウト）
+# .kiro/specs/*/design.md
+
+# ログファイル
+*.log
+auto-sync-log.txt
+
+# 一時ファイル
+*.tmp
+*.bak

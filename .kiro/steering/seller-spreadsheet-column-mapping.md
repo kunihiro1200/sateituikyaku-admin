@@ -1,3 +1,8 @@
+---
+inclusion: fileMatch
+fileMatchPattern: "**/seller*.{ts,tsx,js,md}"
+---
+
 # 売主スプレッドシートのカラムマッピング（完全版）
 
 ## ⚠️ 重要：このドキュメントが唯一の正解

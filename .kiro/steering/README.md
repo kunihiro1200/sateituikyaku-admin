@@ -1,122 +1,66 @@
 # ステアリングドキュメント構成
 
-## 📁 ディレクトリ構造
+## 📁 常時読み込み（最小限）
 
-### `.kiro/steering/`（ルート）
-**常に読み込まれる普遍的なルール**
+### 基本ルール（5つのみ）
+- `japanese-language.md` - 日本語応答
+- `project-isolation-rule.md` - プロジェクト隔離
+- `git-history-first-approach.md` - Git履歴優先
+- `file-encoding-protection.md` - エンコーディング保護
+- `encryption-key-protection.md` - 暗号化キー保護
 
-- `japanese-language.md` - 日本語応答設定
-- `project-isolation-rule.md` - プロジェクト隔離ルール（本番環境保護）
-- `git-history-first-approach.md` - Git履歴優先アプローチ
-- `file-encoding-protection.md` - ファイルエンコーディング保護
-- `backend-architecture.md` - バックエンドアーキテクチャ定義
-- `environment-definition.md` - 環境定義（本番環境とローカル環境）
-- `auto-sync-timing.md` - 自動同期のタイミング
-- `encryption-key-protection.md` - ENCRYPTION_KEY保護ルール
+## 📋 条件付き読み込み（fileMatch）
 
-### 売主（Seller）関連（常に読み込み）
-- `seller-table-column-definition.md` - 売主テーブルのカラム定義
-- `seller-spreadsheet-column-mapping.md` - 売主スプレッドシートのカラムマッピング
-- `sidebar-status-definition.md` - サイドバーステータス定義
+### 売主関連ファイル編集時のみ
+- `seller-table-column-definition.md` - `**/seller*.{ts,tsx,js,md}`
+- `seller-spreadsheet-column-mapping.md` - `**/seller*.{ts,tsx,js,md}`
+- `sidebar-status-definition.md` - `**/seller*.{ts,tsx,js,md}`
 
-### 物件（Property）関連（手動読み込み - `inclusion: manual`）
-以下のファイルは物件関連の作業時のみ手動で参照してください：
+### 買主関連ファイル編集時のみ
+- `buyer-spreadsheet-column-mapping.md` - `**/buyer*.{ts,tsx,js,md}`
+- `buyer-sidebar-status-definition.md` - `**/buyer*.{ts,tsx,js,md}`
 
-- `public-property-definition.md` - 公開物件の定義（公開中の条件）
-- `property-listing-sync-rules.md` - 物件リスト同期ルール
-- `property-listing-column-mapping.md` - 物件リストスプレッドシートのカラムマッピング
-- `property-coordinates-sync-rules.md` - 物件座標同期ルール
-- `property-comments-auto-sync-rule.md` - 物件コメントデータ自動同期ルール
+### バックエンド編集時のみ
+- `backend-architecture.md` - `backend/**/*.{ts,js}`
 
----
+### 日付・時刻関連編集時のみ
+- `timezone-handling-rules.md` - `**/*{date,time,Date,Time}*.{ts,tsx,js}`
 
-### `.kiro/restore-guides/`（ステアリングディレクトリの外）
-**特定の機能が壊れた時だけ手動で参照する復元ガイド**
+## 🔧 手動読み込み（`#ファイル名`で参照）
 
-復元ガイドは`.kiro/restore-guides/`に保存されています（ステアリングルールとして自動読み込みされません）。
+### デバッグ系
+- `#pagination-debugging-checklist`
+- `#cache-invalidation-checklist`
+- `#gas-debugging-checklist`
+- `#frontend-backend-debugging-checklist`
 
-#### 公開物件サイト関連
-- `google-maps-marker-display-fix.md` - 地図のピン表示修正
-- `estimate-pdf-generation-fix.md` - 概算書PDF生成修正
-- `show-public-only-default-fix.md` - 「公開中のみ表示」デフォルト設定
-- `public-property-performance-critical-rules.md` - パフォーマンス重要ルール
-- `list-view-images-must-always-show.md` - 一覧画面の画像表示ルール
+### GAS作業時
+- `#gas-sidebar-counts-update-guide`
+- `#gas-file-organization`
+- `#gas-modification-safety-rules`
+- `#gas-rowtoobject-time-column-handling`
 
-#### データ同期関連
-- `storage-location-manual-flag-implementation.md` - 格納先URL自動同期除外
-- `gyomu-list-cache-optimization.md` - 業務リストキャッシュ最適化
+### 特殊ケース
+- `#environment-definition` - 環境確認時
+- `#identifier-prefix-rules` - 識別子確認時
+- `#deploy-procedure` - デプロイ時
+- `#auto-sync-timing` - 同期タイミング確認時
 
-#### データ分類・検証
-- `atbb-status-classification.md` - atbb_status分類定義
-- `duplicate-detection.md` - 重複宣言の検出と防止
-- `frontend-data-type-validation.md` - フロントエンドデータ型検証
+### Spec作成時
+- `#spec-file-size-guidelines` - Specファイルサイズガイドライン
 
----
+## 🚫 除外ファイル（.kiroignore）
 
-### `.kiro/sessions/`（ステアリングディレクトリの外）
-**過去のセッション記録（参考用）**
+以下のファイルはKiroのコンテキストから除外されています：
 
-セッション記録は`.kiro/sessions/`に保存されています（ステアリングルールとして自動読み込みされません）。
+- `gas_buyer_complete_code.js` - 大きなGASファイル（723行）
+- `gas_seller_complete_code.js` - 大きなGASファイル
+- `*.log` - ログファイル
+- `auto-sync-log.txt` - 自動同期ログ
 
-- `session-2026-01-25-manual-refresh-buttons.md`
-- `session-2026-01-25-panorama-estimate-pdf-fix.md`
-- `session-2026-01-25-public-site-buttons-url-fix.md`
-- `session-2026-01-26-storage-location-auto-sync-exclusion.md`
-- `session-2026-01-27-cc6-image-and-scroll-position-fix.md`
-- `session-2026-01-27-encryption-issue-fix.md`
+**理由**: これらのファイルはトークン消費が大きく（30,000トークン以上）、セッションを短くする原因となるため。
 
 ---
 
-## 🔍 ドキュメントの使い方
-
-### セッション開始時
-ルートディレクトリ（`.kiro/steering/`）の以下のドキュメントが自動的に読み込まれます：
-
-**常に読み込まれるドキュメント**:
-- `japanese-language.md` - 日本語応答設定
-- `project-isolation-rule.md` - プロジェクト隔離ルール
-- `git-history-first-approach.md` - Git履歴優先アプローチ
-- `file-encoding-protection.md` - ファイルエンコーディング保護
-- `backend-architecture.md` - バックエンドアーキテクチャ定義
-- `environment-definition.md` - 環境定義
-- `auto-sync-timing.md` - 自動同期のタイミング
-- `encryption-key-protection.md` - ENCRYPTION_KEY保護ルール
-- `seller-table-column-definition.md` - 売主テーブルのカラム定義
-- `seller-spreadsheet-column-mapping.md` - 売主スプレッドシートのカラムマッピング
-- `sidebar-status-definition.md` - サイドバーステータス定義
-
-**物件関連の作業時のみ手動で参照**:
-- `#public-property-definition` - 公開物件の定義
-- `#property-listing-sync-rules` - 物件リスト同期ルール
-- `#property-listing-column-mapping` - 物件リストカラムマッピング
-- `#property-coordinates-sync-rules` - 物件座標同期ルール
-- `#property-comments-auto-sync-rule` - 物件コメント自動同期ルール
-
-### 問題が発生した時
-該当する機能の復元ガイド（`.kiro/restore-guides/`）を手動で参照してください。
-
-例：
-- 地図のピンが表示されない → `.kiro/restore-guides/google-maps-marker-display-fix.md`
-- 概算書PDFが生成されない → `.kiro/restore-guides/estimate-pdf-generation-fix.md`
-- 初回ロードが遅い → `.kiro/restore-guides/public-property-performance-critical-rules.md`
-
----
-
-## 📝 復元依頼の仕方
-
-各復元ガイドには「次回の復元依頼の仕方」セクションがあります。
-
-**例**（地図のピン表示）:
-```
-地図のピンが表示されない。コミット b67e7fd に戻して。
-```
-
-これだけで、該当するドキュメントを参照して復元できます。
-
----
-
-**最終更新日**: 2026年2月28日  
-**更新内容**: 
-- `encryption-key-protection.md` を常時読み込みリストに追加
-- 物件関連のステアリングドキュメントを手動読み込み（`inclusion: manual`）に変更
-- 売主関連の作業時にコンテキストを軽量化
+**最終更新日**: 2026年4月6日
+**変更**: 常時読み込みを5ファイルのみに削減、大部分を条件付き/手動読み込みに変更、.kiroignoreを追加
