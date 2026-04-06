@@ -1952,6 +1952,59 @@ TEL：097-533-2022`;
                       );
                     }
 
+                    // inquiry_email_replyフィールドは特別処理（ボタン選択 + 即時保存）
+                    if (field.key === 'inquiry_email_reply') {
+                      const INQUIRY_EMAIL_REPLY_BTNS = ['済', '未', '不要'];
+                      return (
+                        <Grid item xs={12} key={`${section.title}-${field.key}`}>
+                          <Box sx={{
+                            display: 'flex', alignItems: 'center', gap: 1,
+                            border: missingRequiredFields.has('inquiry_email_reply') ? '2px solid #f44336' : 'none',
+                            borderRadius: missingRequiredFields.has('inquiry_email_reply') ? 1 : 0,
+                            p: missingRequiredFields.has('inquiry_email_reply') ? 0.5 : 0,
+                            bgcolor: missingRequiredFields.has('inquiry_email_reply') ? 'rgba(244,67,54,0.05)' : 'transparent',
+                          }}>
+                            <Typography variant="caption" color={missingRequiredFields.has('inquiry_email_reply') ? 'error' : 'text.secondary'} sx={{ whiteSpace: 'nowrap', flexShrink: 0, fontWeight: missingRequiredFields.has('inquiry_email_reply') ? 'bold' : 'normal' }}>
+                              {field.label}{missingRequiredFields.has('inquiry_email_reply') ? ' *' : ''}
+                            </Typography>
+                            <Box sx={{ display: 'flex', gap: 0.5, flex: 1 }}>
+                              {INQUIRY_EMAIL_REPLY_BTNS.map((opt) => {
+                                const isSelected = buyer?.[field.key] === opt;
+                                return (
+                                  <Button
+                                    key={opt}
+                                    size="small"
+                                    variant={isSelected ? 'contained' : 'outlined'}
+                                    color={opt === '済' ? 'success' : opt === '未' ? 'error' : 'primary'}
+                                    onClick={async () => {
+                                      const newValue = isSelected ? '' : opt;
+                                      setBuyer((prev: any) => prev ? { ...prev, [field.key]: newValue } : prev);
+                                      handleFieldChange(section.title, field.key, newValue);
+                                      setMissingRequiredFields(prev => {
+                                        const next = new Set(prev);
+                                        if (newValue && String(newValue).trim()) next.delete('inquiry_email_reply');
+                                        else next.add('inquiry_email_reply');
+                                        return next;
+                                      });
+                                      // SAVE_BUTTON_FIELDS に含まれるため handleInlineFieldSave は呼ばない
+                                    }}
+                                    sx={{
+                                      flex: 1,
+                                      py: 0.5,
+                                      fontWeight: isSelected ? 'bold' : 'normal',
+                                      borderRadius: 1,
+                                    }}
+                                  >
+                                    {opt}
+                                  </Button>
+                                );
+                              })}
+                            </Box>
+                          </Box>
+                        </Grid>
+                      );
+                    }
+
                     // distribution_typeフィールドは特別処理（必須・ボタン選択UI）
                     if (field.key === 'distribution_type') {
                       const isDistributionMissing = missingRequiredFields.has('distribution_type');
