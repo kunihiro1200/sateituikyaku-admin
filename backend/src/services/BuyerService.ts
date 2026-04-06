@@ -2652,4 +2652,104 @@ export class BuyerService {
         Math.sin(dLng / 2);
     return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   }
+
+  /**
+   * buyer_sidebar_countsテーブルを更新（バックエンドから直接実行）
+   * GASからの挿入が失敗するため、バックエンドから直接更新する
+   * 
+   * @returns 更新結果
+   */
+  async updateSidebarCountsTable(): Promise<{
+    success: boolean;
+    rowsInserted: number;
+    error?: string;
+  }> {
+    const startTime = Date.now();
+    console.log('[BuyerService.updateSidebarCountsTable] ===== START =====');
+    
+    try {
+      // getSidebarCountsFallback()を呼び出して計算
+      console.log('[BuyerService.updateSidebarCountsTable] Calling getSidebarCountsFallback()...');
+      const { categoryCounts, normalStaffInitials } = await this.getSidebarCountsFallback();
+      
+      // buyer_sidebar_countsテーブルを全削除
+      console.log('[BuyerService.updateSidebarCountsTable] Deleting all rows from buyer_sidebar_counts...');
+      const { error: deleteError } = await this.supabase
+        .from('buyer_sidebar_counts')
+        .delete()
+        .neq('category', '___never___'); // 全件削除
+      
+      if (deleteError) {
+        console.error('[BuyerService.updateSidebarCountsTable] Failed to delete:', deleteError);
+        return {
+          success: false,
+          rowsInserted: 0,
+          error: `Failed to delete: ${deleteError.message}`
+        };
+      }
+      
+      // 挿入するデータを構築
+      const rows: Array<{
+        category: string;
+        count: number;
+        label: string | null;
+        assignee: string | null;
+        updated_at: string;
+      }> = [];
+      
+      const now = new Date().toISOString();
+      
+      // 固定カテゴリ
+      rows.push({ category: 'viewingDayBefore', count: categoryCounts.viewingDayBefore || 0, label: null, assignee: null, updated_at: now });
+      rows.push({ category: 'todayCall', count: categoryCounts.todayCall || 0, label: null, assignee: null, updated_at: now });
+      rows.push({ category: 'threeCallUnchecked', count: categoryCounts.threeCallUnchecked || 0, label: null, assignee: null, updated_at: now });
+      rows.push({ category: 'inquiryEmailUnanswered', count: categoryCounts.inquiryEmailUnanswered || 0, label: null, assignee: null, updated_at: now });
+      rows.push({ category: 'brokerInquiry', count: categoryCounts.brokerInquiry || 0, label: null, assignee: null, updated_at: now });
+      rows.push({ category: 'generalViewingSellerContactPending', count: categoryCounts.generalViewingSellerContactPending || 0, label: null, assignee: null, updated_at: now });
+      rows.push({ category: 'viewingPromotionRequired', count: categoryCounts.viewingPromotionRequired || 0, label: null, assignee: null, updated_at: now });
+      rows.push({ category: 'pinrichUnregistered', count: categoryCounts.pinrichUnregistered || 0, label: null, assignee: null, updated_at: now });
+      
+      // 担当別カテゴリ
+      for (const [assignee, count] of Object.entries(categoryCounts.assignedCounts || {})) {
+        rows.push({ category: 'assigned', count: count as number, label: null, assignee, updated_at: now });
+      }
+      
+      // 当日TEL担当別カテゴリ
+      for (const [assignee, count] of Object.entries(categoryCounts.todayCallAssignedCounts || {})) {
+        rows.push({ category: 'todayCallAssigned', count: count as number, label: null, assignee, updated_at: now });
+      }
+      
+      console.log(`[BuyerService.updateSidebarCountsTable] Inserting ${rows.length} rows...`);
+      
+      // 一括挿入
+      const { error: insertError } = await this.supabase
+        .from('buyer_sidebar_counts')
+        .insert(rows);
+      
+      if (insertError) {
+        console.error('[BuyerService.updateSidebarCountsTable] Failed to insert:', insertError);
+        return {
+          success: false,
+          rowsInserted: 0,
+          error: `Failed to insert: ${insertError.message}`
+        };
+      }
+      
+      const duration = Date.now() - startTime;
+      console.log(`[BuyerService.updateSidebarCountsTable] ===== SUCCESS ===== (${duration}ms, ${rows.length} rows inserted)`);
+      
+      return {
+        success: true,
+        rowsInserted: rows.length
+      };
+    } catch (error: any) {
+      const duration = Date.now() - startTime;
+      console.error(`[BuyerService.updateSidebarCountsTable] ===== ERROR ===== (${duration}ms):`, error);
+      return {
+        success: false,
+        rowsInserted: 0,
+        error: error.message
+      };
+    }
+  }
 }
