@@ -284,6 +284,37 @@ router.put('/:id', authenticateOrApiKey, async (req: Request, res: Response) => 
   }
 });
 
+// buyer_sidebar_countsテーブルを更新（バックエンドから直接実行）
+// 認証不要（公開エンドポイント）
+router.post('/update-sidebar-counts', async (_req: Request, res: Response) => {
+  try {
+    console.log('[POST /buyers/update-sidebar-counts] ===== START =====');
+    
+    const result = await buyerService.updateSidebarCountsTable();
+    
+    if (result.success) {
+      console.log(`[POST /buyers/update-sidebar-counts] ===== SUCCESS ===== (${result.rowsInserted} rows inserted)`);
+      res.json({
+        success: true,
+        rowsInserted: result.rowsInserted,
+        message: `buyer_sidebar_counts table updated successfully (${result.rowsInserted} rows inserted)`
+      });
+    } else {
+      console.error(`[POST /buyers/update-sidebar-counts] ===== FAILED =====:`, result.error);
+      res.status(500).json({
+        success: false,
+        error: result.error
+      });
+    }
+  } catch (error: any) {
+    console.error('[POST /buyers/update-sidebar-counts] ===== ERROR =====:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
 // 全てのルートに認証を適用（sidebar-countsの後、PUT /:id の後に配置）
 router.use(authenticate);
 
@@ -1258,36 +1289,6 @@ ${detailUrl}`;
     res.status(500).json({
       success: false,
       error: `メッセージの送信に失敗しました: ${error.message}`
-    });
-  }
-});
-
-// buyer_sidebar_countsテーブルを更新（バックエンドから直接実行）
-router.post('/update-sidebar-counts', async (_req: Request, res: Response) => {
-  try {
-    console.log('[POST /buyers/update-sidebar-counts] ===== START =====');
-    
-    const result = await buyerService.updateSidebarCountsTable();
-    
-    if (result.success) {
-      console.log(`[POST /buyers/update-sidebar-counts] ===== SUCCESS ===== (${result.rowsInserted} rows inserted)`);
-      res.json({
-        success: true,
-        rowsInserted: result.rowsInserted,
-        message: `buyer_sidebar_counts table updated successfully (${result.rowsInserted} rows inserted)`
-      });
-    } else {
-      console.error(`[POST /buyers/update-sidebar-counts] ===== FAILED =====:`, result.error);
-      res.status(500).json({
-        success: false,
-        error: result.error
-      });
-    }
-  } catch (error: any) {
-    console.error('[POST /buyers/update-sidebar-counts] ===== ERROR =====:', error);
-    res.status(500).json({
-      success: false,
-      error: error.message
     });
   }
 });
