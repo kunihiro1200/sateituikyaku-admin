@@ -1836,8 +1836,8 @@ export class BuyerService {
       
       if (
         (
-          viewingDate >= '2026-03-20' &&
-          viewingDate < todayStr &&
+          latestViewingDate >= '2026-03-20' &&
+          latestViewingDate < todayStr &&
           viewingTypeGeneral &&
           (postViewingSellerContact === '未' || !postViewingSellerContact)
         ) ||
@@ -1866,7 +1866,7 @@ export class BuyerService {
         if (
           receptionDateObj >= fourteenDaysAgo &&
           receptionDateObj <= fourDaysAgo &&
-          !viewingDate &&
+          !latestViewingDate &&
           !followUpAssignee &&
           !latestStatus &&
           viewingPromotionUnnecessary !== '不要' &&
