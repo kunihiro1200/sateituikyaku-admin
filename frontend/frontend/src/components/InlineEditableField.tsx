@@ -171,6 +171,8 @@ export const InlineEditableField: React.FC<InlineEditableFieldProps> = memo(({
           try {
             await onSave(null);
             console.log('[InlineEditableField.handleBlur] onSave(null) completed successfully');
+            // 編集モードを終了（重複呼び出しを防ぐ）
+            cancelEdit();
           } catch (err) {
             console.error('[InlineEditableField.handleBlur] onSave(null) failed:', err);
             // エラーハンドリングはonSave内で行われる
