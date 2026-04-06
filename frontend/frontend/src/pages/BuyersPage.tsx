@@ -231,11 +231,22 @@ export default function BuyersPage() {
 
         // バックグラウンドでサイドバーカウントと全件データを並列取得
         if (!sidebarLoadedRef.current) {
+          const fetchStartTime = Date.now();  // Requirements 5.4: 処理開始時刻
+          
           Promise.all([
             api.get('/api/buyers/sidebar-counts'),
             api.get('/api/buyers/status-categories-with-buyers')
           ]).then(([sidebarRes, buyersRes]) => {
             if (cancelled) return;
+            
+            const sidebarDuration = Date.now() - fetchStartTime;
+            console.log(`[INFO] Sidebar counts and buyers data fetched in ${sidebarDuration}ms`);  // Requirements 5.1
+            
+            // Requirements 5.2: 5秒超過時の警告ログ
+            if (sidebarDuration > 5000) {
+              console.warn(`[WARN] Sidebar fetch took ${sidebarDuration}ms (> 5000ms)`);
+            }
+            
             const sidebarResult = sidebarRes.data;
             const buyersResult = buyersRes.data as {
               categories: any[];
@@ -268,7 +279,8 @@ export default function BuyersPage() {
             sidebarLoadedRef.current = true;
             setDataReady(prev => !prev); // トリガー更新
           }).catch((err) => {
-            console.error('Background fetch failed:', err);
+            console.error('[ERROR] Background fetch failed:', err);  // Requirements 5.3
+            console.error('[ERROR] Stack trace:', (err as Error).stack);  // Requirements 5.3
             setSidebarLoading(false);
           });
         }

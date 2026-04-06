@@ -1742,11 +1742,35 @@ export class BuyerService {
     categoryCounts: any;
     normalStaffInitials: string[];
   }> {
-    // 🚨 重要：buyersテーブルから動的に計算（buyer_sidebar_countsテーブルは使用しない）
-    console.log('🔍 [BuyerService] getSidebarCounts called - calculating dynamically from buyers table');
+    const startTime = Date.now();  // 処理開始時刻（Requirements 5.1）
     
-    // 直接フォールバック（動的計算）を呼び出す
-    return this.getSidebarCountsFallback();
+    try {
+      // 🚨 重要：buyersテーブルから動的に計算（buyer_sidebar_countsテーブルは使用しない）
+      console.log('🔍 [BuyerService] getSidebarCounts called - calculating dynamically from buyers table');
+      
+      // 直接フォールバック（動的計算）を呼び出す
+      const result = await this.getSidebarCountsFallback();
+      
+      const duration = Date.now() - startTime;  // 処理時間
+      
+      // Requirements 5.1: 処理時間をログに記録
+      console.log(`[INFO] getSidebarCounts completed in ${duration}ms`);
+      
+      // Requirements 5.2: 5秒超過時の警告ログ
+      if (duration > 5000) {
+        console.warn(`[WARN] getSidebarCounts took ${duration}ms (> 5000ms)`);
+      }
+      
+      return result;
+    } catch (e) {
+      const duration = Date.now() - startTime;
+      
+      // Requirements 5.3: エラー内容とスタックトレースをログに記録
+      console.error(`[ERROR] getSidebarCounts error after ${duration}ms:`, e);
+      console.error('[ERROR] Stack trace:', (e as Error).stack);
+      
+      throw e;
+    }
   }
 
   /**
@@ -1876,93 +1900,122 @@ export class BuyerService {
     categoryCounts: any;
     normalStaffInitials: string[];
   }> {
-    console.log('📊 Calculating sidebar counts dynamically from all buyers');
+    const startTime = Date.now();  // 処理開始時刻（Requirements 5.1）
     
-    // サイドバーカウント専用の軽量クエリを使用（Requirements 4.1）
-    const allBuyersRaw = await this.fetchBuyersForSidebarCounts();
-    
-    // ステータスを計算
-    const allBuyers = allBuyersRaw.map(buyer => {
-      try {
-        const statusResult = calculateBuyerStatus(buyer);
-        return { ...buyer, calculated_status: statusResult.status, status_priority: statusResult.priority };
-      } catch (error) {
-        console.error(`[BuyerService] Error calculating status for buyer ${buyer.buyer_number}:`, error);
-        return { ...buyer, calculated_status: '', status_priority: 999 };
-      }
-    });
-    
-    // カテゴリカウントオブジェクトを構築
-    // 🚨 重要：買主リスト専用のキーのみを含める（売主専用のキーは削除）
-    const result: any = {
-      all: allBuyers.length,
-      viewingDayBefore: 0,  // ✅ 買主用：内覧日前日
-      todayCall: 0,          // ✅ 買主用：当日TEL
-      threeCallUnchecked: 0, // ✅ 買主用：３回架電未（新規）
-      assignedCounts: {} as Record<string, number>,  // ✅ 買主用：担当別
-      todayCallAssignedCounts: {} as Record<string, number>,  // ✅ 買主用：当日TEL担当別
-      // 🆕 新カテゴリ（2026年4月）
-      inquiryEmailUnanswered: 0,  // 問合メール未対応
-      brokerInquiry: 0,  // 業者問合せあり
-      generalViewingSellerContactPending: 0,  // 一般媒介_内覧後売主連絡未
-      viewingPromotionRequired: 0,  // 要内覧促進客
-      pinrichUnregistered: 0,  // ピンリッチ未登録
-    };
-    
-    // 今日の日付（YYYY-MM-DD形式）
-    const today = new Date();
-    const todayStr = today.toISOString().split('T')[0];
-    
-    // 各買主のステータスをカウント
-    allBuyers.forEach((buyer: any) => {
-      const status = buyer.calculated_status || '';
+    try {
+      console.log('📊 Calculating sidebar counts dynamically from all buyers');
       
-      // カテゴリキーへのマッピング（買主リスト専用）
-      if (status === '内覧日前日') {
-        result.viewingDayBefore++;  // ✅ 買主用：内覧日前日
-      } else if (status === '当日TEL') {
-        result.todayCall++;  // ✅ 買主用：当日TEL
-      } else if (status === '3回架電未') {
-        result.threeCallUnchecked++;  // ✅ 買主用：３回架電未（新規）
-      } else if (status.startsWith('当日TEL(')) {
-        // 当日TEL(Y) などの担当別
-        const match = status.match(/^当日TEL\((.+)\)$/);
-        if (match) {
-          const assignee = match[1];
-          result.todayCallAssignedCounts[assignee] = (result.todayCallAssignedCounts[assignee] || 0) + 1;
+      // Requirements 5.4: 各処理ステップの所要時間を記録
+      const fetchStart = Date.now();
+      // サイドバーカウント専用の軽量クエリを使用（Requirements 4.1）
+      const allBuyersRaw = await this.fetchBuyersForSidebarCounts();
+      const fetchDuration = Date.now() - fetchStart;
+      console.log(`[INFO] fetchBuyersForSidebarCounts completed in ${fetchDuration}ms`);
+      
+      // ステータスを計算
+      const calcStart = Date.now();
+      const allBuyers = allBuyersRaw.map(buyer => {
+        try {
+          const statusResult = calculateBuyerStatus(buyer);
+          return { ...buyer, calculated_status: statusResult.status, status_priority: statusResult.priority };
+        } catch (error) {
+          console.error(`[BuyerService] Error calculating status for buyer ${buyer.buyer_number}:`, error);
+          return { ...buyer, calculated_status: '', status_priority: 999 };
         }
-      } else if (status.startsWith('担当(')) {
-        // 担当(Y) などの担当別
-        const match = status.match(/^担当\((.+)\)$/);
-        if (match) {
-          const assignee = match[1];
-          result.assignedCounts[assignee] = (result.assignedCounts[assignee] || 0) + 1;  // ✅ 買主用：担当別
+      });
+      const calcDuration = Date.now() - calcStart;
+      console.log(`[INFO] Status calculation completed in ${calcDuration}ms`);
+      
+      // カテゴリカウントオブジェクトを構築
+      // 🚨 重要：買主リスト専用のキーのみを含める（売主専用のキーは削除）
+      const result: any = {
+        all: allBuyers.length,
+        viewingDayBefore: 0,  // ✅ 買主用：内覧日前日
+        todayCall: 0,          // ✅ 買主用：当日TEL
+        threeCallUnchecked: 0, // ✅ 買主用：３回架電未（新規）
+        assignedCounts: {} as Record<string, number>,  // ✅ 買主用：担当別
+        todayCallAssignedCounts: {} as Record<string, number>,  // ✅ 買主用：当日TEL担当別
+        // 🆕 新カテゴリ（2026年4月）
+        inquiryEmailUnanswered: 0,  // 問合メール未対応
+        brokerInquiry: 0,  // 業者問合せあり
+        generalViewingSellerContactPending: 0,  // 一般媒介_内覧後売主連絡未
+        viewingPromotionRequired: 0,  // 要内覧促進客
+        pinrichUnregistered: 0,  // ピンリッチ未登録
+      };
+      
+      // 今日の日付（YYYY-MM-DD形式）
+      const today = new Date();
+      const todayStr = today.toISOString().split('T')[0];
+      
+      // 各買主のステータスをカウント
+      allBuyers.forEach((buyer: any) => {
+        const status = buyer.calculated_status || '';
+        
+        // カテゴリキーへのマッピング（買主リスト専用）
+        if (status === '内覧日前日') {
+          result.viewingDayBefore++;  // ✅ 買主用：内覧日前日
+        } else if (status === '当日TEL') {
+          result.todayCall++;  // ✅ 買主用：当日TEL
+        } else if (status === '3回架電未') {
+          result.threeCallUnchecked++;  // ✅ 買主用：３回架電未（新規）
+        } else if (status.startsWith('当日TEL(')) {
+          // 当日TEL(Y) などの担当別
+          const match = status.match(/^当日TEL\((.+)\)$/);
+          if (match) {
+            const assignee = match[1];
+            result.todayCallAssignedCounts[assignee] = (result.todayCallAssignedCounts[assignee] || 0) + 1;
+          }
+        } else if (status.startsWith('担当(')) {
+          // 担当(Y) などの担当別
+          const match = status.match(/^担当\((.+)\)$/);
+          if (match) {
+            const assignee = match[1];
+            result.assignedCounts[assignee] = (result.assignedCounts[assignee] || 0) + 1;  // ✅ 買主用：担当別
+          }
         }
-      }
-      // 🚨 売主専用のカテゴリは削除（買主リストには不要）
-      // - 内覧済み、未査定、査定（郵送）、当日TEL未着手、Pinrich空欄、専任、一般、訪問後他決、未訪問他決、当日TEL（内容）
+        // 🚨 売主専用のカテゴリは削除（買主リストには不要）
+        // - 内覧済み、未査定、査定（郵送）、当日TEL未着手、Pinrich空欄、専任、一般、訪問後他決、未訪問他決、当日TEL（内容）
+        
+        // 🆕 新カテゴリの条件式（2026年4月）
+        // ✅ 修正：calculated_statusを使用してカウント（優先度を考慮）
+        
+        if (status === '問合メール未対応') {
+          result.inquiryEmailUnanswered++;
+        } else if (status === '業者問合せあり') {
+          result.brokerInquiry++;
+        } else if (status === '一般媒介_内覧後売主連絡未') {
+          result.generalViewingSellerContactPending++;
+        } else if (status === '要内覧促進客') {
+          result.viewingPromotionRequired++;
+        } else if (status === 'ピンリッチ未登録') {
+          result.pinrichUnregistered++;
+        }
+      });
       
-      // 🆕 新カテゴリの条件式（2026年4月）
-      // ✅ 修正：calculated_statusを使用してカウント（優先度を考慮）
+      // 通常スタッフのイニシャルを取得
+      const normalStaffInitials = await this.fetchNormalStaffInitials();
       
-      if (status === '問合メール未対応') {
-        result.inquiryEmailUnanswered++;
-      } else if (status === '業者問合せあり') {
-        result.brokerInquiry++;
-      } else if (status === '一般媒介_内覧後売主連絡未') {
-        result.generalViewingSellerContactPending++;
-      } else if (status === '要内覧促進客') {
-        result.viewingPromotionRequired++;
-      } else if (status === 'ピンリッチ未登録') {
-        result.pinrichUnregistered++;
+      const duration = Date.now() - startTime;
+      
+      // Requirements 5.1: 処理時間をログに記録
+      console.log(`[INFO] getSidebarCountsFallback completed in ${duration}ms`);
+      
+      // Requirements 5.2: 5秒超過時の警告ログ
+      if (duration > 5000) {
+        console.warn(`[WARN] getSidebarCountsFallback took ${duration}ms (> 5000ms)`);
       }
-    });
-    
-    // 通常スタッフのイニシャルを取得
-    const normalStaffInitials = await this.fetchNormalStaffInitials();
-    
-    // ✅ 修正: categoryCounts形式で返す（categories配列ではなく）
-    return { categoryCounts: result, normalStaffInitials };
+      
+      // ✅ 修正: categoryCounts形式で返す（categories配列ではなく）
+      return { categoryCounts: result, normalStaffInitials };
+    } catch (e) {
+      const duration = Date.now() - startTime;
+      
+      // Requirements 5.3: エラー内容とスタックトレースをログに記録
+      console.error(`[ERROR] getSidebarCountsFallback error after ${duration}ms:`, e);
+      console.error('[ERROR] Stack trace:', (e as Error).stack);
+      
+      throw e;
+    }
   }
 
   /**
