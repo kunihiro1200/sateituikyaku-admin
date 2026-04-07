@@ -461,6 +461,34 @@ export default function BuyerViewingResultPage() {
       buyer.inquiry_hearing
     );
 
+    // 後続担当のメールアドレスを取得（CallModePageと同じ仕組み）
+    const followUpAssignee = buyer.follow_up_assignee;
+    console.log('=== カレンダー後続担当デバッグ ===');
+    console.log('follow_up_assignee:', followUpAssignee);
+    
+    let assignedEmail = '';
+    if (followUpAssignee) {
+      // イニシャルまたは名前で従業員マスタを検索
+      const assignedEmployee = employees.find(e => 
+        e.initials === followUpAssignee || 
+        e.name === followUpAssignee
+      );
+      console.log('見つかった社員:', assignedEmployee?.name);
+      console.log('メールアドレス:', assignedEmployee?.email);
+      
+      if (assignedEmployee?.email) {
+        assignedEmail = assignedEmployee.email;
+      } else {
+        // 後続担当が従業員マスタに存在しない場合、エラーメッセージを表示
+        setSnackbar({
+          open: true,
+          message: `後続担当（${followUpAssignee}）が従業員マスタに見つかりません`,
+          severity: 'error',
+        });
+        return;
+      }
+    }
+
     // Googleカレンダー新規イベント作成URLを直接開く
     const params = new URLSearchParams({
       action: 'TEMPLATE',
@@ -472,7 +500,10 @@ export default function BuyerViewingResultPage() {
       params.append('dates', `${startDateStr}/${endDateStr}`);
     }
 
-    window.open(`https://calendar.google.com/calendar/render?${params.toString()}`, '_blank');
+    // 後続担当のカレンダーに直接作成（srcパラメータを使用）
+    const srcParam = assignedEmail ? `&src=${encodeURIComponent(assignedEmail)}` : '';
+    
+    window.open(`https://calendar.google.com/calendar/render?${params.toString()}${srcParam}`, '_blank');
     setCalendarOpened(true);
   };
 
