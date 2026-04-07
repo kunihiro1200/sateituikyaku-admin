@@ -3218,10 +3218,23 @@ HP：https://ifoo-oita.com/
 
       const statusLabel = getStatusLabel(editedStatus);
       
-      await api.post('/chat-notifications/send', {
-        sellerId: seller.id,
-        notificationType: statusLabel,
-        message: `${statusLabel}の通知\n\n売主: ${seller.name}\n決定日: ${editedExclusiveDecisionDate}\n競合: ${editedCompetitors.join(', ')}\n要因: ${editedExclusiveOtherDecisionFactors.join(', ')}`,
+      // ステータスに応じて適切なエンドポイントを選択
+      let endpoint = '';
+      if (statusLabel.includes('専任')) {
+        endpoint = `/chat-notifications/exclusive-contract/${seller.id}`;
+      } else if (statusLabel.includes('一般')) {
+        endpoint = `/chat-notifications/general-contract/${seller.id}`;
+      } else if (statusLabel.includes('訪問後他決')) {
+        endpoint = `/chat-notifications/post-visit-other-decision/${seller.id}`;
+      } else if (statusLabel.includes('未訪問他決') || statusLabel.includes('他決')) {
+        endpoint = `/chat-notifications/pre-visit-other-decision/${seller.id}`;
+      } else {
+        throw new Error('このステータスでは通知を送信できません');
+      }
+      
+      await api.post(endpoint, {
+        assignee: seller.assignedTo || employee?.name,
+        notes: `決定日: ${editedExclusiveDecisionDate}\n競合: ${editedCompetitors.join(', ')}\n要因: ${editedExclusiveOtherDecisionFactors.join(', ')}`,
       });
 
       setSuccessMessage(`${statusLabel}の通知を送信しました`);

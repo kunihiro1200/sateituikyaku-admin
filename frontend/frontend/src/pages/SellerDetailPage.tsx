@@ -581,9 +581,30 @@ const SellerDetailPage = () => {
       setSendingChatNotification(true);
       setError(null);
 
-      await api.post('/chat-notifications/send', {
-        sellerId: id,
-        notificationType,
+      // 通知タイプに応じて適切なエンドポイントを選択
+      let endpoint = '';
+      switch (notificationType) {
+        case 'general_contract':
+          endpoint = `/chat-notifications/general-contract/${id}`;
+          break;
+        case 'exclusive_contract':
+          endpoint = `/chat-notifications/exclusive-contract/${id}`;
+          break;
+        case 'post_visit_other_decision':
+          endpoint = `/chat-notifications/post-visit-other-decision/${id}`;
+          break;
+        case 'pre_visit_other_decision':
+          endpoint = `/chat-notifications/pre-visit-other-decision/${id}`;
+          break;
+        case 'property_introduction':
+          endpoint = `/chat-notifications/property-introduction/${id}`;
+          break;
+        default:
+          throw new Error('無効な通知タイプです');
+      }
+
+      await api.post(endpoint, {
+        assignee: seller?.assignedTo || employee?.name,
       });
 
       setSuccessMessage('Google Chat通知を送信しました');
