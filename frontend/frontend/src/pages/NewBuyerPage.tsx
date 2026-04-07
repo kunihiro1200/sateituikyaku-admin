@@ -21,7 +21,7 @@ import {
 } from '@mui/material';
 import { ArrowBack as ArrowBackIcon, OpenInNew } from '@mui/icons-material';
 import api from '../services/api';
-import PurchaseStatusBadge from '../components/PurchaseStatusBadge';
+import PropertyInfoCard from '../components/PropertyInfoCard';
 import { getPurchaseStatusText } from '../utils/purchaseStatusUtils';
 import { INQUIRY_SOURCE_OPTIONS } from '../utils/buyerInquirySourceOptions';
 import { LATEST_STATUS_OPTIONS } from '../utils/buyerLatestStatusOptions';
@@ -40,31 +40,6 @@ import {
   FLOOR_PLAN_OPTIONS,
 } from '../utils/buyerDesiredConditionsOptions';
 
-interface PropertyInfo {
-  property_number: string;
-  address: string;
-  property_type: string;
-  sales_price: number | null;
-  land_area: number | null;
-  building_area: number | null;
-  floor_plan?: string;
-  current_status?: string;
-  pre_viewing_notes?: string;
-  property_tax?: number;
-  management_fee?: number;
-  reserve_fund?: number;
-  parking?: string;
-  parking_fee?: number;
-  delivery?: string;
-  viewing_key?: string;
-  viewing_parking?: string;
-  viewing_notes?: string;
-  special_notes?: string;
-  memo?: string;
-  broker_response?: string | number;
-  offer_status?: string; // 買付フィールド
-}
-
 export default function NewBuyerPage() {
   const navigate = useNavigate();
   const [registeredBuyerNumber, setRegisteredBuyerNumber] = useState<string | null>(null);
@@ -74,8 +49,6 @@ export default function NewBuyerPage() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [propertyInfo, setPropertyInfo] = useState<PropertyInfo | null>(null);
-  const [loadingProperty, setLoadingProperty] = useState(false);
   const [nextBuyerNumber, setNextBuyerNumber] = useState<string>('');
   const [normalInitials, setNormalInitials] = useState<string[]>([]);
 
@@ -152,9 +125,6 @@ export default function NewBuyerPage() {
   const [nextAction, setNextAction] = useState('');
 
   useEffect(() => {
-    if (propertyNumber) {
-      fetchPropertyInfo(propertyNumber);
-    }
     // 次の買主番号を取得
     api.get('/api/buyers/next-buyer-number')
       .then(res => setNextBuyerNumber(res.data.buyerNumber))
@@ -163,20 +133,7 @@ export default function NewBuyerPage() {
     api.get('/api/employees/normal-initials')
       .then(res => setNormalInitials(res.data.initials || []))
       .catch(err => console.error('Failed to fetch normal initials:', err));
-  }, [propertyNumber]);
-
-  const fetchPropertyInfo = async (propNum: string) => {
-    setLoadingProperty(true);
-    try {
-      const response = await api.get(`/api/property-listings/${propNum}`);
-      setPropertyInfo(response.data);
-    } catch (error) {
-      console.error('Failed to fetch property info:', error);
-      setPropertyInfo(null);
-    } finally {
-      setLoadingProperty(false);
-    }
-  };
+  }, []);
 
 
   // 売主コピー検索ハンドラ
@@ -429,279 +386,37 @@ export default function NewBuyerPage() {
       <Grid container spacing={3}>
         {/* 左側: 物件情報 */}
         <Grid item xs={12} md={5}>
-          <Paper sx={{ p: 3, position: 'sticky', top: 16 }}>
-            {/* 買付状況バッジ - 物件情報エリアの最上部に表示 */}
-            <PurchaseStatusBadge
-              statusText={getPurchaseStatusText(latestStatus, propertyInfo?.offer_status)}
-            />
-            <Typography variant="h6" gutterBottom>物件情報</Typography>
-            
-            {/* 物件詳細リンクボタン */}
-            {propertyInfo && !loadingProperty && propertyNumberField && (
-              <Button
-                variant="outlined"
-                size="small"
-                fullWidth
-                startIcon={<OpenInNew />}
-                component="a"
-                href={`/property-listings/${propertyInfo.property_number}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="物件詳細を新しいタブで開く"
-                sx={{ mb: 2 }}
-              >
-                物件詳細を見る
-              </Button>
-            )}
-            
+          <Box sx={{ position: 'sticky', top: 16 }}>
+            {/* 物件番号入力フィールド */}
             <TextField
               fullWidth
               label="物件番号"
               value={propertyNumberField}
-              onChange={(e) => {
-                setPropertyNumberField(e.target.value);
-                if (e.target.value) {
-                  fetchPropertyInfo(e.target.value);
-                } else {
-                  setPropertyInfo(null);
-                }
-              }}
+              onChange={(e) => setPropertyNumberField(e.target.value)}
               sx={{ mb: 2 }}
             />
-
-            {loadingProperty && (
-              <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
-                <CircularProgress size={32} />
-              </Box>
+            
+            {/* PropertyInfoCard */}
+            {propertyNumberField && (
+              <PropertyInfoCard
+                propertyId={propertyNumberField}
+                buyer={{ latest_status: latestStatus }}
+                showCloseButton={false}
+              />
             )}
-
-            {propertyInfo && !loadingProperty && (
-              <Box>
-                {/* 業者への対応日付表示（今日より後の場合のみ） */}
-                {propertyInfo.broker_response && (() => {
-                  try {
-                    let brokerDateValue = propertyInfo.broker_response;
-
-                    // Excelシリアル値の場合は変換
-                    if (typeof brokerDateValue === 'number' || !isNaN(Number(brokerDateValue))) {
-                      const serialNumber = Number(brokerDateValue);
-                      const excelEpoch = new Date(1900, 0, 1);
-                      const daysOffset = serialNumber - 2; // Excelの1900年うるう年バグ対応
-                      brokerDateValue = new Date(excelEpoch.getTime() + daysOffset * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-                    }
-
-                    // 東京時間で今日の日付を取得
-                    const now = new Date();
-                    const tokyoNow = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Tokyo' }));
-                    const tokyoToday = new Date(tokyoNow.getFullYear(), tokyoNow.getMonth(), tokyoNow.getDate());
-
-                    const brokerDate = new Date(brokerDateValue);
-                    const tokyoBrokerDate = new Date(brokerDate.getFullYear(), brokerDate.getMonth(), brokerDate.getDate());
-
-                    // 今日より後の日付の場合のみ表示
-                    if (tokyoBrokerDate > tokyoToday) {
-                      const formattedDate = `${tokyoBrokerDate.getFullYear()}/${String(tokyoBrokerDate.getMonth() + 1).padStart(2, '0')}/${String(tokyoBrokerDate.getDate()).padStart(2, '0')}`;
-                      return (
-                        <Box
-                          sx={{
-                            mb: 3,
-                            px: 3,
-                            py: 1.5,
-                            background: '#ffeb3b',
-                            borderRadius: 1,
-                            border: '3px solid #d32f2f',
-                            boxShadow: '0 0 20px rgba(244, 67, 54, 0.6)',
-                            animation: 'blink 1.5s infinite, shake 0.5s infinite',
-                            '@keyframes blink': {
-                              '0%, 100%': { opacity: 1 },
-                              '50%': { opacity: 0.8 },
-                            },
-                            '@keyframes shake': {
-                              '0%, 100%': { transform: 'translateX(0)' },
-                              '25%': { transform: 'translateX(-2px)' },
-                              '75%': { transform: 'translateX(2px)' },
-                            },
-                          }}
-                        >
-                          <Typography
-                            sx={{
-                              color: '#d32f2f',
-                              fontWeight: 'bold',
-                              fontSize: '1.3rem',
-                              letterSpacing: '0.05em',
-                              textAlign: 'center',
-                            }}
-                          >
-                            ⚠️ 業者対応: {formattedDate} ⚠️
-                          </Typography>
-                        </Box>
-                      );
-                    }
-                  } catch (error) {
-                    console.error('Failed to parse broker_response date:', error);
-                  }
-                  return null;
-                })()}
-
-                {/* 特記・備忘録 - 最上部に配置 */}
-                {(propertyInfo.special_notes || propertyInfo.memo) && (
-                  <Box sx={{ mb: 3, p: 2, bgcolor: '#fff9e6', borderRadius: 1 }}>
-                    <Typography variant="subtitle2" fontWeight="bold" color="warning.dark" gutterBottom>
-                      ⚠️ 特記・備忘録
-                    </Typography>
-                    {propertyInfo.special_notes && (
-                      <Box sx={{ mb: 1 }}>
-                        <Typography variant="caption" color="text.secondary">特記</Typography>
-                        <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
-                          {propertyInfo.special_notes}
-                        </Typography>
-                      </Box>
-                    )}
-                    {propertyInfo.memo && (
-                      <Box>
-                        <Typography variant="caption" color="text.secondary">備忘録</Typography>
-                        <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
-                          {propertyInfo.memo}
-                        </Typography>
-                      </Box>
-                    )}
-                  </Box>
-                )}
-
-                {/* 内覧前伝達事項 - 2番目に重要 */}
-                {propertyInfo.pre_viewing_notes && (
-                  <Box sx={{ mb: 3, p: 2, bgcolor: '#e8f5e9', borderRadius: 1, border: '2px solid #2e7d32' }}>
-                    <Typography variant="subtitle2" fontWeight="bold" color="primary.main" gutterBottom>
-                      📋 内覧前伝達事項
-                    </Typography>
-                    <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
-                      {propertyInfo.pre_viewing_notes}
-                    </Typography>
-                  </Box>
-                )}
-
-                {/* 内覧情報 - 3番目に重要 */}
-                {(propertyInfo.viewing_key || propertyInfo.viewing_parking || propertyInfo.viewing_notes) && (
-                  <Box sx={{ mb: 3, p: 2, bgcolor: '#f5f5f5', borderRadius: 1, border: '1px solid #e0e0e0' }}>
-                    <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
-                      🔑 内覧情報
-                    </Typography>
-                    <Grid container spacing={1}>
-                      {propertyInfo.viewing_key && (
-                        <Grid item xs={12}>
-                          <Typography variant="caption" color="text.secondary">内覧時（鍵等）</Typography>
-                          <Typography variant="body2">{propertyInfo.viewing_key}</Typography>
-                        </Grid>
-                      )}
-                      {propertyInfo.viewing_parking && (
-                        <Grid item xs={12}>
-                          <Typography variant="caption" color="text.secondary">内覧時駐車場</Typography>
-                          <Typography variant="body2">{propertyInfo.viewing_parking}</Typography>
-                        </Grid>
-                      )}
-                      {propertyInfo.viewing_notes && (
-                        <Grid item xs={12}>
-                          <Typography variant="caption" color="text.secondary">内覧の時の伝達事項</Typography>
-                          <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
-                            {propertyInfo.viewing_notes}
-                          </Typography>
-                        </Grid>
-                      )}
-                    </Grid>
-                  </Box>
-                )}
-
-                {/* 基本情報 */}
-                <Box sx={{ mb: 3 }}>
-                  <Typography variant="subtitle2" fontWeight="bold" gutterBottom>基本情報</Typography>
-                  <Grid container spacing={2}>
-                    <Grid item xs={12}>
-                      <Typography variant="caption" color="text.secondary">住所</Typography>
-                      <Typography variant="body2" fontWeight="bold">{propertyInfo.address || '-'}</Typography>
-                    </Grid>
-                    <Grid item xs={6}>
-                      <Typography variant="caption" color="text.secondary">物件種別</Typography>
-                      <Typography variant="body2">{propertyInfo.property_type || '-'}</Typography>
-                    </Grid>
-                    <Grid item xs={6}>
-                      <Typography variant="caption" color="text.secondary">間取り</Typography>
-                      <Typography variant="body2">{propertyInfo.floor_plan || '-'}</Typography>
-                    </Grid>
-                    <Grid item xs={6}>
-                      <Typography variant="caption" color="text.secondary">価格</Typography>
-                      <Typography variant="body2" fontWeight="bold" color="primary.main">
-                        {propertyInfo.sales_price ? `${propertyInfo.sales_price.toLocaleString()}万円` : '-'}
-                      </Typography>
-                    </Grid>
-                    <Grid item xs={6}>
-                      <Typography variant="caption" color="text.secondary">現況</Typography>
-                      <Typography variant="body2">{propertyInfo.current_status || '-'}</Typography>
-                    </Grid>
-                  </Grid>
-                </Box>
-
-                {/* よく聞かれる項目 */}
-                <Box sx={{ mb: 2 }}>
-                  <Typography variant="subtitle2" fontWeight="bold" gutterBottom>よく聞かれる項目</Typography>
-                  <Grid container spacing={2}>
-                    {propertyInfo.property_tax && (
-                      <Grid item xs={6}>
-                        <Typography variant="caption" color="text.secondary">固定資産税</Typography>
-                        <Typography variant="body2" fontWeight="bold">
-                          {propertyInfo.property_tax.toLocaleString()}円
-                        </Typography>
-                      </Grid>
-                    )}
-                    {propertyInfo.management_fee && (
-                      <Grid item xs={6}>
-                        <Typography variant="caption" color="text.secondary">管理費</Typography>
-                        <Typography variant="body2" fontWeight="bold">
-                          {propertyInfo.management_fee.toLocaleString()}円
-                        </Typography>
-                      </Grid>
-                    )}
-                    {propertyInfo.reserve_fund && (
-                      <Grid item xs={6}>
-                        <Typography variant="caption" color="text.secondary">積立金</Typography>
-                        <Typography variant="body2" fontWeight="bold">
-                          {propertyInfo.reserve_fund.toLocaleString()}円
-                        </Typography>
-                      </Grid>
-                    )}
-                    {propertyInfo.parking && (
-                      <Grid item xs={6}>
-                        <Typography variant="caption" color="text.secondary">駐車場</Typography>
-                        <Typography variant="body2">{propertyInfo.parking}</Typography>
-                        {propertyInfo.parking_fee && (
-                          <Typography variant="caption" color="text.secondary">
-                            ({propertyInfo.parking_fee.toLocaleString()}円)
-                          </Typography>
-                        )}
-                      </Grid>
-                    )}
-                    {propertyInfo.delivery && (
-                      <Grid item xs={6}>
-                        <Typography variant="caption" color="text.secondary">引渡し</Typography>
-                        <Typography variant="body2">{propertyInfo.delivery}</Typography>
-                      </Grid>
-                    )}
-                  </Grid>
-                </Box>
-              </Box>
-            )}
-
-            {!propertyInfo && !loadingProperty && propertyNumberField && (
-              <Box sx={{ p: 3, textAlign: 'center', color: 'text.secondary' }}>
-                <Typography variant="body2">物件情報が見つかりませんでした</Typography>
-              </Box>
-            )}
-
+            
+            {/* 物件番号が空の場合のメッセージ */}
             {!propertyNumberField && (
-              <Box sx={{ p: 3, textAlign: 'center', color: 'text.secondary' }}>
-                <Typography variant="body2">物件番号を入力すると物件情報が表示されます</Typography>
-              </Box>
+              <Paper sx={{ p: 3 }}>
+                <Typography variant="h6" gutterBottom>物件情報</Typography>
+                <Box sx={{ p: 3, textAlign: 'center', color: 'text.secondary' }}>
+                  <Typography variant="body2">
+                    物件番号を入力すると物件情報が表示されます
+                  </Typography>
+                </Box>
+              </Paper>
             )}
-          </Paper>
+          </Box>
         </Grid>
 
         {/* 右側: 買主入力フォーム */}
