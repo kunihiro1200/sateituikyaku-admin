@@ -2088,6 +2088,8 @@ const CallModePage = () => {
         visitAssignee: editedAssignedTo || null,
         visitValuationAcquirer: acquirer || null,
         appointmentNotes: editedAppointmentNotes || null,
+        // カレンダーイベント作成用にappointmentDateも送信
+        ...(visitDateTimeStr && { appointmentDate: visitDateTimeStr }),
         // visitDateが空の場合はappointmentDateもクリア（表示フォールバックを防ぐ）
         ...(!visitDateTimeStr && { appointmentDate: null }),
         // visitAssigneeが空の場合はassignedToもクリア（表示フォールバックを防ぐ）
