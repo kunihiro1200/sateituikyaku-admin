@@ -4702,7 +4702,7 @@ HP：https://ifoo-oita.com/
                               
                               // タイトル: 【訪問】物件所在地
                               const propertyAddress = property?.address || seller.address || '物件所在地未設定';
-                              const title = encodeURIComponent(`【訪問】${propertyAddress}`);
+                              const title = `【訪問】${propertyAddress}`;
                               
                               // Google Map URL
                               const googleMapUrl = property?.googleMapUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(propertyAddress)}`;
@@ -4718,7 +4718,7 @@ HP：https://ifoo-oita.com/
                                 .join('\n');
                               
                               // 詳細情報（URLはそのまま記載するとGoogleカレンダーでクリック可能なリンクになる）
-                              const details = encodeURIComponent(
+                              const details = 
                                 `売主名: ${seller.name}\n` +
                                 `住所: ${seller.address}\n` +
                                 `電話: ${seller.phoneNumber}\n` +
@@ -4730,10 +4730,9 @@ HP：https://ifoo-oita.com/
                                 `訪問時注意点: ${seller.appointmentNotes || 'なし'}\n` +
                                 (seller.comments ? `\nコメント:\n${seller.comments}\n` : '') +
                                 `\n` +
-                                `コミュニケーション履歴（通話した内容）:\n${recentActivities || '履歴なし'}`
-                              );
+                                `コミュニケーション履歴（通話した内容）:\n${recentActivities || '履歴なし'}`;
                               
-                              const location = encodeURIComponent(propertyAddress);
+                              const location = propertyAddress;
                               
                               // 営担のメールアドレスを取得（visitAssigneeInitialsを優先、なければvisitAssignee、最後にassignedTo）
                               const assignedToValue = seller.visitAssigneeInitials || seller.visitAssignee || seller.assignedTo;
@@ -4777,7 +4776,16 @@ HP：https://ifoo-oita.com/
                                 calParams.append('add', assignedEmail);
                               }
                               
-                              window.open(`https://calendar.google.com/calendar/render?${calParams.toString()}`, '_blank');
+                              const calendarUrl = `https://calendar.google.com/calendar/render?${calParams.toString()}`;
+                              console.log('=== カレンダーURL生成 ===');
+                              console.log('title:', title);
+                              console.log('details:', details);
+                              console.log('location:', location);
+                              console.log('assignedEmail:', assignedEmail);
+                              console.log('生成されたURL:', calendarUrl);
+                              console.log('URLの長さ:', calendarUrl.length);
+                              
+                              window.open(calendarUrl, '_blank');
                             }}
                           >
                             📅 カレンダーで開く
