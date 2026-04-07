@@ -15,14 +15,14 @@ import { exclusionService } from '../services/ExclusionService';
 
 const router = Router();
 
-// Apply authentication to all routes
-router.use(authenticate);
+// Note: Authentication is applied to individual routes below
+// Do not use router.use(authenticate) here as it would affect all routes on /api/sellers path
 
 /**
  * Generate seller number
  * POST /sellers/generate-number
  */
-router.post('/generate-number', async (_req: Request, res: Response) => {
+router.post('/generate-number', authenticate, async (_req: Request, res: Response) => {
   try {
     const sellerNumber = await sellerNumberService.generateWithRetry();
     res.json({ sellerNumber });
@@ -44,6 +44,7 @@ router.post('/generate-number', async (_req: Request, res: Response) => {
  */
 router.post(
   '/check-duplicate',
+  authenticate,
   [
     body('phoneNumber').notEmpty().withMessage('Phone number is required'),
     body('email').optional().isEmail().withMessage('Invalid email format'),
@@ -90,6 +91,7 @@ router.post(
  */
 router.post(
   '/copy/:sellerNumber',
+  authenticate,
   [param('sellerNumber').matches(/^AA\d{5}$/).withMessage('Invalid seller number format')],
   async (req: Request, res: Response) => {
     try {
@@ -128,6 +130,7 @@ router.post(
  */
 router.post(
   '/buyers/copy/:buyerNumber',
+  authenticate,
   [param('buyerNumber').notEmpty().withMessage('Buyer number is required')],
   async (req: Request, res: Response) => {
     try {
@@ -166,6 +169,7 @@ router.post(
  */
 router.post(
   '/past-info',
+  authenticate,
   [
     body('phoneNumber').notEmpty().withMessage('Phone number is required'),
     body('email').optional().isEmail().withMessage('Invalid email format'),
@@ -210,6 +214,7 @@ router.post(
  */
 router.post(
   '/:id/inquiry',
+  authenticate,
   [
     param('id').isUUID().withMessage('Invalid seller ID'),
     body('inquirySite').notEmpty().withMessage('Inquiry site is required'),
@@ -254,6 +259,7 @@ router.post(
  */
 router.get(
   '/:id/inquiry',
+  authenticate,
   [param('id').isUUID().withMessage('Invalid seller ID')],
   async (req: Request, res: Response) => {
     try {
@@ -302,6 +308,7 @@ router.get(
  */
 router.put(
   '/:id/valuations',
+  authenticate,
   [
     param('id').isUUID().withMessage('Invalid seller ID'),
     body('valuationAmount1').optional().isNumeric(),
@@ -349,6 +356,7 @@ router.put(
  */
 router.post(
   '/:id/visit',
+  authenticate,
   [
     param('id').isUUID().withMessage('Invalid seller ID'),
     body('visitDate').notEmpty().isISO8601().withMessage('Valid visit date is required'),
@@ -392,6 +400,7 @@ router.post(
  */
 router.put(
   '/:id/follow-up-status',
+  authenticate,
   [
     param('id').isUUID().withMessage('Invalid seller ID'),
     body('unreachable').optional().isBoolean(),
@@ -449,6 +458,7 @@ router.put(
  */
 router.post(
   '/:id/document-delivery',
+  authenticate,
   [
     param('id').isUUID().withMessage('Invalid seller ID'),
     body('type').isIn(['email', 'mail']).withMessage('Type must be email or mail'),
@@ -497,6 +507,7 @@ router.post(
  */
 router.put(
   '/:id/assignees',
+  authenticate,
   [
     param('id').isUUID().withMessage('Invalid seller ID'),
     body('valuationAssignee').optional().isString(),
@@ -549,6 +560,7 @@ router.put(
  */
 router.post(
   '/:id/competitor',
+  authenticate,
   [
     param('id').isUUID().withMessage('Invalid seller ID'),
     body('competitorName').optional().isString(),
@@ -592,6 +604,7 @@ router.post(
  */
 router.put(
   '/:id/pinrich',
+  authenticate,
   [
     param('id').isUUID().withMessage('Invalid seller ID'),
     body('status').isIn(['配信中', 'クローズ']).withMessage('Invalid Pinrich status'),
@@ -639,6 +652,7 @@ router.put(
  */
 router.post(
   '/:id/exclusion',
+  authenticate,
   [
     param('id').isUUID().withMessage('Invalid seller ID'),
     body('exclusionSite').notEmpty().isString(),

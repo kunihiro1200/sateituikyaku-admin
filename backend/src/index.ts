@@ -384,6 +384,7 @@ app.post('/api/webhook/seller-row', async (req, res) => {
 // Routes
 app.use('/auth', authSupabaseRoutes);
 app.use('/api/auth', authSupabaseRoutes);
+// Sidebar counts endpoint (authentication not required) - must be registered before other /api/sellers routes
 app.use('/api/sellers', sellerRoutes);
 app.use('/api/sellers', sellersManagementRoutes);
 app.use('/properties', propertyRoutes);
