@@ -43,6 +43,21 @@ import {
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { SECTION_COLORS } from '../theme/sectionColors';
+import ImageSelectorModal from '../components/ImageSelectorModal';
+
+// 画像ファイル型（ImageSelectorModalと同じ）
+interface ImageFile {
+  id: string;
+  name: string;
+  source: 'drive' | 'local' | 'url';
+  size: number;
+  mimeType: string;
+  thumbnailUrl?: string;
+  previewUrl: string;
+  driveFileId?: string;
+  localFile?: File;
+  url?: string;
+}
 
 interface Buyer {
   buyer_number: string;
@@ -109,8 +124,8 @@ export default function OtherCompanyDistributionPage() {
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
   const [emailSubject, setEmailSubject] = useState('新着物件のご案内です！！');
   const [emailBody, setEmailBody] = useState('');
-  const [attachments, setAttachments] = useState<File[]>([]);
-  const [attachmentTab, setAttachmentTab] = useState(1); // 0: Google Drive, 1: ローカルファイル, 2: URL（デフォルトはローカルファイル）
+  const [selectedImages, setSelectedImages] = useState<ImageFile[]>([]);
+  const [imageSelectorOpen, setImageSelectorOpen] = useState(false); // 0: Google Drive, 1: ローカルファイル, 2: URL（デフォルトはローカルファイル）
   const [sending, setSending] = useState(false);
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
     open: false, message: '', severity: 'success',
@@ -214,14 +229,21 @@ export default function OtherCompanyDistributionPage() {
     setEmailDialogOpen(true);
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      setAttachments(Array.from(e.target.files));
-    }
+  const handleOpenImageSelector = () => {
+    setImageSelectorOpen(true);
   };
 
-  const removeAttachment = (index: number) => {
-    setAttachments(prev => prev.filter((_, i) => i !== index));
+  const handleImageSelectionConfirm = (images: ImageFile[]) => {
+    setSelectedImages(images);
+    setImageSelectorOpen(false);
+  };
+
+  const handleImageSelectionCancel = () => {
+    setImageSelectorOpen(false);
+  };
+
+  const removeImage = (index: number) => {
+    setSelectedImages(prev => prev.filter((_, i) => i !== index));
   };
 
   const sendEmails = async () => {
@@ -235,10 +257,12 @@ export default function OtherCompanyDistributionPage() {
         formData.append('body', buildEmailBody(buyer)); // 各買主ごとに本文を生成
         formData.append('senderEmail', 'tenant@ifoo-oita.com');
         
-        // 添付ファイルを追加
-        attachments.forEach(file => {
-          formData.append('attachments', file);
-        });
+        // 画像を添付ファイルに変換（ローカルファイルのみ）
+        for (const image of selectedImages) {
+          if (image.source === 'local' && image.localFile) {
+            formData.append('attachments', image.localFile);
+          }
+        }
 
         await api.post('/api/gmail/send', formData, {
           headers: {
@@ -250,7 +274,7 @@ export default function OtherCompanyDistributionPage() {
       setEmailDialogOpen(false);
       setSnackbar({ open: true, message: `${checkedBuyers.length}件のメールを送信しました`, severity: 'success' });
       setCheckedIds(new Set()); // チェックをクリア
-      setAttachments([]); // 添付ファイルをクリア
+      setSelectedImages([]); // 選択画像をクリア
     } catch (err: any) {
       setSnackbar({ open: true, message: err.response?.data?.error || 'メール送信に失敗しました', severity: 'error' });
     } finally {
@@ -571,6 +595,13 @@ export default function OtherCompanyDistributionPage() {
           {snackbar.message}
         </Alert>
       </Snackbar>
+
+      {/* 画像選択モーダル */}
+      <ImageSelectorModal
+        open={imageSelectorOpen}
+        onConfirm={handleImageSelectionConfirm}
+        onCancel={handleImageSelectionCancel}
+      />
     </Container>
   );
 }
