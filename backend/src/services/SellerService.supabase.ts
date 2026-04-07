@@ -1147,26 +1147,124 @@ export class SellerService extends BaseRepository {
             .not('status', 'ilike', '%一般媒介%');
           break;
         case 'todayCall':
-          // 当日TEL分（追客中 AND 次電日が今日以前 AND コミュニケーション情報なし AND 営担なし）
-          query = query
-            .ilike('status', '%追客中%')
-            .lte('next_call_date', todayJST)
+          // 当日TEL分（追客中 OR 他決→追客 AND 次電日が今日以前 AND コミュニケーション情報なし AND 営担なし）
+          // 🚨 重要: 「他決→追客」も含める（getSidebarCountsFallback()と同じロジック）
+          // 全件取得してJSでフィルタ（ORクエリが複雑なため）
+          let todayCallCandidates: any[] = [];
+          let tcPage = 0;
+          const tcPageSize = 1000;
+          
+          while (true) {
+            const { data, error } = await this.table('sellers')
+              .select('id, status, next_call_date, visit_assignee, phone_contact_person, preferred_contact_time, contact_method')
+              .is('deleted_at', null)
+              .not('next_call_date', 'is', null)
+              .lte('next_call_date', todayJST)
+              .range(tcPage * tcPageSize, (tcPage + 1) * tcPageSize - 1);
+            
+            if (error) {
+              console.error('❌ todayCallCandidates取得エラー:', error);
+              break;
+            }
+            
+            if (!data || data.length === 0) break;
+            
+            todayCallCandidates = todayCallCandidates.concat(data);
+            
+            if (data.length < tcPageSize) break;
+            tcPage++;
+          }
+          
+          // JSでフィルタ
+          const todayCallIds = (todayCallCandidates || []).filter((s: any) => {
+            const status = s.status || '';
+            // 「追客中」を含む OR 「他決→追客」と完全一致
+            const isFollowingUp = status.includes('追客中') || status === '他決→追客';
+            if (!isFollowingUp) return false;
+            
+            // 追客不要、専任媒介、一般媒介を除外
+            if (status.includes('追客不要') || status.includes('専任媒介') || status.includes('一般媒介')) {
+              return false;
+            }
+            
             // 営担が空または「外す」
-            .or('visit_assignee.is.null,visit_assignee.eq.,visit_assignee.eq.外す')
+            const visitAssignee = s.visit_assignee || '';
+            if (visitAssignee && visitAssignee.trim() !== '' && visitAssignee.trim() !== '外す') {
+              return false;
+            }
+            
             // コミュニケーション情報が全て空
-            .or('phone_contact_person.is.null,phone_contact_person.eq.')
-            .or('preferred_contact_time.is.null,preferred_contact_time.eq.')
-            .or('contact_method.is.null,contact_method.eq.');
+            const hasInfo = (s.phone_contact_person && s.phone_contact_person.trim() !== '') ||
+                           (s.preferred_contact_time && s.preferred_contact_time.trim() !== '') ||
+                           (s.contact_method && s.contact_method.trim() !== '');
+            return !hasInfo;
+          }).map((s: any) => s.id);
+          
+          if (todayCallIds.length === 0) {
+            query = query.in('id', ['__no_match__']);
+          } else {
+            query = query.in('id', todayCallIds);
+          }
           break;
         case 'todayCallWithInfo':
-          // 当日TEL（内容）（追客中 AND 次電日が今日以前 AND コミュニケーション情報あり AND 営担なし）
-          query = query
-            .ilike('status', '%追客中%')
-            .lte('next_call_date', todayJST)
+          // 当日TEL（内容）（追客中 OR 他決→追客 AND 次電日が今日以前 AND コミュニケーション情報あり AND 営担なし）
+          // 🚨 重要: 「他決→追客」も含める（getSidebarCountsFallback()と同じロジック）
+          // 全件取得してJSでフィルタ（ORクエリが複雑なため）
+          let todayCallWithInfoCandidates: any[] = [];
+          let tcwiPage = 0;
+          const tcwiPageSize = 1000;
+          
+          while (true) {
+            const { data, error } = await this.table('sellers')
+              .select('id, status, next_call_date, visit_assignee, phone_contact_person, preferred_contact_time, contact_method')
+              .is('deleted_at', null)
+              .not('next_call_date', 'is', null)
+              .lte('next_call_date', todayJST)
+              .range(tcwiPage * tcwiPageSize, (tcwiPage + 1) * tcwiPageSize - 1);
+            
+            if (error) {
+              console.error('❌ todayCallWithInfoCandidates取得エラー:', error);
+              break;
+            }
+            
+            if (!data || data.length === 0) break;
+            
+            todayCallWithInfoCandidates = todayCallWithInfoCandidates.concat(data);
+            
+            if (data.length < tcwiPageSize) break;
+            tcwiPage++;
+          }
+          
+          // JSでフィルタ
+          const todayCallWithInfoIds = (todayCallWithInfoCandidates || []).filter((s: any) => {
+            const status = s.status || '';
+            // 「追客中」を含む OR 「他決→追客」と完全一致
+            const isFollowingUp = status.includes('追客中') || status === '他決→追客';
+            if (!isFollowingUp) return false;
+            
+            // 追客不要、専任媒介、一般媒介を除外
+            if (status.includes('追客不要') || status.includes('専任媒介') || status.includes('一般媒介')) {
+              return false;
+            }
+            
             // 営担が空または「外す」
-            .or('visit_assignee.is.null,visit_assignee.eq.,visit_assignee.eq.外す')
+            const visitAssignee = s.visit_assignee || '';
+            if (visitAssignee && visitAssignee.trim() !== '' && visitAssignee.trim() !== '外す') {
+              return false;
+            }
+            
             // コミュニケーション情報のいずれかに入力あり
-            .or('phone_contact_person.neq.,preferred_contact_time.neq.,contact_method.neq.');
+            const hasInfo = (s.phone_contact_person && s.phone_contact_person.trim() !== '') ||
+                           (s.preferred_contact_time && s.preferred_contact_time.trim() !== '') ||
+                           (s.contact_method && s.contact_method.trim() !== '');
+            return hasInfo;
+          }).map((s: any) => s.id);
+          
+          if (todayCallWithInfoIds.length === 0) {
+            query = query.in('id', ['__no_match__']);
+          } else {
+            query = query.in('id', todayCallWithInfoIds);
+          }
           break;
         case 'unvaluated': {
           // 未査定（追客中 AND 査定額が全て空 AND 反響日付が基準日以降 AND 営担が空（「外す」含む））
