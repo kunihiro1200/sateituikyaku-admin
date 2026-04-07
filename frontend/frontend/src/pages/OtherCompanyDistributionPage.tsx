@@ -44,6 +44,8 @@ interface Buyer {
   phone_number: string;
   email: string;
   latest_status: string | null;
+  inquiry_hearing: string | null;
+  home_hearing_result: string | null;
 }
 
 // エリア選択肢（買主詳細画面と同じ形式）
@@ -159,6 +161,37 @@ export default function OtherCompanyDistributionPage() {
   const checkedBuyers = buyers.filter(b => checkedIds.has(b.buyer_number));
   const allChecked = buyers.length > 0 && checkedIds.size === buyers.length;
   const someChecked = checkedIds.size > 0 && !allChecked;
+
+  // ヒアリング項目を取得（内覧結果を優先、なければ詳細画面のヒアリング項目）
+  const getHearingItems = (buyer: Buyer): string => {
+    if (buyer.home_hearing_result) {
+      return buyer.home_hearing_result;
+    }
+    if (buyer.inquiry_hearing) {
+      return buyer.inquiry_hearing;
+    }
+    return '-';
+  };
+
+  // 希望価格を物件種別に応じて表示
+  const getPriceRange = (buyer: Buyer): string => {
+    const propertyType = buyer.desired_property_type;
+    if (propertyType === 'マンション') {
+      return buyer.price_range_apartment || '-';
+    }
+    if (propertyType === '土地') {
+      return buyer.price_range_land || '-';
+    }
+    if (propertyType === '戸建') {
+      return buyer.price_range_house || '-';
+    }
+    // 複数種別の場合は全て表示
+    const prices: string[] = [];
+    if (buyer.price_range_house) prices.push(`戸建:${buyer.price_range_house}`);
+    if (buyer.price_range_apartment) prices.push(`マンション:${buyer.price_range_apartment}`);
+    if (buyer.price_range_land) prices.push(`土地:${buyer.price_range_land}`);
+    return prices.length > 0 ? prices.join(', ') : '-';
+  };
 
   // メール本文生成
   const buildEmailBody = (buyer: Buyer) => {
@@ -354,10 +387,9 @@ export default function OtherCompanyDistributionPage() {
                     <TableCell>氏名</TableCell>
                     <TableCell>希望エリア</TableCell>
                     <TableCell>希望種別</TableCell>
-                    <TableCell>希望価格（戸建）</TableCell>
-                    <TableCell>希望価格（マンション）</TableCell>
-                    <TableCell>希望価格（土地）</TableCell>
+                    <TableCell>希望価格</TableCell>
                     <TableCell>最新状況</TableCell>
+                    <TableCell>ヒアリング項目</TableCell>
                     <TableCell>受付日</TableCell>
                   </TableRow>
                 </TableHead>
@@ -380,15 +412,16 @@ export default function OtherCompanyDistributionPage() {
                       <TableCell>{buyer.name}</TableCell>
                       <TableCell>{buyer.desired_area}</TableCell>
                       <TableCell>{buyer.desired_property_type}</TableCell>
-                      <TableCell>{buyer.price_range_house || '-'}</TableCell>
-                      <TableCell>{buyer.price_range_apartment || '-'}</TableCell>
-                      <TableCell>{buyer.price_range_land || '-'}</TableCell>
+                      <TableCell>{getPriceRange(buyer)}</TableCell>
                       <TableCell>
                         <Chip
                           label={buyer.latest_status || '-'}
                           size="small"
                           color="default"
                         />
+                      </TableCell>
+                      <TableCell sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', maxWidth: '300px', minWidth: '200px' }}>
+                        <div dangerouslySetInnerHTML={{ __html: getHearingItems(buyer) }} />
                       </TableCell>
                       <TableCell>
                         {buyer.reception_date
