@@ -466,10 +466,8 @@ export default function BuyerDesiredConditionsPage() {
                         // UIを即時更新し、ref にも最新値を保持
                         setSelectedAreas(selected);
                         selectedAreasRef.current = selected;
-                      }}
-                      onClose={() => {
-                        // ドロップダウンを閉じた時に pendingChanges に蓄積（自動保存しない）
-                        handleFieldChange('desired_area', selectedAreasRef.current.join('|'));
+                        // ✅ 修正: onChangeで即座にpendingChangesに反映（ドロップダウンを閉じなくても保存可能）
+                        handleFieldChange('desired_area', selected.join('|'));
                       }}
                       input={<OutlinedInput />}
                       renderValue={(selected) => (
