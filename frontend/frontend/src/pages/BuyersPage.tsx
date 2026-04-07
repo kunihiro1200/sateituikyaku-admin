@@ -133,6 +133,7 @@ export default function BuyersPage() {
       try {
         // サイドバーデータ読み込み済みの場合はフロント側でフィルタリング（APIコール不要）
         // キャッシュヒット時はsetLoading(true)をスキップして画面のちらつきを防ぐ
+        // ただし、全件データ未取得時でもselectedCalculatedStatusが指定されている場合はAPIにフィルタパラメータを渡す
         if (sidebarLoadedRef.current && allBuyersWithStatusRef.current.length > 0) {
           let filtered = selectedCalculatedStatus !== null
             ? allBuyersWithStatusRef.current.filter(b => {
@@ -220,6 +221,13 @@ export default function BuyersPage() {
           sortOrder: 'desc',
         };
         if (debouncedSearch) quickParams.search = normalizeSearch(debouncedSearch);
+        
+        // 全件データ未取得時でもselectedCalculatedStatusが指定されている場合はAPIにフィルタパラメータを渡す
+        if (selectedCalculatedStatus) {
+          // カテゴリキーを日本語表示名に変換してからAPIに渡す
+          const displayName = categoryKeyToDisplayName[selectedCalculatedStatus] || selectedCalculatedStatus;
+          quickParams.calculatedStatus = displayName;
+        }
 
         // 最初の50件を即座に表示
         const quickRes = await api.get('/api/buyers', { params: quickParams });
@@ -305,7 +313,11 @@ export default function BuyersPage() {
         }
       } catch (error) {
         if (!cancelled) {
-          console.error('Failed to fetch buyers:', error);
+          console.error('[ERROR] Failed to fetch buyers:', error);
+          console.error('[ERROR] Stack trace:', (error as Error).stack);
+          // APIエラー時のフォールバック処理: 空配列を設定
+          setBuyers([]);
+          setTotal(0);
         }
       } finally {
         if (!cancelled) {

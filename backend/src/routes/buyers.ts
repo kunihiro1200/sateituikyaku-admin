@@ -32,8 +32,8 @@ router.get('/', async (req: Request, res: Response) => {
       statusCategory,
     } = req.query;
 
-    // withStatus=true かつ calculatedStatus 指定の場合はステータスフィルタリング
-    if (withStatus === 'true' && calculatedStatus) {
+    // calculatedStatus 指定の場合はステータスフィルタリング（withStatusの有無に関わらず）
+    if (calculatedStatus) {
       const result = await buyerService.getBuyersByStatus(calculatedStatus as string, {
         page: parseInt(page as string, 10),
         limit: parseInt(limit as string, 10),
