@@ -4812,6 +4812,14 @@ HP：https://ifoo-oita.com/
                           const newDate = e.target.value;
                           setEditedAppointmentDate(newDate);
                           
+                          // 訪問日を削除した場合、営担と訪問査定取得者もクリア
+                          if (!newDate) {
+                            setEditedAssignedTo('');
+                            setEditedVisitValuationAcquirer('');
+                            console.log('🗑️ 訪問日を削除したため、営担と訪問査定取得者もクリアしました');
+                            return;
+                          }
+                          
                           // 訪問査定日時が入力された場合、現在のログインユーザーを訪問査定取得者に自動設定
                           // ただし、訪問査定取得者が既に設定済みの場合は上書きしない
                           if (newDate && employee?.email && !editedVisitValuationAcquirer) {
