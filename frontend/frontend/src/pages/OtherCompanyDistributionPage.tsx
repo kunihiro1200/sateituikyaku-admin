@@ -10,7 +10,6 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  TextField,
   Button,
   CircularProgress,
   FormControl,
@@ -18,10 +17,7 @@ import {
   Select,
   MenuItem,
   Grid,
-  Card,
-  CardContent,
-  useTheme,
-  useMediaQuery,
+  Chip,
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
@@ -38,6 +34,7 @@ interface Buyer {
   reception_date: string;
   phone_number: string;
   email: string;
+  latest_status: string | null;
 }
 
 // エリア選択肢（買主詳細画面と同じ形式）
@@ -76,8 +73,6 @@ const PROPERTY_TYPE_OPTIONS = ['戸建', 'マンション', '土地'];
 
 export default function OtherCompanyDistributionPage() {
   const navigate = useNavigate();
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   const [selectedArea, setSelectedArea] = useState<string>('');
   const [selectedPriceRange, setSelectedPriceRange] = useState<string>('指定なし');
@@ -120,16 +115,6 @@ export default function OtherCompanyDistributionPage() {
         ? prev.filter(t => t !== type)
         : [...prev, type]
     );
-  };
-
-  // 価格帯を表示用にフォーマット
-  const formatPriceRange = (buyer: Buyer): string => {
-    const prices = [
-      buyer.price_range_house,
-      buyer.price_range_apartment,
-      buyer.price_range_land,
-    ].filter(Boolean);
-    return prices.length > 0 ? prices[0]! : '-';
   };
 
   return (
@@ -238,78 +223,59 @@ export default function OtherCompanyDistributionPage() {
                 : '条件に合う買主が見つかりませんでした'}
             </Typography>
           </Box>
-        ) : isMobile ? (
-          // モバイル表示（カード形式）
-          <Box sx={{ p: 2 }}>
-            {buyers.map(buyer => (
-              <Card
-                key={buyer.buyer_number}
-                sx={{
-                  mb: 2,
-                  cursor: 'pointer',
-                  '&:hover': {
-                    backgroundColor: `${SECTION_COLORS.buyer.main}10`,
-                  },
-                }}
-                onClick={() => navigate(`/buyers/${buyer.buyer_number}`)}
-              >
-                <CardContent>
-                  <Typography variant="h6" gutterBottom>
-                    {buyer.name}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    買主番号: {buyer.buyer_number}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    希望エリア: {buyer.desired_area}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    希望種別: {buyer.desired_property_type}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    希望価格: {formatPriceRange(buyer)}
-                  </Typography>
-                </CardContent>
-              </Card>
-            ))}
-          </Box>
         ) : (
-          // デスクトップ表示（テーブル形式）
-          <TableContainer>
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell>買主番号</TableCell>
-                  <TableCell>氏名</TableCell>
-                  <TableCell>希望エリア</TableCell>
-                  <TableCell>希望種別</TableCell>
-                  <TableCell>希望価格</TableCell>
-                  <TableCell>受付日</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {buyers.map(buyer => (
-                  <TableRow
-                    key={buyer.buyer_number}
-                    hover
-                    sx={{ cursor: 'pointer' }}
-                    onClick={() => navigate(`/buyers/${buyer.buyer_number}`)}
-                  >
-                    <TableCell>{buyer.buyer_number}</TableCell>
-                    <TableCell>{buyer.name}</TableCell>
-                    <TableCell>{buyer.desired_area}</TableCell>
-                    <TableCell>{buyer.desired_property_type}</TableCell>
-                    <TableCell>{formatPriceRange(buyer)}</TableCell>
-                    <TableCell>
-                      {buyer.reception_date
-                        ? new Date(buyer.reception_date).toLocaleDateString('ja-JP')
-                        : '-'}
-                    </TableCell>
+          <>
+            <Box sx={{ p: 2 }}>
+              <Typography variant="h6">買主一覧 ({buyers.length}件)</Typography>
+            </Box>
+            <TableContainer>
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>買主番号</TableCell>
+                    <TableCell>氏名</TableCell>
+                    <TableCell>希望エリア</TableCell>
+                    <TableCell>希望種別</TableCell>
+                    <TableCell>希望価格（戸建）</TableCell>
+                    <TableCell>希望価格（マンション）</TableCell>
+                    <TableCell>希望価格（土地）</TableCell>
+                    <TableCell>最新状況</TableCell>
+                    <TableCell>受付日</TableCell>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
+                </TableHead>
+                <TableBody>
+                  {buyers.map(buyer => (
+                    <TableRow
+                      key={buyer.buyer_number}
+                      hover
+                      sx={{ cursor: 'pointer' }}
+                      onClick={() => navigate(`/buyers/${buyer.buyer_number}`)}
+                    >
+                      <TableCell>{buyer.buyer_number}</TableCell>
+                      <TableCell>{buyer.name}</TableCell>
+                      <TableCell>{buyer.desired_area}</TableCell>
+                      <TableCell>{buyer.desired_property_type}</TableCell>
+                      <TableCell>{buyer.price_range_house || '-'}</TableCell>
+                      <TableCell>{buyer.price_range_apartment || '-'}</TableCell>
+                      <TableCell>{buyer.price_range_land || '-'}</TableCell>
+                      <TableCell>
+                        <Chip
+                          label={buyer.latest_status || '-'}
+                          size="small"
+                          color="default"
+                        />
+                      </TableCell>
+                      <TableCell>
+                        {buyer.reception_date
+                          ? new Date(buyer.reception_date).toLocaleDateString('ja-JP')
+                          : '-'}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </>
         )}
       </Paper>
 
