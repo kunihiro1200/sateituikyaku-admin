@@ -2145,14 +2145,43 @@ const CallModePage = () => {
 
           // 営担のメールアドレスを取得
           const assignedToValue = editedAssignedTo || seller?.visitAssigneeInitials || seller?.visitAssignee || seller?.assignedTo;
-          const assignedEmployee = employees.find((e: any) =>
-            e.name === assignedToValue || e.initials === assignedToValue || e.email === assignedToValue
-          );
+          console.log('=== カレンダー営担デバッグ（売主） ===');
+          console.log('assignedToValue:', assignedToValue);
+          console.log('employees配列:', employees);
+          
+          const matchedEmployees = employees.filter((e: any) => {
+            const nameMatch = e.name === assignedToValue;
+            const initialsMatch = e.initials === assignedToValue;
+            const emailMatch = e.email === assignedToValue;
+            console.log(`従業員チェック: ${e.name} (initials: ${e.initials}, email: ${e.email})`);
+            console.log(`  - nameMatch: ${nameMatch}, initialsMatch: ${initialsMatch}, emailMatch: ${emailMatch}`);
+            return nameMatch || initialsMatch || emailMatch;
+          });
+          
+          console.log('マッチした社員数:', matchedEmployees.length);
+          console.log('マッチした社員:', matchedEmployees);
+          
+          const assignedEmployee = matchedEmployees[0];
           const assignedEmail = assignedEmployee?.email || '';
-          const srcParam = assignedEmail ? `&src=${encodeURIComponent(assignedEmail)}` : '';
+          console.log('見つかった社員:', assignedEmployee?.name);
+          console.log('メールアドレス:', assignedEmail);
+          
+          // URLSearchParamsを使用してパラメータを構築
+          const calParams = new URLSearchParams({
+            action: 'TEMPLATE',
+            text: calTitle.replace(/%/g, ''),  // エンコード済みの文字列をそのまま使用
+            dates: `${startDateStr2}/${endDateStr2}`,
+            details: calDetails.replace(/%/g, ''),  // エンコード済みの文字列をそのまま使用
+            location: calLocation.replace(/%/g, ''),  // エンコード済みの文字列をそのまま使用
+          });
+          
+          // 営担をゲストとして招待（addパラメータを使用）
+          if (assignedEmail) {
+            calParams.append('add', assignedEmail);
+          }
 
           window.open(
-            `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${calTitle}&dates=${startDateStr2}/${endDateStr2}&details=${calDetails}&location=${calLocation}${srcParam}`,
+            `https://calendar.google.com/calendar/render?${calParams.toString()}`,
             '_blank'
           );
         } catch (calError) {
@@ -4708,27 +4737,47 @@ HP：https://ifoo-oita.com/
                               
                               // 営担のメールアドレスを取得（visitAssigneeInitialsを優先、なければvisitAssignee、最後にassignedTo）
                               const assignedToValue = seller.visitAssigneeInitials || seller.visitAssignee || seller.assignedTo;
-                              console.log('=== カレンダー営担デバッグ ===');
+                              console.log('=== カレンダー営担デバッグ（訪問情報セクション） ===');
                               console.log('visitAssigneeInitials:', seller.visitAssigneeInitials);
                               console.log('visitAssignee:', seller.visitAssignee);
                               console.log('assignedTo:', seller.assignedTo);
                               console.log('使用する値:', assignedToValue);
+                              console.log('employees配列:', employees);
                               
                               // フルネームまたはイニシャルまたはメールアドレスで検索
-                              const assignedEmployee = employees.find(e => 
-                                e.name === assignedToValue || 
-                                e.initials === assignedToValue || 
-                                e.email === assignedToValue
-                              );
+                              const matchedEmployees = employees.filter((e: any) => {
+                                const nameMatch = e.name === assignedToValue;
+                                const initialsMatch = e.initials === assignedToValue;
+                                const emailMatch = e.email === assignedToValue;
+                                console.log(`従業員チェック: ${e.name} (initials: ${e.initials}, email: ${e.email})`);
+                                console.log(`  - nameMatch: ${nameMatch}, initialsMatch: ${initialsMatch}, emailMatch: ${emailMatch}`);
+                                return nameMatch || initialsMatch || emailMatch;
+                              });
+                              
+                              console.log('マッチした社員数:', matchedEmployees.length);
+                              console.log('マッチした社員:', matchedEmployees);
+                              
+                              const assignedEmployee = matchedEmployees[0];
                               console.log('見つかった社員:', assignedEmployee?.name);
                               console.log('メールアドレス:', assignedEmployee?.email);
                               
                               const assignedEmail = assignedEmployee?.email || '';
                               
-                              // 営担のカレンダーに直接作成（srcパラメータを使用）
-                              const srcParam = assignedEmail ? `&src=${encodeURIComponent(assignedEmail)}` : '';
+                              // URLSearchParamsを使用してパラメータを構築
+                              const calParams = new URLSearchParams({
+                                action: 'TEMPLATE',
+                                text: title,
+                                dates: `${startDateStr}/${endDateStr}`,
+                                details: details,
+                                location: location,
+                              });
                               
-                              window.open(`https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${startDateStr}/${endDateStr}&details=${details}&location=${location}${srcParam}`, '_blank');
+                              // 営担をゲストとして招待（addパラメータを使用）
+                              if (assignedEmail) {
+                                calParams.append('add', assignedEmail);
+                              }
+                              
+                              window.open(`https://calendar.google.com/calendar/render?${calParams.toString()}`, '_blank');
                             }}
                           >
                             📅 カレンダーで開く
