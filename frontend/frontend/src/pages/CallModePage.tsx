@@ -3233,6 +3233,48 @@ HP：https://ifoo-oita.com/
 
       const statusLabel = getStatusLabel(editedStatus);
       
+      // バリデーション：専任または他決が含まれる場合は決定日、競合、専任・他決要因が必須
+      if (requiresDecisionDate(editedStatus)) {
+        if (!editedExclusiveDecisionDate) {
+          setError('専任（他決）決定日を入力してください');
+          setSendingChatNotification(false);
+          return;
+        }
+        if (editedCompetitors.length === 0) {
+          setError('競合を選択してください');
+          setSendingChatNotification(false);
+          return;
+        }
+        if (editedExclusiveOtherDecisionFactors.length === 0) {
+          setError('専任・他決要因を選択してください');
+          setSendingChatNotification(false);
+          return;
+        }
+      }
+      
+      // チャット送信前に4つのフィールドを保存（DB→スプレッドシート即時同期）
+      await api.put(`/api/sellers/${id}`, {
+        status: editedStatus,
+        confidence: editedConfidence,
+        exclusiveOtherDecisionMeeting: editedExclusiveOtherDecisionMeeting || null,
+        nextCallDate: editedNextCallDate || null,
+        exclusiveDecisionDate: editedExclusiveDecisionDate || null,
+        competitors: editedCompetitors.length > 0 ? editedCompetitors.join(', ') : null,
+        exclusiveOtherDecisionFactors: editedExclusiveOtherDecisionFactors.length > 0 ? editedExclusiveOtherDecisionFactors : null,
+        competitorNameAndReason: editedCompetitorNameAndReason || null,
+      });
+      
+      // 保存した値をローカルステートに反映
+      setSavedStatus(editedStatus);
+      setSavedConfidence(editedConfidence);
+      setSavedExclusiveOtherDecisionMeeting(editedExclusiveOtherDecisionMeeting);
+      setSavedNextCallDate(editedNextCallDate);
+      setSavedExclusiveDecisionDate(editedExclusiveDecisionDate);
+      setSavedCompetitors(editedCompetitors);
+      setSavedExclusiveOtherDecisionFactors(editedExclusiveOtherDecisionFactors);
+      setSavedCompetitorNameAndReason(editedCompetitorNameAndReason);
+      setStatusChanged(false); // 保存成功後にリセット
+      
       // ステータスに応じて適切なエンドポイントを選択
       let endpoint = '';
       if (statusLabel.includes('専任')) {
@@ -3252,7 +3294,7 @@ HP：https://ifoo-oita.com/
         notes: `決定日: ${editedExclusiveDecisionDate}\n競合: ${editedCompetitors.join(', ')}\n要因: ${editedExclusiveOtherDecisionFactors.join(', ')}`,
       });
 
-      setSuccessMessage(`${statusLabel}の通知を送信しました`);
+      setSuccessMessage(`${statusLabel}の通知を送信しました（4つのフィールドも保存しました）`);
     } catch (err: any) {
       setError(err.response?.data?.error?.message || 'Chat通知の送信に失敗しました');
     } finally {
