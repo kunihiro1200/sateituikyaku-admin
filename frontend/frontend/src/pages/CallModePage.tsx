@@ -4857,6 +4857,14 @@ HP：https://ifoo-oita.com/
                           </Alert>
                         ) : (
                           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                            <Button
+                              variant={editedAssignedTo === '' ? 'contained' : 'outlined'}
+                              onClick={() => setEditedAssignedTo('')}
+                              size="small"
+                              color="error"
+                            >
+                              クリア
+                            </Button>
                             {normalInitials.map((initial) => (
                               <Button
                                 key={initial}
