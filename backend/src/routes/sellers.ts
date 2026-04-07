@@ -882,20 +882,64 @@ router.put('/:id', async (req: Request, res: Response) => {
     }
     
     // Validate visitAssignee if provided (営担検証)
+    // スタッフ管理シートから直接取得（Single Source of Truth）
     if (req.body.visitAssignee !== undefined && req.body.visitAssignee !== null && req.body.visitAssignee !== '') {
-      const supabase = createClient(
-        process.env.SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_KEY!
-      );
-      const { data: employee, error } = await supabase
-        .from('employees')
-        .select('initials')
-        .eq('initials', req.body.visitAssignee)
-        .eq('is_normal', true)
-        .eq('is_active', true)
-        .single();
-      
-      if (error || !employee) {
+      try {
+        const sheetsClient = new GoogleSheetsClient({
+          spreadsheetId: '19yAuVYQRm-_zhjYX7M7zjiGbnBibkG77Mpz93sN1xxs',
+          sheetName: 'スタッフ',
+          serviceAccountKeyPath: process.env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH || './google-service-account.json',
+        });
+        await sheetsClient.authenticate();
+        
+        // A列（イニシャル）とH列（有効）を取得
+        const values = await sheetsClient.readRawRange('A:H');
+        
+        if (!values || values.length === 0) {
+          return res.status(400).json({
+            error: {
+              code: 'INVALID_VISIT_ASSIGNEE',
+              message: '無効な営担です',
+              retryable: false,
+            },
+          });
+        }
+        
+        // ヘッダー行を取得
+        const headers = values[0];
+        const initialsIndex = headers.indexOf('イニシャル');
+        const isActiveIndex = headers.indexOf('有効');
+        
+        // 営担を検索
+        const staffRow = values.find((row, index) => 
+          index > 0 && row[initialsIndex] === req.body.visitAssignee
+        );
+        
+        if (!staffRow) {
+          return res.status(400).json({
+            error: {
+              code: 'INVALID_VISIT_ASSIGNEE',
+              message: '無効な営担です',
+              retryable: false,
+            },
+          });
+        }
+        
+        // 有効フラグを確認
+        const isActiveStr = String(staffRow[isActiveIndex]).toUpperCase();
+        const isActive = isActiveStr === 'TRUE' || isActiveStr === 'YES' || isActiveStr === '1';
+        
+        if (!isActive) {
+          return res.status(400).json({
+            error: {
+              code: 'INVALID_VISIT_ASSIGNEE',
+              message: '無効な営担です',
+              retryable: false,
+            },
+          });
+        }
+      } catch (error) {
+        console.error('営担検証エラー:', error);
         return res.status(400).json({
           error: {
             code: 'INVALID_VISIT_ASSIGNEE',
