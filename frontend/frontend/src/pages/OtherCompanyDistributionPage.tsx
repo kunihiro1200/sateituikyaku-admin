@@ -506,9 +506,7 @@ export default function OtherCompanyDistributionPage() {
             fullWidth
           />
           
-          {/* 添付ファイル選択 */}
-          <Box>
-            {/* 画像添付ボタン */}
+          {/* 画像添付ボタン */}
           <Box>
             <Button
               variant="outlined"
