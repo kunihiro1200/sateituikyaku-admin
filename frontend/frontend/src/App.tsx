@@ -32,6 +32,7 @@ import SharedItemsPage from './pages/SharedItemsPage';
 import SharedItemDetailPage from './pages/SharedItemDetailPage';
 import BuyerNearbyPropertiesPage from './pages/BuyerNearbyPropertiesPage';
 import NearbyBuyersPage from './pages/NearbyBuyersPage';
+import OtherCompanyDistributionPage from './pages/OtherCompanyDistributionPage';
 import ReinsRegistrationPage from './pages/ReinsRegistrationPage';
 import ProtectedRoute from './components/ProtectedRoute';
 import { useAuthStore } from './store/authStore';
@@ -196,6 +197,14 @@ function App() {
         element={
           <ProtectedRoute>
             <BuyersPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/buyers/other-company-distribution"
+        element={
+          <ProtectedRoute>
+            <OtherCompanyDistributionPage />
           </ProtectedRoute>
         }
       />

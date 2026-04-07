@@ -408,6 +408,20 @@ export default function BuyersPage() {
         <Typography variant="h5" fontWeight="bold" sx={{ color: SECTION_COLORS.buyer.main }}>買主リスト</Typography>
         <Box sx={{ display: 'flex', gap: 1 }}>
           <Button
+            variant="outlined"
+            onClick={() => navigate('/buyers/other-company-distribution')}
+            sx={{
+              borderColor: SECTION_COLORS.buyer.main,
+              color: SECTION_COLORS.buyer.main,
+              '&:hover': {
+                borderColor: SECTION_COLORS.buyer.dark,
+                backgroundColor: `${SECTION_COLORS.buyer.main}15`,
+              },
+            }}
+          >
+            他社物件新着配信
+          </Button>
+          <Button
             variant="contained"
             onClick={() => navigate('/buyers/new')}
             sx={{

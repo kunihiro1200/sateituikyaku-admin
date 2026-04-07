@@ -9,6 +9,7 @@ import { GoogleSheetsClient } from './GoogleSheetsClient';
 import { BuyerNumberSpreadsheetClient } from './BuyerNumberSpreadsheetClient';
 import { calculateBuyerStatus } from './BuyerStatusCalculator';
 import { STATUS_DEFINITIONS } from '../config/buyer-status-definitions';
+import NodeCache from 'node-cache';
 
 // モジュールレベルのキャッシュ（Vercelサーバーレス環境でもインスタンス間で共有される）
 // インスタンス変数だとリクエストごとにリセットされるため、モジュールレベルに移動
@@ -17,6 +18,9 @@ let _moduleLevelStatusCache: {
   computedAt: number;
 } | null = null;
 const _MODULE_STATUS_CACHE_TTL = 30 * 60 * 1000; // 30分
+
+// 他社物件新着配信用のキャッシュ（TTL: 10分）
+const distributionCache = new NodeCache({ stdTTL: 600 });
 
 /**
  * 買主ステータスキャッシュを無効化（外部から呼び出し可能）
@@ -2750,6 +2754,155 @@ export class BuyerService {
         rowsInserted: 0,
         error: error.message
       };
+    }
+  }
+
+  /**
+   * 他社物件新着配信用の買主を取得
+   * @param params フィルタパラメータ（エリア、価格帯、物件種別）
+   * @returns 条件に合う買主のリスト
+   */
+  async getOtherCompanyDistributionBuyers(params: {
+    area: string;
+    priceRange: string;
+    propertyTypes: string[];
+  }): Promise<{ buyers: any[]; total: number }> {
+    const { area, priceRange, propertyTypes } = params;
+
+    // キャッシュキー生成
+    const cacheKey = `${area}:${priceRange}:${propertyTypes.join(',')}`;
+    
+    // キャッシュチェック
+    const cached = distributionCache.get(cacheKey);
+    if (cached) {
+      return cached as { buyers: any[]; total: number };
+    }
+
+    // エリアグループルール適用
+    const targetAreas = this.applyAreaGroupRules(area);
+
+    // クエリ構築
+    let query = this.supabase
+      .from('buyers')
+      .select('buyer_number, name, desired_area, desired_property_type, price_range_house, price_range_apartment, price_range_land, reception_date, phone_number, email')
+      .is('deleted_at', null);
+
+    // エリアフィルタ（OR条件）
+    const areaConditions = targetAreas.map(a => `desired_area.ilike.%${a}%`);
+    query = query.or(areaConditions.join(','));
+
+    // 物件種別フィルタ（OR条件）
+    const propertyTypeConditions = propertyTypes.map(type => {
+      const dbType = this.mapPropertyTypeToDb(type);
+      return `desired_property_type.ilike.%${dbType}%`;
+    });
+    query = query.or(propertyTypeConditions.join(','));
+
+    // データ取得
+    const { data: buyers, error } = await query;
+
+    if (error) {
+      throw new Error(`Failed to fetch buyers: ${error.message}`);
+    }
+
+    // 価格帯フィルタ（アプリケーション層）
+    const filteredBuyers = this.filterByPriceRange(buyers || [], priceRange, propertyTypes);
+
+    const result = {
+      buyers: filteredBuyers,
+      total: filteredBuyers.length,
+    };
+
+    // キャッシュに保存（TTL: 10分）
+    distributionCache.set(cacheKey, result);
+
+    return result;
+  }
+
+  /**
+   * エリアグループルール適用
+   * ①～⑧ → ㊵も含める
+   * ⑨～⑮ → ㊶も含める
+   */
+  private applyAreaGroupRules(area: string): string[] {
+    const oitaCityAreas = ['①', '②', '③', '④', '⑤', '⑥', '⑦', '⑧'];
+    const beppuCityAreas = ['⑨', '⑩', '⑪', '⑫', '⑬', '⑭', '⑮'];
+
+    const targetAreas = [area];
+
+    if (oitaCityAreas.includes(area)) {
+      targetAreas.push('㊵');
+    }
+
+    if (beppuCityAreas.includes(area)) {
+      targetAreas.push('㊶');
+    }
+
+    return targetAreas;
+  }
+
+  /**
+   * 物件種別をDBカラム値にマッピング
+   */
+  private mapPropertyTypeToDb(type: string): string {
+    const mapping: Record<string, string> = {
+      '戸建': '戸建て',
+      'マンション': 'マンション',
+      '土地': '土地',
+    };
+    return mapping[type] || type;
+  }
+
+  /**
+   * 価格帯フィルタリング
+   */
+  private filterByPriceRange(buyers: any[], priceRange: string, propertyTypes: string[]): any[] {
+    if (priceRange === '指定なし') {
+      return buyers;
+    }
+
+    return buyers.filter(buyer => {
+      for (const type of propertyTypes) {
+        const priceField = this.getPriceFieldForType(type);
+        const buyerPrice = buyer[priceField];
+
+        if (!buyerPrice) continue;
+
+        if (this.matchesPriceRange(buyerPrice, priceRange)) {
+          return true;
+        }
+      }
+      return false;
+    });
+  }
+
+  /**
+   * 物件種別に対応する価格フィールドを取得
+   */
+  private getPriceFieldForType(type: string): string {
+    const mapping: Record<string, string> = {
+      '戸建': 'price_range_house',
+      'マンション': 'price_range_apartment',
+      '土地': 'price_range_land',
+    };
+    return mapping[type] || 'price_range_house';
+  }
+
+  /**
+   * 価格帯マッチング
+   */
+  private matchesPriceRange(buyerPrice: string, priceRange: string): boolean {
+    const { min, max } = this.parsePriceRange(buyerPrice);
+
+    switch (priceRange) {
+      case '~1900万円':
+        return max <= 19000000;
+      case '1000万円~2999万円':
+        return min >= 10000000 && max <= 29990000;
+      case '2000万円以上':
+        return min >= 20000000;
+      default:
+        return true;
     }
   }
 }

@@ -1293,5 +1293,32 @@ ${detailUrl}`;
   }
 });
 
+// 他社物件新着配信用の買主取得
+router.get('/other-company-distribution', authenticate, async (req: Request, res: Response) => {
+  try {
+    const { area, priceRange, propertyTypes } = req.query;
+
+    // バリデーション
+    if (!area || !propertyTypes) {
+      return res.status(400).json({ error: 'area and propertyTypes are required' });
+    }
+
+    const propertyTypesArray = Array.isArray(propertyTypes) 
+      ? propertyTypes 
+      : [propertyTypes];
+
+    const result = await buyerService.getOtherCompanyDistributionBuyers({
+      area: area as string,
+      priceRange: (priceRange as string) || '指定なし',
+      propertyTypes: propertyTypesArray as string[],
+    });
+
+    res.json(result);
+  } catch (error: any) {
+    console.error('Error fetching other company distribution buyers:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 
 export default router;
