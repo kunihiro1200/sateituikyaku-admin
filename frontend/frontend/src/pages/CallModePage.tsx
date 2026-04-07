@@ -6795,11 +6795,26 @@ HP：https://ifoo-oita.com/
                       <Grid item xs={12}>
                         <Button
                           fullWidth
-                          variant="contained"
-                          color="success"
+                          variant={statusChanged ? 'contained' : 'contained'}
+                          color={statusChanged ? undefined : 'success'}
                           onClick={handleSendChatNotification}
                           disabled={sendingChatNotification}
                           startIcon={sendingChatNotification ? <CircularProgress size={20} /> : null}
+                          sx={{
+                            ...(statusChanged ? {
+                              backgroundColor: '#ff6d00',
+                              color: '#fff',
+                              fontWeight: 'bold',
+                              boxShadow: '0 0 0 3px rgba(255,109,0,0.4)',
+                              animation: 'pulse-orange 1.5s infinite',
+                              '@keyframes pulse-orange': {
+                                '0%': { boxShadow: '0 0 0 0 rgba(255,109,0,0.5)' },
+                                '70%': { boxShadow: '0 0 0 8px rgba(255,109,0,0)' },
+                                '100%': { boxShadow: '0 0 0 0 rgba(255,109,0,0)' },
+                              },
+                              '&:hover': { backgroundColor: '#e65100' },
+                            } : {}),
+                          }}
                         >
                           {sendingChatNotification ? '送信中...' : `${getStatusLabel(editedStatus)}通知`}
                         </Button>
