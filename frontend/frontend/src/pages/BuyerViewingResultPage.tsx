@@ -469,10 +469,25 @@ export default function BuyerViewingResultPage() {
     let assignedEmail = '';
     if (followUpAssignee) {
       // イニシャルまたは名前で従業員マスタを検索
-      const assignedEmployee = employees.find(e => 
+      const matchedEmployees = employees.filter(e => 
         e.initials === followUpAssignee || 
         e.name === followUpAssignee
       );
+      
+      console.log('マッチした社員数:', matchedEmployees.length);
+      
+      if (matchedEmployees.length > 1) {
+        // 重複イニシャルの場合、エラーメッセージを表示
+        const names = matchedEmployees.map(e => e.name).join(', ');
+        setSnackbar({
+          open: true,
+          message: `後続担当（${followUpAssignee}）が複数の社員に一致します: ${names}`,
+          severity: 'error',
+        });
+        return;
+      }
+      
+      const assignedEmployee = matchedEmployees[0];
       console.log('見つかった社員:', assignedEmployee?.name);
       console.log('メールアドレス:', assignedEmployee?.email);
       
@@ -1138,7 +1153,19 @@ export default function BuyerViewingResultPage() {
                       onClick={async () => {
                         // 同じボタンを2度クリックしたら値をクリア
                         const newValue = buyer.follow_up_assignee === staff.value ? '' : staff.value;
-                        await handleInlineFieldSave('follow_up_assignee', newValue);
+                        
+                        // 楽観的UI更新: 即座にUIを更新
+                        setBuyer(prev => prev ? { ...prev, follow_up_assignee: newValue } : prev);
+                        buyerRef.current = buyer ? { ...buyer, follow_up_assignee: newValue } : null;
+                        
+                        // バックグラウンドで保存（エラー時はロールバック）
+                        try {
+                          await handleInlineFieldSave('follow_up_assignee', newValue);
+                        } catch (error) {
+                          // エラー時は元の値に戻す
+                          setBuyer(prev => prev ? { ...prev, follow_up_assignee: buyer.follow_up_assignee } : prev);
+                          buyerRef.current = buyer;
+                        }
                       }}
                       sx={{ 
                         minWidth: '32px',
