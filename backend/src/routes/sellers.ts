@@ -883,7 +883,8 @@ router.put('/:id', async (req: Request, res: Response) => {
     
     // Validate visitAssignee if provided (営担検証)
     // スタッフ管理シートから直接取得（Single Source of Truth）
-    if (req.body.visitAssignee !== undefined && req.body.visitAssignee !== null && req.body.visitAssignee !== '') {
+    // 訪問日が削除される場合（visitDate === null）は営担バリデーションをスキップ
+    if (req.body.visitAssignee !== undefined && req.body.visitAssignee !== null && req.body.visitAssignee !== '' && req.body.visitDate !== null) {
       try {
         const sheetsClient = new GoogleSheetsClient({
           spreadsheetId: '19yAuVYQRm-_zhjYX7M7zjiGbnBibkG77Mpz93sN1xxs',
