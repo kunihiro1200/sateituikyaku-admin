@@ -2542,9 +2542,12 @@ export class SellerService extends BaseRepository {
     }).length;
 
     // 6. 査定（郵送）
+    // 条件: 状況（当社）IN ("追客中", "除外後追客中", "他決→追客") AND 査定方法 = "机上査定（郵送）" AND 郵送 = "未"
     const { count: mailingPendingCount } = await this.table('sellers')
       .select('*', { count: 'exact', head: true })
       .is('deleted_at', null)
+      .in('status', ['追客中', '除外後追客中', '他決→追客'])
+      .eq('valuation_method', '机上査定（郵送）')
       .eq('mailing_status', '未');
 
     // 7. 当日TEL_未着手
@@ -2580,7 +2583,7 @@ export class SellerService extends BaseRepository {
       .select('*', { count: 'exact', head: true })
       .is('deleted_at', null)
       .neq('exclusive_other_decision_meeting', '完了')
-      .gt('next_call_date', todayJST)
+      .or(`next_call_date.is.null,next_call_date.neq.${todayJST}`)
       .in('status', ['専任媒介', '他決→専任', 'リースバック（専任）']);
 
     // 10. 一般カテゴリー
@@ -2588,7 +2591,7 @@ export class SellerService extends BaseRepository {
       .select('*', { count: 'exact', head: true })
       .is('deleted_at', null)
       .neq('exclusive_other_decision_meeting', '完了')
-      .gt('next_call_date', todayJST)
+      .or(`next_call_date.is.null,next_call_date.neq.${todayJST}`)
       .eq('status', '一般媒介')
       .gte('contract_year_month', '2025-06-23');
 
@@ -2597,7 +2600,7 @@ export class SellerService extends BaseRepository {
       .select('*', { count: 'exact', head: true })
       .is('deleted_at', null)
       .neq('exclusive_other_decision_meeting', '完了')
-      .gt('next_call_date', todayJST)
+      .or(`next_call_date.is.null,next_call_date.neq.${todayJST}`)
       .in('status', ['他決→追客', '他決→追客不要', '一般→他決', '他社買取'])
       .not('visit_assignee', 'is', null)
       .neq('visit_assignee', '');
@@ -2608,7 +2611,7 @@ export class SellerService extends BaseRepository {
       .is('deleted_at', null)
       .neq('exclusive_other_decision_meeting', '完了')
       .or(`next_call_date.is.null,next_call_date.neq.${todayJST}`)
-      .in('status', ['他決→追客', '他決→追客不要', '一般→他決', '他社買取'])
+      .in('status', ['他決→追客', '他決→追客不要', '一般→他決'])
       .or('visit_assignee.is.null,visit_assignee.eq.,visit_assignee.eq.外す');
 
     const sidebarResult = {
