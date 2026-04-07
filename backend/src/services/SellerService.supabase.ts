@@ -906,11 +906,59 @@ export class SellerService extends BaseRepository {
           return updatedSeller;
         }
 
-        // 担当者の情報を取得
-        const { data: assignedEmployee } = await this.table('employees')
-          .select('id, name, email')
-          .eq('id', data.assignedTo)
-          .single();
+        // 担当者の情報を取得（スタッフ管理シートから直接取得）
+        let assignedEmployee: { id: string; name: string; email: string } | null = null;
+        
+        // data.assignedToがイニシャル（文字列）の場合、スタッフ管理シートから取得
+        if (typeof data.assignedTo === 'string' && data.assignedTo.length <= 3) {
+          console.log('📋 Fetching employee from staff sheet by initials:', data.assignedTo);
+          
+          const { GoogleSheetsClient } = await import('./GoogleSheetsClient');
+          const sheetsClient = new GoogleSheetsClient({
+            spreadsheetId: '19yAuVYQRm-_zhjYX7M7zjiGbnBibkG77Mpz93sN1xxs',
+            sheetName: 'スタッフ',
+            serviceAccountKeyPath: process.env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH || './google-service-account.json',
+          });
+          await sheetsClient.authenticate();
+          
+          const values = await sheetsClient.readRawRange('A:H');
+          if (values && values.length > 0) {
+            const headers = values[0];
+            const initialsIndex = headers.indexOf('イニシャル');
+            const nameIndex = headers.indexOf('姓名');
+            const emailIndex = headers.indexOf('メアド');
+            
+            const staffRow = values.find((row, index) => 
+              index > 0 && row[initialsIndex] === data.assignedTo
+            );
+            
+            if (staffRow) {
+              // employeesテーブルからUUIDを取得（カレンダーイベント作成に必要）
+              const { data: empData } = await this.table('employees')
+                .select('id')
+                .eq('initials', data.assignedTo)
+                .single();
+              
+              assignedEmployee = {
+                id: empData?.id || 'dummy-id',
+                name: staffRow[nameIndex] || data.assignedTo,
+                email: staffRow[emailIndex] || `${data.assignedTo}@dummy.local`,
+              };
+              
+              console.log('✅ Employee found in staff sheet:', assignedEmployee);
+            }
+          }
+        } else {
+          // data.assignedToがUUIDの場合、employeesテーブルから取得
+          const { data: empData } = await this.table('employees')
+            .select('id, name, email')
+            .eq('id', data.assignedTo)
+            .single();
+          
+          if (empData) {
+            assignedEmployee = empData;
+          }
+        }
 
         if (!assignedEmployee) {
           console.warn('⚠️  Assigned employee not found, skipping calendar event');
