@@ -1879,6 +1879,16 @@ export class SellerService extends BaseRepository {
       const initialsMap = getInitialsMap();
       const visitAssigneeFullName = seller.visit_assignee ? (initialsMap[seller.visit_assignee] || null) : null;
       const visitValuationAcquirerFullName = seller.visit_valuation_acquirer ? (initialsMap[seller.visit_valuation_acquirer] || null) : null;
+      
+      // デバッグログ追加
+      if (seller.visit_assignee) {
+        console.log('=== decryptSeller 営担デバッグ ===');
+        console.log('seller.visit_assignee:', seller.visit_assignee);
+        console.log('initialsMap[seller.visit_assignee]:', initialsMap[seller.visit_assignee]);
+        console.log('visitAssigneeFullName:', visitAssigneeFullName);
+        console.log('最終的なvisitAssignee:', visitAssigneeFullName || seller.visit_assignee || undefined);
+      }
+      
       console.log(`[PERF] decryptSeller getEmployeeNames (sync): ${Date.now() - _dt0}ms`);
 
       const decrypted = {
@@ -1924,6 +1934,7 @@ export class SellerService extends BaseRepository {
           : [],
         otherDecisionCountermeasure: seller.other_decision_countermeasure,
         contractYearMonth: seller.contract_year_month,
+        exclusiveDecisionDate: seller.contract_year_month, // 専任（他決）決定日（contract_year_monthのエイリアス）
         exclusiveOtherDecisionMeeting: seller.exclusive_other_decision_meeting,
         // Site field
         inquirySite: seller.inquiry_site,
