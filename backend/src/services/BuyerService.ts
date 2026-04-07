@@ -2769,17 +2769,21 @@ export class BuyerService {
   }): Promise<{ buyers: any[]; total: number }> {
     const { area, priceRange, propertyTypes } = params;
 
+    console.log('[getOtherCompanyDistributionBuyers] params:', { area, priceRange, propertyTypes });
+
     // キャッシュキー生成
     const cacheKey = `${area}:${priceRange}:${propertyTypes.join(',')}`;
     
     // キャッシュチェック
     const cached = distributionCache.get(cacheKey);
     if (cached) {
+      console.log('[getOtherCompanyDistributionBuyers] Cache hit');
       return cached as { buyers: any[]; total: number };
     }
 
     // エリアグループルール適用
     const targetAreas = this.applyAreaGroupRules(area);
+    console.log('[getOtherCompanyDistributionBuyers] targetAreas:', targetAreas);
 
     // クエリ構築
     let query = this.supabase
@@ -2787,26 +2791,59 @@ export class BuyerService {
       .select('buyer_number, name, desired_area, desired_property_type, price_range_house, price_range_apartment, price_range_land, reception_date, phone_number, email')
       .is('deleted_at', null);
 
-    // エリアフィルタ（OR条件）
-    const areaConditions = targetAreas.map(a => `desired_area.ilike.%${a}%`);
-    query = query.or(areaConditions.join(','));
-
-    // 物件種別フィルタ（OR条件）
-    const propertyTypeConditions = propertyTypes.map(type => {
-      const dbType = this.mapPropertyTypeToDb(type);
-      return `desired_property_type.ilike.%${dbType}%`;
-    });
-    query = query.or(propertyTypeConditions.join(','));
+    // エリアフィルタ（OR条件で複数エリアを検索）
+    if (targetAreas.length > 0) {
+      const areaConditions = targetAreas.map(a => `desired_area.ilike.%${a}%`).join(',');
+      query = query.or(areaConditions);
+    }
 
     // データ取得
-    const { data: buyers, error } = await query;
+    const { data: allBuyers, error } = await query;
 
     if (error) {
+      console.error('[getOtherCompanyDistributionBuyers] Query error:', error);
       throw new Error(`Failed to fetch buyers: ${error.message}`);
     }
 
+    console.log('[getOtherCompanyDistributionBuyers] allBuyers count:', allBuyers?.length || 0);
+    
+    // デバッグ：最初の3件のデータを出力
+    if (allBuyers && allBuyers.length > 0) {
+      console.log('[getOtherCompanyDistributionBuyers] Sample buyers (first 3):', 
+        allBuyers.slice(0, 3).map(b => ({
+          buyer_number: b.buyer_number,
+          desired_area: b.desired_area,
+          desired_property_type: b.desired_property_type,
+          price_range_house: b.price_range_house,
+          price_range_apartment: b.price_range_apartment,
+          price_range_land: b.price_range_land
+        }))
+      );
+    }
+
+    // 物件種別フィルタ（アプリケーション層）
+    const propertyTypeFiltered = (allBuyers || []).filter(buyer => {
+      if (!buyer.desired_property_type) {
+        console.log(`[getOtherCompanyDistributionBuyers] Buyer ${buyer.buyer_number}: No desired_property_type`);
+        return false;
+      }
+      
+      const dbTypes = propertyTypes.map(type => this.mapPropertyTypeToDb(type));
+      const matches = dbTypes.some(dbType => 
+        buyer.desired_property_type.includes(dbType)
+      );
+      
+      console.log(`[getOtherCompanyDistributionBuyers] Buyer ${buyer.buyer_number}: desired_property_type="${buyer.desired_property_type}", dbTypes=${JSON.stringify(dbTypes)}, matches=${matches}`);
+      
+      return matches;
+    });
+
+    console.log('[getOtherCompanyDistributionBuyers] propertyTypeFiltered count:', propertyTypeFiltered.length);
+
     // 価格帯フィルタ（アプリケーション層）
-    const filteredBuyers = this.filterByPriceRange(buyers || [], priceRange, propertyTypes);
+    const filteredBuyers = this.filterByPriceRange(propertyTypeFiltered, priceRange, propertyTypes);
+
+    console.log('[getOtherCompanyDistributionBuyers] filteredBuyers count:', filteredBuyers.length);
 
     const result = {
       buyers: filteredBuyers,
@@ -2858,20 +2895,32 @@ export class BuyerService {
    */
   private filterByPriceRange(buyers: any[], priceRange: string, propertyTypes: string[]): any[] {
     if (priceRange === '指定なし') {
+      console.log('[filterByPriceRange] priceRange is "指定なし", returning all buyers');
       return buyers;
     }
+
+    console.log(`[filterByPriceRange] Filtering ${buyers.length} buyers by priceRange="${priceRange}", propertyTypes=${JSON.stringify(propertyTypes)}`);
 
     return buyers.filter(buyer => {
       for (const type of propertyTypes) {
         const priceField = this.getPriceFieldForType(type);
         const buyerPrice = buyer[priceField];
 
-        if (!buyerPrice) continue;
+        console.log(`[filterByPriceRange] Buyer ${buyer.buyer_number}: type="${type}", priceField="${priceField}", buyerPrice="${buyerPrice}"`);
 
-        if (this.matchesPriceRange(buyerPrice, priceRange)) {
+        if (!buyerPrice) {
+          console.log(`[filterByPriceRange] Buyer ${buyer.buyer_number}: No price for ${priceField}`);
+          continue;
+        }
+
+        const matches = this.matchesPriceRange(buyerPrice, priceRange);
+        console.log(`[filterByPriceRange] Buyer ${buyer.buyer_number}: buyerPrice="${buyerPrice}", priceRange="${priceRange}", matches=${matches}`);
+
+        if (matches) {
           return true;
         }
       }
+      console.log(`[filterByPriceRange] Buyer ${buyer.buyer_number}: No matching price range`);
       return false;
     });
   }
@@ -2894,14 +2943,23 @@ export class BuyerService {
   private matchesPriceRange(buyerPrice: string, priceRange: string): boolean {
     const { min, max } = this.parsePriceRange(buyerPrice);
 
+    console.log(`[matchesPriceRange] buyerPrice="${buyerPrice}", parsed: min=${min}, max=${max}, priceRange="${priceRange}"`);
+
     switch (priceRange) {
       case '~1900万円':
-        return max <= 19000000;
+        const result1 = max <= 19000000;
+        console.log(`[matchesPriceRange] ~1900万円: max(${max}) <= 19000000 = ${result1}`);
+        return result1;
       case '1000万円~2999万円':
-        return min >= 10000000 && max <= 29990000;
+        const result2 = min >= 10000000 && max <= 29990000;
+        console.log(`[matchesPriceRange] 1000万円~2999万円: min(${min}) >= 10000000 && max(${max}) <= 29990000 = ${result2}`);
+        return result2;
       case '2000万円以上':
-        return min >= 20000000;
+        const result3 = min >= 20000000;
+        console.log(`[matchesPriceRange] 2000万円以上: min(${min}) >= 20000000 = ${result3}`);
+        return result3;
       default:
+        console.log(`[matchesPriceRange] Unknown priceRange, returning true`);
         return true;
     }
   }
