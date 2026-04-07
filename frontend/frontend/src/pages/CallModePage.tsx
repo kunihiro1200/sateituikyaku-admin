@@ -3726,6 +3726,15 @@ HP：https://ifoo-oita.com/
               <ExpandMoreIcon sx={{ transform: mobileCallLogOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: '0.2s' }} />
             </Box>
           )}
+
+          {/* 追客電話月間ランキング（追客ログの一番上） */}
+          <Box sx={{ width: isMobile ? '100%' : 280, p: 2, borderBottom: 1, borderColor: 'divider', display: isMobile && !mobileCallLogOpen ? 'none' : undefined }}>
+            <CallRankingDisplay
+              title="追客電話月間ランキング"
+              endpoint="/api/sellers/call-tracking-ranking"
+            />
+          </Box>
+
           <Box sx={{ width: isMobile ? '100%' : 280, p: 2, borderBottom: 1, borderColor: 'divider', display: isMobile && !mobileCallLogOpen ? 'none' : undefined }}>
             <CallLogDisplay ref={callLogRef} sellerId={id!} />
           </Box>

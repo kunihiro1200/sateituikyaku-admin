@@ -414,6 +414,128 @@ router.get('/call-ranking', async (req: Request, res: Response) => {
 });
 
 /**
+ * 追客電話ランキングを取得
+ * GET /api/sellers/call-tracking-ranking
+ * Google Spreadsheet「売主追客ログ」から当月のデータを集計してランキングを返す
+ */
+router.get('/call-tracking-ranking', async (req: Request, res: Response) => {
+  try {
+    // JSTで当月の開始日・終了日を計算
+    const now = new Date();
+    const jstOffset = 9 * 60 * 60 * 1000;
+    const jstNow = new Date(now.getTime() + jstOffset);
+    const year = jstNow.getUTCFullYear();
+    const month = jstNow.getUTCMonth(); // 0-indexed
+
+    const fromDate = `${year}-${String(month + 1).padStart(2, '0')}-01`;
+    const lastDay = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+    const toDate = `${year}-${String(month + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+
+    // Google Sheets APIでデータ取得
+    const { GoogleSheetsClient } = await import('../services/GoogleSheetsClient');
+    const sheetsClient = new GoogleSheetsClient({
+      spreadsheetId: '1wKBRLWbT6pSKa9IlTDabjhjTnfs_GxX6Rn6M6kbio1I',
+      sheetName: '売主追客ログ',
+      serviceAccountKeyPath: process.env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH,
+    });
+
+    await sheetsClient.authenticate();
+
+    // A列（日付）、E列（1回目イニシャル）、F列（2回目イニシャル）を取得
+    const rawData = await sheetsClient.readRawRange('売主追客ログ!A:F');
+
+    if (!rawData || rawData.length === 0) {
+      return res.json({
+        period: { from: fromDate, to: toDate },
+        rankings: [],
+        updatedAt: new Date().toISOString(),
+      });
+    }
+
+    // ヘッダー行をスキップ
+    const dataRows = rawData.slice(1);
+
+    // 当月のデータをフィルタリングしてイニシャルを集計
+    const counts = new Map<string, number>();
+    const currentMonthStart = new Date(year, month, 1);
+    const currentMonthEnd = new Date(year, month + 1, 0, 23, 59, 59, 999);
+
+    for (const row of dataRows) {
+      const dateStr = row[0]; // A列（日付）
+      const initial1 = row[4]; // E列（1回目イニシャル）
+      const initial2 = row[5]; // F列（2回目イニシャル）
+
+      // 日付が空欄の場合はスキップ
+      if (!dateStr) continue;
+
+      // 日付を解析（東京時間）
+      let date: Date;
+      try {
+        // "2026/4/15" 形式を想定
+        const parts = String(dateStr).split('/');
+        if (parts.length === 3) {
+          const y = parseInt(parts[0], 10);
+          const m = parseInt(parts[1], 10) - 1; // 0-indexed
+          const d = parseInt(parts[2], 10);
+          date = new Date(y, m, d);
+        } else {
+          // その他の形式はDate.parseで試す
+          date = new Date(dateStr);
+        }
+
+        // 無効な日付はスキップ
+        if (isNaN(date.getTime())) {
+          console.warn(`[CallTrackingRanking] Invalid date format: ${dateStr}`);
+          continue;
+        }
+      } catch (error) {
+        console.warn(`[CallTrackingRanking] Failed to parse date: ${dateStr}`, error);
+        continue;
+      }
+
+      // 当月のデータのみを対象
+      if (date < currentMonthStart || date > currentMonthEnd) {
+        continue;
+      }
+
+      // E列のイニシャルをカウント
+      if (initial1 && String(initial1).trim() !== '') {
+        const initial = String(initial1).trim();
+        counts.set(initial, (counts.get(initial) || 0) + 1);
+      }
+
+      // F列のイニシャルをカウント
+      if (initial2 && String(initial2).trim() !== '') {
+        const initial = String(initial2).trim();
+        counts.set(initial, (counts.get(initial) || 0) + 1);
+      }
+    }
+
+    // count DESC, initial ASC でソート
+    const rankings = Array.from(counts.entries())
+      .map(([initial, count]) => ({ initial, count }))
+      .sort((a, b) => b.count - a.count || a.initial.localeCompare(b.initial));
+
+    console.log(`[CallTrackingRanking] Successfully fetched ranking data (${rankings.length} entries)`);
+
+    res.json({
+      period: { from: fromDate, to: toDate },
+      rankings,
+      updatedAt: new Date().toISOString(),
+    });
+  } catch (error) {
+    console.error('[CallTrackingRanking] Error:', error);
+    res.status(500).json({
+      error: {
+        code: 'CALL_TRACKING_RANKING_ERROR',
+        message: error instanceof Error ? error.message : 'Failed to get call tracking ranking',
+        retryable: true,
+      },
+    });
+  }
+});
+
+/**
  * パフォーマンスメトリクスを取得
  * GET /api/sellers/performance-metrics?month=2024-12
  */

@@ -28,6 +28,10 @@ interface RankingData {
 }
 
 interface CallRankingDisplayProps {
+  /** ランキングのタイトル（デフォルト: "1番電話月間ランキング"） */
+  title?: string;
+  /** APIエンドポイント（デフォルト: "/api/sellers/call-ranking"） */
+  endpoint?: string;
   /** 表示対象のイニシャル一覧（未指定時は全件表示） */
   allowedInitials?: string[];
 }
@@ -54,7 +58,7 @@ function isExcluded(initial: string): boolean {
   return EXCLUDED_PATTERNS.some((p) => initial.includes(p));
 }
 
-const CallRankingDisplay = ({ allowedInitials }: CallRankingDisplayProps) => {
+const CallRankingDisplay = ({ title = '1番電話月間ランキング', endpoint = '/api/sellers/call-ranking', allowedInitials }: CallRankingDisplayProps) => {
   const [data, setData] = useState<RankingData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -64,7 +68,7 @@ const CallRankingDisplay = ({ allowedInitials }: CallRankingDisplayProps) => {
     setLoading(true);
     setError(null);
     try {
-      const response = await api.get('/api/sellers/call-ranking', { timeout: 5000 });
+      const response = await api.get(endpoint, { timeout: 5000 });
       setData(response.data);
     } catch (err: any) {
       if (err.code === 'ECONNABORTED' || err.message?.includes('timeout')) {
@@ -75,7 +79,7 @@ const CallRankingDisplay = ({ allowedInitials }: CallRankingDisplayProps) => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [endpoint]);
 
   useEffect(() => {
     fetchRanking();
@@ -151,7 +155,7 @@ const CallRankingDisplay = ({ allowedInitials }: CallRankingDisplayProps) => {
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
         <Typography variant="subtitle2" sx={{ display: 'flex', alignItems: 'center', gap: 0.5, fontWeight: 'bold' }}>
           <TrophyIcon sx={{ fontSize: 18, color: '#F57F17' }} />
-          1番電話月間ランキング
+          {title}
           <Typography component="span" variant="caption" color="text.secondary" sx={{ ml: 0.5 }}>
             {formatPeriod(data.period.from)}
           </Typography>
