@@ -14,7 +14,7 @@
   - `buyers`テーブルの`deleted_at`カラムに部分インデックスを作成
   - _要件: 10.2_
 
-- [ ] 2. バックエンド：BuyerServiceにメソッド追加
+- [x] 2. バックエンド：BuyerServiceにメソッド追加
   - [x] 2.1 `getOtherCompanyDistributionBuyers`メソッドを実装
     - エリアグループルール適用ロジック（`applyAreaGroupRules`）を実装
     - 物件種別マッピング（`mapPropertyTypeToDb`）を実装
@@ -30,7 +30,7 @@
     - 物件種別フィルタリングのテスト（戸建、マンション、土地）
     - _要件: 3.1, 3.2, 5.1, 5.2, 5.3, 7.1, 7.2, 7.3_
 
-- [ ] 3. バックエンド：APIエンドポイント追加
+- [x] 3. バックエンド：APIエンドポイント追加
   - [x] 3.1 `backend/src/routes/buyers.ts`に`GET /other-company-distribution`エンドポイントを追加
     - クエリパラメータのバリデーション（area、priceRange、propertyTypes）
     - BuyerServiceの`getOtherCompanyDistributionBuyers`を呼び出し
@@ -42,18 +42,18 @@
     - 異常系：必須パラメータ不足時に400エラーが返却されることを確認
     - _要件: 4.1_
 
-- [ ] 4. バックエンド：キャッシュ機能の実装
+- [x] 4. バックエンド：キャッシュ機能の実装
   - [x] 4.1 `node-cache`を使用してキャッシュ機能を実装
     - キャッシュキー：`other-company-distribution:{area}:{priceRange}:{propertyTypes}`
     - TTL：10分間（600秒）
     - _要件: 10.3_
 
-- [ ] 5. チェックポイント - バックエンドのテスト
+- [x] 5. チェックポイント - バックエンドのテスト
   - バックエンドのビルドが成功することを確認
   - 全てのテストが通ることを確認
   - ユーザーに質問があれば確認
 
-- [ ] 6. フロントエンド：OtherCompanyDistributionPageの作成
+- [x] 6. フロントエンド：OtherCompanyDistributionPageの作成
   - [x] 6.1 `OtherCompanyDistributionPage.tsx`を作成
     - ページレイアウト（ヘッダー、フィルター、買主リスト）を実装
     - State管理（selectedArea、selectedPriceRange、selectedPropertyTypes、buyers、loading）を実装
@@ -82,26 +82,26 @@
     - 買主リストをカード形式で表示
     - _要件: 9.1, 9.2, 9.3_
 
-- [ ] 7. フロントエンド：BuyersPageにボタン追加
+- [x] 7. フロントエンド：BuyersPageにボタン追加
   - [x] 7.1 `BuyersPage.tsx`のヘッダーに「他社物件新着配信」ボタンを追加
     - ボタンを「公開物件サイト」ボタンの右隣に配置
     - クリック時に`/buyers/other-company-distribution`に遷移
     - スタイリング（SECTION_COLORS.buyer使用）
     - _要件: 1.1, 1.2, 1.3_
 
-- [ ] 8. フロントエンド：ルーティング設定
+- [x] 8. フロントエンド：ルーティング設定
   - [x] 8.1 `App.tsx`に`/buyers/other-company-distribution`ルートを追加
     - `OtherCompanyDistributionPage`コンポーネントをインポート
     - ルート定義を追加
     - _要件: 1.3_
 
-- [ ] 9. チェックポイント - フロントエンドのテスト
+- [x] 9. チェックポイント - フロントエンドのテスト
   - フロントエンドのビルドが成功することを確認
   - 全てのページが正しく表示されることを確認
   - ユーザーに質問があれば確認
 
-- [ ] 10. 統合テストとデプロイ準備
-  - [ ] 10.1 エンドツーエンドテストを実施
+- [x] 10. 統合テストとデプロイ準備
+  - [x] 10.1 エンドツーエンドテストを実施
     - ヘッダーボタンクリック → ページ遷移を確認
     - フィルター選択 → API呼び出し → 買主リスト表示を確認
     - エリアグループルール（①～⑧→㊵、⑨～⑮→㊶）が正しく動作することを確認
@@ -109,7 +109,7 @@
     - 物件種別フィルタリングが正しく動作することを確認
     - _要件: 3.1, 3.2, 4.1, 5.1, 5.2, 5.3, 6.1, 6.2, 6.3, 6.4, 7.1, 7.2, 7.3, 7.4_
 
-  - [ ] 10.2 パフォーマンステストを実施
+  - [x] 10.2 パフォーマンステストを実施
     - 2秒以内にレスポンスが返却されることを確認
     - キャッシュが正しく動作することを確認
     - _要件: 10.1, 10.3_
