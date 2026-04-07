@@ -628,6 +628,17 @@ export class SellerService extends BaseRepository {
       updates.first_call_person = data.firstCallPerson;
     }
 
+    // コミュニケーション情報フィールド
+    if ((data as any).phoneContactPerson !== undefined) {
+      updates.phone_contact_person = (data as any).phoneContactPerson;
+    }
+    if ((data as any).preferredContactTime !== undefined) {
+      updates.preferred_contact_time = (data as any).preferredContactTime;
+    }
+    if ((data as any).contactMethod !== undefined) {
+      updates.contact_method = (data as any).contactMethod;
+    }
+
     // 除外日を計算（inquiryDateまたはsiteが更新される場合）
     if (data.inquiryDate !== undefined || data.site !== undefined) {
       // 現在の売主データを取得して、更新されないフィールドの値を使用

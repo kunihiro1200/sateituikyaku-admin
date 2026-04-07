@@ -1090,6 +1090,7 @@ const CallModePage = () => {
         console.log('🔄 コミュニケーションフィールドを自動保存中...');
 
         await api.put(`/api/sellers/${id}`, {
+          phoneContactPerson: editedPhoneContactPerson || null,
           preferredContactTime: editedPreferredContactTime || null,
           contactMethod: editedContactMethod || null,
           firstCallPerson: editedFirstCallPerson || null,
