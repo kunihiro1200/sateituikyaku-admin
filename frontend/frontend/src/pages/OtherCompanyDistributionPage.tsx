@@ -26,8 +26,20 @@ import {
   TextField,
   Snackbar,
   Alert,
+  Tabs,
+  Tab,
+  List,
+  ListItem,
+  ListItemText,
+  IconButton,
 } from '@mui/material';
-import { Email as EmailIcon } from '@mui/icons-material';
+import {
+  Email as EmailIcon,
+  Folder as FolderIcon,
+  CloudUpload as CloudUploadIcon,
+  Link as LinkIcon,
+  Delete as DeleteIcon,
+} from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { SECTION_COLORS } from '../theme/sectionColors';
@@ -45,7 +57,6 @@ interface Buyer {
   email: string;
   latest_status: string | null;
   inquiry_hearing: string | null;
-  home_hearing_result: string | null;
 }
 
 // エリア選択肢（買主詳細画面と同じ形式）
@@ -99,6 +110,7 @@ export default function OtherCompanyDistributionPage() {
   const [emailSubject, setEmailSubject] = useState('新着物件のご案内です！！');
   const [emailBody, setEmailBody] = useState('');
   const [attachments, setAttachments] = useState<File[]>([]);
+  const [attachmentTab, setAttachmentTab] = useState(0); // 0: Google Drive, 1: ローカルファイル, 2: URL
   const [sending, setSending] = useState(false);
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
     open: false, message: '', severity: 'success',
@@ -162,11 +174,8 @@ export default function OtherCompanyDistributionPage() {
   const allChecked = buyers.length > 0 && checkedIds.size === buyers.length;
   const someChecked = checkedIds.size > 0 && !allChecked;
 
-  // ヒアリング項目を取得（内覧結果を優先、なければ詳細画面のヒアリング項目）
+  // ヒアリング項目を取得
   const getHearingItems = (buyer: Buyer): string => {
-    if (buyer.home_hearing_result) {
-      return buyer.home_hearing_result;
-    }
     if (buyer.inquiry_hearing) {
       return buyer.inquiry_hearing;
     }
@@ -195,7 +204,7 @@ export default function OtherCompanyDistributionPage() {
 
   // メール本文生成
   const buildEmailBody = (buyer: Buyer) => {
-    return `${buyer.name}様\n\n大変おせわになっております。\n不動産会社の㈱いふうです。\n\n新着物件がでましたので、添付致します。\n他社様の物件でも気になる物件がございましたらまとめてご案内可能ですのでお申し付けくださいませ。${SIGNATURE_EMAIL}`;
+    return `${buyer.name}様\n\n大変お世話になっております。\n不動産会社の㈱いふうです。\n\n新着物件がでましたので、添付致します。\n他社様の物件でも気になる物件がございましたらまとめてご案内可能ですのでお申し付けくださいませ。${SIGNATURE_EMAIL}`;
   };
 
   const openEmailDialog = () => {
@@ -209,6 +218,10 @@ export default function OtherCompanyDistributionPage() {
     if (e.target.files) {
       setAttachments(Array.from(e.target.files));
     }
+  };
+
+  const removeAttachment = (index: number) => {
+    setAttachments(prev => prev.filter((_, i) => i !== index));
   };
 
   const sendEmails = async () => {
@@ -467,20 +480,69 @@ export default function OtherCompanyDistributionPage() {
             rows={14}
             fullWidth
           />
+          
+          {/* 添付ファイル選択 */}
           <Box>
-            <Button variant="outlined" component="label">
-              添付ファイルを選択
-              <input
-                type="file"
-                hidden
-                multiple
-                onChange={handleFileChange}
-              />
-            </Button>
-            {attachments.length > 0 && (
-              <Box sx={{ mt: 1 }}>
-                <Typography variant="body2" color="text.secondary">
-                  選択されたファイル: {attachments.map(f => f.name).join(', ')}
+            <Typography variant="subtitle2" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <CloudUploadIcon fontSize="small" />
+              画像を選択
+            </Typography>
+            <Tabs value={attachmentTab} onChange={(_, v) => setAttachmentTab(v)} sx={{ borderBottom: 1, borderColor: 'divider' }}>
+              <Tab icon={<FolderIcon />} label="GOOGLE DRIVE" />
+              <Tab icon={<CloudUploadIcon />} label="ローカルファイル" />
+              <Tab icon={<LinkIcon />} label="URL" />
+            </Tabs>
+            
+            {/* Google Driveタブ */}
+            {attachmentTab === 0 && (
+              <Box sx={{ p: 2, textAlign: 'center', color: 'text.secondary' }}>
+                <FolderIcon sx={{ fontSize: 48, mb: 1 }} />
+                <Typography variant="body2">
+                  Google Drive連携は現在準備中です
+                </Typography>
+              </Box>
+            )}
+            
+            {/* ローカルファイルタブ */}
+            {attachmentTab === 1 && (
+              <Box sx={{ p: 2 }}>
+                <Button variant="outlined" component="label" fullWidth>
+                  ファイルを選択
+                  <input
+                    type="file"
+                    hidden
+                    multiple
+                    onChange={handleFileChange}
+                  />
+                </Button>
+                {attachments.length > 0 && (
+                  <List dense sx={{ mt: 2 }}>
+                    {attachments.map((file, index) => (
+                      <ListItem
+                        key={index}
+                        secondaryAction={
+                          <IconButton edge="end" onClick={() => removeAttachment(index)}>
+                            <DeleteIcon />
+                          </IconButton>
+                        }
+                      >
+                        <ListItemText
+                          primary={file.name}
+                          secondary={`${(file.size / 1024).toFixed(1)} KB`}
+                        />
+                      </ListItem>
+                    ))}
+                  </List>
+                )}
+              </Box>
+            )}
+            
+            {/* URLタブ */}
+            {attachmentTab === 2 && (
+              <Box sx={{ p: 2, textAlign: 'center', color: 'text.secondary' }}>
+                <LinkIcon sx={{ fontSize: 48, mb: 1 }} />
+                <Typography variant="body2">
+                  URL添付は現在準備中です
                 </Typography>
               </Box>
             )}
