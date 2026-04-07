@@ -38,6 +38,15 @@ export class CalendarService extends BaseRepository {
       process.env.GOOGLE_REDIRECT_URI
     );
 
+    // リフレッシュトークンを設定
+    if (process.env.GOOGLE_CALENDAR_REFRESH_TOKEN) {
+      oauth2Client.setCredentials({
+        refresh_token: process.env.GOOGLE_CALENDAR_REFRESH_TOKEN,
+      });
+    } else {
+      console.warn('⚠️ GOOGLE_CALENDAR_REFRESH_TOKEN is not set. Calendar events will not be created.');
+    }
+
     this.calendar = google.calendar({ version: 'v3', auth: oauth2Client });
   }
 
