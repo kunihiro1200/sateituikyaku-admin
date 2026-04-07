@@ -2862,18 +2862,26 @@ export class BuyerService {
    * ⑨～⑮ → ㊶も含める
    */
   private applyAreaGroupRules(area: string): string[] {
+    // エリア文字列から丸数字を抽出（例：「①中学校（王子、碩田学園、大分西）」→「①」）
+    const circledNumberMatch = area.match(/[①-⑳㉑-㉟㊱-㊿]/);
+    const areaNumber = circledNumberMatch ? circledNumberMatch[0] : area;
+
+    console.log('[applyAreaGroupRules] input area:', area, 'extracted areaNumber:', areaNumber);
+
     const oitaCityAreas = ['①', '②', '③', '④', '⑤', '⑥', '⑦', '⑧'];
     const beppuCityAreas = ['⑨', '⑩', '⑪', '⑫', '⑬', '⑭', '⑮'];
 
-    const targetAreas = [area];
+    const targetAreas = [areaNumber];
 
-    if (oitaCityAreas.includes(area)) {
+    if (oitaCityAreas.includes(areaNumber)) {
       targetAreas.push('㊵');
     }
 
-    if (beppuCityAreas.includes(area)) {
+    if (beppuCityAreas.includes(areaNumber)) {
       targetAreas.push('㊶');
     }
+
+    console.log('[applyAreaGroupRules] targetAreas:', targetAreas);
 
     return targetAreas;
   }
