@@ -606,6 +606,7 @@ const CallModePage = () => {
   const [savedFirstCallPerson, setSavedFirstCallPerson] = useState<string>(''); // 保存済み値（変更検知用）
   const [savingCommunication, setSavingCommunication] = useState(false);
   const [rankingDialogOpen, setRankingDialogOpen] = useState(false); // 1番電話月間ランキングダイアログ
+  const [callTrackingRankingDialogOpen, setCallTrackingRankingDialogOpen] = useState(false); // 追客電話月間ランキングダイアログ
   // スマホ時のアコーディオン開閉状態
   const [mobileCommentOpen, setMobileCommentOpen] = useState(true); // コメント（デフォルト展開）
   const [mobilePropertyOpen, setMobilePropertyOpen] = useState(false); // 物件情報
@@ -3727,12 +3728,28 @@ HP：https://ifoo-oita.com/
             </Box>
           )}
 
-          {/* 追客電話月間ランキング（追客ログの一番上） */}
+          {/* 追客電話月間ランキングボタン（追客ログの一番上） */}
           <Box sx={{ width: isMobile ? '100%' : 280, p: 2, borderBottom: 1, borderColor: 'divider', display: isMobile && !mobileCallLogOpen ? 'none' : undefined }}>
-            <CallRankingDisplay
-              title="追客電話月間ランキング"
-              endpoint="/api/sellers/call-tracking-ranking"
-            />
+            <Button
+              fullWidth
+              variant="outlined"
+              onClick={() => setCallTrackingRankingDialogOpen(true)}
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 1,
+                py: 1.5,
+                borderColor: '#F57F17',
+                color: '#F57F17',
+                '&:hover': {
+                  borderColor: '#F57F17',
+                  bgcolor: '#FFF8E1',
+                },
+              }}
+            >
+              🏆 追客電話月間ランキング
+            </Button>
           </Box>
 
           <Box sx={{ width: isMobile ? '100%' : 280, p: 2, borderBottom: 1, borderColor: 'divider', display: isMobile && !mobileCallLogOpen ? 'none' : undefined }}>
@@ -7194,6 +7211,22 @@ HP：https://ifoo-oita.com/
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setRankingDialogOpen(false)}>閉じる</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 追客電話月間ランキングダイアログ */}
+      <Dialog open={callTrackingRankingDialogOpen} onClose={() => setCallTrackingRankingDialogOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          🏆 追客電話月間ランキング
+        </DialogTitle>
+        <DialogContent>
+          <CallRankingDisplay
+            title="追客電話月間ランキング"
+            endpoint="/api/sellers/call-tracking-ranking"
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setCallTrackingRankingDialogOpen(false)}>閉じる</Button>
         </DialogActions>
       </Dialog>
 
