@@ -1199,4 +1199,43 @@ ${bodyHtml}
     };
   }
 
+  /**
+   * 買主へのメール送信（添付ファイル対応）
+   */
+  async sendBuyerEmail(params: {
+    to: string;
+    subject: string;
+    body: string;
+    from?: string;
+    attachments?: Express.Multer.File[];
+  }): Promise<EmailResult> {
+    try {
+      // Multer.Fileを EmailAttachment に変換
+      const emailAttachments: EmailAttachment[] = (params.attachments || []).map((file, index) => ({
+        filename: file.originalname,
+        mimeType: file.mimetype,
+        data: file.buffer,
+        cid: `attachment-${index}`,
+      }));
+
+      // sendEmailWithCcAndAttachments を使用
+      return await this.sendEmailWithCcAndAttachments({
+        to: params.to,
+        subject: params.subject,
+        body: params.body,
+        from: params.from || 'tenant@ifoo-oita.com',
+        attachments: emailAttachments,
+        isHtml: false,
+      });
+    } catch (error) {
+      console.error('sendBuyerEmail error:', error);
+      return {
+        messageId: '',
+        sentAt: new Date(),
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      };
+    }
+  }
+
 }
