@@ -40,6 +40,7 @@ export class CalendarService extends BaseRepository {
 
     // リフレッシュトークンを設定
     if (process.env.GOOGLE_CALENDAR_REFRESH_TOKEN) {
+      console.log('✅ GOOGLE_CALENDAR_REFRESH_TOKEN is set');
       oauth2Client.setCredentials({
         refresh_token: process.env.GOOGLE_CALENDAR_REFRESH_TOKEN,
       });
@@ -189,38 +190,55 @@ export class CalendarService extends BaseRepository {
     sellerPhone: string,
     propertyAddress: string
   ): Promise<CalendarEvent> {
-    const event = {
-      summary: `訪問査定: ${sellerName}様`,
-      location: request.location,
-      description: `
+    try {
+      const event = {
+        summary: `訪問査定: ${sellerName}様`,
+        location: request.location,
+        description: `
 売主: ${sellerName}
 電話: ${sellerPhone}
 物件住所: ${propertyAddress}
 ${request.notes ? `\n備考: ${request.notes}` : ''}
       `.trim(),
-      start: {
-        dateTime: request.startTime.toISOString(),
-        timeZone: 'Asia/Tokyo',
-      },
-      end: {
-        dateTime: request.endTime.toISOString(),
-        timeZone: 'Asia/Tokyo',
-      },
-      reminders: {
-        useDefault: false,
-        overrides: [
-          { method: 'email', minutes: 24 * 60 }, // 1日前
-          { method: 'popup', minutes: 30 }, // 30分前
-        ],
-      },
-    };
+        start: {
+          dateTime: request.startTime.toISOString(),
+          timeZone: 'Asia/Tokyo',
+        },
+        end: {
+          dateTime: request.endTime.toISOString(),
+          timeZone: 'Asia/Tokyo',
+        },
+        reminders: {
+          useDefault: false,
+          overrides: [
+            { method: 'email', minutes: 24 * 60 }, // 1日前
+            { method: 'popup', minutes: 30 }, // 30分前
+          ],
+        },
+      };
 
-    const response = await this.calendar.events.insert({
-      calendarId: 'primary',
-      requestBody: event,
-    });
+      console.log('📅 Creating calendar event:', {
+        summary: event.summary,
+        start: event.start.dateTime,
+        end: event.end.dateTime,
+      });
 
-    return response.data;
+      const response = await this.calendar.events.insert({
+        calendarId: 'primary',
+        requestBody: event,
+      });
+
+      console.log('✅ Calendar event created successfully:', response.data.id);
+      return response.data;
+    } catch (error: any) {
+      console.error('❌ Failed to create calendar event:', error);
+      console.error('   Error details:', {
+        message: error.message,
+        code: error.code,
+        errors: error.errors,
+      });
+      throw new Error(`Failed to create calendar event: ${error.message}`);
+    }
   }
 
   /**

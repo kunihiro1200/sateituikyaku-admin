@@ -430,10 +430,13 @@ const CallModePage = () => {
   const [exclusionDate, setExclusionDate] = useState<string>('');
   const [exclusionAction, setExclusionAction] = useState<string>('');
   const [editedNextCallDate, setEditedNextCallDate] = useState<string>('');
+  
+  // 4つのフィールドの状態管理（編集中の値）
   const [editedExclusiveDecisionDate, setEditedExclusiveDecisionDate] = useState<string>('');
   const [editedCompetitors, setEditedCompetitors] = useState<string[]>([]);
   const [editedExclusiveOtherDecisionFactors, setEditedExclusiveOtherDecisionFactors] = useState<string[]>([]);
   const [editedCompetitorNameAndReason, setEditedCompetitorNameAndReason] = useState<string>('');
+  
   const [savingStatus, setSavingStatus] = useState(false);
   const [statusChanged, setStatusChanged] = useState(false); // ステータスセクションの変更検知
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -443,6 +446,8 @@ const CallModePage = () => {
   const [savedConfidence, setSavedConfidence] = useState<ConfidenceLevel | ''>('');
   const [savedExclusiveOtherDecisionMeeting, setSavedExclusiveOtherDecisionMeeting] = useState<string>('');
   const [savedNextCallDate, setSavedNextCallDate] = useState<string>('');
+  
+  // 4つのフィールドの保存済み値（変更検知用）
   const [savedExclusiveDecisionDate, setSavedExclusiveDecisionDate] = useState<string>('');
   const [savedCompetitors, setSavedCompetitors] = useState<string[]>([]);
   const [savedExclusiveOtherDecisionFactors, setSavedExclusiveOtherDecisionFactors] = useState<string[]>([]);
@@ -4834,28 +4839,40 @@ HP：https://ifoo-oita.com/
                           }
                           
                           // 訪問査定日時が入力された場合、現在のログインユーザーを訪問査定取得者に自動設定
-                          // ただし、訪問査定取得者が既に設定済みの場合は上書きしない
+                          // 訪問査定取得者が空欄の場合のみ自動設定（既に設定済みの場合は上書きしない）
+                          console.log('📅 訪問日が設定されました:', newDate);
+                          console.log('   現在の訪問査定取得者:', editedVisitValuationAcquirer);
+                          console.log('   ログインユーザー:', employee?.email);
+                          
                           if (newDate && employee?.email && !editedVisitValuationAcquirer) {
+                            console.log('🔍 訪問査定取得者を自動設定します...');
                             try {
                               // 現在のログインユーザーのメールアドレスからスタッフを検索
                               const currentStaff = employees.find(emp => emp.email === employee.email);
+                              console.log('   スタッフ検索結果:', currentStaff);
                               
                               if (currentStaff) {
-                                // スタッフが見つかった場合、訪問査定取得者に設定（既存の値を上書き）
+                                // スタッフが見つかった場合、訪問査定取得者に設定
                                 const initials = currentStaff.initials || currentStaff.name || currentStaff.email;
                                 setEditedVisitValuationAcquirer(initials);
-                                console.log('✅ 訪問査定取得者を自動設定:', initials);
+                                console.log('✅ 訪問査定取得者を自動設定しました:', initials);
                               } else {
-                                // スタッフが見つからない場合は警告をログに出力（ユーザーには表示しない）
+                                // スタッフが見つからない場合は警告をログに出力
                                 console.warn('⚠️ ログインユーザーがスタッフ一覧に見つかりません:', employee.email);
+                                console.warn('   スタッフ一覧:', employees.map(e => ({ email: e.email, initials: e.initials })));
                               }
                             } catch (error) {
                               // エラーが発生しても処理を続行（自動設定をスキップ）
                               console.error('❌ 訪問査定取得者の自動設定に失敗:', error);
                             }
-                          } else if (newDate && !employee?.email) {
-                            // ログインユーザー情報が取得できない場合
-                            console.warn('⚠️ ログインユーザー情報が取得できません');
+                          } else {
+                            if (!newDate) {
+                              console.log('   訪問日が空欄のため、自動設定をスキップ');
+                            } else if (!employee?.email) {
+                              console.warn('⚠️ ログインユーザー情報が取得できません');
+                            } else if (editedVisitValuationAcquirer) {
+                              console.log('   訪問査定取得者が既に設定済みのため、自動設定をスキップ');
+                            }
                           }
                         }}
                         InputLabelProps={{ shrink: true }}
