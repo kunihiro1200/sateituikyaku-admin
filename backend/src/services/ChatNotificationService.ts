@@ -183,12 +183,10 @@ export class ChatNotificationService {
       .select(`
         seller_number,
         name,
+        property_address,
+        property_type,
         valuation_amount_2,
-        exclusive_other_decision_factor,
-        properties (
-          address,
-          property_type
-        )
+        exclusive_other_decision_factor
       `)
       .eq('id', sellerId)
       .single();
@@ -202,8 +200,8 @@ export class ChatNotificationService {
       name: data.name,
       valuation_amount_2: data.valuation_amount_2,
       exclusive_other_decision_factor: data.exclusive_other_decision_factor,
-      property_address: data.properties?.[0]?.address,
-      property_type: data.properties?.[0]?.property_type,
+      property_address: data.property_address,
+      property_type: data.property_type,
     };
   }
 
