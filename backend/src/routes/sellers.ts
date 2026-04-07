@@ -431,8 +431,10 @@ router.get('/call-tracking-ranking', async (req: Request, res: Response) => {
     const lastDay = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
     const toDate = `${year}-${String(month + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
 
-    // Google Sheets APIでデータ取得
+    // Google Sheets APIでデータ取得（レート制限付き）
     const { GoogleSheetsClient } = await import('../services/GoogleSheetsClient');
+    const { sheetsRateLimiter } = await import('../services/RateLimiter');
+    
     const sheetsClient = new GoogleSheetsClient({
       spreadsheetId: '1wKBRLWbT6pSKa9IlTDabjhjTnfs_GxX6Rn6M6kbio1I',
       sheetName: '売主追客ログ',
@@ -441,8 +443,10 @@ router.get('/call-tracking-ranking', async (req: Request, res: Response) => {
 
     await sheetsClient.authenticate();
 
-    // A列（日付）、E列（1回目イニシャル）、F列（2回目イニシャル）を取得
-    const rawData = await sheetsClient.readRawRange('売主追客ログ!A:F');
+    // レート制限を適用してデータ取得
+    const rawData = await sheetsRateLimiter.executeRequest(async () => {
+      return await sheetsClient.readRawRange('売主追客ログ!A:F');
+    });
 
     if (!rawData || rawData.length === 0) {
       return res.json({
