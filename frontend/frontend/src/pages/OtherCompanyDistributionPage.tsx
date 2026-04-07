@@ -18,7 +18,16 @@ import {
   MenuItem,
   Grid,
   Chip,
+  Checkbox,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  Snackbar,
+  Alert,
 } from '@mui/material';
+import { Email as EmailIcon } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { SECTION_COLORS } from '../theme/sectionColors';
@@ -35,6 +44,7 @@ interface Buyer {
   phone_number: string;
   email: string;
   latest_status: string | null;
+  hearing_items: string | null;
 }
 
 // エリア選択肢（買主詳細画面と同じ形式）
@@ -71,6 +81,8 @@ const PRICE_RANGE_OPTIONS = [
 // 物件種別選択肢
 const PROPERTY_TYPE_OPTIONS = ['戸建', 'マンション', '土地'];
 
+const SIGNATURE_EMAIL = `\n\n××××××××××××××××××××××××××××\n株式会社いふう\n大分市舞鶴町1-3-30\nSTビル１F\n097-533-2022\ntenant@ifoo-oita.com\n定休日：水曜\n営業時間：10時～18時\n××××××××××××××××××××××××××××`;
+
 export default function OtherCompanyDistributionPage() {
   const navigate = useNavigate();
 
@@ -79,6 +91,17 @@ export default function OtherCompanyDistributionPage() {
   const [selectedPropertyTypes, setSelectedPropertyTypes] = useState<string[]>([]);
   const [buyers, setBuyers] = useState<Buyer[]>([]);
   const [loading, setLoading] = useState(false);
+  const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
+
+  // メールダイアログ
+  const [emailDialogOpen, setEmailDialogOpen] = useState(false);
+  const [emailSubject, setEmailSubject] = useState('新着物件のご案内です！！');
+  const [emailBody, setEmailBody] = useState('');
+  const [attachments, setAttachments] = useState<File[]>([]);
+  const [sending, setSending] = useState(false);
+  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
+    open: false, message: '', severity: 'success',
+  });
 
   // API呼び出し
   const fetchBuyers = async () => {
@@ -117,27 +140,116 @@ export default function OtherCompanyDistributionPage() {
     );
   };
 
+  // チェックボックス操作
+  const toggleCheck = (buyer_number: string) => {
+    setCheckedIds(prev => {
+      const next = new Set(prev);
+      next.has(buyer_number) ? next.delete(buyer_number) : next.add(buyer_number);
+      return next;
+    });
+  };
+
+  const toggleAll = () => {
+    if (checkedIds.size === buyers.length) {
+      setCheckedIds(new Set());
+    } else {
+      setCheckedIds(new Set(buyers.map(b => b.buyer_number)));
+    }
+  };
+
+  const checkedBuyers = buyers.filter(b => checkedIds.has(b.buyer_number));
+  const allChecked = buyers.length > 0 && checkedIds.size === buyers.length;
+  const someChecked = checkedIds.size > 0 && !allChecked;
+
+  // メール本文生成
+  const buildEmailBody = (buyer: Buyer) => {
+    return `${buyer.name}様\n\n大変おせわになっております。\n不動産会社の㈱いふうです。\n\n新着物件がでましたので、添付致します。\n他社様の物件でも気になる物件がございましたらまとめてご案内可能ですのでお申し付けくださいませ。${SIGNATURE_EMAIL}`;
+  };
+
+  const openEmailDialog = () => {
+    if (checkedBuyers.length === 0) return;
+    // 最初の買主の名前で本文を生成（個別送信なので各買主ごとに変わる）
+    setEmailBody(buildEmailBody(checkedBuyers[0]));
+    setEmailDialogOpen(true);
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      setAttachments(Array.from(e.target.files));
+    }
+  };
+
+  const sendEmails = async () => {
+    setSending(true);
+    try {
+      // 各買主に個別送信
+      for (const buyer of checkedBuyers) {
+        const formData = new FormData();
+        formData.append('buyerId', buyer.buyer_number);
+        formData.append('subject', emailSubject);
+        formData.append('body', buildEmailBody(buyer)); // 各買主ごとに本文を生成
+        formData.append('senderEmail', 'tenant@ifoo-oita.com');
+        
+        // 添付ファイルを追加
+        attachments.forEach(file => {
+          formData.append('attachments', file);
+        });
+
+        await api.post('/api/gmail/send', formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        });
+      }
+
+      setEmailDialogOpen(false);
+      setSnackbar({ open: true, message: `${checkedBuyers.length}件のメールを送信しました`, severity: 'success' });
+      setCheckedIds(new Set()); // チェックをクリア
+      setAttachments([]); // 添付ファイルをクリア
+    } catch (err: any) {
+      setSnackbar({ open: true, message: err.response?.data?.error || 'メール送信に失敗しました', severity: 'error' });
+    } finally {
+      setSending(false);
+    }
+  };
+
   return (
     <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
       {/* ヘッダー */}
-      <Box sx={{ mb: 3, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <Box sx={{ mb: 3, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2 }}>
         <Typography variant="h5" fontWeight="bold" sx={{ color: SECTION_COLORS.buyer.main }}>
           他社物件新着配信
         </Typography>
-        <Button
-          variant="outlined"
-          onClick={() => navigate('/buyers')}
-          sx={{
-            borderColor: SECTION_COLORS.buyer.main,
-            color: SECTION_COLORS.buyer.main,
-            '&:hover': {
-              borderColor: SECTION_COLORS.buyer.dark,
-              backgroundColor: `${SECTION_COLORS.buyer.main}15`,
-            },
-          }}
-        >
-          買主リストに戻る
-        </Button>
+        <Box sx={{ display: 'flex', gap: 2 }}>
+          <Button
+            variant="contained"
+            startIcon={<EmailIcon />}
+            disabled={checkedIds.size === 0}
+            onClick={openEmailDialog}
+            sx={{
+              backgroundColor: SECTION_COLORS.buyer.main,
+              '&:hover': {
+                backgroundColor: SECTION_COLORS.buyer.dark,
+              },
+            }}
+          >
+            Email送信 ({checkedIds.size})
+          </Button>
+          <Button
+            variant="outlined"
+            onClick={() => navigate('/buyers')}
+            sx={{
+              borderColor: SECTION_COLORS.buyer.main,
+              color: SECTION_COLORS.buyer.main,
+              '&:hover': {
+                borderColor: SECTION_COLORS.buyer.dark,
+                backgroundColor: `${SECTION_COLORS.buyer.main}15`,
+              },
+            }}
+          >
+            買主リストに戻る
+          </Button>
+        </Box>
       </Box>
 
       {/* フィルター */}
@@ -232,6 +344,13 @@ export default function OtherCompanyDistributionPage() {
               <Table size="small">
                 <TableHead>
                   <TableRow>
+                    <TableCell padding="checkbox">
+                      <Checkbox
+                        checked={allChecked}
+                        indeterminate={someChecked}
+                        onChange={toggleAll}
+                      />
+                    </TableCell>
                     <TableCell>買主番号</TableCell>
                     <TableCell>氏名</TableCell>
                     <TableCell>希望エリア</TableCell>
@@ -240,6 +359,7 @@ export default function OtherCompanyDistributionPage() {
                     <TableCell>希望価格（マンション）</TableCell>
                     <TableCell>希望価格（土地）</TableCell>
                     <TableCell>最新状況</TableCell>
+                    <TableCell>ヒアリング項目</TableCell>
                     <TableCell>受付日</TableCell>
                   </TableRow>
                 </TableHead>
@@ -248,9 +368,16 @@ export default function OtherCompanyDistributionPage() {
                     <TableRow
                       key={buyer.buyer_number}
                       hover
+                      selected={checkedIds.has(buyer.buyer_number)}
                       sx={{ cursor: 'pointer' }}
-                      onClick={() => navigate(`/buyers/${buyer.buyer_number}`)}
+                      onClick={() => window.open(`/buyers/${buyer.buyer_number}`, '_blank', 'noopener,noreferrer')}
                     >
+                      <TableCell padding="checkbox" onClick={e => e.stopPropagation()}>
+                        <Checkbox
+                          checked={checkedIds.has(buyer.buyer_number)}
+                          onChange={() => toggleCheck(buyer.buyer_number)}
+                        />
+                      </TableCell>
                       <TableCell>{buyer.buyer_number}</TableCell>
                       <TableCell>{buyer.name}</TableCell>
                       <TableCell>{buyer.desired_area}</TableCell>
@@ -264,6 +391,9 @@ export default function OtherCompanyDistributionPage() {
                           size="small"
                           color="default"
                         />
+                      </TableCell>
+                      <TableCell sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', maxWidth: '300px', minWidth: '200px' }}>
+                        {buyer.hearing_items || '-'}
                       </TableCell>
                       <TableCell>
                         {buyer.reception_date
@@ -287,6 +417,70 @@ export default function OtherCompanyDistributionPage() {
           </Typography>
         </Box>
       )}
+
+      {/* メール送信ダイアログ */}
+      <Dialog open={emailDialogOpen} onClose={() => setEmailDialogOpen(false)} maxWidth="md" fullWidth>
+        <DialogTitle>Email送信（{checkedBuyers.length}件）</DialogTitle>
+        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
+          <Typography variant="body2" color="text.secondary">
+            選択した買主に個別にメールを送信します
+          </Typography>
+          <TextField
+            label="件名"
+            value={emailSubject}
+            onChange={e => setEmailSubject(e.target.value)}
+            fullWidth
+          />
+          <TextField
+            label="本文（各買主の名前が自動的に挿入されます）"
+            value={emailBody}
+            onChange={e => setEmailBody(e.target.value)}
+            multiline
+            rows={14}
+            fullWidth
+          />
+          <Box>
+            <Button variant="outlined" component="label">
+              添付ファイルを選択
+              <input
+                type="file"
+                hidden
+                multiple
+                onChange={handleFileChange}
+              />
+            </Button>
+            {attachments.length > 0 && (
+              <Box sx={{ mt: 1 }}>
+                <Typography variant="body2" color="text.secondary">
+                  選択されたファイル: {attachments.map(f => f.name).join(', ')}
+                </Typography>
+              </Box>
+            )}
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setEmailDialogOpen(false)}>キャンセル</Button>
+          <Button
+            variant="contained"
+            onClick={sendEmails}
+            disabled={sending}
+          >
+            {sending ? '送信中...' : `送信 (${checkedBuyers.length}件)`}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* スナックバー */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={4000}
+        onClose={() => setSnackbar(s => ({ ...s, open: false }))}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert onClose={() => setSnackbar(s => ({ ...s, open: false }))} severity={snackbar.severity} sx={{ width: '100%' }}>
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Container>
   );
 }

@@ -2788,7 +2788,7 @@ export class BuyerService {
     // クエリ構築
     let query = this.supabase
       .from('buyers')
-      .select('buyer_number, name, desired_area, desired_property_type, price_range_house, price_range_apartment, price_range_land, reception_date, phone_number, email, latest_status')
+      .select('buyer_number, name, desired_area, desired_property_type, price_range_house, price_range_apartment, price_range_land, reception_date, phone_number, email, latest_status, hearing_items')
       .is('deleted_at', null);
 
     // エリアフィルタ（OR条件で複数エリアを検索）
