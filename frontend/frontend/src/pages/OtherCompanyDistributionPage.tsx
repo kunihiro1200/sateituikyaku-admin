@@ -110,7 +110,7 @@ export default function OtherCompanyDistributionPage() {
   const [emailSubject, setEmailSubject] = useState('新着物件のご案内です！！');
   const [emailBody, setEmailBody] = useState('');
   const [attachments, setAttachments] = useState<File[]>([]);
-  const [attachmentTab, setAttachmentTab] = useState(0); // 0: Google Drive, 1: ローカルファイル, 2: URL
+  const [attachmentTab, setAttachmentTab] = useState(1); // 0: Google Drive, 1: ローカルファイル, 2: URL（デフォルトはローカルファイル）
   const [sending, setSending] = useState(false);
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
     open: false, message: '', severity: 'success',
