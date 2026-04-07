@@ -1153,14 +1153,24 @@ const CallModePage = () => {
     }
     
     // 現在の売主の営担を取得
-    if (!seller || !seller.visitAssignee) {
+    console.log('=== 営担チェック ===');
+    console.log('seller:', seller);
+    console.log('seller.visitAssignee:', seller?.visitAssignee);
+    console.log('seller.visitAssigneeInitials:', seller?.visitAssigneeInitials);
+    console.log('seller.assignedTo:', seller?.assignedTo);
+    
+    // visitAssignee（フルネーム）またはvisitAssigneeInitials（イニシャル）のいずれかが存在すればOK
+    const currentVisitAssignee = seller?.visitAssignee || seller?.visitAssigneeInitials;
+    
+    if (!seller || !currentVisitAssignee) {
       console.log('⚠️ 現在の売主の営担が設定されていません。サイドバーを表示しません。');
+      console.log('  - visitAssignee:', seller?.visitAssignee);
+      console.log('  - visitAssigneeInitials:', seller?.visitAssigneeInitials);
       setSidebarSellers([]);
       setSidebarLoading(false);
       return;
     }
     
-    const currentVisitAssignee = seller.visitAssignee;
     console.log(`📋 営担「${currentVisitAssignee}」の売主のみを取得します`);
     
     try {
@@ -2134,7 +2144,7 @@ const CallModePage = () => {
           );
 
           // 営担のメールアドレスを取得
-          const assignedToValue = editedAssignedTo || seller?.visitAssignee || seller?.assignedTo;
+          const assignedToValue = editedAssignedTo || seller?.visitAssigneeInitials || seller?.visitAssignee || seller?.assignedTo;
           const assignedEmployee = employees.find((e: any) =>
             e.name === assignedToValue || e.initials === assignedToValue || e.email === assignedToValue
           );
@@ -4528,7 +4538,7 @@ HP：https://ifoo-oita.com/
                         cancelDateLocal = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
                       }
                       setEditedAppointmentDate(cancelDateLocal);
-                      setEditedAssignedTo(seller?.visitAssignee || seller?.assignedTo || '');
+                      setEditedAssignedTo(seller?.visitAssigneeInitials || seller?.visitAssignee || seller?.assignedTo || '');
                       setEditedVisitValuationAcquirer(seller?.visitValuationAcquirer || '');
                       setOriginalVisitValuationAcquirer(seller?.visitValuationAcquirer ?? null);
                       setEditedAppointmentNotes(seller?.appointmentNotes || '');
@@ -4552,7 +4562,7 @@ HP：https://ifoo-oita.com/
                         appointmentDateLocal = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
                       }
                       setEditedAppointmentDate(appointmentDateLocal);
-                      setEditedAssignedTo(seller?.visitAssignee || seller?.assignedTo || '');
+                      setEditedAssignedTo(seller?.visitAssigneeInitials || seller?.visitAssignee || seller?.assignedTo || '');
                       setEditedVisitValuationAcquirer(seller?.visitValuationAcquirer || '');
                       setOriginalVisitValuationAcquirer(seller?.visitValuationAcquirer ?? null);
                       setEditedAppointmentNotes(seller?.appointmentNotes || '');
@@ -4654,9 +4664,10 @@ HP：https://ifoo-oita.com/
                               
                               const location = encodeURIComponent(propertyAddress);
                               
-                              // 営担のメールアドレスを取得（visitAssigneeを優先）
-                              const assignedToValue = seller.visitAssignee || seller.assignedTo;
+                              // 営担のメールアドレスを取得（visitAssigneeInitialsを優先、なければvisitAssignee、最後にassignedTo）
+                              const assignedToValue = seller.visitAssigneeInitials || seller.visitAssignee || seller.assignedTo;
                               console.log('=== カレンダー営担デバッグ ===');
+                              console.log('visitAssigneeInitials:', seller.visitAssigneeInitials);
                               console.log('visitAssignee:', seller.visitAssignee);
                               console.log('assignedTo:', seller.assignedTo);
                               console.log('使用する値:', assignedToValue);
@@ -4685,7 +4696,7 @@ HP：https://ifoo-oita.com/
                     )}
                     
                     {/* 訪問情報（2行グリッドレイアウト） */}
-                    {(seller?.visitDate || seller?.visitAssignee || seller?.visitValuationAcquirer || seller?.visitAcquisitionDate) && (
+                    {(seller?.visitDate || seller?.visitAssignee || seller?.visitAssigneeInitials || seller?.visitValuationAcquirer || seller?.visitAcquisitionDate) && (
                       <Box sx={{ mb: 2, p: 2, bgcolor: 'info.lighter', borderRadius: 1 }}>
                         {/* 1行目: 営担 */}
                         <Grid container spacing={2} sx={{ mb: 2 }}>
@@ -6660,7 +6671,7 @@ HP：https://ifoo-oita.com/
                         type="date"
                         required
                         value={editedExclusiveDecisionDate}
-                        onChange={(e) => setEditedExclusiveDecisionDate(e.target.value)}
+                        onChange={(e) => { setEditedExclusiveDecisionDate(e.target.value); setStatusChanged(true); }}
                         InputLabelProps={{ shrink: true }}
                         error={!editedExclusiveDecisionDate}
                         helperText={!editedExclusiveDecisionDate ? '必須項目です' : ''}
@@ -6673,7 +6684,7 @@ HP：https://ifoo-oita.com/
                           multiple
                           value={editedCompetitors}
                           label="競合（複数選択可）"
-                          onChange={(e) => setEditedCompetitors(typeof e.target.value === 'string' ? [e.target.value] : e.target.value)}
+                          onChange={(e) => { setEditedCompetitors(typeof e.target.value === 'string' ? [e.target.value] : e.target.value); setStatusChanged(true); }}
                           renderValue={(selected) => (
                             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
                               {selected.map((value) => (
@@ -6702,7 +6713,7 @@ HP：https://ifoo-oita.com/
                           multiple
                           value={editedExclusiveOtherDecisionFactors}
                           label="専任・他決要因（複数選択可）"
-                          onChange={(e) => setEditedExclusiveOtherDecisionFactors(typeof e.target.value === 'string' ? [e.target.value] : e.target.value)}
+                          onChange={(e) => { setEditedExclusiveOtherDecisionFactors(typeof e.target.value === 'string' ? [e.target.value] : e.target.value); setStatusChanged(true); }}
                           renderValue={(selected) => (
                             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
                               {selected.map((value) => (
@@ -6734,7 +6745,7 @@ HP：https://ifoo-oita.com/
                         size="small"
                         label="競合名、理由（他決、専任）"
                         value={editedCompetitorNameAndReason}
-                        onChange={(e) => setEditedCompetitorNameAndReason(e.target.value)}
+                        onChange={(e) => { setEditedCompetitorNameAndReason(e.target.value); setStatusChanged(true); }}
                         placeholder="競合他社の名前や、専任・他決になった理由の詳細を記入してください"
                       />
                     </Grid>
