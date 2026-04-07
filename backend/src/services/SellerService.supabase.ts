@@ -878,20 +878,23 @@ export class SellerService extends BaseRepository {
    */
   async updateSellerWithAppointment(
     sellerId: string,
-    data: UpdateSellerRequest & { appointmentDate?: string; assignedTo?: string; appointmentNotes?: string },
+    data: UpdateSellerRequest & { appointmentDate?: string; assignedTo?: string; appointmentNotes?: string; visitAssignee?: string },
     creatorEmployeeId: string
   ): Promise<Seller> {
     console.log('📅 Updating seller with appointment:', {
       sellerId,
       appointmentDate: data.appointmentDate,
       assignedTo: data.assignedTo,
+      visitAssignee: data.visitAssignee,
     });
 
     // まず売主情報を更新
     const updatedSeller = await this.updateSeller(sellerId, data);
 
     // 予約情報がある場合、カレンダーイベントを作成/更新
-    if (data.appointmentDate && data.assignedTo) {
+    // visitAssigneeまたはassignedToのいずれかが存在する場合
+    const assigneeIdentifier = data.visitAssignee || data.assignedTo;
+    if (data.appointmentDate && assigneeIdentifier) {
       try {
         const calendarService = new CalendarService();
 
@@ -909,9 +912,9 @@ export class SellerService extends BaseRepository {
         // 担当者の情報を取得（スタッフ管理シートから直接取得）
         let assignedEmployee: { id: string; name: string; email: string } | null = null;
         
-        // data.assignedToがイニシャル（文字列）の場合、スタッフ管理シートから取得
-        if (typeof data.assignedTo === 'string' && data.assignedTo.length <= 3) {
-          console.log('📋 Fetching employee from staff sheet by initials:', data.assignedTo);
+        // assigneeIdentifierがイニシャル（文字列）の場合、スタッフ管理シートから取得
+        if (typeof assigneeIdentifier === 'string' && assigneeIdentifier.length <= 3) {
+          console.log('📋 Fetching employee from staff sheet by initials:', assigneeIdentifier);
           
           const { GoogleSheetsClient } = await import('./GoogleSheetsClient');
           const sheetsClient = new GoogleSheetsClient({
@@ -929,30 +932,30 @@ export class SellerService extends BaseRepository {
             const emailIndex = headers.indexOf('メアド');
             
             const staffRow = values.find((row, index) => 
-              index > 0 && row[initialsIndex] === data.assignedTo
+              index > 0 && row[initialsIndex] === assigneeIdentifier
             );
             
             if (staffRow) {
               // employeesテーブルからUUIDを取得（カレンダーイベント作成に必要）
               const { data: empData } = await this.table('employees')
                 .select('id')
-                .eq('initials', data.assignedTo)
+                .eq('initials', assigneeIdentifier)
                 .single();
               
               assignedEmployee = {
                 id: empData?.id || 'dummy-id',
-                name: staffRow[nameIndex] || data.assignedTo,
-                email: staffRow[emailIndex] || `${data.assignedTo}@dummy.local`,
+                name: staffRow[nameIndex] || assigneeIdentifier,
+                email: staffRow[emailIndex] || `${assigneeIdentifier}@dummy.local`,
               };
               
               console.log('✅ Employee found in staff sheet:', assignedEmployee);
             }
           }
         } else {
-          // data.assignedToがUUIDの場合、employeesテーブルから取得
+          // assigneeIdentifierがUUIDの場合、employeesテーブルから取得
           const { data: empData } = await this.table('employees')
             .select('id, name, email')
-            .eq('id', data.assignedTo)
+            .eq('id', assigneeIdentifier)
             .single();
           
           if (empData) {
