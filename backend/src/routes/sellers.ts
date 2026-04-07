@@ -443,9 +443,9 @@ router.get('/call-tracking-ranking', async (req: Request, res: Response) => {
 
     await sheetsClient.authenticate();
 
-    // レート制限を適用してデータ取得
+    // レート制限を適用してデータ取得（シート名を含めずに範囲のみ指定）
     const rawData = await sheetsRateLimiter.executeRequest(async () => {
-      return await sheetsClient.readRawRange('売主追客ログ!A:F');
+      return await sheetsClient.readRawRange('A:F');
     });
 
     if (!rawData || rawData.length === 0) {
