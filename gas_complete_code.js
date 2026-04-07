@@ -483,7 +483,9 @@ function syncSellerList() {
       Logger.log('❌ 削除同期失敗: HTTP ' + delStatusCode);
     }
   } catch (e) { Logger.log('❌ 削除同期エラー: ' + e.toString()); }
-  updateSidebarCounts_(sheetRows);
+  
+  // updateSidebarCounts_(sheetRows); // 無効化: seller_sidebar_countsテーブルを削除したため不要
+  
   var duration = (new Date() - startTime) / 1000;
   Logger.log('  所要時間: ' + duration + '秒');
   Logger.log('=== 同期完了 ===');

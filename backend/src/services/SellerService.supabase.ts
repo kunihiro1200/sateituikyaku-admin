@@ -2143,79 +2143,10 @@ export class SellerService extends BaseRepository {
     todayCallWithInfoLabels: string[];
     todayCallWithInfoLabelCounts: Record<string, number>;
   }> {
-    try {
-      // seller_sidebar_counts テーブルから全行取得（GASが10分ごとに更新）
-      const { data, error } = await this.supabase
-        .from('seller_sidebar_counts')
-        .select('category, count, label, assignee');
-
-      if (error || !data || data.length === 0) {
-        console.log('⚠️ seller_sidebar_counts empty or error, falling back to DB query');
-        return this.getSidebarCountsFallback();
-      }
-
-      // カテゴリ別に集計
-      const result = {
-        todayCall: 0,
-        todayCallWithInfo: 0,
-        todayCallAssigned: 0,
-        visitDayBefore: 0,
-        visitCompleted: 0,
-        unvaluated: 0,
-        mailingPending: 0,
-        todayCallNotStarted: 0,
-        pinrichEmpty: 0,
-        exclusive: 0,
-        general: 0,
-        visitOtherDecision: 0,
-        unvisitedOtherDecision: 0,
-        visitAssignedCounts: {} as Record<string, number>,
-        todayCallAssignedCounts: {} as Record<string, number>,
-        todayCallWithInfoLabels: [] as string[],
-        todayCallWithInfoLabelCounts: {} as Record<string, number>,
-      };
-
-      for (const row of data) {
-        const count = row.count || 0;
-        switch (row.category) {
-          case 'todayCall':         result.todayCall = count; break;
-          case 'visitDayBefore':    result.visitDayBefore = count; break;
-          case 'visitCompleted':    result.visitCompleted += count; break;
-          case 'unvaluated':        result.unvaluated = count; break;
-          case 'mailingPending':    result.mailingPending = count; break;
-          case 'todayCallNotStarted': result.todayCallNotStarted = count; break;
-          case 'pinrichEmpty':      result.pinrichEmpty = count; break;
-          case 'exclusive':         result.exclusive = count; break;
-          case 'general':           result.general = count; break;
-          case 'visitOtherDecision': result.visitOtherDecision = count; break;
-          case 'unvisitedOtherDecision': result.unvisitedOtherDecision = count; break;
-          case 'todayCallAssigned':
-            result.todayCallAssigned += count;
-            if (row.assignee) result.todayCallAssignedCounts[row.assignee] = count;
-            break;
-          case 'visitAssigned':
-            if (row.assignee) result.visitAssignedCounts[row.assignee] = count;
-            break;
-          case 'todayCallWithInfo':
-            result.todayCallWithInfo += count;
-            if (row.label) {
-              // labelはコンテンツ部分のみ（例: "U", "Eメール"）なので、フルラベル形式に変換
-              const fullLabel = `当日TEL(${row.label})`;
-              result.todayCallWithInfoLabelCounts[fullLabel] = count;
-              if (!result.todayCallWithInfoLabels.includes(fullLabel)) {
-                result.todayCallWithInfoLabels.push(fullLabel);
-              }
-            }
-            break;
-        }
-      }
-
-      console.log('✅ seller_sidebar_counts loaded from cache table');
-      return result;
-    } catch (e) {
-      console.error('❌ getSidebarCounts error, falling back:', e);
-      return this.getSidebarCountsFallback();
-    }
+    // seller_sidebar_countsテーブルを削除し、常にgetSidebarCountsFallback()を使用
+    // 理由: seller_sidebar_countsテーブルが古いデータを保持し、AA13224とAA13932が「当日TEL」カテゴリに表示されない問題が発生していた
+    // getSidebarCountsFallback()は既に正しいロジックを実装しており、60秒のメモリキャッシュでパフォーマンスも十分
+    return this.getSidebarCountsFallback();
   }
 
   /**
