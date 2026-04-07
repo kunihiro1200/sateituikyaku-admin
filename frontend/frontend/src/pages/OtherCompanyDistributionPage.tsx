@@ -44,7 +44,6 @@ interface Buyer {
   phone_number: string;
   email: string;
   latest_status: string | null;
-  hearing_items: string | null;
 }
 
 // エリア選択肢（買主詳細画面と同じ形式）
@@ -359,7 +358,6 @@ export default function OtherCompanyDistributionPage() {
                     <TableCell>希望価格（マンション）</TableCell>
                     <TableCell>希望価格（土地）</TableCell>
                     <TableCell>最新状況</TableCell>
-                    <TableCell>ヒアリング項目</TableCell>
                     <TableCell>受付日</TableCell>
                   </TableRow>
                 </TableHead>
@@ -391,9 +389,6 @@ export default function OtherCompanyDistributionPage() {
                           size="small"
                           color="default"
                         />
-                      </TableCell>
-                      <TableCell sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', maxWidth: '300px', minWidth: '200px' }}>
-                        {buyer.hearing_items || '-'}
                       </TableCell>
                       <TableCell>
                         {buyer.reception_date
