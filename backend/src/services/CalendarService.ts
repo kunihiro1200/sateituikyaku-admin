@@ -30,19 +30,37 @@ export class CalendarService extends BaseRepository {
 
   /**
    * Google Calendar APIを初期化
+   * @param employeeEmail 営担のメールアドレス（オプション）
    */
-  private initializeCalendar() {
+  private initializeCalendar(employeeEmail?: string) {
     const oauth2Client = new google.auth.OAuth2(
       process.env.GOOGLE_CLIENT_ID,
       process.env.GOOGLE_CLIENT_SECRET,
       process.env.GOOGLE_REDIRECT_URI
     );
 
+    // 営担のメールアドレスに基づいてリフレッシュトークンを取得
+    let refreshToken = process.env.GOOGLE_CALENDAR_REFRESH_TOKEN;
+    
+    if (employeeEmail) {
+      // メールアドレスから環境変数名を生成（例：genta@example.com → GOOGLE_CALENDAR_REFRESH_TOKEN_GENTA）
+      const emailPrefix = employeeEmail.split('@')[0].toUpperCase();
+      const envVarName = `GOOGLE_CALENDAR_REFRESH_TOKEN_${emailPrefix}`;
+      const userSpecificToken = process.env[envVarName];
+      
+      if (userSpecificToken) {
+        console.log(`✅ Using user-specific refresh token for ${employeeEmail} (${envVarName})`);
+        refreshToken = userSpecificToken;
+      } else {
+        console.log(`⚠️ No user-specific refresh token found for ${employeeEmail} (${envVarName}), using default`);
+      }
+    }
+
     // リフレッシュトークンを設定
-    if (process.env.GOOGLE_CALENDAR_REFRESH_TOKEN) {
+    if (refreshToken) {
       console.log('✅ GOOGLE_CALENDAR_REFRESH_TOKEN is set');
       oauth2Client.setCredentials({
-        refresh_token: process.env.GOOGLE_CALENDAR_REFRESH_TOKEN,
+        refresh_token: refreshToken,
       });
     } else {
       console.warn('⚠️ GOOGLE_CALENDAR_REFRESH_TOKEN is not set. Calendar events will not be created.');
@@ -58,9 +76,16 @@ export class CalendarService extends BaseRepository {
     request: AppointmentRequest,
     sellerName: string,
     sellerPhone: string,
-    propertyAddress: string
+    propertyAddress: string,
+    employeeEmail?: string
   ): Promise<Appointment> {
     try {
+      // 営担のメールアドレスに基づいてカレンダーAPIを再初期化
+      if (employeeEmail) {
+        console.log(`🔄 Re-initializing calendar for employee: ${employeeEmail}`);
+        this.initializeCalendar(employeeEmail);
+      }
+      
       // カレンダーイベントを作成
       const event = await this.createCalendarEvent(
         request,

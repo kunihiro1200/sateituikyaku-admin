@@ -1010,10 +1010,10 @@ export class SellerService extends BaseRepository {
                 notes: data.appointmentNotes,
                 createdByName: '', // Will be filled by the service
               },
-              assignedEmployee.id,
               updatedSeller.name,
               updatedSeller.phoneNumber,
-              property.address
+              property.address,
+              assignedEmployee.email // 営担のメールアドレスを渡す
             );
           } else {
             // 担当者が同じ場合は、既存の予約を更新
@@ -1040,10 +1040,10 @@ export class SellerService extends BaseRepository {
               notes: data.appointmentNotes,
               createdByName: '', // Will be filled by the service
             },
-            assignedEmployee.id,
             updatedSeller.name,
             updatedSeller.phoneNumber,
-            property.address
+            property.address,
+            assignedEmployee.email // 営担のメールアドレスを渡す
           );
         }
 

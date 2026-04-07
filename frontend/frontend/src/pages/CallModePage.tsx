@@ -4892,12 +4892,12 @@ HP：https://ifoo-oita.com/
                           }
                           
                           // 訪問査定日時が入力された場合、現在のログインユーザーを訪問査定取得者に自動設定
-                          // 訪問査定取得者が空欄の場合のみ自動設定（既に設定済みの場合は上書きしない）
+                          // 訪問日を変更した場合は常に自動設定（既存の値を上書き）
                           console.log('📅 訪問日が設定されました:', newDate);
                           console.log('   現在の訪問査定取得者:', editedVisitValuationAcquirer);
                           console.log('   ログインユーザー:', employee?.email);
                           
-                          if (newDate && employee?.email && !editedVisitValuationAcquirer) {
+                          if (newDate && employee?.email) {
                             console.log('🔍 訪問査定取得者を自動設定します...');
                             try {
                               // 現在のログインユーザーのメールアドレスからスタッフを検索
@@ -4923,8 +4923,6 @@ HP：https://ifoo-oita.com/
                               console.log('   訪問日が空欄のため、自動設定をスキップ');
                             } else if (!employee?.email) {
                               console.warn('⚠️ ログインユーザー情報が取得できません');
-                            } else if (editedVisitValuationAcquirer) {
-                              console.log('   訪問査定取得者が既に設定済みのため、自動設定をスキップ');
                             }
                           }
                         }}
