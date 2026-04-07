@@ -35,6 +35,7 @@ import {
 } from '@mui/material';
 import {
   Email as EmailIcon,
+  Image as ImageIcon,
   Folder as FolderIcon,
   CloudUpload as CloudUploadIcon,
   Link as LinkIcon,
@@ -507,67 +508,39 @@ export default function OtherCompanyDistributionPage() {
           
           {/* 添付ファイル選択 */}
           <Box>
-            <Typography variant="subtitle2" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <CloudUploadIcon fontSize="small" />
-              画像を選択
-            </Typography>
-            <Tabs value={attachmentTab} onChange={(_, v) => setAttachmentTab(v)} sx={{ borderBottom: 1, borderColor: 'divider' }}>
-              <Tab icon={<FolderIcon />} label="GOOGLE DRIVE" />
-              <Tab icon={<CloudUploadIcon />} label="ローカルファイル" />
-              <Tab icon={<LinkIcon />} label="URL" />
-            </Tabs>
-            
-            {/* Google Driveタブ */}
-            {attachmentTab === 0 && (
-              <Box sx={{ p: 2, textAlign: 'center', color: 'text.secondary' }}>
-                <FolderIcon sx={{ fontSize: 48, mb: 1 }} />
-                <Typography variant="body2">
-                  Google Drive連携は現在準備中です
-                </Typography>
-              </Box>
-            )}
-            
-            {/* ローカルファイルタブ */}
-            {attachmentTab === 1 && (
-              <Box sx={{ p: 2 }}>
-                <Button variant="outlined" component="label" fullWidth>
-                  ファイルを選択
-                  <input
-                    type="file"
-                    hidden
-                    multiple
-                    onChange={handleFileChange}
-                  />
-                </Button>
-                {attachments.length > 0 && (
-                  <List dense sx={{ mt: 2 }}>
-                    {attachments.map((file, index) => (
-                      <ListItem
-                        key={index}
-                        secondaryAction={
-                          <IconButton edge="end" onClick={() => removeAttachment(index)}>
-                            <DeleteIcon />
-                          </IconButton>
-                        }
-                      >
-                        <ListItemText
-                          primary={file.name}
-                          secondary={`${(file.size / 1024).toFixed(1)} KB`}
-                        />
-                      </ListItem>
-                    ))}
-                  </List>
-                )}
-              </Box>
-            )}
-            
-            {/* URLタブ */}
-            {attachmentTab === 2 && (
-              <Box sx={{ p: 2, textAlign: 'center', color: 'text.secondary' }}>
-                <LinkIcon sx={{ fontSize: 48, mb: 1 }} />
-                <Typography variant="body2">
-                  URL添付は現在準備中です
-                </Typography>
+            {/* 画像添付ボタン */}
+          <Box>
+            <Button
+              variant="outlined"
+              startIcon={<ImageIcon />}
+              onClick={handleOpenImageSelector}
+              fullWidth
+            >
+              画像を添付
+            </Button>
+
+            {selectedImages.length > 0 && (
+              <Box sx={{ mt: 2 }}>
+                <Alert severity="success">
+                  {selectedImages.length}枚の画像が選択されました
+                </Alert>
+                <List dense sx={{ mt: 1 }}>
+                  {selectedImages.map((image, index) => (
+                    <ListItem
+                      key={image.id}
+                      secondaryAction={
+                        <IconButton edge="end" onClick={() => removeImage(index)}>
+                          <DeleteIcon />
+                        </IconButton>
+                      }
+                    >
+                      <ListItemText
+                        primary={image.name}
+                        secondary={`${(image.size / 1024).toFixed(1)} KB - ${image.source === 'drive' ? 'Google Drive' : image.source === 'local' ? 'ローカル' : 'URL'}`}
+                      />
+                    </ListItem>
+                  ))}
+                </List>
               </Box>
             )}
           </Box>
