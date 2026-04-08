@@ -57,6 +57,7 @@ export function formatPresenceLabel(records: PresenceRecord[]): string {
 export function useSellerPresenceSubscribe(): UseSellerPresenceSubscribeResult {
   const [presenceState, setPresenceState] = useState<PresenceState>({});
   const [isConnected, setIsConnected] = useState(false);
+  const leaveTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
   useEffect(() => {
     console.log('[useSellerPresence] subscribe: チャンネル作成');
@@ -88,12 +89,48 @@ export function useSellerPresenceSubscribe(): UseSellerPresenceSubscribeResult {
       .on('presence', { event: 'join' }, ({ key, newPresences }) => {
         const timestamp = new Date().toISOString();
         console.log(`[${timestamp}] [useSellerPresence] presence join:`, key, newPresences);
+        
+        // joinイベントが来たら、該当するleaveタイマーをキャンセル
+        const presences = newPresences as unknown as PresenceRecord[];
+        presences.forEach((p) => {
+          if (p.seller_number && leaveTimersRef.current.has(p.seller_number)) {
+            const timer = leaveTimersRef.current.get(p.seller_number);
+            if (timer) {
+              clearTimeout(timer);
+              leaveTimersRef.current.delete(p.seller_number);
+              console.log(`[${timestamp}] [useSellerPresence] leaveタイマーキャンセル: ${p.seller_number}`);
+            }
+          }
+        });
+        
         setPresenceState(buildState());
       })
       .on('presence', { event: 'leave' }, ({ key, leftPresences }) => {
         const timestamp = new Date().toISOString();
         console.log(`[${timestamp}] [useSellerPresence] presence leave:`, key, leftPresences);
-        setPresenceState(buildState());
+        
+        // leaveイベントが来ても即座に削除せず、5秒後に削除
+        const presences = leftPresences as unknown as PresenceRecord[];
+        presences.forEach((p) => {
+          if (!p.seller_number) return;
+          
+          // 既存のタイマーをキャンセル
+          if (leaveTimersRef.current.has(p.seller_number)) {
+            const timer = leaveTimersRef.current.get(p.seller_number);
+            if (timer) clearTimeout(timer);
+          }
+          
+          // 5秒後に状態を更新
+          const timer = setTimeout(() => {
+            const delayTimestamp = new Date().toISOString();
+            console.log(`[${delayTimestamp}] [useSellerPresence] ${PRESENCE_PERSIST_DURATION_MS}ms経過、状態更新: ${p.seller_number}`);
+            setPresenceState(buildState());
+            leaveTimersRef.current.delete(p.seller_number);
+          }, PRESENCE_PERSIST_DURATION_MS);
+          
+          leaveTimersRef.current.set(p.seller_number, timer);
+          console.log(`[${timestamp}] [useSellerPresence] leaveタイマー設定: ${p.seller_number} (${PRESENCE_PERSIST_DURATION_MS}ms後)`);
+        });
       })
       .subscribe((status) => {
         const timestamp = new Date().toISOString();
@@ -106,6 +143,11 @@ export function useSellerPresenceSubscribe(): UseSellerPresenceSubscribeResult {
 
     return () => {
       console.log('[useSellerPresence] subscribe: チャンネル削除');
+      
+      // 全てのleaveタイマーをキャンセル
+      leaveTimersRef.current.forEach((timer) => clearTimeout(timer));
+      leaveTimersRef.current.clear();
+      
       supabase.removeChannel(channel);
     };
   }, []);
