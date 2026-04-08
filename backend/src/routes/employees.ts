@@ -1,4 +1,5 @@
 import { Router, Request, Response } from 'express';
+import { createClient } from '@supabase/supabase-js';
 import { GoogleAuthService } from '../services/GoogleAuthService';
 import { EmployeeUtils } from '../utils/employeeUtils';
 import { authenticate } from '../middleware/auth';
@@ -8,6 +9,12 @@ const router = Router();
 const googleAuthService = new GoogleAuthService();
 const employeeUtils = new EmployeeUtils();
 const staffManagementService = new StaffManagementService();
+
+// Supabaseクライアントを作成
+const supabase = createClient(
+  process.env.SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_KEY!
+);
 
 // /active インメモリキャッシュ（TTL: 5分）
 let activeEmployeesCache: { data: any[]; expiresAt: number } | null = null;
