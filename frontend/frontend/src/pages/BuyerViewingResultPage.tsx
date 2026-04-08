@@ -527,7 +527,10 @@ export default function BuyerViewingResultPage() {
       params.append('add', assignedEmail);
     }
     
-    window.open(`https://calendar.google.com/calendar/render?${params.toString()}`, '_blank');
+    // 後続担当のカレンダーに直接作成（srcパラメータを使用）
+    const srcParam = assignedEmail ? `&src=${encodeURIComponent(assignedEmail)}` : '';
+    
+    window.open(`https://calendar.google.com/calendar/render?${params.toString()}${srcParam}`, '_blank');
     setCalendarOpened(true);
   };
 
