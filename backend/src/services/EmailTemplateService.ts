@@ -2,12 +2,16 @@ import { EmailTemplate, TemplateContext, MergedEmailContent, PropertyData, Buyer
 import { GoogleSheetsClient } from './GoogleSheetsClient';
 
 const TEMPLATE_SPREADSHEET_ID = process.env.GOOGLE_SHEETS_TEMPLATE_SPREADSHEET_ID || '1sIBMhrarUSMcVWlTVVyaNNKaDxmfrxyHJLWv6U-MZxE';
-const TEMPLATE_SHEET_NAME = '\u30c6\u30f3\u30d7\u30ec\u30fc\u30c8';
+const TEMPLATE_SHEET_NAME = 'テンプレート';
+
+// インメモリキャッシュ（24時間TTL）
+let _templatesCache: { data: EmailTemplate[]; expiresAt: number } | null = null;
+const TEMPLATES_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24時間
 
 /**
  * Service for managing email templates and merging them with data
- * \u30c6\u30f3\u30d7\u30ec\u30fc\u30c8\u306f\u30b9\u30d7\u30ec\u30c3\u30c9\u30b7\u30fc\u30c8\u304b\u3089\u52d5\u7684\u306b\u53d6\u5f97\u3059\u308b
- * C\u5217=\u533a\u5206, D\u5217=\u7a2e\u5225\uff08\u30bf\u30a4\u30c8\u30eb\uff09, E\u5217=\u4ef6\u540d, F\u5217=\u672c\u6587
+ * テンプレートはスプレッドシートから動的に取得する
+ * C列=区分, D列=種別（タイトル）, E列=件名, F列=本文
  */
 export class EmailTemplateService {
   /**
@@ -73,6 +77,12 @@ export class EmailTemplateService {
    * スプレッドシートから売主用テンプレートを取得（区分=「売主」）
    */
   async getSellerTemplates(): Promise<EmailTemplate[]> {
+    // キャッシュチェック
+    if (_templatesCache && Date.now() < _templatesCache.expiresAt) {
+      console.log('[EmailTemplateService] キャッシュから売主テンプレートを返します');
+      return _templatesCache.data.filter(t => t.id.startsWith('seller_'));
+    }
+
     try {
       const client = new GoogleSheetsClient({
         spreadsheetId: TEMPLATE_SPREADSHEET_ID,
@@ -88,7 +98,7 @@ export class EmailTemplateService {
       });
 
       const rows: any[][] = response.data.values || [];
-      const templates: EmailTemplate[] = [];
+      const allTemplates: EmailTemplate[] = [];
 
       for (let i = 1; i < rows.length; i++) {
         const row = rows[i];
@@ -97,10 +107,11 @@ export class EmailTemplateService {
         const subject = (row[2] || '').toString().trim();
         const body = (row[3] || '').toString().trim();
 
-        if (category !== '売主' || !type) continue;
+        if (!type) continue;
 
-        templates.push({
-          id: `seller_sheet_${i}`,
+        const idPrefix = category === '売主' ? 'seller' : category === '物件' ? 'property' : category === '買主' ? 'buyer' : 'other';
+        allTemplates.push({
+          id: `${idPrefix}_sheet_${i}`,
           name: type,
           description: type,
           subject,
@@ -109,7 +120,14 @@ export class EmailTemplateService {
         });
       }
 
-      console.log(`[EmailTemplateService] 売主テンプレート ${templates.length}件取得`);
+      // キャッシュに保存
+      _templatesCache = {
+        data: allTemplates,
+        expiresAt: Date.now() + TEMPLATES_CACHE_TTL_MS,
+      };
+
+      const sellerTemplates = allTemplates.filter(t => t.id.startsWith('seller_'));
+      console.log(`[EmailTemplateService] 売主テンプレート ${sellerTemplates.length}件取得（キャッシュ更新）`);
 
       // 指定順序でソート
       const SELLER_TEMPLATE_ORDER = [
@@ -131,7 +149,7 @@ export class EmailTemplateService {
         '他決→追客（6ヶ月',
       ];
 
-      templates.sort((a, b) => {
+      sellerTemplates.sort((a, b) => {
         const aIdx = SELLER_TEMPLATE_ORDER.findIndex(keyword => a.name.includes(keyword));
         const bIdx = SELLER_TEMPLATE_ORDER.findIndex(keyword => b.name.includes(keyword));
         const aOrder = aIdx === -1 ? 999 : aIdx;
@@ -139,7 +157,7 @@ export class EmailTemplateService {
         return aOrder - bOrder;
       });
 
-      return templates;
+      return sellerTemplates;
     } catch (error: any) {
       console.error('[EmailTemplateService] 売主テンプレート取得失敗:', error.message);
       throw error;
