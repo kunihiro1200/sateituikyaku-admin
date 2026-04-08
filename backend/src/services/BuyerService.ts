@@ -2971,4 +2971,114 @@ export class BuyerService {
         return true;
     }
   }
+
+  /**
+   * 半径検索で買主を取得
+   * @param params 検索パラメータ（住所、価格帯、物件種別）
+   * @returns 買主リストと総数
+   */
+  async getBuyersByRadiusSearch(params: {
+    address: string;
+    priceRange: string;
+    propertyTypes: string[];
+  }): Promise<{ buyers: any[]; total: number }> {
+    const { address, priceRange, propertyTypes } = params;
+
+    console.log('[getBuyersByRadiusSearch] params:', { address, priceRange, propertyTypes });
+
+    // キャッシュキー生成
+    const cacheKey = `radius:${address}:${priceRange}:${propertyTypes.join(',')}`;
+    
+    // キャッシュチェック
+    const cached = distributionCache.get(cacheKey);
+    if (cached) {
+      console.log('[getBuyersByRadiusSearch] Cache hit');
+      return cached as { buyers: any[]; total: number };
+    }
+
+    // 1. 住所を地理座標に変換
+    const { GeocodingService } = await import('./GeocodingService');
+    const geocodingService = new GeocodingService();
+    const coordinates = await geocodingService.geocodeAddress(address);
+    
+    if (!coordinates) {
+      throw new Error('geocoding failed: Unable to convert address to coordinates');
+    }
+
+    console.log('[getBuyersByRadiusSearch] coordinates:', coordinates);
+
+    // 2. 半径3km圏内の買主を検索
+    // まず、全買主を取得（desired_area_lat, desired_area_lngがnullでないもの）
+    const { data: allBuyers, error } = await this.supabase
+      .from('buyers')
+      .select('buyer_number, name, desired_area, desired_property_type, price_range_house, price_range_apartment, price_range_land, reception_date, phone_number, email, latest_status, inquiry_hearing, desired_area_lat, desired_area_lng')
+      .is('deleted_at', null)
+      .not('desired_area_lat', 'is', null)
+      .not('desired_area_lng', 'is', null);
+
+    if (error) {
+      console.error('[getBuyersByRadiusSearch] Query error:', error);
+      throw new Error(`Failed to fetch buyers: ${error.message}`);
+    }
+
+    console.log('[getBuyersByRadiusSearch] allBuyers count:', allBuyers?.length || 0);
+
+    // 3. 半径3km圏内の買主をフィルタリング
+    const RADIUS_KM = 3;
+    const buyersWithinRadius = (allBuyers || []).filter(buyer => {
+      const distance = geocodingService.calculateDistance(
+        coordinates.lat,
+        coordinates.lng,
+        buyer.desired_area_lat,
+        buyer.desired_area_lng
+      );
+      return distance <= RADIUS_KM;
+    });
+
+    console.log('[getBuyersByRadiusSearch] buyersWithinRadius count:', buyersWithinRadius.length);
+
+    // 4. 最新状況でフィルタリング（"買"または"D"を除外）
+    const statusFiltered = buyersWithinRadius.filter(buyer => {
+      if (!buyer.latest_status) return true;
+      return !buyer.latest_status.includes('買') && buyer.latest_status !== 'D';
+    });
+
+    console.log('[getBuyersByRadiusSearch] statusFiltered count:', statusFiltered.length);
+
+    // 5. 物件種別でフィルタリング
+    const propertyTypeFiltered = statusFiltered.filter(buyer => {
+      if (!buyer.desired_property_type) return false;
+      
+      const dbTypes = propertyTypes.map(type => this.mapPropertyTypeToDb(type));
+      return dbTypes.some(dbType => buyer.desired_property_type.includes(dbType));
+    });
+
+    console.log('[getBuyersByRadiusSearch] propertyTypeFiltered count:', propertyTypeFiltered.length);
+
+    // 6. 価格帯でフィルタリング
+    const filteredBuyers = this.filterByPriceRange(propertyTypeFiltered, priceRange, propertyTypes);
+
+    console.log('[getBuyersByRadiusSearch] filteredBuyers count:', filteredBuyers.length);
+
+    // 7. 距離でソート（近い順）
+    const sortedBuyers = filteredBuyers.map(buyer => ({
+      ...buyer,
+      distance: geocodingService.calculateDistance(
+        coordinates.lat,
+        coordinates.lng,
+        buyer.desired_area_lat,
+        buyer.desired_area_lng
+      ),
+    })).sort((a, b) => a.distance - b.distance);
+
+    const result = {
+      buyers: sortedBuyers,
+      total: sortedBuyers.length,
+    };
+
+    // キャッシュに保存（TTL: 10分）
+    distributionCache.set(cacheKey, result);
+
+    return result;
+  }
 }
