@@ -74,6 +74,7 @@ interface Buyer {
   latest_status: string | null;
   inquiry_hearing: string | null;
   distance?: number; // 距離（km）
+  inquired_property_address?: string; // 問合せ物件所在地
 }
 
 // 削除：エリア選択肢は不要（住所入力に変更）
@@ -196,6 +197,13 @@ export default function OtherCompanyDistributionPage() {
       return buyer.inquiry_hearing;
     }
     return '-';
+  };
+
+  // 最新状況の最初のアルファベットを取得
+  const getFirstAlphabet = (status: string | null): string => {
+    if (!status) return '-';
+    const match = status.match(/[A-Z]/);
+    return match ? match[0] : '-';
   };
 
   // 希望価格を物件種別に応じて表示
@@ -433,6 +441,7 @@ export default function OtherCompanyDistributionPage() {
                     <TableCell>氏名</TableCell>
                     <TableCell>距離</TableCell>
                     <TableCell>希望エリア</TableCell>
+                    <TableCell>問合せ物件所在地</TableCell>
                     <TableCell>希望種別</TableCell>
                     <TableCell>希望価格</TableCell>
                     <TableCell>最新状況</TableCell>
@@ -470,11 +479,12 @@ export default function OtherCompanyDistributionPage() {
                         )}
                       </TableCell>
                       <TableCell>{buyer.desired_area}</TableCell>
+                      <TableCell>{buyer.inquired_property_address || '-'}</TableCell>
                       <TableCell>{buyer.desired_property_type}</TableCell>
                       <TableCell>{getPriceRange(buyer)}</TableCell>
                       <TableCell>
                         <Chip
-                          label={buyer.latest_status || '-'}
+                          label={getFirstAlphabet(buyer.latest_status)}
                           size="small"
                           color="default"
                         />

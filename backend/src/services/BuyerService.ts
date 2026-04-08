@@ -3037,10 +3037,12 @@ export class BuyerService {
 
     console.log('[getBuyersByRadiusSearch] buyersWithinRadius count:', buyersWithinRadius.length);
 
-    // 4. 最新状況でフィルタリング（"買"または"D"を除外）
+    // 4. 最新状況でフィルタリング（"買"を含む、または"D"で始まるものを除外）
     const statusFiltered = buyersWithinRadius.filter(buyer => {
       if (!buyer.latest_status) return true;
-      return !buyer.latest_status.includes('買') && buyer.latest_status !== 'D';
+      const status = buyer.latest_status.trim();
+      // "買"を含む、または"D"で始まる場合は除外
+      return !status.includes('買') && !status.startsWith('D');
     });
 
     console.log('[getBuyersByRadiusSearch] statusFiltered count:', statusFiltered.length);
@@ -3060,16 +3062,56 @@ export class BuyerService {
 
     console.log('[getBuyersByRadiusSearch] filteredBuyers count:', filteredBuyers.length);
 
-    // 7. 距離でソート（近い順）
-    const sortedBuyers = filteredBuyers.map(buyer => ({
-      ...buyer,
-      distance: geocodingService.calculateDistance(
-        coordinates.lat,
-        coordinates.lng,
-        buyer.desired_area_lat,
-        buyer.desired_area_lng
-      ),
-    })).sort((a, b) => a.distance - b.distance);
+    // 7. 各買主の最新問い合わせ物件所在地を取得
+    const buyerNumbers = filteredBuyers.map(b => b.buyer_number);
+    const { data: inquiries } = await this.supabase
+      .from('inquiry_history')
+      .select('buyer_number, property_number, inquiry_date')
+      .in('buyer_number', buyerNumbers)
+      .order('inquiry_date', { ascending: false });
+
+    // 買主ごとの最新問い合わせ物件番号を取得
+    const latestInquiryMap = new Map<string, string>();
+    if (inquiries) {
+      for (const inquiry of inquiries) {
+        if (!latestInquiryMap.has(inquiry.buyer_number)) {
+          latestInquiryMap.set(inquiry.buyer_number, inquiry.property_number);
+        }
+      }
+    }
+
+    // 物件番号から所在地を取得
+    const propertyNumbers = Array.from(new Set(latestInquiryMap.values()));
+    const { data: properties } = await this.supabase
+      .from('sellers')
+      .select('property_number, address')
+      .in('property_number', propertyNumbers);
+
+    const propertyAddressMap = new Map<string, string>();
+    if (properties) {
+      for (const property of properties) {
+        propertyAddressMap.set(property.property_number, property.address);
+      }
+    }
+
+    // 8. 距離でソート（近い順）+ 問い合わせ物件所在地を追加
+    const sortedBuyers = filteredBuyers.map(buyer => {
+      const latestPropertyNumber = latestInquiryMap.get(buyer.buyer_number);
+      const inquiredPropertyAddress = latestPropertyNumber 
+        ? propertyAddressMap.get(latestPropertyNumber) || '-'
+        : '-';
+
+      return {
+        ...buyer,
+        distance: geocodingService.calculateDistance(
+          coordinates.lat,
+          coordinates.lng,
+          buyer.desired_area_lat,
+          buyer.desired_area_lng
+        ),
+        inquired_property_address: inquiredPropertyAddress,
+      };
+    }).sort((a, b) => a.distance - b.distance);
 
     const result = {
       buyers: sortedBuyers,
