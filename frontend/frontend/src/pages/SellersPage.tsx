@@ -375,8 +375,24 @@ export default function SellersPage() {
 
   // 初回ロード時にサイドバーカウントとイニシャルを取得
   useEffect(() => {
-    fetchSidebarCounts();
+    // キャッシュが無効化されている場合は強制的に再取得
+    const cached = pageDataCache.get(CACHE_KEYS.SELLERS_SIDEBAR_COUNTS);
+    fetchSidebarCounts(!cached); // キャッシュがない場合はforceRefresh=true
     fetchAssigneeInitials();
+  }, []);
+
+  // ページに戻ってきた時にサイドバーカウントを再取得（キャッシュが無効化されている場合）
+  useEffect(() => {
+    const handleFocus = () => {
+      // キャッシュが無効化されている場合のみ再取得
+      const cached = pageDataCache.get(CACHE_KEYS.SELLERS_SIDEBAR_COUNTS);
+      if (!cached) {
+        fetchSidebarCounts(true);
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
   }, []);
 
   useEffect(() => {
