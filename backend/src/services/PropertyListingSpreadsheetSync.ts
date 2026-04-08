@@ -157,18 +157,23 @@ export class PropertyListingSpreadsheetSync {
       console.log(`📝 [PropertyListingSpreadsheetSync] Syncing confirmation for ${propertyNumber} to ${confirmation}`);
 
       // 物件番号から行番号を取得
+      console.log(`🔍 [PropertyListingSpreadsheetSync] Finding row index for ${propertyNumber}`);
       const rowIndex = await this.findRowIndex(propertyNumber);
+      console.log(`🔍 [PropertyListingSpreadsheetSync] Row index: ${rowIndex}`);
+      
       if (!rowIndex) {
         throw new Error(`物件番号 ${propertyNumber} が見つかりません`);
       }
 
       // DQ列（列番号120）を更新
       const range = `DQ${rowIndex}`;
+      console.log(`📝 [PropertyListingSpreadsheetSync] Writing to range: ${range}, value: ${confirmation}`);
       await this.sheetsClient.writeRawCell(range, confirmation);
 
       console.log(`✅ [PropertyListingSpreadsheetSync] Successfully synced confirmation for ${propertyNumber}`);
     } catch (error: any) {
       console.error(`❌ [PropertyListingSpreadsheetSync] Error syncing confirmation for ${propertyNumber}:`, error);
+      console.error(`❌ [PropertyListingSpreadsheetSync] Error stack:`, error.stack);
       throw error;
     }
   }
