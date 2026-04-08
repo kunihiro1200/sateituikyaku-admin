@@ -1,3 +1,4 @@
+// Seller routes - sidebar-counts endpoint is authentication-free
 import { Router, Request, Response } from 'express';
 import { createClient } from '@supabase/supabase-js';
 import { body, query, validationResult } from 'express-validator';
