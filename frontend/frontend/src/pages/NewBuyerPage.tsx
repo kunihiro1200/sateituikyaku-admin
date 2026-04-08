@@ -446,7 +446,7 @@ export default function NewBuyerPage() {
                   rows={3}
                   value={otherCompanyProperty}
                   onChange={(e) => setOtherCompanyProperty(e.target.value)}
-                  placeholder="他社物件情報を入力してください"
+                  placeholder="こちらは詳細な住所のみにしてください。お客様に物件情報として表示されます。他社名や価格は「建物名/価格」欄に書いてください。"
                   sx={{ bgcolor: 'white' }}
                 />
               </Box>

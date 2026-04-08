@@ -1753,6 +1753,7 @@ TEL：097-533-2022`;
                       buyerId={buyer_number}
                       enableConflictDetection={false}
                       showEditIndicator={true}
+                      placeholder="こちらは詳細な住所のみにしてください。お客様に物件情報として表示されます。他社名や価格は「建物名/価格」欄に書いてください。"
                     />
                   </Grid>
 

@@ -90,13 +90,15 @@
     - パフォーマンステスト（目標: 7-8秒 → 3-4秒）
     - _Requirements: 1.2 (即座の更新)_
 
-  - [ ] 5.2 クエリの並列化
+  - [x] 5.2 クエリの並列化
     - **問題**: 複数の個別クエリが順次実行される
     - **修正**: `Promise.all()`で並列実行
       - `visitDayBeforeCount`, `visitCompletedCount`, `todayCallAssignedCount`を並列取得
       - その他の個別クエリも並列化
     - `backend/src/services/SellerService.supabase.ts`の`getSidebarCountsFallback()`を修正
     - パフォーマンステスト（目標: 3-4秒 → 2-3秒）
+    - **実装完了**: ページネーションループを削除し、直接並列クエリに書き換え（コミット: 0de34aaf）
+    - **結果**: APIレスポンス時間が7.68秒 → 658ms（256msサーバー時間）に改善
     - _Requirements: 1.2 (即座の更新)_
 
   - [ ] 5.3 キャッシュTTLの延長
