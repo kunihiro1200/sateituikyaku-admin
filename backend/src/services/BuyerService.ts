@@ -3063,25 +3063,25 @@ export class BuyerService {
     console.log('[getBuyersByRadiusSearch] filteredBuyers count:', filteredBuyers.length);
 
     // 7. 各買主の最新問い合わせ物件所在地を取得
+    // 買主の property_number フィールドから物件番号を取得
     const buyerNumbers = filteredBuyers.map(b => b.buyer_number);
-    const { data: inquiries } = await this.supabase
-      .from('inquiry_history')
-      .select('buyer_number, property_number, inquiry_date')
-      .in('buyer_number', buyerNumbers)
-      .order('inquiry_date', { ascending: false });
+    const { data: buyersWithProperty } = await this.supabase
+      .from('buyers')
+      .select('buyer_number, property_number')
+      .in('buyer_number', buyerNumbers);
 
-    // 買主ごとの最新問い合わせ物件番号を取得
-    const latestInquiryMap = new Map<string, string>();
-    if (inquiries) {
-      for (const inquiry of inquiries) {
-        if (!latestInquiryMap.has(inquiry.buyer_number)) {
-          latestInquiryMap.set(inquiry.buyer_number, inquiry.property_number);
+    // 買主ごとの問い合わせ物件番号を取得
+    const propertyNumberMap = new Map<string, string>();
+    if (buyersWithProperty) {
+      for (const buyer of buyersWithProperty) {
+        if (buyer.property_number) {
+          propertyNumberMap.set(buyer.buyer_number, buyer.property_number);
         }
       }
     }
 
     // 物件番号から所在地を取得（property_listingsテーブルから）
-    const propertyNumbers = Array.from(new Set(latestInquiryMap.values()));
+    const propertyNumbers = Array.from(new Set(propertyNumberMap.values()));
     const { data: properties } = await this.supabase
       .from('property_listings')
       .select('property_number, property_type, address, residential_address')
@@ -3100,9 +3100,9 @@ export class BuyerService {
 
     // 8. 距離でソート（近い順）+ 問い合わせ物件所在地を追加
     const sortedBuyers = filteredBuyers.map(buyer => {
-      const latestPropertyNumber = latestInquiryMap.get(buyer.buyer_number);
-      const inquiredPropertyAddress = latestPropertyNumber 
-        ? propertyAddressMap.get(latestPropertyNumber) || '-'
+      const propertyNumber = propertyNumberMap.get(buyer.buyer_number);
+      const inquiredPropertyAddress = propertyNumber 
+        ? propertyAddressMap.get(propertyNumber) || '-'
         : '-';
 
       return {
@@ -3115,7 +3115,12 @@ export class BuyerService {
         ),
         inquired_property_address: inquiredPropertyAddress,
       };
-    }).sort((a, b) => a.distance - b.distance);
+    }).sort((a, b) => {
+      // 受付日の新しい順にソート
+      if (!a.reception_date) return 1;
+      if (!b.reception_date) return -1;
+      return new Date(b.reception_date).getTime() - new Date(a.reception_date).getTime();
+    });
 
     const result = {
       buyers: sortedBuyers,
