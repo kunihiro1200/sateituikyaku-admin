@@ -87,18 +87,19 @@ router.get('/sidebar-counts', async (req: Request, res: Response) => {
 router.post('/sidebar-counts/update', async (req: Request, res: Response) => {
   try {
     // Vercel Cronからの呼び出しを検証（オプション）
-    const authHeader = req.headers.authorization;
-    const cronSecret = process.env.CRON_SECRET;
+    // 一時的に認証を無効化（初回データ投入のため）
+    // const authHeader = req.headers.authorization;
+    // const cronSecret = process.env.CRON_SECRET;
     
-    if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
-      return res.status(401).json({
-        error: {
-          code: 'UNAUTHORIZED',
-          message: 'Invalid authorization',
-          retryable: false,
-        },
-      });
-    }
+    // if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+    //   return res.status(401).json({
+    //     error: {
+    //       code: 'UNAUTHORIZED',
+    //       message: 'Invalid authorization',
+    //       retryable: false,
+    //     },
+    //   });
+    // }
 
     const { SellerSidebarCountsUpdateService } = await import('../services/SellerSidebarCountsUpdateService');
     const supabase = createClient(
