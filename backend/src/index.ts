@@ -279,6 +279,113 @@ app.get('/api/cron/sync-inquiries', async (req, res) => {
   }
 });
 
+// スタッフ同期エンドポイント（手動実行用）
+app.post('/api/cron/sync-staff', async (req, res) => {
+  try {
+    console.log('[Sync Staff] Starting staff sync job...');
+
+    // CRON_SECRET認証チェック
+    const authHeader = req.headers.authorization;
+    if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+      console.error('[Sync Staff] Unauthorized access attempt');
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    // スタッフ管理シートから取得
+    const { GoogleSheetsClient } = await import('./services/GoogleSheetsClient');
+    const sheetsClient = new GoogleSheetsClient({
+      spreadsheetId: '19yAuVYQRm-_zhjYX7M7zjiGbnBibkG77Mpz93sN1xxs',
+      sheetName: 'スタッフ',
+      serviceAccountKeyPath: process.env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH || './google-service-account.json',
+    });
+    
+    await sheetsClient.authenticate();
+    const rows = await sheetsClient.readAll();
+    
+    console.log(`[Sync Staff] Fetched ${rows.length} staff records from spreadsheet`);
+
+    let syncedCount = 0;
+    let updatedCount = 0;
+    let skippedCount = 0;
+
+    for (const row of rows) {
+      const initials = row['イニシャル'] || row['スタッフID'] || '';
+      const name = row['姓名'] || row['名前'] || '';
+      const email = row['メアド'] || row['メールアドレス'] || row['email'] || '';
+      
+      if (!email || !initials) {
+        console.log(`[Sync Staff] Skipping: ${name || initials} (no email or initials)`);
+        skippedCount++;
+        continue;
+      }
+
+      // データベースに既存のレコードがあるか確認
+      const { data: existing } = await supabase
+        .from('employees')
+        .select('id, name, initials')
+        .ilike('email', email)
+        .single();
+
+      if (existing) {
+        // 既存レコードを更新（イニシャルまたは名前が異なる場合のみ）
+        if (existing.initials !== initials || existing.name !== name) {
+          const { error } = await supabase
+            .from('employees')
+            .update({
+              name: name,
+              initials: initials,
+            })
+            .eq('id', existing.id);
+
+          if (error) {
+            console.error(`[Sync Staff] Update failed: ${email} - ${error.message}`);
+          } else {
+            console.log(`[Sync Staff] Updated: ${email} (${existing.initials} → ${initials})`);
+            updatedCount++;
+          }
+        } else {
+          skippedCount++;
+        }
+      } else {
+        // 新規レコードを作成
+        const { error } = await supabase
+          .from('employees')
+          .insert({
+            email: email,
+            name: name,
+            initials: initials,
+            is_active: true,
+            role: 'agent',
+          });
+
+        if (error) {
+          console.error(`[Sync Staff] Insert failed: ${email} - ${error.message}`);
+        } else {
+          console.log(`[Sync Staff] Created: ${email} (${initials})`);
+          syncedCount++;
+        }
+      }
+    }
+
+    console.log(`[Sync Staff] Sync completed: ${syncedCount} created, ${updatedCount} updated, ${skippedCount} skipped`);
+
+    res.status(200).json({
+      success: true,
+      created: syncedCount,
+      updated: updatedCount,
+      skipped: skippedCount,
+      total: rows.length
+    });
+
+  } catch (error: any) {
+    console.error('[Sync Staff] Error:', error.message);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
 // GASバックフィル用: inquiry_id / inquiry_detailed_datetime / site_url を更新
 // CRON_SECRET認証（認証ミドルウェア不要）
 app.post('/api/sellers/backfill-inquiry', async (req, res) => {
@@ -445,6 +552,64 @@ const startServer = async () => {
     app.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);
       console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
+
+      // スタッフ同期を起動時に実行（バックグラウンド）
+      setTimeout(async () => {
+        try {
+          console.log('👥 Starting staff sync on startup...');
+          const { GoogleSheetsClient } = await import('./services/GoogleSheetsClient');
+          const sheetsClient = new GoogleSheetsClient({
+            spreadsheetId: '19yAuVYQRm-_zhjYX7M7zjiGbnBibkG77Mpz93sN1xxs',
+            sheetName: 'スタッフ',
+            serviceAccountKeyPath: process.env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH || './google-service-account.json',
+          });
+          
+          await sheetsClient.authenticate();
+          const rows = await sheetsClient.readAll();
+          
+          let syncedCount = 0;
+          let updatedCount = 0;
+
+          for (const row of rows) {
+            const initials = row['イニシャル'] || row['スタッフID'] || '';
+            const name = row['姓名'] || row['名前'] || '';
+            const email = row['メアド'] || row['メールアドレス'] || row['email'] || '';
+            
+            if (!email || !initials) continue;
+
+            const { data: existing } = await supabase
+              .from('employees')
+              .select('id, name, initials')
+              .ilike('email', email)
+              .single();
+
+            if (existing) {
+              if (existing.initials !== initials || existing.name !== name) {
+                await supabase
+                  .from('employees')
+                  .update({ name, initials })
+                  .eq('id', existing.id);
+                updatedCount++;
+              }
+            } else {
+              await supabase
+                .from('employees')
+                .insert({
+                  email,
+                  name,
+                  initials,
+                  is_active: true,
+                  role: 'agent',
+                });
+              syncedCount++;
+            }
+          }
+
+          console.log(`✅ Staff sync completed: ${syncedCount} created, ${updatedCount} updated`);
+        } catch (error: any) {
+          console.error('⚠️ Staff sync failed (non-blocking):', error.message);
+        }
+      }, 5000); // 5秒後に実行
 
       setTimeout(async () => {
         try {

@@ -506,6 +506,34 @@ export default function SellersPage() {
           <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
             <Button
               variant="outlined"
+              onClick={async () => {
+                if (!window.confirm('スタッフ管理シートからemployeesテーブルに同期しますか？')) return;
+                try {
+                  const token = localStorage.getItem('session_token');
+                  const response = await fetch(`${import.meta.env.VITE_API_URL}/api/staff-sync`, {
+                    method: 'POST',
+                    headers: {
+                      'Authorization': `Bearer ${token}`,
+                      'Content-Type': 'application/json',
+                    },
+                  });
+                  const result = await response.json();
+                  if (response.ok) {
+                    alert(`同期完了しました`);
+                    // 従業員キャッシュをクリア
+                    localStorage.removeItem('employees_cache');
+                  } else {
+                    alert(`同期失敗: ${result.error?.message || 'エラーが発生しました'}`);
+                  }
+                } catch (error: any) {
+                  alert(`エラー: ${error.message}`);
+                }
+              }}
+            >
+              スタッフ同期
+            </Button>
+            <Button
+              variant="outlined"
               onClick={() => navigate('/settings')}
             >
               設定
