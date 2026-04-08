@@ -197,7 +197,7 @@ function fetchAllBuyersFromSupabase_() {
   var allBuyers = [];
   var pageSize = 1000;
   var offset = 0;
-  var fields = 'buyer_number,latest_status,next_call_date,initial_assignee,follow_up_assignee,inquiry_email_phone,three_calls_confirmed,reception_date,distribution_type,desired_area,viewing_date,viewing_time,viewing_mobile,latest_viewing_date,post_viewing_seller_contact,viewing_promotion_email,notification_sender,pre_viewing_notes,viewing_notes,pre_viewing_hearing,offer_comment,company_name,email';
+  var fields = 'buyer_number,latest_status,next_call_date,initial_assignee,follow_up_assignee,inquiry_email_phone,three_calls_confirmed,reception_date,distribution_type,desired_area,viewing_date,viewing_time,viewing_mobile,latest_viewing_date,post_viewing_seller_contact,viewing_promotion_email,notification_sender,pre_viewing_notes,viewing_notes,pre_viewing_hearing,offer_comment,company_name,email,other_company_property,building_name_price';
   while (true) {
     var url = SUPABASE_CONFIG.URL + '/rest/v1/buyers?select=' + fields +
       '&deleted_at=is.null&offset=' + offset + '&limit=' + pageSize;
@@ -611,6 +611,31 @@ function syncUpdatesToSupabase_(sheetRows) {
         Logger.log('  🗑️ ' + buyerNumber + ': ●メアドを削除 (旧値: ' + normalizedDbEmail + ')');
       }
     }
+    
+    // 他社物件（DJ列）
+    var sheetOtherCompanyProperty = row['他社物件'] ? String(row['他社物件']) : null;
+    var normalizedSheetOtherCompanyProperty = normalizeValue(sheetOtherCompanyProperty);
+    var normalizedDbOtherCompanyProperty = normalizeValue(dbBuyer.other_company_property);
+    if (normalizedSheetOtherCompanyProperty !== normalizedDbOtherCompanyProperty) {
+      updateData.other_company_property = normalizedSheetOtherCompanyProperty;
+      needsUpdate = true;
+      if (normalizedSheetOtherCompanyProperty === null && normalizedDbOtherCompanyProperty !== null) {
+        Logger.log('  🗑️ ' + buyerNumber + ': 他社物件を削除 (旧値: ' + normalizedDbOtherCompanyProperty + ')');
+      }
+    }
+    
+    // 建物名/価格（H列）
+    var sheetBuildingNamePrice = row['建物名/価格 内覧物件は赤表示（★は他社物件）'] ? String(row['建物名/価格 内覧物件は赤表示（★は他社物件）']) : null;
+    var normalizedSheetBuildingNamePrice = normalizeValue(sheetBuildingNamePrice);
+    var normalizedDbBuildingNamePrice = normalizeValue(dbBuyer.building_name_price);
+    if (normalizedSheetBuildingNamePrice !== normalizedDbBuildingNamePrice) {
+      updateData.building_name_price = normalizedSheetBuildingNamePrice;
+      needsUpdate = true;
+      if (normalizedSheetBuildingNamePrice === null && normalizedDbBuildingNamePrice !== null) {
+        Logger.log('  🗑️ ' + buyerNumber + ': 建物名/価格を削除 (旧値: ' + normalizedDbBuildingNamePrice + ')');
+      }
+    }
+    
     if (!needsUpdate) continue;
     
     // 🚨 バッチ処理: 更新データをバッチに追加
@@ -690,10 +715,22 @@ function syncBuyerList() {
   
   var lastRow = sheet.getLastRow();
   var lastCol = sheet.getLastColumn();
+  
+  // ヘッダー行のみの場合はスキップ
+  if (lastRow <= 1) {
+    Logger.log('⚠️ データ行がありません（ヘッダー行のみ）');
+    return;
+  }
+  
   var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
   var allData = sheet.getRange(2, 1, lastRow - 1, lastCol).getValues();
   var sheetRows = [];
-  for (var i = 0; i < allData.length; i++) { sheetRows.push(rowToObject(headers, allData[i])); }
+  for (var i = 0; i < allData.length; i++) {
+    // 行データが存在する場合のみ処理
+    if (allData[i]) {
+      sheetRows.push(rowToObject(headers, allData[i]));
+    }
+  }
   Logger.log('📊 スプレッドシート行数: ' + sheetRows.length);
   
   // Phase 1: 追加同期（スプレッドシートにあってDBにない買主を追加）
