@@ -162,8 +162,8 @@ export class PropertyListingSpreadsheetSync {
         throw new Error(`物件番号 ${propertyNumber} が見つかりません`);
       }
 
-      // DQ列（列番号120）を更新（シート名なし、GoogleSheetsClientが自動的に追加）
-      const range = `DQ${rowIndex}`;
+      // DQ列（列番号120）を更新
+      const range = `物件!DQ${rowIndex}`;
       await this.sheetsClient.writeRawCell(range, confirmation);
 
       console.log(`✅ [PropertyListingSpreadsheetSync] Successfully synced confirmation for ${propertyNumber}`);
