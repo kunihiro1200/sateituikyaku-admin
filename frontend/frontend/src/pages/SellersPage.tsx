@@ -32,7 +32,7 @@ import {
   Clear as ClearIcon,
   ExpandMore as ExpandMoreIcon,
 } from '@mui/icons-material';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import api from '../services/api';
 import { pageDataCache, CACHE_KEYS, sellerDetailCacheKey } from '../store/pageDataCache';
 import {
@@ -132,6 +132,7 @@ function SellerStatusCell({ seller }: { seller: any }) {
 
 export default function SellersPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [sellers, setSellers] = useState<Seller[]>([]);
@@ -396,6 +397,16 @@ export default function SellersPage() {
   }, []);
 
   // ページに戻ってきた時にサイドバーカウントを再取得（キャッシュが無効化されている場合）
+  useEffect(() => {
+    // location が変更されたとき（他のページから戻ってきたとき）にキャッシュをチェック
+    const cached = pageDataCache.get(CACHE_KEYS.SELLERS_SIDEBAR_COUNTS);
+    if (!cached) {
+      console.log('[SellersPage] Location changed and cache invalidated, fetching sidebar counts');
+      fetchSidebarCounts(true);
+    }
+  }, [location]);
+
+  // ウィンドウフォーカス時にもチェック（タブ切り替え時など）
   useEffect(() => {
     const handleFocus = () => {
       // キャッシュが無効化されている場合のみ再取得
