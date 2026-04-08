@@ -58,3 +58,5 @@ backend/sync-*.ts
 backend/fix-*.ts
 backend/*.bat
 backend/*.sh
+backend/api/check-*.ts
+backend/api/check-*.js
