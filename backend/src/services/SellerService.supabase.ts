@@ -2314,10 +2314,86 @@ export class SellerService extends BaseRepository {
     todayCallWithInfoLabels: string[];
     todayCallWithInfoLabelCounts: Record<string, number>;
   }> {
-    // seller_sidebar_countsテーブルを削除し、常にgetSidebarCountsFallback()を使用
-    // 理由: seller_sidebar_countsテーブルが古いデータを保持し、AA13224とAA13932が「当日TEL」カテゴリに表示されない問題が発生していた
-    // getSidebarCountsFallback()は既に正しいロジックを実装しており、60秒のメモリキャッシュでパフォーマンスも十分
-    return this.getSidebarCountsFallback();
+    const _t0 = Date.now();
+    
+    // seller_sidebar_countsテーブルから取得
+    const { data: counts, error } = await this.table('seller_sidebar_counts')
+      .select('*');
+    
+    console.log(`[PERF] getSidebarCounts DB query: ${Date.now() - _t0}ms`);
+    
+    // テーブルが空またはエラーの場合はフォールバック
+    if (error || !counts || counts.length === 0) {
+      console.log('⚠️ seller_sidebar_counts is empty or error, falling back to heavy query');
+      return this.getSidebarCountsFallback();
+    }
+    
+    // カウントデータを集計
+    const result = {
+      todayCall: 0,
+      todayCallWithInfo: 0,
+      todayCallAssigned: 0,
+      visitDayBefore: 0,
+      visitCompleted: 0,
+      unvaluated: 0,
+      mailingPending: 0,
+      todayCallNotStarted: 0,
+      pinrichEmpty: 0,
+      exclusive: 0,
+      general: 0,
+      visitOtherDecision: 0,
+      unvisitedOtherDecision: 0,
+      visitAssignedCounts: {} as Record<string, number>,
+      todayCallAssignedCounts: {} as Record<string, number>,
+      todayCallWithInfoLabels: [] as string[],
+      todayCallWithInfoLabelCounts: {} as Record<string, number>,
+    };
+    
+    counts.forEach((row: any) => {
+      const category = row.category;
+      const count = row.count || 0;
+      const label = row.label;
+      const assignee = row.assignee;
+      
+      // 単純カテゴリー
+      if (category === 'todayCall' && !label && !assignee) {
+        result.todayCall = count;
+      } else if (category === 'todayCallWithInfo' && !assignee) {
+        result.todayCallWithInfo += count;
+        if (label) {
+          result.todayCallWithInfoLabels.push(label);
+          result.todayCallWithInfoLabelCounts[label] = count;
+        }
+      } else if (category === 'todayCallAssigned' && assignee) {
+        result.todayCallAssigned += count;
+        result.todayCallAssignedCounts[assignee] = count;
+      } else if (category === 'visitDayBefore' && !label && !assignee) {
+        result.visitDayBefore = count;
+      } else if (category === 'visitCompleted' && !label && !assignee) {
+        result.visitCompleted = count;
+      } else if (category === 'unvaluated' && !label && !assignee) {
+        result.unvaluated = count;
+      } else if (category === 'mailingPending' && !label && !assignee) {
+        result.mailingPending = count;
+      } else if (category === 'todayCallNotStarted' && !label && !assignee) {
+        result.todayCallNotStarted = count;
+      } else if (category === 'pinrichEmpty' && !label && !assignee) {
+        result.pinrichEmpty = count;
+      } else if (category === 'exclusive' && !label && !assignee) {
+        result.exclusive = count;
+      } else if (category === 'general' && !label && !assignee) {
+        result.general = count;
+      } else if (category === 'visitOtherDecision' && !label && !assignee) {
+        result.visitOtherDecision = count;
+      } else if (category === 'unvisitedOtherDecision' && !label && !assignee) {
+        result.unvisitedOtherDecision = count;
+      } else if (category === 'visitAssigned' && assignee) {
+        result.visitAssignedCounts[assignee] = count;
+      }
+    });
+    
+    console.log(`✅ [PERF] getSidebarCounts completed: ${Date.now() - _t0}ms`);
+    return result;
   }
 
   /**
