@@ -403,14 +403,7 @@ export default function SellersPage() {
   }, []);
 
   // ページに戻ってきた時にサイドバーカウントを再取得（キャッシュが無効化されている場合）
-  // location.pathname が変更されたときのみ実行（初回マウント時は実行しない）
-  const isInitialMount = useRef(true);
   useEffect(() => {
-    if (isInitialMount.current) {
-      isInitialMount.current = false;
-      return;
-    }
-    
     // /sellers ページに戻ってきたときのみ実行
     if (location.pathname === '/' || location.pathname === '/sellers') {
       const cached = pageDataCache.get(CACHE_KEYS.SELLERS_SIDEBAR_COUNTS);
