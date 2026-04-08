@@ -2955,16 +2955,20 @@ export class BuyerService {
 
     switch (priceRange) {
       case '~1900万円':
+        // 買主の価格帯の最大値が1900万円以下
         const result1 = max <= 19000000;
         console.log(`[matchesPriceRange] ~1900万円: max(${max}) <= 19000000 = ${result1}`);
         return result1;
       case '1000万円~2999万円':
-        const result2 = min >= 10000000 && max <= 29990000;
-        console.log(`[matchesPriceRange] 1000万円~2999万円: min(${min}) >= 10000000 && max(${max}) <= 29990000 = ${result2}`);
+        // 買主の価格帯が1000万円~2999万円の範囲と重なっている
+        // 条件: 買主の最大値 >= 1000万円 AND 買主の最小値 <= 2999万円
+        const result2 = max >= 10000000 && min <= 29990000;
+        console.log(`[matchesPriceRange] 1000万円~2999万円: max(${max}) >= 10000000 && min(${min}) <= 29990000 = ${result2}`);
         return result2;
       case '2000万円以上':
-        const result3 = min >= 20000000;
-        console.log(`[matchesPriceRange] 2000万円以上: min(${min}) >= 20000000 = ${result3}`);
+        // 買主の価格帯の最大値が2000万円以上
+        const result3 = max >= 20000000;
+        console.log(`[matchesPriceRange] 2000万円以上: max(${max}) >= 20000000 = ${result3}`);
         return result3;
       default:
         console.log(`[matchesPriceRange] Unknown priceRange, returning true`);
