@@ -1015,6 +1015,7 @@ export class SellerService extends BaseRepository {
         visitAcquisitionDate: seller.visit_acquisition_date ? new Date(seller.visit_acquisition_date) : undefined,
         // イニシャルをフルネームに変換（フォールバック付き）
         visitAssignee: visitAssigneeFullName || seller.visit_assignee || undefined,
+        visitAssigneeInitials: seller.visit_assignee || undefined, // 元のイニシャルを保持
         visitValuationAcquirer: visitValuationAcquirerFullName || seller.visit_valuation_acquirer || undefined,
         valuationAssignee: seller.valuation_assignee,
         phoneAssignee: seller.phone_assignee,
