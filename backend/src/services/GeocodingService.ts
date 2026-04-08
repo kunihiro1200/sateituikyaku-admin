@@ -2,6 +2,12 @@
 import axios from 'axios';
 
 export interface Coordinates {
+  lat: number;
+  lng: number;
+}
+
+// 後方互換性のため、既存のインターフェースも保持
+export interface CoordinatesLegacy {
   latitude: number;
   longitude: number;
 }
@@ -13,67 +19,84 @@ export class GeocodingService {
   constructor() {
     this.apiKey = process.env.GOOGLE_MAPS_API_KEY || '';
     if (!this.apiKey) {
-      console.warn('[GeocodingService] GOOGLE_MAPS_API_KEY is not set');
+      throw new Error('GOOGLE_MAPS_API_KEY is not set');
     }
   }
 
   /**
-   * 住所から座標を取得
-   * @param address 住所
-   * @returns 座標（緯度・経度）
+   * 住所を地理座標に変換
+   * @param address 住所（例: "大分県大分市府内町1-1-1"）
+   * @returns 緯度経度、または変換失敗時はnull
    */
   async geocodeAddress(address: string): Promise<Coordinates | null> {
-    if (!this.apiKey) {
-      console.error('[GeocodingService] API key is not configured');
-      return null;
-    }
-
-    if (!address || address.trim() === '') {
-      console.warn('[GeocodingService] Address is empty');
-      return null;
-    }
-
     try {
-      console.log(`[GeocodingService] Geocoding address: ${address}`);
-
-      const response = await axios.get(this.baseUrl, {
+      // 「大分県」が含まれていない場合は自動的に追加
+      let fullAddress = address;
+      if (!address.includes('大分県')) {
+        fullAddress = `大分県${address}`;
+      }
+      
+      console.log(`[GeocodingService] Geocoding address: "${address}" -> "${fullAddress}"`);
+      
+      const response = await axios.get('https://maps.googleapis.com/maps/api/geocode/json', {
         params: {
-          address: address,
+          address: fullAddress,
           key: this.apiKey,
-          language: 'ja', // 日本語
+          language: 'ja',
+          region: 'jp',
         },
-        timeout: 10000, // 10秒タイムアウト
       });
 
-      if (response.data.status === 'OK' && response.data.results.length > 0) {
-        const location = response.data.results[0].geometry.location;
-        const coordinates: Coordinates = {
-          latitude: location.lat,
-          longitude: location.lng,
-        };
+      if (response.data.status !== 'OK' || response.data.results.length === 0) {
+        console.error('[GeocodingService] Geocoding failed:', response.data.status);
+        console.error('[GeocodingService] Error message:', response.data.error_message);
+        console.error('[GeocodingService] Full response:', JSON.stringify(response.data, null, 2));
+        return null;
+      }
 
-        console.log(`[GeocodingService] Successfully geocoded: ${address} -> (${coordinates.latitude}, ${coordinates.longitude})`);
-        return coordinates;
-      } else if (response.data.status === 'ZERO_RESULTS') {
-        console.warn(`[GeocodingService] No results found for address: ${address}`);
-        return null;
-      } else if (response.data.status === 'OVER_QUERY_LIMIT') {
-        console.error('[GeocodingService] API quota exceeded');
-        throw new Error('Geocoding API quota exceeded');
-      } else {
-        console.error(`[GeocodingService] Geocoding failed with status: ${response.data.status}`);
-        return null;
-      }
+      const location = response.data.results[0].geometry.location;
+      const formattedAddress = response.data.results[0].formatted_address;
+      
+      console.log(`[GeocodingService] Geocoding success: "${fullAddress}" -> lat=${location.lat}, lng=${location.lng}, formatted="${formattedAddress}"`);
+      
+      return {
+        lat: location.lat,
+        lng: location.lng,
+      };
     } catch (error: any) {
-      if (error.response) {
-        console.error(`[GeocodingService] API error: ${error.response.status} - ${error.response.data}`);
-      } else if (error.request) {
-        console.error('[GeocodingService] No response from API');
-      } else {
-        console.error(`[GeocodingService] Error: ${error.message}`);
-      }
+      console.error('[GeocodingService] Error calling Google Maps API:', error);
       return null;
     }
+  }
+
+  /**
+   * Haversine公式を使用して2点間の距離を計算
+   * @param lat1 地点1の緯度
+   * @param lng1 地点1の経度
+   * @param lat2 地点2の緯度
+   * @param lng2 地点2の経度
+   * @returns 距離（km）
+   */
+  calculateDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
+    const R = 6371; // 地球の半径（km）
+    const dLat = this.toRadians(lat2 - lat1);
+    const dLng = this.toRadians(lng2 - lng1);
+    
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(this.toRadians(lat1)) *
+      Math.cos(this.toRadians(lat2)) *
+      Math.sin(dLng / 2) *
+      Math.sin(dLng / 2);
+    
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    const distance = R * c;
+    
+    return distance;
+  }
+
+  private toRadians(degrees: number): number {
+    return degrees * (Math.PI / 180);
   }
 
   /**
