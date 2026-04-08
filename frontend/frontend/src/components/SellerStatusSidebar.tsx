@@ -5,7 +5,7 @@
  * 現在の売主がどのステータスカテゴリに属するかをハイライト表示
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, memo } from 'react';
 import { Paper, Typography, Box, Button, Chip, Collapse, IconButton, List, ListItem, Divider, CircularProgress } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { ExpandMore, ExpandLess, Edit, Email, Phone, Chat, LocationOn } from '@mui/icons-material';
@@ -211,7 +211,7 @@ const getCategoryColor = (category: StatusCategory): string => {
   }
 };
 
-export default function SellerStatusSidebar({
+function SellerStatusSidebarComponent({
   currentSeller,
   categoryCounts,
   selectedCategory,
@@ -758,3 +758,6 @@ export default function SellerStatusSidebar({
     </Paper>
   );
 }
+
+// React.memoで最適化（propsが変更されない限り再レンダリングしない）
+export default memo(SellerStatusSidebarComponent);

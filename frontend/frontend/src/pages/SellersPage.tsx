@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Container,
   Box,
@@ -277,15 +277,25 @@ export default function SellersPage() {
   const { presenceState } = useSellerPresenceSubscribe();
 
   // カテゴリ別の売主数をカウント（APIから取得したカウントを使用）
-  const categoryCounts = {
-    ...sidebarCounts,
-    all: total, // ページネーション前の全体件数を使用
-  };
+  // useMemoで最適化：sidebarCountsまたはtotalが変更された時のみ再計算
+  const categoryCounts = useMemo(() => {
+    console.log('[SellersPage] categoryCounts recalculated');
+    return {
+      ...sidebarCounts,
+      all: total, // ページネーション前の全体件数を使用
+    };
+  }, [sidebarCounts, total]);
 
-  // カテゴリ別にフィルタリング（ユーティリティ関数を使用）
-  const getFilteredSellers = () => {
-    return filterSellersByCategory(sellers, selectedCategory);
-  };
+  // カテゴリ選択ハンドラー（useCallbackで最適化）
+  const handleCategorySelect = useCallback((category: StatusCategory) => {
+    setSelectedCategory(category);
+    setPage(0); // カテゴリが変わったらページを0にリセット
+  }, []);
+
+  // カテゴリ展開ハンドラー（useCallbackで最適化）
+  const handleCategoryExpand = useCallback((category: string) => {
+    fetchExpandedCategorySellers(category);
+  }, [expandedCategoryLoading]);
 
   // サイドバー用のカテゴリカウントを取得（APIから直接取得、キャッシュ付き）
   const fetchSidebarCounts = async (forceRefresh = false) => {
@@ -586,13 +596,8 @@ export default function SellersPage() {
               <SellerStatusSidebar
                 categoryCounts={categoryCounts}
                 selectedCategory={selectedCategory}
-                onCategorySelect={(category) => {
-                  setSelectedCategory(category);
-                  setPage(0);
-                }}
-                onCategoryExpand={(category: string) => {
-                  fetchExpandedCategorySellers(category);
-                }}
+                onCategorySelect={handleCategorySelect}
+                onCategoryExpand={handleCategoryExpand}
                 isCallMode={false}
                 sellers={sellers}
                 expandedCategorySellers={expandedCategorySellers}
@@ -611,13 +616,8 @@ export default function SellersPage() {
             <SellerStatusSidebar
               categoryCounts={categoryCounts}
               selectedCategory={selectedCategory}
-              onCategorySelect={(category) => {
-                setSelectedCategory(category);
-                setPage(0); // カテゴリが変わったらページを0にリセット
-              }}
-              onCategoryExpand={(category: string) => {
-                fetchExpandedCategorySellers(category);
-              }}
+              onCategorySelect={handleCategorySelect}
+              onCategoryExpand={handleCategoryExpand}
               isCallMode={false}
               sellers={sellers}
               expandedCategorySellers={expandedCategorySellers}
