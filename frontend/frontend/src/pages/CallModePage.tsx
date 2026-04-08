@@ -3398,6 +3398,8 @@ HP：https://ifoo-oita.com/
           sessionStorage.removeItem('selectedSellerId');
           sessionStorage.removeItem('sellersPage');
           pageDataCache.invalidate(CACHE_KEYS.SELLERS_LIST);
+          pageDataCache.invalidate(CACHE_KEYS.SELLERS_SIDEBAR_COUNTS);
+          pageDataCache.invalidateByPrefix('sidebar_expanded:');
           navigate('/');
         }}>
           一覧に戻る
@@ -3467,6 +3469,8 @@ HP：https://ifoo-oita.com/
               sessionStorage.removeItem('selectedSellerId');
               sessionStorage.removeItem('sellersPage');
               pageDataCache.invalidate(CACHE_KEYS.SELLERS_LIST);
+              pageDataCache.invalidate(CACHE_KEYS.SELLERS_SIDEBAR_COUNTS);
+              pageDataCache.invalidateByPrefix('sidebar_expanded:');
               navigate('/');
             });
           }} variant="outlined">
@@ -3503,6 +3507,8 @@ HP：https://ifoo-oita.com/
                     sessionStorage.removeItem('sellersPage');
                     sessionStorage.setItem('selectedStatusCategory', selectedCategory);
                     pageDataCache.invalidate(CACHE_KEYS.SELLERS_LIST);
+                    pageDataCache.invalidate(CACHE_KEYS.SELLERS_SIDEBAR_COUNTS);
+                    pageDataCache.invalidateByPrefix('sidebar_expanded:');
                     navigate('/');
                   });
                 }}
