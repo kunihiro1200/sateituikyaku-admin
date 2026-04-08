@@ -4723,14 +4723,11 @@ HP：https://ifoo-oita.com/
                                 `住所: ${seller.address}\n` +
                                 `電話: ${seller.phoneNumber}\n` +
                                 `\n` +
-                                `Google Map:\n${googleMapUrl}\n` +
+                                `Google Map: ${googleMapUrl}\n` +
                                 `\n` +
-                                `通話モードページ:\n${callModeUrl}\n` +
+                                `通話モードページ: ${callModeUrl}\n` +
                                 `\n` +
-                                `訪問時注意点: ${seller.appointmentNotes || 'なし'}\n` +
-                                (seller.comments ? `\nコメント:\n${seller.comments}\n` : '') +
-                                `\n` +
-                                `コミュニケーション履歴（通話した内容）:\n${recentActivities || '履歴なし'}`;
+                                `訪問時注意点: ${seller.appointmentNotes || 'なし'}`;
                               
                               const location = propertyAddress;
                               
@@ -4784,6 +4781,15 @@ HP：https://ifoo-oita.com/
                               console.log('assignedEmail:', assignedEmail);
                               console.log('生成されたURL:', calendarUrl);
                               console.log('URLの長さ:', calendarUrl.length);
+                              console.log('URLの最初の200文字:', calendarUrl.substring(0, 200));
+                              
+                              // URLが長すぎる場合は警告
+                              if (calendarUrl.length > 2000) {
+                                console.warn('⚠️ URLが長すぎます（2000文字以上）。Googleカレンダーで404エラーが発生する可能性があります。');
+                                if (!window.confirm(`URLが長すぎます（${calendarUrl.length}文字）。それでもカレンダーを開きますか？`)) {
+                                  return;
+                                }
+                              }
                               
                               window.open(calendarUrl, '_blank');
                             }}
