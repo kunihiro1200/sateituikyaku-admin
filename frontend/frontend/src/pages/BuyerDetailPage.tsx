@@ -1719,6 +1719,63 @@ TEL：097-533-2022`;
                 <Typography variant="body2">紐づいた物件はありません</Typography>
               </Paper>
             )}
+
+            {/* 他社物件情報セクション */}
+            {(buyer?.other_company_property || buyer?.building_name_price) && (
+              <Paper
+                sx={{
+                  p: 3,
+                  mb: 2,
+                  bgcolor: '#fff9e6',
+                  border: '2px solid #f0e5c0',
+                  borderRadius: 2,
+                }}
+              >
+                <Typography variant="h6" fontWeight="bold" sx={{ mb: 2, color: '#856404' }}>
+                  他社物件情報
+                </Typography>
+                
+                {buyer.other_company_property && (
+                  <Box sx={{ mb: 2 }}>
+                    <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
+                      他社物件
+                    </Typography>
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        whiteSpace: 'pre-wrap',
+                        wordWrap: 'break-word',
+                        overflowWrap: 'break-word',
+                        color: '#555',
+                        lineHeight: 1.6,
+                      }}
+                    >
+                      {buyer.other_company_property}
+                    </Typography>
+                  </Box>
+                )}
+
+                {buyer.building_name_price && (
+                  <Box>
+                    <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
+                      建物名/価格
+                    </Typography>
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        whiteSpace: 'pre-wrap',
+                        wordWrap: 'break-word',
+                        overflowWrap: 'break-word',
+                        color: '#555',
+                        lineHeight: 1.6,
+                      }}
+                    >
+                      {buyer.building_name_price}
+                    </Typography>
+                  </Box>
+                )}
+              </Paper>
+            )}
           </Box>
           </Box>{/* スマホ時物件カード開閉Box */}
         </Box>

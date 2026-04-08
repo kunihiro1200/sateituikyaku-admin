@@ -54,6 +54,8 @@ interface PropertyFullDetails {
 interface Buyer {
   pre_viewing_notes?: string;
   viewing_notes?: string;
+  other_company_property?: string;  // 他社物件
+  building_name_price?: string;     // 建物名/価格
   [key: string]: any;
 }
 
