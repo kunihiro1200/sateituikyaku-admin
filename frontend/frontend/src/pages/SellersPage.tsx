@@ -289,18 +289,22 @@ export default function SellersPage() {
 
   // サイドバー用のカテゴリカウントを取得（APIから直接取得、キャッシュ付き）
   const fetchSidebarCounts = async (forceRefresh = false) => {
+    console.log('[SellersPage] fetchSidebarCounts called, forceRefresh:', forceRefresh);
     // キャッシュが有効な場合はキャッシュを使用
     if (!forceRefresh) {
       const cached = pageDataCache.get(CACHE_KEYS.SELLERS_SIDEBAR_COUNTS);
       if (cached) {
+        console.log('[SellersPage] Using cached sidebar counts');
         setSidebarCounts(cached as any);
         setSidebarLoading(false);
         return;
       }
     }
     try {
+      console.log('[SellersPage] Fetching sidebar counts from API');
       setSidebarLoading(true);
       const response = await api.get('/api/sellers/sidebar-counts');
+      console.log('[SellersPage] Sidebar counts fetched:', response.data);
       setSidebarCounts(response.data);
       pageDataCache.set(CACHE_KEYS.SELLERS_SIDEBAR_COUNTS, response.data, 15 * 60 * 1000);
     } catch (error) {
