@@ -1268,6 +1268,35 @@ router.post('/:propertyNumber/send-chat-to-office', async (req: Request, res: Re
           .update({ confirmation: '未' })
           .eq('property_number', propertyNumber);
         
+        // スプレッドシートへ直接同期（キューを使わず即座に実行）
+        try {
+          const { PropertyListingSpreadsheetSync } = await import('../services/PropertyListingSpreadsheetSync');
+          const { GoogleSheetsClient } = await import('../services/GoogleSheetsClient');
+          
+          const spreadsheetId = process.env.GOOGLE_SHEETS_SPREADSHEET_ID || '';
+          console.log(`[send-chat-to-office] GOOGLE_SHEETS_SPREADSHEET_ID: ${spreadsheetId ? '設定済み' : '未設定'}`);
+          
+          if (!spreadsheetId) {
+            throw new Error('GOOGLE_SHEETS_SPREADSHEET_ID is not set');
+          }
+          
+          const sheetsClient = new GoogleSheetsClient({
+            spreadsheetId,
+            sheetName: '物件',
+          });
+          const syncService = new PropertyListingSpreadsheetSync(sheetsClient, supabase);
+          await syncService.syncConfirmationToSpreadsheet(propertyNumber, '未');
+          console.log(`[send-chat-to-office] Successfully synced confirmation to spreadsheet for ${propertyNumber}`);
+        } catch (syncError: any) {
+          console.error(`[send-chat-to-office] Failed to sync confirmation to spreadsheet for ${propertyNumber}:`, syncError);
+          console.error(`[send-chat-to-office] Error details:`, {
+            message: syncError.message,
+            stack: syncError.stack,
+            spreadsheetId: process.env.GOOGLE_SHEETS_SPREADSHEET_ID ? '設定済み' : '未設定'
+          });
+          // 同期エラーでもレスポンスは成功を返す（チャット送信は成功しているため）
+        }
+        
         res.json({ success: true });
         return;
       }
@@ -1310,8 +1339,15 @@ router.post('/:propertyNumber/send-chat-to-office', async (req: Request, res: Re
       const { PropertyListingSpreadsheetSync } = await import('../services/PropertyListingSpreadsheetSync');
       const { GoogleSheetsClient } = await import('../services/GoogleSheetsClient');
       
+      const spreadsheetId = process.env.GOOGLE_SHEETS_SPREADSHEET_ID || '';
+      console.log(`[send-chat-to-office] GOOGLE_SHEETS_SPREADSHEET_ID: ${spreadsheetId ? '設定済み' : '未設定'}`);
+      
+      if (!spreadsheetId) {
+        throw new Error('GOOGLE_SHEETS_SPREADSHEET_ID is not set');
+      }
+      
       const sheetsClient = new GoogleSheetsClient({
-        spreadsheetId: process.env.GOOGLE_SHEETS_SPREADSHEET_ID || '',
+        spreadsheetId,
         sheetName: '物件',
       });
       const syncService = new PropertyListingSpreadsheetSync(sheetsClient, supabase);
@@ -1319,6 +1355,11 @@ router.post('/:propertyNumber/send-chat-to-office', async (req: Request, res: Re
       console.log(`[send-chat-to-office] Successfully synced confirmation to spreadsheet for ${propertyNumber}`);
     } catch (syncError: any) {
       console.error(`[send-chat-to-office] Failed to sync confirmation to spreadsheet for ${propertyNumber}:`, syncError);
+      console.error(`[send-chat-to-office] Error details:`, {
+        message: syncError.message,
+        stack: syncError.stack,
+        spreadsheetId: process.env.GOOGLE_SHEETS_SPREADSHEET_ID ? '設定済み' : '未設定'
+      });
       // 同期エラーでもレスポンスは成功を返す（チャット送信は成功しているため）
     }
 
