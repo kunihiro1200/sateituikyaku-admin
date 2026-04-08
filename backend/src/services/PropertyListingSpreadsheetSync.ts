@@ -163,7 +163,7 @@ export class PropertyListingSpreadsheetSync {
       }
 
       // DQ列（列番号120）を更新
-      const range = `物件!DQ${rowIndex}`;
+      const range = `DQ${rowIndex}`;
       await this.sheetsClient.writeRawCell(range, confirmation);
 
       console.log(`✅ [PropertyListingSpreadsheetSync] Successfully synced confirmation for ${propertyNumber}`);
