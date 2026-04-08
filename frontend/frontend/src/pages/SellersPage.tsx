@@ -398,13 +398,15 @@ export default function SellersPage() {
 
   // ページに戻ってきた時にサイドバーカウントを再取得（キャッシュが無効化されている場合）
   useEffect(() => {
-    // location が変更されたとき（他のページから戻ってきたとき）にキャッシュをチェック
-    const cached = pageDataCache.get(CACHE_KEYS.SELLERS_SIDEBAR_COUNTS);
-    if (!cached) {
-      console.log('[SellersPage] Location changed and cache invalidated, fetching sidebar counts');
-      fetchSidebarCounts(true);
+    // /sellers ページに戻ってきたときのみ実行
+    if (location.pathname === '/' || location.pathname === '/sellers') {
+      const cached = pageDataCache.get(CACHE_KEYS.SELLERS_SIDEBAR_COUNTS);
+      if (!cached) {
+        console.log('[SellersPage] Returned to sellers page, cache invalidated, fetching sidebar counts immediately');
+        fetchSidebarCounts(true);
+      }
     }
-  }, [location]);
+  }, [location.pathname]);
 
   // ウィンドウフォーカス時にもチェック（タブ切り替え時など）
   useEffect(() => {
