@@ -2974,7 +2974,7 @@ export class BuyerService {
 
   /**
    * 半径検索で買主を取得
-   * @param params 検索パラメータ（住所、価格帯、物件種別）
+   * @param params 検索パラメータ（住所または物件番号、価格帯、物件種別）
    * @returns 買主リストと総数
    */
   async getBuyersByRadiusSearch(params: {
@@ -2996,16 +2996,45 @@ export class BuyerService {
       return cached as { buyers: any[]; total: number };
     }
 
-    // 1. 住所を地理座標に変換
-    const { GeocodingService } = await import('./GeocodingService');
-    const geocodingService = new GeocodingService();
-    const coordinates = await geocodingService.geocodeAddress(address);
+    // 1. 住所から座標を取得
+    // まず、物件リストテーブルから座標を検索（住所が物件番号の場合）
+    let coordinates: { lat: number; lng: number } | null = null;
     
+    // 物件番号の形式（AA9999など）かチェック
+    const isPropertyNumber = /^[A-Z]{2}\d{4}$/.test(address.trim());
+    
+    if (isPropertyNumber) {
+      console.log('[getBuyersByRadiusSearch] Searching by property number:', address);
+      const { data: property } = await this.supabase
+        .from('property_listings')
+        .select('latitude, longitude')
+        .eq('property_number', address.trim())
+        .single();
+      
+      if (property && property.latitude && property.longitude) {
+        coordinates = { lat: property.latitude, lng: property.longitude };
+        console.log('[getBuyersByRadiusSearch] Found coordinates from property_listings:', coordinates);
+      }
+    }
+    
+    // 物件リストに座標がない場合、または住所の場合はジオコーディング
     if (!coordinates) {
-      throw new Error('geocoding failed: Unable to convert address to coordinates');
+      console.log('[getBuyersByRadiusSearch] Geocoding address:', address);
+      const { GeocodingService } = await import('./GeocodingService');
+      const geocodingService = new GeocodingService();
+      coordinates = await geocodingService.geocodeAddress(address);
+      
+      if (!coordinates) {
+        throw new Error('geocoding failed: Unable to convert address to coordinates');
+      }
+      console.log('[getBuyersByRadiusSearch] Geocoded coordinates:', coordinates);
     }
 
-    console.log('[getBuyersByRadiusSearch] coordinates:', coordinates);
+    console.log('[getBuyersByRadiusSearch] Using coordinates:', coordinates);
+
+    // GeocodingServiceのインスタンスを作成（距離計算用）
+    const { GeocodingService: GeocodingServiceClass } = await import('./GeocodingService');
+    const geocodingService = new GeocodingServiceClass();
 
     // 2. 半径3km圏内の買主を検索
     // まず、全買主を取得（desired_area_lat, desired_area_lngがnullでないもの）

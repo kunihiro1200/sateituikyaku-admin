@@ -333,15 +333,15 @@ export default function OtherCompanyDistributionPage() {
       {/* フィルター */}
       <Paper sx={{ p: 2, mb: 2 }}>
         <Grid container spacing={2}>
-          {/* 住所入力 */}
+          {/* 住所または物件番号入力 */}
           <Grid item xs={12} md={4}>
             <TextField
-              label="住所を入力してください"
-              placeholder="例: 大分県大分市府内町1-1-1"
+              label="住所または物件番号を入力してください"
+              placeholder="例: 大分県大分市府内町1-1-1 または AA9926"
               value={address}
               onChange={(e) => setAddress(e.target.value)}
               fullWidth
-              helperText="入力した住所の半径3km圏内で買主を検索します（最大200文字）"
+              helperText="入力した住所または物件番号の半径3km圏内で買主を検索します（最大200文字）"
               error={address.length > 200}
             />
           </Grid>
