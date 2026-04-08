@@ -184,8 +184,6 @@ const BUYER_FIELD_SECTIONS = [
       { key: 'owned_home_hearing_inquiry', label: '問合時持家ヒアリング', inlineEditable: true, fieldType: 'staffSelect' },
       { key: 'owned_home_hearing_result', label: '持家ヒアリング結果', inlineEditable: true, fieldType: 'homeHearingResult' },
       { key: 'valuation_required', label: '要査定', inlineEditable: true, fieldType: 'valuationRequired' },
-      { key: 'other_company_property', label: '他社物件', multiline: true, inlineEditable: true },
-      { key: 'building_name_price', label: '建物名/価格', multiline: true, inlineEditable: true },
     ],
   },
   {
@@ -1735,45 +1733,35 @@ TEL：097-533-2022`;
                   他社物件情報
                 </Typography>
                 
-                {buyer.other_company_property && (
-                  <Box sx={{ mb: 2 }}>
-                    <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
-                      他社物件
-                    </Typography>
-                    <Typography
-                      variant="body2"
-                      sx={{
-                        whiteSpace: 'pre-wrap',
-                        wordWrap: 'break-word',
-                        overflowWrap: 'break-word',
-                        color: '#555',
-                        lineHeight: 1.6,
-                      }}
-                    >
-                      {buyer.other_company_property}
-                    </Typography>
-                  </Box>
-                )}
+                <Grid container spacing={2}>
+                  <Grid item xs={12}>
+                    <InlineEditableField
+                      label="他社物件"
+                      value={buyer?.other_company_property || ''}
+                      fieldName="other_company_property"
+                      fieldType="textarea"
+                      onSave={handleInlineFieldSave}
+                      onChange={(fieldName, newValue) => handleFieldChange('他社物件情報', fieldName, newValue)}
+                      buyerId={buyer_number}
+                      enableConflictDetection={false}
+                      showEditIndicator={true}
+                    />
+                  </Grid>
 
-                {buyer.building_name_price && (
-                  <Box>
-                    <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
-                      建物名/価格
-                    </Typography>
-                    <Typography
-                      variant="body2"
-                      sx={{
-                        whiteSpace: 'pre-wrap',
-                        wordWrap: 'break-word',
-                        overflowWrap: 'break-word',
-                        color: '#555',
-                        lineHeight: 1.6,
-                      }}
-                    >
-                      {buyer.building_name_price}
-                    </Typography>
-                  </Box>
-                )}
+                  <Grid item xs={12}>
+                    <InlineEditableField
+                      label="建物名/価格"
+                      value={buyer?.building_name_price || ''}
+                      fieldName="building_name_price"
+                      fieldType="textarea"
+                      onSave={handleInlineFieldSave}
+                      onChange={(fieldName, newValue) => handleFieldChange('他社物件情報', fieldName, newValue)}
+                      buyerId={buyer_number}
+                      enableConflictDetection={false}
+                      showEditIndicator={true}
+                    />
+                  </Grid>
+                </Grid>
               </Paper>
             )}
           </Box>
