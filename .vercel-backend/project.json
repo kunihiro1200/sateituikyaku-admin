@@ -1,16 +1,5 @@
 {
   "projectId": "prj_Ar6ExsktF0Z6g3Jgmx02IhTgGwSh",
   "orgId": "team_6iuG8GaBHjRxtJXxYMLZSd5h",
-  "projectName": "sateituikyaku-admin-backend",
-  "settings": {
-    "createdAt": 1771816952670,
-    "framework": null,
-    "devCommand": null,
-    "installCommand": " npm install",
-    "buildCommand": "npm run build",
-    "outputDirectory": "dist",
-    "rootDirectory": "backend",
-    "directoryListing": false,
-    "nodeVersion": "24.x"
-  }
+  "projectName": "sateituikyaku-admin-backend"
 }
