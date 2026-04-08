@@ -2205,6 +2205,11 @@ const CallModePage = () => {
             calParams.append('add', assignedEmail);
           }
 
+          // authuser パラメータを追加して、ifoo-oita.com アカウントを明示的に指定
+          // 複数のGoogleアカウントにログインしている場合、デフォルトアカウントではなく
+          // 会社アカウント（tenant@ifoo-oita.com）でカレンダーを開くようにする
+          calParams.append('authuser', 'tenant@ifoo-oita.com');
+
           window.open(
             `https://calendar.google.com/calendar/render?${calParams.toString()}`,
             '_blank'
