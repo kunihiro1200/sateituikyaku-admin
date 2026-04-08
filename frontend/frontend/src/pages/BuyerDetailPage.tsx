@@ -184,6 +184,8 @@ const BUYER_FIELD_SECTIONS = [
       { key: 'owned_home_hearing_inquiry', label: '問合時持家ヒアリング', inlineEditable: true, fieldType: 'staffSelect' },
       { key: 'owned_home_hearing_result', label: '持家ヒアリング結果', inlineEditable: true, fieldType: 'homeHearingResult' },
       { key: 'valuation_required', label: '要査定', inlineEditable: true, fieldType: 'valuationRequired' },
+      { key: 'other_company_property', label: '他社物件', multiline: true, inlineEditable: true },
+      { key: 'building_name_price', label: '建物名/価格', multiline: true, inlineEditable: true },
     ],
   },
   {
