@@ -315,6 +315,39 @@ router.post('/update-sidebar-counts', async (_req: Request, res: Response) => {
   }
 });
 
+// 半径検索用の買主取得（認証必須だが、router.use(authenticate)の前に定義）
+router.post('/radius-search', authenticate, async (req: Request, res: Response) => {
+  try {
+    const { address, priceRange, propertyTypes } = req.body;
+
+    // バリデーション
+    if (!address || !propertyTypes || propertyTypes.length === 0) {
+      return res.status(400).json({ 
+        error: 'address and propertyTypes are required' 
+      });
+    }
+
+    const result = await buyerService.getBuyersByRadiusSearch({
+      address,
+      priceRange: priceRange || '指定なし',
+      propertyTypes,
+    });
+
+    res.json(result);
+  } catch (error: any) {
+    console.error('Error fetching buyers by radius:', error);
+    
+    // ジオコーディングエラーの場合
+    if (error.message.includes('geocoding')) {
+      return res.status(400).json({ 
+        error: '住所を地理座標に変換できませんでした。住所を確認してください。' 
+      });
+    }
+    
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // 全てのルートに認証を適用（sidebar-countsの後、PUT /:id の後に配置）
 router.use(authenticate);
 
