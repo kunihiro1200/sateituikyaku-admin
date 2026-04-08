@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   Container,
   Box,
@@ -388,16 +388,29 @@ export default function SellersPage() {
     }
   };
 
-  // 初回ロード時にサイドバーカウントとイニシャルを取得
+  // 初回ロード時とキャッシュ無効化時にサイドバーカウントを即座に取得
   useEffect(() => {
-    // キャッシュが無効化されている場合は強制的に再取得
+    console.log('[SellersPage] Component mounted or cache invalidated');
     const cached = pageDataCache.get(CACHE_KEYS.SELLERS_SIDEBAR_COUNTS);
-    fetchSidebarCounts(!cached); // キャッシュがない場合はforceRefresh=true
+    if (!cached) {
+      console.log('[SellersPage] No cache found, fetching sidebar counts immediately');
+      fetchSidebarCounts(true);
+    } else {
+      console.log('[SellersPage] Using cached sidebar counts');
+      setSidebarCounts(cached as any);
+    }
     fetchAssigneeInitials();
   }, []);
 
   // ページに戻ってきた時にサイドバーカウントを再取得（キャッシュが無効化されている場合）
+  // location.pathname が変更されたときのみ実行（初回マウント時は実行しない）
+  const isInitialMount = useRef(true);
   useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+    
     // /sellers ページに戻ってきたときのみ実行
     if (location.pathname === '/' || location.pathname === '/sellers') {
       const cached = pageDataCache.get(CACHE_KEYS.SELLERS_SIDEBAR_COUNTS);
