@@ -13,7 +13,7 @@ last-verified: 2026-01-25
 ### 🚨 最重要：正しいプロジェクトパス
 
 **唯一の正しい作業対象プロジェクト**:
-- ✅ **`c:\Users\kunih\sateituikyaku`** ← **これが唯一の正しいプロジェクト**
+- ✅ **`c:\Users\kunih\sateituikyaku-admin`** ← **これが唯一の正しいプロジェクト**
 
 **絶対に触ってはいけないプロジェクト**:
 - ❌ **`c:\Users\kunih\property-search-app`** ← **間違ったプロジェクト**
@@ -23,10 +23,8 @@ last-verified: 2026-01-25
 
 以下のVercelプロジェクトのみを扱います：
 
-1. **`backend`** - Vercelプロジェクト（`c:\Users\kunih\sateituikyaku\backend`）
-2. **`baikyaku-property-site3`** - Vercelプロジェクト
-3. **`frontend`** - Vercelプロジェクト（`c:\Users\kunih\sateituikyaku\frontend`）
-4. **`property-site-frontend`** - Vercelプロジェクト（現在の主要作業対象）
+1. **`sateituikyaku-admin-backend`** - Vercelプロジェクト（`c:\Users\kunih\sateituikyaku-admin\backend`）
+2. **`sateituikyaku-admin-frontend`** - Vercelプロジェクト（`c:\Users\kunih\sateituikyaku-admin\frontend\frontend`）
 
 これらのプロジェクトに関連するファイルのみを編集・修正してください。
 
@@ -48,81 +46,7 @@ last-verified: 2026-01-25
    - 絶対に触らない
 
 3. **その他のローカルプロジェクト** ❌
-   - `c:\Users\kunih\sateituikyaku`以外のローカルプロジェクトは全て触らない
-
----
-
-## 🚨🚨🚨 最重要：公開物件サイトに関わるファイルは絶対に触ってはいけない 🚨🚨🚨
-
-### 公開物件サイト関連の禁止ファイル・ディレクトリ
-
-**社内管理システム（`baikyaku-property-site3`バックエンド）の作業中は、以下のファイル・ディレクトリを絶対に触ってはいけません**：
-
-#### 絶対に触ってはいけないファイル
-
-1. **`vercel.json`**（ルートディレクトリ） ❌
-   - 公開物件サイト（`property-site-frontend`）の設定ファイル
-   - このファイルを変更すると、公開物件サイトが壊れる
-   - **絶対に編集・削除してはいけない**
-
-2. **`backend/api/index.ts`** ❌
-   - 公開物件サイトのバックエンドエントリーポイント
-   - このファイルを削除すると、公開物件サイトが壊れる
-   - **絶対に編集・削除してはいけない**
-
-3. **`backend/api/src/**`** ❌
-   - 公開物件サイトのバックエンドサービス
-   - **絶対に編集・削除してはいけない**
-
-4. **`frontend/`ディレクトリ全体** ❌
-   - 公開物件サイトのフロントエンド
-   - **絶対に編集・削除してはいけない**
-
-#### 社内管理システムバックエンドで編集可能なファイル
-
-**社内管理システム（`baikyaku-property-site3`）の作業では、以下のファイルのみ編集可能**：
-
-- ✅ `backend/src/**`（`backend/api/`以外）
-- ✅ `backend/package.json`（依存関係の追加のみ）
-- ✅ `backend/tsconfig.json`
-- ✅ `backend/.env`（環境変数）
-
-#### 絶対に作成・編集してはいけないファイル
-
-- ❌ `backend/vercel.json` ← **公開物件サイトの設定と競合する**
-- ❌ `vercel.json`（ルート） ← **公開物件サイトの設定ファイル**
-
-### なぜ触ってはいけないのか
-
-**理由**:
-1. 公開物件サイト（`property-site-frontend`）と社内管理システムバックエンド（`baikyaku-property-site3`）は、同じ`backend/`ディレクトリを共有している
-2. `vercel.json`（ルート）は公開物件サイト専用の設定ファイル
-3. `backend/api/index.ts`は公開物件サイトのバックエンドエントリーポイント
-4. これらを変更すると、公開物件サイトが壊れる
-
-### 過去の失敗例
-
-**失敗1**: `backend/api/index.ts`を削除してしまった
-- **結果**: 公開物件サイトが404エラーになった
-- **原因**: 社内管理システムバックエンドの作業中に、`backend/api/index.ts`が不要だと判断して削除した
-- **教訓**: ファイルを削除する前に、必ず`grepSearch`で使用箇所を確認する
-
-**失敗2**: `backend/vercel.json`を作成してしまった
-- **結果**: 公開物件サイトのビルドが失敗した
-- **原因**: 社内管理システムバックエンドの設定を追加しようとして、`backend/vercel.json`を作成した
-- **教訓**: `backend/vercel.json`は作成してはいけない（ルートの`vercel.json`と競合する）
-
-### チェックリスト
-
-ファイルを編集・削除する前に、以下を確認：
-
-- [ ] ファイルパスに`backend/api/`が含まれていないか？
-- [ ] ファイル名が`vercel.json`ではないか？
-- [ ] ファイルパスに`frontend/`が含まれていないか？
-- [ ] `grepSearch`で使用箇所を確認したか？
-- [ ] ステアリングドキュメント（`public-property-site-architecture.md`）を確認したか？
-
-**全てのチェックがOKの場合のみ、ファイルを編集・削除してください。**
+   - `c:\Users\kunih\sateituikyaku-admin`以外のローカルプロジェクトは全て触らない
 
 ---
 
@@ -150,7 +74,7 @@ last-verified: 2026-01-25
 
 ファイルパスが以下で始まっているか確認：
 
-- ✅ `c:\Users\kunih\sateituikyaku\` ← **正しい**
+- ✅ `c:\Users\kunih\sateituikyaku-admin\` ← **正しい**
 - ❌ `c:\Users\kunih\property-search-app\` ← **間違い**
 - ❌ `c:\Users\kunih\chuukaigyosha\` ← **間違い**
 
@@ -165,11 +89,9 @@ last-verified: 2026-01-25
 ファイルを編集する前に、以下をチェックしてください：
 
 - [ ] ファイルが以下のVercelプロジェクトに関連しているか？
-  - `backend`（`c:\Users\kunih\sateituikyaku\backend`）
-  - `baikyaku-property-site3`
-  - `frontend`（`c:\Users\kunih\sateituikyaku\frontend`）
-  - `property-site-frontend`
-- [ ] ファイルパスが`c:\Users\kunih\sateituikyaku\`で始まっているか？
+  - `sateituikyaku-admin-backend`（`c:\Users\kunih\sateituikyaku-admin\backend`）
+  - `sateituikyaku-admin-frontend`（`c:\Users\kunih\sateituikyaku-admin\frontend\frontend`）
+- [ ] ファイルパスが`c:\Users\kunih\sateituikyaku-admin\`で始まっているか？
 - [ ] ファイルパスに`property-search-app`が含まれていないか？
 - [ ] ファイルパスに`chuukaigyosha`が含まれていないか？
 
@@ -198,7 +120,7 @@ last-verified: 2026-01-25
 readFile("path/to/file")
 ```
 
-ファイルパスが`c:\Users\kunih\sateituikyaku\`で始まっていることを確認。
+ファイルパスが`c:\Users\kunih\sateituikyaku-admin\`で始まっていることを確認。
 
 ### ステップ2: 編集
 
@@ -213,11 +135,9 @@ readFile("path/to/file")
 ## まとめ
 
 - **作業対象**: 以下のVercelプロジェクトのみ
-  - `backend`（`c:\Users\kunih\sateituikyaku\backend`）
-  - `baikyaku-property-site3`
-  - `frontend`（`c:\Users\kunih\sateituikyaku\frontend`）
-  - `property-site-frontend`
-- **正しいプロジェクトパス**: `c:\Users\kunih\sateituikyaku\`
+  - `sateituikyaku-admin-backend`（`c:\Users\kunih\sateituikyaku-admin\backend`）
+  - `sateituikyaku-admin-frontend`（`c:\Users\kunih\sateituikyaku-admin\frontend\frontend`）
+- **正しいプロジェクトパス**: `c:\Users\kunih\sateituikyaku-admin\`
 - **禁止**: `property-search-app`、`chuukaigyosha`、その他全てのローカルプロジェクト
 - **確認**: ファイル編集前に必ずプロジェクトパスを確認
 - **不明な場合**: ユーザーに確認
