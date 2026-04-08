@@ -2374,132 +2374,65 @@ export class SellerService extends BaseRepository {
       return cachedCounts;
     }
 
+    console.log('🚀 [Performance] Starting sidebar counts calculation');
+    const startTime = Date.now();
+
     // 未査定の基準日
     const cutoffDate = '2025-12-08';
 
-    // ヘルパー関数: 営担が有効かどうかを判定（「外す」は担当なしと同じ扱い）
-    const hasValidVisitAssignee = (visitAssignee: string | null | undefined): boolean => {
-      if (!visitAssignee || visitAssignee.trim() === '' || visitAssignee.trim() === '外す') {
-        return false;
-      }
-      return true;
-    };
-
-    // ページネーション処理をヘルパー関数化
-    const pageSize = 1000;
-    const fetchAllPages = async (query: any): Promise<any[]> => {
-      let allData: any[] = [];
-      let page = 0;
-      
-      while (true) {
-        const { data, error } = await query.range(page * pageSize, (page + 1) * pageSize - 1);
-        
-        if (error) {
-          console.error('❌ データ取得エラー:', error);
-          break;
-        }
-        
-        if (!data || data.length === 0) break;
-        
-        allData = allData.concat(data);
-        
-        if (data.length < pageSize) break;
-        page++;
-      }
-      
-      return allData;
-    };
-
-    // 🚀 パフォーマンス改善: 3つの大きなクエリを並列実行
-    const [visitAssigneeSellers, todayCallAssignedSellers, allAssignedSellers, visitCompletedCountResult] = await Promise.all([
-      // 1. 訪問日前日用データ
-      fetchAllPages(
-        this.table('sellers')
-          .select('visit_date, visit_assignee, visit_reminder_assignee')
-          .is('deleted_at', null)
-          .not('visit_assignee', 'is', null)
-          .neq('visit_assignee', '')
-          .not('visit_date', 'is', null)
-      ),
-      // 2. 当日TEL（担当）用データ
-      fetchAllPages(
-        this.table('sellers')
-          .select('id, visit_assignee')
-          .is('deleted_at', null)
-          .not('visit_assignee', 'is', null)
-          .neq('visit_assignee', '')
-          .lte('next_call_date', todayJST)
-          .ilike('status', '%追客中%')
-          .not('status', 'ilike', '%追客不要%')
-          .not('status', 'ilike', '%専任媒介%')
-          .not('status', 'ilike', '%一般媒介%')
-          .not('status', 'ilike', '%他社買取%')
-      ),
-      // 3. 担当(イニシャル)親カテゴリ用データ
-      fetchAllPages(
-        this.table('sellers')
-          .select('visit_assignee')
-          .is('deleted_at', null)
-          .not('visit_assignee', 'is', null)
-          .neq('visit_assignee', '')
-          .not('status', 'ilike', '%一般媒介%')
-          .not('status', 'ilike', '%専任媒介%')
-          .not('status', 'ilike', '%追客不要%')
-          .not('status', 'ilike', '%他社買取%')
-      ),
-      // 4. 訪問済みカウント（countのみ取得）
+    // 🚀 パフォーマンス改善: COUNT()クエリを使用してデータ取得量を最小限に抑える
+    // 訪問日前日のみJavaScript計算が必要なため、データを取得
+    const [
+      visitAssigneeForDayBeforeResult,
+      visitCompletedCountResult,
+      todayCallAssignedResult,
+      allAssignedResult,
+      todayCallBaseResult1,
+      todayCallBaseResult2,
+      unvaluatedSellersResult,
+      mailingPendingCountResult,
+      exclusiveSellersResult,
+      generalSellersResult,
+      visitOtherDecisionSellersResult,
+      unvisitedOtherDecisionSellersResult
+    ] = await Promise.all([
+      // 1. 訪問日前日用データ（JavaScript計算が必要）
+      this.table('sellers')
+        .select('visit_date, visit_assignee, visit_reminder_assignee')
+        .is('deleted_at', null)
+        .not('visit_assignee', 'is', null)
+        .neq('visit_assignee', '')
+        .not('visit_date', 'is', null),
+      // 2. 訪問済みカウント
       this.table('sellers')
         .select('*', { count: 'exact', head: true })
         .is('deleted_at', null)
         .not('visit_assignee', 'is', null)
         .neq('visit_assignee', '')
-        .lt('visit_date', todayJST)
-    ]);
-
-    // 訪問日前日のカウント計算
-    const visitDayBeforeCount = (visitAssigneeSellers || []).filter(s => {
-      const visitDateStr = s.visit_date;
-      if (!visitDateStr) return false;
-      const reminderAssignee = (s as any).visit_reminder_assignee || '';
-      if (reminderAssignee.trim() !== '') return false;
-      
-      // 🚨 重要：TIMESTAMP形式（YYYY-MM-DDTHH:MM:SS または YYYY-MM-DD HH:MM:SS）から日付部分のみを抽出
-      const visitDateOnly = visitDateStr.split('T')[0].split(' ')[0];
-      const parts = visitDateOnly.split('-');
-      if (parts.length !== 3) return false;
-      const visitDate = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
-      const visitDayOfWeek = visitDate.getDay();
-      const daysBeforeVisit = visitDayOfWeek === 4 ? 2 : 1;
-      const expectedNotifyDate = new Date(visitDate);
-      expectedNotifyDate.setDate(visitDate.getDate() - daysBeforeVisit);
-      const expectedNotifyStr = `${expectedNotifyDate.getFullYear()}-${String(expectedNotifyDate.getMonth() + 1).padStart(2, '0')}-${String(expectedNotifyDate.getDate()).padStart(2, '0')}`;
-      return expectedNotifyStr === todayJST;
-    }).length;
-
-    // 訪問済みカウント
-    const visitCompletedCount = visitCompletedCountResult.count || 0;
-
-    // 当日TEL（担当）カウント
-    const todayCallAssignedCount = (todayCallAssignedSellers || []).length;
-
-    // 担当(イニシャル)親カテゴリのカウント集計
-    const visitAssignedCounts: Record<string, number> = {};
-    (allAssignedSellers || []).forEach((s: any) => {
-      const a = s.visit_assignee;
-      if (a) visitAssignedCounts[a] = (visitAssignedCounts[a] || 0) + 1;
-    });
-
-    // 当日TEL（担当）のイニシャル別カウント集計
-    const todayCallAssignedCounts: Record<string, number> = {};
-    (todayCallAssignedSellers || []).forEach((s: any) => {
-      const a = s.visit_assignee;
-      if (a) todayCallAssignedCounts[a] = (todayCallAssignedCounts[a] || 0) + 1;
-    });
-
-    // 4. 当日TEL分/当日TEL（内容）
-    // 🚨 重要: 「追客中」と「他決→追客」の両方を取得する
-    // 「他決→追客」は「追客中」という文字列を含まないため、別クエリで取得する必要がある
-    const [todayCallBaseResult1, todayCallBaseResult2] = await Promise.all([
+        .lt('visit_date', todayJST),
+      // 3. 当日TEL（担当）用データ（イニシャル別カウントが必要）
+      this.table('sellers')
+        .select('visit_assignee')
+        .is('deleted_at', null)
+        .not('visit_assignee', 'is', null)
+        .neq('visit_assignee', '')
+        .lte('next_call_date', todayJST)
+        .ilike('status', '%追客中%')
+        .not('status', 'ilike', '%追客不要%')
+        .not('status', 'ilike', '%専任媒介%')
+        .not('status', 'ilike', '%一般媒介%')
+        .not('status', 'ilike', '%他社買取%'),
+      // 4. 担当(イニシャル)親カテゴリ用データ（イニシャル別カウントが必要）
+      this.table('sellers')
+        .select('visit_assignee')
+        .is('deleted_at', null)
+        .not('visit_assignee', 'is', null)
+        .neq('visit_assignee', '')
+        .not('status', 'ilike', '%一般媒介%')
+        .not('status', 'ilike', '%専任媒介%')
+        .not('status', 'ilike', '%追客不要%')
+        .not('status', 'ilike', '%他社買取%'),
+      // 5. 当日TEL分/当日TEL（内容）用データ（複雑なフィルタリングが必要）
       this.table('sellers')
         .select('id, visit_assignee, phone_contact_person, preferred_contact_time, contact_method, unreachable_status, inquiry_date, pinrich_status, confidence_level, exclusion_date, status')
         .is('deleted_at', null)
@@ -2512,7 +2445,96 @@ export class SellerService extends BaseRepository {
         .eq('status', '他決→追客')
         .not('next_call_date', 'is', null)
         .lte('next_call_date', todayJST),
+      // 6. 未査定用データ（複雑なフィルタリングが必要）
+      this.table('sellers')
+        .select('id, status, valuation_amount_1, valuation_amount_2, valuation_amount_3, visit_assignee, valuation_method, inquiry_date, unreachable_status, confidence_level, exclusion_date, next_call_date, phone_contact_person, preferred_contact_time, contact_method')
+        .is('deleted_at', null)
+        .ilike('status', '%追客中%')
+        .gte('inquiry_date', cutoffDate)
+        .or('visit_assignee.is.null,visit_assignee.eq.,visit_assignee.eq.外す'),
+      // 7. 査定（郵送）カウント
+      this.table('sellers')
+        .select('*', { count: 'exact', head: true })
+        .is('deleted_at', null)
+        .in('status', ['追客中', '除外後追客中', '他決→追客'])
+        .eq('valuation_method', '机上査定（郵送）')
+        .eq('mailing_status', '未'),
+      // 8. 専任カテゴリー用データ
+      this.table('sellers')
+        .select('exclusive_other_decision_meeting, next_call_date')
+        .is('deleted_at', null)
+        .in('status', ['専任媒介', '他決→専任', 'リースバック（専任）']),
+      // 9. 一般カテゴリー用データ
+      this.table('sellers')
+        .select('exclusive_other_decision_meeting, next_call_date, contract_year_month')
+        .is('deleted_at', null)
+        .eq('status', '一般媒介')
+        .gte('contract_year_month', '2025-06-23'),
+      // 10. 訪問後他決カテゴリー用データ
+      this.table('sellers')
+        .select('exclusive_other_decision_meeting, next_call_date, visit_assignee')
+        .is('deleted_at', null)
+        .in('status', ['他決→追客', '他決→追客不要', '一般→他決', '他社買取'])
+        .not('visit_assignee', 'is', null)
+        .neq('visit_assignee', ''),
+      // 11. 未訪問他決カテゴリー用データ
+      this.table('sellers')
+        .select('exclusive_other_decision_meeting, next_call_date, visit_assignee')
+        .is('deleted_at', null)
+        .in('status', ['他決→追客', '他決→追客不要', '一般→他決'])
     ]);
+
+    console.log(`⏱️ [Performance] Parallel queries completed in ${Date.now() - startTime}ms`);
+
+    // ヘルパー関数: 営担が有効かどうかを判定（「外す」は担当なしと同じ扱い）
+    const hasValidVisitAssignee = (visitAssignee: string | null | undefined): boolean => {
+      if (!visitAssignee || visitAssignee.trim() === '' || visitAssignee.trim() === '外す') {
+        return false;
+      }
+      return true;
+    };
+
+    // 1. 訪問日前日のカウント計算（JavaScript計算が必要）
+    const visitAssigneeSellers = visitAssigneeForDayBeforeResult.data || [];
+    const visitDayBeforeCount = visitAssigneeSellers.filter(s => {
+      const visitDateStr = s.visit_date;
+      if (!visitDateStr) return false;
+      const reminderAssignee = (s as any).visit_reminder_assignee || '';
+      if (reminderAssignee.trim() !== '') return false;
+      
+      const visitDateOnly = visitDateStr.split('T')[0].split(' ')[0];
+      const parts = visitDateOnly.split('-');
+      if (parts.length !== 3) return false;
+      const visitDate = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+      const visitDayOfWeek = visitDate.getDay();
+      const daysBeforeVisit = visitDayOfWeek === 4 ? 2 : 1;
+      const expectedNotifyDate = new Date(visitDate);
+      expectedNotifyDate.setDate(visitDate.getDate() - daysBeforeVisit);
+      const expectedNotifyStr = `${expectedNotifyDate.getFullYear()}-${String(expectedNotifyDate.getMonth() + 1).padStart(2, '0')}-${String(expectedNotifyDate.getDate()).padStart(2, '0')}`;
+      return expectedNotifyStr === todayJST;
+    }).length;
+
+    // 2. 訪問済みカウント
+    const visitCompletedCount = visitCompletedCountResult.count || 0;
+
+    // 3. 当日TEL（担当）のカウントとイニシャル別集計
+    const todayCallAssignedSellers = todayCallAssignedResult.data || [];
+    const todayCallAssignedCount = todayCallAssignedSellers.length;
+    const todayCallAssignedCounts: Record<string, number> = {};
+    todayCallAssignedSellers.forEach((s: any) => {
+      const a = s.visit_assignee;
+      if (a) todayCallAssignedCounts[a] = (todayCallAssignedCounts[a] || 0) + 1;
+    });
+
+    // 4. 担当(イニシャル)親カテゴリのイニシャル別集計
+    const allAssignedSellers = allAssignedResult.data || [];
+    const visitAssignedCounts: Record<string, number> = {};
+    allAssignedSellers.forEach((s: any) => {
+      const a = s.visit_assignee;
+      if (a) visitAssignedCounts[a] = (visitAssignedCounts[a] || 0) + 1;
+    });
+
+    // 5. 当日TEL分/当日TEL（内容）の計算
     const allTodayCallBase = [...(todayCallBaseResult1.data || []), ...(todayCallBaseResult2.data || [])];
     const seenIds = new Set<string>();
     const todayCallBaseSellers = allTodayCallBase.filter(s => {
@@ -2521,7 +2543,7 @@ export class SellerService extends BaseRepository {
       return true;
     });
 
-    const filteredTodayCallSellers = (todayCallBaseSellers || []).filter(s => {
+    const filteredTodayCallSellers = todayCallBaseSellers.filter(s => {
       return !hasValidVisitAssignee(s.visit_assignee);
     });
 
@@ -2534,11 +2556,9 @@ export class SellerService extends BaseRepository {
     const todayCallWithInfoCount = todayCallWithInfoSellers.length;
 
     const labelCountMap: Record<string, number> = {};
-    // "null"文字列も空扱いにするヘルパー
     const isValidValue = (v: string | null | undefined): boolean =>
       !!(v && v.trim() !== '' && v.trim().toLowerCase() !== 'null');
     todayCallWithInfoSellers.forEach(s => {
-      // フロントエンドのgetTodayCallWithInfoLabelと同じロジック（全フィールドを・で結合）
       const parts: string[] = [];
       if (isValidValue(s.phone_contact_person)) parts.push(s.phone_contact_person!.trim());
       if (isValidValue(s.preferred_contact_time)) parts.push(s.preferred_contact_time!.trim());
@@ -2555,54 +2575,13 @@ export class SellerService extends BaseRepository {
       return !hasInfo;
     }).length;
 
-    // 🚀 パフォーマンス改善: 残りのクエリも並列実行
-    const [unvaluatedSellersResult, mailingPendingCountResult, exclusiveSellersResult, generalSellersResult, visitOtherDecisionSellersResult, unvisitedOtherDecisionSellersResult] = await Promise.all([
-      // 5. 未査定
-      this.table('sellers')
-        .select('id, status, valuation_amount_1, valuation_amount_2, valuation_amount_3, visit_assignee, valuation_method, inquiry_date, unreachable_status, confidence_level, exclusion_date, next_call_date, phone_contact_person, preferred_contact_time, contact_method')
-        .is('deleted_at', null)
-        .ilike('status', '%追客中%')
-        .gte('inquiry_date', cutoffDate)
-        .or('visit_assignee.is.null,visit_assignee.eq.,visit_assignee.eq.外す'),
-      // 6. 査定（郵送）
-      this.table('sellers')
-        .select('*', { count: 'exact', head: true })
-        .is('deleted_at', null)
-        .in('status', ['追客中', '除外後追客中', '他決→追客'])
-        .eq('valuation_method', '机上査定（郵送）')
-        .eq('mailing_status', '未'),
-      // 9. 専任カテゴリー
-      this.table('sellers')
-        .select('exclusive_other_decision_meeting, next_call_date')
-        .is('deleted_at', null)
-        .in('status', ['専任媒介', '他決→専任', 'リースバック（専任）']),
-      // 10. 一般カテゴリー
-      this.table('sellers')
-        .select('exclusive_other_decision_meeting, next_call_date, contract_year_month')
-        .is('deleted_at', null)
-        .eq('status', '一般媒介')
-        .gte('contract_year_month', '2025-06-23'),
-      // 11. 訪問後他決カテゴリー
-      this.table('sellers')
-        .select('exclusive_other_decision_meeting, next_call_date, visit_assignee')
-        .is('deleted_at', null)
-        .in('status', ['他決→追客', '他決→追客不要', '一般→他決', '他社買取'])
-        .not('visit_assignee', 'is', null)
-        .neq('visit_assignee', ''),
-      // 12. 未訪問他決カテゴリー
-      this.table('sellers')
-        .select('exclusive_other_decision_meeting, next_call_date, visit_assignee')
-        .is('deleted_at', null)
-        .in('status', ['他決→追客', '他決→追客不要', '一般→他決'])
-    ]);
-
-    const unvaluatedSellers = unvaluatedSellersResult.data;
-    const unvaluatedCount = (unvaluatedSellers || []).filter(s => {
+    // 6. 未査定のカウント
+    const unvaluatedSellers = unvaluatedSellersResult.data || [];
+    const unvaluatedCount = unvaluatedSellers.filter(s => {
       const hasNoValuation = !s.valuation_amount_1 && !s.valuation_amount_2 && !s.valuation_amount_3;
       const valuationMethod = (s as any).valuation_method || '';
       const isNotRequired = valuationMethod === '不要';
       if (!hasNoValuation || isNotRequired) return false;
-      // 当日TEL_未着手の条件を満たす場合は未査定から除外（未着手が優先）
       const status = (s as any).status || '';
       const nextCallDate = (s as any).next_call_date || '';
       const hasInfo = ((s as any).phone_contact_person?.trim()) ||
@@ -2624,9 +2603,10 @@ export class SellerService extends BaseRepository {
       return !isTodayCallNotStarted;
     }).length;
 
+    // 7. 査定（郵送）カウント
     const mailingPendingCount = mailingPendingCountResult.count || 0;
 
-    // 7. 当日TEL_未着手
+    // 8. 当日TEL_未着手
     const todayCallNotStartedCount = filteredTodayCallSellers.filter(s => {
       const hasInfo = (s.phone_contact_person && s.phone_contact_person.trim() !== '') ||
                       (s.preferred_contact_time && s.preferred_contact_time.trim() !== '') ||
@@ -2644,7 +2624,7 @@ export class SellerService extends BaseRepository {
       return inquiryDate >= '2026-01-01';
     }).length;
 
-    // 8. Pinrich空欄
+    // 9. Pinrich空欄
     const pinrichEmptyCount = filteredTodayCallSellers.filter(s => {
       const hasInfo = (s.phone_contact_person && s.phone_contact_person.trim() !== '') ||
                       (s.preferred_contact_time && s.preferred_contact_time.trim() !== '') ||
@@ -2654,40 +2634,43 @@ export class SellerService extends BaseRepository {
       return !pinrich || pinrich.trim() === '';
     }).length;
 
-    const exclusiveSellers = exclusiveSellersResult.data;
-    const exclusiveCount = (exclusiveSellers || []).filter(s => {
+    // 10. 専任カテゴリー
+    const exclusiveSellers = exclusiveSellersResult.data || [];
+    const exclusiveCount = exclusiveSellers.filter(s => {
       const meeting = s.exclusive_other_decision_meeting;
       if (meeting === '完了') return false;
       const nextCallDate = s.next_call_date;
-      if (!nextCallDate) return true; // 次電日が空欄
-      return nextCallDate !== todayJST; // 次電日が今日以外
+      if (!nextCallDate) return true;
+      return nextCallDate !== todayJST;
     }).length;
 
-    const generalSellers = generalSellersResult.data;
-    const generalCount = (generalSellers || []).filter(s => {
+    // 11. 一般カテゴリー
+    const generalSellers = generalSellersResult.data || [];
+    const generalCount = generalSellers.filter(s => {
       const meeting = s.exclusive_other_decision_meeting;
       if (meeting === '完了') return false;
       const nextCallDate = s.next_call_date;
-      if (!nextCallDate) return true; // 次電日が空欄
-      return nextCallDate !== todayJST; // 次電日が今日以外
+      if (!nextCallDate) return true;
+      return nextCallDate !== todayJST;
     }).length;
 
-    const visitOtherDecisionSellers = visitOtherDecisionSellersResult.data;
-    const visitOtherDecisionCount = (visitOtherDecisionSellers || []).filter(s => {
+    // 12. 訪問後他決カテゴリー
+    const visitOtherDecisionSellers = visitOtherDecisionSellersResult.data || [];
+    const visitOtherDecisionCount = visitOtherDecisionSellers.filter(s => {
       const meeting = s.exclusive_other_decision_meeting;
       if (meeting === '完了') return false;
       const nextCallDate = s.next_call_date;
-      if (!nextCallDate) return true; // 次電日が空欄
-      return nextCallDate !== todayJST; // 次電日が今日以外
+      if (!nextCallDate) return true;
+      return nextCallDate !== todayJST;
     }).length;
 
-    const unvisitedOtherDecisionSellers = unvisitedOtherDecisionSellersResult.data;
-    const unvisitedOtherDecisionCount = (unvisitedOtherDecisionSellers || []).filter(s => {
+    // 13. 未訪問他決カテゴリー
+    const unvisitedOtherDecisionSellers = unvisitedOtherDecisionSellersResult.data || [];
+    const unvisitedOtherDecisionCount = unvisitedOtherDecisionSellers.filter(s => {
       const meeting = s.exclusive_other_decision_meeting;
       if (meeting === '完了') return false;
       const nextCallDate = s.next_call_date;
       if (!nextCallDate || nextCallDate !== todayJST) {
-        // 次電日が空欄または今日以外
         const visitAssignee = s.visit_assignee;
         return !visitAssignee || visitAssignee === '' || visitAssignee === '外す';
       }
@@ -2713,6 +2696,8 @@ export class SellerService extends BaseRepository {
       todayCallWithInfoLabels,
       todayCallWithInfoLabelCounts: labelCountMap,
     };
+
+    console.log(`✅ [Performance] Sidebar counts calculation completed in ${Date.now() - startTime}ms`);
 
     // キャッシュに保存（60秒TTL）
     await CacheHelper.set(sidebarCacheKey, sidebarResult, CACHE_TTL.SIDEBAR_COUNTS);
