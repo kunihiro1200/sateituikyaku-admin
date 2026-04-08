@@ -27,7 +27,7 @@ export interface GetWebhookUrlResult {
 export class StaffManagementService {
   private cache: Map<string, StaffInfo> = new Map();
   private cacheExpiry: number = 0;
-  private readonly CACHE_DURATION_MS = 60 * 60 * 1000; // 60分
+  private readonly CACHE_DURATION_MS = 24 * 60 * 60 * 1000; // 24時間（Google Sheets APIのクォータ制限対策）
   private readonly SPREADSHEET_ID = '19yAuVYQRm-_zhjYX7M7zjiGbnBibkG77Mpz93sN1xxs';
   private readonly SHEET_NAME = 'スタッフ'; // 通常スタッフ情報（イニシャル等）
   private readonly CHAT_SHEET_NAME = 'スタッフ'; // チャットアドレスも同じシートのF列

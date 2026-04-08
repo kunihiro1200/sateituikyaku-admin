@@ -525,7 +525,10 @@ export default function SellersPage() {
                     // ページをリロード
                     window.location.reload();
                   } else {
-                    alert(`同期失敗: ${result.error?.message || 'エラーが発生しました'}`);
+                    const errorMsg = result.error?.code === 'QUOTA_EXCEEDED' 
+                      ? result.error.message 
+                      : `同期失敗: ${result.error?.message || 'エラーが発生しました'}`;
+                    alert(errorMsg);
                   }
                 } catch (error: any) {
                   alert(`エラー: ${error.message}`);

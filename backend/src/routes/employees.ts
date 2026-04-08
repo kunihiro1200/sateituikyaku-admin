@@ -213,12 +213,23 @@ router.get('/active-initials', async (req: Request, res: Response) => {
 
 /**
  * 通常スタッフのイニシャル一覧を取得（初動担当選択用）
- * スタッフ管理スプレッドシートの「通常」列=TRUEのスタッフを返す
+ * employeesテーブルから取得（Google Sheets APIを使わない）
  */
 router.get('/normal-initials', async (req: Request, res: Response) => {
   try {
-    const initials = await staffManagementService.getActiveInitials();
-    console.log(`[normal-initials] Returning ${initials.length} normal staff initials:`, initials);
+    // employeesテーブルから有効なスタッフのイニシャルを取得
+    const { data: employees, error } = await supabase
+      .from('employees')
+      .select('initials')
+      .eq('is_active', true)
+      .order('initials');
+
+    if (error) {
+      throw error;
+    }
+
+    const initials = employees.map(e => e.initials).filter(i => i);
+    console.log(`[normal-initials] Returning ${initials.length} normal staff initials from employees table:`, initials);
     res.json({ initials });
   } catch (error: any) {
     console.error('[normal-initials] Failed:', error.message);

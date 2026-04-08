@@ -21,6 +21,19 @@ router.post('/', authenticate, async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error('[StaffSyncAPI] スタッフ同期エラー:', error);
+    
+    // Google Sheets APIのクォータエラーを検出
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    if (errorMessage.includes('Quota exceeded') || errorMessage.includes('quota metric')) {
+      return res.status(429).json({
+        error: {
+          code: 'QUOTA_EXCEEDED',
+          message: 'Google Sheets APIの読み取り制限を超えました。1分後に再度お試しください。',
+          retryable: true,
+        },
+      });
+    }
+    
     res.status(500).json({
       error: {
         code: 'STAFF_SYNC_ERROR',
