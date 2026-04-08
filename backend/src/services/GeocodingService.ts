@@ -4,12 +4,8 @@ import axios from 'axios';
 export interface Coordinates {
   lat: number;
   lng: number;
-}
-
-// 後方互換性のため、既存のインターフェースも保持
-export interface CoordinatesLegacy {
-  latitude: number;
-  longitude: number;
+  latitude: number;  // 後方互換性のため
+  longitude: number; // 後方互換性のため
 }
 
 export class GeocodingService {
@@ -62,6 +58,8 @@ export class GeocodingService {
       return {
         lat: location.lat,
         lng: location.lng,
+        latitude: location.lat,  // 後方互換性のため
+        longitude: location.lng, // 後方互換性のため
       };
     } catch (error: any) {
       console.error('[GeocodingService] Error calling Google Maps API:', error);
