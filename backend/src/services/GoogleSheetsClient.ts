@@ -588,16 +588,23 @@ export class GoogleSheetsClient {
   async findRowByColumn(columnName: string, value: string | number): Promise<number | null> {
     this.ensureAuthenticated();
     
+    console.log(`🔍 [GoogleSheetsClient] Finding row by column: ${columnName}, value: ${value}`);
+    
     const headers = await this.getHeaders();
     const columnIndex = headers.indexOf(columnName);
     
     if (columnIndex === -1) {
+      console.error(`❌ [GoogleSheetsClient] Column "${columnName}" not found in headers:`, headers);
       throw new Error(`Column "${columnName}" not found in headers`);
     }
+
+    console.log(`🔍 [GoogleSheetsClient] Column index: ${columnIndex}`);
 
     // A=0, B=1, ... Z=25, AA=26, ...
     const columnLetter = this.numberToColumnLetter(columnIndex);
     const range = `'${this.config.sheetName}'!${columnLetter}2:${columnLetter}`;
+
+    console.log(`🔍 [GoogleSheetsClient] Reading range: ${range}`);
 
     const response = await this.sheets!.spreadsheets.values.get({
       spreadsheetId: this.config.spreadsheetId,
@@ -606,12 +613,23 @@ export class GoogleSheetsClient {
 
     const values = response.data.values || [];
     
+    console.log(`🔍 [GoogleSheetsClient] Found ${values.length} rows in column ${columnName}`);
+    
     for (let i = 0; i < values.length; i++) {
-      if (String(values[i][0]) === String(value)) {
+      const cellValue = String(values[i][0]).trim();
+      const searchValue = String(value).trim();
+      
+      if (i < 5) {
+        console.log(`🔍 [GoogleSheetsClient] Row ${i + 2}: "${cellValue}" === "${searchValue}"? ${cellValue === searchValue}`);
+      }
+      
+      if (cellValue === searchValue) {
+        console.log(`✅ [GoogleSheetsClient] Found match at row ${i + 2}`);
         return i + 2; // +2 because: +1 for header row, +1 for 0-indexed to 1-indexed
       }
     }
 
+    console.log(`❌ [GoogleSheetsClient] No match found for value: ${value}`);
     return null;
   }
 
