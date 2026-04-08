@@ -172,8 +172,10 @@ export function useSellerPresenceTrack(
   const MAX_RETRIES = 5;
 
   useEffect(() => {
+    const timestamp = new Date().toISOString();
+    console.log(`[${timestamp}] [useSellerPresence] track useEffect実行: sellerNumber=`, sellerNumber, 'employee=', employee?.name);
+    
     if (!sellerNumber || !employee?.name) {
-      const timestamp = new Date().toISOString();
       console.log(`[${timestamp}] [useSellerPresence] track スキップ: sellerNumber=`, sellerNumber, 'employee=', employee?.name);
       return;
     }
