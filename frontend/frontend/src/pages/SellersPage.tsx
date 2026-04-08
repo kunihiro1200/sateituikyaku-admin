@@ -519,9 +519,11 @@ export default function SellersPage() {
                   });
                   const result = await response.json();
                   if (response.ok) {
-                    alert(`同期完了しました`);
+                    alert(`同期完了しました。ページをリロードします。`);
                     // 従業員キャッシュをクリア
                     localStorage.removeItem('employees_cache');
+                    // ページをリロード
+                    window.location.reload();
                   } else {
                     alert(`同期失敗: ${result.error?.message || 'エラーが発生しました'}`);
                   }
