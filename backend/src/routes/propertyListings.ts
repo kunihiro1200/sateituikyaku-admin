@@ -1245,6 +1245,23 @@ router.post('/:propertyNumber/send-chat-to-office', async (req: Request, res: Re
         
         console.log(`[send-chat-to-office] Sent to assignee ${property.sales_assignee} for ${propertyNumber}`);
         
+        // 履歴を保存
+        try {
+          await supabase
+            .from('property_chat_history')
+            .insert({
+              property_number: propertyNumber,
+              chat_type: 'office',
+              message: String(message).trim(),
+              sender_name: senderName || '不明',
+              sent_at: new Date().toISOString(),
+            });
+          console.log(`[send-chat-to-office] Saved chat history for ${propertyNumber}`);
+        } catch (historyError: any) {
+          console.error(`[send-chat-to-office] Failed to save chat history:`, historyError);
+          // 履歴保存失敗でもチャット送信は成功しているのでエラーにしない
+        }
+        
         // 確認フィールドを「未」に自動設定
         await supabase
           .from('property_listings')
@@ -1264,6 +1281,23 @@ router.post('/:propertyNumber/send-chat-to-office', async (req: Request, res: Re
 
     await axios.post(officeWebhookUrl, { text: chatMessage });
     console.log(`[send-chat-to-office] Sent to office chat for ${propertyNumber}`);
+
+    // 履歴を保存
+    try {
+      await supabase
+        .from('property_chat_history')
+        .insert({
+          property_number: propertyNumber,
+          chat_type: 'office',
+          message: String(message).trim(),
+          sender_name: senderName || '不明',
+          sent_at: new Date().toISOString(),
+        });
+      console.log(`[send-chat-to-office] Saved chat history for ${propertyNumber}`);
+    } catch (historyError: any) {
+      console.error(`[send-chat-to-office] Failed to save chat history:`, historyError);
+      // 履歴保存失敗でもチャット送信は成功しているのでエラーにしない
+    }
 
     // 確認フィールドを「未」に自動設定
     await supabase
@@ -1301,13 +1335,28 @@ router.post('/:propertyNumber/send-chat-to-office', async (req: Request, res: Re
 router.get('/:propertyNumber/chat-history', async (req: Request, res: Response): Promise<void> => {
   try {
     const { propertyNumber } = req.params;
+    const { chat_type, limit } = req.query;
     
     // property_chat_historyテーブルから履歴を取得（新しい順）
-    const { data: history, error } = await supabase
+    let query = supabase
       .from('property_chat_history')
       .select('*')
-      .eq('property_number', propertyNumber)
-      .order('sent_at', { ascending: false });
+      .eq('property_number', propertyNumber);
+    
+    // chat_typeでフィルタリング
+    if (chat_type) {
+      query = query.eq('chat_type', chat_type);
+    }
+    
+    // 新しい順にソート
+    query = query.order('sent_at', { ascending: false });
+    
+    // 件数制限
+    if (limit) {
+      query = query.limit(Number(limit));
+    }
+    
+    const { data: history, error } = await query;
     
     if (error) {
       console.error('[get-chat-history] Error:', error);

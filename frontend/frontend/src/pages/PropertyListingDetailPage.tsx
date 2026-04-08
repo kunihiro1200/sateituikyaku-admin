@@ -60,6 +60,7 @@ import GmailDistributionButton from '../components/GmailDistributionButton';
 import DistributionAreaField from '../components/DistributionAreaField';
 import EditableUrlField from '../components/EditableUrlField';
 import PropertySidebarStatus from '../components/PropertySidebarStatus';
+import PropertyChatHistory from '../components/PropertyChatHistory';
 import { getDisplayStatus } from '../utils/atbbStatusDisplayMapper';
 import PurchaseStatusBadge from '../components/PurchaseStatusBadge';
 import { getPurchaseStatusText, hasBuyerPurchaseStatus } from '../utils/purchaseStatusUtils';
@@ -228,6 +229,7 @@ export default function PropertyListingDetailPage() {
   const [chatToOfficeMessage, setChatToOfficeMessage] = useState('');
   const [chatSending, setChatSending] = useState(false);
   const [chatToOfficeSending, setChatToOfficeSending] = useState(false);
+  const [chatHistoryRefreshTrigger, setChatHistoryRefreshTrigger] = useState(0);
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
     message: string;
@@ -673,6 +675,23 @@ export default function PropertyListingDetailPage() {
       });
       // 確認フィールドを「未」に自動設定
       setConfirmation('未');
+      
+      // 物件リストのキャッシュをクリア（最重要）
+      pageDataCache.invalidate(CACHE_KEYS.PROPERTY_LISTINGS);
+      
+      // 物件リストページに戻ったときに再取得するためのフラグを設定
+      sessionStorage.setItem('propertyListingsNeedsRefresh', 'true');
+      
+      // 即座にサイドバーを更新するためのイベントを発火
+      console.log('[PropertyListingDetailPage] イベント発火:', { propertyNumber, confirmation: '未' });
+      window.dispatchEvent(new CustomEvent('propertyConfirmationUpdated', { 
+        detail: { propertyNumber, confirmation: '未' } 
+      }));
+      console.log('[PropertyListingDetailPage] イベント発火完了');
+      
+      // CHAT送信履歴を再取得
+      setChatHistoryRefreshTrigger(prev => prev + 1);
+      
       setSnackbar({ open: true, message: '事務へチャットを送信しました', severity: 'success' });
       setChatToOfficeMessage('');
       setChatToOfficePanelOpen(false);
@@ -1010,12 +1029,20 @@ export default function PropertyListingDetailPage() {
     <Box sx={{ py: 1, px: 1 }}>
       <Box sx={{ display: 'flex', gap: 2 }}>
         {/* 左サイドバー - サイドバーステータス */}
-        <PropertySidebarStatus
-          listings={[data]}
-          selectedStatus={data.sidebar_status || null}
-          onStatusChange={() => {}}
-          pendingPriceReductionProperties={new Set()}
-        />
+        <Box>
+          <PropertySidebarStatus
+            listings={[data]}
+            selectedStatus={data.sidebar_status || null}
+            onStatusChange={() => {}}
+            pendingPriceReductionProperties={new Set()}
+          />
+          
+          {/* CHAT送信履歴 */}
+          <PropertyChatHistory
+            propertyNumber={propertyNumber}
+            refreshTrigger={chatHistoryRefreshTrigger}
+          />
+        </Box>
 
         {/* メインコンテンツ */}
         <Box sx={{ flex: 1 }}>

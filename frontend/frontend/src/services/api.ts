@@ -329,3 +329,24 @@ export const propertyImageApi = {
   }
 };
 
+
+// Property Listing API
+export const propertyListingApi = {
+  // CHAT送信履歴を取得
+  getChatHistory: async (propertyNumber: string, params?: {
+    chat_type?: string;
+    limit?: number;
+  }) => {
+    const response = await api.get(`/api/property-listings/${propertyNumber}/chat-history`, { params });
+    return response.data;
+  },
+
+  // 事務へCHATを送信
+  sendChatToOffice: async (propertyNumber: string, data: {
+    message: string;
+    senderName?: string;
+  }) => {
+    const response = await api.post(`/api/property-listings/${propertyNumber}/send-chat-to-office`, data);
+    return response.data;
+  },
+};
