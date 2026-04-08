@@ -124,6 +124,10 @@ export default function NewBuyerPage() {
   const [purchaseObstacles, setPurchaseObstacles] = useState('');
   const [nextAction, setNextAction] = useState('');
 
+  // 他社物件情報
+  const [otherCompanyProperty, setOtherCompanyProperty] = useState('');
+  const [buildingNamePrice, setBuildingNamePrice] = useState('');
+
   useEffect(() => {
     // 次の買主番号を取得
     api.get('/api/buyers/next-buyer-number')
@@ -276,6 +280,9 @@ export default function NewBuyerPage() {
         disliked_points: dislikedPoints || null,
         purchase_obstacles: purchaseObstacles || null,
         next_action: nextAction || null,
+        // 他社物件情報
+        other_company_property: otherCompanyProperty || null,
+        building_name_price: buildingNamePrice || null,
       };
 
       const response = await api.post('/api/buyers', buyerData);
@@ -416,6 +423,47 @@ export default function NewBuyerPage() {
                 </Box>
               </Paper>
             )}
+
+            {/* 他社物件情報セクション */}
+            <Paper
+              sx={{
+                p: 3,
+                mt: 2,
+                bgcolor: '#fff9e6',
+                border: '1px solid #f0e5c0',
+                borderRadius: 2,
+              }}
+            >
+              <Typography variant="h6" fontWeight="bold" sx={{ mb: 2, color: '#856404' }}>
+                他社物件情報
+              </Typography>
+              
+              <Box sx={{ mb: 2 }}>
+                <TextField
+                  fullWidth
+                  label="他社物件"
+                  multiline
+                  rows={3}
+                  value={otherCompanyProperty}
+                  onChange={(e) => setOtherCompanyProperty(e.target.value)}
+                  placeholder="他社物件情報を入力してください"
+                  sx={{ bgcolor: 'white' }}
+                />
+              </Box>
+
+              <Box>
+                <TextField
+                  fullWidth
+                  label="建物名/価格"
+                  multiline
+                  rows={3}
+                  value={buildingNamePrice}
+                  onChange={(e) => setBuildingNamePrice(e.target.value)}
+                  placeholder="建物名/価格を入力してください"
+                  sx={{ bgcolor: 'white' }}
+                />
+              </Box>
+            </Paper>
           </Box>
         </Grid>
 
