@@ -7,9 +7,11 @@
  * 
  * Property 1: Bug Condition - 他社物件情報セクションの条件付き表示
  * 
- * For any 買主詳細画面において、他社物件フィールド（other_company_propertyとbuilding_name_price）の
- * 両方が空（null、undefined、または空文字列）の場合、「他社物件情報」セクションは非表示にされるべきです。
- * いずれかのフィールドに値がある場合は、セクションが表示されるべきです。
+ * For any 買主詳細画面において、他社物件フィールド（other_company_property）が
+ * 空（null、undefined、または空文字列）の場合、「他社物件情報」セクションは非表示にされるべきです。
+ * other_company_propertyに値がある場合は、セクションが表示されるべきです。
+ * 
+ * 注意: building_name_priceフィールドは条件に含めません。
  */
 
 // モックデータ
@@ -128,61 +130,58 @@ describe('買主詳細画面「他社物件情報」セクション条件表示 
     });
   });
 
-  describe('正常ケース: いずれかのフィールドに値がある場合、セクションは表示すべき', () => {
+  describe('正常ケース: other_company_propertyに値がある場合、セクションは表示すべき', () => {
     test('other_company_propertyのみ値がある場合、セクションは表示すべき', () => {
       const hasOtherCompanyProperty = mockBuyerWithOtherCompanyProperty.other_company_property;
-      const hasBuildingNamePrice = mockBuyerWithOtherCompanyProperty.building_name_price;
       
       // other_company_propertyに値があることを確認
       expect(hasOtherCompanyProperty).toBe('〇〇マンション');
-      expect(hasBuildingNamePrice).toBeNull();
       
-      // 条件式の評価をシミュレート
-      const shouldDisplay = !!(hasOtherCompanyProperty || hasBuildingNamePrice);
+      // 修正後の条件式の評価をシミュレート（other_company_propertyのみをチェック）
+      const shouldDisplay = !!(hasOtherCompanyProperty && hasOtherCompanyProperty.trim() !== '');
       
-      // 期待される動作: いずれかに値がある場合、セクションは表示（shouldDisplay = true）
+      // 期待される動作: other_company_propertyに値がある場合、セクションは表示（shouldDisplay = true）
       expect(shouldDisplay).toBe(true);
     });
 
-    test('building_name_priceのみ値がある場合、セクションは表示すべき', () => {
+    test('building_name_priceのみ値がある場合、セクションは非表示にすべき', () => {
       const hasOtherCompanyProperty = mockBuyerWithBuildingNamePrice.other_company_property;
       const hasBuildingNamePrice = mockBuyerWithBuildingNamePrice.building_name_price;
       
-      // building_name_priceに値があることを確認
+      // building_name_priceに値があるが、other_company_propertyは空
       expect(hasOtherCompanyProperty).toBeNull();
       expect(hasBuildingNamePrice).toBe('△△ビル/3000万円');
       
-      // 条件式の評価をシミュレート
-      const shouldDisplay = !!(hasOtherCompanyProperty || hasBuildingNamePrice);
+      // 修正後の条件式の評価をシミュレート（other_company_propertyのみをチェック）
+      const shouldDisplay = !!(hasOtherCompanyProperty && hasOtherCompanyProperty.trim() !== '');
       
-      // 期待される動作: いずれかに値がある場合、セクションは表示（shouldDisplay = true）
-      expect(shouldDisplay).toBe(true);
+      // 期待される動作: other_company_propertyが空の場合、セクションは非表示（shouldDisplay = false）
+      // building_name_priceは条件に含めない
+      expect(shouldDisplay).toBe(false);
     });
 
     test('両フィールドに値がある場合、セクションは表示すべき', () => {
       const hasOtherCompanyProperty = mockBuyerWithBothFields.other_company_property;
-      const hasBuildingNamePrice = mockBuyerWithBothFields.building_name_price;
       
-      // 両方に値があることを確認
+      // other_company_propertyに値があることを確認
       expect(hasOtherCompanyProperty).toBe('〇〇マンション');
-      expect(hasBuildingNamePrice).toBe('△△ビル/3000万円');
       
-      // 条件式の評価をシミュレート
-      const shouldDisplay = !!(hasOtherCompanyProperty || hasBuildingNamePrice);
+      // 修正後の条件式の評価をシミュレート（other_company_propertyのみをチェック）
+      const shouldDisplay = !!(hasOtherCompanyProperty && hasOtherCompanyProperty.trim() !== '');
       
-      // 期待される動作: 両方に値がある場合、セクションは表示（shouldDisplay = true）
+      // 期待される動作: other_company_propertyに値がある場合、セクションは表示（shouldDisplay = true）
       expect(shouldDisplay).toBe(true);
     });
   });
 
   describe('修正後の条件式の検証', () => {
-    test('修正後の条件式は空文字列、null、undefinedを正しく処理すべき', () => {
-      // 修正後の条件式をテスト
+    test('修正後の条件式はother_company_propertyのみをチェックすべき', () => {
+      // 修正後の条件式をテスト（other_company_propertyのみをチェック）
       const hasOtherCompanyPropertyData = (buyer: any): boolean => {
         if (!buyer) return false;
+        // 「他社物件」フィールドのみをチェック（「建物名/価格」は条件に含めない）
         const hasOtherProperty = !!(buyer.other_company_property && buyer.other_company_property.trim() !== '');
-        const hasBuildingName = !!(buyer.building_name_price && buyer.building_name_price.trim() !== '');
-        return hasOtherProperty || hasBuildingName;
+        return hasOtherProperty;
       };
 
       // 両方がnullの場合
@@ -197,8 +196,9 @@ describe('買主詳細画面「他社物件情報」セクション条件表示 
       // other_company_propertyのみ値がある場合
       expect(hasOtherCompanyPropertyData(mockBuyerWithOtherCompanyProperty)).toBe(true);
       
-      // building_name_priceのみ値がある場合
-      expect(hasOtherCompanyPropertyData(mockBuyerWithBuildingNamePrice)).toBe(true);
+      // building_name_priceのみ値がある場合（other_company_propertyは空）
+      // 修正後: 非表示にすべき
+      expect(hasOtherCompanyPropertyData(mockBuyerWithBuildingNamePrice)).toBe(false);
       
       // 両方に値がある場合
       expect(hasOtherCompanyPropertyData(mockBuyerWithBothFields)).toBe(true);
@@ -207,7 +207,8 @@ describe('買主詳細画面「他社物件情報」セクション条件表示 
 });
 
 console.log('✅ バグ条件探索テスト完了');
-console.log('📝 失敗例記録:');
-console.log('  - 空白文字のみの場合、修正前の条件式はtrueを返す（バグ）');
-console.log('  - 修正後の条件式はtrim()を使用して空白文字を正しく処理する');
+console.log('📝 確認事項:');
+console.log('  - other_company_propertyが空の場合、セクションは非表示');
+console.log('  - building_name_priceは条件に含めない');
+console.log('  - 修正後の条件式はother_company_propertyのみをチェック');
 

@@ -166,9 +166,9 @@ const SAVE_BUTTON_FIELDS = new Set([
 // 他社物件情報セクションの表示判定ヘルパー関数
 const hasOtherCompanyPropertyData = (buyer: Buyer | null): boolean => {
   if (!buyer) return false;
+  // 「他社物件」フィールドのみをチェック（「建物名/価格」は条件に含めない）
   const hasOtherProperty = !!(buyer.other_company_property && buyer.other_company_property.trim() !== '');
-  const hasBuildingName = !!(buyer.building_name_price && buyer.building_name_price.trim() !== '');
-  return hasOtherProperty || hasBuildingName;
+  return hasOtherProperty;
 };
 
 const BUYER_FIELD_SECTIONS = [

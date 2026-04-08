@@ -73,3 +73,62 @@
 
 - [x] 4. チェックポイント - 全てのテストがパスすることを確認
   - 全てのテストがパスすることを確認し、疑問点があればユーザーに質問する
+
+- [ ] 5. バックエンドパフォーマンス改善（優先度高）
+
+  - [ ] 5.1 データベースインデックスの追加
+    - **問題**: `/api/sellers/sidebar-counts`エンドポイントが7-8秒かかる
+    - **原因**: 頻繁にクエリされるカラムにインデックスがない（フルテーブルスキャン）
+    - **修正**: 以下のインデックスを追加
+      - `idx_sellers_visit_assignee`: 営担インデックス
+      - `idx_sellers_next_call_date`: 次電日インデックス
+      - `idx_sellers_visit_date`: 訪問日インデックス
+      - `idx_sellers_status_gin`: 状況（当社）インデックス（部分一致用）
+      - `idx_sellers_today_call`: 複合インデックス（当日TEL分用）
+    - SQLマイグレーションファイルを作成
+    - Supabaseで実行
+    - パフォーマンステスト（目標: 7-8秒 → 3-4秒）
+    - _Requirements: 1.2 (即座の更新)_
+
+  - [ ] 5.2 クエリの並列化
+    - **問題**: 複数の個別クエリが順次実行される
+    - **修正**: `Promise.all()`で並列実行
+      - `visitDayBeforeCount`, `visitCompletedCount`, `todayCallAssignedCount`を並列取得
+      - その他の個別クエリも並列化
+    - `backend/src/services/SellerService.supabase.ts`の`getSidebarCountsFallback()`を修正
+    - パフォーマンステスト（目標: 3-4秒 → 2-3秒）
+    - _Requirements: 1.2 (即座の更新)_
+
+  - [ ] 5.3 キャッシュTTLの延長
+    - **問題**: サイドバーカウントのキャッシュTTLが60秒と短い
+    - **修正**: TTLを5分（300秒）に延長
+    - `backend/src/services/SellerService.supabase.ts`の`getSidebarCountsFallback()`を修正
+    - ユーザー体験への影響を確認（5分以内の変更は許容範囲か）
+    - _Requirements: 1.2 (即座の更新)_
+
+  - [ ]* 5.4 データベースビューの作成（オプション・最も効果的）
+    - **問題**: JavaScriptでのフィルタリングが遅い（データベースレベルではない）
+    - **修正**: 複雑なフィルタリングロジックをデータベースビューに移動
+      - `seller_visit_day_before`: 訪問日前日ビュー（前営業日ロジックを含む）
+      - `seller_today_call`: 当日TEL分ビュー
+    - SQLマイグレーションファイルを作成
+    - Supabaseで実行
+    - `getSidebarCountsFallback()`をビューを使用するように修正
+    - パフォーマンステスト（目標: 2-3秒 → 1秒以下）
+    - _Requirements: 1.2 (即座の更新)_
+
+  - [ ]* 5.5 `seller_sidebar_counts`テーブルの再導入（オプション・長期的）
+    - **問題**: 毎回全件データを取得して計算するのは非効率
+    - **修正**: 買主リストと同様に、専用のサイドバーカウントテーブルを作成
+      - `seller_sidebar_counts`テーブルを作成
+      - トリガー関数を作成（売主データ変更時に自動更新）
+      - `getSidebarCounts()`をテーブルから読み取るように修正
+    - SQLマイグレーションファイルを作成
+    - Supabaseで実行
+    - パフォーマンステスト（目標: 1秒 → 0.1-0.2秒）
+    - _Requirements: 1.2 (即座の更新)_
+
+- [ ] 6. 最終チェックポイント - パフォーマンス目標達成確認
+  - `/api/sellers/sidebar-counts`エンドポイントのレスポンス時間を確認
+  - 目標: 7-8秒 → 1秒以下
+  - ユーザー体験を確認（一覧に戻った際の遅延が解消されているか）
