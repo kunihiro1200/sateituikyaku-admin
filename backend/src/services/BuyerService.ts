@@ -3084,15 +3084,15 @@ export class BuyerService {
     const propertyNumbers = Array.from(new Set(propertyNumberMap.values()));
     const { data: properties } = await this.supabase
       .from('property_listings')
-      .select('property_number, property_type, address, residential_address')
+      .select('property_number, property_type, address, display_address')
       .in('property_number', propertyNumbers);
 
     const propertyAddressMap = new Map<string, string>();
     if (properties) {
       for (const property of properties) {
-        // マンションの場合は住居表示、それ以外は所在地
+        // マンションの場合は住居表示（display_address）、それ以外は所在地（address）
         const address = property.property_type === 'マンション' 
-          ? (property.residential_address || property.address || '-')
+          ? (property.display_address || property.address || '-')
           : (property.address || '-');
         propertyAddressMap.set(property.property_number, address);
       }
