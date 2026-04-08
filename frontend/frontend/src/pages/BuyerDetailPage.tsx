@@ -163,6 +163,14 @@ const SAVE_BUTTON_FIELDS = new Set([
   'broker_inquiry',
 ]);
 
+// 他社物件情報セクションの表示判定ヘルパー関数
+const hasOtherCompanyPropertyData = (buyer: Buyer | null): boolean => {
+  if (!buyer) return false;
+  const hasOtherProperty = !!(buyer.other_company_property && buyer.other_company_property.trim() !== '');
+  const hasBuildingName = !!(buyer.building_name_price && buyer.building_name_price.trim() !== '');
+  return hasOtherProperty || hasBuildingName;
+};
+
 const BUYER_FIELD_SECTIONS = [
   {
     title: '問合せ内容',
@@ -1719,7 +1727,7 @@ TEL：097-533-2022`;
             )}
 
             {/* 他社物件情報セクション */}
-            {(buyer?.other_company_property || buyer?.building_name_price) && (
+            {hasOtherCompanyPropertyData(buyer) && (
               <Paper
                 sx={{
                   p: 3,
