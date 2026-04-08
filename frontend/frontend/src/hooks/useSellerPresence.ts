@@ -173,7 +173,7 @@ export function useSellerPresenceTrack(
 
   useEffect(() => {
     const timestamp = new Date().toISOString();
-    console.log(`[${timestamp}] [useSellerPresence] track useEffect実行: sellerNumber=`, sellerNumber, 'employee=', employee?.name);
+    console.log(`[${timestamp}] [useSellerPresence] track useEffect実行: sellerNumber=`, sellerNumber, 'employee=', employee?.name, 'employee object=', employee);
     
     if (!sellerNumber || !employee?.name) {
       console.log(`[${timestamp}] [useSellerPresence] track スキップ: sellerNumber=`, sellerNumber, 'employee=', employee?.name);
@@ -181,6 +181,7 @@ export function useSellerPresenceTrack(
     }
 
     const userName = employee.name;
+    console.log(`[${timestamp}] [useSellerPresence] track userName=`, userName);
 
     const connect = () => {
       // 既存チャンネルをクリーンアップ
