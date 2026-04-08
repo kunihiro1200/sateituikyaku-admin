@@ -2204,8 +2204,11 @@ const CallModePage = () => {
             calParams.append('add', assignedEmail);
           }
 
+          // 営担のカレンダーに直接作成（srcパラメータを使用）
+          const srcParam = assignedEmail ? `&src=${encodeURIComponent(assignedEmail)}` : '';
+
           window.open(
-            `https://calendar.google.com/calendar/render?${calParams.toString()}`,
+            `https://calendar.google.com/calendar/render?${calParams.toString()}${srcParam}`,
             '_blank'
           );
         } catch (calError) {
