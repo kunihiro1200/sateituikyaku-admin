@@ -323,7 +323,7 @@ app.post('/api/cron/sync-staff', async (req, res) => {
       const { data: existing } = await supabase
         .from('employees')
         .select('id, name, initials')
-        .ilike('email', email)
+        .ilike('email', email as string)
         .single();
 
       if (existing) {
@@ -580,7 +580,7 @@ const startServer = async () => {
             const { data: existing } = await supabase
               .from('employees')
               .select('id, name, initials')
-              .ilike('email', email)
+              .ilike('email', email as string)
               .single();
 
             if (existing) {
