@@ -1273,17 +1273,18 @@ router.post('/:propertyNumber/send-chat-to-office', async (req: Request, res: Re
           const { PropertyListingSpreadsheetSync } = await import('../services/PropertyListingSpreadsheetSync');
           const { GoogleSheetsClient } = await import('../services/GoogleSheetsClient');
           
-          const spreadsheetId = process.env.GOOGLE_SHEETS_SPREADSHEET_ID || '';
-          console.log(`[send-chat-to-office] GOOGLE_SHEETS_SPREADSHEET_ID: ${spreadsheetId ? '設定済み' : '未設定'}`);
+          const spreadsheetId = process.env.PROPERTY_LISTING_SPREADSHEET_ID || '';
+          console.log(`[send-chat-to-office] PROPERTY_LISTING_SPREADSHEET_ID: ${spreadsheetId ? '設定済み' : '未設定'}`);
           
           if (!spreadsheetId) {
-            throw new Error('GOOGLE_SHEETS_SPREADSHEET_ID is not set');
+            throw new Error('PROPERTY_LISTING_SPREADSHEET_ID is not set');
           }
           
           const sheetsClient = new GoogleSheetsClient({
             spreadsheetId,
             sheetName: '物件',
           });
+          await sheetsClient.authenticate();
           const syncService = new PropertyListingSpreadsheetSync(sheetsClient, supabase);
           await syncService.syncConfirmationToSpreadsheet(propertyNumber, '未');
           console.log(`[send-chat-to-office] Successfully synced confirmation to spreadsheet for ${propertyNumber}`);
@@ -1292,7 +1293,7 @@ router.post('/:propertyNumber/send-chat-to-office', async (req: Request, res: Re
           console.error(`[send-chat-to-office] Error details:`, {
             message: syncError.message,
             stack: syncError.stack,
-            spreadsheetId: process.env.GOOGLE_SHEETS_SPREADSHEET_ID ? '設定済み' : '未設定'
+            spreadsheetId: process.env.PROPERTY_LISTING_SPREADSHEET_ID ? '設定済み' : '未設定'
           });
           // 同期エラーでもレスポンスは成功を返す（チャット送信は成功しているため）
         }
@@ -1339,17 +1340,18 @@ router.post('/:propertyNumber/send-chat-to-office', async (req: Request, res: Re
       const { PropertyListingSpreadsheetSync } = await import('../services/PropertyListingSpreadsheetSync');
       const { GoogleSheetsClient } = await import('../services/GoogleSheetsClient');
       
-      const spreadsheetId = process.env.GOOGLE_SHEETS_SPREADSHEET_ID || '';
-      console.log(`[send-chat-to-office] GOOGLE_SHEETS_SPREADSHEET_ID: ${spreadsheetId ? '設定済み' : '未設定'}`);
+      const spreadsheetId = process.env.PROPERTY_LISTING_SPREADSHEET_ID || '';
+      console.log(`[send-chat-to-office] PROPERTY_LISTING_SPREADSHEET_ID: ${spreadsheetId ? '設定済み' : '未設定'}`);
       
       if (!spreadsheetId) {
-        throw new Error('GOOGLE_SHEETS_SPREADSHEET_ID is not set');
+        throw new Error('PROPERTY_LISTING_SPREADSHEET_ID is not set');
       }
       
       const sheetsClient = new GoogleSheetsClient({
         spreadsheetId,
         sheetName: '物件',
       });
+      await sheetsClient.authenticate();
       const syncService = new PropertyListingSpreadsheetSync(sheetsClient, supabase);
       await syncService.syncConfirmationToSpreadsheet(propertyNumber, '未');
       console.log(`[send-chat-to-office] Successfully synced confirmation to spreadsheet for ${propertyNumber}`);
@@ -1358,7 +1360,7 @@ router.post('/:propertyNumber/send-chat-to-office', async (req: Request, res: Re
       console.error(`[send-chat-to-office] Error details:`, {
         message: syncError.message,
         stack: syncError.stack,
-        spreadsheetId: process.env.GOOGLE_SHEETS_SPREADSHEET_ID ? '設定済み' : '未設定'
+        spreadsheetId: process.env.PROPERTY_LISTING_SPREADSHEET_ID ? '設定済み' : '未設定'
       });
       // 同期エラーでもレスポンスは成功を返す（チャット送信は成功しているため）
     }
