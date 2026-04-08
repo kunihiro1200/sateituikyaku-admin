@@ -2144,14 +2144,13 @@ const CallModePage = () => {
           const endDateStr2 = endDate2.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
 
           const propertyAddress = property?.address || updatedSeller?.address || seller?.address || '物件所在地未設定';
-          const calTitle = encodeURIComponent(`【訪問】${propertyAddress}`);
-          const calLocation = encodeURIComponent(propertyAddress);
-          const calDetails = encodeURIComponent(
+          const calTitle = `【訪問】${propertyAddress}`;
+          const calLocation = propertyAddress;
+          const calDetails = 
             `売主名: ${updatedSeller?.name || seller?.name || ''}\n` +
             `電話: ${updatedSeller?.phoneNumber || seller?.phoneNumber || ''}\n` +
             `\n通話モードページ:\n${window.location.href}` +
-            (updatedSeller?.comments || seller?.comments ? `\n\nコメント:\n${updatedSeller?.comments || seller?.comments}` : '')
-          );
+            (updatedSeller?.comments || seller?.comments ? `\n\nコメント:\n${updatedSeller?.comments || seller?.comments}` : '');
 
           // 営担のメールアドレスを取得（更新されたデータを優先）
           const assignedToValue = editedAssignedTo || updatedSeller?.visitAssigneeInitials || updatedSeller?.visitAssignee || seller?.visitAssigneeInitials || seller?.visitAssignee || seller?.assignedTo;
@@ -2194,21 +2193,16 @@ const CallModePage = () => {
           // URLSearchParamsを使用してパラメータを構築
           const calParams = new URLSearchParams({
             action: 'TEMPLATE',
-            text: calTitle.replace(/%/g, ''),  // エンコード済みの文字列をそのまま使用
+            text: calTitle,
             dates: `${startDateStr2}/${endDateStr2}`,
-            details: calDetails.replace(/%/g, ''),  // エンコード済みの文字列をそのまま使用
-            location: calLocation.replace(/%/g, ''),  // エンコード済みの文字列をそのまま使用
+            details: calDetails,
+            location: calLocation,
           });
           
           // 営担をゲストとして招待（addパラメータを使用）
           if (assignedEmail) {
             calParams.append('add', assignedEmail);
           }
-
-          // authuser パラメータを追加して、ifoo-oita.com アカウントを明示的に指定
-          // 複数のGoogleアカウントにログインしている場合、デフォルトアカウントではなく
-          // 会社アカウント（tenant@ifoo-oita.com）でカレンダーを開くようにする
-          calParams.append('authuser', 'tenant@ifoo-oita.com');
 
           window.open(
             `https://calendar.google.com/calendar/render?${calParams.toString()}`,
