@@ -2098,7 +2098,7 @@ const CallModePage = () => {
       }
       // それ以外（既存値あり）は undefined のまま → 送信しない
 
-      await api.put(`/api/sellers/${id}`, {
+      const updateResponse = await api.put(`/api/sellers/${id}`, {
         visitDate: visitDateTimeStr,
         visitAssignee: editedAssignedTo || null,
         visitValuationAcquirer: acquirer || null,
@@ -2111,6 +2111,13 @@ const CallModePage = () => {
         ...(!editedAssignedTo && { assignedTo: null }),
         ...(visitAcquisitionDateToSave !== undefined && { visitAcquisitionDate: visitAcquisitionDateToSave }),
       });
+
+      // APIレスポンスから更新されたデータを取得
+      const updatedSeller = updateResponse.data;
+      console.log('=== 訪問予約保存後のAPIレスポンス ===');
+      console.log('updatedSeller:', updatedSeller);
+      console.log('visitAssignee:', updatedSeller?.visitAssignee);
+      console.log('visitAssigneeInitials:', updatedSeller?.visitAssigneeInitials);
 
       setAppointmentSuccessMessage('訪問予約情報を更新しました');
       setEditingAppointment(false);
@@ -2133,21 +2140,29 @@ const CallModePage = () => {
           const endDate2 = new Date(date.getTime() + 60 * 60 * 1000);
           const endDateStr2 = endDate2.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
 
-          const propertyAddress = property?.address || seller?.address || '物件所在地未設定';
+          const propertyAddress = property?.address || updatedSeller?.address || seller?.address || '物件所在地未設定';
           const calTitle = encodeURIComponent(`【訪問】${propertyAddress}`);
           const calLocation = encodeURIComponent(propertyAddress);
           const calDetails = encodeURIComponent(
-            `売主名: ${seller?.name || ''}\n` +
-            `電話: ${seller?.phoneNumber || ''}\n` +
+            `売主名: ${updatedSeller?.name || seller?.name || ''}\n` +
+            `電話: ${updatedSeller?.phoneNumber || seller?.phoneNumber || ''}\n` +
             `\n通話モードページ:\n${window.location.href}` +
-            (seller?.comments ? `\n\nコメント:\n${seller.comments}` : '')
+            (updatedSeller?.comments || seller?.comments ? `\n\nコメント:\n${updatedSeller?.comments || seller?.comments}` : '')
           );
 
-          // 営担のメールアドレスを取得
-          const assignedToValue = editedAssignedTo || seller?.visitAssigneeInitials || seller?.visitAssignee || seller?.assignedTo;
+          // 営担のメールアドレスを取得（更新されたデータを優先）
+          const assignedToValue = editedAssignedTo || updatedSeller?.visitAssigneeInitials || updatedSeller?.visitAssignee || seller?.visitAssigneeInitials || seller?.visitAssignee || seller?.assignedTo;
           console.log('=== カレンダー営担デバッグ（売主） ===');
           console.log('assignedToValue:', assignedToValue);
+          console.log('updatedSeller.visitAssignee:', updatedSeller?.visitAssignee);
+          console.log('updatedSeller.visitAssigneeInitials:', updatedSeller?.visitAssigneeInitials);
           console.log('employees配列:', employees);
+          
+          // 営担が設定されていない場合は警告
+          if (!assignedToValue) {
+            setError('営業担当が設定されていません。訪問予約編集フォームで営担を設定してください。');
+            return;
+          }
           
           const matchedEmployees = employees.filter((e: any) => {
             const nameMatch = e.name === assignedToValue;
@@ -2162,6 +2177,13 @@ const CallModePage = () => {
           console.log('マッチした社員:', matchedEmployees);
           
           const assignedEmployee = matchedEmployees[0];
+          
+          // 営担に対応する社員が見つからない場合は警告
+          if (!assignedEmployee) {
+            setError(`営業担当「${assignedToValue}」に対応する社員が見つかりません。スタッフ同期を実行してください。`);
+            return;
+          }
+          
           const assignedEmail = assignedEmployee?.email || '';
           console.log('見つかった社員:', assignedEmployee?.name);
           console.log('メールアドレス:', assignedEmail);
@@ -4733,6 +4755,13 @@ HP：https://ifoo-oita.com/
                               
                               // 営担のメールアドレスを取得（visitAssigneeInitialsを優先、なければvisitAssignee、最後にassignedTo）
                               const assignedToValue = seller.visitAssigneeInitials || seller.visitAssignee || seller.assignedTo;
+                              
+                              // 営担が設定されていない場合は警告
+                              if (!assignedToValue) {
+                                alert('営担が設定されていません。訪問予約編集フォームで営担を設定してください。');
+                                return;
+                              }
+                              
                               console.log('=== カレンダー営担デバッグ（訪問情報セクション） ===');
                               console.log('visitAssigneeInitials:', seller.visitAssigneeInitials);
                               console.log('visitAssignee:', seller.visitAssignee);
