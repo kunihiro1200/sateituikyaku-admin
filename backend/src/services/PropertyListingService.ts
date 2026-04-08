@@ -212,9 +212,9 @@ export class PropertyListingService {
             const coordinates = await this.geocodingService.geocodeAddress(address);
             
             if (coordinates) {
-              updates.latitude = coordinates.latitude;
-              updates.longitude = coordinates.longitude;
-              console.log(`[PropertyListingService] Updated coordinates for ${propertyNumber}: (${coordinates.latitude}, ${coordinates.longitude})`);
+              updates.latitude = coordinates.lat;
+              updates.longitude = coordinates.lng;
+              console.log(`[PropertyListingService] Updated coordinates for ${propertyNumber}: (${coordinates.lat}, ${coordinates.lng})`);
             } else {
               console.warn(`[PropertyListingService] Failed to geocode address for ${propertyNumber}`);
             }

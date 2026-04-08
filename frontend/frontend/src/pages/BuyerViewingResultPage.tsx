@@ -306,6 +306,8 @@ export default function BuyerViewingResultPage() {
       setEmployees(employeesData);
     } catch (err) {
       console.error('Failed to load employees:', err);
+      // エラーが発生しても空配列を設定（カレンダー送信は可能にする）
+      setEmployees([]);
     }
   };
 
@@ -465,16 +467,21 @@ export default function BuyerViewingResultPage() {
     const followUpAssignee = buyer.follow_up_assignee;
     console.log('=== カレンダー後続担当デバッグ ===');
     console.log('follow_up_assignee:', followUpAssignee);
+    console.log('employees配列:', employees);
     
     let assignedEmail = '';
     if (followUpAssignee) {
       // イニシャルまたは名前で従業員マスタを検索
-      const matchedEmployees = employees.filter(e => 
-        e.initials === followUpAssignee || 
-        e.name === followUpAssignee
-      );
+      const matchedEmployees = employees.filter(e => {
+        const initialsMatch = e.initials === followUpAssignee;
+        const nameMatch = e.name === followUpAssignee;
+        console.log(`従業員チェック: ${e.name} (initials: ${e.initials}, email: ${e.email})`);
+        console.log(`  - initialsMatch: ${initialsMatch}, nameMatch: ${nameMatch}`);
+        return initialsMatch || nameMatch;
+      });
       
       console.log('マッチした社員数:', matchedEmployees.length);
+      console.log('マッチした社員:', matchedEmployees);
       
       if (matchedEmployees.length > 1) {
         // 重複イニシャルの場合、エラーメッセージを表示
@@ -515,10 +522,12 @@ export default function BuyerViewingResultPage() {
       params.append('dates', `${startDateStr}/${endDateStr}`);
     }
 
-    // 後続担当のカレンダーに直接作成（srcパラメータを使用）
-    const srcParam = assignedEmail ? `&src=${encodeURIComponent(assignedEmail)}` : '';
+    // 後続担当をゲストとして招待（addパラメータを使用）
+    if (assignedEmail) {
+      params.append('add', assignedEmail);
+    }
     
-    window.open(`https://calendar.google.com/calendar/render?${params.toString()}${srcParam}`, '_blank');
+    window.open(`https://calendar.google.com/calendar/render?${params.toString()}`, '_blank');
     setCalendarOpened(true);
   };
 
