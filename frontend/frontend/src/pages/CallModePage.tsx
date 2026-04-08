@@ -2123,16 +2123,19 @@ const CallModePage = () => {
       setEditingAppointment(false);
       
       // データを再読み込み
+      let reloadSuccess = true;
       try {
         await loadAllData();
       } catch (reloadError) {
         console.error('❌ データの再読み込みに失敗:', reloadError);
+        reloadSuccess = false;
         // 再読み込みエラーは警告のみ（保存は成功しているため）
         setError('データの再読み込みに失敗しました。ページを更新してください。');
       }
 
       // 訪問日が設定されている場合、カレンダーを自動で開く
-      if (visitDateTimeStr) {
+      // データ再読み込みが失敗した場合はスキップ（sellerがnullの可能性があるため）
+      if (visitDateTimeStr && reloadSuccess && (seller || updatedSeller)) {
         try {
           // visitDateTimeStr (YYYY-MM-DD HH:mm:ss) からDateを生成
           const date = new Date(visitDateTimeStr.replace(' ', 'T'));
