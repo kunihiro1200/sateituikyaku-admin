@@ -203,7 +203,16 @@ export default function GmailDistributionButton({
     if (!selectedTemplate || buyers.length === 0) {
       return;
     }
-    setSelectedBuyers(buyers);
+    // buyer_number を含めて保存
+    const buyersWithNumber = buyers.map(b => {
+      const fullBuyerData = buyerData?.filteredBuyers?.find((fb: any) => fb.email === b.email);
+      return {
+        email: b.email,
+        name: b.name,
+        buyer_number: fullBuyerData?.buyer_number
+      };
+    });
+    setSelectedBuyers(buyersWithNumber as any);
     // 確認モーダル表示時に本文を初期化（複数時は{buyerName}プレースホルダーのまま表示）
     const previewName = buyers.length === 1 ? (buyers[0].name || 'お客様') : '{buyerName}';
     setEditedBody(replacePlaceholders(selectedTemplate.body, previewName));
@@ -226,12 +235,14 @@ export default function GmailDistributionButton({
       // 編集済み本文があればそれを使用、なければテンプレートから生成
       const body = editedBody || replacePlaceholders(selectedTemplate.body, buyerName);
 
-      // 買主情報を取得（buyerDataから）
-      const buyers = (buyerData?.filteredBuyers || []).map((b: any) => ({
+      // selectedBuyersから直接買主情報を取得（buyer_numberを含む）
+      const buyers = selectedBuyers.map((b: any) => ({
         buyer_number: b.buyer_number,
         email: b.email,
         name: b.name
       }));
+
+      console.log('[GmailDistributionButton] Sending emails with buyers:', buyers);
 
       // gmailDistributionService.sendEmailsDirectly を使用
       const result = await gmailDistributionService.sendEmailsDirectly(
