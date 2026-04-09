@@ -13,8 +13,14 @@ const valuationEngine = new ValuationEngine();
 
 // Supabaseクライアントを初期化
 const supabaseUrl = process.env.SUPABASE_URL || '';
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY || '';
 const supabase = createClient(supabaseUrl, supabaseKey);
+
+console.log('[emails.ts] Supabase initialization:', {
+  urlExists: !!supabaseUrl,
+  keyExists: !!supabaseKey,
+  keySource: process.env.SUPABASE_SERVICE_ROLE_KEY ? 'SUPABASE_SERVICE_ROLE_KEY' : (process.env.SUPABASE_SERVICE_KEY ? 'SUPABASE_SERVICE_KEY' : 'none')
+});
 
 // 全てのルートに認証を適用
 router.use(authenticate);
