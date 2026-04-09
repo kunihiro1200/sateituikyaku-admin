@@ -334,7 +334,8 @@ export function useSellerPresenceTrack(
         } else if (status === 'TIMED_OUT' || status === 'CHANNEL_ERROR') {
           retryCountRef.current += 1;
           if (retryCountRef.current <= MAX_RETRIES) {
-            const delay = Math.min(1000 * Math.pow(2, retryCountRef.current - 1), 30000);
+            // 最初のリトライは即座に、その後は指数バックオフ
+            const delay = retryCountRef.current === 1 ? 0 : Math.min(500 * Math.pow(2, retryCountRef.current - 2), 10000);
             console.log(`[${timestamp}] [useSellerPresence] track リトライ予定:`, retryCountRef.current, '/', MAX_RETRIES, 'delay=', delay, 'ms');
             retryTimerRef.current = setTimeout(() => {
               connect();
