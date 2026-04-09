@@ -70,9 +70,6 @@ export function useSellerPresenceSubscribe(): UseSellerPresenceSubscribeResult {
 
   useEffect(() => {
     console.log('[useSellerPresence] subscribe: チャンネル作成');
-    
-    // マウント時に古いプレゼンス情報をクリア
-    clearAllPresence();
 
     // BroadcastChannelを作成（同じブラウザ内のタブ間通信用）
     try {
@@ -89,14 +86,27 @@ export function useSellerPresenceSubscribe(): UseSellerPresenceSubscribeResult {
     const buildState = () => {
       const raw = channel.presenceState<PresenceRecord>();
       const mapped: PresenceState = {};
+      const now = Date.now();
+      
       for (const presences of Object.values(raw)) {
         for (const p of presences as unknown as PresenceRecord[]) {
           if (!p.seller_number) continue;
+          
+          // 30分以上古いプレゼンス情報は除外
+          const enteredAt = new Date(p.entered_at).getTime();
+          if (now - enteredAt >= STALE_THRESHOLD_MS) {
+            console.log(`[useSellerPresence] subscribe: 古いプレゼンス情報を除外: ${p.seller_number} - ${p.user_name} (${Math.floor((now - enteredAt) / 60000)}分前)`);
+            continue;
+          }
+          
           if (!mapped[p.seller_number]) mapped[p.seller_number] = [];
           mapped[p.seller_number].push(p);
         }
       }
       console.log('[useSellerPresence] subscribe state:', mapped);
+      
+      // グローバルステートをクリアしてから再構築（古いデータを削除）
+      clearAllPresence();
       
       // グローバルステートに保存
       for (const [sellerNumber, records] of Object.entries(mapped)) {
@@ -237,6 +247,8 @@ export function useSellerPresenceTrack(
   sellerNumber: string | undefined
 ): UseSellerPresenceTrackResult {
   const { employee } = useAuthStore();
+  const addPresence = usePresenceStore((state) => state.addPresence);
+  const removePresence = usePresenceStore((state) => state.removePresence);
   const [isTracking, setIsTracking] = useState(false);
   const trackedRef = useRef(false);
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
@@ -304,7 +316,11 @@ export function useSellerPresenceTrack(
             trackedRef.current = true;
             setIsTracking(true);
             
-            // BroadcastChannelで即座に通知（同じブラウザ内の他のタブに）
+            // 即座にグローバルステートに追加（同じタブ内で即時反映）
+            addPresence(presenceData);
+            console.log(`[${trackTimestamp}] [useSellerPresence] グローバルステート即座更新（track）:`, presenceData);
+            
+            // BroadcastChannelで他のタブにも通知
             if (broadcastChannelRef.current) {
               broadcastChannelRef.current.postMessage({
                 type: 'track',
@@ -348,7 +364,16 @@ export function useSellerPresenceTrack(
         untrackTimerRef.current = null;
       }
       
-      // BroadcastChannelで即座に通知（untrack）
+      // 5秒後にグローバルステートから削除（同じタブ内で即時反映）
+      untrackTimerRef.current = setTimeout(() => {
+        const delayTimestamp = new Date().toISOString();
+        console.log(`[${delayTimestamp}] [useSellerPresence] track: 5秒経過、グローバルステートから削除: ${sellerNumber} - ${userName}`);
+        removePresence(sellerNumber, userName);
+      }, PRESENCE_PERSIST_DURATION_MS);
+      
+      console.log(`[${timestamp}] [useSellerPresence] track: グローバルステート削除タイマー設定（${PRESENCE_PERSIST_DURATION_MS}ms後）`);
+      
+      // BroadcastChannelで他のタブにも通知
       if (broadcastChannelRef.current && trackedRef.current) {
         broadcastChannelRef.current.postMessage({
           type: 'untrack',
@@ -358,18 +383,15 @@ export function useSellerPresenceTrack(
         console.log(`[${timestamp}] [useSellerPresence] BroadcastChannel送信（untrack）:`, { sellerNumber, userName });
       }
       
-      // 5秒後にuntrackを実行
+      // 5秒後にSupabase Realtimeからもuntrack
       if (channelRef.current && trackedRef.current) {
         const channelToUntrack = channelRef.current;
-        untrackTimerRef.current = setTimeout(() => {
+        setTimeout(() => {
           const untrackTimestamp = new Date().toISOString();
-          console.log(`[${untrackTimestamp}] [useSellerPresence] track: 5秒経過、untrack実行`);
+          console.log(`[${untrackTimestamp}] [useSellerPresence] track: 5秒経過、Supabase untrack実行`);
           channelToUntrack.untrack();
           supabase.removeChannel(channelToUntrack);
-          untrackTimerRef.current = null;
         }, PRESENCE_PERSIST_DURATION_MS);
-        
-        console.log(`[${timestamp}] [useSellerPresence] track: untrackタイマー設定（${PRESENCE_PERSIST_DURATION_MS}ms後）`);
       } else if (channelRef.current) {
         // trackしていない場合は即座に削除
         supabase.removeChannel(channelRef.current);
@@ -386,7 +408,7 @@ export function useSellerPresenceTrack(
       retryCountRef.current = 0;
       setIsTracking(false);
     };
-  }, [sellerNumber, employee?.initials, employee?.name, employee?.employee_number, employee?.email]);
+  }, [sellerNumber, employee?.initials, employee?.name, employee?.employee_number, employee?.email, addPresence, removePresence]);
 
   return { isTracking };
 }
