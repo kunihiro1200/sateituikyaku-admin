@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { supabase } from '../config/supabase';
 import { useAuthStore } from '../store/authStore';
+import { usePresenceStore } from '../store/presenceStore';
 
 // ============================================================
 // 型定義
@@ -57,10 +58,14 @@ export function formatPresenceLabel(records: PresenceRecord[]): string {
 // ============================================================
 
 export function useSellerPresenceSubscribe(): UseSellerPresenceSubscribeResult {
-  const [presenceState, setPresenceState] = useState<PresenceState>({});
   const [isConnected, setIsConnected] = useState(false);
   const leaveTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
   const broadcastChannelRef = useRef<BroadcastChannel | null>(null);
+  
+  // グローバルステートから取得
+  const presenceState = usePresenceStore((state) => state.presenceState);
+  const addPresence = usePresenceStore((state) => state.addPresence);
+  const removePresence = usePresenceStore((state) => state.removePresence);
 
   useEffect(() => {
     console.log('[useSellerPresence] subscribe: チャンネル作成');
@@ -88,6 +93,14 @@ export function useSellerPresenceSubscribe(): UseSellerPresenceSubscribeResult {
         }
       }
       console.log('[useSellerPresence] subscribe state:', mapped);
+      
+      // グローバルステートに保存
+      for (const [sellerNumber, records] of Object.entries(mapped)) {
+        for (const record of records) {
+          addPresence(record);
+        }
+      }
+      
       return mapped;
     };
 
@@ -98,27 +111,13 @@ export function useSellerPresenceSubscribe(): UseSellerPresenceSubscribeResult {
         console.log(`[${timestamp}] [useSellerPresence] BroadcastChannel受信:`, event.data);
         
         if (event.data.type === 'track') {
-          // 即座にローカルステートに追加
-          setPresenceState((prev) => {
-            const newState = { ...prev };
-            const sellerNumber = event.data.seller_number;
-            if (!newState[sellerNumber]) newState[sellerNumber] = [];
-            
-            // 既存のレコードを削除（同じユーザーの重複を防ぐ）
-            newState[sellerNumber] = newState[sellerNumber].filter(
-              (r) => r.user_name !== event.data.user_name
-            );
-            
-            // 新しいレコードを追加
-            newState[sellerNumber].push({
-              seller_number: event.data.seller_number,
-              user_name: event.data.user_name,
-              entered_at: event.data.entered_at,
-            });
-            
-            console.log(`[${timestamp}] [useSellerPresence] ローカルステート即座更新:`, newState);
-            return newState;
+          // 即座にグローバルステートに追加
+          addPresence({
+            seller_number: event.data.seller_number,
+            user_name: event.data.user_name,
+            entered_at: event.data.entered_at,
           });
+          console.log(`[${timestamp}] [useSellerPresence] BroadcastChannel ローカルステート即座更新`);
         } else if (event.data.type === 'untrack') {
           // 5秒後に削除（leaveタイマーと同じロジック）
           const sellerNumber = event.data.seller_number;
@@ -135,18 +134,7 @@ export function useSellerPresenceSubscribe(): UseSellerPresenceSubscribeResult {
           const timer = setTimeout(() => {
             const delayTimestamp = new Date().toISOString();
             console.log(`[${delayTimestamp}] [useSellerPresence] BroadcastChannel untrack: ${PRESENCE_PERSIST_DURATION_MS}ms経過、削除: ${sellerNumber} - ${userName}`);
-            setPresenceState((prev) => {
-              const newState = { ...prev };
-              if (newState[sellerNumber]) {
-                newState[sellerNumber] = newState[sellerNumber].filter(
-                  (r) => r.user_name !== userName
-                );
-                if (newState[sellerNumber].length === 0) {
-                  delete newState[sellerNumber];
-                }
-              }
-              return newState;
-            });
+            removePresence(sellerNumber, userName);
             leaveTimersRef.current.delete(timerKey);
           }, PRESENCE_PERSIST_DURATION_MS);
           
@@ -163,27 +151,13 @@ export function useSellerPresenceSubscribe(): UseSellerPresenceSubscribeResult {
       console.log(`[${timestamp}] [useSellerPresence] CustomEvent受信:`, customEvent.detail);
       
       if (customEvent.detail.type === 'track') {
-        // 即座にローカルステートに追加
-        setPresenceState((prev) => {
-          const newState = { ...prev };
-          const sellerNumber = customEvent.detail.seller_number;
-          if (!newState[sellerNumber]) newState[sellerNumber] = [];
-          
-          // 既存のレコードを削除（同じユーザーの重複を防ぐ）
-          newState[sellerNumber] = newState[sellerNumber].filter(
-            (r) => r.user_name !== customEvent.detail.user_name
-          );
-          
-          // 新しいレコードを追加
-          newState[sellerNumber].push({
-            seller_number: customEvent.detail.seller_number,
-            user_name: customEvent.detail.user_name,
-            entered_at: customEvent.detail.entered_at,
-          });
-          
-          console.log(`[${timestamp}] [useSellerPresence] CustomEvent ローカルステート即座更新:`, newState);
-          return newState;
+        // 即座にグローバルステートに追加
+        addPresence({
+          seller_number: customEvent.detail.seller_number,
+          user_name: customEvent.detail.user_name,
+          entered_at: customEvent.detail.entered_at,
         });
+        console.log(`[${timestamp}] [useSellerPresence] CustomEvent ローカルステート即座更新`);
       } else if (customEvent.detail.type === 'untrack') {
         // 5秒後に削除（leaveタイマーと同じロジック）
         const sellerNumber = customEvent.detail.seller_number;
@@ -200,18 +174,7 @@ export function useSellerPresenceSubscribe(): UseSellerPresenceSubscribeResult {
         const timer = setTimeout(() => {
           const delayTimestamp = new Date().toISOString();
           console.log(`[${delayTimestamp}] [useSellerPresence] CustomEvent untrack: ${PRESENCE_PERSIST_DURATION_MS}ms経過、削除: ${sellerNumber} - ${userName}`);
-          setPresenceState((prev) => {
-            const newState = { ...prev };
-            if (newState[sellerNumber]) {
-              newState[sellerNumber] = newState[sellerNumber].filter(
-                (r) => r.user_name !== userName
-              );
-              if (newState[sellerNumber].length === 0) {
-                delete newState[sellerNumber];
-              }
-            }
-            return newState;
-          });
+          removePresence(sellerNumber, userName);
           leaveTimersRef.current.delete(timerKey);
         }, PRESENCE_PERSIST_DURATION_MS);
         
@@ -226,7 +189,7 @@ export function useSellerPresenceSubscribe(): UseSellerPresenceSubscribeResult {
       .on('presence', { event: 'sync' }, () => {
         const timestamp = new Date().toISOString();
         console.log(`[${timestamp}] [useSellerPresence] presence sync`);
-        setPresenceState(buildState());
+        buildState(); // グローバルステートに保存済み
       })
       .on('presence', { event: 'join' }, ({ key, newPresences }) => {
         const timestamp = new Date().toISOString();
@@ -245,7 +208,7 @@ export function useSellerPresenceSubscribe(): UseSellerPresenceSubscribeResult {
           }
         });
         
-        setPresenceState(buildState());
+        buildState(); // グローバルステートに保存済み
       })
       .on('presence', { event: 'leave' }, ({ key, leftPresences }) => {
         const timestamp = new Date().toISOString();
@@ -266,7 +229,7 @@ export function useSellerPresenceSubscribe(): UseSellerPresenceSubscribeResult {
           const timer = setTimeout(() => {
             const delayTimestamp = new Date().toISOString();
             console.log(`[${delayTimestamp}] [useSellerPresence] ${PRESENCE_PERSIST_DURATION_MS}ms経過、状態更新: ${p.seller_number}`);
-            setPresenceState(buildState());
+            buildState(); // グローバルステートに保存済み
             leaveTimersRef.current.delete(p.seller_number);
           }, PRESENCE_PERSIST_DURATION_MS);
           
@@ -279,7 +242,7 @@ export function useSellerPresenceSubscribe(): UseSellerPresenceSubscribeResult {
         console.log(`[${timestamp}] [useSellerPresence] subscribe status:`, status);
         setIsConnected(status === 'SUBSCRIBED');
         if (status === 'SUBSCRIBED') {
-          setPresenceState(buildState());
+          buildState(); // グローバルステートに保存済み
         }
       });
 
