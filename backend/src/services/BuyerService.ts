@@ -381,7 +381,7 @@ export class BuyerService {
         this.supabase
           .from('buyers')
           .select(selectFields)
-          .or(`name.ilike.%${query}%,phone_number.ilike.%${query}%,property_number.ilike.%${query}%`)
+          .or(`name.ilike.%${query}%,phone_number.ilike.%${query}%,email.ilike.%${query}%,property_number.ilike.%${query}%`)
           .limit(limit),
       ]);
 
@@ -408,7 +408,7 @@ export class BuyerService {
         .from('buyers')
         .select(selectFields)
         .or(
-          `buyer_number.ilike.%${query}%,name.ilike.%${query}%,phone_number.ilike.%${query}%,property_number.ilike.%${query}%`
+          `buyer_number.ilike.%${query}%,name.ilike.%${query}%,phone_number.ilike.%${query}%,email.ilike.%${query}%,property_number.ilike.%${query}%`
         )
         .limit(limit);
 
