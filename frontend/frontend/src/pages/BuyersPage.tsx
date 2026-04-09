@@ -187,6 +187,7 @@ export default function BuyersPage() {
                 (b.buyer_number || '').toLowerCase().includes(s) ||
                 (b.name || '').toLowerCase().includes(s) ||
                 (b.phone_number || '').toLowerCase().includes(s) ||
+                (b.email || '').toLowerCase().includes(s) ||
                 (b.property_number || '').toLowerCase().includes(s)
               );
             });
@@ -501,7 +502,7 @@ export default function BuyersPage() {
           <Paper sx={{ p: 2, mb: 2 }}>
             <TextField
               size="small"
-              placeholder="検索（買主番号、氏名、電話番号、物件番号）"
+              placeholder="検索（買主番号、氏名、電話番号、メールアドレス、物件番号）"
               value={searchQuery}
               onChange={(e) => { setSearchQuery(e.target.value); setPage(0); }}
               sx={isMobile ? { width: '100%' } : { width: '50%' }}
