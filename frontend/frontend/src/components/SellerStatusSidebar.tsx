@@ -613,6 +613,7 @@ function SellerStatusSidebarComponent({
       </Button>
 
       {/* 既存の固定カテゴリー */}
+      {renderCategoryButton('visitDayBefore', '①訪問日前日', '#2e7d32')}
       {renderCategoryButton('todayCallNotStarted', '当日TEL_未着手', '#ff9800')}
       {renderCategoryButton('unvaluated', '未査定', '#ed6c02')}
       {renderCategoryButton('todayCall', '当日TEL分', '#d32f2f')}
@@ -694,7 +695,6 @@ function SellerStatusSidebarComponent({
 
       {/* その他のカテゴリー（区切り線付き） */}
       <Box sx={{ mt: 0.5, pt: 0.5, borderTop: '1px solid', borderColor: 'grey.200', bgcolor: '#f5f5f5', borderRadius: 1, px: 0.5 }}>
-        {renderCategoryButton('visitDayBefore', '訪問日前日', '#2e7d32')}
         {renderCategoryButton('mailingPending', '査定（郵送）', '#0288d1')}
         {renderCategoryButton('pinrichEmpty', 'Pinrich空欄', '#795548')}
         {renderCategoryButton('exclusive', '専任', '#2e7d32')}
