@@ -286,3 +286,36 @@ export function isPrivateStatus(atbbStatus: string | undefined): boolean {
   }
   return atbbStatus.includes('非公開');
 }
+
+/**
+ * atbb_statusに応じた文字色を返す
+ * @param atbbStatus - atbb_statusフィールドの値
+ * @returns 文字色（CSSカラーコード）
+ */
+export function getAtbbStatusColor(atbbStatus: string | undefined): string {
+  if (!atbbStatus) return 'inherit';
+  
+  // 専任・公開前 → オレンジ
+  if (atbbStatus === '専任・公開前') return '#ff9800';
+  
+  // 専任・公開中 → 赤
+  if (atbbStatus === '専任・公開中') return '#f44336';
+  
+  // 一般・公開前 → 水色
+  if (atbbStatus === '一般・公開前') return '#00bcd4';
+  
+  // 一般・公開中 → 青
+  if (atbbStatus === '一般・公開中') return '#2196f3';
+  
+  // 専任・非公開 → ダークオレンジ
+  if (atbbStatus.includes('専任') && atbbStatus.includes('非公開')) return '#e65100';
+  
+  // 一般・非公開 → ダークシアン
+  if (atbbStatus.includes('一般') && atbbStatus.includes('非公開')) return '#006064';
+  
+  // その他の非公開 → グレー
+  if (atbbStatus.includes('非公開')) return '#757575';
+  
+  // デフォルト
+  return 'inherit';
+}

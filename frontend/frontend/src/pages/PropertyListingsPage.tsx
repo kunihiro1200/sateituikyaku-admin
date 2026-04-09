@@ -41,7 +41,7 @@ import PublicUrlCell from '../components/PublicUrlCell';
 import PropertySidebarStatus from '../components/PropertySidebarStatus';
 import { getDisplayStatus } from '../utils/atbbStatusDisplayMapper';
 import { SECTION_COLORS } from '../theme/sectionColors';
-import { calculatePropertyStatus, createWorkTaskMap, isPrivateStatus } from '../utils/propertyListingStatusUtils';
+import { calculatePropertyStatus, createWorkTaskMap, isPrivateStatus, getAtbbStatusColor } from '../utils/propertyListingStatusUtils';
 import { pageDataCache, CACHE_KEYS } from '../store/pageDataCache';
 
 interface PropertyListing {
@@ -647,7 +647,14 @@ export default function PropertyListingsPage() {
                           {listing.address || listing.display_address || '-'}
                         </TableCell>
                         <TableCell>{listing.seller_name || '-'}</TableCell>
-                        <TableCell>{getDisplayStatus(listing.atbb_status) || '-'}</TableCell>
+                        <TableCell>
+                          <Typography
+                            variant="body2"
+                            sx={{ color: getAtbbStatusColor(listing.atbb_status), fontWeight: 500 }}
+                          >
+                            {getDisplayStatus(listing.atbb_status) || '-'}
+                          </Typography>
+                        </TableCell>
                         <TableCell onClick={(e) => e.stopPropagation()}>
                           {listing.property_number && (
                             <BuyerIndicator
