@@ -156,20 +156,38 @@ export class SellerSidebarCountsUpdateService {
       // カウント計算（getSidebarCountsFallback()と同じロジック）
       const visitAssigneeSellers = visitAssigneeForDayBeforeResult.data || [];
       const visitDayBeforeCount = visitAssigneeSellers.filter(s => {
+        // 🚨 3.1.2: 訪問日が空欄の売主を明示的に除外
         const visitDateStr = s.visit_date;
-        if (!visitDateStr) return false;
+        if (!visitDateStr || visitDateStr.trim() === '') return false;
+        
+        // 🚨 3.1.3: visit_reminder_assigneeが空であることを確認
         const reminderAssignee = (s as any).visit_reminder_assignee || '';
         if (reminderAssignee.trim() !== '') return false;
         
-        const visitDateOnly = visitDateStr.split('T')[0].split(' ')[0];
+        // 🚨 3.1.1: isVisitDayBefore()関数と一致するロジック
+        // TIMESTAMP型対応: visit_dateから日付部分のみを抽出
+        let visitDateOnly = visitDateStr;
+        if (typeof visitDateStr === 'string') {
+          if (visitDateStr.includes(' ')) {
+            visitDateOnly = visitDateStr.split(' ')[0]; // "YYYY-MM-DD HH:MM:SS" → "YYYY-MM-DD"
+          } else if (visitDateStr.includes('T')) {
+            visitDateOnly = visitDateStr.split('T')[0]; // "YYYY-MM-DDTHH:MM:SS.000Z" → "YYYY-MM-DD"
+          }
+        }
+        
         const parts = visitDateOnly.split('-');
         if (parts.length !== 3) return false;
+        
         const visitDate = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+        visitDate.setHours(0, 0, 0, 0);
+        
+        // 水曜定休・木曜2日前ロジック（isVisitDayBeforeUtilと同じ）
         const visitDayOfWeek = visitDate.getDay();
         const daysBeforeVisit = visitDayOfWeek === 4 ? 2 : 1;
         const expectedNotifyDate = new Date(visitDate);
         expectedNotifyDate.setDate(visitDate.getDate() - daysBeforeVisit);
         const expectedNotifyStr = `${expectedNotifyDate.getFullYear()}-${String(expectedNotifyDate.getMonth() + 1).padStart(2, '0')}-${String(expectedNotifyDate.getDate()).padStart(2, '0')}`;
+        
         return expectedNotifyStr === todayJST;
       }).length;
 
