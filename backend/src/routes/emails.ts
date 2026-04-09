@@ -747,6 +747,7 @@ router.post(
             templateName: source === 'buyer_candidate_list' ? '買主候補リスト' : (source === 'pre_public_price_reduction' ? '公開前・値下げメール' : '近隣買主'),
             senderEmail: senderAddress,
             source: source, // 送信元識別子
+            body: body, // メール本文を追加
             createdBy: req.employee?.id || 'system',
           });
           console.log(`[send-distribution] Successfully logged email for buyer: ${recipient.buyerNumber || recipient.email}`);

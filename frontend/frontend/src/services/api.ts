@@ -335,6 +335,12 @@ export const propertyImageApi = {
 
 // Property Listing API
 export const propertyListingApi = {
+  // 物件情報を取得
+  getByPropertyNumber: async (propertyNumber: string) => {
+    const response = await api.get(`/api/property-listings/${propertyNumber}`);
+    return response.data;
+  },
+
   // CHAT送信履歴を取得
   getChatHistory: async (propertyNumber: string, params?: {
     chat_type?: string;
