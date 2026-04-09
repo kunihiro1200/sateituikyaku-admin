@@ -734,6 +734,7 @@ router.post(
       const source = requestSource || (propertyNumber ? 'pre_public_price_reduction' : 'nearby_buyers');
       
       console.log(`[send-distribution] Recording activity logs for ${normalizedRecipients.length} recipients with source: ${source}`);
+      console.log(`[send-distribution] Employee ID: ${req.employee?.id || 'unknown'}`);
       
       for (const recipient of normalizedRecipients) {
         try {
@@ -746,7 +747,7 @@ router.post(
             templateName: source === 'buyer_candidate_list' ? '買主候補リスト' : (source === 'pre_public_price_reduction' ? '公開前・値下げメール' : '近隣買主'),
             senderEmail: senderAddress,
             source: source, // 送信元識別子
-            createdBy: (req as any).user?.id || 'system',
+            createdBy: req.employee?.id || 'system',
           });
           console.log(`[send-distribution] Successfully logged email for buyer: ${recipient.buyerNumber || recipient.email}`);
         } catch (logError) {
