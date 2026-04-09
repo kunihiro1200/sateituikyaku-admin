@@ -523,12 +523,15 @@ router.get('/:propertyNumber/distribution-buyers-enhanced', async (req: Request,
 router.post('/:propertyNumber/send-distribution-emails', async (req: Request, res: Response) => {
   try {
     const { propertyNumber } = req.params;
-    const { recipientEmails, subject, content, htmlBody, from } = req.body;
+    const { recipientEmails, recipients, subject, content, htmlBody, from } = req.body;
+
+    // recipients フィールドを優先、なければ recipientEmails を使用（後方互換性）
+    const normalizedRecipients: Array<{ email: string; buyerNumber?: string }> = recipients || recipientEmails?.map((email: string) => ({ email })) || [];
 
     // バリデーション
-    if (!recipientEmails || !Array.isArray(recipientEmails) || recipientEmails.length === 0) {
+    if (!normalizedRecipients || normalizedRecipients.length === 0) {
       return res.status(400).json({
-        error: 'recipientEmails is required and must be a non-empty array'
+        error: 'recipients or recipientEmails is required and must be a non-empty array'
       });
     }
 
@@ -554,7 +557,9 @@ router.post('/:propertyNumber/send-distribution-emails', async (req: Request, re
 
     // 各受信者にメールを送信
     const results = await Promise.allSettled(
-      recipientEmails.map(async (email: string) => {
+      normalizedRecipients.map(async (recipient) => {
+        const email = typeof recipient === 'string' ? recipient : recipient.email;
+        
         // ダミーのseller objectを作成（EmailServiceのインターフェースに合わせる）
         const dummySeller = {
           id: property.id,
@@ -596,11 +601,57 @@ router.post('/:propertyNumber/send-distribution-emails', async (req: Request, re
 
     const allErrors = [errors, failedResults].filter(e => e).join(', ');
 
+    // activity_logsに記録（メール送信成功後）
+    // 各買主ごとに記録
+    const { ActivityLogService } = await import('../services/ActivityLogService');
+    const activityLogService = new ActivityLogService();
+    
+    // 物件住所を取得
+    const propertyAddresses: Record<string, string> = {};
+    if (property.property_address) {
+      propertyAddresses[propertyNumber] = property.property_address;
+    }
+    
+    console.log(`[send-distribution-emails] Recording activity logs for ${normalizedRecipients.length} recipients with source: pre_public_price_reduction`);
+    console.log(`[send-distribution-emails] Employee ID: ${req.employee?.id || 'unknown'}`);
+    console.log(`[send-distribution-emails] Property addresses:`, propertyAddresses);
+    
+    for (let i = 0; i < normalizedRecipients.length; i++) {
+      const recipient = normalizedRecipients[i];
+      const result = results[i];
+      
+      // メール送信が成功した場合のみ記録
+      if (result.status === 'fulfilled' && result.value.success) {
+        try {
+          const email = typeof recipient === 'string' ? recipient : recipient.email;
+          const buyerNumber = typeof recipient === 'string' ? undefined : recipient.buyerNumber;
+          
+          console.log(`[send-distribution-emails] Logging email for buyer: ${buyerNumber || email}`);
+          await activityLogService.logEmail({
+            buyerId: buyerNumber || email, // buyer_numberを優先、なければemailを使用
+            propertyNumbers: [propertyNumber],
+            propertyAddresses: propertyAddresses,
+            recipientEmail: email,
+            subject,
+            templateName: '公開前・値下げメール',
+            senderEmail: from,
+            source: 'pre_public_price_reduction', // 送信元識別子
+            body: content, // メール本文を追加
+            createdBy: req.employee?.id || 'system',
+          });
+          console.log(`[send-distribution-emails] Successfully logged email for buyer: ${buyerNumber || email}`);
+        } catch (logError) {
+          // activity_logs記録失敗はログのみ（ユーザーには通知しない）
+          console.error(`[send-distribution-emails] Failed to log email activity for ${typeof recipient === 'string' ? recipient : recipient.buyerNumber || recipient.email}:`, logError);
+        }
+      }
+    }
+
     res.json({
       success: failedCount === 0,
       successCount,
       failedCount,
-      totalCount: recipientEmails.length,
+      totalCount: normalizedRecipients.length,
       error: failedCount > 0 ? allErrors : undefined
     });
   } catch (error: any) {
@@ -609,7 +660,7 @@ router.post('/:propertyNumber/send-distribution-emails', async (req: Request, re
       error: error.message || 'Failed to send distribution emails',
       success: false,
       successCount: 0,
-      failedCount: req.body.recipientEmails?.length || 0
+      failedCount: req.body.recipientEmails?.length || req.body.recipients?.length || 0
     });
   }
 });

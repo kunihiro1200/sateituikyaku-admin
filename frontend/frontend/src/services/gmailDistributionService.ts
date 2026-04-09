@@ -276,7 +276,7 @@ export class GmailDistributionService {
     propertyData: Record<string, string>,
     recipientEmails: string[],
     from: string,
-    _buyers: Array<{ buyer_number: string; email: string; [key: string]: any }>
+    buyers: Array<{ buyer_number: string; email: string; [key: string]: any }>
   ): Promise<{
     success: boolean;
     successCount: number;
@@ -287,12 +287,19 @@ export class GmailDistributionService {
       const subject = replacePlaceholders(template.subject, propertyData);
       const body = replacePlaceholders(template.body, propertyData);
 
+      // 買主番号とメールアドレスのマッピングを作成
+      const recipients = recipientEmails.map(email => ({
+        email,
+        buyerNumber: buyers.find(b => b.email === email)?.buyer_number
+      }));
+
       // 物件番号から一括メール送信APIを呼び出し
       const response = await api.post(
         `/api/property-listings/${propertyData.propertyNumber}/send-distribution-emails`,
         {
           templateId: template.id,
-          recipientEmails,
+          recipientEmails, // 後方互換性のために維持
+          recipients, // 買主番号を含む新しいフィールド
           subject,
           content: body,
           htmlBody: body,
