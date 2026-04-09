@@ -520,7 +520,7 @@ router.get('/:propertyNumber/distribution-buyers-enhanced', async (req: Request,
 /**
  * 物件配信メールを一括送信
  */
-router.post('/:propertyNumber/send-distribution-emails', async (req: Request, res: Response) => {
+router.post('/:propertyNumber/send-distribution-emails', authenticate, async (req: Request, res: Response) => {
   try {
     const { propertyNumber } = req.params;
     const { recipientEmails, recipients, subject, content, htmlBody, from } = req.body;
