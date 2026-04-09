@@ -745,12 +745,12 @@ router.post(
           // PropertyListingServiceを使用して物件住所を取得
           const { PropertyListingService } = await import('../services/PropertyListingService');
           const propertyListingService = new PropertyListingService();
-          const property = await propertyListingService.getPropertyListing(propertyNumber);
+          const property = await propertyListingService.getByPropertyNumber(propertyNumber);
           
           console.log(`[send-distribution] PropertyListingService result:`, property ? 'found' : 'not found');
           
           if (property && property.address) {
-            propertyAddresses[property.propertyNumber] = property.address;
+            propertyAddresses[property.property_number] = property.address;
             console.log(`[send-distribution] Property address found: ${property.address}`);
           } else {
             console.warn(`[send-distribution] Property address not found for ${propertyNumber}`);
