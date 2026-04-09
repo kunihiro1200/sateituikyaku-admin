@@ -687,6 +687,9 @@ function SellerStatusSidebarComponent({
         );
       })()}
 
+      {renderCategoryButton('mailingPending', '⑥査定（郵送）', '#0288d1')}
+      {renderCategoryButton('pinrichEmpty', '⑧Pinrich空欄', '#795548')}
+
       {/* 担当者別カテゴリー（動的生成・区切り線なし） */}
       {/* assigneeInitialsが空でもsellersから動的取得するため常に表示 */}
       <Box sx={{ mt: 0.5 }}>
@@ -695,8 +698,6 @@ function SellerStatusSidebarComponent({
 
       {/* その他のカテゴリー（区切り線付き） */}
       <Box sx={{ mt: 0.5, pt: 0.5, borderTop: '1px solid', borderColor: 'grey.200', bgcolor: '#f5f5f5', borderRadius: 1, px: 0.5 }}>
-        {renderCategoryButton('mailingPending', '査定（郵送）', '#0288d1')}
-        {renderCategoryButton('pinrichEmpty', 'Pinrich空欄', '#795548')}
         {renderCategoryButton('exclusive', '専任', '#2e7d32')}
         {renderCategoryButton('general', '一般', '#1565c0')}
         {renderCategoryButton('visitOtherDecision', '訪問後他決', '#ff9800')}
