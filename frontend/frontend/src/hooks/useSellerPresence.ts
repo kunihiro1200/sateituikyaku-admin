@@ -291,7 +291,11 @@ export function useSellerPresenceTrack(
       const timestamp = new Date().toISOString();
       console.log(`[${timestamp}] [useSellerPresence] track 開始: sellerNumber=`, sellerNumber, 'user=', userName, 'retry=', retryCountRef.current);
 
-      const channel = supabase.channel(CHANNEL_NAME, {
+      // ユニークなチャンネル名を生成（タイムスタンプ + ランダム文字列）
+      const uniqueChannelName = `${CHANNEL_NAME}-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+      console.log(`[${timestamp}] [useSellerPresence] track チャンネル名:`, uniqueChannelName);
+
+      const channel = supabase.channel(uniqueChannelName, {
         config: { presence: { key: undefined } },
       });
       channelRef.current = channel;
