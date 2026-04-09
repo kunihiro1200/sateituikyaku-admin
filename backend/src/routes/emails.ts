@@ -4,11 +4,17 @@ import { EmailService } from '../services/EmailService.supabase';
 import { SellerService } from '../services/SellerService.supabase';
 import { ValuationEngine } from '../services/ValuationEngine.supabase';
 import { authenticate } from '../middleware/auth';
+import { createClient } from '@supabase/supabase-js';
 
 const router = Router();
 const emailService = new EmailService();
 const sellerService = new SellerService();
 const valuationEngine = new ValuationEngine();
+
+// Supabaseクライアントを初期化
+const supabaseUrl = process.env.SUPABASE_URL || '';
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 // 全てのルートに認証を適用
 router.use(authenticate);
