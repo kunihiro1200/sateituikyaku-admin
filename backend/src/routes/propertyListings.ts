@@ -638,20 +638,44 @@ router.post('/:propertyNumber/send-distribution-emails', async (req: Request, re
           const email = typeof recipient === 'string' ? recipient : recipient.email;
           const buyerNumber = typeof recipient === 'string' ? undefined : recipient.buyerNumber;
           
-          console.log(`[send-distribution-emails] Logging email for buyer: ${buyerNumber || email}`);
-          await activityLogService.logEmail({
-            buyerId: buyerNumber || email, // buyer_numberを優先、なければemailを使用
-            propertyNumbers: [propertyNumber],
-            propertyAddresses: propertyAddresses,
-            recipientEmail: email,
-            subject,
-            templateName: '公開前・値下げメール',
-            senderEmail: from,
-            source: 'pre_public_price_reduction', // 送信元識別子
-            body: content, // メール本文を追加
-            createdBy: req.employee?.id || 'system',
-          });
-          console.log(`[send-distribution-emails] Successfully logged email for buyer: ${buyerNumber || email}`);
+          // 買主番号がカンマ区切りの場合、分割して各買主番号ごとに記録
+          const buyerNumbers = buyerNumber ? buyerNumber.split(',').map((n: string) => n.trim()) : [];
+          
+          if (buyerNumbers.length > 0) {
+            // 複数の買主番号がある場合、各買主番号ごとに記録
+            for (const singleBuyerNumber of buyerNumbers) {
+              console.log(`[send-distribution-emails] Logging email for buyer: ${singleBuyerNumber}`);
+              await activityLogService.logEmail({
+                buyerId: singleBuyerNumber,
+                propertyNumbers: [propertyNumber],
+                propertyAddresses: propertyAddresses,
+                recipientEmail: email,
+                subject,
+                templateName: '公開前・値下げメール',
+                senderEmail: from,
+                source: 'pre_public_price_reduction', // 送信元識別子
+                body: content, // メール本文を追加
+                createdBy: req.employee?.id || 'system',
+              });
+              console.log(`[send-distribution-emails] Successfully logged email for buyer: ${singleBuyerNumber}`);
+            }
+          } else {
+            // 買主番号がない場合、メールアドレスで記録
+            console.log(`[send-distribution-emails] Logging email for email: ${email}`);
+            await activityLogService.logEmail({
+              buyerId: email,
+              propertyNumbers: [propertyNumber],
+              propertyAddresses: propertyAddresses,
+              recipientEmail: email,
+              subject,
+              templateName: '公開前・値下げメール',
+              senderEmail: from,
+              source: 'pre_public_price_reduction', // 送信元識別子
+              body: content, // メール本文を追加
+              createdBy: req.employee?.id || 'system',
+            });
+            console.log(`[send-distribution-emails] Successfully logged email for email: ${email}`);
+          }
         } catch (logError) {
           // activity_logs記録失敗はログのみ（ユーザーには通知しない）
           console.error(`[send-distribution-emails] Failed to log email activity for ${typeof recipient === 'string' ? recipient : recipient.buyerNumber || recipient.email}:`, logError);
