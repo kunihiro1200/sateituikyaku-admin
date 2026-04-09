@@ -4,23 +4,11 @@ import { EmailService } from '../services/EmailService.supabase';
 import { SellerService } from '../services/SellerService.supabase';
 import { ValuationEngine } from '../services/ValuationEngine.supabase';
 import { authenticate } from '../middleware/auth';
-import { createClient } from '@supabase/supabase-js';
 
 const router = Router();
 const emailService = new EmailService();
 const sellerService = new SellerService();
 const valuationEngine = new ValuationEngine();
-
-// Supabaseクライアントを初期化
-const supabaseUrl = process.env.SUPABASE_URL || '';
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY || '';
-const supabase = createClient(supabaseUrl, supabaseKey);
-
-console.log('[emails.ts] Supabase initialization:', {
-  urlExists: !!supabaseUrl,
-  keyExists: !!supabaseKey,
-  keySource: process.env.SUPABASE_SERVICE_ROLE_KEY ? 'SUPABASE_SERVICE_ROLE_KEY' : (process.env.SUPABASE_SERVICE_KEY ? 'SUPABASE_SERVICE_KEY' : 'none')
-});
 
 // 全てのルートに認証を適用
 router.use(authenticate);
@@ -753,13 +741,16 @@ router.post(
       if (propertyNumber) {
         try {
           console.log(`[send-distribution] Fetching property address for ${propertyNumber}...`);
-          const { data: property, error } = await supabase
-            .from('property_listings')
+          
+          // BaseRepositoryを使用して物件住所を取得
+          const { BaseRepository } = await import('../repositories/BaseRepository');
+          const repo = new BaseRepository();
+          const { data: property, error } = await repo.table('property_listings')
             .select('property_number, address')
             .eq('property_number', propertyNumber)
             .single();
           
-          console.log(`[send-distribution] Supabase query result:`, { property, error });
+          console.log(`[send-distribution] BaseRepository query result:`, { property, error });
           
           if (property && property.address) {
             propertyAddresses[property.property_number] = property.address;
