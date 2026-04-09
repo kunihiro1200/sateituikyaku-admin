@@ -525,8 +525,20 @@ router.post('/:propertyNumber/send-distribution-emails', async (req: Request, re
     const { propertyNumber } = req.params;
     const { recipientEmails, recipients, subject, content, htmlBody, from } = req.body;
 
+    // デバッグログ: リクエストボディを記録
+    console.log(`[send-distribution-emails] Request body:`, JSON.stringify({
+      propertyNumber,
+      recipientEmails: recipientEmails?.length,
+      recipients: recipients?.length,
+      recipientsDetail: recipients,
+      subject,
+      from
+    }));
+
     // recipients フィールドを優先、なければ recipientEmails を使用（後方互換性）
     const normalizedRecipients: Array<{ email: string; buyerNumber?: string }> = recipients || recipientEmails?.map((email: string) => ({ email })) || [];
+
+    console.log(`[send-distribution-emails] Normalized recipients:`, normalizedRecipients);
 
     // バリデーション
     if (!normalizedRecipients || normalizedRecipients.length === 0) {

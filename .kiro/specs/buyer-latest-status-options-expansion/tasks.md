@@ -76,7 +76,7 @@
   - ビルドエラーがないことを確認
   - _Requirements: NFR-002_
 
-- [-] 4.2 Vercelへのデプロイ
+- [x] 4.2 Vercelへのデプロイ
   - フロントエンドをVercelにデプロイ
   - デプロイが成功することを確認
   - _Requirements: NFR-002_
