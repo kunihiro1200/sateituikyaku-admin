@@ -75,8 +75,8 @@ const BuyerPurchaseRateStatisticsPage: React.FC = () => {
     const url = `/buyers?viewingMonth=${yearMonth}&assignee=${encodeURIComponent(assignee)}`;
     console.log('[BuyerPurchaseRateStatisticsPage] Navigating to:', url);
     
-    // 買主リスト画面に遷移（フィルタ付き）
-    navigate(url);
+    // 買主リスト画面を別タブで開く
+    window.open(url, '_blank');
   };
 
   if (loading) {
