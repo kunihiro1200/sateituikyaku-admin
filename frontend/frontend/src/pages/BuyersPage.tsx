@@ -334,9 +334,44 @@ export default function BuyersPage() {
                   
                   console.log('[INFO] Background fetch completed. Table data updated.');
                   
-                  // URLパラメータがある場合は、全件データ取得後に再度フィルタを適用
-                  if (viewingMonth || assigneeParam) {
-                    console.log('[INFO] URL parameters detected. Re-applying filters...');
+                  // URLパラメータがある場合は、全件データ取得後に直接フィルタを適用
+                  const currentViewingMonth = new URLSearchParams(window.location.search).get('viewingMonth');
+                  const currentAssignee = new URLSearchParams(window.location.search).get('assignee');
+                  
+                  if (currentViewingMonth || currentAssignee) {
+                    console.log('[INFO] URL parameters detected. Applying filters directly...', { currentViewingMonth, currentAssignee });
+                    let filtered = [...buyersResult.buyers];
+                    
+                    if (currentViewingMonth) {
+                      filtered = filtered.filter(b => {
+                        if (!b.viewing_date) return false;
+                        return b.viewing_date.substring(0, 7) === currentViewingMonth;
+                      });
+                      console.log(`[INFO] After viewingMonth filter: ${filtered.length} buyers`);
+                    }
+                    
+                    if (currentAssignee) {
+                      filtered = filtered.filter(b => {
+                        return b.follow_up_assignee === currentAssignee ||
+                               (!b.follow_up_assignee && b.initial_assignee === currentAssignee);
+                      });
+                      console.log(`[INFO] After assignee filter: ${filtered.length} buyers`);
+                    }
+                    
+                    // ソート（受付日降順）
+                    filtered.sort((a, b) => {
+                      if (!a.reception_date && !b.reception_date) return 0;
+                      if (!a.reception_date) return 1;
+                      if (!b.reception_date) return -1;
+                      return b.reception_date.localeCompare(a.reception_date);
+                    });
+                    
+                    if (!cancelled) {
+                      setBuyers(filtered.slice(0, rowsPerPage) as any[]);
+                      setTotal(filtered.length);
+                      setLoading(false);
+                    }
+                  } else {
                     setRefetchTrigger(prev => prev + 1);
                   }
                 })
