@@ -40,6 +40,7 @@ export interface InlineEditableFieldProps {
   showEditIndicator?: boolean;  // 編集可能インジケーターを常時表示するか（デフォルト: true）
   onChange?: (fieldName: string, newValue: any) => void;  // 値変更時のコールバック（保存前）
   highlighted?: boolean;  // フィールドを強調表示するかどうか
+  helperText?: string;  // フィールド下部に表示する説明文
 }
 
 export const InlineEditableField: React.FC<InlineEditableFieldProps> = memo(({
@@ -62,6 +63,7 @@ export const InlineEditableField: React.FC<InlineEditableFieldProps> = memo(({
   showEditIndicator = true,
   onChange,
   highlighted = false,
+  helperText,
 }) => {
   const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>(null);
   const [isHovered, setIsHovered] = useState(false);
@@ -517,6 +519,13 @@ export const InlineEditableField: React.FC<InlineEditableFieldProps> = memo(({
         </Typography>
       )}
 
+      {/* Helper text */}
+      {helperText && !isEditing && (
+        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5, ml: 1.5 }}>
+          {helperText}
+        </Typography>
+      )}
+
       {/* Conflict notification */}
       {hasConflict && conflictInfo && (
         <ConflictNotification
@@ -548,6 +557,7 @@ export const InlineEditableField: React.FC<InlineEditableFieldProps> = memo(({
     prevProps.borderPlaceholder === nextProps.borderPlaceholder &&
     prevProps.showEditIndicator === nextProps.showEditIndicator &&
     prevProps.onChange === nextProps.onChange &&
+    prevProps.helperText === nextProps.helperText &&
     JSON.stringify(prevProps.options) === JSON.stringify(nextProps.options) &&
     JSON.stringify(prevProps.permissions) === JSON.stringify(nextProps.permissions)
   );

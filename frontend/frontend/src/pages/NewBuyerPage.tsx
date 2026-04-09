@@ -447,6 +447,8 @@ export default function NewBuyerPage() {
                   value={otherCompanyProperty}
                   onChange={(e) => setOtherCompanyProperty(e.target.value)}
                   placeholder="こちらは詳細な住所のみにしてください。お客様に物件情報として表示されます。他社名や価格は「建物名/価格」欄に書いてください。"
+                  helperText="こちらは詳細な住所のみにしてください。お客様に物件情報として表示されます。他社名や価格は「建物名/価格」欄に書いてください。"
+                  InputLabelProps={{ shrink: true }}
                   sx={{ bgcolor: 'white' }}
                 />
               </Box>
