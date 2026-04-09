@@ -116,14 +116,18 @@ export const useAuthStore = create<AuthState>()(
         throw new Error('有効なセッションが見つかりません。もう一度ログインしてください。');
       }
 
-      // バックエンドにトークンを送信して社員情報を取得
+      // バックエンドにトークンを送信して社員情報を取得（必ずAPIから取得）
       console.log('🔵 Calling backend /auth/callback...');
       const response = await api.post('/auth/callback', {
         access_token: session.access_token,
         refresh_token: session.refresh_token,
       });
 
-      console.log('✅ Got employee info:', response.data.employee);
+      console.log('✅ Got employee info from API:', {
+        name: response.data.employee.name,
+        initials: response.data.employee.initials,
+        email: response.data.employee.email,
+      });
 
       // トークンを保存
       localStorage.setItem('session_token', session.access_token);
@@ -142,6 +146,7 @@ export const useAuthStore = create<AuthState>()(
       console.error('❌ Auth callback error:', error);
       localStorage.removeItem('session_token');
       localStorage.removeItem('refresh_token');
+      localStorage.removeItem('auth-storage');
       set({ employee: null, isAuthenticated: false, isLoading: false });
       
       // エラーメッセージを改善
@@ -199,7 +204,13 @@ export const useAuthStore = create<AuthState>()(
             localStorage.setItem('session_token', refreshData.session.access_token);
             localStorage.setItem('refresh_token', refreshData.session.refresh_token);
             try {
+              // 必ずAPIから最新のemployeeデータを取得
               const response = await api.get('/auth/me');
+              console.log('✅ Got employee info from API:', {
+                name: response.data.name,
+                initials: response.data.initials,
+                email: response.data.email,
+              });
               set({ employee: response.data, isAuthenticated: true, isLoading: false });
               return;
             } catch {
@@ -218,10 +229,14 @@ export const useAuthStore = create<AuthState>()(
         localStorage.setItem('refresh_token', session.refresh_token);
       }
 
-      // 社員情報を取得
+      // 社員情報を取得（必ずAPIから取得、キャッシュを使用しない）
       try {
         const response = await api.get('/auth/me');
-        console.log('✅ Auth check successful');
+        console.log('✅ Auth check successful, got employee info from API:', {
+          name: response.data.name,
+          initials: response.data.initials,
+          email: response.data.email,
+        });
         set({ employee: response.data, isAuthenticated: true, isLoading: false });
       } catch (apiError: any) {
         console.error('❌ Failed to get employee info:', apiError);
@@ -234,20 +249,22 @@ export const useAuthStore = create<AuthState>()(
         
         localStorage.removeItem('session_token');
         localStorage.removeItem('refresh_token');
+        localStorage.removeItem('auth-storage');
         set({ employee: null, isAuthenticated: false, isLoading: false });
       }
     } catch (error) {
       console.error('❌ Check auth error:', error);
       localStorage.removeItem('session_token');
       localStorage.removeItem('refresh_token');
+      localStorage.removeItem('auth-storage');
       set({ employee: null, isAuthenticated: false, isLoading: false });
     }
   },
 }),
     {
       name: 'auth-storage', // localStorageのキー名
+      // employeeデータはキャッシュしない（常にAPIから取得）
       partialize: (state) => ({
-        employee: state.employee,
         isAuthenticated: state.isAuthenticated,
       }),
     }
