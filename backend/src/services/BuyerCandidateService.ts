@@ -53,6 +53,7 @@ export class BuyerCandidateService {
    */
   async getCandidatesForProperty(propertyNumber: string): Promise<BuyerCandidateResponse> {
     console.log(`[BuyerCandidateService] Searching for property: ${propertyNumber}`);
+    const startTime = Date.now();
 
     // 物件情報を取得
     const { data: property, error: propertyError } = await this.supabase
@@ -76,9 +77,12 @@ export class BuyerCandidateService {
     const propertyCoords = await this.getPropertyCoordsFromAddress(property);
 
     // 買主を全件取得（Supabaseの1000件制限を回避するためページネーション）
+    // パフォーマンス最適化: 必要な件数が見つかったら早期終了
     const buyers: any[] = [];
     const PAGE_SIZE = 1000;
+    const TARGET_CANDIDATES = 100; // 目標候補数（フィルタリング後に50件残ることを想定）
     let page = 0;
+    
     while (true) {
       const { data, error: buyersError } = await this.supabase
         .from('buyers')
@@ -96,13 +100,20 @@ export class BuyerCandidateService {
 
       if (!data || data.length === 0) break;
       buyers.push(...data);
+      
+      // パフォーマンス最適化: 十分な候補が見つかったら早期終了
+      if (buyers.length >= TARGET_CANDIDATES) {
+        console.log(`[BuyerCandidateService] Early termination: ${buyers.length} buyers fetched`);
+        break;
+      }
+      
       if (data.length < PAGE_SIZE) break;
       page++;
     }
     console.log(`[BuyerCandidateService] Total buyers fetched: ${buyers.length}`);
 
-    // フィルタリング（非同期処理 - 距離マッチング対応）
-    const candidates = await this.filterCandidatesAsync(
+    // フィルタリング（最適化版 - 距離マッチングを条件付きで実行）
+    const candidates = await this.filterCandidatesOptimized(
       buyers || [],
       property.property_type,
       property.sales_price,
@@ -149,6 +160,9 @@ export class BuyerCandidateService {
         inquiry_property_price: inquiryPropertyPrice,
       };
     });
+
+    const endTime = Date.now();
+    console.log(`[BuyerCandidateService] Total processing time: ${endTime - startTime}ms`);
 
     return {
       candidates: candidatesWithAddress,
@@ -252,6 +266,68 @@ export class BuyerCandidateService {
           candidates.push(buyer);
         }
       }
+    }
+
+    return candidates;
+  }
+
+  /**
+   * 買主候補をフィルタリング（最適化版 - 距離マッチングを条件付きで実行）
+   * パフォーマンス最適化:
+   * 1. エリアマッチングで50件以上見つかった場合、距離マッチングをスキップ
+   * 2. 距離マッチングは最大100件まで実行
+   */
+  private async filterCandidatesOptimized(
+    buyers: any[],
+    propertyType: string | null,
+    salesPrice: number | null,
+    propertyAreaNumbers: string[],
+    propertyCoords: { lat: number; lng: number } | null
+  ): Promise<any[]> {
+    const candidates: any[] = [];
+    const candidatesWithoutDistance: any[] = [];
+
+    // フェーズ1: エリアマッチングのみで候補を収集
+    for (const buyer of buyers) {
+      // 既存フィルタを先に適用
+      if (this.shouldExcludeBuyer(buyer)) continue;
+      if (!this.matchesStatus(buyer)) continue;
+      if (!this.matchesPropertyTypeCriteria(buyer, propertyType)) continue;
+      if (!this.matchesPriceCriteria(buyer, salesPrice, propertyType)) continue;
+
+      // 配信エリアマッチング
+      if (this.matchesAreaCriteria(buyer, propertyAreaNumbers)) {
+        candidates.push(buyer);
+      } else {
+        // エリアマッチングしなかった買主を保存（距離マッチング用）
+        candidatesWithoutDistance.push(buyer);
+      }
+    }
+
+    console.log(`[BuyerCandidateService] Area matching candidates: ${candidates.length}`);
+
+    // フェーズ2: エリアマッチングで50件未満の場合のみ、距離マッチングを実行
+    if (candidates.length < 50 && propertyCoords && candidatesWithoutDistance.length > 0) {
+      console.log(`[BuyerCandidateService] Running distance matching for ${candidatesWithoutDistance.length} buyers`);
+      
+      // 距離マッチングは最大100件まで実行（パフォーマンス最適化）
+      const maxDistanceChecks = Math.min(100, candidatesWithoutDistance.length);
+      
+      for (let i = 0; i < maxDistanceChecks; i++) {
+        const buyer = candidatesWithoutDistance[i];
+        const matchesByDistance = await this.matchesByInquiryDistance(buyer, propertyCoords, this.geocodingCache);
+        if (matchesByDistance) {
+          candidates.push(buyer);
+          
+          // 50件に達したら早期終了
+          if (candidates.length >= 50) {
+            console.log(`[BuyerCandidateService] Early termination: 50 candidates found`);
+            break;
+          }
+        }
+      }
+    } else {
+      console.log(`[BuyerCandidateService] Skipping distance matching (${candidates.length} candidates found by area matching)`);
     }
 
     return candidates;

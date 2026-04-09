@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // 本番環境では強制的に正しいバックエンドURLを使用
 const API_BASE_URL = import.meta.env.MODE === 'production' 
-  ? 'https://baikyaku-property-site3.vercel.app'
+  ? 'https://sateituikyaku-admin-backend.vercel.app'
   : (import.meta.env.VITE_API_URL || 'http://localhost:3000');
 
 // デバッグ用ログ
