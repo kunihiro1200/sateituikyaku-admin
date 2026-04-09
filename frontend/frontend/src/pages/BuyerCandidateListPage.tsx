@@ -258,8 +258,14 @@ export default function BuyerCandidateListPage() {
   if (loading) {
     return (
       <Container maxWidth="xl" sx={{ py: 3 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
-          <CircularProgress />
+        <Box sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', minHeight: '60vh', gap: 2 }}>
+          <CircularProgress size={60} />
+          <Typography variant="h6" color="text.secondary">
+            買主候補を検索中...
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            約10-15秒かかります
+          </Typography>
         </Box>
       </Container>
     );
