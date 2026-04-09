@@ -96,6 +96,7 @@ export class ActivityLogService extends BaseRepository {
     buyerId?: string;
     sellerId?: string;
     propertyNumbers: string[];
+    propertyAddresses?: Record<string, string>;  // 物件番号 → 住所のマップ
     recipientEmail: string;
     subject: string;
     templateName?: string;
@@ -114,6 +115,7 @@ export class ActivityLogService extends BaseRepository {
       targetId: params.buyerId || params.sellerId || '',
       metadata: {
         property_numbers: params.propertyNumbers,
+        propertyAddresses: params.propertyAddresses || {},  // 物件住所を追加
         recipient_email: params.recipientEmail,
         subject: params.subject,
         templateName: params.templateName,

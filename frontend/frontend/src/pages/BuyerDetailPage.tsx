@@ -1672,11 +1672,23 @@ TEL：097-533-2022`;
                           </Box>
                         )}
                         {!isSms && propertyNumbers.length > 0 && (
-                          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 1 }}>
-                            <Typography variant="caption" color="text.secondary" sx={{ mr: 1 }}>物件:</Typography>
-                            {propertyNumbers.map((pn: string) => (
-                              <Chip key={pn} label={pn} size="small" variant="outlined" sx={{ height: 20, fontSize: '0.7rem' }} />
-                            ))}
+                          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, mb: 1 }}>
+                            <Typography variant="caption" color="text.secondary">物件:</Typography>
+                            {propertyNumbers.map((pn: string) => {
+                              // metadata.propertyAddressesから住所を取得（存在する場合）
+                              const propertyAddresses = metadata.propertyAddresses || {};
+                              const address = propertyAddresses[pn] || '';
+                              return (
+                                <Box key={pn} sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                  <Chip label={pn} size="small" variant="outlined" sx={{ height: 20, fontSize: '0.7rem' }} />
+                                  {address && (
+                                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
+                                      {address}
+                                    </Typography>
+                                  )}
+                                </Box>
+                              );
+                            })}
                           </Box>
                         )}
                         {!isSms && metadata.preViewingNotes && (
