@@ -6,6 +6,7 @@ interface PresenceStoreState {
   addPresence: (record: PresenceRecord) => void;
   removePresence: (sellerNumber: string, userName: string) => void;
   clearPresence: (sellerNumber: string) => void;
+  clearAllPresence: () => void; // 全てのプレゼンス情報をクリア
 }
 
 export const usePresenceStore = create<PresenceStoreState>((set) => ({
@@ -60,5 +61,10 @@ export const usePresenceStore = create<PresenceStoreState>((set) => ({
       console.log('[presenceStore] clearPresence:', newState);
       return { presenceState: newState };
     });
+  },
+  
+  clearAllPresence: () => {
+    console.log('[presenceStore] clearAllPresence');
+    set({ presenceState: {} });
   },
 }));

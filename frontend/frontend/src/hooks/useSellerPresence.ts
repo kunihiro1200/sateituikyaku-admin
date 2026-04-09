@@ -66,9 +66,13 @@ export function useSellerPresenceSubscribe(): UseSellerPresenceSubscribeResult {
   const presenceState = usePresenceStore((state) => state.presenceState);
   const addPresence = usePresenceStore((state) => state.addPresence);
   const removePresence = usePresenceStore((state) => state.removePresence);
+  const clearAllPresence = usePresenceStore((state) => state.clearAllPresence);
 
   useEffect(() => {
     console.log('[useSellerPresence] subscribe: チャンネル作成');
+    
+    // マウント時に古いプレゼンス情報をクリア
+    clearAllPresence();
 
     // BroadcastChannelを作成（同じブラウザ内のタブ間通信用）
     try {
@@ -143,47 +147,6 @@ export function useSellerPresenceSubscribe(): UseSellerPresenceSubscribeResult {
         }
       };
     }
-
-    // CustomEventからのメッセージを受信（同じタブ内の即座の更新用）
-    const handleCustomEvent = (event: Event) => {
-      const customEvent = event as CustomEvent;
-      const timestamp = new Date().toISOString();
-      console.log(`[${timestamp}] [useSellerPresence] CustomEvent受信:`, customEvent.detail);
-      
-      if (customEvent.detail.type === 'track') {
-        // 即座にグローバルステートに追加
-        addPresence({
-          seller_number: customEvent.detail.seller_number,
-          user_name: customEvent.detail.user_name,
-          entered_at: customEvent.detail.entered_at,
-        });
-        console.log(`[${timestamp}] [useSellerPresence] CustomEvent ローカルステート即座更新`);
-      } else if (customEvent.detail.type === 'untrack') {
-        // 5秒後に削除（leaveタイマーと同じロジック）
-        const sellerNumber = customEvent.detail.seller_number;
-        const userName = customEvent.detail.user_name;
-        
-        // 既存のタイマーをキャンセル
-        const timerKey = `${sellerNumber}-${userName}`;
-        if (leaveTimersRef.current.has(timerKey)) {
-          const timer = leaveTimersRef.current.get(timerKey);
-          if (timer) clearTimeout(timer);
-        }
-        
-        // 5秒後に削除
-        const timer = setTimeout(() => {
-          const delayTimestamp = new Date().toISOString();
-          console.log(`[${delayTimestamp}] [useSellerPresence] CustomEvent untrack: ${PRESENCE_PERSIST_DURATION_MS}ms経過、削除: ${sellerNumber} - ${userName}`);
-          removePresence(sellerNumber, userName);
-          leaveTimersRef.current.delete(timerKey);
-        }, PRESENCE_PERSIST_DURATION_MS);
-        
-        leaveTimersRef.current.set(timerKey, timer);
-        console.log(`[${timestamp}] [useSellerPresence] CustomEvent untrackタイマー設定: ${timerKey} (${PRESENCE_PERSIST_DURATION_MS}ms後)`);
-      }
-    };
-    
-    window.addEventListener(CUSTOM_EVENT_NAME, handleCustomEvent);
 
     channel
       .on('presence', { event: 'sync' }, () => {
