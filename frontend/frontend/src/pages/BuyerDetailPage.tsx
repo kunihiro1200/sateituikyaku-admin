@@ -1684,7 +1684,6 @@ TEL：097-533-2022`;
                               const propertyAddresses = metadata.propertyAddresses || {};
                               const address = propertyAddresses[pn] || '';
                               const hasBody = !!metadata.body;
-                              console.log('[BuyerDetailPage] Email activity:', { pn, hasBody, bodyLength: metadata.body?.length });
                               return (
                                 <Box 
                                   key={pn} 
@@ -1697,17 +1696,24 @@ TEL：097-533-2022`;
                                     p: 0.5,
                                   }}
                                   onClick={() => {
-                                    console.log('[BuyerDetailPage] Clicked property:', { pn, hasBody, body: metadata.body });
                                     if (metadata.body) {
                                       setSelectedEmailBody(metadata.body);
                                       setEmailBodyModalOpen(true);
+                                    } else {
+                                      setSnackbar({ open: true, message: 'メール本文が保存されていません（古いメールのため）', severity: 'warning' });
                                     }
                                   }}
+                                  title={hasBody ? 'クリックしてメール本文を表示' : 'メール本文が保存されていません'}
                                 >
                                   <Chip label={pn} size="small" variant="outlined" sx={{ height: 20, fontSize: '0.7rem' }} />
                                   {address && (
                                     <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
                                       {address}
+                                    </Typography>
+                                  )}
+                                  {hasBody && (
+                                    <Typography variant="caption" color="primary" sx={{ fontSize: '0.6rem', ml: 0.5 }}>
+                                      📧
                                     </Typography>
                                   )}
                                 </Box>
