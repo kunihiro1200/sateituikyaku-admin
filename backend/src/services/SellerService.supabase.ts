@@ -806,10 +806,11 @@ export class SellerService extends BaseRepository {
     await CacheHelper.del('sellers:sidebar-counts');
 
     // サイドバーカウント更新（非同期、ノンブロッキング）
+    // 🚨 重要: SellerSidebarCountsUpdateService（全体更新）を使用
     if (this.shouldUpdateSellerSidebarCounts(updates)) {
-      const { SidebarCountsUpdateService } = await import('./SidebarCountsUpdateService');
-      const sidebarService = new SidebarCountsUpdateService(this.supabase);
-      sidebarService.updateSellerSidebarCounts(sellerId).catch(err => {
+      const { SellerSidebarCountsUpdateService } = await import('./SellerSidebarCountsUpdateService');
+      const sidebarService = new SellerSidebarCountsUpdateService(this.supabase);
+      sidebarService.updateSellerSidebarCounts().catch(err => {
         console.error('⚠️ Failed to update seller sidebar counts:', err);
       });
     }

@@ -4,7 +4,7 @@
 
 ### 1. フロントエンド実装
 
-- [ ] 1.1 選択肢定義ファイルの更新
+- [x] 1.1 選択肢定義ファイルの更新
   - ファイル: `frontend/frontend/src/utils/buyerLatestStatusOptions.ts`
   - 内容: `LATEST_STATUS_OPTIONS`配列に`{ value: 'BZ：Bだが次電日不要', label: 'BZ：Bだが次電日不要' }`を追加
   - 位置: `AZ:Aだが次電日不要`の直後

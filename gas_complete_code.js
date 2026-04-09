@@ -484,7 +484,17 @@ function syncSellerList() {
     }
   } catch (e) { Logger.log('❌ 削除同期エラー: ' + e.toString()); }
   
-  // updateSidebarCounts_(sheetRows); // 無効化: seller_sidebar_countsテーブルを削除したため不要
+  // サイドバーカウント更新（バックエンドAPIを呼び出し）
+  try {
+    Logger.log('📊 サイドバーカウント更新を開始...');
+    var sidebarResponse = postToBackend('/api/sellers/sidebar-counts/update', {});
+    var sidebarStatusCode = sidebarResponse.getResponseCode();
+    if (sidebarStatusCode >= 200 && sidebarStatusCode < 300) {
+      Logger.log('✅ サイドバーカウント更新成功');
+    } else {
+      Logger.log('❌ サイドバーカウント更新失敗: HTTP ' + sidebarStatusCode);
+    }
+  } catch (e) { Logger.log('❌ サイドバーカウント更新エラー: ' + e.toString()); }
   
   var duration = (new Date() - startTime) / 1000;
   Logger.log('  所要時間: ' + duration + '秒');

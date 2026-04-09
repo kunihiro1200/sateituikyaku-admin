@@ -28,6 +28,7 @@ export const LATEST_STATUS_OPTIONS: LatestStatusOption[] = [
   { value: '2番手', label: '2番手' },
   { value: '3番手', label: '3番手' },
   { value: 'AZ:Aだが次電日不要', label: 'AZ:Aだが次電日不要' },
+  { value: 'BZ：Bだが次電日不要', label: 'BZ：Bだが次電日不要' },
   { value: '2番手買付提出済み', label: '2番手買付提出済み' },
   { value: '3番手買付提出済み', label: '3番手買付提出済み' },
 ];
