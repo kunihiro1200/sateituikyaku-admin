@@ -97,6 +97,7 @@ export class PropertyListingService {
         special_notes,
         storage_location,
         seller_name,
+        seller_email,
         buyer_name,
         sales_assignee,
         status,
@@ -120,7 +121,7 @@ export class PropertyListingService {
 
     // フィルタリング
     if (search) {
-      query = query.or(`property_number.ilike.%${search}%,address.ilike.%${search}%,seller_name.ilike.%${search}%`);
+      query = query.or(`property_number.ilike.%${search}%,address.ilike.%${search}%,seller_name.ilike.%${search}%,seller_email.ilike.%${search}%`);
     }
     if (status) {
       query = query.eq('status', status);
