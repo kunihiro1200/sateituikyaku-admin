@@ -259,6 +259,7 @@ export default function BuyersPage() {
         }
 
         // 初回ロード時：サイドバーカウントのみを高速取得（Requirements 5.1: 5秒以内）
+        // ただし、URLパラメータ（viewingMonth, assignee）がある場合は全件データも取得
         if (!sidebarLoadedRef.current) {
           const fetchStartTime = Date.now();
           
@@ -286,6 +287,7 @@ export default function BuyersPage() {
               console.log('[INFO] Sidebar displayed. Starting background fetch for full buyers data...');
               
               // ステップ2: 全件データをバックグラウンドで非同期取得（23秒かかるがサイドバー表示をブロックしない）
+              // URLパラメータがある場合は優先的に取得
               const bgFetchStartTime = Date.now();
               api.get('/api/buyers/status-categories-with-buyers')
                 .then((buyersRes) => {
@@ -320,6 +322,12 @@ export default function BuyersPage() {
                   setDataReady(prev => !prev); // トリガー更新
                   
                   console.log('[INFO] Background fetch completed. Table data updated.');
+                  
+                  // URLパラメータがある場合は、全件データ取得後に再度フィルタを適用
+                  if (viewingMonth || assigneeParam) {
+                    console.log('[INFO] URL parameters detected. Re-applying filters...');
+                    setRefetchTrigger(prev => prev + 1);
+                  }
                 })
                 .catch((err) => {
                   console.error('[ERROR] Background buyers fetch failed:', err);  // Requirements 5.3
