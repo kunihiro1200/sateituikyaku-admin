@@ -584,8 +584,9 @@ export class GoogleSheetsClient {
 
   /**
    * 特定のカラムで値を検索して行番号を取得（1-indexed）
+   * リトライロジック付き（最大3回、100ms遅延）
    */
-  async findRowByColumn(columnName: string, value: string | number): Promise<number | null> {
+  async findRowByColumn(columnName: string, value: string | number, maxRetries: number = 3): Promise<number | null> {
     this.ensureAuthenticated();
     
     console.log(`🔍 [GoogleSheetsClient] Finding row by column: ${columnName}, value: ${value}`);
@@ -602,34 +603,54 @@ export class GoogleSheetsClient {
 
     // A=0, B=1, ... Z=25, AA=26, ...
     const columnLetter = this.numberToColumnLetter(columnIndex);
-    const range = `'${this.config.sheetName}'!${columnLetter}2:${columnLetter}`;
+    
+    // 検索範囲を明示的に指定（最大10000行まで）
+    const range = `'${this.config.sheetName}'!${columnLetter}2:${columnLetter}10000`;
 
     console.log(`🔍 [GoogleSheetsClient] Reading range: ${range}`);
 
-    const response = await this.sheets!.spreadsheets.values.get({
-      spreadsheetId: this.config.spreadsheetId,
-      range,
-    });
+    // リトライロジック
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        const response = await this.sheets!.spreadsheets.values.get({
+          spreadsheetId: this.config.spreadsheetId,
+          range,
+        });
 
-    const values = response.data.values || [];
-    
-    console.log(`🔍 [GoogleSheetsClient] Found ${values.length} rows in column ${columnName}`);
-    
-    for (let i = 0; i < values.length; i++) {
-      const cellValue = String(values[i][0]).trim();
-      const searchValue = String(value).trim();
-      
-      if (i < 5) {
-        console.log(`🔍 [GoogleSheetsClient] Row ${i + 2}: "${cellValue}" === "${searchValue}"? ${cellValue === searchValue}`);
-      }
-      
-      if (cellValue === searchValue) {
-        console.log(`✅ [GoogleSheetsClient] Found match at row ${i + 2}`);
-        return i + 2; // +2 because: +1 for header row, +1 for 0-indexed to 1-indexed
+        const values = response.data.values || [];
+        
+        console.log(`🔍 [GoogleSheetsClient] Found ${values.length} rows in column ${columnName} (attempt ${attempt})`);
+        
+        for (let i = 0; i < values.length; i++) {
+          const cellValue = String(values[i][0] || '').trim();
+          const searchValue = String(value).trim();
+          
+          if (i < 5) {
+            console.log(`🔍 [GoogleSheetsClient] Row ${i + 2}: "${cellValue}" === "${searchValue}"? ${cellValue === searchValue}`);
+          }
+          
+          if (cellValue === searchValue) {
+            console.log(`✅ [GoogleSheetsClient] Found match at row ${i + 2} (attempt ${attempt})`);
+            return i + 2; // +2 because: +1 for header row, +1 for 0-indexed to 1-indexed
+          }
+        }
+
+        console.log(`❌ [GoogleSheetsClient] No match found for value: ${value} (attempt ${attempt})`);
+        return null;
+      } catch (error: any) {
+        console.error(`❌ [GoogleSheetsClient] API error (attempt ${attempt}/${maxRetries}):`, error.message);
+        
+        // 最後の試行でない場合は遅延を挟む
+        if (attempt < maxRetries) {
+          console.log(`⏳ [GoogleSheetsClient] Waiting 100ms before retry...`);
+          await new Promise(resolve => setTimeout(resolve, 100));
+        } else {
+          // 最後の試行でもエラーの場合は例外をスロー
+          throw error;
+        }
       }
     }
 
-    console.log(`❌ [GoogleSheetsClient] No match found for value: ${value}`);
     return null;
   }
 

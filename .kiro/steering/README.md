@@ -25,6 +25,7 @@
 
 ### 日付・時刻関連編集時のみ
 - `timezone-handling-rules.md` - `**/*{date,time,Date,Time}*.{ts,tsx,js}`
+- `date-field-handling-rules.md` - `**/*{date,Date,time,Time}*.{ts,tsx,js}`
 
 ## 🔧 手動読み込み（`#ファイル名`で参照）
 
@@ -49,6 +50,13 @@
 ### Spec作成時
 - `#spec-file-size-guidelines` - Specファイルサイズガイドライン
 
+### 実装記録系（過去の修正記録）
+- `#visit-appointment-features` - 訪問予約機能の実装記録
+- `#property-listing-spreadsheet-sync-fix` - 物件リストスプレッドシート同期修正
+- `#calendar-send-fix` - カレンダー送信400エラー修正
+- `#buyer-other-property-section-fix` - 買主詳細画面「他社物件情報」セクション修正
+- `#buyer-email-history-property-display` - 買主メール・SMS送信履歴への物件情報表示
+
 ## 🚫 除外ファイル（.kiroignore）
 
 以下のファイルはKiroのコンテキストから除外されています：
@@ -62,5 +70,5 @@
 
 ---
 
-**最終更新日**: 2026年4月6日
-**変更**: 常時読み込みを5ファイルのみに削減、大部分を条件付き/手動読み込みに変更、.kiroignoreを追加
+**最終更新日**: 2026年4月9日
+**変更**: 実装記録系ファイル6つを手動読み込みに変更、date-field-handling-rules.mdを条件付き読み込みに変更

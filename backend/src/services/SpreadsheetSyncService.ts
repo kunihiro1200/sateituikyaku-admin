@@ -19,6 +19,12 @@ export interface BatchSyncResult {
 }
 
 /**
+ * 同期処理のロックマップ（売主番号 → Promise）
+ * 同じ売主番号に対する同期処理を直列化するために使用
+ */
+const syncLocks = new Map<string, Promise<SyncResult>>();
+
+/**
  * スプレッドシート同期サービス
  * 
  * Supabaseのデータをスプレッドシートに同期します。
@@ -64,6 +70,45 @@ export class SpreadsheetSyncService {
 
       console.log(`✅ [SpreadsheetSync] Found seller: ${seller.seller_number}`);
 
+      // 売主番号でロックを取得（同じ売主番号の同期処理を直列化）
+      const existingLock = syncLocks.get(seller.seller_number);
+      if (existingLock) {
+        console.log(`🔒 [SpreadsheetSync] Waiting for existing sync to complete for ${seller.seller_number}`);
+        await existingLock;
+        console.log(`🔓 [SpreadsheetSync] Lock released for ${seller.seller_number}, proceeding with sync`);
+      }
+
+      // 新しいロックを作成
+      const syncPromise = this.performSync(seller);
+      syncLocks.set(seller.seller_number, syncPromise);
+
+      try {
+        const result = await syncPromise;
+        return result;
+      } finally {
+        // ロックを解放
+        syncLocks.delete(seller.seller_number);
+        console.log(`🔓 [SpreadsheetSync] Lock released for ${seller.seller_number}`);
+      }
+    } catch (error: any) {
+      console.error(`❌ [SpreadsheetSync] Error:`, error.message);
+      return {
+        success: false,
+        rowsAffected: 0,
+        error: error.message,
+      };
+    }
+  }
+
+  /**
+   * 実際の同期処理を実行（ロック内で実行される）
+   */
+  private async performSync(seller: any): Promise<SyncResult> {
+    try {
+      // ヘッダーキャッシュをクリア（常に最新のヘッダー情報を使用）
+      this.sheetsClient.clearHeaderCache();
+      console.log(`🔄 [SpreadsheetSync] Header cache cleared for ${seller.seller_number}`);
+
       // 暗号化フィールドを復号
       const decryptedSeller = this.decryptSellerFields(seller);
 
@@ -76,17 +121,17 @@ export class SpreadsheetSyncService {
       const sheetRow = this.columnMapper.mapToSheet(decryptedSeller as SellerData);
       console.log(`📋 [SpreadsheetSync] Converted to sheet row`);
 
-      // 売主番号で既存行を検索
-      const existingRowIndex = await this.findRowBySellerId(seller.seller_number);
+      // 既存行を検索（リトライロジック付き）
+      const existingRowIndex = await this.findRowBySellerIdWithRetry(seller.seller_number);
 
       if (existingRowIndex) {
         // 既存行を部分更新（指定カラムのみ更新し、計算列などは変更しない）
-        console.log(`📝 [SpreadsheetSync] Updating existing row ${existingRowIndex} (partial update)`);
+        console.log(`📝 [SpreadsheetSync] Updating existing row ${existingRowIndex} for ${seller.seller_number} (partial update)`);
         await this.sheetsClient.updateRowPartial(existingRowIndex, sheetRow);
-        console.log(`✅ [SpreadsheetSync] Updated row ${existingRowIndex}`);
+        console.log(`✅ [SpreadsheetSync] Updated row ${existingRowIndex} for ${seller.seller_number}`);
         
         // Supabaseの同期時刻を更新
-        await this.updateSyncTimestamp(sellerId);
+        await this.updateSyncTimestamp(seller.id);
 
         return {
           success: true,
@@ -95,12 +140,12 @@ export class SpreadsheetSyncService {
         };
       } else {
         // 新規行を追加
-        console.log(`➕ [SpreadsheetSync] Adding new row for ${seller.seller_number}`);
+        console.log(`➕ [SpreadsheetSync] Adding new row for ${seller.seller_number} (existing row not found after retry)`);
         await this.sheetsClient.appendRow(sheetRow);
-        console.log(`✅ [SpreadsheetSync] Added new row`);
+        console.log(`✅ [SpreadsheetSync] Added new row for ${seller.seller_number}`);
         
         // Supabaseの同期時刻を更新
-        await this.updateSyncTimestamp(sellerId);
+        await this.updateSyncTimestamp(seller.id);
 
         return {
           success: true,
@@ -109,13 +154,46 @@ export class SpreadsheetSyncService {
         };
       }
     } catch (error: any) {
-      console.error(`❌ [SpreadsheetSync] Error:`, error.message);
-      return {
-        success: false,
-        rowsAffected: 0,
-        error: error.message,
-      };
+      console.error(`❌ [SpreadsheetSync] Error in performSync for ${seller.seller_number}:`, error.message);
+      throw error;
     }
+  }
+
+  /**
+   * 既存行を検索（リトライロジック付き）
+   * 最大3回まで再試行し、100ms遅延を挟む
+   */
+  private async findRowBySellerIdWithRetry(sellerNumber: string, maxRetries: number = 3): Promise<number | null> {
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        console.log(`🔍 [SpreadsheetSync] Searching for seller ${sellerNumber} (attempt ${attempt}/${maxRetries})...`);
+        const rowIndex = await this.sheetsClient.findRowByColumn(this.sellerNumberColumn, sellerNumber);
+        
+        if (rowIndex) {
+          console.log(`✅ [SpreadsheetSync] Found existing row ${rowIndex} for ${sellerNumber} (attempt ${attempt})`);
+          return rowIndex;
+        } else {
+          console.log(`❌ [SpreadsheetSync] Row not found for ${sellerNumber} (attempt ${attempt})`);
+          
+          // 最後の試行でない場合は遅延を挟む
+          if (attempt < maxRetries) {
+            console.log(`⏳ [SpreadsheetSync] Waiting 100ms before retry...`);
+            await new Promise(resolve => setTimeout(resolve, 100));
+          }
+        }
+      } catch (error: any) {
+        console.error(`❌ [SpreadsheetSync] Error finding seller ${sellerNumber} (attempt ${attempt}):`, error.message);
+        
+        // 最後の試行でない場合は遅延を挟む
+        if (attempt < maxRetries) {
+          console.log(`⏳ [SpreadsheetSync] Waiting 100ms before retry...`);
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+      }
+    }
+    
+    console.log(`❌ [SpreadsheetSync] Failed to find row for ${sellerNumber} after ${maxRetries} attempts`);
+    return null;
   }
 
   /**
@@ -161,8 +239,8 @@ export class SpreadsheetSyncService {
           // スプレッドシート形式に変換
           const sheetRow = this.columnMapper.mapToSheet(decryptedSeller as SellerData);
 
-          // 売主番号で既存行を検索
-          const existingRowIndex = await this.findRowBySellerId(seller.seller_number);
+          // 売主番号で既存行を検索（リトライロジック付き）
+          const existingRowIndex = await this.findRowBySellerIdWithRetry(seller.seller_number);
 
           if (existingRowIndex) {
             updates.push({ rowIndex: existingRowIndex, values: sheetRow });
