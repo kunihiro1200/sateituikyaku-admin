@@ -57,6 +57,10 @@ export const useAuthStore = create<AuthState>()(
       console.log('🔵 handleAuthCallback called');
       console.log('🔵 Current URL:', window.location.href);
       
+      // 古いキャッシュをクリア（新しいログインの前に）
+      localStorage.removeItem('auth-storage');
+      console.log('🔵 Cleared old auth cache');
+      
       // URLからハッシュフラグメントを確認（Supabase Authはハッシュフラグメントでトークンを返す）
       const hashParams = new URLSearchParams(window.location.hash.substring(1));
       const hashAccessToken = hashParams.get('access_token');
@@ -157,6 +161,8 @@ export const useAuthStore = create<AuthState>()(
     } finally {
       localStorage.removeItem('session_token');
       localStorage.removeItem('refresh_token');
+      // Zustand persistのキャッシュもクリア
+      localStorage.removeItem('auth-storage');
       set({ employee: null, isAuthenticated: false });
     }
   },
