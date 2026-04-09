@@ -59,6 +59,26 @@ const BuyerPurchaseRateStatisticsPage: React.FC = () => {
     navigate(-1);
   };
 
+  const handleRowClick = (month: string, assignee: string) => {
+    console.log('[BuyerPurchaseRateStatisticsPage] handleRowClick called:', { month, assignee });
+    // 月から年月を抽出（例: "2026年1月" -> "2026-01"）
+    const match = month.match(/(\d{4})年(\d{1,2})月/);
+    if (!match) {
+      console.error('[BuyerPurchaseRateStatisticsPage] Failed to parse month:', month);
+      return;
+    }
+    
+    const year = match[1];
+    const monthNum = match[2].padStart(2, '0');
+    const yearMonth = `${year}-${monthNum}`;
+    
+    const url = `/buyers?viewingMonth=${yearMonth}&assignee=${encodeURIComponent(assignee)}`;
+    console.log('[BuyerPurchaseRateStatisticsPage] Navigating to:', url);
+    
+    // 買主リスト画面に遷移（フィルタ付き）
+    navigate(url);
+  };
+
   if (loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
@@ -142,7 +162,17 @@ const BuyerPurchaseRateStatisticsPage: React.FC = () => {
                 </TableRow>
                 {/* 担当者ごとの行（インデント） */}
                 {monthData.assignees.map((assignee, assigneeIndex) => (
-                  <TableRow key={`${monthIndex}-${assigneeIndex}`} hover>
+                  <TableRow 
+                    key={`${monthIndex}-${assigneeIndex}`} 
+                    hover
+                    onClick={() => handleRowClick(monthData.month, assignee.followUpAssignee)}
+                    sx={{ 
+                      cursor: 'pointer',
+                      '&:hover': {
+                        bgcolor: 'action.hover'
+                      }
+                    }}
+                  >
                     <TableCell sx={{ pl: 4 }}>{assignee.followUpAssignee}</TableCell>
                     <TableCell align="right">{assignee.viewingCount}</TableCell>
                     <TableCell align="right">{assignee.purchaseCount}</TableCell>
