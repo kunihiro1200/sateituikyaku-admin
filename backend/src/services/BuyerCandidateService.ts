@@ -56,11 +56,13 @@ export class BuyerCandidateService {
     const startTime = Date.now();
 
     // 物件情報を取得
+    const propertyStartTime = Date.now();
     const { data: property, error: propertyError } = await this.supabase
       .from('property_listings')
       .select('*')
       .eq('property_number', propertyNumber)
       .single();
+    console.log(`[BuyerCandidateService] Property query time: ${Date.now() - propertyStartTime}ms`);
 
     console.log(`[BuyerCandidateService] Property query result:`, { property, error: propertyError });
 
@@ -70,11 +72,15 @@ export class BuyerCandidateService {
     }
 
     // 物件の住所からエリア番号をマッピング
+    const areaStartTime = Date.now();
     const propertyAreaNumbers = await this.getAreaNumbersForProperty(property);
+    console.log(`[BuyerCandidateService] Area mapping time: ${Date.now() - areaStartTime}ms`);
     console.log(`[BuyerCandidateService] Property area numbers:`, propertyAreaNumbers);
 
     // 物件住所から座標を取得（距離マッチング用）
+    const coordsStartTime = Date.now();
     const propertyCoords = await this.getPropertyCoordsFromAddress(property);
+    console.log(`[BuyerCandidateService] Coords extraction time: ${Date.now() - coordsStartTime}ms`);
 
     // 買主を全件取得（Supabaseの1000件制限を回避するためページネーション）
     // パフォーマンス最適化: 必要な件数が見つかったら早期終了
@@ -83,7 +89,9 @@ export class BuyerCandidateService {
     const TARGET_CANDIDATES = 100; // 目標候補数（フィルタリング後に50件残ることを想定）
     let page = 0;
     
+    const buyersStartTime = Date.now();
     while (true) {
+      const pageStartTime = Date.now();
       const { data, error: buyersError } = await this.supabase
         .from('buyers')
         .select('buyer_number,name,latest_status,desired_area,desired_property_type,reception_date,email,phone_number,property_number,distribution_type,inquiry_source,broker_inquiry,price_range_house,price_range_apartment,price_range_land')
@@ -93,6 +101,7 @@ export class BuyerCandidateService {
         .not('latest_status', 'like', '%D%')  // D確度を除外
         .order('reception_date', { ascending: false, nullsFirst: false })
         .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
+      console.log(`[BuyerCandidateService] Page ${page} query time: ${Date.now() - pageStartTime}ms`);
 
       if (buyersError) {
         throw new Error(`Failed to fetch buyers: ${buyersError.message}`);
@@ -110,9 +119,11 @@ export class BuyerCandidateService {
       if (data.length < PAGE_SIZE) break;
       page++;
     }
+    console.log(`[BuyerCandidateService] Total buyers fetch time: ${Date.now() - buyersStartTime}ms`);
     console.log(`[BuyerCandidateService] Total buyers fetched: ${buyers.length}`);
 
     // フィルタリング（最適化版 - 距離マッチングを条件付きで実行）
+    const filterStartTime = Date.now();
     const candidates = await this.filterCandidatesOptimized(
       buyers || [],
       property.property_type,
@@ -120,6 +131,7 @@ export class BuyerCandidateService {
       propertyAreaNumbers,
       propertyCoords
     );
+    console.log(`[BuyerCandidateService] Filtering time: ${Date.now() - filterStartTime}ms`);
 
     // 最大50件に制限
     const limitedCandidates = candidates.slice(0, 50);
@@ -134,7 +146,9 @@ export class BuyerCandidateService {
     });
 
     // 一括で物件住所を取得
+    const addressStartTime = Date.now();
     const propertyAddressMap = await this.getPropertyAddressesInBatch(Array.from(allPropertyNumbers));
+    console.log(`[BuyerCandidateService] Address batch fetch time: ${Date.now() - addressStartTime}ms`);
 
     // 各買主の問い合わせ物件住所を設定
     const candidatesWithAddress = limitedCandidates.map(b => {

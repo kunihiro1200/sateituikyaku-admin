@@ -281,7 +281,7 @@ export default function BuyerCandidateListPage() {
   }
 
   return (
-    <Container maxWidth="xl" sx={{ py: 3, zoom: '0.6' }}>
+    <Container maxWidth="xl" sx={{ py: 3 }}>
       {/* Header */}
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
