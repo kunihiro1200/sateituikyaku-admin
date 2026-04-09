@@ -493,6 +493,11 @@ export default function BuyerDetailPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
+  // メール本文表示用の状態
+  const [emailBodyModalOpen, setEmailBodyModalOpen] = useState(false);
+  const [selectedEmailBody, setSelectedEmailBody] = useState<string>('');
+
+
 
   useEffect(() => {
     api.get('/api/employees/normal-initials')
@@ -1679,7 +1684,23 @@ TEL：097-533-2022`;
                               const propertyAddresses = metadata.propertyAddresses || {};
                               const address = propertyAddresses[pn] || '';
                               return (
-                                <Box key={pn} sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                <Box 
+                                  key={pn} 
+                                  sx={{ 
+                                    display: 'flex', 
+                                    alignItems: 'center', 
+                                    gap: 0.5,
+                                    cursor: metadata.body ? 'pointer' : 'default',
+                                    '&:hover': metadata.body ? { bgcolor: 'action.hover', borderRadius: 1 } : {},
+                                    p: 0.5,
+                                  }}
+                                  onClick={() => {
+                                    if (metadata.body) {
+                                      setSelectedEmailBody(metadata.body);
+                                      setEmailBodyModalOpen(true);
+                                    }
+                                  }}
+                                >
                                   <Chip label={pn} size="small" variant="outlined" sx={{ height: 20, fontSize: '0.7rem' }} />
                                   {address && (
                                     <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
@@ -3175,6 +3196,24 @@ TEL：097-533-2022`;
           buyerId: buyer_number || '',
         } : undefined}
       />
+
+      {/* メール本文表示モーダル */}
+      <Dialog
+        open={emailBodyModalOpen}
+        onClose={() => setEmailBodyModalOpen(false)}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>メール本文</DialogTitle>
+        <DialogContent>
+          <Box sx={{ whiteSpace: 'pre-wrap', fontFamily: 'monospace', fontSize: '0.9rem', p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
+            {selectedEmailBody}
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setEmailBodyModalOpen(false)}>閉じる</Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }
