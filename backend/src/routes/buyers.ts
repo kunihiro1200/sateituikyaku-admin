@@ -30,6 +30,8 @@ router.get('/', async (req: Request, res: Response) => {
       withStatus,
       calculatedStatus,
       statusCategory,
+      viewingMonth,
+      followUpAssignee,
     } = req.query;
 
     // calculatedStatus 指定の場合はステータスフィルタリング（withStatusの有無に関わらず）
@@ -60,6 +62,8 @@ router.get('/', async (req: Request, res: Response) => {
       sortBy: sortBy as string,
       sortOrder: sortOrder as 'asc' | 'desc',
       statusCategory: statusCategory as any,
+      viewingMonth: viewingMonth as string,
+      followUpAssignee: followUpAssignee as string,
     });
 
     res.json(result);

@@ -74,6 +74,8 @@ export interface BuyerQueryOptions {
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
   statusCategory?: 'all' | 'todayCall' | 'threeCallUnchecked' | 'viewingDayBefore' | 'assigned' | 'todayCallAssigned';
+  viewingMonth?: string; // YYYY-MM形式（内覧月フィルタ）
+  followUpAssignee?: string; // 後続担当者フィルタ（完全一致）
 }
 
 export interface SyncResult {
@@ -154,6 +156,8 @@ export class BuyerService {
       sortBy = 'reception_date',
       sortOrder = 'desc',
       statusCategory,
+      viewingMonth,
+      followUpAssignee,
     } = options;
 
     const offset = (page - 1) * limit;
@@ -186,6 +190,17 @@ export class BuyerService {
     }
     if (dateTo) {
       query = query.lte('reception_date', dateTo);
+    }
+    // 内覧月フィルタ（YYYY-MM形式）
+    if (viewingMonth) {
+      const startDate = `${viewingMonth}-01`;
+      const [year, month] = viewingMonth.split('-').map(Number);
+      const endDate = new Date(year, month, 0).toISOString().split('T')[0]; // 月末日
+      query = query.gte('viewing_date', startDate).lte('viewing_date', endDate);
+    }
+    // 後続担当者フィルタ（完全一致）
+    if (followUpAssignee) {
+      query = query.or(`follow_up_assignee.eq.${followUpAssignee},and(follow_up_assignee.is.null,initial_assignee.eq.${followUpAssignee})`);
     }
 
     // サイドバーカテゴリフィルター
