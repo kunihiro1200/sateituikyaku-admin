@@ -1683,6 +1683,8 @@ TEL：097-533-2022`;
                               // metadata.propertyAddressesから住所を取得（存在する場合）
                               const propertyAddresses = metadata.propertyAddresses || {};
                               const address = propertyAddresses[pn] || '';
+                              const hasBody = !!metadata.body;
+                              console.log('[BuyerDetailPage] Email activity:', { pn, hasBody, bodyLength: metadata.body?.length });
                               return (
                                 <Box 
                                   key={pn} 
@@ -1690,11 +1692,12 @@ TEL：097-533-2022`;
                                     display: 'flex', 
                                     alignItems: 'center', 
                                     gap: 0.5,
-                                    cursor: metadata.body ? 'pointer' : 'default',
-                                    '&:hover': metadata.body ? { bgcolor: 'action.hover', borderRadius: 1 } : {},
+                                    cursor: hasBody ? 'pointer' : 'default',
+                                    '&:hover': hasBody ? { bgcolor: 'action.hover', borderRadius: 1 } : {},
                                     p: 0.5,
                                   }}
                                   onClick={() => {
+                                    console.log('[BuyerDetailPage] Clicked property:', { pn, hasBody, body: metadata.body });
                                     if (metadata.body) {
                                       setSelectedEmailBody(metadata.body);
                                       setEmailBodyModalOpen(true);
