@@ -184,6 +184,8 @@ export default function GmailDistributionButton({
         return;
       }
 
+      console.log('[GmailDistributionButton] Buyer data received:', result);
+      console.log('[GmailDistributionButton] Filtered buyers:', result.filteredBuyers);
       setBuyerData(result);
       setFilterSummaryOpen(true);
       setTemplateSelectorOpen(false);
