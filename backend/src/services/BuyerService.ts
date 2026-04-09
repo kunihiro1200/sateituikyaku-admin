@@ -3180,10 +3180,17 @@ export class BuyerService {
    */
   async getPurchaseRateStatistics(): Promise<Array<{
     month: string;
-    followUpAssignee: string;
-    purchaseCount: number;
-    viewingCount: number;
-    purchaseRate: number | null;
+    total: {
+      viewingCount: number;
+      purchaseCount: number;
+      purchaseRate: number | null;
+    };
+    assignees: Array<{
+      followUpAssignee: string;
+      viewingCount: number;
+      purchaseCount: number;
+      purchaseRate: number | null;
+    }>;
   }>> {
     try {
       console.log('[BuyerService.getPurchaseRateStatistics] Starting...');
@@ -3192,10 +3199,17 @@ export class BuyerService {
       const cacheKey = 'purchase-rate-statistics';
       const cachedData = purchaseRateStatisticsCache.get<Array<{
         month: string;
-        followUpAssignee: string;
-        purchaseCount: number;
-        viewingCount: number;
-        purchaseRate: number | null;
+        total: {
+          viewingCount: number;
+          purchaseCount: number;
+          purchaseRate: number | null;
+        };
+        assignees: Array<{
+          followUpAssignee: string;
+          viewingCount: number;
+          purchaseCount: number;
+          purchaseRate: number | null;
+        }>;
       }>>(cacheKey);
       
       if (cachedData) {
@@ -3222,21 +3236,16 @@ export class BuyerService {
 
       console.log(`[BuyerService.getPurchaseRateStatistics] Fetched ${buyers.length} buyers`);
 
-      // 2. 月ごと・後続担当ごとにグループ化
+      // 2. 月ごと・後続担当ごとにグループ化（2段階）
       const groupedData = this.groupByMonthAndAssignee(buyers);
-      console.log(`[BuyerService.getPurchaseRateStatistics] Grouped into ${groupedData.size} groups`);
+      console.log(`[BuyerService.getPurchaseRateStatistics] Grouped into ${groupedData.size} months`);
 
-      // 3. 買付数と内覧数を集計
-      const statistics = this.calculateStatistics(groupedData);
-      console.log(`[BuyerService.getPurchaseRateStatistics] Calculated ${statistics.length} statistics`);
+      // 3. 月ごとの統計を計算
+      const statistics = this.calculateMonthlyStatistics(groupedData);
+      console.log(`[BuyerService.getPurchaseRateStatistics] Calculated ${statistics.length} monthly statistics`);
 
-      // 4. ソート（月の降順、後続担当のアルファベット順）
-      statistics.sort((a, b) => {
-        if (a.month !== b.month) {
-          return b.month.localeCompare(a.month); // 月の降順
-        }
-        return a.followUpAssignee.localeCompare(b.followUpAssignee); // 後続担当のアルファベット順
-      });
+      // 4. ソート（月の降順）
+      statistics.sort((a, b) => b.month.localeCompare(a.month));
 
       // キャッシュに保存
       purchaseRateStatisticsCache.set(cacheKey, statistics);
@@ -3251,67 +3260,117 @@ export class BuyerService {
   }
 
   /**
-   * 買主データを月ごと・後続担当ごとにグループ化
+   * 買主データを月ごと・後続担当ごとにグループ化（2段階）
    */
-  private groupByMonthAndAssignee(buyers: any[]): Map<string, any[]> {
-    const grouped = new Map<string, any[]>();
+  private groupByMonthAndAssignee(buyers: any[]): Map<string, Map<string, any[]>> {
+    const grouped = new Map<string, Map<string, any[]>>();
 
     for (const buyer of buyers) {
       const viewingDate = new Date(buyer.viewing_date);
       const month = `${viewingDate.getFullYear()}年${viewingDate.getMonth() + 1}月`;
       const assignee = buyer.follow_up_assignee || '未設定';
-      const key = `${month}|${assignee}`;
 
-      if (!grouped.has(key)) {
-        grouped.set(key, []);
+      if (!grouped.has(month)) {
+        grouped.set(month, new Map());
       }
-      grouped.get(key)!.push(buyer);
+      
+      const monthData = grouped.get(month)!;
+      if (!monthData.has(assignee)) {
+        monthData.set(assignee, []);
+      }
+      
+      monthData.get(assignee)!.push(buyer);
     }
 
     return grouped;
   }
 
   /**
-   * 買付数と内覧数を集計
+   * 月ごとの統計を計算
    */
-  private calculateStatistics(groupedData: Map<string, any[]>): Array<{
+  private calculateMonthlyStatistics(groupedData: Map<string, Map<string, any[]>>): Array<{
     month: string;
-    followUpAssignee: string;
-    purchaseCount: number;
-    viewingCount: number;
-    purchaseRate: number | null;
+    total: {
+      viewingCount: number;
+      purchaseCount: number;
+      purchaseRate: number | null;
+    };
+    assignees: Array<{
+      followUpAssignee: string;
+      viewingCount: number;
+      purchaseCount: number;
+      purchaseRate: number | null;
+    }>;
   }> {
     const statistics: Array<{
       month: string;
-      followUpAssignee: string;
-      purchaseCount: number;
-      viewingCount: number;
-      purchaseRate: number | null;
+      total: {
+        viewingCount: number;
+        purchaseCount: number;
+        purchaseRate: number | null;
+      };
+      assignees: Array<{
+        followUpAssignee: string;
+        viewingCount: number;
+        purchaseCount: number;
+        purchaseRate: number | null;
+      }>;
     }> = [];
 
-    for (const [key, buyers] of groupedData.entries()) {
-      const [month, assignee] = key.split('|');
+    for (const [month, assigneeData] of groupedData.entries()) {
+      const assignees: Array<{
+        followUpAssignee: string;
+        viewingCount: number;
+        purchaseCount: number;
+        purchaseRate: number | null;
+      }> = [];
+      
+      let totalViewingCount = 0;
+      let totalPurchaseCount = 0;
 
-      // 買付数を集計（latest_status に「買（」を含む）
-      const purchaseCount = buyers.filter(b => 
-        b.latest_status && b.latest_status.includes('買（')
-      ).length;
+      // 担当者ごとの統計を計算
+      for (const [assignee, buyers] of assigneeData.entries()) {
+        // 買付数を集計（latest_status に「買（」を含む）
+        const purchaseCount = buyers.filter(b => 
+          b.latest_status && b.latest_status.includes('買（')
+        ).length;
 
-      // 内覧数を集計（重複排除）
-      const uniqueViewings = this.getUniqueViewings(buyers);
-      const viewingCount = uniqueViewings.size;
+        // 内覧数を集計（重複排除）
+        const uniqueViewings = this.getUniqueViewings(buyers);
+        const viewingCount = uniqueViewings.size;
 
-      // 買付率を計算
-      const purchaseRate = viewingCount > 0
-        ? Math.round((purchaseCount / viewingCount) * 1000) / 10
+        // 買付率を計算
+        const purchaseRate = viewingCount > 0
+          ? Math.round((purchaseCount / viewingCount) * 1000) / 10
+          : null;
+
+        assignees.push({
+          followUpAssignee: assignee,
+          viewingCount,
+          purchaseCount,
+          purchaseRate
+        });
+
+        totalViewingCount += viewingCount;
+        totalPurchaseCount += purchaseCount;
+      }
+
+      // 担当者をアルファベット順にソート
+      assignees.sort((a, b) => a.followUpAssignee.localeCompare(b.followUpAssignee));
+
+      // 月の合計買付率を計算
+      const totalPurchaseRate = totalViewingCount > 0
+        ? Math.round((totalPurchaseCount / totalViewingCount) * 1000) / 10
         : null;
 
       statistics.push({
         month,
-        followUpAssignee: assignee,
-        purchaseCount,
-        viewingCount,
-        purchaseRate
+        total: {
+          viewingCount: totalViewingCount,
+          purchaseCount: totalPurchaseCount,
+          purchaseRate: totalPurchaseRate
+        },
+        assignees
       });
     }
 
