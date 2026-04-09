@@ -173,14 +173,16 @@ export function useSellerPresenceTrack(
 
   useEffect(() => {
     const timestamp = new Date().toISOString();
-    console.log(`[${timestamp}] [useSellerPresence] track useEffect実行: sellerNumber=`, sellerNumber, 'employee=', employee?.name, 'employee object=', employee);
+    // イニシャルを優先的に使用（employee.initialsがない場合はemployee.nameにフォールバック）
+    const userInitials = employee?.initials || employee?.name;
+    console.log(`[${timestamp}] [useSellerPresence] track useEffect実行: sellerNumber=`, sellerNumber, 'employee.initials=', employee?.initials, 'employee.name=', employee?.name, 'userInitials=', userInitials);
     
-    if (!sellerNumber || !employee?.name) {
-      console.log(`[${timestamp}] [useSellerPresence] track スキップ: sellerNumber=`, sellerNumber, 'employee=', employee?.name);
+    if (!sellerNumber || !userInitials) {
+      console.log(`[${timestamp}] [useSellerPresence] track スキップ: sellerNumber=`, sellerNumber, 'userInitials=', userInitials);
       return;
     }
 
-    const userName = employee.name;
+    const userName = userInitials;
     console.log(`[${timestamp}] [useSellerPresence] track userName=`, userName);
 
     const connect = () => {
@@ -273,7 +275,7 @@ export function useSellerPresenceTrack(
       retryCountRef.current = 0;
       setIsTracking(false);
     };
-  }, [sellerNumber, employee?.name]);
+  }, [sellerNumber, employee?.initials, employee?.name]);
 
   return { isTracking };
 }
