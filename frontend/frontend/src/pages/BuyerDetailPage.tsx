@@ -1607,7 +1607,24 @@ TEL：097-533-2022`;
                       }
                     };
                     
+                    // 送信元によって色を変える
+                    const getSourceColor = (source?: string): 'warning' | 'info' | 'success' | 'secondary' | 'default' => {
+                      switch (source) {
+                        case 'other_company_distribution':
+                          return 'warning'; // 黄色
+                        case 'pre_public_price_reduction':
+                          return 'info'; // 青
+                        case 'buyer_candidate_list':
+                          return 'success'; // 緑
+                        case 'nearby_buyers':
+                          return 'secondary'; // グレー
+                        default:
+                          return 'default'; // デフォルト
+                      }
+                    };
+                    
                     const sourceLabel = getSourceLabel(metadata.source);
+                    const sourceColor = getSourceColor(metadata.source);
                     
                     const displayName = isSms
                       ? (metadata.senderName
@@ -1630,7 +1647,7 @@ TEL：097-533-2022`;
                             ) : (
                               <Chip label="メール" size="small" color="primary" sx={{ height: 20, fontSize: '0.7rem' }} />
                             )}
-                            <Chip label={sourceLabel} size="small" variant="outlined" sx={{ height: 20, fontSize: '0.7rem' }} />
+                            <Chip label={sourceLabel} size="small" color={sourceColor} sx={{ height: 20, fontSize: '0.7rem' }} />
                             <Typography variant="body2" fontWeight="bold">
                               {isSms
                                 ? (metadata.templateName || 'テンプレート不明')
