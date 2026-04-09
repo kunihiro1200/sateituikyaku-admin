@@ -87,20 +87,10 @@ router.get('/purchase-rate-statistics', authenticate, async (_req: Request, res:
     
     const statistics = await buyerService.getPurchaseRateStatistics();
     
-    // 合計を計算
-    const totalPurchaseCount = statistics.reduce((sum, s) => sum + s.purchaseCount, 0);
-    const totalViewingCount = statistics.reduce((sum, s) => sum + s.viewingCount, 0);
-    const totalPurchaseRate = totalViewingCount > 0
-      ? Math.round((totalPurchaseCount / totalViewingCount) * 1000) / 10
-      : null;
-
-    console.log(`[GET /buyers/purchase-rate-statistics] Success: ${statistics.length} records`);
+    console.log(`[GET /buyers/purchase-rate-statistics] Success: ${statistics.length} months`);
     
     res.json({
-      statistics,
-      totalPurchaseCount,
-      totalViewingCount,
-      totalPurchaseRate
+      statistics
     });
   } catch (error: any) {
     console.error('[GET /buyers/purchase-rate-statistics] Error:', error);
