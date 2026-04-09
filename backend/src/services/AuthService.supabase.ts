@@ -178,6 +178,11 @@ export class AuthService extends BaseRepository {
    * ログアウト
    */
   async logout(accessToken: string): Promise<void> {
+    // キャッシュをクリア
+    const cacheKey = accessToken.substring(0, 32);
+    _sessionCache.delete(cacheKey);
+    console.log('[AuthService] Session cache cleared for token:', cacheKey);
+    
     await this.supabase.auth.admin.signOut(accessToken);
   }
 }
