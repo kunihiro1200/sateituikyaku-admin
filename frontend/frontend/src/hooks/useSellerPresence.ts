@@ -351,7 +351,7 @@ export function useSellerPresenceTrack(
 
     return () => {
       const timestamp = new Date().toISOString();
-      console.log(`[${timestamp}] [useSellerPresence] track: クリーンアップ開始（5秒遅延でuntrack）`);
+      console.log(`[${timestamp}] [useSellerPresence] track: クリーンアップ開始（即座にuntrack）`);
       
       // リトライタイマーをキャンセル
       if (retryTimerRef.current) {
@@ -365,14 +365,9 @@ export function useSellerPresenceTrack(
         untrackTimerRef.current = null;
       }
       
-      // 5秒後にグローバルステートから削除（同じタブ内で即時反映）
-      untrackTimerRef.current = setTimeout(() => {
-        const delayTimestamp = new Date().toISOString();
-        console.log(`[${delayTimestamp}] [useSellerPresence] track: 5秒経過、グローバルステートから削除: ${sellerNumber} - ${userName}`);
-        removePresence(sellerNumber, userName);
-      }, PRESENCE_PERSIST_DURATION_MS);
-      
-      console.log(`[${timestamp}] [useSellerPresence] track: グローバルステート削除タイマー設定（${PRESENCE_PERSIST_DURATION_MS}ms後）`);
+      // 即座にグローバルステートから削除
+      removePresence(sellerNumber, userName);
+      console.log(`[${timestamp}] [useSellerPresence] track: グローバルステートから即座削除: ${sellerNumber} - ${userName}`);
       
       // BroadcastChannelで他のタブにも通知
       if (broadcastChannelRef.current && trackedRef.current) {
@@ -384,15 +379,12 @@ export function useSellerPresenceTrack(
         console.log(`[${timestamp}] [useSellerPresence] BroadcastChannel送信（untrack）:`, { sellerNumber, userName });
       }
       
-      // 5秒後にSupabase Realtimeからもuntrack
+      // Supabase Realtimeからも即座にuntrack
       if (channelRef.current && trackedRef.current) {
         const channelToUntrack = channelRef.current;
-        setTimeout(() => {
-          const untrackTimestamp = new Date().toISOString();
-          console.log(`[${untrackTimestamp}] [useSellerPresence] track: 5秒経過、Supabase untrack実行`);
-          channelToUntrack.untrack();
-          supabase.removeChannel(channelToUntrack);
-        }, PRESENCE_PERSIST_DURATION_MS);
+        console.log(`[${timestamp}] [useSellerPresence] track: Supabase untrack即座実行`);
+        channelToUntrack.untrack();
+        supabase.removeChannel(channelToUntrack);
       } else if (channelRef.current) {
         // trackしていない場合は即座に削除
         supabase.removeChannel(channelRef.current);
