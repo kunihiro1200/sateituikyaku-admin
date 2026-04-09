@@ -216,9 +216,6 @@ export function useSellerPresenceSubscribe(): UseSellerPresenceSubscribeResult {
       leaveTimersRef.current.forEach((timer) => clearTimeout(timer));
       leaveTimersRef.current.clear();
       
-      // CustomEventリスナーを削除
-      window.removeEventListener(CUSTOM_EVENT_NAME, handleCustomEvent);
-      
       // BroadcastChannelをクローズ
       if (broadcastChannelRef.current) {
         broadcastChannelRef.current.close();
@@ -315,16 +312,6 @@ export function useSellerPresenceTrack(
               });
               console.log(`[${trackTimestamp}] [useSellerPresence] BroadcastChannel送信（track）:`, presenceData);
             }
-            
-            // CustomEventで即座に通知（同じタブ内に）
-            const customEvent = new CustomEvent(CUSTOM_EVENT_NAME, {
-              detail: {
-                type: 'track',
-                ...presenceData,
-              },
-            });
-            window.dispatchEvent(customEvent);
-            console.log(`[${trackTimestamp}] [useSellerPresence] CustomEvent送信（track）:`, presenceData);
           } catch (e) {
             console.error(`[${timestamp}] [useSellerPresence] track エラー:`, e);
           }
@@ -369,19 +356,6 @@ export function useSellerPresenceTrack(
           user_name: userName,
         });
         console.log(`[${timestamp}] [useSellerPresence] BroadcastChannel送信（untrack）:`, { sellerNumber, userName });
-      }
-      
-      // CustomEventで即座に通知（同じタブ内に）
-      if (trackedRef.current) {
-        const customEvent = new CustomEvent(CUSTOM_EVENT_NAME, {
-          detail: {
-            type: 'untrack',
-            seller_number: sellerNumber,
-            user_name: userName,
-          },
-        });
-        window.dispatchEvent(customEvent);
-        console.log(`[${timestamp}] [useSellerPresence] CustomEvent送信（untrack）:`, { sellerNumber, userName });
       }
       
       // 5秒後にuntrackを実行
