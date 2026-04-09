@@ -346,6 +346,16 @@ export class BuyerCandidateService {
    * 3. 配信種別が「要」でない
    */
   private shouldExcludeBuyer(buyer: any): boolean {
+    // デバッグログ（買主6752の場合のみ）
+    if (buyer.buyer_number === '6752') {
+      console.log(`[BuyerCandidateService] Buyer 6752 exclusion check:`);
+      console.log(`  - Is business inquiry: ${this.isBusinessInquiry(buyer)}`);
+      console.log(`  - Has minimum criteria: ${this.hasMinimumCriteria(buyer)}`);
+      console.log(`  - Has distribution required: ${this.hasDistributionRequired(buyer)}`);
+      console.log(`  - distribution_type: ${buyer.distribution_type}`);
+      console.log(`  - latest_status: ${buyer.latest_status}`);
+    }
+    
     // 1. 業者問合せは除外
     if (this.isBusinessInquiry(buyer)) {
       return true;
@@ -452,7 +462,18 @@ export class BuyerCandidateService {
     // エリア番号でのマッチング
     if (propertyAreaNumbers.length > 0) {
       const buyerAreaNumbers = this.extractAreaNumbers(desiredArea);
-      return propertyAreaNumbers.some(area => buyerAreaNumbers.includes(area));
+      const matches = propertyAreaNumbers.some(area => buyerAreaNumbers.includes(area));
+      
+      // デバッグログ（買主6752の場合のみ）
+      if (buyer.buyer_number === '6752') {
+        console.log(`[BuyerCandidateService] Buyer 6752 area matching:`);
+        console.log(`  - Desired area: ${desiredArea}`);
+        console.log(`  - Buyer area numbers: ${JSON.stringify(buyerAreaNumbers)}`);
+        console.log(`  - Property area numbers: ${JSON.stringify(propertyAreaNumbers)}`);
+        console.log(`  - Matches: ${matches}`);
+      }
+      
+      return matches;
     }
 
     return false;
