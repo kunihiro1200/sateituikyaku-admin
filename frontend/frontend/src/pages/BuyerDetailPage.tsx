@@ -1596,40 +1596,6 @@ TEL：097-533-2022`;
                     const isSms = activity.action === 'sms';
                     const propertyNumbers = metadata.propertyNumbers || metadata.property_numbers || [];
                     
-                    // 送信元を識別
-                    const getSourceLabel = (source?: string): string => {
-                      switch (source) {
-                        case 'other_company_distribution':
-                          return '他社物件新着配信';
-                        case 'pre_public_price_reduction':
-                          return '公開前・値下げメール';
-                        case 'buyer_candidate_list':
-                          return '買主候補リスト';
-                        case 'nearby_buyers':
-                          return '近隣買主';
-                        default:
-                          return '買主詳細画面';
-                      }
-                    };
-                    
-                    // 送信元によって色を変える
-                    const getSourceColor = (source?: string): 'warning' | 'info' | 'success' | 'secondary' | 'default' => {
-                      switch (source) {
-                        case 'other_company_distribution':
-                          return 'warning'; // 黄色
-                        case 'pre_public_price_reduction':
-                          return 'info'; // 青
-                        case 'buyer_candidate_list':
-                          return 'success'; // 緑
-                        case 'nearby_buyers':
-                          return 'secondary'; // グレー
-                        default:
-                          return 'default'; // デフォルト
-                      }
-                    };
-                    
-                    const sourceLabel = getSourceLabel(metadata.source);
-                    const sourceColor = getSourceColor(metadata.source);
                     
                     const displayName = isSms
                       ? (metadata.senderName
@@ -1643,7 +1609,7 @@ TEL：097-533-2022`;
                     return (
                       <ListItem
                         key={activity.id}
-                        sx={{ flexDirection: 'column', alignItems: 'flex-start', borderBottom: '1px solid', borderColor: 'divider', py: 2 }}
+                        sx={{ flexDirection: 'column', alignItems: 'flex-start', borderBottom: '1px solid', borderColor: 'divider', py: 1.5 }}
                       >
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', mb: 1 }}>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -1652,7 +1618,6 @@ TEL：097-533-2022`;
                             ) : (
                               <Chip label="メール" size="small" color="primary" sx={{ height: 20, fontSize: '0.7rem' }} />
                             )}
-                            <Chip label={sourceLabel} size="small" color={sourceColor} sx={{ height: 20, fontSize: '0.7rem' }} />
                             <Typography variant="body2" fontWeight="bold">
                               {isSms
                                 ? (metadata.templateName || 'テンプレート不明')
@@ -1677,7 +1642,7 @@ TEL：097-533-2022`;
                           </Box>
                         )}
                         {!isSms && propertyNumbers.length > 0 && (
-                          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, mb: 1 }}>
+                          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.3, mb: 1 }}>
                             <Typography variant="caption" color="text.secondary">物件:</Typography>
                             {propertyNumbers.map((pn: string) => {
                               // metadata.propertyAddressesから住所を取得（存在する場合）
