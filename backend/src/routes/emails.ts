@@ -739,22 +739,33 @@ router.post(
       // sourceを判定（フロントエンドから渡された値を優先、なければpropertyNumberで判定）
       const source = requestSource || (propertyNumber ? 'pre_public_price_reduction' : 'nearby_buyers');
       
+      console.log(`[send-distribution] propertyNumber from request:`, propertyNumber);
+      console.log(`[send-distribution] source:`, source);
+      
       // 物件住所を取得（propertyNumberが存在する場合）
       let propertyAddresses: Record<string, string> = {};
       if (propertyNumber) {
         try {
-          const { data: property } = await supabase
+          console.log(`[send-distribution] Fetching property address for ${propertyNumber}...`);
+          const { data: property, error } = await supabase
             .from('property_listings')
             .select('property_number, address')
             .eq('property_number', propertyNumber)
             .single();
           
+          console.log(`[send-distribution] Supabase query result:`, { property, error });
+          
           if (property && property.address) {
             propertyAddresses[property.property_number] = property.address;
+            console.log(`[send-distribution] Property address found: ${property.address}`);
+          } else {
+            console.warn(`[send-distribution] Property address not found for ${propertyNumber}`);
           }
         } catch (error) {
           console.error(`[send-distribution] Failed to fetch property address for ${propertyNumber}:`, error);
         }
+      } else {
+        console.log(`[send-distribution] No propertyNumber provided, skipping address fetch`);
       }
       
       console.log(`[send-distribution] Recording activity logs for ${normalizedRecipients.length} recipients with source: ${source}`);
