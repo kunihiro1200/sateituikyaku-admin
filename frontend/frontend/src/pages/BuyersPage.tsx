@@ -45,6 +45,7 @@ interface Buyer {
   inquiry_confidence: string;
   reception_date: string;
   next_call_date: string;
+  viewing_date: string;
   desired_area: string;
   desired_property_type: string;
   calculated_status?: string;
@@ -67,6 +68,8 @@ export default function BuyersPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const initialStatus = searchParams.get('status');
+  const viewingMonth = searchParams.get('viewingMonth'); // YYYY-MM形式
+  const assigneeParam = searchParams.get('assignee');
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [buyers, setBuyers] = useState<Buyer[]>([]);
@@ -176,6 +179,23 @@ export default function BuyersPage() {
                 }
               })
             : [...allBuyersWithStatusRef.current];
+
+          // 内覧月フィルタ（URLパラメータから）
+          if (viewingMonth) {
+            filtered = filtered.filter(b => {
+              if (!b.viewing_date) return false;
+              const viewingDateStr = b.viewing_date.substring(0, 7); // YYYY-MM
+              return viewingDateStr === viewingMonth;
+            });
+          }
+
+          // 担当者フィルタ（URLパラメータから）
+          if (assigneeParam) {
+            filtered = filtered.filter(b => {
+              return b.follow_up_assignee === assigneeParam || 
+                     (!b.follow_up_assignee && b.initial_assignee === assigneeParam);
+            });
+          }
 
           // 検索フィルタ
           if (debouncedSearch) {
@@ -329,7 +349,7 @@ export default function BuyersPage() {
 
     fetchBuyers();
     return () => { cancelled = true; };
-  }, [page, rowsPerPage, debouncedSearch, selectedCalculatedStatus, refetchTrigger]);
+  }, [page, rowsPerPage, debouncedSearch, selectedCalculatedStatus, refetchTrigger, viewingMonth, assigneeParam]);
 
   // キャッシュヒット時: サイドバーカテゴリを初期化（useEffect で一度だけ実行）
   // ※ cachedData がある場合は state 初期値で設定済みなので追加処理不要

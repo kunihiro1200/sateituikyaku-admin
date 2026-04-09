@@ -35,6 +35,7 @@ export interface BuyerWithStatus {
   inquiry_confidence: string;
   reception_date: string;
   next_call_date: string;
+  viewing_date: string;
   calculated_status: string;
   status_priority: number;
   [key: string]: any;
