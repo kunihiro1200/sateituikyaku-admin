@@ -742,18 +742,15 @@ router.post(
         try {
           console.log(`[send-distribution] Fetching property address for ${propertyNumber}...`);
           
-          // BaseRepositoryを使用して物件住所を取得
-          const { BaseRepository } = await import('../repositories/BaseRepository');
-          const repo = new BaseRepository();
-          const { data: property, error } = await repo.table('property_listings')
-            .select('property_number, address')
-            .eq('property_number', propertyNumber)
-            .single();
+          // PropertyListingServiceを使用して物件住所を取得
+          const { PropertyListingService } = await import('../services/PropertyListingService');
+          const propertyListingService = new PropertyListingService();
+          const property = await propertyListingService.getPropertyListing(propertyNumber);
           
-          console.log(`[send-distribution] BaseRepository query result:`, { property, error });
+          console.log(`[send-distribution] PropertyListingService result:`, property ? 'found' : 'not found');
           
           if (property && property.address) {
-            propertyAddresses[property.property_number] = property.address;
+            propertyAddresses[property.propertyNumber] = property.address;
             console.log(`[send-distribution] Property address found: ${property.address}`);
           } else {
             console.warn(`[send-distribution] Property address not found for ${propertyNumber}`);
