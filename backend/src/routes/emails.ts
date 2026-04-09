@@ -639,10 +639,10 @@ router.post(
 
       const { senderAddress, recipients, subject, body, propertyNumber, attachments } = req.body;
 
-      // recipientsは文字列配列または{email, name}配列のどちらも受け付ける
-      const normalizedRecipients: Array<{ email: string; name: string | null }> = recipients.map((r: any) => {
+      // recipientsは文字列配列または{email, name, buyerNumber}配列のどちらも受け付ける
+      const normalizedRecipients: Array<{ email: string; name: string | null; buyerNumber?: string }> = recipients.map((r: any) => {
         if (typeof r === 'string') return { email: r, name: null };
-        return { email: r.email, name: r.name || null };
+        return { email: r.email, name: r.name || null, buyerNumber: r.buyerNumber };
       });
 
       // 送信元アドレスのホワイトリスト検証
@@ -724,6 +724,32 @@ router.post(
         propertyNumber: propertyNumber || 'unknown',
         attachments: processedAttachments,
       });
+
+      // activity_logsに記録（メール送信成功後）
+      // 各買主ごとに記録
+      const { ActivityLogService } = await import('../services/ActivityLogService');
+      const activityLogService = new ActivityLogService();
+      
+      // sourceを判定（propertyNumberがある場合は公開前・値下げメール、ない場合は近隣買主）
+      const source = propertyNumber ? 'pre_public_price_reduction' : 'nearby_buyers';
+      
+      for (const recipient of normalizedRecipients) {
+        try {
+          await activityLogService.logEmail({
+            buyerId: recipient.buyerNumber || recipient.email, // buyer_numberを優先、なければemailを使用
+            propertyNumbers: propertyNumber ? [propertyNumber] : [],
+            recipientEmail: recipient.email,
+            subject,
+            templateName: source === 'pre_public_price_reduction' ? '公開前・値下げメール' : '近隣買主',
+            senderEmail: senderAddress,
+            source: source, // 送信元識別子
+            createdBy: (req as any).user?.id || 'system',
+          });
+        } catch (logError) {
+          // activity_logs記録失敗はログのみ（ユーザーには通知しない）
+          console.error('Failed to log email activity:', logError);
+        }
+      }
 
       res.json(result);
     } catch (error) {

@@ -1590,6 +1590,25 @@ TEL：097-533-2022`;
                     const metadata = activity.metadata || {};
                     const isSms = activity.action === 'sms';
                     const propertyNumbers = metadata.propertyNumbers || metadata.property_numbers || [];
+                    
+                    // 送信元を識別
+                    const getSourceLabel = (source?: string): string => {
+                      switch (source) {
+                        case 'other_company_distribution':
+                          return '他社物件新着配信';
+                        case 'pre_public_price_reduction':
+                          return '公開前・値下げメール';
+                        case 'buyer_candidate_list':
+                          return '買主候補リスト';
+                        case 'nearby_buyers':
+                          return '近隣買主';
+                        default:
+                          return '買主詳細画面';
+                      }
+                    };
+                    
+                    const sourceLabel = getSourceLabel(metadata.source);
+                    
                     const displayName = isSms
                       ? (metadata.senderName
                           ? metadata.senderName
@@ -1611,6 +1630,7 @@ TEL：097-533-2022`;
                             ) : (
                               <Chip label="メール" size="small" color="primary" sx={{ height: 20, fontSize: '0.7rem' }} />
                             )}
+                            <Chip label={sourceLabel} size="small" variant="outlined" sx={{ height: 20, fontSize: '0.7rem' }} />
                             <Typography variant="body2" fontWeight="bold">
                               {isSms
                                 ? (metadata.templateName || 'テンプレート不明')

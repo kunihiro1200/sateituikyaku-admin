@@ -278,6 +278,22 @@ export default function OtherCompanyDistributionPage() {
             'Content-Type': 'multipart/form-data',
           },
         });
+
+        // activity_logsに記録（メール送信成功後）
+        try {
+          await api.post('/api/activity-logs/email', {
+            buyerId: buyer.buyer_number,
+            propertyNumbers: [], // 他社物件のため空配列
+            recipientEmail: buyer.email,
+            subject: emailSubject,
+            templateName: '他社物件新着配信',
+            senderEmail: 'tenant@ifoo-oita.com',
+            source: 'other_company_distribution', // 送信元識別子
+          });
+        } catch (logError) {
+          // activity_logs記録失敗はログのみ（ユーザーには通知しない）
+          console.error('Failed to log email activity:', logError);
+        }
       }
 
       setEmailDialogOpen(false);

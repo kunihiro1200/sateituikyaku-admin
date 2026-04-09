@@ -245,12 +245,13 @@ const NearbyBuyersList = ({ sellerId, propertyNumber, onCountChange }: NearbyBuy
         candidatesWithEmail.map(async (candidate) => {
           const buyerName = candidate.name || 'お客様';
           const personalizedBody = body.replace(/{氏名}/g, buyerName);
+          const effectivePropertyNumber = propertyNumber || propertyNumberState;
           return await api.post('/api/emails/send-distribution', {
-            recipients: [candidate.email!],
+            senderAddress: 'tenant@ifoo-oita.com', // 送信元アドレスを追加
+            recipients: [{ email: candidate.email!, buyerNumber: candidate.buyer_number }], // buyer_numberを追加
             subject,
             body: personalizedBody,
-            from: 'tenant@ifoo-oita.com',
-            cc: 'tenant@ifoo-oita.com',
+            propertyNumber: effectivePropertyNumber || undefined, // 物件番号を追加
           });
         })
       );

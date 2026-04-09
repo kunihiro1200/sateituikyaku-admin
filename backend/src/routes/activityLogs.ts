@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { query, validationResult } from 'express-validator';
+import { query, body, validationResult } from 'express-validator';
 import { ActivityLogService, LogFilter } from '../services/ActivityLogService';
 import { authenticate, requireRole } from '../middleware/auth';
 
@@ -93,6 +93,88 @@ router.get(
         error: {
           code: 'GET_STATISTICS_ERROR',
           message: 'Failed to get statistics',
+          retryable: true,
+        },
+      });
+    }
+  }
+);
+
+/**
+ * メール送信履歴を記録
+ */
+router.post(
+  '/email',
+  [
+    body('buyerId').optional().isString().withMessage('Invalid buyer ID'),
+    body('sellerId').optional().isString().withMessage('Invalid seller ID'),
+    body('propertyNumbers').isArray().withMessage('Property numbers must be an array'),
+    body('recipientEmail').isEmail().withMessage('Invalid recipient email'),
+    body('subject').isString().notEmpty().withMessage('Subject is required'),
+    body('templateName').optional().isString().withMessage('Invalid template name'),
+    body('senderEmail').isEmail().withMessage('Invalid sender email'),
+    body('source').optional().isString().withMessage('Invalid source'),
+    body('preViewingNotes').optional().isString().withMessage('Invalid pre-viewing notes'),
+  ],
+  async (req: Request, res: Response) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'Validation failed',
+            details: errors.array(),
+            retryable: false,
+          },
+        });
+      }
+
+      const { buyerId, sellerId, propertyNumbers, recipientEmail, subject, templateName, senderEmail, source, preViewingNotes } = req.body;
+
+      // buyerIdまたはsellerIdのいずれかが必須
+      if (!buyerId && !sellerId) {
+        return res.status(400).json({
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'Either buyerId or sellerId is required',
+            retryable: false,
+          },
+        });
+      }
+
+      // 認証されたユーザーIDを取得
+      const createdBy = (req as any).user?.id;
+      if (!createdBy) {
+        return res.status(401).json({
+          error: {
+            code: 'UNAUTHORIZED',
+            message: 'User not authenticated',
+            retryable: false,
+          },
+        });
+      }
+
+      await activityLogService.logEmail({
+        buyerId,
+        sellerId,
+        propertyNumbers,
+        recipientEmail,
+        subject,
+        templateName,
+        senderEmail,
+        source,
+        preViewingNotes,
+        createdBy,
+      });
+
+      res.status(201).json({ success: true });
+    } catch (error) {
+      console.error('Log email error:', error);
+      res.status(500).json({
+        error: {
+          code: 'LOG_EMAIL_ERROR',
+          message: 'Failed to log email',
           retryable: true,
         },
       });

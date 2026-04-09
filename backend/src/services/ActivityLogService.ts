@@ -102,6 +102,7 @@ export class ActivityLogService extends BaseRepository {
     senderEmail: string;
     preViewingNotes?: string;
     createdBy: string;
+    source?: string;  // 送信元識別子（オプショナル）
   }): Promise<void> {
     const description = `物件情報メール送信: ${params.propertyNumbers.join(', ')}`;
     
@@ -118,6 +119,7 @@ export class ActivityLogService extends BaseRepository {
         sender_email: params.senderEmail,
         email_type: 'inquiry_response',
         pre_viewing_notes: params.preViewingNotes,
+        source: params.source,  // 送信元識別子を追加
       },
       ipAddress: undefined,
       userAgent: undefined,
