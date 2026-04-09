@@ -1275,15 +1275,6 @@ export class EnhancedAutoSyncService {
     const structure = row['構造'];
     const floorPlan = row['間取り'];
 
-    // デバッグログ: 状況（当社）の値を確認
-    if (sellerNumber === 'AA13888') {
-      console.log(`[updateSingleSeller] AA13888のデバッグ:`);
-      console.log(`  row['状況（当社）']: "${row['状況（当社）']}"`);
-      console.log(`  mappedData.status: "${mappedData.status}"`);
-      console.log(`  typeof mappedData.status: ${typeof mappedData.status}`);
-      console.log(`  mappedData.status || '追客中': "${mappedData.status || '追客中'}"`);
-    }
-
     const updateData: any = {
       status: mappedData.status || '追客中',
       next_call_date: mappedData.next_call_date || null,

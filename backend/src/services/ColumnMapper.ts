@@ -73,21 +73,8 @@ export class ColumnMapper {
   mapToDatabase(sheetRow: SheetRow): SellerData {
     const dbData: any = {};
 
-    // デバッグログ: AA13888の場合のみ
-    const sellerNumber = sheetRow['売主番号'];
-    const isAA13888 = sellerNumber === 'AA13888';
-
     for (const [sheetColumn, dbColumn] of Object.entries(this.spreadsheetToDb)) {
       const value = sheetRow[sheetColumn];
-      
-      // デバッグログ: 状況（当社）の値を確認
-      if (isAA13888 && sheetColumn === '状況（当社）') {
-        console.log(`[ColumnMapper.mapToDatabase] AA13888の状況（当社）:`);
-        console.log(`  sheetColumn: "${sheetColumn}"`);
-        console.log(`  value: "${value}"`);
-        console.log(`  typeof value: ${typeof value}`);
-        console.log(`  dbColumn: "${dbColumn}"`);
-      }
       
       if (value === null || value === undefined || value === '') {
         // 「氏名」フィールドが空の場合は「不明」を設定
