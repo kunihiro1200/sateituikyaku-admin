@@ -637,7 +637,7 @@ router.post(
         });
       }
 
-      const { senderAddress, recipients, subject, body, propertyNumber, attachments } = req.body;
+      const { senderAddress, recipients, subject, body, propertyNumber, attachments, source: requestSource } = req.body;
 
       // recipientsは文字列配列または{email, name, buyerNumber}配列のどちらも受け付ける
       const normalizedRecipients: Array<{ email: string; name: string | null; buyerNumber?: string }> = recipients.map((r: any) => {
@@ -730,24 +730,28 @@ router.post(
       const { ActivityLogService } = await import('../services/ActivityLogService');
       const activityLogService = new ActivityLogService();
       
-      // sourceを判定（propertyNumberがある場合は公開前・値下げメール、ない場合は近隣買主）
-      const source = propertyNumber ? 'pre_public_price_reduction' : 'nearby_buyers';
+      // sourceを判定（フロントエンドから渡された値を優先、なければpropertyNumberで判定）
+      const source = requestSource || (propertyNumber ? 'pre_public_price_reduction' : 'nearby_buyers');
+      
+      console.log(`[send-distribution] Recording activity logs for ${normalizedRecipients.length} recipients with source: ${source}`);
       
       for (const recipient of normalizedRecipients) {
         try {
+          console.log(`[send-distribution] Logging email for buyer: ${recipient.buyerNumber || recipient.email}`);
           await activityLogService.logEmail({
             buyerId: recipient.buyerNumber || recipient.email, // buyer_numberを優先、なければemailを使用
             propertyNumbers: propertyNumber ? [propertyNumber] : [],
             recipientEmail: recipient.email,
             subject,
-            templateName: source === 'pre_public_price_reduction' ? '公開前・値下げメール' : '近隣買主',
+            templateName: source === 'buyer_candidate_list' ? '買主候補リスト' : (source === 'pre_public_price_reduction' ? '公開前・値下げメール' : '近隣買主'),
             senderEmail: senderAddress,
             source: source, // 送信元識別子
             createdBy: (req as any).user?.id || 'system',
           });
+          console.log(`[send-distribution] Successfully logged email for buyer: ${recipient.buyerNumber || recipient.email}`);
         } catch (logError) {
           // activity_logs記録失敗はログのみ（ユーザーには通知しない）
-          console.error('Failed to log email activity:', logError);
+          console.error(`[send-distribution] Failed to log email activity for ${recipient.buyerNumber || recipient.email}:`, logError);
         }
       }
 

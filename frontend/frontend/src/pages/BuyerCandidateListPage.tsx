@@ -173,6 +173,7 @@ export default function BuyerCandidateListPage() {
           subject: subject,
           body: personalizedBody,
           propertyNumber: propertyNumber,
+          source: 'buyer_candidate_list', // 送信元識別子を追加
         });
       })
     );
