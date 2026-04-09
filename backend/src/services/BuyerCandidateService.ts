@@ -82,45 +82,25 @@ export class BuyerCandidateService {
     const propertyCoords = await this.getPropertyCoordsFromAddress(property);
     console.log(`[BuyerCandidateService] Coords extraction time: ${Date.now() - coordsStartTime}ms`);
 
-    // 買主を全件取得（Supabaseの1000件制限を回避するためページネーション）
-    // パフォーマンス最適化: 必要な件数が見つかったら早期終了
-    const buyers: any[] = [];
-    const PAGE_SIZE = 1000;
-    const TARGET_CANDIDATES = 100; // 目標候補数（フィルタリング後に50件残ることを想定）
-    let page = 0;
-    
+    // 買主を取得（最大100件に制限）
     const buyersStartTime = Date.now();
-    while (true) {
-      const pageStartTime = Date.now();
-      const { data, error: buyersError } = await this.supabase
-        .from('buyers')
-        .select('buyer_number,name,latest_status,desired_area,desired_property_type,reception_date,email,phone_number,property_number,distribution_type,inquiry_source,broker_inquiry,price_range_house,price_range_apartment,price_range_land')
-        .is('deleted_at', null)  // 削除済みを除外
-        .eq('distribution_type', '要')  // 配信種別が「要」のみ取得（DBレベルで絞り込み）
-        .not('latest_status', 'like', '%買付%')  // 買付済みを除外
-        .not('latest_status', 'like', '%D%')  // D確度を除外
-        .order('reception_date', { ascending: false, nullsFirst: false })
-        .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
-      console.log(`[BuyerCandidateService] Page ${page} query time: ${Date.now() - pageStartTime}ms`);
+    const { data: buyers, error: buyersError } = await this.supabase
+      .from('buyers')
+      .select('buyer_number,name,latest_status,desired_area,desired_property_type,reception_date,email,phone_number,property_number,distribution_type,inquiry_source,broker_inquiry,price_range_house,price_range_apartment,price_range_land')
+      .is('deleted_at', null)  // 削除済みを除外
+      .eq('distribution_type', '要')  // 配信種別が「要」のみ取得（DBレベルで絞り込み）
+      .not('latest_status', 'like', '%買付%')  // 買付済みを除外
+      .not('latest_status', 'like', '%D%')  // D確度を除外
+      .order('reception_date', { ascending: false, nullsFirst: false })
+      .limit(100);  // 最大100件に制限
+    
+    console.log(`[BuyerCandidateService] Buyers fetch time: ${Date.now() - buyersStartTime}ms`);
 
-      if (buyersError) {
-        throw new Error(`Failed to fetch buyers: ${buyersError.message}`);
-      }
-
-      if (!data || data.length === 0) break;
-      buyers.push(...data);
-      
-      // パフォーマンス最適化: 十分な候補が見つかったら早期終了
-      if (buyers.length >= TARGET_CANDIDATES) {
-        console.log(`[BuyerCandidateService] Early termination: ${buyers.length} buyers fetched`);
-        break;
-      }
-      
-      if (data.length < PAGE_SIZE) break;
-      page++;
+    if (buyersError) {
+      throw new Error(`Failed to fetch buyers: ${buyersError.message}`);
     }
-    console.log(`[BuyerCandidateService] Total buyers fetch time: ${Date.now() - buyersStartTime}ms`);
-    console.log(`[BuyerCandidateService] Total buyers fetched: ${buyers.length}`);
+
+    console.log(`[BuyerCandidateService] Total buyers fetched: ${buyers?.length || 0}`);
 
     // フィルタリング（最適化版 - 距離マッチングを条件付きで実行）
     const filterStartTime = Date.now();
