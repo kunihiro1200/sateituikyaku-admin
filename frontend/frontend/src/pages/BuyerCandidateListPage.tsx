@@ -251,8 +251,8 @@ export default function BuyerCandidateListPage() {
   // 最新状況からアルファベット部分のみ抽出（例: "追客中A" → "A"）
   const extractStatusAlpha = (status: string | null): string => {
     if (!status) return '-';
-    const match = status.match(/[A-Za-z]+/g);
-    return match ? match.join('') : status;
+    // 最初の1文字のみを返す
+    return status.charAt(0);
   };
 
   if (loading) {
