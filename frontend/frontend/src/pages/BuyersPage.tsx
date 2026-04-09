@@ -182,19 +182,23 @@ export default function BuyersPage() {
 
           // 内覧月フィルタ（URLパラメータから）
           if (viewingMonth) {
+            console.log(`[BuyersPage] Applying viewingMonth filter: ${viewingMonth}`);
             filtered = filtered.filter(b => {
               if (!b.viewing_date) return false;
               const viewingDateStr = b.viewing_date.substring(0, 7); // YYYY-MM
               return viewingDateStr === viewingMonth;
             });
+            console.log(`[BuyersPage] After viewingMonth filter: ${filtered.length} buyers`);
           }
 
           // 担当者フィルタ（URLパラメータから）
           if (assigneeParam) {
+            console.log(`[BuyersPage] Applying assignee filter: ${assigneeParam}`);
             filtered = filtered.filter(b => {
               return b.follow_up_assignee === assigneeParam || 
                      (!b.follow_up_assignee && b.initial_assignee === assigneeParam);
             });
+            console.log(`[BuyersPage] After assignee filter: ${filtered.length} buyers`);
           }
 
           // 検索フィルタ
@@ -234,6 +238,14 @@ export default function BuyersPage() {
         }
 
         // サイドバー未ロード時: まず最初の50件を即座に表示（プログレッシブローディング）
+        // ただし、URLパラメータがある場合は全件データ取得まで待機
+        if (viewingMonth || assigneeParam) {
+          console.log('[BuyersPage] URL parameters detected. Waiting for full data...');
+          setLoading(true);
+          // 全件データ取得まで待機（バックグラウンドフェッチが完了するまで）
+          return;
+        }
+        
         setLoading(true);
         const quickParams: any = {
           page: 1,
