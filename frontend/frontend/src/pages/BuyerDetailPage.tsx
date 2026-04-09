@@ -39,6 +39,7 @@ import {
   Clear as ClearIcon,
   Launch as LaunchIcon,
   Delete as DeleteIcon,
+  BarChart as BarChartIcon,
 } from '@mui/icons-material';
 import api, { buyerApi } from '../services/api';
 import PropertyInfoCard from '../components/PropertyInfoCard';
@@ -1858,8 +1859,8 @@ TEL：097-533-2022`;
 
 
           {BUYER_FIELD_SECTIONS.map((section) => (
+            <Box key={section.title}>
             <Paper 
-              key={section.title} 
               sx={{ 
                 p: 2, 
                 mb: 2,
@@ -3103,6 +3104,22 @@ TEL：097-533-2022`;
                 )}
               </Grid>
             </Paper>
+            
+            {/* 基本情報セクションの直後に買付率ボタンを表示 */}
+            {section.title === '基本情報' && (
+              <Box sx={{ mb: 2, display: 'flex', justifyContent: 'center' }}>
+                <Button
+                  variant="contained"
+                  color="primary"
+                  startIcon={<BarChartIcon />}
+                  onClick={() => navigate('/buyers/purchase-rate-statistics')}
+                  sx={{ minWidth: 200 }}
+                >
+                  買付率
+                </Button>
+              </Box>
+            )}
+            </Box>
           ))}
 
           </Box>{/* スマホ時買主情報開閉Box */}

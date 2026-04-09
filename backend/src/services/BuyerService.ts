@@ -22,15 +22,23 @@ const _MODULE_STATUS_CACHE_TTL = 30 * 60 * 1000; // 30分
 // 他社物件新着配信用のキャッシュ（TTL: 10分）
 const distributionCache = new NodeCache({ stdTTL: 600 });
 
+// 買付率統計用のキャッシュ（TTL: 30分）
+const purchaseRateStatisticsCache = new NodeCache({ stdTTL: 1800 });
+
 /**
  * 買主ステータスキャッシュを無効化（外部から呼び出し可能）
  * 買主データ更新時に呼び出してキャッシュをクリアする
  * 
  * 🆕 buyer_sidebar_countsテーブルもクリアして、次回アクセス時に動的計算を強制
+ * 🆕 買付率統計のキャッシュも無効化
  */
 export async function invalidateBuyerStatusCache(): Promise<void> {
   _moduleLevelStatusCache = null;
   console.log('[BuyerService] Buyer status cache invalidated');
+  
+  // 買付率統計のキャッシュを無効化
+  purchaseRateStatisticsCache.flushAll();
+  console.log('[BuyerService] Purchase rate statistics cache invalidated');
   
   // buyer_sidebar_countsテーブルをクリア（次回アクセス時に動的計算を強制）
   try {
@@ -3164,5 +3172,169 @@ export class BuyerService {
     distributionCache.set(cacheKey, result);
 
     return result;
+  }
+
+  /**
+   * 買付率統計を取得
+   * 2026年1月以降の月ごと・後続担当ごとの買付数、内覧数、買付率を集計
+   */
+  async getPurchaseRateStatistics(): Promise<Array<{
+    month: string;
+    followUpAssignee: string;
+    purchaseCount: number;
+    viewingCount: number;
+    purchaseRate: number | null;
+  }>> {
+    try {
+      console.log('[BuyerService.getPurchaseRateStatistics] Starting...');
+      
+      // キャッシュをチェック
+      const cacheKey = 'purchase-rate-statistics';
+      const cachedData = purchaseRateStatisticsCache.get<Array<{
+        month: string;
+        followUpAssignee: string;
+        purchaseCount: number;
+        viewingCount: number;
+        purchaseRate: number | null;
+      }>>(cacheKey);
+      
+      if (cachedData) {
+        console.log('[BuyerService.getPurchaseRateStatistics] Returning cached data');
+        return cachedData;
+      }
+      
+      // 1. 2026年1月1日以降のデータを取得
+      const { data: buyers, error } = await this.supabase
+        .from('buyers')
+        .select('viewing_date, latest_status, follow_up_assignee, email, phone_number')
+        .gte('viewing_date', '2026-01-01')
+        .not('viewing_date', 'is', null);
+
+      if (error) {
+        console.error('[BuyerService.getPurchaseRateStatistics] Supabase error:', error);
+        throw new Error(`Failed to fetch buyers: ${error.message}`);
+      }
+
+      if (!buyers || buyers.length === 0) {
+        console.log('[BuyerService.getPurchaseRateStatistics] No data found');
+        return [];
+      }
+
+      console.log(`[BuyerService.getPurchaseRateStatistics] Fetched ${buyers.length} buyers`);
+
+      // 2. 月ごと・後続担当ごとにグループ化
+      const groupedData = this.groupByMonthAndAssignee(buyers);
+      console.log(`[BuyerService.getPurchaseRateStatistics] Grouped into ${groupedData.size} groups`);
+
+      // 3. 買付数と内覧数を集計
+      const statistics = this.calculateStatistics(groupedData);
+      console.log(`[BuyerService.getPurchaseRateStatistics] Calculated ${statistics.length} statistics`);
+
+      // 4. ソート（月の降順、後続担当のアルファベット順）
+      statistics.sort((a, b) => {
+        if (a.month !== b.month) {
+          return b.month.localeCompare(a.month); // 月の降順
+        }
+        return a.followUpAssignee.localeCompare(b.followUpAssignee); // 後続担当のアルファベット順
+      });
+
+      // キャッシュに保存
+      purchaseRateStatisticsCache.set(cacheKey, statistics);
+      console.log('[BuyerService.getPurchaseRateStatistics] Data cached');
+
+      console.log('[BuyerService.getPurchaseRateStatistics] Completed successfully');
+      return statistics;
+    } catch (error: any) {
+      console.error('[BuyerService.getPurchaseRateStatistics] Error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 買主データを月ごと・後続担当ごとにグループ化
+   */
+  private groupByMonthAndAssignee(buyers: any[]): Map<string, any[]> {
+    const grouped = new Map<string, any[]>();
+
+    for (const buyer of buyers) {
+      const viewingDate = new Date(buyer.viewing_date);
+      const month = `${viewingDate.getFullYear()}年${viewingDate.getMonth() + 1}月`;
+      const assignee = buyer.follow_up_assignee || '未設定';
+      const key = `${month}|${assignee}`;
+
+      if (!grouped.has(key)) {
+        grouped.set(key, []);
+      }
+      grouped.get(key)!.push(buyer);
+    }
+
+    return grouped;
+  }
+
+  /**
+   * 買付数と内覧数を集計
+   */
+  private calculateStatistics(groupedData: Map<string, any[]>): Array<{
+    month: string;
+    followUpAssignee: string;
+    purchaseCount: number;
+    viewingCount: number;
+    purchaseRate: number | null;
+  }> {
+    const statistics: Array<{
+      month: string;
+      followUpAssignee: string;
+      purchaseCount: number;
+      viewingCount: number;
+      purchaseRate: number | null;
+    }> = [];
+
+    for (const [key, buyers] of groupedData.entries()) {
+      const [month, assignee] = key.split('|');
+
+      // 買付数を集計（latest_status に「買（」を含む）
+      const purchaseCount = buyers.filter(b => 
+        b.latest_status && b.latest_status.includes('買（')
+      ).length;
+
+      // 内覧数を集計（重複排除）
+      const uniqueViewings = this.getUniqueViewings(buyers);
+      const viewingCount = uniqueViewings.size;
+
+      // 買付率を計算
+      const purchaseRate = viewingCount > 0
+        ? Math.round((purchaseCount / viewingCount) * 1000) / 10
+        : null;
+
+      statistics.push({
+        month,
+        followUpAssignee: assignee,
+        purchaseCount,
+        viewingCount,
+        purchaseRate
+      });
+    }
+
+    return statistics;
+  }
+
+  /**
+   * 内覧数の重複排除（同じメールアドレスまたは電話番号は1件としてカウント）
+   */
+  private getUniqueViewings(buyers: any[]): Set<string> {
+    const uniqueViewings = new Set<string>();
+
+    for (const buyer of buyers) {
+      const email = buyer.email?.trim() || '';
+      const phoneNumber = buyer.phone_number?.trim() || '';
+
+      // メールアドレスまたは電話番号のいずれかが存在する場合のみカウント
+      if (email || phoneNumber) {
+        const key = `${email}|${phoneNumber}`;
+        uniqueViewings.add(key);
+      }
+    }
+
+    return uniqueViewings;
   }
 }

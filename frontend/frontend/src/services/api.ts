@@ -308,6 +308,12 @@ export const buyerApi = {
   }) => {
     const response = await api.post(`/api/buyers/${buyerId}/email-history`, data);
     return response.data;
+  },
+
+  // 買付率統計を取得
+  getPurchaseRateStatistics: async () => {
+    const response = await api.get('/api/buyers/purchase-rate-statistics');
+    return response.data;
   }
 };
 

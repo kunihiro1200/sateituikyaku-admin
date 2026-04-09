@@ -23,6 +23,7 @@ import BuyerDetailPage from './pages/BuyerDetailPage';
 import BuyerInquiryHistoryPage from './pages/BuyerInquiryHistoryPage';
 import BuyerDesiredConditionsPage from './pages/BuyerDesiredConditionsPage';
 import BuyerViewingResultPage from './pages/BuyerViewingResultPage';
+import BuyerPurchaseRateStatisticsPage from './pages/BuyerPurchaseRateStatisticsPage';
 import PublicPropertyListingPage from './pages/PublicPropertyListingPage';
 import PublicPropertiesPage from './pages/PublicPropertiesPage';
 import PublicPropertyDetailPage from './pages/PublicPropertyDetailPage';
@@ -213,6 +214,14 @@ function App() {
         element={
           <ProtectedRoute>
             <NewBuyerPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/buyers/purchase-rate-statistics"
+        element={
+          <ProtectedRoute>
+            <BuyerPurchaseRateStatisticsPage />
           </ProtectedRoute>
         }
       />

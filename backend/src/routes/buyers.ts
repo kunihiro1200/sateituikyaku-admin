@@ -80,6 +80,36 @@ router.get('/stats', async (_req: Request, res: Response) => {
   }
 });
 
+// 買付率統計取得（/:id よりも前に定義）
+router.get('/purchase-rate-statistics', authenticate, async (_req: Request, res: Response) => {
+  try {
+    console.log('[GET /buyers/purchase-rate-statistics] Request received');
+    
+    const statistics = await buyerService.getPurchaseRateStatistics();
+    
+    // 合計を計算
+    const totalPurchaseCount = statistics.reduce((sum, s) => sum + s.purchaseCount, 0);
+    const totalViewingCount = statistics.reduce((sum, s) => sum + s.viewingCount, 0);
+    const totalPurchaseRate = totalViewingCount > 0
+      ? Math.round((totalPurchaseCount / totalViewingCount) * 1000) / 10
+      : null;
+
+    console.log(`[GET /buyers/purchase-rate-statistics] Success: ${statistics.length} records`);
+    
+    res.json({
+      statistics,
+      totalPurchaseCount,
+      totalViewingCount,
+      totalPurchaseRate
+    });
+  } catch (error: any) {
+    console.error('[GET /buyers/purchase-rate-statistics] Error:', error);
+    res.status(500).json({ 
+      error: 'データの取得に失敗しました。しばらくしてから再度お試しください。' 
+    });
+  }
+});
+
 // ステータスカテゴリ一覧取得（サイドバー用）
 router.get('/status-categories', async (_req: Request, res: Response) => {
   try {
