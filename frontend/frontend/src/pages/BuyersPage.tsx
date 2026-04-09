@@ -239,35 +239,34 @@ export default function BuyersPage() {
 
         // サイドバー未ロード時: まず最初の50件を即座に表示（プログレッシブローディング）
         // ただし、URLパラメータがある場合は全件データ取得まで待機
-        if (viewingMonth || assigneeParam) {
-          console.log('[BuyersPage] URL parameters detected. Waiting for full data...');
-          setLoading(true);
-          // 全件データ取得まで待機（バックグラウンドフェッチが完了するまで）
-          return;
-        }
-        
         setLoading(true);
-        const quickParams: any = {
-          page: 1,
-          limit: 50,
-          sortBy: 'reception_date',
-          sortOrder: 'desc',
-        };
-        if (debouncedSearch) quickParams.search = normalizeSearch(debouncedSearch);
         
-        // 全件データ未取得時でもselectedCalculatedStatusが指定されている場合はAPIにフィルタパラメータを渡す
-        if (selectedCalculatedStatus) {
-          // カテゴリキーを日本語表示名に変換してからAPIに渡す
-          const displayName = categoryKeyToDisplayName[selectedCalculatedStatus] || selectedCalculatedStatus;
-          quickParams.calculatedStatus = displayName;
-        }
+        if (!viewingMonth && !assigneeParam) {
+          // URLパラメータがない場合のみクイックロードを実行
+          const quickParams: any = {
+            page: 1,
+            limit: 50,
+            sortBy: 'reception_date',
+            sortOrder: 'desc',
+          };
+          if (debouncedSearch) quickParams.search = normalizeSearch(debouncedSearch);
+          
+          // 全件データ未取得時でもselectedCalculatedStatusが指定されている場合はAPIにフィルタパラメータを渡す
+          if (selectedCalculatedStatus) {
+            // カテゴリキーを日本語表示名に変換してからAPIに渡す
+            const displayName = categoryKeyToDisplayName[selectedCalculatedStatus] || selectedCalculatedStatus;
+            quickParams.calculatedStatus = displayName;
+          }
 
-        // 最初の50件を即座に表示
-        const quickRes = await api.get('/api/buyers', { params: quickParams });
-        if (!cancelled) {
-          setBuyers(quickRes.data.data || []);
-          setTotal(quickRes.data.total || 0);
-          setLoading(false);
+          // 最初の50件を即座に表示
+          const quickRes = await api.get('/api/buyers', { params: quickParams });
+          if (!cancelled) {
+            setBuyers(quickRes.data.data || []);
+            setTotal(quickRes.data.total || 0);
+            setLoading(false);
+          }
+        } else {
+          console.log('[BuyersPage] URL parameters detected. Skipping quick load, waiting for full data...');
         }
 
         // 初回ロード時：サイドバーカウントのみを高速取得（Requirements 5.1: 5秒以内）
