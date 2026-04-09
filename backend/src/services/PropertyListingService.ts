@@ -1104,7 +1104,10 @@ export class PropertyListingService {
         query = query.eq('property_number', sanitizedNumber);
       } else {
         // 部分一致検索（大文字小文字を区別しない）
-        query = query.ilike('property_number', `%${sanitizedNumber}%`);
+        // 物件番号またはメールアドレスで検索
+        query = query.or(
+          `property_number.ilike.%${sanitizedNumber}%,seller_email.ilike.%${sanitizedNumber}%`
+        );
       }
       
       // 作成日時の降順でソート
