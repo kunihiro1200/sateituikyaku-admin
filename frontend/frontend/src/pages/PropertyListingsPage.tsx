@@ -299,6 +299,20 @@ export default function PropertyListingsPage() {
       );
     }
 
+    // ソート: 非公開物件を後ろに配置（公開日の順序は維持）
+    listings = listings.sort((a, b) => {
+      const aIsPrivate = isPrivateStatus(a.atbb_status);
+      const bIsPrivate = isPrivateStatus(b.atbb_status);
+      
+      // 非公開ステータスが異なる場合、非公開を後ろに
+      if (aIsPrivate !== bIsPrivate) {
+        return aIsPrivate ? 1 : -1;
+      }
+      
+      // 非公開ステータスが同じ場合は元の順序を維持（公開日の新しい順）
+      return 0;
+    });
+
     return listings;
   }, [allListings, sidebarStatus, searchQuery, workTaskMap]);
 
