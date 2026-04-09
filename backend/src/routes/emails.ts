@@ -621,10 +621,10 @@ router.post(
   [
     body('senderAddress').isEmail().withMessage('Valid sender email address is required'),
     body('recipients').isArray({ min: 1 }).withMessage('At least one recipient is required'),
-    body('recipients.*').isEmail().withMessage('All recipients must be valid email addresses'),
     body('subject').notEmpty().withMessage('Subject is required'),
     body('body').notEmpty().withMessage('Email body is required'),
     body('propertyNumber').optional().isString().withMessage('Property number must be a string'),
+    body('source').optional().isString().withMessage('Source must be a string'),
   ],
   async (req: Request, res: Response) => {
     try {
