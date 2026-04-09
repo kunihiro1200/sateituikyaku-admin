@@ -30,6 +30,7 @@ export interface UseSellerPresenceTrackResult {
 export const CHANNEL_NAME = 'seller-presence';
 export const STALE_THRESHOLD_MS = 30 * 60 * 1000; // 30分
 export const PRESENCE_PERSIST_DURATION_MS = 5000; // 5秒間プレゼンス情報を維持
+export const BROADCAST_CHANNEL_NAME = 'seller-presence-local'; // ローカル通信用
 
 // ============================================================
 // ユーティリティ関数
@@ -58,9 +59,18 @@ export function useSellerPresenceSubscribe(): UseSellerPresenceSubscribeResult {
   const [presenceState, setPresenceState] = useState<PresenceState>({});
   const [isConnected, setIsConnected] = useState(false);
   const leaveTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+  const broadcastChannelRef = useRef<BroadcastChannel | null>(null);
 
   useEffect(() => {
     console.log('[useSellerPresence] subscribe: チャンネル作成');
+
+    // BroadcastChannelを作成（同じブラウザ内のタブ間通信用）
+    try {
+      broadcastChannelRef.current = new BroadcastChannel(BROADCAST_CHANNEL_NAME);
+      console.log('[useSellerPresence] subscribe: BroadcastChannel作成成功');
+    } catch (e) {
+      console.warn('[useSellerPresence] subscribe: BroadcastChannel作成失敗（古いブラウザ）', e);
+    }
 
     const channel = supabase.channel(CHANNEL_NAME, {
       config: { presence: { key: undefined } },
@@ -79,6 +89,71 @@ export function useSellerPresenceSubscribe(): UseSellerPresenceSubscribeResult {
       console.log('[useSellerPresence] subscribe state:', mapped);
       return mapped;
     };
+
+    // BroadcastChannelからのメッセージを受信（即座の更新用）
+    if (broadcastChannelRef.current) {
+      broadcastChannelRef.current.onmessage = (event) => {
+        const timestamp = new Date().toISOString();
+        console.log(`[${timestamp}] [useSellerPresence] BroadcastChannel受信:`, event.data);
+        
+        if (event.data.type === 'track') {
+          // 即座にローカルステートに追加
+          setPresenceState((prev) => {
+            const newState = { ...prev };
+            const sellerNumber = event.data.seller_number;
+            if (!newState[sellerNumber]) newState[sellerNumber] = [];
+            
+            // 既存のレコードを削除（同じユーザーの重複を防ぐ）
+            newState[sellerNumber] = newState[sellerNumber].filter(
+              (r) => r.user_name !== event.data.user_name
+            );
+            
+            // 新しいレコードを追加
+            newState[sellerNumber].push({
+              seller_number: event.data.seller_number,
+              user_name: event.data.user_name,
+              entered_at: event.data.entered_at,
+            });
+            
+            console.log(`[${timestamp}] [useSellerPresence] ローカルステート即座更新:`, newState);
+            return newState;
+          });
+        } else if (event.data.type === 'untrack') {
+          // 5秒後に削除（leaveタイマーと同じロジック）
+          const sellerNumber = event.data.seller_number;
+          const userName = event.data.user_name;
+          
+          // 既存のタイマーをキャンセル
+          const timerKey = `${sellerNumber}-${userName}`;
+          if (leaveTimersRef.current.has(timerKey)) {
+            const timer = leaveTimersRef.current.get(timerKey);
+            if (timer) clearTimeout(timer);
+          }
+          
+          // 5秒後に削除
+          const timer = setTimeout(() => {
+            const delayTimestamp = new Date().toISOString();
+            console.log(`[${delayTimestamp}] [useSellerPresence] BroadcastChannel untrack: ${PRESENCE_PERSIST_DURATION_MS}ms経過、削除: ${sellerNumber} - ${userName}`);
+            setPresenceState((prev) => {
+              const newState = { ...prev };
+              if (newState[sellerNumber]) {
+                newState[sellerNumber] = newState[sellerNumber].filter(
+                  (r) => r.user_name !== userName
+                );
+                if (newState[sellerNumber].length === 0) {
+                  delete newState[sellerNumber];
+                }
+              }
+              return newState;
+            });
+            leaveTimersRef.current.delete(timerKey);
+          }, PRESENCE_PERSIST_DURATION_MS);
+          
+          leaveTimersRef.current.set(timerKey, timer);
+          console.log(`[${timestamp}] [useSellerPresence] BroadcastChannel untrackタイマー設定: ${timerKey} (${PRESENCE_PERSIST_DURATION_MS}ms後)`);
+        }
+      };
+    }
 
     channel
       .on('presence', { event: 'sync' }, () => {
@@ -148,6 +223,12 @@ export function useSellerPresenceSubscribe(): UseSellerPresenceSubscribeResult {
       leaveTimersRef.current.forEach((timer) => clearTimeout(timer));
       leaveTimersRef.current.clear();
       
+      // BroadcastChannelをクローズ
+      if (broadcastChannelRef.current) {
+        broadcastChannelRef.current.close();
+        broadcastChannelRef.current = null;
+      }
+      
       supabase.removeChannel(channel);
     };
   }, []);
@@ -169,13 +250,15 @@ export function useSellerPresenceTrack(
   const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const untrackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null); // 5秒遅延用タイマー
   const retryCountRef = useRef(0);
+  const broadcastChannelRef = useRef<BroadcastChannel | null>(null);
   const MAX_RETRIES = 5;
 
   useEffect(() => {
     const timestamp = new Date().toISOString();
     // イニシャルを優先的に使用（employee.initialsがない場合はemployee.nameにフォールバック）
     const userInitials = employee?.initials || employee?.name;
-    console.log(`[${timestamp}] [useSellerPresence] track useEffect実行: sellerNumber=`, sellerNumber, 'employee.initials=', employee?.initials, 'employee.name=', employee?.name, 'userInitials=', userInitials);
+    const employeeId = employee?.employee_number || employee?.email; // ユーザーを一意に識別
+    console.log(`[${timestamp}] [useSellerPresence] track useEffect実行: sellerNumber=`, sellerNumber, 'employee.initials=', employee?.initials, 'employee.name=', employee?.name, 'employeeId=', employeeId, 'userInitials=', userInitials);
     
     if (!sellerNumber || !userInitials) {
       console.log(`[${timestamp}] [useSellerPresence] track スキップ: sellerNumber=`, sellerNumber, 'userInitials=', userInitials);
@@ -184,6 +267,14 @@ export function useSellerPresenceTrack(
 
     const userName = userInitials;
     console.log(`[${timestamp}] [useSellerPresence] track userName=`, userName);
+
+    // BroadcastChannelを作成
+    try {
+      broadcastChannelRef.current = new BroadcastChannel(BROADCAST_CHANNEL_NAME);
+      console.log('[useSellerPresence] track: BroadcastChannel作成成功');
+    } catch (e) {
+      console.warn('[useSellerPresence] track: BroadcastChannel作成失敗（古いブラウザ）', e);
+    }
 
     const connect = () => {
       // 既存チャンネルをクリーンアップ
@@ -208,15 +299,26 @@ export function useSellerPresenceTrack(
         if (status === 'SUBSCRIBED' && !trackedRef.current) {
           retryCountRef.current = 0;
           try {
-            const result = await channel.track({
+            const presenceData = {
               seller_number: sellerNumber,
               user_name: userName,
               entered_at: new Date().toISOString(),
-            });
+            };
+            
+            const result = await channel.track(presenceData);
             const trackTimestamp = new Date().toISOString();
             console.log(`[${trackTimestamp}] [useSellerPresence] track 結果:`, result);
             trackedRef.current = true;
             setIsTracking(true);
+            
+            // BroadcastChannelで即座に通知（同じブラウザ内の他のタブに）
+            if (broadcastChannelRef.current) {
+              broadcastChannelRef.current.postMessage({
+                type: 'track',
+                ...presenceData,
+              });
+              console.log(`[${trackTimestamp}] [useSellerPresence] BroadcastChannel送信（track）:`, presenceData);
+            }
           } catch (e) {
             console.error(`[${timestamp}] [useSellerPresence] track エラー:`, e);
           }
@@ -253,6 +355,16 @@ export function useSellerPresenceTrack(
         untrackTimerRef.current = null;
       }
       
+      // BroadcastChannelで即座に通知（untrack）
+      if (broadcastChannelRef.current && trackedRef.current) {
+        broadcastChannelRef.current.postMessage({
+          type: 'untrack',
+          seller_number: sellerNumber,
+          user_name: userName,
+        });
+        console.log(`[${timestamp}] [useSellerPresence] BroadcastChannel送信（untrack）:`, { sellerNumber, userName });
+      }
+      
       // 5秒後にuntrackを実行
       if (channelRef.current && trackedRef.current) {
         const channelToUntrack = channelRef.current;
@@ -270,12 +382,18 @@ export function useSellerPresenceTrack(
         supabase.removeChannel(channelRef.current);
       }
       
+      // BroadcastChannelをクローズ
+      if (broadcastChannelRef.current) {
+        broadcastChannelRef.current.close();
+        broadcastChannelRef.current = null;
+      }
+      
       channelRef.current = null;
       trackedRef.current = false;
       retryCountRef.current = 0;
       setIsTracking(false);
     };
-  }, [sellerNumber, employee?.initials, employee?.name]);
+  }, [sellerNumber, employee?.initials, employee?.name, employee?.employee_number, employee?.email]);
 
   return { isTracking };
 }
