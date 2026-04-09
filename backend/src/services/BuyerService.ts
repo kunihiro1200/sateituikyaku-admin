@@ -3270,6 +3270,11 @@ export class BuyerService {
       const month = `${viewingDate.getFullYear()}年${viewingDate.getMonth() + 1}月`;
       const assignee = buyer.follow_up_assignee || '未設定';
 
+      // GYOSHAを除外
+      if (assignee === 'GYOSHA') {
+        continue;
+      }
+
       if (!grouped.has(month)) {
         grouped.set(month, new Map());
       }

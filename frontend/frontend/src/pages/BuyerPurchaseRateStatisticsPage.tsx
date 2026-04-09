@@ -118,14 +118,14 @@ const BuyerPurchaseRateStatisticsPage: React.FC = () => {
         集計対象期間: 2026年1月以降
       </Typography>
 
-      <TableContainer component={Paper}>
-        <Table>
+      <TableContainer component={Paper} sx={{ maxHeight: 'calc(100vh - 200px)' }}>
+        <Table stickyHeader>
           <TableHead>
-            <TableRow sx={{ bgcolor: 'primary.main' }}>
-              <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>年月</TableCell>
-              <TableCell sx={{ color: 'white', fontWeight: 'bold' }} align="right">内覧件数</TableCell>
-              <TableCell sx={{ color: 'white', fontWeight: 'bold' }} align="right">買付件数</TableCell>
-              <TableCell sx={{ color: 'white', fontWeight: 'bold' }} align="right">買付率（%）</TableCell>
+            <TableRow>
+              <TableCell sx={{ bgcolor: 'primary.main', color: 'white', fontWeight: 'bold' }}>年月</TableCell>
+              <TableCell sx={{ bgcolor: 'primary.main', color: 'white', fontWeight: 'bold' }} align="right">内覧件数</TableCell>
+              <TableCell sx={{ bgcolor: 'primary.main', color: 'white', fontWeight: 'bold' }} align="right">買付件数</TableCell>
+              <TableCell sx={{ bgcolor: 'primary.main', color: 'white', fontWeight: 'bold' }} align="right">買付率（%）</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
