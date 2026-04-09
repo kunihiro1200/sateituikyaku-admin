@@ -226,41 +226,30 @@ export default function GmailDistributionButton({
       // 編集済み本文があればそれを使用、なければテンプレートから生成
       const body = editedBody || replacePlaceholders(selectedTemplate.body, buyerName);
 
-      // ローカルファイルはBase64に変換してから送信
-      const attachmentsPayload = await Promise.all(
-        selectedImages.map(async (img) => {
-          if (img.source === 'local' && img.localFile) {
-            const base64Data = await new Promise<string>((resolve, reject) => {
-              const reader = new FileReader();
-              reader.onload = () => {
-                const result = reader.result as string;
-                // data:image/jpeg;base64,XXXX → XXXXの部分だけ取り出す
-                resolve(result.split(',')[1] || '');
-              };
-              reader.onerror = reject;
-              reader.readAsDataURL(img.localFile!);
-            });
-            return { ...img, base64Data };
-          }
-          return img;
-        })
+      // 買主情報を取得（buyerDataから）
+      const buyers = (buyerData?.filteredBuyers || []).map((b: any) => ({
+        buyer_number: b.buyer_number,
+        email: b.email,
+        name: b.name
+      }));
+
+      // gmailDistributionService.sendEmailsDirectly を使用
+      const result = await gmailDistributionService.sendEmailsDirectly(
+        selectedTemplate,
+        {
+          propertyNumber: propertyNumber,
+          address: propertyAddress || ''
+        },
+        selectedBuyers.map(b => b.email),
+        senderAddress,
+        buyers
       );
 
-      const response = await api.post('/api/emails/send-distribution', {
-        recipients: selectedEmails,  // {email, name}配列
-        subject: subject,
-        body: body,  // {buyerName}プレースホルダーはバックエンドで個別差し替え
-        senderAddress: senderAddress,
-        propertyNumber: propertyNumber,
-        attachments: attachmentsPayload.length > 0 ? attachmentsPayload : undefined,
-      });
-
-      const result = response.data;
       setConfirmationOpen(false);
       setSenderAddress(DEFAULT_SENDER);
       setSelectedImages([]);
 
-      if (result.failedBatches === 0) {
+      if (result.success) {
         setSnackbar({
           open: true,
           message: `メールを送信しました (${result.successCount}件)\n送信元: ${senderAddress}`,
