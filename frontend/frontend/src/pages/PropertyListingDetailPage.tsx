@@ -813,11 +813,11 @@ export default function PropertyListingDetailPage() {
   const handleOpenBuyerCandidates = () => {
     if (!propertyNumber) return;
 
-    // 新しいタブで買主候補リストページを開く（適切なウィンドウサイズを指定）
+    // 新しいタブで買主候補リストページを開く
     window.open(
       `/property-listings/${propertyNumber}/buyer-candidates`,
       '_blank',
-      'width=1400,height=900,noopener,noreferrer'
+      'noopener,noreferrer'
     );
   };
 
