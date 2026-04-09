@@ -31,6 +31,7 @@ export const CHANNEL_NAME = 'seller-presence';
 export const STALE_THRESHOLD_MS = 30 * 60 * 1000; // 30分
 export const PRESENCE_PERSIST_DURATION_MS = 5000; // 5秒間プレゼンス情報を維持
 export const BROADCAST_CHANNEL_NAME = 'seller-presence-local'; // ローカル通信用
+export const CUSTOM_EVENT_NAME = 'seller-presence-update'; // 同じタブ内通信用
 
 // ============================================================
 // ユーティリティ関数
@@ -155,6 +156,72 @@ export function useSellerPresenceSubscribe(): UseSellerPresenceSubscribeResult {
       };
     }
 
+    // CustomEventからのメッセージを受信（同じタブ内の即座の更新用）
+    const handleCustomEvent = (event: Event) => {
+      const customEvent = event as CustomEvent;
+      const timestamp = new Date().toISOString();
+      console.log(`[${timestamp}] [useSellerPresence] CustomEvent受信:`, customEvent.detail);
+      
+      if (customEvent.detail.type === 'track') {
+        // 即座にローカルステートに追加
+        setPresenceState((prev) => {
+          const newState = { ...prev };
+          const sellerNumber = customEvent.detail.seller_number;
+          if (!newState[sellerNumber]) newState[sellerNumber] = [];
+          
+          // 既存のレコードを削除（同じユーザーの重複を防ぐ）
+          newState[sellerNumber] = newState[sellerNumber].filter(
+            (r) => r.user_name !== customEvent.detail.user_name
+          );
+          
+          // 新しいレコードを追加
+          newState[sellerNumber].push({
+            seller_number: customEvent.detail.seller_number,
+            user_name: customEvent.detail.user_name,
+            entered_at: customEvent.detail.entered_at,
+          });
+          
+          console.log(`[${timestamp}] [useSellerPresence] CustomEvent ローカルステート即座更新:`, newState);
+          return newState;
+        });
+      } else if (customEvent.detail.type === 'untrack') {
+        // 5秒後に削除（leaveタイマーと同じロジック）
+        const sellerNumber = customEvent.detail.seller_number;
+        const userName = customEvent.detail.user_name;
+        
+        // 既存のタイマーをキャンセル
+        const timerKey = `${sellerNumber}-${userName}`;
+        if (leaveTimersRef.current.has(timerKey)) {
+          const timer = leaveTimersRef.current.get(timerKey);
+          if (timer) clearTimeout(timer);
+        }
+        
+        // 5秒後に削除
+        const timer = setTimeout(() => {
+          const delayTimestamp = new Date().toISOString();
+          console.log(`[${delayTimestamp}] [useSellerPresence] CustomEvent untrack: ${PRESENCE_PERSIST_DURATION_MS}ms経過、削除: ${sellerNumber} - ${userName}`);
+          setPresenceState((prev) => {
+            const newState = { ...prev };
+            if (newState[sellerNumber]) {
+              newState[sellerNumber] = newState[sellerNumber].filter(
+                (r) => r.user_name !== userName
+              );
+              if (newState[sellerNumber].length === 0) {
+                delete newState[sellerNumber];
+              }
+            }
+            return newState;
+          });
+          leaveTimersRef.current.delete(timerKey);
+        }, PRESENCE_PERSIST_DURATION_MS);
+        
+        leaveTimersRef.current.set(timerKey, timer);
+        console.log(`[${timestamp}] [useSellerPresence] CustomEvent untrackタイマー設定: ${timerKey} (${PRESENCE_PERSIST_DURATION_MS}ms後)`);
+      }
+    };
+    
+    window.addEventListener(CUSTOM_EVENT_NAME, handleCustomEvent);
+
     channel
       .on('presence', { event: 'sync' }, () => {
         const timestamp = new Date().toISOString();
@@ -222,6 +289,9 @@ export function useSellerPresenceSubscribe(): UseSellerPresenceSubscribeResult {
       // 全てのleaveタイマーをキャンセル
       leaveTimersRef.current.forEach((timer) => clearTimeout(timer));
       leaveTimersRef.current.clear();
+      
+      // CustomEventリスナーを削除
+      window.removeEventListener(CUSTOM_EVENT_NAME, handleCustomEvent);
       
       // BroadcastChannelをクローズ
       if (broadcastChannelRef.current) {
@@ -319,6 +389,16 @@ export function useSellerPresenceTrack(
               });
               console.log(`[${trackTimestamp}] [useSellerPresence] BroadcastChannel送信（track）:`, presenceData);
             }
+            
+            // CustomEventで即座に通知（同じタブ内に）
+            const customEvent = new CustomEvent(CUSTOM_EVENT_NAME, {
+              detail: {
+                type: 'track',
+                ...presenceData,
+              },
+            });
+            window.dispatchEvent(customEvent);
+            console.log(`[${trackTimestamp}] [useSellerPresence] CustomEvent送信（track）:`, presenceData);
           } catch (e) {
             console.error(`[${timestamp}] [useSellerPresence] track エラー:`, e);
           }
@@ -363,6 +443,19 @@ export function useSellerPresenceTrack(
           user_name: userName,
         });
         console.log(`[${timestamp}] [useSellerPresence] BroadcastChannel送信（untrack）:`, { sellerNumber, userName });
+      }
+      
+      // CustomEventで即座に通知（同じタブ内に）
+      if (trackedRef.current) {
+        const customEvent = new CustomEvent(CUSTOM_EVENT_NAME, {
+          detail: {
+            type: 'untrack',
+            seller_number: sellerNumber,
+            user_name: userName,
+          },
+        });
+        window.dispatchEvent(customEvent);
+        console.log(`[${timestamp}] [useSellerPresence] CustomEvent送信（untrack）:`, { sellerNumber, userName });
       }
       
       // 5秒後にuntrackを実行
