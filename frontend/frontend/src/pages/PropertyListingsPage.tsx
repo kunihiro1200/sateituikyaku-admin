@@ -41,7 +41,7 @@ import PublicUrlCell from '../components/PublicUrlCell';
 import PropertySidebarStatus from '../components/PropertySidebarStatus';
 import { getDisplayStatus } from '../utils/atbbStatusDisplayMapper';
 import { SECTION_COLORS } from '../theme/sectionColors';
-import { calculatePropertyStatus, createWorkTaskMap } from '../utils/propertyListingStatusUtils';
+import { calculatePropertyStatus, createWorkTaskMap, isPrivateStatus } from '../utils/propertyListingStatusUtils';
 import { pageDataCache, CACHE_KEYS } from '../store/pageDataCache';
 
 interface PropertyListing {
@@ -608,7 +608,14 @@ export default function PropertyListingsPage() {
                         key={listing.id}
                         hover
                         onClick={() => listing.property_number && handleRowClick(listing.property_number)}
-                        sx={{ cursor: 'pointer', bgcolor: isSelected ? 'action.selected' : 'inherit' }}
+                        sx={{
+                          cursor: 'pointer',
+                          bgcolor: isSelected
+                            ? 'action.selected'
+                            : isPrivateStatus(listing.atbb_status)
+                              ? 'rgba(0, 0, 0, 0.04)'
+                              : 'inherit'
+                        }}
                       >
                         <TableCell padding="checkbox" onClick={(e) => { e.stopPropagation(); listing.property_number && handleSelectProperty(listing.property_number, e); }}>
                           <Checkbox checked={isSelected} />
@@ -696,6 +703,9 @@ export default function PropertyListingsPage() {
                         mb: 1,
                         cursor: 'pointer',
                         minHeight: 44,
+                        bgcolor: isPrivateStatus(listing.atbb_status)
+                          ? 'rgba(0, 0, 0, 0.04)'
+                          : 'inherit',
                         '&:hover': { bgcolor: 'grey.50' },
                       }}
                     >
