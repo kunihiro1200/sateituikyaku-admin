@@ -1816,14 +1816,14 @@ export class SellerService extends BaseRepository {
       }
     }
     
-    // 名前、住所、電話番号での検索は全件取得が必要（暗号化されているため）
+    // 名前、住所、電話番号、メールアドレスでの検索は全件取得が必要（暗号化されているため）
     console.log('⚠️  Slow path: Full scan required for encrypted field search');
     
-    // 最大100件に制限して検索速度を改善
+    // 最大500件に制限して検索速度を改善（メールアドレス検索のため増加）
     let sellerQuery = this.table('sellers')
       .select('*')
       .order('updated_at', { ascending: false })
-      .limit(100);
+      .limit(500);
     
     // デフォルトで削除済みを除外
     if (!includeDeleted) {
