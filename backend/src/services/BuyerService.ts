@@ -2936,7 +2936,11 @@ export class BuyerService {
       return buyers.filter(b => b.pet_allowed_required !== '不可');
     }
     if (pet === '不可') {
-      return buyers.filter(b => b.pet_allowed_required === '不可');
+      // 不可: 「不可」または空欄（null・空文字）の買主を対象
+      return buyers.filter(b => {
+        const v = b.pet_allowed_required;
+        return !v || v === '' || v === '不可';
+      });
     }
     // 不正な値はフォールバック（全件）
     return buyers;
