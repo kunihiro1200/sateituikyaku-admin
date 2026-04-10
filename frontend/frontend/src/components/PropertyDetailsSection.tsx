@@ -1,4 +1,5 @@
 import { Box, Typography, Grid, TextField } from '@mui/material';
+import { formatConstructionDate } from '../utils/constructionDateFormatter';
 
 interface PropertyListing {
   land_area?: number;
@@ -182,7 +183,7 @@ export default function PropertyDetailsSection({
               新築年月
             </Typography>
             <Typography variant="body2" sx={{ fontWeight: 600 }}>
-              {formatValue(data.construction_year_month)}
+              {formatConstructionDate(data.construction_year_month) ?? formatValue(data.construction_year_month)}
             </Typography>
           </Grid>
           <Grid item xs={6}>

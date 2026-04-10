@@ -77,6 +77,18 @@ export function formatConstructionDate(constructionDate: string | null | undefin
     return `${year}年${month}月`;
   }
 
+  // Date.toString()形式のパース
+  // 例: "Sat Apr 01 1978 00:00:00 GMT+0900 (Japan Standard Time)"
+  const dateToStringMatch = trimmed.match(/^[A-Za-z]{3}\s[A-Za-z]{3}\s\d{2}\s(\d{4})/);
+  if (dateToStringMatch) {
+    const date = new Date(trimmed);
+    if (!isNaN(date.getTime())) {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      return `${year}年${month}月`;
+    }
+  }
+
   // 認識できない形式
   console.warn(`[formatConstructionDate] Unrecognized format: ${constructionDate}`);
   return null;
