@@ -4,6 +4,7 @@ import { BeppuAreaMappingService } from './BeppuAreaMappingService';
 import { GeolocationService } from './GeolocationService';
 import { GeocodingService } from './GeocodingService';
 import { getOitaCityAreas, getBeppuCityAreas } from '../utils/cityAreaMapping';
+import { BuyerService } from './BuyerService';
 
 export interface BuyerCandidate {
   buyer_number: string;
@@ -124,8 +125,21 @@ export class BuyerCandidateService {
     );
     console.log(`[BuyerCandidateService] Filtering time: ${Date.now() - filterStartTime}ms`);
 
+    // buyer_filter_* フィルターを適用
+    const pet = property.buyer_filter_pet || 'どちらでも';
+    const parking = property.buyer_filter_parking || '指定なし';
+    const onsen = property.buyer_filter_onsen || 'どちらでも';
+    const floor = property.buyer_filter_floor || 'どちらでも';
+
+    let filtered = candidates;
+    filtered = BuyerService.filterByPet(filtered, pet);
+    filtered = BuyerService.filterByParking(filtered, parking);
+    filtered = BuyerService.filterByOnsen(filtered, onsen);
+    filtered = BuyerService.filterByFloor(filtered, floor);
+    console.log(`[BuyerCandidateService] After buyer_filter_* filtering: ${filtered.length} candidates`);
+
     // 最大50件に制限
-    const limitedCandidates = candidates.slice(0, 50);
+    const limitedCandidates = filtered.slice(0, 50);
 
     // 全買主の問い合わせ物件番号を収集
     const allPropertyNumbers = new Set<string>();

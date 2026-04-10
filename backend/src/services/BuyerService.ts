@@ -2942,7 +2942,7 @@ export class BuyerService {
    * 不可: pet_allowed_required === '不可' のみ
    * どちらでも: 全件
    */
-  private filterByPet(buyers: any[], pet: string): any[] {
+  public static filterByPet(buyers: any[], pet: string): any[] {
     if (pet === 'どちらでも') return buyers;
     if (pet === '可') {
       return buyers.filter(b => b.pet_allowed_required !== '不可');
@@ -2967,7 +2967,7 @@ export class BuyerService {
    * 10台以上: 10台以上 のみ
    * 指定なし: 全件
    */
-  private filterByParking(buyers: any[], parking: string): any[] {
+  public static filterByParking(buyers: any[], parking: string): any[] {
     if (parking === '指定なし') return buyers;
     if (parking === '不要') {
       return buyers.filter(b => {
@@ -3006,7 +3006,7 @@ export class BuyerService {
    * なし: null・空欄・なし
    * どちらでも: 全件
    */
-  private filterByOnsen(buyers: any[], onsen: string): any[] {
+  public static filterByOnsen(buyers: any[], onsen: string): any[] {
     if (onsen === 'どちらでも') return buyers;
     if (onsen === 'あり') {
       return buyers.filter(b => b.hot_spring_required === 'あり');
@@ -3027,7 +3027,7 @@ export class BuyerService {
    * 低層階: null・空欄・低層階・どちらでも
    * どちらでも: 全件
    */
-  private filterByFloor(buyers: any[], floor: string): any[] {
+  public static filterByFloor(buyers: any[], floor: string): any[] {
     if (floor === 'どちらでも') return buyers;
     if (floor === '高層階') {
       return buyers.filter(b => {
@@ -3252,16 +3252,16 @@ export class BuyerService {
     console.log('[getBuyersByRadiusSearch] priceFiltered count:', priceFiltered.length);
 
     // 7. ペット・P台数・温泉・高層階フィルターを適用（AND条件）
-    const petFiltered = this.filterByPet(priceFiltered, pet);
+    const petFiltered = BuyerService.filterByPet(priceFiltered, pet);
     console.log('[getBuyersByRadiusSearch] petFiltered count:', petFiltered.length);
 
-    const parkingFiltered = this.filterByParking(petFiltered, parking);
+    const parkingFiltered = BuyerService.filterByParking(petFiltered, parking);
     console.log('[getBuyersByRadiusSearch] parkingFiltered count:', parkingFiltered.length);
 
-    const onsenFiltered = this.filterByOnsen(parkingFiltered, onsen);
+    const onsenFiltered = BuyerService.filterByOnsen(parkingFiltered, onsen);
     console.log('[getBuyersByRadiusSearch] onsenFiltered count:', onsenFiltered.length);
 
-    const filteredBuyers = this.filterByFloor(onsenFiltered, floor);
+    const filteredBuyers = BuyerService.filterByFloor(onsenFiltered, floor);
     console.log('[getBuyersByRadiusSearch] filteredBuyers (after floor filter) count:', filteredBuyers.length);
 
     // 8. 各買主の最新問い合わせ物件所在地を取得

@@ -1,5 +1,6 @@
 // 拡張買主配信フィルタリングサービス - 複数条件対応
 import { createClient } from '@supabase/supabase-js';
+import { BuyerService } from './BuyerService';
 import { EnhancedGeolocationService, GeographicMatchResult } from './EnhancedGeolocationService';
 import { Coordinates } from './GeolocationService';
 
@@ -192,12 +193,25 @@ export class EnhancedBuyerDistributionService {
       console.log(`[EnhancedBuyerDistributionService] Parallel filtering completed in ${Date.now() - filterStart}ms`);
 
       // 7. 合格した買主を抽出
-      const qualifiedBuyers = filteredBuyers.filter(b => 
+      const qualifiedBuyersBase = filteredBuyers.filter(b => 
         b.filterResults.geography &&
         b.filterResults.distribution &&
         b.filterResults.status &&
         b.filterResults.priceRange
       );
+
+      // buyer_filter_* フィルターを適用
+      const buyerFilterPet = property.buyer_filter_pet || 'どちらでも';
+      const buyerFilterParking = property.buyer_filter_parking || '指定なし';
+      const buyerFilterOnsen = property.buyer_filter_onsen || 'どちらでも';
+      const buyerFilterFloor = property.buyer_filter_floor || 'どちらでも';
+
+      let qualifiedBuyers: FilteredBuyer[] = qualifiedBuyersBase;
+      qualifiedBuyers = BuyerService.filterByPet(qualifiedBuyers, buyerFilterPet);
+      qualifiedBuyers = BuyerService.filterByParking(qualifiedBuyers, buyerFilterParking);
+      qualifiedBuyers = BuyerService.filterByOnsen(qualifiedBuyers, buyerFilterOnsen);
+      qualifiedBuyers = BuyerService.filterByFloor(qualifiedBuyers, buyerFilterFloor);
+      console.log(`[EnhancedBuyerDistributionService] After buyer_filter_* filtering: ${qualifiedBuyers.length} qualified buyers`);
 
       // Since we already consolidated by email, each qualified buyer represents one unique email
       const emails = qualifiedBuyers
@@ -240,7 +254,7 @@ export class EnhancedBuyerDistributionService {
     // 1. property_listingsテーブルを優先検索
     const { data: propertyData, error: propertyError } = await this.supabase
       .from('property_listings')
-      .select('property_number, google_map_url, address, price, property_type, distribution_areas')
+      .select('property_number, google_map_url, address, price, property_type, distribution_areas, buyer_filter_pet, buyer_filter_parking, buyer_filter_onsen, buyer_filter_floor')
       .eq('property_number', propertyNumber)
       .single();
 
@@ -260,7 +274,11 @@ export class EnhancedBuyerDistributionService {
         city: city,
         price: propertyData.price,
         property_type: propertyData.property_type,
-        distribution_areas: propertyData.distribution_areas
+        distribution_areas: propertyData.distribution_areas,
+        buyer_filter_pet: propertyData.buyer_filter_pet,
+        buyer_filter_parking: propertyData.buyer_filter_parking,
+        buyer_filter_onsen: propertyData.buyer_filter_onsen,
+        buyer_filter_floor: propertyData.buyer_filter_floor
       };
     }
 

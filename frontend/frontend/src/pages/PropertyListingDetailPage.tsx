@@ -156,6 +156,10 @@ interface PropertyListing {
   running_cost_price1?: number;
   running_cost_price2?: number;
   running_cost_price3?: number;
+  buyer_filter_pet?: string;
+  buyer_filter_parking?: string;
+  buyer_filter_onsen?: string;
+  buyer_filter_floor?: string;
 }
 
 interface Buyer {
@@ -192,6 +196,12 @@ function getPreviousPriceFromHistory(history: string | null | undefined): number
 // 表示用日付フォーマット関数
 // null / undefined / 空文字 → '-' を返す
 // 'YYYY-MM-DD' 形式 → 'YYYY/MM/DD' 形式に変換して返す
+// 買主フィルター選択肢定数
+const PET_OPTIONS = ['可', '不可', 'どちらでも'] as const;
+const PARKING_OPTIONS = ['1台', '2台以上', '3台以上', '10台以上', '不要', '指定なし'] as const;
+const ONSEN_OPTIONS = ['あり', 'なし', 'どちらでも'] as const;
+const FLOOR_OPTIONS = ['高層階', '低層階', 'どちらでも'] as const;
+
 const formatDisplayDate = (dateStr: string | null | undefined): string => {
   if (!dateStr) return '-';
   return dateStr.replace(/-/g, '/');
@@ -242,6 +252,12 @@ export default function PropertyListingDetailPage() {
   const [copiedPropertyNumber, setCopiedPropertyNumber] = useState(false);
   const [copiedAddress, setCopiedAddress] = useState(false);
   const [propertyNumberSearch, setPropertyNumberSearch] = useState<string>(''); // 物件番号検索
+
+  // 買主フィルター状態
+  const [buyerFilterPet, setBuyerFilterPet] = useState<string>('どちらでも');
+  const [buyerFilterParking, setBuyerFilterParking] = useState<string>('指定なし');
+  const [buyerFilterOnsen, setBuyerFilterOnsen] = useState<string>('どちらでも');
+  const [buyerFilterFloor, setBuyerFilterFloor] = useState<string>('どちらでも');
 
   // 物件テンプレート（非報告）関連の状態
   const [propertyEmailTemplates, setPropertyEmailTemplates] = useState<Array<{id: string; name: string; subject: string; body: string}>>([]);
@@ -306,6 +322,11 @@ export default function PropertyListingDetailPage() {
       setData(response.data);
       // 確認フィールドを設定（nullの場合はそのまま）
       setConfirmation(response.data.confirmation);
+      // 買主フィルター値を設定（nullの場合はデフォルト値）
+      setBuyerFilterPet(response.data.buyer_filter_pet || 'どちらでも');
+      setBuyerFilterParking(response.data.buyer_filter_parking || '指定なし');
+      setBuyerFilterOnsen(response.data.buyer_filter_onsen || 'どちらでも');
+      setBuyerFilterFloor(response.data.buyer_filter_floor || 'どちらでも');
     } catch (error) {
       console.error('Failed to fetch property data:', error);
       setSnackbar({
@@ -342,12 +363,35 @@ export default function PropertyListingDetailPage() {
     }
   };
 
+  // 買主フィルター変更ハンドラー
+  const handleBuyerFilterChange = async (field: string, value: string) => {
+    if (field === 'buyer_filter_pet') setBuyerFilterPet(value);
+    if (field === 'buyer_filter_parking') setBuyerFilterParking(value);
+    if (field === 'buyer_filter_onsen') setBuyerFilterOnsen(value);
+    if (field === 'buyer_filter_floor') setBuyerFilterFloor(value);
+    try {
+      await api.put(`/api/property-listings/${propertyNumber}`, { [field]: value });
+    } catch (error) {
+      setSnackbar({ open: true, message: 'フィルター設定の保存に失敗しました', severity: 'error' });
+    }
+  };
+
   const handleFieldChange = (field: string, value: any) => {
     setEditedData((prev) => ({ ...prev, [field]: value }));
 
     // 売買価格（sales_price）は自動保存しない（保存ボタンで確定）
     if (field === 'sales_price') {
       return;
+    }
+
+    // 物件種別がマンション以外に変更された場合、Pet/Floorフィルターをリセット
+    if (field === 'property_type' && value !== 'マンション') {
+      setBuyerFilterPet('どちらでも');
+      setBuyerFilterFloor('どちらでも');
+      api.put(`/api/property-listings/${propertyNumber}`, {
+        buyer_filter_pet: 'どちらでも',
+        buyer_filter_floor: 'どちらでも',
+      }).catch(() => {});
     }
   };
 
@@ -1398,7 +1442,7 @@ export default function PropertyListingDetailPage() {
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.25 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
             <Typography variant="body1" color="text.secondary" fontWeight="bold">物件情報</Typography>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap' }}>
               <Typography 
                 variant="h6" 
                 fontWeight="bold" 
@@ -1420,6 +1464,134 @@ export default function PropertyListingDetailPage() {
                   {copiedPropertyNumber ? <CheckIcon /> : <ContentCopyIcon />}
                 </IconButton>
               </Tooltip>
+
+              {/* 買主フィルター設定バー */}
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap', ml: 1 }}>
+                {/* P台数フィルター（常時表示） */}
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
+                  <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.7rem', whiteSpace: 'nowrap' }}>P台数:</Typography>
+                  {PARKING_OPTIONS.map(option => (
+                    <Button
+                      key={option}
+                      size="small"
+                      variant={buyerFilterParking === option ? 'contained' : 'outlined'}
+                      onClick={() => handleBuyerFilterChange('buyer_filter_parking', option)}
+                      sx={{
+                        minWidth: 'auto',
+                        px: 0.75,
+                        py: 0.25,
+                        fontSize: '0.7rem',
+                        lineHeight: 1.2,
+                        borderColor: SECTION_COLORS.buyer.main,
+                        color: buyerFilterParking === option ? '#fff' : SECTION_COLORS.buyer.main,
+                        backgroundColor: buyerFilterParking === option ? SECTION_COLORS.buyer.main : 'transparent',
+                        '&:hover': {
+                          borderColor: SECTION_COLORS.buyer.dark,
+                          backgroundColor: buyerFilterParking === option
+                            ? SECTION_COLORS.buyer.dark
+                            : `${SECTION_COLORS.buyer.main}15`,
+                        },
+                      }}
+                    >
+                      {option}
+                    </Button>
+                  ))}
+                </Box>
+                {/* 温泉フィルター（常時表示） */}
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
+                  <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.7rem', whiteSpace: 'nowrap' }}>温泉:</Typography>
+                  {ONSEN_OPTIONS.map(option => (
+                    <Button
+                      key={option}
+                      size="small"
+                      variant={buyerFilterOnsen === option ? 'contained' : 'outlined'}
+                      onClick={() => handleBuyerFilterChange('buyer_filter_onsen', option)}
+                      sx={{
+                        minWidth: 'auto',
+                        px: 0.75,
+                        py: 0.25,
+                        fontSize: '0.7rem',
+                        lineHeight: 1.2,
+                        borderColor: SECTION_COLORS.buyer.main,
+                        color: buyerFilterOnsen === option ? '#fff' : SECTION_COLORS.buyer.main,
+                        backgroundColor: buyerFilterOnsen === option ? SECTION_COLORS.buyer.main : 'transparent',
+                        '&:hover': {
+                          borderColor: SECTION_COLORS.buyer.dark,
+                          backgroundColor: buyerFilterOnsen === option
+                            ? SECTION_COLORS.buyer.dark
+                            : `${SECTION_COLORS.buyer.main}15`,
+                        },
+                      }}
+                    >
+                      {option}
+                    </Button>
+                  ))}
+                </Box>
+                {/* ペットフィルター（マンション選択時のみ） */}
+                {(editedData.property_type ?? data?.property_type) === 'マンション' && (
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
+                    <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.7rem', whiteSpace: 'nowrap' }}>ペット:</Typography>
+                    {PET_OPTIONS.map(option => (
+                      <Button
+                        key={option}
+                        size="small"
+                        variant={buyerFilterPet === option ? 'contained' : 'outlined'}
+                        onClick={() => handleBuyerFilterChange('buyer_filter_pet', option)}
+                        sx={{
+                          minWidth: 'auto',
+                          px: 0.75,
+                          py: 0.25,
+                          fontSize: '0.7rem',
+                          lineHeight: 1.2,
+                          borderColor: SECTION_COLORS.buyer.main,
+                          color: buyerFilterPet === option ? '#fff' : SECTION_COLORS.buyer.main,
+                          backgroundColor: buyerFilterPet === option ? SECTION_COLORS.buyer.main : 'transparent',
+                          '&:hover': {
+                            borderColor: SECTION_COLORS.buyer.dark,
+                            backgroundColor: buyerFilterPet === option
+                              ? SECTION_COLORS.buyer.dark
+                              : `${SECTION_COLORS.buyer.main}15`,
+                          },
+                        }}
+                      >
+                        {option}
+                      </Button>
+                    ))}
+                  </Box>
+                )}
+                {/* 高層階フィルター（マンション選択時のみ） */}
+                {(editedData.property_type ?? data?.property_type) === 'マンション' && (
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
+                    <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.7rem', whiteSpace: 'nowrap' }}>高層階:</Typography>
+                    {FLOOR_OPTIONS.map(option => (
+                      <Button
+                        key={option}
+                        size="small"
+                        variant={buyerFilterFloor === option ? 'contained' : 'outlined'}
+                        onClick={() => handleBuyerFilterChange('buyer_filter_floor', option)}
+                        sx={{
+                          minWidth: 'auto',
+                          px: 0.75,
+                          py: 0.25,
+                          fontSize: '0.7rem',
+                          lineHeight: 1.2,
+                          borderColor: SECTION_COLORS.buyer.main,
+                          color: buyerFilterFloor === option ? '#fff' : SECTION_COLORS.buyer.main,
+                          backgroundColor: buyerFilterFloor === option ? SECTION_COLORS.buyer.main : 'transparent',
+                          '&:hover': {
+                            borderColor: SECTION_COLORS.buyer.dark,
+                            backgroundColor: buyerFilterFloor === option
+                              ? SECTION_COLORS.buyer.dark
+                              : `${SECTION_COLORS.buyer.main}15`,
+                          },
+                        }}
+                      >
+                        {option}
+                      </Button>
+                    ))}
+                  </Box>
+                )}
+              </Box>
             </Box>
           </Box>
           <Box sx={{ display: 'flex', gap: 1 }}>
