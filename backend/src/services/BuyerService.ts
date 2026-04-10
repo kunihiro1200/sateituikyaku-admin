@@ -173,7 +173,7 @@ export class BuyerService {
         query = query.eq('buyer_number', search);
       } else {
         query = query.or(
-          `buyer_number.ilike.%${search}%,name.ilike.%${search}%,phone_number.ilike.%${search}%,property_number.ilike.%${search}%`
+          `buyer_number.ilike.%${search}%,name.ilike.%${search}%,phone_number.ilike.%${search}%,email.ilike.%${search}%,property_number.ilike.%${search}%`
         );
       }
     }
