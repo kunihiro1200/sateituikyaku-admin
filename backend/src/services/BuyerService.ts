@@ -26,6 +26,18 @@ const distributionCache = new NodeCache({ stdTTL: 600 });
 const purchaseRateStatisticsCache = new NodeCache({ stdTTL: 1800 });
 
 /**
+ * 業者問合せ買主かどうかを判定する
+ * broker_inquiry が null、undefined、空文字列、'0' の場合は通常買主（除外しない）
+ * それ以外の値が入っている場合は業者問合せ買主（除外する）
+ */
+export function isVendorBuyer(brokerInquiry: string | null | undefined): boolean {
+  if (brokerInquiry === null || brokerInquiry === undefined) return false;
+  if (brokerInquiry === '') return false;
+  if (brokerInquiry === '0') return false;
+  return true;
+}
+
+/**
  * 買主ステータスキャッシュを無効化（外部から呼び出し可能）
  * 買主データ更新時に呼び出してキャッシュをクリアする
  * 
@@ -3369,7 +3381,7 @@ export class BuyerService {
       // 1. 2026年1月1日以降のデータを取得
       const { data: buyers, error } = await this.supabase
         .from('buyers')
-        .select('viewing_date, latest_status, follow_up_assignee, email, phone_number')
+        .select('viewing_date, latest_status, follow_up_assignee, email, phone_number, broker_inquiry')
         .gte('viewing_date', '2026-01-01')
         .not('viewing_date', 'is', null);
 
@@ -3421,6 +3433,11 @@ export class BuyerService {
 
       // GYOSHAを除外
       if (assignee === 'GYOSHA') {
+        continue;
+      }
+
+      // 業者問合せ買主を除外
+      if (isVendorBuyer(buyer.broker_inquiry)) {
         continue;
       }
 
