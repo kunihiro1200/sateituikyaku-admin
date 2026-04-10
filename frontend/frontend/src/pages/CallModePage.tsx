@@ -182,25 +182,21 @@ export function generateWrongNumberText(phoneNumber: string | null | undefined):
 
 // 電話番号間違いボタン: 本文への挿入
 export function insertWrongNumberText(body: string, insertionText: string): string {
-  const trigger1 = '株式会社いふうです。';
-  const trigger2 = '"株式会社いふう"です。';
+  const triggers = [
+    '株式会社いふうです。',
+    '"株式会社いふう"です。',
+    '不動産会社のいふうです。',
+  ];
 
-  const idx1 = body.indexOf(trigger1);
-  const idx2 = body.indexOf(trigger2);
-
+  // 最初に出現するトリガーを探す
   let insertPos = -1;
-
-  if (idx1 !== -1 && idx2 !== -1) {
-    // 両方存在する場合は最初に出現する方
-    if (idx1 <= idx2) {
-      insertPos = idx1 + trigger1.length;
-    } else {
-      insertPos = idx2 + trigger2.length;
+  let triggerLen = 0;
+  for (const trigger of triggers) {
+    const idx = body.indexOf(trigger);
+    if (idx !== -1 && (insertPos === -1 || idx < insertPos)) {
+      insertPos = idx + trigger.length;
+      triggerLen = trigger.length;
     }
-  } else if (idx1 !== -1) {
-    insertPos = idx1 + trigger1.length;
-  } else if (idx2 !== -1) {
-    insertPos = idx2 + trigger2.length;
   }
 
   const insertion = `<br>${insertionText}`;
