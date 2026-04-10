@@ -153,6 +153,17 @@ export default function PropertySidebarStatus({
       // sidebar_statusを基本として使用（DBに保存されている値）
       const status = listing.sidebar_status || '';
       
+      // sidebar_status === '専任・公開中' の分解処理を先に実行
+      // workTaskMap の有無・calculatePropertyStatus の結果に依存しない形にする
+      const normalizedStatus = status.replace(/\s+/g, '');
+      if (status === '専任・公開中') {
+        const assignee = listing.sales_assignee || '';
+        const assigneeStatus = ASSIGNEE_TO_SENIN_STATUS[assignee] || '専任・公開中';
+        counts[assigneeStatus] = (counts[assigneeStatus] || 0) + 1;
+        // 専任・公開中は sidebar_status ベースで処理済みなので、workTaskMap の処理をスキップ
+        return;
+      }
+
       // 動的に判定が必要なステータス（DBに保存されない、または常に再計算が必要）
       if (workTaskMap) {
         const computed = calculatePropertyStatus(listing as any, workTaskMap);
@@ -175,16 +186,8 @@ export default function PropertySidebarStatus({
       // sidebar_statusが存在する場合はそれを使用
       // ただし「未報告」系は除外（動的判定済み）
       // スペースを除去してから判定（「未報告 林」も「未報告林」も除外）
-      const normalizedStatus = status.replace(/\s+/g, '');
       if (status && status !== '値下げ未完了' && !normalizedStatus.startsWith('未報告')) {
-        // 「専任・公開中」はsales_assigneeで担当者別に分解して表示
-        if (status === '専任・公開中') {
-          const assignee = listing.sales_assignee || '';
-          const assigneeStatus = ASSIGNEE_TO_SENIN_STATUS[assignee] || '専任・公開中';
-          counts[assigneeStatus] = (counts[assigneeStatus] || 0) + 1;
-        } else {
-          counts[status] = (counts[status] || 0) + 1;
-        }
+        counts[status] = (counts[status] || 0) + 1;
       }
     });
 
