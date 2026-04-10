@@ -1200,14 +1200,19 @@ export class SellerService extends BaseRepository {
             .lt('visit_date', todayJST);
           break;
         case 'todayCallAssigned':
-          // 当日TEL（担当）（営担あり（「外す」以外） AND 次電日が今日以前 AND 追客不要を含まない AND 専任媒介・一般媒介を除外）
+          // 当日TEL（担当）（営担あり AND 次電日が今日以前 AND 追客中を含む AND 追客不要・専任媒介・一般媒介・他社買取を除外）
+          // 🔧 修正: カウント計算（SellerSidebarCountsUpdateService）と条件を一致させる
+          // - .ilike('status', '%追客中%') を追加（カウント計算と一致）
+          // - .not('status', 'ilike', '%他社買取%') を追加（カウント計算と一致）
           query = query
             .not('visit_assignee', 'is', null)
             .neq('visit_assignee', '')
             .lte('next_call_date', todayJST)
+            .ilike('status', '%追客中%')
             .not('status', 'ilike', '%追客不要%')
             .not('status', 'ilike', '%専任媒介%')
-            .not('status', 'ilike', '%一般媒介%');
+            .not('status', 'ilike', '%一般媒介%')
+            .not('status', 'ilike', '%他社買取%');
           break;
         case 'todayCall':
           // 当日TEL分（追客中 OR 他決→追客 AND 次電日が今日以前 AND コミュニケーション情報なし AND 営担なし）
@@ -1408,36 +1413,116 @@ export class SellerService extends BaseRepository {
           // 査定（郵送）（郵送ステータスが「未」）
           query = query.eq('mailing_status', '未');
           break;
-        case 'todayCallNotStarted':
+        case 'todayCallNotStarted': {
           // 当日TEL_未着手（当日TEL分の条件 + 不通が空欄 + 反響日付が2026/1/1以降）
-          query = query
-            .ilike('status', '%追客中%')
-            .lte('next_call_date', todayJST)
+          // 🔧 修正: カウント計算（SellerSidebarCountsUpdateService）と条件を一致させる
+          // - todayCallNotStartedCount は status === '追客中' のみカウント（他決→追客は除外）
+          // - フィルタも同様に status === '追客中' のみを対象とする
+          let notStartedCandidates: any[] = [];
+          let nsPage = 0;
+          const nsPageSize = 1000;
+
+          while (true) {
+            const { data: nsData, error: nsError } = await this.table('sellers')
+              .select('id, status, next_call_date, visit_assignee, phone_contact_person, preferred_contact_time, contact_method, unreachable_status, confidence_level, exclusion_date, inquiry_date')
+              .is('deleted_at', null)
+              .not('next_call_date', 'is', null)
+              .lte('next_call_date', todayJST)
+              .range(nsPage * nsPageSize, (nsPage + 1) * nsPageSize - 1);
+
+            if (nsError || !nsData || nsData.length === 0) break;
+            notStartedCandidates = notStartedCandidates.concat(nsData);
+            if (nsData.length < nsPageSize) break;
+            nsPage++;
+          }
+
+          const notStartedIds = notStartedCandidates.filter((s: any) => {
+            const status = s.status || '';
+            // カウント計算の todayCallNotStartedCount と同じ: status === '追客中' のみ
+            if (status !== '追客中') return false;
+            if (status.includes('追客不要') || status.includes('専任媒介') || status.includes('一般媒介')) return false;
+
             // 営担が空または「外す」
-            .or('visit_assignee.is.null,visit_assignee.eq.,visit_assignee.eq.外す')
+            const visitAssignee = s.visit_assignee || '';
+            if (visitAssignee && visitAssignee.trim() !== '' && visitAssignee.trim() !== '外す') return false;
+
             // コミュニケーション情報が全て空
-            .or('phone_contact_person.is.null,phone_contact_person.eq.')
-            .or('preferred_contact_time.is.null,preferred_contact_time.eq.')
-            .or('contact_method.is.null,contact_method.eq.')
+            const hasInfo = (s.phone_contact_person?.trim()) ||
+                            (s.preferred_contact_time?.trim()) ||
+                            (s.contact_method?.trim());
+            if (hasInfo) return false;
+
             // 不通が空欄
-            .or('unreachable_status.is.null,unreachable_status.eq.')
+            const unreachable = s.unreachable_status || '';
+            if (unreachable && unreachable.trim() !== '') return false;
+
+            // 確度が「ダブり」「D」「AI査定」でない
+            const confidence = s.confidence_level || '';
+            if (confidence === 'ダブり' || confidence === 'D' || confidence === 'AI査定') return false;
+
+            // 除外日が空欄
+            const exclusionDate = s.exclusion_date || '';
+            if (exclusionDate && exclusionDate.trim() !== '') return false;
+
             // 反響日付が2026/1/1以降
-            .gte('inquiry_date', '2026-01-01');
+            const inquiryDate = s.inquiry_date || '';
+            return inquiryDate >= '2026-01-01';
+          }).map((s: any) => s.id);
+
+          query = notStartedIds.length === 0
+            ? query.in('id', ['__no_match__'])
+            : query.in('id', notStartedIds);
           break;
-        case 'pinrichEmpty':
+        }
+        case 'pinrichEmpty': {
           // Pinrich空欄（当日TEL分の条件 + Pinrichが空欄）
-          query = query
-            .ilike('status', '%追客中%')
-            .lte('next_call_date', todayJST)
+          // 🔧 修正: カウント計算（SellerSidebarCountsUpdateService）と条件を一致させる
+          // - filteredTodayCallSellers（追客中 OR 他決→追客）から派生させる
+          let pinrichCandidates: any[] = [];
+          let prPage = 0;
+          const prPageSize = 1000;
+
+          while (true) {
+            const { data: prData, error: prError } = await this.table('sellers')
+              .select('id, status, next_call_date, visit_assignee, phone_contact_person, preferred_contact_time, contact_method, pinrich_status')
+              .is('deleted_at', null)
+              .not('next_call_date', 'is', null)
+              .lte('next_call_date', todayJST)
+              .range(prPage * prPageSize, (prPage + 1) * prPageSize - 1);
+
+            if (prError || !prData || prData.length === 0) break;
+            pinrichCandidates = pinrichCandidates.concat(prData);
+            if (prData.length < prPageSize) break;
+            prPage++;
+          }
+
+          const pinrichIds = pinrichCandidates.filter((s: any) => {
+            const status = s.status || '';
+            // 追客中 OR 他決→追客（カウント計算の filteredTodayCallSellers と同じ）
+            const isFollowingUp = status.includes('追客中') || status === '他決→追客';
+            if (!isFollowingUp) return false;
+            if (status.includes('追客不要') || status.includes('専任媒介') || status.includes('一般媒介')) return false;
+
             // 営担が空または「外す」
-            .or('visit_assignee.is.null,visit_assignee.eq.,visit_assignee.eq.外す')
+            const visitAssignee = s.visit_assignee || '';
+            if (visitAssignee && visitAssignee.trim() !== '' && visitAssignee.trim() !== '外す') return false;
+
             // コミュニケーション情報が全て空
-            .or('phone_contact_person.is.null,phone_contact_person.eq.')
-            .or('preferred_contact_time.is.null,preferred_contact_time.eq.')
-            .or('contact_method.is.null,contact_method.eq.')
+            const hasInfo = (s.phone_contact_person?.trim()) ||
+                            (s.preferred_contact_time?.trim()) ||
+                            (s.contact_method?.trim());
+            if (hasInfo) return false;
+
             // Pinrichが空欄
-            .or('pinrich_status.is.null,pinrich_status.eq.');
+            const pinrich = s.pinrich_status || '';
+            return !pinrich || pinrich.trim() === '';
+          }).map((s: any) => s.id);
+
+          query = pinrichIds.length === 0
+            ? query.in('id', ['__no_match__'])
+            : query.in('id', pinrichIds);
           break;
+        }
         case 'exclusive':
           // 専任カテゴリー（専任他決打合せ <> "完了" + 次電日 <> TODAY() + 状況が専任媒介関連）
           query = query
