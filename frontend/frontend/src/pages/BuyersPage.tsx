@@ -191,6 +191,15 @@ export default function BuyersPage() {
             console.log(`[BuyersPage] After viewingMonth filter: ${filtered.length} buyers`);
           }
 
+          // 業者問合せ買主を除外（買付率統計の詳細リストと一致させる）
+          if (viewingMonth) {
+            filtered = filtered.filter(b => {
+              const bi = b.broker_inquiry;
+              return bi === null || bi === undefined || bi === '' || bi === '0';
+            });
+            console.log(`[BuyersPage] After broker_inquiry filter: ${filtered.length} buyers`);
+          }
+
           // 担当者フィルタ（URLパラメータから）
           if (assigneeParam) {
             console.log(`[BuyersPage] Applying assignee filter: ${assigneeParam}`);
@@ -350,6 +359,15 @@ export default function BuyersPage() {
                         return b.viewing_date.substring(0, 7) === currentViewingMonth;
                       });
                       console.log(`[INFO] After viewingMonth filter: ${filtered.length} buyers`);
+                    }
+
+                    // 業者問合せ買主を除外
+                    if (currentViewingMonth) {
+                      filtered = filtered.filter(b => {
+                        const bi = b.broker_inquiry;
+                        return bi === null || bi === undefined || bi === '' || bi === '0';
+                      });
+                      console.log(`[INFO] After broker_inquiry filter: ${filtered.length} buyers`);
                     }
                     
                     if (currentAssignee) {
