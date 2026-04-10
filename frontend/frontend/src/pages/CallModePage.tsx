@@ -182,8 +182,8 @@ export function generateWrongNumberText(phoneNumber: string | null | undefined):
 
 // 電話番号間違いボタン: 本文への挿入
 export function insertWrongNumberText(body: string, insertionText: string): string {
-  const trigger1 = 'いふうです。';
-  const trigger2 = '"いふう"です。';
+  const trigger1 = '株式会社いふうです。';
+  const trigger2 = '"株式会社いふう"です。';
 
   const idx1 = body.indexOf(trigger1);
   const idx2 = body.indexOf(trigger2);
@@ -7317,6 +7317,20 @@ HP：https://ifoo-oita.com/
               
               {confirmDialog.type === 'email' && (
                 <>
+                  {isTargetTemplateForWrongNumber(confirmDialog?.template?.label ?? '') && (
+                    <Box sx={{ mb: 2 }}>
+                      <Button
+                        variant="outlined"
+                        color="warning"
+                        onClick={handleWrongNumberButtonClick}
+                        disabled={wrongNumberButtonDisabled}
+                        fullWidth
+                      >
+                        電話番号間違い
+                      </Button>
+                    </Box>
+                  )}
+
                   <Box sx={{ mt: 2, mb: 2 }}>
                     <SenderAddressSelector
                       value={senderAddress}
@@ -7422,18 +7436,6 @@ HP：https://ifoo-oita.com/
                     </Alert>
                   )}
                 </Box>
-              )}
-
-              {isTargetTemplateForWrongNumber(confirmDialog?.template?.label ?? '') && (
-                <Button
-                  variant="outlined"
-                  color="warning"
-                  onClick={handleWrongNumberButtonClick}
-                  disabled={wrongNumberButtonDisabled}
-                  sx={{ mt: 1 }}
-                >
-                  電話番号間違い
-                </Button>
               )}
 
               <Alert severity="info" sx={{ mt: 2 }}>
