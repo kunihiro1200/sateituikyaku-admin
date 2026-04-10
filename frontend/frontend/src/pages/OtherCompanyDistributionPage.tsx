@@ -90,6 +90,15 @@ const PRICE_RANGE_OPTIONS = [
 // 物件種別選択肢
 const PROPERTY_TYPE_OPTIONS = ['戸建', 'マンション', '土地'];
 
+// ペットフィルター選択肢
+const PET_OPTIONS = ['可', '不可', 'どちらでも'] as const;
+// P台数フィルター選択肢
+const PARKING_OPTIONS = ['1台', '2台以上', '3台以上', '10台以上', '不要', '指定なし'] as const;
+// 温泉フィルター選択肢
+const ONSEN_OPTIONS = ['あり', 'なし', 'どちらでも'] as const;
+// 高層階フィルター選択肢
+const FLOOR_OPTIONS = ['高層階', '低層階', 'どちらでも'] as const;
+
 const SIGNATURE_EMAIL = `\n\n××××××××××××××××××××××××××××\n株式会社いふう\n大分市舞鶴町1-3-30\nSTビル１F\n097-533-2022\ntenant@ifoo-oita.com\n定休日：水曜\n営業時間：10時～18時\n××××××××××××××××××××××××××××`;
 
 export default function OtherCompanyDistributionPage() {
@@ -98,6 +107,10 @@ export default function OtherCompanyDistributionPage() {
   const [address, setAddress] = useState<string>(''); // 住所入力
   const [selectedPriceRange, setSelectedPriceRange] = useState<string>('指定なし');
   const [selectedPropertyTypes, setSelectedPropertyTypes] = useState<string[]>([]);
+  const [selectedPet, setSelectedPet] = useState<string>('どちらでも');
+  const [selectedParking, setSelectedParking] = useState<string>('指定なし');
+  const [selectedOnsen, setSelectedOnsen] = useState<string>('どちらでも');
+  const [selectedFloor, setSelectedFloor] = useState<string>('どちらでも');
   const [buyers, setBuyers] = useState<Buyer[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>(''); // エラーメッセージ
@@ -137,6 +150,10 @@ export default function OtherCompanyDistributionPage() {
         address: address.trim(),
         priceRange: selectedPriceRange,
         propertyTypes: selectedPropertyTypes,
+        pet: selectedPet,
+        parking: selectedParking,
+        onsen: selectedOnsen,
+        floor: selectedFloor,
       });
       setBuyers(response.data.buyers);
     } catch (err: any) {
@@ -159,15 +176,21 @@ export default function OtherCompanyDistributionPage() {
 
   useEffect(() => {
     fetchBuyers();
-  }, [address, selectedPriceRange, selectedPropertyTypes]);
+  }, [address, selectedPriceRange, selectedPropertyTypes, selectedPet, selectedParking, selectedOnsen, selectedFloor]);
 
   // 物件種別ボタンのトグル
   const togglePropertyType = (type: string) => {
-    setSelectedPropertyTypes(prev =>
-      prev.includes(type)
+    setSelectedPropertyTypes(prev => {
+      const next = prev.includes(type)
         ? prev.filter(t => t !== type)
-        : [...prev, type]
-    );
+        : [...prev, type];
+      // マンションが含まれなくなった場合はペット・高層階フィルターをリセット
+      if (!next.includes('マンション')) {
+        setSelectedPet('どちらでも');
+        setSelectedFloor('どちらでも');
+      }
+      return next;
+    });
   };
 
   // チェックボックス操作
@@ -408,6 +431,134 @@ export default function OtherCompanyDistributionPage() {
               </Box>
             </Box>
           </Grid>
+
+          {/* ペットフィルター（マンション選択時のみ表示） */}
+          {selectedPropertyTypes.includes('マンション') && (
+            <Grid item xs={12} md={3}>
+              <Box>
+                <Typography variant="body2" sx={{ mb: 1, color: 'text.secondary' }}>
+                  ペット
+                </Typography>
+                <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                  {PET_OPTIONS.map(option => (
+                    <Button
+                      key={option}
+                      variant={selectedPet === option ? 'contained' : 'outlined'}
+                      onClick={() => setSelectedPet(option)}
+                      sx={{
+                        borderColor: SECTION_COLORS.buyer.main,
+                        color: selectedPet === option ? '#fff' : SECTION_COLORS.buyer.main,
+                        backgroundColor: selectedPet === option ? SECTION_COLORS.buyer.main : 'transparent',
+                        '&:hover': {
+                          borderColor: SECTION_COLORS.buyer.dark,
+                          backgroundColor: selectedPet === option
+                            ? SECTION_COLORS.buyer.dark
+                            : `${SECTION_COLORS.buyer.main}15`,
+                        },
+                      }}
+                    >
+                      {option}
+                    </Button>
+                  ))}
+                </Box>
+              </Box>
+            </Grid>
+          )}
+
+          {/* P台数フィルター（常時表示） */}
+          <Grid item xs={12} md={4}>
+            <Box>
+              <Typography variant="body2" sx={{ mb: 1, color: 'text.secondary' }}>
+                P台数
+              </Typography>
+              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                {PARKING_OPTIONS.map(option => (
+                  <Button
+                    key={option}
+                    variant={selectedParking === option ? 'contained' : 'outlined'}
+                    onClick={() => setSelectedParking(option)}
+                    sx={{
+                      borderColor: SECTION_COLORS.buyer.main,
+                      color: selectedParking === option ? '#fff' : SECTION_COLORS.buyer.main,
+                      backgroundColor: selectedParking === option ? SECTION_COLORS.buyer.main : 'transparent',
+                      '&:hover': {
+                        borderColor: SECTION_COLORS.buyer.dark,
+                        backgroundColor: selectedParking === option
+                          ? SECTION_COLORS.buyer.dark
+                          : `${SECTION_COLORS.buyer.main}15`,
+                      },
+                    }}
+                  >
+                    {option}
+                  </Button>
+                ))}
+              </Box>
+            </Box>
+          </Grid>
+
+          {/* 温泉フィルター（常時表示） */}
+          <Grid item xs={12} md={3}>
+            <Box>
+              <Typography variant="body2" sx={{ mb: 1, color: 'text.secondary' }}>
+                温泉
+              </Typography>
+              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                {ONSEN_OPTIONS.map(option => (
+                  <Button
+                    key={option}
+                    variant={selectedOnsen === option ? 'contained' : 'outlined'}
+                    onClick={() => setSelectedOnsen(option)}
+                    sx={{
+                      borderColor: SECTION_COLORS.buyer.main,
+                      color: selectedOnsen === option ? '#fff' : SECTION_COLORS.buyer.main,
+                      backgroundColor: selectedOnsen === option ? SECTION_COLORS.buyer.main : 'transparent',
+                      '&:hover': {
+                        borderColor: SECTION_COLORS.buyer.dark,
+                        backgroundColor: selectedOnsen === option
+                          ? SECTION_COLORS.buyer.dark
+                          : `${SECTION_COLORS.buyer.main}15`,
+                      },
+                    }}
+                  >
+                    {option}
+                  </Button>
+                ))}
+              </Box>
+            </Box>
+          </Grid>
+
+          {/* 高層階フィルター（マンション選択時のみ表示） */}
+          {selectedPropertyTypes.includes('マンション') && (
+            <Grid item xs={12} md={3}>
+              <Box>
+                <Typography variant="body2" sx={{ mb: 1, color: 'text.secondary' }}>
+                  高層階
+                </Typography>
+                <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                  {FLOOR_OPTIONS.map(option => (
+                    <Button
+                      key={option}
+                      variant={selectedFloor === option ? 'contained' : 'outlined'}
+                      onClick={() => setSelectedFloor(option)}
+                      sx={{
+                        borderColor: SECTION_COLORS.buyer.main,
+                        color: selectedFloor === option ? '#fff' : SECTION_COLORS.buyer.main,
+                        backgroundColor: selectedFloor === option ? SECTION_COLORS.buyer.main : 'transparent',
+                        '&:hover': {
+                          borderColor: SECTION_COLORS.buyer.dark,
+                          backgroundColor: selectedFloor === option
+                            ? SECTION_COLORS.buyer.dark
+                            : `${SECTION_COLORS.buyer.main}15`,
+                        },
+                      }}
+                    >
+                      {option}
+                    </Button>
+                  ))}
+                </Box>
+              </Box>
+            </Grid>
+          )}
         </Grid>
       </Paper>
 

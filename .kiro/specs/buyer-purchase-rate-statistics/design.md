@@ -74,15 +74,22 @@ graph TB
 
 **主要な状態管理**:
 ```typescript
-interface PurchaseRateStatistics {
+interface MonthlyStatistics {
   month: string;              // 例: "2026年1月"
-  followUpAssignee: string;   // 後続担当
-  purchaseCount: number;      // 買付数
-  viewingCount: number;       // 内覧数
-  purchaseRate: number | null; // 買付率（%）
+  total: {
+    viewingCount: number;     // 月の合計内覧数
+    purchaseCount: number;    // 月の合計買付数
+    purchaseRate: number | null; // 月の合計買付率
+  };
+  assignees: Array<{
+    followUpAssignee: string;   // 後続担当
+    viewingCount: number;       // 内覧数
+    purchaseCount: number;      // 買付数
+    purchaseRate: number | null; // 買付率（%）
+  }>;
 }
 
-const [statistics, setStatistics] = useState<PurchaseRateStatistics[]>([]);
+const [statistics, setStatistics] = useState<MonthlyStatistics[]>([]);
 const [loading, setLoading] = useState(true);
 const [error, setError] = useState<string | null>(null);
 ```
@@ -93,14 +100,26 @@ const [error, setError] = useState<string | null>(null);
 
 **責務**:
 - 統計データをテーブル形式で表示
-- 合計行の計算と表示
+- 各月の「計」行を最初に表示
+- 担当名ごとの行をインデントして表示
 - ソート機能（月の降順、後続担当のアルファベット順）
 
 **Props**:
 ```typescript
 interface StatisticsTableProps {
-  data: PurchaseRateStatistics[];
+  data: MonthlyStatistics[];
 }
+```
+
+**表示形式**:
+```
+年月        内覧件数  買付件数  買付率（%）
+2026年1月   計  50      10       20.0
+            A   20       5       25.0
+            B   30       5       16.7
+2025年12月  計  40       8       20.0
+            A   25       5       20.0
+            B   15       3       20.0
 ```
 
 ### 2. バックエンド
@@ -133,10 +152,17 @@ router.get('/purchase-rate-statistics', authenticate, async (req: Request, res: 
 ```typescript
 async getPurchaseRateStatistics(): Promise<Array<{
   month: string;
-  followUpAssignee: string;
-  purchaseCount: number;
-  viewingCount: number;
-  purchaseRate: number | null;
+  total: {
+    viewingCount: number;
+    purchaseCount: number;
+    purchaseRate: number | null;
+  };
+  assignees: Array<{
+    followUpAssignee: string;
+    viewingCount: number;
+    purchaseCount: number;
+    purchaseRate: number | null;
+  }>;
 }>>
 ```
 
@@ -146,7 +172,9 @@ async getPurchaseRateStatistics(): Promise<Array<{
 3. 内覧数を集計（`viewing_date` が入力されている、同じ `email` または `phone_number` は1件としてカウント）
 4. 買付率を計算（買付数 ÷ 内覧数）
 5. 月別・後続担当別にグループ化
-6. 月の降順、後続担当のアルファベット順でソート
+6. 各月の合計を計算
+7. 月の降順、後続担当のアルファベット順でソート
+8. 各月の最初に「計」行、その下に担当名ごとの行を配置
 
 ### 3. ルーティング
 
@@ -231,17 +259,23 @@ const purchaseRate = viewingCount > 0
 ### レスポンス形式
 
 ```typescript
-interface PurchaseRateStatisticsResponse {
-  statistics: Array<{
-    month: string;              // "2026年1月"
+interface MonthlyStatistics {
+  month: string;              // "2026年1月"
+  total: {
+    viewingCount: number;     // 月の合計内覧数
+    purchaseCount: number;    // 月の合計買付数
+    purchaseRate: number | null; // 月の合計買付率
+  };
+  assignees: Array<{
     followUpAssignee: string;   // "A"
-    purchaseCount: number;      // 5
     viewingCount: number;       // 20
+    purchaseCount: number;      // 5
     purchaseRate: number | null; // 25.0 または null
   }>;
-  totalPurchaseCount: number;   // 合計買付数
-  totalViewingCount: number;    // 合計内覧数
-  totalPurchaseRate: number | null; // 合計買付率
+}
+
+interface PurchaseRateStatisticsResponse {
+  statistics: MonthlyStatistics[];
 }
 ```
 
@@ -505,6 +539,9 @@ async getPurchaseRateStatistics(): Promise<any> {
 
 - 2026年1月以降の月ごとの買付率を表示
 - 後続担当ごとに集計
+- 各月の最初に「計」行を表示
+- 担当名の行をインデント表示
+- 列の順序：年月 → 内覧件数 → 買付件数 → 買付率
 - 内覧数の重複排除（同じメールアドレスまたは電話番号）
 - 5秒以内の表示（パフォーマンス要件）
 - エラーハンドリング
@@ -528,10 +565,17 @@ async getPurchaseRateStatistics(): Promise<any> {
  */
 async getPurchaseRateStatistics(): Promise<Array<{
   month: string;
-  followUpAssignee: string;
-  purchaseCount: number;
-  viewingCount: number;
-  purchaseRate: number | null;
+  total: {
+    viewingCount: number;
+    purchaseCount: number;
+    purchaseRate: number | null;
+  };
+  assignees: Array<{
+    followUpAssignee: string;
+    viewingCount: number;
+    purchaseCount: number;
+    purchaseRate: number | null;
+  }>;
 }>> {
   try {
     // 1. 2026年1月1日以降のデータを取得
@@ -553,15 +597,10 @@ async getPurchaseRateStatistics(): Promise<Array<{
     const groupedData = this.groupByMonthAndAssignee(buyers);
 
     // 3. 買付数と内覧数を集計
-    const statistics = this.calculateStatistics(groupedData);
+    const statistics = this.calculateMonthlyStatistics(groupedData);
 
-    // 4. ソート（月の降順、後続担当のアルファベット順）
-    statistics.sort((a, b) => {
-      if (a.month !== b.month) {
-        return b.month.localeCompare(a.month); // 月の降順
-      }
-      return a.followUpAssignee.localeCompare(b.followUpAssignee); // 後続担当のアルファベット順
-    });
+    // 4. ソート（月の降順）
+    statistics.sort((a, b) => b.month.localeCompare(a.month));
 
     return statistics;
   } catch (error: any) {
@@ -573,65 +612,115 @@ async getPurchaseRateStatistics(): Promise<Array<{
 /**
  * 買主データを月ごと・後続担当ごとにグループ化
  */
-private groupByMonthAndAssignee(buyers: any[]): Map<string, any[]> {
-  const grouped = new Map<string, any[]>();
+private groupByMonthAndAssignee(buyers: any[]): Map<string, Map<string, any[]>> {
+  const grouped = new Map<string, Map<string, any[]>>();
 
   for (const buyer of buyers) {
     const viewingDate = new Date(buyer.viewing_date);
     const month = `${viewingDate.getFullYear()}年${viewingDate.getMonth() + 1}月`;
     const assignee = buyer.follow_up_assignee || '未設定';
-    const key = `${month}|${assignee}`;
 
-    if (!grouped.has(key)) {
-      grouped.set(key, []);
+    if (!grouped.has(month)) {
+      grouped.set(month, new Map());
     }
-    grouped.get(key)!.push(buyer);
+    
+    const monthData = grouped.get(month)!;
+    if (!monthData.has(assignee)) {
+      monthData.set(assignee, []);
+    }
+    
+    monthData.get(assignee)!.push(buyer);
   }
 
   return grouped;
 }
 
 /**
- * 買付数と内覧数を集計
+ * 月ごとの統計を計算
  */
-private calculateStatistics(groupedData: Map<string, any[]>): Array<{
+private calculateMonthlyStatistics(groupedData: Map<string, Map<string, any[]>>): Array<{
   month: string;
-  followUpAssignee: string;
-  purchaseCount: number;
-  viewingCount: number;
-  purchaseRate: number | null;
+  total: {
+    viewingCount: number;
+    purchaseCount: number;
+    purchaseRate: number | null;
+  };
+  assignees: Array<{
+    followUpAssignee: string;
+    viewingCount: number;
+    purchaseCount: number;
+    purchaseRate: number | null;
+  }>;
 }> {
   const statistics: Array<{
     month: string;
-    followUpAssignee: string;
-    purchaseCount: number;
-    viewingCount: number;
-    purchaseRate: number | null;
+    total: {
+      viewingCount: number;
+      purchaseCount: number;
+      purchaseRate: number | null;
+    };
+    assignees: Array<{
+      followUpAssignee: string;
+      viewingCount: number;
+      purchaseCount: number;
+      purchaseRate: number | null;
+    }>;
   }> = [];
 
-  for (const [key, buyers] of groupedData.entries()) {
-    const [month, assignee] = key.split('|');
+  for (const [month, assigneeData] of groupedData.entries()) {
+    const assignees: Array<{
+      followUpAssignee: string;
+      viewingCount: number;
+      purchaseCount: number;
+      purchaseRate: number | null;
+    }> = [];
+    
+    let totalViewingCount = 0;
+    let totalPurchaseCount = 0;
 
-    // 買付数を集計（latest_status に「買（」を含む）
-    const purchaseCount = buyers.filter(b => 
-      b.latest_status && b.latest_status.includes('買（')
-    ).length;
+    // 担当者ごとの統計を計算
+    for (const [assignee, buyers] of assigneeData.entries()) {
+      // 買付数を集計（latest_status に「買（」を含む）
+      const purchaseCount = buyers.filter(b => 
+        b.latest_status && b.latest_status.includes('買（')
+      ).length;
 
-    // 内覧数を集計（重複排除）
-    const uniqueViewings = this.getUniqueViewings(buyers);
-    const viewingCount = uniqueViewings.size;
+      // 内覧数を集計（重複排除）
+      const uniqueViewings = this.getUniqueViewings(buyers);
+      const viewingCount = uniqueViewings.size;
 
-    // 買付率を計算
-    const purchaseRate = viewingCount > 0
-      ? Math.round((purchaseCount / viewingCount) * 1000) / 10
+      // 買付率を計算
+      const purchaseRate = viewingCount > 0
+        ? Math.round((purchaseCount / viewingCount) * 1000) / 10
+        : null;
+
+      assignees.push({
+        followUpAssignee: assignee,
+        viewingCount,
+        purchaseCount,
+        purchaseRate
+      });
+
+      totalViewingCount += viewingCount;
+      totalPurchaseCount += purchaseCount;
+    }
+
+    // 担当者をアルファベット順にソート
+    assignees.sort((a, b) => a.followUpAssignee.localeCompare(b.followUpAssignee));
+
+    // 月の合計買付率を計算
+    const totalPurchaseRate = totalViewingCount > 0
+      ? Math.round((totalPurchaseCount / totalViewingCount) * 1000) / 10
       : null;
 
     statistics.push({
       month,
-      followUpAssignee: assignee,
-      purchaseCount,
-      viewingCount,
-      purchaseRate
+      total: {
+        viewingCount: totalViewingCount,
+        purchaseCount: totalPurchaseCount,
+        purchaseRate: totalPurchaseRate
+      },
+      assignees
     });
   }
 
@@ -670,21 +759,11 @@ router.get('/purchase-rate-statistics', authenticate, async (req: Request, res: 
     console.log('[GET /buyers/purchase-rate-statistics] Request received');
     
     const statistics = await buyerService.getPurchaseRateStatistics();
-    
-    // 合計を計算
-    const totalPurchaseCount = statistics.reduce((sum, s) => sum + s.purchaseCount, 0);
-    const totalViewingCount = statistics.reduce((sum, s) => sum + s.viewingCount, 0);
-    const totalPurchaseRate = totalViewingCount > 0
-      ? Math.round((totalPurchaseCount / totalViewingCount) * 1000) / 10
-      : null;
 
-    console.log(`[GET /buyers/purchase-rate-statistics] Success: ${statistics.length} records`);
+    console.log(`[GET /buyers/purchase-rate-statistics] Success: ${statistics.length} months`);
     
     res.json({
-      statistics,
-      totalPurchaseCount,
-      totalViewingCount,
-      totalPurchaseRate
+      statistics
     });
   } catch (error: any) {
     console.error('[GET /buyers/purchase-rate-statistics] Error:', error);
@@ -722,19 +801,23 @@ import {
 import { ArrowBack as ArrowBackIcon } from '@mui/icons-material';
 import api from '../services/api';
 
-interface PurchaseRateStatistics {
+interface MonthlyStatistics {
   month: string;
-  followUpAssignee: string;
-  purchaseCount: number;
-  viewingCount: number;
-  purchaseRate: number | null;
+  total: {
+    viewingCount: number;
+    purchaseCount: number;
+    purchaseRate: number | null;
+  };
+  assignees: Array<{
+    followUpAssignee: string;
+    viewingCount: number;
+    purchaseCount: number;
+    purchaseRate: number | null;
+  }>;
 }
 
 interface StatisticsResponse {
-  statistics: PurchaseRateStatistics[];
-  totalPurchaseCount: number;
-  totalViewingCount: number;
-  totalPurchaseRate: number | null;
+  statistics: MonthlyStatistics[];
 }
 
 export default function BuyerPurchaseRateStatisticsPage() {
@@ -827,33 +910,37 @@ export default function BuyerPurchaseRateStatisticsPage() {
         <Table>
           <TableHead>
             <TableRow>
-              <TableCell>月</TableCell>
-              <TableCell>後続担当</TableCell>
-              <TableCell align="right">買付数</TableCell>
-              <TableCell align="right">内覧数</TableCell>
+              <TableCell>年月</TableCell>
+              <TableCell align="right">内覧件数</TableCell>
+              <TableCell align="right">買付件数</TableCell>
               <TableCell align="right">買付率（%）</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {data.statistics.map((row, index) => (
-              <TableRow key={index}>
-                <TableCell>{row.month}</TableCell>
-                <TableCell>{row.followUpAssignee}</TableCell>
-                <TableCell align="right">{row.purchaseCount}</TableCell>
-                <TableCell align="right">{row.viewingCount}</TableCell>
-                <TableCell align="right">
-                  {row.purchaseRate !== null ? `${row.purchaseRate}%` : '-'}
-                </TableCell>
-              </TableRow>
+            {data.statistics.map((monthData, monthIndex) => (
+              <React.Fragment key={monthIndex}>
+                {/* 月の合計行 */}
+                <TableRow sx={{ bgcolor: 'grey.100', fontWeight: 'bold' }}>
+                  <TableCell>{monthData.month} 計</TableCell>
+                  <TableCell align="right">{monthData.total.viewingCount}</TableCell>
+                  <TableCell align="right">{monthData.total.purchaseCount}</TableCell>
+                  <TableCell align="right">
+                    {monthData.total.purchaseRate !== null ? `${monthData.total.purchaseRate}%` : '-'}
+                  </TableCell>
+                </TableRow>
+                {/* 担当者ごとの行（インデント） */}
+                {monthData.assignees.map((assignee, assigneeIndex) => (
+                  <TableRow key={`${monthIndex}-${assigneeIndex}`}>
+                    <TableCell sx={{ pl: 4 }}>{assignee.followUpAssignee}</TableCell>
+                    <TableCell align="right">{assignee.viewingCount}</TableCell>
+                    <TableCell align="right">{assignee.purchaseCount}</TableCell>
+                    <TableCell align="right">
+                      {assignee.purchaseRate !== null ? `${assignee.purchaseRate}%` : '-'}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </React.Fragment>
             ))}
-            <TableRow sx={{ bgcolor: 'grey.100', fontWeight: 'bold' }}>
-              <TableCell colSpan={2}>合計</TableCell>
-              <TableCell align="right">{data.totalPurchaseCount}</TableCell>
-              <TableCell align="right">{data.totalViewingCount}</TableCell>
-              <TableCell align="right">
-                {data.totalPurchaseRate !== null ? `${data.totalPurchaseRate}%` : '-'}
-              </TableCell>
-            </TableRow>
           </TableBody>
         </Table>
       </TableContainer>
@@ -918,10 +1005,17 @@ const statisticsCache = new NodeCache({ stdTTL: 1800 }); // 30分
 // BuyerServiceクラス内
 async getPurchaseRateStatistics(): Promise<Array<{
   month: string;
-  followUpAssignee: string;
-  purchaseCount: number;
-  viewingCount: number;
-  purchaseRate: number | null;
+  total: {
+    viewingCount: number;
+    purchaseCount: number;
+    purchaseRate: number | null;
+  };
+  assignees: Array<{
+    followUpAssignee: string;
+    viewingCount: number;
+    purchaseCount: number;
+    purchaseRate: number | null;
+  }>;
 }>> {
   const cacheKey = 'purchase-rate-statistics';
   
@@ -1154,6 +1248,9 @@ describe('BuyerService.getPurchaseRateStatistics', () => {
     // 2026年のデータのみが集計されていることを確認
     expect(statistics.length).toBe(1);
     expect(statistics[0].month).toBe('2026年1月');
+    expect(statistics[0].total.purchaseCount).toBe(1);
+    expect(statistics[0].assignees.length).toBe(1);
+    expect(statistics[0].assignees[0].followUpAssignee).toBe('A');
   });
 
   it('should deduplicate viewings by email and phone', async () => {
@@ -1179,7 +1276,7 @@ describe('BuyerService.getPurchaseRateStatistics', () => {
     const statistics = await buyerService.getPurchaseRateStatistics();
 
     // 重複が排除されて1件としてカウントされることを確認
-    expect(statistics[0].viewingCount).toBe(1);
+    expect(statistics[0].assignees[0].viewingCount).toBe(1);
   });
 
   it('should return null for purchase rate when viewing count is 0', async () => {
@@ -1198,7 +1295,7 @@ describe('BuyerService.getPurchaseRateStatistics', () => {
     const statistics = await buyerService.getPurchaseRateStatistics();
 
     // 内覧数が0の場合、買付率がnullになることを確認
-    expect(statistics[0].purchaseRate).toBeNull();
+    expect(statistics[0].assignees[0].purchaseRate).toBeNull();
   });
 });
 ```
@@ -1222,15 +1319,27 @@ describe('BuyerPurchaseRateStatisticsPage', () => {
       statistics: [
         {
           month: '2026年1月',
-          followUpAssignee: 'A',
-          purchaseCount: 5,
-          viewingCount: 20,
-          purchaseRate: 25.0
+          total: {
+            viewingCount: 50,
+            purchaseCount: 10,
+            purchaseRate: 20.0
+          },
+          assignees: [
+            {
+              followUpAssignee: 'A',
+              viewingCount: 20,
+              purchaseCount: 5,
+              purchaseRate: 25.0
+            },
+            {
+              followUpAssignee: 'B',
+              viewingCount: 30,
+              purchaseCount: 5,
+              purchaseRate: 16.7
+            }
+          ]
         }
-      ],
-      totalPurchaseCount: 5,
-      totalViewingCount: 20,
-      totalPurchaseRate: 25.0
+      ]
     };
 
     vi.mocked(api.get).mockResolvedValue({ data: mockData });
@@ -1242,11 +1351,12 @@ describe('BuyerPurchaseRateStatisticsPage', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText('2026年1月')).toBeInTheDocument();
+      expect(screen.getByText('2026年1月 計')).toBeInTheDocument();
       expect(screen.getByText('A')).toBeInTheDocument();
-      expect(screen.getByText('5')).toBeInTheDocument();
-      expect(screen.getByText('20')).toBeInTheDocument();
-      expect(screen.getByText('25.0%')).toBeInTheDocument();
+      expect(screen.getByText('B')).toBeInTheDocument();
+      expect(screen.getByText('50')).toBeInTheDocument();
+      expect(screen.getByText('10')).toBeInTheDocument();
+      expect(screen.getByText('20.0%')).toBeInTheDocument();
     });
   });
 
@@ -1269,10 +1379,7 @@ describe('BuyerPurchaseRateStatisticsPage', () => {
   it('should display "no data" message when statistics are empty', async () => {
     vi.mocked(api.get).mockResolvedValue({
       data: {
-        statistics: [],
-        totalPurchaseCount: 0,
-        totalViewingCount: 0,
-        totalPurchaseRate: null
+        statistics: []
       }
     });
 
@@ -1293,8 +1400,8 @@ describe('BuyerPurchaseRateStatisticsPage', () => {
 
 ### バックエンド
 - [ ] `BuyerService.getPurchaseRateStatistics()` メソッドの実装
-- [ ] `BuyerService.groupByMonthAndAssignee()` メソッドの実装
-- [ ] `BuyerService.calculateStatistics()` メソッドの実装
+- [ ] `BuyerService.groupByMonthAndAssignee()` メソッドの実装（月ごと・担当者ごとの2段階グループ化）
+- [ ] `BuyerService.calculateMonthlyStatistics()` メソッドの実装（月の合計と担当者ごとの統計を計算）
 - [ ] `BuyerService.getUniqueViewings()` メソッドの実装
 - [ ] `/api/buyers/purchase-rate-statistics` エンドポイントの追加
 - [ ] キャッシュ機能の実装
@@ -1303,13 +1410,13 @@ describe('BuyerPurchaseRateStatisticsPage', () => {
 - [ ] ユニットテストの作成
 
 ### フロントエンド
-- [ ] `BuyerPurchaseRateStatisticsPage.tsx` の作成
+- [ ] `BuyerPurchaseRateStatisticsPage.tsx` の作成（月ごとの「計」行と担当者行の表示）
 - [ ] `BuyerDetailPage.tsx` に「買付率」ボタンを追加
 - [ ] `App.tsx` にルーティングを追加
 - [ ] ローディング表示の実装
 - [ ] エラー表示の実装
 - [ ] 「データがありません」表示の実装
-- [ ] 統合テストの作成
+- [ ] 統合テストの作成（月ごとのグループ化表示を確認）
 
 ### テスト
 - [ ] バックエンドユニットテストの実行

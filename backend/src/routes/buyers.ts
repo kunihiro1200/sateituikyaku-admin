@@ -342,7 +342,7 @@ router.post('/update-sidebar-counts', async (_req: Request, res: Response) => {
 // 半径検索用の買主取得（認証必須だが、router.use(authenticate)の前に定義）
 router.post('/radius-search', authenticate, async (req: Request, res: Response) => {
   try {
-    const { address, priceRange, propertyTypes } = req.body;
+    const { address, priceRange, propertyTypes, pet, parking, onsen, floor } = req.body;
 
     // バリデーション
     if (!address || !propertyTypes || propertyTypes.length === 0) {
@@ -355,6 +355,10 @@ router.post('/radius-search', authenticate, async (req: Request, res: Response) 
       address,
       priceRange: priceRange || '指定なし',
       propertyTypes,
+      pet: pet || 'どちらでも',
+      parking: parking || '指定なし',
+      onsen: onsen || 'どちらでも',
+      floor: floor || 'どちらでも',
     });
 
     res.json(result);

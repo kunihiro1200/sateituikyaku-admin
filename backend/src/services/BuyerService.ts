@@ -2924,6 +2924,111 @@ export class BuyerService {
   /**
    * 価格帯フィルタリング
    */
+  /**
+   * ペットフィルター
+   * 可: pet_allowed_required !== '不可'（null・空欄含む）
+   * 不可: pet_allowed_required === '不可' のみ
+   * どちらでも: 全件
+   */
+  private filterByPet(buyers: any[], pet: string): any[] {
+    if (pet === 'どちらでも') return buyers;
+    if (pet === '可') {
+      return buyers.filter(b => b.pet_allowed_required !== '不可');
+    }
+    if (pet === '不可') {
+      return buyers.filter(b => b.pet_allowed_required === '不可');
+    }
+    // 不正な値はフォールバック（全件）
+    return buyers;
+  }
+
+  /**
+   * P台数フィルター
+   * 不要: null・空欄・1台・2台・不要
+   * 1台: null・空欄・不要・1台
+   * 2台以上: 2台以上・3台以上・10台以上
+   * 3台以上: 3台以上・10台以上
+   * 10台以上: 10台以上 のみ
+   * 指定なし: 全件
+   */
+  private filterByParking(buyers: any[], parking: string): any[] {
+    if (parking === '指定なし') return buyers;
+    if (parking === '不要') {
+      return buyers.filter(b => {
+        const v = b.parking_spaces;
+        return !v || v === '' || v === '1台' || v === '2台' || v === '不要';
+      });
+    }
+    if (parking === '1台') {
+      return buyers.filter(b => {
+        const v = b.parking_spaces;
+        return !v || v === '' || v === '不要' || v === '1台';
+      });
+    }
+    if (parking === '2台以上') {
+      return buyers.filter(b => {
+        const v = b.parking_spaces;
+        return v === '2台以上' || v === '3台以上' || v === '10台以上';
+      });
+    }
+    if (parking === '3台以上') {
+      return buyers.filter(b => {
+        const v = b.parking_spaces;
+        return v === '3台以上' || v === '10台以上';
+      });
+    }
+    if (parking === '10台以上') {
+      return buyers.filter(b => b.parking_spaces === '10台以上');
+    }
+    // 不正な値はフォールバック（全件）
+    return buyers;
+  }
+
+  /**
+   * 温泉フィルター
+   * あり: hot_spring_required === 'あり' のみ
+   * なし: null・空欄・なし
+   * どちらでも: 全件
+   */
+  private filterByOnsen(buyers: any[], onsen: string): any[] {
+    if (onsen === 'どちらでも') return buyers;
+    if (onsen === 'あり') {
+      return buyers.filter(b => b.hot_spring_required === 'あり');
+    }
+    if (onsen === 'なし') {
+      return buyers.filter(b => {
+        const v = b.hot_spring_required;
+        return !v || v === '' || v === 'なし';
+      });
+    }
+    // 不正な値はフォールバック（全件）
+    return buyers;
+  }
+
+  /**
+   * 高層階フィルター
+   * 高層階: null・空欄・高層階・どちらでも
+   * 低層階: null・空欄・低層階・どちらでも
+   * どちらでも: 全件
+   */
+  private filterByFloor(buyers: any[], floor: string): any[] {
+    if (floor === 'どちらでも') return buyers;
+    if (floor === '高層階') {
+      return buyers.filter(b => {
+        const v = b.high_floor_required;
+        return !v || v === '' || v === '高層階' || v === 'どちらでも';
+      });
+    }
+    if (floor === '低層階') {
+      return buyers.filter(b => {
+        const v = b.high_floor_required;
+        return !v || v === '' || v === '低層階' || v === 'どちらでも';
+      });
+    }
+    // 不正な値はフォールバック（全件）
+    return buyers;
+  }
+
   private filterByPriceRange(buyers: any[], priceRange: string, propertyTypes: string[]): any[] {
     if (priceRange === '指定なし') {
       console.log('[filterByPriceRange] priceRange is "指定なし", returning all buyers');
@@ -3008,13 +3113,25 @@ export class BuyerService {
     address: string;
     priceRange: string;
     propertyTypes: string[];
+    pet?: string;
+    parking?: string;
+    onsen?: string;
+    floor?: string;
   }): Promise<{ buyers: any[]; total: number }> {
-    const { address, priceRange, propertyTypes } = params;
+    const {
+      address,
+      priceRange,
+      propertyTypes,
+      pet = 'どちらでも',
+      parking = '指定なし',
+      onsen = 'どちらでも',
+      floor = 'どちらでも',
+    } = params;
 
     console.log('[getBuyersByRadiusSearch] params:', { address, priceRange, propertyTypes });
 
     // キャッシュキー生成
-    const cacheKey = `radius:${address}:${priceRange}:${propertyTypes.join(',')}`;
+    const cacheKey = `radius:${address}:${priceRange}:${propertyTypes.join(',')}:${pet}:${parking}:${onsen}:${floor}`;
     
     // キャッシュチェック
     const cached = distributionCache.get(cacheKey);
@@ -3067,7 +3184,7 @@ export class BuyerService {
     // まず、全買主を取得（desired_area_lat, desired_area_lngがnullでないもの）
     const { data: allBuyers, error } = await this.supabase
       .from('buyers')
-      .select('buyer_number, name, desired_area, desired_property_type, price_range_house, price_range_apartment, price_range_land, reception_date, phone_number, email, latest_status, inquiry_hearing, desired_area_lat, desired_area_lng')
+      .select('buyer_number, name, desired_area, desired_property_type, price_range_house, price_range_apartment, price_range_land, reception_date, phone_number, email, latest_status, inquiry_hearing, desired_area_lat, desired_area_lng, pet_allowed_required, parking_spaces, hot_spring_required, high_floor_required')
       .is('deleted_at', null)
       .not('desired_area_lat', 'is', null)
       .not('desired_area_lng', 'is', null);
@@ -3114,11 +3231,24 @@ export class BuyerService {
     console.log('[getBuyersByRadiusSearch] propertyTypeFiltered count:', propertyTypeFiltered.length);
 
     // 6. 価格帯でフィルタリング
-    const filteredBuyers = this.filterByPriceRange(propertyTypeFiltered, priceRange, propertyTypes);
+    const priceFiltered = this.filterByPriceRange(propertyTypeFiltered, priceRange, propertyTypes);
 
-    console.log('[getBuyersByRadiusSearch] filteredBuyers count:', filteredBuyers.length);
+    console.log('[getBuyersByRadiusSearch] priceFiltered count:', priceFiltered.length);
 
-    // 7. 各買主の最新問い合わせ物件所在地を取得
+    // 7. ペット・P台数・温泉・高層階フィルターを適用（AND条件）
+    const petFiltered = this.filterByPet(priceFiltered, pet);
+    console.log('[getBuyersByRadiusSearch] petFiltered count:', petFiltered.length);
+
+    const parkingFiltered = this.filterByParking(petFiltered, parking);
+    console.log('[getBuyersByRadiusSearch] parkingFiltered count:', parkingFiltered.length);
+
+    const onsenFiltered = this.filterByOnsen(parkingFiltered, onsen);
+    console.log('[getBuyersByRadiusSearch] onsenFiltered count:', onsenFiltered.length);
+
+    const filteredBuyers = this.filterByFloor(onsenFiltered, floor);
+    console.log('[getBuyersByRadiusSearch] filteredBuyers (after floor filter) count:', filteredBuyers.length);
+
+    // 8. 各買主の最新問い合わせ物件所在地を取得
     // 買主の property_number フィールドから物件番号を取得
     const buyerNumbers = filteredBuyers.map(b => b.buyer_number);
     const { data: buyersWithProperty } = await this.supabase
@@ -3154,7 +3284,7 @@ export class BuyerService {
       }
     }
 
-    // 8. 距離でソート（近い順）+ 問い合わせ物件所在地を追加
+    // 9. 距離でソート（近い順）+ 問い合わせ物件所在地を追加
     const sortedBuyers = filteredBuyers.map(buyer => {
       const propertyNumber = propertyNumberMap.get(buyer.buyer_number);
       const inquiredPropertyAddress = propertyNumber 

@@ -52,6 +52,24 @@ function rowToObject(headers, rowData) {
   return obj;
 }
 
+/**
+ * rowオブジェクトからキー名のスペースを無視して値を取得するヘルパー
+ * 全角・半角スペースの有無に関わらず正しくマッチする
+ */
+function getRowValue_(row, key) {
+  // まず完全一致で試みる
+  if (row.hasOwnProperty(key)) return row[key];
+  // スペースを除去したキーで再試行
+  var normalizedKey = key.replace(/[\s\u3000]+/g, '');
+  for (var k in row) {
+    if (row.hasOwnProperty(k)) {
+      var normalizedK = k.replace(/[\s\u3000]+/g, '');
+      if (normalizedK === normalizedKey) return row[k];
+    }
+  }
+  return undefined;
+}
+
 function formatDateToISO_(value) {
   if (!value || value === '') return null;
   
@@ -157,37 +175,48 @@ function patchBuyerToSupabase_(buyerNumber, updateData) {
   }
 }
 
-// 🚨 新規追加: バッチ更新関数（複数の買主を1回のHTTPリクエストで更新）
+// バッチ更新関数（Supabase直接upsert方式）
+// バックエンドAPI経由は遅いため、Supabaseに直接upsertする
+// サイドバーカウントは syncBuyerList 完了後に updateBuyerSidebarCounts() で一括更新する
 function patchBuyersBatchToSupabase_(buyersData) {
-  // buyersData: [{ buyer_number, updateData }, ...]
-  var url = BUYER_SYNC_CONFIG.BACKEND_URL + '/api/buyers/batch';
-  
-  // API Keyを環境変数から取得
-  var apiKey = PropertiesService.getScriptProperties().getProperty('GAS_API_KEY');
-  if (!apiKey) {
-    Logger.log('❌ GAS_API_KEY is not set in Script Properties');
-    return { success: false, error: 'GAS_API_KEY is not configured' };
+  // buyersData: [{ buyer_number, updates }, ...]
+  // 1件ずつSupabase直接PATCHする（差分のみ安全に更新）
+  // バックエンドAPI経由より大幅に高速（1件数十ms）
+  var successCount = 0;
+  var failedCount = 0;
+
+  // GASのUrlFetchApp.fetchAllで並列リクエスト
+  var requests = [];
+  for (var i = 0; i < buyersData.length; i++) {
+    var buyerNumber = buyersData[i].buyer_number;
+    var updates = buyersData[i].updates;
+    var url = SUPABASE_CONFIG.URL + '/rest/v1/buyers?buyer_number=eq.' + encodeURIComponent(buyerNumber);
+    requests.push({
+      url: url,
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_CONFIG.SERVICE_KEY,
+        'Authorization': 'Bearer ' + SUPABASE_CONFIG.SERVICE_KEY,
+        'Prefer': 'return=minimal'
+      },
+      payload: JSON.stringify(updates),
+      muteHttpExceptions: true
+    });
   }
-  
-  var options = {
-    method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-API-Key': apiKey  // API Key認証ヘッダー
-    },
-    payload: JSON.stringify({ buyers: buyersData }),
-    muteHttpExceptions: true
-  };
-  
+
   try {
-    var res = UrlFetchApp.fetch(url, options);
-    var code = res.getResponseCode();
-    if (code >= 200 && code < 300) {
-      var result = JSON.parse(res.getContentText());
-      return { success: true, result: result };
-    } else {
-      return { success: false, error: 'HTTP ' + code + ': ' + res.getContentText().substring(0, 300) };
+    var responses = UrlFetchApp.fetchAll(requests);
+    for (var j = 0; j < responses.length; j++) {
+      var code = responses[j].getResponseCode();
+      if (code >= 200 && code < 300) {
+        successCount++;
+      } else {
+        failedCount++;
+        Logger.log('❌ PATCH失敗 ' + buyersData[j].buyer_number + ': HTTP ' + code + ' ' + responses[j].getContentText().substring(0, 100));
+      }
     }
+    return { success: true, result: { success: successCount, failed: failedCount } };
   } catch (e) {
     return { success: false, error: 'Network error: ' + e.toString() };
   }
@@ -197,7 +226,7 @@ function fetchAllBuyersFromSupabase_() {
   var allBuyers = [];
   var pageSize = 1000;
   var offset = 0;
-  var fields = 'buyer_number,latest_status,next_call_date,initial_assignee,follow_up_assignee,inquiry_email_phone,three_calls_confirmed,reception_date,distribution_type,desired_area,viewing_date,viewing_time,viewing_mobile,latest_viewing_date,post_viewing_seller_contact,viewing_promotion_email,notification_sender,pre_viewing_notes,viewing_notes,pre_viewing_hearing,offer_comment,company_name,email,other_company_property,building_name_price';
+  var fields = 'buyer_number,latest_status,next_call_date,initial_assignee,follow_up_assignee,inquiry_email_phone,three_calls_confirmed,reception_date,distribution_type,desired_area,viewing_date,viewing_time,viewing_mobile,latest_viewing_date,post_viewing_seller_contact,viewing_promotion_email,notification_sender,pre_viewing_notes,viewing_notes,pre_viewing_hearing,offer_comment,company_name,email,other_company_property,building_name_price,inquiry_email_reply,inquiry_hearing,inquiry_confidence,viewing_result_follow_up';
   while (true) {
     var url = SUPABASE_CONFIG.URL + '/rest/v1/buyers?select=' + fields +
       '&deleted_at=is.null&offset=' + offset + '&limit=' + pageSize;
@@ -237,13 +266,11 @@ function syncUpdatesToSupabase_(sheetRows) {
     dbMap[dbBuyers[i].buyer_number] = dbBuyers[i];
   }
   sheetRows.sort(function(a, b) {
-    var dateA = formatDateToISO_(a['受付日']) || '';
-    var dateB = formatDateToISO_(b['受付日']) || '';
-    if (dateB > dateA) return 1;
-    if (dateB < dateA) return -1;
-    return 0;
+    var numA = parseInt(a['買主番号'], 10) || 0;
+    var numB = parseInt(b['買主番号'], 10) || 0;
+    return numA - numB;
   });
-  Logger.log('📅 受付日の降順にソート完了');
+  Logger.log('📅 買主番号の昇順にソート完了');
   
   var updatedCount = 0;
   var errorCount = 0;
@@ -263,7 +290,7 @@ function syncUpdatesToSupabase_(sheetRows) {
     var needsUpdate = false;
     
     // 最新状況
-    var sheetStatus = row['★最新状況'] ? String(row['★最新状況']) : null;
+    var sheetStatus = getRowValue_(row, '★最新状況') ? String(getRowValue_(row, '★最新状況')) : null;
     var normalizedSheetStatus = normalizeValue(sheetStatus);
     var normalizedDbStatus = normalizeValue(dbBuyer.latest_status);
     if (normalizedSheetStatus !== normalizedDbStatus) {
@@ -275,7 +302,7 @@ function syncUpdatesToSupabase_(sheetRows) {
     }
     
     // 次電日
-    var sheetNextCallDate = formatDateToISO_(row['★次電日']);
+    var sheetNextCallDate = formatDateToISO_(getRowValue_(row, '★次電日'));
     var dbNextCallDate = dbBuyer.next_call_date ? String(dbBuyer.next_call_date).substring(0, 10) : null;
     var normalizedSheetNextCallDate = normalizeValue(sheetNextCallDate);
     var normalizedDbNextCallDate = normalizeValue(dbNextCallDate);
@@ -288,8 +315,8 @@ function syncUpdatesToSupabase_(sheetRows) {
     }
     
     // 初動担当
-    var initialAssignee = row['初動担当'];
-    var followUpAssignee = row['後続担当'];
+    var initialAssignee = getRowValue_(row, '初動担当');
+    var followUpAssignee = getRowValue_(row, '後続担当');
     var sheetInitialAssignee = initialAssignee ? String(initialAssignee) : null;
     var sheetFollowUpAssignee = followUpAssignee ? String(followUpAssignee) : null;
     var normalizedSheetInitialAssignee = normalizeValue(sheetInitialAssignee);
@@ -314,19 +341,67 @@ function syncUpdatesToSupabase_(sheetRows) {
     }
     
     // 問合メール電話対応
-    var sheetInquiryEmailPhone = row['【問合メール】電話対応'] ? String(row['【問合メール】電話対応']) : null;
+    var sheetInquiryEmailPhone = getRowValue_(row, '【問合メール】電話対応') ? String(getRowValue_(row, '【問合メール】電話対応')) : null;
     var normalizedSheetInquiryEmailPhone = normalizeValue(sheetInquiryEmailPhone);
-    var normalizedDbInquiryEmailPhone = normalizeValue(dbBuyer.inquiry_email_phone_response);
+    var normalizedDbInquiryEmailPhone = normalizeValue(dbBuyer.inquiry_email_phone);
     if (normalizedSheetInquiryEmailPhone !== normalizedDbInquiryEmailPhone) {
-      updateData.inquiry_email_phone_response = normalizedSheetInquiryEmailPhone;
+      updateData.inquiry_email_phone = normalizedSheetInquiryEmailPhone;
       needsUpdate = true;
       if (normalizedSheetInquiryEmailPhone === null && normalizedDbInquiryEmailPhone !== null) {
         Logger.log('  🗑️ ' + buyerNumber + ': 問合メール電話対応を削除 (旧値: ' + normalizedDbInquiryEmailPhone + ')');
       }
     }
     
+    // 【問合メール】メール返信（inquiry_email_reply）
+    var sheetInquiryEmailReply = getRowValue_(row, '【問合メール】　メール返信') ? String(getRowValue_(row, '【問合メール】　メール返信')) : null;
+    var normalizedSheetInquiryEmailReply = normalizeValue(sheetInquiryEmailReply);
+    var normalizedDbInquiryEmailReply = normalizeValue(dbBuyer.inquiry_email_reply);
+    if (normalizedSheetInquiryEmailReply !== normalizedDbInquiryEmailReply) {
+      updateData.inquiry_email_reply = normalizedSheetInquiryEmailReply;
+      needsUpdate = true;
+      if (normalizedSheetInquiryEmailReply === null && normalizedDbInquiryEmailReply !== null) {
+        Logger.log('  🗑️ ' + buyerNumber + ': 問合メール返信を削除 (旧値: ' + normalizedDbInquiryEmailReply + ')');
+      }
+    }
+    
+    // 問合時ヒアリング（inquiry_hearing）
+    var sheetInquiryHearing = getRowValue_(row, '●問合時ヒアリング') ? String(getRowValue_(row, '●問合時ヒアリング')) : null;
+    var normalizedSheetInquiryHearing = normalizeValue(sheetInquiryHearing);
+    var normalizedDbInquiryHearing = normalizeValue(dbBuyer.inquiry_hearing);
+    if (normalizedSheetInquiryHearing !== normalizedDbInquiryHearing) {
+      updateData.inquiry_hearing = normalizedSheetInquiryHearing;
+      needsUpdate = true;
+      if (normalizedSheetInquiryHearing === null && normalizedDbInquiryHearing !== null) {
+        Logger.log('  🗑️ ' + buyerNumber + ': 問合時ヒアリングを削除 (旧値: ' + normalizedDbInquiryHearing + ')');
+      }
+    }
+
+    // 問合時確度（inquiry_confidence）
+    var sheetInquiryConfidence = getRowValue_(row, '●問合時確度') ? String(getRowValue_(row, '●問合時確度')) : null;
+    var normalizedSheetInquiryConfidence = normalizeValue(sheetInquiryConfidence);
+    var normalizedDbInquiryConfidence = normalizeValue(dbBuyer.inquiry_confidence);
+    if (normalizedSheetInquiryConfidence !== normalizedDbInquiryConfidence) {
+      updateData.inquiry_confidence = normalizedSheetInquiryConfidence;
+      needsUpdate = true;
+      if (normalizedSheetInquiryConfidence === null && normalizedDbInquiryConfidence !== null) {
+        Logger.log('  🗑️ ' + buyerNumber + ': 問合時確度を削除 (旧値: ' + normalizedDbInquiryConfidence + ')');
+      }
+    }
+
+    // 内覧結果・後続対応（viewing_result_follow_up）
+    var sheetViewingResultFollowUp = getRowValue_(row, '★内覧結果・後続対応') ? String(getRowValue_(row, '★内覧結果・後続対応')) : null;
+    var normalizedSheetViewingResultFollowUp = normalizeValue(sheetViewingResultFollowUp);
+    var normalizedDbViewingResultFollowUp = normalizeValue(dbBuyer.viewing_result_follow_up);
+    if (normalizedSheetViewingResultFollowUp !== normalizedDbViewingResultFollowUp) {
+      updateData.viewing_result_follow_up = normalizedSheetViewingResultFollowUp;
+      needsUpdate = true;
+      if (normalizedSheetViewingResultFollowUp === null && normalizedDbViewingResultFollowUp !== null) {
+        Logger.log('  🗑️ ' + buyerNumber + ': 内覧結果・後続対応を削除 (旧値: ' + normalizedDbViewingResultFollowUp + ')');
+      }
+    }
+
     // 3回架電確認済み
-    var sheetThreeCallsConfirmed = row['3回架電確認済み'] ? String(row['3回架電確認済み']) : null;
+    var sheetThreeCallsConfirmed = getRowValue_(row, '3回架電確認済み') ? String(getRowValue_(row, '3回架電確認済み')) : null;
     var normalizedSheetThreeCallsConfirmed = normalizeValue(sheetThreeCallsConfirmed);
     var normalizedDbThreeCallsConfirmed = normalizeValue(dbBuyer.three_call_confirmed);
     if (normalizedSheetThreeCallsConfirmed !== normalizedDbThreeCallsConfirmed) {
@@ -338,7 +413,7 @@ function syncUpdatesToSupabase_(sheetRows) {
     }
     
     // 受付日
-    var sheetReceptionDate = formatDateToISO_(row['受付日']);
+    var sheetReceptionDate = formatDateToISO_(getRowValue_(row, '受付日'));
     var dbReceptionDate = dbBuyer.reception_date ? String(dbBuyer.reception_date).substring(0, 10) : null;
     var normalizedSheetReceptionDate = normalizeValue(sheetReceptionDate);
     var normalizedDbReceptionDate = normalizeValue(dbReceptionDate);
@@ -351,7 +426,7 @@ function syncUpdatesToSupabase_(sheetRows) {
     }
     
     // 配信種別
-    var sheetDistributionType = row['配信種別'] ? String(row['配信種別']) : null;
+    var sheetDistributionType = getRowValue_(row, '配信種別') ? String(getRowValue_(row, '配信種別')) : null;
     var normalizedSheetDistributionType = normalizeValue(sheetDistributionType);
     var normalizedDbDistributionType = normalizeValue(dbBuyer.distribution_type);
     if (normalizedSheetDistributionType !== normalizedDbDistributionType) {
@@ -363,7 +438,7 @@ function syncUpdatesToSupabase_(sheetRows) {
     }
     
     // エリア
-    var sheetDesiredArea = row['★エリア'] ? String(row['★エリア']) : null;
+    var sheetDesiredArea = getRowValue_(row, '★エリア') ? String(getRowValue_(row, '★エリア')) : null;
     var normalizedSheetDesiredArea = normalizeValue(sheetDesiredArea);
     var normalizedDbDesiredArea = normalizeValue(dbBuyer.desired_area);
     if (normalizedSheetDesiredArea !== normalizedDbDesiredArea) {
@@ -375,7 +450,7 @@ function syncUpdatesToSupabase_(sheetRows) {
     }
     
     // 内覧日（最新）
-    var sheetViewingDate = formatDateToISO_(row['●内覧日(最新）']);
+    var sheetViewingDate = formatDateToISO_(getRowValue_(row, '●内覧日(最新）'));
     var dbViewingDate = dbBuyer.viewing_date ? String(dbBuyer.viewing_date).substring(0, 10) : null;
     var normalizedSheetViewingDate = normalizeValue(sheetViewingDate);
     var normalizedDbViewingDate = normalizeValue(dbViewingDate);
@@ -388,7 +463,7 @@ function syncUpdatesToSupabase_(sheetRows) {
     }
     
     // 時間（●時間列、BP列）
-    var rawViewingTime = row['●時間'];
+    var rawViewingTime = getRowValue_(row, '●時間');
     var sheetViewingTime = null;
     
     // 🚨 デバッグ: 買主7282の時間データを記録
@@ -468,7 +543,7 @@ function syncUpdatesToSupabase_(sheetRows) {
     }
     
     // 内覧形態
-    var sheetViewingMobile = row['内覧形態'] ? String(row['内覧形態']) : null;
+    var sheetViewingMobile = getRowValue_(row, '内覧形態') ? String(getRowValue_(row, '内覧形態')) : null;
     var normalizedSheetViewingMobile = normalizeValue(sheetViewingMobile);
     var normalizedDbViewingMobile = normalizeValue(dbBuyer.viewing_mobile);
     if (normalizedSheetViewingMobile !== normalizedDbViewingMobile) {
@@ -480,7 +555,7 @@ function syncUpdatesToSupabase_(sheetRows) {
     }
     
     // 内覧形態_一般媒介
-    var sheetViewingTypeGeneral = row['内覧形態_一般媒介'] ? String(row['内覧形態_一般媒介']) : null;
+    var sheetViewingTypeGeneral = getRowValue_(row, '内覧形態_一般媒介') ? String(getRowValue_(row, '内覧形態_一般媒介')) : null;
     var normalizedSheetViewingTypeGeneral = normalizeValue(sheetViewingTypeGeneral);
     var normalizedDbViewingTypeGeneral = normalizeValue(dbBuyer.viewing_type_general);
     if (normalizedSheetViewingTypeGeneral !== normalizedDbViewingTypeGeneral) {
@@ -492,7 +567,7 @@ function syncUpdatesToSupabase_(sheetRows) {
     }
     
     // 最新内覧日
-    var sheetLatestViewingDate = formatDateToISO_(row['最新内覧日']);
+    var sheetLatestViewingDate = formatDateToISO_(getRowValue_(row, '最新内覧日'));
     var dbLatestViewingDate = dbBuyer.latest_viewing_date ? String(dbBuyer.latest_viewing_date).substring(0, 10) : null;
     var normalizedSheetLatestViewingDate = normalizeValue(sheetLatestViewingDate);
     var normalizedDbLatestViewingDate = normalizeValue(dbLatestViewingDate);
@@ -505,7 +580,7 @@ function syncUpdatesToSupabase_(sheetRows) {
     }
     
     // 内覧後売主連絡
-    var sheetPostViewingSellerContact = row['内覧後売主連絡'] ? String(row['内覧後売主連絡']) : null;
+    var sheetPostViewingSellerContact = getRowValue_(row, '内覧後売主連絡') ? String(getRowValue_(row, '内覧後売主連絡')) : null;
     var normalizedSheetPostViewingSellerContact = normalizeValue(sheetPostViewingSellerContact);
     var normalizedDbPostViewingSellerContact = normalizeValue(dbBuyer.post_viewing_seller_contact);
     if (normalizedSheetPostViewingSellerContact !== normalizedDbPostViewingSellerContact) {
@@ -517,7 +592,7 @@ function syncUpdatesToSupabase_(sheetRows) {
     }
     
     // 内覧促進メール
-    var sheetViewingPromotionEmail = row['内覧促進メール'] ? String(row['内覧促進メール']) : null;
+    var sheetViewingPromotionEmail = getRowValue_(row, '内覧促進メール') ? String(getRowValue_(row, '内覧促進メール')) : null;
     var normalizedSheetViewingPromotionEmail = normalizeValue(sheetViewingPromotionEmail);
     var normalizedDbViewingPromotionEmail = normalizeValue(dbBuyer.viewing_promotion_email);
     if (normalizedSheetViewingPromotionEmail !== normalizedDbViewingPromotionEmail) {
@@ -529,7 +604,7 @@ function syncUpdatesToSupabase_(sheetRows) {
     }
     
     // 通知送信者
-    var sheetNotificationSender = row['通知送信者'] ? String(row['通知送信者']) : null;
+    var sheetNotificationSender = getRowValue_(row, '通知送信者') ? String(getRowValue_(row, '通知送信者')) : null;
     var normalizedSheetNotificationSender = normalizeValue(sheetNotificationSender);
     var normalizedDbNotificationSender = normalizeValue(dbBuyer.notification_sender);
     if (normalizedSheetNotificationSender !== normalizedDbNotificationSender) {
@@ -541,7 +616,7 @@ function syncUpdatesToSupabase_(sheetRows) {
     }
     
     // 内覧前伝達事項
-    var sheetPreViewingNotes = row['内覧前伝達事項'] ? String(row['内覧前伝達事項']) : null;
+    var sheetPreViewingNotes = getRowValue_(row, '内覧前伝達事項') ? String(getRowValue_(row, '内覧前伝達事項')) : null;
     var normalizedSheetPreViewingNotes = normalizeValue(sheetPreViewingNotes);
     var normalizedDbPreViewingNotes = normalizeValue(dbBuyer.pre_viewing_notes);
     if (normalizedSheetPreViewingNotes !== normalizedDbPreViewingNotes) {
@@ -553,7 +628,7 @@ function syncUpdatesToSupabase_(sheetRows) {
     }
     
     // 内覧の時の伝達事項
-    var sheetViewingNotes = row['内覧の時の伝達事項'] ? String(row['内覧の時の伝達事項']) : null;
+    var sheetViewingNotes = getRowValue_(row, '内覧の時の伝達事項') ? String(getRowValue_(row, '内覧の時の伝達事項')) : null;
     var normalizedSheetViewingNotes = normalizeValue(sheetViewingNotes);
     var normalizedDbViewingNotes = normalizeValue(dbBuyer.viewing_notes);
     if (normalizedSheetViewingNotes !== normalizedDbViewingNotes) {
@@ -565,7 +640,7 @@ function syncUpdatesToSupabase_(sheetRows) {
     }
     
     // 内覧前ヒアリング
-    var sheetPreViewingHearing = row['内覧前ヒアリング'] ? String(row['内覧前ヒアリング']) : null;
+    var sheetPreViewingHearing = getRowValue_(row, '内覧前ヒアリング') ? String(getRowValue_(row, '内覧前ヒアリング')) : null;
     var normalizedSheetPreViewingHearing = normalizeValue(sheetPreViewingHearing);
     var normalizedDbPreViewingHearing = normalizeValue(dbBuyer.pre_viewing_hearing);
     if (normalizedSheetPreViewingHearing !== normalizedDbPreViewingHearing) {
@@ -577,7 +652,7 @@ function syncUpdatesToSupabase_(sheetRows) {
     }
     
     // 買付コメント（任意）
-    var sheetOfferComment = row['買付コメント（任意）'] ? String(row['買付コメント（任意）']) : null;
+    var sheetOfferComment = getRowValue_(row, '買付コメント（任意）') ? String(getRowValue_(row, '買付コメント（任意）')) : null;
     var normalizedSheetOfferComment = normalizeValue(sheetOfferComment);
     var normalizedDbOfferComment = normalizeValue(dbBuyer.offer_comment);
     if (normalizedSheetOfferComment !== normalizedDbOfferComment) {
@@ -589,7 +664,7 @@ function syncUpdatesToSupabase_(sheetRows) {
     }
     
     // 法人名
-    var sheetCompanyName = row['法人名'] ? String(row['法人名']) : null;
+    var sheetCompanyName = getRowValue_(row, '法人名') ? String(getRowValue_(row, '法人名')) : null;
     var normalizedSheetCompanyName = normalizeValue(sheetCompanyName);
     var normalizedDbCompanyName = normalizeValue(dbBuyer.company_name);
     if (normalizedSheetCompanyName !== normalizedDbCompanyName) {
@@ -601,7 +676,7 @@ function syncUpdatesToSupabase_(sheetRows) {
     }
     
     // ●メアド
-    var sheetEmail = row['●メアド'] ? String(row['●メアド']) : null;
+    var sheetEmail = getRowValue_(row, '●メアド') ? String(getRowValue_(row, '●メアド')) : null;
     var normalizedSheetEmail = normalizeValue(sheetEmail);
     var normalizedDbEmail = normalizeValue(dbBuyer.email);
     if (normalizedSheetEmail !== normalizedDbEmail) {
@@ -613,7 +688,7 @@ function syncUpdatesToSupabase_(sheetRows) {
     }
     
     // 他社物件（DJ列）
-    var sheetOtherCompanyProperty = row['他社物件'] ? String(row['他社物件']) : null;
+    var sheetOtherCompanyProperty = getRowValue_(row, '他社物件') ? String(getRowValue_(row, '他社物件')) : null;
     var normalizedSheetOtherCompanyProperty = normalizeValue(sheetOtherCompanyProperty);
     var normalizedDbOtherCompanyProperty = normalizeValue(dbBuyer.other_company_property);
     if (normalizedSheetOtherCompanyProperty !== normalizedDbOtherCompanyProperty) {
@@ -625,7 +700,7 @@ function syncUpdatesToSupabase_(sheetRows) {
     }
     
     // 建物名/価格（H列）
-    var sheetBuildingNamePrice = row['建物名/価格 内覧物件は赤表示（★は他社物件）'] ? String(row['建物名/価格 内覧物件は赤表示（★は他社物件）']) : null;
+    var sheetBuildingNamePrice = getRowValue_(row, '建物名/価格 内覧物件は赤表示（★は他社物件）') ? String(getRowValue_(row, '建物名/価格 内覧物件は赤表示（★は他社物件）')) : null;
     var normalizedSheetBuildingNamePrice = normalizeValue(sheetBuildingNamePrice);
     var normalizedDbBuildingNamePrice = normalizeValue(dbBuyer.building_name_price);
     if (normalizedSheetBuildingNamePrice !== normalizedDbBuildingNamePrice) {
@@ -650,9 +725,9 @@ function syncUpdatesToSupabase_(sheetRows) {
       Logger.log('📦 バッチ送信: ' + batchData.length + '件');
       var batchResult = patchBuyersBatchToSupabase_(batchData);
       if (batchResult.success) {
-        updatedCount += batchResult.updated;
-        errorCount += batchResult.errors;
-        Logger.log('✅ バッチ更新完了: ' + batchResult.updated + '件成功 / ' + batchResult.errors + '件失敗');
+        updatedCount += batchResult.result ? batchResult.result.success : 0;
+        errorCount += batchResult.result ? batchResult.result.failed : 0;
+        Logger.log('✅ バッチ更新完了: ' + (batchResult.result ? batchResult.result.success : 0) + '件成功 / ' + (batchResult.result ? batchResult.result.failed : 0) + '件失敗');
       } else {
         errorCount += batchData.length;
         Logger.log('❌ バッチ更新失敗: ' + batchResult.error);
@@ -673,9 +748,9 @@ function syncUpdatesToSupabase_(sheetRows) {
     Logger.log('📦 最終バッチ送信: ' + batchData.length + '件');
     var finalBatchResult = patchBuyersBatchToSupabase_(batchData);
     if (finalBatchResult.success) {
-      updatedCount += finalBatchResult.updated;
-      errorCount += finalBatchResult.errors;
-      Logger.log('✅ 最終バッチ更新完了: ' + finalBatchResult.updated + '件成功 / ' + finalBatchResult.errors + '件失敗');
+      updatedCount += finalBatchResult.result ? finalBatchResult.result.success : 0;
+      errorCount += finalBatchResult.result ? finalBatchResult.result.failed : 0;
+      Logger.log('✅ 最終バッチ更新完了: ' + (finalBatchResult.result ? finalBatchResult.result.success : 0) + '件成功 / ' + (finalBatchResult.result ? finalBatchResult.result.failed : 0) + '件失敗');
     } else {
       errorCount += batchData.length;
       Logger.log('❌ 最終バッチ更新失敗: ' + finalBatchResult.error);
@@ -865,7 +940,7 @@ function updateBuyerSidebarCounts() {
       }
       
       // 問合メール未回答
-      if (buyer.inquiry_email_phone_response === '未回答') {
+      if (buyer.inquiry_email_phone === '未回答') {
         counts.inquiryEmailUnanswered++;
         if (assignee) {
           counts.inquiryEmailUnansweredAssigned[assignee] = (counts.inquiryEmailUnansweredAssigned[assignee] || 0) + 1;

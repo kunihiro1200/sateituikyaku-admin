@@ -20,7 +20,7 @@ var BUYER_CONFIG = {
   SUPABASE_SERVICE_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtyeGhyYnRsZ2ZqenNzZWVnYXFxIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MzAyMTQxMSwiZXhwIjoyMDc4NTk3NDExfQ.nog3UX9J9OgfqlCIPJt_sU_exE6Ny-nSj_HmwgV3oA8',
   TABLE_NAME: 'buyers',
   BATCH_SIZE: 100,
-  SYNC_INTERVAL_MINUTES: 10
+  SYNC_INTERVAL_MINUTES: 15
 };
 
 // ============================================================
@@ -37,7 +37,7 @@ var BUYER_COLUMN_MAPPING = {
   '受付日': 'reception_date',
   '●氏名・会社名': 'name',
   '建物名/価格 内覧物件は赤表示（★は他社物件）': 'building_name_price',
-  '●内覧日(最新）': 'latest_viewing_date',
+  '●内覧日(最新）': 'viewing_date',
   '●希望時期': 'desired_timing',
   '後続担当': 'follow_up_assignee',
   '再問合\n（内覧）': 're_inquiry_viewing',
@@ -215,7 +215,7 @@ var BUYER_COLUMN_MAPPING = {
 var BUYER_TYPE_CONVERSIONS = {
   'created_datetime': 'datetime',
   'reception_date': 'date',
-  'latest_viewing_date': 'date',
+  'viewing_date': 'date',
   'next_call_date': 'date',
   'campaign_date': 'date',
   'phone_duplicate_count': 'number',
@@ -286,6 +286,10 @@ function syncBuyers() {
         errorCount += batch.length;
         Logger.log('バッチ ' + (Math.floor(j / BUYER_CONFIG.BATCH_SIZE) + 1) + ': エラー - ' + result.error);
       }
+      // バッチ間のsleep（最後のバッチ以外）: Supabaseレート制限対策
+      if (j + BUYER_CONFIG.BATCH_SIZE < records.length) {
+        Utilities.sleep(1000);
+      }
     }
 
     var duration = (new Date() - startTime) / 1000;
@@ -305,7 +309,11 @@ function buyerMapRowToRecord(headers, row) {
   for (var i = 0; i < headers.length; i++) {
     var dbColumn = BUYER_COLUMN_MAPPING[headers[i]];
     if (!dbColumn) continue;
-    record[dbColumn] = buyerConvertValue(dbColumn, row[i]);
+    var converted = buyerConvertValue(dbColumn, row[i]);
+    // 空欄はスキップ（nullでDBの既存値を上書きしない）
+    // buyer_numberは必須なので例外
+    if (converted === null && dbColumn !== 'buyer_number') continue;
+    record[dbColumn] = converted;
   }
   return record;
 }
@@ -381,26 +389,50 @@ function buyerParseNumber(value) {
 }
 
 // ============================================================
-// Supabase upsert
+// Supabase upsert（fetchAll並列PATCH方式）
+// 空欄スキップにより各レコードのキーが異なるため、1件ずつPATCHする
+// fetchAllで並列実行するため高速
 // ============================================================
 function buyerUpsertToSupabase(records) {
-  var url = BUYER_CONFIG.SUPABASE_URL + '/rest/v1/' + BUYER_CONFIG.TABLE_NAME;
-  var options = {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'apikey': BUYER_CONFIG.SUPABASE_SERVICE_KEY,
-      'Authorization': 'Bearer ' + BUYER_CONFIG.SUPABASE_SERVICE_KEY,
-      'Prefer': 'resolution=merge-duplicates'
-    },
-    payload: JSON.stringify(records),
-    muteHttpExceptions: true
-  };
+  var baseUrl = BUYER_CONFIG.SUPABASE_URL + '/rest/v1/' + BUYER_CONFIG.TABLE_NAME;
+  var requests = [];
+  for (var i = 0; i < records.length; i++) {
+    var record = records[i];
+    var buyerNumber = record.buyer_number;
+    if (!buyerNumber) continue;
+    // buyer_numberはURLパラメータで指定するのでペイロードから除外
+    var payload = {};
+    for (var key in record) {
+      if (record.hasOwnProperty(key) && key !== 'buyer_number') {
+        payload[key] = record[key];
+      }
+    }
+    requests.push({
+      url: baseUrl + '?buyer_number=eq.' + encodeURIComponent(buyerNumber),
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': BUYER_CONFIG.SUPABASE_SERVICE_KEY,
+        'Authorization': 'Bearer ' + BUYER_CONFIG.SUPABASE_SERVICE_KEY,
+        'Prefer': 'return=minimal'
+      },
+      payload: JSON.stringify(payload),
+      muteHttpExceptions: true
+    });
+  }
+  if (requests.length === 0) return { success: true };
   try {
-    var response = UrlFetchApp.fetch(url, options);
-    var statusCode = response.getResponseCode();
-    if (statusCode >= 200 && statusCode < 300) return { success: true };
-    return { success: false, error: 'HTTP ' + statusCode + ': ' + response.getContentText() };
+    var responses = UrlFetchApp.fetchAll(requests);
+    var errorCount = 0;
+    for (var j = 0; j < responses.length; j++) {
+      var code = responses[j].getResponseCode();
+      if (code < 200 || code >= 300) {
+        errorCount++;
+        Logger.log('PATCH失敗 ' + records[j].buyer_number + ': HTTP ' + code);
+      }
+    }
+    if (errorCount > 0) return { success: false, error: errorCount + '件失敗' };
+    return { success: true };
   } catch (e) {
     return { success: false, error: e.toString() };
   }

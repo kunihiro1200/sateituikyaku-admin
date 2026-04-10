@@ -72,14 +72,16 @@
 #### 受入基準
 
 1. THE System SHALL 統計表を以下の列で表示する
-   - 月（例: 2026年1月）
-   - 後続担当
-   - 買付数
-   - 内覧数
+   - 年月（例: 2025年1月）
+   - 内覧件数
+   - 買付件数
    - 買付率（%）
-2. THE System SHALL 統計表を月の降順（最新月が上）で表示する
-3. THE System SHALL 統計表を後続担当のアルファベット順で表示する
-4. THE System SHALL 統計表に合計行を表示する
+2. THE System SHALL 年月を左側に表示する
+3. THE System SHALL 各月の最初の行に「計」を表示し、その月の全担当の合計を表示する
+4. THE System SHALL 各月の「計」行の下に担当名ごとの行を表示する
+5. THE System SHALL 担当名の行をインデントして表示する
+6. THE System SHALL 統計表を月の降順（最新月が上）で表示する
+7. THE System SHALL 各月内で担当名をアルファベット順で表示する
 
 ### 要件6: 集計対象期間
 
