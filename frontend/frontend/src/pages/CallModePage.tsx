@@ -166,6 +166,53 @@ const formatValuationText = (text: string): string => {
   return text;
 };
 
+
+// 電話番号間違いボタン: 対象テンプレート判定
+export function isTargetTemplateForWrongNumber(label: string): boolean {
+  return label.includes('査定額案内メール') || label.includes('不通で電話時間確認');
+}
+
+// 電話番号間違いボタン: 挿入文生成
+export function generateWrongNumberText(phoneNumber: string | null | undefined): string {
+  const phone = phoneNumber && phoneNumber.trim() !== ''
+    ? phoneNumber
+    : '（電話番号未登録）';
+  return `ご登録いただいている電話番号${phone}が別の方？のようですので、正確な番号を教えて頂ければ助かります。`;
+}
+
+// 電話番号間違いボタン: 本文への挿入
+export function insertWrongNumberText(body: string, insertionText: string): string {
+  const trigger1 = 'いふうです。';
+  const trigger2 = '"いふう"です。';
+
+  const idx1 = body.indexOf(trigger1);
+  const idx2 = body.indexOf(trigger2);
+
+  let insertPos = -1;
+
+  if (idx1 !== -1 && idx2 !== -1) {
+    // 両方存在する場合は最初に出現する方
+    if (idx1 <= idx2) {
+      insertPos = idx1 + trigger1.length;
+    } else {
+      insertPos = idx2 + trigger2.length;
+    }
+  } else if (idx1 !== -1) {
+    insertPos = idx1 + trigger1.length;
+  } else if (idx2 !== -1) {
+    insertPos = idx2 + trigger2.length;
+  }
+
+  const insertion = `<br>${insertionText}`;
+
+  if (insertPos === -1) {
+    // トリガーが存在しない場合は末尾に追加
+    return body + insertion;
+  }
+
+  return body.slice(0, insertPos) + insertion + body.slice(insertPos);
+}
+
 const CallModePage = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -482,6 +529,7 @@ const CallModePage = () => {
   // 画像選択モーダル用の状態
   const [imageSelectorOpen, setImageSelectorOpen] = useState(false);
   const [selectedImages, setSelectedImages] = useState<any[]>([]);
+  const [wrongNumberButtonDisabled, setWrongNumberButtonDisabled] = useState(false);
   const [imageError, setImageError] = useState<string | null>(null);
 
   // 訪問予約セクションへのスクロール用ref
@@ -3196,7 +3244,15 @@ HP：https://ifoo-oita.com/
       setConfirmDialog({ open: false, type: null, template: null });
       // 送信後に選択画像をリセット（次回送信時に前回の添付が残らないようにする）
       setSelectedImages([]);
+      setWrongNumberButtonDisabled(false);
     }
+  };
+
+  const handleWrongNumberButtonClick = () => {
+    const insertionText = generateWrongNumberText(seller?.phoneNumber);
+    const newBody = insertWrongNumberText(editableEmailBody, insertionText);
+    setEditableEmailBody(newBody);
+    setWrongNumberButtonDisabled(true);
   };
 
   const handleCancelSend = () => {
@@ -3207,6 +3263,7 @@ HP：https://ifoo-oita.com/
     setEditableEmailBody('');
     // キャンセル時も選択画像をリセット（次回送信時に前回の添付が残らないようにする）
     setSelectedImages([]);
+    setWrongNumberButtonDisabled(false);
   };
 
   // 画像選択ボタンのハンドラー（新しい実装）
@@ -7365,6 +7422,18 @@ HP：https://ifoo-oita.com/
                     </Alert>
                   )}
                 </Box>
+              )}
+
+              {isTargetTemplateForWrongNumber(confirmDialog?.template?.label ?? '') && (
+                <Button
+                  variant="outlined"
+                  color="warning"
+                  onClick={handleWrongNumberButtonClick}
+                  disabled={wrongNumberButtonDisabled}
+                  sx={{ mt: 1 }}
+                >
+                  電話番号間違い
+                </Button>
               )}
 
               <Alert severity="info" sx={{ mt: 2 }}>
