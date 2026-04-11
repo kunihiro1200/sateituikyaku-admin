@@ -715,6 +715,9 @@ export class SellerService extends BaseRepository {
     if ((data as any).unreachableStatus !== undefined) {
       updates.unreachable_status = (data as any).unreachableStatus;
     }
+    if ((data as any).pinrichStatus !== undefined) {
+      updates.pinrich_status = (data as any).pinrichStatus;
+    }
 
     if (Object.keys(updates).length === 0) {
       throw new Error('No fields to update');

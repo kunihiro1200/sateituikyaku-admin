@@ -480,6 +480,7 @@ const CallModePage = () => {
   const [editedExclusiveOtherDecisionFactors, setEditedExclusiveOtherDecisionFactors] = useState<string[]>([]);
   const [editedCompetitorNameAndReason, setEditedCompetitorNameAndReason] = useState<string>('');
   
+  const [editedPinrichStatus, setEditedPinrichStatus] = useState<string>('');
   const [savingStatus, setSavingStatus] = useState(false);
   const [statusChanged, setStatusChanged] = useState(false); // ステータスセクションの変更検知
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -1476,6 +1477,9 @@ const CallModePage = () => {
         (initialValuationMethod.includes('郵送') ? '未' : '');
       setMailingStatus(defaultMailingStatus);
 
+      // Pinrichステータスの初期化
+      setEditedPinrichStatus(sellerData.pinrichStatus || '');
+
       // コミュニケーションフィールドの初期化
       setEditedPhoneContactPerson(sellerData.phoneContactPerson || '');
       setEditedPreferredContactTime(sellerData.preferredContactTime || '');
@@ -1943,6 +1947,7 @@ const CallModePage = () => {
         exclusiveOtherDecisionFactors: editedExclusiveOtherDecisionFactors.length > 0 ? editedExclusiveOtherDecisionFactors : null,
         competitorNameAndReason: editedCompetitorNameAndReason || null,
         ...(exclusionAction ? { exclusionAction } : {}),
+        pinrichStatus: editedPinrichStatus || null,
       });
 
       setSuccessMessage('ステータスを更新しました');
@@ -7129,6 +7134,27 @@ HP：https://ifoo-oita.com/
                     <Typography variant="body2" sx={{ fontWeight: 'medium' }}>
                       {exclusionDate || '－'}
                     </Typography>
+                  </Box>
+                </Grid>
+                {/* Pinrich フィールド */}
+                <Grid item xs={6}>
+                  <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 1, p: 1, minHeight: 40 }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.25 }}>
+                      Pinrich
+                    </Typography>
+                    <TextField
+                      size="small"
+                      fullWidth
+                      variant="standard"
+                      value={editedPinrichStatus}
+                      onChange={(e) => {
+                        setEditedPinrichStatus(e.target.value);
+                        setStatusChanged(true);
+                      }}
+                      placeholder="－"
+                      InputProps={{ disableUnderline: true }}
+                      sx={{ mt: 0 }}
+                    />
                   </Box>
                 </Grid>
                 <Grid item xs={12}>

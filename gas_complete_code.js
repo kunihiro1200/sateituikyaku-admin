@@ -87,6 +87,12 @@ function formatDateToISO_(value) {
     var parts2 = str.split('-');
     return parts2[0] + '-' + parts2[1].padStart(2, '0') + '-' + parts2[2].padStart(2, '0');
   }
+  // M/D または MM/DD 形式（年なし）→ 現在の年を使用
+  if (str.match(/^\d{1,2}\/\d{1,2}$/)) {
+    var currentYear = new Date().getFullYear();
+    var mdParts = str.split('/');
+    return currentYear + '-' + mdParts[0].padStart(2, '0') + '-' + mdParts[1].padStart(2, '0');
+  }
   return null;
 }
 
