@@ -911,18 +911,22 @@ function updateBuyerSidebarCounts() {
       var status = buyer.latest_status || '';
       var nextCallDate = buyer.next_call_date ? buyer.next_call_date.split('T')[0] : '';
       var viewingDate = buyer.latest_viewing_date ? buyer.latest_viewing_date.split('T')[0] : '';
-      var assignee = buyer.initial_assignee || buyer.follow_up_assignee || '';
+      var assignee = buyer.follow_up_assignee || buyer.initial_assignee || '';
       
       // 内覧日前日
       if (viewingDate === tomorrowStr) {
         counts.viewingDayBefore++;
       }
       
-      // 本日架電
-      if (nextCallDate === todayStr) {
-        counts.todayCall++;
-        if (assignee) {
-          counts.todayCallAssigned[assignee] = (counts.todayCallAssigned[assignee] || 0) + 1;
+      // 本日架電（次電日が今日以前かつ追客担当なし）
+      // バックエンドの calculateBuyerStatus() と条件を一致させる
+      if (nextCallDate && nextCallDate <= todayStr) {
+        if (!buyer.follow_up_assignee) {
+          // 担当なし → 当日TEL
+          counts.todayCall++;
+        } else {
+          // 担当あり → 当日TEL(担当) として todayCallAssigned にカウント
+          counts.todayCallAssigned[buyer.follow_up_assignee] = (counts.todayCallAssigned[buyer.follow_up_assignee] || 0) + 1;
         }
       }
       
