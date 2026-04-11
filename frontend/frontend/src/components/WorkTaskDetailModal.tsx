@@ -545,7 +545,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
             />
           </Grid>
         </Grid>
-        <ReadOnlyDisplayField label="サイト登録依頼コメント" value={getValue('site_registration_requestor') || null} />
+        <ReadOnlyDisplayField label="サイト登録依頼コメント" value={generateDefaultRequestorComment()} />
         <EditableButtonSelect label="パノラマ" field="panorama" options={['あり']} />
         <EditableButtonSelect label="サイト登録依頼者*" field="site_registration_requester" options={normalInitials} />
         <Grid container spacing={2} alignItems="center" sx={{ mb: 1.5 }}>
