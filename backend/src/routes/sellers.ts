@@ -668,23 +668,32 @@ router.get('/by-number/:sellerNumber', async (req: Request, res: Response) => {
       // 座標取得失敗は無視
     }
 
-    // 座標がない場合、バックエンドでジオコーディングして保存
-    if ((latitude == null || longitude == null) && seller.propertyAddress && listingId) {
+    // 座標がない場合、バックエンドでジオコーディングして取得
+    if ((latitude == null || longitude == null) && seller.propertyAddress) {
       try {
-        const { GeocodingService } = await import('../services/GeocodingService');
-        const geocodingService = new GeocodingService();
-        const coords = await geocodingService.geocodeAddress(seller.propertyAddress);
-        if (coords) {
-          latitude = coords.lat;
-          longitude = coords.lng;
-          // property_listings に保存（次回から高速化）
-          await supabase
-            .from('property_listings')
-            .update({ latitude: coords.lat, longitude: coords.lng, updated_at: new Date().toISOString() })
-            .eq('id', listingId);
+        const apiKey = process.env.GOOGLE_MAPS_API_KEY;
+        if (apiKey) {
+          const { GeocodingService } = await import('../services/GeocodingService');
+          const geocodingService = new GeocodingService();
+          const coords = await geocodingService.geocodeAddress(seller.propertyAddress);
+          if (coords) {
+            latitude = coords.lat;
+            longitude = coords.lng;
+            // property_listings にレコードがある場合は座標を保存（次回から高速化）
+            if (listingId) {
+              await supabase
+                .from('property_listings')
+                .update({ latitude: coords.lat, longitude: coords.lng, updated_at: new Date().toISOString() })
+                .eq('id', listingId);
+            }
+          } else {
+            console.warn(`[by-number] Geocoding returned null for address: ${seller.propertyAddress}`);
+          }
+        } else {
+          console.warn('[by-number] GOOGLE_MAPS_API_KEY is not set, skipping geocoding');
         }
-      } catch {
-        // ジオコーディング失敗は無視
+      } catch (geocodeError) {
+        console.error('[by-number] Geocoding error:', geocodeError);
       }
     }
 
