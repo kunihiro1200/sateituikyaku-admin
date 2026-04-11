@@ -199,6 +199,8 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
       const dd = String(d.getDate()).padStart(2, '0');
       const hh = String(d.getHours()).padStart(2, '0');
       const mm = String(d.getMinutes()).padStart(2, '0');
+      // DATE型から変換された値は 00:00 になるため 12:00 にフォールバック
+      if (hh === '00' && mm === '00') return `${yyyy}-${MM}-${dd}T12:00`;
       return `${yyyy}-${MM}-${dd}T${hh}:${mm}`;
     } catch {
       return '';
