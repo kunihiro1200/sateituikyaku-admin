@@ -1015,6 +1015,15 @@ router.put('/:id', async (req: Request, res: Response) => {
           );
         }
       });
+      // サイドバーカウントを非同期で即時更新（レスポンスをブロックしない）
+      import('../services/SellerSidebarCountsUpdateService').then(({ SellerSidebarCountsUpdateService }) => {
+        const { createClient } = require('@supabase/supabase-js');
+        const supabaseForCounts = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!);
+        const updateService = new SellerSidebarCountsUpdateService(supabaseForCounts);
+        updateService.updateSellerSidebarCounts().catch((e: any) =>
+          console.error('⚠️ [SidebarCounts] Update error:', e)
+        );
+      }).catch((e: any) => console.error('⚠️ [SidebarCounts] Import error:', e));
     } else {
       // 通常の更新
       const seller = await sellerService.updateSeller(req.params.id, req.body);
@@ -1028,6 +1037,15 @@ router.put('/:id', async (req: Request, res: Response) => {
           );
         }
       });
+      // サイドバーカウントを非同期で即時更新（レスポンスをブロックしない）
+      import('../services/SellerSidebarCountsUpdateService').then(({ SellerSidebarCountsUpdateService }) => {
+        const { createClient } = require('@supabase/supabase-js');
+        const supabaseForCounts = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!);
+        const updateService = new SellerSidebarCountsUpdateService(supabaseForCounts);
+        updateService.updateSellerSidebarCounts().catch((e: any) =>
+          console.error('⚠️ [SidebarCounts] Update error:', e)
+        );
+      }).catch((e: any) => console.error('⚠️ [SidebarCounts] Import error:', e));
     }
   } catch (error: any) {
     console.error('Update seller error:', error);
