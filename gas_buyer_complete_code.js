@@ -834,18 +834,6 @@ function syncBuyerList() {
       Logger.log('❌ 削除同期失敗: HTTP ' + delStatusCode);
     }
   } catch (e) { Logger.log('❌ 削除同期エラー: ' + e.toString()); }
-
-  // Phase 4: サイドバーカウント更新（GASがSupabase直接更新するためバックエンド経由で再計算）
-  try {
-    var sidebarResponse = postToBackend('/api/buyers/update-sidebar-counts', {});
-    var sidebarStatusCode = sidebarResponse.getResponseCode();
-    if (sidebarStatusCode >= 200 && sidebarStatusCode < 300) {
-      var sidebarResult = JSON.parse(sidebarResponse.getContentText());
-      Logger.log('✅ サイドバーカウント更新成功: ' + (sidebarResult.rowsInserted || 0) + '件');
-    } else {
-      Logger.log('❌ サイドバーカウント更新失敗: HTTP ' + sidebarStatusCode);
-    }
-  } catch (e) { Logger.log('❌ サイドバーカウント更新エラー: ' + e.toString()); }
   
   var duration = (new Date() - startTime) / 1000;
   Logger.log('  所要時間: ' + duration + '秒');
@@ -925,8 +913,8 @@ function updateBuyerSidebarCounts() {
       var viewingDate = buyer.latest_viewing_date ? buyer.latest_viewing_date.split('T')[0] : '';
       var assignee = buyer.initial_assignee || buyer.follow_up_assignee || '';
       
-      // 内覧日前日（業者問合せは除外、通知送信者が入力済みの場合も除外）
-      if (viewingDate === tomorrowStr && buyer.broker_inquiry !== '業者問合せ' && !buyer.notification_sender) {
+      // 内覧日前日
+      if (viewingDate === tomorrowStr) {
         counts.viewingDayBefore++;
       }
       
