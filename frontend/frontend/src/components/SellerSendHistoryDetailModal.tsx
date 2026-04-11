@@ -122,19 +122,19 @@ const SellerSendHistoryDetailModal: React.FC<SellerSendHistoryDetailModalProps> 
           <Typography variant="caption" color="text.secondary">
             本文
           </Typography>
-          <Typography
-            variant="body2"
+          <Box
             sx={{
               mt: 0.5,
-              whiteSpace: 'pre-wrap',
               wordBreak: 'break-word',
               backgroundColor: '#f5f5f5',
               p: 1.5,
               borderRadius: 1,
+              fontSize: '0.875rem',
+              lineHeight: 1.6,
+              '& br': { display: 'block', content: '""', marginTop: '0.4em' },
             }}
-          >
-            {item.message}
-          </Typography>
+            dangerouslySetInnerHTML={{ __html: item.message }}
+          />
         </Box>
       </DialogContent>
 
