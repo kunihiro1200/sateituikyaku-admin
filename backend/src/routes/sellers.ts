@@ -649,6 +649,23 @@ router.get('/by-number/:sellerNumber', async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Seller not found' });
     }
 
+    // property_listings テーブルから座標を取得（seller_number = property_number）
+    let latitude: number | null = null;
+    let longitude: number | null = null;
+    try {
+      const { data: listing } = await supabase
+        .from('property_listings')
+        .select('latitude, longitude')
+        .eq('property_number', sellerNumber)
+        .single();
+      if (listing) {
+        latitude = listing.latitude ?? null;
+        longitude = listing.longitude ?? null;
+      }
+    } catch {
+      // 座標取得失敗は無視（地図表示に影響するが致命的ではない）
+    }
+
     res.json({
       id: seller.id,
       sellerNumber: seller.sellerNumber,
@@ -659,10 +676,58 @@ router.get('/by-number/:sellerNumber', async (req: Request, res: Response) => {
       email: seller.email,
       visitDate: seller.visitDate,
       visitAssignee: seller.visitAssignee,
+      latitude,
+      longitude,
     });
   } catch (error) {
     console.error('Get seller by number error:', error);
     res.status(500).json({ error: 'Failed to get seller' });
+  }
+});
+
+/**
+ * 売主の座標を property_listings テーブルに保存
+ * PATCH /api/sellers/:id/coordinates
+ */
+router.patch('/:id/coordinates', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { latitude, longitude } = req.body;
+
+    if (latitude == null || longitude == null) {
+      return res.status(400).json({ error: 'latitude and longitude are required' });
+    }
+
+    // seller_number を取得
+    const supabase = createClient(
+      process.env.SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_KEY!
+    );
+    const { data: seller, error: sellerError } = await supabase
+      .from('sellers')
+      .select('seller_number')
+      .eq('id', id)
+      .single();
+
+    if (sellerError || !seller) {
+      return res.status(404).json({ error: 'Seller not found' });
+    }
+
+    // property_listings テーブルの座標を更新
+    const { error: updateError } = await supabase
+      .from('property_listings')
+      .update({ latitude, longitude, updated_at: new Date().toISOString() })
+      .eq('property_number', seller.seller_number);
+
+    if (updateError) {
+      console.error('Update coordinates error:', updateError);
+      return res.status(500).json({ error: 'Failed to update coordinates' });
+    }
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Patch coordinates error:', error);
+    res.status(500).json({ error: 'Failed to update coordinates' });
   }
 });
 
