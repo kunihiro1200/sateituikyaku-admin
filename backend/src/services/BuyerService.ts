@@ -1732,7 +1732,7 @@ export class BuyerService {
           console.log(`🔍 [DEBUG] Buyer ${buyer.buyer_number} statusResult:`, JSON.stringify(statusResult, null, 2));
         }
         
-        return { ...buyer, calculated_status: statusResult.status, status_priority: statusResult.priority };
+        return { ...buyer, calculated_status: statusResult.status, status_priority: statusResult.priority, status_matched_condition: statusResult.matchedCondition };
       } catch (error) {
         console.error(`[BuyerService] Error calculating status for buyer ${buyer.buyer_number}:`, error);
         console.error(`[BuyerService] Buyer data:`, JSON.stringify(buyer, null, 2));
@@ -2447,6 +2447,16 @@ export class BuyerService {
       } else {
         // 既存のロジック（calculated_statusでフィルタリング）
         filteredBuyers = allBuyers.filter(buyer => buyer.calculated_status === status);
+        
+        // 🚨 デバッグ: 当日TELフィルタリング結果を記録
+        if (status === '当日TEL') {
+          console.log(`[getBuyersByStatus] 当日TELフィルタ結果: ${filteredBuyers.length}件`);
+          // 7340・7342のステータスを確認
+          const targets = allBuyers.filter(b => ['7340', '7342'].includes(b.buyer_number));
+          targets.forEach(b => {
+            console.log(`  🔍 買主${b.buyer_number}: calculated_status="${b.calculated_status}", next_call_date=${b.next_call_date}, follow_up_assignee="${b.follow_up_assignee}", matchedCondition="${b.status_matched_condition || ''}"`);
+          });
+        }
       }
 
       // 検索フィルタを適用
