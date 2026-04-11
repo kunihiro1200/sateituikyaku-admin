@@ -6608,6 +6608,52 @@ HP：https://ifoo-oita.com/
                   }}
                 />
                 <Chip
+                  label="キャンセル案内"
+                  onClick={() => {
+                    handleQuickButtonClick('call-memo-cancel-guidance');
+                    appendBoldText('キャンセル案内済み');
+                  }}
+                  size="small"
+                  clickable
+                  disabled={isButtonDisabled('call-memo-cancel-guidance')}
+                  sx={{
+                    backgroundColor: '#e0e0e0',
+                    ...(getButtonState('call-memo-cancel-guidance') === 'pending' && {
+                      backgroundColor: '#fff9c4',
+                      textDecoration: 'line-through',
+                      color: 'text.secondary',
+                    }),
+                    ...(getButtonState('call-memo-cancel-guidance') === 'persisted' && {
+                      backgroundColor: '#e0e0e0',
+                      textDecoration: 'line-through',
+                      color: 'text.disabled',
+                    }),
+                  }}
+                />
+                <Chip
+                  label="譲渡所得税"
+                  onClick={() => {
+                    handleQuickButtonClick('call-memo-transfer-income-tax');
+                    appendBoldText('譲渡所得税説明済み');
+                  }}
+                  size="small"
+                  clickable
+                  disabled={isButtonDisabled('call-memo-transfer-income-tax')}
+                  sx={{
+                    backgroundColor: '#e0e0e0',
+                    ...(getButtonState('call-memo-transfer-income-tax') === 'pending' && {
+                      backgroundColor: '#fff9c4',
+                      textDecoration: 'line-through',
+                      color: 'text.secondary',
+                    }),
+                    ...(getButtonState('call-memo-transfer-income-tax') === 'persisted' && {
+                      backgroundColor: '#e0e0e0',
+                      textDecoration: 'line-through',
+                      color: 'text.disabled',
+                    }),
+                  }}
+                />
+                <Chip
                   label="お客様います"
                   onClick={() => {
                     handleQuickButtonClick('call-memo-has-customer');
