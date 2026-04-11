@@ -16,6 +16,10 @@
     {
       "path": "/api/sellers/sidebar-counts/update",
       "schedule": "*/10 * * * *"
+    },
+    {
+      "path": "/api/buyers/update-sidebar-counts",
+      "schedule": "*/10 * * * *"
     }
   ]
 }

@@ -41,8 +41,8 @@ export function isVendorBuyer(brokerInquiry: string | null | undefined): boolean
  * 買主ステータスキャッシュを無効化（外部から呼び出し可能）
  * 買主データ更新時に呼び出してキャッシュをクリアする
  * 
- * 🆕 buyer_sidebar_countsテーブルもクリアして、次回アクセス時に動的計算を強制
  * 🆕 買付率統計のキャッシュも無効化
+ * ⚠️ buyer_sidebar_counts テーブルは削除しない（パフォーマンス保護）
  */
 export async function invalidateBuyerStatusCache(): Promise<void> {
   _moduleLevelStatusCache = null;
@@ -52,27 +52,11 @@ export async function invalidateBuyerStatusCache(): Promise<void> {
   purchaseRateStatisticsCache.flushAll();
   console.log('[BuyerService] Purchase rate statistics cache invalidated');
   
-  // buyer_sidebar_countsテーブルをクリア（次回アクセス時に動的計算を強制）
-  try {
-    const { createClient } = await import('@supabase/supabase-js');
-    const supabase = createClient(
-      process.env.SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_KEY!
-    );
-    
-    const { error } = await supabase
-      .from('buyer_sidebar_counts')
-      .delete()
-      .neq('category', '___never___'); // 全件削除
-    
-    if (error) {
-      console.error('[BuyerService] Failed to clear buyer_sidebar_counts:', error);
-    } else {
-      console.log('[BuyerService] buyer_sidebar_counts table cleared - next access will recalculate');
-    }
-  } catch (e) {
-    console.error('[BuyerService] Error clearing buyer_sidebar_counts:', e);
-  }
+  // buyer_sidebar_counts テーブルは削除しない
+  // 理由: SidebarCountsUpdateService が差分更新でテーブルを管理しており、
+  //       テーブルを全削除すると次回 getSidebarCounts() 呼び出し時に
+  //       フォールバック計算（約20秒）が実行されてパフォーマンスが著しく低下するため。
+  //       テーブルの更新は Cron ジョブ（/api/buyers/update-sidebar-counts）が担当する。
 }
 
 export interface BuyerQueryOptions {
