@@ -7142,7 +7142,7 @@ HP：https://ifoo-oita.com/
                     <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.25 }}>
                       Pinrich
                     </Typography>
-                    <TextField
+                    <Select
                       size="small"
                       fullWidth
                       variant="standard"
@@ -7151,10 +7151,18 @@ HP：https://ifoo-oita.com/
                         setEditedPinrichStatus(e.target.value);
                         setStatusChanged(true);
                       }}
-                      placeholder="－"
-                      InputProps={{ disableUnderline: true }}
-                      sx={{ mt: 0 }}
-                    />
+                      displayEmpty
+                      disableUnderline
+                      sx={{ mt: 0, fontSize: '0.875rem' }}
+                    >
+                      <MenuItem value=""><em>－</em></MenuItem>
+                      <MenuItem value="登録不要">登録不要</MenuItem>
+                      <MenuItem value="クローズ">クローズ</MenuItem>
+                      <MenuItem value="アンケート・査定">アンケート・査定</MenuItem>
+                      <MenuItem value="訪問査定依頼">訪問査定依頼</MenuItem>
+                      <MenuItem value="配信中">配信中</MenuItem>
+                      <MenuItem value="他決判明">他決判明</MenuItem>
+                    </Select>
                   </Box>
                 </Grid>
                 <Grid item xs={12}>
