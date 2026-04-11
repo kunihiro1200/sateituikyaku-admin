@@ -2435,36 +2435,11 @@ export class SellerService extends BaseRepository {
     todayCallWithInfoLabels: string[];
     todayCallWithInfoLabelCounts: Record<string, number>;
   }> {
-    // キャッシュキー（日付を含めることで日付変更時に自動無効化）
+    // JST今日の日付を計算
     const now = new Date();
     const jstTime = new Date(now.getTime() + (9 * 60 * 60 * 1000));
     const todayJST = `${jstTime.getUTCFullYear()}-${String(jstTime.getUTCMonth() + 1).padStart(2, '0')}-${String(jstTime.getUTCDate()).padStart(2, '0')}`;
-    const sidebarCacheKey = `sellers:sidebar-counts:${todayJST}`;
-
-    // キャッシュをチェック（60秒TTL）
-    const cachedCounts = await CacheHelper.get<{
-      todayCall: number;
-      todayCallWithInfo: number;
-      todayCallAssigned: number;
-      visitDayBefore: number;
-      visitCompleted: number;
-      unvaluated: number;
-      mailingPending: number;
-      todayCallNotStarted: number;
-      pinrichEmpty: number;
-      exclusive: number;
-      general: number;
-      visitOtherDecision: number;
-      unvisitedOtherDecision: number;
-      visitAssignedCounts: Record<string, number>;
-      todayCallAssignedCounts: Record<string, number>;
-      todayCallWithInfoLabels: string[];
-      todayCallWithInfoLabelCounts: Record<string, number>;
-    }>(sidebarCacheKey);
-    if (cachedCounts) {
-      console.log('✅ Cache hit for sidebar counts (fallback)');
-      return cachedCounts;
-    }
+    // キャッシュなし: 常にDBの現在値から計算する（即時反映のため）
 
     console.log('🚀 [Performance] Starting sidebar counts calculation');
     const startTime = Date.now();
@@ -2790,9 +2765,6 @@ export class SellerService extends BaseRepository {
     };
 
     console.log(`✅ [Performance] Sidebar counts calculation completed in ${Date.now() - startTime}ms`);
-
-    // キャッシュに保存（60秒TTL）
-    await CacheHelper.set(sidebarCacheKey, sidebarResult, CACHE_TTL.SIDEBAR_COUNTS);
 
     return sidebarResult;
   }
