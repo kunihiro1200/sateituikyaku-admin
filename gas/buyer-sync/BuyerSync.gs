@@ -418,72 +418,38 @@ function buyerParseNumber(value) {
 }
 
 // ============================================================
-// Supabase upsert（POST upsert方式 - 新規INSERT + 既存UPDATE）
+// Supabase upsert（バルクPOST方式 - 1リクエストで複数件upsert）
 // Prefer: resolution=merge-duplicates でupsert
 // ============================================================
 function buyerUpsertToSupabase(records) {
   var baseUrl = BUYER_CONFIG.SUPABASE_URL + '/rest/v1/' + BUYER_CONFIG.TABLE_NAME;
   
-  // バッチを50件以下に分割してfetchAllの制限を回避
-  var FETCH_BATCH = 50;
-  var totalErrorCount = 0;
+  if (records.length === 0) return { success: true };
   
-  for (var start = 0; start < records.length; start += FETCH_BATCH) {
-    var batch = records.slice(start, start + FETCH_BATCH);
-    var requests = [];
+  try {
+    var response = UrlFetchApp.fetch(baseUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': BUYER_CONFIG.SUPABASE_SERVICE_KEY,
+        'Authorization': 'Bearer ' + BUYER_CONFIG.SUPABASE_SERVICE_KEY,
+        'Prefer': 'resolution=merge-duplicates,return=minimal'
+      },
+      payload: JSON.stringify(records),
+      muteHttpExceptions: true
+    });
     
-    for (var i = 0; i < batch.length; i++) {
-      var record = batch[i];
-      var buyerNumber = record.buyer_number;
-      if (!buyerNumber) continue;
-      requests.push({
-        url: baseUrl,
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': BUYER_CONFIG.SUPABASE_SERVICE_KEY,
-          'Authorization': 'Bearer ' + BUYER_CONFIG.SUPABASE_SERVICE_KEY,
-          'Prefer': 'resolution=merge-duplicates,return=minimal'
-        },
-        payload: JSON.stringify(record),
-        muteHttpExceptions: true
-      });
+    var code = response.getResponseCode();
+    if (code >= 200 && code < 300) {
+      return { success: true };
+    } else {
+      var body = response.getContentText().substring(0, 500);
+      Logger.log('バルクUPSERT失敗: HTTP ' + code + ' ' + body);
+      return { success: false, error: 'HTTP ' + code + ': ' + body };
     }
-    
-    if (requests.length === 0) continue;
-    
-    try {
-      var responses = UrlFetchApp.fetchAll(requests);
-      if (!responses) {
-        Logger.log('fetchAll returned null for batch starting at ' + start);
-        totalErrorCount += requests.length;
-        continue;
-      }
-      for (var j = 0; j < responses.length; j++) {
-        if (!responses[j]) {
-          totalErrorCount++;
-          continue;
-        }
-        var code = responses[j].getResponseCode();
-        if (code < 200 || code >= 300) {
-          totalErrorCount++;
-          var buyerNum = batch[j] ? batch[j].buyer_number : '不明';
-          Logger.log('UPSERT失敗 ' + buyerNum + ': HTTP ' + code + ' ' + responses[j].getContentText().substring(0, 200));
-        }
-      }
-    } catch (e) {
-      Logger.log('fetchAll例外: ' + e.toString());
-      totalErrorCount += requests.length;
-    }
-    
-    // バッチ間sleep
-    if (start + FETCH_BATCH < records.length) {
-      Utilities.sleep(500);
-    }
+  } catch (e) {
+    return { success: false, error: e.toString() };
   }
-  
-  if (totalErrorCount > 0) return { success: false, error: totalErrorCount + '件失敗' };
-  return { success: true };
 }
 
 // ============================================================
