@@ -429,23 +429,16 @@ function buyerUpsertToSupabase(records) {
     var record = records[i];
     var buyerNumber = record.buyer_number;
     if (!buyerNumber) continue;
-    // buyer_numberはURLパラメータで指定するのでペイロードから除外
-    var payload = {};
-    for (var key in record) {
-      if (record.hasOwnProperty(key) && key !== 'buyer_number') {
-        payload[key] = record[key];
-      }
-    }
     requests.push({
-      url: baseUrl + '?buyer_number=eq.' + encodeURIComponent(buyerNumber),
-      method: 'PATCH',
+      url: baseUrl,
+      method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'apikey': BUYER_CONFIG.SUPABASE_SERVICE_KEY,
         'Authorization': 'Bearer ' + BUYER_CONFIG.SUPABASE_SERVICE_KEY,
-        'Prefer': 'return=minimal'
+        'Prefer': 'resolution=merge-duplicates,return=minimal'
       },
-      payload: JSON.stringify(payload),
+      payload: JSON.stringify(record),
       muteHttpExceptions: true
     });
   }
@@ -457,7 +450,7 @@ function buyerUpsertToSupabase(records) {
       var code = responses[j].getResponseCode();
       if (code < 200 || code >= 300) {
         errorCount++;
-        Logger.log('PATCH失敗 ' + records[j].buyer_number + ': HTTP ' + code);
+        Logger.log('UPSERT失敗 ' + records[j].buyer_number + ': HTTP ' + code + ' ' + responses[j].getContentText().substring(0, 200));
       }
     }
     if (errorCount > 0) return { success: false, error: errorCount + '件失敗' };
