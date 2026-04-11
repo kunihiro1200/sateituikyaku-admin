@@ -20,7 +20,9 @@ var BUYER_CONFIG = {
   SUPABASE_SERVICE_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtyeGhyYnRsZ2ZqenNzZWVnYXFxIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MzAyMTQxMSwiZXhwIjoyMDc4NTk3NDExfQ.nog3UX9J9OgfqlCIPJt_sU_exE6Ny-nSj_HmwgV3oA8',
   TABLE_NAME: 'buyers',
   BATCH_SIZE: 100,
-  SYNC_INTERVAL_MINUTES: 15
+  SYNC_INTERVAL_MINUTES: 15,
+  BACKEND_URL: 'https://sateituikyaku-admin-backend.vercel.app',
+  CRON_SECRET: 'a0z8ahNnFyUY+BXloL5JsotDTbuu9b5L6UApoflR59s='
 };
 
 // ============================================================
@@ -295,6 +297,29 @@ function syncBuyers() {
     var duration = (new Date() - startTime) / 1000;
     Logger.log('=== 同期完了: 成功=' + successCount + ', エラー=' + errorCount + ', 所要時間=' + duration + '秒 ===');
 
+    // 同期完了後にサイドバーカウントを再計算（GASがSupabase直接更新するためバックエンド経由で再計算）
+    try {
+      var sidebarUrl = BUYER_CONFIG.BACKEND_URL + '/api/buyers/update-sidebar-counts';
+      var sidebarOptions = {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + BUYER_CONFIG.CRON_SECRET
+        },
+        payload: JSON.stringify({}),
+        muteHttpExceptions: true
+      };
+      var sidebarRes = UrlFetchApp.fetch(sidebarUrl, sidebarOptions);
+      if (sidebarRes.getResponseCode() >= 200 && sidebarRes.getResponseCode() < 300) {
+        var sidebarResult = JSON.parse(sidebarRes.getContentText());
+        Logger.log('✅ サイドバーカウント更新成功: ' + (sidebarResult.rowsInserted || 0) + '件');
+      } else {
+        Logger.log('❌ サイドバーカウント更新失敗: HTTP ' + sidebarRes.getResponseCode());
+      }
+    } catch (sidebarErr) {
+      Logger.log('❌ サイドバーカウント更新エラー: ' + sidebarErr.toString());
+    }
+
   } catch (e) {
     Logger.log('ERROR: 予期しないエラー - ' + e.toString());
     Logger.log(e.stack);
@@ -314,7 +339,9 @@ function buyerMapRowToRecord(headers, row) {
     // 例外1: buyer_numberは必須なので常に書き込む
     // 例外2: vendor_survey（業者向けアンケート）は空欄時にnullで上書きする
     //        （スプシ空欄 → DBの既存値「未」が残るバグを防ぐため）
-    if (converted === null && dbColumn !== 'buyer_number' && dbColumn !== 'vendor_survey') continue;
+    // 例外3: notification_sender（通知送信者）は空欄時にnullで上書きする
+    //        （スプシで消した場合にDBに反映されないと「内覧日前日」カテゴリーから除外されないため）
+    if (converted === null && dbColumn !== 'buyer_number' && dbColumn !== 'vendor_survey' && dbColumn !== 'notification_sender') continue;
     record[dbColumn] = converted;
   }
   return record;
