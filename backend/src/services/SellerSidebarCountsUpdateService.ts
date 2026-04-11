@@ -286,7 +286,6 @@ export class SellerSidebarCountsUpdateService {
           !hasInfo &&
           !unreachable &&
           confidence !== 'ダブり' && confidence !== 'D' && confidence !== 'AI査定' &&
-          !exclusionDate &&
           inquiryDate >= '2026-01-01'
         );
         return !isTodayCallNotStarted;
@@ -305,8 +304,6 @@ export class SellerSidebarCountsUpdateService {
         if (unreachable && unreachable.trim() !== '') return false;
         const confidence = (s as any).confidence_level || '';
         if (confidence === 'ダブり' || confidence === 'D' || confidence === 'AI査定') return false;
-        const exclusionDate = (s as any).exclusion_date || '';
-        if (exclusionDate && exclusionDate.trim() !== '') return false;
         const inquiryDate = (s as any).inquiry_date || '';
         return inquiryDate >= '2026-01-01';
       }).length;

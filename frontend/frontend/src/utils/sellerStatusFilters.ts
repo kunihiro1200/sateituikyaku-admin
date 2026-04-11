@@ -655,12 +655,6 @@ export const isTodayCallNotStarted = (seller: Seller | any): boolean => {
     return false;
   }
   
-  // 除外日にすること が空かチェック
-  const exclusionDate = seller.exclusionDate || seller.exclusion_date || '';
-  if (exclusionDate && exclusionDate.trim() !== '') {
-    return false;
-  }
-  
   // 反響日付が2026/1/1以降かチェック
   const inquiryDate = seller.inquiryDate || seller.inquiry_date || seller.inquiryDetailedDatetime;
   const normalizedInquiryDate = normalizeDateString(inquiryDate);
