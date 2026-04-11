@@ -188,6 +188,23 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
     }
   };
 
+  // TIMESTAMPTZ / ISO 8601 文字列を datetime-local 形式（YYYY-MM-DDTHH:mm）に変換
+  const formatDateTimeForInput = (dateStr: string | null | undefined): string => {
+    if (!dateStr) return '';
+    try {
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return '';
+      const yyyy = d.getFullYear();
+      const MM = String(d.getMonth() + 1).padStart(2, '0');
+      const dd = String(d.getDate()).padStart(2, '0');
+      const hh = String(d.getHours()).padStart(2, '0');
+      const mm = String(d.getMinutes()).padStart(2, '0');
+      return `${yyyy}-${MM}-${dd}T${hh}:${mm}`;
+    } catch {
+      return '';
+    }
+  };
+
   const hasChanges = Object.keys(editedData).length > 0;
 
   // 編集可能テキストフィールド
@@ -202,6 +219,15 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
             size="small"
             type="date"
             value={formatDateForInput(getValue(field))}
+            onChange={(e) => handleFieldChange(field, e.target.value || null)}
+            fullWidth
+            InputLabelProps={{ shrink: true }}
+          />
+        ) : type === 'datetime-local' ? (
+          <TextField
+            size="small"
+            type="datetime-local"
+            value={formatDateTimeForInput(getValue(field))}
             onChange={(e) => handleFieldChange(field, e.target.value || null)}
             fullWidth
             InputLabelProps={{ shrink: true }}
@@ -348,6 +374,19 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
       return result.toISOString().split('T')[0];
     };
 
+    // datetime-local 形式のデフォルト納期予定日（時刻 12:00）
+    const getDefaultDueDatetime = () => {
+      const today = new Date();
+      const dayOfWeek = today.getDay();
+      const daysToAdd = dayOfWeek === 2 ? 3 : 2;
+      const result = new Date(today);
+      result.setDate(today.getDate() + daysToAdd);
+      const yyyy = result.getFullYear();
+      const MM = String(result.getMonth() + 1).padStart(2, '0');
+      const dd = String(result.getDate()).padStart(2, '0');
+      return `${yyyy}-${MM}-${dd}T12:00`;
+    };
+
     // 変更3: サイト登録依頼コメントのデフォルト値生成ロジック
     const formatDate = (dateStr: string | null | undefined) => {
       if (!dateStr) return '';
@@ -479,8 +518,8 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
           <Grid item xs={8}>
             <TextField
               size="small"
-              type="date"
-              value={formatDateForInput(getValue('site_registration_due_date') || getDefaultDueDate())}
+              type="datetime-local"
+              value={formatDateTimeForInput(getValue('site_registration_due_date')) || getDefaultDueDatetime()}
               onChange={(e) => handleFieldChange('site_registration_due_date', e.target.value || null)}
               fullWidth
               InputLabelProps={{ shrink: true }}
@@ -497,7 +536,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
         <EditableField label="道路寸法" field="road_dimensions" />
         <EditableYesNo label="CWの方へ依頼メール（間取り、区画図）" field="cw_request_email_floor_plan" />
         <EditableYesNo label="CWの方へ依頼メール（2階以上）" field="cw_request_email_2f_above" />
-        <EditableField label="間取図完了予定*" field="floor_plan_due_date" type="date" />
+        <EditableField label="間取図完了予定*" field="floor_plan_due_date" type="datetime-local" />
       </Box>
 
       {/* 右側：確認関係 */}
@@ -525,6 +564,8 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
         <SectionHeader label="【★サイト登録確認】" />
         <EditableButtonSelect label="サイト登録確認" field="site_registration_confirmed" options={['確認中', '完了', '他']} />
         <EditableField label="メール配信v" field="email_distribution" />
+        <EditableField label="サイト登録確認OKコメント" field="site_registration_ok_comment" type="text" />
+        <EditableYesNo label="サイト登録確認OK送信" field="site_registration_ok_sent" />
 
         <SectionHeader label="【★図面確認】" />
         <EditableButtonSelect label="間取図確認者*" field="floor_plan_confirmer" options={['K', 'Y', 'I', '林', '麻', 'U', 'R', '久', '和', 'H']} />
