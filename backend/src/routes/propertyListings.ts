@@ -1462,29 +1462,31 @@ router.post('/:propertyNumber/send-chat-to-office', async (req: Request, res: Re
 
 
 // CHAT送信履歴取得API
+// seller_email / seller_sms / seller_gmail の chat_type にも対応
+// レスポンスに subject フィールドを含む（sent_at 降順・最大50件）
 router.get('/:propertyNumber/chat-history', async (req: Request, res: Response): Promise<void> => {
   try {
     const { propertyNumber } = req.params;
     const { chat_type, limit } = req.query;
     
     // property_chat_historyテーブルから履歴を取得（新しい順）
+    // subject カラムを含む全フィールドを取得
     let query = supabase
       .from('property_chat_history')
-      .select('*')
+      .select('id, property_number, chat_type, subject, message, sender_name, sent_at, created_at')
       .eq('property_number', propertyNumber);
     
-    // chat_typeでフィルタリング
+    // chat_typeでフィルタリング（指定なしの場合は全種別を返す）
     if (chat_type) {
-      query = query.eq('chat_type', chat_type);
+      query = query.eq('chat_type', chat_type as string);
     }
     
-    // 新しい順にソート
+    // sent_at 降順にソート（新しい順）
     query = query.order('sent_at', { ascending: false });
     
-    // 件数制限
-    if (limit) {
-      query = query.limit(Number(limit));
-    }
+    // 件数制限（デフォルト最大50件）
+    const maxLimit = limit ? Math.min(Number(limit), 50) : 50;
+    query = query.limit(maxLimit);
     
     const { data: history, error } = await query;
     
@@ -1498,6 +1500,49 @@ router.get('/:propertyNumber/chat-history', async (req: Request, res: Response):
   } catch (error: any) {
     console.error('[get-chat-history] Error:', error.message);
     res.status(500).json({ error: error.message || 'CHAT送信履歴の取得に失敗しました' });
+  }
+});
+
+
+// 売主への送信履歴保存API
+// POST /api/property-listings/:propertyNumber/seller-send-history
+router.post('/:propertyNumber/seller-send-history', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { propertyNumber } = req.params;
+    const { chat_type, subject, message, sender_name } = req.body;
+
+    // chat_type のバリデーション（seller_email / seller_sms / seller_gmail のみ許可）
+    const validChatTypes = ['seller_email', 'seller_sms', 'seller_gmail'];
+    if (!chat_type || !validChatTypes.includes(chat_type)) {
+      res.status(400).json({
+        error: '無効な送信種別です',
+        code: 'INVALID_CHAT_TYPE',
+      });
+      return;
+    }
+
+    // property_chat_history テーブルに履歴を保存
+    const { error } = await supabase
+      .from('property_chat_history')
+      .insert({
+        property_number: propertyNumber,
+        chat_type,
+        subject: subject || '',
+        message: message || '',
+        sender_name: sender_name || '',
+        sent_at: new Date().toISOString(),
+      });
+
+    if (error) {
+      console.error('[seller-send-history] DB insert error:', error);
+      res.status(500).json({ error: '送信履歴の保存に失敗しました' });
+      return;
+    }
+
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error('[seller-send-history] Error:', error.message);
+    res.status(500).json({ error: error.message || '送信履歴の保存に失敗しました' });
   }
 });
 

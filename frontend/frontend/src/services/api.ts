@@ -364,4 +364,18 @@ export const propertyListingApi = {
     const response = await api.post(`/api/property-listings/${propertyNumber}/send-chat-to-office`, data);
     return response.data;
   },
+
+  // 売主への送信履歴を保存
+  saveSellerSendHistory: async (propertyNumber: string, data: {
+    chat_type: 'seller_email' | 'seller_sms' | 'seller_gmail';
+    subject: string;
+    message: string;
+    sender_name: string;
+  }) => {
+    const response = await api.post(
+      `/api/property-listings/${propertyNumber}/seller-send-history`,
+      data
+    );
+    return response.data;
+  },
 };

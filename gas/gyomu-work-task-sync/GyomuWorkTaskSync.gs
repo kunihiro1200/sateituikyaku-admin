@@ -701,33 +701,30 @@ function getCwCountValue(sheet, itemName) {
 
   if (lastRow < 2 || lastCol < 1) return null;
 
-  // 1行目をヘッダーとして読み取る
+  // シート構造: 1行目がヘッダー（A1=「項目」、B1以降=各項目名）
+  //             2行目以降がデータ（A列=行ラベル、B列以降=値）
+  // 例: A1=項目, B1=サイト登録, C1=間取図（300円）
+  //     A2=回数, B2=236, C2=148
+
+  // 1行目から itemName の列インデックスを探す
   var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
-
-  // 「項目」列と「現在計」列のインデックスを取得
   var itemColIndex = -1;
-  var currentTotalColIndex = -1;
   for (var i = 0; i < headers.length; i++) {
-    var h = String(headers[i]).trim();
-    if (h === '項目') itemColIndex = i;
-    if (h === '現在計') currentTotalColIndex = i;
-  }
-
-  if (itemColIndex < 0 || currentTotalColIndex < 0) {
-    Logger.log('CWカウント: 「項目」または「現在計」列が見つかりません');
-    return null;
-  }
-
-  // 「項目」列から itemName に一致する行を検索
-  var data = sheet.getRange(2, 1, lastRow - 1, lastCol).getValues();
-  for (var j = 0; j < data.length; j++) {
-    if (String(data[j][itemColIndex]).trim() === itemName) {
-      var val = String(data[j][currentTotalColIndex]).trim();
-      return val === '' ? null : val;
+    if (String(headers[i]).trim() === itemName) {
+      itemColIndex = i;
+      break;
     }
   }
 
-  return null;
+  if (itemColIndex < 0) {
+    Logger.log('CWカウント: 「' + itemName + '」列が見つかりません');
+    return null;
+  }
+
+  // 2行目の値を取得（回数行）
+  var val = sheet.getRange(2, itemColIndex + 1).getValue();
+  var strVal = String(val).trim();
+  return strVal === '' ? null : strVal;
 }
 
 /**

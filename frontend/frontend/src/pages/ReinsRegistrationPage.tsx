@@ -23,8 +23,9 @@ import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import EmailIcon from '@mui/icons-material/Email';
 import AttachFileIcon from '@mui/icons-material/AttachFile';
 import CloseIcon from '@mui/icons-material/Close';
-import api from '../services/api';
+import api, { propertyListingApi } from '../services/api';
 import PropertyHeaderInfo from '../components/PropertyHeaderInfo';
+import { useAuthStore } from '../store/authStore';
 
 interface PropertyData {
   property_number?: string;
@@ -90,6 +91,7 @@ HP：https://ifoo-oita.com/
 export default function ReinsRegistrationPage() {
   const { propertyNumber } = useParams<{ propertyNumber: string }>();
   const navigate = useNavigate();
+  const { employee } = useAuthStore();
 
   const [data, setData] = useState<PropertyData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -289,6 +291,18 @@ export default function ReinsRegistrationPage() {
       setSnackbar({ open: true, message: 'メールを送信しました', severity: 'success' });
       setGmailOpen(false);
       setAttachments([]);
+
+      // 売主への送信履歴を保存（非同期・非ブロッキング）
+      try {
+        await propertyListingApi.saveSellerSendHistory(propertyNumber!, {
+          chat_type: 'seller_gmail',
+          subject: emailSubject || '',
+          message: emailBody || '',
+          sender_name: employee?.name || employee?.initials || '不明',
+        });
+      } catch (err) {
+        console.error('[GMAIL送信履歴] 保存に失敗しました:', err);
+      }
     } catch (error: any) {
       setSnackbar({
         open: true,

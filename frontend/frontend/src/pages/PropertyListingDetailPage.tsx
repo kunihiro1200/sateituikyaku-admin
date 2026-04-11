@@ -40,7 +40,7 @@ import {
   Sms as SmsIcon,
   ArrowDropDown as ArrowDropDownIcon,
 } from '@mui/icons-material';
-import api from '../services/api';
+import api, { propertyListingApi } from '../services/api';
 import RichTextEmailEditor from '../components/RichTextEmailEditor';
 import ImageSelectorModal from '../components/ImageSelectorModal';
 import SenderAddressSelector from '../components/SenderAddressSelector';
@@ -66,6 +66,7 @@ import PurchaseStatusBadge from '../components/PurchaseStatusBadge';
 import { getPurchaseStatusText, hasBuyerPurchaseStatus } from '../utils/purchaseStatusUtils';
 import { pageDataCache, CACHE_KEYS } from '../store/pageDataCache';
 import ChatHistorySection from '../components/ChatHistorySection';
+import SellerSendHistory from '../components/SellerSendHistory';
 import { fetchChatHistory } from '../services/chatHistoryService';
 import { ChatHistoryItem } from '../types/chatHistory';
 
@@ -240,6 +241,8 @@ export default function PropertyListingDetailPage() {
   const [chatSending, setChatSending] = useState(false);
   const [chatToOfficeSending, setChatToOfficeSending] = useState(false);
   const [chatHistoryRefreshTrigger, setChatHistoryRefreshTrigger] = useState(0);
+  // 売主への送信履歴の再取得トリガー
+  const [sellerSendHistoryRefreshTrigger, setSellerSendHistoryRefreshTrigger] = useState(0);
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
     message: string;
@@ -846,6 +849,19 @@ export default function PropertyListingDetailPage() {
       setSnackbar({ open: true, message: 'メールを送信しました', severity: 'success' });
       setEmailDialog({ open: false, subject: '', body: '', recipient: '' });
       setSelectedImages([]);
+
+      // 売主への送信履歴を保存（非同期・非ブロッキング）
+      try {
+        await propertyListingApi.saveSellerSendHistory(propertyNumber, {
+          chat_type: 'seller_email',
+          subject: editableEmailSubject || '',
+          message: editableEmailBody || '',
+          sender_name: employee?.name || employee?.initials || '不明',
+        });
+        setSellerSendHistoryRefreshTrigger(prev => prev + 1);
+      } catch (err) {
+        console.error('[EMAIL送信履歴] 保存に失敗しました:', err);
+      }
     } catch (error: any) {
       setSnackbar({ open: true, message: error.response?.data?.error?.message || 'メール送信に失敗しました', severity: 'error' });
     } finally {
@@ -1086,6 +1102,12 @@ export default function PropertyListingDetailPage() {
             propertyNumber={propertyNumber}
             refreshTrigger={chatHistoryRefreshTrigger}
           />
+
+          {/* 売主への送信履歴 */}
+          <SellerSendHistory
+            propertyNumber={propertyNumber!}
+            refreshTrigger={sellerSendHistoryRefreshTrigger}
+          />
         </Box>
 
         {/* メインコンテンツ */}
@@ -1191,7 +1213,21 @@ export default function PropertyListingDetailPage() {
                   <Button
                     variant="outlined"
                     size="small"
-                    onClick={() => { window.location.href = `sms:${data.seller_contact}`; }}
+                    onClick={async () => {
+                      window.location.href = `sms:${data.seller_contact}`;
+                      // SMS送信履歴を保存（非同期・非ブロッキング）
+                      try {
+                        await propertyListingApi.saveSellerSendHistory(propertyNumber!, {
+                          chat_type: 'seller_sms',
+                          subject: '',
+                          message: 'SMS送信',
+                          sender_name: employee?.name || employee?.initials || '不明',
+                        });
+                        setSellerSendHistoryRefreshTrigger(prev => prev + 1);
+                      } catch (err) {
+                        console.error('[SMS送信履歴] 保存に失敗しました:', err);
+                      }
+                    }}
                     startIcon={<SmsIcon fontSize="small" />}
                     sx={{
                       borderColor: '#2e7d32',
