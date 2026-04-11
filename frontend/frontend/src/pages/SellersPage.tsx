@@ -603,7 +603,17 @@ export default function SellersPage() {
         </Box>
 
         {/* ページナビゲーション */}
-        <PageNavigation />
+        <PageNavigation
+          onNavigate={(path) => {
+            if (path === '/') {
+              // 売主リストボタンが押されたらフィルターをリセット
+              setSelectedCategory('all');
+              setPage(0);
+              sessionStorage.removeItem('selectedStatusCategory');
+            }
+            navigate(path);
+          }}
+        />
 
         {/* モバイル：ステータスサイドバーをアコーディオンで表示 */}
         {isMobile && (
