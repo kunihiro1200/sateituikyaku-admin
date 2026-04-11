@@ -3089,8 +3089,6 @@ HP：https://ifoo-oita.com/
                 assigneeKeyForDirect = 'callReminderEmailAssignee';
               } else if (template.label.includes('キャンセル')) {
                 assigneeKeyForDirect = 'cancelNoticeAssignee';
-              } else if (template.label.includes('査定額案内') || template.label.includes('査定理由')) {
-                assigneeKeyForDirect = 'valuationReasonEmailAssignee';
               } else if (template.label.includes('長期客') || template.label.includes('除外前')) {
                 assigneeKeyForDirect = 'longTermEmailAssignee';
               }
@@ -3150,8 +3148,6 @@ HP：https://ifoo-oita.com/
                     assigneeKey = 'callReminderEmailAssignee';
                   } else if (template.label.includes('キャンセル')) {
                     assigneeKey = 'cancelNoticeAssignee';
-                  } else if (template.label.includes('査定額案内') || template.label.includes('査定理由')) {
-                    assigneeKey = 'valuationReasonEmailAssignee';
                   } else if (template.label.includes('長期客') || template.label.includes('除外前')) {
                     assigneeKey = 'longTermEmailAssignee';
                   }
