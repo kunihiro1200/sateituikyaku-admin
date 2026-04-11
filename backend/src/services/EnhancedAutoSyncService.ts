@@ -859,6 +859,7 @@ export class EnhancedAutoSyncService {
           const formattedNextCallDate = sheetNextCallDate ? this.formatVisitDate(sheetNextCallDate) : null;
           const dbNextCallDate = dbSeller.next_call_date ? String(dbSeller.next_call_date).substring(0, 10) : null;
           if (formattedNextCallDate !== dbNextCallDate) {
+            console.log(`[detectUpdated] ${sellerNumber}: next_call_date changed: sheet="${formattedNextCallDate}" db="${dbNextCallDate}"`);
             needsUpdate = true;
           }
 

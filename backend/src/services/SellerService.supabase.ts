@@ -2383,6 +2383,11 @@ export class SellerService extends BaseRepository {
    * seller_sidebar_counts テーブルから1クエリで高速取得。
    * テーブルが空または取得失敗の場合は重いDBクエリにフォールバック。
    */
+  /**
+   * サイドバー用のカテゴリカウントを取得
+   * seller_sidebar_countsテーブルへの依存を排除し、常にDBの現在値から計算する。
+   * これにより、DBのnext_call_dateを変更した場合に即時反映される。
+   */
   async getSidebarCounts(): Promise<{
     todayCall: number;
     todayCallWithInfo: number;
@@ -2402,89 +2407,12 @@ export class SellerService extends BaseRepository {
     todayCallWithInfoLabels: string[];
     todayCallWithInfoLabelCounts: Record<string, number>;
   }> {
-    const _t0 = Date.now();
-    
-    // seller_sidebar_countsテーブルから取得
-    const { data: counts, error } = await this.table('seller_sidebar_counts')
-      .select('*');
-    
-    console.log(`[PERF] getSidebarCounts DB query: ${Date.now() - _t0}ms`);
-    
-    // テーブルが空またはエラーの場合はフォールバック
-    if (error || !counts || counts.length === 0) {
-      console.log('⚠️ seller_sidebar_counts is empty or error, falling back to heavy query');
-      return this.getSidebarCountsFallback();
-    }
-    
-    // カウントデータを集計
-    const result = {
-      todayCall: 0,
-      todayCallWithInfo: 0,
-      todayCallAssigned: 0,
-      visitDayBefore: 0,
-      visitCompleted: 0,
-      unvaluated: 0,
-      mailingPending: 0,
-      todayCallNotStarted: 0,
-      pinrichEmpty: 0,
-      exclusive: 0,
-      general: 0,
-      visitOtherDecision: 0,
-      unvisitedOtherDecision: 0,
-      visitAssignedCounts: {} as Record<string, number>,
-      todayCallAssignedCounts: {} as Record<string, number>,
-      todayCallWithInfoLabels: [] as string[],
-      todayCallWithInfoLabelCounts: {} as Record<string, number>,
-    };
-    
-    counts.forEach((row: any) => {
-      const category = row.category;
-      const count = row.count || 0;
-      const label = row.label;
-      const assignee = row.assignee;
-      
-      // 単純カテゴリー
-      if (category === 'todayCall' && !label && !assignee) {
-        result.todayCall = count;
-      } else if (category === 'todayCallWithInfo' && !assignee) {
-        result.todayCallWithInfo += count;
-        if (label) {
-          result.todayCallWithInfoLabels.push(label);
-          result.todayCallWithInfoLabelCounts[label] = count;
-        }
-      } else if (category === 'todayCallAssigned' && assignee) {
-        result.todayCallAssigned += count;
-        result.todayCallAssignedCounts[assignee] = count;
-      } else if (category === 'visitDayBefore' && !label && !assignee) {
-        result.visitDayBefore = count;
-      } else if (category === 'visitCompleted' && !label && !assignee) {
-        result.visitCompleted = count;
-      } else if (category === 'unvaluated' && !label && !assignee) {
-        result.unvaluated = count;
-      } else if (category === 'mailingPending' && !label && !assignee) {
-        result.mailingPending = count;
-      } else if (category === 'todayCallNotStarted' && !label && !assignee) {
-        result.todayCallNotStarted = count;
-      } else if (category === 'pinrichEmpty' && !label && !assignee) {
-        result.pinrichEmpty = count;
-      } else if (category === 'exclusive' && !label && !assignee) {
-        result.exclusive = count;
-      } else if (category === 'general' && !label && !assignee) {
-        result.general = count;
-      } else if (category === 'visitOtherDecision' && !label && !assignee) {
-        result.visitOtherDecision = count;
-      } else if (category === 'unvisitedOtherDecision' && !label && !assignee) {
-        result.unvisitedOtherDecision = count;
-      } else if (category === 'visitAssigned' && assignee) {
-        result.visitAssignedCounts[assignee] = count;
-      }
-    });
-    
-    console.log(`✅ [PERF] getSidebarCounts completed: ${Date.now() - _t0}ms`);
-    return result;
+    // seller_sidebar_countsテーブルへの依存を排除
+    // 常にDBの現在値から計算する（即時反映のため）
+    return this.getSidebarCountsFallback();
   }
 
-  /**
+    /**
    * サイドバーカウントのフォールバック（重いDBクエリ版）
    * seller_sidebar_counts テーブルが空または取得失敗時に使用
    */
