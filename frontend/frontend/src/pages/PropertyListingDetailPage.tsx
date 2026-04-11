@@ -266,6 +266,8 @@ export default function PropertyListingDetailPage() {
   const [propertyEmailTemplates, setPropertyEmailTemplates] = useState<Array<{id: string; name: string; subject: string; body: string}>>([]);
   const [propertyEmailTemplatesLoading, setPropertyEmailTemplatesLoading] = useState(false);
   const [templateMenuAnchor, setTemplateMenuAnchor] = useState<null | HTMLElement>(null);
+  // 選択中のテンプレート名（送信履歴のタイトル表示用）
+  const [selectedTemplateName, setSelectedTemplateName] = useState<string>('');
 
   // メール送信関連の状態
   const [emailDialog, setEmailDialog] = useState<{
@@ -801,6 +803,9 @@ export default function PropertyListingDetailPage() {
   const handleSelectPropertyEmailTemplate = async (templateId: string) => {
     setTemplateMenuAnchor(null);
     if (!data?.seller_email || !propertyNumber) return;
+    // テンプレート名を保存（送信履歴のタイトル表示用）
+    const tmpl = propertyEmailTemplates.find(t => t.id === templateId);
+    setSelectedTemplateName(tmpl?.name || '');
     try {
       const response = await api.post('/api/email-templates/property/merge', {
         propertyNumber,
@@ -854,11 +859,12 @@ export default function PropertyListingDetailPage() {
       try {
         await propertyListingApi.saveSellerSendHistory(propertyNumber, {
           chat_type: 'seller_email',
-          subject: editableEmailSubject || '',
+          subject: selectedTemplateName || editableEmailSubject || '',
           message: editableEmailBody || '',
           sender_name: employee?.name || employee?.initials || '不明',
         });
         setSellerSendHistoryRefreshTrigger(prev => prev + 1);
+        setSelectedTemplateName('');
       } catch (err) {
         console.error('[EMAIL送信履歴] 保存に失敗しました:', err);
       }
