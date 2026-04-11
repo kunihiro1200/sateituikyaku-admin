@@ -155,6 +155,7 @@ export class SellerSidebarCountsUpdateService {
 
       // カウント計算（getSidebarCountsFallback()と同じロジック）
       const visitAssigneeSellers = visitAssigneeForDayBeforeResult.data || [];
+      console.log(`[visitDayBefore] todayJST=${todayJST}, total candidates=${visitAssigneeSellers.length}`);
       const visitDayBeforeCount = visitAssigneeSellers.filter(s => {
         // 🚨 3.1.2: 訪問日が空欄の売主を明示的に除外
         const visitDateStr = s.visit_date;
@@ -194,7 +195,9 @@ export class SellerSidebarCountsUpdateService {
         expectedNotifyUTC.setUTCDate(visitDateUTC.getUTCDate() - daysBeforeVisit);
         const expectedNotifyStr = `${expectedNotifyUTC.getUTCFullYear()}-${String(expectedNotifyUTC.getUTCMonth() + 1).padStart(2, '0')}-${String(expectedNotifyUTC.getUTCDate()).padStart(2, '0')}`;
         
-        return expectedNotifyStr === todayJST;
+        const match = expectedNotifyStr === todayJST;
+        if (match) console.log(`[visitDayBefore] MATCH: visit_date=${s.visit_date} dow=${visitDayOfWeek} notify=${expectedNotifyStr}`);
+        return match;
       }).length;
 
       const visitCompletedCount = visitCompletedCountResult.count || 0;
