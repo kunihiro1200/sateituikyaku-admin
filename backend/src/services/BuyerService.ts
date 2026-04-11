@@ -1707,16 +1707,29 @@ export class BuyerService {
 
     const buyers = allBuyers.map(buyer => {
       try {
-        // 🚨 デバッグ: 買主7176のデータを記録
-        if (buyer.buyer_number === '7176') {
-          console.log('🔍 [DEBUG] Buyer 7176 data before calculateBuyerStatus:', JSON.stringify(buyer, null, 2));
+        // 🚨 デバッグ: 買主7176・7340・7342のデータを記録
+        if (['7176', '7340', '7342'].includes(buyer.buyer_number)) {
+          console.log(`🔍 [DEBUG] Buyer ${buyer.buyer_number} data before calculateBuyerStatus:`, JSON.stringify({
+            buyer_number: buyer.buyer_number,
+            next_call_date: buyer.next_call_date,
+            follow_up_assignee: buyer.follow_up_assignee,
+            inquiry_email_phone: buyer.inquiry_email_phone,
+            inquiry_email_reply: buyer.inquiry_email_reply,
+            viewing_date: buyer.viewing_date,
+            latest_viewing_date: buyer.latest_viewing_date,
+            broker_inquiry: buyer.broker_inquiry,
+            notification_sender: buyer.notification_sender,
+            three_calls_confirmed: buyer.three_calls_confirmed,
+            valuation_survey: buyer.valuation_survey,
+            broker_survey: buyer.broker_survey,
+          }, null, 2));
         }
         
         const statusResult = calculateBuyerStatus(buyer);
         
-        // 🚨 デバッグ: 買主7176のステータス計算結果を記録
-        if (buyer.buyer_number === '7176') {
-          console.log('🔍 [DEBUG] Buyer 7176 statusResult:', JSON.stringify(statusResult, null, 2));
+        // 🚨 デバッグ: 買主7176・7340・7342のステータス計算結果を記録
+        if (['7176', '7340', '7342'].includes(buyer.buyer_number)) {
+          console.log(`🔍 [DEBUG] Buyer ${buyer.buyer_number} statusResult:`, JSON.stringify(statusResult, null, 2));
         }
         
         return { ...buyer, calculated_status: statusResult.status, status_priority: statusResult.priority };
