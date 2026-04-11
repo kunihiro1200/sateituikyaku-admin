@@ -311,8 +311,10 @@ function buyerMapRowToRecord(headers, row) {
     if (!dbColumn) continue;
     var converted = buyerConvertValue(dbColumn, row[i]);
     // 空欄はスキップ（nullでDBの既存値を上書きしない）
-    // buyer_numberは必須なので例外
-    if (converted === null && dbColumn !== 'buyer_number') continue;
+    // 例外1: buyer_numberは必須なので常に書き込む
+    // 例外2: vendor_survey（業者向けアンケート）は空欄時にnullで上書きする
+    //        （スプシ空欄 → DBの既存値「未」が残るバグを防ぐため）
+    if (converted === null && dbColumn !== 'buyer_number' && dbColumn !== 'vendor_survey') continue;
     record[dbColumn] = converted;
   }
   return record;
