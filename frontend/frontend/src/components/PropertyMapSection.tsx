@@ -54,12 +54,24 @@ const PropertyMapSection: React.FC<PropertyMapSectionProps> = ({ sellerNumber, p
     return null;
   }
 
+  const googleMapsUrl = mapCoordinates
+    ? `https://www.google.com/maps?q=${mapCoordinates.lat},${mapCoordinates.lng}`
+    : null;
+
   return (
-    <Paper sx={{ p: 2, mb: 3 }}>
+    <Paper
+      sx={{ p: 2, mb: 3, cursor: googleMapsUrl ? 'pointer' : 'default' }}
+      onClick={() => googleMapsUrl && window.open(googleMapsUrl, '_blank', 'noopener,noreferrer')}
+    >
       <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
         <Typography variant="h6">
           🗺️ 物件位置
         </Typography>
+        {googleMapsUrl && (
+          <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>
+            （クリックでGoogleマップを開く）
+          </Typography>
+        )}
       </Box>
 
       {isLoadingCoordinates && (
@@ -69,7 +81,22 @@ const PropertyMapSection: React.FC<PropertyMapSectionProps> = ({ sellerNumber, p
       )}
 
       {!isLoadingCoordinates && mapCoordinates && (
-        <Box sx={{ borderRadius: '8px', overflow: 'hidden' }}>
+        <Box sx={{ borderRadius: '8px', overflow: 'hidden', position: 'relative' }}>
+          {/* クリックをGoogleマップ遷移に使うための透明オーバーレイ */}
+          {googleMapsUrl && (
+            <Box
+              sx={{
+                position: 'absolute',
+                top: 0, left: 0, right: 0, bottom: 0,
+                zIndex: 1,
+                cursor: 'pointer',
+              }}
+              onClick={(e) => {
+                e.stopPropagation();
+                window.open(googleMapsUrl, '_blank', 'noopener,noreferrer');
+              }}
+            />
+          )}
           <GoogleMap
             mapContainerStyle={mapContainerStyle}
             center={mapCoordinates}
