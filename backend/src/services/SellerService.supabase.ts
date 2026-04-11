@@ -1141,6 +1141,7 @@ export class SellerService extends BaseRepository {
               .neq('visit_assignee', '')
               // 「外す」は有効な営業担当として扱う
               .not('visit_date', 'is', null)
+              .order('id')
               .range(vdbPage * vdbPageSize, (vdbPage + 1) * vdbPageSize - 1);
             
             if (error) {
@@ -1228,6 +1229,7 @@ export class SellerService extends BaseRepository {
               .is('deleted_at', null)
               .not('next_call_date', 'is', null)
               .lte('next_call_date', todayJST)
+              .order('id')
               .range(tcPage * tcPageSize, (tcPage + 1) * tcPageSize - 1);
             
             if (error) {
@@ -1288,6 +1290,7 @@ export class SellerService extends BaseRepository {
               .is('deleted_at', null)
               .not('next_call_date', 'is', null)
               .lte('next_call_date', todayJST)
+              .order('id')
               .range(tcwiPage * tcwiPageSize, (tcwiPage + 1) * tcwiPageSize - 1);
             
             if (error) {
@@ -1354,6 +1357,7 @@ export class SellerService extends BaseRepository {
               .is('valuation_amount_1', null)
               .is('valuation_amount_2', null)
               .is('valuation_amount_3', null)
+              .order('id')
               .range(uvPage * uvPageSize, (uvPage + 1) * uvPageSize - 1);
             
             if (error) {
@@ -1428,6 +1432,7 @@ export class SellerService extends BaseRepository {
               .is('deleted_at', null)
               .not('next_call_date', 'is', null)
               .lte('next_call_date', todayJST)
+              .order('id')
               .range(nsPage * nsPageSize, (nsPage + 1) * nsPageSize - 1);
 
             if (nsError || !nsData || nsData.length === 0) break;
@@ -1488,6 +1493,7 @@ export class SellerService extends BaseRepository {
               .is('deleted_at', null)
               .not('next_call_date', 'is', null)
               .lte('next_call_date', todayJST)
+              .order('id')
               .range(prPage * prPageSize, (prPage + 1) * prPageSize - 1);
 
             if (prError || !prData || prData.length === 0) break;
