@@ -219,34 +219,20 @@ router.get('/active-initials', async (req: Request, res: Response) => {
 });
 
 /**
- * 通常スタッフのイニシャル一覧を取得（初動担当選択用）
- * employeesテーブルから取得（Google Sheets APIを使わない）
+ * 通常スタッフのイニシャル一覧を取得（業務リストのスタッフ選択用）
+ * スタッフ管理シートの「通常」=TRUEのスタッフを返す
  */
 router.get('/normal-initials', async (req: Request, res: Response) => {
   try {
-    // employeesテーブルから有効なスタッフのイニシャルを取得
-    const { data: employees, error } = await supabase
-      .from('employees')
-      .select('initials')
-      .eq('is_normal', true)
-      .order('initials');
-
-    if (error) {
-      throw error;
-    }
-
-    const initials = employees.map(e => e.initials).filter(i => i);
-    console.log(`[normal-initials] Returning ${initials.length} normal staff initials from employees table:`, initials);
-    res.json({ initials });
+    // スタッフ管理シートの「通常」=TRUEのスタッフのイニシャルを取得
+    const normalInitials = await staffManagementService.getNormalInitials();
+    console.log(`[normal-initials] Returning ${normalInitials.length} normal staff initials from spreadsheet:`, normalInitials);
+    res.json({ initials: normalInitials });
   } catch (error: any) {
-    console.error('[normal-initials] Failed:', error.message);
-    res.status(500).json({
-      error: {
-        code: 'GET_NORMAL_INITIALS_ERROR',
-        message: 'Failed to get normal staff initials',
-        retryable: true,
-      },
-    });
+    console.error('[normal-initials] Spreadsheet fetch failed, using fallback:', error.message);
+    // フォールバック: ハードコードされたデフォルト値
+    const fallbackInitials = ['K', 'Y', 'I', 'U', 'R', 'H'];
+    res.json({ initials: fallbackInitials });
   }
 });
 

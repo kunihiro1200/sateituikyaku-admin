@@ -288,6 +288,39 @@ export class StaffManagementService {
   }
 
   /**
+   * 通常スタッフのイニシャル一覧を取得（「スタッフ」シートの「通常」=TRUEのもの）
+   * normal-initialsエンドポイント用
+   */
+  async getNormalInitials(): Promise<string[]> {
+    try {
+      const { GoogleSheetsClient } = require('./GoogleSheetsClient');
+      const client = new GoogleSheetsClient({
+        spreadsheetId: this.SPREADSHEET_ID,
+        sheetName: this.SHEET_NAME,
+        serviceAccountKeyPath: process.env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH,
+      });
+      await client.authenticate();
+      const rows = await client.readAll();
+
+      const normalInitials = [...new Set(
+        rows
+          .filter((row: any) => {
+            const normalRaw = row['通常'];
+            return String(normalRaw).toUpperCase() === 'TRUE';
+          })
+          .map((row: any) => (row['スタッフID'] || row['イニシャル']) as string)
+          .filter((i: string) => i && i.trim() !== '')
+      )] as string[];
+
+      console.log('[StaffManagementService] Normal initials (通常=TRUE):', normalInitials);
+      return normalInitials;
+    } catch (error: any) {
+      console.error('[StaffManagementService] Error getting normal initials:', error.message);
+      throw error;
+    }
+  }
+
+  /**
    * 事務ありスタッフのイニシャル一覧を取得（「スタッフ」シートの「事務あり」=TRUEのもの）
    */
   async getJimuInitials(): Promise<string[]> {
