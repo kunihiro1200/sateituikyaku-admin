@@ -37,8 +37,28 @@ export class SellerSidebarCountsUpdateService {
       };
 
       // 全データを並列取得
+      // 🔧 訪問日前日用データはページネーション対応（1000件超の場合に対応）
+      let visitAssigneeAllSellers: any[] = [];
+      {
+        let vdbPage = 0;
+        const vdbPageSize = 1000;
+        while (true) {
+          const { data, error } = await this.supabase
+            .from('sellers')
+            .select('visit_date, visit_assignee, visit_reminder_assignee')
+            .is('deleted_at', null)
+            .not('visit_assignee', 'is', null)
+            .neq('visit_assignee', '')
+            .not('visit_date', 'is', null)
+            .range(vdbPage * vdbPageSize, (vdbPage + 1) * vdbPageSize - 1);
+          if (error || !data || data.length === 0) break;
+          visitAssigneeAllSellers = visitAssigneeAllSellers.concat(data);
+          if (data.length < vdbPageSize) break;
+          vdbPage++;
+        }
+      }
+
       const [
-        visitAssigneeForDayBeforeResult,
         visitCompletedCountResult,
         todayCallAssignedResult,
         allAssignedResult,
@@ -51,15 +71,6 @@ export class SellerSidebarCountsUpdateService {
         visitOtherDecisionSellersResult,
         unvisitedOtherDecisionSellersResult
       ] = await Promise.all([
-        // 1. 訪問日前日用データ
-        this.supabase
-          .from('sellers')
-          .select('visit_date, visit_assignee, visit_reminder_assignee')
-          .is('deleted_at', null)
-          .not('visit_assignee', 'is', null)
-          .neq('visit_assignee', '')
-          .not('visit_date', 'is', null),
-        // 2. 訪問済みカウント
         this.supabase
           .from('sellers')
           .select('*', { count: 'exact', head: true })
@@ -154,7 +165,7 @@ export class SellerSidebarCountsUpdateService {
       console.log(`⏱️ [SellerSidebarCountsUpdate] Data fetched in ${Date.now() - startTime}ms`);
 
       // カウント計算（getSidebarCountsFallback()と同じロジック）
-      const visitAssigneeSellers = visitAssigneeForDayBeforeResult.data || [];
+      const visitAssigneeSellers = visitAssigneeAllSellers;
       console.log(`[visitDayBefore] todayJST=${todayJST}, total candidates=${visitAssigneeSellers.length}`);
       const visitDayBeforeCount = visitAssigneeSellers.filter(s => {
         // 🚨 3.1.2: 訪問日が空欄の売主を明示的に除外
