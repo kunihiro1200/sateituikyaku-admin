@@ -21,6 +21,7 @@ import {
 } from '@mui/material';
 import { Close as CloseIcon, Save as SaveIcon } from '@mui/icons-material';
 import api from '../services/api';
+import { supabase } from '../services/supabase';
 
 interface WorkTaskDetailModalProps {
   open: boolean;
@@ -107,6 +108,42 @@ interface WorkTaskData {
   broker: string;
   broker_contact: string;
   [key: string]: any;
+}
+
+// CWカウントデータの型
+interface CwCountData {
+  floorPlan300: string | null;
+  siteRegistration: string | null;
+}
+
+// CWカウント取得フック
+function useCwCounts(): CwCountData {
+  const [data, setData] = useState<CwCountData>({ floorPlan300: null, siteRegistration: null });
+
+  useEffect(() => {
+    const fetchCwCounts = async () => {
+      try {
+        const { data: rows, error } = await supabase
+          .from('cw_counts')
+          .select('item_name, current_total')
+          .in('item_name', ['間取図（300円）', 'サイト登録']);
+
+        if (error || !rows) return;
+
+        const result: CwCountData = { floorPlan300: null, siteRegistration: null };
+        rows.forEach(row => {
+          if (row.item_name === '間取図（300円）') result.floorPlan300 = row.current_total;
+          if (row.item_name === 'サイト登録') result.siteRegistration = row.current_total;
+        });
+        setData(result);
+      } catch {
+        // エラー時はフォールバック値のまま
+      }
+    };
+    fetchCwCounts();
+  }, []);
+
+  return data;
 }
 
 const ASSIGNEE_OPTIONS = ['K', 'Y', 'I', '生', 'U', 'R', '久', 'H'];
@@ -433,6 +470,9 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
 
     const emailDistAutoText = getEmailDistributionAutoText();
 
+    // CWカウントデータを取得
+    const cwCounts = useCwCounts();
+
     // 変更4: cw_request_email_site が空でない場合は必須表示
     const isSiteDueDateRequired = !!(getValue('cw_request_email_site'));
     const siteDueDateLabel = `サイト登録納期予定日${isSiteDueDateRequired ? '*（必須）' : '*'}`;
@@ -570,12 +610,20 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
         <EditableField label="メール配信v" field="email_distribution" />
         <EditableField label="サイト登録確認OKコメント" field="site_registration_ok_comment" type="text" />
         <EditableYesNo label="サイト登録確認OK送信" field="site_registration_ok_sent" />
+        <ReadOnlyDisplayField
+          label=""
+          value={cwCounts.siteRegistration ? `サイト登録（CW)計⇒ ${cwCounts.siteRegistration}` : '-'}
+        />
 
         <SectionHeader label="【★図面確認】" />
         <EditableButtonSelect label="間取図確認者*" field="floor_plan_confirmer" options={['K', 'Y', 'I', '林', '麻', 'U', 'R', '久', '和', 'H']} />
         <EditableField label="間取図確認OK/修正コメント" field="floor_plan_ok_comment" />
         <EditableYesNo label="間取図確認OK送信*" field="floor_plan_ok_sent" />
         <EditableButtonSelect label="間取図修正回数" field="floor_plan_revision_count" options={['1', '2', '3', '4']} />
+        <ReadOnlyDisplayField
+          label=""
+          value={cwCounts.floorPlan300 ? `間取図300円（CW)計⇒ ${cwCounts.floorPlan300}` : '-'}
+        />
         <EditableField label="間取図完了日*" field="floor_plan_completed_date" type="date" />
         <EditableYesNo label="間取図格納済み連絡メール" field="floor_plan_stored_email" />
 
@@ -584,12 +632,35 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
         <EditableButtonSelect label="物件一覧に行追加*" field="property_list_row_added" options={['追加済', '未']} />
         <EditableButtonSelect label="物件ファイル" field="property_file" options={['担当に渡し済み', '未']} />
         <EditableField label="公開予定日" field="publish_scheduled_date" type="date" />
+        <ReadOnlyDisplayField
+          label="メール配信"
+          value={getValue('email_distribution') || null}
+          labelColor="error"
+        />
         <EditableField label="メール配信" field="pre_distribution_check" />
         <EditableField label="サイト登録締め日v" field="site_registration_deadline" type="date" />
       </Box>
     </Box>
     );
   };
+
+  // 読み取り専用表示フィールド
+  const ReadOnlyDisplayField = ({ label, value, labelColor }: {
+    label: string;
+    value: string | null;
+    labelColor?: 'error' | 'text.secondary';
+  }) => (
+    <Grid container spacing={2} alignItems="center" sx={{ mb: 1.5 }}>
+      <Grid item xs={4}>
+        <Typography variant="body2" color={labelColor || 'text.secondary'} sx={{ fontWeight: 500 }}>
+          {label}
+        </Typography>
+      </Grid>
+      <Grid item xs={8}>
+        <Typography variant="body2">{value || ''}</Typography>
+      </Grid>
+    </Grid>
+  );
 
   // 複数行テキストフィールド
   const EditableMultilineField = ({ label, field }: { label: string; field: string }) => (

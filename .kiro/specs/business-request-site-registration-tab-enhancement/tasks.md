@@ -1,83 +1,86 @@
-# 実装計画: 業務依頼リスト「サイト登録」タブ拡張機能
+# 実装計画: 業務依頼リスト「サイト登録」タブへの表示追加機能
 
 ## 概要
 
-DBマイグレーション → 設定ファイル更新 → フロントエンドUI変更の順で実装する。
+Supabaseテーブル作成 → GAS同期関数追加 → フロントエンドUI変更の順で実装する。
 各ステップは前のステップに依存するため、順番通りに実施すること。
 
 ## タスク
 
-- [x] 1. DBマイグレーションの作成
-  - `backend/migrations/112_change_site_registration_due_date_to_timestamptz.sql` を新規作成する
-  - `ALTER TABLE work_tasks ALTER COLUMN site_registration_due_date TYPE TIMESTAMPTZ USING site_registration_due_date::TIMESTAMPTZ;` を記述する
-  - `COMMENT ON COLUMN` でカラムコメントを追加する
-  - _Requirements: 1.5_
+- [x] 1. Supabase `cw_counts` テーブルの作成
+  - `backend/migrations/` に `113_create_cw_counts_table.sql` を新規作成する
+  - 設計書のDDLに従い `cw_counts` テーブルを作成する（`id`, `item_name`, `current_total`, `synced_at`, `updated_at`）
+  - `item_name` に UNIQUE 制約を付与する
+  - RLSポリシーを設定する（フロントエンドからの SELECT を許可）
+  - _Requirements: 4.1_
 
-- [x] 2. work-task-column-mapping.json の更新
-  - [x] 2.1 バックエンド側の `typeConversions` を更新する
-    - `backend/src/config/work-task-column-mapping.json` を開く
-    - `site_registration_due_date` の値を `"date"` → `"datetime"` に変更する
-    - `floor_plan_due_date` の値が `"datetime"` であることを確認し、異なる場合は修正する
-    - _Requirements: 1.6, 2.5_
+- [x] 2. GAS `syncCwCounts()` 関数の追加
+  - [x] 2.1 `gas/gyomu-work-task-sync/GyomuWorkTaskSync.gs` に `syncCwCounts()` 関数を追加する
+    - CWカウントシート（ID: `1MO2vs0mDUFCgM-rjXXPRIy3pKKdfIFvUDwacM-2174g`、シート名「CWカウント」）を開く処理を実装する
+    - `getCwCountValue(sheet, itemName)` ヘルパー関数を実装する（「項目」列と「現在計」列を検索）
+    - 「間取図（300円）」と「サイト登録」の2行を取得し、Supabase `cw_counts` テーブルへ upsert する
+    - エラー時はログに記録してスキップする（業務依頼同期は継続）
+    - _Requirements: 4.1, 4.2_
 
-  - [x] 2.2 フロントエンド側の `typeConversions` を更新する
-    - `frontend/frontend/src/backend/config/work-task-column-mapping.json` を開く
-    - `site_registration_due_date` の値を `"date"` → `"datetime"` に変更する
-    - `floor_plan_due_date` の値が `"datetime"` であることを確認し、異なる場合は修正する
-    - `site_registration_ok_comment` と `site_registration_ok_sent` のマッピングが存在することを確認する
-    - _Requirements: 1.6, 2.5, 5.1, 5.2_
+  - [x] 2.2 既存の定期実行トリガー関数に `syncCwCounts()` の呼び出しを追加する
+    - 既存の10分ごとトリガー関数（`syncGyomuWorkTasks()` 等）の末尾に `syncCwCounts()` の呼び出しを追加する
+    - _Requirements: 4.1_
 
-- [x] 3. WorkTaskDetailModal.tsx の更新
-  - [x] 3.1 `formatDateTimeForInput` 関数を追加する
-    - `frontend/frontend/src/components/WorkTaskDetailModal.tsx` を開く
-    - 既存の `formatDateForInput` 関数の近くに `formatDateTimeForInput` 関数を追加する
-    - TIMESTAMPTZ / ISO 8601 文字列を `YYYY-MM-DDTHH:mm` 形式に変換する実装を行う
-    - null / undefined / 空文字の場合は空文字を返す
-    - `new Date(dateStr)` が無効な場合（`isNaN`）は空文字を返す
-    - _Requirements: 1.3, 2.3_
+- [ ] 3. チェックポイント - GAS動作確認
+  - `syncCwCounts()` を手動実行し、`cw_counts` テーブルに「間取図（300円）」と「サイト登録」の行が挿入されることを確認する。疑問点があればユーザーに確認する。
 
-  - [ ]* 3.2 `formatDateTimeForInput` のプロパティテストを書く
-    - **Property 1: datetime-local 変換の正規化**
-    - **Validates: Requirements 1.3, 2.3**
-    - fast-check を使用し、有効な日付文字列に対して `YYYY-MM-DDTHH:mm` 形式または空文字を返すことを検証する
+- [x] 4. フロントエンド: CWカウント取得フックの実装
+  - [x] 4.1 `frontend/frontend/src/components/WorkTaskDetailModal.tsx` に `useCwCounts` フックを追加する
+    - Supabase JSクライアントを使用して `cw_counts` テーブルから `item_name` と `current_total` を取得する
+    - `CwCountData` 型（`floorPlan300: string | null`, `siteRegistration: string | null`）を定義する
+    - エラー時・データなし時はフォールバック値 `'-'` を返す
+    - _Requirements: 2.3, 3.3, 4.3_
 
-  - [ ]* 3.3 `formatDateTimeForInput` のプロパティテストを書く
-    - **Property 2: null/空文字の安全な処理**
-    - **Validates: Requirements 1.3, 2.3**
-    - null / undefined / 空文字の入力に対して例外をスローせず空文字を返すことを検証する
+  - [ ]* 4.2 `useCwCounts` のプロパティテストを書く
+    - **Property 1: CWカウント表示フォーマットの一貫性**
+    - **Validates: Requirements 2.2**
+    - fast-check を使用し、任意の文字列値に対して `間取図300円（CW)計⇒ {値}` 形式で返ることを検証する
 
-  - [x] 3.4 `getDefaultDueDatetime` 関数を追加する
-    - 現在の `getDefaultDueDate`（DATE用）の近くに `getDefaultDueDatetime` 関数を追加する
-    - 今日が火曜日（dayOfWeek === 2）なら +3日、それ以外は +2日の `YYYY-MM-DDTHH:mm` 形式（時刻は 12:00）を返す
-    - _Requirements: 1.4_
+  - [ ]* 4.3 `useCwCounts` のプロパティテストを書く
+    - **Property 2: サイト登録CWカウント表示フォーマットの一貫性**
+    - **Validates: Requirements 3.2**
+    - fast-check を使用し、任意の文字列値に対して `サイト登録（CW)計⇒ {値}` 形式で返ることを検証する
 
-  - [x] 3.5 `EditableField` コンポーネントに `datetime-local` 対応を追加する
-    - `type` の型定義に `'datetime-local'` を追加する
-    - `type === 'datetime-local'` の場合に `formatDateTimeForInput` を使って `TextField type="datetime-local"` を描画する分岐を追加する
-    - _Requirements: 2.1, 2.2, 2.3_
+- [x] 5. フロントエンド: `ReadOnlyDisplayField` コンポーネントの追加
+  - `WorkTaskDetailModal.tsx` 内に `ReadOnlyDisplayField` コンポーネントを追加する
+  - `label`, `value`, `labelColor` (`'error'` | `'text.secondary'`) の props を受け取る
+  - MUI の `Grid` + `Typography` を使用して既存フィールドと同じレイアウトで表示する
+  - _Requirements: 1.2, 1.3, 2.5, 3.5_
 
-  - [x] 3.6 `SiteRegistrationSection` の `site_registration_due_date` フィールドを変更する
-    - `type="date"` → `type="datetime-local"` に変更する
-    - `formatDateForInput` → `formatDateTimeForInput` に変更する
-    - デフォルト値を `getDefaultDueDate()` → `getDefaultDueDatetime()` に変更する
-    - _Requirements: 1.1, 1.2, 1.4_
+  - [ ]* 5.1 `ReadOnlyDisplayField` のプロパティテストを書く
+    - **Property 3: email_distribution 値のパススルー**
+    - **Validates: Requirements 1.4, 1.5**
+    - fast-check を使用し、null・空文字・任意の文字列でエラーが発生しないことを検証する
 
-  - [x] 3.7 `SiteRegistrationSection` の `floor_plan_due_date` フィールドを変更する
-    - `EditableField` の `type` を `"date"` → `"datetime-local"` に変更する
-    - _Requirements: 2.1, 2.2_
+- [x] 6. フロントエンド: 「メール配信」フィールドの追加（要件1）
+  - `SiteRegistrationSection` の「確認後処理」セクションで「公開予定日」フィールドの直下に `ReadOnlyDisplayField` を追加する
+  - ラベル「メール配信」、`labelColor="error"`（赤字）、値は `task.email_distribution` を渡す
+  - `email_distribution` が null/空の場合は空表示（エラーなし）
+  - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5_
 
-  - [x] 3.8 「サイト登録確認OKコメント」と「サイト登録確認OK送信」フィールドを追加する
-    - `SiteRegistrationSection` 内の「メール配信v」（`email_distribution`）フィールドの直下に追加する
-    - `<EditableField label="サイト登録確認OKコメント" field="site_registration_ok_comment" type="text" />` を追加する
-    - `<EditableYesNo label="サイト登録確認OK送信" field="site_registration_ok_sent" />` を追加する（`floor_plan_ok_sent` と同様の実装）
-    - _Requirements: 3.1, 3.2, 3.3, 4.1, 4.2, 4.3_
+- [x] 7. フロントエンド: 「間取図300円（CW）計」フィールドの追加（要件2）
+  - `SiteRegistrationSection` の「確認関係」セクションで「間取図完了日」フィールドの直上に `ReadOnlyDisplayField` を追加する
+  - ラベルなし（または空）、値は `floorPlan300 ? \`間取図300円（CW)計⇒ ${floorPlan300}\` : '-'` を渡す
+  - `useCwCounts` フックから取得した値を使用する
+  - _Requirements: 2.1, 2.2, 2.4, 2.5_
 
-- [x] 4. チェックポイント - 全テストが通ることを確認する
+- [x] 8. フロントエンド: 「サイト登録（CW）計」フィールドの追加（要件3）
+  - `SiteRegistrationSection` の「★サイト登録確認」セクションで「サイト登録確認OK送信」フィールドの直下に `ReadOnlyDisplayField` を追加する
+  - ラベルなし（または空）、値は `siteRegistration ? \`サイト登録（CW)計⇒ ${siteRegistration}\` : '-'` を渡す
+  - `useCwCounts` フックから取得した値を使用する
+  - _Requirements: 3.1, 3.2, 3.4, 3.5_
+
+- [ ] 9. 最終チェックポイント - 全テストが通ることを確認する
   - 全テストが通ることを確認し、疑問点があればユーザーに確認する。
 
 ## Notes
 
 - `*` が付いたタスクはオプションであり、MVP優先の場合はスキップ可能
 - 各タスクは対応する要件番号を参照している
-- マイグレーション（タスク1）は本番DBに適用するまでフロントエンドの動作確認はローカルで行うこと
-- `formatDateTimeForInput` はブラウザのローカルタイムゾーンで表示されるため、JST環境では UTC+9 で表示される（既存の `floor_plan_due_date` と同じ挙動）
+- タスク3のGAS動作確認後にフロントエンド実装（タスク4〜8）を進めること
+- CWカウントデータはSupabaseから直接取得するため、バックエンドAPIへの変更は不要

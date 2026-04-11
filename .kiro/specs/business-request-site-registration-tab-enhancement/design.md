@@ -1,189 +1,172 @@
-# 技術設計書
-
-## 機能名
-業務依頼リスト「サイト登録」タブ拡張機能
+# 設計書：業務依頼リスト「サイト登録」タブへの表示追加機能
 
 ## 概要
 
-社内管理システム（sateituikyaku-admin）の業務依頼リスト詳細モーダル（`WorkTaskDetailModal.tsx`）の「サイト登録」タブに対して以下の変更を行う。
+本設計書は、社内管理システムの業務依頼リスト「サイト登録」タブに以下3つの表示項目を追加するための技術設計を定義する。
 
-1. `site_registration_due_date`（サイト登録納期予定日）: DBカラムを `DATE` → `TIMESTAMPTZ` に変更し、UIを `datetime-local` 入力に変更
-2. `floor_plan_due_date`（間取図完了予定）: DBは変更済みのため、UIのみ `datetime-local` 入力に変更
-3. 「メール配信v」フィールドの直下に `site_registration_ok_comment`（サイト登録確認OKコメント）と `site_registration_ok_sent`（サイト登録確認OK送信）を追加
+1. **「メール配信」の追加表示**：「確認後処理」セクションの「公開予定日」直下に `email_distribution` の値を赤字・読み取り専用で表示
+2. **「間取図300円（CW）計」の追加表示**：「確認関係」セクションの「間取図完了日」直上にCWカウントデータを表示
+3. **「サイト登録（CW）計」の追加表示**：「★サイト登録確認」セクションの「サイト登録確認OK送信」直下にCWカウントデータを表示
+
+CWカウントデータの取得方法として**方法C（GASでSupabaseに定期同期）**を採用する。
 
 ---
 
 ## アーキテクチャ
 
+### データフロー
+
 ```mermaid
-graph TD
-  A[WorkTaskDetailModal.tsx<br/>SiteRegistrationSection] -->|PUT /api/work-tasks/:id| B[backend/src/routes/work-tasks.ts]
-  B --> C[Supabase PostgreSQL<br/>work_tasks テーブル]
-  D[work-task-column-mapping.json<br/>backend + frontend] -->|typeConversions| A
-  E[DBマイグレーション<br/>112_change_site_registration_due_date_to_timestamptz.sql] --> C
+graph LR
+    A[CWカウントシート<br/>スプレッドシートID:<br/>1MO2vs0mDUFCgM-...] -->|GAS定期同期<br/>10分ごと| B[(Supabase<br/>cw_counts テーブル)]
+    B -->|Supabase JS Client<br/>直接クエリ| C[WorkTaskDetailModal.tsx<br/>SiteRegistrationSection]
+    D[work_tasks テーブル] -->|既存API<br/>/api/work-tasks/:id| C
 ```
 
-変更は以下の4レイヤーに分かれる：
+### 採用理由（方法C）
 
-| レイヤー | 変更内容 |
-|---------|---------|
-| DB | `site_registration_due_date` を `DATE` → `TIMESTAMPTZ` に変更（マイグレーション112） |
-| バックエンド設定 | `work-task-column-mapping.json` の `typeConversions` を更新 |
-| フロントエンド設定 | 同上（フロントエンド側コピー） |
-| フロントエンドUI | `WorkTaskDetailModal.tsx` の `SiteRegistrationSection` を変更 |
+- バックエンドAPIへの追加負荷を避けられる
+- フロントエンドが既にSupabase JSクライアントを使用している場合、DBから直接取得可能
+- GASは既存の `GyomuWorkTaskSync.gs` と同じスプレッドシートを参照しており、同一パターンで実装できる
 
 ---
 
 ## コンポーネントとインターフェース
 
-### WorkTaskDetailModal.tsx の変更箇所
+### 1. 新規Supabaseテーブル：`cw_counts`
 
-#### 1. `formatDateTimeForInput` 関数の追加
+CWカウントシートのデータを格納するテーブル。GASが定期的にupsertする。
 
-既存の `formatDateForInput`（`DATE` 型用）に加えて、`TIMESTAMPTZ` 値を `datetime-local` 形式（`YYYY-MM-DDTHH:mm`）に変換する関数を追加する。
-
-```typescript
-// TIMESTAMPTZ / DATE 文字列を datetime-local 形式に変換
-const formatDateTimeForInput = (dateStr: string | null | undefined): string => {
-  if (!dateStr) return '';
-  try {
-    const d = new Date(dateStr);
-    if (isNaN(d.getTime())) return '';
-    const yyyy = d.getFullYear();
-    const MM = String(d.getMonth() + 1).padStart(2, '0');
-    const dd = String(d.getDate()).padStart(2, '0');
-    const hh = String(d.getHours()).padStart(2, '0');
-    const mm = String(d.getMinutes()).padStart(2, '0');
-    return `${yyyy}-${MM}-${dd}T${hh}:${mm}`;
-  } catch {
-    return '';
-  }
-};
-```
-
-**設計上の注意**: `new Date(dateStr)` はローカルタイムゾーンで解釈するため、Supabaseから返される `TIMESTAMPTZ` 値（UTC ISO文字列）をそのまま渡すと、ブラウザのタイムゾーンで表示される。これは既存の `floor_plan_due_date` の挙動と一致させる。
-
-#### 2. `SiteRegistrationSection` の変更
-
-**変更1: `site_registration_due_date` フィールドの `type` 変更**
-
-現在:
-```tsx
-<TextField type="date" value={formatDateForInput(getValue('site_registration_due_date') || getDefaultDueDate())} ... />
-```
-
-変更後:
-```tsx
-<TextField
-  type="datetime-local"
-  value={formatDateTimeForInput(getValue('site_registration_due_date')) || getDefaultDueDatetime()}
-  ...
-/>
-```
-
-デフォルト値生成関数も `datetime-local` 形式（`YYYY-MM-DDTHH:mm`）を返すよう変更する：
-
-```typescript
-const getDefaultDueDatetime = () => {
-  const today = new Date();
-  const dayOfWeek = today.getDay();
-  const daysToAdd = dayOfWeek === 2 ? 3 : 2;
-  const result = new Date(today);
-  result.setDate(today.getDate() + daysToAdd);
-  result.setHours(12, 0, 0, 0);
-  const yyyy = result.getFullYear();
-  const MM = String(result.getMonth() + 1).padStart(2, '0');
-  const dd = String(result.getDate()).padStart(2, '0');
-  return `${yyyy}-${MM}-${dd}T12:00`;
-};
-```
-
-**変更2: `floor_plan_due_date` フィールドの `type` 変更**
-
-現在:
-```tsx
-<EditableField label="間取図完了予定*" field="floor_plan_due_date" type="date" />
-```
-
-変更後: `EditableField` の `type` を `"datetime-local"` に変更するか、直接 `TextField` で `datetime-local` を使用する。`EditableField` コンポーネントに `datetime-local` 対応を追加する。
-
-**変更3: 新規フィールドの追加（確認関係エリア）**
-
-「メール配信v」（`email_distribution`）フィールドの直下に以下を追加：
-
-```tsx
-<EditableField label="サイト登録確認OKコメント" field="site_registration_ok_comment" type="text" />
-<EditableYesNo label="サイト登録確認OK送信" field="site_registration_ok_sent" />
-```
-
-#### 3. `EditableField` コンポーネントへの `datetime-local` 対応追加
-
-現在の `EditableField` は `type` として `'text' | 'date' | 'number' | 'url'` を受け付ける。`'datetime-local'` を追加する：
-
-```tsx
-const EditableField = ({ label, field, type = 'text' }: {
-  label: string;
-  field: string;
-  type?: 'text' | 'date' | 'datetime-local' | 'number' | 'url';
-}) => (
-  // ...
-  {type === 'date' ? (
-    <TextField type="date" value={formatDateForInput(getValue(field))} ... />
-  ) : type === 'datetime-local' ? (
-    <TextField type="datetime-local" value={formatDateTimeForInput(getValue(field))} ... />
-  ) : /* 他のtype */}
+```sql
+CREATE TABLE IF NOT EXISTS cw_counts (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  item_name TEXT NOT NULL UNIQUE,   -- 「項目」列の値（例: 「間取図（300円）」「サイト登録」）
+  current_total TEXT,               -- 「現在計」列の値
+  synced_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+```
+
+### 2. GAS追加関数：`syncCwCounts()`
+
+既存の `GyomuWorkTaskSync.gs` に追加する関数。CWカウントシートのデータをSupabaseの `cw_counts` テーブルに同期する。
+
+**対象シート**: スプレッドシートID `1MO2vs0mDUFCgM-rjXXPRIy3pKKdfIFvUDwacM-2174g`、シート名「CWカウント」
+
+**同期対象行**:
+- 「項目」列 = `間取図（300円）` → `item_name = '間取図（300円）'`
+- 「項目」列 = `サイト登録` → `item_name = 'サイト登録'`
+
+**同期タイミング**: 既存の `syncGyomuWorkTasks()` と同じトリガー（10分ごと）で呼び出す
+
+### 3. フロントエンド：`WorkTaskDetailModal.tsx` の変更
+
+#### 3.1 CWカウントデータ取得フック
+
+`SiteRegistrationSection` コンポーネント内でSupabaseから `cw_counts` テーブルを直接クエリする。
+
+```typescript
+// CWカウントデータの型
+interface CwCountData {
+  floorPlan300: string | null;   // 間取図（300円）の現在計
+  siteRegistration: string | null; // サイト登録の現在計
+}
+```
+
+#### 3.2 表示コンポーネント：`ReadOnlyDisplayField`
+
+読み取り専用の表示フィールド（CWカウント表示用）。
+
+```typescript
+const ReadOnlyDisplayField = ({ label, value, labelColor }: {
+  label: string;
+  value: string | null;
+  labelColor?: 'error' | 'text.secondary';
+}) => (
+  <Grid container spacing={2} alignItems="center" sx={{ mb: 1.5 }}>
+    <Grid item xs={4}>
+      <Typography variant="body2" color={labelColor || 'text.secondary'} sx={{ fontWeight: 500 }}>
+        {label}
+      </Typography>
+    </Grid>
+    <Grid item xs={8}>
+      <Typography variant="body2">{value || ''}</Typography>
+    </Grid>
+  </Grid>
+);
+```
+
+#### 3.3 変更箇所の概要
+
+**「確認後処理」セクション（右側）**:
+```
+公開予定日（既存）
+↓ 追加
+メール配信（赤字ラベル、email_distribution の値、読み取り専用）
+↓ 既存
+メール配信（pre_distribution_check）
+```
+
+**「確認関係」セクション（右側）**:
+```
+間取図確認OK送信*（既存）
+間取図修正回数（既存）
+↓ 追加
+間取図300円（CW)計⇒ {値}（読み取り専用）
+↓ 既存
+間取図完了日*
+```
+
+**「★サイト登録確認」セクション（右側）**:
+```
+サイト登録確認OK送信（既存）
+↓ 追加
+サイト登録（CW)計⇒ {値}（読み取り専用）
+↓ 既存
+（次の要素）
 ```
 
 ---
 
 ## データモデル
 
-### work_tasks テーブルの変更
+### `cw_counts` テーブル
 
-| カラム名 | 変更前 | 変更後 | 備考 |
-|---------|--------|--------|------|
-| `site_registration_due_date` | `DATE` | `TIMESTAMPTZ` | マイグレーション112で変更 |
-| `floor_plan_due_date` | `DATE` | `TIMESTAMPTZ` | マイグレーション100で変更済み |
-| `site_registration_ok_comment` | `TEXT` | `TEXT` | マイグレーション040で定義済み、変更なし |
-| `site_registration_ok_sent` | `TEXT` | `TEXT` | マイグレーション040で定義済み、変更なし |
+| カラム名 | 型 | 説明 |
+|---------|-----|------|
+| `id` | UUID | 主キー |
+| `item_name` | TEXT (UNIQUE) | 項目名（例: 「間取図（300円）」「サイト登録」） |
+| `current_total` | TEXT | 現在計の値 |
+| `synced_at` | TIMESTAMPTZ | 最終同期日時 |
+| `updated_at` | TIMESTAMPTZ | 最終更新日時 |
 
-### マイグレーション: 112_change_site_registration_due_date_to_timestamptz.sql
+### CWカウントシートの想定構造
 
-```sql
--- site_registration_due_date を DATE から TIMESTAMPTZ に変更
--- 理由: スプレッドシートにタイムスタンプ（日時）が入力されており、時刻情報も保存する必要があるため
--- 参考: migration 100 で floor_plan_due_date に同様の変更を実施済み
+| 列名 | 説明 |
+|-----|------|
+| 項目 | 作業種別（例: 「間取図（300円）」「サイト登録」） |
+| 現在計 | 現在の集計値 |
+| （その他列） | 同期対象外 |
 
-ALTER TABLE work_tasks
-  ALTER COLUMN site_registration_due_date TYPE TIMESTAMPTZ
-  USING site_registration_due_date::TIMESTAMPTZ;
+### GASでの取得ロジック
 
-COMMENT ON COLUMN work_tasks.site_registration_due_date IS 'サイト登録納期予定日（タイムスタンプ）';
-```
-
-### work-task-column-mapping.json の変更
-
-`typeConversions` セクションの変更（バックエンド・フロントエンド両方）：
-
-```json
-"typeConversions": {
-  "site_registration_due_date": "datetime",  // "date" → "datetime" に変更
-  "floor_plan_due_date": "datetime",          // "date" → "datetime" に変更（確認・修正）
-  // 他のエントリは変更なし
-}
-```
-
-### WorkTaskData インターフェース
-
-`site_registration_ok_comment` と `site_registration_ok_sent` は既に `WorkTaskData` インターフェースに定義済みのため変更不要：
-
-```typescript
-interface WorkTaskData {
-  // ...
-  site_registration_ok_comment: string;  // 既存
-  site_registration_ok_sent: string;     // 既存
-  // ...
+```javascript
+// CWカウントシートから「項目」と「現在計」を取得
+// LOOKUP("現在計", "CWカウント", "項目", "間取図（300円）") に相当
+function getCwCountValue(sheet, itemName) {
+  var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  var itemColIndex = headers.indexOf('項目');
+  var currentTotalColIndex = headers.indexOf('現在計');
+  
+  if (itemColIndex < 0 || currentTotalColIndex < 0) return null;
+  
+  var data = sheet.getRange(2, 1, sheet.getLastRow() - 1, sheet.getLastColumn()).getValues();
+  for (var i = 0; i < data.length; i++) {
+    if (String(data[i][itemColIndex]).trim() === itemName) {
+      return String(data[i][currentTotalColIndex]).trim() || null;
+    }
+  }
+  return null;
 }
 ```
 
@@ -191,121 +174,121 @@ interface WorkTaskData {
 
 ## 正確性プロパティ
 
-*プロパティとは、システムの全ての有効な実行において成立すべき特性や振る舞いのことです。プロパティは人間が読める仕様と機械で検証可能な正確性保証の橋渡しをします。*
+*プロパティとは、システムの全ての有効な実行において成立すべき特性や振る舞いのことである。プロパティは人間が読める仕様と機械で検証可能な正確性保証の橋渡しをする。*
 
-本機能はUIコンポーネントの変更と設定ファイルの更新が主体であり、純粋な関数ロジックとして独立してテスト可能な部分は `formatDateTimeForInput` 関数のみである。この関数に対してプロパティベーステストが適用可能。
+### Property 1: CWカウント表示フォーマットの一貫性
 
-### Property 1: datetime-local 変換の正規化
+*For any* CWカウントの現在計の値（文字列または数値）に対して、「間取図300円（CW)計⇒ {値}」の形式でフォーマットされた文字列が返されること
 
-*For any* 有効な日付・日時文字列（ISO 8601形式、DATE形式、TIMESTAMPTZ形式）に対して、`formatDateTimeForInput` 関数は `YYYY-MM-DDTHH:mm` 形式の文字列を返すか、空文字を返す。
+**Validates: Requirements 2.2**
 
-**Validates: Requirements 1.3, 2.3**
+### Property 2: サイト登録CWカウント表示フォーマットの一貫性
 
-### Property 2: null/空文字の安全な処理
+*For any* CWカウントの現在計の値（文字列または数値）に対して、「サイト登録（CW)計⇒ {値}」の形式でフォーマットされた文字列が返されること
 
-*For any* null、undefined、または空文字の入力に対して、`formatDateTimeForInput` 関数は例外をスローせず空文字を返す。
+**Validates: Requirements 3.2**
 
-**Validates: Requirements 1.3, 2.3**
+### Property 3: email_distribution 値のパススルー
+
+*For any* `email_distribution` の値（null、空文字列、任意の文字列）に対して、読み取り専用フィールドがその値をそのまま表示し、エラーを発生させないこと
+
+**Validates: Requirements 1.4, 1.5**
 
 ---
 
 ## エラーハンドリング
 
-### DBマイグレーション
+### CWカウントデータ取得失敗時
 
-- `USING site_registration_due_date::TIMESTAMPTZ` により既存の `DATE` 値は `TIMESTAMPTZ`（時刻部分は `00:00:00+00`）に変換される
-- 既存データが `NULL` の場合はそのまま `NULL` として保持される
-- マイグレーション失敗時はロールバック可能（`ALTER COLUMN TYPE` は DDL トランザクション内で実行）
+| シナリオ | 対応 |
+|---------|------|
+| `cw_counts` テーブルが存在しない | フォールバック値「-」を表示 |
+| 対象の `item_name` が見つからない | フォールバック値「-」を表示 |
+| Supabaseクエリエラー | コンソールにエラーログ、フォールバック値「-」を表示 |
+| `current_total` が null/空 | フォールバック値「-」を表示 |
 
-### フロントエンドの日時変換
+### GAS同期失敗時
 
-- `new Date(dateStr)` が無効な日付を返した場合（`isNaN(d.getTime())`）は空文字を返す
-- `datetime-local` 入力でユーザーが値をクリアした場合、`e.target.value` は空文字になるため `handleFieldChange(field, null)` を呼ぶ
+| シナリオ | 対応 |
+|---------|------|
+| CWカウントシートが見つからない | ログに記録してスキップ（業務依頼同期は継続） |
+| 「項目」または「現在計」列が見つからない | ログに記録してスキップ |
+| Supabase upsertエラー | ログに記録（次回の同期で再試行） |
 
-### 既存データの表示互換性
+### `email_distribution` 表示
 
-- `site_registration_due_date` の既存値は `DATE` 型（例: `2026-04-08`）
-- マイグレーション後は `TIMESTAMPTZ`（例: `2026-04-08T00:00:00+00:00`）として返される
-- `formatDateTimeForInput` はこの値を `2026-04-08T09:00`（JST）として表示する（ブラウザのタイムゾーン依存）
+| シナリオ | 対応 |
+|---------|------|
+| null | 空表示（エラーなし） |
+| 空文字列 | 空表示（エラーなし） |
+| 任意の文字列 | そのまま表示 |
 
 ---
 
 ## テスト戦略
 
-本機能はUIコンポーネントの変更が主体のため、PBTよりもexampleベースのテストが中心となる。
+### PBT適用性の評価
 
-### ユニットテスト（例示ベース）
+本機能はUIレンダリングとデータ表示が主体であるが、以下の純粋関数に対してプロパティベーステストが適用可能：
+- CWカウント値のフォーマット関数（`formatCwCount`）
+- `email_distribution` 値の表示ロジック
 
-**`formatDateTimeForInput` 関数のテスト**:
-- `'2026-04-08'` → `'2026-04-08T09:00'`（JST環境）
-- `'2026-04-08T12:00:00+09:00'` → `'2026-04-08T12:00'`
-- `null` → `''`
-- `''` → `''`
-- `'invalid'` → `''`
+### ユニットテスト
 
-**`SiteRegistrationSection` コンポーネントのテスト**:
-- `site_registration_due_date` フィールドが `type="datetime-local"` で描画されること
-- `floor_plan_due_date` フィールドが `type="datetime-local"` で描画されること
-- 「メール配信v」の直後に「サイト登録確認OKコメント」フィールドが存在すること
-- 「サイト登録確認OKコメント」の直後に「サイト登録確認OK送信」フィールドが存在すること
-- `site_registration_ok_sent` フィールドが Y/N ボタン（EditableYesNo）として描画されること
+**対象**: フォーマット関数、エラーハンドリングロジック
+
+```typescript
+// フォーマット関数のテスト例
+describe('formatCwCount', () => {
+  it('値がある場合は正しい形式で返す', () => {
+    expect(formatCwCount('間取図300円（CW)計', '42')).toBe('間取図300円（CW)計⇒ 42');
+  });
+  it('値がnullの場合は「-」を返す', () => {
+    expect(formatCwCount('間取図300円（CW)計', null)).toBe('-');
+  });
+});
+```
 
 ### プロパティベーステスト
 
-**Property 1: datetime-local 変換の正規化**
+**ライブラリ**: `fast-check`（TypeScript/JavaScript向け）
+**最小実行回数**: 100回
 
 ```typescript
-// fast-check を使用
-import * as fc from 'fast-check';
+// Property 1: CWカウント表示フォーマットの一貫性
+// Feature: business-request-site-registration-tab-enhancement, Property 1: CWカウント表示フォーマットの一貫性
+it('任意の値に対してフォーマットが一貫している', () => {
+  fc.assert(fc.property(
+    fc.string(),
+    (value) => {
+      const result = formatCwCount('間取図300円（CW)計', value);
+      return result === `間取図300円（CW)計⇒ ${value}`;
+    }
+  ), { numRuns: 100 });
+});
 
-test('formatDateTimeForInput: 有効な日付文字列は YYYY-MM-DDTHH:mm 形式を返す', () => {
-  fc.assert(
-    fc.property(
-      fc.date({ min: new Date('2000-01-01'), max: new Date('2099-12-31') }),
-      (date) => {
-        const input = date.toISOString();
-        const result = formatDateTimeForInput(input);
-        // 空文字でなければ YYYY-MM-DDTHH:mm 形式であること
-        if (result !== '') {
-          expect(result).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/);
-        }
-      }
-    ),
-    { numRuns: 100 }
-  );
-  // Feature: business-request-site-registration-tab-enhancement, Property 1: datetime-local 変換の正規化
+// Property 3: email_distribution 値のパススルー
+// Feature: business-request-site-registration-tab-enhancement, Property 3: email_distribution 値のパススルー
+it('任意のemail_distribution値でエラーが発生しない', () => {
+  fc.assert(fc.property(
+    fc.option(fc.string()),
+    (value) => {
+      // null/空/任意の文字列でエラーが発生しないことを確認
+      expect(() => renderEmailDistributionField(value)).not.toThrow();
+      return true;
+    }
+  ), { numRuns: 100 });
 });
 ```
 
-**Property 2: null/空文字の安全な処理**
+### インテグレーションテスト
 
-```typescript
-test('formatDateTimeForInput: null/undefined/空文字は空文字を返す', () => {
-  fc.assert(
-    fc.property(
-      fc.oneof(fc.constant(null), fc.constant(undefined), fc.constant('')),
-      (input) => {
-        expect(() => formatDateTimeForInput(input)).not.toThrow();
-        expect(formatDateTimeForInput(input)).toBe('');
-      }
-    ),
-    { numRuns: 100 }
-  );
-  // Feature: business-request-site-registration-tab-enhancement, Property 2: null/空文字の安全な処理
-});
-```
+**対象**: GAS同期後のSupabaseデータ確認
 
-### スモークテスト（手動確認）
+1. GASの `syncCwCounts()` を実行後、`cw_counts` テーブルに期待するデータが存在することを確認
+2. フロントエンドがSupabaseから正しくデータを取得できることを確認（1〜2件のサンプルで確認）
 
-- マイグレーション112実行後、`work_tasks.site_registration_due_date` のカラム型が `TIMESTAMPTZ` であること
-- `work-task-column-mapping.json`（バックエンド・フロントエンド両方）の `typeConversions.site_registration_due_date` が `"datetime"` であること
-- `work-task-column-mapping.json` の `typeConversions.floor_plan_due_date` が `"datetime"` であること
-- `spreadsheetToDatabase3` に `"サイト登録確認OKコメント": "site_registration_ok_comment"` が存在すること
-- `spreadsheetToDatabase3` に `"サイト登録確認OK送信": "site_registration_ok_sent"` が存在すること
+### スモークテスト
 
-### 統合テスト（手動確認）
-
-- 既存の `DATE` 型データ（例: `2026-04-08`）がマイグレーション後も正しく `datetime-local` フィールドに表示されること
-- `datetime-local` で入力した値がDBに `TIMESTAMPTZ` として保存されること
-- 「サイト登録確認OKコメント」に入力したテキストが `site_registration_ok_comment` として保存されること
-- 「サイト登録確認OK送信」で Y/N を選択した値が `site_registration_ok_sent` として保存されること
+1. GASのトリガーが正常に設定されていることを確認
+2. `cw_counts` テーブルが存在し、RLSポリシーが適切に設定されていることを確認

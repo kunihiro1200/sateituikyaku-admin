@@ -280,6 +280,9 @@ function syncGyomuWorkTasks() {
     Logger.log('ERROR: 予期しないエラー - ' + e.toString());
     Logger.log(e.stack);
   }
+
+  // CWカウントを同期（エラーが発生しても業務依頼同期は継続済み）
+  syncCwCounts();
 }
 
 // ============================================================
@@ -680,4 +683,128 @@ function debugAA9195Fields() {
     }
   }
   Logger.log('AA9195が見つかりません');
+}
+
+// ============================================================
+// CWカウント同期
+// ============================================================
+
+/**
+ * CWカウントシートから指定項目の「現在計」を取得するヘルパー関数
+ * @param {Sheet} sheet - CWカウントシート
+ * @param {string} itemName - 検索する項目名
+ * @returns {string|null} 現在計の値、見つからない場合は null
+ */
+function getCwCountValue(sheet, itemName) {
+  var lastCol = sheet.getLastColumn();
+  var lastRow = sheet.getLastRow();
+
+  if (lastRow < 2 || lastCol < 1) return null;
+
+  // 1行目をヘッダーとして読み取る
+  var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+
+  // 「項目」列と「現在計」列のインデックスを取得
+  var itemColIndex = -1;
+  var currentTotalColIndex = -1;
+  for (var i = 0; i < headers.length; i++) {
+    var h = String(headers[i]).trim();
+    if (h === '項目') itemColIndex = i;
+    if (h === '現在計') currentTotalColIndex = i;
+  }
+
+  if (itemColIndex < 0 || currentTotalColIndex < 0) {
+    Logger.log('CWカウント: 「項目」または「現在計」列が見つかりません');
+    return null;
+  }
+
+  // 「項目」列から itemName に一致する行を検索
+  var data = sheet.getRange(2, 1, lastRow - 1, lastCol).getValues();
+  for (var j = 0; j < data.length; j++) {
+    if (String(data[j][itemColIndex]).trim() === itemName) {
+      var val = String(data[j][currentTotalColIndex]).trim();
+      return val === '' ? null : val;
+    }
+  }
+
+  return null;
+}
+
+/**
+ * CWカウントシートのデータを Supabase cw_counts テーブルに同期する
+ * エラー時はログに記録してスキップ（業務依頼同期は継続）
+ */
+function syncCwCounts() {
+  Logger.log('--- CWカウント同期開始 ---');
+
+  try {
+    // CWカウントシートを開く（業務依頼シートと同じスプレッドシートID）
+    var ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+    var cwSheet = ss.getSheetByName('CWカウント');
+
+    if (!cwSheet) {
+      Logger.log('CWカウント: シート「CWカウント」が見つかりません。スキップします。');
+      return;
+    }
+
+    // 同期対象の項目
+    var targets = [
+      '間取図（300円）',
+      'サイト登録'
+    ];
+
+    var records = [];
+    for (var i = 0; i < targets.length; i++) {
+      var itemName = targets[i];
+      var currentTotal = getCwCountValue(cwSheet, itemName);
+
+      if (currentTotal === null) {
+        Logger.log('CWカウント: 「' + itemName + '」の値が見つかりません。スキップします。');
+        continue;
+      }
+
+      records.push({
+        item_name: itemName,
+        current_total: currentTotal,
+        synced_at: new Date().toISOString()
+      });
+
+      Logger.log('CWカウント: 「' + itemName + '」= ' + currentTotal);
+    }
+
+    if (records.length === 0) {
+      Logger.log('CWカウント: 同期対象レコードなし。スキップします。');
+      return;
+    }
+
+    // Supabase cw_counts テーブルへ upsert（item_name をキーに）
+    var url = CONFIG.SUPABASE_URL + '/rest/v1/cw_counts?on_conflict=item_name';
+    var options = {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': CONFIG.SUPABASE_SERVICE_KEY,
+        'Authorization': 'Bearer ' + CONFIG.SUPABASE_SERVICE_KEY,
+        'Prefer': 'resolution=merge-duplicates,return=minimal'
+      },
+      payload: JSON.stringify(records),
+      muteHttpExceptions: true
+    };
+
+    var response = UrlFetchApp.fetch(url, options);
+    var statusCode = response.getResponseCode();
+
+    if (statusCode >= 200 && statusCode < 300) {
+      Logger.log('CWカウント: ' + records.length + '件 upsert成功');
+    } else {
+      var body = response.getContentText();
+      Logger.log('CWカウント: upsertエラー HTTP ' + statusCode + ': ' + body);
+    }
+
+  } catch (e) {
+    Logger.log('CWカウント: 予期しないエラー - ' + e.toString());
+    // エラーが発生しても業務依頼同期は継続するためここで return しない
+  }
+
+  Logger.log('--- CWカウント同期完了 ---');
 }
