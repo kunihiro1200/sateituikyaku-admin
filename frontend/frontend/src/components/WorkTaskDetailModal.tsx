@@ -276,6 +276,10 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
             onChange={(e) => handleFieldChange(field, e.target.value || null)}
             fullWidth
             InputLabelProps={{ shrink: true }}
+            onClick={(e) => {
+              const input = (e.currentTarget as HTMLElement).querySelector('input');
+              (input as HTMLInputElement | null)?.showPicker?.();
+            }}
           />
         ) : type === 'datetime-local' ? (
           <TextField
@@ -285,6 +289,10 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
             onChange={(e) => handleFieldChange(field, e.target.value || null)}
             fullWidth
             InputLabelProps={{ shrink: true }}
+            onClick={(e) => {
+              const input = (e.currentTarget as HTMLElement).querySelector('input');
+              (input as HTMLInputElement | null)?.showPicker?.();
+            }}
           />
         ) : type === 'number' ? (
           <TextField

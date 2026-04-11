@@ -473,6 +473,7 @@ const CallModePage = () => {
   const [exclusionDate, setExclusionDate] = useState<string>('');
   const [exclusionAction, setExclusionAction] = useState<string>('');
   const [editedNextCallDate, setEditedNextCallDate] = useState<string>('');
+  const nextCallDateRef = useRef<HTMLInputElement>(null); // 次電日フィールドのref
   
   // 4つのフィールドの状態管理（編集中の値）
   const [editedExclusiveDecisionDate, setEditedExclusiveDecisionDate] = useState<string>('');
@@ -576,6 +577,7 @@ const CallModePage = () => {
   // 訪問予約編集用の状態
   const [editingAppointment, setEditingAppointment] = useState(false);
   const [editedAppointmentDate, setEditedAppointmentDate] = useState<string>('');
+  const appointmentDateRef = useRef<HTMLInputElement>(null); // 訪問予定日時フィールドのref
   const [editedAssignedTo, setEditedAssignedTo] = useState<string>('');
   const [editedVisitValuationAcquirer, setEditedVisitValuationAcquirer] = useState<string>(''); // 訪問査定取得者
   const [originalVisitValuationAcquirer, setOriginalVisitValuationAcquirer] = useState<string | null>(null); // 編集開始時の元の値（nullは未設定、''はクリア済み）
@@ -5035,7 +5037,9 @@ HP：https://ifoo-oita.com/
                         size="small"
                         label="訪問予定日時"
                         type="datetime-local"
+                        inputRef={appointmentDateRef}
                         value={editedAppointmentDate}
+                        onClick={() => appointmentDateRef.current?.showPicker?.()}
                         onChange={(e) => {
                           const newDate = e.target.value;
                           setEditedAppointmentDate(newDate);
@@ -6929,8 +6933,10 @@ HP：https://ifoo-oita.com/
                     size="small"
                     label="次電日"
                     type="date"
+                    inputRef={nextCallDateRef}
                     value={editedNextCallDate}
                     onChange={(e) => { setEditedNextCallDate(e.target.value); setStatusChanged(true); }}
+                    onClick={() => nextCallDateRef.current?.showPicker?.()}
                     InputLabelProps={{ 
                       shrink: true,
                       sx: { fontWeight: 'bold', fontSize: '1.1rem' }

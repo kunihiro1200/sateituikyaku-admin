@@ -129,8 +129,19 @@ export const InlineEditableField: React.FC<InlineEditableFieldProps> = memo(({
   useEffect(() => {
     if (isEditing && inputRef.current) {
       inputRef.current.focus();
+      // date型の場合は編集モード切替時にカレンダーを自動表示
+      if (fieldType === 'date') {
+        // focusの後にshowPickerを呼ぶ（タイミング調整）
+        setTimeout(() => {
+          try {
+            (inputRef.current as HTMLInputElement | null)?.showPicker?.();
+          } catch {
+            // SecurityError等は無視（フォールバックとしてフォーカスのみ）
+          }
+        }, 0);
+      }
     }
-  }, [isEditing]);
+  }, [isEditing, fieldType]);
 
   // Check if field is editable
   const isEditable = useMemo(
@@ -393,6 +404,10 @@ export const InlineEditableField: React.FC<InlineEditableFieldProps> = memo(({
               // 空文字の場合はnullを設定（timestampエラーを防ぐ）
               const newValue = e.target.value === '' ? null : e.target.value;
               handleChange(newValue);
+            }}
+            onClick={() => {
+              // 入力枠内のどこをクリックしてもカレンダーを開く
+              (inputRef.current as HTMLInputElement | null)?.showPicker?.();
             }}
           />
         );
