@@ -178,15 +178,21 @@ export class SellerSidebarCountsUpdateService {
         const parts = visitDateOnly.split('-');
         if (parts.length !== 3) return false;
         
-        const visitDate = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
-        visitDate.setHours(0, 0, 0, 0);
+        // 🔧 タイムゾーン安全な日付計算（Vercel UTC環境対応）
+        // new Date(year, month, day) はローカルタイム依存のため使用しない
+        // 代わりに YYYY-MM-DD 文字列から曜日を計算する
+        const year = parseInt(parts[0]);
+        const month = parseInt(parts[1]) - 1; // 0-indexed
+        const day = parseInt(parts[2]);
+        // UTC基準で日付を作成（タイムゾーン非依存）
+        const visitDateUTC = new Date(Date.UTC(year, month, day));
         
         // 水曜定休・木曜2日前ロジック（isVisitDayBeforeUtilと同じ）
-        const visitDayOfWeek = visitDate.getDay();
+        const visitDayOfWeek = visitDateUTC.getUTCDay();
         const daysBeforeVisit = visitDayOfWeek === 4 ? 2 : 1;
-        const expectedNotifyDate = new Date(visitDate);
-        expectedNotifyDate.setDate(visitDate.getDate() - daysBeforeVisit);
-        const expectedNotifyStr = `${expectedNotifyDate.getFullYear()}-${String(expectedNotifyDate.getMonth() + 1).padStart(2, '0')}-${String(expectedNotifyDate.getDate()).padStart(2, '0')}`;
+        const expectedNotifyUTC = new Date(visitDateUTC);
+        expectedNotifyUTC.setUTCDate(visitDateUTC.getUTCDate() - daysBeforeVisit);
+        const expectedNotifyStr = `${expectedNotifyUTC.getUTCFullYear()}-${String(expectedNotifyUTC.getUTCMonth() + 1).padStart(2, '0')}-${String(expectedNotifyUTC.getUTCDate()).padStart(2, '0')}`;
         
         return expectedNotifyStr === todayJST;
       }).length;
