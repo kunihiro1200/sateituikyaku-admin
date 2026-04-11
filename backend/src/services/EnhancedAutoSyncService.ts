@@ -62,7 +62,7 @@ export class EnhancedAutoSyncService {
   // スプレッドシートキャッシュ（Google Sheets APIクォータ対策）
   private spreadsheetCache: any[] | null = null;
   private spreadsheetCacheExpiry: number = 0;
-  private readonly SPREADSHEET_CACHE_TTL = 30 * 60 * 1000; // 30分間キャッシュ（Google Sheets APIクォータ対策）
+  private readonly SPREADSHEET_CACHE_TTL = 5 * 60 * 1000; // 5分間キャッシュ（Google Sheets APIクォータ対策）
 
   // 買主スプレッドシートキャッシュ
   private buyerSpreadsheetCache: any[] | null = null;
