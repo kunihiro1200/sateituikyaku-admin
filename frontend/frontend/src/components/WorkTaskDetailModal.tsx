@@ -17,9 +17,8 @@ import {
   Link,
   Snackbar,
   Alert,
-  Chip,
 } from '@mui/material';
-import { Close as CloseIcon, Save as SaveIcon } from '@mui/icons-material';
+import { Close as CloseIcon, Save as SaveIcon, ContentCopy as ContentCopyIcon } from '@mui/icons-material';
 import api from '../services/api';
 import { supabase } from '../services/supabase';
 
@@ -781,6 +780,9 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
             <Box
               onClick={() => { navigator.clipboard.writeText(propertyNumber || ''); }}
               sx={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 0.5,
                 cursor: 'pointer',
                 px: 1.5, py: 0.5,
                 bgcolor: '#f5f5f5',
@@ -796,13 +798,34 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
               title="クリックでコピー"
             >
               {propertyNumber || ''}
+              <ContentCopyIcon sx={{ fontSize: '1rem', color: '#1565c0', opacity: 0.7 }} />
             </Box>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, overflowX: 'auto', flexShrink: 1, flexWrap: 'nowrap' }}>
-              {data?.property_address && <Chip label={data.property_address} size="small" variant="outlined" sx={{ fontSize: '0.75rem' }} />}
-              {data?.property_type && <Chip label={data.property_type} size="small" variant="outlined" sx={{ fontSize: '0.75rem' }} />}
-              {data?.seller_name && <Chip label={data.seller_name} size="small" variant="outlined" sx={{ fontSize: '0.75rem' }} />}
-              {data?.sales_assignee && <Chip label={data.sales_assignee} size="small" variant="outlined" sx={{ fontSize: '0.75rem' }} />}
-              {data?.mediation_type && <Chip label={data.mediation_type} size="small" variant="outlined" sx={{ fontSize: '0.75rem' }} />}
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, overflowX: 'auto', flexShrink: 1, flexWrap: 'nowrap' }}>
+              {data?.property_address && (
+                <Typography variant="body2" sx={{ whiteSpace: 'nowrap', fontSize: '0.8rem' }}>
+                  <Box component="span" sx={{ fontWeight: 700 }}>物件住所：</Box>{data.property_address}
+                </Typography>
+              )}
+              {data?.property_type && (
+                <Typography variant="body2" sx={{ whiteSpace: 'nowrap', fontSize: '0.8rem' }}>
+                  <Box component="span" sx={{ fontWeight: 700 }}>種別：</Box>{data.property_type}
+                </Typography>
+              )}
+              {data?.seller_name && (
+                <Typography variant="body2" sx={{ whiteSpace: 'nowrap', fontSize: '0.8rem' }}>
+                  <Box component="span" sx={{ fontWeight: 700 }}>売主氏名：</Box>{data.seller_name}
+                </Typography>
+              )}
+              {data?.sales_assignee && (
+                <Typography variant="body2" sx={{ whiteSpace: 'nowrap', fontSize: '0.8rem' }}>
+                  <Box component="span" sx={{ fontWeight: 700 }}>担当名：</Box>{data.sales_assignee}
+                </Typography>
+              )}
+              {data?.mediation_type && (
+                <Typography variant="body2" sx={{ whiteSpace: 'nowrap', fontSize: '0.8rem' }}>
+                  <Box component="span" sx={{ fontWeight: 700 }}>媒介：</Box>{data.mediation_type}
+                </Typography>
+              )}
             </Box>
           </Box>
           <IconButton onClick={onClose} size="small"><CloseIcon /></IconButton>
