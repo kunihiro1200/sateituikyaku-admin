@@ -88,7 +88,7 @@ const PropertyChatHistory: React.FC<PropertyChatHistoryProps> = ({
   }
 
   return (
-    <Box sx={{ mt: 2 }}>
+    <Box sx={{ mt: 2, width: 210 }}>
       <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1 }}>
         事務へCHAT送信履歴
       </Typography>
