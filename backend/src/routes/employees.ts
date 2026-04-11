@@ -228,7 +228,7 @@ router.get('/normal-initials', async (req: Request, res: Response) => {
     const { data: employees, error } = await supabase
       .from('employees')
       .select('initials')
-      .eq('is_active', true)
+      .eq('is_normal', true)
       .order('initials');
 
     if (error) {

@@ -146,10 +146,24 @@ function useCwCounts(): CwCountData {
   return data;
 }
 
+// 通常スタッフのイニシャルを動的取得するフック
+function useNormalInitials(): string[] {
+  const [initials, setInitials] = useState<string[]>(ASSIGNEE_OPTIONS);
+  useEffect(() => {
+    api.get('/api/employees/normal-initials')
+      .then(res => {
+        if (res.data.initials?.length > 0) setInitials(res.data.initials);
+      })
+      .catch(() => { /* フォールバック: ASSIGNEE_OPTIONS のまま */ });
+  }, []);
+  return initials;
+}
+
 const ASSIGNEE_OPTIONS = ['K', 'Y', 'I', '生', 'U', 'R', '久', 'H'];
 
 export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onUpdate, initialData }: WorkTaskDetailModalProps) {
   const [tabIndex, setTabIndex] = useState(0);
+  const normalInitials = useNormalInitials();
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [data, setData] = useState<WorkTaskData | null>(null);
@@ -359,11 +373,11 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
       <EditableField label="物件所在" field="property_address" />
       <EditableField label="売主" field="seller_name" />
       <EditableField label="スプシURL" field="spreadsheet_url" type="url" />
-      <EditableButtonSelect label="営業担当" field="sales_assignee" options={ASSIGNEE_OPTIONS} />
+      <EditableButtonSelect label="営業担当" field="sales_assignee" options={normalInitials} />
       <EditableField label="媒介形態" field="mediation_type" />
       <EditableField label="媒介作成締め日" field="mediation_deadline" type="date" />
       <EditableField label="媒介作成完了" field="mediation_completed" />
-      <EditableButtonSelect label="媒介作成者" field="mediation_creator" options={ASSIGNEE_OPTIONS} />
+      <EditableButtonSelect label="媒介作成者" field="mediation_creator" options={normalInitials} />
       <EditableYesNo label="保留" field="on_hold" />
     </Box>
   );
@@ -507,8 +521,8 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
         <EditableField label="サイト備考" field="site_notes" />
         {getValue('property_type') === '土' && (
           <>
-            <EditableField label="字図、地積測量図URL*" field="cadastral_map_url" type="url" />
-            <EditableField label="地積測量図・字図（営業入力）" field="cadastral_map_sales_input" />
+            <EditableButtonSelect label="字図、地積測量図URL*" field="cadastral_map_url" options={['URL入力済み', '未']} />
+            <ReadOnlyDisplayField label="地積測量図・字図（営業入力）" value={getValue('cadastral_map_sales_input') || null} />
             <CadastralMapFieldSelect />
           </>
         )}
@@ -532,23 +546,9 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
             />
           </Grid>
         </Grid>
-        <Grid container spacing={2} alignItems="flex-start" sx={{ mb: 1.5 }}>
-          <Grid item xs={4}>
-            <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500, pt: 1 }}>サイト登録依頼コメント</Typography>
-          </Grid>
-          <Grid item xs={8}>
-            <TextField
-              size="small"
-              value={(() => { const v = getValue('site_registration_requestor'); return (v && String(v).startsWith('浅沼様')) ? v : generateDefaultRequestorComment(); })()}
-              onChange={(e) => handleFieldChange('site_registration_requestor', e.target.value)}
-              fullWidth
-              multiline
-              rows={4}
-            />
-          </Grid>
-        </Grid>
-        <EditableField label="パノラマ" field="panorama" />
-        <EditableButtonSelect label="サイト登録依頼者*" field="site_registration_requester" options={['K', 'Y', 'I', '林', '麻', 'U', 'R', '久', '和', 'H']} />
+        <ReadOnlyDisplayField label="サイト登録依頼コメント" value={getValue('site_registration_requestor') || null} />
+        <EditableButtonSelect label="パノラマ" field="panorama" options={['あり']} />
+        <EditableButtonSelect label="サイト登録依頼者*" field="site_registration_requester" options={normalInitials} />
         <Grid container spacing={2} alignItems="center" sx={{ mb: 1.5 }}>
           <Grid item xs={4}>
             <Typography
@@ -616,10 +616,13 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
         />
 
         <SectionHeader label="【★図面確認】" />
-        <EditableButtonSelect label="間取図確認者*" field="floor_plan_confirmer" options={['K', 'Y', 'I', '林', '麻', 'U', 'R', '久', '和', 'H']} />
+        <EditableButtonSelect label="間取図確認者*" field="floor_plan_confirmer" options={normalInitials} />
         <EditableField label="間取図確認OK/修正コメント" field="floor_plan_ok_comment" />
         <EditableYesNo label="間取図確認OK送信*" field="floor_plan_ok_sent" />
         <EditableButtonSelect label="間取図修正回数" field="floor_plan_revision_count" options={['1', '2', '3', '4']} />
+        <Typography variant="caption" sx={{ color: 'error.main', display: 'block', mb: 1, ml: '33.33%' }}>
+          ここでの修正とは、当社のミスによる修正のことです。CWの方のミスによる修正はカウントNGです！！
+        </Typography>
         <ReadOnlyDisplayField
           label=""
           value={cwCounts.floorPlan300 ? `間取図300円（CW)計⇒ ${cwCounts.floorPlan300}` : '-'}
@@ -700,7 +703,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
       <EditableField label="コメント（売買契約）" field="sales_contract_comment" />
       <EditableYesNo label="広瀬さんへ依頼（売買契約関連）" field="hirose_request_sales" />
       <EditableYesNo label="CWへ依頼（売買契約関連）" field="cw_request_sales" />
-      <EditableButtonSelect label="社員が契約書作成" field="employee_contract_creation" options={ASSIGNEE_OPTIONS} />
+      <EditableButtonSelect label="社員が契約書作成" field="employee_contract_creation" options={normalInitials} />
       <Grid container spacing={2} alignItems="center" sx={{ mb: 1.5 }}>
         <Grid item xs={4}>
           <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>作業内容</Typography>
