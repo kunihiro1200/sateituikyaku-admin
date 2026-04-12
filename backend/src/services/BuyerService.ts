@@ -2498,12 +2498,18 @@ export class BuyerService {
    * 買主を論理削除
    */
   async softDelete(buyerId: string): Promise<void> {
-    const existing = await this.getById(buyerId);
-    if (!existing) throw new Error('Buyer not found');
+    // buyer_idカラムで直接検索（getById()はUUID判定があるため直接検索する）
+    const { data: existing, error: fetchError } = await this.supabase
+      .from('buyers')
+      .select('buyer_id')
+      .eq('buyer_id', buyerId)
+      .single();
+
+    if (fetchError || !existing) throw new Error('Buyer not found');
 
     const { error } = await this.supabase
       .from('buyers')
-      .update({ deleted_at: new Date().toISOString() })
+      .update({ deleted_at: new Date().toISOString(), latest_status: '' })
       .eq('buyer_id', buyerId);
 
     if (error) throw new Error(`Failed to delete buyer: ${error.message}`);

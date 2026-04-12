@@ -8,11 +8,13 @@ import { uuidValidationMiddleware } from '../middleware/uuidValidator';
 import { ValidationError, NotFoundError, ServiceError } from '../errors';
 import { authenticate } from '../middleware/auth';
 import { apiKeyAuth } from '../middleware/apiKeyAuth';
+import { BuyerLinkageCache } from '../services/BuyerLinkageCache';
 
 const router = Router();
 const buyerService = new BuyerService();
 const buyerSyncService = new BuyerSyncService();
 const emailHistoryService = new EmailHistoryService();
+const buyerLinkageCache = new BuyerLinkageCache();
 
 // 一覧取得
 router.get('/', async (req: Request, res: Response) => {
@@ -1053,7 +1055,48 @@ router.delete('/:id', async (req: Request, res: Response) => {
       buyerId = buyer.buyer_id;
     }
 
+    // 削除前に買主情報を取得（latest_status と property_number を確認するため）
+    const buyerBeforeDelete = await buyerService.getById(buyerId);
+
     await buyerService.softDelete(buyerId);
+
+    // 削除対象買主の latest_status に「買」が含まれる場合、
+    // 紐づく物件の offer_status を直接DBで更新する
+    if (buyerBeforeDelete && buyerBeforeDelete.latest_status?.includes('買') && buyerBeforeDelete.property_number) {
+      const { createClient } = require('@supabase/supabase-js');
+      const supabase = createClient(
+        process.env.SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_KEY!
+      );
+
+      // 同一物件に他の「買」ステータス買主が存在するか確認（削除済みを除く）
+      const { data: remainingBuyers } = await supabase
+        .from('buyers')
+        .select('buyer_id, latest_status')
+        .eq('property_number', buyerBeforeDelete.property_number)
+        .neq('buyer_id', buyerId)
+        .is('deleted_at', null);
+
+      const hasOtherPurchaseBuyer = (remainingBuyers || []).some(
+        (b: { buyer_id: string; latest_status: string | null }) => b.latest_status?.includes('買')
+      );
+
+      // 他に「買」ステータス買主がいない場合のみ offer_status をクリア
+      if (!hasOtherPurchaseBuyer) {
+        await supabase
+          .from('property_listings')
+          .update({ offer_status: '' })
+          .eq('property_number', buyerBeforeDelete.property_number);
+        console.log(`[DELETE /buyers/:id] offer_status cleared for property: ${buyerBeforeDelete.property_number}`);
+      } else {
+        console.log(`[DELETE /buyers/:id] offer_status NOT cleared (other purchase buyers exist) for property: ${buyerBeforeDelete.property_number}`);
+      }
+
+      // 買主リストキャッシュを無効化（削除後すぐにヘッダーに反映されるように）
+      await buyerLinkageCache.invalidate(buyerBeforeDelete.property_number);
+      console.log(`[DELETE /buyers/:id] buyer list cache invalidated for property: ${buyerBeforeDelete.property_number}`);
+    }
+
     res.json({ success: true });
   } catch (error: any) {
     console.error('Error deleting buyer:', error);
