@@ -2677,13 +2677,15 @@ export class SellerService extends BaseRepository {
     const mailingPendingCount = mailingPendingCountResult.count || 0;
 
     // 8. 当日TEL_未着手
-    const todayCallNotStartedCount = filteredTodayCallSellers.filter(s => {
+    // バグ修正: filteredTodayCallSellers は ilike('%追客中%') ベースのため「除外後追客中」などが混入する
+    // listSellers() の todayCallNotStarted と同じ条件（status === '追客中' 完全一致）を使用するため
+    // filteredTodayCallSellers から status === '追客中' のみを抽出した notStartedBaseSellers を使用する
+    const notStartedBaseSellers = filteredTodayCallSellers.filter(s => (s as any).status === '追客中');
+    const todayCallNotStartedCount = notStartedBaseSellers.filter(s => {
       const hasInfo = (s.phone_contact_person && s.phone_contact_person.trim() !== '') ||
                       (s.preferred_contact_time && s.preferred_contact_time.trim() !== '') ||
                       (s.contact_method && s.contact_method.trim() !== '');
       if (hasInfo) return false;
-      const status = (s as any).status || '';
-      if (status !== '追客中') return false;
       const unreachable = (s as any).unreachable_status || '';
       if (unreachable && unreachable.trim() !== '') return false;
       const confidence = (s as any).confidence_level || '';
