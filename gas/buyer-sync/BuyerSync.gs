@@ -275,6 +275,24 @@ function syncBuyers() {
 
     Logger.log('変換済みレコード数: ' + records.length + '（スキップ: ' + skippedCount + '）');
 
+    // PGRST102対策: バルクupsertは全レコードのキーが一致している必要があるため、
+    // 全レコードのキーを収集してunionを作り、存在しないキーはnullで埋める
+    var allKeys = {};
+    for (var k = 0; k < records.length; k++) {
+      var keys = Object.keys(records[k]);
+      for (var m = 0; m < keys.length; m++) {
+        allKeys[keys[m]] = true;
+      }
+    }
+    var allKeysList = Object.keys(allKeys);
+    for (var k = 0; k < records.length; k++) {
+      for (var m = 0; m < allKeysList.length; m++) {
+        if (!(allKeysList[m] in records[k])) {
+          records[k][allKeysList[m]] = null;
+        }
+      }
+    }
+
     var successCount = 0;
     var errorCount = 0;
 
@@ -290,7 +308,7 @@ function syncBuyers() {
       }
       // バッチ間のsleep（最後のバッチ以外）: Supabaseレート制限対策
       if (j + BUYER_CONFIG.BATCH_SIZE < records.length) {
-        Utilities.sleep(1000);
+        Utilities.sleep(2000);
       }
     }
 
