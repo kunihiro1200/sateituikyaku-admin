@@ -687,6 +687,57 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
     </Grid>
   );
 
+  // 依頼前に確認ポップアップのプロパティ定義
+  interface PreRequestCheckPopupProps {
+    open: boolean;
+    text: string;
+    onClose: () => void;
+  }
+
+  // 依頼前に確認ポップアップコンポーネント
+  const PreRequestCheckPopup = ({ open, text, onClose }: PreRequestCheckPopupProps) => (
+    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
+      <DialogTitle>依頼前に確認</DialogTitle>
+      <DialogContent dividers sx={{ overflowY: 'auto', maxHeight: '60vh' }}>
+        <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+          {text}
+        </Typography>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onClose}>閉じる</Button>
+      </DialogActions>
+    </Dialog>
+  );
+
+  // 依頼前に確認ボタンコンポーネント
+  const PreRequestCheckButton = () => {
+    const [popupOpen, setPopupOpen] = useState(false);
+    return (
+      <Grid container spacing={2} alignItems="center" sx={{ mb: 1.5 }}>
+        <Grid item xs={4}>
+          <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>
+            依頼前に確認
+          </Typography>
+        </Grid>
+        <Grid item xs={8}>
+          <Button
+            variant="outlined"
+            size="small"
+            disabled={!getValue('pre_request_check')}
+            onClick={() => setPopupOpen(true)}
+          >
+            確認する
+          </Button>
+          <PreRequestCheckPopup
+            open={popupOpen}
+            text={getValue('pre_request_check') || ''}
+            onClose={() => setPopupOpen(false)}
+          />
+        </Grid>
+      </Grid>
+    );
+  };
+
   // 複数行テキストフィールド
   const EditableMultilineField = ({ label, field }: { label: string; field: string }) => (
     <Grid container spacing={2} alignItems="flex-start" sx={{ mb: 1.5 }}>
@@ -721,7 +772,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
         </Grid>
       </Grid>
       <EditableField label="重説・契約書入力納期*" field="contract_input_deadline" type="date" />
-      <EditableMultilineField label="依頼前に確認" field="pre_request_check" />
+      <PreRequestCheckButton />
       <EditableField label="コメント（売買契約）" field="sales_contract_comment" />
       <EditableYesNo label="広瀬さんへ依頼（売買契約関連）" field="hirose_request_sales" />
       <EditableYesNo label="CWへ依頼（売買契約関連）" field="cw_request_sales" />
