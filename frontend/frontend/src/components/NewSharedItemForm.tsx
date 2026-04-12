@@ -301,68 +301,6 @@ export default function NewSharedItemForm({ onSaved, onCancel }: NewSharedItemFo
           />
         </Grid>
 
-        {/* 共有日 */}
-        <Grid item xs={6}>
-          <Typography variant="caption" color="text.secondary">共有日</Typography>
-          <TextField
-            fullWidth
-            type="date"
-            value={sharingDate}
-            onChange={(e) => setSharingDate(e.target.value)}
-            size="small"
-            InputLabelProps={{ shrink: true }}
-            sx={{ mt: 0.5 }}
-          />
-        </Grid>
-
-        {/* 確認日 */}
-        <Grid item xs={6}>
-          <Typography variant="caption" color="text.secondary">確認日</Typography>
-          <TextField
-            fullWidth
-            type="date"
-            value={confirmationDate}
-            onChange={(e) => setConfirmationDate(e.target.value)}
-            size="small"
-            InputLabelProps={{ shrink: true }}
-            sx={{ mt: 0.5 }}
-          />
-        </Grid>
-
-        {/* 共有できていないスタッフ */}
-        <Grid item xs={12}>
-          <Typography variant="caption" color="text.secondary">共有できていないスタッフ</Typography>
-          <Box sx={{ mt: 1, display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-            {staffList.map((s) => {
-              const initial = s.initials || s.name.charAt(0);
-              const isSelected = staffNotShared.includes(s.name);
-              return (
-                <Button
-                  key={s.name}
-                  variant={isSelected ? 'contained' : 'outlined'}
-                  onClick={() => handleStaffToggle(s.name)}
-                  sx={{
-                    minWidth: '48px',
-                    height: '48px',
-                    borderRadius: '50%',
-                    fontSize: '1.1rem',
-                    fontWeight: 'bold',
-                    bgcolor: isSelected ? color.main : 'transparent',
-                    color: isSelected ? '#fff' : color.main,
-                    borderColor: color.main,
-                    '&:hover': {
-                      bgcolor: isSelected ? color.dark : `${color.light}30`,
-                    },
-                  }}
-                  title={s.name}
-                >
-                  {initial}
-                </Button>
-              );
-            })}
-          </Box>
-        </Grid>
-
         {/* PDF添付 */}
         <Grid item xs={12}>
           <Typography variant="caption" color="text.secondary">PDF（最大4件）</Typography>
@@ -446,6 +384,68 @@ export default function NewSharedItemForm({ onSaved, onCancel }: NewSharedItemFo
             size="small"
             error={!!errors.url}
             helperText={errors.url}
+            sx={{ mt: 0.5 }}
+          />
+        </Grid>
+
+        {/* 共有できていないスタッフ */}
+        <Grid item xs={12}>
+          <Typography variant="caption" color="text.secondary">共有できていないスタッフ</Typography>
+          <Box sx={{ mt: 1, display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+            {staffList.map((s) => {
+              const initial = s.initials || s.name.charAt(0);
+              const isSelected = staffNotShared.includes(s.name);
+              return (
+                <Button
+                  key={s.name}
+                  variant={isSelected ? 'contained' : 'outlined'}
+                  onClick={() => handleStaffToggle(s.name)}
+                  sx={{
+                    minWidth: '48px',
+                    height: '48px',
+                    borderRadius: '50%',
+                    fontSize: '1.1rem',
+                    fontWeight: 'bold',
+                    bgcolor: isSelected ? color.main : 'transparent',
+                    color: isSelected ? '#fff' : color.main,
+                    borderColor: color.main,
+                    '&:hover': {
+                      bgcolor: isSelected ? color.dark : `${color.light}30`,
+                    },
+                  }}
+                  title={s.name}
+                >
+                  {initial}
+                </Button>
+              );
+            })}
+          </Box>
+        </Grid>
+
+        {/* 確認日 */}
+        <Grid item xs={6}>
+          <Typography variant="caption" color="text.secondary">確認日</Typography>
+          <TextField
+            fullWidth
+            type="date"
+            value={confirmationDate}
+            onChange={(e) => setConfirmationDate(e.target.value)}
+            size="small"
+            InputLabelProps={{ shrink: true }}
+            sx={{ mt: 0.5 }}
+          />
+        </Grid>
+
+        {/* 共有日 */}
+        <Grid item xs={6}>
+          <Typography variant="caption" color="text.secondary">共有日</Typography>
+          <TextField
+            fullWidth
+            type="date"
+            value={sharingDate}
+            onChange={(e) => setSharingDate(e.target.value)}
+            size="small"
+            InputLabelProps={{ shrink: true }}
             sx={{ mt: 0.5 }}
           />
         </Grid>
