@@ -61,7 +61,7 @@ router.get('/staff', async (req: Request, res: Response) => {
   try {
     const supabase = createClient(
       process.env.SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
+      process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY!
     );
 
     const { data: staff, error } = await supabase
@@ -128,7 +128,7 @@ router.post('/upload', upload.single('file'), async (req: Request, res: Response
     // Supabase クライアントを初期化
     const supabase = createClient(
       process.env.SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
+      process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY!
     );
 
     // Supabase Storage の shared-items バケットにファイルをアップロード
