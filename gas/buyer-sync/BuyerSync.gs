@@ -231,6 +231,27 @@ var BUYER_TYPE_CONVERSIONS = {
 };
 
 // ============================================================
+// ハッシュ差分検知ユーティリティ
+// ============================================================
+
+/**
+ * 行データのハッシュ文字列を生成（差分検知用）
+ * 全カラムの値を結合して前回との比較に使用する
+ */
+function buyerBuildRowHash_(headers, row) {
+  var parts = [];
+  for (var i = 0; i < headers.length; i++) {
+    var val = row[i];
+    if (val instanceof Date) {
+      parts.push(isNaN(val.getTime()) ? '' : val.toISOString());
+    } else {
+      parts.push(val !== null && val !== undefined ? String(val) : '');
+    }
+  }
+  return parts.join('|');
+}
+
+// ============================================================
 // メイン同期関数（トリガーから呼び出される）
 // ============================================================
 function syncBuyers() {
@@ -257,85 +278,132 @@ function syncBuyers() {
     var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
     var rawValues = sheet.getRange(2, 1, lastRow - 1, lastCol).getValues();
 
+    // ハッシュ差分検知: 変更行のみ抽出
+    var props = PropertiesService.getScriptProperties();
+    var hashKey = 'buyer_row_hashes';
+    var storedJson = props.getProperty(hashKey);
+    var prevHashes = storedJson ? JSON.parse(storedJson) : {};
+    var newHashes = {};
+
     var records = [];
     var skippedCount = 0;
+    var unchangedCount = 0;
+
+    // buyer_number列のインデックスを事前に取得
+    var buyerNumberColIndex = -1;
+    for (var h = 0; h < headers.length; h++) {
+      if (headers[h] === '買主番号') { buyerNumberColIndex = h; break; }
+    }
 
     for (var i = 0; i < rawValues.length; i++) {
+      var buyerNum = buyerNumberColIndex >= 0 ? String(rawValues[i][buyerNumberColIndex] || '').trim() : '';
+      if (!buyerNum) {
+        skippedCount++;
+        continue;
+      }
+
+      var hash = buyerBuildRowHash_(headers, rawValues[i]);
+      newHashes[buyerNum] = hash;
+
+      // 前回と同じハッシュならスキップ
+      if (prevHashes[buyerNum] === hash) {
+        unchangedCount++;
+        continue;
+      }
+
       var record = buyerMapRowToRecord(headers, rawValues[i]);
       if (!record.buyer_number) {
         skippedCount++;
         continue;
       }
       record.last_synced_at = new Date().toISOString();
-      // db_updated_atを除外（バックエンドの db_updated_at > last_synced_at 保護ロジックを機能させるため）
-      // GASのupsertがdb_updated_atを上書きすると、次回以降の保護ロジックが機能しなくなる
       delete record.db_updated_at;
       records.push(record);
     }
 
-    Logger.log('変換済みレコード数: ' + records.length + '（スキップ: ' + skippedCount + '）');
+    Logger.log('変更検知: ' + records.length + '件 / 変更なし: ' + unchangedCount + '件 / スキップ: ' + skippedCount + '件');
 
-    // PGRST102対策: バルクupsertは全レコードのキーが一致している必要があるため、
-    // 全レコードのキーを収集してunionを作り、存在しないキーはnullで埋める
-    var allKeys = {};
-    for (var k = 0; k < records.length; k++) {
-      var keys = Object.keys(records[k]);
-      for (var m = 0; m < keys.length; m++) {
-        allKeys[keys[m]] = true;
-      }
-    }
-    var allKeysList = Object.keys(allKeys);
-    for (var k = 0; k < records.length; k++) {
-      for (var m = 0; m < allKeysList.length; m++) {
-        if (!(allKeysList[m] in records[k])) {
-          records[k][allKeysList[m]] = null;
+    var sidebarUpdateNeeded = records.length > 0;
+
+    if (records.length === 0) {
+      Logger.log('変更なし、upsertをスキップ');
+    } else {
+      // PGRST102対策: 全レコードのキーを統一
+      var allKeys = {};
+      for (var k = 0; k < records.length; k++) {
+        var keys = Object.keys(records[k]);
+        for (var m = 0; m < keys.length; m++) {
+          allKeys[keys[m]] = true;
         }
       }
+      var allKeysList = Object.keys(allKeys);
+      for (var k = 0; k < records.length; k++) {
+        for (var m = 0; m < allKeysList.length; m++) {
+          if (!(allKeysList[m] in records[k])) {
+            records[k][allKeysList[m]] = null;
+          }
+        }
+      }
+
+      var successCount = 0;
+      var errorCount = 0;
+      var failedBuyerNumbers = [];
+
+      for (var j = 0; j < records.length; j += BUYER_CONFIG.BATCH_SIZE) {
+        var batch = records.slice(j, j + BUYER_CONFIG.BATCH_SIZE);
+        var result = buyerUpsertToSupabase(batch);
+        if (result.success) {
+          successCount += batch.length;
+          Logger.log('バッチ ' + (Math.floor(j / BUYER_CONFIG.BATCH_SIZE) + 1) + ': ' + batch.length + '件 upsert成功');
+        } else {
+          errorCount += batch.length;
+          Logger.log('バッチ ' + (Math.floor(j / BUYER_CONFIG.BATCH_SIZE) + 1) + ': エラー - ' + result.error);
+          // 失敗したバッチの買主番号を記録（ハッシュを更新しない）
+          for (var b = 0; b < batch.length; b++) {
+            if (batch[b].buyer_number) failedBuyerNumbers.push(batch[b].buyer_number);
+          }
+        }
+        if (j + BUYER_CONFIG.BATCH_SIZE < records.length) {
+          Utilities.sleep(500);
+        }
+      }
+
+      // 失敗した行はハッシュを前回値に戻す（次回リトライ）
+      for (var f = 0; f < failedBuyerNumbers.length; f++) {
+        var fn = failedBuyerNumbers[f];
+        newHashes[fn] = prevHashes[fn] || '';
+      }
+
+      var duration = (new Date() - startTime) / 1000;
+      Logger.log('=== 同期完了: 成功=' + successCount + ', エラー=' + errorCount + ', 所要時間=' + duration + '秒 ===');
     }
 
-    var successCount = 0;
-    var errorCount = 0;
+    // ハッシュを保存（次回の差分検知に使用）
+    props.setProperty(hashKey, JSON.stringify(newHashes));
 
-    for (var j = 0; j < records.length; j += BUYER_CONFIG.BATCH_SIZE) {
-      var batch = records.slice(j, j + BUYER_CONFIG.BATCH_SIZE);
-      var result = buyerUpsertToSupabase(batch);
-      if (result.success) {
-        successCount += batch.length;
-        Logger.log('バッチ ' + (Math.floor(j / BUYER_CONFIG.BATCH_SIZE) + 1) + ': ' + batch.length + '件 upsert成功');
-      } else {
-        errorCount += batch.length;
-        Logger.log('バッチ ' + (Math.floor(j / BUYER_CONFIG.BATCH_SIZE) + 1) + ': エラー - ' + result.error);
+    // 変更があった場合のみサイドバーカウントを再計算
+    if (sidebarUpdateNeeded) {
+      try {
+        var sidebarUrl = BUYER_CONFIG.BACKEND_URL + '/api/buyers/update-sidebar-counts';
+        var sidebarOptions = {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + BUYER_CONFIG.CRON_SECRET
+          },
+          payload: JSON.stringify({}),
+          muteHttpExceptions: true
+        };
+        var sidebarRes = UrlFetchApp.fetch(sidebarUrl, sidebarOptions);
+        if (sidebarRes.getResponseCode() >= 200 && sidebarRes.getResponseCode() < 300) {
+          var sidebarResult = JSON.parse(sidebarRes.getContentText());
+          Logger.log('✅ サイドバーカウント更新成功: ' + (sidebarResult.rowsInserted || 0) + '件');
+        } else {
+          Logger.log('❌ サイドバーカウント更新失敗: HTTP ' + sidebarRes.getResponseCode());
+        }
+      } catch (sidebarErr) {
+        Logger.log('❌ サイドバーカウント更新エラー: ' + sidebarErr.toString());
       }
-      // バッチ間のsleep（最後のバッチ以外）: Supabaseレート制限対策
-      if (j + BUYER_CONFIG.BATCH_SIZE < records.length) {
-        Utilities.sleep(2000);
-      }
-    }
-
-    var duration = (new Date() - startTime) / 1000;
-    Logger.log('=== 同期完了: 成功=' + successCount + ', エラー=' + errorCount + ', 所要時間=' + duration + '秒 ===');
-
-    // 同期完了後にサイドバーカウントを再計算（GASがSupabase直接更新するためバックエンド経由で再計算）
-    try {
-      var sidebarUrl = BUYER_CONFIG.BACKEND_URL + '/api/buyers/update-sidebar-counts';
-      var sidebarOptions = {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer ' + BUYER_CONFIG.CRON_SECRET
-        },
-        payload: JSON.stringify({}),
-        muteHttpExceptions: true
-      };
-      var sidebarRes = UrlFetchApp.fetch(sidebarUrl, sidebarOptions);
-      if (sidebarRes.getResponseCode() >= 200 && sidebarRes.getResponseCode() < 300) {
-        var sidebarResult = JSON.parse(sidebarRes.getContentText());
-        Logger.log('✅ サイドバーカウント更新成功: ' + (sidebarResult.rowsInserted || 0) + '件');
-      } else {
-        Logger.log('❌ サイドバーカウント更新失敗: HTTP ' + sidebarRes.getResponseCode());
-      }
-    } catch (sidebarErr) {
-      Logger.log('❌ サイドバーカウント更新エラー: ' + sidebarErr.toString());
     }
 
   } catch (e) {
@@ -524,4 +592,13 @@ function syncSingleBuyer(buyerNumber) {
     }
   }
   Logger.log('買主番号 ' + buyerNumber + ' が見つかりません');
+}
+
+/**
+ * ハッシュキャッシュをリセット（全件再同期したい場合に手動実行）
+ * 実行後の次回syncBuyers()で全行が差分ありとみなされupsertされる
+ */
+function buyerResetRowHashCache() {
+  PropertiesService.getScriptProperties().deleteProperty('buyer_row_hashes');
+  Logger.log('✅ ハッシュキャッシュをリセットしました。次回同期で全件再同期されます。');
 }

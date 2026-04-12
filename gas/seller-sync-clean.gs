@@ -113,346 +113,126 @@ function patchSellerToSupabase_(sellerNumber, updateData) {
 }
 
 /**
- * Supabaseから全売主の更新対象フィールドを取得（ページネーション対応）
+ * 行データのハッシュ文字列を生成（差分検知用）
+ * Supabaseへの全件取得を廃止し、スプレッドシート側の変更のみ検知する
  */
-function fetchAllSellersFromSupabase_() {
-  var allSellers = [];
-  var pageSize = 1000;
-  var offset = 0;
-  var fields = 'seller_number,status,next_call_date,visit_assignee,unreachable_status,comments,phone_contact_person,preferred_contact_time,contact_method,contract_year_month,current_status,pinrich_status,visit_reminder_assignee,property_address,land_area,building_area,build_year,structure,floor_plan,inquiry_date,valuation_method,valuation_amount_1,valuation_amount_2,valuation_amount_3,visit_acquisition_date,visit_date,visit_time,visit_valuation_acquirer,valuation_assignee,confidence_level,competitor_name,competitor_name_and_reason,exclusive_other_decision_factor,visit_notes,first_call_person';
-
-  while (true) {
-    var url = SUPABASE_CONFIG.URL + '/rest/v1/sellers?select=' + fields +
-      '&deleted_at=is.null' +
-      '&offset=' + offset + '&limit=' + pageSize;
-    var options = {
-      method: 'GET',
-      headers: {
-        'apikey': SUPABASE_CONFIG.SERVICE_KEY,
-        'Authorization': 'Bearer ' + SUPABASE_CONFIG.SERVICE_KEY
-      },
-      muteHttpExceptions: true
-    };
-    var res = UrlFetchApp.fetch(url, options);
-    var code = res.getResponseCode();
-    if (code !== 200) {
-      Logger.log('❌ Supabase取得失敗: HTTP ' + code);
-      return null;
-    }
-    var page = JSON.parse(res.getContentText());
-    if (!page || page.length === 0) break;
-    allSellers = allSellers.concat(page);
-    if (page.length < pageSize) break;
-    offset += pageSize;
+function buildRowHash_(row) {
+  var keys = [
+    '状況（当社）', '次電日', '営担', '不通', 'コメント', '電話担当（任意）',
+    '連絡取りやすい日、時間帯', '連絡方法', '契約年月 他決は分かった時点',
+    '状況（売主）', 'Pinrich', '訪問事前通知メール担当', '物件所在地',
+    '土（㎡）', '建（㎡）', '築年', '構造', '間取り', '反響日付',
+    '査定方法', '査定額1', '査定額2', '査定額3',
+    '査定額1（自動計算）v', '査定額2（自動計算）v', '査定額3（自動計算）v',
+    '訪問取得日\n年/月/日', '訪問取得日', '訪問日 \nY/M/D', '訪問日',
+    '訪問時間', '訪問査定取得者', '査定担当', '確度', '競合名',
+    '競合名、理由\n（他決、専任）', '競合名、理由', '専任・他決要因', '訪問メモ', '1番電話'
+  ];
+  var parts = [];
+  for (var i = 0; i < keys.length; i++) {
+    parts.push(String(row[keys[i]] !== undefined ? row[keys[i]] : ''));
   }
-  return allSellers;
+  return parts.join('|');
 }
 
 /**
- * Phase 2: スプレッドシートとSupabaseを直接比較して更新
- * バックエンドAPIを経由しないためVercelのタイムアウト制限を回避
- * ※ 暗号化フィールド（name/phone_number/email/address）は更新しない
+ * Phase 2: スプレッドシートの差分のみSupabaseに直接PATCH
+ * Supabase全件取得を廃止 → UrlFetch消費を大幅削減
+ * 前回同期時のハッシュをPropertiesServiceに保存し、変更行のみ更新する
  */
 function syncUpdatesToSupabase_(sheetRows) {
-  Logger.log('📥 Phase 2: Supabase直接更新同期開始...');
+  Logger.log('📥 Phase 2: スプレッドシート差分検知による更新同期開始...');
 
-  // Supabaseから全売主データを取得
-  var dbSellers = fetchAllSellersFromSupabase_();
-  if (!dbSellers) {
-    Logger.log('❌ Supabaseからのデータ取得失敗');
-    return { updated: 0, errors: 0 };
+  var props = PropertiesService.getScriptProperties();
+  var hashKey = 'seller_row_hashes';
+  var storedJson = props.getProperty(hashKey);
+  var prevHashes = storedJson ? JSON.parse(storedJson) : {};
+  var newHashes = {};
+
+  // 変更があった行を抽出
+  var changedRows = [];
+  for (var i = 0; i < sheetRows.length; i++) {
+    var row = sheetRows[i];
+    var sellerNumber = row['売主番号'];
+    if (!sellerNumber || typeof sellerNumber !== 'string' || !sellerNumber.match(/^AA\d+$/)) continue;
+    var hash = buildRowHash_(row);
+    newHashes[sellerNumber] = hash;
+    if (prevHashes[sellerNumber] !== hash) {
+      changedRows.push(row);
+    }
   }
-  Logger.log('📊 DB売主数: ' + dbSellers.length);
 
-  // DBデータをMapに変換（高速検索用）
-  var dbMap = {};
-  for (var i = 0; i < dbSellers.length; i++) {
-    dbMap[dbSellers[i].seller_number] = dbSellers[i];
+  Logger.log('📊 変更検知: ' + changedRows.length + '件 / 全' + sheetRows.length + '行');
+
+  if (changedRows.length === 0) {
+    // ハッシュを保存して終了
+    props.setProperty(hashKey, JSON.stringify(newHashes));
+    Logger.log('✅ 変更なし、スキップ');
+    return { updated: 0, errors: 0 };
   }
 
   var updatedCount = 0;
   var errorCount = 0;
   var phaseStartTime = new Date();
 
-  for (var r = 0; r < sheetRows.length; r++) {
-    var row = sheetRows[r];
+  // 変更行のみSupabaseにPATCH（Supabase全件取得不要）
+  for (var r = 0; r < changedRows.length; r++) {
+    var row = changedRows[r];
     var sellerNumber = row['売主番号'];
-    if (!sellerNumber || typeof sellerNumber !== 'string' || !sellerNumber.match(/^AA\d+$/)) continue;
 
-    var dbSeller = dbMap[sellerNumber];
-    if (!dbSeller) continue; // DBにない売主はPhase 1（追加）で対応
-
-    // 差分チェックと更新データ構築
+    // 全フィールドをスプレッドシートの値でそのまま上書き（差分はハッシュ比較済み）
     var updateData = {};
-    var needsUpdate = false;
 
-    // status（空欄の場合はnullでクリア）
-    var sheetStatus = row['状況（当社）'] ? String(row['状況（当社）']) : null;
-    var dbStatus = dbSeller.status || null;
-    if (sheetStatus !== dbStatus) {
-      updateData.status = sheetStatus;
-      needsUpdate = true;
-    }
+    updateData.status = row['状況（当社）'] ? String(row['状況（当社）']) : null;
+    updateData.next_call_date = formatDateToISO_(row['次電日']);
 
-    // next_call_date
-    var sheetNextCallDate = formatDateToISO_(row['次電日']);
-    var dbNextCallDate = dbSeller.next_call_date ? String(dbSeller.next_call_date).substring(0, 10) : null;
-    if (sheetNextCallDate !== dbNextCallDate) {
-      updateData.next_call_date = sheetNextCallDate; // null でもセット（クリア対応）
-      needsUpdate = true;
-    }
-
-    // visit_assignee（「外す」または空欄 → null）
     var rawVisitAssignee = row['営担'];
-    var sheetVisitAssignee = (rawVisitAssignee === '外す' || rawVisitAssignee === '' || rawVisitAssignee === undefined) ? null : String(rawVisitAssignee);
-    var dbVisitAssignee = dbSeller.visit_assignee || null;
-    if (sheetVisitAssignee !== dbVisitAssignee) {
-      updateData.visit_assignee = sheetVisitAssignee;
-      needsUpdate = true;
-    }
+    updateData.visit_assignee = (rawVisitAssignee === '外す' || rawVisitAssignee === '' || rawVisitAssignee === undefined) ? null : String(rawVisitAssignee);
 
-    // unreachable_status
-    var sheetUnreachable = row['不通'] ? String(row['不通']) : null;
-    var dbUnreachable = dbSeller.unreachable_status || null;
-    if (sheetUnreachable !== dbUnreachable) {
-      updateData.unreachable_status = sheetUnreachable;
-      needsUpdate = true;
-    }
+    updateData.unreachable_status = row['不通'] ? String(row['不通']) : null;
+    updateData.comments = row['コメント'] ? String(row['コメント']) : null;
+    updateData.phone_contact_person = row['電話担当（任意）'] ? String(row['電話担当（任意）']) : null;
+    updateData.preferred_contact_time = row['連絡取りやすい日、時間帯'] ? String(row['連絡取りやすい日、時間帯']) : null;
+    updateData.contact_method = row['連絡方法'] ? String(row['連絡方法']) : null;
+    updateData.contract_year_month = formatDateToISO_(row['契約年月 他決は分かった時点']);
+    updateData.current_status = row['状況（売主）'] ? String(row['状況（売主）']) : null;
+    updateData.pinrich_status = row['Pinrich'] ? String(row['Pinrich']) : null;
+    updateData.visit_reminder_assignee = row['訪問事前通知メール担当'] ? String(row['訪問事前通知メール担当']) : null;
+    updateData.property_address = row['物件所在地'] ? String(row['物件所在地']) : null;
+    updateData.land_area = (row['土（㎡）'] !== '' && row['土（㎡）'] !== undefined && row['土（㎡）'] !== null) ? parseFloat(row['土（㎡）']) : null;
+    updateData.building_area = (row['建（㎡）'] !== '' && row['建（㎡）'] !== undefined && row['建（㎡）'] !== null) ? parseFloat(row['建（㎡）']) : null;
+    updateData.build_year = (row['築年'] !== '' && row['築年'] !== undefined && row['築年'] !== null) ? parseInt(row['築年'], 10) : null;
+    updateData.structure = row['構造'] ? String(row['構造']) : null;
+    updateData.floor_plan = row['間取り'] ? String(row['間取り']) : null;
+    updateData.inquiry_date = formatDateToISO_(row['反響日付']);
+    updateData.valuation_method = row['査定方法'] ? String(row['査定方法']) : null;
 
-    // comments
-    var sheetComments = row['コメント'] ? String(row['コメント']) : null;
-    var dbComments = dbSeller.comments || null;
-    if (sheetComments !== dbComments) {
-      updateData.comments = sheetComments;
-      needsUpdate = true;
-    }
+    // 査定額（手動入力優先、万円→円変換）
+    var rawVal1 = (row['査定額1'] !== '' && row['査定額1'] !== undefined && row['査定額1'] !== null) ? row['査定額1'] : (row['査定額1（自動計算）v'] || null);
+    var rawVal2 = (row['査定額2'] !== '' && row['査定額2'] !== undefined && row['査定額2'] !== null) ? row['査定額2'] : (row['査定額2（自動計算）v'] || null);
+    var rawVal3 = (row['査定額3'] !== '' && row['査定額3'] !== undefined && row['査定額3'] !== null) ? row['査定額3'] : (row['査定額3（自動計算）v'] || null);
+    updateData.valuation_amount_1 = (rawVal1 !== null && rawVal1 !== '') ? Math.round(parseFloat(rawVal1) * 10000) : null;
+    updateData.valuation_amount_2 = (rawVal2 !== null && rawVal2 !== '') ? Math.round(parseFloat(rawVal2) * 10000) : null;
+    updateData.valuation_amount_3 = (rawVal3 !== null && rawVal3 !== '') ? Math.round(parseFloat(rawVal3) * 10000) : null;
 
-    // phone_contact_person
-    var sheetPhoneContact = row['電話担当（任意）'] ? String(row['電話担当（任意）']) : null;
-    var dbPhoneContact = dbSeller.phone_contact_person || null;
-    if (sheetPhoneContact !== dbPhoneContact) {
-      updateData.phone_contact_person = sheetPhoneContact;
-      needsUpdate = true;
-    }
-
-    // preferred_contact_time
-    var sheetPreferredTime = row['連絡取りやすい日、時間帯'] ? String(row['連絡取りやすい日、時間帯']) : null;
-    var dbPreferredTime = dbSeller.preferred_contact_time || null;
-    if (sheetPreferredTime !== dbPreferredTime) {
-      updateData.preferred_contact_time = sheetPreferredTime;
-      needsUpdate = true;
-    }
-
-    // contact_method
-    var sheetContactMethod = row['連絡方法'] ? String(row['連絡方法']) : null;
-    var dbContactMethod = dbSeller.contact_method || null;
-    if (sheetContactMethod !== dbContactMethod) {
-      updateData.contact_method = sheetContactMethod;
-      needsUpdate = true;
-    }
-
-    // contract_year_month
-    var sheetContractYM = formatDateToISO_(row['契約年月 他決は分かった時点']);
-    var dbContractYM = dbSeller.contract_year_month ? String(dbSeller.contract_year_month).substring(0, 10) : null;
-    if (sheetContractYM !== dbContractYM) {
-      updateData.contract_year_month = sheetContractYM;
-      needsUpdate = true;
-    }
-
-    // current_status（状況（売主））
-    var sheetCurrentStatus = row['状況（売主）'] ? String(row['状況（売主）']) : null;
-    var dbCurrentStatus = dbSeller.current_status || null;
-    if (sheetCurrentStatus !== dbCurrentStatus) {
-      updateData.current_status = sheetCurrentStatus;
-      needsUpdate = true;
-    }
-
-    // pinrich_status
-    var sheetPinrich = row['Pinrich'] ? String(row['Pinrich']) : null;
-    var dbPinrich = dbSeller.pinrich_status || null;
-    if (sheetPinrich !== dbPinrich) {
-      updateData.pinrich_status = sheetPinrich;
-      needsUpdate = true;
-    }
-
-    // visit_reminder_assignee（訪問事前通知メール担当）
-    var sheetVisitReminder = row['訪問事前通知メール担当'] ? String(row['訪問事前通知メール担当']) : null;
-    var dbVisitReminder = dbSeller.visit_reminder_assignee || null;
-    if (sheetVisitReminder !== dbVisitReminder) {
-      updateData.visit_reminder_assignee = sheetVisitReminder;
-      needsUpdate = true;
-    }
-
-    // property_address（物件所在地）
-    var sheetPropertyAddress = row['物件所在地'] ? String(row['物件所在地']) : null;
-    var dbPropertyAddress = dbSeller.property_address || null;
-    if (sheetPropertyAddress !== dbPropertyAddress) {
-      updateData.property_address = sheetPropertyAddress;
-      needsUpdate = true;
-    }
-
-    // land_area（土㎡）
-    var sheetLandArea = row['土（㎡）'] !== '' && row['土（㎡）'] !== undefined && row['土（㎡）'] !== null ? parseFloat(row['土（㎡）']) : null;
-    var dbLandArea = dbSeller.land_area !== null && dbSeller.land_area !== undefined ? parseFloat(dbSeller.land_area) : null;
-    if (sheetLandArea !== dbLandArea) {
-      updateData.land_area = sheetLandArea;
-      needsUpdate = true;
-    }
-
-    // building_area（建㎡）
-    var sheetBuildingArea = row['建（㎡）'] !== '' && row['建（㎡）'] !== undefined && row['建（㎡）'] !== null ? parseFloat(row['建（㎡）']) : null;
-    var dbBuildingArea = dbSeller.building_area !== null && dbSeller.building_area !== undefined ? parseFloat(dbSeller.building_area) : null;
-    if (sheetBuildingArea !== dbBuildingArea) {
-      updateData.building_area = sheetBuildingArea;
-      needsUpdate = true;
-    }
-
-    // build_year（築年）
-    var sheetBuildYear = row['築年'] !== '' && row['築年'] !== undefined && row['築年'] !== null ? parseInt(row['築年'], 10) : null;
-    var dbBuildYear = dbSeller.build_year !== null && dbSeller.build_year !== undefined ? parseInt(dbSeller.build_year, 10) : null;
-    if (sheetBuildYear !== dbBuildYear) {
-      updateData.build_year = sheetBuildYear;
-      needsUpdate = true;
-    }
-
-    // structure（構造）
-    var sheetStructure = row['構造'] ? String(row['構造']) : null;
-    var dbStructure = dbSeller.structure || null;
-    if (sheetStructure !== dbStructure) {
-      updateData.structure = sheetStructure;
-      needsUpdate = true;
-    }
-
-    // floor_plan（間取り）
-    var sheetFloorPlan = row['間取り'] ? String(row['間取り']) : null;
-    var dbFloorPlan = dbSeller.floor_plan || null;
-    if (sheetFloorPlan !== dbFloorPlan) {
-      updateData.floor_plan = sheetFloorPlan;
-      needsUpdate = true;
-    }
-
-    // inquiry_date（反響日付）
-    var sheetInquiryDate = formatDateToISO_(row['反響日付']);
-    var dbInquiryDate = dbSeller.inquiry_date ? String(dbSeller.inquiry_date).substring(0, 10) : null;
-    if (sheetInquiryDate !== dbInquiryDate) {
-      updateData.inquiry_date = sheetInquiryDate;
-      needsUpdate = true;
-    }
-
-    // valuation_method（査定方法）
-    var sheetValuationMethod = row['査定方法'] ? String(row['査定方法']) : null;
-    var dbValuationMethod = dbSeller.valuation_method || null;
-    if (sheetValuationMethod !== dbValuationMethod) {
-      updateData.valuation_method = sheetValuationMethod;
-      needsUpdate = true;
-    }
-
-    // valuation_amount_1/2/3（査定額: 手動入力優先、万円→円変換）
-    var rawVal1 = row['査定額1'] !== '' && row['査定額1'] !== undefined && row['査定額1'] !== null ? row['査定額1'] : (row['査定額1（自動計算）v'] || null);
-    var rawVal2 = row['査定額2'] !== '' && row['査定額2'] !== undefined && row['査定額2'] !== null ? row['査定額2'] : (row['査定額2（自動計算）v'] || null);
-    var rawVal3 = row['査定額3'] !== '' && row['査定額3'] !== undefined && row['査定額3'] !== null ? row['査定額3'] : (row['査定額3（自動計算）v'] || null);
-    var sheetVal1 = rawVal1 !== null && rawVal1 !== '' ? Math.round(parseFloat(rawVal1) * 10000) : null;
-    var sheetVal2 = rawVal2 !== null && rawVal2 !== '' ? Math.round(parseFloat(rawVal2) * 10000) : null;
-    var sheetVal3 = rawVal3 !== null && rawVal3 !== '' ? Math.round(parseFloat(rawVal3) * 10000) : null;
-    var dbVal1 = dbSeller.valuation_amount_1 !== null && dbSeller.valuation_amount_1 !== undefined ? parseInt(dbSeller.valuation_amount_1, 10) : null;
-    var dbVal2 = dbSeller.valuation_amount_2 !== null && dbSeller.valuation_amount_2 !== undefined ? parseInt(dbSeller.valuation_amount_2, 10) : null;
-    var dbVal3 = dbSeller.valuation_amount_3 !== null && dbSeller.valuation_amount_3 !== undefined ? parseInt(dbSeller.valuation_amount_3, 10) : null;
-    if (sheetVal1 !== dbVal1) { updateData.valuation_amount_1 = sheetVal1; needsUpdate = true; }
-    if (sheetVal2 !== dbVal2) { updateData.valuation_amount_2 = sheetVal2; needsUpdate = true; }
-    if (sheetVal3 !== dbVal3) { updateData.valuation_amount_3 = sheetVal3; needsUpdate = true; }
-
-    // visit_acquisition_date（訪問取得日）
-    var sheetVisitAcqDate = formatDateToISO_(row['訪問取得日\n年/月/日'] || row['訪問取得日']);
-    var dbVisitAcqDate = dbSeller.visit_acquisition_date ? String(dbSeller.visit_acquisition_date).substring(0, 10) : null;
-    if (sheetVisitAcqDate !== dbVisitAcqDate) {
-      updateData.visit_acquisition_date = sheetVisitAcqDate;
-      needsUpdate = true;
-    }
-
-    // visit_date（訪問日）
-    var sheetVisitDate = formatDateToISO_(row['訪問日 \nY/M/D'] || row['訪問日']);
-    var dbVisitDate = dbSeller.visit_date ? String(dbSeller.visit_date).substring(0, 10) : null;
-    if (sheetVisitDate !== dbVisitDate) {
-      updateData.visit_date = sheetVisitDate;
-      needsUpdate = true;
-    }
-
-    // visit_time（訪問時間）
-    var sheetVisitTime = row['訪問時間'] ? String(row['訪問時間']) : null;
-    var dbVisitTime = dbSeller.visit_time || null;
-    if (sheetVisitTime !== dbVisitTime) {
-      updateData.visit_time = sheetVisitTime;
-      needsUpdate = true;
-    }
-
-    // visit_valuation_acquirer（訪問査定取得者）
-    var sheetVisitValAcq = row['訪問査定取得者'] ? String(row['訪問査定取得者']) : null;
-    var dbVisitValAcq = dbSeller.visit_valuation_acquirer || null;
-    if (sheetVisitValAcq !== dbVisitValAcq) {
-      updateData.visit_valuation_acquirer = sheetVisitValAcq;
-      needsUpdate = true;
-    }
-
-    // valuation_assignee（査定担当）
-    var sheetValAssignee = row['査定担当'] ? String(row['査定担当']) : null;
-    var dbValAssignee = dbSeller.valuation_assignee || null;
-    if (sheetValAssignee !== dbValAssignee) {
-      updateData.valuation_assignee = sheetValAssignee;
-      needsUpdate = true;
-    }
-
-    // confidence_level（確度）
-    var sheetConfidence = row['確度'] ? String(row['確度']) : null;
-    var dbConfidence = dbSeller.confidence_level || null;
-    if (sheetConfidence !== dbConfidence) {
-      updateData.confidence_level = sheetConfidence;
-      needsUpdate = true;
-    }
-
-    // competitor_name（競合名）
-    var sheetCompetitor = row['競合名'] ? String(row['競合名']) : null;
-    var dbCompetitor = dbSeller.competitor_name || null;
-    if (sheetCompetitor !== dbCompetitor) {
-      updateData.competitor_name = sheetCompetitor;
-      needsUpdate = true;
-    }
-
-    // competitor_name_and_reason（競合名、理由）
-    var sheetCompetitorReason = row['競合名、理由\n（他決、専任）'] || row['競合名、理由'] ? String(row['競合名、理由\n（他決、専任）'] || row['競合名、理由']) : null;
-    var dbCompetitorReason = dbSeller.competitor_name_and_reason || null;
-    if (sheetCompetitorReason !== dbCompetitorReason) {
-      updateData.competitor_name_and_reason = sheetCompetitorReason;
-      needsUpdate = true;
-    }
-
-    // exclusive_other_decision_factor（専任・他決要因）
-    var sheetExclusive = row['専任・他決要因'] ? String(row['専任・他決要因']) : null;
-    var dbExclusive = dbSeller.exclusive_other_decision_factor || null;
-    if (sheetExclusive !== dbExclusive) {
-      updateData.exclusive_other_decision_factor = sheetExclusive;
-      needsUpdate = true;
-    }
-
-    // visit_notes（訪問メモ）
-    var sheetVisitNotes = row['訪問メモ'] ? String(row['訪問メモ']) : null;
-    var dbVisitNotes = dbSeller.visit_notes || null;
-    if (sheetVisitNotes !== dbVisitNotes) {
-      updateData.visit_notes = sheetVisitNotes;
-      needsUpdate = true;
-    }
+    updateData.visit_acquisition_date = formatDateToISO_(row['訪問取得日\n年/月/日'] || row['訪問取得日']);
+    updateData.visit_date = formatDateToISO_(row['訪問日 \nY/M/D'] || row['訪問日']);
+    updateData.visit_time = row['訪問時間'] ? String(row['訪問時間']) : null;
+    updateData.visit_valuation_acquirer = row['訪問査定取得者'] ? String(row['訪問査定取得者']) : null;
+    updateData.valuation_assignee = row['査定担当'] ? String(row['査定担当']) : null;
+    updateData.confidence_level = row['確度'] ? String(row['確度']) : null;
+    updateData.competitor_name = row['競合名'] ? String(row['競合名']) : null;
+    var competitorReason = row['競合名、理由\n（他決、専任）'] || row['競合名、理由'];
+    updateData.competitor_name_and_reason = competitorReason ? String(competitorReason) : null;
+    updateData.exclusive_other_decision_factor = row['専任・他決要因'] ? String(row['専任・他決要因']) : null;
+    updateData.visit_notes = row['訪問メモ'] ? String(row['訪問メモ']) : null;
 
     // first_call_person（1番電話）: 反響日付が2026/3/20以降の売主のみ同期
-    var sheetFirstCallPerson = row['1番電話'] ? String(row['1番電話']) : null;
-    var dbFirstCallPerson = dbSeller.first_call_person || null;
-    var inquiryDateForFilter = sheetInquiryDate; // formatDateToISO_済み（YYYY-MM-DD or null）
+    var sheetInquiryDate = updateData.inquiry_date;
     var firstCallPersonCutoff = '2026-03-20';
-    if (sheetFirstCallPerson !== dbFirstCallPerson &&
-        inquiryDateForFilter !== null && inquiryDateForFilter >= firstCallPersonCutoff) {
-      updateData.first_call_person = sheetFirstCallPerson;
-      needsUpdate = true;
+    if (sheetInquiryDate !== null && sheetInquiryDate >= firstCallPersonCutoff) {
+      updateData.first_call_person = row['1番電話'] ? String(row['1番電話']) : null;
     }
-
-    if (!needsUpdate) continue;
 
     updateData.updated_at = new Date().toISOString();
 
@@ -460,10 +240,12 @@ function syncUpdatesToSupabase_(sheetRows) {
     var result = patchSellerToSupabase_(sellerNumber, updateData);
     if (result.success) {
       updatedCount++;
-      Logger.log('✅ ' + sellerNumber + ': 更新 (' + Object.keys(updateData).filter(function(k){ return k !== 'updated_at'; }).join(', ') + ')');
+      Logger.log('✅ ' + sellerNumber + ': 更新');
     } else {
       errorCount++;
       Logger.log('❌ ' + sellerNumber + ': 更新失敗 - ' + result.error);
+      // 失敗した行はハッシュを更新しない（次回リトライ）
+      newHashes[sellerNumber] = prevHashes[sellerNumber] || '';
     }
 
     // 更新した行だけ待機（帯域制限対策）
@@ -472,10 +254,13 @@ function syncUpdatesToSupabase_(sheetRows) {
     // 実行時間チェック: 5分（300秒）を超えたら安全に終了
     var elapsed = (new Date() - phaseStartTime) / 1000;
     if (elapsed > 300) {
-      Logger.log('⚠️ 実行時間制限に近づいたため中断 (' + elapsed.toFixed(0) + '秒経過, ' + r + '/' + sheetRows.length + '件処理済み)');
+      Logger.log('⚠️ 実行時間制限に近づいたため中断 (' + elapsed.toFixed(0) + '秒経過, ' + r + '/' + changedRows.length + '件処理済み)');
       break;
     }
   }
+
+  // 成功分のハッシュを保存（次回の差分検知に使用）
+  props.setProperty(hashKey, JSON.stringify(newHashes));
 
   Logger.log('📊 Phase 2完了: 更新 ' + updatedCount + '件 / エラー ' + errorCount + '件');
   return { updated: updatedCount, errors: errorCount };
@@ -873,4 +658,13 @@ function bulkSyncActiveSellersFull() {
  */
 function syncAA907() {
   syncSellerNow('AA907');
+}
+
+/**
+ * ハッシュキャッシュをリセット（全件再同期したい場合に手動実行）
+ * 実行後の次回syncSellerList()で全行が差分ありとみなされSupabaseに同期される
+ */
+function resetRowHashCache() {
+  PropertiesService.getScriptProperties().deleteProperty('seller_row_hashes');
+  Logger.log('✅ ハッシュキャッシュをリセットしました。次回同期で全件再同期されます。');
 }
