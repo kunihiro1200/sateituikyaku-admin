@@ -1103,7 +1103,7 @@ const CallModePage = () => {
     window.history.pushState(null, '', window.location.href);
 
     const handlePopState = () => {
-      if (seller?.status?.includes('追客中') && !editedNextCallDate) {
+      if (editedStatus?.includes('追客中') && !editedNextCallDate) {
         // ブロック: 戻るボタンを無効化して再度pushState
         window.history.pushState(null, '', window.location.href);
         setNavigationBlockDialog({ open: true });
@@ -1119,7 +1119,7 @@ const CallModePage = () => {
 
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
-  }, [seller?.status, editedNextCallDate]);
+  }, [editedStatus, editedNextCallDate]);
 
   // sellerが変更されたときにコミュニケーションフィールドを初期化
   useEffect(() => {
@@ -1717,7 +1717,8 @@ const CallModePage = () => {
 
   const handleBack = () => {
     // 追客中かつ次電日未入力の場合は遷移を完全ブロック（最優先）
-    if (seller?.status?.includes('追客中') && !editedNextCallDate) {
+    // editedStatusを参照（画面上の現在値、保存前も含む）
+    if (editedStatus?.includes('追客中') && !editedNextCallDate) {
       setNavigationBlockDialog({ open: true });
       return;
     }
@@ -1765,7 +1766,8 @@ const CallModePage = () => {
    */
   const navigateWithWarningCheck = (onConfirm: () => void) => {
     // 追客中かつ次電日未入力の場合は遷移を完全ブロック（最優先）
-    if (seller?.status?.includes('追客中') && !editedNextCallDate) {
+    // editedStatusを参照（画面上の現在値、保存前も含む）
+    if (editedStatus?.includes('追客中') && !editedNextCallDate) {
       setNavigationBlockDialog({ open: true });
       return;
     }
