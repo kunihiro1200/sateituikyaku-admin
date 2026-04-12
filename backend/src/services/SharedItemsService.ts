@@ -68,11 +68,52 @@ export class SharedItemsService {
   }
 
   /**
+   * 英語キー → 日本語キー（スプレッドシートヘッダー）マッピング
+   */
+  private static readonly FIELD_KEY_MAP: Record<string, string> = {
+    'id': 'ID',
+    'date': '日付',
+    'input_person': '入力者',
+    'sharing_location': '共有場',
+    'category': '項目',
+    'title': 'タイトル',
+    'content': '内容',
+    'sharing_date': '共有日',
+    'staff_not_shared': '共有できていない',
+    'confirmation_date': '確認日',
+    'pdf1': 'PDF1',
+    'pdf2': 'PDF2',
+    'pdf3': 'PDF3',
+    'pdf4': 'PDF4',
+    'image1': '画像1',
+    'image2': '画像2',
+    'image3': '画像3',
+    'image4': '画像4',
+    'url': 'URL',
+    'meeting_content': '打ち合わせ内容',
+  };
+
+  /**
+   * 英語キーを日本語キーに変換する
+   * すでに日本語キーの場合はそのまま返す
+   */
+  private normalizeKeys(item: Record<string, any>): SheetRow {
+    const normalized: SheetRow = {};
+    for (const [key, value] of Object.entries(item)) {
+      const mappedKey = SharedItemsService.FIELD_KEY_MAP[key] || key;
+      normalized[mappedKey] = value;
+    }
+    return normalized;
+  }
+
+  /**
    * 新規作成（appendRow使用）
    */
   async create(item: Partial<SharedItem>): Promise<SharedItem> {
     try {
-      await this.sheetsClient.appendRow(item as SheetRow);
+      // 英語キーを日本語キー（スプレッドシートヘッダー）に変換
+      const normalizedItem = this.normalizeKeys(item as Record<string, any>);
+      await this.sheetsClient.appendRow(normalizedItem);
       return item as SharedItem;
     } catch (error: any) {
       console.error('Failed to create shared item:', error);
