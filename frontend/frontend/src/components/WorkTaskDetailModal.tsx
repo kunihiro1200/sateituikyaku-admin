@@ -695,12 +695,27 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
   }
 
   // 依頼前に確認ポップアップコンポーネント
+  // URLをリンクに変換してテキストをレンダリングする
+  const renderTextWithLinks = (text: string) => {
+    const urlRegex = /(https?:\/\/[^\s\u3000\u3001\u3002\uff01\uff09\u300d\u300f]+)/g;
+    const parts = text.split(urlRegex);
+    return parts.map((part, i) =>
+      urlRegex.test(part) ? (
+        <a key={i} href={part} target="_blank" rel="noopener noreferrer" style={{ color: '#1976d2', wordBreak: 'break-all' }}>
+          {part}
+        </a>
+      ) : (
+        <span key={i}>{part}</span>
+      )
+    );
+  };
+
   const PreRequestCheckPopup = ({ open, text, onClose }: PreRequestCheckPopupProps) => (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
       <DialogTitle>依頼前に確認</DialogTitle>
       <DialogContent dividers sx={{ overflowY: 'auto', maxHeight: '60vh' }}>
         <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-          {text}
+          {renderTextWithLinks(text)}
         </Typography>
       </DialogContent>
       <DialogActions>
