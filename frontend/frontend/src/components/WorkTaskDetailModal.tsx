@@ -788,7 +788,6 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
       </Grid>
       <EditableField label="重説・契約書入力納期*" field="contract_input_deadline" type="date" />
       <PreRequestCheckButton />
-      <EditableField label="コメント（売買契約）" field="sales_contract_comment" />
       <EditableButtonSelect label="社員が契約書作成" field="employee_contract_creation" options={normalInitials} />
       <EditableField label="製本予定日" field="binding_scheduled_date" type="date" />
       <EditableField label="製本完了" field="binding_completed" />
