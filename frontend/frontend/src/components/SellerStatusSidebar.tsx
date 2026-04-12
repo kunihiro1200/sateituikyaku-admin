@@ -52,6 +52,8 @@ interface SellerStatusSidebarProps {
   loading?: boolean;
   /** スタッフイニシャル一覧（担当者別カテゴリー表示用） */
   assigneeInitials?: string[];
+  /** 売主クリック時のナビゲーションハンドラー（遷移ブロック対応用） */
+  onSellerNavigate?: (sellerId: string) => void;
 }
 
 /**
@@ -223,6 +225,7 @@ function SellerStatusSidebarComponent({
   expandedCategoryLoading = {},
   loading = false,
   assigneeInitials = [],
+  onSellerNavigate,
 }: SellerStatusSidebarProps) {
   const navigate = useNavigate();
   
@@ -275,7 +278,11 @@ function SellerStatusSidebarComponent({
   
   // 売主クリック時の処理
   const handleSellerClick = (sellerId: string) => {
-    navigate(`/sellers/${sellerId}/call`);
+    if (onSellerNavigate) {
+      onSellerNavigate(sellerId);
+    } else {
+      navigate(`/sellers/${sellerId}/call`);
+    }
   };
   
   // 件数を取得

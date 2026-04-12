@@ -75,6 +75,7 @@ import CollapsibleSection from '../components/CollapsibleSection';
 
 import { formatCurrentStatusDetailed } from '../utils/propertyStatusFormatter';
 import PageNavigation from '../components/PageNavigation';
+import NavigationBlockDialog from '../components/NavigationBlockDialog';
 
 /**
  * SMSテンプレート型定義
@@ -672,6 +673,9 @@ const CallModePage = () => {
     warningType?: 'firstCall' | 'confidence';
     onConfirm: (() => void) | null;
   }>({ open: false, onConfirm: null });
+
+  // 遷移ブロックダイアログ用の状態（追客中+次電日未入力時に遷移を完全ブロック）
+  const [navigationBlockDialog, setNavigationBlockDialog] = useState<{ open: boolean }>({ open: false });
   const isInitialLoadRef = useRef(true); // 初回ロードフラグ
   const callLogRef = useRef<CallLogDisplayHandle>(null); // 追客ログ更新用ref
   const commentEditorRef = useRef<RichTextCommentEditorHandle>(null); // コメントエディタ用ref
@@ -1092,6 +1096,30 @@ const CallModePage = () => {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
+
+  // ブラウザ戻るボタン対応（追客中+次電日未入力の場合はブロック）
+  useEffect(() => {
+    // ダミーのhistoryエントリを追加してpopstateをキャプチャ
+    window.history.pushState(null, '', window.location.href);
+
+    const handlePopState = () => {
+      if (seller?.status?.includes('追客中') && !editedNextCallDate) {
+        // ブロック: 戻るボタンを無効化して再度pushState
+        window.history.pushState(null, '', window.location.href);
+        setNavigationBlockDialog({ open: true });
+      } else {
+        // 遷移許可: 既存の警告チェックを経由
+        navigateWithWarningCheck(() => {
+          pageDataCache.invalidateByPrefix(CACHE_KEYS.SELLERS_LIST);
+          pageDataCache.invalidate(CACHE_KEYS.SELLERS_SIDEBAR_COUNTS);
+          navigate('/sellers');
+        });
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [seller?.status, editedNextCallDate]);
 
   // sellerが変更されたときにコミュニケーションフィールドを初期化
   useEffect(() => {
@@ -1688,6 +1716,12 @@ const CallModePage = () => {
   };
 
   const handleBack = () => {
+    // 追客中かつ次電日未入力の場合は遷移を完全ブロック（最優先）
+    if (seller?.status?.includes('追客中') && !editedNextCallDate) {
+      setNavigationBlockDialog({ open: true });
+      return;
+    }
+
     // 確度が必須条件を満たしているのに未入力の場合は警告
     const isAfterJan2026 = seller?.inquiryDate && new Date(seller.inquiryDate) >= new Date('2026-01-01');
     const isFollowingUp = seller?.status?.includes('追客中');
@@ -1730,6 +1764,12 @@ const CallModePage = () => {
    * 条件: 反響日付が2026/3/1以降 かつ 不通入力済み かつ 1番電話未入力
    */
   const navigateWithWarningCheck = (onConfirm: () => void) => {
+    // 追客中かつ次電日未入力の場合は遷移を完全ブロック（最優先）
+    if (seller?.status?.includes('追客中') && !editedNextCallDate) {
+      setNavigationBlockDialog({ open: true });
+      return;
+    }
+
     // 確度が必須条件を満たしているのに未入力の場合は警告
     const isAfterJan2026 = seller?.inquiryDate && new Date(seller.inquiryDate) >= new Date('2026-01-01');
     const isFollowingUp = seller?.status?.includes('追客中');
@@ -1749,6 +1789,18 @@ const CallModePage = () => {
       return;
     }
     onConfirm();
+  };
+
+  /**
+   * NavigationBlockDialogの「次電日を入力する」ボタン処理
+   * ダイアログを閉じて次電日フィールドへスクロール＆フォーカス
+   */
+  const handleGoToNextCallDate = () => {
+    setNavigationBlockDialog({ open: false });
+    if (nextCallDateRef.current) {
+      nextCallDateRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      nextCallDateRef.current.focus();
+    }
   };
 
   const handleSaveAndExit = async () => {
@@ -3468,7 +3520,7 @@ HP：https://ifoo-oita.com/
     <Box sx={{ height: '100vh', display: 'flex', flexDirection: 'column', minWidth: isMobile ? 0 : '1280px', overflowX: isMobile ? 'hidden' : undefined }}>
       {/* ナビゲーションバー */}
       <Box sx={{ position: 'sticky', top: 0, zIndex: 200, bgcolor: 'background.default', borderBottom: '1px solid', borderColor: 'divider', px: 1, py: 0.5, display: 'flex', alignItems: 'center', gap: 1, flexShrink: 0 }}>
-        <PageNavigation />
+        <PageNavigation onNavigate={(path) => navigateWithWarningCheck(() => navigate(path))} />
         <TextField
           size="small"
           placeholder="売主番号で移動"
@@ -4022,6 +4074,9 @@ HP：https://ifoo-oita.com/
                 selectedCategory={selectedCategory}
                 selectedVisitAssignee={selectedVisitAssignee}
                 onCategorySelect={handleCategorySelect}
+                onSellerNavigate={(sellerId) =>
+                  navigateWithWarningCheck(() => navigate(`/sellers/${sellerId}/call`))
+                }
               />
             </Box>
           )}
@@ -7642,6 +7697,12 @@ HP：https://ifoo-oita.com/
           <Button onClick={() => setCallTrackingRankingDialogOpen(false)}>閉じる</Button>
         </DialogActions>
       </Dialog>
+
+      {/* 遷移ブロックダイアログ（追客中+次電日未入力時に遷移を完全ブロック） */}
+      <NavigationBlockDialog
+        open={navigationBlockDialog.open}
+        onGoToNextCallDate={handleGoToNextCallDate}
+      />
 
       {/* 遷移警告ダイアログ（確度未入力 / 1番電話未入力） */}
       <Dialog open={navigationWarningDialog.open} onClose={() => setNavigationWarningDialog({ open: false, onConfirm: null })}>
