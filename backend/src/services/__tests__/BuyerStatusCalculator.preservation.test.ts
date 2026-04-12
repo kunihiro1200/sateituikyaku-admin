@@ -94,11 +94,11 @@ describe('保持確認: バグ条件を満たさない入力の動作保持', ()
   });
 
   describe('ケース4: Priority 2 の優先度保持', () => {
-    it('broker_survey = "未" → 「業者問合せあり」（priority: 2）', () => {
+    it('vendor_survey = "未" → 「業者問合せあり」（priority: 2）', () => {
       // Arrange: Priority 2 の条件を満たす（Priority 1 は満たさない）
       const buyer: BuyerData = {
         ...minimalBuyer,
-        broker_survey: '未',
+        vendor_survey: '未',
         // Priority 7 の条件も設定するが、Priority 2 が優先されるべき
         inquiry_email_phone: '未',
         inquiry_email_reply: '未',

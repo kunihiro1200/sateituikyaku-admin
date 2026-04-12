@@ -82,7 +82,8 @@ export function calculateBuyerStatus(buyer: BuyerData): StatusResult {
     }
 
     // Priority 2: 業者問合せあり
-    if (equals(buyer.broker_survey, '未')) {
+    // vendor_survey = '未' かつ broker_inquiry ≠ '業者問合せ'（業者からの問合せ自体は除外）
+    if (equals(buyer.vendor_survey, '未') && !equals(buyer.broker_inquiry, '業者問合せ')) {
       const status = '業者問合せあり';
       return { status, priority: 2, matchedCondition: '業者向けアンケート = 未', color: getStatusColor(status) };
     }
