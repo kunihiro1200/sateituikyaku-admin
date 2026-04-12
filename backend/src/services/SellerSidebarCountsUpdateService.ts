@@ -258,11 +258,27 @@ export class SellerSidebarCountsUpdateService {
         labelCountMap[label] = (labelCountMap[label] || 0) + 1;
       });
 
+      // 「未着手（todayCallNotStarted）」条件を満たす売主を todayCall から除外する
+      // 理由: 「未着手」は全カテゴリーの中で最高優先順位を持ち、
+      //       1人の売主は必ず1つのカテゴリーにのみカウントされなければならない
       const todayCallNoInfoCount = filteredTodayCallSellers.filter(s => {
         const hasInfo = (s.phone_contact_person && s.phone_contact_person.trim() !== '') ||
                         (s.preferred_contact_time && s.preferred_contact_time.trim() !== '') ||
                         (s.contact_method && s.contact_method.trim() !== '');
-        return !hasInfo;
+        // 連絡先情報がある場合は todayCallWithInfo に分類されるため除外
+        if (hasInfo) return false;
+        // 未着手条件を満たす売主は todayCallNotStarted に分類されるため除外
+        // （未着手は全カテゴリーの中で最高優先順位）
+        const status = (s as any).status || '';
+        const unreachable = (s as any).unreachable_status || '';
+        const confidence = (s as any).confidence_level || '';
+        const inquiryDate = (s as any).inquiry_date || '';
+        const isNotStarted = status === '追客中' &&
+          !unreachable &&
+          confidence !== 'ダブり' && confidence !== 'D' && confidence !== 'AI査定' &&
+          inquiryDate >= '2026-01-01';
+        // 未着手条件を満たす場合は todayCall から除外（todayCallNotStarted にのみカウント）
+        return !isNotStarted;
       }).length;
 
       const unvaluatedSellers = unvaluatedSellersResult.data || [];

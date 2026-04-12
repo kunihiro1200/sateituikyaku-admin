@@ -83,7 +83,7 @@ function formatDateToISO_(value) {
 // ============================================================
 
 /**
- * Supabaseのsellersテーブルを seller_number で直接PATCH更新（汎用）
+ * Supabaseのsellersテーブルを seller_number で直接PATCH更新（汎用・単件）
  */
 function patchSellerToSupabase_(sellerNumber, updateData) {
   var url = SUPABASE_CONFIG.URL + '/rest/v1/sellers?seller_number=eq.' + encodeURIComponent(sellerNumber);
@@ -107,14 +107,84 @@ function patchSellerToSupabase_(sellerNumber, updateData) {
       return { success: false, error: 'HTTP ' + code + ': ' + res.getContentText().substring(0, 300) };
     }
   } catch (e) {
-    // ネットワークエラー（Address unavailable等）は失敗として返し、ループを継続させる
     return { success: false, error: 'Network error: ' + e.toString() };
   }
 }
 
 /**
+ * fetchAll を使った並列バッチPATCH
+ * items: [{ sellerNumber, updateData }, ...]
+ * batchSize: 同時並列数（デフォルト10）
+ * 戻り値: { updated, errors, failedNumbers }
+ */
+function batchPatchToSupabase_(items, batchSize) {
+  batchSize = batchSize || 10;
+  var updated = 0;
+  var errors = 0;
+  var failedNumbers = [];
+
+  for (var start = 0; start < items.length; start += batchSize) {
+    var batch = items.slice(start, start + batchSize);
+
+    // fetchAll 用リクエスト配列を構築
+    var requests = batch.map(function(item) {
+      return {
+        url: SUPABASE_CONFIG.URL + '/rest/v1/sellers?seller_number=eq.' + encodeURIComponent(item.sellerNumber),
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': SUPABASE_CONFIG.SERVICE_KEY,
+          'Authorization': 'Bearer ' + SUPABASE_CONFIG.SERVICE_KEY,
+          'Prefer': 'return=minimal'
+        },
+        payload: JSON.stringify(item.updateData),
+        muteHttpExceptions: true
+      };
+    });
+
+    var responses;
+    try {
+      responses = UrlFetchApp.fetchAll(requests);
+    } catch (e) {
+      // fetchAll 自体が失敗した場合は全件エラー扱い
+      Logger.log('❌ fetchAll エラー: ' + e.toString());
+      for (var k = 0; k < batch.length; k++) {
+        errors++;
+        failedNumbers.push(batch[k].sellerNumber);
+      }
+      continue;
+    }
+
+    for (var j = 0; j < responses.length; j++) {
+      var code = responses[j].getResponseCode();
+      var sn = batch[j].sellerNumber;
+      if (code >= 200 && code < 300) {
+        updated++;
+        Logger.log('✅ ' + sn + ': 更新');
+      } else {
+        errors++;
+        failedNumbers.push(sn);
+        Logger.log('❌ ' + sn + ': 更新失敗 HTTP ' + code + ' - ' + responses[j].getContentText().substring(0, 200));
+      }
+    }
+
+    // バッチ間のみ待機（Supabase レート制限対策）
+    if (start + batchSize < items.length) {
+      Utilities.sleep(200);
+    }
+  }
+
+  return { updated: updated, errors: errors, failedNumbers: failedNumbers };
+}
+
+/**
  * 行データのハッシュ文字列を生成（差分検知用）
  * Supabaseへの全件取得を廃止し、スプレッドシート側の変更のみ検知する
+ *
+ * ⚠️ フィールド確認（タスク4.1）:
+ * - '次電日' はkeys配列の2番目に含まれており、次電日の変更は確実にハッシュに反映される
+ * - スプレッドシートのヘッダー名「次電日」と完全一致していることを確認済み
+ * - キャッシュが陳藩化した場合は resetRowHashCache() を手動実行すること
  */
 function buildRowHash_(row) {
   var keys = [
@@ -136,17 +206,50 @@ function buildRowHash_(row) {
 }
 
 /**
- * Phase 2: スプレッドシートの差分のみSupabaseに直接PATCH
- * Supabase全件取得を廃止 → UrlFetch消費を大幅削減
- * 前回同期時のハッシュをPropertiesServiceに保存し、変更行のみ更新する
+ * ハッシュをスプレッドシートの隠しシートに保存（PropertiesService容量制限回避）
+ * シート名: _seller_hashes（非表示）
+ * 形式: A列=売主番号, B列=ハッシュ値
+ */
+function saveHashesToSheet_(hashes) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheetName = '_seller_hashes';
+  var sheet = ss.getSheetByName(sheetName);
+  if (!sheet) {
+    sheet = ss.insertSheet(sheetName);
+    sheet.hideSheet();
+  }
+  sheet.clearContents();
+  var keys = Object.keys(hashes);
+  if (keys.length === 0) return;
+  var data = keys.map(function(k) { return [k, hashes[k]]; });
+  sheet.getRange(1, 1, data.length, 2).setValues(data);
+}
+
+/**
+ * スプレッドシートの隠しシートからハッシュを読み込む
+ */
+function loadHashesFromSheet_() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName('_seller_hashes');
+  if (!sheet) return {};
+  var lastRow = sheet.getLastRow();
+  if (lastRow === 0) return {};
+  var data = sheet.getRange(1, 1, lastRow, 2).getValues();
+  var hashes = {};
+  for (var i = 0; i < data.length; i++) {
+    if (data[i][0]) hashes[String(data[i][0])] = String(data[i][1]);
+  }
+  return hashes;
+}
+
+/**
+ * Phase 2: スプレッドシートの差分のみSupabaseに直接PATCH（fetchAll並列化）
+ * ハッシュはスプレッドシートの隠しシートに保存（PropertiesService容量制限回避）
  */
 function syncUpdatesToSupabase_(sheetRows) {
   Logger.log('📥 Phase 2: スプレッドシート差分検知による更新同期開始...');
 
-  var props = PropertiesService.getScriptProperties();
-  var hashKey = 'seller_row_hashes';
-  var storedJson = props.getProperty(hashKey);
-  var prevHashes = storedJson ? JSON.parse(storedJson) : {};
+  var prevHashes = loadHashesFromSheet_();
   var newHashes = {};
 
   // 変更があった行を抽出
@@ -166,29 +269,18 @@ function syncUpdatesToSupabase_(sheetRows) {
 
   if (changedRows.length === 0) {
     // ハッシュを保存して終了
-    props.setProperty(hashKey, JSON.stringify(newHashes));
+    saveHashesToSheet_(newHashes);
     Logger.log('✅ 変更なし、スキップ');
     return { updated: 0, errors: 0 };
   }
 
-  var updatedCount = 0;
-  var errorCount = 0;
-  var phaseStartTime = new Date();
-
-  // 変更行のみSupabaseにPATCH（Supabase全件取得不要）
-  for (var r = 0; r < changedRows.length; r++) {
-    var row = changedRows[r];
-    var sellerNumber = row['売主番号'];
-
-    // 全フィールドをスプレッドシートの値でそのまま上書き（差分はハッシュ比較済み）
+  // updateDataを構築するヘルパー
+  function buildUpdateData_(row) {
     var updateData = {};
-
     updateData.status = row['状況（当社）'] ? String(row['状況（当社）']) : null;
     updateData.next_call_date = formatDateToISO_(row['次電日']);
-
     var rawVisitAssignee = row['営担'];
     updateData.visit_assignee = (rawVisitAssignee === '外す' || rawVisitAssignee === '' || rawVisitAssignee === undefined) ? null : String(rawVisitAssignee);
-
     updateData.unreachable_status = row['不通'] ? String(row['不通']) : null;
     updateData.comments = row['コメント'] ? String(row['コメント']) : null;
     updateData.phone_contact_person = row['電話担当（任意）'] ? String(row['電話担当（任意）']) : null;
@@ -206,15 +298,12 @@ function syncUpdatesToSupabase_(sheetRows) {
     updateData.floor_plan = row['間取り'] ? String(row['間取り']) : null;
     updateData.inquiry_date = formatDateToISO_(row['反響日付']);
     updateData.valuation_method = row['査定方法'] ? String(row['査定方法']) : null;
-
-    // 査定額（手動入力優先、万円→円変換）
     var rawVal1 = (row['査定額1'] !== '' && row['査定額1'] !== undefined && row['査定額1'] !== null) ? row['査定額1'] : (row['査定額1（自動計算）v'] || null);
     var rawVal2 = (row['査定額2'] !== '' && row['査定額2'] !== undefined && row['査定額2'] !== null) ? row['査定額2'] : (row['査定額2（自動計算）v'] || null);
     var rawVal3 = (row['査定額3'] !== '' && row['査定額3'] !== undefined && row['査定額3'] !== null) ? row['査定額3'] : (row['査定額3（自動計算）v'] || null);
     updateData.valuation_amount_1 = (rawVal1 !== null && rawVal1 !== '') ? Math.round(parseFloat(rawVal1) * 10000) : null;
     updateData.valuation_amount_2 = (rawVal2 !== null && rawVal2 !== '') ? Math.round(parseFloat(rawVal2) * 10000) : null;
     updateData.valuation_amount_3 = (rawVal3 !== null && rawVal3 !== '') ? Math.round(parseFloat(rawVal3) * 10000) : null;
-
     updateData.visit_acquisition_date = formatDateToISO_(row['訪問取得日\n年/月/日'] || row['訪問取得日']);
     updateData.visit_date = formatDateToISO_(row['訪問日 \nY/M/D'] || row['訪問日']);
     updateData.visit_time = row['訪問時間'] ? String(row['訪問時間']) : null;
@@ -226,43 +315,94 @@ function syncUpdatesToSupabase_(sheetRows) {
     updateData.competitor_name_and_reason = competitorReason ? String(competitorReason) : null;
     updateData.exclusive_other_decision_factor = row['専任・他決要因'] ? String(row['専任・他決要因']) : null;
     updateData.visit_notes = row['訪問メモ'] ? String(row['訪問メモ']) : null;
-
-    // first_call_person（1番電話）: 反響日付が2026/3/20以降の売主のみ同期
     var sheetInquiryDate = updateData.inquiry_date;
-    var firstCallPersonCutoff = '2026-03-20';
-    if (sheetInquiryDate !== null && sheetInquiryDate >= firstCallPersonCutoff) {
+    if (sheetInquiryDate !== null && sheetInquiryDate >= '2026-03-20') {
       updateData.first_call_person = row['1番電話'] ? String(row['1番電話']) : null;
     }
-
     updateData.updated_at = new Date().toISOString();
+    return updateData;
+  }
 
-    // Supabaseに直接PATCH
-    var result = patchSellerToSupabase_(sellerNumber, updateData);
-    if (result.success) {
-      updatedCount++;
-      Logger.log('✅ ' + sellerNumber + ': 更新');
-    } else {
-      errorCount++;
-      Logger.log('❌ ' + sellerNumber + ': 更新失敗 - ' + result.error);
-      // 失敗した行はハッシュを更新しない（次回リトライ）
-      newHashes[sellerNumber] = prevHashes[sellerNumber] || '';
+  // fetchAll並列バッチで更新（時間制限内で処理できる分だけ実行）
+  var items = changedRows.map(function(row) {
+    return { sellerNumber: row['売主番号'], updateData: buildUpdateData_(row) };
+  });
+
+  var BATCH_SIZE = 10;
+  var TIME_LIMIT_SEC = 240; // 4分で打ち切り（GAS上限6分の余裕を持たせる）
+  var updatedCount = 0;
+  var errorCount = 0;
+  var phaseStartTime = new Date();
+  var interrupted = false;
+
+  for (var start = 0; start < items.length; start += BATCH_SIZE) {
+    // 時間チェック
+    var elapsed = (new Date() - phaseStartTime) / 1000;
+    if (elapsed > TIME_LIMIT_SEC) {
+      Logger.log('⏱️ 時間制限に達したため中断 (' + elapsed.toFixed(0) + '秒, ' + start + '/' + items.length + '件処理済み)');
+      interrupted = true;
+      break;
     }
 
-    // 更新した行だけ待機（帯域制限対策）
-    Utilities.sleep(100);
+    var batch = items.slice(start, start + BATCH_SIZE);
+    var requests = batch.map(function(item) {
+      return {
+        url: SUPABASE_CONFIG.URL + '/rest/v1/sellers?seller_number=eq.' + encodeURIComponent(item.sellerNumber),
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': SUPABASE_CONFIG.SERVICE_KEY,
+          'Authorization': 'Bearer ' + SUPABASE_CONFIG.SERVICE_KEY,
+          'Prefer': 'return=minimal'
+        },
+        payload: JSON.stringify(item.updateData),
+        muteHttpExceptions: true
+      };
+    });
 
-    // 実行時間チェック: 5分（300秒）を超えたら安全に終了
-    var elapsed = (new Date() - phaseStartTime) / 1000;
-    if (elapsed > 300) {
-      Logger.log('⚠️ 実行時間制限に近づいたため中断 (' + elapsed.toFixed(0) + '秒経過, ' + r + '/' + changedRows.length + '件処理済み)');
-      break;
+    var responses;
+    try {
+      responses = UrlFetchApp.fetchAll(requests);
+    } catch (e) {
+      Logger.log('❌ fetchAll エラー: ' + e.toString());
+      for (var k = 0; k < batch.length; k++) {
+        errorCount++;
+        newHashes[batch[k].sellerNumber] = prevHashes[batch[k].sellerNumber] || '';
+      }
+      continue;
+    }
+
+    for (var j = 0; j < responses.length; j++) {
+      var code = responses[j].getResponseCode();
+      var sn = batch[j].sellerNumber;
+      if (code >= 200 && code < 300) {
+        updatedCount++;
+        Logger.log('✅ ' + sn + ': 更新');
+      } else {
+        errorCount++;
+        newHashes[sn] = prevHashes[sn] || ''; // 失敗分は次回リトライ
+        Logger.log('❌ ' + sn + ': HTTP ' + code);
+      }
+    }
+
+    if (start + BATCH_SIZE < items.length) {
+      Utilities.sleep(200);
     }
   }
 
-  // 成功分のハッシュを保存（次回の差分検知に使用）
-  props.setProperty(hashKey, JSON.stringify(newHashes));
+  // 処理済み分のハッシュを保存（中断時は処理済み分だけ保存 → 次回は残りのみ差分あり）
+  saveHashesToSheet_(newHashes);
 
-  Logger.log('📊 Phase 2完了: 更新 ' + updatedCount + '件 / エラー ' + errorCount + '件');
+  var duration = (new Date() - phaseStartTime) / 1000;
+  if (interrupted) {
+    // 中断時: 未処理分のハッシュは保存されていないため、次回同期で差分ありとして再処理される
+    var processedCount = updatedCount + errorCount;
+    var remainingCount = items.length - processedCount;
+    Logger.log('📊 Phase 2中断: 更新 ' + updatedCount + '件 / エラー ' + errorCount + '件 / 残り' + remainingCount + '件（次回同期で再処理） / ' + duration.toFixed(1) + '秒');
+    Logger.log('ℹ️ キャッシュ不整合が憸念される場合は resetRowHashCache() を手動実行してください');
+  } else {
+    Logger.log('📊 Phase 2完了: 更新 ' + updatedCount + '件 / エラー ' + errorCount + '件 / ' + duration.toFixed(1) + '秒');
+  }
   return { updated: updatedCount, errors: errorCount };
 }
 
@@ -665,6 +805,17 @@ function syncAA907() {
  * 実行後の次回syncSellerList()で全行が差分ありとみなされSupabaseに同期される
  */
 function resetRowHashCache() {
-  PropertiesService.getScriptProperties().deleteProperty('seller_row_hashes');
-  Logger.log('✅ ハッシュキャッシュをリセットしました。次回同期で全件再同期されます。');
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName('_seller_hashes');
+  if (sheet) {
+    sheet.clearContents();
+    Logger.log('✅ ハッシュキャッシュをリセットしました（_seller_hashesシート）。次回同期で全件再同期されます。');
+  } else {
+    Logger.log('ℹ️ _seller_hashesシートが存在しません（初回実行前）');
+  }
+  // 旧PropertiesService形式も念のてクリア
+  var props = PropertiesService.getScriptProperties();
+  props.deleteProperty('seller_row_hashes');
+  props.deleteProperty('seller_row_hashes_count');
+  for (var i = 0; i < 20; i++) props.deleteProperty('seller_row_hashes_' + i);
 }
