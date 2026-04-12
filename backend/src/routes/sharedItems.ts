@@ -1,8 +1,14 @@
 import { Router, Request, Response } from 'express';
 import { SharedItemsService } from '../services/SharedItemsService';
+import multer from 'multer';
+import { createClient } from '@supabase/supabase-js';
 
 const router = Router();
 const sharedItemsService = new SharedItemsService();
+
+// multer のメモリストレージ設定（ファイルをバッファとして保持）
+const storage = multer.memoryStorage();
+const upload = multer({ storage });
 
 // サービスの初期化
 let initialized = false;
@@ -53,23 +59,21 @@ router.get('/categories', async (req: Request, res: Response) => {
  */
 router.get('/staff', async (req: Request, res: Response) => {
   try {
-    // 従業員テーブルから通常スタッフを取得
-    const { createClient } = await import('@supabase/supabase-js');
     const supabase = createClient(
       process.env.SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
-    
+
     const { data: staff, error } = await supabase
       .from('employees')
       .select('name, is_normal')
       .eq('is_normal', true)
       .order('name');
-    
+
     if (error) {
       throw error;
     }
-    
+
     res.json({ data: staff || [] });
   } catch (error: any) {
     console.error('Failed to fetch staff:', error);
@@ -93,6 +97,67 @@ router.post('/', async (req: Request, res: Response) => {
     res.status(500).json({
       error: '共有データの作成に失敗しました',
       details: error.message
+    });
+  }
+});
+
+/**
+ * POST /api/shared-items/upload - ファイルアップロード
+ * multipart/form-data でファイルを受け取り、Supabase Storage にアップロードする
+ * Request: multipart/form-data
+ *   - file: アップロードするファイル（PDFまたは画像）
+ *   - type: 'pdf' | 'image' - サブフォルダを決定するパラメータ
+ * Response: { url: string } - アップロード後の公開URL
+ */
+router.post('/upload', upload.single('file'), async (req: Request, res: Response) => {
+  try {
+    // ファイルが存在しない場合は400エラーを返す
+    if (!req.file) {
+      return res.status(400).json({ error: 'ファイルが指定されていません' });
+    }
+
+    // type パラメータからサブフォルダを決定（'pdf' → 'pdfs/', 'image' → 'images/'）
+    const type = req.body.type as 'pdf' | 'image';
+    const folder = type === 'pdf' ? 'pdfs' : 'images';
+
+    // ファイルパスを生成: {folder}/{timestamp}_{originalname}
+    const timestamp = Date.now();
+    const originalName = req.file.originalname;
+    const filePath = ${folder}/_;
+
+    // Supabase クライアントを初期化
+    const supabase = createClient(
+      process.env.SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+
+    // Supabase Storage の shared-items バケットにファイルをアップロード
+    const { error: uploadError } = await supabase.storage
+      .from('shared-items')
+      .upload(filePath, req.file.buffer, {
+        contentType: req.file.mimetype,
+        upsert: false,
+      });
+
+    if (uploadError) {
+      console.error('Supabase Storage アップロードエラー:', uploadError);
+      return res.status(500).json({
+        error: 'ファイルのアップロードに失敗しました',
+        details: uploadError.message,
+      });
+    }
+
+    // アップロード後の公開URLを取得
+    const { data: publicUrlData } = supabase.storage
+      .from('shared-items')
+      .getPublicUrl(filePath);
+
+    res.json({ url: publicUrlData.publicUrl });
+  } catch (error: any) {
+    console.error('ファイルアップロード処理エラー:', error);
+    res.status(500).json({
+      error: 'ファイルのアップロードに失敗しました',
+      details: error.message,
     });
   }
 });
