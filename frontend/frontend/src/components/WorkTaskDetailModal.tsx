@@ -383,7 +383,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
       <EditableButtonSelect label="営業担当" field="sales_assignee" options={normalInitials} />
       <EditableField label="媒介形態" field="mediation_type" />
       <EditableField label="媒介作成締め日" field="mediation_deadline" type="date" />
-      <EditableField label="媒介作成完了" field="mediation_completed" />
+      <EditableField label="媒介作成完了" field="mediation_completed" type="date" />
       <EditableButtonSelect label="媒介作成者" field="mediation_creator" options={normalInitials} />
       <EditableYesNo label="保留" field="on_hold" />
     </Box>

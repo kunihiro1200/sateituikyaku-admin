@@ -105,7 +105,7 @@ const WorkTaskSection: React.FC<WorkTaskSectionProps> = ({ sellerNumber }) => {
     }
 
     // 日付フォーマット
-    if (key.includes('date') || key.includes('deadline')) {
+    if (key.includes('date') || key.includes('deadline') || key.includes('completed')) {
       try {
         const date = new Date(value);
         if (!isNaN(date.getTime())) {
