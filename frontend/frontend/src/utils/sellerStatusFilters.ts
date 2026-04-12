@@ -199,8 +199,9 @@ const hasVisitAssignee = (seller: Seller | any): boolean => {
   // visitAssigneeはフルネームに変換されている場合があるため
   // visitAssignee（camelCase）も参照（APIレスポンスの形式に対応）
   const visitAssignee = seller.visitAssigneeInitials || seller.visit_assignee || seller.visitAssignee || '';
-  // 空文字の場合は担当なしとみなす
-  if (!visitAssignee || visitAssignee.trim() === '') {
+  // 空文字または「外す」の場合は担当なしとみなす
+  // 「外す」は営担を外す指示であり、実質的に担当なしと同じ扱い
+  if (!visitAssignee || visitAssignee.trim() === '' || visitAssignee.trim() === '外す') {
     return false;
   }
   return true;
