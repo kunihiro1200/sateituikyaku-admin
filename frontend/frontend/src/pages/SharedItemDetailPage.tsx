@@ -341,18 +341,31 @@ export default function SharedItemDetailPage() {
             <Typography variant="caption" color="text.secondary">
               URL
             </Typography>
-            <TextField
-              fullWidth
-              value={item['URL'] || 'http://'}
-              disabled
-              sx={{ 
-                mt: 1,
-                '& .MuiInputBase-input.Mui-disabled': {
-                  WebkitTextFillColor: '#000',
-                  color: '#000',
-                }
-              }}
-            />
+            {item['URL'] && item['URL'] !== 'http://' ? (
+              <Box sx={{ mt: 1, p: 1.5, border: '1px solid #e0e0e0', borderRadius: 1, bgcolor: '#fafafa' }}>
+                <a
+                  href={item['URL']}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ color: sharedItemsColor.main, wordBreak: 'break-all' }}
+                >
+                  {item['URL']}
+                </a>
+              </Box>
+            ) : (
+              <TextField
+                fullWidth
+                value={item['URL'] || ''}
+                disabled
+                sx={{
+                  mt: 1,
+                  '& .MuiInputBase-input.Mui-disabled': {
+                    WebkitTextFillColor: '#aaa',
+                    color: '#aaa',
+                  }
+                }}
+              />
+            )}
           </Grid>
 
           {/* ID */}
