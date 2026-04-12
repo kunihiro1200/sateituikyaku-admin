@@ -1,10 +1,12 @@
 import { Router, Request, Response } from 'express';
 import { WorkTaskService } from '../services/WorkTaskService';
 import { WorkTaskSyncService } from '../services/WorkTaskSyncService';
+import { WorkTaskEmailNotificationService } from '../services/WorkTaskEmailNotificationService';
 
 const router = Router();
 const workTaskService = new WorkTaskService();
 const workTaskSyncService = new WorkTaskSyncService();
+const emailNotificationService = new WorkTaskEmailNotificationService();
 
 /**
  * GET /api/work-tasks
@@ -75,6 +77,9 @@ router.put('/:propertyNumber', async (req: Request, res: Response) => {
     delete updates.id;
     delete updates.created_at;
 
+    // 保存前の値を取得（メール通知の変更検知に使用）
+    const beforeData = await workTaskService.getByPropertyNumber(propertyNumber);
+
     const workTask = await workTaskService.updateByPropertyNumber(propertyNumber, updates);
 
     if (!workTask) {
@@ -89,10 +94,18 @@ router.put('/:propertyNumber', async (req: Request, res: Response) => {
       console.error('スプシ書き戻しエラー:', e.message)
     );
 
-    return res.json({
+    // レスポンスを返す（メール送信を待たない）
+    res.json({
       message: '更新が完了しました',
       data: workTask,
     });
+
+    // メール通知（非同期・失敗しても保存に影響しない）
+    emailNotificationService
+      .processEmailNotifications(propertyNumber, beforeData ?? {}, workTask ?? {})
+      .catch((e) => console.error('[WorkTaskEmail] 通知処理エラー:', e.message));
+
+    return;
   } catch (error: any) {
     console.error('業務依頼データ更新エラー:', error);
     return res.status(500).json({ error: error.message });

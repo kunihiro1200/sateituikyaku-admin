@@ -1,0 +1,300 @@
+import { EmailService } from './EmailService.supabase';
+
+// ============================================================
+// インターフェース定義
+// ============================================================
+
+/** メール送信ルールの定義 */
+export interface EmailRule {
+  /** トリガーフィールド名（DBカラム名） */
+  triggerField: string;
+  /** 宛先メールアドレス */
+  to: string;
+  /** CCメールアドレス */
+  cc?: string;
+  /** 件名テンプレート（{変数名}形式） */
+  subjectTemplate: string;
+  /** 本文テンプレート（{変数名}形式、テキストまたはHTML） */
+  bodyTemplate: string;
+  /** HTML形式かどうか（デフォルト: false） */
+  isHtml?: boolean;
+}
+
+/** テンプレート変数のカラムマッピング */
+export interface TemplateVariableMapping {
+  [templateVar: string]: string; // テンプレート変数名 → DBカラム名
+}
+
+// ============================================================
+// テンプレート変数マッピング定数
+// ============================================================
+
+/**
+ * テンプレート変数（{変数名}）とDBカラム名のマッピング
+ * Requirements: 4.2
+ */
+export const TEMPLATE_VARIABLE_MAP: TemplateVariableMapping = {
+  '{物件番号}': 'property_number',
+  '{物件所在}': 'property_address',
+  '{コメント（間取図関係）}': 'floor_plan_comment',
+  '{道路寸法}': 'road_dimensions',
+  '{間取図完了予定}': 'floor_plan_due_date',
+  '{格納先URL}': 'storage_url',
+  '{間取図確認OK/修正コメント}': 'floor_plan_ok_comment',
+  '{コメント（サイト登録）}': 'site_registration_comment',
+  '{サイト登録依頼日}': 'site_registration_request_date',
+  '{サイト登録依頼者}': 'site_registration_requester',
+  '{サイト登録納期予定日}': 'site_registration_due_date',
+  '{パノラマ}': 'panorama',
+  '{スプシURL}': 'spreadsheet_url',
+  '{サイト登録確認OKコメント}': 'site_registration_ok_comment',
+};
+
+// ============================================================
+// メール送信ルール配列（全6ルール）
+// ============================================================
+
+/** 間取図・区画図依頼メールの本文テンプレート（テキスト形式） */
+const FLOOR_PLAN_REQUEST_BODY = [
+  '阿曽様',
+  'お世話になっております。',
+  '間取図OR区画図作成お願いします。',
+  '物件番号：{物件番号}',
+  '物件所在地：{物件所在}',
+  '',
+  'コメント：{コメント（間取図関係）}',
+  '{道路寸法}',
+  '当社の希望納期：{間取図完了予定}格納先：{格納先URL}',
+  '納期が難しかったり、ご不明点等がございましたら、こちらに返信していただければと思います。',
+  '㈱いふうTEL:097-533-2022MAIL:tenant@ifoo-oita.com以上です',
+].join('\n');
+
+/** 間取図確認OKメールの本文テンプレート（テキスト形式） */
+const FLOOR_PLAN_OK_BODY = [
+  '阿曽様',
+  'お世話になっております。',
+  '間取図OR区画図作成ありがとうございます。{間取図確認OK/修正コメント}',
+  '物件番号：{物件番号}',
+  '物件所在地：{物件所在}',
+  'ご不明点等がございましたら、こちらに返信していただければと思います。',
+  '㈱いふうTEL:097-533-2022MAIL:tenant@ifoo-oita.com',
+].join('\n');
+
+/** サイト登録依頼メールの本文テンプレート（HTML形式） */
+const SITE_REGISTRATION_REQUEST_BODY =
+  '<!DOCTYPE html><html><body style="margin:0;padding:0;font-family:Arial, Helvetica, \'Noto Sans JP\', sans-serif;font-size:14px;line-height:1.4;">' +
+  '浅沼様<br>お世話になっております。<br>サイト登録関係お願いします。<br>' +
+  '物件番号：{物件番号}<br>' +
+  'コメント：{コメント（サイト登録）}<br>' +
+  '物件所在地：{物件所在}<br>' +
+  '当社依頼日：{サイト登録依頼日} {サイト登録依頼者}<br>' +
+  '当社の希望納期：{サイト登録納期予定日}<br>' +
+  'パノラマ：{パノラマ}<br>' +
+  '間取図格納時期：{間取図完了予定}<br>' +
+  '詳細：<a href="{スプシURL}">スプレッドシート</a><br>' +
+  '格納先：<a href="{格納先URL}">格納先フォルダ</a><br>' +
+  'ご不明点等がございましたら、こちらに返信していただければと思います。<br><br>' +
+  '㈱いふう<br>TEL:097-533-2022<br>MAIL: tenant@ifoo-oita.com' +
+  '</body></html>';
+
+/** サイト登録確認OKメールの本文テンプレート（HTML形式） */
+const SITE_REGISTRATION_OK_BODY =
+  '<!DOCTYPE html><html><body style="margin:0;padding:0;font-family:Arial, Helvetica, \'Noto Sans JP\', sans-serif;font-size:14px;line-height:1.4;">' +
+  '浅沼様<br>お世話になっております。<br>サイト登録ありがとうございました。OKでした。<br>' +
+  '{サイト登録確認OKコメント}<br>' +
+  '物件番号：{物件番号}<br>' +
+  '物件所在地：{物件所在}<br>' +
+  '詳細：<a href="{スプシURL}">スプレッドシート</a><br>' +
+  'ご不明点等がございましたら、こちらに返信していただければと思います。<br><br>' +
+  '㈱いふう<br>TEL:097-533-2022<br>MAIL: tenant@ifoo-oita.com' +
+  '</body></html>';
+
+/** 間取図格納済み連絡メールの本文テンプレート（HTML形式） */
+const FLOOR_PLAN_STORED_BODY =
+  '<!DOCTYPE html><html><body style="margin:0;padding:0;font-family:Arial, Helvetica, \'Noto Sans JP\', sans-serif;font-size:14px;line-height:1.4;">' +
+  '浅沼様<br>お世話になっております。<br>間取図格納済みです。<br>' +
+  '{格納先URL}<br>' +
+  '物件番号：{物件番号}<br>' +
+  '物件所在地：{物件所在}<br>' +
+  '当社依頼日：{サイト登録依頼日} {サイト登録依頼者}<br>' +
+  '当社の希望納期：{サイト登録納期予定日}<br>' +
+  'パノラマ：{パノラマ}<br>' +
+  '詳細：<a href="{スプシURL}">スプレッドシート</a><br>' +
+  'ご不明点等がございましたら、こちらに返信していただければと思います。<br><br>' +
+  '㈱いふう<br>TEL:097-533-2022<br>MAIL: tenant@ifoo-oita.com' +
+  '</body></html>';
+
+/**
+ * メール送信ルール配列（全6ルール）
+ * Requirements: 5.1, 5.2, 5.3
+ */
+export const EMAIL_RULES: EmailRule[] = [
+  // ルール1: CWの方へ依頼メール（間取り、区画図）
+  {
+    triggerField: 'cw_request_email_floor_plan',
+    to: 'freetask.e72@gmail.com',
+    cc: 'tenant@ifoo-oita.com',
+    subjectTemplate: '間取図作成関係お願いいたします！{物件番号}{物件所在}（㈱いふう）',
+    bodyTemplate: FLOOR_PLAN_REQUEST_BODY,
+    isHtml: false,
+  },
+  // ルール2: CWの方へ依頼メール（2階以上）
+  {
+    triggerField: 'cw_request_email_2f_above',
+    to: 'freetask.e72@gmail.com',
+    cc: 'tenant@ifoo-oita.com',
+    subjectTemplate: '間取図作成関係お願いいたします！{物件番号}{物件所在}（㈱いふう）',
+    bodyTemplate: FLOOR_PLAN_REQUEST_BODY,
+    isHtml: false,
+  },
+  // ルール3: 間取図確認OK送信
+  {
+    triggerField: 'floor_plan_ok_send',
+    to: 'freetask.e72@gmail.com',
+    cc: 'tenant@ifoo-oita.com',
+    subjectTemplate: '図面ありがとうございます！{物件番号}{物件所在}（㈱いふう）',
+    bodyTemplate: FLOOR_PLAN_OK_BODY,
+    isHtml: false,
+  },
+  // ルール4: CWの方へ依頼メール（サイト登録）
+  {
+    triggerField: 'cw_request_email_site_registration',
+    to: 'shiraishi8biz@gmail.com',
+    cc: 'tenant@ifoo-oita.com',
+    subjectTemplate: 'サイト登録関係お願いいたします！{物件番号}{物件所在}（㈱いふう）',
+    bodyTemplate: SITE_REGISTRATION_REQUEST_BODY,
+    isHtml: true,
+  },
+  // ルール5: サイト登録確認OK送信
+  {
+    triggerField: 'site_registration_ok_send',
+    to: 'shiraishi8biz@gmail.com',
+    cc: 'tenant@ifoo-oita.com',
+    subjectTemplate: 'サイト登録ありがとうございます！{物件番号}{物件所在}（㈱いふう）',
+    bodyTemplate: SITE_REGISTRATION_OK_BODY,
+    isHtml: true,
+  },
+  // ルール6: 間取図格納済み連絡メール
+  {
+    triggerField: 'floor_plan_stored_notification',
+    to: 'shiraishi8biz@gmail.com',
+    cc: 'tenant@ifoo-oita.com',
+    subjectTemplate: '間取図格納済みです！{物件番号}{物件所在}（㈱いふう）',
+    bodyTemplate: FLOOR_PLAN_STORED_BODY,
+    isHtml: true,
+  },
+];
+
+// ============================================================
+// WorkTaskEmailNotificationService クラス
+// ============================================================
+
+/**
+ * 業務リストの特定フィールド変更を検知して自動メールを送信するサービス
+ * Requirements: 5.1, 5.2, 5.3
+ */
+export class WorkTaskEmailNotificationService {
+  private emailService: EmailService;
+
+  constructor() {
+    this.emailService = new EmailService();
+  }
+
+  /**
+   * テンプレート変数を解決する（純粋関数）
+   * {変数名} 形式のプレースホルダーをDBカラム値に置換する。
+   * null・空文字の場合は空文字に置換する（エラーにしない）。
+   * Requirements: 4.1, 4.2, 4.4
+   */
+  resolveTemplate(template: string, data: Record<string, any>): string {
+    let result = template;
+    for (const [templateVar, columnName] of Object.entries(TEMPLATE_VARIABLE_MAP)) {
+      const rawValue = data[columnName];
+      // floor_plan_due_date は JST 形式に変換する
+      let value: string;
+      if (columnName === 'floor_plan_due_date') {
+        value = this.formatDateToJST(rawValue);
+      } else {
+        value = rawValue == null ? '' : String(rawValue);
+      }
+      // テンプレート変数を split/join で安全に置換（正規表現エスケープ不要）
+      result = result.split(templateVar).join(value);
+    }
+    return result;
+  }
+
+  /**
+   * ISO 8601 形式の日時文字列を YYYY-MM-DD HH:mm 形式（JST UTC+9）に変換する（純粋関数）
+   * null・undefined の場合は空文字を返す。
+   * Requirements: 4.3
+   */
+  formatDateToJST(isoString: string | null | undefined): string {
+    if (!isoString) return '';
+    try {
+      const date = new Date(isoString);
+      if (isNaN(date.getTime())) return '';
+      // UTC+9 に変換
+      const jstOffset = 9 * 60; // 分
+      const jstTime = new Date(date.getTime() + jstOffset * 60 * 1000);
+      const yyyy = jstTime.getUTCFullYear();
+      const mm = String(jstTime.getUTCMonth() + 1).padStart(2, '0');
+      const dd = String(jstTime.getUTCDate()).padStart(2, '0');
+      const hh = String(jstTime.getUTCHours()).padStart(2, '0');
+      const min = String(jstTime.getUTCMinutes()).padStart(2, '0');
+      return `${yyyy}-${mm}-${dd} ${hh}:${min}`;
+    } catch {
+      return '';
+    }
+  }
+
+  /**
+   * トリガーフィールドの変更を検知してメールを送信する
+   * Requirements: 1.1〜1.9, 7.1, 7.2
+   */
+  async processEmailNotifications(
+    propertyNumber: string,
+    beforeData: Record<string, any>,
+    afterData: Record<string, any>
+  ): Promise<void> {
+    for (const rule of EMAIL_RULES) {
+      const beforeValue = beforeData[rule.triggerField];
+      const afterValue = afterData[rule.triggerField];
+
+      // 変更がない場合はスキップ
+      if (beforeValue === afterValue) {
+        continue;
+      }
+
+      try {
+        const subject = this.resolveTemplate(rule.subjectTemplate, afterData);
+        const body = this.resolveTemplate(rule.bodyTemplate, afterData);
+
+        // テキスト形式の場合は改行を <br> に変換して HTML として送信
+        const htmlBody = rule.isHtml ? body : body.replace(/\n/g, '<br>');
+
+        await this.emailService.sendEmailWithCcAndAttachments({
+          to: rule.to,
+          cc: rule.cc,
+          subject,
+          body: htmlBody,
+          from: 'tenant@ifoo-oita.com',
+          isHtml: true,
+        });
+
+        console.log('[WorkTaskEmail] メール送信成功:', {
+          propertyNumber,
+          to: rule.to,
+          triggerField: rule.triggerField,
+        });
+      } catch (error: any) {
+        console.error('[WorkTaskEmail] メール送信失敗:', {
+          propertyNumber,
+          to: rule.to,
+          triggerField: rule.triggerField,
+          error: error.message,
+        });
+        // 1件失敗しても他の処理を継続する
+      }
+    }
+  }
+}
