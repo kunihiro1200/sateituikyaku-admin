@@ -308,6 +308,20 @@ export default function SharedItemDetailPage() {
               }} />
           </Grid>
 
+          {/* 確認日（編集可能） */}
+          <Grid item xs={6}>
+            <Typography variant="caption" color="text.secondary">確認日</Typography>
+            <TextField
+              fullWidth
+              type="date"
+              value={confirmationDate}
+              onChange={(e) => setConfirmationDate(e.target.value)}
+              size="small"
+              InputLabelProps={{ shrink: true }}
+              sx={{ mt: 1 }}
+            />
+          </Grid>
+
           {/* PDF */}
           <Grid item xs={12}>
             <Typography variant="caption" color="text.secondary">PDF</Typography>
@@ -423,20 +437,6 @@ export default function SharedItemDetailPage() {
                 );
               })}
             </Box>
-          </Grid>
-
-          {/* 確認日（編集可能） */}
-          <Grid item xs={6}>
-            <Typography variant="caption" color="text.secondary">確認日</Typography>
-            <TextField
-              fullWidth
-              type="date"
-              value={confirmationDate}
-              onChange={(e) => setConfirmationDate(e.target.value)}
-              size="small"
-              InputLabelProps={{ shrink: true }}
-              sx={{ mt: 1 }}
-            />
           </Grid>
 
           {/* 共有日（編集可能） */}

@@ -301,6 +301,20 @@ export default function NewSharedItemForm({ onSaved, onCancel }: NewSharedItemFo
           />
         </Grid>
 
+        {/* 確認日 */}
+        <Grid item xs={6}>
+          <Typography variant="caption" color="text.secondary">確認日</Typography>
+          <TextField
+            fullWidth
+            type="date"
+            value={confirmationDate}
+            onChange={(e) => setConfirmationDate(e.target.value)}
+            size="small"
+            InputLabelProps={{ shrink: true }}
+            sx={{ mt: 0.5 }}
+          />
+        </Grid>
+
         {/* PDF添付 */}
         <Grid item xs={12}>
           <Typography variant="caption" color="text.secondary">PDF（最大4件）</Typography>
@@ -420,20 +434,6 @@ export default function NewSharedItemForm({ onSaved, onCancel }: NewSharedItemFo
               );
             })}
           </Box>
-        </Grid>
-
-        {/* 確認日 */}
-        <Grid item xs={6}>
-          <Typography variant="caption" color="text.secondary">確認日</Typography>
-          <TextField
-            fullWidth
-            type="date"
-            value={confirmationDate}
-            onChange={(e) => setConfirmationDate(e.target.value)}
-            size="small"
-            InputLabelProps={{ shrink: true }}
-            sx={{ mt: 0.5 }}
-          />
         </Grid>
 
         {/* 共有日 */}
