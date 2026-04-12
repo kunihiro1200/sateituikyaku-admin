@@ -123,7 +123,7 @@ router.post('/upload', upload.single('file'), async (req: Request, res: Response
     // ファイルパスを生成: {folder}/{timestamp}_{originalname}
     const timestamp = Date.now();
     const originalName = req.file.originalname;
-    const filePath = ${folder}/_;
+    const filePath = `${folder}/${timestamp}_${originalName}`;
 
     // Supabase クライアントを初期化
     const supabase = createClient(
