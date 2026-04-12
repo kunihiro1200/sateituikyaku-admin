@@ -1,6 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
+  ArrowBack as ArrowBackIcon,
+  AttachFile as AttachFileIcon,
+  Close as CloseIcon,
+} from '@mui/icons-material';
+import {
   Container,
   Box,
   Typography,
@@ -11,12 +16,8 @@ import {
   CircularProgress,
   Alert,
   Chip,
+  IconButton,
 } from '@mui/material';
-import {
-  ArrowBack as ArrowBackIcon,
-  AttachFile as AttachFileIcon,
-  Close as CloseIcon,
-} from '@mui/icons-material';
 import api from '../services/api';
 import { SECTION_COLORS } from '../theme/sectionColors';
 import { pageDataCache, CACHE_KEYS } from '../store/pageDataCache';
@@ -174,7 +175,32 @@ export default function SharedItemDetailPage() {
   const existingImageUrls = [1, 2, 3, 4].map((n) => item[`画像${n}`]).filter(Boolean);
   const canAddPdf = existingPdfUrls.length + newPdfs.length < 4;
   const canAddImage = existingImageUrls.length + newImages.length < 4;
-  const hasChanges = newPdfs.length > 0 || newImages.length > 0;
+
+  const hasChanges = newPdfs.length > 0 || newImages.length > 0
+    || [1, 2, 3, 4].some((n) => item[\PDF\] === '')
+    || [1, 2, 3, 4].some((n) => item[\u753b像\] === '');
+
+  const handleDeleteExistingPdf = (url: string) => {
+    setItem((prev) => {
+      if (!prev) return prev;
+      const updated = { ...prev };
+      for (let n = 1; n <= 4; n++) {
+        if (updated[`PDF${n}`] === url) updated[`PDF${n}`] = '';
+      }
+      return updated;
+    });
+  };
+
+  const handleDeleteExistingImage = (url: string) => {
+    setItem((prev) => {
+      if (!prev) return prev;
+      const updated = { ...prev };
+      for (let n = 1; n <= 4; n++) {
+        if (updated[`画像${n}`] === url) updated[`画像${n}`] = '';
+      }
+      return updated;
+    });
+  };
 
   return (
     <Container maxWidth="md" sx={{ py: 3 }}>
@@ -301,9 +327,13 @@ export default function SharedItemDetailPage() {
                 <Box key={i} sx={{ display: 'flex', alignItems: 'center', gap: 1, p: 1, border: '1px solid #e0e0e0', borderRadius: 1, bgcolor: '#fafafa' }}>
                   <Typography sx={{ mr: 0.5 }}>📄</Typography>
                   <a href={url} target="_blank" rel="noopener noreferrer"
-                    style={{ color: color.main, wordBreak: 'break-all', fontSize: '0.85rem' }}>
+                    style={{ color: color.main, wordBreak: 'break-all', fontSize: '0.85rem', flex: 1 }}>
                     {decodeURIComponent(url.split('/').pop() || `PDF${i + 1}`)}
                   </a>
+                  <IconButton size="small" onClick={() => handleDeleteExistingPdf(url)}
+                    sx={{ color: '#f44336', flexShrink: 0 }} title="削除">
+                    <CloseIcon fontSize="small" />
+                  </IconButton>
                 </Box>
               ))}
               {newPdfs.map((f, i) => (
@@ -329,10 +359,17 @@ export default function SharedItemDetailPage() {
             <Box sx={{ mt: 1, display: 'flex', flexDirection: 'column', gap: 1.5 }}>
               {existingImageUrls.map((url, i) => (
                 <Box key={i} sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                  <img src={url} alt={`画像${i + 1}`}
-                    style={{ maxWidth: '100%', maxHeight: 200, objectFit: 'contain', borderRadius: 4, border: '1px solid #e0e0e0' }}
-                    onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                  />
+                  <Box sx={{ position: 'relative', display: 'inline-block' }}>
+                    <img src={url} alt={`画像${i + 1}`}
+                      style={{ maxWidth: '100%', maxHeight: 200, objectFit: 'contain', borderRadius: 4, border: '1px solid #e0e0e0', display: 'block' }}
+                      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                    />
+                    <IconButton size="small" onClick={() => handleDeleteExistingImage(url)}
+                      sx={{ position: 'absolute', top: 4, right: 4, bgcolor: 'rgba(0,0,0,0.5)', color: '#fff',
+                        '&:hover': { bgcolor: 'rgba(244,67,54,0.8)' } }} title="削除">
+                      <CloseIcon fontSize="small" />
+                    </IconButton>
+                  </Box>
                   <a href={url} target="_blank" rel="noopener noreferrer"
                     style={{ color: color.main, fontSize: '0.75rem', wordBreak: 'break-all' }}>
                     {decodeURIComponent(url.split('/').pop() || `画像${i + 1}`)}
