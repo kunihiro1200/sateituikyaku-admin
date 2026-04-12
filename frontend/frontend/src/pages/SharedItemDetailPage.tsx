@@ -21,7 +21,7 @@ import {
 import api from '../services/api';
 import { SECTION_COLORS } from '../theme/sectionColors';
 import { pageDataCache, CACHE_KEYS } from '../store/pageDataCache';
-import { uploadFileToStorage } from '../utils/sharedItemFormUtils';
+import { uploadFileToStorage, toggleStaff } from '../utils/sharedItemFormUtils';
 
 interface SharedItem {
   id: string;
@@ -49,9 +49,19 @@ export default function SharedItemDetailPage() {
   const [apiError, setApiError] = useState('');
   const [saveSuccess, setSaveSuccess] = useState(false);
 
+  // 編集可能フィールド
+  const [sharingDate, setSharingDate] = useState('');
+  const [confirmationDate, setConfirmationDate] = useState('');
+  const [staffNotShared, setStaffNotShared] = useState<string[]>([]);
+
   // 追加ファイル
   const [newPdfs, setNewPdfs] = useState<NewFile[]>([]);
   const [newImages, setNewImages] = useState<NewFile[]>([]);
+
+  // 初期値（変更検知用）
+  const [initialSharingDate, setInitialSharingDate] = useState('');
+  const [initialConfirmationDate, setInitialConfirmationDate] = useState('');
+  const [initialStaffNotShared, setInitialStaffNotShared] = useState('');
 
   useEffect(() => {
     fetchItem();
@@ -64,7 +74,18 @@ export default function SharedItemDetailPage() {
       const response = await api.get('/api/shared-items');
       const items = response.data.data || [];
       const foundItem = items.find((i: SharedItem) => i.id === id);
-      setItem(foundItem || null);
+      if (foundItem) {
+        setItem(foundItem);
+        const sd = foundItem['共有日'] || '';
+        const cd = foundItem['確認日'] || '';
+        const sns = foundItem['共有できていない'] || '';
+        setSharingDate(sd);
+        setConfirmationDate(cd);
+        setStaffNotShared(sns ? sns.split(',').map((s: string) => s.trim()).filter(Boolean) : []);
+        setInitialSharingDate(sd);
+        setInitialConfirmationDate(cd);
+        setInitialStaffNotShared(sns);
+      }
     } catch (error) {
       console.error('Failed to fetch shared item:', error);
     } finally {
@@ -83,6 +104,10 @@ export default function SharedItemDetailPage() {
 
   const handleBack = () => navigate('/shared-items');
 
+  const handleStaffToggle = (name: string) => {
+    setStaffNotShared((prev) => toggleStaff(prev, name));
+  };
+
   const handlePdfChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     const existingCount = [1, 2, 3, 4].filter((n) => item && item[`PDF${n}`]).length;
@@ -99,8 +124,26 @@ export default function SharedItemDetailPage() {
     e.target.value = '';
   };
 
-  const uploadFile = async (newFile: NewFile, type: 'pdf' | 'image'): Promise<string> => {
-    return await uploadFileToStorage(newFile.file, type);
+  const handleDeleteExistingPdf = (url: string) => {
+    setItem((prev) => {
+      if (!prev) return prev;
+      const updated = { ...prev };
+      for (let n = 1; n <= 4; n++) {
+        if (updated[`PDF${n}`] === url) updated[`PDF${n}`] = '';
+      }
+      return updated;
+    });
+  };
+
+  const handleDeleteExistingImage = (url: string) => {
+    setItem((prev) => {
+      if (!prev) return prev;
+      const updated = { ...prev };
+      for (let n = 1; n <= 4; n++) {
+        if (updated[`画像${n}`] === url) updated[`画像${n}`] = '';
+      }
+      return updated;
+    });
   };
 
   const handleSave = async () => {
@@ -110,20 +153,17 @@ export default function SharedItemDetailPage() {
     setSaveSuccess(false);
 
     try {
-      // 既存PDF/画像URLを取得
       const pdfUrls = [1, 2, 3, 4].map((n) => item[`PDF${n}`] || '');
       const imageUrls = [1, 2, 3, 4].map((n) => item[`画像${n}`] || '');
 
-      // 新規PDFをアップロードして空きスロットに追加
       for (const newPdf of newPdfs) {
-        const url = await uploadFile(newPdf, 'pdf');
+        const url = await uploadFileToStorage(newPdf.file, 'pdf');
         const emptyIdx = pdfUrls.findIndex((u) => !u);
         if (emptyIdx !== -1) pdfUrls[emptyIdx] = url;
       }
 
-      // 新規画像をアップロードして空きスロットに追加
       for (const newImg of newImages) {
-        const url = await uploadFile(newImg, 'image');
+        const url = await uploadFileToStorage(newImg.file, 'image');
         const emptyIdx = imageUrls.findIndex((u) => !u);
         if (emptyIdx !== -1) imageUrls[emptyIdx] = url;
       }
@@ -137,6 +177,9 @@ export default function SharedItemDetailPage() {
         '画像2': imageUrls[1],
         '画像3': imageUrls[2],
         '画像4': imageUrls[3],
+        '共有日': sharingDate,
+        '確認日': confirmationDate,
+        '共有できていない': staffNotShared.join(','),
       };
 
       await api.put(`/api/shared-items/${item.id}`, payload);
@@ -145,6 +188,9 @@ export default function SharedItemDetailPage() {
       setItem((prev) => (prev ? { ...prev, ...payload } : prev));
       setNewPdfs([]);
       setNewImages([]);
+      setInitialSharingDate(sharingDate);
+      setInitialConfirmationDate(confirmationDate);
+      setInitialStaffNotShared(staffNotShared.join(','));
       setSaveSuccess(true);
     } catch (error: any) {
       console.error('Save error:', error);
@@ -176,31 +222,14 @@ export default function SharedItemDetailPage() {
   const canAddPdf = existingPdfUrls.length + newPdfs.length < 4;
   const canAddImage = existingImageUrls.length + newImages.length < 4;
 
-  const hasChanges = newPdfs.length > 0 || newImages.length > 0
-    || [1, 2, 3, 4].some((n) => item[\PDF\] === '')
-    || [1, 2, 3, 4].some((n) => item[\u753b像\] === '');
-
-  const handleDeleteExistingPdf = (url: string) => {
-    setItem((prev) => {
-      if (!prev) return prev;
-      const updated = { ...prev };
-      for (let n = 1; n <= 4; n++) {
-        if (updated[`PDF${n}`] === url) updated[`PDF${n}`] = '';
-      }
-      return updated;
-    });
-  };
-
-  const handleDeleteExistingImage = (url: string) => {
-    setItem((prev) => {
-      if (!prev) return prev;
-      const updated = { ...prev };
-      for (let n = 1; n <= 4; n++) {
-        if (updated[`画像${n}`] === url) updated[`画像${n}`] = '';
-      }
-      return updated;
-    });
-  };
+  const hasChanges =
+    newPdfs.length > 0 ||
+    newImages.length > 0 ||
+    [1, 2, 3, 4].some((n) => item[`PDF${n}`] === '') ||
+    [1, 2, 3, 4].some((n) => item[`画像${n}`] === '') ||
+    sharingDate !== initialSharingDate ||
+    confirmationDate !== initialConfirmationDate ||
+    staffNotShared.join(',') !== initialStaffNotShared;
 
   return (
     <Container maxWidth="md" sx={{ py: 3 }}>
@@ -278,45 +307,18 @@ export default function SharedItemDetailPage() {
               }} />
           </Grid>
 
-          {/* 共有日・確認日 */}
+          {/* 共有日（編集可能） */}
           <Grid item xs={6}>
             <Typography variant="caption" color="text.secondary">共有日</Typography>
-            <TextField fullWidth type="date" value={item['共有日'] || ''} disabled size="small"
+            <TextField
+              fullWidth
+              type="date"
+              value={sharingDate}
+              onChange={(e) => setSharingDate(e.target.value)}
+              size="small"
               InputLabelProps={{ shrink: true }}
-              sx={{ mt: 1, '& .MuiInputBase-input.Mui-disabled': { WebkitTextFillColor: '#000' } }} />
-          </Grid>
-          <Grid item xs={6}>
-            <Typography variant="caption" color="text.secondary">確認日</Typography>
-            <TextField fullWidth type="date" value={item['確認日'] || ''} disabled size="small"
-              InputLabelProps={{ shrink: true }}
-              sx={{ mt: 1, '& .MuiInputBase-input.Mui-disabled': { WebkitTextFillColor: '#000' } }} />
-          </Grid>
-
-          {/* 共有できていないスタッフ */}
-          <Grid item xs={12}>
-            <Typography variant="caption" color="text.secondary">共有できていないスタッフ</Typography>
-            <Box sx={{ mt: 1, display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-              {staff.map((s, index) => {
-                const initial = s.name.charAt(0);
-                const notSharedList = item['共有できていない']
-                  ? item['共有できていない'].split(',').map((n: string) => n.trim())
-                  : [];
-                const isNotShared = notSharedList.includes(s.name);
-                return (
-                  <Button key={index} variant={isNotShared ? 'contained' : 'outlined'}
-                    sx={{
-                      minWidth: '48px', height: '48px', borderRadius: '50%',
-                      fontSize: '1.2rem', fontWeight: 'bold',
-                      bgcolor: isNotShared ? color.main : 'transparent',
-                      color: isNotShared ? '#fff' : color.main,
-                      borderColor: color.main,
-                      '&:hover': { bgcolor: isNotShared ? color.dark : `${color.light}30` },
-                    }}
-                    title={s.name}
-                  >{initial}</Button>
-                );
-              })}
-            </Box>
+              sx={{ mt: 1 }}
+            />
           </Grid>
 
           {/* PDF */}
@@ -407,6 +409,47 @@ export default function SharedItemDetailPage() {
               <TextField fullWidth value={item['URL'] || ''} disabled size="small"
                 sx={{ mt: 1, '& .MuiInputBase-input.Mui-disabled': { WebkitTextFillColor: '#aaa' } }} />
             )}
+          </Grid>
+
+          {/* 共有できていないスタッフ（ボタン選択・トグル可能） */}
+          <Grid item xs={12}>
+            <Typography variant="caption" color="text.secondary">共有できていないスタッフ</Typography>
+            <Box sx={{ mt: 1, display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+              {staff.map((s, index) => {
+                const initial = s.name.charAt(0);
+                const isSelected = staffNotShared.includes(s.name);
+                return (
+                  <Button
+                    key={index}
+                    variant={isSelected ? 'contained' : 'outlined'}
+                    onClick={() => handleStaffToggle(s.name)}
+                    sx={{
+                      minWidth: '48px', height: '48px', borderRadius: '50%',
+                      fontSize: '1.2rem', fontWeight: 'bold',
+                      bgcolor: isSelected ? color.main : 'transparent',
+                      color: isSelected ? '#fff' : color.main,
+                      borderColor: color.main,
+                      '&:hover': { bgcolor: isSelected ? color.dark : `${color.light}30` },
+                    }}
+                    title={s.name}
+                  >{initial}</Button>
+                );
+              })}
+            </Box>
+          </Grid>
+
+          {/* 確認日（編集可能） */}
+          <Grid item xs={6}>
+            <Typography variant="caption" color="text.secondary">確認日</Typography>
+            <TextField
+              fullWidth
+              type="date"
+              value={confirmationDate}
+              onChange={(e) => setConfirmationDate(e.target.value)}
+              size="small"
+              InputLabelProps={{ shrink: true }}
+              sx={{ mt: 1 }}
+            />
           </Grid>
 
           {/* 打ち合わせ内容 */}
