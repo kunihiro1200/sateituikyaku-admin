@@ -503,7 +503,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
       {/* 左側：登録関係 */}
       <Box sx={{ flex: 1, p: 2, borderRight: '2px solid', borderColor: 'divider', overflowY: 'auto' }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-          <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#1565c0' }}>【登録関係】</Typography>
+          <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#1565c0' }}>【登録関係】</Typography>
           <Button
             onClick={handleSave}
             variant="contained"
@@ -524,6 +524,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
         <EditableField label="サイト登録締め日" field="site_registration_deadline" type="date" />
         <EditableField label="種別" field="property_type" />
 
+        <Box sx={{ bgcolor: '#e3f2fd', borderRadius: 1, p: 1, mb: 1 }}>
         <SectionHeader label="【サイト登録依頼】" />
         <EditableField label="サイト備考" field="site_notes" />
         {getValue('property_type') === '土' && (
@@ -533,7 +534,9 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
             <CadastralMapFieldSelect />
           </>
         )}
-        <RedNote text={'地積測量図や字図を格納→「リンク知っている人全員」\nの共有URLをスプシの「内覧前伝達事項」に貼り付ける'} />
+        {getValue('property_type') === '土' && (
+          <RedNote text={'地積測量図や字図を格納→「リンク知っている人全員」\nの共有URLをスプシの「内覧前伝達事項」に貼り付ける'} />
+        )}
         <EditableField label="格納先URL" field="storage_url" type="url" />
         <EditableYesNo label="CWの方へ依頼メール（サイト登録）" field="cw_request_email_site" />
         <EditableButtonSelect label="CWの方*" field="cw_person" options={['浅沼様（土日OK, 平日は中１日あけて納期）']} />
@@ -580,20 +583,26 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
         <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mb: 1 }}>CWの方、広瀬さん記入↓↓</Typography>
         <EditableField label="サイト登録確認依頼日" field="site_registration_confirm_request_date" type="date" />
 
+        </Box>
+
+        <Box sx={{ bgcolor: '#e8f5e9', borderRadius: 1, p: 1, mb: 1 }}>
         <SectionHeader label="【図面作成依頼】" />
         <EditableButtonSelect label="間取図" field="floor_plan" options={['クラウドワークス', '他', '不要']} />
         <EditableButtonSelect label="方位記号" field="direction_symbol" options={['確認済', '不要（営業相談済）']} />
         <EditableField label="コメント（間取図関係）" field="floor_plan_comment" />
-        <EditableField label="道路寸法" field="road_dimensions" />
+        {getValue('property_type') === '土' && (
+          <EditableField label="道路寸法" field="road_dimensions" />
+        )}
         <EditableYesNo label="CWの方へ依頼メール（間取り、区画図）" field="cw_request_email_floor_plan" />
         <EditableYesNo label="CWの方へ依頼メール（2階以上）" field="cw_request_email_2f_above" />
         <EditableField label="間取図完了予定*" field="floor_plan_due_date" type="datetime-local" />
+        </Box>
       </Box>
 
       {/* 右側：確認関係 */}
       <Box sx={{ flex: 1, p: 2, overflowY: 'auto' }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-          <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#2e7d32' }}>【確認関係】</Typography>
+          <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#2e7d32' }}>【確認関係】</Typography>
           <Button
             onClick={handleSave}
             variant="contained"
@@ -612,6 +621,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
           >{saving ? '保存中...' : '保存'}</Button>
         </Box>
 
+        <Box sx={{ bgcolor: '#f3e5f5', borderRadius: 1, p: 1, mb: 1 }}>
         <SectionHeader label="【★サイト登録確認】" />
         <EditableButtonSelect label="サイト登録確認" field="site_registration_confirmed" options={['確認中', '完了', '他']} />
         <EditableField label="メール配信v" field="email_distribution" />
@@ -621,7 +631,9 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
           label=""
           value={cwCounts.siteRegistration ? `サイト登録（CW)計⇒ ${cwCounts.siteRegistration}` : '-'}
         />
+        </Box>
 
+        <Box sx={{ bgcolor: '#fff3e0', borderRadius: 1, p: 1, mb: 1 }}>
         <SectionHeader label="【★図面確認】" />
         <EditableButtonSelect label="間取図確認者*" field="floor_plan_confirmer" options={normalInitials} />
         <EditableField label="間取図確認OK/修正コメント" field="floor_plan_ok_comment" />
@@ -636,7 +648,9 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
         />
         <EditableField label="間取図完了日*" field="floor_plan_completed_date" type="date" />
         <EditableYesNo label="間取図格納済み連絡メール" field="floor_plan_stored_email" />
+        </Box>
 
+        <Box sx={{ bgcolor: '#fafafa', borderRadius: 1, p: 1, mb: 1 }}>
         <SectionHeader label="【確認後処理】" />
         <EditableField label="配信日" field="distribution_date" type="date" />
         <EditableButtonSelect label="物件一覧に行追加*" field="property_list_row_added" options={['追加済', '未']} />
@@ -649,6 +663,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
         />
         <EditableField label="メール配信" field="pre_distribution_check" />
         <EditableField label="サイト登録締め日v" field="site_registration_deadline" type="date" />
+        </Box>
       </Box>
     </Box>
     );
