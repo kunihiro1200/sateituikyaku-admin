@@ -789,37 +789,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
       <EditableField label="重説・契約書入力納期*" field="contract_input_deadline" type="date" />
       <PreRequestCheckButton />
       <EditableField label="コメント（売買契約）" field="sales_contract_comment" />
-      <EditableYesNo label="広瀬さんへ依頼（売買契約関連）" field="hirose_request_sales" />
-      <EditableYesNo label="CWへ依頼（売買契約関連）" field="cw_request_sales" />
       <EditableButtonSelect label="社員が契約書作成" field="employee_contract_creation" options={normalInitials} />
-      <Grid container spacing={2} alignItems="center" sx={{ mb: 1.5 }}>
-        <Grid item xs={4}>
-          <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>作業内容</Typography>
-        </Grid>
-        <Grid item xs={8}>
-          <ButtonGroup size="small" variant="outlined">
-            <Button
-              variant={getValue('work_content') === '書類取得のみ' ? 'contained' : 'outlined'}
-              color={getValue('work_content') === '書類取得のみ' ? 'inherit' : 'inherit'}
-              onClick={() => handleFieldChange('work_content', '書類取得のみ')}
-            >書類取得のみ</Button>
-            <Button
-              variant={getValue('work_content') === '入力のみ' ? 'contained' : 'outlined'}
-              color={getValue('work_content') === '入力のみ' ? 'inherit' : 'inherit'}
-              onClick={() => handleFieldChange('work_content', '入力のみ')}
-            >入力のみ</Button>
-            <Button
-              variant={getValue('work_content') === '両方' ? 'contained' : 'outlined'}
-              color={getValue('work_content') === '両方' ? 'error' : 'inherit'}
-              onClick={() => handleFieldChange('work_content', '両方')}
-              sx={getValue('work_content') === '両方' ? { bgcolor: 'error.main', color: 'white', '&:hover': { bgcolor: 'error.dark' } } : {}}
-            >両方</Button>
-          </ButtonGroup>
-        </Grid>
-      </Grid>
-      <EditableField label="添付資料準備納期" field="attachment_prep_deadline" type="date" />
-      <EditableField label="添付資料完了" field="attachment_completed" />
-      <EditableField label="添付資料印刷" field="attachment_printed" />
       <EditableField label="製本予定日" field="binding_scheduled_date" type="date" />
       <EditableField label="製本完了" field="binding_completed" />
       <EditableField label="決済日" field="settlement_date" type="date" />
