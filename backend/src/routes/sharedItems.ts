@@ -66,8 +66,8 @@ router.get('/staff', async (req: Request, res: Response) => {
 
     const { data: staff, error } = await supabase
       .from('employees')
-      .select('name, is_normal')
-      .eq('is_normal', true)
+      .select('name, initials, is_active')
+      .eq('is_active', true)
       .order('name');
 
     if (error) {

@@ -38,7 +38,8 @@ interface UploadedFile {
 
 interface Staff {
   name: string;
-  is_normal: boolean;
+  initials: string;
+  is_active: boolean;
 }
 
 export default function NewSharedItemForm({ onSaved, onCancel }: NewSharedItemFormProps) {
@@ -333,7 +334,7 @@ export default function NewSharedItemForm({ onSaved, onCancel }: NewSharedItemFo
           <Typography variant="caption" color="text.secondary">共有できていないスタッフ</Typography>
           <Box sx={{ mt: 1, display: 'flex', flexWrap: 'wrap', gap: 1 }}>
             {staffList.map((s) => {
-              const initial = s.name.charAt(0);
+              const initial = s.initials || s.name.charAt(0);
               const isSelected = staffNotShared.includes(s.name);
               return (
                 <Button

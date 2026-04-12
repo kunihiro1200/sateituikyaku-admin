@@ -30,7 +30,8 @@ interface SharedItem {
 
 interface Staff {
   name: string;
-  is_normal: boolean;
+  initials: string;
+  is_active: boolean;
 }
 
 interface NewFile {
@@ -307,20 +308,6 @@ export default function SharedItemDetailPage() {
               }} />
           </Grid>
 
-          {/* 共有日（編集可能） */}
-          <Grid item xs={6}>
-            <Typography variant="caption" color="text.secondary">共有日</Typography>
-            <TextField
-              fullWidth
-              type="date"
-              value={sharingDate}
-              onChange={(e) => setSharingDate(e.target.value)}
-              size="small"
-              InputLabelProps={{ shrink: true }}
-              sx={{ mt: 1 }}
-            />
-          </Grid>
-
           {/* PDF */}
           <Grid item xs={12}>
             <Typography variant="caption" color="text.secondary">PDF</Typography>
@@ -416,7 +403,7 @@ export default function SharedItemDetailPage() {
             <Typography variant="caption" color="text.secondary">共有できていないスタッフ</Typography>
             <Box sx={{ mt: 1, display: 'flex', flexWrap: 'wrap', gap: 1 }}>
               {staff.map((s, index) => {
-                const initial = s.name.charAt(0);
+                const initial = s.initials || s.name.charAt(0);
                 const isSelected = staffNotShared.includes(s.name);
                 return (
                   <Button
@@ -446,6 +433,20 @@ export default function SharedItemDetailPage() {
               type="date"
               value={confirmationDate}
               onChange={(e) => setConfirmationDate(e.target.value)}
+              size="small"
+              InputLabelProps={{ shrink: true }}
+              sx={{ mt: 1 }}
+            />
+          </Grid>
+
+          {/* 共有日（編集可能） */}
+          <Grid item xs={6}>
+            <Typography variant="caption" color="text.secondary">共有日</Typography>
+            <TextField
+              fullWidth
+              type="date"
+              value={sharingDate}
+              onChange={(e) => setSharingDate(e.target.value)}
               size="small"
               InputLabelProps={{ shrink: true }}
               sx={{ mt: 1 }}
