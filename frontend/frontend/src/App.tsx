@@ -31,6 +31,7 @@ import { PropertyListingSyncDashboard } from './pages/PropertyListingSyncDashboa
 import BuyerCandidateListPage from './pages/BuyerCandidateListPage';
 import SharedItemsPage from './pages/SharedItemsPage';
 import SharedItemDetailPage from './pages/SharedItemDetailPage';
+import NewSharedItemPage from './pages/NewSharedItemPage';
 import BuyerNearbyPropertiesPage from './pages/BuyerNearbyPropertiesPage';
 import NearbyBuyersPage from './pages/NearbyBuyersPage';
 import OtherCompanyDistributionPage from './pages/OtherCompanyDistributionPage';
@@ -262,6 +263,14 @@ function App() {
         element={
           <ProtectedRoute>
             <SharedItemsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/shared-items/new"
+        element={
+          <ProtectedRoute>
+            <NewSharedItemPage />
           </ProtectedRoute>
         }
       />
