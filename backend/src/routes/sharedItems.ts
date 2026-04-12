@@ -68,6 +68,7 @@ router.get('/staff', async (req: Request, res: Response) => {
       .from('employees')
       .select('name, initials, is_active')
       .eq('is_active', true)
+      .neq('name', '')
       .order('name');
 
     if (error) {
