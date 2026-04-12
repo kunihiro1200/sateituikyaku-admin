@@ -15,6 +15,7 @@
 
 - [ ] 3. Fix BuyerSync.gs sync error and verify end-to-end
   - [x] 3.1 BuyerSync.gs の PATCH → バルクPOST upsert 変更済み（コミット: 986fbbd2）
+  - [ ] 3.1b `buyer_row_hashes` が PropertiesService の9KB上限を超えるエラーを修正する（分割保存方式に変更）
   - [ ] 3.2 `syncBuyers()` を実行し、買主7340・7342がDBに登録されることを確認する（GASのURL取得上限リセット後に実施）
   - [ ] 3.3 DB登録後、サイドバーの「当日TEL」が5件→3件に修正されることを確認する（7326・7327・7342の3件）
   - [ ] 3.4 サイドバーの「当日TEL」をクリックした際に一覧が3件表示されることを確認する

@@ -234,6 +234,71 @@ var BUYER_TYPE_CONVERSIONS = {
 // ハッシュ差分検知ユーティリティ
 // ============================================================
 
+// PropertiesServiceの1プロパティあたり9KB上限対策：分割保存
+var BUYER_HASH_KEY_PREFIX = 'buyer_row_hashes_';
+var BUYER_HASH_CHUNK_SIZE = 500; // 1チャンクあたりの買主数
+
+/**
+ * 分割保存されたハッシュを全チャンク読み込んでマージして返す
+ */
+function buyerLoadRowHashes_(props) {
+  var merged = {};
+  var chunkIndex = 0;
+  while (true) {
+    var key = BUYER_HASH_KEY_PREFIX + chunkIndex;
+    var json = props.getProperty(key);
+    if (!json) break;
+    try {
+      var chunk = JSON.parse(json);
+      var keys = Object.keys(chunk);
+      for (var i = 0; i < keys.length; i++) {
+        merged[keys[i]] = chunk[keys[i]];
+      }
+    } catch (e) {
+      Logger.log('ハッシュ読み込みエラー (chunk ' + chunkIndex + '): ' + e.toString());
+    }
+    chunkIndex++;
+  }
+  // 旧形式（単一キー）からの移行
+  var legacyJson = props.getProperty('buyer_row_hashes');
+  if (legacyJson) {
+    try {
+      var legacy = JSON.parse(legacyJson);
+      var legacyKeys = Object.keys(legacy);
+      for (var j = 0; j < legacyKeys.length; j++) {
+        if (!merged[legacyKeys[j]]) merged[legacyKeys[j]] = legacy[legacyKeys[j]];
+      }
+      props.deleteProperty('buyer_row_hashes');
+      Logger.log('旧形式ハッシュを移行しました（' + legacyKeys.length + '件）');
+    } catch (e) {}
+  }
+  return merged;
+}
+
+/**
+ * ハッシュをチャンク分割してPropertiesServiceに保存する
+ */
+function buyerSaveRowHashes_(props, hashes) {
+  var keys = Object.keys(hashes);
+  var chunkIndex = 0;
+  for (var i = 0; i < keys.length; i += BUYER_HASH_CHUNK_SIZE) {
+    var chunk = {};
+    var end = Math.min(i + BUYER_HASH_CHUNK_SIZE, keys.length);
+    for (var j = i; j < end; j++) {
+      chunk[keys[j]] = hashes[keys[j]];
+    }
+    props.setProperty(BUYER_HASH_KEY_PREFIX + chunkIndex, JSON.stringify(chunk));
+    chunkIndex++;
+  }
+  // 余分な古いチャンクを削除
+  while (true) {
+    var oldKey = BUYER_HASH_KEY_PREFIX + chunkIndex;
+    if (!props.getProperty(oldKey)) break;
+    props.deleteProperty(oldKey);
+    chunkIndex++;
+  }
+}
+
 /**
  * 行データのハッシュ文字列を生成（差分検知用）
  * 全カラムの値を結合して前回との比較に使用する
@@ -280,9 +345,7 @@ function syncBuyers() {
 
     // ハッシュ差分検知: 変更行のみ抽出
     var props = PropertiesService.getScriptProperties();
-    var hashKey = 'buyer_row_hashes';
-    var storedJson = props.getProperty(hashKey);
-    var prevHashes = storedJson ? JSON.parse(storedJson) : {};
+    var prevHashes = buyerLoadRowHashes_(props);
     var newHashes = {};
 
     var records = [];
@@ -379,7 +442,7 @@ function syncBuyers() {
     }
 
     // ハッシュを保存（次回の差分検知に使用）
-    props.setProperty(hashKey, JSON.stringify(newHashes));
+    buyerSaveRowHashes_(props, newHashes);
 
     // 変更があった場合のみサイドバーカウントを再計算
     if (sidebarUpdateNeeded) {
@@ -599,6 +662,16 @@ function syncSingleBuyer(buyerNumber) {
  * 実行後の次回syncBuyers()で全行が差分ありとみなされupsertされる
  */
 function buyerResetRowHashCache() {
-  PropertiesService.getScriptProperties().deleteProperty('buyer_row_hashes');
+  var props = PropertiesService.getScriptProperties();
+  // 旧形式
+  props.deleteProperty('buyer_row_hashes');
+  // 新形式（チャンク分割）
+  var chunkIndex = 0;
+  while (true) {
+    var key = BUYER_HASH_KEY_PREFIX + chunkIndex;
+    if (!props.getProperty(key)) break;
+    props.deleteProperty(key);
+    chunkIndex++;
+  }
   Logger.log('✅ ハッシュキャッシュをリセットしました。次回同期で全件再同期されます。');
 }
