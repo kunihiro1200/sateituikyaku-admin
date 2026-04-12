@@ -22,6 +22,7 @@ import {
   getTodayString,
   SHARING_LOCATIONS,
   CATEGORIES,
+  uploadFileToStorage,
 } from '../utils/sharedItemFormUtils';
 
 interface NewSharedItemFormProps {
@@ -133,13 +134,7 @@ export default function NewSharedItemForm({ onSaved, onCancel }: NewSharedItemFo
   };
 
   const uploadFile = async (uploadedFile: UploadedFile, type: 'pdf' | 'image'): Promise<string> => {
-    const formData = new FormData();
-    formData.append('file', uploadedFile.file);
-    formData.append('type', type);
-    const response = await api.post('/api/shared-items/upload', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
-    return response.data.url;
+    return await uploadFileToStorage(uploadedFile.file, type);
   };
 
   const handleSave = async () => {

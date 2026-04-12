@@ -1,6 +1,32 @@
 /**
  * 共有ページ新規作成フォーム用ユーティリティ関数
  */
+import { supabase } from '../config/supabase';
+
+/**
+ * Supabase Storageに直接ファイルをアップロードして公開URLを返す
+ * バックエンド経由ではなくフロントエンドから直接アップロードすることで
+ * Vercelの4.5MBボディサイズ制限を回避する
+ */
+export async function uploadFileToStorage(file: File, type: 'pdf' | 'image'): Promise<string> {
+  const folder = type === 'pdf' ? 'pdfs' : 'images';
+  const timestamp = Date.now();
+  const filePath = `${folder}/${timestamp}_${file.name}`;
+
+  const { error } = await supabase.storage
+    .from('shared-items')
+    .upload(filePath, file, {
+      contentType: file.type,
+      upsert: false,
+    });
+
+  if (error) {
+    throw new Error(`ファイルのアップロードに失敗しました: ${error.message}`);
+  }
+
+  const { data } = supabase.storage.from('shared-items').getPublicUrl(filePath);
+  return data.publicUrl;
+}
 
 /**
  * 既存エントリーの最大IDに1を加算した次のIDを返す

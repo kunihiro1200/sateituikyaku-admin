@@ -20,6 +20,7 @@ import {
 import api from '../services/api';
 import { SECTION_COLORS } from '../theme/sectionColors';
 import { pageDataCache, CACHE_KEYS } from '../store/pageDataCache';
+import { uploadFileToStorage } from '../utils/sharedItemFormUtils';
 
 interface SharedItem {
   id: string;
@@ -98,13 +99,7 @@ export default function SharedItemDetailPage() {
   };
 
   const uploadFile = async (newFile: NewFile, type: 'pdf' | 'image'): Promise<string> => {
-    const formData = new FormData();
-    formData.append('file', newFile.file);
-    formData.append('type', type);
-    const response = await api.post('/api/shared-items/upload', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
-    return response.data.url;
+    return await uploadFileToStorage(newFile.file, type);
   };
 
   const handleSave = async () => {
