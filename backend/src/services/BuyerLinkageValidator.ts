@@ -48,7 +48,7 @@ export class BuyerLinkageValidator {
       const { count, error: dbError } = await this.supabase
         .from('buyers')
         .select('*', { count: 'exact', head: true })
-        .ilike('property_number', `%${propertyNumber}%`);
+        .eq('property_number', propertyNumber);
 
       if (dbError) {
         errors.push(`Database error: ${dbError.message}`);
@@ -134,7 +134,7 @@ export class BuyerLinkageValidator {
       const { data, error } = await this.supabase
         .from('buyers')
         .select('*')
-        .ilike('property_number', `%${propertyNumber}%`);
+        .eq('property_number', propertyNumber);
 
       if (error) {
         issues.push(`Failed to fetch buyers: ${error.message}`);

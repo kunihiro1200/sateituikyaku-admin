@@ -478,7 +478,7 @@ export class BuyerService {
     const { data, error } = await this.supabase
       .from('buyers')
       .select('*')
-      .ilike('property_number', `%${propertyNumber}%`);
+      .eq('property_number', propertyNumber);
 
     if (error) {
       throw new Error(`Failed to fetch buyers by property: ${error.message}`);

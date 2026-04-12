@@ -110,7 +110,7 @@ export class BuyerLinkageService {
           viewing_time,
           next_call_date
         `)
-        .ilike('property_number', `%${propertyNumber}%`)
+        .eq('property_number', propertyNumber)
         .is('deleted_at', null)
         .order(sortBy, { ascending: sortOrder === 'asc' });
 
@@ -178,7 +178,7 @@ export class BuyerLinkageService {
       const { count, error } = await this.supabase
         .from('buyers')
         .select('*', { count: 'exact', head: true })
-        .ilike('property_number', `%${propertyNumber}%`)
+        .eq('property_number', propertyNumber)
         .is('deleted_at', null);  // 削除済み買主を除外
 
       if (error) {
@@ -200,7 +200,7 @@ export class BuyerLinkageService {
       const { count, error } = await this.supabase
         .from('buyers')
         .select('*', { count: 'exact', head: true })
-        .ilike('property_number', `%${propertyNumber}%`)
+        .eq('property_number', propertyNumber)
         .in('inquiry_confidence', ['A', 'S', 'A+', 'S+'])
         .is('deleted_at', null);  // 削除済み買主を除外
 
