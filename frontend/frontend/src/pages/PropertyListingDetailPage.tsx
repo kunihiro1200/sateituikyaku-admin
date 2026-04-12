@@ -68,6 +68,7 @@ import { pageDataCache, CACHE_KEYS } from '../store/pageDataCache';
 import ChatHistorySection from '../components/ChatHistorySection';
 import SellerSendHistory from '../components/SellerSendHistory';
 import { fetchChatHistory } from '../services/chatHistoryService';
+import { generateSmsBody, smsTemplates, SmsTemplateId } from '../utils/smsTemplates';
 import { ChatHistoryItem } from '../types/chatHistory';
 
 interface PropertyListing {
@@ -284,6 +285,14 @@ export default function PropertyListingDetailPage() {
   const [showImageSelector, setShowImageSelector] = useState(false);
   const [senderAddress, setSenderAddress] = useState<string>(getSenderAddress());
   const [activeEmployees, setActiveEmployees] = useState<any[]>([]);
+
+  // SMS送信テンプレート関連
+  const [smsTemplateMenuAnchor, setSmsTemplateMenuAnchor] = useState<null | HTMLElement>(null);
+  const [smsDialog, setSmsDialog] = useState<{
+    open: boolean;
+    body: string;
+    templateName: string;
+  }>({ open: false, body: '', templateName: '' });
 
   // 確認フィールド関連の状態
   const [confirmation, setConfirmation] = useState<'未' | '済' | null>(null);
@@ -799,6 +808,43 @@ export default function PropertyListingDetailPage() {
     setEmailDialog({ open: true, subject, body, recipient: data.seller_email });
   };
 
+  // SMSテンプレート選択ハンドラ
+  const handleSelectSmsTemplate = (templateId: SmsTemplateId) => {
+    const template = smsTemplates.find(t => t.id === templateId)!;
+    const body = generateSmsBody(templateId, {
+      sellerName: data?.seller_name,
+      address: data?.display_address || data?.address,
+    });
+    setSmsDialog({ open: true, body, templateName: template.name });
+    setSmsTemplateMenuAnchor(null);
+  };
+
+  // SMS送信実行ハンドラ
+  const handleSendSms = async () => {
+    const phone = data?.seller_contact;
+    if (!phone) return;
+
+    // SMSアプリを起動（要件3.1）
+    window.location.href = `sms:${phone}?body=${encodeURIComponent(smsDialog.body)}`;
+
+    // 送信履歴を保存（要件3.2）
+    try {
+      await propertyListingApi.saveSellerSendHistory(propertyNumber!, {
+        chat_type: 'seller_sms',
+        subject: smsDialog.templateName,
+        message: smsDialog.body,
+        sender_name: employee?.name || employee?.initials || '不明',
+      });
+      // 送信履歴表示を最新化（要件3.4）
+      setSellerSendHistoryRefreshTrigger(prev => prev + 1);
+    } catch (error) {
+      // 履歴保存失敗時はコンソールに記録し、SMS送信自体は成功として扱う（要件3.3）
+      console.error('SMS送信履歴の保存に失敗しました:', error);
+    }
+
+    setSmsDialog({ open: false, body: '', templateName: '' });
+  };
+
   // 物件テンプレートを選択してプレースホルダー置換後にダイアログを開く
   const handleSelectPropertyEmailTemplate = async (templateId: string) => {
     setTemplateMenuAnchor(null);
@@ -1216,36 +1262,38 @@ export default function PropertyListingDetailPage() {
                   </>
                 )}
                 {data.seller_contact && (
-                  <Button
-                    variant="outlined"
-                    size="small"
-                    onClick={async () => {
-                      window.location.href = `sms:${data.seller_contact}`;
-                      // SMS送信履歴を保存（非同期・非ブロッキング）
-                      try {
-                        await propertyListingApi.saveSellerSendHistory(propertyNumber!, {
-                          chat_type: 'seller_sms',
-                          subject: '',
-                          message: 'SMS送信',
-                          sender_name: employee?.name || employee?.initials || '不明',
-                        });
-                        setSellerSendHistoryRefreshTrigger(prev => prev + 1);
-                      } catch (err) {
-                        console.error('[SMS送信履歴] 保存に失敗しました:', err);
-                      }
-                    }}
-                    startIcon={<SmsIcon fontSize="small" />}
-                    sx={{
-                      borderColor: '#2e7d32',
-                      color: '#2e7d32',
-                      '&:hover': {
-                        borderColor: '#1b5e20',
-                        backgroundColor: '#2e7d3208',
-                      },
-                    }}
-                  >
-                    SMS
-                  </Button>
+                  <>
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      onClick={(e) => {
+                        setSmsTemplateMenuAnchor(e.currentTarget);
+                      }}
+                      startIcon={<SmsIcon fontSize="small" />}
+                      endIcon={<ArrowDropDownIcon fontSize="small" />}
+                      sx={{
+                        borderColor: '#2e7d32',
+                        color: '#2e7d32',
+                        '&:hover': {
+                          borderColor: '#1b5e20',
+                          backgroundColor: '#2e7d3208',
+                        },
+                      }}
+                    >
+                      SMS送信
+                    </Button>
+                    <Menu
+                      anchorEl={smsTemplateMenuAnchor}
+                      open={Boolean(smsTemplateMenuAnchor)}
+                      onClose={() => setSmsTemplateMenuAnchor(null)}
+                    >
+                      {smsTemplates.map((tmpl) => (
+                        <MenuItem key={tmpl.id} onClick={() => handleSelectSmsTemplate(tmpl.id)}>
+                          {tmpl.name}
+                        </MenuItem>
+                      ))}
+                    </Menu>
+                  </>
                 )}
                 <Button
                   variant="outlined"
@@ -2780,6 +2828,32 @@ export default function PropertyListingDetailPage() {
           <Button onClick={() => setSalesContractUrlDialog(false)}>閉じる</Button>
         </DialogActions>
       </Dialog>
+      {/* SMS送信確認ダイアログ */}
+      <Dialog open={smsDialog.open} onClose={() => setSmsDialog(prev => ({ ...prev, open: false }))} maxWidth="sm" fullWidth>
+        <DialogTitle>SMS送信確認</DialogTitle>
+        <DialogContent>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
+            <TextField
+              label="SMS本文"
+              value={smsDialog.body}
+              onChange={(e) => setSmsDialog(prev => ({ ...prev, body: e.target.value }))}
+              fullWidth
+              multiline
+              rows={6}
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setSmsDialog({ open: false, body: '', templateName: '' })}>キャンセル</Button>
+          <Button
+            variant="contained"
+            onClick={handleSendSms}
+          >
+            送信
+          </Button>
+        </DialogActions>
+      </Dialog>
+
       {/* メール送信ダイアログ */}
       <Dialog open={emailDialog.open} onClose={() => setEmailDialog(prev => ({ ...prev, open: false }))} maxWidth="md" fullWidth>
         <DialogTitle>メール送信</DialogTitle>
