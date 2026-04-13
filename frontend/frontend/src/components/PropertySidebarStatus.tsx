@@ -271,13 +271,13 @@ export default function PropertySidebarStatus({
 
   return (
     <>
-      <Paper elevation={0} sx={{ width: 210, flexShrink: 0, border: 'none' }}>
+      <Paper elevation={0} sx={{ width: 210, flexShrink: 0, border: 'none', borderBottom: 'none', outline: 'none' }}>
         <Box sx={{ p: 1.5, borderBottom: '1px solid #eee' }}>
           <Typography variant="h6" fontWeight="bold" sx={{ fontSize: '1rem' }}>
             カテゴリー
           </Typography>
         </Box>
-        <List dense sx={{ maxHeight: 'calc(100vh - 200px)', overflow: 'auto' }}>
+        <List dense sx={{ maxHeight: 'calc(100vh - 200px)', overflow: 'auto', border: 'none', pb: 0 }}>
           {statusList.map((item) => {
             if (item.isDivider) {
               return (
