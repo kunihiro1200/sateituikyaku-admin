@@ -33,25 +33,38 @@ export function hasPropertyOfferStatus(
 
 /**
  * 買付状況テキストを返す。
- * 条件1（latest_status に「買」を含む）が優先。
+ * 両方のステータスが存在する場合は更新日時が新しい方を優先する。
+ * タイムスタンプがない場合は offer_status を優先する（より最近の操作と推定）。
  * どちらも成立しない場合は null を返す。
  *
  * @param latestStatus 買主の最新状況
  * @param offerStatus 物件の買付フィールド
+ * @param latestStatusUpdatedAt 買主 latest_status の更新日時（ISO8601）
+ * @param offerStatusUpdatedAt 物件 offer_status の更新日時（ISO8601）
  * @returns 買付状況テキスト、または null
  */
 export function getPurchaseStatusText(
   latestStatus: string | null | undefined,
-  offerStatus: string | null | undefined
+  offerStatus: string | null | undefined,
+  latestStatusUpdatedAt?: string | null,
+  offerStatusUpdatedAt?: string | null
 ): string | null {
-  // 条件1: latest_status に「買」が含まれる場合
-  if (hasBuyerPurchaseStatus(latestStatus)) {
-    return latestStatus as string;
-  }
-  // 条件2: offer_status に空でない値がある場合
-  if (hasPropertyOfferStatus(offerStatus)) {
+  const hasBuyer = hasBuyerPurchaseStatus(latestStatus);
+  const hasOffer = hasPropertyOfferStatus(offerStatus);
+
+  // 両方存在する場合: 更新日時が新しい方を優先
+  if (hasBuyer && hasOffer) {
+    if (latestStatusUpdatedAt && offerStatusUpdatedAt) {
+      return latestStatusUpdatedAt > offerStatusUpdatedAt
+        ? (latestStatus as string)
+        : (offerStatus as string);
+    }
+    // タイムスタンプがない場合は offer_status を優先（より最近の操作と推定）
     return offerStatus as string;
   }
-  // どちらも不成立
+
+  // 片方のみ存在する場合
+  if (hasBuyer) return latestStatus as string;
+  if (hasOffer) return offerStatus as string;
   return null;
 }

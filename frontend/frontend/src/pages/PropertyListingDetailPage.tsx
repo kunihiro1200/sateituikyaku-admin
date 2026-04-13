@@ -130,6 +130,7 @@ interface PropertyListing {
   offer_status?: string;
   offer_amount?: string;
   offer_comment?: string;
+  offer_status_updated_at?: string;
   company_name?: string;
   image_url?: string;
   pdf_url?: string;
@@ -177,6 +178,7 @@ interface Buyer {
   reception_date?: string;
   viewing_date?: string;
   latest_status?: string;
+  latest_status_updated_at?: string;
 }
 
 interface WorkTaskData {
@@ -1308,7 +1310,9 @@ export default function PropertyListingDetailPage() {
               <PurchaseStatusBadge
                 statusText={getPurchaseStatusText(
                   buyers.find(b => hasBuyerPurchaseStatus(b.latest_status))?.latest_status,
-                  data.offer_status
+                  data.offer_status,
+                  buyers.find(b => hasBuyerPurchaseStatus(b.latest_status))?.latest_status_updated_at,
+                  data.offer_status_updated_at
                 )}
               />
             </Box>
