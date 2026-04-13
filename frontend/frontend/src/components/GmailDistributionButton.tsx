@@ -254,7 +254,13 @@ export default function GmailDistributionButton({
         selectedTemplate,
         {
           propertyNumber: propertyNumber,
-          address: propertyAddress || ''
+          address: propertyAddress || '',
+          publicUrl: publicUrl || '',
+          priceChangeText: generatePriceChangeText(),
+          signature: SIGNATURE,
+          buyerName: buyerName,
+          propertyType: propertyType || '',
+          price: getPriceText()
         },
         selectedBuyers.map(b => b.email),
         senderAddress,
