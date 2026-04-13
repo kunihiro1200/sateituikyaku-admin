@@ -169,97 +169,28 @@ export class EmailTemplateService {
    * 物件詳細画面のEmail送信ボタン向け
    */
   async getPropertyNonReportTemplates(): Promise<EmailTemplate[]> {
-    try {
-      const client = new GoogleSheetsClient({
-        spreadsheetId: TEMPLATE_SPREADSHEET_ID,
-        sheetName: TEMPLATE_SHEET_NAME,
-        serviceAccountKeyPath: process.env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH,
-      });
-      await client.authenticate();
-
-      const sheetsInstance = (client as any).sheets;
-      const response = await sheetsInstance.spreadsheets.values.get({
-        spreadsheetId: TEMPLATE_SPREADSHEET_ID,
-        range: `${TEMPLATE_SHEET_NAME}!C:F`,
-      });
-
-      const rows: any[][] = response.data.values || [];
-      const templates: EmailTemplate[] = [];
-
-      for (let i = 1; i < rows.length; i++) {
-        const row = rows[i];
-        const category = (row[0] || '').toString().trim(); // C列: 区分
-        const type = (row[1] || '').toString().trim();     // D列: 種別
-        const subject = (row[2] || '').toString().trim();  // E列: 件名
-        const body = (row[3] || '').toString().trim();     // F列: 本文
-
-        // 区分が「物件」かつ種別に「報告」を含まない行のみ対象
-        if (category !== '物件' || !type || type.includes('報告')) continue;
-
-        templates.push({
-          id: `property_sheet_${i}`,
-          name: type,
-          description: type,
-          subject,
-          body,
-          placeholders: [],
-        });
-      }
-
-      console.log(`[EmailTemplateService] 物件（非報告）テンプレート ${templates.length}件取得`);
-      return templates;
-    } catch (error: any) {
-      console.error('[EmailTemplateService] 物件（非報告）テンプレート取得失敗:', error.message);
-      throw error;
+    // キャッシュがあればそこから返す（getSellerTemplates と共有キャッシュ）
+    if (_templatesCache && Date.now() < _templatesCache.expiresAt) {
+      console.log('[EmailTemplateService] キャッシュから物件（非報告）テンプレートを返します');
+      return _templatesCache.data.filter(t => t.id.startsWith('property_') && !t.name.includes('報告'));
     }
+    // キャッシュがない場合は getSellerTemplates を呼んでキャッシュを作成してから返す
+    await this.getSellerTemplates();
+    return (_templatesCache?.data || []).filter(t => t.id.startsWith('property_') && !t.name.includes('報告'));
   }
 
   /**
    * スプレッドシートから物件用テンプレートを取得（区分=「物件」）
    */
   async getPropertyTemplates(): Promise<EmailTemplate[]> {
-    try {
-      const client = new GoogleSheetsClient({
-        spreadsheetId: TEMPLATE_SPREADSHEET_ID,
-        sheetName: TEMPLATE_SHEET_NAME,
-        serviceAccountKeyPath: process.env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH,
-      });
-      await client.authenticate();
-
-      const sheetsInstance = (client as any).sheets;
-      const response = await sheetsInstance.spreadsheets.values.get({
-        spreadsheetId: TEMPLATE_SPREADSHEET_ID,
-        range: `${TEMPLATE_SHEET_NAME}!C:F`,
-      });
-
-      const rows: any[][] = response.data.values || [];
-      const templates: EmailTemplate[] = [];
-
-      for (let i = 1; i < rows.length; i++) {
-        const row = rows[i];
-        const category = (row[0] || '').toString().trim();
-        const type = (row[1] || '').toString().trim();
-        const subject = (row[2] || '').toString().trim();
-        const body = (row[3] || '').toString().trim();
-
-        if (category !== '物件' || !type) continue;
-
-        templates.push({
-          id: `property_sheet_${i}`,
-          name: type,
-          description: type,
-          subject,
-          body,
-          placeholders: [],
-        });
-      }
-
-      console.log(`[EmailTemplateService] 物件テンプレート ${templates.length}件取得`);
-      return templates;
-    } catch (error: any) {
-      console.error('[EmailTemplateService] 物件テンプレート取得失敗:', error.message);
-      throw error;
+    // キャッシュがあればそこから返す（getSellerTemplates と共有キャッシュ）
+    if (_templatesCache && Date.now() < _templatesCache.expiresAt) {
+      console.log('[EmailTemplateService] キャッシュから物件テンプレートを返します');
+      return _templatesCache.data.filter(t => t.id.startsWith('property_'));
     }
+    // キャッシュがない場合は getSellerTemplates を呼んでキャッシュを作成してから返す
+    await this.getSellerTemplates();
+    return (_templatesCache?.data || []).filter(t => t.id.startsWith('property_'));
   }
 
   /**
