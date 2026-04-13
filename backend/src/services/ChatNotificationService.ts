@@ -299,8 +299,7 @@ ${data.notes || '物件紹介文が入力されていません'}
   private async sendToGoogleChat(message: string): Promise<boolean> {
     try {
       if (!this.webhookUrl) {
-        console.warn('Google Chat webhook URL not configured');
-        return false;
+        throw new Error('Google Chat webhook URL is not configured (GOOGLE_CHAT_WEBHOOK_URL)');
       }
 
       const response = await axios.post(this.webhookUrl, {
