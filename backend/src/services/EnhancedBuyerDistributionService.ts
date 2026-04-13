@@ -941,8 +941,8 @@ export class EnhancedBuyerDistributionService {
         continue;
       }
 
-      // 2. "X万円～Y万円" or "X～Y万円" or "～X万円" or "～X" - range or max-only with tilde
-      const rangeMatch = priceRangeText.match(/(\d+)(?:万円)?[～~](\d+)(?:万円)?/);
+      // 2. "X万円～Y万円" or "X万～Y万" or "X～Y万円" or "～X万円" or "～X" - range or max-only with tilde
+      const rangeMatch = priceRangeText.match(/(\d+)(?:万円?)?[～~](\d+)(?:万円?)?/);
       if (rangeMatch) {
         const minPrice = parseInt(rangeMatch[1]) * 10000;
         const maxPrice = parseInt(rangeMatch[2]) * 10000;
