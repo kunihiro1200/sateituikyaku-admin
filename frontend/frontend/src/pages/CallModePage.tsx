@@ -2797,9 +2797,11 @@ HP：https://ifoo-oita.com/
     result = result.replace(/<<査定額2>>/g, amount2.toString());
     result = result.replace(/<<査定額3>>/g, amount3.toString());
     
-    // 土地・建物面積
-    result = result.replace(/<<土（㎡）>>/g, property.landArea?.toString() || '');
-    result = result.replace(/<<建（㎡）>>/g, property.buildingArea?.toString() || '');
+    // 土地・建物面積（「当社調べ」があれば優先）
+    const _landAreaForTemplate = editedLandAreaVerified || editedLandArea || property.landArea?.toString() || '';
+    const _buildingAreaForTemplate = editedBuildingAreaVerified || editedBuildingArea || property.buildingArea?.toString() || '';
+    result = result.replace(/<<土（㎡）>>/g, _landAreaForTemplate);
+    result = result.replace(/<<建（㎡）>>/g, _buildingAreaForTemplate);
     
     // 築年情報（条件付きロジック）
     // 物件種別が「戸建て」AND（築年が空 OR 築年≤0）の場合のみメッセージを表示
