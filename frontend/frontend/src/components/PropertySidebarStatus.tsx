@@ -271,7 +271,7 @@ export default function PropertySidebarStatus({
 
   return (
     <>
-      <Paper sx={{ width: 210, flexShrink: 0 }}>
+      <Paper sx={{ width: 210, flexShrink: 0, boxShadow: 'none', border: 'none' }}>
         <Box sx={{ p: 1.5, borderBottom: '1px solid #eee' }}>
           <Typography variant="h6" fontWeight="bold" sx={{ fontSize: '1rem' }}>
             カテゴリー

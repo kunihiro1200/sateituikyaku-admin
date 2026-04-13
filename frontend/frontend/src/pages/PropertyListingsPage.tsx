@@ -275,12 +275,12 @@ export default function PropertyListingsPage() {
           const normalizedSidebarStatus = sidebarStatus.replace(/\s+/g, '');
           return normalizedStatusLabel === normalizedSidebarStatus;
         });
-      } else if (['Y専任公開中', '生・専任公開中', '久・専任公開中', 'U専任公開中', '林・専任公開中', 'K専任公開中', 'R専任公開中', 'I専任公開中'].includes(sidebarStatus)) {
+      } else if (['Y専任公開中', '生・専任公開中', '久・専任公開中', 'U専任公開中', '林・専任公開中', '林専任公開中', 'K専任公開中', 'R専任公開中', 'I専任公開中'].includes(sidebarStatus)) {
         // 担当者別専任公開中：sidebar_statusが一致するか、古いデータ('専任・公開中')でsales_assigneeが一致するものを含む
         const assigneeMap: Record<string, string> = {
           'Y専任公開中': '山本', '生・専任公開中': '生野', '久・専任公開中': '久',
           'U専任公開中': '裏', '林・専任公開中': '林', 'K専任公開中': '国広',
-          'R専任公開中': '木村', 'I専任公開中': '角井',
+          '林専任公開中': '林田', 'R専任公開中': '木村', 'I専任公開中': '角井',
         };
         const targetAssignee = assigneeMap[sidebarStatus];
         listings = listings.filter(l =>
