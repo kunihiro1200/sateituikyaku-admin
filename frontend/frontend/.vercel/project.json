@@ -1,5 +1,16 @@
 {
   "projectId": "prj_rAAuoDlz3haea5F75qnMx7UvIBJO",
   "orgId": "team_6iuG8GaBHjRxtJXxYMLZSd5h",
-  "projectName": "sateituikyaku-admin-frontend"
+  "projectName": "sateituikyaku-admin-frontend",
+  "settings": {
+    "createdAt": 1771913373489,
+    "framework": "vite",
+    "devCommand": null,
+    "installCommand": "npm install",
+    "buildCommand": "npm run build",
+    "outputDirectory": "dist",
+    "rootDirectory": null,
+    "directoryListing": false,
+    "nodeVersion": "24.x"
+  }
 }

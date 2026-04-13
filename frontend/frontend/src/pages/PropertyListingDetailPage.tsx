@@ -232,6 +232,7 @@ export default function PropertyListingDetailPage() {
   const [isFrequentlyAskedEditMode, setIsFrequentlyAskedEditMode] = useState(false);
   const [isViewingInfoEditMode, setIsViewingInfoEditMode] = useState(false);
   const [isSellerBuyerEditMode, setIsSellerBuyerEditMode] = useState(false);
+  const [isOfferEditMode, setIsOfferEditMode] = useState(false);
   
   const [salesContractDialog, setSalesContractDialog] = useState(false);
   const [salesContractUrlDialog, setSalesContractUrlDialog] = useState(false);
@@ -617,6 +618,33 @@ export default function PropertyListingDetailPage() {
   const handleCancelSellerBuyer = () => {
     setEditedData({});
     setIsSellerBuyerEditMode(false);
+  };
+
+  const handleSaveOffer = async () => {
+    if (!propertyNumber || Object.keys(editedData).length === 0) return;
+    try {
+      await api.put(`/api/property-listings/${propertyNumber}`, editedData);
+      setSnackbar({
+        open: true,
+        message: '買付情報を保存しました',
+        severity: 'success',
+      });
+      setIsOfferEditMode(false);
+      await fetchPropertyData();
+      setEditedData({});
+    } catch (error) {
+      setSnackbar({
+        open: true,
+        message: '保存に失敗しました',
+        severity: 'error',
+      });
+      throw error;
+    }
+  };
+
+  const handleCancelOffer = () => {
+    setEditedData({});
+    setIsOfferEditMode(false);
   };
 
   const handleSaveNotes = async () => {
@@ -2721,38 +2749,132 @@ export default function PropertyListingDetailPage() {
             </Box>
           </Box>
 
-          {/* 7. 買付情報（全幅・条件付き表示） */}
-          {(data.offer_date || data.offer_status || data.offer_amount) && (
-            <Box sx={{ mb: 2, p: 2, bgcolor: '#fff3e0', borderRadius: 2, border: '1px solid #ffb74d' }}>
-              <Paper sx={{ p: 1 }}>
-                <Box sx={{ mb: 1, pb: 0.5, borderBottom: `1px solid ${SECTION_COLORS.property.main}` }}>
-                  <Typography variant="subtitle2" fontWeight="bold" sx={{ color: SECTION_COLORS.property.main }}>買付情報</Typography>
-                </Box>
-                <Grid container spacing={0.5}>
-                  <Grid item xs={6}>
-                    <Typography variant="caption" color="text.secondary">買付日</Typography>
+          {/* 7. 買付情報（全幅・常時表示・EditableSection） */}
+          <Box sx={{ mb: 2, p: 2, bgcolor: '#fff3e0', borderRadius: 2, border: '1px solid #ffb74d' }}>
+            <EditableSection
+              title="買付情報"
+              isEditMode={isOfferEditMode}
+              onEditToggle={() => setIsOfferEditMode(true)}
+              onSave={handleSaveOffer}
+              onCancel={handleCancelOffer}
+              hasChanges={Object.keys(editedData).length > 0}
+            >
+              <Grid container spacing={0.5}>
+                <Grid item xs={6}>
+                  <Typography variant="body2" sx={{ fontWeight: 400, fontSize: '0.7rem', color: 'text.secondary', mb: 0 }}>買付日</Typography>
+                  {isOfferEditMode ? (
+                    <TextField
+                      fullWidth
+                      size="small"
+                      type="date"
+                      value={editedData.offer_date !== undefined ? editedData.offer_date : (data?.offer_date ?? '')}
+                      onChange={(e) => handleFieldChange('offer_date', e.target.value)}
+                      InputLabelProps={{ shrink: true }}
+                    />
+                  ) : (
                     <Typography variant="body2" sx={{ fontWeight: 600 }}>{data.offer_date || '-'}</Typography>
-                  </Grid>
-                  <Grid item xs={6}>
-                    <Typography variant="caption" color="text.secondary">買付</Typography>
-                    <Typography variant="body2" sx={{ fontWeight: 600 }}>{data.offer_status || '-'}</Typography>
-                  </Grid>
-                  <Grid item xs={6}>
-                    <Typography variant="caption" color="text.secondary">金額</Typography>
-                    <Typography variant="body2" sx={{ fontWeight: 600 }}>{data.offer_amount || '-'}</Typography>
-                  </Grid>
-                  <Grid item xs={6}>
-                    <Typography variant="caption" color="text.secondary">会社名</Typography>
-                    <Typography variant="body2" sx={{ fontWeight: 600 }}>{data.company_name || '-'}</Typography>
-                  </Grid>
-                  <Grid item xs={12}>
-                    <Typography variant="caption" color="text.secondary">買付コメント</Typography>
-                    <Typography variant="body2" sx={{ fontWeight: 600 }}>{data.offer_comment || '-'}</Typography>
-                  </Grid>
+                  )}
                 </Grid>
-              </Paper>
-            </Box>
-          )}
+                <Grid item xs={6}>
+                  <Typography variant="body2" sx={{ fontWeight: 400, fontSize: '0.7rem', color: 'text.secondary', mb: 0 }}>買付</Typography>
+                  {isOfferEditMode ? (
+                    <FormControl fullWidth size="small">
+                      <Select
+                        value={editedData.offer_status !== undefined ? editedData.offer_status : (data?.offer_status ?? '')}
+                        onChange={(e) => handleFieldChange('offer_status', e.target.value)}
+                        displayEmpty
+                      >
+                        <MenuItem value="">-</MenuItem>
+                        <MenuItem value="一般片手">一般片手</MenuItem>
+                        <MenuItem value="専任片手">専任片手</MenuItem>
+                        <MenuItem value="専任両手">専任両手</MenuItem>
+                        <MenuItem value="一般両手">一般両手</MenuItem>
+                        <MenuItem value="一般他決">一般他決</MenuItem>
+                      </Select>
+                    </FormControl>
+                  ) : (
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>{data.offer_status || '-'}</Typography>
+                  )}
+                </Grid>
+                <Grid item xs={12}>
+                  <Typography variant="body2" sx={{ fontWeight: 400, fontSize: '0.7rem', color: 'text.secondary', mb: 0 }}>状況</Typography>
+                  {isOfferEditMode ? (
+                    <FormControl fullWidth size="small">
+                      <Select
+                        value={editedData.status !== undefined ? editedData.status : (data?.status ?? '')}
+                        onChange={(e) => handleFieldChange('status', e.target.value)}
+                        displayEmpty
+                      >
+                        <MenuItem value="">-</MenuItem>
+                        <MenuItem value="専任両手">専任両手</MenuItem>
+                        <MenuItem value="専任片手">専任片手</MenuItem>
+                        <MenuItem value="一般両手">一般両手</MenuItem>
+                        <MenuItem value="一般片手">一般片手</MenuItem>
+                        <MenuItem value="一般他決">一般他決</MenuItem>
+                        <MenuItem value="他社物件片手">他社物件片手</MenuItem>
+                        <MenuItem value="自社買取（リースバック）">自社買取（リースバック）</MenuItem>
+                        <MenuItem value="非公開→公開">非公開→公開</MenuItem>
+                        <MenuItem value="一般媒介解除">一般媒介解除</MenuItem>
+                        <MenuItem value="専任解除">専任解除</MenuItem>
+                        <MenuItem value="売止め">売止め</MenuItem>
+                        <MenuItem value="国広収益">国広収益</MenuItem>
+                        <MenuItem value="自社買取（転売）">自社買取（転売）</MenuItem>
+                        <MenuItem value="買取紹介（片手）">買取紹介（片手）</MenuItem>
+                        <MenuItem value="買取紹介（両手）">買取紹介（両手）</MenuItem>
+                        <MenuItem value="契約書作成済み">契約書作成済み</MenuItem>
+                        <MenuItem value="自社売主（元リースバック）">自社売主（元リースバック）</MenuItem>
+                        <MenuItem value="自社売主（元転売目的）">自社売主（元転売目的）</MenuItem>
+                        <MenuItem value="専任→一般媒介">専任→一般媒介</MenuItem>
+                      </Select>
+                    </FormControl>
+                  ) : (
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>{data.status || '-'}</Typography>
+                  )}
+                </Grid>
+                <Grid item xs={6}>
+                  <Typography variant="body2" sx={{ fontWeight: 400, fontSize: '0.7rem', color: 'text.secondary', mb: 0 }}>金額</Typography>
+                  {isOfferEditMode ? (
+                    <TextField
+                      fullWidth
+                      size="small"
+                      value={editedData.offer_amount !== undefined ? editedData.offer_amount : (data?.offer_amount ?? '')}
+                      onChange={(e) => handleFieldChange('offer_amount', e.target.value)}
+                    />
+                  ) : (
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>{data.offer_amount || '-'}</Typography>
+                  )}
+                </Grid>
+                <Grid item xs={6}>
+                  <Typography variant="body2" sx={{ fontWeight: 400, fontSize: '0.7rem', color: 'text.secondary', mb: 0 }}>会社名</Typography>
+                  {isOfferEditMode ? (
+                    <TextField
+                      fullWidth
+                      size="small"
+                      value={editedData.company_name !== undefined ? editedData.company_name : (data?.company_name ?? '')}
+                      onChange={(e) => handleFieldChange('company_name', e.target.value)}
+                    />
+                  ) : (
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>{data.company_name || '-'}</Typography>
+                  )}
+                </Grid>
+                <Grid item xs={12}>
+                  <Typography variant="body2" sx={{ fontWeight: 400, fontSize: '0.7rem', color: 'text.secondary', mb: 0 }}>買付コメント</Typography>
+                  {isOfferEditMode ? (
+                    <TextField
+                      fullWidth
+                      size="small"
+                      multiline
+                      rows={3}
+                      value={editedData.offer_comment !== undefined ? editedData.offer_comment : (data?.offer_comment ?? '')}
+                      onChange={(e) => handleFieldChange('offer_comment', e.target.value)}
+                    />
+                  ) : (
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>{data.offer_comment || '-'}</Typography>
+                  )}
+                </Grid>
+              </Grid>
+            </EditableSection>
+          </Box>
 
           {/* 8. 添付画像・資料（全幅） */}
           <Box sx={{ mb: 2, p: 2, bgcolor: '#f1f8e9', borderRadius: 2, border: '1px solid #aed581' }}>
