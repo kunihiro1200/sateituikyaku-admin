@@ -630,6 +630,23 @@ export class PropertyListingSyncService {
                   : null;
               }
 
+              // seller_nameのフォールバック保護:
+              // changedFieldsOnlyにseller_nameが含まれる場合、DBのowner_infoも参照してフォールバックを再適用
+              // （スプレッドシートのBL列マッピングが失敗した場合でも、DBのowner_infoを使って正しい値を保持）
+              if ('seller_name' in changedFieldsOnly) {
+                const ownerInfoFromSpreadsheet = mappedUpdates.owner_info;
+                if (!ownerInfoFromSpreadsheet) {
+                  // スプレッドシートからowner_infoが取得できない場合、DBから取得
+                  const { data: dbRecord } = await this.supabase
+                    .from('property_listings')
+                    .select('owner_info')
+                    .eq('property_number', update.property_number)
+                    .single();
+                  const dbOwnerInfo = dbRecord?.owner_info;
+                  changedFieldsOnly.seller_name = dbOwnerInfo || changedFieldsOnly.seller_name || null;
+                }
+              }
+
               // サイドバーステータスを計算して更新
               const sidebarStatus = this.calculateSidebarStatus(update.spreadsheet_data);
               changedFieldsOnly.sidebar_status = sidebarStatus;

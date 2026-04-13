@@ -1,6 +1,6 @@
 # Implementation Plan
 
-- [ ] 1. バグ条件の探索テストを作成する
+- [x] 1. バグ条件の探索テストを作成する
   - **Property 1: Bug Condition** - onSendSuccess に body が含まれないバグ
   - **CRITICAL**: このテストは修正前のコードで FAIL することが期待される — FAIL することでバグの存在が確認される
   - **DO NOT attempt to fix the test or the code when it fails**
@@ -17,7 +17,7 @@
   - テストを作成し、実行し、FAIL を記録したらタスク完了とする
   - _Requirements: 1.2_
 
-- [ ] 2. 保全プロパティテストを作成する（修正実装前に）
+- [x] 2. 保全プロパティテストを作成する（修正実装前に）
   - **Property 2: Preservation** - 既存の送信フローと履歴保存動作が変更されない
   - **IMPORTANT**: 観察優先メソドロジーに従う
   - 修正前のコードで非バグ条件の入力（通常メール送信、SMS送信、スナックバー表示など）の動作を観察する
@@ -32,9 +32,9 @@
   - テストを作成し、実行し、PASS を確認したらタスク完了とする
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5_
 
-- [ ] 3. onSendSuccess body フィールド欠落バグの修正
+- [x] 3. onSendSuccess body フィールド欠落バグの修正
 
-  - [ ] 3.1 修正を実装する
+  - [x] 3.1 修正を実装する
     - `frontend/frontend/src/components/GmailDistributionButton.tsx` を修正する
     - `GmailDistributionButtonProps` の `onSendSuccess` 型に `body: string` フィールドを追加する
     - `handleConfirmationConfirm` 内の `onSendSuccess` 呼び出しに `body: editedBody || replacePlaceholders(selectedTemplate.body, buyerName)` を追加する
@@ -46,7 +46,7 @@
     - _Preservation: スナックバー表示・chat_type保存・件名/送信者名/送信日時の保存・通常メール/SMSフロー・送信フローは変更しない_
     - _Requirements: 2.1, 2.2, 2.3_
 
-  - [ ] 3.2 バグ条件の探索テストが PASS することを確認する
+  - [x] 3.2 バグ条件の探索テストが PASS することを確認する
     - **Property 1: Expected Behavior** - onSendSuccess に body が含まれるようになった
     - **IMPORTANT**: タスク1で作成した同じテストを再実行する — 新しいテストを作成しない
     - タスク1のテストは期待される動作をエンコードしている
@@ -55,13 +55,13 @@
     - **EXPECTED OUTCOME**: テストが PASS する（バグが修正されたことを確認する）
     - _Requirements: 2.1, 2.2, 2.3_
 
-  - [ ] 3.3 保全テストが引き続き PASS することを確認する
+  - [x] 3.3 保全テストが引き続き PASS することを確認する
     - **Property 2: Preservation** - 既存の送信フローと履歴保存動作が変更されない
     - **IMPORTANT**: タスク2で作成した同じテストを再実行する — 新しいテストを作成しない
     - タスク2の保全プロパティテストを実行する
     - **EXPECTED OUTCOME**: テストが PASS する（リグレッションがないことを確認する）
     - 修正後も全テストが PASS することを確認する（リグレッションなし）
 
-- [ ] 4. チェックポイント — 全テストが PASS することを確認する
+- [x] 4. チェックポイント — 全テストが PASS することを確認する
   - 全テスト（バグ条件探索テスト・保全プロパティテスト）が PASS することを確認する
   - 疑問点があればユーザーに確認する
