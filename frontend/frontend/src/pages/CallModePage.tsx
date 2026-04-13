@@ -2778,7 +2778,7 @@ HP：https://ifoo-oita.com/
   };
 
   // Emailテンプレートのプレースホルダーを置換する関数
-  const replaceEmailPlaceholders = (text: string): string => {
+  const replaceEmailPlaceholders = (text: string, employeesOverride?: any[]): string => {
     if (!seller || !property) return text;
 
     let result = text;
@@ -2813,8 +2813,9 @@ HP：https://ifoo-oita.com/
     
     // 担当者情報（営業担当）
     // assignedTo（メール）→ visitAssignee（イニシャル）の順で担当者を特定
-    const assignedEmployee = employees.find(emp => emp.email === seller.assignedTo)
-      || employees.find(emp => emp.initials === seller.visitAssignee);
+    const _empList = employeesOverride || employees;
+    const assignedEmployee = _empList.find((emp: any) => emp.email === seller.assignedTo)
+      || _empList.find((emp: any) => emp.initials === seller.visitAssignee);
     const employeeName = assignedEmployee?.name || employee?.name || '';
     result = result.replace(/<<営担>>/g, employeeName);
     result = result.replace(/<<担当名（営業）名前>>/g, employeeName);
@@ -2854,14 +2855,27 @@ HP：https://ifoo-oita.com/
     return result;
   };
 
-  const handleEmailTemplateSelect = (templateId: string) => {
+  const handleEmailTemplateSelect = async (templateId: string) => {
     if (!templateId) return;
+
+    // employeesが未取得の場合は先に取得する（担当者情報の置換に必要）
+    let currentEmployees: any[] = employees;
+    if (employees.length === 0) {
+      try {
+        const freshEmployees = await getActiveEmployees();
+        setEmployees(freshEmployees as any);
+        setActiveEmployees(freshEmployees);
+        currentEmployees = freshEmployees;
+      } catch (err) {
+        console.error('Failed to load employees for template:', err);
+      }
+    }
 
     // スプレッドシートテンプレート（seller_sheet_*）を優先検索
     const sheetTemplate = sellerEmailTemplates.find(t => t.id === templateId);
     if (sheetTemplate) {
-      const replacedSubject = replaceEmailPlaceholders(sheetTemplate.subject);
-      const replacedContent = replaceEmailPlaceholders(sheetTemplate.body);
+      const replacedSubject = replaceEmailPlaceholders(sheetTemplate.subject, currentEmployees);
+      const replacedContent = replaceEmailPlaceholders(sheetTemplate.body, currentEmployees);
       const htmlContent = replacedContent.replace(/\n/g, '<br>');
 
       setEditableEmailRecipient(seller?.email || '');
@@ -2888,8 +2902,8 @@ HP：https://ifoo-oita.com/
     if (!template) return;
 
     // プレースホルダーを置換
-    const replacedSubject = replaceEmailPlaceholders(template.subject);
-    const replacedContent = replaceEmailPlaceholders(template.content);
+    const replacedSubject = replaceEmailPlaceholders(template.subject, currentEmployees);
+    const replacedContent = replaceEmailPlaceholders(template.content, currentEmployees);
 
     // 改行を<br>タグに変換してHTMLとして設定
     const htmlContent = replacedContent.replace(/\n/g, '<br>');
