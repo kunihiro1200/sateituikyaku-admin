@@ -868,6 +868,27 @@ export default function PropertyListingDetailPage() {
     }
   };
 
+  // 値下げ配信メール送信成功時のハンドラ（送信履歴を保存して左列を更新する）
+  const handleGmailDistributionSendSuccess = async (result: {
+    successCount: number;
+    subject: string;
+    senderAddress: string;
+  }) => {
+    try {
+      await propertyListingApi.saveSellerSendHistory(propertyNumber!, {
+        chat_type: 'seller_gmail',
+        subject: result.subject,
+        message: `${result.successCount}件に送信`,
+        sender_name: employee?.name || employee?.initials || '不明',
+      });
+      // 履歴保存後に左列の売主への送信履歴表示を更新する
+      setSellerSendHistoryRefreshTrigger(prev => prev + 1);
+    } catch (err) {
+      // 履歴保存失敗時はコンソールに記録し、UIには影響させない
+      console.error('[値下げ配信メール送信履歴] 保存に失敗しました:', err);
+    }
+  };
+
   // メール送信実行
   const handleSendEmail = async () => {
     if (!propertyNumber) return;
@@ -1523,6 +1544,7 @@ export default function PropertyListingDetailPage() {
             propertyType={editedData.property_type !== undefined ? editedData.property_type : data.property_type}
             size="medium"
             variant="contained"
+            onSendSuccess={handleGmailDistributionSendSuccess}
           />
         </Box>
       </Box>

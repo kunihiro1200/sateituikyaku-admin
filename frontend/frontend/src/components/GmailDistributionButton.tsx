@@ -26,6 +26,8 @@ interface GmailDistributionButtonProps {
   propertyType?: string;
   size?: 'small' | 'medium' | 'large';
   variant?: 'text' | 'outlined' | 'contained';
+  /** 送信成功時に呼び出されるコールバック（親コンポーネントで履歴保存に使用） */
+  onSendSuccess?: (result: { successCount: number; subject: string; senderAddress: string }) => void;
 }
 
 const DEFAULT_SENDER = 'tenant@ifoo-oita.com';
@@ -45,7 +47,8 @@ export default function GmailDistributionButton({
   priceReductionHistory,
   propertyType,
   size = 'small',
-  variant = 'outlined'
+  variant = 'outlined',
+  onSendSuccess
 }: GmailDistributionButtonProps) {
   const [loading, setLoading] = useState(false);
   const [templateSelectorOpen, setTemplateSelectorOpen] = useState(false);
@@ -263,6 +266,12 @@ export default function GmailDistributionButton({
       setSelectedImages([]);
 
       if (result.success) {
+        // 送信成功時に親コンポーネントへ通知（履歴保存のため）
+        onSendSuccess?.({
+          successCount: result.successCount,
+          subject: replacePlaceholders(selectedTemplate.subject, buyerName),
+          senderAddress,
+        });
         setSnackbar({
           open: true,
           message: `メールを送信しました (${result.successCount}件)\n送信元: ${senderAddress}`,
