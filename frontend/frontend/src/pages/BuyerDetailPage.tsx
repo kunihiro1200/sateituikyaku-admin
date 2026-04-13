@@ -1107,6 +1107,19 @@ export default function BuyerDetailPage() {
             count={relatedBuyersCount} 
             onClick={scrollToRelatedBuyers}
           />
+          {/* 削除ボタン */}
+          {buyer?.buyer_id && (
+            <Button
+              variant="outlined"
+              color="error"
+              startIcon={<DeleteIcon />}
+              onClick={() => setDeleteDialogOpen(true)}
+              sx={{ ml: 'auto' }}
+              size="small"
+            >
+              削除
+            </Button>
+          )}
         </Box>
 
         <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -1467,19 +1480,6 @@ TEL：097-533-2022`;
             </Button>
           )}
 
-          {/* 削除ボタン */}
-          {buyer?.buyer_id && (
-            <Button
-              variant="outlined"
-              color="error"
-              startIcon={<DeleteIcon />}
-              onClick={() => setDeleteDialogOpen(true)}
-              sx={{ ml: 'auto' }}
-              size="small"
-            >
-              削除
-            </Button>
-          )}
         </Box>
       </Box>
 
