@@ -44,6 +44,10 @@ import { SECTION_COLORS } from '../theme/sectionColors';
 import { calculatePropertyStatus, createWorkTaskMap, isPrivateStatus, getAtbbStatusColor } from '../utils/propertyListingStatusUtils';
 import { pageDataCache, CACHE_KEYS } from '../store/pageDataCache';
 
+// 全角→半角の正規化（NFKC）+ 小文字化
+const normalizeText = (text: string): string =>
+  text.normalize('NFKC').toLowerCase();
+
 interface PropertyListing {
   id: string;
   property_number?: string;
@@ -289,13 +293,13 @@ export default function PropertyListingsPage() {
       }
     }
     if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
+      const query = normalizeText(searchQuery);
       listings = listings.filter(l =>
-        l.property_number?.toLowerCase().includes(query) ||
-        l.address?.toLowerCase().includes(query) ||
-        l.seller_name?.toLowerCase().includes(query) ||
-        l.seller_email?.toLowerCase().includes(query) ||
-        l.buyer_name?.toLowerCase().includes(query)
+        (l.property_number ? normalizeText(l.property_number) : '').includes(query) ||
+        (l.address ? normalizeText(l.address) : '').includes(query) ||
+        (l.seller_name ? normalizeText(l.seller_name) : '').includes(query) ||
+        (l.seller_email ? normalizeText(l.seller_email) : '').includes(query) ||
+        (l.buyer_name ? normalizeText(l.buyer_name) : '').includes(query)
       );
     }
 
