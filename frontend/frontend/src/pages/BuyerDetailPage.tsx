@@ -764,7 +764,7 @@ export default function BuyerDetailPage() {
 
   // 買主削除ハンドラー
   const handleDeleteBuyer = async () => {
-    if (!buyer?.buyer_id) return;
+    if (!buyer?.buyer_number) return;
     setDeleting(true);
     try {
       await api.delete(`/api/buyers/${buyer.buyer_number}/permanent`);
