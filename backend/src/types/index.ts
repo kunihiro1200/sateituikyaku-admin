@@ -188,7 +188,9 @@ export interface Seller {
   propertyAddress?: string; // 物件所在地
   propertyType?: string; // 種別（土地、戸建、マンション等）
   landArea?: number; // 土地面積（㎡）
+  landAreaVerified?: number; // 土地面積（当社調べ）（㎡）
   buildingArea?: number; // 建物面積（㎡）
+  buildingAreaVerified?: number; // 建物面積（当社調べ）（㎡）
   buildYear?: number; // 築年
   structure?: string; // 構造
   floorPlan?: string; // 間取り
