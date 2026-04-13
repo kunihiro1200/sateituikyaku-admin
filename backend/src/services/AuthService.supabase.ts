@@ -129,8 +129,10 @@ export class AuthService extends BaseRepository {
    * employeesテーブルに登録済み（is_active=true）であればOK
    */
   async validateSession(accessToken: string): Promise<Employee> {
-    // キャッシュをチェック（トークンの先頭32文字をキーに使用）
-    const cacheKey = accessToken.substring(0, 32);
+    // キャッシュをチェック（トークン全体のSHA256ハッシュをキーに使用）
+    // ⚠️ 先頭32文字はJWTヘッダー部分で全ユーザー共通のため、必ずハッシュ全体を使う
+    const crypto = require('crypto');
+    const cacheKey = crypto.createHash('sha256').update(accessToken).digest('hex');
     const cached = _sessionCache.get(cacheKey);
     if (cached && Date.now() < cached.expiresAt) {
       return cached.employee;
@@ -179,7 +181,8 @@ export class AuthService extends BaseRepository {
    */
   async logout(accessToken: string): Promise<void> {
     // キャッシュをクリア
-    const cacheKey = accessToken.substring(0, 32);
+    const crypto = require('crypto');
+    const cacheKey = crypto.createHash('sha256').update(accessToken).digest('hex');
     _sessionCache.delete(cacheKey);
     console.log('[AuthService] Session cache cleared for token:', cacheKey);
     
