@@ -1112,17 +1112,13 @@ router.delete('/:id/permanent', authenticate, async (req: Request, res: Response
   try {
     const { id } = req.params;
 
-    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
-    let buyerId = id;
-    if (!isUuid) {
-      const buyer = await buyerService.getByBuyerNumber(id);
-      if (!buyer) {
-        return res.status(404).json({ error: 'Buyer not found' });
-      }
-      buyerId = buyer.buyer_id;
-    }
+    // buyer_number（数値文字列）をそのまま permanentDelete に渡す
+    // permanentDelete 内で buyer_number TEXT カラムで削除する
+    await buyerService.permanentDelete(id);
 
-    await buyerService.permanentDelete(buyerId);
+    // キャッシュを無効化（サイドバー・リストが即座に更新されるように）
+    await invalidateBuyerStatusCache();
+    console.log(`[DELETE /buyers/${id}/permanent] cache invalidated`);
 
     res.json({ success: true });
   } catch (error: any) {
