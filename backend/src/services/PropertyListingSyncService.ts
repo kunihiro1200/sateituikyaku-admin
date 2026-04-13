@@ -1363,4 +1363,4 @@ export class PropertyListingSyncService {
     };
     return mapping[assignee] || '専任・公開中';
   }
-}
+} // sync
