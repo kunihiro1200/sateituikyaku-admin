@@ -1547,7 +1547,7 @@ TEL：097-533-2022`;
                     const displayName = emp
                       ? (emp.name ? emp.name.split(/[\s　]/)[0] : (emp.initials || '不明'))
                       : '不明';
-                    const hasBody = !isSms && !!metadata.body;
+                    const hasBody = !!metadata.body;
                     return (
                       <ListItem
                         key={activity.id}

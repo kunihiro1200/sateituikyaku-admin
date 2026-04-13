@@ -679,7 +679,7 @@ router.get('/:id/related', async (req: Request, res: Response) => {
     let buyerId = id;
     if (!isUuid) {
       console.log(`[API] Resolving buyer number ${id} to UUID`);
-      const buyer = await buyerService.getByBuyerNumber(id);
+      const buyer = await buyerService.getByBuyerNumber(id, true);
       if (!buyer) {
         console.warn(`[API] Buyer not found for buyer_number: ${id}`);
         return res.status(404).json({ 
