@@ -309,8 +309,9 @@ const CallModePage = () => {
         propertyType: normalizePropertyType(property.propertyType),
         landArea: property.landArea,
         buildingArea: property.buildingArea,
-        landAreaVerified: property.landAreaVerified,
-        buildingAreaVerified: property.buildingAreaVerified,
+        // propertiesテーブルにない場合はsellersテーブルの値をフォールバック
+        landAreaVerified: property.landAreaVerified ?? seller?.landAreaVerified,
+        buildingAreaVerified: property.buildingAreaVerified ?? seller?.buildingAreaVerified,
         buildYear: property.buildYear,
         floorPlan: property.floorPlan,
         structure: property.structure,
