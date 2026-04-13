@@ -858,7 +858,6 @@ export class PropertyListingSyncService {
       // mappedDataも更新（バッチ処理で使用される）
       mappedData.seller_name = effectiveFallback;
     }
-    }
 
     // Compare each field
     for (const [dbField, spreadsheetValue] of Object.entries(mappedData)) {
@@ -1352,15 +1351,15 @@ export class PropertyListingSyncService {
 
   private getAssigneeStatus(assignee: string): string {
     const mapping: Record<string, string> = {
-      '山本': 'Y専任公開中',
-      '生野': '生・専任公開中',
-      '久': '久・専任公開中',
-      '裏': 'U専任公開中',
-      '林': '林・専任公開中',
-      '国広': 'K専任公開中',
-      '木村': 'R専任公開中',
-      '角井': 'I専任公開中',
+      '\u5c71\u672c': 'Y\u5c02\u4efb\u516c\u958b\u4e2d',
+      '\u751f\u91ce': '\u751f\u30fb\u5c02\u4efb\u516c\u958b\u4e2d',
+      '\u4e45': '\u4e45\u30fb\u5c02\u4efb\u516c\u958b\u4e2d',
+      '\u88cf': 'U\u5c02\u4efb\u516c\u958b\u4e2d',
+      '\u6797': '\u6797\u30fb\u5c02\u4efb\u516c\u958b\u4e2d',
+      '\u56fd\u5e83': 'K\u5c02\u4efb\u516c\u958b\u4e2d',
+      '\u6728\u6751': 'R\u5c02\u4efb\u516c\u958b\u4e2d',
+      '\u89d2\u4e95': 'I\u5c02\u4efb\u516c\u958b\u4e2d',
     };
-    return mapping[assignee] || '専任・公開中';
+    return mapping[assignee] || '\u5c02\u4efb\u30fb\u516c\u958b\u4e2d';
   }
-} // sync
+}
