@@ -126,15 +126,16 @@ const SellerSendHistoryDetailModal: React.FC<SellerSendHistoryDetailModalProps> 
             sx={{
               mt: 0.5,
               wordBreak: 'break-word',
+              whiteSpace: 'pre-wrap',
               backgroundColor: '#f5f5f5',
               p: 1.5,
               borderRadius: 1,
               fontSize: '0.875rem',
               lineHeight: 1.6,
-              '& br': { display: 'block', content: '""', marginTop: '0.4em' },
             }}
-            dangerouslySetInnerHTML={{ __html: item.message }}
-          />
+          >
+            {item.message}
+          </Box>
         </Box>
       </DialogContent>
 
