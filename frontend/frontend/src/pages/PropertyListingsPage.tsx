@@ -37,7 +37,6 @@ import PropertyListingDetailModal from '../components/PropertyListingDetailModal
 import PageNavigation from '../components/PageNavigation';
 import BuyerIndicator from '../components/BuyerIndicator';
 import { InquiryResponseButton } from '../components/InquiryResponseButton';
-import PublicUrlCell from '../components/PublicUrlCell';
 import PropertySidebarStatus from '../components/PropertySidebarStatus';
 import { getDisplayStatus } from '../utils/atbbStatusDisplayMapper';
 import { SECTION_COLORS } from '../theme/sectionColors';
@@ -598,24 +597,23 @@ export default function PropertyListingsPage() {
                   <TableCell>担当</TableCell>
                   <TableCell>種別</TableCell>
                   <TableCell>所在地</TableCell>
+                  <TableCell>住居表示</TableCell>
                   <TableCell>売主</TableCell>
                   <TableCell>ATBB状況</TableCell>
                   <TableCell>買主</TableCell>
                   <TableCell>契約日</TableCell>
                   <TableCell>決済日</TableCell>
                   <TableCell>売買価格</TableCell>
-                  <TableCell>公開URL</TableCell>
-                  <TableCell>格納先URL</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={12} align="center">読み込み中...</TableCell>
+                    <TableCell colSpan={11} align="center">読み込み中...</TableCell>
                   </TableRow>
                 ) : paginatedListings.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={12} align="center">
+                    <TableCell colSpan={11} align="center">
                       {isLoadingAll && searchQuery.trim() ? '検索中...' : '物件データが見つかりませんでした'}
                     </TableCell>
                   </TableRow>
@@ -651,6 +649,9 @@ export default function PropertyListingsPage() {
                         <TableCell sx={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {listing.address || listing.display_address || '-'}
                         </TableCell>
+                        <TableCell sx={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {listing.display_address || '-'}
+                        </TableCell>
                         <TableCell>{listing.seller_name || '-'}</TableCell>
                         <TableCell>
                           <Typography
@@ -672,24 +673,6 @@ export default function PropertyListingsPage() {
                         <TableCell>{formatDate(listing.contract_date)}</TableCell>
                         <TableCell>{formatDate(listing.settlement_date)}</TableCell>
                         <TableCell>{formatPrice(listing.price)}</TableCell>
-                        <TableCell onClick={(e) => e.stopPropagation()}>
-                          <PublicUrlCell propertyNumber={listing.property_number} />
-                        </TableCell>
-                        <TableCell onClick={(e) => e.stopPropagation()}>
-                          {listing.storage_location ? (
-                            <Link
-                              href={listing.storage_location}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              underline="hover"
-                              sx={{ fontSize: '0.875rem', maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'inline-block' }}
-                            >
-                              Google Drive
-                            </Link>
-                          ) : (
-                            <Typography variant="body2" color="text.secondary">-</Typography>
-                          )}
-                        </TableCell>
                       </TableRow>
                     );
                   })
