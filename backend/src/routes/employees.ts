@@ -20,6 +20,10 @@ const supabase = createClient(
 let activeEmployeesCache: { data: any[]; expiresAt: number } | null = null;
 const ACTIVE_EMPLOYEES_CACHE_TTL_MS = 5 * 60 * 1000;
 
+// jimu-staff / jimu-initials キャッシュ（TTL: 10分）
+let jimuStaffCache: { data: { initials: string; name: string; email: string }[]; expiresAt: number } | null = null;
+const JIMU_STAFF_CACHE_TTL_MS = 10 * 60 * 1000;
+
 /**
  * スタッフスプレッドシートのヘッダー確認用デバッグエンドポイント
  * GET /api/employees/staff-debug
@@ -281,6 +285,12 @@ router.get('/initials-by-email', async (req: Request, res: Response) => {
  */
 router.get('/jimu-initials', async (req: Request, res: Response) => {
   try {
+    // キャッシュがあれば返す
+    if (jimuStaffCache && Date.now() < jimuStaffCache.expiresAt) {
+      const initials = jimuStaffCache.data.map(s => s.initials);
+      console.log(`[jimu-initials] Returning ${initials.length} jimu staff initials from cache`);
+      return res.json({ initials });
+    }
     const jimuInitials = await staffManagementService.getJimuInitials();
     console.log(`[jimu-initials] Returning ${jimuInitials.length} jimu staff initials:`, jimuInitials);
     res.json({ initials: jimuInitials });
@@ -309,6 +319,12 @@ router.get('/jimu-initials', async (req: Request, res: Response) => {
  */
 router.get('/jimu-staff', async (req: Request, res: Response) => {
   try {
+    // キャッシュがあれば返す
+    if (jimuStaffCache && Date.now() < jimuStaffCache.expiresAt) {
+      console.log(`[jimu-staff] Returning ${jimuStaffCache.data.length} jimu staff from cache`);
+      return res.json({ staff: jimuStaffCache.data });
+    }
+
     const { GoogleSheetsClient } = require('../services/GoogleSheetsClient');
     const client = new GoogleSheetsClient({
       spreadsheetId: '19yAuVYQRm-_zhjYX7M7zjiGbnBibkG77Mpz93sN1xxs',
@@ -338,6 +354,9 @@ router.get('/jimu-staff', async (req: Request, res: Response) => {
       seen.add(initials);
       jimuStaff.push({ initials, name, email });
     }
+
+    // キャッシュに保存
+    jimuStaffCache = { data: jimuStaff, expiresAt: Date.now() + JIMU_STAFF_CACHE_TTL_MS };
 
     console.log(`[jimu-staff] Returning ${jimuStaff.length} jimu staff with email`);
     res.json({ staff: jimuStaff });
