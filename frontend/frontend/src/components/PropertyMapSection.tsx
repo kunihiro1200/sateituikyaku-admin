@@ -81,7 +81,7 @@ const PropertyMapSection: React.FC<PropertyMapSectionProps> = ({ sellerNumber, p
       )}
 
       {!isLoadingCoordinates && mapCoordinates && (
-        <Box sx={{ borderRadius: '8px', overflow: 'hidden' }}>
+        <Box sx={{ borderRadius: '8px', overflow: 'hidden', position: 'relative' }}>
           <GoogleMap
             mapContainerStyle={mapContainerStyle}
             center={mapCoordinates}
