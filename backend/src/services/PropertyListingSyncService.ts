@@ -819,7 +819,19 @@ export class PropertyListingSyncService {
     const mappedData = this.columnMapper.mapSpreadsheetToDatabase(spreadsheetRow);
 
     // BL列（owner_info）優先、空欄の場合はO列（seller_name）にフォールバック
-    mappedData.seller_name = mappedData.owner_info || mappedData.seller_name || null;
+    const fallbackSellerName = mappedData.owner_info || mappedData.seller_name || null;
+    mappedData.seller_name = fallbackSellerName;
+
+    // seller_nameのフォールバック値がDBと異なる場合は必ず変更として検出する
+    // （他フィールドに変更がなくても seller_name の不整合を修正するため）
+    const normalizedFallback = this.normalizeValue(fallbackSellerName);
+    const normalizedDbSellerName = this.normalizeValue(dbProperty['seller_name']);
+    if (normalizedFallback !== normalizedDbSellerName) {
+      changes['seller_name'] = {
+        old: normalizedDbSellerName,
+        new: normalizedFallback
+      };
+    }
 
     // Compare each field
     for (const [dbField, spreadsheetValue] of Object.entries(mappedData)) {
