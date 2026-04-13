@@ -141,6 +141,8 @@ router.post('/:sellerId/calculate-valuation-amount1', async (req: Request, res: 
         propertyType: seller.propertyType || '',
         landArea: seller.landArea || 0,
         buildingArea: seller.buildingArea || 0,
+        landAreaVerified: (seller as any).landAreaVerified || undefined,    // 土地（当社調べ）: 独自調査値を優先するために追加
+        buildingAreaVerified: (seller as any).buildingAreaVerified || undefined, // 建物（当社調べ）: 独自調査値を優先するために追加
         buildYear: seller.buildYear || 0,
         structure: seller.structure || '',
         floorPlan: seller.floorPlan || '',
