@@ -84,6 +84,7 @@ export default function PreDayEmailButton({
           email: buyerEmail,
           pre_viewing_notes: preViewingNotes || '',
           viewing_date: viewingDate || '',
+          latest_viewing_date: viewingDate || '',
           viewing_time: viewingTime || '',
         },
         propertyIds,
