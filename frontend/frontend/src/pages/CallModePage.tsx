@@ -2812,7 +2812,9 @@ HP：https://ifoo-oita.com/
     result = result.replace(/<<築年不明>>/g, buildYearText);
     
     // 担当者情報（営業担当）
-    const assignedEmployee = employees.find(emp => emp.email === seller.assignedTo);
+    // assignedTo（メール）→ visitAssignee（イニシャル）の順で担当者を特定
+    const assignedEmployee = employees.find(emp => emp.email === seller.assignedTo)
+      || employees.find(emp => emp.initials === seller.visitAssignee);
     const employeeName = assignedEmployee?.name || employee?.name || '';
     result = result.replace(/<<営担>>/g, employeeName);
     result = result.replace(/<<担当名（営業）名前>>/g, employeeName);
