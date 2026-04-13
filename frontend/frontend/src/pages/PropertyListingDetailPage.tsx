@@ -970,12 +970,13 @@ export default function PropertyListingDetailPage() {
     successCount: number;
     subject: string;
     senderAddress: string;
+    body: string;
   }) => {
     try {
       await propertyListingApi.saveSellerSendHistory(propertyNumber!, {
         chat_type: 'seller_gmail',
         subject: result.subject,
-        message: `${result.successCount}件に送信`,
+        message: result.body,
         sender_name: employee?.name || employee?.initials || '不明',
       });
       // 履歴保存後に左列の売主への送信履歴表示を更新する

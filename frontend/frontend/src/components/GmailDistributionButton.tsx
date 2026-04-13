@@ -27,7 +27,7 @@ interface GmailDistributionButtonProps {
   size?: 'small' | 'medium' | 'large';
   variant?: 'text' | 'outlined' | 'contained';
   /** 送信成功時に呼び出されるコールバック（親コンポーネントで履歴保存に使用） */
-  onSendSuccess?: (result: { successCount: number; subject: string; senderAddress: string }) => void;
+  onSendSuccess?: (result: { successCount: number; subject: string; senderAddress: string; body: string }) => void;
 }
 
 const DEFAULT_SENDER = 'tenant@ifoo-oita.com';
@@ -277,6 +277,7 @@ export default function GmailDistributionButton({
           successCount: result.successCount,
           subject: replacePlaceholders(selectedTemplate.subject, buyerName),
           senderAddress,
+          body: editedBody || replacePlaceholders(selectedTemplate.body, buyerName),
         });
         setSnackbar({
           open: true,
