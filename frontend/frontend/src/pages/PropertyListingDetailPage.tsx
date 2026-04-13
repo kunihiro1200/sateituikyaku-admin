@@ -233,6 +233,12 @@ export default function PropertyListingDetailPage() {
   const [isViewingInfoEditMode, setIsViewingInfoEditMode] = useState(false);
   const [isSellerBuyerEditMode, setIsSellerBuyerEditMode] = useState(false);
   const [isOfferEditMode, setIsOfferEditMode] = useState(false);
+  // 買付情報バリデーションエラー状態
+  const [offerErrors, setOfferErrors] = useState<{
+    offer_date?: string;
+    offer_status?: string;
+    offer_comment?: string;
+  }>({});
   
   const [salesContractDialog, setSalesContractDialog] = useState(false);
   const [salesContractUrlDialog, setSalesContractUrlDialog] = useState(false);
@@ -620,8 +626,66 @@ export default function PropertyListingDetailPage() {
     setIsSellerBuyerEditMode(false);
   };
 
+  /**
+   * 買付情報バリデーション関数
+   * offer_amount が空欄の場合はエラーなし（null を返す）
+   * offer_amount に値がある場合は未入力フィールドに「必須項目です」を設定して返す
+   */
+  const validateOfferFields = (): {
+    offer_date?: string;
+    offer_status?: string;
+    offer_comment?: string;
+  } | null => {
+    // offer_amount の現在値を取得
+    const offerAmount = editedData.offer_amount !== undefined
+      ? editedData.offer_amount
+      : (data?.offer_amount ?? '');
+
+    // offer_amount が空欄の場合はバリデーションなし
+    if (!offerAmount || offerAmount.trim() === '') {
+      return null;
+    }
+
+    // offer_amount に値がある場合、他フィールドを必須チェック
+    const errors: { offer_date?: string; offer_status?: string; offer_comment?: string } = {};
+
+    const offerDate = editedData.offer_date !== undefined
+      ? editedData.offer_date
+      : (data?.offer_date ?? '');
+    if (!offerDate || offerDate.trim() === '') {
+      errors.offer_date = '必須項目です';
+    }
+
+    const offerStatus = editedData.offer_status !== undefined
+      ? editedData.offer_status
+      : (data?.offer_status ?? '');
+    if (!offerStatus || offerStatus.trim() === '') {
+      errors.offer_status = '必須項目です';
+    }
+
+    const offerComment = editedData.offer_comment !== undefined
+      ? editedData.offer_comment
+      : (data?.offer_comment ?? '');
+    if (!offerComment || offerComment.trim() === '') {
+      errors.offer_comment = '必須項目です';
+    }
+
+    return Object.keys(errors).length > 0 ? errors : null;
+  };
+
   const handleSaveOffer = async () => {
     if (!propertyNumber || Object.keys(editedData).length === 0) return;
+
+    // バリデーション実行
+    const errors = validateOfferFields();
+    if (errors && Object.keys(errors).length > 0) {
+      // エラーがある場合はセットしてAPIを呼び出さずに返る
+      setOfferErrors(errors);
+      return;
+    }
+    // バリデーション通過時はエラーをクリア
+    setOfferErrors({});
+
     try {
       await api.put(`/api/property-listings/${propertyNumber}`, editedData);
       setSnackbar({
@@ -630,6 +694,7 @@ export default function PropertyListingDetailPage() {
         severity: 'success',
       });
       setIsOfferEditMode(false);
+      // 保存成功後にデータを再取得（offer_status が null になれば PurchaseStatusBadge が自動的に非表示になる）
       await fetchPropertyData();
       setEditedData({});
     } catch (error) {
@@ -645,6 +710,8 @@ export default function PropertyListingDetailPage() {
   const handleCancelOffer = () => {
     setEditedData({});
     setIsOfferEditMode(false);
+    // キャンセル時にバリデーションエラーもリセット
+    setOfferErrors({});
   };
 
   const handleSaveNotes = async () => {
@@ -2763,14 +2830,34 @@ export default function PropertyListingDetailPage() {
                 <Grid item xs={6}>
                   <Typography variant="body2" sx={{ fontWeight: 400, fontSize: '0.7rem', color: 'text.secondary', mb: 0 }}>買付日</Typography>
                   {isOfferEditMode ? (
-                    <TextField
-                      fullWidth
-                      size="small"
-                      type="date"
-                      value={editedData.offer_date !== undefined ? editedData.offer_date : (data?.offer_date ?? '')}
-                      onChange={(e) => handleFieldChange('offer_date', e.target.value)}
-                      InputLabelProps={{ shrink: true }}
-                    />
+                    <>
+                      <TextField
+                        fullWidth
+                        size="small"
+                        type="date"
+                        value={editedData.offer_date !== undefined ? editedData.offer_date : (data?.offer_date ?? '')}
+                        onChange={(e) => {
+                          handleFieldChange('offer_date', e.target.value);
+                          // 値が入力されたらエラーを即時消去
+                          if (e.target.value) {
+                            setOfferErrors(prev => ({ ...prev, offer_date: undefined }));
+                          }
+                        }}
+                        onClick={(e) => {
+                          // フィールド全体クリックでカレンダーを即時表示
+                          const input = (e.currentTarget as HTMLElement).querySelector('input');
+                          if (input) input.showPicker?.();
+                        }}
+                        InputLabelProps={{ shrink: true }}
+                        inputProps={{ style: { cursor: 'pointer' } }}
+                        error={!!offerErrors.offer_date}
+                      />
+                      {offerErrors.offer_date && (
+                        <Typography variant="caption" color="error" sx={{ mt: 0.25, display: 'block' }}>
+                          {offerErrors.offer_date}
+                        </Typography>
+                      )}
+                    </>
                   ) : (
                     <Typography variant="body2" sx={{ fontWeight: 600 }}>{data.offer_date || '-'}</Typography>
                   )}
@@ -2778,20 +2865,33 @@ export default function PropertyListingDetailPage() {
                 <Grid item xs={6}>
                   <Typography variant="body2" sx={{ fontWeight: 400, fontSize: '0.7rem', color: 'text.secondary', mb: 0 }}>買付</Typography>
                   {isOfferEditMode ? (
-                    <FormControl fullWidth size="small">
-                      <Select
-                        value={editedData.offer_status !== undefined ? editedData.offer_status : (data?.offer_status ?? '')}
-                        onChange={(e) => handleFieldChange('offer_status', e.target.value)}
-                        displayEmpty
-                      >
-                        <MenuItem value="">-</MenuItem>
-                        <MenuItem value="一般片手">一般片手</MenuItem>
-                        <MenuItem value="専任片手">専任片手</MenuItem>
-                        <MenuItem value="専任両手">専任両手</MenuItem>
-                        <MenuItem value="一般両手">一般両手</MenuItem>
-                        <MenuItem value="一般他決">一般他決</MenuItem>
-                      </Select>
-                    </FormControl>
+                    <>
+                      <FormControl fullWidth size="small" error={!!offerErrors.offer_status}>
+                        <Select
+                          value={editedData.offer_status !== undefined ? editedData.offer_status : (data?.offer_status ?? '')}
+                          onChange={(e) => {
+                            handleFieldChange('offer_status', e.target.value);
+                            // 値が選択されたらエラーを即時消去
+                            if (e.target.value) {
+                              setOfferErrors(prev => ({ ...prev, offer_status: undefined }));
+                            }
+                          }}
+                          displayEmpty
+                        >
+                          <MenuItem value="">-</MenuItem>
+                          <MenuItem value="一般片手">一般片手</MenuItem>
+                          <MenuItem value="専任片手">専任片手</MenuItem>
+                          <MenuItem value="専任両手">専任両手</MenuItem>
+                          <MenuItem value="一般両手">一般両手</MenuItem>
+                          <MenuItem value="一般他決">一般他決</MenuItem>
+                        </Select>
+                      </FormControl>
+                      {offerErrors.offer_status && (
+                        <Typography variant="caption" color="error" sx={{ mt: 0.25, display: 'block' }}>
+                          {offerErrors.offer_status}
+                        </Typography>
+                      )}
+                    </>
                   ) : (
                     <Typography variant="body2" sx={{ fontWeight: 600 }}>{data.offer_status || '-'}</Typography>
                   )}
@@ -2860,14 +2960,28 @@ export default function PropertyListingDetailPage() {
                 <Grid item xs={12}>
                   <Typography variant="body2" sx={{ fontWeight: 400, fontSize: '0.7rem', color: 'text.secondary', mb: 0 }}>買付コメント</Typography>
                   {isOfferEditMode ? (
-                    <TextField
-                      fullWidth
-                      size="small"
-                      multiline
-                      rows={3}
-                      value={editedData.offer_comment !== undefined ? editedData.offer_comment : (data?.offer_comment ?? '')}
-                      onChange={(e) => handleFieldChange('offer_comment', e.target.value)}
-                    />
+                    <>
+                      <TextField
+                        fullWidth
+                        size="small"
+                        multiline
+                        rows={3}
+                        value={editedData.offer_comment !== undefined ? editedData.offer_comment : (data?.offer_comment ?? '')}
+                        onChange={(e) => {
+                          handleFieldChange('offer_comment', e.target.value);
+                          // 値が入力されたらエラーを即時消去
+                          if (e.target.value) {
+                            setOfferErrors(prev => ({ ...prev, offer_comment: undefined }));
+                          }
+                        }}
+                        error={!!offerErrors.offer_comment}
+                      />
+                      {offerErrors.offer_comment && (
+                        <Typography variant="caption" color="error" sx={{ mt: 0.25, display: 'block' }}>
+                          {offerErrors.offer_comment}
+                        </Typography>
+                      )}
+                    </>
                   ) : (
                     <Typography variant="body2" sx={{ fontWeight: 600 }}>{data.offer_comment || '-'}</Typography>
                   )}
