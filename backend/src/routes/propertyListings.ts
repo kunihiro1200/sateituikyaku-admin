@@ -24,6 +24,10 @@ async function notifyGoogleChatOfferSaved(
     offer_status?: string | null;
     offer_comment?: string | null;
     offer_amount?: string | null;
+    address?: string | null;
+    display_address?: string | null;
+    property_type?: string | null;
+    sales_assignee?: string | null;
   }
 ): Promise<void> {
   // Google Chat Webhook URL
@@ -34,6 +38,10 @@ async function notifyGoogleChatOfferSaved(
   const message =
     `【買付情報更新】\n` +
     `物件番号: ${propertyNumber}\n` +
+    `所在地: ${offerData.address ?? '未設定'}\n` +
+    `住居表示: ${offerData.display_address ?? '未設定'}\n` +
+    `種別: ${offerData.property_type ?? '未設定'}\n` +
+    `物件担当: ${offerData.sales_assignee ?? '未設定'}\n` +
     `買付日: ${offerData.offer_date ?? '未設定'}\n` +
     `状況: ${offerData.offer_status ?? '未設定'}\n` +
     `買付コメント: ${offerData.offer_comment ?? '未設定'}`;
@@ -219,10 +227,14 @@ router.put('/:propertyNumber', async (req: Request, res: Response) => {
 
     // 買付情報保存成功後、非同期で Google Chat に通知する（await しない）
     notifyGoogleChatOfferSaved(propertyNumber, {
-      offer_date: updates.offer_date,
-      offer_status: updates.offer_status,
-      offer_comment: updates.offer_comment,
-      offer_amount: updates.offer_amount,
+      offer_date: data?.offer_date ?? updates.offer_date,
+      offer_status: data?.offer_status ?? updates.offer_status,
+      offer_comment: data?.offer_comment ?? updates.offer_comment,
+      offer_amount: data?.offer_amount ?? updates.offer_amount,
+      address: data?.address,
+      display_address: data?.display_address,
+      property_type: data?.property_type,
+      sales_assignee: data?.sales_assignee,
     });
 
     res.json(data);
