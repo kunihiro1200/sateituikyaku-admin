@@ -353,7 +353,8 @@ export class GoogleAuthService extends BaseRepository {
   }
 
   /**
-   * OAuth 2.0クライアントを取得（アクセストークン設定済み）- 会社アカウント用
+   * OAuth 2.0クライアントを取得（アクセストークン自動更新済み）- 会社アカウント用
+   * getAuthenticatedClientForEmployee と同様のパターンで refreshAccessToken() を呼び出す
    * @returns 認証済みOAuth2クライアント
    */
   async getAuthenticatedClient() {
@@ -363,9 +364,6 @@ export class GoogleAuthService extends BaseRepository {
 
     const accountId = await this.getCompanyAccountId();
 
-    // アクセストークンを取得してクライアントに設定
-    const accessToken = await this.getAccessToken();
-
     // 新しいクライアントインスタンスを作成
     const clientId = process.env.GOOGLE_CALENDAR_CLIENT_ID;
     const clientSecret = process.env.GOOGLE_CALENDAR_CLIENT_SECRET;
@@ -373,20 +371,35 @@ export class GoogleAuthService extends BaseRepository {
 
     const client = new google.auth.OAuth2(clientId, clientSecret, redirectUri);
 
-    // データベースから会社アカウントのリフレッシュトークンを取得
-    const { data: tokenData } = await this.table(
+    // データベースから会社アカウントのリフレッシュトークンを一度だけ取得
+    const { data: tokenData, error } = await this.table(
       'google_calendar_tokens'
     )
       .select('*')
       .eq('employee_id', accountId)
       .single();
 
-    if (tokenData) {
-      const refreshToken = decrypt(tokenData.encrypted_refresh_token);
-      client.setCredentials({
-        access_token: accessToken,
-        refresh_token: refreshToken,
+    if (error || !tokenData) {
+      console.error('[GoogleAuthService] 会社アカウントトークンが見つかりません:', {
+        companyAccountId: accountId,
+        error: error?.message,
       });
+      throw new Error('GOOGLE_AUTH_REQUIRED');
+    }
+
+    // リフレッシュトークンのみ設定（アクセストークンは refreshAccessToken() で自動取得）
+    const refreshToken = decrypt(tokenData.encrypted_refresh_token);
+    client.setCredentials({
+      refresh_token: refreshToken,
+    });
+
+    // アクセストークンを自動更新（getAuthenticatedClientForEmployee と同様のパターン）
+    try {
+      const { credentials } = await client.refreshAccessToken();
+      client.setCredentials(credentials);
+    } catch (refreshError) {
+      console.error('[GoogleAuthService] 会社アカウントのアクセストークン更新に失敗:', refreshError);
+      throw new Error('GOOGLE_AUTH_REQUIRED');
     }
 
     return client;
