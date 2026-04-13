@@ -2646,7 +2646,7 @@ const CallModePage = () => {
       return;
     }
 
-    if (!seller || !property) {
+    if (!seller) {
       setError('売主情報または物件情報が取得できません。');
       return;
     }
@@ -2656,9 +2656,9 @@ const CallModePage = () => {
     const amount2Man = Math.round(parseInt(editedValuationAmount2) / 10000);
     const amount3Man = Math.round(parseInt(editedValuationAmount3) / 10000);
 
-    // 土地面積と建物面積を取得（「当社調べ」フィールドを優先）
-    const landArea = property.landAreaVerified || property.landArea || '未設定';
-    const buildingArea = property.buildingAreaVerified || property.buildingArea || '未設定';
+    // 土地面積と建物面積を取得（「当社調べ」フィールドを優先、propInfoを使用）
+    const landArea = propInfo.landAreaVerified || propInfo.landArea || '未設定';
+    const buildingArea = propInfo.buildingAreaVerified || propInfo.buildingArea || '未設定';
 
     // メール件名
     const subject = `【査定結果】${seller.name}様の物件査定について`;
