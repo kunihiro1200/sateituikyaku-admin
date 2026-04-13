@@ -649,26 +649,17 @@ router.get('/by-number/:sellerNumber', async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Seller not found' });
     }
 
-    // property_listings テーブルから座標を取得（seller_number = property_number）
-    let latitude: number | null = null;
-    let longitude: number | null = null;
-    let listingId: string | null = null;
-    try {
-      const { data: listing } = await supabase
-        .from('property_listings')
-        .select('id, latitude, longitude')
-        .eq('property_number', sellerNumber)
-        .single();
-      if (listing) {
-        latitude = listing.latitude ?? null;
-        longitude = listing.longitude ?? null;
-        listingId = listing.id ?? null;
-      }
-    } catch {
-      // 座標取得失敗は無視
-    }
+    // sellers テーブルから座標を直接取得
+    const { data: sellerRaw } = await supabase
+      .from('sellers')
+      .select('latitude, longitude')
+      .eq('seller_number', sellerNumber)
+      .single();
 
-    // 座標がない場合、バックエンドでジオコーディングして取得
+    let latitude: number | null = sellerRaw?.latitude ?? null;
+    let longitude: number | null = sellerRaw?.longitude ?? null;
+
+    // 座標がない場合、バックエンドでジオコーディングして取得・保存
     if ((latitude == null || longitude == null) && seller.propertyAddress) {
       try {
         const apiKey = process.env.GOOGLE_MAPS_API_KEY;
@@ -679,13 +670,11 @@ router.get('/by-number/:sellerNumber', async (req: Request, res: Response) => {
           if (coords) {
             latitude = coords.lat;
             longitude = coords.lng;
-            // property_listings にレコードがある場合は座標を保存（次回から高速化）
-            if (listingId) {
-              await supabase
-                .from('property_listings')
-                .update({ latitude: coords.lat, longitude: coords.lng, updated_at: new Date().toISOString() })
-                .eq('id', listingId);
-            }
+            // sellers テーブルに座標を保存（次回から高速化）
+            await supabase
+              .from('sellers')
+              .update({ latitude: coords.lat, longitude: coords.lng })
+              .eq('seller_number', sellerNumber);
           } else {
             console.warn(`[by-number] Geocoding returned null for address: ${seller.propertyAddress}`);
           }
