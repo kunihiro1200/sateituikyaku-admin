@@ -441,7 +441,7 @@ export class GoogleSheetsClient {
     await this.sheets!.spreadsheets.values.update({
       spreadsheetId: this.config.spreadsheetId,
       range: `'${this.config.sheetName}'!${cell}`,
-      valueInputOption: 'RAW',
+      valueInputOption: 'USER_ENTERED',
       requestBody: {
         values: [[value]],
       },

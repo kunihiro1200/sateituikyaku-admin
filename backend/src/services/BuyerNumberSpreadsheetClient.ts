@@ -42,7 +42,9 @@ export class BuyerNumberSpreadsheetClient {
         throw new Error(msg);
       }
 
-      return String(n + 1);
+      const next: number = n + 1;
+      console.log(`[BuyerNumberSpreadsheetClient] rawValue=${JSON.stringify(rawValue)} (type=${typeof rawValue}), n=${n}, next=${next}`);
+      return String(next);
     } catch (error: any) {
 
       // 自分でスローしたエラーはそのまま再スロー
