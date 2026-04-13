@@ -800,8 +800,8 @@ export default function BuyerViewingResultPage() {
                       const res = await api.get('/api/employees/initials-by-email');
                       senderInitial = res.data?.initials || '';
                     } catch { /* ignore */ }
-                    // フォールバック: employee.initialまたのnameを使用
-                    if (!senderInitial) senderInitial = (employee as any)?.initial || '';
+                    // フォールバック: employee.initialsを使用（正しいフィールド名）
+                    if (!senderInitial) senderInitial = employee?.initials || '';
                     if (senderInitial) {
                       await handleInlineFieldSave('notification_sender', senderInitial);
                     }

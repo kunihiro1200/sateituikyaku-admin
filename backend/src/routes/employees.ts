@@ -256,14 +256,22 @@ router.get('/initials-by-email', async (req: Request, res: Response) => {
         const authService = new AuthService();
         const employee = await authService.validateSession(token);
         email = employee?.email || '';
-      } catch { /* ignore */ }
+      } catch (authError: any) {
+        console.error('[initials-by-email] Auth failed:', authError.message);
+      }
     }
-    if (!email) return res.json({ initials: null });
+    if (!email) {
+      console.log('[initials-by-email] No email found in auth token');
+      return res.json({ initials: null });
+    }
 
     // DBのinitialsカラムを確認
     const { createClient } = await import('@supabase/supabase-js');
     const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
-    const { data: emp } = await supabase.from('employees').select('initials').ilike('email', email).single();
+    const { data: emp, error: dbError } = await supabase.from('employees').select('initials').ilike('email', email).single();
+    if (dbError) {
+      console.log(`[initials-by-email] DB lookup failed: ${dbError.message}, falling back to spreadsheet`);
+    }
     if (emp?.initials) {
       console.log(`[initials-by-email] DB hit: email=${email} → initials=${emp.initials}`);
       return res.json({ initials: emp.initials });
@@ -272,6 +280,9 @@ router.get('/initials-by-email', async (req: Request, res: Response) => {
     // スプシのスタッフシートからメールでイニシャルを取得
     const initials = await staffManagementService.getInitialsByEmail(email);
     console.log(`[initials-by-email] Spreadsheet: email=${email} → initials=${initials}`);
+    if (!initials) {
+      console.log(`[initials-by-email] No initials found for email: ${email}`);
+    }
     res.json({ initials: initials || null });
   } catch (error: any) {
     console.error('[initials-by-email] Failed:', error.message);

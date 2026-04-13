@@ -220,29 +220,21 @@ export class StaffManagementService {
   }
 
   /**
-   * メールアドレスからスタッフIDを取得（「スタッフ」シートのE列「メアド」で照合）
+   * メールアドレスからスタッフIDを取得（fetchStaffData のキャッシュを活用）
    */
   async getInitialsByEmail(email: string): Promise<string | null> {
     try {
-      const { GoogleSheetsClient } = require('./GoogleSheetsClient');
-      const client = new GoogleSheetsClient({
-        spreadsheetId: this.SPREADSHEET_ID,
-        sheetName: this.SHEET_NAME,
-        serviceAccountKeyPath: process.env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH,
-      });
-      await client.authenticate();
-      const rows = await client.readAll();
-
       const normalizedEmail = email.toLowerCase().trim();
-      const matched = rows.find((row: any) => {
-        const rowEmail = (row['メアド'] || row['メールアドレス'] || row['email'] || '').toLowerCase().trim();
-        return rowEmail === normalizedEmail;
+      // fetchStaffData のキャッシュを活用してメールで検索
+      const staffList = await this.fetchStaffData();
+      const matched = staffList.find(staff => {
+        const staffEmail = (staff.email || '').toLowerCase().trim();
+        return staffEmail === normalizedEmail;
       });
 
       if (matched) {
-        const initials = (matched['スタッフID'] || matched['イニシャル'] || '').trim();
-        console.log(`[StaffManagementService] Found initials "${initials}" for email: ${email}`);
-        return initials || null;
+        console.log(`[StaffManagementService] Found initials "${matched.initials}" for email: ${email}`);
+        return matched.initials || null;
       }
 
       console.log(`[StaffManagementService] No staff found for email: ${email}`);
