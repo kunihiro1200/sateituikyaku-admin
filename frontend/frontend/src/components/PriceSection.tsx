@@ -49,9 +49,9 @@ export default function PriceSection({
   onChatSendSuccess,
   onChatSendError,
 }: PriceSectionProps) {
-  const displaySalesPrice = editedData.sales_price !== undefined ? editedData.sales_price : salesPrice;
+  const displaySalesPrice = editedData.price !== undefined ? editedData.price : salesPrice;
   const displayListingPrice = editedData.listing_price !== undefined ? editedData.listing_price : listingPrice;
-  const actualPrice = editedData.sales_price !== undefined ? editedData.sales_price : salesPriceActual;
+  const actualPrice = editedData.price !== undefined ? editedData.price : salesPriceActual;
   const showMonthlyPayment = propertyType === '戸建て' || propertyType === 'マンション' || propertyType === '戸' || propertyType === 'マ' || propertyType === '戸建';
   const monthlyPayment = actualPrice ? calcMonthlyPayment(actualPrice) : null;
   const displayPriceReductionHistory = editedData.price_reduction_history !== undefined ? editedData.price_reduction_history : priceReductionHistory;
@@ -71,7 +71,7 @@ export default function PriceSection({
   };
 
   // 売買価格が変更されたかチェック
-  const isPriceChanged = editedData.sales_price !== undefined && editedData.sales_price !== salesPrice;
+  const isPriceChanged = editedData.price !== undefined && editedData.price !== salesPrice;
 
 
   const handleSendPriceReductionChat = async () => {
@@ -127,7 +127,7 @@ export default function PriceSection({
               fullWidth
               type="number"
               value={displaySalesPrice || ''}
-              onChange={(e) => onFieldChange('sales_price', e.target.value ? Number(e.target.value) : null)}
+              onChange={(e) => onFieldChange('price', e.target.value ? Number(e.target.value) : null)}
               InputProps={{
                 startAdornment: <Typography sx={{ mr: 1 }}>¥</Typography>,
               }}

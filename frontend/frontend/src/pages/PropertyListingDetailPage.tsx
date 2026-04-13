@@ -393,8 +393,8 @@ export default function PropertyListingDetailPage() {
   const handleFieldChange = (field: string, value: any) => {
     setEditedData((prev) => ({ ...prev, [field]: value }));
 
-    // 売買価格（sales_price）は自動保存しない（保存ボタンで確定）
-    if (field === 'sales_price') {
+    // 価格（price）は自動保存しない（保存ボタンで確定）
+    if (field === 'price') {
       return;
     }
 
@@ -414,8 +414,8 @@ export default function PropertyListingDetailPage() {
     if (!propertyNumber || Object.keys(editedData).length === 0) return;
 
     // 価格変更の検出と値下げ履歴の自動追記
-    const newSalesPrice = editedData.sales_price;
-    const oldSalesPrice = data?.sales_price;
+    const newSalesPrice = editedData.price;
+    const oldSalesPrice = data?.price;
 
     let dataToSave = { ...editedData };
 
@@ -1517,7 +1517,7 @@ export default function PropertyListingDetailPage() {
             propertyAddress={data.address || data.display_address}
             publicUrl={`https://property-site-frontend-kappa.vercel.app/public/properties/${data.property_number}`}
             distributionAreas={editedData.distribution_areas !== undefined ? editedData.distribution_areas : data.distribution_areas}
-            salesPrice={editedData.sales_price !== undefined ? editedData.sales_price : data.sales_price}
+            salesPrice={editedData.price !== undefined ? editedData.price : data.price}
             previousSalesPrice={getPreviousPriceFromHistory(data.price_reduction_history)}
             priceReductionHistory={data.price_reduction_history}
             propertyType={editedData.property_type !== undefined ? editedData.property_type : data.property_type}
@@ -1850,16 +1850,16 @@ export default function PropertyListingDetailPage() {
                 size="small"
                 fullWidth
                 type="number"
-                value={editedData.sales_price !== undefined ? editedData.sales_price : (data.sales_price || '')}
-                onChange={(e) => handleFieldChange('sales_price', e.target.value ? Number(e.target.value) : null)}
+                value={editedData.price !== undefined ? editedData.price : (data.price || '')}
+                onChange={(e) => handleFieldChange('price', e.target.value ? Number(e.target.value) : null)}
                 sx={{ mt: 0.5 }}
                 InputProps={{
                   endAdornment: <Typography variant="caption" sx={{ ml: 0.5 }}>円</Typography>
                 }}
               />
             ) : (
-              <Typography variant="body2" fontWeight="bold" sx={{ fontSize: '0.75rem', color: data.sales_price ? 'text.primary' : 'text.disabled' }}>
-                {data.sales_price ? `${Math.round(data.sales_price / 10000).toLocaleString()}万円` : '価格応談'}
+              <Typography variant="body2" fontWeight="bold" sx={{ fontSize: '0.75rem', color: data.price ? 'text.primary' : 'text.disabled' }}>
+                {data.price ? `${Math.round(data.price / 10000).toLocaleString()}万円` : '価格応談'}
               </Typography>
             )}
           </Grid>
@@ -1892,8 +1892,8 @@ export default function PropertyListingDetailPage() {
                 hasChanges={Object.keys(editedData).length > 0}
               >
                 <PriceSection
-                  salesPrice={data.sales_price}
-                  salesPriceActual={editedData.sales_price !== undefined ? editedData.sales_price : data.sales_price}
+                  salesPrice={data.price}
+                  salesPriceActual={editedData.price !== undefined ? editedData.price : data.price}
                   listingPrice={data.listing_price}
                   propertyType={editedData.property_type !== undefined ? editedData.property_type : data.property_type}
                   priceReductionHistory={data.price_reduction_history}
