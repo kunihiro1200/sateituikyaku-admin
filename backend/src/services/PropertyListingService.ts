@@ -113,6 +113,7 @@ export class PropertyListingService {
         single_listing,
         suumo_url,
         suumo_registered,
+        display_address,
         offer_status,
         price_reduction_scheduled_date,
         created_at,
@@ -121,7 +122,7 @@ export class PropertyListingService {
 
     // フィルタリング
     if (search) {
-      query = query.or(`property_number.ilike.%${search}%,address.ilike.%${search}%,seller_name.ilike.%${search}%,seller_email.ilike.%${search}%`);
+      query = query.or(`property_number.ilike.%${search}%,address.ilike.%${search}%,display_address.ilike.%${search}%,seller_name.ilike.%${search}%,seller_email.ilike.%${search}%`);
     }
     if (status) {
       query = query.eq('status', status);

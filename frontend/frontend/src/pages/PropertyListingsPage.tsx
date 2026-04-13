@@ -297,6 +297,7 @@ export default function PropertyListingsPage() {
       listings = listings.filter(l =>
         (l.property_number ? normalizeText(l.property_number) : '').includes(query) ||
         (l.address ? normalizeText(l.address) : '').includes(query) ||
+        (l.display_address ? normalizeText(l.display_address) : '').includes(query) ||
         (l.seller_name ? normalizeText(l.seller_name) : '').includes(query) ||
         (l.seller_email ? normalizeText(l.seller_email) : '').includes(query) ||
         (l.buyer_name ? normalizeText(l.buyer_name) : '').includes(query)
