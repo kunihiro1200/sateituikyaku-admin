@@ -2521,6 +2521,28 @@ export class BuyerService {
   }
 
   /**
+   * 買主を物理削除（DELETE SQL）
+   * Requirements: 3.1, 3.5
+   */
+  async permanentDelete(buyerId: string): Promise<void> {
+    // buyer_idカラムで直接検索（レコード存在確認）
+    const { data: existing, error: fetchError } = await this.supabase
+      .from('buyers')
+      .select('buyer_id')
+      .eq('buyer_id', buyerId)
+      .single();
+
+    if (fetchError || !existing) throw new Error('Buyer not found');
+
+    const { error } = await this.supabase
+      .from('buyers')
+      .delete()
+      .eq('buyer_id', buyerId);
+
+    if (error) throw new Error(`Failed to permanently delete buyer: ${error.message}`);
+  }
+
+  /**
    * 論理削除した買主を復元
    */
   async restore(buyerId: string): Promise<any> {

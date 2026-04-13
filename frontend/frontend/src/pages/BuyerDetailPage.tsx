@@ -767,7 +767,7 @@ export default function BuyerDetailPage() {
     if (!buyer?.buyer_id) return;
     setDeleting(true);
     try {
-      await api.delete(`/api/buyers/${buyer.buyer_id}`);
+      await api.delete(`/api/buyers/${buyer.buyer_id}/permanent`);
       setDeleteDialogOpen(false);
       navigate('/buyers');
     } catch (err) {
@@ -3174,11 +3174,7 @@ TEL：097-533-2022`;
         <DialogTitle>買主を削除しますか？</DialogTitle>
         <DialogContent>
           <Typography>
-            {buyer?.name}（{buyer?.buyer_number}）をDBから削除します。<br />
-            削除後も復元可能ですが、一覧から非表示になります。
-          </Typography>
-          <Typography sx={{ color: 'error.main', fontWeight: 'bold', mt: 1 }}>
-            買主リスト（スプシ）も1行削除してください
+            この買主ナンバーが完全に削除されます。スプシも１行削除忘れないように！！
           </Typography>
         </DialogContent>
         <DialogActions>

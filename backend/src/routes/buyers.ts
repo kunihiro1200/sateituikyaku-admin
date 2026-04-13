@@ -1107,6 +1107,33 @@ router.delete('/:id', async (req: Request, res: Response) => {
   }
 });
 
+// 買主を物理削除（完全削除）
+router.delete('/:id/permanent', authenticate, async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+    let buyerId = id;
+    if (!isUuid) {
+      const buyer = await buyerService.getByBuyerNumber(id);
+      if (!buyer) {
+        return res.status(404).json({ error: 'Buyer not found' });
+      }
+      buyerId = buyer.buyer_id;
+    }
+
+    await buyerService.permanentDelete(buyerId);
+
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error('Error permanently deleting buyer:', error);
+    if (error.message === 'Buyer not found') {
+      return res.status(404).json({ error: error.message });
+    }
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // 論理削除した買主を復元
 router.post('/:id/restore', async (req: Request, res: Response) => {
   try {
