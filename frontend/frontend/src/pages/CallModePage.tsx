@@ -1440,7 +1440,9 @@ const CallModePage = () => {
       setEditedPropertyAddress(propertyData?.address || sellerData.propertyAddress || '');
       setEditedPropertyType(propertyData?.propertyType || sellerData.propertyType || '');
       setEditedLandArea((propertyData?.landArea || sellerData.landArea)?.toString() || '');
-      setEditedLandAreaVerified((propertyData?.landAreaVerified || sellerData.landAreaVerified)?.toString() || '');
+      const _landAreaVerified = (propertyData?.landAreaVerified || sellerData.landAreaVerified)?.toString() || '';
+      console.log('🔧 [初期化] landAreaVerified:', _landAreaVerified, 'propertyData?.landAreaVerified:', propertyData?.landAreaVerified, 'sellerData.landAreaVerified:', sellerData.landAreaVerified);
+      setEditedLandAreaVerified(_landAreaVerified);
       setEditedBuildingArea((propertyData?.buildingArea || sellerData.buildingArea)?.toString() || '');
       setEditedBuildingAreaVerified((propertyData?.buildingAreaVerified || sellerData.buildingAreaVerified)?.toString() || '');
       setEditedBuildYear((propertyData?.buildYear || sellerData.buildYear)?.toString() || '');
