@@ -223,6 +223,12 @@ router.put('/:propertyNumber', async (req: Request, res: Response) => {
       }
     }
 
+    // OFFER_FIELDSのいずれかが更新される場合、offer_status_updated_atを記録
+    const hasOfferUpdate = OFFER_FIELDS.some(f => updates[f] !== undefined);
+    if (hasOfferUpdate) {
+      updates.offer_status_updated_at = new Date().toISOString();
+    }
+
     const data = await propertyListingService.update(propertyNumber, updates);
 
     // 買付情報保存成功後、非同期で Google Chat に通知する（await しない）

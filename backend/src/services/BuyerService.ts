@@ -676,6 +676,11 @@ export class BuyerService {
     // 手動更新時刻を記録（スプレッドシート同期による上書きを防ぐため）
     allowedData.db_updated_at = new Date().toISOString();
 
+    // latest_status が更新される場合、latest_status_updated_at を記録
+    if (allowedData.latest_status !== undefined) {
+      allowedData.latest_status_updated_at = new Date().toISOString();
+    }
+
     // buyer_numberは数値型なので、数値に変換
     const buyerNumberInt = parseInt(buyerNumber, 10);
     console.log('[BuyerService.update] buyerNumberInt:', buyerNumberInt);

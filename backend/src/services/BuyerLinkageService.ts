@@ -9,6 +9,7 @@ export interface BuyerSummary {
   phone_number: string;
   email: string;
   latest_status: string;
+  latest_status_updated_at?: string | null;
   inquiry_confidence: string;
   reception_date: string;
   latest_viewing_date: string | null;
@@ -104,6 +105,7 @@ export class BuyerLinkageService {
           phone_number,
           email,
           latest_status,
+          latest_status_updated_at,
           inquiry_confidence,
           reception_date,
           latest_viewing_date,
