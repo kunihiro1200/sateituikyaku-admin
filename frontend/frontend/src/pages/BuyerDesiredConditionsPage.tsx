@@ -171,11 +171,34 @@ export default function BuyerDesiredConditionsPage() {
   const handleSaveAll = async () => {
     if (!buyer || Object.keys(pendingChanges).length === 0) return;
 
-    // 配信メール「要」時の必須バリデーション
-    for (const [fieldName, newValue] of Object.entries(pendingChanges)) {
-      const validationError = checkDistributionRequiredFields(fieldName, newValue);
-      if (validationError) {
-        setSnackbar({ open: true, message: validationError, severity: 'error' });
+    // 配信メール「要」時の必須バリデーション（pendingChanges全体を一括適用した仮想状態でチェック）
+    const mergedBuyer = { ...buyer, ...pendingChanges };
+    const mergedDistributionType = String(mergedBuyer.distribution_type || '').trim();
+    if (mergedDistributionType === '要') {
+      const mergedDesiredArea = String(mergedBuyer.desired_area || '').trim();
+      const mergedDesiredPropertyType = String(mergedBuyer.desired_property_type || '').trim();
+      const mergedPriceRangeHouse = String(mergedBuyer.price_range_house || '').trim();
+      const mergedPriceRangeApartment = String(mergedBuyer.price_range_apartment || '').trim();
+      const mergedPriceRangeLand = String(mergedBuyer.price_range_land || '').trim();
+
+      const missing: string[] = [];
+      if (!mergedDesiredArea) missing.push('エリア');
+      if (!mergedDesiredPropertyType) missing.push('希望種別');
+
+      const needsHouse = mergedDesiredPropertyType.includes('戸建て');
+      const needsApartment = mergedDesiredPropertyType.includes('マンション');
+      const needsLand = mergedDesiredPropertyType.includes('土地');
+      const hasAnyPriceRange = mergedPriceRangeHouse || mergedPriceRangeApartment || mergedPriceRangeLand;
+
+      if (needsHouse && !mergedPriceRangeHouse) missing.push('価格帯（戸建）');
+      if (needsApartment && !mergedPriceRangeApartment) missing.push('価格帯（マンション）');
+      if (needsLand && !mergedPriceRangeLand) missing.push('価格帯（土地）');
+      if (!needsHouse && !needsApartment && !needsLand && !hasAnyPriceRange) {
+        missing.push('価格帯（戸建・マンション・土地のいずれか）');
+      }
+
+      if (missing.length > 0) {
+        setSnackbar({ open: true, message: `配信メールが「要」の場合、${missing.join('・')}は必須です。希望条件を入力してください。`, severity: 'error' });
         return;
       }
     }
