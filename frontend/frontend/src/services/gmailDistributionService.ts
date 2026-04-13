@@ -293,6 +293,9 @@ export class GmailDistributionService {
         buyerNumber: buyers.find(b => b.email === email)?.buyer_number
       }));
 
+      // プレーンテキストの改行をHTMLの<br>に変換
+      const htmlBody = body.replace(/\n/g, '<br>');
+
       // 物件番号から一括メール送信APIを呼び出し
       const response = await api.post(
         `/api/property-listings/${propertyData.propertyNumber}/send-distribution-emails`,
@@ -302,7 +305,7 @@ export class GmailDistributionService {
           recipients, // 買主番号を含む新しいフィールド
           subject,
           content: body,
-          htmlBody: body,
+          htmlBody,
           from
         }
       );
