@@ -1547,10 +1547,17 @@ TEL：097-533-2022`;
                     const displayName = emp
                       ? (emp.name ? emp.name.split(/[\s　]/)[0] : (emp.initials || '不明'))
                       : '不明';
+                    const hasBody = !isSms && !!metadata.body;
                     return (
                       <ListItem
                         key={activity.id}
-                        sx={{ flexDirection: 'column', alignItems: 'flex-start', borderBottom: '1px solid', borderColor: 'divider', py: 1.5 }}
+                        sx={{ flexDirection: 'column', alignItems: 'flex-start', borderBottom: '1px solid', borderColor: 'divider', py: 1.5, cursor: hasBody ? 'pointer' : 'default', '&:hover': hasBody ? { bgcolor: 'action.hover' } : {} }}
+                        onClick={() => {
+                          if (hasBody) {
+                            setSelectedEmailBody(metadata.body);
+                            setEmailBodyModalOpen(true);
+                          }
+                        }}
                       >
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', mb: 0.5 }}>
                           <Typography variant="caption" color="text.secondary">
@@ -1607,10 +1614,17 @@ TEL：097-533-2022`;
                                   : (activity.employee.initials || '担当者'))
                               : '担当者'))
                       : (activity.employee ? getDisplayName(activity.employee) : '不明');
+                    const hasBody = !isSms && !!metadata.body;
                     return (
                       <ListItem
                         key={activity.id}
-                        sx={{ flexDirection: 'column', alignItems: 'flex-start', borderBottom: '1px solid', borderColor: 'divider', py: 1.5 }}
+                        sx={{ flexDirection: 'column', alignItems: 'flex-start', borderBottom: '1px solid', borderColor: 'divider', py: 1.5, cursor: hasBody ? 'pointer' : 'default', '&:hover': hasBody ? { bgcolor: 'action.hover' } : {} }}
+                        onClick={() => {
+                          if (hasBody) {
+                            setSelectedEmailBody(metadata.body);
+                            setEmailBodyModalOpen(true);
+                          }
+                        }}
                       >
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', mb: 1 }}>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -1649,7 +1663,6 @@ TEL：097-533-2022`;
                               // metadata.propertyAddressesから住所を取得（存在する場合）
                               const propertyAddresses = metadata.propertyAddresses || {};
                               const address = propertyAddresses[pn] || '';
-                              const hasBody = !!metadata.body;
                               return (
                                 <Box 
                                   key={pn} 
@@ -1661,7 +1674,8 @@ TEL：097-533-2022`;
                                     '&:hover': hasBody ? { bgcolor: 'action.hover', borderRadius: 1 } : {},
                                     p: 0.5,
                                   }}
-                                  onClick={() => {
+                                  onClick={(e) => {
+                                    e.stopPropagation();
                                     if (metadata.body) {
                                       setSelectedEmailBody(metadata.body);
                                       setEmailBodyModalOpen(true);
