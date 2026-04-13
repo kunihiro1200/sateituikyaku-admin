@@ -404,6 +404,9 @@ export class PropertyListingRestSyncService {
         // スプレッドシートデータをデータベース形式に変換
         const mappedData = mapper.mapSpreadsheetToDatabase(row);
 
+        // BL列（owner_info）優先、空欄の場合はO列（seller_name）にフォールバック
+        mappedData.seller_name = mappedData.owner_info || mappedData.seller_name || null;
+
         // 必須フィールドのバリデーション
         if (!this.validatePropertyListing(mappedData)) {
           console.warn(
