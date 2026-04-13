@@ -2656,9 +2656,9 @@ const CallModePage = () => {
     const amount2Man = Math.round(parseInt(editedValuationAmount2) / 10000);
     const amount3Man = Math.round(parseInt(editedValuationAmount3) / 10000);
 
-    // 土地面積と建物面積を取得
-    const landArea = property.landArea || '未設定';
-    const buildingArea = property.buildingArea || '未設定';
+    // 土地面積と建物面積を取得（「当社調べ」フィールドを優先）
+    const landArea = property.landAreaVerified || property.landArea || '未設定';
+    const buildingArea = property.buildingAreaVerified || property.buildingArea || '未設定';
 
     // メール件名
     const subject = `【査定結果】${seller.name}様の物件査定について`;
