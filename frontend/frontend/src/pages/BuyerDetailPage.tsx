@@ -767,7 +767,7 @@ export default function BuyerDetailPage() {
     if (!buyer?.buyer_id) return;
     setDeleting(true);
     try {
-      await api.delete(`/api/buyers/${buyer.buyer_id}/permanent`);
+      await api.delete(`/api/buyers/${buyer.buyer_number}/permanent`);
       setDeleteDialogOpen(false);
       navigate('/buyers');
     } catch (err) {
@@ -1108,7 +1108,7 @@ export default function BuyerDetailPage() {
             onClick={scrollToRelatedBuyers}
           />
           {/* 削除ボタン */}
-          {buyer?.buyer_id && (
+          {buyer?.buyer_number && (
             <Button
               variant="outlined"
               color="error"

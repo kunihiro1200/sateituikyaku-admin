@@ -2524,21 +2524,22 @@ export class BuyerService {
    * 買主を物理削除（DELETE SQL）
    * Requirements: 3.1, 3.5
    */
-  async permanentDelete(buyerId: string): Promise<void> {
-    // buyer_idカラムで直接検索（レコード存在確認）
-    const { data: existing, error: fetchError } = await this.supabase
-      .from('buyers')
-      .select('buyer_id')
-      .eq('buyer_id', buyerId)
-      .single();
+  async permanentDelete(buyerIdOrNumber: string): Promise<void> {
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(buyerIdOrNumber);
+    const isNumeric = /^\d+$/.test(buyerIdOrNumber);
 
-    if (fetchError || !existing) throw new Error('Buyer not found');
+    // buyer_numberで削除（主キーがTEXTのため、buyer_numberで特定するのが確実）
+    let query = this.supabase.from('buyers').delete();
 
-    const { error } = await this.supabase
-      .from('buyers')
-      .delete()
-      .eq('buyer_id', buyerId);
+    if (isNumeric) {
+      query = query.eq('buyer_number', parseInt(buyerIdOrNumber, 10));
+    } else if (isUuid) {
+      query = query.eq('buyer_id', buyerIdOrNumber);
+    } else {
+      query = query.eq('buyer_id', buyerIdOrNumber);
+    }
 
+    const { error } = await query;
     if (error) throw new Error(`Failed to permanently delete buyer: ${error.message}`);
   }
 
