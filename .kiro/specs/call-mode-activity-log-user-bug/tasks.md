@@ -94,7 +94,7 @@
   - タスク2の保存プロパティテストが PASS することを確認する
   - 疑問点があればユーザーに確認する
 
-- [-] 5. デプロイ
+- [x] 5. デプロイ
   - `.kiro/steering/deploy-procedure.md` のデプロイ手順に従ってデプロイを実施する
   - バックエンド（`sateituikyaku-admin-backend`）をデプロイする
   - フロントエンド（`sateituikyaku-admin-frontend`）をデプロイする（オプション修正を実施した場合）

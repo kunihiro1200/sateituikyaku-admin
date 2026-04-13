@@ -618,6 +618,9 @@ export class PropertyListingSyncService {
                 update.spreadsheet_data
               );
 
+              // BL列（owner_info）優先、空欄の場合はO列（seller_name）にフォールバック
+              mappedUpdates.seller_name = mappedUpdates.owner_info || mappedUpdates.seller_name || null;
+
               // Only include changed fields
               // ⚠️ 重要: mappedUpdatesに存在しないフィールド（スプレッドシートが空欄）はnullとして更新する
               const changedFieldsOnly: any = {};
@@ -814,6 +817,9 @@ export class PropertyListingSyncService {
 
     // Map spreadsheet row to database format
     const mappedData = this.columnMapper.mapSpreadsheetToDatabase(spreadsheetRow);
+
+    // BL列（owner_info）優先、空欄の場合はO列（seller_name）にフォールバック
+    mappedData.seller_name = mappedData.owner_info || mappedData.seller_name || null;
 
     // Compare each field
     for (const [dbField, spreadsheetValue] of Object.entries(mappedData)) {
