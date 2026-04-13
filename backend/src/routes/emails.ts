@@ -51,6 +51,10 @@ router.post(
         valuationAmount2: seller.valuationAmount2,
         valuationAmount3: seller.valuationAmount3,
         fixedAssetTaxRoadPrice: seller.fixedAssetTaxRoadPrice,
+        landArea: seller.landArea,
+        buildingArea: seller.buildingArea,
+        landAreaVerified: seller.landAreaVerified,
+        buildingAreaVerified: seller.buildingAreaVerified,
       };
 
       // メールを送信

@@ -456,9 +456,14 @@ export class EmailService extends BaseRepository {
     const amount2Man = Math.round(valuationData.valuationAmount2 / 10000);
     const amount3Man = Math.round(valuationData.valuationAmount3 / 10000);
 
-    // 土地面積と建物面積を取得
-    const landArea = valuationData.landArea || '未設定';
-    const buildingArea = valuationData.buildingArea || '未設定';
+    // 土地面積と建物面積を取得（「当社調べ」があれば優先）
+    const landAreaValue = valuationData.landAreaVerified || valuationData.landArea;
+    const landAreaSuffix = valuationData.landAreaVerified ? '（当社調べ）' : '';
+    const landAreaDisplay = landAreaValue ? `${landAreaValue}㎡${landAreaSuffix}` : '未設定';
+
+    const buildingAreaValue = valuationData.buildingAreaVerified || valuationData.buildingArea;
+    const buildingAreaSuffix = valuationData.buildingAreaVerified ? '（当社調べ）' : '';
+    const buildingAreaDisplay = buildingAreaValue ? `${buildingAreaValue}㎡${buildingAreaSuffix}` : '未設定';
 
     const body = `${seller.name}様
 
@@ -466,7 +471,7 @@ export class EmailService extends BaseRepository {
 大分市舞鶴町にございます、不動産会社の株式会社いふうです。
 
 机上査定は以下の通りとなっております。
-※土地${landArea}㎡、建物${buildingArea}㎡で算出しております。
+※土地${landAreaDisplay}、建物${buildingAreaDisplay}で算出しております。
 
 ＜相場価格＞
 　　　${amount1Man}万円～${amount2Man}万円（3ヶ月で売却可能）
