@@ -66,30 +66,15 @@ router.get('/callback', async (req: Request, res: Response) => {
     // 認証コードをトークンに交換（会社アカウント用）
     await googleAuthService.exchangeCodeForTokens(code);
 
-    // 成功時はシンプルな成功ページを表示
-    res.send(`
-      <html>
-        <head><title>カレンダー接続成功</title></head>
-        <body>
-          <h1>✅ Googleカレンダーに接続しました</h1>
-          <p>tenant@ifoo-oita.com のカレンダーに接続されました。</p>
-          <p>このウィンドウを閉じて、買主詳細ページで「カレンダーで開く」ボタンを押してください。</p>
-        </body>
-      </html>
-    `);
+    // 成功時はフロントエンドの設定ページにリダイレクト
+    const frontendUrl = process.env.FRONTEND_URL || 'https://sateituikyaku-admin-frontend.vercel.app';
+    res.redirect(`${frontendUrl}/settings?calendar_connected=true`);
   } catch (error: any) {
     console.error('OAuth callback error:', error);
     
-    res.send(`
-      <html>
-        <head><title>カレンダー接続エラー</title></head>
-        <body>
-          <h1>❌ カレンダー接続に失敗しました</h1>
-          <p>エラー: ${error.message || 'exchange_failed'}</p>
-          <p><a href="/api/auth/google/calendar">再試行</a></p>
-        </body>
-      </html>
-    `);
+    const frontendUrl = process.env.FRONTEND_URL || 'https://sateituikyaku-admin-frontend.vercel.app';
+    const errorMsg = encodeURIComponent(error.message || 'exchange_failed');
+    res.redirect(`${frontendUrl}/settings?calendar_error=${errorMsg}`);
   }
 });
 

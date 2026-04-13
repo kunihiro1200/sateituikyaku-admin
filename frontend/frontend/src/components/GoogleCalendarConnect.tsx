@@ -66,19 +66,12 @@ export const GoogleCalendarConnect: React.FC = () => {
   }, []);
 
   // Google Calendar接続を開始
-  const handleConnect = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const { authUrl } = await googleCalendarApi.getAuthUrl();
-      
-      // OAuth認証画面にリダイレクト
-      window.location.href = authUrl;
-    } catch (err: any) {
-      console.error('Failed to get auth URL:', err);
-      setError('認証URLの取得に失敗しました');
-      setLoading(false);
-    }
+  const handleConnect = () => {
+    // バックエンドのOAuthエンドポイントに直接リダイレクト（CORSを回避）
+    const backendUrl = import.meta.env.MODE === 'production'
+      ? 'https://sateituikyaku-admin-backend.vercel.app'
+      : (import.meta.env.VITE_API_URL || 'http://localhost:3000');
+    window.location.href = `${backendUrl}/api/auth/google/calendar`;
   };
 
   // Google Calendar連携を解除
