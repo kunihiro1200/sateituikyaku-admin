@@ -6,6 +6,7 @@ export interface Employee {
   name: string;
   role: string;
   initials: string;
+  phoneNumber: string | null;
 }
 
 interface EmployeeCache {
@@ -15,7 +16,8 @@ interface EmployeeCache {
 
 // キャッシュの有効期限: 5分
 const CACHE_DURATION = 5 * 60 * 1000;
-const CACHE_KEY = 'employees_cache';
+// v2: phone_number追加に伴いキャッシュキーを更新
+const CACHE_KEY = 'employees_cache_v2';
 
 /**
  * 有効な社員一覧を取得（キャッシュ付き）
@@ -40,8 +42,11 @@ export const getActiveEmployees = async (): Promise<Employee[]> => {
 
     // APIから取得
     console.log('📡 Fetching active employees from API');
-    const response = await api.get<{ employees: Employee[] }>('/api/employees/active');
-    const employees = response.data.employees;
+    const response = await api.get<{ employees: any[] }>('/api/employees/active');
+    const employees = response.data.employees.map((emp: any) => ({
+      ...emp,
+      phoneNumber: emp.phone_number ?? null,
+    }));
 
     // キャッシュに保存
     const cacheData: EmployeeCache = {
