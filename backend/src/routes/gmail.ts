@@ -134,6 +134,7 @@ router.post('/send', upload.array('attachments'), async (req, res) => {
         templateName: templateName || undefined,
         senderEmail: senderEmail || 'tenant@ifoo-oita.com',
         createdBy: employeeId,
+        body: bodyText,
       });
     } catch (err) {
       console.error('[gmail/send] activity_log保存エラー:', err);
