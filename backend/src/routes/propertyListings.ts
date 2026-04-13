@@ -12,6 +12,42 @@ import { createClient } from '@supabase/supabase-js';
 import { EmailService } from '../services/EmailService.supabase';
 import { authenticate } from '../middleware/auth';
 
+
+/**
+ * 買付情報保存時に Google Chat へ通知を送信するヘルパー関数
+ * 失敗しても保存結果には影響しない（例外を外部に伝播させない）
+ */
+async function notifyGoogleChatOfferSaved(
+  propertyNumber: string,
+  offerData: {
+    offer_date?: string | null;
+    offer_status?: string | null;
+    offer_comment?: string | null;
+    offer_amount?: string | null;
+  }
+): Promise<void> {
+  // Google Chat Webhook URL
+  const WEBHOOK_URL =
+    'https://chat.googleapis.com/v1/spaces/AAAA6iEDkiU/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=azlyf21pENCpLLUdJPjnRNXOzsIAP550xebOMVxYRMQ';
+
+  // 通知メッセージを組み立てる
+  const message =
+    `【買付情報更新】\n` +
+    `物件番号: ${propertyNumber}\n` +
+    `買付日: ${offerData.offer_date ?? '未設定'}\n` +
+    `状況: ${offerData.offer_status ?? '未設定'}\n` +
+    `買付コメント: ${offerData.offer_comment ?? '未設定'}`;
+
+  try {
+    // axios を使って Google Chat Webhook に POST する
+    const axios = require('axios');
+    await axios.post(WEBHOOK_URL, { text: message });
+  } catch (err) {
+    // 通知失敗はログ記録のみ（保存結果には影響しない）
+    console.error('[notifyGoogleChatOfferSaved] Google Chat 通知の送信に失敗しました:', err);
+  }
+}
+
 const router = Router();
 
 // Supabaseクライアントを初期化
@@ -171,7 +207,24 @@ router.put('/:propertyNumber', async (req: Request, res: Response) => {
       }
     }
 
+    // 買付フィールドの空文字列を null に変換する（空欄保存時の500エラー防止）
+    const OFFER_FIELDS = ['offer_date', 'offer_status', 'offer_amount', 'offer_comment'] as const;
+    for (const field of OFFER_FIELDS) {
+      if (updates[field] === '') {
+        updates[field] = null;
+      }
+    }
+
     const data = await propertyListingService.update(propertyNumber, updates);
+
+    // 買付情報保存成功後、非同期で Google Chat に通知する（await しない）
+    notifyGoogleChatOfferSaved(propertyNumber, {
+      offer_date: updates.offer_date,
+      offer_status: updates.offer_status,
+      offer_comment: updates.offer_comment,
+      offer_amount: updates.offer_amount,
+    });
+
     res.json(data);
   } catch (error: any) {
     console.error('Error updating property listing:', error);
