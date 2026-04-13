@@ -841,13 +841,23 @@ export class PropertyListingSyncService {
 
     // seller_nameのフォールバック値がDBと異なる場合は必ず変更として検出する
     // （他フィールドに変更がなくても seller_name の不整合を修正するため）
+    // ただし、DBにowner_infoが存在する場合はseller_nameをnullに変更しない
+    // （スプレッドシートのBL列が一時的に空になっても、DBのowner_infoを保持する）
     const normalizedFallback = this.normalizeValue(fallbackSellerName);
     const normalizedDbSellerName = this.normalizeValue(dbProperty['seller_name']);
-    if (normalizedFallback !== normalizedDbSellerName) {
+    const dbOwnerInfo = this.normalizeValue(dbProperty['owner_info']);
+    
+    // DBにowner_infoがある場合、seller_nameをnullに変更しない（保護）
+    const effectiveFallback = (!normalizedFallback && dbOwnerInfo) ? dbOwnerInfo : normalizedFallback;
+    
+    if (effectiveFallback !== normalizedDbSellerName) {
       changes['seller_name'] = {
         old: normalizedDbSellerName,
-        new: normalizedFallback
+        new: effectiveFallback
       };
+      // mappedDataも更新（バッチ処理で使用される）
+      mappedData.seller_name = effectiveFallback;
+    }
     }
 
     // Compare each field
