@@ -2532,7 +2532,8 @@ export class BuyerService {
     let query = this.supabase.from('buyers').delete();
 
     if (isNumeric) {
-      query = query.eq('buyer_number', parseInt(buyerIdOrNumber, 10));
+      // buyer_number は TEXT型なので文字列のまま渡す
+      query = query.eq('buyer_number', buyerIdOrNumber);
     } else if (isUuid) {
       query = query.eq('buyer_id', buyerIdOrNumber);
     } else {
