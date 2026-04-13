@@ -233,7 +233,12 @@ export class StaffManagementService {
       });
 
       if (matched) {
-        console.log(`[StaffManagementService] Found initials "${matched.initials}" for email: ${email}`);
+        console.log(`[StaffManagementService] Found initials "${matched.initials}" for email: ${email} (name: ${matched.name})`);
+        // 全マッチを確認（デバッグ用）
+        const allMatched = staffList.filter(staff => (staff.email || '').toLowerCase().trim() === normalizedEmail);
+        if (allMatched.length > 1) {
+          console.warn(`[StaffManagementService] Multiple staff found for email ${email}:`, allMatched.map(s => ({ initials: s.initials, name: s.name, email: s.email })));
+        }
         return matched.initials || null;
       }
 

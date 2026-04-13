@@ -265,9 +265,7 @@ router.get('/initials-by-email', async (req: Request, res: Response) => {
       return res.json({ initials: null });
     }
 
-    // DBのinitialsカラムを確認
-    const { createClient } = await import('@supabase/supabase-js');
-    const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+    // DBのinitialsカラムを確認（上部で作成済みのsupabaseクライアントを使用）
     const { data: emp, error: dbError } = await supabase.from('employees').select('initials').ilike('email', email).single();
     if (dbError) {
       console.log(`[initials-by-email] DB lookup failed: ${dbError.message}, falling back to spreadsheet`);
