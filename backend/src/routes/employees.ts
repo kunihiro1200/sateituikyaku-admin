@@ -246,22 +246,10 @@ router.get('/normal-initials', async (req: Request, res: Response) => {
  */
 router.get('/initials-by-email', async (req: Request, res: Response) => {
   try {
-    // 認証ヘッダーからemailを取得（authenticateミドルウェアなし）
-    const authHeader = req.headers.authorization;
-    let email = '';
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-      try {
-        const token = authHeader.substring(7);
-        const { AuthService } = await import('../services/AuthService.supabase');
-        const authService = new AuthService();
-        const employee = await authService.validateSession(token);
-        email = employee?.email || '';
-      } catch (authError: any) {
-        console.error('[initials-by-email] Auth failed:', authError.message);
-      }
-    }
+    // authenticate ミドルウェアが設定した req.employee を直接使用（二重認証を排除）
+    const email = req.employee?.email || '';
     if (!email) {
-      console.log('[initials-by-email] No email found in auth token');
+      console.log('[initials-by-email] No email found in req.employee');
       return res.json({ initials: null });
     }
 

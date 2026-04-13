@@ -339,9 +339,29 @@ router.post(
       const assigneeKey = EMAIL_TEMPLATE_ASSIGNEE_MAP[templateId];
       // フロントエンドから送信者イニシャルを受け取る（最優先）
       let senderInitials = (req.body.senderInitials || '').trim();
-      console.log(`📧 [send-template-email] senderInitials from request: "${senderInitials}", employee.initials: "${(req.employee as any)?.initials}"`);
-      // フォールバック1: req.employee.initials
-      if (!senderInitials) senderInitials = (req.employee as any)?.initials || '';
+      console.log(`📧 [send-template-email] senderInitials from request: "${senderInitials}", employee.email: "${req.employee?.email}"`);
+      // フォールバック1: req.employee.email を使って employees テーブルから直接取得（キャッシュを使わない）
+      if (!senderInitials && req.employee?.email) {
+        try {
+          const { createClient } = await import('@supabase/supabase-js');
+          const supabaseClient = createClient(
+            process.env.SUPABASE_URL!,
+            process.env.SUPABASE_SERVICE_KEY!
+          );
+          const { data: empRow } = await supabaseClient
+            .from('employees')
+            .select('initials')
+            .ilike('email', req.employee.email.trim())
+            .eq('is_active', true)
+            .single();
+          if (empRow?.initials) {
+            senderInitials = empRow.initials;
+            console.log(`📧 [send-template-email] Resolved initials from DB by email: ${senderInitials}`);
+          }
+        } catch (dbErr) {
+          console.warn('📧 [send-template-email] Failed to resolve initials from DB:', dbErr);
+        }
+      }
       // フォールバック2: employeeUtils
       if (!senderInitials && req.employee?.email) {
         try {
