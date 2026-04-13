@@ -378,6 +378,18 @@ function syncBuyers() {
     if (records.length === 0) {
       Logger.log('変更なし、upsertをスキップ');
     } else {
+      // 重複除去: 同じbatch内に同じbuyer_numberが複数ある場合、後の行で上書き
+      // （スプシに同一buyer_numberが2行存在するとON CONFLICT DO UPDATE errorが発生するため）
+      var deduped = {};
+      for (var d = 0; d < records.length; d++) {
+        deduped[records[d].buyer_number] = records[d];
+      }
+      var dedupedKeys = Object.keys(deduped);
+      if (dedupedKeys.length < records.length) {
+        Logger.log('⚠️ 重複buyer_numberを除去: ' + records.length + '件 → ' + dedupedKeys.length + '件');
+      }
+      records = dedupedKeys.map(function(k) { return deduped[k]; });
+
       // PGRST102対策: 全レコードのキーを統一
       var allKeys = {};
       for (var k = 0; k < records.length; k++) {
