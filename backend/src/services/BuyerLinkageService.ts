@@ -12,7 +12,7 @@ export interface BuyerSummary {
   latest_status_updated_at?: string | null;
   inquiry_confidence: string;
   reception_date: string;
-  latest_viewing_date: string | null;
+  latest_viewing_date: string | null; // DBカラム名は viewing_date（エイリアス）
   viewing_time: string | null;
   next_call_date: string | null;
 }
@@ -108,7 +108,7 @@ export class BuyerLinkageService {
           latest_status_updated_at,
           inquiry_confidence,
           reception_date,
-          latest_viewing_date,
+          viewing_date,
           viewing_time,
           next_call_date
         `)
@@ -127,9 +127,11 @@ export class BuyerLinkageService {
       }
 
       // buyer_idをidとしても返す（後方互換性のため）
-      const buyersWithId = (data || []).map(buyer => ({
+      // viewing_date → latest_viewing_date にリネームしてフロントエンドに返す
+      const buyersWithId = (data || []).map((buyer: any) => ({
         ...buyer,
-        id: buyer.buyer_id
+        id: buyer.buyer_id,
+        latest_viewing_date: buyer.viewing_date ?? null,
       }));
 
       return buyersWithId;
