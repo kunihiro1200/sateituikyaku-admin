@@ -794,7 +794,7 @@ export class EnhancedAutoSyncService {
     while (hasMore) {
       const { data: dbSellers, error } = await this.supabase
         .from('sellers')
-        .select('seller_number, status, contract_year_month, visit_assignee, phone_contact_person, preferred_contact_time, contact_method, next_call_date, unreachable_status, inquiry_date, comments, valuation_amount_1, valuation_amount_2, valuation_amount_3, first_call_person, valuation_reason, valuation_method, name, address, phone_number, email, property_address, current_status, updated_at, visit_reminder_assignee, mailing_status')
+        .select('seller_number, status, contract_year_month, visit_assignee, visit_date, phone_contact_person, preferred_contact_time, contact_method, next_call_date, unreachable_status, inquiry_date, comments, valuation_amount_1, valuation_amount_2, valuation_amount_3, first_call_person, valuation_reason, valuation_method, name, address, phone_number, email, property_address, current_status, updated_at, visit_reminder_assignee, mailing_status')
         .range(offset, offset + pageSize - 1);
 
       if (error) {
@@ -847,6 +847,14 @@ export class EnhancedAutoSyncService {
           // visit_assigneeの比較（空→null、「外す」→nullも検出）
           const dbVisitAssignee = dbSeller.visit_assignee || null;
           if (sheetVisitAssignee !== dbVisitAssignee) {
+            needsUpdate = true;
+          }
+
+          // visit_dateの比較
+          const sheetVisitDate = sheetRow['訪問日 Y/M/D'];
+          const formattedSheetVisitDate = sheetVisitDate ? this.formatVisitDate(sheetVisitDate) : null;
+          const dbVisitDate = dbSeller.visit_date ? String(dbSeller.visit_date).substring(0, 10) : null;
+          if (formattedSheetVisitDate !== dbVisitDate) {
             needsUpdate = true;
           }
 

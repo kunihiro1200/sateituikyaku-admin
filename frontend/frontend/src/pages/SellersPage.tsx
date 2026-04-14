@@ -697,7 +697,7 @@ export default function SellersPage() {
             <TextField
               sx={isMobile ? { flex: 1 } : { width: '50%' }}
               fullWidth={isMobile}
-              placeholder="名前、住所、電話番号で検索"
+              placeholder="名前、住所、電話番号、物件住所で検索"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyPress={(e) => {

@@ -36,7 +36,7 @@
   - テストを作成・実行し、PASS を確認したらタスク完了とする
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7_
 
-- [~] 3. イニシャル誤記録バグの修正
+- [ ] 3. イニシャル誤記録バグの修正
 
   - [x] 3.1 `backend/src/routes/employees.ts` の二重認証を排除する
     - `GET /api/employees/initials-by-email` エンドポイント内の `authService.validateSession(token)` 呼び出しを削除する

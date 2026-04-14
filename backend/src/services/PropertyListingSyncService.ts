@@ -338,6 +338,7 @@ export class PropertyListingSyncService {
       seller_number: seller.seller_number,
       seller_name: seller.name ? decrypt(seller.name) : null,  // ⚠️ 暗号化フィールドは必ず復号してから保存
       seller_email: seller.email ? decrypt(seller.email) : null,  // ⚠️ 暗号化フィールドは必ず復号してから保存
+      seller_phone: seller.phone_number ? decrypt(seller.phone_number) : null,  // ⚠️ 暗号化フィールドは必ず復号してから保存
       address: seller.address,
       city: seller.city,
       prefecture: seller.prefecture,

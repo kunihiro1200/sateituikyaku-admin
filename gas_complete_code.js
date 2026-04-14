@@ -606,6 +606,13 @@ function syncSellerNow(sellerNumberStr) {
   if (rowObj['Pinrich']) updateData.pinrich_status = String(rowObj['Pinrich']);
   var sheetContractYM = formatDateToISO_(rowObj['契約年月 他決は分かった時点']);
   if (sheetContractYM !== null) updateData.contract_year_month = sheetContractYM;
+  // 訪問日
+  var rawVisitDate = rowObj['訪問日 Y/M/D'] || rowObj['訪問日 \nY/M/D'] || rowObj['訪問日'];
+  var sheetVisitDate = formatDateToISO_(rawVisitDate);
+  updateData.visit_date = sheetVisitDate || null;
+  // 訪問取得日
+  var sheetVisitAcqDate = formatDateToISO_(rowObj['訪問取得日\n年/月/日'] || rowObj['訪問取得日']);
+  if (sheetVisitAcqDate !== null) updateData.visit_acquisition_date = sheetVisitAcqDate;
   updateData.updated_at = new Date().toISOString();
   var result = patchSellerToSupabase_(sellerNumberStr, updateData);
   if (result.success) {
@@ -617,6 +624,7 @@ function syncSellerNow(sellerNumberStr) {
 
 function syncAA907() { syncSellerNow('AA907'); }
 function syncAA13837() { syncSellerNow('AA13837'); }
+function syncAA2708() { syncSellerNow('AA2708'); }
 
 // AA13837の反響詳細日時をDBに反映する専用関数
 function syncAA13837InquiryDatetime() {

@@ -57,6 +57,7 @@ interface PropertyListing {
   display_address?: string;
   seller_name?: string;
   seller_email?: string;
+  seller_phone?: string;
   buyer_name?: string;
   contract_date?: string;
   settlement_date?: string;
@@ -299,6 +300,7 @@ export default function PropertyListingsPage() {
         (l.display_address ? normalizeText(l.display_address) : '').includes(query) ||
         (l.seller_name ? normalizeText(l.seller_name) : '').includes(query) ||
         (l.seller_email ? normalizeText(l.seller_email) : '').includes(query) ||
+        (l.seller_phone ? normalizeText(l.seller_phone) : '').includes(query) ||
         (l.buyer_name ? normalizeText(l.buyer_name) : '').includes(query)
       );
     }
@@ -521,7 +523,7 @@ export default function PropertyListingsPage() {
             <TextField
               fullWidth
               size="small"
-              placeholder="Search 物件（物件番号、所在地、売主、売主メール、買主）"
+              placeholder="物件番号、所在地、売主、売主電話番号、買主で検索"
               value={searchQuery}
               onChange={(e) => { setSearchQuery(e.target.value); setSidebarStatus(null); setLastFilter('search'); setPage(0); }}
               InputProps={{

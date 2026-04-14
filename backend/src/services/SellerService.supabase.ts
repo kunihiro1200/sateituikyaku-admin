@@ -1908,7 +1908,8 @@ export class SellerService extends BaseRepository {
         (seller.address && seller.address.toLowerCase().includes(lowerQuery)) ||
         (seller.phoneNumber && seller.phoneNumber.toLowerCase().includes(lowerQuery)) ||
         (seller.email && seller.email.toLowerCase().includes(lowerQuery)) ||
-        (seller.sellerNumber && seller.sellerNumber.toLowerCase().includes(lowerQuery))
+        (seller.sellerNumber && seller.sellerNumber.toLowerCase().includes(lowerQuery)) ||
+        (seller.propertyAddress && seller.propertyAddress.toLowerCase().includes(lowerQuery))
     );
 
     console.log(`🎯 Found ${results.length} matching sellers`);

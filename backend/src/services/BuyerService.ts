@@ -168,9 +168,25 @@ export class BuyerService {
       if (isBuyerNumber) {
         query = query.eq('buyer_number', search);
       } else {
-        query = query.or(
-          `buyer_number.ilike.%${search}%,name.ilike.%${search}%,phone_number.ilike.%${search}%,email.ilike.%${search}%,property_number.ilike.%${search}%`
-        );
+        // property_listings から住所一致の property_number を取得して OR 条件に追加
+        const { data: matchingProperties } = await this.supabase
+          .from('property_listings')
+          .select('property_number')
+          .ilike('address', `%${search}%`);
+
+        const matchingPropertyNumbers = (matchingProperties || [])
+          .map((p: any) => p.property_number)
+          .filter(Boolean) as string[];
+
+        if (matchingPropertyNumbers.length > 0) {
+          query = query.or(
+            `buyer_number.ilike.%${search}%,name.ilike.%${search}%,phone_number.ilike.%${search}%,email.ilike.%${search}%,property_number.ilike.%${search}%,property_number.in.(${matchingPropertyNumbers.join(',')})`
+          );
+        } else {
+          query = query.or(
+            `buyer_number.ilike.%${search}%,name.ilike.%${search}%,phone_number.ilike.%${search}%,email.ilike.%${search}%,property_number.ilike.%${search}%`
+          );
+        }
       }
     }
 
