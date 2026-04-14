@@ -2816,6 +2816,11 @@ HP：https://ifoo-oita.com/
     const _empList = employeesOverride || employees;
     const assignedEmployee = _empList.find((emp: any) => emp.email === seller.assignedTo)
       || _empList.find((emp: any) => emp.initials === seller.visitAssignee);
+    console.log('[署名デバッグ] _empList.length:', _empList.length);
+    console.log('[署名デバッグ] seller.assignedTo:', seller.assignedTo);
+    console.log('[署名デバッグ] seller.visitAssignee:', seller.visitAssignee);
+    console.log('[署名デバッグ] assignedEmployee:', JSON.stringify(assignedEmployee));
+    console.log('[署名デバッグ] phoneNumber:', assignedEmployee?.phoneNumber);
     const employeeName = assignedEmployee?.name || employee?.name || '';
     result = result.replace(/<<営担>>/g, employeeName);
     result = result.replace(/<<担当名（営業）名前>>/g, employeeName);
@@ -3466,13 +3471,13 @@ HP：https://ifoo-oita.com/
       // ステータスに応じて適切なエンドポイントを選択
       let endpoint = '';
       if (statusLabel.includes('専任')) {
-        endpoint = `/chat-notifications/exclusive-contract/${seller.id}`;
+        endpoint = `/api/chat-notifications/exclusive-contract/${seller.id}`;
       } else if (statusLabel.includes('一般')) {
-        endpoint = `/chat-notifications/general-contract/${seller.id}`;
+        endpoint = `/api/chat-notifications/general-contract/${seller.id}`;
       } else if (statusLabel.includes('訪問後他決')) {
-        endpoint = `/chat-notifications/post-visit-other-decision/${seller.id}`;
+        endpoint = `/api/chat-notifications/post-visit-other-decision/${seller.id}`;
       } else if (statusLabel.includes('未訪問他決') || statusLabel.includes('他決')) {
-        endpoint = `/chat-notifications/pre-visit-other-decision/${seller.id}`;
+        endpoint = `/api/chat-notifications/pre-visit-other-decision/${seller.id}`;
       } else {
         throw new Error('このステータスでは通知を送信できません');
       }

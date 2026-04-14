@@ -585,19 +585,19 @@ const SellerDetailPage = () => {
       let endpoint = '';
       switch (notificationType) {
         case 'general_contract':
-          endpoint = `/chat-notifications/general-contract/${id}`;
+          endpoint = `/api/chat-notifications/general-contract/${id}`;
           break;
         case 'exclusive_contract':
-          endpoint = `/chat-notifications/exclusive-contract/${id}`;
+          endpoint = `/api/chat-notifications/exclusive-contract/${id}`;
           break;
         case 'post_visit_other_decision':
-          endpoint = `/chat-notifications/post-visit-other-decision/${id}`;
+          endpoint = `/api/chat-notifications/post-visit-other-decision/${id}`;
           break;
         case 'pre_visit_other_decision':
-          endpoint = `/chat-notifications/pre-visit-other-decision/${id}`;
+          endpoint = `/api/chat-notifications/pre-visit-other-decision/${id}`;
           break;
         case 'property_introduction':
-          endpoint = `/chat-notifications/property-introduction/${id}`;
+          endpoint = `/api/chat-notifications/property-introduction/${id}`;
           break;
         default:
           throw new Error('無効な通知タイプです');
