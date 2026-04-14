@@ -2625,7 +2625,6 @@ export class SellerService extends BaseRepository {
         !hasInfo &&
         !unreachable &&
         confidence !== 'ダブり' && confidence !== 'D' && confidence !== 'AI査定' &&
-        !exclusionDate &&
         inquiryDate >= '2026-01-01'
       );
       return !isTodayCallNotStarted;
