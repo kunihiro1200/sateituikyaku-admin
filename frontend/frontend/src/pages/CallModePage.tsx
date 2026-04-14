@@ -2817,6 +2817,8 @@ HP：https://ifoo-oita.com/
     const assignedEmployee = _empList.find((emp: any) => emp.email === seller.assignedTo)
       || _empList.find((emp: any) => emp.initials === seller.visitAssignee)
       || _empList.find((emp: any) => emp.name === seller.visitAssignee);
+    console.log('[署名デバッグ2] assignedEmployee full:', JSON.stringify(assignedEmployee));
+    console.log('[署名デバッグ2] _empList[0] keys:', _empList.length > 0 ? Object.keys(_empList[0]) : []);
     const employeeName = assignedEmployee?.name || employee?.name || '';
     result = result.replace(/<<営担>>/g, employeeName);
     result = result.replace(/<<担当名（営業）名前>>/g, employeeName);
@@ -2828,6 +2830,20 @@ HP：https://ifoo-oita.com/
       const appointmentDate = new Date(seller.appointmentDate);
       const dateStr = `${appointmentDate.getMonth() + 1}月${appointmentDate.getDate()}日`;
       const timeStr = `${appointmentDate.getHours()}:${appointmentDate.getMinutes().toString().padStart(2, '0')}`;
+      result = result.replace(/<<訪問日>>/g, dateStr);
+      result = result.replace(/<<時間>>/g, timeStr);
+    } else if (seller.visitDate) {
+      // appointmentDate が未設定の場合は visitDate にフォールバック
+      const visitDateObj = new Date(seller.visitDate);
+      const dateStr = `${visitDateObj.getMonth() + 1}月${visitDateObj.getDate()}日`;
+      let timeStr: string;
+      if (visitDateObj.getHours() === 0 && visitDateObj.getMinutes() === 0 && seller.visitTime) {
+        // visitDate の時刻が 00:00 かつ visitTime が存在する場合は visitTime の HH:mm を使用
+        const timeParts = (seller.visitTime as string).split(':');
+        timeStr = `${timeParts[0]}:${timeParts[1]}`;
+      } else {
+        timeStr = `${visitDateObj.getHours()}:${visitDateObj.getMinutes().toString().padStart(2, '0')}`;
+      }
       result = result.replace(/<<訪問日>>/g, dateStr);
       result = result.replace(/<<時間>>/g, timeStr);
     } else {
