@@ -125,10 +125,10 @@ export class EmployeeUtils extends BaseRepository {
    * 有効な社員でメールアドレスが存在するものを取得
    * @returns 有効な社員の配列
    */
-  async getActiveEmployeesWithEmail(): Promise<Array<{ id: string; email: string; name: string; role: string; initials: string }>> {
+  async getActiveEmployeesWithEmail(): Promise<Array<{ id: string; email: string; name: string; role: string; initials: string; phone_number: string | null }>> {
     try {
       const { data: employees, error } = await this.table('employees')
-        .select('id, email, name, role, initials')
+        .select('id, email, name, role, initials, phone_number')
         .eq('is_active', true)
         .not('email', 'is', null)
         .order('name');
