@@ -1626,25 +1626,24 @@ router.post('/backfill-seller-phone', authenticate, async (req: Request, res: Re
     );
     const { decrypt } = await import('../utils/encryption');
 
-    // seller_phone が NULL の物件を全件取得
+    // seller_phone が NULL の物件を全件取得（property_number で sellers と紐付け）
     const { data: listings, error: listErr } = await supabase
       .from('property_listings')
-      .select('property_number, seller_number')
-      .is('seller_phone', null)
-      .not('seller_number', 'is', null);
+      .select('property_number')
+      .is('seller_phone', null);
 
     if (listErr) throw new Error(listErr.message);
     if (!listings || listings.length === 0) {
       return res.json({ updated: 0, message: 'seller_phone が NULL の物件はありません' });
     }
 
-    const sellerNumbers = [...new Set(listings.map((l: any) => l.seller_number).filter(Boolean))];
+    const propertyNumbers = listings.map((l: any) => l.property_number).filter(Boolean);
 
-    // sellers テーブルから phone_number を取得
+    // sellers テーブルから property_number と phone_number を取得
     const { data: sellers, error: sellerErr } = await supabase
       .from('sellers')
       .select('seller_number, phone_number')
-      .in('seller_number', sellerNumbers);
+      .in('seller_number', propertyNumbers);
 
     if (sellerErr) throw new Error(sellerErr.message);
 
@@ -1662,18 +1661,14 @@ router.post('/backfill-seller-phone', authenticate, async (req: Request, res: Re
 
     // バッチ更新
     let updated = 0;
-    const BATCH = 100;
-    for (let i = 0; i < listings.length; i += BATCH) {
-      const batch = listings.slice(i, i + BATCH);
-      for (const listing of batch) {
-        const phone = phoneMap[listing.seller_number];
-        if (!phone) continue;
-        const { error: upErr } = await supabase
-          .from('property_listings')
-          .update({ seller_phone: phone })
-          .eq('property_number', listing.property_number);
-        if (!upErr) updated++;
-      }
+    for (const listing of listings) {
+      const phone = phoneMap[listing.property_number];
+      if (!phone) continue;
+      const { error: upErr } = await supabase
+        .from('property_listings')
+        .update({ seller_phone: phone })
+        .eq('property_number', listing.property_number);
+      if (!upErr) updated++;
     }
 
     res.json({ updated, total: listings.length, message: `${updated}件の seller_phone を更新しました` });
