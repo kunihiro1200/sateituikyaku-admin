@@ -48,6 +48,24 @@ export function generateCalendarTitle(
 }
 
 /**
+ * 業者問合せ時にカレンダータイトル末尾に氏名・会社名を追加する
+ * @param baseTitle - generateCalendarTitle で生成した基本タイトル
+ * @param brokerInquiry - buyer.broker_inquiry の値
+ * @param buyerName - buyer.name の値
+ * @returns 加工後のタイトル文字列
+ */
+export function applyAgencyInquiryTitle(
+  baseTitle: string,
+  brokerInquiry: string | undefined | null,
+  buyerName: string | undefined | null
+): string {
+  if (brokerInquiry === '業者問合せ' && buyerName && buyerName.trim().length > 0) {
+    return `${baseTitle} ${buyerName}`;
+  }
+  return baseTitle;
+}
+
+/**
  * カレンダーイベントの説明欄を生成する
  * 末尾に買主詳細画面のURLを追加する
  */
@@ -483,12 +501,13 @@ export default function BuyerViewingResultPage() {
     }
 
     // タイトルと説明を生成
-    const title = generateCalendarTitle(
+    const baseTitle = generateCalendarTitle(
       buyer.viewing_mobile,
       buyer.viewing_type_general,
       property?.address,
       buyer.name
     );
+    const title = applyAgencyInquiryTitle(baseTitle, buyer.broker_inquiry, buyer.name);
     const description = generateCalendarDescription(
       property?.address,
       property?.google_map_url,
