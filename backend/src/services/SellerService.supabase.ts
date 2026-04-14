@@ -1837,6 +1837,25 @@ export class SellerService extends BaseRepository {
       }
     }
     
+    // 電話番号パターン（数字のみ7桁以上）→ phone_number_hash で検索
+    if (lowerQuery.match(/^\d{7,}$/)) {
+      console.log('🚀 Fast path: Searching by phone_number_hash in database');
+      const phoneHash = crypto.createHash('sha256').update(lowerQuery).digest('hex');
+      let hashQuery = this.table('sellers')
+        .select('*')
+        .eq('phone_number_hash', phoneHash);
+      if (!includeDeleted) {
+        hashQuery = hashQuery.is('deleted_at', null);
+      }
+      const { data: hashSellers, error: hashError } = await hashQuery;
+      if (hashError) throw new Error(`Failed to search by phone hash: ${hashError.message}`);
+      if (hashSellers && hashSellers.length > 0) {
+        const decryptedSellers = await Promise.all(hashSellers.map(s => this.decryptSeller(s)));
+        return await this._attachLastCalledAt(decryptedSellers);
+      }
+      // ヒットしない場合は全件スキャンにフォールバック
+    }
+    
     // 数字のみの場合も売主番号として検索
     if (lowerQuery.match(/^\d+$/)) {
       console.log('🚀 Fast path: Searching by seller_number (numeric) in database');
@@ -1862,6 +1881,25 @@ export class SellerService extends BaseRepository {
         const decryptedSellers = await Promise.all(sellers.map(seller => this.decryptSeller(seller)));
         return await this._attachLastCalledAt(decryptedSellers);
       }
+    }
+    
+    // メールアドレスパターン → email_hash で検索
+    if (lowerQuery.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) {
+      console.log('🚀 Fast path: Searching by email_hash in database');
+      const emailHash = crypto.createHash('sha256').update(lowerQuery).digest('hex');
+      let hashQuery = this.table('sellers')
+        .select('*')
+        .eq('email_hash', emailHash);
+      if (!includeDeleted) {
+        hashQuery = hashQuery.is('deleted_at', null);
+      }
+      const { data: hashSellers, error: hashError } = await hashQuery;
+      if (hashError) throw new Error(`Failed to search by email hash: ${hashError.message}`);
+      if (hashSellers && hashSellers.length > 0) {
+        const decryptedSellers = await Promise.all(hashSellers.map(s => this.decryptSeller(s)));
+        return await this._attachLastCalledAt(decryptedSellers);
+      }
+      // ヒットしない場合は全件スキャンにフォールバック
     }
     
     // 名前、住所、電話番号、メールアドレスでの検索は全件取得が必要（暗号化されているため）
