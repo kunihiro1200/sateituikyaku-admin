@@ -2263,6 +2263,7 @@ const CallModePage = () => {
           const calTitle = `【訪問】${propertyAddress}`;
           const calLocation = propertyAddress;
           const calDetails = 
+            (updatedSeller?.sellerNumber || seller?.sellerNumber ? `売主番号: ${updatedSeller?.sellerNumber || seller?.sellerNumber}\n` : '') +
             `売主名: ${updatedSeller?.name || seller?.name || ''}\n` +
             `電話: ${updatedSeller?.phoneNumber || seller?.phoneNumber || ''}\n` +
             `\n通話モードページ:\n${window.location.href}` +
@@ -4912,6 +4913,7 @@ HP：https://ifoo-oita.com/
                               
                               // 詳細情報（URLはそのまま記載するとGoogleカレンダーでクリック可能なリンクになる）
                               const details = 
+                                (seller.sellerNumber ? `売主番号: ${seller.sellerNumber}\n` : '') +
                                 `売主名: ${seller.name}\n` +
                                 `住所: ${seller.address}\n` +
                                 `電話: ${seller.phoneNumber}\n` +
