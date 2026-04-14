@@ -689,7 +689,7 @@ export default function PropertyListingDetailPage() {
     setOfferErrors({});
 
     try {
-      await api.put(`/api/property-listings/${propertyNumber}`, editedData);
+      await api.put(`/api/property-listings/${propertyNumber}`, { ...editedData, notify_offer: true });
       setSnackbar({
         open: true,
         message: '買付情報を保存しました',

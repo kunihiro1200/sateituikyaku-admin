@@ -256,12 +256,15 @@ router.put('/:propertyNumber', async (req: Request, res: Response) => {
     const { propertyNumber } = req.params;
     const updates = req.body;
 
+    const { notify_offer, ...updatesWithoutFlag } = updates;
+    const safeUpdates = updatesWithoutFlag;
+
     // Validate distribution_areas if provided
-    if (updates.distribution_areas !== undefined && updates.distribution_areas !== null) {
+    if (safeUpdates.distribution_areas !== undefined && safeUpdates.distribution_areas !== null) {
       const { PropertyDistributionAreaCalculator } = await import('../services/PropertyDistributionAreaCalculator');
       const calculator = new PropertyDistributionAreaCalculator();
       
-      if (!calculator.validateAreaNumbers(updates.distribution_areas)) {
+      if (!calculator.validateAreaNumbers(safeUpdates.distribution_areas)) {
         return res.status(400).json({ 
           error: 'Invalid distribution_areas format. Must contain only valid area numbers (①-⑯, ㊵, ㊶)' 
         });
@@ -271,30 +274,32 @@ router.put('/:propertyNumber', async (req: Request, res: Response) => {
     // 買付フィールドの空文字列を null に変換する（空欄保存時の500エラー防止）
     const OFFER_FIELDS = ['offer_date', 'offer_status', 'offer_amount', 'offer_comment'] as const;
     for (const field of OFFER_FIELDS) {
-      if (updates[field] === '') {
-        updates[field] = null;
+      if (safeUpdates[field] === '') {
+        safeUpdates[field] = null;
       }
     }
 
     // OFFER_FIELDSのいずれかが更新される場合、offer_status_updated_atを記録
-    const hasOfferUpdate = OFFER_FIELDS.some(f => updates[f] !== undefined);
+    const hasOfferUpdate = OFFER_FIELDS.some(f => safeUpdates[f] !== undefined);
     if (hasOfferUpdate) {
-      updates.offer_status_updated_at = new Date().toISOString();
+      safeUpdates.offer_status_updated_at = new Date().toISOString();
     }
 
-    const data = await propertyListingService.update(propertyNumber, updates);
+    const data = await propertyListingService.update(propertyNumber, safeUpdates);
 
-    // 買付情報保存成功後、非同期で Google Chat に通知する（await しない）
-    notifyGoogleChatOfferSaved(propertyNumber, {
-      offer_date: data?.offer_date ?? updates.offer_date,
-      offer_status: data?.offer_status ?? updates.offer_status,
-      offer_comment: data?.offer_comment ?? updates.offer_comment,
-      offer_amount: data?.offer_amount ?? updates.offer_amount,
-      address: data?.address,
-      display_address: data?.display_address,
-      property_type: data?.property_type,
-      sales_assignee: data?.sales_assignee,
-    });
+    // 買付セクションからの保存時のみ Google Chat に通知する（notify_offer フラグで判定）
+    if (notify_offer === true) {
+      notifyGoogleChatOfferSaved(propertyNumber, {
+        offer_date: data?.offer_date ?? safeUpdates.offer_date,
+        offer_status: data?.offer_status ?? safeUpdates.offer_status,
+        offer_comment: data?.offer_comment ?? safeUpdates.offer_comment,
+        offer_amount: data?.offer_amount ?? safeUpdates.offer_amount,
+        address: data?.address,
+        display_address: data?.display_address,
+        property_type: data?.property_type,
+        sales_assignee: data?.sales_assignee,
+      });
+    }
 
     res.json(data);
   } catch (error: any) {
