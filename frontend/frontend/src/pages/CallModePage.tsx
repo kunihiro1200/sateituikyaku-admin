@@ -7073,7 +7073,9 @@ HP：https://ifoo-oita.com/
                         専任（他決）決定日
                       </Typography>
                       <Typography variant="body1" sx={{ fontWeight: 'bold', color: '#E65100' }}>
-                        {editedExclusiveDecisionDate || '未設定'}
+                        {editedExclusiveDecisionDate
+                          ? new Date(editedExclusiveDecisionDate + 'T00:00:00').toLocaleDateString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit' })
+                          : '未設定'}
                       </Typography>
                     </Box>
                   </Grid>
