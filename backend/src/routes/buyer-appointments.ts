@@ -131,6 +131,7 @@ router.post(
       // カレンダーイベントを作成
       const defaultTitle = `${viewingMobile || '内覧'} ${propertyAddress || ''} ${buyerName || buyerNumber}`;
       const defaultDescription =
+        `買主番号: ${buyerNumber}\n` +
         `物件住所: ${propertyAddress || 'なし'}\n` +
         `GoogleMap: ${propertyGoogleMapUrl || 'なし'}\n` +
         `\n` +
