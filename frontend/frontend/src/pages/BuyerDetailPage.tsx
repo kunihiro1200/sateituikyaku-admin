@@ -2295,6 +2295,11 @@ TEL：097-533-2022`;
                                       const newValue = isSelected ? '' : opt;
                                       setBuyer((prev: any) => prev ? { ...prev, [field.key]: newValue } : prev);
                                       handleFieldChange(section.title, field.key, newValue);
+                                      // vendor_surveyに非空値が入力された場合、three_calls_confirmedを"他"に自動セット
+                                      if (newValue && String(newValue).trim()) {
+                                        setBuyer((prev: any) => prev ? { ...prev, three_calls_confirmed: '他' } : prev);
+                                        handleFieldChange(section.title, 'three_calls_confirmed', '他');
+                                      }
                                       // SAVE_BUTTON_FIELDS に含まれるため handleInlineFieldSave は呼ばない
                                     }}
                                     sx={{
