@@ -857,6 +857,31 @@ export default function PropertyListingDetailPage() {
     }
   };
 
+  // PriceSection Chat送信成功時のハンドラー
+  const handlePriceChatSendSuccess = async (message: string) => {
+    // スナックバー表示（既存処理）
+    setSnackbar({ open: true, message, severity: 'success' });
+
+    // 確認フィールドを「未」にリセット（要件 1.1）
+    setConfirmation('未');
+
+    // DBを更新（要件 1.2）
+    try {
+      await api.put(`/api/property-listings/${propertyNumber}/confirmation`, { confirmation: '未' });
+    } catch (error) {
+      console.error('[PropertyListingDetailPage] 確認フィールドの更新に失敗しました:', error);
+    }
+
+    // キャッシュをクリア
+    pageDataCache.invalidate(CACHE_KEYS.PROPERTY_LISTINGS);
+    sessionStorage.setItem('propertyListingsNeedsRefresh', 'true');
+
+    // サイドバーに即座に通知（要件 1.3）
+    window.dispatchEvent(new CustomEvent('propertyConfirmationUpdated', {
+      detail: { propertyNumber, confirmation: '未' }
+    }));
+  };
+
   // 確認フィールド更新
   const handleUpdateConfirmation = async (value: '未' | '済') => {
     setConfirmationUpdating(true);
@@ -2026,7 +2051,7 @@ export default function PropertyListingDetailPage() {
                   propertyNumber={data.property_number}
                   salesAssignee={data.sales_assignee}
                   address={data.address}
-                  onChatSendSuccess={(message) => setSnackbar({ open: true, message, severity: 'success' })}
+                  onChatSendSuccess={handlePriceChatSendSuccess}
                   onChatSendError={(message) => setSnackbar({ open: true, message, severity: 'error' })}
                 />
               </EditableSection>
