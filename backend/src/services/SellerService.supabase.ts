@@ -2078,6 +2078,7 @@ export class SellerService extends BaseRepository {
         structure: seller.structure,
         floorPlan: seller.floor_plan,
         currentStatus: seller.current_status, // 状況（売主）
+        situation_company: seller.situation_company,  // 状況（当社）
         // 担当者設定フィールド（call-mode-assignee-section）
         unreachableSmsAssignee: seller.unreachable_sms_assignee,
         valuationSmsAssignee: seller.valuation_sms_assignee,

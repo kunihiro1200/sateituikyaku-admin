@@ -1019,6 +1019,19 @@ const SellerDetailPage = () => {
                     />
                   </Grid>
 
+                  {seller.situation_company === '一般媒介' && (
+                    <Grid item xs={12}>
+                      <Box sx={{ mb: 1 }}>
+                        <Typography variant="caption" color="text.secondary">
+                          専任（他決）決定日
+                        </Typography>
+                        <Typography variant="body2">
+                          {seller.contractYearMonth || '未設定'}
+                        </Typography>
+                      </Box>
+                    </Grid>
+                  )}
+
                   <Grid item xs={12}>
                     <TextField
                       fullWidth
@@ -1647,9 +1660,16 @@ const SellerDetailPage = () => {
             
             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
               <Button
-                variant="outlined"
+                variant={seller.situation_company === '一般媒介' ? 'contained' : 'outlined'}
                 onClick={() => handleSendChatNotification('general_contract')}
                 disabled={sendingChatNotification}
+                sx={seller.situation_company === '一般媒介' ? {
+                  backgroundColor: '#FF6D00',
+                  color: '#fff',
+                  fontWeight: 'bold',
+                  '&:hover': { backgroundColor: '#E65100' },
+                  '&:disabled': { backgroundColor: '#FFAB76', color: '#fff' },
+                } : {}}
               >
                 一般媒介通知
               </Button>
