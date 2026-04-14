@@ -7042,7 +7042,11 @@ HP：https://ifoo-oita.com/
                     inputRef={nextCallDateRef}
                     value={editedNextCallDate}
                     onChange={(e) => { setEditedNextCallDate(e.target.value); setStatusChanged(true); statusChangedRef.current = true; }}
-                    onClick={() => nextCallDateRef.current?.showPicker?.()}
+                    onClick={() => {
+                      nextCallDateRef.current?.showPicker?.();
+                      setStatusChanged(true);
+                      statusChangedRef.current = true;
+                    }}
                     InputLabelProps={{ 
                       shrink: true,
                       sx: { fontWeight: 'bold', fontSize: '1.1rem' }
