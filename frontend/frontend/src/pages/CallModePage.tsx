@@ -7073,7 +7073,7 @@ HP：https://ifoo-oita.com/
                         専任（他決）決定日
                       </Typography>
                       <Typography variant="body1" sx={{ fontWeight: 'bold', color: '#E65100' }}>
-                        {seller?.contractYearMonth || '未設定'}
+                        {editedExclusiveDecisionDate || '未設定'}
                       </Typography>
                     </Box>
                   </Grid>
