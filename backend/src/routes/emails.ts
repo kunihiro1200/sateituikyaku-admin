@@ -838,6 +838,7 @@ router.post(
     body('htmlBody').optional().isString().withMessage('HTML body must be a string'),
     body('from').optional().isEmail().withMessage('Invalid from email address'),
     body('attachments').optional().isArray().withMessage('Attachments must be an array'),
+    body('replyTo').optional().isEmail().withMessage('Invalid replyTo email address'),
   ],
   async (req: Request, res: Response) => {
     try {
@@ -854,7 +855,7 @@ router.post(
       }
 
       const { sellerNumber } = req.params;
-      const { templateId, to, subject, content, htmlBody, from, attachments } = req.body;
+      const { templateId, to, subject, content, htmlBody, from, attachments, replyTo } = req.body;
 
       // seller_numberで売主を検索
       const { createClient } = await import('@supabase/supabase-js');
@@ -969,17 +970,32 @@ router.post(
           from: senderEmail,
           attachments: emailAttachments,
           isHtml: !!htmlBody,
+          replyTo: replyTo || undefined,
         });
       } else {
-        result = await emailService.sendTemplateEmail(
-          sellerWithEmail,
-          subject,
-          content || '',
-          senderEmail,
-          req.employee?.id || 'system',
-          htmlBody,
-          senderEmail
-        );
+        if (replyTo) {
+          // replyTo が指定されている場合は sendEmailWithCcAndAttachments を使用
+          result = await emailService.sendEmailWithCcAndAttachments({
+            to: recipientEmail,
+            subject,
+            body: htmlBody || content || '',
+            from: senderEmail,
+            attachments: [],
+            isHtml: !!htmlBody,
+            replyTo,
+          });
+        } else {
+          // 既存フロー（変更なし）
+          result = await emailService.sendTemplateEmail(
+            sellerWithEmail,
+            subject,
+            content || '',
+            senderEmail,
+            req.employee?.id || 'system',
+            htmlBody,
+            senderEmail
+          );
+        }
       }
 
       return res.json({

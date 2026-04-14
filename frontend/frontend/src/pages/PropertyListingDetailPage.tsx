@@ -18,6 +18,7 @@ import {
   DialogContent,
   DialogActions,
   FormControl,
+  InputLabel,
   Tooltip,
   Select,
   MenuItem,
@@ -294,6 +295,10 @@ export default function PropertyListingDetailPage() {
   const [showImageSelector, setShowImageSelector] = useState(false);
   const [senderAddress, setSenderAddress] = useState<string>(getSenderAddress());
   const [activeEmployees, setActiveEmployees] = useState<any[]>([]);
+  // 事務ありスタッフ一覧（返信先選択肢用）
+  const [jimuStaff, setJimuStaff] = useState<Array<{ initials: string; name: string; email?: string }>>([]);
+  // 返信先（Reply-To）選択状態
+  const [replyTo, setReplyTo] = useState<string>('');
 
   // SMS送信テンプレート関連
   const [smsTemplateMenuAnchor, setSmsTemplateMenuAnchor] = useState<null | HTMLElement>(null);
@@ -320,6 +325,8 @@ export default function PropertyListingDetailPage() {
       ]);
       // 物件テンプレート（非報告）を事前取得
       fetchPropertyEmailTemplates();
+      // 事務ありスタッフ一覧を取得
+      fetchJimuStaff();
     }
   }, [propertyNumber]);
 
@@ -334,6 +341,16 @@ export default function PropertyListingDetailPage() {
       // エラー時はボタンを非活性のまま維持（テンプレートは空のまま）
     } finally {
       setPropertyEmailTemplatesLoading(false);
+    }
+  };
+
+  // 事務ありスタッフ一覧を取得する関数
+  const fetchJimuStaff = async () => {
+    try {
+      const response = await api.get('/api/employees/jimu-staff');
+      setJimuStaff(response.data.staff || []);
+    } catch (error) {
+      console.error('Failed to fetch jimu staff:', error);
     }
   };
 
@@ -927,6 +944,9 @@ export default function PropertyListingDetailPage() {
     setEditableEmailSubject(subject);
     setEditableEmailBody(body);
     setSelectedImages([]);
+    // sales_assignee に対応するスタッフのメールをデフォルト設定
+    const matchedStaff = jimuStaff.find((s) => s.initials === data?.sales_assignee);
+    setReplyTo(matchedStaff?.email || '');
     setEmailDialog({ open: true, subject, body, recipient: data.seller_email });
   };
 
@@ -984,6 +1004,9 @@ export default function PropertyListingDetailPage() {
       setEditableEmailSubject(subject || '');
       setEditableEmailBody((body || '').replace(/\n/g, '<br>'));
       setSelectedImages([]);
+      // sales_assignee に対応するスタッフのメールをデフォルト設定
+      const matchedStaff = jimuStaff.find((s) => s.initials === data?.sales_assignee);
+      setReplyTo(matchedStaff?.email || '');
       setEmailDialog({ open: true, subject: subject || '', body: body || '', recipient: data.seller_email });
     } catch (err: any) {
       setSnackbar({ open: true, message: 'テンプレートの取得に失敗しました', severity: 'error' });
@@ -1037,6 +1060,7 @@ export default function PropertyListingDetailPage() {
         content: editableEmailBody,
         htmlBody: editableEmailBody,
         from: senderAddress,
+        ...(replyTo ? { replyTo } : {}),
       };
       if (attachmentImages.length > 0) payload.attachments = attachmentImages;
 
@@ -1044,6 +1068,7 @@ export default function PropertyListingDetailPage() {
       setSnackbar({ open: true, message: 'メールを送信しました', severity: 'success' });
       setEmailDialog({ open: false, subject: '', body: '', recipient: '' });
       setSelectedImages([]);
+      setReplyTo('');
 
       // 売主への送信履歴を保存（非同期・非ブロッキング）
       try {
@@ -3143,7 +3168,7 @@ export default function PropertyListingDetailPage() {
       </Dialog>
 
       {/* メール送信ダイアログ */}
-      <Dialog open={emailDialog.open} onClose={() => setEmailDialog(prev => ({ ...prev, open: false }))} maxWidth="md" fullWidth>
+      <Dialog open={emailDialog.open} onClose={() => { setEmailDialog(prev => ({ ...prev, open: false })); setReplyTo(''); }} maxWidth="md" fullWidth>
         <DialogTitle>メール送信</DialogTitle>
         <DialogContent>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
@@ -3151,6 +3176,28 @@ export default function PropertyListingDetailPage() {
               value={senderAddress}
               onChange={(addr) => { setSenderAddress(addr); saveSenderAddress(addr); }}
             />
+            {/* 返信先（Reply-To）選択フィールド */}
+            <FormControl size="small" fullWidth>
+              <InputLabel id="reply-to-label">返信先（Reply-To）</InputLabel>
+              <Select
+                labelId="reply-to-label"
+                label="返信先（Reply-To）"
+                value={replyTo}
+                onChange={(e) => setReplyTo(e.target.value)}
+                displayEmpty
+              >
+                <MenuItem value="">
+                  <em>選択なし（送信元と同じ）</em>
+                </MenuItem>
+                {jimuStaff
+                  .filter((s) => s.email)
+                  .map((s) => (
+                    <MenuItem key={s.initials} value={s.email}>
+                      {s.name} &lt;{s.email}&gt;
+                    </MenuItem>
+                  ))}
+              </Select>
+            </FormControl>
             <TextField
               label="送信先"
               value={editableEmailRecipient}
@@ -3201,7 +3248,7 @@ export default function PropertyListingDetailPage() {
           </Box>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setEmailDialog(prev => ({ ...prev, open: false }))}>キャンセル</Button>
+          <Button onClick={() => { setEmailDialog(prev => ({ ...prev, open: false })); setReplyTo(''); }}>キャンセル</Button>
           <Button
             variant="contained"
             onClick={handleSendEmail}
