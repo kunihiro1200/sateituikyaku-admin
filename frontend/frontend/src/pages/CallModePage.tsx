@@ -486,6 +486,7 @@ const CallModePage = () => {
   const [editedPinrichStatus, setEditedPinrichStatus] = useState<string>('');
   const [savingStatus, setSavingStatus] = useState(false);
   const [statusChanged, setStatusChanged] = useState(false); // ステータスセクションの変更検知
+  const statusChangedRef = useRef(false); // バックグラウンド更新クロージャ用ref
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   
   // 保存済み値（変更検知用）
@@ -1332,6 +1333,14 @@ const CallModePage = () => {
             setUnreachableStatus(freshData.unreachableStatus || null);
             setEditableComments(freshData.comments || '');
             setSavedComments(freshData.comments || '');
+            // statusChanged が false の場合のみステータスフィールドを更新
+            // （ユーザーが編集中の場合は上書きしない）
+            if (!statusChangedRef.current) {
+              setEditedStatus(freshData.status);
+              setEditedConfidence(freshData.confidence || '');
+              setEditedNextCallDate(freshData.nextCallDate || '');
+              setEditedPinrichStatus(freshData.pinrichStatus || '');
+            }
           }
         }).catch(() => {});
       } else {
@@ -1371,6 +1380,7 @@ const CallModePage = () => {
       setEditedConfidence(sellerData.confidence || '');
       setEditedExclusiveOtherDecisionMeeting(sellerData.exclusiveOtherDecisionMeeting || '');
       setStatusChanged(false); // 売主データ読み込み時にリセット
+      statusChangedRef.current = false;
       
       // 保存済み値を初期化（変更検知用）
       setSavedStatus(sellerData.status);
@@ -1948,9 +1958,6 @@ const CallModePage = () => {
       // 通話メモ入力欄をクリア
       setCallMemo('');
 
-      // ページをリロード（最新のコメントを表示）
-      await loadAllData();
-
       // 成功メッセージを3秒後に消す
       setTimeout(() => {
         setSuccessMessage(null);
@@ -2011,6 +2018,7 @@ const CallModePage = () => {
 
       setSuccessMessage('ステータスを更新しました');
       setStatusChanged(false); // 保存成功後にリセット
+      statusChangedRef.current = false;
       
       // 保存した値をローカルステートに反映（loadAllData()を削除して画面フラッシュを防止）
       setSavedStatus(editedStatus);
@@ -7003,7 +7011,7 @@ HP：https://ifoo-oita.com/
                     <Select
                       value={editedStatus}
                       label="状況（当社）"
-                      onChange={(e) => { setEditedStatus(e.target.value); setStatusChanged(true); }}
+                      onChange={(e) => { setEditedStatus(e.target.value); setStatusChanged(true); statusChangedRef.current = true; }}
                     >
                       <MenuItem value="追客中">追客中</MenuItem>
                       <MenuItem value="追客不要(未訪問）">追客不要(未訪問）</MenuItem>
@@ -7031,7 +7039,7 @@ HP：https://ifoo-oita.com/
                     type="date"
                     inputRef={nextCallDateRef}
                     value={editedNextCallDate}
-                    onChange={(e) => { setEditedNextCallDate(e.target.value); setStatusChanged(true); }}
+                    onChange={(e) => { setEditedNextCallDate(e.target.value); setStatusChanged(true); statusChangedRef.current = true; }}
                     onClick={() => nextCallDateRef.current?.showPicker?.()}
                     InputLabelProps={{ 
                       shrink: true,
@@ -7062,7 +7070,7 @@ HP：https://ifoo-oita.com/
                         type="date"
                         required
                         value={editedExclusiveDecisionDate}
-                        onChange={(e) => { setEditedExclusiveDecisionDate(e.target.value); setStatusChanged(true); }}
+                        onChange={(e) => { setEditedExclusiveDecisionDate(e.target.value); setStatusChanged(true); statusChangedRef.current = true; }}
                         InputLabelProps={{ shrink: true }}
                         error={!editedExclusiveDecisionDate}
                         helperText={!editedExclusiveDecisionDate ? '必須項目です' : ''}
@@ -7075,7 +7083,7 @@ HP：https://ifoo-oita.com/
                           multiple
                           value={editedCompetitors}
                           label="競合（複数選択可）"
-                          onChange={(e) => { setEditedCompetitors(typeof e.target.value === 'string' ? [e.target.value] : e.target.value); setStatusChanged(true); }}
+                          onChange={(e) => { setEditedCompetitors(typeof e.target.value === 'string' ? [e.target.value] : e.target.value); setStatusChanged(true); statusChangedRef.current = true; }}
                           renderValue={(selected) => (
                             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
                               {selected.map((value) => (
@@ -7104,7 +7112,7 @@ HP：https://ifoo-oita.com/
                           multiple
                           value={editedExclusiveOtherDecisionFactors}
                           label="専任・他決要因（複数選択可）"
-                          onChange={(e) => { setEditedExclusiveOtherDecisionFactors(typeof e.target.value === 'string' ? [e.target.value] : e.target.value); setStatusChanged(true); }}
+                          onChange={(e) => { setEditedExclusiveOtherDecisionFactors(typeof e.target.value === 'string' ? [e.target.value] : e.target.value); setStatusChanged(true); statusChangedRef.current = true; }}
                           renderValue={(selected) => (
                             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
                               {selected.map((value) => (
@@ -7136,7 +7144,7 @@ HP：https://ifoo-oita.com/
                         size="small"
                         label="競合名、理由（他決、専任）"
                         value={editedCompetitorNameAndReason}
-                        onChange={(e) => { setEditedCompetitorNameAndReason(e.target.value); setStatusChanged(true); }}
+                        onChange={(e) => { setEditedCompetitorNameAndReason(e.target.value); setStatusChanged(true); statusChangedRef.current = true; }}
                         placeholder="競合他社の名前や、専任・他決になった理由の詳細を記入してください"
                       />
                     </Grid>
@@ -7187,6 +7195,7 @@ HP：https://ifoo-oita.com/
                         onClick={() => {
                           setEditedExclusiveOtherDecisionMeeting('完了');
                           setStatusChanged(true);
+                          statusChangedRef.current = true;
                         }}
                         sx={{ minWidth: '80px' }}
                       >
@@ -7218,7 +7227,7 @@ HP：https://ifoo-oita.com/
                     <Select
                       value={editedConfidence}
                       label="確度"
-                      onChange={(e) => { setEditedConfidence(e.target.value as ConfidenceLevel); setStatusChanged(true); }}
+                      onChange={(e) => { setEditedConfidence(e.target.value as ConfidenceLevel); setStatusChanged(true); statusChangedRef.current = true; }}
                     >
                       {CONFIDENCE_OPTIONS.map((opt) => (
                         <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>
@@ -7252,6 +7261,7 @@ HP：https://ifoo-oita.com/
                       onChange={(e) => {
                         setEditedPinrichStatus(e.target.value);
                         setStatusChanged(true);
+                        statusChangedRef.current = true;
                       }}
                       displayEmpty
                       disableUnderline
@@ -7286,6 +7296,7 @@ HP：https://ifoo-oita.com/
                             setEditedNextCallDate(exclusionDate);
                           }
                           setStatusChanged(true);
+                          statusChangedRef.current = true;
                         }}
                         sx={{ minWidth: 80 }}
                       >
