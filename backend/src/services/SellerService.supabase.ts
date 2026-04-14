@@ -1432,8 +1432,11 @@ export class SellerService extends BaseRepository {
             const { data: nsData, error: nsError } = await this.table('sellers')
               .select('id, status, next_call_date, visit_assignee, phone_contact_person, preferred_contact_time, contact_method, unreachable_status, confidence_level, exclusion_date, inquiry_date')
               .is('deleted_at', null)
+              .eq('status', '追客中')
               .not('next_call_date', 'is', null)
               .lte('next_call_date', todayJST)
+              .gte('inquiry_date', '2026-01-01')
+              .or('visit_assignee.is.null,visit_assignee.eq.,visit_assignee.eq.外す')
               .order('id')
               .range(nsPage * nsPageSize, (nsPage + 1) * nsPageSize - 1);
 
