@@ -1019,18 +1019,6 @@ const SellerDetailPage = () => {
                     />
                   </Grid>
 
-                  {seller.situation_company === '一般媒介' && (
-                    <Grid item xs={12}>
-                      <Box sx={{ mb: 1 }}>
-                        <Typography variant="caption" color="text.secondary">
-                          専任（他決）決定日
-                        </Typography>
-                        <Typography variant="body2">
-                          {seller.contractYearMonth || '未設定'}
-                        </Typography>
-                      </Box>
-                    </Grid>
-                  )}
 
                   <Grid item xs={12}>
                     <TextField
@@ -1085,6 +1073,19 @@ const SellerDetailPage = () => {
                   </Select>
                 </FormControl>
               </Grid>
+
+              {seller.situation_company === '一般媒介' && (
+                <Grid item xs={12}>
+                  <Box sx={{ p: 1.5, bgcolor: '#FFF3E0', borderRadius: 1, border: '1px solid #FF6D00' }}>
+                    <Typography variant="caption" color="text.secondary">
+                      専任（他決）決定日
+                    </Typography>
+                    <Typography variant="body1" sx={{ fontWeight: 'bold', color: '#E65100' }}>
+                      {seller.contractYearMonth || '未設定'}
+                    </Typography>
+                  </Box>
+                </Grid>
+              )}
 
               <Grid item xs={12}>
                 <TextField
