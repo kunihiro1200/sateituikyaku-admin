@@ -7094,6 +7094,28 @@ HP：https://ifoo-oita.com/
                   </Grid>
                 )}
 
+                {/* 一般媒介通知ボタン */}
+                {editedStatus === '一般媒介' && (
+                  <Grid item xs={12}>
+                    <Button
+                      fullWidth
+                      variant="contained"
+                      onClick={handleSendChatNotification}
+                      disabled={sendingChatNotification}
+                      startIcon={sendingChatNotification ? <CircularProgress size={20} /> : null}
+                      sx={{
+                        backgroundColor: '#FF6D00',
+                        color: '#fff',
+                        fontWeight: 'bold',
+                        '&:hover': { backgroundColor: '#E65100' },
+                        '&:disabled': { backgroundColor: '#FFAB76', color: '#fff' },
+                      }}
+                    >
+                      {sendingChatNotification ? '送信中...' : '一般媒介通知を送る'}
+                    </Button>
+                  </Grid>
+                )}
+
                 {/* 専任または他決が含まれる場合のみ表示 */}
                 {requiresDecisionDate(editedStatus) && (
                   <>
