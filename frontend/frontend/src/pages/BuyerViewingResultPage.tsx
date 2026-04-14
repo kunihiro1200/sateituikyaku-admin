@@ -315,6 +315,12 @@ export default function BuyerViewingResultPage() {
   const handleInlineFieldSave = useCallback(async (fieldName: string, newValue: any): Promise<void> => {
     if (!buyerRef.current) return;
 
+    // Optimistic UI: APIを待たずに即座にUIを更新する
+    const previousBuyer = buyerRef.current;
+    const optimisticBuyer = { ...buyerRef.current, [fieldName]: newValue };
+    buyerRef.current = optimisticBuyer;
+    setBuyer(optimisticBuyer);
+
     try {
       console.log(`[BuyerViewingResultPage] Saving field: ${fieldName}, value:`, newValue);
       
@@ -354,10 +360,14 @@ export default function BuyerViewingResultPage() {
       
       console.log(`[BuyerViewingResultPage] Save result for ${fieldName}:`, result.buyer[fieldName]);
       
+      // API成功後はサーバーの値で確定する
       buyerRef.current = result.buyer;
       setBuyer(result.buyer);
     } catch (error: any) {
+      // API失敗時は元の値に戻す（ロールバック）
       console.error('Failed to update field:', error);
+      buyerRef.current = previousBuyer;
+      setBuyer(previousBuyer);
       throw new Error(error.response?.data?.error || '更新に失敗しました');
     }
   }, [buyer_number]);
