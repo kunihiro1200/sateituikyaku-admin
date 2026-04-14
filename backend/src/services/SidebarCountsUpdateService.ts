@@ -216,6 +216,20 @@ export class SidebarCountsUpdateService {
       }
     }
 
+    // 問合せメール未対応
+    const isInquiryEmailUnanswered =
+      buyer.inquiry_email_phone === '未' ||
+      buyer.inquiry_email_reply === '未' ||
+      (
+        !buyer.latest_viewing_date &&
+        buyer.inquiry_email_phone === '不要' &&
+        (buyer.inquiry_email_reply === '未' || !buyer.inquiry_email_reply)
+      );
+
+    if (isInquiryEmailUnanswered) {
+      categories.push({ category: 'inquiryEmailUnanswered', assignee: null });
+    }
+
     console.log(`[determineBuyerCategories] Final categories:`, categories);
     return categories;
   }
