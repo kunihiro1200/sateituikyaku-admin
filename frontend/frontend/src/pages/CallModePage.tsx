@@ -7065,6 +7065,20 @@ HP：https://ifoo-oita.com/
                   />
                 </Grid>
 
+                {/* 一般媒介の場合：専任（他決）決定日を読み取り専用で表示 */}
+                {editedStatus === '一般媒介' && (
+                  <Grid item xs={12}>
+                    <Box sx={{ p: 1.5, bgcolor: '#FFF3E0', borderRadius: 1, border: '1px solid #FF6D00' }}>
+                      <Typography variant="caption" color="text.secondary">
+                        専任（他決）決定日
+                      </Typography>
+                      <Typography variant="body1" sx={{ fontWeight: 'bold', color: '#E65100' }}>
+                        {seller?.contractYearMonth || '未設定'}
+                      </Typography>
+                    </Box>
+                  </Grid>
+                )}
+
                 {/* 専任または他決が含まれる場合のみ表示 */}
                 {requiresDecisionDate(editedStatus) && (
                   <>
