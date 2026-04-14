@@ -103,11 +103,6 @@ export function filterTemplatesByConditions(
 
     if (name === '業者（内覧確定）') return false;
 
-    if (name === '内覧後御礼メール') {
-      if (!viewingDate) return false;
-      return viewingDate.getTime() <= today.getTime();
-    }
-
     if (name === '☆内覧前日通知メール') {
       if (!viewingDate) return false;
       const twoDaysBefore = new Date(viewingDate);
