@@ -248,7 +248,7 @@ export const generateCallReminderSMS = (
  * const seller = { sellerNumber: 'FI12345', name: '山田太郎' };
  * const message = '<<当社住所>>です。<<売買実績ｖ>>';
  * const result = replacePlaceholders(message, seller);
- * // 結果: '福岡市中央区六本松４丁目３－２です。'
+ * // 結果: '福岡市中央区舞鶴３丁目１－１０です。'
  * ```
  * 
  * @example
@@ -287,7 +287,7 @@ export const replacePlaceholders = (
     
     // <<当社住所>>の置換
     if (hasFI) {
-      result = result.replace(/<<当社住所>>/g, '福岡市中央区六本松４丁目３－２');
+      result = result.replace(/<<当社住所>>/g, '福岡市中央区舞鶴３丁目１－１０');
     } else {
       result = result.replace(/<<当社住所>>/g, '大分市舞鶴町1-3-30STビル１F');
     }

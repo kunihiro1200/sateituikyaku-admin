@@ -22,7 +22,7 @@
 
 #### Acceptance Criteria
 
-1. WHEN 売主番号に「FI」が含まれる, THE System SHALL `<<当社住所>>`を「住所：福岡市中央区六本松４丁目３－２」に置き換える
+1. WHEN 売主番号に「FI」が含まれる, THE System SHALL `<<当社住所>>`を「住所：福岡市中央区舞鶴３丁目１－１０」に置き換える
 2. WHEN 売主番号に「FI」が含まれない, THE System SHALL `<<当社住所>>`を「住所：大分市舞鶴町1-3-30STビル１F」に置き換える
 3. THE System SHALL 売主番号の大文字・小文字を区別せずに「FI」を検索する
 4. WHEN 売主番号がnullまたは空文字列, THE System SHALL デフォルト住所（大分本社）を使用する
