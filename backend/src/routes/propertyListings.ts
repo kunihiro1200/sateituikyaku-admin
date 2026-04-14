@@ -432,6 +432,19 @@ router.get('/:propertyNumber/buyers', async (req: Request, res: Response): Promi
   }
 });
 
+// 買主リストキャッシュを手動クリア
+router.delete('/:propertyNumber/buyers/cache', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { propertyNumber } = req.params;
+    await buyerLinkageCache.invalidate(propertyNumber);
+    console.log(`[cache-clear] Buyer list cache cleared for property: ${propertyNumber}`);
+    res.json({ success: true, message: `Cache cleared for ${propertyNumber}` });
+  } catch (error: any) {
+    console.error('Error clearing buyer list cache:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // 買主候補リスト取得（条件に合致する買主を抽出）
 router.get('/:propertyNumber/buyer-candidates', async (req: Request, res: Response): Promise<void> => {
   try {
