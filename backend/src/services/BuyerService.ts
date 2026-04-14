@@ -786,9 +786,6 @@ export class BuyerService {
     userEmail?: string,
     options?: { force?: boolean }
   ): Promise<UpdateWithSyncResult> {
-    // 同期サービスを初期化（認証含む）
-    await this.initSyncServices();
-
     // 存在確認（UUIDか買主番号かを判定）
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
     const existing = isUuid
@@ -864,87 +861,7 @@ export class BuyerService {
       throw new Error(`Failed to update buyer: ${error.message}`);
     }
 
-    // スプレッドシート同期を試行
-    let syncResult: SyncResult;
-
-    try {
-      if (this.writeService && this.retryHandler) {
-        // リトライ付きで同期を実行
-        const retryResult = await this.retryHandler.executeWithRetry(
-          async () => {
-            const writeResult = await this.writeService!.updateFields(buyerNumber, allowedData);
-            if (!writeResult.success) {
-              throw new Error(writeResult.error || 'Spreadsheet write failed');
-            }
-            return writeResult;
-          }
-        );
-
-        if (retryResult.success) {
-          // 同期成功 - last_synced_atを更新
-          await this.supabase
-            .from('buyers')
-            .update({ last_synced_at: new Date().toISOString() })
-            .eq('buyer_number', buyerNumber);
-
-          syncResult = {
-            success: true,
-            syncStatus: 'synced'
-          };
-        } else {
-          // 同期失敗 - キューに追加
-          for (const key of Object.keys(allowedData)) {
-            if (key !== 'db_updated_at') {
-              await this.retryHandler.queueFailedChange({
-                buyer_number: buyerNumber,
-                field_name: key,
-                old_value: existing[key] ? String(existing[key]) : null,
-                new_value: allowedData[key] ? String(allowedData[key]) : null,
-                retry_count: retryResult.attempts,
-                last_error: retryResult.error || null
-              });
-            }
-          }
-
-          syncResult = {
-            success: false,
-            syncStatus: 'pending',
-            error: retryResult.error
-          };
-        }
-      } else {
-        // 同期サービスが利用できない場合
-        syncResult = {
-          success: false,
-          syncStatus: 'pending',
-          error: 'Sync services not available'
-        };
-      }
-    } catch (syncError: any) {
-      // 同期エラー - キューに追加
-      if (this.retryHandler) {
-        for (const key of Object.keys(allowedData)) {
-          if (key !== 'db_updated_at') {
-            await this.retryHandler.queueFailedChange({
-              buyer_number: buyerNumber,
-              field_name: key,
-              old_value: existing[key] ? String(existing[key]) : null,
-              new_value: allowedData[key] ? String(allowedData[key]) : null,
-              retry_count: 0,
-              last_error: syncError.message
-            });
-          }
-        }
-      }
-
-      syncResult = {
-        success: false,
-        syncStatus: 'pending',
-        error: syncError.message
-      };
-    }
-
-    // 監査ログを記録（sync_status付き）
+    // 監査ログを記録（DB更新直後、同期処理の前）
     if (userId && userEmail) {
       for (const key in allowedData) {
         if (key !== 'db_updated_at' && existing[key] !== allowedData[key]) {
@@ -957,7 +874,7 @@ export class BuyerService {
               allowedData[key],
               userId,
               userEmail,
-              syncResult.syncStatus
+              'pending'
             );
           } catch (auditError) {
             console.error('Failed to create audit log:', auditError);
@@ -966,6 +883,70 @@ export class BuyerService {
       }
     }
 
+    // syncResult の初期値（スプレッドシート同期はバックグラウンドで実行）
+    const syncResult: SyncResult = { success: true, syncStatus: 'pending' };
+
+    // スプレッドシート同期を fire-and-forget で非同期実行
+    setImmediate(async () => {
+      try {
+        // 同期サービスを初期化（認証含む）- バックグラウンドで実行
+        await this.initSyncServices();
+
+        if (this.writeService && this.retryHandler) {
+          // リトライ付きで同期を実行
+          const retryResult = await this.retryHandler.executeWithRetry(
+            async () => {
+              const writeResult = await this.writeService!.updateFields(buyerNumber, allowedData);
+              if (!writeResult.success) {
+                throw new Error(writeResult.error || 'Spreadsheet write failed');
+              }
+              return writeResult;
+            }
+          );
+
+          if (retryResult.success) {
+            // 同期成功 - last_synced_atを更新
+            await this.supabase
+              .from('buyers')
+              .update({ last_synced_at: new Date().toISOString() })
+              .eq('buyer_number', buyerNumber);
+          } else {
+            // 同期失敗 - キューに追加
+            for (const key of Object.keys(allowedData)) {
+              if (key !== 'db_updated_at') {
+                await this.retryHandler.queueFailedChange({
+                  buyer_number: buyerNumber,
+                  field_name: key,
+                  old_value: existing[key] ? String(existing[key]) : null,
+                  new_value: allowedData[key] ? String(allowedData[key]) : null,
+                  retry_count: retryResult.attempts,
+                  last_error: retryResult.error || null
+                });
+              }
+            }
+          }
+        }
+      } catch (syncError: any) {
+        // 同期エラー - キューに追加
+        if (this.retryHandler) {
+          for (const key of Object.keys(allowedData)) {
+            if (key !== 'db_updated_at') {
+              await this.retryHandler.queueFailedChange({
+                buyer_number: buyerNumber,
+                field_name: key,
+                old_value: existing[key] ? String(existing[key]) : null,
+                new_value: allowedData[key] ? String(allowedData[key]) : null,
+                retry_count: 0,
+                last_error: syncError.message
+              });
+            }
+          }
+        }
+        console.error('Background sync error:', syncError);
+      }
+    });
+
+    // DB更新完了後に即座にレスポンスを返す
     return {
       buyer: data,
       syncResult
