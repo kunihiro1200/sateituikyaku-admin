@@ -2812,15 +2812,11 @@ HP：https://ifoo-oita.com/
     result = result.replace(/<<築年不明>>/g, buildYearText);
     
     // 担当者情報（営業担当）
-    // assignedTo（メール）→ visitAssignee（イニシャル）の順で担当者を特定
+    // assignedTo（メール）→ visitAssignee（イニシャル or フルネーム）の順で担当者を特定
     const _empList = employeesOverride || employees;
     const assignedEmployee = _empList.find((emp: any) => emp.email === seller.assignedTo)
-      || _empList.find((emp: any) => emp.initials === seller.visitAssignee);
-    console.log('[署名デバッグ] _empList.length:', _empList.length);
-    console.log('[署名デバッグ] seller.assignedTo:', seller.assignedTo);
-    console.log('[署名デバッグ] seller.visitAssignee:', seller.visitAssignee);
-    console.log('[署名デバッグ] assignedEmployee:', JSON.stringify(assignedEmployee));
-    console.log('[署名デバッグ] phoneNumber:', assignedEmployee?.phoneNumber);
+      || _empList.find((emp: any) => emp.initials === seller.visitAssignee)
+      || _empList.find((emp: any) => emp.name === seller.visitAssignee);
     const employeeName = assignedEmployee?.name || employee?.name || '';
     result = result.replace(/<<営担>>/g, employeeName);
     result = result.replace(/<<担当名（営業）名前>>/g, employeeName);
