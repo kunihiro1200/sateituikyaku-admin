@@ -177,7 +177,7 @@ interface Buyer {
   phone_number?: string;
   email?: string;
   reception_date?: string;
-  viewing_date?: string;
+  latest_viewing_date?: string;
   latest_status?: string;
   latest_status_updated_at?: string;
 }
@@ -353,6 +353,14 @@ export default function PropertyListingDetailPage() {
       console.error('Failed to fetch jimu staff:', error);
     }
   };
+
+  // emailDialog.open が true になったとき、sales_assignee に対応するスタッフのメールをデフォルト設定
+  useEffect(() => {
+    if (emailDialog.open && jimuStaff.length > 0) {
+      const matchedStaff = jimuStaff.find((s) => s.initials === data?.sales_assignee);
+      setReplyTo(matchedStaff?.email || '');
+    }
+  }, [emailDialog.open, jimuStaff, data?.sales_assignee]);
 
   const fetchPropertyData = async () => {
     if (!propertyNumber) return;
@@ -944,9 +952,6 @@ export default function PropertyListingDetailPage() {
     setEditableEmailSubject(subject);
     setEditableEmailBody(body);
     setSelectedImages([]);
-    // sales_assignee に対応するスタッフのメールをデフォルト設定
-    const matchedStaff = jimuStaff.find((s) => s.initials === data?.sales_assignee);
-    setReplyTo(matchedStaff?.email || '');
     setEmailDialog({ open: true, subject, body, recipient: data.seller_email });
   };
 
@@ -1004,9 +1009,6 @@ export default function PropertyListingDetailPage() {
       setEditableEmailSubject(subject || '');
       setEditableEmailBody((body || '').replace(/\n/g, '<br>'));
       setSelectedImages([]);
-      // sales_assignee に対応するスタッフのメールをデフォルト設定
-      const matchedStaff = jimuStaff.find((s) => s.initials === data?.sales_assignee);
-      setReplyTo(matchedStaff?.email || '');
       setEmailDialog({ open: true, subject: subject || '', body: body || '', recipient: data.seller_email });
     } catch (err: any) {
       setSnackbar({ open: true, message: 'テンプレートの取得に失敗しました', severity: 'error' });
