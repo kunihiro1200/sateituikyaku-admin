@@ -1402,10 +1402,14 @@ const CallModePage = () => {
       setEditedNextCallDate(sellerData.nextCallDate || '');
       setSavedNextCallDate(sellerData.nextCallDate || '');
       
-      // 専任（他決）決定日を設定
+      // 専任（他決）決定日を設定（DATE型はYYYY-MM-DD形式の文字列なのでそのまま使用）
       if (sellerData.contractYearMonth) {
-        const decisionDateObj = new Date(sellerData.contractYearMonth);
-        const formattedDecisionDate = decisionDateObj.toISOString().split('T')[0];
+        // new Date()を使わず文字列のまま使用（タイムゾーンずれ防止）
+        const rawDate = sellerData.contractYearMonth;
+        // YYYY-MM-DD形式に正規化（YYYY-MM形式の場合は-01を付加）
+        const formattedDecisionDate = typeof rawDate === 'string' && rawDate.length === 7
+          ? rawDate + '-01'
+          : typeof rawDate === 'string' ? rawDate.split('T')[0] : '';
         setEditedExclusiveDecisionDate(formattedDecisionDate);
         setSavedExclusiveDecisionDate(formattedDecisionDate);
       } else {
@@ -7065,19 +7069,28 @@ HP：https://ifoo-oita.com/
                   />
                 </Grid>
 
-                {/* 一般媒介の場合：専任（他決）決定日を読み取り専用で表示 */}
+                {/* 一般媒介の場合：専任（他決）決定日を編集可能な日付フィールドで表示 */}
                 {editedStatus === '一般媒介' && (
                   <Grid item xs={12}>
-                    <Box sx={{ p: 1.5, bgcolor: '#FFF3E0', borderRadius: 1, border: '1px solid #FF6D00' }}>
-                      <Typography variant="caption" color="text.secondary">
-                        専任（他決）決定日
-                      </Typography>
-                      <Typography variant="body1" sx={{ fontWeight: 'bold', color: '#E65100' }}>
-                        {editedExclusiveDecisionDate
-                          ? new Date(editedExclusiveDecisionDate + 'T00:00:00').toLocaleDateString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit' })
-                          : '未設定'}
-                      </Typography>
-                    </Box>
+                    <TextField
+                      fullWidth
+                      size="small"
+                      label="専任（他決）決定日"
+                      type="date"
+                      value={editedExclusiveDecisionDate}
+                      onChange={(e) => { setEditedExclusiveDecisionDate(e.target.value); setStatusChanged(true); statusChangedRef.current = true; }}
+                      InputLabelProps={{ shrink: true }}
+                      sx={{
+                        '& .MuiOutlinedInput-root': {
+                          backgroundColor: '#FFF3E0',
+                          '& fieldset': { borderColor: '#FF6D00' },
+                          '&:hover fieldset': { borderColor: '#E65100' },
+                          '&.Mui-focused fieldset': { borderColor: '#E65100' },
+                        },
+                        '& .MuiInputLabel-root': { color: '#E65100' },
+                        '& .MuiInputLabel-root.Mui-focused': { color: '#E65100' },
+                      }}
+                    />
                   </Grid>
                 )}
 
