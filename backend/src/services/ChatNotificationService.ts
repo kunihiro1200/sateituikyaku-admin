@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import axios from 'axios';
+import { decrypt } from '../utils/encryption';
 
 const supabaseUrl = process.env.SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY!;
@@ -15,6 +16,7 @@ export interface ChatNotificationData {
   reason?: string;
   notes?: string;
   assignee?: string;
+  callPageUrl?: string;
 }
 
 /**
@@ -48,6 +50,7 @@ export class ChatNotificationService {
         sellerNumber: seller.seller_number,
         sellerName: seller.name,
         propertyAddress: seller.property_address,
+        callPageUrl: seller.call_page_url,
       });
 
       return await this.sendToGoogleChat(message);
@@ -78,6 +81,7 @@ export class ChatNotificationService {
         sellerName: seller.name,
         propertyAddress: seller.property_address,
         valuationAmount: seller.valuation_amount_2,
+        callPageUrl: seller.call_page_url,
       });
 
       return await this.sendToGoogleChat(message);
@@ -108,6 +112,7 @@ export class ChatNotificationService {
         sellerName: seller.name,
         propertyAddress: seller.property_address,
         reason: data.reason || seller.exclusive_other_decision_factor,
+        callPageUrl: seller.call_page_url,
       });
 
       return await this.sendToGoogleChat(message);
@@ -138,6 +143,7 @@ export class ChatNotificationService {
         sellerName: seller.name,
         propertyAddress: seller.property_address,
         reason: data.reason || seller.exclusive_other_decision_factor,
+        callPageUrl: seller.call_page_url,
       });
 
       return await this.sendToGoogleChat(message);
@@ -200,14 +206,22 @@ export class ChatNotificationService {
       throw new Error(`Failed to get seller info: ${error.message}`);
     }
 
+    // 売主名を復号する
+    const decryptedName = data.name ? (() => {
+      try { return decrypt(data.name); } catch { return data.name; }
+    })() : '';
+
+    const frontendBaseUrl = 'https://sateituikyaku-admin-frontend.vercel.app';
+
     return {
       seller_number: data.seller_number,
-      name: data.name,
+      name: decryptedName,
       valuation_amount_2: data.valuation_amount_2,
       exclusive_other_decision_factor: data.exclusive_other_decision_factor,
       property_address: data.property_address,
       property_type: data.property_type,
       visit_assignee: data.visit_assignee,
+      call_page_url: `${frontendBaseUrl}/sellers/${data.seller_number}/call`,
     };
   }
 
@@ -225,6 +239,7 @@ export class ChatNotificationService {
 
 一般媒介契約が締結されました。
 ${data.notes ? `\n備考: ${data.notes}` : ''}
+${data.callPageUrl ? `\n🔗 ${data.callPageUrl}` : ''}
     `.trim();
   }
 
@@ -243,6 +258,7 @@ ${data.notes ? `\n備考: ${data.notes}` : ''}
 
 専任媒介契約を取得しました！
 ${data.notes ? `\n備考: ${data.notes}` : ''}
+${data.callPageUrl ? `\n🔗 ${data.callPageUrl}` : ''}
     `.trim();
   }
 
@@ -261,6 +277,7 @@ ${data.notes ? `\n備考: ${data.notes}` : ''}
 
 訪問査定後に他決となりました。
 ${data.notes ? `\n対策: ${data.notes}` : ''}
+${data.callPageUrl ? `\n🔗 ${data.callPageUrl}` : ''}
     `.trim();
   }
 
@@ -278,6 +295,7 @@ ${data.notes ? `\n対策: ${data.notes}` : ''}
 
 訪問前に他決となりました。
 ${data.notes ? `\n備考: ${data.notes}` : ''}
+${data.callPageUrl ? `\n🔗 ${data.callPageUrl}` : ''}
     `.trim();
   }
 
