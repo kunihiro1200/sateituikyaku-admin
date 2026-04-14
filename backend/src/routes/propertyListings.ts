@@ -1618,12 +1618,17 @@ router.post('/:propertyNumber/seller-send-history', async (req: Request, res: Re
 });
 
 // seller_phone バックフィル: property_listings の seller_phone を sellers テーブルから一括補完
-router.post('/backfill-seller-phone', async (req: Request, res: Response) => {
+router.get('/backfill-seller-phone', async (req: Request, res: Response) => {
   try {
     const supabase = createClient(
       process.env.SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_KEY!
     );
+
+    if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_KEY) {
+      return res.status(500).json({ error: 'Missing env vars', SUPABASE_URL: !!process.env.SUPABASE_URL, SUPABASE_SERVICE_KEY: !!process.env.SUPABASE_SERVICE_KEY });
+    }
+
     const { decrypt } = await import('../utils/encryption');
 
     // seller_phone が NULL の物件を全件取得（property_number で sellers と紐付け）
