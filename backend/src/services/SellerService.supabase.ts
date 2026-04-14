@@ -1400,7 +1400,6 @@ export class SellerService extends BaseRepository {
               !hasInfo &&
               !unreachable &&
               confidence !== 'ダブり' && confidence !== 'D' && confidence !== 'AI査定' &&
-              !exclusionDate &&
               inquiryDate >= '2026-01-01'
             );
             
@@ -1467,10 +1466,6 @@ export class SellerService extends BaseRepository {
             // 確度が「ダブり」「D」「AI査定」でない
             const confidence = s.confidence_level || '';
             if (confidence === 'ダブり' || confidence === 'D' || confidence === 'AI査定') return false;
-
-            // 除外日が空欄（カウント計算と同じ条件）
-            const exclusionDate = s.exclusion_date || '';
-            if (exclusionDate && exclusionDate.trim() !== '') return false;
 
             // 反響日付が2026/1/1以降
             const inquiryDate = s.inquiry_date || '';
@@ -2695,8 +2690,6 @@ export class SellerService extends BaseRepository {
       if (unreachable && unreachable.trim() !== '') return false;
       const confidence = (s as any).confidence_level || '';
       if (confidence === 'ダブり' || confidence === 'D' || confidence === 'AI査定') return false;
-      const exclusionDate = (s as any).exclusion_date || '';
-      if (exclusionDate && exclusionDate.trim() !== '') return false;
       const inquiryDate = (s as any).inquiry_date || '';
       return inquiryDate >= '2026-01-01';
     }).length;

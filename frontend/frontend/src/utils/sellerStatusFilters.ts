@@ -650,12 +650,6 @@ export const isTodayCallNotStarted = (seller: Seller | any): boolean => {
     return false;
   }
   
-  // 除外日が設定されている場合は除外
-  const exclusionDate = seller.exclusionDate || seller.exclusion_date || '';
-  if (exclusionDate && exclusionDate.trim() !== '') {
-    return false;
-  }
-  
   // 確度が「ダブり」「D」「AI査定」の場合は除外
   const confidence = seller.confidence || seller.confidenceLevel || seller.confidence_level || '';
   if (confidence === 'ダブり' || confidence === 'D' || confidence === 'AI査定') {
