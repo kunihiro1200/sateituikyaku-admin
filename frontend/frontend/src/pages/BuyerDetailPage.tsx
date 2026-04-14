@@ -658,7 +658,7 @@ export default function BuyerDetailPage() {
       );
 
       // 同期失敗の通知（DBへの保存は成功）
-      if (result?.syncStatus === 'pending' || result?.syncStatus === 'failed') {
+      if (result?.syncStatus === 'failed') {
         setSnackbar({
           open: true,
           message: 'DBへの保存は完了しましたが、スプレッドシートへの同期に失敗しました',
@@ -711,7 +711,7 @@ export default function BuyerDetailPage() {
       setSectionDirtyStates(prev => ({ ...prev, [sectionTitle]: false }));
       setSectionChangedFields(prev => ({ ...prev, [sectionTitle]: {} }));
       // スプシ同期失敗時は警告表示
-      if (result?.syncStatus === 'pending' || result?.syncStatus === 'failed') {
+      if (result?.syncStatus === 'failed') {
         setSnackbar({
           open: true,
           message: 'DBへの保存は完了しましたが、スプレッドシートへの同期に失敗しました',

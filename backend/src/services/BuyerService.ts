@@ -883,52 +883,35 @@ export class BuyerService {
       }
     }
 
-    // syncResult の初期値（スプレッドシート同期はバックグラウンドで実行）
-    const syncResult: SyncResult = { success: true, syncStatus: 'pending' };
+    // syncResult の初期値
+    let syncResult: SyncResult = { success: true, syncStatus: 'pending' };
 
-    // スプレッドシート同期を fire-and-forget で非同期実行
-    setImmediate(async () => {
-      try {
-        // 同期サービスを初期化（認証含む）- バックグラウンドで実行
-        await this.initSyncServices();
+    // スプレッドシート同期を直接実行（Vercelサーバーレス対応: setImmediateは使わない）
+    try {
+      // 同期サービスを初期化（認証含む）
+      await this.initSyncServices();
 
-        if (this.writeService && this.retryHandler) {
-          // リトライ付きで同期を実行
-          const retryResult = await this.retryHandler.executeWithRetry(
-            async () => {
-              const writeResult = await this.writeService!.updateFields(buyerNumber, allowedData);
-              if (!writeResult.success) {
-                throw new Error(writeResult.error || 'Spreadsheet write failed');
-              }
-              return writeResult;
+      if (this.writeService && this.retryHandler) {
+        // リトライ付きで同期を実行
+        const retryResult = await this.retryHandler.executeWithRetry(
+          async () => {
+            const writeResult = await this.writeService!.updateFields(buyerNumber, allowedData);
+            if (!writeResult.success) {
+              throw new Error(writeResult.error || 'Spreadsheet write failed');
             }
-          );
-
-          if (retryResult.success) {
-            // 同期成功 - last_synced_atを更新
-            await this.supabase
-              .from('buyers')
-              .update({ last_synced_at: new Date().toISOString() })
-              .eq('buyer_number', buyerNumber);
-          } else {
-            // 同期失敗 - キューに追加
-            for (const key of Object.keys(allowedData)) {
-              if (key !== 'db_updated_at') {
-                await this.retryHandler.queueFailedChange({
-                  buyer_number: buyerNumber,
-                  field_name: key,
-                  old_value: existing[key] ? String(existing[key]) : null,
-                  new_value: allowedData[key] ? String(allowedData[key]) : null,
-                  retry_count: retryResult.attempts,
-                  last_error: retryResult.error || null
-                });
-              }
-            }
+            return writeResult;
           }
-        }
-      } catch (syncError: any) {
-        // 同期エラー - キューに追加
-        if (this.retryHandler) {
+        );
+
+        if (retryResult.success) {
+          // 同期成功 - last_synced_atを更新
+          await this.supabase
+            .from('buyers')
+            .update({ last_synced_at: new Date().toISOString() })
+            .eq('buyer_number', buyerNumber);
+          syncResult = { success: true, syncStatus: 'synced' };
+        } else {
+          // 同期失敗 - キューに追加
           for (const key of Object.keys(allowedData)) {
             if (key !== 'db_updated_at') {
               await this.retryHandler.queueFailedChange({
@@ -936,17 +919,34 @@ export class BuyerService {
                 field_name: key,
                 old_value: existing[key] ? String(existing[key]) : null,
                 new_value: allowedData[key] ? String(allowedData[key]) : null,
-                retry_count: 0,
-                last_error: syncError.message
+                retry_count: retryResult.attempts,
+                last_error: retryResult.error || null
               });
             }
           }
+          syncResult = { success: false, syncStatus: 'failed', error: retryResult.error };
         }
-        console.error('Background sync error:', syncError);
       }
-    });
+    } catch (syncError: any) {
+      // 同期エラー - キューに追加
+      if (this.retryHandler) {
+        for (const key of Object.keys(allowedData)) {
+          if (key !== 'db_updated_at') {
+            await this.retryHandler.queueFailedChange({
+              buyer_number: buyerNumber,
+              field_name: key,
+              old_value: existing[key] ? String(existing[key]) : null,
+              new_value: allowedData[key] ? String(allowedData[key]) : null,
+              retry_count: 0,
+              last_error: syncError.message
+            });
+          }
+        }
+      }
+      console.error('Spreadsheet sync error:', syncError);
+      syncResult = { success: false, syncStatus: 'failed', error: syncError.message };
+    }
 
-    // DB更新完了後に即座にレスポンスを返す
     return {
       buyer: data,
       syncResult
