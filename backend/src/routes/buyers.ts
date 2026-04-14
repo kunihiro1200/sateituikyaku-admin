@@ -270,34 +270,33 @@ router.put('/:id', authenticateOrApiKey, async (req: Request, res: Response) => 
       return res.json(updatedBuyer);
     }
 
-    // デフォルト：即時同期を使用（sync=true または sync未指定）
-    console.log('[PUT /buyers/:id] Using updateWithSync (default or sync=true)');
-    const result = await buyerService.updateWithSync(
-      buyerNumber,
-      sanitizedData,
-      userId,
-      userEmail,
-      { force: force === 'true' }
-    );
+    // DB更新を先に実行してレスポンスを返す（スプレッドシート同期はバックグラウンドで実行）
+    // Vercelサーバーレス環境ではsetImmediate/Promiseがレスポンス後に凍結されるため、
+    // DB更新→即レスポンス→スプレッドシート同期（非同期）の順で処理する
+    console.log('[PUT /buyers/:id] Using update (DB first, then async sync)');
+    const updatedBuyer = await buyerService.update(buyerNumber, sanitizedData, userId, userEmail);
+    console.log('[PUT /buyers/:id] DB update completed successfully');
 
     // 🆕 キャッシュを無効化（サイドバーが即座に更新されるように）
     await invalidateBuyerStatusCache();
     console.log('[PUT /buyers/:id] Buyer status cache invalidated');
 
-    // 競合がある場合は409を返す
-    if (result.syncResult.conflict && result.syncResult.conflict.length > 0) {
-      return res.status(409).json({
-        error: 'Conflict detected',
-        buyer: result.buyer,
-        syncStatus: result.syncResult.syncStatus,
-        conflicts: result.syncResult.conflict
-      });
-    }
-
+    // レスポンスを即座に返す（スプレッドシート同期を待たない）
     res.json({
-      ...result.buyer,
-      syncStatus: result.syncResult.syncStatus,
-      syncError: result.syncResult.error
+      ...updatedBuyer,
+      syncStatus: 'pending',
+    });
+
+    // スプレッドシート同期をバックグラウンドで実行（レスポンス後）
+    // awaitしないことでVercelサーバーレスでもレスポンスをブロックしない
+    buyerService.updateWithSync(
+      buyerNumber,
+      sanitizedData,
+      userId,
+      userEmail,
+      { force: force === 'true' }
+    ).catch((syncError: any) => {
+      console.error('[PUT /buyers/:id] Background sync error (non-fatal):', syncError.message);
     });
   } catch (error: any) {
     console.error('[PUT /buyers/:id] Error updating buyer:', error);
