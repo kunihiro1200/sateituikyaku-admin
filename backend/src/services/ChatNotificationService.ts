@@ -44,6 +44,7 @@ export class ChatNotificationService {
       
       const message = this.formatGeneralContractMessage({
         ...data,
+        assignee: data.assignee || seller.visit_assignee,
         sellerNumber: seller.seller_number,
         sellerName: seller.name,
         propertyAddress: seller.property_address,
@@ -72,6 +73,7 @@ export class ChatNotificationService {
       
       const message = this.formatExclusiveContractMessage({
         ...data,
+        assignee: data.assignee || seller.visit_assignee,
         sellerNumber: seller.seller_number,
         sellerName: seller.name,
         propertyAddress: seller.property_address,
@@ -101,6 +103,7 @@ export class ChatNotificationService {
       
       const message = this.formatPostVisitOtherDecisionMessage({
         ...data,
+        assignee: data.assignee || seller.visit_assignee,
         sellerNumber: seller.seller_number,
         sellerName: seller.name,
         propertyAddress: seller.property_address,
@@ -130,6 +133,7 @@ export class ChatNotificationService {
       
       const message = this.formatPreVisitOtherDecisionMessage({
         ...data,
+        assignee: data.assignee || seller.visit_assignee,
         sellerNumber: seller.seller_number,
         sellerName: seller.name,
         propertyAddress: seller.property_address,
@@ -186,7 +190,8 @@ export class ChatNotificationService {
         property_address,
         property_type,
         valuation_amount_2,
-        exclusive_other_decision_factor
+        exclusive_other_decision_factor,
+        visit_assignee
       `)
       .eq('id', sellerId)
       .single();
@@ -202,6 +207,7 @@ export class ChatNotificationService {
       exclusive_other_decision_factor: data.exclusive_other_decision_factor,
       property_address: data.property_address,
       property_type: data.property_type,
+      visit_assignee: data.visit_assignee,
     };
   }
 

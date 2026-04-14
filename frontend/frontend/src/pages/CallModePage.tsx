@@ -3483,7 +3483,7 @@ HP：https://ifoo-oita.com/
       }
       
       await api.post(endpoint, {
-        assignee: seller.assignedTo || employee?.name,
+        assignee: seller.visitAssignee || seller.assignedTo || employee?.name,
         notes: `決定日: ${editedExclusiveDecisionDate}\n競合: ${editedCompetitors.join(', ')}\n要因: ${editedExclusiveOtherDecisionFactors.join(', ')}`,
       });
 
