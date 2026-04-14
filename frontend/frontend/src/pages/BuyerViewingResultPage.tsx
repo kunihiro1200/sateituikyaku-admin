@@ -61,6 +61,7 @@ export function generateCalendarDescription(
 ): string {
   const baseUrl = 'https://sateituikyaku-admin-frontend.vercel.app';
   return (
+    `買主番号: ${buyerNumber || 'なし'}\n` +
     `物件住所: ${propertyAddress || 'なし'}\n` +
     `GoogleMap: ${googleMapUrl || 'なし'}\n` +
     `\n` +
