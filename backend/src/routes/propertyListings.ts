@@ -1618,7 +1618,7 @@ router.post('/:propertyNumber/seller-send-history', async (req: Request, res: Re
 });
 
 // seller_phone バックフィル: property_listings の seller_phone を sellers テーブルから一括補完
-router.post('/backfill-seller-phone', authenticate, async (req: Request, res: Response) => {
+router.post('/backfill-seller-phone', async (req: Request, res: Response) => {
   try {
     const supabase = createClient(
       process.env.SUPABASE_URL!,
