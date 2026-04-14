@@ -248,6 +248,30 @@ export default function BuyerViewingResultPage() {
     !buyer?.notification_sender
   );
 
+  // タスク1.1: isCalendarEnabled 計算値
+  // 内覧形態の参照フィールドは物件種別に依存する（要件3.5）
+  const atbbStatus = linkedProperties?.[0]?.atbb_status || '';
+  const viewingTypeValue =
+    atbbStatus.includes('専任')
+      ? (buyer?.viewing_mobile || null)
+      : atbbStatus.includes('一般')
+      ? (buyer?.viewing_type_general || null)
+      : (buyer?.viewing_mobile || buyer?.viewing_type_general || null);
+
+  // 4条件がすべて非空の場合のみ true（要件3.1, 3.2, 3.5）
+  const isCalendarEnabled = !!(
+    buyer?.viewing_date &&
+    buyer?.viewing_time &&
+    buyer?.follow_up_assignee &&
+    viewingTypeValue
+  );
+
+  // タスク4.1: 必須強調表示の計算値（要件2.1〜2.7）
+  const hasViewingDate = !!(buyer?.viewing_date && buyer.viewing_date.trim() !== '');
+  const isTimeRequired = hasViewingDate && !(buyer?.viewing_time && buyer.viewing_time.trim() !== '');
+  const isViewingTypeRequired = hasViewingDate && !viewingTypeValue;
+  const isFollowUpRequired = hasViewingDate && !(buyer?.follow_up_assignee && buyer.follow_up_assignee.trim() !== '');
+
   // 離脱ガード: カレンダー未開封の場合に警告
   const guardedNavigate = (url: string) => {
     if (needsCalendar && !calendarOpened) {
@@ -482,43 +506,48 @@ export default function BuyerViewingResultPage() {
     
     let assignedEmail = '';
     if (followUpAssignee) {
-      // イニシャルまたは名前で従業員マスタを検索
-      const matchedEmployees = employees.filter(e => {
-        const initialsMatch = e.initials === followUpAssignee;
-        const nameMatch = e.name === followUpAssignee;
-        console.log(`従業員チェック: ${e.name} (initials: ${e.initials}, email: ${e.email})`);
-        console.log(`  - initialsMatch: ${initialsMatch}, nameMatch: ${nameMatch}`);
-        return initialsMatch || nameMatch;
-      });
-      
-      console.log('マッチした社員数:', matchedEmployees.length);
-      console.log('マッチした社員:', matchedEmployees);
-      
-      if (matchedEmployees.length > 1) {
-        // 重複イニシャルの場合、エラーメッセージを表示
-        const names = matchedEmployees.map(e => e.name).join(', ');
-        setSnackbar({
-          open: true,
-          message: `後続担当（${followUpAssignee}）が複数の社員に一致します: ${names}`,
-          severity: 'error',
-        });
-        return;
-      }
-      
-      const assignedEmployee = matchedEmployees[0];
-      console.log('見つかった社員:', assignedEmployee?.name);
-      console.log('メールアドレス:', assignedEmployee?.email);
-      
-      if (assignedEmployee?.email) {
-        assignedEmail = assignedEmployee.email;
+      // タスク6: 「業者」の場合は従業員マスタ検索をスキップ（要件1.4, 1.5）
+      if (followUpAssignee === '業者') {
+        assignedEmail = 'tenant@ifoo-oita.com';
       } else {
-        // 後続担当が従業員マスタに存在しない場合、エラーメッセージを表示
-        setSnackbar({
-          open: true,
-          message: `後続担当（${followUpAssignee}）が従業員マスタに見つかりません`,
-          severity: 'error',
+        // イニシャルまたは名前で従業員マスタを検索
+        const matchedEmployees = employees.filter(e => {
+          const initialsMatch = e.initials === followUpAssignee;
+          const nameMatch = e.name === followUpAssignee;
+          console.log(`従業員チェック: ${e.name} (initials: ${e.initials}, email: ${e.email})`);
+          console.log(`  - initialsMatch: ${initialsMatch}, nameMatch: ${nameMatch}`);
+          return initialsMatch || nameMatch;
         });
-        return;
+        
+        console.log('マッチした社員数:', matchedEmployees.length);
+        console.log('マッチした社員:', matchedEmployees);
+        
+        if (matchedEmployees.length > 1) {
+          // 重複イニシャルの場合、エラーメッセージを表示
+          const names = matchedEmployees.map(e => e.name).join(', ');
+          setSnackbar({
+            open: true,
+            message: `後続担当（${followUpAssignee}）が複数の社員に一致します: ${names}`,
+            severity: 'error',
+          });
+          return;
+        }
+        
+        const assignedEmployee = matchedEmployees[0];
+        console.log('見つかった社員:', assignedEmployee?.name);
+        console.log('メールアドレス:', assignedEmployee?.email);
+        
+        if (assignedEmployee?.email) {
+          assignedEmail = assignedEmployee.email;
+        } else {
+          // 後続担当が従業員マスタに存在しない場合、エラーメッセージを表示
+          setSnackbar({
+            open: true,
+            message: `後続担当（${followUpAssignee}）が従業員マスタに見つかりません`,
+            severity: 'error',
+          });
+          return;
+        }
       }
     }
 
@@ -961,50 +990,66 @@ export default function BuyerViewingResultPage() {
                 🗑️ 内覧日をクリア
               </Button>
               {/* カレンダーリンクボタン */}
-              {buyer.viewing_date && (() => {
-                // 全条件を満たす場合にボタンを目立たせる
-                const shouldHighlight =
-                  !!buyer.viewing_date &&
-                  !!buyer.viewing_time &&
-                  !!buyer.follow_up_assignee &&
-                  !buyer.viewing_unconfirmed;
-                return (
+              {buyer.viewing_date && (
                   <Button
                     size="small"
-                    variant={shouldHighlight ? 'contained' : 'outlined'}
-                    color={shouldHighlight ? 'error' : 'primary'}
+                    variant={isCalendarEnabled ? 'contained' : 'outlined'}
+                    color={isCalendarEnabled ? 'error' : 'primary'}
                     fullWidth
+                    disabled={!isCalendarEnabled}
                     sx={{
                       mt: 0.5,
-                      fontSize: shouldHighlight ? '0.75rem' : '0.7rem',
-                      padding: shouldHighlight ? '4px 8px' : '2px 4px',
-                      fontWeight: shouldHighlight ? 'bold' : 'normal',
-                      ...(shouldHighlight && {
-                        animation: 'calendarPulse 1.5s ease-in-out infinite',
-                        '@keyframes calendarPulse': {
-                          '0%': { boxShadow: '0 0 0 0 rgba(211, 47, 47, 0.5)' },
-                          '70%': { boxShadow: '0 0 0 6px rgba(211, 47, 47, 0)' },
-                          '100%': { boxShadow: '0 0 0 0 rgba(211, 47, 47, 0)' },
-                        },
-                      }),
+                      fontSize: isCalendarEnabled ? '0.75rem' : '0.7rem',
+                      padding: isCalendarEnabled ? '4px 8px' : '2px 4px',
+                      fontWeight: isCalendarEnabled ? 'bold' : 'normal',
+                      ...(isCalendarEnabled
+                        ? {
+                            animation: 'calendarPulse 1.5s ease-in-out infinite',
+                            '@keyframes calendarPulse': {
+                              '0%': { boxShadow: '0 0 0 0 rgba(211, 47, 47, 0.5)' },
+                              '70%': { boxShadow: '0 0 0 6px rgba(211, 47, 47, 0)' },
+                              '100%': { boxShadow: '0 0 0 0 rgba(211, 47, 47, 0)' },
+                            },
+                          }
+                        : {
+                            color: '#9e9e9e',
+                            borderColor: '#e0e0e0',
+                            backgroundColor: '#f5f5f5',
+                          }),
                     }}
                     onClick={handleCalendarButtonClick}
                   >
                     📅 カレンダーで開く
                   </Button>
-                );
-              })()}
+              )}
             </Box>
 
             {/* 時間 */}
             <Box sx={{ width: '200px', flexShrink: 0 }}>
-              <InlineEditableField
-                label="時間"
-                value={buyer.viewing_time || ''}
-                onSave={handleSaveViewingTime}
-                fieldType="time"
-                placeholder="例: 14:30"
-              />
+              <Box
+                sx={{
+                  p: isTimeRequired ? 1 : 0,
+                  border: isTimeRequired ? '2px solid' : 'none',
+                  borderColor: isTimeRequired ? 'error.main' : 'transparent',
+                  borderRadius: 2,
+                  bgcolor: isTimeRequired ? 'rgba(255, 205, 210, 0.3)' : 'transparent',
+                  boxShadow: isTimeRequired ? '0 2px 8px rgba(211, 47, 47, 0.2)' : 'none',
+                  transition: 'all 0.3s ease',
+                }}
+              >
+                {isTimeRequired && (
+                  <Typography variant="caption" color="error" sx={{ display: 'block', mb: 0.5, fontWeight: 'bold', fontSize: '0.7rem' }}>
+                    *必須
+                  </Typography>
+                )}
+                <InlineEditableField
+                  label={isTimeRequired ? '時間 *必須' : '時間'}
+                  value={buyer.viewing_time || ''}
+                  onSave={handleSaveViewingTime}
+                  fieldType="time"
+                  placeholder="例: 14:30"
+                />
+              </Box>
             </Box>
 
             {/* 内覧形態（条件付き表示：内覧日が入力されている場合のみ表示） */}
@@ -1159,8 +1204,19 @@ export default function BuyerViewingResultPage() {
 
             {/* 後続担当 */}
             <Box sx={{ width: '360px', flexShrink: 0 }}>
-              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5, fontSize: '0.7rem' }}>
-                後続担当
+              <Box
+                sx={{
+                  p: isFollowUpRequired ? 1 : 0,
+                  border: isFollowUpRequired ? '2px solid' : 'none',
+                  borderColor: isFollowUpRequired ? 'error.main' : 'transparent',
+                  borderRadius: 2,
+                  bgcolor: isFollowUpRequired ? 'rgba(255, 205, 210, 0.3)' : 'transparent',
+                  boxShadow: isFollowUpRequired ? '0 2px 8px rgba(211, 47, 47, 0.2)' : 'none',
+                  transition: 'all 0.3s ease',
+                }}
+              >
+              <Typography variant="caption" color={isFollowUpRequired ? 'error' : 'text.secondary'} sx={{ display: 'block', mb: 0.5, fontSize: '0.7rem', fontWeight: isFollowUpRequired ? 'bold' : 'normal' }}>
+                後続担当 {isFollowUpRequired && <span style={{ color: 'red', fontWeight: 'bold' }}>*必須</span>}
               </Typography>
               <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
                 {staffInitials.map((staff) => {
@@ -1201,6 +1257,27 @@ export default function BuyerViewingResultPage() {
                     </Button>
                   );
                 })}
+                {/* タスク5.1: 「業者」ボタン（要件1.1, 1.2, 1.3） */}
+                <Button
+                  variant={buyer.follow_up_assignee === '業者' ? 'contained' : 'outlined'}
+                  color="warning"
+                  size="small"
+                  onClick={async () => {
+                    const newValue = buyer.follow_up_assignee === '業者' ? '' : '業者';
+                    setBuyer(prev => prev ? { ...prev, follow_up_assignee: newValue } : prev);
+                    buyerRef.current = buyer ? { ...buyer, follow_up_assignee: newValue } : null;
+                    try {
+                      await handleInlineFieldSave('follow_up_assignee', newValue);
+                    } catch (error) {
+                      setBuyer(prev => prev ? { ...prev, follow_up_assignee: buyer.follow_up_assignee } : prev);
+                      buyerRef.current = buyer;
+                    }
+                  }}
+                  sx={{ minWidth: '32px', padding: '2px 6px', fontSize: '0.7rem' }}
+                >
+                  業者
+                </Button>
+              </Box>
               </Box>
             </Box>
 
