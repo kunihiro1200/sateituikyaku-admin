@@ -844,6 +844,7 @@ export default function PropertyReportPage() {
             buyers={buyers}
             propertyNumber={propertyNumber || ''}
             loading={buyersLoading}
+            showCreateButton={false}
           />
 
           {/* 前回メール内容 */}

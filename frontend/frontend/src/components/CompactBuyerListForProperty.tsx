@@ -32,12 +32,14 @@ interface CompactBuyerListForPropertyProps {
   buyers: BuyerWithDetails[];
   propertyNumber: string;
   loading?: boolean;
+  showCreateButton?: boolean;
 }
 
 export default function CompactBuyerListForProperty({
   buyers,
   propertyNumber,
   loading = false,
+  showCreateButton = true,
 }: CompactBuyerListForPropertyProps) {
   const navigate = useNavigate();
 
@@ -109,13 +111,15 @@ export default function CompactBuyerListForProperty({
     <Paper sx={{ p: 2, height: '100%', display: 'flex', flexDirection: 'column' }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
         <Typography variant="h6">買主リスト ({buyers.length}件)</Typography>
-        <Button
-          variant="contained"
-          size="small"
-          onClick={() => navigate(`/buyers/new?propertyNumber=${propertyNumber}`)}
-        >
-          新規作成
-        </Button>
+        {showCreateButton && (
+          <Button
+            variant="contained"
+            size="small"
+            onClick={() => navigate(`/buyers/new?propertyNumber=${propertyNumber}`)}
+          >
+            新規作成
+          </Button>
+        )}
       </Box>
 
       {buyers.length === 0 ? (
