@@ -119,6 +119,59 @@ router.get('/stats', async (_req: Request, res: Response) => {
   }
 });
 
+// seller_phone バックフィル: property_listings の seller_phone を sellers テーブルから一括補完
+router.get('/backfill-seller-phone', async (req: Request, res: Response) => {
+  try {
+    const supabase = createClient(
+      process.env.SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_KEY!
+    );
+    const { decrypt } = await import('../utils/encryption');
+
+    const { data: listings, error: listErr } = await supabase
+      .from('property_listings')
+      .select('property_number')
+      .is('seller_phone', null);
+
+    if (listErr) throw new Error(listErr.message);
+    if (!listings || listings.length === 0) {
+      return res.json({ updated: 0, message: 'seller_phone が NULL の物件はありません' });
+    }
+
+    const propertyNumbers = listings.map((l: any) => l.property_number).filter(Boolean);
+
+    const { data: sellers, error: sellerErr } = await supabase
+      .from('sellers')
+      .select('seller_number, phone_number')
+      .in('seller_number', propertyNumbers);
+
+    if (sellerErr) throw new Error(sellerErr.message);
+
+    const phoneMap: Record<string, string> = {};
+    for (const s of sellers || []) {
+      if (s.phone_number) {
+        try { phoneMap[s.seller_number] = decrypt(s.phone_number); } catch { /* skip */ }
+      }
+    }
+
+    let updated = 0;
+    for (const listing of listings) {
+      const phone = phoneMap[listing.property_number];
+      if (!phone) continue;
+      const { error: upErr } = await supabase
+        .from('property_listings')
+        .update({ seller_phone: phone })
+        .eq('property_number', listing.property_number);
+      if (!upErr) updated++;
+    }
+
+    res.json({ updated, total: listings.length, message: `${updated}件の seller_phone を更新しました` });
+  } catch (error: any) {
+    console.error('[backfill-seller-phone] Error:', error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // 公開物件一覧取得（公開物件サイト用）
 router.get('/public', async (req: Request, res: Response) => {
   try {
@@ -1618,69 +1671,4 @@ router.post('/:propertyNumber/seller-send-history', async (req: Request, res: Re
 });
 
 // seller_phone バックフィル: property_listings の seller_phone を sellers テーブルから一括補完
-router.get('/backfill-seller-phone', async (req: Request, res: Response) => {
-  try {
-    const supabase = createClient(
-      process.env.SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_KEY!
-    );
-
-    if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_KEY) {
-      return res.status(500).json({ error: 'Missing env vars', SUPABASE_URL: !!process.env.SUPABASE_URL, SUPABASE_SERVICE_KEY: !!process.env.SUPABASE_SERVICE_KEY });
-    }
-
-    const { decrypt } = await import('../utils/encryption');
-
-    // seller_phone が NULL の物件を全件取得（property_number で sellers と紐付け）
-    const { data: listings, error: listErr } = await supabase
-      .from('property_listings')
-      .select('property_number')
-      .is('seller_phone', null);
-
-    if (listErr) throw new Error(listErr.message);
-    if (!listings || listings.length === 0) {
-      return res.json({ updated: 0, message: 'seller_phone が NULL の物件はありません' });
-    }
-
-    const propertyNumbers = listings.map((l: any) => l.property_number).filter(Boolean);
-
-    // sellers テーブルから property_number と phone_number を取得
-    const { data: sellers, error: sellerErr } = await supabase
-      .from('sellers')
-      .select('seller_number, phone_number')
-      .in('seller_number', propertyNumbers);
-
-    if (sellerErr) throw new Error(sellerErr.message);
-
-    // seller_number → 復号済み電話番号 のマップを作成
-    const phoneMap: Record<string, string> = {};
-    for (const s of sellers || []) {
-      if (s.phone_number) {
-        try {
-          phoneMap[s.seller_number] = decrypt(s.phone_number);
-        } catch {
-          // 復号失敗はスキップ
-        }
-      }
-    }
-
-    // バッチ更新
-    let updated = 0;
-    for (const listing of listings) {
-      const phone = phoneMap[listing.property_number];
-      if (!phone) continue;
-      const { error: upErr } = await supabase
-        .from('property_listings')
-        .update({ seller_phone: phone })
-        .eq('property_number', listing.property_number);
-      if (!upErr) updated++;
-    }
-
-    res.json({ updated, total: listings.length, message: `${updated}件の seller_phone を更新しました` });
-  } catch (error: any) {
-    console.error('[backfill-seller-phone] Error:', error.message);
-    res.status(500).json({ error: error.message });
-  }
-});
-
 export default router;
