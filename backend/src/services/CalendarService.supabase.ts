@@ -285,9 +285,17 @@ export class CalendarService extends BaseRepository {
     sellerName: string,
     sellerPhone: string,
     propertyAddress: string,
-    notes?: string
+    notes?: string,
+    sellerNumber?: string
   ): string {
-    let description = `売主: ${sellerName}\n`;
+    let description = '';
+    
+    // 売主番号を一番上に表示（存在する場合）
+    if (sellerNumber) {
+      description += `売主番号: ${sellerNumber}\n`;
+    }
+    
+    description += `売主: ${sellerName}\n`;
     description += `電話: ${sellerPhone}\n`;
     description += `物件住所: ${propertyAddress}`;
     
@@ -311,7 +319,8 @@ export class CalendarService extends BaseRepository {
     assignedEmployeeId: string,
     sellerName: string,
     sellerPhone: string,
-    propertyAddress: string
+    propertyAddress: string,
+    sellerNumber?: string
   ): Promise<Appointment> {
     console.log('[CalendarService] Creating appointment for assigned employee:', assignedEmployeeId);
     console.log('[CalendarService] Request details:', {
@@ -369,7 +378,8 @@ export class CalendarService extends BaseRepository {
               sellerName,
               sellerPhone,
               propertyAddress,
-              request.notes
+              request.notes,
+              sellerNumber
             ),
             startTime: request.startTime,
             endTime: request.endTime,

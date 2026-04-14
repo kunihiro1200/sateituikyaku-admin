@@ -173,7 +173,8 @@ router.post(
         assignedEmployee.id,
         seller.name,
         seller.phoneNumber,
-        property.address
+        property.address,
+        seller.sellerNumber  // 売主番号を追加
       );
 
       console.log('[Appointments] Appointment created successfully:', {
