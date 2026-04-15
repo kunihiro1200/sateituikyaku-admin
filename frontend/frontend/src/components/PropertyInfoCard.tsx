@@ -42,6 +42,9 @@ interface PropertyFullDetails {
   sale_reason?: string; // 理由
   suumo_url?: string; // Suumo URL
   google_map_url?: string; // Google Map URL
+  storage_location?: string; // 保存場所
+  image_url?: string; // 画像URL
+  pdf_url?: string; // PDF URL
   confirmation_status?: string; // 確済
   structure?: string;
   floor_plan?: string;
@@ -525,6 +528,66 @@ export default function PropertyInfoCard({
                     <Typography variant="body2">
                       地図を開く
                     </Typography>
+                    <LaunchIcon fontSize="small" />
+                  </Link>
+                </Box>
+              </Box>
+            )}
+
+            {/* 保存場所 */}
+            {property.storage_location && (
+              <Box sx={{ flex: '0 0 auto' }}>
+                <Typography variant="caption" color="text.secondary">
+                  保存場所
+                </Typography>
+                <Box sx={{ mt: 0.5 }}>
+                  <Link
+                    href={property.storage_location}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}
+                  >
+                    <Typography variant="body2">保存場所を開く</Typography>
+                    <LaunchIcon fontSize="small" />
+                  </Link>
+                </Box>
+              </Box>
+            )}
+
+            {/* 画像 */}
+            {property.image_url && (
+              <Box sx={{ flex: '0 0 auto' }}>
+                <Typography variant="caption" color="text.secondary">
+                  画像
+                </Typography>
+                <Box sx={{ mt: 0.5 }}>
+                  <Link
+                    href={property.image_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}
+                  >
+                    <Typography variant="body2">画像を開く</Typography>
+                    <LaunchIcon fontSize="small" />
+                  </Link>
+                </Box>
+              </Box>
+            )}
+
+            {/* PDF */}
+            {property.pdf_url && (
+              <Box sx={{ flex: '0 0 auto' }}>
+                <Typography variant="caption" color="text.secondary">
+                  PDF
+                </Typography>
+                <Box sx={{ mt: 0.5 }}>
+                  <Link
+                    href={property.pdf_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}
+                  >
+                    <Typography variant="body2">PDFを開く</Typography>
                     <LaunchIcon fontSize="small" />
                   </Link>
                 </Box>
