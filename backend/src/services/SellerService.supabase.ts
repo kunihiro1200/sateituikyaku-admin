@@ -1228,7 +1228,7 @@ export class SellerService extends BaseRepository {
           
           while (true) {
             const { data, error } = await this.table('sellers')
-              .select('id, status, next_call_date, visit_assignee, phone_contact_person, preferred_contact_time, contact_method')
+              .select('id, status, next_call_date, visit_assignee, phone_contact_person, preferred_contact_time, contact_method, unreachable_status, confidence_level, inquiry_date')
               .is('deleted_at', null)
               .not('next_call_date', 'is', null)
               .lte('next_call_date', todayJST)
@@ -1270,7 +1270,21 @@ export class SellerService extends BaseRepository {
             const hasInfo = (s.phone_contact_person && s.phone_contact_person.trim() !== '') ||
                            (s.preferred_contact_time && s.preferred_contact_time.trim() !== '') ||
                            (s.contact_method && s.contact_method.trim() !== '');
-            return !hasInfo;
+            if (hasInfo) return false;
+            
+            // 当日TEL_未着手（todayCallNotStarted）に該当する場合は除外（未着手を優先）
+            const unreachable = s.unreachable_status || '';
+            const confidence = s.confidence_level || '';
+            const inquiryDate = s.inquiry_date || '';
+            const isTodayCallNotStarted = (
+              status === '追客中' &&
+              !unreachable &&
+              confidence !== 'ダブり' && confidence !== 'D' && confidence !== 'AI査定' &&
+              inquiryDate >= '2026-01-01'
+            );
+            if (isTodayCallNotStarted) return false;
+            
+            return true;
           }).map((s: any) => s.id);
           
           if (todayCallIds.length === 0) {
