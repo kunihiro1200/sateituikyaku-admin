@@ -2654,7 +2654,19 @@ export class SellerService extends BaseRepository {
       const hasInfo = (s.phone_contact_person && s.phone_contact_person.trim() !== '') ||
                       (s.preferred_contact_time && s.preferred_contact_time.trim() !== '') ||
                       (s.contact_method && s.contact_method.trim() !== '');
-      return !hasInfo;
+      if (hasInfo) return false;
+      // 当日TEL_未着手（todayCallNotStarted）に該当する場合は除外（未着手を優先）
+      const status = (s as any).status || '';
+      const unreachable = (s as any).unreachable_status || '';
+      const confidence = (s as any).confidence_level || '';
+      const inquiryDate = (s as any).inquiry_date || '';
+      const isNotStarted = (
+        status === '追客中' &&
+        !unreachable &&
+        confidence !== 'ダブり' && confidence !== 'D' && confidence !== 'AI査定' &&
+        inquiryDate >= '2026-01-01'
+      );
+      return !isNotStarted;
     }).length;
 
     // 6. 未査定のカウント
