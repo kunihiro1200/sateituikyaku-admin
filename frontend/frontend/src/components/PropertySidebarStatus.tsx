@@ -182,6 +182,12 @@ export default function PropertySidebarStatus({
           counts[label] = (counts[label] || 0) + 1;
           return;
         }
+
+        // 「本日公開予定」も常にcalculatePropertyStatusで判定（公開予定日が動的に変わるため）
+        if (computed.key === 'today_publish') {
+          counts['本日公開予定'] = (counts['本日公開予定'] || 0) + 1;
+          return;
+        }
       }
 
       // sidebar_statusが存在する場合はそれを使用

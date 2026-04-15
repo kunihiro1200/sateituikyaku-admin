@@ -276,6 +276,9 @@ export default function PropertyListingsPage() {
           const normalizedSidebarStatus = sidebarStatus.replace(/\s+/g, '');
           return normalizedStatusLabel === normalizedSidebarStatus;
         });
+      } else if (sidebarStatus === '本日公開予定') {
+        // 「本日公開予定」はDBのsidebar_statusに保存されないため、calculatePropertyStatusで判定
+        listings = listings.filter(l => calculatePropertyStatus(l as any, workTaskMap).key === 'today_publish');
       } else if (['Y専任公開中', '生・専任公開中', '久・専任公開中', 'U専任公開中', '林・専任公開中', '林専任公開中', 'K専任公開中', 'R専任公開中', 'I専任公開中'].includes(sidebarStatus)) {
         // 担当者別専任公開中：sidebar_statusが一致するか、古いデータ('専任・公開中')でsales_assigneeが一致するものを含む
         const assigneeMap: Record<string, string> = {
