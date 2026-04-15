@@ -2490,6 +2490,7 @@ export class SellerService extends BaseRepository {
     mailingPending: number;
     todayCallNotStarted: number;
     pinrichEmpty: number;
+    pinrichChangeRequired: number;
     exclusive: number;
     general: number;
     visitOtherDecision: number;
@@ -2518,6 +2519,7 @@ export class SellerService extends BaseRepository {
     mailingPending: number;
     todayCallNotStarted: number;
     pinrichEmpty: number;
+    pinrichChangeRequired: number;
     exclusive: number;
     general: number;
     visitOtherDecision: number;
@@ -2553,7 +2555,8 @@ export class SellerService extends BaseRepository {
       exclusiveSellersResult,
       generalSellersResult,
       visitOtherDecisionSellersResult,
-      unvisitedOtherDecisionSellersResult
+      unvisitedOtherDecisionSellersResult,
+      pinrichChangeRequiredResult
     ] = await Promise.all([
       // 1. 訪問日前日用データ（JavaScript計算が必要）
       this.table('sellers')
@@ -2640,7 +2643,11 @@ export class SellerService extends BaseRepository {
       this.table('sellers')
         .select('exclusive_other_decision_meeting, next_call_date, visit_assignee')
         .is('deleted_at', null)
-        .in('status', ['他決→追客', '他決→追客不要', '一般→他決'])
+        .in('status', ['他決→追客', '他決→追客不要', '一般→他決']),
+      // 12. Pinrich要変更カテゴリー用データ（条件A〜Dを評価するため必要なカラムを取得）
+      this.table('sellers')
+        .select('id, visit_assignee, pinrich_status, status, confidence_level, visit_date, contract_year_month')
+        .is('deleted_at', null)
     ]);
 
     console.log(`⏱️ [Performance] Parallel queries completed in ${Date.now() - startTime}ms`);
@@ -2804,7 +2811,29 @@ export class SellerService extends BaseRepository {
       return !pinrich || pinrich.trim() === '';
     }).length;
 
-    // 10. 専任カテゴリー
+    // 10. Pinrich要変更カテゴリー（条件A〜Dのいずれかを満たす売主）
+    const pinrichChangeSellers = pinrichChangeRequiredResult.data || [];
+    const EXCLUDED_PINRICH_B_FB = new Set([
+      'クローズ', '登録不要', 'アドレスエラー',
+      '配信不要（他決後、訪問後、担当付）', '△配信停止'
+    ]);
+    const VALID_STATUS_C_FB = new Set(['専任媒介', '追客中', '除外後追客中']);
+    const VALID_STATUS_D_FB = new Set(['他決→追客', '他決→追客不要', '一般媒介']);
+    const pinrichChangeRequiredCount = pinrichChangeSellers.filter((s: any) => {
+      const visitAssignee = (s.visit_assignee || '').trim();
+      const pinrichStatus = (s.pinrich_status || '').trim();
+      const status = (s.status || '').trim();
+      const confidenceLevel = (s.confidence_level || '').trim();
+      const visitDate = (s.visit_date || '').trim();
+      const contractYearMonth = (s.contract_year_month || '').trim();
+      const conditionA = visitAssignee === '外す' && pinrichStatus === 'クローズ' && status === '追客中';
+      const conditionB = confidenceLevel === 'D' && !EXCLUDED_PINRICH_B_FB.has(pinrichStatus);
+      const conditionC = visitDate !== '' && pinrichStatus === '配信中' && visitAssignee !== '' && VALID_STATUS_C_FB.has(status);
+      const conditionD = VALID_STATUS_D_FB.has(status) && pinrichStatus === 'クローズ' && contractYearMonth >= '2025-05-01';
+      return conditionA || conditionB || conditionC || conditionD;
+    }).length;
+
+    // 11. 専任カテゴリー
     const exclusiveSellers = exclusiveSellersResult.data || [];
     const exclusiveCount = exclusiveSellers.filter(s => {
       const meeting = s.exclusive_other_decision_meeting;
@@ -2857,6 +2886,7 @@ export class SellerService extends BaseRepository {
       mailingPending: mailingPendingCount || 0,
       todayCallNotStarted: todayCallNotStartedCount || 0,
       pinrichEmpty: pinrichEmptyCount || 0,
+      pinrichChangeRequired: pinrichChangeRequiredCount || 0,
       exclusive: exclusiveCount || 0,
       general: generalCount || 0,
       visitOtherDecision: visitOtherDecisionCount || 0,
