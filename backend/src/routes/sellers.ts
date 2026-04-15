@@ -1498,7 +1498,22 @@ router.get('/:id/nearby-buyers', async (req: Request, res: Response) => {
     }
 
     const city = cityExtractor.extractCityFromAddress(seller.propertyAddress);
-    const result = await calculator.calculateDistributionAreas(googleMapUrl, city, seller.propertyAddress);
+
+    // sellersテーブルから保存済み座標を取得（物件位置セクションと同じ方法）
+    const supabase = createClient(
+      process.env.SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_KEY!
+    );
+    const { data: sellerRaw } = await supabase
+      .from('sellers')
+      .select('latitude, longitude')
+      .eq('id', id)
+      .single();
+    const preloadedCoords = (sellerRaw?.latitude && sellerRaw?.longitude)
+      ? { lat: sellerRaw.latitude, lng: sellerRaw.longitude }
+      : null;
+
+    const result = await calculator.calculateDistributionAreas(googleMapUrl, city, seller.propertyAddress, preloadedCoords);
 
     if (!result.areas || result.areas.length === 0) {
       return res.json({

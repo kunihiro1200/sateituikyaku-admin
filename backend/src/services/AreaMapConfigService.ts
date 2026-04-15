@@ -277,10 +277,10 @@ export class AreaMapConfigService {
       return false;
     }
 
-    // Regular areas (①-⑯) must have google_map_url
-    if (!['㊵', '㊶'].includes(config.area_number) && !config.google_map_url) {
+    // Regular areas (①-⑯) must have google_map_url OR coordinates
+    if (!['㊵', '㊶'].includes(config.area_number) && !config.google_map_url && !config.coordinates) {
       this.logError('Configuration validation failed', {
-        reason: 'Regular area missing google_map_url',
+        reason: 'Regular area missing both google_map_url and coordinates',
         areaNumber: config.area_number,
         configId: config.id
       });
