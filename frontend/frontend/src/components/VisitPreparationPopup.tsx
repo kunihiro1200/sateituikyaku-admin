@@ -212,6 +212,9 @@ export const VisitPreparationPopup: React.FC<VisitPreparationPopupProps> = ({
             ぜんりん
           </a>
           <ZenrinCredentials />
+          <Typography sx={{ color: 'error.main', fontSize: '0.85rem', mt: 0.5 }}>
+            ヘッダーの「画像」ボタンより、PDF保存してください。使用後はすぐにログアウトしてください。
+          </Typography>
         </Box>
       ),
     },
@@ -219,9 +222,14 @@ export const VisitPreparationPopup: React.FC<VisitPreparationPopupProps> = ({
     {
       label: '謄本',
       content: (
-        <a href={FIXED_LINKS_BEFORE[2].url} target="_blank" rel="noopener noreferrer">
-          謄本
-        </a>
+        <Box component="span" sx={{ display: 'inline-block' }}>
+          <a href={FIXED_LINKS_BEFORE[2].url} target="_blank" rel="noopener noreferrer">
+            謄本
+          </a>
+          <Typography sx={{ color: 'error.main', fontSize: '0.85rem', mt: 0.5 }}>
+            ヘッダーの「画像」ボタンより、PDF保存してください。
+          </Typography>
+        </Box>
       ),
     },
     // 4. 査定書（動的）
