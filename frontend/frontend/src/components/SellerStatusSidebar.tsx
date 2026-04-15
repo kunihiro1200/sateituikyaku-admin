@@ -19,6 +19,7 @@ import {
   isMailingPending,
   isTodayCallNotStarted,
   isPinrichEmpty,
+  isPinrichChangeRequired,
   isVisitAssignedTo,
   isTodayCallAssignedTo,
   isTodayCallAssigned,
@@ -140,6 +141,8 @@ const getCategoryLabel = (category: StatusCategory): string => {
       return '⑥査定（郵送）';
     case 'todayCallNotStarted':
       return '⑦当日TEL_未着手';
+    case 'pinrichChangeRequired':
+      return 'Pinrich要変更';
     case 'pinrichEmpty':
       return '⑧Pinrich空欄';
     case 'todayCallAssigned':
@@ -187,6 +190,8 @@ const getCategoryColor = (category: StatusCategory): string => {
       return 'info.main';
     case 'todayCallNotStarted':
       return '#ff9800';
+    case 'pinrichChangeRequired':
+      return '#e91e63';
     case 'pinrichEmpty':
       return '#795548';
     case 'todayCallAssigned':
@@ -695,6 +700,7 @@ function SellerStatusSidebarComponent({
       })()}
 
       {renderCategoryButton('mailingPending', '⑥査定（郵送）', '#0288d1')}
+      {renderCategoryButton('pinrichChangeRequired', 'Pinrich要変更', '#e91e63')}
       {renderCategoryButton('pinrichEmpty', '⑧Pinrich空欄', '#795548')}
 
       {/* 担当者別カテゴリー（動的生成・区切り線なし） */}

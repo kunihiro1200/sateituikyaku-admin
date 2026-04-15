@@ -69,7 +69,8 @@ export class SellerSidebarCountsUpdateService {
         exclusiveSellersResult,
         generalSellersResult,
         visitOtherDecisionSellersResult,
-        unvisitedOtherDecisionSellersResult
+        unvisitedOtherDecisionSellersResult,
+        pinrichChangeRequiredResult
       ] = await Promise.all([
         this.supabase
           .from('sellers')
@@ -159,7 +160,12 @@ export class SellerSidebarCountsUpdateService {
           .from('sellers')
           .select('exclusive_other_decision_meeting, next_call_date, visit_assignee')
           .is('deleted_at', null)
-          .in('status', ['他決→追客', '他決→追客不要', '一般→他決'])
+          .in('status', ['他決→追客', '他決→追客不要', '一般→他決']),
+        // 12. Pinrich要変更カテゴリー用データ（条件A〜Dを評価するため必要なカラムを取得）
+        this.supabase
+          .from('sellers')
+          .select('id, visit_assignee, pinrich_status, status, confidence_level, visit_date, contract_year_month')
+          .is('deleted_at', null)
       ]);
 
       console.log(`⏱️ [SellerSidebarCountsUpdate] Data fetched in ${Date.now() - startTime}ms`);
@@ -372,6 +378,51 @@ export class SellerSidebarCountsUpdateService {
         return false;
       }).length;
 
+      // Pinrich要変更カウント計算（条件A〜Dのいずれかを満たす売主）
+      const pinrichChangeRequiredSellers = pinrichChangeRequiredResult.data || [];
+      // 条件Bの除外リスト
+      const EXCLUDED_PINRICH_B = new Set([
+        'クローズ', '登録不要', 'アドレスエラー',
+        '配信不要（他決後、訪問後、担当付）', '△配信停止'
+      ]);
+      // 条件Cの有効ステータスリスト
+      const VALID_STATUS_C = new Set(['専任媒介', '追客中', '除外後追客中']);
+      // 条件Dの有効ステータスリスト
+      const VALID_STATUS_D = new Set(['他決→追客', '他決→追客不要', '一般媒介']);
+
+      const pinrichChangeRequiredCount = pinrichChangeRequiredSellers.filter(s => {
+        const visitAssignee = (s.visit_assignee || '').trim();
+        const pinrichStatus = (s.pinrich_status || '').trim();
+        const status = (s.status || '').trim();
+        const confidenceLevel = (s.confidence_level || '').trim();
+        const visitDate = (s.visit_date || '').trim();
+        const contractYearMonth = (s.contract_year_month || '').trim();
+
+        // 条件A: visit_assignee = "外す" AND pinrich_status = "クローズ" AND status = "追客中"
+        const conditionA = visitAssignee === '外す'
+          && pinrichStatus === 'クローズ'
+          && status === '追客中';
+
+        // 条件B: confidence_level = "D" AND pinrich_status が除外リスト外
+        const conditionB = confidenceLevel === 'D'
+          && !EXCLUDED_PINRICH_B.has(pinrichStatus);
+
+        // 条件C: visit_date が空欄でない AND pinrich_status = "配信中"
+        //        AND visit_assignee が空欄でない AND status が有効リスト内
+        const conditionC = visitDate !== ''
+          && pinrichStatus === '配信中'
+          && visitAssignee !== ''
+          && VALID_STATUS_C.has(status);
+
+        // 条件D: status が有効リスト内 AND pinrich_status = "クローズ"
+        //        AND contract_year_month >= "2025-05-01"
+        const conditionD = VALID_STATUS_D.has(status)
+          && pinrichStatus === 'クローズ'
+          && contractYearMonth >= '2025-05-01';
+
+        return conditionA || conditionB || conditionC || conditionD;
+      }).length;
+
       console.log(`⏱️ [SellerSidebarCountsUpdate] Counts calculated in ${Date.now() - startTime}ms`);
 
       // seller_sidebar_countsテーブルを更新
@@ -389,6 +440,7 @@ export class SellerSidebarCountsUpdateService {
         { category: 'mailingPending', count: mailingPendingCount, label: null, assignee: null },
         { category: 'todayCallNotStarted', count: todayCallNotStartedCount, label: null, assignee: null },
         { category: 'pinrichEmpty', count: pinrichEmptyCount, label: null, assignee: null },
+        { category: 'pinrichChangeRequired', count: pinrichChangeRequiredCount, label: null, assignee: null },
         { category: 'exclusive', count: exclusiveCount, label: null, assignee: null },
         { category: 'general', count: generalCount, label: null, assignee: null },
         { category: 'visitOtherDecision', count: visitOtherDecisionCount, label: null, assignee: null },

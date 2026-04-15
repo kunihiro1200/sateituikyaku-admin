@@ -44,7 +44,7 @@ import { isVisitDayBefore as isVisitDayBeforeUtil, parseDate } from './sellerSta
 // general: 一般カテゴリー（専任他決打合せ <> "完了" + 次電日 <> TODAY() + 状況が一般媒介 + 契約年月 >= 2025/6/23）
 // visitOtherDecision: 訪問後他決カテゴリー（専任他決打合せ <> "完了" + 次電日 <> TODAY() + 状況が他決関連 + 営担あり）
 // unvisitedOtherDecision: 未訪問他決カテゴリー（専任他決打合せ <> "完了" + 次電日 <> TODAY() + 状況が他決関連 + 営担なし）
-export type StatusCategory = 'all' | 'todayCall' | 'todayCallWithInfo' | 'todayCallAssigned' | 'visitDayBefore' | 'visitCompleted' | 'unvaluated' | 'mailingPending' | 'todayCallNotStarted' | 'pinrichEmpty' | 'exclusive' | 'general' | 'visitOtherDecision' | 'unvisitedOtherDecision'
+export type StatusCategory = 'all' | 'todayCall' | 'todayCallWithInfo' | 'todayCallAssigned' | 'visitDayBefore' | 'visitCompleted' | 'unvaluated' | 'mailingPending' | 'todayCallNotStarted' | 'pinrichEmpty' | 'pinrichChangeRequired' | 'exclusive' | 'general' | 'visitOtherDecision' | 'unvisitedOtherDecision'
   | `visitAssigned:${string}`        // 担当カテゴリー（例: visitAssigned:Y）
   | `todayCallAssigned:${string}`    // 当日TELサブカテゴリー（例: todayCallAssigned:Y）
   | `todayCallWithInfo:${string}`;   // 当日TEL（内容）ラベル別カテゴリー（例: todayCallWithInfo:当日TEL(I・Eメール)）
@@ -61,6 +61,7 @@ export interface CategoryCounts {
   mailingPending: number;
   todayCallNotStarted: number; // 当日TEL_未着手（不通が空欄 + 反響日付が2026/1/1以降）
   pinrichEmpty: number;        // Pinrich空欄（Pinrichカラムが空欄）
+  pinrichChangeRequired: number; // Pinrich要変更（条件A〜Dのいずれかを満たす）
   exclusive: number;           // 専任カテゴリー（専任他決打合せ <> "完了" + 次電日 <> TODAY() + 状況が専任媒介関連）
   general: number;             // 一般カテゴリー（専任他決打合せ <> "完了" + 次電日 <> TODAY() + 状況が一般媒介 + 契約年月 >= 2025/6/23）
   visitOtherDecision: number;  // 訪問後他決カテゴリー（専任他決打合せ <> "完了" + 次電日 <> TODAY() + 状況が他決関連 + 営担あり（「外す」含む））
@@ -775,6 +776,63 @@ export const isPinrichEmpty = (seller: Seller | any): boolean => {
 };
 
 /**
+ * Pinrich要変更カテゴリー判定
+ * 
+ * 条件（A〜Dのいずれかを満たす）:
+ * - 条件A: visit_assignee = "外す" AND pinrich_status = "クローズ" AND status = "追客中"
+ * - 条件B: confidence_level = "D" AND pinrich_status が除外リスト外
+ * - 条件C: visit_date が空欄でない AND pinrich_status = "配信中" AND visit_assignee が空欄でない AND status が特定ステータスのいずれか
+ * - 条件D: status が特定ステータスのいずれか AND pinrich_status = "クローズ" AND contract_year_month >= "2025-05-01"
+ * 
+ * @param seller 売主データ
+ * @returns Pinrich要変更対象かどうか
+ * 
+ * Requirements: 2.1, 2.2
+ */
+export const isPinrichChangeRequired = (seller: Seller | any): boolean => {
+  const pinrichStatus = seller.pinrichStatus || seller.pinrich_status || '';
+  const status = seller.status || '';
+  const visitAssignee = seller.visitAssigneeInitials || seller.visit_assignee || seller.visitAssignee || '';
+  const confidenceLevel = seller.confidenceLevel || seller.confidence_level || '';
+  const visitDate = seller.visitDate || seller.visit_date || '';
+  const contractYearMonth = seller.contractYearMonth || seller.contract_year_month || '';
+
+  // 条件A: visit_assignee = "外す" AND pinrich_status = "クローズ" AND status = "追客中"
+  const conditionA = visitAssignee === '外す'
+    && pinrichStatus === 'クローズ'
+    && status === '追客中';
+
+  // 条件B: confidence_level = "D" AND pinrich_status が除外リスト外
+  const excludedPinrichB = new Set([
+    'クローズ',
+    '登録不要',
+    'アドレスエラー',
+    '配信不要（他決後、訪問後、担当付）',
+    '△配信停止',
+  ]);
+  const conditionB = confidenceLevel === 'D'
+    && !excludedPinrichB.has(pinrichStatus);
+
+  // 条件C: visit_date が空欄でない AND pinrich_status = "配信中" AND visit_assignee が空欄でない AND status が特定ステータスのいずれか
+  const validStatusC = new Set(['専任媒介', '追客中', '除外後追客中']);
+  const hasVisitDate = visitDate !== null && visitDate !== undefined && String(visitDate).trim() !== '';
+  const hasVisitAssigneeC = visitAssignee !== null && visitAssignee !== undefined && String(visitAssignee).trim() !== '';
+  const conditionC = hasVisitDate
+    && pinrichStatus === '配信中'
+    && hasVisitAssigneeC
+    && validStatusC.has(status);
+
+  // 条件D: status が特定ステータスのいずれか AND pinrich_status = "クローズ" AND contract_year_month >= "2025-05-01"
+  const validStatusD = new Set(['他決→追客', '他決→追客不要', '一般媒介']);
+  const normalizedContractDate = contractYearMonth ? String(contractYearMonth).substring(0, 10) : '';
+  const conditionD = validStatusD.has(status)
+    && pinrichStatus === 'クローズ'
+    && normalizedContractDate >= '2025-05-01';
+
+  return conditionA || conditionB || conditionC || conditionD;
+};
+
+/**
  * 専任カテゴリー判定
  * 
  * 条件:
@@ -1042,6 +1100,7 @@ export const getCategoryCounts = (sellers: (Seller | any)[]): CategoryCounts => 
     mailingPending: sellers.filter(isMailingPending).length,
     todayCallNotStarted: sellers.filter(isTodayCallNotStarted).length,
     pinrichEmpty: sellers.filter(isPinrichEmpty).length,
+    pinrichChangeRequired: sellers.filter(isPinrichChangeRequired).length,
     exclusive: sellers.filter(isExclusive).length,
     general: sellers.filter(isGeneral).length,
     visitOtherDecision: sellers.filter(isVisitOtherDecision).length,
@@ -1097,6 +1156,8 @@ export const filterSellersByCategory = (
       return sellers.filter(isTodayCallNotStarted);
     case 'pinrichEmpty':
       return sellers.filter(isPinrichEmpty);
+    case 'pinrichChangeRequired':
+      return sellers.filter(isPinrichChangeRequired);
     case 'exclusive':
       return sellers.filter(isExclusive);
     case 'general':
