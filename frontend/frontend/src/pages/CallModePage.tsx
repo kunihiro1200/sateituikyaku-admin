@@ -78,6 +78,25 @@ import { formatCurrentStatusDetailed } from '../utils/propertyStatusFormatter';
 import PageNavigation from '../components/PageNavigation';
 import NavigationBlockDialog from '../components/NavigationBlockDialog';
 
+
+/**
+ * 除外日アクション選択時の査定方法自動設定ロジック
+ * @param newExclusionAction 新しい除外日アクション値（''は解除）
+ * @param currentValuationMethod 現在の査定方法値
+ * @returns 更新後の査定方法値
+ */
+export function applyAutoValuationMethod(
+  newExclusionAction: string,
+  currentValuationMethod: string
+): string {
+  // 解除時または査定方法が設定済みの場合は変更しない
+  if (!newExclusionAction || currentValuationMethod) {
+    return currentValuationMethod;
+  }
+  // 査定方法が空欄の場合のみ「不要」を設定
+  return '不要';
+}
+
 /**
  * 反響日から指定日数後の日付をYYYY-MM-DD形式で返す
  * @param inquiryDate 反響日（string | Date）
@@ -7382,6 +7401,11 @@ HP：https://ifoo-oita.com/
                           const value = exclusionAction === option ? '' : option;
                           setExclusionAction(value);
                           if (value) {
+                            // 【新規追加】査定方法が空欄の場合のみ「不要」を自動設定
+                            const newValuationMethod = applyAutoValuationMethod(value, editedValuationMethod);
+                            if (newValuationMethod !== editedValuationMethod) {
+                              handleValuationMethodChange('不要');
+                            }
                             // サイト=H かつ inquiryDate が存在する場合：反響日+5日を次電日に設定
                             if (seller?.site === 'H' && seller?.inquiryDate) {
                               const nextDate = calcInquiryDatePlusDays(seller.inquiryDate, 5);
