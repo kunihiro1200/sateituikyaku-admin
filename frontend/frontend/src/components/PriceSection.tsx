@@ -87,8 +87,9 @@ export default function PriceSection({
       const webhookUrl = 'https://chat.googleapis.com/v1/spaces/AAAAw9wyS-o/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=t6SJmZ8af-yyB38DZzAqGOKYI-DnIl6wYtVo-Lyskuk';
       const propertyUrl = `${window.location.origin}/property-listings/${propertyNumber}`;
 
+      const propertyNumberLine = propertyNumber ? `物件番号：${propertyNumber}\n` : '';
       const message = {
-        text: `【値下げ通知】\n${latestReduction}\n${address || ''}\n${propertyUrl}`
+        text: `${propertyNumberLine}【値下げ通知】\n${latestReduction}\n${address || ''}\n${propertyUrl}`
       };
 
       const response = await fetch(webhookUrl, {
@@ -267,7 +268,7 @@ export default function PriceSection({
             以下の内容をGoogle Chatに送信します：
           </Typography>
           <Box sx={{ mt: 1, p: 2, bgcolor: '#f5f5f5', borderRadius: 1, whiteSpace: 'pre-line', fontFamily: 'monospace', fontSize: '0.75rem' }}>
-            {`【値下げ通知】\n${getLatestPriceReduction() || ''}\n${address || ''}\n${window.location.origin}/property-listings/${propertyNumber}`}
+            {`${propertyNumber ? `物件番号：${propertyNumber}\n` : ''}【値下げ通知】\n${getLatestPriceReduction() || ''}\n${address || ''}\n${window.location.origin}/property-listings/${propertyNumber}`}
           </Box>
         </DialogContent>
         <DialogActions>

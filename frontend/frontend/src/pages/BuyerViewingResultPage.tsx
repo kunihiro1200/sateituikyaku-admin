@@ -1401,6 +1401,14 @@ export default function BuyerViewingResultPage() {
                       })}
                     </Box>
                   </Box>
+                  {/* 注意書き（常時表示） */}
+                  <Typography
+                    variant="caption"
+                    color="error"
+                    sx={{ display: 'block', mt: 0.5 }}
+                  >
+                    *一般媒介は内覧後に、全ての売り主に結果報告をしてください
+                  </Typography>
                 </Box>
               );
             })()}

@@ -86,6 +86,21 @@ router.get('/stats', async (_req: Request, res: Response) => {
   }
 });
 
+// 物件番号バリデーション（/:id よりも前に定義）
+router.get('/validate-property-number', async (req: Request, res: Response) => {
+  const { number } = req.query;
+  if (!number || typeof number !== 'string') {
+    return res.status(400).json({ error: 'number query parameter is required' });
+  }
+  try {
+    const exists = await buyerService.validatePropertyNumber(number.trim());
+    res.json({ exists });
+  } catch (error: any) {
+    console.error('Error validating property number:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // 買付率統計取得（/:id よりも前に定義）
 router.get('/purchase-rate-statistics', authenticate, async (_req: Request, res: Response) => {
   try {

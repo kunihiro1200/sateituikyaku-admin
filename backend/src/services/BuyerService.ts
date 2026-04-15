@@ -3606,4 +3606,19 @@ export class BuyerService {
 
     return uniqueViewings;
   }
+  /**
+   * Validate if a property number exists in property_listings table
+   * @param propertyNumber - property number to check
+   * @returns true if exists, false if not
+   */
+  async validatePropertyNumber(propertyNumber: string): Promise<boolean> {
+    const { data, error } = await this.supabase
+      .from('property_listings')
+      .select('property_number')
+      .eq('property_number', propertyNumber)
+      .maybeSingle();
+    if (error) throw new Error(`Failed to validate property number: ${error.message}`);
+    return data !== null;
+  }
+
 }
