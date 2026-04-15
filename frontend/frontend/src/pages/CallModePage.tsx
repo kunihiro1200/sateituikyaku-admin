@@ -71,6 +71,7 @@ import { useCallModeQuickButtonState } from '../hooks/useCallModeQuickButtonStat
 import { pageDataCache, sellerDetailCacheKey, CACHE_KEYS } from '../store/pageDataCache';
 import PropertyMapSection from '../components/PropertyMapSection';
 import NearbyBuyersList from '../components/NearbyBuyersList';
+import { VisitPreparationButton } from '../components/VisitPreparationButton';
 import CollapsibleSection from '../components/CollapsibleSection';
 
 import { formatCurrentStatusDetailed } from '../utils/propertyStatusFormatter';
@@ -3902,6 +3903,8 @@ HP：https://ifoo-oita.com/
         </Box>
         {seller?.phoneNumber && (
           <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+            {/* 訪問準備ボタン */}
+            <VisitPreparationButton sellerId={seller?.id} inquiryUrl={inquiryUrl} />
             {/* 画像ボタン */}
             <Button
               variant="outlined"
