@@ -117,6 +117,11 @@ const NearbyBuyersList = ({ sellerId, propertyNumber, onCountChange }: NearbyBuy
         const bDate = new Date(bValue as string).getTime();
         return sortConfig.direction === 'asc' ? aDate - bDate : bDate - aDate;
       }
+      if (sortConfig.key === 'inquiry_price') {
+        const aNum = Number(aValue);
+        const bNum = Number(bValue);
+        return sortConfig.direction === 'asc' ? aNum - bNum : bNum - aNum;
+      }
       if (typeof aValue === 'number' && typeof bValue === 'number') {
         return sortConfig.direction === 'asc' ? aValue - bValue : bValue - aValue;
       }
