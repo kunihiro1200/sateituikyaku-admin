@@ -20,6 +20,7 @@ import {
 import { Email as EmailIcon, Sms as SmsIcon } from '@mui/icons-material';
 import api from '../services/api';
 import EmailConfirmationModal from './EmailConfirmationModal';
+import { buildPrintContent } from './nearbyBuyersPrintUtils';
 
 interface NearbyBuyer {
   buyer_number: string;
@@ -70,6 +71,7 @@ const NearbyBuyersList = ({ sellerId, propertyNumber, onCountChange }: NearbyBuy
   const [emailSubject, setEmailSubject] = useState('');
   const [emailBody, setEmailBody] = useState('');
   const [expandedAreaBuyer, setExpandedAreaBuyer] = useState<string | null>(null);
+  const [isNameHidden, setIsNameHidden] = useState<boolean>(false);
 
   // ソート状態
   const [sortConfig, setSortConfig] = useState<{
@@ -185,6 +187,46 @@ const NearbyBuyersList = ({ sellerId, propertyNumber, onCountChange }: NearbyBuy
       newSelected.add(buyerNumber);
     }
     setSelectedBuyers(newSelected);
+  };
+
+  // 名前非表示トグル
+  const handleToggleNameHidden = () => {
+    setIsNameHidden(prev => !prev);
+  };
+
+  // PDF印刷
+  const handlePrint = () => {
+    if (selectedBuyers.size === 0) {
+      setSnackbar({ open: true, message: '印刷する行を選択してください', severity: 'warning' });
+      return;
+    }
+
+    // 印刷用スタイルを動的に挿入
+    const style = document.createElement('style');
+    style.id = 'nearby-buyers-print-style';
+    style.textContent = `
+      @media print {
+        body > * { display: none !important; }
+        #nearby-buyers-print-root { display: block !important; }
+      }
+    `;
+    document.head.appendChild(style);
+
+    // 印刷用コンテンツをbodyに追加
+    const printRoot = document.createElement('div');
+    printRoot.id = 'nearby-buyers-print-root';
+    printRoot.innerHTML = buildPrintContent(buyers, selectedBuyers, isNameHidden);
+    document.body.appendChild(printRoot);
+
+    // 印刷後にクリーンアップ
+    const cleanup = () => {
+      if (document.head.contains(style)) document.head.removeChild(style);
+      if (document.body.contains(printRoot)) document.body.removeChild(printRoot);
+      window.removeEventListener('afterprint', cleanup);
+    };
+    window.addEventListener('afterprint', cleanup);
+
+    window.print();
   };
 
   // メール送信処理
@@ -366,6 +408,19 @@ const NearbyBuyersList = ({ sellerId, propertyNumber, onCountChange }: NearbyBuy
         >
           SMS送信 ({selectedBuyers.size})
         </Button>
+        <Button
+          variant={isNameHidden ? 'contained' : 'outlined'}
+          color="warning"
+          onClick={handleToggleNameHidden}
+        >
+          {isNameHidden ? '名前表示' : '名前非表示'}
+        </Button>
+        <Button
+          variant="outlined"
+          onClick={handlePrint}
+        >
+          PDF
+        </Button>
       </Box>
 
       {/* 買主リストテーブル */}
@@ -430,7 +485,15 @@ const NearbyBuyersList = ({ sellerId, propertyNumber, onCountChange }: NearbyBuy
                   </TableCell>
                   <TableCell>
                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                      <Typography variant="body2">{buyer.name || '-'}</Typography>
+                      <Typography
+                        variant="body2"
+                        sx={isNameHidden ? {
+                          backgroundColor: 'black',
+                          color: 'black',
+                          borderRadius: '2px',
+                          userSelect: 'none',
+                        } : {}}
+                      >{buyer.name || '-'}</Typography>
                       <Typography variant="caption" color="text.secondary">
                         {buyer.reception_date ? new Date(buyer.reception_date).toLocaleDateString('ja-JP') : '-'}
                       </Typography>
