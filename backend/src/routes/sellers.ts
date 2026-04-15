@@ -1560,7 +1560,7 @@ router.get('/:id/inquiry-url', async (req: Request, res: Response) => {
     const propertyAddress = seller.propertyAddress;
 
     if (!inquiryDate && !propertyAddress) {
-      return res.json({ inquiryUrl: null });
+      return res.json({ inquiryUrl: 'https://tsunagaru-online.jp/partner/@5jJ7Ue/satei?assessmentStatuses=waiting_assessment' });
     }
 
     const { GoogleSheetsClient } = await import('../services/GoogleSheetsClient');
@@ -1632,6 +1632,8 @@ router.get('/:id/inquiry-url', async (req: Request, res: Response) => {
 
     if (!inquiryUrl) {
       console.log(`[inquiry-url] 一致なし: date=${sellerDateStr}, address=${sellerAddress}`);
+      // スプレッドシートに一致する行がない場合はフォールバックURLを使用
+      inquiryUrl = 'https://tsunagaru-online.jp/partner/@5jJ7Ue/satei?assessmentStatuses=waiting_assessment';
     }
 
     res.json({ inquiryUrl });
