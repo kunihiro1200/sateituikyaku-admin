@@ -74,9 +74,9 @@ interface PropertyInfoCardProps {
 function renderTextWithLinks(text: string): React.ReactNode {
   const urlRegex = /(https?:\/\/[^\s\u3000-\u9fff\uff00-\uffef]+)/g;
   const parts = text.split(urlRegex);
+  const urlTestRegex = /^https?:\/\//;
   return parts.map((part, index) => {
-    if (urlRegex.test(part)) {
-      urlRegex.lastIndex = 0;
+    if (urlTestRegex.test(part)) {
       return (
         <Link
           key={index}
