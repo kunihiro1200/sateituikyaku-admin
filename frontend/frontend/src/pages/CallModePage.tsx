@@ -78,6 +78,26 @@ import PageNavigation from '../components/PageNavigation';
 import NavigationBlockDialog from '../components/NavigationBlockDialog';
 
 /**
+ * 反響日から指定日数後の日付をYYYY-MM-DD形式で返す
+ * @param inquiryDate 反響日（string | Date）
+ * @param days 加算日数
+ * @returns YYYY-MM-DD形式の文字列、または null（無効な日付の場合）
+ */
+function calcInquiryDatePlusDays(
+  inquiryDate: string | Date,
+  days: number
+): string | null {
+  try {
+    const date = new Date(inquiryDate);
+    if (isNaN(date.getTime())) return null;
+    date.setDate(date.getDate() + days);
+    return date.toISOString().split('T')[0];
+  } catch {
+    return null;
+  }
+}
+
+/**
  * SMSテンプレート型定義
  */
 interface SMSTemplate {
@@ -6438,21 +6458,31 @@ HP：https://ifoo-oita.com/
                 );
               })()}
               {exclusionAction && (
-                <Typography
-                  variant="h5"
-                  sx={{
-                    color: 'error.main',
-                    fontWeight: 'bold',
-                    backgroundColor: 'white',
-                    px: 2,
-                    py: 0.5,
-                    borderRadius: 1,
-                    border: 2,
-                    borderColor: 'error.main',
-                  }}
-                >
-                  ⚠️ {exclusionAction}
-                </Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                  <Typography
+                    variant="h5"
+                    sx={{
+                      color: 'error.main',
+                      fontWeight: 'bold',
+                      backgroundColor: 'white',
+                      px: 2,
+                      py: 0.5,
+                      borderRadius: 1,
+                      border: 2,
+                      borderColor: 'error.main',
+                    }}
+                  >
+                    ⚠️ {exclusionAction}
+                  </Typography>
+                  {seller?.site === 'H' && (
+                    <Chip
+                      label="（なりすまし）として除外してください"
+                      color="warning"
+                      size="small"
+                      sx={{ fontWeight: 'bold' }}
+                    />
+                  )}
+                </Box>
               )}
             </Box>
 
@@ -7348,9 +7378,17 @@ HP：https://ifoo-oita.com/
                         onClick={() => {
                           const value = exclusionAction === option ? '' : option;
                           setExclusionAction(value);
-                          // 除外日が設定されている場合、次電日を除外日に設定
-                          if (value && exclusionDate) {
-                            setEditedNextCallDate(exclusionDate);
+                          if (value) {
+                            // サイト=H かつ inquiryDate が存在する場合：反響日+5日を次電日に設定
+                            if (seller?.site === 'H' && seller?.inquiryDate) {
+                              const nextDate = calcInquiryDatePlusDays(seller.inquiryDate, 5);
+                              if (nextDate) {
+                                setEditedNextCallDate(nextDate);
+                              }
+                            } else if (exclusionDate) {
+                              // H以外：既存動作（除外日そのものを次電日に設定）
+                              setEditedNextCallDate(exclusionDate);
+                            }
                           }
                           setStatusChanged(true);
                           statusChangedRef.current = true;
