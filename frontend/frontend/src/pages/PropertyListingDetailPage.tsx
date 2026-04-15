@@ -207,6 +207,24 @@ const PARKING_OPTIONS = ['1台', '2台以上', '3台以上', '10台以上', '不
 const ONSEN_OPTIONS = ['あり', 'なし', 'どちらでも'] as const;
 const FLOOR_OPTIONS = ['高層階', '低層階', 'どちらでも'] as const;
 
+/**
+ * ATBB状況の変更が「公開前→公開中」への変更かどうかを判定する
+ * スキップすべき2パターン:
+ *   - 専任・公開前 → 専任・公開中
+ *   - 一般・公開前 → 一般・公開中
+ * 媒介種別が変わる場合（専任・公開前 → 一般・公開中 など）はfalseを返す
+ * null / undefined を受け取った場合は false を返す
+ */
+const isPreToPublicTransition = (
+  prevStatus: string | null | undefined,
+  nextStatus: string | null | undefined
+): boolean => {
+  return (
+    (prevStatus === '専任・公開前' && nextStatus === '専任・公開中') ||
+    (prevStatus === '一般・公開前' && nextStatus === '一般・公開中')
+  );
+};
+
 const formatDisplayDate = (dateStr: string | null | undefined): string => {
   if (!dateStr) return '-';
   return dateStr.replace(/-/g, '/');
@@ -492,6 +510,28 @@ export default function PropertyListingDetailPage() {
 
   const handleSaveHeader = async () => {
     if (!propertyNumber || Object.keys(editedData).length === 0) return;
+
+    // ATBB状況が変更されている場合、offer_status バリデーションを実行
+    if (editedData.atbb_status !== undefined) {
+      const prevAtbbStatus = data?.atbb_status;
+      const nextAtbbStatus = editedData.atbb_status;
+
+      // 「公開前→公開中」への変更はスキップ
+      if (!isPreToPublicTransition(prevAtbbStatus, nextAtbbStatus)) {
+        // offer_status の現在値を取得
+        const currentOfferStatus = editedData.offer_status !== undefined
+          ? editedData.offer_status
+          : (data?.offer_status ?? '');
+
+        if (!currentOfferStatus || currentOfferStatus.trim() === '') {
+          // エラーをセットして買付情報セクションを編集モードに切り替え
+          setOfferErrors(prev => ({ ...prev, offer_status: '必須項目です' }));
+          setIsOfferEditMode(true);
+          return; // 保存処理を中断
+        }
+      }
+    }
+
     try {
       await api.put(`/api/property-listings/${propertyNumber}`, editedData);
       setSnackbar({
