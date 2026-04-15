@@ -220,7 +220,7 @@ export default function PropertyListingsPage() {
       // 業務依頼データを取得
       console.log('業務依頼データを取得中...');
       const workTasksRes = await api.get('/api/work-tasks');
-      const workTasksData = Array.isArray(workTasksRes.data) ? workTasksRes.data : [];
+      const workTasksData = Array.isArray(workTasksRes.data?.data) ? workTasksRes.data.data : [];
       setWorkTasks(workTasksData);
       console.log('✅ 業務依頼データ取得成功:', { 件数: workTasksData.length });
 
