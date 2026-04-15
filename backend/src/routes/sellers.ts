@@ -84,6 +84,23 @@ router.get('/sidebar-counts', async (req: Request, res: Response) => {
  * seller_sidebar_countsテーブルを更新（認証不要・cron用）
  * 10分ごとにVercel Cronから呼び出される
  */
+// Vercel CronはGETリクエストを送信するため、GETとPOSTの両方に対応
+router.get('/sidebar-counts/update', async (req: Request, res: Response) => {
+  try {
+    const { SellerSidebarCountsUpdateService } = await import('../services/SellerSidebarCountsUpdateService');
+    const supabase = createClient(
+      process.env.SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_KEY!
+    );
+    const updateService = new SellerSidebarCountsUpdateService(supabase);
+    await updateService.updateSellerSidebarCounts();
+    res.json({ success: true, message: 'Seller sidebar counts updated successfully' });
+  } catch (error) {
+    console.error('Update seller sidebar counts error:', error);
+    res.status(500).json({ error: { code: 'UPDATE_SIDEBAR_COUNTS_ERROR', message: 'Failed to update seller sidebar counts', retryable: true } });
+  }
+});
+
 router.post('/sidebar-counts/update', async (req: Request, res: Response) => {
   try {
     // Vercel Cronからの呼び出しを検証（オプション）
