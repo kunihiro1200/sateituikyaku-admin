@@ -1,4 +1,28 @@
-import { Box, Typography, Grid, TextField } from '@mui/material';
+import React from 'react';
+import { Box, Typography, Grid, TextField, Link } from '@mui/material';
+
+// テキスト内のURLを検出してリンク化するヘルパー関数
+function renderTextWithLinks(text: string): React.ReactNode {
+  const urlRegex = /(https?:\/\/[^\s\u3000-\u9fff\uff00-\uffef]+)/g;
+  const parts = text.split(urlRegex);
+  const urlTestRegex = /^https?:\/\//;
+  return parts.map((part, index) => {
+    if (urlTestRegex.test(part)) {
+      return (
+        <Link
+          key={index}
+          href={part}
+          target="_blank"
+          rel="noopener noreferrer"
+          sx={{ wordBreak: 'break-all' }}
+        >
+          {part}
+        </Link>
+      );
+    }
+    return part;
+  });
+}
 
 interface FrequentlyAskedSectionProps {
   data: {
@@ -59,6 +83,7 @@ export default function FrequentlyAskedSection({ data, editedData, onFieldChange
               ) : (
                 <Typography 
                   variant="body1" 
+                  component="div"
                   sx={{ 
                     fontSize: '0.75rem', 
                     lineHeight: 1.8,
@@ -66,7 +91,7 @@ export default function FrequentlyAskedSection({ data, editedData, onFieldChange
                     wordBreak: 'break-word'
                   }}
                 >
-                  {data.pre_viewing_notes}
+                  {renderTextWithLinks(data.pre_viewing_notes || '')}
                 </Typography>
               )}
             </Box>
