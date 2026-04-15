@@ -50,6 +50,7 @@ import UnifiedInquiryHistoryTable from '../components/UnifiedInquiryHistoryTable
 import RelatedBuyerNotificationBadge from '../components/RelatedBuyerNotificationBadge';
 import { ConfirmationToAssignee } from '../components/ConfirmationToAssignee';
 import BuyerGmailSendButton from '../components/BuyerGmailSendButton';
+import { ViewingPreparationButton } from '../components/ViewingPreparationButton';
 import { SmsDropdownButton } from '../components/SmsDropdownButton';
 import PageNavigation from '../components/PageNavigation';
 import { InlineEditableField } from '../components/InlineEditableField';
@@ -1123,6 +1124,11 @@ export default function BuyerDetailPage() {
         </Box>
 
         <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
+          {/* 内覧準備ボタン */}
+          <ViewingPreparationButton
+            buyerNumber={buyer?.buyer_number}
+            propertyNumber={linkedProperties[0]?.property_number}
+          />
           {/* 近隣物件ボタン */}
           {linkedProperties.length > 0 && (
             <Button
