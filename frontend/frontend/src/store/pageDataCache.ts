@@ -68,7 +68,7 @@ export const CACHE_KEYS = {
   BUYERS: 'buyers',
   BUYERS_STATS: 'buyers_stats',
   BUYERS_WITH_STATUS: 'buyers_with_status',
-  SELLERS_SIDEBAR_COUNTS: 'sellers_sidebar_counts_v2',
+  SELLERS_SIDEBAR_COUNTS: 'sellers_sidebar_counts_v3',
   SELLERS_ASSIGNEE_INITIALS: 'sellers_assignee_initials',
   SELLERS_LIST: 'sellers_list',
   SELLER_DETAIL: 'seller_detail', // 売主詳細（一覧→通話モードのプリフェッチ用）
