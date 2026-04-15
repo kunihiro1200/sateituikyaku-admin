@@ -470,7 +470,7 @@ export default function BuyerViewingResultPage() {
     viewingResultEditorRef.current?.insertAtCursor(`<b>${text}</b>`);
   };
 
-  const handleCalendarButtonClick = () => {
+  const handleCalendarButtonClick = async () => {
     if (!buyer) return;
 
     // 物件情報を取得
