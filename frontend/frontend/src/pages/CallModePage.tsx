@@ -3923,7 +3923,12 @@ HP：https://ifoo-oita.com/
         {seller?.phoneNumber && (
           <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
             {/* 訪問準備ボタン */}
-            <VisitPreparationButton sellerId={seller?.id} inquiryUrl={inquiryUrl} />
+            <VisitPreparationButton
+              sellerId={seller?.id}
+              inquiryUrl={inquiryUrl}
+              sellerNumber={seller?.sellerNumber}
+              propertyAddress={propInfo.address || seller?.propertyAddress}
+            />
             {/* 画像ボタン */}
             <Button
               variant="outlined"

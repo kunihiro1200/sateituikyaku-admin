@@ -5,6 +5,8 @@ import { VisitPreparationPopup } from './VisitPreparationPopup';
 export interface VisitPreparationButtonProps {
   sellerId: string | undefined;
   inquiryUrl: string | null | undefined;
+  sellerNumber: string | undefined;
+  propertyAddress: string | undefined;
 }
 
 /**
@@ -14,6 +16,8 @@ export interface VisitPreparationButtonProps {
 export const VisitPreparationButton: React.FC<VisitPreparationButtonProps> = ({
   sellerId,
   inquiryUrl,
+  sellerNumber,
+  propertyAddress,
 }) => {
   const [open, setOpen] = useState(false);
 
@@ -35,6 +39,8 @@ export const VisitPreparationButton: React.FC<VisitPreparationButtonProps> = ({
         onClose={handleClose}
         sellerId={sellerId}
         inquiryUrl={inquiryUrl}
+        sellerNumber={sellerNumber}
+        propertyAddress={propertyAddress}
       />
     </>
   );

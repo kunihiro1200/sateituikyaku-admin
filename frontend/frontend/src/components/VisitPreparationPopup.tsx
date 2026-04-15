@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -9,13 +9,18 @@ import {
   List,
   ListItem,
   ListItemText,
+  Box,
+  Tooltip,
 } from '@mui/material';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 
 export interface VisitPreparationPopupProps {
   open: boolean;
   onClose: () => void;
   sellerId: string | undefined;
   inquiryUrl: string | null | undefined;
+  sellerNumber: string | undefined;
+  propertyAddress: string | undefined;
 }
 
 // 固定リンク定数（添付資料・ぜんりん・謄本・成約事例）
@@ -41,6 +46,60 @@ const FIXED_LINKS_AFTER_ASSESSMENT = [
   },
 ] as const;
 
+interface CopyButtonProps {
+  text: string;
+  label: string;
+}
+
+/** ワンクリックコピーボタン */
+const CopyButton: React.FC<CopyButtonProps> = ({ text, label }) => {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // フォールバック
+      const el = document.createElement('textarea');
+      el.value = text;
+      document.body.appendChild(el);
+      el.select();
+      document.execCommand('copy');
+      document.body.removeChild(el);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    }
+  };
+
+  return (
+    <Tooltip title={copied ? 'コピーしました！' : 'コピー'} placement="top">
+      <Box
+        component="span"
+        sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5, cursor: 'pointer' }}
+        onClick={handleCopy}
+      >
+        <Typography
+          component="span"
+          sx={{
+            fontWeight: 'bold',
+            color: copied ? 'success.main' : 'text.primary',
+          }}
+        >
+          {label}：{text}
+        </Typography>
+        <ContentCopyIcon
+          sx={{
+            fontSize: 16,
+            color: copied ? 'success.main' : 'action.active',
+          }}
+        />
+      </Box>
+    </Tooltip>
+  );
+};
+
 /**
  * 訪問準備ポップアップコンポーネント
  * 訪問前に必要な6種類のリソースへのリンクを一覧表示する
@@ -50,6 +109,8 @@ export const VisitPreparationPopup: React.FC<VisitPreparationPopupProps> = ({
   onClose,
   sellerId,
   inquiryUrl,
+  sellerNumber,
+  propertyAddress,
 }) => {
   // 表示順序：添付資料 → ぜんりん → 謄本 → 査定書 → 成約事例 → 近隣買主
   const items: Array<{ label: string; content: React.ReactNode }> = [
@@ -115,6 +176,16 @@ export const VisitPreparationPopup: React.FC<VisitPreparationPopupProps> = ({
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
       <DialogTitle>訪問準備</DialogTitle>
       <DialogContent>
+        {/* 売主番号・物件住所コピーエリア */}
+        <Box sx={{ mb: 2, display: 'flex', flexDirection: 'column', gap: 1 }}>
+          {sellerNumber && (
+            <CopyButton text={sellerNumber} label="売主番号" />
+          )}
+          {propertyAddress && (
+            <CopyButton text={propertyAddress} label="物件住所" />
+          )}
+        </Box>
+
         {/* 注意メッセージ */}
         <Typography
           sx={{
