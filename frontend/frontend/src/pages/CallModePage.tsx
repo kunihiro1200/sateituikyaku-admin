@@ -30,7 +30,7 @@ import {
   AccordionSummary,
   AccordionDetails,
 } from '@mui/material';
-import { ArrowBack, Phone, Save, CalendarToday, Email, Image as ImageIcon, ContentCopy as ContentCopyIcon, Search as SearchIcon, Clear as ClearIcon, Delete as DeleteIcon, ExpandMore as ExpandMoreIcon, Sms as SmsIcon } from '@mui/icons-material';
+import { ArrowBack, Phone, Save, CalendarToday, Email, Image as ImageIcon, ContentCopy as ContentCopyIcon, Search as SearchIcon, Clear as ClearIcon, Delete as DeleteIcon, ExpandMore as ExpandMoreIcon, Sms as SmsIcon, OpenInNew as OpenInNewIcon } from '@mui/icons-material';
 import api, { emailImageApi } from '../services/api';
 import { SECTION_COLORS } from '../theme/sectionColors';
 import { Seller, PropertyInfo, Activity, SellerStatus, ConfidenceLevel, DuplicateMatch, SelectedImages, DriveImage } from '../types';
@@ -7366,6 +7366,16 @@ HP：https://ifoo-oita.com/
                   <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 1, p: 1, minHeight: 40 }}>
                     <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.25 }}>
                       Pinrich
+                      <IconButton
+                        component="a"
+                        href="https://pinrich.com/"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        size="small"
+                        sx={{ ml: 0.5, p: 0, verticalAlign: 'middle', color: 'text.secondary' }}
+                      >
+                        <OpenInNewIcon sx={{ fontSize: '0.75rem' }} />
+                      </IconButton>
                     </Typography>
                     <Select
                       size="small"
