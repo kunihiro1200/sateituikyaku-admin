@@ -57,7 +57,7 @@ router.post(
         });
       }
 
-      const { buyerNumber, startTime, endTime, assignedTo, buyerName, buyerPhone, buyerEmail, viewingMobile, propertyAddress, propertyGoogleMapUrl, inquiryHearing, creatorName, customTitle, customDescription, propertyNumber } = req.body;
+      const { buyerNumber, startTime, endTime, assignedTo, buyerName, buyerPhone, buyerEmail, viewingMobile, viewingTypeGeneral, viewingDate, viewingTime, followUpAssignee, propertyAddress, propertyGoogleMapUrl, inquiryHearing, creatorName, customTitle, customDescription, propertyNumber } = req.body;
 
       // 後続担当イニシャルから従業員情報を取得
       console.log('[BuyerAppointments] Looking up assigned employee by initials:', assignedTo);
@@ -173,82 +173,66 @@ router.post(
 
       // カレンダー登録成功後にメール通知を送信（失敗してもカレンダー登録は成功扱い）
       try {
-        const recipients: string[] = [];
-
-        // 1. 後続担当のメールアドレスを追加
-        if (assignedEmployee.email) {
-          recipients.push(assignedEmployee.email);
-        }
-
-        // 2. 物件担当者（sales_assignee）のメールアドレスを取得して追加
-        let salesAssigneeInitials = '';
+        // 1. 物件担当者（sales_assignee）のメールアドレスを取得
+        let salesEmployee = null;
+        let displayAddress = '（住所未設定）';
         if (propertyNumber) {
           const { data: propertyData } = await supabase
             .from('property_listings')
-            .select('sales_assignee')
+            .select('sales_assignee, display_address, address')
             .eq('property_number', propertyNumber)
             .single();
 
+          // display_address → address → '（住所未設定）' のフォールバック
+          displayAddress = propertyData?.display_address || propertyData?.address || '（住所未設定）';
+
           if (propertyData?.sales_assignee) {
-            salesAssigneeInitials = propertyData.sales_assignee;
-            const salesEmployee = await employeeUtils.getEmployeeByInitials(propertyData.sales_assignee);
-            if (salesEmployee?.email && salesEmployee.email !== assignedEmployee.email) {
-              recipients.push(salesEmployee.email);
-            }
+            salesEmployee = await employeeUtils.getEmployeeByInitials(propertyData.sales_assignee);
           }
         }
 
-        // 3. 売主情報を取得（物件番号 = 売主番号）
-        let ownerName = 'なし';
-        let ownerPhone = 'なし';
-        if (propertyNumber) {
-          const { data: sellerData } = await supabase
-            .from('sellers')
-            .select('name, phone_number')
-            .eq('seller_number', propertyNumber)
-            .single();
-          if (sellerData) {
-            try {
-              ownerName = sellerData.name ? decrypt(sellerData.name) : 'なし';
-            } catch {
-              ownerName = sellerData.name || 'なし';
-            }
-            try {
-              ownerPhone = sellerData.phone_number ? decrypt(sellerData.phone_number) : 'なし';
-            } catch {
-              ownerPhone = sellerData.phone_number || 'なし';
+        // sales_assignee が存在しない or メールアドレスなし → スキップ
+        if (!salesEmployee?.email) {
+          console.log('[BuyerAppointments] No sales_assignee email found, skipping notification email');
+        } else {
+          // 2. 売主情報を取得（物件番号 = 売主番号）
+          let ownerName = 'なし';
+          let ownerPhone = 'なし';
+          if (propertyNumber) {
+            const { data: sellerData } = await supabase
+              .from('sellers')
+              .select('name, phone_number')
+              .eq('seller_number', propertyNumber)
+              .single();
+            if (sellerData) {
+              try {
+                ownerName = sellerData.name ? decrypt(sellerData.name) : 'なし';
+              } catch {
+                ownerName = sellerData.name || 'なし';
+              }
+              try {
+                ownerPhone = sellerData.phone_number ? decrypt(sellerData.phone_number) : 'なし';
+              } catch {
+                ownerPhone = sellerData.phone_number || 'なし';
+              }
             }
           }
-        }
 
-        if (recipients.length > 0) {
-          const startDate = new Date(startTime);
-          const endDate = new Date(endTime);
-          const weekdays = ['日', '月', '火', '水', '木', '金', '土'];
-          const weekday = weekdays[startDate.getDay()];
-          const dateStr = `${startDate.getFullYear()}/${startDate.getMonth() + 1}/${startDate.getDate()}`;
-          const startTimeStr = startDate.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
-          const endTimeStr = endDate.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
-          const frontendUrl = (process.env.FRONTEND_URL || 'https://sateituikyaku-admin-frontend.vercel.app').split(',')[0].trim();
-
-          const subject = `${propertyAddress || '物件住所未設定'}の内覧入りました！内覧担当：${assignedEmployee.name}`;
+          const subject = `${displayAddress}の内覧入りました！`;
           const body = [
-            `内覧担当は${assignedEmployee.name}です。`,
-            `${viewingMobile || ''}`,
-            `物件所在地「${propertyAddress || 'なし'}」`,
-            `内覧日：${dateStr}(${weekday})`,
-            `時間：${startTimeStr}〜${endTimeStr}`,
+            `内覧担当は${followUpAssignee || assignedTo || ''}です。`,
+            `${viewingMobile || viewingTypeGeneral || ''}`,
+            `物件所在地${displayAddress}`,
+            `内覧日${viewingDate || ''}${viewingTime ? ' ' + viewingTime : ''}`,
             `問合時コメント：${inquiryHearing || 'なし'}`,
-            `売主様：${ownerName}`,
-            `所有者連絡先：${ownerPhone}`,
+            `売主様：${ownerName}様`,
+            `所有者連絡先${ownerPhone}`,
             `買主番号：${buyerNumber}`,
             `物件番号：${propertyNumber || 'なし'}`,
-            '',
-            `${frontendUrl}/buyers/${buyerNumber}`,
           ].join('\n');
 
-          await emailService.sendEmail({ to: recipients, subject, body });
-          console.log('[BuyerAppointments] Notification email sent to:', recipients);
+          await emailService.sendEmail({ to: [salesEmployee.email], subject, body });
+          console.log('[BuyerAppointments] Notification email sent to:', salesEmployee.email);
         }
       } catch (emailError: any) {
         // メール送信失敗はログのみ（カレンダー登録の成功に影響させない）
@@ -323,75 +307,88 @@ router.post(
   '/cancel-notification',
   [
     body('buyerNumber').isString().withMessage('Invalid buyer number'),
-    body('propertyAddress').optional().isString(),
     body('propertyNumber').optional().isString(),
-    body('assignedTo').optional().isString(),
+    body('previousViewingDate').optional().isString(),
+    body('viewingMobile').optional().isString(),
+    body('viewingTypeGeneral').optional().isString(),
+    body('followUpAssignee').optional().isString(),
+    body('inquiryHearing').optional().isString(),
   ],
   async (req: Request, res: Response) => {
     try {
       console.log('[BuyerAppointments] POST /cancel-notification - Request received');
 
-      const { buyerNumber, propertyAddress, propertyNumber, assignedTo, inquiryHearing } = req.body;
+      const { buyerNumber, propertyNumber, previousViewingDate, viewingMobile, viewingTypeGeneral, followUpAssignee, inquiryHearing } = req.body;
 
-      const recipients: string[] = [];
+      // 1. 物件担当者（sales_assignee）のメールアドレスを取得
+      let salesEmployee = null;
+      let displayAddress = '（住所未設定）';
 
-      // 1. 担当者のメールアドレスを追加
-      if (assignedTo) {
-        try {
-          const assignedEmployee = await employeeUtils.getEmployeeByInitials(assignedTo);
-          if (assignedEmployee?.email) {
-            recipients.push(assignedEmployee.email);
-          }
-        } catch (e) {
-          console.warn('[BuyerAppointments] Could not resolve assignedTo for cancel:', assignedTo);
-        }
-      }
-
-      // 2. 物件担当者のメールアドレスを追加
       if (propertyNumber) {
-        try {
-          const { data: propertyData } = await supabase
-            .from('property_listings')
-            .select('sales_assignee')
-            .eq('property_number', propertyNumber)
-            .single();
-          if (propertyData?.sales_assignee) {
-            const salesEmployee = await employeeUtils.getEmployeeByInitials(propertyData.sales_assignee);
-            if (salesEmployee?.email && !recipients.includes(salesEmployee.email)) {
-              recipients.push(salesEmployee.email);
-            }
+        const { data: propertyData } = await supabase
+          .from('property_listings')
+          .select('sales_assignee, display_address, address')
+          .eq('property_number', propertyNumber)
+          .single();
+
+        // display_address → address → '（住所未設定）' のフォールバック
+        displayAddress = propertyData?.display_address || propertyData?.address || '（住所未設定）';
+
+        if (propertyData?.sales_assignee) {
+          try {
+            salesEmployee = await employeeUtils.getEmployeeByInitials(propertyData.sales_assignee);
+          } catch (e) {
+            console.warn('[BuyerAppointments] Could not resolve sales_assignee for cancel:', propertyData.sales_assignee);
           }
-        } catch (e) {
-          console.warn('[BuyerAppointments] Could not resolve sales_assignee for cancel:', propertyNumber);
         }
       }
 
-      // 3. 国広智子（固定）を追加
-      const kunihiroEmail = 'tomoko.kunihiro@ifoo-oita.com';
-      if (!recipients.includes(kunihiroEmail)) {
-        recipients.push(kunihiroEmail);
+      // sales_assignee が存在しない or メールアドレスなし → スキップ
+      if (!salesEmployee?.email) {
+        console.log('[BuyerAppointments] No sales_assignee email found, skipping cancel notification email');
+        return res.status(200).json({ success: true, recipients: [] });
       }
 
-      const frontendUrl = (process.env.FRONTEND_URL || 'https://sateituikyaku-admin-frontend.vercel.app').split(',')[0].trim();
+      // 2. 売主情報を取得（物件番号 = 売主番号）
+      let ownerName = 'なし';
+      let ownerPhone = 'なし';
+      if (propertyNumber) {
+        const { data: sellerData } = await supabase
+          .from('sellers')
+          .select('name, phone_number')
+          .eq('seller_number', propertyNumber)
+          .single();
+        if (sellerData) {
+          try {
+            ownerName = sellerData.name ? decrypt(sellerData.name) : 'なし';
+          } catch {
+            ownerName = sellerData.name || 'なし';
+          }
+          try {
+            ownerPhone = sellerData.phone_number ? decrypt(sellerData.phone_number) : 'なし';
+          } catch {
+            ownerPhone = sellerData.phone_number || 'なし';
+          }
+        }
+      }
 
-      const subject = `【キャンセル】${propertyAddress || '物件住所未設定'}の内覧がキャンセルされました`;
+      const subject = `${displayAddress}の内覧キャンセルです`;
       const body = [
-        `この内覧はキャンセルされました。`,
-        ``,
-        `${assignedTo || ''}`,
-        `物件所在地「${propertyAddress || 'なし'}」`,
-        `内覧日：（キャンセル済み）`,
+        `内覧担当は${followUpAssignee || ''}でした。`,
+        `${viewingMobile || viewingTypeGeneral || ''}`,
+        `物件所在地${displayAddress}`,
+        `内覧日${previousViewingDate || ''}の予定でしたがキャンセルとなりました。報告書記入の際はお気をつけください。`,
         `問合時コメント：${inquiryHearing || 'なし'}`,
+        `売主様：${ownerName}様`,
+        `所有者連絡先${ownerPhone}`,
         `買主番号：${buyerNumber}`,
         `物件番号：${propertyNumber || 'なし'}`,
-        ``,
-        `${frontendUrl}/buyers/${buyerNumber}`,
       ].join('\n');
 
-      await emailService.sendEmail({ to: recipients, subject, body });
-      console.log('[BuyerAppointments] Cancel notification email sent to:', recipients);
+      await emailService.sendEmail({ to: [salesEmployee.email], subject, body });
+      console.log('[BuyerAppointments] Cancel notification email sent to:', salesEmployee.email);
 
-      res.status(200).json({ success: true, recipients });
+      res.status(200).json({ success: true, recipients: [salesEmployee.email] });
     } catch (error: any) {
       console.error('[BuyerAppointments] Failed to send cancel notification:', error.message);
       res.status(500).json({
