@@ -635,10 +635,14 @@ export default function BuyerViewingResultPage() {
         startTime: viewingDate.toISOString(),
         endTime: endDate.toISOString(),
         assignedTo: buyer.follow_up_assignee,
+        followUpAssignee: buyer.follow_up_assignee,
         buyerName: buyer.name,
         buyerPhone: buyer.phone_number,
         buyerEmail: buyer.email,
-        viewingMobile: buyer.viewing_mobile || buyer.viewing_type_general,
+        viewingMobile: buyer.viewing_mobile || '',
+        viewingTypeGeneral: buyer.viewing_type_general || '',
+        viewingDate: buyer.viewing_date || '',
+        viewingTime: buyer.viewing_time || '',
         propertyAddress: property?.address || '',
         propertyNumber: property?.property_number || '',
         propertyGoogleMapUrl: property?.google_map_url || '',
@@ -993,9 +997,11 @@ export default function BuyerViewingResultPage() {
                     const property = linkedProperties && linkedProperties.length > 0 ? linkedProperties[0] : null;
                     await api.post('/api/buyer-appointments/cancel-notification', {
                       buyerNumber: buyer.buyer_number,
-                      propertyAddress: property?.address || '',
                       propertyNumber: property?.property_number || '',
-                      assignedTo: buyer.follow_up_assignee || '',
+                      previousViewingDate: buyer.viewing_date || '',
+                      viewingMobile: buyer.viewing_mobile || '',
+                      viewingTypeGeneral: buyer.viewing_type_general || '',
+                      followUpAssignee: buyer.follow_up_assignee || '',
                       inquiryHearing: buyer.inquiry_hearing || '',
                     });
                     console.log('[BuyerViewingResultPage] Cancel notification sent');
