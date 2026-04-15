@@ -1078,7 +1078,7 @@ export const filterSellersByCategory = (
 
   switch (category) {
     case 'todayCall':
-      return sellers.filter(isTodayCall);
+      return sellers.filter(s => isTodayCall(s) && !isTodayCallNotStarted(s));
     case 'todayCallWithInfo':
       return sellers.filter(isTodayCallWithInfo);
     case 'todayCallAssigned':
