@@ -31,19 +31,29 @@ export const buildPrintContent = (
   // 選択行のみをフィルタリング
   const selectedBuyers = buyers.filter(b => selectedBuyerNumbers.has(b.buyer_number));
 
-  const rows = selectedBuyers.map(buyer => `
+  const rows = selectedBuyers.map(buyer => {
+    // 問合せ物件情報：種別 + 住所 + 価格
+    const inquiryParts: string[] = [];
+    if (buyer.inquiry_property_type) inquiryParts.push(buyer.inquiry_property_type);
+    if (buyer.property_address) inquiryParts.push(buyer.property_address);
+    if (buyer.inquiry_price) inquiryParts.push(`${(buyer.inquiry_price / 10000).toLocaleString()}万円`);
+    const inquiryInfo = inquiryParts.join(' / ') || '-';
+
+    // ヒアリング/内覧結果
+    const hearingOrResult = buyer.viewing_result_follow_up || buyer.inquiry_hearing || '-';
+
+    return `
     <tr>
       <td style="border:1px solid #ccc; padding:4px;">${buyer.buyer_number}</td>
       <td style="border:1px solid #ccc; padding:4px; ${isNameHidden ? 'background-color:black;color:black;' : ''}">
         ${buyer.name || '-'}
       </td>
       <td style="border:1px solid #ccc; padding:4px;">${buyer.reception_date ? new Date(buyer.reception_date).toLocaleDateString('ja-JP') : '-'}</td>
-      <td style="border:1px solid #ccc; padding:4px;">${(buyer.distribution_areas || []).join(', ') || '-'}</td>
-      <td style="border:1px solid #ccc; padding:4px;">${buyer.inquiry_property_type || '-'}</td>
-      <td style="border:1px solid #ccc; padding:4px;">${buyer.inquiry_price ? `${(buyer.inquiry_price / 10000).toLocaleString()}万円` : '-'}</td>
+      <td style="border:1px solid #ccc; padding:4px;">${inquiryInfo}</td>
+      <td style="border:1px solid #ccc; padding:4px; white-space:pre-wrap; max-width:200px;">${hearingOrResult}</td>
       <td style="border:1px solid #ccc; padding:4px;">${buyer.latest_status || '-'}</td>
-    </tr>
-  `).join('');
+    </tr>`;
+  }).join('');
 
   return `
     <div style="font-family: sans-serif; padding: 20px;">
@@ -58,9 +68,8 @@ export const buildPrintContent = (
             <th style="border:1px solid #ccc; padding:4px;">買主番号</th>
             <th style="border:1px solid #ccc; padding:4px;">名前</th>
             <th style="border:1px solid #ccc; padding:4px;">受付日</th>
-            <th style="border:1px solid #ccc; padding:4px;">配布エリア</th>
-            <th style="border:1px solid #ccc; padding:4px;">物件種別</th>
-            <th style="border:1px solid #ccc; padding:4px;">価格</th>
+            <th style="border:1px solid #ccc; padding:4px;">問合せ物件情報</th>
+            <th style="border:1px solid #ccc; padding:4px;">ヒアリング/内覧結果</th>
             <th style="border:1px solid #ccc; padding:4px;">最新状況</th>
           </tr>
         </thead>
