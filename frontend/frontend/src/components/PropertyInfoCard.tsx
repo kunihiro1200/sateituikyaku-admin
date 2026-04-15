@@ -1,3 +1,4 @@
+import React from 'react';
 import { useState, useEffect } from 'react';
 import {
   Paper,
@@ -67,6 +68,29 @@ interface PropertyInfoCardProps {
   buyer?: Buyer;
   onClose?: () => void;
   showCloseButton?: boolean;
+}
+
+// テキスト内のURLを検出してリンク化するヘルパー関数
+function renderTextWithLinks(text: string): React.ReactNode {
+  const urlRegex = /(https?:\/\/[^\s\u3000-\u9fff\uff00-\uffef]+)/g;
+  const parts = text.split(urlRegex);
+  return parts.map((part, index) => {
+    if (urlRegex.test(part)) {
+      urlRegex.lastIndex = 0;
+      return (
+        <Link
+          key={index}
+          href={part}
+          target="_blank"
+          rel="noopener noreferrer"
+          sx={{ wordBreak: 'break-all' }}
+        >
+          {part}
+        </Link>
+      );
+    }
+    return part;
+  });
 }
 
 export default function PropertyInfoCard({
@@ -436,6 +460,7 @@ export default function PropertyInfoCard({
               </Typography>
               <Typography
                 variant="body2"
+                component="div"
                 sx={{
                   mt: 1,
                   whiteSpace: 'pre-wrap',
@@ -445,7 +470,7 @@ export default function PropertyInfoCard({
                   lineHeight: 1.5,
                 }}
               >
-                {property.pre_viewing_notes}
+                {renderTextWithLinks(property.pre_viewing_notes)}
               </Typography>
             </Box>
           </Grid>
