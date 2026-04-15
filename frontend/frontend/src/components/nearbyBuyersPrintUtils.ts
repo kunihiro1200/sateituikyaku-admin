@@ -45,8 +45,14 @@ export const buildPrintContent = (
     return `
     <tr>
       <td style="border:1px solid #ccc; padding:4px;">${buyer.buyer_number}</td>
-      <td style="border:1px solid #ccc; padding:4px; ${isNameHidden ? 'background-color:black;color:black;' : ''}">
-        ${buyer.name || '-'}
+      <td style="border:1px solid #ccc; padding:4px;">
+        ${isNameHidden
+          ? `<span style="display:inline-block; position:relative; white-space:nowrap;">
+               <span style="visibility:hidden;">${buyer.name || '-'}</span>
+               <span style="position:absolute; left:0; right:0; top:50%; transform:translateY(-50%); height:6px; background:black; display:block;"></span>
+             </span>`
+          : (buyer.name || '-')
+        }
       </td>
       <td style="border:1px solid #ccc; padding:4px;">${buyer.reception_date ? new Date(buyer.reception_date).toLocaleDateString('ja-JP') : '-'}</td>
       <td style="border:1px solid #ccc; padding:4px;">${inquiryInfo}</td>

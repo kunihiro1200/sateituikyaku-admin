@@ -485,15 +485,25 @@ const NearbyBuyersList = ({ sellerId, propertyNumber, onCountChange }: NearbyBuy
                   </TableCell>
                   <TableCell>
                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                      <Typography
-                        variant="body2"
-                        sx={isNameHidden ? {
-                          backgroundColor: 'black',
-                          color: 'black',
-                          borderRadius: '2px',
-                          userSelect: 'none',
-                        } : {}}
-                      >{buyer.name || '-'}</Typography>
+                      {isNameHidden ? (
+                        <Box sx={{ position: 'relative', display: 'inline-block' }}>
+                          <Typography variant="body2" sx={{ visibility: 'hidden', userSelect: 'none' }}>
+                            {buyer.name || '-'}
+                          </Typography>
+                          <Box sx={{
+                            position: 'absolute',
+                            left: 0,
+                            right: 0,
+                            top: '50%',
+                            transform: 'translateY(-50%)',
+                            height: '6px',
+                            backgroundColor: 'black',
+                            borderRadius: '1px',
+                          }} />
+                        </Box>
+                      ) : (
+                        <Typography variant="body2">{buyer.name || '-'}</Typography>
+                      )}
                       <Typography variant="caption" color="text.secondary">
                         {buyer.reception_date ? new Date(buyer.reception_date).toLocaleDateString('ja-JP') : '-'}
                       </Typography>
