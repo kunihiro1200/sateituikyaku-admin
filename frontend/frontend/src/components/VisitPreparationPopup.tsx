@@ -207,13 +207,16 @@ export const VisitPreparationPopup: React.FC<VisitPreparationPopupProps> = ({
     {
       label: 'ぜんりん',
       content: (
-        <Box component="span" sx={{ display: 'inline-block' }}>
+        <Box component="span" sx={{ display: 'inline-block', verticalAlign: 'top' }}>
           <a href={FIXED_LINKS_BEFORE[1].url} target="_blank" rel="noopener noreferrer">
             ぜんりん
           </a>
           <ZenrinCredentials />
           <Typography sx={{ color: 'error.main', fontSize: '0.85rem', mt: 0.5 }}>
-            ヘッダーの「画像」ボタンより、PDF保存してください。使用後はすぐにログアウトしてください。
+            ヘッダーの「画像」ボタンより、PDF保存してください。
+          </Typography>
+          <Typography sx={{ color: 'error.main', fontSize: '0.85rem' }}>
+            使用後はすぐにログアウトしてください。
           </Typography>
         </Box>
       ),
@@ -222,7 +225,7 @@ export const VisitPreparationPopup: React.FC<VisitPreparationPopupProps> = ({
     {
       label: '謄本',
       content: (
-        <Box component="span" sx={{ display: 'inline-block' }}>
+        <Box component="span" sx={{ display: 'inline-block', verticalAlign: 'top' }}>
           <a href={FIXED_LINKS_BEFORE[2].url} target="_blank" rel="noopener noreferrer">
             謄本
           </a>
@@ -296,13 +299,16 @@ export const VisitPreparationPopup: React.FC<VisitPreparationPopupProps> = ({
             <ListItem
               key={index}
               component="li"
-              sx={{ display: 'list-item', py: 0.5 }}
+              sx={{ display: 'list-item', py: 0.5, alignItems: 'flex-start' }}
             >
               <ListItemText
                 primary={
-                  <Typography component="span">
-                    {item.label}：{item.content}
-                  </Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                    <Typography component="span" sx={{ whiteSpace: 'nowrap' }}>
+                      {item.label}：
+                    </Typography>
+                    <Box component="span">{item.content}</Box>
+                  </Box>
                 }
               />
             </ListItem>
