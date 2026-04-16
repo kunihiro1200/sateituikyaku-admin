@@ -596,7 +596,28 @@ export class BuyerService {
     try {
       await this.initSyncServices();
       if (this.writeService) {
-        const appendResult = await this.writeService.appendNewBuyer(data);
+        // property_numberがある場合、property_listingsから物件情報を取得してスプシに反映
+        let appendData = { ...data };
+        if (appendData.property_number) {
+          try {
+            const { data: propertyListing, error: propertyError } = await this.supabase
+              .from('property_listings')
+              .select('address, display_address, price')
+              .eq('property_number', appendData.property_number)
+              .maybeSingle();
+
+            if (!propertyError && propertyListing) {
+              appendData.property_address = propertyListing.address ?? null;
+              appendData.display_address = propertyListing.display_address ?? null;
+              appendData.price = propertyListing.price ?? null;
+              console.log(`[BuyerService] Fetched property info for ${appendData.property_number}: address=${appendData.property_address}`);
+            }
+          } catch (propErr: any) {
+            console.warn(`[BuyerService] Failed to fetch property info for ${appendData.property_number}: ${propErr.message}`);
+          }
+        }
+
+        const appendResult = await this.writeService.appendNewBuyer(appendData);
         if (!appendResult.success) {
           console.warn(`[BuyerService] Failed to append new buyer to spreadsheet (buyer_number=${buyerNumber}): ${appendResult.error}`);
         } else {
