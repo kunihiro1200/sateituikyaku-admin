@@ -125,10 +125,18 @@ router.post('/:sellerId/calculate-valuation-amount1', async (req: Request, res: 
     }
 
     // 🚨 重要：リクエストボディで固定資産税路線価が指定されている場合、それを優先
-    if (fixedAssetTaxRoadPrice !== undefined && fixedAssetTaxRoadPrice !== null) {
-      seller.fixedAssetTaxRoadPrice = fixedAssetTaxRoadPrice;
-      console.log('Using fixedAssetTaxRoadPrice from request body:', fixedAssetTaxRoadPrice);
+    const effectiveRoadPrice = fixedAssetTaxRoadPrice ?? seller.fixedAssetTaxRoadPrice;
+    if (!effectiveRoadPrice || effectiveRoadPrice <= 0) {
+      return res.status(400).json({
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: '固定資産税路線価が設定されていません。路線価を入力してから査定額を計算してください。',
+          retryable: false,
+        },
+      });
     }
+    seller.fixedAssetTaxRoadPrice = effectiveRoadPrice;
+    console.log('Using effectiveRoadPrice:', effectiveRoadPrice);
 
     // 物件情報を取得（seller.property がない場合は seller の直接フィールドから構築）
     let propertyInfo = seller.property;

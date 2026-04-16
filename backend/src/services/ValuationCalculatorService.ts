@@ -20,6 +20,9 @@ export class ValuationCalculatorService extends BaseRepository {
       const buildingArea = property.buildingAreaVerified || property.buildingArea || 0;
       const landArea = property.landAreaVerified || property.landArea || 0;
       const fixedAssetTaxRoadPrice = seller.fixedAssetTaxRoadPrice || 0;
+      if (fixedAssetTaxRoadPrice === 0) {
+        console.warn('⚠️ fixedAssetTaxRoadPrice is 0 or null, land price will be 0');
+      }
       
       console.log('📋 Input data:', {
         buildYear,

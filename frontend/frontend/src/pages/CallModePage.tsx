@@ -2527,7 +2527,9 @@ const CallModePage = () => {
       // 査定額1を計算
       let amount1: number;
       try {
-        const response1 = await api.post(`/api/sellers/${id}/calculate-valuation-amount1`);
+        const response1 = await api.post(`/api/sellers/${id}/calculate-valuation-amount1`, {
+          fixedAssetTaxRoadPrice: parseFloat(roadPrice),
+        });
         amount1 = response1.data.valuationAmount1;
         setEditedValuationAmount1(amount1.toString());
       } catch (err: any) {
