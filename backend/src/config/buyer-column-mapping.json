@@ -247,7 +247,8 @@
     "high_floor_required": "★高層階",
     "corner_room_required": "★角部屋",
     "other_company_property": "他社物件",
-    "building_name_price": "建物名/価格 内覧物件は赤表示（★は他社物件）"
+    "building_name_price": "建物名/価格 内覧物件は赤表示（★は他社物件）",
+    "price": "価格"
   },
   "typeConversions": {
     "created_datetime": "datetime",

@@ -156,6 +156,13 @@ export class BuyerColumnMapper {
       return String(value);
     }
 
+    // number型: 数値をそのまま返す（文字列変換しない）
+    // 万円表示の文字列（例: "2380万円"）が渡された場合はNaNになるため元の値を返す
+    if (type === 'number' && value !== null && value !== undefined) {
+      const num = Number(value);
+      return isNaN(num) ? value : num;
+    }
+
     // HTMLを含む可能性があるフィールドはプレーンテキストに変換
     const htmlFields = ['inquiry_hearing', 'viewing_result_follow_up', 'message_to_assignee'];
     if (htmlFields.includes(column) && typeof value === 'string' && value.includes('<')) {
