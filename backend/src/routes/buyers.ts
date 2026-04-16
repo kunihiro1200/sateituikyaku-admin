@@ -346,6 +346,105 @@ router.post('/update-sidebar-counts', async (_req: Request, res: Response) => {
   }
 });
 
+
+// 既存買主の物件情報をproperty_listingsから一括バックフィルしてスプシに同期
+router.post('/backfill-property-info', authenticateOrApiKey, async (req: Request, res: Response) => {
+  try {
+    console.log('[POST /buyers/backfill-property-info] Starting backfill...');
+
+    const supabase = (buyerService as any).supabase;
+
+    // property_numberが入っている買主を全件取得（作成日時2026/4/1以降 & display_addressが空のもの）
+    const { data: buyers, error: buyersError } = await supabase
+      .from('buyers')
+      .select('buyer_number, property_number')
+      .not('property_number', 'is', null)
+      .neq('property_number', '')
+      .is('deleted_at', null)
+      .gte('created_datetime', '2026-04-01T00:00:00.000Z')
+      .or('display_address.is.null,display_address.eq.');
+
+    if (buyersError) {
+      throw new Error(`Failed to fetch buyers: ${buyersError.message}`);
+    }
+
+    if (!buyers || buyers.length === 0) {
+      return res.json({ success: true, message: '対象の買主が見つかりませんでした', updated: 0, skipped: 0 });
+    }
+
+    console.log(`[backfill] Found ${buyers.length} buyers with property_number`);
+
+    // 全物件番号を収集してproperty_listingsを一括取得
+    const propertyNumbers = [...new Set(buyers.map((b: any) => b.property_number))];
+    const { data: listings, error: listingsError } = await supabase
+      .from('property_listings')
+      .select('property_number, address, display_address, price')
+      .in('property_number', propertyNumbers);
+
+    if (listingsError) {
+      throw new Error(`Failed to fetch property_listings: ${listingsError.message}`);
+    }
+
+    const listingMap: Record<string, { address: string | null; display_address: string | null; price: number | null }> = {};
+    for (const listing of (listings || [])) {
+      listingMap[listing.property_number] = {
+        address: listing.address ?? null,
+        display_address: listing.display_address ?? null,
+        price: listing.price ?? null,
+      };
+    }
+
+    let updated = 0;
+    let skipped = 0;
+
+    for (const buyer of buyers) {
+      const listing = listingMap[buyer.property_number];
+      if (!listing) {
+        skipped++;
+        continue;
+      }
+
+      try {
+        const updatePayload: Record<string, any> = {
+          property_address: listing.address,
+          display_address: listing.display_address,
+          price: listing.price,
+        };
+
+        // DB更新
+        const { error: updateError } = await supabase
+          .from('buyers')
+          .update(updatePayload)
+          .eq('buyer_number', buyer.buyer_number);
+
+        if (updateError) {
+          throw new Error(updateError.message);
+        }
+
+        // スプシ同期
+        await (buyerService as any).initSyncServices();
+        const writeService = (buyerService as any).writeService;
+        if (writeService) {
+          await writeService.updateFields(buyer.buyer_number, updatePayload);
+        }
+
+        updated++;
+        console.log(`[backfill] Updated buyer ${buyer.buyer_number} with property ${buyer.property_number}`);
+      } catch (err: any) {
+        console.error(`[backfill] Failed to update buyer ${buyer.buyer_number}:`, err.message);
+        skipped++;
+      }
+    }
+
+    console.log(`[backfill] Done. updated=${updated}, skipped=${skipped}`);
+    res.json({ success: true, updated, skipped, total: buyers.length });
+
+  } catch (error: any) {
+    console.error('[POST /buyers/backfill-property-info] Error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // 半径検索用の買主取得（認証必須だが、router.use(authenticate)の前に定義）
 router.post('/radius-search', authenticate, async (req: Request, res: Response) => {
   try {
@@ -1452,105 +1551,5 @@ ${detailUrl}`;
   }
 });
 
-
-// 既存買主の物件情報をproperty_listingsから一括バックフィルしてスプシに同期
-router.post('/backfill-property-info', authenticate, async (req: Request, res: Response) => {
-  try {
-    console.log('[POST /buyers/backfill-property-info] Starting backfill...');
-
-    const supabase = (buyerService as any).supabase;
-
-    // property_numberが入っている買主を全件取得（作成日時2026/4/1以降 & display_addressが空のもの）
-    const { data: buyers, error: buyersError } = await supabase
-      .from('buyers')
-      .select('buyer_number, property_number')
-      .not('property_number', 'is', null)
-      .neq('property_number', '')
-      .is('deleted_at', null)
-      .gte('created_datetime', '2026-04-01T00:00:00.000Z')
-      .or('display_address.is.null,display_address.eq.');
-
-    if (buyersError) {
-      throw new Error(`Failed to fetch buyers: ${buyersError.message}`);
-    }
-
-    if (!buyers || buyers.length === 0) {
-      return res.json({ success: true, message: '対象の買主が見つかりませんでした', updated: 0, skipped: 0 });
-    }
-
-    console.log(`[backfill] Found ${buyers.length} buyers with property_number`);
-
-    // 全物件番号を収集してproperty_listingsを一括取得
-    const propertyNumbers = [...new Set(buyers.map((b: any) => b.property_number))];
-    const { data: listings, error: listingsError } = await supabase
-      .from('property_listings')
-      .select('property_number, address, display_address, price')
-      .in('property_number', propertyNumbers);
-
-    if (listingsError) {
-      throw new Error(`Failed to fetch property_listings: ${listingsError.message}`);
-    }
-
-    const listingMap: Record<string, { address: string | null; display_address: string | null; price: number | null }> = {};
-    for (const listing of (listings || [])) {
-      listingMap[listing.property_number] = {
-        address: listing.address ?? null,
-        display_address: listing.display_address ?? null,
-        price: listing.price ?? null,
-      };
-    }
-
-    let updated = 0;
-    let skipped = 0;
-
-    for (const buyer of buyers) {
-      const listing = listingMap[buyer.property_number];
-      if (!listing) {
-        skipped++;
-        continue;
-      }
-
-      try {
-        // DBを直接更新してからスプシに同期（property_numberは変えない）
-        const updatePayload: Record<string, any> = {
-          property_address: listing.address,
-          display_address: listing.display_address,
-          price: listing.price,
-        };
-
-        // DB更新
-        const supabaseClient = (buyerService as any).supabase;
-        const { error: updateError } = await supabaseClient
-          .from('buyers')
-          .update(updatePayload)
-          .eq('buyer_number', buyer.buyer_number);
-
-        if (updateError) {
-          throw new Error(updateError.message);
-        }
-
-        // スプシ同期（writeServiceを直接使う）
-        await (buyerService as any).initSyncServices();
-        const writeService = (buyerService as any).writeService;
-        if (writeService) {
-          await writeService.updateFields(buyer.buyer_number, updatePayload);
-        }
-
-        updated++;
-        console.log(`[backfill] Updated buyer ${buyer.buyer_number} with property ${buyer.property_number}`);
-      } catch (err: any) {
-        console.error(`[backfill] Failed to update buyer ${buyer.buyer_number}:`, err.message);
-        skipped++;
-      }
-    }
-
-    console.log(`[backfill] Done. updated=${updated}, skipped=${skipped}`);
-    res.json({ success: true, updated, skipped, total: buyers.length });
-
-  } catch (error: any) {
-    console.error('[POST /buyers/backfill-property-info] Error:', error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
 
 export default router;
