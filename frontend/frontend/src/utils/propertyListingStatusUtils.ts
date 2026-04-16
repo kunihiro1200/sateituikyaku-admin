@@ -108,6 +108,7 @@ const getAssigneeInitial = (assignee: string | null | undefined): string => {
     '久': '久',
     '裏': 'U',
     '林': '林',
+    '林田': '林',
     '国広': 'K',
     '木村': 'R',
     '角井': 'I',
