@@ -77,6 +77,7 @@ import CollapsibleSection from '../components/CollapsibleSection';
 import { formatCurrentStatusDetailed } from '../utils/propertyStatusFormatter';
 import PageNavigation from '../components/PageNavigation';
 import NavigationBlockDialog from '../components/NavigationBlockDialog';
+import NextCallDateReminderDialog from '../components/NextCallDateReminderDialog';
 
 
 /**
@@ -249,6 +250,49 @@ export function insertWrongNumberText(body: string, insertionText: string): stri
 
   return body.slice(0, insertPos) + insertion + body.slice(insertPos);
 }
+
+/**
+ * 反響日付から3日以上経過しているか判定する（JST基準）
+ * 翌日を1日目として数える
+ * @param inquiryDate 反響日付
+ * @returns 3日以上経過していれば true、未設定または3日未満なら false
+ */
+export function isInquiryDateElapsed3Days(inquiryDate: string | Date | null | undefined): boolean {
+  if (!inquiryDate) return false;
+
+  const nowJST = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Tokyo' }));
+  const todayJST = new Date(nowJST.getFullYear(), nowJST.getMonth(), nowJST.getDate());
+
+  const inquiry = new Date(inquiryDate);
+  if (isNaN(inquiry.getTime())) return false;
+
+  const inquiryJST = new Date(inquiry.toLocaleString('en-US', { timeZone: 'Asia/Tokyo' }));
+  const inquiryDateJST = new Date(inquiryJST.getFullYear(), inquiryJST.getMonth(), inquiryJST.getDate());
+
+  const diffMs = todayJST.getTime() - inquiryDateJST.getTime();
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+  return diffDays >= 3;
+}
+
+/**
+ * 次電日変更確認ダイアログを表示すべきか判定する
+ * 4条件がすべて true の場合のみ true を返す
+ * @param isElapsed 反響日付から3日以上経過しているか
+ * @param isFollowingUp 状況（当社）が「追客中」を含むか
+ * @param pageEdited ページで編集操作が行われたか
+ * @param nextCallDateUnchanged 次電日が変更されていないか
+ * @returns 4条件すべて true の場合のみ true
+ */
+export function shouldShowReminderDialog(
+  isElapsed: boolean,
+  isFollowingUp: boolean,
+  pageEdited: boolean,
+  nextCallDateUnchanged: boolean
+): boolean {
+  return isElapsed && isFollowingUp && pageEdited && nextCallDateUnchanged;
+}
+
 
 const CallModePage = () => {
   const { id } = useParams<{ id: string }>();
@@ -718,6 +762,15 @@ const CallModePage = () => {
 
   // 遷移ブロックダイアログ用の状態（追客中+次電日未入力時に遷移を完全ブロック）
   const [navigationBlockDialog, setNavigationBlockDialog] = useState<{ open: boolean }>({ open: false });
+
+  // 編集フラグ（ページで何らかの編集が行われたか）
+  const [pageEdited, setPageEdited] = useState<boolean>(false);
+
+  // 次電日変更確認ダイアログ用の状態
+  const [nextCallDateReminderDialog, setNextCallDateReminderDialog] = useState<{
+    open: boolean;
+    onProceed: (() => void) | null;
+  }>({ open: false, onProceed: null });
   const isInitialLoadRef = useRef(true); // 初回ロードフラグ
   const callLogRef = useRef<CallLogDisplayHandle>(null); // 追客ログ更新用ref
   const commentEditorRef = useRef<RichTextCommentEditorHandle>(null); // コメントエディタ用ref
@@ -1062,6 +1115,8 @@ const CallModePage = () => {
     loadAllData();
     // 売主が切り替わったら選択画像をリセット（前の売主の添付が残らないようにする）
     setSelectedImages([]);
+    // 売主が切り替わったら編集フラグをリセット
+    setPageEdited(false);
   }, [id]);
 
   // スプレッドシートから売主用Emailテンプレートを取得
@@ -1829,6 +1884,18 @@ const CallModePage = () => {
       return;
     }
 
+    // 次電日変更確認ダイアログの判定（NavigationWarningDialogより前に評価）
+    // 4条件: 反響日付から3日以上経過 & 追客中 & 編集あり & 次電日が変更されていない
+    if (shouldShowReminderDialog(
+      isInquiryDateElapsed3Days(seller?.inquiryDate),
+      editedStatus?.includes('追客中') ?? false,
+      pageEdited,
+      editedNextCallDate === savedNextCallDate
+    )) {
+      setNextCallDateReminderDialog({ open: true, onProceed: onConfirm });
+      return;
+    }
+
     // 確度が必須条件を満たしているのに未入力の場合は警告
     const isAfterJan2026 = seller?.inquiryDate && new Date(seller.inquiryDate) >= new Date('2026-01-01');
     const isFollowingUp = seller?.status?.includes('追客中');
@@ -1859,6 +1926,25 @@ const CallModePage = () => {
     if (nextCallDateRef.current) {
       nextCallDateRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
       nextCallDateRef.current.focus();
+    }
+  };
+
+  // 次電日変更確認ダイアログ：「次電日を変更する」ボタン処理
+  const handleReminderGoToNextCallDate = () => {
+    setNextCallDateReminderDialog({ open: false, onProceed: null });
+    // 次電日フィールドへスクロール＆フォーカス
+    if (nextCallDateRef?.current) {
+      nextCallDateRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      nextCallDateRef.current.focus();
+    }
+  };
+
+  // 次電日変更確認ダイアログ：「このまま移動する」ボタン処理
+  const handleReminderProceed = () => {
+    const onProceed = nextCallDateReminderDialog.onProceed;
+    setNextCallDateReminderDialog({ open: false, onProceed: null });
+    if (onProceed) {
+      onProceed();
     }
   };
 
@@ -1998,6 +2084,7 @@ const CallModePage = () => {
 
       // 成功メッセージ
       setSuccessMessage('コメントを保存しました');
+      setPageEdited(true); // 追客ログ（通話メモ）保存時に編集フラグを設定
 
       // 通話メモ入力欄をクリア
       setCallMemo('');
@@ -2134,6 +2221,7 @@ const CallModePage = () => {
 
       setSuccessMessage('物件情報を更新しました');
       setEditingProperty(false);
+      setPageEdited(true); // 物件情報保存時に編集フラグを設定
       
       // データを再読み込み
       await loadAllData();
@@ -2180,6 +2268,7 @@ const CallModePage = () => {
 
       setSuccessMessage('売主情報を更新しました');
       setEditingSeller(false);
+      setPageEdited(true); // 売主情報保存時に編集フラグを設定
       
       // データを再読み込み
       await loadAllData();
@@ -2281,6 +2370,7 @@ const CallModePage = () => {
 
       setAppointmentSuccessMessage('訪問予約情報を更新しました');
       setEditingAppointment(false);
+      setPageEdited(true); // 訪問予約保存時に編集フラグを設定
       
       // データを再読み込み
       let reloadSuccess = true;
@@ -3082,6 +3172,7 @@ HP：https://ifoo-oita.com/
       // 成功メッセージを表示
       setSnackbarMessage(`${template.label}を記録しました`);
       setSnackbarOpen(true);
+      setPageEdited(true); // SMS送信実行時に編集フラグを設定
       
       // 活動履歴を再読み込み（バックグラウンドで実行）
       api.get(`/api/sellers/${id}/activities`).then((activitiesResponse) => {
@@ -3217,6 +3308,7 @@ HP：https://ifoo-oita.com/
           // Gmail送信完了後すぐにUIを更新（ユーザーへのフィードバックを早める）
           setSnackbarMessage(hasImages ? `${template.label}を画像付きで送信しました` : `${template.label}を送信しました`);
           setSnackbarOpen(true);
+          setPageEdited(true); // メール送信実行時に編集フラグを設定
           setSendingTemplate(false);
           setConfirmDialog({ open: false, type: null, template: null });
           setSelectedImages([]);
@@ -4246,7 +4338,7 @@ HP：https://ifoo-oita.com/
                   <RichTextCommentEditor
                     ref={commentEditorRef}
                     value={editableComments}
-                    onChange={(html) => setEditableComments(html)}
+                    onChange={(html) => { setEditableComments(html); setPageEdited(true); }}
                     placeholder="コメントを入力してください..."
                   />
                   {(() => {
@@ -6899,7 +6991,7 @@ HP：https://ifoo-oita.com/
               <RichTextCommentEditor
                 ref={commentEditorRef}
                 value={editableComments}
-                onChange={(html) => setEditableComments(html)}
+                onChange={(html) => { setEditableComments(html); setPageEdited(true); }}
                 placeholder="コメントを入力してください..."
               />
             </Box>
@@ -6954,7 +7046,7 @@ HP：https://ifoo-oita.com/
                   variant={unreachableStatus === '不通' ? 'contained' : 'outlined'}
                   color="error"
                   size="small"
-                  onClick={() => setUnreachableStatus('不通')}
+                  onClick={() => { setUnreachableStatus('不通'); setPageEdited(true); }}
                   sx={{ minWidth: 100 }}
                 >
                   不通
@@ -6963,7 +7055,7 @@ HP：https://ifoo-oita.com/
                   variant={unreachableStatus === '通電OK' ? 'contained' : 'outlined'}
                   color="primary"
                   size="small"
-                  onClick={() => setUnreachableStatus('通電OK')}
+                  onClick={() => { setUnreachableStatus('通電OK'); setPageEdited(true); }}
                   sx={{ minWidth: 100 }}
                 >
                   通電OK
@@ -6973,7 +7065,7 @@ HP：https://ifoo-oita.com/
                     variant="outlined"
                     color="inherit"
                     size="small"
-                    onClick={() => setUnreachableStatus(null)}
+                    onClick={() => { setUnreachableStatus(null); setPageEdited(true); }}
                     sx={{ minWidth: 60, color: '#bdbdbd', borderColor: '#e0e0e0' }}
                   >
                     クリア
@@ -7074,7 +7166,7 @@ HP：https://ifoo-oita.com/
                     <Select
                       value={editedStatus}
                       label="状況（当社）"
-                      onChange={(e) => { setEditedStatus(e.target.value); setStatusChanged(true); statusChangedRef.current = true; }}
+                      onChange={(e) => { setEditedStatus(e.target.value); setStatusChanged(true); statusChangedRef.current = true; setPageEdited(true); }}
                     >
                       <MenuItem value="追客中">追客中</MenuItem>
                       <MenuItem value="追客不要(未訪問）">追客不要(未訪問）</MenuItem>
@@ -7341,7 +7433,7 @@ HP：https://ifoo-oita.com/
                     <Select
                       value={editedConfidence}
                       label="確度"
-                      onChange={(e) => { setEditedConfidence(e.target.value as ConfidenceLevel); setStatusChanged(true); statusChangedRef.current = true; }}
+                      onChange={(e) => { setEditedConfidence(e.target.value as ConfidenceLevel); setStatusChanged(true); statusChangedRef.current = true; setPageEdited(true); }}
                     >
                       {CONFIDENCE_OPTIONS.map((opt) => (
                         <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>
@@ -7891,6 +7983,13 @@ HP：https://ifoo-oita.com/
       <NavigationBlockDialog
         open={navigationBlockDialog.open}
         onGoToNextCallDate={handleGoToNextCallDate}
+      />
+
+      {/* 次電日変更確認ダイアログ */}
+      <NextCallDateReminderDialog
+        open={nextCallDateReminderDialog.open}
+        onGoToNextCallDate={handleReminderGoToNextCallDate}
+        onProceed={handleReminderProceed}
       />
 
       {/* 遷移警告ダイアログ（確度未入力 / 1番電話未入力） */}
