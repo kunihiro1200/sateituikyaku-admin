@@ -5,7 +5,7 @@ import { BuyerSummary } from './BuyerLinkageService';
 const CACHE_KEY_BUYER_COUNT = 'buyer_count:';
 const CACHE_KEY_BUYER_LIST = 'buyer_list:';
 const CACHE_KEY_HIGH_CONFIDENCE = 'high_confidence:';
-const CACHE_TTL = 3600; // 1 hour (as per design specification)
+const CACHE_TTL = 300; // 5 minutes (短縮: 古い値が返されないようにするため)
 
 export interface CacheEntry {
   property_number: string;

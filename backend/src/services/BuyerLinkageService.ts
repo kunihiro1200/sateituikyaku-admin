@@ -48,32 +48,23 @@ export class BuyerLinkageService {
     }
 
     try {
-      // 1回のクエリで全買主のproperty_numberを取得してフロントで集計
-      // property_numberはカンマ区切りで複数の物件番号を含む可能性があるため、
-      // 対象物件番号を含む買主を全件取得してカウントする
-      const { data, error } = await this.supabase
-        .from('buyers')
-        .select('property_number')
-        .is('deleted_at', null)
-        .not('property_number', 'is', null);
+      // 各物件番号に対して getBuyersForProperty と同じロジックで直接カウント
+      await Promise.all(
+        propertyNumbers.map(async (propNum) => {
+          const { count, error } = await this.supabase
+            .from('buyers')
+            .select('*', { count: 'exact', head: true })
+            .eq('property_number', propNum)
+            .is('deleted_at', null);
 
-      if (error) {
-        console.error('Failed to fetch buyer property numbers:', error);
-        return counts;
-      }
-
-      // 各買主のproperty_numberを解析してカウント
-      const propertyNumberSet = new Set(propertyNumbers);
-      for (const row of data || []) {
-        if (!row.property_number) continue;
-        // property_numberはカンマ区切りで複数含む場合がある
-        const parts = row.property_number.split(',').map((p: string) => p.trim());
-        for (const part of parts) {
-          if (propertyNumberSet.has(part)) {
-            counts.set(part, (counts.get(part) || 0) + 1);
+          if (error) {
+            console.error(`Failed to count buyers for property ${propNum}:`, error);
+            counts.set(propNum, 0);
+          } else {
+            counts.set(propNum, count || 0);
           }
-        }
-      }
+        })
+      );
 
       return counts;
     } catch (error) {
