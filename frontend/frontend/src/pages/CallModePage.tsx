@@ -30,7 +30,7 @@ import {
   AccordionSummary,
   AccordionDetails,
 } from '@mui/material';
-import { ArrowBack, Phone, Save, CalendarToday, Email, Image as ImageIcon, ContentCopy as ContentCopyIcon, Search as SearchIcon, Clear as ClearIcon, Delete as DeleteIcon, ExpandMore as ExpandMoreIcon, Sms as SmsIcon, OpenInNew as OpenInNewIcon } from '@mui/icons-material';
+import { ArrowBack, Phone, Save, CalendarToday, Email, Image as ImageIcon, ContentCopy as ContentCopyIcon, Search as SearchIcon, Clear as ClearIcon, Delete as DeleteIcon, ExpandMore as ExpandMoreIcon, ExpandLess as ExpandLessIcon, Sms as SmsIcon, OpenInNew as OpenInNewIcon } from '@mui/icons-material';
 import api, { emailImageApi } from '../services/api';
 import { SECTION_COLORS } from '../theme/sectionColors';
 import { Seller, PropertyInfo, Activity, SellerStatus, ConfidenceLevel, DuplicateMatch, SelectedImages, DriveImage } from '../types';
@@ -505,6 +505,61 @@ const CallModePage = () => {
     const newUrl = `${window.location.pathname}?${params.toString()}`;
     window.history.replaceState({}, '', newUrl);
   }, []);
+
+  // メール・SMS履歴の展開状態管理
+  const [expandedActivityIds, setExpandedActivityIds] = useState<Set<string>>(new Set());
+
+  const toggleActivityExpand = useCallback((activityId: string) => {
+    setExpandedActivityIds(prev => {
+      const next = new Set(prev);
+      if (next.has(activityId)) {
+        next.delete(activityId);
+      } else {
+        next.add(activityId);
+      }
+      return next;
+    });
+  }, []);
+
+  // 展開パネルの内容を決定するヘルパー関数
+  const renderActivityBody = (activity: Activity): React.ReactNode => {
+    if (activity.type === 'email') {
+      const subject = activity.metadata?.subject;
+      const body = activity.metadata?.body;
+      return (
+        <Box>
+          {subject && (
+            <Box sx={{ mb: 0.5 }}>
+              <Typography variant="caption" sx={{ fontWeight: 'bold' }}>件名:</Typography>
+              <Typography variant="caption" sx={{ ml: 0.5 }}>{subject}</Typography>
+            </Box>
+          )}
+          <Box>
+            <Typography variant="caption" sx={{ fontWeight: 'bold' }}>本文:</Typography>
+            <Typography
+              variant="caption"
+              component="pre"
+              sx={{ display: 'block', whiteSpace: 'pre-wrap', wordBreak: 'break-word', mt: 0.3 }}
+            >
+              {body ?? '本文データなし（旧形式）'}
+            </Typography>
+          </Box>
+        </Box>
+      );
+    }
+    if (activity.type === 'sms') {
+      return (
+        <Typography
+          variant="caption"
+          component="pre"
+          sx={{ display: 'block', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}
+        >
+          {activity.content || 'メッセージ内容なし'}
+        </Typography>
+      );
+    }
+    return null;
+  };
   
   // サイドバー用のカテゴリカウント（APIから直接取得）
   const [sidebarCounts, setSidebarCounts] = useState<{
@@ -4219,19 +4274,42 @@ HP：https://ifoo-oita.com/
                     borderColor = '4px solid #2e7d32';
                   }
                   return (
-                    <Paper key={index} sx={{ p: 1, mb: 0.5, bgcolor, borderLeft: borderColor }}>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.3 }}>
-                        <Typography variant="caption" sx={{ fontWeight: 'bold' }}>
-                          {typeIcon} {typeLabel}
+                    <Box key={index}>
+                      <Paper
+                        sx={{ p: 1, mb: 0, bgcolor, borderLeft: borderColor, cursor: 'pointer' }}
+                        onClick={() => toggleActivityExpand(activity.id)}
+                      >
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.3 }}>
+                          <Typography variant="caption" sx={{ fontWeight: 'bold' }}>
+                            {typeIcon} {typeLabel}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary" sx={{ flex: 1 }}>
+                            {displayName} {formattedDate}
+                          </Typography>
+                          {expandedActivityIds.has(activity.id) ? (
+                            <ExpandLessIcon sx={{ fontSize: 16 }} />
+                          ) : (
+                            <ExpandMoreIcon sx={{ fontSize: 16 }} />
+                          )}
+                        </Box>
+                        <Typography variant="caption" sx={{ display: 'block' }}>
+                          {activity.content}
                         </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {displayName} {formattedDate}
-                        </Typography>
-                      </Box>
-                      <Typography variant="caption" sx={{ display: 'block' }}>
-                        {activity.content}
-                      </Typography>
-                    </Paper>
+                      </Paper>
+                      {/* 展開パネル */}
+                      {expandedActivityIds.has(activity.id) && (
+                        <Box sx={{
+                          backgroundColor: '#fff',
+                          maxHeight: '200px',
+                          overflow: 'auto',
+                          p: 1,
+                          borderTop: '1px solid #e0e0e0',
+                          mb: 0.5,
+                        }}>
+                          {renderActivityBody(activity)}
+                        </Box>
+                      )}
+                    </Box>
                   );
                 })}
               {activities.filter((a) => a.type === 'sms' || a.type === 'email').length === 0 && (
