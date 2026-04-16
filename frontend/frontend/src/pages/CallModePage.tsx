@@ -3436,6 +3436,7 @@ HP：https://ifoo-oita.com/
                 type: 'email',
                 content: `【${template.label}】を送信`,
                 result: 'sent',
+                metadata: { subject: capturedEmailSubject, body: capturedEmailBody },
               });
 
               // 活動履歴保存後の並列処理
