@@ -2848,8 +2848,8 @@ export class EnhancedAutoSyncService {
     }
     console.log(`📊 Spreadsheet buyers: ${sheetBuyerNumbers.size}`);
 
-    const dbBuyerNumbers = await this.getAllDbBuyerNumbers();
-    console.log(`📊 Database buyers: ${dbBuyerNumbers.size}`);
+    const dbBuyerNumbers = await this.getAllActiveBuyerNumbers();
+    console.log(`📊 Active database buyers: ${dbBuyerNumbers.size}`);
 
     const missingBuyers: string[] = [];
     for (const buyerNumber of sheetBuyerNumbers) {
