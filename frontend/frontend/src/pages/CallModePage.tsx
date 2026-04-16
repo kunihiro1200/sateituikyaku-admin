@@ -81,6 +81,157 @@ import NextCallDateReminderDialog from '../components/NextCallDateReminderDialog
 
 
 /**
+ * 本文中の <BR> / <br> を改行文字 \n に変換する
+ * @param text 変換対象の文字列（null / undefined も受け付ける）
+ * @returns 変換後の文字列（null / undefined の場合は空文字列）
+ */
+export function convertBrToNewline(text: string | null | undefined): string {
+  if (text == null) return '';
+  return text.replace(/<BR>/gi, '\n');
+}
+
+// ============================================================
+// SmsEmailHistoryModal コンポーネント
+// SMS・メール送信履歴の本文をモーダルで表示する
+// ============================================================
+interface SmsEmailHistoryModalProps {
+  open: boolean;
+  activity: Activity | null;
+  onClose: () => void;
+}
+
+function SmsEmailHistoryModal({ open, activity, onClose }: SmsEmailHistoryModalProps) {
+  if (!activity) return null;
+
+  const isSms = (activity.type as string) === 'sms';
+  const isEmail = (activity.type as string) === 'email';
+
+  // タイトルラベルと色
+  const titleLabel = isSms ? '💬 SMS' : '📧 メール';
+  const titleColor = isSms ? '#1565c0' : '#2e7b32';
+  const titleBgColor = isSms ? '#e3f2fd' : '#e8f5e9';
+
+  // 本文の取得と BR 変換
+  const rawBody = isEmail
+    ? (activity.metadata?.body ?? null)
+    : (activity.content ?? null);
+  const bodyText = rawBody != null ? convertBrToNewline(rawBody) : null;
+
+  // 件名（メールのみ）
+  const subject = isEmail ? (activity.metadata?.subject ?? null) : null;
+
+  // 送信者名
+  const senderName = activity.employee?.name ?? '不明';
+
+  // 送信日時
+  const sentAt = activity.createdAt ? formatDateTime(activity.createdAt) : '不明';
+
+  return (
+    <Dialog
+      open={open}
+      onClose={onClose}
+      maxWidth="sm"
+      fullWidth
+      sx={{
+        '& .MuiDialog-paper': {
+          mx: { xs: 1, sm: 2 },
+          width: { xs: 'calc(100% - 16px)', sm: undefined },
+        },
+      }}
+    >
+      {/* タイトル */}
+      <DialogTitle
+        sx={{
+          backgroundColor: titleBgColor,
+          color: titleColor,
+          fontWeight: 'bold',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          py: 1.5,
+          px: 2,
+        }}
+      >
+        <Typography variant="h6" component="span" sx={{ fontWeight: 'bold', color: titleColor }}>
+          {titleLabel}
+        </Typography>
+        <IconButton
+          aria-label="閉じる"
+          onClick={onClose}
+          size="small"
+          sx={{ color: titleColor }}
+        >
+          <span style={{ fontSize: '1.2rem', lineHeight: 1 }}>✕</span>
+        </IconButton>
+      </DialogTitle>
+
+      <Divider />
+
+      {/* 本文エリア */}
+      <DialogContent sx={{ pt: 2, pb: 1 }}>
+        {/* 送信日時・送信者 */}
+        <Box sx={{ mb: 1.5 }}>
+          <Typography variant="body2" color="text.secondary">
+            <strong>送信日時：</strong>{sentAt}
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            <strong>送信者：</strong>{senderName}
+          </Typography>
+        </Box>
+
+        {/* 件名（メールのみ） */}
+        {isEmail && subject && (
+          <Box sx={{ mb: 1.5 }}>
+            <Typography variant="body2">
+              <strong>件名：</strong>{subject}
+            </Typography>
+          </Box>
+        )}
+
+        <Divider sx={{ mb: 1.5 }} />
+
+        {/* 本文 */}
+        <Box
+          sx={{
+            maxHeight: { xs: '50vh', sm: '60vh' },
+            overflowY: 'auto',
+            backgroundColor: '#fafafa',
+            borderRadius: 1,
+            p: 1.5,
+            border: '1px solid #e0e0e0',
+          }}
+        >
+          {bodyText != null ? (
+            <Typography
+              variant="body2"
+              component="pre"
+              sx={{
+                whiteSpace: 'pre-wrap',
+                wordBreak: 'break-word',
+                fontFamily: 'inherit',
+                m: 0,
+              }}
+            >
+              {bodyText}
+            </Typography>
+          ) : (
+            <Typography variant="body2" color="text.secondary" fontStyle="italic">
+              本文データなし（旧形式）
+            </Typography>
+          )}
+        </Box>
+      </DialogContent>
+
+      <DialogActions sx={{ px: 2, pb: 1.5 }}>
+        <Button onClick={onClose} variant="outlined" size="small">
+          閉じる
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+}
+
+/**
  * 除外日アクション選択時の査定方法自動設定ロジック
  * @param newExclusionAction 新しい除外日アクション値（''は解除）
  * @param currentValuationMethod 現在の査定方法値
@@ -506,60 +657,16 @@ const CallModePage = () => {
     window.history.replaceState({}, '', newUrl);
   }, []);
 
-  // メール・SMS履歴の展開状態管理
-  const [expandedActivityIds, setExpandedActivityIds] = useState<Set<string>>(new Set());
+  // SMS・メール履歴モーダル用の状態管理
+  const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null);
 
-  const toggleActivityExpand = useCallback((activityId: string) => {
-    setExpandedActivityIds(prev => {
-      const next = new Set(prev);
-      if (next.has(activityId)) {
-        next.delete(activityId);
-      } else {
-        next.add(activityId);
-      }
-      return next;
-    });
+  const handleActivityClick = useCallback((activity: Activity) => {
+    setSelectedActivity(activity);
   }, []);
 
-  // 展開パネルの内容を決定するヘルパー関数
-  const renderActivityBody = (activity: Activity): React.ReactNode => {
-    if (activity.type === 'email') {
-      const subject = activity.metadata?.subject;
-      const body = activity.metadata?.body;
-      return (
-        <Box>
-          {subject && (
-            <Box sx={{ mb: 0.5 }}>
-              <Typography variant="caption" sx={{ fontWeight: 'bold' }}>件名:</Typography>
-              <Typography variant="caption" sx={{ ml: 0.5 }}>{subject}</Typography>
-            </Box>
-          )}
-          <Box>
-            <Typography variant="caption" sx={{ fontWeight: 'bold' }}>本文:</Typography>
-            <Typography
-              variant="caption"
-              component="pre"
-              sx={{ display: 'block', whiteSpace: 'pre-wrap', wordBreak: 'break-word', mt: 0.3 }}
-            >
-              {body ?? '本文データなし（旧形式）'}
-            </Typography>
-          </Box>
-        </Box>
-      );
-    }
-    if (activity.type === 'sms') {
-      return (
-        <Typography
-          variant="caption"
-          component="pre"
-          sx={{ display: 'block', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}
-        >
-          {activity.content || 'メッセージ内容なし'}
-        </Typography>
-      );
-    }
-    return null;
-  };
+  const handleModalClose = useCallback(() => {
+    setSelectedActivity(null);
+  }, []);
   
   // サイドバー用のカテゴリカウント（APIから直接取得）
   const [sidebarCounts, setSidebarCounts] = useState<{
@@ -4278,8 +4385,8 @@ HP：https://ifoo-oita.com/
                   return (
                     <Box key={index}>
                       <Paper
-                        sx={{ p: 1, mb: 0, bgcolor, borderLeft: borderColor, cursor: 'pointer' }}
-                        onClick={() => toggleActivityExpand(activity.id)}
+                        sx={{ p: 1, mb: 0.5, bgcolor, borderLeft: borderColor, cursor: 'pointer' }}
+                        onClick={() => handleActivityClick(activity)}
                       >
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.3 }}>
                           <Typography variant="caption" sx={{ fontWeight: 'bold' }}>
@@ -4288,29 +4395,11 @@ HP：https://ifoo-oita.com/
                           <Typography variant="caption" color="text.secondary" sx={{ flex: 1 }}>
                             {displayName} {formattedDate}
                           </Typography>
-                          {expandedActivityIds.has(activity.id) ? (
-                            <ExpandLessIcon sx={{ fontSize: 16 }} />
-                          ) : (
-                            <ExpandMoreIcon sx={{ fontSize: 16 }} />
-                          )}
                         </Box>
                         <Typography variant="caption" sx={{ display: 'block' }}>
                           {activity.content}
                         </Typography>
                       </Paper>
-                      {/* 展開パネル */}
-                      {expandedActivityIds.has(activity.id) && (
-                        <Box sx={{
-                          backgroundColor: '#fff',
-                          maxHeight: '200px',
-                          overflow: 'auto',
-                          p: 1,
-                          borderTop: '1px solid #e0e0e0',
-                          mb: 0.5,
-                        }}>
-                          {renderActivityBody(activity)}
-                        </Box>
-                      )}
                     </Box>
                   );
                 })}
@@ -4321,6 +4410,13 @@ HP：https://ifoo-oita.com/
               )}
             </Box>
           </Box>
+
+          {/* SMS・メール履歴モーダル */}
+          <SmsEmailHistoryModal
+            open={selectedActivity !== null}
+            activity={selectedActivity}
+            onClose={handleModalClose}
+          />
 
           {/* 過去の活動ログ（追客ログの直下） */}
           <Box sx={{ width: isMobile ? '100%' : 280, p: 2, borderBottom: 1, borderColor: 'divider', display: isMobile && !mobileCallLogOpen ? 'none' : undefined }}>
