@@ -113,3 +113,102 @@ describe('BUYER_FIELD_SECTIONS', () => {
     expect(found).toBe(true);
   });
 });
+
+
+/**
+ * ユニットテスト: handleSavePropertyNumber が sync=false なしでAPIを呼び出すことを検証
+ *
+ * タスク 4.1: 物件番号保存時のAPI呼び出しが `sync=false` を含まないことを検証
+ *
+ * **Validates: Requirements 2.1**
+ */
+
+describe('handleSavePropertyNumber - API呼び出し検証', () => {
+  /**
+   * handleSavePropertyNumber の実装を直接テストするため、
+   * BuyerDetailPage.tsx のソースコードを文字列として読み込み、
+   * API呼び出しパターンを検証する。
+   *
+   * これはコードレビューベースのテストであり、
+   * 実装が正しいパターンを使用していることを保証する。
+   */
+
+  // BuyerDetailPage.tsx の handleSavePropertyNumber 関数の実装を
+  // 文字列として取得してパターン検証する
+  const fs = require('fs');
+  const path = require('path');
+
+  const buyerDetailPagePath = path.resolve(
+    __dirname,
+    '../pages/BuyerDetailPage.tsx'
+  );
+  const sourceCode = fs.readFileSync(buyerDetailPagePath, 'utf-8');
+
+  // handleSavePropertyNumber 関数のブロックを抽出
+  const handleSavePropertyNumberMatch = sourceCode.match(
+    /const handleSavePropertyNumber\s*=\s*async\s*\(\s*\)\s*=>\s*\{[\s\S]*?^\s*\};/m
+  );
+
+  it('handleSavePropertyNumber 関数がソースコードに存在すること', () => {
+    expect(handleSavePropertyNumberMatch).not.toBeNull();
+  });
+
+  it('handleSavePropertyNumber 内の api.put 呼び出しが ?sync=false を含まないこと', () => {
+    // handleSavePropertyNumber 関数のブロックを取得
+    // 関数の開始位置から次の関数定義の前まで抽出
+    const funcStart = sourceCode.indexOf('const handleSavePropertyNumber');
+    expect(funcStart).toBeGreaterThan(-1);
+
+    // 関数ブロックの終端を探す（次の // コメント付き関数定義の前まで）
+    const funcEnd = sourceCode.indexOf(
+      '// 他社物件情報の保存ハンドラー',
+      funcStart
+    );
+    const funcBlock =
+      funcEnd > funcStart
+        ? sourceCode.slice(funcStart, funcEnd)
+        : sourceCode.slice(funcStart, funcStart + 1000);
+
+    // api.put の呼び出しが存在することを確認
+    expect(funcBlock).toMatch(/api\.put\(/);
+
+    // api.put の呼び出しに ?sync=false が含まれないことを確認
+    const apiPutCallMatch = funcBlock.match(/api\.put\(`[^`]*`/);
+    expect(apiPutCallMatch).not.toBeNull();
+
+    const apiPutUrl = apiPutCallMatch![0];
+    expect(apiPutUrl).not.toContain('sync=false');
+  });
+
+  it('handleSavePropertyNumber 内の api.put が /api/buyers/${buyer_number} を呼び出すこと', () => {
+    const funcStart = sourceCode.indexOf('const handleSavePropertyNumber');
+    const funcEnd = sourceCode.indexOf(
+      '// 他社物件情報の保存ハンドラー',
+      funcStart
+    );
+    const funcBlock =
+      funcEnd > funcStart
+        ? sourceCode.slice(funcStart, funcEnd)
+        : sourceCode.slice(funcStart, funcStart + 1000);
+
+    // /api/buyers/${buyer_number} パターンが含まれることを確認
+    expect(funcBlock).toMatch(/api\.put\(`\/api\/buyers\/\$\{buyer_number\}`/);
+  });
+
+  it('handleSaveOtherCompanyPropertyInfo は依然として ?sync=false を使用していること（他フィールドへの影響がないことを確認）', () => {
+    const funcStart = sourceCode.indexOf('const handleSaveOtherCompanyPropertyInfo');
+    expect(funcStart).toBeGreaterThan(-1);
+
+    const funcEnd = sourceCode.indexOf(
+      'const fetchActivities',
+      funcStart
+    );
+    const funcBlock =
+      funcEnd > funcStart
+        ? sourceCode.slice(funcStart, funcEnd)
+        : sourceCode.slice(funcStart, funcStart + 500);
+
+    // handleSaveOtherCompanyPropertyInfo は sync=false を使用していること
+    expect(funcBlock).toContain('sync=false');
+  });
+});

@@ -836,7 +836,7 @@ export default function BuyerDetailPage() {
         setManualPropertyNumberError(`物件番号「${manualPropertyNumber.trim()}」は存在しません`);
         return;
       }
-      await api.put(`/api/buyers/${buyer_number}?sync=false`, {
+      await api.put(`/api/buyers/${buyer_number}`, {
         property_number: manualPropertyNumber.trim(),
       });
       await fetchLinkedProperties();

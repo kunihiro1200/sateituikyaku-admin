@@ -1,288 +1,204 @@
-# seller-sidebar-count-mismatch-fix バグ修正デザイン
+# 物件リスト「未報告林」サイドバーカウント不一致バグ 設計書
 
 ## Overview
 
-売主リストのサイドバーにおいて、カウント数とクリック時のリスト件数が一致しない問題を修正する。
+物件リスト（売主管理システム）のサイドバーにおいて、「未報告林」カテゴリのカウントとフィルタリング後の表示件数が一致しないバグを修正する。
 
-根本原因は `SellerSidebarCountsUpdateService`（カウント計算）と `SellerService.listSellers()`（フィルタリング）の2つのロジックが独立して実装されており、以下の3点で条件が一致していないことにある：
+根本原因は `frontend/frontend/src/utils/propertyListingStatusUtils.ts` の `getAssigneeInitial()` 関数内の `initialMap` に `'林田'` のマッピングが存在しないことである。`getAssigneeInitial('林田')` がフォールバックにより `'林田'` をそのまま返すため、ラベルが `'未報告林田'` となり、サイドバーキー `'未報告林'` と一致しない。
 
-1. `todayCallNotStarted`（当日TEL_未着手）の判定条件の差異（`exclusion_date` チェックの有無）
-2. `todayCall`（当日TEL分）での未着手売主の除外漏れ（`unreachable_status`, `confidence_level`, `inquiry_date` チェックなし）
-3. `unvaluated`（未査定）での `isTodayCallNotStarted` 判定条件の差異（`exclusion_date` チェックの有無）
-
-修正方針は、`listSellers()` のフィルタリング条件を `SellerSidebarCountsUpdateService` のカウント計算条件と完全に一致させることで、カウントとリスト件数を常に同一にする。
+修正方針は最小限の変更として、`initialMap` に `'林田': '林'` を追加するのみとする。
 
 ## Glossary
 
-- **Bug_Condition (C)**: カウント計算とフィルタリングの条件が一致しない状態 — 同一の売主に対して2つのロジックが異なる判定を下す
-- **Property (P)**: 任意のカテゴリでカウントN件と表示されているとき、クリック後のリストもちょうどN件であること
-- **Preservation**: 修正対象外カテゴリ（`visitDayBefore`, `visitCompleted`, `todayCallAssigned`, `todayCallWithInfo`, `mailingPending`, `exclusive`, `general`, `visitOtherDecision`, `unvisitedOtherDecision`, `visitAssigned:xxx`）の動作が変わらないこと
-- **filteredTodayCallSellers**: `SellerSidebarCountsUpdateService` 内で `hasValidVisitAssignee=false` の売主を抽出した中間集合（`todayCall`, `todayCallNotStarted`, `pinrichEmpty` の基底集合）
-- **isTodayCallNotStarted**: 当日TEL_未着手の判定条件（`status === '追客中'` + `next_call_date <= today` + コミュニケーション情報なし + `unreachable_status` 空 + `confidence_level` が「ダブり」「D」「AI査定」でない + `inquiry_date >= '2026-01-01'`）
-- **todayJST**: JST基準の今日の日付文字列（`YYYY-MM-DD`形式）
+- **Bug_Condition (C)**: バグが発現する条件 — `report_assignee` が `'林田'` であり、かつ `report_date` が今日以前に存在する物件
+- **Property (P)**: バグ条件が成立する入力に対して期待される正しい動作 — `getAssigneeInitial('林田')` が `'林'` を返し、ラベルが `'未報告林'` となること
+- **Preservation**: 修正によって変更してはならない既存の動作 — `'林田'` 以外の全担当者のイニシャル変換、null/空文字のフォールバック、その他サイドバーカテゴリのカウント・フィルタリング
+- **getAssigneeInitial**: `frontend/frontend/src/utils/propertyListingStatusUtils.ts` 内の関数。担当者名を受け取り、サイドバー表示用のイニシャル文字列を返す
+- **initialMap**: `getAssigneeInitial` 内の担当者名→イニシャルのマッピングオブジェクト
+- **calculatePropertyStatus**: 物件1件のステータス（key, label, color）を計算して返す関数
+- **report_assignee**: 物件リストの「報告担当者」フィールド
 
 ## Bug Details
 
 ### Bug Condition
 
-カウント計算（`SellerSidebarCountsUpdateService.updateSellerSidebarCounts()`）とフィルタリング（`SellerService.listSellers()`）の条件が一致しないとき、バグが発現する。
+`report_assignee` が `'林田'` の物件に対して `getAssigneeInitial()` を呼び出すと、`initialMap` にキーが存在しないためフォールバック動作が発動し、`'林田'` をそのまま返す。その結果、ラベルが `'未報告林田'` となり、サイドバーキー `'未報告林'` と不一致が生じる。
 
 **Formal Specification:**
 ```
-FUNCTION isBugCondition(seller, category)
-  INPUT: seller（売主データ）, category（サイドバーカテゴリ）
+FUNCTION isBugCondition(X)
+  INPUT: X of type PropertyListing
   OUTPUT: boolean
 
-  countResult := countCategory(seller, category)   // カウント計算での判定
-  filterResult := filterCategory(seller, category) // フィルタリングでの判定
-
-  RETURN countResult != filterResult
+  RETURN X.report_assignee = '林田'
+    AND X.report_date IS NOT NULL
+    AND X.report_date <= today
 END FUNCTION
 ```
 
-### 具体的な差異
-
-#### 差異1: `todayCallNotStarted` の `exclusion_date` チェック
-
-| | カウント計算 | フィルタリング |
-|---|---|---|
-| `exclusion_date` チェック | **なし** | `!exclusionDate` を追加チェック |
-
-カウント計算の `todayCallNotStartedCount` では `exclusion_date` を確認しない。フィルタリングの `todayCallNotStarted` ケースでは `exclusion_date` が空であることを追加条件としている。
-
-#### 差異2: `todayCall` での未着手売主の除外
-
-| | カウント計算 | フィルタリング |
-|---|---|---|
-| `unreachable_status` チェック | **あり** | **なし** |
-| `confidence_level` チェック | **あり** | **なし** |
-| `inquiry_date >= '2026-01-01'` チェック | **あり** | **なし** |
-
-カウント計算の `todayCallNoInfoCount` では `isNotStarted` 条件を満たす売主を除外する。フィルタリングの `todayCall` ケースでは `unreachable_status`, `confidence_level`, `inquiry_date` を確認せず、未着手売主が除外されない。
-
-#### 差異3: `unvaluated` の `isTodayCallNotStarted` 判定
-
-| | カウント計算 | フィルタリング |
-|---|---|---|
-| `exclusion_date` チェック | **なし** | `!exclusionDate` を追加チェック |
-
-カウント計算の `unvaluatedCount` では `isTodayCallNotStarted` 判定に `exclusion_date` を含まない。フィルタリングの `unvaluated` ケースでは `!exclusionDate` を追加チェックしている。
-
 ### Examples
 
-- **例1（差異2）**: `status='追客中'`, `next_call_date='2026-01-15'`, `unreachable_status='不通'`, `inquiry_date='2026-02-01'` の売主 → カウント計算では `isNotStarted=false`（`unreachable_status` あり）なので `todayCall` にカウントされる。フィルタリングでも `todayCall` に含まれる（一致）。しかし `unreachable_status` チェックがないため、別の売主で `unreachable_status` が空の場合に `isNotStarted=true` となりカウントから除外されるが、フィルタには残る（不一致）。
-- **例2（差異1）**: `status='追客中'`, `next_call_date='2026-01-15'`, `exclusion_date='2026-03-01'`, `inquiry_date='2026-02-01'` の売主 → カウント計算では `todayCallNotStarted` にカウントされる（`exclusion_date` チェックなし）。フィルタリングでは `exclusionDate` があるため除外される（不一致）。
-- **例3（差異3）**: `status='追客中'`, `inquiry_date='2026-02-01'`, `exclusion_date='2026-03-01'`, 査定額なし, 営担なし の売主 → カウント計算では `isTodayCallNotStarted=false`（`exclusion_date` チェックなし）なので `unvaluated` にカウントされる。フィルタリングでは `!exclusionDate` が false なので `isTodayCallNotStarted=true` と判定され除外される（不一致）。
+- `report_assignee = '林田'`、`report_date = '2025-01-10'`（今日以前）の物件
+  - 実際: `getAssigneeInitial('林田')` → `'林田'`、ラベル `'未報告林田'`
+  - 期待: `getAssigneeInitial('林田')` → `'林'`、ラベル `'未報告林'`
+- `report_assignee = '林田'`、`report_date = null` の物件
+  - バグ条件不成立（report_dateがnullのため未報告ステータスにならない）
+- `report_assignee = '林'`、`report_date = '2025-01-10'` の物件
+  - バグ条件不成立（`'林'` は既にinitialMapに存在し `'林'` を返す）
+  - 修正後も動作変化なし（Preservation対象）
 
 ## Expected Behavior
 
 ### Preservation Requirements
 
-**変更してはいけない動作:**
-- `visitDayBefore`（訪問日前日）のフィルタリング動作
-- `visitCompleted`（訪問済み）のフィルタリング動作
-- `todayCallAssigned`（当日TEL担当）のフィルタリング動作
-- `todayCallWithInfo`（当日TEL内容）のフィルタリング動作
-- `mailingPending`（査定郵送）のフィルタリング動作
-- `exclusive`（専任）・`general`（一般）・`visitOtherDecision`・`unvisitedOtherDecision` のフィルタリング動作
-- `visitAssigned:xxx`（担当者別）のフィルタリング動作
-- カテゴリなし（全件表示）の動作
+**変更してはならない動作:**
+- `'山本'` → `'Y'`、`'生野'` → `'生'`、`'久'` → `'久'`、`'裏'` → `'U'`、`'林'` → `'林'`、`'国広'` → `'K'`、`'木村'` → `'R'`、`'角井'` → `'I'` の既存イニシャル変換は変更しない
+- `report_assignee` が `null` または空文字列の場合、`''` を返すフォールバック動作は変更しない
+- `initialMap` に存在しない未知の担当者名の場合、担当者名をそのまま返すフォールバック動作は変更しない（`'林田'` 以外）
+- 「未報告林」以外のサイドバーカテゴリ（要値下げ、未完了、非公開予定、買付申込み、公開前情報、非公開、一般公開中物件など）のカウント・フィルタリングは変更しない
 
 **スコープ:**
-修正対象は `todayCall`, `todayCallNotStarted`, `unvaluated` の3カテゴリのみ。それ以外のカテゴリは一切変更しない。
+バグ条件（`report_assignee = '林田'` かつ `report_date` が今日以前）に該当しない全ての入力は、この修正によって完全に影響を受けない。
 
 ## Hypothesized Root Cause
 
-1. **独立した実装**: `SellerSidebarCountsUpdateService` と `SellerService.listSellers()` が独立して実装されており、共通のロジックを共有していない。一方を修正しても他方に反映されない構造になっている。
+`initialMap` に `'林田'` のエントリが存在しないことが直接の原因である。
 
-2. **`todayCall` での除外ロジック未実装**: `listSellers()` の `todayCall` ケースは、カウント計算で行われている `isNotStarted` 判定（`unreachable_status`, `confidence_level`, `inquiry_date` チェック）を実装していない。コメントには「未着手を除外する」旨の記述がないため、意図的な省略か実装漏れかが不明。
+1. **マッピング漏れ**: `'林'` 担当者のマッピングは存在するが、`'林田'` 担当者が後から追加された際に `initialMap` への追記が漏れた
+   - `'林'` → `'林'` は登録済み
+   - `'林田'` → `'林'` が未登録
 
-3. **`exclusion_date` チェックの非対称性**: `todayCallNotStarted` と `unvaluated` のフィルタリングでは `exclusion_date` チェックが追加されているが、カウント計算側にはない。どちらが正しい仕様かを確認する必要がある。
+2. **フォールバック動作の副作用**: `initialMap[assignee] || assignee` というフォールバックにより、マッピング未登録の場合は担当者名をそのまま返す。これ自体は意図した設計だが、`'林田'` の場合に `'林田'` が返ることでサイドバーキーと不一致が生じる
 
-4. **段階的な修正の積み重ね**: コードコメントに「🔧 修正: カウント計算と条件を一致させる」という記述が複数あり、過去に部分的な修正が行われてきたことがわかる。その過程で `exclusion_date` チェックが片方にのみ追加された可能性がある。
+3. **カウントとフィルタリングの二重不一致**: サイドバーカウント計算（`calculateStatusCounts`）とリストフィルタリング（`filterByStatus`）の両方が `calculatePropertyStatus` を経由するため、ラベル生成の誤りが両方に波及する
 
 ## Correctness Properties
 
-Property 1: Bug Condition - カウントとリスト件数の一致
+Property 1: Bug Condition - 林田担当者の未報告ラベル正規化
 
-_For any_ サイドバーカテゴリ（`todayCall`, `todayCallNotStarted`, `unvaluated`）において、`SellerSidebarCountsUpdateService` がカウントNを計算した場合、`listSellers({ statusCategory })` が返す売主リストもちょうどN件であること。すなわち、カウント計算でそのカテゴリに含まれる売主の集合と、フィルタリングで返される売主の集合が完全に一致すること。
+_For any_ 物件 X において `isBugCondition(X)` が true（`report_assignee = '林田'` かつ `report_date` が今日以前）の場合、修正後の `calculatePropertyStatus(X)` は `label.replace(/\s+/g, '') === '未報告林'` かつ `key === 'unreported'` を返さなければならない。
 
-**Validates: Requirements 2.1, 2.2, 2.3, 2.4, 2.5**
+**Validates: Requirements 2.1, 2.2, 2.3**
 
-Property 2: Preservation - 修正対象外カテゴリの動作維持
+Property 2: Preservation - 既存担当者・その他入力の動作保持
 
-_For any_ 修正対象外カテゴリ（`visitDayBefore`, `visitCompleted`, `todayCallAssigned`, `todayCallWithInfo`, `mailingPending`, `exclusive`, `general`, `visitOtherDecision`, `unvisitedOtherDecision`, `visitAssigned:xxx`）において、修正前後で `listSellers()` が返す売主リストが完全に同一であること。
+_For any_ 物件 X において `isBugCondition(X)` が false（`report_assignee` が `'林田'` 以外、または `report_date` が null/未来）の場合、修正後の `calculatePropertyStatus(X)` は修正前と同一の結果を返さなければならない。
 
-**Validates: Requirements 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8**
-
-Property 3: Preservation - 排他的カテゴリ所属
-
-_For any_ 売主において、`todayCallNotStarted`, `todayCall`, `unvaluated` の3カテゴリのうち、最大1つのカテゴリにのみ属すること（重複カウント・重複表示なし）。優先順位は `todayCallNotStarted > unvaluated > todayCall`。
-
-**Validates: Requirements 2.6**
+**Validates: Requirements 3.1, 3.2, 3.3, 3.4**
 
 ## Fix Implementation
 
-### 修正方針
+### Changes Required
 
-`SellerSidebarCountsUpdateService` のカウント計算を「正」として、`listSellers()` のフィルタリング条件をそれに合わせる。
+**File**: `frontend/frontend/src/utils/propertyListingStatusUtils.ts`
 
-**ファイル**: `backend/src/services/SellerService.supabase.ts`
+**Function**: `getAssigneeInitial`
 
-### 修正1: `todayCall` ケースへの未着手除外ロジック追加
+**Specific Changes**:
 
-**現状**: `unreachable_status`, `confidence_level`, `inquiry_date` をチェックせず、未着手売主が除外されない。
+1. **initialMapへのエントリ追加**: `initialMap` に `'林田': '林'` を追加する
+   - 追加位置: `'林': '林'` の直後（可読性のため隣接させる）
+   - 変更前:
+     ```typescript
+     const initialMap: Record<string, string> = {
+       '山本': 'Y',
+       '生野': '生',
+       '久': '久',
+       '裏': 'U',
+       '林': '林',
+       '国広': 'K',
+       '木村': 'R',
+       '角井': 'I',
+     };
+     ```
+   - 変更後:
+     ```typescript
+     const initialMap: Record<string, string> = {
+       '山本': 'Y',
+       '生野': '生',
+       '久': '久',
+       '裏': 'U',
+       '林': '林',
+       '林田': '林',
+       '国広': 'K',
+       '木村': 'R',
+       '角井': 'I',
+     };
+     ```
 
-**修正内容**: JSフィルタ内の `isNotStarted` 判定を追加し、未着手条件を満たす売主を除外する。
-
-```typescript
-// 修正前（todayCallIds フィルタ内）
-const hasInfo = ...;
-return !hasInfo;
-
-// 修正後
-const hasInfo = ...;
-if (hasInfo) return false;
-
-// 未着手条件を満たす売主は todayCallNotStarted に分類されるため除外
-const unreachable = s.unreachable_status || '';
-const confidence = s.confidence_level || '';
-const inquiryDate = s.inquiry_date || '';
-const isNotStarted = status === '追客中' &&
-  !unreachable &&
-  confidence !== 'ダブり' && confidence !== 'D' && confidence !== 'AI査定' &&
-  inquiryDate >= '2026-01-01';
-return !isNotStarted;
-```
-
-ただし、`todayCall` のクエリで `unreachable_status`, `confidence_level`, `inquiry_date` を SELECT に追加する必要がある。
-
-### 修正2: `todayCallNotStarted` の `exclusion_date` チェック削除
-
-**現状**: フィルタリングでは `exclusion_date` が空であることを追加条件としているが、カウント計算にはない。
-
-**修正内容**: カウント計算に合わせて `exclusion_date` チェックを削除する。
-
-```typescript
-// 修正前
-const isTodayCallNotStarted = (
-  status === '追客中' &&
-  nextCallDate && nextCallDate <= todayJST &&
-  !hasInfo &&
-  !unreachable &&
-  confidence !== 'ダブり' && confidence !== 'D' && confidence !== 'AI査定' &&
-  !exclusionDate &&  // ← 削除
-  inquiryDate >= '2026-01-01'
-);
-
-// 修正後
-const isTodayCallNotStarted = (
-  status === '追客中' &&
-  nextCallDate && nextCallDate <= todayJST &&
-  !hasInfo &&
-  !unreachable &&
-  confidence !== 'ダブり' && confidence !== 'D' && confidence !== 'AI査定' &&
-  inquiryDate >= '2026-01-01'
-);
-```
-
-### 修正3: `unvaluated` の `isTodayCallNotStarted` 判定の `exclusion_date` チェック削除
-
-**現状**: フィルタリングでは `!exclusionDate` を追加チェックしているが、カウント計算にはない。
-
-**修正内容**: カウント計算に合わせて `!exclusionDate` チェックを削除する。
-
-```typescript
-// 修正前
-const isTodayCallNotStarted = (
-  status === '追客中' &&
-  nextCallDate && nextCallDate <= todayJST &&
-  !hasInfo &&
-  !unreachable &&
-  confidence !== 'ダブり' && confidence !== 'D' && confidence !== 'AI査定' &&
-  !exclusionDate &&  // ← 削除
-  inquiryDate >= '2026-01-01'
-);
-
-// 修正後
-const isTodayCallNotStarted = (
-  status === '追客中' &&
-  nextCallDate && nextCallDate <= todayJST &&
-  !hasInfo &&
-  !unreachable &&
-  confidence !== 'ダブり' && confidence !== 'D' && confidence !== 'AI査定' &&
-  inquiryDate >= '2026-01-01'
-);
-```
+この1行の追加のみで修正完了。他のファイルへの変更は不要。
 
 ## Testing Strategy
 
 ### Validation Approach
 
-2フェーズアプローチ：まず未修正コードでバグを再現するテストを書き、次に修正後のコードで全条件が一致することを検証する。
+テスト戦略は2フェーズで構成する。まず未修正コードでバグを再現するテストを実行してバグを確認し、次に修正後のコードでバグが解消され既存動作が保持されることを検証する。
 
 ### Exploratory Bug Condition Checking
 
-**Goal**: 未修正コードでカウント計算とフィルタリングの条件差異を具体的に確認する。
+**Goal**: 修正前のコードでバグを再現し、根本原因分析を確認・反証する。
 
-**Test Plan**: 各差異を再現する売主データを用意し、カウント計算とフィルタリングの結果が異なることを確認する。
+**Test Plan**: `getAssigneeInitial('林田')` が `'林田'` を返すことを確認し、`calculatePropertyStatus` が `'未報告林田'` ラベルを生成することを確認する。未修正コードでこれらのテストが失敗（または期待通りのバグ動作を示す）することを観察する。
 
 **Test Cases**:
-1. **差異2の再現**: `status='追客中'`, `next_call_date=today`, `unreachable_status=''`, `confidence_level=''`, `inquiry_date='2026-02-01'`, コミュニケーション情報なし, 営担なし の売主 → カウント計算では `todayCallNotStarted` にカウントされ `todayCall` から除外されるが、フィルタリングでは `todayCall` に含まれる（不一致）
-2. **差異1の再現**: `status='追客中'`, `next_call_date=today`, `exclusion_date='2026-03-01'`, `inquiry_date='2026-02-01'`, コミュニケーション情報なし, 営担なし の売主 → カウント計算では `todayCallNotStarted` にカウントされるが、フィルタリングでは除外される（不一致）
-3. **差異3の再現**: `status='追客中'`, `inquiry_date='2026-02-01'`, `exclusion_date='2026-03-01'`, 査定額なし, 営担なし の売主 → カウント計算では `unvaluated` にカウントされるが、フィルタリングでは除外される（不一致）
+1. **林田イニシャル変換テスト**: `getAssigneeInitial('林田')` が `'林田'` を返すことを確認（未修正コードでのバグ動作）
+2. **未報告ラベル生成テスト**: `report_assignee='林田'`、`report_date=今日以前` の物件で `calculatePropertyStatus` が `'未報告林田'` を返すことを確認
+3. **サイドバーカウント不一致テスト**: `'林田'` 担当物件が `'未報告林'` キーではなく `'未報告林田'` キーでカウントされることを確認
 
 **Expected Counterexamples**:
-- `todayCall` フィルタが未着手売主を含んでしまう
-- `todayCallNotStarted` フィルタが `exclusion_date` ありの売主を除外してしまう
-- `unvaluated` フィルタが `exclusion_date` ありの売主を除外してしまう
+- `getAssigneeInitial('林田')` が `'林'` ではなく `'林田'` を返す
+- 原因: `initialMap` に `'林田'` エントリが存在しないためフォールバックが発動
 
 ### Fix Checking
 
-**Goal**: 修正後、カウント計算とフィルタリングが同一の売主集合を返すことを検証する。
+**Goal**: バグ条件が成立する全入力に対して、修正後の関数が期待動作を示すことを検証する。
 
 **Pseudocode:**
 ```
-FOR ALL seller WHERE isBugCondition(seller, category) DO
-  countResult := countCategory(seller, category)
-  filterResult := filterCategory(seller, category)
-  ASSERT countResult == filterResult
+FOR ALL X WHERE isBugCondition(X) DO
+  result := calculatePropertyStatus_fixed(X)
+  ASSERT result.key = 'unreported'
+    AND result.label.replace(/\s+/g, '') = '未報告林'
 END FOR
 ```
 
 ### Preservation Checking
 
-**Goal**: 修正対象外カテゴリのフィルタリング動作が変わらないことを検証する。
+**Goal**: バグ条件が成立しない全入力に対して、修正後の関数が修正前と同一の結果を返すことを検証する。
 
 **Pseudocode:**
 ```
-FOR ALL seller, category WHERE category NOT IN ['todayCall', 'todayCallNotStarted', 'unvaluated'] DO
-  ASSERT listSellers_original(category) == listSellers_fixed(category)
+FOR ALL X WHERE NOT isBugCondition(X) DO
+  ASSERT calculatePropertyStatus_original(X) = calculatePropertyStatus_fixed(X)
 END FOR
 ```
 
-**Testing Approach**: プロパティベーステストを推奨。多様な売主データを自動生成し、修正対象外カテゴリで結果が変わらないことを確認する。
+**Testing Approach**: プロパティベーステストを推奨する理由:
+- 多様な担当者名・日付の組み合わせを自動生成できる
+- 手動テストでは見落としがちなエッジケースを網羅できる
+- 既存担当者（山本、生野、久、裏、林、国広、木村、角井）全員の動作保持を強力に保証できる
 
 **Test Cases**:
-1. **visitDayBefore の保持**: 修正前後で同じ売主が返ることを確認
-2. **visitCompleted の保持**: 修正前後で同じ売主が返ることを確認
-3. **todayCallAssigned の保持**: 修正前後で同じ売主が返ることを確認
-4. **exclusive/general/visitOtherDecision/unvisitedOtherDecision の保持**: 修正前後で同じ売主が返ることを確認
+1. **既存担当者イニシャル保持テスト**: 既存8担当者それぞれで `getAssigneeInitial` が修正前後で同一結果を返すことを確認
+2. **null/空文字フォールバック保持テスト**: `getAssigneeInitial(null)` と `getAssigneeInitial('')` が `''` を返すことを確認
+3. **未知担当者フォールバック保持テスト**: `initialMap` に存在しない担当者名（`'林田'` 以外）がそのまま返ることを確認
+4. **他カテゴリカウント保持テスト**: 「未報告林」以外のサイドバーカテゴリのカウントが変化しないことを確認
 
 ### Unit Tests
 
-- `todayCall` フィルタが未着手売主を除外することを確認
-- `todayCallNotStarted` フィルタが `exclusion_date` ありの売主を含むことを確認（カウント計算と一致）
-- `unvaluated` フィルタが `exclusion_date` ありの売主を含むことを確認（カウント計算と一致）
-- 境界値テスト（`inquiry_date='2025-12-31'` vs `'2026-01-01'`）
+- `getAssigneeInitial('林田')` が `'林'` を返すことを確認
+- `getAssigneeInitial('林')` が引き続き `'林'` を返すことを確認（既存動作保持）
+- 既存8担当者全員のイニシャル変換が正しいことを確認
+- `report_assignee='林田'` の物件で `calculatePropertyStatus` が `key='unreported'`、`label='未報告 林'` を返すことを確認
 
 ### Property-Based Tests
 
-- ランダムな売主データを生成し、カウント計算とフィルタリングの結果が一致することを検証
-- ランダムな売主データを生成し、1人の売主が `todayCallNotStarted`, `todayCall`, `unvaluated` のうち最大1つにのみ属することを検証
-- 修正対象外カテゴリで、多様な売主データに対して修正前後の結果が同一であることを検証
+- ランダムな担当者名を生成し、`'林田'` 以外の場合は修正前後で同一結果を返すことを検証
+- ランダムな物件データを生成し、`isBugCondition` が false の場合は修正前後で同一ステータスを返すことを検証
+- 既存担当者名の全組み合わせで `calculatePropertyStatus` の結果が変化しないことを検証
 
 ### Integration Tests
 
-- 実際のDBデータを使用して、各カテゴリのカウントとリスト件数が一致することを確認
-- 売主データを更新後、カウントとリスト件数が引き続き一致することを確認
+- `report_assignee='林田'` の物件を含むリストで `calculateStatusCounts` を実行し、`'未報告林'` キーのカウントが正しいことを確認
+- サイドバーの `'未報告林'` をクリックした際のフィルタリングで、`'林田'` 担当物件が正しく表示されることを確認
+- `'林田'` 担当物件と `'林'` 担当物件が混在する場合に、両者が `'未報告林'` として正しく集計されることを確認

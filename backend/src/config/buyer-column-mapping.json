@@ -183,6 +183,7 @@
   },
   "databaseToSpreadsheet": {
     "buyer_number": "買主番号",
+    "property_number": "物件番号",
     "viewing_date": "●内覧日(最新）",
     "viewing_time": "●時間",
     "notification_sender": "通知送信者",
@@ -261,5 +262,7 @@
     "price": "number",
     "viewing_time": "time"
   },
-  "requiredFields": ["buyer_number"]
+  "requiredFields": [
+    "buyer_number"
+  ]
 }
