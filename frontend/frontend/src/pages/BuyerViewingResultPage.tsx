@@ -525,9 +525,14 @@ export default function BuyerViewingResultPage() {
     
     let assignedEmail = '';
     if (followUpAssignee) {
-      // タスク6: 「業者」の場合は従業員マスタ検索をスキップ（要件1.4, 1.5）
+      // 「業者」の場合はカレンダー送信をスキップ
       if (followUpAssignee === '業者') {
-        assignedEmail = 'tenant@ifoo-oita.com';
+        setSnackbar({
+          open: true,
+          message: '後続担当が「業者」のため、カレンダー送信をスキップしました',
+          severity: 'warning',
+        });
+        return;
       } else {
         // イニシャルまたは名前で従業員マスタを検索
         const matchedEmployees = employees.filter(e => {
@@ -581,11 +586,6 @@ export default function BuyerViewingResultPage() {
       params.append('dates', `${startDateStr}/${endDateStr}`);
     }
 
-    // 後続担当をゲストとして招待（addパラメータを使用）
-    if (assignedEmail) {
-      params.append('add', assignedEmail);
-    }
-    
     // 後続担当のカレンダーに直接作成（srcパラメータを使用）
     const srcParam = assignedEmail ? `&src=${encodeURIComponent(assignedEmail)}` : '';
     
