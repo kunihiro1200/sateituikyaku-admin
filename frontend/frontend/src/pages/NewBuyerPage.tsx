@@ -18,8 +18,9 @@ import {
   Chip,
   OutlinedInput,
   Checkbox,
+  Link,
 } from '@mui/material';
-import { ArrowBack as ArrowBackIcon, OpenInNew } from '@mui/icons-material';
+import { ArrowBack as ArrowBackIcon, OpenInNew, Launch as LaunchIcon } from '@mui/icons-material';
 import api from '../services/api';
 import PropertyInfoCard from '../components/PropertyInfoCard';
 import { getPurchaseStatusText } from '../utils/purchaseStatusUtils';
@@ -825,6 +826,15 @@ export default function NewBuyerPage() {
                       ))}
                     </Select>
                   </FormControl>
+                  <Link
+                    href="https://pinrich.com/management/hankyo"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    sx={{ display: 'flex', alignItems: 'center', gap: 0.5, fontSize: '0.875rem', mt: 0.5 }}
+                  >
+                    Pinrichリンク
+                    <LaunchIcon fontSize="small" />
+                  </Link>
                 </Grid>
 
                 {/* inquiry_email_phone: inquiry_sourceに「電話」が含まれる場合は非表示 */}
