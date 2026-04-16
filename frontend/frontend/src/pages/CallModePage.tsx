@@ -3179,6 +3179,7 @@ HP：https://ifoo-oita.com/
           type: 'sms',
           content: `【${template.label}】を送信`,
           result: 'sent',
+          metadata: { body: messageContent },
         });
       } catch (activityErr) {
         console.error('活動履歴の記録に失敗しました:', activityErr);
