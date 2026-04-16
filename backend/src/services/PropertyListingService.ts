@@ -242,7 +242,15 @@ export class PropertyListingService {
             const rd = new Date(reportDate);
             rd.setHours(0, 0, 0, 0);
             if (rd <= today) {
-              updates.sidebar_status = reportAssignee ? `未報告 ${reportAssignee}` : '未報告';
+              // 担当者名をイニシャルに変換（フロントエンドのgetAssigneeInitialと同じマッピング）
+              const initialMap: Record<string, string> = {
+                '山本': 'Y', '生野': '生', '久': '久', '裏': 'U',
+                '林': '林', '林田': '林', '国広': 'K', '木村': 'R', '角井': 'I',
+              };
+              const assigneeInitial = reportAssignee
+                ? (initialMap[reportAssignee] || reportAssignee)
+                : null;
+              updates.sidebar_status = assigneeInitial ? `未報告${assigneeInitial}` : '未報告';
             }
           }
         }

@@ -166,7 +166,8 @@ export default function PropertySidebarStatus({
       }
 
       // 動的に判定が必要なステータス（DBに保存されない、または常に再計算が必要）
-      if (workTaskMap) {
+      // workTaskMapの有無に関わらず、未報告・要値下げは常にcalculatePropertyStatusで判定
+      {
         const computed = calculatePropertyStatus(listing as any, workTaskMap);
         
         // 「要値下げ」は常にcalculatePropertyStatusで判定（DBに保存されないため）
@@ -176,6 +177,7 @@ export default function PropertySidebarStatus({
         }
         
         // 「未報告」も常にcalculatePropertyStatusで判定（報告日が動的に変更されるため）
+        // sidebar_statusの古い値に依存せず、report_dateから動的に判定する
         if (computed.key === 'unreported') {
           // スペースを除去して統一（「未報告 林」→「未報告林」）
           const label = computed.label.replace(/\s+/g, '');
@@ -184,7 +186,7 @@ export default function PropertySidebarStatus({
         }
 
         // 「本日公開予定」も常にcalculatePropertyStatusで判定（公開予定日が動的に変わるため）
-        if (computed.key === 'today_publish') {
+        if (workTaskMap && computed.key === 'today_publish') {
           counts['本日公開予定'] = (counts['本日公開予定'] || 0) + 1;
           return;
         }
