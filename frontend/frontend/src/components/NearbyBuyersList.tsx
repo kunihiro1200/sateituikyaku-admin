@@ -543,7 +543,7 @@ const NearbyBuyersList = ({ sellerId, propertyNumber, onCountChange }: NearbyBuy
                     </Box>
                   </TableCell>
                   <TableCell>
-                    {buyer.inquiry_price ? `${buyer.inquiry_price.toLocaleString()}万円` : '-'}
+                    {buyer.inquiry_price ? `${(buyer.inquiry_price / 10000).toLocaleString()}万円` : '-'}
                   </TableCell>
                   <TableCell>
                     <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', maxWidth: 300 }}>
