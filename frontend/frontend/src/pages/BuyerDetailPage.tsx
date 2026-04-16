@@ -166,13 +166,6 @@ const SAVE_BUTTON_FIELDS = new Set([
   'broker_inquiry',
 ]);
 
-// 他社物件情報セクションの表示判定ヘルパー関数
-const hasOtherCompanyPropertyData = (buyer: Buyer | null): boolean => {
-  if (!buyer) return false;
-  // 「他社物件」フィールドのみをチェック（「建物名/価格」は条件に含めない）
-  const hasOtherProperty = !!(buyer.other_company_property && buyer.other_company_property.trim() !== '');
-  return hasOtherProperty;
-};
 
 const BUYER_FIELD_SECTIONS = [
   {
@@ -505,10 +498,7 @@ export default function BuyerDetailPage() {
   const [manualPropertyNumberError, setManualPropertyNumberError] = useState('');
   const [isSavingPropertyNumber, setIsSavingPropertyNumber] = useState(false);
 
-  // 他社物件情報セクション用
-  const [otherCompanyPropertyInfo, setOtherCompanyPropertyInfo] = useState('');
-  const [isSavingOtherCompanyInfo, setIsSavingOtherCompanyInfo] = useState(false);
-  const [otherCompanyInfoSaveStatus, setOtherCompanyInfoSaveStatus] = useState<'idle' | 'success' | 'error'>('idle');
+
 
 
 
@@ -591,8 +581,6 @@ export default function BuyerDetailPage() {
       initialInquiryHearingRef.current = res.data.inquiry_hearing || '';
       // 担当への伝言/質問事項の初期値をセット
       setMessageToAssigneeEditValue(res.data.message_to_assignee || '');
-      // 他社物件情報の初期値をセット
-      setOtherCompanyPropertyInfo(res.data.other_company_property_info || '');
       // 初回表示時から未入力の必須フィールドをハイライト
       const initialMissing: string[] = [];
       if (!res.data.initial_assignee || !String(res.data.initial_assignee).trim()) {
@@ -850,22 +838,6 @@ export default function BuyerDetailPage() {
     }
   };
 
-  // 他社物件情報の保存ハンドラー
-  const handleSaveOtherCompanyPropertyInfo = async () => {
-    setIsSavingOtherCompanyInfo(true);
-    setOtherCompanyInfoSaveStatus('idle');
-    try {
-      await api.put(`/api/buyers/${buyer_number}?sync=false`, {
-        other_company_property_info: otherCompanyPropertyInfo,
-      });
-      setOtherCompanyInfoSaveStatus('success');
-      setBuyer(prev => prev ? { ...prev, other_company_property_info: otherCompanyPropertyInfo } : prev);
-    } catch {
-      setOtherCompanyInfoSaveStatus('error');
-    } finally {
-      setIsSavingOtherCompanyInfo(false);
-    }
-  };
 
   const fetchActivities = async () => {
     try {
@@ -1880,46 +1852,12 @@ TEL：097-533-2022`;
                   </div>
                 )}
 
-                {/* 他社物件情報セクション */}
-                {!buyer?.property_number && (
-                  <div style={{ padding: '16px', border: '1px solid #e0e0e0', borderRadius: '8px', marginTop: '16px' }}>
-                    <h4 style={{ margin: '0 0 8px 0', fontSize: '14px', fontWeight: 'bold', color: '#333' }}>他社物件情報</h4>
-                    <textarea
-                      value={otherCompanyPropertyInfo}
-                      onChange={e => setOtherCompanyPropertyInfo(e.target.value)}
-                      placeholder="他社物件の情報を入力してください"
-                      rows={4}
-                      style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '14px', resize: 'vertical', boxSizing: 'border-box' }}
-                    />
-                    {otherCompanyInfoSaveStatus === 'success' && (
-                      <p style={{ color: '#388e3c', fontSize: '12px', margin: '4px 0 0 0' }}>保存しました</p>
-                    )}
-                    {otherCompanyInfoSaveStatus === 'error' && (
-                      <p style={{ color: '#d32f2f', fontSize: '12px', margin: '4px 0 0 0' }}>保存に失敗しました。再度お試しください。</p>
-                    )}
-                    <button
-                      onClick={handleSaveOtherCompanyPropertyInfo}
-                      disabled={isSavingOtherCompanyInfo}
-                      style={{
-                        marginTop: '8px',
-                        padding: '8px 16px',
-                        backgroundColor: isSavingOtherCompanyInfo ? '#ccc' : '#1976d2',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '4px',
-                        cursor: isSavingOtherCompanyInfo ? 'not-allowed' : 'pointer',
-                        fontSize: '14px',
-                      }}
-                    >
-                      {isSavingOtherCompanyInfo ? '保存中...' : '保存'}
-                    </button>
-                  </div>
-                )}
+
               </>
             )}
 
-            {/* 他社物件情報セクション（既存：other_company_property等のデータがある場合） */}
-            {hasOtherCompanyPropertyData(buyer) && (
+            {/* 他社物件情報セクション */}
+            {!buyer?.property_number && (
               <Paper
                 sx={{
                   p: 3,

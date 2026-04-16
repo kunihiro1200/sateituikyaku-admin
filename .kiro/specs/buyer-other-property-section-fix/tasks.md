@@ -1,0 +1,82 @@
+# 実装計画
+
+- [x] 1. バグ条件の探索テストを作成する
+  - **Property 1: Bug Condition** - property_number未設定時の簡易UI表示バグ
+  - **重要**: このテストは修正前のコードで必ず**失敗**すること — 失敗がバグの存在を証明する
+  - **修正前にテストを実行してもコードを修正しないこと**
+  - **目的**: バグが存在することを示す反例を発見する
+  - **スコープ限定PBTアプローチ**: 決定論的バグのため、具体的な失敗ケースにスコープを絞る
+  - テスト対象: `BuyerDetailPage` コンポーネントを `property_number` が null の買主データでレンダリング
+  - バグ条件（design.md の isBugCondition より）:
+    - `property_number` が null または空文字の場合
+    - UIに `other_company_property` テキストエリアが表示されない
+    - UIに `building_name_price` テキストエリアが表示されない
+    - UIに説明文「こちらは詳細な住所のみにしてください...」が表示されない
+    - `handleSaveOtherCompanyPropertyInfo` が `sync=false` でAPIを呼び出す
+  - テストアサーション（design.md の expectedBehavior より）:
+    - 「他社物件」テキストエリアが表示されること
+    - 「建物名/価格」テキストエリアが表示されること
+    - 説明文が表示されること
+    - 保存時に `sync=true` でAPIが呼ばれること
+  - 修正前のコードでテストを実行する
+  - **期待される結果**: テストが**失敗**する（これが正しい — バグの存在を証明する）
+  - 発見した反例を記録して根本原因を理解する（例: 「property_number=nullの場合、other_company_propertyテキストエリアが見つからない」）
+  - テストを作成・実行し、失敗を記録したらタスク完了とする
+  - _Requirements: 1.1, 1.2, 1.3, 1.4_
+
+- [x] 2. 保全プロパティテストを作成する（修正前に実施）
+  - **Property 2: Preservation** - 他セクションの動作保持
+  - **重要**: 観察優先メソドロジーに従うこと
+  - 修正前のコードで、バグ条件が成立しない入力（`property_number` が設定済みの買主）の動作を観察する
+  - 観察内容:
+    - `property_number` が設定済みの買主で他フィールドを保存した際、`sync=true` でAPIが呼ばれること
+    - `other_company_property` が空の状態で他フィールドを保存した際、正常に完了すること
+    - `building_name_price` が空の状態で他フィールドを保存した際、正常に完了すること
+    - 他のセクション（基本情報、希望条件など）のレンダリングが変更されないこと
+  - 観察した動作パターンをプロパティベーステストとして記述する（design.md の Preservation Requirements より）
+  - 多様な買主データ（各フィールドの有無・値の組み合わせ）を生成してテスト
+  - 修正前のコードでテストを実行する
+  - **期待される結果**: テストが**成功**する（これが正しい — 保全すべきベースライン動作を確認する）
+  - テストを作成・実行し、成功を確認したらタスク完了とする
+  - _Requirements: 3.1, 3.2, 3.3, 3.4_
+
+- [x] 3. 「他社物件情報」セクションUIバグの修正
+
+  - [x] 3.1 修正を実装する
+    - `frontend/frontend/src/pages/BuyerDetailPage.tsx` を編集する
+    - **削除1**: `property_number` 未設定時に表示される `other_company_property_info` 単一フィールドの簡易UIブロック（行1883〜1919付近）を削除する
+    - **変更2**: 「他社物件情報」セクションの表示条件を変更する
+      - 現在: `{hasOtherCompanyPropertyData(buyer) && (...)}`
+      - 修正後: `{!buyer?.property_number && (...)}` または常時表示
+    - **削除3**: 不要なstateを削除する
+      - `otherCompanyPropertyInfo` state
+      - `isSavingOtherCompanyInfo` state
+      - `otherCompanyInfoSaveStatus` state
+      - `handleSaveOtherCompanyPropertyInfo` 関数
+    - **削除4**: `fetchBuyer` 内の `setOtherCompanyPropertyInfo(res.data.other_company_property_info || '')` を削除する
+    - **注意**: `other_company_property` と `building_name_price` フィールドは既に `handleInlineFieldSave`（`sync=true`）を使用しているため、スプレッドシート同期は自動的に修正される
+    - **注意**: 日本語を含むファイルのため、Pythonスクリプトを使用してUTF-8で編集すること（file-encoding-protection.mdのルールに従う）
+    - _Bug_Condition: isBugCondition(input) where input.buyerPropertyNumber IS NULL OR '' AND currentUI shows only 'other_company_property_info' textarea_
+    - _Expected_Behavior: 2つのテキストエリア（other_company_property, building_name_price）と説明文が表示され、handleInlineFieldSave（sync=true）で保存される_
+    - _Preservation: 他社物件情報セクション以外の全フィールドの保存・同期処理、空フィールド保存時の動作、他セクションのレイアウトは変更しない_
+    - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5_
+
+  - [x] 3.2 バグ条件の探索テストが成功することを確認する
+    - **Property 1: Expected Behavior** - property_number未設定時の2枠UI表示と即時同期
+    - **重要**: タスク1で作成した**同じテスト**を再実行する — 新しいテストを書かないこと
+    - タスク1のテストは期待される動作をエンコードしている
+    - このテストが成功すれば、期待される動作が満たされていることを確認できる
+    - タスク1のバグ条件探索テストを実行する
+    - **期待される結果**: テストが**成功**する（バグが修正されたことを確認する）
+    - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5（design.md の Expected Behavior Properties より）_
+
+  - [x] 3.3 保全テストが引き続き成功することを確認する
+    - **Property 2: Preservation** - 他セクションの動作保持
+    - **重要**: タスク2で作成した**同じテスト**を再実行する — 新しいテストを書かないこと
+    - タスク2の保全プロパティテストを実行する
+    - **期待される結果**: テストが**成功**する（リグレッションがないことを確認する）
+    - 修正後も全テストが成功することを確認する
+
+- [-] 4. チェックポイント — 全テストの成功を確認する
+  - 全テスト（探索テスト・保全テスト）が成功することを確認する
+  - 疑問点があればユーザーに確認する
