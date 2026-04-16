@@ -70,6 +70,7 @@ import RichTextCommentEditor, { RichTextCommentEditorHandle } from '../component
 import { ValidationWarningDialog } from '../components/ValidationWarningDialog';
 import { formatDateTime } from '../utils/dateFormat';
 import { getDisplayName } from '../utils/employeeUtils';
+import { normalizeEmail } from '../utils/stringUtils';
 
 interface Buyer {
   [key: string]: any;
@@ -3062,9 +3063,13 @@ TEL：097-533-2022`;
 
                     // その他のフィールド
                     const handleFieldSave = async (newValue: any) => {
+                      // メールアドレスは全角→半角に正規化
+                      const normalizedValue = field.key === 'email' && typeof newValue === 'string'
+                        ? normalizeEmail(newValue)
+                        : newValue;
                       // UIを即座に更新（楽観的更新）してからAPIをバックグラウンドで保存
-                      setBuyer((prev: any) => prev ? { ...prev, [field.key]: newValue } : prev);
-                      handleInlineFieldSave(field.key, newValue).catch(console.error);
+                      setBuyer((prev: any) => prev ? { ...prev, [field.key]: normalizedValue } : prev);
+                      handleInlineFieldSave(field.key, normalizedValue).catch(console.error);
                     };
 
                     // inquiry_hearingフィールドはRichTextEditorで表示

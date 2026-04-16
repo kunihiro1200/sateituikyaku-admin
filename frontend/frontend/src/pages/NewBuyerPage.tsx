@@ -39,6 +39,7 @@ import {
   BUILDING_AGE_OPTIONS,
   FLOOR_PLAN_OPTIONS,
 } from '../utils/buyerDesiredConditionsOptions';
+import { normalizeEmail } from '../utils/stringUtils';
 
 export default function NewBuyerPage() {
   const navigate = useNavigate();
@@ -581,7 +582,7 @@ export default function NewBuyerPage() {
                     label="メールアドレス"
                     type="email"
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    onChange={(e) => setEmail(normalizeEmail(e.target.value))}
                   />
                 </Grid>
 
