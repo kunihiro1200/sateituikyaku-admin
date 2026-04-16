@@ -1100,9 +1100,10 @@ export default function NewBuyerPage() {
                   <TextField
                     fullWidth
                     label="内覧時間"
+                    type="time"
                     value={viewingTime}
                     onChange={(e) => setViewingTime(e.target.value)}
-                    placeholder="例: 14:00"
+                    InputLabelProps={{ shrink: true }}
                   />
                 </Grid>
 
