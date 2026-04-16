@@ -810,6 +810,28 @@ export class BuyerService {
     // 手動更新時刻を記録（スプレッドシート同期による上書きを防ぐため）
     allowedData.db_updated_at = new Date().toISOString();
 
+    // property_number が含まれ、かつ非null・非空文字の場合、property_listingsから物件情報を取得して同期
+    if (allowedData.property_number != null && allowedData.property_number !== '') {
+      try {
+        const { data: propertyListing, error: propertyError } = await this.supabase
+          .from('property_listings')
+          .select('address, display_address, price')
+          .eq('property_number', allowedData.property_number)
+          .maybeSingle();
+
+        if (!propertyError && propertyListing) {
+          // 取得した物件情報をallowedDataに追加してスプレッドシート同期に乗せる
+          allowedData.property_address = propertyListing.address ?? null;
+          allowedData.display_address = propertyListing.display_address ?? null;
+          allowedData.price = propertyListing.price ?? null;
+        }
+        // property_listingsに対応物件が存在しない場合はスキップ（property_numberのみ保存）
+      } catch (propertyFetchError: any) {
+        console.error('Failed to fetch property info from property_listings:', propertyFetchError);
+        // エラーが発生しても処理を継続（property_numberのみ保存）
+      }
+    }
+
     // 競合チェック（forceオプションがない場合、かつ前回同期済みの場合のみ）
     // last_synced_at がない場合は、まだ一度も同期されていないため競合チェックをスキップ
     // 注意: 競合チェックは、スプレッドシートが他のユーザーによって変更された場合のみ検出する
