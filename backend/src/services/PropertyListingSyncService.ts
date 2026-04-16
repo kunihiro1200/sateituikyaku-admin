@@ -458,6 +458,10 @@ export class PropertyListingSyncService {
       dbData.map(p => [p.property_number, p])
     );
 
+    // 3.5. work_tasksテーブルから公開予定日データを取得してgyomuListData形式に変換
+    // calculateSidebarStatus()の条件⑤（本日公開予定）と条件⑥（レインズ登録＋SUUMO登録）に必要
+    const gyomuListData = await this.fetchGyomuListDataFromWorkTasks();
+
     // 4. Compare and detect changes
     const updates: PropertyListingUpdate[] = [];
 
@@ -475,7 +479,7 @@ export class PropertyListingSyncService {
       const changes = this.detectChanges(row, dbProperty);
 
       // sidebar_statusの再計算結果が現在のDB値と異なる場合も変更として検出
-      const newSidebarStatus = this.calculateSidebarStatus(row);
+      const newSidebarStatus = this.calculateSidebarStatus(row, gyomuListData);
       const currentSidebarStatus = dbProperty.sidebar_status || '';
       if (newSidebarStatus !== currentSidebarStatus) {
         changes['sidebar_status'] = {
@@ -600,6 +604,11 @@ export class PropertyListingSyncService {
         // エラーでも続行（業務リスト取得は必須ではない）
       }
 
+      // 1.7. work_tasksテーブルから公開予定日データを取得（sidebar_status計算用）
+      // calculateSidebarStatus()の条件⑤（本日公開予定）と条件⑥（レインズ登録＋SUUMO登録）に必要
+      const gyomuListData = await this.fetchGyomuListDataFromWorkTasks();
+      console.log(`📋 [PropertyListingSyncService] gyomuListData loaded: ${gyomuListData.length} entries`);
+
       // 2. Process in batches
       const BATCH_SIZE = 10;
       const results: UpdateResult[] = [];
@@ -649,7 +658,8 @@ export class PropertyListingSyncService {
               }
 
               // サイドバーステータスを計算して更新
-              const sidebarStatus = this.calculateSidebarStatus(update.spreadsheet_data);
+              // gyomuListDataを渡して公開予定日を正しく取得する
+              const sidebarStatus = this.calculateSidebarStatus(update.spreadsheet_data, gyomuListData);
               changedFieldsOnly.sidebar_status = sidebarStatus;
 
               // 業務リストから格納先URLを取得（storage_locationが空の場合）
@@ -1080,7 +1090,9 @@ export class PropertyListingSyncService {
       }
 
       // 4. サイドバーステータスを計算
-      propertyData.sidebar_status = this.calculateSidebarStatus(spreadsheetRow);
+      // work_tasksテーブルから公開予定日データを取得してgyomuListData形式に変換
+      const gyomuListDataForNew = await this.fetchGyomuListDataFromWorkTasks();
+      propertyData.sidebar_status = this.calculateSidebarStatus(spreadsheetRow, gyomuListDataForNew);
 
       // 5. Add timestamps
       propertyData.created_at = new Date().toISOString();
@@ -1231,6 +1243,33 @@ export class PropertyListingSyncService {
    * @param row 物件リストスプレッドシートの1行
    * @param gyomuListData 業務依頼シートの全データ
    */
+  /**
+   * work_tasksテーブルから公開予定日データを取得してgyomuListData形式に変換
+   * calculateSidebarStatus()の条件⑤（本日公開予定）と条件⑥（レインズ登録＋SUUMO登録）で使用
+   */
+  private async fetchGyomuListDataFromWorkTasks(): Promise<any[]> {
+    try {
+      const { data, error } = await this.supabase
+        .from('work_tasks')
+        .select('property_number, publish_scheduled_date');
+
+      if (error) {
+        console.warn('[PropertyListingSyncService] Failed to fetch work_tasks for gyomuListData:', error.message);
+        return [];
+      }
+
+      // calculateSidebarStatus()が期待するgyomuListData形式に変換
+      // lookupGyomuList(propertyNumber, gyomuListData, '公開予定日') で参照される
+      return (data || []).map((row: any) => ({
+        '物件番号': row.property_number,
+        '公開予定日': row.publish_scheduled_date,
+      }));
+    } catch (error: any) {
+      console.warn('[PropertyListingSyncService] Error fetching work_tasks for gyomuListData:', error.message);
+      return [];
+    }
+  }
+
   calculateSidebarStatus(row: any, gyomuListData: any[] = []): string {
     const propertyNumber = String(row['物件番号'] || '');
     const atbbStatus = String(row['atbb成約済み/非公開'] || '');
