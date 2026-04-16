@@ -321,10 +321,22 @@ export class BuyerColumnMapper {
   private parseNumber(value: any): number | null {
     if (!value) return null;
     
-    const str = String(value).replace(/[,，円￥\s]/g, '').trim();
+    const str = String(value).trim();
     if (!str) return null;
 
-    const num = parseFloat(str);
+    // 「2380万円」「2380万」のような万円表示を円単位に変換
+    const manYenMatch = str.match(/^([\d,，.]+)万円?$/);
+    if (manYenMatch) {
+      const manValue = parseFloat(manYenMatch[1].replace(/[,，]/g, ''));
+      if (!isNaN(manValue)) {
+        return Math.round(manValue * 10000);
+      }
+    }
+
+    const cleaned = str.replace(/[,，円￥\s万]/g, '').trim();
+    if (!cleaned) return null;
+
+    const num = parseFloat(cleaned);
     return isNaN(num) ? null : num;
   }
 
