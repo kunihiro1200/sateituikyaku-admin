@@ -521,7 +521,7 @@ export default function PropertyListingDetailPage() {
 
   const handleSaveHeader = async () => {
     if (!propertyNumber) return;
-    if (Object.keys(editedData).length === 0 || !('price' in editedData)) {
+    if (Object.keys(editedData).length === 0) {
       throw new Error('no_changes');
     }
 
@@ -573,7 +573,7 @@ export default function PropertyListingDetailPage() {
 
   const handleSaveBasicInfo = async () => {
     if (!propertyNumber) return;
-    if (Object.keys(editedData).length === 0 || !('price' in editedData)) {
+    if (Object.keys(editedData).length === 0) {
       throw new Error('no_changes');
     }
     try {
@@ -597,7 +597,7 @@ export default function PropertyListingDetailPage() {
 
   const handleSavePropertyDetails = async () => {
     if (!propertyNumber) return;
-    if (Object.keys(editedData).length === 0 || !('price' in editedData)) {
+    if (Object.keys(editedData).length === 0) {
       throw new Error('no_changes');
     }
     try {
@@ -637,7 +637,7 @@ export default function PropertyListingDetailPage() {
 
   const handleSaveFrequentlyAsked = async () => {
     if (!propertyNumber) return;
-    if (Object.keys(editedData).length === 0 || !('price' in editedData)) {
+    if (Object.keys(editedData).length === 0) {
       throw new Error('no_changes');
     }
     try {
@@ -666,7 +666,7 @@ export default function PropertyListingDetailPage() {
 
   const handleSaveViewingInfo = async () => {
     if (!propertyNumber) return;
-    if (Object.keys(editedData).length === 0 || !('price' in editedData)) {
+    if (Object.keys(editedData).length === 0) {
       throw new Error('no_changes');
     }
     try {
@@ -695,7 +695,7 @@ export default function PropertyListingDetailPage() {
 
   const handleSaveSellerBuyer = async () => {
     if (!propertyNumber) return;
-    if (Object.keys(editedData).length === 0 || !('price' in editedData)) {
+    if (Object.keys(editedData).length === 0) {
       throw new Error('no_changes');
     }
     try {
@@ -771,7 +771,7 @@ export default function PropertyListingDetailPage() {
 
   const handleSaveOffer = async () => {
     if (!propertyNumber) return;
-    if (Object.keys(editedData).length === 0 || !('price' in editedData)) {
+    if (Object.keys(editedData).length === 0) {
       throw new Error('no_changes');
     }
 
