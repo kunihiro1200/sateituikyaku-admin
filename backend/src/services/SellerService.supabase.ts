@@ -302,6 +302,7 @@ export class SellerService extends BaseRepository {
       // seller-spreadsheet-column-mapping.md に従ってデータを書き込む
       // B列: seller_number, C列: name, D列: address, E列: phone_number, F列: email
       await sellerListClient.appendRow({
+        // 既存フィールド（変更なし）
         '売主番号': sellerNumber || '',
         '名前(漢字のみ）': data.name || '',
         '依頼者住所(物件所在と異なる場合）': data.address || '',
@@ -311,6 +312,23 @@ export class SellerService extends BaseRepository {
         '種別': data.property?.propertyType || '',
         '反響日付': (data.inquiryDate instanceof Date ? data.inquiryDate.toISOString().split('T')[0] : data.inquiryDate) || '',
         'サイト': data.inquirySource || '',
+        // 追加フィールド
+        '次電日': (data as any).nextCallDate || '',
+        '訪問日 \nY/M/D': (data as any).visitDate || '',
+        '訪問時間': (data as any).visitTime || '',
+        '営担': (data as any).visitAssignee || '',
+        '訪問メモ': (data as any).visitNotes || '',
+        '確度': (data as any).confidence || (data as any).confidenceLevel || '',
+        '状況（当社）': (data as any).status || '',
+        'コメント': (data as any).comments || '',
+        '査定額1': (data as any).valuationAmount1 ? String((data as any).valuationAmount1) : '',
+        '査定額2': (data as any).valuationAmount2 ? String((data as any).valuationAmount2) : '',
+        '査定額3': (data as any).valuationAmount3 ? String((data as any).valuationAmount3) : '',
+        '査定方法': (data as any).valuationMethod || '',
+        '査定担当': (data as any).valuationAssignee || '',
+        '連絡方法': (data as any).contactMethod || '',
+        '連絡取りやすい日、時間帯': (data as any).preferredContactTime || '',
+        '1番電話': (data as any).assignedTo || '',
       });
       console.log(`✅ 売主リストスプレッドシートに追加: ${sellerNumber}`);
     } catch (err) {
