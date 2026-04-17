@@ -8,6 +8,7 @@ import { GoogleSheetsClient } from './GoogleSheetsClient';
 import { PropertyListingColumnMapper } from './PropertyListingColumnMapper';
 import { PropertyListingSyncQueue } from './PropertyListingSyncQueue';
 import { PropertyListingSpreadsheetSync } from './PropertyListingSpreadsheetSync';
+import { PropertyListingSyncService } from './PropertyListingSyncService';
 
 export class PropertyListingService {
   private supabase;
@@ -256,6 +257,43 @@ export class PropertyListingService {
         }
       } catch (e) {
         // sidebar_status 再計算失敗は無視
+      }
+    }
+
+    // suumo_url が更新される場合（かつ空でない場合）、sidebar_status を再計算
+    if ('suumo_url' in updates && updates.suumo_url && String(updates.suumo_url).trim() !== '') {
+      try {
+        const current = await this.getByPropertyNumber(propertyNumber);
+        if (current) {
+          // work_tasks から gyomuListData を取得
+          const syncService = new PropertyListingSyncService();
+          const gyomuListData = await syncService.fetchGyomuListDataFromWorkTasks();
+
+          // DB形式 → calculateSidebarStatus() が期待するスプレッドシート行形式に変換
+          const row: Record<string, any> = {
+            '物件番号': current.property_number ?? '',
+            'atbb成約済み/非公開': current.atbb_status ?? '',
+            '報告日': current.report_date ?? null,
+            '報告担当_override': current.report_assignee ?? null,
+            '報告担当': current.report_assignee ?? null,
+            '確認': current.confirmation ?? null,
+            '一般媒介非公開（仮）': current.general_mediation_private ?? null,
+            '１社掲載': current.single_listing ?? null,
+            // suumo_url は更新後の値を使用
+            'Suumo URL': updates.suumo_url,
+            'Suumo登録': current.suumo_registered ?? null,
+            '買付': current.offer_status ?? null,
+            '担当名（営業）': current.sales_assignee ?? null,
+          };
+
+          // sidebar_status を再計算
+          const newSidebarStatus = syncService.calculateSidebarStatus(row, gyomuListData);
+          updates.sidebar_status = newSidebarStatus;
+          console.log(`[PropertyListingService] Recalculated sidebar_status for ${propertyNumber}: ${newSidebarStatus}`);
+        }
+      } catch (e) {
+        // sidebar_status 再計算失敗は無視（既存パターンと同様）
+        console.warn(`[PropertyListingService] Failed to recalculate sidebar_status for suumo_url update:`, e);
       }
     }
 

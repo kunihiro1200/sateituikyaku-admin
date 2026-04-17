@@ -1247,7 +1247,7 @@ export class PropertyListingSyncService {
    * work_tasksテーブルから公開予定日データを取得してgyomuListData形式に変換
    * calculateSidebarStatus()の条件⑤（本日公開予定）と条件⑥（レインズ登録＋SUUMO登録）で使用
    */
-  private async fetchGyomuListDataFromWorkTasks(): Promise<any[]> {
+  async fetchGyomuListDataFromWorkTasks(): Promise<any[]> {
     try {
       const { data, error } = await this.supabase
         .from('work_tasks')
