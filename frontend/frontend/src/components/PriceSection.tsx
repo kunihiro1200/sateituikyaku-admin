@@ -98,8 +98,11 @@ export default function PriceSection({
       const propertyUrl = `${window.location.origin}/property-listings/${propertyNumber}`;
 
       const imageUrlLine = selectedImageUrl ? `\n📷 ${selectedImageUrl}` : '';
+      const fullText = `${chatMessageBody}${imageUrlLine}`;
+      // Google Chat APIの文字数制限は4096文字
+      const truncatedText = fullText.length > 4000 ? fullText.substring(0, 4000) + '...' : fullText;
       const message = {
-        text: `${chatMessageBody}${imageUrlLine}`
+        text: truncatedText
       };
 
       const response = await fetch(webhookUrl, {
@@ -345,7 +348,10 @@ export default function PriceSection({
         onClose={() => setImageSelectorOpen(false)}
         onConfirm={(images) => {
           if (images.length > 0) {
-            setSelectedImageUrl(images[0].previewUrl || images[0].url || '');
+            // url（Google Drive webViewLink等）を優先、なければpreviewUrl（ただし短いもののみ）
+            const img = images[0];
+            const imgUrl = img.url || (img.previewUrl && img.previewUrl.length < 500 ? img.previewUrl : '');
+            setSelectedImageUrl(imgUrl || img.previewUrl || '');
           }
           setImageSelectorOpen(false);
         }}
