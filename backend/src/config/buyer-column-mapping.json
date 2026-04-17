@@ -250,7 +250,8 @@
     "other_company_property": "他社物件",
     "building_name_price": "建物名/価格 内覧物件は赤表示（★は他社物件）",
     "price": "価格",
-    "display_address": "住居表示"
+    "display_address": "住居表示",
+    "property_assignee": "物件担当者"
   },
   "typeConversions": {
     "created_datetime": "datetime",

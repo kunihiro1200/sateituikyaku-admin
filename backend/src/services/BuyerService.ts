@@ -602,7 +602,7 @@ export class BuyerService {
           try {
             const { data: propertyListing, error: propertyError } = await this.supabase
               .from('property_listings')
-              .select('address, display_address, price')
+              .select('address, display_address, price, sales_assignee')
               .eq('property_number', appendData.property_number)
               .maybeSingle();
 
@@ -610,6 +610,7 @@ export class BuyerService {
               appendData.property_address = propertyListing.address ?? null;
               appendData.display_address = propertyListing.display_address ?? null;
               appendData.price = propertyListing.price ?? null;
+              appendData.property_assignee = propertyListing.sales_assignee ?? null;
               console.log(`[BuyerService] Fetched property info for ${appendData.property_number}: address=${appendData.property_address}`);
             }
           } catch (propErr: any) {
@@ -836,7 +837,7 @@ export class BuyerService {
       try {
         const { data: propertyListing, error: propertyError } = await this.supabase
           .from('property_listings')
-          .select('address, display_address, price')
+          .select('address, display_address, price, sales_assignee')
           .eq('property_number', allowedData.property_number)
           .maybeSingle();
 
@@ -845,6 +846,7 @@ export class BuyerService {
           allowedData.property_address = propertyListing.address ?? null;
           allowedData.display_address = propertyListing.display_address ?? null;
           allowedData.price = propertyListing.price ?? null;
+          allowedData.property_assignee = propertyListing.sales_assignee ?? null;
         }
         // property_listingsに対応物件が存在しない場合はスキップ（property_numberのみ保存）
       } catch (propertyFetchError: any) {
