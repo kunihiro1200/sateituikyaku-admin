@@ -2180,14 +2180,15 @@ export class BuyerService {
         }
       });
       
-      // Pinrich500万以上登録未: email非空 AND price<=500万 AND (pinrich_500man_registration が '未' または null/空)
+      // Pinrich500万以上登録未: email非空 AND price<=500万 AND pinrich_500man_registration未 AND reception_date>=2026-01-01
       allBuyers.forEach((buyer: any) => {
         if (
           buyer.email && String(buyer.email).trim() &&
           buyer.inquiry_property_price !== null &&
           buyer.inquiry_property_price !== undefined &&
           Number(buyer.inquiry_property_price) <= 5000000 &&
-          (!buyer.pinrich_500man_registration || buyer.pinrich_500man_registration === '未')
+          (!buyer.pinrich_500man_registration || buyer.pinrich_500man_registration === '未') &&
+          buyer.reception_date && buyer.reception_date >= '2026-01-01'
         ) {
           result.pinrich500manUnregistered++;
         }
@@ -2501,6 +2502,21 @@ export class BuyerService {
         });
         
         console.log(`[getBuyersByStatus] ３回架電未フィルタ結果: ${filteredBuyers.length}件`);
+      } else if (status === 'pinrich500manUnregistered') {
+        // Pinrich500万以上登録未: 4条件でフィルタリング
+        // email非空 AND price<=500万 AND pinrich_500man_registration未 AND reception_date>=2026-01-01
+        console.log(`[getBuyersByStatus] pinrich500manUnregistered カテゴリ検出`);
+        filteredBuyers = allBuyers.filter((buyer: any) => {
+          return (
+            buyer.email && String(buyer.email).trim() &&
+            buyer.inquiry_property_price !== null &&
+            buyer.inquiry_property_price !== undefined &&
+            Number(buyer.inquiry_property_price) <= 5000000 &&
+            (!buyer.pinrich_500man_registration || buyer.pinrich_500man_registration === '未') &&
+            buyer.reception_date && buyer.reception_date >= '2026-01-01'
+          );
+        });
+        console.log(`[getBuyersByStatus] pinrich500manUnregistered フィルタ結果: ${filteredBuyers.length}件`);
       } else if (status === 'inquiryEmailUnanswered' || status === 'brokerInquiry' || 
                  status === 'generalViewingSellerContactPending' || status === 'viewingPromotionRequired' || 
                  status === 'pinrichUnregistered') {
