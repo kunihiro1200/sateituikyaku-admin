@@ -7818,7 +7818,7 @@ HP：https://ifoo-oita.com/
             {showNearbyBuyers && seller?.id && (
               <div ref={nearbyBuyersSectionRef}>
                 <CollapsibleSection title="近隣買主" defaultExpanded={true} headerColor="success.light">
-                  <NearbyBuyersList sellerId={seller.id} />
+                  <NearbyBuyersList sellerId={seller.id} propertyType={seller.propertyType} />
                 </CollapsibleSection>
               </div>
             )}

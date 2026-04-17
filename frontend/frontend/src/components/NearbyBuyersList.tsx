@@ -36,11 +36,15 @@ interface NearbyBuyer {
   property_address?: string | null;
   inquiry_property_type?: string | null;
   inquiry_price?: number | null;
+  price_range_house?: string | null;
+  price_range_apartment?: string | null;
+  price_range_land?: string | null;
 }
 
 interface NearbyBuyersListProps {
   sellerId: string;
   propertyNumber?: string;
+  propertyType?: string | null;
   onCountChange?: (count: number) => void;
 }
 
@@ -80,15 +84,37 @@ const togglePriceRange = (prev: Set<string>, key: string): Set<string> => {
   return next;
 };
 
+// 買主の希望価格が「指定なし」かどうかを判定（物件種別に応じたフィールドを参照）
+const isUnspecifiedPrice = (buyer: NearbyBuyer, propertyType?: string | null): boolean => {
+  let priceRange: string | null | undefined = null;
+  const pt = (propertyType || '').trim();
+  if (pt === '戸' || pt === '戸建' || pt === '戸建て') {
+    priceRange = buyer.price_range_house;
+  } else if (pt === 'マ' || pt === 'マンション' || pt === 'アパート') {
+    priceRange = buyer.price_range_apartment;
+  } else if (pt === '土' || pt === '土地') {
+    priceRange = buyer.price_range_land;
+  } else {
+    // 種別不明の場合: いずれかのフィールドに値があればそれを使う
+    priceRange = buyer.price_range_house || buyer.price_range_apartment || buyer.price_range_land;
+  }
+  if (!priceRange || !priceRange.trim() || priceRange.trim() === '指定なし') return true;
+  return false;
+};
+
 // 選択済み価格帯で買主リストをフィルタリング（純粋関数）
-const filterBuyersByPrice = (buyers: NearbyBuyer[], selectedSet: Set<string>): NearbyBuyer[] => {
+// 「指定なし」の買主はどの価格帯ボタンを押しても常に表示される
+const filterBuyersByPrice = (buyers: NearbyBuyer[], selectedSet: Set<string>, propertyType?: string | null): NearbyBuyer[] => {
   if (selectedSet.size === 0) return buyers;
-  return buyers.filter(buyer =>
-    PRICE_RANGES.some(range =>
+  return buyers.filter(buyer => {
+    // 「指定なし」の買主は常に表示
+    if (isUnspecifiedPrice(buyer, propertyType)) return true;
+    // それ以外は inquiry_price で価格帯フィルタリング
+    return PRICE_RANGES.some(range =>
       selectedSet.has(range.key) &&
       isInPriceRange(buyer.inquiry_price, range.min, range.max)
-    )
-  );
+    );
+  });
 };
 
 interface PropertyDetails {
@@ -99,7 +125,7 @@ interface PropertyDetails {
   floorPlan: string | null;
 }
 
-const NearbyBuyersList = ({ sellerId, propertyNumber, onCountChange }: NearbyBuyersListProps) => {
+const NearbyBuyersList = ({ sellerId, propertyNumber, propertyType, onCountChange }: NearbyBuyersListProps) => {
   const [buyers, setBuyers] = useState<NearbyBuyer[]>([]);
   const [matchedAreas, setMatchedAreas] = useState<string[]>([]);
   const [propertyAddress, setPropertyAddress] = useState<string | null>(null);
@@ -156,8 +182,8 @@ const NearbyBuyersList = ({ sellerId, propertyNumber, onCountChange }: NearbyBuy
 
   // 価格帯フィルター適用後の買主リスト
   const filteredBuyers = React.useMemo(() => {
-    return filterBuyersByPrice(buyers, selectedPriceRanges);
-  }, [buyers, selectedPriceRanges]);
+    return filterBuyersByPrice(buyers, selectedPriceRanges, propertyType);
+  }, [buyers, selectedPriceRanges, propertyType]);
 
   const sortedBuyers = React.useMemo(() => {
     if (!sortConfig.key) return filteredBuyers;
@@ -252,6 +278,23 @@ const NearbyBuyersList = ({ sellerId, propertyNumber, onCountChange }: NearbyBuy
       newSelected.add(buyerNumber);
     }
     setSelectedBuyers(newSelected);
+  };
+
+  // 物件種別に応じた希望価格文字列を取得
+  const getDesiredPriceLabel = (buyer: NearbyBuyer): string => {
+    const pt = (propertyType || '').trim();
+    let priceRange: string | null | undefined = null;
+    if (pt === '戸' || pt === '戸建' || pt === '戸建て') {
+      priceRange = buyer.price_range_house;
+    } else if (pt === 'マ' || pt === 'マンション' || pt === 'アパート') {
+      priceRange = buyer.price_range_apartment;
+    } else if (pt === '土' || pt === '土地') {
+      priceRange = buyer.price_range_land;
+    } else {
+      priceRange = buyer.price_range_house || buyer.price_range_apartment || buyer.price_range_land;
+    }
+    if (!priceRange || !priceRange.trim() || priceRange.trim() === '指定なし') return '指定なし';
+    return priceRange.trim();
   };
 
   // 価格帯フィルタートグルハンドラー
@@ -531,6 +574,7 @@ const NearbyBuyersList = ({ sellerId, propertyNumber, onCountChange }: NearbyBuy
               <TableCell sx={{ cursor: 'pointer', userSelect: 'none' }} onClick={() => handleSort('inquiry_price')}>
                 価格{getSortIcon('inquiry_price')}
               </TableCell>
+              <TableCell>希望価格</TableCell>
               <TableCell>ヒアリング/内覧結果</TableCell>
               <TableCell sx={{ cursor: 'pointer', userSelect: 'none' }} onClick={() => handleSort('latest_status')}>
                 最新状況{getSortIcon('latest_status')}
@@ -624,6 +668,11 @@ const NearbyBuyersList = ({ sellerId, propertyNumber, onCountChange }: NearbyBuy
                   </TableCell>
                   <TableCell>
                     {buyer.inquiry_price ? `${(buyer.inquiry_price / 10000).toLocaleString()}万円` : '-'}
+                  </TableCell>
+                  <TableCell>
+                    <Typography variant="body2" sx={{ whiteSpace: 'nowrap' }}>
+                      {getDesiredPriceLabel(buyer)}
+                    </Typography>
                   </TableCell>
                   <TableCell>
                     <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', maxWidth: 300 }}>
