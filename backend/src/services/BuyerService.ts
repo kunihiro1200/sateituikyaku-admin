@@ -620,7 +620,7 @@ export class BuyerService {
           try {
             const { data: propertyListing, error: propertyError } = await this.supabase
               .from('property_listings')
-              .select('address, display_address, price, sales_assignee')
+              .select('address, display_address, price, sales_assignee, pre_viewing_notes, key_info, sale_reason, price_reduction_history, viewing_notes, parking, viewing_parking')
               .eq('property_number', appendData.property_number)
               .maybeSingle();
 
@@ -629,6 +629,13 @@ export class BuyerService {
               appendData.display_address = propertyListing.display_address ?? null;
               appendData.price = propertyListing.price ?? null;
               appendData.property_assignee = propertyListing.sales_assignee ?? null;
+              appendData.pre_viewing_notes = propertyListing.pre_viewing_notes ?? null;
+              appendData.key_info = propertyListing.key_info ?? null;
+              appendData.sale_reason = propertyListing.sale_reason ?? null;
+              appendData.price_reduction_history = propertyListing.price_reduction_history ?? null;
+              appendData.viewing_notes = propertyListing.viewing_notes ?? null;
+              appendData.parking = propertyListing.parking ?? null;
+              appendData.viewing_parking = propertyListing.viewing_parking ?? null;
               console.log(`[BuyerService] Fetched property info for ${appendData.property_number}: address=${appendData.property_address}`);
             }
           } catch (propErr: any) {
