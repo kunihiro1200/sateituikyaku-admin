@@ -413,10 +413,10 @@ export default function PriceSection({
           <Button
             variant="contained"
             onClick={handleSendPriceReductionChat}
-            disabled={sendingChat}
+            disabled={sendingChat || uploadingImage}
             sx={{ backgroundColor: '#d32f2f', '&:hover': { backgroundColor: '#b71c1c' } }}
           >
-            {sendingChat ? '送信中...' : '送信する'}
+            {sendingChat ? '送信中...' : uploadingImage ? '画像アップロード中...' : '送信する'}
           </Button>
         </DialogActions>
       </Dialog>
