@@ -324,7 +324,7 @@ export default function PropertyListingsPage() {
         (l.seller_email ? normalizeText(l.seller_email) : '').includes(query) ||
         (l.seller_phone ? normalizeText(l.seller_phone) : '').includes(query) ||
         (l.buyer_name ? normalizeText(l.buyer_name) : '').includes(query) ||
-        (l.price != null ? normalizeText(String(l.price)) : '').includes(query)
+        (l.price != null ? normalizeText(String(l.price)) === query : false)
       );
     }
 
