@@ -44,6 +44,53 @@ interface NearbyBuyersListProps {
   onCountChange?: (count: number) => void;
 }
 
+// 価格帯定数（9段階）
+const PRICE_RANGES = [
+  { key: 'under1000',  label: '1000万未満',     min: null,  max: 1000  },
+  { key: '1000s',      label: '1000万円台',     min: 1000,  max: 2000  },
+  { key: '2000s',      label: '2000万円台',     min: 2000,  max: 3000  },
+  { key: '3000s',      label: '3000万円台',     min: 3000,  max: 4000  },
+  { key: '4000s',      label: '4000万円台',     min: 4000,  max: 5000  },
+  { key: '5000s',      label: '5000万円台',     min: 5000,  max: 6000  },
+  { key: '6000s',      label: '6000万円台',     min: 6000,  max: 7000  },
+  { key: '7000s',      label: '7000万円台',     min: 7000,  max: 8000  },
+  { key: '8000plus',   label: '8000万円台以上', min: 8000,  max: null  },
+] as const;
+
+// 買主が指定した価格帯に該当するか判定（null/undefined は false を返す）
+const isInPriceRange = (
+  price: number | null | undefined,
+  min: number | null,
+  max: number | null
+): boolean => {
+  if (price == null) return false;
+  if (min !== null && price < min) return false;
+  if (max !== null && price >= max) return false;
+  return true;
+};
+
+// 価格帯キーのトグル（純粋関数）
+const togglePriceRange = (prev: Set<string>, key: string): Set<string> => {
+  const next = new Set(prev);
+  if (next.has(key)) {
+    next.delete(key);
+  } else {
+    next.add(key);
+  }
+  return next;
+};
+
+// 選択済み価格帯で買主リストをフィルタリング（純粋関数）
+const filterBuyersByPrice = (buyers: NearbyBuyer[], selectedSet: Set<string>): NearbyBuyer[] => {
+  if (selectedSet.size === 0) return buyers;
+  return buyers.filter(buyer =>
+    PRICE_RANGES.some(range =>
+      selectedSet.has(range.key) &&
+      isInPriceRange(buyer.inquiry_price, range.min, range.max)
+    )
+  );
+};
+
 interface PropertyDetails {
   address: string | null;
   landArea: number | null;
@@ -72,6 +119,9 @@ const NearbyBuyersList = ({ sellerId, propertyNumber, onCountChange }: NearbyBuy
   const [emailBody, setEmailBody] = useState('');
   const [expandedAreaBuyer, setExpandedAreaBuyer] = useState<string | null>(null);
   const [isNameHidden, setIsNameHidden] = useState<boolean>(false);
+
+  // 価格帯フィルター選択状態
+  const [selectedPriceRanges, setSelectedPriceRanges] = useState<Set<string>>(new Set());
 
   // ソート状態
   const [sortConfig, setSortConfig] = useState<{
@@ -104,9 +154,14 @@ const NearbyBuyersList = ({ sellerId, propertyNumber, onCountChange }: NearbyBuy
     setSortConfig({ key, direction });
   };
 
+  // 価格帯フィルター適用後の買主リスト
+  const filteredBuyers = React.useMemo(() => {
+    return filterBuyersByPrice(buyers, selectedPriceRanges);
+  }, [buyers, selectedPriceRanges]);
+
   const sortedBuyers = React.useMemo(() => {
-    if (!sortConfig.key) return buyers;
-    return [...buyers].sort((a, b) => {
+    if (!sortConfig.key) return filteredBuyers;
+    return [...filteredBuyers].sort((a, b) => {
       const aValue = a[sortConfig.key!];
       const bValue = b[sortConfig.key!];
       if (aValue == null && bValue == null) return 0;
@@ -131,7 +186,7 @@ const NearbyBuyersList = ({ sellerId, propertyNumber, onCountChange }: NearbyBuy
         ? aStr.localeCompare(bStr, 'ja')
         : bStr.localeCompare(aStr, 'ja');
     });
-  }, [buyers, sortConfig]);
+  }, [filteredBuyers, sortConfig]);
 
   useEffect(() => {
     const fetchNearbyBuyers = async () => {
@@ -144,7 +199,7 @@ const NearbyBuyersList = ({ sellerId, propertyNumber, onCountChange }: NearbyBuy
         setMatchedAreas(response.data.matchedAreas || []);
         setPropertyAddress(response.data.propertyAddress);
         setPropertyDetails(response.data.propertyDetails || null);
-        if (onCountChange) onCountChange((response.data.buyers || []).length);
+        if (onCountChange) onCountChange((response.data.buyers || []).length); // 初期値はfull count、フィルター後はuseEffectで更新
         if (propertyNumber) {
           setPropertyNumberState(propertyNumber);
         } else {
@@ -165,6 +220,11 @@ const NearbyBuyersList = ({ sellerId, propertyNumber, onCountChange }: NearbyBuy
     };
     if (sellerId) fetchNearbyBuyers();
   }, [sellerId, propertyNumber]);
+
+  // フィルター変更時に件数を通知
+  useEffect(() => {
+    if (onCountChange) onCountChange(filteredBuyers.length);
+  }, [filteredBuyers.length, onCountChange]);
 
   const handleBuyerClick = (buyerNumber: string) => {
     window.open(`/buyers/${buyerNumber}`, '_blank');
@@ -192,6 +252,11 @@ const NearbyBuyersList = ({ sellerId, propertyNumber, onCountChange }: NearbyBuy
       newSelected.add(buyerNumber);
     }
     setSelectedBuyers(newSelected);
+  };
+
+  // 価格帯フィルタートグルハンドラー
+  const handlePriceRangeToggle = (key: string) => {
+    setSelectedPriceRanges(prev => togglePriceRange(prev, key));
   };
 
   // 名前非表示トグル
@@ -428,6 +493,21 @@ const NearbyBuyersList = ({ sellerId, propertyNumber, onCountChange }: NearbyBuy
         </Button>
       </Box>
 
+      {/* 価格帯フィルターボタン行 */}
+      <Box sx={{ mb: 2, display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+        {PRICE_RANGES.map(range => (
+          <Button
+            key={range.key}
+            size="small"
+            variant={selectedPriceRanges.has(range.key) ? 'contained' : 'outlined'}
+            color="primary"
+            onClick={() => handlePriceRangeToggle(range.key)}
+          >
+            {range.label}
+          </Button>
+        ))}
+      </Box>
+
       {/* 買主リストテーブル */}
       <TableContainer component={Paper} variant="outlined">
         <Table size="small">
@@ -562,7 +642,7 @@ const NearbyBuyersList = ({ sellerId, propertyNumber, onCountChange }: NearbyBuy
       </TableContainer>
 
       <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-        {buyers.length}件の買主が見つかりました
+        {filteredBuyers.length}件の買主が見つかりました
       </Typography>
 
       <EmailConfirmationModal
