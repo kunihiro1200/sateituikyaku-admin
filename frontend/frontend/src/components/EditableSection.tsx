@@ -36,9 +36,14 @@ const EditableSection: React.FC<EditableSectionProps> = ({
     setIsSaving(true);
     try {
       await onSave();
-      onEditToggle();
+      onEditToggle(); // 成功時のみ編集モードを終了
     } catch (error) {
-      console.error('Save failed:', error);
+      if (error instanceof Error && error.message === 'no_changes') {
+        // 変更なし: 編集モードを維持（ログ出力なし）
+      } else {
+        console.error('Save failed:', error);
+        // 編集モードは維持される（onEditToggle を呼ばない）
+      }
     } finally {
       setIsSaving(false);
     }

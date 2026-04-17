@@ -463,7 +463,10 @@ export default function PropertyListingDetailPage() {
 
   // Save handlers for each section
   const handleSavePrice = async () => {
-    if (!propertyNumber || Object.keys(editedData).length === 0) return;
+    if (!propertyNumber) return;
+    if (Object.keys(editedData).length === 0 || !('price' in editedData)) {
+      throw new Error('no_changes');
+    }
 
     // 価格変更の検出と値下げ履歴の自動追記
     const newSalesPrice = editedData.price;
@@ -517,7 +520,10 @@ export default function PropertyListingDetailPage() {
   };
 
   const handleSaveHeader = async () => {
-    if (!propertyNumber || Object.keys(editedData).length === 0) return;
+    if (!propertyNumber) return;
+    if (Object.keys(editedData).length === 0 || !('price' in editedData)) {
+      throw new Error('no_changes');
+    }
 
     // ATBB状況が変更されている場合、offer_status バリデーションを実行
     if (editedData.atbb_status !== undefined) {
@@ -566,7 +572,10 @@ export default function PropertyListingDetailPage() {
   };
 
   const handleSaveBasicInfo = async () => {
-    if (!propertyNumber || Object.keys(editedData).length === 0) return;
+    if (!propertyNumber) return;
+    if (Object.keys(editedData).length === 0 || !('price' in editedData)) {
+      throw new Error('no_changes');
+    }
     try {
       await api.put(`/api/property-listings/${propertyNumber}`, editedData);
       setSnackbar({
@@ -587,7 +596,10 @@ export default function PropertyListingDetailPage() {
   };
 
   const handleSavePropertyDetails = async () => {
-    if (!propertyNumber || Object.keys(editedData).length === 0) return;
+    if (!propertyNumber) return;
+    if (Object.keys(editedData).length === 0 || !('price' in editedData)) {
+      throw new Error('no_changes');
+    }
     try {
       await api.put(`/api/property-listings/${propertyNumber}`, editedData);
       setSnackbar({
@@ -624,7 +636,10 @@ export default function PropertyListingDetailPage() {
   };
 
   const handleSaveFrequentlyAsked = async () => {
-    if (!propertyNumber || Object.keys(editedData).length === 0) return;
+    if (!propertyNumber) return;
+    if (Object.keys(editedData).length === 0 || !('price' in editedData)) {
+      throw new Error('no_changes');
+    }
     try {
       await api.put(`/api/property-listings/${propertyNumber}`, editedData);
       setSnackbar({
@@ -650,7 +665,10 @@ export default function PropertyListingDetailPage() {
   };
 
   const handleSaveViewingInfo = async () => {
-    if (!propertyNumber || Object.keys(editedData).length === 0) return;
+    if (!propertyNumber) return;
+    if (Object.keys(editedData).length === 0 || !('price' in editedData)) {
+      throw new Error('no_changes');
+    }
     try {
       await api.put(`/api/property-listings/${propertyNumber}`, editedData);
       setSnackbar({
@@ -676,7 +694,10 @@ export default function PropertyListingDetailPage() {
   };
 
   const handleSaveSellerBuyer = async () => {
-    if (!propertyNumber || Object.keys(editedData).length === 0) return;
+    if (!propertyNumber) return;
+    if (Object.keys(editedData).length === 0 || !('price' in editedData)) {
+      throw new Error('no_changes');
+    }
     try {
       await api.put(`/api/property-listings/${propertyNumber}`, editedData);
       setSnackbar({
@@ -749,7 +770,10 @@ export default function PropertyListingDetailPage() {
   };
 
   const handleSaveOffer = async () => {
-    if (!propertyNumber || Object.keys(editedData).length === 0) return;
+    if (!propertyNumber) return;
+    if (Object.keys(editedData).length === 0 || !('price' in editedData)) {
+      throw new Error('no_changes');
+    }
 
     // バリデーション実行
     const errors = validateOfferFields();
