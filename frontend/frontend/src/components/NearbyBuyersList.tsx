@@ -61,18 +61,6 @@ const PRICE_RANGES = [
   { key: '8000plus',   label: '8000万円台以上', min: 80000000,   max: null       },
 ] as const;
 
-// 買主が指定した価格帯に該当するか判定（null/undefined は false を返す）
-const isInPriceRange = (
-  price: number | null | undefined,
-  min: number | null,
-  max: number | null
-): boolean => {
-  if (price == null) return false;
-  if (min !== null && price < min) return false;
-  if (max !== null && price >= max) return false;
-  return true;
-};
-
 // 価格帯キーのトグル（純粋関数）
 const togglePriceRange = (prev: Set<string>, key: string): Set<string> => {
   const next = new Set(prev);
@@ -84,35 +72,86 @@ const togglePriceRange = (prev: Set<string>, key: string): Set<string> => {
   return next;
 };
 
-// 買主の希望価格が「指定なし」かどうかを判定（物件種別に応じたフィールドを参照）
-const isUnspecifiedPrice = (buyer: NearbyBuyer, propertyType?: string | null): boolean => {
-  let priceRange: string | null | undefined = null;
-  const pt = (propertyType || '').trim();
-  if (pt === '戸' || pt === '戸建' || pt === '戸建て') {
-    priceRange = buyer.price_range_house;
-  } else if (pt === 'マ' || pt === 'マンション' || pt === 'アパート') {
-    priceRange = buyer.price_range_apartment;
-  } else if (pt === '土' || pt === '土地') {
-    priceRange = buyer.price_range_land;
-  } else {
-    // 種別不明の場合: いずれかのフィールドに値があればそれを使う
-    priceRange = buyer.price_range_house || buyer.price_range_apartment || buyer.price_range_land;
+// 希望価格文字列（例: "1000〜2999万円", "2000万以上", "指定なし"）を
+// { min: number, max: number } に変換する（円単位）
+// 変換できない場合は null を返す（「指定なし」扱い）
+const parseDesiredPriceRange = (priceStr: string): { min: number; max: number } | null => {
+  const s = priceStr
+    .replace(/,/g, '')
+    .replace(/円/g, '')
+    .replace(/万/g, '0000')
+    .replace(/億/g, '00000000')
+    .trim();
+
+  // 範囲形式: "10000000〜29990000" など
+  const rangeMatch = s.match(/(\d+)\s*[〜～\-~]\s*(\d+)/);
+  if (rangeMatch) {
+    return { min: parseInt(rangeMatch[1], 10), max: parseInt(rangeMatch[2], 10) };
   }
-  if (!priceRange || !priceRange.trim() || priceRange.trim() === '指定なし') return true;
-  return false;
+  // 以上形式: "20000000以上"
+  const aboveMatch = s.match(/(\d+)\s*以上/);
+  if (aboveMatch) {
+    return { min: parseInt(aboveMatch[1], 10), max: Number.MAX_SAFE_INTEGER };
+  }
+  // 以下形式: "20000000以下"
+  const belowMatch = s.match(/(\d+)\s*以下/);
+  if (belowMatch) {
+    return { min: 0, max: parseInt(belowMatch[1], 10) };
+  }
+  // 単一値: "20000000"
+  const singleMatch = s.match(/^(\d+)$/);
+  if (singleMatch) {
+    const v = parseInt(singleMatch[1], 10);
+    return { min: Math.floor(v * 0.8), max: Math.ceil(v * 1.2) };
+  }
+  return null;
+};
+
+// 物件種別に応じた希望価格文字列を取得する
+const getDesiredPriceStr = (buyer: NearbyBuyer, propertyType?: string | null): string | null => {
+  const pt = (propertyType || '').trim();
+  if (pt === '戸' || pt === '戸建' || pt === '戸建て') return buyer.price_range_house ?? null;
+  if (pt === 'マ' || pt === 'マンション' || pt === 'アパート') return buyer.price_range_apartment ?? null;
+  if (pt === '土' || pt === '土地') return buyer.price_range_land ?? null;
+  // 種別不明: いずれかのフィールドを使う
+  return buyer.price_range_house || buyer.price_range_apartment || buyer.price_range_land || null;
+};
+
+// 2つの価格範囲が重なるかどうかを判定する
+// ボタン範囲 [btnMin, btnMax) と 希望価格範囲 [desiredMin, desiredMax] が重なるか
+const rangesOverlap = (
+  btnMin: number | null,
+  btnMax: number | null,
+  desiredMin: number,
+  desiredMax: number
+): boolean => {
+  const bMin = btnMin ?? 0;
+  const bMax = btnMax ?? Number.MAX_SAFE_INTEGER;
+  // 重ならない条件: desiredMax < bMin OR desiredMin >= bMax
+  if (desiredMax < bMin) return false;
+  if (desiredMin >= bMax) return false;
+  return true;
 };
 
 // 選択済み価格帯で買主リストをフィルタリング（純粋関数）
-// 「指定なし」の買主はどの価格帯ボタンを押しても常に表示される
+// 判定ロジック:
+//   1. 希望価格が「指定なし」（null/空/"指定なし"）→ 常に表示
+//   2. 希望価格の範囲と選択ボタンの価格帯が重なる → 表示
+//   3. 重ならない → 非表示
 const filterBuyersByPrice = (buyers: NearbyBuyer[], selectedSet: Set<string>, propertyType?: string | null): NearbyBuyer[] => {
   if (selectedSet.size === 0) return buyers;
   return buyers.filter(buyer => {
-    // 「指定なし」の買主は常に表示
-    if (isUnspecifiedPrice(buyer, propertyType)) return true;
-    // それ以外は inquiry_price で価格帯フィルタリング
+    const priceStr = getDesiredPriceStr(buyer, propertyType);
+    // 希望価格が未設定または「指定なし」→ 常に表示
+    if (!priceStr || !priceStr.trim() || priceStr.trim() === '指定なし') return true;
+    // 希望価格をパース
+    const desired = parseDesiredPriceRange(priceStr);
+    // パースできない場合も「指定なし」扱いで常に表示
+    if (!desired) return true;
+    // 選択されたボタンのいずれかと希望価格範囲が重なるか判定
     return PRICE_RANGES.some(range =>
       selectedSet.has(range.key) &&
-      isInPriceRange(buyer.inquiry_price, range.min, range.max)
+      rangesOverlap(range.min, range.max, desired.min, desired.max)
     );
   });
 };
@@ -280,21 +319,11 @@ const NearbyBuyersList = ({ sellerId, propertyNumber, propertyType, onCountChang
     setSelectedBuyers(newSelected);
   };
 
-  // 物件種別に応じた希望価格文字列を取得
+  // 物件種別に応じた希望価格ラベルを取得（表示用）
   const getDesiredPriceLabel = (buyer: NearbyBuyer): string => {
-    const pt = (propertyType || '').trim();
-    let priceRange: string | null | undefined = null;
-    if (pt === '戸' || pt === '戸建' || pt === '戸建て') {
-      priceRange = buyer.price_range_house;
-    } else if (pt === 'マ' || pt === 'マンション' || pt === 'アパート') {
-      priceRange = buyer.price_range_apartment;
-    } else if (pt === '土' || pt === '土地') {
-      priceRange = buyer.price_range_land;
-    } else {
-      priceRange = buyer.price_range_house || buyer.price_range_apartment || buyer.price_range_land;
-    }
-    if (!priceRange || !priceRange.trim() || priceRange.trim() === '指定なし') return '指定なし';
-    return priceRange.trim();
+    const priceStr = getDesiredPriceStr(buyer, propertyType);
+    if (!priceStr || !priceStr.trim() || priceStr.trim() === '指定なし') return '指定なし';
+    return priceStr.trim();
   };
 
   // 価格帯フィルタートグルハンドラー
