@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Box, Typography, TextField, Grid, Button, Dialog, DialogTitle, DialogContent, DialogActions, Tooltip, IconButton as MuiIconButton } from '@mui/material';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import CheckIcon from '@mui/icons-material/Check';
@@ -78,7 +78,7 @@ export default function PriceSection({
   const uploadImageToDrive = async (file: File): Promise<string> => {
     const formData = new FormData();
     formData.append('file', file);
-    const res = await api.post(`/drive/folders/${propertyNumber}/files`, formData, {
+    const res = await api.post(`/api/drive/folders/${propertyNumber}/files`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
     return res.data?.file?.webViewLink || res.data?.file?.webContentLink || '';
@@ -98,21 +98,26 @@ export default function PriceSection({
     }
   };
 
-  // クリップボード貼り付けハンドラ
-  const handlePaste = async (e: React.ClipboardEvent) => {
-    const items = e.clipboardData?.items;
-    if (!items) return;
-    for (const item of Array.from(items)) {
-      if (item.type.startsWith('image/')) {
-        const file = item.getAsFile();
-        if (file) {
-          e.preventDefault();
-          await handleLocalFileSelect(file);
-          break;
+  // クリップボード貼り付けハンドラ（ダイアログが開いている間だけグローバルに登録）
+  useEffect(() => {
+    if (!confirmDialogOpen) return;
+    const handleGlobalPaste = async (e: ClipboardEvent) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      for (const item of Array.from(items)) {
+        if (item.type.startsWith('image/')) {
+          const file = item.getAsFile();
+          if (file) {
+            e.preventDefault();
+            await handleLocalFileSelect(file);
+            break;
+          }
         }
       }
-    }
-  };
+    };
+    document.addEventListener('paste', handleGlobalPaste);
+    return () => document.removeEventListener('paste', handleGlobalPaste);
+  }, [confirmDialogOpen]);
 
   // 値下げ履歴の最新行を検出
   const getLatestPriceReduction = () => {
@@ -347,7 +352,7 @@ export default function PriceSection({
             sx={{ mt: 1, fontFamily: 'monospace', fontSize: '0.75rem', '& .MuiInputBase-input': { fontFamily: 'monospace', fontSize: '0.75rem' } }}
           />
           {/* 画像添付セクション */}
-          <Box sx={{ mt: 2 }} onPaste={handlePaste}>
+          <Box sx={{ mt: 2 }}>
             <Typography variant="body2" color="text.secondary" gutterBottom>
               画像添付（任意）：
             </Typography>
