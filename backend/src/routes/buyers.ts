@@ -223,6 +223,21 @@ router.put('/batch', authenticateOrApiKey, async (req: Request, res: Response) =
   }
 });
 
+// Pinrich500万以上登録 同メアド一括更新
+router.patch('/pinrich-500man-bulk-update', async (req: Request, res: Response) => {
+  try {
+    const { email, pinrich_500man_registration } = req.body;
+    if (!email || !pinrich_500man_registration) {
+      return res.status(400).json({ error: 'email and pinrich_500man_registration are required' });
+    }
+    const result = await buyerService.bulkUpdatePinrich500man(email.trim(), pinrich_500man_registration);
+    res.json({ success: true, updatedCount: result });
+  } catch (error: any) {
+    console.error('Error bulk updating pinrich_500man_registration:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // 🚨 重要: GAS用のPUT /api/buyers/:id エンドポイント（API Key認証）
 // router.use(authenticate)よりも前に定義する必要がある
 router.put('/:id', authenticateOrApiKey, async (req: Request, res: Response) => {

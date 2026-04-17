@@ -456,6 +456,24 @@ export class BuyerService {
   }
 
   /**
+   * 同じメールアドレスの買主の pinrich_500man_registration を一括更新
+   */
+  async bulkUpdatePinrich500man(email: string, value: string): Promise<number> {
+    const { data, error } = await this.supabase
+      .from('buyers')
+      .update({ pinrich_500man_registration: value })
+      .eq('email', email)
+      .is('deleted_at', null)
+      .select('buyer_number');
+
+    if (error) {
+      throw new Error(`Failed to bulk update pinrich_500man_registration: ${error.message}`);
+    }
+
+    return data?.length || 0;
+  }
+
+  /**
    * 買主に紐づく物件リストを取得
    */
   async getLinkedProperties(buyerId: string): Promise<any[]> {
@@ -1971,6 +1989,8 @@ export class BuyerService {
       'vendor_survey',
       'day_of_week',
       'pinrich',
+      'email',
+      'pinrich_500man_registration',
       'email_confirmed',
       'email_confirmation_assignee',
       'viewing_promotion_not_needed',
@@ -1993,7 +2013,7 @@ export class BuyerService {
       // property_listings を buyers 取得と並列で全件取得
       this.supabase
         .from('property_listings')
-        .select('property_number, atbb_status, sales_assignee, property_type'),
+        .select('property_number, atbb_status, sales_assignee, property_type, price'),
     ]);
 
     const { count, error: countError } = countResult;
@@ -2030,7 +2050,7 @@ export class BuyerService {
     }
 
     // property_listings のマップを構築（並列取得済み）
-    const propertyMap: Record<string, { atbb_status: string; sales_assignee: string | null; property_type: string | null }> = {};
+    const propertyMap: Record<string, { atbb_status: string; sales_assignee: string | null; property_type: string | null; price: number | null }> = {};
     if (allListingsResult.data) {
       for (const listing of allListingsResult.data) {
         if (listing.property_number) {
@@ -2038,6 +2058,7 @@ export class BuyerService {
             atbb_status: listing.atbb_status || '',
             sales_assignee: listing.sales_assignee ?? null,
             property_type: listing.property_type ?? null,
+            price: listing.price ?? null,
           };
         }
       }
@@ -2053,6 +2074,7 @@ export class BuyerService {
         atbb_status: prop?.atbb_status || '',
         property_sales_assignee: prop?.sales_assignee ?? null,
         property_type: prop?.property_type ?? null,
+        inquiry_property_price: prop?.price ?? null,
       };
     });
   }

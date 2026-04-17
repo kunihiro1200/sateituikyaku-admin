@@ -282,6 +282,20 @@ export default function BuyerDetailPage() {
     return Number(price) <= 5000000;
   };
 
+  // 同じメアドの買主を一括で「済」に更新する
+  const handlePinrich500manBulkUpdate = async (email: string, value: string) => {
+    if (!email || !String(email).trim()) return;
+    try {
+      await api.patch('/api/buyers/pinrich-500man-bulk-update', {
+        email: email.trim(),
+        pinrich_500man_registration: value,
+      });
+      console.log(`[BuyerDetailPage] Bulk updated pinrich_500man_registration to "${value}" for email: ${email}`);
+    } catch (error) {
+      console.error('[BuyerDetailPage] Failed to bulk update pinrich_500man_registration:', error);
+    }
+  };
+
   // owned_home_hearing_result が必須かどうかを判定するヘルパー
   // AND([受付日]>="2026/3/30", ISNOTBLANK([問合時持家ヒアリング]))
   const isHomeHearingResultRequired = (data: any): boolean => {
@@ -2299,7 +2313,7 @@ TEL：097-533-2022`;
                       );
                     }
 
-                    // pinrichフィールドは特別処理（ドロップダウン）
+                    // pinrichフィールドは特別処理（ドロップダウン＋グループ化）
                     if (field.key === 'pinrich') {
                       const PINRICH_OPTIONS = [
                         '配信中',
@@ -2312,98 +2326,100 @@ TEL：097-533-2022`;
                         '受信エラー',
                       ];
                       return (
-                        <Grid item xs={12} sm={6} key={`${section.title}-${field.key}`}>
-                          <FormControl fullWidth size="small">
-                            <InputLabel>{field.label}</InputLabel>
-                            <Select
-                              value={buyer[field.key] || ''}
-                              label={field.label}
-                              onChange={async (e) => {
-                                const newValue = e.target.value;
-                                setBuyer((prev: any) => prev ? { ...prev, [field.key]: newValue } : prev);
-                                handleFieldChange(section.title, field.key, newValue);
-                                // SAVE_BUTTON_FIELDS に含まれるため handleInlineFieldSave は呼ばない
-                              }}
-                            >
-                              <MenuItem value=""><em>未選択</em></MenuItem>
-                              {PINRICH_OPTIONS.map((opt) => (
-                                <MenuItem key={opt} value={opt}>{opt}</MenuItem>
-                              ))}
-                            </Select>
-                          </FormControl>
-                        </Grid>
-                      );
-                    }
-
-                    // pinrich_linkフィールドは特別処理（リンク表示）
-                    if (field.key === 'pinrich_link') {
-                      return (
                         <Grid item xs={12} key={`${section.title}-${field.key}`}>
-                          <Link
-                            href="https://pinrich.com/management/hankyo"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            sx={{ display: 'flex', alignItems: 'center', gap: 0.5, fontSize: '0.875rem' }}
-                          >
-                            Pinrichリンク
-                            <LaunchIcon fontSize="small" />
-                          </Link>
-                        </Grid>
-                      );
-                    }
-
-                    // pinrich_500man_registrationフィールドは特別処理（表示条件付きButtonSelect）
-                    if (field.key === 'pinrich_500man_registration') {
-                      if (!isPinrich500manVisible(buyer, linkedProperties)) return null;
-                      const PINRICH_500MAN_BTNS = ['済', '未'];
-                      const currentValue = buyer?.pinrich_500man_registration || '未';
-                      return (
-                        <Grid item xs={12} sm={6} key={`${section.title}-${field.key}`}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <Typography variant="caption" sx={{ whiteSpace: 'nowrap', flexShrink: 0 }}>
-                              {field.label}
-                            </Typography>
-                            <Box sx={{ display: 'flex', gap: 0.5, flex: 1 }}>
-                              {PINRICH_500MAN_BTNS.map((opt) => {
-                                const isSelected = currentValue === opt;
-                                return (
-                                  <Button
-                                    key={opt}
-                                    variant={isSelected ? 'contained' : 'outlined'}
-                                    size="small"
-                                    color={opt === '未' ? 'error' : 'primary'}
-                                    onClick={() => {
-                                      setBuyer((prev: any) => prev ? { ...prev, pinrich_500man_registration: opt } : prev);
-                                      handleFieldChange(section.title, field.key, opt);
+                          <Box sx={{ backgroundColor: '#e3f2fd', borderRadius: 1, p: 1.5, border: '1px solid #90caf9' }}>
+                            <Grid container spacing={1}>
+                              {/* Pinrichドロップダウン */}
+                              <Grid item xs={12} sm={6}>
+                                <FormControl fullWidth size="small">
+                                  <InputLabel>{field.label}</InputLabel>
+                                  <Select
+                                    value={buyer[field.key] || ''}
+                                    label={field.label}
+                                    onChange={async (e) => {
+                                      const newValue = e.target.value;
+                                      setBuyer((prev: any) => prev ? { ...prev, [field.key]: newValue } : prev);
+                                      handleFieldChange(section.title, field.key, newValue);
                                     }}
-                                    sx={{ flex: 1, py: 0.5 }}
                                   >
-                                    {opt}
-                                  </Button>
-                                );
-                              })}
-                            </Box>
+                                    <MenuItem value=""><em>未選択</em></MenuItem>
+                                    {PINRICH_OPTIONS.map((opt) => (
+                                      <MenuItem key={opt} value={opt}>{opt}</MenuItem>
+                                    ))}
+                                  </Select>
+                                </FormControl>
+                              </Grid>
+                              {/* Pinrichリンク */}
+                              <Grid item xs={12}>
+                                <Link
+                                  href="https://pinrich.com/management/hankyo"
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  sx={{ display: 'flex', alignItems: 'center', gap: 0.5, fontSize: '0.875rem' }}
+                                >
+                                  Pinrichリンク
+                                  <LaunchIcon fontSize="small" />
+                                </Link>
+                              </Grid>
+                              {/* 500万以上登録（表示条件付き） */}
+                              {isPinrich500manVisible(buyer, linkedProperties) && (
+                                <>
+                                  <Grid item xs={12} sm={6}>
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                      <Typography variant="caption" sx={{ whiteSpace: 'nowrap', flexShrink: 0 }}>
+                                        500万以上登録
+                                      </Typography>
+                                      <Box sx={{ display: 'flex', gap: 0.5, flex: 1 }}>
+                                        {['済', '未'].map((opt) => {
+                                          const currentValue = buyer?.pinrich_500man_registration || '未';
+                                          const isSelected = currentValue === opt;
+                                          return (
+                                            <Button
+                                              key={opt}
+                                              variant={isSelected ? 'contained' : 'outlined'}
+                                              size="small"
+                                              color={opt === '未' ? 'error' : 'primary'}
+                                              onClick={() => {
+                                                setBuyer((prev: any) => prev ? { ...prev, pinrich_500man_registration: opt } : prev);
+                                                handleFieldChange(section.title, 'pinrich_500man_registration', opt);
+                                                // 同じメアドの買主を一括更新
+                                                if (opt === '済' && buyer?.email) {
+                                                  handlePinrich500manBulkUpdate(buyer.email, opt);
+                                                }
+                                              }}
+                                              sx={{ flex: 1, py: 0.5 }}
+                                            >
+                                              {opt}
+                                            </Button>
+                                          );
+                                        })}
+                                      </Box>
+                                    </Box>
+                                  </Grid>
+                                  {/* Pinrich500万以上登録方法リンク */}
+                                  <Grid item xs={12}>
+                                    <Link
+                                      href="https://docs.google.com/spreadsheets/d/14gi7bEM1jLgMGA5iOes69DbcLkcRox2vZdKiUy-4_VU/edit?usp=sharing"
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      sx={{ display: 'flex', alignItems: 'center', gap: 0.5, fontSize: '0.875rem' }}
+                                    >
+                                      Pinrich500万以上登録方法
+                                      <LaunchIcon fontSize="small" />
+                                    </Link>
+                                  </Grid>
+                                </>
+                              )}
+                            </Grid>
                           </Box>
                         </Grid>
                       );
                     }
 
-                    // pinrich_500man_linkフィールドは特別処理（リンク表示、表示条件付き）
-                    if (field.key === 'pinrich_500man_link') {
-                      if (!isPinrich500manVisible(buyer, linkedProperties)) return null;
-                      return (
-                        <Grid item xs={12} key={`${section.title}-${field.key}`}>
-                          <Link
-                            href="https://docs.google.com/spreadsheets/d/14gi7bEM1jLgMGA5iOes69DbcLkcRox2vZdKiUy-4_VU/edit?usp=sharing"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            sx={{ display: 'flex', alignItems: 'center', gap: 0.5, fontSize: '0.875rem' }}
-                          >
-                            Pinrich500万以上登録方法
-                            <LaunchIcon fontSize="small" />
-                          </Link>
-                        </Grid>
-                      );
+                    // pinrich_link / pinrich_500man_registration / pinrich_500man_link は
+                    // pinrich グループ内に統合済みのためスキップ
+                    if (field.key === 'pinrich_link' || field.key === 'pinrich_500man_registration' || field.key === 'pinrich_500man_link') {
+                      return null;
                     }
 
                     // vendor_surveyフィールドは特別処理（値がある場合のみ表示、「未」のときはオレンジ強調）
