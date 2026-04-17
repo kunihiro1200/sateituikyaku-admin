@@ -353,6 +353,34 @@ export class GoogleAuthService extends BaseRepository {
   }
 
   /**
+   * 一時的なエラーかどうかを判定する
+   * 一時的エラー（レート制限・ネットワーク遅延・タイムアウト等）は true を返す
+   * 永続的エラー（invalid_grant・Token has been expired or revoked 等）は false を返す
+   */
+  private isTransientError(error: any): boolean {
+    // 永続的な認証エラーはリトライしない
+    if (
+      error.message?.includes('invalid_grant') ||
+      error.message?.includes('Token has been expired or revoked') ||
+      error.message === 'GOOGLE_AUTH_REQUIRED'
+    ) {
+      return false;
+    }
+    // レート制限、ネットワークエラー、一時的なサーバーエラーはリトライ対象
+    const status = error.status || error.code || error.response?.status;
+    return (
+      status === 429 ||
+      status === 500 ||
+      status === 503 ||
+      error.code === 'ECONNRESET' ||
+      error.code === 'ETIMEDOUT' ||
+      error.code === 'ENOTFOUND' ||
+      error.message?.includes('timeout') ||
+      error.message?.includes('network')
+    );
+  }
+
+  /**
    * OAuth 2.0クライアントを取得（アクセストークン自動更新済み）- 会社アカウント用
    * getAuthenticatedClientForEmployee と同様のパターンで refreshAccessToken() を呼び出す
    * @returns 認証済みOAuth2クライアント
@@ -393,13 +421,36 @@ export class GoogleAuthService extends BaseRepository {
       refresh_token: refreshToken,
     });
 
-    // アクセストークンを自動更新（getAuthenticatedClientForEmployee と同様のパターン）
-    try {
-      const { credentials } = await client.refreshAccessToken();
-      client.setCredentials(credentials);
-    } catch (refreshError) {
-      console.error('[GoogleAuthService] 会社アカウントのアクセストークン更新に失敗:', refreshError);
-      throw new Error('GOOGLE_AUTH_REQUIRED');
+    // アクセストークンを自動更新（エクスポネンシャルバックオフ付きリトライ）
+    const MAX_RETRIES = 3;
+    const BASE_DELAY_MS = 1000; // 1秒
+
+    let lastError: any;
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        const { credentials } = await client.refreshAccessToken();
+        client.setCredentials(credentials);
+        break; // 成功したらループを抜ける
+      } catch (refreshError: any) {
+        lastError = refreshError;
+
+        // 永続的なエラーはリトライしない
+        if (!this.isTransientError(refreshError)) {
+          console.error('[GoogleAuthService] 永続的な認証エラー（リトライなし）:', refreshError.message);
+          throw new Error('GOOGLE_AUTH_REQUIRED');
+        }
+
+        // 最後の試行だった場合はエラーをスロー
+        if (attempt === MAX_RETRIES) {
+          console.error(`[GoogleAuthService] ${MAX_RETRIES}回リトライ後も失敗:`, refreshError.message);
+          throw new Error('GOOGLE_AUTH_REQUIRED');
+        }
+
+        // エクスポネンシャルバックオフで待機
+        const delay = BASE_DELAY_MS * Math.pow(2, attempt);
+        console.warn(`[GoogleAuthService] トークン更新失敗（試行${attempt + 1}/${MAX_RETRIES + 1}）。${delay}ms後にリトライ:`, refreshError.message);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
     }
 
     return client;
@@ -440,13 +491,36 @@ export class GoogleAuthService extends BaseRepository {
       refresh_token: refreshToken,
     });
 
-    // アクセストークンを自動的に更新
-    try {
-      const { credentials } = await client.refreshAccessToken();
-      client.setCredentials(credentials);
-    } catch (error) {
-      console.error('[GoogleAuthService] Failed to refresh access token for employee:', employeeId, error);
-      throw new Error('GOOGLE_AUTH_REQUIRED');
+    // アクセストークンを自動的に更新（エクスポネンシャルバックオフ付きリトライ）
+    const MAX_RETRIES_EMP = 3;
+    const BASE_DELAY_MS_EMP = 1000; // 1秒
+
+    let lastErrorEmp: any;
+    for (let attempt = 0; attempt <= MAX_RETRIES_EMP; attempt++) {
+      try {
+        const { credentials } = await client.refreshAccessToken();
+        client.setCredentials(credentials);
+        break; // 成功したらループを抜ける
+      } catch (refreshError: any) {
+        lastErrorEmp = refreshError;
+
+        // 永続的なエラーはリトライしない
+        if (!this.isTransientError(refreshError)) {
+          console.error('[GoogleAuthService] 永続的な認証エラー（従業員、リトライなし）:', refreshError.message);
+          throw new Error('GOOGLE_AUTH_REQUIRED');
+        }
+
+        // 最後の試行だった場合はエラーをスロー
+        if (attempt === MAX_RETRIES_EMP) {
+          console.error(`[GoogleAuthService] 従業員トークン更新: ${MAX_RETRIES_EMP}回リトライ後も失敗:`, refreshError.message);
+          throw new Error('GOOGLE_AUTH_REQUIRED');
+        }
+
+        // エクスポネンシャルバックオフで待機
+        const delay = BASE_DELAY_MS_EMP * Math.pow(2, attempt);
+        console.warn(`[GoogleAuthService] 従業員トークン更新失敗（試行${attempt + 1}/${MAX_RETRIES_EMP + 1}）。${delay}ms後にリトライ:`, refreshError.message);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
     }
 
     return client;
