@@ -109,7 +109,8 @@ export default function PriceSection({
       });
 
       if (!response.ok) {
-        throw new Error('Failed to send message to Google Chat');
+        const body = await response.text().catch(() => '');
+        throw new Error(`HTTP ${response.status}: ${body}`);
       }
 
       onChatSendSuccess('値下げ通知を送信しました');
@@ -117,7 +118,8 @@ export default function PriceSection({
       setChatMessageBody('');
     } catch (error: any) {
       console.error('Failed to send price reduction chat:', error);
-      onChatSendError('値下げ通知の送信に失敗しました');
+      const errMsg = error?.message || String(error);
+      onChatSendError(`値下げ通知の送信に失敗しました: ${errMsg}`);
     } finally {
       setSendingChat(false);
     }
