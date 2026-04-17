@@ -1211,12 +1211,15 @@ export class SellerService extends BaseRepository {
             const visitDateOnly = vd.split('T')[0].split(' ')[0];
             const parts = visitDateOnly.split('-');
             if (parts.length !== 3) return false;
-            const visitDate = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
-            const dow = visitDate.getDay();
+            const year = parseInt(parts[0]);
+            const month = parseInt(parts[1]) - 1; // 0-indexed
+            const day = parseInt(parts[2]);
+            const visitDateUTC = new Date(Date.UTC(year, month, day));
+            const dow = visitDateUTC.getUTCDay();
             const days = dow === 4 ? 2 : 1;
-            const notify = new Date(visitDate);
-            notify.setDate(visitDate.getDate() - days);
-            const notifyStr = `${notify.getFullYear()}-${String(notify.getMonth() + 1).padStart(2, '0')}-${String(notify.getDate()).padStart(2, '0')}`;
+            const notify = new Date(visitDateUTC);
+            notify.setUTCDate(visitDateUTC.getUTCDate() - days);
+            const notifyStr = `${notify.getUTCFullYear()}-${String(notify.getUTCMonth() + 1).padStart(2, '0')}-${String(notify.getUTCDate()).padStart(2, '0')}`;
             console.log(`[visitDayBefore] seller=${s.id} visit_date=${vd} dow=${dow} notifyStr=${notifyStr} match=${notifyStr === todayJST}`);
             return notifyStr === todayJST;
           }).map((s: any) => s.id);
@@ -2603,7 +2606,8 @@ export class SellerService extends BaseRepository {
         .is('deleted_at', null)
         .not('visit_assignee', 'is', null)
         .neq('visit_assignee', '')
-        .not('visit_date', 'is', null),
+        .not('visit_date', 'is', null)
+        .range(0, 9999),  // Supabaseの1000件デフォルト制限を回避
       // 2. 訪問済みカウント
       this.table('sellers')
         .select('*', { count: 'exact', head: true })
@@ -2710,12 +2714,15 @@ export class SellerService extends BaseRepository {
       const visitDateOnly = visitDateStr.split('T')[0].split(' ')[0];
       const parts = visitDateOnly.split('-');
       if (parts.length !== 3) return false;
-      const visitDate = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
-      const visitDayOfWeek = visitDate.getDay();
+      const year = parseInt(parts[0]);
+      const month = parseInt(parts[1]) - 1; // 0-indexed
+      const day = parseInt(parts[2]);
+      const visitDateUTC = new Date(Date.UTC(year, month, day));
+      const visitDayOfWeek = visitDateUTC.getUTCDay();
       const daysBeforeVisit = visitDayOfWeek === 4 ? 2 : 1;
-      const expectedNotifyDate = new Date(visitDate);
-      expectedNotifyDate.setDate(visitDate.getDate() - daysBeforeVisit);
-      const expectedNotifyStr = `${expectedNotifyDate.getFullYear()}-${String(expectedNotifyDate.getMonth() + 1).padStart(2, '0')}-${String(expectedNotifyDate.getDate()).padStart(2, '0')}`;
+      const expectedNotifyUTC = new Date(visitDateUTC);
+      expectedNotifyUTC.setUTCDate(visitDateUTC.getUTCDate() - daysBeforeVisit);
+      const expectedNotifyStr = `${expectedNotifyUTC.getUTCFullYear()}-${String(expectedNotifyUTC.getUTCMonth() + 1).padStart(2, '0')}-${String(expectedNotifyUTC.getUTCDate()).padStart(2, '0')}`;
       return expectedNotifyStr === todayJST;
     }).length;
 
