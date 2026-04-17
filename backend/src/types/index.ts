@@ -394,6 +394,26 @@ export interface CreateSellerRequest {
   firstCallerInitials?: string;
   firstCallerEmployeeId?: string;
   site?: string; // サイト（問い合わせ元）
+  // 追客情報
+  nextCallDate?: string;
+  contactMethod?: string;
+  preferredContactTime?: string;
+  // 訪問査定情報
+  visitDate?: string;
+  visitTime?: string;
+  visitAssignee?: string;
+  visitNotes?: string;
+  // ステータス・コメント
+  status?: string;
+  confidence?: string;
+  comments?: string;
+  assignedTo?: string;
+  // 査定情報
+  valuationAmount1?: number;
+  valuationAmount2?: number;
+  valuationAmount3?: number;
+  valuationMethod?: string;
+  valuationAssignee?: string;
 }
 
 export interface UpdateSellerRequest {

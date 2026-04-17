@@ -213,6 +213,26 @@ export class SellerService extends BaseRepository {
       is_unreachable: false,
       duplicate_confirmed: false,
       exclusion_date: exclusionDate,
+      // 追客情報
+      next_call_date: (data as any).nextCallDate || null,
+      contact_method: (data as any).contactMethod || null,
+      preferred_contact_time: (data as any).preferredContactTime || null,
+      // 訪問査定情報
+      visit_date: (data as any).visitDate || null,
+      visit_time: (data as any).visitTime || null,
+      visit_assignee: (data as any).visitAssignee || null,
+      visit_notes: (data as any).visitNotes || null,
+      // ステータス・コメント
+      comments: (data as any).comments || null,
+      assigned_to: (data as any).assignedTo || null,
+      // 査定情報
+      valuation_amount_1: (data as any).valuationAmount1 ? parseFloat(String((data as any).valuationAmount1)) : null,
+      valuation_amount_2: (data as any).valuationAmount2 ? parseFloat(String((data as any).valuationAmount2)) : null,
+      valuation_amount_3: (data as any).valuationAmount3 ? parseFloat(String((data as any).valuationAmount3)) : null,
+      valuation_method: (data as any).valuationMethod || null,
+      valuation_assignee: (data as any).valuationAssignee || null,
+      // サイト
+      inquiry_site: (data as any).site || null,
     };
 
     // 売主を作成
@@ -264,6 +284,9 @@ export class SellerService extends BaseRepository {
       floor_plan: data.property.floorPlan || null,
       current_status: data.property.sellerSituation || null,
       property_address_ieul_apartment: data.property.propertyAddressForIeulMansion || null,
+      floors: data.property.floors || null,
+      parking: data.property.parking || false,
+      additional_info: data.property.additionalInfo || null,
     });
 
     if (propertyError) {
