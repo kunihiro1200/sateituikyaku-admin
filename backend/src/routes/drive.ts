@@ -151,10 +151,33 @@ router.post('/folders/:sellerNumber/files', authenticate, upload.single('file'),
 
     // 売主情報を取得（物件住所と依頼者名も含む）
     const baseRepo = new BaseRepository();
-    const { data: seller, error: sellerError } = await (baseRepo as any).table('sellers')
+    let seller: any = null;
+    let sellerError: any = null;
+
+    // まず sellers テーブルで seller_number 検索
+    const result1 = await (baseRepo as any).table('sellers')
       .select('id, name, property_address')
       .eq('seller_number', sellerNumber)
       .single();
+    seller = result1.data;
+    sellerError = result1.error;
+
+    // 見つからない場合は property_listings テーブルから検索してフォールバック
+    if (sellerError || !seller) {
+      const result2 = await (baseRepo as any).table('property_listings')
+        .select('property_number, address')
+        .eq('property_number', sellerNumber)
+        .single();
+      if (!result2.error && result2.data) {
+        // property_listings から仮の seller オブジェクトを構築
+        seller = {
+          id: result2.data.property_number,
+          name: null,
+          property_address: result2.data.address || '',
+        };
+        sellerError = null;
+      }
+    }
 
     if (sellerError || !seller) {
       console.error('Seller not found:', { sellerNumber, error: sellerError });
