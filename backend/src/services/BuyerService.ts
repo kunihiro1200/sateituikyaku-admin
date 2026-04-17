@@ -855,7 +855,7 @@ export class BuyerService {
       try {
         const { data: propertyListing, error: propertyError } = await this.supabase
           .from('property_listings')
-          .select('address, display_address, price, sales_assignee')
+          .select('address, display_address, price, sales_assignee, pre_viewing_notes, key_info, sale_reason, price_reduction_history, viewing_notes, parking, viewing_parking')
           .eq('property_number', allowedData.property_number)
           .maybeSingle();
 
@@ -865,6 +865,13 @@ export class BuyerService {
           allowedData.display_address = propertyListing.display_address ?? null;
           allowedData.price = propertyListing.price ?? null;
           allowedData.property_assignee = propertyListing.sales_assignee ?? null;
+          allowedData.pre_viewing_notes = propertyListing.pre_viewing_notes ?? null;
+          allowedData.key_info = propertyListing.key_info ?? null;
+          allowedData.sale_reason = propertyListing.sale_reason ?? null;
+          allowedData.price_reduction_history = propertyListing.price_reduction_history ?? null;
+          allowedData.viewing_notes = propertyListing.viewing_notes ?? null;
+          allowedData.parking = propertyListing.parking ?? null;
+          allowedData.viewing_parking = propertyListing.viewing_parking ?? null;
         }
         // property_listingsに対応物件が存在しない場合はスキップ（property_numberのみ保存）
       } catch (propertyFetchError: any) {
