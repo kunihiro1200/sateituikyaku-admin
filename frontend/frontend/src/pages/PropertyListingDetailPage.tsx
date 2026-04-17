@@ -496,6 +496,14 @@ export default function PropertyListingDetailPage() {
         message: '価格情報を保存しました',
         severity: 'success',
       });
+      if (editedData.price_reduction_scheduled_date !== undefined) {
+        window.dispatchEvent(new CustomEvent('propertyPriceReductionUpdated', {
+          detail: {
+            propertyNumber,
+            priceReductionScheduledDate: editedData.price_reduction_scheduled_date
+          }
+        }));
+      }
       await fetchPropertyData();
       setEditedData({});
     } catch (error) {

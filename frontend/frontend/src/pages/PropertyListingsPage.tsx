@@ -158,6 +158,25 @@ export default function PropertyListingsPage() {
     };
   }, []);
 
+  // 値下げ予約日更新イベントをリッスン
+  useEffect(() => {
+    const handlePriceReductionUpdate = (event: CustomEvent) => {
+      const { propertyNumber, priceReductionScheduledDate } = event.detail;
+      setAllListings(prevListings =>
+        prevListings.map(listing =>
+          listing.property_number === propertyNumber
+            ? { ...listing, price_reduction_scheduled_date: priceReductionScheduledDate }
+            : listing
+        )
+      );
+      pageDataCache.invalidate(CACHE_KEYS.PROPERTY_LISTINGS);
+    };
+    window.addEventListener('propertyPriceReductionUpdated', handlePriceReductionUpdate as EventListener);
+    return () => {
+      window.removeEventListener('propertyPriceReductionUpdated', handlePriceReductionUpdate as EventListener);
+    };
+  }, []);
+
   const fetchAllData = async (forceRefresh = false) => {
     // 二重フェッチ防止（キャッシュヒット時は除く）
     if (isFetchingRef.current && !forceRefresh) return;
