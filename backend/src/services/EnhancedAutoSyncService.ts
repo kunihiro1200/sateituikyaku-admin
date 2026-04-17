@@ -3197,10 +3197,10 @@ export class EnhancedAutoSyncService {
       updated_at: new Date().toISOString(),
     };
 
-    // 既存の買主を確認
+    // 既存の買主を確認（deleted_at も取得して論理削除状態を判定）
     const { data: existingBuyer, error: checkError } = await this.supabase
       .from('buyers')
-      .select('buyer_id')
+      .select('buyer_id, deleted_at')
       .eq('buyer_number', buyerNumber)
       .maybeSingle();
 
@@ -3209,13 +3209,21 @@ export class EnhancedAutoSyncService {
     }
 
     if (existingBuyer) {
-      // 既存の買主を更新
+      // 更新データを構築
+      const updateData: any = {
+        ...buyerData,
+        created_at: undefined, // created_at は更新しない
+      };
+
+      // 論理削除済みレコードの場合は deleted_at: null で復元
+      if (existingBuyer.deleted_at !== null) {
+        updateData.deleted_at = null;
+        console.log(`[syncSingleBuyer] 論理削除済み買主を復元: buyer_number=${buyerNumber}`);
+      }
+
       const { error: updateError } = await this.supabase
         .from('buyers')
-        .update({
-          ...buyerData,
-          created_at: undefined, // created_at は更新しない
-        })
+        .update(updateData)
         .eq('buyer_number', buyerNumber);
 
       if (updateError) {
