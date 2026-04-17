@@ -21,6 +21,7 @@ interface CategoryCounts {
   generalViewingSellerContactPending?: number;  // 一般媒介_内覧後売主連絡未
   viewingPromotionRequired?: number;  // 要内覧促進客
   pinrichUnregistered?: number;  // ピンリッチ未登録
+  pinrich500manUnregistered?: number;  // Pinrich500万以上登録未
 }
 
 export interface BuyerWithStatus {
@@ -73,6 +74,8 @@ function getCategoryColor(category: string): string {
       return '#d32f2f'; // 赤
     case 'pinrichUnregistered':
       return '#d32f2f'; // 赤
+    case 'pinrich500manUnregistered':
+      return '#d32f2f'; // 赤
     default:
       if (category.startsWith('assigned:')) {
         return '#4caf50'; // 緑（担当）
@@ -106,6 +109,8 @@ function getCategoryLabel(category: string): string {
       return '要内覧促進客';
     case 'pinrichUnregistered':
       return 'ピンリッチ未登録';
+    case 'pinrich500manUnregistered':
+      return 'Pinrich500万以上登録未';
     default:
       if (category.startsWith('assigned:')) {
         return `担当(${category.replace('assigned:', '')})`;
@@ -189,6 +194,7 @@ export default function BuyerStatusSidebar({
     'generalViewingSellerContactPending',
     'viewingPromotionRequired',
     'pinrichUnregistered',
+    'pinrich500manUnregistered',
   ];
   
   newCategories.forEach(key => {

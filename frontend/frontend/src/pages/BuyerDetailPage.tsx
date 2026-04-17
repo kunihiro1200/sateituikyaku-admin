@@ -164,6 +164,7 @@ const SAVE_BUTTON_FIELDS = new Set([
   'owned_home_hearing_result',
   'valuation_required',
   'broker_inquiry',
+  'pinrich_500man_registration',
 ]);
 
 
@@ -180,6 +181,8 @@ const BUYER_FIELD_SECTIONS = [
       { key: 'distribution_type', label: '配信メール', inlineEditable: true, fieldType: 'buttonSelect', required: true },
       { key: 'pinrich', label: 'Pinrich', inlineEditable: true, fieldType: 'dropdown' },
       { key: 'pinrich_link', label: 'Pinrichリンク', inlineEditable: true, fieldType: 'pinrichLink' },
+      { key: 'pinrich_500man_registration', label: '500万以上登録', inlineEditable: true, fieldType: 'buttonSelect' },
+      { key: 'pinrich_500man_link', label: 'Pinrich500万以上登録方法', inlineEditable: true, fieldType: 'pinrich500manLink' },
       { key: 'inquiry_email_phone', label: '【問合メール】電話対応', inlineEditable: true, fieldType: 'dropdown' },
       { key: 'inquiry_email_reply', label: '【問合メール】メール返信', inlineEditable: true, fieldType: 'buttonSelect' },
       { key: 'three_calls_confirmed', label: '3回架電確認済み', inlineEditable: true, fieldType: 'buttonSelect' },
@@ -267,6 +270,16 @@ export default function BuyerDetailPage() {
     }
 
     return true;
+  };
+
+  // 500万以上登録フィールドの表示条件を判定するヘルパー
+  // AND(ISNOTBLANK([メールアドレス]), [問合せ物件価格] <= 5000000)
+  const isPinrich500manVisible = (data: any, properties: any[]): boolean => {
+    if (!data) return false;
+    if (!data.email || !String(data.email).trim()) return false;
+    const price = properties[0]?.price;
+    if (price === undefined || price === null) return false;
+    return Number(price) <= 5000000;
   };
 
   // owned_home_hearing_result が必須かどうかを判定するヘルパー
@@ -2333,6 +2346,60 @@ TEL：097-533-2022`;
                             sx={{ display: 'flex', alignItems: 'center', gap: 0.5, fontSize: '0.875rem' }}
                           >
                             Pinrichリンク
+                            <LaunchIcon fontSize="small" />
+                          </Link>
+                        </Grid>
+                      );
+                    }
+
+                    // pinrich_500man_registrationフィールドは特別処理（表示条件付きButtonSelect）
+                    if (field.key === 'pinrich_500man_registration') {
+                      if (!isPinrich500manVisible(buyer, linkedProperties)) return null;
+                      const PINRICH_500MAN_BTNS = ['済', '未'];
+                      const currentValue = buyer?.pinrich_500man_registration || '未';
+                      return (
+                        <Grid item xs={12} sm={6} key={`${section.title}-${field.key}`}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Typography variant="caption" sx={{ whiteSpace: 'nowrap', flexShrink: 0 }}>
+                              {field.label}
+                            </Typography>
+                            <Box sx={{ display: 'flex', gap: 0.5, flex: 1 }}>
+                              {PINRICH_500MAN_BTNS.map((opt) => {
+                                const isSelected = currentValue === opt;
+                                return (
+                                  <Button
+                                    key={opt}
+                                    variant={isSelected ? 'contained' : 'outlined'}
+                                    size="small"
+                                    color={opt === '未' ? 'error' : 'primary'}
+                                    onClick={() => {
+                                      setBuyer((prev: any) => prev ? { ...prev, pinrich_500man_registration: opt } : prev);
+                                      handleFieldChange(section.title, field.key, opt);
+                                    }}
+                                    sx={{ flex: 1, py: 0.5 }}
+                                  >
+                                    {opt}
+                                  </Button>
+                                );
+                              })}
+                            </Box>
+                          </Box>
+                        </Grid>
+                      );
+                    }
+
+                    // pinrich_500man_linkフィールドは特別処理（リンク表示、表示条件付き）
+                    if (field.key === 'pinrich_500man_link') {
+                      if (!isPinrich500manVisible(buyer, linkedProperties)) return null;
+                      return (
+                        <Grid item xs={12} key={`${section.title}-${field.key}`}>
+                          <Link
+                            href="https://docs.google.com/spreadsheets/d/14gi7bEM1jLgMGA5iOes69DbcLkcRox2vZdKiUy-4_VU/edit?usp=sharing"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            sx={{ display: 'flex', alignItems: 'center', gap: 0.5, fontSize: '0.875rem' }}
+                          >
+                            Pinrich500万以上登録方法
                             <LaunchIcon fontSize="small" />
                           </Link>
                         </Grid>

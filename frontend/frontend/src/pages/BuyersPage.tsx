@@ -96,6 +96,7 @@ export default function BuyersPage() {
     'generalViewingSellerContactPending': '一般媒介_内覧後売主連絡未',
     'viewingPromotionRequired': '要内覧促進客',
     'pinrichUnregistered': 'ピンリッチ未登録',
+    'pinrich500manUnregistered': 'Pinrich500万以上登録未',
     'unvaluated': '未査定',
     'mailingPending': '査定（郵送）',
     'todayCallNotStarted': '当日TEL_未着手',

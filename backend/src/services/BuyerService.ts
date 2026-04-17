@@ -1875,6 +1875,7 @@ export class BuyerService {
           generalViewingSellerContactPending: 0,
           viewingPromotionRequired: 0,
           pinrichUnregistered: 0,
+          pinrich500manUnregistered: 0,
         };
         
         for (const row of data) {
@@ -1898,6 +1899,8 @@ export class BuyerService {
             categoryCounts.viewingPromotionRequired = row.count || 0;
           } else if (row.category === 'pinrichUnregistered') {
             categoryCounts.pinrichUnregistered = row.count || 0;
+          } else if (row.category === 'pinrich500manUnregistered') {
+            categoryCounts.pinrich500manUnregistered = row.count || 0;
           }
         }
         
@@ -2101,6 +2104,7 @@ export class BuyerService {
         generalViewingSellerContactPending: 0,  // 一般媒介_内覧後売主連絡未
         viewingPromotionRequired: 0,  // 要内覧促進客
         pinrichUnregistered: 0,  // ピンリッチ未登録
+        pinrich500manUnregistered: 0,  // Pinrich500万以上登録未
       };
       
       // 今日の日付（YYYY-MM-DD形式）
@@ -2149,6 +2153,19 @@ export class BuyerService {
           result.viewingPromotionRequired++;
         } else if (status === 'ピンリッチ未登録') {
           result.pinrichUnregistered++;
+        }
+      });
+      
+      // Pinrich500万以上登録未: email非空 AND price<=500万 AND (pinrich_500man_registration が '未' または null/空)
+      allBuyers.forEach((buyer: any) => {
+        if (
+          buyer.email && String(buyer.email).trim() &&
+          buyer.inquiry_property_price !== null &&
+          buyer.inquiry_property_price !== undefined &&
+          Number(buyer.inquiry_property_price) <= 5000000 &&
+          (!buyer.pinrich_500man_registration || buyer.pinrich_500man_registration === '未')
+        ) {
+          result.pinrich500manUnregistered++;
         }
       });
       
@@ -2829,6 +2846,7 @@ export class BuyerService {
       rows.push({ category: 'generalViewingSellerContactPending', count: categoryCounts.generalViewingSellerContactPending || 0, label: null, assignee: null, updated_at: now });
       rows.push({ category: 'viewingPromotionRequired', count: categoryCounts.viewingPromotionRequired || 0, label: null, assignee: null, updated_at: now });
       rows.push({ category: 'pinrichUnregistered', count: categoryCounts.pinrichUnregistered || 0, label: null, assignee: null, updated_at: now });
+      rows.push({ category: 'pinrich500manUnregistered', count: categoryCounts.pinrich500manUnregistered || 0, label: null, assignee: null, updated_at: now });
       
       // 担当別カテゴリ
       for (const [assignee, count] of Object.entries(categoryCounts.assignedCounts || {})) {
