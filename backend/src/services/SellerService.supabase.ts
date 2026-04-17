@@ -81,7 +81,7 @@ function getInitialsMap(): Record<string, string> {
 
 // getSeller 用インメモリキャッシュ（30秒TTL）
 const _sellerCache = new Map<string, { data: any; expiresAt: number }>();
-const SELLER_CACHE_TTL_MS = 30 * 1000; // 30秒
+const SELLER_CACHE_TTL_MS = 0; // キャッシュ無効化（Vercelサーバーレス環境ではインスタンス間でキャッシュが共有されないため）
 
 function getSellerCache(sellerId: string): any | null {
   const entry = _sellerCache.get(sellerId);
@@ -624,7 +624,8 @@ export class SellerService extends BaseRepository {
 
     // Exclusion action field
     if ((data as any).exclusionAction !== undefined) {
-      updates.exclusion_action = (data as any).exclusionAction;
+      // 空文字列の場合はnullに変換（除外アクション解除）
+      updates.exclusion_action = (data as any).exclusionAction === '' ? null : (data as any).exclusionAction;
     }
 
     // 内覧前伝達事項

@@ -2305,7 +2305,7 @@ const CallModePage = () => {
         competitors: editedCompetitors.length > 0 ? editedCompetitors.join(', ') : null,
         exclusiveOtherDecisionFactors: editedExclusiveOtherDecisionFactors.length > 0 ? editedExclusiveOtherDecisionFactors : null,
         competitorNameAndReason: editedCompetitorNameAndReason || null,
-        ...(exclusionAction ? { exclusionAction } : {}),
+        ...(exclusionAction !== undefined ? { exclusionAction } : {}),
         pinrichStatus: editedPinrichStatus || null,
       });
 
