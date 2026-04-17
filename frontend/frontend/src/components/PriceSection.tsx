@@ -3,6 +3,7 @@ import { Box, Typography, TextField, Grid, Button, Dialog, DialogTitle, DialogCo
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import CheckIcon from '@mui/icons-material/Check';
 import api from '../services/api';
+import ImageSelectorModal from './ImageSelectorModal';
 import { PropertyChatSendData } from '../types/chat';
 
 // 月々ローン支払い計算（元利均等返済、金利年3%/12、420回）
@@ -67,6 +68,8 @@ export default function PriceSection({
   const [showScheduleForm, setShowScheduleForm] = useState(false);
   const [sendingChat, setSendingChat] = useState(false);
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
+  const [imageSelectorOpen, setImageSelectorOpen] = useState(false);
+  const [selectedImageUrl, setSelectedImageUrl] = useState<string | undefined>(undefined);
   const [copiedMonthly, setCopiedMonthly] = useState(false);
 
   // 値下げ履歴の最新行を検出
@@ -94,8 +97,9 @@ export default function PriceSection({
       const propertyUrl = `${window.location.origin}/property-listings/${propertyNumber}`;
 
       const propertyNumberLine = propertyNumber ? `物件番号：${propertyNumber}\n` : '';
+      const imageUrlLine = selectedImageUrl ? `\n📷 ${selectedImageUrl}` : '';
       const message = {
-        text: `${propertyNumberLine}【値下げ通知】\n${latestReduction}\n${address || ''}\n${propertyUrl}`
+        text: `${propertyNumberLine}【値下げ通知】\n${latestReduction}\n${address || ''}\n${propertyUrl}${imageUrlLine}`
       };
 
       const response = await fetch(webhookUrl, {
@@ -109,6 +113,7 @@ export default function PriceSection({
       }
 
       onChatSendSuccess('値下げ通知を送信しました');
+      setSelectedImageUrl(undefined);
     } catch (error: any) {
       console.error('Failed to send price reduction chat:', error);
       onChatSendError('値下げ通知の送信に失敗しました');
@@ -246,21 +251,21 @@ export default function PriceSection({
                 }}
                 disabled={sendingChat || !getLatestPriceReduction()}
                 sx={{
-                  backgroundColor: isPriceChanged && scheduledNotifications.length === 0 ? '#d32f2f' : '#1976d2',
+                  backgroundColor: isPriceChanged && scheduledNotifications.length === 0 ? '#e65100' : '#f57c00',
                   '&:hover': {
-                    backgroundColor: isPriceChanged && scheduledNotifications.length === 0 ? '#b71c1c' : '#1565c0',
+                    backgroundColor: isPriceChanged && scheduledNotifications.length === 0 ? '#bf360c' : '#e65100',
                   },
                   fontSize: '0.75rem',
                   fontWeight: 'bold',
                   animation: isPriceChanged && scheduledNotifications.length === 0 ? 'pulse 2s infinite' : 'none',
                   '@keyframes pulse': {
-                    '0%': { boxShadow: '0 0 0 0 rgba(211, 47, 47, 0.7)' },
-                    '70%': { boxShadow: '0 0 0 10px rgba(211, 47, 47, 0)' },
-                    '100%': { boxShadow: '0 0 0 0 rgba(211, 47, 47, 0)' },
+                    '0%': { boxShadow: '0 0 0 0 rgba(230, 81, 0, 0.7)' },
+                    '70%': { boxShadow: '0 0 0 10px rgba(230, 81, 0, 0)' },
+                    '100%': { boxShadow: '0 0 0 0 rgba(230, 81, 0, 0)' },
                   },
                 }}
               >
-                {sendingChat ? '送信中...' : '物件担当へCHAT送信'}
+                {sendingChat ? '送信中...' : '物件担当へCHAT送信（画像添付可能）'}
               </Button>
             </Box>
           )}
@@ -268,7 +273,7 @@ export default function PriceSection({
       )}
 
       {/* 送信確認ダイアログ */}
-      <Dialog open={confirmDialogOpen} onClose={() => setConfirmDialogOpen(false)} maxWidth="sm" fullWidth>
+      <Dialog open={confirmDialogOpen} onClose={() => { setConfirmDialogOpen(false); setSelectedImageUrl(undefined); }} maxWidth="sm" fullWidth>
         <DialogTitle>Chat送信の確認</DialogTitle>
         <DialogContent>
           <Typography variant="body2" color="text.secondary" gutterBottom>
@@ -277,9 +282,37 @@ export default function PriceSection({
           <Box sx={{ mt: 1, p: 2, bgcolor: '#f5f5f5', borderRadius: 1, whiteSpace: 'pre-line', fontFamily: 'monospace', fontSize: '0.75rem' }}>
             {`${propertyNumber ? `物件番号：${propertyNumber}\n` : ''}【値下げ通知】\n${getLatestPriceReduction() || ''}\n${address || ''}\n${window.location.origin}/property-listings/${propertyNumber}`}
           </Box>
+          {/* 画像添付セクション */}
+          <Box sx={{ mt: 2 }}>
+            <Typography variant="body2" color="text.secondary" gutterBottom>
+              画像添付（任意）：
+            </Typography>
+            {selectedImageUrl ? (
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1 }}>
+                <Box
+                  component="img"
+                  src={selectedImageUrl}
+                  alt="添付画像"
+                  sx={{ width: 80, height: 60, objectFit: 'cover', borderRadius: 1, border: '1px solid #ddd' }}
+                />
+                <Button size="small" color="error" onClick={() => setSelectedImageUrl(undefined)}>
+                  削除
+                </Button>
+              </Box>
+            ) : (
+              <Button
+                size="small"
+                variant="outlined"
+                onClick={() => setImageSelectorOpen(true)}
+                sx={{ mt: 0.5 }}
+              >
+                📷 画像を選択
+              </Button>
+            )}
+          </Box>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setConfirmDialogOpen(false)}>キャンセル</Button>
+          <Button onClick={() => { setConfirmDialogOpen(false); setSelectedImageUrl(undefined); }}>キャンセル</Button>
           <Button
             variant="contained"
             onClick={handleSendPriceReductionChat}
@@ -290,6 +323,19 @@ export default function PriceSection({
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* 画像選択モーダル */}
+      <ImageSelectorModal
+        open={imageSelectorOpen}
+        onClose={() => setImageSelectorOpen(false)}
+        onConfirm={(images) => {
+          if (images.length > 0) {
+            setSelectedImageUrl(images[0].previewUrl || images[0].url || '');
+          }
+          setImageSelectorOpen(false);
+        }}
+        sellerNumber={propertyNumber}
+      />
     </Box>
   );
 }
