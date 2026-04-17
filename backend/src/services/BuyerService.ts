@@ -620,7 +620,7 @@ export class BuyerService {
           try {
             const { data: propertyListing, error: propertyError } = await this.supabase
               .from('property_listings')
-              .select('address, display_address, price, sales_assignee, pre_viewing_notes, key_info, sale_reason, price_reduction_history, viewing_notes, parking, viewing_parking')
+              .select('address, display_address, price, sales_assignee, pre_viewing_notes, sale_reason, price_reduction_history, viewing_notes, parking, viewing_parking')
               .eq('property_number', appendData.property_number)
               .maybeSingle();
 
@@ -630,7 +630,6 @@ export class BuyerService {
               appendData.price = propertyListing.price ?? null;
               appendData.property_assignee = propertyListing.sales_assignee ?? null;
               appendData.pre_viewing_notes = propertyListing.pre_viewing_notes ?? null;
-              appendData.key_info = propertyListing.key_info ?? null;
               appendData.sale_reason = propertyListing.sale_reason ?? null;
               appendData.price_reduction_history = propertyListing.price_reduction_history ?? null;
               appendData.viewing_notes = propertyListing.viewing_notes ?? null;
@@ -862,7 +861,7 @@ export class BuyerService {
       try {
         const { data: propertyListing, error: propertyError } = await this.supabase
           .from('property_listings')
-          .select('address, display_address, price, sales_assignee, pre_viewing_notes, key_info, sale_reason, price_reduction_history, viewing_notes, parking, viewing_parking')
+          .select('address, display_address, price, sales_assignee, pre_viewing_notes, sale_reason, price_reduction_history, viewing_notes, parking, viewing_parking')
           .eq('property_number', allowedData.property_number)
           .maybeSingle();
 
@@ -873,7 +872,6 @@ export class BuyerService {
           allowedData.price = propertyListing.price ?? null;
           allowedData.property_assignee = propertyListing.sales_assignee ?? null;
           allowedData.pre_viewing_notes = propertyListing.pre_viewing_notes ?? null;
-          allowedData.key_info = propertyListing.key_info ?? null;
           allowedData.sale_reason = propertyListing.sale_reason ?? null;
           allowedData.price_reduction_history = propertyListing.price_reduction_history ?? null;
           allowedData.viewing_notes = propertyListing.viewing_notes ?? null;
