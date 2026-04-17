@@ -70,6 +70,7 @@ export default function PriceSection({
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
   const [imageSelectorOpen, setImageSelectorOpen] = useState(false);
   const [selectedImageUrl, setSelectedImageUrl] = useState<string | undefined>(undefined);
+  const [chatMessageBody, setChatMessageBody] = useState('');
   const [copiedMonthly, setCopiedMonthly] = useState(false);
 
   // 値下げ履歴の最新行を検出
@@ -96,10 +97,9 @@ export default function PriceSection({
       const webhookUrl = 'https://chat.googleapis.com/v1/spaces/AAAAw9wyS-o/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=t6SJmZ8af-yyB38DZzAqGOKYI-DnIl6wYtVo-Lyskuk';
       const propertyUrl = `${window.location.origin}/property-listings/${propertyNumber}`;
 
-      const propertyNumberLine = propertyNumber ? `物件番号：${propertyNumber}\n` : '';
       const imageUrlLine = selectedImageUrl ? `\n📷 ${selectedImageUrl}` : '';
       const message = {
-        text: `${propertyNumberLine}【値下げ通知】\n${latestReduction}\n${address || ''}\n${propertyUrl}${imageUrlLine}`
+        text: `${chatMessageBody}${imageUrlLine}`
       };
 
       const response = await fetch(webhookUrl, {
@@ -114,6 +114,7 @@ export default function PriceSection({
 
       onChatSendSuccess('値下げ通知を送信しました');
       setSelectedImageUrl(undefined);
+      setChatMessageBody('');
     } catch (error: any) {
       console.error('Failed to send price reduction chat:', error);
       onChatSendError('値下げ通知の送信に失敗しました');
@@ -246,8 +247,15 @@ export default function PriceSection({
                 fullWidth
                 variant="contained"
                 onClick={() => {
-                  if (getLatestPriceReduction()) setConfirmDialogOpen(true);
-                  else onChatSendError('値下げ履歴が見つかりません');
+                  const latestReduction = getLatestPriceReduction();
+                  if (latestReduction) {
+                    const propertyUrl = `${window.location.origin}/property-listings/${propertyNumber}`;
+                    const propertyNumberLine = propertyNumber ? `物件番号：${propertyNumber}\n` : '';
+                    setChatMessageBody(`${propertyNumberLine}【値下げ通知】\n${latestReduction}\n${address || ''}\n${propertyUrl}`);
+                    setConfirmDialogOpen(true);
+                  } else {
+                    onChatSendError('値下げ履歴が見つかりません');
+                  }
                 }}
                 disabled={sendingChat || !getLatestPriceReduction()}
                 sx={{
@@ -273,15 +281,20 @@ export default function PriceSection({
       )}
 
       {/* 送信確認ダイアログ */}
-      <Dialog open={confirmDialogOpen} onClose={() => { setConfirmDialogOpen(false); setSelectedImageUrl(undefined); }} maxWidth="sm" fullWidth>
+      <Dialog open={confirmDialogOpen} onClose={() => { setConfirmDialogOpen(false); setSelectedImageUrl(undefined); setChatMessageBody(''); }} maxWidth="sm" fullWidth>
         <DialogTitle>Chat送信の確認</DialogTitle>
         <DialogContent>
           <Typography variant="body2" color="text.secondary" gutterBottom>
             以下の内容をGoogle Chatに送信します：
           </Typography>
-          <Box sx={{ mt: 1, p: 2, bgcolor: '#f5f5f5', borderRadius: 1, whiteSpace: 'pre-line', fontFamily: 'monospace', fontSize: '0.75rem' }}>
-            {`${propertyNumber ? `物件番号：${propertyNumber}\n` : ''}【値下げ通知】\n${getLatestPriceReduction() || ''}\n${address || ''}\n${window.location.origin}/property-listings/${propertyNumber}`}
-          </Box>
+          <TextField
+            fullWidth
+            multiline
+            rows={6}
+            value={chatMessageBody}
+            onChange={(e) => setChatMessageBody(e.target.value)}
+            sx={{ mt: 1, fontFamily: 'monospace', fontSize: '0.75rem', '& .MuiInputBase-input': { fontFamily: 'monospace', fontSize: '0.75rem' } }}
+          />
           {/* 画像添付セクション */}
           <Box sx={{ mt: 2 }}>
             <Typography variant="body2" color="text.secondary" gutterBottom>
@@ -312,7 +325,7 @@ export default function PriceSection({
           </Box>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => { setConfirmDialogOpen(false); setSelectedImageUrl(undefined); }}>キャンセル</Button>
+          <Button onClick={() => { setConfirmDialogOpen(false); setSelectedImageUrl(undefined); setChatMessageBody(''); }}>キャンセル</Button>
           <Button
             variant="contained"
             onClick={handleSendPriceReductionChat}
