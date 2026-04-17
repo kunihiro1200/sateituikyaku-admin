@@ -97,10 +97,15 @@ export default function PriceSection({
       const webhookUrl = 'https://chat.googleapis.com/v1/spaces/AAAAw9wyS-o/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=t6SJmZ8af-yyB38DZzAqGOKYI-DnIl6wYtVo-Lyskuk';
       const propertyUrl = `${window.location.origin}/property-listings/${propertyNumber}`;
 
+      const GOOGLE_CHAT_LIMIT = 4096;
+      const TRUNCATE_SUFFIX = '...';
+      const SAFE_LIMIT = GOOGLE_CHAT_LIMIT - TRUNCATE_SUFFIX.length; // 4093
+
       const imageUrlLine = selectedImageUrl ? `\n📷 ${selectedImageUrl}` : '';
       const fullText = `${chatMessageBody}${imageUrlLine}`;
-      // Google Chat APIの文字数制限は4096文字
-      const truncatedText = fullText.length > 4000 ? fullText.substring(0, 4000) + '...' : fullText;
+      const truncatedText = fullText.length > GOOGLE_CHAT_LIMIT
+        ? fullText.substring(0, SAFE_LIMIT) + TRUNCATE_SUFFIX
+        : fullText;
       const message = {
         text: truncatedText
       };
