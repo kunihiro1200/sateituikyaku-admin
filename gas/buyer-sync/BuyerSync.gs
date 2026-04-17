@@ -489,9 +489,17 @@ function buyerMapRowToRecord(headers, row) {
     //        （スプシ空欄 → DBの既存値「未」が残るバグを防ぐため）
     // 例外3: notification_sender（通知送信者）は空欄時にnullで上書きする
     //        （スプシで消した場合にDBに反映されないと「内覧日前日」カテゴリーから除外されないため）
+    // 例外4: nameはNOT NULL制約があるため、空欄時は空文字列を直接セット（buyerConvertValueを通さない）
+    if (dbColumn === 'name') {
+      record[dbColumn] = converted !== null ? converted : '(氏名未入力)';
+      continue;
+    }
     if (converted === null && dbColumn !== 'buyer_number' && dbColumn !== 'vendor_survey' && dbColumn !== 'notification_sender') continue;
     record[dbColumn] = converted;
   }
+  // スプシに存在する行は常にアクティブ（deleted_at: null）として復元する
+  // DBで論理削除されていてもスプシにデータがあれば復元する
+  record['deleted_at'] = null;
   return record;
 }
 
