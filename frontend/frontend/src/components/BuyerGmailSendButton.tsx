@@ -69,7 +69,8 @@ export default function BuyerGmailSendButton({
 
   // 選択数を取得
   const selectedCount = selectedPropertyIds.size;
-  const isDisabled = selectedCount === 0 || loading;
+  // メールアドレスがあればボタンは有効化する（物件未選択はクリック時にエラーメッセージで対応）
+  const isDisabled = loading;
 
   const handleClick = () => {
     // 選択物件がない場合はエラーメッセージを表示
