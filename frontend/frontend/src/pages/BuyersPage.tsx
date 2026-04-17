@@ -168,6 +168,17 @@ export default function BuyersPage() {
                   );
                   
                   return matches;
+                } else if (selectedCalculatedStatus === 'pinrich500manUnregistered') {
+                  // Pinrich500万以上登録未: 4条件でフィルタリング（バックエンドと同じロジック）
+                  const matches = (
+                    b.email && String(b.email).trim() &&
+                    b.inquiry_property_price !== null &&
+                    b.inquiry_property_price !== undefined &&
+                    Number(b.inquiry_property_price) <= 5000000 &&
+                    (!b.pinrich_500man_registration || b.pinrich_500man_registration === '未') &&
+                    b.reception_date && b.reception_date >= '2026-01-01'
+                  );
+                  return matches;
                 } else {
                   // サイドバーのカテゴリキーを日本語の表示名に変換
                   const displayName = categoryKeyToDisplayName[selectedCalculatedStatus] || selectedCalculatedStatus;
@@ -265,9 +276,14 @@ export default function BuyersPage() {
         
         // 全件データ未取得時でもselectedCalculatedStatusが指定されている場合はAPIにフィルタパラメータを渡す
         if (selectedCalculatedStatus && !viewingMonth && !assigneeParam) {
-          // カテゴリキーを日本語表示名に変換してからAPIに渡す
-          const displayName = categoryKeyToDisplayName[selectedCalculatedStatus] || selectedCalculatedStatus;
-          quickParams.calculatedStatus = displayName;
+          // pinrich500manUnregistered は英語キーをそのままAPIに渡す（バックエンドが英語キーで処理）
+          // その他のカテゴリはカテゴリキーを日本語表示名に変換してからAPIに渡す
+          if (selectedCalculatedStatus === 'pinrich500manUnregistered') {
+            quickParams.calculatedStatus = selectedCalculatedStatus;
+          } else {
+            const displayName = categoryKeyToDisplayName[selectedCalculatedStatus] || selectedCalculatedStatus;
+            quickParams.calculatedStatus = displayName;
+          }
         }
 
         // 最初の50件を即座に表示
