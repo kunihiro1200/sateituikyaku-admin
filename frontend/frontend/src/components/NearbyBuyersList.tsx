@@ -44,17 +44,17 @@ interface NearbyBuyersListProps {
   onCountChange?: (count: number) => void;
 }
 
-// 価格帯定数（9段階）
+// 価格帯定数（9段階）- inquiry_price は円単位のため閾値も円単位
 const PRICE_RANGES = [
-  { key: 'under1000',  label: '1000万未満',     min: null,  max: 1000  },
-  { key: '1000s',      label: '1000万円台',     min: 1000,  max: 2000  },
-  { key: '2000s',      label: '2000万円台',     min: 2000,  max: 3000  },
-  { key: '3000s',      label: '3000万円台',     min: 3000,  max: 4000  },
-  { key: '4000s',      label: '4000万円台',     min: 4000,  max: 5000  },
-  { key: '5000s',      label: '5000万円台',     min: 5000,  max: 6000  },
-  { key: '6000s',      label: '6000万円台',     min: 6000,  max: 7000  },
-  { key: '7000s',      label: '7000万円台',     min: 7000,  max: 8000  },
-  { key: '8000plus',   label: '8000万円台以上', min: 8000,  max: null  },
+  { key: 'under1000',  label: '1000万未満',     min: null,       max: 10000000   },
+  { key: '1000s',      label: '1000万円台',     min: 10000000,   max: 20000000   },
+  { key: '2000s',      label: '2000万円台',     min: 20000000,   max: 30000000   },
+  { key: '3000s',      label: '3000万円台',     min: 30000000,   max: 40000000   },
+  { key: '4000s',      label: '4000万円台',     min: 40000000,   max: 50000000   },
+  { key: '5000s',      label: '5000万円台',     min: 50000000,   max: 60000000   },
+  { key: '6000s',      label: '6000万円台',     min: 60000000,   max: 70000000   },
+  { key: '7000s',      label: '7000万円台',     min: 70000000,   max: 80000000   },
+  { key: '8000plus',   label: '8000万円台以上', min: 80000000,   max: null       },
 ] as const;
 
 // 買主が指定した価格帯に該当するか判定（null/undefined は false を返す）
