@@ -601,7 +601,7 @@ const NearbyBuyersList = ({ sellerId, propertyNumber, propertyType, onCountChang
       <TableContainer component={Paper} variant="outlined">
         <Table size="small">
           <TableHead>
-            <TableRow>
+            <TableRow sx={{ backgroundColor: '#e8f5e9' }}>
               <TableCell padding="checkbox">
                 <Checkbox
                   indeterminate={selectedBuyers.size > 0 && selectedBuyers.size < sortedBuyers.length}
