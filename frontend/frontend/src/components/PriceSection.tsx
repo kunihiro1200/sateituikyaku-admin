@@ -351,29 +351,18 @@ export default function PriceSection({
       <ImageSelectorModal
         open={imageSelectorOpen}
         onClose={() => setImageSelectorOpen(false)}
-        onConfirm={async (images) => {
+        onConfirm={(images) => {
           if (images.length > 0) {
             const img = images[0];
-            // Google Drive画像: webViewLink（previewUrl）を使用
-            if (img.source === 'drive' && img.previewUrl && !img.previewUrl.startsWith('data:')) {
-              setSelectedImageUrl(img.previewUrl);
-            } else if (img.source === 'local' && img.localFile) {
-              // ローカルファイル: バックエンドにアップロードしてURLを取得
-              try {
-                const formData = new FormData();
-                formData.append('file', img.localFile);
-                const res = await api.post(`/drive/folders/${propertyNumber}/files`, formData, {
-                  headers: { 'Content-Type': 'multipart/form-data' },
-                });
-                const uploadedUrl = res.data?.file?.webViewLink || res.data?.file?.webContentLink || '';
-                setSelectedImageUrl(uploadedUrl);
-              } catch (err) {
-                console.error('画像アップロードエラー:', err);
-                onChatSendError('画像のアップロードに失敗しました');
-              }
-            } else if (img.url) {
-              setSelectedImageUrl(img.url);
+            if (img.source === 'local' || img.previewUrl?.startsWith('data:')) {
+              // ローカルファイルはChatに送信できないためエラー
+              onChatSendError('ローカルファイルは送信できません。Google Driveタブから画像を選択してください。');
+              setImageSelectorOpen(false);
+              return;
             }
+            // Google Drive画像またはURL: そのまま使用
+            const imgUrl = img.url || img.previewUrl || '';
+            setSelectedImageUrl(imgUrl);
           }
           setImageSelectorOpen(false);
         }}
