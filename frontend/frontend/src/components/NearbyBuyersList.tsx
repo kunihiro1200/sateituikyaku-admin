@@ -72,7 +72,7 @@ const togglePriceRange = (prev: Set<string>, key: string): Set<string> => {
   return next;
 };
 
-// 希望価格文字列（例: "1000〜2999万円", "2000万以上", "指定なし"）を
+// 希望価格文字列（例: "1000〜2999万円", "2000万以上", "~1900万円", "指定なし"）を
 // { min: number, max: number } に変換する（円単位）
 // 変換できない場合は null を返す（「指定なし」扱い）
 const parseDesiredPriceRange = (priceStr: string): { min: number; max: number } | null => {
@@ -83,6 +83,16 @@ const parseDesiredPriceRange = (priceStr: string): { min: number; max: number } 
     .replace(/億/g, '00000000')
     .trim();
 
+  // 先頭チルダ形式: "~19000000" → 0〜19000000（以下）
+  const leadingTildeMatch = s.match(/^[〜～~]\s*(\d+)/);
+  if (leadingTildeMatch) {
+    return { min: 0, max: parseInt(leadingTildeMatch[1], 10) };
+  }
+  // 末尾チルダ形式: "10000000〜" → 10000000以上
+  const trailingTildeMatch = s.match(/^(\d+)\s*[〜～~]\s*$/);
+  if (trailingTildeMatch) {
+    return { min: parseInt(trailingTildeMatch[1], 10), max: Number.MAX_SAFE_INTEGER };
+  }
   // 範囲形式: "10000000〜29990000" など
   const rangeMatch = s.match(/(\d+)\s*[〜～\-~]\s*(\d+)/);
   if (rangeMatch) {
