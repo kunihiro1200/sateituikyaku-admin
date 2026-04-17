@@ -2583,10 +2583,30 @@ export class SellerService extends BaseRepository {
     // 未査定の基準日
     const cutoffDate = '2025-12-08';
 
+    // 訪問日前日用データをページネーションで全件取得（Supabaseは range() でも最大1000件制限があるため）
+    let visitAssigneeForDayBeforeAllData: any[] = [];
+    {
+      let vdbFallbackPage = 0;
+      const vdbFallbackPageSize = 1000;
+      while (true) {
+        const { data: vdbData, error: vdbError } = await this.table('sellers')
+          .select('visit_date, visit_assignee, visit_reminder_assignee')
+          .is('deleted_at', null)
+          .not('visit_assignee', 'is', null)
+          .neq('visit_assignee', '')
+          .not('visit_date', 'is', null)
+          .order('id')
+          .range(vdbFallbackPage * vdbFallbackPageSize, (vdbFallbackPage + 1) * vdbFallbackPageSize - 1);
+        if (vdbError || !vdbData || vdbData.length === 0) break;
+        visitAssigneeForDayBeforeAllData = visitAssigneeForDayBeforeAllData.concat(vdbData);
+        if (vdbData.length < vdbFallbackPageSize) break;
+        vdbFallbackPage++;
+      }
+    }
+
     // 🚀 パフォーマンス改善: COUNT()クエリを使用してデータ取得量を最小限に抑える
     // 訪問日前日のみJavaScript計算が必要なため、データを取得
     const [
-      visitAssigneeForDayBeforeResult,
       visitCompletedCountResult,
       todayCallAssignedResult,
       allAssignedResult,
@@ -2600,15 +2620,7 @@ export class SellerService extends BaseRepository {
       unvisitedOtherDecisionSellersResult,
       pinrichChangeRequiredResult
     ] = await Promise.all([
-      // 1. 訪問日前日用データ（JavaScript計算が必要）
-      this.table('sellers')
-        .select('visit_date, visit_assignee, visit_reminder_assignee')
-        .is('deleted_at', null)
-        .not('visit_assignee', 'is', null)
-        .neq('visit_assignee', '')
-        .not('visit_date', 'is', null)
-        .range(0, 9999),  // Supabaseの1000件デフォルト制限を回避
-      // 2. 訪問済みカウント
+      // 1. 訪問済みカウント
       this.table('sellers')
         .select('*', { count: 'exact', head: true })
         .is('deleted_at', null)
@@ -2704,7 +2716,7 @@ export class SellerService extends BaseRepository {
     };
 
     // 1. 訪問日前日のカウント計算（JavaScript計算が必要）
-    const visitAssigneeSellers = visitAssigneeForDayBeforeResult.data || [];
+    const visitAssigneeSellers = visitAssigneeForDayBeforeAllData;
     const visitDayBeforeCount = visitAssigneeSellers.filter(s => {
       const visitDateStr = s.visit_date;
       if (!visitDateStr) return false;
