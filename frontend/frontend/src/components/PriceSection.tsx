@@ -3,6 +3,7 @@ import { Box, Typography, TextField, Grid, Button, Dialog, DialogTitle, DialogCo
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import CheckIcon from '@mui/icons-material/Check';
 import api from '../services/api';
+import { PropertyChatSendData } from '../types/chat';
 
 // 月々ローン支払い計算（元利均等返済、金利年3%/12、420回）
 function calcMonthlyPayment(price: number): number {
@@ -31,6 +32,7 @@ interface PriceSectionProps {
   address?: string;
   onChatSendSuccess: (message: string) => void;
   onChatSendError: (message: string) => void;
+  onChatSend: (data: PropertyChatSendData) => Promise<void>;
 }
 
 export default function PriceSection({
@@ -48,6 +50,7 @@ export default function PriceSection({
   address,
   onChatSendSuccess,
   onChatSendError,
+  onChatSend,
 }: PriceSectionProps) {
   const displaySalesPrice = editedData.price !== undefined ? editedData.price : salesPrice;
   const displayListingPrice = editedData.listing_price !== undefined ? editedData.listing_price : listingPrice;
@@ -56,6 +59,9 @@ export default function PriceSection({
   const monthlyPayment = actualPrice ? calcMonthlyPayment(actualPrice) : null;
   const displayPriceReductionHistory = editedData.price_reduction_history !== undefined ? editedData.price_reduction_history : priceReductionHistory;
   const displayScheduledDate = editedData.price_reduction_scheduled_date !== undefined ? editedData.price_reduction_scheduled_date : priceReductionScheduledDate;
+
+  // 値下げ予約日が空の場合のみ表示（非編集モードのみ）
+  const showChatButton = !isEditMode && !displayScheduledDate;
 
   const [scheduledNotifications, setScheduledNotifications] = useState<any[]>([]);
   const [showScheduleForm, setShowScheduleForm] = useState(false);
@@ -229,34 +235,35 @@ export default function PriceSection({
           )}
 
           {/* Chat送信ボタン */}
-          <Box sx={{ mt: 3, pt: 2, borderTop: '1px solid #ddd' }}>
-            <Button
-              fullWidth
-              variant="contained"
-              onClick={() => {
-                if (getLatestPriceReduction()) setConfirmDialogOpen(true);
-                else onChatSendError('値下げ履歴が見つかりません');
-              }}
-              disabled={sendingChat || !getLatestPriceReduction()}
-              sx={{
-                backgroundColor: isPriceChanged && scheduledNotifications.length === 0 ? '#d32f2f' : '#1976d2',
-                '&:hover': {
-                  backgroundColor: isPriceChanged && scheduledNotifications.length === 0 ? '#b71c1c' : '#1565c0',
-                },
-                fontSize: '0.75rem',
-                fontWeight: 'bold',
-                animation: isPriceChanged && scheduledNotifications.length === 0 ? 'pulse 2s infinite' : 'none',
-                '@keyframes pulse': {
-                  '0%': { boxShadow: '0 0 0 0 rgba(211, 47, 47, 0.7)' },
-                  '70%': { boxShadow: '0 0 0 10px rgba(211, 47, 47, 0)' },
-                  '100%': { boxShadow: '0 0 0 0 rgba(211, 47, 47, 0)' },
-                },
-              }}
-            >
-              {sendingChat ? '送信中...' : 'Chat送信'}
-            </Button>
-
-          </Box>
+          {showChatButton && (
+            <Box sx={{ mt: 3, pt: 2, borderTop: '1px solid #ddd' }}>
+              <Button
+                fullWidth
+                variant="contained"
+                onClick={() => {
+                  if (getLatestPriceReduction()) setConfirmDialogOpen(true);
+                  else onChatSendError('値下げ履歴が見つかりません');
+                }}
+                disabled={sendingChat || !getLatestPriceReduction()}
+                sx={{
+                  backgroundColor: isPriceChanged && scheduledNotifications.length === 0 ? '#d32f2f' : '#1976d2',
+                  '&:hover': {
+                    backgroundColor: isPriceChanged && scheduledNotifications.length === 0 ? '#b71c1c' : '#1565c0',
+                  },
+                  fontSize: '0.75rem',
+                  fontWeight: 'bold',
+                  animation: isPriceChanged && scheduledNotifications.length === 0 ? 'pulse 2s infinite' : 'none',
+                  '@keyframes pulse': {
+                    '0%': { boxShadow: '0 0 0 0 rgba(211, 47, 47, 0.7)' },
+                    '70%': { boxShadow: '0 0 0 10px rgba(211, 47, 47, 0)' },
+                    '100%': { boxShadow: '0 0 0 0 rgba(211, 47, 47, 0)' },
+                  },
+                }}
+              >
+                {sendingChat ? '送信中...' : '物件担当へCHAT送信'}
+              </Button>
+            </Box>
+          )}
         </Box>
       )}
 

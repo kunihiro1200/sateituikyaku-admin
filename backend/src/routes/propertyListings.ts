@@ -279,6 +279,11 @@ router.put('/:propertyNumber', async (req: Request, res: Response) => {
       }
     }
 
+    // price_reduction_scheduled_date の空文字列を null に変換する（date型カラムへの空文字列保存エラー防止）
+    if (safeUpdates.price_reduction_scheduled_date === '') {
+      safeUpdates.price_reduction_scheduled_date = null;
+    }
+
     // OFFER_FIELDSのいずれかが更新される場合、offer_status_updated_atを記録
     const hasOfferUpdate = OFFER_FIELDS.some(f => safeUpdates[f] !== undefined);
     if (hasOfferUpdate) {

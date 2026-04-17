@@ -1,0 +1,81 @@
+# Implementation Plan
+
+- [x] 1. バグ条件の探索テストを作成する
+  - **Property 1: Bug Condition** - 欠落フィールドのスプレッドシート非同期バグ
+  - **重要**: このテストは未修正コードで必ず**失敗**すること（失敗がバグの存在を証明する）
+  - **修正やコードを変更しようとしないこと**
+  - **注意**: このテストは期待動作をエンコードしている。修正後にパスすることで修正を検証する
+  - **目的**: バグの存在を示すカウンターサンプルを発見する
+  - **スコープ付きPBTアプローチ**: 決定論的バグのため、具体的な失敗ケースにスコープを絞る
+  - テスト対象: `backend/src/services/SellerService.supabase.ts` の `createSeller` メソッド
+  - `appendRow` をモックし、渡されるオブジェクトを検査する
+  - バグ条件（`isBugCondition` が true）を満たす入力でテストを実行する:
+    - `nextCallDate: '2026-05-01'` を含む `CreateSellerRequest` → `appendRow` の引数に `'次電日': '2026-05-01'` が含まれないことを確認
+    - `visitAssignee: 'Y'` を含む `CreateSellerRequest` → `appendRow` の引数に `'営担': 'Y'` が含まれないことを確認
+    - `status: '追客中'` を含む `CreateSellerRequest` → `appendRow` の引数に `'状況（当社）': '追客中'` が含まれないことを確認
+    - `valuationAmount1: 1500` を含む `CreateSellerRequest` → `appendRow` の引数に `'査定額1': '1500'` が含まれないことを確認
+  - 未修正コードでテストを実行する
+  - **期待される結果**: テストが**失敗**する（これが正しい。バグの存在を証明する）
+  - カウンターサンプルを記録して根本原因を理解する（例: `appendRow` に渡されるオブジェクトに追加フィールドのキーが存在しない）
+  - テストを作成・実行し、失敗を記録したらタスク完了とする
+  - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 1.10_
+
+- [x] 2. 保全プロパティテストを作成する（修正前に実施）
+  - **Property 2: Preservation** - 既存フィールドの同期維持
+  - **重要**: 観察優先メソドロジーに従うこと
+  - 未修正コードで `isBugCondition` が false の入力（全追加フィールドが null）を使って動作を観察する:
+    - `createSeller({ name: '田中太郎', phoneNumber: '09012345678', ... })` → `appendRow` に `'名前(漢字のみ）': '田中太郎'` が渡されることを確認
+    - `createSeller({ address: '東京都渋谷区1-1-1', ... })` → `appendRow` に `'依頼者住所(物件所在と異なる場合）': '東京都渋谷区1-1-1'` が渡されることを確認
+    - `createSeller({ inquiryDate: new Date('2026-05-01'), ... })` → `appendRow` に `'反響日付': '2026-05-01'` が渡されることを確認
+  - プロパティベーステストを作成する: 全追加フィールドが null の任意の `CreateSellerRequest` に対して、既存フィールド（売主番号・名前・住所・電話番号・メール・物件所在地・種別・反響日付・サイト）が正しく `appendRow` に渡されることを検証
+  - 未修正コードでテストを実行する
+  - **期待される結果**: テストが**パス**する（これがベースライン動作を確認する）
+  - テストを作成・実行し、パスを確認したらタスク完了とする
+  - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5_
+
+- [x] 3. 欠落フィールドのスプレッドシート同期バグを修正する
+
+  - [x] 3.1 `appendRow` 呼び出しに欠落フィールドを追加する
+    - `backend/src/services/SellerService.supabase.ts` の `createSeller` メソッド内の `appendRow` 呼び出しを修正する
+    - 既存フィールド（売主番号・名前・住所・電話番号・メール・物件所在地・種別・反響日付・サイト）はそのまま維持する
+    - 以下の追加フィールドを `appendRow` に渡すオブジェクトに追加する:
+      - `'次電日': (data as any).nextCallDate || ''`
+      - `'訪問日 \nY/M/D': (data as any).visitDate || ''`
+      - `'訪問時間': (data as any).visitTime || ''`
+      - `'営担': (data as any).visitAssignee || ''`
+      - `'訪問メモ': (data as any).visitNotes || ''`
+      - `'確度': (data as any).confidence || (data as any).confidenceLevel || ''`
+      - `'状況（当社）': (data as any).status || ''`
+      - `'コメント': (data as any).comments || ''`
+      - `'査定額1': (data as any).valuationAmount1 ? String((data as any).valuationAmount1) : ''`
+      - `'査定額2': (data as any).valuationAmount2 ? String((data as any).valuationAmount2) : ''`
+      - `'査定額3': (data as any).valuationAmount3 ? String((data as any).valuationAmount3) : ''`
+      - `'査定方法': (data as any).valuationMethod || ''`
+      - `'査定担当': (data as any).valuationAssignee || ''`
+      - `'連絡方法': (data as any).contactMethod || ''`
+      - `'連絡取りやすい日、時間帯': (data as any).preferredContactTime || ''`
+      - `'1番電話': (data as any).assignedTo || ''`
+    - 査定額は数値から文字列に変換する（`String()` を使用）
+    - 既存フィールドのキー名・値の変換ロジックは変更しない
+    - _Bug_Condition: isBugCondition(X) where X の追加フィールドのいずれかが非 null_
+    - _Expected_Behavior: appendRow に渡されるオブジェクトに全フィールドが含まれ、スプレッドシートの該当列に入力値が書き込まれる_
+    - _Preservation: 既存フィールド（売主番号・名前・住所・電話番号・メール・物件所在地・種別・反響日付・サイト）のキー名・値は変更しない_
+    - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8, 2.9, 2.10, 3.1, 3.2, 3.3, 3.4, 3.5_
+
+  - [x] 3.2 バグ条件の探索テストが今度はパスすることを確認する
+    - **Property 1: Expected Behavior** - 欠落フィールドのスプレッドシート同期
+    - **重要**: タスク1で作成した**同じテスト**を再実行する。新しいテストを書かないこと
+    - タスク1のバグ条件探索テストを実行する
+    - **期待される結果**: テストが**パス**する（バグが修正されたことを確認する）
+    - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8, 2.9, 2.10_
+
+  - [x] 3.3 保全テストが引き続きパスすることを確認する
+    - **Property 2: Preservation** - 既存フィールドの同期維持
+    - **重要**: タスク2で作成した**同じテスト**を再実行する。新しいテストを書かないこと
+    - タスク2の保全プロパティテストを実行する
+    - **期待される結果**: テストが**パス**する（リグレッションがないことを確認する）
+    - 全既存フィールドが修正後も正しく同期されることを確認する
+
+- [x] 4. チェックポイント - 全テストのパスを確認する
+  - 全テスト（バグ条件探索テスト・保全テスト）がパスすることを確認する
+  - 疑問点があればユーザーに確認する

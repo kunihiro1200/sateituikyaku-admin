@@ -68,6 +68,7 @@ import { getPurchaseStatusText, hasBuyerPurchaseStatus } from '../utils/purchase
 import { pageDataCache, CACHE_KEYS } from '../store/pageDataCache';
 import ChatHistorySection from '../components/ChatHistorySection';
 import SellerSendHistory from '../components/SellerSendHistory';
+import { PropertyChatSendData } from '../types/chat';
 import { fetchChatHistory } from '../services/chatHistoryService';
 import { generateSmsBody, smsTemplates, SmsTemplateId } from '../utils/smsTemplates';
 import { ChatHistoryItem } from '../types/chatHistory';
@@ -952,6 +953,12 @@ export default function PropertyListingDetailPage() {
     } finally {
       setChatToOfficeSending(false);
     }
+  };
+
+  // PriceSection CHAT送信ハンドラー（将来のバックエンド移行用プレースホルダー）
+  const handlePropertyChatSend = async (data: PropertyChatSendData) => {
+    // PriceSection 内部で直接 Webhook に送信するため、
+    // このハンドラーは将来のバックエンド移行用プレースホルダー
   };
 
   // PriceSection Chat送信成功時のハンドラー
@@ -2152,6 +2159,7 @@ export default function PropertyListingDetailPage() {
                   address={data.address}
                   onChatSendSuccess={handlePriceChatSendSuccess}
                   onChatSendError={(message) => setSnackbar({ open: true, message, severity: 'error' })}
+                  onChatSend={handlePropertyChatSend}
                 />
               </EditableSection>
             </Box>
