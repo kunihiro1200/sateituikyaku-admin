@@ -1682,7 +1682,7 @@ export class BuyerService {
       'viewing_result_follow_up', 'viewing_unconfirmed', 'viewing_type_general',
       'post_viewing_seller_contact', 'notification_sender',
       'valuation_survey', 'valuation_survey_confirmed', 'broker_survey', 'vendor_survey',
-      'day_of_week', 'pinrich', 'email_confirmed', 'email_confirmation_assignee',
+      'day_of_week', 'pinrich', 'pinrich_500man_registration', 'email_confirmed', 'email_confirmation_assignee',
       'viewing_promotion_not_needed', 'viewing_promotion_sender',
       'past_buyer_list', 'price', 'property_number',
       'desired_area', 'desired_property_type', 'budget',
@@ -1704,7 +1704,7 @@ export class BuyerService {
       // property_listings を buyers 取得と並列で全件取得
       this.supabase
         .from('property_listings')
-        .select('property_number, atbb_status, address, sales_assignee, property_type'),
+        .select('property_number, atbb_status, address, sales_assignee, property_type, price'),
     ]);
 
     const { count, error: countError } = countResult;
@@ -1741,7 +1741,7 @@ export class BuyerService {
     }
 
     // property_listings のマップを構築（並列取得済み）
-    const propertyMap: Record<string, { atbb_status: string; property_address: string | null; sales_assignee: string | null; property_type: string | null }> = {};
+    const propertyMap: Record<string, { atbb_status: string; property_address: string | null; sales_assignee: string | null; property_type: string | null; price: number | null }> = {};
     if (allListingsResult.data) {
       for (const listing of allListingsResult.data) {
         if (listing.property_number) {
@@ -1750,6 +1750,7 @@ export class BuyerService {
             property_address: listing.address ?? null,
             sales_assignee: listing.sales_assignee ?? null,
             property_type: listing.property_type ?? null,
+            price: listing.price ?? null,
           };
         }
       }
@@ -1766,6 +1767,7 @@ export class BuyerService {
         property_address: prop?.property_address ?? null,
         property_sales_assignee: prop?.sales_assignee ?? null,
         property_type: prop?.property_type ?? null,
+        inquiry_property_price: prop?.price ?? null,
       };
     });
   }
