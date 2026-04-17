@@ -464,7 +464,7 @@ export default function PropertyListingDetailPage() {
   // Save handlers for each section
   const handleSavePrice = async () => {
     if (!propertyNumber) return;
-    if (Object.keys(editedData).length === 0 || !('price' in editedData)) {
+    if (Object.keys(editedData).length === 0) {
       throw new Error('no_changes');
     }
 
