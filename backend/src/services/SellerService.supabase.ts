@@ -284,9 +284,6 @@ export class SellerService extends BaseRepository {
       floor_plan: data.property.floorPlan || null,
       current_status: data.property.sellerSituation || null,
       property_address_ieul_apartment: data.property.propertyAddressForIeulMansion || null,
-      floors: data.property.floors || null,
-      parking: data.property.parking || false,
-      additional_info: data.property.additionalInfo || null,
     });
 
     if (propertyError) {
