@@ -576,18 +576,25 @@ const NearbyBuyersList = ({ sellerId, propertyNumber, propertyType, onCountChang
       </Box>
 
       {/* 価格帯フィルターボタン行 */}
-      <Box sx={{ mb: 2, display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
-        {PRICE_RANGES.map(range => (
-          <Button
-            key={range.key}
-            size="small"
-            variant={selectedPriceRanges.has(range.key) ? 'contained' : 'outlined'}
-            color="primary"
-            onClick={() => handlePriceRangeToggle(range.key)}
-          >
-            {range.label}
-          </Button>
-        ))}
+      <Box sx={{ mb: 2, p: 1.5, backgroundColor: '#f0f4ff', borderRadius: 1, border: '1px solid #c5d0e8' }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.75 }}>
+          <Typography variant="caption" sx={{ color: '#5c6bc0', fontWeight: 600, fontSize: '0.7rem' }}>
+            価格帯で絞り込み（複数選択可）
+          </Typography>
+        </Box>
+        <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+          {PRICE_RANGES.map(range => (
+            <Button
+              key={range.key}
+              size="small"
+              variant={selectedPriceRanges.has(range.key) ? 'contained' : 'outlined'}
+              color="primary"
+              onClick={() => handlePriceRangeToggle(range.key)}
+            >
+              {range.label}
+            </Button>
+          ))}
+        </Box>
       </Box>
 
       {/* 買主リストテーブル */}
