@@ -260,8 +260,8 @@ export class PropertyListingService {
       }
     }
 
-    // suumo_url が更新される場合（かつ空でない場合）、sidebar_status を再計算
-    if ('suumo_url' in updates && updates.suumo_url && String(updates.suumo_url).trim() !== '') {
+    // suumo_url が更新される場合（空文字列を含む）、sidebar_status を再計算
+    if ('suumo_url' in updates) {
       try {
         const current = await this.getByPropertyNumber(propertyNumber);
         if (current) {

@@ -1319,7 +1319,7 @@ export class PropertyListingSyncService {
           suumoRegistration !== 'S不要') {
         return atbbStatus === '一般・公開中'
           ? 'SUUMO URL　要登録'
-          : 'レインズ登録＋SUUMO登録';
+          : 'レインズ登録＋SUUMO URL 要登録';
       }
     }
 

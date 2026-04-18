@@ -82,15 +82,15 @@ describe('保存チェックテスト: suumo_url非更新時のsidebar_status動
 
   // ============================================================
   // テスト1: calculateSidebarStatus()の単体テスト（DBアクセスなし）
-  // suumo_url が空の物件は「レインズ登録＋SUUMO登録」になること
+  // suumo_url が空の物件は「レインズ登録＋SUUMO URL 要登録」になること
   // ============================================================
   describe('calculateSidebarStatus() 単体テスト（Preservation確認）', () => {
     /**
-     * 観察1: suumo_url が空の物件は「レインズ登録＋SUUMO登録」になる
+     * 観察1: suumo_url が空の物件は「レインズ登録＋SUUMO URL 要登録」になる
      * Requirements 3.1
      */
     test(
-      'suumo_urlが空の専任・公開中物件は「レインズ登録＋SUUMO登録」になること（Requirement 3.1）',
+      'suumo_urlが空の専任・公開中物件は「レインズ登録＋SUUMO URL 要登録」になること（Requirement 3.1）',
       () => {
         // 公開予定日が確実に昨日以前になるよう7日前を使用
         // （タイムゾーン差異を避けるため余裕を持たせる）
@@ -117,17 +117,17 @@ describe('保存チェックテスト: suumo_url非更新時のsidebar_status動
         console.log(`  sidebar_status: ${status}`);
         console.log(`  公開予定日: ${pastDateStr}`);
 
-        // 観察した動作: suumo_url が空の場合は「レインズ登録＋SUUMO登録」になる
-        expect(status).toBe('レインズ登録＋SUUMO登録');
+        // 観察した動作: suumo_url が空の場合は「レインズ登録＋SUUMO URL 要登録」になる
+        expect(status).toBe('レインズ登録＋SUUMO URL 要登録');
       }
     );
 
     /**
-     * 観察2: suumo_url が空文字列の場合も「レインズ登録＋SUUMO登録」になる
+     * 観察2: suumo_url が空文字列の場合も「レインズ登録＋SUUMO URL 要登録」になる
      * Requirements 3.1
      */
     test(
-      'suumo_urlが空文字列の専任・公開中物件は「レインズ登録＋SUUMO登録」になること（Requirement 3.1）',
+      'suumo_urlが空文字列の専任・公開中物件は「レインズ登録＋SUUMO URL 要登録」になること（Requirement 3.1）',
       () => {
         const sevenDaysAgo = new Date();
         sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
@@ -151,17 +151,17 @@ describe('保存チェックテスト: suumo_url非更新時のsidebar_status動
         console.log(`\n--- 観察2: suumo_url空文字列の専任・公開中 ---`);
         console.log(`  sidebar_status: ${status}`);
 
-        // 観察した動作: suumo_url が空文字列の場合も「レインズ登録＋SUUMO登録」になる
-        expect(status).toBe('レインズ登録＋SUUMO登録');
+        // 観察した動作: suumo_url が空文字列の場合も「レインズ登録＋SUUMO URL 要登録」になる
+        expect(status).toBe('レインズ登録＋SUUMO URL 要登録');
       }
     );
 
     /**
-     * 観察3: suumo_url が空文字列（スペースのみ）の場合も「レインズ登録＋SUUMO登録」になる
+     * 観察3: suumo_url が空文字列（スペースのみ）の場合も「レインズ登録＋SUUMO URL 要登録」になる
      * Requirements 3.1
      */
     test(
-      'suumo_urlがスペースのみの専任・公開中物件は「レインズ登録＋SUUMO登録」になること（Requirement 3.1）',
+      'suumo_urlがスペースのみの専任・公開中物件は「レインズ登録＋SUUMO URL 要登録」になること（Requirement 3.1）',
       () => {
         const sevenDaysAgo = new Date();
         sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
@@ -185,8 +185,8 @@ describe('保存チェックテスト: suumo_url非更新時のsidebar_status動
         console.log(`\n--- 観察3: suumo_urlスペースのみの専任・公開中 ---`);
         console.log(`  sidebar_status: ${status}`);
 
-        // 観察した動作: suumo_url がスペースのみの場合も「レインズ登録＋SUUMO登録」になる
-        expect(status).toBe('レインズ登録＋SUUMO登録');
+        // 観察した動作: suumo_url がスペースのみの場合も「レインズ登録＋SUUMO URL 要登録」になる
+        expect(status).toBe('レインズ登録＋SUUMO URL 要登録');
       }
     );
 
@@ -225,11 +225,11 @@ describe('保存チェックテスト: suumo_url非更新時のsidebar_status動
     );
 
     /**
-     * 観察5: suumo_registered = 'S不要' の物件は「レインズ登録＋SUUMO登録」にならない
+     * 観察5: suumo_registered = 'S不要' の物件は「レインズ登録＋SUUMO URL 要登録」にならない
      * Requirements 3.4
      */
     test(
-      'suumo_registered=S不要の物件は「レインズ登録＋SUUMO登録」にならないこと（Requirement 3.4）',
+      'suumo_registered=S不要の物件は「レインズ登録＋SUUMO URL 要登録」にならないこと（Requirement 3.4）',
       () => {
         const sevenDaysAgo = new Date();
         sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
@@ -253,8 +253,8 @@ describe('保存チェックテスト: suumo_url非更新時のsidebar_status動
         console.log(`\n--- 観察5: suumo_registered=S不要 ---`);
         console.log(`  sidebar_status: ${status}`);
 
-        // 観察した動作: S不要の場合は「レインズ登録＋SUUMO登録」にならない
-        expect(status).not.toBe('レインズ登録＋SUUMO登録');
+        // 観察した動作: S不要の場合は「レインズ登録＋SUUMO URL 要登録」にならない
+        expect(status).not.toBe('レインズ登録＋SUUMO URL 要登録');
       }
     );
 
@@ -295,11 +295,11 @@ describe('保存チェックテスト: suumo_url非更新時のsidebar_status動
 
     /**
      * 観察7: suumo_registered = 'S不要' の物件に suumo_url を登録しても
-     * 「レインズ登録＋SUUMO登録」に表示されないこと
+     * 「レインズ登録＋SUUMO URL 要登録」に表示されないこと
      * Requirements 3.4
      */
     test(
-      'suumo_registered=S不要の物件にsuumo_urlを登録しても「レインズ登録＋SUUMO登録」にならないこと（Requirement 3.4）',
+      'suumo_registered=S不要の物件にsuumo_urlを登録しても「レインズ登録＋SUUMO URL 要登録」にならないこと（Requirement 3.4）',
       () => {
         const sevenDaysAgo = new Date();
         sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
@@ -323,8 +323,8 @@ describe('保存チェックテスト: suumo_url非更新時のsidebar_status動
         console.log(`\n--- 観察7: suumo_registered=S不要 + suumo_url登録済み ---`);
         console.log(`  sidebar_status: ${status}`);
 
-        // 観察した動作: S不要の場合は suumo_url があっても「レインズ登録＋SUUMO登録」にならない
-        expect(status).not.toBe('レインズ登録＋SUUMO登録');
+        // 観察した動作: S不要の場合は suumo_url があっても「レインズ登録＋SUUMO URL 要登録」にならない
+        expect(status).not.toBe('レインズ登録＋SUUMO URL 要登録');
       }
     );
   });
@@ -376,11 +376,11 @@ describe('保存チェックテスト: suumo_url非更新時のsidebar_status動
     );
 
     /**
-     * 観察9: suumo_url = '' （空文字）で更新 → sidebar_status が「レインズ登録＋SUUMO登録」のままであることを観察
+     * 観察9: suumo_url = '' （空文字）で更新 → sidebar_status が「レインズ登録＋SUUMO URL 要登録」のままであることを観察
      * Requirements 3.1
      */
     test(
-      'suumo_url=空文字で更新した場合、sidebar_statusが「レインズ登録＋SUUMO登録」のままであること（Requirement 3.1）',
+      'suumo_url=空文字で更新した場合、sidebar_statusが「レインズ登録＋SUUMO URL 要登録」のままであること（Requirement 3.1）',
       async () => {
         // テスト対象物件の現在の状態を取得
         const current = await service.getByPropertyNumber(TEST_PROPERTY_NUMBER);
@@ -395,9 +395,9 @@ describe('保存チェックテスト: suumo_url非更新時のsidebar_status動
           originalRecord = { ...current };
         }
 
-        // まず「レインズ登録＋SUUMO登録」状態にセットアップ
+        // まず「レインズ登録＋SUUMO URL 要登録」状態にセットアップ
         await service.update(TEST_PROPERTY_NUMBER, {
-          sidebar_status: 'レインズ登録＋SUUMO登録',
+          sidebar_status: 'レインズ登録＋SUUMO URL 要登録',
           suumo_url: '',
         });
 
@@ -413,9 +413,9 @@ describe('保存チェックテスト: suumo_url非更新時のsidebar_status動
         console.log(`  更新後 sidebar_status: ${result?.sidebar_status}`);
         console.log(`  更新後 suumo_url: ${result?.suumo_url || '(空)'}`);
 
-        // 観察した動作: suumo_url = '' で更新した場合、sidebar_status は「レインズ登録＋SUUMO登録」のまま
+        // 観察した動作: suumo_url = '' で更新した場合、sidebar_status は「レインズ登録＋SUUMO URL 要登録」のまま
         // （空文字はバグ条件に該当しないため、再計算されない）
-        expect(result?.sidebar_status).toBe('レインズ登録＋SUUMO登録');
+        expect(result?.sidebar_status).toBe('レインズ登録＋SUUMO URL 要登録');
       },
       30000
     );
@@ -439,7 +439,7 @@ describe('保存チェックテスト: suumo_url非更新時のsidebar_status動
      * Validates: Requirements 3.1, 3.2, 3.3, 3.4, 3.5
      */
     test(
-      'calculateSidebarStatus()はsuumo_urlが空の場合に「レインズ登録＋SUUMO登録」を返すこと（プロパティテスト）',
+      'calculateSidebarStatus()はsuumo_urlが空の場合に「レインズ登録＋SUUMO URL 要登録」を返すこと（プロパティテスト）',
       () => {
         // suumo_url が空のパターンを複数生成してテスト
         const emptyUrlPatterns = [null, '', '   ', undefined];
@@ -472,10 +472,10 @@ describe('保存チェックテスト: suumo_url非更新時のsidebar_status動
 
             const status = syncService.calculateSidebarStatus(row, gyomuListData);
 
-            // 観察した動作: suumo_url が空の場合は「レインズ登録＋SUUMO登録」または「SUUMO URL　要登録」になる
+            // 観察した動作: suumo_url が空の場合は「レインズ登録＋SUUMO URL 要登録」または「SUUMO URL　要登録」になる
             const expectedStatuses =
               atbbStatus === '専任・公開中'
-                ? ['レインズ登録＋SUUMO登録']
+                ? ['レインズ登録＋SUUMO URL 要登録']
                 : ['SUUMO URL　要登録'];
 
             const isExpected = expectedStatuses.includes(status);
@@ -496,11 +496,11 @@ describe('保存チェックテスト: suumo_url非更新時のsidebar_status動
 
     /**
      * プロパティテスト: suumo_registered = 'S不要' の物件は
-     * suumo_url の値に関わらず「レインズ登録＋SUUMO登録」にならない
+     * suumo_url の値に関わらず「レインズ登録＋SUUMO URL 要登録」にならない
      * Validates: Requirements 3.4
      */
     test(
-      'suumo_registered=S不要の物件はsuumo_urlの値に関わらず「レインズ登録＋SUUMO登録」にならないこと（プロパティテスト）',
+      'suumo_registered=S不要の物件はsuumo_urlの値に関わらず「レインズ登録＋SUUMO URL 要登録」にならないこと（プロパティテスト）',
       () => {
         const suumoUrlPatterns = [
           null,
@@ -532,7 +532,7 @@ describe('保存チェックテスト: suumo_url非更新時のsidebar_status動
 
           const status = syncService.calculateSidebarStatus(row, gyomuListData);
 
-          const isNotReinsCategory = status !== 'レインズ登録＋SUUMO登録';
+          const isNotReinsCategory = status !== 'レインズ登録＋SUUMO URL 要登録';
 
           console.log(
             `  suumo_url=${JSON.stringify(suumoUrl)}, suumo_registered=S不要 → ${status} (${isNotReinsCategory ? '✅' : '❌'})`
@@ -540,8 +540,8 @@ describe('保存チェックテスト: suumo_url非更新時のsidebar_status動
 
           if (isNotReinsCategory) passCount++;
 
-          // 観察した動作: S不要の場合は「レインズ登録＋SUUMO登録」にならない
-          expect(status).not.toBe('レインズ登録＋SUUMO登録');
+          // 観察した動作: S不要の場合は「レインズ登録＋SUUMO URL 要登録」にならない
+          expect(status).not.toBe('レインズ登録＋SUUMO URL 要登録');
         }
 
         console.log(`\n  プロパティテスト結果: ${passCount}/${totalCount} PASS`);

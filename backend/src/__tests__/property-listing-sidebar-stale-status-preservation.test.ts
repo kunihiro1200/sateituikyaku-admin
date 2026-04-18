@@ -1,5 +1,5 @@
 // Phase 4: 保存テスト（Preservation Checking）
-// 修正後も、正しく「レインズ登録＋SUUMO登録」カテゴリーに含まれるべき物件は含まれることを確認
+// 修正後も、正しく「レインズ登録＋SUUMO URL 要登録」カテゴリーに含まれるべき物件は含まれることを確認
 
 import { PropertyListingSyncService } from '../services/PropertyListingSyncService';
 
@@ -11,7 +11,7 @@ describe('Property Listing Sidebar Stale Status Bug - Preservation', () => {
   });
 
   // Task 4.1: SUUMO URL空の物件の保存テスト
-  test('SUUMO URLが空の物件は「レインズ登録＋SUUMO登録」カテゴリーに含まれる', () => {
+  test('SUUMO URLが空の物件は「レインズ登録＋SUUMO URL 要登録」カテゴリーに含まれる', () => {
     // SUUMO URLが空の物件データを作成
     const row = {
       '物件番号': 'TEST001',
@@ -35,10 +35,10 @@ describe('Property Listing Sidebar Stale Status Bug - Preservation', () => {
     const status = syncService.calculateSidebarStatus(row, gyomuListData);
 
     console.log(`  TEST001のステータス: ${status}`);
-    expect(status).toBe('レインズ登録＋SUUMO登録');
+    expect(status).toBe('レインズ登録＋SUUMO URL 要登録');
   });
 
-  test('SUUMO URLが空文字列の物件は「レインズ登録＋SUUMO登録」カテゴリーに含まれる', () => {
+  test('SUUMO URLが空文字列の物件は「レインズ登録＋SUUMO URL 要登録」カテゴリーに含まれる', () => {
     // SUUMO URLが空文字列の物件データを作成
     const row = {
       '物件番号': 'TEST002',
@@ -62,10 +62,10 @@ describe('Property Listing Sidebar Stale Status Bug - Preservation', () => {
     const status = syncService.calculateSidebarStatus(row, gyomuListData);
 
     console.log(`  TEST002のステータス: ${status}`);
-    expect(status).toBe('レインズ登録＋SUUMO登録');
+    expect(status).toBe('レインズ登録＋SUUMO URL 要登録');
   });
 
-  test('SUUMO URLがスペースのみの物件は「レインズ登録＋SUUMO登録」カテゴリーに含まれる', () => {
+  test('SUUMO URLがスペースのみの物件は「レインズ登録＋SUUMO URL 要登録」カテゴリーに含まれる', () => {
     // SUUMO URLがスペースのみの物件データを作成
     const row = {
       '物件番号': 'TEST003',
@@ -89,10 +89,10 @@ describe('Property Listing Sidebar Stale Status Bug - Preservation', () => {
     const status = syncService.calculateSidebarStatus(row, gyomuListData);
 
     console.log(`  TEST003のステータス: ${status}`);
-    expect(status).toBe('レインズ登録＋SUUMO登録');
+    expect(status).toBe('レインズ登録＋SUUMO URL 要登録');
   });
 
-  test('SUUMO URLが登録された物件は「レインズ登録＋SUUMO登録」カテゴリーから除外される', () => {
+  test('SUUMO URLが登録された物件は「レインズ登録＋SUUMO URL 要登録」カテゴリーから除外される', () => {
     // SUUMO URLが登録された物件データを作成
     const row = {
       '物件番号': 'TEST004',
@@ -117,7 +117,7 @@ describe('Property Listing Sidebar Stale Status Bug - Preservation', () => {
     const status = syncService.calculateSidebarStatus(row, gyomuListData);
 
     console.log(`  TEST004のステータス: ${status}`);
-    expect(status).not.toBe('レインズ登録＋SUUMO登録');
+    expect(status).not.toBe('レインズ登録＋SUUMO URL 要登録');
     // 専任・公開中の場合、担当別のステータスまたは「専任・公開中」になる
     expect(status).toBe('専任・公開中');
   });

@@ -32,7 +32,7 @@ export const PROPERTY_STATUS_DEFINITIONS = [
   { key: 'general_listing_unconfirmed', label: '一般媒介の掲載確認未', color: '#e91e63' },
   { key: 'today_publish', label: '本日公開予定', color: '#4caf50' },
   { key: 'suumo_required', label: 'SUUMO URL　要登録', color: '#2196f3' },
-  { key: 'reins_suumo_required', label: 'レインズ登録＋SUUMO登録', color: '#3f51b5' },
+  { key: 'reins_suumo_required', label: 'レインズ登録＋SUUMO URL 要登録', color: '#3f51b5' },
   { key: 'offer_no_viewing', label: '買付申込み（内覧なし）２', color: '#00bcd4' },
   { key: 'pre_publish', label: '公開前情報', color: '#607d8b' },
   { key: 'private_email_only', label: '非公開（配信メールのみ）', color: '#795548' },
