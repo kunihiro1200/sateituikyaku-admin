@@ -516,7 +516,8 @@ export default function BuyerViewingResultPage() {
       buyer.viewing_mobile,
       buyer.viewing_type_general,
       property?.address,
-      buyer.name
+      buyer.name,
+      buyer.other_company_property
     );
     const title = applyAgencyInquiryTitle(baseTitle, buyer.broker_inquiry, buyer.name);
     const description = generateCalendarDescription(
