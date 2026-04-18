@@ -24,6 +24,7 @@ import {
   AccordionDetails,
   useTheme,
   useMediaQuery,
+  Snackbar,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -32,6 +33,7 @@ import {
   Clear as ClearIcon,
   ExpandMore as ExpandMoreIcon,
 } from '@mui/icons-material';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import { useNavigate, useLocation } from 'react-router-dom';
 import api from '../services/api';
 import { pageDataCache, CACHE_KEYS, sellerDetailCacheKey } from '../store/pageDataCache';
@@ -528,6 +530,22 @@ export default function SellersPage() {
   // バックエンドでフィルタリングするため、sellersをそのまま使用
   const filteredSellers = sellers;
 
+  // 売主番号コピー用の状態
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
+
+  // 売主番号をクリップボードにコピーする関数
+  const handleCopySellerNumber = async (sellerNumber: string, event: React.MouseEvent) => {
+    event.stopPropagation(); // 行クリックによるページ遷移を防止
+    try {
+      await navigator.clipboard.writeText(sellerNumber);
+      setSnackbarMessage(`${sellerNumber} をコピーしました`);
+      setSnackbarOpen(true);
+    } catch (error) {
+      console.error('クリップボードへのコピーに失敗しました:', error);
+    }
+  };
+
   return (
     <Container maxWidth="xl" sx={isMobile ? { overflowX: 'hidden', px: 1 } : {}}>
       {/* 自動同期通知 */}
@@ -906,13 +924,28 @@ export default function SellersPage() {
                 >
                   <CardContent sx={{ py: 1.5, px: 2, '&:last-child': { pb: 1.5 } }}>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 0.5 }}>
-                      <Typography
-                        variant="body2"
-                        fontWeight="bold"
-                        sx={{ color: SECTION_COLORS.seller.main, fontSize: '14px' }}
+                      <Box
+                        onClick={(e) => seller.sellerNumber && handleCopySellerNumber(seller.sellerNumber, e)}
+                        sx={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 0.5,
+                          cursor: seller.sellerNumber ? 'pointer' : 'default',
+                        }}
                       >
-                        {seller.sellerNumber || '-'}
-                      </Typography>
+                        <Typography
+                          variant="body2"
+                          fontWeight="bold"
+                          sx={{ color: SECTION_COLORS.seller.main, fontSize: '14px' }}
+                        >
+                          {seller.sellerNumber || '-'}
+                        </Typography>
+                        {seller.sellerNumber && (
+                          <ContentCopyIcon
+                            sx={{ fontSize: 14, color: SECTION_COLORS.seller.main }}
+                          />
+                        )}
+                      </Box>
                       <Chip
                         label={statusLabels[seller.status] || seller.status || '-'}
                         color={getStatusColor(seller.status)}
@@ -1031,9 +1064,26 @@ export default function SellersPage() {
                     data-seller-id={seller.id}
                   >
                     <TableCell>
-                      <Typography variant="body2" fontWeight="bold" sx={{ color: SECTION_COLORS.seller.main }}>
-                        {seller.sellerNumber || '-'}
-                      </Typography>
+                      <Box
+                        onClick={(e) => seller.sellerNumber && handleCopySellerNumber(seller.sellerNumber, e)}
+                        sx={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 0.5,
+                          cursor: seller.sellerNumber ? 'pointer' : 'default',
+                          '&:hover .copy-icon': { visibility: 'visible' },
+                        }}
+                      >
+                        <Typography variant="body2" fontWeight="bold" sx={{ color: SECTION_COLORS.seller.main }}>
+                          {seller.sellerNumber || '-'}
+                        </Typography>
+                        {seller.sellerNumber && (
+                          <ContentCopyIcon
+                            className="copy-icon"
+                            sx={{ fontSize: 14, color: SECTION_COLORS.seller.main, visibility: 'hidden' }}
+                          />
+                        )}
+                      </Box>
                     </TableCell>
                     <TableCell>{seller.name}</TableCell>
                     <TableCell>
@@ -1145,6 +1195,13 @@ export default function SellersPage() {
           </Box>
         </Box>
       </Box>
+      <Snackbar
+        open={snackbarOpen}
+        autoHideDuration={2000}
+        onClose={() => setSnackbarOpen(false)}
+        message={snackbarMessage}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      />
     </Container>
   );
 }
