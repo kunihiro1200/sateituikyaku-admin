@@ -190,7 +190,7 @@ export default function PropertyInfoCard({
   const fetchJimuStaff = async () => {
     try {
       const response = await api.get('/api/employees/jimu-staff');
-      setJimuStaff(response.data || []);
+      setJimuStaff(response.data.staff || []);
     } catch (err) {
       console.error('Failed to fetch jimu staff:', err);
     }
