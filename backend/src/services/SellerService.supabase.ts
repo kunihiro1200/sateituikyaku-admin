@@ -348,7 +348,7 @@ export class SellerService extends BaseRepository {
         '査定担当': (data as any).valuationAssignee || '',
         '連絡方法': (data as any).contactMethod || '',
         '連絡取りやすい日、時間帯': (data as any).preferredContactTime || '',
-        '1番電話': (data as any).assignedTo || '',
+        '1番電話': (data as any).firstCallPerson || '',
       });
       console.log(`✅ 売主リストスプレッドシートに追加: ${sellerNumber}`);
     } catch (err) {

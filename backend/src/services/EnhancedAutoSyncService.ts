@@ -927,7 +927,7 @@ export class EnhancedAutoSyncService {
 
           // first_call_personの比較
           const dbFirstCallPerson = dbSeller.first_call_person || '';
-          const sheetFirstCallPerson = sheetRow['一番TEL'] || '';
+          const sheetFirstCallPerson = sheetRow['1番電話'] || '';
           if (sheetFirstCallPerson !== dbFirstCallPerson) {
             needsUpdate = true;
           }
@@ -1427,7 +1427,7 @@ export class EnhancedAutoSyncService {
     const phoneContactPerson = row['電話担当（任意）'];
     const preferredContactTime = row['連絡取りやすい日、時間帯'];
     const contactMethod = row['連絡方法'];
-    const firstCallPerson = row['一番TEL'];
+    const firstCallPerson = row['1番電話'];
     
     if (phoneContactPerson) {
       updateData.phone_contact_person = String(phoneContactPerson);
@@ -1735,7 +1735,7 @@ export class EnhancedAutoSyncService {
     const phoneContactPerson = row['電話担当（任意）'];
     const preferredContactTime = row['連絡取りやすい日、時間帯'];
     const contactMethod = row['連絡方法'];
-    const firstCallPerson = row['一番TEL'];
+    const firstCallPerson = row['1番電話'];
     
     if (phoneContactPerson) {
       encryptedData.phone_contact_person = String(phoneContactPerson);

@@ -1139,6 +1139,21 @@ router.put('/:id', async (req: Request, res: Response) => {
           );
         }
       });
+      // firstCallPerson が更新された場合、スプレッドシートのY列（'1番電話'）を即時同期
+      if (req.body.firstCallPerson !== undefined) {
+        console.log('📞 [SpreadsheetSync] firstCallPerson updated, triggering immediate sync for Y column (1番電話)');
+        createSpreadsheetSyncService().then(syncService => {
+          if (syncService) {
+            syncService.syncToSpreadsheet(req.params.id).then(result => {
+              console.log('✅ [SpreadsheetSync] firstCallPerson sync completed:', result);
+            }).catch(e =>
+              console.error('⚠️ [SpreadsheetSync] firstCallPerson sync error (best-effort):', e)
+            );
+          }
+        }).catch(e =>
+          console.error('⚠️ [SpreadsheetSync] Failed to initialize sync service for firstCallPerson:', e)
+        );
+      }
       // サイドバーカウントを非同期で即時更新（レスポンスをブロックしない）
       import('../services/SellerSidebarCountsUpdateService').then(({ SellerSidebarCountsUpdateService }) => {
         const { createClient } = require('@supabase/supabase-js');
