@@ -1597,6 +1597,15 @@ const CallModePage = () => {
               setEditedConfidence(freshData.confidence || '');
               setEditedNextCallDate(freshData.nextCallDate || '');
               setEditedPinrichStatus(freshData.pinrichStatus || '');
+              if (freshData.contractYearMonth) {
+                const rawDate = freshData.contractYearMonth;
+                const formattedDecisionDate = typeof rawDate === 'string' && rawDate.length === 7
+                  ? rawDate + '-01'
+                  : typeof rawDate === 'string' ? rawDate.split('T')[0] : '';
+                setEditedExclusiveDecisionDate(formattedDecisionDate);
+              } else {
+                setEditedExclusiveDecisionDate('');
+              }
             }
           }
         }).catch(() => {});
