@@ -38,10 +38,12 @@ export function generateCalendarTitle(
   viewingType: string | undefined | null,
   viewingTypeGeneral: string | undefined | null,
   propertyAddress: string | undefined | null,
-  buyerName: string | undefined | null
+  buyerName: string | undefined | null,
+  otherCompanyProperty: string | undefined | null = null
 ): string {
   const viewingTypeValue = viewingType || viewingTypeGeneral || '';
-  const propertyAddr = propertyAddress || '';
+  // 自社物件の住所がない場合は他社物件フィールドの内容を使用
+  const propertyAddr = propertyAddress || otherCompanyProperty || '';
   const isRittai = viewingTypeValue.includes('立会') && !viewingTypeValue.includes('立会不要');
   const buyerNameSuffix = isRittai && buyerName ? `（${buyerName}）` : '';
   return `${viewingTypeValue}${propertyAddr}${buyerNameSuffix}`.trim();
