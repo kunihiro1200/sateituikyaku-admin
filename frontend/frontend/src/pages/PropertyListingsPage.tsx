@@ -416,8 +416,8 @@ export default function PropertyListingsPage() {
       return;
     }
 
-    // 「レインズ登録＋SUUMO登録」カテゴリー選択中はレインズ登録ページへ直接遷移
-    if (sidebarStatus === 'レインズ登録＋SUUMO登録') {
+    // 「レインズ登録＋SUUMO URL 要登録」カテゴリー選択中はレインズ登録ページへ直接遷移
+    if (sidebarStatus === 'レインズ登録＋SUUMO URL 要登録') {
       console.log('[handleRowClick] レインズ登録ページへ直接遷移');
       navigate(`/property-listings/${propertyNumber}/reins-registration`);
       return;

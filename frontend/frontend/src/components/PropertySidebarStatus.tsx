@@ -43,7 +43,7 @@ const STATUS_PRIORITY: Record<string, number> = {
   '未報告': 4,
   '一般媒介の掲載確認未': 5,
   'SUUMO URL　要登録': 6,
-  'レインズ登録＋SUUMO登録': 7,
+  'レインズ登録＋SUUMO URL 要登録': 7,
   '買付申込み（内覧なし）２': 8,
   '公開前情報': 9,
   '非公開（配信メールのみ）': 10,
@@ -77,7 +77,7 @@ const HIGH_PRIORITY_BG_STATUSES = new Set([
   '未報告',
   '一般媒介の掲載確認未',
   'SUUMO URL\u3000要登録',
-  'レインズ登録＋SUUMO登録',
+  'レインズ登録＋SUUMO URL 要登録',
 ]);
 
 // sales_assignee → 専任公開中ステータス名のマッピング
