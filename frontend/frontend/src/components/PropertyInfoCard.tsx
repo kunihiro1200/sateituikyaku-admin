@@ -12,6 +12,16 @@ import {
   Link,
   Snackbar,
   Tooltip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Menu,
+  Chip,
 } from '@mui/material';
 import {
   Close as CloseIcon,
@@ -19,9 +29,16 @@ import {
   Launch as LaunchIcon,
   ContentCopy as ContentCopyIcon,
   Check as CheckIcon,
+  Email as EmailIcon,
+  Phone as PhoneIcon,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
-import api from '../services/api';
+import api, { propertyListingApi } from '../services/api';
+import { useAuthStore } from '../store/authStore';
+import { getSenderAddress, saveSenderAddress } from '../utils/senderAddressStorage';
+import RichTextEmailEditor from './RichTextEmailEditor';
+import SenderAddressSelector from './SenderAddressSelector';
+import ImageSelectorModal from './ImageSelectorModal';
 import PurchaseStatusBadge from './PurchaseStatusBadge';
 import { getPurchaseStatusText } from '../utils/purchaseStatusUtils';
 
@@ -62,6 +79,8 @@ interface PropertyFullDetails {
 
   // 売主情報（新規追加）
   seller_contact?: string;          // 連絡先
+  seller_email?: string;            // メールアドレス
+  seller_name?: string;             // 売主名
 }
 
 interface Buyer {
@@ -109,6 +128,7 @@ export default function PropertyInfoCard({
   showCloseButton = true,
 }: PropertyInfoCardProps) {
   const navigate = useNavigate();
+  const { employee } = useAuthStore();
   const [property, setProperty] = useState<PropertyFullDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -119,9 +139,33 @@ export default function PropertyInfoCard({
   // この物件に「買」を含むlatest_statusの買主がいるか
   const [propertyHasBuyerPurchase, setPropertyHasBuyerPurchase] = useState<string | null>(null);
 
+  // メール送信ダイアログ関連
+  const [emailDialogOpen, setEmailDialogOpen] = useState(false);
+  const [emailSubject, setEmailSubject] = useState('');
+  const [emailBody, setEmailBody] = useState('');
+  const [emailRecipient, setEmailRecipient] = useState('');
+  const [selectedTemplateName, setSelectedTemplateName] = useState('');
+  const [sendingEmail, setSendingEmail] = useState(false);
+
+  // テンプレートメニュー関連
+  const [propertyEmailTemplates, setPropertyEmailTemplates] = useState<
+    Array<{ id: string; name: string; subject: string; body: string }>
+  >([]);
+  const [templateMenuAnchor, setTemplateMenuAnchor] = useState<null | HTMLElement>(null);
+
+  // 送信元・返信先
+  const [senderAddress, setSenderAddress] = useState<string>(getSenderAddress());
+  const [replyTo, setReplyTo] = useState<string>('');
+  const [jimuStaff, setJimuStaff] = useState<Array<{ initials: string; name: string; email?: string }>>([]);
+
+  // 画像添付
+  const [selectedImages, setSelectedImages] = useState<any[]>([]);
+  const [showImageSelector, setShowImageSelector] = useState(false);
+
   useEffect(() => {
     fetchPropertyDetails();
     fetchPropertyBuyerPurchaseStatus();
+    fetchJimuStaff();
 
     // 物件リストの変更を検知するため30秒ごとに再フェッチ
     const intervalId = setInterval(() => {
@@ -140,6 +184,15 @@ export default function PropertyInfoCard({
       setPropertyHasBuyerPurchase(buyerWithPurchase ? buyerWithPurchase.latest_status : null);
     } catch {
       // エラー時は非表示のまま
+    }
+  };
+
+  const fetchJimuStaff = async () => {
+    try {
+      const response = await api.get('/api/employees/jimu-staff');
+      setJimuStaff(response.data || []);
+    } catch (err) {
+      console.error('Failed to fetch jimu staff:', err);
     }
   };
 
@@ -199,6 +252,121 @@ export default function PropertyInfoCard({
 
   const handleSnackbarClose = () => {
     setSnackbarOpen(false);
+  };
+
+  // 電話発信 + 履歴記録
+  const handlePhoneCall = async (phoneNumber: string) => {
+    window.location.href = `tel:${phoneNumber}`;
+    try {
+      await propertyListingApi.post(
+        `/api/property-listings/${property?.property_number}/seller-send-history`,
+        {
+          chat_type: 'seller_sms',
+          subject: '電話発信',
+          message: phoneNumber,
+          sender_name: employee?.name || employee?.initials || '不明',
+        }
+      );
+    } catch (err) {
+      console.error('Failed to save phone call history:', err);
+    }
+  };
+
+  // メール送信ボタンクリック → テンプレート一覧取得
+  const handleEmailButtonClick = async (event: React.MouseEvent<HTMLElement>) => {
+    try {
+      const response = await api.get('/api/email-templates/property-non-report');
+      setPropertyEmailTemplates(response.data || []);
+      setTemplateMenuAnchor(event.currentTarget);
+    } catch (err) {
+      console.error('Failed to fetch email templates:', err);
+      setSnackbarMessage('テンプレートの取得に失敗しました');
+      setSnackbarOpen(true);
+    }
+  };
+
+  // テンプレート選択 → merge → ダイアログ表示
+  const handleSelectTemplate = async (templateId: string, templateName: string) => {
+    setTemplateMenuAnchor(null);
+    try {
+      const response = await api.post('/api/email-templates/property/merge', {
+        templateId,
+        propertyNumber: property?.property_number,
+      });
+      setEmailSubject(response.data.subject || '');
+      setEmailBody(response.data.body || '');
+      setEmailRecipient(property?.seller_email || '');
+      setSelectedTemplateName(templateName);
+      setEmailDialogOpen(true);
+    } catch (err) {
+      console.error('Failed to merge template:', err);
+      setSnackbarMessage('テンプレートの適用に失敗しました');
+      setSnackbarOpen(true);
+    }
+  };
+
+  // メール送信実行 + 履歴記録
+  const handleSendEmail = async () => {
+    setSendingEmail(true);
+    try {
+      const attachments = selectedImages.map((img: any) => ({
+        id: img.id || img.name,
+        name: img.name,
+        base64Data: img.base64Data,
+        mimeType: img.mimeType || 'image/jpeg',
+        url: img.url,
+      }));
+
+      await api.post(
+        `/api/emails/by-seller-number/${property?.property_number}/send-template-email`,
+        {
+          templateId: 'custom',
+          to: emailRecipient,
+          subject: emailSubject,
+          content: emailBody,
+          htmlBody: emailBody,
+          from: senderAddress,
+          replyTo: replyTo || undefined,
+          attachments: attachments.length > 0 ? attachments : undefined,
+        }
+      );
+
+      // 送信履歴を記録
+      try {
+        await propertyListingApi.post(
+          `/api/property-listings/${property?.property_number}/seller-send-history`,
+          {
+            chat_type: 'seller_email',
+            subject: selectedTemplateName || emailSubject,
+            message: emailBody,
+            sender_name: employee?.name || employee?.initials || '不明',
+          }
+        );
+      } catch (historyErr) {
+        console.error('Failed to save email send history:', historyErr);
+      }
+
+      setSnackbarMessage('メールを送信しました');
+      setSnackbarOpen(true);
+      handleEmailDialogClose();
+    } catch (err: any) {
+      console.error('Failed to send email:', err);
+      const errorMessage = err.response?.data?.error?.message || 'メールの送信に失敗しました';
+      setSnackbarMessage(errorMessage);
+      setSnackbarOpen(true);
+    } finally {
+      setSendingEmail(false);
+    }
+  };
+
+  // ダイアログキャンセル
+  const handleEmailDialogClose = () => {
+    setEmailDialogOpen(false);
+    setEmailSubject('');
+    setEmailBody('');
+    setEmailRecipient('');
+    setSelectedTemplateName('');
+    setSelectedImages([]);
   };
 
   if (loading) {
@@ -760,9 +928,21 @@ export default function PropertyInfoCard({
                   <Typography variant="caption" color="text.secondary">
                     連絡先
                   </Typography>
-                  <Typography variant="body2" sx={{ mt: 0.5 }}>
-                    {property.seller_contact}
-                  </Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.5 }}>
+                    <Link
+                      href={`tel:${property.seller_contact}`}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        handlePhoneCall(property.seller_contact!);
+                      }}
+                      sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}
+                    >
+                      <PhoneIcon sx={{ fontSize: 16 }} />
+                      <Typography variant="body2">
+                        {property.seller_contact}
+                      </Typography>
+                    </Link>
+                  </Box>
                 </Box>
               )}
               {property.seller_email && (
@@ -770,9 +950,19 @@ export default function PropertyInfoCard({
                   <Typography variant="caption" color="text.secondary">
                     メールアドレス
                   </Typography>
-                  <Typography variant="body2" sx={{ mt: 0.5 }}>
-                    {property.seller_email}
-                  </Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.5 }}>
+                    <Typography variant="body2">
+                      {property.seller_email}
+                    </Typography>
+                    <IconButton
+                      size="small"
+                      onClick={handleEmailButtonClick}
+                      color="primary"
+                      aria-label="メール送信"
+                    >
+                      <EmailIcon sx={{ fontSize: 18 }} />
+                    </IconButton>
+                  </Box>
                 </Box>
               )}
               {property.sale_reason && (
@@ -858,6 +1048,155 @@ export default function PropertyInfoCard({
           物件詳細ページを開く
         </Button>
       </Box>
+
+      {/* テンプレート選択メニュー */}
+      <Menu
+        anchorEl={templateMenuAnchor}
+        open={Boolean(templateMenuAnchor)}
+        onClose={() => setTemplateMenuAnchor(null)}
+      >
+        {propertyEmailTemplates.map((template) => (
+          <MenuItem
+            key={template.id}
+            onClick={() => handleSelectTemplate(template.id, template.name)}
+          >
+            {template.name}
+          </MenuItem>
+        ))}
+        {propertyEmailTemplates.length === 0 && (
+          <MenuItem disabled>テンプレートがありません</MenuItem>
+        )}
+      </Menu>
+
+      {/* メール送信ダイアログ */}
+      <Dialog
+        open={emailDialogOpen}
+        onClose={handleEmailDialogClose}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>メール送信</DialogTitle>
+        <DialogContent>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
+            {/* 送信元アドレス */}
+            <SenderAddressSelector
+              value={senderAddress}
+              onChange={(value) => {
+                setSenderAddress(value);
+                saveSenderAddress(value);
+              }}
+            />
+
+            {/* 返信先 */}
+            <FormControl fullWidth size="small">
+              <InputLabel>返信先（Reply-To）</InputLabel>
+              <Select
+                value={replyTo}
+                onChange={(e) => setReplyTo(e.target.value)}
+                label="返信先（Reply-To）"
+              >
+                <MenuItem value="">なし</MenuItem>
+                {jimuStaff.map((staff) => (
+                  <MenuItem key={staff.initials} value={staff.email || ''}>
+                    {staff.name}（{staff.initials}）
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            {/* 送信先 */}
+            <Box>
+              <Typography variant="caption" color="text.secondary">
+                送信先
+              </Typography>
+              <Typography variant="body2" sx={{ mt: 0.5 }}>
+                {emailRecipient}
+              </Typography>
+            </Box>
+
+            {/* 件名 */}
+            <FormControl fullWidth>
+              <InputLabel shrink>件名</InputLabel>
+              <Box sx={{ mt: 2 }}>
+                <input
+                  type="text"
+                  value={emailSubject}
+                  onChange={(e) => setEmailSubject(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '8px',
+                    border: '1px solid #ccc',
+                    borderRadius: '4px',
+                    fontSize: '14px',
+                  }}
+                />
+              </Box>
+            </FormControl>
+
+            {/* 本文 */}
+            <Box>
+              <Typography variant="caption" color="text.secondary">
+                本文
+              </Typography>
+              <Box sx={{ mt: 1 }}>
+                <RichTextEmailEditor
+                  value={emailBody}
+                  onChange={setEmailBody}
+                />
+              </Box>
+            </Box>
+
+            {/* 画像添付 */}
+            <Box>
+              <Button
+                variant="outlined"
+                size="small"
+                onClick={() => setShowImageSelector(true)}
+              >
+                画像を添付
+              </Button>
+              {selectedImages.length > 0 && (
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1 }}>
+                  {selectedImages.map((img: any, index: number) => (
+                    <Chip
+                      key={index}
+                      label={img.name}
+                      onDelete={() => {
+                        setSelectedImages(selectedImages.filter((_: any, i: number) => i !== index));
+                      }}
+                      size="small"
+                    />
+                  ))}
+                </Box>
+              )}
+            </Box>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleEmailDialogClose} disabled={sendingEmail}>
+            キャンセル
+          </Button>
+          <Button
+            onClick={handleSendEmail}
+            variant="contained"
+            disabled={sendingEmail || !emailRecipient}
+          >
+            {sendingEmail ? '送信中...' : '送信'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 画像選択モーダル */}
+      {showImageSelector && (
+        <ImageSelectorModal
+          open={showImageSelector}
+          onClose={() => setShowImageSelector(false)}
+          onSelect={(images: any[]) => {
+            setSelectedImages(images);
+            setShowImageSelector(false);
+          }}
+        />
+      )}
 
       {/* Snackbar for copy notification */}
       <Snackbar
