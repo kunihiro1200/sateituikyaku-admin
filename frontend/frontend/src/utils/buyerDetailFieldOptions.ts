@@ -28,6 +28,7 @@ export const PINRICH_OPTIONS = [
   { value: '送信中', label: '送信中' },
   { value: 'クローズ', label: 'クローズ' },
   { value: '登録不要（一時可）', label: '登録不要（一時可）' },
+  { value: '登録不要（不可）', label: '登録不要（不可）' },
   { value: '500万以上の設定済み', label: '500万以上の設定済み' },
   { value: '送信済（女性確認より）', label: '送信済（女性確認より）' },
   { value: '登録無い', label: '登録無い' },

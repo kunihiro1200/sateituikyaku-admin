@@ -119,6 +119,16 @@ export class BuyerWriteService {
   }
 
   /**
+   * If inquiry_source is '2件目以降', force pinrich to '登録不要（不可）'
+   */
+  private applySecondInquiryRule(data: Record<string, any>): Record<string, any> {
+    if (data.inquiry_source === '2件目以降') {
+      return { ...data, pinrich: '登録不要（不可）' };
+    }
+    return data;
+  }
+
+  /**
    * 複数フィールドを一括でスプレッドシートに書き込み
    * @param buyerNumber 買主番号
    * @param updates 更新するフィールドと値のマップ
@@ -129,6 +139,9 @@ export class BuyerWriteService {
       console.log(`[BuyerWriteService] updateFields called for buyer ${buyerNumber}`);
       console.log(`[BuyerWriteService] Updates:`, JSON.stringify(updates, null, 2));
       
+      // Apply second inquiry rule before writing to spreadsheet
+      updates = this.applySecondInquiryRule(updates);
+
       // 行番号を検索
       const rowNumber = await this.findRowByBuyerNumber(buyerNumber);
       
@@ -254,6 +267,9 @@ export class BuyerWriteService {
    */
   async appendNewBuyer(buyerData: Record<string, any>): Promise<WriteResult> {
     try {
+      // Apply second inquiry rule before mapping to spreadsheet format
+      buyerData = this.applySecondInquiryRule(buyerData);
+
       // DBデータをスプレッドシート形式に変換
       const spreadsheetRow = this.columnMapper.mapDatabaseToSpreadsheet(buyerData);
       

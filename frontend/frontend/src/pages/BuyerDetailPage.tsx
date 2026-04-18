@@ -59,6 +59,7 @@ import { useStableContainerHeight } from '../hooks/useStableContainerHeight';
 import { useAuthStore } from '../store/authStore';
 import { useQuickButtonState } from '../hooks/useQuickButtonState';
 import { INQUIRY_SOURCE_OPTIONS } from '../utils/buyerInquirySourceOptions';
+import { isSecondInquiry, resolvePinrichValue } from '../utils/buyerPinrichHelper';
 import { LATEST_STATUS_OPTIONS } from '../utils/buyerLatestStatusOptions';
 import { 
   INQUIRY_EMAIL_PHONE_OPTIONS, 
@@ -572,6 +573,13 @@ export default function BuyerDetailPage() {
       fetchActivities();
     }
   }, [buyer_number, isValidBuyerNumber]);
+
+  // inquiry_source が '2件目以降' の場合、pinrich を自動セット（初期表示時）
+  useEffect(() => {
+    if (buyer && isSecondInquiry(buyer.inquiry_source)) {
+      setBuyer((prev: any) => prev ? { ...prev, pinrich: '登録不要（不可）' } : prev);
+    }
+  }, [buyer?.inquiry_source]);
 
   // Pinrich の動的バリデーション
   useEffect(() => {
@@ -2073,6 +2081,10 @@ TEL：097-533-2022`;
                                     return next;
                                   });
                                 }
+                                // inquiry_source が '2件目以降' の場合、pinrich を即時セット
+                                if (isSecondInquiry(newValue)) {
+                                  setBuyer((prev: any) => prev ? { ...prev, pinrich: '登録不要（不可）' } : prev);
+                                }
                               }}
                               buyerId={buyer_number}
                               enableConflictDetection={false}
@@ -2336,6 +2348,8 @@ TEL：097-533-2022`;
                                   <Select
                                     value={buyer[field.key] || ''}
                                     label={field.label}
+                                    disabled={isSecondInquiry(buyer?.inquiry_source)}
+                                    sx={isSecondInquiry(buyer?.inquiry_source) ? { backgroundColor: '#f5f5f5', opacity: 0.7 } : {}}
                                     onChange={async (e) => {
                                       const newValue = e.target.value;
                                       setBuyer((prev: any) => prev ? { ...prev, [field.key]: newValue } : prev);

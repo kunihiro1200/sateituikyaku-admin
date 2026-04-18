@@ -33,6 +33,7 @@ import {
   PINRICH_OPTIONS,
 } from '../utils/buyerDetailFieldOptions';
 import { SECTION_COLORS } from '../theme/sectionColors';
+import { isSecondInquiry } from '../../frontend/frontend/src/utils/buyerPinrichHelper';
 
 interface PropertyInfo {
   property_number: string;
@@ -189,7 +190,14 @@ export default function NewBuyerPage() {
   // フィールド更新ハンドラー（新規登録用）
   const handleInlineFieldSave = async (fieldName: string, newValue: any) => {
     // ローカル状態を更新
-    setBuyer((prev: any) => ({ ...prev, [fieldName]: newValue }));
+    setBuyer((prev: any) => {
+      const updated = { ...prev, [fieldName]: newValue };
+      // inquiry_source が '2件目以降' に変更された場合、pinrich を自動セット
+      if (fieldName === 'inquiry_source' && isSecondInquiry(newValue)) {
+        updated.pinrich = '登録不要（不可）';
+      }
+      return updated;
+    });
   };
 
   // 問合時ヒアリング用クイック入力ボタンのクリックハンドラー
@@ -1152,6 +1160,7 @@ export default function NewBuyerPage() {
                       const hasEmail = buyer.email && buyer.email.trim() !== '';
                       const hasValue = value && value.trim() !== '';
                       const isRequired = hasEmail && !hasValue;
+                      const isPinrichDisabled = isSecondInquiry(buyer.inquiry_source);
 
                       return (
                         <Grid item {...gridSize} key={field.key}>
@@ -1163,6 +1172,13 @@ export default function NewBuyerPage() {
                               borderColor: isRequired ? 'error.main' : 'transparent',
                               borderRadius: isRequired ? 1 : 0,
                               bgcolor: isRequired ? 'error.light' : 'transparent',
+                              ...(isPinrichDisabled && {
+                                opacity: 0.6,
+                                pointerEvents: 'none',
+                                bgcolor: 'action.disabledBackground',
+                                borderRadius: 1,
+                                p: 1,
+                              }),
                             }}
                           >
                             <InlineEditableField
@@ -1174,8 +1190,9 @@ export default function NewBuyerPage() {
                               onSave={async (newValue) => handleInlineFieldSave(field.key, newValue)}
                               showEditIndicator={true}
                               oneClickDropdown={true}
+                              disabled={isPinrichDisabled}
                             />
-                            {isRequired && (
+                            {isRequired && !isPinrichDisabled && (
                               <Typography variant="caption" color="error" sx={{ display: 'block', mt: 1, fontWeight: 'bold' }}>
                                 *必須: メールアドレスが入力されている場合、Pinrichの選択が必要です
                               </Typography>

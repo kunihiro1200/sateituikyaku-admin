@@ -198,9 +198,7 @@ export class BuyerSyncService {
       const rowNumber = startRowNumber + i;
       
       try {
-        const data = this.columnMapper.mapSpreadsheetToDatabase(headers, row);
-        
-        // 買主番号がない場合はスキップ
+        const data = this.applySecondInquiryRule(this.columnMapper.mapSpreadsheetToDatabase(headers, row));
         if (!data.buyer_number || String(data.buyer_number).trim() === '') {
           result.skipped++;
           continue;
@@ -379,7 +377,7 @@ export class BuyerSyncService {
     
     try {
       // Map spreadsheet data to database format
-      const data = this.columnMapper.mapSpreadsheetToDatabase(headers, row);
+      const data = this.applySecondInquiryRule(this.columnMapper.mapSpreadsheetToDatabase(headers, row));
       
       // Get existing buyer data
       const { data: existing } = await this.supabase
@@ -554,7 +552,7 @@ export class BuyerSyncService {
       }
 
       // Map only specified fields
-      const data = this.columnMapper.mapSpreadsheetToDatabase(headers, buyerRow);
+      const data = this.applySecondInquiryRule(this.columnMapper.mapSpreadsheetToDatabase(headers, buyerRow));
       const updateData: any = {};
       
       for (const fieldName of fieldNames) {
@@ -653,5 +651,15 @@ export class BuyerSyncService {
       total: count || 0,
       lastSync
     };
+  }
+
+  /**
+   * If inquiry_source is '2件目以降', force pinrich to '登録不要（不可）'
+   */
+  private applySecondInquiryRule(data: Record<string, any>): Record<string, any> {
+    if (data.inquiry_source === '2件目以降') {
+      return { ...data, pinrich: '登録不要（不可）' };
+    }
+    return data;
   }
 }

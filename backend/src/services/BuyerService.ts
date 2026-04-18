@@ -590,9 +590,11 @@ export class BuyerService {
       buyer_number: buyerNumber,
     };
 
+    const finalNewBuyer = this.applySecondInquiryRule(newBuyer);
+
     const { data, error } = await this.supabase
       .from('buyers')
-      .insert(newBuyer)
+      .insert(finalNewBuyer)
       .select()
       .single();
 
@@ -701,6 +703,16 @@ export class BuyerService {
   }
 
   /**
+   * If inquiry_source is '2件目以降', force pinrich to '登録不要（不可）'
+   */
+  private applySecondInquiryRule(data: Record<string, any>): Record<string, any> {
+    if (data.inquiry_source === '2件目以降') {
+      return { ...data, pinrich: '登録不要（不可）' };
+    }
+    return data;
+  }
+
+  /**
    * 買主情報を更新
    */
   async update(id: string, updateData: Partial<any>, userId?: string, userEmail?: string): Promise<any> {
@@ -743,13 +755,16 @@ export class BuyerService {
       allowedData.latest_status_updated_at = new Date().toISOString();
     }
 
+    // Apply second inquiry rule: force pinrich to '登録不要（不可）' if inquiry_source is '2件目以降'
+    const finalAllowedData = this.applySecondInquiryRule(allowedData);
+
     // buyer_numberは数値型なので、数値に変換
     const buyerNumberInt = parseInt(buyerNumber, 10);
     console.log('[BuyerService.update] buyerNumberInt:', buyerNumberInt);
 
     const { data, error } = await this.supabase
       .from('buyers')
-      .update(allowedData)
+      .update(finalAllowedData)
       .eq('buyer_number', buyerNumberInt)
       .select()
       .single();
@@ -767,15 +782,15 @@ export class BuyerService {
 
     // Log audit trail for each changed field
     if (userId && userEmail) {
-      for (const key in allowedData) {
-        if (key !== 'db_updated_at' && existing[key] !== allowedData[key]) {
+      for (const key in finalAllowedData) {
+        if (key !== 'db_updated_at' && existing[key] !== finalAllowedData[key]) {
           try {
             await AuditLogService.logFieldUpdate(
               'buyer',
               buyerNumber,
               key,
               existing[key],
-              allowedData[key],
+              finalAllowedData[key],
               userId,
               userEmail
             );
@@ -789,12 +804,12 @@ export class BuyerService {
 
     // サイドバーカウント更新（非同期、ノンブロッキング）
     console.log('[BuyerService] Checking if sidebar counts update is needed:', {
-      shouldUpdate: this.shouldUpdateBuyerSidebarCounts(allowedData),
-      allowedData: Object.keys(allowedData),
+      shouldUpdate: this.shouldUpdateBuyerSidebarCounts(finalAllowedData),
+      allowedData: Object.keys(finalAllowedData),
       buyerNumber
     });
     
-    if (this.shouldUpdateBuyerSidebarCounts(allowedData)) {
+    if (this.shouldUpdateBuyerSidebarCounts(finalAllowedData)) {
       console.log('[BuyerService] Triggering sidebar counts update for buyer:', buyerNumber);
       console.log('[BuyerService] Old buyer data (before update):', JSON.stringify({
         buyer_number: existing.buyer_number,
@@ -925,9 +940,10 @@ export class BuyerService {
     }
 
     // DB更新（buyer_numberカラムを使用）
+    const finalAllowedData = this.applySecondInquiryRule(allowedData);
     const { data, error } = await this.supabase
       .from('buyers')
-      .update(allowedData)
+      .update(finalAllowedData)
       .eq('buyer_number', buyerNumber)
       .select()
       .single();
@@ -938,15 +954,15 @@ export class BuyerService {
 
     // 監査ログを記録（DB更新直後、同期処理の前）
     if (userId && userEmail) {
-      for (const key in allowedData) {
-        if (key !== 'db_updated_at' && existing[key] !== allowedData[key]) {
+      for (const key in finalAllowedData) {
+        if (key !== 'db_updated_at' && existing[key] !== finalAllowedData[key]) {
           try {
             await AuditLogService.logFieldUpdate(
               'buyer',
               id,
               key,
               existing[key],
-              allowedData[key],
+              finalAllowedData[key],
               userId,
               userEmail,
               'pending'
@@ -970,7 +986,7 @@ export class BuyerService {
         // リトライ付きで同期を実行
         const retryResult = await this.retryHandler.executeWithRetry(
           async () => {
-            const writeResult = await this.writeService!.updateFields(buyerNumber, allowedData);
+            const writeResult = await this.writeService!.updateFields(buyerNumber, finalAllowedData);
             if (!writeResult.success) {
               throw new Error(writeResult.error || 'Spreadsheet write failed');
             }
@@ -987,13 +1003,13 @@ export class BuyerService {
           syncResult = { success: true, syncStatus: 'synced' };
         } else {
           // 同期失敗 - キューに追加
-          for (const key of Object.keys(allowedData)) {
+          for (const key of Object.keys(finalAllowedData)) {
             if (key !== 'db_updated_at') {
               await this.retryHandler.queueFailedChange({
                 buyer_number: buyerNumber,
                 field_name: key,
                 old_value: existing[key] ? String(existing[key]) : null,
-                new_value: allowedData[key] ? String(allowedData[key]) : null,
+                new_value: finalAllowedData[key] ? String(finalAllowedData[key]) : null,
                 retry_count: retryResult.attempts,
                 last_error: retryResult.error || null
               });
@@ -1005,13 +1021,13 @@ export class BuyerService {
     } catch (syncError: any) {
       // 同期エラー - キューに追加
       if (this.retryHandler) {
-        for (const key of Object.keys(allowedData)) {
+        for (const key of Object.keys(finalAllowedData)) {
           if (key !== 'db_updated_at') {
             await this.retryHandler.queueFailedChange({
               buyer_number: buyerNumber,
               field_name: key,
               old_value: existing[key] ? String(existing[key]) : null,
-              new_value: allowedData[key] ? String(allowedData[key]) : null,
+              new_value: finalAllowedData[key] ? String(finalAllowedData[key]) : null,
               retry_count: 0,
               last_error: syncError.message
             });
