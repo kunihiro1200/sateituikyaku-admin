@@ -66,6 +66,8 @@ const HIGH_PRIORITY_RED_STATUSES = new Set([
   '未完了',
   '本日公開予定',
   '要値下げ',
+  'SUUMO URL\u3000要登録',
+  'レインズ登録＋SUUMO URL 要登録',
 ]);
 
 // 「買付申し込み」より上の優先度高グループ（薄い背景色対象）
