@@ -3812,8 +3812,14 @@ HP：https://ifoo-oita.com/
         endpoint = `/api/chat-notifications/general-contract/${seller.id}`;
       } else if (statusLabel.includes('訪問後他決')) {
         endpoint = `/api/chat-notifications/post-visit-other-decision/${seller.id}`;
-      } else if (statusLabel.includes('未訪問他決') || statusLabel.includes('他決')) {
+      } else if (statusLabel.includes('未訪問他決')) {
         endpoint = `/api/chat-notifications/pre-visit-other-decision/${seller.id}`;
+      } else if (statusLabel.includes('他決')) {
+        // visit_assigneeが設定されている（訪問済み）場合は訪問後他決、それ以外は未訪問他決
+        const isVisited = seller.visitAssignee && seller.visitAssignee !== '' && seller.visitAssignee !== '外す';
+        endpoint = isVisited
+          ? `/api/chat-notifications/post-visit-other-decision/${seller.id}`
+          : `/api/chat-notifications/pre-visit-other-decision/${seller.id}`;
       } else {
         throw new Error('このステータスでは通知を送信できません');
       }
