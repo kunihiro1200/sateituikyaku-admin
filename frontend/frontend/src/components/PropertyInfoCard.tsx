@@ -1107,14 +1107,23 @@ export default function PropertyInfoCard({
             </FormControl>
 
             {/* 送信先 */}
-            <Box>
-              <Typography variant="caption" color="text.secondary">
-                送信先
-              </Typography>
-              <Typography variant="body2" sx={{ mt: 0.5 }}>
-                {emailRecipient}
-              </Typography>
-            </Box>
+            <FormControl fullWidth>
+              <InputLabel shrink>送信先</InputLabel>
+              <Box sx={{ mt: 2 }}>
+                <input
+                  type="email"
+                  value={emailRecipient}
+                  onChange={(e) => setEmailRecipient(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '8px',
+                    border: '1px solid #ccc',
+                    borderRadius: '4px',
+                    fontSize: '14px',
+                  }}
+                />
+              </Box>
+            </FormControl>
 
             {/* 件名 */}
             <FormControl fullWidth>
