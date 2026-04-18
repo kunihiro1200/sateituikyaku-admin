@@ -182,6 +182,7 @@ export default function NewSellerPage() {
   const [visitDate, setVisitDate] = useState('');
   const [visitTime, setVisitTime] = useState('');
   const [visitAssignee, setVisitAssignee] = useState('');
+  const [visitAcquirer, setVisitAcquirer] = useState('');
   const [visitNotes, setVisitNotes] = useState('');
 
   // ステータス情報
@@ -392,6 +393,7 @@ export default function NewSellerPage() {
         visitDate: visitDate || undefined,
         visitTime: visitTime || undefined,
         visitAssignee: visitAssignee || undefined,
+        visitAcquirer: visitAcquirer || undefined,
         visitNotes: visitNotes || undefined,
         
         // ステータス
@@ -492,7 +494,7 @@ export default function NewSellerPage() {
 
         <form onSubmit={handleSubmit}>
           {/* 基本情報セクション */}
-          <Paper sx={{ p: 3, mb: 3 }}>
+          <Paper sx={{ p: 3, mb: 3, backgroundColor: '#e3f2fd' }}>
             <Typography variant="h6" gutterBottom>
               基本情報
             </Typography>
@@ -563,6 +565,7 @@ export default function NewSellerPage() {
                   label="名前"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
+                InputProps={{ style: { backgroundColor: '#ffffff' } }}
                 />
               </Grid>
               {/* 5. 依頼者住所 */}
@@ -572,6 +575,7 @@ export default function NewSellerPage() {
                   label="依頼者住所"
                   value={requestorAddress}
                   onChange={(e) => setRequestorAddress(e.target.value)}
+                InputProps={{ style: { backgroundColor: '#ffffff' } }}
                 />
               </Grid>
               {/* 6. 電話番号 */}
@@ -583,6 +587,7 @@ export default function NewSellerPage() {
                   value={phoneNumber}
                   onChange={(e) => setPhoneNumber(e.target.value)}
                   placeholder="090-1234-5678"
+                InputProps={{ style: { backgroundColor: '#ffffff' } }}
                 />
               </Grid>
               {/* 7. メールアドレス */}
@@ -593,13 +598,14 @@ export default function NewSellerPage() {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                InputProps={{ style: { backgroundColor: '#ffffff' } }}
                 />
               </Grid>
             </Grid>
           </Paper>
 
           {/* 反響情報セクション */}
-          <Paper sx={{ p: 3, mb: 3 }}>
+          <Paper sx={{ p: 3, mb: 3, backgroundColor: '#f3e5f5' }}>
             <Typography variant="h6" gutterBottom>
               反響情報
             </Typography>
@@ -611,6 +617,7 @@ export default function NewSellerPage() {
                   type="number"
                   value={inquiryYear}
                   onChange={(e) => setInquiryYear(e.target.value)}
+                InputProps={{ style: { backgroundColor: '#ffffff' } }}
                 />
               </Grid>
               <Grid item xs={12} sm={4}>
@@ -621,6 +628,7 @@ export default function NewSellerPage() {
                   value={inquiryDate}
                   onChange={(e) => setInquiryDate(e.target.value)}
                   InputLabelProps={{ shrink: true }}
+                InputProps={{ style: { backgroundColor: '#ffffff' } }}
                 />
               </Grid>
               <Grid item xs={12} sm={4}>
@@ -631,6 +639,7 @@ export default function NewSellerPage() {
                   value={inquiryDetailedDateTime}
                   onChange={(e) => setInquiryDetailedDateTime(e.target.value)}
                   InputLabelProps={{ shrink: true }}
+                InputProps={{ style: { backgroundColor: '#ffffff' } }}
                 />
               </Grid>
               <Grid item xs={12} sm={6}>
@@ -658,6 +667,7 @@ export default function NewSellerPage() {
                   label="査定理由"
                   value={inquiryReason}
                   onChange={(e) => setInquiryReason(e.target.value)}
+                InputProps={{ style: { backgroundColor: '#ffffff' } }}
                 />
               </Grid>
               <Grid item xs={12} sm={6}>
@@ -666,6 +676,7 @@ export default function NewSellerPage() {
                   label="サイトURL"
                   value={siteUrl}
                   onChange={(e) => setSiteUrl(e.target.value)}
+                InputProps={{ style: { backgroundColor: '#ffffff' } }}
                 />
               </Grid>
               <Grid item xs={12} sm={6}>
@@ -675,13 +686,14 @@ export default function NewSellerPage() {
                   type="number"
                   value={numberOfCompanies}
                   onChange={(e) => setNumberOfCompanies(e.target.value)}
+                InputProps={{ style: { backgroundColor: '#ffffff' } }}
                 />
               </Grid>
             </Grid>
           </Paper>
 
           {/* 物件情報セクション */}
-          <Paper sx={{ p: 3, mb: 3 }}>
+          <Paper sx={{ p: 3, mb: 3, backgroundColor: '#e8f5e9' }}>
             <Typography variant="h6" gutterBottom>
               物件情報
             </Typography>
@@ -693,6 +705,7 @@ export default function NewSellerPage() {
                   label="物件所在地"
                   value={propertyAddress}
                   onChange={(e) => setPropertyAddress(e.target.value)}
+                InputProps={{ style: { backgroundColor: '#ffffff' } }}
                 />
               </Grid>
               <Grid item xs={12} sm={6}>
@@ -734,6 +747,7 @@ export default function NewSellerPage() {
                   type="number"
                   value={landArea}
                   onChange={(e) => setLandArea(e.target.value)}
+                InputProps={{ style: { backgroundColor: '#ffffff' } }}
                 />
               </Grid>
               <Grid item xs={12} sm={6}>
@@ -743,6 +757,7 @@ export default function NewSellerPage() {
                   type="number"
                   value={buildingArea}
                   onChange={(e) => setBuildingArea(e.target.value)}
+                InputProps={{ style: { backgroundColor: '#ffffff' } }}
                 />
               </Grid>
               <Grid item xs={12} sm={6}>
@@ -752,6 +767,7 @@ export default function NewSellerPage() {
                   type="number"
                   value={landAreaVerified}
                   onChange={(e) => setLandAreaVerified(e.target.value)}
+                InputProps={{ style: { backgroundColor: '#ffffff' } }}
                 />
               </Grid>
               <Grid item xs={12} sm={6}>
@@ -761,6 +777,7 @@ export default function NewSellerPage() {
                   type="number"
                   value={buildingAreaVerified}
                   onChange={(e) => setBuildingAreaVerified(e.target.value)}
+                InputProps={{ style: { backgroundColor: '#ffffff' } }}
                 />
               </Grid>
               <Grid item xs={12} sm={6}>
@@ -770,6 +787,7 @@ export default function NewSellerPage() {
                   value={floorPlan}
                   onChange={(e) => setFloorPlan(e.target.value)}
                   placeholder="例: 3LDK"
+                InputProps={{ style: { backgroundColor: '#ffffff' } }}
                 />
               </Grid>
               <Grid item xs={12} sm={6}>
@@ -780,6 +798,7 @@ export default function NewSellerPage() {
                   value={buildYear}
                   onChange={(e) => setBuildYear(e.target.value)}
                   placeholder="2000"
+                InputProps={{ style: { backgroundColor: '#ffffff' } }}
                 />
               </Grid>
               <Grid item xs={12} sm={6}>
@@ -805,6 +824,7 @@ export default function NewSellerPage() {
                   type="number"
                   value={floors}
                   onChange={(e) => setFloors(e.target.value)}
+                InputProps={{ style: { backgroundColor: '#ffffff' } }}
                 />
               </Grid>
               {propertyType === 'apartment' && (
@@ -814,6 +834,7 @@ export default function NewSellerPage() {
                     label="イエウール・マンション専用住所"
                     value={propertyAddressForIeulMansion}
                     onChange={(e) => setPropertyAddressForIeulMansion(e.target.value)}
+                  InputProps={{ style: { backgroundColor: '#ffffff' } }}
                   />
                 </Grid>
               )}
@@ -836,13 +857,14 @@ export default function NewSellerPage() {
                   label="追加情報"
                   value={additionalInfo}
                   onChange={(e) => setAdditionalInfo(e.target.value)}
+                InputProps={{ style: { backgroundColor: '#ffffff' } }}
                 />
               </Grid>
             </Grid>
           </Paper>
 
           {/* コメントセクション */}
-          <Paper sx={{ p: 3, mb: 3 }}>
+          <Paper sx={{ p: 3, mb: 3, backgroundColor: '#fff8e1' }}>
             <Typography variant="h6" gutterBottom>
               コメント
             </Typography>
@@ -857,7 +879,7 @@ export default function NewSellerPage() {
           </Paper>
 
           {/* ステータス情報セクション（コメントの直後） */}
-          <Paper sx={{ p: 3, mb: 3 }}>
+          <Paper sx={{ p: 3, mb: 3, backgroundColor: '#fce4ec' }}>
             <Typography variant="h6" gutterBottom>
               ステータス情報
             </Typography>
@@ -912,13 +934,14 @@ export default function NewSellerPage() {
                   label="担当社員"
                   value={assignedTo}
                   onChange={(e) => setAssignedTo(e.target.value)}
+                InputProps={{ style: { backgroundColor: '#ffffff' } }}
                 />
               </Grid>
             </Grid>
           </Paper>
 
           {/* 査定情報セクション */}
-          <Paper sx={{ p: 3, mb: 3 }}>
+          <Paper sx={{ p: 3, mb: 3, backgroundColor: '#e0f7fa' }}>
             <Typography variant="h6" gutterBottom>
               査定情報
             </Typography>
@@ -930,6 +953,7 @@ export default function NewSellerPage() {
                   type="number"
                   value={valuationAmount1}
                   onChange={(e) => setValuationAmount1(e.target.value)}
+                InputProps={{ style: { backgroundColor: '#ffffff' } }}
                 />
               </Grid>
               <Grid item xs={12} sm={4}>
@@ -939,6 +963,7 @@ export default function NewSellerPage() {
                   type="number"
                   value={valuationAmount2}
                   onChange={(e) => setValuationAmount2(e.target.value)}
+                InputProps={{ style: { backgroundColor: '#ffffff' } }}
                 />
               </Grid>
               <Grid item xs={12} sm={4}>
@@ -948,6 +973,7 @@ export default function NewSellerPage() {
                   type="number"
                   value={valuationAmount3}
                   onChange={(e) => setValuationAmount3(e.target.value)}
+                InputProps={{ style: { backgroundColor: '#ffffff' } }}
                 />
               </Grid>
               <Grid item xs={12} sm={6}>
@@ -972,6 +998,7 @@ export default function NewSellerPage() {
                   label="査定担当"
                   value={valuationAssignee}
                   onChange={(e) => setValuationAssignee(e.target.value)}
+                InputProps={{ style: { backgroundColor: '#ffffff' } }}
                 />
               </Grid>
               <Grid item xs={12}>
@@ -981,25 +1008,32 @@ export default function NewSellerPage() {
                   type="number"
                   value={fixedAssetTaxRoadPrice}
                   onChange={(e) => setFixedAssetTaxRoadPrice(e.target.value)}
+                InputProps={{ style: { backgroundColor: '#ffffff' } }}
                 />
               </Grid>
             </Grid>
           </Paper>
 
           {/* 追客情報セクション */}
-          <Paper sx={{ p: 3, mb: 3 }}>
+          <Paper sx={{ p: 3, mb: 3, backgroundColor: '#fff3e0' }}>
             <Typography variant="h6" gutterBottom>
               追客情報
             </Typography>
             <Grid container spacing={2}>
-              <Grid item xs={12} sm={6}>
+              <Grid item xs={12} sm={6} sx={{ backgroundColor: '#fff9c4', borderRadius: 1, p: 1 }}>
                 <TextField
                   fullWidth
                   label="次電日"
                   type="date"
                   value={nextCallDate}
                   onChange={(e) => setNextCallDate(e.target.value)}
-                  InputLabelProps={{ shrink: true }}
+                  InputLabelProps={{
+                    shrink: true,
+                    style: { fontWeight: 'bold', color: '#d32f2f' }
+                  }}
+                  color={!nextCallDate ? 'warning' : undefined}
+                  focused={!nextCallDate ? true : undefined}
+                  InputProps={{ style: { backgroundColor: '#ffffff' } }}
                 />
               </Grid>
               <Grid item xs={12} sm={6}>
@@ -1025,13 +1059,14 @@ export default function NewSellerPage() {
                   value={preferredContactTime}
                   onChange={(e) => setPreferredContactTime(e.target.value)}
                   placeholder="例: 平日18時以降"
+                InputProps={{ style: { backgroundColor: '#ffffff' } }}
                 />
               </Grid>
             </Grid>
           </Paper>
 
           {/* 訪問査定情報セクション */}
-          <Paper sx={{ p: 3, mb: 3 }}>
+          <Paper sx={{ p: 3, mb: 3, backgroundColor: '#f1f8e9' }}>
             <Typography variant="h6" gutterBottom>
               訪問査定情報
             </Typography>
@@ -1044,6 +1079,7 @@ export default function NewSellerPage() {
                   value={visitDate}
                   onChange={(e) => setVisitDate(e.target.value)}
                   InputLabelProps={{ shrink: true }}
+                InputProps={{ style: { backgroundColor: '#ffffff' } }}
                 />
               </Grid>
               <Grid item xs={12} sm={6}>
@@ -1054,6 +1090,7 @@ export default function NewSellerPage() {
                   value={visitTime}
                   onChange={(e) => setVisitTime(e.target.value)}
                   InputLabelProps={{ shrink: true }}
+                InputProps={{ style: { backgroundColor: '#ffffff' } }}
                 />
               </Grid>
               <Grid item xs={12} sm={6}>
@@ -1076,6 +1113,27 @@ export default function NewSellerPage() {
                   </Select>
                 </FormControl>
               </Grid>
+              <Grid item xs={12} sm={6}>
+                <FormControl fullWidth>
+                  <InputLabel>訪問査定取得者</InputLabel>
+                  <Select
+                    value={visitAcquirer}
+                    label="訪問査定取得者"
+                    onChange={(e) => setVisitAcquirer(e.target.value)}
+                    sx={{ backgroundColor: '#ffffff' }}
+                  >
+                    <MenuItem value=""><em>未選択</em></MenuItem>
+                    {employees.map((emp) => {
+                      const initials = (emp as any).initials || emp.name || emp.email;
+                      return (
+                        <MenuItem key={(emp as any).id} value={initials}>
+                          {emp.name} ({initials})
+                        </MenuItem>
+                      );
+                    })}
+                  </Select>
+                </FormControl>
+              </Grid>
               <Grid item xs={12}>
                 <TextField
                   fullWidth
@@ -1084,6 +1142,7 @@ export default function NewSellerPage() {
                   label="訪問時注意点"
                   value={visitNotes}
                   onChange={(e) => setVisitNotes(e.target.value)}
+                InputProps={{ style: { backgroundColor: '#ffffff' } }}
                 />
               </Grid>
               {true && (
