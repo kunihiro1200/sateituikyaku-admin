@@ -337,7 +337,8 @@ export class EmailTemplateService {
     let result = text;
 
     // 買主情報の置換
-    const buyerName = buyer.company_name
+    const isBrokerInquiry = buyer.broker_inquiry === '業者問合せ';
+    const buyerName = (!isBrokerInquiry && buyer.company_name)
       ? `${buyer.name || ''}・${buyer.company_name}`
       : (buyer.name || buyer.buyerName || '');
     result = result.replace(/<<●氏名・会社名>>/g, buyerName);

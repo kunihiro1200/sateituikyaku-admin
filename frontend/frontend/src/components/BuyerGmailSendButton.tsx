@@ -105,6 +105,7 @@ export default function BuyerGmailSendButton({
           buyerName,
           name: buyerName,
           company_name: buyerCompanyName || '',
+          broker_inquiry: brokerInquiry || '',
           buyer_number: buyerNumber || '',
           email: buyerEmail,
           pre_viewing_notes: preViewingNotes || '',
