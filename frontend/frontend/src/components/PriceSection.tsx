@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Box, Typography, TextField, Grid, Button, Dialog, DialogTitle, DialogContent, DialogActions, Tooltip, IconButton as MuiIconButton } from '@mui/material';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import CheckIcon from '@mui/icons-material/Check';
@@ -61,8 +61,9 @@ export default function PriceSection({
   const displayPriceReductionHistory = editedData.price_reduction_history !== undefined ? editedData.price_reduction_history : priceReductionHistory;
   const displayScheduledDate = editedData.price_reduction_scheduled_date !== undefined ? editedData.price_reduction_scheduled_date : priceReductionScheduledDate;
 
-  // 値下げ予約日が空の場合のみ表示（非編集モードのみ）
-  const showChatButton = !isEditMode && !displayScheduledDate;
+  // ローカル状態変数
+  const [chatSent, setChatSent] = useState(false);
+  const [scheduledDateWasCleared, setScheduledDateWasCleared] = useState(false);
 
   const [scheduledNotifications, setScheduledNotifications] = useState<any[]>([]);
   const [showScheduleForm, setShowScheduleForm] = useState(false);
@@ -129,6 +130,33 @@ export default function PriceSection({
   // 売買価格が変更されたかチェック
   const isPriceChanged = editedData.price !== undefined && editedData.price !== salesPrice;
 
+  // displayScheduledDate の変化を監視する
+  const prevScheduledDateRef = useRef<string | null | undefined>(displayScheduledDate);
+
+  useEffect(() => {
+    const prev = prevScheduledDateRef.current;
+    const current = displayScheduledDate;
+
+    // 値があった → 空欄になった場合
+    if (prev && !current) {
+      setScheduledDateWasCleared(true);
+      setChatSent(false);
+    }
+    // 空欄 → 値が設定された場合（リセット）
+    if (!prev && current) {
+      setScheduledDateWasCleared(false);
+      setChatSent(false);
+    }
+
+    prevScheduledDateRef.current = current;
+  }, [displayScheduledDate]);
+
+  // オレンジのバー：値下げ予約日をクリアした場合のみ
+  const showOrangeChatButton = !isEditMode && !displayScheduledDate && scheduledDateWasCleared && !chatSent;
+
+  // 青いバー：売買価格が変更された場合（オレンジが表示されていない場合のみ）
+  const showBlueChatButton = !isEditMode && !displayScheduledDate && isPriceChanged && !showOrangeChatButton;
+
 
   const handleSendPriceReductionChat = async () => {
     const latestReduction = getLatestPriceReduction();
@@ -168,6 +196,7 @@ export default function PriceSection({
       }
 
       onChatSendSuccess('値下げ通知を送信しました');
+      setChatSent(true);  // オレンジのバーを非表示にする
       setSelectedImageUrl(undefined);
       setChatMessageBody('');
     } catch (error: any) {
@@ -296,8 +325,8 @@ export default function PriceSection({
             </Box>
           )}
 
-          {/* Chat送信ボタン */}
-          {showChatButton && (
+          {/* オレンジのバー：値下げ予約日クリア時の通知用 */}
+          {showOrangeChatButton && (
             <Box sx={{ mt: 3, pt: 2, borderTop: '1px solid #ddd' }}>
               <Button
                 fullWidth
@@ -330,6 +359,36 @@ export default function PriceSection({
                 }}
               >
                 {sendingChat ? '送信中...' : '物件担当へCHAT送信（画像添付可能）'}
+              </Button>
+            </Box>
+          )}
+
+          {/* 青いバー：売買価格変更時の通知用（確認フィールドを「未」にリセット） */}
+          {showBlueChatButton && (
+            <Box sx={{ mt: 3, pt: 2, borderTop: '1px solid #ddd' }}>
+              <Button
+                fullWidth
+                variant="contained"
+                onClick={() => {
+                  const latestReduction = getLatestPriceReduction();
+                  if (latestReduction) {
+                    const propertyUrl = `${window.location.origin}/property-listings/${propertyNumber}`;
+                    const propertyNumberLine = propertyNumber ? `物件番号：${propertyNumber}\n` : '';
+                    setChatMessageBody(`${propertyNumberLine}【値下げ通知】\n${latestReduction}\n${address || ''}\n${propertyUrl}`);
+                    setConfirmDialogOpen(true);
+                  } else {
+                    onChatSendError('値下げ履歴が見つかりません');
+                  }
+                }}
+                disabled={sendingChat || !getLatestPriceReduction()}
+                sx={{
+                  backgroundColor: '#1976d2',
+                  '&:hover': { backgroundColor: '#1565c0' },
+                  fontSize: '0.75rem',
+                  fontWeight: 'bold',
+                }}
+              >
+                {sendingChat ? '送信中...' : 'CHAT送信'}
               </Button>
             </Box>
           )}
