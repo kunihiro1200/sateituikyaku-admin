@@ -72,6 +72,7 @@ import { ValidationWarningDialog } from '../components/ValidationWarningDialog';
 import { formatDateTime } from '../utils/dateFormat';
 import { getDisplayName } from '../utils/employeeUtils';
 import { normalizeEmail } from '../utils/stringUtils';
+import { pageDataCache, CACHE_KEYS } from '../store/pageDataCache';
 
 interface Buyer {
   [key: string]: any;
@@ -806,6 +807,8 @@ export default function BuyerDetailPage() {
     try {
       await api.delete(`/api/buyers/${buyer.buyer_number}/permanent`);
       setDeleteDialogOpen(false);
+      // キャッシュを無効化してサイドバーを即時更新
+      pageDataCache.invalidate(CACHE_KEYS.BUYERS_WITH_STATUS);
       navigate('/buyers');
     } catch (err) {
       console.error('Delete buyer error:', err);
