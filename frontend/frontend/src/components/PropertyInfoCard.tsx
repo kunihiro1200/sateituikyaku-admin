@@ -258,8 +258,8 @@ export default function PropertyInfoCard({
   const handlePhoneCall = async (phoneNumber: string) => {
     window.location.href = `tel:${phoneNumber}`;
     try {
-      await propertyListingApi.post(
-        `/api/property-listings/${property?.property_number}/seller-send-history`,
+      await propertyListingApi.saveSellerSendHistory(
+        property?.property_number || '',
         {
           chat_type: 'seller_sms',
           subject: '電話発信',
@@ -333,8 +333,8 @@ export default function PropertyInfoCard({
 
       // 送信履歴を記録
       try {
-        await propertyListingApi.post(
-          `/api/property-listings/${property?.property_number}/seller-send-history`,
+        await propertyListingApi.saveSellerSendHistory(
+          property?.property_number || '',
           {
             chat_type: 'seller_email',
             subject: selectedTemplateName || emailSubject,
