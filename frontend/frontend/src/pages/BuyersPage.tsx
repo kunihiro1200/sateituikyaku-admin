@@ -23,8 +23,10 @@ import {
   AccordionDetails,
   useTheme,
   useMediaQuery,
+  Snackbar,
 } from '@mui/material';
 import { Search as SearchIcon, Sync as SyncIcon, Clear as ClearIcon, ExpandMore as ExpandMoreIcon } from '@mui/icons-material';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../services/api';
 import PageNavigation from '../components/PageNavigation';
@@ -83,6 +85,8 @@ export default function BuyersPage() {
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [refetchTrigger, setRefetchTrigger] = useState(0);
   const [selectedCalculatedStatus, setSelectedCalculatedStatus] = useState<string | null>(initialStatus);
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
 
   // サイドバーのカテゴリキーを日本語の表示名に変換するマッピング
   const categoryKeyToDisplayName: Record<string, string> = {
@@ -467,6 +471,17 @@ export default function BuyersPage() {
     }
   };
 
+  const handleCopyBuyerNumber = async (buyerNumber: string, event: React.MouseEvent) => {
+    event.stopPropagation();
+    try {
+      await navigator.clipboard.writeText(buyerNumber);
+      setSnackbarMessage(`${buyerNumber} をコピーしました`);
+      setSnackbarOpen(true);
+    } catch (error) {
+      console.error('クリップボードへのコピーに失敗しました:', error);
+    }
+  };
+
   const handleRowClick = (buyerId: string) => {
     // selectedCalculatedStatusはカテゴリキー（例: 'visitDayBefore'）なので、日本語表示名に変換して比較
     const displayName = categoryKeyToDisplayName[selectedCalculatedStatus || ''] || selectedCalculatedStatus;
@@ -675,13 +690,26 @@ export default function BuyersPage() {
                     >
                       <CardContent sx={{ py: 1.5, px: 2, '&:last-child': { pb: 1.5 } }}>
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 0.5 }}>
-                          <Typography
-                            variant="body2"
-                            fontWeight="bold"
-                            sx={{ color: SECTION_COLORS.buyer.main, fontSize: '14px' }}
+                          <Box
+                            onClick={(e) => buyer.buyer_number && handleCopyBuyerNumber(buyer.buyer_number, e)}
+                            sx={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 0.5,
+                              cursor: buyer.buyer_number ? 'pointer' : 'default',
+                            }}
                           >
-                            {buyer.buyer_number || '-'}
-                          </Typography>
+                            <Typography
+                              variant="body2"
+                              fontWeight="bold"
+                              sx={{ color: SECTION_COLORS.buyer.main, fontSize: '14px' }}
+                            >
+                              {buyer.buyer_number || '-'}
+                            </Typography>
+                            {buyer.buyer_number && (
+                              <ContentCopyIcon sx={{ fontSize: 14 }} />
+                            )}
+                          </Box>
                           {displayConfidence && (
                             <Chip
                               label={displayConfidence.label}
@@ -774,9 +802,26 @@ export default function BuyersPage() {
                         onClick={() => handleRowClick(buyer.buyer_number)}
                       >
                         <TableCell>
-                          <Typography variant="body2" fontWeight="bold" sx={{ color: SECTION_COLORS.buyer.main }}>
-                            {buyer.buyer_number || '-'}
-                          </Typography>
+                          <Box
+                            onClick={(e) => buyer.buyer_number && handleCopyBuyerNumber(buyer.buyer_number, e)}
+                            sx={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 0.5,
+                              cursor: buyer.buyer_number ? 'pointer' : 'default',
+                              '&:hover .copy-icon': { visibility: 'visible' },
+                            }}
+                          >
+                            <Typography variant="body2" fontWeight="bold" sx={{ color: SECTION_COLORS.buyer.main }}>
+                              {buyer.buyer_number || '-'}
+                            </Typography>
+                            {buyer.buyer_number && (
+                              <ContentCopyIcon
+                                className="copy-icon"
+                                sx={{ fontSize: 14, visibility: 'hidden' }}
+                              />
+                            )}
+                          </Box>
                         </TableCell>
                         <TableCell>{buyer.name || '-'}</TableCell>
                         <TableCell sx={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -817,6 +862,13 @@ export default function BuyersPage() {
           )}
         </Box>
       </Box>
+      <Snackbar
+        open={snackbarOpen}
+        autoHideDuration={2000}
+        onClose={() => setSnackbarOpen(false)}
+        message={snackbarMessage}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      />
     </Container>
   );
 }
