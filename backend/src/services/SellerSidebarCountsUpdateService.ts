@@ -241,6 +241,9 @@ export class SellerSidebarCountsUpdateService {
       });
 
       const filteredTodayCallSellers = todayCallBaseSellers.filter(s => {
+        // 追客不要を含むステータスを除外（架電対象外）
+        const status = s.status || '';
+        if (status.includes('追客不要')) return false;
         return !hasValidVisitAssignee(s.visit_assignee);
       });
 
