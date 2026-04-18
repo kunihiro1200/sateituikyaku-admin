@@ -58,6 +58,7 @@ interface ReportData {
   owner_email?: string;
   suumo_url?: string;
   report_memo?: string;
+  price?: number | null; // 売買価格（円単位）
 }
 
 // 今日からN週間後の日付文字列（YYYY-MM-DD）を返す
@@ -65,6 +66,13 @@ const getDateWeeksLater = (weeks: number): string => {
   const d = new Date();
   d.setDate(d.getDate() + weeks * 7);
   return d.toISOString().split('T')[0];
+};
+
+// 円単位の価格を万円単位のカンマ区切り文字列に変換する
+// 例: 50000000 → "5,000万円"、5000000 → "500万円"
+const formatPrice = (price: number): string => {
+  const man = Math.floor(price / 10000);
+  return `${man.toLocaleString('ja-JP')}万円`;
 };
 
 interface EmailTemplate {
@@ -202,6 +210,7 @@ export default function PropertyReportPage() {
         owner_email: ownerEmail,
         suumo_url: d.suumo_url || '',
         report_memo: d.report_memo || '',
+        price: d.price ?? null, // 売買価格（BS列「価格」）
       };
       setReportData(initial);
       setSavedData(initial);
@@ -536,6 +545,17 @@ export default function PropertyReportPage() {
     return staff?.name || initials;
   };
 
+  // 物件番号をクリップボードにコピーする
+  const handleCopyPropertyNumber = async () => {
+    if (!propertyNumber) return;
+    try {
+      await navigator.clipboard.writeText(propertyNumber);
+      setSnackbar({ open: true, message: '物件番号をコピーしました', severity: 'success' });
+    } catch {
+      setSnackbar({ open: true, message: 'コピーに失敗しました', severity: 'error' });
+    }
+  };
+
   const handleBack = () => {
     navigate(`/property-listings/${propertyNumber}`);
   };
@@ -568,7 +588,14 @@ export default function PropertyReportPage() {
           <Box>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
               <Typography variant="h5" fontWeight="bold" sx={{ color: SECTION_COLORS.property.main }}>
-                報告 - {propertyNumber}
+                報告 -{' '}
+                <Box
+                  component="span"
+                  onClick={handleCopyPropertyNumber}
+                  sx={{ cursor: 'pointer', '&:hover': { opacity: 0.7 } }}
+                >
+                  {propertyNumber}
+                </Box>
                 {reportData.owner_name && (
                   <Typography component="span" variant="h6" sx={{ ml: 2, color: 'text.primary', fontWeight: 'normal' }}>
                     {reportData.owner_name}
@@ -591,9 +618,16 @@ export default function PropertyReportPage() {
               </Button>
             </Box>
             {reportData.address && (
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-                {reportData.address}
-              </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
+                <Typography variant="body2" color="text.secondary">
+                  {reportData.address}
+                </Typography>
+                {reportData.price != null && reportData.price > 0 && (
+                  <Typography variant="body2" color="text.secondary">
+                    {formatPrice(reportData.price)}
+                  </Typography>
+                )}
+              </Box>
             )}
           </Box>
         </Box>
