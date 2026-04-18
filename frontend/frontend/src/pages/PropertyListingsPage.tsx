@@ -30,8 +30,10 @@ import {
   AccordionDetails,
   useTheme,
   useMediaQuery,
+  Snackbar,
 } from '@mui/material';
 import { Search as SearchIcon, ClearAll as ClearAllIcon, Clear as ClearIcon, ExpandMore as ExpandMoreIcon } from '@mui/icons-material';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import api from '../services/api';
 import PropertyListingDetailModal from '../components/PropertyListingDetailModal';
 import PageNavigation from '../components/PageNavigation';
@@ -97,6 +99,8 @@ export default function PropertyListingsPage() {
   const [lastFilter, setLastFilter] = useState<'sidebar' | 'search' | null>(null);
   const [isLoadingAll, setIsLoadingAll] = useState(true);
   const isFetchingRef = useRef(false); // 二重フェッチ防止フラグ
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
 
   // 状態を復元
   useEffect(() => {
@@ -450,6 +454,17 @@ export default function PropertyListingsPage() {
     setSelectedPropertyNumbers(new Set());
   };
 
+  const handleCopyPropertyNumber = async (propertyNumber: string, event: React.MouseEvent) => {
+    event.stopPropagation();
+    try {
+      await navigator.clipboard.writeText(propertyNumber);
+      setSnackbarMessage(`${propertyNumber} をコピーしました`);
+      setSnackbarOpen(true);
+    } catch (error) {
+      console.error('クリップボードへのコピーに失敗しました:', error);
+    }
+  };
+
   const selectedProperties = useMemo(() => {
     return allListings.filter(l =>
       l.property_number && selectedPropertyNumbers.has(l.property_number)
@@ -663,9 +678,26 @@ export default function PropertyListingsPage() {
                           <Checkbox checked={isSelected} />
                         </TableCell>
                         <TableCell>
-                          <Typography variant="body2" sx={{ color: SECTION_COLORS.property.main }} fontWeight="bold">
-                            {listing.property_number || '-'}
-                          </Typography>
+                          <Box
+                            onClick={(e) => listing.property_number && handleCopyPropertyNumber(listing.property_number, e)}
+                            sx={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 0.5,
+                              cursor: listing.property_number ? 'pointer' : 'default',
+                              '&:hover .copy-icon': { visibility: 'visible' },
+                            }}
+                          >
+                            <Typography variant="body2" sx={{ color: SECTION_COLORS.property.main }} fontWeight="bold">
+                              {listing.property_number || '-'}
+                            </Typography>
+                            {listing.property_number && (
+                              <ContentCopyIcon
+                                className="copy-icon"
+                                sx={{ fontSize: 14, color: SECTION_COLORS.property.main, visibility: 'hidden' }}
+                              />
+                            )}
+                          </Box>
                         </TableCell>
                         <TableCell>{listing.sales_assignee || '-'}</TableCell>
                         <TableCell>
@@ -745,13 +777,28 @@ export default function PropertyListingsPage() {
                     >
                       <CardContent sx={{ py: 1.5, px: 2, '&:last-child': { pb: 1.5 } }}>
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 0.5 }}>
-                          <Typography
-                            variant="body2"
-                            fontWeight="bold"
-                            sx={{ color: SECTION_COLORS.property.main, fontSize: '14px' }}
+                          <Box
+                            onClick={(e) => listing.property_number && handleCopyPropertyNumber(listing.property_number, e)}
+                            sx={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 0.5,
+                              cursor: listing.property_number ? 'pointer' : 'default',
+                            }}
                           >
-                            {listing.property_number || '-'}
-                          </Typography>
+                            <Typography
+                              variant="body2"
+                              fontWeight="bold"
+                              sx={{ color: SECTION_COLORS.property.main, fontSize: '14px' }}
+                            >
+                              {listing.property_number || '-'}
+                            </Typography>
+                            {listing.property_number && (
+                              <ContentCopyIcon
+                                sx={{ fontSize: 14, color: SECTION_COLORS.property.main }}
+                              />
+                            )}
+                          </Box>
                           <Chip
                             label={propertyStatus.label}
                             size="small"
@@ -805,6 +852,14 @@ export default function PropertyListingsPage() {
           )}
         </Box>
       </Box>
+
+      <Snackbar
+        open={snackbarOpen}
+        autoHideDuration={2000}
+        onClose={() => setSnackbarOpen(false)}
+        message={snackbarMessage}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      />
 
       <PropertyListingDetailModal
         open={modalOpen}
