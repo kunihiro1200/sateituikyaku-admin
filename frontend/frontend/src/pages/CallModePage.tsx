@@ -918,7 +918,7 @@ const CallModePage = () => {
   // 遷移警告ダイアログ用の状態
   const [navigationWarningDialog, setNavigationWarningDialog] = useState<{
     open: boolean;
-    warningType?: 'firstCall' | 'confidence';
+    warningType?: 'firstCall' | 'confidence' | 'unreachable';
     onConfirm: (() => void) | null;
   }>({ open: false, onConfirm: null });
 
@@ -1997,6 +1997,13 @@ const CallModePage = () => {
       return;
     }
 
+    // 不通未入力警告（反響日2026年1月1日以降 かつ 不通未入力）
+    const isAfterJan2026ForUnreachable = seller?.inquiryDate && new Date(seller.inquiryDate) >= new Date('2026-01-01');
+    if (isAfterJan2026ForUnreachable && !unreachableStatus) {
+      setNavigationWarningDialog({ open: true, warningType: 'unreachable', onConfirm });
+      return;
+    }
+
     // 確度が必須条件を満たしているのに未入力の場合は警告
     const isAfterJan2026 = seller?.inquiryDate && new Date(seller.inquiryDate) >= new Date('2026-01-01');
     const isFollowingUp = seller?.status?.includes('追客中');
@@ -2058,8 +2065,14 @@ const CallModePage = () => {
       return;
     }
 
-    // 確度が必須条件を満たしているのに未入力の場合は警告
+    // 不通未入力警告（2026年1月1日以降の反響日 かつ 不通未入力）
     const isAfterJan2026 = seller?.inquiryDate && new Date(seller.inquiryDate) >= new Date('2026-01-01');
+    if (isAfterJan2026 && !unreachableStatus) {
+      setNavigationWarningDialog({ open: true, warningType: 'unreachable', onConfirm });
+      return;
+    }
+
+    // 確度が必須条件を満たしているのに未入力の場合は警告
     const isFollowingUp = seller?.status?.includes('追客中');
     const isNotUnreachable = unreachableStatus === '通電OK';
     if (isAfterJan2026 && isFollowingUp && isNotUnreachable && !editedConfidence) {
@@ -8175,13 +8188,17 @@ HP：https://ifoo-oita.com/
         <DialogTitle>
           {navigationWarningDialog.warningType === 'confidence'
             ? '⚠️ 確度が未入力です'
-            : '⚠️ 1番電話が未入力です'}
+            : navigationWarningDialog.warningType === 'unreachable'
+              ? '⚠️ 不通が未入力です'
+              : '⚠️ 1番電話が未入力です'}
         </DialogTitle>
         <DialogContent>
           <Typography>
             {navigationWarningDialog.warningType === 'confidence'
               ? <>確度が未入力です。<br />このまま移動しますか？</>
-              : <>不通が入力されていますが、1番電話が未入力です。<br />このまま移動しますか？</>}
+              : navigationWarningDialog.warningType === 'unreachable'
+                ? <>不通が未入力です。<br />このまま移動しますか？</>
+                : <>不通が入力されていますが、1番電話が未入力です。<br />このまま移動しますか？</>}
           </Typography>
         </DialogContent>
         <DialogActions>
