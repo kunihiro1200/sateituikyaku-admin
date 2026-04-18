@@ -2278,7 +2278,7 @@ export default function PropertyListingDetailPage() {
                   <TextField
                     fullWidth
                     multiline
-                    rows={2}
+                    rows={6}
                     value={editedData.memo !== undefined ? editedData.memo : (data.memo || '')}
                     onChange={(e) => handleFieldChange('memo', e.target.value)}
                     placeholder="備忘録を入力してください"
