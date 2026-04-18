@@ -107,7 +107,7 @@ export const buildPrintContent = (
         <div>大分市舞鶴町1-3-30 STビル１F</div>
         <div>097-533-2022</div>
       </div>
-      ${propertyAddress && propertyAddress.trim() ? `<h2 style="font-size:20px; margin-bottom:16px; margin-top:8px;">${propertyAddress.trim()}の近隣にお問合せ合った買主様</h2>` : ''}
+      ${propertyAddress && propertyAddress.trim() ? `<h2 style="font-size:20px; margin-bottom:16px; margin-top:8px;">${propertyAddress.trim()}の近隣にお問合せのあった買主様</h2>` : ''}
       <table style="width:100%; border-collapse:collapse; font-size:12px;">
         <thead>
           <tr>
