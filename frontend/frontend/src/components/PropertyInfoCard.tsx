@@ -274,10 +274,12 @@ export default function PropertyInfoCard({
 
   // メール送信ボタンクリック → テンプレート一覧取得
   const handleEmailButtonClick = async (event: React.MouseEvent<HTMLElement>) => {
+    // 非同期処理前にanchorを保存（Reactの合成イベントはawait後にnullになる）
+    const anchor = event.currentTarget;
     try {
       const response = await api.get('/api/email-templates/property-non-report');
       setPropertyEmailTemplates(response.data || []);
-      setTemplateMenuAnchor(event.currentTarget);
+      setTemplateMenuAnchor(anchor);
     } catch (err) {
       console.error('Failed to fetch email templates:', err);
       setSnackbarMessage('テンプレートの取得に失敗しました');
