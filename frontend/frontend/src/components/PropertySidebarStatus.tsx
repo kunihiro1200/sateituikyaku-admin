@@ -261,7 +261,7 @@ export default function PropertySidebarStatus({
         const getPriority = (key: string) => {
           if (STATUS_PRIORITY[key] !== undefined) return STATUS_PRIORITY[key];
           // 「未報告 Y」「未報告 I」など担当者付きは「未報告」と同じ優先度
-          if (key.startsWith('未報告')) return 4;
+          if (key.startsWith('未報告')) return STATUS_PRIORITY['未報告'] ?? 6;
           return 999;
         };
         return getPriority(a[0]) - getPriority(b[0]);
