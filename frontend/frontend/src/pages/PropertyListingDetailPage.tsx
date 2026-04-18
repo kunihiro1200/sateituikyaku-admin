@@ -240,6 +240,7 @@ export default function PropertyListingDetailPage() {
   const [data, setData] = useState<PropertyListing | null>(null);
   const [loading, setLoading] = useState(true);
   const [editedData, setEditedData] = useState<Record<string, any>>({});
+  const [priceSavedButNotSent, setPriceSavedButNotSent] = useState(false);
   const [buyers, setBuyers] = useState<Buyer[]>([]);
   const [buyersLoading, setBuyersLoading] = useState(false);
   const [workTaskData, setWorkTaskData] = useState<WorkTaskData | null>(null);
@@ -381,9 +382,9 @@ export default function PropertyListingDetailPage() {
     }
   }, [emailDialog.open, jimuStaff, data?.sales_assignee]);
 
-  const fetchPropertyData = async () => {
+  const fetchPropertyData = async (silent = false) => {
     if (!propertyNumber) return;
-    setLoading(true);
+    if (!silent) setLoading(true);
     try {
       const response = await api.get(`/api/property-listings/${propertyNumber}`);
       setData(response.data);
@@ -508,8 +509,9 @@ export default function PropertyListingDetailPage() {
           }
         }));
       }
-      await fetchPropertyData();
+      await fetchPropertyData(true);  // silent=true: ローディング画面を表示しない
       setEditedData({});
+      setPriceSavedButNotSent(true);  // 保存済みだがCHATがまだ送信されていない
     } catch (error) {
       setSnackbar({
         open: true,
@@ -965,6 +967,7 @@ export default function PropertyListingDetailPage() {
   const handlePriceChatSendSuccess = async (message: string) => {
     // スナックバー表示（既存処理）
     setSnackbar({ open: true, message, severity: 'success' });
+    setPriceSavedButNotSent(false);  // CHAT送信完了でフラグをリセット
 
     // 確認フィールドを「未」にリセット（要件 1.1）
     setConfirmation('未');
@@ -2160,6 +2163,7 @@ export default function PropertyListingDetailPage() {
                   onChatSendSuccess={handlePriceChatSendSuccess}
                   onChatSendError={(message) => setSnackbar({ open: true, message, severity: 'error' })}
                   onChatSend={handlePropertyChatSend}
+                  priceSavedButNotSent={priceSavedButNotSent}
                 />
               </EditableSection>
             </Box>

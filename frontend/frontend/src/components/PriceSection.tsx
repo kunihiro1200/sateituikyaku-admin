@@ -34,6 +34,7 @@ interface PriceSectionProps {
   onChatSendSuccess: (message: string) => void;
   onChatSendError: (message: string) => void;
   onChatSend: (data: PropertyChatSendData) => Promise<void>;
+  priceSavedButNotSent?: boolean;
 }
 
 export default function PriceSection({
@@ -52,6 +53,7 @@ export default function PriceSection({
   onChatSendSuccess,
   onChatSendError,
   onChatSend,
+  priceSavedButNotSent = false,
 }: PriceSectionProps) {
   const displaySalesPrice = editedData.price !== undefined ? editedData.price : salesPrice;
   const displayListingPrice = editedData.listing_price !== undefined ? editedData.listing_price : listingPrice;
@@ -154,8 +156,8 @@ export default function PriceSection({
   // オレンジのバー：値下げ予約日をクリアした場合のみ
   const showOrangeChatButton = !isEditMode && !displayScheduledDate && scheduledDateWasCleared && !chatSent;
 
-  // 青いバー：売買価格が変更された場合（オレンジが表示されていない場合のみ）
-  const showBlueChatButton = !isEditMode && !displayScheduledDate && isPriceChanged && !showOrangeChatButton;
+  // 青いバー：売買価格が変更された場合、または保存済みだがCHATがまだ送信されていない場合
+  const showBlueChatButton = !isEditMode && !displayScheduledDate && (isPriceChanged || priceSavedButNotSent) && !showOrangeChatButton;
 
 
   const handleSendPriceReductionChat = async () => {
