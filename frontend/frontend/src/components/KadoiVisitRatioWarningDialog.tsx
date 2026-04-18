@@ -60,10 +60,10 @@ export const KadoiVisitRatioWarningDialog: React.FC<KadoiVisitRatioWarningDialog
         </Box>
       </DialogContent>
       <DialogActions sx={{ backgroundColor: '#fff3f3', pb: 2, px: 3, gap: 1 }}>
-        <Button onClick={onCancel} variant="outlined" color="error" fullWidth>
+        <Button onClick={onCancel} color="error" variant="contained" fullWidth>
           キャンセル
         </Button>
-        <Button onClick={onContinue} color="error" variant="contained" fullWidth>
+        <Button onClick={onContinue} variant="outlined" color="error" fullWidth>
           このまま続ける
         </Button>
       </DialogActions>
