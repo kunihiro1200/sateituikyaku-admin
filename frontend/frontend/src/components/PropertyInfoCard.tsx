@@ -53,6 +53,15 @@ interface PropertyFullDetails {
   building_area?: number;
   pre_viewing_notes?: string; // 内覧前伝達事項（物件リストから取得）
   broker_response?: string; // 業者対応日付
+
+  // 内覧情報（新規追加）
+  viewing_key?: string;             // 内覧時（鍵等）
+  viewing_parking?: string;         // 内覧時駐車場
+  viewing_notes?: string;           // 内覧の時の伝達事項
+  viewing_available_date?: string;  // 内覧可能日
+
+  // 売主情報（新規追加）
+  seller_contact?: string;          // 連絡先
 }
 
 interface Buyer {
@@ -676,6 +685,109 @@ export default function PropertyInfoCard({
           </Grid>
         )}
 
+
+        {/* 内覧情報セクション */}
+        {(property.viewing_key || property.viewing_parking ||
+          property.viewing_notes || property.viewing_available_date) && (
+          <Grid item xs={12}>
+            <Box sx={{ p: 2, bgcolor: '#e3f2fd', borderRadius: 1, border: '1px solid #bbdefb' }}>
+              <Typography variant="caption" fontWeight="bold">
+                内覧情報
+              </Typography>
+              {property.viewing_key && (
+                <Box sx={{ mt: 1 }}>
+                  <Typography variant="caption" color="text.secondary">
+                    内覧時（鍵等）
+                  </Typography>
+                  <Typography variant="body2" sx={{ mt: 0.5 }}>
+                    {property.viewing_key}
+                  </Typography>
+                </Box>
+              )}
+              {property.viewing_parking && (
+                <Box sx={{ mt: 1 }}>
+                  <Typography variant="caption" color="text.secondary">
+                    内覧時駐車場
+                  </Typography>
+                  <Typography variant="body2" sx={{ mt: 0.5 }}>
+                    {property.viewing_parking}
+                  </Typography>
+                </Box>
+              )}
+              {property.viewing_notes && (
+                <Box sx={{ mt: 1 }}>
+                  <Typography variant="caption" color="text.secondary">
+                    内覧の時の伝達事項
+                  </Typography>
+                  <Typography variant="body2" sx={{ mt: 0.5 }}>
+                    {property.viewing_notes}
+                  </Typography>
+                </Box>
+              )}
+              {property.viewing_available_date && (
+                <Box sx={{ mt: 1 }}>
+                  <Typography variant="caption" color="text.secondary">
+                    内覧可能日
+                  </Typography>
+                  <Typography variant="body2" sx={{ mt: 0.5 }}>
+                    {property.viewing_available_date}
+                  </Typography>
+                </Box>
+              )}
+            </Box>
+          </Grid>
+        )}
+        {/* 売主情報セクション */}
+        {(property.seller_name || property.seller_contact ||
+          property.seller_email || property.sale_reason) && (
+          <Grid item xs={12}>
+            <Box sx={{ p: 2, bgcolor: '#fff3e0', borderRadius: 1, border: '1px solid #ffe0b2' }}>
+              <Typography variant="caption" fontWeight="bold">
+                売主情報
+              </Typography>
+              {property.seller_name && (
+                <Box sx={{ mt: 1 }}>
+                  <Typography variant="caption" color="text.secondary">
+                    売主名前
+                  </Typography>
+                  <Typography variant="body2" sx={{ mt: 0.5 }}>
+                    {property.seller_name}
+                  </Typography>
+                </Box>
+              )}
+              {property.seller_contact && (
+                <Box sx={{ mt: 1 }}>
+                  <Typography variant="caption" color="text.secondary">
+                    連絡先
+                  </Typography>
+                  <Typography variant="body2" sx={{ mt: 0.5 }}>
+                    {property.seller_contact}
+                  </Typography>
+                </Box>
+              )}
+              {property.seller_email && (
+                <Box sx={{ mt: 1 }}>
+                  <Typography variant="caption" color="text.secondary">
+                    メールアドレス
+                  </Typography>
+                  <Typography variant="body2" sx={{ mt: 0.5 }}>
+                    {property.seller_email}
+                  </Typography>
+                </Box>
+              )}
+              {property.sale_reason && (
+                <Box sx={{ mt: 1 }}>
+                  <Typography variant="caption" color="text.secondary">
+                    売却理由
+                  </Typography>
+                  <Typography variant="body2" sx={{ mt: 0.5 }}>
+                    {property.sale_reason}
+                  </Typography>
+                </Box>
+              )}
+            </Box>
+          </Grid>
+        )}
         {/* 確済 */}
         {property.confirmation_status && (
           <Grid item xs={12} sm={6}>
