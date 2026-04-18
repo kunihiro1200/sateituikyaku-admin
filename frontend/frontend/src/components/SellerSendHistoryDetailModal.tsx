@@ -1,4 +1,5 @@
 import React from 'react';
+import DOMPurify from 'dompurify';
 import {
   Dialog,
   DialogTitle,
@@ -43,6 +44,14 @@ const formatDateTime = (dateString: string): string => {
   const hours = String(date.getHours()).padStart(2, '0');
   const minutes = String(date.getMinutes()).padStart(2, '0');
   return `${year}/${month}/${day} ${hours}:${minutes}`;
+};
+
+// <br> タグのみ許可し、その他の危険なタグはサニタイズする
+const sanitizeMessage = (message: string): string => {
+  return DOMPurify.sanitize(message, {
+    ALLOWED_TAGS: ['br'],
+    ALLOWED_ATTR: [],
+  });
 };
 
 const SellerSendHistoryDetailModal: React.FC<SellerSendHistoryDetailModalProps> = ({
@@ -126,16 +135,14 @@ const SellerSendHistoryDetailModal: React.FC<SellerSendHistoryDetailModalProps> 
             sx={{
               mt: 0.5,
               wordBreak: 'break-word',
-              whiteSpace: 'pre-wrap',
               backgroundColor: '#f5f5f5',
               p: 1.5,
               borderRadius: 1,
               fontSize: '0.875rem',
               lineHeight: 1.6,
             }}
-          >
-            {item.message}
-          </Box>
+            dangerouslySetInnerHTML={{ __html: sanitizeMessage(item.message) }}
+          />
         </Box>
       </DialogContent>
 
