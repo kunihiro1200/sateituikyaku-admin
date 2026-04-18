@@ -279,6 +279,53 @@ app.get('/api/cron/sync-inquiries', async (req, res) => {
   }
 });
 
+
+// Cron Job: 値下げ予約日メール配信（毎日 UTC 00:00 = JST 09:00 に実行）
+// ⚠️ 注意: 他のルートより前に設定（より具体的なルートを優先）
+app.get('/api/cron/price-reduction-notification', async (req, res) => {
+  try {
+    console.log('[Cron PriceReduction] 値下げ予約日メール配信ジョブ開始');
+
+    // Vercel Cron Jobの認証チェック
+    const authHeader = req.headers.authorization;
+    if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+      console.error('[Cron PriceReduction] 認証失敗: 不正なアクセス');
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    // 値下げ予約日メール配信サービスをインポート
+    const { PriceReductionNotificationService } = await import('./services/PriceReductionNotificationService');
+    const service = new PriceReductionNotificationService();
+
+    // 当日（JST）の値下げ予約対象物件を取得
+    const targets = await service.getTodayTargets();
+    console.log(`[Cron PriceReduction] 対象物件数: ${targets.length}件`);
+
+    // 対象物件が0件の場合はスキップして正常終了
+    if (targets.length === 0) {
+      console.log('[Cron PriceReduction] 対象物件なし。メール送信をスキップして終了');
+      return res.status(200).json({ success: true, sent: 0, failed: 0 });
+    }
+
+    // 各物件へメール通知を送信
+    const result = await service.sendNotifications(targets);
+    console.log(`[Cron PriceReduction] 完了サマリー: 送信成功=${result.sent}件, 送信失敗=${result.failed}件`);
+
+    return res.status(200).json({
+      success: true,
+      sent: result.sent,
+      failed: result.failed,
+    });
+
+  } catch (error: any) {
+    console.error('[Cron PriceReduction] 予期しないエラーが発生:', error.message);
+    return res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+});
+
 // スタッフ同期エンドポイント（手動実行用）
 app.post('/api/cron/sync-staff', async (req, res) => {
   try {
