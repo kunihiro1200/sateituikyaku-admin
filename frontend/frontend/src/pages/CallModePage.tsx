@@ -78,6 +78,8 @@ import { formatCurrentStatusDetailed } from '../utils/propertyStatusFormatter';
 import PageNavigation from '../components/PageNavigation';
 import NavigationBlockDialog from '../components/NavigationBlockDialog';
 import NextCallDateReminderDialog from '../components/NextCallDateReminderDialog';
+import { calcKadoiVisitRatio, VisitStatsResponse } from '../utils/visitRatioCalculator';
+import { KadoiVisitRatioWarningDialog } from '../components/KadoiVisitRatioWarningDialog';
 
 
 /**
@@ -833,6 +835,13 @@ const CallModePage = () => {
   const [editedAppointmentNotes, setEditedAppointmentNotes] = useState<string>('');
   const [savingAppointment, setSavingAppointment] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+
+  // 角井割合警告ダイアログ用の状態
+  const [kadoiWarningOpen, setKadoiWarningOpen] = useState(false);
+  const [kadoiCurrentRatio, setKadoiCurrentRatio] = useState(0);
+  const [pendingVisitAssignee, setPendingVisitAssignee] = useState<string | null>(null);
+  const [previousVisitAssignee, setPreviousVisitAssignee] = useState<string>('');
+  const [loadingKadoiCheck, setLoadingKadoiCheck] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [employees, setEmployees] = useState<any[]>([]);
 
@@ -2099,6 +2108,41 @@ const CallModePage = () => {
       return;
     }
     onConfirm();
+  };
+
+  /**
+   * 訪問査定営担変更ハンドラ
+   * 「I（角井）」選択時に割合チェックを行い、15%超の場合は警告ダイアログを表示する
+   */
+  const handleVisitAssigneeChange = async (newValue: string) => {
+    if (newValue === 'I') {
+      setLoadingKadoiCheck(true);
+      try {
+        // JST基準の当月をYYYY-MM形式で取得
+        const now = new Date();
+        const jstOffset = 9 * 60;
+        const jstDate = new Date(now.getTime() + (jstOffset - now.getTimezoneOffset()) * 60000);
+        const month = `${jstDate.getFullYear()}-${String(jstDate.getMonth() + 1).padStart(2, '0')}`;
+
+        const response = await api.get(`/api/sellers/visit-stats?month=${month}`);
+        const stats: VisitStatsResponse = response.data;
+        const ratio = calcKadoiVisitRatio(stats);
+
+        if (ratio > 15) {
+          setPreviousVisitAssignee(editedAssignedTo ?? '');
+          setPendingVisitAssignee(newValue);
+          setKadoiCurrentRatio(ratio);
+          setKadoiWarningOpen(true);
+          return;
+        }
+      } catch (error) {
+        console.error('[KadoiWarning] visit-stats API error:', error);
+        // フェイルオープン: 通常通り担当者を設定
+      } finally {
+        setLoadingKadoiCheck(false);
+      }
+    }
+    setEditedAssignedTo(newValue);
   };
 
   /**
@@ -5566,7 +5610,7 @@ HP：https://ifoo-oita.com/
                               <Button
                                 key={initial}
                                 variant={editedAssignedTo === initial ? 'contained' : 'outlined'}
-                                onClick={() => setEditedAssignedTo(initial)}
+                                onClick={() => handleVisitAssigneeChange(initial)}
                                 size="small"
                               >
                                 {initial}
@@ -8184,6 +8228,22 @@ HP：https://ifoo-oita.com/
           <Button onClick={() => setCallTrackingRankingDialogOpen(false)}>閉じる</Button>
         </DialogActions>
       </Dialog>
+
+      {/* 角井訪問査定割合警告ダイアログ */}
+      <KadoiVisitRatioWarningDialog
+        open={kadoiWarningOpen}
+        ratio={kadoiCurrentRatio}
+        onContinue={() => {
+          if (pendingVisitAssignee !== null) {
+            setEditedAssignedTo(pendingVisitAssignee);
+          }
+          setKadoiWarningOpen(false);
+        }}
+        onCancel={() => {
+          setEditedAssignedTo(previousVisitAssignee);
+          setKadoiWarningOpen(false);
+        }}
+      />
 
       {/* 遷移ブロックダイアログ（追客中+次電日未入力時に遷移を完全ブロック） */}
       <NavigationBlockDialog
