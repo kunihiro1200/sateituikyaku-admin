@@ -181,6 +181,17 @@ export default function PropertySidebarStatus({
         return;
       }
 
+      // 「SUUMO URL 要登録」「レインズ登録＋SUUMO URL 要登録」も動的判定
+      // DBのsidebar_statusに依存せず、atbb_status/suumo_url/suumo_registered/公開予定日から計算
+      if (computed.key === 'suumo_required') {
+        counts['SUUMO URL\u3000要登録'] = (counts['SUUMO URL\u3000要登録'] || 0) + 1;
+        return;
+      }
+      if (computed.key === 'reins_suumo_required') {
+        counts['レインズ登録＋SUUMO URL 要登録'] = (counts['レインズ登録＋SUUMO URL 要登録'] || 0) + 1;
+        return;
+      }
+
       // sidebar_status === '専任・公開中' の分解処理
       // （未報告・要値下げ・本日公開予定でない場合のみここに到達）
       if (status === '専任・公開中') {
@@ -191,9 +202,10 @@ export default function PropertySidebarStatus({
       }
 
       // sidebar_statusが存在する場合はそれを使用
-      // ただし「未報告」系は除外（動的判定済み）
+      // ただし「未報告」系・SUUMO系は除外（動的判定済み）
       // スペースを除去してから判定（「未報告 林」も「未報告林」も除外）
-      if (status && status !== '値下げ未完了' && !normalizedStatus.startsWith('未報告')) {
+      if (status && status !== '値下げ未完了' && !normalizedStatus.startsWith('未報告')
+          && status !== 'SUUMO URL\u3000要登録' && status !== 'レインズ登録＋SUUMO URL 要登録') {
         counts[status] = (counts[status] || 0) + 1;
       }
     });
