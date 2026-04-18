@@ -108,7 +108,7 @@ const SellerSendHistory: React.FC<SellerSendHistoryProps> = ({
   return (
     <Box sx={{ mt: 2, width: 210 }}>
       <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1 }}>
-        売主への送信履歴
+        売主・物件の送信履歴
       </Typography>
 
       {history.length === 0 ? (
