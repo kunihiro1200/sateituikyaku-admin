@@ -723,6 +723,11 @@ const CallModePage = () => {
   const [exclusionDate, setExclusionDate] = useState<string>('');
   const [exclusionAction, setExclusionAction] = useState<string>('');
   const [editedNextCallDate, setEditedNextCallDate] = useState<string>('');
+
+  // 除外ステータス表示判定ロジック
+  const isExcluded = editedStatus?.includes('除外') ?? false;
+  const showBanner = !isExcluded && !!exclusionAction;
+  const showStatusDisplay = isExcluded;
   const nextCallDateRef = useRef<HTMLInputElement>(null); // 次電日フィールドのref
   
   // 4つのフィールドの状態管理（編集中の値）
@@ -6847,7 +6852,7 @@ HP：https://ifoo-oita.com/
                   </Box>
                 );
               })()}
-              {exclusionAction && (
+              {showBanner && (
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
                   <Typography
                     variant="h5"
@@ -6873,6 +6878,16 @@ HP：https://ifoo-oita.com/
                     />
                   )}
                 </Box>
+              )}
+              {showStatusDisplay && (
+                <Typography
+                  variant="body2"
+                  sx={{
+                    color: 'error.main',
+                  }}
+                >
+                  {editedStatus}
+                </Typography>
               )}
             </Box>
 
