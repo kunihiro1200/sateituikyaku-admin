@@ -249,15 +249,42 @@ export default function GmailDistributionButton({
 
       console.log('[GmailDistributionButton] Sending emails with buyers:', buyers);
 
-      // selectedImages を attachments 形式に変換
-      const attachments = selectedImages.map(img => ({
-        id: img.id,
-        name: img.name,
-        mimeType: img.mimeType,
-        ...(img.base64Data ? { base64Data: img.base64Data } : {}),
-        ...(img.driveFileId ? { driveFileId: img.driveFileId } : {}),
-        ...(img.url ? { url: img.url } : {}),
-      }));
+      // selectedImages を attachments 形式に変換（localFile は base64 に変換）
+      const toBase64 = (file: File): Promise<string> =>
+        new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => {
+            const result = reader.result as string;
+            // data:image/jpeg;base64,XXXX の XXXX 部分だけ取り出す
+            resolve(result.split(',')[1] || result);
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+
+      const attachmentsRaw = await Promise.all(
+        selectedImages.map(async img => {
+          // ローカルファイルの場合は base64 に変換
+          if (img.localFile) {
+            const base64Data = await toBase64(img.localFile);
+            return {
+              id: img.id,
+              name: img.name,
+              mimeType: img.mimeType || img.localFile.type || 'image/jpeg',
+              base64Data,
+            };
+          }
+          return {
+            id: img.id,
+            name: img.name,
+            mimeType: img.mimeType,
+            ...(img.base64Data ? { base64Data: img.base64Data } : {}),
+            ...(img.driveFileId ? { driveFileId: img.driveFileId } : {}),
+            ...(img.url ? { url: img.url } : {}),
+          };
+        })
+      );
+      const attachments = attachmentsRaw;
 
       // gmailDistributionService.sendEmailsDirectly を使用
       const result = await gmailDistributionService.sendEmailsDirectly(
