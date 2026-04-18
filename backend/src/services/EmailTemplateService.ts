@@ -336,13 +336,14 @@ export class EmailTemplateService {
   ): string {
     let result = text;
 
-    // 買主情報の置換
+    // 買主情報の置換（name末尾の「様」を除去してから使用）
+    const rawName = (buyer.name || buyer.buyerName || '').replace(/様$/, '');
     const isBrokerInquiry = buyer.broker_inquiry === '業者問合せ';
     const buyerName = (!isBrokerInquiry && buyer.company_name)
-      ? `${buyer.name || ''}・${buyer.company_name}`
-      : (buyer.name || buyer.buyerName || '');
+      ? `${rawName}・${buyer.company_name}`
+      : rawName;
     result = result.replace(/<<●氏名・会社名>>/g, buyerName);
-    result = result.replace(/<<氏名>>/g, buyer.name || buyer.buyerName || '');
+    result = result.replace(/<<氏名>>/g, rawName);
     result = result.replace(/<<買主番号>>/g, buyer.buyer_number || '');
     result = result.replace(/<<メールアドレス>>/g, buyer.email || '');
 
