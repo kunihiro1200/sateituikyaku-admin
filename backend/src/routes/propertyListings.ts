@@ -670,7 +670,7 @@ router.get('/:propertyNumber/distribution-buyers-enhanced', async (req: Request,
 router.post('/:propertyNumber/send-distribution-emails', authenticate, async (req: Request, res: Response) => {
   try {
     const { propertyNumber } = req.params;
-    const { recipientEmails, recipients, subject, content, htmlBody, from } = req.body;
+    const { recipientEmails, recipients, subject, content, htmlBody, from, attachments } = req.body;
 
     // デバッグログ: リクエストボディを記録
     console.log(`[send-distribution-emails] Request body:`, JSON.stringify({
@@ -718,7 +718,77 @@ router.post('/:propertyNumber/send-distribution-emails', authenticate, async (re
     const results = await Promise.allSettled(
       normalizedRecipients.map(async (recipient) => {
         const email = typeof recipient === 'string' ? recipient : recipient.email;
-        
+
+        // 添付ファイルがある場合は各ソースに応じてデータを取得して添付付きで送信
+        if (attachments && Array.isArray(attachments) && attachments.length > 0) {
+          const { GoogleDriveService } = await import('../services/GoogleDriveService');
+          const driveService = new GoogleDriveService();
+
+          const emailAttachmentsRaw = await Promise.all(
+            attachments.map(async (img: any) => {
+              // ローカルファイル（Base64データ）
+              if (img.base64Data) {
+                return {
+                  filename: img.name || 'attachment.jpg',
+                  mimeType: img.mimeType || 'image/jpeg',
+                  data: Buffer.from(img.base64Data, 'base64'),
+                  cid: `attachment-${img.id}`,
+                };
+              }
+              // URL指定
+              if (img.url) {
+                try {
+                  const https = await import('https');
+                  const http = await import('http');
+                  const data = await new Promise<Buffer>((resolve, reject) => {
+                    const client = img.url.startsWith('https') ? https : http;
+                    (client as any).get(img.url, (res: any) => {
+                      const chunks: Buffer[] = [];
+                      res.on('data', (chunk: Buffer) => chunks.push(chunk));
+                      res.on('end', () => resolve(Buffer.concat(chunks)));
+                      res.on('error', reject);
+                    }).on('error', reject);
+                  });
+                  return {
+                    filename: img.name || 'attachment.jpg',
+                    mimeType: 'image/jpeg',
+                    data,
+                    cid: `attachment-${img.id}`,
+                  };
+                } catch (urlErr) {
+                  console.warn(`⚠️ Could not fetch image from URL: ${img.url}`, urlErr);
+                  return null;
+                }
+              }
+              // Google Drive ファイル（driveFileId または id を使用）
+              const fileId = img.driveFileId || img.id;
+              const fileData = await driveService.getFile(fileId);
+              if (!fileData) {
+                console.warn(`⚠️ Could not fetch file from Google Drive: ${fileId}`);
+                return null;
+              }
+              return {
+                filename: img.name || `image-${fileId}.jpg`,
+                mimeType: fileData.mimeType || 'image/jpeg',
+                data: fileData.data,
+                cid: `attachment-${img.id}`,
+              };
+            })
+          );
+          // nullを除外
+          const emailAttachments = emailAttachmentsRaw.filter((a): a is NonNullable<typeof a> => a !== null);
+
+          return await emailService.sendEmailWithCcAndAttachments({
+            to: email,
+            subject,
+            body: htmlBody || content,
+            from,
+            attachments: emailAttachments,
+            isHtml: !!htmlBody,
+          });
+        }
+
+        // 添付ファイルなし: 既存フロー（変更なし）
         // ダミーのseller objectを作成（EmailServiceのインターフェースに合わせる）
         const dummySeller = {
           id: property.id,

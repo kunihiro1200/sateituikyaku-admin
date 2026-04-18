@@ -276,7 +276,15 @@ export class GmailDistributionService {
     propertyData: Record<string, string>,
     recipientEmails: string[],
     from: string,
-    buyers: Array<{ buyer_number: string; email: string; [key: string]: any }>
+    buyers: Array<{ buyer_number: string; email: string; [key: string]: any }>,
+    attachments?: Array<{
+      id: string;
+      name: string;
+      mimeType?: string;
+      base64Data?: string;
+      driveFileId?: string;
+      url?: string;
+    }>
   ): Promise<{
     success: boolean;
     successCount: number;
@@ -306,7 +314,8 @@ export class GmailDistributionService {
           subject,
           content: body,
           htmlBody,
-          from
+          from,
+          attachments: attachments && attachments.length > 0 ? attachments : undefined,
         }
       );
 

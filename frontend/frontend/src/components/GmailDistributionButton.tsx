@@ -249,6 +249,16 @@ export default function GmailDistributionButton({
 
       console.log('[GmailDistributionButton] Sending emails with buyers:', buyers);
 
+      // selectedImages を attachments 形式に変換
+      const attachments = selectedImages.map(img => ({
+        id: img.id,
+        name: img.name,
+        mimeType: img.mimeType,
+        ...(img.base64Data ? { base64Data: img.base64Data } : {}),
+        ...(img.driveFileId ? { driveFileId: img.driveFileId } : {}),
+        ...(img.url ? { url: img.url } : {}),
+      }));
+
       // gmailDistributionService.sendEmailsDirectly を使用
       const result = await gmailDistributionService.sendEmailsDirectly(
         selectedTemplate,
@@ -264,7 +274,8 @@ export default function GmailDistributionButton({
         },
         selectedBuyers.map(b => b.email),
         senderAddress,
-        buyers
+        buyers,
+        attachments.length > 0 ? attachments : undefined
       );
 
       setConfirmationOpen(false);
