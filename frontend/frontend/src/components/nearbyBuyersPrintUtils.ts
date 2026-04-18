@@ -51,13 +51,15 @@ export const getDesiredPriceForPrint = (
  * @param selectedBuyerNumbers - 選択された買主番号のセット
  * @param isNameHidden - 名前を黒塗りにするかどうか
  * @param propertyType - 物件種別（省略可能）
+ * @param propertyAddress - 物件住所（省略可能）。有効な文字列の場合、ヘッダーに見出しを表示する
  * @returns 印刷用HTML文字列
  */
 export const buildPrintContent = (
   buyers: NearbyBuyer[],
   selectedBuyerNumbers: Set<string>,
   isNameHidden: boolean,
-  propertyType?: string | null
+  propertyType?: string | null,
+  propertyAddress?: string | null
 ): string => {
   // 選択行のみをフィルタリング
   const selectedBuyers = buyers.filter(b => selectedBuyerNumbers.has(b.buyer_number));
@@ -105,6 +107,7 @@ export const buildPrintContent = (
         <div>大分市舞鶴町1-3-30 STビル１F</div>
         <div>097-533-2022</div>
       </div>
+      ${propertyAddress && propertyAddress.trim() ? `<h2 style="font-size:20px; margin-bottom:16px; margin-top:8px;">${propertyAddress.trim()}の近隣にお問合せ合った買主様</h2>` : ''}
       <table style="width:100%; border-collapse:collapse; font-size:12px;">
         <thead>
           <tr>

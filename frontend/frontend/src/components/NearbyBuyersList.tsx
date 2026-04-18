@@ -367,7 +367,7 @@ const NearbyBuyersList = ({ sellerId, propertyNumber, propertyType, onCountChang
     // 印刷用コンテンツをbodyに追加
     const printRoot = document.createElement('div');
     printRoot.id = 'nearby-buyers-print-root';
-    printRoot.innerHTML = buildPrintContent(buyers, selectedBuyers, isNameHidden, propertyType);
+    printRoot.innerHTML = buildPrintContent(buyers, selectedBuyers, isNameHidden, propertyType, propertyAddress);
     document.body.appendChild(printRoot);
 
     // 印刷後にクリーンアップ
