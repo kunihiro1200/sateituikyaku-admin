@@ -850,11 +850,20 @@ export class EnhancedAutoSyncService {
             needsUpdate = true;
           }
 
-          // visit_dateの比較
+          // visit_dateの比較（日時を含めて比較）
           const sheetVisitDate = sheetRow['訪問日 Y/M/D'];
-          const formattedSheetVisitDate = sheetVisitDate ? this.formatVisitDate(sheetVisitDate) : null;
-          const dbVisitDate = dbSeller.visit_date ? String(dbSeller.visit_date).substring(0, 10) : null;
-          if (formattedSheetVisitDate !== dbVisitDate) {
+          const sheetVisitTime = sheetRow['訪問時間'];
+          const formattedSheetVisitDateTime = sheetVisitDate
+            ? this.combineVisitDateAndTime(sheetVisitDate, sheetVisitTime)
+            : null;
+          // DB の visit_date を YYYY-MM-DD HH:mm 形式で比較（秒は無視）
+          const dbVisitDateTime = dbSeller.visit_date
+            ? String(dbSeller.visit_date).substring(0, 16).replace('T', ' ')
+            : null;
+          const sheetVisitDateTimeForCompare = formattedSheetVisitDateTime
+            ? formattedSheetVisitDateTime.substring(0, 16)
+            : null;
+          if (sheetVisitDateTimeForCompare !== dbVisitDateTime) {
             needsUpdate = true;
           }
 
@@ -1228,6 +1237,20 @@ export class EnhancedAutoSyncService {
   }
 
   /**
+   * 訪問日と訪問時間を組み合わせて YYYY-MM-DD HH:mm:ss 形式にフォーマット
+   * 訪問時間が存在する場合は日時を結合し、存在しない場合は日付のみ（00:00:00）を返す
+   */
+  private combineVisitDateAndTime(visitDate: any, visitTime: any): string | null {
+    const formattedDate = this.formatVisitDate(visitDate);
+    if (!formattedDate) return null;
+    const formattedTime = this.formatVisitTime(visitTime);
+    if (formattedTime) {
+      return `${formattedDate} ${formattedTime}:00`;
+    }
+    return formattedDate;
+  }
+
+  /**
    * 不通フラグをbooleanに変換
    * スプレッドシートの「不通」カラムの値:
    * - 空欄 → false
@@ -1381,7 +1404,7 @@ export class EnhancedAutoSyncService {
       updateData.visit_acquisition_date = this.formatVisitDate(visitAcquisitionDate);
     }
     if (visitDate) {
-      updateData.visit_date = this.formatVisitDate(visitDate);
+      updateData.visit_date = this.combineVisitDateAndTime(visitDate, visitTime);
     }
     if (visitTime) {
       updateData.visit_time = this.formatVisitTime(visitTime);
@@ -1689,7 +1712,7 @@ export class EnhancedAutoSyncService {
       encryptedData.visit_acquisition_date = this.formatVisitDate(visitAcquisitionDate);
     }
     if (visitDate) {
-      encryptedData.visit_date = this.formatVisitDate(visitDate);
+      encryptedData.visit_date = this.combineVisitDateAndTime(visitDate, visitTime);
     }
     if (visitTime) {
       encryptedData.visit_time = this.formatVisitTime(visitTime);
