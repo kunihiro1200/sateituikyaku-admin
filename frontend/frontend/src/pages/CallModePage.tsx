@@ -5883,29 +5883,35 @@ HP：https://ifoo-oita.com/
                             setAutoCalculating(false);
                           }
                         } else {
-                          // 固定資産税路線価が空欄になった場合、査定額もクリア
-                          console.log('🗑️ 固定資産税路線価が空欄のため、査定額をクリアします');
-                          try {
-                            await api.put(`/api/sellers/${id}`, {
-                              fixedAssetTaxRoadPrice: null,
-                              valuationAmount1: null,
-                              valuationAmount2: null,
-                              valuationAmount3: null,
-                            });
-                            setEditedValuationAmount1('');
-                            setEditedValuationAmount2('');
-                            setEditedValuationAmount3('');
-                            setSeller(prev => prev ? {
-                              ...prev,
-                              fixedAssetTaxRoadPrice: undefined,
-                              valuationAmount1: undefined,
-                              valuationAmount2: undefined,
-                              valuationAmount3: undefined,
-                            } : prev);
-                          } catch (err) {
-                            console.error('Failed to clear valuation:', err);
-                            // エラー時は編集モードに戻す
-                            setEditingValuation(true);
+                          // 手入力査定額モードの場合は査定額をクリアしない
+                          if (isManualValuation) {
+                            console.log('✋ 手入力査定額モードのため、査定額をクリアしません');
+                            // 何もしない（手入力査定額はそのまま維持）
+                          } else {
+                            // 固定資産税路線価が空欄になった場合、査定額もクリア
+                            console.log('🗑️ 固定資産税路線価が空欄のため、査定額をクリアします');
+                            try {
+                              await api.put(`/api/sellers/${id}`, {
+                                fixedAssetTaxRoadPrice: null,
+                                valuationAmount1: null,
+                                valuationAmount2: null,
+                                valuationAmount3: null,
+                              });
+                              setEditedValuationAmount1('');
+                              setEditedValuationAmount2('');
+                              setEditedValuationAmount3('');
+                              setSeller(prev => prev ? {
+                                ...prev,
+                                fixedAssetTaxRoadPrice: undefined,
+                                valuationAmount1: undefined,
+                                valuationAmount2: undefined,
+                                valuationAmount3: undefined,
+                              } : prev);
+                            } catch (err) {
+                              console.error('Failed to clear valuation:', err);
+                              // エラー時は編集モードに戻す
+                              setEditingValuation(true);
+                            }
                           }
                         }
                       })();
