@@ -181,10 +181,18 @@ export class ColumnMapper {
 
       // 査定額フィールド: DBは円単位、スプシは万円単位なので÷10000して戻す
       // BC/BD/BE列（自動計算列）に書き込む（column-mapping.jsonのdatabaseToSpreadsheetに従う）
+      // さらにCB/CC/CD列（手入力査定額列）にも同じ値を書き込む
       if (dbColumn === 'valuation_amount_1' || dbColumn === 'valuation_amount_2' || dbColumn === 'valuation_amount_3') {
         const numVal = typeof value === 'number' ? value : parseFloat(String(value));
         const manEn = isNaN(numVal) ? '' : Math.round(numVal / 10000);
-        sheetRow[sheetColumn] = manEn;
+        sheetRow[sheetColumn] = manEn; // BC/BD/BE列（自動計算列）
+        // CB/CC/CD列（手入力査定額列）にも同じ値を書き込む
+        const manualColumnMap: Record<string, string> = {
+          'valuation_amount_1': '\u67fb\u5b9a\u984d1',
+          'valuation_amount_2': '\u67fb\u5b9a\u984d2',
+          'valuation_amount_3': '\u67fb\u5b9a\u984d3',
+        };
+        sheetRow[manualColumnMap[dbColumn]] = manEn;
         continue;
       }
 

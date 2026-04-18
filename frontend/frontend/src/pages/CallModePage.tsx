@@ -1781,13 +1781,34 @@ const CallModePage = () => {
       console.log('hasValuation:', hasValuation);
       console.log('hasRoadPrice:', hasRoadPrice);
       
-      // 常に自動計算モードとして扱う
-      // （手入力査定額は将来的にmanualValuationAmount1を使用）
-      setIsManualValuation(false);
-      setEditedManualValuationAmount1('');
-      setEditedManualValuationAmount2('');
-      setEditedManualValuationAmount3('');
-      console.log('査定額を査定計算セクションに表示');
+      // 手入力査定額の復元ロジック
+      // valuationAmount1が存在し、かつfixedAssetTaxRoadPriceがnullの場合は手入力モード
+      const hasManualValuation = sellerData.valuationAmount1 != null
+                                 && sellerData.fixedAssetTaxRoadPrice == null;
+
+      if (hasManualValuation) {
+        setIsManualValuation(true);
+        setEditedManualValuationAmount1(
+          String(Math.round(sellerData.valuationAmount1 / 10000))
+        );
+        setEditedManualValuationAmount2(
+          sellerData.valuationAmount2
+            ? String(Math.round(sellerData.valuationAmount2 / 10000))
+            : ''
+        );
+        setEditedManualValuationAmount3(
+          sellerData.valuationAmount3
+            ? String(Math.round(sellerData.valuationAmount3 / 10000))
+            : ''
+        );
+        console.log('手入力査定額を復元:', sellerData.valuationAmount1);
+      } else {
+        setIsManualValuation(false);
+        setEditedManualValuationAmount1('');
+        setEditedManualValuationAmount2('');
+        setEditedManualValuationAmount3('');
+        console.log('査定額を査定計算セクションに表示');
+      }
 
       // 査定方法の初期化
       setEditedValuationMethod(sellerData.valuationMethod || '');
