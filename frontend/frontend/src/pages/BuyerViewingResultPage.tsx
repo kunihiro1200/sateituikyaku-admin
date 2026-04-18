@@ -266,8 +266,13 @@ export default function BuyerViewingResultPage() {
     !buyer?.notification_sender
   );
 
-  // タスク1.1: isCalendarEnabled 計算値
+  // isCalendarEnabled 計算値
   // 内覧形態の参照フィールドは物件種別に依存する（要件3.5）
+  // - 専任物件: viewing_mobile を参照
+  // - 一般媒介物件: viewing_type_general を参照
+  // - 他社物件（linkedProperties が空）: atbbStatus が '' になるため、
+  //   3番目の分岐（viewing_mobile || viewing_type_general）が適用される。
+  //   他社物件ケースでは viewing_mobile に値が保存されるため、正しく参照される（要件2.1, 2.2, 2.3）
   const atbbStatus = linkedProperties?.[0]?.atbb_status || '';
   const viewingTypeValue =
     atbbStatus.includes('専任')
@@ -284,9 +289,12 @@ export default function BuyerViewingResultPage() {
     viewingTypeValue
   );
 
-  // タスク4.1: 必須強調表示の計算値（要件2.1〜2.7）
+  // 必須強調表示の計算値（要件2.1〜2.7, 3.4）
   const hasViewingDate = !!(buyer?.viewing_date && buyer.viewing_date.trim() !== '');
   const isTimeRequired = hasViewingDate && !(buyer?.viewing_time && buyer.viewing_time.trim() !== '');
+  // isViewingTypeRequired: 内覧日あり かつ 内覧形態未選択の場合に true
+  // 他社物件ケース（linkedProperties が空）でも viewingTypeValue が viewing_mobile を参照するため、
+  // viewing_mobile が空のとき true になる → 他社物件ケースも既存ロジックでカバー済み（要件3.4）
   const isViewingTypeRequired = hasViewingDate && !viewingTypeValue;
   const isFollowUpRequired = hasViewingDate && !(buyer?.follow_up_assignee && buyer.follow_up_assignee.trim() !== '');
 
@@ -501,6 +509,9 @@ export default function BuyerViewingResultPage() {
     }
 
     // タイトルと説明を生成
+    // 他社物件ケース（linkedProperties が空）では property が null になるが、
+    // buyer.viewing_mobile は正しく渡される。
+    // generateCalendarTitle 内で viewingType || viewingTypeGeneral || '' として処理されるため変更不要（要件2.4）
     const baseTitle = generateCalendarTitle(
       buyer.viewing_mobile,
       buyer.viewing_type_general,
@@ -1224,7 +1235,71 @@ export default function BuyerViewingResultPage() {
                 );
               }
 
-              // 専任も一般もない場合は表示しない
+              // 他社物件ケース（linkedProperties が空）の場合
+              // hasViewingDate が true かつ linkedProperties が空のとき、
+              // viewing_mobile の選択肢を表示する（要件1.1, 1.2）
+              if (linkedProperties.length === 0) {
+                // 必須条件：内覧日が入力されているが、内覧形態が未入力の場合（要件3.4）
+                const hasValue = buyer.viewing_mobile && buyer.viewing_mobile.trim() !== '';
+                // isRequired: 他社物件ケースでも既存の isViewingTypeRequired と同じロジックで判定
+                const isRequired = !hasValue;
+
+                // 他社物件では専任物件と同じ選択肢（VIEWING_FORM_EXCLUSIVE_OPTIONS）を使用（要件1.2）
+                const VIEWING_FORM_EXCLUSIVE_OPTIONS = [
+                  '【内覧_専（自社物件）】',
+                  '【内覧（他社物件）】',
+                  '準不【内覧_専（立会）】',
+                  '準不【内覧_専（立会不要）】',
+                ];
+
+                return (
+                  <Box sx={{ width: '400px', flexShrink: 0 }}>
+                    <Box 
+                      sx={{ 
+                        p: isRequired ? 1 : 0,
+                        border: isRequired ? '2px solid' : 'none',
+                        borderColor: isRequired ? 'error.main' : 'transparent',
+                        borderRadius: 2,
+                        bgcolor: isRequired ? 'rgba(255, 205, 210, 0.3)' : 'transparent',
+                        boxShadow: isRequired ? '0 2px 8px rgba(211, 47, 47, 0.2)' : 'none',
+                        transition: 'all 0.3s ease',
+                      }}
+                    >
+                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5, fontSize: '0.7rem' }}>
+                        内覧形態 {isRequired && <span style={{ color: 'red', fontWeight: 'bold' }}>*必須</span>}
+                      </Typography>
+                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                        {VIEWING_FORM_EXCLUSIVE_OPTIONS.map((option) => (
+                          <Button
+                            key={option}
+                            // タスク4.3: viewing_mobile === option のとき 'contained'、それ以外は 'outlined'（要件3.3）
+                            variant={buyer.viewing_mobile === option ? 'contained' : 'outlined'}
+                            color="primary"
+                            size="small"
+                            onClick={async () => {
+                              // タスク4.1: 未選択→選択で viewing_mobile に保存、選択済み→再クリックでクリア（要件3.1, 3.2, 3.5）
+                              const newValue = buyer.viewing_mobile === option ? '' : option;
+                              await handleInlineFieldSave('viewing_mobile', newValue);
+                            }}
+                            sx={{ 
+                              justifyContent: 'flex-start',
+                              textAlign: 'left',
+                              whiteSpace: 'normal',
+                              wordBreak: 'break-all',
+                              fontSize: '0.7rem',
+                              padding: '2px 4px',
+                            }}
+                          >
+                            {option}
+                          </Button>
+                        ))}
+                      </Box>
+                    </Box>
+                  </Box>
+                );
+              }
+
+              // 専任も一般もなく、他社物件でもない場合は表示しない
               return null;
             })()}
 
