@@ -6729,9 +6729,9 @@ HP：https://ifoo-oita.com/
               <Typography variant="h6" sx={{ display: isMobile ? 'none' : undefined }}>
                 📝 コメント
               </Typography>
-              {/* 通知送信者（visitReminderAssigneeに値がある場合のみ表示） */}
+              {/* 通知送信者（訪問日前日カテゴリー または visitReminderAssigneeに値がある場合に表示） */}
               {(() => {
-                const showVisitReminderSender = !!(seller?.visitReminderAssignee);
+                const showVisitReminderSender = selectedCategory === 'visitDayBefore' || !!(seller?.visitReminderAssignee);
                 if (!showVisitReminderSender) return null;
                 return (
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
