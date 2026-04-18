@@ -296,7 +296,7 @@ export default function PropertyInfoCard({
         propertyNumber: property?.property_number,
       });
       setEmailSubject(response.data.subject || '');
-      setEmailBody(response.data.body || '');
+      setEmailBody((response.data.body || '').replace(/\n/g, '<br>'));
       setEmailRecipient(property?.seller_email || '');
       setSelectedTemplateName(templateName);
       setEmailDialogOpen(true);
