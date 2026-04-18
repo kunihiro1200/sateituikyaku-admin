@@ -32,6 +32,7 @@ interface PriceSectionProps {
   salesAssignee?: string;
   address?: string;
   onChatSendSuccess: (message: string) => void;
+  onPriceReductionChatSendSuccess?: (message: string) => void;
   onChatSendError: (message: string) => void;
   onChatSend: (data: PropertyChatSendData) => Promise<void>;
   priceSavedButNotSent?: boolean;
@@ -51,6 +52,7 @@ export default function PriceSection({
   salesAssignee,
   address,
   onChatSendSuccess,
+  onPriceReductionChatSendSuccess,
   onChatSendError,
   onChatSend,
   priceSavedButNotSent = false,
@@ -197,7 +199,7 @@ export default function PriceSection({
         throw new Error(`HTTP ${response.status}: ${body}`);
       }
 
-      onChatSendSuccess('値下げ通知を送信しました');
+      (onPriceReductionChatSendSuccess ?? onChatSendSuccess)('値下げ通知を送信しました');
       setChatSent(true);  // オレンジのバーを非表示にする
       setSelectedImageUrl(undefined);
       setChatMessageBody('');

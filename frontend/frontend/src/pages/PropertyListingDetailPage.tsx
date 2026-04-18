@@ -989,6 +989,13 @@ export default function PropertyListingDetailPage() {
     }));
   };
 
+  // オレンジバー専用: 確認ステータスを変更しない
+  const handlePriceReductionChatSendSuccess = (message: string) => {
+    setSnackbar({ open: true, message, severity: 'success' });
+    setPriceSavedButNotSent(false);
+    // 確認ステータスの更新・API呼び出し・イベント発火は行わない
+  };
+
   // 確認フィールド更新
   const handleUpdateConfirmation = async (value: '未' | '済') => {
     setConfirmationUpdating(true);
@@ -2161,6 +2168,7 @@ export default function PropertyListingDetailPage() {
                   salesAssignee={data.sales_assignee}
                   address={data.address}
                   onChatSendSuccess={handlePriceChatSendSuccess}
+                  onPriceReductionChatSendSuccess={handlePriceReductionChatSendSuccess}
                   onChatSendError={(message) => setSnackbar({ open: true, message, severity: 'error' })}
                   onChatSend={handlePropertyChatSend}
                   priceSavedButNotSent={priceSavedButNotSent}
