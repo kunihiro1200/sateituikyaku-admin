@@ -158,7 +158,7 @@ export const EMAIL_RULES: EmailRule[] = [
   },
   // ルール4: CWの方へ依頼メール（サイト登録）
   {
-    triggerField: 'cw_request_email_site_registration',
+    triggerField: 'cw_request_email_site',
     to: 'shiraishi8biz@gmail.com',
     cc: 'tenant@ifoo-oita.com',
     subjectTemplate: 'サイト登録関係お願いいたします！{物件番号}{物件所在}（㈱いふう）',
