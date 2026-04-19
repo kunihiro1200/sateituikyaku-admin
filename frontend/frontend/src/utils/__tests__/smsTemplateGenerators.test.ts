@@ -168,4 +168,90 @@ describe('replacePlaceholders', () => {
       expect(result).toBe('売買実績はこちら：https://property-site-frontend-kappa.vercel.app/public/properties?view=mapをご覧ください。売買実績はこちら：https://property-site-frontend-kappa.vercel.app/public/properties?view=map');
     });
   });
+
+  describe('FI番号による「大分市舞鶴町にございます」文言変換', () => {
+    it('FI番号の場合、「大分市舞鶴町にございます」が「福岡市中央区舞鶴にございます」に変換される', () => {
+      const seller: Partial<Seller> = { sellerNumber: 'FI12345' };
+      const message = 'お世話になっております。大分市舞鶴町にございます不動産会社のいふうです。';
+      const result = replacePlaceholders(message, seller as Seller);
+      expect(result).toBe('お世話になっております。福岡市中央区舞鶴にございます不動産会社のいふうです。');
+    });
+
+    it('大文字・小文字を区別しない（fi）', () => {
+      const seller: Partial<Seller> = { sellerNumber: 'fi12345' };
+      const message = '大分市舞鶴町にございます不動産会社のいふうです。';
+      const result = replacePlaceholders(message, seller as Seller);
+      expect(result).toBe('福岡市中央区舞鶴にございます不動産会社のいふうです。');
+    });
+
+    it('大文字・小文字を区別しない（Fi）', () => {
+      const seller: Partial<Seller> = { sellerNumber: 'Fi12345' };
+      const message = '大分市舞鶴町にございます不動産会社のいふうです。';
+      const result = replacePlaceholders(message, seller as Seller);
+      expect(result).toBe('福岡市中央区舞鶴にございます不動産会社のいふうです。');
+    });
+
+    it('大文字・小文字を区別しない（fI）', () => {
+      const seller: Partial<Seller> = { sellerNumber: 'fI12345' };
+      const message = '大分市舞鶴町にございます不動産会社のいふうです。';
+      const result = replacePlaceholders(message, seller as Seller);
+      expect(result).toBe('福岡市中央区舞鶴にございます不動産会社のいふうです。');
+    });
+
+    it('複数箇所が全て変換される', () => {
+      const seller: Partial<Seller> = { sellerNumber: 'FI12345' };
+      const message = '大分市舞鶴町にございます会社です。[改行]大分市舞鶴町にございます不動産会社のいふうです。';
+      const result = replacePlaceholders(message, seller as Seller);
+      expect(result).toBe('福岡市中央区舞鶴にございます会社です。[改行]福岡市中央区舞鶴にございます不動産会社のいふうです。');
+    });
+
+    it('非FI番号の場合、「大分市舞鶴町にございます」は変換されない', () => {
+      const seller: Partial<Seller> = { sellerNumber: 'AA13501' };
+      const message = '大分市舞鶴町にございます不動産会社のいふうです。';
+      const result = replacePlaceholders(message, seller as Seller);
+      expect(result).toBe('大分市舞鶴町にございます不動産会社のいふうです。');
+    });
+
+    it('売主番号がnullの場合、「大分市舞鶴町にございます」は変換されない', () => {
+      const seller: Partial<Seller> = { sellerNumber: null as any };
+      const message = '大分市舞鶴町にございます不動産会社のいふうです。';
+      const result = replacePlaceholders(message, seller as Seller);
+      expect(result).toBe('大分市舞鶴町にございます不動産会社のいふうです。');
+    });
+
+    it('売主番号がundefinedの場合、「大分市舞鶴町にございます」は変換されない', () => {
+      const seller: Partial<Seller> = { sellerNumber: undefined };
+      const message = '大分市舞鶴町にございます不動産会社のいふうです。';
+      const result = replacePlaceholders(message, seller as Seller);
+      expect(result).toBe('大分市舞鶴町にございます不動産会社のいふうです。');
+    });
+
+    it('売主番号が空文字列の場合、「大分市舞鶴町にございます」は変換されない', () => {
+      const seller: Partial<Seller> = { sellerNumber: '' };
+      const message = '大分市舞鶴町にございます不動産会社のいふうです。';
+      const result = replacePlaceholders(message, seller as Seller);
+      expect(result).toBe('大分市舞鶴町にございます不動産会社のいふうです。');
+    });
+
+    it('「大分市舞鶴町1丁目3-30」などの住所表記は変換されない', () => {
+      const seller: Partial<Seller> = { sellerNumber: 'FI12345' };
+      const message = '大分市舞鶴町1丁目3-30にある物件です。';
+      const result = replacePlaceholders(message, seller as Seller);
+      expect(result).toBe('大分市舞鶴町1丁目3-30にある物件です。');
+    });
+
+    it('「大分市舞鶴町1-3-30」の住所表記は変換されない', () => {
+      const seller: Partial<Seller> = { sellerNumber: 'FI12345' };
+      const message = '大分市舞鶴町1-3-30 STビル１Fです。';
+      const result = replacePlaceholders(message, seller as Seller);
+      expect(result).toBe('大分市舞鶴町1-3-30 STビル１Fです。');
+    });
+
+    it('<<当社住所>>置換と文言変換が同時に正しく動作する', () => {
+      const seller: Partial<Seller> = { sellerNumber: 'FI12345' };
+      const message = '大分市舞鶴町にございます不動産会社のいふうです。[改行]<<当社住所>>までお越しください。';
+      const result = replacePlaceholders(message, seller as Seller);
+      expect(result).toBe('福岡市中央区舞鶴にございます不動産会社のいふうです。[改行]福岡市中央区舞鶴３丁目１－１０までお越しください。');
+    });
+  });
 });

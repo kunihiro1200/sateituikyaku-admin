@@ -300,6 +300,11 @@ export const replacePlaceholders = (
       result = result.replace(/<<売買実績ｖ>>/g, '売買実績はこちら：https://property-site-frontend-kappa.vercel.app/public/properties?view=map');
       result = result.replace(/<<売買実績v>>/g, '売買実績はこちら：https://property-site-frontend-kappa.vercel.app/public/properties?view=map');
     }
+
+    // 新規追加: ハードコードされた「大分市舞鶴町にございます」の変換
+    if (hasFI) {
+      result = result.replace(/大分市舞鶴町にございます/g, '福岡市中央区舞鶴にございます');
+    }
     
     return result;
   } catch (error) {
