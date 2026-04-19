@@ -368,6 +368,9 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
   };
 
   const handleFieldChange = (field: string, value: any) => {
+    // 左右ペインのスクロール位置を保存
+    leftScrollRef.current = leftPaneRef.current?.scrollTop ?? 0;
+    rightScrollRef.current = rightPaneRef.current?.scrollTop ?? 0;
     setEditedData(prev => ({ ...prev, [field]: value }));
 
     // 締日超過チェック対象フィールド
@@ -423,6 +426,22 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
   };
 
   const hasChanges = Object.keys(editedData).length > 0;
+
+  // サイト登録タブ左右ペインのスクロール位置保持用 ref
+  const leftPaneRef = useRef<HTMLDivElement>(null);
+  const rightPaneRef = useRef<HTMLDivElement>(null);
+  const leftScrollRef = useRef<number>(0);
+  const rightScrollRef = useRef<number>(0);
+
+  // editedData 変更後に左右ペインのスクロール位置を復元
+  useEffect(() => {
+    if (leftPaneRef.current) {
+      leftPaneRef.current.scrollTop = leftScrollRef.current;
+    }
+    if (rightPaneRef.current) {
+      rightPaneRef.current.scrollTop = rightScrollRef.current;
+    }
+  }, [editedData]);
 
 
 
@@ -589,7 +608,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
   );
 
   // サイト登録セクション
-  const SiteRegistrationSection = ({ cwCounts }: { cwCounts: CwCountData }) => {
+  const SiteRegistrationSection = ({ cwCounts, leftPaneRef, rightPaneRef }: { cwCounts: CwCountData; leftPaneRef: React.RefObject<HTMLDivElement>; rightPaneRef: React.RefObject<HTMLDivElement> }) => {
     // 変更4: サイト登録納期予定日の初期値ロジック
     const getDefaultDueDate = () => {
       const today = new Date();
@@ -663,7 +682,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
     return (
     <Box sx={{ display: 'flex', gap: 0, flex: 1, minHeight: 0, overflow: 'hidden' }}>
       {/* 左側：登録関係 */}
-      <Box sx={{ flex: 1, p: 2, borderRight: '2px solid', borderColor: 'divider', overflowY: 'auto', minHeight: 0 }}>
+      <Box ref={leftPaneRef} sx={{ flex: 1, p: 2, borderRight: '2px solid', borderColor: 'divider', overflowY: 'auto', minHeight: 0 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
           <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#1565c0' }}>【登録関係】</Typography>
           <Button
@@ -771,7 +790,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
       </Box>
 
       {/* 右側：確認関係 */}
-      <Box sx={{ flex: 1, p: 2, overflowY: 'auto', minHeight: 0 }}>
+      <Box ref={rightPaneRef} sx={{ flex: 1, p: 2, overflowY: 'auto', minHeight: 0 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
           <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#2e7d32' }}>【確認関係】</Typography>
           <Button
@@ -1116,7 +1135,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
           ) : (
             <>
               {tabIndex === 0 && <MediationSection />}
-              {tabIndex === 1 && <SiteRegistrationSection cwCounts={cwCounts} />}
+              {tabIndex === 1 && <SiteRegistrationSection cwCounts={cwCounts} leftPaneRef={leftPaneRef} rightPaneRef={rightPaneRef} />}
               {tabIndex === 2 && <ContractSettlementSection />}
               {tabIndex === 3 && <JudicialScrivenerSection />}
             </>
