@@ -5,6 +5,7 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
+  DialogContentText,
   DialogActions,
   IconButton,
   Box,
@@ -23,6 +24,9 @@ import {
 import { Close as CloseIcon, Save as SaveIcon, ContentCopy as ContentCopyIcon } from '@mui/icons-material';
 import api from '../services/api';
 import { supabase } from '../services/supabase';
+import { isDeadlineExceeded } from '../utils/deadlineUtils';
+
+
 
 interface WorkTaskDetailModalProps {
   open: boolean;
@@ -160,6 +164,32 @@ function useNormalInitials(): string[] {
   return initials;
 }
 
+// 締日超過警告ダイアログのプロパティ定義
+interface DeadlineWarningDialogProps {
+  open: boolean;
+  fieldLabel: string; // 超過したフィールドのラベル（例: "サイト登録納期予定日"）
+  onClose: () => void;
+}
+
+// 締日超過警告ダイアログコンポーネント
+function DeadlineWarningDialog({ open, fieldLabel, onClose }: DeadlineWarningDialogProps) {
+  return (
+    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+      <DialogTitle>締日超過の警告</DialogTitle>
+      <DialogContent>
+        <DialogContentText>
+          サイト登録締日を過ぎています　担当に確認しましたか？
+        </DialogContentText>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onClose} variant="contained" color="primary">
+          確認
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+}
+
 const ASSIGNEE_OPTIONS = ['K', 'Y', 'I', '生', 'U', 'R', '久', 'H'];
 
 export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onUpdate, initialData }: WorkTaskDetailModalProps) {
@@ -173,6 +203,10 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
     open: false, message: '', severity: 'success'
   });
+  const [warningDialog, setWarningDialog] = useState<{
+    open: boolean;
+    fieldLabel: string;
+  }>({ open: false, fieldLabel: '' });
 
   useEffect(() => {
     if (open && propertyNumber) {
@@ -227,6 +261,19 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
 
   const handleFieldChange = (field: string, value: any) => {
     setEditedData(prev => ({ ...prev, [field]: value }));
+
+    // 締日超過チェック対象フィールド
+    const DEADLINE_CHECK_FIELDS: Record<string, string> = {
+      site_registration_due_date: 'サイト登録納期予定日',
+      floor_plan_due_date: '間取図完了予定',
+    };
+
+    if (field in DEADLINE_CHECK_FIELDS) {
+      const deadline = editedData['site_registration_deadline'] ?? data?.['site_registration_deadline'];
+      if (isDeadlineExceeded(value, deadline)) {
+        setWarningDialog({ open: true, fieldLabel: DEADLINE_CHECK_FIELDS[field] });
+      }
+    }
   };
 
   const getValue = (field: string) => {
@@ -981,6 +1028,11 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
           {snackbar.message}
         </Alert>
       </Snackbar>
+      <DeadlineWarningDialog
+        open={warningDialog.open}
+        fieldLabel={warningDialog.fieldLabel}
+        onClose={() => setWarningDialog({ open: false, fieldLabel: '' })}
+      />
     </>
   );
 }
