@@ -69,6 +69,7 @@ import {
 } from '../utils/buyerFieldOptions';
 import RichTextCommentEditor, { RichTextCommentEditorHandle } from '../components/RichTextCommentEditor';
 import { ValidationWarningDialog } from '../components/ValidationWarningDialog';
+import { ChatNavigationPopup } from '../components/ChatNavigationPopup';
 import { formatDateTime } from '../utils/dateFormat';
 import { getDisplayName } from '../utils/employeeUtils';
 import { normalizeEmail } from '../utils/stringUtils';
@@ -153,6 +154,11 @@ const toHalfWidth = (str: string): string => {
   );
 };
 
+// "買"を含む最新状況かどうかを判定する純粋関数
+const isBuyingStatus = (value: string): boolean => {
+  return value.includes('買');
+};
+
 // 保存ボタン押下時にまとめて保存するフィールドのセット
 const SAVE_BUTTON_FIELDS = new Set([
   'inquiry_email_phone',
@@ -235,6 +241,15 @@ export default function BuyerDetailPage() {
 
   // 必須フィールド未入力ハイライト用
   const [missingRequiredFields, setMissingRequiredFields] = useState<Set<string>>(new Set());
+
+  // Chat送信誘導ポップアップの表示状態
+  const [chatPopupOpen, setChatPopupOpen] = useState(false);
+
+  // Chat送信誘導ポップアップ: 内覧ページへ遷移するハンドラー
+  const handleChatNavigate = () => {
+    setChatPopupOpen(false);
+    navigate(`/buyers/${buyer_number}/viewing-result`);
+  };
 
   // 必須フィールドの表示名マップ
   const REQUIRED_FIELD_LABEL_MAP: Record<string, string> = {
@@ -2118,6 +2133,10 @@ TEL：097-533-2022`;
                         });
                         // バックグラウンドで保存
                         handleInlineFieldSave(field.key, newValue).catch(console.error);
+                        // "買"を含む場合はChat送信誘導ポップアップを表示
+                        if (newValue && isBuyingStatus(String(newValue))) {
+                          setChatPopupOpen(true);
+                        }
                       };
 
                       const isLatestStatusMissing = missingRequiredFields.has('latest_status');
@@ -3395,6 +3414,13 @@ TEL：097-533-2022`;
           <Button onClick={() => setEmailBodyModalOpen(false)}>閉じる</Button>
         </DialogActions>
       </Dialog>
+
+      {/* Chat送信誘導ポップアップ */}
+      <ChatNavigationPopup
+        open={chatPopupOpen}
+        onNavigate={handleChatNavigate}
+        onClose={() => setChatPopupOpen(false)}
+      />
     </Box>
   );
 }
