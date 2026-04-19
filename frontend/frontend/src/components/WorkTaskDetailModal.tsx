@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import PageNavigation from './PageNavigation';
 import {
   Dialog,
   DialogTitle,
@@ -162,6 +164,7 @@ const ASSIGNEE_OPTIONS = ['K', 'Y', 'I', '生', 'U', 'R', '久', 'H'];
 
 export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onUpdate, initialData }: WorkTaskDetailModalProps) {
   const [tabIndex, setTabIndex] = useState(0);
+  const navigate = useNavigate();
   const normalInitials = useNormalInitials();
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -198,6 +201,11 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
     } finally {
       if (!background) setLoading(false);
     }
+  };
+
+  const handleNavigate = (path: string) => {
+    onClose();
+    navigate(path);
   };
 
   const handleSave = async () => {
@@ -824,74 +832,81 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
   return (
     <>
       <Dialog open={open} onClose={onClose} fullScreen>
-        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 0 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, overflow: 'hidden' }}>
-            <Button
-              variant="contained"
-              size="small"
-              onClick={onClose}
-              sx={{ bgcolor: '#8e24aa', '&:hover': { bgcolor: '#6a1b9a' }, fontWeight: 700, whiteSpace: 'nowrap' }}
-            >
-              業務一覧
-            </Button>
-            <Typography variant="h6">業務詳細 -</Typography>
-            <Box
-              onClick={() => { navigator.clipboard.writeText(propertyNumber || ''); }}
-              sx={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 0.5,
-                cursor: 'pointer',
-                px: 1.5, py: 0.5,
-                bgcolor: '#f5f5f5',
-                border: '1px solid #ddd',
-                borderRadius: 1,
-                fontWeight: 700,
-                fontSize: '1.1rem',
-                userSelect: 'all',
-                whiteSpace: 'nowrap',
-                '&:hover': { bgcolor: '#e3f2fd', borderColor: '#1565c0' },
-                '&:active': { bgcolor: '#bbdefb' },
-              }}
-              title="クリックでコピー"
-            >
-              {propertyNumber || ''}
-              <ContentCopyIcon sx={{ fontSize: '1rem', color: '#1565c0', opacity: 0.7 }} />
-            </Box>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, overflowX: 'auto', flexShrink: 1, flexWrap: 'nowrap' }}>
-              {data?.property_address && (
-                <Box sx={{ display: 'flex', alignItems: 'center', bgcolor: '#e3f2fd', borderRadius: '6px', px: 1.2, py: 0.4, border: '1px solid #90caf9', whiteSpace: 'nowrap' }}>
-                  <Typography component="span" sx={{ fontWeight: 700, fontSize: '0.78rem', color: '#1565c0', mr: 0.5 }}>物件住所</Typography>
-                  <Typography component="span" sx={{ fontSize: '0.85rem', color: '#1a237e', fontWeight: 500 }}>{data.property_address}</Typography>
-                </Box>
-              )}
-              {data?.property_type && (
-                <Box sx={{ display: 'flex', alignItems: 'center', bgcolor: '#f3e5f5', borderRadius: '6px', px: 1.2, py: 0.4, border: '1px solid #ce93d8', whiteSpace: 'nowrap' }}>
-                  <Typography component="span" sx={{ fontWeight: 700, fontSize: '0.78rem', color: '#6a1b9a', mr: 0.5 }}>種別</Typography>
-                  <Typography component="span" sx={{ fontSize: '0.85rem', color: '#4a148c', fontWeight: 500 }}>{data.property_type}</Typography>
-                </Box>
-              )}
-              {data?.seller_name && (
-                <Box sx={{ display: 'flex', alignItems: 'center', bgcolor: '#e8f5e9', borderRadius: '6px', px: 1.2, py: 0.4, border: '1px solid #a5d6a7', whiteSpace: 'nowrap' }}>
-                  <Typography component="span" sx={{ fontWeight: 700, fontSize: '0.78rem', color: '#2e7d32', mr: 0.5 }}>売主氏名</Typography>
-                  <Typography component="span" sx={{ fontSize: '0.85rem', color: '#1b5e20', fontWeight: 500 }}>{data.seller_name}</Typography>
-                </Box>
-              )}
-              {data?.sales_assignee && (
-                <Box sx={{ display: 'flex', alignItems: 'center', bgcolor: '#fff8e1', borderRadius: '6px', px: 1.2, py: 0.4, border: '1px solid #ffe082', whiteSpace: 'nowrap' }}>
-                  <Typography component="span" sx={{ fontWeight: 700, fontSize: '0.78rem', color: '#e65100', mr: 0.5 }}>担当名</Typography>
-                  <Typography component="span" sx={{ fontSize: '0.85rem', color: '#bf360c', fontWeight: 500 }}>{data.sales_assignee}</Typography>
-                </Box>
-              )}
-              {data?.mediation_type && (
-                <Box sx={{ display: 'flex', alignItems: 'center', bgcolor: '#fce4ec', borderRadius: '6px', px: 1.2, py: 0.4, border: '1px solid #f48fb1', whiteSpace: 'nowrap' }}>
-                  <Typography component="span" sx={{ fontWeight: 700, fontSize: '0.78rem', color: '#880e4f', mr: 0.5 }}>媒介</Typography>
-                  <Typography component="span" sx={{ fontSize: '0.85rem', color: '#560027', fontWeight: 500 }}>{data.mediation_type}</Typography>
-                </Box>
-              )}
-            </Box>
+        <DialogTitle sx={{ p: 1, pb: 0 }}>
+          {/* 1行目: ナビゲーションバー */}
+          <Box sx={{ mb: 0.5 }}>
+            <PageNavigation onNavigate={handleNavigate} />
           </Box>
-          <IconButton onClick={onClose} size="small"><CloseIcon /></IconButton>
+          {/* 2行目: 既存のヘッダー */}
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, overflow: 'hidden' }}>
+              <Button
+                variant="contained"
+                size="small"
+                onClick={onClose}
+                sx={{ bgcolor: '#8e24aa', '&:hover': { bgcolor: '#6a1b9a' }, fontWeight: 700, whiteSpace: 'nowrap' }}
+              >
+                業務一覧
+              </Button>
+              <Typography variant="h6">業務詳細 -</Typography>
+              <Box
+                onClick={() => { navigator.clipboard.writeText(propertyNumber || ''); }}
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 0.5,
+                  cursor: 'pointer',
+                  px: 1.5, py: 0.5,
+                  bgcolor: '#f5f5f5',
+                  border: '1px solid #ddd',
+                  borderRadius: 1,
+                  fontWeight: 700,
+                  fontSize: '1.1rem',
+                  userSelect: 'all',
+                  whiteSpace: 'nowrap',
+                  '&:hover': { bgcolor: '#e3f2fd', borderColor: '#1565c0' },
+                  '&:active': { bgcolor: '#bbdefb' },
+                }}
+                title="クリックでコピー"
+              >
+                {propertyNumber || ''}
+                <ContentCopyIcon sx={{ fontSize: '1rem', color: '#1565c0', opacity: 0.7 }} />
+              </Box>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, overflowX: 'auto', flexShrink: 1, flexWrap: 'nowrap' }}>
+                {data?.property_address && (
+                  <Box sx={{ display: 'flex', alignItems: 'center', bgcolor: '#e3f2fd', borderRadius: '6px', px: 1.2, py: 0.4, border: '1px solid #90caf9', whiteSpace: 'nowrap' }}>
+                    <Typography component="span" sx={{ fontWeight: 700, fontSize: '0.78rem', color: '#1565c0', mr: 0.5 }}>物件住所</Typography>
+                    <Typography component="span" sx={{ fontSize: '0.85rem', color: '#1a237e', fontWeight: 500 }}>{data.property_address}</Typography>
+                  </Box>
+                )}
+                {data?.property_type && (
+                  <Box sx={{ display: 'flex', alignItems: 'center', bgcolor: '#f3e5f5', borderRadius: '6px', px: 1.2, py: 0.4, border: '1px solid #ce93d8', whiteSpace: 'nowrap' }}>
+                    <Typography component="span" sx={{ fontWeight: 700, fontSize: '0.78rem', color: '#6a1b9a', mr: 0.5 }}>種別</Typography>
+                    <Typography component="span" sx={{ fontSize: '0.85rem', color: '#4a148c', fontWeight: 500 }}>{data.property_type}</Typography>
+                  </Box>
+                )}
+                {data?.seller_name && (
+                  <Box sx={{ display: 'flex', alignItems: 'center', bgcolor: '#e8f5e9', borderRadius: '6px', px: 1.2, py: 0.4, border: '1px solid #a5d6a7', whiteSpace: 'nowrap' }}>
+                    <Typography component="span" sx={{ fontWeight: 700, fontSize: '0.78rem', color: '#2e7d32', mr: 0.5 }}>売主氏名</Typography>
+                    <Typography component="span" sx={{ fontSize: '0.85rem', color: '#1b5e20', fontWeight: 500 }}>{data.seller_name}</Typography>
+                  </Box>
+                )}
+                {data?.sales_assignee && (
+                  <Box sx={{ display: 'flex', alignItems: 'center', bgcolor: '#fff8e1', borderRadius: '6px', px: 1.2, py: 0.4, border: '1px solid #ffe082', whiteSpace: 'nowrap' }}>
+                    <Typography component="span" sx={{ fontWeight: 700, fontSize: '0.78rem', color: '#e65100', mr: 0.5 }}>担当名</Typography>
+                    <Typography component="span" sx={{ fontSize: '0.85rem', color: '#bf360c', fontWeight: 500 }}>{data.sales_assignee}</Typography>
+                  </Box>
+                )}
+                {data?.mediation_type && (
+                  <Box sx={{ display: 'flex', alignItems: 'center', bgcolor: '#fce4ec', borderRadius: '6px', px: 1.2, py: 0.4, border: '1px solid #f48fb1', whiteSpace: 'nowrap' }}>
+                    <Typography component="span" sx={{ fontWeight: 700, fontSize: '0.78rem', color: '#880e4f', mr: 0.5 }}>媒介</Typography>
+                    <Typography component="span" sx={{ fontSize: '0.85rem', color: '#560027', fontWeight: 500 }}>{data.mediation_type}</Typography>
+                  </Box>
+                )}
+              </Box>
+            </Box>
+            <IconButton onClick={onClose} size="small"><CloseIcon /></IconButton>
+          </Box>
         </DialogTitle>
         <Box sx={{ borderBottom: 1, borderColor: 'divider', px: 2 }}>
           <Tabs
