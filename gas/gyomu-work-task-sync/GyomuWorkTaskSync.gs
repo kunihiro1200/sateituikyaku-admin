@@ -721,8 +721,23 @@ function getCwCountValue(sheet, itemName) {
     return null;
   }
 
-  // 2行目の値を取得（回数行）
-  var val = sheet.getRange(2, itemColIndex + 1).getValue();
+  // A列から「現在計」ラベルの行インデックスを動的に検索する
+  var rowLabels = sheet.getRange(1, 1, lastRow, 1).getValues();
+  var currentTotalRowIndex = -1;
+  for (var j = 0; j < rowLabels.length; j++) {
+    if (String(rowLabels[j][0]).trim() === '現在計') {
+      currentTotalRowIndex = j + 1; // 1-indexed
+      break;
+    }
+  }
+
+  if (currentTotalRowIndex < 0) {
+    Logger.log('CWカウント: 「現在計」行が見つかりません（itemName: ' + itemName + '）');
+    return null;
+  }
+
+  // 「現在計」行の値を取得（固定行番号2ではなく動的に検索した行番号を使用）
+  var val = sheet.getRange(currentTotalRowIndex, itemColIndex + 1).getValue();
   var strVal = String(val).trim();
   return strVal === '' ? null : strVal;
 }

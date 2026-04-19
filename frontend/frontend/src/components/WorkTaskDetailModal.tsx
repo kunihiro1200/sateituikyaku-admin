@@ -21,7 +21,7 @@ import {
   Snackbar,
   Alert,
 } from '@mui/material';
-import { Close as CloseIcon, Save as SaveIcon, ContentCopy as ContentCopyIcon } from '@mui/icons-material';
+import { Close as CloseIcon, Save as SaveIcon, ContentCopy as ContentCopyIcon, WarningAmber as WarningAmberIcon } from '@mui/icons-material';
 import api from '../services/api';
 import { supabase } from '../services/supabase';
 import { isDeadlineExceeded } from '../utils/deadlineUtils';
@@ -174,16 +174,77 @@ interface DeadlineWarningDialogProps {
 // 締日超過警告ダイアログコンポーネント
 function DeadlineWarningDialog({ open, fieldLabel, onClose }: DeadlineWarningDialogProps) {
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogTitle>締日超過の警告</DialogTitle>
-      <DialogContent>
-        <DialogContentText>
-          サイト登録締日を過ぎています　担当に確認しましたか？
-        </DialogContentText>
+    <Dialog
+      open={open}
+      onClose={onClose}
+      maxWidth="sm"
+      fullWidth
+      PaperProps={{
+        sx: {
+          border: '3px solid #d32f2f',
+          borderRadius: 2,
+          boxShadow: '0 0 30px rgba(211, 47, 47, 0.5)',
+        }
+      }}
+    >
+      <DialogTitle sx={{
+        bgcolor: '#d32f2f',
+        color: '#fff',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 1,
+        fontWeight: 700,
+        fontSize: '1.1rem',
+        py: 1.5,
+      }}>
+        <WarningAmberIcon sx={{ fontSize: '1.8rem', color: '#ffeb3b' }} />
+        ⚠️ 締日超過の警告
+      </DialogTitle>
+      <DialogContent sx={{ pt: 3, pb: 2, bgcolor: '#fff8f8' }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+          <Typography sx={{
+            fontSize: '1.15rem',
+            fontWeight: 700,
+            color: '#b71c1c',
+            textAlign: 'center',
+            lineHeight: 1.6,
+          }}>
+            🚨 サイト登録締日を過ぎています
+          </Typography>
+          <Typography sx={{
+            fontSize: '1.05rem',
+            fontWeight: 600,
+            color: '#c62828',
+            textAlign: 'center',
+            bgcolor: '#ffebee',
+            border: '2px solid #ef9a9a',
+            borderRadius: 1,
+            px: 3,
+            py: 1.5,
+          }}>
+            担当に確認しましたか？
+          </Typography>
+          {fieldLabel && (
+            <Typography variant="caption" sx={{ color: '#757575', mt: 0.5 }}>
+              対象フィールド：{fieldLabel}
+            </Typography>
+          )}
+        </Box>
       </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose} variant="contained" color="primary">
-          確認
+      <DialogActions sx={{ bgcolor: '#fff8f8', pb: 2, px: 3 }}>
+        <Button
+          onClick={onClose}
+          variant="contained"
+          fullWidth
+          sx={{
+            bgcolor: '#d32f2f',
+            '&:hover': { bgcolor: '#b71c1c' },
+            fontWeight: 700,
+            fontSize: '1rem',
+            py: 1,
+          }}
+        >
+          確認しました
         </Button>
       </DialogActions>
     </Dialog>
@@ -212,8 +273,10 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
     if (open && propertyNumber) {
       // 一覧データがあれば即座に表示（ローディングなし）
       if (initialData) {
-        setData(initialData as WorkTaskData);
+        const taskData = initialData as WorkTaskData;
+        setData(taskData);
         setLoading(false);
+        checkDeadlineOnLoad(taskData);
         // バックグラウンドで詳細データを取得（差し替え）
         fetchData(true);
       } else {
@@ -223,12 +286,27 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
     }
   }, [open, propertyNumber]);
 
+  const checkDeadlineOnLoad = (taskData: WorkTaskData) => {
+    const deadline = taskData.site_registration_deadline;
+    const DEADLINE_CHECK_FIELDS: Record<string, string> = {
+      site_registration_due_date: 'サイト登録納期予定日',
+      floor_plan_due_date: '間取図完了予定',
+    };
+    for (const [field, label] of Object.entries(DEADLINE_CHECK_FIELDS)) {
+      if (isDeadlineExceeded(taskData[field], deadline)) {
+        setWarningDialog({ open: true, fieldLabel: label });
+        return; // 最初に見つかったフィールドで1つだけ表示
+      }
+    }
+  };
+
   const fetchData = async (background = false) => {
     if (!propertyNumber) return;
     if (!background) setLoading(true);
     try {
       const response = await api.get(`/api/work-tasks/${propertyNumber}`);
       setData(response.data);
+      checkDeadlineOnLoad(response.data);
     } catch (error) {
       console.error('Failed to fetch work task:', error);
       if (!background) setData(null);
