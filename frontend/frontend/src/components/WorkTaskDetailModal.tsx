@@ -122,31 +122,26 @@ interface CwCountData {
 }
 
 // CWカウント取得フック
-// work_tasksテーブルから直接集計することで即時反映を実現
+// GASが定期同期するcw_countsテーブルから「現在計」を取得
 function useCwCounts(): CwCountData {
   const [data, setData] = useState<CwCountData>({ floorPlan300: null, siteRegistration: null });
 
   useEffect(() => {
     const fetchCwCounts = async () => {
       try {
-        // cw_inspection_plan_300が空でないレコード数を直接カウント（即時反映）
-        const { count: floorPlan300Count, error: error1 } = await supabase
-          .from('work_tasks')
-          .select('id', { count: 'exact', head: true })
-          .not('cw_inspection_plan_300', 'is', null)
-          .neq('cw_inspection_plan_300', '');
+        const { data: rows, error } = await supabase
+          .from('cw_counts')
+          .select('item_name, current_total')
+          .in('item_name', ['間取図（300円）', 'サイト登録']);
 
-        // cw_inspection_siteが空でないレコード数を直接カウント（即時反映）
-        const { count: siteCount, error: error2 } = await supabase
-          .from('work_tasks')
-          .select('id', { count: 'exact', head: true })
-          .not('cw_inspection_site', 'is', null)
-          .neq('cw_inspection_site', '');
+        if (error || !rows) return;
 
-        setData({
-          floorPlan300: (!error1 && floorPlan300Count !== null) ? String(floorPlan300Count) : null,
-          siteRegistration: (!error2 && siteCount !== null) ? String(siteCount) : null,
+        const result: CwCountData = { floorPlan300: null, siteRegistration: null };
+        rows.forEach(row => {
+          if (row.item_name === '間取図（300円）') result.floorPlan300 = row.current_total;
+          if (row.item_name === 'サイト登録') result.siteRegistration = row.current_total;
         });
+        setData(result);
       } catch {
         // エラー時はフォールバック値のまま
       }
