@@ -1610,6 +1610,7 @@ const CallModePage = () => {
               setEditedStatus(freshData.status);
               setEditedConfidence(freshData.confidence || '');
               setEditedNextCallDate(freshData.nextCallDate || '');
+              setSavedNextCallDate(freshData.nextCallDate || '');  // savedも同時に更新
               setEditedPinrichStatus(freshData.pinrichStatus || '');
               if (freshData.contractYearMonth) {
                 const rawDate = freshData.contractYearMonth;
