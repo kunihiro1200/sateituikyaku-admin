@@ -494,12 +494,12 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
           <Button
             variant={getValue(field) === 'Y' ? 'contained' : 'outlined'}
             color={getValue(field) === 'Y' ? 'primary' : 'inherit'}
-            onClick={() => handleFieldChange(field, 'Y')}
+            onClick={() => handleFieldChange(field, getValue(field) === 'Y' ? null : 'Y')}
           >Y</Button>
           <Button
             variant={getValue(field) === 'N' ? 'contained' : 'outlined'}
             color={getValue(field) === 'N' ? 'inherit' : 'inherit'}
-            onClick={() => handleFieldChange(field, 'N')}
+            onClick={() => handleFieldChange(field, getValue(field) === 'N' ? null : 'N')}
           >N</Button>
         </ButtonGroup>
       </Grid>
