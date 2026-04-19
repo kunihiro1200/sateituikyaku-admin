@@ -153,7 +153,7 @@ export const EMAIL_RULES: EmailRule[] = [
   },
   // ルール3: 間取図確認OK送信
   {
-    triggerField: 'floor_plan_ok_send',
+    triggerField: 'floor_plan_ok_sent',
     to: 'tomoko.kunihiro@ifoo-oita.com',
     cc: 'tomoko.kunihiro@ifoo-oita.com',
     subjectTemplate: '図面ありがとうございます！{物件番号}{物件所在}（㈱いふう）',
@@ -171,7 +171,7 @@ export const EMAIL_RULES: EmailRule[] = [
   },
   // ルール5: サイト登録確認OK送信
   {
-    triggerField: 'site_registration_ok_send',
+    triggerField: 'site_registration_ok_sent',
     to: 'tomoko.kunihiro@ifoo-oita.com',
     cc: 'tomoko.kunihiro@ifoo-oita.com',
     subjectTemplate: 'サイト登録ありがとうございます！{物件番号}{物件所在}（㈱いふう）',
