@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import PageNavigation from '../components/PageNavigation';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import {
@@ -256,6 +256,8 @@ export default function PropertyListingDetailPage() {
   const [isViewingInfoEditMode, setIsViewingInfoEditMode] = useState(false);
   const [isSellerBuyerEditMode, setIsSellerBuyerEditMode] = useState(false);
   const [isOfferEditMode, setIsOfferEditMode] = useState(false);
+  const [atbbWarningDialog, setAtbbWarningDialog] = useState(false);
+  const offerSectionRef = useRef<HTMLDivElement>(null);
   // 買付情報バリデーションエラー状態
   const [offerErrors, setOfferErrors] = useState<{
     offer_date?: string;
@@ -545,11 +547,7 @@ export default function PropertyListingDetailPage() {
           setOfferErrors(prev => ({ ...prev, offer_status: '必須項目です' }));
           setIsOfferEditMode(true);
           // 警告ダイアログを表示してユーザーに理由を伝える
-          setSnackbar({
-            open: true,
-            message: 'ATBB状況を非公開にする場合、買付フィールドの入力が必要です',
-            severity: 'warning',
-          });
+          setAtbbWarningDialog(true);
           return; // 保存処理を中断
         }
       }
@@ -2972,7 +2970,7 @@ export default function PropertyListingDetailPage() {
           </Box>
 
           {/* 7. 買付情報（全幅・常時表示・EditableSection） */}
-          <Box sx={{ mb: 2, p: 2, bgcolor: '#fff3e0', borderRadius: 2, border: '1px solid #ffb74d' }}>
+          <Box ref={offerSectionRef} sx={{ mb: 2, p: 2, bgcolor: '#fff3e0', borderRadius: 2, border: '1px solid #ffb74d' }}>
             <EditableSection
               title="買付情報"
               isEditMode={isOfferEditMode}
@@ -3180,6 +3178,40 @@ export default function PropertyListingDetailPage() {
           </Box>
         </Grid>
       </Grid>
+
+      {/* ATBB非公開時 買付フィールド必須警告ダイアログ */}
+      <Dialog open={atbbWarningDialog} onClose={() => setAtbbWarningDialog(false)} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ bgcolor: '#fff3e0', color: '#e65100', fontWeight: 'bold', fontSize: '1.1rem' }}>
+          ⚠️ 保存できません
+        </DialogTitle>
+        <DialogContent sx={{ pt: 3, pb: 2 }}>
+          <Typography variant="body1" sx={{ mb: 1.5, fontWeight: 600 }}>
+            ATBB状況を「非公開」に変更する場合、<br />
+            <span style={{ color: '#e65100' }}>「買付」フィールドの入力が必須</span>です。
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            下のボタンを押すと「買付情報」セクションに移動します。<br />
+            「買付」フィールドに値を入力してから再度保存してください。
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2, gap: 1 }}>
+          <Button onClick={() => setAtbbWarningDialog(false)} variant="outlined" color="inherit">
+            閉じる
+          </Button>
+          <Button
+            variant="contained"
+            color="warning"
+            onClick={() => {
+              setAtbbWarningDialog(false);
+              setTimeout(() => {
+                offerSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              }, 100);
+            }}
+          >
+            「買付情報」セクションへ移動
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* 売買契約完了 チャット送信確認ダイアログ（ステップ1） */}
       <Dialog open={salesContractDialog} onClose={() => setSalesContractDialog(false)} maxWidth="sm" fullWidth>
