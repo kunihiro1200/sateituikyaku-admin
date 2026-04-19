@@ -28,8 +28,8 @@ export class ChatNotificationService {
   private exclusiveWebhookUrl: string;
 
   constructor() {
-    this.webhookUrl = process.env.GOOGLE_CHAT_WEBHOOK_URL || '';
-    this.exclusiveWebhookUrl = process.env.GOOGLE_CHAT_EXCLUSIVE_WEBHOOK_URL || '';
+    this.webhookUrl = (process.env.GOOGLE_CHAT_WEBHOOK_URL || '').trim();
+    this.exclusiveWebhookUrl = (process.env.GOOGLE_CHAT_EXCLUSIVE_WEBHOOK_URL || '').trim();
   }
 
   /**
@@ -327,7 +327,7 @@ ${data.notes || '物件紹介文が入力されていません'}
    * @returns Success status
    */
   private async sendToGoogleChat(message: string, webhookUrl?: string): Promise<boolean> {
-    const url = webhookUrl || this.webhookUrl;
+    const url = (webhookUrl || this.webhookUrl).trim();
     if (!url) {
       throw new Error('Google Chat webhook URL is not configured');
     }
