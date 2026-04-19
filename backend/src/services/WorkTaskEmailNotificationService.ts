@@ -42,7 +42,7 @@ export const TEMPLATE_VARIABLE_MAP: TemplateVariableMapping = {
   '{格納先URL}': 'storage_url',
   '{間取図確認OK/修正コメント}': 'floor_plan_ok_comment',
   '{コメント（サイト登録）}': 'site_registration_comment',
-  '{サイト登録依頼日}': 'site_registration_request_date',
+  '{サイト登録依頼日}': '__today_jst__',
   '{サイト登録依頼者}': 'site_registration_requester',
   '{サイト登録納期予定日}': 'site_registration_due_date',
   '{パノラマ}': 'panorama',
@@ -93,6 +93,7 @@ const SITE_REGISTRATION_REQUEST_BODY =
   '間取図格納時期：{間取図完了予定}<br>' +
   '詳細：<a href="{スプシURL}">スプレッドシート</a><br>' +
   '格納先：<a href="{格納先URL}">格納先フォルダ</a><br>' +
+  '{メール配信コメント}' +
   'ご不明点等がございましたら、こちらに返信していただければと思います。<br><br>' +
   '㈱いふう<br>TEL:097-533-2022<br>MAIL: tenant@ifoo-oita.com' +
   '</body></html>';
@@ -209,17 +210,29 @@ export class WorkTaskEmailNotificationService {
   resolveTemplate(template: string, data: Record<string, any>): string {
     let result = template;
     for (const [templateVar, columnName] of Object.entries(TEMPLATE_VARIABLE_MAP)) {
-      const rawValue = data[columnName];
-      // floor_plan_due_date は JST 形式に変換する
       let value: string;
-      if (columnName === 'floor_plan_due_date') {
-        value = this.formatDateToJST(rawValue);
+      if (columnName === '__today_jst__') {
+        // 送信当日のJST日付（YYYY-MM-DD）
+        value = this.formatDateToJST(new Date().toISOString()).split(' ')[0];
+      } else if (columnName === 'floor_plan_due_date' || columnName === 'site_registration_due_date') {
+        value = this.formatDateToJST(data[columnName]);
       } else {
+        const rawValue = data[columnName];
         value = rawValue == null ? '' : String(rawValue);
       }
-      // テンプレート変数を split/join で安全に置換（正規表現エスケープ不要）
       result = result.split(templateVar).join(value);
     }
+
+    // {メール配信コメント} を動的に解決
+    const emailDist: string = data['email_distribution'] ?? '';
+    let emailDistComment = '';
+    if (emailDist.includes('不要') && emailDist.includes('即')) {
+      emailDistComment =
+        '公開前配信メールは不要です。確認前に公開お願い致します。公開方法→' +
+        'https://docs.google.com/document/d/145LKr_Q7ftxnRVvNalaKPO1NH_FqncOlOY5bqP5P48c/edit?usp=sharing<br>';
+    }
+    result = result.split('{メール配信コメント}').join(emailDistComment);
+
     return result;
   }
 
