@@ -42,17 +42,107 @@ export class WorkTaskSyncService {
 
   /**
    * Google Sheets APIクライアントを初期化
+   * 認証優先順位:
+   * 1. GOOGLE_SERVICE_ACCOUNT_JSON（JSON文字列 or Base64）- Vercel環境用
+   * 2. GOOGLE_SERVICE_ACCOUNT_EMAIL + GOOGLE_PRIVATE_KEY - Vercel環境用フォールバック
+   * 3. GOOGLE_SERVICE_ACCOUNT_PATH またはローカルファイル - ローカル開発用
+   * 4. いずれも存在しない場合はエラーをスロー
    */
   private async initSheetsClient(): Promise<sheets_v4.Sheets> {
     if (this.sheets) return this.sheets;
 
-    const auth = new google.auth.GoogleAuth({
-      keyFile: process.env.GOOGLE_SERVICE_ACCOUNT_PATH || 'google-service-account.json',
-      scopes: ['https://www.googleapis.com/auth/spreadsheets'],
-    });
+    console.log('[WorkTaskSyncService] Initializing Google Sheets client...');
 
-    this.sheets = google.sheets({ version: 'v4', auth });
-    return this.sheets;
+    // 1. GOOGLE_SERVICE_ACCOUNT_JSON 環境変数（JSON文字列 or Base64）
+    if (process.env.GOOGLE_SERVICE_ACCOUNT_JSON) {
+      console.log('[WorkTaskSyncService] Using GOOGLE_SERVICE_ACCOUNT_JSON');
+      try {
+        let jsonString = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
+
+        // Base64エンコードされている場合はデコード
+        let keyFile: any;
+        try {
+          keyFile = JSON.parse(jsonString);
+        } catch (e) {
+          // JSONパース失敗 → Base64としてデコード
+          console.log('[WorkTaskSyncService] Decoding Base64 encoded JSON...');
+          jsonString = Buffer.from(jsonString, 'base64').toString('utf8');
+          keyFile = JSON.parse(jsonString);
+        }
+
+        // private_keyの改行を復元
+        if (keyFile.private_key && !keyFile.private_key.includes('\n')) {
+          keyFile.private_key = keyFile.private_key.replace(/\\n/g, '\n');
+        }
+
+        const auth = new google.auth.JWT({
+          email: keyFile.client_email,
+          key: keyFile.private_key,
+          scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+        });
+
+        await auth.authorize();
+        this.sheets = google.sheets({ version: 'v4', auth });
+        console.log('[WorkTaskSyncService] Authentication successful (GOOGLE_SERVICE_ACCOUNT_JSON)');
+        return this.sheets;
+      } catch (error: any) {
+        console.error('[WorkTaskSyncService] Authentication failed (GOOGLE_SERVICE_ACCOUNT_JSON):', error.message);
+        throw new Error(`Google Sheets 認証失敗 (GOOGLE_SERVICE_ACCOUNT_JSON): ${error.message}`);
+      }
+    }
+
+    // 2. GOOGLE_SERVICE_ACCOUNT_EMAIL + GOOGLE_PRIVATE_KEY（Vercel環境用フォールバック）
+    if (process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL && process.env.GOOGLE_PRIVATE_KEY) {
+      console.log('[WorkTaskSyncService] Using GOOGLE_SERVICE_ACCOUNT_EMAIL and GOOGLE_PRIVATE_KEY');
+      try {
+        const email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
+        const privateKey = process.env.GOOGLE_PRIVATE_KEY.replace(/\\n/g, '\n');
+
+        const auth = new google.auth.JWT({
+          email,
+          key: privateKey,
+          scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+        });
+
+        await auth.authorize();
+        this.sheets = google.sheets({ version: 'v4', auth });
+        console.log('[WorkTaskSyncService] Authentication successful (GOOGLE_SERVICE_ACCOUNT_EMAIL + GOOGLE_PRIVATE_KEY)');
+        return this.sheets;
+      } catch (error: any) {
+        console.error('[WorkTaskSyncService] Authentication failed (GOOGLE_SERVICE_ACCOUNT_EMAIL + GOOGLE_PRIVATE_KEY):', error.message);
+        throw new Error(`Google Sheets 認証失敗 (GOOGLE_SERVICE_ACCOUNT_EMAIL + GOOGLE_PRIVATE_KEY): ${error.message}`);
+      }
+    }
+
+    // 3. ファイル認証（ローカル開発用フォールバック）
+    const fs = require('fs');
+    const keyFilePath = process.env.GOOGLE_SERVICE_ACCOUNT_PATH || 'google-service-account.json';
+    if (fs.existsSync(keyFilePath)) {
+      console.log(`[WorkTaskSyncService] Using service account file: ${keyFilePath}`);
+      try {
+        const auth = new google.auth.GoogleAuth({
+          keyFile: keyFilePath,
+          scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+        });
+
+        this.sheets = google.sheets({ version: 'v4', auth });
+        console.log('[WorkTaskSyncService] Authentication successful (keyFile)');
+        return this.sheets;
+      } catch (error: any) {
+        console.error(`[WorkTaskSyncService] Authentication failed (keyFile: ${keyFilePath}):`, error.message);
+        throw new Error(`Google Sheets 認証失敗 (keyFile: ${keyFilePath}): ${error.message}`);
+      }
+    }
+
+    // 4. いずれの認証情報も存在しない場合
+    const errorMessage =
+      'Google Sheets 認証情報が設定されていません。' +
+      '以下のいずれかの環境変数を設定してください: ' +
+      'GOOGLE_SERVICE_ACCOUNT_JSON, ' +
+      'GOOGLE_SERVICE_ACCOUNT_EMAIL + GOOGLE_PRIVATE_KEY, ' +
+      'または GOOGLE_SERVICE_ACCOUNT_PATH';
+    console.error('[WorkTaskSyncService] No authentication credentials found.');
+    throw new Error(errorMessage);
   }
 
   /**
