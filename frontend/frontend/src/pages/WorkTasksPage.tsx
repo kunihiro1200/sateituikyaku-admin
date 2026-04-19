@@ -206,25 +206,24 @@ export default function WorkTasksPage() {
                   '&.Mui-selected:hover': {
                     backgroundColor: 'action.selected',
                   },
-                  '& .MuiListItemText-primary': {
-                    color: cat.isDeadlinePast ? 'error.main' : 'inherit',
-                  },
                 }}
               >
                 <ListItemText 
                   primary={cat.label} 
                   primaryTypographyProps={{ 
-                    variant: 'body2',
+                    variant: cat.isDeadlineTomorrow ? 'body1' : 'body2',
                     sx: { 
                       overflow: 'hidden',
                       textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap'
+                      whiteSpace: 'nowrap',
+                      color: cat.isDeadlinePast ? 'error.main' : 'text.primary',
+                      fontWeight: cat.isDeadlineTomorrow ? 'bold' : 'normal',
                     }
                   }}
                   secondary={cat.deadline ? `締切: ${cat.deadline}` : undefined}
                   secondaryTypographyProps={{
                     variant: 'caption',
-                    color: 'error',
+                    color: cat.isDeadlinePast ? 'error' : 'text.secondary',
                   }}
                 />
                 <Badge

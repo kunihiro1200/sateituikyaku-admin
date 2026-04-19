@@ -42,6 +42,7 @@ export interface StatusCategory {
   count: number;
   deadline?: string; // 最も近い期日（M/D形式）
   isDeadlinePast?: boolean; // 期日が本日以前かどうか
+  isDeadlineTomorrow?: boolean; // 期日が明日かどうか
   filter: (task: WorkTask) => boolean;
 }
 
@@ -319,6 +320,7 @@ export const getStatusCategories = (tasks: WorkTask[]): StatusCategory[] => {
     // 期日が過去かどうかを判定（ステータス文字列から日付を抽出）
     const dateMatch = status.match(/(\d{1,2})\/(\d{1,2})/);
     let isDeadlinePast = false;
+    let isDeadlineTomorrow = false;
     let deadlineStr: string | undefined;
     if (dateMatch) {
       deadlineStr = `${dateMatch[1]}/${dateMatch[2]}`;
@@ -326,6 +328,10 @@ export const getStatusCategories = (tasks: WorkTask[]): StatusCategory[] => {
       const deadlineDate = new Date(year, parseInt(dateMatch[1]) - 1, parseInt(dateMatch[2]));
       deadlineDate.setHours(0, 0, 0, 0);
       isDeadlinePast = deadlineDate <= today();
+      // 翌日判定
+      const tomorrow = new Date(today());
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      isDeadlineTomorrow = deadlineDate.getTime() === tomorrow.getTime();
     }
 
     categories.push({
@@ -334,6 +340,7 @@ export const getStatusCategories = (tasks: WorkTask[]): StatusCategory[] => {
       count,
       deadline: deadlineStr,
       isDeadlinePast,
+      isDeadlineTomorrow,
       filter: (task: WorkTask) => calculateTaskStatus(task) === status,
     });
   });
