@@ -118,13 +118,14 @@ interface WorkTaskData {
 // CWカウントデータの型
 interface CwCountData {
   floorPlan300: string | null;
+  floorPlan500: string | null;
   siteRegistration: string | null;
 }
 
 // CWカウント取得フック
 // GASが定期同期するcw_countsテーブルから「現在計」を取得
 function useCwCounts(): CwCountData {
-  const [data, setData] = useState<CwCountData>({ floorPlan300: null, siteRegistration: null });
+  const [data, setData] = useState<CwCountData>({ floorPlan300: null, floorPlan500: null, siteRegistration: null });
 
   useEffect(() => {
     const fetchCwCounts = async () => {
@@ -132,13 +133,14 @@ function useCwCounts(): CwCountData {
         const { data: rows, error } = await supabase
           .from('cw_counts')
           .select('item_name, current_total')
-          .in('item_name', ['間取図（300円）', 'サイト登録']);
+          .in('item_name', ['間取図（300円）', '間取図（500円）', 'サイト登録']);
 
         if (error || !rows) return;
 
-        const result: CwCountData = { floorPlan300: null, siteRegistration: null };
+        const result: CwCountData = { floorPlan300: null, floorPlan500: null, siteRegistration: null };
         rows.forEach(row => {
           if (row.item_name === '間取図（300円）') result.floorPlan300 = row.current_total;
+          if (row.item_name === '間取図（500円）') result.floorPlan500 = row.current_total;
           if (row.item_name === 'サイト登録') result.siteRegistration = row.current_total;
         });
         setData(result);
@@ -277,7 +279,6 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
         const taskData = initialData as WorkTaskData;
         setData(taskData);
         setLoading(false);
-        checkDeadlineOnLoad(taskData);
         // バックグラウンドで詳細データを取得（差し替え）
         fetchData(true);
       } else {
@@ -307,7 +308,6 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
     try {
       const response = await api.get(`/api/work-tasks/${propertyNumber}`);
       setData(response.data);
-      checkDeadlineOnLoad(response.data);
     } catch (error) {
       console.error('Failed to fetch work task:', error);
       if (!background) setData(null);
@@ -778,7 +778,11 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
         </Typography>
         <ReadOnlyDisplayField
           label=""
-          value={cwCounts.floorPlan300 ? `間取図300円（CW)計⇒ ${cwCounts.floorPlan300}` : '-'}
+          value={
+            getValue('cw_request_email_2f_above')
+              ? (cwCounts.floorPlan500 ? `間取図500円（CW)計⇒ ${cwCounts.floorPlan500}` : '-')
+              : (cwCounts.floorPlan300 ? `間取図300円（CW)計⇒ ${cwCounts.floorPlan300}` : '-')
+          }
         />
         <EditableField label="間取図完了日*" field="floor_plan_completed_date" type="date" />
         <EditableYesNo label="間取図格納済み連絡メール" field="floor_plan_stored_email" />
