@@ -64,7 +64,8 @@ const FLOOR_PLAN_REQUEST_BODY = [
   '',
   'コメント：{コメント（間取図関係）}',
   '{道路寸法}',
-  '当社の希望納期：{間取図完了予定}格納先：{格納先URL}',
+  '当社の希望納期：{間取図完了予定}',
+  '格納先：{格納先URL}',
   '納期が難しかったり、ご不明点等がございましたら、こちらに返信していただければと思います。',
   '㈱いふうTEL:097-533-2022MAIL:tenant@ifoo-oita.com以上です',
 ].join('\n');
@@ -90,7 +91,7 @@ const SITE_REGISTRATION_REQUEST_BODY =
   '物件所在地：{物件所在}<br>' +
   '当社依頼日：{サイト登録依頼日} {サイト登録依頼者}<br>' +
   '当社の希望納期：{サイト登録納期予定日}<br>' +
-  'パノラマ：{パノラマ}<br>' +
+  '{パノラマ行}' +
   '間取図格納時期：{間取図完了予定}<br>' +
   '詳細：<a href="{スプシURL}">スプレッドシート</a><br>' +
   '格納先：<a href="{格納先URL}">格納先フォルダ</a><br>' +
@@ -119,7 +120,7 @@ const FLOOR_PLAN_STORED_BODY =
   '物件所在地：{物件所在}<br>' +
   '当社依頼日：{サイト登録依頼日} {サイト登録依頼者}<br>' +
   '当社の希望納期：{サイト登録納期予定日}<br>' +
-  'パノラマ：{パノラマ}<br>' +
+  '{パノラマ行}' +
   '詳細：<a href="{スプシURL}">スプレッドシート</a><br>' +
   'ご不明点等がございましたら、こちらに返信していただければと思います。<br><br>' +
   '㈱いふう<br>TEL:097-533-2022<br>MAIL: tenant@ifoo-oita.com' +
@@ -236,6 +237,11 @@ export class WorkTaskEmailNotificationService {
         'https://docs.google.com/document/d/145LKr_Q7ftxnRVvNalaKPO1NH_FqncOlOY5bqP5P48c/edit?usp=sharing<br>';
     }
     result = result.split('{メール配信コメント}').join(emailDistComment);
+
+    // {パノラマ行} を動的に解決（空なら非表示、値があれば「パノラマ：あり」）
+    const panoramaValue: string = data['panorama'] ?? '';
+    const panoramaLine = panoramaValue.trim() !== '' ? 'パノラマ：あり<br>' : '';
+    result = result.split('{パノラマ行}').join(panoramaLine);
 
     return result;
   }
