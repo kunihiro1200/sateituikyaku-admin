@@ -1394,6 +1394,67 @@ router.post('/:buyerNumber/sms-history', async (req: Request, res: Response) => 
   }
 });
 
+// 買付チャット送信（買付情報・買付外れ情報をGoogle Chatに送信）
+router.post('/:buyer_number/send-offer-chat', async (req: Request, res: Response) => {
+  try {
+    const { buyer_number } = req.params;
+    const { propertyNumber, offerComment } = req.body;
+
+    const buyer = await buyerService.getByBuyerNumber(buyer_number);
+    if (!buyer) {
+      return res.status(404).json({ success: false, error: '買主が見つかりませんでした' });
+    }
+
+    const properties = await buyerService.getLinkedProperties(buyer.buyer_number);
+    const property = properties && properties.length > 0 ? properties[0] : null;
+
+    const latestStatus = buyer.latest_status || '';
+    const isOfferFailed = !latestStatus.includes('買') || latestStatus === '買付外れました';
+
+    const frontendBaseUrl = 'https://sateituikyaku-admin-frontend.vercel.app';
+    const detailUrl = `${frontendBaseUrl}/buyers/${buyer_number}/viewing-result`;
+
+    let message: string;
+    if (isOfferFailed) {
+      message =
+        `【買付外れ】\n` +
+        `買主番号: ${buyer.buyer_number}\n` +
+        `買主名: ${buyer.name || '未設定'}\n` +
+        `物件番号: ${propertyNumber || property?.property_number || '未設定'}\n` +
+        `物件所在地: ${property?.address || property?.display_address || '未設定'}\n` +
+        `★最新状況: ${latestStatus || '（空欄）'}\n` +
+        `買付ハズレコメント: ${offerComment || '未記入'}\n` +
+        `${detailUrl}`;
+    } else {
+      message =
+        `【買付情報】\n` +
+        `買主番号: ${buyer.buyer_number}\n` +
+        `買主名: ${buyer.name || '未設定'}\n` +
+        `物件番号: ${propertyNumber || property?.property_number || '未設定'}\n` +
+        `物件所在地: ${property?.address || property?.display_address || '未設定'}\n` +
+        `★最新状況: ${latestStatus}\n` +
+        `買付コメント: ${offerComment || '未記入'}\n` +
+        `${detailUrl}`;
+    }
+
+    const OFFER_WEBHOOK_URL =
+      'https://chat.googleapis.com/v1/spaces/AAAA6iEDkiU/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=azlyf21pENCpLLUdJPjnRNXOzsIAP550xebOMVxYRMQ';
+
+    const { GoogleChatService } = require('../services/GoogleChatService');
+    const chatService = new GoogleChatService();
+    const sendResult = await chatService.sendMessage(OFFER_WEBHOOK_URL, message);
+
+    if (!sendResult.success) {
+      return res.status(500).json({ success: false, error: sendResult.error || 'チャット送信に失敗しました' });
+    }
+
+    res.json({ success: true, message: '送信しました' });
+  } catch (error: any) {
+    console.error('[POST /buyers/:buyer_number/send-offer-chat] Exception:', error);
+    res.status(500).json({ success: false, error: `チャット送信に失敗しました: ${error.message}` });
+  }
+});
+
 // 担当への確認事項をGoogle Chatに送信
 router.post('/:buyer_number/send-confirmation', async (req: Request, res: Response) => {
   try {
