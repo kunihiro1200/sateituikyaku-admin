@@ -260,8 +260,10 @@ export class WorkTaskEmailNotificationService {
       const beforeValue = beforeData[rule.triggerField];
       const afterValue = afterData[rule.triggerField];
 
-      // 変更がない場合はスキップ
-      if (beforeValue === afterValue) {
+      // 変更がない場合はスキップ（null/undefined は空文字として比較）
+      const normalizedBefore = beforeValue ?? '';
+      const normalizedAfter = afterValue ?? '';
+      if (normalizedBefore === normalizedAfter) {
         continue;
       }
 
