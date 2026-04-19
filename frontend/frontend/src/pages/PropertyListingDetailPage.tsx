@@ -544,6 +544,12 @@ export default function PropertyListingDetailPage() {
           // エラーをセットして買付情報セクションを編集モードに切り替え
           setOfferErrors(prev => ({ ...prev, offer_status: '必須項目です' }));
           setIsOfferEditMode(true);
+          // 警告ダイアログを表示してユーザーに理由を伝える
+          setSnackbar({
+            open: true,
+            message: 'ATBB状況を非公開にする場合、買付フィールドの入力が必要です',
+            severity: 'warning',
+          });
           return; // 保存処理を中断
         }
       }

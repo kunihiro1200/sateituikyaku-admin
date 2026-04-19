@@ -113,8 +113,8 @@ var COLUMN_MAPPING = {
   '司法書士': 'judicial_scrivener',
   '司法書士連絡先': 'judicial_scrivener_contact',
   '口コミカウント用': 'review_count_field',
-  'サイト登録依頼先': 'site_registration_requester',
-  'サイト登録依頼者': 'site_registration_requestor',
+  'サイト登録依頼先': 'site_registration_requestor',
+  'サイト登録依頼者': 'site_registration_requester',
   '広瀬さんへ依頼': 'hirose_request',
   '物件一覧に行追加': 'property_list_row_added',
   '物件ファイル': 'property_file',
@@ -173,7 +173,7 @@ var TYPE_CONVERSIONS = {
   'mediation_deadline': 'date',
   'site_registration_deadline': 'date',
   'site_registration_request_date': 'date',
-  'site_registration_due_date': 'date',
+  'site_registration_due_date': 'datetime',
   'site_registration_confirm_request_date': 'date',
   'distribution_date': 'date',
   'publish_scheduled_date': 'date',
@@ -762,6 +762,7 @@ function syncCwCounts() {
     // 同期対象の項目
     var targets = [
       '間取図（300円）',
+      '間取図（500円）',
       'サイト登録'
     ];
 
