@@ -25,9 +25,11 @@ export interface ChatNotificationData {
  */
 export class ChatNotificationService {
   private webhookUrl: string;
+  private exclusiveWebhookUrl: string;
 
   constructor() {
     this.webhookUrl = process.env.GOOGLE_CHAT_WEBHOOK_URL || '';
+    this.exclusiveWebhookUrl = process.env.GOOGLE_CHAT_EXCLUSIVE_WEBHOOK_URL || '';
   }
 
   /**
@@ -84,7 +86,7 @@ export class ChatNotificationService {
         callPageUrl: seller.call_page_url,
       });
 
-      return await this.sendToGoogleChat(message);
+      return await this.sendToGoogleChat(message, this.exclusiveWebhookUrl);
     } catch (error) {
       console.error('Send exclusive contract notification error:', error);
       throw error;
@@ -320,13 +322,14 @@ ${data.notes || '物件紹介文が入力されていません'}
    * @param message - Message text
    * @returns Success status
    */
-  private async sendToGoogleChat(message: string): Promise<boolean> {
+  private async sendToGoogleChat(message: string, webhookUrl?: string): Promise<boolean> {
     try {
-      if (!this.webhookUrl) {
+      const url = webhookUrl || this.webhookUrl;
+      if (!url) {
         throw new Error('Google Chat webhook URL is not configured (GOOGLE_CHAT_WEBHOOK_URL)');
       }
 
-      const response = await axios.post(this.webhookUrl, {
+      const response = await axios.post(url, {
         text: message,
       });
 
