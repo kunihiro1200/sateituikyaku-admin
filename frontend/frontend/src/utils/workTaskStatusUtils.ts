@@ -230,61 +230,50 @@ export const calculateTaskStatus = (task: WorkTask): string => {
   return '';
 };
 
-// ステータスカテゴリ定義
+// カテゴリの優先順位（ステータスのプレフィックスで判定）
+const CATEGORY_ORDER = [
+  '売買契約　営業確認中',
+  '売買契約 入力待ち',
+  'サイト登録依頼してください',
+  '決済完了チャット送信未',
+  '入金確認未',
+  '要台帳作成',
+  '売買契約 製本待ち',
+  '売買契約 依頼未',
+  'サイト依頼済み納品待ち',
+  'サイト登録要確認',
+  '媒介作成_締日',
+  '保留',
+];
+
+const getCategoryOrder = (status: string): number => {
+  for (let i = 0; i < CATEGORY_ORDER.length; i++) {
+    if (status.startsWith(CATEGORY_ORDER[i])) return i;
+  }
+  return CATEGORY_ORDER.length;
+};
+
+// ステータスカテゴリ定義（締切日ごとに分割）
 export const getStatusCategories = (tasks: WorkTask[]): StatusCategory[] => {
+  // ステータス文字列ごとにカウント（日付・担当者込みで完全一致グループ化）
   const statusCounts: Record<string, number> = {};
-  
-  // 各タスクのステータスを計算してカウント
+
   tasks.forEach(task => {
     const status = calculateTaskStatus(task);
-    // ステータスの先頭部分でグループ化（日付や担当者を除く）
-    const statusKey = getStatusKey(status);
-    if (statusKey) {
-      statusCounts[statusKey] = (statusCounts[statusKey] || 0) + 1;
+    if (status) {
+      statusCounts[status] = (statusCounts[status] || 0) + 1;
     }
   });
 
-  // カテゴリ定義（順序付き）
-  const categoryDefinitions: { key: string; label: string; matchPrefix: string }[] = [
-    { key: 'sales_contract_confirm', label: '売買契約　営業確認中', matchPrefix: '売買契約　営業確認中' },
-    { key: 'sales_contract_input', label: '売買契約 入力待ち', matchPrefix: '売買契約 入力待ち' },
-    { key: 'site_registration_request', label: 'サイト登録依頼してください', matchPrefix: 'サイト登録依頼してください' },
-    { key: 'settlement_chat_pending', label: '決済完了チャット送信未', matchPrefix: '決済完了チャット送信未' },
-    { key: 'payment_pending', label: '入金確認未', matchPrefix: '入金確認未' },
-    { key: 'ledger_required', label: '要台帳作成', matchPrefix: '要台帳作成' },
-    { key: 'sales_contract_binding', label: '売買契約 製本待ち', matchPrefix: '売買契約 製本待ち' },
-    { key: 'sales_contract_unrequested', label: '売買契約 依頼未', matchPrefix: '売買契約 依頼未' },
-    { key: 'site_delivery_pending', label: 'サイト依頼済み納品待ち', matchPrefix: 'サイト依頼済み納品待ち' },
-    { key: 'site_registration_check', label: 'サイト登録要確認', matchPrefix: 'サイト登録要確認' },
-    { key: 'mediation_deadline', label: '媒介作成_締日', matchPrefix: '媒介作成_締日' },
-    { key: 'on_hold', label: '保留', matchPrefix: '保留' },
-  ];
-
-  // 期日を表示するカテゴリと対応するフィールド
-  const deadlineFieldMap: Record<string, keyof WorkTask> = {
-    sales_contract_confirm: 'sales_contract_deadline',
-    site_registration_request: 'site_registration_deadline',
-    site_delivery_pending: 'site_registration_deadline',
-  };
-
-  // カテゴリごとの最も近い期日を計算
-  const categoryDeadlines: Record<string, string> = {};
-  const categoryDeadlineDates: Record<string, Date> = {};
-  Object.entries(deadlineFieldMap).forEach(([categoryKey, field]) => {
-    const matchPrefix = categoryDefinitions.find(d => d.key === categoryKey)?.matchPrefix;
-    if (!matchPrefix) return;
-    const dates = tasks
-      .filter(task => calculateTaskStatus(task).startsWith(matchPrefix))
-      .map(task => parseDate(task[field] as string))
-      .filter((d): d is Date => d !== null);
-    if (dates.length > 0) {
-      const minDate = dates.reduce((a, b) => (a < b ? a : b));
-      categoryDeadlines[categoryKey] = formatDateMD(minDate.toISOString());
-      categoryDeadlineDates[categoryKey] = minDate;
-    }
+  // ステータス文字列を優先順位・日付順でソート
+  const sortedStatuses = Object.keys(statusCounts).sort((a, b) => {
+    const orderA = getCategoryOrder(a);
+    const orderB = getCategoryOrder(b);
+    if (orderA !== orderB) return orderA - orderB;
+    // 同じカテゴリ内は文字列順（日付が含まれるので自然にソートされる）
+    return a.localeCompare(b, 'ja');
   });
 
-  // 件数が0より大きいカテゴリのみ返す
   const categories: StatusCategory[] = [
     {
       key: 'all',
@@ -294,20 +283,31 @@ export const getStatusCategories = (tasks: WorkTask[]): StatusCategory[] => {
     },
   ];
 
-  categoryDefinitions.forEach(def => {
-    const count = statusCounts[def.key] || 0;
-    if (count > 0) {
-      categories.push({
-        key: def.key,
-        label: def.label,
-        count,
-        deadline: categoryDeadlines[def.key],
-        isDeadlinePast: categoryDeadlineDates[def.key]
-          ? categoryDeadlineDates[def.key] <= today()
-          : false,
-        filter: (task: WorkTask) => calculateTaskStatus(task).startsWith(def.matchPrefix),
-      });
+  sortedStatuses.forEach(status => {
+    const count = statusCounts[status];
+    // キーはステータス文字列をそのまま使用（URLセーフにエンコード）
+    const key = `status:${status}`;
+
+    // 期日が過去かどうかを判定（ステータス文字列から日付を抽出）
+    const dateMatch = status.match(/(\d{1,2})\/(\d{1,2})/);
+    let isDeadlinePast = false;
+    let deadlineStr: string | undefined;
+    if (dateMatch) {
+      deadlineStr = `${dateMatch[1]}/${dateMatch[2]}`;
+      const year = new Date().getFullYear();
+      const deadlineDate = new Date(year, parseInt(dateMatch[1]) - 1, parseInt(dateMatch[2]));
+      deadlineDate.setHours(0, 0, 0, 0);
+      isDeadlinePast = deadlineDate <= today();
     }
+
+    categories.push({
+      key,
+      label: status,
+      count,
+      deadline: deadlineStr,
+      isDeadlinePast,
+      filter: (task: WorkTask) => calculateTaskStatus(task) === status,
+    });
   });
 
   return categories;
@@ -334,7 +334,14 @@ const getStatusKey = (status: string): string => {
 // タスクをステータスでフィルタリング
 export const filterTasksByStatus = (tasks: WorkTask[], statusKey: string): WorkTask[] => {
   if (statusKey === 'all') return tasks;
-  
+
+  // 新形式: "status:ステータス文字列"
+  if (statusKey.startsWith('status:')) {
+    const targetStatus = statusKey.slice('status:'.length);
+    return tasks.filter(task => calculateTaskStatus(task) === targetStatus);
+  }
+
+  // 旧形式との後方互換（念のため残す）
   return tasks.filter(task => {
     const status = calculateTaskStatus(task);
     const taskStatusKey = getStatusKey(status);
