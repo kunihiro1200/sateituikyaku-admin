@@ -251,9 +251,11 @@ export class WorkTaskEmailNotificationService {
     const panoramaLine = panoramaValue.trim() !== '' ? 'パノラマ：あり<br>' : '';
     result = result.split('{パノラマ行}').join(panoramaLine);
 
-    // {道路寸法行} を動的に解決（空なら非表示）
+    // {道路寸法行} を動的に解決（種別=「土」かつ値がある場合のみ表示）
     const roadDimValue: string = data['road_dimensions'] ?? '';
-    const roadDimLine = roadDimValue.trim() !== '' ? roadDimValue : '';
+    const propertyTypeValue: string = data['property_type'] ?? '';
+    const isLandType = propertyTypeValue.trim() === '土';
+    const roadDimLine = (isLandType && roadDimValue.trim() !== '') ? roadDimValue : '';
     result = result.split('{道路寸法行}').join(roadDimLine);
 
     return result;
