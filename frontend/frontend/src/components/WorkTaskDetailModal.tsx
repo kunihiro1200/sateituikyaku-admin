@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from 'react';
-import { flushSync } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import PageNavigation from './PageNavigation';
 import {
@@ -369,16 +368,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
   };
 
   const handleFieldChange = (field: string, value: any) => {
-    // フィールド変更前にスクロール位置を保存
-    scrollPositionRef.current = dialogContentRef.current?.scrollTop ?? 0;
-    // flushSync で同期的に state 更新し、直後にスクロール位置を復元
-    flushSync(() => {
-      setEditedData(prev => ({ ...prev, [field]: value }));
-    });
-    // 同期的に復元（flushSync 後は DOM が更新済み）
-    if (dialogContentRef.current) {
-      dialogContentRef.current.scrollTop = scrollPositionRef.current;
-    }
+    setEditedData(prev => ({ ...prev, [field]: value }));
 
     // 締日超過チェック対象フィールド
     const DEADLINE_CHECK_FIELDS: Record<string, string> = {
@@ -434,12 +424,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
 
   const hasChanges = Object.keys(editedData).length > 0;
 
-  // DialogContent の ref（スクロール位置保持用）
-  const dialogContentRef = useRef<HTMLDivElement>(null);
-  const scrollPositionRef = useRef<number>(0);
 
-  // flushSync で同期的に復元しているため useEffect での復元は不要
-  // （念のため残しておくが、通常は flushSync 側で処理される）
 
   // 編集可能テキストフィールド
   const EditableField = ({ label, field, type = 'text' }: { label: string; field: string; type?: string }) => (
@@ -519,7 +504,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
               key={opt}
               variant={getValue(field) === opt ? 'contained' : 'outlined'}
               color={getValue(field) === opt ? 'primary' : 'inherit'}
-              onClick={() => handleFieldChange(field, opt)}
+              onClick={(e) => { (e.currentTarget as HTMLButtonElement).blur(); handleFieldChange(field, opt); }}
             >
               {opt}
             </Button>
@@ -540,12 +525,12 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
           <Button
             variant={getValue(field) === 'Y' ? 'contained' : 'outlined'}
             color={getValue(field) === 'Y' ? 'primary' : 'inherit'}
-            onClick={() => handleFieldChange(field, getValue(field) === 'Y' ? null : 'Y')}
+            onClick={(e) => { (e.currentTarget as HTMLButtonElement).blur(); handleFieldChange(field, getValue(field) === 'Y' ? null : 'Y'); }}
           >Y</Button>
           <Button
             variant={getValue(field) === 'N' ? 'contained' : 'outlined'}
             color={getValue(field) === 'N' ? 'inherit' : 'inherit'}
-            onClick={() => handleFieldChange(field, getValue(field) === 'N' ? null : 'N')}
+            onClick={(e) => { (e.currentTarget as HTMLButtonElement).blur(); handleFieldChange(field, getValue(field) === 'N' ? null : 'N'); }}
           >N</Button>
         </ButtonGroup>
       </Grid>
@@ -593,7 +578,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
             size="small"
             variant={getValue('cadastral_map_field') === opt ? 'contained' : 'outlined'}
             color="primary"
-            onClick={() => handleFieldChange('cadastral_map_field', opt)}
+            onClick={(e) => { (e.currentTarget as HTMLButtonElement).blur(); handleFieldChange('cadastral_map_field', opt); }}
             sx={{ flex: 1, py: 0.5, fontWeight: getValue('cadastral_map_field') === opt ? 'bold' : 'normal', borderRadius: 1 }}
           >
             {opt}
@@ -1114,7 +1099,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
             {tabLabels.map((label, index) => (<Tab key={index} label={label} />))}
           </Tabs>
         </Box>
-        <DialogContent ref={dialogContentRef} sx={{ p: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+        <DialogContent sx={{ p: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
           {loading ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', flex: 1 }}>
               <CircularProgress />
