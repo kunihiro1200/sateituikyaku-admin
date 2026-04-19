@@ -1,7 +1,7 @@
-import { Router, Request, Response } from 'express';
+﻿import { Router, Request, Response } from 'express';
 import { body, param, validationResult } from 'express-validator';
 import { authenticate } from '../middleware/auth';
-import { chatNotificationService } from '../services/ChatNotificationService';
+import { ChatNotificationService } from '../services/ChatNotificationService';
 
 const router = Router();
 
@@ -34,7 +34,7 @@ router.post(
       }
 
       const { sellerId } = req.params;
-      const success = await chatNotificationService.sendGeneralContractNotification(
+      const success = await new ChatNotificationService().sendGeneralContractNotification(
         sellerId,
         req.body
       );
@@ -79,7 +79,7 @@ router.post(
       }
 
       const { sellerId } = req.params;
-      const success = await chatNotificationService.sendExclusiveContractNotification(
+      const success = await new ChatNotificationService().sendExclusiveContractNotification(
         sellerId,
         req.body
       );
@@ -125,7 +125,7 @@ router.post(
       }
 
       const { sellerId } = req.params;
-      const success = await chatNotificationService.sendPostVisitOtherDecisionNotification(
+      const success = await new ChatNotificationService().sendPostVisitOtherDecisionNotification(
         sellerId,
         req.body
       );
@@ -170,7 +170,7 @@ router.post(
       }
 
       const { sellerId } = req.params;
-      const success = await chatNotificationService.sendPreVisitOtherDecisionNotification(
+      const success = await new ChatNotificationService().sendPreVisitOtherDecisionNotification(
         sellerId,
         req.body
       );
@@ -215,7 +215,7 @@ router.post(
 
       const { sellerId } = req.params;
       const { introduction } = req.body;
-      const success = await chatNotificationService.sendPropertyIntroductionNotification(
+      const success = await new ChatNotificationService().sendPropertyIntroductionNotification(
         sellerId,
         introduction
       );
@@ -240,7 +240,7 @@ router.post(
  */
 router.get('/status', async (_req: Request, res: Response) => {
   try {
-    const configured = chatNotificationService.isConfigured();
+    const configured = new ChatNotificationService().isConfigured();
     res.json({ configured });
   } catch (error: any) {
     console.error('Check chat notification status error:', error);
@@ -255,3 +255,4 @@ router.get('/status', async (_req: Request, res: Response) => {
 });
 
 export default router;
+

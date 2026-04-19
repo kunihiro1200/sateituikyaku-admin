@@ -74,6 +74,10 @@ export class ChatNotificationService {
     data: ChatNotificationData
   ): Promise<boolean> {
     try {
+      if (!this.exclusiveWebhookUrl) {
+        throw new Error('GOOGLE_CHAT_EXCLUSIVE_WEBHOOK_URL is not configured');
+      }
+
       const seller = await this.getSellerInfo(sellerId);
       
       const message = this.formatExclusiveContractMessage({
@@ -323,21 +327,22 @@ ${data.notes || '物件紹介文が入力されていません'}
    * @returns Success status
    */
   private async sendToGoogleChat(message: string, webhookUrl?: string): Promise<boolean> {
-    try {
-      const url = webhookUrl || this.webhookUrl;
-      if (!url) {
-        throw new Error('Google Chat webhook URL is not configured (GOOGLE_CHAT_WEBHOOK_URL)');
-      }
-
-      const response = await axios.post(url, {
-        text: message,
-      });
-
-      return response.status === 200;
-    } catch (error) {
-      console.error('Send to Google Chat error:', error);
-      return false;
+    const url = webhookUrl || this.webhookUrl;
+    if (!url) {
+      throw new Error('Google Chat webhook URL is not configured');
     }
+
+    console.log('[ChatNotificationService] Sending to URL:', url.substring(0, 60) + '...');
+
+    const response = await axios.post(url, {
+      text: message,
+    });
+
+    if (response.status !== 200) {
+      throw new Error(`Google Chat returned status ${response.status}`);
+    }
+
+    return true;
   }
 
   /**
@@ -351,4 +356,5 @@ ${data.notes || '物件紹介文が入力されていません'}
 }
 
 // Export singleton instance
+// Note: インスタンスはリクエスト時に環境変数を読み込む
 export const chatNotificationService = new ChatNotificationService();
