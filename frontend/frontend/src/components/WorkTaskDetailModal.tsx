@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { flushSync } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import PageNavigation from './PageNavigation';
 import {
@@ -370,7 +371,14 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
   const handleFieldChange = (field: string, value: any) => {
     // フィールド変更前にスクロール位置を保存
     scrollPositionRef.current = dialogContentRef.current?.scrollTop ?? 0;
-    setEditedData(prev => ({ ...prev, [field]: value }));
+    // flushSync で同期的に state 更新し、直後にスクロール位置を復元
+    flushSync(() => {
+      setEditedData(prev => ({ ...prev, [field]: value }));
+    });
+    // 同期的に復元（flushSync 後は DOM が更新済み）
+    if (dialogContentRef.current) {
+      dialogContentRef.current.scrollTop = scrollPositionRef.current;
+    }
 
     // 締日超過チェック対象フィールド
     const DEADLINE_CHECK_FIELDS: Record<string, string> = {
@@ -430,12 +438,8 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
   const dialogContentRef = useRef<HTMLDivElement>(null);
   const scrollPositionRef = useRef<number>(0);
 
-  // レンダリング後にスクロール位置を復元
-  useEffect(() => {
-    if (dialogContentRef.current) {
-      dialogContentRef.current.scrollTop = scrollPositionRef.current;
-    }
-  });
+  // flushSync で同期的に復元しているため useEffect での復元は不要
+  // （念のため残しておくが、通常は flushSync 側で処理される）
 
   // 編集可能テキストフィールド
   const EditableField = ({ label, field, type = 'text' }: { label: string; field: string; type?: string }) => (
@@ -672,9 +676,9 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
     const siteDueDateLabel = `サイト登録納期予定日${isSiteDueDateRequired ? '*（必須）' : '*'}`;
 
     return (
-    <Box sx={{ display: 'flex', gap: 0, height: '100%' }}>
+    <Box sx={{ display: 'flex', gap: 0, height: '100%', overflow: 'hidden' }}>
       {/* 左側：登録関係 */}
-      <Box sx={{ flex: 1, p: 2, borderRight: '2px solid', borderColor: 'divider', overflowY: 'auto' }}>
+      <Box sx={{ flex: 1, p: 2, borderRight: '2px solid', borderColor: 'divider', overflowY: 'auto', minHeight: 0 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
           <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#1565c0' }}>【登録関係】</Typography>
           <Button
@@ -782,7 +786,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
       </Box>
 
       {/* 右側：確認関係 */}
-      <Box sx={{ flex: 1, p: 2, overflowY: 'auto' }}>
+      <Box sx={{ flex: 1, p: 2, overflowY: 'auto', minHeight: 0 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
           <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#2e7d32' }}>【確認関係】</Typography>
           <Button
@@ -1110,13 +1114,13 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
             {tabLabels.map((label, index) => (<Tab key={index} label={label} />))}
           </Tabs>
         </Box>
-        <DialogContent ref={dialogContentRef} sx={{ minHeight: 400 }}>
+        <DialogContent ref={dialogContentRef} sx={{ p: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
           {loading ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 300 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', flex: 1 }}>
               <CircularProgress />
             </Box>
           ) : !data ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 300 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', flex: 1 }}>
               <Typography color="text.secondary">データが見つかりません</Typography>
             </Box>
           ) : (
