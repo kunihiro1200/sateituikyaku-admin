@@ -280,6 +280,37 @@ app.get('/api/cron/sync-inquiries', async (req, res) => {
 });
 
 
+// Cron Job: 業務リスト締切日当日メール通知（毎日 UTC 00:00 = JST 09:00 に実行）
+app.get('/api/cron/work-task-deadline-notification', async (req, res) => {
+  try {
+    console.log('[Cron WorkTaskDeadline] 業務リスト締切日通知ジョブ開始');
+
+    const authHeader = req.headers.authorization;
+    if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+      console.error('[Cron WorkTaskDeadline] 認証失敗');
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const { WorkTaskDeadlineNotificationService } = await import('./services/WorkTaskDeadlineNotificationService');
+    const service = new WorkTaskDeadlineNotificationService();
+
+    const targets = await service.getTodayDeadlineTargets();
+    console.log(`[Cron WorkTaskDeadline] 当日締切対象: ${targets.length}件`);
+
+    if (targets.length === 0) {
+      return res.status(200).json({ success: true, sent: 0, failed: 0, skipped: 0 });
+    }
+
+    const result = await service.sendNotifications(targets);
+    console.log(`[Cron WorkTaskDeadline] 完了: 送信成功=${result.sent}, 失敗=${result.failed}, スキップ=${result.skipped}`);
+
+    return res.status(200).json({ success: true, ...result });
+  } catch (error: any) {
+    console.error('[Cron WorkTaskDeadline] エラー:', error.message);
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // Cron Job: 値下げ予約日メール配信（毎日 UTC 00:00 = JST 09:00 に実行）
 // ⚠️ 注意: 他のルートより前に設定（より具体的なルートを優先）
 app.get('/api/cron/price-reduction-notification', async (req, res) => {
