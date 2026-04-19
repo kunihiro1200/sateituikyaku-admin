@@ -28,6 +28,7 @@ import { ValidationService } from '../services/ValidationService';
 import PreDayEmailButton from '../components/PreDayEmailButton';
 import SmsIcon from '@mui/icons-material/Sms';
 import { useAuthStore } from '../store/authStore';
+import { OfferFailedChatSentPopup } from '../components/OfferFailedChatSentPopup';
 
 /**
  * カレンダーイベントのタイトルを生成する
@@ -198,6 +199,7 @@ export default function BuyerViewingResultPage() {
     severity: 'success',
   });
   const [isOfferFailedFlag, setIsOfferFailedFlag] = useState(false); // 買付外れましたフラグ
+  const [offerFailedChatSentPopupOpen, setOfferFailedChatSentPopupOpen] = useState(false);
   const [normalInitials, setNormalInitials] = useState<string[]>([]);
   const [calendarOpened, setCalendarOpened] = useState(false); // カレンダーを開いたかどうか
   const [leaveWarningDialog, setLeaveWarningDialog] = useState<{ open: boolean; targetUrl: string }>({ open: false, targetUrl: '' });
@@ -684,6 +686,11 @@ export default function BuyerViewingResultPage() {
     }
   };
 
+  const handleOfferFailedChatSentPopupOk = () => {
+    setOfferFailedChatSentPopupOpen(false);
+    navigate(`/buyers/${buyer_number}`);
+  };
+
   const handleCloseSnackbar = () => {
     setSnackbar({ ...snackbar, open: false });
   };
@@ -767,11 +774,15 @@ export default function BuyerViewingResultPage() {
       });
 
       if (response.data.success) {
-        setSnackbar({
-          open: true,
-          message: 'Google Chatに送信しました',
-          severity: 'success',
-        });
+        if (isOfferFailed()) {
+          setOfferFailedChatSentPopupOpen(true);
+        } else {
+          setSnackbar({
+            open: true,
+            message: 'Google Chatに送信しました',
+            severity: 'success',
+          });
+        }
       } else {
         throw new Error(response.data.error || 'チャット送信に失敗しました');
       }
@@ -1754,6 +1765,11 @@ export default function BuyerViewingResultPage() {
           {snackbar.message}
         </Alert>
       </Snackbar>
+
+      <OfferFailedChatSentPopup
+        open={offerFailedChatSentPopupOpen}
+        onOk={handleOfferFailedChatSentPopupOk}
+      />
 
       {/* カレンダー未開封の離脱警告ダイアログ */}
       <Dialog open={leaveWarningDialog.open} onClose={() => setLeaveWarningDialog({ open: false, targetUrl: '' })} maxWidth="xs" fullWidth>
