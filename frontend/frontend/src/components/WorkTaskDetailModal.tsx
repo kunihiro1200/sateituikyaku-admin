@@ -661,7 +661,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
     const siteDueDateLabel = `サイト登録納期予定日${isSiteDueDateRequired ? '*（必須）' : '*'}`;
 
     return (
-    <Box sx={{ display: 'flex', gap: 0, height: '100%', overflow: 'hidden' }}>
+    <Box sx={{ display: 'flex', gap: 0, flex: 1, minHeight: 0, overflow: 'hidden' }}>
       {/* 左側：登録関係 */}
       <Box sx={{ flex: 1, p: 2, borderRight: '2px solid', borderColor: 'divider', overflowY: 'auto', minHeight: 0 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
@@ -997,7 +997,12 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
 
   return (
     <>
-      <Dialog open={open} onClose={onClose} fullScreen>
+      <Dialog
+          open={open}
+          onClose={onClose}
+          fullScreen
+          PaperProps={{ sx: { display: 'flex', flexDirection: 'column', overflow: 'hidden' } }}
+        >
         <DialogTitle sx={{ p: 1, pb: 0 }}>
           {/* 1行目: ナビゲーションバー */}
           <Box sx={{ mb: 0.5 }}>
@@ -1099,7 +1104,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
             {tabLabels.map((label, index) => (<Tab key={index} label={label} />))}
           </Tabs>
         </Box>
-        <DialogContent sx={{ p: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+        <DialogContent sx={{ p: 0, flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
           {loading ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', flex: 1 }}>
               <CircularProgress />
