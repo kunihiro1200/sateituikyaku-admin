@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import PageNavigation from './PageNavigation';
 import {
@@ -274,6 +274,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
   const [tabIndex, setTabIndex] = useState(0);
   const navigate = useNavigate();
   const normalInitials = useNormalInitials();
+  const cwCounts = useCwCounts();
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [data, setData] = useState<WorkTaskData | null>(null);
@@ -367,6 +368,8 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
   };
 
   const handleFieldChange = (field: string, value: any) => {
+    // フィールド変更前にスクロール位置を保存
+    scrollPositionRef.current = dialogContentRef.current?.scrollTop ?? 0;
     setEditedData(prev => ({ ...prev, [field]: value }));
 
     // 締日超過チェック対象フィールド
@@ -422,6 +425,17 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
   };
 
   const hasChanges = Object.keys(editedData).length > 0;
+
+  // DialogContent の ref（スクロール位置保持用）
+  const dialogContentRef = useRef<HTMLDivElement>(null);
+  const scrollPositionRef = useRef<number>(0);
+
+  // レンダリング後にスクロール位置を復元
+  useEffect(() => {
+    if (dialogContentRef.current) {
+      dialogContentRef.current.scrollTop = scrollPositionRef.current;
+    }
+  });
 
   // 編集可能テキストフィールド
   const EditableField = ({ label, field, type = 'text' }: { label: string; field: string; type?: string }) => (
@@ -586,7 +600,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
   );
 
   // サイト登録セクション
-  const SiteRegistrationSection = () => {
+  const SiteRegistrationSection = ({ cwCounts }: { cwCounts: CwCountData }) => {
     // 変更4: サイト登録納期予定日の初期値ロジック
     const getDefaultDueDate = () => {
       const today = new Date();
@@ -652,9 +666,6 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
     };
 
     const emailDistAutoText = getEmailDistributionAutoText();
-
-    // CWカウントデータを取得
-    const cwCounts = useCwCounts();
 
     // 変更4: cw_request_email_site が空でない場合は必須表示
     const isSiteDueDateRequired = !!(getValue('cw_request_email_site'));
@@ -1099,7 +1110,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
             {tabLabels.map((label, index) => (<Tab key={index} label={label} />))}
           </Tabs>
         </Box>
-        <DialogContent sx={{ minHeight: 400 }}>
+        <DialogContent ref={dialogContentRef} sx={{ minHeight: 400 }}>
           {loading ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 300 }}>
               <CircularProgress />
@@ -1111,7 +1122,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
           ) : (
             <>
               {tabIndex === 0 && <MediationSection />}
-              {tabIndex === 1 && <SiteRegistrationSection />}
+              {tabIndex === 1 && <SiteRegistrationSection cwCounts={cwCounts} />}
               {tabIndex === 2 && <ContractSettlementSection />}
               {tabIndex === 3 && <JudicialScrivenerSection />}
             </>
