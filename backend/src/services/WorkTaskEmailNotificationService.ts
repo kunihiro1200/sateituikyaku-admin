@@ -63,7 +63,7 @@ const FLOOR_PLAN_REQUEST_BODY = [
   '物件所在地：{物件所在}',
   '',
   'コメント：{コメント（間取図関係）}',
-  '{道路寸法}',
+  '{道路寸法行}',
   '当社の希望納期：{間取図完了予定}',
   '格納先：{格納先URL}',
   '納期が難しかったり、ご不明点等がございましたら、こちらに返信していただければと思います。',
@@ -250,6 +250,11 @@ export class WorkTaskEmailNotificationService {
     const panoramaValue: string = data['panorama'] ?? '';
     const panoramaLine = panoramaValue.trim() !== '' ? 'パノラマ：あり<br>' : '';
     result = result.split('{パノラマ行}').join(panoramaLine);
+
+    // {道路寸法行} を動的に解決（空なら非表示）
+    const roadDimValue: string = data['road_dimensions'] ?? '';
+    const roadDimLine = roadDimValue.trim() !== '' ? roadDimValue : '';
+    result = result.split('{道路寸法行}').join(roadDimLine);
 
     return result;
   }
