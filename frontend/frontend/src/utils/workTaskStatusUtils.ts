@@ -199,7 +199,10 @@ export const calculateTaskStatus = (task: WorkTask): string => {
     task.site_registration_confirmed !== '完了' &&
     dateGte(task.site_registration_deadline, SITE_REG_BASE_DATE)
   ) {
-    return 'サイト依頼済み納品待ち';
+    const deadline = formatDateMD(task.site_registration_deadline);
+    return deadline
+      ? `サイト依頼済み納品待ち ${deadline}`
+      : 'サイト依頼済み納品待ち';
   }
 
   // 10. サイト登録要確認
@@ -228,6 +231,31 @@ export const calculateTaskStatus = (task: WorkTask): string => {
 
   // デフォルト: 空
   return '';
+};
+
+// カテゴリグループの背景色マッピング（プレフィックス → 背景色）
+const CATEGORY_GROUP_COLORS: [string, string][] = [
+  ['売買契約　営業確認中',   '#e3f2fd'],
+  ['売買契約 入力待ち',      '#e3f2fd'],
+  ['売買契約 製本待ち',      '#e3f2fd'],
+  ['売買契約 依頼未',        '#e3f2fd'],
+  ['サイト登録依頼してください', '#f3e5f5'],
+  ['サイト依頼済み納品待ち', '#f3e5f5'],
+  ['サイト登録要確認',       '#f3e5f5'],
+  ['決済完了チャット送信未', '#fff8e1'],
+  ['入金確認未',             '#fff8e1'],
+  ['媒介作成_締日',          '#e8f5e9'],
+  ['要台帳作成',             '#fce4ec'],
+  ['保留',                   '#f5f5f5'],
+];
+
+// カテゴリプレフィックスから背景色を返す関数
+export const getCategoryGroupColor = (label: string): string | undefined => {
+  if (label === 'All') return undefined;
+  for (const [prefix, color] of CATEGORY_GROUP_COLORS) {
+    if (label.startsWith(prefix)) return color;
+  }
+  return undefined;
 };
 
 // カテゴリの優先順位（ステータスのプレフィックスで判定）

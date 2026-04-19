@@ -24,7 +24,7 @@ import { Search as SearchIcon } from '@mui/icons-material';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import api from '../services/api';
 import WorkTaskDetailModal from '../components/WorkTaskDetailModal';
-import { WorkTask, getStatusCategories, filterTasksByStatus, calculateTaskStatus } from '../utils/workTaskStatusUtils';
+import { WorkTask, getStatusCategories, filterTasksByStatus, calculateTaskStatus, getCategoryGroupColor } from '../utils/workTaskStatusUtils';
 import PageNavigation from '../components/PageNavigation';
 import { pageDataCache, CACHE_KEYS } from '../store/pageDataCache';
 
@@ -195,8 +195,20 @@ export default function WorkTasksPage() {
                 onClick={() => handleCategoryChange(cat.key)}
                 sx={{ 
                   py: 0.5,
-                  bgcolor: cat.isDeadlinePast ? '#fff3e0' : undefined,
-                  '&.Mui-selected': { bgcolor: 'action.selected' }
+                  backgroundColor: getCategoryGroupColor(cat.label),
+                  '&:hover': {
+                    backgroundColor: getCategoryGroupColor(cat.label),
+                    filter: 'brightness(0.95)',
+                  },
+                  '&.Mui-selected': {
+                    backgroundColor: 'action.selected',
+                  },
+                  '&.Mui-selected:hover': {
+                    backgroundColor: 'action.selected',
+                  },
+                  '& .MuiListItemText-primary': {
+                    color: cat.isDeadlinePast ? 'error.main' : 'inherit',
+                  },
                 }}
               >
                 <ListItemText 

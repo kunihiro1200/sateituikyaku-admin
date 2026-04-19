@@ -233,6 +233,10 @@ function syncPropertyListings() {
 
     Logger.log('データ行数: ' + (lastRow - 1));
 
+    // 業務依頼シートから公開予定日データを取得（sidebar_status計算用）
+    var gyomuListMap = loadGyomuListData(ss);
+    Logger.log('業務依頼データ読み込み完了: ' + Object.keys(gyomuListMap).length + '件');
+
     // ヘッダー行を取得
     var headerRange = sheet.getRange(1, 1, 1, lastCol);
     var headers = headerRange.getValues()[0];
@@ -254,6 +258,9 @@ function syncPropertyListings() {
         skippedCount++;
         continue;
       }
+
+      // sidebar_status を計算して追加（GASのupsertがnullで上書きするのを防ぐ）
+      record.sidebar_status = calculateSidebarStatusGas(record, gyomuListMap);
 
       records.push(record);
     }
