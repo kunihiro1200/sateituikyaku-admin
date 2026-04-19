@@ -86,6 +86,7 @@ const SITE_REGISTRATION_REQUEST_BODY =
   '浅沼様<br>お世話になっております。<br>サイト登録関係お願いします。<br>' +
   '物件番号：{物件番号}<br>' +
   'コメント：{コメント（サイト登録）}<br>' +
+  '{メール配信コメント}' +
   '物件所在地：{物件所在}<br>' +
   '当社依頼日：{サイト登録依頼日} {サイト登録依頼者}<br>' +
   '当社の希望納期：{サイト登録納期予定日}<br>' +
@@ -93,7 +94,6 @@ const SITE_REGISTRATION_REQUEST_BODY =
   '間取図格納時期：{間取図完了予定}<br>' +
   '詳細：<a href="{スプシURL}">スプレッドシート</a><br>' +
   '格納先：<a href="{格納先URL}">格納先フォルダ</a><br>' +
-  '{メール配信コメント}' +
   'ご不明点等がございましたら、こちらに返信していただければと思います。<br><br>' +
   '㈱いふう<br>TEL:097-533-2022<br>MAIL: tenant@ifoo-oita.com' +
   '</body></html>';
@@ -226,9 +226,13 @@ export class WorkTaskEmailNotificationService {
     // {メール配信コメント} を動的に解決
     const emailDist: string = data['email_distribution'] ?? '';
     let emailDistComment = '';
-    if (emailDist.includes('不要') && emailDist.includes('即')) {
+    if (emailDist.includes('即') && emailDist.includes('不要')) {
       emailDistComment =
         '公開前配信メールは不要です。確認前に公開お願い致します。公開方法→' +
+        'https://docs.google.com/document/d/145LKr_Q7ftxnRVvNalaKPO1NH_FqncOlOY5bqP5P48c/edit?usp=sharing<br>';
+    } else if (emailDist === '新着配信、即公開（期日関係無）') {
+      emailDistComment =
+        '公開前配信メールを「新着配信」に変更して、同時に公開もお願い致します。公開方法→' +
         'https://docs.google.com/document/d/145LKr_Q7ftxnRVvNalaKPO1NH_FqncOlOY5bqP5P48c/edit?usp=sharing<br>';
     }
     result = result.split('{メール配信コメント}').join(emailDistComment);
