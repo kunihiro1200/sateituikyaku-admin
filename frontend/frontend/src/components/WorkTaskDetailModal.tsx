@@ -174,6 +174,20 @@ interface DeadlineWarningDialogProps {
   onClose: () => void;
 }
 
+// 物件一覧に行追加 未入力警告ダイアログ
+const RowAddWarningDialog = ({ open, onConfirm, onCancel }: { open: boolean; onConfirm: () => void; onCancel: () => void }) => (
+  <Dialog open={open} onClose={onCancel}>
+    <DialogTitle>確認</DialogTitle>
+    <DialogContent>
+      <Typography>物件一覧に行追加が未入力です。このまま保存しますか？</Typography>
+    </DialogContent>
+    <DialogActions>
+      <Button onClick={onCancel} color="inherit">キャンセル</Button>
+      <Button onClick={onConfirm} color="primary" variant="contained">このまま保存</Button>
+    </DialogActions>
+  </Dialog>
+);
+
 // 締日超過警告ダイアログコンポーネント
 function DeadlineWarningDialog({ open, fieldLabel, onClose }: DeadlineWarningDialogProps) {
   return (
@@ -271,6 +285,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
     open: boolean;
     fieldLabel: string;
   }>({ open: false, fieldLabel: '' });
+  const [rowAddWarningDialog, setRowAddWarningDialog] = useState<{ open: boolean }>({ open: false });
 
   useEffect(() => {
     if (open && propertyNumber) {
@@ -321,8 +336,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
     navigate(path);
   };
 
-  const handleSave = async () => {
-    if (!propertyNumber || Object.keys(editedData).length === 0) return;
+  const executeSave = async () => {
     setSaving(true);
     try {
       await api.put(`/api/work-tasks/${propertyNumber}`, editedData);
@@ -336,6 +350,20 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleSave = async () => {
+    if (!propertyNumber || Object.keys(editedData).length === 0) return;
+
+    // 条件付きバリデーション
+    const cwEmailSite = getValue('cw_request_email_site');
+    const rowAdded = getValue('property_list_row_added');
+    if (cwEmailSite && !rowAdded) {
+      setRowAddWarningDialog({ open: true });
+      return;
+    }
+
+    await executeSave();
   };
 
   const handleFieldChange = (field: string, value: any) => {
@@ -461,10 +489,10 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
   );
 
   // 編集可能ボタン選択
-  const EditableButtonSelect = ({ label, field, options }: { label: string; field: string; options: string[] }) => (
+  const EditableButtonSelect = ({ label, field, options, labelColor }: { label: string; field: string; options: string[]; labelColor?: 'error' | 'text.secondary' }) => (
     <Grid container spacing={2} alignItems="center" sx={{ mb: 1.5 }}>
       <Grid item xs={4}>
-        <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>{label}</Typography>
+        <Typography variant="body2" color={labelColor || 'text.secondary'} sx={{ fontWeight: labelColor === 'error' ? 700 : 500 }}>{label}</Typography>
       </Grid>
       <Grid item xs={8}>
         <ButtonGroup size="small" variant="outlined">
@@ -730,6 +758,15 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
         <EditableYesNo label="CWの方へ依頼メール（間取り、区画図）" field="cw_request_email_floor_plan" />
         <EditableYesNo label="CWの方へ依頼メール（2階以上）" field="cw_request_email_2f_above" />
         <EditableField label="間取図完了予定*" field="floor_plan_due_date" type="datetime-local" />
+        {/* 物件一覧に行追加（薄いピンク背景） */}
+        <Box sx={{ bgcolor: '#fce4ec', borderRadius: 1, p: 1, mb: 1 }}>
+          <EditableButtonSelect
+            label="物件一覧に行追加*"
+            field="property_list_row_added"
+            options={['追加済', '未']}
+            labelColor={getValue('cw_request_email_site') ? 'error' : 'text.secondary'}
+          />
+        </Box>
         </Box>
       </Box>
 
@@ -791,7 +828,6 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
         <Box sx={{ bgcolor: '#fafafa', borderRadius: 1, p: 1, mb: 1 }}>
         <SectionHeader label="【確認後処理】" />
         <EditableField label="配信日" field="distribution_date" type="date" />
-        <EditableButtonSelect label="物件一覧に行追加*" field="property_list_row_added" options={['追加済', '未']} />
         <EditableButtonSelect label="物件ファイル" field="property_file" options={['担当に渡し済み', '未']} />
         <EditableField label="公開予定日" field="publish_scheduled_date" type="date" />
         <ReadOnlyDisplayField
@@ -1115,6 +1151,11 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
         open={warningDialog.open}
         fieldLabel={warningDialog.fieldLabel}
         onClose={() => setWarningDialog({ open: false, fieldLabel: '' })}
+      />
+      <RowAddWarningDialog
+        open={rowAddWarningDialog.open}
+        onConfirm={() => { setRowAddWarningDialog({ open: false }); executeSave(); }}
+        onCancel={() => setRowAddWarningDialog({ open: false })}
       />
     </>
   );
