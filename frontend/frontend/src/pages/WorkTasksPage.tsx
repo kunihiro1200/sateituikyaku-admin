@@ -18,8 +18,10 @@ import {
   ListItemButton,
   ListItemText,
   Badge,
+  Snackbar,
 } from '@mui/material';
 import { Search as SearchIcon } from '@mui/icons-material';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import api from '../services/api';
 import WorkTaskDetailModal from '../components/WorkTaskDetailModal';
 import { WorkTask, getStatusCategories, filterTasksByStatus, calculateTaskStatus } from '../utils/workTaskStatusUtils';
@@ -36,6 +38,19 @@ export default function WorkTasksPage() {
   const [selectedPropertyNumber, setSelectedPropertyNumber] = useState<string | null>(null);
   const [selectedTaskData, setSelectedTaskData] = useState<WorkTask | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
+
+  const handleCopyPropertyNumber = async (propertyNumber: string, event: React.MouseEvent) => {
+    event.stopPropagation();
+    try {
+      await navigator.clipboard.writeText(propertyNumber);
+      setSnackbarMessage(`${propertyNumber} をコピーしました`);
+      setSnackbarOpen(true);
+    } catch (error) {
+      console.error('クリップボードへのコピーに失敗しました:', error);
+    }
+  };
 
   const handleRowClick = (task: WorkTask) => {
     setSelectedPropertyNumber(task.property_number);
@@ -292,9 +307,26 @@ export default function WorkTasksPage() {
                         sx={{ cursor: 'pointer' }}
                       >
                         <TableCell>
-                          <Typography variant="body2" color="primary" fontWeight="bold">
-                            {task.property_number || '-'}
-                          </Typography>
+                          <Box
+                            onClick={(e) => task.property_number && handleCopyPropertyNumber(task.property_number, e)}
+                            sx={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 0.5,
+                              cursor: task.property_number ? 'pointer' : 'default',
+                              '&:hover .copy-icon': { visibility: 'visible' },
+                            }}
+                          >
+                            <Typography variant="body2" color="primary" fontWeight="bold">
+                              {task.property_number || '-'}
+                            </Typography>
+                            {task.property_number && (
+                              <ContentCopyIcon
+                                className="copy-icon"
+                                sx={{ fontSize: 14, visibility: 'hidden', color: 'text.secondary' }}
+                              />
+                            )}
+                          </Box>
                         </TableCell>
                         <TableCell>{task.property_address || '-'}</TableCell>
                         <TableCell>{task.seller_name || '-'}</TableCell>
@@ -346,6 +378,14 @@ export default function WorkTasksPage() {
         propertyNumber={selectedPropertyNumber}
         initialData={selectedTaskData}
         onUpdate={() => fetchAllWorkTasks(true)}
+      />
+
+      <Snackbar
+        open={snackbarOpen}
+        autoHideDuration={2000}
+        onClose={() => setSnackbarOpen(false)}
+        message={snackbarMessage}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       />
     </Container>
   );
