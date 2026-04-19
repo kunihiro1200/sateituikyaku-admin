@@ -769,6 +769,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
         <EditableYesNo label="CWの方へ依頼メール（間取り、区画図）" field="cw_request_email_floor_plan" />
         <EditableYesNo label="CWの方へ依頼メール（2階以上）" field="cw_request_email_2f_above" />
         <EditableField label="間取図完了予定*" field="floor_plan_due_date" type="datetime-local" />
+        </Box>
         {/* 物件一覧に行追加（薄いピンク背景） */}
         <Box sx={{ bgcolor: '#fce4ec', borderRadius: 1, p: 1, mb: 1 }}>
           <EditableButtonSelect
@@ -777,7 +778,6 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
             options={['追加済', '未']}
             labelColor={getValue('cw_request_email_site') ? 'error' : 'text.secondary'}
           />
-        </Box>
         </Box>
       </Box>
 
