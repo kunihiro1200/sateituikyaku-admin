@@ -138,8 +138,8 @@ export const EMAIL_RULES: EmailRule[] = [
   // ルール1: CWの方へ依頼メール（間取り、区画図）
   {
     triggerField: 'cw_request_email_floor_plan',
-    to: 'tomoko.kunihiro@ifoo-oita.com',
-    cc: 'tomoko.kunihiro@ifoo-oita.com',
+    to: 'freetask.e72@gmail.com',
+    cc: 'tenant@ifoo-oita.com',
     subjectTemplate: '間取図作成関係お願いいたします！{物件番号}{物件所在}（㈱いふう）',
     bodyTemplate: FLOOR_PLAN_REQUEST_BODY,
     isHtml: false,
@@ -147,8 +147,8 @@ export const EMAIL_RULES: EmailRule[] = [
   // ルール2: CWの方へ依頼メール（2階以上）
   {
     triggerField: 'cw_request_email_2f_above',
-    to: 'tomoko.kunihiro@ifoo-oita.com',
-    cc: 'tomoko.kunihiro@ifoo-oita.com',
+    to: 'freetask.e72@gmail.com',
+    cc: 'tenant@ifoo-oita.com',
     subjectTemplate: '間取図作成関係お願いいたします！{物件番号}{物件所在}（㈱いふう）',
     bodyTemplate: FLOOR_PLAN_REQUEST_BODY,
     isHtml: false,
@@ -156,8 +156,8 @@ export const EMAIL_RULES: EmailRule[] = [
   // ルール3: 間取図確認OK送信
   {
     triggerField: 'floor_plan_ok_sent',
-    to: 'tomoko.kunihiro@ifoo-oita.com',
-    cc: 'tomoko.kunihiro@ifoo-oita.com',
+    to: 'freetask.e72@gmail.com',
+    cc: 'tenant@ifoo-oita.com',
     subjectTemplate: '図面ありがとうございます！{物件番号}{物件所在}（㈱いふう）',
     bodyTemplate: FLOOR_PLAN_OK_BODY,
     isHtml: false,
@@ -165,8 +165,8 @@ export const EMAIL_RULES: EmailRule[] = [
   // ルール4: CWの方へ依頼メール（サイト登録）
   {
     triggerField: 'cw_request_email_site',
-    to: 'tomoko.kunihiro@ifoo-oita.com',
-    cc: 'tomoko.kunihiro@ifoo-oita.com',
+    to: 'shiraishi8biz@gmail.com',
+    cc: 'tenant@ifoo-oita.com',
     subjectTemplate: 'サイト登録関係お願いいたします！{物件番号}{物件所在}（㈱いふう）',
     bodyTemplate: SITE_REGISTRATION_REQUEST_BODY,
     isHtml: true,
@@ -174,8 +174,8 @@ export const EMAIL_RULES: EmailRule[] = [
   // ルール5: サイト登録確認OK送信
   {
     triggerField: 'site_registration_ok_sent',
-    to: 'tomoko.kunihiro@ifoo-oita.com',
-    cc: 'tomoko.kunihiro@ifoo-oita.com',
+    to: 'shiraishi8biz@gmail.com',
+    cc: 'tenant@ifoo-oita.com',
     subjectTemplate: 'サイト登録ありがとうございます！{物件番号}{物件所在}（㈱いふう）',
     bodyTemplate: SITE_REGISTRATION_OK_BODY,
     isHtml: true,
@@ -183,8 +183,8 @@ export const EMAIL_RULES: EmailRule[] = [
   // ルール6: 間取図格納済み連絡メール
   {
     triggerField: 'floor_plan_stored_notification',
-    to: 'tomoko.kunihiro@ifoo-oita.com',
-    cc: 'tomoko.kunihiro@ifoo-oita.com',
+    to: 'shiraishi8biz@gmail.com',
+    cc: 'tenant@ifoo-oita.com',
     subjectTemplate: '間取図格納済みです！{物件番号}{物件所在}（㈱いふう）',
     bodyTemplate: FLOOR_PLAN_STORED_BODY,
     isHtml: true,
