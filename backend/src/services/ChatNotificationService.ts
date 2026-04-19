@@ -28,8 +28,16 @@ export class ChatNotificationService {
   private exclusiveWebhookUrl: string;
 
   constructor() {
-    this.webhookUrl = (process.env.GOOGLE_CHAT_WEBHOOK_URL || '').trim();
-    this.exclusiveWebhookUrl = (process.env.GOOGLE_CHAT_EXCLUSIVE_WEBHOOK_URL || '').trim();
+    // 改行・スペース・制御文字を除去してURLをクリーンにする
+    const rawWebhookUrl = (process.env.GOOGLE_CHAT_WEBHOOK_URL || '').replace(/[\r\n\s]/g, '');
+    const rawExclusiveUrl = (process.env.GOOGLE_CHAT_EXCLUSIVE_WEBHOOK_URL || '').replace(/[\r\n\s]/g, '');
+
+    // 値が変数名そのものになっている場合（Vercel設定ミス）は空文字として扱う
+    this.webhookUrl = rawWebhookUrl.startsWith('http') ? rawWebhookUrl : '';
+    this.exclusiveWebhookUrl = rawExclusiveUrl.startsWith('http') ? rawExclusiveUrl : '';
+
+    console.log('[ChatNotificationService] webhookUrl configured:', !!this.webhookUrl);
+    console.log('[ChatNotificationService] exclusiveWebhookUrl configured:', !!this.exclusiveWebhookUrl);
   }
 
   /**
@@ -327,7 +335,7 @@ ${data.notes || '物件紹介文が入力されていません'}
    * @returns Success status
    */
   private async sendToGoogleChat(message: string, webhookUrl?: string): Promise<boolean> {
-    const url = (webhookUrl || this.webhookUrl).trim();
+    const url = (webhookUrl || this.webhookUrl).replace(/[\r\n\s]/g, '');
     if (!url) {
       throw new Error('Google Chat webhook URL is not configured');
     }
