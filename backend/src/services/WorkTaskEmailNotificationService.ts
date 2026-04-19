@@ -67,7 +67,9 @@ const FLOOR_PLAN_REQUEST_BODY = [
   '当社の希望納期：{間取図完了予定}',
   '格納先：{格納先URL}',
   '納期が難しかったり、ご不明点等がございましたら、こちらに返信していただければと思います。',
-  '㈱いふうTEL:097-533-2022MAIL:tenant@ifoo-oita.com以上です',
+  '㈱いふう',
+  'TEL:097-533-2022',
+  'MAIL:tenant@ifoo-oita.com',
 ].join('\n');
 
 /** 間取図確認OKメールの本文テンプレート（テキスト形式） */
@@ -216,7 +218,13 @@ export class WorkTaskEmailNotificationService {
         // 送信当日のJST日付（YYYY-MM-DD）
         value = this.formatDateToJST(new Date().toISOString()).split(' ')[0];
       } else if (columnName === 'floor_plan_due_date' || columnName === 'site_registration_due_date') {
-        value = this.formatDateToJST(data[columnName]);
+        const rawDate = data[columnName];
+        // ISO形式（T含む）はJST変換、スラッシュ/ハイフン形式はそのまま表示
+        if (rawDate && String(rawDate).includes('T')) {
+          value = this.formatDateToJST(rawDate);
+        } else {
+          value = rawDate == null ? '' : String(rawDate);
+        }
       } else {
         const rawValue = data[columnName];
         value = rawValue == null ? '' : String(rawValue);
