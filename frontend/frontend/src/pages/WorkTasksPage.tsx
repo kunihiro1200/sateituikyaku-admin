@@ -217,7 +217,7 @@ export default function WorkTasksPage() {
                       textOverflow: 'ellipsis',
                       whiteSpace: 'nowrap',
                       color: cat.isDeadlinePast ? 'error.main' : 'text.primary',
-                      fontWeight: cat.isDeadlineTomorrow ? 'bold' : 'normal',
+                      fontWeight: (cat.isDeadlinePast || cat.isDeadlineTomorrow) ? 'bold' : 'normal',
                     }
                   }}
                   secondary={cat.deadline ? `締切: ${cat.deadline}` : undefined}
