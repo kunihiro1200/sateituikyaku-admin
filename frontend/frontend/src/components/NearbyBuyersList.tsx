@@ -252,6 +252,9 @@ const NearbyBuyersList = ({ sellerId, propertyNumber, propertyType, onCountChang
   const [expandedAreaBuyer, setExpandedAreaBuyer] = useState<string | null>(null);
   const [isNameHidden, setIsNameHidden] = useState<boolean>(false);
 
+  // APIから取得したpropertyType（NearbyBuyersPageからprops未渡しの場合に使用）
+  const [apiPropertyType, setApiPropertyType] = useState<string | null>(null);
+
   // 価格帯フィルター選択状態
   const [selectedPriceRanges, setSelectedPriceRanges] = useState<Set<string>>(new Set());
 
@@ -335,6 +338,7 @@ const NearbyBuyersList = ({ sellerId, propertyNumber, propertyType, onCountChang
         setMatchedAreas(response.data.matchedAreas || []);
         setPropertyAddress(response.data.propertyAddress);
         setPropertyDetails(response.data.propertyDetails || null);
+        if (response.data.propertyType) setApiPropertyType(response.data.propertyType);
         if (onCountChange) onCountChange((response.data.buyers || []).length); // 初期値はfull count、フィルター後はuseEffectで更新
         if (propertyNumber) {
           setPropertyNumberState(propertyNumber);
@@ -407,9 +411,10 @@ const NearbyBuyersList = ({ sellerId, propertyNumber, propertyType, onCountChang
     setActiveAgencyFilter(prev => prev === filterType ? null : filterType);
   };
 
-  // ボタン表示制御（propertyTypeUtilsで全形式に対応）
-  const showLandAndHouseButtons = isLand(propertyType) || isDetachedHouse(propertyType);
-  const showApartmentButton = isApartment(propertyType);
+  // ボタン表示制御（props優先、なければAPIから取得した値を使用）
+  const effectivePropertyType = propertyType || apiPropertyType;
+  const showLandAndHouseButtons = isLand(effectivePropertyType) || isDetachedHouse(effectivePropertyType);
+  const showApartmentButton = isApartment(effectivePropertyType);
 
   // 名前非表示トグル
   const handleToggleNameHidden = () => {
