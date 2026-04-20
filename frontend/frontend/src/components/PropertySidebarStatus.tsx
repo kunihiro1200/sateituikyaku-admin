@@ -22,6 +22,8 @@ interface PropertyListing {
   id: string;
   property_number?: string;
   sidebar_status?: string;
+  // 一般媒介非公開（仮）フィールド
+  general_mediation_private?: string;
   [key: string]: any;
 }
 
@@ -211,6 +213,14 @@ export default function PropertySidebarStatus({
         counts[status] = (counts[status] || 0) + 1;
       }
     });
+
+    // 「非公開予定（確認後）」カテゴリー: general_mediation_private === '非公開予定' の物件をカウント
+    const generalMediationPrivateCount = listings.filter(
+      l => l.general_mediation_private === '非公開予定'
+    ).length;
+    if (generalMediationPrivateCount > 0) {
+      counts['非公開予定（確認後）'] = generalMediationPrivateCount;
+    }
 
     return counts;
   }, [listings, pendingPriceReductionProperties, workTaskMap]);

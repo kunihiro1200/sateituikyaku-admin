@@ -1367,4 +1367,43 @@ export class PropertyListingService {
     // 実際のチャットAPI呼び出しをここに実装
     // 例: await chatApiClient.sendMessage({ address, message, senderName });
   }
+
+  /**
+   * 一般媒介非公開（仮）フィールドを更新
+   */
+  async updateGeneralMediationPrivate(
+    propertyNumber: string,
+    value: '非公開予定' | '不要'
+  ): Promise<void> {
+    if (!['非公開予定', '不要'].includes(value)) {
+      throw new Error('一般媒介非公開（仮）フィールドは「非公開予定」または「不要」のみ有効です');
+    }
+
+    console.log(`[PropertyListingService] Updating general_mediation_private for ${propertyNumber} to ${value}`);
+
+    // DBを更新
+    const { error } = await this.supabase
+      .from('property_listings')
+      .update({
+        general_mediation_private: value,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('property_number', propertyNumber);
+
+    if (error) {
+      console.error(`[PropertyListingService] Failed to update general_mediation_private for ${propertyNumber}:`, error);
+      throw new Error('一般媒介非公開（仮）の更新に失敗しました');
+    }
+
+    console.log(`[PropertyListingService] Successfully updated general_mediation_private for ${propertyNumber}`);
+
+    // スプレッドシートへ同期（失敗はサイレント処理）
+    try {
+      await this.syncToSpreadsheet(propertyNumber, { general_mediation_private: value });
+      console.log(`[PropertyListingService] Successfully synced general_mediation_private to spreadsheet for ${propertyNumber}`);
+    } catch (syncError: any) {
+      console.error(`[PropertyListingService] Failed to sync general_mediation_private to spreadsheet for ${propertyNumber}:`, syncError);
+      // 同期エラーでもDB更新は成功しているため、エラーをスローしない
+    }
+  }
 }

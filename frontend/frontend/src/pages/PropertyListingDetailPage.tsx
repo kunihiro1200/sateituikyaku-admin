@@ -165,6 +165,8 @@ interface PropertyListing {
   buyer_filter_parking?: string;
   buyer_filter_onsen?: string;
   buyer_filter_floor?: string;
+  // 一般媒介非公開（仮）フィールド
+  general_mediation_private?: string;
 }
 
 interface Buyer {
@@ -334,6 +336,10 @@ export default function PropertyListingDetailPage() {
   const [confirmation, setConfirmation] = useState<'未' | '済' | null>(null);
   const [confirmationUpdating, setConfirmationUpdating] = useState(false);
 
+  // 一般媒介非公開（仮）フィールド関連の状態
+  const [generalMediationPrivate, setGeneralMediationPrivate] = useState<string | null>(null);
+  const [generalMediationPrivateUpdating, setGeneralMediationPrivateUpdating] = useState(false);
+
   // Check for buyer context from navigation state
   const buyerContext = location.state as { buyerId?: string; buyerName?: string; source?: string } | null;
 
@@ -392,6 +398,8 @@ export default function PropertyListingDetailPage() {
       setData(response.data);
       // 確認フィールドを設定（nullの場合はそのまま）
       setConfirmation(response.data.confirmation);
+      // 一般媒介非公開（仮）フィールドを設定
+      setGeneralMediationPrivate(response.data.general_mediation_private ?? null);
       // 買主フィルター値を設定（nullの場合はデフォルト値）
       setBuyerFilterPet(response.data.buyer_filter_pet || 'どちらでも');
       setBuyerFilterParking(response.data.buyer_filter_parking || '指定なし');
@@ -1024,6 +1032,31 @@ export default function PropertyListingDetailPage() {
       setSnackbar({ open: true, message: error.response?.data?.error || '確認の更新に失敗しました', severity: 'error' });
     } finally {
       setConfirmationUpdating(false);
+    }
+  };
+
+  // atbb_statusに「一般」が含まれる場合のみ「一般媒介非公開（仮）」フィールドを表示する
+  const shouldShowGeneralMediationPrivate = (atbbStatus: string | null | undefined): boolean => {
+    return typeof atbbStatus === 'string' && atbbStatus.includes('一般');
+  };
+
+  // 一般媒介非公開（仮）フィールドを更新するハンドラー
+  const handleUpdateGeneralMediationPrivate = async (value: '非公開予定' | '不要') => {
+    setGeneralMediationPrivateUpdating(true);
+    try {
+      await api.put(`/api/property-listings/${propertyNumber}/general-mediation-private`, {
+        generalMediationPrivate: value,
+      });
+      setGeneralMediationPrivate(value);
+      setSnackbar({ open: true, message: `一般媒介非公開（仮）を「${value}」に更新しました`, severity: 'success' });
+      // サイドバーへのリアルタイム通知
+      window.dispatchEvent(new CustomEvent('generalMediationPrivateUpdated', {
+        detail: { propertyNumber: data?.property_number, value },
+      }));
+    } catch (error: any) {
+      setSnackbar({ open: true, message: error.response?.data?.error || '一般媒介非公開（仮）の更新に失敗しました', severity: 'error' });
+    } finally {
+      setGeneralMediationPrivateUpdating(false);
     }
   };
 
@@ -2037,6 +2070,34 @@ export default function PropertyListingDetailPage() {
               </Typography>
             )}
           </Grid>
+          {shouldShowGeneralMediationPrivate(data?.atbb_status) && (
+            <Grid item xs={6} sm={4} md={true} sx={{ minWidth: 140, flex: '1 1 0' }}>
+              <Typography variant="caption" color="text.secondary" fontWeight="bold" sx={{ fontSize: '0.75rem', lineHeight: 1.2 }}>
+                一般媒介非公開（仮）
+              </Typography>
+              <Box sx={{ mt: 0.5 }}>
+                <ButtonGroup size="small" disabled={generalMediationPrivateUpdating}>
+                  <Button
+                    variant={generalMediationPrivate === '非公開予定' ? 'contained' : 'outlined'}
+                    color={generalMediationPrivate === '非公開予定' ? 'error' : 'inherit'}
+                    onClick={() => handleUpdateGeneralMediationPrivate('非公開予定')}
+                    aria-label="一般媒介非公開（仮）を非公開予定に設定"
+                    aria-pressed={generalMediationPrivate === '非公開予定'}
+                  >
+                    非公開予定
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    onClick={() => handleUpdateGeneralMediationPrivate('不要')}
+                    aria-label="一般媒介非公開（仮）を不要に設定"
+                    aria-pressed={generalMediationPrivate === '不要'}
+                  >
+                    不要
+                  </Button>
+                </ButtonGroup>
+              </Box>
+            </Grid>
+          )}
           <Grid item xs={6} sm={4} md={true} sx={{ minWidth: 120, flex: '1 1 0' }}>
             <Typography variant="caption" color="text.secondary" fontWeight="bold" sx={{ fontSize: '0.75rem', lineHeight: 1.2 }}>種別</Typography>
             {isHeaderEditMode ? (

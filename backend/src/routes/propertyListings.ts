@@ -1763,5 +1763,34 @@ router.post('/:propertyNumber/seller-send-history', async (req: Request, res: Re
   }
 });
 
+
+// 一般媒介非公開（仮）フィールドを更新
+// PUT /api/property-listings/:propertyNumber/general-mediation-private
+router.put('/:propertyNumber/general-mediation-private', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { propertyNumber } = req.params;
+    const { generalMediationPrivate } = req.body;
+
+    // バリデーション
+    if (!generalMediationPrivate || !['非公開予定', '不要'].includes(generalMediationPrivate)) {
+      res.status(400).json({
+        error: '一般媒介非公開（仮）フィールドは「非公開予定」または「不要」のみ有効です',
+        code: 'INVALID_GENERAL_MEDIATION_PRIVATE_VALUE',
+      });
+      return;
+    }
+
+    await propertyListingService.updateGeneralMediationPrivate(propertyNumber, generalMediationPrivate);
+
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error('[general-mediation-private] Error:', error);
+    res.status(500).json({
+      error: error.message || '一般媒介非公開（仮）の更新に失敗しました',
+      code: 'INTERNAL_ERROR',
+    });
+  }
+});
+
 // seller_phone バックフィル: property_listings の seller_phone を sellers テーブルから一括補完
 export default router;

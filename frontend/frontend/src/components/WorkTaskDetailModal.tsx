@@ -523,7 +523,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
               key={opt}
               variant={getValue(field) === opt ? 'contained' : 'outlined'}
               color={getValue(field) === opt ? 'primary' : 'inherit'}
-              onClick={(e) => { (e.currentTarget as HTMLButtonElement).blur(); handleFieldChange(field, opt); }}
+              onClick={(e) => { (e.currentTarget as HTMLButtonElement).blur(); handleFieldChange(field, getValue(field) === opt ? null : opt); }}
             >
               {opt}
             </Button>

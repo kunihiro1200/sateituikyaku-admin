@@ -181,6 +181,23 @@ export default function PropertyListingsPage() {
     };
   }, []);
 
+  // 一般媒介非公開（仮）更新イベントをリッスン
+  useEffect(() => {
+    const handleGeneralMediationPrivateUpdated = (event: Event) => {
+      const customEvent = event as CustomEvent<{ propertyNumber: string; value: string }>;
+      const { propertyNumber, value } = customEvent.detail;
+      setAllListings(prev => prev.map(l =>
+        l.property_number === propertyNumber
+          ? { ...l, general_mediation_private: value }
+          : l
+      ));
+    };
+    window.addEventListener('generalMediationPrivateUpdated', handleGeneralMediationPrivateUpdated);
+    return () => {
+      window.removeEventListener('generalMediationPrivateUpdated', handleGeneralMediationPrivateUpdated);
+    };
+  }, []);
+
   const fetchAllData = async (forceRefresh = false) => {
     // 二重フェッチ防止（キャッシュヒット時は除く）
     if (isFetchingRef.current && !forceRefresh) return;
@@ -320,6 +337,9 @@ export default function PropertyListingsPage() {
           l.sidebar_status === sidebarStatus ||
           (l.sidebar_status === '専任・公開中' && l.sales_assignee === targetAssignee)
         );
+      } else if (sidebarStatus === '非公開予定（確認後）') {
+        // 「非公開予定（確認後）」: general_mediation_private === '非公開予定' の物件をフィルタリング
+        listings = listings.filter(l => l.general_mediation_private === '非公開予定');
       } else {
         listings = listings.filter(l => l.sidebar_status === sidebarStatus);
       }
