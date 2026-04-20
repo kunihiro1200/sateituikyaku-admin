@@ -23,6 +23,7 @@ import EmailConfirmationModal from './EmailConfirmationModal';
 import { ImageFile } from './ImageSelectorModal';
 import { AttachmentPayload } from '../types/email';
 import { buildPrintContent } from './nearbyBuyersPrintUtils';
+import { isLand, isDetachedHouse, isApartment } from '../utils/propertyTypeUtils';
 
 interface NearbyBuyer {
   buyer_number: string;
@@ -406,9 +407,9 @@ const NearbyBuyersList = ({ sellerId, propertyNumber, propertyType, onCountChang
     setActiveAgencyFilter(prev => prev === filterType ? null : filterType);
   };
 
-  // ボタン表示制御（日本語値・英語値の両方に対応）
-  const showLandAndHouseButtons = propertyType === '土地' || propertyType === '戸建て' || propertyType === 'land' || propertyType === 'detached_house';
-  const showApartmentButton = propertyType === 'マンション' || propertyType === 'apartment';
+  // ボタン表示制御（propertyTypeUtilsで全形式に対応）
+  const showLandAndHouseButtons = isLand(propertyType) || isDetachedHouse(propertyType);
+  const showApartmentButton = isApartment(propertyType);
 
   // 名前非表示トグル
   const handleToggleNameHidden = () => {
