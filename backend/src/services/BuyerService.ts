@@ -1584,10 +1584,11 @@ export class BuyerService {
     const inquirySource = (buyer.inquiry_source || '').trim();
     const distributionType = (buyer.distribution_type || '').trim();
     const brokerInquiry = (buyer.broker_inquiry || '').trim();
+    // '業者（両手）' は近隣買主リストに含める（業者フィルターボタンで絞り込み可能）
+    // inquiry_sourceやdistribution_typeより先に判定する
+    if (brokerInquiry === '業者（両手）') return false;
     if (inquirySource === '業者問い合わせ' || inquirySource.includes('業者')) return true;
     if (distributionType === '業者問い合わせ' || distributionType.includes('業者')) return true;
-    // '業者（両手）' は近隣買主リストに含める（業者フィルターボタンで絞り込み可能）
-    if (brokerInquiry === '業者（両手）') return false;
     if (brokerInquiry && brokerInquiry !== '' && brokerInquiry !== '0' && brokerInquiry.toLowerCase() !== 'false') return true;
     return false;
   }
