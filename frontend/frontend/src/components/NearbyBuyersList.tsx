@@ -178,6 +178,10 @@ const filterBuyersByAgency = (
 ): NearbyBuyer[] => {
   if (filterType === null) return buyers;
 
+  // デバッグ: broker_inquiryの値を確認
+  const brokerValues = [...new Set(buyers.map(b => b.broker_inquiry))];
+  console.log('[DEBUG agency filter] filterType:', filterType, 'total buyers:', buyers.length, 'broker_inquiry values:', brokerValues);
+
   return buyers.filter(buyer => {
     // broker_inquiry が "業者（両手）" と完全一致することが共通条件
     if (buyer.broker_inquiry !== '業者（両手）') return false;
