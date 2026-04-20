@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+﻿import { useState, useEffect, useRef } from 'react';
 import PageNavigation from '../components/PageNavigation';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import {
@@ -2070,34 +2070,7 @@ export default function PropertyListingDetailPage() {
               </Typography>
             )}
           </Grid>
-          {shouldShowGeneralMediationPrivate(data?.atbb_status) && (
-            <Grid item xs={6} sm={4} md={true} sx={{ minWidth: 140, flex: '1 1 0' }}>
-              <Typography variant="caption" color="text.secondary" fontWeight="bold" sx={{ fontSize: '0.75rem', lineHeight: 1.2 }}>
-                一般媒介非公開（仮）
-              </Typography>
-              <Box sx={{ mt: 0.5 }}>
-                <ButtonGroup size="small" disabled={generalMediationPrivateUpdating}>
-                  <Button
-                    variant={generalMediationPrivate === '非公開予定' ? 'contained' : 'outlined'}
-                    color={generalMediationPrivate === '非公開予定' ? 'error' : 'inherit'}
-                    onClick={() => handleUpdateGeneralMediationPrivate('非公開予定')}
-                    aria-label="一般媒介非公開（仮）を非公開予定に設定"
-                    aria-pressed={generalMediationPrivate === '非公開予定'}
-                  >
-                    非公開予定
-                  </Button>
-                  <Button
-                    variant="outlined"
-                    onClick={() => handleUpdateGeneralMediationPrivate('不要')}
-                    aria-label="一般媒介非公開（仮）を不要に設定"
-                    aria-pressed={generalMediationPrivate === '不要'}
-                  >
-                    不要
-                  </Button>
-                </ButtonGroup>
-              </Box>
-            </Grid>
-          )}
+
           <Grid item xs={6} sm={4} md={true} sx={{ minWidth: 120, flex: '1 1 0' }}>
             <Typography variant="caption" color="text.secondary" fontWeight="bold" sx={{ fontSize: '0.75rem', lineHeight: 1.2 }}>種別</Typography>
             {isHeaderEditMode ? (
@@ -2279,6 +2252,31 @@ export default function PropertyListingDetailPage() {
                 <Typography variant="body2" color="text.secondary">
                   （事務へCHAT送信後に表示されます）
                 </Typography>
+              )}
+              {/* 一般媒介非公開（仮）フィールド: atbb_statusに「一般」が含まれる場合のみ表示 */}
+              {shouldShowGeneralMediationPrivate(data?.atbb_status) && (
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, ml: 2 }}>
+                  <Typography variant="body2" fontWeight="bold">一般媒介非公開（仮）:</Typography>
+                  <ButtonGroup size="small" disabled={generalMediationPrivateUpdating}>
+                    <Button
+                      variant={generalMediationPrivate === '非公開予定' ? 'contained' : 'outlined'}
+                      color={generalMediationPrivate === '非公開予定' ? 'error' : 'inherit'}
+                      onClick={() => handleUpdateGeneralMediationPrivate('非公開予定')}
+                      aria-label="一般媒介非公開（仮）を非公開予定に設定"
+                      aria-pressed={generalMediationPrivate === '非公開予定'}
+                    >
+                      非公開予定
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      onClick={() => handleUpdateGeneralMediationPrivate('不要')}
+                      aria-label="一般媒介非公開（仮）を不要に設定"
+                      aria-pressed={generalMediationPrivate === '不要'}
+                    >
+                      不要
+                    </Button>
+                  </ButtonGroup>
+                </Box>
               )}
               {/* スクリーンリーダー用のaria-live領域 */}
               <Box
