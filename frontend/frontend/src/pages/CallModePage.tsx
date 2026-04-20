@@ -7930,7 +7930,7 @@ HP：https://ifoo-oita.com/
             </Box>
 
             {/* 近隣買主セクション */}
-            {showNearbyBuyers && seller?.id && (
+            {showNearbyBuyers && seller?.id && (() => { console.log("[DEBUG] propInfo.propertyType:", propInfo.propertyType, "seller.propertyType:", seller?.propertyType); return true; })() && (
               <div ref={nearbyBuyersSectionRef}>
                 <CollapsibleSection title="近隣買主" defaultExpanded={true} headerColor="success.light">
                   <NearbyBuyersList sellerId={seller.id} propertyType={propInfo.propertyType} />
