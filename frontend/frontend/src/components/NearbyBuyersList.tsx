@@ -406,9 +406,9 @@ const NearbyBuyersList = ({ sellerId, propertyNumber, propertyType, onCountChang
     setActiveAgencyFilter(prev => prev === filterType ? null : filterType);
   };
 
-  // ボタン表示制御
-  const showLandAndHouseButtons = propertyType === '土地' || propertyType === '戸建て';
-  const showApartmentButton = propertyType === 'マンション';
+  // ボタン表示制御（日本語値・英語値の両方に対応）
+  const showLandAndHouseButtons = propertyType === '土地' || propertyType === '戸建て' || propertyType === 'land' || propertyType === 'detached_house';
+  const showApartmentButton = propertyType === 'マンション' || propertyType === 'apartment';
 
   // 名前非表示トグル
   const handleToggleNameHidden = () => {
