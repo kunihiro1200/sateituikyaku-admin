@@ -117,7 +117,22 @@ function generatePreDaySmsBody(buyer: {
     if (viewingDate.getDay() === 4) dayWord = '明後日'; // 木曜
   }
 
-  const timeStr = buyer.viewing_time || '';
+  const rawTime = buyer.viewing_time || '';
+  let timeStr = '';
+  if (rawTime) {
+    // 既に HH:MM 形式かチェック
+    if (/^\d{1,2}:\d{2}$/.test(rawTime)) {
+      timeStr = rawTime;
+    } else {
+      // Dateオブジェクト文字列などから時・分を抽出
+      const dateObj = new Date(rawTime);
+      if (!isNaN(dateObj.getTime())) {
+        const hours = dateObj.getHours().toString().padStart(2, '0');
+        const minutes = dateObj.getMinutes().toString().padStart(2, '0');
+        timeStr = `${hours}:${minutes}`;
+      }
+    }
+  }
   const mapLine = googleMapUrl ? `\n${googleMapUrl}` : '';
 
   return `【内覧のご連絡　☆返信不可☆】\n${name}様\nお世話になっております。㈱いふうです。\n${dayWord}の${dateLabel} ${timeStr}から${propertyAddress}の内覧をよろしくお願いいたします。${mapLine}\nこのメールは返信不可となっておりますので、何かございましたら下記連絡先へお願いいたします。\n【電話】(10時～18時）*水曜定休\n097-533-2022\n【メールアドレス】\ntenant@ifoo-oita.com\nそれではお会いできるのを楽しみにしております。\n㈱いふう`;
@@ -900,7 +915,7 @@ export default function BuyerViewingResultPage() {
               {/* 電話番号がある場合はSMSボタン */}
               {buyer.phone_number && (() => {
                 const property = linkedProperties.length > 0 ? linkedProperties[0] : null;
-                const address = property?.property_address || property?.address || '';
+                const address = property?.display_address || property?.property_address || property?.address || '';
                 const googleMapUrl = property?.google_map_url || '';
                 const smsBody = generatePreDaySmsBody(buyer, address, googleMapUrl);
                 const smsLink = `sms:${buyer.phone_number}?body=${encodeURIComponent(smsBody)}`;
