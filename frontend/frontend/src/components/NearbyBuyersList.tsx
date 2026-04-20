@@ -41,6 +41,10 @@ interface NearbyBuyer {
   price_range_house?: string | null;
   price_range_apartment?: string | null;
   price_range_land?: string | null;
+  // 業者フィルター用フィールド（新規追加）
+  desired_type?: string | null;      // U列「★希望種別」
+  broker_inquiry?: string | null;    // CV列「業者問合せ」
+  distribution_type?: string | null; // Q列「配信種別」
 }
 
 interface NearbyBuyersListProps {
@@ -163,6 +167,38 @@ const rangesOverlap = (
   return true;
 };
 
+// 業者フィルタータイプ
+type AgencyFilterType = '土地' | '戸建' | 'マンション' | null;
+
+// 業者フィルタリング純粋関数
+const filterBuyersByAgency = (
+  buyers: NearbyBuyer[],
+  filterType: AgencyFilterType
+): NearbyBuyer[] => {
+  if (filterType === null) return buyers;
+
+  return buyers.filter(buyer => {
+    // broker_inquiry が "業者（両手）" と完全一致することが共通条件
+    if (buyer.broker_inquiry !== '業者（両手）') return false;
+
+    const desiredType = (buyer.desired_type || '').trim();
+
+    switch (filterType) {
+      case '土地':
+        // desired_type が空欄 or "土地" を含む
+        return !desiredType || desiredType.includes('土地');
+      case '戸建':
+        // desired_type が "戸建" と完全一致（複合値NG）
+        return desiredType === '戸建';
+      case 'マンション':
+        // desired_type が "マンション" と完全一致
+        return desiredType === 'マンション';
+      default:
+        return true;
+    }
+  });
+};
+
 // 選択済み価格帯で買主リストをフィルタリング（純粋関数）
 // 判定ロジック:
 //   1. 希望価格が「指定なし」（null/空/"指定なし"）→ 常に表示
@@ -218,6 +254,9 @@ const NearbyBuyersList = ({ sellerId, propertyNumber, propertyType, onCountChang
   // 価格帯フィルター選択状態
   const [selectedPriceRanges, setSelectedPriceRanges] = useState<Set<string>>(new Set());
 
+  // 業者フィルター選択状態
+  const [activeAgencyFilter, setActiveAgencyFilter] = useState<AgencyFilterType>(null);
+
   // ソート状態
   const [sortConfig, setSortConfig] = useState<{
     key: keyof NearbyBuyer | null;
@@ -249,10 +288,11 @@ const NearbyBuyersList = ({ sellerId, propertyNumber, propertyType, onCountChang
     setSortConfig({ key, direction });
   };
 
-  // 価格帯フィルター適用後の買主リスト
+  // 業者フィルター → 価格帯フィルターの順で AND 結合
   const filteredBuyers = React.useMemo(() => {
-    return filterBuyersByPrice(buyers, selectedPriceRanges, propertyType);
-  }, [buyers, selectedPriceRanges, propertyType]);
+    const agencyFiltered = filterBuyersByAgency(buyers, activeAgencyFilter);
+    return filterBuyersByPrice(agencyFiltered, selectedPriceRanges, propertyType);
+  }, [buyers, activeAgencyFilter, selectedPriceRanges, propertyType]);
 
   const sortedBuyers = React.useMemo(() => {
     if (!sortConfig.key) return filteredBuyers;
@@ -360,6 +400,15 @@ const NearbyBuyersList = ({ sellerId, propertyNumber, propertyType, onCountChang
   const handlePriceRangeToggle = (key: string) => {
     setSelectedPriceRanges(prev => togglePriceRange(prev, key));
   };
+
+  // 業者フィルタートグルハンドラー（同じボタンで解除、別ボタンで排他切り替え）
+  const handleAgencyFilterToggle = (filterType: AgencyFilterType) => {
+    setActiveAgencyFilter(prev => prev === filterType ? null : filterType);
+  };
+
+  // ボタン表示制御
+  const showLandAndHouseButtons = propertyType === '土地' || propertyType === '戸建て';
+  const showApartmentButton = propertyType === 'マンション';
 
   // 名前非表示トグル
   const handleToggleNameHidden = () => {
@@ -595,6 +644,37 @@ const NearbyBuyersList = ({ sellerId, propertyNumber, propertyType, onCountChang
         >
           PDF
         </Button>
+        {/* 業者フィルターボタン（物件種別に応じて表示） */}
+        {showLandAndHouseButtons && (
+          <>
+            <Button
+              variant={activeAgencyFilter === '土地' ? 'contained' : 'outlined'}
+              color="success"
+              size="small"
+              onClick={() => handleAgencyFilterToggle('土地')}
+            >
+              業者_土地
+            </Button>
+            <Button
+              variant={activeAgencyFilter === '戸建' ? 'contained' : 'outlined'}
+              color="success"
+              size="small"
+              onClick={() => handleAgencyFilterToggle('戸建')}
+            >
+              業者_戸建
+            </Button>
+          </>
+        )}
+        {showApartmentButton && (
+          <Button
+            variant={activeAgencyFilter === 'マンション' ? 'contained' : 'outlined'}
+            color="success"
+            size="small"
+            onClick={() => handleAgencyFilterToggle('マンション')}
+          >
+            業者_マンション
+          </Button>
+        )}
       </Box>
 
       {/* 価格帯フィルターボタン行 */}
