@@ -535,18 +535,7 @@ export class SellerService extends BaseRepository {
     }
     if (data.appointmentDate !== undefined) {
       updates.appointment_date = data.appointmentDate;
-      // appointmentDateをvisit_date（TIMESTAMP型）に変換して保存（visitDate未指定の場合のみ）
-      if (data.appointmentDate && (data as any).visitDate === undefined) {
-        const appointmentDateObj = new Date(data.appointmentDate);
-        // TIMESTAMP形式（YYYY-MM-DD HH:mm:ss）で保存
-        const year = appointmentDateObj.getFullYear();
-        const month = (appointmentDateObj.getMonth() + 1).toString().padStart(2, '0');
-        const day = appointmentDateObj.getDate().toString().padStart(2, '0');
-        const hours = appointmentDateObj.getHours().toString().padStart(2, '0');
-        const minutes = appointmentDateObj.getMinutes().toString().padStart(2, '0');
-        const seconds = appointmentDateObj.getSeconds().toString().padStart(2, '0');
-        updates.visit_date = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
-      }
+      // appointmentDate経由のvisit_date変換は削除（visitDateを直接使用）
       // appointmentDateがnullの場合はvisit_dateを変更しない（意図しない消去を防ぐ）
     }
     if (data.appointmentNotes !== undefined) {
