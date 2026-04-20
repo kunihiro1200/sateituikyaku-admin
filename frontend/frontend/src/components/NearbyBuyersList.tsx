@@ -20,6 +20,8 @@ import {
 import { Email as EmailIcon, Sms as SmsIcon } from '@mui/icons-material';
 import api from '../services/api';
 import EmailConfirmationModal from './EmailConfirmationModal';
+import { ImageFile } from './ImageSelectorModal';
+import { AttachmentPayload } from '../types/email';
 import { buildPrintContent } from './nearbyBuyersPrintUtils';
 
 interface NearbyBuyer {
@@ -47,6 +49,24 @@ interface NearbyBuyersListProps {
   propertyType?: string | null;
   onCountChange?: (count: number) => void;
 }
+
+// ImageFile[] をAPIのattachment形式に変換する純粋関数
+const convertImageFilesToAttachments = (images: ImageFile[]): AttachmentPayload[] => {
+  const result: AttachmentPayload[] = [];
+  for (const img of images) {
+    if (img.source === 'drive') {
+      result.push({ id: img.driveFileId || img.id, name: img.name });
+    } else if (img.source === 'local' && img.previewUrl) {
+      const base64Match = img.previewUrl.match(/^data:([^;]+);base64,(.+)$/);
+      if (base64Match) {
+        result.push({ id: img.id, name: img.name, base64Data: base64Match[2], mimeType: base64Match[1] });
+      }
+    } else if (img.source === 'url' && img.url) {
+      result.push({ id: img.id, name: img.name, url: img.url });
+    }
+  }
+  return result;
+};
 
 // 価格帯定数（9段階）- inquiry_price は円単位のため閾値も円単位
 const PRICE_RANGES = [
@@ -428,7 +448,7 @@ const NearbyBuyersList = ({ sellerId, propertyNumber, propertyType, onCountChang
     setEmailModalOpen(true);
   };
 
-  const handleConfirmSendEmail = async (subject: string, body: string) => {
+  const handleConfirmSendEmail = async (subject: string, body: string, attachments: ImageFile[]) => {
     const selectedCandidates = sortedBuyers.filter(b => selectedBuyers.has(b.buyer_number));
     const candidatesWithEmail = selectedCandidates.filter(
       b => b.email && typeof b.email === 'string' && b.email.trim() !== ''
@@ -440,12 +460,14 @@ const NearbyBuyersList = ({ sellerId, propertyNumber, propertyType, onCountChang
           const buyerName = candidate.name || 'お客様';
           const personalizedBody = body.replace(/{氏名}/g, buyerName);
           const effectivePropertyNumber = propertyNumber || propertyNumberState;
+          const attachmentPayloads = convertImageFilesToAttachments(attachments);
           return await api.post('/api/emails/send-distribution', {
             senderAddress: 'tenant@ifoo-oita.com', // 送信元アドレスを追加
             recipients: [{ email: candidate.email!, buyerNumber: candidate.buyer_number }], // buyer_numberを追加
             subject,
             body: personalizedBody,
             propertyNumber: effectivePropertyNumber || undefined, // 物件番号を追加
+            ...(attachmentPayloads.length > 0 ? { attachments: attachmentPayloads } : {}),
           });
         })
       );

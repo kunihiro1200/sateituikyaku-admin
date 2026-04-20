@@ -35,6 +35,10 @@ import {
 } from '@mui/icons-material';
 import { emailImageApi } from '../services/api';
 
+// サイズ制限定数
+const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024;   // 5MB per file
+const MAX_TOTAL_SIZE_BYTES = 10 * 1024 * 1024; // 10MB total
+
 
 interface ImageSelectorModalProps {
   open: boolean;
@@ -48,7 +52,7 @@ interface ImageSelectorModalProps {
 }
 
 // 統一された画像ファイル型
-interface ImageFile {
+export interface ImageFile {
   id: string;
   name: string;
   source: 'drive' | 'local' | 'url';
@@ -116,6 +120,8 @@ const ImageSelectorModal = ({
   // URL用の状態
   const [urlInput, setUrlInput] = useState<string>('');
   const [urlError, setUrlError] = useState<string | null>(null);
+  // サイズバリデーションエラー用 state
+  const [sizeError, setSizeError] = useState<string | null>(null);
 
   // モーダルが開いたときにGoogle Driveのルートフォルダを読み込む
   useEffect(() => {
@@ -304,19 +310,20 @@ const ImageSelectorModal = ({
 
   // 確定
   const handleConfirm = () => {
-    // ファイルサイズチェック（5MB/枚、合計10MB）
-    const totalSize = selectedImages.reduce((sum, img) => sum + img.size, 0);
-    const maxSingleSize = 5 * 1024 * 1024; // 5MB
-    const maxTotalSize = 10 * 1024 * 1024; // 10MB
+    // サイズエラーをリセット
+    setSizeError(null);
 
-    const oversizedImage = selectedImages.find(img => img.size > maxSingleSize);
+    // 単一ファイルサイズチェック（5MB/枚）
+    const oversizedImage = selectedImages.find(img => img.size > MAX_FILE_SIZE_BYTES);
     if (oversizedImage) {
-      setError(`${oversizedImage.name} のサイズが5MBを超えています`);
+      setSizeError(`${oversizedImage.name} のサイズが5MBを超えています`);
       return;
     }
 
-    if (totalSize > maxTotalSize) {
-      setError('選択した画像の合計サイズが10MBを超えています');
+    // 合計サイズチェック（10MB）
+    const totalSize = selectedImages.reduce((sum, img) => sum + img.size, 0);
+    if (totalSize > MAX_TOTAL_SIZE_BYTES) {
+      setSizeError('選択した画像の合計サイズが10MBを超えています');
       return;
     }
 
@@ -462,6 +469,11 @@ const ImageSelectorModal = ({
           {error && (
             <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
               {error}
+            </Alert>
+          )}
+          {sizeError && (
+            <Alert severity="error" sx={{ mb: 2 }} onClose={() => setSizeError(null)}>
+              {sizeError}
             </Alert>
           )}
 
