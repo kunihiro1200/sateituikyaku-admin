@@ -915,7 +915,7 @@ export default function BuyerViewingResultPage() {
               {/* 電話番号がある場合はSMSボタン */}
               {buyer.phone_number && (() => {
                 const property = linkedProperties.length > 0 ? linkedProperties[0] : null;
-                const address = property?.display_address || property?.property_address || property?.address || '';
+                const address = property?.display_address || property?.property_address || property?.address || buyer.other_company_property || '';
                 const googleMapUrl = property?.google_map_url || '';
                 const smsBody = generatePreDaySmsBody(buyer, address, googleMapUrl);
                 const smsLink = `sms:${buyer.phone_number}?body=${encodeURIComponent(smsBody)}`;
