@@ -338,8 +338,8 @@ export default function PropertyListingsPage() {
           (l.sidebar_status === '専任・公開中' && l.sales_assignee === targetAssignee)
         );
       } else if (sidebarStatus === '非公開予定（確認後）') {
-        // 「非公開予定（確認後）」: general_mediation_private === '非公開予定' の物件をフィルタリング
-        listings = listings.filter(l => l.general_mediation_private === '非公開予定');
+        // 「非公開予定（確認後）」: calculatePropertyStatus() の結果で判定（カウントとの一致を保証）
+        listings = listings.filter(l => calculatePropertyStatus(l as any, workTaskMap).key === 'private_pending');
       } else {
         listings = listings.filter(l => l.sidebar_status === sidebarStatus);
       }

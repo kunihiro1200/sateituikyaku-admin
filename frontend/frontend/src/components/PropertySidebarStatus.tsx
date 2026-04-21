@@ -205,6 +205,12 @@ export default function PropertySidebarStatus({
         return;
       }
 
+      // 「非公開予定（確認後）」は calculatePropertyStatus() の結果で判定（カウントとフィルタリングの一致を保証）
+      if (computed.key === 'private_pending') {
+        counts['非公開予定（確認後）'] = (counts['非公開予定（確認後）'] || 0) + 1;
+        return;
+      }
+
       // sidebar_statusが存在する場合はそれを使用
       // ただし「未報告」系・SUUMO系は除外（動的判定済み）
       // スペースを除去してから判定（「未報告 林」も「未報告林」も除外）
@@ -214,13 +220,6 @@ export default function PropertySidebarStatus({
       }
     });
 
-    // 「非公開予定（確認後）」カテゴリー: general_mediation_private === '非公開予定' の物件をカウント
-    const generalMediationPrivateCount = listings.filter(
-      l => l.general_mediation_private === '非公開予定'
-    ).length;
-    if (generalMediationPrivateCount > 0) {
-      counts['非公開予定（確認後）'] = generalMediationPrivateCount;
-    }
 
     return counts;
   }, [listings, pendingPriceReductionProperties, workTaskMap]);
