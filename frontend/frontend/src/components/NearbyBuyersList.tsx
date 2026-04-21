@@ -538,7 +538,9 @@ const NearbyBuyersList = ({ sellerId, propertyNumber, propertyType, onCountChang
       return;
     }
     const address = propertyAddress || '物件';
-    const subject = `${address}に興味のあるかた！もうすぐ売り出します！事前に内覧可能です！`;
+    const subject = isLand(effectivePropertyType)
+      ? `${address}に興味のあるかた！もうすぐ売り出します！`
+      : `${address}に興味のあるかた！もうすぐ売り出します！事前に内覧可能です！`;
     const landArea = resolveArea(propertyDetails?.landAreaVerified, propertyDetails?.landArea);
     const buildingArea = resolveArea(propertyDetails?.buildingAreaVerified, propertyDetails?.buildingArea);
     let bodyTemplate: string;
