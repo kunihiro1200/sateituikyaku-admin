@@ -280,9 +280,11 @@ export default function BuyersPage() {
         
         // 全件データ未取得時でもselectedCalculatedStatusが指定されている場合はAPIにフィルタパラメータを渡す
         if (selectedCalculatedStatus && !viewingMonth && !assigneeParam) {
-          // pinrich500manUnregistered は英語キーをそのままAPIに渡す（バックエンドが英語キーで処理）
+          // 英語キーをそのままAPIに渡すカテゴリ（バックエンドが英語キーで処理）
+          // pinrichUnregistered, pinrich500manUnregistered は英語キーで渡す
           // その他のカテゴリはカテゴリキーを日本語表示名に変換してからAPIに渡す
-          if (selectedCalculatedStatus === 'pinrich500manUnregistered') {
+          const englishKeyCategories = ['pinrichUnregistered', 'pinrich500manUnregistered'];
+          if (englishKeyCategories.includes(selectedCalculatedStatus)) {
             quickParams.calculatedStatus = selectedCalculatedStatus;
           } else {
             const displayName = categoryKeyToDisplayName[selectedCalculatedStatus] || selectedCalculatedStatus;
