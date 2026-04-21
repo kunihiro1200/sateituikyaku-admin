@@ -1495,7 +1495,7 @@ export class BuyerService {
         inquiry_hearing,
         viewing_result_follow_up
       `)
-      .or('distribution_type.eq.要,broker_inquiry.eq.業者（両手）')
+      .eq('distribution_type', '要')
       .is('deleted_at', null)
       .not('latest_status', 'ilike', '%成約%')
       .not('latest_status', 'ilike', '%D%');
@@ -1579,10 +1579,10 @@ export class BuyerService {
 
   private shouldExcludeBuyer(buyer: any): boolean {
     if (this.isBusinessInquiry(buyer)) return true;
-    if (!this.hasMinimumCriteria(buyer)) return true;
-    // 業者（両手）の買主はdistribution_typeチェックをスキップ（業者フィルターボタンで絞り込み可能）
+    if (!this.hasDistributionRequired(buyer)) return true;
+    // 業者（両手）の買主はdesired_area/desired_property_typeが空でも表示する
     const brokerInquiry = (buyer.broker_inquiry || '').trim();
-    if (brokerInquiry !== '業者（両手）' && !this.hasDistributionRequired(buyer)) return true;
+    if (brokerInquiry !== '業者（両手）' && !this.hasMinimumCriteria(buyer)) return true;
     return false;
   }
 
