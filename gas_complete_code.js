@@ -468,6 +468,79 @@ function syncUpdatesToSupabase_(sheetRows) {
 }
 
 // ============================================================
+// DB→スプシ: 訪問時間をスプシのAS列に書き戻す
+// ============================================================
+function writeVisitTimeToSheet_(sheet, headers, dbMap) {
+  Logger.log('📝 DB→スプシ: 訪問時間書き戻し開始...');
+  
+  // AS列（「訪問時間」）のインデックスを取得
+  var visitTimeColIndex = -1;
+  var sellerNumberColIndex = -1;
+  for (var h = 0; h < headers.length; h++) {
+    var headerName = String(headers[h]).trim();
+    if (headerName === '訪問時間') visitTimeColIndex = h;
+    if (headerName === '売主番号') sellerNumberColIndex = h;
+  }
+  
+  if (visitTimeColIndex === -1) {
+    Logger.log('⚠️ 「訪問時間」列が見つかりません');
+    return;
+  }
+  if (sellerNumberColIndex === -1) {
+    Logger.log('⚠️ 「売主番号」列が見つかりません');
+    return;
+  }
+  
+  var lastRow = sheet.getLastRow();
+  if (lastRow < 2) return;
+  
+  // 全データを取得（2行目から）
+  var lastCol = sheet.getLastColumn();
+  var allData = sheet.getRange(2, 1, lastRow - 1, lastCol).getValues();
+  
+  var updatedCount = 0;
+  
+  for (var i = 0; i < allData.length; i++) {
+    var row = allData[i];
+    var sellerNumber = row[sellerNumberColIndex];
+    if (!sellerNumber || typeof sellerNumber !== 'string' || !sellerNumber.match(/^[A-Z]{2}\d+$/)) continue;
+    
+    var dbSeller = dbMap[sellerNumber];
+    if (!dbSeller) continue;
+    
+    // DBの visit_time を取得
+    var dbVisitTime = dbSeller.visit_time ? String(dbSeller.visit_time).trim() : null;
+    if (!dbVisitTime) continue; // DBに訪問時間がない場合はスキップ
+    
+    // スプシの現在の訪問時間を取得
+    var sheetVisitTime = row[visitTimeColIndex];
+    var sheetVisitTimeStr = '';
+    if (sheetVisitTime instanceof Date) {
+      // Dateオブジェクトの場合は HH:MM 形式に変換
+      sheetVisitTimeStr = String(sheetVisitTime.getHours()).padStart(2, '0') + ':' + String(sheetVisitTime.getMinutes()).padStart(2, '0');
+    } else if (sheetVisitTime !== null && sheetVisitTime !== undefined && sheetVisitTime !== '') {
+      sheetVisitTimeStr = String(sheetVisitTime).trim();
+    }
+    
+    // スプシが空欄でDBに値がある場合のみ書き込む
+    if (sheetVisitTimeStr === '' && dbVisitTime !== '') {
+      // DBの visit_time を HH:MM 形式に変換（HH:MM:SS → HH:MM）
+      var timeToWrite = dbVisitTime;
+      if (timeToWrite.match(/^\d{2}:\d{2}:\d{2}$/)) {
+        timeToWrite = timeToWrite.substring(0, 5); // HH:MM:SS → HH:MM
+      }
+      
+      // スプシのAS列に書き込む（行番号は i+2、列番号は visitTimeColIndex+1）
+      sheet.getRange(i + 2, visitTimeColIndex + 1).setValue(timeToWrite);
+      updatedCount++;
+      Logger.log('📝 ' + sellerNumber + ': 訪問時間をスプシに書き戻し: ' + timeToWrite);
+    }
+  }
+  
+  Logger.log('📝 DB→スプシ: 訪問時間書き戻し完了 (' + updatedCount + '件)');
+}
+
+// ============================================================
 // メイン同期（10分トリガー）
 // ============================================================
 function syncSellerList() {
@@ -494,6 +567,20 @@ function syncSellerList() {
     }
   } catch (e) { Logger.log('⚠️ 追加同期エラー: ' + e.toString()); }
   syncUpdatesToSupabase_(sheetRows);
+  
+  // DB→スプシ: 訪問時間をスプシのAS列に書き戻す
+  // （通話モードページで入力した訪問時間をスプシに反映する）
+  try {
+    var dbSellersForWriteback = fetchAllSellersFromSupabase_();
+    if (dbSellersForWriteback) {
+      var dbMapForWriteback = {};
+      for (var wb = 0; wb < dbSellersForWriteback.length; wb++) {
+        dbMapForWriteback[dbSellersForWriteback[wb].seller_number] = dbSellersForWriteback[wb];
+      }
+      writeVisitTimeToSheet_(sheet, headers, dbMapForWriteback);
+    }
+  } catch (e) { Logger.log('⚠️ 訪問時間書き戻しエラー: ' + e.toString()); }
+  
   try {
     var delResponse = postToBackend('/api/sync/trigger?deletionOnly=true', {});
     var delStatusCode = delResponse.getResponseCode();
