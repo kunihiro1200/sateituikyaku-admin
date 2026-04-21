@@ -46,6 +46,7 @@ interface NearbyBuyer {
   desired_type?: string | null;      // U列「★希望種別」
   broker_inquiry?: string | null;    // CV列「業者問合せ」
   distribution_type?: string | null; // Q列「配信種別」
+  corporate_name?: string | null;    // EE列「法人名」
 }
 
 interface NearbyBuyersListProps {
@@ -759,6 +760,7 @@ const NearbyBuyersList = ({ sellerId, propertyNumber, propertyType, onCountChang
               <TableCell sx={{ cursor: 'pointer', userSelect: 'none' }} onClick={() => handleSort('name')}>
                 名前{getSortIcon('name')}
               </TableCell>
+              <TableCell>法人名</TableCell>
               <TableCell sx={{ minWidth: 80, maxWidth: 150 }}>配布エリア</TableCell>
               <TableCell>問合せ物件情報</TableCell>
               <TableCell sx={{ cursor: 'pointer', userSelect: 'none' }} onClick={() => handleSort('inquiry_price')}>
@@ -828,6 +830,7 @@ const NearbyBuyersList = ({ sellerId, propertyNumber, propertyType, onCountChang
                       </Typography>
                     </Box>
                   </TableCell>
+                  <TableCell>{buyer.corporate_name || '-'}</TableCell>
                   <TableCell sx={{ minWidth: 80, maxWidth: 150 }}>
                     {buyer.distribution_areas && buyer.distribution_areas.length > 0 ? (
                       <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>

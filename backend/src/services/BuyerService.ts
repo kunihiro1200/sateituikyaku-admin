@@ -1493,7 +1493,8 @@ export class BuyerService {
         property_number,
         price,
         inquiry_hearing,
-        viewing_result_follow_up
+        viewing_result_follow_up,
+        corporate_name
       `)
       .eq('distribution_type', '要')
       .is('deleted_at', null)
@@ -1532,6 +1533,7 @@ export class BuyerService {
       inquiry_price: buyer.price ?? null,
       property_address: propertyAddressMap[buyer.property_number] ?? null,
       desired_type: buyer.desired_property_type ?? null,
+      corporate_name: buyer.corporate_name ?? null,
     }));
   }
 
