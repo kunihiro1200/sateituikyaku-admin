@@ -1,6 +1,5 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { EmailService } from './EmailService.supabase';
-import { calculateTaskStatus } from '../../../frontend/frontend/src/utils/workTaskStatusUtils';
 
 // フロントエンドのcalculateTaskStatusに依存しないよう、
 // バックエンド用に同等のロジックをインライン実装する
