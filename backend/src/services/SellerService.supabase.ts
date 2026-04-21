@@ -1535,80 +1535,14 @@ export class SellerService extends BaseRepository {
           break;
         }
         case 'pinrichChangeRequired': {
-          // Pinrich要変更（条件A〜Dのいずれかを満たす売主）
-          // 条件が複雑なため、全件取得後にJS側でフィルタリング
-          let pinrichChangeCandidates: any[] = [];
-          let prcPage = 0;
-          const prcPageSize = 1000;
-
-          while (true) {
-            const { data: prcData, error: prcError } = await this.table('sellers')
-              .select('id, status, visit_assignee, pinrich_status, confidence_level, visit_date, contract_year_month')
-              .is('deleted_at', null)
-              .order('id')
-              .range(prcPage * prcPageSize, (prcPage + 1) * prcPageSize - 1);
-
-            if (prcError || !prcData || prcData.length === 0) break;
-            pinrichChangeCandidates = pinrichChangeCandidates.concat(prcData);
-            if (prcData.length < prcPageSize) break;
-            prcPage++;
-          }
-
-          // 条件B の除外リスト
-          const EXCLUDED_PINRICH_B = new Set([
-            'クローズ',
-            '登録不要',
-            'アドレスエラー',
-            '配信不要（他決後、訪問後、担当付）',
-            '△配信停止',
-          ]);
-
-          // 条件C の有効ステータス
-          const VALID_STATUS_C = new Set(['専任媒介', '追客中', '除外後追客中']);
-
-          // 条件D の有効ステータス
-          const VALID_STATUS_D = new Set(['他決→追客', '他決→追客不要', '一般媒介']);
-
-          const pinrichChangeIds = pinrichChangeCandidates.filter((s: any) => {
-            const status = s.status || '';
-            const visitAssignee = s.visit_assignee || '';
-            const pinrichStatus = s.pinrich_status || '';
-            const confidenceLevel = s.confidence_level || '';
-            const visitDate = s.visit_date || '';
-            const contractYearMonth = s.contract_year_month || '';
-
-            // 条件A: visit_assignee = "外す" AND pinrich_status = "クローズ" AND status = "追客中"
-            const conditionA =
-              visitAssignee === '外す' &&
-              pinrichStatus === 'クローズ' &&
-              status === '追客中';
-
-            // 条件B: confidence_level = "D" AND pinrich_status が除外リスト外
-            const conditionB =
-              confidenceLevel === 'D' &&
-              !EXCLUDED_PINRICH_B.has(pinrichStatus);
-
-            // 条件C: visit_date が空欄でない AND pinrich_status = "配信中" AND visit_assignee が空欄でない AND status が有効リスト内
-            const conditionC =
-              visitDate.trim() !== '' &&
-              pinrichStatus === '配信中' &&
-              visitAssignee.trim() !== '' &&
-              VALID_STATUS_C.has(status);
-
-            // 条件D: status が有効リスト内 AND pinrich_status = "クローズ" AND contract_year_month >= "2025-05-01"
-            const conditionD =
-              VALID_STATUS_D.has(status) &&
-              pinrichStatus === 'クローズ' &&
-              contractYearMonth >= '2025-05-01';
-
-            return conditionA || conditionB || conditionC || conditionD;
-          }).map((s: any) => s.id);
-
-          console.log(`[pinrichChangeRequired] matched IDs: ${pinrichChangeIds.length}`);
-
-          query = pinrichChangeIds.length === 0
-            ? query.eq('id', '00000000-0000-0000-0000-000000000000')
-            : query.in('id', pinrichChangeIds);
+          // Pinrich要変更（新条件: 配信中 + visitAssignee有効 + inquiryDate >= 2026-01-01）
+          // フロントエンドの isPinrichNeedsChange() と同じ条件
+          query = query
+            .eq('pinrich_status', '配信中')
+            .not('visit_assignee', 'is', null)
+            .neq('visit_assignee', '')
+            .neq('visit_assignee', '外す')
+            .gte('inquiry_date', '2026-01-01');
           break;
         }
         case 'exclusive':
