@@ -223,10 +223,53 @@ const filterBuyersByPrice = (buyers: NearbyBuyer[], selectedSet: Set<string>, pr
   });
 };
 
+// 面積優先ロジック: 「当社調べ」値を優先し、なければ通常値を使用する
+function resolveArea(verified: number | null | undefined, normal: number | null | undefined): number | null {
+  if (verified != null) return verified;
+  if (normal != null) return normal;
+  return null;
+}
+
+// メール本文テンプレート生成関数
+function buildEmailTemplate(params: {
+  buyerName: string | null;
+  address: string | null;
+  landArea: number | null;
+  buildingArea: number | null;
+}): string {
+  const name = params.buyerName ?? '{氏名}';
+  const address = params.address ?? '';
+  const landArea = params.landArea != null ? String(params.landArea) : '';
+  const buildingArea = params.buildingArea != null ? String(params.buildingArea) : '';
+
+  return `${name}様
+
+お世話になります。不動産会社の株式会社いふうです。
+
+下記を近々売りに出すことになりました！
+
+物件住所：${address}
+土地面積：${landArea}㎡
+建物面積：${buildingArea}㎡
+
+ぜんりんを添付しておりますのでご参考ください。
+もしご興味がございましたら、このメールにご返信頂ければと思います。
+
+よろしくお願いいたします。
+
+×××××××××××××××
+大分市舞鶴町1-3-30
+株式会社いふう
+TEL:097-533-2022
+×××××××××××××××`;
+}
+
 interface PropertyDetails {
   address: string | null;
   landArea: number | null;
   buildingArea: number | null;
+  landAreaVerified: number | null;      // 土地面積（当社調べ）
+  buildingAreaVerified: number | null;  // 建物面積（当社調べ）
   buildYear: number | null;
   floorPlan: string | null;
 }
@@ -470,33 +513,26 @@ const NearbyBuyersList = ({ sellerId, propertyNumber, propertyType, onCountChang
       setSnackbar({ open: true, message: '選択された買主にメールアドレスが登録されていません', severity: 'error' });
       return;
     }
-    const effectivePropertyNumber = propertyNumber || propertyNumberState;
-    const publicUrl = effectivePropertyNumber
-      ? `https://property-site-frontend-kappa.vercel.app/public/properties/${effectivePropertyNumber}`
-      : '';
     const address = propertyAddress || '物件';
     const subject = `${address}に興味のあるかた！もうすぐ売り出します！事前に内覧可能です！`;
-    let propertyInfoSection = '';
-    if (propertyDetails) {
-      const infoLines: string[] = [];
-      if (propertyDetails.address) infoLines.push(`住所: ${propertyDetails.address}`);
-      if (propertyDetails.landArea) infoLines.push(`土地面積: ${propertyDetails.landArea}㎡`);
-      if (propertyDetails.buildingArea) infoLines.push(`建物面積: ${propertyDetails.buildingArea}㎡`);
-      if (propertyDetails.buildYear) {
-        const age = new Date().getFullYear() - propertyDetails.buildYear;
-        infoLines.push(`築年: ${age}年`);
-      }
-      if (propertyDetails.floorPlan) infoLines.push(`間取り: ${propertyDetails.floorPlan}`);
-      infoLines.push(`価格: 未定`);
-      if (infoLines.length > 0) propertyInfoSection = '\n\n【物件情報】\n' + infoLines.join('\n');
-    }
-    const signature = `よろしくお願いいたします。\n×××××××××××××××\n大分市舞鶴町1-3-30\n株式会社いふう\nTEL:097-533-2022\n×××××××××××××××`;
+    const landArea = resolveArea(propertyDetails?.landAreaVerified, propertyDetails?.landArea);
+    const buildingArea = resolveArea(propertyDetails?.buildingAreaVerified, propertyDetails?.buildingArea);
     let bodyTemplate: string;
     if (candidatesWithEmail.length === 1) {
-      const buyerName = candidatesWithEmail[0].name || 'お客様';
-      bodyTemplate = `${buyerName}様\nお世話になります。不動産会社の株式会社いふうです。\n${address}を近々売りに出すことになりました！${propertyInfoSection}\n\nもしご興味がございましたら、誰よりも早く内覧することが可能となっておりますので、このメールにご返信頂ければと思います。\n${publicUrl ? `物件詳細：${publicUrl}\n\n` : ''}${signature}`;
+      const buyerName = candidatesWithEmail[0].name || null;
+      bodyTemplate = buildEmailTemplate({
+        buyerName,
+        address: propertyDetails?.address ?? null,
+        landArea,
+        buildingArea,
+      });
     } else {
-      bodyTemplate = `{氏名}様\nお世話になります。不動産会社の株式会社いふうです。\n${address}を近々売りに出すことになりました！${propertyInfoSection}\n\nもしご興味がございましたら、誰よりも早く内覧することが可能となっておりますので、このメールにご返信頂ければと思います。\n${publicUrl ? `物件詳細：${publicUrl}\n\n` : ''}${signature}`;
+      bodyTemplate = buildEmailTemplate({
+        buyerName: null,
+        address: propertyDetails?.address ?? null,
+        landArea,
+        buildingArea,
+      });
     }
     setEmailSubject(subject);
     setEmailBody(bodyTemplate);

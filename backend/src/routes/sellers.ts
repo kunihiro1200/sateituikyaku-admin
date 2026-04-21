@@ -1504,6 +1504,7 @@ router.get('/:id/nearby-buyers', async (req: Request, res: Response) => {
         propertyAddress: null,
         propertyType: null,
         salesPrice: null,
+        propertyDetails: null,
         message: '物件住所が設定されていません',
       });
     }
@@ -1548,12 +1549,24 @@ router.get('/:id/nearby-buyers', async (req: Request, res: Response) => {
     const result = await calculator.calculateDistributionAreas(googleMapUrl, city, seller.propertyAddress, preloadedCoords);
 
     if (!result.areas || result.areas.length === 0) {
+      // propertyDetailsオブジェクトを構築
+      const propertyDetails = seller.property ? {
+        address: seller.property.address || null,
+        landArea: seller.property.landArea ?? null,
+        buildingArea: seller.property.buildingArea ?? null,
+        landAreaVerified: seller.property.landAreaVerified ?? null,
+        buildingAreaVerified: seller.property.buildingAreaVerified ?? null,
+        buildYear: seller.property.buildYear ?? null,
+        floorPlan: seller.property.floorPlan || null,
+      } : null;
+
       return res.json({
         buyers: [],
         matchedAreas: [],
         propertyAddress: seller.propertyAddress,
         propertyType,
         salesPrice,
+        propertyDetails,
         message: '配布エリアを特定できませんでした',
       });
     }
@@ -1563,12 +1576,24 @@ router.get('/:id/nearby-buyers', async (req: Request, res: Response) => {
 
     console.log(`✅ Found ${buyers.length} nearby buyers for seller ${id}`);
 
+    // propertyDetailsオブジェクトを構築
+    const propertyDetails = seller.property ? {
+      address: seller.property.address || null,
+      landArea: seller.property.landArea ?? null,
+      buildingArea: seller.property.buildingArea ?? null,
+      landAreaVerified: seller.property.landAreaVerified ?? null,
+      buildingAreaVerified: seller.property.buildingAreaVerified ?? null,
+      buildYear: seller.property.buildYear ?? null,
+      floorPlan: seller.property.floorPlan || null,
+    } : null;
+
     res.json({
       buyers,
       matchedAreas: result.areas,
       propertyAddress: seller.propertyAddress,
       propertyType,
       salesPrice,
+      propertyDetails,
     });
   } catch (error) {
     console.error('Get nearby buyers error:', error);
