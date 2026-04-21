@@ -1415,7 +1415,15 @@ export class EnhancedAutoSyncService {
       updateData.visit_acquisition_date = this.formatVisitDate(visitAcquisitionDate);
     }
     if (visitDate) {
-      updateData.visit_date = this.combineVisitDateAndTime(visitDate, visitTime);
+      // 訪問時間が空欄の場合は visit_date を更新しない（DBの既存時刻を保持）
+      // 訪問時間がある場合のみ visit_date を更新する
+      // 理由: スプシの「訪問時間」列はDBに同期されていないため、
+      //       空欄のまま同期が走ると毎回 00:00:00 で上書きされてしまう
+      const hasVisitTime = visitTime && String(visitTime).trim() !== '';
+      if (hasVisitTime) {
+        updateData.visit_date = this.combineVisitDateAndTime(visitDate, visitTime);
+      }
+      // visitTime が空欄の場合は visit_date を updateData に含めない（DBの既存値を保持）
     }
     if (visitTime) {
       updateData.visit_time = this.formatVisitTime(visitTime);
@@ -1723,7 +1731,13 @@ export class EnhancedAutoSyncService {
       encryptedData.visit_acquisition_date = this.formatVisitDate(visitAcquisitionDate);
     }
     if (visitDate) {
-      encryptedData.visit_date = this.combineVisitDateAndTime(visitDate, visitTime);
+      // 訪問時間が空欄の場合は visit_date を更新しない（DBの既存時刻を保持）
+      // 訪問時間がある場合のみ visit_date を更新する
+      const hasVisitTime = visitTime && String(visitTime).trim() !== '';
+      if (hasVisitTime) {
+        encryptedData.visit_date = this.combineVisitDateAndTime(visitDate, visitTime);
+      }
+      // visitTime が空欄の場合は visit_date を encryptedData に含めない（DBの既存値を保持）
     }
     if (visitTime) {
       encryptedData.visit_time = this.formatVisitTime(visitTime);
