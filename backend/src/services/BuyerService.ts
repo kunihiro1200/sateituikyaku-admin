@@ -1783,6 +1783,7 @@ export class BuyerService {
     // property_listings のマップを構築（並列取得済み）
     const propertyMap: Record<string, { atbb_status: string; property_address: string | null; sales_assignee: string | null; property_type: string | null; price: number | null }> = {};
     if (allListingsResult.data) {
+      console.log(`🔍 [DEBUG] fetchAllBuyers - property_listings取得件数: ${allListingsResult.data.length}`);
       for (const listing of allListingsResult.data) {
         if (listing.property_number) {
           propertyMap[listing.property_number] = {
