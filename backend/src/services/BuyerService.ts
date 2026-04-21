@@ -1554,8 +1554,12 @@ export class BuyerService {
       if (this.shouldExcludeBuyer(buyer)) return false;
       if (!this.matchesStatus(buyer)) return false;
       if (!this.matchesAreaCriteria(buyer, propertyAreaNumbers)) return false;
-      if (propertyType && !this.matchesPropertyTypeCriteria(buyer, propertyType)) return false;
-      if (salesPrice && !this.matchesPriceCriteria(buyer, salesPrice, propertyType)) return false;
+      // 業者（両手）の買主は物件種別・価格フィルターをスキップ（業者フィルターボタンで絞り込む）
+      const isBrokerBothHands = (buyer.broker_inquiry || '').trim() === '業者（両手）';
+      if (!isBrokerBothHands) {
+        if (propertyType && !this.matchesPropertyTypeCriteria(buyer, propertyType)) return false;
+        if (salesPrice && !this.matchesPriceCriteria(buyer, salesPrice, propertyType)) return false;
+      }
       return true;
     });
   }
