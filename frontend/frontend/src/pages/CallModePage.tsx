@@ -4287,7 +4287,7 @@ HP：https://ifoo-oita.com/
             </Box>
           )}
         </Box>
-        {seller?.phoneNumber && (
+        {seller && (
           <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
             {/* 訪問準備ボタン */}
             <VisitPreparationButton
@@ -4383,7 +4383,7 @@ HP：https://ifoo-oita.com/
             </FormControl>
 
             {/* 電話番号ボタン */}
-            <Button
+            {seller?.phoneNumber && <Button
               variant="contained"
               startIcon={<Phone />}
               component="a"
@@ -4412,7 +4412,7 @@ HP：https://ifoo-oita.com/
               }}
             >
               {seller.phoneNumber}
-            </Button>
+            </Button>}
           </Box>
         )}
       </Box>
