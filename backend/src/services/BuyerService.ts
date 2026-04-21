@@ -2583,9 +2583,10 @@ export class BuyerService {
           );
         });
         console.log(`[getBuyersByStatus] pinrich500manUnregistered フィルタ結果: ${filteredBuyers.length}件`);
-      } else if (status === 'pinrichUnregistered') {
+      } else if (status === 'pinrichUnregistered' || status === 'ピンリッチ未登録') {
         // Pinrich未登録: pinrichが空欄・「登録無し」かつ reception_date >= '2026-01-01'
-        console.log(`[getBuyersByStatus] pinrichUnregistered カテゴリ検出`);
+        // 英語キー('pinrichUnregistered')と日本語名('ピンリッチ未登録')の両方に対応
+        console.log(`[getBuyersByStatus] pinrichUnregistered カテゴリ検出 (status=${status})`);
         filteredBuyers = allBuyers.filter((buyer: any) => {
           const pinrich = buyer.pinrich ?? '';
           const isPinrichUnregistered = pinrich === '' || pinrich === null || pinrich === '登録無し';
