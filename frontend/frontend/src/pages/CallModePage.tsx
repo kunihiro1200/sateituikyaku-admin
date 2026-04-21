@@ -265,7 +265,11 @@ function calcInquiryDatePlusDays(
     const date = new Date(inquiryDate);
     if (isNaN(date.getTime())) return null;
     date.setDate(date.getDate() + days);
-    return date.toISOString().split('T')[0];
+    // JSTタイムゾーンずれ防止: toISOString()はUTCのため9時間ずれる可能性がある
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
   } catch {
     return null;
   }
@@ -7811,6 +7815,8 @@ HP：https://ifoo-oita.com/
                               const nextDate = calcInquiryDatePlusDays(seller.inquiryDate, 5);
                               if (nextDate) {
                                 setEditedNextCallDate(nextDate);
+                              } else if (exclusionDate) {
+                                setEditedNextCallDate(exclusionDate);
                               }
                             } else if (exclusionDate) {
                               // H以外：既存動作（除外日そのものを次電日に設定）
