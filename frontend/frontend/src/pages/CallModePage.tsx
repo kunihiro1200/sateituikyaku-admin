@@ -2612,8 +2612,15 @@ const CallModePage = () => {
       }
       // それ以外（既存値あり）は undefined のまま → 送信しない
 
+      // visitTimeStr: visitDateTimeStr から時刻部分を抽出（HH:mm 形式）
+      // スプシのAS列「訪問時間」に即時反映するために visit_time カラムも更新する
+      const visitTimeStr = visitDateTimeStr
+        ? visitDateTimeStr.split(' ')[1]?.substring(0, 5) || null  // "YYYY-MM-DD HH:mm:ss" → "HH:mm"
+        : null;
+
       const updateResponse = await api.put(`/api/sellers/${id}`, {
         visitDate: visitDateTimeStr,
+        visitTime: visitTimeStr,  // スプシのAS列「訪問時間」に即時反映
         visitAssignee: editedAssignedTo || null,
         visitValuationAcquirer: acquirer || null,
         appointmentNotes: editedAppointmentNotes || null,

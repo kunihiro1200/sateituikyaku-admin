@@ -527,6 +527,10 @@ export class SellerService extends BaseRepository {
     if ((data as any).visitDate !== undefined) {
       updates.visit_date = (data as any).visitDate; // TIMESTAMP形式（YYYY-MM-DD HH:mm:ss）
     }
+    // visitTime を直接指定した場合（訪問予約フォームから）
+    if ((data as any).visitTime !== undefined) {
+      updates.visit_time = (data as any).visitTime; // HH:mm 形式
+    }
     if ((data as any).visitAcquisitionDate !== undefined) {
       updates.visit_acquisition_date = (data as any).visitAcquisitionDate; // YYYY-MM-DD形式のまま保存
     }
