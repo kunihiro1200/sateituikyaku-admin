@@ -656,7 +656,7 @@ const NearbyBuyersList = ({ sellerId, propertyNumber, propertyType, onCountChang
       )}
 
       {/* アクションボタン */}
-      <Box sx={{ mb: 2, display: 'flex', gap: 1 }}>
+      <Box sx={{ mb: 2, display: 'flex', gap: 1, alignItems: 'center' }}>
         <Button
           variant="contained"
           startIcon={<EmailIcon />}
@@ -687,36 +687,58 @@ const NearbyBuyersList = ({ sellerId, propertyNumber, propertyType, onCountChang
         >
           PDF
         </Button>
-        {/* 業者フィルターボタン（物件種別に応じて表示） */}
-        {showLandAndHouseButtons && (
-          <>
-            <Button
-              variant={activeAgencyFilter === '土地' ? 'contained' : 'outlined'}
-              color="success"
-              size="small"
-              onClick={() => handleAgencyFilterToggle('土地')}
-            >
-              業者_土地
-            </Button>
-            <Button
-              variant={activeAgencyFilter === '戸建' ? 'contained' : 'outlined'}
-              color="success"
-              size="small"
-              onClick={() => handleAgencyFilterToggle('戸建')}
-            >
-              業者_戸建
-            </Button>
-          </>
-        )}
-        {showApartmentButton && (
-          <Button
-            variant={activeAgencyFilter === 'マンション' ? 'contained' : 'outlined'}
-            color="success"
-            size="small"
-            onClick={() => handleAgencyFilterToggle('マンション')}
+        {/* 業者フィルターボタングループ（物件種別に応じて表示） */}
+        {(showLandAndHouseButtons || showApartmentButton) && (
+          <Box
+            sx={{
+              backgroundColor: '#e8f5e9',
+              borderRadius: 1,
+              border: '1px solid #a5d6a7',
+              p: 1,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 0.5,
+            }}
           >
-            業者_マンション
-          </Button>
+            <Typography
+              variant="caption"
+              sx={{ color: '#2e7d32', fontWeight: 600, fontSize: '0.7rem' }}
+            >
+              業者フィルター
+            </Typography>
+            <Box sx={{ display: 'flex', gap: 0.5 }}>
+              {showLandAndHouseButtons && (
+                <>
+                  <Button
+                    variant={activeAgencyFilter === '土地' ? 'contained' : 'outlined'}
+                    color="success"
+                    size="small"
+                    onClick={() => handleAgencyFilterToggle('土地')}
+                  >
+                    業者_土地
+                  </Button>
+                  <Button
+                    variant={activeAgencyFilter === '戸建' ? 'contained' : 'outlined'}
+                    color="success"
+                    size="small"
+                    onClick={() => handleAgencyFilterToggle('戸建')}
+                  >
+                    業者_戸建
+                  </Button>
+                </>
+              )}
+              {showApartmentButton && (
+                <Button
+                  variant={activeAgencyFilter === 'マンション' ? 'contained' : 'outlined'}
+                  color="success"
+                  size="small"
+                  onClick={() => handleAgencyFilterToggle('マンション')}
+                >
+                  業者_マンション
+                </Button>
+              )}
+            </Box>
+          </Box>
         )}
       </Box>
 
