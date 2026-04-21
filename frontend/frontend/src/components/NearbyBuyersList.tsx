@@ -237,11 +237,34 @@ function buildEmailTemplate(params: {
   address: string | null;
   landArea: number | null;
   buildingArea: number | null;
+  propertyType: string | null | undefined;
 }): string {
   const name = params.buyerName ?? '{氏名}';
   const address = params.address ?? '';
   const landArea = params.landArea != null ? String(params.landArea) : '';
   const buildingArea = params.buildingArea != null ? String(params.buildingArea) : '';
+  const isMansion = params.propertyType === 'マ' || params.propertyType === 'マンション';
+
+  if (isMansion) {
+    return `${name}様
+
+お世話になります。不動産会社の株式会社いふうです。
+
+下記を近々売りに出すことになりました！
+
+物件住所：${address}
+建物面積：${buildingArea}㎡
+
+もしご興味がございましたら、このメールにご返信頂ければと思います。
+
+よろしくお願いいたします。
+
+×××××××××××××××
+大分市舞鶴町1-3-30
+株式会社いふう
+TEL:097-533-2022
+×××××××××××××××`;
+  }
 
   return `${name}様
 
@@ -526,6 +549,7 @@ const NearbyBuyersList = ({ sellerId, propertyNumber, propertyType, onCountChang
         address: propertyDetails?.address ?? null,
         landArea,
         buildingArea,
+        propertyType: effectivePropertyType,
       });
     } else {
       bodyTemplate = buildEmailTemplate({
@@ -533,6 +557,7 @@ const NearbyBuyersList = ({ sellerId, propertyNumber, propertyType, onCountChang
         address: propertyDetails?.address ?? null,
         landArea,
         buildingArea,
+        propertyType: effectivePropertyType,
       });
     }
     setEmailSubject(subject);
