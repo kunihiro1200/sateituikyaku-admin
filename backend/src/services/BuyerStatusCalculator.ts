@@ -345,9 +345,18 @@ export function calculateBuyerStatusComplete(buyer: BuyerData): StatusResult {
     }
 
     // Priority 31: ピンリッチ未登録
-    // ✅ 修正：pinrichが空欄の場合のみ（"登録無し"は除外）
+    // 条件:
+    // - pinrich が NULL・空文字・「登録無し」のいずれか
+    // - email が存在する
+    // - broker_inquiry が空欄
+    // - reception_date >= '2026-01-01'
     if (
-      and(isBlank(buyer.pinrich), isNotBlank(buyer.email), isBlank(buyer.broker_inquiry))
+      and(
+        or(isBlank(buyer.pinrich), equals(buyer.pinrich, '登録無し')),
+        isNotBlank(buyer.email),
+        isBlank(buyer.broker_inquiry),
+        isAfterOrEqual(buyer.reception_date, '2026-01-01')
+      )
     ) {
       const status = 'ピンリッチ未登録';
       return { status, priority: 31, matchedCondition: 'ピンリッチに未登録', color: getStatusColor(status) };

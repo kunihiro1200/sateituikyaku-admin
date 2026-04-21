@@ -20,6 +20,7 @@ import {
   isTodayCallNotStarted,
   isPinrichEmpty,
   isPinrichChangeRequired,
+  isPinrichNeedsChange,
   isVisitAssignedTo,
   isTodayCallAssignedTo,
   isTodayCallAssigned,
@@ -117,6 +118,8 @@ const filterSellersByCategory = (sellers: any[], category: StatusCategory): any[
       return sellers.filter(isVisitCompleted);
     case 'unvisitedOtherDecision':
       return sellers.filter(isUnvisitedOtherDecision);
+    case 'pinrichChangeRequired':
+      return sellers.filter(isPinrichNeedsChange);
     default:
       return sellers;
   }

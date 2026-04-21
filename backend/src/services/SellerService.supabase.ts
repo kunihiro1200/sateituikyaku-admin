@@ -2692,10 +2692,15 @@ export class SellerService extends BaseRepository {
         .select('exclusive_other_decision_meeting, next_call_date, visit_assignee')
         .is('deleted_at', null)
         .in('status', ['他決→追客', '他決→追客不要', '一般→他決']),
-      // 12. Pinrich要変更カテゴリー用データ（条件A〜Dを評価するため必要なカラムを取得）
+      // 12. Pinrich要変更カテゴリー用データ（新条件: 配信中 + visitAssignee あり + inquiryDate >= 2026-01-01）
       this.table('sellers')
-        .select('id, visit_assignee, pinrich_status, status, confidence_level, visit_date, contract_year_month')
+        .select('*', { count: 'exact', head: true })
         .is('deleted_at', null)
+        .eq('pinrich_status', '配信中')
+        .not('visit_assignee', 'is', null)
+        .neq('visit_assignee', '')
+        .neq('visit_assignee', '外す')
+        .gte('inquiry_date', '2026-01-01')
     ]);
 
     console.log(`⏱️ [Performance] Parallel queries completed in ${Date.now() - startTime}ms`);
@@ -2852,37 +2857,20 @@ export class SellerService extends BaseRepository {
       return inquiryDate >= '2026-01-01';
     }).length;
 
-    // 9. Pinrich空欄
+    // 9. Pinrich空欄（inquiryDate >= '2026-01-01' 条件を追加）
     const pinrichEmptyCount = filteredTodayCallSellers.filter(s => {
       const hasInfo = (s.phone_contact_person && s.phone_contact_person.trim() !== '') ||
                       (s.preferred_contact_time && s.preferred_contact_time.trim() !== '') ||
                       (s.contact_method && s.contact_method.trim() !== '');
       if (hasInfo) return false;
       const pinrich = (s as any).pinrich_status || '';
-      return !pinrich || pinrich.trim() === '';
+      if (pinrich && pinrich.trim() !== '') return false;
+      const inquiryDate = (s as any).inquiry_date || '';
+      return inquiryDate >= '2026-01-01';
     }).length;
 
-    // 10. Pinrich要変更カテゴリー（条件A〜Dのいずれかを満たす売主）
-    const pinrichChangeSellers = pinrichChangeRequiredResult.data || [];
-    const EXCLUDED_PINRICH_B_FB = new Set([
-      'クローズ', '登録不要', 'アドレスエラー',
-      '配信不要（他決後、訪問後、担当付）', '△配信停止'
-    ]);
-    const VALID_STATUS_C_FB = new Set(['専任媒介', '追客中', '除外後追客中']);
-    const VALID_STATUS_D_FB = new Set(['他決→追客', '他決→追客不要', '一般媒介']);
-    const pinrichChangeRequiredCount = pinrichChangeSellers.filter((s: any) => {
-      const visitAssignee = (s.visit_assignee || '').trim();
-      const pinrichStatus = (s.pinrich_status || '').trim();
-      const status = (s.status || '').trim();
-      const confidenceLevel = (s.confidence_level || '').trim();
-      const visitDate = (s.visit_date || '').trim();
-      const contractYearMonth = (s.contract_year_month || '').trim();
-      const conditionA = visitAssignee === '外す' && pinrichStatus === 'クローズ' && status === '追客中';
-      const conditionB = confidenceLevel === 'D' && !EXCLUDED_PINRICH_B_FB.has(pinrichStatus);
-      const conditionC = visitDate !== '' && pinrichStatus === '配信中' && visitAssignee !== '' && VALID_STATUS_C_FB.has(status);
-      const conditionD = VALID_STATUS_D_FB.has(status) && pinrichStatus === 'クローズ' && contractYearMonth >= '2025-05-01';
-      return conditionA || conditionB || conditionC || conditionD;
-    }).length;
+    // 10. Pinrich要変更カテゴリー（新条件: 配信中 + visitAssignee あり + inquiryDate >= 2026-01-01）
+    const pinrichChangeRequiredCount = pinrichChangeRequiredResult.count || 0;
 
     // 11. 専任カテゴリー
     const exclusiveSellers = exclusiveSellersResult.data || [];

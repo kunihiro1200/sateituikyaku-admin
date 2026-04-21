@@ -772,7 +772,41 @@ export const isPinrichEmpty = (seller: Seller | any): boolean => {
   
   // Pinrichカラムが空欄かチェック
   const pinrichStatus = seller.pinrichStatus || seller.pinrich_status || '';
-  return !pinrichStatus || pinrichStatus.trim() === '';
+  if (pinrichStatus && pinrichStatus.trim() !== '') return false;
+
+  // 反響日付が2026/1/1以降かチェック
+  const inquiryDate = seller.inquiryDate || seller.inquiry_date || '';
+  const normalizedInquiry = normalizeDateString(inquiryDate);
+  if (!normalizedInquiry || normalizedInquiry < '2026-01-01') return false;
+
+  return true;
+};
+
+/**
+ * Pinrich要変更カテゴリー判定（新条件）
+ * 
+ * 条件:
+ * - pinrichStatus === '配信中'
+ * - visitAssignee に有効な値がある（空・null・'外す' は除外）
+ * - inquiryDate >= '2026-01-01'
+ * 
+ * @param seller 売主データ
+ * @returns Pinrich要変更対象かどうか
+ * 
+ * Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 4.1
+ */
+export const isPinrichNeedsChange = (seller: Seller | any): boolean => {
+  const pinrichStatus = seller.pinrichStatus || seller.pinrich_status || '';
+  if (pinrichStatus !== '配信中') return false;
+
+  const visitAssignee = seller.visitAssigneeInitials || seller.visit_assignee || seller.visitAssignee || '';
+  if (!visitAssignee || visitAssignee.trim() === '' || visitAssignee.trim() === '外す') return false;
+
+  const inquiryDate = seller.inquiryDate || seller.inquiry_date || '';
+  const normalized = normalizeDateString(inquiryDate);
+  if (!normalized || normalized < '2026-01-01') return false;
+
+  return true;
 };
 
 /**

@@ -698,7 +698,7 @@ export class BuyerService {
    */
   private shouldUpdateBuyerSidebarCounts(updateData: Partial<any>): boolean {
     // サイドバーカテゴリーに影響するフィールド
-    const sidebarFields = ['next_call_date', 'follow_up_assignee', 'viewing_date', 'notification_sender', 'inquiry_email_phone'];
+    const sidebarFields = ['next_call_date', 'follow_up_assignee', 'viewing_date', 'notification_sender', 'inquiry_email_phone', 'pinrich'];
     return sidebarFields.some(field => field in updateData);
   }
 
@@ -2228,7 +2228,17 @@ export class BuyerService {
           result.generalViewingSellerContactPending++;
         } else if (status === '要内覧促進客') {
           result.viewingPromotionRequired++;
-        } else if (status === 'ピンリッチ未登録') {
+        }
+      });
+      
+      // Pinrich未登録: pinrichが空欄・「登録無し」かつ reception_date >= '2026-01-01'（動的計算）
+      allBuyers.forEach((buyer: any) => {
+        const pinrich = buyer.pinrich ?? '';
+        const isPinrichUnregistered = pinrich === '' || pinrich === null || pinrich === '登録無し';
+        if (
+          isPinrichUnregistered &&
+          buyer.reception_date && buyer.reception_date >= '2026-01-01'
+        ) {
           result.pinrichUnregistered++;
         }
       });
@@ -2570,9 +2580,22 @@ export class BuyerService {
           );
         });
         console.log(`[getBuyersByStatus] pinrich500manUnregistered フィルタ結果: ${filteredBuyers.length}件`);
+      } else if (status === 'pinrichUnregistered') {
+        // Pinrich未登録: pinrichが空欄・「登録無し」かつ reception_date >= '2026-01-01'
+        console.log(`[getBuyersByStatus] pinrichUnregistered カテゴリ検出`);
+        filteredBuyers = allBuyers.filter((buyer: any) => {
+          const pinrich = buyer.pinrich ?? '';
+          const isPinrichUnregistered = pinrich === '' || pinrich === null || pinrich === '登録無し';
+          return (
+            isPinrichUnregistered &&
+            buyer.email && String(buyer.email).trim() &&
+            (!buyer.broker_inquiry || buyer.broker_inquiry === '' || buyer.broker_inquiry === '0') &&
+            buyer.reception_date && buyer.reception_date >= '2026-01-01'
+          );
+        });
+        console.log(`[getBuyersByStatus] pinrichUnregistered フィルタ結果: ${filteredBuyers.length}件`);
       } else if (status === 'inquiryEmailUnanswered' || status === 'brokerInquiry' || 
-                 status === 'generalViewingSellerContactPending' || status === 'viewingPromotionRequired' || 
-                 status === 'pinrichUnregistered') {
+                 status === 'generalViewingSellerContactPending' || status === 'viewingPromotionRequired') {
         // 新カテゴリの場合（2026年4月追加）
         // これらのカテゴリはGASで計算されたカウントのみを使用し、フィルタリングは実装しない
         console.log(`[getBuyersByStatus] 新カテゴリ検出: status=${status}`);
