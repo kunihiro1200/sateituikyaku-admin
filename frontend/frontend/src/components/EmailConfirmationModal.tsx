@@ -15,15 +15,30 @@ import {
   List,
   ListItem,
   ListItemText,
+  Select,
+  MenuItem,
 } from '@mui/material';
 import { Email as EmailIcon, AttachFile, Delete } from '@mui/icons-material';
 import { ImageFile } from './ImageSelectorModal';
 import ImageSelectorModal from './ImageSelectorModal';
+import api from '../services/api';
+
+// デフォルト返信先アドレス
+const DEFAULT_REPLY_TO = 'tenant@ifoo-oita.com';
+
+interface Employee {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  initials: string;
+  phone_number: string | null;
+}
 
 interface EmailConfirmationModalProps {
   open: boolean;
   onClose: () => void;
-  onConfirm: (subject: string, body: string, attachments: ImageFile[]) => Promise<void>;
+  onConfirm: (subject: string, body: string, attachments: ImageFile[], replyTo: string) => Promise<void>;
   recipientCount: number;
   defaultSubject: string;
   defaultBody: string;
@@ -43,19 +58,44 @@ export default function EmailConfirmationModal({
   const [attachments, setAttachments] = useState<ImageFile[]>([]);
   const [imageSelectorOpen, setImageSelectorOpen] = useState(false);
 
-  // モーダルが開かれたときにデフォルト値と添付ファイルをリセット
+  // スタッフ一覧の状態
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [employeesLoading, setEmployeesLoading] = useState(false);
+
+  // Reply-To 選択状態（初期値: DEFAULT_REPLY_TO）
+  const [replyTo, setReplyTo] = useState<string>(DEFAULT_REPLY_TO);
+
+  // スタッフ一覧を取得する関数
+  const fetchEmployees = async () => {
+    setEmployeesLoading(true);
+    try {
+      const response = await api.get('/api/employees/active');
+      setEmployees(response.data.employees || []);
+    } catch (error) {
+      console.warn('[EmailConfirmationModal] スタッフ一覧の取得に失敗しました:', error);
+      setEmployees([]); // フォールバック: DEFAULT_REPLY_TO のみ表示
+    } finally {
+      setEmployeesLoading(false);
+    }
+  };
+
+  // モーダルが開かれたときにデフォルト値と添付ファイルをリセット、スタッフ一覧を取得
   useEffect(() => {
     if (open) {
       setSubject(defaultSubject);
       setBody(defaultBody);
       setAttachments([]);
+      setReplyTo(DEFAULT_REPLY_TO); // Reply-To をリセット
+      fetchEmployees();
     }
   }, [open, defaultSubject, defaultBody]);
 
   const handleConfirm = async () => {
     setSending(true);
     try {
-      await onConfirm(subject, body, attachments);
+      // replyTo が空の場合は DEFAULT_REPLY_TO を使用
+      const effectiveReplyTo = replyTo.trim() || DEFAULT_REPLY_TO;
+      await onConfirm(subject, body, attachments, effectiveReplyTo);
       setAttachments([]);
       onClose();
     } catch (error) {
@@ -119,6 +159,32 @@ export default function EmailConfirmationModal({
           </Box>
 
           <Divider sx={{ mb: 3 }} />
+
+          {/* 返信先（Reply-To）選択 */}
+          <Box sx={{ mb: 3 }}>
+            <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
+              返信先（Reply-To）
+            </Typography>
+            <Select
+              fullWidth
+              value={replyTo}
+              onChange={(e) => setReplyTo(e.target.value as string)}
+              disabled={sending || employeesLoading}
+              size="small"
+            >
+              <MenuItem value={DEFAULT_REPLY_TO}>
+                デフォルト（{DEFAULT_REPLY_TO}）
+              </MenuItem>
+              {employees
+                .filter(emp => emp.email && emp.email !== DEFAULT_REPLY_TO)
+                .map(emp => (
+                  <MenuItem key={emp.id} value={emp.email}>
+                    {emp.name}（{emp.email}）
+                  </MenuItem>
+                ))
+              }
+            </Select>
+          </Box>
 
           {/* 件名 */}
           <Box sx={{ mb: 3 }}>

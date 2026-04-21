@@ -649,6 +649,7 @@ router.post(
     body('body').notEmpty().withMessage('Email body is required'),
     body('propertyNumber').optional().isString().withMessage('Property number must be a string'),
     body('source').optional().isString().withMessage('Source must be a string'),
+    body('replyTo').optional().isEmail().withMessage('Invalid replyTo email address'),
   ],
   async (req: Request, res: Response) => {
     try {
@@ -661,7 +662,7 @@ router.post(
         });
       }
 
-      const { senderAddress, recipients, subject, body, propertyNumber, attachments, source: requestSource } = req.body;
+      const { senderAddress, recipients, subject, body, propertyNumber, attachments, source: requestSource, replyTo } = req.body;
 
       // recipientsは文字列配列または{email, name, buyerNumber}配列のどちらも受け付ける
       const normalizedRecipients: Array<{ email: string; name: string | null; buyerNumber?: string }> = recipients.map((r: any) => {
@@ -747,6 +748,7 @@ router.post(
         body,
         propertyNumber: propertyNumber || 'unknown',
         attachments: processedAttachments,
+        replyTo: replyTo || 'tenant@ifoo-oita.com',
       });
 
       // activity_logsに記録（メール送信成功後）

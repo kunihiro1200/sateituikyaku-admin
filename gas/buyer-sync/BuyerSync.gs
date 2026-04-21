@@ -164,7 +164,7 @@ var BUYER_COLUMN_MAPPING = {
   '内覧促進メール結果': 'viewing_promotion_result',
   'データ更新': 'data_updated',
   'キャンペーン該当/未': 'campaign_applicable',
-  '法人名': 'company_name',
+  '法人名': 'corporate_name',
   '他気になる物件ヒアリング': 'other_property_hearing',
   '問合時持家ヒアリング': 'owned_home_hearing_inquiry',
   '持家ヒアリング結果': 'owned_home_hearing_result',

@@ -1061,6 +1061,7 @@ ${bodyHtml}
     subject: string;
     body: string;
     propertyNumber: string;
+    replyTo?: string;
     attachments?: Array<{
       filename: string;
       mimeType: string;
@@ -1107,6 +1108,9 @@ ${bodyHtml}
       console.log(`  Attachments: ${params.attachments!.length} files`);
     }
 
+    // replyTo が未指定・空文字の場合はデフォルト値を使用
+    const effectiveReplyTo = params.replyTo?.trim() || 'tenant@ifoo-oita.com';
+
     for (const recipient of normalizedRecipients) {
       try {
         // 各受信者の名前で本文を差し替え（{buyerName}プレースホルダー）
@@ -1122,6 +1126,7 @@ ${bodyHtml}
           const messageParts = [
             `From: ${params.senderAddress}`,
             `To: ${recipient.email}`,
+            `Reply-To: ${effectiveReplyTo}`,
             `Subject: ${encodedPersonalizedSubject}`,
             'MIME-Version: 1.0',
             `Content-Type: multipart/mixed; boundary="${boundary}"`,
@@ -1157,6 +1162,7 @@ ${bodyHtml}
           const messageParts = [
             `From: ${params.senderAddress}`,
             `To: ${recipient.email}`,
+            `Reply-To: ${effectiveReplyTo}`,
             `Subject: ${encodedPersonalizedSubject}`,
             'MIME-Version: 1.0',
             'Content-Type: text/plain; charset=utf-8',

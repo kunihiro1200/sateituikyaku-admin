@@ -540,7 +540,7 @@ const NearbyBuyersList = ({ sellerId, propertyNumber, propertyType, onCountChang
     setEmailModalOpen(true);
   };
 
-  const handleConfirmSendEmail = async (subject: string, body: string, attachments: ImageFile[]) => {
+  const handleConfirmSendEmail = async (subject: string, body: string, attachments: ImageFile[], replyTo: string) => {
     const selectedCandidates = sortedBuyers.filter(b => selectedBuyers.has(b.buyer_number));
     const candidatesWithEmail = selectedCandidates.filter(
       b => b.email && typeof b.email === 'string' && b.email.trim() !== ''
@@ -559,6 +559,7 @@ const NearbyBuyersList = ({ sellerId, propertyNumber, propertyType, onCountChang
             subject,
             body: personalizedBody,
             propertyNumber: effectivePropertyNumber || undefined, // 物件番号を追加
+            replyTo, // Reply-Toアドレスを追加
             ...(attachmentPayloads.length > 0 ? { attachments: attachmentPayloads } : {}),
           });
         })
