@@ -1497,8 +1497,8 @@ export class BuyerService {
       `)
       .eq('distribution_type', '要')
       .is('deleted_at', null)
-      .not('latest_status', 'ilike', '%成約%')
-      .not('latest_status', 'ilike', '%D%');
+      .or('latest_status.is.null,latest_status.not.ilike.*成約*')
+      .or('latest_status.is.null,latest_status.not.ilike.*D*');
 
     if (error) {
       throw new Error(`Failed to fetch buyers by areas: ${error.message}`);
