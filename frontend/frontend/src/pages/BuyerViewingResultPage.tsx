@@ -554,16 +554,12 @@ export default function BuyerViewingResultPage() {
     console.log('follow_up_assignee:', followUpAssignee);
     console.log('employees配列:', employees);
     
+    const TENANT_EMAIL = 'tenant@ifoo-oita.com';
     let assignedEmail = '';
     if (followUpAssignee) {
-      // 「業者」の場合はカレンダー送信をスキップ
+      // 「業者」の場合はテナントメールアドレスを使用
       if (followUpAssignee === '業者') {
-        setSnackbar({
-          open: true,
-          message: '後続担当が「業者」のため、カレンダー送信をスキップしました',
-          severity: 'warning',
-        });
-        return;
+        assignedEmail = TENANT_EMAIL;
       } else {
         // イニシャルまたは名前で従業員マスタを検索
         const matchedEmployees = employees.filter(e => {
