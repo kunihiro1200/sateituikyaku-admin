@@ -1434,6 +1434,64 @@ export default function BuyerViewingResultPage() {
                 ))}
               </Box>
             </Box>
+            {/* 内覧後売主連絡（内覧情報行内 - viewing_mobile または viewing_type_general に「一般」が含まれる場合のみ表示） */}
+            {(() => {
+              const showPostViewingSellerContact =
+                (buyer.viewing_mobile && buyer.viewing_mobile.includes('一般')) ||
+                (buyer.viewing_type_general && buyer.viewing_type_general.includes('一般'));
+              if (!showPostViewingSellerContact) return null;
+
+              // 必須条件判定
+              // mediation_type === "一般・公開中" AND viewing_date >= "2025-07-05" AND <= today AND viewing_result_follow_up が非空
+              const isPostViewingSellerContactRequired = (() => {
+                const mediationType = linkedProperties?.find((p: any) => p.atbb_status)?.atbb_status || '';
+                if (mediationType !== '一般・公開中') return false;
+                if (!buyer.viewing_date) return false;
+                const viewingDate = new Date(buyer.viewing_date);
+                if (isNaN(viewingDate.getTime())) return false;
+                const minDate = new Date('2025-07-05');
+                const today = new Date();
+                today.setHours(23, 59, 59, 999);
+                if (viewingDate < minDate || viewingDate > today) return false;
+                return !!(buyer.viewing_result_follow_up && String(buyer.viewing_result_follow_up).trim());
+              })();
+
+              return (
+                <Box sx={{ flexShrink: 0 }}>
+                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5, fontSize: '0.7rem' }}>
+                    内覧後売主連絡{isPostViewingSellerContactRequired ? '*' : ''}
+                  </Typography>
+                  <Box sx={{ display: 'flex', gap: 0.5 }}>
+                    {(['済', '未', '不要'] as const).map((option) => {
+                      const isSelected = buyer.post_viewing_seller_contact === option;
+                      return (
+                        <Button
+                          key={option}
+                          size="small"
+                          variant={isSelected ? 'contained' : 'outlined'}
+                          color="primary"
+                          onClick={async () => {
+                            const newValue = isSelected ? '' : option;
+                            await handleInlineFieldSave('post_viewing_seller_contact', newValue);
+                          }}
+                          sx={{ py: 0.5, fontWeight: isSelected ? 'bold' : 'normal', borderRadius: 1, fontSize: '0.75rem' }}
+                        >
+                          {option}
+                        </Button>
+                      );
+                    })}
+                  </Box>
+                  {/* 注意書き（常時表示） */}
+                  <Typography
+                    variant="caption"
+                    color="error"
+                    sx={{ display: 'block', mt: 0.5 }}
+                  >
+                    *一般媒介は内覧後に、全ての売り主に結果報告をしてください
+                  </Typography>
+                </Box>
+              );
+            })()}
           </Box>
 
           {/* 内覧結果・後続対応 */}
@@ -1459,66 +1517,6 @@ export default function BuyerViewingResultPage() {
                 ))}
               </Box>
             </Box>
-            {/* 内覧後売主連絡（viewing_mobile または viewing_type_general に「一般」が含まれる場合のみ表示） */}
-            {(() => {
-              const showPostViewingSellerContact =
-                (buyer.viewing_mobile && buyer.viewing_mobile.includes('一般')) ||
-                (buyer.viewing_type_general && buyer.viewing_type_general.includes('一般'));
-              if (!showPostViewingSellerContact) return null;
-
-              // 必須条件判定
-              // mediation_type === "一般・公開中" AND viewing_date >= "2025-07-05" AND <= today AND viewing_result_follow_up が非空
-              const isPostViewingSellerContactRequired = (() => {
-                const mediationType = linkedProperties?.find((p: any) => p.atbb_status)?.atbb_status || '';
-                if (mediationType !== '一般・公開中') return false;
-                if (!buyer.viewing_date) return false;
-                const viewingDate = new Date(buyer.viewing_date);
-                if (isNaN(viewingDate.getTime())) return false;
-                const minDate = new Date('2025-07-05');
-                const today = new Date();
-                today.setHours(23, 59, 59, 999);
-                if (viewingDate < minDate || viewingDate > today) return false;
-                return !!(buyer.viewing_result_follow_up && String(buyer.viewing_result_follow_up).trim());
-              })();
-
-              return (
-                <Box sx={{ mt: 1, mb: 1 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <Typography variant="caption" color="text.secondary" sx={{ whiteSpace: 'nowrap', flexShrink: 0, fontSize: '0.7rem' }}>
-                      内覧後売主連絡{isPostViewingSellerContactRequired ? '*' : ''}
-                    </Typography>
-                    <Box sx={{ display: 'flex', gap: 0.5, flex: 1 }}>
-                      {(['済', '未', '不要'] as const).map((option) => {
-                        const isSelected = buyer.post_viewing_seller_contact === option;
-                        return (
-                          <Button
-                            key={option}
-                            size="small"
-                            variant={isSelected ? 'contained' : 'outlined'}
-                            color="primary"
-                            onClick={async () => {
-                              const newValue = isSelected ? '' : option;
-                              await handleInlineFieldSave('post_viewing_seller_contact', newValue);
-                            }}
-                            sx={{ flex: 1, py: 0.5, fontWeight: isSelected ? 'bold' : 'normal', borderRadius: 1, fontSize: '0.75rem' }}
-                          >
-                            {option}
-                          </Button>
-                        );
-                      })}
-                    </Box>
-                  </Box>
-                  {/* 注意書き（常時表示） */}
-                  <Typography
-                    variant="caption"
-                    color="error"
-                    sx={{ display: 'block', mt: 0.5 }}
-                  >
-                    *一般媒介は内覧後に、全ての売り主に結果報告をしてください
-                  </Typography>
-                </Box>
-              );
-            })()}
             {/* RichTextEditor + 保存ボタン */}
             {(() => {
               const isDirty = viewingResultEditValue !== (buyer?.viewing_result_follow_up || '');
