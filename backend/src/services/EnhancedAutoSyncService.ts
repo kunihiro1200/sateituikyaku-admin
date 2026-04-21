@@ -860,10 +860,17 @@ export class EnhancedAutoSyncService {
           const dbVisitDateTime = dbSeller.visit_date
             ? String(dbSeller.visit_date).substring(0, 16).replace('T', ' ')
             : null;
+          // 訪問時間が空欄の場合は日付部分のみ比較する
+          // （訪問時間なしの場合に既存の時刻を不必要に上書きしないため）
+          const hasSheetVisitTime = sheetVisitTime && String(sheetVisitTime).trim() !== '';
+          const compareLength = hasSheetVisitTime ? 16 : 10;
           const sheetVisitDateTimeForCompare = formattedSheetVisitDateTime
-            ? formattedSheetVisitDateTime.substring(0, 16)
+            ? formattedSheetVisitDateTime.substring(0, compareLength)
             : null;
-          if (sheetVisitDateTimeForCompare !== dbVisitDateTime) {
+          const dbVisitDateTimeForCompare = dbVisitDateTime
+            ? dbVisitDateTime.substring(0, compareLength)
+            : null;
+          if (sheetVisitDateTimeForCompare !== dbVisitDateTimeForCompare) {
             needsUpdate = true;
           }
 
@@ -1238,7 +1245,9 @@ export class EnhancedAutoSyncService {
 
   /**
    * 訪問日と訪問時間を組み合わせて YYYY-MM-DD HH:mm:ss 形式にフォーマット
-   * 訪問時間が存在する場合は日時を結合し、存在しない場合は日付のみ（00:00:00）を返す
+   * 訪問時間が存在する場合は日時を結合し、存在しない場合は YYYY-MM-DD 00:00:00 を返す
+   * （時刻なしで返すと DB の TIMESTAMP 型が 00:00:00 として解釈し、
+   *   フロントエンドの new Date() でタイムゾーン変換が発生するため明示的に付与）
    */
   private combineVisitDateAndTime(visitDate: any, visitTime: any): string | null {
     const formattedDate = this.formatVisitDate(visitDate);
@@ -1247,7 +1256,9 @@ export class EnhancedAutoSyncService {
     if (formattedTime) {
       return `${formattedDate} ${formattedTime}:00`;
     }
-    return formattedDate;
+    // visitTime が空欄の場合、YYYY-MM-DD 00:00:00 を明示的に返す
+    // （YYYY-MM-DD のみだと DB が 00:00:00 として解釈し、フロントエンドでタイムゾーンずれが発生）
+    return `${formattedDate} 00:00:00`;
   }
 
   /**

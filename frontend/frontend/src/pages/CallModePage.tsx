@@ -451,6 +451,19 @@ export function shouldShowReminderDialog(
 }
 
 
+
+// タイムゾーン変換なしで visitDate 文字列を "YYYY-MM-DDTHH:mm" 形式に変換するヘルパー関数
+// new Date() を使わず文字列を直接パースすることで UTC→JST 変換を回避する
+function parseVisitDateToLocal(visitDate: string): string {
+  // "YYYY-MM-DD HH:mm:ss" または "YYYY-MM-DDTHH:mm:ss.sssZ" 形式に対応
+  const visitDateStr = String(visitDate);
+  // "T" を " " に統一し、ミリ秒・タイムゾーン部分を除去
+  const normalized = visitDateStr.replace('T', ' ').replace(/\.\d+Z?$/, '');
+  const [datePart, timePart = '00:00'] = normalized.split(' ');
+  const [hh, mm] = timePart.split(':');
+  return `${datePart}T${hh.padStart(2, '0')}:${mm.padStart(2, '0')}`;
+}
+
 const CallModePage = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -1751,16 +1764,9 @@ const CallModePage = () => {
 
       // 訪問予約情報の初期化
       // TIMESTAMP型対応: visit_dateから日時を抽出してdatetime-local形式に変換 (YYYY-MM-DDTHH:mm)
+      // タイムゾーン変換なし: 文字列を直接パースして "YYYY-MM-DDTHH:mm" 形式に変換
       const appointmentDateLocal = sellerData.visitDate
-        ? (() => {
-            const visitDateTime = new Date(sellerData.visitDate);
-            const year = visitDateTime.getFullYear();
-            const month = String(visitDateTime.getMonth() + 1).padStart(2, '0');
-            const day = String(visitDateTime.getDate()).padStart(2, '0');
-            const hours = String(visitDateTime.getHours()).padStart(2, '0');
-            const minutes = String(visitDateTime.getMinutes()).padStart(2, '0');
-            return `${year}-${month}-${day}T${hours}:${minutes}`;
-          })()
+        ? parseVisitDateToLocal(sellerData.visitDate)
         : '';
       setEditedAppointmentDate(appointmentDateLocal);
       setEditedAssignedTo(sellerData.assignedTo || '');
@@ -5213,14 +5219,8 @@ HP：https://ifoo-oita.com/
                       // キャンセル時: visitDateを優先、なければappointmentDateを使用
                       let cancelDateLocal = '';
                       if (seller?.visitDate) {
-                        // visit_date (TIMESTAMP型) から日時を抽出
-                        const visitDateTime = new Date(seller.visitDate);
-                        const year = visitDateTime.getFullYear();
-                        const month = String(visitDateTime.getMonth() + 1).padStart(2, '0');
-                        const day = String(visitDateTime.getDate()).padStart(2, '0');
-                        const hours = String(visitDateTime.getHours()).padStart(2, '0');
-                        const minutes = String(visitDateTime.getMinutes()).padStart(2, '0');
-                        cancelDateLocal = `${year}-${month}-${day}T${hours}:${minutes}`;
+                        // タイムゾーン変換なし: 文字列を直接パースして "YYYY-MM-DDTHH:mm" 形式に変換
+                        cancelDateLocal = parseVisitDateToLocal(seller.visitDate);
                       } else if (seller?.appointmentDate) {
                         const d = new Date(seller.appointmentDate);
                         const pad = (n: number) => String(n).padStart(2, '0');
@@ -5236,14 +5236,8 @@ HP：https://ifoo-oita.com/
                       // visitDateがあればそれを使用（TIMESTAMP型から日時を抽出）
                       let appointmentDateLocal = '';
                       if (seller?.visitDate) {
-                        // visit_date (TIMESTAMP型) から日時を抽出
-                        const visitDateTime = new Date(seller.visitDate);
-                        const year = visitDateTime.getFullYear();
-                        const month = String(visitDateTime.getMonth() + 1).padStart(2, '0');
-                        const day = String(visitDateTime.getDate()).padStart(2, '0');
-                        const hours = String(visitDateTime.getHours()).padStart(2, '0');
-                        const minutes = String(visitDateTime.getMinutes()).padStart(2, '0');
-                        appointmentDateLocal = `${year}-${month}-${day}T${hours}:${minutes}`;
+                        // タイムゾーン変換なし: 文字列を直接パースして "YYYY-MM-DDTHH:mm" 形式に変換
+                        appointmentDateLocal = parseVisitDateToLocal(seller.visitDate);
                       } else if (seller?.appointmentDate) {
                         // appointmentDateはUTCなのでローカル時刻に変換
                         const d = new Date(seller.appointmentDate);
