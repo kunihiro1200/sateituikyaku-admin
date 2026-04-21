@@ -317,14 +317,29 @@ function syncUpdatesToSupabase_(sheetRows) {
     if (dbVisitDateTime) {
       dbVisitDateTime = dbVisitDateTime.replace(/-/g, '/').replace('T', ' ');
     }
-    if (sheetVisitDateTime !== dbVisitDateTime) { 
-      // YYYY/MM/DD HH:MM:SS形式をYYYY-MM-DD HH:MM:SS形式に変換してデータベースに保存
-      if (sheetVisitDateTime) {
-        updateData.visit_date = sheetVisitDateTime.replace(/\//g, '-'); 
-      } else {
+    // 訪問時間が空欄の場合は日付部分のみ比較する
+    // （訪問時間なしの場合に既存の時刻を不必要に上書きしないため）
+    var hasRawVisitTime = rawVisitTime && rawVisitTime !== '';
+    var compareLength = hasRawVisitTime ? 19 : 10;
+    var sheetVisitDateTimeForCompare = sheetVisitDateTime ? sheetVisitDateTime.substring(0, compareLength) : null;
+    var dbVisitDateTimeForCompare = dbVisitDateTime ? dbVisitDateTime.substring(0, compareLength) : null;
+    if (sheetVisitDateTimeForCompare !== dbVisitDateTimeForCompare) { 
+      // 訪問時間がある場合のみ visit_date を更新する
+      // 訪問時間が空欄の場合は visit_date を更新しない（DBの既存時刻を保持）
+      if (hasRawVisitTime) {
+        // YYYY/MM/DD HH:MM:SS形式をYYYY-MM-DD HH:MM:SS形式に変換してデータベースに保存
+        if (sheetVisitDateTime) {
+          updateData.visit_date = sheetVisitDateTime.replace(/\//g, '-'); 
+        } else {
+          updateData.visit_date = null;
+        }
+        needsUpdate = true;
+      } else if (!sheetVisitDateTime) {
+        // 訪問日自体が空欄になった場合はnullでクリア
         updateData.visit_date = null;
+        needsUpdate = true;
       }
-      needsUpdate = true; 
+      // 訪問時間が空欄で訪問日がある場合は visit_date を更新しない（DBの既存値を保持）
     }
     var sheetVisitValAcq = row['訪問査定取得者'] ? String(row['訪問査定取得者']) : null;
     if (sheetVisitValAcq !== (dbSeller.visit_valuation_acquirer || null)) { updateData.visit_valuation_acquirer = sheetVisitValAcq; needsUpdate = true; }
