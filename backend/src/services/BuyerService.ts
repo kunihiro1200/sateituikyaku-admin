@@ -1740,10 +1740,11 @@ export class BuyerService {
         .select(BUYER_COLUMNS)
         .is('deleted_at', null)
         .range(0, PAGE_SIZE - 1),
-      // property_listings を buyers 取得と並列で全件取得
+      // property_listings を buyers 取得と並列で全件取得（上限2000件）
       this.supabase
         .from('property_listings')
-        .select('property_number, atbb_status, address, sales_assignee, property_type, price'),
+        .select('property_number, atbb_status, address, sales_assignee, property_type, price')
+        .range(0, 1999),
     ]);
 
     const { count, error: countError } = countResult;
@@ -2063,10 +2064,11 @@ export class BuyerService {
         .select(SIDEBAR_COLUMNS)
         .is('deleted_at', null)
         .range(0, PAGE_SIZE - 1),
-      // property_listings を buyers 取得と並列で全件取得
+      // property_listings を buyers 取得と並列で全件取得（上限2000件）
       this.supabase
         .from('property_listings')
-        .select('property_number, atbb_status, sales_assignee, property_type, price'),
+        .select('property_number, atbb_status, sales_assignee, property_type, price')
+        .range(0, 1999),
     ]);
 
     const { count, error: countError } = countResult;

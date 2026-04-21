@@ -868,12 +868,40 @@ function setupBuyerSyncTrigger() {
 
 /**
  * 買主サイドバーカウントを更新（10分ごとに実行）
- * buyer_sidebar_countsテーブルに事前計算結果を保存
+ * バックエンドAPIを呼び出してbuyer_sidebar_countsテーブルを更新する。
+ * バックエンド側でBuyerStatusCalculator.tsの正確なロジック（atbb_status結合含む）で計算される。
  */
 function updateBuyerSidebarCounts() {
   try {
     var startTime = new Date();
-    Logger.log('🔄 買主サイドバーカウント更新開始...');
+    Logger.log('🔄 買主サイドバーカウント更新開始（バックエンドAPI経由）...');
+
+    var response = postToBackend('/api/buyers/update-sidebar-counts', {});
+    var statusCode = response.getResponseCode();
+    var responseText = response.getContentText();
+
+    if (statusCode >= 200 && statusCode < 300) {
+      var result = JSON.parse(responseText);
+      var duration = (new Date() - startTime) / 1000;
+      Logger.log('✅ 買主サイドバーカウント更新完了: ' + result.rowsInserted + '件 (' + duration + '秒)');
+    } else {
+      Logger.log('❌ 買主サイドバーカウント更新失敗: HTTP ' + statusCode);
+      Logger.log('  エラー詳細: ' + responseText.substring(0, 500));
+    }
+  } catch (e) {
+    Logger.log('❌ 買主サイドバーカウント更新エラー: ' + e.toString());
+  }
+}
+
+/**
+ * 旧実装（参考用・使用しない）
+ * GAS側でカウントを計算していたが、atbb_statusが物件テーブルから取得できないため
+ * バックエンドAPIに移行した。
+ */
+function updateBuyerSidebarCounts_DEPRECATED() {
+  try {
+    var startTime = new Date();
+    Logger.log('🔄 [DEPRECATED] 買主サイドバーカウント更新開始...');
     
     // 全買主データを取得
     var allBuyers = fetchAllBuyersFromSupabase_();
@@ -1175,9 +1203,9 @@ function updateBuyerSidebarCounts() {
     }
     
     var duration = (new Date() - startTime) / 1000;
-    Logger.log('✅ 買主サイドバーカウント更新完了: ' + duration + '秒');
+    Logger.log('✅ [DEPRECATED] 買主サイドバーカウント更新完了: ' + duration + '秒');
   } catch (e) {
-    Logger.log('❌ 買主サイドバーカウント更新エラー: ' + e.toString());
+    Logger.log('❌ [DEPRECATED] 買主サイドバーカウント更新エラー: ' + e.toString());
     Logger.log('  スタックトレース: ' + e.stack);
   }
 }
