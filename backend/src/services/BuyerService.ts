@@ -2231,12 +2231,15 @@ export class BuyerService {
         }
       });
       
-      // Pinrich未登録: pinrichが空欄・「登録無し」かつ reception_date >= '2026-01-01'（動的計算）
+      // Pinrich未登録: getBuyersByStatusのフィルタ条件と完全一致させる
+      // pinrichが空欄・「登録無し」かつ email存在 かつ broker_inquiry空欄 かつ reception_date >= '2026-01-01'
       allBuyers.forEach((buyer: any) => {
         const pinrich = buyer.pinrich ?? '';
         const isPinrichUnregistered = pinrich === '' || pinrich === null || pinrich === '登録無し';
         if (
           isPinrichUnregistered &&
+          buyer.email && String(buyer.email).trim() &&
+          (!buyer.broker_inquiry || buyer.broker_inquiry === '' || buyer.broker_inquiry === '0') &&
           buyer.reception_date && buyer.reception_date >= '2026-01-01'
         ) {
           result.pinrichUnregistered++;
