@@ -1727,10 +1727,8 @@ export class BuyerService {
       'desired_area', 'desired_property_type', 'budget',
     ].join(', ');
 
-    console.log('🔍 [DEBUG] fetchAllBuyers - BUYER_COLUMNS:', BUYER_COLUMNS);
-
     // count クエリ・最初のバッチ・property_listings を全て並列実行
-    const [countResult, firstBatchResult, allListingsResult] = await Promise.all([
+    const [countResult, firstBatchResult, listingsCountResult] = await Promise.all([
       this.supabase
         .from('buyers')
         .select('*', { count: 'exact', head: true })
@@ -1740,11 +1738,10 @@ export class BuyerService {
         .select(BUYER_COLUMNS)
         .is('deleted_at', null)
         .range(0, PAGE_SIZE - 1),
-      // property_listings を buyers 取得と並列で全件取得（上限2000件）
+      // property_listings の件数を取得（ページネーション用）
       this.supabase
         .from('property_listings')
-        .select('property_number, atbb_status, address, sales_assignee, property_type, price')
-        .range(0, 1999),
+        .select('*', { count: 'exact', head: true }),
     ]);
 
     const { count, error: countError } = countResult;
@@ -1753,6 +1750,29 @@ export class BuyerService {
 
     const totalCount = count || 0;
     if (totalCount === 0) return [];
+
+    const allBuyers: any[] = [...(firstBatchResult.data || [])];
+
+    // property_listings を全件取得（1000件超え対応のページネーション）
+    const listingsTotalCount = listingsCountResult.count || 0;
+    const listingsBatchCount = Math.ceil(listingsTotalCount / PAGE_SIZE);
+    const listingsBatchRanges: Array<[number, number]> = [];
+    for (let i = 0; i < listingsBatchCount; i++) {
+      listingsBatchRanges.push([i * PAGE_SIZE, (i + 1) * PAGE_SIZE - 1]);
+    }
+    const listingsBatchResults = await Promise.all(
+      listingsBatchRanges.map(([from, to]) =>
+        this.supabase
+          .from('property_listings')
+          .select('property_number, atbb_status, address, sales_assignee, property_type, price')
+          .range(from, to)
+      )
+    );
+    const allListingsData: any[] = [];
+    for (const { data } of listingsBatchResults) {
+      if (data) allListingsData.push(...data);
+    }
+    console.log(`🔍 [DEBUG] fetchAllBuyers - property_listings取得件数: ${allListingsData.length}`);
 
     const allBuyers: any[] = [...(firstBatchResult.data || [])];
 
@@ -1780,20 +1800,17 @@ export class BuyerService {
       }
     }
 
-    // property_listings のマップを構築（並列取得済み）
+    // property_listings のマップを構築（ページネーション取得済み）
     const propertyMap: Record<string, { atbb_status: string; property_address: string | null; sales_assignee: string | null; property_type: string | null; price: number | null }> = {};
-    if (allListingsResult.data) {
-      console.log(`🔍 [DEBUG] fetchAllBuyers - property_listings取得件数: ${allListingsResult.data.length}`);
-      for (const listing of allListingsResult.data) {
-        if (listing.property_number) {
-          propertyMap[listing.property_number] = {
-            atbb_status: listing.atbb_status || '',
-            property_address: listing.address ?? null,
-            sales_assignee: listing.sales_assignee ?? null,
-            property_type: listing.property_type ?? null,
-            price: listing.price ?? null,
-          };
-        }
+    for (const listing of allListingsData) {
+      if (listing.property_number) {
+        propertyMap[listing.property_number] = {
+          atbb_status: listing.atbb_status || '',
+          property_address: listing.address ?? null,
+          sales_assignee: listing.sales_assignee ?? null,
+          property_type: listing.property_type ?? null,
+          price: listing.price ?? null,
+        };
       }
     }
 
@@ -2054,8 +2071,8 @@ export class BuyerService {
       'property_number',
     ].join(', ');
 
-    // count クエリ・最初のバッチ・property_listings を全て並列実行
-    const [countResult, firstBatchResult, allListingsResult] = await Promise.all([
+    // count クエリ・最初のバッチ・property_listings件数を並列実行
+    const [countResult, firstBatchResult, listingsCountResult2] = await Promise.all([
       this.supabase
         .from('buyers')
         .select('*', { count: 'exact', head: true })
@@ -2065,11 +2082,10 @@ export class BuyerService {
         .select(SIDEBAR_COLUMNS)
         .is('deleted_at', null)
         .range(0, PAGE_SIZE - 1),
-      // property_listings を buyers 取得と並列で全件取得（上限2000件）
+      // property_listings の件数を取得（ページネーション用）
       this.supabase
         .from('property_listings')
-        .select('property_number, atbb_status, sales_assignee, property_type, price')
-        .range(0, 1999),
+        .select('*', { count: 'exact', head: true }),
     ]);
 
     const { count, error: countError } = countResult;
@@ -2078,6 +2094,28 @@ export class BuyerService {
 
     const totalCount = count || 0;
     if (totalCount === 0) return [];
+
+    const allBuyers: any[] = [...(firstBatchResult.data || [])];
+
+    // property_listings を全件取得（1000件超え対応のページネーション）
+    const listingsTotalCount2 = listingsCountResult2.count || 0;
+    const listingsBatchCount2 = Math.ceil(listingsTotalCount2 / PAGE_SIZE);
+    const listingsBatchRanges2: Array<[number, number]> = [];
+    for (let i = 0; i < listingsBatchCount2; i++) {
+      listingsBatchRanges2.push([i * PAGE_SIZE, (i + 1) * PAGE_SIZE - 1]);
+    }
+    const listingsBatchResults2 = await Promise.all(
+      listingsBatchRanges2.map(([from, to]) =>
+        this.supabase
+          .from('property_listings')
+          .select('property_number, atbb_status, sales_assignee, property_type, price')
+          .range(from, to)
+      )
+    );
+    const allListingsData2: any[] = [];
+    for (const { data } of listingsBatchResults2) {
+      if (data) allListingsData2.push(...data);
+    }
 
     const allBuyers: any[] = [...(firstBatchResult.data || [])];
 
@@ -2105,18 +2143,16 @@ export class BuyerService {
       }
     }
 
-    // property_listings のマップを構築（並列取得済み）
+    // property_listings のマップを構築（ページネーション取得済み）
     const propertyMap: Record<string, { atbb_status: string; sales_assignee: string | null; property_type: string | null; price: number | null }> = {};
-    if (allListingsResult.data) {
-      for (const listing of allListingsResult.data) {
-        if (listing.property_number) {
-          propertyMap[listing.property_number] = {
-            atbb_status: listing.atbb_status || '',
-            sales_assignee: listing.sales_assignee ?? null,
-            property_type: listing.property_type ?? null,
-            price: listing.price ?? null,
-          };
-        }
+    for (const listing of allListingsData2) {
+      if (listing.property_number) {
+        propertyMap[listing.property_number] = {
+          atbb_status: listing.atbb_status || '',
+          sales_assignee: listing.sales_assignee ?? null,
+          property_type: listing.property_type ?? null,
+          price: listing.price ?? null,
+        };
       }
     }
 
