@@ -125,6 +125,10 @@ export function calculateBuyerStatus(buyer: BuyerData): StatusResult {
       equals(buyer.post_viewing_seller_contact, '未'),
       contains(buyer.atbb_status, '公開中')
     );
+    // 🚨 デバッグ: 買主7609のPriority 8判定を記録
+    if (buyer.buyer_number === '7609') {
+      console.log(`🔍 [DEBUG P8] Buyer 7609: post_viewing_seller_contact='${buyer.post_viewing_seller_contact}', atbb_status='${buyer.atbb_status}', conditionA=${conditionA}, conditionB=${conditionB}`);
+    }
     if (or(conditionA, conditionB)) {
       const status = '一般媒介_内覧後売主連絡未';
       return { status, priority: 8, matchedCondition: '一般媒介で内覧後の売主連絡が未完了（公開中のみ）', color: getStatusColor(status) };
