@@ -1385,7 +1385,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
                   if (rawUrl) {
                     const targetGid = tabIndex === 0 ? '1819926492' : '1725934947';
                     const base = rawUrl.split('#')[0].split('?')[0];
-                    const finalUrl = base + '#gid=' + targetGid;
+                    const finalUrl = base + '?gid=' + targetGid + '#gid=' + targetGid;
                     console.log('[SpreadsheetBtn] tabIndex=' + tabIndex + ' targetGid=' + targetGid + ' url=' + finalUrl);
                     window.open(finalUrl, '_blank', 'noopener,noreferrer');
                   }
@@ -1403,7 +1403,8 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
                 onClick={() => {
                   const url = getValue('spreadsheet_url');
                   if (url) {
-                    window.open(buildLedgerSheetUrl(url), '_blank', 'noopener,noreferrer');
+                    const base = url.split('#')[0].split('?')[0];
+                    window.open(base + '?gid=78322744#gid=78322744', '_blank', 'noopener,noreferrer');
                   }
                 }}
                 sx={{ whiteSpace: 'nowrap', fontWeight: 700, bgcolor: '#1e8e3e', '&:hover': { bgcolor: '#166d30' }, fontSize: '0.85rem', px: 1.5 }}
