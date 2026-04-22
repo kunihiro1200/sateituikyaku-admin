@@ -22,6 +22,7 @@ interface CategoryCounts {
   viewingPromotionRequired?: number;  // 要内覧促進客
   pinrichUnregistered?: number;  // ピンリッチ未登録
   pinrich500manUnregistered?: number;  // Pinrich500万以上登録未
+  nextCallDateBlankCounts?: Record<string, number>;  // 次電日空欄（担当別）
 }
 
 export interface BuyerWithStatus {
@@ -76,7 +77,12 @@ function getCategoryColor(category: string): string {
       return '#d32f2f'; // 赤
     case 'pinrich500manUnregistered':
       return '#d32f2f'; // 赤
+    case 'nextCallDateBlank':
+      return '#d32f2f'; // 赤
     default:
+      if (category.startsWith('nextCallDateBlank:')) {
+        return '#d32f2f'; // 赤
+      }
       if (category.startsWith('assigned:')) {
         return '#4caf50'; // 緑（担当）
       }
@@ -111,7 +117,12 @@ function getCategoryLabel(category: string): string {
       return 'ピンリッチ未登録';
     case 'pinrich500manUnregistered':
       return 'Pinrich500万以上登録未';
+    case 'nextCallDateBlank':
+      return '次電日空欄';
     default:
+      if (category.startsWith('nextCallDateBlank:')) {
+        return `次電日空欄(${category.replace('nextCallDateBlank:', '')})`;
+      }
       if (category.startsWith('assigned:')) {
         return `担当(${category.replace('assigned:', '')})`;
       }
@@ -233,6 +244,18 @@ export default function BuyerStatusSidebar({
             parentKey: key,
           });
         }
+        // サブカテゴリ: 次電日空欄(イニシャル)
+        const nextCallDateBlankCount = categoryCounts.nextCallDateBlankCounts?.[assignee] ?? 0;
+        if (nextCallDateBlankCount > 0) {
+          categoryList.push({
+            key: `nextCallDateBlank:${assignee}`,
+            label: `次電日空欄(${assignee})`,
+            count: nextCallDateBlankCount,
+            color: '#d32f2f',
+            isSubCategory: true,
+            parentKey: key,
+          });
+        }
       }
     });
   }
@@ -241,6 +264,7 @@ export default function BuyerStatusSidebar({
     const isIndented = category.isSubCategory === true;
     const isAssignedCategory = category.key.startsWith('assigned:') && !category.isSubCategory;
     const isTodayCallAssignedCategory = category.key.startsWith('todayCallAssigned:');
+    const isNextCallDateBlankCategory = category.key.startsWith('nextCallDateBlank:');
     
     return (
       <ListItemButton
@@ -266,8 +290,8 @@ export default function BuyerStatusSidebar({
           primary={isIndented ? `↳ ${category.label}` : category.label}
           primaryTypographyProps={{ 
             variant: 'body2', 
-            color: isTodayCallAssignedCategory ? '#d32f2f' : (isIndented ? 'text.secondary' : 'text.primary'),
-            fontWeight: isTodayCallAssignedCategory ? 'bold' : 'normal'
+            color: (isTodayCallAssignedCategory || isNextCallDateBlankCategory) ? '#d32f2f' : (isIndented ? 'text.secondary' : 'text.primary'),
+            fontWeight: (isTodayCallAssignedCategory || isNextCallDateBlankCategory) ? 'bold' : 'normal'
           }}
           sx={{ flex: 1, minWidth: 0, mr: 1 }}
         />

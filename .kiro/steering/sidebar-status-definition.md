@@ -163,11 +163,36 @@ fileMatchPattern: "**/seller*.{ts,tsx,js,md}"
 
 **条件**:
 - **Pinrichカラム（pinrichStatus）が空欄**
-- 当日TEL分の条件を満たす（追客中 + 次電日が今日以前 + コミュニケーション情報が全て空 + 営担なし）
+- 状況（当社）に「追客中」が含まれる（部分一致）
+- 反響日付が2026/1/1以降
+- 営担（visitAssignee）が空欄
 
 **重要**: 
-- 当日TEL分のサブセット（当日TEL分の条件を満たす売主の中で、さらにPinrichが空欄の売主）
+- 次電日は条件に含まない（次電日が未来でも対象）
+- 当日TEL分から独立したカテゴリー（次電日・コミュニケーション情報は無関係）
 - Pinrichカラムに何か入力がある場合は対象外
+
+---
+
+### 9. 「Pinrich要変更」
+
+**サイドバー表示**: `Pinrich要変更`
+**色**: ピンク（#e91e63）
+
+**条件**: 以下の条件A〜Dのいずれかを満たす売主
+
+- **条件A**: `visit_assignee = "外す"` AND `pinrich_status = "クローズ"` AND `status = "追客中"`
+- **条件B**: `confidence_level = "D"` AND `pinrich_status` が以下のいずれでもない：「クローズ」「登録不要」「アドレスエラー」「配信不要（他決後、訪問後、担当付）」「△配信停止」
+- **条件C**: `visit_date` が空欄でない AND `pinrich_status = "配信中"` AND `visit_assignee` が空欄でない AND `status` が「専任媒介」「追客中」「除外後追客中」のいずれか
+- **条件D**: `status` が「他決→追客」「他決→追客不要」「一般媒介」のいずれか AND `pinrich_status = "クローズ"` AND `contract_year_month >= "2025-05-01"`
+
+**重要**:
+- 「Pinrich空欄」とは**独立した別カテゴリー**（条件が全く異なる）
+- 条件Dは `pinrich_status = "クローズ"` が必須。`pinrich_status = "配信中"` の場合は条件Dに**該当しない**
+- 例: `status = "他決→追客"` かつ `pinrich_status = "配信中"` → 条件Dに非該当（条件Cも `status` が対象外のため非該当）→「Pinrich要変更」に**分類されない**
+- 🚨 **実装注意**: バックエンドのカウント計算・フィルタリングはDBクエリで直接表現できないため、`pinrich_status IN (配信中, クローズ) OR confidence_level = 'D'` で候補を絞り込んだ後、JSで条件A〜Dを判定する
+
+**実装関数**: `isPinrichChangeRequired()` in `frontend/src/utils/sellerStatusFilters.ts`
 
 ---
 
@@ -188,6 +213,7 @@ fileMatchPattern: "**/seller*.{ts,tsx,js,md}"
 - `isMailingPending()` - 査定（郵送）の判定
 - `isTodayCallNotStarted()` - 当日TEL_未着手の判定
 - `isPinrichEmpty()` - Pinrich空欄の判定
+- `isPinrichChangeRequired()` - Pinrich要変更の判定（条件A〜D）
 
 ### ステータス表示ロジック
 
@@ -211,6 +237,7 @@ fileMatchPattern: "**/seller*.{ts,tsx,js,md}"
 - `'mailingPending'` - 査定（郵送）
 - `'todayCallNotStarted'` - 当日TEL_未着手
 - `'pinrichEmpty'` - Pinrich空欄
+- `'pinrichChangeRequired'` - Pinrich要変更
 
 ---
 
@@ -323,13 +350,14 @@ categoryCounts.todayCallWithInfo = sellers.filter(isTodayCallWithInfo).length;  
 | 未査定 | 追客中 + 査定額が全て空（自動・手動両方） + 反響日付が2025/12/8以降 + 営担が空 + 査定不要ではない | オレンジ |
 | 査定（郵送） | 郵送ステータスが「未」 | 青 |
 | 当日TEL_未着手 | 当日TEL分の条件 + 不通が空欄 + 反響日付が2026/1/1以降 | オレンジ |
-| Pinrich空欄 | 当日TEL分の条件 + Pinrichが空欄 | ブラウン |
+| Pinrich空欄 | 追客中 + Pinrich空欄 + 反響日付が2026/1/1以降 + 営担なし（次電日は無関係） | ブラウン |
+| Pinrich要変更 | 条件A〜Dのいずれか（詳細は上記参照） | ピンク |
 
 **このルールを徹底することで、ステータスの混同を完全に防止できます。**
 
 ---
 
-**最終更新日**: 2026年4月2日  
+**最終更新日**: 2026年4月23日  
 **作成理由**: サイドバーステータスの定義を明確化し、同じ間違いを繰り返さないため
 **更新履歴**:
 - 2026年1月31日: 「当日TEL_未着手」「Pinrich空欄」カテゴリを追加
@@ -338,3 +366,4 @@ categoryCounts.todayCallWithInfo = sellers.filter(isTodayCallWithInfo).length;  
 - 2026年4月2日: 営担「外す」は有効な営業担当として扱うルールを追加（「当日TEL（担当）」に分類）
 - 2026年4月2日: 「担当(イニシャル)」親カテゴリの定義を追加（営担あり + 一般媒介・専任媒介・追客不要・他社買取を除外）
 - 2026年4月2日: 専任・一般・訪問後他決カテゴリの次電日条件を修正（次電日が空 OR 次電日≠今日）
+- 2026年4月23日: 「Pinrich要変更」カテゴリを追加（条件A〜D）。条件Dは `pinrich_status = "クローズ"` が必須であることを明記

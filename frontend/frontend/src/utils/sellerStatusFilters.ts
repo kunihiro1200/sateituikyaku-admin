@@ -758,18 +758,24 @@ export const isMailingPending = (seller: Seller | any): boolean => {
  * Pinrich空欄判定
  * 
  * 条件:
+ * - 状況（当社）に「追客中」が含まれる（部分一致）
  * - Pinrichカラム（pinrichStatus）が空欄
- * - 当日TEL分の条件を満たす（追客中 + 次電日が今日以前 + コミュニケーション情報が全て空 + 営担なし）
+ * - 反響日付が2026/1/1以降
+ * - 営担（visitAssignee）が空欄
+ * ※ 次電日は条件に含まない
  * 
  * @param seller 売主データ
  * @returns Pinrich空欄対象かどうか
  */
 export const isPinrichEmpty = (seller: Seller | any): boolean => {
-  // まず当日TEL分の条件を満たすかチェック
-  if (!isTodayCall(seller)) {
-    return false;
-  }
-  
+  // 状況（当社）に「追客中」が含まれるかチェック（部分一致）
+  const status = seller.status || seller.situation_company || '';
+  if (typeof status !== 'string' || !status.includes('追客')) return false;
+  if (status.includes('追客不要') || status.includes('専任媒介') || status.includes('一般媒介')) return false;
+
+  // 営担が空欄かチェック
+  if (hasVisitAssignee(seller)) return false;
+
   // Pinrichカラムが空欄かチェック
   const pinrichStatus = seller.pinrichStatus || seller.pinrich_status || '';
   if (pinrichStatus && pinrichStatus.trim() !== '') return false;

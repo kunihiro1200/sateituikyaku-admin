@@ -216,6 +216,18 @@ export class SidebarCountsUpdateService {
       }
     }
 
+    // 次電日空欄(イニシャル)
+    const STATUS_A = 'A:この物件を気に入っている（こちらからの一押しが必要）';
+    const STATUS_B = 'B:1年以内に引っ越し希望だが、この物件ではない。駐車場の要件や、日当たり等が合わない。';
+    const isStatusAorB = buyer.latest_status === STATUS_A || buyer.latest_status === STATUS_B;
+    const isNextCallBrokerInquiryBlank = !buyer.broker_inquiry || buyer.broker_inquiry === '';
+    const isNextCallDateBlank = !buyer.next_call_date;
+    const hasFollowUpAssignee = !!buyer.follow_up_assignee && buyer.follow_up_assignee !== '';
+
+    if (isStatusAorB && isNextCallDateBlank && isNextCallBrokerInquiryBlank && hasFollowUpAssignee) {
+      categories.push({ category: 'nextCallDateBlank', assignee: buyer.follow_up_assignee });
+    }
+
     // 問合せメール未対応
     const isInquiryEmailUnanswered =
       buyer.inquiry_email_phone === '未' ||

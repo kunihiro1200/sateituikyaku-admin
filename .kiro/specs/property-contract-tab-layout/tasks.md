@@ -23,7 +23,7 @@
     - `EditableField` 製本完了（`binding_completed`）
   - **対象ファイル:** `frontend/frontend/src/components/WorkTaskDetailModal.tsx`
 
-- [~] 3. 右ペイン「決済詳細」セクションを実装する
+- [ ] 3. 右ペイン「決済詳細」セクションを実装する
   - [ ] 3.1 ヘッダー行に `【決済詳細】` テキスト（`color: '#2e7d32'`）と保存ボタン（`color="success"`）を配置する
   - [ ] 3.2 保存ボタンに `SiteRegistrationSection` と同じパルスアニメーション（`rgba(46, 125, 50, 0.7)`）を適用する
   - [ ] 3.3 `bgcolor: '#f3e5f5'` の `Box` を作成し、以下のフィールドをこの順序で配置する：

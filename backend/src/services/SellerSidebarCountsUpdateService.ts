@@ -346,14 +346,32 @@ export class SellerSidebarCountsUpdateService {
         return inquiryDate >= '2026-01-01';
       }).length;
 
-      const pinrichEmptyCount = filteredTodayCallSellers.filter(s => {
-        const hasInfo = (s.phone_contact_person && s.phone_contact_person.trim() !== '') ||
-                        (s.preferred_contact_time && s.preferred_contact_time.trim() !== '') ||
-                        (s.contact_method && s.contact_method.trim() !== '');
-        if (hasInfo) return false;
-        const pinrich = (s as any).pinrich_status || '';
-        return !pinrich || pinrich.trim() === '';
-      }).length;
+      // Pinrich空欄カウント: 次電日に関係なく「追客中 + Pinrich空欄 + 反響日2026/1/1以降 + 営担なし」
+      // ※ filteredTodayCallSellers（次電日が今日以前）には依存しない
+      let pinrichEmptyAllSellers: any[] = [];
+      {
+        let pePage = 0;
+        const pePageSize = 1000;
+        while (true) {
+          const { data: peData, error: peError } = await this.supabase
+            .from('sellers')
+            .select('id, visit_assignee, pinrich_status, inquiry_date, status')
+            .is('deleted_at', null)
+            .ilike('status', '%追客%')
+            .not('status', 'ilike', '%追客不要%')
+            .not('status', 'ilike', '%専任媒介%')
+            .not('status', 'ilike', '%一般媒介%')
+            .or('visit_assignee.is.null,visit_assignee.eq.,visit_assignee.eq.外す')
+            .or('pinrich_status.is.null,pinrich_status.eq.')
+            .gte('inquiry_date', '2026-01-01')
+            .range(pePage * pePageSize, (pePage + 1) * pePageSize - 1);
+          if (peError || !peData || peData.length === 0) break;
+          pinrichEmptyAllSellers = pinrichEmptyAllSellers.concat(peData);
+          if (peData.length < pePageSize) break;
+          pePage++;
+        }
+      }
+      const pinrichEmptyCount = pinrichEmptyAllSellers.length;
 
       const exclusiveSellers = exclusiveSellersResult.data || [];
       const exclusiveCount = exclusiveSellers.filter(s => {

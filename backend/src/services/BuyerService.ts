@@ -265,6 +265,16 @@ export class BuyerService {
               .eq('follow_up_assignee', assigneeInitial)
               .not('next_call_date', 'is', null)
               .lte('next_call_date', todayStr);
+          } else if (dynamicCategory.startsWith('nextCallDateBlank:')) {
+            // 次電日空欄(イニシャル): follow_up_assignee = イニシャル AND latest_status IN (A, B) AND next_call_date IS NULL AND broker_inquiry IS NULL OR 空文字
+            const assigneeInitial = dynamicCategory.replace('nextCallDateBlank:', '');
+            const STATUS_A_QUERY = 'A:この物件を気に入っている（こちらからの一押しが必要）';
+            const STATUS_B_QUERY = 'B:1年以内に引っ越し希望だが、この物件ではない。駐車場の要件や、日当たり等が合わない。';
+            query = query
+              .eq('follow_up_assignee', assigneeInitial)
+              .in('latest_status', [STATUS_A_QUERY, STATUS_B_QUERY])
+              .is('next_call_date', null)
+              .or('broker_inquiry.is.null,broker_inquiry.eq.');
           }
           break;
         }
@@ -698,7 +708,7 @@ export class BuyerService {
    */
   private shouldUpdateBuyerSidebarCounts(updateData: Partial<any>): boolean {
     // サイドバーカテゴリーに影響するフィールド
-    const sidebarFields = ['next_call_date', 'follow_up_assignee', 'viewing_date', 'notification_sender', 'inquiry_email_phone', 'pinrich', 'inquiry_source'];
+    const sidebarFields = ['next_call_date', 'follow_up_assignee', 'viewing_date', 'notification_sender', 'inquiry_email_phone', 'pinrich', 'inquiry_source', 'latest_status', 'broker_inquiry'];
     return sidebarFields.some(field => field in updateData);
   }
 
@@ -1966,6 +1976,7 @@ export class BuyerService {
           viewingPromotionRequired: 0,
           pinrichUnregistered: 0,
           pinrich500manUnregistered: 0,
+          nextCallDateBlankCounts: {} as Record<string, number>,
         };
         
         for (const row of data) {
@@ -1991,6 +2002,8 @@ export class BuyerService {
             categoryCounts.pinrichUnregistered = row.count || 0;
           } else if (row.category === 'pinrich500manUnregistered') {
             categoryCounts.pinrich500manUnregistered = row.count || 0;
+          } else if (row.category === 'nextCallDateBlank' && row.assignee) {
+            categoryCounts.nextCallDateBlankCounts[row.assignee] = row.count || 0;
           }
         }
         
@@ -2217,6 +2230,7 @@ export class BuyerService {
         viewingPromotionRequired: 0,  // 要内覧促進客
         pinrichUnregistered: 0,  // ピンリッチ未登録
         pinrich500manUnregistered: 0,  // Pinrich500万以上登録未
+        nextCallDateBlankCounts: {} as Record<string, number>,
       };
       
       // 今日の日付（YYYY-MM-DD形式）
@@ -2263,6 +2277,21 @@ export class BuyerService {
           result.generalViewingSellerContactPending++;
         } else if (status === '要内覧促進客') {
           result.viewingPromotionRequired++;
+        }
+      });
+      
+      // 次電日空欄(イニシャル)
+      const STATUS_A_FALLBACK = 'A:この物件を気に入っている（こちらからの一押しが必要）';
+      const STATUS_B_FALLBACK = 'B:1年以内に引っ越し希望だが、この物件ではない。駐車場の要件や、日当たり等が合わない。';
+      allBuyers.forEach((buyer: any) => {
+        const isStatusAorB = buyer.latest_status === STATUS_A_FALLBACK || buyer.latest_status === STATUS_B_FALLBACK;
+        const isBrokerInquiryBlank = !buyer.broker_inquiry || buyer.broker_inquiry === '';
+        const isNextCallDateBlank = !buyer.next_call_date;
+        const hasFollowUpAssignee = !!buyer.follow_up_assignee && buyer.follow_up_assignee !== '';
+        
+        if (isStatusAorB && isNextCallDateBlank && isBrokerInquiryBlank && hasFollowUpAssignee) {
+          const assignee = buyer.follow_up_assignee;
+          result.nextCallDateBlankCounts[assignee] = (result.nextCallDateBlankCounts[assignee] || 0) + 1;
         }
       });
       

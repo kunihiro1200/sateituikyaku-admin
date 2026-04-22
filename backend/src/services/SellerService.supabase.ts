@@ -1485,53 +1485,15 @@ export class SellerService extends BaseRepository {
           break;
         }
         case 'pinrichEmpty': {
-          // Pinrich空欄（当日TEL分の条件 + Pinrichが空欄）
-          // 🔧 修正: カウント計算（SellerSidebarCountsUpdateService）と条件を一致させる
-          // - filteredTodayCallSellers（追客中 OR 他決→追客）から派生させる
-          let pinrichCandidates: any[] = [];
-          let prPage = 0;
-          const prPageSize = 1000;
-
-          while (true) {
-            const { data: prData, error: prError } = await this.table('sellers')
-              .select('id, status, next_call_date, visit_assignee, phone_contact_person, preferred_contact_time, contact_method, pinrich_status')
-              .is('deleted_at', null)
-              .not('next_call_date', 'is', null)
-              .lte('next_call_date', todayJST)
-              .order('id')
-              .range(prPage * prPageSize, (prPage + 1) * prPageSize - 1);
-
-            if (prError || !prData || prData.length === 0) break;
-            pinrichCandidates = pinrichCandidates.concat(prData);
-            if (prData.length < prPageSize) break;
-            prPage++;
-          }
-
-          const pinrichIds = pinrichCandidates.filter((s: any) => {
-            const status = s.status || '';
-            // 追客中 OR 他決→追客（カウント計算の filteredTodayCallSellers と同じ）
-            const isFollowingUp = status.includes('追客中') || status === '他決→追客';
-            if (!isFollowingUp) return false;
-            if (status.includes('追客不要') || status.includes('専任媒介') || status.includes('一般媒介')) return false;
-
-            // 営担が空または「外す」
-            const visitAssignee = s.visit_assignee || '';
-            if (visitAssignee && visitAssignee.trim() !== '' && visitAssignee.trim() !== '外す') return false;
-
-            // コミュニケーション情報が全て空
-            const hasInfo = (s.phone_contact_person?.trim()) ||
-                            (s.preferred_contact_time?.trim()) ||
-                            (s.contact_method?.trim());
-            if (hasInfo) return false;
-
-            // Pinrichが空欄
-            const pinrich = s.pinrich_status || '';
-            return !pinrich || pinrich.trim() === '';
-          }).map((s: any) => s.id);
-
-          query = pinrichIds.length === 0
-            ? query.eq('id', '00000000-0000-0000-0000-000000000000')
-            : query.in('id', pinrichIds);
+          // Pinrich空欄: 次電日に関係なく「追客中 + Pinrich空欄 + 反響日2026/1/1以降 + 営担なし」
+          query = query
+            .ilike('status', '%追客%')
+            .not('status', 'ilike', '%追客不要%')
+            .not('status', 'ilike', '%専任媒介%')
+            .not('status', 'ilike', '%一般媒介%')
+            .or('visit_assignee.is.null,visit_assignee.eq.,visit_assignee.eq.外す')
+            .or('pinrich_status.is.null,pinrich_status.eq.')
+            .gte('inquiry_date', '2026-01-01');
           break;
         }
         case 'pinrichChangeRequired': {
