@@ -43,6 +43,7 @@ export interface StatusCategory {
   label: string;
   count: number;
   deadline?: string; // 最も近い期日（M/D形式）
+  siteDeadline?: string; // サイト登録締め日（site_registration_deadline）
   isDeadlinePast?: boolean; // 期日が本日以前かどうか
   isDeadlineTomorrow?: boolean; // 期日が明日かどうか
   filter: (task: WorkTask) => boolean;
@@ -291,11 +292,20 @@ const getCategoryOrder = (status: string): number => {
 export const getStatusCategories = (tasks: WorkTask[]): StatusCategory[] => {
   // ステータス文字列ごとにカウント（日付・担当者込みで完全一致グループ化）
   const statusCounts: Record<string, number> = {};
+  // サイト依頼済み納品待ちの締め日（site_registration_deadline）を収集
+  const siteDeadlines: Record<string, string> = {};
 
   tasks.forEach(task => {
     const status = calculateTaskStatus(task);
     if (status) {
       statusCounts[status] = (statusCounts[status] || 0) + 1;
+      // サイト依頼済み納品待ちの場合、site_registration_deadlineを記録
+      if (status.startsWith('サイト依頼済み納品待ち') && task.site_registration_deadline) {
+        const d = new Date(task.site_registration_deadline);
+        if (!isNaN(d.getTime())) {
+          siteDeadlines[status] = `${d.getMonth() + 1}/${d.getDate()}`;
+        }
+      }
     }
   });
 
@@ -344,6 +354,7 @@ export const getStatusCategories = (tasks: WorkTask[]): StatusCategory[] => {
       label: status,
       count,
       deadline: deadlineStr,
+      siteDeadline: siteDeadlines[status],
       isDeadlinePast,
       isDeadlineTomorrow,
       filter: (task: WorkTask) => calculateTaskStatus(task) === status,

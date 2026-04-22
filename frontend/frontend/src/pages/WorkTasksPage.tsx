@@ -220,7 +220,7 @@ export default function WorkTasksPage() {
                       fontWeight: (cat.isDeadlinePast || cat.isDeadlineTomorrow) ? 'bold' : 'normal',
                     }
                   }}
-                  secondary={cat.deadline ? `締め日: ${cat.deadline}` : undefined}
+                  secondary={cat.siteDeadline ? `締め日: ${cat.siteDeadline}` : cat.deadline ? `締め日: ${cat.deadline}` : undefined}
                   secondaryTypographyProps={{
                     variant: 'caption',
                     color: cat.isDeadlinePast ? 'error' : 'text.secondary',
