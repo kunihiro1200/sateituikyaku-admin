@@ -25,6 +25,7 @@ import { Close as CloseIcon, Save as SaveIcon, ContentCopy as ContentCopyIcon, W
 import api from '../services/api';
 import { supabase } from '../services/supabase';
 import { isDeadlineExceeded } from '../utils/deadlineUtils';
+import { buildLedgerSheetUrl } from '../utils/spreadsheetUrl';
 
 
 
@@ -1350,6 +1351,22 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
                 )}
               </Box>
             </Box>
+            {(tabIndex === 2 || tabIndex === 3) && (
+              <Button
+                variant="outlined"
+                size="small"
+                disabled={!getValue('spreadsheet_url')}
+                onClick={() => {
+                  const url = getValue('spreadsheet_url');
+                  if (url) {
+                    window.open(buildLedgerSheetUrl(url), '_blank', 'noopener,noreferrer');
+                  }
+                }}
+                sx={{ whiteSpace: 'nowrap', fontWeight: 700 }}
+              >
+                スプシ
+              </Button>
+            )}
             <IconButton onClick={onClose} size="small"><CloseIcon /></IconButton>
           </Box>
         </DialogTitle>
