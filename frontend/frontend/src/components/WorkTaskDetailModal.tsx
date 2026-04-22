@@ -1253,7 +1253,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
       <EditableField label="買主TEL" field="buyer_contact_tel" />
 
       <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#e65100', mb: 1, mt: 2 }}>【ローン情報】</Typography>
-      <EditableButtonSelect label="ローン" field="loan" options={['あり', 'なし']} />
+      <ReadOnlyDisplayField label="ローン" value={getValue('loan') || '-'} />
       <EditableField label="金融機関名" field="financial_institution" />
 
       <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#6a1b9a', mb: 1, mt: 2 }}>【日程】</Typography>
