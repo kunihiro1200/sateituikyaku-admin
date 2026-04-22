@@ -905,9 +905,10 @@ export class EnhancedBuyerDistributionService {
       priceRangeTexts = consolidatedBuyer.priceRanges.land;
     }
 
-    // If no price range specified or all are "指定なし", check property type match
+    // If no price range specified or any are "指定なし", check property type match
+    // Note: use "some" so that if ANY record has "指定なし" (no restriction), the buyer passes
     if (priceRangeTexts.length === 0 || 
-        priceRangeTexts.every(text => !text || text.includes('指定なし') || text.trim() === '')) {
+        priceRangeTexts.some(text => !text || text.includes('指定なし') || text.trim() === '')) {
       // If buyer has specific desired property types, at least one must match
       if (consolidatedBuyer.propertyTypes.length > 0) {
         const actualType = propertyType?.trim() || '';
