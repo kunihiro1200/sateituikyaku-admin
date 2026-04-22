@@ -1381,10 +1381,11 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
                 size="small"
                 disabled={!getValue('spreadsheet_url')}
                 onClick={() => {
-                  const url = getValue('spreadsheet_url');
-                  if (url) {
-                    const gid = tabIndex === 0 ? MEDIATION_REQUEST_SHEET_GID : ATHOME_SHEET_GID;
-                    window.open(buildSheetUrl(url, gid), '_blank', 'noopener,noreferrer');
+                  const rawUrl = getValue('spreadsheet_url');
+                  if (rawUrl) {
+                    const targetGid = tabIndex === 0 ? '1819926492' : '1725934947';
+                    const base = rawUrl.split('#')[0].split('?')[0];
+                    window.open(base + '#gid=' + targetGid, '_blank', 'noopener,noreferrer');
                   }
                 }}
                 sx={{ whiteSpace: 'nowrap', fontWeight: 700 }}
