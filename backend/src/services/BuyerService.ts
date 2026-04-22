@@ -3046,6 +3046,11 @@ export class BuyerService {
         rows.push({ category: 'todayCallAssigned', count: count as number, label: null, assignee, updated_at: now });
       }
       
+      // 次電日空欄担当別カテゴリ
+      for (const [assignee, count] of Object.entries(categoryCounts.nextCallDateBlankCounts || {})) {
+        rows.push({ category: 'nextCallDateBlank', count: count as number, label: null, assignee, updated_at: now });
+      }
+      
       console.log(`[BuyerService.updateSidebarCountsTable] Inserting ${rows.length} rows...`);
       
       // 一括挿入
