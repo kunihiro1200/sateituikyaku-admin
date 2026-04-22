@@ -88,7 +88,8 @@ export default function GmailDistributionButton({
 
   // 「非公開（配信メールのみ）」の場合は専用テンプレートのみ表示、それ以外は専用テンプレートを除外
   const templates = getAllTemplates().filter(t => {
-    const isPrivateEmailOnly = atbbStatus?.includes('非公開') && atbbStatus?.includes('配信メール');
+    const isPrivateEmailOnly = typeof atbbStatus === 'string' &&
+      atbbStatus.includes('非公開') && atbbStatus.includes('配信メールのみ');
     if (isPrivateEmailOnly) {
       return t.id === 'private-email-only';
     }

@@ -75,7 +75,9 @@ export const EMAIL_TEMPLATES: EmailTemplate[] = [
     id: 'private-email-only',
     name: '非公開案件メール配信',
     subject: '未公開物件のお知らせ＜{address}＞',
-    body: `顧客様限定！【ネット非公開情報】のご案内
+    body: `{buyerName}様
+
+★★★顧客様限定！【ネット非公開情報】のご案内★★★
 
 お世話になっております。
 大分市舞鶴町の不動産会社『株式会社いふう』です。
@@ -106,7 +108,7 @@ FAX：097-529-7160
 HP：https://ifoo-oita.com/
 店休日：毎週水曜日　年末年始、GW、盆
 ***************************`,
-    placeholders: ['address', 'publicUrl']
+    placeholders: ['address', 'publicUrl', 'buyerName']
   }
 ];
 
