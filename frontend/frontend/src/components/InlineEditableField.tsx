@@ -431,12 +431,12 @@ export const InlineEditableField: React.FC<InlineEditableFieldProps> = memo(({
     <Box sx={{ mb: 1 }}>
       {label && (
         <Typography 
-          variant="caption" 
+          variant="body2" 
           color={highlighted ? '#f57c00' : 'text.secondary'}
           sx={{ 
             display: 'block', 
             mb: 0.5,
-            fontWeight: highlighted ? 600 : 400,
+            fontWeight: 'bold',
           }}
         >
           {label}
