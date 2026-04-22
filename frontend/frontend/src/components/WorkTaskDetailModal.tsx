@@ -1385,7 +1385,9 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
                   if (rawUrl) {
                     const targetGid = tabIndex === 0 ? '1819926492' : '1725934947';
                     const base = rawUrl.split('#')[0].split('?')[0];
-                    window.open(base + '#gid=' + targetGid, '_blank', 'noopener,noreferrer');
+                    const finalUrl = base + '#gid=' + targetGid;
+                    console.log('[SpreadsheetBtn] tabIndex=' + tabIndex + ' targetGid=' + targetGid + ' url=' + finalUrl);
+                    window.open(finalUrl, '_blank', 'noopener,noreferrer');
                   }
                 }}
                 sx={{ whiteSpace: 'nowrap', fontWeight: 700 }}
