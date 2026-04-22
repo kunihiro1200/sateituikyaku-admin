@@ -70,6 +70,43 @@ export const EMAIL_TEMPLATES: EmailTemplate[] = [
 
 {signature}`,
     placeholders: ['address', 'propertyNumber', 'publicUrl', 'buyerName', 'propertyType', 'price', 'signature']
+  },
+  {
+    id: 'private-email-only',
+    name: '非公開案件メール配信',
+    subject: '未公開物件のお知らせ＜{address}＞',
+    body: `顧客様限定！【ネット非公開情報】のご案内
+
+お世話になっております。
+大分市舞鶴町の不動産会社『株式会社いふう』です。
+
+物件住所：{address}
+詳細URL:{publicUrl}
+
+内覧は可能ですので、こちらのメールに
+■名前
+■電話番号
+■メールアドレス
+■内覧希望日時
+■その他ご質問
+を入力して返信して頂ければと思います。
+
+＼＼お問い合わせはこちら／／
+電話：097-533-2022（10～18時）
+メール：tenant@ifoo-oita.com
+お電話の際は、物件名・価格と「非公開メールを見て」とお伝えいただくとスムーズです。
+メールは24時間受け付けております。
+
+***************************
+株式会社 いふう
+〒870-0044
+大分市舞鶴町1丁目3-30
+TEL：097-533-2022
+FAX：097-529-7160
+HP：https://ifoo-oita.com/
+店休日：毎週水曜日　年末年始、GW、盆
+***************************`,
+    placeholders: ['address', 'publicUrl']
   }
 ];
 

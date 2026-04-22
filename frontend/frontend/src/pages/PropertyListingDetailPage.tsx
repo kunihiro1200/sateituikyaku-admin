@@ -1825,6 +1825,7 @@ export default function PropertyListingDetailPage() {
             previousSalesPrice={getPreviousPriceFromHistory(data.price_reduction_history)}
             priceReductionHistory={data.price_reduction_history}
             propertyType={editedData.property_type !== undefined ? editedData.property_type : data.property_type}
+            atbbStatus={editedData.atbb_status !== undefined ? editedData.atbb_status : data.atbb_status}
             size="medium"
             variant="contained"
             onSendSuccess={handleGmailDistributionSendSuccess}

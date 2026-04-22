@@ -26,6 +26,8 @@ interface GmailDistributionButtonProps {
   propertyType?: string;
   size?: 'small' | 'medium' | 'large';
   variant?: 'text' | 'outlined' | 'contained';
+  /** ATBB状況（「非公開（配信メールのみ）」の場合に専用テンプレートを表示） */
+  atbbStatus?: string;
   /** 送信成功時に呼び出されるコールバック（親コンポーネントで履歴保存に使用） */
   onSendSuccess?: (result: { successCount: number; subject: string; senderAddress: string; body: string }) => void;
 }
@@ -46,6 +48,7 @@ export default function GmailDistributionButton({
   previousSalesPrice,
   priceReductionHistory,
   propertyType,
+  atbbStatus,
   size = 'small',
   variant = 'outlined',
   onSendSuccess
@@ -83,7 +86,14 @@ export default function GmailDistributionButton({
     severity: 'info'
   });
 
-  const templates = getAllTemplates();
+  // 「非公開（配信メールのみ）」の場合は専用テンプレートのみ表示、それ以外は専用テンプレートを除外
+  const templates = getAllTemplates().filter(t => {
+    const isPrivateEmailOnly = atbbStatus?.includes('非公開') && atbbStatus?.includes('配信メール');
+    if (isPrivateEmailOnly) {
+      return t.id === 'private-email-only';
+    }
+    return t.id !== 'private-email-only';
+  });
 
   // 社員データを取得
   useEffect(() => {
