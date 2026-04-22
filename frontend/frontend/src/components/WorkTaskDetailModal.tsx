@@ -36,6 +36,7 @@ interface WorkTaskDetailModalProps {
   propertyNumber: string | null;
   onUpdate?: () => void;
   initialData?: Partial<WorkTaskData> | null;
+  initialTabIndex?: number;
 }
 
 interface WorkTaskData {
@@ -396,7 +397,7 @@ function checkMediationFormatWarning(getValue: (field: string) => any): boolean 
 
 const ASSIGNEE_OPTIONS = ['K', 'Y', 'I', '生', 'U', 'R', '久', 'H'];
 
-export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onUpdate, initialData }: WorkTaskDetailModalProps) {
+export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onUpdate, initialData, initialTabIndex }: WorkTaskDetailModalProps) {
   const [tabIndex, setTabIndex] = useState(0);
   const navigate = useNavigate();
   const normalInitials = useNormalInitials();
@@ -420,6 +421,13 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
     emptyFields: string[];
     onConfirmAction: 'site' | 'floor' | null;
   }>({ open: false, title: '', emptyFields: [], onConfirmAction: null });
+
+  // モーダルが開くたびに initialTabIndex でタブをリセット
+  useEffect(() => {
+    if (open) {
+      setTabIndex(initialTabIndex ?? 0);
+    }
+  }, [open]);
 
   useEffect(() => {
     if (open && propertyNumber) {

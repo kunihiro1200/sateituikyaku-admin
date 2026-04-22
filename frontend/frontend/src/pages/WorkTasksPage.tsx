@@ -28,6 +28,25 @@ import { WorkTask, getStatusCategories, filterTasksByStatus, calculateTaskStatus
 import PageNavigation from '../components/PageNavigation';
 import { pageDataCache, CACHE_KEYS } from '../store/pageDataCache';
 
+/**
+ * カテゴリーキー文字列からタブインデックスを返す
+ * - 「媒介」で始まる → 0（媒介契約タブ）
+ * - 「サイト」で始まる → 1（サイト登録タブ）
+ * - 「売買契約」「決済」「要台帳」で始まる → 2（契約決済タブ）
+ * - それ以外（「all」含む）・null・空文字 → 0
+ */
+function getInitialTabIndexFromCategory(category: string | null): number {
+  if (!category) return 0;
+  if (category.startsWith('媒介')) return 0;
+  if (category.startsWith('サイト')) return 1;
+  if (
+    category.startsWith('売買契約') ||
+    category.startsWith('決済') ||
+    category.startsWith('要台帳')
+  ) return 2;
+  return 0;
+}
+
 export default function WorkTasksPage() {
   const [allWorkTasks, setAllWorkTasks] = useState<WorkTask[]>([]);
   const [loading, setLoading] = useState(true);
@@ -40,6 +59,7 @@ export default function WorkTasksPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
+  const [initialTabIndex, setInitialTabIndex] = useState(0);
 
   const handleCopyPropertyNumber = async (propertyNumber: string, event: React.MouseEvent) => {
     event.stopPropagation();
@@ -55,6 +75,7 @@ export default function WorkTasksPage() {
   const handleRowClick = (task: WorkTask) => {
     setSelectedPropertyNumber(task.property_number);
     setSelectedTaskData(task);
+    setInitialTabIndex(getInitialTabIndexFromCategory(selectedCategory));
     setModalOpen(true);
   };
 
@@ -389,6 +410,7 @@ export default function WorkTasksPage() {
         propertyNumber={selectedPropertyNumber}
         initialData={selectedTaskData}
         onUpdate={() => fetchAllWorkTasks(true)}
+        initialTabIndex={initialTabIndex}
       />
 
       <Snackbar
