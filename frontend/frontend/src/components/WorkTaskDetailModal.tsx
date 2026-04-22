@@ -188,6 +188,35 @@ const RowAddWarningDialog = ({ open, onConfirm, onCancel }: { open: boolean; onC
   </Dialog>
 );
 
+
+// バリデーション警告ダイアログコンポーネント
+interface ValidationWarningDialogProps {
+  open: boolean;
+  title: string;
+  emptyFields: string[];
+  onConfirm: () => void;
+  onCancel: () => void;
+}
+
+const ValidationWarningDialog = ({ open, title, emptyFields, onConfirm, onCancel }: ValidationWarningDialogProps) => (
+  <Dialog open={open} onClose={onCancel} maxWidth="sm" fullWidth>
+    <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+      <WarningAmberIcon sx={{ color: 'warning.main' }} />
+      <Typography component="span" sx={{ fontWeight: 700 }}>{title}</Typography>
+    </DialogTitle>
+    <DialogContent>
+      <Typography sx={{ fontWeight: 700, mb: 1 }}>以下のフィールドが未入力です：</Typography>
+      {emptyFields.map((field) => (
+        <Typography key={field}>・未入力：{field}</Typography>
+      ))}
+    </DialogContent>
+    <DialogActions>
+      <Button onClick={onCancel} color="error" variant="outlined">キャンセル</Button>
+      <Button onClick={onConfirm} color="primary" variant="contained">このまま保存する</Button>
+    </DialogActions>
+  </Dialog>
+);
+
 // 締日超過警告ダイアログコンポーネント
 function DeadlineWarningDialog({ open, fieldLabel, onClose }: DeadlineWarningDialogProps) {
   return (
@@ -268,6 +297,70 @@ function DeadlineWarningDialog({ open, fieldLabel, onClose }: DeadlineWarningDia
   );
 }
 
+// ============================================================
+// バリデーション純粋関数（モジュールレベル）
+// ============================================================
+
+// フィールドの空欄判定（''、null、undefinedを空欄とみなす）
+const isEmpty = (value: any): boolean =>
+  value === '' || value === null || value === undefined;
+
+// サイト登録確認グループのフィールド表示名マッピング
+const SITE_REGISTRATION_FIELD_LABELS: Record<string, string> = {
+  site_registration_confirmed: 'サイト登録確認',
+  site_registration_ok_sent: 'サイト登録確認OK送信',
+};
+
+// 間取図グループのフィールド表示名マッピング
+const FLOOR_PLAN_FIELD_LABELS: Record<string, string> = {
+  floor_plan_confirmer: '間取図確認者',
+  floor_plan_ok_sent: '間取図確認OK送信',
+  floor_plan_completed_date: '間取図完了日',
+  floor_plan_stored_email: '間取図格納済み確認メール',
+};
+
+// サイト登録確認グループのバリデーション
+// XOR条件：片方だけ入力されている場合に警告
+function checkSiteRegistrationWarning(getValue: (field: string) => any): {
+  hasWarning: boolean;
+  emptyFields: string[];
+} {
+  const confirmed = getValue('site_registration_confirmed');
+  const okSent = getValue('site_registration_ok_sent');
+  const confirmedEmpty = isEmpty(confirmed);
+  const okSentEmpty = isEmpty(okSent);
+  // XOR: 片方だけ入力されている場合に警告
+  const hasWarning = confirmedEmpty !== okSentEmpty;
+  const emptyFields: string[] = [];
+  if (hasWarning) {
+    if (confirmedEmpty) emptyFields.push(SITE_REGISTRATION_FIELD_LABELS['site_registration_confirmed']);
+    if (okSentEmpty) emptyFields.push(SITE_REGISTRATION_FIELD_LABELS['site_registration_ok_sent']);
+  }
+  return { hasWarning, emptyFields };
+}
+
+// 間取図グループのバリデーション
+// 一部入力・一部空欄の場合に警告（全て空欄または全て入力済みは正常）
+function checkFloorPlanWarning(getValue: (field: string) => any): {
+  hasWarning: boolean;
+  emptyFields: string[];
+} {
+  const fields = Object.keys(FLOOR_PLAN_FIELD_LABELS);
+  const emptyFields: string[] = [];
+  let filledCount = 0;
+  for (const field of fields) {
+    const value = getValue(field);
+    if (isEmpty(value)) {
+      emptyFields.push(FLOOR_PLAN_FIELD_LABELS[field]);
+    } else {
+      filledCount++;
+    }
+  }
+  // 一部入力・一部空欄の場合のみ警告
+  const hasWarning = filledCount > 0 && emptyFields.length > 0;
+  return { hasWarning, emptyFields: hasWarning ? emptyFields : [] };
+}
+
 const ASSIGNEE_OPTIONS = ['K', 'Y', 'I', '生', 'U', 'R', '久', 'H'];
 
 export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onUpdate, initialData }: WorkTaskDetailModalProps) {
@@ -287,6 +380,12 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
     fieldLabel: string;
   }>({ open: false, fieldLabel: '' });
   const [rowAddWarningDialog, setRowAddWarningDialog] = useState<{ open: boolean }>({ open: false });
+  const [validationWarningDialog, setValidationWarningDialog] = useState<{
+    open: boolean;
+    title: string;
+    emptyFields: string[];
+    onConfirmAction: 'site' | 'floor' | null;
+  }>({ open: false, title: '', emptyFields: [], onConfirmAction: null });
 
   useEffect(() => {
     if (open && propertyNumber) {
@@ -364,7 +463,57 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
       return;
     }
 
+    // 要件1チェック（サイト登録確認グループ）
+    const siteResult = checkSiteRegistrationWarning(getValue);
+    if (siteResult.hasWarning) {
+      setValidationWarningDialog({
+        open: true,
+        title: 'サイト登録確認関連フィールドに未入力項目があります',
+        emptyFields: siteResult.emptyFields,
+        onConfirmAction: 'site',
+      });
+      return;
+    }
+
+    // 要件2チェック（間取図グループ）
+    const floorResult = checkFloorPlanWarning(getValue);
+    if (floorResult.hasWarning) {
+      setValidationWarningDialog({
+        open: true,
+        title: '間取図関連フィールドに未入力項目があります',
+        emptyFields: floorResult.emptyFields,
+        onConfirmAction: 'floor',
+      });
+      return;
+    }
+
     await executeSave();
+  };
+
+  const handleValidationWarningConfirm = async () => {
+    const action = validationWarningDialog.onConfirmAction;
+    setValidationWarningDialog(prev => ({ ...prev, open: false }));
+
+    if (action === 'site') {
+      // 要件1をスキップして要件2チェックへ
+      const getValueLocal = (field: string) => editedData[field] !== undefined ? editedData[field] : data?.[field];
+      const floorResult = checkFloorPlanWarning(getValueLocal);
+      if (floorResult.hasWarning) {
+        setValidationWarningDialog({
+          open: true,
+          title: '間取図関連フィールドに未入力項目があります',
+          emptyFields: floorResult.emptyFields,
+          onConfirmAction: 'floor',
+        });
+        return;
+      }
+    }
+
+    await executeSave();
+  };
+
+  const handleValidationWarningCancel = () => {
+    setValidationWarningDialog(prev => ({ ...prev, open: false }));
   };
 
   const handleFieldChange = (field: string, value: any) => {
@@ -1180,6 +1329,13 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
         open={rowAddWarningDialog.open}
         onConfirm={() => { setRowAddWarningDialog({ open: false }); executeSave(); }}
         onCancel={() => setRowAddWarningDialog({ open: false })}
+      />
+      <ValidationWarningDialog
+        open={validationWarningDialog.open}
+        title={validationWarningDialog.title}
+        emptyFields={validationWarningDialog.emptyFields}
+        onConfirm={handleValidationWarningConfirm}
+        onCancel={handleValidationWarningCancel}
       />
     </>
   );
