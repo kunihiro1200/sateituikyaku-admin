@@ -41,6 +41,7 @@ import {
   Delete as DeleteIcon,
   BarChart as BarChartIcon,
 } from '@mui/icons-material';
+import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import api, { buyerApi } from '../services/api';
 import PropertyInfoCard from '../components/PropertyInfoCard';
 import InquiryHistoryTable, { InquiryHistoryItem } from '../components/InquiryHistoryTable';
@@ -75,6 +76,57 @@ import { getDisplayName } from '../utils/employeeUtils';
 import { normalizeEmail } from '../utils/stringUtils';
 import { pageDataCache, CACHE_KEYS } from '../store/pageDataCache';
 
+/**
+ * 次電日の設定が必須かどうかを判定する
+ * @param latestStatus - 最新状況の値（保存済み + 編集中の最終値）
+ * @param nextCallDate - 次電日の値（保存済み + 編集中の最終値）
+ * @returns true = 次電日必須（ダイアログ表示）、false = チェック不要
+ */
+export function requiresNextCallDate(
+  latestStatus: string | null | undefined,
+  nextCallDate: string | null | undefined
+): boolean {
+  // latest_status が未設定の場合はチェック不要
+  if (!latestStatus || latestStatus.trim() === '') return false;
+
+  // 「AZ」または「BZ」で始まる場合はチェック不要
+  if (latestStatus.startsWith('AZ') || latestStatus.startsWith('BZ')) return false;
+
+  // 「A」または「B」を含まない場合はチェック不要
+  if (!latestStatus.includes('A') && !latestStatus.includes('B')) return false;
+
+  // 上記条件を通過 = A系またはB系ステータス
+  // next_call_date が未設定の場合のみ true
+  return !nextCallDate || nextCallDate.trim() === '';
+}
+
+interface NextCallDateRequiredDialogProps {
+  open: boolean;
+  onClose: () => void;
+}
+
+function NextCallDateRequiredDialog({ open, onClose }: NextCallDateRequiredDialogProps) {
+  return (
+    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+      <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <WarningAmberIcon color="warning" />
+        次電日が未設定です
+      </DialogTitle>
+      <DialogContent>
+        <Typography variant="body2">
+          最新状況がAやBの場合は次電日の設定は必須です。
+          次電日の設定不要の場合はAZもしくはBZを選択してください。
+        </Typography>
+      </DialogContent>
+      <DialogActions sx={{ px: 3, pb: 2 }}>
+        <Button variant="contained" color="warning" onClick={onClose}>
+          閉じる
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+}
+
 interface Buyer {
   [key: string]: any;
 }
@@ -90,6 +142,7 @@ interface PropertyListing {
   sales_assignee?: string;
   contract_date?: string;
   settlement_date?: string;
+  pre_viewing_notes?: string;
 }
 
 interface InquiryHistory {
@@ -176,7 +229,22 @@ const SAVE_BUTTON_FIELDS = new Set([
 ]);
 
 
-const BUYER_FIELD_SECTIONS = [
+interface BuyerFieldSection {
+  title: string;
+  isViewingResultGroup?: boolean;
+  fields: Array<{
+    key: string;
+    label: string;
+    inlineEditable?: boolean;
+    fieldType?: string;
+    multiline?: boolean;
+    type?: string;
+    required?: boolean;
+    readOnly?: boolean;
+  }>;
+}
+
+const BUYER_FIELD_SECTIONS: BuyerFieldSection[] = [
   {
     title: '問合せ内容',
     fields: [
@@ -474,6 +542,9 @@ export default function BuyerDetailPage() {
   const [validationDialogOpen, setValidationDialogOpen] = useState(false);
   const [pendingNavigationUrl, setPendingNavigationUrl] = useState<string>('');
 
+  // 次電日必須ダイアログ用 state
+  const [nextCallDateDialogOpen, setNextCallDateDialogOpen] = useState(false);
+
   // バリデーション警告ダイアログ用 missing labels state
   const [pendingMissingLabels, setPendingMissingLabels] = useState<string[]>([]);
 
@@ -752,6 +823,21 @@ export default function BuyerDetailPage() {
   const handleSectionSave = async (sectionTitle: string) => {
     const changedFields = sectionChangedFields[sectionTitle] || {};
     if (Object.keys(changedFields).length === 0) return;
+
+    // 次電日必須バリデーション
+    // 最終値 = 編集中の値があればそれを優先、なければ保存済みの値
+    const latestStatusForValidation = 'latest_status' in changedFields
+      ? changedFields.latest_status
+      : buyer?.latest_status;
+    const nextCallDateForValidation = 'next_call_date' in changedFields
+      ? changedFields.next_call_date
+      : buyer?.next_call_date;
+
+    if (requiresNextCallDate(latestStatusForValidation, nextCallDateForValidation)) {
+      setNextCallDateDialogOpen(true);
+      return; // 保存中断
+    }
+
     setSectionSavingStates(prev => ({ ...prev, [sectionTitle]: true }));
     try {
       // force=true を付与して競合チェックをスキップ（last_synced_at が設定されている場合の409エラーを回避）
@@ -1241,7 +1327,7 @@ export default function BuyerDetailPage() {
             selectedPropertyIds={selectedPropertyIds}
             linkedPropertyType={linkedProperties[0]?.property_type}
             brokerInquiry={buyer.broker_inquiry || ''}
-            viewingDate={buyer.viewing_date || ''}
+            latestViewingDate={buyer.viewing_date || ''}
             size="small"
             variant="contained"
             onEmailSent={fetchActivities}
@@ -1286,7 +1372,7 @@ export default function BuyerDetailPage() {
               preViewingNotes={linkedProperties[0]?.pre_viewing_notes || ''}
             />
           )}
-          {false && buyer.phone_number && (
+          {false && buyer?.phone_number && (
             <FormControl size="small" sx={{ minWidth: 160 }}>
               <InputLabel>SMS送信</InputLabel>
               <Select
@@ -1294,8 +1380,8 @@ export default function BuyerDetailPage() {
                 label="SMS送信"
                 onChange={(e) => {
                   const templateId = e.target.value;
-                  if (!templateId || !buyer.phone_number) return;
-                  const name = buyer.name || 'お客様';
+                  if (!templateId || !buyer?.phone_number) return;
+                  const name = buyer?.name || 'お客様';
                   const address = linkedProperties[0]?.display_address || linkedProperties[0]?.address || '';
                   const viewingFormBase = 'https://docs.google.com/forms/d/e/1FAIpQLSefXwsYKryraVM4jtnLgcYtboUg3w-lx7tasftVA47E5jXUlQ/viewform?usp=pp_url';
                   const viewingFormUrl = `${viewingFormBase}&entry.267319544=${buyer_number}&entry.2056434590=${encodeURIComponent(address)}`;
@@ -1474,7 +1560,7 @@ TEL：097-533-2022`;
                   }
 
                   if (message) {
-                    const smsLink = `sms:${buyer.phone_number}?body=${encodeURIComponent(message)}`;
+                    const smsLink = `sms:${buyer?.phone_number}?body=${encodeURIComponent(message)}`;
                     window.location.href = smsLink;
                   }
                 }}
@@ -1931,7 +2017,7 @@ TEL：097-533-2022`;
                       value={buyer?.other_company_property || ''}
                       fieldName="other_company_property"
                       fieldType="textarea"
-                      onSave={handleInlineFieldSave}
+                      onSave={(value) => handleInlineFieldSave('other_company_property', value).then(() => {})}
                       onChange={(fieldName, newValue) => handleFieldChange('他社物件情報', fieldName, newValue)}
                       buyerId={buyer_number}
                       enableConflictDetection={false}
@@ -1947,7 +2033,7 @@ TEL：097-533-2022`;
                       value={buyer?.building_name_price || ''}
                       fieldName="building_name_price"
                       fieldType="textarea"
-                      onSave={handleInlineFieldSave}
+                      onSave={(value) => handleInlineFieldSave('building_name_price', value).then(() => {})}
                       onChange={(fieldName, newValue) => handleFieldChange('他社物件情報', fieldName, newValue)}
                       buyerId={buyer_number}
                       enableConflictDetection={false}
@@ -3414,6 +3500,12 @@ TEL：097-533-2022`;
           <Button onClick={() => setEmailBodyModalOpen(false)}>閉じる</Button>
         </DialogActions>
       </Dialog>
+
+      {/* 次電日必須ダイアログ */}
+      <NextCallDateRequiredDialog
+        open={nextCallDateDialogOpen}
+        onClose={() => setNextCallDateDialogOpen(false)}
+      />
 
       {/* Chat送信誘導ポップアップ */}
       <ChatNavigationPopup
