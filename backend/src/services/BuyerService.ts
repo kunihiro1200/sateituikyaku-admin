@@ -1753,6 +1753,8 @@ export class BuyerService {
 
     const allBuyers: any[] = [...(firstBatchResult.data || [])];
 
+    const allBuyers: any[] = [...(firstBatchResult.data || [])];
+
     // property_listings を全件取得（1000件超え対応のページネーション）
     const listingsTotalCount = listingsCountResult.count || 0;
     const listingsBatchCount = Math.ceil(listingsTotalCount / PAGE_SIZE);
@@ -1773,8 +1775,6 @@ export class BuyerService {
       if (data) allListingsData.push(...data);
     }
     console.log(`🔍 [DEBUG] fetchAllBuyers - property_listings取得件数: ${allListingsData.length}`);
-
-    const allBuyers: any[] = [...(firstBatchResult.data || [])];
 
     // 2バッチ目以降を並列取得（既に1バッチ目は取得済み）
     const batchCount = Math.ceil(totalCount / PAGE_SIZE);
