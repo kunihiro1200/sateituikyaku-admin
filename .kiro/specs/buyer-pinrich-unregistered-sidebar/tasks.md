@@ -53,7 +53,22 @@
     - バックエンドのロジックをモック化してフィルター結果と比較
     - **Validates: Requirements 1.5, 1.6, 3.2, 3.4, 4.3, 5.3, 5.4**
 
-- [ ] 4. チェックポイント - すべてのテストが通ることを確認する
+- [ ] 4. チェックポイント - BuyerService.ts の修正確認
+  - すべてのテストが通ることを確認する。疑問点があればユーザーに確認する。
+
+- [ ] 5. バグ修正: inquiry_source='2件目以降' の既存データ一括修正
+  - [x] 5.1 `inquiry_source = '2件目以降'` かつ `pinrich IS NULL または空文字` の買主を一括で `pinrich = '登録不要（不可）'` に更新するPythonスクリプトを作成・実行する
+    - 対象件数を事前に確認してからユーザーに報告し、承認を得てから実行する
+    - _Requirements: 6.1_
+  - [x] 5.2 `BuyerStatusCalculator.ts` の Priority 31 に `inquiry_source !== '2件目以降'` の条件を追加する
+    - `notEquals(buyer.inquiry_source, '2件目以降')` を AND 条件で追加する
+    - `getBuyersByStatus` の `pinrichUnregistered` フィルタにも同条件を追加する
+    - `getSidebarCountsFallback` のカウントにも同条件を追加する
+    - _Requirements: 6.2, 6.3, 6.4_
+  - [x] 5.3 修正後、7609が「Pinrich未登録」サイドバーから消えることを確認する
+    - _Requirements: 6.1, 6.2_
+
+- [ ] 6. チェックポイント - すべてのテストが通ることを確認する
   - すべてのテストが通ることを確認する。疑問点があればユーザーに確認する。
 
 ## 注意事項
@@ -64,3 +79,4 @@
 - `BuyerStatusCalculator.ts` の Priority 31 条件と `getBuyersByStatus` の `pinrichUnregistered` フィルタ条件を必ず一致させること（不一致が過去の問題の原因）
 - プロパティテストには fast-check を使用し、最低100回のランダム入力で実行する
 - `BuyerStatusSidebar.tsx` と `BuyersPage.tsx` は `BuyerStatusCalculator.ts` 修正後に自動的に機能するため変更不要
+- `inquiry_source = '2件目以降'` の買主は `pinrich` が「登録不要（不可）」であるべき。バックエンドの `applySecondInquiryRule` は新規・更新時に適用済みだが、既存データには未適用のため一括修正が必要

@@ -82,7 +82,16 @@
     "サイト登録依頼者": "site_registration_requestor",
     "広瀬さんへ依頼": "hirose_request",
     "物件一覧に行追加": "property_list_row_added",
-    "物件ファイル": "property_file"
+    "物件ファイル": "property_file",
+    "売主名前": "seller_contact_name",
+    "売主メアド": "seller_contact_email",
+    "売主TEL": "seller_contact_tel",
+    "買主名前": "buyer_contact_name",
+    "買主メアド": "buyer_contact_email",
+    "買主TEL": "buyer_contact_tel",
+    "ローン": "loan",
+    "金融機関名": "financial_institution",
+    "引き渡し予定": "delivery_scheduled_date"
   },
   "spreadsheetToDatabase3": {
     "コメント（サイト登録）": "site_registration_comment",
@@ -156,14 +165,81 @@
     "standard_brokerage_fee_buyer": "number",
     "sales_price": "number",
     "floor_plan_revision_count": "number",
-    "review_count": "number"
+    "review_count": "number",
+    "delivery_scheduled_date": "date"
   },
   "categories": {
-    "基本情報": ["property_number", "property_address", "seller_name", "spreadsheet_url", "sales_assignee"],
-    "媒介契約": ["mediation_type", "mediation_deadline", "mediation_completed", "mediation_creator", "mediation_notes"],
-    "サイト登録": ["site_registration_deadline", "site_registration_request_date", "site_registration_due_date", "site_registration_confirm_request_date", "site_registration_confirmed", "site_registration_confirmer", "email_distribution", "pre_distribution_check", "distribution_date", "distribution_assignee", "pre_publish_check", "publish_scheduled_date", "cadastral_map_url", "floor_plan_no_notification", "floor_plan", "floor_plan_request_date", "floor_plan_due_date", "floor_plan_completed_date", "floor_plan_confirmer", "floor_plan_revision_count", "contract_input_deadline", "panorama", "panorama_completed", "employee_contract_creation", "attachment_completed", "site_notes"],
-    "売買契約": ["sales_contract_deadline", "sales_contract_assignee", "sales_contract_confirmed", "binding_scheduled_date", "binding_completed", "sales_contract_notes", "ledger_created", "on_hold", "attachment_printed"],
-    "決済": ["settlement_date", "brokerage_fee_seller", "brokerage_fee_buyer", "seller_payment_method", "buyer_payment_method", "payment_confirmed_seller", "payment_confirmed_buyer", "standard_brokerage_fee_seller", "standard_brokerage_fee_buyer", "discount_reason", "discount_reason_other", "sales_price", "settlement_scheduled_month", "accounting_confirmed"]
+    "基本情報": [
+      "property_number",
+      "property_address",
+      "seller_name",
+      "spreadsheet_url",
+      "sales_assignee"
+    ],
+    "媒介契約": [
+      "mediation_type",
+      "mediation_deadline",
+      "mediation_completed",
+      "mediation_creator",
+      "mediation_notes"
+    ],
+    "サイト登録": [
+      "site_registration_deadline",
+      "site_registration_request_date",
+      "site_registration_due_date",
+      "site_registration_confirm_request_date",
+      "site_registration_confirmed",
+      "site_registration_confirmer",
+      "email_distribution",
+      "pre_distribution_check",
+      "distribution_date",
+      "distribution_assignee",
+      "pre_publish_check",
+      "publish_scheduled_date",
+      "cadastral_map_url",
+      "floor_plan_no_notification",
+      "floor_plan",
+      "floor_plan_request_date",
+      "floor_plan_due_date",
+      "floor_plan_completed_date",
+      "floor_plan_confirmer",
+      "floor_plan_revision_count",
+      "contract_input_deadline",
+      "panorama",
+      "panorama_completed",
+      "employee_contract_creation",
+      "attachment_completed",
+      "site_notes"
+    ],
+    "売買契約": [
+      "sales_contract_deadline",
+      "sales_contract_assignee",
+      "sales_contract_confirmed",
+      "binding_scheduled_date",
+      "binding_completed",
+      "sales_contract_notes",
+      "ledger_created",
+      "on_hold",
+      "attachment_printed"
+    ],
+    "決済": [
+      "settlement_date",
+      "brokerage_fee_seller",
+      "brokerage_fee_buyer",
+      "seller_payment_method",
+      "buyer_payment_method",
+      "payment_confirmed_seller",
+      "payment_confirmed_buyer",
+      "standard_brokerage_fee_seller",
+      "standard_brokerage_fee_buyer",
+      "discount_reason",
+      "discount_reason_other",
+      "sales_price",
+      "settlement_scheduled_month",
+      "accounting_confirmed"
+    ]
   },
-  "requiredFields": ["property_number"]
+  "requiredFields": [
+    "property_number"
+  ]
 }

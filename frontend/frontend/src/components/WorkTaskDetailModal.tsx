@@ -1200,9 +1200,28 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
     </Box>
   );
 
-  // 司法書士・相手側不動産情報セクション
-  const JudicialScrivenerSection = () => (
+  // 売主、買主詳細セクション
+  const SellerBuyerDetailSection = () => (
     <Box sx={{ p: 2 }}>
+      <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#2e7d32', mb: 1 }}>【売主情報】</Typography>
+      <EditableField label="売主名前" field="seller_contact_name" />
+      <EditableField label="売主メアド" field="seller_contact_email" />
+      <EditableField label="売主TEL" field="seller_contact_tel" />
+
+      <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#1565c0', mb: 1, mt: 2 }}>【買主情報】</Typography>
+      <EditableField label="買主名前" field="buyer_contact_name" />
+      <EditableField label="買主メアド" field="buyer_contact_email" />
+      <EditableField label="買主TEL" field="buyer_contact_tel" />
+
+      <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#e65100', mb: 1, mt: 2 }}>【ローン情報】</Typography>
+      <EditableButtonSelect label="ローン" field="loan" options={['あり', 'なし']} />
+      <EditableField label="金融機関名" field="financial_institution" />
+
+      <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#6a1b9a', mb: 1, mt: 2 }}>【日程】</Typography>
+      <EditableField label="引き渡し予定" field="delivery_scheduled_date" type="date" />
+      <EditableField label="融資承認予定日" field="loan_approval_scheduled_date" type="date" />
+
+      <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#37474f', mb: 1, mt: 2 }}>【司法書士・仲介業者情報】</Typography>
       <EditableField label="司法書士" field="judicial_scrivener" />
       <EditableField label="司法書士連絡先" field="judicial_scrivener_contact" />
       <EditableField label="仲介業者" field="broker" />
@@ -1210,7 +1229,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
     </Box>
   );
 
-  const tabLabels = ['媒介契約', 'サイト登録', '契約決済', '司法書士、相手側不動産情報'];
+  const tabLabels = ['媒介契約', 'サイト登録', '契約決済', '売主、買主詳細'];
 
   return (
     <>
@@ -1335,7 +1354,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
               {tabIndex === 0 && <MediationSection />}
               {tabIndex === 1 && <SiteRegistrationSection cwCounts={cwCounts} leftPaneRef={leftPaneRef} rightPaneRef={rightPaneRef} />}
               {tabIndex === 2 && <ContractSettlementSection />}
-              {tabIndex === 3 && <JudicialScrivenerSection />}
+              {tabIndex === 3 && <SellerBuyerDetailSection />}
             </>
           )}
         </DialogContent>
