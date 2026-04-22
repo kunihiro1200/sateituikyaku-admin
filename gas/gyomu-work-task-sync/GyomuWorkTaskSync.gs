@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 業務依頼同期スクリプト（GAS → Supabase直接書き込み）
  *
  * 概要:
@@ -165,7 +165,17 @@ var COLUMN_MAPPING = {
   '作業内容': 'work_content',
   '売買関係検収': 'sales_inspection',
   '依頼前に確認': 'pre_request_check',
-  'CWの方': 'cw_person'
+  'CWの方': 'cw_person',
+  // 売主、買主詳細フィールド（2026年4月追加）
+  '売主名前': 'seller_contact_name',
+  '売主メアド': 'seller_contact_email',
+  '売主TEL': 'seller_contact_tel',
+  '買主名前': 'buyer_contact_name',
+  '買主メアド': 'buyer_contact_email',
+  '買主TEL': 'buyer_contact_tel',
+  'ローン': 'loan',
+  '金融機関名': 'financial_institution',
+  '引き渡し予定': 'delivery_scheduled_date'
 };
 
 // 型変換ルール（work-task-column-mapping.json の typeConversions）
@@ -192,7 +202,8 @@ var TYPE_CONVERSIONS = {
   'standard_brokerage_fee_buyer': 'number',
   'sales_price': 'number',
   'floor_plan_revision_count': 'number',
-  'review_count': 'number'
+  'review_count': 'number',
+  'delivery_scheduled_date': 'date'
 };
 
 // ============================================================
