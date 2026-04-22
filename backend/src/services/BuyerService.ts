@@ -1753,8 +1753,6 @@ export class BuyerService {
 
     const allBuyers: any[] = [...(firstBatchResult.data || [])];
 
-    const allBuyers: any[] = [...(firstBatchResult.data || [])];
-
     // property_listings を全件取得（1000件超え対応のページネーション）
     const listingsTotalCount = listingsCountResult.count || 0;
     const listingsBatchCount = Math.ceil(listingsTotalCount / PAGE_SIZE);
