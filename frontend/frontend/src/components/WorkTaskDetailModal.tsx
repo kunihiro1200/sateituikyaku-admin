@@ -434,8 +434,9 @@ const SELF_CHECK_BUILDING_ITEMS_BASE = [
 ];
 const SELF_CHECK_BUILDING_ITEM_MANSION = 'マンションの壁芯面積は謄本より大きな数字になっているか（種別＝マンションの場合のみ）';
 
-// 全チェック項目を返す（property_typeに応じてマンション項目を含める）
+// 全チェック項目を返す（property_typeに応じてマンション項目を含める、土地は建物なし）
 function SELF_CHECK_ALL_ITEMS(propertyType: string | undefined): string[] {
+  if (propertyType === '土') return [...SELF_CHECK_OWNER_ITEMS, ...SELF_CHECK_LAND_ITEMS];
   const buildingItems = propertyType === 'マンション'
     ? [SELF_CHECK_BUILDING_ITEM_MANSION, ...SELF_CHECK_BUILDING_ITEMS_BASE]
     : SELF_CHECK_BUILDING_ITEMS_BASE;
@@ -864,7 +865,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
               }
               label={
                 <Typography variant="body2" sx={{ fontSize: '0.82rem' }}>
-                  □{item}
+                  {item}
                 </Typography>
               }
             />
@@ -893,7 +894,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
           </Typography>
           {renderCheckGroup('所有者、登記名義人', SELF_CHECK_OWNER_ITEMS)}
           {renderCheckGroup('土地', SELF_CHECK_LAND_ITEMS)}
-          {renderCheckGroup('建物', buildingItems)}
+          {propertyType !== '土' && renderCheckGroup('建物', buildingItems)}
         </Box>
 
         <EditableYesNo label="保留" field="on_hold" />
