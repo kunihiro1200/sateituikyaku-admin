@@ -213,7 +213,8 @@ export class PropertyListingService {
           // 住所が更新された場合、座標もジオコーディング
           if (updates.address) {
             console.log(`[PropertyListingService] Geocoding address for ${propertyNumber}: ${address}`);
-            const coordinates = await this.geocodingService.geocodeAddress(address);
+            const propertyPrefix = propertyNumber ? propertyNumber.substring(0, 2).toUpperCase() : undefined;
+            const coordinates = await this.geocodingService.geocodeAddress(address, propertyPrefix);
             
             if (coordinates) {
               updates.latitude = coordinates.lat;

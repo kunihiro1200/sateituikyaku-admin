@@ -24,15 +24,15 @@ export class GeocodingService {
    * @param address 住所（例: "大分県大分市府内町1-1-1"）
    * @returns 緯度経度、または変換失敗時はnull
    */
-  async geocodeAddress(address: string): Promise<Coordinates | null> {
+  async geocodeAddress(address: string, sellerPrefix?: string): Promise<Coordinates | null> {
     try {
-      // 「大分県」が含まれていない場合は自動的に追加
+      // 「大分県」が含まれていない場合は自動的に追加（AAプレフィックスまたは未指定の場合のみ）
       let fullAddress = address;
-      if (!address.includes('大分県')) {
+      if (!address.includes('大分県') && (!sellerPrefix || sellerPrefix === 'AA')) {
         fullAddress = `大分県${address}`;
       }
       
-      console.log(`[GeocodingService] Geocoding address: "${address}" -> "${fullAddress}"`);
+      console.log(`[GeocodingService] Geocoding address: "${address}" -> "${fullAddress}" (sellerPrefix: ${sellerPrefix || 'none'})`);
       
       const response = await axios.get('https://maps.googleapis.com/maps/api/geocode/json', {
         params: {

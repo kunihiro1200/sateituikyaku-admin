@@ -683,7 +683,8 @@ router.get('/by-number/:sellerNumber', async (req: Request, res: Response) => {
         if (apiKey) {
           const { GeocodingService } = await import('../services/GeocodingService');
           const geocodingService = new GeocodingService();
-          const coords = await geocodingService.geocodeAddress(seller.propertyAddress);
+          const sellerPrefix = sellerNumber ? sellerNumber.substring(0, 2).toUpperCase() : undefined;
+          const coords = await geocodingService.geocodeAddress(seller.propertyAddress, sellerPrefix);
           if (coords) {
             latitude = coords.lat;
             longitude = coords.lng;
