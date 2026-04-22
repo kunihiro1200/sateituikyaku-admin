@@ -20,6 +20,9 @@ import {
   Link,
   Snackbar,
   Alert,
+  Checkbox,
+  FormControlLabel,
+  FormGroup,
 } from '@mui/material';
 import { Close as CloseIcon, Save as SaveIcon, ContentCopy as ContentCopyIcon, WarningAmber as WarningAmberIcon } from '@mui/icons-material';
 import api from '../services/api';
@@ -115,6 +118,7 @@ interface WorkTaskData {
   judicial_scrivener_contact: string;
   broker: string;
   broker_contact: string;
+  mediation_self_check: string[];
   [key: string]: any;
 }
 
@@ -214,6 +218,22 @@ const RowAddWarningDialog = ({ open, onConfirm, onCancel }: { open: boolean; onC
   </Dialog>
 );
 
+
+// セルフチェック未完了警告ダイアログ
+const SelfCheckWarningDialog = ({ open, onClose }: { open: boolean; onClose: () => void }) => (
+  <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+    <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+      <WarningAmberIcon sx={{ color: 'warning.main' }} />
+      <Typography component="span" sx={{ fontWeight: 700 }}>セルフチェック未完了</Typography>
+    </DialogTitle>
+    <DialogContent>
+      <Typography>セルフチェックの記入を全て完了させてください。</Typography>
+    </DialogContent>
+    <DialogActions>
+      <Button onClick={onClose} color="primary" variant="contained">OK</Button>
+    </DialogActions>
+  </Dialog>
+);
 
 // バリデーション警告ダイアログコンポーネント
 interface ValidationWarningDialogProps {
@@ -395,6 +415,33 @@ function checkMediationFormatWarning(getValue: (field: string) => any): boolean 
   return propertyAddress === '不要' && !isEmpty(mediationCreator);
 }
 
+// セルフチェック項目定義
+const SELF_CHECK_OWNER_ITEMS = [
+  '物件所在地と名義人住所を１字１字再確認',
+  '全ての人名を再確認',
+  '相続物件の場合、亡くなった人を名義人としていないか再確認',
+  '名義人の人数を再確認（復数人いる場合は、備考欄に明記しているか）',
+];
+const SELF_CHECK_LAND_ITEMS = [
+  '筆を再確認（本当にそれで足りているのか？）',
+  '下線が引かれているものを表記していないか確認',
+  '面積を１字１字再確認',
+  '所在を１字１字再確認',
+  '地目を再確認',
+];
+const SELF_CHECK_BUILDING_ITEMS_BASE = [
+  '建物セクションを全て１字１字再確認',
+];
+const SELF_CHECK_BUILDING_ITEM_MANSION = 'マンションの壁芯面積は謄本より大きな数字になっているか（種別＝マンションの場合のみ）';
+
+// 全チェック項目を返す（property_typeに応じてマンション項目を含める）
+function SELF_CHECK_ALL_ITEMS(propertyType: string | undefined): string[] {
+  const buildingItems = propertyType === 'マンション'
+    ? [SELF_CHECK_BUILDING_ITEM_MANSION, ...SELF_CHECK_BUILDING_ITEMS_BASE]
+    : SELF_CHECK_BUILDING_ITEMS_BASE;
+  return [...SELF_CHECK_OWNER_ITEMS, ...SELF_CHECK_LAND_ITEMS, ...buildingItems];
+}
+
 const ASSIGNEE_OPTIONS = ['K', 'Y', 'I', '生', 'U', 'R', '久', 'H'];
 
 export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onUpdate, initialData, initialTabIndex }: WorkTaskDetailModalProps) {
@@ -421,6 +468,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
     emptyFields: string[];
     onConfirmAction: 'site' | 'floor' | null;
   }>({ open: false, title: '', emptyFields: [], onConfirmAction: null });
+  const [selfCheckWarningDialog, setSelfCheckWarningDialog] = useState(false);
 
   // モーダルが開くたびに initialTabIndex でタブをリセット
   useEffect(() => {
@@ -506,6 +554,18 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
 
   const handleSave = async () => {
     if (!propertyNumber || Object.keys(editedData).length === 0) return;
+
+    // 媒介作成完了が入力されている場合、セルフチェック全項目必須
+    const mediationCompleted = getValue('mediation_completed');
+    if (mediationCompleted) {
+      const selfCheck: string[] = getValue('mediation_self_check') ?? [];
+      const allCheckItems = SELF_CHECK_ALL_ITEMS(getValue('property_type'));
+      const allChecked = allCheckItems.every(item => selfCheck.includes(item));
+      if (!allChecked) {
+        setSelfCheckWarningDialog(true);
+        return;
+      }
+    }
 
     // 条件付きバリデーション
     const cwEmailSite = getValue('cw_request_email_site');
@@ -768,21 +828,78 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
   );
 
   // 媒介契約セクション
-  const MediationSection = () => (
-    <Box sx={{ p: 2 }}>
-      <EditableField label="物件番号" field="property_number" />
-      <EditableField label="媒介備考" field="mediation_notes" />
-      <EditableField label="物件所在" field="property_address" />
-      <EditableField label="売主" field="seller_name" />
-      <EditableField label="スプシURL" field="spreadsheet_url" type="url" />
-      <EditableButtonSelect label="営業担当" field="sales_assignee" options={normalInitials} />
-      <EditableField label="媒介形態" field="mediation_type" />
-      <EditableField label="媒介作成締め日" field="mediation_deadline" type="date" />
-      <EditableField label="媒介作成完了" field="mediation_completed" type="date" />
-      <EditableButtonSelect label="媒介作成者" field="mediation_creator" options={normalInitials} />
-      <EditableYesNo label="保留" field="on_hold" />
-    </Box>
-  );
+  const MediationSection = () => {
+    const selfCheck: string[] = getValue('mediation_self_check') ?? [];
+    const propertyType: string = getValue('property_type') ?? '';
+    const mediationCompleted = getValue('mediation_completed');
+    const isRequired = !!mediationCompleted;
+
+    const handleCheckChange = (item: string, checked: boolean) => {
+      const next = checked
+        ? [...selfCheck, item]
+        : selfCheck.filter((v) => v !== item);
+      handleFieldChange('mediation_self_check', next);
+    };
+
+    const buildingItems = propertyType === 'マンション'
+      ? [SELF_CHECK_BUILDING_ITEM_MANSION, ...SELF_CHECK_BUILDING_ITEMS_BASE]
+      : SELF_CHECK_BUILDING_ITEMS_BASE;
+
+    const renderCheckGroup = (groupLabel: string, items: string[]) => (
+      <Box sx={{ mb: 1.5 }}>
+        <Typography variant="body2" sx={{ fontWeight: 700, mb: 0.5 }}>
+          【{groupLabel}】
+        </Typography>
+        <FormGroup sx={{ pl: 1 }}>
+          {items.map((item) => (
+            <FormControlLabel
+              key={item}
+              control={
+                <Checkbox
+                  size="small"
+                  checked={selfCheck.includes(item)}
+                  onChange={(e) => handleCheckChange(item, e.target.checked)}
+                  sx={isRequired && !selfCheck.includes(item) ? { color: 'error.main' } : {}}
+                />
+              }
+              label={
+                <Typography variant="body2" sx={{ fontSize: '0.82rem' }}>
+                  □{item}
+                </Typography>
+              }
+            />
+          ))}
+        </FormGroup>
+      </Box>
+    );
+
+    return (
+      <Box sx={{ p: 2 }}>
+        <EditableField label="物件番号" field="property_number" />
+        <EditableField label="媒介備考" field="mediation_notes" />
+        <EditableField label="物件所在" field="property_address" />
+        <EditableField label="売主" field="seller_name" />
+        <EditableField label="スプシURL" field="spreadsheet_url" type="url" />
+        <EditableButtonSelect label="営業担当" field="sales_assignee" options={normalInitials} />
+        <EditableField label="媒介形態" field="mediation_type" />
+        <EditableField label="媒介作成締め日" field="mediation_deadline" type="date" />
+        <EditableField label="媒介作成完了" field="mediation_completed" type="date" />
+        <EditableButtonSelect label="媒介作成者" field="mediation_creator" options={normalInitials} />
+
+        {/* セルフチェック */}
+        <Box sx={{ mt: 2, mb: 1.5, p: 1.5, border: isRequired ? '2px solid #d32f2f' : '1px solid #e0e0e0', borderRadius: 1, bgcolor: isRequired ? '#fff8f8' : '#fafafa' }}>
+          <Typography variant="body2" sx={{ fontWeight: 700, mb: 1, color: isRequired ? 'error.main' : 'text.primary' }}>
+            セルフチェック{isRequired ? '（必須）' : ''}
+          </Typography>
+          {renderCheckGroup('所有者、登記名義人', SELF_CHECK_OWNER_ITEMS)}
+          {renderCheckGroup('土地', SELF_CHECK_LAND_ITEMS)}
+          {renderCheckGroup('建物', buildingItems)}
+        </Box>
+
+        <EditableYesNo label="保留" field="on_hold" />
+      </Box>
+    );
+  };
 
   // セクションヘッダー
   const SectionHeader = ({ label }: { label: string }) => (
@@ -1505,6 +1622,10 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
       <MediationFormatWarningDialog
         open={mediationFormatWarningDialog.open}
         onConfirm={() => { setMediationFormatWarningDialog({ open: false }); executeSave(); }}
+      />
+      <SelfCheckWarningDialog
+        open={selfCheckWarningDialog}
+        onClose={() => setSelfCheckWarningDialog(false)}
       />
     </>
   );

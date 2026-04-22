@@ -172,6 +172,18 @@ export default function BuyersPage() {
                   );
                   
                   return matches;
+                } else if (selectedCalculatedStatus.startsWith('nextCallDateBlank:')) {
+                  // 次電日空欄(イニシャル): follow_up_assignee = イニシャル AND latest_status IN (A, B) AND next_call_date NULL AND broker_inquiry NULL/空
+                  const assignee = selectedCalculatedStatus.replace('nextCallDateBlank:', '');
+                  const STATUS_A = 'A:この物件を気に入っている（こちらからの一押しが必要）';
+                  const STATUS_B = 'B:1年以内に引っ越し希望だが、この物件ではない。駐車場の要件や、日当たり等が合わない。';
+                  const matches = (
+                    b.follow_up_assignee === assignee &&
+                    (b.latest_status === STATUS_A || b.latest_status === STATUS_B) &&
+                    !b.next_call_date &&
+                    (!b.broker_inquiry || b.broker_inquiry === '')
+                  );
+                  return matches;
                 } else if (selectedCalculatedStatus === 'pinrich500manUnregistered') {
                   // Pinrich500万以上登録未: 4条件でフィルタリング（バックエンドと同じロジック）
                   const matches = (
@@ -290,6 +302,14 @@ export default function BuyersPage() {
           ];
           if (backendEnglishKeyCategories.includes(selectedCalculatedStatus)) {
             quickParams.calculatedStatus = selectedCalculatedStatus;
+          } else if (
+            selectedCalculatedStatus.startsWith('assigned:') ||
+            selectedCalculatedStatus.startsWith('todayCallAssigned:') ||
+            selectedCalculatedStatus.startsWith('nextCallDateBlank:')
+          ) {
+            // 動的カテゴリ（assigned:xxx, todayCallAssigned:xxx, nextCallDateBlank:xxx）は
+            // statusCategory パラメーターとして getAll() に渡す
+            quickParams.statusCategory = selectedCalculatedStatus;
           } else {
             const displayName = categoryKeyToDisplayName[selectedCalculatedStatus] || selectedCalculatedStatus;
             quickParams.calculatedStatus = displayName;
