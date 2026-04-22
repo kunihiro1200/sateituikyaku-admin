@@ -427,7 +427,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
     if (open) {
       setTabIndex(initialTabIndex ?? 0);
     }
-  }, [open]);
+  }, [open, initialTabIndex]);
 
   useEffect(() => {
     if (open && propertyNumber) {
