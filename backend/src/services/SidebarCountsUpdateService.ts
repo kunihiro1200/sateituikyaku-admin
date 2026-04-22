@@ -230,6 +230,26 @@ export class SidebarCountsUpdateService {
       categories.push({ category: 'inquiryEmailUnanswered', assignee: null });
     }
 
+    // Pinrich未登録
+    // 条件: pinrich が NULL・空文字・「登録無し」のいずれか
+    //       かつ email が存在する
+    //       かつ broker_inquiry が空欄
+    //       かつ reception_date >= '2026-01-01'
+    //       かつ inquiry_source が '2件目以降' でない
+    const pinrich = buyer.pinrich ?? '';
+    const isPinrichBlankOrUnregistered = pinrich === '' || pinrich === null || pinrich === '登録無し';
+    const receptionDateStr = buyer.reception_date ? String(buyer.reception_date).substring(0, 10) : '';
+    const isBrokerInquiryBlank = !buyer.broker_inquiry || buyer.broker_inquiry === '' || buyer.broker_inquiry === '0';
+    if (
+      isPinrichBlankOrUnregistered &&
+      buyer.email && String(buyer.email).trim() &&
+      isBrokerInquiryBlank &&
+      receptionDateStr >= '2026-01-01' &&
+      buyer.inquiry_source !== '2件目以降'
+    ) {
+      categories.push({ category: 'pinrichUnregistered', assignee: null });
+    }
+
     console.log(`[determineBuyerCategories] Final categories:`, categories);
     return categories;
   }
