@@ -2268,6 +2268,7 @@ export class BuyerService {
       
       // Pinrich未登録: getBuyersByStatusのフィルタ条件と完全一致させる
       // pinrichが空欄・「登録無し」かつ email存在 かつ broker_inquiry空欄 かつ reception_date >= '2026-01-01'
+      // inquiry_source='2件目以降' は除外（登録不要（不可）のため）
       allBuyers.forEach((buyer: any) => {
         const pinrich = buyer.pinrich ?? '';
         const isPinrichUnregistered = pinrich === '' || pinrich === null || pinrich === '登録無し';
@@ -2275,7 +2276,8 @@ export class BuyerService {
           isPinrichUnregistered &&
           buyer.email && String(buyer.email).trim() &&
           (!buyer.broker_inquiry || buyer.broker_inquiry === '' || buyer.broker_inquiry === '0') &&
-          buyer.reception_date && buyer.reception_date >= '2026-01-01'
+          buyer.reception_date && buyer.reception_date >= '2026-01-01' &&
+          buyer.inquiry_source !== '2件目以降'
         ) {
           result.pinrichUnregistered++;
         }
@@ -2621,6 +2623,7 @@ export class BuyerService {
       } else if (status === 'pinrichUnregistered' || status === 'ピンリッチ未登録') {
         // Pinrich未登録: pinrichが空欄・「登録無し」かつ reception_date >= '2026-01-01'
         // 英語キー('pinrichUnregistered')と日本語名('ピンリッチ未登録')の両方に対応
+        // inquiry_source='2件目以降' は除外（登録不要（不可）のため）
         console.log(`[getBuyersByStatus] pinrichUnregistered カテゴリ検出 (status=${status})`);
         filteredBuyers = allBuyers.filter((buyer: any) => {
           const pinrich = buyer.pinrich ?? '';
@@ -2629,7 +2632,8 @@ export class BuyerService {
             isPinrichUnregistered &&
             buyer.email && String(buyer.email).trim() &&
             (!buyer.broker_inquiry || buyer.broker_inquiry === '' || buyer.broker_inquiry === '0') &&
-            buyer.reception_date && buyer.reception_date >= '2026-01-01'
+            buyer.reception_date && buyer.reception_date >= '2026-01-01' &&
+            buyer.inquiry_source !== '2件目以降'
           );
         });
         console.log(`[getBuyersByStatus] pinrichUnregistered フィルタ結果: ${filteredBuyers.length}件`);

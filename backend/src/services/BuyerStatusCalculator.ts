@@ -350,12 +350,14 @@ export function calculateBuyerStatusComplete(buyer: BuyerData): StatusResult {
     // - email が存在する
     // - broker_inquiry が空欄
     // - reception_date >= '2026-01-01'
+    // - inquiry_source が '2件目以降' でない（2件目以降は登録不要（不可）のため除外）
     if (
       and(
         or(isBlank(buyer.pinrich), equals(buyer.pinrich, '登録無し')),
         isNotBlank(buyer.email),
         isBlank(buyer.broker_inquiry),
-        isAfterOrEqual(buyer.reception_date, '2026-01-01')
+        isAfterOrEqual(buyer.reception_date, '2026-01-01'),
+        notEquals(buyer.inquiry_source, '2件目以降')
       )
     ) {
       const status = 'ピンリッチ未登録';
