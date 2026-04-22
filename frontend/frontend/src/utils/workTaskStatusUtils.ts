@@ -30,6 +30,7 @@ export interface WorkTask {
   distribution_date: string;
   publish_scheduled_date: string;
   site_registration_deadline: string;
+  site_registration_due_date: string;
   settlement_completed_chat: string;
   ledger_created: string;
   site_registration_confirm_request_date: string;
@@ -202,9 +203,11 @@ export const calculateTaskStatus = (task: WorkTask): string => {
     task.site_registration_confirmed !== '完了' &&
     dateGte(task.site_registration_deadline, SITE_REG_BASE_DATE)
   ) {
+    const dueDate = formatDateMD(task.site_registration_due_date);
     const deadline = formatDateMD(task.site_registration_deadline);
-    return deadline
-      ? `サイト依頼済み納品待ち ${deadline}`
+    const displayDate = dueDate || deadline;
+    return displayDate
+      ? `サイト依頼済み納品待ち ${displayDate}`
       : 'サイト依頼済み納品待ち';
   }
 
