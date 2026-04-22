@@ -174,6 +174,29 @@ interface DeadlineWarningDialogProps {
   onClose: () => void;
 }
 
+// 媒介契約フォーマット警告ダイアログ
+const MediationFormatWarningDialog = ({ open, onConfirm }: { open: boolean; onConfirm: () => void }) => {
+  const url = 'https://docs.google.com/spreadsheets/d/1PyMxyCHitJJyWH2dh3z6o7Wr6dTD_XPfd3Y9jJD9UEw/edit?usp=sharing';
+  return (
+    <Dialog open={open} maxWidth="sm" fullWidth>
+      <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <WarningAmberIcon sx={{ color: 'warning.main' }} />
+        <Typography component="span" sx={{ fontWeight: 700 }}>フォーマット警告</Typography>
+      </DialogTitle>
+      <DialogContent>
+        <Typography>
+          「媒介作成」シートの1行目が古い形式になっているので{' '}
+          <Link href={url} target="_blank" rel="noopener">{url}</Link>
+          {' '}に従って変更してください
+        </Typography>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onConfirm} color="primary" variant="contained">OK</Button>
+      </DialogActions>
+    </Dialog>
+  );
+};
+
 // 物件一覧に行追加 未入力警告ダイアログ
 const RowAddWarningDialog = ({ open, onConfirm, onCancel }: { open: boolean; onConfirm: () => void; onCancel: () => void }) => (
   <Dialog open={open} onClose={onCancel}>
@@ -361,6 +384,14 @@ function checkFloorPlanWarning(getValue: (field: string) => any): {
   return { hasWarning, emptyFields: hasWarning ? emptyFields : [] };
 }
 
+// 媒介契約フォーマット警告チェック
+// property_address === '不要' かつ mediation_creator が空欄でない場合に true を返す
+function checkMediationFormatWarning(getValue: (field: string) => any): boolean {
+  const propertyAddress = getValue('property_address');
+  const mediationCreator = getValue('mediation_creator');
+  return propertyAddress === '不要' && !isEmpty(mediationCreator);
+}
+
 const ASSIGNEE_OPTIONS = ['K', 'Y', 'I', '生', 'U', 'R', '久', 'H'];
 
 export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onUpdate, initialData }: WorkTaskDetailModalProps) {
@@ -380,6 +411,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
     fieldLabel: string;
   }>({ open: false, fieldLabel: '' });
   const [rowAddWarningDialog, setRowAddWarningDialog] = useState<{ open: boolean }>({ open: false });
+  const [mediationFormatWarningDialog, setMediationFormatWarningDialog] = useState<{ open: boolean }>({ open: false });
   const [validationWarningDialog, setValidationWarningDialog] = useState<{
     open: boolean;
     title: string;
@@ -460,6 +492,12 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
     const rowAdded = getValue('property_list_row_added');
     if (cwEmailSite && !rowAdded) {
       setRowAddWarningDialog({ open: true });
+      return;
+    }
+
+    // 媒介契約フォーマット警告チェック
+    if (checkMediationFormatWarning(getValue)) {
+      setMediationFormatWarningDialog({ open: true });
       return;
     }
 
@@ -1404,6 +1442,10 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
         emptyFields={validationWarningDialog.emptyFields}
         onConfirm={handleValidationWarningConfirm}
         onCancel={handleValidationWarningCancel}
+      />
+      <MediationFormatWarningDialog
+        open={mediationFormatWarningDialog.open}
+        onConfirm={() => { setMediationFormatWarningDialog({ open: false }); executeSave(); }}
       />
     </>
   );
