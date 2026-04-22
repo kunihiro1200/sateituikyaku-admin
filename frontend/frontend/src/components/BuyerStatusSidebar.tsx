@@ -221,9 +221,12 @@ export default function BuyerStatusSidebar({
   });
 
   // 担当者別カテゴリ（assignedCounts）- 親カテゴリ
+  // 「業者」は担当カテゴリーから除外する
+  const EXCLUDED_ASSIGNEES = ['業者'];
+
   if (categoryCounts.assignedCounts) {
     Object.entries(categoryCounts.assignedCounts).forEach(([assignee, count]) => {
-      if (count > 0 && normalStaffInitials.includes(assignee)) {
+      if (count > 0 && normalStaffInitials.includes(assignee) && !EXCLUDED_ASSIGNEES.includes(assignee)) {
         const key = `assigned:${assignee}`;
         categoryList.push({
           key,
