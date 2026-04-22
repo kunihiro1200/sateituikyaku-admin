@@ -26,6 +26,7 @@ import api from '../services/api';
 import { supabase } from '../services/supabase';
 import { isDeadlineExceeded } from '../utils/deadlineUtils';
 import { buildLedgerSheetUrl } from '../utils/spreadsheetUrl';
+import { normalizePhoneNumber } from '../utils/phoneNormalizer';
 
 
 
@@ -472,7 +473,17 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
   const executeSave = async () => {
     setSaving(true);
     try {
-      await api.put(`/api/work-tasks/${propertyNumber}`, editedData);
+      // 電話番号フィールドの先頭「0」補完
+      const normalizedData = {
+        ...editedData,
+        ...(editedData.seller_contact_tel !== undefined && {
+          seller_contact_tel: normalizePhoneNumber(editedData.seller_contact_tel) ?? null,
+        }),
+        ...(editedData.buyer_contact_tel !== undefined && {
+          buyer_contact_tel: normalizePhoneNumber(editedData.buyer_contact_tel) ?? null,
+        }),
+      };
+      await api.put(`/api/work-tasks/${propertyNumber}`, normalizedData);
       setSnackbar({ open: true, message: '保存しました', severity: 'success' });
       await fetchData(false);
       setEditedData({});
@@ -576,7 +587,11 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
   };
 
   const getValue = (field: string) => {
-    return editedData[field] !== undefined ? editedData[field] : data?.[field];
+    const raw = editedData[field] !== undefined ? editedData[field] : data?.[field];
+    if (field === 'seller_contact_tel' || field === 'buyer_contact_tel') {
+      return normalizePhoneNumber(raw) ?? raw;
+    }
+    return raw;
   };
 
   const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {

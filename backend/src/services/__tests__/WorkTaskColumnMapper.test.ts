@@ -256,3 +256,43 @@ describe('Property 2: 物件番号の一意性保持', () => {
     expect(true).toBe(true);
   });
 });
+
+
+/**
+ * **Feature: business-phone-number-zero-prefix**
+ * 電話番号先頭「0」補完のユニットテスト
+ * **Validates: Requirements 3.1, 3.2, 3.3, 3.4**
+ */
+describe('WorkTaskColumnMapper - 電話番号先頭「0」補完', () => {
+  const mapper = new WorkTaskColumnMapper();
+
+  it('「売主TEL」に先頭「0」なし値 → seller_contact_tel が補完されること', () => {
+    const row = { '物件番号': 'AA12345', '売主TEL': '90-1234-5678' };
+    const result = mapper.mapToDatabase(row);
+    expect(result.seller_contact_tel).toBe('090-1234-5678');
+  });
+
+  it('「買主TEL」に先頭「0」なし値 → buyer_contact_tel が補完されること', () => {
+    const row = { '物件番号': 'AA12345', '買主TEL': '80-9876-5432' };
+    const result = mapper.mapToDatabase(row);
+    expect(result.buyer_contact_tel).toBe('080-9876-5432');
+  });
+
+  it('「売主TEL」が空 → seller_contact_tel が null になること', () => {
+    const row = { '物件番号': 'AA12345', '売主TEL': '' };
+    const result = mapper.mapToDatabase(row);
+    expect(result.seller_contact_tel).toBeNull();
+  });
+
+  it('「売主TEL」が先頭「0」あり → そのまま返ること', () => {
+    const row = { '物件番号': 'AA12345', '売主TEL': '090-1234-5678' };
+    const result = mapper.mapToDatabase(row);
+    expect(result.seller_contact_tel).toBe('090-1234-5678');
+  });
+
+  it('他カラム（物件番号）の変換結果が変わらないこと', () => {
+    const row = { '物件番号': 'AA12345', '売主TEL': '90-1234-5678' };
+    const result = mapper.mapToDatabase(row);
+    expect(result.property_number).toBe('AA12345');
+  });
+});

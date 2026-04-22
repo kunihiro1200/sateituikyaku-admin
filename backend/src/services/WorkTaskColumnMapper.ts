@@ -1,5 +1,6 @@
 import workTaskMappingConfig from '../config/work-task-column-mapping.json';
 import { SheetRow } from './GoogleSheetsClient';
+import { normalizePhoneNumber } from '../utils/phoneNormalizer';
 
 export interface WorkTaskData {
   id?: string;
@@ -41,6 +42,7 @@ export class WorkTaskColumnMapper {
    */
   mapToDatabase(sheetRow: SheetRow): WorkTaskData {
     const dbData: any = {};
+    const TEL_COLUMNS = ['seller_contact_tel', 'buyer_contact_tel'];
 
     for (const [sheetColumn, dbColumn] of Object.entries(this.spreadsheetToDb)) {
       const value = sheetRow[sheetColumn];
@@ -52,7 +54,14 @@ export class WorkTaskColumnMapper {
 
       // 型変換
       const targetType = this.typeConversions[dbColumn];
-      dbData[dbColumn] = this.convertValue(value, targetType);
+      const converted = this.convertValue(value, targetType);
+
+      // 電話番号カラムは先頭「0」補完を適用
+      if (TEL_COLUMNS.includes(dbColumn)) {
+        dbData[dbColumn] = normalizePhoneNumber(converted as string) ?? null;
+      } else {
+        dbData[dbColumn] = converted;
+      }
     }
 
     return dbData as WorkTaskData;
