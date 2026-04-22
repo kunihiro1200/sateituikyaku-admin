@@ -1403,8 +1403,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
                 onClick={() => {
                   const url = getValue('spreadsheet_url');
                   if (url) {
-                    const base = url.split('#')[0].split('?')[0];
-                    window.open(base + '?gid=78322744#gid=78322744', '_blank', 'noopener,noreferrer');
+                    window.open(buildLedgerSheetUrl(url), '_blank', 'noopener,noreferrer');
                   }
                 }}
                 sx={{ whiteSpace: 'nowrap', fontWeight: 700, bgcolor: '#1e8e3e', '&:hover': { bgcolor: '#166d30' }, fontSize: '0.85rem', px: 1.5 }}
