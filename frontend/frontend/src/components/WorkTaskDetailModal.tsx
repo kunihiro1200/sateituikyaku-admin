@@ -1116,38 +1116,87 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
 
   // 契約決済セクション（スクショ通り）
   const ContractSettlementSection = () => (
-    <Box sx={{ p: 2 }}>
-      <EditableField label="売買契約締め日" field="sales_contract_deadline" type="date" />
-      <EditableField label="売買契約備考" field="sales_contract_notes" />
-      <EditableField label="契約形態" field="contract_type" />
-      {/* CW（浅沼様）全エリア・種別依頼OK - 表示のみ */}
-      <Grid container spacing={2} alignItems="center" sx={{ mb: 1.5 }}>
-        <Grid item xs={12}>
-          <Typography variant="body2" sx={{ color: 'success.main', fontWeight: 500 }}>
-            ☆ CW（浅沼様）全エリア・種別依頼OK
-          </Typography>
-        </Grid>
-      </Grid>
-      <EditableField label="重説・契約書入力納期*" field="contract_input_deadline" type="date" />
-      <PreRequestCheckButton />
-      <EditableButtonSelect label="社員が契約書作成" field="employee_contract_creation" options={normalInitials} />
-      <EditableField label="製本予定日" field="binding_scheduled_date" type="date" />
-      <EditableField label="製本完了" field="binding_completed" />
-      <EditableField label="決済日" field="settlement_date" type="date" />
-      <EditableField label="決済予定月" field="settlement_scheduled_month" />
-      <EditableField label="売買価格" field="sales_price" type="number" />
-      <EditableField label="仲介手数料（売）" field="brokerage_fee_seller" type="number" />
-      <EditableField label="通常仲介手数料（売）" field="standard_brokerage_fee_seller" type="number" />
-      <EditableButtonSelect label="キャンペーン" field="campaign" options={['あり', 'なし']} />
-      <EditableField label="減額理由" field="discount_reason" />
-      <EditableField label="減額理由他" field="discount_reason_other" />
-      <EditableButtonSelect label="売・支払方法" field="seller_payment_method" options={['振込', '現金', '他']} />
-      <EditableButtonSelect label="入金確認（売）" field="payment_confirmed_seller" options={['確認済み', '未']} />
-      <EditableField label="仲介手数料（買）" field="brokerage_fee_buyer" type="number" />
-      <EditableField label="通常仲介手数料（買）" field="standard_brokerage_fee_buyer" type="number" />
-      <EditableButtonSelect label="買・支払方法" field="buyer_payment_method" options={['振込', '現金', '他']} />
-      <EditableButtonSelect label="入金確認（買）" field="payment_confirmed_buyer" options={['確認済み', '未']} />
-      <EditableButtonSelect label="経理確認済み" field="accounting_confirmed" options={['未', '済']} />
+    <Box sx={{ display: 'flex', gap: 0, flex: 1, minHeight: 0, overflow: 'hidden' }}>
+      {/* 左ペイン: 契約書・重説作成 */}
+      <Box sx={{ flex: 1, p: 2, borderRight: '2px solid', borderColor: 'divider', overflowY: 'auto', minHeight: 0 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+          <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#1565c0' }}>【契約書、重説作成】</Typography>
+          <Button
+            onClick={handleSave}
+            variant="contained"
+            color="primary"
+            size="small"
+            disabled={!hasChanges || saving}
+            startIcon={saving ? <CircularProgress size={14} /> : <SaveIcon />}
+            sx={hasChanges ? {
+              animation: 'pulse-save 1s ease-in-out infinite',
+              '@keyframes pulse-save': {
+                '0%': { boxShadow: '0 0 0 0 rgba(25, 118, 210, 0.7)' },
+                '70%': { boxShadow: '0 0 0 8px rgba(25, 118, 210, 0)' },
+                '100%': { boxShadow: '0 0 0 0 rgba(25, 118, 210, 0)' },
+              },
+            } : {}}
+          >{saving ? '保存中...' : '保存'}</Button>
+        </Box>
+        <Box sx={{ bgcolor: '#e3f2fd', borderRadius: 1, p: 1, mb: 1 }}>
+          <EditableField label="売買契約締め日" field="sales_contract_deadline" type="date" />
+          <EditableField label="売買契約備考" field="sales_contract_notes" />
+          <EditableField label="契約形態" field="contract_type" />
+          {/* CW（浅沼様）全エリア・種別依頼OK - 表示のみ */}
+          <Grid container spacing={2} alignItems="center" sx={{ mb: 1.5 }}>
+            <Grid item xs={12}>
+              <Typography variant="body2" sx={{ color: 'success.main', fontWeight: 500 }}>
+                ☆ CW（浅沼様）全エリア・種別依頼OK
+              </Typography>
+            </Grid>
+          </Grid>
+          <EditableField label="重説・契約書入力納期" field="contract_input_deadline" type="date" />
+          <PreRequestCheckButton />
+          <EditableButtonSelect label="社員が契約書作成" field="employee_contract_creation" options={normalInitials} />
+          <EditableField label="製本予定日" field="binding_scheduled_date" type="date" />
+          <EditableField label="製本完了" field="binding_completed" />
+        </Box>
+      </Box>
+
+      {/* 右ペイン: 決済詳細 */}
+      <Box sx={{ flex: 1, p: 2, overflowY: 'auto', minHeight: 0 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+          <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#2e7d32' }}>【決済詳細】</Typography>
+          <Button
+            onClick={handleSave}
+            variant="contained"
+            color="success"
+            size="small"
+            disabled={!hasChanges || saving}
+            startIcon={saving ? <CircularProgress size={14} /> : <SaveIcon />}
+            sx={hasChanges ? {
+              animation: 'pulse-save 1s ease-in-out infinite',
+              '@keyframes pulse-save': {
+                '0%': { boxShadow: '0 0 0 0 rgba(46, 125, 50, 0.7)' },
+                '70%': { boxShadow: '0 0 0 8px rgba(46, 125, 50, 0)' },
+                '100%': { boxShadow: '0 0 0 0 rgba(46, 125, 50, 0)' },
+              },
+            } : {}}
+          >{saving ? '保存中...' : '保存'}</Button>
+        </Box>
+        <Box sx={{ bgcolor: '#f3e5f5', borderRadius: 1, p: 1, mb: 1 }}>
+          <EditableField label="決済日" field="settlement_date" type="date" />
+          <EditableField label="決済予定月" field="settlement_scheduled_month" />
+          <EditableField label="売買価格" field="sales_price" type="number" />
+          <EditableField label="仲介手数料（売）" field="brokerage_fee_seller" type="number" />
+          <EditableField label="通常仲介手数料（売）" field="standard_brokerage_fee_seller" type="number" />
+          <EditableButtonSelect label="キャンペーン" field="campaign" options={['あり', 'なし']} />
+          <EditableField label="減額理由" field="discount_reason" />
+          <EditableField label="減額理由他" field="discount_reason_other" />
+          <EditableButtonSelect label="売・支払方法" field="seller_payment_method" options={['振込', '現金', '他']} />
+          <EditableButtonSelect label="入金確認（売）" field="payment_confirmed_seller" options={['確認済み', '未']} />
+          <EditableField label="仲介手数料（買）" field="brokerage_fee_buyer" type="number" />
+          <EditableField label="通常仲介手数料（買）" field="standard_brokerage_fee_buyer" type="number" />
+          <EditableButtonSelect label="買・支払方法" field="buyer_payment_method" options={['振込', '現金', '他']} />
+          <EditableButtonSelect label="入金確認（買）" field="payment_confirmed_buyer" options={['確認済み', '未']} />
+          <EditableButtonSelect label="経理確認済み" field="accounting_confirmed" options={['未', '済']} />
+        </Box>
+      </Box>
     </Box>
   );
 
