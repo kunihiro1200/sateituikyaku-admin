@@ -1353,7 +1353,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
             </Box>
             {(tabIndex === 2 || tabIndex === 3) && (
               <Button
-                variant="outlined"
+                variant="contained"
                 size="small"
                 disabled={!getValue('spreadsheet_url')}
                 onClick={() => {
@@ -1362,7 +1362,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
                     window.open(buildLedgerSheetUrl(url), '_blank', 'noopener,noreferrer');
                   }
                 }}
-                sx={{ whiteSpace: 'nowrap', fontWeight: 700 }}
+                sx={{ whiteSpace: 'nowrap', fontWeight: 700, bgcolor: '#1e8e3e', '&:hover': { bgcolor: '#166d30' }, fontSize: '0.85rem', px: 1.5 }}
               >
                 スプシ
               </Button>
