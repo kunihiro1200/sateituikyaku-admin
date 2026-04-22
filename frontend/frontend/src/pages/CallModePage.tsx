@@ -4672,24 +4672,32 @@ HP：https://ifoo-oita.com/
                 <Typography variant="h6">
                   📍 物件情報
                 </Typography>
-                {seller && (seller.inquiryDetailedDateTime || seller.inquiryDetailedDatetime || seller.inquiryDate) && (
+                {seller && (seller.inquiryDetailedDateTime || seller.inquiryDetailedDatetime || (seller as any).inquiryDatetime || seller.inquiryDate) && (
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   <Typography variant="body2" color="text.secondary" sx={{ display: 'flex', alignItems: 'center' }}>
                     反響日：
                     <Typography component="span" variant="body2" sx={{ fontWeight: 'bold', ml: 0.5 }}>
                       {(() => {
-                        const detailedDateTime = seller.inquiryDetailedDateTime || seller.inquiryDetailedDatetime;
+                        // 反響詳細日時（AL列）を優先表示。秒は除外
+                        const detailedDateTime = seller.inquiryDetailedDateTime || seller.inquiryDetailedDatetime || (seller as any).inquiryDatetime;
                         if (detailedDateTime) {
-                          return new Date(detailedDateTime).toLocaleString('ja-JP', {
-                            year: 'numeric',
-                            month: '2-digit',
-                            day: '2-digit',
-                            hour: '2-digit',
-                            minute: '2-digit',
-                          });
+                          const d = new Date(detailedDateTime);
+                          if (!isNaN(d.getTime())) {
+                            return d.toLocaleString('ja-JP', {
+                              year: 'numeric',
+                              month: '2-digit',
+                              day: '2-digit',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            });
+                          }
                         }
+                        // 反響詳細日時がない場合は反響日付を日付のみで表示
                         if (seller.inquiryDate) {
-                          return new Date(seller.inquiryDate).toLocaleDateString('ja-JP');
+                          const d = new Date(seller.inquiryDate);
+                          if (!isNaN(d.getTime())) {
+                            return d.toLocaleDateString('ja-JP');
+                          }
                         }
                         return '-';
                       })()}
