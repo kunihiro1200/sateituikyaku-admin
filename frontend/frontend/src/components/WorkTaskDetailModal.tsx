@@ -434,10 +434,13 @@ const SELF_CHECK_BUILDING_ITEMS_BASE = [
 ];
 const SELF_CHECK_BUILDING_ITEM_MANSION = 'マンションの壁芯面積は謄本より大きな数字になっているか（種別＝マンションの場合のみ）';
 
+const isMansion = (propertyType: string | undefined) =>
+  propertyType === 'マンション' || propertyType === 'マ';
+
 // 全チェック項目を返す（property_typeに応じてマンション項目を含める、土地は建物なし）
 function SELF_CHECK_ALL_ITEMS(propertyType: string | undefined): string[] {
   if (propertyType === '土') return [...SELF_CHECK_OWNER_ITEMS, ...SELF_CHECK_LAND_ITEMS];
-  const buildingItems = propertyType === 'マンション'
+  const buildingItems = isMansion(propertyType)
     ? [SELF_CHECK_BUILDING_ITEM_MANSION, ...SELF_CHECK_BUILDING_ITEMS_BASE]
     : SELF_CHECK_BUILDING_ITEMS_BASE;
   return [...SELF_CHECK_OWNER_ITEMS, ...SELF_CHECK_LAND_ITEMS, ...buildingItems];
@@ -842,7 +845,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
       handleFieldChange('mediation_self_check', next);
     };
 
-    const buildingItems = propertyType === 'マンション'
+    const buildingItems = isMansion(propertyType)
       ? [SELF_CHECK_BUILDING_ITEM_MANSION, ...SELF_CHECK_BUILDING_ITEMS_BASE]
       : SELF_CHECK_BUILDING_ITEMS_BASE;
 
