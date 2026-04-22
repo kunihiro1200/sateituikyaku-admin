@@ -37,12 +37,14 @@ import { pageDataCache, CACHE_KEYS } from '../store/pageDataCache';
  */
 function getInitialTabIndexFromCategory(category: string | null): number {
   if (!category) return 0;
-  if (category.startsWith('媒介')) return 0;
-  if (category.startsWith('サイト')) return 1;
+  // カテゴリーキーは "status:ステータス文字列" 形式のため、プレフィックスを除去して判定
+  const label = category.startsWith('status:') ? category.slice('status:'.length) : category;
+  if (label.startsWith('媒介')) return 0;
+  if (label.startsWith('サイト')) return 1;
   if (
-    category.startsWith('売買契約') ||
-    category.startsWith('決済') ||
-    category.startsWith('要台帳')
+    label.startsWith('売買契約') ||
+    label.startsWith('決済') ||
+    label.startsWith('要台帳')
   ) return 2;
   return 0;
 }
