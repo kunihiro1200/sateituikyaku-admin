@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import PageNavigation from '../components/PageNavigation';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import {
@@ -275,6 +275,7 @@ export default function PropertyListingDetailPage() {
   const [chatToOfficeMessage, setChatToOfficeMessage] = useState('');
   const [chatSending, setChatSending] = useState(false);
   const [chatToOfficeSending, setChatToOfficeSending] = useState(false);
+  const [notesSaving, setNotesSaving] = useState(false);
   const [chatHistoryRefreshTrigger, setChatHistoryRefreshTrigger] = useState(0);
   // 売主への送信履歴の再取得トリガー
   const [sellerSendHistoryRefreshTrigger, setSellerSendHistoryRefreshTrigger] = useState(0);
@@ -830,17 +831,21 @@ export default function PropertyListingDetailPage() {
 
   const handleSaveNotes = async () => {
     if (!propertyNumber) return;
+    if (notesSaving) return;  // 重複クリック防止
     const notesData: Record<string, any> = {};
     if (editedData.special_notes !== undefined) notesData.special_notes = editedData.special_notes;
     if (editedData.memo !== undefined) notesData.memo = editedData.memo;
     if (Object.keys(notesData).length === 0) return;
+    setNotesSaving(true);
     try {
       await api.put(`/api/property-listings/${propertyNumber}`, notesData);
       setSnackbar({ open: true, message: '特記・備忘録を保存しました', severity: 'success' });
-      await fetchPropertyData();
+      await fetchPropertyData(true);  // silent=true: ローディング画面を表示しない
       setEditedData({});
     } catch (error) {
       setSnackbar({ open: true, message: '保存に失敗しました', severity: 'error' });
+    } finally {
+      setNotesSaving(false);
     }
   };
 
@@ -2361,7 +2366,7 @@ export default function PropertyListingDetailPage() {
                     variant="contained"
                     size="small"
                     onClick={handleSaveNotes}
-                    disabled={editedData.special_notes === undefined && editedData.memo === undefined}
+                    disabled={notesSaving || (editedData.special_notes === undefined && editedData.memo === undefined)}
                     sx={{
                       ...(editedData.special_notes !== undefined || editedData.memo !== undefined ? {
                         backgroundColor: '#d32f2f',
