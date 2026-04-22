@@ -25,7 +25,7 @@ import { Close as CloseIcon, Save as SaveIcon, ContentCopy as ContentCopyIcon, W
 import api from '../services/api';
 import { supabase } from '../services/supabase';
 import { isDeadlineExceeded } from '../utils/deadlineUtils';
-import { buildLedgerSheetUrl } from '../utils/spreadsheetUrl';
+import { buildLedgerSheetUrl, buildSheetUrl, MEDIATION_REQUEST_SHEET_GID, ATHOME_SHEET_GID } from '../utils/spreadsheetUrl';
 import { normalizePhoneNumber } from '../utils/phoneNormalizer';
 
 
@@ -1374,6 +1374,24 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
                 )}
               </Box>
             </Box>
+            {/* スプシボタン: tabIndex=0（媒介契約）または tabIndex=1（サイト登録）のとき */}
+            {(tabIndex === 0 || tabIndex === 1) && (
+              <Button
+                variant="outlined"
+                size="small"
+                disabled={!getValue('spreadsheet_url')}
+                onClick={() => {
+                  const url = getValue('spreadsheet_url');
+                  if (url) {
+                    const gid = tabIndex === 0 ? MEDIATION_REQUEST_SHEET_GID : ATHOME_SHEET_GID;
+                    window.open(buildSheetUrl(url, gid), '_blank', 'noopener,noreferrer');
+                  }
+                }}
+                sx={{ whiteSpace: 'nowrap', fontWeight: 700 }}
+              >
+                スプシ
+              </Button>
+            )}
             {(tabIndex === 2 || tabIndex === 3) && (
               <Button
                 variant="contained"

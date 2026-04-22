@@ -1,15 +1,16 @@
 /** 台帳シートのgid（全案件共通の固定値） */
 export const LEDGER_SHEET_GID = '78322744';
 
+/** 媒介依頼シートのgid */
+export const MEDIATION_REQUEST_SHEET_GID = '1819926492';
+
+/** athomeシートのgid */
+export const ATHOME_SHEET_GID = '1725934947';
+
 /**
- * spreadsheet_url から台帳シートへの遷移URLを生成する。
- * - ?gid=... クエリパラメータを除去
- * - #gid=... ハッシュを除去
- * - /edit で終わるベースURLを確保
- * - #gid=78322744 を付加
- * - URL解析失敗時は元の文字列をそのまま返す（try-catch）
+ * spreadsheet_url から指定したgidのシートへの遷移URLを生成する汎用関数。
  */
-export function buildLedgerSheetUrl(spreadsheetUrl: string): string {
+export function buildSheetUrl(spreadsheetUrl: string, gid: string): string {
   try {
     const withoutHash = spreadsheetUrl.split('#')[0];
     const url = new URL(withoutHash);
@@ -22,8 +23,15 @@ export function buildLedgerSheetUrl(spreadsheetUrl: string): string {
       }
     }
     const search = url.searchParams.toString() ? `?${url.searchParams.toString()}` : '';
-    return `${url.origin}${basePath}${search}#gid=${LEDGER_SHEET_GID}`;
+    return `${url.origin}${basePath}${search}#gid=${gid}`;
   } catch {
     return spreadsheetUrl;
   }
+}
+
+/**
+ * spreadsheet_url から台帳シートへの遷移URLを生成する。
+ */
+export function buildLedgerSheetUrl(spreadsheetUrl: string): string {
+  return buildSheetUrl(spreadsheetUrl, LEDGER_SHEET_GID);
 }
