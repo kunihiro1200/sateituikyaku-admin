@@ -2117,8 +2117,6 @@ export class BuyerService {
       if (data) allListingsData2.push(...data);
     }
 
-    const allBuyers: any[] = [...(firstBatchResult.data || [])];
-
     // 2バッチ目以降を並列取得（既に1バッチ目は取得済み）
     const batchCount = Math.ceil(totalCount / PAGE_SIZE);
     if (batchCount > 1) {
