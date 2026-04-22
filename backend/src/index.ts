@@ -279,6 +279,36 @@ app.get('/api/cron/sync-inquiries', async (req, res) => {
   }
 });
 
+// Cron Job: サイト登録・間取図納期1時間前メール通知（毎時0分に実行）
+app.get('/api/cron/business-site-deadline-hourly-notification', async (req, res) => {
+  try {
+    console.log('[Cron BusinessSiteDeadline] サイト登録・間取図納期通知ジョブ開始');
+
+    const authHeader = req.headers.authorization;
+    if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+      console.error('[Cron BusinessSiteDeadline] 認証失敗');
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const { BusinessSiteDeadlineHourlyNotificationService } = await import('./services/BusinessSiteDeadlineHourlyNotificationService');
+    const service = new BusinessSiteDeadlineHourlyNotificationService();
+
+    const targets = await service.getTargets();
+    console.log(`[Cron BusinessSiteDeadline] 通知対象: ${targets.length}件`);
+
+    if (targets.length === 0) {
+      return res.status(200).json({ success: true, sent: 0, failed: 0, skipped: 0 });
+    }
+
+    const result = await service.sendNotifications(targets);
+    console.log(`[Cron BusinessSiteDeadline] 完了: 送信成功=${result.sent}, 失敗=${result.failed}, スキップ=${result.skipped}`);
+
+    return res.status(200).json({ success: true, ...result });
+  } catch (error: any) {
+    console.error('[Cron BusinessSiteDeadline] エラー:', error.message);
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
 
 // Cron Job: 業務リスト締切日当日メール通知（毎日 UTC 00:00 = JST 09:00 に実行）
 app.get('/api/cron/work-task-deadline-notification', async (req, res) => {
