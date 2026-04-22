@@ -26,6 +26,7 @@ export interface WorkTask {
   work_completed_chat_hirose: string;
   sales_contract_assignee: string;
   site_registration_requestor: string;
+  cw_request_email_site: string;
   distribution_date: string;
   publish_scheduled_date: string;
   site_registration_deadline: string;
@@ -127,6 +128,7 @@ export const calculateTaskStatus = (task: WorkTask): string => {
   // 3. サイト登録依頼してください
   if (
     isBlank(task.site_registration_requestor) &&
+    isBlank(task.cw_request_email_site) &&
     isBlank(task.on_hold) &&
     isBlank(task.distribution_date) &&
     isBlank(task.publish_scheduled_date) &&
