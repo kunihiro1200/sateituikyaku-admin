@@ -800,8 +800,8 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
 
   const mediationRevisionSummary = getMediationRevisionSummary();
 
-  // 媒介契約セクション
-  const MediationSection = () => (
+  // 媒介契約セクション（コンポーネントではなく関数として定義し再マウントを防ぐ）
+  const renderMediationSection = () => (
     <Box ref={mediationPaneRef} sx={{ p: 2, overflowY: 'auto', flex: 1 }}>
       <EditableField label="物件番号" field="property_number" />
       <EditableField label="媒介備考" field="mediation_notes" />
@@ -1577,7 +1577,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
             </Box>
           ) : (
             <>
-              {tabIndex === 0 && <MediationSection />}
+              {tabIndex === 0 && renderMediationSection()}
               {tabIndex === 1 && <SiteRegistrationSection cwCounts={cwCounts} leftPaneRef={leftPaneRef} rightPaneRef={rightPaneRef} />}
               {tabIndex === 2 && <ContractSettlementSection />}
               {tabIndex === 3 && <SellerBuyerDetailSection />}
