@@ -190,9 +190,11 @@ export default function PropertySidebarStatus({
         counts[label] = (counts[label] || 0) + 1;
         // 未報告でも担当者別専任公開中カテゴリーにも加算する
         // sales_assigneeからマッピングして担当者別カテゴリーを特定
+        // atbb_statusが専任系の場合のみ加算（一般公開中などは除外）
         const assignee = listing.sales_assignee || '';
         const seninStatus = ASSIGNEE_TO_SENIN_STATUS[assignee] || null;
-        if (seninStatus) {
+        const isSenin = listing.atbb_status === '専任・公開中' || (listing.sidebar_status || '').includes('専任');
+        if (seninStatus && isSenin) {
           counts[seninStatus] = (counts[seninStatus] || 0) + 1;
         }
         return;
