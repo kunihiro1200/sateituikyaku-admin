@@ -581,6 +581,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
     // 左右ペインのスクロール位置を保存
     leftScrollRef.current = leftPaneRef.current?.scrollTop ?? 0;
     rightScrollRef.current = rightPaneRef.current?.scrollTop ?? 0;
+    mediationScrollRef.current = mediationPaneRef.current?.scrollTop ?? 0;
     setEditedData(prev => ({ ...prev, [field]: value }));
 
     // 締日超過チェック対象フィールド
@@ -646,6 +647,9 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
   const rightPaneRef = useRef<HTMLDivElement>(null);
   const leftScrollRef = useRef<number>(0);
   const rightScrollRef = useRef<number>(0);
+  // 媒介契約タブのスクロール位置保持用 ref
+  const mediationPaneRef = useRef<HTMLDivElement>(null);
+  const mediationScrollRef = useRef<number>(0);
 
   // editedData 変更後に左右ペインのスクロール位置を復元
   useEffect(() => {
@@ -654,6 +658,9 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
     }
     if (rightPaneRef.current) {
       rightPaneRef.current.scrollTop = rightScrollRef.current;
+    }
+    if (mediationPaneRef.current) {
+      mediationPaneRef.current.scrollTop = mediationScrollRef.current;
     }
   }, [editedData]);
 
@@ -798,7 +805,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
 
   // 媒介契約セクション
   const MediationSection = () => (
-    <Box sx={{ p: 2 }}>
+    <Box ref={mediationPaneRef} sx={{ p: 2, overflowY: 'auto', flex: 1 }}>
       <EditableField label="物件番号" field="property_number" />
       <EditableField label="媒介備考" field="mediation_notes" />
       <EditableField label="物件所在" field="property_address" />
