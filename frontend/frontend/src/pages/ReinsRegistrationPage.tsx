@@ -208,8 +208,26 @@ export default function ReinsRegistrationPage() {
           await api.put(`/api/property-listings/${propertyNumber}`, { [field]: value });
           setSnackbar({ open: true, message: '保存しました', severity: 'success' });
         }
+      } else if (field === 'reins_certificate_email' && value === '連絡済み' && prevValue !== '連絡済み') {
+        // レインズ証明書メール済みが新たに「連絡済み」になった場合、報告日設定を自動的に「する」にする
+        const today = new Date();
+        const futureDate = new Date(today);
+        futureDate.setDate(futureDate.getDate() + 14);
+        const reportDate = futureDate.toISOString().split('T')[0];
+
+        // UIを更新（reins_certificate_email と report_date_setting の両方）
+        setData((prev) => prev ? { ...prev, reins_certificate_email: value, report_date_setting: 'する' } : prev);
+
+        // 3つのフィールドをまとめて保存
+        await api.put(`/api/property-listings/${propertyNumber}`, {
+          reins_certificate_email: value,
+          report_date_setting: 'する',
+          report_date: reportDate,
+        });
+
+        setSnackbar({ open: true, message: `保存しました（報告日設定を自動で「する」に設定、報告日: ${reportDate}）`, severity: 'success' });
       } else {
-        // 報告日設定以外のフィールドは通常通り保存
+        // 通常保存
         await api.put(`/api/property-listings/${propertyNumber}`, { [field]: value });
         setSnackbar({ open: true, message: '保存しました', severity: 'success' });
       }
