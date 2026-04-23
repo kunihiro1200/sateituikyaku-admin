@@ -37,6 +37,7 @@ import { getSenderAddress, saveSenderAddress, validateSenderAddress } from '../u
 import SenderAddressSelector from './SenderAddressSelector';
 import RichTextEmailEditor from './RichTextEmailEditor';
 import ImageSelectorModal from './ImageSelectorModal';
+import { useAuthStore } from '../store/authStore';
 
 
 
@@ -519,6 +520,8 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
   const normalInitials = useNormalInitials();
   const cwCounts = useCwCounts();
   const [loading, setLoading] = useState(false);
+  const [isSales, setIsSales] = useState(false);
+  const { employee } = useAuthStore();
   const [saving, setSaving] = useState(false);
   const [copiedPropertyNumber, setCopiedPropertyNumber] = useState(false);
   const [data, setData] = useState<WorkTaskData | null>(null);
@@ -538,6 +541,15 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
     emptyFields: string[];
     onConfirmAction: 'site' | 'floor' | null;
   }>({ open: false, title: '', emptyFields: [], onConfirmAction: null });
+
+  // ログインユーザーの営業フラグを取得
+  useEffect(() => {
+    if (open && employee) {
+      api.get('/api/employees/is-sales')
+        .then(res => setIsSales(res.data.isSales === true))
+        .catch(() => setIsSales(false));
+    }
+  }, [open, employee]);
 
   // モーダルが開くたびに initialTabIndex でタブをリセット
   useEffect(() => {
@@ -2086,8 +2098,38 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
           <PreRequestCheckButton />
           <EditableButtonSelect label="社員が契約書作成" field="employee_contract_creation" options={normalInitials} />
 
-          {/* 売買契約確認（スプシAM列と同期） */}
-          <EditableButtonSelect label="売買契約確認" field="sales_contract_confirmed" options={['確認中', '確認OK']} />
+          {/* 売買契約確認（スプシAM列と同期）- 「確認OK」は営業のみ押せる */}
+          {isSales ? (
+            <EditableButtonSelect label="売買契約確認" field="sales_contract_confirmed" options={['確認中', '確認OK']} />
+          ) : (
+            <Grid container spacing={2} alignItems="center" sx={{ mb: 1.5 }}>
+              <Grid item xs={4}>
+                <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>
+                  売買契約確認
+                </Typography>
+              </Grid>
+              <Grid item xs={8}>
+                <ButtonGroup size="small" variant="outlined">
+                  {['確認中', '確認OK'].map((opt) => (
+                    <Button
+                      key={opt}
+                      variant={getValue('sales_contract_confirmed') === opt ? 'contained' : 'outlined'}
+                      color={getValue('sales_contract_confirmed') === opt ? 'primary' : 'inherit'}
+                      disabled={opt === '確認OK'}
+                      title={opt === '確認OK' ? '営業のみ操作できます' : undefined}
+                    >
+                      {opt}
+                    </Button>
+                  ))}
+                </ButtonGroup>
+                {getValue('sales_contract_confirmed') !== '確認OK' && (
+                  <Typography variant="caption" color="text.disabled" sx={{ display: 'block', mt: 0.5 }}>
+                    「確認OK」は営業のみ操作できます
+                  </Typography>
+                )}
+              </Grid>
+            </Grid>
+          )}
 
           {/* 確認OKの場合のみ表示 */}
           {getValue('sales_contract_confirmed') === '確認OK' && (

@@ -363,6 +363,49 @@ router.get('/jimu-staff', async (req: Request, res: Response) => {
   }
 });
 
+
+/**
+ * ログインユーザーが営業かどうかを確認
+ * スタッフ管理シートのV列「営業」=TRUEかどうかを返す
+ * GET /api/employees/is-sales
+ */
+router.get('/is-sales', async (req: Request, res: Response) => {
+  try {
+    const email = req.employee?.email || '';
+    if (!email) {
+      return res.json({ isSales: false });
+    }
+
+    const { GoogleSheetsClient } = require('../services/GoogleSheetsClient');
+    const client = new GoogleSheetsClient({
+      spreadsheetId: '19yAuVYQRm-_zhjYX7M7zjiGbnBibkG77Mpz93sN1xxs',
+      sheetName: 'スタッフ',
+      serviceAccountKeyPath: process.env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH,
+    });
+    await client.authenticate();
+    const rows = await client.readAll();
+
+    const normalizedEmail = email.trim().toLowerCase();
+    const matched = rows.find((row: any) => {
+      const rowEmail = (row['メアド'] || row['メールアドレス'] || row['email'] || '').trim().toLowerCase();
+      return rowEmail === normalizedEmail;
+    });
+
+    if (!matched) {
+      console.log(`[is-sales] No staff found for email: ${email}`);
+      return res.json({ isSales: false });
+    }
+
+    const isSales = String(matched['営業'] || '').toUpperCase() === 'TRUE';
+    console.log(`[is-sales] email=${email}, isSales=${isSales}`);
+    return res.json({ isSales });
+  } catch (error: any) {
+    console.error('[is-sales] Failed:', error.message);
+    // エラー時はfalseを返す（安全側に倒す）
+    return res.json({ isSales: false });
+  }
+});
+
 /**
  * 全従業員の一覧とカレンダー接続状態を取得
  */
