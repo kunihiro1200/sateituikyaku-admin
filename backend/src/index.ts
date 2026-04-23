@@ -387,6 +387,44 @@ app.get('/api/cron/price-reduction-notification', async (req, res) => {
   }
 });
 
+// Cron Job: 毎月第2土曜日に非公開配信メールを「未」にリセット（毎日 UTC 00:00 = JST 09:00 に実行、第2土曜日のみ処理）
+app.get('/api/cron/reset-private-mail-delivery', async (req, res) => {
+  try {
+    console.log('[Cron PrivateMailDelivery] 非公開配信メールリセットジョブ開始');
+
+    const authHeader = req.headers.authorization;
+    if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+      console.error('[Cron PrivateMailDelivery] 認証失敗');
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    // 今日が日本時間で第2土曜日かチェック
+    const nowJST = new Date(Date.now() + 9 * 60 * 60 * 1000);
+    const dayOfWeek = nowJST.getUTCDay(); // 0=日, 6=土
+    const dayOfMonth = nowJST.getUTCDate();
+
+    // 第2土曜日 = 土曜日(6) かつ 8日〜14日
+    const isSecondSaturday = dayOfWeek === 6 && dayOfMonth >= 8 && dayOfMonth <= 14;
+
+    if (!isSecondSaturday) {
+      console.log(`[Cron PrivateMailDelivery] 本日は第2土曜日ではないためスキップ (dayOfWeek=${dayOfWeek}, dayOfMonth=${dayOfMonth})`);
+      return res.status(200).json({ success: true, skipped: true, reset: 0 });
+    }
+
+    console.log('[Cron PrivateMailDelivery] 本日は第2土曜日 - リセット実行');
+
+    const { PropertyListingService } = await import('./services/PropertyListingService');
+    const service = new PropertyListingService();
+    const result = await service.resetPrivateMailDeliveryForSecondSaturday();
+
+    console.log(`[Cron PrivateMailDelivery] 完了: ${result.reset}件リセット`);
+    return res.status(200).json({ success: true, skipped: false, reset: result.reset });
+  } catch (error: any) {
+    console.error('[Cron PrivateMailDelivery] エラー:', error.message);
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // スタッフ同期エンドポイント（手動実行用）
 app.post('/api/cron/sync-staff', async (req, res) => {
   try {

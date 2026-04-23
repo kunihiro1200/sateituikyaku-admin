@@ -24,6 +24,8 @@ interface PropertyListing {
   sidebar_status?: string;
   // 一般媒介非公開（仮）フィールド
   general_mediation_private?: string;
+  // 非公開配信メールフィールド
+  private_mail_delivery?: string;
   [key: string]: any;
 }
 
@@ -49,6 +51,7 @@ const STATUS_PRIORITY: Record<string, number> = {
   '買付申込み（内覧なし）２': 8,
   '公開前情報': 9,
   '非公開（配信メールのみ）': 10,
+  '非公開（配信メール）要': 10.5,
   '非公開予定（確認後）': 11,
   // 優先度低グループ（末尾）
   '一般公開中物件': 20,
@@ -70,6 +73,7 @@ const HIGH_PRIORITY_RED_STATUSES = new Set([
   '要値下げ',
   'SUUMO URL\u3000要登録',
   'レインズ登録＋SUUMO URL 要登録',
+  '非公開（配信メール）要',
 ]);
 
 // 「買付申し込み」より上の優先度高グループ（薄い背景色対象）
@@ -149,6 +153,14 @@ export default function PropertySidebarStatus({
         confirmation: l.confirmation
       }))
     });
+
+    // 「非公開（配信メール）要」: atbb_status === '非公開（配信メールのみ）' かつ private_mail_delivery === '未'
+    const privateMailPendingListings = listings.filter(l =>
+      l.atbb_status === '非公開（配信メールのみ）' && l.private_mail_delivery === '未'
+    );
+    if (privateMailPendingListings.length > 0) {
+      counts['非公開（配信メール）要'] = privateMailPendingListings.length;
+    }
 
     if (pendingPriceReductionProperties && pendingPriceReductionProperties.size > 0) {
       counts['値下げ未完了'] = pendingPriceReductionProperties.size;

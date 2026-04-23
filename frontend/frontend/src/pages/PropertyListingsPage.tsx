@@ -67,6 +67,7 @@ interface PropertyListing {
   storage_location?: string;
   atbb_status?: string;
   confirmation?: '未' | '済';
+  private_mail_delivery?: string;
   [key: string]: any;
 }
 
@@ -159,6 +160,26 @@ export default function PropertyListingsPage() {
     
     return () => {
       window.removeEventListener('propertyConfirmationUpdated', handleConfirmationUpdate as EventListener);
+    };
+  }, []);
+
+  // privateMailDelivery更新イベントをリッスン
+  useEffect(() => {
+    const handlePrivateMailDeliveryUpdate = (event: CustomEvent) => {
+      const { propertyNumber, value } = event.detail;
+      setAllListings(prevListings =>
+        prevListings.map(listing =>
+          listing.property_number === propertyNumber
+            ? { ...listing, private_mail_delivery: value }
+            : listing
+        )
+      );
+      pageDataCache.invalidate(CACHE_KEYS.PROPERTY_LISTINGS);
+    };
+
+    window.addEventListener('privateMailDeliveryUpdated', handlePrivateMailDeliveryUpdate as EventListener);
+    return () => {
+      window.removeEventListener('privateMailDeliveryUpdated', handlePrivateMailDeliveryUpdate as EventListener);
     };
   }, []);
 
@@ -340,6 +361,11 @@ export default function PropertyListingsPage() {
       } else if (sidebarStatus === '非公開予定（確認後）') {
         // 「非公開予定（確認後）」: calculatePropertyStatus() の結果で判定（カウントとの一致を保証）
         listings = listings.filter(l => calculatePropertyStatus(l as any, workTaskMap).key === 'private_pending');
+      } else if (sidebarStatus === '非公開（配信メール）要') {
+        // 「非公開（配信メール）要」: atbb_status === '非公開（配信メールのみ）' かつ private_mail_delivery === '未'
+        listings = listings.filter(l =>
+          l.atbb_status === '非公開（配信メールのみ）' && l.private_mail_delivery === '未'
+        );
       } else {
         listings = listings.filter(l => l.sidebar_status === sidebarStatus);
       }
@@ -552,7 +578,7 @@ export default function PropertyListingsPage() {
             </AccordionSummary>
             <AccordionDetails sx={{ p: 1 }}>
               <PropertySidebarStatus
-                key={`sidebar-mobile-${allListings.length}-${allListings.filter(l => l.confirmation === '未').length}`}
+                key={`sidebar-mobile-${allListings.length}-${allListings.filter(l => l.confirmation === '未').length}-${allListings.filter(l => l.private_mail_delivery === '未').length}`}
                 listings={allListings}
                 selectedStatus={sidebarStatus}
                 onStatusChange={(status) => {
@@ -572,7 +598,7 @@ export default function PropertyListingsPage() {
         {!isMobile && (
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
           <PropertySidebarStatus
-            key={`sidebar-${allListings.length}-${allListings.filter(l => l.confirmation === '未').length}`}
+            key={`sidebar-${allListings.length}-${allListings.filter(l => l.confirmation === '未').length}-${allListings.filter(l => l.private_mail_delivery === '未').length}`}
             listings={allListings}
             selectedStatus={sidebarStatus}
             onStatusChange={(status) => { setSidebarStatus(status); setSearchQuery(''); setLastFilter('sidebar'); setPage(0); }}

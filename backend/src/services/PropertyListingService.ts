@@ -1407,4 +1407,59 @@ export class PropertyListingService {
       // 同期エラーでもDB更新は成功しているため、エラーをスローしない
     }
   }
+
+  /**
+   * 非公開配信メールフィールドを更新
+   */
+  async updatePrivateMailDelivery(
+    propertyNumber: string,
+    value: '未' | '済'
+  ): Promise<void> {
+    if (!['未', '済'].includes(value)) {
+      throw new Error('非公開配信メールフィールドは「未」または「済」のみ有効です');
+    }
+
+    console.log(`[PropertyListingService] Updating private_mail_delivery for ${propertyNumber} to ${value}`);
+
+    const { error } = await this.supabase
+      .from('property_listings')
+      .update({
+        private_mail_delivery: value,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('property_number', propertyNumber);
+
+    if (error) {
+      console.error(`[PropertyListingService] Failed to update private_mail_delivery for ${propertyNumber}:`, error);
+      throw new Error('非公開配信メールの更新に失敗しました');
+    }
+
+    console.log(`[PropertyListingService] Successfully updated private_mail_delivery for ${propertyNumber}`);
+  }
+
+  /**
+   * 毎月第2土曜日に「非公開（配信メールのみ）」カテゴリーの物件の
+   * private_mail_delivery を「未」にリセットする
+   */
+  async resetPrivateMailDeliveryForSecondSaturday(): Promise<{ reset: number }> {
+    console.log('[PropertyListingService] Resetting private_mail_delivery to 未 for 非公開（配信メールのみ）');
+
+    const { data, error } = await this.supabase
+      .from('property_listings')
+      .update({
+        private_mail_delivery: '未',
+        updated_at: new Date().toISOString(),
+      })
+      .eq('atbb_status', '非公開（配信メールのみ）')
+      .select('property_number');
+
+    if (error) {
+      console.error('[PropertyListingService] Failed to reset private_mail_delivery:', error);
+      throw new Error('非公開配信メールのリセットに失敗しました');
+    }
+
+    const count = data?.length ?? 0;
+    console.log(`[PropertyListingService] Reset private_mail_delivery for ${count} properties`);
+    return { reset: count };
+  }
 }

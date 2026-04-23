@@ -32,6 +32,10 @@
     {
       "path": "/api/cron/business-site-deadline-hourly-notification",
       "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/cron/reset-private-mail-delivery",
+      "schedule": "0 0 * * *"
     }
   ]
 }
