@@ -86,8 +86,8 @@ describe('getCategoryGroupColor - 各プレフィックスの色', () => {
     it('決済完了チャット送信未 → #fff8e1', () => {
       expect(getCategoryGroupColor('決済完了チャット送信未')).toBe('#fff8e1');
     });
-    it('入金確認未 → #fff8e1', () => {
-      expect(getCategoryGroupColor('入金確認未')).toBe('#fff8e1');
+    it('経理確認未 → #fff8e1', () => {
+      expect(getCategoryGroupColor('経理確認未')).toBe('#fff8e1');
     });
   });
 
@@ -228,7 +228,7 @@ describe('Property 1: グループ背景色の一貫性', () => {
     'サイト依頼済み納品待ち',
     'サイト登録要確認',
     '決済完了チャット送信未',
-    '入金確認未',
+    '経理確認未',
     '媒介作成_締日',
     '要台帳作成',
     '保留',
@@ -266,7 +266,7 @@ describe('Property 2: 異なるグループは異なる色', () => {
   const COLOR_GROUPS: Record<string, string[]> = {
     '#e3f2fd': ['売買契約　営業確認中', '売買契約 入力待ち', '売買契約 製本待ち', '売買契約 依頼未'],
     '#f3e5f5': ['サイト登録依頼してください', 'サイト依頼済み納品待ち', 'サイト登録要確認'],
-    '#fff8e1': ['決済完了チャット送信未', '入金確認未'],
+    '#fff8e1': ['決済完了チャット送信未', '経理確認未'],
     '#e8f5e9': ['媒介作成_締日'],
     '#fce4ec': ['要台帳作成'],
     '#f5f5f5': ['保留'],

@@ -195,13 +195,13 @@ export const calculateTaskStatus = (task: WorkTask): string => {
     return '決済完了チャット送信未';
   }
 
-  // 5. 入金確認未
+  // 5. 経理確認未
   if (
     isNotBlank(task.settlement_completed_chat) &&
     (isBlank(task.accounting_confirmed) || task.accounting_confirmed === '未') &&
     isNotBlank(task.sales_contract_deadline)
   ) {
-    return '入金確認未';
+    return '経理確認未';
   }
 
   // 6. 要台帳作成
@@ -298,7 +298,7 @@ const CATEGORY_GROUP_COLORS: [string, string][] = [
   ['売買契約 製本待ち',          '#e3f2fd'],
   ['要台帳作成',                 '#fce4ec'],
   ['決済完了チャット送信未',     '#fff8e1'],
-  ['入金確認未',                 '#fff8e1'],
+  ['経理確認未',                 '#fff8e1'],
   ['保留',                       '#f5f5f5'],
 ];
 
@@ -325,7 +325,7 @@ const CATEGORY_ORDER = [
   '売買契約 製本待ち',
   '要台帳作成',
   '決済完了チャット送信未',
-  '入金確認未',
+  '経理確認未',
   '保留',
 ];
 
@@ -422,7 +422,7 @@ const getStatusKey = (status: string): string => {
   if (status.startsWith('売買契約 入力待ち')) return 'sales_contract_input';
   if (status.startsWith('サイト登録依頼してください')) return 'site_registration_request';
   if (status.startsWith('決済完了チャット送信未')) return 'settlement_chat_pending';
-  if (status.startsWith('入金確認未')) return 'payment_pending';
+  if (status.startsWith('経理確認未')) return 'payment_pending';
   if (status.startsWith('要台帳作成')) return 'ledger_required';
   if (status.startsWith('売買契約 製本待ち')) return 'sales_contract_binding';
   if (status.startsWith('売買契約 依頼未')) return 'sales_contract_unrequested';

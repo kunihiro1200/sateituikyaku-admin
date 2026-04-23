@@ -700,7 +700,12 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
     sellerBuyerRightScrollRef.current = sellerBuyerRightPaneRef.current?.scrollTop ?? 0;
     contractLeftScrollRef.current = contractLeftPaneRef.current?.scrollTop ?? 0;
     contractRightScrollRef.current = contractRightPaneRef.current?.scrollTop ?? 0;
-    setEditedData(prev => ({ ...prev, [field]: value }));
+    // 決済完了チャットに値が入ったら経理確認済みを「未」に自動リセット
+    if (field === 'settlement_completed_chat' && value) {
+      setEditedData(prev => ({ ...prev, [field]: value, accounting_confirmed: '未' }));
+    } else {
+      setEditedData(prev => ({ ...prev, [field]: value }));
+    }
 
     // 締日超過チェック対象フィールド
     const DEADLINE_CHECK_FIELDS: Record<string, string> = {
