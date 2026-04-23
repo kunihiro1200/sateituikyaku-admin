@@ -1159,8 +1159,9 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <TextField
               size="small"
-              value={getValue(field) || ''}
-              onChange={(e) => handleFieldChange(field, e.target.value)}
+              key={`${propertyNumber}_${field}`}
+              defaultValue={getValue(field) || ''}
+              onBlur={(e) => { if (e.target.value !== (getValue(field) || '')) handleFieldChange(field, e.target.value || null); }}
               fullWidth
             />
             {getValue(field) && (
@@ -1170,8 +1171,9 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
         ) : (
           <TextField
             size="small"
-            value={getValue(field) || ''}
-            onChange={(e) => handleFieldChange(field, e.target.value)}
+            key={`${propertyNumber}_${field}`}
+            defaultValue={getValue(field) || ''}
+            onBlur={(e) => { if (e.target.value !== (getValue(field) || '')) handleFieldChange(field, e.target.value || null); }}
             fullWidth
           />
         )}
