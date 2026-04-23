@@ -1221,24 +1221,25 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
     const [sending, setSending] = React.useState(false);
 
     const handleClick = async (val: 'Y' | 'N') => {
-      if (val === 'Y') {
-        setSending(true);
-        try {
-          const message = buildMessage();
-          await api.post(`/api/work-tasks/${propertyNumber}/send-settlement-chat`, {
-            type: chatType,
-            staffName,
-            message,
-          });
-          handleFieldChange(field, 'Y');
-          setSnackbar({ open: true, message: `${label}を送信しました`, severity: 'success' });
-        } catch (err: any) {
-          setSnackbar({ open: true, message: `チャット送信に失敗しました: ${err?.response?.data?.error || err.message}`, severity: 'error' });
-        } finally {
-          setSending(false);
-        }
-      } else {
-        handleFieldChange(field, getValue(field) === 'N' ? null : 'N');
+      // 同じ値を再度押した場合はトグル解除のみ（チャット送信なし）
+      if (getValue(field) === val) {
+        handleFieldChange(field, null);
+        return;
+      }
+      setSending(true);
+      try {
+        const message = buildMessage();
+        await api.post(`/api/work-tasks/${propertyNumber}/send-settlement-chat`, {
+          type: chatType,
+          staffName,
+          message,
+        });
+        handleFieldChange(field, val);
+        setSnackbar({ open: true, message: `${label}を送信しました`, severity: 'success' });
+      } catch (err: any) {
+        setSnackbar({ open: true, message: `チャット送信に失敗しました: ${err?.response?.data?.error || err.message}`, severity: 'error' });
+      } finally {
+        setSending(false);
       }
     };
 
