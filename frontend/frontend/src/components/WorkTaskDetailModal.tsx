@@ -612,6 +612,8 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
       await fetchData(false);
       setEditedData({});
       onUpdate?.();
+      // 修正履歴を再取得（保存後に表を更新）
+      fetchRevisionHistories();
     } catch (error) {
       console.error('Failed to save:', error);
       setSnackbar({ open: true, message: '保存に失敗しました', severity: 'error' });
