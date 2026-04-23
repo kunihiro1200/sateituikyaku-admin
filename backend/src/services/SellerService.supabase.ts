@@ -2442,11 +2442,6 @@ export class SellerService extends BaseRepository {
    * seller_sidebar_counts テーブルから1クエリで高速取得。
    * テーブルが空または取得失敗の場合は重いDBクエリにフォールバック。
    */
-  /**
-   * サイドバー用のカテゴリカウントを取得
-   * seller_sidebar_countsテーブルへの依存を排除し、常にDBの現在値から計算する。
-   * これにより、DBのnext_call_dateを変更した場合に即時反映される。
-   */
   async getSidebarCounts(): Promise<{
     todayCall: number;
     todayCallWithInfo: number;
@@ -2467,9 +2462,62 @@ export class SellerService extends BaseRepository {
     todayCallWithInfoLabels: string[];
     todayCallWithInfoLabelCounts: Record<string, number>;
   }> {
-    // seller_sidebar_countsテーブルへの依存を排除
-    // 常にDBの現在値から計算する（即時反映のため）
-    return this.getSidebarCountsFallback();
+    try {
+      // seller_sidebar_countsテーブルから全行を取得（1クエリで高速）
+      const { data: rows, error } = await this.table('seller_sidebar_counts')
+        .select('category, count, label, assignee');
+
+      if (error || !rows || rows.length === 0) {
+        console.warn('⚠️ [SidebarCounts] Table empty or error, falling back to DB calculation:', error?.message);
+        return this.getSidebarCountsFallback();
+      }
+
+      // テーブルのデータを返却形式に変換
+      const getCount = (category: string) =>
+        rows.find((r: any) => r.category === category && !r.label && !r.assignee)?.count ?? 0;
+
+      const visitAssignedCounts: Record<string, number> = {};
+      const todayCallAssignedCounts: Record<string, number> = {};
+      const todayCallWithInfoLabelCounts: Record<string, number> = {};
+
+      rows.forEach((r: any) => {
+        if (r.category === 'visitAssigned' && r.assignee) {
+          visitAssignedCounts[r.assignee] = r.count;
+        } else if (r.category === 'todayCallAssigned' && r.assignee) {
+          todayCallAssignedCounts[r.assignee] = r.count;
+        } else if (r.category === 'todayCallWithInfo' && r.label) {
+          todayCallWithInfoLabelCounts[r.label] = r.count;
+        }
+      });
+
+      const todayCallWithInfoLabels = Object.keys(todayCallWithInfoLabelCounts);
+
+      console.log('✅ [SidebarCounts] Served from seller_sidebar_counts table (fast path)');
+
+      return {
+        todayCall: getCount('todayCall'),
+        todayCallWithInfo: getCount('todayCallWithInfo'),
+        todayCallAssigned: getCount('todayCallAssigned'),
+        visitDayBefore: getCount('visitDayBefore'),
+        visitCompleted: getCount('visitCompleted'),
+        unvaluated: getCount('unvaluated'),
+        mailingPending: getCount('mailingPending'),
+        todayCallNotStarted: getCount('todayCallNotStarted'),
+        pinrichEmpty: getCount('pinrichEmpty'),
+        pinrichChangeRequired: getCount('pinrichChangeRequired'),
+        exclusive: getCount('exclusive'),
+        general: getCount('general'),
+        visitOtherDecision: getCount('visitOtherDecision'),
+        unvisitedOtherDecision: getCount('unvisitedOtherDecision'),
+        visitAssignedCounts,
+        todayCallAssignedCounts,
+        todayCallWithInfoLabels,
+        todayCallWithInfoLabelCounts,
+      };
+    } catch (err) {
+      console.warn('⚠️ [SidebarCounts] Unexpected error, falling back to DB calculation:', err);
+      return this.getSidebarCountsFallback();
+    }
   }
 
     /**
