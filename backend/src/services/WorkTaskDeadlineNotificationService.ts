@@ -259,7 +259,7 @@ export class WorkTaskDeadlineNotificationService {
         const body = [
           `物件番号：${target.property_number}`,
           `物件住所：${target.property_address}`,
-          `本日${target.category}において締め切りです。遅れる可能性がある場合は担当、上長に相談してください。`,
+          `本日${target.category}において締め切りです。遅れる可能性がある場合は担当、「対応済み」に入れる前に上長に相談してください。`,
         ].join('\n');
 
         await this.emailService.sendEmailWithCcAndAttachments({

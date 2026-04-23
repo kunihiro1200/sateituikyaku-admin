@@ -180,14 +180,20 @@ export class BusinessSiteDeadlineHourlyNotificationService {
           subject = `${target.property_number}/${target.property_address}のサイト登録の納期が迫っています！！`;
           body = [
             `${target.property_number}/${target.property_address}のサイト登録の納期が${remainingTime}です。`,
-            '遅れる可能性がある場合は担当、上長に相談してください。',
+            '必ず、クラウドワーカーと連絡をとり、納期の件間に合うかどうか連絡してください。',
+            'この件は急ぎではないのでよい等の自己判断はしないでください。',
+            '大事なのは依頼先に「遅れても良い」と思わせないことです。',
+            '「対応済み」に入れる前に、遅れる可能性がある場合は担当、上長に相談してください。',
             'ご確認の程よろしくお願い致します。',
           ].join('\n');
         } else {
           subject = `${target.property_number}/${target.property_address}の間取図作成の納期が迫っています！！`;
           body = [
             `${target.property_number}/${target.property_address}の間取図作成の納期が${remainingTime}です。`,
-            '遅れる可能性がある場合は担当、上長に相談してください。',
+            '必ず、クラウドワーカーと連絡をとり、納期の件間に合うかどうか連絡してください。',
+            'この件は急ぎではないのでよい等の自己判断はしないでください。',
+            '大事なのは依頼先に「遅れても良い」と思わせないことです。',
+            '「対応済み」に入れる前に、遅れる可能性がある場合は担当、上長に相談してください。',
             'ご確認の程よろしくお願い致します。',
           ].join('\n');
         }
