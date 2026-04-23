@@ -19,7 +19,7 @@
 var SURVEY_CONFIG = {
   // 内覧アンケートスプレッドシートID
   SPREADSHEET_ID: '11wSOSaoTBanlH0ClpDx9NdBnHMGYmrYGs95gdu7T3BQ',
-  SHEET_NAME: 'フォームの回答 1',  // ← 実際のシート名に合わせて変更してください
+  SHEET_NAME: '内覧アンケート',
   SUPABASE_URL: 'https://krxhrbtlgfjzsseegaqq.supabase.co',
   SUPABASE_SERVICE_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtyeGhyYnRsZ2ZqenNzZWVnYXFxIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MzAyMTQxMSwiZXhwIjoyMDc4NTk3NDExfQ.nog3UX9J9OgfqlCIPJt_sU_exE6Ny-nSj_HmwgV3oA8',
   TABLE_NAME: 'buyers',
@@ -170,17 +170,17 @@ function syncViewingSurvey() {
       var errorCount = 0;
       var failedBuyerNumbers = [];
 
-      // バッチサイズ50でupsert
+      // バッチサイズ50でPATCH更新
       var BATCH_SIZE = 50;
       for (var j = 0; j < dedupedRecords.length; j += BATCH_SIZE) {
         var batch = dedupedRecords.slice(j, j + BATCH_SIZE);
         var result = surveyUpsertToSupabase(batch);
         if (result.success) {
           successCount += batch.length;
-          Logger.log('バッチ ' + (Math.floor(j / BATCH_SIZE) + 1) + ': ' + batch.length + '件 upsert成功');
+          Logger.log('バッチ ' + (Math.floor(j / BATCH_SIZE) + 1) + ': ' + batch.length + '件 PATCH成功');
         } else {
           errorCount += batch.length;
-          Logger.log('バッチ ' + (Math.floor(j / BATCH_SIZE) + 1) + ': エラー - ' + result.error);
+          Logger.log('バッチ ' + (Math.floor(j / BATCH_SIZE) + 1) + ': 一部エラー - ' + result.error);
           for (var b = 0; b < batch.length; b++) {
             failedBuyerNumbers.push(batch[b].buyer_number);
           }
@@ -210,37 +210,55 @@ function syncViewingSurvey() {
 }
 
 // ============================================================
-// Supabase upsert（viewing_survey_result のみ更新）
+// Supabase PATCH（viewing_survey_result のみ部分更新）
+// buyer_number をキーに既存レコードの viewing_survey_result だけ更新する
+// upsert（POST）ではなく PATCH を使うことで NOT NULL 制約エラーを回避
 // ============================================================
 function surveyUpsertToSupabase(records) {
-  var baseUrl = SURVEY_CONFIG.SUPABASE_URL + '/rest/v1/' + SURVEY_CONFIG.TABLE_NAME;
-
   if (records.length === 0) return { success: true };
 
-  try {
-    var response = UrlFetchApp.fetch(baseUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'apikey': SURVEY_CONFIG.SUPABASE_SERVICE_KEY,
-        'Authorization': 'Bearer ' + SURVEY_CONFIG.SUPABASE_SERVICE_KEY,
-        'Prefer': 'resolution=merge-duplicates,return=minimal'
-      },
-      payload: JSON.stringify(records),
-      muteHttpExceptions: true
-    });
+  var successCount = 0;
+  var errors = [];
 
-    var code = response.getResponseCode();
-    if (code >= 200 && code < 300) {
-      return { success: true };
-    } else {
-      var body = response.getContentText().substring(0, 500);
-      Logger.log('バルクUPSERT失敗: HTTP ' + code + ' ' + body);
-      return { success: false, error: 'HTTP ' + code + ': ' + body };
+  for (var i = 0; i < records.length; i++) {
+    var record = records[i];
+    // buyer_number でフィルタして viewing_survey_result だけ PATCH
+    var url = SURVEY_CONFIG.SUPABASE_URL + '/rest/v1/' + SURVEY_CONFIG.TABLE_NAME
+      + '?buyer_number=eq.' + encodeURIComponent(record.buyer_number);
+
+    try {
+      var response = UrlFetchApp.fetch(url, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': SURVEY_CONFIG.SUPABASE_SERVICE_KEY,
+          'Authorization': 'Bearer ' + SURVEY_CONFIG.SUPABASE_SERVICE_KEY,
+          'Prefer': 'return=minimal'
+        },
+        payload: JSON.stringify({
+          viewing_survey_result: record.viewing_survey_result,
+          last_synced_at: record.last_synced_at
+        }),
+        muteHttpExceptions: true
+      });
+
+      var code = response.getResponseCode();
+      if (code >= 200 && code < 300) {
+        successCount++;
+      } else {
+        var body = response.getContentText().substring(0, 200);
+        errors.push('buyer_number=' + record.buyer_number + ': HTTP ' + code + ' ' + body);
+      }
+    } catch (e) {
+      errors.push('buyer_number=' + record.buyer_number + ': ' + e.toString());
     }
-  } catch (e) {
-    return { success: false, error: e.toString() };
   }
+
+  if (errors.length > 0) {
+    Logger.log('PATCH エラー (' + errors.length + '件): ' + errors.slice(0, 3).join(' / '));
+    return { success: errors.length < records.length, error: errors.join('; ') };
+  }
+  return { success: true };
 }
 
 // ============================================================
