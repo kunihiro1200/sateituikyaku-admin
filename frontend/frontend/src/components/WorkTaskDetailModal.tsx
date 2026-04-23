@@ -1931,12 +1931,17 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
                   </Grid>
                   <Grid item xs={8}>
                     <TextField
+                      key={`contract_revision_content_${propertyNumber}`}
                       fullWidth
                       multiline
                       minRows={4}
                       size="small"
-                      value={getValue('contract_revision_content') || ''}
-                      onChange={(e) => handleFieldChange('contract_revision_content', e.target.value)}
+                      defaultValue={getValue('contract_revision_content') || ''}
+                      onBlur={(e) => {
+                        if (e.target.value !== (getValue('contract_revision_content') || '')) {
+                          handleFieldChange('contract_revision_content', e.target.value);
+                        }
+                      }}
                       placeholder="修正内容を入力してください"
                       error={!getValue('contract_revision_content')}
                       helperText={!getValue('contract_revision_content') ? '必須項目です' : ''}
