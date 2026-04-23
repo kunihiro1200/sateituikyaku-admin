@@ -2024,7 +2024,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
           <Button
             variant="outlined"
             size="small"
-            disabled={!getValue('pre_request_check')}
+            disabled={false}
             onClick={() => setPopupOpen(true)}
           >
             確認する
@@ -2086,14 +2086,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
           <EditableField label="売買契約締め日" field="sales_contract_deadline" type="date" />
           <EditableField label="売買契約備考" field="sales_contract_notes" />
           <EditableField label="契約形態" field="contract_type" />
-          {/* CW（浅沼様）全エリア・種別依頼OK - 表示のみ */}
-          <Grid container spacing={2} alignItems="center" sx={{ mb: 1.5 }}>
-            <Grid item xs={12}>
-              <Typography variant="body2" sx={{ color: 'success.main', fontWeight: 500 }}>
-                ☆ CW（浅沼様）全エリア・種別依頼OK
-              </Typography>
-            </Grid>
-          </Grid>
+
           <EditableField label="重説・契約書入力納期" field="contract_input_deadline" type="date" />
           <PreRequestCheckButton />
           <EditableButtonSelect label="社員が契約書作成" field="employee_contract_creation" options={normalInitials} />
@@ -2194,7 +2187,35 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
             </Box>
           )}
 
-          <EditableField label="製本予定日" field="binding_scheduled_date" type="date" />
+          {/* 製本予定日: 売買契約確認=確認OKの場合は必須 */}
+          {getValue('sales_contract_confirmed') === '確認OK' ? (
+            <Grid container spacing={2} alignItems="center" sx={{ mb: 1.5 }}>
+              <Grid item xs={4}>
+                <Typography variant="body2" color="error" sx={{ fontWeight: 700 }}>
+                  製本予定日*（必須）
+                </Typography>
+              </Grid>
+              <Grid item xs={8}>
+                <TextField
+                  key={`binding_scheduled_date_${propertyNumber}`}
+                  type="date"
+                  size="small"
+                  fullWidth
+                  defaultValue={getValue('binding_scheduled_date') || ''}
+                  onBlur={(e) => {
+                    if (e.target.value !== (getValue('binding_scheduled_date') || '')) {
+                      handleFieldChange('binding_scheduled_date', e.target.value || null);
+                    }
+                  }}
+                  error={!getValue('binding_scheduled_date')}
+                  helperText={!getValue('binding_scheduled_date') ? '必須項目です' : ''}
+                  InputLabelProps={{ shrink: true }}
+                />
+              </Grid>
+            </Grid>
+          ) : (
+            <EditableField label="製本予定日" field="binding_scheduled_date" type="date" />
+          )}
           <EditableField label="製本完了" field="binding_completed" type="date" />
 
           {/* 契約書、重説他の修正内容まとめ（全物件） */}
