@@ -1948,7 +1948,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
           )}
 
           <EditableField label="製本予定日" field="binding_scheduled_date" type="date" />
-          <EditableField label="製本完了" field="binding_completed" />
+          <EditableField label="製本完了" field="binding_completed" type="date" />
 
           {/* 契約書、重説他の修正内容まとめ（全物件） */}
           <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#b71c1c', mb: 1, mt: 3 }}>
@@ -2100,7 +2100,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
     }, [propertyNumber, emailHistoryRefreshKey]);
 
     return (
-    <Box sx={{ display: 'flex', height: '100%', overflow: 'hidden' }}>
+    <Box sx={{ display: 'flex', height: '100%', overflow: 'hidden', width: '100%' }}>
       {/* 左ペイン: Email送信履歴 */}
       <Box sx={{ width: 320, minWidth: 260, overflowY: 'auto', bgcolor: '#f8f9fa', display: 'flex', flexDirection: 'column', borderRight: '1px solid #e0e0e0' }}>
         <Box sx={{ p: 1.5, borderBottom: '1px solid #e0e0e0', bgcolor: '#fff', position: 'sticky', top: 0, zIndex: 1 }}>
@@ -2154,7 +2154,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
       </Box>
 
       {/* 右ペイン: 売主・買主詳細 */}
-      <Box sx={{ flex: 1, minWidth: 0, overflowY: 'auto', p: 2 }}>
+      <Box sx={{ flex: 1, minWidth: 0, overflowY: 'auto', overflowX: 'hidden', p: 2 }}>
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
         <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#2e7d32' }}>【売主情報】</Typography>
         <FormControl size="small" sx={{ minWidth: 180 }}>
@@ -2515,7 +2515,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
               {tabIndex === 0 && renderMediationSection()}
               {tabIndex === 1 && <SiteRegistrationSection cwCounts={cwCounts} leftPaneRef={leftPaneRef} rightPaneRef={rightPaneRef} />}
               {tabIndex === 2 && <ContractSettlementSection />}
-              {tabIndex === 3 && <Box sx={{ flex: 1, display: 'flex', minHeight: 0, height: '100%' }}><SellerBuyerDetailSection emailHistoryRefreshKey={emailHistoryRefreshKey} /></Box>}
+              {tabIndex === 3 && <Box sx={{ flex: 1, display: 'flex', minHeight: 0, height: '100%', width: '100%', overflow: 'hidden' }}><SellerBuyerDetailSection emailHistoryRefreshKey={emailHistoryRefreshKey} /></Box>}
             </>
           )}
         </DialogContent>
