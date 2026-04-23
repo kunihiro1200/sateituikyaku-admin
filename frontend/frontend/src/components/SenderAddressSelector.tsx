@@ -31,9 +31,12 @@ const SenderAddressSelector: React.FC<SenderAddressSelectorProps> = ({
 }) => {
   const DEFAULT_VALUE = 'tenant@ifoo-oita.com';
   
-  // テナント（共有）のみをオプションとして表示
+  // テナント（共有）＋スタッフ全員をオプションとして表示
   const options = [
     { email: DEFAULT_VALUE, name: 'テナント（共有）', role: 'shared' },
+    ...employees
+      .filter(emp => emp.email && emp.email.trim() !== '')
+      .map(emp => ({ email: emp.email, name: emp.name, role: emp.role })),
   ];
 
   // 値が空または未定義の場合はデフォルト値を使用し、親に通知
