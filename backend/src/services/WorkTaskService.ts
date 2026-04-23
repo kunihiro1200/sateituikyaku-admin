@@ -66,6 +66,7 @@ export class WorkTaskService {
   /**
    * 一覧取得（一覧表示に必要なカラムのみ取得してパフォーマンス改善）
    * property_listingsのsales_contract_completedも結合して返す
+   * work_tasks取得とproperty_listings全件取得を並列実行して高速化
    */
   async list(options: ListOptions = {}): Promise<WorkTaskData[]> {
     const {
@@ -75,35 +76,35 @@ export class WorkTaskService {
       orderDirection = 'desc',
     } = options;
 
-    const { data, error } = await this.supabase
-      .from('work_tasks')
-      .select('*')
-      .order(orderBy, { ascending: orderDirection === 'asc' })
-      .range(offset, offset + limit - 1);
+    // work_tasks と property_listings を並列取得
+    const [workTasksResult, listingsResult] = await Promise.all([
+      this.supabase
+        .from('work_tasks')
+        .select('*')
+        .order(orderBy, { ascending: orderDirection === 'asc' })
+        .range(offset, offset + limit - 1),
+      this.supabase
+        .from('property_listings')
+        .select('property_number, sales_contract_completed'),
+    ]);
 
-    if (error || !data) {
+    if (workTasksResult.error || !workTasksResult.data) {
       return [];
     }
 
-    // property_listingsのsales_contract_completedを取得して結合
-    try {
-      const propertyNumbers = data.map((t: any) => t.property_number).filter(Boolean);
-      if (propertyNumbers.length > 0) {
-        const { data: listings } = await this.supabase
-          .from('property_listings')
-          .select('property_number, sales_contract_completed')
-          .in('property_number', propertyNumbers);
+    const data = workTasksResult.data;
 
-        if (listings) {
-          const listingMap: Record<string, string> = {};
-          listings.forEach((l: any) => {
-            if (l.property_number) listingMap[l.property_number] = l.sales_contract_completed || '';
-          });
-          return data.map((t: any) => ({
-            ...t,
-            sales_contract_completed: listingMap[t.property_number] || '',
-          })) as WorkTaskData[];
-        }
+    // property_listingsの結合
+    try {
+      if (listingsResult.data) {
+        const listingMap: Record<string, string> = {};
+        listingsResult.data.forEach((l: any) => {
+          if (l.property_number) listingMap[l.property_number] = l.sales_contract_completed || '';
+        });
+        return data.map((t: any) => ({
+          ...t,
+          sales_contract_completed: listingMap[t.property_number] || '',
+        })) as WorkTaskData[];
       }
     } catch {
       // 結合失敗時はwork_tasksのみ返す

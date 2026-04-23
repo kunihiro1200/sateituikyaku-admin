@@ -26,14 +26,16 @@ router.get('/', async (req: Request, res: Response) => {
     const orderBy = (req.query.orderBy as string) || 'created_at';
     const orderDirection = (req.query.orderDirection as string) === 'asc' ? 'asc' : 'desc';
 
-    const workTasks = await workTaskService.list({
-      limit,
-      offset,
-      orderBy,
-      orderDirection,
-    });
-
-    const total = await workTaskService.count();
+    // list と count を並列実行してレスポンスを高速化
+    const [workTasks, total] = await Promise.all([
+      workTaskService.list({
+        limit,
+        offset,
+        orderBy,
+        orderDirection,
+      }),
+      workTaskService.count(),
+    ]);
 
     res.json({
       data: workTasks,

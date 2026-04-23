@@ -2264,11 +2264,35 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
           <EditableField label="決済予定月" field="settlement_scheduled_month" />
           <EditableField label="売買価格" field="sales_price" type="number" />
           <EditableField label="仲介手数料（売）" field="brokerage_fee_seller" type="number" />
+          {/* 仲介手数料（買）: 専任両手・一般両手・他社片手の場合のみ表示 */}
+          {(() => {
+            const ct = getValue('contract_type') || '';
+            const showBuyer = ct === '専任両手' || ct === '一般両手' || ct === '他社片手';
+            return showBuyer ? (
+              <EditableField label="仲介手数料（買）" field="brokerage_fee_buyer" type="number" />
+            ) : null;
+          })()}
           <EditableField label="通常仲介手数料（売）" field="standard_brokerage_fee_seller" type="number" />
+          {/* 通常仲介手数料（買）: 専任両手・一般両手・他社片手・自社含む の場合のみ表示 */}
+          {(() => {
+            const ct = getValue('contract_type') || '';
+            const showBuyer = ct === '専任両手' || ct === '一般両手' || ct === '他社片手' || ct.includes('自社');
+            return showBuyer ? (
+              <EditableField label="通常仲介手数料（買）" field="standard_brokerage_fee_buyer" type="number" />
+            ) : null;
+          })()}
           <EditableButtonSelect label="キャンペーン" field="campaign" options={['あり', 'なし']} />
           <EditableField label="減額理由" field="discount_reason" />
           <EditableField label="減額理由他" field="discount_reason_other" />
           <EditableButtonSelect label="売・支払方法" field="seller_payment_method" options={['振込', '現金', '他']} />
+          {/* 買・支払方法: 専任両手・一般両手・他社片手の場合のみ表示 */}
+          {(() => {
+            const ct = getValue('contract_type') || '';
+            const showBuyer = ct === '専任両手' || ct === '一般両手' || ct === '他社片手';
+            return showBuyer ? (
+              <EditableButtonSelect label="買・支払方法" field="buyer_payment_method" options={['振込', '現金', '他']} />
+            ) : null;
+          })()}
           {/* 入金確認（売）: 決済日>2025/10/20 かつ 決済完了チャット入力済みの場合は必須・ハイライト */}
           {(() => {
             const settlementDate = getValue('settlement_date');
@@ -2285,15 +2309,18 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
               />
             );
           })()}
-          <EditableField label="仲介手数料（買）" field="brokerage_fee_buyer" type="number" />
-          <EditableField label="通常仲介手数料（買）" field="standard_brokerage_fee_buyer" type="number" />
-          <EditableButtonSelect label="買・支払方法" field="buyer_payment_method" options={['振込', '現金', '他']} />
-          <EditableButtonSelect label="入金確認（買）" field="payment_confirmed_buyer" options={['確認済み', '未']} />
+          {/* 入金確認（買）: 専任両手・一般両手・他社片手の場合のみ表示 */}
+          {(() => {
+            const ct = getValue('contract_type') || '';
+            const showBuyer = ct === '専任両手' || ct === '一般両手' || ct === '他社片手';
+            return showBuyer ? (
+              <EditableButtonSelect label="入金確認（買）" field="payment_confirmed_buyer" options={['確認済み', '未']} />
+            ) : null;
+          })()}
           <EditableButtonSelect label="経理確認済み" field="accounting_confirmed" options={['未', '済']} />
         </Box>
         <Box sx={{ bgcolor: '#e8f5e9', borderRadius: 1, p: 1, mb: 1 }}>
           <EditableButtonSelect label="紹介チラシ渡し" field="referral_flyer_given" options={['OK', 'NG', '他']} />
-          <EditableButtonSelect label="口コミ登録" field="review_registered" options={['済', '未']} />
           <EditableButtonSelect label="口コミ(売主)*" field="review_seller" options={['Google口コミ', 'アンケート用紙', 'NG', 'これから']} labelColor="error" />
           <EditableButtonSelect label="口コミ(買主)" field="review_buyer" options={['Google口コミ', 'アンケート用紙', 'NG', 'これから']} />
           <EditableField label="他コメント" field="other_comments" />
@@ -2305,7 +2332,6 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
               !!getValue('judicial_scrivener') &&
               !!getValue('referral_flyer_given') &&
               !!getValue('seller_payment_method') &&
-              !!getValue('review_registered') &&
               !!settlementDate &&
               settlementDate >= '2025-06-27';
             const isSettlementChatUnfilled = isSettlementChatRequired && !getValue('settlement_completed_chat');
