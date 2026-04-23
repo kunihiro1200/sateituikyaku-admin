@@ -2528,7 +2528,6 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
             )}
             <IconButton onClick={onClose} size="small"><CloseIcon /></IconButton>
           </Box>
-          </Box>
         </DialogTitle>
         <Box sx={{ borderBottom: 1, borderColor: 'divider', px: 2 }}>
           <Tabs

@@ -65,6 +65,7 @@ export class WorkTaskService {
 
   /**
    * 一覧取得（一覧表示に必要なカラムのみ取得してパフォーマンス改善）
+   * property_listingsのsales_contract_completedも結合して返す
    */
   async list(options: ListOptions = {}): Promise<WorkTaskData[]> {
     const {
@@ -82,6 +83,30 @@ export class WorkTaskService {
 
     if (error || !data) {
       return [];
+    }
+
+    // property_listingsのsales_contract_completedを取得して結合
+    try {
+      const propertyNumbers = data.map((t: any) => t.property_number).filter(Boolean);
+      if (propertyNumbers.length > 0) {
+        const { data: listings } = await this.supabase
+          .from('property_listings')
+          .select('property_number, sales_contract_completed')
+          .in('property_number', propertyNumbers);
+
+        if (listings) {
+          const listingMap: Record<string, string> = {};
+          listings.forEach((l: any) => {
+            if (l.property_number) listingMap[l.property_number] = l.sales_contract_completed || '';
+          });
+          return data.map((t: any) => ({
+            ...t,
+            sales_contract_completed: listingMap[t.property_number] || '',
+          })) as WorkTaskData[];
+        }
+      }
+    } catch {
+      // 結合失敗時はwork_tasksのみ返す
     }
 
     return data as WorkTaskData[];

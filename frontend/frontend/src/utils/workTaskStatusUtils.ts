@@ -35,6 +35,12 @@ export interface WorkTask {
   ledger_created: string;
   site_registration_confirm_request_date: string;
   site_registration_confirmed: string;
+  // property_listingsから参照（サイドバーカテゴリー判定用）
+  sales_contract_completed?: string;
+  // DB専用フィールド（スプシ非同期）
+  judicial_scrivener_email_after_contract?: string;
+  settlement_seller_denomination_email?: string;
+  settlement_buyer_denomination_email?: string;
   [key: string]: any;
 }
 
@@ -108,6 +114,41 @@ const SITE_REG_BASE_DATE = new Date('2025-10-30');
 
 // ステータス計算関数
 export const calculateTaskStatus = (task: WorkTask): string => {
+  // 0a. 契約後司法書士連絡未
+  // property_listingsのsales_contract_completedが"契約完了～"で始まり、
+  // judicial_scrivener_email_after_contractが空の場合
+  if (
+    task.sales_contract_completed &&
+    task.sales_contract_completed.startsWith('契約完了') &&
+    isBlank(task.judicial_scrivener_email_after_contract)
+  ) {
+    return '契約後司法書士連絡未';
+  }
+
+  // 0b. 金種表送付　未
+  // settlement_dateに値があり（2026/4/30以降）、今日がsettlement_dateの1週間前以降で、
+  // settlement_seller_denomination_email と settlement_buyer_denomination_email が両方空の場合
+  const DENOMINATION_BASE_DATE = new Date('2026-04-30');
+  if (
+    isNotBlank(task.settlement_date) &&
+    isNotBlank(task.sales_contract_deadline) &&
+    dateGte(task.settlement_date, DENOMINATION_BASE_DATE)
+  ) {
+    const settlementD = parseDate(task.settlement_date);
+    if (settlementD) {
+      const oneWeekBefore = new Date(settlementD);
+      oneWeekBefore.setDate(oneWeekBefore.getDate() - 7);
+      oneWeekBefore.setHours(0, 0, 0, 0);
+      if (
+        today() >= oneWeekBefore &&
+        isBlank(task.settlement_seller_denomination_email) &&
+        isBlank(task.settlement_buyer_denomination_email)
+      ) {
+        return '金種表送付　未';
+      }
+    }
+  }
+
   // 1. 売買契約確認 = "確認中"
   if (task.sales_contract_confirmed === '確認中') {
     return `売買契約　営業確認中${formatDateMD(task.sales_contract_deadline)}`;
