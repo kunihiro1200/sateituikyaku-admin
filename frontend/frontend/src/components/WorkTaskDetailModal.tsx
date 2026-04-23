@@ -698,6 +698,8 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
     leftScrollRef.current = leftPaneRef.current?.scrollTop ?? 0;
     rightScrollRef.current = rightPaneRef.current?.scrollTop ?? 0;
     sellerBuyerRightScrollRef.current = sellerBuyerRightPaneRef.current?.scrollTop ?? 0;
+    contractLeftScrollRef.current = contractLeftPaneRef.current?.scrollTop ?? 0;
+    contractRightScrollRef.current = contractRightPaneRef.current?.scrollTop ?? 0;
     setEditedData(prev => ({ ...prev, [field]: value }));
 
     // 締日超過チェック対象フィールド
@@ -1038,23 +1040,50 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
   const sellerBuyerRightPaneRef = useRef<HTMLDivElement>(null);
   const sellerBuyerRightScrollRef = useRef<number>(0);
 
+  // 契約決済タブのスクロール位置保持用 ref
+  const contractLeftPaneRef = useRef<HTMLDivElement>(null);
+  const contractRightPaneRef = useRef<HTMLDivElement>(null);
+  const contractLeftScrollRef = useRef<number>(0);
+  const contractRightScrollRef = useRef<number>(0);
+
   // editedData 変更後に左右ペインのスクロール位置を復元（サイト登録タブのみ）
   useEffect(() => {
     if (tabIndex !== 1) return;
-    if (leftPaneRef.current) {
-      leftPaneRef.current.scrollTop = leftScrollRef.current;
-    }
-    if (rightPaneRef.current) {
-      rightPaneRef.current.scrollTop = rightScrollRef.current;
-    }
+    const raf = requestAnimationFrame(() => {
+      if (leftPaneRef.current) {
+        leftPaneRef.current.scrollTop = leftScrollRef.current;
+      }
+      if (rightPaneRef.current) {
+        rightPaneRef.current.scrollTop = rightScrollRef.current;
+      }
+    });
+    return () => cancelAnimationFrame(raf);
   }, [editedData, tabIndex]);
 
   // editedData 変更後に売主・買主詳細タブのスクロール位置を復元
   useEffect(() => {
     if (tabIndex !== 3) return;
-    if (sellerBuyerRightPaneRef.current) {
-      sellerBuyerRightPaneRef.current.scrollTop = sellerBuyerRightScrollRef.current;
-    }
+    // 再マウント後にDOMが確定してからスクロール位置を復元する
+    const raf = requestAnimationFrame(() => {
+      if (sellerBuyerRightPaneRef.current) {
+        sellerBuyerRightPaneRef.current.scrollTop = sellerBuyerRightScrollRef.current;
+      }
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [editedData, tabIndex]);
+
+  // editedData 変更後に契約決済タブのスクロール位置を復元
+  useEffect(() => {
+    if (tabIndex !== 2) return;
+    const raf = requestAnimationFrame(() => {
+      if (contractLeftPaneRef.current) {
+        contractLeftPaneRef.current.scrollTop = contractLeftScrollRef.current;
+      }
+      if (contractRightPaneRef.current) {
+        contractRightPaneRef.current.scrollTop = contractRightScrollRef.current;
+      }
+    });
+    return () => cancelAnimationFrame(raf);
   }, [editedData, tabIndex]);
 
 
@@ -1916,7 +1945,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
   const ContractSettlementSection = () => (
     <Box sx={{ display: 'flex', gap: 0, flex: 1, minHeight: 0, overflow: 'hidden' }}>
       {/* 左ペイン: 契約書・重説作成 */}
-      <Box sx={{ flex: 1, p: 2, borderRight: '2px solid', borderColor: 'divider', overflowY: 'auto', minHeight: 0 }}>
+      <Box ref={contractLeftPaneRef} sx={{ flex: 1, p: 2, borderRight: '2px solid', borderColor: 'divider', overflowY: 'auto', minHeight: 0 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
           <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#1565c0' }}>【契約書、重説作成】</Typography>
           <Button
@@ -2062,7 +2091,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
       </Box>
 
       {/* 右ペイン: 決済詳細 */}
-      <Box sx={{ flex: 1, p: 2, overflowY: 'auto', minHeight: 0 }}>
+      <Box ref={contractRightPaneRef} sx={{ flex: 1, p: 2, overflowY: 'auto', minHeight: 0 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
           <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#2e7d32' }}>【決済詳細】</Typography>
           <Button
@@ -2195,7 +2224,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
       </Box>
 
       {/* 右ペイン: 売主・買主詳細 */}
-      <Box sx={{ flex: 1, minWidth: 0, overflowY: 'auto', overflowX: 'hidden', p: 2 }}>
+      <Box ref={sellerBuyerRightPaneRef} sx={{ flex: 1, minWidth: 0, overflowY: 'auto', overflowX: 'hidden', p: 2 }}>
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
         <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#2e7d32' }}>【売主情報】</Typography>
         <FormControl size="small" sx={{ minWidth: 180 }}>
