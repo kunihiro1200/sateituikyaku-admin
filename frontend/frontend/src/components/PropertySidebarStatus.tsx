@@ -232,6 +232,17 @@ export default function PropertySidebarStatus({
         return;
       }
 
+      // sidebar_statusが「未報告 X」形式（報告日が未来で動的判定がunreportedにならない場合）
+      // → 担当者別専任公開中カテゴリーにカウントする
+      if (normalizedStatus.startsWith('未報告') && listing.atbb_status === '専任・公開中') {
+        const assignee = listing.sales_assignee || '';
+        const seninStatus = ASSIGNEE_TO_SENIN_STATUS[assignee] || null;
+        if (seninStatus) {
+          counts[seninStatus] = (counts[seninStatus] || 0) + 1;
+        }
+        return;
+      }
+
       // sidebar_statusが存在する場合はそれを使用
       // ただし「未報告」系・SUUMO系・「非公開予定（確認後）」は除外（動的判定済み）
       // 「非公開予定（確認後）」はDBに保存されている場合でも calculatePropertyStatus() で判定する
