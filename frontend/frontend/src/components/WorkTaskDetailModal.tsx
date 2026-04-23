@@ -26,7 +26,7 @@ import {
   MenuItem,
   Paper,
 } from '@mui/material';
-import { Close as CloseIcon, Save as SaveIcon, ContentCopy as ContentCopyIcon, WarningAmber as WarningAmberIcon, Email as EmailIcon, Image as ImageIcon } from '@mui/icons-material';
+import { Close as CloseIcon, Save as SaveIcon, ContentCopy as ContentCopyIcon, Check as CheckIcon, WarningAmber as WarningAmberIcon, Email as EmailIcon, Image as ImageIcon } from '@mui/icons-material';
 import api from '../services/api';
 import { supabase } from '../services/supabase';
 import { isDeadlineExceeded } from '../utils/deadlineUtils';
@@ -520,6 +520,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
   const cwCounts = useCwCounts();
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [copiedPropertyNumber, setCopiedPropertyNumber] = useState(false);
   const [data, setData] = useState<WorkTaskData | null>(null);
   const [editedData, setEditedData] = useState<Partial<WorkTaskData>>({});
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
@@ -696,6 +697,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
     // 左右ペインのスクロール位置を保存
     leftScrollRef.current = leftPaneRef.current?.scrollTop ?? 0;
     rightScrollRef.current = rightPaneRef.current?.scrollTop ?? 0;
+    sellerBuyerRightScrollRef.current = sellerBuyerRightPaneRef.current?.scrollTop ?? 0;
     setEditedData(prev => ({ ...prev, [field]: value }));
 
     // 締日超過チェック対象フィールド
@@ -980,6 +982,9 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
   // 媒介契約タブのスクロール位置保持用 ref
   const mediationPaneRef = useRef<HTMLDivElement>(null);
   const mediationScrollRef = useRef<number>(0);
+  // 売主・買主詳細タブのスクロール位置保持用 ref
+  const sellerBuyerRightPaneRef = useRef<HTMLDivElement>(null);
+  const sellerBuyerRightScrollRef = useRef<number>(0);
 
   // editedData 変更後に左右ペインのスクロール位置を復元（サイト登録タブのみ）
   useEffect(() => {
@@ -989,6 +994,14 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
     }
     if (rightPaneRef.current) {
       rightPaneRef.current.scrollTop = rightScrollRef.current;
+    }
+  }, [editedData, tabIndex]);
+
+  // editedData 変更後に売主・買主詳細タブのスクロール位置を復元
+  useEffect(() => {
+    if (tabIndex !== 3) return;
+    if (sellerBuyerRightPaneRef.current) {
+      sellerBuyerRightPaneRef.current.scrollTop = sellerBuyerRightScrollRef.current;
     }
   }, [editedData, tabIndex]);
 
@@ -2293,27 +2306,35 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
               </Button>
               <Typography variant="h6">業務詳細 -</Typography>
               <Box
-                onClick={() => { navigator.clipboard.writeText(propertyNumber || ''); }}
+                onClick={() => {
+                  navigator.clipboard.writeText(propertyNumber || '');
+                  setCopiedPropertyNumber(true);
+                  setTimeout(() => setCopiedPropertyNumber(false), 2000);
+                }}
                 sx={{
                   display: 'flex',
                   alignItems: 'center',
                   gap: 0.5,
                   cursor: 'pointer',
                   px: 1.5, py: 0.5,
-                  bgcolor: '#f5f5f5',
-                  border: '1px solid #ddd',
+                  bgcolor: copiedPropertyNumber ? '#e8f5e9' : '#f5f5f5',
+                  border: `1px solid ${copiedPropertyNumber ? '#66bb6a' : '#ddd'}`,
                   borderRadius: 1,
                   fontWeight: 700,
                   fontSize: '1.1rem',
                   userSelect: 'all',
                   whiteSpace: 'nowrap',
-                  '&:hover': { bgcolor: '#e3f2fd', borderColor: '#1565c0' },
+                  transition: 'all 0.2s',
+                  '&:hover': { bgcolor: copiedPropertyNumber ? '#e8f5e9' : '#e3f2fd', borderColor: copiedPropertyNumber ? '#66bb6a' : '#1565c0' },
                   '&:active': { bgcolor: '#bbdefb' },
                 }}
                 title="クリックでコピー"
               >
-                {propertyNumber || ''}
-                <ContentCopyIcon sx={{ fontSize: '1rem', color: '#1565c0', opacity: 0.7 }} />
+                {copiedPropertyNumber ? 'コピーしました！' : (propertyNumber || '')}
+                {copiedPropertyNumber
+                  ? <CheckIcon sx={{ fontSize: '1rem', color: '#2e7d32' }} />
+                  : <ContentCopyIcon sx={{ fontSize: '1rem', color: '#1565c0', opacity: 0.7 }} />
+                }
               </Box>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, overflowX: 'auto', flexShrink: 1, flexWrap: 'nowrap' }}>
                 {data?.property_address && (
