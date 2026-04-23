@@ -381,11 +381,28 @@ function checkSiteRegistrationWarning(getValue: (field: string) => any): {
 }
 
 // 間取図グループのバリデーション
-// 一部入力・一部空欄の場合に警告（全て空欄または全て入力済みは正常）
+// 確認者に値がある場合：OK送信・完了日・格納済み連絡メールが必須
+// 確認者が空の場合：一部入力・一部空欄の場合に警告（全て空欄または全て入力済みは正常）
 function checkFloorPlanWarning(getValue: (field: string) => any): {
   hasWarning: boolean;
   emptyFields: string[];
 } {
+  const confirmer = getValue('floor_plan_confirmer');
+
+  // 確認者に値がある場合：残り3つが必須
+  if (!isEmpty(confirmer)) {
+    const requiredFields: Record<string, string> = {
+      floor_plan_ok_sent: FLOOR_PLAN_FIELD_LABELS['floor_plan_ok_sent'],
+      floor_plan_completed_date: FLOOR_PLAN_FIELD_LABELS['floor_plan_completed_date'],
+      floor_plan_stored_email: FLOOR_PLAN_FIELD_LABELS['floor_plan_stored_email'],
+    };
+    const emptyFields: string[] = [];
+    for (const [field, label] of Object.entries(requiredFields)) {
+      if (isEmpty(getValue(field))) emptyFields.push(label);
+    }
+    return { hasWarning: emptyFields.length > 0, emptyFields };
+  }
+
   const fields = Object.keys(FLOOR_PLAN_FIELD_LABELS);
   const emptyFields: string[] = [];
   let filledCount = 0;
@@ -676,10 +693,10 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
 
 
   // 編集可能テキストフィールド
-  const EditableField = ({ label, field, type = 'text' }: { label: string; field: string; type?: string }) => (
+  const EditableField = ({ label, field, type = 'text', labelColor }: { label: string; field: string; type?: string; labelColor?: 'error' | 'text.secondary' }) => (
     <Grid container spacing={2} alignItems="center" sx={{ mb: 1.5 }}>
       <Grid item xs={4}>
-        <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>{label}</Typography>
+        <Typography variant="body2" color={labelColor || 'text.secondary'} sx={{ fontWeight: labelColor === 'error' ? 700 : 500 }}>{label}</Typography>
       </Grid>
       <Grid item xs={8}>
         {type === 'date' ? (
@@ -797,20 +814,47 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
     }
   })();
 
-  // 媒介作成者の過去の修正内容まとめを取得
-  // 保存済みデータ（data）のみを参照する（editedDataは参照しない）
-  const getMediationRevisionSummary = () => {
-    const creator = data?.mediation_creator;
-    if (!creator) return null;
-    const content = data?.mediation_revision_content;
-    const completed = data?.mediation_completed;
-    const checker = data?.mediation_checker;
-    const revision = data?.mediation_revision;
-    if (revision !== 'あり' || !content) return null;
-    return { creator, content, completed, checker };
-  };
+  // 媒介作成者の修正履歴（他の案件含む）
+  const [mediationRevisionHistory, setMediationRevisionHistory] = React.useState<Array<{
+    property_number: string;
+    mediation_completed: string | null;
+    mediation_checker: string | null;
+    mediation_creator: string;
+    mediation_revision_content: string;
+  }>>([]);
 
-  const mediationRevisionSummary = getMediationRevisionSummary();
+  // 媒介作成者が変わったら修正履歴を取得
+  React.useEffect(() => {
+    const creator = data?.mediation_creator;
+    if (!creator) {
+      setMediationRevisionHistory([]);
+      return;
+    }
+    const fetchHistory = async () => {
+      try {
+        const params = new URLSearchParams({ creator });
+        if (propertyNumber) params.append('exclude', propertyNumber);
+        const res = await api.get(`/api/work-tasks/mediation-revisions?${params.toString()}`);
+        // 現在の案件の修正内容（あり）も先頭に追加
+        const currentRevision = data?.mediation_revision === 'あり' && data?.mediation_revision_content
+          ? [{
+              property_number: propertyNumber || '',
+              mediation_completed: data.mediation_completed || null,
+              mediation_checker: data.mediation_checker || null,
+              mediation_creator: creator,
+              mediation_revision_content: data.mediation_revision_content,
+            }]
+          : [];
+        setMediationRevisionHistory([...currentRevision, ...(res.data || [])]);
+      } catch {
+        setMediationRevisionHistory([]);
+      }
+    };
+    fetchHistory();
+  }, [data?.mediation_creator, data?.mediation_revision, data?.mediation_revision_content, propertyNumber]);
+
+  const hasMediationRevisionHistory = mediationRevisionHistory.length > 0;
+  const mediationRevisionCreator = data?.mediation_creator;
 
   // 媒介契約セクション（コンポーネントではなく関数として定義し再マウントを防ぐ）
   const renderMediationSection = () => (
@@ -827,15 +871,16 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
       <EditableButtonSelect label="媒介作成者" field="mediation_creator" options={normalInitials} />
 
       {/* 媒介作成者に値があり、過去の修正内容がある場合に注意表示 */}
-      {mediationRevisionSummary && (
+      {hasMediationRevisionHistory && mediationRevisionCreator && (
         <Box sx={{ mb: 2, p: 1.5, bgcolor: '#fff3e0', border: '2px solid #ff9800', borderRadius: 1 }}>
           <Typography variant="body2" sx={{ fontWeight: 700, color: '#e65100', mb: 1 }}>
-            ⚠️ 下記確認しましたか？（{mediationRevisionSummary.creator} さんへの注意点）
+            ⚠️ 下記確認しましたか？（{mediationRevisionCreator} さんへの注意点）
           </Typography>
           <Box sx={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
               <thead>
                 <tr style={{ backgroundColor: '#ffe0b2' }}>
+                  <th style={{ border: '1px solid #ffb74d', padding: '4px 8px', textAlign: 'left' }}>物件番号</th>
                   <th style={{ border: '1px solid #ffb74d', padding: '4px 8px', textAlign: 'left' }}>媒介作成完了日</th>
                   <th style={{ border: '1px solid #ffb74d', padding: '4px 8px', textAlign: 'left' }}>媒介確認者</th>
                   <th style={{ border: '1px solid #ffb74d', padding: '4px 8px', textAlign: 'left' }}>媒介作成者</th>
@@ -843,12 +888,15 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
                 </tr>
               </thead>
               <tbody>
-                <tr>
-                  <td style={{ border: '1px solid #ffb74d', padding: '4px 8px' }}>{mediationRevisionSummary.completed || '-'}</td>
-                  <td style={{ border: '1px solid #ffb74d', padding: '4px 8px' }}>{mediationRevisionSummary.checker || '-'}</td>
-                  <td style={{ border: '1px solid #ffb74d', padding: '4px 8px' }}>{mediationRevisionSummary.creator}</td>
-                  <td style={{ border: '1px solid #ffb74d', padding: '4px 8px', whiteSpace: 'pre-wrap' }}>{mediationRevisionSummary.content}</td>
-                </tr>
+                {mediationRevisionHistory.map((item, idx) => (
+                  <tr key={idx} style={{ backgroundColor: idx % 2 === 0 ? '#fff8f0' : '#fff3e0' }}>
+                    <td style={{ border: '1px solid #ffb74d', padding: '4px 8px' }}>{item.property_number || '-'}</td>
+                    <td style={{ border: '1px solid #ffb74d', padding: '4px 8px' }}>{item.mediation_completed || '-'}</td>
+                    <td style={{ border: '1px solid #ffb74d', padding: '4px 8px' }}>{item.mediation_checker || '-'}</td>
+                    <td style={{ border: '1px solid #ffb74d', padding: '4px 8px' }}>{item.mediation_creator}</td>
+                    <td style={{ border: '1px solid #ffb74d', padding: '4px 8px', whiteSpace: 'pre-wrap' }}>{item.mediation_revision_content}</td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </Box>
@@ -1188,7 +1236,11 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
         <SectionHeader label="【★図面確認】" />
         <EditableButtonSelect label="間取図確認者*" field="floor_plan_confirmer" options={normalInitials} />
         <EditableField label="間取図確認OK/修正コメント" field="floor_plan_ok_comment" />
-        <EditableYesNo label="間取図確認OK送信*" field="floor_plan_ok_sent" />
+        <EditableYesNo
+          label={getValue('floor_plan_confirmer') && !getValue('floor_plan_ok_sent') ? '間取図確認OK送信*（必須）' : '間取図確認OK送信*'}
+          field="floor_plan_ok_sent"
+          labelColor={getValue('floor_plan_confirmer') && !getValue('floor_plan_ok_sent') ? 'error' : undefined}
+        />
         <EditableButtonSelect label="間取図修正回数" field="floor_plan_revision_count" options={['1', '2', '3', '4']} />
         <Typography variant="caption" sx={{ color: 'error.main', display: 'block', mb: 1, ml: '33.33%' }}>
           ここでの修正とは、当社のミスによる修正のことです。CWの方のミスによる修正はカウントNGです！！
@@ -1201,8 +1253,17 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
               : (cwCounts.floorPlan300 ? `間取図300円（CW)計⇒ ${cwCounts.floorPlan300}` : '-')
           }
         />
-        <EditableField label="間取図完了日*" field="floor_plan_completed_date" type="date" />
-        <EditableYesNo label="間取図格納済み連絡メール" field="floor_plan_stored_email" />
+        <EditableField
+          label={getValue('floor_plan_confirmer') && !getValue('floor_plan_completed_date') ? '間取図完了日*（必須）' : '間取図完了日*'}
+          field="floor_plan_completed_date"
+          type="date"
+          labelColor={getValue('floor_plan_confirmer') && !getValue('floor_plan_completed_date') ? 'error' : undefined}
+        />
+        <EditableYesNo
+          label={getValue('floor_plan_confirmer') && !getValue('floor_plan_stored_email') ? '間取図格納済み連絡メール*（必須）' : '間取図格納済み連絡メール'}
+          field="floor_plan_stored_email"
+          labelColor={getValue('floor_plan_confirmer') && !getValue('floor_plan_stored_email') ? 'error' : undefined}
+        />
         </Box>
 
         <Box sx={{ bgcolor: '#fafafa', borderRadius: 1, p: 1, mb: 1 }}>
