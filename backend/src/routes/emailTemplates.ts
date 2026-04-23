@@ -369,7 +369,7 @@ router.post('/:templateId/mergeMultiple', async (req, res) => {
     // 物件番号で直接検索（propertyIdsは物件番号の配列）
     const { data: properties, error: propError } = await supabase
       .from('property_listings')
-      .select('id, property_number, address, sales_price, price, google_map_url, suumo_url, property_type, land_area, building_area, current_status')
+      .select('id, property_number, address, sales_price, price, google_map_url, suumo_url, property_type, land_area, building_area, current_status, viewing_key')
       .in('property_number', propertyIds);
 
     if (propError) {
@@ -416,6 +416,7 @@ router.post('/:templateId/mergeMultiple', async (req, res) => {
       landArea: p.land_area,
       buildingArea: p.building_area,
       currentStatus: p.current_status || '',
+      viewingKey: p.viewing_key || '',
     }));
 
     // {{}} 形式用データ（後方互換）

@@ -373,6 +373,7 @@ export class EmailTemplateService {
       result = result.replace(/<<内覧日>>/g, formattedDate0);
       result = result.replace(/<<時間>>/g, formattedTime0);
       result = result.replace(/<<現況>>/g, '');
+      result = result.replace(/<<鍵>>/g, '');
       result = result.replace(/<<内覧アンケート>>/g, '');
       // <<担当名（営業）>> 系プレースホルダーの置換（staffInfo が渡された場合）
       result = result.replace(/<<担当名（営業）名前>>/g, staffInfo?.name || '');
@@ -390,6 +391,7 @@ export class EmailTemplateService {
       result = result.replace(/<<athome URL>>/g, prop.athomeUrl || '');
       result = result.replace(/<<物件詳細URL>>/g, prop.detailUrl || prop.athomeUrl || '');
       result = result.replace(/<<現況>>/g, prop.currentStatus || '');
+      result = result.replace(/<<鍵>>/g, prop.viewingKey || '');
     } else {
       const addressList = properties.map((p, i) => `【物件${i + 1}】${p.address || ''}`).join('\n');
       const mapList = properties.filter(p => p.googleMapUrl).map((p, i) => `【物件${i + 1}】Googleマップ: ${p.googleMapUrl}`).join('\n');
@@ -401,6 +403,7 @@ export class EmailTemplateService {
       result = result.replace(/<<物件詳細URL>>/g, detailList);
       // 複数物件の場合は最初の物件の現況を使用
       result = result.replace(/<<現況>>/g, properties[0]?.currentStatus || '');
+      result = result.replace(/<<鍵>>/g, properties[0]?.viewingKey || '');
     }
 
     // 内覧アンケートURLを生成して置換
