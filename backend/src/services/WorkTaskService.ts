@@ -164,6 +164,48 @@ export class WorkTaskService {
   }
 
   /**
+   * サイト登録修正履歴を取得（site_registration_revision='あり' のレコード）
+   */
+  async getSiteRegistrationRevisions(excludePropertyNumber?: string): Promise<WorkTaskData[]> {
+    let query = this.supabase
+      .from('work_tasks')
+      .select('property_number, site_registration_ok_sent, site_registration_confirmer, site_registration_requester, site_registration_revision_content')
+      .eq('site_registration_revision', 'あり')
+      .not('site_registration_revision_content', 'is', null)
+      .order('updated_at', { ascending: false })
+      .limit(50);
+
+    if (excludePropertyNumber) {
+      query = query.neq('property_number', excludePropertyNumber);
+    }
+
+    const { data, error } = await query;
+    if (error || !data) return [];
+    return data as WorkTaskData[];
+  }
+
+  /**
+   * 間取図修正（当社ミス）履歴を取得（floor_plan_revision_correction='あり' のレコード）
+   */
+  async getFloorPlanRevisionCorrections(excludePropertyNumber?: string): Promise<WorkTaskData[]> {
+    let query = this.supabase
+      .from('work_tasks')
+      .select('property_number, floor_plan_ok_sent, floor_plan_confirmer, site_registration_requester, floor_plan_revision_correction_content')
+      .eq('floor_plan_revision_correction', 'あり')
+      .not('floor_plan_revision_correction_content', 'is', null)
+      .order('updated_at', { ascending: false })
+      .limit(50);
+
+    if (excludePropertyNumber) {
+      query = query.neq('property_number', excludePropertyNumber);
+    }
+
+    const { data, error } = await query;
+    if (error || !data) return [];
+    return data as WorkTaskData[];
+  }
+
+  /**
    * 物件番号でデータを更新
    */
   async updateByPropertyNumber(propertyNumber: string, updates: Partial<WorkTaskData>): Promise<WorkTaskData | null> {

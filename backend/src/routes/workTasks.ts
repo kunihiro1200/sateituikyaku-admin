@@ -58,6 +58,36 @@ router.get('/mediation-revisions', async (req: Request, res: Response) => {
 });
 
 /**
+ * GET /api/work-tasks/site-registration-revisions
+ * サイト登録修正履歴を取得
+ */
+router.get('/site-registration-revisions', async (req: Request, res: Response) => {
+  try {
+    const exclude = req.query.exclude as string | undefined;
+    const revisions = await workTaskService.getSiteRegistrationRevisions(exclude);
+    return res.json(revisions);
+  } catch (error: any) {
+    console.error('サイト登録修正履歴取得エラー:', error);
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * GET /api/work-tasks/floor-plan-revision-corrections
+ * 間取図修正（当社ミス）履歴を取得
+ */
+router.get('/floor-plan-revision-corrections', async (req: Request, res: Response) => {
+  try {
+    const exclude = req.query.exclude as string | undefined;
+    const revisions = await workTaskService.getFloorPlanRevisionCorrections(exclude);
+    return res.json(revisions);
+  } catch (error: any) {
+    console.error('間取図修正履歴取得エラー:', error);
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+/**
  * GET /api/work-tasks/:propertyNumber
  * 物件番号で業務依頼データを取得
  */

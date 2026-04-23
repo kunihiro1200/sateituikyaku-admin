@@ -20,13 +20,23 @@ import {
   Link,
   Snackbar,
   Alert,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Paper,
 } from '@mui/material';
-import { Close as CloseIcon, Save as SaveIcon, ContentCopy as ContentCopyIcon, WarningAmber as WarningAmberIcon } from '@mui/icons-material';
+import { Close as CloseIcon, Save as SaveIcon, ContentCopy as ContentCopyIcon, WarningAmber as WarningAmberIcon, Email as EmailIcon, Image as ImageIcon } from '@mui/icons-material';
 import api from '../services/api';
 import { supabase } from '../services/supabase';
 import { isDeadlineExceeded } from '../utils/deadlineUtils';
 import { buildLedgerSheetUrl, buildSheetUrl, MEDIATION_REQUEST_SHEET_GID, ATHOME_SHEET_GID } from '../utils/spreadsheetUrl';
 import { normalizePhoneNumber } from '../utils/phoneNormalizer';
+import { getActiveEmployees, Employee } from '../services/employeeService';
+import { getSenderAddress, saveSenderAddress, validateSenderAddress } from '../utils/senderAddressStorage';
+import SenderAddressSelector from './SenderAddressSelector';
+import RichTextEmailEditor from './RichTextEmailEditor';
+import ImageSelectorModal from './ImageSelectorModal';
 
 
 
@@ -76,6 +86,10 @@ interface WorkTaskData {
   floor_plan_ok_sent: string;
   floor_plan_stored_email: string;
   floor_plan_revision_count: string;
+  site_registration_revision: string;
+  site_registration_revision_content: string;
+  floor_plan_revision_correction: string;
+  floor_plan_revision_correction_content: string;
   panorama: string;
   panorama_completed: string;
   site_notes: string;
@@ -638,6 +652,315 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
     setTabIndex(newValue);
   };
 
+  // ===== Email送信機能 =====
+  const [activeEmployees, setActiveEmployees] = useState<Employee[]>([]);
+  const [senderAddress, setSenderAddress] = useState<string>('tenant@ifoo-oita.com');
+  const [emailDialog, setEmailDialog] = useState<{
+    open: boolean;
+    type: 'seller' | 'buyer' | null;
+    templateId: string | null;
+    templateLabel: string;
+  }>({ open: false, type: null, templateId: null, templateLabel: '' });
+  const [emailRecipient, setEmailRecipient] = useState('');
+  const [emailSubject, setEmailSubject] = useState('');
+  const [emailBody, setEmailBody] = useState('');
+  const [sendingEmail, setSendingEmail] = useState(false);
+  const [imageSelectorOpen, setImageSelectorOpen] = useState(false);
+  const [selectedImages, setSelectedImages] = useState<any[]>([]);
+  const [imageError, setImageError] = useState<string | null>(null);
+  const [templateSelectType, setTemplateSelectType] = useState<'seller' | 'buyer' | null>(null);
+
+  // 売主向けEmailテンプレート
+  const SELLER_EMAIL_TEMPLATES = [
+    {
+      id: 'settlement_seller_unmanned',
+      name: '金種表（売主様）無人決済',
+      subject: '｛物件住所｝のご決済の件',
+      body: `｛売主氏名｝様
+
+いつもお世話になっております。
+決済日は｛決済日｝になりましたので、よろしくお願いいたします。
+金種表等を添付いたしましたので、お手数ですが、決済日までに内容のご確認をお願いいたします。
+また領収書を添付しておりますのでご参考ください。
+仲介手数料や司法書士へのお支払い分は、決済日の14時までに必ずご入金をいただくよう、お願い致します。
+何かございましたら、お知らせください。
+何卒よろしくお願いいたします。
+
+【添付資料】
+・固定資産税清算書
+・金種表
+・売主様に決済日にお支払いいただく金種表
+・買主様より決済日に振り込まれる分の金種表
+
+【決済日の流れ】
+①｛買主氏名｝様より｛売主氏名｝様へ売買代金を入金後は、｛買主氏名｝様より司法書士事務所へご連絡していただきます。
+②司法書士事務所より、｛売主氏名｝様へ売買代金の振込をしたことをご連絡致します。
+③｛売主氏名｝様は　着金の確認をしていただき、確認後、司法書士事務所へご連絡していただきます。
+｛売主氏名｝様は　14時までに　司法書士への手数料（あれば）と不動産仲介手数料をお支払いしていただきます。
+④司法書士事務所が｛売主氏名｝様より着金確認のご連絡をうけたら、｛売主氏名｝様からの不動産仲介手数料の振込、司法書士への手数料（あれば）を確認後、所有権移転の手続きにはいります。
+⑤司法書士事務所より不動産会社（当社）へご連絡いただき、当社で仲介手数料や売買代金の領収書の発行手続きにはいり、｛売主氏名｝様の代理で｛買主氏名｝様へ売買代金の領収書、固定資産税精算の領収書を発行致します。
+不動産仲介手数料は｛売主氏名｝様宛てに発行して郵送手配させていただきます。
+
+以上が　決済日の流れになります。
+｛売主氏名｝様の主なアクションとしては③になりますので、よろしくお願い申し上げます。
+ご不明点等ございましたらいつでもご連絡頂ければと思います。
+
+***************************
+株式会社 いふう
+〒870-0044
+大分市舞鶴町1丁目3-30
+TEL：097-533-2022
+FAX：097-529-7160
+HP：https://ifoo-oita.com/
+店休日：毎週水曜日　年末年始、GW、盆
+***************************`,
+    },
+    {
+      id: 'settlement_seller_manned',
+      name: '金種表（売主様）有人決済',
+      subject: '｛物件住所｝のご決済の件',
+      body: `｛売主氏名｝様
+
+いつもお世話になっております。
+決済日は｛決済日｝になりましたので、よろしくお願いいたします。
+金種表等を添付いたしましたので、お手数ですが、決済日までに内容のご確認をお願いいたします。
+仲介手数料や司法書士へのお支払い分（あれば）は、決済日の14時までに必ずご入金をいただくよう、お願い致します。
+何かございましたら、お知らせください。
+何卒よろしくお願いいたします。
+
+【添付資料】
+・固定資産税清算書
+・金種表
+・売主様に決済日にお支払いいただく金種表
+・買主様より決済日に振り込まれる分の金種表
+・決済連絡書
+
+ご不明点等ございましたらいつでもご連絡頂ければと思います。
+
+***************************
+株式会社 いふう
+〒870-0044
+大分市舞鶴町1丁目3-30
+TEL：097-533-2022
+FAX：097-529-7160
+HP：https://ifoo-oita.com/
+店休日：毎週水曜日　年末年始、GW、盆
+***************************`,
+    },
+  ];
+
+  // 買主向けEmailテンプレート
+  const BUYER_EMAIL_TEMPLATES = [
+    {
+      id: 'settlement_buyer_unmanned',
+      name: '金種表（買主様）無人決済',
+      subject: '｛物件住所｝のご決済の件',
+      body: `｛買主氏名｝様
+
+いつもお世話になっております。
+決済日は｛決済日｝になりましたので、よろしくお願いいたします。
+金種表等を添付いたしましたので、お手数ですが、決済日までに内容のご確認をお願いいたします。
+また領収書を添付しておりますのでご参考ください。
+仲介手数料や司法書士へのお支払い分は、決済日の14時までに必ずご入金をいただくよう、お願い致します。
+何かございましたら、お知らせください。
+何卒よろしくお願いいたします。
+
+【添付資料】
+・固定資産税清算書
+・金種表
+・買主様より決済日にお支払いいただく分の金種表
+
+【決済日の流れ】
+①｛買主氏名｝様より｛売主氏名｝様へ売買代金を入金後は、｛買主氏名｝様より司法書士事務所へご連絡していただきます。
+②司法書士事務所より、｛売主氏名｝様へ売買代金の振込をしたことをご連絡致します。
+③｛売主氏名｝様は　着金の確認をしていただき、確認後、司法書士事務所へご連絡していただきます。
+④司法書士事務所が｛売主氏名｝様より着金確認のご連絡をうけたら、所有権移転の手続きにはいります。
+⑤司法書士事務所より不動産会社（当社）へご連絡いただき、当社で仲介手数料や売買代金の領収書の発行手続きにはいり、｛買主氏名｝様へ売買代金の領収書、固定資産税精算の領収書を発行致します。
+不動産仲介手数料は｛買主氏名｝様宛てに発行して郵送手配させていただきます。
+
+以上が　決済日の流れになります。
+｛買主氏名｝様の主なアクションとしては①になりますので、よろしくお願い申し上げます。
+ご不明点等ございましたらいつでもご連絡頂ければと思います。
+
+***************************
+株式会社 いふう
+〒870-0044
+大分市舞鶴町1丁目3-30
+TEL：097-533-2022
+FAX：097-529-7160
+HP：https://ifoo-oita.com/
+店休日：毎週水曜日　年末年始、GW、盆
+***************************`,
+    },
+    {
+      id: 'settlement_buyer_manned',
+      name: '金種表（買主様）有人決済',
+      subject: '｛物件住所｝のご決済の件',
+      body: `｛買主氏名｝様
+
+いつもお世話になっております。
+決済日は｛決済日｝になりましたので、よろしくお願いいたします。
+金種表等を添付いたしましたので、お手数ですが、決済日までに内容のご確認をお願いいたします。
+また領収書を添付しておりますのでご参考ください。
+何かございましたら、お知らせください。
+何卒よろしくお願いいたします。
+
+【添付資料】
+・固定資産税清算書
+・金種表
+・買主様より決済日にお支払いいただく分の金種表
+・決済連絡書
+
+ご不明点等ございましたらいつでもご連絡頂ければと思います。
+
+***************************
+株式会社 いふう
+〒870-0044
+大分市舞鶴町1丁目3-30
+TEL：097-533-2022
+FAX：097-529-7160
+HP：https://ifoo-oita.com/
+店休日：毎週水曜日　年末年始、GW、盆
+***************************`,
+    },
+  ];
+
+  // プレースホルダー置換
+  const replaceWorkTaskPlaceholders = (text: string): string => {
+    const sellerName = getValue('seller_contact_name') || getValue('seller_name') || '';
+    const buyerName = getValue('buyer_contact_name') || '';
+    const propertyAddress = getValue('property_address') || '';
+    const settlementDate = getValue('settlement_date')
+      ? (() => {
+          try {
+            const d = new Date(getValue('settlement_date'));
+            return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`;
+          } catch { return getValue('settlement_date'); }
+        })()
+      : '';
+    return text
+      .replace(/｛売主氏名｝/g, sellerName)
+      .replace(/｛買主氏名｝/g, buyerName)
+      .replace(/｛物件住所｝/g, propertyAddress)
+      .replace(/｛決済日｝/g, settlementDate);
+  };
+
+  // 社員データ取得
+  useEffect(() => {
+    if (open) {
+      getActiveEmployees().then(emps => {
+        setActiveEmployees(emps);
+        const saved = getSenderAddress();
+        const validEmails = ['tenant@ifoo-oita.com', ...emps.filter(e => e.email).map(e => e.email)];
+        setSenderAddress(validateSenderAddress(saved, validEmails));
+      }).catch(() => {});
+    }
+  }, [open]);
+
+  const handleEmailTemplateSelect = (templateId: string, type: 'seller' | 'buyer') => {
+    if (!templateId) return;
+    const templates = type === 'seller' ? SELLER_EMAIL_TEMPLATES : BUYER_EMAIL_TEMPLATES;
+    const template = templates.find(t => t.id === templateId);
+    if (!template) return;
+
+    const replacedSubject = replaceWorkTaskPlaceholders(template.subject);
+    const replacedBody = replaceWorkTaskPlaceholders(template.body);
+    const htmlBody = replacedBody.replace(/\n/g, '<br>');
+
+    const recipientEmail = type === 'seller'
+      ? (getValue('seller_contact_email') || '')
+      : (getValue('buyer_contact_email') || '');
+
+    setEmailRecipient(recipientEmail);
+    setEmailSubject(replacedSubject);
+    setEmailBody(htmlBody);
+    setSelectedImages([]);
+    setTemplateSelectType(null);
+    setEmailDialog({
+      open: true,
+      type,
+      templateId: template.id,
+      templateLabel: template.name,
+    });
+  };
+
+  const handleSenderAddressChange = (address: string) => {
+    setSenderAddress(address);
+    saveSenderAddress(address);
+  };
+
+  const handleConfirmEmailSend = async () => {
+    if (!emailRecipient || !emailSubject) return;
+    setSendingEmail(true);
+    try {
+      // 添付画像の処理
+      const attachmentImages: any[] = [];
+      for (const img of selectedImages) {
+        if (img.source === 'drive') {
+          attachmentImages.push({ id: img.driveFileId || img.id, name: img.name });
+        } else if (img.source === 'local' && img.previewUrl) {
+          const base64Match = (img.previewUrl as string).match(/^data:([^;]+);base64,(.+)$/);
+          if (base64Match) {
+            attachmentImages.push({ id: img.id, name: img.name, base64Data: base64Match[2], mimeType: base64Match[1] });
+          }
+        } else if (img.source === 'url' && img.url) {
+          attachmentImages.push({ id: img.id, name: img.name, url: img.url });
+        }
+      }
+
+      // 売主IDを取得してEmail送信APIを呼び出す
+      // work_tasksにはseller_idがないため、seller_numberで検索
+      const sellerNumber = getValue('property_number');
+      const payload: any = {
+        templateId: emailDialog.templateId || 'work_task_email',
+        to: emailRecipient,
+        subject: emailSubject,
+        content: emailBody.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]+>/g, ''),
+        htmlBody: emailBody,
+        from: senderAddress,
+        ...(attachmentImages.length > 0 ? { attachments: attachmentImages } : {}),
+      };
+
+      // seller_numberでseller_idを取得してAPIを呼び出す
+      const sellerRes = await api.get(`/api/sellers?sellerNumber=${sellerNumber}`);
+      const sellers = sellerRes.data?.sellers || sellerRes.data?.data || [];
+      const seller = sellers.find((s: any) => s.sellerNumber === sellerNumber || s.seller_number === sellerNumber);
+
+      if (seller?.id) {
+        await api.post(`/api/emails/${seller.id}/send-template-email`, payload);
+      } else {
+        // seller_idが見つからない場合はgmail直接送信APIを使用
+        await api.post('/api/gmail/send', {
+          to: emailRecipient,
+          subject: emailSubject,
+          body: emailBody,
+          senderEmail: senderAddress,
+          isHtml: true,
+          ...(attachmentImages.length > 0 ? { attachments: attachmentImages } : {}),
+        });
+      }
+
+      setSnackbar({ open: true, message: 'メールを送信しました', severity: 'success' });
+      setEmailDialog({ open: false, type: null, templateId: null, templateLabel: '' });
+      setSelectedImages([]);
+    } catch (error) {
+      console.error('Email送信エラー:', error);
+      setSnackbar({ open: true, message: 'メール送信に失敗しました', severity: 'error' });
+    } finally {
+      setSendingEmail(false);
+    }
+  };
+
+  const handleCancelEmailSend = () => {
+    setEmailDialog({ open: false, type: null, templateId: null, templateLabel: '' });
+    setEmailRecipient('');
+    setEmailSubject('');
+    setEmailBody('');
+    setSelectedImages([]);
+    setTemplateSelectType(null);
+  };
+  // ===== Email送信機能ここまで =====
+
   const formatDateForInput = (dateStr: string | null | undefined) => {
     if (!dateStr) return '';
     try {
@@ -823,6 +1146,22 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
     mediation_revision_content: string;
   }>>([]);
 
+  // サイト登録修正履歴（全案件）
+  const [siteRegistrationRevisionHistory, setSiteRegistrationRevisionHistory] = useState<Array<{
+    property_number: string;
+    site_registration_confirmer: string | null;
+    site_registration_requester: string | null;
+    site_registration_revision_content: string;
+  }>>([]);
+
+  // 間取図修正（当社ミス）履歴（全案件）
+  const [floorPlanRevisionCorrectionHistory, setFloorPlanRevisionCorrectionHistory] = useState<Array<{
+    property_number: string;
+    floor_plan_confirmer: string | null;
+    site_registration_requester: string | null;
+    floor_plan_revision_correction_content: string;
+  }>>([]);
+
   // 日付文字列をYYYY-MM-DD形式に整形
   const formatDateShort = (dateStr: string | null | undefined): string => {
     if (!dateStr) return '-';
@@ -850,6 +1189,25 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
       }
     };
     fetchHistory();
+  }, [open]);
+
+  // サイト登録修正履歴・間取図修正履歴を取得
+  useEffect(() => {
+    if (!open) return;
+    const fetchRevisionHistories = async () => {
+      try {
+        const [siteRes, floorRes] = await Promise.all([
+          api.get('/api/work-tasks/site-registration-revisions'),
+          api.get('/api/work-tasks/floor-plan-revision-corrections'),
+        ]);
+        setSiteRegistrationRevisionHistory(siteRes.data || []);
+        setFloorPlanRevisionCorrectionHistory(floorRes.data || []);
+      } catch {
+        setSiteRegistrationRevisionHistory([]);
+        setFloorPlanRevisionCorrectionHistory([]);
+      }
+    };
+    fetchRevisionHistories();
   }, [open]);
 
   // 媒介契約セクション（コンポーネントではなく関数として定義し再マウントを防ぐ）
@@ -1222,11 +1580,90 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
           field="site_registration_ok_sent"
           labelColor={getValue('site_registration_confirmed') === '完了' && !getValue('site_registration_ok_sent') ? 'error' : undefined}
         />
+        {/* サイト登録確認OK送信に値がある場合、サイト登録修正フィールドを表示 */}
+        {getValue('site_registration_ok_sent') && (
+          <>
+            <Grid container spacing={2} alignItems="center" sx={{ mb: 1.5 }}>
+              <Grid item xs={4}>
+                <Typography variant="body2" color="error" sx={{ fontWeight: 700 }}>サイト登録修正*（必須）</Typography>
+              </Grid>
+              <Grid item xs={8}>
+                <ButtonGroup size="small" variant="outlined">
+                  {['あり', 'なし'].map((opt) => (
+                    <Button
+                      key={opt}
+                      variant={getValue('site_registration_revision') === opt ? 'contained' : 'outlined'}
+                      color={getValue('site_registration_revision') === opt ? (opt === 'あり' ? 'error' : 'primary') : 'inherit'}
+                      onClick={(e) => { (e.currentTarget as HTMLButtonElement).blur(); handleFieldChange('site_registration_revision', getValue('site_registration_revision') === opt ? null : opt); }}
+                    >
+                      {opt}
+                    </Button>
+                  ))}
+                </ButtonGroup>
+              </Grid>
+            </Grid>
+            {/* サイト登録修正が「あり」の場合のみ修正内容を表示 */}
+            {getValue('site_registration_revision') === 'あり' && (
+              <Box sx={{ mb: 1.5 }}>
+                <Grid container spacing={2} alignItems="flex-start">
+                  <Grid item xs={4}>
+                    <Typography variant="body2" color={!getValue('site_registration_revision_content') ? 'error' : 'text.secondary'} sx={{ fontWeight: 500, mt: 0.5 }}>
+                      {!getValue('site_registration_revision_content') ? 'サイト登録修正内容*（必須）' : 'サイト登録修正内容'}
+                    </Typography>
+                  </Grid>
+                  <Grid item xs={8}>
+                    <TextField
+                      size="small"
+                      multiline
+                      minRows={3}
+                      maxRows={8}
+                      value={getValue('site_registration_revision_content') || ''}
+                      onChange={(e) => handleFieldChange('site_registration_revision_content', e.target.value)}
+                      fullWidth
+                      error={!getValue('site_registration_revision_content')}
+                    />
+                  </Grid>
+                </Grid>
+              </Box>
+            )}
+          </>
+        )}
         <ReadOnlyDisplayField
           label=""
           value={cwCounts.siteRegistration ? `サイト登録（CW)計⇒ ${cwCounts.siteRegistration}` : '-'}
         />
         </Box>
+
+        {/* サイト登録修正内容まとめ（【★サイト登録確認】の下に表示） */}
+        {siteRegistrationRevisionHistory.length > 0 && (
+          <Box sx={{ mt: 1, mb: 1, p: 1.5, bgcolor: '#fce4ec', border: '2px solid #e91e63', borderRadius: 1 }}>
+            <Typography variant="body2" sx={{ fontWeight: 700, color: '#880e4f', mb: 1 }}>
+              ⚠️ サイト登録修正内容まとめ
+            </Typography>
+            <Box sx={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
+                <thead>
+                  <tr style={{ backgroundColor: '#f8bbd0' }}>
+                    <th style={{ border: '1px solid #f48fb1', padding: '4px 8px', textAlign: 'left', whiteSpace: 'nowrap' }}>物件番号</th>
+                    <th style={{ border: '1px solid #f48fb1', padding: '4px 8px', textAlign: 'left', whiteSpace: 'nowrap' }}>サイト登録確認者</th>
+                    <th style={{ border: '1px solid #f48fb1', padding: '4px 8px', textAlign: 'left', whiteSpace: 'nowrap' }}>サイト登録依頼者</th>
+                    <th style={{ border: '1px solid #f48fb1', padding: '4px 8px', textAlign: 'left', width: '50%' }}>修正内容</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {siteRegistrationRevisionHistory.map((item, idx) => (
+                    <tr key={idx} style={{ backgroundColor: idx % 2 === 0 ? '#fce4ec' : '#fce4ec' }}>
+                      <td style={{ border: '1px solid #f48fb1', padding: '4px 8px', whiteSpace: 'nowrap' }}>{item.property_number || '-'}</td>
+                      <td style={{ border: '1px solid #f48fb1', padding: '4px 8px', whiteSpace: 'nowrap' }}>{item.site_registration_confirmer || '-'}</td>
+                      <td style={{ border: '1px solid #f48fb1', padding: '4px 8px', whiteSpace: 'nowrap' }}>{item.site_registration_requester || '-'}</td>
+                      <td style={{ border: '1px solid #f48fb1', padding: '4px 8px', whiteSpace: 'pre-wrap', width: '50%' }}>{item.site_registration_revision_content}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </Box>
+          </Box>
+        )}
 
         <Box sx={{ bgcolor: '#fff3e0', borderRadius: 1, p: 1, mb: 1 }}>
         <SectionHeader label="【★図面確認】" />
@@ -1237,6 +1674,54 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
           field="floor_plan_ok_sent"
           labelColor={getValue('floor_plan_confirmer') && !getValue('floor_plan_ok_sent') ? 'error' : undefined}
         />
+        {/* 間取図確認OK送信に値がある場合、間取図修正（当社ミス）フィールドを表示 */}
+        {getValue('floor_plan_ok_sent') && (
+          <>
+            <Grid container spacing={2} alignItems="center" sx={{ mb: 1.5 }}>
+              <Grid item xs={4}>
+                <Typography variant="body2" color="error" sx={{ fontWeight: 700 }}>間取図修正（当社ミス）*（必須）</Typography>
+              </Grid>
+              <Grid item xs={8}>
+                <ButtonGroup size="small" variant="outlined">
+                  {['あり', 'なし'].map((opt) => (
+                    <Button
+                      key={opt}
+                      variant={getValue('floor_plan_revision_correction') === opt ? 'contained' : 'outlined'}
+                      color={getValue('floor_plan_revision_correction') === opt ? (opt === 'あり' ? 'error' : 'primary') : 'inherit'}
+                      onClick={(e) => { (e.currentTarget as HTMLButtonElement).blur(); handleFieldChange('floor_plan_revision_correction', getValue('floor_plan_revision_correction') === opt ? null : opt); }}
+                    >
+                      {opt}
+                    </Button>
+                  ))}
+                </ButtonGroup>
+              </Grid>
+            </Grid>
+            {/* 間取図修正（当社ミス）が「あり」の場合のみ修正内容を表示 */}
+            {getValue('floor_plan_revision_correction') === 'あり' && (
+              <Box sx={{ mb: 1.5 }}>
+                <Grid container spacing={2} alignItems="flex-start">
+                  <Grid item xs={4}>
+                    <Typography variant="body2" color={!getValue('floor_plan_revision_correction_content') ? 'error' : 'text.secondary'} sx={{ fontWeight: 500, mt: 0.5 }}>
+                      {!getValue('floor_plan_revision_correction_content') ? '間取図修正内容*（必須）' : '間取図修正内容'}
+                    </Typography>
+                  </Grid>
+                  <Grid item xs={8}>
+                    <TextField
+                      size="small"
+                      multiline
+                      minRows={3}
+                      maxRows={8}
+                      value={getValue('floor_plan_revision_correction_content') || ''}
+                      onChange={(e) => handleFieldChange('floor_plan_revision_correction_content', e.target.value)}
+                      fullWidth
+                      error={!getValue('floor_plan_revision_correction_content')}
+                    />
+                  </Grid>
+                </Grid>
+              </Box>
+            )}
+          </>
+        )}
         <EditableButtonSelect label="間取図修正回数" field="floor_plan_revision_count" options={['1', '2', '3', '4']} />
         <Typography variant="caption" sx={{ color: 'error.main', display: 'block', mb: 1, ml: '33.33%' }}>
           ここでの修正とは、当社のミスによる修正のことです。CWの方のミスによる修正はカウントNGです！！
@@ -1261,6 +1746,37 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
           labelColor={getValue('floor_plan_confirmer') && !getValue('floor_plan_stored_email') ? 'error' : undefined}
         />
         </Box>
+
+        {/* 間取図修正内容まとめ（【★図面確認】の下に表示） */}
+        {floorPlanRevisionCorrectionHistory.length > 0 && (
+          <Box sx={{ mt: 1, mb: 1, p: 1.5, bgcolor: '#e8f5e9', border: '2px solid #4caf50', borderRadius: 1 }}>
+            <Typography variant="body2" sx={{ fontWeight: 700, color: '#1b5e20', mb: 1 }}>
+              ⚠️ 間取図修正内容まとめ（当社ミス）
+            </Typography>
+            <Box sx={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
+                <thead>
+                  <tr style={{ backgroundColor: '#c8e6c9' }}>
+                    <th style={{ border: '1px solid #81c784', padding: '4px 8px', textAlign: 'left', whiteSpace: 'nowrap' }}>物件番号</th>
+                    <th style={{ border: '1px solid #81c784', padding: '4px 8px', textAlign: 'left', whiteSpace: 'nowrap' }}>間取図確認者</th>
+                    <th style={{ border: '1px solid #81c784', padding: '4px 8px', textAlign: 'left', whiteSpace: 'nowrap' }}>サイト登録依頼者</th>
+                    <th style={{ border: '1px solid #81c784', padding: '4px 8px', textAlign: 'left', width: '50%' }}>修正内容</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {floorPlanRevisionCorrectionHistory.map((item, idx) => (
+                    <tr key={idx} style={{ backgroundColor: idx % 2 === 0 ? '#f1f8e9' : '#e8f5e9' }}>
+                      <td style={{ border: '1px solid #81c784', padding: '4px 8px', whiteSpace: 'nowrap' }}>{item.property_number || '-'}</td>
+                      <td style={{ border: '1px solid #81c784', padding: '4px 8px', whiteSpace: 'nowrap' }}>{item.floor_plan_confirmer || '-'}</td>
+                      <td style={{ border: '1px solid #81c784', padding: '4px 8px', whiteSpace: 'nowrap' }}>{item.site_registration_requester || '-'}</td>
+                      <td style={{ border: '1px solid #81c784', padding: '4px 8px', whiteSpace: 'pre-wrap', width: '50%' }}>{item.floor_plan_revision_correction_content}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </Box>
+          </Box>
+        )}
 
         <Box sx={{ bgcolor: '#fafafa', borderRadius: 1, p: 1, mb: 1 }}>
         <SectionHeader label="【確認後処理】" />
@@ -1472,12 +1988,42 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
   // 売主、買主詳細セクション
   const SellerBuyerDetailSection = () => (
     <Box sx={{ p: 2 }}>
-      <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#2e7d32', mb: 1 }}>【売主情報】</Typography>
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+        <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#2e7d32' }}>【売主情報】</Typography>
+        <FormControl size="small" sx={{ minWidth: 180 }}>
+          <InputLabel>売主へEmail</InputLabel>
+          <Select
+            value=""
+            label="売主へEmail"
+            onChange={(e) => handleEmailTemplateSelect(e.target.value as string, 'seller')}
+            startAdornment={<EmailIcon sx={{ mr: 0.5, fontSize: 18, color: '#2e7d32' }} />}
+          >
+            {SELLER_EMAIL_TEMPLATES.map(t => (
+              <MenuItem key={t.id} value={t.id}>{t.name}</MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+      </Box>
       <EditableField label="売主名前" field="seller_contact_name" />
       <EditableField label="売主メアド" field="seller_contact_email" />
       <EditableField label="売主TEL" field="seller_contact_tel" />
 
-      <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#1565c0', mb: 1, mt: 2 }}>【買主情報】</Typography>
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1, mt: 2 }}>
+        <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#1565c0' }}>【買主情報】</Typography>
+        <FormControl size="small" sx={{ minWidth: 180 }}>
+          <InputLabel>買主へEmail</InputLabel>
+          <Select
+            value=""
+            label="買主へEmail"
+            onChange={(e) => handleEmailTemplateSelect(e.target.value as string, 'buyer')}
+            startAdornment={<EmailIcon sx={{ mr: 0.5, fontSize: 18, color: '#1565c0' }} />}
+          >
+            {BUYER_EMAIL_TEMPLATES.map(t => (
+              <MenuItem key={t.id} value={t.id}>{t.name}</MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+      </Box>
       <EditableField label="買主名前" field="buyer_contact_name" />
       <EditableField label="買主メアド" field="buyer_contact_email" />
       <EditableField label="買主TEL" field="buyer_contact_tel" />
