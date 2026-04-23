@@ -463,17 +463,21 @@ function checkMediationFormatWarning(getValue: (field: string) => any): boolean 
 
 // ============================================================
 // 必須修正フィールドのバリデーション（2026/4/24以降 保存時に必ず通過）
-// 表示条件を満たしているのに未入力の場合、保存を完全にブロックする
+// 「今回の保存操作で親フィールドを新たに変更した場合のみ」チェックを適用する
+// 既にDBに保存済みで今回触っていない親フィールドはチェックしない
 // ============================================================
-function checkMandatoryRevisionFields(getValue: (field: string) => any): {
+function checkMandatoryRevisionFields(
+  getValue: (field: string) => any,
+  editedData: Record<string, any>
+): {
   hasError: boolean;
   errorFields: string[];
 } {
   const errorFields: string[] = [];
 
   // 1. サイト登録修正（当社ミス）
-  //    表示条件: site_registration_ok_sent に値がある
-  if (!isEmpty(getValue('site_registration_ok_sent'))) {
+  //    親フィールド: site_registration_ok_sent を今回変更した場合のみチェック
+  if (editedData.hasOwnProperty('site_registration_ok_sent') && !isEmpty(getValue('site_registration_ok_sent'))) {
     if (isEmpty(getValue('site_registration_revision'))) {
       errorFields.push('サイト登録修正（当社ミス）');
     }
@@ -484,8 +488,8 @@ function checkMandatoryRevisionFields(getValue: (field: string) => any): {
   }
 
   // 2. 契約書、重説他　修正点
-  //    表示条件: sales_contract_confirmed === '確認OK'
-  if (getValue('sales_contract_confirmed') === '確認OK') {
+  //    親フィールド: sales_contract_confirmed を今回「確認OK」に変更した場合のみチェック
+  if (editedData.hasOwnProperty('sales_contract_confirmed') && getValue('sales_contract_confirmed') === '確認OK') {
     if (isEmpty(getValue('contract_revision_exists'))) {
       errorFields.push('契約書、重説他　修正点');
     }
@@ -496,16 +500,16 @@ function checkMandatoryRevisionFields(getValue: (field: string) => any): {
   }
 
   // 3. 媒介契約修正
-  //    表示条件: mediation_checker に値がある
-  if (!isEmpty(getValue('mediation_checker'))) {
+  //    親フィールド: mediation_checker を今回変更した場合のみチェック
+  if (editedData.hasOwnProperty('mediation_checker') && !isEmpty(getValue('mediation_checker'))) {
     if (isEmpty(getValue('mediation_revision'))) {
       errorFields.push('媒介契約修正');
     }
   }
 
   // 4. 間取図修正（当社ミス）
-  //    表示条件: floor_plan_ok_sent に値がある
-  if (!isEmpty(getValue('floor_plan_ok_sent'))) {
+  //    親フィールド: floor_plan_ok_sent を今回変更した場合のみチェック
+  if (editedData.hasOwnProperty('floor_plan_ok_sent') && !isEmpty(getValue('floor_plan_ok_sent'))) {
     if (isEmpty(getValue('floor_plan_revision_correction'))) {
       errorFields.push('間取図修正（当社ミス）');
     }
@@ -769,7 +773,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
     }
 
     // 必須修正フィールドチェック（2026/4/24以降 保存を完全ブロック）
-    const mandatoryResult = checkMandatoryRevisionFields(getValue);
+    const mandatoryResult = checkMandatoryRevisionFields(getValue, editedData);
     if (mandatoryResult.hasError) {
       setValidationWarningDialog({
         open: true,
