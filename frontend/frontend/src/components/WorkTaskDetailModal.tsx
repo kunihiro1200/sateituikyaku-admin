@@ -922,22 +922,13 @@ HP：https://ifoo-oita.com/
       };
 
       // seller_numberでseller_idを取得してAPIを呼び出す
-      const sellerRes = await api.get(`/api/sellers?sellerNumber=${sellerNumber}`);
-      const sellers = sellerRes.data?.sellers || sellerRes.data?.data || [];
-      const seller = sellers.find((s: any) => s.sellerNumber === sellerNumber || s.seller_number === sellerNumber);
+      const sellerRes = await api.get(`/api/sellers/by-number/${sellerNumber}`);
+      const sellerData = sellerRes.data;
 
-      if (seller?.id) {
-        await api.post(`/api/emails/${seller.id}/send-template-email`, payload);
+      if (sellerData?.id) {
+        await api.post(`/api/emails/${sellerData.id}/send-template-email`, payload);
       } else {
-        // seller_idが見つからない場合はgmail直接送信APIを使用
-        await api.post('/api/gmail/send', {
-          to: emailRecipient,
-          subject: emailSubject,
-          body: emailBody,
-          senderEmail: senderAddress,
-          isHtml: true,
-          ...(attachmentImages.length > 0 ? { attachments: attachmentImages } : {}),
-        });
+        throw new Error('売主情報が見つかりません');
       }
 
       setSnackbar({ open: true, message: 'メールを送信しました', severity: 'success' });
@@ -1996,7 +1987,6 @@ HP：https://ifoo-oita.com/
             value=""
             label="売主へEmail"
             onChange={(e) => handleEmailTemplateSelect(e.target.value as string, 'seller')}
-            startAdornment={<EmailIcon sx={{ mr: 0.5, fontSize: 18, color: '#2e7d32' }} />}
           >
             {SELLER_EMAIL_TEMPLATES.map(t => (
               <MenuItem key={t.id} value={t.id}>{t.name}</MenuItem>
@@ -2016,7 +2006,6 @@ HP：https://ifoo-oita.com/
             value=""
             label="買主へEmail"
             onChange={(e) => handleEmailTemplateSelect(e.target.value as string, 'buyer')}
-            startAdornment={<EmailIcon sx={{ mr: 0.5, fontSize: 18, color: '#1565c0' }} />}
           >
             {BUYER_EMAIL_TEMPLATES.map(t => (
               <MenuItem key={t.id} value={t.id}>{t.name}</MenuItem>
@@ -2258,6 +2247,102 @@ HP：https://ifoo-oita.com/
       <MediationFormatWarningDialog
         open={mediationFormatWarningDialog.open}
         onConfirm={() => { setMediationFormatWarningDialog({ open: false }); executeSave(); }}
+      />
+
+      {/* Email送信確認ダイアログ */}
+      <Dialog open={emailDialog.open} onClose={handleCancelEmailSend} maxWidth="sm" fullWidth>
+        <DialogTitle>
+          {emailDialog.type === 'seller' ? '売主へEmail送信確認' : '買主へEmail送信確認'}
+        </DialogTitle>
+        <DialogContent>
+          <Box>
+            <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 'bold', color: 'success.main' }}>
+              {emailDialog.templateLabel}
+            </Typography>
+
+            <Box sx={{ mt: 2, mb: 2 }}>
+              <SenderAddressSelector
+                value={senderAddress}
+                onChange={handleSenderAddressChange}
+                employees={activeEmployees}
+              />
+            </Box>
+
+            <Box sx={{ mb: 2 }}>
+              <TextField
+                fullWidth
+                label="送信先"
+                value={emailRecipient}
+                onChange={(e) => setEmailRecipient(e.target.value)}
+                size="small"
+                type="email"
+              />
+            </Box>
+
+            <Box sx={{ mb: 2 }}>
+              <TextField
+                fullWidth
+                label="件名"
+                value={emailSubject}
+                onChange={(e) => setEmailSubject(e.target.value)}
+                size="small"
+              />
+            </Box>
+
+            <Box>
+              <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block' }}>
+                本文
+              </Typography>
+              <RichTextEmailEditor
+                value={emailBody}
+                onChange={setEmailBody}
+                placeholder="メール本文を入力..."
+                helperText="Ctrl+Vで画像を貼り付けられます"
+              />
+            </Box>
+
+            <Box sx={{ mt: 2 }}>
+              <Button
+                variant="outlined"
+                startIcon={<ImageIcon />}
+                onClick={() => setImageSelectorOpen(true)}
+                fullWidth
+              >
+                画像を添付
+              </Button>
+              {selectedImages.length > 0 && (
+                <Box sx={{ mt: 1 }}>
+                  <Alert severity="success">{selectedImages.length}枚の画像が選択されました</Alert>
+                </Box>
+              )}
+              {imageError && (
+                <Alert severity="error" sx={{ mt: 1 }}>{imageError}</Alert>
+              )}
+            </Box>
+
+            <Alert severity="info" sx={{ mt: 2 }}>
+              この内容でメールを送信します。よろしいですか？
+            </Alert>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCancelEmailSend} color="inherit">キャンセル</Button>
+          <Button
+            onClick={handleConfirmEmailSend}
+            variant="contained"
+            color="primary"
+            disabled={sendingEmail || !emailRecipient}
+          >
+            {sendingEmail ? <CircularProgress size={20} /> : '送信'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 画像選択モーダル */}
+      <ImageSelectorModal
+        open={imageSelectorOpen}
+        onConfirm={(images: any[]) => { setSelectedImages(images); setImageSelectorOpen(false); setImageError(null); }}
+        onCancel={() => setImageSelectorOpen(false)}
       />
     </>
   );
