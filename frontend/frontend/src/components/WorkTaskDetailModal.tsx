@@ -1187,10 +1187,12 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
   );
 
   // 編集可能ボタン選択
-  const EditableButtonSelect = ({ label, field, options, labelColor }: { label: string; field: string; options: string[]; labelColor?: 'error' | 'text.secondary' }) => (
-    <Grid container spacing={2} alignItems="center" sx={{ mb: 1.5 }}>
+  const EditableButtonSelect = ({ label, field, options, labelColor, required, highlight }: { label: string; field: string; options: string[]; labelColor?: 'error' | 'text.secondary'; required?: boolean; highlight?: boolean }) => (
+    <Grid container spacing={2} alignItems="center" sx={{ mb: 1.5, ...(highlight ? { bgcolor: '#fff3e0', borderRadius: 1, p: 0.5, border: '2px solid #ff9800' } : {}) }}>
       <Grid item xs={4}>
-        <Typography variant="body2" color={labelColor || 'text.secondary'} sx={{ fontWeight: labelColor === 'error' ? 700 : 500 }}>{label}</Typography>
+        <Typography variant="body2" color={highlight ? 'warning.dark' : (labelColor || 'text.secondary')} sx={{ fontWeight: (highlight || labelColor === 'error') ? 700 : 500 }}>
+          {label}{required && !getValue(field) ? <span style={{ color: '#d32f2f', marginLeft: 2 }}>*（必須）</span> : null}
+        </Typography>
       </Grid>
       <Grid item xs={8}>
         <ButtonGroup size="small" variant="outlined">
@@ -1273,9 +1275,11 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
 
   // Yes/No選択
   const EditableYesNo = ({ label, field, labelColor }: { label: string; field: string; labelColor?: 'error' | 'text.secondary' }) => (
-    <Grid container spacing={2} alignItems="center" sx={{ mb: 1.5 }}>
+    <Grid container spacing={2} alignItems="center" sx={{ mb: 1.5, ...(highlight ? { bgcolor: '#fff3e0', borderRadius: 1, p: 0.5, border: '2px solid #ff9800' } : {}) }}>
       <Grid item xs={4}>
-        <Typography variant="body2" color={labelColor || 'text.secondary'} sx={{ fontWeight: labelColor === 'error' ? 700 : 500 }}>{label}</Typography>
+        <Typography variant="body2" color={highlight ? 'warning.dark' : (labelColor || 'text.secondary')} sx={{ fontWeight: (highlight || labelColor === 'error') ? 700 : 500 }}>
+          {label}{required && !getValue(field) ? <span style={{ color: '#d32f2f', marginLeft: 2 }}>*（必須）</span> : null}
+        </Typography>
       </Grid>
       <Grid item xs={8}>
         <ButtonGroup size="small" variant="outlined">
@@ -2216,7 +2220,22 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
           <EditableField label="減額理由" field="discount_reason" />
           <EditableField label="減額理由他" field="discount_reason_other" />
           <EditableButtonSelect label="売・支払方法" field="seller_payment_method" options={['振込', '現金', '他']} />
-          <EditableButtonSelect label="入金確認（売）" field="payment_confirmed_seller" options={['確認済み', '未']} />
+          {/* 入金確認（売）: 決済日>2025/10/20 かつ 決済完了チャット入力済みの場合は必須・ハイライト */}
+          {(() => {
+            const settlementDate = getValue('settlement_date');
+            const settlementChat = getValue('settlement_completed_chat');
+            const isRequired = settlementDate && settlementDate > '2025-10-20' && !!settlementChat;
+            const isUnfilled = isRequired && !getValue('payment_confirmed_seller');
+            return (
+              <EditableButtonSelect
+                label="入金確認（売）"
+                field="payment_confirmed_seller"
+                options={['確認済み', '未']}
+                required={isRequired}
+                highlight={isUnfilled}
+              />
+            );
+          })()}
           <EditableField label="仲介手数料（買）" field="brokerage_fee_buyer" type="number" />
           <EditableField label="通常仲介手数料（買）" field="standard_brokerage_fee_buyer" type="number" />
           <EditableButtonSelect label="買・支払方法" field="buyer_payment_method" options={['振込', '現金', '他']} />
@@ -2252,6 +2271,24 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
 決済日：${dateStr}`;
             }}
           />
+          <EditableField label="台帳作成済み" field="ledger_created" type="date" />
+          {/* 入金確認（売）: 決済日>2025/10/20 かつ 決済完了チャット入力済みの場合は必須・ハイライト */}
+          {(() => {
+            const settlementDate = getValue('settlement_date');
+            const settlementChat = getValue('settlement_completed_chat');
+            const isRequired = settlementDate && settlementDate > '2025-10-20' && !!settlementChat;
+            const isUnfilled = isRequired && !getValue('payment_confirmed_seller');
+            return (
+              <EditableButtonSelect
+                label="入金確認（売）"
+                field="payment_confirmed_seller"
+                options={['確認済み', '未']}
+                required={isRequired}
+                highlight={isUnfilled}
+              />
+            );
+          })()}
+          <EditableButtonSelect label="入金確認（買）" field="payment_confirmed_buyer" options={['確認済み', '未']} />
           {getValue('sales_assignee') === 'K' && (
             <ChatSendButton
               label="国広とチャット"
