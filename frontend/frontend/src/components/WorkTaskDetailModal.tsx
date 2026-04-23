@@ -2219,10 +2219,10 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
           <EditableButtonSelect label="経理確認済み" field="accounting_confirmed" options={['未', '済']} />
         </Box>
         <Box sx={{ bgcolor: '#e8f5e9', borderRadius: 1, p: 1, mb: 1 }}>
-          <EditableButtonSelect label="紹介チラシ渡し" field="referral_flyer_given" options={['済', '未']} />
+          <EditableButtonSelect label="紹介チラシ渡し" field="referral_flyer_given" options={['OK', 'NG', '他']} />
           <EditableButtonSelect label="口コミ登録" field="review_registered" options={['済', '未']} />
-          <EditableField label="口コミ(売主)" field="review_seller" />
-          <EditableField label="口コミ(買主)" field="review_buyer" />
+          <EditableButtonSelect label="口コミ(売主)*" field="review_seller" options={['Google口コミ', 'アンケート用紙', 'NG', 'これから']} labelColor="error" />
+          <EditableButtonSelect label="口コミ(買主)" field="review_buyer" options={['Google口コミ', 'アンケート用紙', 'NG', 'これから']} />
           <EditableField label="他コメント" field="other_comments" />
           <ChatSendButton
             label="決済完了チャット"
