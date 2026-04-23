@@ -2130,6 +2130,18 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
           <EditableButtonSelect label="入金確認（買）" field="payment_confirmed_buyer" options={['確認済み', '未']} />
           <EditableButtonSelect label="経理確認済み" field="accounting_confirmed" options={['未', '済']} />
         </Box>
+        <Box sx={{ bgcolor: '#e8f5e9', borderRadius: 1, p: 1, mb: 1 }}>
+          <EditableButtonSelect label="紹介チラシ渡し" field="referral_flyer_given" options={['済', '未']} />
+          <EditableButtonSelect label="口コミ登録" field="review_registered" options={['済', '未']} />
+          <EditableField label="口コミ(売主)" field="review_seller" />
+          <EditableField label="口コミ(買主)" field="review_buyer" />
+          <EditableField label="他コメント" field="other_comments" />
+          <EditableButtonSelect label="決済完了チャット" field="settlement_completed_chat" options={['済']} />
+          <EditableButtonSelect label="国広とチャット" field="kunihiro_chat" options={['済']} />
+          <EditableButtonSelect label="山本へチャット送信" field="yamamoto_chat" options={['済']} />
+          <EditableButtonSelect label="裏へチャット送信" field="ura_chat" options={['済']} />
+          <EditableButtonSelect label="角井へチャット送信" field="kadoi_chat" options={['済']} />
+        </Box>
       </Box>
     </Box>
   );
@@ -2360,7 +2372,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
       <EditableField label="買主TEL" field="buyer_contact_tel" />
 
       <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#e65100', mb: 1, mt: 2 }}>【ローン情報】</Typography>
-      <ReadOnlyDisplayField label="ローン" value={getValue('loan') || '-'} />
+      <EditableField label="ローン" field="loan" />
       <EditableField label="金融機関名" field="financial_institution" />
 
       <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#6a1b9a', mb: 1, mt: 2 }}>【日程】</Typography>
