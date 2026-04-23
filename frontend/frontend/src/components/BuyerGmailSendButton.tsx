@@ -21,6 +21,7 @@ interface BuyerGmailSendButtonProps {
   linkedPropertyType?: string; // 紐づき物件の種別（テンプレートフィルタリング用）
   brokerInquiry?: string;      // 業者問合せフィールド
   latestViewingDate?: string;  // 内覧日（最新）
+  viewingTime?: string;        // 内覧時間
   size?: 'small' | 'medium' | 'large';
   variant?: 'text' | 'outlined' | 'contained';
   onEmailSent?: () => void; // メール送信成功後のコールバック
@@ -45,6 +46,7 @@ export default function BuyerGmailSendButton({
   linkedPropertyType,
   brokerInquiry,
   latestViewingDate,
+  viewingTime,
   size = 'medium',
   variant = 'contained',
   onEmailSent,
@@ -110,6 +112,8 @@ export default function BuyerGmailSendButton({
           email: buyerEmail,
           pre_viewing_notes: preViewingNotes || '',
           follow_up_assignee: followUpAssignee || '',
+          latest_viewing_date: latestViewingDate || '',
+          viewing_time: viewingTime || '',
         },
         propertyIds,
         templateSubject: template.subject,

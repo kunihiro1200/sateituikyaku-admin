@@ -1330,6 +1330,7 @@ export default function BuyerDetailPage() {
             linkedPropertyType={linkedProperties[0]?.property_type}
             brokerInquiry={buyer.broker_inquiry || ''}
             latestViewingDate={buyer.viewing_date || ''}
+            viewingTime={buyer.viewing_time || ''}
             size="small"
             variant="contained"
             onEmailSent={fetchActivities}
