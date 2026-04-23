@@ -194,6 +194,7 @@ var TYPE_CONVERSIONS = {
   'contract_input_deadline': 'date',
   'sales_contract_deadline': 'date',
   'binding_scheduled_date': 'date',
+  'binding_completed': 'date',
   'settlement_date': 'date',
   'loan_approval_scheduled_date': 'date',
   'attachment_prep_deadline': 'date',
@@ -311,6 +312,15 @@ function mapRowToRecord(headers, row) {
     var value = row[i];
     var converted = convertValue(dbColumn, value);
     record[dbColumn] = converted;
+  }
+
+  // 司法書士が「司法書士法人中央ライズアクロス」の場合、連絡先を自動補完
+  if (record['judicial_scrivener'] === '司法書士法人中央ライズアクロス') {
+    if (!record['judicial_scrivener_contact']) {
+      record['judicial_scrivener_contact'] = 'naruse@riseacross.com';
+    }
+  } else if (record['judicial_scrivener'] === '他' || record['judicial_scrivener'] === null) {
+    // 「他」または未選択の場合は連絡先をスプシの値そのまま（上書きしない）
   }
 
   return record;
