@@ -322,6 +322,11 @@ const NearbyBuyersList = ({ sellerId, propertyNumber, propertyType, onCountChang
   // APIから取得したpropertyType（NearbyBuyersPageからprops未渡しの場合に使用）
   const [apiPropertyType, setApiPropertyType] = useState<string | null>(null);
 
+  // 土地（一般買主）モード
+  const [landBuyerMode, setLandBuyerMode] = useState(false);
+  const [landBuyers, setLandBuyers] = useState<NearbyBuyer[] | null>(null);
+  const [landBuyerLoading, setLandBuyerLoading] = useState(false);
+
   // 価格帯フィルター選択状態
   const [selectedPriceRanges, setSelectedPriceRanges] = useState<Set<string>>(new Set());
 
@@ -359,11 +364,14 @@ const NearbyBuyersList = ({ sellerId, propertyNumber, propertyType, onCountChang
     setSortConfig({ key, direction });
   };
 
+  // 現在表示するバイヤーリスト（通常 or 土地モード）
+  const activeBuyers = landBuyerMode ? (landBuyers || []) : buyers;
+
   // 業者フィルター → 価格帯フィルターの順で AND 結合
   const filteredBuyers = React.useMemo(() => {
-    const agencyFiltered = filterBuyersByAgency(buyers, activeAgencyFilter);
-    return filterBuyersByPrice(agencyFiltered, selectedPriceRanges, propertyType);
-  }, [buyers, activeAgencyFilter, selectedPriceRanges, propertyType]);
+    const agencyFiltered = filterBuyersByAgency(activeBuyers, activeAgencyFilter);
+    return filterBuyersByPrice(agencyFiltered, selectedPriceRanges, landBuyerMode ? '土地' : propertyType);
+  }, [activeBuyers, activeAgencyFilter, selectedPriceRanges, propertyType, landBuyerMode]);
 
   const sortedBuyers = React.useMemo(() => {
     if (!sortConfig.key) return filteredBuyers;
@@ -482,6 +490,31 @@ const NearbyBuyersList = ({ sellerId, propertyNumber, propertyType, onCountChang
   const effectivePropertyType = propertyType || apiPropertyType;
   const showLandAndHouseButtons = isLand(effectivePropertyType) || isDetachedHouse(effectivePropertyType);
   const showApartmentButton = isApartment(effectivePropertyType);
+
+  // 戸建系物件かどうか（土地（一般買主）ボタン表示判定）
+  const showLandBuyerButton = isDetachedHouse(effectivePropertyType);
+
+  // 土地（一般買主）ボタンクリック
+  const handleLandBuyerMode = async () => {
+    if (landBuyerMode) {
+      setLandBuyerMode(false);
+      setSelectedBuyers(new Set());
+      return;
+    }
+    setLandBuyerMode(true);
+    setSelectedBuyers(new Set());
+    if (landBuyers !== null) return; // キャッシュ済み
+    setLandBuyerLoading(true);
+    try {
+      const response = await api.get(`/api/sellers/${sellerId}/nearby-buyers?overridePropertyType=土地`);
+      setLandBuyers(response.data.buyers || []);
+    } catch (err: any) {
+      console.error('[NearbyBuyersList] Failed to fetch land buyers:', err);
+      setLandBuyerMode(false);
+    } finally {
+      setLandBuyerLoading(false);
+    }
+  };
 
   // 名前非表示トグル
   const handleToggleNameHidden = () => {
@@ -715,6 +748,27 @@ const NearbyBuyersList = ({ sellerId, propertyNumber, propertyType, onCountChang
         >
           PDF
         </Button>
+        {/* 戸建系物件の場合のみ「土地（一般買主）」ボタンを表示 */}
+        {showLandBuyerButton && (
+          <Button
+            variant={landBuyerMode ? 'contained' : 'outlined'}
+            size="small"
+            onClick={handleLandBuyerMode}
+            disabled={landBuyerLoading}
+            sx={landBuyerMode ? {
+              bgcolor: '#795548',
+              color: 'white',
+              '&:hover': { bgcolor: '#5d4037' },
+            } : {
+              borderColor: '#795548',
+              color: '#795548',
+              '&:hover': { borderColor: '#5d4037', bgcolor: '#79554808' },
+            }}
+          >
+            {landBuyerLoading && <CircularProgress size={14} sx={{ mr: 0.5, color: 'inherit' }} />}
+            土地（一般買主）
+          </Button>
+        )}
         {/* 業者フィルターボタングループ（物件種別に応じて表示） */}
         {(showLandAndHouseButtons || showApartmentButton) && (
           <Box
@@ -793,6 +847,12 @@ const NearbyBuyersList = ({ sellerId, propertyNumber, propertyType, onCountChang
       </Box>
 
       {/* 買主リストテーブル */}
+      {landBuyerLoading ? (
+        <Box sx={{ py: 4, textAlign: 'center' }}>
+          <CircularProgress size={40} />
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>土地希望買主を検索中...</Typography>
+        </Box>
+      ) : (
       <TableContainer component={Paper} variant="outlined">
         <Table size="small">
           <TableHead>
@@ -932,6 +992,7 @@ const NearbyBuyersList = ({ sellerId, propertyNumber, propertyType, onCountChang
           </TableBody>
         </Table>
       </TableContainer>
+      )}
 
       <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
         {filteredBuyers.length}件の買主が見つかりました

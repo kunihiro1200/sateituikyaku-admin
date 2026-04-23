@@ -1493,7 +1493,8 @@ router.get(
 router.get('/:id/nearby-buyers', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    console.log(`🔍 Getting nearby buyers for seller ${id}`);
+    const { overridePropertyType } = req.query;
+    console.log(`🔍 Getting nearby buyers for seller ${id}${overridePropertyType ? ` (overridePropertyType: ${overridePropertyType})` : ''}`);
 
     const seller = await sellerService.getSeller(id);
     if (!seller) {
@@ -1519,7 +1520,8 @@ router.get('/:id/nearby-buyers', async (req: Request, res: Response) => {
     const cityExtractor_local = cityExtractor;
 
     const googleMapUrl = (seller as any).googleMapUrl || null;
-    const propertyType = seller.propertyType || null;
+    // overridePropertyType が指定された場合はそちらを使用（例: 戸建物件で土地希望買主を検索）
+    const propertyType = (typeof overridePropertyType === 'string' ? overridePropertyType : null) || seller.propertyType || null;
 
     // 査定額の中央値を売出価格として使用
     let salesPrice: number | null = null;
