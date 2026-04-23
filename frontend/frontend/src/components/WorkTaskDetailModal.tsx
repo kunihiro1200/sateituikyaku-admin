@@ -2168,6 +2168,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
         </Box>
       </Box>
     </Box>
+  );
 
   // Email送信履歴取得（親stateを使用）
   useEffect(() => {
