@@ -731,7 +731,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
   const [senderAddress, setSenderAddress] = useState<string>('tenant@ifoo-oita.com');
   const [emailDialog, setEmailDialog] = useState<{
     open: boolean;
-    type: 'seller' | 'buyer' | null;
+    type: 'seller' | 'buyer' | 'judicial_scrivener' | null;
     templateId: string | null;
     templateLabel: string;
   }>({ open: false, type: null, templateId: null, templateLabel: '' });
@@ -742,7 +742,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
   const [imageSelectorOpen, setImageSelectorOpen] = useState(false);
   const [selectedImages, setSelectedImages] = useState<any[]>([]);
   const [imageError, setImageError] = useState<string | null>(null);
-  const [templateSelectType, setTemplateSelectType] = useState<'seller' | 'buyer' | null>(null);
+  const [templateSelectType, setTemplateSelectType] = useState<'seller' | 'buyer' | 'judicial_scrivener' | null>(null);
   const [emailHistoryRefreshKey, setEmailHistoryRefreshKey] = useState(0);
 
   // 売主向けEmailテンプレート
@@ -781,6 +781,27 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
     },
   ];
 
+
+  // 司法書士向けEmailテンプレート
+  const JUDICIAL_SCRIVENER_EMAIL_TEMPLATES = [
+    {
+      id: 'judicial_riseacross',
+      name: '司法書士法人中央ライズアクロスへメール',
+      subject: '｛物件住所｝の契約が終わりました',
+      body: `ご担当者様<br><br>お世話になっております。<br>株式会社いふうです。<br>先ほど売主様、買主様の売買契約が完了いたしました。<br><br>【添付資料】<br>・契約書、重説<br>・契約書（署名押印欄）<br>・謄本<br>・固定資産税公課証明<br><br>【売主様】<br>名前：｛売主名前｝　様<br>電話番号：｛売主TEL｝<br>メールアドレス：｛売主メアド｝<br>抵当権等は　謄本をご参考ください<br><br>【買主様】<br>名前：｛買主名前｝　様<br>電話番号：｛買主TEL｝<br>メールアドレス：｛買主メアド｝<br>融資：｛ローン｝<br>金融機関：｛金融機関名｝<br>引渡予定：｛引き渡し予定｝までとなっております。<br><br>御社より連絡がある旨伝えておりますのでよろしくお願いいたします。<br>費用がわかりましたらお見積りを頂ければと思います。<br>決済日が分かりましたら、金種表をお作りしますので教えて頂ければと思います。<br><br>***************************<br>株式会社 いふう<br>〒870-0044<br>大分市舞鶴町1丁目3-30<br>TEL：097-533-2022<br>FAX：097-529-7160<br>MAIL：tenant@ifoo-oita.com<br>HP：https://ifoo-oita.com/<br>店休日：毎週水曜日　年末年始、GW、盆<br>***************************`,
+      isHtml: true,
+      fixedRecipient: 'naruse@riseacross.com',
+    },
+    {
+      id: 'judicial_other',
+      name: '他の司法書士へメール',
+      subject: '｛物件住所｝の契約が終わりました',
+      body: `ご担当者様<br><br>お世話になっております。<br>株式会社いふうです。<br>先ほど売主様、買主様の売買契約が完了いたしました。<br><br>【添付資料】<br>・契約書、重説<br>・契約書（署名押印欄）<br>・謄本<br>・固定資産税公課証明<br><br>【売主様】<br>名前：｛売主名前｝　様<br>電話番号：｛売主TEL｝<br>メールアドレス：｛売主メアド｝<br>抵当権等は　謄本をご参考ください<br><br>【買主様】<br>名前：｛買主名前｝　様<br>電話番号：｛買主TEL｝<br>メールアドレス：｛買主メアド｝<br>融資：｛ローン｝<br>金融機関：｛金融機関名｝<br>引渡予定：｛引き渡し予定｝までとなっております。<br><br>御社より連絡がある旨伝えておりますのでよろしくお願いいたします。<br>費用がわかりましたらお見積りを頂ければと思います。<br>決済日が分かりましたら、金種表をお作りしますので教えて頂ければと思います。<br><br>***************************<br>株式会社 いふう<br>〒870-0044<br>大分市舞鶴町1丁目3-30<br>TEL：097-533-2022<br>FAX：097-529-7160<br>MAIL：tenant@ifoo-oita.com<br>HP：https://ifoo-oita.com/<br>店休日：毎週水曜日　年末年始、GW、盆<br>***************************`,
+      isHtml: true,
+      fixedRecipient: null,
+    },
+  ];
+
   // プレースホルダー置換
   const replaceWorkTaskPlaceholders = (text: string): string => {
     const sellerName = getValue('seller_contact_name') || getValue('seller_name') || '';
@@ -794,11 +815,34 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
           } catch { return getValue('settlement_date'); }
         })()
       : '';
+    const sellerTel = getValue('seller_contact_tel') || '';
+    const sellerEmail = getValue('seller_contact_email') || '';
+    const buyerTel = getValue('buyer_contact_tel') || '';
+    const buyerEmail = getValue('buyer_contact_email') || '';
+    const loan = getValue('loan') || '';
+    const financialInstitution = getValue('financial_institution') || '';
+    const deliveryDate = getValue('delivery_scheduled_date')
+      ? (() => {
+          try {
+            const d = new Date(getValue('delivery_scheduled_date'));
+            return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`;
+          } catch { return getValue('delivery_scheduled_date'); }
+        })()
+      : '';
     return text
       .replace(/｛売主氏名｝/g, sellerName)
+      .replace(/｛売主名前｝/g, sellerName)
+      .replace(/｛売主TEL｝/g, sellerTel)
+      .replace(/｛売主メアド｝/g, sellerEmail)
       .replace(/｛買主氏名｝/g, buyerName)
+      .replace(/｛買主名前｝/g, buyerName)
+      .replace(/｛買主TEL｝/g, buyerTel)
+      .replace(/｛買主メアド｝/g, buyerEmail)
       .replace(/｛物件住所｝/g, propertyAddress)
-      .replace(/｛決済日｝/g, settlementDate);
+      .replace(/｛決済日｝/g, settlementDate)
+      .replace(/｛ローン｝/g, loan)
+      .replace(/｛金融機関名｝/g, financialInstitution)
+      .replace(/｛引き渡し予定｝/g, deliveryDate);
   };
 
   // 社員データ取得
@@ -813,9 +857,11 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
     }
   }, [open]);
 
-  const handleEmailTemplateSelect = (templateId: string, type: 'seller' | 'buyer') => {
+  const handleEmailTemplateSelect = (templateId: string, type: 'seller' | 'buyer' | 'judicial_scrivener') => {
     if (!templateId) return;
-    const templates = type === 'seller' ? SELLER_EMAIL_TEMPLATES : BUYER_EMAIL_TEMPLATES;
+    const templates = type === 'seller' ? SELLER_EMAIL_TEMPLATES
+      : type === 'buyer' ? BUYER_EMAIL_TEMPLATES
+      : JUDICIAL_SCRIVENER_EMAIL_TEMPLATES;
     const template = templates.find(t => t.id === templateId);
     if (!template) return;
 
@@ -823,9 +869,15 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
     const replacedBody = replaceWorkTaskPlaceholders(template.body);
     const htmlBody = (template as any).isHtml ? replacedBody : replacedBody.replace(/\n/g, '<br>');
 
-    const recipientEmail = type === 'seller'
-      ? (getValue('seller_contact_email') || '')
-      : (getValue('buyer_contact_email') || '');
+    let recipientEmail = '';
+    if (type === 'seller') {
+      recipientEmail = getValue('seller_contact_email') || '';
+    } else if (type === 'buyer') {
+      recipientEmail = getValue('buyer_contact_email') || '';
+    } else if (type === 'judicial_scrivener') {
+      const fixedRecipient = (template as any).fixedRecipient;
+      recipientEmail = fixedRecipient || getValue('judicial_scrivener_contact') || '';
+    }
 
     setEmailRecipient(recipientEmail);
     setEmailSubject(replacedSubject);
@@ -2147,11 +2199,19 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
         <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#2e7d32' }}>【売主情報】</Typography>
         <FormControl size="small" sx={{ minWidth: 180 }}>
-          <InputLabel>売主へEmail</InputLabel>
+          <InputLabel sx={{ color: '#2e7d32', '&.Mui-focused': { color: '#2e7d32' } }}>売主へEmail</InputLabel>
           <Select
             value=""
             label="売主へEmail"
             onChange={(e) => handleEmailTemplateSelect(e.target.value as string, 'seller')}
+            sx={{
+              bgcolor: '#e8f5e9',
+              '& .MuiOutlinedInput-notchedOutline': { borderColor: '#66bb6a', borderWidth: 2 },
+              '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#2e7d32' },
+              '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: '#2e7d32' },
+              fontWeight: 700,
+              color: '#2e7d32',
+            }}
           >
             {SELLER_EMAIL_TEMPLATES.map(t => (
               <MenuItem key={t.id} value={t.id}>{t.name}</MenuItem>
@@ -2166,11 +2226,19 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1, mt: 2 }}>
         <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#1565c0' }}>【買主情報】</Typography>
         <FormControl size="small" sx={{ minWidth: 180 }}>
-          <InputLabel>買主へEmail</InputLabel>
+          <InputLabel sx={{ color: '#1565c0', '&.Mui-focused': { color: '#1565c0' } }}>買主へEmail</InputLabel>
           <Select
             value=""
             label="買主へEmail"
             onChange={(e) => handleEmailTemplateSelect(e.target.value as string, 'buyer')}
+            sx={{
+              bgcolor: '#e3f2fd',
+              '& .MuiOutlinedInput-notchedOutline': { borderColor: '#64b5f6', borderWidth: 2 },
+              '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#1565c0' },
+              '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: '#1565c0' },
+              fontWeight: 700,
+              color: '#1565c0',
+            }}
           >
             {BUYER_EMAIL_TEMPLATES.map(t => (
               <MenuItem key={t.id} value={t.id}>{t.name}</MenuItem>
@@ -2367,6 +2435,29 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
                     <Typography component="span" sx={{ fontSize: '0.85rem', color: '#560027', fontWeight: 500 }}>{data.mediation_type}</Typography>
                   </Box>
                 )}
+                {/* 司法書士へのメール */}
+                <FormControl size="small" sx={{ minWidth: 160, flexShrink: 0 }}>
+                  <InputLabel sx={{ color: '#6a1b9a', '&.Mui-focused': { color: '#6a1b9a' }, fontSize: '0.8rem' }}>司法書士へのメール</InputLabel>
+                  <Select
+                    value=""
+                    label="司法書士へのメール"
+                    onChange={(e) => handleEmailTemplateSelect(e.target.value as string, 'judicial_scrivener')}
+                    sx={{
+                      bgcolor: '#f3e5f5',
+                      '& .MuiOutlinedInput-notchedOutline': { borderColor: '#ce93d8', borderWidth: 2 },
+                      '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#6a1b9a' },
+                      '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: '#6a1b9a' },
+                      fontWeight: 700,
+                      color: '#6a1b9a',
+                      fontSize: '0.8rem',
+                      height: '36px',
+                    }}
+                  >
+                    {JUDICIAL_SCRIVENER_EMAIL_TEMPLATES.map(t => (
+                      <MenuItem key={t.id} value={t.id}>{t.name}</MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
               </Box>
             </Box>
             {/* スプシボタン: tabIndex=0（媒介契約）または tabIndex=1（サイト登録）のとき */}
@@ -2505,7 +2596,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
       {/* Email送信確認ダイアログ */}
       <Dialog open={emailDialog.open} onClose={handleCancelEmailSend} maxWidth="sm" fullWidth>
         <DialogTitle>
-          {emailDialog.type === 'seller' ? '売主へEmail送信確認' : '買主へEmail送信確認'}
+          {emailDialog.type === 'seller' ? '売主へEmail送信確認' : emailDialog.type === 'buyer' ? '買主へEmail送信確認' : '司法書士へEmail送信確認'}
         </DialogTitle>
         <DialogContent>
           <Box>
