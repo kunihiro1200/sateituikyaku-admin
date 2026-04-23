@@ -41,6 +41,27 @@ router.get('/', async (req: Request, res: Response) => {
 });
 
 /**
+ * GET /api/work-tasks/mediation-revisions?creator=K&exclude=AA1234
+ * 指定した媒介作成者の修正履歴を取得
+ */
+router.get('/mediation-revisions', async (req: Request, res: Response) => {
+  try {
+    const creator = req.query.creator as string;
+    const exclude = req.query.exclude as string | undefined;
+
+    if (!creator) {
+      return res.status(400).json({ error: 'creator パラメータが必要です' });
+    }
+
+    const revisions = await workTaskService.getMediationRevisionsByCreator(creator, exclude);
+    return res.json(revisions);
+  } catch (error: any) {
+    console.error('媒介修正履歴取得エラー:', error);
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+/**
  * GET /api/work-tasks/:propertyNumber
  * 物件番号で業務依頼データを取得
  */

@@ -815,7 +815,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
   })();
 
   // 媒介作成者の修正履歴（他の案件含む）
-  const [mediationRevisionHistory, setMediationRevisionHistory] = React.useState<Array<{
+  const [mediationRevisionHistory, setMediationRevisionHistory] = useState<Array<{
     property_number: string;
     mediation_completed: string | null;
     mediation_checker: string | null;
@@ -824,7 +824,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
   }>>([]);
 
   // 媒介作成者が変わったら修正履歴を取得
-  React.useEffect(() => {
+  useEffect(() => {
     const creator = data?.mediation_creator;
     if (!creator) {
       setMediationRevisionHistory([]);

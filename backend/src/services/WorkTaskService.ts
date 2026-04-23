@@ -138,6 +138,29 @@ export class WorkTaskService {
   }
 
   /**
+   * 媒介作成者の修正履歴を取得（mediation_revision='あり' のレコード）
+   * 現在の物件番号は除外する
+   */
+  async getMediationRevisionsByCreator(creator: string, excludePropertyNumber?: string): Promise<WorkTaskData[]> {
+    let query = this.supabase
+      .from('work_tasks')
+      .select('property_number, mediation_completed, mediation_checker, mediation_creator, mediation_revision_content')
+      .eq('mediation_creator', creator)
+      .eq('mediation_revision', 'あり')
+      .not('mediation_revision_content', 'is', null)
+      .order('mediation_completed', { ascending: false })
+      .limit(10);
+
+    if (excludePropertyNumber) {
+      query = query.neq('property_number', excludePropertyNumber);
+    }
+
+    const { data, error } = await query;
+    if (error || !data) return [];
+    return data as WorkTaskData[];
+  }
+
+  /**
    * 物件番号でデータを更新
    */
   async updateByPropertyNumber(propertyNumber: string, updates: Partial<WorkTaskData>): Promise<WorkTaskData | null> {
