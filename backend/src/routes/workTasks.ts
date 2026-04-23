@@ -133,6 +133,24 @@ router.put('/:propertyNumber', async (req: Request, res: Response) => {
     delete updates.id;
     delete updates.created_at;
 
+    // 修正内容が空になった場合、対応する「あり」フラグも自動リセット
+    if ('site_registration_revision_content' in updates && (updates.site_registration_revision_content ?? '').toString().trim() === '') {
+      updates.site_registration_revision_content = null;
+      updates.site_registration_revision = null;
+    }
+    if ('mediation_revision_content' in updates && (updates.mediation_revision_content ?? '').toString().trim() === '') {
+      updates.mediation_revision_content = null;
+      updates.mediation_revision = null;
+    }
+    if ('floor_plan_revision_correction_content' in updates && (updates.floor_plan_revision_correction_content ?? '').toString().trim() === '') {
+      updates.floor_plan_revision_correction_content = null;
+      updates.floor_plan_revision_correction = null;
+    }
+    if ('contract_revision_content' in updates && (updates.contract_revision_content ?? '').toString().trim() === '') {
+      updates.contract_revision_content = null;
+      updates.contract_revision_exists = null;
+    }
+
     // 保存前の値を取得（メール通知の変更検知に使用）
     const beforeData = await workTaskService.getByPropertyNumber(propertyNumber);
 
