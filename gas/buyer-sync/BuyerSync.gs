@@ -687,3 +687,125 @@ function buyerResetRowHashCache() {
     i++;
   }
 }
+
+// ============================================================
+// viewing_survey_confirmed の DB → スプレッドシート書き戻し
+// （フロントエンドで「↑確認済み」ボタンを押した後、DBの値をスプシに反映する）
+// syncBuyers() の後に呼び出すか、独立したトリガーで実行する
+// ============================================================
+
+/**
+ * Supabaseから viewing_survey_confirmed を取得して買主リストBE列に書き戻す
+ * BE列 = 「内覧アンケート確認」カラム
+ */
+function syncSurveyConfirmedToSheet() {
+  var startTime = new Date();
+  Logger.log('=== 内覧アンケート確認 書き戻し開始: ' + startTime.toISOString() + ' ===');
+
+  try {
+    var ss = SpreadsheetApp.openById(BUYER_CONFIG.SPREADSHEET_ID);
+    var sheet = ss.getSheetByName(BUYER_CONFIG.SHEET_NAME);
+    if (!sheet) {
+      Logger.log('ERROR: シート「' + BUYER_CONFIG.SHEET_NAME + '」が見つかりません');
+      return;
+    }
+
+    var lastRow = sheet.getLastRow();
+    var lastCol = sheet.getLastColumn();
+    if (lastRow < 2) {
+      Logger.log('データなし');
+      return;
+    }
+
+    // ヘッダー行を取得してBE列（内覧アンケート確認）のインデックスを探す
+    var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+    var surveyConfirmedColIndex = -1;
+    var buyerNumberColIndex = -1;
+    for (var h = 0; h < headers.length; h++) {
+      if (headers[h] === '内覧アンケート確認') surveyConfirmedColIndex = h;
+      if (headers[h] === '買主番号') buyerNumberColIndex = h;
+    }
+
+    if (surveyConfirmedColIndex < 0) {
+      Logger.log('ERROR: 「内覧アンケート確認」列が見つかりません（BE列を確認してください）');
+      return;
+    }
+    if (buyerNumberColIndex < 0) {
+      Logger.log('ERROR: 「買主番号」列が見つかりません');
+      return;
+    }
+
+    Logger.log('買主番号列: ' + (buyerNumberColIndex + 1) + '列目');
+    Logger.log('内覧アンケート確認列: ' + (surveyConfirmedColIndex + 1) + '列目');
+
+    // Supabaseから viewing_survey_confirmed が入力済みの買主を取得
+    var url = BUYER_CONFIG.SUPABASE_URL + '/rest/v1/' + BUYER_CONFIG.TABLE_NAME
+      + '?select=buyer_number,viewing_survey_confirmed'
+      + '&viewing_survey_confirmed=not.is.null';
+
+    var response = UrlFetchApp.fetch(url, {
+      method: 'GET',
+      headers: {
+        'apikey': BUYER_CONFIG.SUPABASE_SERVICE_KEY,
+        'Authorization': 'Bearer ' + BUYER_CONFIG.SUPABASE_SERVICE_KEY,
+      },
+      muteHttpExceptions: true
+    });
+
+    var code = response.getResponseCode();
+    if (code < 200 || code >= 300) {
+      Logger.log('ERROR: Supabase取得失敗 HTTP ' + code + ' ' + response.getContentText().substring(0, 200));
+      return;
+    }
+
+    var buyers = JSON.parse(response.getContentText());
+    Logger.log('確認済み買主: ' + buyers.length + '件');
+
+    if (buyers.length === 0) {
+      Logger.log('書き戻し対象なし');
+      return;
+    }
+
+    // 買主番号 → confirmed値 のマップを作成
+    var confirmedMap = {};
+    for (var i = 0; i < buyers.length; i++) {
+      if (buyers[i].buyer_number && buyers[i].viewing_survey_confirmed) {
+        confirmedMap[String(buyers[i].buyer_number)] = buyers[i].viewing_survey_confirmed;
+      }
+    }
+
+    // スプシの買主番号列を読み込んで書き戻し
+    var buyerNumbers = sheet.getRange(2, buyerNumberColIndex + 1, lastRow - 1, 1).getValues();
+    var updatedCount = 0;
+
+    for (var j = 0; j < buyerNumbers.length; j++) {
+      var bn = String(buyerNumbers[j][0] || '').trim();
+      if (!bn) continue;
+
+      var confirmedValue = confirmedMap[bn];
+      if (confirmedValue !== undefined) {
+        var currentValue = sheet.getRange(j + 2, surveyConfirmedColIndex + 1).getValue();
+        if (String(currentValue || '') !== String(confirmedValue)) {
+          sheet.getRange(j + 2, surveyConfirmedColIndex + 1).setValue(confirmedValue);
+          updatedCount++;
+        }
+      }
+    }
+
+    var duration = (new Date() - startTime) / 1000;
+    Logger.log('=== 書き戻し完了: ' + updatedCount + '件更新, 所要時間=' + duration + '秒 ===');
+
+  } catch (e) {
+    Logger.log('ERROR: ' + e.toString());
+    Logger.log(e.stack);
+  }
+}
+
+/**
+ * syncBuyers と syncSurveyConfirmedToSheet を連続実行するラッパー
+ * このトリガーを設定することで、同期と書き戻しを一括実行できる
+ */
+function syncBuyersAndSurveyConfirmed() {
+  syncBuyers();
+  syncSurveyConfirmedToSheet();
+}

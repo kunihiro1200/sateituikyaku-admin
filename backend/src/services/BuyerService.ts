@@ -1977,6 +1977,7 @@ export class BuyerService {
           pinrichUnregistered: 0,
           pinrich500manUnregistered: 0,
           nextCallDateBlankCounts: {} as Record<string, number>,
+          viewingSurveyUnchecked: 0,  // 内覧アンケート未確認
         };
         
         for (const row of data) {
@@ -2004,6 +2005,8 @@ export class BuyerService {
             categoryCounts.pinrich500manUnregistered = row.count || 0;
           } else if (row.category === 'nextCallDateBlank' && row.assignee) {
             categoryCounts.nextCallDateBlankCounts[row.assignee] = row.count || 0;
+          } else if (row.category === 'viewingSurveyUnchecked') {
+            categoryCounts.viewingSurveyUnchecked = row.count || 0;
           }
         }
         
@@ -2080,6 +2083,8 @@ export class BuyerService {
       'viewing_promotion_sender',
       'past_buyer_list',
       'property_number',
+      'viewing_survey_result',
+      'viewing_survey_confirmed',
     ].join(', ');
 
     // count クエリ・最初のバッチ・property_listings件数を並列実行
@@ -2231,6 +2236,7 @@ export class BuyerService {
         pinrichUnregistered: 0,  // ピンリッチ未登録
         pinrich500manUnregistered: 0,  // Pinrich500万以上登録未
         nextCallDateBlankCounts: {} as Record<string, number>,
+        viewingSurveyUnchecked: 0,  // 内覧アンケート未確認
       };
       
       // 今日の日付（YYYY-MM-DD形式）
@@ -2326,6 +2332,15 @@ export class BuyerService {
         }
       });
       
+      // 内覧アンケート未確認: viewing_survey_result が入力済み かつ viewing_survey_confirmed が空欄
+      allBuyers.forEach((buyer: any) => {
+        const hasSurveyResult = buyer.viewing_survey_result && String(buyer.viewing_survey_result).trim();
+        const isConfirmed = buyer.viewing_survey_confirmed && String(buyer.viewing_survey_confirmed).trim();
+        if (hasSurveyResult && !isConfirmed) {
+          result.viewingSurveyUnchecked++;
+        }
+      });
+
       // 通常スタッフのイニシャルを取得
       const normalStaffInitials = await this.fetchNormalStaffInitials();
       
@@ -3035,6 +3050,7 @@ export class BuyerService {
       rows.push({ category: 'viewingPromotionRequired', count: categoryCounts.viewingPromotionRequired || 0, label: null, assignee: null, updated_at: now });
       rows.push({ category: 'pinrichUnregistered', count: categoryCounts.pinrichUnregistered || 0, label: null, assignee: null, updated_at: now });
       rows.push({ category: 'pinrich500manUnregistered', count: categoryCounts.pinrich500manUnregistered || 0, label: null, assignee: null, updated_at: now });
+      rows.push({ category: 'viewingSurveyUnchecked', count: categoryCounts.viewingSurveyUnchecked || 0, label: null, assignee: null, updated_at: now });
       
       // 担当別カテゴリ
       for (const [assignee, count] of Object.entries(categoryCounts.assignedCounts || {})) {

@@ -262,6 +262,13 @@ export class SidebarCountsUpdateService {
       categories.push({ category: 'pinrichUnregistered', assignee: null });
     }
 
+    // 内覧アンケート未確認: viewing_survey_result が入力済み かつ viewing_survey_confirmed が空欄
+    const hasSurveyResult = buyer.viewing_survey_result && String(buyer.viewing_survey_result).trim();
+    const isSurveyConfirmed = buyer.viewing_survey_confirmed && String(buyer.viewing_survey_confirmed).trim();
+    if (hasSurveyResult && !isSurveyConfirmed) {
+      categories.push({ category: 'viewingSurveyUnchecked', assignee: null });
+    }
+
     console.log(`[determineBuyerCategories] Final categories:`, categories);
     return categories;
   }
