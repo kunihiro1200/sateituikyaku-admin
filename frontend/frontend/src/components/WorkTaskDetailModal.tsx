@@ -1132,10 +1132,12 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
 
 
   // 編集可能テキストフィールド
-  const EditableField = ({ label, field, type = 'text', labelColor }: { label: string; field: string; type?: string; labelColor?: 'error' | 'text.secondary' }) => (
-    <Grid container spacing={2} alignItems="center" sx={{ mb: 1.5 }}>
+  const EditableField = ({ label, field, type = 'text', labelColor, required, highlight, multiline }: { label: string; field: string; type?: string; labelColor?: 'error' | 'text.secondary'; required?: boolean; highlight?: boolean; multiline?: boolean }) => (
+    <Grid container spacing={2} alignItems={multiline ? 'flex-start' : 'center'} sx={{ mb: 1.5, ...(highlight ? { bgcolor: '#fff3e0', borderRadius: 1, p: 0.5, border: '2px solid #ff9800' } : {}) }}>
       <Grid item xs={4}>
-        <Typography variant="body2" color={labelColor || 'text.secondary'} sx={{ fontWeight: labelColor === 'error' ? 700 : 500 }}>{label}</Typography>
+        <Typography variant="body2" color={highlight ? 'warning.dark' : (labelColor || 'text.secondary')} sx={{ fontWeight: (highlight || labelColor === 'error') ? 700 : 500, ...(multiline ? { mt: 0.5 } : {}) }}>
+          {label}{required && !getValue(field) ? <span style={{ color: '#d32f2f', marginLeft: 2 }}>*（必須）</span> : null}
+        </Typography>
       </Grid>
       <Grid item xs={8}>
         {type === 'date' ? (
@@ -1185,6 +1187,18 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
               <Link href={getValue(field)} target="_blank" rel="noopener" sx={{ whiteSpace: 'nowrap' }}>開く</Link>
             )}
           </Box>
+        ) : multiline ? (
+          <TextField
+            size="small"
+            key={`${propertyNumber}_${field}`}
+            defaultValue={getValue(field) || ''}
+            onBlur={(e) => { if (e.target.value !== (getValue(field) || '')) handleFieldChange(field, e.target.value || null); }}
+            fullWidth
+            multiline
+            minRows={3}
+            error={required && !getValue(field)}
+            helperText={required && !getValue(field) ? '必須項目です' : ''}
+          />
         ) : (
           <TextField
             size="small"
@@ -2303,8 +2317,31 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
             ) : null;
           })()}
           <EditableButtonSelect label="キャンペーン" field="campaign" options={['あり', 'なし']} />
-          <EditableField label="減額理由" field="discount_reason" />
-          <EditableField label="減額理由他" field="discount_reason_other" />
+          {/* 減額理由他: 売買契約締め日>2025/9/1 かつ 仲介手数料（買）or（売）入力済み かつ 通常仲介手数料と異なる場合は必須 */}
+          {(() => {
+            const contractDate = getValue('sales_contract_deadline');
+            const feeBuyer = getValue('brokerage_fee_buyer');
+            const feeSeller = getValue('brokerage_fee_seller');
+            const stdFeeBuyer = getValue('standard_brokerage_fee_buyer');
+            const stdFeeSeller = getValue('standard_brokerage_fee_seller');
+            const isDiscountRequired =
+              contractDate && contractDate > '2025-09-01' &&
+              (feeBuyer != null && feeBuyer !== '' || feeSeller != null && feeSeller !== '') &&
+              (
+                (stdFeeBuyer != null && feeBuyer != null && String(stdFeeBuyer) !== String(feeBuyer)) ||
+                (stdFeeSeller != null && feeSeller != null && String(stdFeeSeller) !== String(feeSeller))
+              );
+            const isUnfilled = isDiscountRequired && !getValue('discount_reason_other');
+            return (
+              <EditableField
+                label="減額理由他"
+                field="discount_reason_other"
+                multiline
+                required={!!isDiscountRequired}
+                highlight={!!isUnfilled}
+              />
+            );
+          })()}
           <EditableButtonSelect label="売・支払方法" field="seller_payment_method" options={['振込', '現金', '他']} />
           {/* 買・支払方法: 専任両手・一般両手・他社片手の場合のみ表示 */}
           {(() => {
