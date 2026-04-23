@@ -1971,8 +1971,60 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
 
     return (
     <Box sx={{ display: 'flex', height: '100%', overflow: 'hidden' }}>
-      {/* 左ペイン: 売主・買主詳細 */}
-      <Box sx={{ flex: 1, overflowY: 'auto', p: 2, borderRight: '1px solid #e0e0e0' }}>
+      {/* 左ペイン: Email送信履歴 */}
+      <Box sx={{ width: 320, minWidth: 260, overflowY: 'auto', bgcolor: '#f8f9fa', display: 'flex', flexDirection: 'column', borderRight: '1px solid #e0e0e0' }}>
+        <Box sx={{ p: 1.5, borderBottom: '1px solid #e0e0e0', bgcolor: '#fff', position: 'sticky', top: 0, zIndex: 1 }}>
+          <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#1565c0', display: 'flex', alignItems: 'center', gap: 0.5 }}>
+            <EmailIcon sx={{ fontSize: '1rem' }} />
+            Email送信履歴
+          </Typography>
+        </Box>
+        <Box sx={{ flex: 1, p: 1 }}>
+          {emailHistoryLoading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', pt: 3 }}>
+              <CircularProgress size={24} />
+            </Box>
+          ) : emailHistory.length === 0 ? (
+            <Typography variant="body2" color="text.secondary" sx={{ p: 1.5, textAlign: 'center' }}>
+              送信履歴はありません
+            </Typography>
+          ) : (
+            emailHistory.map((record) => (
+              <Box
+                key={record.id}
+                onClick={() => setSelectedEmailRecord(record)}
+                sx={{
+                  mb: 1,
+                  p: 1.5,
+                  bgcolor: '#fff',
+                  borderRadius: 1,
+                  border: '1px solid #e0e0e0',
+                  cursor: 'pointer',
+                  '&:hover': { bgcolor: '#e3f2fd', borderColor: '#1565c0' },
+                }}
+              >
+                <Typography variant="caption" sx={{ color: '#888', display: 'block', mb: 0.5 }}>
+                  {new Date(record.sentAt).toLocaleString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                </Typography>
+                {record.templateName && (
+                  <Typography variant="caption" sx={{ display: 'inline-block', bgcolor: '#e8f5e9', color: '#2e7d32', borderRadius: '4px', px: 0.8, py: 0.2, mb: 0.5, fontWeight: 600, fontSize: '0.7rem' }}>
+                    {record.templateName}
+                  </Typography>
+                )}
+                <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.8rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {record.subject || '（件名なし）'}
+                </Typography>
+                <Typography variant="caption" sx={{ color: '#666' }}>
+                  送信者: {record.senderName || record.senderInitials || record.senderEmail || '-'}
+                </Typography>
+              </Box>
+            ))
+          )}
+        </Box>
+      </Box>
+
+      {/* 右ペイン: 売主・買主詳細 */}
+      <Box sx={{ flex: 1, overflowY: 'auto', p: 2 }}>
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
         <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#2e7d32' }}>【売主情報】</Typography>
         <FormControl size="small" sx={{ minWidth: 180 }}>
@@ -2127,58 +2179,6 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
           </table>
         </Box>
       )}
-      </Box>
-
-      {/* 右ペイン: Email送信履歴 */}
-      <Box sx={{ width: 320, minWidth: 260, overflowY: 'auto', bgcolor: '#f8f9fa', display: 'flex', flexDirection: 'column' }}>
-        <Box sx={{ p: 1.5, borderBottom: '1px solid #e0e0e0', bgcolor: '#fff', position: 'sticky', top: 0, zIndex: 1 }}>
-          <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#1565c0', display: 'flex', alignItems: 'center', gap: 0.5 }}>
-            <EmailIcon sx={{ fontSize: '1rem' }} />
-            Email送信履歴
-          </Typography>
-        </Box>
-        <Box sx={{ flex: 1, p: 1 }}>
-          {emailHistoryLoading ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', pt: 3 }}>
-              <CircularProgress size={24} />
-            </Box>
-          ) : emailHistory.length === 0 ? (
-            <Typography variant="body2" color="text.secondary" sx={{ p: 1.5, textAlign: 'center' }}>
-              送信履歴はありません
-            </Typography>
-          ) : (
-            emailHistory.map((record) => (
-              <Box
-                key={record.id}
-                onClick={() => setSelectedEmailRecord(record)}
-                sx={{
-                  mb: 1,
-                  p: 1.5,
-                  bgcolor: '#fff',
-                  borderRadius: 1,
-                  border: '1px solid #e0e0e0',
-                  cursor: 'pointer',
-                  '&:hover': { bgcolor: '#e3f2fd', borderColor: '#1565c0' },
-                }}
-              >
-                <Typography variant="caption" sx={{ color: '#888', display: 'block', mb: 0.5 }}>
-                  {new Date(record.sentAt).toLocaleString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
-                </Typography>
-                {record.templateName && (
-                  <Typography variant="caption" sx={{ display: 'inline-block', bgcolor: '#e8f5e9', color: '#2e7d32', borderRadius: '4px', px: 0.8, py: 0.2, mb: 0.5, fontWeight: 600, fontSize: '0.7rem' }}>
-                    {record.templateName}
-                  </Typography>
-                )}
-                <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.8rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {record.subject || '（件名なし）'}
-                </Typography>
-                <Typography variant="caption" sx={{ color: '#666' }}>
-                  送信者: {record.senderName || record.senderInitials || record.senderEmail || '-'}
-                </Typography>
-              </Box>
-            ))
-          )}
-        </Box>
       </Box>
 
       {/* Email本文モーダル */}
