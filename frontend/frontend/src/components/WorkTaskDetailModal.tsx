@@ -1281,10 +1281,10 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
 
   // Yes/No選択
   const EditableYesNo = ({ label, field, labelColor }: { label: string; field: string; labelColor?: 'error' | 'text.secondary' }) => (
-    <Grid container spacing={2} alignItems="center" sx={{ mb: 1.5, ...(highlight ? { bgcolor: '#fff3e0', borderRadius: 1, p: 0.5, border: '2px solid #ff9800' } : {}) }}>
+    <Grid container spacing={2} alignItems="center" sx={{ mb: 1.5 }}>
       <Grid item xs={4}>
-        <Typography variant="body2" color={highlight ? 'warning.dark' : (labelColor || 'text.secondary')} sx={{ fontWeight: (highlight || labelColor === 'error') ? 700 : 500 }}>
-          {label}{required && !getValue(field) ? <span style={{ color: '#d32f2f', marginLeft: 2 }}>*（必須）</span> : null}
+        <Typography variant="body2" color={labelColor || 'text.secondary'} sx={{ fontWeight: labelColor === 'error' ? 700 : 500 }}>
+          {label}
         </Typography>
       </Grid>
       <Grid item xs={8}>
