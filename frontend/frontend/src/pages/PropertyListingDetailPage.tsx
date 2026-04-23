@@ -167,6 +167,8 @@ interface PropertyListing {
   buyer_filter_floor?: string;
   // 一般媒介非公開（仮）フィールド
   general_mediation_private?: string;
+  // 非公開配信メールフィールド
+  private_mail_delivery?: string;
 }
 
 interface Buyer {
@@ -341,6 +343,10 @@ export default function PropertyListingDetailPage() {
   const [generalMediationPrivate, setGeneralMediationPrivate] = useState<string | null>(null);
   const [generalMediationPrivateUpdating, setGeneralMediationPrivateUpdating] = useState(false);
 
+  // 非公開配信メールフィールド関連の状態
+  const [privateMailDelivery, setPrivateMailDelivery] = useState<'未' | '済' | null>(null);
+  const [privateMailDeliveryUpdating, setPrivateMailDeliveryUpdating] = useState(false);
+
   // Check for buyer context from navigation state
   const buyerContext = location.state as { buyerId?: string; buyerName?: string; source?: string } | null;
 
@@ -401,6 +407,8 @@ export default function PropertyListingDetailPage() {
       setConfirmation(response.data.confirmation);
       // 一般媒介非公開（仮）フィールドを設定
       setGeneralMediationPrivate(response.data.general_mediation_private ?? null);
+      // 非公開配信メールフィールドを設定
+      setPrivateMailDelivery(response.data.private_mail_delivery ?? null);
       // 買主フィルター値を設定（nullの場合はデフォルト値）
       setBuyerFilterPet(response.data.buyer_filter_pet || 'どちらでも');
       setBuyerFilterParking(response.data.buyer_filter_parking || '指定なし');
@@ -1062,6 +1070,26 @@ export default function PropertyListingDetailPage() {
       setSnackbar({ open: true, message: error.response?.data?.error || '一般媒介非公開（仮）の更新に失敗しました', severity: 'error' });
     } finally {
       setGeneralMediationPrivateUpdating(false);
+    }
+  };
+
+  // 非公開配信メールフィールドを更新するハンドラー
+  const handleUpdatePrivateMailDelivery = async (value: '未' | '済') => {
+    setPrivateMailDeliveryUpdating(true);
+    try {
+      await api.put(`/api/property-listings/${propertyNumber}/private-mail-delivery`, {
+        privateMailDelivery: value,
+      });
+      setPrivateMailDelivery(value);
+      setSnackbar({ open: true, message: `非公開配信メールを「${value}」に更新しました`, severity: 'success' });
+      // サイドバーへのリアルタイム通知
+      window.dispatchEvent(new CustomEvent('privateMailDeliveryUpdated', {
+        detail: { propertyNumber: data?.property_number, value },
+      }));
+    } catch (error: any) {
+      setSnackbar({ open: true, message: error.response?.data?.error || '非公開配信メールの更新に失敗しました', severity: 'error' });
+    } finally {
+      setPrivateMailDeliveryUpdating(false);
     }
   };
 
@@ -1826,6 +1854,7 @@ export default function PropertyListingDetailPage() {
             priceReductionHistory={data.price_reduction_history}
             propertyType={editedData.property_type !== undefined ? editedData.property_type : data.property_type}
             atbbStatus={editedData.atbb_status !== undefined ? editedData.atbb_status : data.atbb_status}
+            assigneeEmail={jimuStaff.find(s => s.initials === data.sales_assignee)?.email}
             size="medium"
             variant="contained"
             onSendSuccess={handleGmailDistributionSendSuccess}
@@ -2280,6 +2309,32 @@ export default function PropertyListingDetailPage() {
                       aria-pressed={generalMediationPrivate === '不要'}
                     >
                       不要
+                    </Button>
+                  </ButtonGroup>
+                </Box>
+              )}
+              {/* 非公開配信メールフィールド: atbb_statusが「非公開（配信メールのみ）」の場合のみ表示 */}
+              {data?.atbb_status === '非公開（配信メールのみ）' && (
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, ml: 2 }}>
+                  <Typography variant="body2" fontWeight="bold">非公開配信メール:</Typography>
+                  <ButtonGroup size="small" disabled={privateMailDeliveryUpdating}>
+                    <Button
+                      variant={privateMailDelivery === '未' ? 'contained' : 'outlined'}
+                      color={privateMailDelivery === '未' ? 'error' : 'inherit'}
+                      onClick={() => handleUpdatePrivateMailDelivery('未')}
+                      aria-label="非公開配信メールを未に設定"
+                      aria-pressed={privateMailDelivery === '未'}
+                    >
+                      未
+                    </Button>
+                    <Button
+                      variant={privateMailDelivery === '済' ? 'contained' : 'outlined'}
+                      color={privateMailDelivery === '済' ? 'success' : 'inherit'}
+                      onClick={() => handleUpdatePrivateMailDelivery('済')}
+                      aria-label="非公開配信メールを済に設定"
+                      aria-pressed={privateMailDelivery === '済'}
+                    >
+                      済
                     </Button>
                   </ButtonGroup>
                 </Box>

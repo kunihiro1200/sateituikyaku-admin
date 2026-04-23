@@ -28,6 +28,8 @@ interface GmailDistributionButtonProps {
   variant?: 'text' | 'outlined' | 'contained';
   /** ATBB状況（「非公開（配信メールのみ）」の場合に専用テンプレートを表示） */
   atbbStatus?: string;
+  /** 物件担当者のメールアドレス（メール送信時にCCとして追加） */
+  assigneeEmail?: string;
   /** 送信成功時に呼び出されるコールバック（親コンポーネントで履歴保存に使用） */
   onSendSuccess?: (result: { successCount: number; subject: string; senderAddress: string; body: string }) => void;
 }
@@ -49,6 +51,7 @@ export default function GmailDistributionButton({
   priceReductionHistory,
   propertyType,
   atbbStatus,
+  assigneeEmail,
   size = 'small',
   variant = 'outlined',
   onSendSuccess
@@ -306,7 +309,8 @@ export default function GmailDistributionButton({
         selectedBuyers.map(b => b.email),
         senderAddress,
         buyers,
-        attachments.length > 0 ? attachments : undefined
+        attachments.length > 0 ? attachments : undefined,
+        assigneeEmail || undefined
       );
 
       setConfirmationOpen(false);

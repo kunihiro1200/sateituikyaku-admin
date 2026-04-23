@@ -670,7 +670,7 @@ router.get('/:propertyNumber/distribution-buyers-enhanced', async (req: Request,
 router.post('/:propertyNumber/send-distribution-emails', authenticate, async (req: Request, res: Response) => {
   try {
     const { propertyNumber } = req.params;
-    const { recipientEmails, recipients, subject, content, htmlBody, from, attachments } = req.body;
+    const { recipientEmails, recipients, subject, content, htmlBody, from, attachments, assigneeEmail } = req.body;
 
     // デバッグログ: リクエストボディを記録
     console.log(`[send-distribution-emails] Request body:`, JSON.stringify({
@@ -897,6 +897,33 @@ router.post('/:propertyNumber/send-distribution-emails', authenticate, async (re
           // activity_logs記録失敗はログのみ（ユーザーには通知しない）
           console.error(`[send-distribution-emails] Failed to log email activity for ${typeof recipient === 'string' ? recipient : recipient.buyerNumber || recipient.email}:`, logError);
         }
+      }
+    }
+
+    // 担当者への通知メールを1通送信（assigneeEmailが指定されている場合のみ）
+    if (assigneeEmail && successCount > 0) {
+      try {
+        console.log(`[send-distribution-emails] Sending notification to assignee: ${assigneeEmail}`);
+        const assigneeSubject = `【配信済み】${subject}`;
+        const assigneeBody = `${successCount}件の買主様にメールを配信しました。\n\n` +
+          `物件番号: ${propertyNumber}\n` +
+          `物件住所: ${property.property_address || ''}\n` +
+          `件名: ${subject}\n\n` +
+          `---\n` +
+          `${content}`;
+        const assigneeHtmlBody = assigneeBody.replace(/\n/g, '<br>');
+
+        await emailService.sendEmailWithCcAndAttachments({
+          to: assigneeEmail,
+          subject: assigneeSubject,
+          body: assigneeHtmlBody,
+          from,
+          isHtml: true,
+        });
+        console.log(`[send-distribution-emails] Assignee notification sent to: ${assigneeEmail}`);
+      } catch (assigneeError) {
+        // 担当者への送信失敗はログのみ（買主への送信結果には影響しない）
+        console.error(`[send-distribution-emails] Failed to send assignee notification:`, assigneeError);
       }
     }
 
@@ -1787,6 +1814,33 @@ router.put('/:propertyNumber/general-mediation-private', async (req: Request, re
     console.error('[general-mediation-private] Error:', error);
     res.status(500).json({
       error: error.message || '一般媒介非公開（仮）の更新に失敗しました',
+      code: 'INTERNAL_ERROR',
+    });
+  }
+});
+
+// 非公開配信メールフィールドを更新
+// PUT /api/property-listings/:propertyNumber/private-mail-delivery
+router.put('/:propertyNumber/private-mail-delivery', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { propertyNumber } = req.params;
+    const { privateMailDelivery } = req.body;
+
+    if (!privateMailDelivery || !['未', '済'].includes(privateMailDelivery)) {
+      res.status(400).json({
+        error: '非公開配信メールフィールドは「未」または「済」のみ有効です',
+        code: 'INVALID_VALUE',
+      });
+      return;
+    }
+
+    await propertyListingService.updatePrivateMailDelivery(propertyNumber, privateMailDelivery);
+
+    res.json({ success: true, message: `非公開配信メールを「${privateMailDelivery}」に更新しました` });
+  } catch (error: any) {
+    console.error('[private-mail-delivery] Error:', error);
+    res.status(500).json({
+      error: error.message || '非公開配信メールの更新に失敗しました',
       code: 'INTERNAL_ERROR',
     });
   }

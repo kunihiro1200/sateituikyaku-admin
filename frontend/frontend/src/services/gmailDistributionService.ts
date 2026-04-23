@@ -284,7 +284,8 @@ export class GmailDistributionService {
       base64Data?: string;
       driveFileId?: string;
       url?: string;
-    }>
+    }>,
+    ccEmail?: string
   ): Promise<{
     success: boolean;
     successCount: number;
@@ -316,6 +317,7 @@ export class GmailDistributionService {
           htmlBody,
           from,
           attachments: attachments && attachments.length > 0 ? attachments : undefined,
+          assigneeEmail: ccEmail || undefined,
         }
       );
 
