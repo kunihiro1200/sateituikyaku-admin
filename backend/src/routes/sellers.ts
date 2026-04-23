@@ -14,6 +14,10 @@ import { GoogleSheetsClient } from '../services/GoogleSheetsClient';
 const router = Router();
 const sellerService = new SellerService();
 
+// シングルトンインスタンス（キャッシュを維持するため）
+const distributionCalculator = new PropertyDistributionAreaCalculator();
+const cityExtractor = new CityNameExtractor();
+
 /**
  * SpreadsheetSyncServiceを初期化して返す（Vercelサーバーレス対応）
  * SyncQueueが使えない環境でも直接スプシ同期できるようにする
@@ -1510,8 +1514,9 @@ router.get('/:id/nearby-buyers', async (req: Request, res: Response) => {
       });
     }
 
-    const calculator = new PropertyDistributionAreaCalculator();
-    const cityExtractor = new CityNameExtractor();
+    // シングルトンインスタンスを使用（キャッシュが維持される）
+    const calculator = distributionCalculator;
+    const cityExtractor_local = cityExtractor;
 
     const googleMapUrl = (seller as any).googleMapUrl || null;
     const propertyType = seller.propertyType || null;
@@ -1531,7 +1536,7 @@ router.get('/:id/nearby-buyers', async (req: Request, res: Response) => {
         : valuations[mid];
     }
 
-    const city = cityExtractor.extractCityFromAddress(seller.propertyAddress);
+    const city = cityExtractor_local.extractCityFromAddress(seller.propertyAddress);
 
     // sellersテーブルから保存済み座標を取得（物件位置セクションと同じ方法）
     const supabase = createClient(

@@ -107,16 +107,16 @@ export class AreaMapConfigService {
 
       this.logInfo(`Retrieved ${data.length} area map configurations from database`);
 
-      // Transform and cache data
-      const configs: AreaMapConfig[] = [];
+      // Transform and cache data（並列処理でURL展開を高速化）
       const skippedConfigs: string[] = [];
       this.cache.clear();
 
-      for (const row of data) {
+      // 各行を並列処理するヘルパー関数
+      const processRow = async (row: any): Promise<AreaMapConfig | null> => {
         // Validate configuration
         if (!this.validateConfig(row)) {
           skippedConfigs.push(row.area_number || row.id);
-          continue;
+          return null;
         }
 
         const config: AreaMapConfig = {
@@ -157,7 +157,7 @@ export class AreaMapConfigService {
               url: config.googleMapUrl
             });
             skippedConfigs.push(config.areaNumber);
-            continue;
+            return null;
           }
 
           try {
@@ -168,19 +168,16 @@ export class AreaMapConfigService {
                 lat: coords.lat,
                 lng: coords.lng
               });
-              // 次回以降のためにDBに座標を保存
-              try {
-                await this.supabase
-                  .from('area_map_config')
-                  .update({ coordinates: { lat: coords.lat, lng: coords.lng } })
-                  .eq('id', row.id);
-                this.logInfo(`Saved coordinates to DB for area ${config.areaNumber}`);
-              } catch (saveError) {
-                this.logWarning('Failed to save coordinates to DB (non-critical)', {
+              // 次回以降のためにDBに座標を保存（非同期、待機不要）
+              this.supabase
+                .from('area_map_config')
+                .update({ coordinates: { lat: coords.lat, lng: coords.lng } })
+                .eq('id', row.id)
+                .then(() => this.logInfo(`Saved coordinates to DB for area ${config.areaNumber}`))
+                .catch((saveError: any) => this.logWarning('Failed to save coordinates to DB (non-critical)', {
                   areaNumber: config.areaNumber,
                   error: saveError instanceof Error ? saveError.message : String(saveError)
-                });
-              }
+                }));
             } else {
               this.logWarning('Failed to extract coordinates', {
                 areaNumber: config.areaNumber,
@@ -188,7 +185,7 @@ export class AreaMapConfigService {
                 action: 'Skipping this area'
               });
               skippedConfigs.push(config.areaNumber);
-              continue;
+              return null;
             }
           } catch (coordError) {
             this.logError('Exception while extracting coordinates', {
@@ -197,11 +194,19 @@ export class AreaMapConfigService {
               error: coordError instanceof Error ? coordError.message : String(coordError)
             });
             skippedConfigs.push(config.areaNumber);
-            continue;
+            return null;
           }
         }
 
-        configs.push(config);
+        return config;
+      };
+
+      // 全エリアを並列処理（URL展開が必要なエリアも同時に処理）
+      const results = await Promise.all(data.map(row => processRow(row)));
+      const configs = results.filter((c): c is AreaMapConfig => c !== null);
+
+      // キャッシュに登録
+      for (const config of configs) {
         this.cache.set(config.areaNumber, config);
       }
 
