@@ -2173,8 +2173,63 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
 
     return (
     <Box sx={{ display: 'flex', height: '100%', overflow: 'hidden', width: '100%' }}>
-      {/* 左ペイン: Email送信履歴 */}
+      {/* 左ペイン: 契約後フィールド + Email送信履歴 */}
       <Box sx={{ width: 320, minWidth: 260, overflowY: 'auto', bgcolor: '#f8f9fa', display: 'flex', flexDirection: 'column', borderRight: '1px solid #e0e0e0' }}>
+        {/* 契約後　司法書士へのメール */}
+        <Box sx={{ p: 1.5, borderBottom: '1px solid #e0e0e0', bgcolor: '#fff3e0' }}>
+          <Typography variant="caption" sx={{ fontWeight: 700, color: '#e65100', display: 'block', mb: 0.5 }}>
+            契約後　司法書士へのメール
+          </Typography>
+          <ButtonGroup size="small" variant="outlined" fullWidth>
+            {['済', '不要'].map((opt) => (
+              <Button
+                key={opt}
+                variant={getValue('judicial_scrivener_email_after_contract') === opt ? 'contained' : 'outlined'}
+                color={getValue('judicial_scrivener_email_after_contract') === opt ? 'warning' : 'inherit'}
+                onClick={(e) => { (e.currentTarget as HTMLButtonElement).blur(); handleFieldChange('judicial_scrivener_email_after_contract', getValue('judicial_scrivener_email_after_contract') === opt ? null : opt); }}
+              >
+                {opt}
+              </Button>
+            ))}
+          </ButtonGroup>
+        </Box>
+        {/* 決済前、売主金種表連絡メール */}
+        <Box sx={{ p: 1.5, borderBottom: '1px solid #e0e0e0', bgcolor: '#e8f5e9' }}>
+          <Typography variant="caption" sx={{ fontWeight: 700, color: '#2e7d32', display: 'block', mb: 0.5 }}>
+            決済前、売主金種表連絡メール
+          </Typography>
+          <ButtonGroup size="small" variant="outlined" fullWidth>
+            {['済', '不要'].map((opt) => (
+              <Button
+                key={opt}
+                variant={getValue('settlement_seller_denomination_email') === opt ? 'contained' : 'outlined'}
+                color={getValue('settlement_seller_denomination_email') === opt ? 'success' : 'inherit'}
+                onClick={(e) => { (e.currentTarget as HTMLButtonElement).blur(); handleFieldChange('settlement_seller_denomination_email', getValue('settlement_seller_denomination_email') === opt ? null : opt); }}
+              >
+                {opt}
+              </Button>
+            ))}
+          </ButtonGroup>
+        </Box>
+        {/* 決済前、買主金種表連絡メール */}
+        <Box sx={{ p: 1.5, borderBottom: '1px solid #e0e0e0', bgcolor: '#e3f2fd' }}>
+          <Typography variant="caption" sx={{ fontWeight: 700, color: '#1565c0', display: 'block', mb: 0.5 }}>
+            決済前、買主金種表連絡メール
+          </Typography>
+          <ButtonGroup size="small" variant="outlined" fullWidth>
+            {['済', '不要'].map((opt) => (
+              <Button
+                key={opt}
+                variant={getValue('settlement_buyer_denomination_email') === opt ? 'contained' : 'outlined'}
+                color={getValue('settlement_buyer_denomination_email') === opt ? 'primary' : 'inherit'}
+                onClick={(e) => { (e.currentTarget as HTMLButtonElement).blur(); handleFieldChange('settlement_buyer_denomination_email', getValue('settlement_buyer_denomination_email') === opt ? null : opt); }}
+              >
+                {opt}
+              </Button>
+            ))}
+          </ButtonGroup>
+        </Box>
+        {/* Email送信履歴ヘッダー */}
         <Box sx={{ p: 1.5, borderBottom: '1px solid #e0e0e0', bgcolor: '#fff', position: 'sticky', top: 0, zIndex: 1 }}>
           <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#1565c0', display: 'flex', alignItems: 'center', gap: 0.5 }}>
             <EmailIcon sx={{ fontSize: '1rem' }} />
