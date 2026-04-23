@@ -2471,9 +2471,36 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
       <Box sx={{ width: 320, minWidth: 260, overflowY: 'auto', bgcolor: '#f8f9fa', display: 'flex', flexDirection: 'column', borderRight: '1px solid #e0e0e0' }}>
         {/* 契約後　司法書士へのメール */}
         <Box sx={{ p: 1.5, borderBottom: '1px solid #e0e0e0', bgcolor: '#fff3e0' }}>
-          <Typography variant="caption" sx={{ fontWeight: 700, color: '#e65100', display: 'block', mb: 0.5 }}>
-            契約後　司法書士へのメール
-          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.5 }}>
+            <Typography variant="caption" sx={{ fontWeight: 700, color: '#e65100' }}>
+              契約後　司法書士へのメール
+            </Typography>
+            <Button
+              size="small"
+              variant="contained"
+              color="primary"
+              onClick={handleSave}
+              disabled={!hasChanges || saving}
+              startIcon={saving ? <CircularProgress size={12} /> : <SaveIcon sx={{ fontSize: '0.85rem !important' }} />}
+              sx={{
+                minWidth: 0,
+                px: 1,
+                py: 0.3,
+                fontSize: '0.7rem',
+                lineHeight: 1.4,
+                ...(hasChanges && !saving ? {
+                  animation: 'pulse-save 1s ease-in-out infinite',
+                  '@keyframes pulse-save': {
+                    '0%': { boxShadow: '0 0 0 0 rgba(25, 118, 210, 0.7)' },
+                    '70%': { boxShadow: '0 0 0 8px rgba(25, 118, 210, 0)' },
+                    '100%': { boxShadow: '0 0 0 0 rgba(25, 118, 210, 0)' },
+                  },
+                } : {}),
+              }}
+            >
+              {saving ? '保存中' : '保存'}
+            </Button>
+          </Box>
           <ButtonGroup size="small" variant="outlined" fullWidth>
             {['済', '不要'].map((opt) => (
               <Button
