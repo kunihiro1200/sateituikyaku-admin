@@ -5,7 +5,7 @@ import { EmailService } from './EmailService.supabase';
 export interface HourlyNotificationTarget {
   property_number: string;
   property_address: string;
-  notificationType: 'site_registration' | 'floor_plan';
+  notificationType: 'site_registration' | 'floor_plan' | 'sales_contract';
   dueDateTime: Date;        // 解釈済みの納期日時（JST基準）
   remainingMinutes: number; // 残り時間（分）
 }
@@ -40,16 +40,27 @@ export class BusinessSiteDeadlineHourlyNotificationService {
   }
 
   /**
-   * 日付文字列（YYYY-MM-DD）をJST 00:00:00 として解釈した Date を返す
+   * 日付・日時文字列を JST として解釈した Date を返す
+   * - "YYYY-MM-DD HH:MM:SS" 形式 → JST の時刻として解釈
+   * - "YYYY-MM-DD" 形式 → JST 00:00:00 として解釈
    * 無効な値の場合は null を返す
    */
   parseDueDateAsJST(dateStr: string): Date | null {
     if (!dateStr || typeof dateStr !== 'string') return null;
-    // YYYY-MM-DD 形式チェック
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return null;
-    const d = new Date(dateStr + 'T00:00:00+09:00');
-    if (isNaN(d.getTime())) return null;
-    return d;
+    // "YYYY-MM-DD HH:MM:SS" または "YYYY-MM-DDTHH:MM:SS" 形式（datetime）
+    const datetimeMatch = dateStr.match(/^(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2}(?::\d{2})?)$/);
+    if (datetimeMatch) {
+      const d = new Date(datetimeMatch[1] + 'T' + datetimeMatch[2] + '+09:00');
+      if (isNaN(d.getTime())) return null;
+      return d;
+    }
+    // "YYYY-MM-DD" 形式（date のみ）→ JST 00:00:00
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+      const d = new Date(dateStr + 'T00:00:00+09:00');
+      if (isNaN(d.getTime())) return null;
+      return d;
+    }
+    return null;
   }
 
   /**
@@ -99,8 +110,8 @@ export class BusinessSiteDeadlineHourlyNotificationService {
     const targets: HourlyNotificationTarget[] = [];
 
     for (const task of data || []) {
-      // サイト登録通知チェック
-      const siteDeadlineStr = task.site_registration_deadline;
+      // サイト登録通知チェック（site_registration_due_date = 納期予定日・datetime型）
+      const siteDeadlineStr = task.site_registration_due_date;
       const siteOkSent = task.site_registration_ok_sent;
 
       if (siteDeadlineStr) {
@@ -166,17 +177,17 @@ export class BusinessSiteDeadlineHourlyNotificationService {
         let body: string;
 
         if (target.notificationType === 'site_registration') {
-          subject = `${target.property_number}/${target.property_address}のサイト登録の納期が${remainingTime}です！！`;
+          subject = `${target.property_number}/${target.property_address}のサイト登録の納期が迫っています！！`;
           body = [
-            'サイト登録者へ、至急メール送信してください！！',
-            `${target.property_number}/${target.property_address}のサイト登録の納期が${remainingTime}ですが大丈夫でしょうか？`,
+            `${target.property_number}/${target.property_address}のサイト登録の納期が${remainingTime}です。`,
+            '遅れる可能性がある場合は担当、上長に相談してください。',
             'ご確認の程よろしくお願い致します。',
           ].join('\n');
         } else {
-          subject = `${target.property_number}/${target.property_address}の間取図作成の納期が${remainingTime}です！！`;
+          subject = `${target.property_number}/${target.property_address}の間取図作成の納期が迫っています！！`;
           body = [
-            '間取図作成者へ、至急メール送信してください！！',
-            `${target.property_number}/${target.property_address}の間取図作成の納期が${remainingTime}ですが大丈夫でしょうか？`,
+            `${target.property_number}/${target.property_address}の間取図作成の納期が${remainingTime}です。`,
+            '遅れる可能性がある場合は担当、上長に相談してください。',
             'ご確認の程よろしくお願い致します。',
           ].join('\n');
         }

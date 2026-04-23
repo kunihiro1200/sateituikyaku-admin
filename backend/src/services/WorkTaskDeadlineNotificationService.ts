@@ -229,6 +229,8 @@ export class WorkTaskDeadlineNotificationService {
       const status = calcStatus(task);
       if (!status) continue;
       if (!isDeadlineToday(status)) continue;
+      // サイト登録は1時間前通知（BusinessSiteDeadlineHourlyNotificationService）に任せる
+      if (status.startsWith('サイト登録依頼してください')) continue;
 
       targets.push({
         property_number: task.property_number || '',
@@ -257,7 +259,7 @@ export class WorkTaskDeadlineNotificationService {
         const body = [
           `物件番号：${target.property_number}`,
           `物件住所：${target.property_address}`,
-          `本日${target.category}において締め切りですが送れるようであれば担当、上長に相談してください。`,
+          `本日${target.category}において締め切りです。遅れる可能性がある場合は担当、上長に相談してください。`,
         ].join('\n');
 
         await this.emailService.sendEmailWithCcAndAttachments({
