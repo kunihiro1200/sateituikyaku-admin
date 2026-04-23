@@ -1218,12 +1218,16 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
     chatType,
     staffName,
     buildMessage,
+    required,
+    highlight,
   }: {
     label: string;
     field: string;
     chatType: 'settlement' | 'staff';
     staffName?: string;
     buildMessage: () => string;
+    required?: boolean;
+    highlight?: boolean;
   }) => {
     const [sending, setSending] = React.useState(false);
 
@@ -1251,9 +1255,11 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
     };
 
     return (
-      <Grid container spacing={2} alignItems="center" sx={{ mb: 1.5 }}>
+      <Grid container spacing={2} alignItems="center" sx={{ mb: 1.5, ...(highlight ? { bgcolor: '#fff3e0', borderRadius: 1, p: 0.5, border: '2px solid #ff9800' } : {}) }}>
         <Grid item xs={4}>
-          <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>{label}</Typography>
+          <Typography variant="body2" color={highlight ? 'warning.dark' : 'text.secondary'} sx={{ fontWeight: (highlight || required) ? 700 : 500 }}>
+            {label}{required && !getValue(field) ? <span style={{ color: '#d32f2f', marginLeft: 2 }}>*（必須）</span> : null}
+          </Typography>
         </Grid>
         <Grid item xs={8}>
           <ButtonGroup size="small" variant="outlined" disabled={sending}>
@@ -2248,10 +2254,25 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
           <EditableButtonSelect label="口コミ(売主)*" field="review_seller" options={['Google口コミ', 'アンケート用紙', 'NG', 'これから']} labelColor="error" />
           <EditableButtonSelect label="口コミ(買主)" field="review_buyer" options={['Google口コミ', 'アンケート用紙', 'NG', 'これから']} />
           <EditableField label="他コメント" field="other_comments" />
+          {(() => {
+            // 決済完了チャット必須条件:
+            // 司法書士・紹介チラシ渡し・売支払方法・口コミ登録が全て入力済み かつ 決済日>=2025/6/27
+            const settlementDate = getValue('settlement_date');
+            const isSettlementChatRequired =
+              !!getValue('judicial_scrivener') &&
+              !!getValue('referral_flyer_given') &&
+              !!getValue('seller_payment_method') &&
+              !!getValue('review_registered') &&
+              !!settlementDate &&
+              settlementDate >= '2025-06-27';
+            const isSettlementChatUnfilled = isSettlementChatRequired && !getValue('settlement_completed_chat');
+            return (
           <ChatSendButton
             label="決済完了チャット"
             field="settlement_completed_chat"
             chatType="settlement"
+            required={isSettlementChatRequired}
+            highlight={isSettlementChatUnfilled}
             buildMessage={() => {
               const pn = getValue('property_number') || propertyNumber || '';
               const addr = getValue('property_address') || '';
@@ -2271,6 +2292,8 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
 決済日：${dateStr}`;
             }}
           />
+            );
+          })()}
           <EditableField label="台帳作成済み" field="ledger_created" type="date" />
           {/* 入金確認（売）: 決済日>2025/10/20 かつ 決済完了チャット入力済みの場合は必須・ハイライト */}
           {(() => {
