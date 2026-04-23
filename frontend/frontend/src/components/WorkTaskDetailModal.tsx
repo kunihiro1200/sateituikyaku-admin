@@ -337,6 +337,7 @@ const isEmpty = (value: any): boolean =>
 // サイト登録確認グループのフィールド表示名マッピング
 const SITE_REGISTRATION_FIELD_LABELS: Record<string, string> = {
   site_registration_confirmed: 'サイト登録確認',
+  site_registration_confirmer: 'サイト登録確認者',
   site_registration_ok_sent: 'サイト登録確認OK送信',
 };
 
@@ -350,6 +351,7 @@ const FLOOR_PLAN_FIELD_LABELS: Record<string, string> = {
 
 // サイト登録確認グループのバリデーション
 // XOR条件：片方だけ入力されている場合に警告
+// 完了時はsite_registration_confirmerとsite_registration_ok_sentも必須
 function checkSiteRegistrationWarning(getValue: (field: string) => any): {
   hasWarning: boolean;
   emptyFields: string[];
@@ -358,6 +360,16 @@ function checkSiteRegistrationWarning(getValue: (field: string) => any): {
   const okSent = getValue('site_registration_ok_sent');
   const confirmedEmpty = isEmpty(confirmed);
   const okSentEmpty = isEmpty(okSent);
+
+  // 完了時：確認者とOK送信が必須
+  if (confirmed === '完了') {
+    const confirmerEmpty = isEmpty(getValue('site_registration_confirmer'));
+    const emptyFields: string[] = [];
+    if (confirmerEmpty) emptyFields.push(SITE_REGISTRATION_FIELD_LABELS['site_registration_confirmer']);
+    if (okSentEmpty) emptyFields.push(SITE_REGISTRATION_FIELD_LABELS['site_registration_ok_sent']);
+    return { hasWarning: emptyFields.length > 0, emptyFields };
+  }
+
   // XOR: 片方だけ入力されている場合に警告
   const hasWarning = confirmedEmpty !== okSentEmpty;
   const emptyFields: string[] = [];
@@ -752,10 +764,10 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
   );
 
   // Yes/No選択
-  const EditableYesNo = ({ label, field }: { label: string; field: string }) => (
+  const EditableYesNo = ({ label, field, labelColor }: { label: string; field: string; labelColor?: 'error' | 'text.secondary' }) => (
     <Grid container spacing={2} alignItems="center" sx={{ mb: 1.5 }}>
       <Grid item xs={4}>
-        <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>{label}</Typography>
+        <Typography variant="body2" color={labelColor || 'text.secondary'} sx={{ fontWeight: labelColor === 'error' ? 700 : 500 }}>{label}</Typography>
       </Grid>
       <Grid item xs={8}>
         <ButtonGroup size="small" variant="outlined">
@@ -1150,13 +1162,22 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
         <Box sx={{ bgcolor: '#f3e5f5', borderRadius: 1, p: 1, mb: 1 }}>
         <SectionHeader label="【★サイト登録確認】" />
         <EditableButtonSelect label="サイト登録確認" field="site_registration_confirmed" options={['確認中', '完了', '他']} />
-        {/* サイト登録確認が「完了」になったら確認者を表示 */}
+        {/* サイト登録確認が「完了」になったら確認者を表示（必須） */}
         {getValue('site_registration_confirmed') === '完了' && (
-          <EditableButtonSelect label="サイト登録確認者" field="site_registration_confirmer" options={normalInitials} />
+          <EditableButtonSelect
+            label={!getValue('site_registration_confirmer') ? 'サイト登録確認者*（必須）' : 'サイト登録確認者'}
+            field="site_registration_confirmer"
+            options={normalInitials}
+            labelColor={!getValue('site_registration_confirmer') ? 'error' : undefined}
+          />
         )}
         <EditableField label="メール配信v" field="email_distribution" />
         <EditableField label="サイト登録確認OKコメント" field="site_registration_ok_comment" type="text" />
-        <EditableYesNo label="サイト登録確認OK送信" field="site_registration_ok_sent" />
+        <EditableYesNo
+          label={getValue('site_registration_confirmed') === '完了' && !getValue('site_registration_ok_sent') ? 'サイト登録確認OK送信*（必須）' : 'サイト登録確認OK送信'}
+          field="site_registration_ok_sent"
+          labelColor={getValue('site_registration_confirmed') === '完了' && !getValue('site_registration_ok_sent') ? 'error' : undefined}
+        />
         <ReadOnlyDisplayField
           label=""
           value={cwCounts.siteRegistration ? `サイト登録（CW)計⇒ ${cwCounts.siteRegistration}` : '-'}
