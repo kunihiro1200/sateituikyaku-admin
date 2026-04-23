@@ -383,6 +383,9 @@ router.post('/:templateId/mergeMultiple', async (req, res) => {
 
     const allProperties = properties || [];
     console.log(`[mergeMultiple] propertyIds=${JSON.stringify(propertyIds)}, found=${allProperties.length}`);
+    if (allProperties.length > 0) {
+      console.log(`[mergeMultiple] first property: current_status=${allProperties[0].current_status}, viewing_key=${allProperties[0].viewing_key}`);
+    }
     if (allProperties.length === 0) {
       // 物件が見つからない場合でも、物件情報なしでテンプレートをマージして返す
       // follow_up_assignee でスタッフ情報を取得
