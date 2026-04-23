@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import PageNavigation from './PageNavigation';
 import {
@@ -442,6 +442,74 @@ function checkMediationFormatWarning(getValue: (field: string) => any): boolean 
 }
 
 const ASSIGNEE_OPTIONS = ['K', 'Y', 'I', '生', 'U', 'R', '久', 'H'];
+
+// サイト登録修正内容入力フィールド（再マウント防止のためモーダル外で定義）
+const SiteRevisionContentField = React.memo(({ value, hasError, onCommit }: {
+  value: string;
+  hasError: boolean;
+  onCommit: (v: string) => void;
+}) => {
+  const [localValue, setLocalValue] = React.useState(value);
+  React.useEffect(() => { setLocalValue(value); }, [value]);
+  return (
+    <Box sx={{ mb: 1.5 }}>
+      <Grid container spacing={2} alignItems="flex-start">
+        <Grid item xs={4}>
+          <Typography variant="body2" color={hasError ? 'error' : 'text.secondary'} sx={{ fontWeight: 500, mt: 0.5 }}>
+            {hasError ? 'サイト登録修正内容*（必須）' : 'サイト登録修正内容'}
+          </Typography>
+        </Grid>
+        <Grid item xs={8}>
+          <TextField
+            size="small"
+            multiline
+            minRows={3}
+            maxRows={8}
+            value={localValue}
+            onChange={(e) => setLocalValue(e.target.value)}
+            onBlur={() => onCommit(localValue)}
+            fullWidth
+            error={hasError}
+          />
+        </Grid>
+      </Grid>
+    </Box>
+  );
+});
+
+// 間取図修正内容入力フィールド（再マウント防止のためモーダル外で定義）
+const FloorPlanRevisionContentField = React.memo(({ value, hasError, onCommit }: {
+  value: string;
+  hasError: boolean;
+  onCommit: (v: string) => void;
+}) => {
+  const [localValue, setLocalValue] = React.useState(value);
+  React.useEffect(() => { setLocalValue(value); }, [value]);
+  return (
+    <Box sx={{ mb: 1.5 }}>
+      <Grid container spacing={2} alignItems="flex-start">
+        <Grid item xs={4}>
+          <Typography variant="body2" color={hasError ? 'error' : 'text.secondary'} sx={{ fontWeight: 500, mt: 0.5 }}>
+            {hasError ? '間取図修正内容*（必須）' : '間取図修正内容'}
+          </Typography>
+        </Grid>
+        <Grid item xs={8}>
+          <TextField
+            size="small"
+            multiline
+            minRows={3}
+            maxRows={8}
+            value={localValue}
+            onChange={(e) => setLocalValue(e.target.value)}
+            onBlur={() => onCommit(localValue)}
+            fullWidth
+            error={hasError}
+          />
+        </Grid>
+      </Grid>
+    </Box>
+  );
+});
 
 export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onUpdate, initialData, initialTabIndex }: WorkTaskDetailModalProps) {
   const [tabIndex, setTabIndex] = useState(0);
@@ -1457,7 +1525,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
           <>
             <Grid container spacing={2} alignItems="center" sx={{ mb: 1.5 }}>
               <Grid item xs={4}>
-                <Typography variant="body2" color="error" sx={{ fontWeight: 700 }}>サイト登録修正*（必須）</Typography>
+                <Typography variant="body2" color="error" sx={{ fontWeight: 700 }}>サイト登録修正（当社ミス）*（必須）</Typography>
               </Grid>
               <Grid item xs={8}>
                 <ButtonGroup size="small" variant="outlined">
@@ -1476,27 +1544,11 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
             </Grid>
             {/* サイト登録修正が「あり」の場合のみ修正内容を表示 */}
             {getValue('site_registration_revision') === 'あり' && (
-              <Box sx={{ mb: 1.5 }}>
-                <Grid container spacing={2} alignItems="flex-start">
-                  <Grid item xs={4}>
-                    <Typography variant="body2" color={!getValue('site_registration_revision_content') ? 'error' : 'text.secondary'} sx={{ fontWeight: 500, mt: 0.5 }}>
-                      {!getValue('site_registration_revision_content') ? 'サイト登録修正内容*（必須）' : 'サイト登録修正内容'}
-                    </Typography>
-                  </Grid>
-                  <Grid item xs={8}>
-                    <TextField
-                      size="small"
-                      multiline
-                      minRows={3}
-                      maxRows={8}
-                      value={getValue('site_registration_revision_content') || ''}
-                      onChange={(e) => handleFieldChange('site_registration_revision_content', e.target.value)}
-                      fullWidth
-                      error={!getValue('site_registration_revision_content')}
-                    />
-                  </Grid>
-                </Grid>
-              </Box>
+              <SiteRevisionContentField
+                value={getValue('site_registration_revision_content') || ''}
+                hasError={!getValue('site_registration_revision_content')}
+                onCommit={(v) => handleFieldChange('site_registration_revision_content', v)}
+              />
             )}
           </>
         )}
@@ -1570,27 +1622,11 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
             </Grid>
             {/* 間取図修正（当社ミス）が「あり」の場合のみ修正内容を表示 */}
             {getValue('floor_plan_revision_correction') === 'あり' && (
-              <Box sx={{ mb: 1.5 }}>
-                <Grid container spacing={2} alignItems="flex-start">
-                  <Grid item xs={4}>
-                    <Typography variant="body2" color={!getValue('floor_plan_revision_correction_content') ? 'error' : 'text.secondary'} sx={{ fontWeight: 500, mt: 0.5 }}>
-                      {!getValue('floor_plan_revision_correction_content') ? '間取図修正内容*（必須）' : '間取図修正内容'}
-                    </Typography>
-                  </Grid>
-                  <Grid item xs={8}>
-                    <TextField
-                      size="small"
-                      multiline
-                      minRows={3}
-                      maxRows={8}
-                      value={getValue('floor_plan_revision_correction_content') || ''}
-                      onChange={(e) => handleFieldChange('floor_plan_revision_correction_content', e.target.value)}
-                      fullWidth
-                      error={!getValue('floor_plan_revision_correction_content')}
-                    />
-                  </Grid>
-                </Grid>
-              </Box>
+              <FloorPlanRevisionContentField
+                value={getValue('floor_plan_revision_correction_content') || ''}
+                hasError={!getValue('floor_plan_revision_correction_content')}
+                onCommit={(v) => handleFieldChange('floor_plan_revision_correction_content', v)}
+              />
             )}
           </>
         )}
