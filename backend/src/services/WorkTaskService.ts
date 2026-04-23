@@ -173,6 +173,7 @@ export class WorkTaskService {
       .select('property_number, mediation_completed, mediation_checker, mediation_creator, mediation_revision_content, mediation_revision_countermeasure')
       .eq('mediation_revision', 'あり')
       .not('mediation_revision_content', 'is', null)
+      .neq('mediation_revision_content', '')
       .order('mediation_completed', { ascending: false })
       .limit(50);
 
@@ -198,6 +199,7 @@ export class WorkTaskService {
       .select('property_number, site_registration_ok_sent, site_registration_confirmer, site_registration_requester, site_registration_revision_content, site_registration_revision_countermeasure')
       .eq('site_registration_revision', 'あり')
       .not('site_registration_revision_content', 'is', null)
+      .neq('site_registration_revision_content', '')
       .order('updated_at', { ascending: false })
       .limit(50);
 
@@ -219,6 +221,7 @@ export class WorkTaskService {
       .select('property_number, floor_plan_ok_sent, floor_plan_confirmer, site_registration_requester, floor_plan_revision_correction_content, floor_plan_revision_countermeasure')
       .eq('floor_plan_revision_correction', 'あり')
       .not('floor_plan_revision_correction_content', 'is', null)
+      .neq('floor_plan_revision_correction_content', '')
       .order('updated_at', { ascending: false })
       .limit(50);
 

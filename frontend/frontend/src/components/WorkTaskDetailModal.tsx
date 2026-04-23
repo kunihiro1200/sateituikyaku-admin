@@ -553,7 +553,7 @@ const CountermeasureCell = React.memo(({ propertyNumber, field, value, onSaved }
       onChange={(e) => setLocalValue(e.target.value)}
       onBlur={handleBlur}
       fullWidth
-      placeholder="対策案を入力..."
+      placeholder="対策案（イニシャルと日付）を入力..."
       disabled={saving}
       sx={{ fontSize: '0.8rem', '& .MuiInputBase-input': { fontSize: '0.8rem' } }}
     />
@@ -1107,6 +1107,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
           .select('property_number, property_address, contract_input_deadline, employee_contract_creation, contract_revision_content, contract_revision_countermeasure')
           .eq('contract_revision_exists', 'あり')
           .not('contract_revision_content', 'is', null)
+          .neq('contract_revision_content', '')
           .order('contract_input_deadline', { ascending: false, nullsFirst: false });
         if (!error && rows) {
           setContractRevisionSummary(rows);
