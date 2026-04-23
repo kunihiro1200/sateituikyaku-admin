@@ -111,6 +111,8 @@ interface WorkTaskData {
   property_list_row_added: string;
   property_file: string;
   sales_contract_confirmed: string;
+  contract_revision_exists: string;
+  contract_revision_content: string;
   completed_comment_sales: string;
   binding_scheduled_date: string;
   binding_completed: string;
@@ -867,6 +869,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
         content: emailBody.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]+>/g, ''),
         htmlBody: emailBody,
         from: senderAddress,
+        templateName: emailDialog.templateLabel || emailDialog.templateId || '',
         ...(attachmentImages.length > 0 ? { attachments: attachmentImages } : {}),
       };
 
@@ -883,6 +886,10 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
       setSnackbar({ open: true, message: 'メールを送信しました', severity: 'success' });
       setEmailDialog({ open: false, type: null, templateId: null, templateLabel: '' });
       setSelectedImages([]);
+      // Email送信後に履歴を再取得（SellerBuyerDetailSectionが再マウントされるため、
+      // propertyNumberを変更してuseEffectを再トリガーする代わりに、
+      // 送信成功フラグを使って履歴更新を通知する）
+      setEmailHistoryRefreshKey(prev => prev + 1);
     } catch (error) {
       console.error('Email送信エラー:', error);
       setSnackbar({ open: true, message: 'メール送信に失敗しました', severity: 'error' });
@@ -1894,8 +1901,74 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
   );
 
   // 売主、買主詳細セクション
-  const SellerBuyerDetailSection = () => (
-    <Box sx={{ p: 2 }}>
+  const SellerBuyerDetailSection = () => {
+    // 契約書修正内容まとめ用データ取得
+    const [contractRevisionSummary, setContractRevisionSummary] = React.useState<Array<{
+      property_number: string;
+      property_address: string;
+      contract_input_deadline: string | null;
+      employee_contract_creation: string | null;
+      contract_revision_content: string | null;
+    }>>([]);
+
+    // Email送信履歴
+    const [emailHistory, setEmailHistory] = React.useState<Array<{
+      id: number;
+      sentAt: string;
+      subject: string;
+      body: string;
+      templateName: string;
+      recipientEmail: string;
+      senderEmail: string;
+      senderName: string;
+      senderInitials: string;
+    }>>([]);
+    const [emailHistoryLoading, setEmailHistoryLoading] = React.useState(false);
+    const [selectedEmailRecord, setSelectedEmailRecord] = React.useState<{
+      id: number;
+      sentAt: string;
+      subject: string;
+      body: string;
+      templateName: string;
+      recipientEmail: string;
+      senderEmail: string;
+      senderName: string;
+      senderInitials: string;
+    } | null>(null);
+
+    React.useEffect(() => {
+      const fetchSummary = async () => {
+        try {
+          const { data, error } = await supabase
+            .from('work_tasks')
+            .select('property_number, property_address, contract_input_deadline, employee_contract_creation, contract_revision_content')
+            .eq('contract_revision_exists', 'あり')
+            .not('contract_revision_content', 'is', null)
+            .order('contract_input_deadline', { ascending: false, nullsFirst: false });
+          if (!error && data) {
+            setContractRevisionSummary(data);
+          }
+        } catch {
+          // エラー時は空のまま
+        }
+      };
+      fetchSummary();
+    }, [data]);
+
+    // Email送信履歴を取得
+    React.useEffect(() => {
+      if (!propertyNumber) return;
+      setEmailHistoryLoading(true);
+      api.get(`/api/work-tasks/${propertyNumber}/email-history`)
+        .then(res => setEmailHistory(res.data.emailHistory || []))
+        .catch(() => setEmailHistory([]))
+        .finally(() => setEmailHistoryLoading(false));
+    }, [propertyNumber]);
+
+    return (
+    <Box sx={{ display: 'flex', height: '100%', overflow: 'hidden' }}>
+      {/* 左ペイン: 売主・買主詳細 */}
+      <Box sx={{ flex: 1, overflowY: 'auto', p: 2, borderRight: '1px solid #e0e0e0' }}>
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
         <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#2e7d32' }}>【売主情報】</Typography>
         <FormControl size="small" sx={{ minWidth: 180 }}>
@@ -1947,8 +2020,206 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
       <EditableField label="司法書士連絡先" field="judicial_scrivener_contact" />
       <EditableField label="仲介業者" field="broker" />
       <EditableField label="仲介業者担当連絡先" field="broker_contact" />
+
+      {/* 社員が契約書作成 */}
+      <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#4a148c', mb: 1, mt: 2 }}>【契約書作成】</Typography>
+      <EditableButtonSelect label="社員が契約書作成" field="employee_contract_creation" options={normalInitials} />
+
+      {/* 売買契約確認（スプシAM列と同期） */}
+      <EditableButtonSelect label="売買契約確認" field="sales_contract_confirmed" options={['確認中', '確認OK']} />
+
+      {/* 確認OKの場合のみ表示 */}
+      {getValue('sales_contract_confirmed') === '確認OK' && (
+        <Box sx={{ bgcolor: '#fff8e1', borderRadius: 1, p: 1.5, mb: 1 }}>
+          {/* 契約書、重説他　修正点（必須） */}
+          <Grid container spacing={2} alignItems="center" sx={{ mb: 1.5 }}>
+            <Grid item xs={4}>
+              <Typography variant="body2" color="error" sx={{ fontWeight: 700 }}>
+                契約書、重説他　修正点*（必須）
+              </Typography>
+            </Grid>
+            <Grid item xs={8}>
+              <ButtonGroup size="small" variant="outlined">
+                {['あり', 'なし'].map((opt) => (
+                  <Button
+                    key={opt}
+                    variant={getValue('contract_revision_exists') === opt ? 'contained' : 'outlined'}
+                    color={getValue('contract_revision_exists') === opt ? (opt === 'あり' ? 'error' : 'success') : 'inherit'}
+                    onClick={(e) => { (e.currentTarget as HTMLButtonElement).blur(); handleFieldChange('contract_revision_exists', getValue('contract_revision_exists') === opt ? null : opt); }}
+                  >
+                    {opt}
+                  </Button>
+                ))}
+              </ButtonGroup>
+              {!getValue('contract_revision_exists') && (
+                <Typography variant="caption" color="error" sx={{ display: 'block', mt: 0.5 }}>
+                  必須項目です
+                </Typography>
+              )}
+            </Grid>
+          </Grid>
+
+          {/* 「あり」の場合のみ修正内容を表示（必須） */}
+          {getValue('contract_revision_exists') === 'あり' && (
+            <Grid container spacing={2} alignItems="flex-start" sx={{ mb: 1.5 }}>
+              <Grid item xs={4}>
+                <Typography variant="body2" color="error" sx={{ fontWeight: 700 }}>
+                  契約書、重説他の修正内容*（必須）
+                </Typography>
+              </Grid>
+              <Grid item xs={8}>
+                <TextField
+                  fullWidth
+                  multiline
+                  minRows={4}
+                  size="small"
+                  value={getValue('contract_revision_content') || ''}
+                  onChange={(e) => handleFieldChange('contract_revision_content', e.target.value)}
+                  placeholder="修正内容を入力してください"
+                  error={!getValue('contract_revision_content')}
+                  helperText={!getValue('contract_revision_content') ? '必須項目です' : ''}
+                />
+              </Grid>
+            </Grid>
+          )}
+        </Box>
+      )}
+
+      {/* 契約書、重説他の修正内容まとめ（全物件） */}
+      <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#b71c1c', mb: 1, mt: 3 }}>
+        契約書、重説他の修正内容　まとめ
+      </Typography>
+      {contractRevisionSummary.length === 0 ? (
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          修正内容のある物件はありません
+        </Typography>
+      ) : (
+        <Box sx={{ overflowX: 'auto', mb: 2 }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+            <thead>
+              <tr style={{ backgroundColor: '#ffcdd2' }}>
+                <th style={{ border: '1px solid #e57373', padding: '6px 10px', textAlign: 'left', whiteSpace: 'nowrap' }}>重説・契約書入力納期</th>
+                <th style={{ border: '1px solid #e57373', padding: '6px 10px', textAlign: 'left', whiteSpace: 'nowrap' }}>写真が契約書作成</th>
+                <th style={{ border: '1px solid #e57373', padding: '6px 10px', textAlign: 'left', minWidth: '300px' }}>修正内容</th>
+              </tr>
+            </thead>
+            <tbody>
+              {contractRevisionSummary.map((row, idx) => (
+                <tr key={row.property_number} style={{ backgroundColor: idx % 2 === 0 ? '#fff' : '#fff8f8' }}>
+                  <td style={{ border: '1px solid #e0e0e0', padding: '6px 10px', whiteSpace: 'nowrap', color: '#555' }}>
+                    {row.contract_input_deadline
+                      ? new Date(row.contract_input_deadline).toLocaleDateString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit' })
+                      : '-'}
+                  </td>
+                  <td style={{ border: '1px solid #e0e0e0', padding: '6px 10px', whiteSpace: 'nowrap' }}>
+                    {row.employee_contract_creation || '-'}
+                  </td>
+                  <td style={{ border: '1px solid #e0e0e0', padding: '6px 10px', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                    {row.contract_revision_content || '-'}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </Box>
+      )}
+      </Box>
+
+      {/* 右ペイン: Email送信履歴 */}
+      <Box sx={{ width: 320, minWidth: 260, overflowY: 'auto', bgcolor: '#f8f9fa', display: 'flex', flexDirection: 'column' }}>
+        <Box sx={{ p: 1.5, borderBottom: '1px solid #e0e0e0', bgcolor: '#fff', position: 'sticky', top: 0, zIndex: 1 }}>
+          <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#1565c0', display: 'flex', alignItems: 'center', gap: 0.5 }}>
+            <EmailIcon sx={{ fontSize: '1rem' }} />
+            Email送信履歴
+          </Typography>
+        </Box>
+        <Box sx={{ flex: 1, p: 1 }}>
+          {emailHistoryLoading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', pt: 3 }}>
+              <CircularProgress size={24} />
+            </Box>
+          ) : emailHistory.length === 0 ? (
+            <Typography variant="body2" color="text.secondary" sx={{ p: 1.5, textAlign: 'center' }}>
+              送信履歴はありません
+            </Typography>
+          ) : (
+            emailHistory.map((record) => (
+              <Box
+                key={record.id}
+                onClick={() => setSelectedEmailRecord(record)}
+                sx={{
+                  mb: 1,
+                  p: 1.5,
+                  bgcolor: '#fff',
+                  borderRadius: 1,
+                  border: '1px solid #e0e0e0',
+                  cursor: 'pointer',
+                  '&:hover': { bgcolor: '#e3f2fd', borderColor: '#1565c0' },
+                }}
+              >
+                <Typography variant="caption" sx={{ color: '#888', display: 'block', mb: 0.5 }}>
+                  {new Date(record.sentAt).toLocaleString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                </Typography>
+                {record.templateName && (
+                  <Typography variant="caption" sx={{ display: 'inline-block', bgcolor: '#e8f5e9', color: '#2e7d32', borderRadius: '4px', px: 0.8, py: 0.2, mb: 0.5, fontWeight: 600, fontSize: '0.7rem' }}>
+                    {record.templateName}
+                  </Typography>
+                )}
+                <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.8rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {record.subject || '（件名なし）'}
+                </Typography>
+                <Typography variant="caption" sx={{ color: '#666' }}>
+                  送信者: {record.senderName || record.senderInitials || record.senderEmail || '-'}
+                </Typography>
+              </Box>
+            ))
+          )}
+        </Box>
+      </Box>
+
+      {/* Email本文モーダル */}
+      <Dialog open={!!selectedEmailRecord} onClose={() => setSelectedEmailRecord(null)} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 1 }}>
+          <Box>
+            <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+              {selectedEmailRecord?.subject || '（件名なし）'}
+            </Typography>
+            {selectedEmailRecord?.templateName && (
+              <Typography variant="caption" sx={{ color: '#2e7d32', fontWeight: 600 }}>
+                {selectedEmailRecord.templateName}
+              </Typography>
+            )}
+          </Box>
+          <IconButton onClick={() => setSelectedEmailRecord(null)} size="small"><CloseIcon /></IconButton>
+        </DialogTitle>
+        <DialogContent dividers>
+          <Box sx={{ mb: 1.5, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+            <Typography variant="caption" color="text.secondary">
+              送信日時: {selectedEmailRecord ? new Date(selectedEmailRecord.sentAt).toLocaleString('ja-JP') : ''}
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              送信者: {selectedEmailRecord?.senderName || selectedEmailRecord?.senderInitials || selectedEmailRecord?.senderEmail || '-'}
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              宛先: {selectedEmailRecord?.recipientEmail || '-'}
+            </Typography>
+          </Box>
+          {selectedEmailRecord?.body ? (
+            <Box
+              sx={{ fontSize: '0.875rem', lineHeight: 1.7, '& *': { maxWidth: '100%' } }}
+              dangerouslySetInnerHTML={{ __html: selectedEmailRecord.body }}
+            />
+          ) : (
+            <Typography variant="body2" color="text.secondary">本文なし</Typography>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setSelectedEmailRecord(null)} color="inherit">閉じる</Button>
+        </DialogActions>
+      </Dialog>
     </Box>
-  );
+    );
+  };
 
   const tabLabels = ['媒介契約', 'サイト登録', '契約決済', '売主、買主詳細'];
 
@@ -2096,7 +2367,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
             {tabLabels.map((label, index) => (<Tab key={index} label={label} />))}
           </Tabs>
         </Box>
-        <DialogContent sx={{ p: 0, flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+        <DialogContent sx={{ p: 0, flex: 1, overflow: tabIndex === 3 ? 'hidden' : 'auto', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
           {loading ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', flex: 1 }}>
               <CircularProgress />
@@ -2110,7 +2381,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
               {tabIndex === 0 && renderMediationSection()}
               {tabIndex === 1 && <SiteRegistrationSection cwCounts={cwCounts} leftPaneRef={leftPaneRef} rightPaneRef={rightPaneRef} />}
               {tabIndex === 2 && <ContractSettlementSection />}
-              {tabIndex === 3 && <SellerBuyerDetailSection />}
+              {tabIndex === 3 && <Box sx={{ flex: 1, display: 'flex', minHeight: 0, height: '100%' }}><SellerBuyerDetailSection /></Box>}
             </>
           )}
         </DialogContent>
