@@ -52,8 +52,8 @@ export class BuyerCandidateService {
   /**
    * 物件に対する買主候補を取得
    */
-  async getCandidatesForProperty(propertyNumber: string): Promise<BuyerCandidateResponse> {
-    console.log(`[BuyerCandidateService] Searching for property: ${propertyNumber}`);
+  async getCandidatesForProperty(propertyNumber: string, overridePropertyType?: string): Promise<BuyerCandidateResponse> {
+    console.log(`[BuyerCandidateService] Searching for property: ${propertyNumber}${overridePropertyType ? ` (overridePropertyType: ${overridePropertyType})` : ''}`);
     const startTime = Date.now();
 
     // 物件情報を取得
@@ -115,10 +115,12 @@ export class BuyerCandidateService {
     console.log(`[BuyerCandidateService] Total buyers fetched: ${buyers.length}`);
 
     // フィルタリング（最適化版 - 距離マッチングを条件付きで実行）
+    // overridePropertyType が指定された場合はそちらを使用（例: 戸建物件で土地買主を検索）
+    const effectivePropertyType = overridePropertyType ?? property.property_type;
     const filterStartTime = Date.now();
     const candidates = await this.filterCandidatesOptimized(
       buyers || [],
-      property.property_type,
+      effectivePropertyType,
       property.sales_price,
       propertyAreaNumbers,
       propertyCoords
@@ -188,7 +190,7 @@ export class BuyerCandidateService {
       total: limitedCandidates.length,
       property: {
         property_number: property.property_number,
-        property_type: property.property_type,
+        property_type: effectivePropertyType,
         sales_price: property.sales_price,
         distribution_areas: propertyAreaNumbers.join(''),
         address: property.address,

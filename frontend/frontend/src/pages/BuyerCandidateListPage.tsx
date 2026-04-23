@@ -70,6 +70,10 @@ export default function BuyerCandidateListPage() {
   const [emailModalOpen, setEmailModalOpen] = useState(false);
   const [emailSubject, setEmailSubject] = useState('');
   const [emailBody, setEmailBody] = useState('');
+  // 土地買主モード（戸建物件で土地希望買主を表示するモード）
+  const [landBuyerMode, setLandBuyerMode] = useState(false);
+  const [landBuyerData, setLandBuyerData] = useState<BuyerCandidateResponse | null>(null);
+  const [landBuyerLoading, setLandBuyerLoading] = useState(false);
 
   useEffect(() => {
     if (propertyNumber) {
@@ -91,6 +95,39 @@ export default function BuyerCandidateListPage() {
     }
   };
 
+  // 物件種別が戸建系かどうか判定
+  const isDetachedHouseType = (propertyType: string | null | undefined): boolean => {
+    if (!propertyType) return false;
+    const t = propertyType.trim();
+    return t.includes('戸建') || t.includes('戸建て') || t === '戸';
+  };
+
+  // 土地（一般買主）ボタンクリック時の処理
+  const handleLandBuyerMode = async () => {
+    if (landBuyerMode) {
+      setLandBuyerMode(false);
+      setSelectedBuyers(new Set());
+      return;
+    }
+    setLandBuyerMode(true);
+    setSelectedBuyers(new Set());
+    if (landBuyerData) return;
+    setLandBuyerLoading(true);
+    try {
+      const response = await api.get(`/api/property-listings/${propertyNumber}/buyer-candidates?propertyType=土地`);
+      setLandBuyerData(response.data);
+    } catch (err: any) {
+      console.error('Failed to fetch land buyer candidates:', err);
+      setSnackbar({ open: true, message: '土地買主候補の取得に失敗しました', severity: 'error' });
+      setLandBuyerMode(false);
+    } finally {
+      setLandBuyerLoading(false);
+    }
+  };
+
+  // 現在表示中のデータ（通常 or 土地モード）
+  const activeData = landBuyerMode ? landBuyerData : data;
+
   const handleBuyerClick = (buyerNumber: string) => {
     window.open(`/buyers/${buyerNumber}`, '_blank');
   };
@@ -102,7 +139,7 @@ export default function BuyerCandidateListPage() {
   // チェックボックスの全選択/全解除
   const handleSelectAll = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.checked) {
-      setSelectedBuyers(new Set(data?.candidates.map(c => c.buyer_number) || []));
+      setSelectedBuyers(new Set(activeData?.candidates.map(c => c.buyer_number) || []));
     } else {
       setSelectedBuyers(new Set());
     }
@@ -125,9 +162,9 @@ export default function BuyerCandidateListPage() {
       setSnackbar({ open: true, message: '買主を選択してください', severity: 'warning' });
       return;
     }
-    if (!data) return;
+    if (!activeData) return;
 
-    const selectedCandidates = data.candidates.filter(c => selectedBuyers.has(c.buyer_number));
+    const selectedCandidates = activeData.candidates.filter(c => selectedBuyers.has(c.buyer_number));
     const candidatesWithEmail = selectedCandidates.filter(c => c.email && c.email.trim() !== '');
 
     if (candidatesWithEmail.length === 0) {
@@ -136,7 +173,7 @@ export default function BuyerCandidateListPage() {
     }
 
     const publicUrl = `https://property-site-frontend-kappa.vercel.app/public/properties/${propertyNumber}`;
-    const address = data.property.address || '物件';
+    const address = activeData.property.address || '物件';
     const subject = `${address}にご興味のある方へ、もうすぐ売りに出します！事前に内覧可能です！`;
 
     // 1件選択時: 実際の買主名を表示、複数件: {氏名}プレースホルダー
@@ -155,9 +192,9 @@ export default function BuyerCandidateListPage() {
 
   // メール送信確認後の実際の送信処理
   const handleConfirmSendEmail = async (subject: string, body: string) => {
-    if (!data) return;
+    if (!activeData) return;
 
-    const selectedCandidates = data.candidates.filter(c => selectedBuyers.has(c.buyer_number));
+    const selectedCandidates = activeData.candidates.filter(c => selectedBuyers.has(c.buyer_number));
     const candidatesWithEmail = selectedCandidates.filter(c => c.email && c.email.trim() !== '');
 
     setSnackbar({ open: true, message: `メール送信中... (${candidatesWithEmail.length}件)`, severity: 'info' });
@@ -196,9 +233,9 @@ export default function BuyerCandidateListPage() {
       setSnackbar({ open: true, message: '買主を選択してください', severity: 'warning' });
       return;
     }
-    if (!data) return;
+    if (!activeData) return;
 
-    const selectedCandidates = data.candidates.filter(c => selectedBuyers.has(c.buyer_number));
+    const selectedCandidates = activeData.candidates.filter(c => selectedBuyers.has(c.buyer_number));
     const candidatesWithPhone = selectedCandidates.filter(c => c.phone_number && c.phone_number.trim() !== '');
 
     if (candidatesWithPhone.length === 0) {
@@ -207,7 +244,7 @@ export default function BuyerCandidateListPage() {
     }
 
     const publicUrl = `https://property-site-frontend-kappa.vercel.app/public/properties/${propertyNumber}`;
-    const address = data.property.address || '';
+    const address = activeData.property.address || '';
 
     // 1件ずつsms:リンクで開く（Android Messages Web連携）
     candidatesWithPhone.forEach((candidate, index) => {
@@ -301,16 +338,44 @@ export default function BuyerCandidateListPage() {
                 買主候補リスト
               </Typography>
               <Chip
-                label={`${data.total}件`}
+                label={`${activeData?.total ?? data?.total ?? 0}件`}
                 size="medium"
                 sx={{ bgcolor: SECTION_COLORS.property.main, color: 'white', fontWeight: 'bold' }}
               />
+              {/* 戸建系物件の場合のみ「土地（一般買主）」ボタンを表示 */}
+              {isDetachedHouseType(data?.property.property_type) && (
+                <Button
+                  variant={landBuyerMode ? 'contained' : 'outlined'}
+                  size="small"
+                  onClick={handleLandBuyerMode}
+                  disabled={landBuyerLoading}
+                  sx={landBuyerMode ? {
+                    bgcolor: '#795548',
+                    color: 'white',
+                    '&:hover': { bgcolor: '#5d4037' },
+                    ml: 1,
+                  } : {
+                    borderColor: '#795548',
+                    color: '#795548',
+                    '&:hover': { borderColor: '#5d4037', bgcolor: '#79554808' },
+                    ml: 1,
+                  }}
+                >
+                  {landBuyerLoading ? <CircularProgress size={16} sx={{ mr: 0.5 }} /> : null}
+                  土地（一般買主）
+                </Button>
+              )}
             </Box>
             <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, ml: 5 }}>
-              物件番号: {data.property.property_number}
-              {data.property.distribution_areas && (
+              物件番号: {data?.property.property_number}
+              {data?.property.distribution_areas && (
                 <Typography component="span" variant="body2" fontWeight="bold" sx={{ ml: 2, color: SECTION_COLORS.property.main }}>
                   配信エリア: {data.property.distribution_areas}
+                </Typography>
+              )}
+              {landBuyerMode && (
+                <Typography component="span" variant="body2" sx={{ ml: 2, color: '#795548', fontWeight: 'bold' }}>
+                  ※ 土地希望買主を表示中
                 </Typography>
               )}
             </Typography>
@@ -358,20 +423,20 @@ export default function BuyerCandidateListPage() {
         <Box sx={{ display: 'flex', gap: 4 }}>
           <Box>
             <Typography variant="body2" color="text.secondary">物件番号</Typography>
-            <Typography variant="body1" fontWeight="medium">{data.property.property_number}</Typography>
+            <Typography variant="body1" fontWeight="medium">{data?.property.property_number}</Typography>
           </Box>
           <Box>
             <Typography variant="body2" color="text.secondary">所在地</Typography>
-            <Typography variant="body1" fontWeight="medium">{data.property.address || '-'}</Typography>
+            <Typography variant="body1" fontWeight="medium">{data?.property.address || '-'}</Typography>
           </Box>
           <Box>
             <Typography variant="body2" color="text.secondary">種別</Typography>
-            <Typography variant="body1" fontWeight="medium">{data.property.property_type || '-'}</Typography>
+            <Typography variant="body1" fontWeight="medium">{data?.property.property_type || '-'}</Typography>
           </Box>
           <Box>
             <Typography variant="body2" color="text.secondary">価格</Typography>
             <Typography variant="body1" fontWeight="medium">
-              {data.property.sales_price ? `¥${data.property.sales_price.toLocaleString()}` : '-'}
+              {data?.property.sales_price ? `¥${data.property.sales_price.toLocaleString()}` : '-'}
             </Typography>
           </Box>
         </Box>
@@ -393,7 +458,12 @@ export default function BuyerCandidateListPage() {
           </Typography>
         </Box>
 
-        {data.candidates.length === 0 ? (
+        {landBuyerLoading ? (
+          <Box sx={{ py: 4, textAlign: 'center' }}>
+            <CircularProgress size={40} />
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>土地希望買主を検索中...</Typography>
+          </Box>
+        ) : activeData?.candidates.length === 0 ? (
           <Box sx={{ py: 4, textAlign: 'center' }}>
             <Typography color="text.secondary">該当する買主候補がありません</Typography>
           </Box>
@@ -404,8 +474,8 @@ export default function BuyerCandidateListPage() {
                 <TableRow sx={{ bgcolor: '#f5f5f5' }}>
                   <TableCell padding="checkbox">
                     <Checkbox
-                      indeterminate={selectedBuyers.size > 0 && selectedBuyers.size < data.candidates.length}
-                      checked={data.candidates.length > 0 && selectedBuyers.size === data.candidates.length}
+                      indeterminate={selectedBuyers.size > 0 && selectedBuyers.size < (activeData?.candidates.length ?? 0)}
+                      checked={(activeData?.candidates.length ?? 0) > 0 && selectedBuyers.size === (activeData?.candidates.length ?? 0)}
                       onChange={handleSelectAll}
                     />
                   </TableCell>
@@ -419,7 +489,7 @@ export default function BuyerCandidateListPage() {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {data.candidates.map((candidate) => {
+                {activeData?.candidates.map((candidate) => {
                   const isSelected = selectedBuyers.has(candidate.buyer_number);
                   return (
                     <TableRow
@@ -522,7 +592,7 @@ export default function BuyerCandidateListPage() {
         onClose={() => setEmailModalOpen(false)}
         onConfirm={handleConfirmSendEmail}
         recipientCount={
-          data?.candidates.filter(c => selectedBuyers.has(c.buyer_number) && c.email && c.email.trim() !== '').length || 0
+          activeData?.candidates.filter(c => selectedBuyers.has(c.buyer_number) && c.email && c.email.trim() !== '').length || 0
         }
         defaultSubject={emailSubject}
         defaultBody={emailBody}

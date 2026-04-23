@@ -454,10 +454,14 @@ router.delete('/:propertyNumber/buyers/cache', async (req: Request, res: Respons
 router.get('/:propertyNumber/buyer-candidates', async (req: Request, res: Response): Promise<void> => {
   try {
     const { propertyNumber } = req.params;
+    const { propertyType } = req.query;
 
-    console.log(`[buyer-candidates] Fetching candidates for property: ${propertyNumber}`);
+    console.log(`[buyer-candidates] Fetching candidates for property: ${propertyNumber}${propertyType ? ` (propertyType override: ${propertyType})` : ''}`);
 
-    const result = await buyerCandidateService.getCandidatesForProperty(propertyNumber);
+    const result = await buyerCandidateService.getCandidatesForProperty(
+      propertyNumber,
+      typeof propertyType === 'string' ? propertyType : undefined
+    );
 
     console.log(`[buyer-candidates] Found ${result.total} candidates for property: ${propertyNumber}`);
 
