@@ -558,7 +558,7 @@ export class SellerSidebarCountsUpdateService {
       !!(v && v.trim() !== '' && v.trim() !== '外す');
 
     // 影響カテゴリに必要なクエリだけ並列実行
-    const queries: Record<string, Promise<any>> = {};
+    const queries: Record<string, any> = {};
 
     const needsTodayCallBase = affected.has('todayCall') || affected.has('todayCallWithInfo') || affected.has('todayCallNotStarted');
     const needsVisitDayBefore = affected.has('visitDayBefore');
