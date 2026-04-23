@@ -831,20 +831,22 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
           } catch { return getValue('delivery_scheduled_date'); }
         })()
       : '';
+    const empty = '<span style="color:#d32f2f;font-weight:bold;">未入力です！！</span>';
+    const v = (val: string) => val || empty;
     return text
-      .replace(/｛売主氏名｝/g, sellerName)
-      .replace(/｛売主名前｝/g, sellerName)
-      .replace(/｛売主TEL｝/g, sellerTel)
-      .replace(/｛売主メアド｝/g, sellerEmail)
-      .replace(/｛買主氏名｝/g, buyerName)
-      .replace(/｛買主名前｝/g, buyerName)
-      .replace(/｛買主TEL｝/g, buyerTel)
-      .replace(/｛買主メアド｝/g, buyerEmail)
-      .replace(/｛物件住所｝/g, propertyAddress)
-      .replace(/｛決済日｝/g, settlementDate)
-      .replace(/｛ローン｝/g, loan)
-      .replace(/｛金融機関名｝/g, financialInstitution)
-      .replace(/｛引き渡し予定｝/g, deliveryDate);
+      .replace(/｛売主氏名｝/g, v(sellerName))
+      .replace(/｛売主名前｝/g, v(sellerName))
+      .replace(/｛売主TEL｝/g, v(sellerTel))
+      .replace(/｛売主メアド｝/g, v(sellerEmail))
+      .replace(/｛買主氏名｝/g, v(buyerName))
+      .replace(/｛買主名前｝/g, v(buyerName))
+      .replace(/｛買主TEL｝/g, v(buyerTel))
+      .replace(/｛買主メアド｝/g, v(buyerEmail))
+      .replace(/｛物件住所｝/g, v(propertyAddress))
+      .replace(/｛決済日｝/g, v(settlementDate))
+      .replace(/｛ローン｝/g, v(loan))
+      .replace(/｛金融機関名｝/g, v(financialInstitution))
+      .replace(/｛引き渡し予定｝/g, v(deliveryDate));
   };
 
   // 社員データ取得
@@ -2225,6 +2227,29 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
 
       {/* 右ペイン: 売主・買主詳細 */}
       <Box ref={sellerBuyerRightPaneRef} sx={{ flex: 1, minWidth: 0, overflowY: 'auto', overflowX: 'hidden', p: 2 }}>
+      {/* 司法書士へのメール */}
+      <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
+        <FormControl size="small" sx={{ minWidth: 240 }}>
+          <InputLabel sx={{ color: '#6a1b9a', '&.Mui-focused': { color: '#6a1b9a' } }}>司法書士へのメール</InputLabel>
+          <Select
+            value=""
+            label="司法書士へのメール"
+            onChange={(e) => handleEmailTemplateSelect(e.target.value as string, 'judicial_scrivener')}
+            sx={{
+              bgcolor: '#f3e5f5',
+              '& .MuiOutlinedInput-notchedOutline': { borderColor: '#ce93d8', borderWidth: 2 },
+              '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#6a1b9a' },
+              '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: '#6a1b9a' },
+              fontWeight: 700,
+              color: '#6a1b9a',
+            }}
+          >
+            {JUDICIAL_SCRIVENER_EMAIL_TEMPLATES.map(t => (
+              <MenuItem key={t.id} value={t.id}>{t.name}</MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+      </Box>
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
         <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#2e7d32' }}>【売主情報】</Typography>
         <FormControl size="small" sx={{ minWidth: 180 }}>
@@ -2391,7 +2416,6 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
             <PageNavigation onNavigate={handleNavigate} />
           </Box>
           {/* 2行目: 既存のヘッダー */}
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, overflow: 'hidden' }}>
               <Button
@@ -2504,31 +2528,6 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
             )}
             <IconButton onClick={onClose} size="small"><CloseIcon /></IconButton>
           </Box>
-          {/* 3行目: 司法書士へのメール（契約決済・売主買主詳細タブのみ） */}
-          {(tabIndex === 2 || tabIndex === 3) && (
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <FormControl size="small" sx={{ minWidth: 220 }}>
-                <InputLabel sx={{ color: '#6a1b9a', '&.Mui-focused': { color: '#6a1b9a' } }}>司法書士へのメール</InputLabel>
-                <Select
-                  value=""
-                  label="司法書士へのメール"
-                  onChange={(e) => handleEmailTemplateSelect(e.target.value as string, 'judicial_scrivener')}
-                  sx={{
-                    bgcolor: '#f3e5f5',
-                    '& .MuiOutlinedInput-notchedOutline': { borderColor: '#ce93d8', borderWidth: 2 },
-                    '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#6a1b9a' },
-                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: '#6a1b9a' },
-                    fontWeight: 700,
-                    color: '#6a1b9a',
-                  }}
-                >
-                  {JUDICIAL_SCRIVENER_EMAIL_TEMPLATES.map(t => (
-                    <MenuItem key={t.id} value={t.id}>{t.name}</MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Box>
-          )}
           </Box>
         </DialogTitle>
         <Box sx={{ borderBottom: 1, borderColor: 'divider', px: 2 }}>
