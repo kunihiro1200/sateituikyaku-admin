@@ -114,6 +114,10 @@ interface WorkTaskData {
   sales_contract_confirmed: string;
   contract_revision_exists: string;
   contract_revision_content: string;
+  mediation_revision_countermeasure: string;
+  site_registration_revision_countermeasure: string;
+  floor_plan_revision_countermeasure: string;
+  contract_revision_countermeasure: string;
   completed_comment_sales: string;
   binding_scheduled_date: string;
   binding_completed: string;
@@ -511,6 +515,48 @@ const FloorPlanRevisionContentField = React.memo(({ value, hasError, onCommit }:
         </Grid>
       </Grid>
     </Box>
+  );
+});
+
+// 対策案インライン編集セル（修正内容まとめテーブル用）
+// フォーカスが外れたときに直接APIで保存する
+const CountermeasureCell = React.memo(({ propertyNumber, field, value, onSaved }: {
+  propertyNumber: string;
+  field: string;
+  value: string;
+  onSaved: (val: string) => void;
+}) => {
+  const [localValue, setLocalValue] = React.useState(value);
+  const [saving, setSaving] = React.useState(false);
+  React.useEffect(() => { setLocalValue(value); }, [value]);
+
+  const handleBlur = async () => {
+    if (localValue === value) return;
+    setSaving(true);
+    try {
+      await api.put(`/api/work-tasks/${propertyNumber}`, { [field]: localValue || null });
+      onSaved(localValue);
+    } catch {
+      setLocalValue(value); // 失敗時は元に戻す
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <TextField
+      size="small"
+      multiline
+      minRows={2}
+      maxRows={6}
+      value={localValue}
+      onChange={(e) => setLocalValue(e.target.value)}
+      onBlur={handleBlur}
+      fullWidth
+      placeholder="対策案を入力..."
+      disabled={saving}
+      sx={{ fontSize: '0.8rem', '& .MuiInputBase-input': { fontSize: '0.8rem' } }}
+    />
   );
 });
 
@@ -1049,6 +1095,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
     contract_input_deadline: string | null;
     employee_contract_creation: string | null;
     contract_revision_content: string | null;
+    contract_revision_countermeasure: string | null;
   }>>([]);
 
   useEffect(() => {
@@ -1057,7 +1104,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
       try {
         const { data: rows, error } = await supabase
           .from('work_tasks')
-          .select('property_number, property_address, contract_input_deadline, employee_contract_creation, contract_revision_content')
+          .select('property_number, property_address, contract_input_deadline, employee_contract_creation, contract_revision_content, contract_revision_countermeasure')
           .eq('contract_revision_exists', 'あり')
           .not('contract_revision_content', 'is', null)
           .order('contract_input_deadline', { ascending: false, nullsFirst: false });
@@ -1348,6 +1395,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
     mediation_checker: string | null;
     mediation_creator: string;
     mediation_revision_content: string;
+    mediation_revision_countermeasure: string | null;
   }>>([]);
 
   // サイト登録修正履歴（全案件）
@@ -1356,6 +1404,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
     site_registration_confirmer: string | null;
     site_registration_requester: string | null;
     site_registration_revision_content: string;
+    site_registration_revision_countermeasure: string | null;
   }>>([]);
 
   // 間取図修正（当社ミス）履歴（全案件）
@@ -1364,6 +1413,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
     floor_plan_confirmer: string | null;
     site_registration_requester: string | null;
     floor_plan_revision_correction_content: string;
+    floor_plan_revision_countermeasure: string | null;
   }>>([]);
 
   // 日付文字列をYYYY-MM-DD形式に整形
@@ -1507,7 +1557,8 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
                   <th style={{ border: '1px solid #ffb74d', padding: '4px 8px', textAlign: 'left', whiteSpace: 'nowrap' }}>媒介作成完了日</th>
                   <th style={{ border: '1px solid #ffb74d', padding: '4px 8px', textAlign: 'left', whiteSpace: 'nowrap' }}>媒介確認者</th>
                   <th style={{ border: '1px solid #ffb74d', padding: '4px 8px', textAlign: 'left', whiteSpace: 'nowrap' }}>媒介作成者</th>
-                  <th style={{ border: '1px solid #ffb74d', padding: '4px 8px', textAlign: 'left', width: '50%' }}>修正内容</th>
+                  <th style={{ border: '1px solid #ffb74d', padding: '4px 8px', textAlign: 'left', width: '35%' }}>修正内容</th>
+                  <th style={{ border: '1px solid #ffb74d', padding: '4px 8px', textAlign: 'left', width: '25%' }}>対策案</th>
                 </tr>
               </thead>
               <tbody>
@@ -1517,7 +1568,17 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
                     <td style={{ border: '1px solid #ffb74d', padding: '4px 8px', whiteSpace: 'nowrap' }}>{formatDateShort(item.mediation_completed)}</td>
                     <td style={{ border: '1px solid #ffb74d', padding: '4px 8px', whiteSpace: 'nowrap' }}>{item.mediation_checker || '-'}</td>
                     <td style={{ border: '1px solid #ffb74d', padding: '4px 8px', whiteSpace: 'nowrap' }}>{item.mediation_creator || '-'}</td>
-                    <td style={{ border: '1px solid #ffb74d', padding: '4px 8px', whiteSpace: 'pre-wrap', width: '50%' }}>{item.mediation_revision_content}</td>
+                    <td style={{ border: '1px solid #ffb74d', padding: '4px 8px', whiteSpace: 'pre-wrap', width: '35%' }}>{item.mediation_revision_content}</td>
+                    <td style={{ border: '1px solid #ffb74d', padding: '4px 8px', width: '25%' }}>
+                      <CountermeasureCell
+                        propertyNumber={item.property_number}
+                        field="mediation_revision_countermeasure"
+                        value={item.mediation_revision_countermeasure || ''}
+                        onSaved={(val) => {
+                          setMediationRevisionHistory(prev => prev.map((r, i) => i === idx ? { ...r, mediation_revision_countermeasure: val } : r));
+                        }}
+                      />
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -1836,7 +1897,8 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
                     <th style={{ border: '1px solid #f48fb1', padding: '4px 8px', textAlign: 'left', whiteSpace: 'nowrap' }}>物件番号</th>
                     <th style={{ border: '1px solid #f48fb1', padding: '4px 8px', textAlign: 'left', whiteSpace: 'nowrap' }}>サイト登録確認者</th>
                     <th style={{ border: '1px solid #f48fb1', padding: '4px 8px', textAlign: 'left', whiteSpace: 'nowrap' }}>サイト登録依頼者</th>
-                    <th style={{ border: '1px solid #f48fb1', padding: '4px 8px', textAlign: 'left', width: '50%' }}>修正内容</th>
+                    <th style={{ border: '1px solid #f48fb1', padding: '4px 8px', textAlign: 'left', width: '35%' }}>修正内容</th>
+                    <th style={{ border: '1px solid #f48fb1', padding: '4px 8px', textAlign: 'left', width: '25%' }}>対策案</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1845,7 +1907,17 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
                       <td style={{ border: '1px solid #f48fb1', padding: '4px 8px', whiteSpace: 'nowrap' }}>{item.property_number || '-'}</td>
                       <td style={{ border: '1px solid #f48fb1', padding: '4px 8px', whiteSpace: 'nowrap' }}>{item.site_registration_confirmer || '-'}</td>
                       <td style={{ border: '1px solid #f48fb1', padding: '4px 8px', whiteSpace: 'nowrap' }}>{item.site_registration_requester || '-'}</td>
-                      <td style={{ border: '1px solid #f48fb1', padding: '4px 8px', whiteSpace: 'pre-wrap', width: '50%' }}>{item.site_registration_revision_content}</td>
+                      <td style={{ border: '1px solid #f48fb1', padding: '4px 8px', whiteSpace: 'pre-wrap', width: '35%' }}>{item.site_registration_revision_content}</td>
+                      <td style={{ border: '1px solid #f48fb1', padding: '4px 8px', width: '25%' }}>
+                        <CountermeasureCell
+                          propertyNumber={item.property_number}
+                          field="site_registration_revision_countermeasure"
+                          value={item.site_registration_revision_countermeasure || ''}
+                          onSaved={(val) => {
+                            setSiteRegistrationRevisionHistory(prev => prev.map((r, i) => i === idx ? { ...r, site_registration_revision_countermeasure: val } : r));
+                          }}
+                        />
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -1933,7 +2005,8 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
                     <th style={{ border: '1px solid #81c784', padding: '4px 8px', textAlign: 'left', whiteSpace: 'nowrap' }}>物件番号</th>
                     <th style={{ border: '1px solid #81c784', padding: '4px 8px', textAlign: 'left', whiteSpace: 'nowrap' }}>間取図確認者</th>
                     <th style={{ border: '1px solid #81c784', padding: '4px 8px', textAlign: 'left', whiteSpace: 'nowrap' }}>サイト登録依頼者</th>
-                    <th style={{ border: '1px solid #81c784', padding: '4px 8px', textAlign: 'left', width: '50%' }}>修正内容</th>
+                    <th style={{ border: '1px solid #81c784', padding: '4px 8px', textAlign: 'left', width: '35%' }}>修正内容</th>
+                    <th style={{ border: '1px solid #81c784', padding: '4px 8px', textAlign: 'left', width: '25%' }}>対策案</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1942,7 +2015,17 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
                       <td style={{ border: '1px solid #81c784', padding: '4px 8px', whiteSpace: 'nowrap' }}>{item.property_number || '-'}</td>
                       <td style={{ border: '1px solid #81c784', padding: '4px 8px', whiteSpace: 'nowrap' }}>{item.floor_plan_confirmer || '-'}</td>
                       <td style={{ border: '1px solid #81c784', padding: '4px 8px', whiteSpace: 'nowrap' }}>{item.site_registration_requester || '-'}</td>
-                      <td style={{ border: '1px solid #81c784', padding: '4px 8px', whiteSpace: 'pre-wrap', width: '50%' }}>{item.floor_plan_revision_correction_content}</td>
+                      <td style={{ border: '1px solid #81c784', padding: '4px 8px', whiteSpace: 'pre-wrap', width: '35%' }}>{item.floor_plan_revision_correction_content}</td>
+                      <td style={{ border: '1px solid #81c784', padding: '4px 8px', width: '25%' }}>
+                        <CountermeasureCell
+                          propertyNumber={item.property_number}
+                          field="floor_plan_revision_countermeasure"
+                          value={item.floor_plan_revision_countermeasure || ''}
+                          onSaved={(val) => {
+                            setFloorPlanRevisionCorrectionHistory(prev => prev.map((r, i) => i === idx ? { ...r, floor_plan_revision_countermeasure: val } : r));
+                          }}
+                        />
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -2247,7 +2330,8 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
                   <tr style={{ backgroundColor: '#ffcdd2' }}>
                     <th style={{ border: '1px solid #e57373', padding: '6px 10px', textAlign: 'left', whiteSpace: 'nowrap' }}>重説・契約書入力納期</th>
                     <th style={{ border: '1px solid #e57373', padding: '6px 10px', textAlign: 'left', whiteSpace: 'nowrap' }}>写真が契約書作成</th>
-                    <th style={{ border: '1px solid #e57373', padding: '6px 10px', textAlign: 'left', minWidth: '300px' }}>修正内容</th>
+                    <th style={{ border: '1px solid #e57373', padding: '6px 10px', textAlign: 'left', minWidth: '200px' }}>修正内容</th>
+                    <th style={{ border: '1px solid #e57373', padding: '6px 10px', textAlign: 'left', minWidth: '180px' }}>対策案</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -2263,6 +2347,16 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
                       </td>
                       <td style={{ border: '1px solid #e0e0e0', padding: '6px 10px', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
                         {row.contract_revision_content || '-'}
+                      </td>
+                      <td style={{ border: '1px solid #e0e0e0', padding: '6px 10px' }}>
+                        <CountermeasureCell
+                          propertyNumber={row.property_number}
+                          field="contract_revision_countermeasure"
+                          value={row.contract_revision_countermeasure || ''}
+                          onSaved={(val) => {
+                            setContractRevisionSummary(prev => prev.map((r) => r.property_number === row.property_number ? { ...r, contract_revision_countermeasure: val } : r));
+                          }}
+                        />
                       </td>
                     </tr>
                   ))}

@@ -170,7 +170,7 @@ export class WorkTaskService {
   async getMediationRevisionsByCreator(creator?: string, excludePropertyNumber?: string): Promise<WorkTaskData[]> {
     let query = this.supabase
       .from('work_tasks')
-      .select('property_number, mediation_completed, mediation_checker, mediation_creator, mediation_revision_content')
+      .select('property_number, mediation_completed, mediation_checker, mediation_creator, mediation_revision_content, mediation_revision_countermeasure')
       .eq('mediation_revision', 'あり')
       .not('mediation_revision_content', 'is', null)
       .order('mediation_completed', { ascending: false })
@@ -195,7 +195,7 @@ export class WorkTaskService {
   async getSiteRegistrationRevisions(excludePropertyNumber?: string): Promise<WorkTaskData[]> {
     let query = this.supabase
       .from('work_tasks')
-      .select('property_number, site_registration_ok_sent, site_registration_confirmer, site_registration_requester, site_registration_revision_content')
+      .select('property_number, site_registration_ok_sent, site_registration_confirmer, site_registration_requester, site_registration_revision_content, site_registration_revision_countermeasure')
       .eq('site_registration_revision', 'あり')
       .not('site_registration_revision_content', 'is', null)
       .order('updated_at', { ascending: false })
@@ -216,7 +216,7 @@ export class WorkTaskService {
   async getFloorPlanRevisionCorrections(excludePropertyNumber?: string): Promise<WorkTaskData[]> {
     let query = this.supabase
       .from('work_tasks')
-      .select('property_number, floor_plan_ok_sent, floor_plan_confirmer, site_registration_requester, floor_plan_revision_correction_content')
+      .select('property_number, floor_plan_ok_sent, floor_plan_confirmer, site_registration_requester, floor_plan_revision_correction_content, floor_plan_revision_countermeasure')
       .eq('floor_plan_revision_correction', 'あり')
       .not('floor_plan_revision_correction_content', 'is', null)
       .order('updated_at', { ascending: false })
