@@ -841,13 +841,15 @@ export class SellerService extends BaseRepository {
     await CacheHelper.del('sellers:sidebar-counts');
 
     // サイドバーカウント更新（非同期、ノンブロッキング）
-    // 🚨 重要: SellerSidebarCountsUpdateService（全体更新）を使用
+    // 更新されたフィールドに影響するカテゴリだけ再計算（全件再計算より大幅に高速）
     if (this.shouldUpdateSellerSidebarCounts(updates)) {
-      const { SellerSidebarCountsUpdateService } = await import('./SellerSidebarCountsUpdateService');
-      const sidebarService = new SellerSidebarCountsUpdateService(this.supabase);
-      sidebarService.updateSellerSidebarCounts().catch(err => {
-        console.error('⚠️ Failed to update seller sidebar counts:', err);
-      });
+      const updatedFields = Object.keys(updates);
+      import('./SellerSidebarCountsUpdateService').then(({ SellerSidebarCountsUpdateService }) => {
+        const sidebarService = new SellerSidebarCountsUpdateService(this.supabase);
+        sidebarService.updateAffectedCategories(updatedFields).catch((err: any) => {
+          console.error('⚠️ Failed to update affected sidebar categories:', err);
+        });
+      }).catch((err: any) => console.error('⚠️ [SidebarCounts] Import error:', err));
     }
 
     // スプレッドシートに同期（非同期・ノンブロッキング）
@@ -905,7 +907,14 @@ export class SellerService extends BaseRepository {
    */
   private shouldUpdateSellerSidebarCounts(updates: any): boolean {
     // サイドバーカテゴリーに影響するフィールド
-    const sidebarFields = ['next_call_date', 'visit_assignee', 'visit_date', 'status'];
+    const sidebarFields = [
+      'next_call_date', 'visit_assignee', 'visit_date', 'status',
+      'phone_contact_person', 'preferred_contact_time', 'contact_method',
+      'unreachable_status', 'confidence_level', 'inquiry_date',
+      'valuation_amount_1', 'valuation_amount_2', 'valuation_amount_3',
+      'valuation_method', 'mailing_status', 'pinrich_status',
+      'contract_year_month', 'exclusive_other_decision_meeting', 'visit_reminder_assignee',
+    ];
     return sidebarFields.some(field => field in updates);
   }
 
