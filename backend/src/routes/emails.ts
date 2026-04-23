@@ -3,12 +3,14 @@ import { body, validationResult } from 'express-validator';
 import { EmailService } from '../services/EmailService.supabase';
 import { SellerService } from '../services/SellerService.supabase';
 import { ValuationEngine } from '../services/ValuationEngine.supabase';
+import { ActivityLogService } from '../services/ActivityLogService';
 import { authenticate } from '../middleware/auth';
 
 const router = Router();
 const emailService = new EmailService();
 const sellerService = new SellerService();
 const valuationEngine = new ValuationEngine();
+const activityLogService = new ActivityLogService();
 
 // 全てのルートに認証を適用
 router.use(authenticate);
@@ -394,6 +396,27 @@ router.post(
         } catch (assigneeErr) {
           console.warn(`📧 [send-template-email] Failed to auto-set ${assigneeKey}:`, assigneeErr);
         }
+      }
+
+      // activity_logs に記録（業務詳細のEmail送信履歴用）
+      try {
+        const employeeId = req.employee?.id || '00000000-0000-0000-0000-000000000000';
+        const { templateName: reqTemplateName } = req.body;
+        await activityLogService.logActivity({
+          employeeId,
+          action: 'email',
+          targetType: 'seller',
+          targetId: sellerId,
+          metadata: {
+            subject,
+            body: htmlBody || content || '',
+            templateName: reqTemplateName || templateId || '',
+            recipient_email: recipientEmail,
+            sender_email: from || req.employee?.email || '',
+          },
+        });
+      } catch (logErr) {
+        console.warn('📧 [send-template-email] Failed to log activity:', logErr);
       }
 
       res.json({

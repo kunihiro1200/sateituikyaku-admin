@@ -739,6 +739,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
   const [selectedImages, setSelectedImages] = useState<any[]>([]);
   const [imageError, setImageError] = useState<string | null>(null);
   const [templateSelectType, setTemplateSelectType] = useState<'seller' | 'buyer' | null>(null);
+  const [emailHistoryRefreshKey, setEmailHistoryRefreshKey] = useState(0);
 
   // 売主向けEmailテンプレート
   const SELLER_EMAIL_TEMPLATES = [
@@ -1139,21 +1140,22 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
   }, [open]);
 
   // サイト登録修正履歴・間取図修正履歴を取得
+  const fetchRevisionHistories = React.useCallback(async () => {
+    try {
+      const [siteRes, floorRes] = await Promise.all([
+        api.get('/api/work-tasks/site-registration-revisions'),
+        api.get('/api/work-tasks/floor-plan-revision-corrections'),
+      ]);
+      setSiteRegistrationRevisionHistory(siteRes.data || []);
+      setFloorPlanRevisionCorrectionHistory(floorRes.data || []);
+    } catch {
+      setSiteRegistrationRevisionHistory([]);
+      setFloorPlanRevisionCorrectionHistory([]);
+    }
+  }, []);
+
   useEffect(() => {
     if (!open) return;
-    const fetchRevisionHistories = async () => {
-      try {
-        const [siteRes, floorRes] = await Promise.all([
-          api.get('/api/work-tasks/site-registration-revisions'),
-          api.get('/api/work-tasks/floor-plan-revision-corrections'),
-        ]);
-        setSiteRegistrationRevisionHistory(siteRes.data || []);
-        setFloorPlanRevisionCorrectionHistory(floorRes.data || []);
-      } catch {
-        setSiteRegistrationRevisionHistory([]);
-        setFloorPlanRevisionCorrectionHistory([]);
-      }
-    };
     fetchRevisionHistories();
   }, [open]);
 
@@ -1901,7 +1903,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
   );
 
   // 売主、買主詳細セクション
-  const SellerBuyerDetailSection = () => {
+  const SellerBuyerDetailSection = ({ emailHistoryRefreshKey }: { emailHistoryRefreshKey: number }) => {
     // 契約書修正内容まとめ用データ取得
     const [contractRevisionSummary, setContractRevisionSummary] = React.useState<Array<{
       property_number: string;
@@ -1963,7 +1965,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
         .then(res => setEmailHistory(res.data.emailHistory || []))
         .catch(() => setEmailHistory([]))
         .finally(() => setEmailHistoryLoading(false));
-    }, [propertyNumber]);
+    }, [propertyNumber, emailHistoryRefreshKey]);
 
     return (
     <Box sx={{ display: 'flex', height: '100%', overflow: 'hidden' }}>
@@ -2381,7 +2383,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
               {tabIndex === 0 && renderMediationSection()}
               {tabIndex === 1 && <SiteRegistrationSection cwCounts={cwCounts} leftPaneRef={leftPaneRef} rightPaneRef={rightPaneRef} />}
               {tabIndex === 2 && <ContractSettlementSection />}
-              {tabIndex === 3 && <Box sx={{ flex: 1, display: 'flex', minHeight: 0, height: '100%' }}><SellerBuyerDetailSection /></Box>}
+              {tabIndex === 3 && <Box sx={{ flex: 1, display: 'flex', minHeight: 0, height: '100%' }}><SellerBuyerDetailSection emailHistoryRefreshKey={emailHistoryRefreshKey} /></Box>}
             </>
           )}
         </DialogContent>

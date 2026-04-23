@@ -1,4 +1,5 @@
 import { Router, Request, Response } from 'express';
+import { createClient } from '@supabase/supabase-js';
 import { WorkTaskService } from '../services/WorkTaskService';
 import { WorkTaskSyncService } from '../services/WorkTaskSyncService';
 import { WorkTaskEmailNotificationService } from '../services/WorkTaskEmailNotificationService';
@@ -202,6 +203,67 @@ router.post('/sync/:propertyNumber', async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     console.error('業務依頼データ同期エラー:', error);
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * GET /api/work-tasks/:propertyNumber/email-history
+ * 業務詳細のEmail送信履歴を取得
+ * sellers.seller_number = propertyNumber で seller.id を取得し、
+ * activity_logs から email アクションの履歴を返す
+ */
+router.get('/:propertyNumber/email-history', async (req: Request, res: Response) => {
+  try {
+    const { propertyNumber } = req.params;
+
+    const supabase = createClient(
+      process.env.SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_KEY!
+    );
+
+    // seller_number で seller.id を取得
+    const { data: seller, error: sellerError } = await supabase
+      .from('sellers')
+      .select('id')
+      .eq('seller_number', propertyNumber)
+      .single();
+
+    if (sellerError || !seller) {
+      // 売主が見つからない場合は空配列を返す（エラーにしない）
+      return res.json({ emailHistory: [] });
+    }
+
+    // activity_logs から email アクションの履歴を取得
+    const { data: logs, error: logsError } = await supabase
+      .from('activity_logs')
+      .select('id, created_at, metadata, employee:employees(id, name, initials)')
+      .eq('target_type', 'seller')
+      .eq('target_id', seller.id)
+      .eq('action', 'email')
+      .order('created_at', { ascending: false })
+      .limit(50);
+
+    if (logsError) {
+      console.error('Email履歴取得エラー:', logsError);
+      return res.status(500).json({ error: logsError.message });
+    }
+
+    const emailHistory = (logs || []).map((log: any) => ({
+      id: log.id,
+      sentAt: log.created_at,
+      subject: log.metadata?.subject || '',
+      body: log.metadata?.body || '',
+      templateName: log.metadata?.templateName || '',
+      recipientEmail: log.metadata?.recipient_email || '',
+      senderEmail: log.metadata?.sender_email || '',
+      senderName: log.employee?.name || log.employee?.initials || log.metadata?.sender_email || '',
+      senderInitials: log.employee?.initials || '',
+    }));
+
+    return res.json({ emailHistory });
+  } catch (error: any) {
+    console.error('Email履歴取得エラー:', error);
     return res.status(500).json({ error: error.message });
   }
 });
