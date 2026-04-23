@@ -2117,6 +2117,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
                       color={getValue('sales_contract_confirmed') === opt ? 'primary' : 'inherit'}
                       disabled={opt === '確認OK'}
                       title={opt === '確認OK' ? '営業のみ操作できます' : undefined}
+                      onClick={opt !== '確認OK' ? (e) => { (e.currentTarget as HTMLButtonElement).blur(); handleFieldChange('sales_contract_confirmed', getValue('sales_contract_confirmed') === opt ? null : opt); } : undefined}
                     >
                       {opt}
                     </Button>
