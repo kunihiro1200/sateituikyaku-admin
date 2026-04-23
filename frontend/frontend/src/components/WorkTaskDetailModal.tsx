@@ -2362,6 +2362,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
             <PageNavigation onNavigate={handleNavigate} />
           </Box>
           {/* 2行目: 既存のヘッダー */}
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, overflow: 'hidden' }}>
               <Button
@@ -2435,29 +2436,6 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
                     <Typography component="span" sx={{ fontSize: '0.85rem', color: '#560027', fontWeight: 500 }}>{data.mediation_type}</Typography>
                   </Box>
                 )}
-                {/* 司法書士へのメール */}
-                <FormControl size="small" sx={{ minWidth: 160, flexShrink: 0 }}>
-                  <InputLabel sx={{ color: '#6a1b9a', '&.Mui-focused': { color: '#6a1b9a' }, fontSize: '0.8rem' }}>司法書士へのメール</InputLabel>
-                  <Select
-                    value=""
-                    label="司法書士へのメール"
-                    onChange={(e) => handleEmailTemplateSelect(e.target.value as string, 'judicial_scrivener')}
-                    sx={{
-                      bgcolor: '#f3e5f5',
-                      '& .MuiOutlinedInput-notchedOutline': { borderColor: '#ce93d8', borderWidth: 2 },
-                      '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#6a1b9a' },
-                      '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: '#6a1b9a' },
-                      fontWeight: 700,
-                      color: '#6a1b9a',
-                      fontSize: '0.8rem',
-                      height: '36px',
-                    }}
-                  >
-                    {JUDICIAL_SCRIVENER_EMAIL_TEMPLATES.map(t => (
-                      <MenuItem key={t.id} value={t.id}>{t.name}</MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
               </Box>
             </Box>
             {/* スプシボタン: tabIndex=0（媒介契約）または tabIndex=1（サイト登録）のとき */}
@@ -2496,6 +2474,32 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
               </Button>
             )}
             <IconButton onClick={onClose} size="small"><CloseIcon /></IconButton>
+          </Box>
+          {/* 3行目: 司法書士へのメール（契約決済・売主買主詳細タブのみ） */}
+          {(tabIndex === 2 || tabIndex === 3) && (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <FormControl size="small" sx={{ minWidth: 220 }}>
+                <InputLabel sx={{ color: '#6a1b9a', '&.Mui-focused': { color: '#6a1b9a' } }}>司法書士へのメール</InputLabel>
+                <Select
+                  value=""
+                  label="司法書士へのメール"
+                  onChange={(e) => handleEmailTemplateSelect(e.target.value as string, 'judicial_scrivener')}
+                  sx={{
+                    bgcolor: '#f3e5f5',
+                    '& .MuiOutlinedInput-notchedOutline': { borderColor: '#ce93d8', borderWidth: 2 },
+                    '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#6a1b9a' },
+                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: '#6a1b9a' },
+                    fontWeight: 700,
+                    color: '#6a1b9a',
+                  }}
+                >
+                  {JUDICIAL_SCRIVENER_EMAIL_TEMPLATES.map(t => (
+                    <MenuItem key={t.id} value={t.id}>{t.name}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Box>
+          )}
           </Box>
         </DialogTitle>
         <Box sx={{ borderBottom: 1, borderColor: 'divider', px: 2 }}>
@@ -2620,6 +2624,16 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
                 onChange={(e) => setEmailRecipient(e.target.value)}
                 size="small"
                 type="email"
+                error={!emailRecipient}
+                helperText={!emailRecipient ? '⚠️ 送信先メールアドレスが未入力です。入力してから送信してください。' : ''}
+                sx={!emailRecipient ? {
+                  '& .MuiOutlinedInput-root': {
+                    bgcolor: '#fff3e0',
+                    '& fieldset': { borderColor: '#f44336', borderWidth: 2 },
+                    '&:hover fieldset': { borderColor: '#d32f2f' },
+                  },
+                  '& .MuiInputLabel-root': { color: '#f44336' },
+                } : {}}
               />
             </Box>
 
