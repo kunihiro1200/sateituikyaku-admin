@@ -2247,102 +2247,74 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
 決済日：${dateStr}`;
             }}
           />
-          <ChatSendButton
-            label="国広とチャット"
-            field="kunihiro_chat"
-            chatType="staff"
-            staffName="国広"
-            buildMessage={() => {
-              const pn = getValue('property_number') || propertyNumber || '';
-              const addr = getValue('property_address') || '';
-              const seller = getValue('seller_contact_name') || getValue('seller_name') || '';
-              const sd = getValue('settlement_date') || '';
-              let dateStr = sd;
-              if (sd) {
-                try {
-                  const d = new Date(sd);
-                  dateStr = `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`;
-                } catch { dateStr = sd; }
-              }
-              return `【決済完了】
-物件番号：${pn}
-物件所在：${addr}
-売主：${seller}
-決済日：${dateStr}`;
-            }}
-          />
-          <ChatSendButton
-            label="山本へチャット送信"
-            field="yamamoto_chat"
-            chatType="staff"
-            staffName="山本"
-            buildMessage={() => {
-              const pn = getValue('property_number') || propertyNumber || '';
-              const addr = getValue('property_address') || '';
-              const seller = getValue('seller_contact_name') || getValue('seller_name') || '';
-              const sd = getValue('settlement_date') || '';
-              let dateStr = sd;
-              if (sd) {
-                try {
-                  const d = new Date(sd);
-                  dateStr = `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`;
-                } catch { dateStr = sd; }
-              }
-              return `【決済完了】
-物件番号：${pn}
-物件所在：${addr}
-売主：${seller}
-決済日：${dateStr}`;
-            }}
-          />
-          <ChatSendButton
-            label="裏へチャット送信"
-            field="ura_chat"
-            chatType="staff"
-            staffName="裏"
-            buildMessage={() => {
-              const pn = getValue('property_number') || propertyNumber || '';
-              const addr = getValue('property_address') || '';
-              const seller = getValue('seller_contact_name') || getValue('seller_name') || '';
-              const sd = getValue('settlement_date') || '';
-              let dateStr = sd;
-              if (sd) {
-                try {
-                  const d = new Date(sd);
-                  dateStr = `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`;
-                } catch { dateStr = sd; }
-              }
-              return `【決済完了】
-物件番号：${pn}
-物件所在：${addr}
-売主：${seller}
-決済日：${dateStr}`;
-            }}
-          />
-          <ChatSendButton
-            label="角井へチャット送信"
-            field="kadoi_chat"
-            chatType="staff"
-            staffName="角井"
-            buildMessage={() => {
-              const pn = getValue('property_number') || propertyNumber || '';
-              const addr = getValue('property_address') || '';
-              const seller = getValue('seller_contact_name') || getValue('seller_name') || '';
-              const sd = getValue('settlement_date') || '';
-              let dateStr = sd;
-              if (sd) {
-                try {
-                  const d = new Date(sd);
-                  dateStr = `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`;
-                } catch { dateStr = sd; }
-              }
-              return `【決済完了】
-物件番号：${pn}
-物件所在：${addr}
-売主：${seller}
-決済日：${dateStr}`;
-            }}
-          />
+          {getValue('sales_assignee') === 'K' && (
+            <ChatSendButton
+              label="国広とチャット"
+              field="kunihiro_chat"
+              chatType="staff"
+              staffName="国広"
+              buildMessage={() => {
+                const pn = getValue('property_number') || propertyNumber || '';
+                const addr = getValue('property_address') || '';
+                const seller = getValue('seller_contact_name') || getValue('seller_name') || '';
+                const sd = getValue('settlement_date') || '';
+                let dateStr = sd;
+                if (sd) { try { const d = new Date(sd); dateStr = `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`; } catch { dateStr = sd; } }
+                return `【決済完了】\n物件番号：${pn}\n物件所在：${addr}\n売主：${seller}\n決済日：${dateStr}`;
+              }}
+            />
+          )}
+          {getValue('sales_assignee') === 'Y' && (
+            <ChatSendButton
+              label="山本へチャット送信"
+              field="yamamoto_chat"
+              chatType="staff"
+              staffName="山本"
+              buildMessage={() => {
+                const pn = getValue('property_number') || propertyNumber || '';
+                const addr = getValue('property_address') || '';
+                const seller = getValue('seller_contact_name') || getValue('seller_name') || '';
+                const sd = getValue('settlement_date') || '';
+                let dateStr = sd;
+                if (sd) { try { const d = new Date(sd); dateStr = `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`; } catch { dateStr = sd; } }
+                return `【決済完了】\n物件番号：${pn}\n物件所在：${addr}\n売主：${seller}\n決済日：${dateStr}`;
+              }}
+            />
+          )}
+          {getValue('sales_assignee') === 'U' && (
+            <ChatSendButton
+              label="裏へチャット送信"
+              field="ura_chat"
+              chatType="staff"
+              staffName="裏"
+              buildMessage={() => {
+                const pn = getValue('property_number') || propertyNumber || '';
+                const addr = getValue('property_address') || '';
+                const seller = getValue('seller_contact_name') || getValue('seller_name') || '';
+                const sd = getValue('settlement_date') || '';
+                let dateStr = sd;
+                if (sd) { try { const d = new Date(sd); dateStr = `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`; } catch { dateStr = sd; } }
+                return `【決済完了】\n物件番号：${pn}\n物件所在：${addr}\n売主：${seller}\n決済日：${dateStr}`;
+              }}
+            />
+          )}
+          {getValue('sales_assignee') === 'I' && (
+            <ChatSendButton
+              label="角井へチャット送信"
+              field="kadoi_chat"
+              chatType="staff"
+              staffName="角井"
+              buildMessage={() => {
+                const pn = getValue('property_number') || propertyNumber || '';
+                const addr = getValue('property_address') || '';
+                const seller = getValue('seller_contact_name') || getValue('seller_name') || '';
+                const sd = getValue('settlement_date') || '';
+                let dateStr = sd;
+                if (sd) { try { const d = new Date(sd); dateStr = `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`; } catch { dateStr = sd; } }
+                return `【決済完了】\n物件番号：${pn}\n物件所在：${addr}\n売主：${seller}\n決済日：${dateStr}`;
+              }}
+            />
+          )}
         </Box>
       </Box>
     </Box>
