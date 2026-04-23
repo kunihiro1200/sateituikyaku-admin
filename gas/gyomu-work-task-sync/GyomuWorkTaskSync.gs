@@ -205,7 +205,8 @@ var TYPE_CONVERSIONS = {
   'sales_price': 'number',
   'floor_plan_revision_count': 'number',
   'review_count': 'number',
-  'delivery_scheduled_date': 'date'
+  'delivery_scheduled_date': 'date',
+  'ledger_created': 'date'
 };
 
 // ============================================================
