@@ -48,10 +48,11 @@ export interface StatusCategory {
   key: string;
   label: string;
   count: number;
-  deadline?: string; // 最も近い期日（M/D形式）
-  siteDeadline?: string; // サイト登録締め日（site_registration_deadline）
-  isDeadlinePast?: boolean; // 期日が本日以前かどうか
-  isDeadlineTomorrow?: boolean; // 期日が明日かどうか
+  deadline?: string;
+  siteDeadline?: string;
+  isDeadlinePast?: boolean;
+  isDeadlineTomorrow?: boolean;
+  isUrgent?: boolean; // 赤字表示（契約後司法書士連絡未・金種表送付未）
   filter: (task: WorkTask) => boolean;
 }
 
@@ -289,6 +290,8 @@ const CATEGORY_GROUP_COLORS: [string, string][] = [
   ['サイト登録依頼してください', '#f3e5f5'],
   ['サイト依頼済み納品待ち',     '#f3e5f5'],
   ['サイト登録要確認',           '#f3e5f5'],
+  ['契約後司法書士連絡未',       '#ffebee'],
+  ['金種表送付　未',             '#ffebee'],
   ['売買契約 依頼未',            '#e3f2fd'],
   ['売買契約　営業確認中',       '#e3f2fd'],
   ['売買契約 入力待ち',          '#e3f2fd'],
@@ -314,6 +317,8 @@ const CATEGORY_ORDER = [
   'サイト登録依頼してください',
   'サイト依頼済み納品待ち',
   'サイト登録要確認',
+  '契約後司法書士連絡未',
+  '金種表送付　未',
   '売買契約 依頼未',
   '売買契約　営業確認中',
   '売買契約 入力待ち',
@@ -392,6 +397,8 @@ export const getStatusCategories = (tasks: WorkTask[]): StatusCategory[] => {
       isDeadlineTomorrow = deadlineDate.getTime() === tomorrow.getTime();
     }
 
+    const isUrgent = status === '契約後司法書士連絡未' || status === '金種表送付　未';
+
     categories.push({
       key,
       label: status,
@@ -400,6 +407,7 @@ export const getStatusCategories = (tasks: WorkTask[]): StatusCategory[] => {
       siteDeadline: siteDeadlines[status],
       isDeadlinePast,
       isDeadlineTomorrow,
+      isUrgent,
       filter: (task: WorkTask) => calculateTaskStatus(task) === status,
     });
   });

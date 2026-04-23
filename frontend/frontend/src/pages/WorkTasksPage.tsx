@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Container,
   Box,
@@ -194,52 +194,61 @@ export default function WorkTasksPage() {
             </Typography>
           </Box>
           <List dense>
-            {statusCategories.map((cat) => (
-              <ListItemButton
-                key={cat.key}
-                selected={selectedCategory === cat.key}
-                onClick={() => handleCategoryChange(cat.key)}
-                sx={{ 
-                  py: 0.5,
-                  backgroundColor: getCategoryGroupColor(cat.label),
-                  '&:hover': {
-                    backgroundColor: getCategoryGroupColor(cat.label),
-                    filter: 'brightness(0.95)',
-                  },
-                  '&.Mui-selected': {
-                    backgroundColor: 'action.selected',
-                  },
-                  '&.Mui-selected:hover': {
-                    backgroundColor: 'action.selected',
-                  },
-                }}
-              >
-                <ListItemText 
-                  primary={cat.label} 
-                  primaryTypographyProps={{ 
-                    variant: cat.isDeadlineTomorrow ? 'body1' : 'body2',
-                    sx: { 
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                      color: cat.isDeadlinePast ? 'error.main' : 'text.primary',
-                      fontWeight: (cat.isDeadlinePast || cat.isDeadlineTomorrow) ? 'bold' : 'normal',
-                    }
-                  }}
-                  secondary={cat.siteDeadline ? `締め日: ${cat.siteDeadline}` : cat.deadline ? `締め日: ${cat.deadline}` : undefined}
-                  secondaryTypographyProps={{
-                    variant: 'caption',
-                    color: cat.isDeadlinePast ? 'error' : 'text.secondary',
-                  }}
-                />
-                <Badge
-                  badgeContent={cat.count}
-                  color="primary"
-                  max={999}
-                  sx={{ ml: 1 }}
-                />
-              </ListItemButton>
-            ))}
+            {statusCategories.map((cat, idx) => {
+              // サイト系の最後（サイト登録要確認）と売買契約系の最初（契約後司法書士連絡未 or 売買契約）の間に区切り線
+              const prevLabel = idx > 0 ? statusCategories[idx - 1].label : '';
+              const showDivider =
+                (prevLabel.startsWith('サイト') || prevLabel.startsWith('サイト登録')) &&
+                (cat.label.startsWith('契約後司法書士') || cat.label.startsWith('金種表') || cat.label.startsWith('売買契約'));
+              return (
+                <React.Fragment key={cat.key}>
+                  {showDivider && <Box sx={{ my: 0.5, borderTop: '2px solid #bdbdbd' }} />}
+                  <ListItemButton
+                    selected={selectedCategory === cat.key}
+                    onClick={() => handleCategoryChange(cat.key)}
+                    sx={{ 
+                      py: 0.5,
+                      backgroundColor: getCategoryGroupColor(cat.label),
+                      '&:hover': {
+                        backgroundColor: getCategoryGroupColor(cat.label),
+                        filter: 'brightness(0.95)',
+                      },
+                      '&.Mui-selected': {
+                        backgroundColor: 'action.selected',
+                      },
+                      '&.Mui-selected:hover': {
+                        backgroundColor: 'action.selected',
+                      },
+                    }}
+                  >
+                    <ListItemText 
+                      primary={cat.label} 
+                      primaryTypographyProps={{ 
+                        variant: cat.isDeadlineTomorrow ? 'body1' : 'body2',
+                        sx: { 
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                          color: (cat.isUrgent || cat.isDeadlinePast) ? 'error.main' : 'text.primary',
+                          fontWeight: (cat.isUrgent || cat.isDeadlinePast || cat.isDeadlineTomorrow) ? 'bold' : 'normal',
+                        }
+                      }}
+                      secondary={cat.siteDeadline ? `締め日: ${cat.siteDeadline}` : cat.deadline ? `締め日: ${cat.deadline}` : undefined}
+                      secondaryTypographyProps={{
+                        variant: 'caption',
+                        color: cat.isDeadlinePast ? 'error' : 'text.secondary',
+                      }}
+                    />
+                    <Badge
+                      badgeContent={cat.count}
+                      color={cat.isUrgent ? 'error' : 'primary'}
+                      max={999}
+                      sx={{ ml: 1 }}
+                    />
+                  </ListItemButton>
+                </React.Fragment>
+              );
+            })}
           </List>
         </Paper>
 
