@@ -823,7 +823,22 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
     mediation_revision_content: string;
   }>>([]);
 
-  // 媒介作成者が変わったら修正履歴を取得
+  // 日付文字列をYYYY-MM-DD形式に整形
+  const formatDateShort = (dateStr: string | null | undefined): string => {
+    if (!dateStr) return '-';
+    try {
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return dateStr;
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const dd = String(d.getDate()).padStart(2, '0');
+      return `${yyyy}-${mm}-${dd}`;
+    } catch {
+      return dateStr;
+    }
+  };
+
+  // 媒介作成者が変わったら修正履歴を取得（現在の案件は除外してAPIから取得）
   useEffect(() => {
     const creator = data?.mediation_creator;
     if (!creator) {
@@ -835,7 +850,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
         const params = new URLSearchParams({ creator });
         if (propertyNumber) params.append('exclude', propertyNumber);
         const res = await api.get(`/api/work-tasks/mediation-revisions?${params.toString()}`);
-        // 現在の案件の修正内容（あり）も先頭に追加
+        // 現在の案件の修正内容（あり）のみ先頭に追加（他案件とは重複しない）
         const currentRevision = data?.mediation_revision === 'あり' && data?.mediation_revision_content
           ? [{
               property_number: propertyNumber || '',
@@ -845,7 +860,11 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
               mediation_revision_content: data.mediation_revision_content,
             }]
           : [];
-        setMediationRevisionHistory([...currentRevision, ...(res.data || [])]);
+        // 重複除去（property_numberが現在の案件と一致するものを除外）
+        const otherRevisions = (res.data || []).filter(
+          (item: { property_number: string }) => item.property_number !== propertyNumber
+        );
+        setMediationRevisionHistory([...currentRevision, ...otherRevisions]);
       } catch {
         setMediationRevisionHistory([]);
       }
@@ -880,21 +899,21 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
               <thead>
                 <tr style={{ backgroundColor: '#ffe0b2' }}>
-                  <th style={{ border: '1px solid #ffb74d', padding: '4px 8px', textAlign: 'left' }}>物件番号</th>
-                  <th style={{ border: '1px solid #ffb74d', padding: '4px 8px', textAlign: 'left' }}>媒介作成完了日</th>
-                  <th style={{ border: '1px solid #ffb74d', padding: '4px 8px', textAlign: 'left' }}>媒介確認者</th>
-                  <th style={{ border: '1px solid #ffb74d', padding: '4px 8px', textAlign: 'left' }}>媒介作成者</th>
-                  <th style={{ border: '1px solid #ffb74d', padding: '4px 8px', textAlign: 'left' }}>修正内容</th>
+                  <th style={{ border: '1px solid #ffb74d', padding: '4px 8px', textAlign: 'left', whiteSpace: 'nowrap' }}>物件番号</th>
+                  <th style={{ border: '1px solid #ffb74d', padding: '4px 8px', textAlign: 'left', whiteSpace: 'nowrap' }}>媒介作成完了日</th>
+                  <th style={{ border: '1px solid #ffb74d', padding: '4px 8px', textAlign: 'left', whiteSpace: 'nowrap' }}>媒介確認者</th>
+                  <th style={{ border: '1px solid #ffb74d', padding: '4px 8px', textAlign: 'left', whiteSpace: 'nowrap' }}>媒介作成者</th>
+                  <th style={{ border: '1px solid #ffb74d', padding: '4px 8px', textAlign: 'left', width: '50%' }}>修正内容</th>
                 </tr>
               </thead>
               <tbody>
                 {mediationRevisionHistory.map((item, idx) => (
                   <tr key={idx} style={{ backgroundColor: idx % 2 === 0 ? '#fff8f0' : '#fff3e0' }}>
-                    <td style={{ border: '1px solid #ffb74d', padding: '4px 8px' }}>{item.property_number || '-'}</td>
-                    <td style={{ border: '1px solid #ffb74d', padding: '4px 8px' }}>{item.mediation_completed || '-'}</td>
-                    <td style={{ border: '1px solid #ffb74d', padding: '4px 8px' }}>{item.mediation_checker || '-'}</td>
-                    <td style={{ border: '1px solid #ffb74d', padding: '4px 8px' }}>{item.mediation_creator}</td>
-                    <td style={{ border: '1px solid #ffb74d', padding: '4px 8px', whiteSpace: 'pre-wrap' }}>{item.mediation_revision_content}</td>
+                    <td style={{ border: '1px solid #ffb74d', padding: '4px 8px', whiteSpace: 'nowrap' }}>{item.property_number || '-'}</td>
+                    <td style={{ border: '1px solid #ffb74d', padding: '4px 8px', whiteSpace: 'nowrap' }}>{formatDateShort(item.mediation_completed)}</td>
+                    <td style={{ border: '1px solid #ffb74d', padding: '4px 8px', whiteSpace: 'nowrap' }}>{item.mediation_checker || '-'}</td>
+                    <td style={{ border: '1px solid #ffb74d', padding: '4px 8px', whiteSpace: 'nowrap' }}>{item.mediation_creator}</td>
+                    <td style={{ border: '1px solid #ffb74d', padding: '4px 8px', whiteSpace: 'pre-wrap', width: '50%' }}>{item.mediation_revision_content}</td>
                   </tr>
                 ))}
               </tbody>
