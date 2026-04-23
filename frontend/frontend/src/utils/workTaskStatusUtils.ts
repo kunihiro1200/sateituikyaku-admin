@@ -116,11 +116,13 @@ const SITE_REG_BASE_DATE = new Date('2025-10-30');
 export const calculateTaskStatus = (task: WorkTask): string => {
   // 0a. 契約後司法書士連絡未
   // property_listingsのsales_contract_completedが"契約完了～"で始まり、
-  // judicial_scrivener_email_after_contractが空の場合
+  // judicial_scrivener_email_after_contractが空で、決済日が2026/4/30以降の場合
+  const JUDICIAL_BASE_DATE = new Date('2026-04-30');
   if (
     task.sales_contract_completed &&
     task.sales_contract_completed.startsWith('契約完了') &&
-    isBlank(task.judicial_scrivener_email_after_contract)
+    isBlank(task.judicial_scrivener_email_after_contract) &&
+    dateGte(task.settlement_date, JUDICIAL_BASE_DATE)
   ) {
     return '契約後司法書士連絡未';
   }
