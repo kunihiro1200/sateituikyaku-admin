@@ -50,6 +50,9 @@ interface WorkTaskData {
   mediation_deadline: string;
   mediation_completed: string;
   mediation_creator: string;
+  mediation_checker: string;
+  mediation_revision: string;
+  mediation_revision_content: string;
   mediation_notes: string;
   on_hold: string;
   site_registration_deadline: string;
@@ -767,6 +770,31 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
     </Grid>
   );
 
+  // 媒介確認者が必須かどうかの判定（媒介作成完了が2026/4/23以降）
+  const isMediationCheckerRequired = (() => {
+    const completed = getValue('mediation_completed');
+    if (!completed) return false;
+    try {
+      return new Date(completed) >= new Date('2026-04-23');
+    } catch {
+      return false;
+    }
+  })();
+
+  // 媒介作成者の過去の修正内容まとめを取得
+  const getMediationRevisionSummary = () => {
+    const creator = getValue('mediation_creator');
+    if (!creator) return null;
+    const content = getValue('mediation_revision_content');
+    const completed = getValue('mediation_completed');
+    const checker = getValue('mediation_checker');
+    const revision = getValue('mediation_revision');
+    if (revision !== 'あり' || !content) return null;
+    return { creator, content, completed, checker };
+  };
+
+  const mediationRevisionSummary = getMediationRevisionSummary();
+
   // 媒介契約セクション
   const MediationSection = () => (
     <Box sx={{ p: 2 }}>
@@ -780,6 +808,98 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
       <EditableField label="媒介作成締め日" field="mediation_deadline" type="date" />
       <EditableField label="媒介作成完了" field="mediation_completed" type="date" />
       <EditableButtonSelect label="媒介作成者" field="mediation_creator" options={normalInitials} />
+
+      {/* 媒介作成者に値があり、過去の修正内容がある場合に注意表示 */}
+      {mediationRevisionSummary && (
+        <Box sx={{ mb: 2, p: 1.5, bgcolor: '#fff3e0', border: '2px solid #ff9800', borderRadius: 1 }}>
+          <Typography variant="body2" sx={{ fontWeight: 700, color: '#e65100', mb: 1 }}>
+            ⚠️ 下記確認しましたか？（{mediationRevisionSummary.creator} さんへの注意点）
+          </Typography>
+          <Box sx={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
+              <thead>
+                <tr style={{ backgroundColor: '#ffe0b2' }}>
+                  <th style={{ border: '1px solid #ffb74d', padding: '4px 8px', textAlign: 'left' }}>媒介作成完了日</th>
+                  <th style={{ border: '1px solid #ffb74d', padding: '4px 8px', textAlign: 'left' }}>媒介確認者</th>
+                  <th style={{ border: '1px solid #ffb74d', padding: '4px 8px', textAlign: 'left' }}>媒介作成者</th>
+                  <th style={{ border: '1px solid #ffb74d', padding: '4px 8px', textAlign: 'left' }}>修正内容</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style={{ border: '1px solid #ffb74d', padding: '4px 8px' }}>{mediationRevisionSummary.completed || '-'}</td>
+                  <td style={{ border: '1px solid #ffb74d', padding: '4px 8px' }}>{mediationRevisionSummary.checker || '-'}</td>
+                  <td style={{ border: '1px solid #ffb74d', padding: '4px 8px' }}>{mediationRevisionSummary.creator}</td>
+                  <td style={{ border: '1px solid #ffb74d', padding: '4px 8px', whiteSpace: 'pre-wrap' }}>{mediationRevisionSummary.content}</td>
+                </tr>
+              </tbody>
+            </table>
+          </Box>
+        </Box>
+      )}
+
+      {/* 媒介作成完了に値がある場合のみ媒介確認者を表示 */}
+      {getValue('mediation_completed') && (
+        <>
+          <EditableButtonSelect
+            label={isMediationCheckerRequired ? '媒介確認者*（必須）' : '媒介確認者'}
+            field="mediation_checker"
+            options={normalInitials}
+            labelColor={isMediationCheckerRequired && !getValue('mediation_checker') ? 'error' : undefined}
+          />
+
+          {/* 媒介確認者に値がある場合のみ媒介契約修正を表示 */}
+          {getValue('mediation_checker') && (
+            <>
+              <Grid container spacing={2} alignItems="center" sx={{ mb: 1.5 }}>
+                <Grid item xs={4}>
+                  <Typography variant="body2" color="error" sx={{ fontWeight: 700 }}>媒介契約修正*（必須）</Typography>
+                </Grid>
+                <Grid item xs={8}>
+                  <ButtonGroup size="small" variant="outlined">
+                    {['あり', 'なし'].map((opt) => (
+                      <Button
+                        key={opt}
+                        variant={getValue('mediation_revision') === opt ? 'contained' : 'outlined'}
+                        color={getValue('mediation_revision') === opt ? (opt === 'あり' ? 'error' : 'primary') : 'inherit'}
+                        onClick={(e) => { (e.currentTarget as HTMLButtonElement).blur(); handleFieldChange('mediation_revision', getValue('mediation_revision') === opt ? null : opt); }}
+                      >
+                        {opt}
+                      </Button>
+                    ))}
+                  </ButtonGroup>
+                </Grid>
+              </Grid>
+
+              {/* 媒介契約修正が「あり」の場合のみ修正内容を表示 */}
+              {getValue('mediation_revision') === 'あり' && (
+                <Box sx={{ mb: 1.5 }}>
+                  <Grid container spacing={2} alignItems="flex-start">
+                    <Grid item xs={4}>
+                      <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500, mt: 0.5 }}>媒介契約修正内容</Typography>
+                    </Grid>
+                    <Grid item xs={8}>
+                      <TextField
+                        size="small"
+                        multiline
+                        minRows={3}
+                        maxRows={8}
+                        value={getValue('mediation_revision_content') || ''}
+                        onChange={(e) => handleFieldChange('mediation_revision_content', e.target.value)}
+                        fullWidth
+                      />
+                      <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 0.5 }}>
+                        ※ これは次回この作成担当者に注意点として表示されるので、分かりやすく具体的に記載してください
+                      </Typography>
+                    </Grid>
+                  </Grid>
+                </Box>
+              )}
+            </>
+          )}
+        </>
+      )}
+
       <EditableYesNo label="保留" field="on_hold" />
     </Box>
   );

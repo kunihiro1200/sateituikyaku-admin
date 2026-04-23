@@ -9,6 +9,9 @@
     "媒介作成締め日": "mediation_deadline",
     "媒介作成完了": "mediation_completed",
     "媒介作成者": "mediation_creator",
+    "媒介確認者": "mediation_checker",
+    "媒介契約修正": "mediation_revision",
+    "媒介契約修正内容": "mediation_revision_content",
     "媒介備考": "mediation_notes",
     "サイト登録締め日": "site_registration_deadline",
     "サイト登録依頼日": "site_registration_request_date",
@@ -181,6 +184,9 @@
       "mediation_deadline",
       "mediation_completed",
       "mediation_creator",
+      "mediation_checker",
+      "mediation_revision",
+      "mediation_revision_content",
       "mediation_notes"
     ],
     "サイト登録": [
