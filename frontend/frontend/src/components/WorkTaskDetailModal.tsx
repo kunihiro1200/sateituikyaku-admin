@@ -2040,15 +2040,6 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
 
   // 売主、買主詳細セクション
   const SellerBuyerDetailSection = ({ emailHistoryRefreshKey }: { emailHistoryRefreshKey: number }) => {
-    // 契約書修正内容まとめ用データ取得
-    const [contractRevisionSummary, setContractRevisionSummary] = React.useState<Array<{
-      property_number: string;
-      property_address: string;
-      contract_input_deadline: string | null;
-      employee_contract_creation: string | null;
-      contract_revision_content: string | null;
-    }>>([]);
-
     // Email送信履歴
     const [emailHistory, setEmailHistory] = React.useState<Array<{
       id: number;
@@ -2073,25 +2064,6 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
       senderName: string;
       senderInitials: string;
     } | null>(null);
-
-    React.useEffect(() => {
-      const fetchSummary = async () => {
-        try {
-          const { data, error } = await supabase
-            .from('work_tasks')
-            .select('property_number, property_address, contract_input_deadline, employee_contract_creation, contract_revision_content')
-            .eq('contract_revision_exists', 'あり')
-            .not('contract_revision_content', 'is', null)
-            .order('contract_input_deadline', { ascending: false, nullsFirst: false });
-          if (!error && data) {
-            setContractRevisionSummary(data);
-          }
-        } catch {
-          // エラー時は空のまま
-        }
-      };
-      fetchSummary();
-    }, [data]);
 
     // Email送信履歴を取得
     React.useEffect(() => {
@@ -2206,113 +2178,47 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
       <EditableField label="融資承認予定日" field="loan_approval_scheduled_date" type="date" />
 
       <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#37474f', mb: 1, mt: 2 }}>【司法書士・仲介業者情報】</Typography>
-      <EditableField label="司法書士" field="judicial_scrivener" />
-      <EditableField label="司法書士連絡先" field="judicial_scrivener_contact" />
+      <Grid container spacing={2} alignItems="center" sx={{ mb: 1.5 }}>
+        <Grid item xs={4}>
+          <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>司法書士</Typography>
+        </Grid>
+        <Grid item xs={8}>
+          <ButtonGroup size="small" variant="outlined">
+            {['司法書士法人中央ライズアクロス', '他'].map((opt) => (
+              <Button
+                key={opt}
+                variant={getValue('judicial_scrivener') === opt ? 'contained' : 'outlined'}
+                color={getValue('judicial_scrivener') === opt ? 'primary' : 'inherit'}
+                onClick={(e) => {
+                  (e.currentTarget as HTMLButtonElement).blur();
+                  const newVal = getValue('judicial_scrivener') === opt ? null : opt;
+                  handleFieldChange('judicial_scrivener', newVal);
+                  // 連絡先を自動設定
+                  handleFieldChange(
+                    'judicial_scrivener_contact',
+                    newVal === '司法書士法人中央ライズアクロス' ? 'naruse@riseacross.com' : null
+                  );
+                }}
+              >
+                {opt}
+              </Button>
+            ))}
+          </ButtonGroup>
+        </Grid>
+      </Grid>
+      <Grid container spacing={2} alignItems="center" sx={{ mb: 1.5 }}>
+        <Grid item xs={4}>
+          <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>司法書士連絡先</Typography>
+        </Grid>
+        <Grid item xs={8}>
+          <Typography variant="body2" sx={{ py: 0.5 }}>
+            {getValue('judicial_scrivener_contact') ||
+              (getValue('judicial_scrivener') === '司法書士法人中央ライズアクロス' ? 'naruse@riseacross.com' : '')}
+          </Typography>
+        </Grid>
+      </Grid>
       <EditableField label="仲介業者" field="broker" />
       <EditableField label="仲介業者担当連絡先" field="broker_contact" />
-
-      {/* 社員が契約書作成 */}
-      <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#4a148c', mb: 1, mt: 2 }}>【契約書作成】</Typography>
-      <EditableButtonSelect label="社員が契約書作成" field="employee_contract_creation" options={normalInitials} />
-
-      {/* 売買契約確認（スプシAM列と同期） */}
-      <EditableButtonSelect label="売買契約確認" field="sales_contract_confirmed" options={['確認中', '確認OK']} />
-
-      {/* 確認OKの場合のみ表示 */}
-      {getValue('sales_contract_confirmed') === '確認OK' && (
-        <Box sx={{ bgcolor: '#fff8e1', borderRadius: 1, p: 1.5, mb: 1 }}>
-          {/* 契約書、重説他　修正点（必須） */}
-          <Grid container spacing={2} alignItems="center" sx={{ mb: 1.5 }}>
-            <Grid item xs={4}>
-              <Typography variant="body2" color="error" sx={{ fontWeight: 700 }}>
-                契約書、重説他　修正点*（必須）
-              </Typography>
-            </Grid>
-            <Grid item xs={8}>
-              <ButtonGroup size="small" variant="outlined">
-                {['あり', 'なし'].map((opt) => (
-                  <Button
-                    key={opt}
-                    variant={getValue('contract_revision_exists') === opt ? 'contained' : 'outlined'}
-                    color={getValue('contract_revision_exists') === opt ? (opt === 'あり' ? 'error' : 'success') : 'inherit'}
-                    onClick={(e) => { (e.currentTarget as HTMLButtonElement).blur(); handleFieldChange('contract_revision_exists', getValue('contract_revision_exists') === opt ? null : opt); }}
-                  >
-                    {opt}
-                  </Button>
-                ))}
-              </ButtonGroup>
-              {!getValue('contract_revision_exists') && (
-                <Typography variant="caption" color="error" sx={{ display: 'block', mt: 0.5 }}>
-                  必須項目です
-                </Typography>
-              )}
-            </Grid>
-          </Grid>
-
-          {/* 「あり」の場合のみ修正内容を表示（必須） */}
-          {getValue('contract_revision_exists') === 'あり' && (
-            <Grid container spacing={2} alignItems="flex-start" sx={{ mb: 1.5 }}>
-              <Grid item xs={4}>
-                <Typography variant="body2" color="error" sx={{ fontWeight: 700 }}>
-                  契約書、重説他の修正内容*（必須）
-                </Typography>
-              </Grid>
-              <Grid item xs={8}>
-                <TextField
-                  fullWidth
-                  multiline
-                  minRows={4}
-                  size="small"
-                  value={getValue('contract_revision_content') || ''}
-                  onChange={(e) => handleFieldChange('contract_revision_content', e.target.value)}
-                  placeholder="修正内容を入力してください"
-                  error={!getValue('contract_revision_content')}
-                  helperText={!getValue('contract_revision_content') ? '必須項目です' : ''}
-                />
-              </Grid>
-            </Grid>
-          )}
-        </Box>
-      )}
-
-      {/* 契約書、重説他の修正内容まとめ（全物件） */}
-      <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#b71c1c', mb: 1, mt: 3 }}>
-        契約書、重説他の修正内容　まとめ
-      </Typography>
-      {contractRevisionSummary.length === 0 ? (
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          修正内容のある物件はありません
-        </Typography>
-      ) : (
-        <Box sx={{ overflowX: 'auto', mb: 2 }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
-            <thead>
-              <tr style={{ backgroundColor: '#ffcdd2' }}>
-                <th style={{ border: '1px solid #e57373', padding: '6px 10px', textAlign: 'left', whiteSpace: 'nowrap' }}>重説・契約書入力納期</th>
-                <th style={{ border: '1px solid #e57373', padding: '6px 10px', textAlign: 'left', whiteSpace: 'nowrap' }}>写真が契約書作成</th>
-                <th style={{ border: '1px solid #e57373', padding: '6px 10px', textAlign: 'left', minWidth: '300px' }}>修正内容</th>
-              </tr>
-            </thead>
-            <tbody>
-              {contractRevisionSummary.map((row, idx) => (
-                <tr key={row.property_number} style={{ backgroundColor: idx % 2 === 0 ? '#fff' : '#fff8f8' }}>
-                  <td style={{ border: '1px solid #e0e0e0', padding: '6px 10px', whiteSpace: 'nowrap', color: '#555' }}>
-                    {row.contract_input_deadline
-                      ? new Date(row.contract_input_deadline).toLocaleDateString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit' })
-                      : '-'}
-                  </td>
-                  <td style={{ border: '1px solid #e0e0e0', padding: '6px 10px', whiteSpace: 'nowrap' }}>
-                    {row.employee_contract_creation || '-'}
-                  </td>
-                  <td style={{ border: '1px solid #e0e0e0', padding: '6px 10px', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                    {row.contract_revision_content || '-'}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </Box>
-      )}
       </Box>
 
       {/* Email本文モーダル */}
