@@ -814,7 +814,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
     }
   })();
 
-  // 媒介作成者の修正履歴（他の案件含む）
+  // 媒介契約修正履歴（全案件・全担当者）
   const [mediationRevisionHistory, setMediationRevisionHistory] = useState<Array<{
     property_number: string;
     mediation_completed: string | null;
@@ -838,42 +838,19 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
     }
   };
 
-  // 媒介作成者が変わったら修正履歴を取得（現在の案件は除外してAPIから取得）
+  // モーダルが開いたとき（data取得後）に修正履歴を全件取得
   useEffect(() => {
-    const creator = data?.mediation_creator;
-    if (!creator) {
-      setMediationRevisionHistory([]);
-      return;
-    }
+    if (!open) return;
     const fetchHistory = async () => {
       try {
-        const params = new URLSearchParams({ creator });
-        if (propertyNumber) params.append('exclude', propertyNumber);
-        const res = await api.get(`/api/work-tasks/mediation-revisions?${params.toString()}`);
-        // 現在の案件の修正内容（あり）のみ先頭に追加（他案件とは重複しない）
-        const currentRevision = data?.mediation_revision === 'あり' && data?.mediation_revision_content
-          ? [{
-              property_number: propertyNumber || '',
-              mediation_completed: data.mediation_completed || null,
-              mediation_checker: data.mediation_checker || null,
-              mediation_creator: creator,
-              mediation_revision_content: data.mediation_revision_content,
-            }]
-          : [];
-        // 重複除去（property_numberが現在の案件と一致するものを除外）
-        const otherRevisions = (res.data || []).filter(
-          (item: { property_number: string }) => item.property_number !== propertyNumber
-        );
-        setMediationRevisionHistory([...currentRevision, ...otherRevisions]);
+        const res = await api.get('/api/work-tasks/mediation-revisions');
+        setMediationRevisionHistory(res.data || []);
       } catch {
         setMediationRevisionHistory([]);
       }
     };
     fetchHistory();
-  }, [data?.mediation_creator, data?.mediation_revision, data?.mediation_revision_content, propertyNumber]);
-
-  const hasMediationRevisionHistory = mediationRevisionHistory.length > 0;
-  const mediationRevisionCreator = data?.mediation_creator;
+  }, [open]);
 
   // 媒介契約セクション（コンポーネントではなく関数として定義し再マウントを防ぐ）
   const renderMediationSection = () => (
@@ -888,39 +865,6 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
       <EditableField label="媒介作成締め日" field="mediation_deadline" type="date" />
       <EditableField label="媒介作成完了" field="mediation_completed" type="date" />
       <EditableButtonSelect label="媒介作成者" field="mediation_creator" options={normalInitials} />
-
-      {/* 媒介作成者に値があり、過去の修正内容がある場合に注意表示 */}
-      {hasMediationRevisionHistory && mediationRevisionCreator && (
-        <Box sx={{ mb: 2, p: 1.5, bgcolor: '#fff3e0', border: '2px solid #ff9800', borderRadius: 1 }}>
-          <Typography variant="body2" sx={{ fontWeight: 700, color: '#e65100', mb: 1 }}>
-            ⚠️ 下記確認しましたか？（{mediationRevisionCreator} さんへの注意点）
-          </Typography>
-          <Box sx={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
-              <thead>
-                <tr style={{ backgroundColor: '#ffe0b2' }}>
-                  <th style={{ border: '1px solid #ffb74d', padding: '4px 8px', textAlign: 'left', whiteSpace: 'nowrap' }}>物件番号</th>
-                  <th style={{ border: '1px solid #ffb74d', padding: '4px 8px', textAlign: 'left', whiteSpace: 'nowrap' }}>媒介作成完了日</th>
-                  <th style={{ border: '1px solid #ffb74d', padding: '4px 8px', textAlign: 'left', whiteSpace: 'nowrap' }}>媒介確認者</th>
-                  <th style={{ border: '1px solid #ffb74d', padding: '4px 8px', textAlign: 'left', whiteSpace: 'nowrap' }}>媒介作成者</th>
-                  <th style={{ border: '1px solid #ffb74d', padding: '4px 8px', textAlign: 'left', width: '50%' }}>修正内容</th>
-                </tr>
-              </thead>
-              <tbody>
-                {mediationRevisionHistory.map((item, idx) => (
-                  <tr key={idx} style={{ backgroundColor: idx % 2 === 0 ? '#fff8f0' : '#fff3e0' }}>
-                    <td style={{ border: '1px solid #ffb74d', padding: '4px 8px', whiteSpace: 'nowrap' }}>{item.property_number || '-'}</td>
-                    <td style={{ border: '1px solid #ffb74d', padding: '4px 8px', whiteSpace: 'nowrap' }}>{formatDateShort(item.mediation_completed)}</td>
-                    <td style={{ border: '1px solid #ffb74d', padding: '4px 8px', whiteSpace: 'nowrap' }}>{item.mediation_checker || '-'}</td>
-                    <td style={{ border: '1px solid #ffb74d', padding: '4px 8px', whiteSpace: 'nowrap' }}>{item.mediation_creator}</td>
-                    <td style={{ border: '1px solid #ffb74d', padding: '4px 8px', whiteSpace: 'pre-wrap', width: '50%' }}>{item.mediation_revision_content}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </Box>
-        </Box>
-      )}
 
       {/* 媒介作成完了に値がある場合のみ媒介確認者を表示 */}
       {getValue('mediation_completed') && (
@@ -985,6 +929,39 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
       )}
 
       <EditableYesNo label="保留" field="on_hold" />
+
+      {/* 媒介契約修正内容まとめ（常時表示・全担当者） */}
+      {mediationRevisionHistory.length > 0 && (
+        <Box sx={{ mt: 2, p: 1.5, bgcolor: '#fff3e0', border: '2px solid #ff9800', borderRadius: 1 }}>
+          <Typography variant="body2" sx={{ fontWeight: 700, color: '#e65100', mb: 1 }}>
+            ⚠️ 媒介契約修正内容まとめ
+          </Typography>
+          <Box sx={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
+              <thead>
+                <tr style={{ backgroundColor: '#ffe0b2' }}>
+                  <th style={{ border: '1px solid #ffb74d', padding: '4px 8px', textAlign: 'left', whiteSpace: 'nowrap' }}>物件番号</th>
+                  <th style={{ border: '1px solid #ffb74d', padding: '4px 8px', textAlign: 'left', whiteSpace: 'nowrap' }}>媒介作成完了日</th>
+                  <th style={{ border: '1px solid #ffb74d', padding: '4px 8px', textAlign: 'left', whiteSpace: 'nowrap' }}>媒介確認者</th>
+                  <th style={{ border: '1px solid #ffb74d', padding: '4px 8px', textAlign: 'left', whiteSpace: 'nowrap' }}>媒介作成者</th>
+                  <th style={{ border: '1px solid #ffb74d', padding: '4px 8px', textAlign: 'left', width: '50%' }}>修正内容</th>
+                </tr>
+              </thead>
+              <tbody>
+                {mediationRevisionHistory.map((item, idx) => (
+                  <tr key={idx} style={{ backgroundColor: idx % 2 === 0 ? '#fff8f0' : '#fff3e0' }}>
+                    <td style={{ border: '1px solid #ffb74d', padding: '4px 8px', whiteSpace: 'nowrap' }}>{item.property_number || '-'}</td>
+                    <td style={{ border: '1px solid #ffb74d', padding: '4px 8px', whiteSpace: 'nowrap' }}>{formatDateShort(item.mediation_completed)}</td>
+                    <td style={{ border: '1px solid #ffb74d', padding: '4px 8px', whiteSpace: 'nowrap' }}>{item.mediation_checker || '-'}</td>
+                    <td style={{ border: '1px solid #ffb74d', padding: '4px 8px', whiteSpace: 'nowrap' }}>{item.mediation_creator || '-'}</td>
+                    <td style={{ border: '1px solid #ffb74d', padding: '4px 8px', whiteSpace: 'pre-wrap', width: '50%' }}>{item.mediation_revision_content}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </Box>
+        </Box>
+      )}
     </Box>
   );
 
