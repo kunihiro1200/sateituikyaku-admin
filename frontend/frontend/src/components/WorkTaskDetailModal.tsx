@@ -248,21 +248,34 @@ interface ValidationWarningDialogProps {
   onCancel: () => void;
 }
 
-const ValidationWarningDialog = ({ open, title, emptyFields, onConfirm, onCancel }: ValidationWarningDialogProps) => (
+const ValidationWarningDialog = ({ open, title, emptyFields, onConfirm, onCancel, isMandatory }: ValidationWarningDialogProps & { isMandatory?: boolean }) => (
   <Dialog open={open} onClose={onCancel} maxWidth="sm" fullWidth>
-    <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-      <WarningAmberIcon sx={{ color: 'warning.main' }} />
-      <Typography component="span" sx={{ fontWeight: 700 }}>{title}</Typography>
+    <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1, bgcolor: isMandatory ? '#d32f2f' : undefined, color: isMandatory ? '#fff' : undefined }}>
+      <WarningAmberIcon sx={{ color: isMandatory ? '#ffeb3b' : 'warning.main' }} />
+      <Typography component="span" sx={{ fontWeight: 700, color: isMandatory ? '#fff' : undefined }}>{title}</Typography>
     </DialogTitle>
-    <DialogContent>
-      <Typography sx={{ fontWeight: 700, mb: 1 }}>以下のフィールドが未入力です：</Typography>
+    <DialogContent sx={{ pt: 2 }}>
+      {isMandatory && (
+        <Typography sx={{ fontWeight: 700, color: '#d32f2f', mb: 1.5 }}>
+          🚫 以下の必須項目を入力するまで保存できません：
+        </Typography>
+      )}
+      {!isMandatory && (
+        <Typography sx={{ fontWeight: 700, mb: 1 }}>以下のフィールドが未入力です：</Typography>
+      )}
       {emptyFields.map((field) => (
-        <Typography key={field}>・未入力：{field}</Typography>
+        <Typography key={field} sx={{ color: isMandatory ? '#d32f2f' : undefined, fontWeight: isMandatory ? 600 : undefined }}>・未入力：{field}</Typography>
       ))}
     </DialogContent>
     <DialogActions>
-      <Button onClick={onCancel} color="error" variant="outlined">キャンセル</Button>
-      <Button onClick={onConfirm} color="primary" variant="contained">このまま保存する</Button>
+      {isMandatory ? (
+        <Button onClick={onCancel} color="error" variant="contained" fullWidth>閉じて入力する</Button>
+      ) : (
+        <>
+          <Button onClick={onCancel} color="error" variant="outlined">キャンセル</Button>
+          <Button onClick={onConfirm} color="primary" variant="contained">このまま保存する</Button>
+        </>
+      )}
     </DialogActions>
   </Dialog>
 );
@@ -448,6 +461,63 @@ function checkMediationFormatWarning(getValue: (field: string) => any): boolean 
   return propertyAddress === '不要' && !isEmpty(mediationCreator);
 }
 
+// ============================================================
+// 必須修正フィールドのバリデーション（2026/4/24以降 保存時に必ず通過）
+// 表示条件を満たしているのに未入力の場合、保存を完全にブロックする
+// ============================================================
+function checkMandatoryRevisionFields(getValue: (field: string) => any): {
+  hasError: boolean;
+  errorFields: string[];
+} {
+  const errorFields: string[] = [];
+
+  // 1. サイト登録修正（当社ミス）
+  //    表示条件: site_registration_ok_sent に値がある
+  if (!isEmpty(getValue('site_registration_ok_sent'))) {
+    if (isEmpty(getValue('site_registration_revision'))) {
+      errorFields.push('サイト登録修正（当社ミス）');
+    }
+    // 「あり」の場合は修正内容も必須
+    if (getValue('site_registration_revision') === 'あり' && isEmpty(getValue('site_registration_revision_content'))) {
+      errorFields.push('サイト登録修正内容');
+    }
+  }
+
+  // 2. 契約書、重説他　修正点
+  //    表示条件: sales_contract_confirmed === '確認OK'
+  if (getValue('sales_contract_confirmed') === '確認OK') {
+    if (isEmpty(getValue('contract_revision_exists'))) {
+      errorFields.push('契約書、重説他　修正点');
+    }
+    // 「あり」の場合は修正内容も必須
+    if (getValue('contract_revision_exists') === 'あり' && isEmpty(getValue('contract_revision_content'))) {
+      errorFields.push('契約書、重説他の修正内容');
+    }
+  }
+
+  // 3. 媒介契約修正
+  //    表示条件: mediation_checker に値がある
+  if (!isEmpty(getValue('mediation_checker'))) {
+    if (isEmpty(getValue('mediation_revision'))) {
+      errorFields.push('媒介契約修正');
+    }
+  }
+
+  // 4. 間取図修正（当社ミス）
+  //    表示条件: floor_plan_ok_sent に値がある
+  if (!isEmpty(getValue('floor_plan_ok_sent'))) {
+    if (isEmpty(getValue('floor_plan_revision_correction'))) {
+      errorFields.push('間取図修正（当社ミス）');
+    }
+    // 「あり」の場合は修正内容も必須
+    if (getValue('floor_plan_revision_correction') === 'あり' && isEmpty(getValue('floor_plan_revision_correction_content'))) {
+      errorFields.push('間取図修正内容');
+    }
+  }
+
+  return { hasError: errorFields.length > 0, errorFields };
+}
+
 const ASSIGNEE_OPTIONS = ['K', 'Y', 'I', '生', 'U', 'R', '久', 'H'];
 
 // サイト登録修正内容入力フィールド（再マウント防止のためモーダル外で定義）
@@ -585,7 +655,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
     open: boolean;
     title: string;
     emptyFields: string[];
-    onConfirmAction: 'site' | 'floor' | null;
+    onConfirmAction: 'site' | 'floor' | 'mandatory' | null;
   }>({ open: false, title: '', emptyFields: [], onConfirmAction: null });
 
   // ログインユーザーの営業フラグを取得
@@ -695,6 +765,18 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
     // 媒介契約フォーマット警告チェック
     if (checkMediationFormatWarning(getValue)) {
       setMediationFormatWarningDialog({ open: true });
+      return;
+    }
+
+    // 必須修正フィールドチェック（2026/4/24以降 保存を完全ブロック）
+    const mandatoryResult = checkMandatoryRevisionFields(getValue);
+    if (mandatoryResult.hasError) {
+      setValidationWarningDialog({
+        open: true,
+        title: '必須項目が未入力のため保存できません',
+        emptyFields: mandatoryResult.errorFields,
+        onConfirmAction: 'mandatory',
+      });
       return;
     }
 
@@ -3146,6 +3228,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
         emptyFields={validationWarningDialog.emptyFields}
         onConfirm={handleValidationWarningConfirm}
         onCancel={handleValidationWarningCancel}
+        isMandatory={validationWarningDialog.onConfirmAction === 'mandatory'}
       />
       <MediationFormatWarningDialog
         open={mediationFormatWarningDialog.open}
