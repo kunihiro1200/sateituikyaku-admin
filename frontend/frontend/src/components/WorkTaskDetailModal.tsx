@@ -1110,7 +1110,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
           .neq('contract_revision_content', '')
           .order('contract_input_deadline', { ascending: false, nullsFirst: false });
         if (!error && rows) {
-          setContractRevisionSummary(rows);
+          setContractRevisionSummary(rows.filter((r: any) => (r.contract_revision_content || '').trim() !== ''));
         }
       } catch {
         // エラー時は空のまま

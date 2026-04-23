@@ -187,7 +187,7 @@ export class WorkTaskService {
 
     const { data, error } = await query;
     if (error || !data) return [];
-    return data as WorkTaskData[];
+    return (data as WorkTaskData[]).filter(r => (r.mediation_revision_content || '').trim() !== '');
   }
 
   /**
@@ -209,7 +209,8 @@ export class WorkTaskService {
 
     const { data, error } = await query;
     if (error || !data) return [];
-    return data as WorkTaskData[];
+    // 改行・スペースのみのコンテンツも除外
+    return (data as WorkTaskData[]).filter(r => (r.site_registration_revision_content || '').trim() !== '');
   }
 
   /**
@@ -231,7 +232,7 @@ export class WorkTaskService {
 
     const { data, error } = await query;
     if (error || !data) return [];
-    return data as WorkTaskData[];
+    return (data as WorkTaskData[]).filter(r => (r.floor_plan_revision_correction_content || '').trim() !== '');
   }
 
   /**
