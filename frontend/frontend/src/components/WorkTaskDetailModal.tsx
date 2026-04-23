@@ -746,6 +746,30 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
   const [imageError, setImageError] = useState<string | null>(null);
   const [templateSelectType, setTemplateSelectType] = useState<'seller' | 'buyer' | 'judicial_scrivener' | null>(null);
   const [emailHistoryRefreshKey, setEmailHistoryRefreshKey] = useState(0);
+  // Email送信履歴（SellerBuyerDetailSectionから引き上げ）
+  const [emailHistory, setEmailHistory] = useState<Array<{
+    id: number;
+    sentAt: string;
+    subject: string;
+    body: string;
+    templateName: string;
+    recipientEmail: string;
+    senderEmail: string;
+    senderName: string;
+    senderInitials: string;
+  }>>([]);
+  const [emailHistoryLoading, setEmailHistoryLoading] = useState(false);
+  const [selectedEmailRecord, setSelectedEmailRecord] = useState<{
+    id: number;
+    sentAt: string;
+    subject: string;
+    body: string;
+    templateName: string;
+    recipientEmail: string;
+    senderEmail: string;
+    senderName: string;
+    senderInitials: string;
+  } | null>(null);
 
   // 売主向けEmailテンプレート
   const SELLER_EMAIL_TEMPLATES = [
@@ -1943,8 +1967,8 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
     </Grid>
   );
 
-  // 契約決済セクション（スクショ通り）
-  const ContractSettlementSection = () => (
+  // 契約決済セクション（関数呼び出し形式で再マウントを防ぐ）
+  const renderContractSettlementSection = () => (
     <Box sx={{ display: 'flex', gap: 0, flex: 1, minHeight: 0, overflow: 'hidden' }}>
       {/* 左ペイン: 契約書・重説作成 */}
       <Box ref={contractLeftPaneRef} sx={{ flex: 1, p: 2, borderRight: '2px solid', borderColor: 'divider', overflowY: 'auto', minHeight: 0 }}>
@@ -2144,46 +2168,19 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
         </Box>
       </Box>
     </Box>
-  );
 
-  // 売主、買主詳細セクション
-  const SellerBuyerDetailSection = ({ emailHistoryRefreshKey }: { emailHistoryRefreshKey: number }) => {
-    // Email送信履歴
-    const [emailHistory, setEmailHistory] = React.useState<Array<{
-      id: number;
-      sentAt: string;
-      subject: string;
-      body: string;
-      templateName: string;
-      recipientEmail: string;
-      senderEmail: string;
-      senderName: string;
-      senderInitials: string;
-    }>>([]);
-    const [emailHistoryLoading, setEmailHistoryLoading] = React.useState(false);
-    const [selectedEmailRecord, setSelectedEmailRecord] = React.useState<{
-      id: number;
-      sentAt: string;
-      subject: string;
-      body: string;
-      templateName: string;
-      recipientEmail: string;
-      senderEmail: string;
-      senderName: string;
-      senderInitials: string;
-    } | null>(null);
+  // Email送信履歴取得（親stateを使用）
+  useEffect(() => {
+    if (!propertyNumber) return;
+    setEmailHistoryLoading(true);
+    api.get(`/api/work-tasks/${propertyNumber}/email-history`)
+      .then(res => setEmailHistory(res.data.emailHistory || []))
+      .catch(() => setEmailHistory([]))
+      .finally(() => setEmailHistoryLoading(false));
+  }, [propertyNumber, emailHistoryRefreshKey]);
 
-    // Email送信履歴を取得
-    React.useEffect(() => {
-      if (!propertyNumber) return;
-      setEmailHistoryLoading(true);
-      api.get(`/api/work-tasks/${propertyNumber}/email-history`)
-        .then(res => setEmailHistory(res.data.emailHistory || []))
-        .catch(() => setEmailHistory([]))
-        .finally(() => setEmailHistoryLoading(false));
-    }, [propertyNumber, emailHistoryRefreshKey]);
-
-    return (
+  // 売主、買主詳細セクション（関数呼び出し形式で再マウントを防ぐ）
+  const renderSellerBuyerDetailSection = () => (
     <Box sx={{ display: 'flex', height: '100%', overflow: 'hidden', width: '100%' }}>
       {/* 左ペイン: 契約後フィールド + Email送信履歴 */}
       <Box sx={{ width: 320, minWidth: 260, overflowY: 'auto', bgcolor: '#f8f9fa', display: 'flex', flexDirection: 'column', borderRight: '1px solid #e0e0e0' }}>
@@ -2464,8 +2461,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
         </DialogActions>
       </Dialog>
     </Box>
-    );
-  };
+  );
 
   const tabLabels = ['媒介契約', 'サイト登録', '契約決済', '売主、買主詳細'];
 
@@ -2634,8 +2630,8 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
             <>
               {tabIndex === 0 && renderMediationSection()}
               {tabIndex === 1 && <SiteRegistrationSection cwCounts={cwCounts} leftPaneRef={leftPaneRef} rightPaneRef={rightPaneRef} />}
-              {tabIndex === 2 && <ContractSettlementSection />}
-              {tabIndex === 3 && <Box sx={{ flex: 1, display: 'flex', minHeight: 0, height: '100%', width: '100%', overflow: 'hidden' }}><SellerBuyerDetailSection emailHistoryRefreshKey={emailHistoryRefreshKey} /></Box>}
+              {tabIndex === 2 && renderContractSettlementSection()}
+              {tabIndex === 3 && <Box sx={{ flex: 1, display: 'flex', minHeight: 0, height: '100%', width: '100%', overflow: 'hidden' }}>{renderSellerBuyerDetailSection()}</Box>}
             </>
           )}
         </DialogContent>
