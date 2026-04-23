@@ -943,6 +943,35 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
 
   const hasChanges = Object.keys(editedData).length > 0;
 
+  // 契約書修正内容まとめ用データ（ContractSettlementSection用）
+  const [contractRevisionSummary, setContractRevisionSummary] = useState<Array<{
+    property_number: string;
+    property_address: string;
+    contract_input_deadline: string | null;
+    employee_contract_creation: string | null;
+    contract_revision_content: string | null;
+  }>>([]);
+
+  useEffect(() => {
+    if (!open) return;
+    const fetchContractRevisionSummary = async () => {
+      try {
+        const { data: rows, error } = await supabase
+          .from('work_tasks')
+          .select('property_number, property_address, contract_input_deadline, employee_contract_creation, contract_revision_content')
+          .eq('contract_revision_exists', 'あり')
+          .not('contract_revision_content', 'is', null)
+          .order('contract_input_deadline', { ascending: false, nullsFirst: false });
+        if (!error && rows) {
+          setContractRevisionSummary(rows);
+        }
+      } catch {
+        // エラー時は空のまま
+      }
+    };
+    fetchContractRevisionSummary();
+  }, [open, data]);
+
   // サイト登録タブ左右ペインのスクロール位置保持用 ref
   const leftPaneRef = useRef<HTMLDivElement>(null);
   const rightPaneRef = useRef<HTMLDivElement>(null);
@@ -1819,36 +1848,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
   );
 
   // 契約決済セクション（スクショ通り）
-  const ContractSettlementSection = () => {
-    // 契約書修正内容まとめ用データ取得
-    const [contractRevisionSummary, setContractRevisionSummary] = React.useState<Array<{
-      property_number: string;
-      property_address: string;
-      contract_input_deadline: string | null;
-      employee_contract_creation: string | null;
-      contract_revision_content: string | null;
-    }>>([]);
-
-    React.useEffect(() => {
-      const fetchSummary = async () => {
-        try {
-          const { data: rows, error } = await supabase
-            .from('work_tasks')
-            .select('property_number, property_address, contract_input_deadline, employee_contract_creation, contract_revision_content')
-            .eq('contract_revision_exists', 'あり')
-            .not('contract_revision_content', 'is', null)
-            .order('contract_input_deadline', { ascending: false, nullsFirst: false });
-          if (!error && rows) {
-            setContractRevisionSummary(rows);
-          }
-        } catch {
-          // エラー時は空のまま
-        }
-      };
-      fetchSummary();
-    }, [data]);
-
-    return (
+  const ContractSettlementSection = () => (
     <Box sx={{ display: 'flex', gap: 0, flex: 1, minHeight: 0, overflow: 'hidden' }}>
       {/* 左ペイン: 契約書・重説作成 */}
       <Box sx={{ flex: 1, p: 2, borderRight: '2px solid', borderColor: 'divider', overflowY: 'auto', minHeight: 0 }}>
@@ -2031,8 +2031,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
         </Box>
       </Box>
     </Box>
-    );
-  };
+  );
 
   // 売主、買主詳細セクション
   const SellerBuyerDetailSection = ({ emailHistoryRefreshKey }: { emailHistoryRefreshKey: number }) => {
