@@ -581,7 +581,6 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
     // 左右ペインのスクロール位置を保存
     leftScrollRef.current = leftPaneRef.current?.scrollTop ?? 0;
     rightScrollRef.current = rightPaneRef.current?.scrollTop ?? 0;
-    mediationScrollRef.current = mediationPaneRef.current?.scrollTop ?? 0;
     setEditedData(prev => ({ ...prev, [field]: value }));
 
     // 締日超過チェック対象フィールド
@@ -651,18 +650,16 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
   const mediationPaneRef = useRef<HTMLDivElement>(null);
   const mediationScrollRef = useRef<number>(0);
 
-  // editedData 変更後に左右ペインのスクロール位置を復元
+  // editedData 変更後に左右ペインのスクロール位置を復元（サイト登録タブのみ）
   useEffect(() => {
+    if (tabIndex !== 1) return;
     if (leftPaneRef.current) {
       leftPaneRef.current.scrollTop = leftScrollRef.current;
     }
     if (rightPaneRef.current) {
       rightPaneRef.current.scrollTop = rightScrollRef.current;
     }
-    if (mediationPaneRef.current) {
-      mediationPaneRef.current.scrollTop = mediationScrollRef.current;
-    }
-  }, [editedData]);
+  }, [editedData, tabIndex]);
 
 
 
@@ -1153,6 +1150,10 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
         <Box sx={{ bgcolor: '#f3e5f5', borderRadius: 1, p: 1, mb: 1 }}>
         <SectionHeader label="【★サイト登録確認】" />
         <EditableButtonSelect label="サイト登録確認" field="site_registration_confirmed" options={['確認中', '完了', '他']} />
+        {/* サイト登録確認が「完了」になったら確認者を表示 */}
+        {getValue('site_registration_confirmed') === '完了' && (
+          <EditableButtonSelect label="サイト登録確認者" field="site_registration_confirmer" options={normalInitials} />
+        )}
         <EditableField label="メール配信v" field="email_distribution" />
         <EditableField label="サイト登録確認OKコメント" field="site_registration_ok_comment" type="text" />
         <EditableYesNo label="サイト登録確認OK送信" field="site_registration_ok_sent" />
