@@ -73,6 +73,7 @@ export default function PriceSection({
   const [showScheduleForm, setShowScheduleForm] = useState(false);
   const [sendingChat, setSendingChat] = useState(false);
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
+  const [chatSource, setChatSource] = useState<'blue' | 'orange'>('blue'); // どちらのバーから開いたか
   const [imageSelectorOpen, setImageSelectorOpen] = useState(false);
   const [selectedImageUrl, setSelectedImageUrl] = useState<string | undefined>(undefined);
   const [uploadingImage, setUploadingImage] = useState(false);
@@ -199,7 +200,13 @@ export default function PriceSection({
         throw new Error(`HTTP ${response.status}: ${body}`);
       }
 
-      (onPriceReductionChatSendSuccess ?? onChatSendSuccess)('値下げ通知を送信しました');
+      // 青いバーから送信した場合は確認=「未」にする（onChatSendSuccessを呼ぶ）
+      // オレンジバーから送信した場合は確認を変えない（onPriceReductionChatSendSuccessを呼ぶ）
+      if (chatSource === 'blue') {
+        onChatSendSuccess('値下げ通知を送信しました');
+      } else {
+        (onPriceReductionChatSendSuccess ?? onChatSendSuccess)('値下げ通知を送信しました');
+      }
       setChatSent(true);  // オレンジのバーを非表示にする
       setSelectedImageUrl(undefined);
       setChatMessageBody('');
@@ -341,6 +348,7 @@ export default function PriceSection({
                     const propertyUrl = `${window.location.origin}/property-listings/${propertyNumber}`;
                     const propertyNumberLine = propertyNumber ? `物件番号：${propertyNumber}\n` : '';
                     setChatMessageBody(`${propertyNumberLine}【値下げ通知】\n${latestReduction}\n${address || ''}\n${propertyUrl}`);
+                    setChatSource('orange');
                     setConfirmDialogOpen(true);
                   } else {
                     onChatSendError('値下げ履歴が見つかりません');
@@ -379,6 +387,7 @@ export default function PriceSection({
                     const propertyUrl = `${window.location.origin}/property-listings/${propertyNumber}`;
                     const propertyNumberLine = propertyNumber ? `物件番号：${propertyNumber}\n` : '';
                     setChatMessageBody(`${propertyNumberLine}【値下げ通知】\n${latestReduction}\n${address || ''}\n${propertyUrl}`);
+                    setChatSource('blue');
                     setConfirmDialogOpen(true);
                   } else {
                     onChatSendError('値下げ履歴が見つかりません');
