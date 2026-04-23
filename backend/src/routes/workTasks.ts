@@ -1,13 +1,19 @@
 import { Router, Request, Response } from 'express';
 import { createClient } from '@supabase/supabase-js';
+import axios from 'axios';
 import { WorkTaskService } from '../services/WorkTaskService';
 import { WorkTaskSyncService } from '../services/WorkTaskSyncService';
 import { WorkTaskEmailNotificationService } from '../services/WorkTaskEmailNotificationService';
+import { StaffManagementService } from '../services/StaffManagementService';
+
+// 決済完了チャット専用Webhook URL
+const SETTLEMENT_CHAT_WEBHOOK_URL = 'https://chat.googleapis.com/v1/spaces/AAAAEZtcLfM/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=jpLkd-Tp1o9mPLCWA4YMyu-Te_fX4lymfoyj_qFnzLY';
 
 const router = Router();
 const workTaskService = new WorkTaskService();
 const workTaskSyncService = new WorkTaskSyncService();
 const emailNotificationService = new WorkTaskEmailNotificationService();
+const staffManagementService = new StaffManagementService();
 
 /**
  * GET /api/work-tasks
@@ -264,6 +270,56 @@ router.get('/:propertyNumber/email-history', async (req: Request, res: Response)
     return res.json({ emailHistory });
   } catch (error: any) {
     console.error('Email履歴取得エラー:', error);
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * POST /api/work-tasks/:propertyNumber/send-settlement-chat
+ * 決済完了チャット送信
+ * type: 'settlement' → 決済完了チャット専用URLへ送信
+ * type: 'staff' → スタッフ管理シートのChatへ送信（staffNameで担当者を特定）
+ */
+router.post('/:propertyNumber/send-settlement-chat', async (req: Request, res: Response) => {
+  try {
+    const { propertyNumber } = req.params;
+    const { type, staffName, message } = req.body;
+
+    if (!type || !message) {
+      return res.status(400).json({ error: 'type と message は必須です' });
+    }
+
+    let webhookUrl: string;
+
+    if (type === 'settlement') {
+      // 決済完了チャット専用URL
+      webhookUrl = SETTLEMENT_CHAT_WEBHOOK_URL;
+    } else if (type === 'staff') {
+      // スタッフ管理シートからWebhook URLを取得
+      if (!staffName) {
+        return res.status(400).json({ error: 'staffName は type=staff の場合に必須です' });
+      }
+      const result = await staffManagementService.getWebhookUrl(staffName);
+      if (!result.success || !result.webhookUrl) {
+        return res.status(400).json({ error: result.error || 'Webhook URLの取得に失敗しました' });
+      }
+      webhookUrl = result.webhookUrl;
+    } else {
+      return res.status(400).json({ error: '無効な type です。settlement または staff を指定してください' });
+    }
+
+    const response = await axios.post(webhookUrl, { text: message }, {
+      headers: { 'Content-Type': 'application/json' },
+    });
+
+    if (response.status < 200 || response.status >= 300) {
+      throw new Error(`Google Chat APIエラー: ${response.status}`);
+    }
+
+    console.log(`[WorkTask] チャット送信成功: ${propertyNumber} type=${type} staffName=${staffName || '-'}`);
+    return res.json({ success: true, message: 'チャットを送信しました' });
+  } catch (error: any) {
+    console.error('[WorkTask] チャット送信エラー:', error.message);
     return res.status(500).json({ error: error.message });
   }
 });

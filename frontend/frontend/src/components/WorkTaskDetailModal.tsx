@@ -1204,6 +1204,67 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
     </Grid>
   );
 
+  // チャット送信付きN/Yボタン
+  const ChatSendButton = ({
+    label,
+    field,
+    chatType,
+    staffName,
+    buildMessage,
+  }: {
+    label: string;
+    field: string;
+    chatType: 'settlement' | 'staff';
+    staffName?: string;
+    buildMessage: () => string;
+  }) => {
+    const [sending, setSending] = React.useState(false);
+
+    const handleClick = async (val: 'Y' | 'N') => {
+      if (val === 'Y') {
+        setSending(true);
+        try {
+          const message = buildMessage();
+          await api.post(`/api/work-tasks/${propertyNumber}/send-settlement-chat`, {
+            type: chatType,
+            staffName,
+            message,
+          });
+          handleFieldChange(field, 'Y');
+          setSnackbar({ open: true, message: `${label}を送信しました`, severity: 'success' });
+        } catch (err: any) {
+          setSnackbar({ open: true, message: `チャット送信に失敗しました: ${err?.response?.data?.error || err.message}`, severity: 'error' });
+        } finally {
+          setSending(false);
+        }
+      } else {
+        handleFieldChange(field, getValue(field) === 'N' ? null : 'N');
+      }
+    };
+
+    return (
+      <Grid container spacing={2} alignItems="center" sx={{ mb: 1.5 }}>
+        <Grid item xs={4}>
+          <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>{label}</Typography>
+        </Grid>
+        <Grid item xs={8}>
+          <ButtonGroup size="small" variant="outlined" disabled={sending}>
+            <Button
+              variant={getValue(field) === 'N' ? 'contained' : 'outlined'}
+              color={getValue(field) === 'N' ? 'error' : 'inherit'}
+              onClick={() => handleClick('N')}
+            >N</Button>
+            <Button
+              variant={getValue(field) === 'Y' ? 'contained' : 'outlined'}
+              color={getValue(field) === 'Y' ? 'success' : 'inherit'}
+              onClick={() => handleClick('Y')}
+            >{sending ? '送信中...' : 'Y'}</Button>
+          </ButtonGroup>
+        </Grid>
+      </Grid>
+    );
+  };
+
   // Yes/No選択
   const EditableYesNo = ({ label, field, labelColor }: { label: string; field: string; labelColor?: 'error' | 'text.secondary' }) => (
     <Grid container spacing={2} alignItems="center" sx={{ mb: 1.5 }}>
@@ -2162,11 +2223,125 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
           <EditableField label="口コミ(売主)" field="review_seller" />
           <EditableField label="口コミ(買主)" field="review_buyer" />
           <EditableField label="他コメント" field="other_comments" />
-          <EditableButtonSelect label="決済完了チャット" field="settlement_completed_chat" options={['済']} />
-          <EditableButtonSelect label="国広とチャット" field="kunihiro_chat" options={['済']} />
-          <EditableButtonSelect label="山本へチャット送信" field="yamamoto_chat" options={['済']} />
-          <EditableButtonSelect label="裏へチャット送信" field="ura_chat" options={['済']} />
-          <EditableButtonSelect label="角井へチャット送信" field="kadoi_chat" options={['済']} />
+          <ChatSendButton
+            label="決済完了チャット"
+            field="settlement_completed_chat"
+            chatType="settlement"
+            buildMessage={() => {
+              const pn = getValue('property_number') || propertyNumber || '';
+              const addr = getValue('property_address') || '';
+              const seller = getValue('seller_contact_name') || getValue('seller_name') || '';
+              const sd = getValue('settlement_date') || '';
+              let dateStr = sd;
+              if (sd) {
+                try {
+                  const d = new Date(sd);
+                  dateStr = `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`;
+                } catch { dateStr = sd; }
+              }
+              return `【決済完了】
+物件番号：${pn}
+物件所在：${addr}
+売主：${seller}
+決済日：${dateStr}`;
+            }}
+          />
+          <ChatSendButton
+            label="国広とチャット"
+            field="kunihiro_chat"
+            chatType="staff"
+            staffName="国広"
+            buildMessage={() => {
+              const pn = getValue('property_number') || propertyNumber || '';
+              const addr = getValue('property_address') || '';
+              const seller = getValue('seller_contact_name') || getValue('seller_name') || '';
+              const sd = getValue('settlement_date') || '';
+              let dateStr = sd;
+              if (sd) {
+                try {
+                  const d = new Date(sd);
+                  dateStr = `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`;
+                } catch { dateStr = sd; }
+              }
+              return `【決済完了】
+物件番号：${pn}
+物件所在：${addr}
+売主：${seller}
+決済日：${dateStr}`;
+            }}
+          />
+          <ChatSendButton
+            label="山本へチャット送信"
+            field="yamamoto_chat"
+            chatType="staff"
+            staffName="山本"
+            buildMessage={() => {
+              const pn = getValue('property_number') || propertyNumber || '';
+              const addr = getValue('property_address') || '';
+              const seller = getValue('seller_contact_name') || getValue('seller_name') || '';
+              const sd = getValue('settlement_date') || '';
+              let dateStr = sd;
+              if (sd) {
+                try {
+                  const d = new Date(sd);
+                  dateStr = `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`;
+                } catch { dateStr = sd; }
+              }
+              return `【決済完了】
+物件番号：${pn}
+物件所在：${addr}
+売主：${seller}
+決済日：${dateStr}`;
+            }}
+          />
+          <ChatSendButton
+            label="裏へチャット送信"
+            field="ura_chat"
+            chatType="staff"
+            staffName="裏"
+            buildMessage={() => {
+              const pn = getValue('property_number') || propertyNumber || '';
+              const addr = getValue('property_address') || '';
+              const seller = getValue('seller_contact_name') || getValue('seller_name') || '';
+              const sd = getValue('settlement_date') || '';
+              let dateStr = sd;
+              if (sd) {
+                try {
+                  const d = new Date(sd);
+                  dateStr = `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`;
+                } catch { dateStr = sd; }
+              }
+              return `【決済完了】
+物件番号：${pn}
+物件所在：${addr}
+売主：${seller}
+決済日：${dateStr}`;
+            }}
+          />
+          <ChatSendButton
+            label="角井へチャット送信"
+            field="kadoi_chat"
+            chatType="staff"
+            staffName="角井"
+            buildMessage={() => {
+              const pn = getValue('property_number') || propertyNumber || '';
+              const addr = getValue('property_address') || '';
+              const seller = getValue('seller_contact_name') || getValue('seller_name') || '';
+              const sd = getValue('settlement_date') || '';
+              let dateStr = sd;
+              if (sd) {
+                try {
+                  const d = new Date(sd);
+                  dateStr = `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`;
+                } catch { dateStr = sd; }
+              }
+              return `【決済完了】
+物件番号：${pn}
+物件所在：${addr}
+売主：${seller}
+決済日：${dateStr}`;
+            }}
+          />
         </Box>
       </Box>
     </Box>
