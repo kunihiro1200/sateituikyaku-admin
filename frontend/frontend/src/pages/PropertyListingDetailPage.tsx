@@ -1854,7 +1854,10 @@ export default function PropertyListingDetailPage() {
             priceReductionHistory={data.price_reduction_history}
             propertyType={editedData.property_type !== undefined ? editedData.property_type : data.property_type}
             atbbStatus={editedData.atbb_status !== undefined ? editedData.atbb_status : data.atbb_status}
-            assigneeEmail={jimuStaff.find(s => s.initials === data.sales_assignee)?.email}
+            assigneeEmail={
+              activeEmployees.find(e => e.initials === data.sales_assignee)?.email ||
+              jimuStaff.find(s => s.initials === data.sales_assignee)?.email
+            }
             size="medium"
             variant="contained"
             onSendSuccess={handleGmailDistributionSendSuccess}
