@@ -782,13 +782,14 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
   })();
 
   // 媒介作成者の過去の修正内容まとめを取得
+  // 保存済みデータ（data）のみを参照する（editedDataは参照しない）
   const getMediationRevisionSummary = () => {
-    const creator = getValue('mediation_creator');
+    const creator = data?.mediation_creator;
     if (!creator) return null;
-    const content = getValue('mediation_revision_content');
-    const completed = getValue('mediation_completed');
-    const checker = getValue('mediation_checker');
-    const revision = getValue('mediation_revision');
+    const content = data?.mediation_revision_content;
+    const completed = data?.mediation_completed;
+    const checker = data?.mediation_checker;
+    const revision = data?.mediation_revision;
     if (revision !== 'あり' || !content) return null;
     return { creator, content, completed, checker };
   };
