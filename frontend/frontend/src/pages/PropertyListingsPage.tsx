@@ -356,7 +356,12 @@ export default function PropertyListingsPage() {
         const targetAssignee = assigneeMap[sidebarStatus];
         listings = listings.filter(l =>
           l.sidebar_status === sidebarStatus ||
-          (l.sidebar_status === '専任・公開中' && l.sales_assignee === targetAssignee)
+          (l.sidebar_status === '専任・公開中' && l.sales_assignee === targetAssignee) ||
+          // 未報告判定された物件（sidebar_statusが'未報告 X'形式）も含める
+          (calculatePropertyStatus(l as any, workTaskMap).key === 'unreported' &&
+            (l.sidebar_status === sidebarStatus ||
+             (l.sidebar_status === '専任・公開中' && l.sales_assignee === targetAssignee) ||
+             (l.sidebar_status && l.sidebar_status.startsWith('未報告') && l.sales_assignee === targetAssignee)))
         );
       } else if (sidebarStatus === '非公開予定（確認後）') {
         // 「非公開予定（確認後）」: calculatePropertyStatus() の結果で判定（カウントとの一致を保証）

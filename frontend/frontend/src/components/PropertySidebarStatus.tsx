@@ -188,6 +188,14 @@ export default function PropertySidebarStatus({
         // スペースを除去して統一（「未報告 林」→「未報告林」）
         const label = computed.label.replace(/\s+/g, '');
         counts[label] = (counts[label] || 0) + 1;
+        // 未報告でも専任公開中の担当者別カテゴリーにも加算する
+        // （「I専任公開中」などのカウントに未報告物件も含める）
+        const seninStatus = status === '専任・公開中'
+          ? (ASSIGNEE_TO_SENIN_STATUS[listing.sales_assignee || ''] || null)
+          : (status && status !== '値下げ未完了' && !status.startsWith('未報告') ? status : null);
+        if (seninStatus && (seninStatus.endsWith('専任公開中') || seninStatus === '専任・公開中')) {
+          counts[seninStatus] = (counts[seninStatus] || 0) + 1;
+        }
         return;
       }
 
