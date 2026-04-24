@@ -41,6 +41,9 @@ export interface WorkTask {
   judicial_scrivener_email_after_contract?: string;
   settlement_seller_denomination_email?: string;
   settlement_buyer_denomination_email?: string;
+  contract_to_settlement_admin_staff?: string;
+  contract_to_settlement_admin_approver?: string;
+  contract_to_settlement_admin_person?: string;
   [key: string]: any;
 }
 
