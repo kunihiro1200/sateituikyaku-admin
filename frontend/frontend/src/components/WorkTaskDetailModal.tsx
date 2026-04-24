@@ -3339,31 +3339,31 @@ ${pageUrl}`;
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, overflowX: 'auto', flexShrink: 1, flexWrap: 'nowrap' }}>
                     {data?.property_address && (
                       <Box sx={{ display: 'flex', alignItems: 'center', bgcolor: '#f5f5f5', borderRadius: '6px', px: 1.2, py: 0.4, border: '1px solid #e0e0e0', whiteSpace: 'nowrap' }}>
-                        <Typography component="span" sx={{ fontWeight: 700, fontSize: '0.78rem', color: '#616161', mr: 0.5 }}>物件住所</Typography>
+                        <Typography component="span" sx={{ fontWeight: 700, fontSize: '0.78rem', color: '#1565c0', mr: 0.5, textDecoration: 'underline', textDecorationColor: '#90caf9' }}>物件住所</Typography>
                         <Typography component="span" sx={{ fontSize: '0.85rem', color: '#212121', fontWeight: 500 }}>{data.property_address}</Typography>
                       </Box>
                     )}
                     {data?.property_type && (
                       <Box sx={{ display: 'flex', alignItems: 'center', bgcolor: '#f5f5f5', borderRadius: '6px', px: 1.2, py: 0.4, border: '1px solid #e0e0e0', whiteSpace: 'nowrap' }}>
-                        <Typography component="span" sx={{ fontWeight: 700, fontSize: '0.78rem', color: '#616161', mr: 0.5 }}>種別</Typography>
+                        <Typography component="span" sx={{ fontWeight: 700, fontSize: '0.78rem', color: '#1565c0', mr: 0.5, textDecoration: 'underline', textDecorationColor: '#90caf9' }}>種別</Typography>
                         <Typography component="span" sx={{ fontSize: '0.85rem', color: '#212121', fontWeight: 500 }}>{data.property_type}</Typography>
                       </Box>
                     )}
                     {data?.seller_name && (
                       <Box sx={{ display: 'flex', alignItems: 'center', bgcolor: '#f5f5f5', borderRadius: '6px', px: 1.2, py: 0.4, border: '1px solid #e0e0e0', whiteSpace: 'nowrap' }}>
-                        <Typography component="span" sx={{ fontWeight: 700, fontSize: '0.78rem', color: '#616161', mr: 0.5 }}>売主氏名</Typography>
+                        <Typography component="span" sx={{ fontWeight: 700, fontSize: '0.78rem', color: '#1565c0', mr: 0.5, textDecoration: 'underline', textDecorationColor: '#90caf9' }}>売主氏名</Typography>
                         <Typography component="span" sx={{ fontSize: '0.85rem', color: '#212121', fontWeight: 500 }}>{data.seller_name}</Typography>
                       </Box>
                     )}
                     {data?.sales_assignee && (
                       <Box sx={{ display: 'flex', alignItems: 'center', bgcolor: '#f5f5f5', borderRadius: '6px', px: 1.2, py: 0.4, border: '1px solid #e0e0e0', whiteSpace: 'nowrap' }}>
-                        <Typography component="span" sx={{ fontWeight: 700, fontSize: '0.78rem', color: '#616161', mr: 0.5 }}>担当名</Typography>
+                        <Typography component="span" sx={{ fontWeight: 700, fontSize: '0.78rem', color: '#1565c0', mr: 0.5, textDecoration: 'underline', textDecorationColor: '#90caf9' }}>担当名</Typography>
                         <Typography component="span" sx={{ fontSize: '0.85rem', color: '#212121', fontWeight: 500 }}>{data.sales_assignee}</Typography>
                       </Box>
                     )}
                     {data?.mediation_type && (
                       <Box sx={{ display: 'flex', alignItems: 'center', bgcolor: '#f5f5f5', borderRadius: '6px', px: 1.2, py: 0.4, border: '1px solid #e0e0e0', whiteSpace: 'nowrap' }}>
-                        <Typography component="span" sx={{ fontWeight: 700, fontSize: '0.78rem', color: '#616161', mr: 0.5 }}>媒介</Typography>
+                        <Typography component="span" sx={{ fontWeight: 700, fontSize: '0.78rem', color: '#1565c0', mr: 0.5, textDecoration: 'underline', textDecorationColor: '#90caf9' }}>媒介</Typography>
                         <Typography component="span" sx={{ fontSize: '0.85rem', color: '#212121', fontWeight: 500 }}>{data.mediation_type}</Typography>
                       </Box>
                     )}
