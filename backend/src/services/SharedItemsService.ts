@@ -146,7 +146,8 @@ export class SharedItemsService {
         throw new Error(`ID ${id} が見つかりません`);
       }
 
-      await this.sheetsClient.updateRow(rowIndex, updates as SheetRow);
+      // updateRowPartial を使って指定カラムのみ更新（他のカラムを消さない）
+      await this.sheetsClient.updateRowPartial(rowIndex, updates as SheetRow);
       return { ...updates, id } as SharedItem;
     } catch (error: any) {
       console.error('Failed to update shared item:', error);
@@ -226,7 +227,7 @@ export class SharedItemsService {
         throw new Error(`ID ${itemId} が見つかりません`);
       }
 
-      await this.sheetsClient.updateRow(rowIndex, {
+      await this.sheetsClient.updateRowPartial(rowIndex, {
         '共有できていない': staffName,
       } as SheetRow);
     } catch (error: any) {
@@ -250,7 +251,7 @@ export class SharedItemsService {
 
       const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD形式
 
-      await this.sheetsClient.updateRow(rowIndex, {
+      await this.sheetsClient.updateRowPartial(rowIndex, {
         '確認日': today,
       } as SheetRow);
     } catch (error: any) {
