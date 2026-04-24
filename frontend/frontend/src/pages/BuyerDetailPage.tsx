@@ -616,6 +616,9 @@ export default function BuyerDetailPage() {
   const initialInquiryEmailPhoneRef = useRef<string>('');
   const initialInquiryHearingRef = useRef<string>('');
 
+  // 近隣物件送付メールフィールドへのref（バリデーション後スクロール用）
+  const neighborPropertyEmailSentRef = useRef<HTMLDivElement>(null);
+
   // ヒアリング項目用RichTextEditorのref
   const hearingEditorRef = useRef<RichTextCommentEditorHandle>(null);
   // ヒアリング項目のローカル編集値（HTML）
@@ -2513,7 +2516,7 @@ TEL：097-533-2022`;
                       const currentVal = String(buyer[field.key] || '').trim();
                       return (
                         <Grid item xs={12} key={`${section.title}-${field.key}`}>
-                          <Box sx={{
+                          <Box ref={neighborPropertyEmailSentRef} sx={{
                             border: isNeighborMissing ? '2px solid #f44336' : 'none',
                             borderRadius: isNeighborMissing ? 1 : 0,
                             p: isNeighborMissing ? 0.5 : 0,
@@ -3746,6 +3749,12 @@ TEL：097-533-2022`;
         onStay={() => {
           setValidationDialogOpen(false);
           setBlockNavigation(false);
+          // 近隣物件送付メールが未入力の場合はそのフィールドまでスクロール
+          if (pendingMissingLabels.includes('近隣物件送付メール')) {
+            setTimeout(() => {
+              neighborPropertyEmailSentRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 100);
+          }
         }}
         onGoToDesiredConditions={() => {
           setValidationDialogOpen(false);
