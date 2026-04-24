@@ -416,7 +416,7 @@ export default function SharedItemDetailPage() {
           <Grid item xs={12}>
             <Typography variant="caption" color="text.secondary">共有できていないスタッフ</Typography>
             <Typography variant="caption" color="error" sx={{ display: 'block', mt: 0.5 }}>
-              ＊複数いる場合は、確認後自分の名前だけ消して保存してください。確認日は入れないでください！
+              ＊複数いる場合は、確認後自分の名前だけ消して保存してください。確認日は入れないでください！最後の一人が「確認日」を入力してください
             </Typography>
             <Box sx={{ mt: 1, display: 'flex', flexWrap: 'wrap', gap: 1 }}>
               {staff.map((s, index) => {
