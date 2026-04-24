@@ -1367,6 +1367,9 @@ export class BuyerService {
       inquiryDate: string;
     }>();
 
+    // property_numberなしの関連買主も行として追加するためのリスト（自分自身も含む）
+    const noPropertyRelatedBuyers: Array<{ buyerNumber: string; inquiryDate: string; buildingNamePrice: string; status: 'current' | 'past' }> = [];
+
     // Parse current buyer's property numbers
     if (buyer.property_number) {
       const currentPropertyNumbers = buyer.property_number
@@ -1382,15 +1385,20 @@ export class BuyerService {
           inquiryDate: buyer.reception_date || ''
         });
       });
+    } else {
+      // 自分自身もproperty_numberがない場合は行として追加
+      noPropertyRelatedBuyers.push({
+        buyerNumber: buyer.buyer_number,
+        inquiryDate: buyer.reception_date || '',
+        buildingNamePrice: buyer.building_name_price || '',
+        status: 'current'
+      });
     }
 
     // 同じメールアドレス・電話番号を持つ関連買主の物件番号も統合
     const relatedConditions: string[] = [];
     if (buyer.email) relatedConditions.push(`email.eq.${buyer.email}`);
     if (buyer.phone_number) relatedConditions.push(`phone_number.eq.${buyer.phone_number}`);
-
-    // property_numberなしの関連買主も行として追加するためのリスト
-    const noPropertyRelatedBuyers: Array<{ buyerNumber: string; inquiryDate: string; buildingNamePrice: string }> = [];
 
     if (relatedConditions.length > 0) {
       const currentBuyerNumber = buyer.buyer_number;
@@ -1422,7 +1430,8 @@ export class BuyerService {
             noPropertyRelatedBuyers.push({
               buyerNumber: rb.buyer_number,
               inquiryDate: rb.reception_date || '',
-              buildingNamePrice: rb.building_name_price || ''
+              buildingNamePrice: rb.building_name_price || '',
+              status: 'past'
             });
           }
         }
@@ -1474,7 +1483,7 @@ export class BuyerService {
         propertyPrice: null as number | null,
         buildingNamePrice: rb.buildingNamePrice,
         inquiryDate: rb.inquiryDate,
-        status: 'past' as const,
+        status: rb.status,
         propertyId: '',
         propertyListingId: '',
       }));
@@ -1530,7 +1539,7 @@ export class BuyerService {
         propertyPrice: null,
         buildingNamePrice: rb.buildingNamePrice,
         inquiryDate: rb.inquiryDate,
-        status: 'past',
+        status: rb.status,
         propertyId: '',
         propertyListingId: '',
       });
