@@ -11,7 +11,12 @@ import { supabase } from '../config/supabase';
 export async function uploadFileToStorage(file: File, type: 'pdf' | 'image'): Promise<string> {
   const folder = type === 'pdf' ? 'pdfs' : 'images';
   const timestamp = Date.now();
-  const filePath = `${folder}/${timestamp}_${file.name}`;
+  // 日本語などのマルチバイト文字はSupabase StorageでInvalid keyになるため、
+  // ファイル名をサニタイズして英数字とハイフン・ドットのみにする
+  const ext = file.name.includes('.') ? '.' + file.name.split('.').pop() : '';
+  const baseName = file.name.slice(0, file.name.length - ext.length);
+  const safeName = baseName.replace(/[^a-zA-Z0-9_-]/g, '_').replace(/^_+|_+$/g, '') || 'file';
+  const filePath = `${folder}/${timestamp}_${safeName}${ext}`;
 
   const { error } = await supabase.storage
     .from('shared-items')
