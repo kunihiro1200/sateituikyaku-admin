@@ -1387,32 +1387,41 @@ export class BuyerService {
     if (buyer.email) relatedConditions.push(`email.eq.${buyer.email}`);
     if (buyer.phone_number) relatedConditions.push(`phone_number.eq.${buyer.phone_number}`);
 
+    // property_numberなしの関連買主も行として追加するためのリスト
+    const noPropertyRelatedBuyers: Array<{ buyerNumber: string; inquiryDate: string }> = [];
+
     if (relatedConditions.length > 0) {
       const currentBuyerNumber = buyer.buyer_number;
-      let relatedQuery = this.supabase
+      const { data: relatedBuyers } = await this.supabase
         .from('buyers')
         .select('buyer_number, property_number, reception_date')
         .or(relatedConditions.join(','))
         .is('deleted_at', null)
         .neq('buyer_number', currentBuyerNumber);
-      const { data: relatedBuyers } = await relatedQuery;
       if (relatedBuyers) {
         for (const rb of relatedBuyers) {
-          if (!rb.property_number) continue;
-          const relatedPropertyNumbers = rb.property_number
-            .split(',')
-            .map((n: string) => n.trim())
-            .filter((n: string) => n);
-          relatedPropertyNumbers.forEach((propNum: string) => {
-            if (!propertyToBuyerMap.has(propNum)) {
-              allPropertyNumbers.push(propNum);
-              propertyToBuyerMap.set(propNum, {
-                buyerNumber: rb.buyer_number,
-                status: 'past',
-                inquiryDate: rb.reception_date || ''
-              });
-            }
-          });
+          if (rb.property_number) {
+            const relatedPropertyNumbers = rb.property_number
+              .split(',')
+              .map((n: string) => n.trim())
+              .filter((n: string) => n);
+            relatedPropertyNumbers.forEach((propNum: string) => {
+              if (!propertyToBuyerMap.has(propNum)) {
+                allPropertyNumbers.push(propNum);
+                propertyToBuyerMap.set(propNum, {
+                  buyerNumber: rb.buyer_number,
+                  status: 'past',
+                  inquiryDate: rb.reception_date || ''
+                });
+              }
+            });
+          } else {
+            // property_numberがない関連買主も履歴行として追加
+            noPropertyRelatedBuyers.push({
+              buyerNumber: rb.buyer_number,
+              inquiryDate: rb.reception_date || ''
+            });
+          }
         }
       }
     }
@@ -1453,8 +1462,23 @@ export class BuyerService {
     // Remove duplicates
     const uniquePropertyNumbers = Array.from(new Set(allPropertyNumbers));
 
+    // property_numberなしの関連買主のみの場合も対応
     if (uniquePropertyNumbers.length === 0) {
-      return [];
+      const historyNoProperty = noPropertyRelatedBuyers.map(rb => ({
+        buyerNumber: rb.buyerNumber,
+        propertyNumber: '',
+        propertyAddress: '',
+        inquiryDate: rb.inquiryDate,
+        status: 'past' as const,
+        propertyId: '',
+        propertyListingId: '',
+      }));
+      historyNoProperty.sort((a, b) => {
+        if (!a.inquiryDate) return 1;
+        if (!b.inquiryDate) return -1;
+        return new Date(b.inquiryDate).getTime() - new Date(a.inquiryDate).getTime();
+      });
+      return historyNoProperty;
     }
 
     // Fetch property listings for all property numbers
@@ -1488,6 +1512,19 @@ export class BuyerService {
         propertyListingId: property.id,
       };
     });
+
+    // property_numberなしの関連買主を行として追加
+    for (const rb of noPropertyRelatedBuyers) {
+      history.push({
+        buyerNumber: rb.buyerNumber,
+        propertyNumber: '',
+        propertyAddress: '',
+        inquiryDate: rb.inquiryDate,
+        status: 'past',
+        propertyId: '',
+        propertyListingId: '',
+      });
+    }
 
     // Sort by inquiry date (most recent first)
     history.sort((a, b) => {
