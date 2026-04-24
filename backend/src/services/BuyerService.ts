@@ -2681,6 +2681,15 @@ export class BuyerService {
           );
         });
         console.log(`[getBuyersByStatus] pinrichUnregistered フィルタ結果: ${filteredBuyers.length}件`);
+      } else if (status === 'viewingSurveyUnchecked') {
+        // 内覧アンケート未確認: viewing_survey_result が入力済み かつ viewing_survey_confirmed が空欄
+        console.log(`[getBuyersByStatus] viewingSurveyUnchecked カテゴリ検出`);
+        filteredBuyers = allBuyers.filter((buyer: any) => {
+          const hasSurveyResult = buyer.viewing_survey_result && String(buyer.viewing_survey_result).trim();
+          const isSurveyConfirmed = buyer.viewing_survey_confirmed && String(buyer.viewing_survey_confirmed).trim();
+          return hasSurveyResult && !isSurveyConfirmed;
+        });
+        console.log(`[getBuyersByStatus] viewingSurveyUnchecked フィルタ結果: ${filteredBuyers.length}件`);
       } else if (status === 'inquiryEmailUnanswered' || status === 'brokerInquiry' || 
                  status === 'generalViewingSellerContactPending' || status === 'viewingPromotionRequired') {
         // 新カテゴリの場合（2026年4月追加）

@@ -195,6 +195,11 @@ export default function BuyersPage() {
                     b.reception_date && b.reception_date >= '2026-01-01'
                   );
                   return matches;
+                } else if (selectedCalculatedStatus === 'viewingSurveyUnchecked') {
+                  // 内覧アンケート未: viewing_survey_result が入力済み かつ viewing_survey_confirmed が空欄
+                  const hasSurveyResult = b.viewing_survey_result && String(b.viewing_survey_result).trim();
+                  const isSurveyConfirmed = b.viewing_survey_confirmed && String(b.viewing_survey_confirmed).trim();
+                  return !!(hasSurveyResult && !isSurveyConfirmed);
                 } else {
                   // サイドバーのカテゴリキーを日本語の表示名に変換
                   const displayName = categoryKeyToDisplayName[selectedCalculatedStatus] || selectedCalculatedStatus;
@@ -299,6 +304,7 @@ export default function BuyersPage() {
             'threeCallUnchecked',          // ３回架電未
             'pinrichUnregistered',         // ピンリッチ未登録
             'pinrich500manUnregistered',   // Pinrich500万以上登録未
+            'viewingSurveyUnchecked',      // 内覧アンケート未
           ];
           if (backendEnglishKeyCategories.includes(selectedCalculatedStatus)) {
             quickParams.calculatedStatus = selectedCalculatedStatus;
