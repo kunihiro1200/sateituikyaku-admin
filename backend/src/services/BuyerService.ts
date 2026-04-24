@@ -1331,6 +1331,7 @@ export class BuyerService {
     propertyNumber: string;
     propertyAddress: string;
     propertyPrice: number | null;
+    buildingNamePrice: string;
     inquiryDate: string;
     status: 'current' | 'past';
     propertyId: string;
@@ -1346,7 +1347,7 @@ export class BuyerService {
     } else {
       const { data, error } = await this.supabase
         .from('buyers')
-        .select('buyer_number, property_number, reception_date, past_buyer_list, email, phone_number')
+        .select('buyer_number, property_number, reception_date, past_buyer_list, email, phone_number, building_name_price')
         .eq('buyer_number', buyerId)
         .is('deleted_at', null)
         .single();
@@ -1389,13 +1390,13 @@ export class BuyerService {
     if (buyer.phone_number) relatedConditions.push(`phone_number.eq.${buyer.phone_number}`);
 
     // property_numberなしの関連買主も行として追加するためのリスト
-    const noPropertyRelatedBuyers: Array<{ buyerNumber: string; inquiryDate: string }> = [];
+    const noPropertyRelatedBuyers: Array<{ buyerNumber: string; inquiryDate: string; buildingNamePrice: string }> = [];
 
     if (relatedConditions.length > 0) {
       const currentBuyerNumber = buyer.buyer_number;
       const { data: relatedBuyers } = await this.supabase
         .from('buyers')
-        .select('buyer_number, property_number, reception_date')
+        .select('buyer_number, property_number, reception_date, building_name_price')
         .or(relatedConditions.join(','))
         .is('deleted_at', null)
         .neq('buyer_number', currentBuyerNumber);
@@ -1420,7 +1421,8 @@ export class BuyerService {
             // property_numberがない関連買主も履歴行として追加
             noPropertyRelatedBuyers.push({
               buyerNumber: rb.buyer_number,
-              inquiryDate: rb.reception_date || ''
+              inquiryDate: rb.reception_date || '',
+              buildingNamePrice: rb.building_name_price || ''
             });
           }
         }
@@ -1470,6 +1472,7 @@ export class BuyerService {
         propertyNumber: '',
         propertyAddress: '',
         propertyPrice: null as number | null,
+        buildingNamePrice: rb.buildingNamePrice,
         inquiryDate: rb.inquiryDate,
         status: 'past' as const,
         propertyId: '',
@@ -1510,6 +1513,7 @@ export class BuyerService {
         propertyNumber: property.property_number,
         propertyAddress: property.address || '',
         propertyPrice: property.price ?? null,
+        buildingNamePrice: '',
         inquiryDate: buyerInfo?.inquiryDate || '',
         status: buyerInfo?.status || 'current',
         propertyId: property.id,
@@ -1524,6 +1528,7 @@ export class BuyerService {
         propertyNumber: '',
         propertyAddress: '',
         propertyPrice: null,
+        buildingNamePrice: rb.buildingNamePrice,
         inquiryDate: rb.inquiryDate,
         status: 'past',
         propertyId: '',
