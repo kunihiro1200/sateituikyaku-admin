@@ -2642,12 +2642,23 @@ ${pageUrl}`;
               staffName="国広"
               buildMessage={() => {
                 const pn = getValue('property_number') || propertyNumber || '';
-                const addr = getValue('property_address') || '';
-                const seller = getValue('seller_contact_name') || getValue('seller_name') || '';
-                const sd = getValue('settlement_date') || '';
-                let dateStr = sd;
-                if (sd) { try { const d = new Date(sd); dateStr = `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`; } catch { dateStr = sd; } }
-                return `【決済完了】\n物件番号：${pn}\n物件所在：${addr}\n売主：${seller}\n決済日：${dateStr}`;
+                const paymentSeller = getValue('payment_confirmed_seller') || '';
+                const brokerageSeller = getValue('brokerage_fee_seller') != null ? String(getValue('brokerage_fee_seller')) : '';
+                const sellerPaymentMethod = getValue('seller_payment_method') || '';
+                const paymentBuyer = getValue('payment_confirmed_buyer') || '';
+                const brokerageBuyer = getValue('brokerage_fee_buyer') != null ? String(getValue('brokerage_fee_buyer')) : '';
+                const buyerPaymentMethod = getValue('buyer_payment_method') || '';
+                const accountingConfirmed = getValue('accounting_confirmed') || '';
+                const pageUrl = `${window.location.origin}/work-tasks`;
+                return `経理確認しました
+入金（売）の確認：${paymentSeller}
+仲介手数料（売）：${brokerageSeller}
+支払方法（売）：${sellerPaymentMethod}
+入金（買）の確認：${paymentBuyer}
+仲介手数料（買）：${brokerageBuyer}
+買・支払方法：${buyerPaymentMethod}
+経理確認：${accountingConfirmed}
+${pageUrl}`;
               }}
             />
           )}
@@ -2659,12 +2670,23 @@ ${pageUrl}`;
               staffName="山本"
               buildMessage={() => {
                 const pn = getValue('property_number') || propertyNumber || '';
-                const addr = getValue('property_address') || '';
-                const seller = getValue('seller_contact_name') || getValue('seller_name') || '';
-                const sd = getValue('settlement_date') || '';
-                let dateStr = sd;
-                if (sd) { try { const d = new Date(sd); dateStr = `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`; } catch { dateStr = sd; } }
-                return `【決済完了】\n物件番号：${pn}\n物件所在：${addr}\n売主：${seller}\n決済日：${dateStr}`;
+                const paymentSeller = getValue('payment_confirmed_seller') || '';
+                const brokerageSeller = getValue('brokerage_fee_seller') != null ? String(getValue('brokerage_fee_seller')) : '';
+                const sellerPaymentMethod = getValue('seller_payment_method') || '';
+                const paymentBuyer = getValue('payment_confirmed_buyer') || '';
+                const brokerageBuyer = getValue('brokerage_fee_buyer') != null ? String(getValue('brokerage_fee_buyer')) : '';
+                const buyerPaymentMethod = getValue('buyer_payment_method') || '';
+                const accountingConfirmed = getValue('accounting_confirmed') || '';
+                const pageUrl = `${window.location.origin}/work-tasks`;
+                return `経理確認しました
+入金（売）の確認：${paymentSeller}
+仲介手数料（売）：${brokerageSeller}
+支払方法（売）：${sellerPaymentMethod}
+入金（買）の確認：${paymentBuyer}
+仲介手数料（買）：${brokerageBuyer}
+買・支払方法：${buyerPaymentMethod}
+経理確認：${accountingConfirmed}
+${pageUrl}`;
               }}
             />
           )}
@@ -2676,12 +2698,23 @@ ${pageUrl}`;
               staffName="裏"
               buildMessage={() => {
                 const pn = getValue('property_number') || propertyNumber || '';
-                const addr = getValue('property_address') || '';
-                const seller = getValue('seller_contact_name') || getValue('seller_name') || '';
-                const sd = getValue('settlement_date') || '';
-                let dateStr = sd;
-                if (sd) { try { const d = new Date(sd); dateStr = `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`; } catch { dateStr = sd; } }
-                return `【決済完了】\n物件番号：${pn}\n物件所在：${addr}\n売主：${seller}\n決済日：${dateStr}`;
+                const paymentSeller = getValue('payment_confirmed_seller') || '';
+                const brokerageSeller = getValue('brokerage_fee_seller') != null ? String(getValue('brokerage_fee_seller')) : '';
+                const sellerPaymentMethod = getValue('seller_payment_method') || '';
+                const paymentBuyer = getValue('payment_confirmed_buyer') || '';
+                const brokerageBuyer = getValue('brokerage_fee_buyer') != null ? String(getValue('brokerage_fee_buyer')) : '';
+                const buyerPaymentMethod = getValue('buyer_payment_method') || '';
+                const accountingConfirmed = getValue('accounting_confirmed') || '';
+                const pageUrl = `${window.location.origin}/work-tasks`;
+                return `経理確認しました
+入金（売）の確認：${paymentSeller}
+仲介手数料（売）：${brokerageSeller}
+支払方法（売）：${sellerPaymentMethod}
+入金（買）の確認：${paymentBuyer}
+仲介手数料（買）：${brokerageBuyer}
+買・支払方法：${buyerPaymentMethod}
+経理確認：${accountingConfirmed}
+${pageUrl}`;
               }}
             />
           )}
@@ -2693,12 +2726,23 @@ ${pageUrl}`;
               staffName="角井"
               buildMessage={() => {
                 const pn = getValue('property_number') || propertyNumber || '';
-                const addr = getValue('property_address') || '';
-                const seller = getValue('seller_contact_name') || getValue('seller_name') || '';
-                const sd = getValue('settlement_date') || '';
-                let dateStr = sd;
-                if (sd) { try { const d = new Date(sd); dateStr = `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`; } catch { dateStr = sd; } }
-                return `【決済完了】\n物件番号：${pn}\n物件所在：${addr}\n売主：${seller}\n決済日：${dateStr}`;
+                const paymentSeller = getValue('payment_confirmed_seller') || '';
+                const brokerageSeller = getValue('brokerage_fee_seller') != null ? String(getValue('brokerage_fee_seller')) : '';
+                const sellerPaymentMethod = getValue('seller_payment_method') || '';
+                const paymentBuyer = getValue('payment_confirmed_buyer') || '';
+                const brokerageBuyer = getValue('brokerage_fee_buyer') != null ? String(getValue('brokerage_fee_buyer')) : '';
+                const buyerPaymentMethod = getValue('buyer_payment_method') || '';
+                const accountingConfirmed = getValue('accounting_confirmed') || '';
+                const pageUrl = `${window.location.origin}/work-tasks`;
+                return `経理確認しました
+入金（売）の確認：${paymentSeller}
+仲介手数料（売）：${brokerageSeller}
+支払方法（売）：${sellerPaymentMethod}
+入金（買）の確認：${paymentBuyer}
+仲介手数料（買）：${brokerageBuyer}
+買・支払方法：${buyerPaymentMethod}
+経理確認：${accountingConfirmed}
+${pageUrl}`;
               }}
             />
           )}
