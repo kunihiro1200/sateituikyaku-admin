@@ -121,10 +121,15 @@ router.post('/upload', upload.single('file'), async (req: Request, res: Response
     const type = req.body.type as 'pdf' | 'image';
     const folder = type === 'pdf' ? 'pdfs' : 'images';
 
-    // ファイルパスを生成: {folder}/{timestamp}_{originalname}
+    // ファイルパスを生成: {folder}/{timestamp}_{sanitized_filename}
+    // 日本語などのマルチバイト文字はSupabase StorageでInvalid keyになるため、
+    // ファイル名をサニタイズして英数字とハイフン・ドットのみにする
     const timestamp = Date.now();
     const originalName = req.file.originalname;
-    const filePath = `${folder}/${timestamp}_${originalName}`;
+    const ext = originalName.includes('.') ? '.' + originalName.split('.').pop() : '';
+    const baseName = originalName.slice(0, originalName.length - ext.length);
+    const safeName = baseName.replace(/[^a-zA-Z0-9_-]/g, '_').replace(/^_+|_+$/g, '') || 'file';
+    const filePath = `${folder}/${timestamp}_${safeName}${ext}`;
 
     // Supabase クライアントを初期化
     const supabase = createClient(
