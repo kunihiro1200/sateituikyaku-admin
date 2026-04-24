@@ -3336,33 +3336,33 @@ ${pageUrl}`;
                   </Box>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, overflowX: 'auto', flexShrink: 1, flexWrap: 'nowrap' }}>
                     {data?.property_address && (
-                      <Box sx={{ display: 'flex', alignItems: 'center', bgcolor: '#e3f2fd', borderRadius: '6px', px: 1.2, py: 0.4, border: '1px solid #90caf9', whiteSpace: 'nowrap' }}>
-                        <Typography component="span" sx={{ fontWeight: 700, fontSize: '0.78rem', color: '#1565c0', mr: 0.5 }}>物件住所</Typography>
-                        <Typography component="span" sx={{ fontSize: '0.85rem', color: '#1a237e', fontWeight: 500 }}>{data.property_address}</Typography>
+                      <Box sx={{ display: 'flex', alignItems: 'center', bgcolor: '#f5f5f5', borderRadius: '6px', px: 1.2, py: 0.4, border: '1px solid #e0e0e0', whiteSpace: 'nowrap' }}>
+                        <Typography component="span" sx={{ fontWeight: 700, fontSize: '0.78rem', color: '#616161', mr: 0.5 }}>物件住所</Typography>
+                        <Typography component="span" sx={{ fontSize: '0.85rem', color: '#212121', fontWeight: 500 }}>{data.property_address}</Typography>
                       </Box>
                     )}
                     {data?.property_type && (
-                      <Box sx={{ display: 'flex', alignItems: 'center', bgcolor: '#f3e5f5', borderRadius: '6px', px: 1.2, py: 0.4, border: '1px solid #ce93d8', whiteSpace: 'nowrap' }}>
-                        <Typography component="span" sx={{ fontWeight: 700, fontSize: '0.78rem', color: '#6a1b9a', mr: 0.5 }}>種別</Typography>
-                        <Typography component="span" sx={{ fontSize: '0.85rem', color: '#4a148c', fontWeight: 500 }}>{data.property_type}</Typography>
+                      <Box sx={{ display: 'flex', alignItems: 'center', bgcolor: '#f5f5f5', borderRadius: '6px', px: 1.2, py: 0.4, border: '1px solid #e0e0e0', whiteSpace: 'nowrap' }}>
+                        <Typography component="span" sx={{ fontWeight: 700, fontSize: '0.78rem', color: '#616161', mr: 0.5 }}>種別</Typography>
+                        <Typography component="span" sx={{ fontSize: '0.85rem', color: '#212121', fontWeight: 500 }}>{data.property_type}</Typography>
                       </Box>
                     )}
                     {data?.seller_name && (
-                      <Box sx={{ display: 'flex', alignItems: 'center', bgcolor: '#e8f5e9', borderRadius: '6px', px: 1.2, py: 0.4, border: '1px solid #a5d6a7', whiteSpace: 'nowrap' }}>
-                        <Typography component="span" sx={{ fontWeight: 700, fontSize: '0.78rem', color: '#2e7d32', mr: 0.5 }}>売主氏名</Typography>
-                        <Typography component="span" sx={{ fontSize: '0.85rem', color: '#1b5e20', fontWeight: 500 }}>{data.seller_name}</Typography>
+                      <Box sx={{ display: 'flex', alignItems: 'center', bgcolor: '#f5f5f5', borderRadius: '6px', px: 1.2, py: 0.4, border: '1px solid #e0e0e0', whiteSpace: 'nowrap' }}>
+                        <Typography component="span" sx={{ fontWeight: 700, fontSize: '0.78rem', color: '#616161', mr: 0.5 }}>売主氏名</Typography>
+                        <Typography component="span" sx={{ fontSize: '0.85rem', color: '#212121', fontWeight: 500 }}>{data.seller_name}</Typography>
                       </Box>
                     )}
                     {data?.sales_assignee && (
-                      <Box sx={{ display: 'flex', alignItems: 'center', bgcolor: '#fff8e1', borderRadius: '6px', px: 1.2, py: 0.4, border: '1px solid #ffe082', whiteSpace: 'nowrap' }}>
-                        <Typography component="span" sx={{ fontWeight: 700, fontSize: '0.78rem', color: '#e65100', mr: 0.5 }}>担当名</Typography>
-                        <Typography component="span" sx={{ fontSize: '0.85rem', color: '#bf360c', fontWeight: 500 }}>{data.sales_assignee}</Typography>
+                      <Box sx={{ display: 'flex', alignItems: 'center', bgcolor: '#f5f5f5', borderRadius: '6px', px: 1.2, py: 0.4, border: '1px solid #e0e0e0', whiteSpace: 'nowrap' }}>
+                        <Typography component="span" sx={{ fontWeight: 700, fontSize: '0.78rem', color: '#616161', mr: 0.5 }}>担当名</Typography>
+                        <Typography component="span" sx={{ fontSize: '0.85rem', color: '#212121', fontWeight: 500 }}>{data.sales_assignee}</Typography>
                       </Box>
                     )}
                     {data?.mediation_type && (
-                      <Box sx={{ display: 'flex', alignItems: 'center', bgcolor: '#fce4ec', borderRadius: '6px', px: 1.2, py: 0.4, border: '1px solid #f48fb1', whiteSpace: 'nowrap' }}>
-                        <Typography component="span" sx={{ fontWeight: 700, fontSize: '0.78rem', color: '#880e4f', mr: 0.5 }}>媒介</Typography>
-                        <Typography component="span" sx={{ fontSize: '0.85rem', color: '#560027', fontWeight: 500 }}>{data.mediation_type}</Typography>
+                      <Box sx={{ display: 'flex', alignItems: 'center', bgcolor: '#f5f5f5', borderRadius: '6px', px: 1.2, py: 0.4, border: '1px solid #e0e0e0', whiteSpace: 'nowrap' }}>
+                        <Typography component="span" sx={{ fontWeight: 700, fontSize: '0.78rem', color: '#616161', mr: 0.5 }}>媒介</Typography>
+                        <Typography component="span" sx={{ fontSize: '0.85rem', color: '#212121', fontWeight: 500 }}>{data.mediation_type}</Typography>
                       </Box>
                     )}
                   </Box>
