@@ -554,7 +554,7 @@ function checkMandatoryRevisionFields(
     }
     // 山本マネージャーに確認（済）が必須
     if (isEmpty(getValue('manager_confirmation_done'))) {
-      errorFields.push('山本マネージャーに確認（済）');
+      errorFields.push('山本マネージャーの契約書チェック（済）');
     }
     // 契約～決済担当者が必須
     if (isEmpty(getValue('contract_to_settlement_admin_staff'))) {
@@ -2548,7 +2548,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
               <Grid container spacing={2} alignItems="center">
                 <Grid item xs={4}>
                   <Typography variant="body2" color="error" sx={{ fontWeight: 700 }}>
-                    山本マネージャーに確認*（必須）
+                    山本マネージャーの契約書チェック*（必須）
                   </Typography>
                 </Grid>
                 <Grid item xs={8}>
