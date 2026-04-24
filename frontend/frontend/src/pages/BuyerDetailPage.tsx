@@ -2512,7 +2512,7 @@ TEL：097-533-2022`;
                                       key={opt}
                                       size="small"
                                       variant={isSelected ? 'contained' : 'outlined'}
-                                      color={opt === '済' ? 'success' : 'default'}
+                                      color={opt === '済' ? 'success' : 'inherit'}
                                       onClick={async () => {
                                         const newValue = isSelected ? '' : opt;
                                         setBuyer((prev: any) => prev ? { ...prev, neighbor_property_email_sent: newValue } : prev);
