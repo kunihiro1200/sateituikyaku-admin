@@ -47,21 +47,23 @@ const InquiryHistoryTable: React.FC<InquiryHistoryTableProps> = ({
   const [sortColumn, setSortColumn] = useState<SortColumn>('inquiryDate');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
 
+  const getItemKey = (item: InquiryHistoryItem) => item.propertyNumber || `buyer-${item.buyerNumber}`;
+
   const handleSelectAll = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.checked) {
-      const allIds = new Set(inquiryHistory.map(item => item.propertyNumber));
+      const allIds = new Set(inquiryHistory.map(item => getItemKey(item)));
       onSelectionChange(allIds);
     } else {
       onSelectionChange(new Set());
     }
   };
 
-  const handleSelectOne = (propertyNumber: string) => {
+  const handleSelectOne = (key: string) => {
     const newSelected = new Set(selectedPropertyIds);
-    if (newSelected.has(propertyNumber)) {
-      newSelected.delete(propertyNumber);
+    if (newSelected.has(key)) {
+      newSelected.delete(key);
     } else {
-      newSelected.add(propertyNumber);
+      newSelected.add(key);
     }
     onSelectionChange(newSelected);
   };
@@ -158,22 +160,22 @@ const InquiryHistoryTable: React.FC<InquiryHistoryTableProps> = ({
         <TableBody>
           {sortedHistory.map((item, index) => {
             const rowKey = item.propertyNumber || `no-property-${item.buyerNumber}-${index}`;
-            const isSelected = item.propertyNumber ? selectedPropertyIds.has(item.propertyNumber) : false;
+            const itemKey = getItemKey(item);
+            const isSelected = selectedPropertyIds.has(itemKey);
             
             return (
               <TableRow
                 key={rowKey}
                 hover
                 sx={getRowStyle(item, isSelected)}
-                onClick={() => item.propertyNumber && handleSelectOne(item.propertyNumber)}
+                onClick={() => handleSelectOne(itemKey)}
               >
                 <TableCell padding="checkbox">
                   <Checkbox
                     checked={isSelected}
-                    disabled={!item.propertyNumber}
-                    onChange={() => item.propertyNumber && handleSelectOne(item.propertyNumber)}
+                    onChange={() => handleSelectOne(itemKey)}
                     onClick={(e) => e.stopPropagation()}
-                    inputProps={{ 'aria-label': `物件 ${item.propertyNumber} を選択` }}
+                    inputProps={{ 'aria-label': `${item.propertyNumber || item.buyerNumber} を選択` }}
                   />
                 </TableCell>
                 <TableCell>
