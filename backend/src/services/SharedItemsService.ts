@@ -85,10 +85,10 @@ export class SharedItemsService {
     'pdf2': 'PDF2',
     'pdf3': 'PDF3',
     'pdf4': 'PDF4',
-    'image1': '画像1',
-    'image2': '画像2',
-    'image3': '画像3',
-    'image4': '画像4',
+    'image1': '画像１',
+    'image2': '画像２',
+    'image3': '画像３',
+    'image4': '画像４',
     'url': 'URL',
     'meeting_content': '打ち合わせ内容',
   };
@@ -113,6 +113,19 @@ export class SharedItemsService {
     try {
       // 英語キーを日本語キー（スプレッドシートヘッダー）に変換
       const normalizedItem = this.normalizeKeys(item as Record<string, any>);
+
+      // デバッグ: ヘッダーと送信データのキー照合を確認
+      const headers = await this.sheetsClient.getHeaders();
+      const sentKeys = Object.keys(normalizedItem);
+      const matchedKeys = sentKeys.filter(k => headers.includes(k));
+      const unmatchedKeys = sentKeys.filter(k => !headers.includes(k));
+      const missingHeaders = headers.filter(h => !sentKeys.includes(h));
+      console.log('[SharedItemsService.create] headers:', JSON.stringify(headers));
+      console.log('[SharedItemsService.create] sentKeys:', JSON.stringify(sentKeys));
+      console.log('[SharedItemsService.create] matchedKeys:', JSON.stringify(matchedKeys));
+      console.log('[SharedItemsService.create] unmatchedKeys (送信したがヘッダーにない):', JSON.stringify(unmatchedKeys));
+      console.log('[SharedItemsService.create] missingHeaders (ヘッダーにあるが送信していない):', JSON.stringify(missingHeaders));
+
       await this.sheetsClient.appendRow(normalizedItem);
       return item as SharedItem;
     } catch (error: any) {

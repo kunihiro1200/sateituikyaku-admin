@@ -308,14 +308,14 @@ export default function SharedItemDetailPage() {
               }} />
           </Grid>
 
-          {/* 確認日（編集可能） */}
+          {/* 共有日（編集可能） */}
           <Grid item xs={6}>
-            <Typography variant="caption" color="text.secondary">確認日</Typography>
+            <Typography variant="caption" color="text.secondary">共有日</Typography>
             <TextField
               fullWidth
               type="date"
-              value={confirmationDate}
-              onChange={(e) => setConfirmationDate(e.target.value)}
+              value={sharingDate}
+              onChange={(e) => setSharingDate(e.target.value)}
               size="small"
               InputLabelProps={{ shrink: true }}
               sx={{ mt: 1 }}
@@ -439,14 +439,14 @@ export default function SharedItemDetailPage() {
             </Box>
           </Grid>
 
-          {/* 共有日（編集可能） */}
+          {/* 確認日（編集可能） */}
           <Grid item xs={6}>
-            <Typography variant="caption" color="text.secondary">共有日</Typography>
+            <Typography variant="caption" color="text.secondary">確認日</Typography>
             <TextField
               fullWidth
               type="date"
-              value={sharingDate}
-              onChange={(e) => setSharingDate(e.target.value)}
+              value={confirmationDate}
+              onChange={(e) => setConfirmationDate(e.target.value)}
               size="small"
               InputLabelProps={{ shrink: true }}
               sx={{ mt: 1 }}

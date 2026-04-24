@@ -345,7 +345,11 @@ export class GoogleSheetsClient {
    */
   private async objectToRow(obj: SheetRow): Promise<any[]> {
     const headers = await this.getHeaders();
-    return headers.map(header => obj[header] ?? '');
+    const row = headers.map(header => obj[header] ?? '');
+    // デバッグ: 最初の10列のマッピング結果をログ出力
+    const debugInfo = headers.slice(0, 10).map((h, i) => `${h}="${row[i]}"`).join(', ');
+    console.log(`[GoogleSheetsClient.objectToRow] first 10 cols: ${debugInfo}`);
+    return row;
   }
 
   /**
