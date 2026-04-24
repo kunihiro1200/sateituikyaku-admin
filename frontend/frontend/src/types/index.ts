@@ -693,6 +693,9 @@ export interface Buyer {
   is_deleted?: boolean;
   deleted_at?: string | Date;
   
+  // 近隣物件送付メール
+  neighbor_property_email_sent?: string;
+
   // システムフィールド
   created_at?: string | Date;
   updated_at?: string | Date;

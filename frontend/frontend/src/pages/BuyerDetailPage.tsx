@@ -256,6 +256,7 @@ const BUYER_FIELD_SECTIONS: BuyerFieldSection[] = [
       { key: 'reception_date', label: '受付日', type: 'date', inlineEditable: true },
       { key: 'inquiry_source', label: '問合せ元', inlineEditable: true },
       { key: 'latest_status', label: '★最新状況', inlineEditable: true },
+      { key: 'neighbor_property_email_sent', label: '近隣物件送付メール', inlineEditable: true, fieldType: 'buttonSelect' },
       { key: 'distribution_type', label: '配信メール', inlineEditable: true, fieldType: 'buttonSelect', required: true },
       { key: 'pinrich', label: 'Pinrich', inlineEditable: true, fieldType: 'dropdown' },
       { key: 'pinrich_link', label: 'Pinrichリンク', inlineEditable: true, fieldType: 'pinrichLink' },
@@ -326,6 +327,7 @@ export default function BuyerDetailPage() {
     initial_assignee: '初動担当',
     inquiry_source: '問合せ元',
     latest_status: '★最新状況',
+    neighbor_property_email_sent: '近隣物件送付メール',
     distribution_type: '配信メール',
     inquiry_email_phone: '【問合メール】電話対応',
     inquiry_email_reply: '【問合メール】メール返信',
@@ -491,6 +493,8 @@ export default function BuyerDetailPage() {
 
     // 問合せ元にメールが含まれる場合は inquiry_email_phone も必須
     const inquirySource = buyer.inquiry_source ? String(buyer.inquiry_source) : '';
+    // inquiry_email_phone が表示される条件（問合せ元に「電話」を含まない場合に表示）
+    const isInquiryEmailPhoneVisible = !inquirySource.includes('電話');
     if (inquirySource.includes('メール')) {
       if (!buyer.inquiry_email_phone || !String(buyer.inquiry_email_phone).trim()) {
         missingKeys.push('inquiry_email_phone');
@@ -499,6 +503,25 @@ export default function BuyerDetailPage() {
       if (String(buyer.inquiry_email_phone).trim() === '不通') {
         if (!buyer.three_calls_confirmed || !String(buyer.three_calls_confirmed).trim()) {
           missingKeys.push('three_calls_confirmed');
+        }
+      }
+    }
+    // inquiry_email_phone が表示されていて「済」以外の場合、
+    // inquiry_email_reply と three_calls_confirmed を必須にする
+    if (isInquiryEmailPhoneVisible) {
+      const emailPhoneValue = buyer.inquiry_email_phone ? String(buyer.inquiry_email_phone).trim() : '';
+      if (emailPhoneValue && emailPhoneValue !== '済') {
+        // メール返信が未入力の場合は必須
+        if (!buyer.inquiry_email_reply || !String(buyer.inquiry_email_reply).trim()) {
+          if (!missingKeys.includes('inquiry_email_reply')) {
+            missingKeys.push('inquiry_email_reply');
+          }
+        }
+        // 3回架電確認済みが未入力の場合は必須
+        if (!buyer.three_calls_confirmed || !String(buyer.three_calls_confirmed).trim()) {
+          if (!missingKeys.includes('three_calls_confirmed')) {
+            missingKeys.push('three_calls_confirmed');
+          }
         }
       }
     }
@@ -732,6 +755,13 @@ export default function BuyerDetailPage() {
       if (isLatestStatusRequired(res.data) && (!res.data.latest_status || !String(res.data.latest_status).trim())) {
         initialMissing.push('latest_status');
       }
+      // 近隣物件送付メール：受付日が2026/4/1以降は必須
+      if (res.data.reception_date) {
+        const receptionDate = new Date(res.data.reception_date);
+        if (receptionDate >= new Date('2026-04-01') && (!res.data.neighbor_property_email_sent || !String(res.data.neighbor_property_email_sent).trim())) {
+          initialMissing.push('neighbor_property_email_sent');
+        }
+      }
       if (!res.data.distribution_type || !String(res.data.distribution_type).trim()) {
         initialMissing.push('distribution_type');
       }
@@ -855,6 +885,90 @@ export default function BuyerDetailPage() {
       setBlockNavigation(true);
       setValidationDialogOpen(true);
       return; // 保存中断
+    }
+
+    // inquiry_email_phone が表示されていて「済」以外の場合、
+    // inquiry_email_reply と three_calls_confirmed の必須チェック
+    {
+      const currentInquirySource = buyer?.inquiry_source ? String(buyer.inquiry_source) : '';
+      const isEmailPhoneVisible = !currentInquirySource.includes('電話');
+      if (isEmailPhoneVisible) {
+        const emailPhoneVal = ('inquiry_email_phone' in changedFields
+          ? changedFields.inquiry_email_phone
+          : buyer?.inquiry_email_phone) ?? '';
+        const emailPhoneStr = String(emailPhoneVal).trim();
+        if (emailPhoneStr && emailPhoneStr !== '済') {
+          const emailReplyVal = ('inquiry_email_reply' in changedFields
+            ? changedFields.inquiry_email_reply
+            : buyer?.inquiry_email_reply) ?? '';
+          const threeCallsVal = ('three_calls_confirmed' in changedFields
+            ? changedFields.three_calls_confirmed
+            : buyer?.three_calls_confirmed) ?? '';
+          const missingLabels: string[] = [];
+          if (!String(emailReplyVal).trim()) missingLabels.push('【問合メール】メール返信');
+          if (!String(threeCallsVal).trim()) missingLabels.push('3回架電確認済み');
+          if (missingLabels.length > 0) {
+            // ハイライト用 state を更新
+            setMissingRequiredFields(prev => {
+              const next = new Set(prev);
+              if (!String(emailReplyVal).trim()) next.add('inquiry_email_reply');
+              if (!String(threeCallsVal).trim()) next.add('three_calls_confirmed');
+              return next;
+            });
+            setPendingMissingLabels(missingLabels);
+            setBlockNavigation(true);
+            setValidationDialogOpen(true);
+            return; // 保存中断
+          }
+        }
+      }
+    }
+
+    // inquiry_email_phone が「済」の場合、owned_home_hearing_inquiry は必須
+    {
+      const emailPhoneVal = ('inquiry_email_phone' in changedFields
+        ? changedFields.inquiry_email_phone
+        : buyer?.inquiry_email_phone) ?? '';
+      if (String(emailPhoneVal).trim() === '済') {
+        const hearingVal = ('owned_home_hearing_inquiry' in changedFields
+          ? changedFields.owned_home_hearing_inquiry
+          : buyer?.owned_home_hearing_inquiry) ?? '';
+        if (!String(hearingVal).trim()) {
+          setMissingRequiredFields(prev => {
+            const next = new Set(prev);
+            next.add('owned_home_hearing_inquiry');
+            return next;
+          });
+          setPendingMissingLabels(['問合時持家ヒアリング']);
+          setBlockNavigation(true);
+          setValidationDialogOpen(true);
+          return; // 保存中断
+        }
+      }
+    }
+
+    // 近隣物件送付メール必須バリデーション（受付日が2026/4/1以降）
+    {
+      const receptionDateVal = buyer?.reception_date;
+      if (receptionDateVal) {
+        const receptionDate = new Date(receptionDateVal as string);
+        if (receptionDate >= new Date('2026-04-01')) {
+          const neighborVal = ('neighbor_property_email_sent' in changedFields
+            ? changedFields.neighbor_property_email_sent
+            : buyer?.neighbor_property_email_sent) ?? '';
+          if (!String(neighborVal).trim()) {
+            setMissingRequiredFields(prev => {
+              const next = new Set(prev);
+              next.add('neighbor_property_email_sent');
+              return next;
+            });
+            setPendingMissingLabels(['近隣物件送付メール']);
+            setBlockNavigation(true);
+            setValidationDialogOpen(true);
+            return; // 保存中断
+          }
+        }
+      }
     }
 
     // 次電日必須バリデーション
@@ -2373,6 +2487,59 @@ TEL：097-533-2022`;
                       );
                     }
 
+                    // neighbor_property_email_sentフィールドは特別処理（ボタン選択 + 説明文）
+                    if (field.key === 'neighbor_property_email_sent') {
+                      const NEIGHBOR_BTNS = ['済', '不要'];
+                      const isNeighborMissing = missingRequiredFields.has('neighbor_property_email_sent');
+                      const currentVal = String(buyer[field.key] || '').trim();
+                      return (
+                        <Grid item xs={12} key={`${section.title}-${field.key}`}>
+                          <Box sx={{
+                            border: isNeighborMissing ? '2px solid #f44336' : 'none',
+                            borderRadius: isNeighborMissing ? 1 : 0,
+                            p: isNeighborMissing ? 0.5 : 0,
+                            bgcolor: isNeighborMissing ? 'rgba(244,67,54,0.05)' : 'transparent',
+                          }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                              <Typography variant="caption" color={isNeighborMissing ? 'error' : 'text.secondary'} sx={{ whiteSpace: 'nowrap', flexShrink: 0, fontWeight: isNeighborMissing ? 'bold' : 'normal' }}>
+                                {field.label}{isNeighborMissing ? ' *' : ''}
+                              </Typography>
+                              <Box sx={{ display: 'flex', gap: 0.5 }}>
+                                {NEIGHBOR_BTNS.map((opt) => {
+                                  const isSelected = currentVal === opt;
+                                  return (
+                                    <Button
+                                      key={opt}
+                                      size="small"
+                                      variant={isSelected ? 'contained' : 'outlined'}
+                                      color={opt === '済' ? 'success' : 'default'}
+                                      onClick={async () => {
+                                        const newValue = isSelected ? '' : opt;
+                                        setBuyer((prev: any) => prev ? { ...prev, neighbor_property_email_sent: newValue } : prev);
+                                        handleFieldChange(section.title, field.key, newValue);
+                                        setMissingRequiredFields(prev => {
+                                          const next = new Set(prev);
+                                          if (newValue && String(newValue).trim()) next.delete('neighbor_property_email_sent');
+                                          else next.add('neighbor_property_email_sent');
+                                          return next;
+                                        });
+                                      }}
+                                      sx={{ py: 0.5, px: 1.5, fontWeight: isSelected ? 'bold' : 'normal', borderRadius: 1 }}
+                                    >
+                                      {opt}
+                                    </Button>
+                                  );
+                                })}
+                              </Box>
+                            </Box>
+                            <Typography variant="caption" sx={{ color: 'error.main', display: 'block', lineHeight: 1.5 }}>
+                              積極的に「近隣物件」をメール送信してください。どういう反応が返ってくるかを確認したいので。絶対にこの人は近隣買主のメール不要という人は送らなくてよいです。（５００万以下問い合わせ等）
+                            </Typography>
+                          </Box>
+                        </Grid>
+                      );
+                    }
+
                     // inquiry_email_phoneフィールドは特別処理（ボタン選択 + 即時保存）
                     if (field.key === 'inquiry_email_phone') {
                       // 問合せ元に「電話」が含まれる場合は非表示
@@ -2958,11 +3125,18 @@ TEL：097-533-2022`;
                     // owned_home_hearing_inquiry フィールドは特別処理（スタッフイニシャル選択）
                     if (field.key === 'owned_home_hearing_inquiry') {
                       const SPECIAL_OPTIONS = ['不要', '未'];  // 追加
+                      const isOwnedHomeHearingMissing = missingRequiredFields.has('owned_home_hearing_inquiry');
                       return (
                         <Grid item xs={12} key={`${section.title}-${field.key}`}>
-                          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                            <Typography variant="caption" color="text.secondary">
-                              {field.label}
+                          <Box sx={{
+                            display: 'flex', flexDirection: 'column', gap: 0.5,
+                            border: isOwnedHomeHearingMissing ? '2px solid #f44336' : 'none',
+                            borderRadius: isOwnedHomeHearingMissing ? 1 : 0,
+                            p: isOwnedHomeHearingMissing ? 0.5 : 0,
+                            bgcolor: isOwnedHomeHearingMissing ? 'rgba(244,67,54,0.05)' : 'transparent',
+                          }}>
+                            <Typography variant="caption" color={isOwnedHomeHearingMissing ? 'error' : 'text.secondary'} sx={{ fontWeight: isOwnedHomeHearingMissing ? 'bold' : 'normal' }}>
+                              {field.label}{isOwnedHomeHearingMissing ? ' *' : ''}
                             </Typography>
                             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
                               {normalInitials.map((initial) => {
@@ -2981,6 +3155,9 @@ TEL：097-533-2022`;
                                         // owned_home_hearing_inquiry が変わったら owned_home_hearing_result の必須状態を再計算
                                         setMissingRequiredFields(prevMissing => {
                                           const next = new Set(prevMissing);
+                                          // 値が入ったら owned_home_hearing_inquiry の必須マークを解除
+                                          if (newValue && String(newValue).trim()) next.delete('owned_home_hearing_inquiry');
+                                          else next.add('owned_home_hearing_inquiry');
                                           if (isHomeHearingResultRequired(updated)) {
                                             if (!updated.owned_home_hearing_result || !String(updated.owned_home_hearing_result).trim()) {
                                               next.add('owned_home_hearing_result');
@@ -3024,6 +3201,9 @@ TEL：097-533-2022`;
                                         // 必須状態を再計算
                                         setMissingRequiredFields(prevMissing => {
                                           const next = new Set(prevMissing);
+                                          // 値が入ったら owned_home_hearing_inquiry の必須マークを解除
+                                          if (newValue && String(newValue).trim()) next.delete('owned_home_hearing_inquiry');
+                                          else next.add('owned_home_hearing_inquiry');
                                           if (isHomeHearingResultRequired(updated)) {
                                             if (!updated.owned_home_hearing_result || !String(updated.owned_home_hearing_result).trim()) {
                                               next.add('owned_home_hearing_result');
