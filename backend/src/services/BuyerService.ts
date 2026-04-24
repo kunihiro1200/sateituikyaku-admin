@@ -1345,7 +1345,7 @@ export class BuyerService {
     } else {
       const { data, error } = await this.supabase
         .from('buyers')
-        .select('buyer_number, property_number, reception_date, past_buyer_list')
+        .select('id, buyer_number, property_number, reception_date, past_buyer_list, email, phone_number')
         .eq('buyer_number', buyerId)
         .is('deleted_at', null)
         .single();
@@ -1380,6 +1380,41 @@ export class BuyerService {
           inquiryDate: buyer.reception_date || ''
         });
       });
+    }
+
+    // 同じメールアドレス・電話番号を持つ関連買主の物件番号も統合
+    const relatedConditions: string[] = [];
+    if (buyer.email) relatedConditions.push(`email.eq.${buyer.email}`);
+    if (buyer.phone_number) relatedConditions.push(`phone_number.eq.${buyer.phone_number}`);
+
+    if (relatedConditions.length > 0) {
+      const currentBuyerNumber = buyer.buyer_number;
+      let relatedQuery = this.supabase
+        .from('buyers')
+        .select('buyer_number, property_number, reception_date')
+        .or(relatedConditions.join(','))
+        .is('deleted_at', null)
+        .neq('buyer_number', currentBuyerNumber);
+      const { data: relatedBuyers } = await relatedQuery;
+      if (relatedBuyers) {
+        for (const rb of relatedBuyers) {
+          if (!rb.property_number) continue;
+          const relatedPropertyNumbers = rb.property_number
+            .split(',')
+            .map((n: string) => n.trim())
+            .filter((n: string) => n);
+          relatedPropertyNumbers.forEach((propNum: string) => {
+            if (!propertyToBuyerMap.has(propNum)) {
+              allPropertyNumbers.push(propNum);
+              propertyToBuyerMap.set(propNum, {
+                buyerNumber: rb.buyer_number,
+                status: 'past',
+                inquiryDate: rb.reception_date || ''
+              });
+            }
+          });
+        }
+      }
     }
 
     // Get past buyer numbers and their property numbers（並列取得）
