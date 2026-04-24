@@ -797,6 +797,25 @@ export default function BuyerDetailPage() {
   // ヒアリング項目の保存ハンドラー
   const handleSaveHearing = async () => {
     if (!buyer) return;
+
+    // 近隣物件送付メール必須バリデーション（受付日が2026/4/1以降）
+    if (buyer.reception_date) {
+      const receptionDate = new Date(buyer.reception_date as string);
+      if (receptionDate >= new Date('2026-04-01')) {
+        if (!buyer.neighbor_property_email_sent || !String(buyer.neighbor_property_email_sent).trim()) {
+          setMissingRequiredFields(prev => {
+            const next = new Set(prev);
+            next.add('neighbor_property_email_sent');
+            return next;
+          });
+          setPendingMissingLabels(['近隣物件送付メール']);
+          setBlockNavigation(true);
+          setValidationDialogOpen(true);
+          return; // 保存中断
+        }
+      }
+    }
+
     setHearingSaving(true);
     try {
       const result = await buyerApi.update(
