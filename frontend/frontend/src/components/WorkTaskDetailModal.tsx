@@ -556,6 +556,20 @@ function checkMandatoryRevisionFields(
     if (isEmpty(getValue('manager_confirmation_done'))) {
       errorFields.push('山本マネージャーに確認（済）');
     }
+    // 契約～決済担当者が必須
+    if (isEmpty(getValue('contract_to_settlement_admin_staff'))) {
+      errorFields.push('契約～決済までに事務担当者');
+    }
+    // 「他」の場合は許可者も必須
+    if (getValue('contract_to_settlement_admin_staff') === '他') {
+      if (isEmpty(getValue('contract_to_settlement_admin_approver'))) {
+        errorFields.push('契約～決済担当者：許可済み？（山本/国広）');
+      }
+    }
+    // 担当者（全社員）が必須
+    if (isEmpty(getValue('contract_to_settlement_admin_person'))) {
+      errorFields.push('契約～決済担当者：担当者');
+    }
   }
   //    親フィールド: mediation_checker を今回変更した場合のみチェック
   if (editedData.hasOwnProperty('mediation_checker') && !isEmpty(getValue('mediation_checker'))) {
@@ -2528,8 +2542,8 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
             </Box>
           )}
 
-          {/* 山本マネージャーに確認: 売買契約確認=確認OKの場合のみ表示・必須 */}
-          {getValue('sales_contract_confirmed') === '確認OK' && (
+          {/* 山本マネージャーに確認: 今回確認OKに変更した場合のみ表示（過去データは対象外）、または既に済の場合は表示 */}
+          {getValue('sales_contract_confirmed') === '確認OK' && (editedData.hasOwnProperty('sales_contract_confirmed') || getValue('manager_confirmation_done') === '済') && (
             <Box sx={{ bgcolor: '#fce4ec', borderRadius: 1, p: 1.5, mb: 1 }}>
               <Grid container spacing={2} alignItems="center">
                 <Grid item xs={4}>
@@ -2612,6 +2626,118 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
           ) : (
             <EditableField label="製本予定日" field="binding_scheduled_date" type="date" />
           )}
+
+          {/* 契約～決済までに事務担当者: 売買契約確認=確認OKの場合のみ表示・必須 */}
+          {getValue('sales_contract_confirmed') === '確認OK' && (
+            <Box sx={{ bgcolor: '#e8f5e9', borderRadius: 1, p: 1.5, mb: 1 }}>
+              {/* 担当者選択（R/久/和/他） */}
+              <Grid container spacing={2} alignItems="center" sx={{ mb: 1.5 }}>
+                <Grid item xs={4}>
+                  <Typography variant="body2" color="error" sx={{ fontWeight: 700 }}>
+                    契約～決済担当者*（必須）
+                  </Typography>
+                </Grid>
+                <Grid item xs={8}>
+                  <ButtonGroup size="small" variant="outlined">
+                    {['R', '久', '和', '他'].map((opt) => (
+                      <Button
+                        key={opt}
+                        variant={getValue('contract_to_settlement_admin_staff') === opt ? 'contained' : 'outlined'}
+                        color={getValue('contract_to_settlement_admin_staff') === opt ? 'primary' : 'inherit'}
+                        onClick={(e) => {
+                          (e.currentTarget as HTMLButtonElement).blur();
+                          const current = getValue('contract_to_settlement_admin_staff');
+                          if (current === opt) {
+                            handleFieldChange('contract_to_settlement_admin_staff', null);
+                          } else {
+                            handleFieldChange('contract_to_settlement_admin_staff', opt);
+                            // 「他」以外に変更した場合は許可者をリセット
+                            if (opt !== '他') {
+                              handleFieldChange('contract_to_settlement_admin_approver', null);
+                            }
+                          }
+                        }}
+                      >
+                        {opt}
+                      </Button>
+                    ))}
+                  </ButtonGroup>
+                  {!getValue('contract_to_settlement_admin_staff') && (
+                    <Typography variant="caption" color="error" sx={{ display: 'block', mt: 0.5 }}>
+                      必須項目です
+                    </Typography>
+                  )}
+                </Grid>
+              </Grid>
+
+              {/* 「他」選択時：許可済み？（山本/国広） */}
+              {getValue('contract_to_settlement_admin_staff') === '他' && (
+                <Grid container spacing={2} alignItems="center" sx={{ mb: 1.5 }}>
+                  <Grid item xs={4}>
+                    <Typography variant="body2" color="error" sx={{ fontWeight: 700 }}>
+                      許可済み？*（必須）
+                    </Typography>
+                  </Grid>
+                  <Grid item xs={8}>
+                    <ButtonGroup size="small" variant="outlined">
+                      {['山本', '国広'].map((opt) => (
+                        <Button
+                          key={opt}
+                          variant={getValue('contract_to_settlement_admin_approver') === opt ? 'contained' : 'outlined'}
+                          color={getValue('contract_to_settlement_admin_approver') === opt ? 'primary' : 'inherit'}
+                          onClick={(e) => {
+                            (e.currentTarget as HTMLButtonElement).blur();
+                            handleFieldChange('contract_to_settlement_admin_approver', getValue('contract_to_settlement_admin_approver') === opt ? null : opt);
+                          }}
+                        >
+                          {opt}
+                        </Button>
+                      ))}
+                    </ButtonGroup>
+                    {!getValue('contract_to_settlement_admin_approver') && (
+                      <Typography variant="caption" color="error" sx={{ display: 'block', mt: 0.5 }}>
+                        必須項目です
+                      </Typography>
+                    )}
+                  </Grid>
+                </Grid>
+              )}
+
+              {/* 担当者（全社員から選択） */}
+              <Grid container spacing={2} alignItems="center" sx={{ mb: 0.5 }}>
+                <Grid item xs={4}>
+                  <Typography variant="body2" color="error" sx={{ fontWeight: 700 }}>
+                    担当者*（必須）
+                  </Typography>
+                </Grid>
+                <Grid item xs={8}>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                    {activeEmployees.map((emp) => (
+                      <Button
+                        key={emp.id}
+                        size="small"
+                        variant={getValue('contract_to_settlement_admin_person') === emp.name ? 'contained' : 'outlined'}
+                        color={getValue('contract_to_settlement_admin_person') === emp.name ? 'primary' : 'inherit'}
+                        onClick={(e) => {
+                          (e.currentTarget as HTMLButtonElement).blur();
+                          handleFieldChange('contract_to_settlement_admin_person', getValue('contract_to_settlement_admin_person') === emp.name ? null : emp.name);
+                        }}
+                        sx={{ minWidth: 'auto', px: 1 }}
+                      >
+                        {emp.name}
+                      </Button>
+                    ))}
+                  </Box>
+                  {!getValue('contract_to_settlement_admin_person') && (
+                    <Typography variant="caption" color="error" sx={{ display: 'block', mt: 0.5 }}>
+                      必須項目です
+                    </Typography>
+                  )}
+                </Grid>
+              </Grid>
+            </Box>
+          )}
+
           <EditableField label="製本完了" field="binding_completed" type="date" />
 
           {/* 契約書、重説他の修正内容まとめ（全物件） */}
