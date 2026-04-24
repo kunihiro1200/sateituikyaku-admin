@@ -199,7 +199,9 @@ export default function BuyersPage() {
                   // 内覧アンケート未: viewing_survey_result が入力済み かつ viewing_survey_confirmed が空欄
                   const hasSurveyResult = b.viewing_survey_result && String(b.viewing_survey_result).trim();
                   const isSurveyConfirmed = b.viewing_survey_confirmed && String(b.viewing_survey_confirmed).trim();
-                  return !!(hasSurveyResult && !isSurveyConfirmed);
+                  const matched = !!(hasSurveyResult && !isSurveyConfirmed);
+                  if (matched) console.log(`[viewingSurveyUnchecked] ✅ ${b.buyer_number}: result="${b.viewing_survey_result}", confirmed="${b.viewing_survey_confirmed}"`);
+                  return matched;
                 } else {
                   // サイドバーのカテゴリキーを日本語の表示名に変換
                   const displayName = categoryKeyToDisplayName[selectedCalculatedStatus] || selectedCalculatedStatus;
@@ -382,6 +384,14 @@ export default function BuyersPage() {
                   buyersResult.buyers.slice(0, 3).forEach(b => {
                     console.log(`  - ${b.buyer_number}: calculated_status="${b.calculated_status}", follow_up_assignee="${b.follow_up_assignee}", next_call_date="${b.next_call_date}"`);
                   });
+                  // viewing_survey フィールド確認
+                  const surveyBuyers = buyersResult.buyers.filter((b: any) => b.viewing_survey_result);
+                  console.log(`[BuyersPage] viewing_survey_result 入力済み件数: ${surveyBuyers.length}`);
+                  if (surveyBuyers.length > 0) {
+                    surveyBuyers.slice(0, 3).forEach((b: any) => {
+                      console.log(`  - ${b.buyer_number}: result="${b.viewing_survey_result}", confirmed="${b.viewing_survey_confirmed}"`);
+                    });
+                  }
                   
                   // キャッシュデータを構築
                   const cacheData = {
