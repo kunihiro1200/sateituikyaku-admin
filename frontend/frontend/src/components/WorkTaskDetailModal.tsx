@@ -1787,7 +1787,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
     const siteDueDateLabel = `サイト登録納期予定日${isSiteDueDateRequired ? '*（必須）' : '*'}`;
 
     return (
-    <Box sx={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 0, flex: 1, minHeight: 0, overflow: isMobile ? 'auto' : 'hidden' }}>
+    <Box sx={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 0, flex: isMobile ? 'none' : 1, minHeight: 0, overflow: isMobile ? 'visible' : 'hidden' }}>
       {/* 左側：登録関係 */}
       <Box ref={leftPaneRef} sx={{ flex: 1, p: 2, borderRight: isMobile ? 'none' : '2px solid', borderBottom: isMobile ? '2px solid' : 'none', borderColor: 'divider', overflowY: isMobile ? 'visible' : 'auto', minHeight: 0 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
@@ -2248,7 +2248,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
 
   // 契約決済セクション（関数呼び出し形式で再マウントを防ぐ）
   const renderContractSettlementSection = () => (
-    <Box sx={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 0, flex: 1, minHeight: 0, overflow: isMobile ? 'auto' : 'hidden' }}>
+    <Box sx={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 0, flex: isMobile ? 'none' : 1, minHeight: 0, overflow: isMobile ? 'visible' : 'hidden' }}>
       {/* 左ペイン: 契約書・重説作成 */}
       <Box ref={contractLeftPaneRef} sx={{ flex: 1, p: 2, borderRight: isMobile ? 'none' : '2px solid', borderBottom: isMobile ? '2px solid' : 'none', borderColor: 'divider', overflowY: isMobile ? 'visible' : 'auto', minHeight: 0 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
@@ -3271,7 +3271,11 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
           ) : (
             <>
               {tabIndex === 0 && renderMediationSection()}
-              {tabIndex === 1 && <SiteRegistrationSection cwCounts={cwCounts} leftPaneRef={leftPaneRef} rightPaneRef={rightPaneRef} />}
+              {tabIndex === 1 && (
+                isMobile
+                  ? <Box sx={{ display: 'flex', flexDirection: 'column' }}><SiteRegistrationSection cwCounts={cwCounts} leftPaneRef={leftPaneRef} rightPaneRef={rightPaneRef} /></Box>
+                  : <SiteRegistrationSection cwCounts={cwCounts} leftPaneRef={leftPaneRef} rightPaneRef={rightPaneRef} />
+              )}
               {tabIndex === 2 && renderContractSettlementSection()}
               {tabIndex === 3 && <Box sx={{ flex: 1, display: 'flex', minHeight: 0, height: '100%', width: '100%', overflow: 'hidden' }}>{renderSellerBuyerDetailSection()}</Box>}
             </>
