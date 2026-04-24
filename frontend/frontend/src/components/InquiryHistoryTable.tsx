@@ -153,32 +153,34 @@ const InquiryHistoryTable: React.FC<InquiryHistoryTableProps> = ({
           </TableRow>
         </TableHead>
         <TableBody>
-          {sortedHistory.map((item) => {
-            const isSelected = selectedPropertyIds.has(item.propertyNumber);
+          {sortedHistory.map((item, index) => {
+            const rowKey = item.propertyNumber || `no-property-${item.buyerNumber}-${index}`;
+            const isSelected = item.propertyNumber ? selectedPropertyIds.has(item.propertyNumber) : false;
             
             return (
               <TableRow
-                key={item.propertyNumber}
+                key={rowKey}
                 hover
                 sx={getRowStyle(item, isSelected)}
-                onClick={() => handleSelectOne(item.propertyNumber)}
+                onClick={() => item.propertyNumber && handleSelectOne(item.propertyNumber)}
               >
                 <TableCell padding="checkbox">
                   <Checkbox
                     checked={isSelected}
-                    onChange={() => handleSelectOne(item.propertyNumber)}
+                    disabled={!item.propertyNumber}
+                    onChange={() => item.propertyNumber && handleSelectOne(item.propertyNumber)}
                     onClick={(e) => e.stopPropagation()}
                     inputProps={{ 'aria-label': `物件 ${item.propertyNumber} を選択` }}
                   />
                 </TableCell>
                 <TableCell>
                   <Typography variant="body2" fontWeight="medium">
-                    {item.propertyNumber}
+                    {item.propertyNumber || '—'}
                   </Typography>
                 </TableCell>
                 <TableCell>
                   <Typography variant="body2" noWrap sx={{ maxWidth: 300 }}>
-                    {item.propertyAddress}
+                    {item.propertyAddress || '—'}
                   </Typography>
                 </TableCell>
                 <TableCell>
