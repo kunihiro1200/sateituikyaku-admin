@@ -44,6 +44,8 @@ export default function SharedItemsPage() {
   const [rowsPerPage, setRowsPerPage] = useState(50);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedLocation, setSelectedLocation] = useState<string | null>(null);
+  // 未確認フィルター用スタッフ名（null = 未確認フィルターなし）
+  const [selectedUnconfirmedStaff, setSelectedUnconfirmedStaff] = useState<string | null>(null);
 
   useEffect(() => {
     fetchAllSharedItems();
@@ -85,8 +87,19 @@ export default function SharedItemsPage() {
   const filteredItems = useMemo(() => {
     let items = allSharedItems;
 
-    // 共有場フィルター
-    if (selectedLocation) {
+    // 未確認スタッフフィルター
+    if (selectedUnconfirmedStaff) {
+      items = items.filter(
+        (item) =>
+          item.staff_not_shared &&
+          !item.confirmation_date &&
+          String(item.staff_not_shared)
+            .split(/[,、，]/)
+            .map((s) => s.trim())
+            .includes(selectedUnconfirmedStaff)
+      );
+    } else if (selectedLocation) {
+      // 共有場フィルター
       items = items.filter(item => (item.sharing_location || '') === selectedLocation);
     }
 
@@ -108,7 +121,7 @@ export default function SharedItemsPage() {
       if (!dateB) return -1;
       return new Date(dateB).getTime() - new Date(dateA).getTime();
     });
-  }, [allSharedItems, searchQuery, selectedLocation]);
+  }, [allSharedItems, searchQuery, selectedLocation, selectedUnconfirmedStaff]);
 
   // サイドバー用カテゴリー集計（出現順を維持）
   const locationCategories = useMemo(() => {
@@ -120,6 +133,27 @@ export default function SharedItemsPage() {
       }
     }
     return Array.from(seen.entries()).map(([label, count]) => ({ label, count }));
+  }, [allSharedItems]);
+
+  // 「●●＿未確認」カテゴリー集計
+  // staff_not_shared に値があり confirmation_date が空のアイテムをスタッフ名ごとに集計
+  const unconfirmedCategories = useMemo(() => {
+    const staffMap = new Map<string, number>();
+    for (const item of allSharedItems) {
+      if (item.staff_not_shared && !item.confirmation_date) {
+        // カンマ区切りで複数スタッフが入っている場合に対応
+        const staffNames = String(item.staff_not_shared)
+          .split(/[,、，]/)
+          .map((s) => s.trim())
+          .filter(Boolean);
+        for (const name of staffNames) {
+          staffMap.set(name, (staffMap.get(name) || 0) + 1);
+        }
+      }
+    }
+    return Array.from(staffMap.entries())
+      .sort((a, b) => a[0].localeCompare(b[0], 'ja'))
+      .map(([name, count]) => ({ label: `${name}＿未確認`, staffName: name, count }));
   }, [allSharedItems]);
 
   // ページネーション用
@@ -184,8 +218,8 @@ export default function SharedItemsPage() {
           </Box>
           {/* All */}
           <ListItemButton
-            selected={!selectedLocation}
-            onClick={() => { setSelectedLocation(null); setPage(0); }}
+            selected={!selectedLocation && !selectedUnconfirmedStaff}
+            onClick={() => { setSelectedLocation(null); setSelectedUnconfirmedStaff(null); setPage(0); }}
             sx={{ py: 1 }}
           >
             <ListItemText
@@ -202,12 +236,58 @@ export default function SharedItemsPage() {
               max={9999}
             />
           </ListItemButton>
+          {/* 未確認カテゴリー */}
+          {unconfirmedCategories.length > 0 && (
+            <>
+              <Box sx={{ px: 2, pt: 1.5, pb: 0.5 }}>
+                <Typography variant="caption" color="text.secondary" fontWeight="bold">
+                  未確認
+                </Typography>
+              </Box>
+              {unconfirmedCategories.map(({ label, staffName, count }) => (
+                <ListItemButton
+                  key={label}
+                  selected={selectedUnconfirmedStaff === staffName}
+                  onClick={() => { setSelectedUnconfirmedStaff(staffName); setSelectedLocation(null); setPage(0); }}
+                  sx={{
+                    py: 1,
+                    borderLeft: '4px solid #f44336',
+                    '&.Mui-selected': {
+                      backgroundColor: '#f4433615',
+                    },
+                    '&:hover': {
+                      backgroundColor: '#f4433610',
+                    },
+                  }}
+                >
+                  <ListItemText
+                    primary={label}
+                    primaryTypographyProps={{ variant: 'body2', color: '#d32f2f' }}
+                    sx={{ flex: 1, minWidth: 0, mr: 1 }}
+                  />
+                  <Badge
+                    badgeContent={count}
+                    sx={{
+                      ml: 1,
+                      '& .MuiBadge-badge': { backgroundColor: '#f44336', color: '#fff' }
+                    }}
+                    max={9999}
+                  />
+                </ListItemButton>
+              ))}
+              <Box sx={{ px: 2, pt: 1.5, pb: 0.5 }}>
+                <Typography variant="caption" color="text.secondary" fontWeight="bold">
+                  共有場
+                </Typography>
+              </Box>
+            </>
+          )}
           {/* 共有場カテゴリー */}
           {locationCategories.map(({ label, count }) => (
             <ListItemButton
               key={label}
-              selected={selectedLocation === label}
-              onClick={() => { setSelectedLocation(label); setPage(0); }}
+              selected={selectedLocation === label && !selectedUnconfirmedStaff}
+              onClick={() => { setSelectedLocation(label); setSelectedUnconfirmedStaff(null); setPage(0); }}
               sx={{
                 py: 1,
                 borderLeft: `4px solid ${sharedItemsColor.main}`,
