@@ -142,6 +142,10 @@ interface WorkTaskData {
   broker: string;
   broker_contact: string;
   athome_pre_visit_notice_hidden_confirmed: string;
+  manager_confirmation_done: string;
+  contract_to_settlement_admin_staff: string;
+  contract_to_settlement_admin_approver: string;
+  contract_to_settlement_admin_person: string;
   [key: string]: any;
 }
 
@@ -548,9 +552,11 @@ function checkMandatoryRevisionFields(
     if (getValue('contract_revision_exists') === 'あり' && isEmpty(getValue('contract_revision_content'))) {
       errorFields.push('契約書、重説他の修正内容');
     }
+    // 山本マネージャーに確認（済）が必須
+    if (isEmpty(getValue('manager_confirmation_done'))) {
+      errorFields.push('山本マネージャーに確認（済）');
+    }
   }
-
-  // 3. 媒介契約修正
   //    親フィールド: mediation_checker を今回変更した場合のみチェック
   if (editedData.hasOwnProperty('mediation_checker') && !isEmpty(getValue('mediation_checker'))) {
     if (isEmpty(getValue('mediation_revision'))) {
@@ -2519,6 +2525,61 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
                   </Grid>
                 </Grid>
               )}
+            </Box>
+          )}
+
+          {/* 山本マネージャーに確認: 売買契約確認=確認OKの場合のみ表示・必須 */}
+          {getValue('sales_contract_confirmed') === '確認OK' && (
+            <Box sx={{ bgcolor: '#fce4ec', borderRadius: 1, p: 1.5, mb: 1 }}>
+              <Grid container spacing={2} alignItems="center">
+                <Grid item xs={4}>
+                  <Typography variant="body2" color="error" sx={{ fontWeight: 700 }}>
+                    山本マネージャーに確認*（必須）
+                  </Typography>
+                </Grid>
+                <Grid item xs={8}>
+                  {getValue('manager_confirmation_done') === '済' ? (
+                    <Typography variant="body2" sx={{ color: 'success.main', fontWeight: 700 }}>
+                      ✓ 済（送信完了）
+                    </Typography>
+                  ) : (
+                    <>
+                      <Button
+                        variant="contained"
+                        color="error"
+                        size="small"
+                        onClick={() => {
+                          // 保存前に必須チェック（manager_confirmation_done以外）
+                          const contractRevisionExists = getValue('contract_revision_exists');
+                          const contractRevisionContent = getValue('contract_revision_content');
+                          const bindingScheduledDate = getValue('binding_scheduled_date');
+                          if (!contractRevisionExists) {
+                            alert('先に「契約書、重説他　修正点」を選択してください。');
+                            return;
+                          }
+                          if (contractRevisionExists === 'あり' && !contractRevisionContent) {
+                            alert('先に「契約書、重説他の修正内容」を入力してください。');
+                            return;
+                          }
+                          if (!bindingScheduledDate) {
+                            alert('先に「製本予定日」を入力してください。');
+                            return;
+                          }
+                          // 「済」をセット（保存時にバックエンドがメール送信）
+                          handleFieldChange('manager_confirmation_done', '済');
+                        }}
+                      >
+                        済
+                      </Button>
+                      {!getValue('manager_confirmation_done') && (
+                        <Typography variant="caption" color="error" sx={{ display: 'block', mt: 0.5 }}>
+                          必須項目です（押すとメールが送信されます）
+                        </Typography>
+                      )}
+                    </>
+                  )}
+                </Grid>
+              </Grid>
             </Box>
           )}
 

@@ -189,6 +189,14 @@ export const EMAIL_RULES: EmailRule[] = [
     bodyTemplate: FLOOR_PLAN_STORED_BODY,
     isHtml: true,
   },
+  // ルール7: 山本マネージャーへの契約書確認完了メール
+  {
+    triggerField: 'manager_confirmation_done',
+    to: 'yuuko.yamamoto@ifoo-oita.com',
+    subjectTemplate: '{物件住所}/{担当名}の契約書関係の確認ありがとうございました！',
+    bodyTemplate: '__manager_confirmation_body__',
+    isHtml: false,
+  },
 ];
 
 // ============================================================
@@ -259,6 +267,29 @@ export class WorkTaskEmailNotificationService {
     const isLandType = propertyTypeValue.trim() === '土';
     const roadDimLine = (isLandType && roadDimValue.trim() !== '') ? roadDimValue : '';
     result = result.split('{道路寸法行}').join(roadDimLine);
+
+    // __manager_confirmation_body__ を動的に解決（山本マネージャー確認メール本文）
+    if (result.includes('__manager_confirmation_body__')) {
+      const address: string = data['property_address'] ?? '';
+      const assignee: string = data['sales_assignee'] ?? '';
+      const bindingRaw: string = data['binding_scheduled_date'] ?? '';
+      let bindingFormatted = bindingRaw;
+      if (bindingRaw && bindingRaw.includes('-')) {
+        try {
+          const d = new Date(bindingRaw);
+          if (!isNaN(d.getTime())) {
+            bindingFormatted = `${d.getFullYear()}年${String(d.getMonth() + 1).padStart(2, '0')}月${String(d.getDate()).padStart(2, '0')}日`;
+          }
+        } catch { /* ignore */ }
+      }
+      const revisionExists: string = data['contract_revision_exists'] ?? '';
+      const revisionContent: string = data['contract_revision_content'] ?? '';
+      let body = `${address}/${assignee}の契約書関係の確認ありがとうございました。製本予定は${bindingFormatted}となっております。`;
+      if (revisionExists === 'あり') {
+        body += `契約書等の修正は、${revisionExists}でした。内容は${revisionContent}です。`;
+      }
+      result = body;
+    }
 
     return result;
   }
