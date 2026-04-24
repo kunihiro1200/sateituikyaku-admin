@@ -142,7 +142,9 @@ export default function BuyersPage() {
         // サイドバーデータ読み込み済みの場合はフロント側でフィルタリング（APIコール不要）
         // キャッシュヒット時はsetLoading(true)をスキップして画面のちらつきを防ぐ
         // ただし、全件データ未取得時でもselectedCalculatedStatusが指定されている場合はAPIにフィルタパラメータを渡す
+        console.log(`[BuyersPage] fetchBuyers: sidebarLoaded=${sidebarLoadedRef.current}, allBuyersCount=${allBuyersWithStatusRef.current.length}, selectedStatus=${selectedCalculatedStatus}`);
         if (sidebarLoadedRef.current && allBuyersWithStatusRef.current.length > 0) {
+          console.log(`[BuyersPage] フロントフィルタパスに入った: selectedCalculatedStatus=${selectedCalculatedStatus}`);
           let filtered = selectedCalculatedStatus !== null
             ? allBuyersWithStatusRef.current.filter(b => {
                 // 担当者別カテゴリ（assigned:Y, todayCallAssigned:I など）の処理
