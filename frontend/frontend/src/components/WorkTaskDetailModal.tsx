@@ -141,6 +141,7 @@ interface WorkTaskData {
   judicial_scrivener_contact: string;
   broker: string;
   broker_contact: string;
+  athome_pre_visit_notice_hidden_confirmed: string;
   [key: string]: any;
 }
 
@@ -240,6 +241,54 @@ const RowAddWarningDialog = ({ open, onConfirm, onCancel }: { open: boolean; onC
   </Dialog>
 );
 
+
+// 地積測量図・字図 未格納警告ダイアログ
+const CadastralMapWarningDialog = ({ open, onCancel }: { open: boolean; onCancel: () => void }) => (
+  <Dialog open={open} onClose={onCancel} maxWidth="sm" fullWidth
+    PaperProps={{ sx: { border: '4px solid #d32f2f', borderRadius: 2, boxShadow: '0 0 40px rgba(211,47,47,0.6)' } }}
+  >
+    <DialogTitle sx={{ bgcolor: '#d32f2f', color: '#fff', display: 'flex', alignItems: 'center', gap: 1, py: 2 }}>
+      <WarningAmberIcon sx={{ fontSize: '2rem', color: '#ffeb3b' }} />
+      <Typography component="span" sx={{ fontWeight: 700, fontSize: '1.15rem' }}>
+        ⚠️ 地積測量図・字図が未格納です！
+      </Typography>
+    </DialogTitle>
+    <DialogContent sx={{ pt: 3, pb: 2, bgcolor: '#fff8f8' }}>
+      <Typography sx={{
+        fontWeight: 700,
+        fontSize: '1.3rem',
+        color: '#b71c1c',
+        textAlign: 'center',
+        lineHeight: 1.7,
+        mb: 2,
+      }}>
+        🚨 地積測量図、字図が格納されていません！
+        <br />
+        「未」のままです。
+      </Typography>
+      <Box sx={{
+        bgcolor: '#ffebee',
+        border: '2px solid #ef9a9a',
+        borderRadius: 2,
+        px: 3,
+        py: 2,
+      }}>
+        <Typography sx={{ fontWeight: 700, fontSize: '1.05rem', color: '#c62828', lineHeight: 1.8 }}>
+          格納後、スプシの「athome」シートの
+          <br />
+          「内覧前伝達事項の●●」を書き換えて、
+          <br />
+          物件シートの1行を差し替えてください。
+        </Typography>
+      </Box>
+    </DialogContent>
+    <DialogActions sx={{ bgcolor: '#fff8f8', pb: 2, px: 3 }}>
+      <Button onClick={onCancel} color="error" variant="contained" fullWidth sx={{ fontWeight: 700, fontSize: '1rem', py: 1 }}>
+        閉じる
+      </Button>
+    </DialogActions>
+  </Dialog>
+);
 
 // バリデーション警告ダイアログコンポーネント
 interface ValidationWarningDialogProps {
@@ -658,12 +707,13 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
     fieldLabel: string;
   }>({ open: false, fieldLabel: '' });
   const [rowAddWarningDialog, setRowAddWarningDialog] = useState<{ open: boolean }>({ open: false });
+  const [athomePreVisitCheckRequired, setAthomePreVisitCheckRequired] = useState<boolean>(false);
   const [mediationFormatWarningDialog, setMediationFormatWarningDialog] = useState<{ open: boolean }>({ open: false });
   const [validationWarningDialog, setValidationWarningDialog] = useState<{
     open: boolean;
     title: string;
     emptyFields: string[];
-    onConfirmAction: 'site' | 'floor' | 'mandatory' | null;
+    onConfirmAction: 'site' | 'floor' | 'mandatory' | 'cadastral' | null;
   }>({ open: false, title: '', emptyFields: [], onConfirmAction: null });
 
   // ログインユーザーの営業フラグを取得
@@ -770,6 +820,19 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
       return;
     }
 
+    // 物件一覧に行追加「追加済」かつ地積測量図・字図が「未」の場合、athome確認チェックを必須化
+    if (rowAdded === '追加済') {
+      const cadastralField = getValue('cadastral_map_field');
+      const cadastralUrl = getValue('cadastral_map_url');
+      if (cadastralField === '未' || cadastralUrl === '未') {
+        const confirmed = getValue('athome_pre_visit_notice_hidden_confirmed');
+        if (confirmed !== 'はい') {
+          setAthomePreVisitCheckRequired(true);
+          return;
+        }
+      }
+    }
+
     // 媒介契約フォーマット警告チェック
     if (checkMediationFormatWarning(getValue)) {
       setMediationFormatWarningDialog({ open: true });
@@ -786,6 +849,22 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
         onConfirmAction: 'mandatory',
       });
       return;
+    }
+
+    // 地積測量図・字図 未格納チェック
+    // site_registration_ok_sent に値が入っていて、かつ cadastral_map_field === '未' または cadastral_map_url === '未' の場合に警告
+    if (!isEmpty(getValue('site_registration_ok_sent'))) {
+      const cadastralField = getValue('cadastral_map_field');
+      const cadastralUrl = getValue('cadastral_map_url');
+      if (cadastralField === '未' || cadastralUrl === '未') {
+        setValidationWarningDialog({
+          open: true,
+          title: '地積測量図・字図が未格納です',
+          emptyFields: [],
+          onConfirmAction: 'cadastral',
+        });
+        return;
+      }
     }
 
     // 要件1チェック（サイト登録確認グループ）
@@ -818,6 +897,31 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
   const handleValidationWarningConfirm = async () => {
     const action = validationWarningDialog.onConfirmAction;
     setValidationWarningDialog(prev => ({ ...prev, open: false }));
+
+    if (action === 'cadastral') {
+      // 地積測量図警告をスキップして要件1チェックへ
+      const getValueLocal = (field: string) => editedData[field] !== undefined ? editedData[field] : data?.[field];
+      const siteResult2 = checkSiteRegistrationWarning(getValueLocal);
+      if (siteResult2.hasWarning) {
+        setValidationWarningDialog({
+          open: true,
+          title: 'サイト登録確認関連フィールドに未入力項目があります',
+          emptyFields: siteResult2.emptyFields,
+          onConfirmAction: 'site',
+        });
+        return;
+      }
+      const floorResult2 = checkFloorPlanWarning(getValueLocal);
+      if (floorResult2.hasWarning) {
+        setValidationWarningDialog({
+          open: true,
+          title: '間取図関連フィールドに未入力項目があります',
+          emptyFields: floorResult2.emptyFields,
+          onConfirmAction: 'floor',
+        });
+        return;
+      }
+    }
 
     if (action === 'site') {
       // 要件1をスキップして要件2チェックへ
@@ -1893,6 +1997,47 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
             options={['追加済', '未']}
             labelColor={getValue('cw_request_email_site') ? 'error' : 'text.secondary'}
           />
+          {/* 地積測量図・字図が「未」かつ「追加済」の場合、athome確認を必須表示 */}
+          {getValue('property_list_row_added') === '追加済' &&
+            (getValue('cadastral_map_field') === '未' || getValue('cadastral_map_url') === '未') && (
+            <Box sx={{
+              mt: 1,
+              p: 1.5,
+              bgcolor: athomePreVisitCheckRequired && getValue('athome_pre_visit_notice_hidden_confirmed') !== 'はい'
+                ? '#ffebee'
+                : '#fff8e1',
+              border: athomePreVisitCheckRequired && getValue('athome_pre_visit_notice_hidden_confirmed') !== 'はい'
+                ? '2px solid #d32f2f'
+                : '1px solid #ffe082',
+              borderRadius: 1,
+            }}>
+              <Typography variant="caption" sx={{
+                fontWeight: 700,
+                color: athomePreVisitCheckRequired && getValue('athome_pre_visit_notice_hidden_confirmed') !== 'はい'
+                  ? '#d32f2f'
+                  : '#e65100',
+                display: 'block',
+                mb: 0.5,
+              }}>
+                ⚠️ スプシathomeの内覧前伝達事項●●の表示を消しましたか？（必須）
+              </Typography>
+              <Box sx={{ display: 'flex', gap: 1 }}>
+                <Button
+                  size="small"
+                  variant={getValue('athome_pre_visit_notice_hidden_confirmed') === 'はい' ? 'contained' : 'outlined'}
+                  color={getValue('athome_pre_visit_notice_hidden_confirmed') === 'はい' ? 'success' : 'warning'}
+                  onClick={(e) => {
+                    (e.currentTarget as HTMLButtonElement).blur();
+                    handleFieldChange('athome_pre_visit_notice_hidden_confirmed', 'はい');
+                    setAthomePreVisitCheckRequired(false);
+                  }}
+                  sx={{ fontWeight: 700 }}
+                >
+                  はい
+                </Button>
+              </Box>
+            </Box>
+          )}
         </Box>
       </Box>
 
@@ -3375,8 +3520,13 @@ ${pageUrl}`;
         onConfirm={() => { setRowAddWarningDialog({ open: false }); executeSave(); }}
         onCancel={() => setRowAddWarningDialog({ open: false })}
       />
+      <CadastralMapWarningDialog
+        open={validationWarningDialog.open && validationWarningDialog.onConfirmAction === 'cadastral'}
+        onConfirm={handleValidationWarningConfirm}
+        onCancel={handleValidationWarningCancel}
+      />
       <ValidationWarningDialog
-        open={validationWarningDialog.open}
+        open={validationWarningDialog.open && validationWarningDialog.onConfirmAction !== 'cadastral'}
         title={validationWarningDialog.title}
         emptyFields={validationWarningDialog.emptyFields}
         onConfirm={handleValidationWarningConfirm}
