@@ -1,10 +1,12 @@
 import { Router, Request, Response } from 'express';
 import { SharedItemsService } from '../services/SharedItemsService';
+import { EmailService } from '../services/EmailService';
 import multer from 'multer';
 import { createClient } from '@supabase/supabase-js';
 
 const router = Router();
 const sharedItemsService = new SharedItemsService();
+const emailService = new EmailService();
 
 // multer のメモリストレージ設定（ファイルをバッファとして保持）
 const storage = multer.memoryStorage();
@@ -170,11 +172,78 @@ router.post('/upload', upload.single('file'), async (req: Request, res: Response
 
 /**
  * PUT /api/shared-items/:id - 更新
+ * 「共有できていないスタッフ」に新たに追加されたスタッフがいて、かつ「確認日」が空欄の場合、
+ * そのスタッフのメールアドレスに朝礼共有事項の通知メールを送信する
  */
 router.put('/:id', async (req: Request, res: Response) => {
   try {
     await ensureInitialized();
-    const item = await sharedItemsService.update(req.params.id, req.body);
+
+    const itemId = req.params.id;
+    const updates = req.body;
+
+    // 更新前の現在データを取得して「共有できていないスタッフ」の変化を検知
+    const newStaffNotShared: string = updates['共有できていない'] || updates['staff_not_shared'] || '';
+    const newConfirmationDate: string = updates['確認日'] || updates['confirmation_date'] || '';
+
+    // 確認日が空欄の場合のみメール送信を検討
+    if (!newConfirmationDate) {
+      try {
+        // 現在のデータを取得して以前の「共有できていないスタッフ」を確認
+        const allItems = await sharedItemsService.getAll();
+        const currentItem = allItems.find((i) => i.id === itemId);
+        const previousStaffNotShared: string = currentItem?.['共有できていない'] || currentItem?.staff_not_shared || '';
+
+        const previousNames = previousStaffNotShared
+          ? previousStaffNotShared.split(',').map((s: string) => s.trim()).filter(Boolean)
+          : [];
+        const newNames = newStaffNotShared
+          ? newStaffNotShared.split(',').map((s: string) => s.trim()).filter(Boolean)
+          : [];
+
+        // 新たに追加されたスタッフ名を特定（以前は入っていなかった名前）
+        const addedStaffNames = newNames.filter((name) => !previousNames.includes(name));
+
+        if (addedStaffNames.length > 0) {
+          // Supabaseからスタッフのメールアドレスを取得
+          const supabase = createClient(
+            process.env.SUPABASE_URL!,
+            process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY!
+          );
+
+          const { data: employees } = await supabase
+            .from('employees')
+            .select('name, email')
+            .in('name', addedStaffNames)
+            .eq('is_active', true);
+
+          const emailAddresses = (employees || [])
+            .map((e: { name: string; email: string }) => e.email)
+            .filter((email: string) => email && email.includes('@'));
+
+          if (emailAddresses.length > 0) {
+            // フロントエンドの詳細画面URL
+            const frontendBaseUrl = process.env.NODE_ENV === 'production'
+              ? 'https://sateituikyaku-admin-frontend.vercel.app'
+              : (process.env.FRONTEND_URL?.split(',')[0] || 'http://localhost:5173');
+            const detailUrl = `${frontendBaseUrl}/shared-items/${itemId}`;
+
+            await emailService.sendEmail({
+              to: emailAddresses,
+              subject: '朝礼での共有事項があります。ご確認お願い致します。',
+              body: `本日の朝礼で下記の共有事項がありましたので、確認お願いします。\n\n${detailUrl}`,
+            });
+
+            console.log(`[sharedItems] 朝礼共有通知メール送信: ${emailAddresses.join(', ')} (スタッフ: ${addedStaffNames.join(', ')})`);
+          }
+        }
+      } catch (emailError: any) {
+        // メール送信失敗は保存処理を止めない
+        console.error('[sharedItems] メール送信エラー（保存は続行）:', emailError.message);
+      }
+    }
+
+    const item = await sharedItemsService.update(itemId, updates);
     res.json({ data: item });
   } catch (error: any) {
     console.error('Failed to update shared item:', error);
