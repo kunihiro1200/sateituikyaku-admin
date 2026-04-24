@@ -25,6 +25,8 @@ import {
   Select,
   MenuItem,
   Paper,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material';
 import { Close as CloseIcon, Save as SaveIcon, ContentCopy as ContentCopyIcon, Check as CheckIcon, WarningAmber as WarningAmberIcon, Email as EmailIcon, Image as ImageIcon } from '@mui/icons-material';
 import api from '../services/api';
@@ -639,6 +641,8 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
   const navigate = useNavigate();
   const normalInitials = useNormalInitials();
   const cwCounts = useCwCounts();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [loading, setLoading] = useState(false);
   const [isSales, setIsSales] = useState(false);
   const { employee } = useAuthStore();
@@ -1783,9 +1787,9 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
     const siteDueDateLabel = `サイト登録納期予定日${isSiteDueDateRequired ? '*（必須）' : '*'}`;
 
     return (
-    <Box sx={{ display: 'flex', gap: 0, flex: 1, minHeight: 0, overflow: 'hidden' }}>
+    <Box sx={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 0, flex: 1, minHeight: 0, overflow: isMobile ? 'auto' : 'hidden' }}>
       {/* 左側：登録関係 */}
-      <Box ref={leftPaneRef} sx={{ flex: 1, p: 2, borderRight: '2px solid', borderColor: 'divider', overflowY: 'auto', minHeight: 0 }}>
+      <Box ref={leftPaneRef} sx={{ flex: 1, p: 2, borderRight: isMobile ? 'none' : '2px solid', borderBottom: isMobile ? '2px solid' : 'none', borderColor: 'divider', overflowY: isMobile ? 'visible' : 'auto', minHeight: 0 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
           <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#1565c0' }}>【登録関係】</Typography>
           <Button
@@ -1893,7 +1897,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
       </Box>
 
       {/* 右側：確認関係 */}
-      <Box ref={rightPaneRef} sx={{ flex: 1, p: 2, overflowY: 'auto', minHeight: 0 }}>
+      <Box ref={rightPaneRef} sx={{ flex: 1, p: 2, overflowY: isMobile ? 'visible' : 'auto', minHeight: 0 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
           <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#2e7d32' }}>【確認関係】</Typography>
           <Button
@@ -2244,9 +2248,9 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
 
   // 契約決済セクション（関数呼び出し形式で再マウントを防ぐ）
   const renderContractSettlementSection = () => (
-    <Box sx={{ display: 'flex', gap: 0, flex: 1, minHeight: 0, overflow: 'hidden' }}>
+    <Box sx={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 0, flex: 1, minHeight: 0, overflow: isMobile ? 'auto' : 'hidden' }}>
       {/* 左ペイン: 契約書・重説作成 */}
-      <Box ref={contractLeftPaneRef} sx={{ flex: 1, p: 2, borderRight: '2px solid', borderColor: 'divider', overflowY: 'auto', minHeight: 0 }}>
+      <Box ref={contractLeftPaneRef} sx={{ flex: 1, p: 2, borderRight: isMobile ? 'none' : '2px solid', borderBottom: isMobile ? '2px solid' : 'none', borderColor: 'divider', overflowY: isMobile ? 'visible' : 'auto', minHeight: 0 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
           <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#1565c0' }}>【契約書、重説作成】</Typography>
           <Button
@@ -2455,7 +2459,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
       </Box>
 
       {/* 右ペイン: 決済詳細 */}
-      <Box ref={contractRightPaneRef} sx={{ flex: 1, p: 2, overflowY: 'auto', minHeight: 0 }}>
+      <Box ref={contractRightPaneRef} sx={{ flex: 1, p: 2, overflowY: isMobile ? 'visible' : 'auto', minHeight: 0 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
           <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#2e7d32' }}>【決済詳細】</Typography>
           <Button
@@ -3144,31 +3148,57 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
           </Box>
         </DialogTitle>
         <Box sx={{ borderBottom: 1, borderColor: 'divider', px: 2 }}>
-          <Tabs
-            value={tabIndex}
-            onChange={handleTabChange}
-            variant="scrollable"
-            scrollButtons="auto"
-            sx={{
-              '& .MuiTab-root': { minWidth: 120, px: 2, fontWeight: 600, borderRadius: '4px 4px 0 0', mr: 0.5, color: 'rgba(255,255,255,0.6)', opacity: 1 },
-              '& .MuiTab-root:nth-of-type(1)': { bgcolor: '#2e7d32' },
-              '& .MuiTab-root:nth-of-type(2)': { bgcolor: '#1565c0' },
-              '& .MuiTab-root:nth-of-type(3)': { bgcolor: '#e65100' },
-              '& .MuiTab-root:nth-of-type(4)': { bgcolor: '#6a1b9a' },
-              '& .Mui-selected': {
-                color: '#fff !important',
-                fontWeight: 800,
-                fontSize: '1rem',
-                boxShadow: 'inset 0 -4px 0 rgba(255,255,255,0.8)',
-                filter: 'brightness(1.25)',
-              },
-              '& .MuiTabs-indicator': { display: 'none' },
-            }}
-          >
-            {tabLabels.map((label, index) => (<Tab key={index} label={label} />))}
-          </Tabs>
+          {isMobile ? (
+            /* スマホ: プルダウン選択 */
+            <FormControl fullWidth size="small" sx={{ my: 1 }}>
+              <Select
+                value={tabIndex}
+                onChange={(e) => setTabIndex(Number(e.target.value))}
+                sx={{
+                  fontWeight: 700,
+                  bgcolor: [
+                    '#2e7d32', '#1565c0', '#e65100', '#6a1b9a'
+                  ][tabIndex],
+                  color: '#fff',
+                  '& .MuiSelect-icon': { color: '#fff' },
+                  '& .MuiOutlinedInput-notchedOutline': { borderColor: 'transparent' },
+                  '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'transparent' },
+                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: 'transparent' },
+                }}
+              >
+                {tabLabels.map((label, index) => (
+                  <MenuItem key={index} value={index} sx={{ fontWeight: 600 }}>{label}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          ) : (
+            /* PC: 従来のタブ */
+            <Tabs
+              value={tabIndex}
+              onChange={handleTabChange}
+              variant="scrollable"
+              scrollButtons="auto"
+              sx={{
+                '& .MuiTab-root': { minWidth: 120, px: 2, fontWeight: 600, borderRadius: '4px 4px 0 0', mr: 0.5, color: 'rgba(255,255,255,0.6)', opacity: 1 },
+                '& .MuiTab-root:nth-of-type(1)': { bgcolor: '#2e7d32' },
+                '& .MuiTab-root:nth-of-type(2)': { bgcolor: '#1565c0' },
+                '& .MuiTab-root:nth-of-type(3)': { bgcolor: '#e65100' },
+                '& .MuiTab-root:nth-of-type(4)': { bgcolor: '#6a1b9a' },
+                '& .Mui-selected': {
+                  color: '#fff !important',
+                  fontWeight: 800,
+                  fontSize: '1rem',
+                  boxShadow: 'inset 0 -4px 0 rgba(255,255,255,0.8)',
+                  filter: 'brightness(1.25)',
+                },
+                '& .MuiTabs-indicator': { display: 'none' },
+              }}
+            >
+              {tabLabels.map((label, index) => (<Tab key={index} label={label} />))}
+            </Tabs>
+          )}
         </Box>
-        <DialogContent sx={{ p: 0, flex: 1, overflow: tabIndex === 3 ? 'hidden' : 'auto', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+        <DialogContent sx={{ p: 0, flex: 1, overflow: (tabIndex === 3 && !isMobile) ? 'hidden' : 'auto', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
           {loading ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', flex: 1 }}>
               <CircularProgress />
