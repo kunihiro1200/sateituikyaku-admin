@@ -1345,7 +1345,7 @@ export class BuyerService {
     } else {
       const { data, error } = await this.supabase
         .from('buyers')
-        .select('id, buyer_number, property_number, reception_date, past_buyer_list, email, phone_number')
+        .select('buyer_number, property_number, reception_date, past_buyer_list, email, phone_number')
         .eq('buyer_number', buyerId)
         .is('deleted_at', null)
         .single();
