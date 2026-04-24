@@ -47,19 +47,31 @@ export class BusinessSiteDeadlineHourlyNotificationService {
    */
   parseDueDateAsJST(dateStr: string): Date | null {
     if (!dateStr || typeof dateStr !== 'string') return null;
-    // "YYYY-MM-DD HH:MM:SS" または "YYYY-MM-DDTHH:MM:SS" 形式（datetime）
+
+    // TIMESTAMPTZ形式（タイムゾーン付き）: "YYYY-MM-DDTHH:MM:SS+09:00" / "YYYY-MM-DDTHH:MM:SSZ" など
+    // → new Date() はタイムゾーン情報を正しく解釈するのでそのまま渡す
+    const hasTimezone = /^(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?)([+-]\d{2}:\d{2}|Z)$/.test(dateStr);
+    if (hasTimezone) {
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return null;
+      return d;
+    }
+
+    // "YYYY-MM-DD HH:MM:SS" または "YYYY-MM-DDTHH:MM:SS" 形式（タイムゾーンなし）→ JSTとして解釈
     const datetimeMatch = dateStr.match(/^(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2}(?::\d{2})?)$/);
     if (datetimeMatch) {
       const d = new Date(datetimeMatch[1] + 'T' + datetimeMatch[2] + '+09:00');
       if (isNaN(d.getTime())) return null;
       return d;
     }
+
     // "YYYY-MM-DD" 形式（date のみ）→ JST 00:00:00
     if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
       const d = new Date(dateStr + 'T00:00:00+09:00');
       if (isNaN(d.getTime())) return null;
       return d;
     }
+
     return null;
   }
 
