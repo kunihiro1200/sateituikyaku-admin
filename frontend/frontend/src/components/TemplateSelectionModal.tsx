@@ -98,7 +98,7 @@ export function filterTemplatesByConditions(
     const name = template.name;
 
     if (isBrokerInquiry) {
-      return name === '業者（内覧確定）' || name === '民泊問合せ' || name === '空';
+      return name === '業者（内覧確定）' || name === '民泊問い合わせ' || name === '空' || name === '内覧後御礼メール';
     }
 
     if (name === '業者（内覧確定）') return false;

@@ -338,6 +338,7 @@ export default function BuyerDetailPage() {
     price_range_any: '価格帯（いずれか）',
     owned_home_hearing_result: '持家ヒアリング結果',
     pinrich: 'Pinrich',
+    other_company_property: '他社物件',
   };
 
   // Pinrich が必須かどうかを判定するヘルパー
@@ -534,6 +535,14 @@ export default function BuyerDetailPage() {
       missingKeys.push('pinrich');
     }
 
+    // 他社物件：building_name_price（建物名/価格）に値がある場合は必須
+    // property_numberが未設定の場合のみ表示されるセクションなので、その条件も確認
+    if (!buyer.property_number &&
+        buyer.building_name_price && String(buyer.building_name_price).trim() &&
+        (!buyer.other_company_property || !String(buyer.other_company_property).trim())) {
+      missingKeys.push('other_company_property');
+    }
+
     // ハイライト用 state を更新
     setMissingRequiredFields(new Set(missingKeys));
 
@@ -543,6 +552,8 @@ export default function BuyerDetailPage() {
   // バリデーション警告ダイアログ用 state
   const [validationDialogOpen, setValidationDialogOpen] = useState(false);
   const [pendingNavigationUrl, setPendingNavigationUrl] = useState<string>('');
+  // 遷移ブロック（他社物件未入力など、移動を許可しないケース）
+  const [blockNavigation, setBlockNavigation] = useState(false);
 
   // 次電日必須ダイアログ用 state
   const [nextCallDateDialogOpen, setNextCallDateDialogOpen] = useState(false);
@@ -559,8 +570,11 @@ export default function BuyerDetailPage() {
     }
     const missing = checkMissingFields();
     if (missing.length > 0) {
+      // other_company_property が未入力の場合は遷移をブロック
+      const hasOtherCompanyPropertyMissing = missing.includes('他社物件');
       setPendingNavigationUrl(url);
       setPendingMissingLabels(missing);
+      setBlockNavigation(hasOtherCompanyPropertyMissing);
       setValidationDialogOpen(true);
     } else {
       navigate(url);
@@ -825,6 +839,22 @@ export default function BuyerDetailPage() {
   const handleSectionSave = async (sectionTitle: string) => {
     const changedFields = sectionChangedFields[sectionTitle] || {};
     if (Object.keys(changedFields).length === 0) return;
+
+    // 他社物件バリデーション：building_name_priceに値があればother_company_propertyは必須
+    const buildingNamePrice = 'building_name_price' in changedFields
+      ? changedFields.building_name_price
+      : buyer?.building_name_price;
+    const otherCompanyProperty = 'other_company_property' in changedFields
+      ? changedFields.other_company_property
+      : buyer?.other_company_property;
+    if (!buyer?.property_number &&
+        buildingNamePrice && String(buildingNamePrice).trim() &&
+        (!otherCompanyProperty || !String(otherCompanyProperty).trim())) {
+      setPendingMissingLabels(['他社物件']);
+      setBlockNavigation(true);
+      setValidationDialogOpen(true);
+      return; // 保存中断
+    }
 
     // 次電日必須バリデーション
     // 最終値 = 編集中の値があればそれを優先、なければ保存済みの値
@@ -1325,6 +1355,7 @@ export default function BuyerDetailPage() {
             buyerNumber={buyer_number || ''}
             preViewingNotes={linkedProperties[0]?.pre_viewing_notes || ''}
             followUpAssignee={buyer.follow_up_assignee || ''}
+            otherCompanyProperty={buyer.other_company_property || ''}
             inquiryHistory={inquiryHistoryTable}
             selectedPropertyIds={selectedPropertyIds}
             linkedPropertyType={linkedProperties[0]?.property_type}
@@ -2026,7 +2057,12 @@ TEL：097-533-2022`;
                       enableConflictDetection={false}
                       showEditIndicator={true}
                       alwaysShowBorder={true}
-                      helperText="こちらは詳細な住所のみにしてください。お客様に物件情報として表示されます。他社名や価格は「建物名/価格」欄に書いてください。"
+                      highlighted={missingRequiredFields.has('other_company_property')}
+                      helperText={
+                        missingRequiredFields.has('other_company_property')
+                          ? '「建物名/価格」に値がある場合、他社物件（住所）は必須です'
+                          : 'こちらは詳細な住所のみにしてください。お客様に物件情報として表示されます。他社名や価格は「建物名/価格」欄に書いてください。'
+                      }
                     />
                   </Grid>
 
@@ -3501,13 +3537,19 @@ TEL：097-533-2022`;
       <ValidationWarningDialog
         open={validationDialogOpen}
         missingFieldLabels={pendingMissingLabels}
+        blockNavigation={blockNavigation}
         onProceed={() => {
           setValidationDialogOpen(false);
+          setBlockNavigation(false);
           navigate(pendingNavigationUrl);
         }}
-        onStay={() => setValidationDialogOpen(false)}
+        onStay={() => {
+          setValidationDialogOpen(false);
+          setBlockNavigation(false);
+        }}
         onGoToDesiredConditions={() => {
           setValidationDialogOpen(false);
+          setBlockNavigation(false);
           navigate(`/buyers/${buyer_number}/desired-conditions`);
         }}
       />

@@ -16,6 +16,7 @@ interface BuyerGmailSendButtonProps {
   buyerNumber?: string;
   preViewingNotes?: string;
   followUpAssignee?: string; // 後続担当（署名の担当者情報取得に使用）
+  otherCompanyProperty?: string; // 他社物件（物件番号なしの場合に住居表示の代わりに使用）
   inquiryHistory: InquiryHistoryItem[];
   selectedPropertyIds: Set<string>; // チェックボックスで選択された物件ID
   linkedPropertyType?: string; // 紐づき物件の種別（テンプレートフィルタリング用）
@@ -41,6 +42,7 @@ export default function BuyerGmailSendButton({
   buyerNumber,
   preViewingNotes,
   followUpAssignee,
+  otherCompanyProperty,
   inquiryHistory,
   selectedPropertyIds,
   linkedPropertyType,
@@ -75,13 +77,7 @@ export default function BuyerGmailSendButton({
   const isDisabled = loading;
 
   const handleClick = () => {
-    // 選択物件がない場合はエラーメッセージを表示
-    if (selectedCount === 0) {
-      setErrorMessage('物件を選択してください');
-      return;
-    }
-
-    // PropertySelectionModalをスキップして直接テンプレート選択へ
+    // 物件未選択でもテンプレート選択に進む（物件なしの場合は他社物件フィールドを使用）
     setTemplateModalOpen(true);
   };
 
@@ -114,6 +110,7 @@ export default function BuyerGmailSendButton({
           follow_up_assignee: followUpAssignee || '',
           latest_viewing_date: latestViewingDate || '',
           viewing_time: viewingTime || '',
+          other_company_property: otherCompanyProperty || '',
         },
         propertyIds,
         templateSubject: template.subject,

@@ -348,8 +348,8 @@ export class EmailTemplateService {
     result = result.replace(/<<メールアドレス>>/g, buyer.email || '');
 
     if (properties.length === 0) {
-      // 物件なしの場合、物件関連プレースホルダーを空文字に置換
-      result = result.replace(/<<住居表示>>/g, '');
+      // 物件なしの場合、<<住居表示>> は other_company_property（他社物件）で代替
+      result = result.replace(/<<住居表示>>/g, buyer.other_company_property || '');
       result = result.replace(/<<住居表示Pinrich>>/g, '');
       result = result.replace(/<<GoogleMap>>/g, '');
       result = result.replace(/<<athome URL>>/g, '');
