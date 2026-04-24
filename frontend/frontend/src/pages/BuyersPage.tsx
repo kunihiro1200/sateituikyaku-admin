@@ -489,7 +489,7 @@ export default function BuyersPage() {
 
     fetchBuyers();
     return () => { cancelled = true; };
-  }, [page, rowsPerPage, debouncedSearch, selectedCalculatedStatus, refetchTrigger, viewingMonth, assigneeParam]);
+  }, [page, rowsPerPage, debouncedSearch, selectedCalculatedStatus, refetchTrigger, viewingMonth, assigneeParam, dataReady]);
 
   // キャッシュヒット時: サイドバーカテゴリを初期化（useEffect で一度だけ実行）
   // ※ cachedData がある場合は state 初期値で設定済みなので追加処理不要

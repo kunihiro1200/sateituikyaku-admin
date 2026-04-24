@@ -249,6 +249,8 @@ const BUYER_FIELD_SECTIONS: BuyerFieldSection[] = [
     title: '問合せ内容',
     fields: [
       { key: 'vendor_survey', label: '業者向けアンケート', inlineEditable: true, fieldType: 'buttonSelect' },
+      { key: 'viewing_survey_result', label: '内覧アンケート内容', multiline: true, inlineEditable: false, readOnly: true },
+      { key: 'viewing_survey_confirmed', label: '内覧アンケート確認', inlineEditable: true, fieldType: 'viewingSurveyConfirmed' },
       { key: 'inquiry_hearing', label: '問合時ヒアリング', multiline: true, inlineEditable: true },
       { key: 'initial_assignee', label: '初動担当', inlineEditable: true },
       { key: 'reception_date', label: '受付日', type: 'date', inlineEditable: true },
@@ -267,8 +269,6 @@ const BUYER_FIELD_SECTIONS: BuyerFieldSection[] = [
       { key: 'owned_home_hearing_inquiry', label: '問合時持家ヒアリング', inlineEditable: true, fieldType: 'staffSelect' },
       { key: 'owned_home_hearing_result', label: '持家ヒアリング結果', inlineEditable: true, fieldType: 'homeHearingResult' },
       { key: 'valuation_required', label: '要査定', inlineEditable: true, fieldType: 'valuationRequired' },
-      { key: 'viewing_survey_result', label: '内覧アンケート内容', multiline: true, inlineEditable: false, readOnly: true },
-      { key: 'viewing_survey_confirmed', label: '内覧アンケート確認', inlineEditable: true, fieldType: 'viewingSurveyConfirmed' },
     ],
   },
   {
@@ -2137,6 +2137,72 @@ TEL：097-533-2022`;
                   // isMobile 時は全フィールドを xs=12 の1カラムに
                   const gridSize = isMobile ? { xs: 12 } : (field.multiline ? { xs: 12 } : field.key === 'company_name' ? { xs: 6 } : { xs: 12, sm: 6 });
 
+                  // viewing_survey_result フィールドは読み取り専用テキスト表示（inlineEditable: false のため先に処理）
+                  if (field.key === 'viewing_survey_result') {
+                    const surveyResult = buyer?.viewing_survey_result;
+                    if (!surveyResult) return null;
+                    return (
+                      <Grid item xs={12} key={`${section.title}-${field.key}`}>
+                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                          <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 'bold' }}>
+                            {field.label}
+                          </Typography>
+                          <Box sx={{
+                            p: 1.5,
+                            bgcolor: '#fff8e1',
+                            border: '1px solid #ffe082',
+                            borderRadius: 1,
+                            whiteSpace: 'pre-wrap',
+                          }}>
+                            <Typography variant="body2">{surveyResult}</Typography>
+                          </Box>
+                        </Box>
+                      </Grid>
+                    );
+                  }
+
+                  // viewing_survey_confirmed フィールドは「↑確認済み」ボタン（inlineEditable: false のため先に処理）
+                  if (field.key === 'viewing_survey_confirmed') {
+                    const surveyResult = buyer?.viewing_survey_result;
+                    if (!surveyResult) return null;
+                    const isConfirmed = !!buyer?.viewing_survey_confirmed;
+                    return (
+                      <Grid item xs={12} key={`${section.title}-${field.key}`}>
+                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                          <Typography variant="caption" color="text.secondary">
+                            {field.label}
+                          </Typography>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Button
+                              size="small"
+                              variant={isConfirmed ? 'contained' : 'outlined'}
+                              color={isConfirmed ? 'success' : 'warning'}
+                              onClick={async () => {
+                                if (isConfirmed) return; // 確認済みは変更不可
+                                const confirmedValue = '↑確認済み';
+                                setBuyer((prev: any) => prev ? { ...prev, viewing_survey_confirmed: confirmedValue } : prev);
+                                try {
+                                  await handleInlineFieldSave('viewing_survey_confirmed', confirmedValue);
+                                } catch (e) {
+                                  setBuyer((prev: any) => prev ? { ...prev, viewing_survey_confirmed: null } : prev);
+                                }
+                              }}
+                              disabled={isConfirmed}
+                              sx={{ fontWeight: 'bold' }}
+                            >
+                              {isConfirmed ? '✓ 確認済み' : '↑確認済み'}
+                            </Button>
+                            {isConfirmed && (
+                              <Typography variant="caption" color="success.main">
+                                {buyer?.viewing_survey_confirmed}
+                              </Typography>
+                            )}
+                          </Box>
+                        </Box>
+                      </Grid>
+                    );
+                  }
+
                   // インライン編集可能なフィールド
                   if (field.inlineEditable) {
                     // inquiry_sourceフィールドは特別処理（ドロップダウン）
@@ -3217,72 +3283,6 @@ TEL：097-533-2022`;
                       setBuyer((prev: any) => prev ? { ...prev, [field.key]: normalizedValue } : prev);
                       handleInlineFieldSave(field.key, normalizedValue).catch(console.error);
                     };
-
-                    // viewing_survey_result フィールドは読み取り専用テキスト表示
-                    if (field.key === 'viewing_survey_result') {
-                      const surveyResult = buyer?.viewing_survey_result;
-                      if (!surveyResult) return null;
-                      return (
-                        <Grid item xs={12} key={`${section.title}-${field.key}`}>
-                          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                            <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 'bold' }}>
-                              {field.label}
-                            </Typography>
-                            <Box sx={{
-                              p: 1.5,
-                              bgcolor: '#fff8e1',
-                              border: '1px solid #ffe082',
-                              borderRadius: 1,
-                              whiteSpace: 'pre-wrap',
-                            }}>
-                              <Typography variant="body2">{surveyResult}</Typography>
-                            </Box>
-                          </Box>
-                        </Grid>
-                      );
-                    }
-
-                    // viewing_survey_confirmed フィールドは「↑確認済み」ボタン
-                    if (field.key === 'viewing_survey_confirmed') {
-                      const surveyResult = buyer?.viewing_survey_result;
-                      if (!surveyResult) return null;
-                      const isConfirmed = !!buyer?.viewing_survey_confirmed;
-                      return (
-                        <Grid item xs={12} key={`${section.title}-${field.key}`}>
-                          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                            <Typography variant="caption" color="text.secondary">
-                              {field.label}
-                            </Typography>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                              <Button
-                                size="small"
-                                variant={isConfirmed ? 'contained' : 'outlined'}
-                                color={isConfirmed ? 'success' : 'warning'}
-                                onClick={async () => {
-                                  if (isConfirmed) return; // 確認済みは変更不可
-                                  const confirmedValue = '↑確認済み';
-                                  setBuyer((prev: any) => prev ? { ...prev, viewing_survey_confirmed: confirmedValue } : prev);
-                                  try {
-                                    await handleInlineFieldSave('viewing_survey_confirmed', confirmedValue);
-                                  } catch (e) {
-                                    setBuyer((prev: any) => prev ? { ...prev, viewing_survey_confirmed: null } : prev);
-                                  }
-                                }}
-                                disabled={isConfirmed}
-                                sx={{ fontWeight: 'bold' }}
-                              >
-                                {isConfirmed ? '✓ 確認済み' : '↑確認済み'}
-                              </Button>
-                              {isConfirmed && (
-                                <Typography variant="caption" color="success.main">
-                                  {buyer?.viewing_survey_confirmed}
-                                </Typography>
-                              )}
-                            </Box>
-                          </Box>
-                        </Grid>
-                      );
-                    }
 
                     // inquiry_hearingフィールドはRichTextEditorで表示
                     if (field.key === 'inquiry_hearing') {
