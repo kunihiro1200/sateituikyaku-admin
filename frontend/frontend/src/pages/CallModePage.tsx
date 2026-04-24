@@ -733,6 +733,9 @@ const CallModePage = () => {
   const [savedComments, setSavedComments] = useState<string>(''); // 保存済みコメント（変更検知用）
   const [savingComments, setSavingComments] = useState(false);
 
+  // 不通確認ダイアログの状態
+  const [unreachableConfirmOpen, setUnreachableConfirmOpen] = useState(false);
+
   // ステータス更新用の状態
   const [editedStatus, setEditedStatus] = useState<string>('追客中');
   const [editedConfidence, setEditedConfidence] = useState<ConfidenceLevel | ''>('');
@@ -2291,6 +2294,16 @@ const CallModePage = () => {
 
   // コメント直接編集の保存処理
   const handleSaveComments = async () => {
+    // 不通フィールドが「不通」かつコメントに変更がある場合、確認ダイアログを表示
+    if (unreachableStatus === '不通' && editableComments !== savedComments) {
+      setUnreachableConfirmOpen(true);
+      return;
+    }
+    await doSaveComments();
+  };
+
+  // コメント保存の実処理（ダイアログ確認後も共通で使用）
+  const doSaveComments = async () => {
     try {
       setSavingComments(true);
       setError(null);
@@ -2302,6 +2315,33 @@ const CallModePage = () => {
 
       setSuccessMessage('コメントを保存しました');
       setSavedComments(editableComments); // 保存済み状態を更新
+      setTimeout(() => {
+        setSuccessMessage(null);
+      }, 3000);
+    } catch (err: any) {
+      console.error('コメント保存エラー:', err);
+      setError('コメントの保存に失敗しました');
+    } finally {
+      setSavingComments(false);
+    }
+  };
+
+  // 不通確認ダイアログ：「通電OK」として保存
+  const handleSaveCommentsAsTsudenOK = async () => {
+    setUnreachableConfirmOpen(false);
+    setUnreachableStatus('通電OK');
+    setSavedUnreachableStatus('通電OK');
+    try {
+      setSavingComments(true);
+      setError(null);
+
+      await api.put(`/api/sellers/${id}`, {
+        comments: editableComments,
+        unreachableStatus: '通電OK',
+      });
+
+      setSuccessMessage('コメントを保存しました（通電OKに変更）');
+      setSavedComments(editableComments);
       setTimeout(() => {
         setSuccessMessage(null);
       }, 3000);
@@ -8347,6 +8387,32 @@ HP：https://ifoo-oita.com/
             variant="outlined"
           >
             このまま移動する
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 不通確認ダイアログ */}
+      <Dialog open={unreachableConfirmOpen} onClose={() => setUnreachableConfirmOpen(false)}>
+        <DialogTitle>⚠️ 不通になっています</DialogTitle>
+        <DialogContent>
+          <Typography>
+            「不通」になっていますが、「通電OK」ではないですか？？
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => { setUnreachableConfirmOpen(false); doSaveComments(); }}
+            color="inherit"
+            variant="outlined"
+          >
+            不通のまま
+          </Button>
+          <Button
+            onClick={handleSaveCommentsAsTsudenOK}
+            color="primary"
+            variant="contained"
+          >
+            通電OK
           </Button>
         </DialogActions>
       </Dialog>
