@@ -48,7 +48,7 @@ export default function PageNavigation({ onNavigate }: PageNavigationProps = {})
   ];
 
   const handlePublicSiteClick = () => {
-    window.open('/public/properties', '_blank');
+    window.open('https://property-site-frontend-kappa.vercel.app/public/properties', '_blank', 'noopener,noreferrer');
     setDrawerOpen(false);
   };
 
