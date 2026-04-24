@@ -3097,9 +3097,9 @@ ${pageUrl}`;
 
   // 売主、買主詳細セクション（関数呼び出し形式で再マウントを防ぐ）
   const renderSellerBuyerDetailSection = () => (
-    <Box sx={{ display: 'flex', height: '100%', overflow: 'hidden', width: '100%' }}>
+    <Box sx={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', height: isMobile ? 'auto' : '100%', overflow: isMobile ? 'visible' : 'hidden', width: '100%' }}>
       {/* 左ペイン: 契約後フィールド + Email送信履歴 */}
-      <Box sx={{ width: 320, minWidth: 260, overflowY: 'auto', bgcolor: '#f8f9fa', display: 'flex', flexDirection: 'column', borderRight: '1px solid #e0e0e0' }}>
+      <Box sx={{ width: isMobile ? '100%' : 320, minWidth: isMobile ? 0 : 260, overflowY: isMobile ? 'visible' : 'auto', bgcolor: '#f8f9fa', display: 'flex', flexDirection: 'column', borderRight: isMobile ? 'none' : '1px solid #e0e0e0', borderTop: isMobile ? '2px solid #e0e0e0' : 'none', order: isMobile ? 2 : 1 }}>
         {/* 契約後　司法書士へのメール */}
         <Box sx={{ p: 1.5, borderBottom: '1px solid #e0e0e0', bgcolor: '#fff3e0' }}>
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.5 }}>
@@ -3233,7 +3233,7 @@ ${pageUrl}`;
       </Box>
 
       {/* 右ペイン: 売主・買主詳細 */}
-      <Box ref={sellerBuyerRightPaneRef} sx={{ flex: 1, minWidth: 0, overflowY: 'auto', overflowX: 'hidden', p: 2 }}>
+      <Box ref={sellerBuyerRightPaneRef} sx={{ flex: 1, minWidth: 0, overflowY: isMobile ? 'visible' : 'auto', overflowX: 'hidden', p: 2, order: isMobile ? 1 : 2 }}>
       {/* 司法書士へのメール */}
       <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
         <FormControl size="small" sx={{ minWidth: 240 }}>
