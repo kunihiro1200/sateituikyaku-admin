@@ -1330,6 +1330,7 @@ export class BuyerService {
     buyerNumber: string;
     propertyNumber: string;
     propertyAddress: string;
+    propertyPrice: number | null;
     inquiryDate: string;
     status: 'current' | 'past';
     propertyId: string;
@@ -1468,6 +1469,7 @@ export class BuyerService {
         buyerNumber: rb.buyerNumber,
         propertyNumber: '',
         propertyAddress: '',
+        propertyPrice: null as number | null,
         inquiryDate: rb.inquiryDate,
         status: 'past' as const,
         propertyId: '',
@@ -1487,7 +1489,8 @@ export class BuyerService {
       .select(`
         id,
         property_number,
-        address
+        address,
+        price
       `)
       .in('property_number', uniquePropertyNumbers);
 
@@ -1506,6 +1509,7 @@ export class BuyerService {
         buyerNumber: buyerInfo?.buyerNumber || buyer.buyer_number,
         propertyNumber: property.property_number,
         propertyAddress: property.address || '',
+        propertyPrice: property.price ?? null,
         inquiryDate: buyerInfo?.inquiryDate || '',
         status: buyerInfo?.status || 'current',
         propertyId: property.id,
@@ -1519,6 +1523,7 @@ export class BuyerService {
         buyerNumber: rb.buyerNumber,
         propertyNumber: '',
         propertyAddress: '',
+        propertyPrice: null,
         inquiryDate: rb.inquiryDate,
         status: 'past',
         propertyId: '',
