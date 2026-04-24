@@ -2588,20 +2588,30 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
             buildMessage={() => {
               const pn = getValue('property_number') || propertyNumber || '';
               const addr = getValue('property_address') || '';
-              const seller = getValue('seller_contact_name') || getValue('seller_name') || '';
-              const sd = getValue('settlement_date') || '';
-              let dateStr = sd;
-              if (sd) {
-                try {
-                  const d = new Date(sd);
-                  dateStr = `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`;
-                } catch { dateStr = sd; }
-              }
-              return `【決済完了】
-物件番号：${pn}
+              const assignee = getValue('sales_assignee') || '';
+              const reviewSeller = getValue('review_seller') || '';
+              const reviewBuyer = getValue('review_buyer') || '';
+              const referralFlyer = getValue('referral_flyer_given') || '';
+              const campaign = getValue('campaign') || '';
+              const brokerageSeller = getValue('brokerage_fee_seller') != null ? String(getValue('brokerage_fee_seller')) : '';
+              const paymentSeller = getValue('seller_payment_method') || '';
+              const brokerageBuyer = getValue('brokerage_fee_buyer') != null ? String(getValue('brokerage_fee_buyer')) : '';
+              const paymentBuyer = getValue('buyer_payment_method') || '';
+              const otherComments = getValue('other_comments') || '';
+              const pageUrl = `${window.location.origin}/work-tasks`;
+              return `決済おわりました
 物件所在：${addr}
-売主：${seller}
-決済日：${dateStr}`;
+営業担当：${assignee}
+口コミ売主:${reviewSeller}
+口コミ買主:${reviewBuyer}
+紹介チラシ渡し:${referralFlyer}
+キャンペーン：${campaign}
+仲介手数料（売）：${brokerageSeller}
+支払方法（売）：${paymentSeller}
+仲介手数料（買）：${brokerageBuyer}
+買・支払方法：${paymentBuyer}
+他コメント：${otherComments}
+${pageUrl}`;
             }}
           />
             );

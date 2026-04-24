@@ -294,23 +294,30 @@ export default function SharedItemsPage() {
           <Table size="small">
             <TableHead>
               <TableRow sx={{ bgcolor: `${sharedItemsColor.light}20` }}>
-                <TableCell>ID</TableCell>
-                <TableCell>共有場</TableCell>
-                <TableCell>共有日</TableCell>
-                <TableCell>共有できていない</TableCell>
-                <TableCell>確認日</TableCell>
+                <TableCell sx={{ whiteSpace: 'nowrap' }}>ID</TableCell>
+                <TableCell sx={{ whiteSpace: 'nowrap' }}>入力者</TableCell>
+                <TableCell sx={{ whiteSpace: 'nowrap' }}>共有日</TableCell>
+                <TableCell sx={{ whiteSpace: 'nowrap' }}>項目</TableCell>
+                <TableCell sx={{ whiteSpace: 'nowrap' }}>タイトル</TableCell>
+                <TableCell>内容</TableCell>
+                <TableCell sx={{ whiteSpace: 'nowrap' }}>画像1</TableCell>
+                <TableCell sx={{ whiteSpace: 'nowrap' }}>画像2</TableCell>
+                <TableCell sx={{ whiteSpace: 'nowrap' }}>画像3</TableCell>
+                <TableCell sx={{ whiteSpace: 'nowrap' }}>画像4</TableCell>
+                <TableCell sx={{ whiteSpace: 'nowrap' }}>日付</TableCell>
+                <TableCell sx={{ whiteSpace: 'nowrap' }}>打ち合わせ内容</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={5} align="center">
+                  <TableCell colSpan={12} align="center">
                     読み込み中...
                   </TableCell>
                 </TableRow>
               ) : paginatedItems.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} align="center">
+                  <TableCell colSpan={12} align="center">
                     共有データが見つかりませんでした
                   </TableCell>
                 </TableRow>
@@ -327,10 +334,21 @@ export default function SharedItemsPage() {
                         {item.id || '-'}
                       </Typography>
                     </TableCell>
-                    <TableCell>{item.sharing_location || '-'}</TableCell>
-                    <TableCell>{formatDate(item.sharing_date)}</TableCell>
-                    <TableCell>{item.staff_not_shared || '-'}</TableCell>
-                    <TableCell>{formatDate(item.confirmation_date)}</TableCell>
+                    <TableCell sx={{ whiteSpace: 'nowrap' }}>{item['入力者'] || '-'}</TableCell>
+                    <TableCell sx={{ whiteSpace: 'nowrap' }}>{formatDate(item['共有日'] || item.sharing_date)}</TableCell>
+                    <TableCell sx={{ whiteSpace: 'nowrap' }}>{item['項目'] || '-'}</TableCell>
+                    <TableCell sx={{ whiteSpace: 'nowrap' }}>{item['タイトル'] || '-'}</TableCell>
+                    <TableCell sx={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {item['内容'] || '-'}
+                    </TableCell>
+                    <TableCell sx={{ whiteSpace: 'nowrap' }}>{item['画像1'] ? '✓' : '-'}</TableCell>
+                    <TableCell sx={{ whiteSpace: 'nowrap' }}>{item['画像2'] ? '✓' : '-'}</TableCell>
+                    <TableCell sx={{ whiteSpace: 'nowrap' }}>{item['画像3'] ? '✓' : '-'}</TableCell>
+                    <TableCell sx={{ whiteSpace: 'nowrap' }}>{item['画像4'] ? '✓' : '-'}</TableCell>
+                    <TableCell sx={{ whiteSpace: 'nowrap' }}>{formatDate(item['日付'])}</TableCell>
+                    <TableCell sx={{ maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {item['打ち合わせ内容'] || '-'}
+                    </TableCell>
                   </TableRow>
                 ))
               )}
