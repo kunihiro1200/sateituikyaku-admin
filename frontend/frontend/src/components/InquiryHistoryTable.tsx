@@ -189,7 +189,14 @@ const InquiryHistoryTable: React.FC<InquiryHistoryTableProps> = ({
                   </Typography>
                 </TableCell>
                 <TableCell>
-                  <Typography variant="body2">
+                  <Typography
+                    variant="body2"
+                    sx={{ color: 'primary.main', cursor: 'pointer', textDecoration: 'underline' }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      window.open(`/buyers/${item.buyerNumber}`, '_blank');
+                    }}
+                  >
                     {item.buyerNumber}
                   </Typography>
                 </TableCell>
