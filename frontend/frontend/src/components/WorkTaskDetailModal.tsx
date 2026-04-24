@@ -708,6 +708,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
   }>({ open: false, fieldLabel: '' });
   const [rowAddWarningDialog, setRowAddWarningDialog] = useState<{ open: boolean }>({ open: false });
   const [athomePreVisitCheckRequired, setAthomePreVisitCheckRequired] = useState<boolean>(false);
+  const [athomePreVisitDialog, setAthomePreVisitDialog] = useState<boolean>(false);
   const [mediationFormatWarningDialog, setMediationFormatWarningDialog] = useState<{ open: boolean }>({ open: false });
   const [validationWarningDialog, setValidationWarningDialog] = useState<{
     open: boolean;
@@ -828,6 +829,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
         const confirmed = getValue('athome_pre_visit_notice_hidden_confirmed');
         if (confirmed !== 'はい') {
           setAthomePreVisitCheckRequired(true);
+          setAthomePreVisitDialog(true);
           return;
         }
       }
@@ -3520,6 +3522,45 @@ ${pageUrl}`;
         onConfirm={() => { setRowAddWarningDialog({ open: false }); executeSave(); }}
         onCancel={() => setRowAddWarningDialog({ open: false })}
       />
+      {/* athome内覧前伝達事項確認ポップアップ */}
+      <Dialog open={athomePreVisitDialog} onClose={() => setAthomePreVisitDialog(false)} maxWidth="xs" fullWidth>
+        <DialogTitle sx={{ bgcolor: '#d32f2f', color: '#fff', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 1 }}>
+          ⚠️ 入力が必要な項目があります
+        </DialogTitle>
+        <DialogContent sx={{ pt: 2, pb: 1 }}>
+          <Typography sx={{ fontWeight: 600, mb: 1 }}>
+            「スプシathomeの内覧前伝達事項●●の表示を消しましたか？」が未入力です。
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            「はい」を選択してから保存してください。
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ pb: 2, px: 2, gap: 1 }}>
+          <Button
+            onClick={() => setAthomePreVisitDialog(false)}
+            color="inherit"
+            variant="outlined"
+          >
+            閉じる
+          </Button>
+          <Button
+            onClick={() => {
+              setAthomePreVisitDialog(false);
+              // サイト登録タブ（tabIndex=1）に切り替えてから左ペインを一番下にスクロール
+              requestAnimationFrame(() => {
+                if (leftPaneRef.current) {
+                  leftPaneRef.current.scrollTop = leftPaneRef.current.scrollHeight;
+                }
+              });
+            }}
+            color="error"
+            variant="contained"
+            sx={{ fontWeight: 700 }}
+          >
+            入力する
+          </Button>
+        </DialogActions>
+      </Dialog>
       <CadastralMapWarningDialog
         open={validationWarningDialog.open && validationWarningDialog.onConfirmAction === 'cadastral'}
         onConfirm={handleValidationWarningConfirm}
