@@ -126,6 +126,7 @@ export default function NewSharedItemForm({ onSaved, onCancel }: NewSharedItemFo
 
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {};
+    if (!nextId) newErrors.nextId = 'IDの取得中です。しばらくお待ちください。';
     if (!sharingLocation) newErrors.sharingLocation = '共有場を選択してください';
     if (!category) newErrors.category = '項目を選択してください';
     if (!title.trim()) newErrors.title = 'タイトルを入力してください';
