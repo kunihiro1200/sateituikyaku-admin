@@ -21,6 +21,7 @@ export interface InquiryHistoryItem {
   propertyNumber: string;
   propertyAddress: string;
   propertyPrice?: number | null;
+  buildingNamePrice?: string;
   inquiryDate: string;
   status: 'current' | 'past';
   propertyId: string;
@@ -187,9 +188,11 @@ const InquiryHistoryTable: React.FC<InquiryHistoryTableProps> = ({
                 </TableCell>
                 <TableCell>
                   <Typography variant="body2" noWrap sx={{ maxWidth: 200 }}>
-                    {item.propertyPrice != null
-                      ? `${(item.propertyPrice / 10000).toLocaleString()}万円`
-                      : '—'}
+                    {item.buildingNamePrice
+                      ? item.buildingNamePrice
+                      : item.propertyPrice != null
+                        ? `${(item.propertyPrice / 10000).toLocaleString()}万円`
+                        : '—'}
                   </Typography>
                 </TableCell>
                 <TableCell>
