@@ -3430,6 +3430,7 @@ export default function PropertyListingDetailPage() {
             <SenderAddressSelector
               value={senderAddress}
               onChange={(addr) => { setSenderAddress(addr); saveSenderAddress(addr); }}
+              employees={activeEmployees}
             />
             {/* 返信先（Reply-To）選択フィールド */}
             <FormControl size="small" fullWidth>
