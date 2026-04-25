@@ -401,7 +401,7 @@ export default function BuyerViewingResultPage() {
         currentBuyerNumber: buyer_number || '',
         followUpAssignee: followUpAssignee || '',
       });
-      const res = await api.get(\/api/buyers/viewing-double-booking-check?\);
+      const res = await api.get(`/api/buyers/viewing-double-booking-check?${params.toString()}`);
       const { conflicts } = res.data;
       if (conflicts && conflicts.length > 0) {
         setDoubleBookingWarning({ open: true, conflicts });
