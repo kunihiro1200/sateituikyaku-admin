@@ -188,12 +188,15 @@ export const calculateTaskStatus = (task: WorkTask): string => {
   }
 
   // 4. 決済完了チャット送信未
+  // ※ sales_contract_deadline が settlement_date より将来の場合は、
+  //    settlement_date はデフォルト値とみなして無視する
   if (
     dateLte(task.settlement_date, today()) &&
     dateGte(task.settlement_date, BASE_DATE) &&
     isNotBlank(task.settlement_date) &&
     isBlank(task.settlement_completed_chat) &&
-    isNotBlank(task.sales_contract_deadline)
+    isNotBlank(task.sales_contract_deadline) &&
+    !dateGte(task.sales_contract_deadline, parseDate(task.settlement_date) ?? today())
   ) {
     return '決済完了チャット送信未';
   }
@@ -208,12 +211,15 @@ export const calculateTaskStatus = (task: WorkTask): string => {
   }
 
   // 6. 要台帳作成
+  // ※ sales_contract_deadline が settlement_date より将来の場合は、
+  //    settlement_date はデフォルト値とみなして無視する
   if (
     isBlank(task.ledger_created) &&
     isBlank(task.on_hold) &&
     isNotBlank(task.settlement_date) &&
     dateLt(task.settlement_date, today()) &&
-    isNotBlank(task.sales_contract_deadline)
+    isNotBlank(task.sales_contract_deadline) &&
+    !dateGte(task.sales_contract_deadline, parseDate(task.settlement_date) ?? today())
   ) {
     return '要台帳作成';
   }
