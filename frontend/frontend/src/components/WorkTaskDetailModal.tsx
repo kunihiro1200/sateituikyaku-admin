@@ -2599,7 +2599,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
                   ) : (
                     <>
                       <Button
-                        variant="contained"
+                        variant="outlined"
                         color="error"
                         size="small"
                         onClick={() => {
