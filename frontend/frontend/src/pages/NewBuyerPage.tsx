@@ -345,6 +345,7 @@ export default function NewBuyerPage() {
   };
 
   return (
+    <>
     <Container maxWidth="xl" sx={{ py: 3 }}>
       <Box sx={{ mb: 3 }}>
         <Button
@@ -1446,5 +1447,6 @@ export default function NewBuyerPage() {
           </Button>
         </DialogActions>
       </Dialog>
+    </>
   );
 }
