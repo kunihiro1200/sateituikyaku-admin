@@ -1432,7 +1432,7 @@ export default function NewBuyerPage() {
                 買主番号: {c.buyer_number}　{c.name || '（氏名なし）'}
               </Typography>
               <Typography variant="body2">
-                内覧日: {c.viewing_date}　時間: {c.viewing_time || '未設定'}　後続担当: {c.follow_up_assignee}
+                内覧日: {c.viewing_date ? c.viewing_date.slice(0, 10) : ''}　時間: {c.viewing_time || '未設定'}　後続担当: {c.follow_up_assignee}
               </Typography>
             </Box>
           ))}
