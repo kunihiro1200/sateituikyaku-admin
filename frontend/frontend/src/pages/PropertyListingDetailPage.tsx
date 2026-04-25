@@ -553,7 +553,13 @@ export default function PropertyListingDetailPage() {
       const nextAtbbStatus = editedData.atbb_status;
 
       // 「公開前→公開中」への変更はスキップ
-      if (!isPreToPublicTransition(prevAtbbStatus, nextAtbbStatus)) {
+      // 「非公開（配信メールのみ）→一般～」への変更も買付は必須ではないためスキップ
+      const isPrivateEmailToGeneral =
+        prevAtbbStatus === '非公開（配信メールのみ）' &&
+        typeof nextAtbbStatus === 'string' &&
+        nextAtbbStatus.includes('一般');
+
+      if (!isPreToPublicTransition(prevAtbbStatus, nextAtbbStatus) && !isPrivateEmailToGeneral) {
         // offer_status の現在値を取得
         const currentOfferStatus = editedData.offer_status !== undefined
           ? editedData.offer_status
