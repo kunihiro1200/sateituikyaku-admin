@@ -217,6 +217,12 @@ export default function NewBuyerPage() {
       return;
     }
 
+    // inquiry_email_phone が「済」の場合、owned_home_hearing_inquiry は必須
+    if (String(inquiryEmailPhone).trim() === '済' && !String(ownedHomeHearingInquiry).trim()) {
+      setError('問合時持家ヒアリングは必須です（問合メール電話対応が「済」の場合）');
+      return;
+    }
+
     // 初動担当の条件付き必須バリデーション（受付日2026/3/30以降）
     const receptionDateObj = receptionDate ? new Date(receptionDate) : null;
     const isAfterCutoff = receptionDateObj && receptionDateObj >= new Date('2026-03-30');
@@ -909,6 +915,53 @@ export default function NewBuyerPage() {
                     onChange={(e) => setNextCallDate(e.target.value)}
                     InputLabelProps={{ shrink: true }}
                   />
+                </Grid>
+
+                {/* owned_home_hearing_inquiry: 問合時持家ヒアリング（スタッフ選択 + 不要/未） */}
+                <Grid item xs={12}>
+                  {(() => {
+                    const SPECIAL_OPTIONS = ['不要', '未'];
+                    const isMissing = String(inquiryEmailPhone).trim() === '済' && !String(ownedHomeHearingInquiry).trim();
+                    return (
+                      <Box sx={{
+                        display: 'flex', flexDirection: 'column', gap: 0.5,
+                        border: isMissing ? '2px solid #f44336' : 'none',
+                        borderRadius: isMissing ? 1 : 0,
+                        p: isMissing ? 0.5 : 0,
+                        bgcolor: isMissing ? 'rgba(244,67,54,0.05)' : 'transparent',
+                      }}>
+                        <Typography variant="caption" color={isMissing ? 'error' : 'text.secondary'} sx={{ fontWeight: isMissing ? 'bold' : 'normal' }}>
+                          問合時持家ヒアリング{isMissing ? ' *' : ''}
+                        </Typography>
+                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                          {normalInitials.map((initial) => (
+                            <Button
+                              key={initial}
+                              size="small"
+                              variant={ownedHomeHearingInquiry === initial ? 'contained' : 'outlined'}
+                              color="primary"
+                              onClick={() => setOwnedHomeHearingInquiry(ownedHomeHearingInquiry === initial ? '' : initial)}
+                              sx={{ minWidth: 40, px: 1.5, py: 0.5, fontWeight: ownedHomeHearingInquiry === initial ? 'bold' : 'normal', borderRadius: 1 }}
+                            >
+                              {initial}
+                            </Button>
+                          ))}
+                          {SPECIAL_OPTIONS.map((option) => (
+                            <Button
+                              key={option}
+                              size="small"
+                              variant={ownedHomeHearingInquiry === option ? 'contained' : 'outlined'}
+                              color="secondary"
+                              onClick={() => setOwnedHomeHearingInquiry(ownedHomeHearingInquiry === option ? '' : option)}
+                              sx={{ minWidth: 60, px: 1.5, py: 0.5, fontWeight: ownedHomeHearingInquiry === option ? 'bold' : 'normal', borderRadius: 1 }}
+                            >
+                              {option}
+                            </Button>
+                          ))}
+                        </Box>
+                      </Box>
+                    );
+                  })()}
                 </Grid>
 
                 {/* 希望条件 */}
