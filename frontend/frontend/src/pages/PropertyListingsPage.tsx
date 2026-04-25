@@ -387,7 +387,8 @@ export default function PropertyListingsPage() {
       );
     }
 
-    // ソート: 非公開物件を後ろに配置（公開日の順序は維持）
+    // ソート: 非公開物件を後ろに配置し、同一ステータス内は公開日（distribution_date）降順
+    const isExclusivePublicStatus = ['Y専任公開中', '生・専任公開中', '久・専任公開中', 'U専任公開中', '林・専任公開中', '林専任公開中', 'K専任公開中', 'R専任公開中', 'I専任公開中'].includes(sidebarStatus || '');
     listings = listings.sort((a, b) => {
       const aIsPrivate = isPrivateStatus(a.atbb_status);
       const bIsPrivate = isPrivateStatus(b.atbb_status);
@@ -397,7 +398,14 @@ export default function PropertyListingsPage() {
         return aIsPrivate ? 1 : -1;
       }
       
-      // 非公開ステータスが同じ場合は元の順序を維持（公開日の新しい順）
+      // 専任公開中（担当者別）の場合は公開日（distribution_date）降順でソート
+      if (isExclusivePublicStatus) {
+        const aDate = a.distribution_date ? new Date(a.distribution_date).getTime() : 0;
+        const bDate = b.distribution_date ? new Date(b.distribution_date).getTime() : 0;
+        return bDate - aDate;
+      }
+      
+      // その他は元の順序を維持（公開日の新しい順）
       return 0;
     });
 
