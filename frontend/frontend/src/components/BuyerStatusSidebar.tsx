@@ -24,6 +24,7 @@ interface CategoryCounts {
   pinrich500manUnregistered?: number;  // Pinrich500万以上登録未
   nextCallDateBlankCounts?: Record<string, number>;  // 次電日空欄（担当別）
   viewingSurveyUnchecked?: number;  // 内覧アンケート未確認
+  viewingUnconfirmed?: number;  // 内覧未確定
 }
 
 export interface BuyerWithStatus {
@@ -82,6 +83,8 @@ function getCategoryColor(category: string): string {
       return '#d32f2f'; // 赤
     case 'viewingSurveyUnchecked':
       return '#d32f2f'; // 赤
+    case 'viewingUnconfirmed':
+      return '#d32f2f'; // 赤
     default:
       if (category.startsWith('nextCallDateBlank:')) {
         return '#d32f2f'; // 赤
@@ -124,6 +127,8 @@ function getCategoryLabel(category: string): string {
       return '次電日空欄';
     case 'viewingSurveyUnchecked':
       return '内覧アンケート未';
+    case 'viewingUnconfirmed':
+      return '内覧未確定';
     default:
       if (category.startsWith('nextCallDateBlank:')) {
         return `次電日空欄(${category.replace('nextCallDateBlank:', '')})`;
@@ -212,6 +217,7 @@ export default function BuyerStatusSidebar({
     'pinrichUnregistered',
     'pinrich500manUnregistered',
     'viewingSurveyUnchecked',
+    'viewingUnconfirmed',
   ];
   
   newCategories.forEach(key => {

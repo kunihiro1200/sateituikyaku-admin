@@ -624,8 +624,7 @@ export class BuyerService {
     // DB保存成功後、買主リストスプレッドシートに新規行を追加
     // 失敗しても登録自体は成功とする（警告ログのみ）
     try {
-      await this.initSyncServices();
-      if (this.writeService) {
+      await this.initSyncServices();      if (this.writeService) {
         // property_numberがある場合、property_listingsから物件情報を取得してスプシに反映
         let appendData = { ...data };
         if (appendData.property_number) {
@@ -663,6 +662,17 @@ export class BuyerService {
       }
     } catch (appendError: any) {
       console.warn(`[BuyerService] Error appending new buyer to spreadsheet (buyer_number=${buyerNumber}): ${appendError.message}`);
+    }
+
+    // DB保存成功後、サイドバーカウントを即時更新（ノンブロッキング）
+    try {
+      const { SidebarCountsUpdateService } = await import('./SidebarCountsUpdateService');
+      const sidebarService = new SidebarCountsUpdateService(this.supabase);
+      sidebarService.updateBuyerSidebarCounts(buyerNumber, null).catch(err => {
+        console.warn(`[BuyerService] Failed to update sidebar counts after create (buyer_number=${buyerNumber}): ${err.message}`);
+      });
+    } catch (sidebarError: any) {
+      console.warn(`[BuyerService] Error importing SidebarCountsUpdateService after create (buyer_number=${buyerNumber}): ${sidebarError.message}`);
     }
 
     return data;
@@ -2070,6 +2080,7 @@ export class BuyerService {
           pinrich500manUnregistered: 0,
           nextCallDateBlankCounts: {} as Record<string, number>,
           viewingSurveyUnchecked: 0,  // 内覧アンケート未確認
+          viewingUnconfirmed: 0,  // 内覧未確定
         };
         
         for (const row of data) {
@@ -2099,6 +2110,8 @@ export class BuyerService {
             categoryCounts.nextCallDateBlankCounts[row.assignee] = row.count || 0;
           } else if (row.category === 'viewingSurveyUnchecked') {
             categoryCounts.viewingSurveyUnchecked = row.count || 0;
+          } else if (row.category === 'viewingUnconfirmed') {
+            categoryCounts.viewingUnconfirmed = row.count || 0;
           }
         }
         
@@ -2329,6 +2342,7 @@ export class BuyerService {
         pinrich500manUnregistered: 0,  // Pinrich500万以上登録未
         nextCallDateBlankCounts: {} as Record<string, number>,
         viewingSurveyUnchecked: 0,  // 内覧アンケート未確認
+        viewingUnconfirmed: 0,  // 内覧未確定
       };
       
       // 今日の日付（YYYY-MM-DD形式）
@@ -2375,6 +2389,8 @@ export class BuyerService {
           result.generalViewingSellerContactPending++;
         } else if (status === '要内覧促進客') {
           result.viewingPromotionRequired++;
+        } else if (status === '内覧未確定') {
+          result.viewingUnconfirmed++;
         }
       });
       
@@ -2782,6 +2798,11 @@ export class BuyerService {
           return hasSurveyResult && !isSurveyConfirmed;
         });
         console.log(`[getBuyersByStatus] viewingSurveyUnchecked フィルタ結果: ${filteredBuyers.length}件`);
+      } else if (status === 'viewingUnconfirmed') {
+        // 内覧未確定: viewing_unconfirmed = '未確定'
+        console.log(`[getBuyersByStatus] viewingUnconfirmed カテゴリ検出`);
+        filteredBuyers = allBuyers.filter((buyer: any) => buyer.viewing_unconfirmed === '未確定');
+        console.log(`[getBuyersByStatus] viewingUnconfirmed フィルタ結果: ${filteredBuyers.length}件`);
       } else if (status === 'inquiryEmailUnanswered' || status === 'brokerInquiry' || 
                  status === 'generalViewingSellerContactPending' || status === 'viewingPromotionRequired') {
         // 新カテゴリの場合（2026年4月追加）- calculated_statusで直接フィルタリング
@@ -3158,6 +3179,7 @@ export class BuyerService {
       rows.push({ category: 'pinrichUnregistered', count: categoryCounts.pinrichUnregistered || 0, label: null, assignee: null, updated_at: now });
       rows.push({ category: 'pinrich500manUnregistered', count: categoryCounts.pinrich500manUnregistered || 0, label: null, assignee: null, updated_at: now });
       rows.push({ category: 'viewingSurveyUnchecked', count: categoryCounts.viewingSurveyUnchecked || 0, label: null, assignee: null, updated_at: now });
+      rows.push({ category: 'viewingUnconfirmed', count: categoryCounts.viewingUnconfirmed || 0, label: null, assignee: null, updated_at: now });
       
       // 担当別カテゴリ
       for (const [assignee, count] of Object.entries(categoryCounts.assignedCounts || {})) {

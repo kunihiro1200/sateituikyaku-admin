@@ -100,8 +100,7 @@ export default function BuyersPage() {
     'generalViewingSellerContactPending': '一般媒介_内覧後売主連絡未',
     'viewingPromotionRequired': '要内覧促進客',
     'pinrichUnregistered': 'ピンリッチ未登録',
-    'pinrich500manUnregistered': 'Pinrich500万以上登録未',
-    'unvaluated': '未査定',
+    'pinrich500manUnregistered': 'Pinrich500万以上登録未',    'unvaluated': '未査定',
     'mailingPending': '査定（郵送）',
     'todayCallNotStarted': '当日TEL_未着手',
     'pinrichEmpty': 'Pinrich空欄',
@@ -204,6 +203,9 @@ export default function BuyersPage() {
                   const matched = !!(hasSurveyResult && !isSurveyConfirmed);
                   if (matched) console.log(`[viewingSurveyUnchecked] ✅ ${b.buyer_number}: result="${b.viewing_survey_result}", confirmed="${b.viewing_survey_confirmed}"`);
                   return matched;
+                } else if (selectedCalculatedStatus === 'viewingUnconfirmed') {
+                  // 内覧未確定: viewing_unconfirmed = '未確定'
+                  return b.viewing_unconfirmed === '未確定';
                 } else {
                   // サイドバーのカテゴリキーを日本語の表示名に変換
                   const displayName = categoryKeyToDisplayName[selectedCalculatedStatus] || selectedCalculatedStatus;
@@ -309,6 +311,7 @@ export default function BuyersPage() {
             'pinrichUnregistered',         // ピンリッチ未登録
             'pinrich500manUnregistered',   // Pinrich500万以上登録未
             'viewingSurveyUnchecked',      // 内覧アンケート未
+            'viewingUnconfirmed',          // 内覧未確定
           ];
           if (backendEnglishKeyCategories.includes(selectedCalculatedStatus)) {
             quickParams.calculatedStatus = selectedCalculatedStatus;

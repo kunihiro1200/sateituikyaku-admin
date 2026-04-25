@@ -18,6 +18,7 @@ import {
   Chip,
   OutlinedInput,
   Checkbox,
+  FormControlLabel,
   Link,
   Dialog,
   DialogTitle,
@@ -95,6 +96,7 @@ export default function NewBuyerPage() {
   const [viewingDate, setLatestViewingDate] = useState('');
   const [viewingTime, setViewingTime] = useState('');
   const [followUpAssignee, setFollowUpAssignee] = useState('');
+  const [viewingUnconfirmed, setViewingUnconfirmed] = useState(false);
   const [viewingResultFollowUp, setViewingResultFollowUp] = useState('');
 
   // 問合せ情報（追加フィールド）
@@ -281,6 +283,7 @@ export default function NewBuyerPage() {
         viewing_date: viewingDate || null,
         viewing_time: viewingTime || null,
         follow_up_assignee: followUpAssignee || null,
+        viewing_unconfirmed: viewingUnconfirmed ? '未確定' : null,
         viewing_result_follow_up: viewingResultFollowUp || null,
         // 問合せ情報（追加）
         inquiry_email_phone: inquiryEmailPhone || null,
@@ -1203,7 +1206,7 @@ export default function NewBuyerPage() {
                   <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
                     後続担当
                   </Typography>
-                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, alignItems: 'center' }}>
                     {normalInitials.map((initial) => (
                       <Chip
                         key={initial}
@@ -1215,6 +1218,18 @@ export default function NewBuyerPage() {
                         sx={{ cursor: 'pointer', fontWeight: followUpAssignee === initial ? 'bold' : 'normal' }}
                       />
                     ))}
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          checked={viewingUnconfirmed}
+                          onChange={(e) => setViewingUnconfirmed(e.target.checked)}
+                          size="small"
+                          color="warning"
+                        />
+                      }
+                      label={<Typography variant="caption">内覧未確定</Typography>}
+                      sx={{ ml: 1 }}
+                    />
                   </Box>
                 </Grid>
 

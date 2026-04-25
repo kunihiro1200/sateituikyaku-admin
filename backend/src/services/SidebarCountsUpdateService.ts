@@ -304,6 +304,11 @@ export class SidebarCountsUpdateService {
       categories.push({ category: 'viewingSurveyUnchecked', assignee: null });
     }
 
+    // 内覧未確定: viewing_unconfirmed = '未確定'
+    if (buyer.viewing_unconfirmed === '未確定') {
+      categories.push({ category: 'viewingUnconfirmed', assignee: null });
+    }
+
     console.log(`[determineBuyerCategories] Final categories:`, categories);
     return categories;
   }
