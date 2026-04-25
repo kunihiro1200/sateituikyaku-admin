@@ -19,6 +19,10 @@ import {
   OutlinedInput,
   Checkbox,
   Link,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from '@mui/material';
 import { ArrowBack as ArrowBackIcon, OpenInNew, Launch as LaunchIcon } from '@mui/icons-material';
 import api from '../services/api';
@@ -53,6 +57,11 @@ export default function NewBuyerPage() {
   const [error, setError] = useState('');
   const [nextBuyerNumber, setNextBuyerNumber] = useState<string>('');
   const [normalInitials, setNormalInitials] = useState<string[]>([]);
+  // 内覧ダブルブッキング警告ダイアログ
+  const [doubleBookingWarning, setDoubleBookingWarning] = useState<{
+    open: boolean;
+    conflicts: Array<{ buyer_number: string; name: string; viewing_date: string; viewing_time: string | null; follow_up_assignee: string }>;
+  }>({ open: false, conflicts: [] });
 
   // 基本情報
   const [name, setName] = useState('');
@@ -303,6 +312,26 @@ export default function NewBuyerPage() {
       const response = await api.post('/api/buyers', buyerData);
       const createdBuyerNumber = response.data.buyer_number || nextBuyerNumber;
       setRegisteredBuyerNumber(createdBuyerNumber);
+
+      // 内覧日・後続担当・物件番号が揃っている場合はダブルブッキングチェック
+      if (viewingDate && followUpAssignee && propertyNumberField) {
+        try {
+          const params = new URLSearchParams({
+            propertyNumber: propertyNumberField,
+            viewingDate,
+            currentBuyerNumber: createdBuyerNumber,
+            followUpAssignee,
+          });
+          const checkRes = await api.get(`/api/buyers/viewing-double-booking-check?${params.toString()}`);
+          const { conflicts } = checkRes.data;
+          if (conflicts && conflicts.length > 0) {
+            setDoubleBookingWarning({ open: true, conflicts });
+          }
+        } catch (e) {
+          console.warn('[NewBuyerPage] double booking check failed:', e);
+        }
+      }
+
       // 登録後アクションがある場合は即遷移
       if (postRegistrationAction) {
         navigate(`/buyers/${createdBuyerNumber}/${postRegistrationAction}`);
@@ -1382,5 +1411,40 @@ export default function NewBuyerPage() {
         </Grid>
       </Grid>
     </Container>
+
+      {/* 内覧ダブルブッキング警告ダイアログ */}
+      <Dialog
+        open={doubleBookingWarning.open}
+        onClose={() => setDoubleBookingWarning({ open: false, conflicts: [] })}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle sx={{ color: 'warning.dark' }}>
+          ⚠️ 同日に同じ物件の内覧が入っています
+        </DialogTitle>
+        <DialogContent>
+          <Typography sx={{ mb: 1.5 }}>
+            この前後に同じ物件で内覧が入っています。確認してください。鍵の件等大丈夫ですか？
+          </Typography>
+          {doubleBookingWarning.conflicts.map((c, idx) => (
+            <Box key={idx} sx={{ p: 1.5, mb: 1, bgcolor: 'warning.light', borderRadius: 1 }}>
+              <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+                買主番号: {c.buyer_number}　{c.name || '（氏名なし）'}
+              </Typography>
+              <Typography variant="body2">
+                内覧日: {c.viewing_date}　時間: {c.viewing_time || '未設定'}　後続担当: {c.follow_up_assignee}
+              </Typography>
+            </Box>
+          ))}
+        </DialogContent>
+        <DialogActions>
+          <Button
+            variant="contained"
+            onClick={() => setDoubleBookingWarning({ open: false, conflicts: [] })}
+          >
+            確認しました
+          </Button>
+        </DialogActions>
+      </Dialog>
   );
 }
