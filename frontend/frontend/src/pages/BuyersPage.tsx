@@ -643,7 +643,7 @@ export default function BuyersPage() {
           <AccordionDetails sx={{ p: 1 }}>
             <BuyerStatusSidebar
               selectedStatus={selectedCalculatedStatus}
-              onStatusSelect={(status) => { setSelectedCalculatedStatus(status); setPage(0); }}
+              onStatusSelect={(status) => { setSelectedCalculatedStatus(status); setSearchQuery(''); setPage(0); }}
               totalCount={total}
               categoryCounts={sidebarCounts}
               normalStaffInitials={sidebarNormalStaffInitials}
@@ -659,7 +659,7 @@ export default function BuyersPage() {
           <Paper sx={{ width: 220, flexShrink: 0, alignSelf: 'flex-start', maxHeight: 'none', overflow: 'visible' }}>
             <BuyerStatusSidebar
               selectedStatus={selectedCalculatedStatus}
-              onStatusSelect={(status) => { setSelectedCalculatedStatus(status); setPage(0); }}
+              onStatusSelect={(status) => { setSelectedCalculatedStatus(status); setSearchQuery(''); setPage(0); }}
               totalCount={total}
               categoryCounts={sidebarCounts}
               normalStaffInitials={sidebarNormalStaffInitials}
@@ -675,7 +675,7 @@ export default function BuyersPage() {
               size="small"
               placeholder="買主番号、氏名、電話番号、メールアドレス、物件番号、物件住所で検索"
               value={searchQuery}
-              onChange={(e) => { setSearchQuery(e.target.value); setPage(0); }}
+              onChange={(e) => { setSearchQuery(e.target.value); setSelectedCalculatedStatus(null); setPage(0); }}
               sx={isMobile ? { width: '100%' } : { width: '50%' }}
               InputProps={{
                 startAdornment: <InputAdornment position="start"><SearchIcon /></InputAdornment>,

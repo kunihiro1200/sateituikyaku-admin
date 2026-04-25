@@ -292,6 +292,7 @@ export default function SellersPage() {
   // カテゴリ選択ハンドラー（useCallbackで最適化）
   const handleCategorySelect = useCallback((category: StatusCategory) => {
     setSelectedCategory(category);
+    setSearchQuery(''); // 検索クエリをクリア（後から操作したサイドバーを優先）
     setPage(0); // カテゴリが変わったらページを0にリセット
   }, []);
 
@@ -503,6 +504,10 @@ export default function SellersPage() {
       fetchSellers();
       return;
     }
+
+    // サイドバーカテゴリをリセット（後から操作した検索を優先）
+    setSelectedCategory('all');
+    setPage(0);
 
     try {
       setLoading(true);
