@@ -67,6 +67,14 @@ export default function SharedItemDetailPage() {
   const [initialStaffNotShared, setInitialStaffNotShared] = useState('');
 
   useEffect(() => {
+    // idが変わったら古いデータをリセット
+    setItem(null);
+    setContent('');
+    setSharingDate('');
+    setConfirmationDate('');
+    setStaffNotShared([]);
+    setNewPdfs([]);
+    setNewImages([]);
     fetchItem();
     fetchStaff();
   }, [id]);
