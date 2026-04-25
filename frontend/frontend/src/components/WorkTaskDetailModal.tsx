@@ -3687,7 +3687,7 @@ ${pageUrl}`;
             </Tabs>
           )}
         </Box>
-        <DialogContent sx={{ p: 0, flex: 1, overflow: (tabIndex === 3 && !isMobile) ? 'hidden' : 'auto', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+        <DialogContent sx={{ p: 0, flex: (tabIndex === 3 && isMobile) ? 'none' : 1, overflow: (tabIndex === 3 && !isMobile) ? 'hidden' : 'auto', display: 'flex', flexDirection: 'column', minHeight: (tabIndex === 3 && isMobile) ? 'unset' : 0 }}>
           {loading ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', flex: 1 }}>
               <CircularProgress />
@@ -3705,7 +3705,7 @@ ${pageUrl}`;
                   : <SiteRegistrationSection cwCounts={cwCounts} leftPaneRef={leftPaneRef} rightPaneRef={rightPaneRef} />
               )}
               {tabIndex === 2 && renderContractSettlementSection()}
-              {tabIndex === 3 && <Box sx={{ flex: 1, display: 'flex', minHeight: 0, height: '100%', width: '100%', overflow: 'hidden' }}>{renderSellerBuyerDetailSection()}</Box>}
+              {tabIndex === 3 && <Box sx={isMobile ? { width: '100%' } : { flex: 1, display: 'flex', minHeight: 0, height: '100%', width: '100%', overflow: 'hidden' }}>{renderSellerBuyerDetailSection()}</Box>}
             </>
           )}
         </DialogContent>
