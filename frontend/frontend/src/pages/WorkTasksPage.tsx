@@ -27,7 +27,8 @@ import {
   useTheme,
   useMediaQuery,
 } from '@mui/material';
-import { Search as SearchIcon, ExpandMore as ExpandMoreIcon } from '@mui/icons-material';
+import { Search as SearchIcon, ExpandMore as ExpandMoreIcon, Clear as ClearIcon } from '@mui/icons-material';
+import IconButton from '@mui/material/IconButton';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import api from '../services/api';
 import WorkTaskDetailModal from '../components/WorkTaskDetailModal';
@@ -176,6 +177,7 @@ export default function WorkTasksPage() {
 
   const handleCategoryChange = (key: string) => {
     setSelectedCategory(key);
+    setSearchQuery('');
     setPage(0);
   };
 
@@ -293,6 +295,9 @@ export default function WorkTasksPage() {
               value={searchQuery}
               onChange={(e) => {
                 setSearchQuery(e.target.value);
+                if (e.target.value.trim()) {
+                  setSelectedCategory('all');
+                }
                 setPage(0);
               }}
               InputProps={{
@@ -301,6 +306,20 @@ export default function WorkTasksPage() {
                     <SearchIcon />
                   </InputAdornment>
                 ),
+                endAdornment: searchQuery ? (
+                  <InputAdornment position="end">
+                    <IconButton
+                      size="small"
+                      onClick={() => {
+                        setSearchQuery('');
+                        setPage(0);
+                      }}
+                      edge="end"
+                    >
+                      <ClearIcon fontSize="small" />
+                    </IconButton>
+                  </InputAdornment>
+                ) : undefined,
               }}
             />
           </Paper>
