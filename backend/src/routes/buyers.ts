@@ -361,6 +361,72 @@ router.post('/update-sidebar-counts', async (_req: Request, res: Response) => {
   }
 });
 
+// 内覧ダブルブッキングチェック
+// 同じ物件・同じ日（日本時間）・異なる後続担当の内覧を検索する
+// viewingDate は日本時間の YYYY-MM-DD 形式でフロントから渡される
+router.get('/viewing-double-booking-check', async (req: Request, res: Response) => {
+  try {
+    const { propertyNumber, viewingDate, currentBuyerNumber } = req.query as {
+      propertyNumber: string;
+      viewingDate: string; // 日本時間 YYYY-MM-DD
+      currentBuyerNumber: string;
+    };
+
+    if (!propertyNumber || !viewingDate) {
+      return res.status(400).json({ error: 'propertyNumber and viewingDate are required' });
+    }
+
+    // viewingDate が YYYY-MM-DD 形式であることを確認
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(viewingDate)) {
+      return res.status(400).json({ error: 'viewingDate must be YYYY-MM-DD format' });
+    }
+
+    const { createClient } = require('@supabase/supabase-js');
+    const supabase = createClient(
+      process.env.SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_KEY!
+    );
+
+    // 同じ物件・同じ内覧日の買主を取得（自分以外）
+    const { data: candidates, error } = await supabase
+      .from('buyers')
+      .select('buyer_number, name, viewing_date, viewing_time, follow_up_assignee')
+      .eq('property_number', propertyNumber)
+      .eq('viewing_date', viewingDate)
+      .neq('buyer_number', currentBuyerNumber || '')
+      .not('viewing_time', 'is', null)
+      .not('follow_up_assignee', 'is', null)
+      .is('deleted_at', null);
+
+    if (error) {
+      console.error('[viewing-double-booking-check] Supabase error:', error);
+      return res.status(500).json({ error: error.message });
+    }
+
+    if (!candidates || candidates.length === 0) {
+      return res.json({ conflicts: [] });
+    }
+
+    // 当日・同じ物件で異なる後続担当の内覧を抽出
+    const currentAssignee = req.query.followUpAssignee as string || '';
+    const conflicts = candidates.filter((c: any) => {
+      if (!c.follow_up_assignee) return false;
+
+      // 「業者」同士は別物扱い（常にconflict対象）
+      // 同じ後続担当（業者以外）なら問題なし
+      if (currentAssignee && currentAssignee !== '業者' && c.follow_up_assignee !== '業者') {
+        if (currentAssignee === c.follow_up_assignee) return false;
+      }
+
+      return true;
+    });
+
+    res.json({ conflicts });
+  } catch (error: any) {
+    console.error('[viewing-double-booking-check] Error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
 
 // 既存買主の物件情報をproperty_listingsから一括バックフィルしてスプシに同期
 router.post('/backfill-property-info', authenticateOrApiKey, async (req: Request, res: Response) => {

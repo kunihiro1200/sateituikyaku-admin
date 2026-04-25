@@ -237,6 +237,11 @@ export default function BuyerViewingResultPage() {
     title: '',
     description: '',
   });
+  // 内覧ダブルブッキング警告ダイアログ
+  const [doubleBookingWarning, setDoubleBookingWarning] = useState<{
+    open: boolean;
+    conflicts: Array<{ buyer_number: string; name: string; viewing_date: string; viewing_time: string | null; follow_up_assignee: string }>;
+  }>({ open: false, conflicts: [] });
 
   useEffect(() => {
     if (buyer_number) {
@@ -381,6 +386,32 @@ export default function BuyerViewingResultPage() {
     }
   };
 
+  // 内覧ダブルブッキングチェック
+  // 同じ物件・同じ日（日本時間）・異なる後続担当の内覧があれば警告ダイアログを表示
+  const checkDoubleBooking = async (
+    viewingDate: string,
+    followUpAssignee: string,
+    propertyNumber: string
+  ) => {
+    if (!viewingDate || !propertyNumber) return;
+    try {
+      const params = new URLSearchParams({
+        propertyNumber,
+        viewingDate,
+        currentBuyerNumber: buyer_number || '',
+        followUpAssignee: followUpAssignee || '',
+      });
+      const res = await api.get(\/api/buyers/viewing-double-booking-check?\);
+      const { conflicts } = res.data;
+      if (conflicts && conflicts.length > 0) {
+        setDoubleBookingWarning({ open: true, conflicts });
+      }
+    } catch (e) {
+      // チェック失敗は非致命的なので無視
+      console.warn('[checkDoubleBooking] failed:', e);
+    }
+  };
+
   const handleInlineFieldSave = useCallback(async (fieldName: string, newValue: any): Promise<void> => {
     if (!buyerRef.current) return;
 
@@ -443,11 +474,17 @@ export default function BuyerViewingResultPage() {
 
   // JSX内でuseCallbackを使えないため、各フィールド用コールバックをトップレベルで定義
   const handleSaveLatestViewingDate = useCallback(
-    (newValue: any) => {
+    async (newValue: any) => {
       console.log('[BuyerViewingResultPage] InlineEditableField onSave called with:', newValue);
-      return handleInlineFieldSave('viewing_date', newValue);
+      await handleInlineFieldSave('viewing_date', newValue);
+      // 内覧日が設定された場合、ダブルブッキングチェック
+      if (newValue && buyerRef.current) {
+        const propertyNumber = linkedProperties?.[0]?.property_number || '';
+        const followUpAssignee = buyerRef.current.follow_up_assignee || '';
+        await checkDoubleBooking(newValue, followUpAssignee, propertyNumber);
+      }
     },
-    [handleInlineFieldSave]
+    [handleInlineFieldSave, linkedProperties]
   );
 
   const handleSaveViewingTime = useCallback(
@@ -1366,6 +1403,11 @@ export default function BuyerViewingResultPage() {
                         // バックグラウンドで保存（エラー時はロールバック）
                         try {
                           await handleInlineFieldSave('follow_up_assignee', newValue);
+                          // ダブルブッキングチェック（後続担当設定時）
+                          if (newValue && buyer.viewing_date) {
+                            const propertyNumber = linkedProperties?.[0]?.property_number || '';
+                            await checkDoubleBooking(buyer.viewing_date, newValue, propertyNumber);
+                          }
                         } catch (error) {
                           // エラー時は元の値に戻す
                           setBuyer(prev => prev ? { ...prev, follow_up_assignee: buyer.follow_up_assignee } : prev);
@@ -1394,6 +1436,11 @@ export default function BuyerViewingResultPage() {
                     buyerRef.current = buyer ? { ...buyer, follow_up_assignee: newValue } : null;
                     try {
                       await handleInlineFieldSave('follow_up_assignee', newValue);
+                      // ダブルブッキングチェック（業者ボタン設定時）
+                      if (newValue && buyer.viewing_date) {
+                        const propertyNumber = linkedProperties?.[0]?.property_number || '';
+                        await checkDoubleBooking(buyer.viewing_date, newValue, propertyNumber);
+                      }
                     } catch (error) {
                       setBuyer(prev => prev ? { ...prev, follow_up_assignee: buyer.follow_up_assignee } : prev);
                       buyerRef.current = buyer;
@@ -1803,6 +1850,41 @@ export default function BuyerViewingResultPage() {
             }}
           >
             このまま離れる
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 内覧ダブルブッキング警告ダイアログ */}
+      <Dialog
+        open={doubleBookingWarning.open}
+        onClose={() => setDoubleBookingWarning({ open: false, conflicts: [] })}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle sx={{ color: 'warning.dark', display: 'flex', alignItems: 'center', gap: 1 }}>
+          ⚠️ 同日に同じ物件の内覧が入っています
+        </DialogTitle>
+        <DialogContent>
+          <Typography sx={{ mb: 1.5 }}>
+            この前後に同じ物件で内覧が入っています。確認してください。鍵の件等大丈夫ですか？
+          </Typography>
+          {doubleBookingWarning.conflicts.map((c, idx) => (
+            <Box key={idx} sx={{ p: 1.5, mb: 1, bgcolor: 'warning.light', borderRadius: 1, fontSize: '0.85rem' }}>
+              <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+                買主番号: {c.buyer_number}　{c.name || '（氏名なし）'}
+              </Typography>
+              <Typography variant="body2">
+                内覧日: {c.viewing_date}　時間: {c.viewing_time || '未設定'}　後続担当: {c.follow_up_assignee}
+              </Typography>
+            </Box>
+          ))}
+        </DialogContent>
+        <DialogActions>
+          <Button
+            variant="contained"
+            onClick={() => setDoubleBookingWarning({ open: false, conflicts: [] })}
+          >
+            確認しました
           </Button>
         </DialogActions>
       </Dialog>
