@@ -51,6 +51,7 @@ export default function SharedItemDetailPage() {
   const [saveSuccess, setSaveSuccess] = useState(false);
 
   // 編集可能フィールド
+  const [content, setContent] = useState('');
   const [sharingDate, setSharingDate] = useState('');
   const [confirmationDate, setConfirmationDate] = useState('');
   const [staffNotShared, setStaffNotShared] = useState<string[]>([]);
@@ -60,6 +61,7 @@ export default function SharedItemDetailPage() {
   const [newImages, setNewImages] = useState<NewFile[]>([]);
 
   // 初期値（変更検知用）
+  const [initialContent, setInitialContent] = useState('');
   const [initialSharingDate, setInitialSharingDate] = useState('');
   const [initialConfirmationDate, setInitialConfirmationDate] = useState('');
   const [initialStaffNotShared, setInitialStaffNotShared] = useState('');
@@ -80,12 +82,15 @@ export default function SharedItemDetailPage() {
         const sd = foundItem['共有日'] || '';
         const cd = foundItem['確認日'] || '';
         const sns = foundItem['共有できていない'] || '';
+        const ct = foundItem['内容'] || '';
         setSharingDate(sd);
         setConfirmationDate(cd);
         setStaffNotShared(sns ? sns.split(',').map((s: string) => s.trim()).filter(Boolean) : []);
+        setContent(ct);
         setInitialSharingDate(sd);
         setInitialConfirmationDate(cd);
         setInitialStaffNotShared(sns);
+        setInitialContent(ct);
       }
     } catch (error) {
       console.error('Failed to fetch shared item:', error);
@@ -119,7 +124,7 @@ export default function SharedItemDetailPage() {
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
-    const existingCount = [1, 2, 3, 4].filter((n) => item && item[`画像${n}`]).length;
+    const existingCount = ['１', '２', '３', '４'].filter((n) => item && item[`画像${n}`]).length;
     const remaining = 4 - existingCount - newImages.length;
     setNewImages((prev) => [...prev, ...files.slice(0, remaining).map((f) => ({ file: f, name: f.name }))]);
     e.target.value = '';
@@ -140,7 +145,7 @@ export default function SharedItemDetailPage() {
     setItem((prev) => {
       if (!prev) return prev;
       const updated = { ...prev };
-      for (let n = 1; n <= 4; n++) {
+      for (const n of ['１', '２', '３', '４']) {
         if (updated[`画像${n}`] === url) updated[`画像${n}`] = '';
       }
       return updated;
@@ -155,7 +160,7 @@ export default function SharedItemDetailPage() {
 
     try {
       const pdfUrls = [1, 2, 3, 4].map((n) => item[`PDF${n}`] || '');
-      const imageUrls = [1, 2, 3, 4].map((n) => item[`画像${n}`] || '');
+      const imageUrls = [1, 2, 3, 4].map((n) => item[`画像${n === 1 ? '１' : n === 2 ? '２' : n === 3 ? '３' : '４'}`] || '');
 
       for (const newPdf of newPdfs) {
         const url = await uploadFileToStorage(newPdf.file, 'pdf');
@@ -192,6 +197,7 @@ export default function SharedItemDetailPage() {
       setInitialSharingDate(sharingDate);
       setInitialConfirmationDate(confirmationDate);
       setInitialStaffNotShared(staffNotShared.join(','));
+      setInitialContent(content);
       setSaveSuccess(true);
     } catch (error: any) {
       console.error('Save error:', error);
@@ -219,7 +225,7 @@ export default function SharedItemDetailPage() {
   }
 
   const existingPdfUrls = [1, 2, 3, 4].map((n) => item[`PDF${n}`]).filter(Boolean);
-  const existingImageUrls = [1, 2, 3, 4].map((n) => item[`画像${n}`]).filter(Boolean);
+  const existingImageUrls = ['１', '２', '３', '４'].map((n) => item[`画像${n}`]).filter(Boolean);
   const canAddPdf = existingPdfUrls.length + newPdfs.length < 4;
   const canAddImage = existingImageUrls.length + newImages.length < 4;
 
@@ -227,7 +233,8 @@ export default function SharedItemDetailPage() {
     newPdfs.length > 0 ||
     newImages.length > 0 ||
     [1, 2, 3, 4].some((n) => item[`PDF${n}`] === '') ||
-    [1, 2, 3, 4].some((n) => item[`画像${n}`] === '') ||
+    ['１', '２', '３', '４'].some((n) => item[`画像${n}`] === '') ||
+    content !== initialContent ||
     sharingDate !== initialSharingDate ||
     confirmationDate !== initialConfirmationDate ||
     staffNotShared.join(',') !== initialStaffNotShared;
@@ -301,9 +308,9 @@ export default function SharedItemDetailPage() {
           {/* 内容 */}
           <Grid item xs={12}>
             <Typography variant="caption" color="text.secondary">内容</Typography>
-            <TextField fullWidth multiline rows={4} value={item['内容'] || ''} disabled
+            <TextField fullWidth multiline minRows={4} value={content}
+              onChange={(e) => setContent(e.target.value)}
               sx={{ mt: 1,
-                '& .MuiInputBase-input.Mui-disabled': { WebkitTextFillColor: color.dark, fontWeight: 500 },
                 '& .MuiOutlinedInput-root': { bgcolor: `${color.light}15` },
               }} />
           </Grid>
@@ -325,18 +332,25 @@ export default function SharedItemDetailPage() {
           {/* PDF */}
           <Grid item xs={12}>
             <Typography variant="caption" color="text.secondary">PDF</Typography>
-            <Box sx={{ mt: 1, display: 'flex', flexDirection: 'column', gap: 1 }}>
+            <Box sx={{ mt: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
               {existingPdfUrls.map((url, i) => (
-                <Box key={i} sx={{ display: 'flex', alignItems: 'center', gap: 1, p: 1, border: '1px solid #e0e0e0', borderRadius: 1, bgcolor: '#fafafa' }}>
-                  <Typography sx={{ mr: 0.5 }}>📄</Typography>
-                  <a href={url} target="_blank" rel="noopener noreferrer"
-                    style={{ color: color.main, wordBreak: 'break-all', fontSize: '0.85rem', flex: 1 }}>
-                    {decodeURIComponent(url.split('/').pop() || `PDF${i + 1}`)}
-                  </a>
-                  <IconButton size="small" onClick={() => handleDeleteExistingPdf(url)}
-                    sx={{ color: '#f44336', flexShrink: 0 }} title="削除">
-                    <CloseIcon fontSize="small" />
-                  </IconButton>
+                <Box key={i} sx={{ border: '1px solid #e0e0e0', borderRadius: 1, overflow: 'hidden' }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, p: 1, bgcolor: '#fafafa', borderBottom: '1px solid #e0e0e0' }}>
+                    <Typography sx={{ mr: 0.5 }}>📄</Typography>
+                    <a href={url} target="_blank" rel="noopener noreferrer"
+                      style={{ color: color.main, wordBreak: 'break-all', fontSize: '0.85rem', flex: 1 }}>
+                      {decodeURIComponent(url.split('/').pop() || `PDF${i + 1}`)}
+                    </a>
+                    <IconButton size="small" onClick={() => handleDeleteExistingPdf(url)}
+                      sx={{ color: '#f44336', flexShrink: 0 }} title="削除">
+                      <CloseIcon fontSize="small" />
+                    </IconButton>
+                  </Box>
+                  <iframe
+                    src={url}
+                    title={`PDF${i + 1}`}
+                    style={{ width: '100%', height: 600, border: 'none', display: 'block' }}
+                  />
                 </Box>
               ))}
               {newPdfs.map((f, i) => (
@@ -359,24 +373,28 @@ export default function SharedItemDetailPage() {
           {/* 画像 */}
           <Grid item xs={12}>
             <Typography variant="caption" color="text.secondary">画像</Typography>
-            <Box sx={{ mt: 1, display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+            <Box sx={{ mt: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
               {existingImageUrls.map((url, i) => (
-                <Box key={i} sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                  <Box sx={{ position: 'relative', display: 'inline-block' }}>
-                    <img src={url} alt={`画像${i + 1}`}
-                      style={{ maxWidth: '100%', maxHeight: 200, objectFit: 'contain', borderRadius: 4, border: '1px solid #e0e0e0', display: 'block' }}
-                      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                    />
+                <Box key={i} sx={{ border: '1px solid #e0e0e0', borderRadius: 1, overflow: 'hidden' }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, p: 1, bgcolor: '#fafafa', borderBottom: '1px solid #e0e0e0' }}>
+                    <Typography sx={{ fontSize: '0.85rem', flex: 1, color: color.main, wordBreak: 'break-all' }}>
+                      🖼️ {decodeURIComponent(url.split('/').pop() || `画像${i + 1}`)}
+                    </Typography>
+                    <a href={url} target="_blank" rel="noopener noreferrer"
+                      style={{ color: color.main, fontSize: '0.75rem', whiteSpace: 'nowrap' }}>
+                      別タブで開く
+                    </a>
                     <IconButton size="small" onClick={() => handleDeleteExistingImage(url)}
-                      sx={{ position: 'absolute', top: 4, right: 4, bgcolor: 'rgba(0,0,0,0.5)', color: '#fff',
-                        '&:hover': { bgcolor: 'rgba(244,67,54,0.8)' } }} title="削除">
+                      sx={{ color: '#f44336', flexShrink: 0 }} title="削除">
                       <CloseIcon fontSize="small" />
                     </IconButton>
                   </Box>
-                  <a href={url} target="_blank" rel="noopener noreferrer"
-                    style={{ color: color.main, fontSize: '0.75rem', wordBreak: 'break-all' }}>
-                    {decodeURIComponent(url.split('/').pop() || `画像${i + 1}`)}
-                  </a>
+                  <Box sx={{ p: 1, bgcolor: '#f5f5f5', textAlign: 'center' }}>
+                    <img src={url} alt={`画像${i + 1}`}
+                      style={{ maxWidth: '100%', objectFit: 'contain', borderRadius: 4, display: 'block', margin: '0 auto' }}
+                      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                    />
+                  </Box>
                 </Box>
               ))}
               {newImages.map((f, i) => (
