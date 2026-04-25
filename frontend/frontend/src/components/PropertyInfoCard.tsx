@@ -35,6 +35,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import api, { propertyListingApi } from '../services/api';
 import { useAuthStore } from '../store/authStore';
+import { getActiveEmployees } from '../services/employeeService';
 import { getSenderAddress, saveSenderAddress } from '../utils/senderAddressStorage';
 import RichTextEmailEditor from './RichTextEmailEditor';
 import SenderAddressSelector from './SenderAddressSelector';
@@ -157,6 +158,7 @@ export default function PropertyInfoCard({
   const [senderAddress, setSenderAddress] = useState<string>(getSenderAddress());
   const [replyTo, setReplyTo] = useState<string>('');
   const [jimuStaff, setJimuStaff] = useState<Array<{ initials: string; name: string; email?: string }>>([]);
+  const [activeEmployees, setActiveEmployees] = useState<any[]>([]);
 
   // 画像添付
   const [selectedImages, setSelectedImages] = useState<any[]>([]);
@@ -166,6 +168,7 @@ export default function PropertyInfoCard({
     fetchPropertyDetails();
     fetchPropertyBuyerPurchaseStatus();
     fetchJimuStaff();
+    getActiveEmployees().then(setActiveEmployees).catch(() => {});
 
     // 物件リストの変更を検知するため30秒ごとに再フェッチ
     const intervalId = setInterval(() => {
@@ -1087,6 +1090,7 @@ export default function PropertyInfoCard({
                 setSenderAddress(value);
                 saveSenderAddress(value);
               }}
+              employees={activeEmployees}
             />
 
             {/* 返信先 */}

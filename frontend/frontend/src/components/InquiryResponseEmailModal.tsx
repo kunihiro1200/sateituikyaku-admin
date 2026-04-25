@@ -3,6 +3,7 @@ import { PropertyListing } from '../types';
 import { EmailTemplatePreview } from './EmailTemplatePreview';
 import SenderAddressSelector from './SenderAddressSelector';
 import api from '../services/api';
+import { getActiveEmployees } from '../services/employeeService';
 
 interface InquiryResponseEmailModalProps {
   isOpen: boolean;
@@ -37,6 +38,7 @@ export const InquiryResponseEmailModal: React.FC<InquiryResponseEmailModalProps>
   const [buyerName, setBuyerName] = useState('');
   const [buyerEmail, setBuyerEmail] = useState('');
   const [senderAddress, setSenderAddress] = useState('tenant@ifoo-oita.com');
+  const [activeEmployees, setActiveEmployees] = useState<any[]>([]);
   const [emailContent, setEmailContent] = useState<GeneratedEmailContent | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSending, setIsSending] = useState(false);
@@ -48,6 +50,9 @@ export const InquiryResponseEmailModal: React.FC<InquiryResponseEmailModalProps>
       // Auto-fill buyer information when modal opens
       setBuyerName(buyerInfo.name);
       setBuyerEmail(buyerInfo.email);
+    }
+    if (isOpen) {
+      getActiveEmployees().then(setActiveEmployees).catch(() => {});
     }
   }, [isOpen, buyerInfo]);
 
@@ -221,6 +226,7 @@ export const InquiryResponseEmailModal: React.FC<InquiryResponseEmailModalProps>
                 <SenderAddressSelector
                   value={senderAddress}
                   onChange={setSenderAddress}
+                  employees={activeEmployees}
                 />
               </div>
 
