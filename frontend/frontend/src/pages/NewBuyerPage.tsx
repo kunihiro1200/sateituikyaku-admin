@@ -217,10 +217,17 @@ export default function NewBuyerPage() {
       return;
     }
 
-    // inquiry_email_phone が「済」の場合、owned_home_hearing_inquiry は必須
-    if (String(inquiryEmailPhone).trim() === '済' && !String(ownedHomeHearingInquiry).trim()) {
-      setError('問合時持家ヒアリングは必須です（問合メール電話対応が「済」の場合）');
-      return;
+    // 問合時持家ヒアリングの必須チェック
+    // 条件: (inquiry_email_phone === '済' OR inquiry_source に '電話' を含む) AND 受付日 >= 2026-04-25
+    {
+      const receptionDateObj2 = receptionDate ? new Date(receptionDate) : null;
+      const isAfterHearingCutoff = receptionDateObj2 && receptionDateObj2 >= new Date('2026-04-25');
+      const emailPhoneDone = String(inquiryEmailPhone).trim() === '済';
+      const hasPhone = inquirySource.includes('電話');
+      if (isAfterHearingCutoff && (emailPhoneDone || hasPhone) && !String(ownedHomeHearingInquiry).trim()) {
+        setError('問合時持家ヒアリングは必須です（問合メール電話対応が「済」または問合せ元に「電話」を含む場合）');
+        return;
+      }
     }
 
     // 初動担当の条件付き必須バリデーション（受付日2026/3/30以降）
@@ -921,7 +928,9 @@ export default function NewBuyerPage() {
                 <Grid item xs={12}>
                   {(() => {
                     const SPECIAL_OPTIONS = ['不要', '未'];
-                    const isMissing = String(inquiryEmailPhone).trim() === '済' && !String(ownedHomeHearingInquiry).trim();
+                    const receptionDateForHearing = receptionDate ? new Date(receptionDate) : null;
+                    const isAfterHearingCutoffUI = receptionDateForHearing && receptionDateForHearing >= new Date('2026-04-25');
+                    const isMissing = Boolean(isAfterHearingCutoffUI) && (String(inquiryEmailPhone).trim() === '済' || inquirySource.includes('電話')) && !String(ownedHomeHearingInquiry).trim();
                     return (
                       <Box sx={{
                         display: 'flex', flexDirection: 'column', gap: 0.5,

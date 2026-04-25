@@ -547,6 +547,17 @@ export default function BuyerDetailPage() {
       if (!needsH && !needsA && !needsL && !anyPrice) missingKeys.push('price_range_any');
     }
 
+    // 問合時持家ヒアリング：条件付き必須（受付日 >= 2026-04-25 かつ 電話済みまたは電話問合せ）
+    if (buyer.reception_date) {
+      const receptionDateForHearing = new Date(buyer.reception_date as string);
+      if (receptionDateForHearing >= new Date('2026-04-25')) {
+        const emailPhoneDone = String(buyer.inquiry_email_phone || '').trim() === '済';
+        const hasPhone = String(buyer.inquiry_source || '').includes('電話');
+        if ((emailPhoneDone || hasPhone) && (!buyer.owned_home_hearing_inquiry || !String(buyer.owned_home_hearing_inquiry).trim())) {
+          missingKeys.push('owned_home_hearing_inquiry');
+        }
+      }
+    }
     // 持家ヒアリング結果：条件付き必須
     if (isHomeHearingResultRequired(buyer) && (!buyer.owned_home_hearing_result || !String(buyer.owned_home_hearing_result).trim())) {
       missingKeys.push('owned_home_hearing_result');
@@ -778,6 +789,17 @@ export default function BuyerDetailPage() {
           initialMissing.push('three_calls_confirmed');
         }
       }
+      // 問合時持家ヒアリング：条件付き必須（受付日 >= 2026-04-25 かつ 電話済みまたは電話問合せ）
+      if (res.data.reception_date) {
+        const receptionDateForHearing = new Date(res.data.reception_date);
+        if (receptionDateForHearing >= new Date('2026-04-25')) {
+          const emailPhoneDone = String(res.data.inquiry_email_phone || '').trim() === '済';
+          const hasPhone = String(res.data.inquiry_source || '').includes('電話');
+          if ((emailPhoneDone || hasPhone) && (!res.data.owned_home_hearing_inquiry || !String(res.data.owned_home_hearing_inquiry).trim())) {
+            initialMissing.push('owned_home_hearing_inquiry');
+          }
+        }
+      }
       // 持家ヒアリング結果：条件付き必須
       if (isHomeHearingResultRequired(res.data) && (!res.data.owned_home_hearing_result || !String(res.data.owned_home_hearing_result).trim())) {
         initialMissing.push('owned_home_hearing_result');
@@ -946,25 +968,35 @@ export default function BuyerDetailPage() {
       }
     }
 
-    // inquiry_email_phone が「済」の場合、owned_home_hearing_inquiry は必須
+    // 問合時持家ヒアリングの必須チェック
+    // 条件: (inquiry_email_phone === '済' OR inquiry_source に '電話' を含む) AND 受付日 >= 2026-04-25
     {
-      const emailPhoneVal = ('inquiry_email_phone' in changedFields
-        ? changedFields.inquiry_email_phone
-        : buyer?.inquiry_email_phone) ?? '';
-      if (String(emailPhoneVal).trim() === '済') {
-        const hearingVal = ('owned_home_hearing_inquiry' in changedFields
-          ? changedFields.owned_home_hearing_inquiry
-          : buyer?.owned_home_hearing_inquiry) ?? '';
-        if (!String(hearingVal).trim()) {
-          setMissingRequiredFields(prev => {
-            const next = new Set(prev);
-            next.add('owned_home_hearing_inquiry');
-            return next;
-          });
-          setPendingMissingLabels(['問合時持家ヒアリング']);
-          setBlockNavigation(true);
-          setValidationDialogOpen(true);
-          return; // 保存中断
+      const receptionDateForHearing = buyer?.reception_date ? new Date(buyer.reception_date as string) : null;
+      const isAfterHearingCutoff = receptionDateForHearing && receptionDateForHearing >= new Date('2026-04-25');
+      if (isAfterHearingCutoff) {
+        const emailPhoneVal = ('inquiry_email_phone' in changedFields
+          ? changedFields.inquiry_email_phone
+          : buyer?.inquiry_email_phone) ?? '';
+        const inquirySourceVal = ('inquiry_source' in changedFields
+          ? changedFields.inquiry_source
+          : buyer?.inquiry_source) ?? '';
+        const emailPhoneDone = String(emailPhoneVal).trim() === '済';
+        const hasPhone = String(inquirySourceVal).includes('電話');
+        if (emailPhoneDone || hasPhone) {
+          const hearingVal = ('owned_home_hearing_inquiry' in changedFields
+            ? changedFields.owned_home_hearing_inquiry
+            : buyer?.owned_home_hearing_inquiry) ?? '';
+          if (!String(hearingVal).trim()) {
+            setMissingRequiredFields(prev => {
+              const next = new Set(prev);
+              next.add('owned_home_hearing_inquiry');
+              return next;
+            });
+            setPendingMissingLabels(['問合時持家ヒアリング']);
+            setBlockNavigation(true);
+            setValidationDialogOpen(true);
+            return; // 保存中断
+          }
         }
       }
     }
