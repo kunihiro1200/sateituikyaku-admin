@@ -134,6 +134,17 @@ export default function WorkTasksPage() {
     return getStatusCategories(allWorkTasks);
   }, [allWorkTasks]);
 
+  // allWorkTasksが更新された後、selectedCategoryが存在しなくなった場合は'all'にリセット
+  // （モーダルで条件変更・保存後にステータスが変わり、カテゴリーキーが変わる場合に対応）
+  useEffect(() => {
+    if (selectedCategory === 'all') return;
+    const exists = statusCategories.some(cat => cat.key === selectedCategory);
+    if (!exists) {
+      setSelectedCategory('all');
+      setPage(0);
+    }
+  }, [statusCategories, selectedCategory]);
+
   const filteredTasks = useMemo(() => {
     let tasks = filterTasksByStatus(allWorkTasks, selectedCategory);
     if (searchQuery.trim()) {
