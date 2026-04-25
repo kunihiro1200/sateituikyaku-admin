@@ -289,7 +289,7 @@ export default function WorkTasksPage() {
           {/* 検索バー */}
           <Paper sx={{ p: isMobile ? 1.5 : 2, mb: 2 }}>
             <TextField
-              fullWidth
+              sx={{ width: isMobile ? '100%' : '50%' }}
               size="small"
               placeholder="Search 業務リスト（物件番号、所在、売主）"
               value={searchQuery}
