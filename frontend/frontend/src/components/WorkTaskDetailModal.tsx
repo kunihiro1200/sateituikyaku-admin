@@ -1008,9 +1008,27 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
     sellerBuyerRightScrollRef.current = sellerBuyerRightPaneRef.current?.scrollTop ?? 0;
     contractLeftScrollRef.current = contractLeftPaneRef.current?.scrollTop ?? 0;
     contractRightScrollRef.current = contractRightPaneRef.current?.scrollTop ?? 0;
+    // 売買価格変更時に通常仲介手数料を自動計算
+    // IF(売買価格 >= 800万, (売買価格 * 0.03 + 60000) * 1.1, 330000)
+    const calcStandardBrokerageFee = (salesPrice: number | null): number => {
+      if (!salesPrice || salesPrice <= 0) return 330000;
+      return salesPrice >= 8000000
+        ? Math.round((salesPrice * 0.03 + 60000) * 1.1)
+        : 330000;
+    };
+
     // 決済完了チャットに値が入ったら経理確認済みを「未」に自動リセット
     if (field === 'settlement_completed_chat' && value) {
       setEditedData(prev => ({ ...prev, [field]: value, accounting_confirmed: '未' }));
+    } else if (field === 'sales_price') {
+      // 売買価格変更時は通常仲介手数料（売）・（買）を自動計算
+      const fee = calcStandardBrokerageFee(value ? Number(value) : null);
+      setEditedData(prev => ({
+        ...prev,
+        [field]: value,
+        standard_brokerage_fee_seller: fee,
+        standard_brokerage_fee_buyer: fee,
+      }));
     } else {
       setEditedData(prev => ({ ...prev, [field]: value }));
     }
@@ -1471,9 +1489,10 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
           <TextField
             size="small"
             type="number"
-            value={getValue(field) || ''}
-            onChange={(e) => handleFieldChange(field, e.target.value ? Number(e.target.value) : null)}
+            value={getValue(field) != null && getValue(field) !== '' ? Math.round(Number(getValue(field))) : ''}
+            onChange={(e) => handleFieldChange(field, e.target.value ? Math.round(Number(e.target.value)) : null)}
             fullWidth
+            inputProps={{ step: 1 }}
           />
         ) : type === 'url' ? (
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -2865,30 +2884,55 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
               <EditableField label="仲介手数料（買）" field="brokerage_fee_buyer" type="number" />
             ) : null;
           })()}
-          <EditableField label="通常仲介手数料（売）" field="standard_brokerage_fee_seller" type="number" />
-          {/* 通常仲介手数料（買）: 専任両手・一般両手・他社片手・自社含む の場合のみ表示 */}
+          {/* 通常仲介手数料（売）: 読み取り専用（売買価格から自動計算） */}
+          <Grid container spacing={2} alignItems="center" sx={{ mb: 1.5 }}>
+            <Grid item xs={4}>
+              <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>通常仲介手数料（売）</Typography>
+            </Grid>
+            <Grid item xs={8}>
+              <Typography variant="body2" sx={{ px: 1.5, py: 1, bgcolor: '#f5f5f5', borderRadius: 1, border: '1px solid #e0e0e0', color: 'text.secondary' }}>
+                {getValue('standard_brokerage_fee_seller') != null && getValue('standard_brokerage_fee_seller') !== ''
+                  ? Math.round(Number(getValue('standard_brokerage_fee_seller'))).toLocaleString()
+                  : '—'}
+              </Typography>
+            </Grid>
+          </Grid>
+          {/* 通常仲介手数料（買）: 専任両手・一般両手・他社片手・自社含む の場合のみ表示（読み取り専用） */}
           {(() => {
             const ct = getValue('contract_type') || '';
             const showBuyer = ct === '専任両手' || ct === '一般両手' || ct === '他社片手' || ct.includes('自社');
             return showBuyer ? (
-              <EditableField label="通常仲介手数料（買）" field="standard_brokerage_fee_buyer" type="number" />
+              <Grid container spacing={2} alignItems="center" sx={{ mb: 1.5 }}>
+                <Grid item xs={4}>
+                  <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>通常仲介手数料（買）</Typography>
+                </Grid>
+                <Grid item xs={8}>
+                  <Typography variant="body2" sx={{ px: 1.5, py: 1, bgcolor: '#f5f5f5', borderRadius: 1, border: '1px solid #e0e0e0', color: 'text.secondary' }}>
+                    {getValue('standard_brokerage_fee_buyer') != null && getValue('standard_brokerage_fee_buyer') !== ''
+                      ? Math.round(Number(getValue('standard_brokerage_fee_buyer'))).toLocaleString()
+                      : '—'}
+                  </Typography>
+                </Grid>
+              </Grid>
             ) : null;
           })()}
           <EditableButtonSelect label="キャンペーン" field="campaign" options={['あり', 'なし']} />
-          {/* 減額理由他: 売買契約締め日>2025/9/1 かつ 仲介手数料（買）or（売）入力済み かつ 通常仲介手数料と異なる場合は必須 */}
+          {/* 減額理由他: AND(売買契約締め日が入力済み かつ >2025/9/1, OR(仲介手数料（買）or（売）入力済み), OR(通常仲介手数料と異なる)) */}
           {(() => {
             const contractDate = getValue('sales_contract_deadline');
             const feeBuyer = getValue('brokerage_fee_buyer');
             const feeSeller = getValue('brokerage_fee_seller');
             const stdFeeBuyer = getValue('standard_brokerage_fee_buyer');
             const stdFeeSeller = getValue('standard_brokerage_fee_seller');
-            const isDiscountRequired =
-              contractDate && contractDate > '2025-09-01' &&
-              (feeBuyer != null && feeBuyer !== '' || feeSeller != null && feeSeller !== '') &&
-              (
-                (stdFeeBuyer != null && feeBuyer != null && String(stdFeeBuyer) !== String(feeBuyer)) ||
-                (stdFeeSeller != null && feeSeller != null && String(stdFeeSeller) !== String(feeSeller))
-              );
+            // 条件1: 売買契約締め日が入力済み かつ 2025/9/1より後
+            const cond1 = contractDate != null && contractDate !== '' && contractDate > '2025-09-01';
+            // 条件2: 仲介手数料（買）または（売）のいずれかが入力済み
+            const cond2 = (feeBuyer != null && feeBuyer !== '') || (feeSeller != null && feeSeller !== '');
+            // 条件3: 通常仲介手数料（買）≠仲介手数料（買）または 通常仲介手数料（売）≠仲介手数料（売）
+            const cond3 =
+              (stdFeeBuyer != null && feeBuyer != null && feeBuyer !== '' && Math.round(Number(stdFeeBuyer)) !== Math.round(Number(feeBuyer))) ||
+              (stdFeeSeller != null && feeSeller != null && feeSeller !== '' && Math.round(Number(stdFeeSeller)) !== Math.round(Number(feeSeller)));
+            const isDiscountRequired = cond1 && cond2 && cond3;
             const isUnfilled = isDiscountRequired && !getValue('discount_reason_other');
             return (
               <EditableField
