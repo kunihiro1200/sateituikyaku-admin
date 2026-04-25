@@ -29,6 +29,7 @@ import PreDayEmailButton from '../components/PreDayEmailButton';
 import SmsIcon from '@mui/icons-material/Sms';
 import { useAuthStore } from '../store/authStore';
 import { OfferFailedChatSentPopup } from '../components/OfferFailedChatSentPopup';
+import CompactBuyerListForProperty from '../components/CompactBuyerListForProperty';
 
 /**
  * カレンダーイベントのタイトルを生成する
@@ -242,6 +243,11 @@ export default function BuyerViewingResultPage() {
     open: boolean;
     conflicts: Array<{ buyer_number: string; name: string; viewing_date: string; viewing_time: string | null; follow_up_assignee: string }>;
   }>({ open: false, conflicts: [] });
+  // 物件の買主リスト
+  const [propertyBuyers, setPropertyBuyers] = useState<any[]>([]);
+  const [propertyBuyersLoading, setPropertyBuyersLoading] = useState(false);
+  // ダブルブッキング警告からスクロールするための ref
+  const buyerListSectionRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (buyer_number) {
@@ -358,8 +364,24 @@ export default function BuyerViewingResultPage() {
           .filter(Boolean)
       );
       setSelectedPropertyIds(ids);
+      // 最初の物件番号で買主リストを取得
+      if (properties.length > 0 && properties[0].property_number) {
+        fetchPropertyBuyers(properties[0].property_number);
+      }
     } catch (error) {
       console.error('Failed to fetch linked properties:', error);
+    }
+  };
+
+  const fetchPropertyBuyers = async (propertyNumber: string) => {
+    setPropertyBuyersLoading(true);
+    try {
+      const res = await api.get(`/api/property-listings/${propertyNumber}/buyers`);
+      setPropertyBuyers(res.data || []);
+    } catch (error) {
+      console.error('Failed to fetch property buyers:', error);
+    } finally {
+      setPropertyBuyersLoading(false);
     }
   };
 
@@ -1771,6 +1793,18 @@ export default function BuyerViewingResultPage() {
         </Paper>
       )}
 
+      {/* 物件の買主リストセクション */}
+      {linkedProperties.length > 0 && (
+        <Box ref={buyerListSectionRef} sx={{ mt: 3 }}>
+          <CompactBuyerListForProperty
+            buyers={propertyBuyers}
+            propertyNumber={linkedProperties[0].property_number}
+            loading={propertyBuyersLoading}
+            showCreateButton={false}
+          />
+        </Box>
+      )}
+
       {/* スナックバー */}
       {/* カレンダー登録確認ダイアログ */}
       <Dialog open={calendarConfirmDialog.open} onClose={() => setCalendarConfirmDialog(prev => ({ ...prev, open: false }))} maxWidth="sm" fullWidth>
@@ -1882,7 +1916,13 @@ export default function BuyerViewingResultPage() {
         <DialogActions>
           <Button
             variant="contained"
-            onClick={() => setDoubleBookingWarning({ open: false, conflicts: [] })}
+            onClick={() => {
+              setDoubleBookingWarning({ open: false, conflicts: [] });
+              // 買主リストセクションへスクロール
+              setTimeout(() => {
+                buyerListSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              }, 100);
+            }}
           >
             確認しました
           </Button>
