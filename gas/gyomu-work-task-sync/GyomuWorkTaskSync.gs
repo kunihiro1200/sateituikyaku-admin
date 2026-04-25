@@ -184,12 +184,12 @@ var TYPE_CONVERSIONS = {
   'mediation_deadline': 'date',
   'site_registration_deadline': 'date',
   'site_registration_request_date': 'date',
-  'site_registration_due_date': 'datetime',
+  'site_registration_due_date': 'date',
   'site_registration_confirm_request_date': 'date',
   'distribution_date': 'date',
   'publish_scheduled_date': 'date',
   'floor_plan_request_date': 'date',
-  'floor_plan_due_date': 'datetime',
+  'floor_plan_due_date': 'date',
   'floor_plan_completed_date': 'date',
   'contract_input_deadline': 'date',
   'sales_contract_deadline': 'date',
@@ -409,6 +409,7 @@ function parseDate(value) {
 /**
  * 日時変換（タイムスタンプ）
  * ISO 8601形式（例: "2026-03-18T14:30:00.000Z"）で返す
+ * PostgreSQLが認識できる形式のみ使用（gmt+0900 は不可、+09:00 を使用）
  */
 function parseDatetime(value) {
   if (!value) return null;
@@ -416,6 +417,7 @@ function parseDatetime(value) {
   // GASのDateオブジェクト
   if (value instanceof Date) {
     if (isNaN(value.getTime())) return null;
+    // toISOString() はUTC（Z）形式で返すため安全
     return value.toISOString();
   }
 
@@ -429,6 +431,21 @@ function parseDatetime(value) {
   var str = String(value).trim();
   if (!str) return null;
 
+  // YYYY/MM/DD または YYYY-MM-DD 形式の日付文字列（時刻なし）
+  var dateOnlyMatch = str.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/);
+  if (dateOnlyMatch) {
+    // 日付のみの場合は日本時間の00:00として扱い、UTC変換してISO形式で返す
+    var d = new Date(
+      parseInt(dateOnlyMatch[1]),
+      parseInt(dateOnlyMatch[2]) - 1,
+      parseInt(dateOnlyMatch[3]),
+      0, 0, 0
+    );
+    if (!isNaN(d.getTime())) return d.toISOString();
+  }
+
+  // new Date() でパース（ただし "gmt+0900" のような不正形式を避けるため
+  // パース後は必ず toISOString() でUTC形式に変換する）
   var date2 = new Date(str);
   if (!isNaN(date2.getTime())) {
     return date2.toISOString();
