@@ -2889,8 +2889,11 @@ export class EnhancedAutoSyncService {
       const buyerNumber = row['買主番号'];
       if (buyerNumber !== null && buyerNumber !== undefined && buyerNumber !== '') {
         const buyerNumberStr = String(buyerNumber).trim();
-        if (buyerNumberStr) {
+        // BY_プレフィックスの不正な買主番号はスキップ
+        if (buyerNumberStr && !/^BY_[A-Za-z0-9_]+$/.test(buyerNumberStr)) {
           sheetBuyerNumbers.add(buyerNumberStr);
+        } else if (/^BY_[A-Za-z0-9_]+$/.test(buyerNumberStr)) {
+          console.warn(`[detectMissingBuyers] Skipping invalid buyer_number with BY_ prefix: ${buyerNumberStr}`);
         }
       }
     }
@@ -2937,8 +2940,11 @@ export class EnhancedAutoSyncService {
       const buyerNumber = row['買主番号'];
       if (buyerNumber !== null && buyerNumber !== undefined && buyerNumber !== '') {
         const buyerNumberStr = String(buyerNumber).trim();
-        if (buyerNumberStr) {
+        // BY_プレフィックスの不正な買主番号はスキップ
+        if (buyerNumberStr && !/^BY_[A-Za-z0-9_]+$/.test(buyerNumberStr)) {
           sheetDataByBuyerNumber.set(buyerNumberStr, row);
+        } else if (/^BY_[A-Za-z0-9_]+$/.test(buyerNumberStr)) {
+          console.warn(`[detectUpdatedBuyers] Skipping invalid buyer_number with BY_ prefix: ${buyerNumberStr}`);
         }
       }
     }

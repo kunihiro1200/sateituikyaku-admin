@@ -203,6 +203,12 @@ export class BuyerSyncService {
           result.skipped++;
           continue;
         }
+        // BY_プレフィックスの不正な買主番号はスキップ（スプレッドシートの誤った列値が混入した場合）
+        if (/^BY_[A-Za-z0-9_]+$/.test(String(data.buyer_number).trim())) {
+          console.warn(`[BuyerSyncService] Skipping invalid buyer_number with BY_ prefix: ${data.buyer_number} (row ${rowNumber})`);
+          result.skipped++;
+          continue;
+        }
 
         // 既存レコードを確認
         const { data: existing } = await this.supabase
