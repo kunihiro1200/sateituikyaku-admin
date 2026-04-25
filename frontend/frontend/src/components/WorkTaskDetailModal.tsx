@@ -692,8 +692,7 @@ const CountermeasureCell = React.memo(({ propertyNumber, field, value, onSaved }
     <TextField
       size="small"
       multiline
-      minRows={2}
-      maxRows={6}
+      minRows={3}
       value={localValue}
       onChange={(e) => setLocalValue(e.target.value)}
       onBlur={handleBlur}
