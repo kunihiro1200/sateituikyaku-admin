@@ -734,7 +734,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
     open: boolean;
     title: string;
     emptyFields: string[];
-    onConfirmAction: 'site' | 'floor' | 'mandatory' | 'cadastral' | null;
+    onConfirmAction: 'site' | 'floor' | 'mandatory' | 'cadastral' | 'binding_completed' | null;
   }>({ open: false, title: '', emptyFields: [], onConfirmAction: null });
 
   // ログインユーザーの営業フラグを取得
@@ -861,6 +861,25 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
       return;
     }
 
+    // 製本完了チェック: 製本完了に値があり、売買契約確認が「確認OK」でなく、売買契約締め日が2025-04-25以降の場合はブロック
+    const bindingCompleted = getValue('binding_completed');
+    const salesContractConfirmed = getValue('sales_contract_confirmed');
+    const salesContractDeadline = getValue('sales_contract_deadline');
+    if (
+      bindingCompleted &&
+      salesContractConfirmed !== '確認OK' &&
+      salesContractDeadline &&
+      salesContractDeadline >= '2025-04-25'
+    ) {
+      setValidationWarningDialog({
+        open: true,
+        title: '「売買契約確認」が「確認OK」になっていないため保存できません',
+        emptyFields: ['売買契約確認を「確認OK」にしてから保存してください'],
+        onConfirmAction: 'binding_completed',
+      });
+      return;
+    }
+
     // 必須修正フィールドチェック（2026/4/24以降 保存を完全ブロック）
     const mandatoryResult = checkMandatoryRevisionFields(getValue, editedData);
     if (mandatoryResult.hasError) {
@@ -964,7 +983,23 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
   };
 
   const handleValidationWarningCancel = () => {
+    const action = validationWarningDialog.onConfirmAction;
     setValidationWarningDialog(prev => ({ ...prev, open: false }));
+
+    // 製本完了チェックエラーの場合、売買契約確認フィールドまでスクロール
+    if (action === 'binding_completed') {
+      // 契約決済タブ（tabIndex=2）に切り替えてからスクロール
+      setTabIndex(2);
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          if (salesContractConfirmedRef.current) {
+            salesContractConfirmedRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          } else if (contractLeftPaneRef.current) {
+            contractLeftPaneRef.current.scrollTop = 0;
+          }
+        });
+      });
+    }
   };
 
   const handleFieldChange = (field: string, value: any) => {
@@ -1352,6 +1387,9 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
   const contractRightPaneRef = useRef<HTMLDivElement>(null);
   const contractLeftScrollRef = useRef<number>(0);
   const contractRightScrollRef = useRef<number>(0);
+
+  // 売買契約確認フィールドへのスクロール用 ref
+  const salesContractConfirmedRef = useRef<HTMLDivElement>(null);
 
   // editedData 変更後に左右ペインのスクロール位置を復元（サイト登録タブのみ）
   useEffect(() => {
@@ -2447,6 +2485,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
           <EditableButtonSelect label="社員が契約書作成" field="employee_contract_creation" options={normalInitials} />
 
           {/* 売買契約確認（スプシAM列と同期）- 「確認OK」は営業のみ押せる */}
+          <div ref={salesContractConfirmedRef}>
           {isSales ? (
             <EditableButtonSelect label="売買契約確認" field="sales_contract_confirmed" options={['確認中', '確認OK']} />
           ) : (
@@ -2479,6 +2518,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
               </Grid>
             </Grid>
           )}
+          </div>
 
           {/* 確認OKの場合のみ表示 */}
           {getValue('sales_contract_confirmed') === '確認OK' && (
@@ -3759,7 +3799,7 @@ ${pageUrl}`;
         emptyFields={validationWarningDialog.emptyFields}
         onConfirm={handleValidationWarningConfirm}
         onCancel={handleValidationWarningCancel}
-        isMandatory={validationWarningDialog.onConfirmAction === 'mandatory'}
+        isMandatory={validationWarningDialog.onConfirmAction === 'mandatory' || validationWarningDialog.onConfirmAction === 'binding_completed'}
       />
       <MediationFormatWarningDialog
         open={mediationFormatWarningDialog.open}
