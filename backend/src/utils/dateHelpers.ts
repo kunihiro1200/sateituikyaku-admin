@@ -70,6 +70,19 @@ function todayJST(): Date {
 }
 
 /**
+ * 今日の日付を JST で YYYY-MM-DD 形式の文字列として返す
+ * タイムゾーン非依存の日付比較に使用する
+ */
+export function getTodayJST(): string {
+  const now = new Date();
+  const jstTime = new Date(now.getTime() + JST_OFFSET_MS);
+  const year = jstTime.getUTCFullYear();
+  const month = String(jstTime.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(jstTime.getUTCDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+/**
  * 指定された日付が今日かどうかを判定
  */
 export function isToday(date: Date | string | null | undefined): boolean {

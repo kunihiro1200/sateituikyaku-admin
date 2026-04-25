@@ -708,7 +708,7 @@ export class BuyerService {
    */
   private shouldUpdateBuyerSidebarCounts(updateData: Partial<any>): boolean {
     // サイドバーカテゴリーに影響するフィールド
-    const sidebarFields = ['next_call_date', 'follow_up_assignee', 'viewing_date', 'notification_sender', 'inquiry_email_phone', 'pinrich', 'inquiry_source', 'latest_status', 'broker_inquiry'];
+    const sidebarFields = ['next_call_date', 'follow_up_assignee', 'viewing_date', 'notification_sender', 'inquiry_email_phone', 'pinrich', 'inquiry_source', 'latest_status', 'broker_inquiry', 'pinrich_500man_registration', 'viewing_survey_result', 'viewing_survey_confirmed', 'vendor_survey', 'viewing_type_general', 'post_viewing_seller_contact', 'atbb_status', 'viewing_promotion_not_needed', 'viewing_promotion_sender', 'inquiry_confidence', 'inquiry_email_reply', 'three_call_unchecked'];
     return sidebarFields.some(field => field in updateData);
   }
 
@@ -2784,11 +2784,17 @@ export class BuyerService {
         console.log(`[getBuyersByStatus] viewingSurveyUnchecked フィルタ結果: ${filteredBuyers.length}件`);
       } else if (status === 'inquiryEmailUnanswered' || status === 'brokerInquiry' || 
                  status === 'generalViewingSellerContactPending' || status === 'viewingPromotionRequired') {
-        // 新カテゴリの場合（2026年4月追加）
-        // これらのカテゴリはGASで計算されたカウントのみを使用し、フィルタリングは実装しない
+        // 新カテゴリの場合（2026年4月追加）- calculated_statusで直接フィルタリング
         console.log(`[getBuyersByStatus] 新カテゴリ検出: status=${status}`);
-        console.log(`[getBuyersByStatus] 新カテゴリはフィルタリング未実装のため、空配列を返します`);
-        filteredBuyers = [];
+        const statusMap: Record<string, string> = {
+          'inquiryEmailUnanswered': '問合メール未対応',
+          'brokerInquiry': '業者問合せあり',
+          'generalViewingSellerContactPending': '一般媒介_内覧後売主連絡未',
+          'viewingPromotionRequired': '要内覧促進客',
+        };
+        const targetStatus = statusMap[status];
+        filteredBuyers = allBuyers.filter((buyer: any) => buyer.calculated_status === targetStatus);
+        console.log(`[getBuyersByStatus] ${status} フィルタ結果: ${filteredBuyers.length}件`);
       } else if (assignedMatch1 || assignedMatch2) {
         // 担当カテゴリの場合、follow_up_assignee または initial_assignee でフィルタリング
         const assignee = assignedMatch1 ? assignedMatch1[1] : assignedMatch2![1]; // 'Y', 'I', '久', '外す' など

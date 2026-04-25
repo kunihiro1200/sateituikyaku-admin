@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { CacheHelper } from '../utils/cache';
-import { isTomorrow, isDaysFromToday, getDayOfWeek } from '../utils/dateHelpers';
+import { isTomorrow, isDaysFromToday, getDayOfWeek, getTodayJST } from '../utils/dateHelpers';
 import { invalidateBuyerStatusCache } from './BuyerService';
 
 /**
@@ -168,8 +168,8 @@ export class SidebarCountsUpdateService {
    */
   private determineBuyerCategories(buyer: any): Array<{ category: string; assignee: string | null }> {
     const categories: Array<{ category: string; assignee: string | null }> = [];
-    // タイムゾーンを考慮した今日の日付（YYYY-MM-DD形式の文字列で比較）
-    const todayStr = new Date().toISOString().split('T')[0];
+    // ✅ タイムゾーン修正: getTodayJST()を使用してJST日付を取得
+    const todayStr = getTodayJST();
 
     console.log(`[determineBuyerCategories] buyer_number=${buyer.buyer_number}, today=${todayStr}`);
     console.log(`[determineBuyerCategories] follow_up_assignee="${buyer.follow_up_assignee}", next_call_date="${buyer.next_call_date}"`);
@@ -193,7 +193,7 @@ export class SidebarCountsUpdateService {
     // 当日TEL
     console.log(`[determineBuyerCategories] Checking todayCall: !follow_up_assignee=${!buyer.follow_up_assignee}, has next_call_date=${!!buyer.next_call_date}`);
     if (!buyer.follow_up_assignee && buyer.next_call_date) {
-      const nextCallDateStr = new Date(buyer.next_call_date).toISOString().split('T')[0];
+      const nextCallDateStr = buyer.next_call_date.substring(0, 10);
       console.log(`[determineBuyerCategories] next_call_date=${nextCallDateStr}, today=${todayStr}`);
       console.log(`[determineBuyerCategories] nextCallDateStr <= todayStr: ${nextCallDateStr <= todayStr}`);
       if (nextCallDateStr <= todayStr) {
@@ -209,7 +209,7 @@ export class SidebarCountsUpdateService {
 
       // 当日TEL(イニシャル)
       if (buyer.next_call_date) {
-        const nextCallDateStr = new Date(buyer.next_call_date).toISOString().split('T')[0];
+        const nextCallDateStr = buyer.next_call_date.substring(0, 10);
         if (nextCallDateStr <= todayStr) {
           categories.push({ category: 'todayCallAssigned', assignee });
         }
@@ -262,6 +262,41 @@ export class SidebarCountsUpdateService {
       categories.push({ category: 'pinrichUnregistered', assignee: null });
     }
 
+    // 業者問合せあり: vendor_survey = '未'
+    if (buyer.vendor_survey === '未') {
+      categories.push({ category: 'brokerInquiry', assignee: null });
+    }
+
+    // 一般媒介_内覧後売主連絡未
+    const latestViewingDateStr = buyer.latest_viewing_date ? String(buyer.latest_viewing_date).substring(0, 10) : '';
+    const conditionA_GV = (
+      buyer.viewing_type_general && String(buyer.viewing_type_general).trim() &&
+      latestViewingDateStr &&
+      latestViewingDateStr < todayStr &&
+      latestViewingDateStr >= '2025-08-01' &&
+      (!buyer.post_viewing_seller_contact || buyer.post_viewing_seller_contact === '') &&
+      buyer.atbb_status && String(buyer.atbb_status).includes('公開中')
+    );
+    const conditionB_GV = (
+      buyer.post_viewing_seller_contact === '未' &&
+      buyer.atbb_status && String(buyer.atbb_status).includes('公開中')
+    );
+    if (conditionA_GV || conditionB_GV) {
+      categories.push({ category: 'generalViewingSellerContactPending', assignee: null });
+    }
+
+    // Pinrich500万以上登録未
+    if (
+      buyer.email && String(buyer.email).trim() &&
+      buyer.inquiry_property_price !== null &&
+      buyer.inquiry_property_price !== undefined &&
+      Number(buyer.inquiry_property_price) <= 5000000 &&
+      (!buyer.pinrich_500man_registration || buyer.pinrich_500man_registration === '未') &&
+      receptionDateStr >= '2026-01-01'
+    ) {
+      categories.push({ category: 'pinrich500manUnregistered', assignee: null });
+    }
+
     // 内覧アンケート未確認: viewing_survey_result が入力済み かつ viewing_survey_confirmed が空欄
     const hasSurveyResult = buyer.viewing_survey_result && String(buyer.viewing_survey_result).trim();
     const isSurveyConfirmed = buyer.viewing_survey_confirmed && String(buyer.viewing_survey_confirmed).trim();
@@ -278,8 +313,8 @@ export class SidebarCountsUpdateService {
    */
   private determineSellerCategories(seller: any): Array<{ category: string; assignee: string | null }> {
     const categories: Array<{ category: string; assignee: string | null }> = [];
-    // タイムゾーンを考慮した今日の日付（YYYY-MM-DD形式の文字列で比較）
-    const todayStr = new Date().toISOString().split('T')[0];
+    // ✅ タイムゾーン修正: getTodayJST()を使用してJST日付を取得
+    const todayStr = getTodayJST();
 
     // 訪問日前日（dateHelpers.tsの関数を使用してタイムゾーン問題を回避）
     if (seller.visit_assignee && seller.visit_date) {
