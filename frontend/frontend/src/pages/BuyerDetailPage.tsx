@@ -769,8 +769,8 @@ export default function BuyerDetailPage() {
       if (isLatestStatusRequired(res.data) && (!res.data.latest_status || !String(res.data.latest_status).trim())) {
         initialMissing.push('latest_status');
       }
-      // 近隣物件送付メール：受付日が2026/4/1以降は必須
-      if (res.data.reception_date) {
+      // 近隣物件送付メール：受付日が2026/4/1以降は必須（業者問合せの場合は不要）
+      if (res.data.reception_date && res.data.broker_inquiry !== '業者問合せ') {
         const receptionDate = new Date(res.data.reception_date);
         if (receptionDate >= new Date('2026-04-01') && (!res.data.neighbor_property_email_sent || !String(res.data.neighbor_property_email_sent).trim())) {
           initialMissing.push('neighbor_property_email_sent');
@@ -823,8 +823,8 @@ export default function BuyerDetailPage() {
   const handleSaveHearing = async () => {
     if (!buyer) return;
 
-    // 近隣物件送付メール必須バリデーション（受付日が2026/4/1以降）
-    if (buyer.reception_date) {
+    // 近隣物件送付メール必須バリデーション（受付日が2026/4/1以降、業者問合せの場合は不要）
+    if (buyer.reception_date && buyer.broker_inquiry !== '業者問合せ') {
       const receptionDate = new Date(buyer.reception_date as string);
       if (receptionDate >= new Date('2026-04-01')) {
         if (!buyer.neighbor_property_email_sent || !String(buyer.neighbor_property_email_sent).trim()) {
@@ -1001,10 +1001,10 @@ export default function BuyerDetailPage() {
       }
     }
 
-    // 近隣物件送付メール必須バリデーション（受付日が2026/4/1以降）
+    // 近隣物件送付メール必須バリデーション（受付日が2026/4/1以降、業者問合せの場合は不要）
     {
       const receptionDateVal = buyer?.reception_date;
-      if (receptionDateVal) {
+      if (receptionDateVal && buyer?.broker_inquiry !== '業者問合せ') {
         const receptionDate = new Date(receptionDateVal as string);
         if (receptionDate >= new Date('2026-04-01')) {
           const neighborVal = ('neighbor_property_email_sent' in changedFields
@@ -2542,7 +2542,9 @@ TEL：097-533-2022`;
                     }
 
                     // neighbor_property_email_sentフィールドは特別処理（ボタン選択 + 説明文）
+                    // 業者問合せの場合は非表示
                     if (field.key === 'neighbor_property_email_sent') {
+                      if (buyer.broker_inquiry === '業者問合せ') return null;
                       const NEIGHBOR_BTNS = ['済', '不要'];
                       const isNeighborMissing = missingRequiredFields.has('neighbor_property_email_sent');
                       const currentVal = String(buyer[field.key] || '').trim();
