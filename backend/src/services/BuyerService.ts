@@ -376,14 +376,16 @@ export class BuyerService {
   async getByBuyerNumber(buyerNumber: string, includeDeleted: boolean = false): Promise<any | null> {
     console.log(`[BuyerService.getByBuyerNumber] buyerNumber=${buyerNumber} (type: ${typeof buyerNumber})`);
     
-    // buyer_numberは数値型なので、文字列を数値に変換
-    const buyerNumberInt = parseInt(buyerNumber, 10);
-    console.log(`[BuyerService.getByBuyerNumber] converted to int: ${buyerNumberInt}`);
+    // BY_プレフィックス形式（例: BY_MN28sl8yi5yLNI）はそのまま文字列で検索
+    // 数値形式の場合はintに変換して検索
+    const isByPrefix = /^BY_[A-Za-z0-9_]+$/.test(buyerNumber);
+    const searchValue = isByPrefix ? buyerNumber : parseInt(buyerNumber, 10);
+    console.log(`[BuyerService.getByBuyerNumber] searchValue=${searchValue} (isByPrefix=${isByPrefix})`);
     
     let query = this.supabase
       .from('buyers')
       .select('*')
-      .eq('buyer_number', buyerNumberInt);
+      .eq('buyer_number', searchValue);
 
     if (!includeDeleted) {
       query = query.is('deleted_at', null);
@@ -778,14 +780,15 @@ export class BuyerService {
     // Apply second inquiry rule: force pinrich to '登録不要（不可）' if inquiry_source is '2件目以降'
     const finalAllowedData = this.applySecondInquiryRule(allowedData);
 
-    // buyer_numberは数値型なので、数値に変換
-    const buyerNumberInt = parseInt(buyerNumber, 10);
-    console.log('[BuyerService.update] buyerNumberInt:', buyerNumberInt);
+    // BY_プレフィックス形式はそのまま文字列で、数値形式はintに変換
+    const isByPrefixUpdate = /^BY_[A-Za-z0-9_]+$/.test(buyerNumber);
+    const buyerNumberValue = isByPrefixUpdate ? buyerNumber : parseInt(buyerNumber, 10);
+    console.log('[BuyerService.update] buyerNumberValue:', buyerNumberValue);
 
     const { data, error } = await this.supabase
       .from('buyers')
       .update(finalAllowedData)
-      .eq('buyer_number', buyerNumberInt)
+      .eq('buyer_number', buyerNumberValue)
       .select()
       .single();
 
