@@ -2465,6 +2465,7 @@ const CallModePage = () => {
       setSavedCompetitors(editedCompetitors);
       setSavedExclusiveOtherDecisionFactors(editedExclusiveOtherDecisionFactors);
       setSavedCompetitorNameAndReason(editedCompetitorNameAndReason);
+      setPageEdited(false); // 次電日を含むステータス保存後はリマインダーダイアログ不要
     } catch (err: any) {
       setError(err.response?.data?.error?.message || 'ステータスの更新に失敗しました');
     } finally {
@@ -3940,6 +3941,7 @@ HP：https://ifoo-oita.com/
       setSavedExclusiveOtherDecisionFactors(editedExclusiveOtherDecisionFactors);
       setSavedCompetitorNameAndReason(editedCompetitorNameAndReason);
       setStatusChanged(false); // 保存成功後にリセット
+      setPageEdited(false); // 次電日を含むステータス保存後はリマインダーダイアログ不要
       
       // ステータスに応じて適切なエンドポイントを選択
       let endpoint = '';
