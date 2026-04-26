@@ -49,6 +49,8 @@ export interface EnhancedPerformanceMetrics {
     currentValue: number;
     fiscalYearMonthlyAverage: number;
     target: 28;
+    numerator: number;
+    denominator: number;
   };
   exclusiveContracts: {
     byRepresentative: RepresentativeMetricWithAverage[];
@@ -57,16 +59,18 @@ export interface EnhancedPerformanceMetrics {
       rate: number;
       fiscalYearMonthlyAverage: number;
       target: 48;
-      numerator?: number;        // 専任件数（分子）
-      denominator?: number;      // 訪問数 - 一般媒介数（分母）
-      visitCount?: number;       // 訪問数
-      generalAgencyCount?: number; // 一般媒介数
+      numerator: number;
+      denominator: number;
+      visitCount: number;
+      generalAgencyCount: number;
     };
   };
   competitorLossUnvisited: {
     currentValue: number;
     fiscalYearMonthlyAverage: number;
     previousYearMonthlyAverage: number;
+    numerator: number;
+    denominator: number;
   };
   competitorLossVisited: {
     byRepresentative: RepresentativeMetricWithAverage[];
@@ -75,6 +79,8 @@ export interface EnhancedPerformanceMetrics {
       rate: number;
       fiscalYearMonthlyAverage: number;
       previousYearMonthlyAverage: number;
+      numerator: number;
+      denominator: number;
     };
   };
 }
@@ -87,7 +93,8 @@ export class PerformanceMetricsService extends BaseRepository {
     const [year, monthNum] = month.split('-').map(Number);
 
     // 現在月のメトリクスを計算
-    const visitAppraisalRate = await this.calculateVisitAppraisalRate(year, monthNum);
+    const visitAppraisalRateResult = await this.calculateVisitAppraisalRate(year, monthNum);
+    const visitAppraisalRate = visitAppraisalRateResult.rate;
     const exclusiveContracts = await this.calculateExclusiveContracts(year, monthNum);
     const competitorLossUnvisited = await this.calculateCompetitorLossUnvisited(year, monthNum);
     const competitorLossVisited = await this.calculateCompetitorLossVisited(year, monthNum);
@@ -96,7 +103,10 @@ export class PerformanceMetricsService extends BaseRepository {
     const visitAppraisalRateAvg = await this.calculateFiscalYearMonthlyAverage(
       year,
       monthNum,
-      (y, m) => this.calculateVisitAppraisalRate(y, m)
+      async (y, m) => {
+        const result = await this.calculateVisitAppraisalRate(y, m);
+        return result.rate;
+      }
     );
 
     const exclusiveContractsRateAvg = await this.calculateFiscalYearMonthlyAverage(
@@ -166,6 +176,8 @@ export class PerformanceMetricsService extends BaseRepository {
         currentValue: visitAppraisalRate,
         fiscalYearMonthlyAverage: visitAppraisalRateAvg,
         target: 28,
+        numerator: visitAppraisalRateResult.numerator,
+        denominator: visitAppraisalRateResult.denominator,
       },
       exclusiveContracts: {
         byRepresentative: exclusiveByRepWithAvg,
@@ -174,12 +186,18 @@ export class PerformanceMetricsService extends BaseRepository {
           rate: exclusiveContracts.total.rate,
           fiscalYearMonthlyAverage: exclusiveContractsRateAvg,
           target: 48,
+          numerator: exclusiveContracts.total.count,
+          denominator: exclusiveContracts.total.denominator,
+          visitCount: exclusiveContracts.total.visitCount,
+          generalAgencyCount: exclusiveContracts.total.generalAgencyCount,
         },
       },
       competitorLossUnvisited: {
         currentValue: competitorLossUnvisited.rate,
         fiscalYearMonthlyAverage: competitorLossUnvisitedAvg,
         previousYearMonthlyAverage: competitorLossUnvisitedPrevYearAvg,
+        numerator: competitorLossUnvisited.numerator,
+        denominator: competitorLossUnvisited.denominator,
       },
       competitorLossVisited: {
         byRepresentative: competitorLossVisitedByRepWithAvg,
@@ -188,6 +206,8 @@ export class PerformanceMetricsService extends BaseRepository {
           rate: competitorLossVisited.total.rate,
           fiscalYearMonthlyAverage: competitorLossVisitedAvg,
           previousYearMonthlyAverage: competitorLossVisitedPrevYearAvg,
+          numerator: competitorLossVisited.total.numerator,
+          denominator: competitorLossVisited.total.denominator,
         },
       },
     };
@@ -367,7 +387,7 @@ export class PerformanceMetricsService extends BaseRepository {
   /**
    * 訪問査定取得割合を計算
    */
-  async calculateVisitAppraisalRate(year: number, month: number): Promise<number> {
+  async calculateVisitAppraisalRate(year: number, month: number): Promise<{ rate: number; numerator: number; denominator: number }> {
     const visitCount = await this.calculateVisitAppraisalCount(year, month);
 
     // Use UTC dates to avoid timezone issues
@@ -386,12 +406,9 @@ export class PerformanceMetricsService extends BaseRepository {
     }
 
     const inquiryCount = count || 0;
+    const rate = inquiryCount === 0 ? 0 : (visitCount / inquiryCount) * 100;
 
-    if (inquiryCount === 0) {
-      return 0;
-    }
-
-    return (visitCount / inquiryCount) * 100;
+    return { rate, numerator: visitCount, denominator: inquiryCount };
   }
 
   /**
@@ -504,7 +521,7 @@ export class PerformanceMetricsService extends BaseRepository {
   async calculateCompetitorLossUnvisited(
     year: number,
     month: number
-  ): Promise<{ count: number; rate: number }> {
+  ): Promise<{ count: number; rate: number; numerator: number; denominator: number }> {
     // Use UTC dates to avoid timezone issues
     const startDate = new Date(Date.UTC(year, month - 1, 1)).toISOString();
     const endDate = new Date(Date.UTC(year, month, 0, 23, 59, 59, 999)).toISOString();
@@ -537,12 +554,11 @@ export class PerformanceMetricsService extends BaseRepository {
       throw inquiryError;
     }
 
-    const rate = (inquiryCount || 0) > 0 ? ((lossCount || 0) / (inquiryCount || 0)) * 100 : 0;
+    const numerator = lossCount || 0;
+    const denominator = inquiryCount || 0;
+    const rate = denominator > 0 ? (numerator / denominator) * 100 : 0;
 
-    return {
-      count: lossCount || 0,
-      rate,
-    };
+    return { count: numerator, rate, numerator, denominator };
   }
 
   /**
@@ -567,7 +583,7 @@ export class PerformanceMetricsService extends BaseRepository {
     month: number
   ): Promise<{
     byRepresentative: RepresentativeMetric[];
-    total: { count: number; rate: number };
+    total: { count: number; rate: number; numerator: number; denominator: number };
   }> {
     // Use UTC dates to avoid timezone issues
     const startDate = new Date(Date.UTC(year, month - 1, 1)).toISOString();
@@ -586,7 +602,7 @@ export class PerformanceMetricsService extends BaseRepository {
       throw lossError;
     }
 
-    // 営担別の総件数を取得（分母の計算用）
+    // 営担別の訪問査定取得数を取得（分母）
     // visit_acquisition_date が指定月のすべての件数
     const { data: totalData, error: totalError } = await this.table('sellers')
       .select('visit_assignee')
@@ -600,53 +616,21 @@ export class PerformanceMetricsService extends BaseRepository {
       throw totalError;
     }
 
-    // 営担別の一般媒介件数を取得（分母から除外する）
-    // contract_year_month が指定月で、「状況(当社)」が"一般媒介"
-    const { data: generalData, error: generalError } = await this.table('sellers')
-      .select('visit_assignee')
-      .gte('contract_year_month', startDate)
-      .lte('contract_year_month', endDate)
-      .eq('status', '一般媒介')
-      .not('visit_assignee', 'is', null)
-      .neq('visit_assignee', '');
-
-    if (generalError) {
-      console.error('Error calculating general agency count:', generalError);
-      throw generalError;
-    }
-
     // 営担別に集計
     const lossCounts = new Map<string, number>();
     const totalCounts = new Map<string, number>();
-    const generalCounts = new Map<string, number>();
 
-    // 他決件数を集計
     if (lossData) {
       lossData.forEach(row => {
         const rep = row.visit_assignee;
-        if (rep) {
-          lossCounts.set(rep, (lossCounts.get(rep) || 0) + 1);
-        }
+        if (rep) lossCounts.set(rep, (lossCounts.get(rep) || 0) + 1);
       });
     }
 
-    // 総件数を集計
     if (totalData) {
       totalData.forEach(row => {
         const rep = row.visit_assignee;
-        if (rep) {
-          totalCounts.set(rep, (totalCounts.get(rep) || 0) + 1);
-        }
-      });
-    }
-
-    // 一般媒介件数を集計
-    if (generalData) {
-      generalData.forEach(row => {
-        const rep = row.visit_assignee;
-        if (rep) {
-          generalCounts.set(rep, (generalCounts.get(rep) || 0) + 1);
-        }
+        if (rep) totalCounts.set(rep, (totalCounts.get(rep) || 0) + 1);
       });
     }
 
@@ -657,34 +641,23 @@ export class PerformanceMetricsService extends BaseRepository {
     allRepresentatives.forEach(representative => {
       const lossCount = lossCounts.get(representative) || 0;
       const total = totalCounts.get(representative) || 0;
-      const general = generalCounts.get(representative) || 0;
-      
-      // 分母 = 総件数 - 一般媒介件数
-      const denominator = total - general;
-      const rate = denominator > 0 ? (lossCount / denominator) * 100 : 0;
-
-      byRepresentative.push({
-        representative,
-        count: lossCount,
-        rate,
-      });
+      const rate = total > 0 ? (lossCount / total) * 100 : 0;
+      byRepresentative.push({ representative, count: lossCount, rate });
     });
 
-    // 件数でソート（降順）
     byRepresentative.sort((a, b) => b.count - a.count);
 
-    // 合計を計算
-    const totalLossCount = Array.from(lossCounts.values()).reduce((sum, count) => sum + count, 0);
-    const totalCount = Array.from(totalCounts.values()).reduce((sum, count) => sum + count, 0);
-    const totalGeneralCount = Array.from(generalCounts.values()).reduce((sum, count) => sum + count, 0);
-    const totalDenominator = totalCount - totalGeneralCount;
-    const totalRate = totalDenominator > 0 ? (totalLossCount / totalDenominator) * 100 : 0;
+    const totalLossCount = Array.from(lossCounts.values()).reduce((sum, c) => sum + c, 0);
+    const totalVisitCount = Array.from(totalCounts.values()).reduce((sum, c) => sum + c, 0);
+    const totalRate = totalVisitCount > 0 ? (totalLossCount / totalVisitCount) * 100 : 0;
 
     return {
       byRepresentative,
       total: {
         count: totalLossCount,
         rate: totalRate,
+        numerator: totalLossCount,
+        denominator: totalVisitCount,
       },
     };
   }

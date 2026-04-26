@@ -10,6 +10,8 @@ interface MetricCardProps {
   previousYearAverage?: number;
   unit?: string;
   showProgressBar?: boolean;
+  formula?: string;       // 条件式 例: "他決数 / 訪問査定取得数 × 100"
+  formulaValues?: string; // 実数   例: "（5 ÷ 44）× 100"
   children?: React.ReactNode;
 }
 
@@ -21,6 +23,8 @@ export const MetricCard: React.FC<MetricCardProps> = ({
   previousYearAverage,
   unit = '%',
   showProgressBar = false,
+  formula,
+  formulaValues,
   children,
 }) => {
   // 達成度を計算
@@ -46,6 +50,15 @@ export const MetricCard: React.FC<MetricCardProps> = ({
             </>
           )}
         </div>
+        {/* 条件式と実数 */}
+        {formula && (
+          <div className="mt-1 text-xs text-gray-500">
+            <span>{formula}</span>
+            {formulaValues && (
+              <span className="ml-1 text-gray-400">{formulaValues}</span>
+            )}
+          </div>
+        )}
       </div>
 
       {/* メイン数値行 */}

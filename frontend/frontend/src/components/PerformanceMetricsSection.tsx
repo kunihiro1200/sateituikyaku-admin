@@ -19,6 +19,8 @@ interface EnhancedPerformanceMetrics {
     currentValue: number;
     fiscalYearMonthlyAverage: number;
     target: 28;
+    numerator: number;
+    denominator: number;
   };
   exclusiveContracts: {
     byRepresentative: RepresentativeMetricWithAverage[];
@@ -27,12 +29,18 @@ interface EnhancedPerformanceMetrics {
       rate: number;
       fiscalYearMonthlyAverage: number;
       target: 48;
+      numerator: number;
+      denominator: number;
+      visitCount: number;
+      generalAgencyCount: number;
     };
   };
   competitorLossUnvisited: {
     currentValue: number;
     fiscalYearMonthlyAverage: number;
     previousYearMonthlyAverage: number;
+    numerator: number;
+    denominator: number;
   };
   competitorLossVisited: {
     byRepresentative: RepresentativeMetricWithAverage[];
@@ -41,6 +49,8 @@ interface EnhancedPerformanceMetrics {
       rate: number;
       fiscalYearMonthlyAverage: number;
       previousYearMonthlyAverage: number;
+      numerator: number;
+      denominator: number;
     };
   };
 }
@@ -137,6 +147,8 @@ export const PerformanceMetricsSection: React.FC = () => {
           monthlyAverage={metrics.visitAppraisalRate.fiscalYearMonthlyAverage}
           target={metrics.visitAppraisalRate.target}
           showProgressBar={true}
+          formula="（訪問査定取得数 ÷ 依頼件数）× 100"
+          formulaValues={`（${metrics.visitAppraisalRate.numerator} ÷ ${metrics.visitAppraisalRate.denominator}）× 100`}
         />
 
         {/* 専任件数（専任割合） */}
@@ -146,6 +158,8 @@ export const PerformanceMetricsSection: React.FC = () => {
           monthlyAverage={metrics.exclusiveContracts.total.fiscalYearMonthlyAverage}
           target={metrics.exclusiveContracts.total.target}
           showProgressBar={true}
+          formula="（専任媒介件数 ÷（訪問査定取得数 − 一般媒介件数））× 100"
+          formulaValues={`（${metrics.exclusiveContracts.total.numerator} ÷（${metrics.exclusiveContracts.total.visitCount} − ${metrics.exclusiveContracts.total.generalAgencyCount}））× 100`}
         >
           <div className="text-sm text-gray-700 mb-2">
             合計: {metrics.exclusiveContracts.total.count}件
@@ -162,6 +176,8 @@ export const PerformanceMetricsSection: React.FC = () => {
           currentValue={metrics.competitorLossUnvisited.currentValue}
           monthlyAverage={metrics.competitorLossUnvisited.fiscalYearMonthlyAverage}
           previousYearAverage={metrics.competitorLossUnvisited.previousYearMonthlyAverage}
+          formula="（未訪問他決件数 ÷ 未訪問依頼件数）× 100"
+          formulaValues={`（${metrics.competitorLossUnvisited.numerator} ÷ ${metrics.competitorLossUnvisited.denominator}）× 100`}
         />
 
         {/* 他決割合（訪問済み） */}
@@ -170,6 +186,8 @@ export const PerformanceMetricsSection: React.FC = () => {
           currentValue={metrics.competitorLossVisited.total.rate}
           monthlyAverage={metrics.competitorLossVisited.total.fiscalYearMonthlyAverage}
           previousYearAverage={metrics.competitorLossVisited.total.previousYearMonthlyAverage}
+          formula="（他決件数 ÷ 訪問査定取得数）× 100"
+          formulaValues={`（${metrics.competitorLossVisited.total.numerator} ÷ ${metrics.competitorLossVisited.total.denominator}）× 100`}
         >
           <div className="text-sm text-gray-700 mb-2">
             合計: {metrics.competitorLossVisited.total.count}件
