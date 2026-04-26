@@ -752,6 +752,14 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
     }
   }, [open, initialTabIndex]);
 
+  // 売買価格から通常仲介手数料を計算するヘルパー
+  const calcStandardBrokerageFeeFromPrice = (salesPrice: number | null | undefined): number => {
+    if (!salesPrice || salesPrice <= 0) return 330000;
+    return salesPrice >= 8000000
+      ? Math.round((salesPrice * 0.03 + 60000) * 1.1)
+      : 330000;
+  };
+
   useEffect(() => {
     if (open && propertyNumber) {
       // 一覧データがあれば即座に表示（ローディングなし）
@@ -767,6 +775,21 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
       setEditedData({});
     }
   }, [open, propertyNumber]);
+
+  // データロード後、通常仲介手数料を売買価格から自動計算してeditedDataに反映
+  useEffect(() => {
+    if (!data) return;
+    const salesPrice = data.sales_price ? Number(data.sales_price) : null;
+    const calcFee = calcStandardBrokerageFeeFromPrice(salesPrice);
+    const dbFeeSeller = data.standard_brokerage_fee_seller != null ? Math.round(Number(data.standard_brokerage_fee_seller)) : null;
+    const dbFeeBuyer = data.standard_brokerage_fee_buyer != null ? Math.round(Number(data.standard_brokerage_fee_buyer)) : null;
+    const updates: Partial<WorkTaskData> = {};
+    if (dbFeeSeller !== calcFee) updates.standard_brokerage_fee_seller = calcFee;
+    if (dbFeeBuyer !== calcFee) updates.standard_brokerage_fee_buyer = calcFee;
+    if (Object.keys(updates).length > 0) {
+      setEditedData(prev => ({ ...prev, ...updates }));
+    }
+  }, [data]);
 
   const checkDeadlineOnLoad = (taskData: WorkTaskData) => {
     const deadline = taskData.site_registration_deadline;
@@ -1010,19 +1033,13 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
     contractRightScrollRef.current = contractRightPaneRef.current?.scrollTop ?? 0;
     // 売買価格変更時に通常仲介手数料を自動計算
     // IF(売買価格 >= 800万, (売買価格 * 0.03 + 60000) * 1.1, 330000)
-    const calcStandardBrokerageFee = (salesPrice: number | null): number => {
-      if (!salesPrice || salesPrice <= 0) return 330000;
-      return salesPrice >= 8000000
-        ? Math.round((salesPrice * 0.03 + 60000) * 1.1)
-        : 330000;
-    };
 
     // 決済完了チャットに値が入ったら経理確認済みを「未」に自動リセット
     if (field === 'settlement_completed_chat' && value) {
       setEditedData(prev => ({ ...prev, [field]: value, accounting_confirmed: '未' }));
     } else if (field === 'sales_price') {
       // 売買価格変更時は通常仲介手数料（売）・（買）を自動計算
-      const fee = calcStandardBrokerageFee(value ? Number(value) : null);
+      const fee = calcStandardBrokerageFeeFromPrice(value ? Number(value) : null);
       setEditedData(prev => ({
         ...prev,
         [field]: value,
