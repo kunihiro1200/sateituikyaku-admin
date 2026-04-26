@@ -428,25 +428,55 @@ export class PerformanceMetricsService extends BaseRepository {
       throw exclusiveError;
     }
 
+    // 一般媒介の件数を取得（分母から除外するため）
+    const { data: generalData, error: generalError } = await this.table('sellers')
+      .select('visit_assignee')
+      .eq('status', '一般媒介')
+      .gte('contract_year_month', startDate)
+      .lte('contract_year_month', endDate)
+      .or('confidence_level.is.null,and(confidence_level.neq.D,confidence_level.neq.ダブり)');
+
+    if (generalError) {
+      console.error('Error calculating general agency contracts:', generalError);
+      throw generalError;
+    }
+
     const exclusiveCount = exclusiveData?.length || 0;
+    const generalCount = generalData?.length || 0;
+
+    // 訪問査定取得数を取得（割合計算用）
+    const visitAppraisalCount = await this.calculateVisitAppraisalCount(year, month);
+
+    // 分母 = 訪問査定取得数 - 一般媒介件数
+    const denominator = visitAppraisalCount - generalCount;
+    const totalRate = denominator > 0 ? (exclusiveCount / denominator) * 100 : 0;
 
     // 営担別の集計
     const byRepresentative: RepresentativeMetric[] = [];
     if (exclusiveData && exclusiveData.length > 0) {
-      const representativeCounts = new Map<string, number>();
-      
+      const exclusiveCounts = new Map<string, number>();
       exclusiveData.forEach(row => {
         const rep = row.visit_assignee;
         if (rep) {
-          representativeCounts.set(rep, (representativeCounts.get(rep) || 0) + 1);
+          exclusiveCounts.set(rep, (exclusiveCounts.get(rep) || 0) + 1);
         }
       });
 
-      // 訪問査定取得数を取得（割合計算用）
-      const visitAppraisalCount = await this.calculateVisitAppraisalCount(year, month);
+      // 営担別の一般媒介件数を集計
+      const generalCounts = new Map<string, number>();
+      if (generalData) {
+        generalData.forEach(row => {
+          const rep = row.visit_assignee;
+          if (rep) {
+            generalCounts.set(rep, (generalCounts.get(rep) || 0) + 1);
+          }
+        });
+      }
 
-      representativeCounts.forEach((count, representative) => {
-        const rate = visitAppraisalCount > 0 ? (count / visitAppraisalCount) * 100 : 0;
+      exclusiveCounts.forEach((count, representative) => {
+        const repGeneral = generalCounts.get(representative) || 0;
+        const repDenominator = visitAppraisalCount - repGeneral;
+        const rate = repDenominator > 0 ? (count / repDenominator) * 100 : 0;
         byRepresentative.push({
           representative,
           count,
@@ -457,10 +487,6 @@ export class PerformanceMetricsService extends BaseRepository {
       // 件数でソート
       byRepresentative.sort((a, b) => b.count - a.count);
     }
-
-    // 訪問査定取得数を取得（割合計算用）
-    const visitAppraisalCount = await this.calculateVisitAppraisalCount(year, month);
-    const totalRate = visitAppraisalCount > 0 ? (exclusiveCount / visitAppraisalCount) * 100 : 0;
 
     return {
       byRepresentative,
