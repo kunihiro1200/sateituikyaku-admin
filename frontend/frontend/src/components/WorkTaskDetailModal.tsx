@@ -53,6 +53,7 @@ interface WorkTaskDetailModalProps {
   onUpdate?: () => void;
   initialData?: Partial<WorkTaskData> | null;
   initialTabIndex?: number;
+  onNavigate?: (propertyNumber: string, tabIndex: number) => void;
 }
 
 interface WorkTaskData {
@@ -750,7 +751,7 @@ const CountermeasureCell = React.memo(({ propertyNumber, field, value, onSaved }
   );
 });
 
-export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onUpdate, initialData, initialTabIndex }: WorkTaskDetailModalProps) {
+export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onUpdate, initialData, initialTabIndex, onNavigate }: WorkTaskDetailModalProps) {
   const [tabIndex, setTabIndex] = useState(0);
   const navigate = useNavigate();
   const normalInitials = useNormalInitials();
@@ -1926,7 +1927,11 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
               <tbody>
                 {mediationRevisionHistory.map((item, idx) => (
                   <tr key={idx} style={{ backgroundColor: idx % 2 === 0 ? '#fff8f0' : '#fff3e0' }}>
-                    <td style={{ border: '1px solid #ffb74d', padding: '4px 8px', whiteSpace: 'nowrap' }}>{item.property_number || '-'}</td>
+                    <td style={{ border: '1px solid #ffb74d', padding: '4px 8px', whiteSpace: 'nowrap' }}>
+                      {item.property_number
+                        ? <span onClick={() => onNavigate?.(item.property_number, 0)} style={{ color: '#1565c0', cursor: 'pointer', textDecoration: 'underline', fontWeight: 600 }}>{item.property_number}</span>
+                        : '-'}
+                    </td>
                     <td style={{ border: '1px solid #ffb74d', padding: '4px 8px', whiteSpace: 'nowrap' }}>{formatDateShort(item.mediation_completed)}</td>
                     <td style={{ border: '1px solid #ffb74d', padding: '4px 8px', whiteSpace: 'nowrap' }}>{item.mediation_checker || '-'}</td>
                     <td style={{ border: '1px solid #ffb74d', padding: '4px 8px', whiteSpace: 'nowrap' }}>{item.mediation_creator || '-'}</td>
@@ -2305,7 +2310,11 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
                 <tbody>
                   {siteRegistrationRevisionHistory.map((item, idx) => (
                     <tr key={idx} style={{ backgroundColor: idx % 2 === 0 ? '#fce4ec' : '#fce4ec' }}>
-                      <td style={{ border: '1px solid #f48fb1', padding: '4px 8px', whiteSpace: 'nowrap' }}>{item.property_number || '-'}</td>
+                      <td style={{ border: '1px solid #f48fb1', padding: '4px 8px', whiteSpace: 'nowrap' }}>
+                        {item.property_number
+                          ? <span onClick={() => onNavigate?.(item.property_number, 1)} style={{ color: '#1565c0', cursor: 'pointer', textDecoration: 'underline', fontWeight: 600 }}>{item.property_number}</span>
+                          : '-'}
+                      </td>
                       <td style={{ border: '1px solid #f48fb1', padding: '4px 8px', whiteSpace: 'nowrap' }}>{item.site_registration_confirmer || '-'}</td>
                       <td style={{ border: '1px solid #f48fb1', padding: '4px 8px', whiteSpace: 'nowrap' }}>{item.site_registration_requester || '-'}</td>
                       <td style={{ border: '1px solid #f48fb1', padding: '4px 8px', whiteSpace: 'pre-wrap', width: '35%', color: '#c62828', fontWeight: 700 }}><span dangerouslySetInnerHTML={{ __html: item.site_registration_revision_content }} /></td>
@@ -2413,7 +2422,11 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
                 <tbody>
                   {floorPlanRevisionCorrectionHistory.map((item, idx) => (
                     <tr key={idx} style={{ backgroundColor: idx % 2 === 0 ? '#f1f8e9' : '#e8f5e9' }}>
-                      <td style={{ border: '1px solid #81c784', padding: '4px 8px', whiteSpace: 'nowrap' }}>{item.property_number || '-'}</td>
+                      <td style={{ border: '1px solid #81c784', padding: '4px 8px', whiteSpace: 'nowrap' }}>
+                        {item.property_number
+                          ? <span onClick={() => onNavigate?.(item.property_number, 1)} style={{ color: '#1565c0', cursor: 'pointer', textDecoration: 'underline', fontWeight: 600 }}>{item.property_number}</span>
+                          : '-'}
+                      </td>
                       <td style={{ border: '1px solid #81c784', padding: '4px 8px', whiteSpace: 'nowrap' }}>{item.floor_plan_confirmer || '-'}</td>
                       <td style={{ border: '1px solid #81c784', padding: '4px 8px', whiteSpace: 'nowrap' }}>{item.site_registration_requester || '-'}</td>
                       <td style={{ border: '1px solid #81c784', padding: '4px 8px', whiteSpace: 'pre-wrap', width: '35%', color: '#c62828', fontWeight: 700 }}><span dangerouslySetInnerHTML={{ __html: item.floor_plan_revision_correction_content }} /></td>
@@ -2891,6 +2904,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
                 <thead>
                   <tr style={{ backgroundColor: '#ffcdd2' }}>
+                    <th style={{ border: '1px solid #e57373', padding: '6px 10px', textAlign: 'left', whiteSpace: 'nowrap' }}>物件番号</th>
                     <th style={{ border: '1px solid #e57373', padding: '6px 10px', textAlign: 'left', whiteSpace: 'nowrap' }}>重説・契約書入力納期</th>
                     <th style={{ border: '1px solid #e57373', padding: '6px 10px', textAlign: 'left', whiteSpace: 'nowrap' }}>写真が契約書作成</th>
                     <th style={{ border: '1px solid #e57373', padding: '6px 10px', textAlign: 'left', minWidth: '200px' }}>修正内容</th>
@@ -2900,6 +2914,9 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
                 <tbody>
                   {contractRevisionSummary.map((row, idx) => (
                     <tr key={row.property_number} style={{ backgroundColor: idx % 2 === 0 ? '#fff' : '#fff8f8' }}>
+                      <td style={{ border: '1px solid #e0e0e0', padding: '6px 10px', whiteSpace: 'nowrap' }}>
+                        <span onClick={() => onNavigate?.(row.property_number, 2)} style={{ color: '#1565c0', cursor: 'pointer', textDecoration: 'underline', fontWeight: 600 }}>{row.property_number}</span>
+                      </td>
                       <td style={{ border: '1px solid #e0e0e0', padding: '6px 10px', whiteSpace: 'nowrap', color: '#555' }}>
                         {row.contract_input_deadline
                           ? new Date(row.contract_input_deadline).toLocaleDateString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit' })

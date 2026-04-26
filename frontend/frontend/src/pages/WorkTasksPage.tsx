@@ -536,6 +536,11 @@ export default function WorkTasksPage() {
         initialData={selectedTaskData}
         onUpdate={() => fetchAllWorkTasks(true)}
         initialTabIndex={initialTabIndex}
+        onNavigate={(pn, tab) => {
+          setSelectedPropertyNumber(pn);
+          setSelectedTaskData(null);
+          setInitialTabIndex(tab);
+        }}
       />
 
       <Snackbar
