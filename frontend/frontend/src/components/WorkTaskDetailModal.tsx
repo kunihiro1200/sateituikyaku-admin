@@ -28,7 +28,9 @@ import {
   useMediaQuery,
   useTheme,
 } from '@mui/material';
-import { Close as CloseIcon, Save as SaveIcon, ContentCopy as ContentCopyIcon, Check as CheckIcon, WarningAmber as WarningAmberIcon, Email as EmailIcon, Image as ImageIcon } from '@mui/icons-material';
+import { Close as CloseIcon, Save as SaveIcon, ContentCopy as ContentCopyIcon, Check as CheckIcon, WarningAmber as WarningAmberIcon, Email as EmailIcon, Image as ImageIcon, EditNote as EditNoteIcon } from '@mui/icons-material';
+import Popover from '@mui/material/Popover';
+import Tooltip from '@mui/material/Tooltip';
 import api from '../services/api';
 import { supabase } from '../services/supabase';
 import { isDeadlineExceeded } from '../utils/deadlineUtils';
@@ -40,6 +42,7 @@ import SenderAddressSelector from './SenderAddressSelector';
 import RichTextEmailEditor from './RichTextEmailEditor';
 import ImageSelectorModal from './ImageSelectorModal';
 import { useAuthStore } from '../store/authStore';
+import RichTextEditor from './RichTextEditor';
 
 
 
@@ -612,16 +615,12 @@ const SiteRevisionContentField = React.memo(({ value, hasError, onCommit }: {
           </Typography>
         </Grid>
         <Grid item xs={8}>
-          <TextField
-            size="small"
-            multiline
-            minRows={3}
-            maxRows={8}
+          <RichTextEditor
             value={localValue}
-            onChange={(e) => setLocalValue(e.target.value)}
+            onChange={(html) => setLocalValue(html)}
             onBlur={() => onCommit(localValue)}
-            fullWidth
-            error={hasError}
+            hasError={hasError}
+            minHeight={72}
           />
         </Grid>
       </Grid>
@@ -646,16 +645,12 @@ const FloorPlanRevisionContentField = React.memo(({ value, hasError, onCommit }:
           </Typography>
         </Grid>
         <Grid item xs={8}>
-          <TextField
-            size="small"
-            multiline
-            minRows={3}
-            maxRows={8}
+          <RichTextEditor
             value={localValue}
-            onChange={(e) => setLocalValue(e.target.value)}
+            onChange={(html) => setLocalValue(html)}
             onBlur={() => onCommit(localValue)}
-            fullWidth
-            error={hasError}
+            hasError={hasError}
+            minHeight={72}
           />
         </Grid>
       </Grid>
@@ -664,43 +659,94 @@ const FloorPlanRevisionContentField = React.memo(({ value, hasError, onCommit }:
 });
 
 // 対策案インライン編集セル（修正内容まとめテーブル用）
-// フォーカスが外れたときに直接APIで保存する
+// ボタンクリックでポップオーバーを開いて編集・保存する
 const CountermeasureCell = React.memo(({ propertyNumber, field, value, onSaved }: {
   propertyNumber: string;
   field: string;
   value: string;
   onSaved: (val: string) => void;
 }) => {
+  const [anchorEl, setAnchorEl] = React.useState<HTMLButtonElement | null>(null);
   const [localValue, setLocalValue] = React.useState(value);
   const [saving, setSaving] = React.useState(false);
   React.useEffect(() => { setLocalValue(value); }, [value]);
 
-  const handleBlur = async () => {
-    if (localValue === value) return;
+  const handleOpen = (e: React.MouseEvent<HTMLButtonElement>) => {
+    setAnchorEl(e.currentTarget);
+  };
+  const handleClose = () => {
+    setAnchorEl(null);
+  };
+
+  const handleSave = async () => {
+    if (localValue === value) { handleClose(); return; }
     setSaving(true);
     try {
       await api.put(`/api/work-tasks/${propertyNumber}`, { [field]: localValue || null });
       onSaved(localValue);
+      handleClose();
     } catch {
-      setLocalValue(value); // 失敗時は元に戻す
+      setLocalValue(value);
     } finally {
       setSaving(false);
     }
   };
 
+  const open = Boolean(anchorEl);
+  const hasValue = value && value.trim() !== '';
+
   return (
-    <TextField
-      size="small"
-      multiline
-      minRows={3}
-      value={localValue}
-      onChange={(e) => setLocalValue(e.target.value)}
-      onBlur={handleBlur}
-      fullWidth
-      placeholder="対策案（イニシャルと日付）を入力..."
-      disabled={saving}
-      sx={{ fontSize: '0.8rem', '& .MuiInputBase-input': { fontSize: '0.8rem' } }}
-    />
+    <>
+      <Button
+        size="small"
+        variant={hasValue ? 'contained' : 'outlined'}
+        color={hasValue ? 'warning' : 'inherit'}
+        onClick={handleOpen}
+        startIcon={<EditNoteIcon sx={{ fontSize: '0.9rem !important' }} />}
+        sx={{
+          fontSize: '0.7rem',
+          py: 0.25,
+          px: 0.75,
+          minWidth: 0,
+          whiteSpace: 'nowrap',
+          textTransform: 'none',
+          ...(hasValue ? {} : { color: 'text.secondary', borderColor: 'divider' }),
+        }}
+      >
+        {hasValue ? '対策案あり' : '対策案を入力'}
+      </Button>
+
+      <Popover
+        open={open}
+        anchorEl={anchorEl}
+        onClose={handleClose}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+        transformOrigin={{ vertical: 'top', horizontal: 'left' }}
+        PaperProps={{ sx: { p: 1.5, width: 320 } }}
+      >
+        <Typography variant="caption" sx={{ fontWeight: 700, display: 'block', mb: 1 }}>
+          対策案（{propertyNumber}）
+        </Typography>
+        <TextField
+          size="small"
+          multiline
+          minRows={4}
+          maxRows={10}
+          value={localValue}
+          onChange={(e) => setLocalValue(e.target.value)}
+          fullWidth
+          placeholder="対策案（イニシャルと日付）を入力..."
+          autoFocus
+          sx={{ mb: 1, fontSize: '0.8rem', '& .MuiInputBase-input': { fontSize: '0.8rem' } }}
+        />
+        <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
+          <Button size="small" onClick={handleClose} disabled={saving}>キャンセル</Button>
+          <Button size="small" variant="contained" onClick={handleSave} disabled={saving}>
+            {saving ? '保存中...' : '保存'}
+          </Button>
+        </Box>
+      </Popover>
+    </>
   );
 });
 
@@ -1840,14 +1886,10 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
                       <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500, mt: 0.5 }}>媒介契約修正内容</Typography>
                     </Grid>
                     <Grid item xs={8}>
-                      <TextField
-                        size="small"
-                        multiline
-                        minRows={3}
-                        maxRows={8}
+                      <RichTextEditor
                         value={getValue('mediation_revision_content') || ''}
-                        onChange={(e) => handleFieldChange('mediation_revision_content', e.target.value)}
-                        fullWidth
+                        onChange={(html) => handleFieldChange('mediation_revision_content', html)}
+                        minHeight={72}
                       />
                       <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 0.5 }}>
                         ※ これは次回この作成担当者に注意点として表示されるので、分かりやすく具体的に記載してください
@@ -1888,7 +1930,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
                     <td style={{ border: '1px solid #ffb74d', padding: '4px 8px', whiteSpace: 'nowrap' }}>{formatDateShort(item.mediation_completed)}</td>
                     <td style={{ border: '1px solid #ffb74d', padding: '4px 8px', whiteSpace: 'nowrap' }}>{item.mediation_checker || '-'}</td>
                     <td style={{ border: '1px solid #ffb74d', padding: '4px 8px', whiteSpace: 'nowrap' }}>{item.mediation_creator || '-'}</td>
-                    <td style={{ border: '1px solid #ffb74d', padding: '4px 8px', whiteSpace: 'pre-wrap', width: '35%', color: '#c62828', fontWeight: 700 }}>{item.mediation_revision_content}</td>
+                    <td style={{ border: '1px solid #ffb74d', padding: '4px 8px', whiteSpace: 'pre-wrap', width: '35%', color: '#c62828', fontWeight: 700 }}><span dangerouslySetInnerHTML={{ __html: item.mediation_revision_content }} /></td>
                     <td style={{ border: '1px solid #ffb74d', padding: '4px 8px', width: '25%', color: '#c62828', fontWeight: 700 }}>
                       <CountermeasureCell
                         propertyNumber={item.property_number}
@@ -2266,7 +2308,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
                       <td style={{ border: '1px solid #f48fb1', padding: '4px 8px', whiteSpace: 'nowrap' }}>{item.property_number || '-'}</td>
                       <td style={{ border: '1px solid #f48fb1', padding: '4px 8px', whiteSpace: 'nowrap' }}>{item.site_registration_confirmer || '-'}</td>
                       <td style={{ border: '1px solid #f48fb1', padding: '4px 8px', whiteSpace: 'nowrap' }}>{item.site_registration_requester || '-'}</td>
-                      <td style={{ border: '1px solid #f48fb1', padding: '4px 8px', whiteSpace: 'pre-wrap', width: '35%', color: '#c62828', fontWeight: 700 }}>{item.site_registration_revision_content}</td>
+                      <td style={{ border: '1px solid #f48fb1', padding: '4px 8px', whiteSpace: 'pre-wrap', width: '35%', color: '#c62828', fontWeight: 700 }}><span dangerouslySetInnerHTML={{ __html: item.site_registration_revision_content }} /></td>
                       <td style={{ border: '1px solid #f48fb1', padding: '4px 8px', width: '25%', color: '#c62828', fontWeight: 700 }}>
                         <CountermeasureCell
                           propertyNumber={item.property_number}
@@ -2374,7 +2416,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
                       <td style={{ border: '1px solid #81c784', padding: '4px 8px', whiteSpace: 'nowrap' }}>{item.property_number || '-'}</td>
                       <td style={{ border: '1px solid #81c784', padding: '4px 8px', whiteSpace: 'nowrap' }}>{item.floor_plan_confirmer || '-'}</td>
                       <td style={{ border: '1px solid #81c784', padding: '4px 8px', whiteSpace: 'nowrap' }}>{item.site_registration_requester || '-'}</td>
-                      <td style={{ border: '1px solid #81c784', padding: '4px 8px', whiteSpace: 'pre-wrap', width: '35%', color: '#c62828', fontWeight: 700 }}>{item.floor_plan_revision_correction_content}</td>
+                      <td style={{ border: '1px solid #81c784', padding: '4px 8px', whiteSpace: 'pre-wrap', width: '35%', color: '#c62828', fontWeight: 700 }}><span dangerouslySetInnerHTML={{ __html: item.floor_plan_revision_correction_content }} /></td>
                       <td style={{ border: '1px solid #81c784', padding: '4px 8px', width: '25%', color: '#c62828', fontWeight: 700 }}>
                         <CountermeasureCell
                           propertyNumber={item.property_number}
@@ -2623,22 +2665,15 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
                     </Typography>
                   </Grid>
                   <Grid item xs={8}>
-                    <TextField
-                      key={`contract_revision_content_${propertyNumber}`}
-                      fullWidth
-                      multiline
-                      minRows={4}
-                      size="small"
-                      defaultValue={getValue('contract_revision_content') || ''}
-                      onBlur={(e) => {
-                        if (e.target.value !== (getValue('contract_revision_content') || '')) {
-                          handleFieldChange('contract_revision_content', e.target.value);
-                        }
-                      }}
-                      placeholder="修正内容を入力してください"
-                      error={!getValue('contract_revision_content')}
-                      helperText={!getValue('contract_revision_content') ? '必須項目です' : ''}
+                    <RichTextEditor
+                      value={getValue('contract_revision_content') || ''}
+                      onChange={(html) => handleFieldChange('contract_revision_content', html)}
+                      hasError={!getValue('contract_revision_content')}
+                      minHeight={96}
                     />
+                    {!getValue('contract_revision_content') && (
+                      <Typography variant="caption" color="error" sx={{ display: 'block', mt: 0.5 }}>必須項目です</Typography>
+                    )}
                   </Grid>
                 </Grid>
               )}
@@ -2874,7 +2909,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
                         {row.employee_contract_creation || '-'}
                       </td>
                       <td style={{ border: '1px solid #e0e0e0', padding: '6px 10px', whiteSpace: 'pre-wrap', wordBreak: 'break-word', color: '#c62828', fontWeight: 700 }}>
-                        {row.contract_revision_content || '-'}
+                        <span dangerouslySetInnerHTML={{ __html: row.contract_revision_content || '-' }} />
                       </td>
                       <td style={{ border: '1px solid #e0e0e0', padding: '6px 10px', color: '#c62828', fontWeight: 700 }}>
                         <CountermeasureCell
