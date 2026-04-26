@@ -1332,8 +1332,15 @@ const CallModePage = () => {
     fetchSellerTemplates();
   }, []);
 
-  // 社員データと送信元アドレスを初期化
+  // 社員データと送信元アドレスを初期化（activeEmployeesが初めて読み込まれた時のみ実行）
+  const senderAddressInitialized = React.useRef(false);
   useEffect(() => {
+    // activeEmployeesが空の場合はスキップ（まだ読み込まれていない）
+    if (activeEmployees.length === 0) return;
+    // 既に初期化済みの場合はスキップ（ユーザーが選択した値を上書きしない）
+    if (senderAddressInitialized.current) return;
+    senderAddressInitialized.current = true;
+
     // 送信元アドレスを初期化（社員データは loadAllData で取得済み）
     const savedAddress = getSenderAddress();
     const validEmails = [
