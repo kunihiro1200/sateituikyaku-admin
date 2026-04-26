@@ -287,9 +287,17 @@ export default function BuyerViewingResultPage() {
       .catch(err => console.error('Failed to fetch normal initials:', err));
   }, []);
 
-  // カレンダー必須チェック: 内覧日・時間・後続担当あり かつ 内覧未確定空欄 かつ 通知送信者空欄
+  // カレンダー必須チェック: 内覧日・時間・後続担当あり かつ 内覧未確定空欄 かつ 通知送信者空欄 かつ 内覧日が今日より後
+  const isFutureViewingDate = (() => {
+    if (!buyer?.viewing_date) return false;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const viewingDate = new Date(buyer.viewing_date);
+    viewingDate.setHours(0, 0, 0, 0);
+    return viewingDate > today;
+  })();
   const needsCalendar = !!(
-    buyer?.viewing_date &&
+    isFutureViewingDate &&
     buyer?.viewing_time &&
     buyer?.follow_up_assignee &&
     !buyer?.viewing_unconfirmed &&
