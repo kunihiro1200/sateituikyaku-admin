@@ -659,6 +659,66 @@ const FloorPlanRevisionContentField = React.memo(({ value, hasError, onCommit }:
   );
 });
 
+// 媒介契約修正内容入力フィールド（再マウント防止のためモーダル外で定義）
+const MediationRevisionContentField = React.memo(({ value, onCommit }: {
+  value: string;
+  onCommit: (v: string) => void;
+}) => {
+  const [localValue, setLocalValue] = React.useState(value);
+  React.useEffect(() => { setLocalValue(value); }, [value]);
+  return (
+    <Box sx={{ mb: 1.5 }}>
+      <Grid container spacing={2} alignItems="flex-start">
+        <Grid item xs={4}>
+          <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500, mt: 0.5 }}>媒介契約修正内容</Typography>
+        </Grid>
+        <Grid item xs={8}>
+          <RichTextEditor
+            value={localValue}
+            onChange={(html) => setLocalValue(html)}
+            onBlur={() => onCommit(localValue)}
+            minHeight={72}
+          />
+          <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 0.5 }}>
+            ※ これは次回この作成担当者に注意点として表示されるので、分かりやすく具体的に記載してください
+          </Typography>
+        </Grid>
+      </Grid>
+    </Box>
+  );
+});
+
+// 契約書修正内容入力フィールド（再マウント防止のためモーダル外で定義）
+const ContractRevisionContentField = React.memo(({ value, hasError, onCommit }: {
+  value: string;
+  hasError: boolean;
+  onCommit: (v: string) => void;
+}) => {
+  const [localValue, setLocalValue] = React.useState(value);
+  React.useEffect(() => { setLocalValue(value); }, [value]);
+  return (
+    <Grid container spacing={2} alignItems="flex-start" sx={{ mb: 1.5 }}>
+      <Grid item xs={4}>
+        <Typography variant="body2" color="error" sx={{ fontWeight: 700 }}>
+          契約書、重説他の修正内容*（必須）
+        </Typography>
+      </Grid>
+      <Grid item xs={8}>
+        <RichTextEditor
+          value={localValue}
+          onChange={(html) => setLocalValue(html)}
+          onBlur={() => onCommit(localValue)}
+          hasError={hasError}
+          minHeight={96}
+        />
+        {hasError && (
+          <Typography variant="caption" color="error" sx={{ display: 'block', mt: 0.5 }}>必須項目です</Typography>
+        )}
+      </Grid>
+    </Grid>
+  );
+});
+
 // 対策案インライン編集セル（修正内容まとめテーブル用）
 // ボタンクリックでポップオーバーを開いて編集・保存する
 const CountermeasureCell = React.memo(({ propertyNumber, field, value, onSaved }: {
@@ -1881,23 +1941,10 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
 
               {/* 媒介契約修正が「あり」の場合のみ修正内容を表示 */}
               {getValue('mediation_revision') === 'あり' && (
-                <Box sx={{ mb: 1.5 }}>
-                  <Grid container spacing={2} alignItems="flex-start">
-                    <Grid item xs={4}>
-                      <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500, mt: 0.5 }}>媒介契約修正内容</Typography>
-                    </Grid>
-                    <Grid item xs={8}>
-                      <RichTextEditor
-                        value={getValue('mediation_revision_content') || ''}
-                        onChange={(html) => handleFieldChange('mediation_revision_content', html)}
-                        minHeight={72}
-                      />
-                      <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 0.5 }}>
-                        ※ これは次回この作成担当者に注意点として表示されるので、分かりやすく具体的に記載してください
-                      </Typography>
-                    </Grid>
-                  </Grid>
-                </Box>
+                <MediationRevisionContentField
+                  value={getValue('mediation_revision_content') || ''}
+                  onCommit={(v) => handleFieldChange('mediation_revision_content', v)}
+                />
               )}
             </>
           )}
@@ -2112,8 +2159,13 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
           <Grid item xs={8}>
             <TextField
               size="small"
-              value={getValue('site_registration_comment') || ''}
-              onChange={(e) => handleFieldChange('site_registration_comment', e.target.value)}
+              key={`site_registration_comment_${propertyNumber}`}
+              defaultValue={getValue('site_registration_comment') || ''}
+              onBlur={(e) => {
+                if (e.target.value !== (getValue('site_registration_comment') || '')) {
+                  handleFieldChange('site_registration_comment', e.target.value);
+                }
+              }}
               fullWidth
               multiline
               minRows={2}
@@ -2559,8 +2611,13 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
       <Grid item xs={8}>
         <TextField
           size="small"
-          value={getValue(field) || ''}
-          onChange={(e) => handleFieldChange(field, e.target.value)}
+          key={`multiline_${field}_${propertyNumber}`}
+          defaultValue={getValue(field) || ''}
+          onBlur={(e) => {
+            if (e.target.value !== (getValue(field) || '')) {
+              handleFieldChange(field, e.target.value);
+            }
+          }}
           fullWidth
           multiline
           rows={4}
@@ -2671,24 +2728,11 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
 
               {/* 「あり」の場合のみ修正内容を表示（必須） */}
               {getValue('contract_revision_exists') === 'あり' && (
-                <Grid container spacing={2} alignItems="flex-start" sx={{ mb: 1.5 }}>
-                  <Grid item xs={4}>
-                    <Typography variant="body2" color="error" sx={{ fontWeight: 700 }}>
-                      契約書、重説他の修正内容*（必須）
-                    </Typography>
-                  </Grid>
-                  <Grid item xs={8}>
-                    <RichTextEditor
-                      value={getValue('contract_revision_content') || ''}
-                      onChange={(html) => handleFieldChange('contract_revision_content', html)}
-                      hasError={!getValue('contract_revision_content')}
-                      minHeight={96}
-                    />
-                    {!getValue('contract_revision_content') && (
-                      <Typography variant="caption" color="error" sx={{ display: 'block', mt: 0.5 }}>必須項目です</Typography>
-                    )}
-                  </Grid>
-                </Grid>
+                <ContractRevisionContentField
+                  value={getValue('contract_revision_content') || ''}
+                  hasError={!getValue('contract_revision_content')}
+                  onCommit={(v) => handleFieldChange('contract_revision_content', v)}
+                />
               )}
             </Box>
           )}
