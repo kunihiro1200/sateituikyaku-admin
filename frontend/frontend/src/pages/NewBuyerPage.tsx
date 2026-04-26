@@ -399,30 +399,32 @@ export default function NewBuyerPage() {
           </Typography>
           <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', mt: 2 }}>
             <Button
-              variant="outlined"
-              color="success"
+              variant="contained"
               size="small"
+              sx={{ bgcolor: 'white', color: 'success.dark', '&:hover': { bgcolor: 'grey.100' } }}
               onClick={() => navigate(`/buyers/${registeredBuyerNumber}/desired-conditions`)}
             >
               希望条件
             </Button>
             <Button
-              variant="outlined"
-              color="success"
+              variant="contained"
               size="small"
+              sx={{ bgcolor: 'white', color: 'success.dark', '&:hover': { bgcolor: 'grey.100' } }}
               onClick={() => navigate(`/buyers/${registeredBuyerNumber}/viewing-result`)}
             >
               内覧
             </Button>
             <Button
-              variant="outlined"
+              variant="contained"
+              sx={{ bgcolor: 'white', color: 'success.dark', '&:hover': { bgcolor: 'grey.100' } }}
               onClick={() => navigate(`/buyers/${registeredBuyerNumber}`)}
             >
               買主詳細を見る
             </Button>
             {propertyNumberField && (
               <Button
-                variant="outlined"
+                variant="contained"
+                sx={{ bgcolor: 'white', color: 'success.dark', '&:hover': { bgcolor: 'grey.100' } }}
                 onClick={() => navigate(`/property-listings/${propertyNumberField}`)}
               >
                 物件詳細に戻る
@@ -1386,32 +1388,34 @@ export default function NewBuyerPage() {
                       </Typography>
                       <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', mt: 1 }}>
                         <Button
-                          variant="outlined"
-                          color="success"
+                          variant="contained"
                           size="small"
+                          sx={{ bgcolor: 'white', color: 'success.dark', '&:hover': { bgcolor: 'grey.100' } }}
                           onClick={() => navigate(`/buyers/${registeredBuyerNumber}/desired-conditions`)}
                         >
                           希望条件
                         </Button>
                         <Button
-                          variant="outlined"
-                          color="success"
+                          variant="contained"
                           size="small"
+                          sx={{ bgcolor: 'white', color: 'success.dark', '&:hover': { bgcolor: 'grey.100' } }}
                           onClick={() => navigate(`/buyers/${registeredBuyerNumber}/viewing-result`)}
                         >
                           内覧
                         </Button>
                         <Button
-                          variant="outlined"
+                          variant="contained"
                           size="small"
+                          sx={{ bgcolor: 'white', color: 'success.dark', '&:hover': { bgcolor: 'grey.100' } }}
                           onClick={() => navigate(`/buyers/${registeredBuyerNumber}`)}
                         >
                           買主詳細を見る
                         </Button>
                         {propertyNumberField && (
                           <Button
-                            variant="outlined"
+                            variant="contained"
                             size="small"
+                            sx={{ bgcolor: 'white', color: 'success.dark', '&:hover': { bgcolor: 'grey.100' } }}
                             onClick={() => navigate(`/property-listings/${propertyNumberField}`)}
                           >
                             物件詳細に戻る
