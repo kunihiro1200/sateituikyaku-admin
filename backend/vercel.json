@@ -30,6 +30,10 @@
       "schedule": "0 0 * * *"
     },
     {
+      "path": "/api/cron/work-task-upcoming-deadline-notification",
+      "schedule": "0 0,7 * * *"
+    },
+    {
       "path": "/api/cron/business-site-deadline-hourly-notification",
       "schedule": "0 * * * *"
     },
