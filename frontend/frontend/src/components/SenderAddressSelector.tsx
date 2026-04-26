@@ -21,6 +21,7 @@ interface SenderAddressSelectorProps {
   onChange: (email: string) => void;
   employees: Employee[];
   disabled?: boolean;
+  label?: string;
 }
 
 const SenderAddressSelector: React.FC<SenderAddressSelectorProps> = ({
@@ -28,8 +29,10 @@ const SenderAddressSelector: React.FC<SenderAddressSelectorProps> = ({
   onChange,
   employees,
   disabled = false,
+  label: labelProp,
 }) => {
   const DEFAULT_VALUE = 'tenant@ifoo-oita.com';
+  const label = labelProp || '返信先（Reply-To）';
   
   // テナント（共有）＋スタッフ全員をオプションとして表示
   const options = [
@@ -54,12 +57,12 @@ const SenderAddressSelector: React.FC<SenderAddressSelectorProps> = ({
 
   return (
     <FormControl fullWidth size="small" sx={{ mb: 2 }}>
-      <InputLabel shrink={true}>送信元</InputLabel>
+      <InputLabel shrink={true}>{label}</InputLabel>
       <Select
         value={effectiveValue}
         onChange={(e) => onChange(e.target.value)}
         disabled={disabled}
-        label="送信元"
+        label={label}
         displayEmpty={true}
         notched={true}
       >

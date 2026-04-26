@@ -3609,8 +3609,11 @@ HP：https://ifoo-oita.com/
             subject: capturedEmailSubject,
             content: capturedEmailBody,
             htmlBody: capturedEmailBody, // 常にHTMLとして渡す（<br>がそのまま表示される問題を修正）
-            from: capturedSenderAddress,
             senderInitials: resolvedSenderInitials, // 送信者イニシャル（バックエンドで自動セット用）
+            // tenant@以外が選択されている場合のみ replyTo を設定
+            ...(capturedSenderAddress && capturedSenderAddress !== 'tenant@ifoo-oita.com'
+              ? { replyTo: capturedSenderAddress }
+              : {}),
             // 画像が選択されている場合のみ attachments を含める
             ...(attachmentImages.length > 0
               ? { attachments: attachmentImages }
