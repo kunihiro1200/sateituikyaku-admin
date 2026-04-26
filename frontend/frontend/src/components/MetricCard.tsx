@@ -49,22 +49,22 @@ export const MetricCard: React.FC<MetricCardProps> = ({
       </div>
 
       {/* 当月ハイライト */}
-      <div className="bg-blue-50 border border-blue-100 rounded-lg px-4 py-3 mb-3">
+      <div style={{ backgroundColor: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '12px 16px', marginBottom: '12px' }}>
         <div className="flex items-baseline gap-2 flex-wrap">
-          <span className="text-xs text-blue-500 font-medium">当月</span>
-          <span className="text-3xl font-bold text-blue-700">
+          <span style={{ fontSize: '11px', color: '#3b82f6', fontWeight: 500 }}>当月</span>
+          <span style={{ fontSize: '30px', fontWeight: 700, color: '#1d4ed8' }}>
             {currentValue.toFixed(1)}
           </span>
-          <span className="text-base font-semibold text-blue-600">{unit}</span>
-          <span className="text-sm text-blue-400">
+          <span style={{ fontSize: '16px', fontWeight: 600, color: '#2563eb' }}>{unit}</span>
+          <span style={{ fontSize: '13px', color: '#93c5fd' }}>
             （月平均 {monthlyAverage.toFixed(1)}{unit}）
           </span>
           {Math.abs(differenceFromAverage) > 0.5 && (
-            <span className={`font-semibold text-xs px-1.5 py-0.5 rounded ${
-              differenceFromAverage > 0
-                ? 'bg-green-100 text-green-700'
-                : 'bg-red-100 text-red-700'
-            }`}>
+            <span style={{
+              fontSize: '11px', fontWeight: 600, padding: '2px 6px', borderRadius: '4px',
+              backgroundColor: differenceFromAverage > 0 ? '#dcfce7' : '#fee2e2',
+              color: differenceFromAverage > 0 ? '#15803d' : '#b91c1c',
+            }}>
               {differenceFromAverage > 0 ? '+' : ''}{differenceFromAverage.toFixed(1)}{unit}
             </span>
           )}
@@ -72,9 +72,9 @@ export const MetricCard: React.FC<MetricCardProps> = ({
 
         {/* 目標・達成度（ハイライト内に1行のみ） */}
         {target !== undefined && achievementRate !== undefined && (
-          <div className="flex items-center gap-2 mt-1.5 text-xs">
-            <span className="text-blue-400">目標 {target}{unit}</span>
-            <span className="font-semibold text-blue-600">達成度 {achievementRate.toFixed(1)}%</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '6px', fontSize: '11px' }}>
+            <span style={{ color: '#93c5fd' }}>目標 {target}{unit}</span>
+            <span style={{ fontWeight: 600, color: '#2563eb' }}>達成度 {achievementRate.toFixed(1)}%</span>
           </div>
         )}
       </div>
@@ -82,7 +82,7 @@ export const MetricCard: React.FC<MetricCardProps> = ({
       {/* プログレスバー */}
       {showProgressBar && target !== undefined && (
         <div className="mb-3">
-          <ProgressBar current={currentValue} target={target} />
+          <ProgressBar current={currentValue} target={target} showPercentage={false} />
         </div>
       )}
 
