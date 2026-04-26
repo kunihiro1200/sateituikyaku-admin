@@ -749,6 +749,9 @@ const CallModePage = () => {
   const showBanner = !isExcluded && !!exclusionAction;
   const showStatusDisplay = isExcluded;
   const nextCallDateRef = useRef<HTMLInputElement>(null); // 次電日フィールドのref
+  const confidenceRef = useRef<HTMLDivElement>(null); // 確度フィールドのref
+  const [confidenceHighlight, setConfidenceHighlight] = useState(false); // 確度フィールドのハイライト
+  const [statusConfidenceWarningOpen, setStatusConfidenceWarningOpen] = useState(false); // 状況×確度警告ダイアログ
   
   // 4つのフィールドの状態管理（編集中の値）
   const [editedExclusiveDecisionDate, setEditedExclusiveDecisionDate] = useState<string>('');
@@ -2423,6 +2426,14 @@ const CallModePage = () => {
     const isNotUnreachable = unreachableStatus === '通電OK';
     if (isAfterJan2026 && isFollowingUp && isNotUnreachable && !editedConfidence) {
       setError('確度を選択してください');
+      return;
+    }
+
+    // バリデーション：状況（当社）に他決/一般/専任を含む + 確度がD/ダブりを含む場合は警告
+    const statusHasOtherDecision = editedStatus?.includes('他決') || editedStatus?.includes('一般') || editedStatus?.includes('専任');
+    const confidenceIsDOrDouble = editedConfidence?.includes('D') || editedConfidence?.includes('ダブり');
+    if (statusHasOtherDecision && confidenceIsDOrDouble) {
+      setStatusConfidenceWarningOpen(true);
       return;
     }
 
@@ -5644,6 +5655,22 @@ HP：https://ifoo-oita.com/
                             return;
                           }
                           
+                          // 訪問日が入力された場合、次電日を訪問日の3日後に自動設定
+                          try {
+                            const visitDateObj = new Date(newDate);
+                            if (!isNaN(visitDateObj.getTime())) {
+                              const nextCallDateObj = new Date(visitDateObj.getTime() + 3 * 24 * 60 * 60 * 1000);
+                              const pad = (n: number) => String(n).padStart(2, '0');
+                              const nextCallDateStr = `${nextCallDateObj.getFullYear()}-${pad(nextCallDateObj.getMonth() + 1)}-${pad(nextCallDateObj.getDate())}`;
+                              setEditedNextCallDate(nextCallDateStr);
+                              setStatusChanged(true);
+                              statusChangedRef.current = true;
+                              console.log('📅 次電日を訪問日の3日後に自動設定しました:', nextCallDateStr);
+                            }
+                          } catch (err) {
+                            console.error('次電日の自動設定に失敗:', err);
+                          }
+                          
                           // 訪問査定日時が入力された場合、現在のログインユーザーを訪問査定取得者に自動設定
                           // 訪問日を変更した場合は常に自動設定（既存の値を上書き）
                           console.log('📅 訪問日が設定されました:', newDate);
@@ -7783,12 +7810,25 @@ HP：https://ifoo-oita.com/
 
                 {/* 確度 - 1行全幅 */}
                 <Grid item xs={12}>
-                  <FormControl fullWidth size="small" error={
-                    !editedConfidence &&
-                    !!(seller?.inquiryDate && new Date(seller.inquiryDate) >= new Date('2026-01-01')) &&
-                    editedStatus?.includes('追客中') &&
-                    unreachableStatus === '通電OK'
-                  }>
+                  <FormControl
+                    ref={confidenceRef}
+                    fullWidth
+                    size="small"
+                    error={
+                      !editedConfidence &&
+                      !!(seller?.inquiryDate && new Date(seller.inquiryDate) >= new Date('2026-01-01')) &&
+                      editedStatus?.includes('追客中') &&
+                      unreachableStatus === '通電OK'
+                    }
+                    sx={confidenceHighlight ? {
+                      animation: 'confidence-blink 0.5s ease-in-out 4',
+                      '@keyframes confidence-blink': {
+                        '0%': { boxShadow: '0 0 0 0 rgba(255,0,0,0)' },
+                        '50%': { boxShadow: '0 0 0 6px rgba(255,0,0,0.5)', backgroundColor: '#fff3f3', borderRadius: '4px' },
+                        '100%': { boxShadow: '0 0 0 0 rgba(255,0,0,0)' },
+                      },
+                    } : {}}
+                  >
                     <InputLabel>
                       確度
                       {!!(seller?.inquiryDate && new Date(seller.inquiryDate) >= new Date('2026-01-01')) &&
@@ -7902,6 +7942,47 @@ HP：https://ifoo-oita.com/
                       </Button>
                     ))}
                   </Box>
+                </Grid>
+
+                {/* 状況×確度 警告ダイアログ */}
+                <Grid item xs={12}>
+                  <Dialog open={statusConfidenceWarningOpen} onClose={() => {
+                    setStatusConfidenceWarningOpen(false);
+                    // ダイアログを閉じたら確度フィールドまでスクロール＆ハイライト
+                    setTimeout(() => {
+                      confidenceRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                      setConfidenceHighlight(true);
+                      setTimeout(() => setConfidenceHighlight(false), 2500);
+                    }, 100);
+                  }}>
+                    <DialogTitle sx={{ color: 'error.main', fontWeight: 'bold' }}>
+                      ⚠️ 確度の確認が必要です
+                    </DialogTitle>
+                    <DialogContent>
+                      <Typography>
+                        「状況（当社）」に <strong>{editedStatus}</strong> が選択されていますが、「確度」が <strong>{editedConfidence}</strong> になっています。
+                      </Typography>
+                      <Typography sx={{ mt: 1 }}>
+                        他決・一般・専任の場合、確度を「D」や「ダブり」以外に変更してください。
+                      </Typography>
+                    </DialogContent>
+                    <DialogActions>
+                      <Button
+                        variant="contained"
+                        color="error"
+                        onClick={() => {
+                          setStatusConfidenceWarningOpen(false);
+                          setTimeout(() => {
+                            confidenceRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            setConfidenceHighlight(true);
+                            setTimeout(() => setConfidenceHighlight(false), 2500);
+                          }, 100);
+                        }}
+                      >
+                        確度を変更する
+                      </Button>
+                    </DialogActions>
+                  </Dialog>
                 </Grid>
 
                 {/* ステータスを更新ボタン（未変更時はグレー、変更あり時はオレンジでパルスアニメーション） */}
