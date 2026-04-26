@@ -180,6 +180,7 @@ router.post(
     body('htmlBody').optional().isString().withMessage('HTML body must be a string'),
     body('from').optional().isEmail().withMessage('Invalid from email address'),
     body('attachments').optional().isArray().withMessage('Attachments must be an array'),
+    body('replyTo').optional().isEmail().withMessage('Invalid replyTo email address'),
   ],
   async (req: Request, res: Response) => {
     try {
@@ -207,7 +208,7 @@ router.post(
       }
 
       const { sellerId } = req.params;
-      const { templateId, to, subject, content, htmlBody, from, attachments } = req.body;
+      const { templateId, to, subject, content, htmlBody, from, attachments, replyTo } = req.body;
 
       // 売主情報を取得
       const seller = await sellerService.getSeller(sellerId);
@@ -301,19 +302,34 @@ router.post(
           from: from || req.employee!.email,
           attachments: emailAttachments,
           isHtml: !!htmlBody,
+          replyTo: replyTo || undefined,
         });
       } else {
-        // 添付ファイルなし: 既存フロー（変更なし）
-        const sellerWithUpdatedEmail = { ...seller, email: recipientEmail };
-        result = await emailService.sendTemplateEmail(
-          sellerWithUpdatedEmail,
-          subject,
-          content || '',
-          req.employee!.email,
-          req.employee!.id,
-          htmlBody,  // オプション: カスタムHTMLボディ（貼り付けた画像を含む場合）
-          from       // オプション: 送信元メールアドレス
-        );
+        // 添付ファイルなし
+        if (replyTo) {
+          // replyTo が指定されている場合は sendEmailWithCcAndAttachments を使用（Reply-Toヘッダー対応）
+          result = await emailService.sendEmailWithCcAndAttachments({
+            to: recipientEmail,
+            subject,
+            body: htmlBody || content || '',
+            from: from || req.employee!.email,
+            attachments: [],
+            isHtml: !!htmlBody,
+            replyTo,
+          });
+        } else {
+          // 既存フロー（変更なし）
+          const sellerWithUpdatedEmail = { ...seller, email: recipientEmail };
+          result = await emailService.sendTemplateEmail(
+            sellerWithUpdatedEmail,
+            subject,
+            content || '',
+            req.employee!.email,
+            req.employee!.id,
+            htmlBody,  // オプション: カスタムHTMLボディ（貼り付けた画像を含む場合）
+            from       // オプション: 送信元メールアドレス
+          );
+        }
       }
 
       if (!result.success) {
