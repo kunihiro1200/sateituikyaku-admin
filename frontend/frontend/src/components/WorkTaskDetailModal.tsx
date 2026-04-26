@@ -840,7 +840,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
     open: boolean;
     title: string;
     emptyFields: string[];
-    onConfirmAction: 'site' | 'floor' | 'mandatory' | 'cadastral' | 'binding_completed' | 'sales_assignee' | null;
+    onConfirmAction: 'site' | 'floor' | 'mandatory' | 'cadastral' | 'binding_completed' | 'sales_assignee' | 'publish_scheduled_date' | 'storage_url' | null;
   }>({ open: false, title: '', emptyFields: [], onConfirmAction: null });
 
   // ログインユーザーの営業フラグを取得
@@ -961,6 +961,33 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
 
   const handleSave = async () => {
     if (!propertyNumber || Object.keys(editedData).length === 0) return;
+
+    // 公開予定日が入力されていて物件ファイルが空欄の場合はブロック
+    const publishScheduledDate = getValue('publish_scheduled_date');
+    const propertyFile = getValue('property_file');
+    if (publishScheduledDate && !propertyFile) {
+      setValidationWarningDialog({
+        open: true,
+        title: '「物件ファイル」が空欄です。公開予定日を入力する場合は必須項目です。',
+        emptyFields: ['物件ファイル'],
+        onConfirmAction: 'publish_scheduled_date',
+      });
+      return;
+    }
+
+    // 格納先URLが空欄で、CWの方へ依頼メール（サイト登録）または間取図 に値が入っている場合はブロック
+    const storageUrl = getValue('storage_url');
+    const cwRequestEmailSiteVal = getValue('cw_request_email_site');
+    const floorPlanVal = getValue('floor_plan');
+    if (!storageUrl && (cwRequestEmailSiteVal || floorPlanVal)) {
+      setValidationWarningDialog({
+        open: true,
+        title: '「格納先URL」が空欄です。CWの方へ依頼メール（サイト登録）または間取図 に値が入っている場合は必須項目です。',
+        emptyFields: ['格納先URL'],
+        onConfirmAction: 'storage_url',
+      });
+      return;
+    }
 
     // 条件付きバリデーション
     const cwEmailSite = getValue('cw_request_email_site');
@@ -1150,6 +1177,30 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
             salesContractConfirmedRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
           } else if (contractLeftPaneRef.current) {
             contractLeftPaneRef.current.scrollTop = 0;
+          }
+        });
+      });
+    }
+
+    // 公開予定日エラーの場合、サイト登録タブ（tabIndex=1）に切り替えて物件ファイルまでスクロール
+    if (action === 'publish_scheduled_date') {
+      setTabIndex(1);
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          if (propertyFileRef.current) {
+            propertyFileRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        });
+      });
+    }
+
+    // 格納先URLエラーの場合、サイト登録タブ（tabIndex=1）に切り替えて格納先URLまでスクロール
+    if (action === 'storage_url') {
+      setTabIndex(1);
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          if (storageUrlRef.current) {
+            storageUrlRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
           }
         });
       });
@@ -1559,6 +1610,12 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
 
   // 営業担当フィールドへのスクロール用 ref
   const salesAssigneeRef = useRef<HTMLDivElement>(null);
+
+  // 物件ファイルフィールドへのスクロール用 ref
+  const propertyFileRef = useRef<HTMLDivElement>(null);
+
+  // 格納先URLフィールドへのスクロール用 ref
+  const storageUrlRef = useRef<HTMLDivElement>(null);
 
   // editedData 変更後に左右ペインのスクロール位置を復元（サイト登録タブのみ）
   useEffect(() => {
@@ -2038,7 +2095,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
   );
 
   // サイト登録セクション
-  const SiteRegistrationSection = ({ cwCounts, leftPaneRef, rightPaneRef }: { cwCounts: CwCountData; leftPaneRef: React.RefObject<HTMLDivElement>; rightPaneRef: React.RefObject<HTMLDivElement> }) => {
+  const SiteRegistrationSection = ({ cwCounts, leftPaneRef, rightPaneRef, propertyFileRef, storageUrlRef }: { cwCounts: CwCountData; leftPaneRef: React.RefObject<HTMLDivElement>; rightPaneRef: React.RefObject<HTMLDivElement>; propertyFileRef: React.RefObject<HTMLDivElement>; storageUrlRef: React.RefObject<HTMLDivElement> }) => {
     // 変更4: サイト登録納期予定日の初期値ロジック
     const getDefaultDueDate = () => {
       const today = new Date();
@@ -2148,7 +2205,9 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
         {getValue('property_type') === '土' && (
           <RedNote text={'地積測量図や字図を格納→「リンク知っている人全員」\nの共有URLをスプシの「内覧前伝達事項」に貼り付ける'} />
         )}
-        <EditableField label="格納先URL" field="storage_url" type="url" />
+        <Box ref={storageUrlRef}>
+          <EditableField label="格納先URL" field="storage_url" type="url" />
+        </Box>
         <EditableYesNo label="CWの方へ依頼メール（サイト登録）" field="cw_request_email_site" />
         <EditableButtonSelect label="CWの方*" field="cw_person" options={['浅沼様（土日OK, 平日は中１日あけて納期）']} />
         <EditableField label="メール配信" field="email_distribution" />
@@ -2503,7 +2562,9 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
         <Box sx={{ bgcolor: '#fafafa', borderRadius: 1, p: 1, mb: 1 }}>
         <SectionHeader label="【確認後処理】" />
         <EditableField label="配信日" field="distribution_date" type="date" />
-        <EditableButtonSelect label="物件ファイル" field="property_file" options={['担当に渡し済み', '未']} />
+        <Box ref={propertyFileRef}>
+          <EditableButtonSelect label="物件ファイル" field="property_file" options={['担当に渡し済み', '未']} />
+        </Box>
         <EditableField label="公開予定日" field="publish_scheduled_date" type="date" />
         <ReadOnlyDisplayField
           label="メール配信"
@@ -3885,8 +3946,8 @@ ${pageUrl}`;
               {tabIndex === 0 && renderMediationSection()}
               {tabIndex === 1 && (
                 isMobile
-                  ? <Box sx={{ display: 'flex', flexDirection: 'column' }}><SiteRegistrationSection cwCounts={cwCounts} leftPaneRef={leftPaneRef} rightPaneRef={rightPaneRef} /></Box>
-                  : <SiteRegistrationSection cwCounts={cwCounts} leftPaneRef={leftPaneRef} rightPaneRef={rightPaneRef} />
+                  ? <Box sx={{ display: 'flex', flexDirection: 'column' }}><SiteRegistrationSection cwCounts={cwCounts} leftPaneRef={leftPaneRef} rightPaneRef={rightPaneRef} propertyFileRef={propertyFileRef} storageUrlRef={storageUrlRef} /></Box>
+                  : <SiteRegistrationSection cwCounts={cwCounts} leftPaneRef={leftPaneRef} rightPaneRef={rightPaneRef} propertyFileRef={propertyFileRef} storageUrlRef={storageUrlRef} />
               )}
               {tabIndex === 2 && renderContractSettlementSection()}
               {tabIndex === 3 && <Box sx={isMobile ? { width: '100%' } : { flex: 1, display: 'flex', minHeight: 0, height: '100%', width: '100%', overflow: 'hidden' }}>{renderSellerBuyerDetailSection()}</Box>}
