@@ -521,6 +521,10 @@ export class PerformanceMetricsService extends BaseRepository {
         generalAgencyCount: generalCount,
       },
     };
+  }
+
+  /**
+   * 他決割合（未訪問）を計算
    * 条件: contract_year_month が指定月、status に "他決" を含む、visit_assignee が空欄
    */
   async calculateCompetitorLossUnvisited(
