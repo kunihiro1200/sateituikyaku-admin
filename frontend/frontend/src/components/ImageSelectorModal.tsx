@@ -32,6 +32,7 @@ import {
   Link as LinkIcon,
   NavigateNext,
   Home as HomeIcon,
+  PictureAsPdf as PdfIcon,
 } from '@mui/icons-material';
 import { emailImageApi } from '../services/api';
 
@@ -201,7 +202,7 @@ const ImageSelectorModal = ({
     const files = event.target.files;
     if (files) {
       const newFiles = Array.from(files).filter(file => 
-        file.type.startsWith('image/')
+        file.type.startsWith('image/') || file.type === 'application/pdf'
       );
       
       // ImageFile形式に変換して選択リストに追加
@@ -243,7 +244,7 @@ const ImageSelectorModal = ({
     const files = e.dataTransfer.files;
     if (files) {
       const newFiles = Array.from(files).filter(file => 
-        file.type.startsWith('image/')
+        file.type.startsWith('image/') || file.type === 'application/pdf'
       );
       
       // ImageFile形式に変換して選択リストに追加
@@ -361,12 +362,25 @@ const ImageSelectorModal = ({
           onClick={() => handleImageToggle(image)}
         >
           <CardMedia
-            component="img"
+            component={image.mimeType === 'application/pdf' ? 'div' : 'img'}
             height="200"
-            image={image.thumbnailUrl || image.previewUrl}
+            {...(image.mimeType !== 'application/pdf' && { image: image.thumbnailUrl || image.previewUrl })}
             alt={image.name}
-            sx={{ objectFit: 'cover' }}
-          />
+            sx={{
+              objectFit: 'cover',
+              ...(image.mimeType === 'application/pdf' && {
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                bgcolor: '#f5f5f5',
+                height: 200,
+              }),
+            }}
+          >
+            {image.mimeType === 'application/pdf' && (
+              <PdfIcon sx={{ fontSize: 80, color: '#d32f2f' }} />
+            )}
+          </CardMedia>
           {isSelected && (
             <Box
               sx={{
@@ -569,7 +583,7 @@ const ImageSelectorModal = ({
                     type="file"
                     hidden
                     multiple
-                    accept="image/*"
+                    accept="image/*,application/pdf"
                     onChange={handleLocalFileSelect}
                   />
                 </Button>
@@ -683,11 +697,18 @@ const ImageSelectorModal = ({
           </DialogTitle>
           <DialogContent>
             <Box sx={{ textAlign: 'center', mb: 2 }}>
-              <img
-                src={previewImage.previewUrl}
-                alt={previewImage.name}
-                style={{ maxWidth: '100%', height: 'auto' }}
-              />
+              {previewImage.mimeType === 'application/pdf' ? (
+                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', py: 4 }}>
+                  <PdfIcon sx={{ fontSize: 120, color: '#d32f2f', mb: 2 }} />
+                  <Typography variant="body1">{previewImage.name}</Typography>
+                </Box>
+              ) : (
+                <img
+                  src={previewImage.previewUrl}
+                  alt={previewImage.name}
+                  style={{ maxWidth: '100%', height: 'auto' }}
+                />
+              )}
             </Box>
             <Typography variant="body2">
               <strong>ファイル名:</strong> {previewImage.name}
