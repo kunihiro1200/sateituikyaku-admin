@@ -3538,7 +3538,7 @@ HP：https://ifoo-oita.com/
     const capturedEmailBody = editableEmailBody;
     const capturedEmailRecipient = editableEmailRecipient;
     const capturedEmailSubject = editableEmailSubject;
-    const capturedSenderAddress = senderAddress;
+    const capturedSenderAddress = getSenderAddress(); // stateではなくsessionStorageから直接取得（state更新の非同期問題を回避）
     const capturedSelectedImages = selectedImages;
 
     try {
