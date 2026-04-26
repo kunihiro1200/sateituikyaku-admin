@@ -104,6 +104,8 @@ export default function NewSellerPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [duplicateWarning, setDuplicateWarning] = useState<any>(null);
+  const [validationError, setValidationError] = useState<string[]>([]);
+  const [validationDialogOpen, setValidationDialogOpen] = useState(false);
 
   // 売主番号（自動採番）
   const [sellerNumber, setSellerNumber] = useState('');
@@ -335,23 +337,17 @@ export default function NewSellerPage() {
     setNextCallDateConfirmOpen(false);
 
     // バリデーション
-    if (!name || !phoneNumber) {
-      setError('名前、電話番号は必須です');
-      return;
-    }
+    const missingFields: string[] = [];
+    if (!name) missingFields.push('名前');
+    if (!phoneNumber) missingFields.push('電話番号');
+    if (!propertyAddress) missingFields.push('物件所在地');
+    if (!propertyType) missingFields.push('物件種別');
+    if (!confidence) missingFields.push('確度');
+    if (!site) missingFields.push('サイト');
 
-    if (!propertyAddress || !propertyType) {
-      setError('物件の住所、種別は必須です');
-      return;
-    }
-
-    if (!confidence) {
-      setError('確度は必須です');
-      return;
-    }
-
-    if (!site) {
-      setError('サイトは必須です');
+    if (missingFields.length > 0) {
+      setValidationError(missingFields);
+      setValidationDialogOpen(true);
       return;
     }
 
@@ -1182,6 +1178,28 @@ export default function NewSellerPage() {
             </Grid>
           </Paper>
 
+
+          {/* 必須項目未入力ダイアログ */}
+          <Dialog open={validationDialogOpen} onClose={() => setValidationDialogOpen(false)}>
+            <DialogTitle sx={{ color: 'error.main', fontWeight: 'bold' }}>
+              ⚠️ 必須項目が未入力です
+            </DialogTitle>
+            <DialogContent>
+              <Typography sx={{ mb: 1 }}>以下の必須項目（*）を入力してください：</Typography>
+              <Box component="ul" sx={{ pl: 2, m: 0 }}>
+                {validationError.map((field) => (
+                  <Box component="li" key={field} sx={{ color: 'error.main', fontWeight: 'bold' }}>
+                    {field}
+                  </Box>
+                ))}
+              </Box>
+            </DialogContent>
+            <DialogActions>
+              <Button variant="contained" onClick={() => setValidationDialogOpen(false)}>
+                閉じる
+              </Button>
+            </DialogActions>
+          </Dialog>
 
           {/* 次電日未入力確認ダイアログ */}
           <Dialog open={nextCallDateConfirmOpen} onClose={() => setNextCallDateConfirmOpen(false)}>
