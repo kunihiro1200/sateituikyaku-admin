@@ -2918,12 +2918,13 @@ export class BuyerService {
   async permanentDelete(buyerIdOrNumber: string): Promise<void> {
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(buyerIdOrNumber);
     const isNumeric = /^\d+$/.test(buyerIdOrNumber);
+    const isByPrefix = /^BY_[A-Za-z0-9_]+$/.test(buyerIdOrNumber);
 
     // buyer_numberで削除（主キーがTEXTのため、buyer_numberで特定するのが確実）
     let query = this.supabase.from('buyers').delete();
 
-    if (isNumeric) {
-      // buyer_number は TEXT型なので文字列のまま渡す
+    if (isNumeric || isByPrefix) {
+      // 数値形式またはBY_プレフィックス形式はbuyer_numberで削除
       query = query.eq('buyer_number', buyerIdOrNumber);
     } else if (isUuid) {
       query = query.eq('buyer_id', buyerIdOrNumber);
