@@ -354,6 +354,7 @@ export class PerformanceMetricsService extends BaseRepository {
       .select('*', { count: 'exact', head: true })
       .gte('visit_acquisition_date', startDate)
       .lte('visit_acquisition_date', endDate)
+      .is('deleted_at', null)
       .or('confidence_level.is.null,and(confidence_level.neq.D,confidence_level.neq.ダブり)');
 
     if (error) {
@@ -378,6 +379,7 @@ export class PerformanceMetricsService extends BaseRepository {
       .select('*', { count: 'exact', head: true })
       .gte('inquiry_date', startDate)
       .lte('inquiry_date', endDate)
+      .is('deleted_at', null)
       .or('confidence_level.is.null,and(confidence_level.neq.D,confidence_level.neq.ダブり)');
 
     if (error) {
