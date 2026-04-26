@@ -93,7 +93,12 @@ export const buildPrintContent = (
           : (buyer.name || '-')
         }
       </td>
-      <td style="border:1px solid #ccc; padding:4px;">${buyer.reception_date ? new Date(buyer.reception_date).toLocaleDateString('ja-JP') : '-'}</td>
+      <td style="border:1px solid #ccc; padding:4px;">${(() => {
+        if (!buyer.reception_date) return '-';
+        const d = new Date(buyer.reception_date);
+        // 2024年12月31日以前は「-」を表示
+        return d <= new Date('2024-12-31') ? '-' : d.toLocaleDateString('ja-JP');
+      })()}</td>
       <td style="border:1px solid #ccc; padding:4px;">${inquiryInfo}${desiredPriceLine}</td>
       <td style="border:1px solid #ccc; padding:4px; white-space:pre-wrap; max-width:200px;">${hearingOrResult}</td>
       <td style="border:1px solid #ccc; padding:4px;">${buyer.latest_status || '-'}</td>
