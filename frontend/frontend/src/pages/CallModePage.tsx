@@ -7438,15 +7438,15 @@ HP：https://ifoo-oita.com/
                   onClick={() => setRankingDialogOpen(true)}
                   sx={{ fontSize: '0.7rem', py: 0.25, px: 1, minWidth: 0 }}
                 >
-                  🏆 1番電話月間ランキング
+                  🏆 1番電話<span style={{ fontSize: '0.85rem', fontWeight: 'bold', color: '#1976d2' }}>月間</span>ランキング
                 </Button>
                 <Button
                   size="small"
                   variant="outlined"
                   onClick={() => setYearlyRankingDialogOpen(true)}
-                  sx={{ fontSize: '0.7rem', py: 0.25, px: 1, minWidth: 0 }}
+                  sx={{ fontSize: '0.7rem', py: 0.25, px: 1, minWidth: 0, borderColor: '#e65100', color: '#e65100', '&:hover': { borderColor: '#e65100', bgcolor: '#fff3e0' } }}
                 >
-                  🏆 1番電話年間累計ランキング
+                  🏆 1番電話<span style={{ fontSize: '0.85rem', fontWeight: 'bold', color: '#e65100' }}>年間</span>累計ランキング
                 </Button>
               </Box>
               <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
