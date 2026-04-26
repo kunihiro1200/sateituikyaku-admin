@@ -171,13 +171,22 @@ export class WorkTaskUpcomingDeadlineNotificationService {
             `この物件詳細のURL（サイト登録タブ）: ${workTasksUrl}`,
             '※業務リストページを開き、該当物件番号をクリックしてサイト登録タブをご確認ください。',
           ].join('\n');
-        } else {
+        } else if (target.notificationType === 'sales_contract_reminder') {
           subject = `${target.property_number}の売買契約書の締日が迫っています！！`;
           body = [
             `${target.property_number}の売買契約書が未着手です！早急に着手してください！`,
             '',
             `この物件詳細画面のURL（契約決済タブ）: ${workTasksUrl}`,
             '※業務リストページを開き、該当物件番号をクリックして契約決済タブをご確認ください。',
+          ].join('\n');
+        } else {
+          // mediation_reminder
+          subject = `${target.property_number}の媒介作成の締日が迫っています！！`;
+          body = [
+            `${target.property_number}の媒介作成が未完了です！早急に作成してください！`,
+            '',
+            `この物件詳細画面のURL（媒介契約タブ）: ${workTasksUrl}`,
+            '※業務リストページを開き、該当物件番号をクリックして媒介契約タブをご確認ください。',
           ].join('\n');
         }
 
