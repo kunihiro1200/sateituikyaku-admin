@@ -2067,8 +2067,6 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
             />
           </Grid>
         </Grid>
-        <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mb: 1 }}>CWの方、広瀬さん記入↓↓</Typography>
-        <EditableField label="サイト登録確認依頼日" field="site_registration_confirm_request_date" type="date" />
 
         </Box>
 
