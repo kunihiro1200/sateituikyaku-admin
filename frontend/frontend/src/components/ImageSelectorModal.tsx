@@ -361,26 +361,19 @@ const ImageSelectorModal = ({
           }}
           onClick={() => handleImageToggle(image)}
         >
-          <CardMedia
-            component={image.mimeType === 'application/pdf' ? 'div' : 'img'}
-            height="200"
-            {...(image.mimeType !== 'application/pdf' && { image: image.thumbnailUrl || image.previewUrl })}
-            alt={image.name}
-            sx={{
-              objectFit: 'cover',
-              ...(image.mimeType === 'application/pdf' && {
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                bgcolor: '#f5f5f5',
-                height: 200,
-              }),
-            }}
-          >
-            {image.mimeType === 'application/pdf' && (
+          {image.mimeType === 'application/pdf' ? (
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: '#f5f5f5', height: 200 }}>
               <PdfIcon sx={{ fontSize: 80, color: '#d32f2f' }} />
-            )}
-          </CardMedia>
+            </Box>
+          ) : (
+            <CardMedia
+              component="img"
+              height="200"
+              image={image.thumbnailUrl || image.previewUrl}
+              alt={image.name}
+              sx={{ objectFit: 'cover' }}
+            />
+          )}
           {isSelected && (
             <Box
               sx={{
