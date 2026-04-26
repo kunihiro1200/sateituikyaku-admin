@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { ProgressBar } from './ProgressBar';
 import { ComparisonIndicator } from './ComparisonIndicator';
 
@@ -10,8 +10,8 @@ interface MetricCardProps {
   previousYearAverage?: number;
   unit?: string;
   showProgressBar?: boolean;
-  formula?: string;       // 条件式 例: "他決数 / 訪問査定取得数 × 100"
-  formulaValues?: string; // 実数   例: "（5 ÷ 44）× 100"
+  formula?: string;
+  formulaValues?: string;
   children?: React.ReactNode;
 }
 
@@ -27,70 +27,68 @@ export const MetricCard: React.FC<MetricCardProps> = ({
   formulaValues,
   children,
 }) => {
-  // 達成度を計算
+  const [showFormula, setShowFormula] = useState(false);
+
   const achievementRate = target !== undefined ? (currentValue / target) * 100 : undefined;
-  
-  // 月平均との差分を計算
   const differenceFromAverage = currentValue - monthlyAverage;
 
   return (
-    <div className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
-      {/* タイトル行 */}
-      <div className="mb-3">
-        <div className="flex items-baseline gap-2 flex-wrap">
-          <h3 className="text-sm font-medium text-gray-700">{title}</h3>
-          {target !== undefined && (
-            <>
-              <span className="text-xs text-gray-500">（目標: {target}{unit}）</span>
-              {achievementRate !== undefined && (
-                <span className="text-xs font-semibold text-blue-600">
-                  達成度: {achievementRate.toFixed(1)}%
-                </span>
-              )}
-            </>
-          )}
-        </div>
-        {/* 条件式と実数 */}
+    <div className="bg-white rounded-lg shadow-md p-5 hover:shadow-lg transition-shadow">
+
+      {/* タイトル */}
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-sm font-semibold text-gray-600">{title}</h3>
         {formula && (
-          <div className="mt-1 text-xs text-gray-500">
-            <span>{formula}</span>
-            {formulaValues && (
-              <span className="ml-1 text-gray-400">{formulaValues}</span>
-            )}
+          <button
+            onClick={() => setShowFormula(v => !v)}
+            className="text-xs px-2 py-1 rounded border border-blue-300 text-blue-600 hover:bg-blue-50 transition-colors"
+          >
+            条件式
+          </button>
+        )}
+      </div>
+
+      {/* 当月ハイライト */}
+      <div className="bg-blue-50 rounded-lg px-4 py-3 mb-3">
+        <div className="flex items-baseline gap-1">
+          <span className="text-xs text-blue-500 font-medium">当月</span>
+          <span className="text-3xl font-bold text-blue-700 ml-1">
+            {currentValue.toFixed(1)}
+          </span>
+          <span className="text-lg font-semibold text-blue-600">{unit}</span>
+        </div>
+        {target !== undefined && achievementRate !== undefined && (
+          <div className="flex items-center gap-2 mt-1">
+            <span className="text-xs text-blue-400">目標 {target}{unit}</span>
+            <span className="text-xs font-semibold text-blue-600">達成度 {achievementRate.toFixed(1)}%</span>
           </div>
         )}
       </div>
 
-      {/* メイン数値行 */}
-      <div className="mb-4">
-        <div className="flex items-baseline gap-2 flex-wrap">
-          <span className="text-sm text-gray-600">当月：</span>
-          <span className="text-2xl font-bold text-gray-900">
-            {currentValue.toFixed(1)}{unit}
-          </span>
-          <span className="text-sm text-gray-600">
-            （月平均{monthlyAverage.toFixed(1)}{unit}）
-          </span>
-          {Math.abs(differenceFromAverage) > 0.5 && (
-            <span className={`text-sm font-semibold ${
-              differenceFromAverage > 0 ? 'text-green-600' : 'text-red-600'
-            }`}>
-              {differenceFromAverage > 0 ? '+' : ''}{differenceFromAverage.toFixed(1)}{unit}
-            </span>
-          )}
-        </div>
-      </div>
-
       {/* プログレスバー */}
       {showProgressBar && target !== undefined && (
-        <div className="mb-4">
+        <div className="mb-3">
           <ProgressBar current={currentValue} target={target} />
         </div>
       )}
 
+      {/* 月平均・差分 */}
+      <div className="flex items-center gap-2 mb-2 text-sm">
+        <span className="text-gray-500">月平均 {monthlyAverage.toFixed(1)}{unit}</span>
+        {Math.abs(differenceFromAverage) > 0.5 && (
+          <span className={`font-semibold text-xs px-1.5 py-0.5 rounded ${
+            differenceFromAverage > 0
+              ? 'bg-green-100 text-green-700'
+              : 'bg-red-100 text-red-700'
+          }`}>
+            {differenceFromAverage > 0 ? '+' : ''}{differenceFromAverage.toFixed(1)}{unit}
+          </span>
+        )}
+      </div>
+
       {/* 前年度平均との比較 */}
       {previousYearAverage !== undefined && (
-        <div className="mb-4">
+        <div className="mb-2">
           <ComparisonIndicator
             current={currentValue}
             average={previousYearAverage}
@@ -99,9 +97,20 @@ export const MetricCard: React.FC<MetricCardProps> = ({
         </div>
       )}
 
+      {/* 条件式（トグル表示） */}
+      {showFormula && formula && (
+        <div className="mt-3 p-3 bg-gray-50 rounded-lg border border-gray-200 text-xs text-gray-600">
+          <div className="font-medium text-gray-500 mb-1">計算式</div>
+          <div>{formula}</div>
+          {formulaValues && (
+            <div className="mt-1 text-gray-400">{formulaValues}</div>
+          )}
+        </div>
+      )}
+
       {/* 子要素（テーブルなど） */}
       {children && (
-        <div className="mt-4 pt-4 border-t border-gray-200">
+        <div className="mt-3 pt-3 border-t border-gray-200">
           {children}
         </div>
       )}
