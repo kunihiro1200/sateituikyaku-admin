@@ -194,6 +194,7 @@ export default function SharedItemDetailPage() {
         '共有日': sharingDate,
         '確認日': confirmationDate,
         '共有できていない': staffNotShared.join(','),
+        '内容': content,
       };
 
       await api.put(`/api/shared-items/${item.id}`, payload);
