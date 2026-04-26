@@ -850,6 +850,8 @@ export default function BuyerDetailPage() {
       );
       setBuyer(result.buyer);
       setHearingEditValue(result.buyer.inquiry_hearing || '');
+      // キャッシュを無効化してサイドバーカテゴリーを即時反映
+      pageDataCache.invalidate(CACHE_KEYS.BUYERS_WITH_STATUS);
       setSnackbar({ open: true, message: 'ヒアリング項目を保存しました', severity: 'success' });
     } catch (error: any) {
       setSnackbar({ open: true, message: error.response?.data?.error || '保存に失敗しました', severity: 'error' });
@@ -871,6 +873,9 @@ export default function BuyerDetailPage() {
 
       // 保存後に buyer ステートを即座に更新（バリデーションが古い値を参照しないように）
       setBuyer((prev: any) => prev ? { ...prev, [fieldName]: newValue } : prev);
+
+      // キャッシュを無効化してサイドバーカテゴリーを即時反映
+      pageDataCache.invalidate(CACHE_KEYS.BUYERS_WITH_STATUS);
 
       // 同期失敗の通知（DBへの保存は成功）
       if (result?.syncStatus === 'failed') {
@@ -1050,6 +1055,8 @@ export default function BuyerDetailPage() {
       setBuyer(result.buyer);
       setSectionDirtyStates(prev => ({ ...prev, [sectionTitle]: false }));
       setSectionChangedFields(prev => ({ ...prev, [sectionTitle]: {} }));
+      // キャッシュを無効化してサイドバーカテゴリーを即時反映
+      pageDataCache.invalidate(CACHE_KEYS.BUYERS_WITH_STATUS);
       // スプシ同期失敗時は警告表示
       if (result?.syncStatus === 'failed') {
         setSnackbar({
@@ -1083,6 +1090,8 @@ export default function BuyerDetailPage() {
       );
       setBuyer(result.buyer);
       setMessageToAssigneeEditValue(result.buyer.message_to_assignee || '');
+      // キャッシュを無効化してサイドバーカテゴリーを即時反映
+      pageDataCache.invalidate(CACHE_KEYS.BUYERS_WITH_STATUS);
       const syncMsg = result.syncStatus === 'synced' ? '（スプシ同期済み）' : result.syncStatus === 'pending' ? '（スプシ同期保留中）' : '';
       setSnackbar({ open: true, message: `担当への伝言/質問事項を保存しました${syncMsg}`, severity: result.syncStatus === 'synced' ? 'success' : 'warning' });
     } catch (error: any) {

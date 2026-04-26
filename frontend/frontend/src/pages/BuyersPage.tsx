@@ -136,6 +136,12 @@ export default function BuyersPage() {
   useEffect(() => {
     let cancelled = false;
 
+    // キャッシュが無効化されていたらインメモリ状態もリセット（BuyerDetailPageでの更新を反映）
+    if (!pageDataCache.get(CACHE_KEYS.BUYERS_WITH_STATUS)) {
+      sidebarLoadedRef.current = false;
+      allBuyersWithStatusRef.current = [];
+    }
+
     const fetchBuyers = async () => {
       try {
         // サイドバーデータ読み込み済みの場合はフロント側でフィルタリング（APIコール不要）
