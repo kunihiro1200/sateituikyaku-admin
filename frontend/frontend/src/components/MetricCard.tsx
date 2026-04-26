@@ -35,47 +35,49 @@ export const MetricCard: React.FC<MetricCardProps> = ({
   return (
     <div className="bg-white rounded-lg shadow-md p-5 hover:shadow-lg transition-shadow">
 
-      {/* タイトル */}
+      {/* タイトル行 + 条件式ボタン */}
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-semibold text-gray-600">{title}</h3>
         {formula && (
           <button
             onClick={() => setShowFormula(v => !v)}
-            className="text-xs px-2 py-1 rounded border border-blue-300 text-blue-600 hover:bg-blue-50 transition-colors"
+            className="text-xs px-2 py-1 rounded border border-blue-300 text-blue-600 hover:bg-blue-50 transition-colors flex-shrink-0"
           >
             条件式
           </button>
         )}
       </div>
 
-      {/* 当月 + 月平均（横並び） */}
-      <div className="flex items-baseline gap-2 mb-2 flex-wrap">
-        <span className="text-xs text-gray-500">当月</span>
-        <span className="text-3xl font-bold text-gray-900">
-          {currentValue.toFixed(1)}
-        </span>
-        <span className="text-base font-semibold text-gray-700">{unit}</span>
-        <span className="text-sm text-gray-400">
-          （月平均 {monthlyAverage.toFixed(1)}{unit}）
-        </span>
-        {Math.abs(differenceFromAverage) > 0.5 && (
-          <span className={`font-semibold text-xs px-1.5 py-0.5 rounded ${
-            differenceFromAverage > 0
-              ? 'bg-green-100 text-green-700'
-              : 'bg-red-100 text-red-700'
-          }`}>
-            {differenceFromAverage > 0 ? '+' : ''}{differenceFromAverage.toFixed(1)}{unit}
+      {/* 当月ハイライト */}
+      <div className="bg-blue-50 border border-blue-100 rounded-lg px-4 py-3 mb-3">
+        <div className="flex items-baseline gap-2 flex-wrap">
+          <span className="text-xs text-blue-500 font-medium">当月</span>
+          <span className="text-3xl font-bold text-blue-700">
+            {currentValue.toFixed(1)}
           </span>
+          <span className="text-base font-semibold text-blue-600">{unit}</span>
+          <span className="text-sm text-blue-400">
+            （月平均 {monthlyAverage.toFixed(1)}{unit}）
+          </span>
+          {Math.abs(differenceFromAverage) > 0.5 && (
+            <span className={`font-semibold text-xs px-1.5 py-0.5 rounded ${
+              differenceFromAverage > 0
+                ? 'bg-green-100 text-green-700'
+                : 'bg-red-100 text-red-700'
+            }`}>
+              {differenceFromAverage > 0 ? '+' : ''}{differenceFromAverage.toFixed(1)}{unit}
+            </span>
+          )}
+        </div>
+
+        {/* 目標・達成度（ハイライト内に1行のみ） */}
+        {target !== undefined && achievementRate !== undefined && (
+          <div className="flex items-center gap-2 mt-1.5 text-xs">
+            <span className="text-blue-400">目標 {target}{unit}</span>
+            <span className="font-semibold text-blue-600">達成度 {achievementRate.toFixed(1)}%</span>
+          </div>
         )}
       </div>
-
-      {/* 目標・達成度 */}
-      {target !== undefined && achievementRate !== undefined && (
-        <div className="flex items-center gap-2 mb-3 text-xs">
-          <span className="text-gray-400">目標 {target}{unit}</span>
-          <span className="font-semibold text-blue-600">達成度 {achievementRate.toFixed(1)}%</span>
-        </div>
-      )}
 
       {/* プログレスバー */}
       {showProgressBar && target !== undefined && (
