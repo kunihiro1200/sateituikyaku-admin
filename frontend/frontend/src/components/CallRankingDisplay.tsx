@@ -34,6 +34,8 @@ interface CallRankingDisplayProps {
   endpoint?: string;
   /** 表示対象のイニシャル一覧（未指定時は全件表示） */
   allowedInitials?: string[];
+  /** 年間累計表示モード（trueの場合、期間を "2026年1月〜YYYY年M月" 形式で表示） */
+  yearlyMode?: boolean;
 }
 
 // 順位ごとの色設定
@@ -58,7 +60,7 @@ function isExcluded(initial: string): boolean {
   return EXCLUDED_PATTERNS.some((p) => initial.includes(p));
 }
 
-const CallRankingDisplay = ({ title = '1番電話月間ランキング', endpoint = '/api/sellers/call-ranking', allowedInitials }: CallRankingDisplayProps) => {
+const CallRankingDisplay = ({ title = '1番電話月間ランキング', endpoint = '/api/sellers/call-ranking', allowedInitials, yearlyMode = false }: CallRankingDisplayProps) => {
   const [data, setData] = useState<RankingData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -85,9 +87,13 @@ const CallRankingDisplay = ({ title = '1番電話月間ランキング', endpoin
     fetchRanking();
   }, [fetchRanking]);
 
-  // 期間表示（例: 2026年4月）
-  const formatPeriod = (from: string): string => {
+  // 期間表示（月間: "2026年4月"、年間: "2026年1月〜2026年4月"）
+  const formatPeriod = (from: string, to?: string): string => {
     const [year, month] = from.split('-');
+    if (yearlyMode && to) {
+      const [toYear, toMonth] = to.split('-');
+      return `${year}年${parseInt(month)}月〜${toYear}年${parseInt(toMonth)}月`;
+    }
     return `${year}年${parseInt(month)}月`;
   };
 
@@ -157,7 +163,7 @@ const CallRankingDisplay = ({ title = '1番電話月間ランキング', endpoin
           <TrophyIcon sx={{ fontSize: 18, color: '#F57F17' }} />
           {title}
           <Typography component="span" variant="caption" color="text.secondary" sx={{ ml: 0.5 }}>
-            {formatPeriod(data.period.from)}
+            {formatPeriod(data.period.from, data.period.to)}
           </Typography>
         </Typography>
         <Button size="small" startIcon={<RefreshIcon />} onClick={fetchRanking} sx={{ minWidth: 0, px: 1 }}>

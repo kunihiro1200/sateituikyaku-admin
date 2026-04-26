@@ -942,6 +942,7 @@ const CallModePage = () => {
   const [savingCommunication, setSavingCommunication] = useState(false);
   const [rankingDialogOpen, setRankingDialogOpen] = useState(false); // 1番電話月間ランキングダイアログ
   const [callTrackingRankingDialogOpen, setCallTrackingRankingDialogOpen] = useState(false); // 追客電話月間ランキングダイアログ
+  const [yearlyRankingDialogOpen, setYearlyRankingDialogOpen] = useState(false); // 1番電話年間累計ランキングダイアログ
   // スマホ時のアコーディオン開閉状態
   const [mobileCommentOpen, setMobileCommentOpen] = useState(true); // コメント（デフォルト展開）
   const [mobilePropertyOpen, setMobilePropertyOpen] = useState(false); // 物件情報
@@ -7439,6 +7440,14 @@ HP：https://ifoo-oita.com/
                 >
                   🏆 1番電話月間ランキング
                 </Button>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  onClick={() => setYearlyRankingDialogOpen(true)}
+                  sx={{ fontSize: '0.7rem', py: 0.25, px: 1, minWidth: 0 }}
+                >
+                  🏆 1番電話年間累計ランキング
+                </Button>
               </Box>
               <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
                 {normalInitials.map((initial) => (
@@ -8310,6 +8319,24 @@ HP：https://ifoo-oita.com/
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setRankingDialogOpen(false)}>閉じる</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 1番電話年間累計ランキングダイアログ */}
+      <Dialog open={yearlyRankingDialogOpen} onClose={() => setYearlyRankingDialogOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          🏆 1番電話年間累計ランキング
+        </DialogTitle>
+        <DialogContent>
+          <CallRankingDisplay
+            title="1番電話年間累計ランキング"
+            endpoint="/api/sellers/call-ranking-yearly"
+            allowedInitials={normalInitials.filter((i) => i !== 'K')}
+            yearlyMode={true}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setYearlyRankingDialogOpen(false)}>閉じる</Button>
         </DialogActions>
       </Dialog>
 
