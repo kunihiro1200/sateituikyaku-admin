@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import {
   Container,
   Box,
@@ -194,6 +194,7 @@ const VIEWING_RESULT_QUICK_INPUTS = [
 export default function BuyerViewingResultPage() {
   const { buyer_number } = useParams<{ buyer_number: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const { employee } = useAuthStore();
   const [buyer, setBuyer] = useState<Buyer | null>(null);
   const buyerRef = useRef<Buyer | null>(null); // handleInlineFieldSave から buyer を参照するための ref
@@ -256,7 +257,7 @@ export default function BuyerViewingResultPage() {
       fetchStaffInitials();
       fetchEmployees();
     }
-  }, [buyer_number]);
+  }, [buyer_number, location.key]);
 
   // デバッグ用: buyerステートの変更を監視
   useEffect(() => {
