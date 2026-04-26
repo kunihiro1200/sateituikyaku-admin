@@ -733,7 +733,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
     open: boolean;
     title: string;
     emptyFields: string[];
-    onConfirmAction: 'site' | 'floor' | 'mandatory' | 'cadastral' | 'binding_completed' | null;
+    onConfirmAction: 'site' | 'floor' | 'mandatory' | 'cadastral' | 'binding_completed' | 'sales_assignee' | null;
   }>({ open: false, title: '', emptyFields: [], onConfirmAction: null });
 
   // ログインユーザーの営業フラグを取得
@@ -860,6 +860,17 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
     const rowAdded = getValue('property_list_row_added');
     if (cwEmailSite && !rowAdded) {
       setRowAddWarningDialog({ open: true });
+      return;
+    }
+
+    // 物件一覧に行追加「追加済」かつ営業担当が空欄の場合はブロック
+    if (rowAdded === '追加済' && !getValue('sales_assignee')) {
+      setValidationWarningDialog({
+        open: true,
+        title: '「媒介契約」タブの"営業担当"が空欄です。必ず入力してください！',
+        emptyFields: ['そのあと、必ず物件リスト（スプシ）のA列に担当名を入力してください！'],
+        onConfirmAction: 'sales_assignee',
+      });
       return;
     }
 
@@ -1007,6 +1018,20 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
   const handleValidationWarningCancel = () => {
     const action = validationWarningDialog.onConfirmAction;
     setValidationWarningDialog(prev => ({ ...prev, open: false }));
+
+    // 営業担当空欄エラーの場合、媒介契約タブ（tabIndex=0）に切り替えてスクロール
+    if (action === 'sales_assignee') {
+      setTabIndex(0);
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          if (salesAssigneeRef.current) {
+            salesAssigneeRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          } else if (mediationPaneRef.current) {
+            mediationPaneRef.current.scrollTop = 0;
+          }
+        });
+      });
+    }
 
     // 製本完了チェックエラーの場合、売買契約確認フィールドまでスクロール
     if (action === 'binding_completed') {
@@ -1425,6 +1450,9 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
   // 売買契約確認フィールドへのスクロール用 ref
   const salesContractConfirmedRef = useRef<HTMLDivElement>(null);
 
+  // 営業担当フィールドへのスクロール用 ref
+  const salesAssigneeRef = useRef<HTMLDivElement>(null);
+
   // editedData 変更後に左右ペインのスクロール位置を復元（サイト登録タブのみ）
   useEffect(() => {
     if (tabIndex !== 1) return;
@@ -1763,7 +1791,9 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
       <EditableField label="物件所在" field="property_address" />
       <EditableField label="売主" field="seller_name" />
       <EditableField label="スプシURL" field="spreadsheet_url" type="url" />
-      <EditableButtonSelect label="営業担当" field="sales_assignee" options={normalInitials} />
+      <Box ref={salesAssigneeRef}>
+        <EditableButtonSelect label="営業担当" field="sales_assignee" options={normalInitials} />
+      </Box>
       <EditableField label="媒介形態" field="mediation_type" />
       <EditableField label="媒介作成締め日" field="mediation_deadline" type="date" />
       <EditableField label="媒介作成完了" field="mediation_completed" type="date" />
