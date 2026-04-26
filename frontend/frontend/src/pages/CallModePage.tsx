@@ -1333,7 +1333,7 @@ const CallModePage = () => {
   }, []);
 
   // 社員データと送信元アドレスを初期化（activeEmployeesが初めて読み込まれた時のみ実行）
-  const senderAddressInitialized = React.useRef(false);
+  const senderAddressInitialized = useRef(false);
   useEffect(() => {
     // activeEmployeesが空の場合はスキップ（まだ読み込まれていない）
     if (activeEmployees.length === 0) return;
