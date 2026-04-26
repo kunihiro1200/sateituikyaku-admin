@@ -128,14 +128,14 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
           </IconButton>
         </Tooltip>
 
-        {/* 色リセット */}
-        <Tooltip title="色をリセット">
+        {/* 黒に戻す */}
+        <Tooltip title="黒（デフォルト）">
           <IconButton
             size="small"
             sx={TOOLBAR_BTN_SX}
-            onMouseDown={(e) => { e.preventDefault(); editor.chain().focus().unsetColor().run(); }}
+            onMouseDown={(e) => { e.preventDefault(); editor.chain().focus().setColor('#000000').run(); }}
           >
-            <span style={{ fontSize: '0.7rem', lineHeight: 1, color: '#555' }}>A</span>
+            <span style={{ fontSize: '0.85rem', fontWeight: 700, lineHeight: 1, color: '#000000' }}>A</span>
           </IconButton>
         </Tooltip>
       </Box>
