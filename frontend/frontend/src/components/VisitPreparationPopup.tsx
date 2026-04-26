@@ -238,21 +238,33 @@ export const VisitPreparationPopup: React.FC<VisitPreparationPopupProps> = ({
     // 4. 査定書（動的）
     {
       label: '査定書',
-      content: inquiryUrl ? (
-        <a href={inquiryUrl} target="_blank" rel="noopener noreferrer">
-          査定書
-        </a>
-      ) : (
-        <span>（リンクなし）</span>
+      content: (
+        <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+          {inquiryUrl ? (
+            <a href={inquiryUrl} target="_blank" rel="noopener noreferrer">
+              査定書
+            </a>
+          ) : (
+            <span>（リンクなし）</span>
+          )}
+          <a href="https://docs.google.com/document/d/1qXQ9dYuIXS5HgqWDt-0S7fAsFzVTxxv3xtn3zFCFXEo/edit?tab=t.2wdqx1i81hul" target="_blank" rel="noopener noreferrer">
+            事務の準備方法
+          </a>
+        </Box>
       ),
     },
     // 5. 成約事例
     {
       label: '成約事例',
       content: (
-        <a href={FIXED_LINKS_AFTER_ASSESSMENT[0].url} target="_blank" rel="noopener noreferrer">
-          成約事例
-        </a>
+        <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+          <a href={FIXED_LINKS_AFTER_ASSESSMENT[0].url} target="_blank" rel="noopener noreferrer">
+            成約事例
+          </a>
+          <a href="https://docs.google.com/document/d/1qXQ9dYuIXS5HgqWDt-0S7fAsFzVTxxv3xtn3zFCFXEo/edit?tab=t.x250eg61pmmp" target="_blank" rel="noopener noreferrer">
+            マンションの場合は事務が成約事例をだす
+          </a>
+        </Box>
       ),
     },
     // 6. 近隣買主（動的）
