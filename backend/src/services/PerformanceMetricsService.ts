@@ -86,79 +86,84 @@ export class PerformanceMetricsService extends BaseRepository {
   async calculateEnhancedMetrics(month: string): Promise<EnhancedPerformanceMetrics> {
     const [year, monthNum] = month.split('-').map(Number);
 
-    // 現在月のメトリクスを計算
-    const visitAppraisalRate = await this.calculateVisitAppraisalRate(year, monthNum);
-    const exclusiveContracts = await this.calculateExclusiveContracts(year, monthNum);
-    const competitorLossUnvisited = await this.calculateCompetitorLossUnvisited(year, monthNum);
-    const competitorLossVisited = await this.calculateCompetitorLossVisited(year, monthNum);
+    // 現在月のメトリクスを並列計算
+    const [visitAppraisalRate, exclusiveContracts, competitorLossUnvisited, competitorLossVisited] =
+      await Promise.all([
+        this.calculateVisitAppraisalRate(year, monthNum),
+        this.calculateExclusiveContracts(year, monthNum),
+        this.calculateCompetitorLossUnvisited(year, monthNum),
+        this.calculateCompetitorLossVisited(year, monthNum),
+      ]);
 
-    // 年度月平均を計算
-    const visitAppraisalRateAvg = await this.calculateFiscalYearMonthlyAverage(
-      year,
-      monthNum,
-      (y, m) => this.calculateVisitAppraisalRate(y, m)
-    );
-
-    const exclusiveContractsRateAvg = await this.calculateFiscalYearMonthlyAverage(
-      year,
-      monthNum,
-      async (y, m) => {
-        const result = await this.calculateExclusiveContracts(y, m);
-        return result.total.rate;
-      }
-    );
-
-    const competitorLossUnvisitedAvg = await this.calculateFiscalYearMonthlyAverage(
-      year,
-      monthNum,
-      async (y, m) => {
-        const result = await this.calculateCompetitorLossUnvisited(y, m);
-        return result.rate;
-      }
-    );
-
-    const competitorLossVisitedAvg = await this.calculateFiscalYearMonthlyAverage(
-      year,
-      monthNum,
-      async (y, m) => {
-        const result = await this.calculateCompetitorLossVisited(y, m);
-        return result.total.rate;
-      }
-    );
-
-    // 前年度月平均を計算
-    const competitorLossUnvisitedPrevYearAvg = await this.calculatePreviousYearMonthlyAverage(
-      year,
-      monthNum,
-      async (y, m) => {
-        const result = await this.calculateCompetitorLossUnvisited(y, m);
-        return result.rate;
-      }
-    );
-
-    const competitorLossVisitedPrevYearAvg = await this.calculatePreviousYearMonthlyAverage(
-      year,
-      monthNum,
-      async (y, m) => {
-        const result = await this.calculateCompetitorLossVisited(y, m);
-        return result.total.rate;
-      }
-    );
-
-    // 担当者別の月平均を計算
-    const exclusiveByRepWithAvg = await this.calculateRepresentativeMonthlyAverages(
-      year,
-      monthNum,
-      exclusiveContracts.byRepresentative,
-      (y, m) => this.calculateExclusiveContracts(y, m)
-    );
-
-    const competitorLossVisitedByRepWithAvg = await this.calculateRepresentativeMonthlyAverages(
-      year,
-      monthNum,
-      competitorLossVisited.byRepresentative,
-      (y, m) => this.calculateCompetitorLossVisited(y, m)
-    );
+    // 年度月平均・前年度月平均・担当者別月平均を全て並列計算
+    const [
+      visitAppraisalRateAvg,
+      exclusiveContractsRateAvg,
+      competitorLossUnvisitedAvg,
+      competitorLossVisitedAvg,
+      competitorLossUnvisitedPrevYearAvg,
+      competitorLossVisitedPrevYearAvg,
+      exclusiveByRepWithAvg,
+      competitorLossVisitedByRepWithAvg,
+    ] = await Promise.all([
+      this.calculateFiscalYearMonthlyAverage(
+        year,
+        monthNum,
+        (y, m) => this.calculateVisitAppraisalRate(y, m)
+      ),
+      this.calculateFiscalYearMonthlyAverage(
+        year,
+        monthNum,
+        async (y, m) => {
+          const result = await this.calculateExclusiveContracts(y, m);
+          return result.total.rate;
+        }
+      ),
+      this.calculateFiscalYearMonthlyAverage(
+        year,
+        monthNum,
+        async (y, m) => {
+          const result = await this.calculateCompetitorLossUnvisited(y, m);
+          return result.rate;
+        }
+      ),
+      this.calculateFiscalYearMonthlyAverage(
+        year,
+        monthNum,
+        async (y, m) => {
+          const result = await this.calculateCompetitorLossVisited(y, m);
+          return result.total.rate;
+        }
+      ),
+      this.calculatePreviousYearMonthlyAverage(
+        year,
+        monthNum,
+        async (y, m) => {
+          const result = await this.calculateCompetitorLossUnvisited(y, m);
+          return result.rate;
+        }
+      ),
+      this.calculatePreviousYearMonthlyAverage(
+        year,
+        monthNum,
+        async (y, m) => {
+          const result = await this.calculateCompetitorLossVisited(y, m);
+          return result.total.rate;
+        }
+      ),
+      this.calculateRepresentativeMonthlyAverages(
+        year,
+        monthNum,
+        exclusiveContracts.byRepresentative,
+        (y, m) => this.calculateExclusiveContracts(y, m)
+      ),
+      this.calculateRepresentativeMonthlyAverages(
+        year,
+        monthNum,
+        competitorLossVisited.byRepresentative,
+        (y, m) => this.calculateCompetitorLossVisited(y, m)
+      ),
+    ]);
 
     return {
       month,
@@ -204,29 +209,26 @@ export class PerformanceMetricsService extends BaseRepository {
     const monthRange = FiscalYearUtils.getFiscalYearMonthRange(year, month);
     const monthsElapsed = monthRange.monthsElapsed;
 
-    let sum = 0;
     const startYear = monthRange.startMonth.getFullYear();
     const startMonth = monthRange.startMonth.getMonth() + 1; // 1-indexed
 
-    for (let i = 0; i < monthsElapsed; i++) {
+    // 全月を並列計算
+    const promises = Array.from({ length: monthsElapsed }, (_, i) => {
       const currentMonth = startMonth + i;
       let currentYear = startYear;
       let adjustedMonth = currentMonth;
-
       if (currentMonth > 12) {
         currentYear = startYear + 1;
         adjustedMonth = currentMonth - 12;
       }
-
-      try {
-        const value = await calculateMonthMetric(currentYear, adjustedMonth);
-        sum += value;
-      } catch (error) {
+      return calculateMonthMetric(currentYear, adjustedMonth).catch(error => {
         console.error(`Error calculating metric for ${currentYear}-${adjustedMonth}:`, error);
-        // エラーの場合は0として扱う
-      }
-    }
+        return 0;
+      });
+    });
 
+    const values = await Promise.all(promises);
+    const sum = values.reduce((acc, v) => acc + v, 0);
     return monthsElapsed > 0 ? sum / monthsElapsed : 0;
   }
 
@@ -241,29 +243,26 @@ export class PerformanceMetricsService extends BaseRepository {
     const prevYearRange = FiscalYearUtils.getPreviousFiscalYearRange(year, month);
     const monthsElapsed = FiscalYearUtils.getMonthsElapsedInFiscalYear(year, month);
 
-    let sum = 0;
     const startYear = prevYearRange.startDate.getFullYear();
     const startMonth = prevYearRange.startDate.getMonth() + 1; // 1-indexed
 
-    for (let i = 0; i < monthsElapsed; i++) {
+    // 全月を並列計算
+    const promises = Array.from({ length: monthsElapsed }, (_, i) => {
       const currentMonth = startMonth + i;
       let currentYear = startYear;
       let adjustedMonth = currentMonth;
-
       if (currentMonth > 12) {
         currentYear = startYear + 1;
         adjustedMonth = currentMonth - 12;
       }
-
-      try {
-        const value = await calculateMonthMetric(currentYear, adjustedMonth);
-        sum += value;
-      } catch (error) {
+      return calculateMonthMetric(currentYear, adjustedMonth).catch(error => {
         console.error(`Error calculating previous year metric for ${currentYear}-${adjustedMonth}:`, error);
-        // エラーの場合は0として扱う
-      }
-    }
+        return 0;
+      });
+    });
 
+    const values = await Promise.all(promises);
+    const sum = values.reduce((acc, v) => acc + v, 0);
     return monthsElapsed > 0 ? sum / monthsElapsed : 0;
   }
 
@@ -282,32 +281,35 @@ export class PerformanceMetricsService extends BaseRepository {
     const monthRange = FiscalYearUtils.getFiscalYearMonthRange(year, month);
     const monthsElapsed = monthRange.monthsElapsed;
 
-    // 担当者ごとの合計を保持
-    const repSums = new Map<string, number>();
-    const repCounts = new Map<string, number>();
-
     const startYear = monthRange.startMonth.getFullYear();
     const startMonth = monthRange.startMonth.getMonth() + 1; // 1-indexed
 
-    for (let i = 0; i < monthsElapsed; i++) {
+    // 全月を並列計算
+    const promises = Array.from({ length: monthsElapsed }, (_, i) => {
       const currentMonth = startMonth + i;
       let currentYear = startYear;
       let adjustedMonth = currentMonth;
-
       if (currentMonth > 12) {
         currentYear = startYear + 1;
         adjustedMonth = currentMonth - 12;
       }
-
-      try {
-        const result = await calculateMonthMetric(currentYear, adjustedMonth);
-        result.byRepresentative.forEach(rep => {
-          repSums.set(rep.representative, (repSums.get(rep.representative) || 0) + rep.rate);
-          repCounts.set(rep.representative, (repCounts.get(rep.representative) || 0) + 1);
-        });
-      } catch (error) {
+      return calculateMonthMetric(currentYear, adjustedMonth).catch(error => {
         console.error(`Error calculating representative metrics for ${currentYear}-${adjustedMonth}:`, error);
-      }
+        return null;
+      });
+    });
+
+    const results = await Promise.all(promises);
+
+    // 担当者ごとの合計を集計
+    const repSums = new Map<string, number>();
+    const repCounts = new Map<string, number>();
+    for (const result of results) {
+      if (!result) continue;
+      result.byRepresentative.forEach(rep => {
+        repSums.set(rep.representative, (repSums.get(rep.representative) || 0) + rep.rate);
+        repCounts.set(rep.representative, (repCounts.get(rep.representative) || 0) + 1);
+      });
     }
 
     // 現在月の担当者に月平均を追加

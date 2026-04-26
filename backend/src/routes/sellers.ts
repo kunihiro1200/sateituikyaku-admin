@@ -8,6 +8,7 @@ import { CreateSellerRequest, ListSellersParams } from '../types';
 import { PropertyDistributionAreaCalculator } from '../services/PropertyDistributionAreaCalculator';
 import { CityNameExtractor } from '../services/CityNameExtractor';
 import { BuyerService } from '../services/BuyerService';
+import { PerformanceMetricsService } from '../services/PerformanceMetricsService';
 import { SpreadsheetSyncService } from '../services/SpreadsheetSyncService';
 import { GoogleSheetsClient } from '../services/GoogleSheetsClient';
 
@@ -686,7 +687,6 @@ router.get('/performance-metrics', [
     }
 
     const { month } = req.query;
-    const { PerformanceMetricsService } = await import('../services/PerformanceMetricsService');
     const performanceMetricsService = new PerformanceMetricsService();
     
     // 拡張メトリクス（月平均を含む）を返す
