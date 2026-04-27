@@ -321,6 +321,12 @@ export class WorkTaskEmailNotificationService {
       const dd = String(jstTime.getUTCDate()).padStart(2, '0');
       const hh = String(jstTime.getUTCHours()).padStart(2, '0');
       const min = String(jstTime.getUTCMinutes()).padStart(2, '0');
+      // DATE型からTIMESTAMPTZに変換された値はUTC 00:00:00 → JST 09:00になるため 12:00 にフォールバック
+      // （フロントエンドの formatDateTimeForInput と同じ補正）
+      if (jstTime.getUTCHours() === 9 && jstTime.getUTCMinutes() === 0 && jstTime.getUTCSeconds() === 0
+          && date.getUTCHours() === 0 && date.getUTCMinutes() === 0 && date.getUTCSeconds() === 0) {
+        return `${yyyy}-${mm}-${dd} 12:00`;
+      }
       return `${yyyy}-${mm}-${dd} ${hh}:${min}`;
     } catch {
       return '';
