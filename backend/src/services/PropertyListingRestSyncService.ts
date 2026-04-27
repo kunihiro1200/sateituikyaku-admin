@@ -19,6 +19,15 @@ import { SyncStateService } from './SyncStateService';
 import { SyncMetricsCollector, SyncMetrics } from './SyncMetricsCollector';
 import { createClient } from '@supabase/supabase-js';
 
+/**
+ * O列（seller_name）が空欄または"様"のみの場合はBL列（owner_info）にフォールバックする
+ */
+function resolveSellerName(sellerName: string | null | undefined, ownerInfo: string | null | undefined): string | null {
+  const trimmed = (sellerName || '').trim();
+  const isBlankOrSamaOnly = !trimmed || trimmed === '様';
+  return isBlankOrSamaOnly ? (ownerInfo || null) : trimmed;
+}
+
 export interface PropertyListingRestSyncConfig extends SupabaseRestClientConfig {
   /** バッチサイズ */
   batchSize: number;
@@ -404,8 +413,8 @@ export class PropertyListingRestSyncService {
         // スプレッドシートデータをデータベース形式に変換
         const mappedData = mapper.mapSpreadsheetToDatabase(row);
 
-        // BL列（owner_info）優先、空欄の場合はO列（seller_name）にフォールバック
-        mappedData.seller_name = mappedData.owner_info || mappedData.seller_name || null;
+        // O列（seller_name）が空欄または"様"のみの場合はBL列（owner_info）にフォールバック
+        mappedData.seller_name = resolveSellerName(mappedData.seller_name, mappedData.owner_info);
 
         // 必須フィールドのバリデーション
         if (!this.validatePropertyListing(mappedData)) {

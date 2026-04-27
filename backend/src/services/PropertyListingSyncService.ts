@@ -7,6 +7,15 @@ import { GoogleSheetsClient } from './GoogleSheetsClient';
 import { PropertyListingColumnMapper } from './PropertyListingColumnMapper';
 import { decrypt } from '../utils/encryption';
 
+/**
+ * O列（seller_name）が空欄または"様"のみの場合はBL列（owner_info）にフォールバックする
+ */
+function resolveSellerName(sellerName: string | null | undefined, ownerInfo: string | null | undefined): string | null {
+  const trimmed = (sellerName || '').trim();
+  const isBlankOrSamaOnly = !trimmed || trimmed === '様';
+  return isBlankOrSamaOnly ? (ownerInfo || null) : trimmed;
+}
+
 export interface SyncResult {
   propertyNumber: string;
   success: boolean;
@@ -628,8 +637,8 @@ export class PropertyListingSyncService {
                 update.spreadsheet_data
               );
 
-              // BL列（owner_info）優先、空欄の場合はO列（seller_name）にフォールバック
-              mappedUpdates.seller_name = mappedUpdates.owner_info || mappedUpdates.seller_name || null;
+              // O列（seller_name）が空欄または"様"のみの場合はBL列（owner_info）にフォールバック
+              mappedUpdates.seller_name = resolveSellerName(mappedUpdates.seller_name, mappedUpdates.owner_info);
 
               // Only include changed fields
               // ⚠️ 重要: mappedUpdatesに存在しないフィールド（スプレッドシートが空欄）はnullとして更新する
@@ -645,7 +654,10 @@ export class PropertyListingSyncService {
               // （スプレッドシートのBL列マッピングが失敗した場合でも、DBのowner_infoを使って正しい値を保持）
               if ('seller_name' in changedFieldsOnly) {
                 const ownerInfoFromSpreadsheet = mappedUpdates.owner_info;
-                if (!ownerInfoFromSpreadsheet) {
+                const currentSellerName = changedFieldsOnly.seller_name;
+                const trimmed = (currentSellerName || '').trim();
+                const isBlankOrSamaOnly = !trimmed || trimmed === '様';
+                if (isBlankOrSamaOnly && !ownerInfoFromSpreadsheet) {
                   // スプレッドシートからowner_infoが取得できない場合、DBから取得
                   const { data: dbRecord } = await this.supabase
                     .from('property_listings')
@@ -653,7 +665,7 @@ export class PropertyListingSyncService {
                     .eq('property_number', update.property_number)
                     .single();
                   const dbOwnerInfo = dbRecord?.owner_info;
-                  changedFieldsOnly.seller_name = dbOwnerInfo || changedFieldsOnly.seller_name || null;
+                  changedFieldsOnly.seller_name = dbOwnerInfo || null;
                 }
               }
 
@@ -846,8 +858,8 @@ export class PropertyListingSyncService {
     // Map spreadsheet row to database format
     const mappedData = this.columnMapper.mapSpreadsheetToDatabase(spreadsheetRow);
 
-    // BL列（owner_info）優先、空欄の場合はO列（seller_name）にフォールバック
-    const fallbackSellerName = mappedData.owner_info || mappedData.seller_name || null;
+    // O列（seller_name）が空欄または"様"のみの場合はBL列（owner_info）にフォールバック
+    const fallbackSellerName = resolveSellerName(mappedData.seller_name, mappedData.owner_info);
     mappedData.seller_name = fallbackSellerName;
 
     // seller_nameのフォールバック値がDBと異なる場合は必ず変更として検出する
