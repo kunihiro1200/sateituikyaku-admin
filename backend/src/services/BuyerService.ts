@@ -3644,7 +3644,7 @@ export class BuyerService {
     console.log('[getBuyersByRadiusSearch] params:', { address, priceRange, propertyTypes });
 
     // キャッシュキー生成
-    const cacheKey = `radius:${address}:${priceRange}:${propertyTypes.join(',')}:${pet}:${parking}:${onsen}:${floor}`;
+    const cacheKey = `radius:v2:${address}:${priceRange}:${propertyTypes.join(',')}:${pet}:${parking}:${onsen}:${floor}`;
     
     // キャッシュチェック
     const cached = distributionCache.get(cacheKey);
