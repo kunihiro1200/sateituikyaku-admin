@@ -135,56 +135,56 @@ const FLOOR_PLAN_STORED_BODY =
  * Requirements: 5.1, 5.2, 5.3
  */
 export const EMAIL_RULES: EmailRule[] = [
-  // ルール1: CWの方へ依頼メール（間取り、区画図）
+  // ルール1: CWの方へ依頼メール（間取り、区画図）【テスト中: 本来の宛先 freetask.e72@gmail.com】
   {
     triggerField: 'cw_request_email_floor_plan',
-    to: 'freetask.e72@gmail.com',
-    cc: 'tenant@ifoo-oita.com',
+    to: 'tomoko.kunihiro@ifoo-oita.com',
+    cc: undefined,
     subjectTemplate: '間取図作成関係お願いいたします！{物件番号}{物件所在}（㈱いふう）',
     bodyTemplate: FLOOR_PLAN_REQUEST_BODY,
     isHtml: false,
   },
-  // ルール2: CWの方へ依頼メール（2階以上）
+  // ルール2: CWの方へ依頼メール（2階以上）【テスト中: 本来の宛先 freetask.e72@gmail.com】
   {
     triggerField: 'cw_request_email_2f_above',
-    to: 'freetask.e72@gmail.com',
-    cc: 'tenant@ifoo-oita.com',
+    to: 'tomoko.kunihiro@ifoo-oita.com',
+    cc: undefined,
     subjectTemplate: '間取図作成関係お願いいたします！{物件番号}{物件所在}（㈱いふう）',
     bodyTemplate: FLOOR_PLAN_REQUEST_BODY,
     isHtml: false,
   },
-  // ルール3: 間取図確認OK送信
+  // ルール3: 間取図確認OK送信【テスト中: 本来の宛先 freetask.e72@gmail.com】
   {
     triggerField: 'floor_plan_ok_sent',
-    to: 'freetask.e72@gmail.com',
-    cc: 'tenant@ifoo-oita.com',
+    to: 'tomoko.kunihiro@ifoo-oita.com',
+    cc: undefined,
     subjectTemplate: '図面ありがとうございます！{物件番号}{物件所在}（㈱いふう）',
     bodyTemplate: FLOOR_PLAN_OK_BODY,
     isHtml: false,
   },
-  // ルール4: CWの方へ依頼メール（サイト登録）
+  // ルール4: CWの方へ依頼メール（サイト登録）【テスト中: 本来の宛先 shiraishi8biz@gmail.com】
   {
     triggerField: 'cw_request_email_site',
-    to: 'shiraishi8biz@gmail.com',
-    cc: 'tenant@ifoo-oita.com',
+    to: 'tomoko.kunihiro@ifoo-oita.com',
+    cc: undefined,
     subjectTemplate: 'サイト登録関係お願いいたします！{物件番号}{物件所在}（㈱いふう）',
     bodyTemplate: SITE_REGISTRATION_REQUEST_BODY,
     isHtml: true,
   },
-  // ルール5: サイト登録確認OK送信
+  // ルール5: サイト登録確認OK送信【テスト中: 本来の宛先 shiraishi8biz@gmail.com】
   {
     triggerField: 'site_registration_ok_sent',
-    to: 'shiraishi8biz@gmail.com',
-    cc: 'tenant@ifoo-oita.com',
+    to: 'tomoko.kunihiro@ifoo-oita.com',
+    cc: undefined,
     subjectTemplate: 'サイト登録ありがとうございます！{物件番号}{物件所在}（㈱いふう）',
     bodyTemplate: SITE_REGISTRATION_OK_BODY,
     isHtml: true,
   },
-  // ルール6: 間取図格納済み連絡メール
+  // ルール6: 間取図格納済み連絡メール【テスト中: 本来の宛先 shiraishi8biz@gmail.com】
   {
     triggerField: 'floor_plan_stored_notification',
-    to: 'shiraishi8biz@gmail.com',
-    cc: 'tenant@ifoo-oita.com',
+    to: 'tomoko.kunihiro@ifoo-oita.com',
+    cc: undefined,
     subjectTemplate: '間取図格納済みです！{物件番号}{物件所在}（㈱いふう）',
     bodyTemplate: FLOOR_PLAN_STORED_BODY,
     isHtml: true,
