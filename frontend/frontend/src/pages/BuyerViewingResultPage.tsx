@@ -1539,6 +1539,45 @@ export default function BuyerViewingResultPage() {
               </Box>
             </Box>
 
+            {/* 随行者 */}
+            <Box sx={{ flexShrink: 0 }}>
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5, fontSize: '0.7rem' }}>
+                随行者
+              </Typography>
+              <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+                {staffInitials.map((staff) => {
+                  const isSales = ['K', 'Y', 'I', '林', 'U'].includes(staff.value);
+                  return (
+                    <Button
+                      key={staff.value}
+                      variant={buyer.viewing_companion === staff.value ? 'contained' : 'outlined'}
+                      color={isSales ? 'success' : 'primary'}
+                      size="small"
+                      onClick={async () => {
+                        const newValue = buyer.viewing_companion === staff.value ? '' : staff.value;
+                        setBuyer(prev => prev ? { ...prev, viewing_companion: newValue } : prev);
+                        buyerRef.current = buyer ? { ...buyer, viewing_companion: newValue } : null;
+                        try {
+                          await handleInlineFieldSave('viewing_companion', newValue);
+                        } catch (error) {
+                          setBuyer(prev => prev ? { ...prev, viewing_companion: buyer.viewing_companion } : prev);
+                          buyerRef.current = buyer;
+                        }
+                      }}
+                      sx={{
+                        minWidth: '32px',
+                        padding: '2px 6px',
+                        fontSize: '0.7rem',
+                        fontWeight: isSales ? 'normal' : 'bold',
+                      }}
+                    >
+                      {staff.label}
+                    </Button>
+                  );
+                })}
+              </Box>
+            </Box>
+
             {/* 内覧未確定 */}
             <Box sx={{ width: '240px', flexShrink: 0 }}>
               <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5, fontSize: '0.7rem' }}>

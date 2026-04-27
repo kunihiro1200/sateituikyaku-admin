@@ -621,6 +621,7 @@ export interface Buyer {
   viewing_result_follow_up?: string; // 内覧結果・後続対応
   viewing_insight_executor?: string; // 気づき（内覧実行者）
   viewing_insight_companion?: string; // 気づき（随行者）
+  viewing_companion?: string; // 随行者
   latest_status?: string; // 最新状況
   special_notes?: string;
   viewing_survey_response?: string;
