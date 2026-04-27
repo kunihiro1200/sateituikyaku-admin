@@ -3700,7 +3700,8 @@ export class BuyerService {
       .select('buyer_number, name, desired_area, desired_property_type, price_range_house, price_range_apartment, price_range_land, reception_date, phone_number, email, latest_status, inquiry_hearing, desired_area_lat, desired_area_lng, pet_allowed_required, parking_spaces, hot_spring_required, high_floor_required')
       .is('deleted_at', null)
       .not('desired_area_lat', 'is', null)
-      .not('desired_area_lng', 'is', null);
+      .not('desired_area_lng', 'is', null)
+      .limit(10000);
 
     if (error) {
       console.error('[getBuyersByRadiusSearch] Query error:', error);
