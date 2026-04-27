@@ -168,16 +168,18 @@ router.put('/:propertyNumber', async (req: Request, res: Response) => {
       console.error('スプシ書き戻しエラー:', e.message)
     );
 
-    // レスポンスを返す（メール送信を待たない）
+    // メール通知（先に実行してからレスポンスを返す）
+    try {
+      await emailNotificationService.processEmailNotifications(propertyNumber, beforeData ?? {}, workTask ?? {});
+    } catch (e: any) {
+      console.error('[WorkTaskEmail] 通知処理エラー:', e.message);
+    }
+
+    // レスポンスを返す
     res.json({
       message: '更新が完了しました',
       data: workTask,
     });
-
-    // メール通知（非同期・失敗しても保存に影響しない）
-    emailNotificationService
-      .processEmailNotifications(propertyNumber, beforeData ?? {}, workTask ?? {})
-      .catch((e) => console.error('[WorkTaskEmail] 通知処理エラー:', e.message));
 
     return;
   } catch (error: any) {
