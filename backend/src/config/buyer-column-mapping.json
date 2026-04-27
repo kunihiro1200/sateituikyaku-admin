@@ -179,7 +179,9 @@
     "査定アンケート確認": "valuation_survey_confirmed",
     "内覧前ヒアリング": "pre_viewing_hearing",
     "内覧前ヒアリング送る？": "pre_viewing_hearing_send",
-    "業者向けアンケート": "vendor_survey"
+    "業者向けアンケート": "vendor_survey",
+    "気づき（内覧実行者）": "viewing_insight_executor",
+    "気づき（随行者）": "viewing_insight_companion"
   },
   "databaseToSpreadsheet": {
     "buyer_number": "買主番号",
@@ -258,7 +260,9 @@
     "display_address": "住居表示",
     "property_assignee": "物件担当者",
     "seller_viewing_date_contact": "売主内覧日連絡",
-    "seller_cancel_contact": "売主キャンセル連絡"
+    "seller_cancel_contact": "売主キャンセル連絡",
+    "viewing_insight_executor": "気づき（内覧実行者）",
+    "viewing_insight_companion": "気づき（随行者）"
   },
   "typeConversions": {
     "created_datetime": "datetime",

@@ -210,6 +210,12 @@ export default function BuyerViewingResultPage() {
   const viewingResultEditorRef = useRef<RichTextCommentEditorHandle>(null);
   const [viewingResultEditValue, setViewingResultEditValue] = useState<string>('');
   const [viewingResultSaving, setViewingResultSaving] = useState(false);
+  // 気づきフィールド
+  const [insightExecutorValue, setInsightExecutorValue] = useState<string>('');
+  const [insightCompanionValue, setInsightCompanionValue] = useState<string>('');
+  const [insightSaving, setInsightSaving] = useState(false);
+  // 気づき必須警告ダイアログ
+  const [insightRequiredDialog, setInsightRequiredDialog] = useState<{ open: boolean; targetUrl: string }>({ open: false, targetUrl: '' });
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' | 'warning' }>({
     open: false,
     message: '',
@@ -337,10 +343,25 @@ export default function BuyerViewingResultPage() {
   const isViewingTypeRequired = hasViewingDate && !viewingTypeValue;
   const isFollowUpRequired = hasViewingDate && !(buyer?.follow_up_assignee && buyer.follow_up_assignee.trim() !== '');
 
+  // 気づき（内覧実行者）必須チェック:
+  // 内覧日が2026-04-28以降 かつ ヒアリング項目（viewing_result_follow_up）に値がある場合に必須
+  const INSIGHT_REQUIRED_FROM = new Date('2026-04-28');
+  INSIGHT_REQUIRED_FROM.setHours(0, 0, 0, 0);
+  const isInsightExecutorRequired = (() => {
+    if (!buyer?.viewing_date) return false;
+    const viewingDate = new Date(buyer.viewing_date);
+    viewingDate.setHours(0, 0, 0, 0);
+    if (viewingDate < INSIGHT_REQUIRED_FROM) return false;
+    const hasHearing = !!(buyer?.viewing_result_follow_up && buyer.viewing_result_follow_up.trim() !== '');
+    return hasHearing;
+  })();
+
   // 離脱ガード: カレンダー未開封の場合に警告
   const guardedNavigate = (url: string) => {
     if (needsCalendar && !calendarOpened) {
       setLeaveWarningDialog({ open: true, targetUrl: url });
+    } else if (isInsightExecutorRequired && !insightExecutorValue.trim()) {
+      setInsightRequiredDialog({ open: true, targetUrl: url });
     } else {
       navigate(url);
     }
@@ -354,6 +375,9 @@ export default function BuyerViewingResultPage() {
       setBuyer(res.data);
       // 内覧結果・後続対応の初期値をセット
       setViewingResultEditValue(res.data.viewing_result_follow_up || '');
+      // 気づきフィールドの初期値をセット
+      setInsightExecutorValue(res.data.viewing_insight_executor || '');
+      setInsightCompanionValue(res.data.viewing_insight_companion || '');
     } catch (error) {
       console.error('Failed to fetch buyer:', error);
     } finally {
@@ -483,6 +507,8 @@ export default function BuyerViewingResultPage() {
         'loan_balance',
         'visit_desk',
         'seller_list_copy',
+        'viewing_insight_executor',
+        'viewing_insight_companion',
       ];
       const shouldSync = SYNC_FIELDS.includes(fieldName);
       const result = await buyerApi.update(
@@ -565,6 +591,31 @@ export default function BuyerViewingResultPage() {
   const handleViewingResultQuickInput = (text: string) => {
     // RichTextEditorのカーソル位置に太字で挿入
     viewingResultEditorRef.current?.insertAtCursor(`<b>${text}</b>`);
+  };
+
+  // 気づきフィールドの保存ハンドラー
+  const handleSaveInsights = async () => {
+    if (!buyer) return;
+    setInsightSaving(true);
+    try {
+      const result = await buyerApi.update(
+        buyer_number!,
+        {
+          viewing_insight_executor: insightExecutorValue,
+          viewing_insight_companion: insightCompanionValue,
+        },
+        { sync: true, force: true }
+      );
+      buyerRef.current = result.buyer;
+      setBuyer(result.buyer);
+      setInsightExecutorValue(result.buyer.viewing_insight_executor || '');
+      setInsightCompanionValue(result.buyer.viewing_insight_companion || '');
+      setSnackbar({ open: true, message: '気づきを保存しました', severity: 'success' });
+    } catch (error: any) {
+      setSnackbar({ open: true, message: error.response?.data?.error || '保存に失敗しました', severity: 'error' });
+    } finally {
+      setInsightSaving(false);
+    }
   };
 
   const handleCalendarButtonClick = async () => {
@@ -1728,6 +1779,107 @@ export default function BuyerViewingResultPage() {
               );
             })()}
           </Box>
+
+          {/* 気づきフィールド */}
+          <Box sx={{ mt: 2 }}>
+            {/* 気づき（内覧実行者） */}
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="subtitle2" gutterBottom>
+                気づき（内覧実行者）
+                {isInsightExecutorRequired && (
+                  <Typography component="span" color="error" sx={{ ml: 0.5, fontWeight: 'bold' }}>
+                    *必須
+                  </Typography>
+                )}
+              </Typography>
+              <TextField
+                fullWidth
+                multiline
+                minRows={3}
+                value={insightExecutorValue}
+                onChange={(e) => setInsightExecutorValue(e.target.value)}
+                placeholder="内覧実行者の気づきを入力..."
+                error={isInsightExecutorRequired && !insightExecutorValue.trim()}
+                helperText={isInsightExecutorRequired && !insightExecutorValue.trim() ? 'ヒアリング項目が入力されている場合、気づき（内覧実行者）は必須です' : ''}
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    ...(isInsightExecutorRequired && !insightExecutorValue.trim() ? {
+                      '& fieldset': { borderColor: 'error.main', borderWidth: 2 },
+                    } : {}),
+                  },
+                }}
+              />
+            </Box>
+            {/* 気づき（随行者） */}
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="subtitle2" gutterBottom>
+                気づき（随行者）
+              </Typography>
+              <TextField
+                fullWidth
+                multiline
+                minRows={3}
+                value={insightCompanionValue}
+                onChange={(e) => setInsightCompanionValue(e.target.value)}
+                placeholder="随行者の気づきを入力..."
+              />
+            </Box>
+            {/* 気づき保存ボタン */}
+            {(() => {
+              const isInsightDirty =
+                insightExecutorValue !== (buyer?.viewing_insight_executor || '') ||
+                insightCompanionValue !== (buyer?.viewing_insight_companion || '');
+              return (
+                <Button
+                  fullWidth
+                  variant={isInsightDirty ? 'contained' : 'outlined'}
+                  size="large"
+                  onClick={handleSaveInsights}
+                  disabled={insightSaving}
+                  sx={{
+                    ...(isInsightDirty ? {
+                      backgroundColor: '#ff6d00',
+                      color: '#fff',
+                      fontWeight: 'bold',
+                      boxShadow: '0 0 0 3px rgba(255,109,0,0.4)',
+                      animation: 'pulse-orange 1.5s infinite',
+                      '&:hover': { backgroundColor: '#e65100' },
+                    } : {
+                      color: '#bdbdbd',
+                      borderColor: '#e0e0e0',
+                    }),
+                  }}
+                >
+                  {insightSaving ? '保存中...' : '保存'}
+                </Button>
+              );
+            })()}
+          </Box>
+
+          {/* 気づき必須警告ダイアログ */}
+          <Dialog open={insightRequiredDialog.open} onClose={() => setInsightRequiredDialog({ open: false, targetUrl: '' })}>
+            <DialogTitle>気づき（内覧実行者）が未入力です</DialogTitle>
+            <DialogContent>
+              <Typography>
+                ヒアリング項目が入力されているため、「気づき（内覧実行者）」は必須です。
+                入力せずにページを移動しますか？
+              </Typography>
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={() => setInsightRequiredDialog({ open: false, targetUrl: '' })}>
+                戻って入力する
+              </Button>
+              <Button
+                color="warning"
+                onClick={() => {
+                  setInsightRequiredDialog({ open: false, targetUrl: '' });
+                  navigate(insightRequiredDialog.targetUrl);
+                }}
+              >
+                このまま移動する
+              </Button>
+            </DialogActions>
+          </Dialog>
 
           {/* ★最新状況 */}
           <Box sx={{ display: 'flex', gap: 2, alignItems: 'flex-start' }}>

@@ -2076,8 +2076,8 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
                     <td style={{ border: '1px solid #ffb74d', padding: '4px 8px', whiteSpace: 'nowrap' }}>{formatDateShort(item.mediation_completed)}</td>
                     <td style={{ border: '1px solid #ffb74d', padding: '4px 8px', whiteSpace: 'nowrap' }}>{item.mediation_checker || '-'}</td>
                     <td style={{ border: '1px solid #ffb74d', padding: '4px 8px', whiteSpace: 'nowrap' }}>{item.mediation_creator || '-'}</td>
-                    <td style={{ border: '1px solid #ffb74d', padding: '4px 8px', whiteSpace: 'pre-wrap', width: '35%', color: '#c62828', fontWeight: 700 }}><span dangerouslySetInnerHTML={{ __html: item.mediation_revision_content }} /></td>
-                    <td style={{ border: '1px solid #ffb74d', padding: '4px 8px', width: '25%', color: '#c62828', fontWeight: 700 }}>
+                    <td style={{ border: '1px solid #ffb74d', padding: '4px 8px', whiteSpace: 'pre-wrap', width: '35%', color: 'inherit', fontWeight: 'normal' }}><span dangerouslySetInnerHTML={{ __html: item.mediation_revision_content }} /></td>
+                    <td style={{ border: '1px solid #ffb74d', padding: '4px 8px', width: '25%', color: 'inherit', fontWeight: 'normal' }}>
                       <CountermeasureCell
                         propertyNumber={item.property_number}
                         field="mediation_revision_countermeasure"
@@ -2465,8 +2465,8 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
                       </td>
                       <td style={{ border: '1px solid #f48fb1', padding: '4px 8px', whiteSpace: 'nowrap' }}>{item.site_registration_confirmer || '-'}</td>
                       <td style={{ border: '1px solid #f48fb1', padding: '4px 8px', whiteSpace: 'nowrap' }}>{item.site_registration_requester || '-'}</td>
-                      <td style={{ border: '1px solid #f48fb1', padding: '4px 8px', whiteSpace: 'pre-wrap', width: '35%', color: '#c62828', fontWeight: 700 }}><span dangerouslySetInnerHTML={{ __html: item.site_registration_revision_content }} /></td>
-                      <td style={{ border: '1px solid #f48fb1', padding: '4px 8px', width: '25%', color: '#c62828', fontWeight: 700 }}>
+                      <td style={{ border: '1px solid #f48fb1', padding: '4px 8px', whiteSpace: 'pre-wrap', width: '35%', color: 'inherit', fontWeight: 'normal' }}><span dangerouslySetInnerHTML={{ __html: item.site_registration_revision_content }} /></td>
+                      <td style={{ border: '1px solid #f48fb1', padding: '4px 8px', width: '25%', color: 'inherit', fontWeight: 'normal' }}>
                         <CountermeasureCell
                           propertyNumber={item.property_number}
                           field="site_registration_revision_countermeasure"
@@ -2577,8 +2577,8 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
                       </td>
                       <td style={{ border: '1px solid #81c784', padding: '4px 8px', whiteSpace: 'nowrap' }}>{item.floor_plan_confirmer || '-'}</td>
                       <td style={{ border: '1px solid #81c784', padding: '4px 8px', whiteSpace: 'nowrap' }}>{item.site_registration_requester || '-'}</td>
-                      <td style={{ border: '1px solid #81c784', padding: '4px 8px', whiteSpace: 'pre-wrap', width: '35%', color: '#c62828', fontWeight: 700 }}><span dangerouslySetInnerHTML={{ __html: item.floor_plan_revision_correction_content }} /></td>
-                      <td style={{ border: '1px solid #81c784', padding: '4px 8px', width: '25%', color: '#c62828', fontWeight: 700 }}>
+                      <td style={{ border: '1px solid #81c784', padding: '4px 8px', whiteSpace: 'pre-wrap', width: '35%', color: 'inherit', fontWeight: 'normal' }}><span dangerouslySetInnerHTML={{ __html: item.floor_plan_revision_correction_content }} /></td>
+                      <td style={{ border: '1px solid #81c784', padding: '4px 8px', width: '25%', color: 'inherit', fontWeight: 'normal' }}>
                         <CountermeasureCell
                           propertyNumber={item.property_number}
                           field="floor_plan_revision_countermeasure"
@@ -3067,10 +3067,10 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
                       <td style={{ border: '1px solid #e0e0e0', padding: '6px 10px', whiteSpace: 'nowrap' }}>
                         {row.employee_contract_creation || '-'}
                       </td>
-                      <td style={{ border: '1px solid #e0e0e0', padding: '6px 10px', whiteSpace: 'pre-wrap', wordBreak: 'break-word', color: '#c62828', fontWeight: 700 }}>
+                      <td style={{ border: '1px solid #e0e0e0', padding: '6px 10px', whiteSpace: 'pre-wrap', wordBreak: 'break-word', color: 'inherit', fontWeight: 'normal' }}>
                         <span dangerouslySetInnerHTML={{ __html: row.contract_revision_content || '-' }} />
                       </td>
-                      <td style={{ border: '1px solid #e0e0e0', padding: '6px 10px', color: '#c62828', fontWeight: 700 }}>
+                      <td style={{ border: '1px solid #e0e0e0', padding: '6px 10px', color: 'inherit', fontWeight: 'normal' }}>
                         <CountermeasureCell
                           propertyNumber={row.property_number}
                           field="contract_revision_countermeasure"
