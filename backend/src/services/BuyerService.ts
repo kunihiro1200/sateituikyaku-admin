@@ -614,6 +614,21 @@ export class BuyerService {
       throw new Error(`Failed to create buyer: ${error.message}`);
     }
 
+    // property_numberがある場合、Google Maps URLから座標を非同期で設定
+    if (data?.property_number) {
+      this.fetchCoordinatesFromPropertyNumber(data.property_number).then(async (coords) => {
+        if (coords) {
+          await this.supabase
+            .from('buyers')
+            .update({ desired_area_lat: coords.lat, desired_area_lng: coords.lng })
+            .eq('buyer_number', data.buyer_number);
+          console.log(`[BuyerService] Set coordinates for buyer ${data.buyer_number}: (${coords.lat}, ${coords.lng})`);
+        }
+      }).catch(err => {
+        console.warn(`[BuyerService] Failed to set coordinates for buyer ${data.buyer_number}: ${err.message}`);
+      });
+    }
+
     // DB保存成功後、採番スプレッドシートのB2セルを更新
     // 失敗しても登録自体は成功とする（警告ログのみ）
     try {
@@ -722,6 +737,29 @@ export class BuyerService {
     // サイドバーカテゴリーに影響するフィールド
     const sidebarFields = ['next_call_date', 'follow_up_assignee', 'viewing_date', 'notification_sender', 'inquiry_email_phone', 'pinrich', 'inquiry_source', 'latest_status', 'broker_inquiry', 'pinrich_500man_registration', 'viewing_survey_result', 'viewing_survey_confirmed', 'vendor_survey', 'viewing_type_general', 'post_viewing_seller_contact', 'atbb_status', 'viewing_promotion_not_needed', 'viewing_promotion_sender', 'inquiry_confidence', 'inquiry_email_reply', 'three_call_unchecked'];
     return sidebarFields.some(field => field in updateData);
+  }
+
+  /**
+   * property_numberからGoogle Maps URLを取得し、座標を返す
+   * 取得できない場合はnullを返す（ノンブロッキング用）
+   */
+  private async fetchCoordinatesFromPropertyNumber(propertyNumber: string): Promise<{ lat: number; lng: number } | null> {
+    try {
+      const firstPropertyNumber = propertyNumber.split(',')[0].trim();
+      const { data: property, error } = await this.supabase
+        .from('property_listings')
+        .select('google_map_url')
+        .eq('property_number', firstPropertyNumber)
+        .maybeSingle();
+
+      if (error || !property?.google_map_url) return null;
+
+      const { GeolocationService } = await import('./GeolocationService');
+      const geoService = new GeolocationService();
+      return await geoService.extractCoordinatesFromUrl(property.google_map_url);
+    } catch {
+      return null;
+    }
   }
 
   /**
@@ -851,6 +889,23 @@ export class BuyerService {
     }
 
     console.log('[BuyerService.update] ===== END =====');
+
+    // property_numberが更新された場合、座標を再設定（非同期）
+    const newPropertyNumber = finalAllowedData.property_number ?? existing.property_number;
+    if (newPropertyNumber && (finalAllowedData.property_number || !existing.desired_area_lat)) {
+      this.fetchCoordinatesFromPropertyNumber(newPropertyNumber).then(async (coords) => {
+        if (coords) {
+          await this.supabase
+            .from('buyers')
+            .update({ desired_area_lat: coords.lat, desired_area_lng: coords.lng })
+            .eq('buyer_number', buyerNumber);
+          console.log(`[BuyerService] Updated coordinates for buyer ${buyerNumber}: (${coords.lat}, ${coords.lng})`);
+        }
+      }).catch(err => {
+        console.warn(`[BuyerService] Failed to update coordinates for buyer ${buyerNumber}: ${err.message}`);
+      });
+    }
+
     return data;
   }
 
