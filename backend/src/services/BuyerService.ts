@@ -3646,12 +3646,12 @@ export class BuyerService {
     // キャッシュキー生成
     const cacheKey = `radius:v2:${address}:${priceRange}:${propertyTypes.join(',')}:${pet}:${parking}:${onsen}:${floor}`;
     
-    // キャッシュチェック
-    const cached = distributionCache.get(cacheKey);
-    if (cached) {
-      console.log('[getBuyersByRadiusSearch] Cache hit');
-      return cached as { buyers: any[]; total: number };
-    }
+    // キャッシュチェック（一時的に無効化）
+    // const cached = distributionCache.get(cacheKey);
+    // if (cached) {
+    //   console.log('[getBuyersByRadiusSearch] Cache hit');
+    //   return cached as { buyers: any[]; total: number };
+    // }
 
     // 1. 住所から座標を取得
     // まず、物件リストテーブルから座標を検索（住所が物件番号の場合）
