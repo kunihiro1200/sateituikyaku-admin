@@ -379,6 +379,10 @@ export default function BuyerViewingResultPage() {
       // 気づきフィールドの初期値をセット
       setInsightExecutorValue(res.data.viewing_insight_executor || '');
       setInsightCompanionValue(res.data.viewing_insight_companion || '');
+      // property_numberがあれば買主リストを取得（linkedPropertiesが空の場合のフォールバック）
+      if (res.data.property_number) {
+        fetchPropertyBuyers(res.data.property_number);
+      }
     } catch (error) {
       console.error('Failed to fetch buyer:', error);
     } finally {
@@ -401,6 +405,9 @@ export default function BuyerViewingResultPage() {
       // 最初の物件番号で買主リストを取得
       if (properties.length > 0 && properties[0].property_number) {
         fetchPropertyBuyers(properties[0].property_number);
+      } else if (buyerRef.current?.property_number) {
+        // linkedPropertiesが空でもbuyerのproperty_numberで取得
+        fetchPropertyBuyers(buyerRef.current.property_number);
       }
     } catch (error) {
       console.error('Failed to fetch linked properties:', error);
@@ -2006,6 +2013,7 @@ export default function BuyerViewingResultPage() {
             (b.viewing_insight_executor && b.viewing_insight_executor.trim()) ||
             (b.viewing_insight_companion && b.viewing_insight_companion.trim())
         );
+        // 同じ物件の買主の中で誰か1人でも気づきを入力していれば全買主ページで表示
         if (insightBuyers.length === 0) return null;
         return (
           <Paper sx={{ p: 3, mt: 3, bgcolor: '#e8f4fd', border: '1px solid #90caf9' }}>
