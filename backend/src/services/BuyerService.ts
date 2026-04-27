@@ -3757,7 +3757,10 @@ export class BuyerService {
       if (!buyer.desired_property_type) return false;
       
       const dbTypes = propertyTypes.map(type => this.mapPropertyTypeToDb(type));
-      return dbTypes.some(dbType => buyer.desired_property_type.includes(dbType));
+      return dbTypes.some(dbType => 
+        buyer.desired_property_type.includes(dbType) ||
+        dbType.includes(buyer.desired_property_type)
+      );
     });
 
     console.log('[getBuyersByRadiusSearch] propertyTypeFiltered count:', propertyTypeFiltered.length);
