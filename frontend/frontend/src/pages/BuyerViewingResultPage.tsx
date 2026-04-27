@@ -1450,8 +1450,8 @@ export default function BuyerViewingResultPage() {
               return null;
             })()}
 
-            {/* 後続担当 + 随行者 横並びラッパー */}
-            <Box sx={{ display: 'flex', gap: 2, flexShrink: 0, alignItems: 'flex-start' }}>
+            {/* 後続担当 + 随行者 縦並びラッパー */}
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, flexShrink: 0 }}>
             {/* 後続担当 */}
             <Box sx={{ width: '360px', flexShrink: 0 }}>
               <Box
