@@ -174,7 +174,9 @@ export default function SharedItemsPage() {
   };
 
   const handleRowClick = (id: string) => {
-    navigate(`/shared-items/${id}`);
+    navigate(`/shared-items/${id}`, {
+      state: { fromLocation: selectedLocation },
+    });
   };
 
   // 日付フォーマット

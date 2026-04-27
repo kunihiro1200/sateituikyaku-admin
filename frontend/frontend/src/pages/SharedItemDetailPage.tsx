@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import {
   ArrowBack as ArrowBackIcon,
   AttachFile as AttachFileIcon,
@@ -42,6 +42,8 @@ interface NewFile {
 export default function SharedItemDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
+  const fromLocation = (location.state as { fromLocation?: string | null })?.fromLocation ?? null;
   const color = SECTION_COLORS.sharedItems;
   const [item, setItem] = useState<SharedItem | null>(null);
   const [staff, setStaff] = useState<Staff[]>([]);
@@ -116,7 +118,13 @@ export default function SharedItemDetailPage() {
     }
   };
 
-  const handleBack = () => navigate('/shared-items');
+  const handleBack = () => {
+    if (fromLocation) {
+      navigate('/shared-items', { state: { restoreLocation: fromLocation } });
+    } else {
+      navigate('/shared-items');
+    }
+  };
 
   const handleStaffToggle = (name: string) => {
     setStaffNotShared((prev) => toggleStaff(prev, name));
@@ -254,8 +262,13 @@ export default function SharedItemDetailPage() {
       <Box sx={{ mb: 3, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
           <Button startIcon={<ArrowBackIcon />} onClick={handleBack} sx={{ color: color.main }}>
-            戻る
+            {fromLocation ? `${fromLocation}に戻る` : '戻る'}
           </Button>
+          {item && (
+            <Typography variant="body2" color="text.secondary" fontWeight="bold">
+              {item.id || ''}
+            </Typography>
+          )}
           <Typography variant="h5" fontWeight="bold" sx={{ color: color.main }}>
             共有詳細
           </Typography>
