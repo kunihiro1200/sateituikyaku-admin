@@ -612,6 +612,14 @@ export default function BuyerViewingResultPage() {
       setInsightExecutorValue(result.buyer.viewing_insight_executor || '');
       setInsightCompanionValue(result.buyer.viewing_insight_companion || '');
       setSnackbar({ open: true, message: '気づきを保存しました', severity: 'success' });
+      // 保存後に一覧テーブルを最新化（キャッシュクリア→再取得）
+      const propertyNumber = linkedProperties?.[0]?.property_number;
+      if (propertyNumber) {
+        try {
+          await api.delete(`/api/property-listings/${propertyNumber}/buyers/cache`);
+        } catch (_) { /* キャッシュクリア失敗は無視 */ }
+        fetchPropertyBuyers(propertyNumber);
+      }
     } catch (error: any) {
       setSnackbar({ open: true, message: error.response?.data?.error || '保存に失敗しました', severity: 'error' });
     } finally {
