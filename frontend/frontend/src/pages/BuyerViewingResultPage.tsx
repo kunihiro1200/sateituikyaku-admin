@@ -211,6 +211,8 @@ export default function BuyerViewingResultPage() {
   const [viewingResultEditValue, setViewingResultEditValue] = useState<string>('');
   const [viewingResultSaving, setViewingResultSaving] = useState(false);
   // 気づきフィールド
+  const insightExecutorEditorRef = useRef<RichTextCommentEditorHandle>(null);
+  const insightCompanionEditorRef = useRef<RichTextCommentEditorHandle>(null);
   const [insightExecutorValue, setInsightExecutorValue] = useState<string>('');
   const [insightCompanionValue, setInsightCompanionValue] = useState<string>('');
   const [insightSaving, setInsightSaving] = useState(false);
@@ -355,12 +357,11 @@ export default function BuyerViewingResultPage() {
     const hasHearing = !!(buyer?.viewing_result_follow_up && buyer.viewing_result_follow_up.trim() !== '');
     return hasHearing;
   })();
-
   // 離脱ガード: カレンダー未開封の場合に警告
   const guardedNavigate = (url: string) => {
     if (needsCalendar && !calendarOpened) {
       setLeaveWarningDialog({ open: true, targetUrl: url });
-    } else if (isInsightExecutorRequired && !insightExecutorValue.trim()) {
+    } else if (isInsightExecutorRequired && !insightExecutorValue.replace(/<[^>]*>/g, '').trim()) {
       setInsightRequiredDialog({ open: true, targetUrl: url });
     } else {
       navigate(url);
@@ -1792,37 +1793,43 @@ export default function BuyerViewingResultPage() {
                   </Typography>
                 )}
               </Typography>
-              <TextField
-                fullWidth
-                multiline
-                minRows={3}
-                value={insightExecutorValue}
-                onChange={(e) => setInsightExecutorValue(e.target.value)}
-                placeholder="内覧実行者の気づきを入力..."
-                error={isInsightExecutorRequired && !insightExecutorValue.trim()}
-                helperText={isInsightExecutorRequired && !insightExecutorValue.trim() ? 'ヒアリング項目が入力されている場合、気づき（内覧実行者）は必須です' : ''}
-                sx={{
-                  '& .MuiOutlinedInput-root': {
-                    ...(isInsightExecutorRequired && !insightExecutorValue.trim() ? {
-                      '& fieldset': { borderColor: 'error.main', borderWidth: 2 },
-                    } : {}),
-                  },
-                }}
-              />
+              <Box sx={{
+                border: isInsightExecutorRequired && !insightExecutorValue.replace(/<[^>]*>/g, '').trim()
+                  ? '2px solid #d32f2f'
+                  : '1px solid rgba(0,0,0,0.23)',
+                borderRadius: 1,
+                bgcolor: '#fff',
+              }}>
+                <RichTextCommentEditor
+                  ref={insightExecutorEditorRef}
+                  value={insightExecutorValue}
+                  onChange={(html) => setInsightExecutorValue(html)}
+                  placeholder="内覧実行者の気づきを入力..."
+                />
+              </Box>
+              {isInsightExecutorRequired && !insightExecutorValue.replace(/<[^>]*>/g, '').trim() && (
+                <Typography variant="caption" color="error" sx={{ mt: 0.5, display: 'block' }}>
+                  ヒアリング項目が入力されている場合、気づき（内覧実行者）は必須です
+                </Typography>
+              )}
             </Box>
             {/* 気づき（随行者） */}
             <Box sx={{ mb: 2 }}>
               <Typography variant="subtitle2" gutterBottom>
                 気づき（随行者）
               </Typography>
-              <TextField
-                fullWidth
-                multiline
-                minRows={3}
-                value={insightCompanionValue}
-                onChange={(e) => setInsightCompanionValue(e.target.value)}
-                placeholder="随行者の気づきを入力..."
-              />
+              <Box sx={{
+                border: '1px solid rgba(0,0,0,0.23)',
+                borderRadius: 1,
+                bgcolor: '#fff',
+              }}>
+                <RichTextCommentEditor
+                  ref={insightCompanionEditorRef}
+                  value={insightCompanionValue}
+                  onChange={(html) => setInsightCompanionValue(html)}
+                  placeholder="随行者の気づきを入力..."
+                />
+              </Box>
             </Box>
             {/* 気づき保存ボタン */}
             {(() => {
@@ -1940,6 +1947,69 @@ export default function BuyerViewingResultPage() {
           </Box>
         </Box>
       </Paper>
+
+      {/* 気づき一覧テーブル（同じ物件の全買主） */}
+      {(() => {
+        const insightBuyers = propertyBuyers.filter(
+          (b: any) =>
+            (b.viewing_insight_executor && b.viewing_insight_executor.trim()) ||
+            (b.viewing_insight_companion && b.viewing_insight_companion.trim())
+        );
+        if (insightBuyers.length === 0) return null;
+        return (
+          <Paper sx={{ p: 3, mt: 3 }}>
+            <Typography variant="h6" gutterBottom>
+              気づき一覧（同物件の全買主）
+            </Typography>
+            <Box sx={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                <thead>
+                  <tr style={{ backgroundColor: '#f5f5f5' }}>
+                    {['買主番号', '物件住所', '内覧者（後続担当）', '随行者', '実行者コメント', '随行者コメント'].map((h) => (
+                      <th key={h} style={{ padding: '8px 12px', textAlign: 'left', borderBottom: '2px solid #e0e0e0', whiteSpace: 'nowrap' }}>
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {insightBuyers.map((b: any, idx: number) => (
+                    <tr key={b.buyer_number} style={{ backgroundColor: idx % 2 === 0 ? '#fff' : '#fafafa' }}>
+                      <td style={{ padding: '8px 12px', borderBottom: '1px solid #e0e0e0', whiteSpace: 'nowrap' }}>
+                        <span
+                          style={{ color: '#1976d2', cursor: 'pointer', textDecoration: 'underline', fontWeight: 'bold' }}
+                          onClick={() => navigate(`/buyers/${b.buyer_number}`)}
+                        >
+                          {b.buyer_number}
+                        </span>
+                      </td>
+                      <td style={{ padding: '8px 12px', borderBottom: '1px solid #e0e0e0' }}>
+                        {b.property_address || '-'}
+                      </td>
+                      <td style={{ padding: '8px 12px', borderBottom: '1px solid #e0e0e0', whiteSpace: 'nowrap' }}>
+                        {b.follow_up_assignee || '-'}
+                      </td>
+                      <td style={{ padding: '8px 12px', borderBottom: '1px solid #e0e0e0', whiteSpace: 'nowrap' }}>
+                        {b.name || '-'}
+                      </td>
+                      <td style={{ padding: '8px 12px', borderBottom: '1px solid #e0e0e0', maxWidth: '300px' }}>
+                        {b.viewing_insight_executor
+                          ? <span dangerouslySetInnerHTML={{ __html: b.viewing_insight_executor }} />
+                          : '-'}
+                      </td>
+                      <td style={{ padding: '8px 12px', borderBottom: '1px solid #e0e0e0', maxWidth: '300px' }}>
+                        {b.viewing_insight_companion
+                          ? <span dangerouslySetInnerHTML={{ __html: b.viewing_insight_companion }} />
+                          : '-'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </Box>
+          </Paper>
+        );
+      })()}
 
       {/* 買付情報セクション（条件付き表示） */}
       {shouldShowOfferSection() && (

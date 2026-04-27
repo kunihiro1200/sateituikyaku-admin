@@ -101,7 +101,11 @@ export class BuyerLinkageService {
           reception_date,
           viewing_date,
           viewing_time,
-          next_call_date
+          next_call_date,
+          follow_up_assignee,
+          property_address,
+          viewing_insight_executor,
+          viewing_insight_companion
         `)
         .eq('property_number', propertyNumber)
         .is('deleted_at', null)
