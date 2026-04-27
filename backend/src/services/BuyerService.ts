@@ -3695,13 +3695,31 @@ export class BuyerService {
 
     // 2. 半径3km圏内の買主を検索
     // まず、全買主を取得（desired_area_lat, desired_area_lngがnullでないもの）
-    const { data: allBuyers, error } = await this.supabase
-      .from('buyers')
-      .select('buyer_number, name, desired_area, desired_property_type, price_range_house, price_range_apartment, price_range_land, reception_date, phone_number, email, latest_status, inquiry_hearing, desired_area_lat, desired_area_lng, pet_allowed_required, parking_spaces, hot_spring_required, high_floor_required')
-      .is('deleted_at', null)
-      .not('desired_area_lat', 'is', null)
-      .not('desired_area_lng', 'is', null)
-      .limit(10000);
+    // 座標ありの全買主を取得（ページネーションで上限を回避）
+    let allBuyers: any[] = [];
+    let from = 0;
+    const pageSize = 1000;
+    while (true) {
+      const { data: page, error: pageError } = await this.supabase
+        .from('buyers')
+        .select('buyer_number, name, desired_area, desired_property_type, price_range_house, price_range_apartment, price_range_land, reception_date, phone_number, email, latest_status, inquiry_hearing, desired_area_lat, desired_area_lng, pet_allowed_required, parking_spaces, hot_spring_required, high_floor_required')
+        .is('deleted_at', null)
+        .not('desired_area_lat', 'is', null)
+        .not('desired_area_lng', 'is', null)
+        .range(from, from + pageSize - 1);
+
+      if (pageError) {
+        console.error('[getBuyersByRadiusSearch] Query error:', pageError);
+        throw new Error(`Failed to fetch buyers: ${pageError.message}`);
+      }
+
+      if (!page || page.length === 0) break;
+      allBuyers = allBuyers.concat(page);
+      if (page.length < pageSize) break;
+      from += pageSize;
+    }
+
+    const error = null;
 
     if (error) {
       console.error('[getBuyersByRadiusSearch] Query error:', error);
