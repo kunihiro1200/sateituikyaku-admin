@@ -3481,7 +3481,7 @@ export class BuyerService {
     if (parking === '2台以上') {
       return buyers.filter(b => {
         const v = b.parking_spaces;
-        return v === '2台以上' || v === '3台以上' || v === '10台以上';
+        return !v || v === '' || v === '2台以上';
       });
     }
     if (parking === '3台以上') {
