@@ -143,6 +143,7 @@ interface WorkTaskData {
   ura_chat: string;
   judicial_scrivener: string;
   judicial_scrivener_contact: string;
+  judicial_scrivener_email: string;
   broker: string;
   broker_contact: string;
   athome_pre_visit_notice_hidden_confirmed: string;
@@ -1435,7 +1436,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
       recipientEmail = getValue('buyer_contact_email') || '';
     } else if (type === 'judicial_scrivener') {
       const fixedRecipient = (template as any).fixedRecipient;
-      recipientEmail = fixedRecipient || getValue('judicial_scrivener_contact') || '';
+      recipientEmail = fixedRecipient || getValue('judicial_scrivener_email') || '';
     }
 
     setEmailRecipient(recipientEmail);
@@ -3623,7 +3624,7 @@ ${pageUrl}`;
                   // 「司法書士法人中央ライズアクロス」選択時のみ連絡先を自動設定
                   // 「他」や未選択の場合は連絡先を変更しない（手動入力を維持）
                   if (newVal === '司法書士法人中央ライズアクロス') {
-                    handleFieldChange('judicial_scrivener_contact', 'naruse@riseacross.com');
+                    handleFieldChange('judicial_scrivener_email', 'naruse@riseacross.com');
                   }
                 }}
               >
@@ -3633,9 +3634,10 @@ ${pageUrl}`;
           </ButtonGroup>
         </Grid>
       </Grid>
-      <EditableField label="司法書士連絡先" field="judicial_scrivener_contact" />
+      <EditableField label="司法書士連絡先（電話番号）" field="judicial_scrivener_contact" />
+      <EditableField label="司法書士連絡先（メールアドレス）" field="judicial_scrivener_email" />
       <EditableField label="仲介業者" field="broker" />
-      <EditableField label="仲介業者担当連絡先" field="broker_contact" />
+      <EditableField label="仲介業者担当連絡先（名前/連絡先）" field="broker_contact" />
       </Box>
 
       {/* Email本文モーダル */}
