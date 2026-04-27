@@ -20,7 +20,7 @@ import {
   Badge,
 } from '@mui/material';
 import { Search as SearchIcon, Clear as ClearIcon, Add as AddIcon } from '@mui/icons-material';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import api from '../services/api';
 import PageNavigation from '../components/PageNavigation';
 import { pageDataCache, CACHE_KEYS } from '../store/pageDataCache';
@@ -37,13 +37,16 @@ interface SharedItem {
 
 export default function SharedItemsPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const sharedItemsColor = SECTION_COLORS.sharedItems;
   const [allSharedItems, setAllSharedItems] = useState<SharedItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(50);
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedLocation, setSelectedLocation] = useState<string | null>(null);
+  const [selectedLocation, setSelectedLocation] = useState<string | null>(
+    (location.state as { restoreLocation?: string | null })?.restoreLocation ?? null
+  );
   // 未確認フィルター用スタッフ名（null = 未確認フィルターなし）
   const [selectedUnconfirmedStaff, setSelectedUnconfirmedStaff] = useState<string | null>(null);
 
