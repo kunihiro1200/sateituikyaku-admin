@@ -76,12 +76,12 @@ export class BusinessSiteDeadlineHourlyNotificationService {
   }
 
   /**
-   * 納期日時が現在時刻（JST）の30分後〜90分後の範囲内かチェックする
-   * nowJST + 30分 <= dueDateTime <= nowJST + 90分
+   * 納期日時が現在時刻（UTC）の30分後〜90分後の範囲内かチェックする
+   * now + 30分 <= dueDateTime <= now + 90分
    */
-  isInNotificationWindow(dueDateTime: Date, nowJST: Date): boolean {
-    const lower = new Date(nowJST.getTime() + 30 * 60 * 1000);
-    const upper = new Date(nowJST.getTime() + 90 * 60 * 1000);
+  isInNotificationWindow(dueDateTime: Date, now: Date): boolean {
+    const lower = new Date(now.getTime() + 30 * 60 * 1000);
+    const upper = new Date(now.getTime() + 90 * 60 * 1000);
     return dueDateTime >= lower && dueDateTime <= upper;
   }
 
@@ -116,8 +116,7 @@ export class BusinessSiteDeadlineHourlyNotificationService {
     }
 
     const now = new Date();
-    // 現在時刻をJSTに変換
-    const nowJST = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+    // isInNotificationWindow には UTC の now をそのまま渡す（nowJST.getTime() は +9h ずれるため使わない）
 
     const targets: HourlyNotificationTarget[] = [];
 
@@ -128,7 +127,7 @@ export class BusinessSiteDeadlineHourlyNotificationService {
 
       if (siteDeadlineStr) {
         const dueDateTime = this.parseDueDateAsJST(siteDeadlineStr);
-        if (dueDateTime && this.isInNotificationWindow(dueDateTime, nowJST)) {
+        if (dueDateTime && this.isInNotificationWindow(dueDateTime, now)) {
           // site_registration_ok_sent が空欄の場合のみ通知
           if (!siteOkSent || siteOkSent === '') {
             const remainingMs = dueDateTime.getTime() - now.getTime();
@@ -150,7 +149,7 @@ export class BusinessSiteDeadlineHourlyNotificationService {
 
       if (floorPlanDueDateStr) {
         const dueDateTime = this.parseDueDateAsJST(floorPlanDueDateStr);
-        if (dueDateTime && this.isInNotificationWindow(dueDateTime, nowJST)) {
+        if (dueDateTime && this.isInNotificationWindow(dueDateTime, now)) {
           // floor_plan_ok_sent が空欄の場合のみ通知
           if (!floorPlanOkSent || floorPlanOkSent === '') {
             const remainingMs = dueDateTime.getTime() - now.getTime();
