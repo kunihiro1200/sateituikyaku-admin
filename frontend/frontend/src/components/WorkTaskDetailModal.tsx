@@ -3620,11 +3620,11 @@ ${pageUrl}`;
                   (e.currentTarget as HTMLButtonElement).blur();
                   const newVal = getValue('judicial_scrivener') === opt ? null : opt;
                   handleFieldChange('judicial_scrivener', newVal);
-                  // 連絡先を自動設定
-                  handleFieldChange(
-                    'judicial_scrivener_contact',
-                    newVal === '司法書士法人中央ライズアクロス' ? 'naruse@riseacross.com' : null
-                  );
+                  // 「司法書士法人中央ライズアクロス」選択時のみ連絡先を自動設定
+                  // 「他」や未選択の場合は連絡先を変更しない（手動入力を維持）
+                  if (newVal === '司法書士法人中央ライズアクロス') {
+                    handleFieldChange('judicial_scrivener_contact', 'naruse@riseacross.com');
+                  }
                 }}
               >
                 {opt}
@@ -3633,17 +3633,7 @@ ${pageUrl}`;
           </ButtonGroup>
         </Grid>
       </Grid>
-      <Grid container spacing={2} alignItems="center" sx={{ mb: 1.5 }}>
-        <Grid item xs={4}>
-          <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>司法書士連絡先</Typography>
-        </Grid>
-        <Grid item xs={8}>
-          <Typography variant="body2" sx={{ py: 0.5 }}>
-            {getValue('judicial_scrivener_contact') ||
-              (getValue('judicial_scrivener') === '司法書士法人中央ライズアクロス' ? 'naruse@riseacross.com' : '')}
-          </Typography>
-        </Grid>
-      </Grid>
+      <EditableField label="司法書士連絡先" field="judicial_scrivener_contact" />
       <EditableField label="仲介業者" field="broker" />
       <EditableField label="仲介業者担当連絡先" field="broker_contact" />
       </Box>
