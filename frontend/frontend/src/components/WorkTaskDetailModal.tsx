@@ -1555,6 +1555,23 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
     }
   };
 
+  // datetime-local 入力値（JST: "YYYY-MM-DDTHH:mm"）をUTC ISO文字列に変換してDBに保存する
+  // 例: "2026-04-27T12:00"（JST）→ "2026-04-27T03:00:00.000Z"（UTC）
+  // ブラウザでは new Date('YYYY-MM-DDTHH:mm') はローカルタイム（JST）として解釈されるため、
+  // そのまま .toISOString() を呼ぶとUTCに変換される
+  const convertDatetimeLocalToUTC = (localValue: string | null): string | null => {
+    if (!localValue) return null;
+    try {
+      // datetime-local の値（"YYYY-MM-DDTHH:mm"）はブラウザのローカルタイム（JST）として解釈される
+      const d = new Date(localValue);
+      if (isNaN(d.getTime())) return localValue;
+      // .toISOString() はUTC形式で返す（例: "2026-04-27T03:00:00.000Z"）
+      return d.toISOString();
+    } catch {
+      return localValue;
+    }
+  };
+
   const hasChanges = Object.keys(editedData).length > 0;
 
   // 契約書修正内容まとめ用データ（ContractSettlementSection用）
@@ -1687,7 +1704,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
             size="small"
             type="datetime-local"
             value={formatDateTimeForInput(getValue(field))}
-            onChange={(e) => handleFieldChange(field, e.target.value || null)}
+            onChange={(e) => handleFieldChange(field, convertDatetimeLocalToUTC(e.target.value || null))}
             fullWidth
             InputLabelProps={{ shrink: true }}
             onClick={(e) => {
@@ -2250,7 +2267,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
               size="small"
               type="datetime-local"
               value={formatDateTimeForInput(getValue('site_registration_due_date')) || getDefaultDueDatetime()}
-              onChange={(e) => handleFieldChange('site_registration_due_date', e.target.value || null)}
+              onChange={(e) => handleFieldChange('site_registration_due_date', convertDatetimeLocalToUTC(e.target.value || null))}
               fullWidth
               InputLabelProps={{ shrink: true }}
             />

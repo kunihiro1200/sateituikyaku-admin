@@ -302,7 +302,16 @@ export class WorkTaskEmailNotificationService {
   formatDateToJST(isoString: string | null | undefined): string {
     if (!isoString) return '';
     try {
-      const date = new Date(isoString);
+      const str = String(isoString).trim();
+      // タイムゾーン情報なし（Z や + を含まない）の場合はすでにJST（ローカル入力値）として扱う
+      // 例: "2026-04-27T12:00" → "2026-04-27 12:00" としてそのまま返す
+      if (str.includes('T') && !str.includes('Z') && !str.includes('+') && !str.includes('-', 10)) {
+        const parts = str.split('T');
+        const datePart = parts[0]; // YYYY-MM-DD
+        const timePart = parts[1] ? parts[1].substring(0, 5) : '00:00'; // HH:mm
+        return `${datePart} ${timePart}`;
+      }
+      const date = new Date(str);
       if (isNaN(date.getTime())) return '';
       // UTC+9 に変換
       const jstOffset = 9 * 60; // 分
