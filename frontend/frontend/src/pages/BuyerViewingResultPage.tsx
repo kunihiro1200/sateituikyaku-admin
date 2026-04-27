@@ -2016,7 +2016,7 @@ export default function BuyerViewingResultPage() {
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
                 <thead>
                   <tr style={{ backgroundColor: '#f5f5f5' }}>
-                    {['買主番号', '物件住所', '内覧者（後続担当）', '随行者', '実行者コメント', '随行者コメント'].map((h) => (
+                    {['買主番号', '物件住所', '内覧日', '内覧者（後続担当）', '随行者', '実行者コメント', '随行者コメント'].map((h) => (
                       <th key={h} style={{ padding: '8px 12px', textAlign: 'left', borderBottom: '2px solid #e0e0e0', whiteSpace: 'nowrap' }}>
                         {h}
                       </th>
@@ -2036,6 +2036,9 @@ export default function BuyerViewingResultPage() {
                       </td>
                       <td style={{ padding: '8px 12px', borderBottom: '1px solid #e0e0e0' }}>
                         {b.property_address || '-'}
+                      </td>
+                      <td style={{ padding: '8px 12px', borderBottom: '1px solid #e0e0e0', whiteSpace: 'nowrap' }}>
+                        {b.viewing_date ? String(b.viewing_date).split('T')[0] : '-'}
                       </td>
                       <td style={{ padding: '8px 12px', borderBottom: '1px solid #e0e0e0', whiteSpace: 'nowrap' }}>
                         {b.follow_up_assignee || '-'}
