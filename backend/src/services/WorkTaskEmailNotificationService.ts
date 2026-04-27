@@ -182,7 +182,7 @@ export const EMAIL_RULES: EmailRule[] = [
   },
   // ルール6: 間取図格納済み連絡メール【テスト中: 本来の宛先 shiraishi8biz@gmail.com】
   {
-    triggerField: 'floor_plan_stored_notification',
+    triggerField: 'floor_plan_stored_email',
     to: 'tomoko.kunihiro@ifoo-oita.com',
     cc: undefined,
     subjectTemplate: '間取図格納済みです！{物件番号}{物件所在}（㈱いふう）',
