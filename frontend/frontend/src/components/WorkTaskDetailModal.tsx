@@ -1224,7 +1224,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
     } else if (field === 'cw_request_email_site') {
       // cw_request_email_site に値がセットされた時、site_registration_due_date が空なら自動セット
       if (value) {
-        const currentDueDate = editedData['site_registration_due_date'] ?? taskData?.site_registration_due_date;
+        const currentDueDate = editedData['site_registration_due_date'] ?? data?.site_registration_due_date;
         if (!currentDueDate) {
           // デフォルト納期予定日を計算（火曜+3日、それ以外+2日、12:00 JST → UTC変換）
           const today = new Date();
