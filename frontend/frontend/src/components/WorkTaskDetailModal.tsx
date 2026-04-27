@@ -3634,7 +3634,7 @@ ${pageUrl}`;
           </ButtonGroup>
         </Grid>
       </Grid>
-      <EditableField label="司法書士連絡先（電話番号）" field="judicial_scrivener_contact" />
+      <EditableField label="司法書士連絡先（会社名/電話番号）" field="judicial_scrivener_contact" />
       <EditableField label="司法書士連絡先（メールアドレス）" field="judicial_scrivener_email" />
       <EditableField label="仲介業者" field="broker" />
       <EditableField label="仲介業者担当連絡先（名前/連絡先）" field="broker_contact" />
