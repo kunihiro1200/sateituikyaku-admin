@@ -468,6 +468,8 @@ export default function BuyerViewingResultPage() {
         'pre_viewing_hearing',
         'seller_viewing_contact',
         'buyer_viewing_contact',
+        'seller_viewing_date_contact',
+        'seller_cancel_contact',
         'notification_sender',
         'inquiry_hearing',
         'post_viewing_seller_contact',
@@ -1576,6 +1578,88 @@ export default function BuyerViewingResultPage() {
           <Box>
             {/* クイック入力ボタン */}
             <Box sx={{ mb: 1 }}>
+              {/* 売主内覧日連絡 / 売主キャンセル連絡 */}
+              <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'flex-start', mb: 1 }}>
+                {/* 売主内覧日連絡: SHOW条件 ISNOTBLANK([●内覧日(最新）]) */}
+                {buyer.viewing_date && (
+                  <Box sx={{ flexShrink: 0 }}>
+                    {/* 必須条件: AND(ISNOTBLANK([●内覧日(最新）]),[●内覧日(最新）]>="2025/8/1") */}
+                    {(() => {
+                      const isRequired = (() => {
+                        if (!buyer.viewing_date) return false;
+                        const vd = new Date(buyer.viewing_date);
+                        if (isNaN(vd.getTime())) return false;
+                        return vd >= new Date('2025-08-01');
+                      })();
+                      return (
+                        <>
+                          <Typography variant="caption" color={isRequired && !buyer.seller_viewing_date_contact ? 'error' : 'text.secondary'} sx={{ display: 'block', mb: 0.5, fontSize: '0.7rem', fontWeight: isRequired && !buyer.seller_viewing_date_contact ? 'bold' : 'normal' }}>
+                            売主内覧日連絡{isRequired && !buyer.seller_viewing_date_contact ? ' *必須' : ''}
+                          </Typography>
+                          <Box sx={{ display: 'flex', gap: 0.5 }}>
+                            {(['済', '未', '不要'] as const).map((option) => {
+                              const isSelected = buyer.seller_viewing_date_contact === option;
+                              return (
+                                <Button
+                                  key={option}
+                                  size="small"
+                                  variant={isSelected ? 'contained' : 'outlined'}
+                                  color="primary"
+                                  onClick={async () => {
+                                    const newValue = isSelected ? '' : option;
+                                    await handleInlineFieldSave('seller_viewing_date_contact', newValue);
+                                  }}
+                                  sx={{ py: 0.5, fontWeight: isSelected ? 'bold' : 'normal', borderRadius: 1, fontSize: '0.75rem' }}
+                                >
+                                  {option}
+                                </Button>
+                              );
+                            })}
+                          </Box>
+                        </>
+                      );
+                    })()}
+                  </Box>
+                )}
+
+                {/* 売主キャンセル連絡: SHOW条件 AND(ISBLANK([●内覧日(最新）]),[売主内覧日連絡]="済") */}
+                {!buyer.viewing_date && buyer.seller_viewing_date_contact === '済' && (
+                  <Box sx={{ flexShrink: 0 }}>
+                    {/* 必須条件: AND(ISBLANK([●内覧日(最新）]),[売主内覧日連絡]="済") */}
+                    {(() => {
+                      const isRequired = !buyer.viewing_date && buyer.seller_viewing_date_contact === '済';
+                      return (
+                        <>
+                          <Typography variant="caption" color={isRequired && !buyer.seller_cancel_contact ? 'error' : 'text.secondary'} sx={{ display: 'block', mb: 0.5, fontSize: '0.7rem', fontWeight: isRequired && !buyer.seller_cancel_contact ? 'bold' : 'normal' }}>
+                            売主キャンセル連絡{isRequired && !buyer.seller_cancel_contact ? ' *必須' : ''}
+                          </Typography>
+                          <Box sx={{ display: 'flex', gap: 0.5 }}>
+                            {(['済', '未', '不要'] as const).map((option) => {
+                              const isSelected = buyer.seller_cancel_contact === option;
+                              return (
+                                <Button
+                                  key={option}
+                                  size="small"
+                                  variant={isSelected ? 'contained' : 'outlined'}
+                                  color="primary"
+                                  onClick={async () => {
+                                    const newValue = isSelected ? '' : option;
+                                    await handleInlineFieldSave('seller_cancel_contact', newValue);
+                                  }}
+                                  sx={{ py: 0.5, fontWeight: isSelected ? 'bold' : 'normal', borderRadius: 1, fontSize: '0.75rem' }}
+                                >
+                                  {option}
+                                </Button>
+                              );
+                            })}
+                          </Box>
+                        </>
+                      );
+                    })()}
+                  </Box>
+                )}
+              </Box>
+
               <Typography variant="subtitle2" gutterBottom>
                 ヒアリング項目
               </Typography>
