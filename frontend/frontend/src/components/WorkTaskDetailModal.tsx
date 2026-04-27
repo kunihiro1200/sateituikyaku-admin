@@ -976,14 +976,16 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
       return;
     }
 
-    // 格納先URLが空欄で、CWの方へ依頼メール（サイト登録）または間取図 に値が入っている場合はブロック
+    // 格納先URLが空欄で、CW依頼メール系または間取図 に値が入っている場合はブロック
     const storageUrl = getValue('storage_url');
     const cwRequestEmailSiteVal = getValue('cw_request_email_site');
+    const cwRequestEmailFloorPlanVal = getValue('cw_request_email_floor_plan');
+    const cwRequestEmail2fAboveVal = getValue('cw_request_email_2f_above');
     const floorPlanVal = getValue('floor_plan');
-    if (!storageUrl && (cwRequestEmailSiteVal || floorPlanVal)) {
+    if (!storageUrl && (cwRequestEmailSiteVal || cwRequestEmailFloorPlanVal || cwRequestEmail2fAboveVal || floorPlanVal)) {
       setValidationWarningDialog({
         open: true,
-        title: '「格納先URL」が空欄です。CWの方へ依頼メール（サイト登録）または間取図 に値が入っている場合は必須項目です。',
+        title: '「格納先URL」が空欄です。CWの方へ依頼メール または間取図 に値が入っている場合は必須項目です。',
         emptyFields: ['格納先URL'],
         onConfirmAction: 'storage_url',
       });
