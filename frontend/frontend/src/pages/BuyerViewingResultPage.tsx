@@ -218,6 +218,8 @@ export default function BuyerViewingResultPage() {
   const [insightSaving, setInsightSaving] = useState(false);
   // 気づき必須警告ダイアログ
   const [insightRequiredDialog, setInsightRequiredDialog] = useState<{ open: boolean; targetUrl: string }>({ open: false, targetUrl: '' });
+  // 全買主の気づき一覧
+  const [allInsightBuyers, setAllInsightBuyers] = useState<any[]>([]);
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' | 'warning' }>({
     open: false,
     message: '',
@@ -264,6 +266,7 @@ export default function BuyerViewingResultPage() {
       fetchLinkedProperties();
       fetchStaffInitials();
       fetchEmployees();
+      fetchAllInsightBuyers();
     }
   }, [buyer_number, location.key]);
 
@@ -423,6 +426,15 @@ export default function BuyerViewingResultPage() {
       console.error('Failed to fetch property buyers:', error);
     } finally {
       setPropertyBuyersLoading(false);
+    }
+  };
+
+  const fetchAllInsightBuyers = async () => {
+    try {
+      const res = await api.get('/api/buyers/insights');
+      setAllInsightBuyers(res.data || []);
+    } catch (error) {
+      console.error('Failed to fetch insight buyers:', error);
     }
   };
 
@@ -627,6 +639,7 @@ export default function BuyerViewingResultPage() {
         } catch (_) { /* キャッシュクリア失敗は無視 */ }
         fetchPropertyBuyers(propertyNumber);
       }
+      fetchAllInsightBuyers();
     } catch (error: any) {
       setSnackbar({ open: true, message: error.response?.data?.error || '保存に失敗しました', severity: 'error' });
     } finally {
@@ -2006,19 +2019,13 @@ export default function BuyerViewingResultPage() {
         </Box>
       </Paper>
 
-      {/* 気づき一覧テーブル（同じ物件の全買主） */}
+      {/* 気づき一覧テーブル（全買主） */}
       {(() => {
-        const insightBuyers = propertyBuyers.filter(
-          (b: any) =>
-            (b.viewing_insight_executor && b.viewing_insight_executor.trim()) ||
-            (b.viewing_insight_companion && b.viewing_insight_companion.trim())
-        );
-        // 同じ物件の買主の中で誰か1人でも気づきを入力していれば全買主ページで表示
-        if (insightBuyers.length === 0) return null;
+        if (allInsightBuyers.length === 0) return null;
         return (
           <Paper sx={{ p: 3, mt: 3, bgcolor: '#e8f4fd', border: '1px solid #90caf9' }}>
             <Typography variant="h6" gutterBottom sx={{ color: '#1565c0' }}>
-              気づき一覧（同物件の全買主）
+              気づき一覧（全買主）
             </Typography>
             <Box sx={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
@@ -2032,7 +2039,7 @@ export default function BuyerViewingResultPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {insightBuyers.map((b: any, idx: number) => (
+                  {allInsightBuyers.map((b: any, idx: number) => (
                     <tr key={b.buyer_number} style={{ backgroundColor: idx % 2 === 0 ? '#fff' : '#e3f2fd' }}>
                       <td style={{ padding: '8px 12px', borderBottom: '1px solid #90caf9', whiteSpace: 'nowrap', verticalAlign: 'top' }}>
                         <span
