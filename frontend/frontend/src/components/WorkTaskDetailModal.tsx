@@ -1221,18 +1221,22 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
     // 決済完了チャットに値が入ったら経理確認済みを「未」に自動リセット
     if (field === 'settlement_completed_chat' && value) {
       setEditedData(prev => ({ ...prev, [field]: value, accounting_confirmed: '未' }));
-    } else if (field === 'cw_request_email_site' && value) {
+    } else if (field === 'cw_request_email_site') {
       // cw_request_email_site に値がセットされた時、site_registration_due_date が空なら自動セット
-      const currentDueDate = editedData['site_registration_due_date'] ?? taskData?.site_registration_due_date;
-      if (!currentDueDate) {
-        // デフォルト納期予定日を計算（火曜+3日、それ以外+2日、12:00 JST → UTC変換）
-        const today = new Date();
-        const daysToAdd = today.getDay() === 2 ? 3 : 2;
-        const defaultDate = new Date(today);
-        defaultDate.setDate(today.getDate() + daysToAdd);
-        defaultDate.setHours(12, 0, 0, 0);
-        const utcIso = new Date(defaultDate.getTime() - (9 * 60 * 60 * 1000)).toISOString();
-        setEditedData(prev => ({ ...prev, [field]: value, site_registration_due_date: utcIso }));
+      if (value) {
+        const currentDueDate = editedData['site_registration_due_date'] ?? taskData?.site_registration_due_date;
+        if (!currentDueDate) {
+          // デフォルト納期予定日を計算（火曜+3日、それ以外+2日、12:00 JST → UTC変換）
+          const today = new Date();
+          const daysToAdd = today.getDay() === 2 ? 3 : 2;
+          const defaultDate = new Date(today);
+          defaultDate.setDate(today.getDate() + daysToAdd);
+          defaultDate.setHours(12, 0, 0, 0);
+          const utcIso = new Date(defaultDate.getTime() - (9 * 60 * 60 * 1000)).toISOString();
+          setEditedData(prev => ({ ...prev, [field]: value, site_registration_due_date: utcIso }));
+        } else {
+          setEditedData(prev => ({ ...prev, [field]: value }));
+        }
       } else {
         setEditedData(prev => ({ ...prev, [field]: value }));
       }
