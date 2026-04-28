@@ -79,7 +79,7 @@ router.post(
           req.employee!.initials || req.employee!.name,
           new Date(activity.createdAt)
         ).catch((err: any) => {
-          console.error('[CallLog] Failed to append to spreadsheet:', err.message);
+          console.error('[CallLog] Failed to append to spreadsheet:', err.message, err.stack);
         });
       }
       res.status(201).json(activity);
@@ -312,11 +312,12 @@ async function appendCallLogToSpreadsheet(
   // 追記するデータ（ヘッダーに合わせた列名で指定）
   const rowData: Record<string, string> = {
     '日付': jstDateString,
-    '売主追客ログ': activityId.substring(0, 8),
+    '売主追客ログID': activityId.substring(0, 8),
     '売主番号': sellerNumber,
     '担当（前半）': initials,
   };
 
+  console.log(`[CallLog] Attempting to append row: ${JSON.stringify(rowData)}`);
   await sheetsClient.appendRow(rowData);
   console.log(`[CallLog] Appended to spreadsheet: ${sellerNumber} by ${initials} at ${jstDateString}`);
 }
