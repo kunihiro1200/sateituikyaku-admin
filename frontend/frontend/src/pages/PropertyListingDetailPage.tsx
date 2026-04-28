@@ -169,6 +169,8 @@ interface PropertyListing {
   general_mediation_private?: string;
   // 非公開配信メールフィールド
   private_mail_delivery?: string;
+  // Eラベルチェック
+  e_label_checked?: string;
 }
 
 interface Buyer {
@@ -551,6 +553,21 @@ export default function PropertyListingDetailPage() {
     if (editedData.atbb_status !== undefined) {
       const prevAtbbStatus = data?.atbb_status;
       const nextAtbbStatus = editedData.atbb_status;
+
+      // Eラベルチェック: 「一般・公開中」に変更された場合（もともと「一般・公開中」でない場合）
+      if (nextAtbbStatus === '一般・公開中' && prevAtbbStatus !== '一般・公開中') {
+        const currentELabel = editedData.e_label_checked !== undefined
+          ? editedData.e_label_checked
+          : (data?.e_label_checked ?? '');
+        if (!currentELabel || currentELabel.trim() === '' || currentELabel !== '済') {
+          setSnackbar({
+            open: true,
+            message: 'Eラベルチェックの確認してください',
+            severity: 'error',
+          });
+          return;
+        }
+      }
 
       // 買付が必須になる条件:
       //   1. 変更後が「非公開（専任）」または「非公開（一般）」
@@ -2115,6 +2132,34 @@ export default function PropertyListingDetailPage() {
               </Typography>
             )}
           </Grid>
+
+          {/* Eラベルつけた？: ATBB状況が「一般・公開中」に変更された場合のみ表示 */}
+          {isHeaderEditMode && (editedData.atbb_status !== undefined ? editedData.atbb_status : (data.atbb_status || '')) === '一般・公開中' && data.atbb_status !== '一般・公開中' && (
+            <Grid item xs={6} sm={4} md={true} sx={{ minWidth: 120, flex: '1 1 0' }}>
+              <Typography variant="caption" color="text.secondary" fontWeight="bold" sx={{ fontSize: '0.75rem', lineHeight: 1.2 }}>
+                Eラベルつけた？
+                <Typography component="span" color="error" sx={{ fontSize: '0.75rem', ml: 0.3 }}>*</Typography>
+              </Typography>
+              <Box sx={{ mt: 0.5 }}>
+                <Button
+                  size="small"
+                  variant={
+                    (editedData.e_label_checked !== undefined ? editedData.e_label_checked : (data.e_label_checked || '')) === '済'
+                      ? 'contained'
+                      : 'outlined'
+                  }
+                  color="success"
+                  onClick={() => {
+                    const current = editedData.e_label_checked !== undefined ? editedData.e_label_checked : (data.e_label_checked || '');
+                    handleFieldChange('e_label_checked', current === '済' ? '' : '済');
+                  }}
+                  sx={{ minWidth: 48, fontSize: '0.75rem', py: 0.3 }}
+                >
+                  済
+                </Button>
+              </Box>
+            </Grid>
+          )}
 
           <Grid item xs={6} sm={4} md={true} sx={{ minWidth: 120, flex: '1 1 0' }}>
             <Typography variant="caption" color="text.secondary" fontWeight="bold" sx={{ fontSize: '0.75rem', lineHeight: 1.2 }}>種別</Typography>
