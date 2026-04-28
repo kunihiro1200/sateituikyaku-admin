@@ -285,7 +285,7 @@ B'（売却意欲が低い・価格確認だけ・様子見・興味薄い）
           { role: 'user', content: `以下のコメントから関連項目を抽出してください：\n\n${plainText}` },
         ],
         temperature: 0.2,
-        max_tokens: 800,
+        max_tokens: 500,
         response_format: { type: 'json_object' },
       },
       {

@@ -7,6 +7,15 @@ import { ButtonState } from '../hooks/useCallModeQuickButtonState';
 // 重要項目（ピンク表示）
 const IMPORTANT_LABELS = ['名義', 'ローン', '表札確認', '売却理由'];
 
+// モジュールレベルのメモリキャッシュ（ページ遷移をまたいで保持）
+const highlightsCache = new Map<string, { highlights: string[]; other_summary: string[] }>();
+
+// キャッシュキー：コメントの先頭200文字をハッシュ代わりに使用
+function makeCacheKey(html: string): string {
+  const plain = html.replace(/<[^>]+>/g, '').trim();
+  return plain.slice(0, 200);
+}
+
 interface QuickButtonDef {
   id: string;
   label: string;
@@ -36,19 +45,33 @@ const CommentHighlightsPanel: React.FC<CommentHighlightsPanelProps> = ({
   const [error, setError] = useState<string | null>(null);
   const prevCommentRef = useRef<string>('');
 
-  const fetchHighlights = async (html: string) => {
+  const fetchHighlights = async (html: string, forceRefresh = false) => {
     const plain = html.replace(/<[^>]+>/g, '').trim();
     if (!plain) {
       setHighlights([]);
       setOtherSummary([]);
       return;
     }
+
+    // キャッシュヒット時は即座に表示（強制更新でない場合）
+    const cacheKey = makeCacheKey(html);
+    if (!forceRefresh && highlightsCache.has(cacheKey)) {
+      const cached = highlightsCache.get(cacheKey)!;
+      setHighlights(cached.highlights);
+      setOtherSummary(cached.other_summary);
+      return;
+    }
+
     setLoading(true);
     setError(null);
     try {
       const res = await api.post('/summarize/comment-highlights', { commentText: html });
-      setHighlights(res.data.highlights || []);
-      setOtherSummary(res.data.other_summary || []);
+      const newHighlights = res.data.highlights || [];
+      const newOtherSummary = res.data.other_summary || [];
+      setHighlights(newHighlights);
+      setOtherSummary(newOtherSummary);
+      // キャッシュに保存
+      highlightsCache.set(cacheKey, { highlights: newHighlights, other_summary: newOtherSummary });
     } catch (e: any) {
       console.error('[CommentHighlightsPanel] fetch error:', e);
       const status = e?.response?.status;
@@ -94,7 +117,7 @@ const CommentHighlightsPanel: React.FC<CommentHighlightsPanelProps> = ({
               <span>
                 <IconButton
                   size="small"
-                  onClick={() => fetchHighlights(commentHtml)}
+                  onClick={() => fetchHighlights(commentHtml, true)}
                   disabled={loading}
                   sx={{ color: '#6a1b9a' }}
                 >
