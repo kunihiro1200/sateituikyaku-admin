@@ -165,13 +165,17 @@ router.post('/backfill-call-log', async (req: Request, res: Response) => {
     const rawData = await sheetsClient.readRawRange('A:C');
     const headers = rawData[0] || [];
     const keyIdx = headers.findIndex((h: string) => h === '売主追客ログID');
+    console.log(`[BackfillCallLog] Headers: ${JSON.stringify(headers)}, keyIdx=${keyIdx}`);
+
+    // keyIdxが見つからない場合はB列(index=1)をデフォルトとして使用
+    const effectiveKeyIdx = keyIdx >= 0 ? keyIdx : 1;
 
     const existingKeys = new Set<string>();
     for (let i = 1; i < rawData.length; i++) {
-      const key = rawData[i][keyIdx];
+      const key = rawData[i][effectiveKeyIdx];
       if (key) existingKeys.add(String(key).trim());
     }
-    console.log(`[BackfillCallLog] Existing keys in sheet: ${existingKeys.size}`);
+    console.log(`[BackfillCallLog] effectiveKeyIdx=${effectiveKeyIdx}, Existing keys: ${existingKeys.size}, samples: ${JSON.stringify([...existingKeys].slice(-5))}`);
 
     const { data: activities, error } = await supabase
       .from('activities')
