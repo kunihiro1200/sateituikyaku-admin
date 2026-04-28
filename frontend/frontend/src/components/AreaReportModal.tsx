@@ -90,10 +90,11 @@ ${reportHtml}
     }, 500);
   };
 
-  const handleOpen = () => {
-    if (!reportHtml) {
-      generateReport();
-    }
+  const handleClose = () => {
+    // 閉じるときにHTMLをリセット（次回開いたとき最新のコードで再生成される）
+    setReportHtml(null);
+    setError(null);
+    onClose();
   };
 
   // ダイアログが開いたときに自動生成
@@ -104,7 +105,7 @@ ${reportHtml}
   return (
     <Dialog
       open={open}
-      onClose={onClose}
+      onClose={handleClose}
       maxWidth="lg"
       fullWidth
       PaperProps={{ sx: { height: '90vh' } }}
@@ -121,7 +122,7 @@ ${reportHtml}
             </Typography>
           )}
         </Box>
-        <IconButton onClick={onClose} size="small">
+        <IconButton onClick={handleClose} size="small">
           <CloseIcon />
         </IconButton>
       </DialogTitle>
@@ -187,7 +188,7 @@ ${reportHtml}
           </Button>
         )}
         <Box sx={{ flex: 1 }} />
-        <Button onClick={onClose} variant="outlined" size="small">
+        <Button onClick={handleClose} variant="outlined" size="small">
           閉じる
         </Button>
         {reportHtml && !loading && (
