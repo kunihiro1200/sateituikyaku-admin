@@ -230,6 +230,7 @@ export default function BuyerViewingResultPage() {
   const [normalInitials, setNormalInitials] = useState<string[]>([]);
   const [calendarOpened, setCalendarOpened] = useState(false); // カレンダーを開いたかどうか
   const [leaveWarningDialog, setLeaveWarningDialog] = useState<{ open: boolean; targetUrl: string }>({ open: false, targetUrl: '' });
+  const [sellerViewingContactDialog, setSellerViewingContactDialog] = useState<{ open: boolean; targetUrl: string }>({ open: false, targetUrl: '' });
   const [calendarConfirmDialog, setCalendarConfirmDialog] = useState<{
     open: boolean;
     viewingDate: string;
@@ -360,12 +361,24 @@ export default function BuyerViewingResultPage() {
     const hasHearing = !!(buyer?.viewing_result_follow_up && buyer.viewing_result_follow_up.trim() !== '');
     return hasHearing;
   })();
+  // 売主内覧日連絡 必須チェック（2026-04-29以降の内覧日で未入力の場合、遷移をブロック）
+  const isSellerViewingContactBlocked = (() => {
+    if (!buyer?.viewing_date) return false;
+    // 文字列比較でタイムゾーン問題を回避
+    const vdStr = buyer.viewing_date.substring(0, 10);
+    if (vdStr < '2026-04-29') return false;
+    // seller_viewing_date_contact が未入力（空）の場合のみブロック
+    return !buyer.seller_viewing_date_contact;
+  })();
+
   // 離脱ガード: カレンダー未開封の場合に警告
   const guardedNavigate = (url: string) => {
     if (needsCalendar && !calendarOpened) {
       setLeaveWarningDialog({ open: true, targetUrl: url });
     } else if (isInsightExecutorRequired && !insightExecutorValue.replace(/<[^>]*>/g, '').trim()) {
       setInsightRequiredDialog({ open: true, targetUrl: url });
+    } else if (isSellerViewingContactBlocked) {
+      setSellerViewingContactDialog({ open: true, targetUrl: url });
     } else {
       navigate(url);
     }
@@ -2268,6 +2281,24 @@ export default function BuyerViewingResultPage() {
             }}
           >
             このまま離れる
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 売主内覧日連絡 未入力の離脱ブロックダイアログ */}
+      <Dialog open={sellerViewingContactDialog.open} onClose={() => setSellerViewingContactDialog({ open: false, targetUrl: '' })} maxWidth="xs" fullWidth>
+        <DialogTitle sx={{ color: 'error.main' }}>🚨 売主内覧日連絡が未入力です</DialogTitle>
+        <DialogContent>
+          <Typography>
+            内覧日が2026年4月29日以降の場合、<strong>売主内覧日連絡</strong>の入力が必須です。
+          </Typography>
+          <Typography sx={{ mt: 1 }}>
+            「済」「未」「不要」のいずれかを選択してからページを離れてください。
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button variant="contained" onClick={() => setSellerViewingContactDialog({ open: false, targetUrl: '' })}>
+            入力する
           </Button>
         </DialogActions>
       </Dialog>

@@ -64,6 +64,7 @@ export interface BuyerData {
   past_buyer_list?: string | null;
   price?: string | null;
   atbb_status?: string | null;
+  seller_viewing_date_contact?: string | null;
 }
 
 export interface StatusResult {
@@ -128,6 +129,19 @@ export function calculateBuyerStatus(buyer: BuyerData): StatusResult {
     if (or(conditionA, conditionB)) {
       const status = '一般媒介_内覧後売主連絡未';
       return { status, priority: 8, matchedCondition: '一般媒介で内覧後の売主連絡が未完了（公開中のみ）', color: getStatusColor(status) };
+    }
+
+    // Priority 8.5: 売主内覧連絡未
+    // 条件: seller_viewing_date_contact = '未' かつ 内覧日が2026-04-29以降
+    if (
+      and(
+        equals(buyer.seller_viewing_date_contact, '未'),
+        isNotBlank(buyer.viewing_date),
+        isAfterOrEqual(buyer.viewing_date, '2026-04-29')
+      )
+    ) {
+      const status = '売主内覧連絡未';
+      return { status, priority: 8.5, matchedCondition: '売主内覧日連絡が未（2026-04-29以降）', color: getStatusColor(status) };
     }
 
     // Priority 6: 当日TEL（次電日が当日以前 かつ 追客担当なし）

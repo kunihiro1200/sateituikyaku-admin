@@ -21,6 +21,7 @@ export const STATUS_DEFINITIONS: StatusDefinition[] = [
   { priority: 6, status: '当日TEL', description: '次電日が当日以前', color: '#388e3c' },
   { priority: 7, status: '3回架電未', description: '3回架電が未完了', color: '#4caf50' },
   { priority: 8, status: '一般媒介_内覧後売主連絡未', description: '一般媒介で内覧後の売主連絡が未完了', color: '#2e7d32' },
+  { priority: 8.5, status: '売主内覧連絡未', description: '売主内覧日連絡が未（2026-04-29以降）', color: '#d32f2f' },
   { priority: 9, status: 'Y_内覧後未入力', description: '担当Y: 内覧後の入力が未完了', color: '#66bb6a' },
   { priority: 10, status: '生_内覧後未入力', description: '担当生: 内覧後の入力が未完了', color: '#66bb6a' },
   { priority: 11, status: 'U_内覧後未入力', description: '担当U: 内覧後の入力が未完了', color: '#66bb6a' },

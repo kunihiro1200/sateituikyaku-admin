@@ -110,6 +110,7 @@ export default function BuyersPage() {
     'general': '一般',
     'visitOtherDecision': '内覧後他決',
     'unvisitedOtherDecision': '未内覧他決',
+    'sellerViewingContactPending': '売主内覧連絡未',
   };
 
   // キャッシュから初期データを取得
@@ -318,6 +319,7 @@ export default function BuyersPage() {
             'pinrich500manUnregistered',   // Pinrich500万以上登録未
             'viewingSurveyUnchecked',      // 内覧アンケート未
             'viewingUnconfirmed',          // 内覧未確定
+            'sellerViewingContactPending', // 売主内覧連絡未
           ];
           if (backendEnglishKeyCategories.includes(selectedCalculatedStatus)) {
             quickParams.calculatedStatus = selectedCalculatedStatus;
