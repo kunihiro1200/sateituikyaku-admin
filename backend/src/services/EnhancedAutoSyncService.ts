@@ -879,10 +879,11 @@ export class EnhancedAutoSyncService {
             needsUpdate = true;
           }
 
-          // next_call_dateの比較（スプレッドシートが空欄の場合もDBをクリア）
+          // next_call_dateの比較
+          // スプシが空欄の場合はDBの値を正とする（通話モードページでの更新を保護）
           const formattedNextCallDate = sheetNextCallDate ? this.formatVisitDate(sheetNextCallDate) : null;
           const dbNextCallDate = dbSeller.next_call_date ? String(dbSeller.next_call_date).substring(0, 10) : null;
-          if (formattedNextCallDate !== dbNextCallDate) {
+          if (formattedNextCallDate !== null && formattedNextCallDate !== dbNextCallDate) {
             console.log(`[detectUpdated] ${sellerNumber}: next_call_date changed: sheet="${formattedNextCallDate}" db="${dbNextCallDate}"`);
             needsUpdate = true;
           }
@@ -1320,13 +1321,19 @@ export class EnhancedAutoSyncService {
 
     const updateData: any = {
       status: mappedData.status || '追客中',
-      next_call_date: mappedData.next_call_date || null,
       pinrich_status: mappedData.pinrich_status || null,
       is_unreachable: this.convertIsUnreachable(row['不通']),
       unreachable_status: row['不通'] ? String(row['不通']) : null,
       comments: row['コメント'] ? String(row['コメント']) : null,
       updated_at: new Date().toISOString(),
     };
+
+    // next_call_date: スプシに値がある場合のみ更新（空欄の場合はDBの値を保持）
+    // 理由: 通話モードページで次電日を更新した後、スプシへの書き戻しが
+    // 完了する前に自動同期が走ると、スプシの古い値でDBが上書きされてしまうため
+    if (mappedData.next_call_date) {
+      updateData.next_call_date = mappedData.next_call_date;
+    }
 
     // 暗号化フィールドはスプシに値がある場合のみ更新（空欄でDBの既存値を消さない）
     if (mappedData.name && mappedData.name.trim() !== '') {
