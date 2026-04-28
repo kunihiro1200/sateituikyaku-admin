@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -7,8 +7,6 @@ import {
   Button,
   CircularProgress,
   IconButton,
-  Chip,
-  Divider,
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import PrintIcon from '@mui/icons-material/Print';
@@ -46,7 +44,6 @@ const HouseMakerModal: React.FC<HouseMakerModalProps> = ({ open, onClose, commen
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [content, setContent] = useState<HouseMakerContent | null>(null);
-  const printRef = useRef<HTMLDivElement>(null);
 
   const fetchHouseMakerInfo = async () => {
     setLoading(true);
@@ -81,57 +78,68 @@ const HouseMakerModal: React.FC<HouseMakerModalProps> = ({ open, onClose, commen
   }, [open]);
 
   const handlePrint = () => {
-    const printContent = printRef.current;
-    if (!printContent) return;
+    if (!content) return;
 
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
+
+    // セクションHTMLをデータから直接組み立て（MUIのsxスタイルに依存しない）
+    const sectionsHtml = content.sections.map((section) => {
+      const icon = SECTION_ICONS[section.title] || '📌';
+      const pointsHtml = section.points.map((point) =>
+        `<div class="point"><span class="point-dot"></span><span>${point}</span></div>`
+      ).join('');
+      return `
+        <div class="section">
+          <div class="section-header">${icon} ${section.title}</div>
+          <div class="section-body">${pointsHtml}</div>
+        </div>`;
+    }).join('');
 
     printWindow.document.write(`
 <!DOCTYPE html>
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>${content?.makerName || 'ハウスメーカー'} 特徴・メリット</title>
+  <title>${content.makerName} 特徴・メリット</title>
   <style>
-    @page { size: A4; margin: 15mm 18mm; }
+    @page { size: A4 portrait; margin: 12mm 15mm; }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      font-family: 'Hiragino Kaku Gothic ProN', 'Meiryo', sans-serif;
+      font-family: 'Hiragino Kaku Gothic ProN', 'Meiryo', 'Yu Gothic', sans-serif;
       font-size: 10pt;
       color: #1a1a2e;
       background: white;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
     }
     .header {
-      background: linear-gradient(135deg, #1a237e 0%, #283593 100%);
-      color: white;
+      background: linear-gradient(135deg, #1a237e 0%, #283593 100%) !important;
+      color: white !important;
       padding: 14px 20px 12px;
       border-radius: 6px;
       margin-bottom: 14px;
     }
-    .header-top {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      margin-bottom: 4px;
-    }
     .badge {
+      display: inline-block;
       background: rgba(255,255,255,0.2);
       border: 1px solid rgba(255,255,255,0.4);
       border-radius: 4px;
       padding: 2px 8px;
-      font-size: 8pt;
-      letter-spacing: 0.05em;
+      font-size: 7.5pt;
+      margin-bottom: 6px;
+      color: white;
     }
     .maker-name {
       font-size: 22pt;
-      font-weight: 700;
+      font-weight: 800;
       letter-spacing: 0.02em;
+      color: white;
     }
     .tagline {
       font-size: 10pt;
-      opacity: 0.9;
-      margin-top: 2px;
+      color: rgba(255,255,255,0.9);
+      margin-top: 3px;
     }
     .sections-grid {
       display: grid;
@@ -143,44 +151,46 @@ const HouseMakerModal: React.FC<HouseMakerModalProps> = ({ open, onClose, commen
       border: 1px solid #e0e0e0;
       border-radius: 6px;
       overflow: hidden;
+      break-inside: avoid;
     }
     .section-header {
-      background: #f5f5f5;
-      padding: 6px 10px;
+      background: #f0f0f5 !important;
+      padding: 7px 10px;
       font-size: 9pt;
       font-weight: 700;
-      color: #1a237e;
+      color: #1a237e !important;
       border-bottom: 1px solid #e0e0e0;
     }
     .section-body {
-      padding: 8px 10px;
+      padding: 9px 10px;
     }
     .point {
       display: flex;
       align-items: flex-start;
-      gap: 6px;
-      margin-bottom: 5px;
-      font-size: 9pt;
-      line-height: 1.5;
+      gap: 7px;
+      margin-bottom: 6px;
+      font-size: 8.5pt;
+      line-height: 1.55;
     }
     .point:last-child { margin-bottom: 0; }
     .point-dot {
+      display: inline-block;
       width: 5px;
       height: 5px;
-      background: #1a237e;
+      min-width: 5px;
+      background: #1a237e !important;
       border-radius: 50%;
       margin-top: 5px;
-      flex-shrink: 0;
     }
     .summary-box {
-      background: linear-gradient(135deg, #e8eaf6 0%, #ede7f6 100%);
+      background: linear-gradient(135deg, #e8eaf6 0%, #ede7f6 100%) !important;
       border: 1px solid #9fa8da;
       border-radius: 6px;
       padding: 10px 14px;
       text-align: center;
       font-size: 10pt;
       font-weight: 600;
-      color: #1a237e;
+      color: #1a237e !important;
       margin-bottom: 10px;
     }
     .footer {
@@ -193,7 +203,16 @@ const HouseMakerModal: React.FC<HouseMakerModalProps> = ({ open, onClose, commen
   </style>
 </head>
 <body>
-  ${printContent.innerHTML}
+  <div class="header">
+    <div class="badge">ハウスメーカー資料</div>
+    <div class="maker-name">${content.makerName}</div>
+    <div class="tagline">${content.tagline}</div>
+  </div>
+  <div class="sections-grid">
+    ${sectionsHtml}
+  </div>
+  <div class="summary-box">${content.summary}</div>
+  <div class="footer">※ この資料はAIが生成した参考情報です</div>
 </body>
 </html>`);
     printWindow.document.close();
@@ -201,7 +220,7 @@ const HouseMakerModal: React.FC<HouseMakerModalProps> = ({ open, onClose, commen
     setTimeout(() => {
       printWindow.print();
       printWindow.close();
-    }, 500);
+    }, 600);
   };
 
   return (
@@ -275,7 +294,7 @@ const HouseMakerModal: React.FC<HouseMakerModalProps> = ({ open, onClose, commen
 
         {/* コンテンツ */}
         {!loading && !error && content && (
-          <Box ref={printRef}>
+          <Box>
             {/* ヘッダー */}
             <Box className="header" sx={{
               background: 'linear-gradient(135deg, #1a237e 0%, #283593 100%)',
@@ -285,11 +304,18 @@ const HouseMakerModal: React.FC<HouseMakerModalProps> = ({ open, onClose, commen
               mb: 2,
             }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
-                <Chip
-                  label="ハウスメーカー資料"
-                  size="small"
-                  sx={{ background: 'rgba(255,255,255,0.2)', color: 'white', fontSize: '0.7rem' }}
-                />
+                <Box sx={{
+                  display: 'inline-block',
+                  background: 'rgba(255,255,255,0.2)',
+                  border: '1px solid rgba(255,255,255,0.4)',
+                  borderRadius: '4px',
+                  px: 1,
+                  py: 0.2,
+                  fontSize: '0.7rem',
+                  color: 'white',
+                }}>
+                  ハウスメーカー資料
+                </Box>
               </Box>
               <Typography variant="h4" fontWeight={800} sx={{ letterSpacing: '0.02em' }}>
                 {content.makerName}
