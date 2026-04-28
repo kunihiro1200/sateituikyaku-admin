@@ -130,7 +130,7 @@ const CommentHighlightsPanel: React.FC<CommentHighlightsPanelProps> = ({
         <Box sx={{ p: 1.5, bgcolor: '#fff8e1', borderRadius: 1, border: '1px solid #ffcc02' }}>
           <Typography variant="subtitle2" sx={{ color: '#e65100', fontWeight: 'bold', mb: 0.75 }}>
             ⚠️ ヒアリング未です！ヒアリングしてください！<br />
-            <span style={{ fontSize: '0.8rem', color: '#c62828' }}>訪問取得時はピンクは必須項目です！</span>
+            <span style={{ fontSize: '0.8rem', color: '#e91e8c' }}>訪問取得時はピンクは必須項目です！</span>
           </Typography>
           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75 }}>
             {unhearingButtons.map((btn) => {
