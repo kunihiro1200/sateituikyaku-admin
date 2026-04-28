@@ -2072,7 +2072,7 @@ HTMLのbodyタグ内のコンテンツのみを出力してください（html�
 
     res.json({
       html: htmlContent,
-      areaName: detailArea || reportAreaName,
+      areaName: detailArea,
       generatedAt: new Date().toISOString(),
     });
   } catch (error) {
