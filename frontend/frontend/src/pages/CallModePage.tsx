@@ -7098,7 +7098,7 @@ HP：https://ifoo-oita.com/
                 { id: 'call-memo-unreachable', label: '不通', insertText: '不通' },
                 { id: 'call-memo-cancel-guidance', label: 'キャンセル案内', insertText: 'キャンセル案内済み' },
                 { id: 'call-memo-transfer-income-tax', label: '譲渡所得税', insertText: '譲渡所得税説明済み' },
-                { id: 'call-memo-has-customer', label: 'お客様います', insertText: 'お客様からこの辺で探していると問合せがあったときにご紹介は控えたほうが良いですよね？' },
+                { id: 'call-memo-has-customer', label: 'お客様います', insertText: 'お客様紹介：済　紹介OK　お客様からこの辺で探していると問合せがあったときにご紹介は控えたほうが良いですよね？' },
                 { id: 'call-memo-our-referral', label: '当社紹介', insertText: '当社紹介済み' },
                 { id: 'call-memo-house-maker', label: 'ハウスメーカー', insertText: 'ハウスメーカー：' },
                 { id: 'call-memo-sell-reason', label: '売却理由', insertText: '売却理由：' },
