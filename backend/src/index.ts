@@ -728,6 +728,7 @@ app.use('/appointments', appointmentRoutes);
 app.use('/api/buyer-appointments', buyerAppointmentRoutes);
 app.use('/api/activity-logs', activityLogRoutes);
 app.use('/summarize', summarizeRoutes);
+app.use('/api/summarize', summarizeRoutes);
 app.use('/api/auth/google/calendar', googleCalendarRoutes);
 app.use('/api/employees', employeeRoutes);
 app.use('/api/chat-notifications', chatNotificationRoutes);

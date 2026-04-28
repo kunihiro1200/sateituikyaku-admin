@@ -37,6 +37,7 @@ import {
   Email as EmailIcon,
   List as ListIcon,
   Image as ImageIcon,
+  AutoFixHigh as AutoFixHighIcon,
 } from '@mui/icons-material';
 import {
   FormControl,
@@ -147,6 +148,7 @@ export default function PropertyReportPage() {
   const [editReplyTo, setEditReplyTo] = useState('');
   const [emailJustSent, setEmailJustSent] = useState(false);
   const [sending, setSending] = useState(false);
+  const [enhancing, setEnhancing] = useState(false);
   // 画像添付用ステート
   const [imageSelectorOpen, setImageSelectorOpen] = useState(false);
   const [selectedImages, setSelectedImages] = useState<any[]>([]);
@@ -420,6 +422,32 @@ export default function PropertyReportPage() {
 
   const handleImageSelectionCancel = () => {
     setImageSelectorOpen(false);
+  };
+
+  const handleEnhanceEmail = async () => {
+    if (!editBody.trim()) return;
+    setEnhancing(true);
+    try {
+      // 過去の送信履歴から本文を取得（最新3件）
+      const previousBodies = reportHistory
+        .slice(0, 3)
+        .map((h) => h.body)
+        .filter((b): b is string => !!b);
+
+      const response = await api.post('/api/summarize/enhance-email', {
+        currentBody: editBody,
+        previousBodies,
+      });
+      if (response.data?.enhancedBody) {
+        setEditBody(response.data.enhancedBody);
+        setSnackbar({ open: true, message: 'AIが本文を改善しました', severity: 'success' });
+      }
+    } catch (error: any) {
+      const errMsg = error.response?.data?.error || 'AI改善に失敗しました';
+      setSnackbar({ open: true, message: errMsg, severity: 'error' });
+    } finally {
+      setEnhancing(false);
+    }
   };
 
   const handleSend = async () => {
@@ -1057,6 +1085,18 @@ export default function PropertyReportPage() {
               InputProps={{ sx: { fontSize: '0.85rem', alignItems: 'flex-start' } }}
               inputProps={{ style: { minHeight: 'calc(100vh - 280px)' } }}
             />
+            {/* AIで本文を改善ボタン */}
+            <Button
+              variant="outlined"
+              color="secondary"
+              startIcon={enhancing ? <CircularProgress size={16} /> : <AutoFixHighIcon />}
+              onClick={handleEnhanceEmail}
+              disabled={enhancing || !editBody.trim()}
+              fullWidth
+              size="small"
+            >
+              {enhancing ? 'AI改善中...' : 'AIで本文を改善（過去の履歴を参考に）'}
+            </Button>
             {/* 画像添付ボタン */}
             <Box sx={{ mt: 1 }}>
               <Button

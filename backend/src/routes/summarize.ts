@@ -312,5 +312,88 @@ B'（売却意欲が低い・価格確認だけ・様子見・興味薄い）
   }
 });
 
+/**
+ * メール本文をAIで改善・バリエーション生成
+ * POST /api/summarize/enhance-email
+ * Body: { currentBody: string, previousBodies: string[] }
+ */
+router.post('/enhance-email', authenticate, async (req: Request, res: Response) => {
+  try {
+    const { currentBody, previousBodies } = req.body;
+
+    if (!currentBody || typeof currentBody !== 'string' || currentBody.trim().length === 0) {
+      return res.status(400).json({ error: 'currentBody は必須です' });
+    }
+
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) {
+      console.error('[enhance-email] OPENAI_API_KEY not set');
+      return res.status(500).json({ error: 'OpenAI API key not configured' });
+    }
+
+    // 過去の送信履歴を整形
+    const historySection = Array.isArray(previousBodies) && previousBodies.length > 0
+      ? `【過去に送った本文（直近${previousBodies.length}件）】\n` +
+        previousBodies.map((b, i) => `--- 過去${i + 1}回目 ---\n${b}`).join('\n\n')
+      : '（過去の送信履歴なし）';
+
+    const systemPrompt = `あなたは不動産会社の丁寧なメール文章アシスタントです。
+売主への報告メールの本文を、自然で読みやすい日本語に改善してください。
+
+【ルール】
+- 元の本文の意味・内容・構成は変えない
+- 敬語・丁寧語を適切に使う
+- 過去に送った本文と同じ表現・言い回しにならないよう、ニュアンスや言葉を変える
+- 文章の長さは元の本文と同程度にする
+- 署名部分（「---」以降や「よろしくお願いいたします」以降の名前・会社名など）は変更しない
+- 改行・段落構成は元の本文に合わせる
+- 改善した本文のみを返す（説明文・コメント不要）`;
+
+    const userMessage = `${historySection}
+
+【今回の本文（改善してください）】
+${currentBody}`;
+
+    const completion = await axios.post(
+      'https://api.openai.com/v1/chat/completions',
+      {
+        model: 'gpt-4o-mini',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userMessage },
+        ],
+        temperature: 0.7,
+        max_tokens: 1500,
+      },
+      {
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        timeout: 30000,
+      }
+    );
+
+    const enhancedBody = completion.data?.choices?.[0]?.message?.content?.trim() || '';
+    if (!enhancedBody) {
+      return res.status(500).json({ error: 'AIからの応答が空でした' });
+    }
+
+    return res.json({ enhancedBody });
+  } catch (error: any) {
+    const status = error?.response?.status;
+    const errMsg = error?.response?.data?.error?.message || error.message;
+    console.error(`[enhance-email] Error (HTTP ${status}):`, errMsg);
+
+    if (status === 429) {
+      return res.status(429).json({ error: 'APIの利用制限に達しました。しばらく待ってから再試行してください。' });
+    }
+    if (status === 401) {
+      return res.status(401).json({ error: 'OpenAI APIキーが無効です。' });
+    }
+    return res.status(500).json({ error: 'メール改善に失敗しました' });
+  }
+});
+
 export default router;
 
