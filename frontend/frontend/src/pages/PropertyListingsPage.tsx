@@ -475,7 +475,9 @@ export default function PropertyListingsPage() {
     // 「未報告」カテゴリー選択中は報告ページへ直接遷移
     if (sidebarStatus && sidebarStatus.startsWith('未報告')) {
       console.log('[handleRowClick] 報告ページへ直接遷移');
-      navigate(`/property-listings/${propertyNumber}/report`);
+      navigate(`/property-listings/${propertyNumber}/report`, {
+        state: { fromUnreported: true, sidebarStatus },
+      });
       return;
     }
 

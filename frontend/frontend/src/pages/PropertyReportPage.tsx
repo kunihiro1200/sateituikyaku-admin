@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import {
   Container,
   Box,
@@ -35,6 +35,7 @@ import {
   ArrowBack as ArrowBackIcon,
   Save as SaveIcon,
   Email as EmailIcon,
+  List as ListIcon,
   Image as ImageIcon,
 } from '@mui/icons-material';
 import {
@@ -116,8 +117,12 @@ const getDisplayRows = (history: ReportHistory[], rowCount: number = 5): (Report
 export default function PropertyReportPage() {
   const { propertyNumber } = useParams<{ propertyNumber: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+
+  // 未報告一覧から遷移してきたかどうか
+  const locationState = location.state as { fromUnreported?: boolean; sidebarStatus?: string } | null;
 
   const [reportData, setReportData] = useState<ReportData>({});
   const [savedData, setSavedData] = useState<ReportData>({});
@@ -560,6 +565,17 @@ export default function PropertyReportPage() {
     navigate(`/property-listings/${propertyNumber}`);
   };
 
+  const handleBackToUnreportedList = () => {
+    const savedState = sessionStorage.getItem('propertyListState');
+    if (savedState) {
+      navigate('/property-listings', { state: JSON.parse(savedState) });
+    } else {
+      navigate('/property-listings', {
+        state: { sidebarStatus: locationState?.sidebarStatus || '未報告' },
+      });
+    }
+  };
+
   if (loading) {
     return (
       <Container maxWidth="sm" sx={{ py: 3 }}>
@@ -585,6 +601,17 @@ export default function PropertyReportPage() {
           <IconButton onClick={handleBack} size="large">
             <ArrowBackIcon />
           </IconButton>
+          {locationState?.fromUnreported && (
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<ListIcon />}
+              onClick={handleBackToUnreportedList}
+              sx={{ whiteSpace: 'nowrap' }}
+            >
+              報告一覧
+            </Button>
+          )}
           <Box>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
               <Typography variant="h5" fontWeight="bold" sx={{ color: SECTION_COLORS.property.main }}>
