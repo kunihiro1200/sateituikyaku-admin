@@ -28,6 +28,7 @@ import { ValidationService } from '../services/ValidationService';
 import PreDayEmailButton from '../components/PreDayEmailButton';
 import SmsIcon from '@mui/icons-material/Sms';
 import { useAuthStore } from '../store/authStore';
+import { pageDataCache, CACHE_KEYS } from '../store/pageDataCache';
 import { OfferFailedChatSentPopup } from '../components/OfferFailedChatSentPopup';
 import CompactBuyerListForProperty from '../components/CompactBuyerListForProperty';
 
@@ -555,6 +556,18 @@ export default function BuyerViewingResultPage() {
       // API成功後はサーバーの値で確定する
       buyerRef.current = result.buyer;
       setBuyer(result.buyer);
+
+      // サイドバーカテゴリーに影響するフィールドが更新された場合はキャッシュを無効化
+      const SIDEBAR_AFFECTING_FIELDS = [
+        'seller_viewing_date_contact',
+        'next_call_date', 'follow_up_assignee', 'viewing_date', 'notification_sender',
+        'inquiry_email_phone', 'pinrich', 'latest_status', 'broker_inquiry',
+        'vendor_survey', 'viewing_type_general', 'post_viewing_seller_contact',
+        'viewing_unconfirmed',
+      ];
+      if (SIDEBAR_AFFECTING_FIELDS.includes(fieldName)) {
+        pageDataCache.invalidate(CACHE_KEYS.BUYERS_WITH_STATUS);
+      }
     } catch (error: any) {
       // API失敗時は元の値に戻す（ロールバック）
       console.error('Failed to update field:', error);

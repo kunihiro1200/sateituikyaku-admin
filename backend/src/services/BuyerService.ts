@@ -735,7 +735,7 @@ export class BuyerService {
    */
   private shouldUpdateBuyerSidebarCounts(updateData: Partial<any>): boolean {
     // サイドバーカテゴリーに影響するフィールド
-    const sidebarFields = ['next_call_date', 'follow_up_assignee', 'viewing_date', 'notification_sender', 'inquiry_email_phone', 'pinrich', 'inquiry_source', 'latest_status', 'broker_inquiry', 'pinrich_500man_registration', 'viewing_survey_result', 'viewing_survey_confirmed', 'vendor_survey', 'viewing_type_general', 'post_viewing_seller_contact', 'atbb_status', 'viewing_promotion_not_needed', 'viewing_promotion_sender', 'inquiry_confidence', 'inquiry_email_reply', 'three_call_unchecked'];
+    const sidebarFields = ['next_call_date', 'follow_up_assignee', 'viewing_date', 'notification_sender', 'inquiry_email_phone', 'pinrich', 'inquiry_source', 'latest_status', 'broker_inquiry', 'pinrich_500man_registration', 'viewing_survey_result', 'viewing_survey_confirmed', 'vendor_survey', 'viewing_type_general', 'post_viewing_seller_contact', 'atbb_status', 'viewing_promotion_not_needed', 'viewing_promotion_sender', 'inquiry_confidence', 'inquiry_email_reply', 'three_call_unchecked', 'seller_viewing_date_contact'];
     return sidebarFields.some(field => field in updateData);
   }
 
