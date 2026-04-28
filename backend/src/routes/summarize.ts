@@ -371,7 +371,16 @@ router.post('/enhance-email', authenticate, async (req: Request, res: Response) 
 - 改行・段落構成は元の本文に合わせる
 - 改善した本文のみを返す（説明文・コメント不要）`;
 
-    const userMessage = `${historySection}
+    const userMessage = enhanceMode === 'rewrite'
+      ? `${historySection}
+
+【今回の本文（書き直してください）】
+${currentBody}
+
+---
+上記の本文は約${currentBody.length}文字です。
+書き直し後は必ず${Math.floor(currentBody.length * 1.5)}文字以上、できれば${currentBody.length * 2}文字程度になるよう、内容を丁寧に膨らませてください。`
+      : `${historySection}
 
 【今回の本文（改善してください）】
 ${currentBody}`;
@@ -379,7 +388,7 @@ ${currentBody}`;
     const completion = await axios.post(
       'https://api.openai.com/v1/chat/completions',
       {
-        model: 'gpt-4o-mini',
+        model: enhanceMode === 'rewrite' ? 'gpt-4o' : 'gpt-4o-mini',
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userMessage },
