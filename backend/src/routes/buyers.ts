@@ -1161,34 +1161,6 @@ router.get('/other-company-distribution', authenticate, async (req: Request, res
   }
 });
 
-// 気づき（viewing_insight）が入力されている全買主を取得
-// ⚠️ /:id より前に定義しないと "insights" が id として解釈される
-router.get('/insights', async (req: Request, res: Response) => {
-  try {
-    const supabase = (buyerService as any).supabase;
-    // NULLフィルタはSupabaseのor構文では難しいため、全件取得してJS側でフィルタする
-    const { data, error } = await supabase
-      .from('buyers')
-      .select('buyer_number, name, property_number, property_address, viewing_date, follow_up_assignee, viewing_insight_executor, viewing_insight_companion')
-      .is('deleted_at', null)
-      .order('viewing_date', { ascending: false });
-
-    if (error) throw error;
-
-    // NULLでない かつ 空文字でないものだけに絞り込む
-    const filtered = (data || []).filter(
-      (b: any) =>
-        (b.viewing_insight_executor && b.viewing_insight_executor.trim() !== '') ||
-        (b.viewing_insight_companion && b.viewing_insight_companion.trim() !== '')
-    );
-
-    res.json(filtered);
-  } catch (error: any) {
-    console.error('[GET /buyers/insights] Error:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
 // ===== 汎用ルート（最後に定義する必要がある） =====
 
 // 個別取得（ID）
@@ -1685,5 +1657,26 @@ ${detailUrl}`;
   }
 });
 
+
+
+
+// 気づき（viewing_insight）が入力されている全買主を取得
+router.get('/insights', async (req: Request, res: Response) => {
+  try {
+    const supabase = (buyerService as any).supabase;
+    const { data, error } = await supabase
+      .from('buyers')
+      .select('buyer_number, name, property_number, property_address, viewing_date, follow_up_assignee, viewing_insight_executor, viewing_insight_companion')
+      .is('deleted_at', null)
+      .or('viewing_insight_executor.neq.,viewing_insight_companion.neq.')
+      .order('viewing_date', { ascending: false });
+
+    if (error) throw error;
+    res.json(data || []);
+  } catch (error: any) {
+    console.error('[GET /buyers/insights] Error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
 
 export default router;
