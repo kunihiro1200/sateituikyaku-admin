@@ -149,6 +149,92 @@ router.post('/sidebar-counts/update', async (req: Request, res: Response) => {
 router.use(authenticate);
 
 /**
+ * 売主追客ログスプレッドシートへの一括バックフィル
+ * POST /api/sellers/backfill-call-log
+ * 指定日以降のphone_callアクティビティをスプレッドシートに追記する（重複スキップ）
+ */
+router.post('/backfill-call-log', async (req: Request, res: Response) => {
+  try {
+    const fromDate = (req.body?.from as string) || '2026-04-13T00:00:00+09:00';
+    console.log(`[BackfillCallLog] Starting backfill from ${fromDate}`);
+
+    const supabase = (await import('../config/supabase')).default;
+    const { GoogleSheetsClient } = await import('../services/GoogleSheetsClient');
+
+    const sheetsClient = new GoogleSheetsClient({
+      spreadsheetId: '1wKBRLWbT6pSKa9IlTDabjhjTnfs_GxX6Rn6M6kbio1I',
+      sheetName: '売主追客ログ',
+      serviceAccountKeyPath: process.env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH,
+    });
+    await sheetsClient.authenticate();
+
+    const rawData = await sheetsClient.readRawRange('A:C');
+    const headers = rawData[0] || [];
+    const keyIdx = headers.findIndex((h: string) => h === '売主追客ログID');
+
+    const existingKeys = new Set<string>();
+    for (let i = 1; i < rawData.length; i++) {
+      const key = rawData[i][keyIdx];
+      if (key) existingKeys.add(String(key).trim());
+    }
+    console.log(`[BackfillCallLog] Existing keys in sheet: ${existingKeys.size}`);
+
+    const { data: activities, error } = await supabase
+      .from('activities')
+      .select(`id, seller_id, created_at, employees:employee_id (id, name, initials)`)
+      .eq('type', 'phone_call')
+      .gte('created_at', fromDate)
+      .order('created_at', { ascending: true });
+
+    if (error) throw error;
+    console.log(`[BackfillCallLog] DB activities found: ${activities?.length ?? 0}`);
+
+    const sellerIds = [...new Set((activities || []).map((a: any) => a.seller_id))];
+    const { data: sellers } = await supabase
+      .from('sellers').select('id, seller_number').in('id', sellerIds);
+
+    const sellerMap = new Map<string, string>();
+    for (const s of sellers || []) sellerMap.set(s.id, s.seller_number);
+
+    let written = 0, skipped = 0, failed = 0;
+
+    for (const activity of activities || []) {
+      const shortId = activity.id.substring(0, 8);
+      if (existingKeys.has(shortId)) { skipped++; continue; }
+
+      const sellerNumber = sellerMap.get(activity.seller_id);
+      if (!sellerNumber) { failed++; continue; }
+
+      const emp = (activity as any).employees;
+      const initials = emp?.initials || emp?.name || '?';
+      const jstDate = new Date(new Date(activity.created_at).getTime() + 9 * 60 * 60 * 1000);
+      const jstDateString = jstDate.toISOString().replace('T', ' ').substring(0, 19);
+
+      try {
+        await sheetsClient.appendRow({
+          '日付': jstDateString,
+          '売主追客ログID': shortId,
+          '売主番号': sellerNumber,
+          '担当（前半）': initials,
+        });
+        console.log(`[BackfillCallLog] ✅ ${sellerNumber} by ${initials} at ${jstDateString}`);
+        written++;
+        await new Promise(r => setTimeout(r, 300));
+      } catch (err: any) {
+        console.error(`[BackfillCallLog] ❌ ${sellerNumber}: ${err.message}`);
+        failed++;
+      }
+    }
+
+    console.log(`[BackfillCallLog] Done. written=${written}, skipped=${skipped}, failed=${failed}`);
+    res.json({ success: true, written, skipped, failed, total: (activities || []).length });
+  } catch (error: any) {
+    console.error('[BackfillCallLog] Error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
  * 売主を登録
  */
 router.post(
@@ -1801,109 +1887,6 @@ router.get('/:id/inquiry-url', async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Get inquiry URL error:', error);
     res.status(500).json({ error: 'Failed to get inquiry URL' });
-  }
-});
-
-/**
- * 売主追客ログスプレッドシートへの一括バックフィル
- * POST /api/sellers/backfill-call-log
- * 指定日以降のphone_callアクティビティをスプレッドシートに追記する（重複スキップ）
- */
-router.post('/backfill-call-log', async (req: Request, res: Response) => {
-  try {
-    const fromDate = (req.body?.from as string) || '2026-04-13T00:00:00+09:00';
-    console.log(`[BackfillCallLog] Starting backfill from ${fromDate}`);
-
-    const supabase = (await import('../config/supabase')).default;
-    const { GoogleSheetsClient } = await import('../services/GoogleSheetsClient');
-
-    // スプレッドシートの既存データを取得（重複チェック用）
-    const sheetsClient = new GoogleSheetsClient({
-      spreadsheetId: '1wKBRLWbT6pSKa9IlTDabjhjTnfs_GxX6Rn6M6kbio1I',
-      sheetName: '売主追客ログ',
-      serviceAccountKeyPath: process.env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH,
-    });
-    await sheetsClient.authenticate();
-
-    const rawData = await sheetsClient.readRawRange('A:C');
-    const headers = rawData[0] || [];
-    const keyIdx = headers.findIndex((h: string) => h === '売主追客ログID');
-
-    const existingKeys = new Set<string>();
-    for (let i = 1; i < rawData.length; i++) {
-      const key = rawData[i][keyIdx];
-      if (key) existingKeys.add(String(key).trim());
-    }
-    console.log(`[BackfillCallLog] Existing keys in sheet: ${existingKeys.size}`);
-
-    // DBからphone_callを取得
-    const { data: activities, error } = await supabase
-      .from('activities')
-      .select(`
-        id,
-        seller_id,
-        created_at,
-        employees:employee_id (
-          id,
-          name,
-          initials
-        )
-      `)
-      .eq('type', 'phone_call')
-      .gte('created_at', fromDate)
-      .order('created_at', { ascending: true });
-
-    if (error) throw error;
-    console.log(`[BackfillCallLog] DB activities found: ${activities?.length ?? 0}`);
-
-    // 売主番号を一括取得
-    const sellerIds = [...new Set((activities || []).map((a: any) => a.seller_id))];
-    const { data: sellers } = await supabase
-      .from('sellers')
-      .select('id, seller_number')
-      .in('id', sellerIds);
-
-    const sellerMap = new Map<string, string>();
-    for (const s of sellers || []) sellerMap.set(s.id, s.seller_number);
-
-    let written = 0, skipped = 0, failed = 0;
-
-    for (const activity of activities || []) {
-      const shortId = activity.id.substring(0, 8);
-      if (existingKeys.has(shortId)) { skipped++; continue; }
-
-      const sellerNumber = sellerMap.get(activity.seller_id);
-      if (!sellerNumber) { failed++; continue; }
-
-      const emp = (activity as any).employees;
-      const initials = emp?.initials || emp?.name || '?';
-
-      const createdAt = new Date(activity.created_at);
-      const jstDate = new Date(createdAt.getTime() + 9 * 60 * 60 * 1000);
-      const jstDateString = jstDate.toISOString().replace('T', ' ').substring(0, 19);
-
-      try {
-        await sheetsClient.appendRow({
-          '日付': jstDateString,
-          '売主追客ログID': shortId,
-          '売主番号': sellerNumber,
-          '担当（前半）': initials,
-        });
-        console.log(`[BackfillCallLog] ✅ ${sellerNumber} by ${initials} at ${jstDateString}`);
-        written++;
-        // レート制限対策
-        await new Promise(r => setTimeout(r, 300));
-      } catch (err: any) {
-        console.error(`[BackfillCallLog] ❌ ${sellerNumber}: ${err.message}`);
-        failed++;
-      }
-    }
-
-    console.log(`[BackfillCallLog] Done. written=${written}, skipped=${skipped}, failed=${failed}`);
-    res.json({ success: true, written, skipped, failed, total: (activities || []).length });
-  } catch (error: any) {
-    console.error('[BackfillCallLog] Error:', error);
-    res.status(500).json({ success: false, error: error.message });
   }
 });
 
