@@ -298,12 +298,9 @@ export class PropertyListingService {
       }
     }
 
-    // e_label_checked はDBカラム追加後に有効化（現時点では除外）
-    const { e_label_checked: _eLabelChecked, ...safeUpdates } = updates;
-
     const { data, error } = await this.supabase
       .from('property_listings')
-      .update({ ...safeUpdates, updated_at: new Date().toISOString() })
+      .update({ ...updates, updated_at: new Date().toISOString() })
       .eq('property_number', propertyNumber)
       .select()
       .single();
