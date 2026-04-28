@@ -425,57 +425,81 @@ export default function PropertyReportPage() {
     setImageSelectorOpen(false);
   };
 
-  const handleEnhanceEmail = async () => {
+  // SSEストリーミングでAIメール改善を実行する共通関数
+  const streamEnhanceEmail = async (mode: 'light' | 'rewrite', setLoading: (v: boolean) => void, successMsg: string) => {
     if (!editBody.trim()) return;
-    setEnhancing(true);
-    try {
-      const previousBodies = reportHistory
-        .slice(0, 3)
-        .map((h) => h.body)
-        .filter((b): b is string => !!b);
+    setLoading(true);
+    const originalBody = editBody; // エラー時の復元用
+    setEditBody('');
 
-      const response = await api.post('/api/summarize/enhance-email', {
-        currentBody: editBody,
-        previousBodies,
-        mode: 'light',
+    const previousBodies = reportHistory
+      .slice(0, 3)
+      .map((h) => h.body)
+      .filter((b): b is string => !!b);
+
+    const API_BASE_URL = import.meta.env.MODE === 'production'
+      ? 'https://sateituikyaku-admin-backend.vercel.app'
+      : (import.meta.env.VITE_API_URL || 'http://localhost:3000');
+
+    const sessionToken = localStorage.getItem('session_token');
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/summarize/enhance-email`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(sessionToken ? { Authorization: `Bearer ${sessionToken}` } : {}),
+        },
+        body: JSON.stringify({ currentBody: originalBody, previousBodies, mode }),
       });
-      if (response.data?.enhancedBody) {
-        setEditBody(response.data.enhancedBody);
-        setSnackbar({ open: true, message: 'AIが本文を改善しました', severity: 'success' });
+
+      if (!response.ok || !response.body) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.error || 'AI改善に失敗しました');
       }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let accumulated = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value, { stream: true });
+        const lines = chunk.split('\n').filter((l) => l.trim());
+
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          const data = line.slice(6);
+          if (data === '[DONE]') break;
+          try {
+            const parsed = JSON.parse(data);
+            if (parsed.error) throw new Error(parsed.error);
+            if (parsed.token) {
+              accumulated += parsed.token;
+              setEditBody(accumulated);
+            }
+          } catch (e: any) {
+            if (e.message && e.message !== 'Unexpected end of JSON input') throw e;
+          }
+        }
+      }
+
+      setSnackbar({ open: true, message: successMsg, severity: 'success' });
     } catch (error: any) {
-      const errMsg = error.response?.data?.error || 'AI改善に失敗しました';
-      setSnackbar({ open: true, message: errMsg, severity: 'error' });
+      setSnackbar({ open: true, message: error.message || 'AI改善に失敗しました', severity: 'error' });
+      setEditBody(originalBody); // エラー時は元の本文を復元
     } finally {
-      setEnhancing(false);
+      setLoading(false);
     }
   };
 
-  const handleRewriteEmail = async () => {
-    if (!editBody.trim()) return;
-    setRewriting(true);
-    try {
-      const previousBodies = reportHistory
-        .slice(0, 3)
-        .map((h) => h.body)
-        .filter((b): b is string => !!b);
+  const handleEnhanceEmail = () =>
+    streamEnhanceEmail('light', setEnhancing, 'AIが本文を改善しました');
 
-      const response = await api.post('/api/summarize/enhance-email', {
-        currentBody: editBody,
-        previousBodies,
-        mode: 'rewrite',
-      });
-      if (response.data?.enhancedBody) {
-        setEditBody(response.data.enhancedBody);
-        setSnackbar({ open: true, message: 'AIが本文を大幅にリライトしました', severity: 'success' });
-      }
-    } catch (error: any) {
-      const errMsg = error.response?.data?.error || 'AIリライトに失敗しました';
-      setSnackbar({ open: true, message: errMsg, severity: 'error' });
-    } finally {
-      setRewriting(false);
-    }
-  };
+  const handleRewriteEmail = () =>
+    streamEnhanceEmail('rewrite', setRewriting, 'AIが本文を大幅にリライトしました');
 
   const handleSend = async () => {
     if (!pendingSendHistory) return;

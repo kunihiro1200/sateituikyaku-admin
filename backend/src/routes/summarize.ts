@@ -320,7 +320,6 @@ B'（売却意欲が低い・価格確認だけ・様子見・興味薄い）
 router.post('/enhance-email', authenticate, async (req: Request, res: Response) => {
   try {
     const { currentBody, previousBodies, mode } = req.body;
-    // mode: 'light'（軽微な改善）または 'rewrite'（大幅リライト）、デフォルトは 'light'
     const enhanceMode: 'light' | 'rewrite' = mode === 'rewrite' ? 'rewrite' : 'light';
 
     if (!currentBody || typeof currentBody !== 'string' || currentBody.trim().length === 0) {
@@ -333,7 +332,6 @@ router.post('/enhance-email', authenticate, async (req: Request, res: Response) 
       return res.status(500).json({ error: 'OpenAI API key not configured' });
     }
 
-    // 過去の送信履歴を整形
     const historySection = Array.isArray(previousBodies) && previousBodies.length > 0
       ? `【過去に送った本文（直近${previousBodies.length}件）】\n` +
         previousBodies.map((b, i) => `--- 過去${i + 1}回目 ---\n${b}`).join('\n\n')
@@ -385,7 +383,13 @@ ${currentBody}
 【今回の本文（改善してください）】
 ${currentBody}`;
 
-    const completion = await axios.post(
+    // SSEヘッダーを設定してストリーミング開始
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.flushHeaders();
+
+    const streamResponse = await axios.post(
       'https://api.openai.com/v1/chat/completions',
       {
         model: enhanceMode === 'rewrite' ? 'gpt-4o' : 'gpt-4o-mini',
@@ -395,34 +399,66 @@ ${currentBody}`;
         ],
         temperature: enhanceMode === 'rewrite' ? 1.0 : 0.7,
         max_tokens: enhanceMode === 'rewrite' ? 2500 : 1500,
+        stream: true,
       },
       {
         headers: {
           'Authorization': `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
         },
-        timeout: 30000,
+        responseType: 'stream',
+        timeout: 60000,
       }
     );
 
-    const enhancedBody = completion.data?.choices?.[0]?.message?.content?.trim() || '';
-    if (!enhancedBody) {
-      return res.status(500).json({ error: 'AIからの応答が空でした' });
-    }
+    streamResponse.data.on('data', (chunk: Buffer) => {
+      const lines = chunk.toString().split('\n').filter((l: string) => l.trim());
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        const data = line.slice(6);
+        if (data === '[DONE]') {
+          res.write('data: [DONE]\n\n');
+          res.end();
+          return;
+        }
+        try {
+          const parsed = JSON.parse(data);
+          const token = parsed.choices?.[0]?.delta?.content;
+          if (token) {
+            res.write(`data: ${JSON.stringify({ token })}\n\n`);
+          }
+        } catch {
+          // パースエラーは無視
+        }
+      }
+    });
 
-    return res.json({ enhancedBody });
+    streamResponse.data.on('end', () => {
+      res.write('data: [DONE]\n\n');
+      res.end();
+    });
+
+    streamResponse.data.on('error', (err: Error) => {
+      console.error('[enhance-email] Stream error:', err.message);
+      res.write(`data: ${JSON.stringify({ error: 'ストリームエラーが発生しました' })}\n\n`);
+      res.end();
+    });
+
   } catch (error: any) {
     const status = error?.response?.status;
     const errMsg = error?.response?.data?.error?.message || error.message;
     console.error(`[enhance-email] Error (HTTP ${status}):`, errMsg);
 
-    if (status === 429) {
-      return res.status(429).json({ error: 'APIの利用制限に達しました。しばらく待ってから再試行してください。' });
+    if (!res.headersSent) {
+      if (status === 429) {
+        return res.status(429).json({ error: 'APIの利用制限に達しました。しばらく待ってから再試行してください。' });
+      }
+      if (status === 401) {
+        return res.status(401).json({ error: 'OpenAI APIキーが無効です。' });
+      }
+      return res.status(500).json({ error: 'メール改善に失敗しました' });
     }
-    if (status === 401) {
-      return res.status(401).json({ error: 'OpenAI APIキーが無効です。' });
-    }
-    return res.status(500).json({ error: 'メール改善に失敗しました' });
+    res.end();
   }
 });
 
