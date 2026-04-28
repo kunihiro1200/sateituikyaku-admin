@@ -73,6 +73,7 @@ import PropertyMapSection from '../components/PropertyMapSection';
 import NearbyBuyersList from '../components/NearbyBuyersList';
 import { VisitPreparationButton } from '../components/VisitPreparationButton';
 import CollapsibleSection from '../components/CollapsibleSection';
+import CommentHighlightsPanel from '../components/CommentHighlightsPanel';
 
 import { formatCurrentStatusDetailed } from '../utils/propertyStatusFormatter';
 import PageNavigation from '../components/PageNavigation';
@@ -7369,6 +7370,9 @@ HP：https://ifoo-oita.com/
                 />
               </Box>
             </Box>
+
+            {/* AIコメントまとめフィールド（クイックボタン関連項目をAIで抽出） */}
+            <CommentHighlightsPanel commentHtml={savedComments} />
 
             {/* コメント入力・編集エリア（直接書き込み可能） */}
             <Box sx={{ mb: 2 }}>
