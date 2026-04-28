@@ -1474,8 +1474,11 @@ export class SellerService extends BaseRepository {
           break;
         }
         case 'mailingPending':
-          // 査定（郵送）（郵送ステータスが「未」）
-          query = query.eq('mailing_status', '未');
+          // 査定（郵送）: SellerSidebarCountsUpdateServiceと同じ条件
+          query = query
+            .in('status', ['追客中', '除外後追客中', '他決→追客'])
+            .eq('valuation_method', '机上査定（郵送）')
+            .eq('mailing_status', '未');
           break;
         case 'todayCallNotStarted': {
           // 当日TEL_未着手: 全条件をDBレベルで直接フィルタ（IDリスト方式を廃止）
@@ -2650,7 +2653,7 @@ export class SellerService extends BaseRepository {
         .ilike('status', '%追客中%')
         .gte('inquiry_date', cutoffDate)
         .or('visit_assignee.is.null,visit_assignee.eq.,visit_assignee.eq.外す'),
-      // 7. 査定（郵送）カウント
+      // 7. 査定（郵送）カウント（条件: SellerSidebarCountsUpdateServiceと同じ）
       this.table('sellers')
         .select('*', { count: 'exact', head: true })
         .is('deleted_at', null)
