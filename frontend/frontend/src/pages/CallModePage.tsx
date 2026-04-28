@@ -3305,29 +3305,18 @@ HP：https://ifoo-oita.com/
     // 訪問日時
     // appointmentDate: TIMESTAMPTZ（"YYYY-MM-DDTHH:mm:ss.sssZ" UTC形式）→ new Date() で JST に変換
     // ただし古いデータが "YYYY-MM-DD HH:mm:ss" 形式（タイムゾーンなし）の場合は parseVisitDateToLocal を使用
-    console.log('[visitReminder DEBUG] appointmentDate raw:', JSON.stringify(seller.appointmentDate));
-    console.log('[visitReminder DEBUG] visitDate raw:', JSON.stringify(seller.visitDate));
-    console.log('[visitReminder DEBUG] visitTime raw:', JSON.stringify(seller.visitTime));
     if (seller.appointmentDate) {
+      // appointmentDate は "YYYY-MM-DDTHH:mm:ss+00:00" 形式（UTC）で来る
+      // new Date() でパースすると JST +9時間になるため、タイムゾーン部分を除去して直接パース
       const apptStr = String(seller.appointmentDate);
-      let apptMonth: number, apptDay: number, apptHour: number, apptMin: number;
-      if (apptStr.includes('Z') || apptStr.includes('+')) {
-        // UTC形式 → new Date() でJSTに変換（正しい）
-        const appointmentDate = new Date(apptStr);
-        apptMonth = appointmentDate.getMonth() + 1;
-        apptDay = appointmentDate.getDate();
-        apptHour = appointmentDate.getHours();
-        apptMin = appointmentDate.getMinutes();
-      } else {
-        // タイムゾーンなし形式 → parseVisitDateToLocal で直接パース（UTC解釈を回避）
-        const localStr = parseVisitDateToLocal(apptStr); // "YYYY-MM-DDTHH:mm"
-        const [apptDatePart, apptTimePart = '00:00'] = localStr.split('T');
-        const [ay, am, ad] = apptDatePart.split('-').map(Number);
-        const [ah, aMin] = apptTimePart.split(':').map(Number);
-        apptMonth = am; apptDay = ad; apptHour = ah; apptMin = aMin;
-      }
-      const dateStr = `${apptMonth}月${apptDay}日`;
-      const timeStr = `${apptHour}:${String(apptMin).padStart(2, '0')}`;
+      // タイムゾーン情報（+00:00, Z, +09:00 など）を除去して "YYYY-MM-DDTHH:mm:ss" にする
+      const apptStrNoTz = apptStr.replace(/([+-]\d{2}:\d{2}|Z)$/, '');
+      const localStr = parseVisitDateToLocal(apptStrNoTz); // "YYYY-MM-DDTHH:mm"
+      const [apptDatePart, apptTimePart = '00:00'] = localStr.split('T');
+      const [, am, ad] = apptDatePart.split('-').map(Number);
+      const [ah, aMin] = apptTimePart.split(':').map(Number);
+      const dateStr = `${am}月${ad}日`;
+      const timeStr = `${ah}:${String(aMin).padStart(2, '0')}`;
       result = result.replace(/<<訪問日>>/g, dateStr);
       result = result.replace(/<<時間>>/g, timeStr);
     } else if (seller.visitDate) {
