@@ -149,6 +149,7 @@ export default function PropertyReportPage() {
   const [emailJustSent, setEmailJustSent] = useState(false);
   const [sending, setSending] = useState(false);
   const [enhancing, setEnhancing] = useState(false);
+  const [rewriting, setRewriting] = useState(false);
   // 画像添付用ステート
   const [imageSelectorOpen, setImageSelectorOpen] = useState(false);
   const [selectedImages, setSelectedImages] = useState<any[]>([]);
@@ -428,7 +429,6 @@ export default function PropertyReportPage() {
     if (!editBody.trim()) return;
     setEnhancing(true);
     try {
-      // 過去の送信履歴から本文を取得（最新3件）
       const previousBodies = reportHistory
         .slice(0, 3)
         .map((h) => h.body)
@@ -437,6 +437,7 @@ export default function PropertyReportPage() {
       const response = await api.post('/api/summarize/enhance-email', {
         currentBody: editBody,
         previousBodies,
+        mode: 'light',
       });
       if (response.data?.enhancedBody) {
         setEditBody(response.data.enhancedBody);
@@ -447,6 +448,32 @@ export default function PropertyReportPage() {
       setSnackbar({ open: true, message: errMsg, severity: 'error' });
     } finally {
       setEnhancing(false);
+    }
+  };
+
+  const handleRewriteEmail = async () => {
+    if (!editBody.trim()) return;
+    setRewriting(true);
+    try {
+      const previousBodies = reportHistory
+        .slice(0, 3)
+        .map((h) => h.body)
+        .filter((b): b is string => !!b);
+
+      const response = await api.post('/api/summarize/enhance-email', {
+        currentBody: editBody,
+        previousBodies,
+        mode: 'rewrite',
+      });
+      if (response.data?.enhancedBody) {
+        setEditBody(response.data.enhancedBody);
+        setSnackbar({ open: true, message: 'AIが本文を大幅にリライトしました', severity: 'success' });
+      }
+    } catch (error: any) {
+      const errMsg = error.response?.data?.error || 'AIリライトに失敗しました';
+      setSnackbar({ open: true, message: errMsg, severity: 'error' });
+    } finally {
+      setRewriting(false);
     }
   };
 
@@ -1091,11 +1118,22 @@ export default function PropertyReportPage() {
               color="secondary"
               startIcon={enhancing ? <CircularProgress size={16} /> : <AutoFixHighIcon />}
               onClick={handleEnhanceEmail}
-              disabled={enhancing || !editBody.trim()}
+              disabled={enhancing || rewriting || !editBody.trim()}
               fullWidth
               size="small"
             >
-              {enhancing ? 'AI改善中...' : 'AIで本文を改善（過去の履歴を参考に）'}
+              {enhancing ? 'AI改善中...' : 'AIで微調整（言い回しを少し変える）'}
+            </Button>
+            <Button
+              variant="outlined"
+              color="warning"
+              startIcon={rewriting ? <CircularProgress size={16} /> : <AutoFixHighIcon />}
+              onClick={handleRewriteEmail}
+              disabled={enhancing || rewriting || !editBody.trim()}
+              fullWidth
+              size="small"
+            >
+              {rewriting ? 'AIリライト中...' : 'AIで大幅リライト（別のアプローチで書き直す）'}
             </Button>
             {/* 画像添付ボタン */}
             <Box sx={{ mt: 1 }}>

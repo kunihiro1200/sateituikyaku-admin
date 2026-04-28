@@ -319,7 +319,9 @@ B'（売却意欲が低い・価格確認だけ・様子見・興味薄い）
  */
 router.post('/enhance-email', authenticate, async (req: Request, res: Response) => {
   try {
-    const { currentBody, previousBodies } = req.body;
+    const { currentBody, previousBodies, mode } = req.body;
+    // mode: 'light'（軽微な改善）または 'rewrite'（大幅リライト）、デフォルトは 'light'
+    const enhanceMode: 'light' | 'rewrite' = mode === 'rewrite' ? 'rewrite' : 'light';
 
     if (!currentBody || typeof currentBody !== 'string' || currentBody.trim().length === 0) {
       return res.status(400).json({ error: 'currentBody は必須です' });
@@ -337,7 +339,18 @@ router.post('/enhance-email', authenticate, async (req: Request, res: Response) 
         previousBodies.map((b, i) => `--- 過去${i + 1}回目 ---\n${b}`).join('\n\n')
       : '（過去の送信履歴なし）';
 
-    const systemPrompt = `あなたは不動産会社の丁寧なメール文章アシスタントです。
+    const systemPrompt = enhanceMode === 'rewrite'
+      ? `あなたは不動産会社の丁寧なメール文章アシスタントです。
+売主への報告メールの本文を、同じ趣旨・内容を保ちながら、全く異なるアプローチで書き直してください。
+
+【ルール】
+- 伝える情報・趣旨は元の本文と同じにする
+- 文章の構成・切り口・言い回しを大きく変える（例：冒頭の入り方を変える、段落の順序を変える、別の表現で言い換えるなど）
+- 敬語・丁寧語を適切に使う
+- 過去に送った本文と同じ表現・構成にならないよう意識する
+- 署名部分（「---」以降や「よろしくお願いいたします」以降の名前・会社名など）は変更しない
+- 書き直した本文のみを返す（説明文・コメント不要）`
+      : `あなたは不動産会社の丁寧なメール文章アシスタントです。
 売主への報告メールの本文を、自然で読みやすい日本語に改善してください。
 
 【ルール】
