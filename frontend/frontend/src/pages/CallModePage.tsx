@@ -7368,11 +7368,101 @@ HP：https://ifoo-oita.com/
                     }),
                   }}
                 />
+                <Chip
+                  label="ハウスメーカー"
+                  onClick={() => {
+                    handleQuickButtonClick('call-memo-house-maker');
+                    appendBoldText('ハウスメーカー：');
+                  }}
+                  size="small"
+                  clickable
+                  disabled={isButtonDisabled('call-memo-house-maker')}
+                  sx={{
+                    ...(getButtonState('call-memo-house-maker') === 'pending' && {
+                      backgroundColor: '#fff9c4',
+                      textDecoration: 'line-through',
+                      color: 'text.secondary',
+                    }),
+                    ...(getButtonState('call-memo-house-maker') === 'persisted' && {
+                      backgroundColor: '#e0e0e0',
+                      textDecoration: 'line-through',
+                      color: 'text.disabled',
+                    }),
+                  }}
+                />
+                <Chip
+                  label="売却理由"
+                  onClick={() => {
+                    handleQuickButtonClick('call-memo-sell-reason');
+                    appendBoldText('売却理由：');
+                  }}
+                  size="small"
+                  clickable
+                  disabled={isButtonDisabled('call-memo-sell-reason')}
+                  sx={{
+                    ...(getButtonState('call-memo-sell-reason') === 'pending' && {
+                      backgroundColor: '#fff9c4',
+                      textDecoration: 'line-through',
+                      color: 'text.secondary',
+                    }),
+                    ...(getButtonState('call-memo-sell-reason') === 'persisted' && {
+                      backgroundColor: '#e0e0e0',
+                      textDecoration: 'line-through',
+                      color: 'text.disabled',
+                    }),
+                  }}
+                />
+                <Chip
+                  label="表札確認"
+                  onClick={() => {
+                    handleQuickButtonClick('call-memo-nameplate');
+                    appendBoldText('表札確認：');
+                  }}
+                  size="small"
+                  clickable
+                  disabled={isButtonDisabled('call-memo-nameplate')}
+                  sx={{
+                    ...(getButtonState('call-memo-nameplate') === 'pending' && {
+                      backgroundColor: '#fff9c4',
+                      textDecoration: 'line-through',
+                      color: 'text.secondary',
+                    }),
+                    ...(getButtonState('call-memo-nameplate') === 'persisted' && {
+                      backgroundColor: '#e0e0e0',
+                      textDecoration: 'line-through',
+                      color: 'text.disabled',
+                    }),
+                  }}
+                />
               </Box>
             </Box>
 
             {/* AIコメントまとめフィールド（クイックボタン関連項目をAIで抽出） */}
-            <CommentHighlightsPanel commentHtml={savedComments} />
+            <CommentHighlightsPanel
+              commentHtml={savedComments}
+              quickButtonIds={[
+                { id: 'call-memo-b-prime', label: "B'" },
+                { id: 'call-memo-wood-2f', label: '木造２F' },
+                { id: 'call-memo-land-area', label: '土地面積' },
+                { id: 'call-memo-solar', label: '太陽光' },
+                { id: 'call-memo-desk-valuation', label: '机上査定' },
+                { id: 'call-memo-waiting-other', label: '他社待ち' },
+                { id: 'call-memo-surprised-high', label: '査定額反応' },
+                { id: 'call-memo-ownership', label: '名義' },
+                { id: 'call-memo-loan', label: 'ローン' },
+                { id: 'call-memo-willing-sell', label: '売る気あり' },
+                { id: 'call-memo-considering', label: '検討中' },
+                { id: 'call-memo-unreachable', label: '不通' },
+                { id: 'call-memo-cancel-guidance', label: 'キャンセル案内' },
+                { id: 'call-memo-transfer-income-tax', label: '譲渡所得税' },
+                { id: 'call-memo-has-customer', label: 'お客様います' },
+                { id: 'call-memo-our-referral', label: '当社紹介' },
+                { id: 'call-memo-house-maker', label: 'ハウスメーカー' },
+                { id: 'call-memo-sell-reason', label: '売却理由' },
+                { id: 'call-memo-nameplate', label: '表札確認' },
+              ]}
+              getButtonState={getButtonState}
+            />
 
             {/* コメント入力・編集エリア（直接書き込み可能） */}
             <Box sx={{ mb: 2 }}>
