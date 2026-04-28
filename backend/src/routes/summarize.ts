@@ -298,7 +298,16 @@ B'（売却意欲が低い・価格確認だけ・様子見・興味薄い）
 
     return res.json({ highlights });
   } catch (error: any) {
-    console.error('[comment-highlights] Error:', error.message);
+    const status = error?.response?.status;
+    const errMsg = error?.response?.data?.error?.message || error.message;
+    console.error(`[comment-highlights] Error (HTTP ${status}):`, errMsg);
+
+    if (status === 429) {
+      return res.status(429).json({ error: 'rate_limit', highlights: [] });
+    }
+    if (status === 401) {
+      return res.status(401).json({ error: 'invalid_api_key', highlights: [] });
+    }
     return res.status(500).json({ error: 'Failed to extract highlights', highlights: [] });
   }
 });

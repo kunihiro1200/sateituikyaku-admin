@@ -30,9 +30,14 @@ const CommentHighlightsPanel: React.FC<CommentHighlightsPanelProps> = ({ comment
     try {
       const res = await api.post('/summarize/comment-highlights', { commentText: html });
       setHighlights(res.data.highlights || []);
-    } catch (e) {
+    } catch (e: any) {
       console.error('[CommentHighlightsPanel] fetch error:', e);
-      setError('取得に失敗しました');
+      const status = e?.response?.status;
+      if (status === 429) {
+        setError('APIの利用制限中です。しばらく待ってから🔄で再取得してください');
+      } else {
+        setError('取得に失敗しました');
+      }
     } finally {
       setLoading(false);
     }
