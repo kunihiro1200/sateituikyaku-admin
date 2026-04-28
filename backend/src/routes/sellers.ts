@@ -2141,7 +2141,7 @@ HTMLのbodyタグ内のコンテンツのみを出力してください（html�
       },
       {
         headers: {
-          'Authorization': \Bearer \,
+          'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
           'Content-Type': 'application/json',
         },
         timeout: 60000,
