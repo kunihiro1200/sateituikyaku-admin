@@ -46,6 +46,7 @@ export class EmailService extends BaseRepository {
       // RFC 2822形式のメールを作成
       const toHeader = validRecipients.join(', ');
       const rawMessage = [
+        'From: tenant@ifoo-oita.com',
         `To: ${toHeader}`,
         `Subject: =?UTF-8?B?${Buffer.from(subject).toString('base64')}?=`,
         'MIME-Version: 1.0',
