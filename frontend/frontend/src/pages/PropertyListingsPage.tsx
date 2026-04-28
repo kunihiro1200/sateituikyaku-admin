@@ -60,6 +60,7 @@ interface PropertyListing {
   seller_name?: string;
   seller_email?: string;
   seller_phone?: string;
+  seller_contact?: string;
   buyer_name?: string;
   contract_date?: string;
   settlement_date?: string;
@@ -382,6 +383,7 @@ export default function PropertyListingsPage() {
         (l.seller_name ? normalizeText(l.seller_name) : '').includes(query) ||
         (l.seller_email ? normalizeText(l.seller_email) : '').includes(query) ||
         (l.seller_phone ? normalizeText(l.seller_phone) : '').includes(query) ||
+        (l.seller_contact ? normalizeText(l.seller_contact) : '').includes(query) ||
         (l.buyer_name ? normalizeText(l.buyer_name) : '').includes(query) ||
         (l.price != null ? normalizeText(String(l.price)) === query : false)
       );

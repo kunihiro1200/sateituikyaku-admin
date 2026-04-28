@@ -100,6 +100,7 @@ export class PropertyListingService {
         seller_name,
         seller_email,
         seller_phone,
+        seller_contact,
         buyer_name,
         sales_assignee,
         status,
@@ -118,13 +119,14 @@ export class PropertyListingService {
         display_address,
         offer_status,
         price_reduction_scheduled_date,
+        private_mail_delivery,
         created_at,
         updated_at
       `, { count: 'exact' });
 
     // フィルタリング
     if (search) {
-      query = query.or(`property_number.ilike.%${search}%,address.ilike.%${search}%,display_address.ilike.%${search}%,seller_name.ilike.%${search}%,seller_email.ilike.%${search}%,seller_phone.ilike.%${search}%`);
+      query = query.or(`property_number.ilike.%${search}%,address.ilike.%${search}%,display_address.ilike.%${search}%,seller_name.ilike.%${search}%,seller_email.ilike.%${search}%,seller_phone.ilike.%${search}%,seller_contact.ilike.%${search}%`);
     }
     if (status) {
       query = query.eq('status', status);
