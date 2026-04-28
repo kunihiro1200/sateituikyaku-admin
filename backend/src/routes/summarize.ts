@@ -318,7 +318,18 @@ B'（売却意欲が低い・価格確認だけ・様子見・興味薄い）
       console.error('[comment-highlights] JSON parse error:', e, raw);
     }
 
-    return res.json({ highlights, other_summary: otherSummary });
+    // 後処理フィルタリング：土地面積カテゴリに価格・金額が混入している場合はother_summaryに移動
+    const filteredHighlights: string[] = [];
+    for (const item of highlights) {
+      if (item.startsWith('土地面積') && /万円|価格|査定|予想|円|~|〜/.test(item)) {
+        // 土地面積カテゴリなのに金額情報が含まれている → その他に移動
+        otherSummary = [item.replace(/^土地面積[：:]?\s*/, ''), ...otherSummary];
+      } else {
+        filteredHighlights.push(item);
+      }
+    }
+
+    return res.json({ highlights: filteredHighlights, other_summary: otherSummary });
   } catch (error: any) {
     const status = error?.response?.status;
     const errMsg = error?.response?.data?.error?.message || error.message;
