@@ -308,6 +308,7 @@ async function appendCallLogToSpreadsheet(
   });
 
   await sheetsClient.authenticate();
+  console.log(`[CallLog] Authentication successful, preparing row data`);
 
   // 追記するデータ（ヘッダーに合わせた列名で指定）
   const rowData: Record<string, string> = {
@@ -319,7 +320,7 @@ async function appendCallLogToSpreadsheet(
 
   console.log(`[CallLog] Attempting to append row: ${JSON.stringify(rowData)}`);
   await sheetsClient.appendRow(rowData);
-  console.log(`[CallLog] Appended to spreadsheet: ${sellerNumber} by ${initials} at ${jstDateString}`);
+  console.log(`[CallLog] SUCCESS - Appended to spreadsheet: ${sellerNumber} by ${initials} at ${jstDateString}`);
 }
 
 export default router;

@@ -314,6 +314,7 @@ export class GoogleSheetsClient {
 
     this.ensureAuthenticated();
     const range = `'${this.config.sheetName}'!1:1`;
+    console.log(`[GoogleSheetsClient.getHeaders] Fetching headers for sheet: ${this.config.sheetName}, range: ${range}`);
     
     const response = await this.sheets!.spreadsheets.values.get({
       spreadsheetId: this.config.spreadsheetId,
@@ -321,6 +322,7 @@ export class GoogleSheetsClient {
     });
 
     const headers = response.data.values?.[0] || [];
+    console.log(`[GoogleSheetsClient.getHeaders] Got ${headers.length} headers: ${JSON.stringify(headers.slice(0, 10))}`);
     this.headerCache = headers as string[];
     return this.headerCache;
   }
