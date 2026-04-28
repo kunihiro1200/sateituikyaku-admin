@@ -77,7 +77,7 @@ router.post(
           activity.id,
           sellerId,
           req.employee!.initials || req.employee!.name,
-          new Date(activity.createdAt)
+          new Date((activity as any).created_at || activity.createdAt)
         ).catch((err: any) => {
           console.error('[CallLog] Failed to append to spreadsheet:', err.message, err.stack);
         });
