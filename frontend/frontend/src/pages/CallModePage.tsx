@@ -3303,10 +3303,28 @@ HP：https://ifoo-oita.com/
     result = result.replace(/<<担当名（営業）メールアドレス>>/g, assignedEmployee?.email || employee?.email || '');
     
     // 訪問日時
+    // appointmentDate: TIMESTAMPTZ（"YYYY-MM-DDTHH:mm:ss.sssZ" UTC形式）→ new Date() で JST に変換
+    // ただし古いデータが "YYYY-MM-DD HH:mm:ss" 形式（タイムゾーンなし）の場合は parseVisitDateToLocal を使用
     if (seller.appointmentDate) {
-      const appointmentDate = new Date(seller.appointmentDate);
-      const dateStr = `${appointmentDate.getMonth() + 1}月${appointmentDate.getDate()}日`;
-      const timeStr = `${appointmentDate.getHours()}:${appointmentDate.getMinutes().toString().padStart(2, '0')}`;
+      const apptStr = String(seller.appointmentDate);
+      let apptMonth: number, apptDay: number, apptHour: number, apptMin: number;
+      if (apptStr.includes('Z') || apptStr.includes('+')) {
+        // UTC形式 → new Date() でJSTに変換（正しい）
+        const appointmentDate = new Date(apptStr);
+        apptMonth = appointmentDate.getMonth() + 1;
+        apptDay = appointmentDate.getDate();
+        apptHour = appointmentDate.getHours();
+        apptMin = appointmentDate.getMinutes();
+      } else {
+        // タイムゾーンなし形式 → parseVisitDateToLocal で直接パース（UTC解釈を回避）
+        const localStr = parseVisitDateToLocal(apptStr); // "YYYY-MM-DDTHH:mm"
+        const [apptDatePart, apptTimePart = '00:00'] = localStr.split('T');
+        const [ay, am, ad] = apptDatePart.split('-').map(Number);
+        const [ah, aMin] = apptTimePart.split(':').map(Number);
+        apptMonth = am; apptDay = ad; apptHour = ah; apptMin = aMin;
+      }
+      const dateStr = `${apptMonth}月${apptDay}日`;
+      const timeStr = `${apptHour}:${String(apptMin).padStart(2, '0')}`;
       result = result.replace(/<<訪問日>>/g, dateStr);
       result = result.replace(/<<時間>>/g, timeStr);
     } else if (seller.visitDate) {
