@@ -72,8 +72,10 @@ import { pageDataCache, sellerDetailCacheKey, CACHE_KEYS } from '../store/pageDa
 import PropertyMapSection from '../components/PropertyMapSection';
 import NearbyBuyersList from '../components/NearbyBuyersList';
 import { VisitPreparationButton } from '../components/VisitPreparationButton';
+import AreaReportModal from '../components/AreaReportModal';
 import CollapsibleSection from '../components/CollapsibleSection';
 import CommentHighlightsPanel from '../components/CommentHighlightsPanel';
+import HouseMakerModal from '../components/HouseMakerModal';
 
 import { formatCurrentStatusDetailed } from '../utils/propertyStatusFormatter';
 import PageNavigation from '../components/PageNavigation';
@@ -734,6 +736,9 @@ const CallModePage = () => {
   const [savedComments, setSavedComments] = useState<string>(''); // 保存済みコメント（変更検知用）
   const [savingComments, setSavingComments] = useState(false);
 
+  // ハウスメーカーモーダルの状態
+  const [houseMakerModalOpen, setHouseMakerModalOpen] = useState(false);
+
   // 不通確認ダイアログの状態
   const [unreachableConfirmOpen, setUnreachableConfirmOpen] = useState(false);
 
@@ -852,6 +857,8 @@ const CallModePage = () => {
 
   // ドキュメントモーダル用の状態
   const [documentModalOpen, setDocumentModalOpen] = useState(false);
+  // エリア情勢レポートモーダル用の状態
+  const [areaReportOpen, setAreaReportOpen] = useState(false);
   const [detailsError, setDetailsError] = useState<string | null>(null);
 
   // 訪問予約編集用の状態
@@ -4397,6 +4404,20 @@ HP：https://ifoo-oita.com/
               画像
             </Button>
 
+            {/* エリア情勢レポートボタン */}
+            <Button
+              variant="outlined"
+              onClick={() => setAreaReportOpen(true)}
+              size="small"
+              sx={{
+                borderColor: '#1a237e',
+                color: '#1a237e',
+                '&:hover': { borderColor: '#283593', backgroundColor: '#e8eaf6' },
+              }}
+            >
+              エリア情勢
+            </Button>
+
             {/* Emailテンプレート選択 */}
             <FormControl size="small" sx={{ minWidth: 200 }}>
               <InputLabel>Email送信</InputLabel>
@@ -7081,6 +7102,46 @@ HP：https://ifoo-oita.com/
 
 
             {/* AIコメントまとめフィールド（クイックボタン関連項目をAIで抽出） */}
+            {/* ハウスメーカーボタン（コメントにハウスメーカー名が含まれる場合のみ表示） */}
+            {(() => {
+              const HOUSE_MAKERS = [
+                '一条工務店', '積水ハウス', 'ダイワハウス', '大和ハウス',
+                'パナソニックホームズ', 'ユニバーサルホーム', 'ミサワホーム',
+                '谷川建設', '住友林業', 'ヘーベルハウス', 'セキスイハイム',
+                'トヨタホーム', '三井ホーム', '旭化成ホームズ', 'タマホーム',
+                'アイフルホーム', 'クレバリーホーム', 'アキュラホーム',
+                'ハウスメーカー',
+              ];
+              const plainComment = savedComments.replace(/<[^>]+>/g, '');
+              const detected = HOUSE_MAKERS.some((m) => plainComment.includes(m));
+              if (!detected) return null;
+              return (
+                <Box sx={{ mb: 1.5 }}>
+                  <Button
+                    variant="contained"
+                    size="small"
+                    startIcon={<span style={{ fontSize: '1.1em' }}>🏠</span>}
+                    onClick={() => setHouseMakerModalOpen(true)}
+                    sx={{
+                      background: 'linear-gradient(135deg, #1a237e 0%, #283593 100%)',
+                      color: 'white',
+                      fontWeight: 700,
+                      fontSize: '0.82rem',
+                      px: 2,
+                      py: 0.7,
+                      borderRadius: 2,
+                      boxShadow: '0 2px 8px rgba(26,35,126,0.3)',
+                      '&:hover': {
+                        background: 'linear-gradient(135deg, #283593 0%, #3949ab 100%)',
+                        boxShadow: '0 4px 12px rgba(26,35,126,0.4)',
+                      },
+                    }}
+                  >
+                    ハウスメーカー
+                  </Button>
+                </Box>
+              );
+            })()}
             <CommentHighlightsPanel
               commentHtml={savedComments}
               quickButtonIds={[
@@ -7109,6 +7170,13 @@ HP：https://ifoo-oita.com/
                 handleQuickButtonClick(id);
                 appendBoldText(insertText);
               }}
+            />
+
+            {/* ハウスメーカーモーダル */}
+            <HouseMakerModal
+              open={houseMakerModalOpen}
+              onClose={() => setHouseMakerModalOpen(false)}
+              commentHtml={savedComments}
             />
 
             {/* コメント入力・編集エリア（直接書き込み可能） */}
@@ -8143,6 +8211,17 @@ HP：https://ifoo-oita.com/
           open={documentModalOpen}
           onClose={() => setDocumentModalOpen(false)}
           sellerNumber={seller.sellerNumber || ''}
+        />
+      )}
+
+      {/* エリア情勢レポートモーダル */}
+      {seller && (
+        <AreaReportModal
+          open={areaReportOpen}
+          onClose={() => setAreaReportOpen(false)}
+          sellerId={seller.id}
+          sellerNumber={seller.sellerNumber}
+          propertyAddress={propInfo.address || seller.propertyAddress}
         />
       )}
 

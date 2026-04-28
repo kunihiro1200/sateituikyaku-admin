@@ -468,5 +468,154 @@ ${currentBody}`;
   }
 });
 
+/**
+ * コメントからハウスメーカー名を抽出し、A4用メリット情報を生成
+ * POST /summarize/house-maker-info
+ * body: { commentText: string }
+ * response: { makerName: string, content: string }
+ */
+router.post('/house-maker-info', authenticate, async (req: Request, res: Response) => {
+  try {
+    const { commentText } = req.body;
+
+    if (!commentText || typeof commentText !== 'string' || commentText.trim().length === 0) {
+      return res.status(400).json({ error: 'commentText は必須です' });
+    }
+
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) {
+      console.error('[house-maker-info] OPENAI_API_KEY not set');
+      return res.status(500).json({ error: 'OpenAI API key not configured' });
+    }
+
+    const plainText = commentText.replace(/<[^>]+>/g, '').trim();
+
+    // Step1: コメントからハウスメーカー名を抽出
+    const extractCompletion = await axios.post(
+      'https://api.openai.com/v1/chat/completions',
+      {
+        model: 'gpt-4o-mini',
+        messages: [
+          {
+            role: 'system',
+            content: `コメントからハウスメーカー名を1つだけ抽出してください。
+ハウスメーカー名のみをJSON形式で返してください。
+例: {"makerName": "一条工務店"}
+ハウスメーカーが見つからない場合: {"makerName": null}`,
+          },
+          {
+            role: 'user',
+            content: `以下のコメントからハウスメーカー名を抽出してください：\n\n${plainText}`,
+          },
+        ],
+        temperature: 0.1,
+        max_tokens: 100,
+        response_format: { type: 'json_object' },
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        timeout: 15000,
+      }
+    );
+
+    const extractRaw = extractCompletion.data?.choices?.[0]?.message?.content || '{}';
+    let makerName: string | null = null;
+    try {
+      const parsed = JSON.parse(extractRaw);
+      makerName = parsed.makerName || null;
+    } catch (e) {
+      console.error('[house-maker-info] extract parse error:', e);
+    }
+
+    if (!makerName) {
+      return res.status(404).json({ error: 'ハウスメーカーが見つかりませんでした' });
+    }
+
+    // Step2: ハウスメーカーのA4用メリット情報を生成
+    const contentCompletion = await axios.post(
+      'https://api.openai.com/v1/chat/completions',
+      {
+        model: 'gpt-4o',
+        messages: [
+          {
+            role: 'system',
+            content: `あなたは不動産のプロフェッショナルです。
+売主のお客様に「この担当者は自分の家に詳しい！」と思ってもらえるよう、
+ハウスメーカーの特徴・メリットをA4一枚にまとめた資料を作成してください。
+
+【出力形式】
+以下のJSON形式で返してください：
+{
+  "makerName": "ハウスメーカー名",
+  "tagline": "一言キャッチコピー（20文字以内）",
+  "sections": [
+    {
+      "title": "セクションタイトル",
+      "points": ["ポイント1", "ポイント2", "ポイント3"]
+    }
+  ],
+  "summary": "まとめの一文（売主への共感メッセージ、50文字以内）"
+}
+
+【セクション構成（必ず以下の5つ）】
+1. 構造・耐震性
+2. 断熱・省エネ性能
+3. 設計・デザインの特徴
+4. 品質・アフターサービス
+5. 資産価値・売却時のポイント
+
+【ポイントの書き方】
+- 各セクション3〜4項目
+- 1項目30〜50文字程度
+- 専門用語は分かりやすく説明
+- 売主が「そうそう、うちの家はそういう家なんだ」と誇りに思えるような表現
+- 売却時の資産価値に関する内容は必ず含める`,
+          },
+          {
+            role: 'user',
+            content: `${makerName}のメリット・特徴をA4資料用にまとめてください。`,
+          },
+        ],
+        temperature: 0.5,
+        max_tokens: 1500,
+        response_format: { type: 'json_object' },
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        timeout: 30000,
+      }
+    );
+
+    const contentRaw = contentCompletion.data?.choices?.[0]?.message?.content || '{}';
+    let content: any = null;
+    try {
+      content = JSON.parse(contentRaw);
+    } catch (e) {
+      console.error('[house-maker-info] content parse error:', e);
+      return res.status(500).json({ error: 'コンテンツの生成に失敗しました' });
+    }
+
+    return res.json({ makerName, content });
+  } catch (error: any) {
+    const status = error?.response?.status;
+    const errMsg = error?.response?.data?.error?.message || error.message;
+    console.error(`[house-maker-info] Error (HTTP ${status}):`, errMsg);
+
+    if (status === 429) {
+      return res.status(429).json({ error: 'APIの利用制限に達しました。しばらく待ってから再試行してください。' });
+    }
+    if (status === 401) {
+      return res.status(401).json({ error: 'OpenAI APIキーが無効です。' });
+    }
+    return res.status(500).json({ error: 'ハウスメーカー情報の生成に失敗しました' });
+  }
+});
+
 export default router;
 
