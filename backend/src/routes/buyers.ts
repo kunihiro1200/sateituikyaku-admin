@@ -1163,6 +1163,26 @@ router.get('/other-company-distribution', authenticate, async (req: Request, res
 
 // ===== 汎用ルート（最後に定義する必要がある） =====
 
+// 気づき（viewing_insight）が入力されている全買主を取得
+// ⚠️ /:id より前に定義必須（"insights"がidとして解釈されるのを防ぐ）
+router.get('/insights', async (req: Request, res: Response) => {
+  try {
+    const supabase = (buyerService as any).supabase;
+    const { data, error } = await supabase
+      .from('buyers')
+      .select('buyer_number, name, property_number, property_address, viewing_date, follow_up_assignee, viewing_insight_executor, viewing_insight_companion')
+      .is('deleted_at', null)
+      .or('viewing_insight_executor.neq.,viewing_insight_companion.neq.')
+      .order('viewing_date', { ascending: false });
+
+    if (error) throw error;
+    res.json(data || []);
+  } catch (error: any) {
+    console.error('[GET /buyers/insights] Error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // 個別取得（ID）
 router.get('/:id', async (req: Request, res: Response) => {
   const t0 = Date.now();
@@ -1660,23 +1680,5 @@ ${detailUrl}`;
 
 
 
-// 気づき（viewing_insight）が入力されている全買主を取得
-router.get('/insights', async (req: Request, res: Response) => {
-  try {
-    const supabase = (buyerService as any).supabase;
-    const { data, error } = await supabase
-      .from('buyers')
-      .select('buyer_number, name, property_number, property_address, viewing_date, follow_up_assignee, viewing_insight_executor, viewing_insight_companion')
-      .is('deleted_at', null)
-      .or('viewing_insight_executor.neq.,viewing_insight_companion.neq.')
-      .order('viewing_date', { ascending: false });
-
-    if (error) throw error;
-    res.json(data || []);
-  } catch (error: any) {
-    console.error('[GET /buyers/insights] Error:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
 
 export default router;
