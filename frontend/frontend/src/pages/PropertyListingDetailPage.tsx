@@ -598,7 +598,7 @@ export default function PropertyListingDetailPage() {
         message: 'サマリー情報を保存しました',
         severity: 'success',
       });
-      await fetchPropertyData();
+      await fetchPropertyData(true);
       setEditedData({});
       setIsHeaderEditMode(false);
     } catch (error) {
@@ -628,7 +628,7 @@ export default function PropertyListingDetailPage() {
         message: '基本情報を保存しました',
         severity: 'success',
       });
-      await fetchPropertyData();
+      await fetchPropertyData(true);
       setEditedData({});
     } catch (error) {
       setSnackbar({
@@ -652,7 +652,7 @@ export default function PropertyListingDetailPage() {
         message: '物件詳細情報を保存しました',
         severity: 'success',
       });
-      await fetchPropertyData();
+      await fetchPropertyData(true);
       setEditedData({});
     } catch (error) {
       setSnackbar({
@@ -692,7 +692,7 @@ export default function PropertyListingDetailPage() {
         message: 'よく聞かれる項目を保存しました',
         severity: 'success',
       });
-      await fetchPropertyData();
+      await fetchPropertyData(true);
       setEditedData({});
     } catch (error) {
       setSnackbar({
@@ -721,7 +721,7 @@ export default function PropertyListingDetailPage() {
         message: '内覧情報を保存しました',
         severity: 'success',
       });
-      await fetchPropertyData();
+      await fetchPropertyData(true);
       setEditedData({});
     } catch (error) {
       setSnackbar({
@@ -750,7 +750,7 @@ export default function PropertyListingDetailPage() {
         message: '売主買主情報を保存しました',
         severity: 'success',
       });
-      await fetchPropertyData();
+      await fetchPropertyData(true);
       setEditedData({});
     } catch (error) {
       setSnackbar({
@@ -839,7 +839,7 @@ export default function PropertyListingDetailPage() {
       });
       setIsOfferEditMode(false);
       // 保存成功後にデータを再取得（offer_status が null になれば PurchaseStatusBadge が自動的に非表示になる）
-      await fetchPropertyData();
+      await fetchPropertyData(true);
       setEditedData({});
     } catch (error) {
       setSnackbar({
@@ -2955,7 +2955,7 @@ export default function PropertyListingDetailPage() {
                       try {
                         await api.put(`/api/property-listings/${propertyNumber}`, { distribution_areas: editedData.distribution_areas });
                         setSnackbar({ open: true, message: '配信エリアを保存しました', severity: 'success' });
-                        await fetchPropertyData();
+                        await fetchPropertyData(true);
                         setEditedData(prev => { const { distribution_areas, ...rest } = prev; return rest; });
                       } catch {
                         setSnackbar({ open: true, message: '保存に失敗しました', severity: 'error' });
