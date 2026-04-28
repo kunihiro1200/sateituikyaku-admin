@@ -3305,6 +3305,9 @@ HP：https://ifoo-oita.com/
     // 訪問日時
     // appointmentDate: TIMESTAMPTZ（"YYYY-MM-DDTHH:mm:ss.sssZ" UTC形式）→ new Date() で JST に変換
     // ただし古いデータが "YYYY-MM-DD HH:mm:ss" 形式（タイムゾーンなし）の場合は parseVisitDateToLocal を使用
+    console.log('[visitReminder DEBUG] appointmentDate raw:', JSON.stringify(seller.appointmentDate));
+    console.log('[visitReminder DEBUG] visitDate raw:', JSON.stringify(seller.visitDate));
+    console.log('[visitReminder DEBUG] visitTime raw:', JSON.stringify(seller.visitTime));
     if (seller.appointmentDate) {
       const apptStr = String(seller.appointmentDate);
       let apptMonth: number, apptDay: number, apptHour: number, apptMin: number;
