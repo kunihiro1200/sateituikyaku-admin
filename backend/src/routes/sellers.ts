@@ -146,13 +146,7 @@ router.post('/sidebar-counts/update', async (req: Request, res: Response) => {
 });
 
 // 全てのルートに認証を適用（sidebar-countsの後に配置）
-router.use(authenticate);
-
-/**
- * 売主追客ログスプレッドシートへの一括バックフィル
- * POST /api/sellers/backfill-call-log
- * 指定日以降のphone_callアクティビティをスプレッドシートに追記する（重複スキップ）
- */
+// ↓ backfill-call-logは認証不要のためここより前に定義
 router.post('/backfill-call-log', async (req: Request, res: Response) => {
   try {
     const fromDate = (req.body?.from as string) || '2026-04-13T00:00:00+09:00';
@@ -233,6 +227,9 @@ router.post('/backfill-call-log', async (req: Request, res: Response) => {
     res.status(500).json({ success: false, error: error.message });
   }
 });
+
+// 全てのルートに認証を適用（sidebar-countsの後に配置）
+router.use(authenticate);
 
 /**
  * 売主を登録
