@@ -1,5 +1,5 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { EmailService } from './EmailService';
+import { EmailService } from './EmailService.supabase';
 
 // ============================================================
 // インターフェース定義
@@ -164,10 +164,12 @@ export class PriceReductionNotificationService {
       try {
         const body = this.buildEmailBody(target);
 
-        await this.emailService.sendEmail({
-          to: [NOTIFICATION_TO],
+        await this.emailService.sendEmailWithCcAndAttachments({
+          to: NOTIFICATION_TO,
           subject: NOTIFICATION_SUBJECT,
           body,
+          from: NOTIFICATION_TO,
+          isHtml: false,
         });
 
         // 送信成功をログに記録
