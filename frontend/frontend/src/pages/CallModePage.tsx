@@ -857,6 +857,11 @@ const CallModePage = () => {
   // 訪問予約編集用の状態
   const [editingAppointment, setEditingAppointment] = useState(false);
   const [editedAppointmentDate, setEditedAppointmentDate] = useState<string>('');
+  // 編集モード開始時に訪問予定日時が空だったかどうか（新規入力判定用）
+  const [visitDateWasEmpty, setVisitDateWasEmpty] = useState(false);
+  // ヒアリング注意喚起ダイアログ
+  const [hearingWarningOpen, setHearingWarningOpen] = useState(false);
+  const [hearingWarningItems, setHearingWarningItems] = useState<string[]>([]);
   const appointmentDateRef = useRef<HTMLInputElement>(null); // 訪問予定日時フィールドのref
   const [editedAssignedTo, setEditedAssignedTo] = useState<string>('');
   const [editedVisitValuationAcquirer, setEditedVisitValuationAcquirer] = useState<string>(''); // 訪問査定取得者
@@ -5343,6 +5348,8 @@ HP：https://ifoo-oita.com/
                       setEditedVisitValuationAcquirer(seller?.visitValuationAcquirer || '');
                       setOriginalVisitValuationAcquirer(seller?.visitValuationAcquirer ?? null);
                       setEditedAppointmentNotes(seller?.appointmentNotes || '');
+                      // 編集開始時点で訪問予定日時が空かどうかを記録（新規入力判定用）
+                      setVisitDateWasEmpty(!seller?.visitDate && !seller?.appointmentDate);
                     }
                     setEditingAppointment(!editingAppointment);
                     // 訪問予約フォームを開く時に当月の統計をロード
@@ -5669,6 +5676,23 @@ HP：https://ifoo-oita.com/
                             console.log('🗑️ 訪問日を削除したため、営担と訪問査定取得者もクリアしました');
                             return;
                           }
+
+                          // 新規入力（空→値あり）の場合、ヒアリング未項目を確認して注意喚起
+                          if (visitDateWasEmpty && newDate) {
+                            const hearingItems = [
+                              { id: 'call-memo-ownership', label: '名義' },
+                              { id: 'call-memo-loan', label: 'ローン' },
+                              { id: 'call-memo-nameplate', label: '表札' },
+                              { id: 'call-memo-sell-reason', label: '売却理由' },
+                            ];
+                            const unheardItems = hearingItems
+                              .filter(item => !getButtonState(item.id))
+                              .map(item => item.label);
+                            if (unheardItems.length > 0) {
+                              setHearingWarningItems(unheardItems);
+                              setHearingWarningOpen(true);
+                            }
+                          }
                           
                           // 訪問日が入力された場合、次電日を訪問日の3日後に自動設定
                           try {
@@ -5800,6 +5824,55 @@ HP：https://ifoo-oita.com/
                         {savingAppointment ? '保存中...' : '保存'}
                       </Button>
                     </Grid>
+
+                    {/* ヒアリング注意喚起ダイアログ */}
+                    <Dialog
+                      open={hearingWarningOpen}
+                      onClose={() => setHearingWarningOpen(false)}
+                      maxWidth="xs"
+                      fullWidth
+                    >
+                      <DialogTitle sx={{ bgcolor: '#fff3e0', color: '#e65100', fontWeight: 'bold', pb: 1 }}>
+                        ⚠️ ヒアリング未確認項目があります
+                      </DialogTitle>
+                      <DialogContent sx={{ pt: 2 }}>
+                        <Typography variant="body2" sx={{ mb: 1.5 }}>
+                          訪問予定日時を入力しましたが、以下の項目がまだヒアリングされていません。必ずヒアリングしてください。
+                        </Typography>
+                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                          {hearingWarningItems.map((item) => (
+                            <Chip
+                              key={item}
+                              label={item}
+                              color="warning"
+                              variant="outlined"
+                              sx={{ fontWeight: 'bold' }}
+                            />
+                          ))}
+                        </Box>
+                      </DialogContent>
+                      <DialogActions sx={{ px: 2, pb: 2, gap: 1 }}>
+                        <Button
+                          onClick={() => setHearingWarningOpen(false)}
+                          variant="outlined"
+                          color="inherit"
+                          fullWidth
+                        >
+                          閉じる
+                        </Button>
+                        <Button
+                          onClick={() => {
+                            setHearingWarningOpen(false);
+                            handleSaveAppointment();
+                          }}
+                          variant="contained"
+                          color="warning"
+                          fullWidth
+                        >
+                          そのまま保存
+                        </Button>
+                      </DialogActions>
+                    </Dialog>
                     
                     {/* 編集モードでも訪問統計を表示 */}
                     <Grid item xs={12}>
