@@ -197,7 +197,11 @@ router.post('/comment-highlights', authenticate, async (req: Request, res: Respo
       return res.json({ highlights: [] });
     }
     const systemPrompt = `あなたは不動産売主管理システムのアシスタントです。
-売主との通話・対応のコメントを読んで、以下のカテゴリに「意味的に関連する内容」を全て箇条書きで抽出してください。
+売主との通話・対応のコメントを読んで、以下の2つを抽出してください。
+
+## 1. クイックボタンカテゴリの抽出（highlights）
+
+以下のカテゴリに「意味的に関連する内容」を全て箇条書きで抽出してください。
 
 【カテゴリと、そのカテゴリに該当するニュアンス例】
 
@@ -247,15 +251,30 @@ B'（売却意欲が低い・価格確認だけ・様子見・興味薄い）
 当社紹介済み（すでに当社から紹介した）
   → 「当社から紹介済み」「すでに紹介した」など
 
-【出力ルール】
+【highlightsの出力ルール】
 - 上記カテゴリに「意味的に近いニュアンス」があれば積極的に抽出する
 - 直接的な表現でなくても、文脈から読み取れるものは含める
 - 各項目は「カテゴリ名：コメントから読み取れる具体的な内容」の形式で出力
 - 「買主紹介」カテゴリに該当する場合は必ず「買主紹介：済　紹介OK」の形式で出力する
 - 該当するカテゴリが複数あれば全て出力する（上限なし）
 - 関連する内容が全くなければ空配列を返す
-- 必ず {"highlights": [...]} の形式のJSONで返す
-- 例: {"highlights": ["B'：価格だけ知りたかった様子で売る気はなさそう", "他社待ち：他社の査定結果を待ってから判断したい", "売却意欲あり：1年以内には売りたいと言っていた"]}`;
+
+## 2. その他の内容の時系列要約（other_summary）
+
+上記クイックボタンカテゴリに分類されなかった内容（入院・体調・家族の状況・次回連絡の約束・特記事項など）を時系列順（古い順）に箇条書きで要約してください。
+
+【other_summaryの出力ルール】
+- クイックボタンカテゴリ（B'・木造２F・土地面積・太陽光・机上査定・他社待ち・査定額への反応・名義・ローン・売却意欲あり・キャンセル案内・譲渡所得税・買主紹介・当社紹介済み）に該当する内容は含めない
+- 日付がある場合は「YYYY/M/D：内容」の形式で出力する
+- 重複する内容はまとめる
+- 重要な出来事・状況変化・次回アクションに関する内容を優先する
+- 該当する内容がなければ空配列を返す
+- 1項目あたり30文字以内で簡潔にまとめる
+
+## 出力形式
+必ず以下のJSON形式で返す：
+{"highlights": [...], "other_summary": [...]}
+例: {"highlights": ["B'：価格だけ知りたかった様子", "他社待ち：他社の査定結果を待っている"], "other_summary": ["2024/1/22：連絡が取れないため追客不要", "2023/7/16：入院中、28日まで"]}`;
 
     const completion = await axios.post(
       'https://api.openai.com/v1/chat/completions',
@@ -266,7 +285,7 @@ B'（売却意欲が低い・価格確認だけ・様子見・興味薄い）
           { role: 'user', content: `以下のコメントから関連項目を抽出してください：\n\n${plainText}` },
         ],
         temperature: 0.2,
-        max_tokens: 500,
+        max_tokens: 800,
         response_format: { type: 'json_object' },
       },
       {
@@ -280,16 +299,16 @@ B'（売却意欲が低い・価格確認だけ・様子見・興味薄い）
 
     const raw = completion.data?.choices?.[0]?.message?.content || '{}';
     let highlights: string[] = [];
+    let otherSummary: string[] = [];
 
     try {
       const parsed = JSON.parse(raw);
-      // { highlights: [...] } または直接配列の両方に対応
       if (Array.isArray(parsed)) {
         highlights = parsed;
       } else if (Array.isArray(parsed.highlights)) {
         highlights = parsed.highlights;
+        otherSummary = Array.isArray(parsed.other_summary) ? parsed.other_summary : [];
       } else {
-        // オブジェクトの最初の配列値を使用
         const firstArray = Object.values(parsed).find((v) => Array.isArray(v));
         if (firstArray) highlights = firstArray as string[];
       }
@@ -297,7 +316,7 @@ B'（売却意欲が低い・価格確認だけ・様子見・興味薄い）
       console.error('[comment-highlights] JSON parse error:', e, raw);
     }
 
-    return res.json({ highlights });
+    return res.json({ highlights, other_summary: otherSummary });
   } catch (error: any) {
     const status = error?.response?.status;
     const errMsg = error?.response?.data?.error?.message || error.message;

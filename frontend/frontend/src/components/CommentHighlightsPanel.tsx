@@ -31,6 +31,7 @@ const CommentHighlightsPanel: React.FC<CommentHighlightsPanelProps> = ({
   onQuickButtonClick,
 }) => {
   const [highlights, setHighlights] = useState<string[]>([]);
+  const [otherSummary, setOtherSummary] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const prevCommentRef = useRef<string>('');
@@ -39,6 +40,7 @@ const CommentHighlightsPanel: React.FC<CommentHighlightsPanelProps> = ({
     const plain = html.replace(/<[^>]+>/g, '').trim();
     if (!plain) {
       setHighlights([]);
+      setOtherSummary([]);
       return;
     }
     setLoading(true);
@@ -46,6 +48,7 @@ const CommentHighlightsPanel: React.FC<CommentHighlightsPanelProps> = ({
     try {
       const res = await api.post('/summarize/comment-highlights', { commentText: html });
       setHighlights(res.data.highlights || []);
+      setOtherSummary(res.data.other_summary || []);
     } catch (e: any) {
       console.error('[CommentHighlightsPanel] fetch error:', e);
       const status = e?.response?.status;
@@ -110,7 +113,7 @@ const CommentHighlightsPanel: React.FC<CommentHighlightsPanelProps> = ({
           {error && !loading && (
             <Typography variant="caption" color="error">{error}</Typography>
           )}
-          {!loading && !error && highlights.length === 0 && plain && (
+          {!loading && !error && highlights.length === 0 && otherSummary.length === 0 && plain && (
             <Typography variant="caption" color="text.secondary">関連項目なし</Typography>
           )}
           {!loading && highlights.length > 0 && (
@@ -121,6 +124,20 @@ const CommentHighlightsPanel: React.FC<CommentHighlightsPanelProps> = ({
                 </Box>
               ))}
             </Box>
+          )}
+          {!loading && otherSummary.length > 0 && (
+            <>
+              <Typography variant="caption" sx={{ color: '#6a1b9a', fontWeight: 'bold', display: 'block', mt: highlights.length > 0 ? 1 : 0, mb: 0.25 }}>
+                【その他】
+              </Typography>
+              <Box component="ul" sx={{ m: 0, pl: 2.5 }}>
+                {otherSummary.map((item, idx) => (
+                  <Box component="li" key={idx} sx={{ fontSize: '0.85rem', color: '#4a148c', mb: 0.25 }}>
+                    {item}
+                  </Box>
+                ))}
+              </Box>
+            </>
           )}
         </Box>
       )}
