@@ -1892,134 +1892,8 @@ router.get('/:id/inquiry-url', async (req: Request, res: Response) => {
 });
 
 /**
- * デモ用サンプルエリア情勢レポートHTML生成
- */
-function generateSampleAreaReport(cityName: string, detailArea: string, propertyType: string): string {
-  const today = new Date().toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric' });
-  const area = detailArea || cityName;
-  return `
-<div style="font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;font-size:12px;color:#333;max-width:800px;margin:0 auto;padding:20px;">
+ * エリア情勢レポートを生成（AI使用）
 
-  <!-- ヘッダー -->
-  <div style="text-align:center;border-bottom:3px solid #1a237e;padding-bottom:12px;margin-bottom:20px;">
-    <div style="font-size:10px;color:#666;margin-bottom:4px;">不動産売却のご参考資料</div>
-    <h1 style="font-size:20px;color:#1a237e;margin:0 0 4px;">エリア情勢レポート</h1>
-    <div style="font-size:14px;font-weight:bold;color:#333;">${area} エリア</div>
-    <div style="font-size:10px;color:#888;margin-top:4px;">作成日：${today}　　物件種別：${propertyType || '不動産'}</div>
-    <div style="display:inline-block;background:#fff3e0;border:1px solid #ff9800;border-radius:4px;padding:3px 10px;font-size:10px;color:#e65100;margin-top:6px;">※ これはデモ表示です。APIキー設定後に実際のAI生成レポートが表示されます</div>
-  </div>
-
-  <!-- セクション1: 人口の推移 -->
-  <div style="margin-bottom:24px;">
-    <h2 style="font-size:15px;color:#1a237e;border-left:4px solid #1a237e;padding-left:8px;margin-bottom:10px;">① 人口の推移</h2>
-    <table style="width:100%;border-collapse:collapse;margin-bottom:8px;">
-      <thead>
-        <tr style="background:#e3f2fd;">
-          <th style="border:1px solid #90caf9;padding:6px 10px;text-align:center;">年</th>
-          <th style="border:1px solid #90caf9;padding:6px 10px;text-align:center;">人口（人）</th>
-          <th style="border:1px solid #90caf9;padding:6px 10px;text-align:center;">前回比</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr><td style="border:1px solid #ccc;padding:5px 10px;text-align:center;">2010年</td><td style="border:1px solid #ccc;padding:5px 10px;text-align:center;">482,000</td><td style="border:1px solid #ccc;padding:5px 10px;text-align:center;">—</td></tr>
-        <tr style="background:#f9f9f9;"><td style="border:1px solid #ccc;padding:5px 10px;text-align:center;">2015年</td><td style="border:1px solid #ccc;padding:5px 10px;text-align:center;">478,500</td><td style="border:1px solid #ccc;padding:5px 10px;text-align:center;color:#e53935;">▼ 0.7%</td></tr>
-        <tr><td style="border:1px solid #ccc;padding:5px 10px;text-align:center;">2020年</td><td style="border:1px solid #ccc;padding:5px 10px;text-align:center;">471,200</td><td style="border:1px solid #ccc;padding:5px 10px;text-align:center;color:#e53935;">▼ 1.5%</td></tr>
-        <tr style="background:#f9f9f9;"><td style="border:1px solid #ccc;padding:5px 10px;text-align:center;">2024年（推計）</td><td style="border:1px solid #ccc;padding:5px 10px;text-align:center;">463,000</td><td style="border:1px solid #ccc;padding:5px 10px;text-align:center;color:#e53935;">▼ 1.7%</td></tr>
-      </tbody>
-    </table>
-    <p style="font-size:11px;color:#555;background:#f5f5f5;padding:6px 10px;border-radius:4px;">📊 <strong>分析：</strong>人口は緩やかな減少傾向にあります。今後も減少が続くと予測されており、<strong>需要が高い現在が売却の好機</strong>といえます。</p>
-  </div>
-
-  <!-- セクション2: 世帯種類の推移 -->
-  <div style="margin-bottom:24px;">
-    <h2 style="font-size:15px;color:#1a237e;border-left:4px solid #1a237e;padding-left:8px;margin-bottom:10px;">② 世帯種類の推移</h2>
-    <table style="width:100%;border-collapse:collapse;margin-bottom:8px;">
-      <thead>
-        <tr style="background:#e3f2fd;">
-          <th style="border:1px solid #90caf9;padding:6px 10px;text-align:center;">世帯種類</th>
-          <th style="border:1px solid #90caf9;padding:6px 10px;text-align:center;">2010年</th>
-          <th style="border:1px solid #90caf9;padding:6px 10px;text-align:center;">2015年</th>
-          <th style="border:1px solid #90caf9;padding:6px 10px;text-align:center;">2020年</th>
-          <th style="border:1px solid #90caf9;padding:6px 10px;text-align:center;">2024年</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr><td style="border:1px solid #ccc;padding:5px 10px;">単身世帯</td><td style="border:1px solid #ccc;padding:5px 10px;text-align:center;">28%</td><td style="border:1px solid #ccc;padding:5px 10px;text-align:center;">31%</td><td style="border:1px solid #ccc;padding:5px 10px;text-align:center;">34%</td><td style="border:1px solid #ccc;padding:5px 10px;text-align:center;font-weight:bold;color:#1565c0;">37%</td></tr>
-        <tr style="background:#f9f9f9;"><td style="border:1px solid #ccc;padding:5px 10px;">夫婦のみ</td><td style="border:1px solid #ccc;padding:5px 10px;text-align:center;">22%</td><td style="border:1px solid #ccc;padding:5px 10px;text-align:center;">23%</td><td style="border:1px solid #ccc;padding:5px 10px;text-align:center;">24%</td><td style="border:1px solid #ccc;padding:5px 10px;text-align:center;font-weight:bold;color:#1565c0;">25%</td></tr>
-        <tr><td style="border:1px solid #ccc;padding:5px 10px;">核家族</td><td style="border:1px solid #ccc;padding:5px 10px;text-align:center;">38%</td><td style="border:1px solid #ccc;padding:5px 10px;text-align:center;">35%</td><td style="border:1px solid #ccc;padding:5px 10px;text-align:center;">32%</td><td style="border:1px solid #ccc;padding:5px 10px;text-align:center;font-weight:bold;">29%</td></tr>
-        <tr style="background:#f9f9f9;"><td style="border:1px solid #ccc;padding:5px 10px;">三世代同居</td><td style="border:1px solid #ccc;padding:5px 10px;text-align:center;">12%</td><td style="border:1px solid #ccc;padding:5px 10px;text-align:center;">11%</td><td style="border:1px solid #ccc;padding:5px 10px;text-align:center;">10%</td><td style="border:1px solid #ccc;padding:5px 10px;text-align:center;font-weight:bold;">9%</td></tr>
-      </tbody>
-    </table>
-    <p style="font-size:11px;color:#555;background:#f5f5f5;padding:6px 10px;border-radius:4px;">📊 <strong>分析：</strong>単身・夫婦のみ世帯が増加し、コンパクトな住居への需要が高まっています。<strong>売却物件への問い合わせ数は増加傾向</strong>にあります。</p>
-  </div>
-
-  <!-- セクション3: 物件種別の取引件数推移 -->
-  <div style="margin-bottom:24px;">
-    <h2 style="font-size:15px;color:#1a237e;border-left:4px solid #1a237e;padding-left:8px;margin-bottom:10px;">③ 物件種別の取引件数推移</h2>
-    <table style="width:100%;border-collapse:collapse;margin-bottom:8px;">
-      <thead>
-        <tr style="background:#e3f2fd;">
-          <th style="border:1px solid #90caf9;padding:6px 10px;text-align:center;">年</th>
-          <th style="border:1px solid #90caf9;padding:6px 10px;text-align:center;">戸建て（件）</th>
-          <th style="border:1px solid #90caf9;padding:6px 10px;text-align:center;">マンション（件）</th>
-          <th style="border:1px solid #90caf9;padding:6px 10px;text-align:center;">土地（件）</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr><td style="border:1px solid #ccc;padding:5px 10px;text-align:center;">2020年</td><td style="border:1px solid #ccc;padding:5px 10px;text-align:center;">312</td><td style="border:1px solid #ccc;padding:5px 10px;text-align:center;">145</td><td style="border:1px solid #ccc;padding:5px 10px;text-align:center;">98</td></tr>
-        <tr style="background:#f9f9f9;"><td style="border:1px solid #ccc;padding:5px 10px;text-align:center;">2021年</td><td style="border:1px solid #ccc;padding:5px 10px;text-align:center;">328</td><td style="border:1px solid #ccc;padding:5px 10px;text-align:center;">152</td><td style="border:1px solid #ccc;padding:5px 10px;text-align:center;">105</td></tr>
-        <tr><td style="border:1px solid #ccc;padding:5px 10px;text-align:center;">2022年</td><td style="border:1px solid #ccc;padding:5px 10px;text-align:center;">341</td><td style="border:1px solid #ccc;padding:5px 10px;text-align:center;">168</td><td style="border:1px solid #ccc;padding:5px 10px;text-align:center;">112</td></tr>
-        <tr style="background:#f9f9f9;"><td style="border:1px solid #ccc;padding:5px 10px;text-align:center;">2023年</td><td style="border:1px solid #ccc;padding:5px 10px;text-align:center;">356</td><td style="border:1px solid #ccc;padding:5px 10px;text-align:center;">174</td><td style="border:1px solid #ccc;padding:5px 10px;text-align:center;">118</td></tr>
-        <tr><td style="border:1px solid #ccc;padding:5px 10px;text-align:center;font-weight:bold;">2024年（推計）</td><td style="border:1px solid #ccc;padding:5px 10px;text-align:center;font-weight:bold;color:#1565c0;">370</td><td style="border:1px solid #ccc;padding:5px 10px;text-align:center;font-weight:bold;color:#1565c0;">182</td><td style="border:1px solid #ccc;padding:5px 10px;text-align:center;font-weight:bold;color:#1565c0;">124</td></tr>
-      </tbody>
-    </table>
-    <p style="font-size:11px;color:#555;background:#f5f5f5;padding:6px 10px;border-radius:4px;">📊 <strong>分析：</strong>全物件種別で取引件数が増加しています。特に戸建て・マンションの需要が旺盛で、<strong>売り手市場が続いています</strong>。</p>
-  </div>
-
-  <!-- セクション4: 不動産価格の推移 -->
-  <div style="margin-bottom:24px;">
-    <h2 style="font-size:15px;color:#1a237e;border-left:4px solid #1a237e;padding-left:8px;margin-bottom:10px;">④ 不動産価格の推移</h2>
-    <table style="width:100%;border-collapse:collapse;margin-bottom:8px;">
-      <thead>
-        <tr style="background:#e3f2fd;">
-          <th style="border:1px solid #90caf9;padding:6px 10px;text-align:center;">年</th>
-          <th style="border:1px solid #90caf9;padding:6px 10px;text-align:center;">戸建て（万円/坪）</th>
-          <th style="border:1px solid #90caf9;padding:6px 10px;text-align:center;">マンション（万円/㎡）</th>
-          <th style="border:1px solid #90caf9;padding:6px 10px;text-align:center;">土地（万円/坪）</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr><td style="border:1px solid #ccc;padding:5px 10px;text-align:center;">2020年</td><td style="border:1px solid #ccc;padding:5px 10px;text-align:center;">28.5</td><td style="border:1px solid #ccc;padding:5px 10px;text-align:center;">22.1</td><td style="border:1px solid #ccc;padding:5px 10px;text-align:center;">18.3</td></tr>
-        <tr style="background:#f9f9f9;"><td style="border:1px solid #ccc;padding:5px 10px;text-align:center;">2021年</td><td style="border:1px solid #ccc;padding:5px 10px;text-align:center;">29.8</td><td style="border:1px solid #ccc;padding:5px 10px;text-align:center;">23.4</td><td style="border:1px solid #ccc;padding:5px 10px;text-align:center;">19.1</td></tr>
-        <tr><td style="border:1px solid #ccc;padding:5px 10px;text-align:center;">2022年</td><td style="border:1px solid #ccc;padding:5px 10px;text-align:center;">31.2</td><td style="border:1px solid #ccc;padding:5px 10px;text-align:center;">25.0</td><td style="border:1px solid #ccc;padding:5px 10px;text-align:center;">20.2</td></tr>
-        <tr style="background:#f9f9f9;"><td style="border:1px solid #ccc;padding:5px 10px;text-align:center;">2023年</td><td style="border:1px solid #ccc;padding:5px 10px;text-align:center;">33.1</td><td style="border:1px solid #ccc;padding:5px 10px;text-align:center;">26.8</td><td style="border:1px solid #ccc;padding:5px 10px;text-align:center;">21.5</td></tr>
-        <tr><td style="border:1px solid #ccc;padding:5px 10px;text-align:center;font-weight:bold;">2024年（推計）</td><td style="border:1px solid #ccc;padding:5px 10px;text-align:center;font-weight:bold;color:#c62828;">34.8 ↑</td><td style="border:1px solid #ccc;padding:5px 10px;text-align:center;font-weight:bold;color:#c62828;">28.2 ↑</td><td style="border:1px solid #ccc;padding:5px 10px;text-align:center;font-weight:bold;color:#c62828;">22.8 ↑</td></tr>
-      </tbody>
-    </table>
-    <p style="font-size:11px;color:#555;background:#f5f5f5;padding:6px 10px;border-radius:4px;">📊 <strong>分析：</strong>2020年以降、不動産価格は一貫して上昇しています。4年間で約20%の価格上昇となっており、<strong>現在は価格のピーク水準</strong>にあります。</p>
-  </div>
-
-  <!-- セクション5: まとめ -->
-  <div style="margin-bottom:24px;background:#fffde7;border:2px solid #f9a825;border-radius:8px;padding:16px;">
-    <h2 style="font-size:15px;color:#e65100;border-left:4px solid #e65100;padding-left:8px;margin-bottom:12px;">⑤ まとめ ── 今が売却のチャンスである理由</h2>
-    <ul style="margin:0;padding-left:20px;line-height:2;">
-      <li style="margin-bottom:6px;"><strong style="color:#c62828;">不動産価格が過去最高水準</strong>：2020年比で約20%上昇。今後の価格下落リスクを考えると、現在が最も高値で売却できるタイミングです。</li>
-      <li style="margin-bottom:6px;"><strong style="color:#c62828;">取引件数が増加中</strong>：買い手の需要が旺盛で、物件が市場に出れば早期成約が期待できます。</li>
-      <li style="margin-bottom:6px;"><strong style="color:#c62828;">人口減少前の需要ピーク</strong>：今後の人口減少により需要が落ちる前に、高値売却を実現できます。</li>
-      <li style="margin-bottom:6px;"><strong style="color:#c62828;">単身・夫婦世帯の増加</strong>：コンパクトな住居への需要が高まり、幅広い買い手層にアプローチできます。</li>
-      <li><strong style="color:#c62828;">金利上昇前の駆け込み需要</strong>：住宅ローン金利の上昇が予測される中、今のうちに購入しようとする買い手が増えています。</li>
-    </ul>
-    <div style="margin-top:12px;text-align:center;background:#e65100;color:white;padding:8px;border-radius:4px;font-size:13px;font-weight:bold;">
-      ✅ データが示す通り、今が最も有利な売却タイミングです
-    </div>
-  </div>
-
-  <!-- フッター -->
-  <div style="border-top:1px solid #ccc;padding-top:8px;font-size:10px;color:#999;text-align:center;">
-    ※本レポートのデータは公開統計・市場動向に基づく概算値です。実際の取引価格は個別物件の状況により異なります。
-  </div>
-</div>`;
-}
 
 /**
  * エリア情勢レポートを生成（AI使用）
@@ -2041,33 +1915,24 @@ router.post('/:id/area-report', async (req: Request, res: Response) => {
       return res.status(400).json({ error: '物件住所が設定されていません' });
     }
 
-    // ANTHROPIC_API_KEYが未設定の場合はサンプルレポートを返す（デモ用）
+    // OPENAI_API_KEYが未設定の場合はエラーを返す
     if (!process.env.OPENAI_API_KEY) {
-      // 住所からエリア名を抽出（デモ用）
-      const prefMatchDemo = address.match(/^(.{2,5}[都道府県])/);
-      const cityMatchDemo = address.match(/[都道府県](.{2,10}[市区町村])/);
-      const townMatchDemo = address.match(/[市区町村](.{2,15}?)(?:\d|[一二三四五六七八九十]|$)/);
-      const cityDemo = cityMatchDemo ? cityMatchDemo[1] : '';
-      const townDemo = townMatchDemo ? townMatchDemo[1].replace(/[\s　]+/g, '') : '';
-      const areaNameDemo = cityDemo || (prefMatchDemo ? prefMatchDemo[1] : address.substring(0, 10));
-      const detailAreaDemo = townDemo ? `${cityDemo}${townDemo}` : cityDemo;
-      const sampleHtml = generateSampleAreaReport(areaNameDemo, detailAreaDemo || areaNameDemo, propertyType);
-      return res.json({ html: sampleHtml, areaName: detailAreaDemo || areaNameDemo, generatedAt: new Date().toISOString(), isDemo: true });
+      return res.status(500).json({ error: 'OPENAI_API_KEYが設定されていません' });
     }
 
-    const Anthropic = (await import('@anthropic-ai/sdk')).default;
-    const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-
-    // 住所から市区町村・町丁目を抽出
-    const prefMatch = address.match(/^(.{2,5}[都道府県])/);
-    const cityMatch = address.match(/[都道府県](.{2,10}[市区町村])/);
-    const townMatch = address.match(/[市区町村](.{2,15}?)(?:\d|[一二三四五六七八九十]|$)/);
+    // 住所から都道府県・市区町村・町丁目を抽出
+    // 例: 「大分県別府市亀川東町3-9」→ pref=大分県, city=別府市, town=亀川東町
+    const prefMatch = address.match(/(.{2,5}[都道府県])/);
+    const cityMatch = address.match(/[都道府県]\s*(.{2,6}?[市区町村](?!.*[市区町村]))/);
+    const townMatch = address.match(/[市区町村]\s*([^\d\s-ー－〜0-9０-９]+?)(?=[\d\s\-ー－0-9０-９]|$)/);
 
     const prefecture = prefMatch ? prefMatch[1] : '';
     const city = cityMatch ? cityMatch[1] : '';
-    const town = townMatch ? townMatch[1].replace(/[\s　]+/g, '') : '';
+    const town = townMatch ? townMatch[1].trim() : '';
     const reportAreaName = city || prefecture || address.substring(0, 10);
     const detailArea = town ? `${city}${town}` : city;
+
+    const today = new Date().toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric' });
 
     const prompt = `あなたは不動産売買仲介会社の営業担当者です。
 以下のエリアについて、売主様に訪問査定時にお見せする「エリア情勢レポート」を作成してください。
@@ -2076,6 +1941,7 @@ router.post('/:id/area-report', async (req: Request, res: Response) => {
 【市区町村】${city || reportAreaName}
 【町丁目エリア】${detailArea || reportAreaName}
 【物件種別】${propertyType || '不動産'}
+【作成日】${today}（この日付をレポートのヘッダーに必ず使用すること。他の日付は絶対に使わない）
 
 以下の5つのセクションを含む、A4印刷用のHTMLレポートを作成してください。
 レポートは日本語で、売主様が「今が売却のチャンス」と感じられるよう、説得力のある内容にしてください。
@@ -2180,7 +2046,21 @@ HTMLのbodyタグ内のコンテンツのみを出力してください（html�
       }
     );
 
-    const htmlContent = completion.data.choices[0]?.message?.content || '';
+    let htmlContent = completion.data.choices[0]?.message?.content || '';
+
+    // AIがMarkdownコードブロックで囲んで返した場合は除去
+    // 例: ```html ... ``` や ``` ... ```
+    htmlContent = htmlContent.replace(/^```(?:html)?\s*/i, '').replace(/\s*```\s*$/i, '').trim();
+
+    // 印刷時に背景色・文字色が消えないようにCSSを先頭に注入
+    const printCss = `<style>
+@media print {
+  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
+  body { margin: 0; font-family: 'Hiragino Kaku Gothic ProN','Meiryo',sans-serif; }
+  @page { size: A4; margin: 15mm; }
+}
+</style>`;
+    htmlContent = printCss + htmlContent;
 
     res.json({
       html: htmlContent,
