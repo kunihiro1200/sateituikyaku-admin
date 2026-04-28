@@ -4,6 +4,9 @@ import RefreshIcon from '@mui/icons-material/Refresh';
 import api from '../services/api';
 import { ButtonState } from '../hooks/useCallModeQuickButtonState';
 
+// 重要項目（ピンク表示）
+const IMPORTANT_LABELS = ['名義', 'ローン', '表札確認', '売却理由'];
+
 interface QuickButtonDef {
   id: string;
   label: string;
@@ -129,22 +132,26 @@ const CommentHighlightsPanel: React.FC<CommentHighlightsPanelProps> = ({
             ⚠️ ヒアリング未です！ヒアリングしてください！
           </Typography>
           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75 }}>
-            {unhearingButtons.map((btn) => (
-              <Chip
-                key={btn.id}
-                label={btn.label}
-                size="small"
-                clickable={!!onQuickButtonClick}
-                onClick={onQuickButtonClick ? () => onQuickButtonClick(btn.id, btn.insertText) : undefined}
-                sx={{
-                  bgcolor: '#ffe0b2',
-                  color: '#bf360c',
-                  fontWeight: 'bold',
-                  fontSize: '0.75rem',
-                  '&:hover': onQuickButtonClick ? { bgcolor: '#ffcc80' } : undefined,
-                }}
-              />
-            ))}
+            {unhearingButtons.map((btn) => {
+              const isImportant = IMPORTANT_LABELS.includes(btn.label);
+              return (
+                <Chip
+                  key={btn.id}
+                  label={btn.label}
+                  size="small"
+                  clickable={!!onQuickButtonClick}
+                  onClick={onQuickButtonClick ? () => onQuickButtonClick(btn.id, btn.insertText) : undefined}
+                  sx={{
+                    bgcolor: isImportant ? '#fce4ec' : '#ffe0b2',
+                    color: isImportant ? '#c62828' : '#bf360c',
+                    fontWeight: 'bold',
+                    fontSize: '0.75rem',
+                    border: isImportant ? '1px solid #f48fb1' : 'none',
+                    '&:hover': onQuickButtonClick ? { bgcolor: isImportant ? '#f8bbd0' : '#ffcc80' } : undefined,
+                  }}
+                />
+              );
+            })}
           </Box>
         </Box>
       )}
