@@ -343,11 +343,11 @@ router.post('/enhance-email', authenticate, async (req: Request, res: Response) 
 
 【必須条件】
 - 元の文章の単語・フレーズを極力使わない（別の言葉に置き換える）
-- 冒頭の書き出しを完全に変える（「お世話になっております」で始まっている場合は別の書き出しにする）
+- 冒頭の挨拶はビジネスメールとして適切な表現にする（「お世話になっております」「平素よりお世話になっております」「いつもお世話になっております」などビジネス定型挨拶の範囲で変える。「こんにちは」「はじめまして」などカジュアルな表現は絶対に使わない）
 - 段落の構成・順序を変える
 - 文体のトーンを変える（例：元が事務的なら温かみのある表現に、元が柔らかければ簡潔でテキパキした表現に）
 - 伝える情報・事実・趣旨は元の本文と完全に同じにする
-- 敬語・丁寧語は維持する
+- 敬語・丁寧語は維持する（「思います」「考えております」など語尾を省略しない）
 - 署名部分（「---」以降や名前・会社名・電話番号など）は一切変更しない
 - 書き直した本文のみを返す（説明・コメント・前置き不要）
 
@@ -383,13 +383,7 @@ ${currentBody}
 【今回の本文（改善してください）】
 ${currentBody}`;
 
-    // SSEヘッダーを設定してストリーミング開始
-    res.setHeader('Content-Type', 'text/event-stream');
-    res.setHeader('Cache-Control', 'no-cache');
-    res.setHeader('Connection', 'keep-alive');
-    res.flushHeaders();
-
-    const streamResponse = await axios.post(
+    const completion = await axios.post(
       'https://api.openai.com/v1/chat/completions',
       {
         model: enhanceMode === 'rewrite' ? 'gpt-4o' : 'gpt-4o-mini',
@@ -399,66 +393,35 @@ ${currentBody}`;
         ],
         temperature: enhanceMode === 'rewrite' ? 1.0 : 0.7,
         max_tokens: enhanceMode === 'rewrite' ? 2500 : 1500,
-        stream: true,
       },
       {
         headers: {
           'Authorization': `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
         },
-        responseType: 'stream',
         timeout: 60000,
       }
     );
 
-    streamResponse.data.on('data', (chunk: Buffer) => {
-      const lines = chunk.toString().split('\n').filter((l: string) => l.trim());
-      for (const line of lines) {
-        if (!line.startsWith('data: ')) continue;
-        const data = line.slice(6);
-        if (data === '[DONE]') {
-          res.write('data: [DONE]\n\n');
-          res.end();
-          return;
-        }
-        try {
-          const parsed = JSON.parse(data);
-          const token = parsed.choices?.[0]?.delta?.content;
-          if (token) {
-            res.write(`data: ${JSON.stringify({ token })}\n\n`);
-          }
-        } catch {
-          // パースエラーは無視
-        }
-      }
-    });
+    const enhancedBody = completion.data?.choices?.[0]?.message?.content?.trim() || '';
+    if (!enhancedBody) {
+      return res.status(500).json({ error: 'AIからの応答が空でした' });
+    }
 
-    streamResponse.data.on('end', () => {
-      res.write('data: [DONE]\n\n');
-      res.end();
-    });
-
-    streamResponse.data.on('error', (err: Error) => {
-      console.error('[enhance-email] Stream error:', err.message);
-      res.write(`data: ${JSON.stringify({ error: 'ストリームエラーが発生しました' })}\n\n`);
-      res.end();
-    });
+    return res.json({ enhancedBody });
 
   } catch (error: any) {
     const status = error?.response?.status;
     const errMsg = error?.response?.data?.error?.message || error.message;
     console.error(`[enhance-email] Error (HTTP ${status}):`, errMsg);
 
-    if (!res.headersSent) {
-      if (status === 429) {
-        return res.status(429).json({ error: 'APIの利用制限に達しました。しばらく待ってから再試行してください。' });
-      }
-      if (status === 401) {
-        return res.status(401).json({ error: 'OpenAI APIキーが無効です。' });
-      }
-      return res.status(500).json({ error: 'メール改善に失敗しました' });
+    if (status === 429) {
+      return res.status(429).json({ error: 'APIの利用制限に達しました。しばらく待ってから再試行してください。' });
     }
-    res.end();
+    if (status === 401) {
+      return res.status(401).json({ error: 'OpenAI APIキーが無効です。' });
+    }
+    return res.status(500).json({ error: 'メール改善に失敗しました' });
   }
 });
 
