@@ -8419,6 +8419,7 @@ HP：https://ifoo-oita.com/
         </DialogTitle>
         <DialogContent>
           <CallRankingDisplay
+            key={rankingDialogOpen ? 'open' : 'closed'}
             allowedInitials={normalInitials.filter((i) => i !== 'K')}
           />
         </DialogContent>
@@ -8434,6 +8435,7 @@ HP：https://ifoo-oita.com/
         </DialogTitle>
         <DialogContent>
           <CallRankingDisplay
+            key={yearlyRankingDialogOpen ? 'open' : 'closed'}
             title="1番電話年間累計ランキング"
             endpoint="/api/sellers/call-ranking-yearly"
             allowedInitials={normalInitials.filter((i) => i !== 'K')}
@@ -8452,6 +8454,7 @@ HP：https://ifoo-oita.com/
         </DialogTitle>
         <DialogContent>
           <CallRankingDisplay
+            key={callTrackingRankingDialogOpen ? 'open' : 'closed'}
             title="追客電話月間ランキング"
             endpoint="/api/sellers/call-tracking-ranking"
           />
