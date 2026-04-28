@@ -7,22 +7,25 @@ import { ButtonState } from '../hooks/useCallModeQuickButtonState';
 interface QuickButtonDef {
   id: string;
   label: string;
+  insertText: string;
 }
 
 interface CommentHighlightsPanelProps {
   commentHtml: string;
   quickButtonIds?: QuickButtonDef[];
   getButtonState?: (id: string) => ButtonState | null;
+  onQuickButtonClick?: (id: string, insertText: string) => void;
 }
 
 /**
- * 保存済みコメントをAIで解析し、クイックボタン関連項目を箇条書きで表示するパネル。
- * あわせて、まだコメントに言及されていないクイックボタン項目を「ヒアリング未」として表示する。
+ * AIコメントまとめ＋ヒアリング未フィールド。
+ * ヒアリング未のチップをクリックするとコメントに挿入＋ボタン状態を更新する。
  */
 const CommentHighlightsPanel: React.FC<CommentHighlightsPanelProps> = ({
   commentHtml,
   quickButtonIds = [],
   getButtonState,
+  onQuickButtonClick,
 }) => {
   const [highlights, setHighlights] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
@@ -35,7 +38,6 @@ const CommentHighlightsPanel: React.FC<CommentHighlightsPanelProps> = ({
       setHighlights([]);
       return;
     }
-
     setLoading(true);
     setError(null);
     try {
@@ -54,35 +56,28 @@ const CommentHighlightsPanel: React.FC<CommentHighlightsPanelProps> = ({
     }
   };
 
-  // 保存済みコメントが変わったら自動取得
   useEffect(() => {
     if (commentHtml === prevCommentRef.current) return;
     prevCommentRef.current = commentHtml;
     fetchHighlights(commentHtml);
   }, [commentHtml]);
 
-  // ヒアリング未のボタンを計算
-  // - クイックボタンが押されていない（pending/persistedでない）
-  // - かつAIまとめにそのラベルが含まれていない
+  // ヒアリング未：押されていない＆AIまとめにも出ていないボタン
   const unhearingButtons = quickButtonIds.filter((btn) => {
     const state = getButtonState ? getButtonState(btn.id) : null;
     if (state === 'pending' || state === 'persisted') return false;
-    // AIまとめにラベルが含まれているか確認
-    const mentionedInHighlights = highlights.some((h) =>
-      h.includes(btn.label)
-    );
+    const mentionedInHighlights = highlights.some((h) => h.includes(btn.label));
     return !mentionedInHighlights;
   });
 
   const plain = commentHtml.replace(/<[^>]+>/g, '').trim();
   const hasContent = plain || highlights.length > 0 || loading;
 
-  // コメントが空でヒアリング未もなければ非表示
   if (!hasContent && unhearingButtons.length === 0) return null;
 
   return (
     <Box sx={{ mb: 2 }}>
-      {/* AIコメントまとめ（コメントがある場合のみ表示） */}
+      {/* AIコメントまとめ */}
       {hasContent && (
         <Box sx={{ mb: 1.5, p: 1.5, bgcolor: '#f3e5f5', borderRadius: 1, border: '1px solid #ce93d8' }}>
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.5 }}>
@@ -109,15 +104,12 @@ const CommentHighlightsPanel: React.FC<CommentHighlightsPanelProps> = ({
               <Typography variant="caption" color="text.secondary">解析中...</Typography>
             </Box>
           )}
-
           {error && !loading && (
             <Typography variant="caption" color="error">{error}</Typography>
           )}
-
           {!loading && !error && highlights.length === 0 && plain && (
             <Typography variant="caption" color="text.secondary">関連項目なし</Typography>
           )}
-
           {!loading && highlights.length > 0 && (
             <Box component="ul" sx={{ m: 0, pl: 2.5 }}>
               {highlights.map((item, idx) => (
@@ -142,11 +134,14 @@ const CommentHighlightsPanel: React.FC<CommentHighlightsPanelProps> = ({
                 key={btn.id}
                 label={btn.label}
                 size="small"
+                clickable={!!onQuickButtonClick}
+                onClick={onQuickButtonClick ? () => onQuickButtonClick(btn.id, btn.insertText) : undefined}
                 sx={{
                   bgcolor: '#ffe0b2',
                   color: '#bf360c',
                   fontWeight: 'bold',
                   fontSize: '0.75rem',
+                  '&:hover': onQuickButtonClick ? { bgcolor: '#ffcc80' } : undefined,
                 }}
               />
             ))}
