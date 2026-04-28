@@ -1664,12 +1664,15 @@ ${detailUrl}`;
 router.get('/insights', async (req: Request, res: Response) => {
   try {
     const supabase = (buyerService as any).supabase;
+    // viewing_insight_executor または viewing_insight_companion が入力されている全買主を取得
+    // NULLフィルタはSupabaseのor構文では難しいため、全件取得してJS側でフィルタする
     const { data, error } = await supabase
       .from('buyers')
       .select('buyer_number, name, property_number, property_address, viewing_date, follow_up_assignee, viewing_insight_executor, viewing_insight_companion')
       .is('deleted_at', null)
-      .or('viewing_insight_executor.not.is.null,viewing_insight_companion.not.is.null')
       .order('viewing_date', { ascending: false });
+
+    if (error) throw error;
 
     // NULLでない かつ 空文字でないものだけに絞り込む
     const filtered = (data || []).filter(
@@ -1678,7 +1681,6 @@ router.get('/insights', async (req: Request, res: Response) => {
         (b.viewing_insight_companion && b.viewing_insight_companion.trim() !== '')
     );
 
-    if (error) throw error;
     res.json(filtered);
   } catch (error: any) {
     console.error('[GET /buyers/insights] Error:', error);
