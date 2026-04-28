@@ -107,10 +107,27 @@ const DATA: Record<string, HouseMakerContent> = {
   },
 };
 
+// 略称・通称 → データキーのマッピング
+const ALIASES: [RegExp, string][] = [
+  [/一条/,                  '一条工務店'],
+  [/積水ハウス|セキスイハウス/,  '積水ハウス'],
+  [/ダイワ|大和ハウス/,        'ダイワハウス'],
+  [/パナソニック|パナホーム/,   'パナソニックホームズ'],
+  [/ユニバーサル/,            'ユニバーサルホーム'],
+  [/ミサワ/,                 'ミサワホーム'],
+  [/谷川/,                   '谷川建設'],
+  [/住友林業|すみりん/,        '住友林業'],
+];
+
 function detectMaker(commentHtml: string): HouseMakerContent | null {
   const plain = commentHtml.replace(/<[^>]+>/g, '');
+  // まず完全一致で検索
   for (const [key, data] of Object.entries(DATA)) {
     if (plain.includes(key)) return data;
+  }
+  // 次に略称・通称で検索
+  for (const [pattern, key] of ALIASES) {
+    if (pattern.test(plain)) return DATA[key] ?? null;
   }
   return null;
 }
