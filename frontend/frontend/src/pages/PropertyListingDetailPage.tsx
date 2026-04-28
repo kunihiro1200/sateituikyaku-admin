@@ -622,7 +622,7 @@ export default function PropertyListingDetailPage() {
       throw new Error('no_changes');
     }
     try {
-      await api.put(`/api/property-listings/${propertyNumber}`, basicInfoData);
+      await api.put(`/api/property-listings/${propertyNumber}`, editedData);
       setSnackbar({
         open: true,
         message: '基本情報を保存しました',
@@ -646,7 +646,7 @@ export default function PropertyListingDetailPage() {
       throw new Error('no_changes');
     }
     try {
-      await api.put(`/api/property-listings/${propertyNumber}`, propertyDetailsData);
+      await api.put(`/api/property-listings/${propertyNumber}`, editedData);
       setSnackbar({
         open: true,
         message: '物件詳細情報を保存しました',
@@ -686,7 +686,7 @@ export default function PropertyListingDetailPage() {
       throw new Error('no_changes');
     }
     try {
-      await api.put(`/api/property-listings/${propertyNumber}`, frequentlyAskedData);
+      await api.put(`/api/property-listings/${propertyNumber}`, editedData);
       setSnackbar({
         open: true,
         message: 'よく聞かれる項目を保存しました',
@@ -715,7 +715,7 @@ export default function PropertyListingDetailPage() {
       throw new Error('no_changes');
     }
     try {
-      await api.put(`/api/property-listings/${propertyNumber}`, viewingInfoData);
+      await api.put(`/api/property-listings/${propertyNumber}`, editedData);
       setSnackbar({
         open: true,
         message: '内覧情報を保存しました',
@@ -744,7 +744,7 @@ export default function PropertyListingDetailPage() {
       throw new Error('no_changes');
     }
     try {
-      await api.put(`/api/property-listings/${propertyNumber}`, sellerBuyerData);
+      await api.put(`/api/property-listings/${propertyNumber}`, editedData);
       setSnackbar({
         open: true,
         message: '売主買主情報を保存しました',
