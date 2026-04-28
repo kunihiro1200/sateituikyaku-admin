@@ -28,6 +28,7 @@ export interface PerformanceMetrics {
       denominator?: number;      // 訪問数 - 一般媒介数（分母）
       visitCount?: number;       // 訪問数
       generalAgencyCount?: number; // 一般媒介数
+      target?: number;
     };
   };
   competitorLossUnvisited: {
@@ -430,7 +431,7 @@ export class PerformanceMetricsService extends BaseRepository {
     month: number
   ): Promise<{
     byRepresentative: RepresentativeMetric[];
-    total: { count: number; rate: number };
+    total: { count: number; rate: number; denominator?: number; visitCount?: number; generalAgencyCount?: number };
   }> {
     // Use UTC dates to avoid timezone issues
     const startDate = new Date(Date.UTC(year, month - 1, 1)).toISOString();
