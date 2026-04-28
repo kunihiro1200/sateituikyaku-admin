@@ -3,7 +3,7 @@ import { authenticate } from '../middleware/auth';
 import { SummaryGenerator } from '../services/SummaryGenerator';
 import { ActivityLogService } from '../services/ActivityLogService';
 import { SellerService } from '../services/SellerService.supabase';
-import OpenAI from 'openai';
+import axios from 'axios';
 
 const router = Router();
 const summaryGenerator = new SummaryGenerator();
@@ -190,15 +190,12 @@ router.post('/comment-highlights', authenticate, async (req: Request, res: Respo
       return res.status(500).json({ error: 'OpenAI API key not configured' });
     }
 
-    const openai = new OpenAI({ apiKey });
-
     // HTMLタグを除去してプレーンテキストに変換
     const plainText = commentText.replace(/<[^>]+>/g, '').trim();
 
     if (plainText.length === 0) {
       return res.json({ highlights: [] });
     }
-
     const systemPrompt = `あなたは不動産売主管理システムのアシスタントです。
 売主との通話・対応のコメントを読んで、以下のカテゴリに「意味的に関連する内容」を全て箇条書きで抽出してください。
 
@@ -259,18 +256,28 @@ B'（売却意欲が低い・価格確認だけ・様子見・興味薄い）
 - 必ず {"highlights": [...]} の形式のJSONで返す
 - 例: {"highlights": ["B'：価格だけ知りたかった様子で売る気はなさそう", "他社待ち：他社の査定結果を待ってから判断したい", "売却意欲あり：1年以内には売りたいと言っていた"]}`;
 
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: `以下のコメントから関連項目を抽出してください：\n\n${plainText}` },
-      ],
-      temperature: 0.2,
-      max_tokens: 500,
-      response_format: { type: 'json_object' },
-    });
+    const completion = await axios.post(
+      'https://api.openai.com/v1/chat/completions',
+      {
+        model: 'gpt-4o-mini',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: `以下のコメントから関連項目を抽出してください：\n\n${plainText}` },
+        ],
+        temperature: 0.2,
+        max_tokens: 500,
+        response_format: { type: 'json_object' },
+      },
+      {
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        timeout: 20000,
+      }
+    );
 
-    const raw = completion.choices[0]?.message?.content || '{}';
+    const raw = completion.data?.choices?.[0]?.message?.content || '{}';
     let highlights: string[] = [];
 
     try {
