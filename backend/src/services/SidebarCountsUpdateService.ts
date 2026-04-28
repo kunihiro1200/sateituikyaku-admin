@@ -309,6 +309,15 @@ export class SidebarCountsUpdateService {
       categories.push({ category: 'viewingUnconfirmed', assignee: null });
     }
 
+    // 売主内覧連絡未: seller_viewing_date_contact = '未' かつ viewing_date >= '2026-04-29'
+    if (
+      buyer.seller_viewing_date_contact === '未' &&
+      buyer.viewing_date &&
+      String(buyer.viewing_date).substring(0, 10) >= '2026-04-29'
+    ) {
+      categories.push({ category: 'sellerViewingContactPending', assignee: null });
+    }
+
     console.log(`[determineBuyerCategories] Final categories:`, categories);
     return categories;
   }

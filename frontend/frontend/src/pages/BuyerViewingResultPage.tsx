@@ -526,7 +526,7 @@ export default function BuyerViewingResultPage() {
         'pre_viewing_hearing',
         'seller_viewing_contact',
         'buyer_viewing_contact',
-        'seller_viewing_date_contact',
+        // seller_viewing_date_contact はスプシ同期不要（同期失敗でロールバックされるため除外）
         'seller_cancel_contact',
         'notification_sender',
         'inquiry_hearing',

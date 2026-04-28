@@ -1895,6 +1895,7 @@ export class BuyerService {
       'past_buyer_list', 'price', 'property_number',
       'desired_area', 'desired_property_type', 'budget',
       'viewing_survey_result', 'viewing_survey_confirmed',
+      'seller_viewing_date_contact',
     ].join(', ');
 
     // count クエリ・最初のバッチ・property_listings を全て並列実行
