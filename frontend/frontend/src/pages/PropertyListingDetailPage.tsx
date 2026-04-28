@@ -263,6 +263,7 @@ export default function PropertyListingDetailPage() {
   const [isSellerBuyerEditMode, setIsSellerBuyerEditMode] = useState(false);
   const [isOfferEditMode, setIsOfferEditMode] = useState(false);
   const [atbbWarningDialog, setAtbbWarningDialog] = useState(false);
+  const [eLabelWarningDialog, setELabelWarningDialog] = useState(false);
   const offerSectionRef = useRef<HTMLDivElement>(null);
   // 買付情報バリデーションエラー状態
   const [offerErrors, setOfferErrors] = useState<{
@@ -560,11 +561,7 @@ export default function PropertyListingDetailPage() {
           ? editedData.e_label_checked
           : (data?.e_label_checked ?? '');
         if (!currentELabel || currentELabel.trim() === '' || currentELabel !== '済') {
-          setSnackbar({
-            open: true,
-            message: 'Eラベルチェックの確認してください',
-            severity: 'error',
-          });
+          setELabelWarningDialog(true);
           return;
         }
       }
@@ -3354,9 +3351,29 @@ export default function PropertyListingDetailPage() {
         </Grid>
       </Grid>
 
+      {/* Eラベルチェック警告ダイアログ */}
+      <Dialog open={eLabelWarningDialog} onClose={() => setELabelWarningDialog(false)} maxWidth="xs" fullWidth>
+        <DialogTitle sx={{ bgcolor: '#fce4ec', color: '#c62828', fontWeight: 'bold', fontSize: '1.1rem' }}>
+          ⚠️ 保存できません
+        </DialogTitle>
+        <DialogContent sx={{ pt: 3, pb: 2 }}>
+          <Typography variant="body1" sx={{ fontWeight: 600 }}>
+            ATBB状況を「一般・公開中」に変更する場合、<br />
+            <span style={{ color: '#c62828' }}>「Eラベルつけた？」の確認が必須</span>です。
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 1.5 }}>
+            「済」ボタンを押してからもう一度保存してください。
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={() => setELabelWarningDialog(false)} variant="contained" color="error">
+            閉じる
+          </Button>
+        </DialogActions>
+      </Dialog>
+
       {/* ATBB非公開時 買付フィールド必須警告ダイアログ */}
-      <Dialog open={atbbWarningDialog} onClose={() => setAtbbWarningDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ bgcolor: '#fff3e0', color: '#e65100', fontWeight: 'bold', fontSize: '1.1rem' }}>
+      <Dialog open={atbbWarningDialog} onClose={() => setAtbbWarningDialog(false)} maxWidth="sm" fullWidth>        <DialogTitle sx={{ bgcolor: '#fff3e0', color: '#e65100', fontWeight: 'bold', fontSize: '1.1rem' }}>
           ⚠️ 保存できません
         </DialogTitle>
         <DialogContent sx={{ pt: 3, pb: 2 }}>
