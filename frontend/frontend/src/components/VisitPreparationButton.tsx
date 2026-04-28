@@ -7,6 +7,7 @@ export interface VisitPreparationButtonProps {
   inquiryUrl: string | null | undefined;
   sellerNumber: string | undefined;
   propertyAddress: string | undefined;
+  commentHtml?: string;
 }
 
 /**
@@ -18,6 +19,7 @@ export const VisitPreparationButton: React.FC<VisitPreparationButtonProps> = ({
   inquiryUrl,
   sellerNumber,
   propertyAddress,
+  commentHtml,
 }) => {
   const [open, setOpen] = useState(false);
 
@@ -41,6 +43,7 @@ export const VisitPreparationButton: React.FC<VisitPreparationButtonProps> = ({
         inquiryUrl={inquiryUrl}
         sellerNumber={sellerNumber}
         propertyAddress={propertyAddress}
+        commentHtml={commentHtml}
       />
     </>
   );

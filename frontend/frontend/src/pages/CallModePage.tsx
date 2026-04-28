@@ -4393,6 +4393,7 @@ HP：https://ifoo-oita.com/
               inquiryUrl={inquiryUrl}
               sellerNumber={seller?.sellerNumber}
               propertyAddress={propInfo.address || seller?.propertyAddress}
+              commentHtml={savedComments}
             />
             {/* 画像ボタン */}
             <Button

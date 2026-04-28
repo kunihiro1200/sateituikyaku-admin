@@ -13,6 +13,8 @@ import {
   Tooltip,
 } from '@mui/material';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import AreaReportModal from './AreaReportModal';
+import HouseMakerModal from './HouseMakerModal';
 
 export interface VisitPreparationPopupProps {
   open: boolean;
@@ -21,6 +23,7 @@ export interface VisitPreparationPopupProps {
   inquiryUrl: string | null | undefined;
   sellerNumber: string | undefined;
   propertyAddress: string | undefined;
+  commentHtml?: string;
 }
 
 // ゼンリンのログイン情報
@@ -180,6 +183,16 @@ const ZenrinCredentials: React.FC = () => (
   </Box>
 );
 
+// ハウスメーカー名リスト（コメントに含まれるか判定用）
+const HOUSE_MAKERS = [
+  '一条工務店', '積水ハウス', 'ダイワハウス', '大和ハウス',
+  'パナソニックホームズ', 'ユニバーサルホーム', 'ミサワホーム',
+  '谷川建設', '住友林業', 'ヘーベルハウス', 'セキスイハイム',
+  'トヨタホーム', '三井ホーム', '旭化成ホームズ', 'タマホーム',
+  'アイフルホーム', 'クレバリーホーム', 'アキュラホーム',
+  'ハウスメーカー',
+];
+
 /**
  * 訪問準備ポップアップコンポーネント
  * 訪問前に必要な6種類のリソースへのリンクを一覧表示する
@@ -191,7 +204,14 @@ export const VisitPreparationPopup: React.FC<VisitPreparationPopupProps> = ({
   inquiryUrl,
   sellerNumber,
   propertyAddress,
+  commentHtml = '',
 }) => {
+  const [areaReportOpen, setAreaReportOpen] = useState(false);
+  const [houseMakerModalOpen, setHouseMakerModalOpen] = useState(false);
+
+  // ハウスメーカー名がコメントに含まれるか判定
+  const plainComment = commentHtml.replace(/<[^>]+>/g, '');
+  const hasHouseMaker = HOUSE_MAKERS.some((m) => plainComment.includes(m));
   // 表示順序：添付資料 → ぜんりん（+ログイン情報） → 謄本 → 査定書 → 成約事例 → 近隣買主
   const items: Array<{ label: string; content: React.ReactNode }> = [
     // 1. 添付資料
@@ -278,9 +298,48 @@ export const VisitPreparationPopup: React.FC<VisitPreparationPopupProps> = ({
         <span>（リンクなし）</span>
       ),
     },
+    // 7. エリア情勢（ボタンクリックでモーダルを開く）
+    {
+      label: 'エリア情勢',
+      content: sellerId ? (
+        <Box
+          component="span"
+          sx={{
+            color: '#1a237e',
+            textDecoration: 'underline',
+            cursor: 'pointer',
+            '&:hover': { opacity: 0.7 },
+          }}
+          onClick={() => setAreaReportOpen(true)}
+        >
+          エリア情勢
+        </Box>
+      ) : (
+        <span>（リンクなし）</span>
+      ),
+    },
+    // 8. ハウスメーカー（コメントにハウスメーカー名がある場合のみ）
+    ...(hasHouseMaker ? [{
+      label: 'ハウスメーカー',
+      content: (
+        <Box
+          component="span"
+          sx={{
+            color: '#1a237e',
+            textDecoration: 'underline',
+            cursor: 'pointer',
+            '&:hover': { opacity: 0.7 },
+          }}
+          onClick={() => setHouseMakerModalOpen(true)}
+        >
+          ハウスメーカー
+        </Box>
+      ),
+    }] : []),
   ];
 
   return (
+    <>
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
       <DialogTitle>訪問準備</DialogTitle>
       <DialogContent>
@@ -333,6 +392,25 @@ export const VisitPreparationPopup: React.FC<VisitPreparationPopupProps> = ({
         </Button>
       </DialogActions>
     </Dialog>
+
+    {/* エリア情勢モーダル */}
+    {sellerId && (
+      <AreaReportModal
+        open={areaReportOpen}
+        onClose={() => setAreaReportOpen(false)}
+        sellerId={sellerId}
+        sellerNumber={sellerNumber}
+        propertyAddress={propertyAddress}
+      />
+    )}
+
+    {/* ハウスメーカーモーダル */}
+    <HouseMakerModal
+      open={houseMakerModalOpen}
+      onClose={() => setHouseMakerModalOpen(false)}
+      commentHtml={commentHtml}
+    />
+  </>
   );
 };
 
