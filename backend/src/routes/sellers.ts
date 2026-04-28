@@ -571,9 +571,9 @@ router.get('/call-tracking-ranking', async (req: Request, res: Response) => {
 
     await sheetsClient.authenticate();
 
-    // レート制限を適用してデータ取得（シート名を含めずに範囲のみ指定）
+    // レート制限を適用してデータ取得（A列からG列まで広めに取得）
     const rawData = await sheetsRateLimiter.executeRequest(async () => {
-      return await sheetsClient.readRawRange('A:F');
+      return await sheetsClient.readRawRange('A:G');
     });
 
     if (!rawData || rawData.length === 0) {
@@ -584,6 +584,20 @@ router.get('/call-tracking-ranking', async (req: Request, res: Response) => {
       });
     }
 
+    // ヘッダー行からインデックスを動的に取得
+    const headers = rawData[0];
+    const dateColIdx = headers.findIndex((h: string) => h === '日付');
+    const firstHalfColIdx = headers.findIndex((h: string) => h === '担当（前半）');
+    const secondHalfColIdx = headers.findIndex((h: string) => h === '担当（後半）');
+
+    console.log(`[CallTrackingRanking] Column indices - 日付:${dateColIdx}, 担当（前半）:${firstHalfColIdx}, 担当（後半）:${secondHalfColIdx}`);
+    console.log(`[CallTrackingRanking] Headers: ${JSON.stringify(headers)}`);
+
+    // ヘッダーが見つからない場合はデフォルト値を使用
+    const effectiveDateIdx = dateColIdx >= 0 ? dateColIdx : 0;
+    const effectiveFirstHalfIdx = firstHalfColIdx >= 0 ? firstHalfColIdx : 4;
+    const effectiveSecondHalfIdx = secondHalfColIdx >= 0 ? secondHalfColIdx : 5;
+
     // ヘッダー行をスキップ
     const dataRows = rawData.slice(1);
 
@@ -593,26 +607,31 @@ router.get('/call-tracking-ranking', async (req: Request, res: Response) => {
     const currentMonthEnd = new Date(year, month + 1, 0, 23, 59, 59, 999);
 
     for (const row of dataRows) {
-      const dateStr = row[0]; // A列（日付）
-      const initial1 = row[4]; // E列（1回目イニシャル）
-      const initial2 = row[5]; // F列（2回目イニシャル）
+      const dateStr = row[effectiveDateIdx]; // 日付列
+      const initial1 = row[effectiveFirstHalfIdx]; // 担当（前半）列
+      const initial2 = row[effectiveSecondHalfIdx]; // 担当（後半）列
 
       // 日付が空欄の場合はスキップ
       if (!dateStr) continue;
 
-      // 日付を解析（東京時間）
+      // 日付を解析（JSTローカル時刻として扱う）
       let date: Date;
       try {
-        // "2026/4/15" 形式を想定
-        const parts = String(dateStr).split('/');
-        if (parts.length === 3) {
-          const y = parseInt(parts[0], 10);
-          const m = parseInt(parts[1], 10) - 1; // 0-indexed
-          const d = parseInt(parts[2], 10);
+        const dateStrNorm = String(dateStr).trim();
+        // "2026/4/15" または "2026/4/15 10:30:00" 形式
+        const slashParts = dateStrNorm.split('/');
+        if (slashParts.length >= 3) {
+          const y = parseInt(slashParts[0], 10);
+          const m = parseInt(slashParts[1], 10) - 1;
+          const dayPart = slashParts[2].split(' ')[0]; // 時刻部分を除去
+          const d = parseInt(dayPart, 10);
           date = new Date(y, m, d);
         } else {
-          // その他の形式はDate.parseで試す
-          date = new Date(dateStr);
+          // "2026-04-28 10:30:00" または "2026-04-28T10:30:00" 形式
+          // 日付部分のみ取り出してローカル時刻として解釈
+          const datePart = dateStrNorm.substring(0, 10); // "2026-04-28"
+          const [y, m, d] = datePart.split('-').map(Number);
+          date = new Date(y, m - 1, d);
         }
 
         // 無効な日付はスキップ
