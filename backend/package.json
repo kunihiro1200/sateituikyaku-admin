@@ -39,6 +39,7 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.91.1",
     "@supabase/supabase-js": "^2.90.1",
     "@types/bcrypt": "^6.0.0",
     "@types/bull": "^3.15.9",
