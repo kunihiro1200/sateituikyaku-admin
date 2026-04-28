@@ -622,7 +622,8 @@ export default function PropertyListingDetailPage() {
       throw new Error('no_changes');
     }
     try {
-      await api.put(`/api/property-listings/${propertyNumber}`, editedData);
+      const { e_label_checked: _e1, ...basicInfoData } = editedData;
+      await api.put(`/api/property-listings/${propertyNumber}`, basicInfoData);
       setSnackbar({
         open: true,
         message: '基本情報を保存しました',
@@ -646,7 +647,8 @@ export default function PropertyListingDetailPage() {
       throw new Error('no_changes');
     }
     try {
-      await api.put(`/api/property-listings/${propertyNumber}`, editedData);
+      const { e_label_checked: _e2, ...propertyDetailsData } = editedData;
+      await api.put(`/api/property-listings/${propertyNumber}`, propertyDetailsData);
       setSnackbar({
         open: true,
         message: '物件詳細情報を保存しました',
@@ -686,7 +688,8 @@ export default function PropertyListingDetailPage() {
       throw new Error('no_changes');
     }
     try {
-      await api.put(`/api/property-listings/${propertyNumber}`, editedData);
+      const { e_label_checked: _e3, ...frequentlyAskedData } = editedData;
+      await api.put(`/api/property-listings/${propertyNumber}`, frequentlyAskedData);
       setSnackbar({
         open: true,
         message: 'よく聞かれる項目を保存しました',
@@ -715,7 +718,8 @@ export default function PropertyListingDetailPage() {
       throw new Error('no_changes');
     }
     try {
-      await api.put(`/api/property-listings/${propertyNumber}`, editedData);
+      const { e_label_checked: _e4, ...viewingInfoData } = editedData;
+      await api.put(`/api/property-listings/${propertyNumber}`, viewingInfoData);
       setSnackbar({
         open: true,
         message: '内覧情報を保存しました',
@@ -744,7 +748,8 @@ export default function PropertyListingDetailPage() {
       throw new Error('no_changes');
     }
     try {
-      await api.put(`/api/property-listings/${propertyNumber}`, editedData);
+      const { e_label_checked: _e5, ...sellerBuyerData } = editedData;
+      await api.put(`/api/property-listings/${propertyNumber}`, sellerBuyerData);
       setSnackbar({
         open: true,
         message: '売主買主情報を保存しました',
@@ -831,7 +836,9 @@ export default function PropertyListingDetailPage() {
     setOfferErrors({});
 
     try {
-      await api.put(`/api/property-listings/${propertyNumber}`, { ...editedData, notify_offer: true });
+      // e_label_checked はヘッダー保存時のみ送信（買付保存では除外）
+      const { e_label_checked: _excluded, ...offerData } = editedData;
+      await api.put(`/api/property-listings/${propertyNumber}`, { ...offerData, notify_offer: true });
       setSnackbar({
         open: true,
         message: '買付情報を保存しました',
