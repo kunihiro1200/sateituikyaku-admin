@@ -3311,15 +3311,19 @@ HP：https://ifoo-oita.com/
       result = result.replace(/<<時間>>/g, timeStr);
     } else if (seller.visitDate) {
       // appointmentDate が未設定の場合は visitDate にフォールバック
-      const visitDateObj = new Date(seller.visitDate);
-      const dateStr = `${visitDateObj.getMonth() + 1}月${visitDateObj.getDate()}日`;
+      // new Date() を使わず parseVisitDateToLocal で文字列から直接パース（UTC→JST変換を回避）
+      const localDateTimeStr = parseVisitDateToLocal(String(seller.visitDate)); // "YYYY-MM-DDTHH:mm"
+      const [localDatePart, localTimePart = '00:00'] = localDateTimeStr.split('T');
+      const [localYear, localMonth, localDay] = localDatePart.split('-').map(Number);
+      const [localHour, localMin] = localTimePart.split(':').map(Number);
+      const dateStr = `${localMonth}月${localDay}日`;
       let timeStr: string;
-      if (visitDateObj.getHours() === 0 && visitDateObj.getMinutes() === 0 && seller.visitTime) {
+      if (localHour === 0 && localMin === 0 && seller.visitTime) {
         // visitDate の時刻が 00:00 かつ visitTime が存在する場合は visitTime の HH:mm を使用
         const timeParts = (seller.visitTime as string).split(':');
         timeStr = `${timeParts[0]}:${timeParts[1]}`;
       } else {
-        timeStr = `${visitDateObj.getHours()}:${visitDateObj.getMinutes().toString().padStart(2, '0')}`;
+        timeStr = `${localHour}:${String(localMin).padStart(2, '0')}`;
       }
       result = result.replace(/<<訪問日>>/g, dateStr);
       result = result.replace(/<<時間>>/g, timeStr);
