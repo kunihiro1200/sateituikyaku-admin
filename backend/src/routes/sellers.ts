@@ -1891,5 +1891,132 @@ router.get('/:id/inquiry-url', async (req: Request, res: Response) => {
   }
 });
 
+/**
+ * エリア情勢レポートを生成（AI使用・JSON方式）
+ * POST /api/sellers/:id/area-report
+ */
+router.post('/:id/area-report', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const seller = await sellerService.getSeller(id);
+    if (!seller) return res.status(404).json({ error: 'Seller not found' });
+
+    const address = seller.propertyAddress || seller.address || '';
+    if (!address) return res.status(400).json({ error: '物件住所が設定されていません' });
+    if (!process.env.OPENAI_API_KEY) return res.status(500).json({ error: 'OPENAI_API_KEYが設定されていません' });
+
+    const propertyType = seller.propertyType || '';
+
+    // 住所から市区町村・町名を抽出
+    const prefIdx = address.search(/[都道府県]/);
+    const afterPref = prefIdx >= 0 ? address.slice(prefIdx + 1) : address;
+    const cityEndMatch = afterPref.match(/^(.{1,6}?[市区])/);
+    const city = cityEndMatch ? cityEndMatch[1] : afterPref.substring(0, 4);
+    const cityEnd = address.indexOf(city) + city.length;
+    const afterCity = address.slice(cityEnd);
+    const townMatch = afterCity.match(/^([^\d\s\-0-9]{2,10}?)(?=\d|[0-9\-]|$)/);
+    const townRaw = townMatch ? townMatch[1].trim() : '';
+    const town = townRaw.replace(/\d+丁目$/, '').replace(/町$/, '').trim();
+    const detailArea = town || city;
+    const cityLabel = city;
+
+    console.log('[area-report] address:', address, '| city:', city, '| town:', town);
+
+    const today = new Date().toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric' });
+
+    const jsonPrompt = `${cityLabel}の${detailArea}エリアの不動産売却資料用データをJSONで返してください。現在2026年。数値は概算可。コメントは30字以内。
+
+{"population":[{"year":"2015年","city":数値,"area":数値},{"year":"2018年","city":数値,"area":数値},{"year":"2021年","city":数値,"area":数値},{"year":"2024年","city":数値,"area":数値},{"year":"2025年","city":数値,"area":数値}],"populationComment":"コメント","household":[{"type":"単身世帯","city":"XX%","area":"XX%"},{"type":"夫婦のみ","city":"XX%","area":"XX%"},{"type":"核家族","city":"XX%","area":"XX%"},{"type":"三世代同居","city":"XX%","area":"XX%"}],"householdComment":"コメント","transactions":[{"year":"2020年","city":数値,"area":数値},{"year":"2021年","city":数値,"area":数値},{"year":"2022年","city":数値,"area":数値},{"year":"2023年","city":数値,"area":数値},{"year":"2024年","city":数値,"area":数値},{"year":"2025年","city":数値,"area":数値}],"transactionsComment":"コメント","prices":[{"year":"2020年","city":数値,"area":数値},{"year":"2021年","city":数値,"area":数値},{"year":"2022年","city":数値,"area":数値},{"year":"2023年","city":数値,"area":数値},{"year":"2024年","city":数値,"area":数値},{"year":"2025年","city":数値,"area":数値}],"pricesComment":"コメント","summary":["理由1","理由2","理由3","理由4","理由5"]}
+
+JSONのみ返してください。`;
+
+    const axios = (await import('axios')).default;
+    const completion = await axios.post(
+      'https://api.openai.com/v1/chat/completions',
+      {
+        model: 'gpt-4o-mini',
+        messages: [
+          { role: 'system', content: `不動産売却資料用のデータをJSONで返します。左列ラベルは必ず「${cityLabel}全体」、右列ラベルは必ず「${detailArea}エリア」を使用します。` },
+          { role: 'user', content: jsonPrompt },
+        ],
+        temperature: 0.3,
+        max_tokens: 1200,
+      },
+      { headers: { 'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`, 'Content-Type': 'application/json' }, timeout: 55000 }
+    );
+
+    const raw = completion.data.choices[0]?.message?.content || '{}';
+    const rawClean = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/i, '').trim();
+    let data: any;
+    try { data = JSON.parse(rawClean); } catch { data = {}; }
+
+    const CL = cityLabel + '全体';
+    const AL = detailArea + 'エリア';
+    const th = 'border:1px solid #90caf9;padding:6px 10px;text-align:center;';
+    const td = 'border:1px solid #ccc;padding:5px 10px;text-align:center;';
+    const tda = 'border:1px solid #ccc;padding:5px 10px;text-align:center;background:#fffde7;';
+
+    const arw = (cur: number, prev: number | null) => {
+      if (prev === null) return '';
+      if (cur > prev) return ' <span style="color:#c62828;font-weight:bold;">↑</span>';
+      if (cur < prev) return ' <span style="color:#e53935;">▼</span>';
+      return '';
+    };
+
+    const pop = data.population || [];
+    const popRows = pop.map((r: any, i: number) => {
+      const b = i === pop.length - 1 ? 'font-weight:bold;' : '';
+      return `<tr><td style="${td}${b}">${r.year}</td><td style="${td}${b}">${Number(r.city).toLocaleString()}人${arw(r.city, i > 0 ? pop[i-1].city : null)}</td><td style="${tda}${b}">${Number(r.area).toLocaleString()}人${arw(r.area, i > 0 ? pop[i-1].area : null)}</td></tr>`;
+    }).join('');
+
+    const hh = data.household || [];
+    const hhRows = hh.map((r: any) => `<tr><td style="${td}">${r.type}</td><td style="${td}">${r.city}</td><td style="${tda}">${r.area}</td></tr>`).join('');
+
+    const trx = data.transactions || [];
+    const trRows = trx.map((r: any, i: number) => {
+      const b = i === trx.length - 1 ? 'font-weight:bold;' : '';
+      return `<tr><td style="${td}${b}">${r.year}</td><td style="${td}${b}">${Number(r.city).toLocaleString()}件${arw(r.city, i > 0 ? trx[i-1].city : null)}</td><td style="${tda}${b}">${Number(r.area).toLocaleString()}件${arw(r.area, i > 0 ? trx[i-1].area : null)}</td></tr>`;
+    }).join('');
+
+    const pr = data.prices || [];
+    const prRows = pr.map((r: any, i: number) => {
+      const b = i === pr.length - 1 ? 'font-weight:bold;' : '';
+      return `<tr><td style="${td}${b}">${r.year}</td><td style="${td}${b}">${Number(r.city).toLocaleString()}万円${arw(r.city, i > 0 ? pr[i-1].city : null)}</td><td style="${tda}${b}">${Number(r.area).toLocaleString()}万円${arw(r.area, i > 0 ? pr[i-1].area : null)}</td></tr>`;
+    }).join('');
+
+    const summary = (data.summary || []).map((s: string) => `<li style="margin-bottom:8px;"><strong style="color:#c62828;">${s}</strong></li>`).join('');
+
+    const tbl = (rows: string) => `<table style="width:100%;border-collapse:collapse;margin-bottom:8px;"><thead><tr style="background:#e3f2fd;"><th style="${th}width:20%">年</th><th style="${th}width:40%">${CL}</th><th style="${th}width:40%;background:#fff9c4">${AL}</th></tr></thead><tbody>${rows}</tbody></table>`;
+    const hhTbl = `<table style="width:100%;border-collapse:collapse;margin-bottom:8px;"><thead><tr style="background:#e3f2fd;"><th style="${th}width:20%">世帯種類</th><th style="${th}width:40%">${CL}</th><th style="${th}width:40%;background:#fff9c4">${AL}</th></tr></thead><tbody>${hhRows}</tbody></table>`;
+    const cmt = (t: string) => `<p style="font-size:11px;color:#555;background:#f5f5f5;padding:6px 10px;border-radius:4px;">📊 <strong>分析：</strong>${t}</p>`;
+    const sec = (n: string, t: string) => `<h2 style="font-size:15px;color:#1a237e;border-left:4px solid #1a237e;padding-left:8px;margin-bottom:10px;">${n} ${t}</h2>`;
+
+    const htmlContent = `<style>@media print{*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}@page{size:A4;margin:15mm;}}</style>
+<div style="font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;font-size:12px;color:#333;max-width:800px;margin:0 auto;padding:20px;">
+<div style="text-align:center;border-bottom:3px solid #1a237e;padding-bottom:12px;margin-bottom:20px;">
+<div style="font-size:10px;color:#666;margin-bottom:4px;">不動産売却のご参考資料</div>
+<h1 style="font-size:20px;color:#1a237e;margin:0 0 4px;">エリア情勢レポート</h1>
+<div style="font-size:14px;font-weight:bold;">${AL}</div>
+<div style="font-size:10px;color:#888;margin-top:4px;">作成日：${today}　物件種別：${propertyType || '不動産'}</div>
+</div>
+<div style="margin-bottom:24px;">${sec('①', '人口の推移')}${tbl(popRows)}${cmt(data.populationComment || '')}</div>
+<div style="margin-bottom:24px;">${sec('②', '世帯種類の推移')}${hhTbl}${cmt(data.householdComment || '')}</div>
+<div style="margin-bottom:24px;">${sec('③', '物件種別の取引件数推移')}${tbl(trRows)}${cmt(data.transactionsComment || '')}</div>
+<div style="margin-bottom:24px;">${sec('④', '不動産価格の推移（坪単価・万円）')}${tbl(prRows)}${cmt(data.pricesComment || '')}</div>
+<div style="margin-bottom:24px;background:#fffde7;border:2px solid #f9a825;border-radius:8px;padding:16px;">
+<h2 style="font-size:15px;color:#e65100;border-left:4px solid #e65100;padding-left:8px;margin-bottom:12px;">⑤ まとめ ── ${AL}で今が売却のチャンスである理由</h2>
+<ul style="margin:0;padding-left:20px;line-height:2;">${summary}</ul>
+<div style="margin-top:12px;text-align:center;background:#e65100;color:white;padding:8px;border-radius:4px;font-size:13px;font-weight:bold;">✅ ${AL}のデータが示す通り、今が最も有利な売却タイミングです</div>
+</div>
+<div style="border-top:1px solid #ccc;padding-top:8px;font-size:10px;color:#999;text-align:center;">※本レポートの数値は市場動向に基づく概算値です。実際の取引価格は個別物件の状況により異なります。</div>
+</div>`;
+
+    res.json({ html: htmlContent, areaName: detailArea, cityLabel, generatedAt: new Date().toISOString() });
+  } catch (error: any) {
+    console.error('Area report generation error:', error?.message || error);
+    res.status(500).json({ error: error?.response?.data?.error?.message || error?.message || 'エリア情勢レポートの生成に失敗しました' });
+  }
+});
+
 export default router;
 
