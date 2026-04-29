@@ -1948,52 +1948,11 @@ router.post('/:id/area-report', async (req: Request, res: Response) => {
     const today = new Date().toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric' });
 
     // AIにはJSONで数値・コメントだけ返させる（HTMLラベルはコードで制御）
-    const jsonPrompt = `以下のエリアについて、不動産売却資料用のデータをJSON形式で返してください。
+    const jsonPrompt = `${cityLabel}の${detailArea}エリアの不動産売却資料用データをJSONで返してください。現在2026年。数値は概算可。コメントは30字以内。
 
-対象エリア: ${detailArea}（${cityLabel}内）
-物件種別: ${propertyType || '不動産'}
-現在年: 2026年
+{"population":[{"year":"2015年","city":数値,"area":数値},{"year":"2018年","city":数値,"area":数値},{"year":"2021年","city":数値,"area":数値},{"year":"2024年","city":数値,"area":数値},{"year":"2025年","city":数値,"area":数値}],"populationComment":"コメント","household":[{"type":"単身世帯","city":"XX%","area":"XX%"},{"type":"夫婦のみ","city":"XX%","area":"XX%"},{"type":"核家族","city":"XX%","area":"XX%"},{"type":"三世代同居","city":"XX%","area":"XX%"}],"householdComment":"コメント","transactions":[{"year":"2020年","city":数値,"area":数値},{"year":"2021年","city":数値,"area":数値},{"year":"2022年","city":数値,"area":数値},{"year":"2023年","city":数値,"area":数値},{"year":"2024年","city":数値,"area":数値},{"year":"2025年","city":数値,"area":数値}],"transactionsComment":"コメント","prices":[{"year":"2020年","city":数値,"area":数値},{"year":"2021年","city":数値,"area":数値},{"year":"2022年","city":数値,"area":数値},{"year":"2023年","city":数値,"area":数値},{"year":"2024年","city":数値,"area":数値},{"year":"2025年","city":数値,"area":数値}],"pricesComment":"コメント","summary":["理由1","理由2","理由3","理由4","理由5"]}
 
-以下のJSON形式で返してください。数値は概算で構いません。
-
-{
-  "population": [
-    {"year": "2015年", "city": 数値, "area": 数値},
-    {"year": "2018年", "city": 数値, "area": 数値},
-    {"year": "2021年", "city": 数値, "area": 数値},
-    {"year": "2024年", "city": 数値, "area": 数値},
-    {"year": "2025年", "city": 数値, "area": 数値}
-  ],
-  "populationComment": "分析コメント（エリアの特徴を強調）",
-  "household": [
-    {"type": "単身世帯", "city": "XX%", "area": "XX%"},
-    {"type": "夫婦のみ", "city": "XX%", "area": "XX%"},
-    {"type": "核家族", "city": "XX%", "area": "XX%"},
-    {"type": "三世代同居", "city": "XX%", "area": "XX%"}
-  ],
-  "householdComment": "分析コメント",
-  "transactions": [
-    {"year": "2020年", "city": 数値, "area": 数値},
-    {"year": "2021年", "city": 数値, "area": 数値},
-    {"year": "2022年", "city": 数値, "area": 数値},
-    {"year": "2023年", "city": 数値, "area": 数値},
-    {"year": "2024年", "city": 数値, "area": 数値},
-    {"year": "2025年", "city": 数値, "area": 数値}
-  ],
-  "transactionsComment": "分析コメント",
-  "prices": [
-    {"year": "2020年", "city": 数値, "area": 数値},
-    {"year": "2021年", "city": 数値, "area": 数値},
-    {"year": "2022年", "city": 数値, "area": 数値},
-    {"year": "2023年", "city": 数値, "area": 数値},
-    {"year": "2024年", "city": 数値, "area": 数値},
-    {"year": "2025年", "city": 数値, "area": 数値}
-  ],
-  "pricesComment": "分析コメント",
-  "summary": ["理由1", "理由2", "理由3", "理由4", "理由5"]
-}
-
-JSONのみ返してください。説明文は不要です。`;
+JSONのみ返してください。`;JSONのみ返してください。説明文は不要です。`;
 
     const axios = (await import('axios')).default;
     const systemPrompt = `あなたは不動産売買仲介会社の営業担当者です。HTMLレポートを作成します。
@@ -2011,8 +1970,7 @@ JSONのみ返してください。説明文は不要です。`;
           { role: 'user', content: jsonPrompt },
         ],
         temperature: 0.3,
-        max_tokens: 2048,
-        response_format: { type: 'json_object' },
+        max_tokens: 1200,
       },
       {
         headers: {
@@ -2024,8 +1982,13 @@ JSONのみ返してください。説明文は不要です。`;
     );
 
     const raw = completion.data.choices[0]?.message?.content || '{}';
+    // JSONコードブロックを除去してパース
+    const rawClean = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/i, '').trim();
     let data: any;
-    try { data = JSON.parse(raw); } catch { data = {}; }
+    try { data = JSON.parse(rawClean); } catch (e) {
+      console.error('[area-report] JSON parse error:', e, 'raw:', rawClean.substring(0, 200));
+      data = {};
+    }
 
     // HTMLをサーバー側で組み立て（ラベルはコードで完全制御）
     const CL = cityLabel + '全体';  // 例: 「別府市全体」
