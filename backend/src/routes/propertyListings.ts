@@ -1897,4 +1897,71 @@ router.post('/:propertyNumber/sync-house-maker', async (req: Request, res: Respo
   }
 });
 
+// 戸建て物件のハウスメーカーを一括同期
+// POST /api/property-listings/sync-house-maker-bulk
+router.post('/sync-house-maker-bulk', async (req: Request, res: Response): Promise<void> => {
+  try {
+    // 戸建て物件を全件取得
+    const { data: listings, error: fetchError } = await supabase
+      .from('property_listings')
+      .select('property_number, property_type')
+      .not('property_number', 'is', null);
+
+    if (fetchError) {
+      res.status(500).json({ error: fetchError.message });
+      return;
+    }
+
+    // 戸建て判定
+    const detachedListings = (listings || []).filter((l: any) => {
+      const pt = (l.property_type || '').toLowerCase();
+      return pt === 'detached_house' || pt.includes('戸建') || pt === '戸';
+    });
+
+    if (detachedListings.length === 0) {
+      res.json({ success: true, total: 0, synced: 0, failed: 0, skipped: 0, results: [] });
+      return;
+    }
+
+    const { AthomeSheetSyncService } = await import('../services/AthomeSheetSyncService');
+    const athomeService = new AthomeSheetSyncService();
+
+    let synced = 0;
+    let failed = 0;
+    let skipped = 0;
+    const results: Array<{ property_number: string; status: string; house_maker?: string }> = [];
+
+    for (const listing of detachedListings) {
+      try {
+        const houseMaker = await athomeService.syncHouseMaker(listing.property_number);
+        if (houseMaker !== null) {
+          synced++;
+          results.push({ property_number: listing.property_number, status: 'synced', house_maker: houseMaker });
+        } else {
+          skipped++;
+          results.push({ property_number: listing.property_number, status: 'skipped' });
+        }
+        // Google Sheets APIレート制限対策（1秒待機）
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      } catch (err: any) {
+        failed++;
+        results.push({ property_number: listing.property_number, status: 'failed' });
+        console.error(`[sync-house-maker-bulk] Failed for ${listing.property_number}:`, err.message);
+      }
+    }
+
+    res.json({
+      success: true,
+      total: detachedListings.length,
+      synced,
+      failed,
+      skipped,
+      results,
+    });
+  } catch (error: any) {
+    console.error('[sync-house-maker-bulk] Error:', error);
+    res.status(500).json({ error: error.message || 'ハウスメーカー一括同期に失敗しました' });
+  }
+});
+
 export default router;

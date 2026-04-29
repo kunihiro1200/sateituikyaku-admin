@@ -130,6 +130,22 @@ export class PropertyListingSyncService {
         };
       }
 
+      // 戸建ての場合、ハウスメーカーをathomeシートF10から非同期で取得
+      const pt = (seller.property_type || '').toLowerCase();
+      const isDetachedHouse =
+        pt === 'detached_house' || pt.includes('戸建') || pt === '戸';
+      if (isDetachedHouse) {
+        try {
+          const { AthomeSheetSyncService } = await import('./AthomeSheetSyncService');
+          const athomeService = new AthomeSheetSyncService();
+          await athomeService.syncHouseMaker(propertyNumber);
+          console.log(`[PropertyListingSyncService] house_maker synced for ${propertyNumber}`);
+        } catch (err: any) {
+          // ハウスメーカー取得失敗は致命的エラーではないのでログのみ
+          console.warn(`[PropertyListingSyncService] house_maker sync failed for ${propertyNumber}:`, err.message);
+        }
+      }
+
       return {
         propertyNumber,
         success: true,
