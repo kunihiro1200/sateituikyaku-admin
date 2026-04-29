@@ -171,6 +171,8 @@ interface PropertyListing {
   private_mail_delivery?: string;
   // Eラベルチェック
   e_label_checked?: string;
+  // ハウスメーカー（戸建て物件のみ）
+  house_maker?: string;
 }
 
 interface Buyer {
@@ -2921,6 +2923,7 @@ export default function PropertyListingDetailPage() {
                     price: editedData.price !== undefined ? editedData.price : data.price,
                     sales_price: editedData.sales_price !== undefined ? editedData.sales_price : data.sales_price,
                     property_type: editedData.property_type !== undefined ? editedData.property_type : data.property_type,
+                    house_maker: editedData.house_maker !== undefined ? editedData.house_maker : data.house_maker,
                   }}
                   editedData={editedData}
                   onFieldChange={handleFieldChange}
