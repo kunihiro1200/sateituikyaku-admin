@@ -1925,7 +1925,8 @@ router.post('/:id/area-report', async (req: Request, res: Response) => {
     const afterCity = address.slice(cityEnd);
     const townMatch = afterCity.match(/^([^\d\s\-0-9]{2,10}?)(?=\d|[0-9\-]|$)/);
     const townRaw = townMatch ? townMatch[1].trim() : '';
-    const town = townRaw.replace(/\d+丁目$/, '').replace(/町$/, '').trim();
+    // 「南太平寺1丁目」→「南太平寺」（丁目番号のみ除去、末尾の「町」は残す）
+    const town = townRaw.replace(/\d+丁目$/, '').trim();
     const detailArea = town || city;
     const cityLabel = city;
 
