@@ -1,5 +1,6 @@
 // Athomeシートからコメントデータを同期するサービス
 import { google } from 'googleapis';
+import { createClient } from '@supabase/supabase-js';
 import { PropertyDetailsService } from './PropertyDetailsService';
 
 /**
@@ -232,5 +233,63 @@ export class AthomeSheetSyncService {
     console.error(`[AthomeSheetSyncService] ❌ All ${maxRetries} attempts failed for ${propertyNumber}`);
     console.error(`[AthomeSheetSyncService] Last error:`, lastError?.message);
     return false;
+  }
+
+  /**
+   * 戸建て物件のハウスメーカーをathomeシートF10セルから取得してDBに保存する
+   * 
+   * 取得元: 業務依頼シートのタイトルに物件番号を含むスプシの athome シート F10 セル
+   * 保存先: property_listings.house_maker
+   * 
+   * @param propertyNumber - 物件番号
+   * @returns 取得したハウスメーカー名（null の場合は未設定）
+   */
+  async syncHouseMaker(propertyNumber: string): Promise<string | null> {
+    try {
+      console.log(`[AthomeSheetSyncService] Syncing house_maker for ${propertyNumber}`);
+
+      // 個別物件スプレッドシートのIDを取得
+      const spreadsheetId = await this.getIndividualSpreadsheetId(propertyNumber);
+      if (!spreadsheetId) {
+        console.warn(`[AthomeSheetSyncService] Spreadsheet not found for ${propertyNumber}`);
+        return null;
+      }
+
+      // athomeシートのF10セルを取得（空白シート名は無視）
+      const sheetName = 'athome';
+      const response = await this.sheets.spreadsheets.values.get({
+        spreadsheetId,
+        range: `${sheetName}!F10`,
+      });
+
+      const houseMaker: string | null = response.data.values?.[0]?.[0]?.trim() || null;
+      console.log(`[AthomeSheetSyncService] house_maker for ${propertyNumber}: ${houseMaker}`);
+
+      if (houseMaker === null) {
+        console.log(`[AthomeSheetSyncService] F10 is empty for ${propertyNumber}, skipping DB update`);
+        return null;
+      }
+
+      // property_listingsテーブルに保存
+      const supabase = createClient(
+        process.env.SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY!
+      );
+      const { error } = await supabase
+        .from('property_listings')
+        .update({ house_maker: houseMaker })
+        .eq('property_number', propertyNumber);
+
+      if (error) {
+        console.error(`[AthomeSheetSyncService] Failed to save house_maker for ${propertyNumber}:`, error.message);
+        return null;
+      }
+
+      console.log(`[AthomeSheetSyncService] ✅ house_maker saved for ${propertyNumber}: ${houseMaker}`);
+      return houseMaker;
+    } catch (error: any) {
+      console.error(`[AthomeSheetSyncService] Error syncing house_maker for ${propertyNumber}:`, error.message);
+      return null;
+    }
   }
 }

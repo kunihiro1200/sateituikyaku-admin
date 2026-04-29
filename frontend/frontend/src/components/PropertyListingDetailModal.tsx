@@ -17,7 +17,7 @@ import {
   Snackbar,
   Alert,
 } from '@mui/material';
-import { Close as CloseIcon, Save as SaveIcon, Add as AddIcon } from '@mui/icons-material';
+import { Close as CloseIcon, Save as SaveIcon, Add as AddIcon, Sync as SyncIcon } from '@mui/icons-material';
 import api from '../services/api';
 import BuyerTable from './BuyerTable';
 import { getDisplayStatus } from '../utils/atbbStatusDisplayMapper';
@@ -228,21 +228,82 @@ export default function PropertyListingDetailModal({ open, onClose, propertyNumb
   );
 
   // 物件詳細
-  const DetailSection = () => (
-    <Box sx={{ p: 2 }}>
-      <Field label="構造" field="structure" />
-      <Field label="新築年月" field="construction_year_month" />
-      <Field label="間取り" field="floor_plan" />
-      <Field label="専有面積" field="exclusive_area" type="number" />
-      <Field label="主要採光面" field="main_lighting" />
-      <Field label="現況" field="current_status" />
-      <Field label="引渡し" field="delivery" />
-      <Field label="駐車場" field="parking" />
-      <Field label="管理費" field="management_fee" type="number" />
-      <Field label="積立金" field="reserve_fund" type="number" />
-      <Field label="特記" field="special_notes" />
-    </Box>
-  );
+  const DetailSection = () => {
+    const [syncingHouseMaker, setSyncingHouseMaker] = useState(false);
+
+    const isDetachedHouse = (() => {
+      const pt = (data?.property_type || '').toLowerCase();
+      return pt === 'detached_house' || pt.includes('戸建') || pt === '戸';
+    })();
+
+    const handleSyncHouseMaker = async () => {
+      if (!propertyNumber) return;
+      setSyncingHouseMaker(true);
+      try {
+        const res = await api.post(`/api/property-listings/${propertyNumber}/sync-house-maker`);
+        if (res.data.success) {
+          setSnackbar({ open: true, message: `ハウスメーカーを同期しました: ${res.data.house_maker}`, severity: 'success' });
+          await fetchData();
+        } else {
+          setSnackbar({ open: true, message: res.data.message || 'スプシにデータがありませんでした', severity: 'error' });
+        }
+      } catch (err: any) {
+        setSnackbar({ open: true, message: err.response?.data?.error || '同期に失敗しました', severity: 'error' });
+      } finally {
+        setSyncingHouseMaker(false);
+      }
+    };
+
+    return (
+      <Box sx={{ p: 2 }}>
+        <Field label="構造" field="structure" />
+        <Field label="新築年月" field="construction_year_month" />
+        <Field label="間取り" field="floor_plan" />
+        <Field label="専有面積" field="exclusive_area" type="number" />
+        <Field label="主要採光面" field="main_lighting" />
+        <Field label="現況" field="current_status" />
+        <Field label="引渡し" field="delivery" />
+        <Field label="駐車場" field="parking" />
+        <Field label="管理費" field="management_fee" type="number" />
+        <Field label="積立金" field="reserve_fund" type="number" />
+        <Field label="特記" field="special_notes" />
+        {isDetachedHouse && (
+          <>
+            <Typography variant="subtitle2" sx={{ mt: 2, mb: 1, fontWeight: 'bold', color: 'text.secondary' }}>
+              物件詳細情報
+            </Typography>
+            <Grid container spacing={2} alignItems="center" sx={{ mb: 1.5 }}>
+              <Grid item xs={4}>
+                <Typography variant="body2" color="text.secondary" fontWeight={500}>ハウスメーカー</Typography>
+              </Grid>
+              <Grid item xs={8}>
+                <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                  <TextField
+                    size="small"
+                    value={getValue('house_maker') || ''}
+                    onChange={(e) => handleFieldChange('house_maker', e.target.value)}
+                    fullWidth
+                    placeholder="例: 一条工務店"
+                  />
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    startIcon={syncingHouseMaker ? <CircularProgress size={14} /> : <SyncIcon />}
+                    onClick={handleSyncHouseMaker}
+                    disabled={syncingHouseMaker}
+                    sx={{ whiteSpace: 'nowrap', minWidth: 'auto' }}
+                    title="スプシのathomeシートF10から同期"
+                  >
+                    同期
+                  </Button>
+                </Box>
+              </Grid>
+            </Grid>
+          </>
+        )}
+      </Box>
+    );
+  };
 
   const tabLabels = ['基本情報', '売主', getBuyerTabLabel(), '手数料・価格', '物件詳細'];
 
