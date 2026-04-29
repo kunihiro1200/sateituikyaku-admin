@@ -14,12 +14,14 @@ import {
 } from '@mui/material';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import CheckIcon from '@mui/icons-material/Check';
+import HouseMakerModal from './HouseMakerModal';
 
 export interface ViewingPreparationPopupProps {
   open: boolean;
   onClose: () => void;
   buyerNumber: string | null | undefined;
   propertyNumber: string | null | undefined;
+  houseMaker?: string | null | undefined;
 }
 
 // 固定リンク定数
@@ -98,11 +100,14 @@ export const ViewingPreparationPopup: React.FC<ViewingPreparationPopupProps> = (
   onClose,
   buyerNumber,
   propertyNumber,
+  houseMaker,
 }) => {
   const hasBuyerNumber = buyerNumber != null && buyerNumber !== '';
   const hasPropertyNumber = propertyNumber != null && propertyNumber !== '';
+  const [houseMakerModalOpen, setHouseMakerModalOpen] = useState(false);
 
   return (
+    <>
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
       <DialogTitle>内覧準備資料</DialogTitle>
       <DialogContent>
@@ -162,6 +167,34 @@ export const ViewingPreparationPopup: React.FC<ViewingPreparationPopupProps> = (
               />
             </ListItem>
           ))}
+          {/* ハウスメーカー（house_makerフィールドに値がある場合のみ表示） */}
+          {houseMaker && (
+            <ListItem
+              component="li"
+              sx={{ display: 'list-item', py: 0.5 }}
+            >
+              <ListItemText
+                primary={
+                  <Typography component="span">
+                    ハウスメーカー：{houseMaker}（
+                    <Box
+                      component="span"
+                      sx={{
+                        color: 'primary.main',
+                        textDecoration: 'underline',
+                        cursor: 'pointer',
+                        '&:hover': { opacity: 0.7 },
+                      }}
+                      onClick={() => setHouseMakerModalOpen(true)}
+                    >
+                      詳細を見る
+                    </Box>
+                    ）
+                  </Typography>
+                }
+              />
+            </ListItem>
+          )}
         </List>
       </DialogContent>
       <DialogActions>
@@ -170,6 +203,17 @@ export const ViewingPreparationPopup: React.FC<ViewingPreparationPopupProps> = (
         </Button>
       </DialogActions>
     </Dialog>
+
+    {/* ハウスメーカーモーダル */}
+    {houseMaker && (
+      <HouseMakerModal
+        open={houseMakerModalOpen}
+        onClose={() => setHouseMakerModalOpen(false)}
+        commentHtml={houseMaker}
+        mode="buyer"
+      />
+    )}
+    </>
   );
 };
 

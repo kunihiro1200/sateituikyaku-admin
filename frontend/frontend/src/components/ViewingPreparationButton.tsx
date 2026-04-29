@@ -5,6 +5,7 @@ import { ViewingPreparationPopup } from './ViewingPreparationPopup';
 export interface ViewingPreparationButtonProps {
   buyerNumber: string | null | undefined;
   propertyNumber: string | null | undefined;
+  houseMaker?: string | null | undefined;
 }
 
 /**
@@ -14,6 +15,7 @@ export interface ViewingPreparationButtonProps {
 export const ViewingPreparationButton: React.FC<ViewingPreparationButtonProps> = ({
   buyerNumber,
   propertyNumber,
+  houseMaker,
 }) => {
   const [open, setOpen] = useState(false);
 
@@ -35,6 +37,7 @@ export const ViewingPreparationButton: React.FC<ViewingPreparationButtonProps> =
         onClose={handleClose}
         buyerNumber={buyerNumber}
         propertyNumber={propertyNumber}
+        houseMaker={houseMaker}
       />
     </>
   );

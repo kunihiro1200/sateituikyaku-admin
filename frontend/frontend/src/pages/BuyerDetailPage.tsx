@@ -143,6 +143,7 @@ interface PropertyListing {
   contract_date?: string;
   settlement_date?: string;
   pre_viewing_notes?: string;
+  house_maker?: string;
 }
 
 interface InquiryHistory {
@@ -1508,6 +1509,7 @@ export default function BuyerDetailPage() {
           <ViewingPreparationButton
             buyerNumber={buyer?.buyer_number}
             propertyNumber={linkedProperties[0]?.property_number}
+            houseMaker={linkedProperties[0]?.house_maker}
           />
           {/* 近隣物件ボタン */}
           {linkedProperties.length > 0 && (
