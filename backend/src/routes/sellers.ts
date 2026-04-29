@@ -1956,7 +1956,7 @@ ${populationHint}
 各コメントはデータの傾向を客観的に説明する内容にしてください（40〜60字程度）。
 「売却をお考えください」「今が売り時」「売却のチャンス」などの売却を促す表現は一切使わないこと。
 「〜の傾向が見られます」「〜となっています」のように事実を述べる表現で終わること。
-summaryの各項目もデータから読み取れる客観的な市場の特徴を述べるだけにしてください。
+summaryの各項目は売却意欲を高める内容にしてください。「〇〇のため、早めの売却が望ましい」「〇〇により、売却時期として適している」のように、データを根拠にした売却推奨の表現を使うこと。
 
 {"population":[{"year":"2015年","city":数値,"area":数値},{"year":"2018年","city":数値,"area":数値},{"year":"2021年","city":数値,"area":数値},{"year":"2024年","city":数値,"area":数値},{"year":"2025年","city":数値,"area":数値}],"populationComment":"人口動向の客観的説明","household":[{"type":"単身世帯","city":"XX%","area":"XX%"},{"type":"夫婦のみ","city":"XX%","area":"XX%"},{"type":"核家族","city":"XX%","area":"XX%"},{"type":"三世代同居","city":"XX%","area":"XX%"}],"householdComment":"世帯構成の客観的説明","transactions":[{"year":"2020年","city":数値,"area":数値},{"year":"2021年","city":数値,"area":数値},{"year":"2022年","city":数値,"area":数値},{"year":"2023年","city":数値,"area":数値},{"year":"2024年","city":数値,"area":数値},{"year":"2025年","city":数値,"area":数値}],"transactionsComment":"取引件数の客観的説明","prices":[{"year":"2020年","city":数値,"area":数値},{"year":"2021年","city":数値,"area":数値},{"year":"2022年","city":数値,"area":数値},{"year":"2023年","city":数値,"area":数値},{"year":"2024年","city":数値,"area":数値},{"year":"2025年","city":数値,"area":数値}],"pricesComment":"価格推移の客観的説明","summary":["市場の特徴1（客観的事実）","市場の特徴2（客観的事実）","市場の特徴3（客観的事実）","市場の特徴4（客観的事実）","市場の特徴5（客観的事実）"]}
 
@@ -2042,9 +2042,9 @@ JSONのみ返してください。`;
 <div style="margin-bottom:24px;">${sec('③', '物件種別の取引件数推移')}${tbl(trRows)}${cmt(data.transactionsComment || '')}</div>
 <div style="margin-bottom:24px;">${sec('④', '不動産価格の推移（坪単価・万円）')}${tbl(prRows)}${cmt(data.pricesComment || '')}</div>
 <div style="margin-bottom:24px;background:#fffde7;border:2px solid #f9a825;border-radius:8px;padding:16px;">
-<h2 style="font-size:15px;color:#e65100;border-left:4px solid #e65100;padding-left:8px;margin-bottom:12px;">⑤ まとめ ── ${AL}の市場概況</h2>
+<h2 style="font-size:15px;color:#e65100;border-left:4px solid #e65100;padding-left:8px;margin-bottom:12px;">⑤ まとめ ── ${AL}で今が売却のチャンスである理由</h2>
 <ul style="margin:0;padding-left:20px;line-height:2;">${summary}</ul>
-<div style="margin-top:12px;text-align:center;background:#1a237e;color:white;padding:8px;border-radius:4px;font-size:13px;font-weight:bold;">📊 ${AL}のエリアデータ概要</div>
+<div style="margin-top:12px;text-align:center;background:#e65100;color:white;padding:8px;border-radius:4px;font-size:13px;font-weight:bold;">✅ ${AL}のデータが示す通り、今が最も有利な売却タイミングです</div>
 </div>
 <div style="border-top:1px solid #ccc;padding-top:8px;font-size:10px;color:#999;text-align:center;">※本レポートの数値は市場動向に基づく概算値です。実際の取引価格は個別物件の状況により異なります。</div>
 </div>`;
