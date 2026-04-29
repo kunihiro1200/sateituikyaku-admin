@@ -18,8 +18,23 @@ const AreaReportPage = () => {
     setHtml(null);
     try {
       const res = await api.post(`/api/sellers/${sellerId}/area-report`);
-      setHtml(res.data.html);
-      setAreaName(res.data.areaName || '');
+      let htmlContent: string = res.data.html || '';
+      const name: string = res.data.areaName || '';
+
+      // バックエンドから返ってきた cityLabel（市名）を使って
+      // 「別府市石垣全体」→「別府市全体」のようにヘッダーを修正
+      // areaName = "石垣東" の場合、cityLabel = areaName より前の市名部分
+      // res.data には cityLabel も返す
+      const cityLabel: string = res.data.cityLabel || '';
+      if (cityLabel) {
+        // 「別府市〇〇全体」→「別府市全体」（〇〇は任意の日本語文字）
+        const escaped = cityLabel.replace(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`);
+        const re = new RegExp(escaped + '[\\u3000-\\u9FFF\\u30A0-\\u30FF\\u3040-\\u309F]{1,10}全体', 'g');
+        htmlContent = htmlContent.replace(re, cityLabel + '全体');
+      }
+
+      setHtml(htmlContent);
+      setAreaName(name);
     } catch (e: any) {
       setError(e?.response?.data?.error || 'レポートの生成に失敗しました');
     } finally {
