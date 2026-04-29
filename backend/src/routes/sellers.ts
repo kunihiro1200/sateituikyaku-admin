@@ -1908,10 +1908,19 @@ router.post('/:id/area-report', async (req: Request, res: Response) => {
     const propertyType = seller.propertyType || '';
 
     // 住所から市区町村・町名を抽出
-    const prefIdx = address.search(/[都道府県]/);
-    const afterPref = prefIdx >= 0 ? address.slice(prefIdx + 1) : address;
-    const cityEndMatch = afterPref.match(/^(.{1,6}?[市区])/);
-    const city = cityEndMatch ? cityEndMatch[1] : afterPref.substring(0, 4);
+    // 都道府県あり: 「大分県別府市浜町21-9」→ city=別府市
+    // 都道府県なし: 「別府市浜町21-9」→ city=別府市
+    // [市区]の前に必ず1文字以上の非[市区]文字が必要（「市浜町」誤マッチ防止）
+    const prefMatch = address.match(/^(東京都|北海道|大阪府|京都府|[\u3040-\u9FFF]{2,3}県)/);
+    let city = '';
+    if (prefMatch) {
+      const afterPref = address.slice(prefMatch[1].length);
+      const cityMatch = afterPref.match(/^([\u3040-\u9FFF]+?[市区])/);
+      city = cityMatch ? cityMatch[1] : afterPref.substring(0, 4);
+    } else {
+      const cityMatch = address.match(/^([\u3040-\u9FFF]+?[市区])/);
+      city = cityMatch ? cityMatch[1] : address.substring(0, 4);
+    }
     const cityEnd = address.indexOf(city) + city.length;
     const afterCity = address.slice(cityEnd);
     const townMatch = afterCity.match(/^([^\d\s\-0-9]{2,10}?)(?=\d|[0-9\-]|$)/);
