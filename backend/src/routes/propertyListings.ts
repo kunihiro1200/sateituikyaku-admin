@@ -1851,53 +1851,7 @@ router.put('/:propertyNumber/private-mail-delivery', async (req: Request, res: R
 });
 
 // seller_phone バックフィル: property_listings の seller_phone を sellers テーブルから一括補完
-// ハウスメーカーをathomeシートF10セルから同期
-// POST /api/property-listings/:propertyNumber/sync-house-maker
-router.post('/:propertyNumber/sync-house-maker', async (req: Request, res: Response): Promise<void> => {
-  try {
-    const { propertyNumber } = req.params;
-
-    // 物件種別を確認（戸建てのみ対象）
-    const { data: listing, error: fetchError } = await supabase
-      .from('property_listings')
-      .select('property_type')
-      .eq('property_number', propertyNumber)
-      .single();
-
-    if (fetchError || !listing) {
-      res.status(404).json({ error: '物件が見つかりません' });
-      return;
-    }
-
-    const pt = (listing.property_type || '').toLowerCase();
-    const isDetachedHouse =
-      pt === 'detached_house' ||
-      pt.includes('戸建') ||
-      pt.includes('戸建て') ||
-      pt === '戸';
-
-    if (!isDetachedHouse) {
-      res.status(400).json({ error: 'ハウスメーカー同期は戸建て物件のみ対応しています' });
-      return;
-    }
-
-    const { AthomeSheetSyncService } = await import('../services/AthomeSheetSyncService');
-    const athomeService = new AthomeSheetSyncService();
-    const houseMaker = await athomeService.syncHouseMaker(propertyNumber);
-
-    if (houseMaker === null) {
-      res.json({ success: false, message: 'スプシのF10セルが空か、スプシが見つかりませんでした' });
-      return;
-    }
-
-    res.json({ success: true, house_maker: houseMaker });
-  } catch (error: any) {
-    console.error('[sync-house-maker] Error:', error);
-    res.status(500).json({ error: error.message || 'ハウスメーカー同期に失敗しました' });
-  }
-});
-
-// 戸建て物件のハウスメーカーを一括同期
+// 戸建て物件のハウスメーカーを一括同期（個別エンドポイントより前に定義する必要あり）
 // POST /api/property-listings/sync-house-maker-bulk
 router.post('/sync-house-maker-bulk', async (req: Request, res: Response): Promise<void> => {
   try {
@@ -1961,6 +1915,52 @@ router.post('/sync-house-maker-bulk', async (req: Request, res: Response): Promi
   } catch (error: any) {
     console.error('[sync-house-maker-bulk] Error:', error);
     res.status(500).json({ error: error.message || 'ハウスメーカー一括同期に失敗しました' });
+  }
+});
+
+// ハウスメーカーをathomeシートF10セルから同期
+// POST /api/property-listings/:propertyNumber/sync-house-maker
+router.post('/:propertyNumber/sync-house-maker', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { propertyNumber } = req.params;
+
+    // 物件種別を確認（戸建てのみ対象）
+    const { data: listing, error: fetchError } = await supabase
+      .from('property_listings')
+      .select('property_type')
+      .eq('property_number', propertyNumber)
+      .single();
+
+    if (fetchError || !listing) {
+      res.status(404).json({ error: '物件が見つかりません' });
+      return;
+    }
+
+    const pt = (listing.property_type || '').toLowerCase();
+    const isDetachedHouse =
+      pt === 'detached_house' ||
+      pt.includes('戸建') ||
+      pt.includes('戸建て') ||
+      pt === '戸';
+
+    if (!isDetachedHouse) {
+      res.status(400).json({ error: 'ハウスメーカー同期は戸建て物件のみ対応しています' });
+      return;
+    }
+
+    const { AthomeSheetSyncService } = await import('../services/AthomeSheetSyncService');
+    const athomeService = new AthomeSheetSyncService();
+    const houseMaker = await athomeService.syncHouseMaker(propertyNumber);
+
+    if (houseMaker === null) {
+      res.json({ success: false, message: 'スプシのF10セルが空か、スプシが見つかりませんでした' });
+      return;
+    }
+
+    res.json({ success: true, house_maker: houseMaker });
+  } catch (error: any) {
+    console.error('[sync-house-maker] Error:', error);
+    res.status(500).json({ error: error.message || 'ハウスメーカー同期に失敗しました' });
   }
 });
 
