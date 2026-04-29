@@ -4408,7 +4408,7 @@ HP：https://ifoo-oita.com/
             {/* エリア情勢レポートボタン */}
             <Button
               variant="outlined"
-              onClick={() => setAreaReportOpen(true)}
+              onClick={() => window.open(`/sellers/${seller.id}/area-report`, '_blank')}
               size="small"
               sx={{
                 borderColor: '#1a237e',

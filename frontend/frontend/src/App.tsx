@@ -28,6 +28,7 @@ import PublicPropertyListingPage from './pages/PublicPropertyListingPage';
 import PublicPropertiesPage from './pages/PublicPropertiesPage';
 import PublicPropertyDetailPage from './pages/PublicPropertyDetailPage';
 import { PropertyListingSyncDashboard } from './pages/PropertyListingSyncDashboard';
+import AreaReportPage from './pages/AreaReportPage';
 import BuyerCandidateListPage from './pages/BuyerCandidateListPage';
 import SharedItemsPage from './pages/SharedItemsPage';
 import SharedItemDetailPage from './pages/SharedItemDetailPage';
@@ -298,6 +299,7 @@ function App() {
           </ProtectedRoute>
         }
       />
+      <Route path="/sellers/:sellerId/area-report" element={<AreaReportPage />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
     </GoogleMapsProvider>
