@@ -10,6 +10,8 @@ interface PropertyListing {
   floor_plan?: string;
   contract_date?: string;
   settlement_date?: string;
+  house_maker?: string;
+  property_type?: string;
 }
 
 interface PropertyDetailsSectionProps {
@@ -143,6 +145,24 @@ export default function PropertyDetailsSection({
               InputLabelProps={{ shrink: true }}
             />
           </Grid>
+          {(() => {
+            const pt = (editedData.property_type !== undefined ? editedData.property_type : (data.property_type || '')).toLowerCase();
+            const isDetached = pt === 'detached_house' || pt.includes('戸建') || pt === '戸';
+            return isDetached ? (
+              <Grid item xs={12}>
+                <Typography variant="body2" sx={{ fontWeight: 400, fontSize: '0.7rem', color: 'text.secondary', mb: 0 }}>
+                  ハウスメーカー
+                </Typography>
+                <TextField
+                  fullWidth
+                  size="small"
+                  value={getValue('house_maker', data.house_maker)}
+                  onChange={(e) => onFieldChange('house_maker', e.target.value)}
+                  placeholder="例: 積水ハイム"
+                />
+              </Grid>
+            ) : null;
+          })()}
         </Grid>
       ) : (
         <Grid container spacing={0.5}>
@@ -210,6 +230,20 @@ export default function PropertyDetailsSection({
               {formatValue(data.settlement_date)}
             </Typography>
           </Grid>
+          {(() => {
+            const pt = (data.property_type || '').toLowerCase();
+            const isDetached = pt === 'detached_house' || pt.includes('戸建') || pt === '戸';
+            return (isDetached || data.house_maker) ? (
+              <Grid item xs={12}>
+                <Typography variant="body2" sx={{ fontWeight: 400, fontSize: '0.7rem', color: 'text.secondary', mb: 0 }}>
+                  ハウスメーカー
+                </Typography>
+                <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                  {formatValue(data.house_maker)}
+                </Typography>
+              </Grid>
+            ) : null;
+          })()}
         </Grid>
       )}
     </Box>
