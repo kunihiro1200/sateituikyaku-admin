@@ -11,6 +11,7 @@ import { BuyerService } from '../services/BuyerService';
 import { PerformanceMetricsService } from '../services/PerformanceMetricsService';
 import { SpreadsheetSyncService } from '../services/SpreadsheetSyncService';
 import { GoogleSheetsClient } from '../services/GoogleSheetsClient';
+import { fetchPopulationData, estimateAreaRatio } from '../services/EStatService';
 
 const router = Router();
 const sellerService = new SellerService();
@@ -1934,7 +1935,23 @@ router.post('/:id/area-report', async (req: Request, res: Response) => {
 
     const today = new Date().toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric' });
 
-    const jsonPrompt = `${cityLabel}の${detailArea}エリアの不動産売却資料用データをJSONで返してください。現在2026年。数値は概算可。
+    // e-Stat APIから実際の人口データを取得
+    const areaRatio = estimateAreaRatio(city, town);
+    const realPopData = await fetchPopulationData(city, areaRatio);
+
+    // 人口データをプロンプトに埋め込む（実データがある場合）
+    const populationHint = realPopData
+      ? `\n【実際の国勢調査データ（必ずこの数値を使用すること）】\n人口（${cityLabel}全体）:\n${realPopData.map(r => `  ${r.year}: ${r.city.toLocaleString()}人`).join('\n')}\n人口（${detailArea}エリア推計）:\n${realPopData.map(r => `  ${r.year}: ${r.area.toLocaleString()}人`).join('\n')}\n※上記の人口数値は国勢調査の実データです。populationフィールドには必ずこの数値を使用してください。`
+      : '';
+
+    const jsonPrompt = `${cityLabel}の${detailArea}エリアについて、実際の統計・市場データに基づいた不動産売却資料用のJSONを返してください。現在2026年。
+${populationHint}
+【重要な数値生成ルール】
+- 人口：${realPopData ? '上記の実データを必ず使用すること（改変禁止）' : '国勢調査・住民基本台帳の実態に近い数値を使用。毎年一定ではなく、年によって増減幅が異なる'}
+- 取引件数：景気・金利・コロナ禍（2020-2021年）の影響を反映。コロナ禍は件数が落ち込み、2022年以降に回復するなど現実的な波を持たせる
+- 不動産価格：**坪単価を万円単位の整数**で返すこと（例：大分市なら15〜30程度、絶対に円単位の大きな数値にしない）。2020年以降の全国的な地価上昇トレンドを反映しつつ、エリアの特性に応じた現実的な数値（毎年同額上昇にならないよう）
+- 世帯構成：そのエリアの実態（高齢化率・単身世帯増加傾向など）を反映した%
+- 絶対に等差数列（毎年同じ増減幅）にしないこと。実際のデータは不規則にばらつく
 
 各コメントは「今が売却のチャンス」と売主様が感じられるよう、データの傾向を踏まえた説得力のある内容にしてください（50〜80字程度）。
 summaryの各項目は「〇〇のため、今が売り時」のように具体的な理由を書いてください。
@@ -1949,10 +1966,10 @@ JSONのみ返してください。`;
       {
         model: 'gpt-4o-mini',
         messages: [
-          { role: 'system', content: `不動産売却資料用のデータをJSONで返します。左列ラベルは必ず「${cityLabel}全体」、右列ラベルは必ず「${detailArea}エリア」を使用します。` },
+          { role: 'system', content: `あなたは日本の不動産市場に精通したデータアナリストです。国勢調査・住民基本台帳・国土交通省地価公示・不動産取引価格情報などの実際の統計データの知識を活かし、${cityLabel}の実態に即したリアルな数値を生成してください。左列ラベルは必ず「${cityLabel}全体」、右列ラベルは必ず「${detailArea}エリア」を使用します。数値は毎年同じ増減幅（等差数列）にならないよう、現実のデータのような不規則なばらつきを持たせてください。` },
           { role: 'user', content: jsonPrompt },
         ],
-        temperature: 0.3,
+        temperature: 0.7,
         max_tokens: 1200,
       },
       { headers: { 'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`, 'Content-Type': 'application/json' }, timeout: 55000 }
@@ -1994,7 +2011,13 @@ JSONのみ返してください。`;
     const pr = data.prices || [];
     const prRows = pr.map((r: any, i: number) => {
       const b = i === pr.length - 1 ? 'font-weight:bold;' : '';
-      return `<tr><td style="${td}${b}">${r.year}</td><td style="${td}${b}">${Number(r.city).toLocaleString()}万円${arw(r.city, i > 0 ? pr[i-1].city : null)}</td><td style="${tda}${b}">${Number(r.area).toLocaleString()}万円${arw(r.area, i > 0 ? pr[i-1].area : null)}</td></tr>`;
+      // AIが円単位で返してきた場合（10000以上）は万円に変換する
+      const toMan = (v: number) => v >= 10000 ? Math.round(v / 10000) : v;
+      const cityVal = toMan(Number(r.city));
+      const areaVal = toMan(Number(r.area));
+      const prevCityVal = i > 0 ? toMan(Number(pr[i-1].city)) : null;
+      const prevAreaVal = i > 0 ? toMan(Number(pr[i-1].area)) : null;
+      return `<tr><td style="${td}${b}">${r.year}</td><td style="${td}${b}">${cityVal.toLocaleString()}万円${arw(cityVal, prevCityVal)}</td><td style="${tda}${b}">${areaVal.toLocaleString()}万円${arw(areaVal, prevAreaVal)}</td></tr>`;
     }).join('');
 
     const summary = (data.summary || []).map((s: string) => `<li style="margin-bottom:8px;"><strong style="color:#c62828;">${s}</strong></li>`).join('');
