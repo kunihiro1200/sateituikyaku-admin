@@ -72,6 +72,7 @@ import { PropertyChatSendData } from '../types/chat';
 import { fetchChatHistory } from '../services/chatHistoryService';
 import { generateSmsBody, smsTemplates, SmsTemplateId } from '../utils/smsTemplates';
 import { ChatHistoryItem } from '../types/chatHistory';
+import HouseMakerModal from '../components/HouseMakerModal';
 
 interface PropertyListing {
   id: number;
@@ -262,6 +263,7 @@ export default function PropertyListingDetailPage() {
   const [isPropertyDetailsEditMode, setIsPropertyDetailsEditMode] = useState(false);
   const [isFrequentlyAskedEditMode, setIsFrequentlyAskedEditMode] = useState(false);
   const [isViewingInfoEditMode, setIsViewingInfoEditMode] = useState(false);
+  const [houseMakerModalOpen, setHouseMakerModalOpen] = useState(false);
   const [isSellerBuyerEditMode, setIsSellerBuyerEditMode] = useState(false);
   const [isOfferEditMode, setIsOfferEditMode] = useState(false);
   const [atbbWarningDialog, setAtbbWarningDialog] = useState(false);
@@ -2581,6 +2583,39 @@ export default function PropertyListingDetailPage() {
                           </Typography>
                         )}
                       </Box>
+                    </Grid>
+                  )}
+                  {/* ハウスメーカーボタン（house_makerフィールドに値がある場合のみ表示） */}
+                  {data.house_maker && (
+                    <Grid item xs={12}>
+                      <Button
+                        variant="contained"
+                        size="small"
+                        startIcon={<span style={{ fontSize: '1.1em' }}>🏠</span>}
+                        onClick={() => setHouseMakerModalOpen(true)}
+                        sx={{
+                          background: 'linear-gradient(135deg, #1a237e 0%, #283593 100%)',
+                          color: 'white',
+                          fontWeight: 700,
+                          fontSize: '0.82rem',
+                          px: 2,
+                          py: 0.7,
+                          borderRadius: 2,
+                          boxShadow: '0 2px 8px rgba(26,35,126,0.3)',
+                          '&:hover': {
+                            background: 'linear-gradient(135deg, #283593 0%, #3949ab 100%)',
+                            boxShadow: '0 4px 12px rgba(26,35,126,0.4)',
+                          },
+                        }}
+                      >
+                        ハウスメーカー
+                      </Button>
+                      <HouseMakerModal
+                        open={houseMakerModalOpen}
+                        onClose={() => setHouseMakerModalOpen(false)}
+                        commentHtml={data.house_maker}
+                        mode="buyer"
+                      />
                     </Grid>
                   )}
                   {(isViewingInfoEditMode || data.viewing_available_date) && (

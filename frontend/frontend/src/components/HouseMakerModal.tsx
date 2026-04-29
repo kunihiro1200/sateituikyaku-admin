@@ -5,8 +5,9 @@ import PrintIcon from '@mui/icons-material/Print';
 import HomeWorkIcon from '@mui/icons-material/HomeWork';
 
 interface HouseMakerSection { title: string; points: string[]; }
-interface HouseMakerContent { makerName: string; tagline: string; sections: HouseMakerSection[]; summary: string; }
-interface HouseMakerModalProps { open: boolean; onClose: () => void; commentHtml: string; }
+interface HouseMakerContent { makerName: string; tagline: string; sections: HouseMakerSection[]; summary: string; buyerSummary: string; }
+// mode: 'seller' = 通話モード（売主向け）, 'buyer' = 物件詳細（買主向け）
+interface HouseMakerModalProps { open: boolean; onClose: () => void; commentHtml: string; mode?: 'seller' | 'buyer'; }
 
 const SECTION_ICONS: Record<string, string> = {
   '構造・耐震性': '🏗️',
@@ -27,6 +28,7 @@ const DATA: Record<string, HouseMakerContent> = {
       { title: '資産価値・売却時のポイント', points: ['高断熱・高気密の性能が数値で証明できるため買主への説明がしやすい', '太陽光パネル・床暖房などの設備が充実し光熱費の安さが売却時の強みになる', '外壁タイルは劣化しにくく築年数が経っても外観の美しさを維持しやすい', '一条ブランドは中古市場でも認知度が高く買主から安心感を得やすい'] },
     ],
     summary: '光熱費の安さと高い性能が、売却時の大きなアピールポイントになります',
+    buyerSummary: '一条工務店の中古住宅は、業界最高水準の断熱・気密性能と太陽光発電が揃った「買って得する家」です。光熱費が大幅に安く、快適性も新築同等水準を維持しています。',
   },
   '積水ハウス': {
     makerName: '積水ハウス', tagline: '累計建築戸数No.1の信頼と技術力',
@@ -38,6 +40,7 @@ const DATA: Record<string, HouseMakerContent> = {
       { title: '資産価値・売却時のポイント', points: ['積水ハウスのブランド力が中古市場での高評価を実現', '建物の耐久性とデザイン性が価格維持率の高さを証明', 'エコ住宅としての価値が次世代へのアピールポイント'] },
     ],
     summary: '240万戸超の実績と制震技術が、安心感として売却時に直結します',
+    buyerSummary: '積水ハウスの中古住宅は、国内最多の建築実績と独自の制震技術「シーカス構法」を持つ信頼のブランド。30年保証体制と高いデザイン性が、中古でも価値を保ち続けます。',
   },
   'ダイワハウス': {
     makerName: 'ダイワハウス', tagline: '鉄骨の強さと工場品質で災害に強い家',
@@ -49,6 +52,7 @@ const DATA: Record<string, HouseMakerContent> = {
       { title: '資産価値・売却時のポイント', points: ['鉄骨構造は木造より法定耐用年数が長く（34年）資産価値の減少が緩やか', '大空間・大開口の間取りは買主にとって魅力的なリノベーション素地になる', 'ダイワハウスブランドは中古市場での認知度が高く売却しやすい'] },
     ],
     summary: '鉄骨の耐久性と30年保証が、中古市場での高い評価につながります',
+    buyerSummary: 'ダイワハウスの中古住宅は、鉄骨構造の高い耐久性と30年保証が魅力。木造より法定耐用年数が長く、大空間・大開口の間取りはリノベーションの自由度も高い資産価値の高い物件です。',
   },
   'パナソニックホームズ': {
     makerName: 'パナソニックホームズ', tagline: '制震鉄骨と先進空調で快適・安心な住まい',
@@ -60,6 +64,7 @@ const DATA: Record<string, HouseMakerContent> = {
       { title: '資産価値・売却時のポイント', points: ['35年保証は業界最長水準で買主への安心感として直接アピールできる', '光触媒タイル外壁は築年数が経っても外観が美しく第一印象が良い', 'スマートホーム設備が充実しており次世代の買主層に響くアピールポイントになる'] },
     ],
     summary: '35年保証と全館空調が、買主にとって魅力的な付加価値になります',
+    buyerSummary: 'パナソニックホームズの中古住宅は、業界最長水準の35年保証と全館空調「エアロハス」が標準装備。スマートホーム技術と光触媒タイル外壁で、快適性・省エネ性・美観を長期間維持します。',
   },
   'ユニバーサルホーム': {
     makerName: 'ユニバーサルホーム', tagline: '地熱床システムで一年中快適・省エネな家',
@@ -71,6 +76,7 @@ const DATA: Record<string, HouseMakerContent> = {
       { title: '資産価値・売却時のポイント', points: ['地熱床システムによる光熱費の安さは買主にとって毎月のランニングコスト削減として直接訴求できる', '省エネ性能の高さはZEH補助金・省エネ住宅ローン優遇の対象になりやすい', '手頃な価格帯の物件として幅広い買主層にアプローチしやすい'] },
     ],
     summary: '地熱床システムによる光熱費の安さが、買主への最大のアピールポイントです',
+    buyerSummary: 'ユニバーサルホームの中古住宅は、他社にない「地熱床システム」で一年中快適な室温を維持しながら光熱費を大幅に節約できる省エネ住宅。毎月のランニングコストの安さが大きな魅力です。',
   },
   'ミサワホーム': {
     makerName: 'ミサワホーム', tagline: '「蔵」のある暮らしと高い耐震性を両立',
@@ -82,6 +88,7 @@ const DATA: Record<string, HouseMakerContent> = {
       { title: '資産価値・売却時のポイント', points: ['「蔵」は固定資産税の対象外（高さ1.4m以下）のため実質的な床面積以上の収納価値がある', 'デザイン性の高さが中古市場での差別化ポイントになり買主の目を引きやすい', '木質パネル工法の高い耐久性が築年数が経っても建物の価値を維持する'] },
     ],
     summary: '「蔵」の収納力とデザイン性が、他の中古物件との差別化になります',
+    buyerSummary: 'ミサワホームの中古住宅は、固定資産税がかからない大容量収納「蔵」と受賞歴多数のデザイン性が特徴。木質パネル工法の高い耐久性で、築年数が経っても建物の価値が維持されます。',
   },
   '谷川建設': {
     makerName: '谷川建設', tagline: '国産檜100%使用の本物の木の家',
@@ -93,6 +100,7 @@ const DATA: Record<string, HouseMakerContent> = {
       { title: '資産価値・売却時のポイント', points: ['国産檜は年月が経つほど強度が増す特性があり築年数が経っても構造の信頼性が高い', '自然素材・無垢材の家は健康志向の買主層に強くアピールできる', '木の家の温もり・香りは内覧時に買主の印象に強く残り成約につながりやすい'] },
     ],
     summary: '国産檜の本物の木の家は、内覧時に買主の心をつかむ強みがあります',
+    buyerSummary: '谷川建設の中古住宅は、国産檜100%使用の本物の木の家。檜は年月とともに強度が増す特性があり、木の香り・温もり・調湿効果が内覧時に体感できる、他にはない魅力を持つ物件です。',
   },
   '住友林業': {
     makerName: '住友林業', tagline: '300年の森林経営が生んだ最高品質の木の家',
@@ -104,6 +112,7 @@ const DATA: Record<string, HouseMakerContent> = {
       { title: '資産価値・売却時のポイント', points: ['住友林業ブランドは高級木造住宅の代名詞として中古市場での評価が高い', '無垢材・木質内装は経年変化で味わいが増し築年数が経っても魅力が落ちにくい', '住友林業ホームサービスが売却をサポートするためスムーズな取引が期待できる'] },
     ],
     summary: '住友林業ブランドと無垢材の上質感が、中古市場での高評価を生みます',
+    buyerSummary: '住友林業の中古住宅は、高級木造住宅の代名詞として中古市場でも高い評価を受けるブランド物件。無垢材・木質内装は経年で味わいが増し、30年保証と充実したアフターサービスが安心感を支えます。',
   },
 };
 
@@ -119,8 +128,8 @@ const ALIASES: [RegExp, string][] = [
   [/住友林業|すみりん/,        '住友林業'],
 ];
 
-function detectMaker(commentHtml: string): HouseMakerContent | null {
-  const plain = commentHtml.replace(/<[^>]+>/g, '');
+function detectMaker(text: string): HouseMakerContent | null {
+  const plain = text.replace(/<[^>]+>/g, '');
   // まず完全一致で検索
   for (const [key, data] of Object.entries(DATA)) {
     if (plain.includes(key)) return data;
@@ -132,8 +141,10 @@ function detectMaker(commentHtml: string): HouseMakerContent | null {
   return null;
 }
 
-const HouseMakerModal: React.FC<HouseMakerModalProps> = ({ open, onClose, commentHtml }) => {
+const HouseMakerModal: React.FC<HouseMakerModalProps> = ({ open, onClose, commentHtml, mode = 'seller' }) => {
   const content = open ? detectMaker(commentHtml) : null;
+  const isBuyer = mode === 'buyer';
+  const displaySummary = content ? (isBuyer ? content.buyerSummary : content.summary) : '';
 
   const handlePrint = () => {
     if (!content) return;
@@ -159,7 +170,7 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo','Yu Gothic',sans-serif;fon
 </style></head><body>
 <div class="header"><div class="badge">ハウスメーカー資料</div><div class="mn">${content.makerName}</div><div class="tl">${content.tagline}</div></div>
 <div class="grid">${sectionsHtml}</div>
-<div class="sum">${content.summary}</div>
+<div class="sum">${displaySummary}</div>
 </body></html>`);
     win.document.close();
     win.focus();
@@ -219,7 +230,7 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo','Yu Gothic',sans-serif;fon
               ))}
             </Box>
             <Box sx={{ background: 'linear-gradient(135deg, #e8eaf6 0%, #ede7f6 100%)', border: '1px solid', borderColor: '#9fa8da', borderRadius: 1.5, p: 1.5, textAlign: 'center' }}>
-              <Typography variant="body1" fontWeight={600} color="primary.dark">{content.summary}</Typography>
+              <Typography variant="body1" fontWeight={600} color="primary.dark">{displaySummary}</Typography>
             </Box>
           </Box>
         )}
