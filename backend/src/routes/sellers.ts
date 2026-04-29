@@ -1937,6 +1937,10 @@ router.post('/:id/area-report', async (req: Request, res: Response) => {
     const detailArea = town || city;
     const cityLabel = city; // 「別府市」のみ
 
+    // デバッグログ
+    console.log('[area-report] address:', address);
+    console.log('[area-report] city:', city, '| town:', town, '| detailArea:', detailArea, '| cityLabel:', cityLabel);
+
     const today = new Date().toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric' });
 
     const prompt = `あなたは不動産売買仲介会社の営業担当者です。
