@@ -12,6 +12,11 @@
       "dest": "src/index.ts"
     }
   ],
+  "functions": {
+    "src/index.ts": {
+      "maxDuration": 60
+    }
+  },
   "crons": [
     {
       "path": "/api/sellers/sidebar-counts/update",
