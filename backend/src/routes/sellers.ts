@@ -1934,9 +1934,12 @@ router.post('/:id/area-report', async (req: Request, res: Response) => {
 
     const today = new Date().toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric' });
 
-    const jsonPrompt = `${cityLabel}の${detailArea}エリアの不動産売却資料用データをJSONで返してください。現在2026年。数値は概算可。コメントは30字以内。
+    const jsonPrompt = `${cityLabel}の${detailArea}エリアの不動産売却資料用データをJSONで返してください。現在2026年。数値は概算可。
 
-{"population":[{"year":"2015年","city":数値,"area":数値},{"year":"2018年","city":数値,"area":数値},{"year":"2021年","city":数値,"area":数値},{"year":"2024年","city":数値,"area":数値},{"year":"2025年","city":数値,"area":数値}],"populationComment":"コメント","household":[{"type":"単身世帯","city":"XX%","area":"XX%"},{"type":"夫婦のみ","city":"XX%","area":"XX%"},{"type":"核家族","city":"XX%","area":"XX%"},{"type":"三世代同居","city":"XX%","area":"XX%"}],"householdComment":"コメント","transactions":[{"year":"2020年","city":数値,"area":数値},{"year":"2021年","city":数値,"area":数値},{"year":"2022年","city":数値,"area":数値},{"year":"2023年","city":数値,"area":数値},{"year":"2024年","city":数値,"area":数値},{"year":"2025年","city":数値,"area":数値}],"transactionsComment":"コメント","prices":[{"year":"2020年","city":数値,"area":数値},{"year":"2021年","city":数値,"area":数値},{"year":"2022年","city":数値,"area":数値},{"year":"2023年","city":数値,"area":数値},{"year":"2024年","city":数値,"area":数値},{"year":"2025年","city":数値,"area":数値}],"pricesComment":"コメント","summary":["理由1","理由2","理由3","理由4","理由5"]}
+各コメントは「今が売却のチャンス」と売主様が感じられるよう、データの傾向を踏まえた説得力のある内容にしてください（50〜80字程度）。
+summaryの各項目は「〇〇のため、今が売り時」のように具体的な理由を書いてください。
+
+{"population":[{"year":"2015年","city":数値,"area":数値},{"year":"2018年","city":数値,"area":数値},{"year":"2021年","city":数値,"area":数値},{"year":"2024年","city":数値,"area":数値},{"year":"2025年","city":数値,"area":数値}],"populationComment":"人口動向を踏まえた売却推奨コメント","household":[{"type":"単身世帯","city":"XX%","area":"XX%"},{"type":"夫婦のみ","city":"XX%","area":"XX%"},{"type":"核家族","city":"XX%","area":"XX%"},{"type":"三世代同居","city":"XX%","area":"XX%"}],"householdComment":"世帯構成から見た需要コメント","transactions":[{"year":"2020年","city":数値,"area":数値},{"year":"2021年","city":数値,"area":数値},{"year":"2022年","city":数値,"area":数値},{"year":"2023年","city":数値,"area":数値},{"year":"2024年","city":数値,"area":数値},{"year":"2025年","city":数値,"area":数値}],"transactionsComment":"取引件数から見た市場活況コメント","prices":[{"year":"2020年","city":数値,"area":数値},{"year":"2021年","city":数値,"area":数値},{"year":"2022年","city":数値,"area":数値},{"year":"2023年","city":数値,"area":数値},{"year":"2024年","city":数値,"area":数値},{"year":"2025年","city":数値,"area":数値}],"pricesComment":"価格上昇を踏まえた売却推奨コメント","summary":["具体的な売却推奨理由1","具体的な売却推奨理由2","具体的な売却推奨理由3","具体的な売却推奨理由4","具体的な売却推奨理由5"]}
 
 JSONのみ返してください。`;
 
