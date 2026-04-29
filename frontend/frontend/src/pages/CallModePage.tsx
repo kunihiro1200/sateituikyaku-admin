@@ -7150,9 +7150,13 @@ HP：https://ifoo-oita.com/
             })()}
             {/* マンションボタン（種別がマンションかつ物件住所にマンション名が含まれる場合のみ表示） */}
             {(() => {
-              const isApartment = propInfo.propertyType === 'apartment';
+              // propInfo.propertyType は normalizePropertyType 済み（'apartment'）
+              // seller.propertyType が未正規化の場合も考慮して直接チェック
+              const rawType = propInfo.propertyType || seller?.propertyType || '';
+              const isApartment = rawType === 'apartment' || rawType === 'マ' || rawType === 'マンション';
               if (!isApartment) return null;
-              const address = propInfo.address || seller?.propertyAddress || '';
+              // propInfo.address と seller.propertyAddress の両方を結合して検索
+              const address = (propInfo.address || '') + ' ' + (seller?.propertyAddress || '');
               const MANSION_BRANDS = [
                 'アルファステイツ', 'サーパス', 'サンレスコ', 'グリーンヒル',
                 'エイリック', 'スタイルパークサイド', 'デュオヒルズ', 'MJR',
