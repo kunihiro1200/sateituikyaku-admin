@@ -1923,14 +1923,18 @@ router.post('/:id/area-report', async (req: Request, res: Response) => {
     // 住所から市区町村・町名を抽出
     // 「大分県大分市南太平寺1丁目」→ city=大分市, town=南太平寺
     // 「大分県別府市亀川東町3-9」→ city=別府市, town=亀川東町
-    const cityMatch = address.match(/[都道府県]([^都道府県]{2,6}?[市区町村])/);
-    const townMatch = address.match(/[市区町村]([^\d\s\-0-9０-９]{2,10}?)(?=\d|[0-9０-９]|$)/);
+    // cityは「市」「区」「町」「村」で終わる最短マッチ
+    const cityMatch = address.match(/[都道府県](.{2,6}?[市区])/);
+    const cityMatchTown = !cityMatch ? address.match(/[都道府県](.{2,8}?[町村])/) : null;
+    const city = (cityMatch ? cityMatch[1] : (cityMatchTown ? cityMatchTown[1] : '')) || address.substring(0, 5);
 
-    const city = cityMatch ? cityMatch[1] : address.substring(0, 5);
+    // 市区町村の直後の町名（数字・ハイフンの手前まで）
+    const afterCity = address.replace(/^.*?[市区町村]/, '');
+    const townMatch = afterCity.match(/^([^\d\s\-0-9０-９]{2,10}?)(?=\d|[0-9０-９]|$)/);
     const townRaw = townMatch ? townMatch[1].trim() : '';
     const town = townRaw.replace(/[0-9０-９一二三四五六七八九十]+丁目$/, '').trim();
     const detailArea = town || city;
-    const cityLabel = city;
+    const cityLabel = city; // 「別府市」のみ（町名は含めない）
 
     const today = new Date().toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric' });
 
