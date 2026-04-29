@@ -76,6 +76,7 @@ import AreaReportModal from '../components/AreaReportModal';
 import CollapsibleSection from '../components/CollapsibleSection';
 import CommentHighlightsPanel from '../components/CommentHighlightsPanel';
 import HouseMakerModal from '../components/HouseMakerModal';
+import MansionModal from '../components/MansionModal';
 
 import { formatCurrentStatusDetailed } from '../utils/propertyStatusFormatter';
 import PageNavigation from '../components/PageNavigation';
@@ -738,6 +739,7 @@ const CallModePage = () => {
 
   // ハウスメーカーモーダルの状態
   const [houseMakerModalOpen, setHouseMakerModalOpen] = useState(false);
+  const [mansionModalOpen, setMansionModalOpen] = useState(false);
 
   // 不通確認ダイアログの状態
   const [unreachableConfirmOpen, setUnreachableConfirmOpen] = useState(false);
@@ -7146,6 +7148,46 @@ HP：https://ifoo-oita.com/
                 </Box>
               );
             })()}
+            {/* マンションボタン（種別がマンションかつ物件住所にマンション名が含まれる場合のみ表示） */}
+            {(() => {
+              const isApartment = propInfo.propertyType === 'apartment';
+              if (!isApartment) return null;
+              const address = propInfo.address || seller?.propertyAddress || '';
+              const MANSION_BRANDS = [
+                'アルファステイツ', 'サーパス', 'サンレスコ', 'グリーンヒル',
+                'エイリック', 'スタイルパークサイド', 'デュオヒルズ', 'MJR',
+                'サンパーク', 'クレア', 'ネクスト', 'オーヴィジョン',
+                'リビオ', 'ロフティ', 'パレスト',
+              ];
+              const detected = MANSION_BRANDS.some((m) => address.includes(m));
+              if (!detected) return null;
+              return (
+                <Box sx={{ mb: 1.5 }}>
+                  <Button
+                    variant="contained"
+                    size="small"
+                    startIcon={<span style={{ fontSize: '1.1em' }}>🏢</span>}
+                    onClick={() => setMansionModalOpen(true)}
+                    sx={{
+                      background: 'linear-gradient(135deg, #1b5e20 0%, #2e7d32 100%)',
+                      color: 'white',
+                      fontWeight: 700,
+                      fontSize: '0.82rem',
+                      px: 2,
+                      py: 0.7,
+                      borderRadius: 2,
+                      boxShadow: '0 2px 8px rgba(27,94,32,0.3)',
+                      '&:hover': {
+                        background: 'linear-gradient(135deg, #2e7d32 0%, #388e3c 100%)',
+                        boxShadow: '0 4px 12px rgba(27,94,32,0.4)',
+                      },
+                    }}
+                  >
+                    マンション
+                  </Button>
+                </Box>
+              );
+            })()}
             <CommentHighlightsPanel
               commentHtml={savedComments}
               quickButtonIds={[
@@ -7181,6 +7223,13 @@ HP：https://ifoo-oita.com/
               open={houseMakerModalOpen}
               onClose={() => setHouseMakerModalOpen(false)}
               commentHtml={savedComments}
+            />
+
+            {/* マンションモーダル */}
+            <MansionModal
+              open={mansionModalOpen}
+              onClose={() => setMansionModalOpen(false)}
+              address={propInfo.address || seller?.propertyAddress || ''}
             />
 
             {/* コメント入力・編集エリア（直接書き込み可能） */}
