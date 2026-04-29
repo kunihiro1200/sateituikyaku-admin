@@ -1923,23 +1923,27 @@ router.post('/:id/area-report', async (req: Request, res: Response) => {
     // 住所から市区町村・町名を抽出
     // 「大分県大分市南太平寺1丁目」→ city=大分市, town=南太平寺
     // 「大分県別府市石垣東町3-9」→ city=別府市, town=石垣東
-    // 都道府県の直後から最初の「市」「区」までを city とする
-    const cityMatch = address.match(/[都道府県]([^都道府県市区町村]{1,6}[市区])/);
-    const cityMatchTown = !cityMatch ? address.match(/[都道府県]([^都道府県市区町村]{1,8}[町村])/) : null;
-    const city = (cityMatch ? cityMatch[1] : (cityMatchTown ? cityMatchTown[1] : '')) || address.substring(0, 5);
+    // 都道府県の直後から最初の「市」「区」で止める（貪欲マッチを避ける）
+    const prefIdx = address.search(/[都道府県]/);
+    const afterPref = prefIdx >= 0 ? address.slice(prefIdx + 1) : address;
+    // 「大分市」「別府市」「北九州市」など：最初の「市」または「区」で切る
+    const cityEndMatch = afterPref.match(/^(.{1,6}?[市区])/);
+    const city = cityEndMatch ? cityEndMatch[1] : afterPref.substring(0, 4);
 
-    // 市区町村の直後の町名（数字・ハイフンの手前まで）
-    const afterCity = address.replace(/^.*?[市区]/, '');
-    const townMatch = afterCity.match(/^([^\d\s\-0-9０-９]{2,10}?)(?=\d|[0-9０-９]|$)/);
-    const townRaw = townMatch ? townMatch[1].trim() : '';
-    // 「石垣東町」→「石垣東」のように末尾の「町」「丁目番号」を除去
+    // 市の直後の町名（数字・ハイフンの手前まで）
+    const cityEnd = address.indexOf(city) + city.length;
+    const afterCity2 = address.slice(cityEnd);
+    // 町名部分：漢字・ひらがな・カタカナのみ（数字・記号の手前まで）
+    const townMatch2 = afterCity2.match(/^([\u3000-\u9FFF\u30A0-\u30FF\u3040-\u309F]{2,10}?)(?=\d|[0-9０-９\-ー－]|$)/);
+    const townRaw = townMatch2 ? townMatch2[1].trim() : '';
+    // 末尾の「町」「丁目番号」を除去
     const town = townRaw.replace(/[0-9０-９一二三四五六七八九十]+丁目$/, '').replace(/町$/, '').trim();
     const detailArea = town || city;
-    const cityLabel = city; // 「別府市」のみ
+    const cityLabel = city; // 「別府市」「大分市」のみ
 
     // デバッグログ
     console.log('[area-report] address:', address);
-    console.log('[area-report] city:', city, '| town:', town, '| detailArea:', detailArea, '| cityLabel:', cityLabel);
+    console.log('[area-report] city:', city, '| town:', town, '| detailArea:', detailArea);
 
     const today = new Date().toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric' });
 
