@@ -1899,7 +1899,6 @@ router.get('/:id/inquiry-url', async (req: Request, res: Response) => {
  * エリア情勢レポートを生成（AI使用）
  * POST /api/sellers/:id/area-report
  * エリア情勢レポートを生成（AI使用・JSON方式）
- * @param id 売主ID
  */
 router.post('/:id/area-report', async (req: Request, res: Response) => {
   try {
