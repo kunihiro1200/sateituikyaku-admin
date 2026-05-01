@@ -164,6 +164,21 @@ ${itemsList}
     });
   } catch (error: any) {
     console.error('管理規約解析エラー:', error?.response?.data || error.message);
+
+    // OpenAIのレート制限エラーは429で返す（フロントエンドがリトライできるように）
+    const isRateLimit =
+      error?.response?.status === 429 ||
+      error?.response?.data?.error?.code === 'rate_limit_exceeded';
+
+    if (isRateLimit) {
+      return res.status(429).json({
+        error: {
+          code: 'rate_limit_exceeded',
+          message: 'APIのレート制限に達しました。しばらく待ってから再試行します。',
+        },
+      });
+    }
+
     return res.status(500).json({
       error: error?.response?.data?.error?.message || error.message || '解析中にエラーが発生しました',
     });

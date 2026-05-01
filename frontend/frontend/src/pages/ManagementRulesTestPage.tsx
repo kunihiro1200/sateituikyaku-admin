@@ -27,8 +27,8 @@ const API_BASE_URL =
     ? 'https://sateituikyaku-admin-backend.vercel.app'
     : import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
-// 1回のリクエストに含める最大ページ数（413対策）
-const PAGES_PER_CHUNK = 4;
+// 1回のリクエストに含める最大ページ数（TPMレート制限対策で小さめに）
+const PAGES_PER_CHUNK = 2;
 
 interface CheckResult {
   key: string;
@@ -119,22 +119,45 @@ function chunkArray<T>(arr: T[], size: number): T[][] {
 }
 
 /**
- * 1チャンク分をAPIに送信して結果を取得
+ * 指定ミリ秒待機
  */
-async function analyzeChunk(pages: FilePayload[]): Promise<CheckResult[]> {
-  const response = await fetch(`${API_BASE_URL}/api/management-rules/analyze`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ files: pages }),
-  });
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
-  if (!response.ok) {
+/**
+ * 1チャンク分をAPIに送信して結果を取得（レート制限時は自動リトライ）
+ */
+async function analyzeChunk(pages: FilePayload[], retries = 3): Promise<CheckResult[]> {
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    const response = await fetch(`${API_BASE_URL}/api/management-rules/analyze`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ files: pages }),
+    });
+
+    if (response.ok) {
+      const data: AnalyzeResponse = await response.json();
+      return data.results;
+    }
+
     const errData = await response.json().catch(() => ({ error: 'サーバーエラー' }));
-    throw new Error(errData.error || `HTTP ${response.status}`);
+
+    // レート制限（429 or 500でrate_limit_exceeded）の場合はリトライ
+    const isRateLimit =
+      response.status === 429 ||
+      (response.status === 500 && errData?.error?.code === 'rate_limit_exceeded');
+
+    if (isRateLimit && attempt < retries) {
+      // 10秒待ってリトライ
+      await sleep(10000);
+      continue;
+    }
+
+    throw new Error(errData?.error?.message || errData?.error || `HTTP ${response.status}`);
   }
 
-  const data: AnalyzeResponse = await response.json();
-  return data.results;
+  throw new Error('リトライ上限に達しました');
 }
 
 /**
@@ -235,6 +258,12 @@ const ManagementRulesTestPage: React.FC = () => {
 
         const chunkResults = await analyzeChunk(chunks[i]);
         allChunkResults.push(chunkResults);
+
+        // チャンク間に5秒待機（レート制限対策）
+        if (i < chunks.length - 1) {
+          setLoadingMessage(`次のバッチを準備中... (${chunkNum + 1}/${chunks.length})`);
+          await sleep(5000);
+        }
       }
 
       setProgress(100);
