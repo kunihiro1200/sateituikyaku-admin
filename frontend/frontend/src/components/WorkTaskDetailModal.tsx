@@ -3793,6 +3793,15 @@ ${pageUrl}`;
                   sx={{ whiteSpace: 'nowrap', fontWeight: 700, bgcolor: '#1e8e3e', '&:hover': { bgcolor: '#166d30' }, fontSize: '0.75rem', px: 1, py: 0.4, minWidth: 0 }}
                 >スプシ</Button>
               )}
+              {/* 管理規約解析ボタン: 契約決済タブ かつ 種別がマ・マンションの場合のみ表示 */}
+              {tabIndex === 2 && ['マ', 'マンション'].includes(getValue('property_type') || '') && (
+                <Button
+                  variant="contained"
+                  size="small"
+                  onClick={() => navigate(`/management-rules-test?propertyNumber=${propertyNumber}`)}
+                  sx={{ whiteSpace: 'nowrap', fontWeight: 700, bgcolor: '#7b1fa2', '&:hover': { bgcolor: '#6a1b9a' }, fontSize: '0.75rem', px: 1, py: 0.4, minWidth: 0 }}
+                >管理規約</Button>
+              )}
               <IconButton onClick={onClose} size="small" sx={{ p: 0.5 }}><CloseIcon fontSize="small" /></IconButton>
             </Box>
           ) : (
@@ -3904,6 +3913,17 @@ ${pageUrl}`;
                     sx={{ whiteSpace: 'nowrap', fontWeight: 700, bgcolor: '#1e8e3e', '&:hover': { bgcolor: '#166d30' }, fontSize: '0.85rem', px: 1.5 }}
                   >
                     スプシ
+                  </Button>
+                )}
+                {/* 管理規約解析ボタン: 契約決済タブ かつ 種別がマ・マンションの場合のみ表示 */}
+                {tabIndex === 2 && ['マ', 'マンション'].includes(getValue('property_type') || '') && (
+                  <Button
+                    variant="contained"
+                    size="small"
+                    onClick={() => navigate(`/management-rules-test?propertyNumber=${propertyNumber}`)}
+                    sx={{ whiteSpace: 'nowrap', fontWeight: 700, bgcolor: '#7b1fa2', '&:hover': { bgcolor: '#6a1b9a' }, fontSize: '0.85rem', px: 1.5 }}
+                  >
+                    管理規約解析
                   </Button>
                 )}
                 <IconButton onClick={onClose} size="small"><CloseIcon /></IconButton>

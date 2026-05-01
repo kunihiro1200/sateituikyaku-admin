@@ -26,6 +26,8 @@ import UploadFileIcon from '@mui/icons-material/UploadFile';
 import SearchIcon from '@mui/icons-material/Search';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import ImageIcon from '@mui/icons-material/Image';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 
 const API_BASE_URL =
   import.meta.env.MODE === 'production'
@@ -322,6 +324,10 @@ function mergeResults(allResults: CheckResult[][]): CheckResult[] {
 }
 
 const ManagementRulesTestPage: React.FC = () => {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const propertyNumber = searchParams.get('propertyNumber');
+
   const [files, setFiles] = useState<File[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
@@ -411,9 +417,24 @@ const ManagementRulesTestPage: React.FC = () => {
 
   return (
     <Box sx={{ maxWidth: 800, mx: 'auto', p: 3 }}>
-      <Typography variant="h5" fontWeight="bold" gutterBottom>
-        管理規約 解析テスト
-      </Typography>
+      {/* ヘッダー */}
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+        <Button
+          variant="outlined"
+          size="small"
+          startIcon={<ArrowBackIcon />}
+          onClick={() => navigate('/work-tasks')}
+          sx={{ whiteSpace: 'nowrap' }}
+        >
+          業務一覧
+        </Button>
+        <Typography variant="h5" fontWeight="bold">
+          管理規約 解析
+        </Typography>
+        {propertyNumber && (
+          <Chip label={propertyNumber} size="small" color="primary" variant="outlined" />
+        )}
+      </Box>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
         管理規約のPDFまたは画像をアップロードすると、各項目の該当条文を自動で抽出します。
         テキストPDF・スキャンPDF両方に対応しています。
