@@ -132,7 +132,6 @@ function makeLabelIconUrl(label: string, color: string, emoji: string): string {
 
 // ---- 物件マーカー（小さめ） ----
 function makePropertyIconUrl(): string {
-  // 元の半分サイズ: 45×18
   const w = 46;
   const h = 18;
   const arrowH = 6;
@@ -140,7 +139,7 @@ function makePropertyIconUrl(): string {
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${totalH}">
     <rect x="0" y="0" width="${w}" height="${h}" rx="4" ry="4" fill="#d32f2f" opacity="0.97"/>
     <text x="${w / 2}" y="12" font-family="'Noto Sans JP','Hiragino Sans','Meiryo',sans-serif"
-      font-size="9" font-weight="bold" fill="white" text-anchor="middle">📍物件</text>
+      font-size="9" font-weight="bold" fill="white" text-anchor="middle">&#x1F4CD;&#x7269;&#x4EF6;</text>
     <polygon points="${w / 2 - 4},${h} ${w / 2 + 4},${h} ${w / 2},${totalH}"
       fill="#d32f2f" opacity="0.97"/>
   </svg>`;
@@ -148,8 +147,8 @@ function makePropertyIconUrl(): string {
 }
 
 // ---- 施設リストHTML（印刷用） ----
-function buildListHtml(nearbyData: NearbyData, radiusLabel: string): string {
-  return nearbyData.categories
+function buildListHtml(nearbyData: NearbyData): string {
+  const items = nearbyData.categories
     .map((cat) => {
       const places = nearbyData.places[cat.type] || [];
       if (places.length === 0) return '';
@@ -158,103 +157,99 @@ function buildListHtml(nearbyData: NearbyData, radiusLabel: string): string {
         .map(
           (p) =>
             `<tr>
-              <td style="padding:2px 5px;font-size:10px;border-bottom:1px solid #eee;">${p.name}</td>
-              <td style="padding:2px 5px;font-size:9px;color:#555;border-bottom:1px solid #eee;">${p.vicinity}</td>
-              <td style="padding:2px 5px;font-size:10px;color:#1565c0;text-align:right;border-bottom:1px solid #eee;white-space:nowrap;">約${p.distance}m</td>
-              <td style="padding:2px 5px;font-size:9px;color:#e65100;border-bottom:1px solid #eee;">${p.rating ? `★${p.rating}` : ''}</td>
+              <td class="td-name">${escHtml(p.name)}</td>
+              <td class="td-addr">${escHtml(p.vicinity)}</td>
+              <td class="td-dist">約${p.distance}m</td>
+              <td class="td-rate">${p.rating ? `★${p.rating}` : ''}</td>
             </tr>`
         )
         .join('');
-      return `<div style="margin-bottom:6px;break-inside:avoid;">
-        <div style="background:${color};color:white;padding:2px 8px;border-radius:3px;font-size:10px;font-weight:bold;margin-bottom:2px;">
-          ${cat.icon} ${cat.label}（${places.length}件）
-        </div>
-        <table style="width:100%;border-collapse:collapse;">
-          <tbody>${rows}</tbody>
-        </table>
+      return `<div class="cat-block">
+        <div class="cat-header" style="background:${color};">${cat.icon} ${cat.label}（${places.length}件）</div>
+        <table><tbody>${rows}</tbody></table>
       </div>`;
     })
     .join('');
+
+  return items || '<p class="no-data">この圏内に施設が見つかりませんでした</p>';
 }
 
-// ---- PDF印刷：隠しiframeで印刷（ポップアップブロック回避） ----
+function escHtml(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+// ---- PDF印刷：srcdoc方式（ポップアップブロック完全回避） ----
 function printNearbyMapBothRadii(
   address: string,
   data1km: NearbyData | null,
   data2km: NearbyData | null
 ) {
-  const list1 = data1km ? buildListHtml(data1km, '1km') : '<p style="color:#999;font-size:11px;">データなし</p>';
-  const list2 = data2km ? buildListHtml(data2km, '2km') : '<p style="color:#999;font-size:11px;">データなし</p>';
+  const list1 = data1km ? buildListHtml(data1km) : '<p class="no-data">データなし</p>';
+  const list2 = data2km ? buildListHtml(data2km) : '<p class="no-data">データなし</p>';
 
   const html = `<!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8"/>
-  <title>近隣環境マップ</title>
-  <style>
-    @page { size: A4 portrait; margin: 10mm 12mm; }
-    * { box-sizing: border-box; }
-    body {
-      font-family: 'Noto Sans JP','Hiragino Sans','Meiryo',sans-serif;
-      margin: 0; padding: 0; font-size: 10px; color: #111;
-    }
-    h1 { font-size: 14px; margin: 0 0 2px; color: #1565c0; }
-    .subtitle { font-size: 9px; color: #555; margin-bottom: 6px; }
-    .divider { border: none; border-top: 2px solid #1565c0; margin: 4px 0 8px; }
-    .columns { display: flex; gap: 10px; }
-    .col { flex: 1; min-width: 0; }
-    .col-title {
-      font-size: 12px; font-weight: bold; color: white;
-      padding: 3px 8px; border-radius: 4px; margin-bottom: 6px;
-    }
-    .col-1km { background: #1565c0; }
-    .col-2km { background: #2e7d32; }
-  </style>
+<meta charset="UTF-8"/>
+<title>近隣環境マップ</title>
+<style>
+@page { size: A4 portrait; margin: 10mm 12mm; }
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Hiragino Sans','Meiryo','Yu Gothic',sans-serif;font-size:9px;color:#111;}
+h1{font-size:13px;color:#1565c0;margin-bottom:2px;}
+.subtitle{font-size:8px;color:#555;margin-bottom:5px;}
+hr{border:none;border-top:2px solid #1565c0;margin:4px 0 8px;}
+.columns{display:flex;gap:8px;}
+.col{flex:1;min-width:0;}
+.col-title{font-size:10px;font-weight:bold;color:white;padding:3px 7px;border-radius:3px;margin-bottom:5px;}
+.col-1km{background:#1565c0;}
+.col-2km{background:#2e7d32;}
+.cat-block{margin-bottom:5px;break-inside:avoid;}
+.cat-header{color:white;padding:2px 6px;border-radius:2px;font-size:9px;font-weight:bold;margin-bottom:2px;}
+table{width:100%;border-collapse:collapse;}
+.td-name{padding:1px 4px;font-size:9px;border-bottom:1px solid #eee;}
+.td-addr{padding:1px 4px;font-size:8px;color:#555;border-bottom:1px solid #eee;}
+.td-dist{padding:1px 4px;font-size:9px;color:#1565c0;text-align:right;border-bottom:1px solid #eee;white-space:nowrap;}
+.td-rate{padding:1px 4px;font-size:8px;color:#e65100;border-bottom:1px solid #eee;}
+.no-data{font-size:9px;color:#999;padding:4px;}
+</style>
 </head>
 <body>
-  <h1>近隣環境マップ</h1>
-  <div class="subtitle">${address}</div>
-  <hr class="divider"/>
-  <div class="columns">
-    <div class="col">
-      <div class="col-title col-1km">🔵 半径1km圏内の施設</div>
-      ${list1}
-    </div>
-    <div class="col">
-      <div class="col-title col-2km">🟢 半径2km圏内の施設</div>
-      ${list2}
-    </div>
+<h1>近隣環境マップ</h1>
+<div class="subtitle">${escHtml(address)}</div>
+<hr/>
+<div class="columns">
+  <div class="col">
+    <div class="col-title col-1km">&#x1F535; 半径1km圏内の施設</div>
+    ${list1}
   </div>
+  <div class="col">
+    <div class="col-title col-2km">&#x1F7E2; 半径2km圏内の施設</div>
+    ${list2}
+  </div>
+</div>
 </body>
 </html>`;
 
-  // 隠しiframeで印刷（ポップアップブロックを回避）
-  const existingFrame = document.getElementById('nearby-print-frame');
+  // srcdoc方式：document.writeより確実にコンテンツが入る
+  const existingFrame = document.getElementById('nearby-print-frame') as HTMLIFrameElement | null;
   if (existingFrame) existingFrame.remove();
 
   const iframe = document.createElement('iframe');
   iframe.id = 'nearby-print-frame';
-  iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:0;height:0;border:none;';
+  iframe.setAttribute('srcdoc', html);
+  iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:210mm;height:297mm;border:none;visibility:hidden;';
   document.body.appendChild(iframe);
 
-  const doc = iframe.contentDocument || iframe.contentWindow?.document;
-  if (!doc) return;
-
-  doc.open();
-  doc.write(html);
-  doc.close();
-
-  // フォント読み込み待ち後に印刷
-  setTimeout(() => {
+  iframe.onload = () => {
     try {
       iframe.contentWindow?.focus();
       iframe.contentWindow?.print();
     } catch (e) {
-      console.error('Print failed:', e);
+      console.error('[NearbyMap] print error:', e);
     }
-    // 印刷後にiframeを削除
-    setTimeout(() => iframe.remove(), 3000);
-  }, 600);
+    setTimeout(() => iframe.remove(), 5000);
+  };
 }
 
 // ---- マーカーを地図に描画 ----
@@ -265,13 +260,12 @@ function renderMarkersOnMap(
   infoWindow: google.maps.InfoWindow,
   markersRef: React.MutableRefObject<google.maps.Marker[]>
 ) {
-  // 既存マーカー削除
   markersRef.current.forEach((m) => m.setMap(null));
   markersRef.current = [];
 
-  // 物件マーカー（小さめ）
+  // 物件マーカー
   const propW = 46;
-  const propH = 24; // totalH
+  const propH = 24;
   const centerMarker = new google.maps.Marker({
     position: data.center,
     map,
@@ -296,7 +290,7 @@ function renderMarkersOnMap(
       const displayName = place.name.length > 10 ? place.name.slice(0, 10) + '…' : place.name;
       const text = `${cat.icon} ${displayName}`;
       const iconWidth = Math.max(72, text.length * 7.5 + 14);
-      const iconHeight = 31; // h(24) + arrowH(7)
+      const iconHeight = 31;
 
       const marker = new google.maps.Marker({
         position: { lat: place.lat, lng: place.lng },
@@ -313,7 +307,7 @@ function renderMarkersOnMap(
       marker.addListener('click', () => {
         infoWindow.setContent(`
           <div style="font-size:12px;padding:5px 8px;min-width:160px;line-height:1.6;
-            font-family:'Noto Sans JP','Hiragino Sans','Meiryo',sans-serif;">
+            font-family:'Hiragino Sans','Meiryo',sans-serif;">
             <div style="font-weight:bold;font-size:13px;margin-bottom:3px;">
               ${cat.icon} ${place.name}
             </div>
@@ -348,9 +342,8 @@ const NearbyMapModal: React.FC<NearbyMapModalProps> = ({
   const [data2km, setData2km] = useState<NearbyData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState(0); // 0=1km, 1=2km
+  const [activeTab, setActiveTab] = useState(0);
 
-  // 各タブ用のマップ・マーカー ref
   const map1Ref = useRef<google.maps.Map | null>(null);
   const map2Ref = useRef<google.maps.Map | null>(null);
   const markers1Ref = useRef<google.maps.Marker[]>([]);
@@ -391,40 +384,33 @@ const NearbyMapModal: React.FC<NearbyMapModalProps> = ({
     }
   }, [coords]);
 
-  // ---- マップ1km ロード ----
-  const handleMap1Load = useCallback(
-    (map: google.maps.Map) => {
-      map1Ref.current = map;
-      infoWindow1Ref.current = new google.maps.InfoWindow();
-      if (data1km) renderMarkersOnMap(map, data1km, address || '', infoWindow1Ref.current, markers1Ref);
-    },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [data1km]
-  );
+  // ---- マップロード ----
+  const handleMap1Load = useCallback((map: google.maps.Map) => {
+    map1Ref.current = map;
+    infoWindow1Ref.current = new google.maps.InfoWindow();
+    if (data1km) renderMarkersOnMap(map, data1km, address || '', infoWindow1Ref.current, markers1Ref);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data1km]);
 
-  // ---- マップ2km ロード ----
-  const handleMap2Load = useCallback(
-    (map: google.maps.Map) => {
-      map2Ref.current = map;
-      infoWindow2Ref.current = new google.maps.InfoWindow();
-      if (data2km) renderMarkersOnMap(map, data2km, address || '', infoWindow2Ref.current, markers2Ref);
-    },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [data2km]
-  );
+  const handleMap2Load = useCallback((map: google.maps.Map) => {
+    map2Ref.current = map;
+    infoWindow2Ref.current = new google.maps.InfoWindow();
+    if (data2km) renderMarkersOnMap(map, data2km, address || '', infoWindow2Ref.current, markers2Ref);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data2km]);
 
   // ---- データ更新時にマーカー再描画 ----
   useEffect(() => {
     if (map1Ref.current && data1km && infoWindow1Ref.current) {
       renderMarkersOnMap(map1Ref.current, data1km, address || '', infoWindow1Ref.current, markers1Ref);
     }
-  }, [data1km]);
+  }, [data1km, address]);
 
   useEffect(() => {
     if (map2Ref.current && data2km && infoWindow2Ref.current) {
       renderMarkersOnMap(map2Ref.current, data2km, address || '', infoWindow2Ref.current, markers2Ref);
     }
-  }, [data2km]);
+  }, [data2km, address]);
 
   // ---- モーダルを閉じる ----
   const handleClose = () => {
@@ -466,39 +452,32 @@ const NearbyMapModal: React.FC<NearbyMapModalProps> = ({
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
           <MapIcon color="primary" />
           <Typography variant="h6" fontWeight="bold">近隣MAP</Typography>
-          {address && (
-            <Typography variant="body2" color="text.secondary">{address}</Typography>
-          )}
+          {address && <Typography variant="body2" color="text.secondary">{address}</Typography>}
         </Box>
         <IconButton onClick={handleClose} size="small"><CloseIcon /></IconButton>
       </DialogTitle>
 
       <Divider />
 
-      {/* タブ（1km / 2km） */}
+      {/* タブ */}
       <Box sx={{ borderBottom: 1, borderColor: 'divider', px: 2 }}>
         <Tabs value={activeTab} onChange={(_, v) => setActiveTab(v)}>
-          <Tab
-            label={
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                <span>🔵 半径1km</span>
-                {count1 > 0 && <Chip label={`${count1}件`} size="small" sx={{ height: 18, fontSize: '10px' }} />}
-              </Box>
-            }
-          />
-          <Tab
-            label={
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                <span>🟢 半径2km</span>
-                {count2 > 0 && <Chip label={`${count2}件`} size="small" sx={{ height: 18, fontSize: '10px' }} />}
-              </Box>
-            }
-          />
+          <Tab label={
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+              <span>🔵 半径1km</span>
+              {count1 > 0 && <Chip label={`${count1}件`} size="small" sx={{ height: 18, fontSize: '10px' }} />}
+            </Box>
+          } />
+          <Tab label={
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+              <span>🟢 半径2km</span>
+              {count2 > 0 && <Chip label={`${count2}件`} size="small" sx={{ height: 18, fontSize: '10px' }} />}
+            </Box>
+          } />
         </Tabs>
       </Box>
 
       <DialogContent sx={{ flex: 1, overflow: 'hidden', p: 2 }}>
-        {/* エラー・ローディング */}
         {!hasCoords && !loading && (
           <Alert severity="warning">
             Google Map URLから座標を取得できませんでした。URLが正しく設定されているか確認してください。
@@ -510,9 +489,9 @@ const NearbyMapModal: React.FC<NearbyMapModalProps> = ({
             <Typography>1km・2km圏内の施設を検索中...</Typography>
           </Box>
         )}
-        {error && <Alert severity="error">{error}</Alert>}
+        {error && <Alert severity="error" sx={{ mb: 1 }}>{error}</Alert>}
 
-        {/* 地図 + 施設リスト（横並び） */}
+        {/* 地図 + 施設リスト */}
         {hasCoords && isMapLoaded && !loading && (
           <Box sx={{ display: 'flex', gap: 2, height: '100%' }}>
 
@@ -607,13 +586,12 @@ const NearbyMapModal: React.FC<NearbyMapModalProps> = ({
 
         <Box sx={{ flex: 1 }} />
 
-        {/* PDF印刷（隠しiframe方式 → ポップアップブロック回避、A4 1枚） */}
         <Button
           variant="contained"
           color="primary"
           startIcon={<PrintIcon />}
           onClick={() => printNearbyMapBothRadii(address || '', data1km, data2km)}
-          disabled={!hasData}
+          disabled={!hasData || loading}
         >
           PDFで印刷（A4・1枚）
         </Button>
