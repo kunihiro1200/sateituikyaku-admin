@@ -22,6 +22,7 @@ const DISPLAY_CATS = new Set([
   'supermarket', 'convenience_store',
   'elementary_school', 'middle_school', 'high_school', 'kindergarten', 'cram_school',
   'hospital', 'dentist', 'bank', 'post_office', 'park', 'train_station',
+  'restaurant',
 ]);
 
 const COLORS: Record<string, string> = {
@@ -31,6 +32,7 @@ const COLORS: Record<string, string> = {
   hospital: '#2e7d32', dentist: '#2e7d32',
   bank: '#e65100', post_office: '#bf360c',
   park: '#33691e', train_station: '#283593',
+  restaurant: '#d84315',
 };
 
 // 丸囲み文字アイコンを使うカテゴリと表示文字
@@ -63,15 +65,34 @@ async function extractCoords(url: string, apiBase: string): Promise<{ lat: numbe
 
 // ---- 丸囲み文字SVGマーカー ----
 function makeCircleTextMarker(char: string, color: string): { url: string; w: number; h: number } {
-  const size = 26;
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size + 8}" viewBox="0 0 ${size} ${size + 8}">
-    <circle cx="${size/2}" cy="${size/2}" r="${size/2 - 1}" fill="${color}" stroke="white" stroke-width="1.5"/>
-    <text x="${size/2}" y="${size/2 + 5}" font-family="Meiryo,'Yu Gothic',sans-serif"
-      font-size="13" font-weight="bold" fill="white" text-anchor="middle">${char}</text>
-    <polygon points="${size/2-4},${size} ${size/2+4},${size} ${size/2},${size+8}" fill="${color}"/>
+  const size = 52; // 2倍サイズ
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size + 14}" viewBox="0 0 ${size} ${size + 14}">
+    <circle cx="${size/2}" cy="${size/2}" r="${size/2 - 2}" fill="${color}" stroke="white" stroke-width="2.5"/>
+    <text x="${size/2}" y="${size/2 + 9}" font-family="Meiryo,'Yu Gothic',sans-serif"
+      font-size="24" font-weight="bold" fill="white" text-anchor="middle">${char}</text>
+    <polygon points="${size/2-6},${size} ${size/2+6},${size} ${size/2},${size+14}" fill="${color}"/>
   </svg>`;
-  try { return { url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg), w: size, h: size + 8 }; }
-  catch { return { url: 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg))), w: size, h: size + 8 }; }
+  try { return { url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg), w: size, h: size + 14 }; }
+  catch { return { url: 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg))), w: size, h: size + 14 }; }
+}
+
+// ---- フォーク＆ナイフSVGマーカー（飲食店） ----
+function makeRestaurantMarker(): { url: string; w: number; h: number } {
+  const w = 36; const h = 42;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 36 42">
+    <circle cx="18" cy="16" r="15" fill="#d84315" stroke="white" stroke-width="2"/>
+    <!-- フォーク -->
+    <line x1="13" y1="8" x2="13" y2="24" stroke="white" stroke-width="1.8" stroke-linecap="round"/>
+    <line x1="11" y1="8" x2="11" y2="13" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+    <line x1="13" y1="8" x2="13" y2="13" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+    <line x1="15" y1="8" x2="15" y2="13" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+    <!-- ナイフ -->
+    <line x1="22" y1="8" x2="22" y2="24" stroke="white" stroke-width="1.8" stroke-linecap="round"/>
+    <path d="M22,8 Q26,10 26,14 L22,16" fill="white" stroke="white" stroke-width="0.5"/>
+    <polygon points="15,36 21,36 18,42" fill="#d84315"/>
+  </svg>`;
+  try { return { url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg), w, h }; }
+  catch { return { url: 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg))), w, h }; }
 }
 
 // ---- テキストラベル付きSVGマーカー（文字切れ防止） ----
@@ -192,6 +213,12 @@ function drawMarkers(map: google.maps.Map, data: NearbyData, iw: google.maps.Inf
           dotSize = pk.w;
           dotAnchorX = pk.w / 2;
           dotAnchorY = pk.h;
+        } else if (cat.type === 'restaurant') {
+          const rm = makeRestaurantMarker();
+          dotUrl = rm.url;
+          dotSize = 20;
+          dotAnchorX = 10;
+          dotAnchorY = 20;
         } else if (CIRCLE_ICONS[cat.type]) {
           // 丸囲み文字カテゴリは小さめの丸アイコン
           const char = CIRCLE_ICONS[cat.type];
@@ -230,6 +257,9 @@ function drawMarkers(map: google.maps.Map, data: NearbyData, iw: google.maps.Inf
         if (cat.type === 'park') {
           const pk = makeParkMarker();
           icon = { url: pk.url, anchor: new google.maps.Point(pk.w / 2, pk.h), scaledSize: new google.maps.Size(pk.w, pk.h) };
+        } else if (cat.type === 'restaurant') {
+          const rm = makeRestaurantMarker();
+          icon = { url: rm.url, anchor: new google.maps.Point(rm.w / 2, rm.h), scaledSize: new google.maps.Size(rm.w, rm.h) };
         } else if (CIRCLE_ICONS[cat.type]) {
           const ci = makeCircleTextMarker(CIRCLE_ICONS[cat.type], color);
           icon = { url: ci.url, anchor: new google.maps.Point(ci.w / 2, ci.h), scaledSize: new google.maps.Size(ci.w, ci.h) };

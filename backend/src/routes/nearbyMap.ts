@@ -8,6 +8,7 @@ const router = Router();
 const PLACE_CATEGORIES = [
   { type: 'supermarket',       label: 'スーパー',           icon: '🛒' },
   { type: 'convenience_store', label: 'コンビニ',           icon: '🏪' },
+  { type: 'restaurant',        label: '飲食店',             icon: '🍴' },
   { type: 'elementary_school', label: '小学校',             icon: '小' },
   { type: 'middle_school',     label: '中学校',             icon: '中' },
   { type: 'high_school',       label: '高校',               icon: '高' },
