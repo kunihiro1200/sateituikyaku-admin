@@ -183,6 +183,89 @@ const ContentRenderer: React.FC<{ content: string }> = ({ content }) => {
 };
 
 /**
+ * テキストの行数を数える
+ */
+function countLines(text: string): number {
+  return text.split('\n').length;
+}
+
+/**
+ * 条文を要約する
+ */
+async function summarizeContent(label: string, content: string): Promise<string> {
+  const response = await fetch(`${API_BASE_URL}/api/management-rules/summarize`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ label, content }),
+  });
+  if (!response.ok) throw new Error('要約に失敗しました');
+  const data = await response.json();
+  return data.summary;
+}
+
+/**
+ * 要約ボタン付きコンテンツ表示
+ */
+const ContentWithSummary: React.FC<{ label: string; content: string }> = ({ label, content }) => {
+  const [summary, setSummary] = useState<string | null>(null);
+  const [summarizing, setSummarizing] = useState(false);
+  const [summaryError, setSummaryError] = useState<string | null>(null);
+
+  const showSummaryButton = countLines(content) >= 5 || content.length > 200;
+
+  const handleSummarize = async () => {
+    setSummarizing(true);
+    setSummaryError(null);
+    try {
+      const result = await summarizeContent(label, content);
+      setSummary(result);
+    } catch (e: any) {
+      setSummaryError(e.message);
+    } finally {
+      setSummarizing(false);
+    }
+  };
+
+  return (
+    <Box>
+      <ContentRenderer content={content} />
+      {showSummaryButton && (
+        <Box sx={{ mt: 1 }}>
+          {!summary && (
+            <Button
+              size="small"
+              variant="outlined"
+              onClick={handleSummarize}
+              disabled={summarizing}
+              startIcon={summarizing ? <CircularProgress size={14} /> : undefined}
+              sx={{ fontSize: '0.75rem', py: 0.3 }}
+            >
+              {summarizing ? '要約中...' : '📝 要約を見る'}
+            </Button>
+          )}
+          {summaryError && (
+            <Typography variant="caption" color="error">{summaryError}</Typography>
+          )}
+          {summary && (
+            <Box sx={{ mt: 1, p: 1, backgroundColor: '#fff8e1', borderRadius: 1, borderLeft: '3px solid #f9a825' }}>
+              <Typography variant="caption" color="text.secondary" fontWeight="bold">
+                📝 要約
+              </Typography>
+              <Typography variant="body2" sx={{ mt: 0.3 }}>
+                {summary}
+              </Typography>
+              <Button size="small" sx={{ fontSize: '0.7rem', mt: 0.5, p: 0 }} onClick={() => setSummary(null)}>
+                閉じる
+              </Button>
+            </Box>
+          )}
+        </Box>
+      )}
+    </Box>
+  );
+};
+
+/**
  * 画像ファイルをBase64に変換
  */
 function fileToBase64(file: File): Promise<string> {
@@ -430,7 +513,7 @@ const ManagementRulesTestPage: React.FC = () => {
                         <Box
                           sx={{ mt: 0.5, p: 1, backgroundColor: '#f0f7ff', borderRadius: 1, borderLeft: '3px solid #1976d2' }}
                         >
-                          <ContentRenderer content={result.content!} />
+                          <ContentWithSummary label={result.label} content={result.content!} />
                         </Box>
                       ) : (
                         <Typography variant="body2" color="text.disabled" sx={{ mt: 0.5 }}>

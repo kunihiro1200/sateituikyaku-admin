@@ -89,14 +89,25 @@ router.post('/analyze', async (req: Request, res: Response) => {
 【抽出するkey一覧】
 ${itemsDetail}
 
-【ルール】
-- 条文番号（第○条）とページ番号を含めること
-- 原文に近い形で記載すること
-- 「第○条に基づき〜」のような参照がある場合は、参照先の条文内容も合わせて記載すること
-- 参照先が見つからない場合は「（詳細は第○条参照）」と付記すること
-- 「別表第○」「別表○」が参照されている場合は、その別表の全内容をMarkdown表形式で記載すること。例：\n「第14条の規定による。\n\n| 対象 | 号室 | 面積 |\n|------|------|------|\n| バルコニー | 101号 | 10㎡ |\n| 玄関扉 | 101号 | - |」\n表が見つからない場合は「（別表第○ 参照）」と付記すること
-- 見つからない場合はnull
-- 必ず以下のJSON形式のみで応答すること（説明文・コードブロック記号は不要）
+【重要ルール】
+1. 条文番号（第○条）とページ番号を含めること
+2. 原文に近い形で記載すること
+3. 「第○条に基づき〜」のような参照がある場合は、参照先の条文内容も合わせて記載すること
+4. 「別表第○」「別表○」が参照されている場合：
+   - 必ずその別表を探して、表の全内容をMarkdown形式で記載すること
+   - Markdown表の書き方: 1行目にヘッダー、2行目に「|---|---|」、3行目以降にデータ
+   - 例：
+     第14条の規定による。
+
+     | 専用使用部分 | 位置 | 専用使用権者 |
+     |---|---|---|
+     | バルコニー | 各住戸に接する | 各住戸の区分所有者 |
+     | 玄関扉・窓枠・窓ガラス | 各住戸に付属する | 各住戸の区分所有者 |
+     | 自転車置場 | 位置図の通り | 各住戸の区分所有者 |
+     | 駐車場 | 位置図の通り | 各住戸の区分所有者 |
+   - 別表が見つからない場合のみ「（別表第○ 参照）」と付記すること
+5. 見つからない場合はnull
+6. 必ず以下のJSON形式のみで応答すること（説明文・コードブロック記号は不要）
 
 {"pets":null,"piano":null,"flooring":null,"renovation":null,"sublease":null,"parking":null,"balcony_exclusive":null,"parking_exclusive":null,"bicycle_exclusive":null,"garden_exclusive":null,"storage_exclusive":null,"usage_restriction":null,"noise":null,"garbage":null,"subletting":null,"signage":null}`,
     });
@@ -169,6 +180,58 @@ ${itemsDetail}
     return res.status(500).json({
       error: error?.message || '解析中にエラーが発生しました',
     });
+  }
+});
+
+/**
+ * POST /api/management-rules/summarize
+ * 条文テキストを要約する
+ */
+router.post('/summarize', async (req: Request, res: Response) => {
+  try {
+    const { label, content } = req.body as { label: string; content: string };
+
+    if (!content) {
+      return res.status(400).json({ error: 'content が必要です' });
+    }
+
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) {
+      return res.status(500).json({ error: 'OPENAI_API_KEY が設定されていません' });
+    }
+
+    const axios = (await import('axios')).default;
+    const response = await axios.post(
+      'https://api.openai.com/v1/chat/completions',
+      {
+        model: 'gpt-4o-mini',
+        max_tokens: 300,
+        messages: [
+          {
+            role: 'system',
+            content: 'マンション管理規約の条文を、不動産業者が買主・売主に説明できるよう、3〜5文の平易な日本語で要約してください。専門用語は避け、具体的な制限内容を明確に伝えてください。',
+          },
+          {
+            role: 'user',
+            content: `【項目】${label}\n\n【条文】\n${content}`,
+          },
+        ],
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        timeout: 30000,
+      }
+    );
+
+    const summary = response.data?.choices?.[0]?.message?.content?.trim() || '';
+    return res.json({ summary });
+
+  } catch (error: any) {
+    console.error('要約エラー:', error?.response?.data || error.message);
+    return res.status(500).json({ error: '要約に失敗しました' });
   }
 });
 
