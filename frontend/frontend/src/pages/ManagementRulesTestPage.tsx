@@ -13,6 +13,12 @@ import {
   ListItemText,
   ListItemIcon,
   LinearProgress,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
 } from '@mui/material';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CancelIcon from '@mui/icons-material/Cancel';
@@ -110,6 +116,71 @@ async function splitPdfIntoChunks(
 
   return chunks;
 }
+
+/**
+ * Markdownテーブルをパースして行列データに変換
+ */
+function parseMarkdownTable(text: string): { headers: string[]; rows: string[][] } | null {
+  const lines = text.split('\n').map((l) => l.trim()).filter((l) => l.startsWith('|'));
+  if (lines.length < 2) return null;
+
+  const parseRow = (line: string) =>
+    line.split('|').map((c) => c.trim()).filter((_, i, arr) => i > 0 && i < arr.length - 1);
+
+  const headers = parseRow(lines[0]);
+  const rows = lines.slice(2).map(parseRow); // 2行目はセパレータなのでスキップ
+
+  if (headers.length === 0) return null;
+  return { headers, rows };
+}
+
+/**
+ * テキストにMarkdownテーブルが含まれる場合、テキスト部分と表部分に分割して表示
+ */
+const ContentRenderer: React.FC<{ content: string }> = ({ content }) => {
+  const parts = content.split(/((?:\|[^\n]+\|\n?)+)/g);
+
+  return (
+    <>
+      {parts.map((part, i) => {
+        const table = parseMarkdownTable(part);
+        if (table && table.headers.length > 0) {
+          return (
+            <TableContainer key={i} component={Paper} variant="outlined" sx={{ mt: 1, mb: 1 }}>
+              <Table size="small">
+                <TableHead>
+                  <TableRow sx={{ backgroundColor: '#e3f2fd' }}>
+                    {table.headers.map((h, j) => (
+                      <TableCell key={j} sx={{ fontWeight: 'bold', fontSize: '0.8rem', py: 0.5 }}>
+                        {h}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {table.rows.map((row, j) => (
+                    <TableRow key={j} sx={{ '&:last-child td': { border: 0 } }}>
+                      {row.map((cell, k) => (
+                        <TableCell key={k} sx={{ fontSize: '0.8rem', py: 0.5 }}>
+                          {cell}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          );
+        }
+        return part.trim() ? (
+          <Typography key={i} variant="body2" color="text.primary" sx={{ whiteSpace: 'pre-wrap', mt: 0.5 }}>
+            {part.trim()}
+          </Typography>
+        ) : null;
+      })}
+    </>
+  );
+};
 
 /**
  * 画像ファイルをBase64に変換
@@ -356,12 +427,11 @@ const ManagementRulesTestPage: React.FC = () => {
                     primary={<Typography variant="subtitle2" fontWeight="bold">{result.label}</Typography>}
                     secondary={
                       result.found ? (
-                        <Typography
-                          variant="body2" color="text.primary"
+                        <Box
                           sx={{ mt: 0.5, p: 1, backgroundColor: '#f0f7ff', borderRadius: 1, borderLeft: '3px solid #1976d2' }}
                         >
-                          {result.content}
-                        </Typography>
+                          <ContentRenderer content={result.content!} />
+                        </Box>
                       ) : (
                         <Typography variant="body2" color="text.disabled" sx={{ mt: 0.5 }}>
                           該当する条文が見つかりませんでした
