@@ -15,6 +15,7 @@ import {
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import AreaReportModal from './AreaReportModal';
 import HouseMakerModal from './HouseMakerModal';
+import MansionModal from './MansionModal';
 
 export interface VisitPreparationPopupProps {
   open: boolean;
@@ -208,10 +209,36 @@ export const VisitPreparationPopup: React.FC<VisitPreparationPopupProps> = ({
 }) => {
   const [areaReportOpen, setAreaReportOpen] = useState(false);
   const [houseMakerModalOpen, setHouseMakerModalOpen] = useState(false);
+  const [mansionModalOpen, setMansionModalOpen] = useState(false);
 
   // ハウスメーカー名がコメントに含まれるか判定
   const plainComment = commentHtml.replace(/<[^>]+>/g, '');
   const hasHouseMaker = HOUSE_MAKERS.some((m) => plainComment.includes(m));
+
+  // マンションブランド名が物件住所に含まれるか判定
+  const MANSION_BRANDS = [
+    'アルファステイツ', 'サーパス', 'サンレスコ', 'グリーンヒル',
+    'エイリック', 'スタイルパークサイド', 'デュオヒルズ', 'MJR',
+    'サンパーク', 'クレアネクスト', 'オーヴィジョン',
+    'リビオ', 'ロフティ', 'パレスト',
+    'レジオン', 'アルバガーデン', 'パレス',
+    'グランフォーレ', 'グランドパレス',
+    'ザ・パークハウス', 'ザ・ライオンズ', 'グランドメゾン', 'プレミスト',
+    'ザ・サンメゾン', 'ロイヤルアーク', 'レーベン', 'ルッシュ', 'アンピール',
+    'ネクサス', 'アーバンパレス', 'ブライトパーク', 'サンリヤン', 'アルテ',
+    'マインド', 'ライオンズマンション', 'アクタス', 'パークコート', 'サントーア',
+    'コアマンション', 'グランドステイツ', 'サングレート', 'パークホームズ', 'アクロス',
+    'エステートマンション', 'ティアラ', 'アーサー', '東急ドエル', 'アルス',
+    'デュオヴェール', 'ダイアパレス', 'グランデージ', 'ソピア', 'インプレスト',
+    'オープンレジデンシア', 'クリオ', 'サンレジア', 'アートウィル', 'グランコート',
+    'エンゼルハイム', 'アドニス', 'ライオンズプラザ', 'コモダス', 'パッソ',
+    '藤和シティコープ', 'プレッソ', 'ニューライフ', 'シャンボール', '藤和コープ',
+    'ソシエ', '赤坂エクセル', 'ヴィルテージ', '日商岩井', 'ダイナコート',
+    '朝日プラザ', 'エスポワール', '東洋マンション', '三井', 'ライオンズ',
+  ];
+  const addressForMansion = propertyAddress || '';
+  const detectedMansionBrand = MANSION_BRANDS.find((m) => addressForMansion.includes(m));
+  const hasMansion = !!detectedMansionBrand;
   // 表示順序：添付資料 → ぜんりん（+ログイン情報） → 謄本 → 査定書 → 成約事例 → 近隣買主
   const items: Array<{ label: string; content: React.ReactNode }> = [
     // 1. 添付資料
@@ -336,6 +363,24 @@ export const VisitPreparationPopup: React.FC<VisitPreparationPopupProps> = ({
         </Box>
       ),
     }] : []),
+    // 9. マンション（物件住所にマンション名がある場合のみ）
+    ...(hasMansion ? [{
+      label: `マンション：${detectedMansionBrand}`,
+      content: (
+        <Box
+          component="span"
+          sx={{
+            color: '#1b5e20',
+            textDecoration: 'underline',
+            cursor: 'pointer',
+            '&:hover': { opacity: 0.7 },
+          }}
+          onClick={() => setMansionModalOpen(true)}
+        >
+          マンション
+        </Box>
+      ),
+    }] : []),
   ];
 
   return (
@@ -409,6 +454,13 @@ export const VisitPreparationPopup: React.FC<VisitPreparationPopupProps> = ({
       open={houseMakerModalOpen}
       onClose={() => setHouseMakerModalOpen(false)}
       commentHtml={commentHtml}
+    />
+
+    {/* マンションモーダル */}
+    <MansionModal
+      open={mansionModalOpen}
+      onClose={() => setMansionModalOpen(false)}
+      address={addressForMansion}
     />
   </>
   );
