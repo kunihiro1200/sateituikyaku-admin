@@ -64,6 +64,7 @@ const FLOOR_PLAN_REQUEST_BODY = [
   '',
   'コメント：{コメント（間取図関係）}',
   '{道路寸法行}',
+  '{区画図依頼行}',
   '当社の希望納期：{間取図完了予定}',
   '格納先：{格納先URL}',
   '納期が難しかったり、ご不明点等がございましたら、こちらに返信していただければと思います。',
@@ -263,12 +264,16 @@ export class WorkTaskEmailNotificationService {
     const panoramaLine = panoramaValue.trim() !== '' ? 'パノラマ：あり<br>' : '';
     result = result.split('{パノラマ行}').join(panoramaLine);
 
-    // {道路寸法行} を動的に解決（種別=「土」かつ値がある場合のみ表示）
+    // {道路寸法行} を動的に解決（種別=「土」または「土地」かつ値がある場合のみ表示）
     const roadDimValue: string = data['road_dimensions'] ?? '';
     const propertyTypeValue: string = data['property_type'] ?? '';
-    const isLandType = propertyTypeValue.trim() === '土';
+    const isLandType = ['土', '土地'].includes(propertyTypeValue.trim());
     const roadDimLine = (isLandType && roadDimValue.trim() !== '') ? roadDimValue : '';
     result = result.split('{道路寸法行}').join(roadDimLine);
+
+    // {区画図依頼行} を動的に解決（種別=「土」または「土地」の場合のみ表示）
+    const kukakuzuLine = isLandType ? '区画図の作成お願い致します。' : '';
+    result = result.split('{区画図依頼行}').join(kukakuzuLine);
 
     // __manager_confirmation_body__ を動的に解決（山本マネージャー確認メール本文）
     if (result.includes('__manager_confirmation_body__')) {
