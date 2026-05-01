@@ -163,22 +163,24 @@ function latLngToPixel(lat: number, lng: number, zoom: number): { x: number; y: 
   return { x, y };
 }
 
-// ---- オフセット候補（8方向＋デフォルト） ----
+// ---- オフセット候補（8方向＋デフォルト、間隔を広げる） ----
 // dx: 右が正、dy: 上が正（ラベルを地点からずらす方向）
 const OFFSET_CANDIDATES = [
   { dx:  0,   dy:  0  }, // デフォルト（真下に尻尾）
-  { dx:  0,   dy: 35  }, // 上
-  { dx:  45,  dy:  0  }, // 右
-  { dx: -45,  dy:  0  }, // 左
-  { dx:  35,  dy: 30  }, // 右上
-  { dx: -35,  dy: 30  }, // 左上
-  { dx:  35,  dy: -20 }, // 右下（尻尾が長くなる）
-  { dx: -35,  dy: -20 }, // 左下
-  { dx:  0,   dy: 65  }, // さらに上
-  { dx:  70,  dy:  0  }, // さらに右
-  { dx: -70,  dy:  0  }, // さらに左
-  { dx:  55,  dy: 50  }, // 右上遠
-  { dx: -55,  dy: 50  }, // 左上遠
+  { dx:  0,   dy: 45  }, // 上
+  { dx:  60,  dy:  0  }, // 右
+  { dx: -60,  dy:  0  }, // 左
+  { dx:  50,  dy: 40  }, // 右上
+  { dx: -50,  dy: 40  }, // 左上
+  { dx:  50,  dy: -30 }, // 右下
+  { dx: -50,  dy: -30 }, // 左下
+  { dx:  0,   dy: 85  }, // さらに上
+  { dx:  100, dy:  0  }, // さらに右
+  { dx: -100, dy:  0  }, // さらに左
+  { dx:  80,  dy: 70  }, // 右上遠
+  { dx: -80,  dy: 70  }, // 左上遠
+  { dx:  80,  dy: -55 }, // 右下遠
+  { dx: -80,  dy: -55 }, // 左下遠
 ];
 
 interface PlacedLabel {
@@ -217,8 +219,12 @@ function findBestOffset(
 
     const lx = px - anchorX;
     const ly = py - anchorY;
+
+    // 余白を少し加えて判定（隣接ラベルとの間隔を確保）
+    const margin = 4;
     const overlaps = placed.some(q =>
-      !(lx + svgW < q.lx || lx > q.lx + q.lw || ly + svgH < q.ly || ly > q.ly + q.lh)
+      !(lx + svgW + margin < q.lx || lx > q.lx + q.lw + margin ||
+        ly + svgH + margin < q.ly || ly > q.ly + q.lh + margin)
     );
     if (!overlaps) return { dx, dy };
   }
@@ -341,7 +347,7 @@ function drawMarkers(map: google.maps.Map, data: NearbyData, iw: google.maps.Inf
       let textW = 0;
       for (const ch of displayText) { textW += ch.charCodeAt(0) > 127 ? 10 : 7; }
       const labelW = Math.max(60, textW + 24);
-      const labelH = 30; // boxH + tailMinH
+      const labelH = 22; // boxH のみ（tailはfindBestOffset内で計算）
 
       // 被らない方向を探す
       const { dx, dy } = findBestOffset(ppx.x, ppx.y, labelW, labelH, placedLabels);
