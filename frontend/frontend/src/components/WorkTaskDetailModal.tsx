@@ -846,6 +846,12 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
     onConfirmAction: 'site' | 'floor' | 'mandatory' | 'cadastral' | 'binding_completed' | 'sales_assignee' | 'publish_scheduled_date' | 'storage_url' | null;
   }>({ open: false, title: '', emptyFields: [], onConfirmAction: null });
 
+  // 謄本読み取り関連のstate
+  const [tokiExtractLoading, setTokiExtractLoading] = useState(false);
+  const [tokiExtractResult, setTokiExtractResult] = useState<any>(null);
+  const [tokiExtractDialog, setTokiExtractDialog] = useState(false);
+  const [tokiWriteLoading, setTokiWriteLoading] = useState(false);
+
   // ログインユーザーの営業フラグを取得
   useEffect(() => {
     if (open && employee) {
@@ -2003,6 +2009,42 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
     if (!open) return;
     fetchRevisionHistories();
   }, [open]);
+
+  // 謄本読み取りハンドラー
+  const handleTokiExtract = async () => {
+    if (!propertyNumber) return;
+    setTokiExtractLoading(true);
+    try {
+      const res = await api.post(`/api/toki-extract/${propertyNumber}/extract`);
+      setTokiExtractResult(res.data);
+      setTokiExtractDialog(true);
+    } catch (err: any) {
+      const msg = err?.response?.data?.error || '謄本の読み取りに失敗しました';
+      setSnackbar({ open: true, message: msg, severity: 'error' });
+    } finally {
+      setTokiExtractLoading(false);
+    }
+  };
+
+  const handleTokiWrite = async () => {
+    if (!tokiExtractResult) return;
+    setTokiWriteLoading(true);
+    try {
+      await api.post(`/api/toki-extract/${propertyNumber}/write`, {
+        extractResult: tokiExtractResult.extractResult,
+        sheetName: tokiExtractResult.sheetName,
+        spreadsheetUrl: tokiExtractResult.spreadsheetUrl,
+      });
+      setSnackbar({ open: true, message: `スプレッドシートへの書き込みが完了しました（シート：${tokiExtractResult.sheetName}）`, severity: 'success' });
+      setTokiExtractDialog(false);
+      setTokiExtractResult(null);
+    } catch (err: any) {
+      const msg = err?.response?.data?.error || 'スプレッドシートへの書き込みに失敗しました';
+      setSnackbar({ open: true, message: msg, severity: 'error' });
+    } finally {
+      setTokiWriteLoading(false);
+    }
+  };
 
   // 媒介契約セクション（コンポーネントではなく関数として定義し再マウントを防ぐ）
   const renderMediationSection = () => (
@@ -3808,6 +3850,19 @@ ${pageUrl}`;
                   sx={{ whiteSpace: 'nowrap', fontWeight: 700, fontSize: '0.75rem', px: 1, py: 0.4, minWidth: 0 }}
                 >スプシ</Button>
               )}
+              {/* 謄本読み取りボタン: 媒介契約タブ かつ 種別がマ・マンションの場合のみ表示 */}
+              {tabIndex === 0 && ['マ', 'マンション'].includes(getValue('property_type') || '') && (
+                <Button
+                  variant="contained"
+                  size="small"
+                  disabled={tokiExtractLoading}
+                  onClick={handleTokiExtract}
+                  startIcon={tokiExtractLoading ? <CircularProgress size={12} color="inherit" /> : null}
+                  sx={{ whiteSpace: 'nowrap', fontWeight: 700, bgcolor: '#0277bd', '&:hover': { bgcolor: '#01579b' }, fontSize: '0.75rem', px: 1, py: 0.4, minWidth: 0 }}
+                >
+                  {tokiExtractLoading ? '読取中...' : '📄 謄本'}
+                </Button>
+              )}
               {(tabIndex === 2 || tabIndex === 3) && (
                 <Button variant="contained" size="small" disabled={!getValue('spreadsheet_url')}
                   onClick={() => { const url = getValue('spreadsheet_url'); if (url) window.open(buildLedgerSheetUrl(url), '_blank', 'noopener,noreferrer'); }}
@@ -3930,6 +3985,19 @@ ${pageUrl}`;
                     sx={{ whiteSpace: 'nowrap', fontWeight: 700 }}
                   >
                     スプシ
+                  </Button>
+                )}
+                {/* 謄本読み取りボタン（モバイル）: 媒介契約タブ かつ 種別がマ・マンションの場合のみ表示 */}
+                {tabIndex === 0 && ['マ', 'マンション'].includes(getValue('property_type') || '') && (
+                  <Button
+                    variant="contained"
+                    size="small"
+                    disabled={tokiExtractLoading}
+                    onClick={handleTokiExtract}
+                    startIcon={tokiExtractLoading ? <CircularProgress size={12} color="inherit" /> : null}
+                    sx={{ whiteSpace: 'nowrap', fontWeight: 700, bgcolor: '#0277bd', '&:hover': { bgcolor: '#01579b' } }}
+                  >
+                    {tokiExtractLoading ? '読取中...' : '📄 謄本'}
                   </Button>
                 )}
                 {(tabIndex === 2 || tabIndex === 3) && (
@@ -4079,6 +4147,84 @@ ${pageUrl}`;
           {snackbar.message}
         </Alert>
       </Snackbar>
+
+      {/* 謄本読み取り結果プレビューダイアログ */}
+      <Dialog open={tokiExtractDialog} onClose={() => setTokiExtractDialog(false)} maxWidth="md" fullWidth>
+        <DialogTitle sx={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 1 }}>
+          📄 謄本読み取り結果の確認
+          <IconButton onClick={() => setTokiExtractDialog(false)} sx={{ ml: 'auto' }}>
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent dividers>
+          {tokiExtractResult && (
+            <Box>
+              <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block' }}>
+                ファイル：{tokiExtractResult.fileName}　／　書き込み先シート：{tokiExtractResult.sheetName}
+              </Typography>
+              <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1, fontSize: '0.85rem' }}>
+                {[
+                  { label: 'A81 所有者住所', value: tokiExtractResult.extractResult?.ownerAddress },
+                  { label: 'C81 所有者氏名', value: tokiExtractResult.extractResult?.ownerName },
+                  { label: 'B110 共有者情報', value: tokiExtractResult.extractResult?.coOwners },
+                  { label: 'A96 建物名称', value: tokiExtractResult.extractResult?.buildingName },
+                  { label: 'A98 一棟所在', value: tokiExtractResult.extractResult?.buildingLocation },
+                  { label: 'A100 構造', value: tokiExtractResult.extractResult?.structure },
+                  { label: 'C100 屋根', value: tokiExtractResult.extractResult?.roofType },
+                  { label: 'D100 階数', value: tokiExtractResult.extractResult?.floors },
+                  { label: 'A102 一棟床面積', value: tokiExtractResult.extractResult?.buildingArea },
+                  { label: 'C96 所在階', value: tokiExtractResult.extractResult?.floorNumber },
+                  { label: 'D96 部屋番号', value: tokiExtractResult.extractResult?.roomNumber },
+                  { label: 'D102 専有面積', value: tokiExtractResult.extractResult?.exclusiveArea },
+                  { label: 'A104 新築日', value: tokiExtractResult.extractResult?.constructionDate },
+                ].map(({ label, value }) => (
+                  <Box key={label} sx={{ p: 1, bgcolor: value ? '#f0f7ff' : '#f5f5f5', borderRadius: 1, border: '1px solid #e0e0e0' }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontWeight: 600 }}>{label}</Typography>
+                    <Typography variant="body2" sx={{ color: value ? '#1a1a1a' : '#aaa' }}>
+                      {value ?? '（取得なし）'}
+                    </Typography>
+                  </Box>
+                ))}
+              </Box>
+              {/* 土地情報 */}
+              {tokiExtractResult.extractResult?.lands?.length > 0 && (
+                <Box sx={{ mt: 2 }}>
+                  <Typography variant="caption" sx={{ fontWeight: 700, color: '#555' }}>土地情報（A88〜）</Typography>
+                  {tokiExtractResult.extractResult.lands.map((land: any, i: number) => (
+                    <Box key={i} sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 0.5, mt: 0.5 }}>
+                      {[
+                        { label: `A${88 + i} 所在`, value: land.location },
+                        { label: `C${88 + i} 地番`, value: land.lotNumber },
+                        { label: `D${88 + i} 地目`, value: land.landType },
+                        { label: `E${88 + i} 地積`, value: land.area },
+                      ].map(({ label, value }) => (
+                        <Box key={label} sx={{ p: 0.75, bgcolor: value ? '#f0f7ff' : '#f5f5f5', borderRadius: 1, border: '1px solid #e0e0e0' }}>
+                          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontWeight: 600, fontSize: '0.7rem' }}>{label}</Typography>
+                          <Typography variant="body2" sx={{ color: value ? '#1a1a1a' : '#aaa', fontSize: '0.8rem' }}>
+                            {value ?? '（取得なし）'}
+                          </Typography>
+                        </Box>
+                      ))}
+                    </Box>
+                  ))}
+                </Box>
+              )}
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setTokiExtractDialog(false)} color="inherit">キャンセル</Button>
+          <Button
+            variant="contained"
+            color="primary"
+            disabled={tokiWriteLoading}
+            onClick={handleTokiWrite}
+            startIcon={tokiWriteLoading ? <CircularProgress size={16} color="inherit" /> : null}
+          >
+            {tokiWriteLoading ? '書き込み中...' : 'スプシに反映する'}
+          </Button>
+        </DialogActions>
+      </Dialog>
       <DeadlineWarningDialog
         open={warningDialog.open}
         fieldLabel={warningDialog.fieldLabel}

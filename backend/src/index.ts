@@ -67,6 +67,7 @@ import urlRedirectRoutes from './routes/urlRedirect';
 import staffSyncRoutes from './routes/staff-sync';
 import nearbyMapRoutes from './routes/nearbyMap';
 import managementRulesRoutes from './routes/managementRules';
+import tokiExtractRoutes from './routes/tokiExtract';
 import { activityLogger } from './middleware/activityLogger';
 import { authenticate } from './middleware/auth';
 
@@ -756,6 +757,7 @@ app.use('/api/public', publicPropertiesRoutes);
 app.use('/api/geocode', geocodeRoutes);
 app.use('/api/url-redirect', urlRedirectRoutes);
 app.use('/api/management-rules', managementRulesRoutes); // 管理規約解析API（認証不要 - /api catchallより前に登録）
+app.use('/api/toki-extract', tokiExtractRoutes); // 謄本読み取りAPI（認証不要 - /api catchallより前に登録）
 app.use('/api', inquiryHistoryRoutes);
 app.use('/api/audit-logs', auditLogRoutes);
 app.use('/api/property-listing-sync', propertyListingSyncRoutes);
