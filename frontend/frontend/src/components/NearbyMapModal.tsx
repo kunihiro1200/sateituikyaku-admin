@@ -297,13 +297,18 @@ function drawMarkers(map: google.maps.Map, data: NearbyData, iw: google.maps.Inf
     icon: { url: pm.url, anchor: new google.maps.Point(pm.w / 2, pm.h), scaledSize: new google.maps.Size(pm.w, pm.h) },
   }));
 
+  // 全施設を距離順にフラット化してから処理（近い施設が優先的に良い位置を取る）
+  const allPlaces: Array<{ cat: typeof data.categories[0]; p: typeof data.categories[0] extends { type: string } ? any : never; }> = [];
   data.categories.filter(cat => DISPLAY_CATS.has(cat.type)).forEach((cat) => {
-    const color = COLORS[cat.type] || '#757575';
-    const prefix = CAT_PREFIX[cat.type] || '';
+    (data.places[cat.type] || []).forEach((p: any) => {
+      if (p.lat && p.lng) allPlaces.push({ cat, p });
+    });
+  });
+  allPlaces.sort((a, b) => a.p.distance - b.p.distance);
 
-    (data.places[cat.type] || []).forEach((p, idx) => {
-      if (!p.lat || !p.lng) return;
-
+  allPlaces.forEach(({ cat, p }, globalIdx) => {
+      const color = COLORS[cat.type] || '#757575';
+      const prefix = CAT_PREFIX[cat.type] || '';
       const ppx = latLngToPixel(p.lat, p.lng, zoom);
 
       // 公園：ツリーアイコン
@@ -360,7 +365,7 @@ function drawMarkers(map: google.maps.Map, data: NearbyData, iw: google.maps.Inf
 
       const mk = new google.maps.Marker({
         position: { lat: p.lat, lng: p.lng }, map,
-        title: `${p.name} (${p.distance}m)`, zIndex: 500 - idx,
+        title: `${p.name} (${p.distance}m)`, zIndex: 500 - globalIdx,
         icon: { url: ic.url, anchor: new google.maps.Point(ic.anchorX, ic.anchorY), scaledSize: new google.maps.Size(ic.w, ic.h) },
       });
       mk.addListener('click', () => {
@@ -368,7 +373,6 @@ function drawMarkers(map: google.maps.Map, data: NearbyData, iw: google.maps.Inf
         iw.open(map, mk);
       });
       ref.current.push(mk);
-    });
   });
 }
 
