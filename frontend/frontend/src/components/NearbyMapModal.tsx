@@ -255,6 +255,28 @@ const NearbyMapModal: React.FC<NearbyMapModalProps> = ({ open, onClose, googleMa
     printWrap.id = 'nearby-map-print-wrap';
     printWrap.style.cssText = `position:fixed;top:0;left:0;width:${mapW}px;height:${mapH}px;z-index:99999;background:white;overflow:hidden;`;
 
+    // ヘッダーdivを作成（地図の上に重ねる）
+    const headerWrap = document.createElement('div');
+    headerWrap.id = 'nearby-header-print-wrap';
+    headerWrap.innerHTML = `
+      <span style="font-size:13pt;font-weight:bold;">🗺️ 近隣MAP</span>
+      ${address ? `<span style="font-size:9pt;color:#555;margin-left:8px;">${address}</span>` : ''}
+      <span style="font-size:9pt;color:#1565c0;margin-left:auto;">${tabLabel}</span>
+    `;
+    headerWrap.style.cssText = `
+      position:fixed;top:0;left:0;width:${mapW}px;z-index:100000;
+      display:flex;align-items:center;gap:6px;
+      background:white;padding:4px 10px;
+      border-bottom:1px solid #ccc;box-sizing:border-box;
+      font-family:'Meiryo','Yu Gothic',sans-serif;
+    `;
+    document.body.appendChild(headerWrap);
+    const headerH = headerWrap.offsetHeight || 32;
+
+    // 地図ラッパーをヘッダー分下にずらす
+    printWrap.style.top = `${headerH}px`;
+    printWrap.style.height = `${mapH - headerH}px`;
+
     // 地図の内部divを移動
     const mapInner = mapAreaEl.firstElementChild as HTMLElement | null;
     if (mapInner) {
@@ -281,16 +303,29 @@ const NearbyMapModal: React.FC<NearbyMapModalProps> = ({ open, onClose, googleMa
       @media print {
         @page { size: A4 landscape; margin: 0; }
 
-        /* 地図と施設リスト以外を全て非表示 */
-        body > *:not(#nearby-map-print-wrap):not(#nearby-facility-print-wrap):not(#nearby-print-style) {
+        /* 地図・ヘッダー・施設リスト以外を全て非表示 */
+        body > *:not(#nearby-header-print-wrap):not(#nearby-map-print-wrap):not(#nearby-facility-print-wrap):not(#nearby-print-style) {
           display: none !important;
         }
 
-        /* 1ページ目：地図をページいっぱいに */
+        /* 1ページ目：ヘッダー */
+        #nearby-header-print-wrap {
+          position: static !important;
+          width: 100% !important;
+          display: flex !important;
+          align-items: center !important;
+          padding: 3mm 5mm !important;
+          border-bottom: 1px solid #ccc !important;
+          background: white !important;
+          page-break-after: avoid !important;
+          break-after: avoid !important;
+        }
+
+        /* 1ページ目：地図をページいっぱいに（ヘッダー分を除く） */
         #nearby-map-print-wrap {
           position: static !important;
-          width: 100vw !important;
-          height: 100vh !important;
+          width: 100% !important;
+          height: calc(100vh - 12mm) !important;
           page-break-after: always !important;
           break-after: page !important;
           overflow: hidden !important;
@@ -337,6 +372,7 @@ const NearbyMapModal: React.FC<NearbyMapModalProps> = ({ open, onClose, googleMa
         }
         printWrap.remove();
         facilityWrap.remove();
+        headerWrap.remove();
         st.remove();
       }, 1000);
     }, 400);
