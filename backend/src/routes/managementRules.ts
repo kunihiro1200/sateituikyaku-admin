@@ -1,7 +1,14 @@
 import { Router, Request, Response } from 'express';
 import Anthropic from '@anthropic-ai/sdk';
+import { createClient } from '@supabase/supabase-js';
 
 const router = Router();
+
+// Supabaseクライアント
+const getSupabase = () => createClient(
+  process.env.SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_KEY!
+);
 
 // チェック項目の定義（表示順）
 const CHECK_ITEMS = [
@@ -231,6 +238,77 @@ router.post('/summarize', async (req: Request, res: Response) => {
   } catch (error: any) {
     console.error('要約エラー:', error?.response?.data || error.message);
     return res.status(500).json({ error: '要約に失敗しました' });
+  }
+});
+
+/**
+ * POST /api/management-rules/save
+ * 解析結果をDBに保存（物件番号ごとにupsert）
+ */
+router.post('/save', async (req: Request, res: Response) => {
+  try {
+    const { propertyNumber, results } = req.body as {
+      propertyNumber: string;
+      results: Array<{ key: string; label: string; content: string | null; found: boolean }>;
+    };
+
+    if (!propertyNumber) {
+      return res.status(400).json({ error: 'propertyNumber が必要です' });
+    }
+    if (!results || !Array.isArray(results)) {
+      return res.status(400).json({ error: 'results が必要です' });
+    }
+
+    const supabase = getSupabase();
+
+    const { data, error } = await supabase
+      .from('management_rules_analysis')
+      .upsert(
+        {
+          property_number: propertyNumber,
+          results: results,
+          analyzed_at: new Date().toISOString(),
+        },
+        { onConflict: 'property_number' }
+      )
+      .select()
+      .single();
+
+    if (error) {
+      console.error('[management-rules/save] Supabase error:', error);
+      return res.status(500).json({ error: error.message });
+    }
+
+    return res.json({ success: true, data });
+  } catch (error: any) {
+    console.error('[management-rules/save] Error:', error.message);
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * GET /api/management-rules/:propertyNumber
+ * 物件番号で保存済み解析結果を取得
+ */
+router.get('/:propertyNumber', async (req: Request, res: Response) => {
+  try {
+    const { propertyNumber } = req.params;
+
+    const supabase = getSupabase();
+
+    const { data, error } = await supabase
+      .from('management_rules_analysis')
+      .select('*')
+      .eq('property_number', propertyNumber)
+      .single();
+
+    if (error && error.code !== 'PGRST116') { // PGRST116 = not found
+      return res.status(500).json({ error: error.message });
+    }
+
+    return res.json({ data: data || null });
+  } catch (error: any) {
+    return res.status(500).json({ error: error.message });
   }
 });
 

@@ -335,6 +335,22 @@ const ManagementRulesTestPage: React.FC = () => {
   const [results, setResults] = useState<CheckResult[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
+  const [savedAt, setSavedAt] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  // ページ表示時に保存済みデータを読み込む
+  React.useEffect(() => {
+    if (!propertyNumber) return;
+    fetch(`${API_BASE_URL}/api/management-rules/${encodeURIComponent(propertyNumber)}`)
+      .then((r) => r.json())
+      .then((json) => {
+        if (json.data?.results) {
+          setResults(json.data.results);
+          setSavedAt(json.data.analyzed_at);
+        }
+      })
+      .catch(() => {});
+  }, [propertyNumber]);
 
   const addFiles = useCallback((newFiles: FileList | null) => {
     if (!newFiles) return;
@@ -402,7 +418,25 @@ const ManagementRulesTestPage: React.FC = () => {
       }
 
       setProgress(100);
-      setResults(mergeResults(allChunkResults));
+      const merged = mergeResults(allChunkResults);
+      setResults(merged);
+
+      // 物件番号がある場合は自動保存
+      if (propertyNumber) {
+        setSaving(true);
+        try {
+          await fetch(`${API_BASE_URL}/api/management-rules/save`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ propertyNumber, results: merged }),
+          });
+          setSavedAt(new Date().toISOString());
+        } catch {
+          // 保存失敗は無視（解析結果は表示する）
+        } finally {
+          setSaving(false);
+        }
+      }
     } catch (err: any) {
       setError(err.message || '解析中にエラーが発生しました');
     } finally {
@@ -513,10 +547,21 @@ const ManagementRulesTestPage: React.FC = () => {
         <Paper variant="outlined" sx={{ p: 2 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
             <Typography variant="h6" fontWeight="bold">解析結果</Typography>
-            <Chip
-              label={`${foundCount} / ${totalCount} 項目が見つかりました`}
-              color={foundCount > 0 ? 'success' : 'default'}
-            />
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              {saving && <CircularProgress size={16} />}
+              {savedAt && !saving && (
+                <Chip
+                  label={`保存済み ${new Date(savedAt).toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}`}
+                  size="small"
+                  color="success"
+                  variant="outlined"
+                />
+              )}
+              <Chip
+                label={`${foundCount} / ${totalCount} 項目が見つかりました`}
+                color={foundCount > 0 ? 'success' : 'default'}
+              />
+            </Box>
           </Box>
           <Divider sx={{ mb: 1 }} />
           <List disablePadding>
