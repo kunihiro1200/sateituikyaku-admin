@@ -179,21 +179,32 @@ async function analyzeChunk(pages: FilePayload[], retries = 3): Promise<CheckRes
 }
 
 /**
- * 複数チャンクの結果をマージ（先に見つかった条文を優先）
+ * 複数チャンクの結果をマージ
+ * - nullだった項目は後のチャンクで見つかれば上書き
+ * - 「参照」のみの内容（第○条参照）より実際の条文が見つかれば上書き
  */
 function mergeResults(allResults: CheckResult[][]): CheckResult[] {
   if (allResults.length === 0) return [];
 
-  // 最初のチャンクの結果をベースにする
   const merged = allResults[0].map((r) => ({ ...r }));
 
-  // 後続チャンクで見つかった項目で上書き（nullだった項目のみ）
   for (let i = 1; i < allResults.length; i++) {
     for (const result of allResults[i]) {
       const existing = merged.find((m) => m.key === result.key);
-      if (existing && !existing.found && result.found) {
+      if (!existing) continue;
+
+      if (!existing.found && result.found) {
+        // まだ見つかっていない → 上書き
         existing.content = result.content;
         existing.found = true;
+      } else if (existing.found && result.found && result.content) {
+        // 両方見つかっている場合、より詳しい内容（文字数が多い）を優先
+        const currentLen = existing.content?.length ?? 0;
+        const newLen = result.content.length;
+        if (newLen > currentLen * 1.2) {
+          // 20%以上長い場合は新しい方が詳しいと判断して上書き
+          existing.content = result.content;
+        }
       }
     }
   }
