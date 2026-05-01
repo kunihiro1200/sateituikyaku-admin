@@ -27,6 +27,9 @@ const API_BASE_URL =
     ? 'https://sateituikyaku-admin-backend.vercel.app'
     : import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
+// 1回のリクエストに含める最大ページ数（413対策）
+const PAGES_PER_CHUNK = 4;
+
 interface CheckResult {
   key: string;
   label: string;
@@ -48,13 +51,12 @@ interface FilePayload {
 
 /**
  * PDFを各ページの画像（JPEG）に変換する
- * pdfjs-distを動的インポートして使用
  */
-async function pdfToImages(file: File, onProgress?: (page: number, total: number) => void): Promise<FilePayload[]> {
-  // 動的インポート（バンドルサイズ削減）
+async function pdfToImages(
+  file: File,
+  onProgress?: (page: number, total: number) => void
+): Promise<FilePayload[]> {
   const pdfjsLib = await import('pdfjs-dist');
-
-  // workerのパスを設定（Viteのpublicディレクトリから配信）
   pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
 
   const arrayBuffer = await file.arrayBuffer();
@@ -66,7 +68,8 @@ async function pdfToImages(file: File, onProgress?: (page: number, total: number
     onProgress?.(pageNum, totalPages);
 
     const page = await pdf.getPage(pageNum);
-    const viewport = page.getViewport({ scale: 2.0 }); // 高解像度で取得
+    // scale: 1.5 に下げてファイルサイズを削減（元は2.0）
+    const viewport = page.getViewport({ scale: 1.5 });
 
     const canvas = document.createElement('canvas');
     canvas.width = viewport.width;
@@ -75,12 +78,12 @@ async function pdfToImages(file: File, onProgress?: (page: number, total: number
 
     await page.render({ canvasContext: ctx, viewport }).promise;
 
-    // JPEG形式でBase64に変換（品質0.85）
-    const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+    // 品質0.7に下げてサイズ削減（元は0.85）
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
     const base64 = dataUrl.split(',')[1];
 
     images.push({
-      name: `${file.name}_page${pageNum}.jpg`,
+      name: `${file.name}_p${pageNum}.jpg`,
       mimeType: 'image/jpeg',
       base64,
     });
@@ -97,23 +100,75 @@ function imageToBase64(file: File): Promise<FilePayload> {
     const reader = new FileReader();
     reader.onload = () => {
       const dataUrl = reader.result as string;
-      const base64 = dataUrl.split(',')[1];
-      resolve({ name: file.name, mimeType: file.type, base64 });
+      resolve({ name: file.name, mimeType: file.type, base64: dataUrl.split(',')[1] });
     };
     reader.onerror = reject;
     reader.readAsDataURL(file);
   });
 }
 
+/**
+ * ページ配列をN枚ずつのチャンクに分割
+ */
+function chunkArray<T>(arr: T[], size: number): T[][] {
+  const chunks: T[][] = [];
+  for (let i = 0; i < arr.length; i += size) {
+    chunks.push(arr.slice(i, i + size));
+  }
+  return chunks;
+}
+
+/**
+ * 1チャンク分をAPIに送信して結果を取得
+ */
+async function analyzeChunk(pages: FilePayload[]): Promise<CheckResult[]> {
+  const response = await fetch(`${API_BASE_URL}/api/management-rules/analyze`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ files: pages }),
+  });
+
+  if (!response.ok) {
+    const errData = await response.json().catch(() => ({ error: 'サーバーエラー' }));
+    throw new Error(errData.error || `HTTP ${response.status}`);
+  }
+
+  const data: AnalyzeResponse = await response.json();
+  return data.results;
+}
+
+/**
+ * 複数チャンクの結果をマージ（先に見つかった条文を優先）
+ */
+function mergeResults(allResults: CheckResult[][]): CheckResult[] {
+  if (allResults.length === 0) return [];
+
+  // 最初のチャンクの結果をベースにする
+  const merged = allResults[0].map((r) => ({ ...r }));
+
+  // 後続チャンクで見つかった項目で上書き（nullだった項目のみ）
+  for (let i = 1; i < allResults.length; i++) {
+    for (const result of allResults[i]) {
+      const existing = merged.find((m) => m.key === result.key);
+      if (existing && !existing.found && result.found) {
+        existing.content = result.content;
+        existing.found = true;
+      }
+    }
+  }
+
+  return merged;
+}
+
 const ManagementRulesTestPage: React.FC = () => {
   const [files, setFiles] = useState<File[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
+  const [progress, setProgress] = useState(0);
   const [results, setResults] = useState<CheckResult[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
 
-  // ファイル追加
   const addFiles = useCallback((newFiles: FileList | null) => {
     if (!newFiles) return;
     const allowed = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'];
@@ -126,7 +181,6 @@ const ManagementRulesTestPage: React.FC = () => {
     setError(null);
   }, []);
 
-  // ドラッグ&ドロップ
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
       e.preventDefault();
@@ -136,12 +190,10 @@ const ManagementRulesTestPage: React.FC = () => {
     [addFiles]
   );
 
-  // ファイル削除
   const removeFile = (index: number) => {
     setFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
-  // 解析実行
   const handleAnalyze = async () => {
     if (files.length === 0) {
       setError('ファイルを選択してください');
@@ -151,44 +203,52 @@ const ManagementRulesTestPage: React.FC = () => {
     setLoading(true);
     setError(null);
     setResults(null);
+    setProgress(0);
 
     try {
-      const allPayloads: FilePayload[] = [];
+      // Step1: 全ファイルを画像に変換
+      const allPages: FilePayload[] = [];
 
       for (const file of files) {
         if (file.type === 'application/pdf') {
-          setLoadingMessage(`PDFを画像に変換中: ${file.name}`);
+          setLoadingMessage(`PDFを変換中: ${file.name}`);
           const images = await pdfToImages(file, (page, total) => {
-            setLoadingMessage(`PDFを画像に変換中: ${file.name} (${page}/${total}ページ)`);
+            setLoadingMessage(`PDFを変換中: ${file.name} (${page}/${total}ページ)`);
           });
-          allPayloads.push(...images);
+          allPages.push(...images);
         } else {
           setLoadingMessage(`画像を読み込み中: ${file.name}`);
-          const payload = await imageToBase64(file);
-          allPayloads.push(payload);
+          allPages.push(await imageToBase64(file));
         }
       }
 
-      setLoadingMessage('AIが管理規約を解析中...');
+      // Step2: ページをチャンクに分割してAPIに送信
+      const chunks = chunkArray(allPages, PAGES_PER_CHUNK);
+      const allChunkResults: CheckResult[][] = [];
 
-      const response = await fetch(`${API_BASE_URL}/api/management-rules/analyze`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ files: allPayloads }),
-      });
+      for (let i = 0; i < chunks.length; i++) {
+        const chunkNum = i + 1;
+        setLoadingMessage(
+          `AIが解析中... (${chunkNum}/${chunks.length}バッチ、${allPages.length}ページ中 ${Math.min(chunkNum * PAGES_PER_CHUNK, allPages.length)}ページ完了)`
+        );
+        setProgress(Math.round((i / chunks.length) * 100));
 
-      if (!response.ok) {
-        const errData = await response.json().catch(() => ({ error: 'サーバーエラー' }));
-        throw new Error(errData.error || `HTTP ${response.status}`);
+        const chunkResults = await analyzeChunk(chunks[i]);
+        allChunkResults.push(chunkResults);
       }
 
-      const data: AnalyzeResponse = await response.json();
-      setResults(data.results);
+      setProgress(100);
+      setLoadingMessage('結果をまとめています...');
+
+      // Step3: 結果をマージ
+      const merged = mergeResults(allChunkResults);
+      setResults(merged);
     } catch (err: any) {
       setError(err.message || '解析中にエラーが発生しました');
     } finally {
       setLoading(false);
       setLoadingMessage('');
+      setProgress(0);
     }
   };
 
@@ -202,10 +262,10 @@ const ManagementRulesTestPage: React.FC = () => {
       </Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
         管理規約の画像またはPDFをアップロードすると、各項目の該当条文を自動で抽出します。
-        PDFは自動的にページごとの画像に変換されます。
+        PDFは自動的にページごとの画像に変換し、複数バッチに分けて解析します。
       </Typography>
 
-      {/* ファイルアップロードエリア */}
+      {/* アップロードエリア */}
       <Paper
         variant="outlined"
         sx={{
@@ -217,16 +277,13 @@ const ManagementRulesTestPage: React.FC = () => {
           transition: 'all 0.2s',
           textAlign: 'center',
         }}
-        onDragOver={(e) => {
-          e.preventDefault();
-          setDragOver(true);
-        }}
+        onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
         onDragLeave={() => setDragOver(false)}
         onDrop={handleDrop}
-        onClick={() => document.getElementById('file-input')?.click()}
+        onClick={() => document.getElementById('mgmt-file-input')?.click()}
       >
         <input
-          id="file-input"
+          id="mgmt-file-input"
           type="file"
           multiple
           accept="image/jpeg,image/png,image/gif,image/webp,application/pdf"
@@ -242,7 +299,7 @@ const ManagementRulesTestPage: React.FC = () => {
         </Typography>
       </Paper>
 
-      {/* 選択済みファイル一覧 */}
+      {/* 選択済みファイル */}
       {files.length > 0 && (
         <Box sx={{ mb: 2, display: 'flex', flexWrap: 'wrap', gap: 1 }}>
           {files.map((file, i) => (
@@ -259,14 +316,12 @@ const ManagementRulesTestPage: React.FC = () => {
         </Box>
       )}
 
-      {/* エラー表示 */}
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>
           {error}
         </Alert>
       )}
 
-      {/* 解析ボタン */}
       <Button
         variant="contained"
         size="large"
@@ -279,23 +334,21 @@ const ManagementRulesTestPage: React.FC = () => {
         {loading ? '処理中...' : '管理規約を解析する'}
       </Button>
 
-      {/* ローディング進捗 */}
+      {/* 進捗表示 */}
       {loading && (
         <Box sx={{ mb: 3 }}>
-          <LinearProgress />
+          <LinearProgress variant={progress > 0 ? 'determinate' : 'indeterminate'} value={progress} />
           <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block', textAlign: 'center' }}>
             {loadingMessage}
           </Typography>
         </Box>
       )}
 
-      {/* 結果表示 */}
+      {/* 結果 */}
       {results && (
         <Paper variant="outlined" sx={{ p: 2 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-            <Typography variant="h6" fontWeight="bold">
-              解析結果
-            </Typography>
+            <Typography variant="h6" fontWeight="bold">解析結果</Typography>
             <Chip
               label={`${foundCount} / ${totalCount} 項目が見つかりました`}
               color={foundCount > 0 ? 'success' : 'default'}
@@ -308,11 +361,9 @@ const ManagementRulesTestPage: React.FC = () => {
                 {i > 0 && <Divider component="li" />}
                 <ListItem alignItems="flex-start" sx={{ py: 1.5 }}>
                   <ListItemIcon sx={{ minWidth: 36, mt: 0.5 }}>
-                    {result.found ? (
-                      <CheckCircleIcon color="success" />
-                    ) : (
-                      <CancelIcon color="disabled" />
-                    )}
+                    {result.found
+                      ? <CheckCircleIcon color="success" />
+                      : <CancelIcon color="disabled" />}
                   </ListItemIcon>
                   <ListItemText
                     primary={
@@ -325,13 +376,7 @@ const ManagementRulesTestPage: React.FC = () => {
                         <Typography
                           variant="body2"
                           color="text.primary"
-                          sx={{
-                            mt: 0.5,
-                            p: 1,
-                            backgroundColor: '#f0f7ff',
-                            borderRadius: 1,
-                            borderLeft: '3px solid #1976d2',
-                          }}
+                          sx={{ mt: 0.5, p: 1, backgroundColor: '#f0f7ff', borderRadius: 1, borderLeft: '3px solid #1976d2' }}
                         >
                           {result.content}
                         </Typography>
