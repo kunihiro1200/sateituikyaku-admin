@@ -112,8 +112,8 @@ function drawMarkers(map: google.maps.Map, data: NearbyData, iw: google.maps.Inf
   ref.current.forEach((m) => m.setMap(null)); ref.current = [];
   const zoom = map.getZoom() ?? 14;
 
-  // 全マーカーの位置を収集して重なり判定（ラベル幅を考慮：約80px）
-  const OVERLAP_PX = 80;
+  // 全マーカーの位置を収集して重なり判定（ラベル幅を考慮：約40px）
+  const OVERLAP_PX = 40;
   const placed: Array<{ lat: number; lng: number }> = [];
 
   // 物件マーカーを最初に配置
