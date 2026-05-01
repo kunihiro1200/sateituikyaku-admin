@@ -74,6 +74,7 @@ import { generateSmsBody, smsTemplates, SmsTemplateId } from '../utils/smsTempla
 import { ChatHistoryItem } from '../types/chatHistory';
 import HouseMakerModal from '../components/HouseMakerModal';
 import MansionModal from '../components/MansionModal';
+import NearbyMapModal from '../components/NearbyMapModal';
 
 interface PropertyListing {
   id: number;
@@ -266,6 +267,7 @@ export default function PropertyListingDetailPage() {
   const [isViewingInfoEditMode, setIsViewingInfoEditMode] = useState(false);
   const [houseMakerModalOpen, setHouseMakerModalOpen] = useState(false);
   const [mansionModalOpen, setMansionModalOpen] = useState(false);
+  const [nearbyMapModalOpen, setNearbyMapModalOpen] = useState(false);
   const [isSellerBuyerEditMode, setIsSellerBuyerEditMode] = useState(false);
   const [isOfferEditMode, setIsOfferEditMode] = useState(false);
   const [atbbWarningDialog, setAtbbWarningDialog] = useState(false);
@@ -2964,6 +2966,35 @@ export default function PropertyListingDetailPage() {
                   onSave={handleUpdateGoogleMapUrl}
                   helperText="物件の位置を示すGoogle Map URLを入力してください"
                 />
+                {/* 近隣MAPボタン */}
+                {data.google_map_url && (
+                  <Box sx={{ mt: 1 }}>
+                    <Button
+                      variant="contained"
+                      size="small"
+                      startIcon={<span style={{ fontSize: '1.1em' }}>🗺️</span>}
+                      onClick={() => setNearbyMapModalOpen(true)}
+                      sx={{
+                        background: 'linear-gradient(135deg, #0277bd 0%, #01579b 100%)',
+                        color: 'white',
+                        fontWeight: 'bold',
+                        '&:hover': {
+                          background: 'linear-gradient(135deg, #01579b 0%, #013a6b 100%)',
+                        },
+                      }}
+                    >
+                      近隣MAP
+                    </Button>
+                    <NearbyMapModal
+                      open={nearbyMapModalOpen}
+                      onClose={() => setNearbyMapModalOpen(false)}
+                      googleMapUrl={data.google_map_url}
+                      address={data.address || data.display_address || ''}
+                      propertyNumber={data.property_number}
+                      propertyType={data.property_type}
+                    />
+                  </Box>
+                )}
                 <EditableUrlField
                   label="Suumo URL"
                   value={data.suumo_url || null}

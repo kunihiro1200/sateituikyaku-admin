@@ -1,7 +1,10 @@
 import React, { createContext, useContext, ReactNode } from 'react';
-import { useJsApiLoader } from '@react-google-maps/api';
+import { useJsApiLoader, Libraries } from '@react-google-maps/api';
 
 const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '';
+
+// librariesは定数として定義（再レンダリングのたびに新しい配列が作られるのを防ぐ）
+const LIBRARIES: Libraries = ['places'];
 
 interface GoogleMapsContextType {
   isLoaded: boolean;
@@ -16,6 +19,7 @@ export const GoogleMapsProvider: React.FC<{ children: ReactNode }> = ({ children
     googleMapsApiKey: GOOGLE_MAPS_API_KEY,
     language: 'ja',
     region: 'JP',
+    libraries: LIBRARIES,
   });
 
   return (

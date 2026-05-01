@@ -32,6 +32,7 @@ import { generatePropertyStructuredData } from '../utils/structuredData';
 import { GoogleMap, Marker } from '@react-google-maps/api';
 import { useGoogleMaps } from '../contexts/GoogleMapsContext';
 import { useAuthStore } from '../store/authStore';
+import NearbyMapModal from '../components/NearbyMapModal';
 import '../styles/print.css';
 
 /**
@@ -149,6 +150,7 @@ const PublicPropertyDetailPage: React.FC = () => {
   
   // 地図表示用の座標（Google Map URLまたは住所から取得）
   const [mapCoordinates, setMapCoordinates] = useState<{ lat: number; lng: number } | null>(null);
+  const [nearbyMapModalOpen, setNearbyMapModalOpen] = useState(false);
 
   const { data: property, isLoading, isError, error } = usePublicProperty(id);
 
@@ -668,18 +670,44 @@ const PublicPropertyDetailPage: React.FC = () => {
                 
                 {/* Google Mapボタン */}
                 {property.google_map_url && (
-                  <Button
-                    variant="outlined"
-                    startIcon={<LocationOnIcon />}
-                    href={property.google_map_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    fullWidth
-                    sx={{ mb: mapCoordinates && isMapLoaded ? 2 : 0 }}
-                  >
-                    Google Mapで見る
-                  </Button>
+                  <Box sx={{ display: 'flex', gap: 1, mb: mapCoordinates && isMapLoaded ? 2 : 0, flexWrap: 'wrap' }}>
+                    <Button
+                      variant="outlined"
+                      startIcon={<LocationOnIcon />}
+                      href={property.google_map_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      sx={{ flex: 1 }}
+                    >
+                      Google Mapで見る
+                    </Button>
+                    <Button
+                      variant="contained"
+                      startIcon={<span style={{ fontSize: '1.1em' }}>🗺️</span>}
+                      onClick={() => setNearbyMapModalOpen(true)}
+                      sx={{
+                        flex: 1,
+                        background: 'linear-gradient(135deg, #0277bd 0%, #01579b 100%)',
+                        color: 'white',
+                        fontWeight: 'bold',
+                        '&:hover': {
+                          background: 'linear-gradient(135deg, #01579b 0%, #013a6b 100%)',
+                        },
+                      }}
+                    >
+                      近隣MAP
+                    </Button>
+                  </Box>
                 )}
+                {/* 近隣MAPモーダル */}
+                <NearbyMapModal
+                  open={nearbyMapModalOpen}
+                  onClose={() => setNearbyMapModalOpen(false)}
+                  googleMapUrl={property.google_map_url}
+                  address={property.address || ''}
+                  propertyNumber={property.property_number}
+                  propertyType={property.property_type}
+                />
 
                 {/* 地図表示（座標がある場合） */}
                 {mapCoordinates && isMapLoaded && (
