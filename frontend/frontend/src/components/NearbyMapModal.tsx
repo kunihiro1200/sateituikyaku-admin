@@ -35,18 +35,6 @@ const COLORS: Record<string, string> = {
   restaurant: '#d84315',
 };
 
-// 丸囲み文字アイコンを使うカテゴリと表示文字
-const CIRCLE_ICONS: Record<string, string> = {
-  kindergarten: '幼',
-  elementary_school: '小',
-  middle_school: '中',
-  high_school: '高',
-  hospital: '病',
-  dentist: '歯',
-  bank: '銀',
-  cram_school: '塾',
-};
-
 // ---- URL から座標抽出 ----
 async function extractCoords(url: string, apiBase: string): Promise<{ lat: number; lng: number } | null> {
   if (!url) return null;
@@ -63,70 +51,63 @@ async function extractCoords(url: string, apiBase: string): Promise<{ lat: numbe
   } catch { return null; }
 }
 
-// ---- 丸囲み文字SVGマーカー（全ケース統一サイズ） ----
-function makeCircleTextMarker(char: string, color: string): { url: string; w: number; h: number } {
-  const size = 32;
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size + 8}" viewBox="0 0 ${size} ${size + 8}">
-    <circle cx="${size/2}" cy="${size/2}" r="${size/2 - 2}" fill="${color}" stroke="white" stroke-width="2"/>
-    <text x="${size/2}" y="${size/2 + 6}" font-family="Meiryo,'Yu Gothic',sans-serif"
-      font-size="15" font-weight="bold" fill="white" text-anchor="middle">${char}</text>
-    <polygon points="${size/2-5},${size} ${size/2+5},${size} ${size/2},${size+8}" fill="${color}"/>
-  </svg>`;
-  try { return { url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg), w: size, h: size + 8 }; }
-  catch { return { url: 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg))), w: size, h: size + 8 }; }
-}
+// ---- カテゴリ略称（テキストラベル先頭に付ける） ----
+const CAT_PREFIX: Record<string, string> = {
+  supermarket: 'スーパー',
+  convenience_store: 'コンビニ',
+  restaurant: '飲食',
+  elementary_school: '小学校',
+  middle_school: '中学校',
+  high_school: '高校',
+  hospital: '病院',
+  dentist: '歯科',
+  bank: '銀行',
+  post_office: '郵便',
+  park: '公園',
+  train_station: '駅',
+  kindergarten: '幼稚園',
+  cram_school: '塾',
+};
 
-// ---- フォーク＆ナイフSVGマーカー（飲食店） ----
-function makeRestaurantMarker(): { url: string; w: number; h: number } {
-  const w = 36; const h = 42;
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 36 42">
-    <circle cx="18" cy="16" r="15" fill="#d84315" stroke="white" stroke-width="2"/>
-    <!-- フォーク -->
-    <line x1="13" y1="8" x2="13" y2="24" stroke="white" stroke-width="1.8" stroke-linecap="round"/>
-    <line x1="11" y1="8" x2="11" y2="13" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
-    <line x1="13" y1="8" x2="13" y2="13" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
-    <line x1="15" y1="8" x2="15" y2="13" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
-    <!-- ナイフ -->
-    <line x1="22" y1="8" x2="22" y2="24" stroke="white" stroke-width="1.8" stroke-linecap="round"/>
-    <path d="M22,8 Q26,10 26,14 L22,16" fill="white" stroke="white" stroke-width="0.5"/>
-    <polygon points="15,36 21,36 18,42" fill="#d84315"/>
-  </svg>`;
-  try { return { url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg), w, h }; }
-  catch { return { url: 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg))), w, h }; }
-}
+// ---- テキストラベルSVGマーカー（吹き出し口は常に下、オフセットで尻尾伸縮） ----
+// offsetX: 左右ずらし量（px）、offsetY: 上方向ずらし量（px、正=上）
+function makeTextMarker(
+  name: string, color: string, prefix: string,
+  offsetX = 0, offsetY = 0
+): { url: string; w: number; h: number; anchorX: number; anchorY: number } {
+  const maxChars = 10;
+  const rawName = name.length > maxChars ? name.slice(0, maxChars) + '…' : name;
+  const displayText = prefix ? `${prefix} ${rawName}` : rawName;
+  const label = displayText.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
-// ---- テキストラベル付きSVGマーカー（オフセット対応・尻尾伸縮） ----
-// offsetX/offsetY: ラベルを実際の座標からずらすピクセル数（尻尾がその分伸びる）
-function makeTextMarker(name: string, color: string, offsetX = 0, offsetY = 0): { url: string; w: number; h: number; anchorX: number; anchorY: number } {
-  const raw = name.length > 12 ? name.slice(0, 12) + '…' : name;
-  const label = raw.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   let textW = 0;
-  for (const ch of raw) { textW += ch.charCodeAt(0) > 127 ? 10 : 7; }
-  const boxW = Math.max(56, textW + 28);
+  for (const ch of displayText) { textW += ch.charCodeAt(0) > 127 ? 10 : 7; }
+  const boxW = Math.max(60, textW + 24);
   const boxH = 22;
+  const tailMinH = 8;  // 最小尻尾高さ
+  const tailH = tailMinH + Math.abs(offsetY); // オフセット分だけ尻尾を伸ばす
 
-  // SVGキャンバスサイズ：ラベルボックス＋尻尾の伸び分を含む
+  // SVGキャンバス：ボックス幅＋左右オフセット分、高さ＝ボックス＋尻尾
   const padX = Math.abs(offsetX);
-  const padY = Math.abs(offsetY);
   const svgW = boxW + padX;
-  const svgH = boxH + 6 + padY; // 6 = 最小尻尾高さ
+  const svgH = boxH + tailH;
 
-  // ラベルボックスの左上座標（オフセット方向によって配置を変える）
-  const boxX = offsetX < 0 ? 0 : padX;
-  const boxY = offsetY < 0 ? 0 : padY;
-
-  // 尻尾の先端（実際のマーカー位置 = アンカー）
-  // アンカーはSVG内の「実際の地点」を指す座標
-  const tipX = offsetX < 0 ? svgW : (offsetX > 0 ? 0 : svgW / 2);
-  const tipY = offsetY < 0 ? svgH : (offsetY > 0 ? 0 : svgH);
+  // ボックスの左上X（オフセット方向によって左右に寄せる）
+  const boxX = offsetX > 0 ? 0 : padX;  // 右ずらし→ボックスを左端に、左ずらし→右端に
+  const boxY = 0;
 
   // 尻尾の根元（ボックス底辺中央）
   const baseX = boxX + boxW / 2;
-  const baseY = boxY + boxH;
+  const baseY = boxH;
 
-  // アンカー位置（SVG内でのピクセル座標）
-  const anchorX = offsetX < 0 ? svgW : (offsetX > 0 ? 0 : svgW / 2);
-  const anchorY = offsetY < 0 ? svgH : (offsetY > 0 ? 0 : svgH);
+  // 尻尾の先端（実際の地点 = アンカー）
+  // 水平オフセットがある場合は先端もずらす
+  const tipX = baseX - offsetX;  // offsetX>0なら右にずれているので先端は左に
+  const tipY = svgH;
+
+  // アンカー（SVG内での実際の地点座標）
+  const anchorX = tipX;
+  const anchorY = tipY;
 
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${svgW}" height="${svgH}">
     <rect x="${boxX}" y="${boxY}" width="${boxW}" height="${boxH}" rx="4" ry="4" fill="${color}" opacity="0.93"/>
@@ -148,23 +129,21 @@ function latLngToPixel(lat: number, lng: number, zoom: number): { x: number; y: 
   return { x, y };
 }
 
-// ---- オフセット計算：配置済みラベルと被らない方向を探す ----
-// 候補方向：上・右上・右・右下・下・左下・左・左上
+// ---- オフセット候補（上・右・左のみ、下は除外） ----
 const OFFSET_CANDIDATES = [
-  { dx: 0,   dy: -35 }, // 上
-  { dx: 35,  dy: -25 }, // 右上
-  { dx: 40,  dy: 0   }, // 右
-  { dx: 35,  dy: 25  }, // 右下
-  { dx: 0,   dy: 35  }, // 下（デフォルト）
-  { dx: -35, dy: 25  }, // 左下
-  { dx: -40, dy: 0   }, // 左
-  { dx: -35, dy: -25 }, // 左上
+  { dx: 0,   dy: 0  }, // デフォルト（真下に尻尾）
+  { dx: 0,   dy: 30 }, // 上にずらす
+  { dx: 40,  dy: 0  }, // 右にずらす
+  { dx: -40, dy: 0  }, // 左にずらす
+  { dx: 40,  dy: 30 }, // 右上
+  { dx: -40, dy: 30 }, // 左上
+  { dx: 0,   dy: 60 }, // さらに上
+  { dx: 60,  dy: 0  }, // さらに右
+  { dx: -60, dy: 0  }, // さらに左
 ];
 
 interface PlacedLabel {
-  px: number; py: number;   // 地点のピクセル座標
-  lx: number; ly: number;   // ラベル左上のピクセル座標
-  lw: number; lh: number;   // ラベルサイズ
+  lx: number; ly: number; lw: number; lh: number;
 }
 
 function findBestOffset(
@@ -173,22 +152,17 @@ function findBestOffset(
   placed: PlacedLabel[]
 ): { dx: number; dy: number } {
   for (const { dx, dy } of OFFSET_CANDIDATES) {
-    // ラベル左上座標（アンカーからオフセット、ラベル中央下がアンカー）
     const lx = px + dx - labelW / 2;
-    const ly = py + dy - labelH;
-
-    // 既存ラベルと重なるか確認
-    const overlaps = placed.some(q => {
-      return !(lx + labelW < q.lx || lx > q.lx + q.lw ||
-               ly + labelH < q.ly || ly > q.ly + q.lh);
-    });
+    const ly = py - dy - labelH; // dyは上方向なのでマイナス
+    const overlaps = placed.some(q =>
+      !(lx + labelW < q.lx || lx > q.lx + q.lw || ly + labelH < q.ly || ly > q.ly + q.lh)
+    );
     if (!overlaps) return { dx, dy };
   }
-  // 全方向で重なる場合はデフォルト（下）
-  return OFFSET_CANDIDATES[4];
+  return OFFSET_CANDIDATES[0];
 }
 
-// ---- 物件マーカー（家マーク・吹き出しなし） ----
+// ---- 物件マーカー（家マーク） ----
 function makePropertyMarker(): { url: string; w: number; h: number } {
   const w = 40; const h = 40;
   // 家の形をSVGパスで描画
@@ -209,31 +183,16 @@ function makePropertyMarker(): { url: string; w: number; h: number } {
   catch { return { url: 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg))), w, h }; }
 }
 
-// ---- 公園用ツリーアイコンマーカー ----
-function makeParkMarker(): { url: string; w: number; h: number } {
-  const w = 24; const h = 28;
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 24 28">
-    <ellipse cx="12" cy="11" rx="9" ry="9" fill="#33691e" opacity="0.95"/>
-    <ellipse cx="12" cy="9" rx="7" ry="7" fill="#558b2f" opacity="0.9"/>
-    <rect x="10" y="18" width="4" height="7" rx="1" fill="#5d4037"/>
-    <ellipse cx="12" cy="11" rx="4" ry="3" fill="#7cb342" opacity="0.6"/>
-  </svg>`;
-  try { return { url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg), w, h }; }
-  catch { return { url: 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg))), w, h }; }
-}
-
-
-// ---- マーカー描画（オフセット付き尻尾伸縮でラベル被り回避） ----
+// ---- マーカー描画（全カテゴリ統一テキストラベル、吹き出し口は常に下） ----
 function drawMarkers(map: google.maps.Map, data: NearbyData, iw: google.maps.InfoWindow, ref: React.MutableRefObject<google.maps.Marker[]>) {
   ref.current.forEach((m) => m.setMap(null)); ref.current = [];
   const zoom = map.getZoom() ?? 14;
-
   const placedLabels: PlacedLabel[] = [];
 
-  // 物件マーカー（常に最優先）
+  // 物件マーカー（家アイコン）
   const pm = makePropertyMarker();
   const centerPx = latLngToPixel(data.center.lat, data.center.lng, zoom);
-  placedLabels.push({ px: centerPx.x, py: centerPx.y, lx: centerPx.x - pm.w/2, ly: centerPx.y - pm.h, lw: pm.w, lh: pm.h });
+  placedLabels.push({ lx: centerPx.x - pm.w/2, ly: centerPx.y - pm.h, lw: pm.w, lh: pm.h });
   ref.current.push(new google.maps.Marker({
     position: data.center, map, title: '物件', zIndex: 3000,
     icon: { url: pm.url, anchor: new google.maps.Point(pm.w / 2, pm.h), scaledSize: new google.maps.Size(pm.w, pm.h) },
@@ -241,87 +200,41 @@ function drawMarkers(map: google.maps.Map, data: NearbyData, iw: google.maps.Inf
 
   data.categories.filter(cat => DISPLAY_CATS.has(cat.type)).forEach((cat) => {
     const color = COLORS[cat.type] || '#757575';
+    const prefix = CAT_PREFIX[cat.type] || '';
+
     (data.places[cat.type] || []).forEach((p, idx) => {
       if (!p.lat || !p.lng) return;
 
       const ppx = latLngToPixel(p.lat, p.lng, zoom);
 
-      if (cat.type === 'park') {
-        // 公園：ツリーアイコン（オフセットなし）
-        const pk = makeParkMarker();
-        placedLabels.push({ px: ppx.x, py: ppx.y, lx: ppx.x - pk.w/2, ly: ppx.y - pk.h, lw: pk.w, lh: pk.h });
-        const mk = new google.maps.Marker({
-          position: { lat: p.lat, lng: p.lng }, map,
-          title: `${p.name} (${p.distance}m)`, zIndex: 800 - idx,
-          icon: { url: pk.url, anchor: new google.maps.Point(pk.w / 2, pk.h), scaledSize: new google.maps.Size(pk.w, pk.h) },
-        });
-        mk.addListener('click', () => {
-          iw.setContent(`<div style="font-size:12px;padding:5px 8px;min-width:160px;line-height:1.6;"><b>${cat.icon} ${p.name}</b><br/><span style="color:#555;font-size:11px;">${p.vicinity}</span><br/><span style="color:#1565c0;font-weight:bold;">物件から約 ${p.distance}m</span>${p.rating ? `<br/><span style="color:#e65100;">★ ${p.rating}</span>` : ''}</div>`);
-          iw.open(map, mk);
-        });
-        ref.current.push(mk);
+      // ラベルサイズを事前計算
+      const maxChars = 10;
+      const rawName = p.name.length > maxChars ? p.name.slice(0, maxChars) + '…' : p.name;
+      const displayText = prefix ? `${prefix} ${rawName}` : rawName;
+      let textW = 0;
+      for (const ch of displayText) { textW += ch.charCodeAt(0) > 127 ? 10 : 7; }
+      const labelW = Math.max(60, textW + 24);
+      const labelH = 30; // boxH + tailMinH
 
-      } else if (cat.type === 'restaurant') {
-        // 飲食店：フォーク＆ナイフアイコン（オフセットなし）
-        const rm = makeRestaurantMarker();
-        placedLabels.push({ px: ppx.x, py: ppx.y, lx: ppx.x - rm.w/2, ly: ppx.y - rm.h, lw: rm.w, lh: rm.h });
-        const mk = new google.maps.Marker({
-          position: { lat: p.lat, lng: p.lng }, map,
-          title: `${p.name} (${p.distance}m)`, zIndex: 800 - idx,
-          icon: { url: rm.url, anchor: new google.maps.Point(rm.w / 2, rm.h), scaledSize: new google.maps.Size(rm.w, rm.h) },
-        });
-        mk.addListener('click', () => {
-          iw.setContent(`<div style="font-size:12px;padding:5px 8px;min-width:160px;line-height:1.6;"><b>${cat.icon} ${p.name}</b><br/><span style="color:#555;font-size:11px;">${p.vicinity}</span><br/><span style="color:#1565c0;font-weight:bold;">物件から約 ${p.distance}m</span>${p.rating ? `<br/><span style="color:#e65100;">★ ${p.rating}</span>` : ''}</div>`);
-          iw.open(map, mk);
-        });
-        ref.current.push(mk);
+      // 被らない方向を探す
+      const { dx, dy } = findBestOffset(ppx.x, ppx.y, labelW, labelH, placedLabels);
+      const ic = makeTextMarker(p.name, color, prefix, dx, dy);
 
-      } else if (CIRCLE_ICONS[cat.type]) {
-        // 丸囲み文字：オフセットなし（コンパクトなので被りにくい）
-        const ci = makeCircleTextMarker(CIRCLE_ICONS[cat.type], color);
-        placedLabels.push({ px: ppx.x, py: ppx.y, lx: ppx.x - ci.w/2, ly: ppx.y - ci.h, lw: ci.w, lh: ci.h });
-        const mk = new google.maps.Marker({
-          position: { lat: p.lat, lng: p.lng }, map,
-          title: `${p.name} (${p.distance}m)`, zIndex: 900 - idx,
-          icon: { url: ci.url, anchor: new google.maps.Point(ci.w / 2, ci.h), scaledSize: new google.maps.Size(ci.w, ci.h) },
-        });
-        mk.addListener('click', () => {
-          iw.setContent(`<div style="font-size:12px;padding:5px 8px;min-width:160px;line-height:1.6;"><b>${cat.icon} ${p.name}</b><br/><span style="color:#555;font-size:11px;">${p.vicinity}</span><br/><span style="color:#1565c0;font-weight:bold;">物件から約 ${p.distance}m</span>${p.rating ? `<br/><span style="color:#e65100;">★ ${p.rating}</span>` : ''}</div>`);
-          iw.open(map, mk);
-        });
-        ref.current.push(mk);
+      // 配置済みリストに追加（ラベルの実際の位置）
+      const lx = ppx.x + dx - ic.w / 2;
+      const ly = ppx.y - dy - ic.h;
+      placedLabels.push({ lx, ly, lw: ic.w, lh: ic.h });
 
-      } else {
-        // テキストラベル：被らない方向にオフセット＋尻尾伸縮
-        // まずデフォルトサイズを計算
-        const raw = p.name.length > 12 ? p.name.slice(0, 12) + '…' : p.name;
-        let textW = 0;
-        for (const ch of raw) { textW += ch.charCodeAt(0) > 127 ? 10 : 7; }
-        const labelW = Math.max(56, textW + 28);
-        const labelH = 28; // boxH + tail
-
-        const { dx, dy } = findBestOffset(ppx.x, ppx.y, labelW, labelH, placedLabels);
-        const ic = makeTextMarker(p.name, color, dx, dy);
-
-        // 配置済みリストに追加
-        placedLabels.push({
-          px: ppx.x, py: ppx.y,
-          lx: ppx.x + dx - ic.w / 2,
-          ly: ppx.y + dy - ic.h,
-          lw: ic.w, lh: ic.h,
-        });
-
-        const mk = new google.maps.Marker({
-          position: { lat: p.lat, lng: p.lng }, map,
-          title: `${p.name} (${p.distance}m)`, zIndex: 1000 - idx,
-          icon: { url: ic.url, anchor: new google.maps.Point(ic.anchorX, ic.anchorY), scaledSize: new google.maps.Size(ic.w, ic.h) },
-        });
-        mk.addListener('click', () => {
-          iw.setContent(`<div style="font-size:12px;padding:5px 8px;min-width:160px;line-height:1.6;"><b>${cat.icon} ${p.name}</b><br/><span style="color:#555;font-size:11px;">${p.vicinity}</span><br/><span style="color:#1565c0;font-weight:bold;">物件から約 ${p.distance}m</span>${p.rating ? `<br/><span style="color:#e65100;">★ ${p.rating}</span>` : ''}</div>`);
-          iw.open(map, mk);
-        });
-        ref.current.push(mk);
-      }
+      const mk = new google.maps.Marker({
+        position: { lat: p.lat, lng: p.lng }, map,
+        title: `${p.name} (${p.distance}m)`, zIndex: 1000 - idx,
+        icon: { url: ic.url, anchor: new google.maps.Point(ic.anchorX, ic.anchorY), scaledSize: new google.maps.Size(ic.w, ic.h) },
+      });
+      mk.addListener('click', () => {
+        iw.setContent(`<div style="font-size:12px;padding:5px 8px;min-width:160px;line-height:1.6;"><b>${cat.icon} ${p.name}</b><br/><span style="color:#555;font-size:11px;">${p.vicinity}</span><br/><span style="color:#1565c0;font-weight:bold;">物件から約 ${p.distance}m</span>${p.rating ? `<br/><span style="color:#e65100;">★ ${p.rating}</span>` : ''}</div>`);
+        iw.open(map, mk);
+      });
+      ref.current.push(mk);
     });
   });
 }
