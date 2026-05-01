@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import Anthropic from '@anthropic-ai/sdk';
+import axios from 'axios';
 
 const router = Router();
 
@@ -34,46 +34,20 @@ router.post('/analyze', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'ファイルが選択されていません' });
     }
 
-    const apiKey = process.env.ANTHROPIC_API_KEY;
+    const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
-      return res.status(500).json({ error: 'ANTHROPIC_API_KEY が設定されていません' });
+      return res.status(500).json({ error: 'OPENAI_API_KEY が設定されていません' });
     }
 
-    const client = new Anthropic({ apiKey });
-
-    // コンテンツブロックを構築
-    const contentBlocks: Anthropic.ContentBlockParam[] = [];
-
-    for (const file of files) {
-      if (file.mimeType === 'application/pdf') {
-        contentBlocks.push({
-          type: 'document',
-          source: {
-            type: 'base64',
-            media_type: 'application/pdf',
-            data: file.base64,
-          },
-        } as any);
-      } else {
-        const mediaType = file.mimeType as 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp';
-        contentBlocks.push({
-          type: 'image',
-          source: {
-            type: 'base64',
-            media_type: mediaType,
-            data: file.base64,
-          },
-        });
-      }
-    }
-
-    // チェック項目リストをプロンプトに含める
+    // チェック項目リスト
     const itemsList = CHECK_ITEMS.map((item) => `- ${item.key}: ${item.label}`).join('\n');
 
-    contentBlocks.push({
-      type: 'text',
-      text: `あなたはマンション管理規約の専門家です。
-添付された管理規約の画像/文書を読み取り、以下の各項目について該当する条文を抽出してください。
+    // OpenAI Vision用のコンテンツブロックを構築
+    const contentBlocks: any[] = [
+      {
+        type: 'text',
+        text: `あなたはマンション管理規約の専門家です。
+添付された管理規約の画像を読み取り、以下の各項目について該当する条文を抽出してください。
 
 【チェック項目（keyとラベル）】
 ${itemsList}
@@ -104,22 +78,51 @@ ${itemsList}
 - 複数の条文が関連する場合は、最も重要な条文を記載してください
 - 日本語で回答してください
 - JSONコードブロックのみを出力し、前後に説明文を付けないでください`,
-    });
+      },
+    ];
 
-    // Claude APIに送信
-    const response = await client.messages.create({
-      model: 'claude-opus-4-5',
-      max_tokens: 4096,
-      messages: [
-        {
-          role: 'user',
-          content: contentBlocks,
+    // 画像ブロックを追加（PDFはOpenAI Visionでは非対応のため画像のみ）
+    for (const file of files) {
+      if (file.mimeType !== 'application/pdf') {
+        contentBlocks.push({
+          type: 'image_url',
+          image_url: {
+            url: `data:${file.mimeType};base64,${file.base64}`,
+            detail: 'high',
+          },
+        });
+      } else {
+        // PDFの場合はテキストで通知
+        contentBlocks.push({
+          type: 'text',
+          text: `[PDFファイル "${file.name}" が添付されています。このファイルの内容を解析してください。]`,
+        });
+      }
+    }
+
+    // OpenAI Vision APIに送信
+    const response = await axios.post(
+      'https://api.openai.com/v1/chat/completions',
+      {
+        model: 'gpt-4o',
+        max_tokens: 4096,
+        messages: [
+          {
+            role: 'user',
+            content: contentBlocks,
+          },
+        ],
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
         },
-      ],
-    });
+        timeout: 120000, // 2分タイムアウト
+      }
+    );
 
-    // レスポンスからJSONを抽出
-    const responseText = response.content[0].type === 'text' ? response.content[0].text : '';
+    const responseText = response.data?.choices?.[0]?.message?.content || '';
 
     // JSONブロックを抽出
     const jsonMatch = responseText.match(/```json\n?([\s\S]*?)\n?```/);
@@ -136,7 +139,6 @@ ${itemsList}
         });
       }
     } else {
-      // JSONブロックがない場合、直接パースを試みる
       try {
         extractedData = JSON.parse(responseText);
       } catch {
@@ -161,9 +163,9 @@ ${itemsList}
       results,
     });
   } catch (error: any) {
-    console.error('管理規約解析エラー:', error);
+    console.error('管理規約解析エラー:', error?.response?.data || error.message);
     return res.status(500).json({
-      error: error.message || '解析中にエラーが発生しました',
+      error: error?.response?.data?.error?.message || error.message || '解析中にエラーが発生しました',
     });
   }
 });
