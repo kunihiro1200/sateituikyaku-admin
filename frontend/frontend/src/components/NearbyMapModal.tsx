@@ -44,28 +44,43 @@ async function extractCoords(url: string, apiBase: string): Promise<{ lat: numbe
 
 // ---- テキストラベル付きSVGマーカー（常時表示） ----
 function makeTextMarker(name: string, color: string): { url: string; w: number; h: number } {
-  // 最大12文字に制限、特殊文字をエスケープ
-  const raw = name.length > 12 ? name.slice(0, 12) + '…' : name;
-  // SVG内テキスト用エスケープ（encodeURIComponentが失敗しないよう安全な文字のみ）
+  // 最大16文字に制限（文字を小さくして多く表示）
+  const raw = name.length > 16 ? name.slice(0, 16) + '…' : name;
   const label = raw.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-  const charW = 7.5;
-  const w = Math.max(60, raw.length * charW + 16);
-  const h = 22;
+  const charW = 6.5; // 文字幅を小さく
+  const w = Math.max(60, raw.length * charW + 14);
+  const h = 20; // 高さを少し小さく
   const ah = 6;
   const totalH = h + ah;
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${totalH}">
     <rect x="0" y="0" width="${w}" height="${h}" rx="4" ry="4" fill="${color}" opacity="0.92"/>
-    <text x="${w/2}" y="15" font-family="Meiryo,sans-serif"
-      font-size="10" font-weight="bold" fill="white" text-anchor="middle">${label}</text>
+    <text x="${w/2}" y="14" font-family="Meiryo,sans-serif"
+      font-size="9" font-weight="bold" fill="white" text-anchor="middle">${label}</text>
     <polygon points="${w/2-5},${h} ${w/2+5},${h} ${w/2},${totalH}" fill="${color}" opacity="0.92"/>
   </svg>`;
   try {
     return { url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg), w, h: totalH };
   } catch {
-    // エンコード失敗時はBase64にフォールバック
     return { url: 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg))), w, h: totalH };
   }
 }
+
+// ---- マークのみのSVGマーカー（薬局・公園など） ----
+function makeDotMarker(color: string, emoji: string): { url: string; w: number; h: number } {
+  const w = 24; const h = 24;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}">
+    <circle cx="${w/2}" cy="${w/2}" r="10" fill="${color}" opacity="0.85" stroke="white" stroke-width="2"/>
+    <text x="${w/2}" y="${w/2+4}" font-size="10" text-anchor="middle">${emoji}</text>
+  </svg>`;
+  try {
+    return { url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg), w, h };
+  } catch {
+    return { url: 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg))), w, h };
+  }
+}
+
+// マークのみ表示するカテゴリ（テキストラベルなし）
+const DOT_ONLY_TYPES = new Set(['pharmacy', 'park', 'bus_station']);
 
 // ---- 物件マーカー（大きく目立つ） ----
 function makePropertyMarker(): { url: string; w: number; h: number } {
@@ -124,22 +139,42 @@ function drawMarkers(
 // ---- HTML エスケープ ----
 function esc(s: string) { return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 
-// ---- Static Maps URL生成（PDF用地図画像） ----
+// ---- Static Maps URL生成（PDF用地図画像・施設マーカー付き） ----
 function buildStaticMapUrl(data: NearbyData, apiKey: string): string {
   if (!apiKey) return '';
   const { center, radius } = data;
   const zoom = radius <= 1000 ? 14 : 13;
-  // A4横幅に合わせた大きめサイズ（Static API最大640x640）
-  const params = new URLSearchParams({
-    center: `${center.lat},${center.lng}`,
-    zoom: String(zoom),
-    size: '640x400',
-    scale: '2',   // Retina対応（実質1280x800相当）
-    language: 'ja',
-    key: apiKey,
-    markers: `color:red|size:large|label:P|${center.lat},${center.lng}`,
+
+  // カテゴリ別の色（Static Maps対応色）
+  const colorMap: Record<string, string> = {
+    supermarket: '0xE53935', convenience_store: '0xC62828',
+    school: '0x1565C0', kindergarten: '0x0277BD',
+    hospital: '0x2E7D32', pharmacy: '0x00695C',
+    bank: '0xE65100', post_office: '0xBF360C',
+    park: '0x33691E', restaurant: '0x6A1B9A',
+    train_station: '0x283593', bus_station: '0x37474F',
+  };
+
+  // ベースパラメータ
+  let url = `https://maps.googleapis.com/maps/api/staticmap?`;
+  url += `center=${center.lat},${center.lng}&zoom=${zoom}&size=640x400&scale=2&language=ja&key=${apiKey}`;
+
+  // 物件マーカー（赤・大）
+  url += `&markers=color:red%7Csize:large%7Clabel:P%7C${center.lat},${center.lng}`;
+
+  // 施設マーカー（カテゴリ別色・小）
+  data.categories.forEach((cat) => {
+    const places = data.places[cat.type] || [];
+    const color = colorMap[cat.type] || '0x757575';
+    // 各カテゴリ最大3件まで（URLが長くなりすぎないよう）
+    places.slice(0, 3).forEach((p) => {
+      if (p.lat && p.lng) {
+        url += `&markers=color:${color}%7Csize:small%7C${p.lat},${p.lng}`;
+      }
+    });
   });
-  return `https://maps.googleapis.com/maps/api/staticmap?${params.toString()}`;
+
+  return url;
 }
 
 // ---- 施設リストHTML（印刷用） ----
