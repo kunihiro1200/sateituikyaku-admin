@@ -17,13 +17,19 @@ interface PlaceCategory { type: string; label: string; icon: string; }
 interface NearbyData { center: { lat: number; lng: number }; radius: number; categories: PlaceCategory[]; places: Record<string, PlaceItem[]>; }
 interface NearbyMapModalProps { open: boolean; onClose: () => void; googleMapUrl?: string | null; address?: string; propertyNumber?: string; propertyType?: string; }
 
+// 飲食店・薬局・バス停を除外したカテゴリ
+const DISPLAY_CATS = new Set([
+  'supermarket', 'convenience_store', 'school', 'kindergarten',
+  'hospital', 'bank', 'post_office', 'park', 'train_station',
+]);
+
 const COLORS: Record<string, string> = {
   supermarket: '#e53935', convenience_store: '#c62828',
   school: '#1565c0', kindergarten: '#0277bd',
-  hospital: '#2e7d32', pharmacy: '#00695c',
+  hospital: '#2e7d32',
   bank: '#e65100', post_office: '#bf360c',
-  park: '#33691e', restaurant: '#6a1b9a',
-  train_station: '#283593', bus_station: '#37474f',
+  park: '#33691e',
+  train_station: '#283593',
 };
 
 // ---- URL から座標抽出 ----
@@ -42,91 +48,44 @@ async function extractCoords(url: string, apiBase: string): Promise<{ lat: numbe
   } catch { return null; }
 }
 
-// ---- テキストラベル付きSVGマーカー（常時表示） ----
+// ---- テキストラベル付きSVGマーカー ----
 function makeTextMarker(name: string, color: string): { url: string; w: number; h: number } {
-  // 最大16文字に制限（文字を小さくして多く表示）
-  const raw = name.length > 16 ? name.slice(0, 16) + '…' : name;
+  const raw = name.length > 14 ? name.slice(0, 14) + '…' : name;
   const label = raw.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-  const charW = 6.5; // 文字幅を小さく
-  const w = Math.max(60, raw.length * charW + 14);
-  const h = 20; // 高さを少し小さく
-  const ah = 6;
-  const totalH = h + ah;
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${totalH}">
-    <rect x="0" y="0" width="${w}" height="${h}" rx="4" ry="4" fill="${color}" opacity="0.92"/>
-    <text x="${w/2}" y="14" font-family="Meiryo,sans-serif"
-      font-size="9" font-weight="bold" fill="white" text-anchor="middle">${label}</text>
-    <polygon points="${w/2-5},${h} ${w/2+5},${h} ${w/2},${totalH}" fill="${color}" opacity="0.92"/>
-  </svg>`;
-  try {
-    return { url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg), w, h: totalH };
-  } catch {
-    return { url: 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg))), w, h: totalH };
-  }
+  const w = Math.max(60, raw.length * 6.5 + 14);
+  const h = 20; const ah = 6; const totalH = h + ah;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${totalH}"><rect x="0" y="0" width="${w}" height="${h}" rx="4" ry="4" fill="${color}" opacity="0.92"/><text x="${w/2}" y="14" font-family="Meiryo,sans-serif" font-size="9" font-weight="bold" fill="white" text-anchor="middle">${label}</text><polygon points="${w/2-5},${h} ${w/2+5},${h} ${w/2},${totalH}" fill="${color}" opacity="0.92"/></svg>`;
+  try { return { url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg), w, h: totalH }; }
+  catch { return { url: 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg))), w, h: totalH }; }
 }
 
-// ---- マークのみのSVGマーカー（薬局・公園など） ----
-function makeDotMarker(color: string, emoji: string): { url: string; w: number; h: number } {
-  const w = 24; const h = 24;
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}">
-    <circle cx="${w/2}" cy="${w/2}" r="10" fill="${color}" opacity="0.85" stroke="white" stroke-width="2"/>
-    <text x="${w/2}" y="${w/2+4}" font-size="10" text-anchor="middle">${emoji}</text>
-  </svg>`;
-  try {
-    return { url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg), w, h };
-  } catch {
-    return { url: 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg))), w, h };
-  }
-}
-
-// マークのみ表示するカテゴリ（テキストラベルなし）
-const DOT_ONLY_TYPES = new Set(['pharmacy', 'park', 'bus_station']);
-
-// ---- 物件マーカー（大きく目立つ） ----
+// ---- 物件マーカー「📍 物件」 ----
 function makePropertyMarker(): { url: string; w: number; h: number } {
   const w = 72; const h = 26; const ah = 8; const totalH = h + ah;
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${totalH}">
-    <rect x="0" y="0" width="${w}" height="${h}" rx="5" ry="5" fill="#d32f2f"/>
-    <text x="${w/2}" y="18" font-family="Meiryo,sans-serif"
-      font-size="12" font-weight="bold" fill="white" text-anchor="middle">&#x5F53;&#x7269;&#x4EF6;</text>
-    <polygon points="${w/2-6},${h} ${w/2+6},${h} ${w/2},${totalH}" fill="#d32f2f"/>
-  </svg>`;
-  try {
-    return { url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg), w, h: totalH };
-  } catch {
-    return { url: 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg))), w, h: totalH };
-  }
+  // 絵文字を使わずテキストのみ（エンコードエラー回避）
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${totalH}"><rect x="0" y="0" width="${w}" height="${h}" rx="5" ry="5" fill="#d32f2f"/><text x="${w/2}" y="18" font-family="Meiryo,sans-serif" font-size="13" font-weight="bold" fill="white" text-anchor="middle">&#x1F4CD; &#x7269;&#x4EF6;</text><polygon points="${w/2-6},${h} ${w/2+6},${h} ${w/2},${totalH}" fill="#d32f2f"/></svg>`;
+  try { return { url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg), w, h: totalH }; }
+  catch { return { url: 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg))), w, h: totalH }; }
 }
 
-// ---- マーカー描画（テキスト常時表示） ----
-function drawMarkers(
-  map: google.maps.Map,
-  data: NearbyData,
-  iw: google.maps.InfoWindow,
-  ref: React.MutableRefObject<google.maps.Marker[]>
-) {
+// ---- マーカー描画 ----
+function drawMarkers(map: google.maps.Map, data: NearbyData, iw: google.maps.InfoWindow, ref: React.MutableRefObject<google.maps.Marker[]>) {
   ref.current.forEach((m) => m.setMap(null)); ref.current = [];
-
-  // 物件マーカー（大きく目立つ）
   const pm = makePropertyMarker();
   ref.current.push(new google.maps.Marker({
     position: data.center, map, title: '物件', zIndex: 3000,
     icon: { url: pm.url, anchor: new google.maps.Point(pm.w / 2, pm.h), scaledSize: new google.maps.Size(pm.w, pm.h) },
   }));
-
-  // 施設マーカー（テキスト常時表示）
-  data.categories.forEach((cat) => {
+  data.categories.filter(cat => DISPLAY_CATS.has(cat.type)).forEach((cat) => {
     const color = COLORS[cat.type] || '#757575';
     (data.places[cat.type] || []).forEach((p, idx) => {
       if (!p.lat || !p.lng) return;
       const ic = makeTextMarker(p.name, color);
       const mk = new google.maps.Marker({
         position: { lat: p.lat, lng: p.lng }, map,
-        title: `${p.name} (${p.distance}m)`,
-        zIndex: 1000 - idx,
+        title: `${p.name} (${p.distance}m)`, zIndex: 1000 - idx,
         icon: { url: ic.url, anchor: new google.maps.Point(ic.w / 2, ic.h), scaledSize: new google.maps.Size(ic.w, ic.h) },
       });
-      // クリックで詳細表示（距離・評価）
       mk.addListener('click', () => {
         iw.setContent(`<div style="font-size:12px;padding:5px 8px;min-width:160px;line-height:1.6;"><b>${cat.icon} ${p.name}</b><br/><span style="color:#555;font-size:11px;">${p.vicinity}</span><br/><span style="color:#1565c0;font-weight:bold;">物件から約 ${p.distance}m</span>${p.rating ? `<br/><span style="color:#e65100;">★ ${p.rating}</span>` : ''}</div>`);
         iw.open(map, mk);
@@ -134,146 +93,6 @@ function drawMarkers(
       ref.current.push(mk);
     });
   });
-}
-
-// ---- HTML エスケープ ----
-function esc(s: string) { return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
-
-// ---- Static Maps URL生成（PDF用地図画像・施設マーカー付き） ----
-function buildStaticMapUrl(data: NearbyData, apiKey: string): string {
-  if (!apiKey) return '';
-  const { center, radius } = data;
-  const zoom = radius <= 1000 ? 14 : 13;
-
-  // カテゴリ別の色（Static Maps対応色）
-  const colorMap: Record<string, string> = {
-    supermarket: '0xE53935', convenience_store: '0xC62828',
-    school: '0x1565C0', kindergarten: '0x0277BD',
-    hospital: '0x2E7D32', pharmacy: '0x00695C',
-    bank: '0xE65100', post_office: '0xBF360C',
-    park: '0x33691E', restaurant: '0x6A1B9A',
-    train_station: '0x283593', bus_station: '0x37474F',
-  };
-
-  // ベースパラメータ
-  let url = `https://maps.googleapis.com/maps/api/staticmap?`;
-  url += `center=${center.lat},${center.lng}&zoom=${zoom}&size=640x400&scale=2&language=ja&key=${apiKey}`;
-
-  // 物件マーカー（赤・大・「当」）
-  url += `&markers=color:red%7Csize:large%7Clabel:%E5%BD%93%7C${center.lat},${center.lng}`;
-
-  // 施設マーカー（カテゴリ別色・小）
-  data.categories.forEach((cat) => {
-    const places = data.places[cat.type] || [];
-    const color = colorMap[cat.type] || '0x757575';
-    // 各カテゴリ最大3件まで（URLが長くなりすぎないよう）
-    places.slice(0, 3).forEach((p) => {
-      if (p.lat && p.lng) {
-        url += `&markers=color:${color}%7Csize:small%7C${p.lat},${p.lng}`;
-      }
-    });
-  });
-
-  return url;
-}
-
-// ---- 施設リストHTML（印刷用） ----
-function listHtml(data: NearbyData): string {
-  const rows = data.categories.map((cat) => {
-    const ps = data.places[cat.type] || []; if (!ps.length) return '';
-    const color = COLORS[cat.type] || '#757575';
-    const trs = ps.map((p) => `<tr><td class="n">${esc(p.name)}</td><td class="d">約${p.distance}m</td>${p.rating ? `<td class="r">★${p.rating}</td>` : '<td></td>'}</tr>`).join('');
-    return `<div class="cb"><div class="ch" style="background:${color}">${cat.icon} ${cat.label}（${ps.length}件）</div><table><tbody>${trs}</tbody></table></div>`;
-  }).join('');
-  return rows || '<p class="nd">この圏内に施設が見つかりませんでした</p>';
-}
-
-// ---- PDF印刷（現在のタブの地図1枚 + 施設リスト2列） ----
-function doPrint(address: string, d1: NearbyData | null, d2: NearbyData | null, currentTab: number) {
-  console.log('[doPrint] called, d1:', !!d1, 'd2:', !!d2, 'tab:', currentTab);
-  const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '';
-  const l1 = d1 ? listHtml(d1) : '<p class="nd">データなし</p>';
-  const l2 = d2 ? listHtml(d2) : '<p class="nd">データなし</p>';
-  // 現在表示中のタブの地図を1枚だけ使用
-  const currentData = currentTab === 0 ? d1 : d2;
-  const mapUrl = currentData && apiKey ? buildStaticMapUrl(currentData, apiKey) : '';
-  const mapLabel = currentTab === 0 ? '半径1km圏内' : '半径2km圏内';
-  console.log('[doPrint] mapUrl:', mapUrl.slice(0, 80));
-
-  ['nbp-root', 'nbp-style'].forEach((id) => { const el = document.getElementById(id); if (el) el.remove(); });
-
-  const css = `
-    @page { size: A4 portrait; margin: 8mm 10mm; }
-    @media print {
-      body > *:not(#nbp-root) { display: none !important; }
-      #nbp-root {
-        display: block !important; position: fixed !important;
-        top: 0 !important; left: 0 !important; width: 100% !important;
-        background: white !important; z-index: 999999 !important;
-        font-family: 'Hiragino Sans','Meiryo',sans-serif !important;
-        font-size: 9px !important; color: #111 !important;
-        -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important;
-      }
-    }
-    #nbp-root { font-family: 'Hiragino Sans','Meiryo',sans-serif; font-size: 9px; color: #111; }
-    #nbp-root h1 { font-size: 13px; color: #1565c0; margin: 0 0 2px; }
-    #nbp-root .sub { font-size: 8px; color: #555; margin-bottom: 4px; }
-    #nbp-root hr { border: none; border-top: 2px solid #1565c0; margin: 3px 0 5px; }
-    #nbp-root .map-wrap { margin-bottom: 6px; }
-    #nbp-root .map-wrap img { width: 100%; border: 1px solid #ddd; border-radius: 3px; display: block; }
-    #nbp-root .map-label { font-size: 9px; font-weight: bold; color: #1565c0; margin-bottom: 2px; }
-    #nbp-root .cols { display: flex; gap: 8px; }
-    #nbp-root .col { flex: 1; min-width: 0; }
-    #nbp-root .ct { font-size: 10px; font-weight: bold; color: white; padding: 2px 6px; border-radius: 3px; margin-bottom: 4px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    #nbp-root .c1 { background: #1565c0; }
-    #nbp-root .c2 { background: #2e7d32; }
-    #nbp-root .cb { margin-bottom: 4px; break-inside: avoid; }
-    #nbp-root .ch { color: white; padding: 1px 5px; border-radius: 2px; font-size: 8px; font-weight: bold; margin-bottom: 1px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    #nbp-root table { width: 100%; border-collapse: collapse; }
-    #nbp-root .n { padding: 1px 3px; font-size: 8px; border-bottom: 1px solid #eee; }
-    #nbp-root .d { padding: 1px 3px; font-size: 8px; color: #1565c0; text-align: right; border-bottom: 1px solid #eee; white-space: nowrap; }
-    #nbp-root .r { padding: 1px 3px; font-size: 8px; color: #e65100; border-bottom: 1px solid #eee; }
-    #nbp-root .nd { font-size: 8px; color: #999; padding: 3px; }
-  `;
-
-  const st = document.createElement('style'); st.id = 'nbp-style'; st.textContent = css;
-  document.head.appendChild(st);
-
-  const div = document.createElement('div'); div.id = 'nbp-root';
-  div.style.cssText = 'position:fixed;top:-9999px;left:0;width:190mm;background:white;z-index:-1;';
-  div.innerHTML = `
-    <h1>近隣環境マップ</h1>
-    <div class="sub">${esc(address)}</div>
-    <hr/>
-    ${mapUrl ? `<div class="map-wrap">
-      <div class="map-label">${mapLabel}の地図</div>
-      <img src="${mapUrl}" alt="地図"/>
-    </div>` : ''}
-    <div class="cols">
-      <div class="col"><div class="ct c1">半径1km圏内の施設</div>${l1}</div>
-      <div class="col"><div class="ct c2">半径2km圏内の施設</div>${l2}</div>
-    </div>`;
-  document.body.appendChild(div);
-  console.log('[doPrint] div appended, waiting for images...');
-
-  const imgs = Array.from(div.querySelectorAll('img'));
-  const execPrint = () => {
-    console.log('[doPrint] printing now');
-    window.print();
-    setTimeout(() => { div.remove(); st.remove(); }, 3000);
-  };
-
-  if (imgs.length === 0) {
-    execPrint();
-  } else {
-    let loaded = 0;
-    imgs.forEach((img) => {
-      const done = () => { loaded++; console.log('[doPrint] img done:', loaded, '/', imgs.length); if (loaded >= imgs.length) execPrint(); };
-      if (img.complete) done();
-      else { img.onload = done; img.onerror = done; }
-    });
-    setTimeout(execPrint, 6000); // 6秒タイムアウト
-  }
 }
 
 // ---- メインコンポーネント ----
@@ -314,10 +133,7 @@ const NearbyMapModal: React.FC<NearbyMapModalProps> = ({ open, onClose, googleMa
     }
   }, []);
 
-  useEffect(() => {
-    if (!coords) return;
-    doFetch(coords);
-  }, [coords, doFetch]);
+  useEffect(() => { if (!coords) return; doFetch(coords); }, [coords, doFetch]);
 
   const onMapLoad = useCallback((map: google.maps.Map) => {
     mapRef.current = map;
@@ -340,12 +156,51 @@ const NearbyMapModal: React.FC<NearbyMapModalProps> = ({ open, onClose, googleMa
     onClose();
   };
 
+  // ---- 印刷：モーダルコンテンツをそのまま印刷 ----
+  const handlePrint = () => {
+    // 印刷用スタイルを一時的に追加
+    const styleId = 'nearby-print-override';
+    const old = document.getElementById(styleId); if (old) old.remove();
+    const st = document.createElement('style'); st.id = styleId;
+    st.textContent = `
+      @media print {
+        @page { size: A4 landscape; margin: 8mm; }
+        body > *:not(.MuiDialog-root) { display: none !important; }
+        .MuiDialog-root { position: static !important; }
+        .MuiDialog-container { height: auto !important; align-items: flex-start !important; }
+        .MuiDialog-paper {
+          height: auto !important; max-height: none !important;
+          box-shadow: none !important; margin: 0 !important;
+          width: 100% !important; max-width: 100% !important;
+        }
+        .MuiDialogTitle-root { padding: 4px 8px !important; }
+        .MuiDialogContent-root { overflow: visible !important; height: auto !important; }
+        .MuiDialogActions-root { display: none !important; }
+        .MuiTabs-root { display: none !important; }
+        .no-print { display: none !important; }
+        /* 地図エリアを固定高さで印刷 */
+        .nearby-map-container { height: 400px !important; }
+      }
+    `;
+    document.head.appendChild(st);
+    window.print();
+    setTimeout(() => st.remove(), 3000);
+  };
+
   const cur = tab === 0 ? data1 : data2;
-  const c1 = data1 ? Object.values(data1.places).reduce((s, a) => s + a.length, 0) : 0;
-  const c2 = data2 ? Object.values(data2.places).reduce((s, a) => s + a.length, 0) : 0;
+  const c1 = data1 ? Object.values(data1.places).filter((_, i) => DISPLAY_CATS.has(Object.keys(data1.places)[i])).reduce((s, a) => s + a.length, 0) : 0;
+  const c2 = data2 ? Object.values(data2.places).filter((_, i) => DISPLAY_CATS.has(Object.keys(data2.places)[i])).reduce((s, a) => s + a.length, 0) : 0;
 
   return (
-    <Dialog open={open} onClose={handleClose} maxWidth="xl" fullWidth PaperProps={{ sx: { height: '92vh', display: 'flex', flexDirection: 'column' } }}>
+    <Dialog open={open} onClose={handleClose} maxWidth="xl" fullWidth
+      PaperProps={{ sx: { height: '92vh', display: 'flex', flexDirection: 'column' } }}>
+
+      {/* 印刷用タイトル（通常時は非表示） */}
+      <Box sx={{ display: 'none', '@media print': { display: 'block' }, px: 2, pt: 1 }}>
+        <Typography variant="h6" fontWeight="bold">近隣環境マップ</Typography>
+        {address && <Typography variant="body2" color="text.secondary">{address}</Typography>}
+      </Box>
+
       <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', pb: 1 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
           <MapIcon color="primary" />
@@ -353,11 +208,11 @@ const NearbyMapModal: React.FC<NearbyMapModalProps> = ({ open, onClose, googleMa
           {address && <Typography variant="body2" color="text.secondary">{address}</Typography>}
           {loading && <CircularProgress size={16} sx={{ ml: 1 }} />}
         </Box>
-        <IconButton onClick={handleClose} size="small"><CloseIcon /></IconButton>
+        <IconButton onClick={handleClose} size="small" className="no-print"><CloseIcon /></IconButton>
       </DialogTitle>
       <Divider />
 
-      <Box sx={{ borderBottom: 1, borderColor: 'divider', px: 2 }}>
+      <Box sx={{ borderBottom: 1, borderColor: 'divider', px: 2 }} className="no-print">
         <Tabs value={tab} onChange={(_, v) => setTab(v)}>
           <Tab label={<Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}><span>🔵 半径1km</span>{c1 > 0 && <Chip label={`${c1}件`} size="small" sx={{ height: 18, fontSize: '10px' }} />}</Box>} />
           <Tab label={<Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}><span>🟢 半径2km</span>{c2 > 0 && <Chip label={`${c2}件`} size="small" sx={{ height: 18, fontSize: '10px' }} />}</Box>} />
@@ -370,7 +225,8 @@ const NearbyMapModal: React.FC<NearbyMapModalProps> = ({ open, onClose, googleMa
 
         {coords && isLoaded && (
           <Box sx={{ display: 'flex', gap: 2, height: '100%' }}>
-            <Box sx={{ flex: '1 1 65%', borderRadius: 1, overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.15)', minWidth: 0 }}>
+            {/* 地図（左65%） */}
+            <Box className="nearby-map-container" sx={{ flex: '1 1 65%', borderRadius: 1, overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.15)', minWidth: 0 }}>
               <GoogleMap
                 mapContainerStyle={{ width: '100%', height: '100%' }}
                 center={coords}
@@ -380,6 +236,7 @@ const NearbyMapModal: React.FC<NearbyMapModalProps> = ({ open, onClose, googleMa
               />
             </Box>
 
+            {/* 施設リスト（右35%） */}
             <Box sx={{ flex: '0 0 35%', overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 0.75 }}>
               {loading && (
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 1 }}>
@@ -392,7 +249,7 @@ const NearbyMapModal: React.FC<NearbyMapModalProps> = ({ open, onClose, googleMa
                   <Typography variant="caption" fontWeight="bold" color="text.secondary" sx={{ px: 0.5 }}>
                     半径{(cur.radius / 1000).toFixed(0)}km圏内の施設
                   </Typography>
-                  {cur.categories.map((cat) => {
+                  {cur.categories.filter(cat => DISPLAY_CATS.has(cat.type)).map((cat) => {
                     const places = cur.places[cat.type] || [];
                     if (!places.length) return null;
                     const color = COLORS[cat.type] || '#757575';
@@ -429,7 +286,7 @@ const NearbyMapModal: React.FC<NearbyMapModalProps> = ({ open, onClose, googleMa
       </DialogContent>
 
       <Divider />
-      <DialogActions sx={{ px: 2, py: 1.5, gap: 1 }}>
+      <DialogActions sx={{ px: 2, py: 1.5, gap: 1 }} className="no-print">
         <Tooltip title="施設情報を再取得します">
           <span>
             <Button variant="outlined" startIcon={<RefreshIcon />} onClick={() => coords && doFetch(coords)} disabled={loading || !coords} size="small">再取得</Button>
@@ -437,12 +294,9 @@ const NearbyMapModal: React.FC<NearbyMapModalProps> = ({ open, onClose, googleMa
         </Tooltip>
         <Box sx={{ flex: 1 }} />
         <Button variant="contained" color="primary" startIcon={<PrintIcon />}
-          onClick={() => {
-            console.log('[Print] clicked, data1:', !!data1, 'data2:', !!data2, 'loading:', loading);
-            doPrint(address || '', data1, data2, tab);
-          }}
+          onClick={handlePrint}
           disabled={(!data1 && !data2) || loading}>
-          PDFで印刷（A4・1枚）
+          PDFで印刷
         </Button>
         <Button variant="outlined" onClick={handleClose}>閉じる</Button>
       </DialogActions>

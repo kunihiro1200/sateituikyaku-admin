@@ -4,20 +4,17 @@ import axios from 'axios';
 
 const router = Router();
 
-// カテゴリ定義（旧版Places API nearbysearch用）
+// カテゴリ定義（飲食店・薬局は不要のため削除）
 const PLACE_CATEGORIES = [
-  { type: 'supermarket',       label: 'スーパー',             icon: '🛒' },
-  { type: 'convenience_store', label: 'コンビニ',             icon: '🏪' },
-  { type: 'school',            label: '小学校・中学校',       icon: '🏫' },
-  { type: 'hospital',          label: '病院・クリニック',     icon: '🏥' },
-  { type: 'pharmacy',          label: '薬局・ドラッグストア', icon: '💊' },
-  { type: 'bank',              label: '銀行・ATM',            icon: '🏦' },
-  { type: 'post_office',       label: '郵便局',               icon: '📮' },
-  { type: 'park',              label: '公園',                 icon: '🌳' },
-  { type: 'restaurant',        label: 'レストラン',           icon: '🍽️' },
-  { type: 'train_station',     label: '駅',                   icon: '🚉' },
-  { type: 'bus_station',       label: 'バス停',               icon: '🚌' },
-  { type: 'kindergarten',      label: '幼稚園・保育園',       icon: '🎒' },
+  { type: 'supermarket',       label: 'スーパー',           icon: '🛒' },
+  { type: 'convenience_store', label: 'コンビニ',           icon: '🏪' },
+  { type: 'school',            label: '小学校・中学校',     icon: '🏫' },
+  { type: 'hospital',          label: '病院・クリニック',   icon: '🏥' },
+  { type: 'bank',              label: '銀行・ATM',          icon: '🏦' },
+  { type: 'post_office',       label: '郵便局',             icon: '📮' },
+  { type: 'park',              label: '公園',               icon: '🌳' },
+  { type: 'train_station',     label: '駅',                 icon: '🚉' },
+  { type: 'kindergarten',      label: '幼稚園・保育園',     icon: '🎒' },
 ];
 
 /**
