@@ -40,45 +40,34 @@ router.post('/analyze', async (req: Request, res: Response) => {
     }
 
     // チェック項目リスト
-    const itemsList = CHECK_ITEMS.map((item) => `- ${item.key}: ${item.label}`).join('\n');
+    const itemsList = CHECK_ITEMS.map((item) => `"${item.key}"`).join(', ');
+    const itemsDetail = CHECK_ITEMS.map((item) => `- "${item.key}": ${item.label}`).join('\n');
+
+    // システムプロンプト（JSON出力を強制）
+    const systemPrompt = `あなたはマンション管理規約の専門家です。
+ユーザーが送る管理規約の画像を読み取り、指定された項目の条文を抽出します。
+必ず以下のJSON形式のみで応答してください。説明文・前置き・コードブロック記号は一切不要です。
+
+応答形式（これ以外は絶対に出力しない）:
+{"pets":null,"piano":null,"flooring":null,"renovation":null,"sublease":null,"parking":null,"balcony":null,"noise":null,"garbage":null,"subletting":null,"smoking":null,"signage":null}
+
+各keyに該当条文があれば文字列、なければnullを入れてください。`;
+
+    // ユーザープロンプト
+    const userPrompt = `以下の管理規約画像から、各項目の条文を抽出してJSONで返してください。
+
+【抽出するkey一覧】
+${itemsDetail}
+
+【ルール】
+- 条文番号（第○条）とページ番号を含めること
+- 原文に近い形で記載すること
+- 見つからない場合はnull
+- JSON以外は出力しないこと`;
 
     // OpenAI Vision用のコンテンツブロックを構築
     const contentBlocks: any[] = [
-      {
-        type: 'text',
-        text: `あなたはマンション管理規約の専門家です。
-添付された管理規約の画像を読み取り、以下の各項目について該当する条文を抽出してください。
-
-【チェック項目（keyとラベル）】
-${itemsList}
-
-【出力形式】
-以下のJSON形式のみを出力してください。該当する条文が見つかった場合はその内容を、見つからない場合は null を返してください。
-
-\`\`\`json
-{
-  "pets": "第○条 区分所有者はペットは小型犬２匹までとなっています（○ページ）",
-  "piano": null,
-  "flooring": "第○条 ...",
-  "renovation": "第○条 ...",
-  "sublease": null,
-  "parking": "第○条 ...",
-  "balcony": null,
-  "noise": "第○条 ...",
-  "garbage": null,
-  "subletting": "第○条 ...",
-  "smoking": null,
-  "signage": null
-}
-\`\`\`
-
-【注意事項】
-- 条文番号（第○条）とページ番号を必ず含めてください
-- 条文の内容は要約せず、できるだけ原文に近い形で記載してください
-- 複数の条文が関連する場合は、最も重要な条文を記載してください
-- 日本語で回答してください
-- JSONコードブロックのみを出力し、前後に説明文を付けないでください`,
-      },
+      { type: 'text', text: userPrompt },
     ];
 
     // 画像ブロックを追加（PDFはOpenAI Visionでは非対応のため画像のみ）
@@ -105,8 +94,12 @@ ${itemsList}
       'https://api.openai.com/v1/chat/completions',
       {
         model: 'gpt-4o',
-        max_tokens: 4096,
+        max_tokens: 2048,
         messages: [
+          {
+            role: 'system',
+            content: systemPrompt,
+          },
           {
             role: 'user',
             content: contentBlocks,
@@ -118,35 +111,38 @@ ${itemsList}
           Authorization: `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
         },
-        timeout: 120000, // 2分タイムアウト
+        timeout: 120000,
       }
     );
 
-    const responseText = response.data?.choices?.[0]?.message?.content || '';
+    const responseText = (response.data?.choices?.[0]?.message?.content || '').trim();
+    console.log('[management-rules] raw response:', responseText.substring(0, 200));
 
-    // JSONブロックを抽出
-    const jsonMatch = responseText.match(/```json\n?([\s\S]*?)\n?```/);
     let extractedData: Record<string, string | null> = {};
 
-    if (jsonMatch) {
+    // パターン1: ```json ... ``` ブロック
+    const jsonBlockMatch = responseText.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+    // パターン2: { ... } を直接抽出
+    const jsonRawMatch = responseText.match(/\{[\s\S]*\}/);
+
+    const jsonStr = jsonBlockMatch?.[1] ?? jsonRawMatch?.[0] ?? null;
+
+    if (jsonStr) {
       try {
-        extractedData = JSON.parse(jsonMatch[1]);
+        extractedData = JSON.parse(jsonStr);
       } catch (parseError) {
-        console.error('JSON parse error:', parseError);
+        console.error('[management-rules] JSON parse error:', parseError, 'raw:', jsonStr);
         return res.status(500).json({
           error: 'AIの応答をパースできませんでした',
           rawResponse: responseText,
         });
       }
     } else {
-      try {
-        extractedData = JSON.parse(responseText);
-      } catch {
-        return res.status(500).json({
-          error: 'AIの応答にJSONが含まれていませんでした',
-          rawResponse: responseText,
-        });
-      }
+      console.error('[management-rules] No JSON found in response:', responseText);
+      return res.status(500).json({
+        error: 'AIの応答にJSONが含まれていませんでした',
+        rawResponse: responseText,
+      });
     }
 
     // チェック項目のラベルと結合して返す
