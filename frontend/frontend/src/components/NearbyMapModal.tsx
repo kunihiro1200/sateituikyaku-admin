@@ -221,92 +221,86 @@ const NearbyMapModal: React.FC<NearbyMapModalProps> = ({ open, onClose, googleMa
     const st = document.createElement('style'); st.id = styleId;
     st.textContent = `
       @media print {
-        @page { size: A4 landscape; margin: 4mm 5mm; }
+        @page { size: A4 landscape; margin: 0; }
 
         /* ダイアログ以外を非表示 */
         body > *:not(.MuiDialog-root) { display: none !important; }
 
         /* ダイアログ全体をフラットに展開 */
-        .MuiDialog-root {
-          position: static !important;
-          display: block !important;
-        }
-        .MuiBackdrop-root { display: none !important; }
-        .MuiDialog-container {
-          display: block !important;
-          height: auto !important;
-          transform: none !important;
-        }
+        .MuiDialog-root,
+        .MuiDialog-container,
         .MuiDialog-paper {
+          all: unset !important;
+          display: block !important;
           position: static !important;
+          width: 100% !important;
           height: auto !important;
           max-height: none !important;
-          box-shadow: none !important;
-          margin: 0 !important;
-          width: 100% !important;
-          max-width: 100% !important;
           overflow: visible !important;
-          display: block !important;
-          transform: none !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          box-shadow: none !important;
+          background: white !important;
         }
+        .MuiBackdrop-root { display: none !important; }
 
-        /* タイトルを最小化 */
-        .MuiDialogTitle-root {
-          padding: 1mm 3mm !important;
-          min-height: 0 !important;
-          line-height: 1.2 !important;
-          border-bottom: 0.5px solid #ccc !important;
-        }
-        .MuiDialogTitle-root .MuiTypography-h6 { font-size: 11pt !important; }
-
-        /* 不要な要素を非表示 */
+        /* タイトル・タブ・ボタン類を非表示 */
+        .MuiDialogTitle-root,
         .MuiTabs-root,
         .MuiDialogActions-root,
-        .no-print,
-        .MuiDivider-root { display: none !important; }
+        .MuiDivider-root,
+        .no-print { display: none !important; }
 
         /* コンテンツエリア */
         .MuiDialogContent-root {
+          all: unset !important;
+          display: block !important;
           overflow: visible !important;
           padding: 0 !important;
-          height: auto !important;
-          flex: none !important;
+          width: 100% !important;
         }
 
-        /* 横並びコンテナを縦並びに（印刷時） */
+        /* 横並びコンテナを縦並びに */
         .nearby-print-wrapper {
           display: block !important;
+          width: 100% !important;
           height: auto !important;
         }
 
-        /* 1ページ目：地図をA4横いっぱい（タイトル分を引いた高さ） */
+        /* 1ページ目：地図をA4横いっぱい */
         .nearby-map-area {
-          width: 100% !important;
-          height: 185mm !important;
-          flex: none !important;
           display: block !important;
+          width: 100vw !important;
+          height: 100vh !important;
+          flex: none !important;
           page-break-after: always !important;
           break-after: page !important;
           overflow: hidden !important;
           margin: 0 !important;
+          padding: 0 !important;
         }
-        .nearby-map-area > div { height: 100% !important; }
+        .nearby-map-area > div {
+          width: 100% !important;
+          height: 100% !important;
+        }
 
-        /* 2ページ目：施設リスト1列（選択中タブのみ） */
+        /* 2ページ目：施設リスト1列 */
         .nearby-list-area {
           display: block !important;
           width: 100% !important;
           page-break-before: always !important;
           break-before: page !important;
           overflow: visible !important;
+          padding: 8mm !important;
+          box-sizing: border-box !important;
         }
         .nearby-list-area > * { width: 100% !important; }
 
-        /* 通常表示用の要素を印刷時に非表示 */
+        /* 通常表示用を非表示 */
         .nearby-screen-only { display: none !important; }
 
-        /* 印刷用要素を表示 */
-        .nearby-print-only { display: flex !important; }
+        /* 印刷用を表示 */
+        .nearby-print-only { display: block !important; }
 
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
