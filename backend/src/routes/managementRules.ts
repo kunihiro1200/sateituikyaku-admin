@@ -11,11 +11,15 @@ const CHECK_ITEMS = [
   { key: 'renovation', label: 'リフォーム・改修工事全般' },
   { key: 'sublease', label: '民泊・短期賃貸（Airbnb等）' },
   { key: 'parking', label: '駐車場・駐輪場の利用' },
-  { key: 'balcony', label: 'バルコニー・ベランダの使用制限' },
+  { key: 'balcony_exclusive', label: '専用使用権 - バルコニー' },
+  { key: 'parking_exclusive', label: '専用使用権 - 専用駐車場' },
+  { key: 'bicycle_exclusive', label: '専用使用権 - 専用駐輪場' },
+  { key: 'garden_exclusive', label: '専用使用権 - 専用庭' },
+  { key: 'storage_exclusive', label: '専用使用権 - 専用倉庫' },
+  { key: 'usage_restriction', label: '用途制限' },
   { key: 'noise', label: '騒音・生活音の制限' },
   { key: 'garbage', label: 'ゴミ出しルール' },
   { key: 'subletting', label: '専有部分の第三者への貸与' },
-  { key: 'smoking', label: '喫煙ルール' },
   { key: 'signage', label: '看板・広告物の掲示' },
 ];
 
@@ -93,7 +97,7 @@ ${itemsDetail}
 - 見つからない場合はnull
 - 必ず以下のJSON形式のみで応答すること（説明文・コードブロック記号は不要）
 
-{"pets":null,"piano":null,"flooring":null,"renovation":null,"sublease":null,"parking":null,"balcony":null,"noise":null,"garbage":null,"subletting":null,"smoking":null,"signage":null}`,
+{"pets":null,"piano":null,"flooring":null,"renovation":null,"sublease":null,"parking":null,"balcony_exclusive":null,"parking_exclusive":null,"bicycle_exclusive":null,"garden_exclusive":null,"storage_exclusive":null,"usage_restriction":null,"noise":null,"garbage":null,"subletting":null,"signage":null}`,
     });
 
     // Claude APIに送信（PDF直接対応）
