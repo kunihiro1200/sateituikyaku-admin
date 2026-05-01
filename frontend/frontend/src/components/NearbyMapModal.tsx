@@ -522,8 +522,9 @@ const NearbyMapModal: React.FC<NearbyMapModalProps> = ({ open, onClose, googleMa
                   fullscreenControl: true,
                   clickableIcons: false,
                   styles: [
-                    // 飲食店・カフェ・バーを非表示
-                    { featureType: 'poi.food_and_drink', elementType: 'all', stylers: [{ visibility: 'off' }] },
+                    // 飲食店・カフェ・バーを非表示（poi.attraction以外のPOIラベルを抑制）
+                    { featureType: 'poi', elementType: 'labels', stylers: [{ visibility: 'off' }] },
+                    { featureType: 'poi.park', elementType: 'labels', stylers: [{ visibility: 'on' }] },
                   ],
                 }}
                 onLoad={onMapLoad}
