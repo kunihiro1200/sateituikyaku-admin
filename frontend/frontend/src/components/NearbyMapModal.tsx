@@ -44,20 +44,27 @@ async function extractCoords(url: string, apiBase: string): Promise<{ lat: numbe
 
 // ---- テキストラベル付きSVGマーカー（常時表示） ----
 function makeTextMarker(name: string, color: string): { url: string; w: number; h: number } {
-  // 最大12文字に制限
-  const label = name.length > 12 ? name.slice(0, 12) + '…' : name;
+  // 最大12文字に制限、特殊文字をエスケープ
+  const raw = name.length > 12 ? name.slice(0, 12) + '…' : name;
+  // SVG内テキスト用エスケープ（encodeURIComponentが失敗しないよう安全な文字のみ）
+  const label = raw.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   const charW = 7.5;
-  const w = Math.max(60, label.length * charW + 16);
+  const w = Math.max(60, raw.length * charW + 16);
   const h = 22;
-  const ah = 6; // 矢印の高さ
+  const ah = 6;
   const totalH = h + ah;
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${totalH}">
     <rect x="0" y="0" width="${w}" height="${h}" rx="4" ry="4" fill="${color}" opacity="0.92"/>
-    <text x="${w/2}" y="15" font-family="'Hiragino Sans','Meiryo','Yu Gothic',sans-serif"
+    <text x="${w/2}" y="15" font-family="Meiryo,sans-serif"
       font-size="10" font-weight="bold" fill="white" text-anchor="middle">${label}</text>
     <polygon points="${w/2-5},${h} ${w/2+5},${h} ${w/2},${totalH}" fill="${color}" opacity="0.92"/>
   </svg>`;
-  return { url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg), w, h: totalH };
+  try {
+    return { url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg), w, h: totalH };
+  } catch {
+    // エンコード失敗時はBase64にフォールバック
+    return { url: 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg))), w, h: totalH };
+  }
 }
 
 // ---- 物件マーカー（大きく目立つ） ----
@@ -65,11 +72,15 @@ function makePropertyMarker(): { url: string; w: number; h: number } {
   const w = 60; const h = 26; const ah = 8; const totalH = h + ah;
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${totalH}">
     <rect x="0" y="0" width="${w}" height="${h}" rx="5" ry="5" fill="#d32f2f"/>
-    <text x="${w/2}" y="18" font-family="'Hiragino Sans','Meiryo','Yu Gothic',sans-serif"
-      font-size="12" font-weight="bold" fill="white" text-anchor="middle">📍 物件</text>
+    <text x="${w/2}" y="18" font-family="Meiryo,sans-serif"
+      font-size="12" font-weight="bold" fill="white" text-anchor="middle">&#x1F4CD; &#x7269;&#x4EF6;</text>
     <polygon points="${w/2-6},${h} ${w/2+6},${h} ${w/2},${totalH}" fill="#d32f2f"/>
   </svg>`;
-  return { url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg), w, h: totalH };
+  try {
+    return { url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg), w, h: totalH };
+  } catch {
+    return { url: 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg))), w, h: totalH };
+  }
 }
 
 // ---- マーカー描画（テキスト常時表示） ----
@@ -171,6 +182,7 @@ function listHtml(data: NearbyData): string {
 
 // ---- PDF印刷（地図画像 + 施設リスト） ----
 function doPrint(address: string, d1: NearbyData | null, d2: NearbyData | null) {
+  console.log('[doPrint] called, d1:', !!d1, 'd2:', !!d2);
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '';
   const l1 = d1 ? listHtml(d1) : '<p class="nd">データなし</p>';
   const l2 = d2 ? listHtml(d2) : '<p class="nd">データなし</p>';
@@ -421,7 +433,10 @@ const NearbyMapModal: React.FC<NearbyMapModalProps> = ({ open, onClose, googleMa
         </Tooltip>
         <Box sx={{ flex: 1 }} />
         <Button variant="contained" color="primary" startIcon={<PrintIcon />}
-          onClick={() => doPrint(address || '', data1, data2)}
+          onClick={() => {
+            console.log('[Print] clicked, data1:', !!data1, 'data2:', !!data2, 'loading:', loading);
+            doPrint(address || '', data1, data2);
+          }}
           disabled={(!data1 && !data2) || loading}>
           PDFで印刷（A4・1枚）
         </Button>
