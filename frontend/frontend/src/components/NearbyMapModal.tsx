@@ -511,7 +511,7 @@ const NearbyMapModal: React.FC<NearbyMapModalProps> = ({ open, onClose, googleMa
     // 実際の地図コンテナサイズを使用（モーダルサイズに追従）
     const PRINT_W = mapAreaEl.offsetWidth || 800;
     const HEADER_H = 36;
-    const PRINT_MAP_H = mapAreaEl.offsetHeight - HEADER_H || 500;
+    const PRINT_MAP_H = mapAreaEl.offsetHeight || 500;
 
     // 印刷用ラッパーを body に追加（地図DOMを移動）
     const printWrap = document.createElement('div');
@@ -587,7 +587,7 @@ const NearbyMapModal: React.FC<NearbyMapModalProps> = ({ open, onClose, googleMa
           position: static !important;
           display: block !important;
           width: 100% !important;
-          height: 185mm !important;
+          height: ${PRINT_MAP_H}px !important;
           overflow: hidden !important;
           page-break-after: always !important;
           break-after: page !important;
