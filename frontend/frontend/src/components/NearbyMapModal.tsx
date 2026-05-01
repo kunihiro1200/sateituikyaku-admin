@@ -174,58 +174,90 @@ function doPrint(address: string, d1: NearbyData | null, d2: NearbyData | null) 
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '';
   const l1 = d1 ? listHtml(d1) : '<p class="nd">データなし</p>';
   const l2 = d2 ? listHtml(d2) : '<p class="nd">データなし</p>';
-  const map1Url = d1 ? buildStaticMapUrl(d1, apiKey) : '';
-  const map2Url = d2 ? buildStaticMapUrl(d2, apiKey) : '';
+  const map1Url = d1 && apiKey ? buildStaticMapUrl(d1, apiKey) : '';
+  const map2Url = d2 && apiKey ? buildStaticMapUrl(d2, apiKey) : '';
 
-  const old = document.getElementById('nbp-root'); if (old) old.remove();
-  const oldSt = document.getElementById('nbp-style'); if (oldSt) oldSt.remove();
+  // 既存要素を削除
+  ['nbp-root', 'nbp-style'].forEach((id) => { const el = document.getElementById(id); if (el) el.remove(); });
 
-  const st = document.createElement('style'); st.id = 'nbp-style';
-  st.textContent = `@media print{
-    body>*:not(#nbp-root){display:none!important;}
-    #nbp-root{display:block!important;position:fixed!important;top:0!important;left:0!important;
-      width:100%!important;background:white!important;z-index:999999!important;
-      padding:8mm 10mm!important;font-family:'Hiragino Sans','Meiryo',sans-serif!important;
-      font-size:9px!important;color:#111!important;
-      -webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}
-    #nbp-root h1{font-size:13px;color:#1565c0;margin-bottom:2px;}
-    #nbp-root .sub{font-size:8px;color:#555;margin-bottom:5px;}
-    #nbp-root hr{border:none;border-top:2px solid #1565c0;margin:3px 0 6px;}
-    #nbp-root .maps{display:flex;gap:6px;margin-bottom:6px;}
-    #nbp-root .map-block{flex:1;text-align:center;}
-    #nbp-root .map-block img{width:100%;border:1px solid #ddd;border-radius:3px;}
-    #nbp-root .map-label{font-size:9px;font-weight:bold;margin-bottom:2px;}
-    #nbp-root .cols{display:flex;gap:8px;}
-    #nbp-root .col{flex:1;min-width:0;}
-    #nbp-root .ct{font-size:10px;font-weight:bold;color:white;padding:2px 6px;border-radius:3px;margin-bottom:4px;}
-    #nbp-root .c1{background:#1565c0!important;}
-    #nbp-root .c2{background:#2e7d32!important;}
-    #nbp-root .cb{margin-bottom:4px;break-inside:avoid;}
-    #nbp-root .ch{color:white!important;padding:1px 5px;border-radius:2px;font-size:8px;font-weight:bold;margin-bottom:1px;}
-    #nbp-root table{width:100%;border-collapse:collapse;}
-    #nbp-root .n{padding:1px 3px;font-size:8px;border-bottom:1px solid #eee;}
-    #nbp-root .d{padding:1px 3px;font-size:8px;color:#1565c0;text-align:right;border-bottom:1px solid #eee;white-space:nowrap;}
-    #nbp-root .r{padding:1px 3px;font-size:8px;color:#e65100;border-bottom:1px solid #eee;}
-    #nbp-root .nd{font-size:8px;color:#999;padding:3px;}
-  }`;
+  const css = `
+    @page { size: A4 portrait; margin: 8mm 10mm; }
+    @media print {
+      body > *:not(#nbp-root) { display: none !important; }
+      #nbp-root {
+        display: block !important; position: fixed !important;
+        top: 0 !important; left: 0 !important; width: 100% !important;
+        background: white !important; z-index: 999999 !important;
+        padding: 0 !important;
+        font-family: 'Hiragino Sans','Meiryo',sans-serif !important;
+        font-size: 9px !important; color: #111 !important;
+        -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important;
+      }
+    }
+    #nbp-root { font-family: 'Hiragino Sans','Meiryo',sans-serif; font-size: 9px; color: #111; }
+    #nbp-root h1 { font-size: 13px; color: #1565c0; margin: 0 0 2px; }
+    #nbp-root .sub { font-size: 8px; color: #555; margin-bottom: 5px; }
+    #nbp-root hr { border: none; border-top: 2px solid #1565c0; margin: 3px 0 6px; }
+    #nbp-root .maps { display: flex; gap: 6px; margin-bottom: 6px; }
+    #nbp-root .map-block { flex: 1; }
+    #nbp-root .map-block img { width: 100%; border: 1px solid #ddd; border-radius: 3px; display: block; }
+    #nbp-root .map-label { font-size: 9px; font-weight: bold; margin-bottom: 2px; }
+    #nbp-root .cols { display: flex; gap: 8px; }
+    #nbp-root .col { flex: 1; min-width: 0; }
+    #nbp-root .ct { font-size: 10px; font-weight: bold; color: white; padding: 2px 6px; border-radius: 3px; margin-bottom: 4px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    #nbp-root .c1 { background: #1565c0; }
+    #nbp-root .c2 { background: #2e7d32; }
+    #nbp-root .cb { margin-bottom: 4px; break-inside: avoid; }
+    #nbp-root .ch { color: white; padding: 1px 5px; border-radius: 2px; font-size: 8px; font-weight: bold; margin-bottom: 1px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    #nbp-root table { width: 100%; border-collapse: collapse; }
+    #nbp-root .n { padding: 1px 3px; font-size: 8px; border-bottom: 1px solid #eee; }
+    #nbp-root .d { padding: 1px 3px; font-size: 8px; color: #1565c0; text-align: right; border-bottom: 1px solid #eee; white-space: nowrap; }
+    #nbp-root .r { padding: 1px 3px; font-size: 8px; color: #e65100; border-bottom: 1px solid #eee; }
+    #nbp-root .nd { font-size: 8px; color: #999; padding: 3px; }
+  `;
+
+  const st = document.createElement('style'); st.id = 'nbp-style'; st.textContent = css;
   document.head.appendChild(st);
 
-  const div = document.createElement('div'); div.id = 'nbp-root'; div.style.display = 'none';
+  const div = document.createElement('div'); div.id = 'nbp-root';
+  // 通常時も表示（印刷プレビュー確認用）、ただし画面外に配置
+  div.style.cssText = 'position:fixed;top:-9999px;left:0;width:210mm;background:white;z-index:-1;';
   div.innerHTML = `
     <h1>近隣環境マップ</h1>
     <div class="sub">${esc(address)}</div>
     <hr/>
-    <div class="maps">
+    ${(map1Url || map2Url) ? `<div class="maps">
       ${map1Url ? `<div class="map-block"><div class="map-label" style="color:#1565c0">🔵 半径1km</div><img src="${map1Url}" alt="1km地図"/></div>` : ''}
       ${map2Url ? `<div class="map-block"><div class="map-label" style="color:#2e7d32">🟢 半径2km</div><img src="${map2Url}" alt="2km地図"/></div>` : ''}
-    </div>
+    </div>` : ''}
     <div class="cols">
       <div class="col"><div class="ct c1">🔵 半径1km圏内の施設</div>${l1}</div>
       <div class="col"><div class="ct c2">🟢 半径2km圏内の施設</div>${l2}</div>
     </div>`;
   document.body.appendChild(div);
-  window.print();
-  setTimeout(() => { div.remove(); st.remove(); }, 3000);
+
+  // 地図画像の読み込みを待ってから印刷
+  const imgs = div.querySelectorAll('img');
+  if (imgs.length === 0) {
+    window.print();
+    setTimeout(() => { div.remove(); st.remove(); }, 3000);
+  } else {
+    let loaded = 0;
+    const total = imgs.length;
+    const tryPrint = () => {
+      loaded++;
+      if (loaded >= total) {
+        window.print();
+        setTimeout(() => { div.remove(); st.remove(); }, 3000);
+      }
+    };
+    imgs.forEach((img) => {
+      if (img.complete) { tryPrint(); }
+      else { img.onload = tryPrint; img.onerror = tryPrint; }
+    });
+    // 5秒でタイムアウト
+    setTimeout(() => { window.print(); setTimeout(() => { div.remove(); st.remove(); }, 3000); }, 5000);
+  }
 }
 
 // ---- メインコンポーネント ----
