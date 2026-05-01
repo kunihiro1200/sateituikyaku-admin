@@ -234,12 +234,16 @@ const NearbyMapModal: React.FC<NearbyMapModalProps> = ({ open, onClose, googleMa
         .MuiDialogTitle-root { padding: 2px 6px !important; border-bottom: 1px solid #ccc !important; }
         .MuiTabs-root, .MuiDialogActions-root, .no-print { display: none !important; }
         .MuiDialogContent-root { overflow: visible !important; padding: 0 !important; height: auto !important; }
+        /* 横並びコンテナを縦並びに（印刷時） */
+        .nearby-print-wrapper { display: block !important; height: auto !important; }
         /* 1ページ目：地図をA4横いっぱい */
         .nearby-map-area {
-          width: 100% !important; height: 185mm !important;
+          width: 100% !important; height: 160mm !important;
           flex: none !important; display: block !important;
           page-break-after: always !important; break-after: page !important;
+          overflow: hidden !important;
         }
+        .nearby-map-area > div { height: 100% !important; }
         /* 2ページ目：施設リスト2列 */
         .nearby-list-area {
           display: flex !important; flex-direction: row !important;
@@ -293,7 +297,7 @@ const NearbyMapModal: React.FC<NearbyMapModalProps> = ({ open, onClose, googleMa
         {error && <Alert severity="error" sx={{ mb: 1 }}>{error}</Alert>}
 
         {coords && isLoaded && (
-          <Box sx={{ display: 'flex', gap: 2, height: '100%' }}>
+          <Box className="nearby-print-wrapper" sx={{ display: 'flex', gap: 2, height: '100%' }}>
 
             {/* ===== 地図エリア（1ページ目） ===== */}
             <Box className="nearby-map-area" sx={{ flex: '1 1 65%', borderRadius: 1, overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.15)', minWidth: 0 }}>
