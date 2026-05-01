@@ -291,12 +291,15 @@ const NearbyMapModal: React.FC<NearbyMapModalProps> = ({ open, onClose, googleMa
   const svcRef = useRef<google.maps.places.PlacesService | null>(null);
   const iwRef = useRef<google.maps.InfoWindow | null>(null);
   const mkRef = useRef<google.maps.Marker[]>([]);
+  // coordsRef: onMapLoadWithCoords のクロージャ問題を回避するため、常に最新の coords を保持
+  const coordsRef = useRef<{ lat: number; lng: number } | null>(null);
 
   // ---- 座標取得 ----
   useEffect(() => {
     if (!open || !googleMapUrl) return;
     setCoords(null); setData1(null); setData2(null);
-    extractCoords(googleMapUrl, apiBase).then((c) => { if (c) setCoords(c); });
+    coordsRef.current = null;
+    extractCoords(googleMapUrl, apiBase).then((c) => { if (c) { coordsRef.current = c; setCoords(c); } });
   }, [open, googleMapUrl, apiBase]);
 
   // ---- 地図ロード ----
@@ -314,16 +317,15 @@ const NearbyMapModal: React.FC<NearbyMapModalProps> = ({ open, onClose, googleMa
   }, [coords]);
 
   // 地図ロード後に coords が既にある場合
+  // coordsRef を使うことで、useCallback のクロージャ問題（古い coords を参照する問題）を回避
   const onMapLoadWithCoords = useCallback((map: google.maps.Map) => {
     onMapLoad(map);
-    if (coords) {
-      // 少し待ってからサービスを使う
-      setTimeout(() => {
-        if (svcRef.current && coords) runFetch(coords);
-      }, 300);
-    }
+    // 少し待ってから coordsRef.current（常に最新）を参照して施設取得
+    setTimeout(() => {
+      if (svcRef.current && coordsRef.current) runFetch(coordsRef.current);
+    }, 300);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [coords]);
+  }, []);
 
   const runFetch = useCallback(async (c: { lat: number; lng: number }) => {
     if (!svcRef.current) return;
