@@ -129,14 +129,15 @@ function buildStaticMapUrl(data: NearbyData, apiKey: string): string {
   if (!apiKey) return '';
   const { center, radius } = data;
   const zoom = radius <= 1000 ? 14 : 13;
-  // マーカーは物件のみ（施設マーカーはURLが長くなりすぎるため省略）
+  // A4横幅に合わせた大きめサイズ（Static API最大640x640）
   const params = new URLSearchParams({
     center: `${center.lat},${center.lng}`,
     zoom: String(zoom),
-    size: '580x280',
+    size: '640x400',
+    scale: '2',   // Retina対応（実質1280x800相当）
     language: 'ja',
     key: apiKey,
-    markers: `color:red|size:large|${center.lat},${center.lng}`,
+    markers: `color:red|size:large|label:P|${center.lat},${center.lng}`,
   });
   return `https://maps.googleapis.com/maps/api/staticmap?${params.toString()}`;
 }
@@ -152,17 +153,18 @@ function listHtml(data: NearbyData): string {
   return rows || '<p class="nd">この圏内に施設が見つかりませんでした</p>';
 }
 
-// ---- PDF印刷（地図画像 + 施設リスト） ----
-function doPrint(address: string, d1: NearbyData | null, d2: NearbyData | null) {
-  console.log('[doPrint] called, d1:', !!d1, 'd2:', !!d2);
+// ---- PDF印刷（現在のタブの地図1枚 + 施設リスト2列） ----
+function doPrint(address: string, d1: NearbyData | null, d2: NearbyData | null, currentTab: number) {
+  console.log('[doPrint] called, d1:', !!d1, 'd2:', !!d2, 'tab:', currentTab);
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '';
   const l1 = d1 ? listHtml(d1) : '<p class="nd">データなし</p>';
   const l2 = d2 ? listHtml(d2) : '<p class="nd">データなし</p>';
-  const map1Url = d1 && apiKey ? buildStaticMapUrl(d1, apiKey) : '';
-  const map2Url = d2 && apiKey ? buildStaticMapUrl(d2, apiKey) : '';
-  console.log('[doPrint] map1Url:', map1Url.slice(0, 80));
+  // 現在表示中のタブの地図を1枚だけ使用
+  const currentData = currentTab === 0 ? d1 : d2;
+  const mapUrl = currentData && apiKey ? buildStaticMapUrl(currentData, apiKey) : '';
+  const mapLabel = currentTab === 0 ? '半径1km圏内' : '半径2km圏内';
+  console.log('[doPrint] mapUrl:', mapUrl.slice(0, 80));
 
-  // 既存要素を削除
   ['nbp-root', 'nbp-style'].forEach((id) => { const el = document.getElementById(id); if (el) el.remove(); });
 
   const css = `
@@ -173,7 +175,6 @@ function doPrint(address: string, d1: NearbyData | null, d2: NearbyData | null) 
         display: block !important; position: fixed !important;
         top: 0 !important; left: 0 !important; width: 100% !important;
         background: white !important; z-index: 999999 !important;
-        padding: 0 !important;
         font-family: 'Hiragino Sans','Meiryo',sans-serif !important;
         font-size: 9px !important; color: #111 !important;
         -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important;
@@ -181,12 +182,11 @@ function doPrint(address: string, d1: NearbyData | null, d2: NearbyData | null) 
     }
     #nbp-root { font-family: 'Hiragino Sans','Meiryo',sans-serif; font-size: 9px; color: #111; }
     #nbp-root h1 { font-size: 13px; color: #1565c0; margin: 0 0 2px; }
-    #nbp-root .sub { font-size: 8px; color: #555; margin-bottom: 5px; }
-    #nbp-root hr { border: none; border-top: 2px solid #1565c0; margin: 3px 0 6px; }
-    #nbp-root .maps { display: flex; gap: 6px; margin-bottom: 6px; }
-    #nbp-root .map-block { flex: 1; }
-    #nbp-root .map-block img { width: 100%; border: 1px solid #ddd; border-radius: 3px; display: block; }
-    #nbp-root .map-label { font-size: 9px; font-weight: bold; margin-bottom: 2px; }
+    #nbp-root .sub { font-size: 8px; color: #555; margin-bottom: 4px; }
+    #nbp-root hr { border: none; border-top: 2px solid #1565c0; margin: 3px 0 5px; }
+    #nbp-root .map-wrap { margin-bottom: 6px; }
+    #nbp-root .map-wrap img { width: 100%; border: 1px solid #ddd; border-radius: 3px; display: block; }
+    #nbp-root .map-label { font-size: 9px; font-weight: bold; color: #1565c0; margin-bottom: 2px; }
     #nbp-root .cols { display: flex; gap: 8px; }
     #nbp-root .col { flex: 1; min-width: 0; }
     #nbp-root .ct { font-size: 10px; font-weight: bold; color: white; padding: 2px 6px; border-radius: 3px; margin-bottom: 4px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
@@ -205,49 +205,39 @@ function doPrint(address: string, d1: NearbyData | null, d2: NearbyData | null) 
   document.head.appendChild(st);
 
   const div = document.createElement('div'); div.id = 'nbp-root';
-  div.style.cssText = 'position:fixed;top:-9999px;left:0;width:210mm;background:white;z-index:-1;';
+  div.style.cssText = 'position:fixed;top:-9999px;left:0;width:190mm;background:white;z-index:-1;';
   div.innerHTML = `
     <h1>近隣環境マップ</h1>
     <div class="sub">${esc(address)}</div>
     <hr/>
-    ${(map1Url || map2Url) ? `<div class="maps">
-      ${map1Url ? `<div class="map-block"><div class="map-label" style="color:#1565c0">半径1km</div><img src="${map1Url}" alt="1km地図"/></div>` : ''}
-      ${map2Url ? `<div class="map-block"><div class="map-label" style="color:#2e7d32">半径2km</div><img src="${map2Url}" alt="2km地図"/></div>` : ''}
+    ${mapUrl ? `<div class="map-wrap">
+      <div class="map-label">${mapLabel}の地図</div>
+      <img src="${mapUrl}" alt="地図"/>
     </div>` : ''}
     <div class="cols">
       <div class="col"><div class="ct c1">半径1km圏内の施設</div>${l1}</div>
       <div class="col"><div class="ct c2">半径2km圏内の施設</div>${l2}</div>
     </div>`;
   document.body.appendChild(div);
-  console.log('[doPrint] div appended, calling window.print()');
+  console.log('[doPrint] div appended, waiting for images...');
 
-  // 地図画像の読み込みを待ってから印刷
   const imgs = Array.from(div.querySelectorAll('img'));
-  if (imgs.length === 0) {
-    console.log('[doPrint] no images, printing now');
+  const execPrint = () => {
+    console.log('[doPrint] printing now');
     window.print();
     setTimeout(() => { div.remove(); st.remove(); }, 3000);
+  };
+
+  if (imgs.length === 0) {
+    execPrint();
   } else {
     let loaded = 0;
-    const tryPrint = () => {
-      loaded++;
-      console.log('[doPrint] image loaded/errored:', loaded, '/', imgs.length);
-      if (loaded >= imgs.length) {
-        console.log('[doPrint] all images ready, printing');
-        window.print();
-        setTimeout(() => { div.remove(); st.remove(); }, 3000);
-      }
-    };
     imgs.forEach((img) => {
-      if (img.complete) { tryPrint(); }
-      else { img.onload = tryPrint; img.onerror = tryPrint; }
+      const done = () => { loaded++; console.log('[doPrint] img done:', loaded, '/', imgs.length); if (loaded >= imgs.length) execPrint(); };
+      if (img.complete) done();
+      else { img.onload = done; img.onerror = done; }
     });
-    // 5秒でタイムアウト
-    setTimeout(() => {
-      console.log('[doPrint] timeout, forcing print');
-      window.print();
-      setTimeout(() => { div.remove(); st.remove(); }, 3000);
-    }, 5000);
+    setTimeout(execPrint, 6000); // 6秒タイムアウト
   }
 }
 
@@ -414,7 +404,7 @@ const NearbyMapModal: React.FC<NearbyMapModalProps> = ({ open, onClose, googleMa
         <Button variant="contained" color="primary" startIcon={<PrintIcon />}
           onClick={() => {
             console.log('[Print] clicked, data1:', !!data1, 'data2:', !!data2, 'loading:', loading);
-            doPrint(address || '', data1, data2);
+            doPrint(address || '', data1, data2, tab);
           }}
           disabled={(!data1 && !data2) || loading}>
           PDFで印刷（A4・1枚）
