@@ -31,6 +31,7 @@ import {
 import { Close as CloseIcon, Save as SaveIcon, ContentCopy as ContentCopyIcon, Check as CheckIcon, WarningAmber as WarningAmberIcon, Email as EmailIcon, Image as ImageIcon, EditNote as EditNoteIcon } from '@mui/icons-material';
 import Popover from '@mui/material/Popover';
 import Tooltip from '@mui/material/Tooltip';
+import Badge from '@mui/material/Badge';
 import api from '../services/api';
 import { supabase } from '../services/supabase';
 import { isDeadlineExceeded } from '../utils/deadlineUtils';
@@ -41,6 +42,7 @@ import { getSenderAddress, saveSenderAddress, validateSenderAddress } from '../u
 import SenderAddressSelector from './SenderAddressSelector';
 import RichTextEmailEditor from './RichTextEmailEditor';
 import ImageSelectorModal from './ImageSelectorModal';
+import DocumentModal from './DocumentModal';
 import { useAuthStore } from '../store/authStore';
 import RichTextEditor from './RichTextEditor';
 
@@ -884,6 +886,22 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
     }
   }, [open, propertyNumber]);
 
+  // 画像数をバックグラウンドで取得（「画像」ボタンのバッジ表示用）
+  useEffect(() => {
+    if (!open || !propertyNumber) return;
+    let cancelled = false;
+    api.get(`/api/drive/folders/${propertyNumber}`)
+      .then((res) => {
+        if (cancelled) return;
+        const files: any[] = res.data.files || [];
+        setDriveImageCount(files.length);
+      })
+      .catch(() => {
+        // 取得失敗時はバッジを非表示にする
+      });
+    return () => { cancelled = true; };
+  }, [open, propertyNumber]);
+
   // データロード後、通常仲介手数料を売買価格から自動計算してeditedDataに反映
   useEffect(() => {
     if (!data) return;
@@ -1298,6 +1316,9 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
   const [imageError, setImageError] = useState<string | null>(null);
   const [templateSelectType, setTemplateSelectType] = useState<'seller' | 'buyer' | 'judicial_scrivener' | null>(null);
   const [emailHistoryRefreshKey, setEmailHistoryRefreshKey] = useState(0);
+  // 画像ボタン用の状態
+  const [documentModalOpen, setDocumentModalOpen] = useState(false);
+  const [driveImageCount, setDriveImageCount] = useState<number | null>(null);
   // Email送信履歴（SellerBuyerDetailSectionから引き上げ）
   const [emailHistory, setEmailHistory] = useState<Array<{
     id: number;
@@ -3802,6 +3823,18 @@ ${pageUrl}`;
                   sx={{ whiteSpace: 'nowrap', fontWeight: 700, bgcolor: '#7b1fa2', '&:hover': { bgcolor: '#6a1b9a' }, fontSize: '0.75rem', px: 1, py: 0.4, minWidth: 0 }}
                 >管理規約</Button>
               )}
+              {/* 画像ボタン */}
+              <Badge badgeContent={driveImageCount && driveImageCount > 0 ? driveImageCount : null} color="primary" max={99}>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  startIcon={<ImageIcon sx={{ fontSize: '0.9rem' }} />}
+                  onClick={() => setDocumentModalOpen(true)}
+                  sx={{ whiteSpace: 'nowrap', fontSize: '0.75rem', px: 1, py: 0.4, minWidth: 0 }}
+                >
+                  画像
+                </Button>
+              </Badge>
               <IconButton onClick={onClose} size="small" sx={{ p: 0.5 }}><CloseIcon fontSize="small" /></IconButton>
             </Box>
           ) : (
@@ -3926,6 +3959,18 @@ ${pageUrl}`;
                     管理規約解析
                   </Button>
                 )}
+                {/* 画像ボタン */}
+                <Badge badgeContent={driveImageCount && driveImageCount > 0 ? driveImageCount : null} color="primary" max={99}>
+                  <Button
+                    variant="outlined"
+                    startIcon={<ImageIcon />}
+                    onClick={() => setDocumentModalOpen(true)}
+                    size="small"
+                    sx={{ whiteSpace: 'nowrap' }}
+                  >
+                    画像
+                  </Button>
+                </Badge>
                 <IconButton onClick={onClose} size="small"><CloseIcon /></IconButton>
               </Box>
             </>
@@ -4205,7 +4250,17 @@ ${pageUrl}`;
         open={imageSelectorOpen}
         onConfirm={(images: any[]) => { setSelectedImages(images); setImageSelectorOpen(false); setImageError(null); }}
         onCancel={() => setImageSelectorOpen(false)}
+        sellerNumber={propertyNumber || undefined}
       />
+
+      {/* ドキュメント管理モーダル（画像ボタンから開く） */}
+      {propertyNumber && (
+        <DocumentModal
+          open={documentModalOpen}
+          onClose={() => setDocumentModalOpen(false)}
+          sellerNumber={propertyNumber}
+        />
+      )}
     </>
   );
 }
