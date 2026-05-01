@@ -107,7 +107,20 @@ function pixelDistance(
   return Math.sqrt((p1.x - p2.x) ** 2 + (p1.y - p2.y) ** 2);
 }
 
-// ---- マーカー描画 ----
+// ---- 公園用ツリーアイコンマーカー ----
+function makeParkMarker(): { url: string; w: number; h: number } {
+  const w = 24; const h = 28;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 24 28">
+    <ellipse cx="12" cy="11" rx="9" ry="9" fill="#33691e" opacity="0.95"/>
+    <ellipse cx="12" cy="9" rx="7" ry="7" fill="#558b2f" opacity="0.9"/>
+    <rect x="10" y="18" width="4" height="7" rx="1" fill="#5d4037"/>
+    <ellipse cx="12" cy="11" rx="4" ry="3" fill="#7cb342" opacity="0.6"/>
+  </svg>`;
+  try { return { url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg), w, h }; }
+  catch { return { url: 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg))), w, h }; }
+}
+
+
 function drawMarkers(map: google.maps.Map, data: NearbyData, iw: google.maps.InfoWindow, ref: React.MutableRefObject<google.maps.Marker[]>) {
   ref.current.forEach((m) => m.setMap(null)); ref.current = [];
   const zoom = map.getZoom() ?? 14;
@@ -141,14 +154,30 @@ function drawMarkers(map: google.maps.Map, data: NearbyData, iw: google.maps.Inf
 
       if (overlaps) {
         // 重なる場合：小さい点マーカー（クリックで詳細表示）
-        const dotSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12">
-          <circle cx="6" cy="6" r="5" fill="${color}" stroke="white" stroke-width="1.5" opacity="0.9"/>
-        </svg>`;
-        const dotUrl = 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(dotSvg);
+        // 公園は重なっても木アイコンで表示
+        let dotUrl: string;
+        let dotSize: number;
+        let dotAnchorX: number;
+        let dotAnchorY: number;
+        if (cat.type === 'park') {
+          const pk = makeParkMarker();
+          dotUrl = pk.url;
+          dotSize = pk.w;
+          dotAnchorX = pk.w / 2;
+          dotAnchorY = pk.h;
+        } else {
+          const dotSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12">
+            <circle cx="6" cy="6" r="5" fill="${color}" stroke="white" stroke-width="1.5" opacity="0.9"/>
+          </svg>`;
+          dotUrl = 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(dotSvg);
+          dotSize = 12;
+          dotAnchorX = 6;
+          dotAnchorY = 6;
+        }
         const mk = new google.maps.Marker({
           position: { lat: p.lat, lng: p.lng }, map,
           title: `${p.name} (${p.distance}m)`, zIndex: 500 - idx,
-          icon: { url: dotUrl, anchor: new google.maps.Point(6, 6), scaledSize: new google.maps.Size(12, 12) },
+          icon: { url: dotUrl, anchor: new google.maps.Point(dotAnchorX, dotAnchorY), scaledSize: new google.maps.Size(dotSize, cat.type === 'park' ? 28 : dotSize) },
         });
         mk.addListener('click', () => {
           iw.setContent(`<div style="font-size:12px;padding:5px 8px;min-width:160px;line-height:1.6;"><b>${cat.icon} ${p.name}</b><br/><span style="color:#555;font-size:11px;">${p.vicinity}</span><br/><span style="color:#1565c0;font-weight:bold;">物件から約 ${p.distance}m</span>${p.rating ? `<br/><span style="color:#e65100;">★ ${p.rating}</span>` : ''}</div>`);
@@ -156,13 +185,20 @@ function drawMarkers(map: google.maps.Map, data: NearbyData, iw: google.maps.Inf
         });
         ref.current.push(mk);
       } else {
-        // 重ならない場合：通常のテキストラベルマーカー
+        // 重ならない場合：公園はツリーアイコン、それ以外はテキストラベル
         placed.push({ lat: p.lat, lng: p.lng });
-        const ic = makeTextMarker(p.name, color);
+        let icon: google.maps.Icon;
+        if (cat.type === 'park') {
+          const pk = makeParkMarker();
+          icon = { url: pk.url, anchor: new google.maps.Point(pk.w / 2, pk.h), scaledSize: new google.maps.Size(pk.w, pk.h) };
+        } else {
+          const ic = makeTextMarker(p.name, color);
+          icon = { url: ic.url, anchor: new google.maps.Point(ic.w / 2, ic.h), scaledSize: new google.maps.Size(ic.w, ic.h) };
+        }
         const mk = new google.maps.Marker({
           position: { lat: p.lat, lng: p.lng }, map,
           title: `${p.name} (${p.distance}m)`, zIndex: 1000 - idx,
-          icon: { url: ic.url, anchor: new google.maps.Point(ic.w / 2, ic.h), scaledSize: new google.maps.Size(ic.w, ic.h) },
+          icon,
         });
         mk.addListener('click', () => {
           iw.setContent(`<div style="font-size:12px;padding:5px 8px;min-width:160px;line-height:1.6;"><b>${cat.icon} ${p.name}</b><br/><span style="color:#555;font-size:11px;">${p.vicinity}</span><br/><span style="color:#1565c0;font-weight:bold;">物件から約 ${p.distance}m</span>${p.rating ? `<br/><span style="color:#e65100;">★ ${p.rating}</span>` : ''}</div>`);
