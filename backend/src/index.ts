@@ -755,12 +755,12 @@ app.use('/api/public/inquiries', publicInquiriesRoutes);
 app.use('/api/public', publicPropertiesRoutes);
 app.use('/api/geocode', geocodeRoutes);
 app.use('/api/url-redirect', urlRedirectRoutes);
+app.use('/api/management-rules', managementRulesRoutes); // 管理規約解析API（認証不要 - /api catchallより前に登録）
 app.use('/api', inquiryHistoryRoutes);
 app.use('/api/audit-logs', auditLogRoutes);
 app.use('/api/property-listing-sync', propertyListingSyncRoutes);
 app.use('/api/staff-sync', staffSyncRoutes); // スタッフ同期API
 app.use('/api/nearby-map', nearbyMapRoutes); // 近隣MAPapi
-app.use('/api/management-rules', managementRulesRoutes); // 管理規約解析API
 
 // Error handling middleware
 app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
