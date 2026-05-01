@@ -73,6 +73,7 @@ import { fetchChatHistory } from '../services/chatHistoryService';
 import { generateSmsBody, smsTemplates, SmsTemplateId } from '../utils/smsTemplates';
 import { ChatHistoryItem } from '../types/chatHistory';
 import HouseMakerModal from '../components/HouseMakerModal';
+import MansionModal from '../components/MansionModal';
 
 interface PropertyListing {
   id: number;
@@ -264,6 +265,7 @@ export default function PropertyListingDetailPage() {
   const [isFrequentlyAskedEditMode, setIsFrequentlyAskedEditMode] = useState(false);
   const [isViewingInfoEditMode, setIsViewingInfoEditMode] = useState(false);
   const [houseMakerModalOpen, setHouseMakerModalOpen] = useState(false);
+  const [mansionModalOpen, setMansionModalOpen] = useState(false);
   const [isSellerBuyerEditMode, setIsSellerBuyerEditMode] = useState(false);
   const [isOfferEditMode, setIsOfferEditMode] = useState(false);
   const [atbbWarningDialog, setAtbbWarningDialog] = useState(false);
@@ -2618,6 +2620,63 @@ export default function PropertyListingDetailPage() {
                       />
                     </Grid>
                   )}
+                  {/* マンションボタン（物件住所にマンション名が含まれる場合のみ表示） */}
+                  {(() => {
+                    const MANSION_BRANDS = [
+                      'アルファステイツ', 'サーパス', 'サンレスコ', 'グリーンヒル',
+                      'エイリック', 'スタイルパークサイド', 'デュオヒルズ', 'MJR',
+                      'サンパーク', 'クレアネクスト', 'オーヴィジョン',
+                      'リビオ', 'ロフティ', 'パレスト',
+                      'レジオン', 'アルバガーデン', 'パレス',
+                      'グランフォーレ', 'グランドパレス',
+                      'ザ・パークハウス', 'ザ・ライオンズ', 'グランドメゾン', 'プレミスト',
+                      'ザ・サンメゾン', 'ロイヤルアーク', 'レーベン', 'ルッシュ', 'アンピール',
+                      'ネクサス', 'アーバンパレス', 'ブライトパーク', 'サンリヤン', 'アルテ',
+                      'マインド', 'ライオンズマンション', 'アクタス', 'パークコート', 'サントーア',
+                      'コアマンション', 'グランドステイツ', 'サングレート', 'パークホームズ', 'アクロス',
+                      'エステートマンション', 'ティアラ', 'アーサー', '東急ドエル', 'アルス',
+                      'デュオヴェール', 'ダイアパレス', 'グランデージ', 'ソピア', 'インプレスト',
+                      'オープンレジデンシア', 'クリオ', 'サンレジア', 'アートウィル', 'グランコート',
+                      'エンゼルハイム', 'アドニス', 'ライオンズプラザ', 'コモダス', 'パッソ',
+                      '藤和シティコープ', 'プレッソ', 'ニューライフ', 'シャンボール', '藤和コープ',
+                      'ソシエ', '赤坂エクセル', 'ヴィルテージ', '日商岩井', 'ダイナコート',
+                      '朝日プラザ', 'エスポワール', '東洋マンション', '三井', 'ライオンズ',
+                    ];
+                    const addr = data.address || data.display_address || '';
+                    const detected = MANSION_BRANDS.some((m) => addr.includes(m));
+                    if (!detected) return null;
+                    return (
+                      <Grid item xs={12}>
+                        <Button
+                          variant="contained"
+                          size="small"
+                          startIcon={<span style={{ fontSize: '1.1em' }}>🏢</span>}
+                          onClick={() => setMansionModalOpen(true)}
+                          sx={{
+                            background: 'linear-gradient(135deg, #1b5e20 0%, #2e7d32 100%)',
+                            color: 'white',
+                            fontWeight: 700,
+                            fontSize: '0.82rem',
+                            px: 2,
+                            py: 0.7,
+                            borderRadius: 2,
+                            boxShadow: '0 2px 8px rgba(27,94,32,0.3)',
+                            '&:hover': {
+                              background: 'linear-gradient(135deg, #2e7d32 0%, #388e3c 100%)',
+                              boxShadow: '0 4px 12px rgba(27,94,32,0.4)',
+                            },
+                          }}
+                        >
+                          マンション
+                        </Button>
+                        <MansionModal
+                          open={mansionModalOpen}
+                          onClose={() => setMansionModalOpen(false)}
+                          address={addr}
+                        />
+                      </Grid>
+                    );
+                  })()}
                   {(isViewingInfoEditMode || data.viewing_available_date) && (
                     <Grid item xs={6}>
                       <Typography variant="body2" sx={{ fontWeight: 400, fontSize: '0.7rem', color: 'text.secondary', mb: 0 }}>内覧可能日</Typography>
