@@ -1,4 +1,3 @@
-// NearbyMapModal - Places API (JS SDK) で施設取得
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Dialog, DialogTitle, DialogContent, DialogActions,
@@ -15,7 +14,6 @@ interface PlaceItem { name: string; vicinity: string; lat: number; lng: number; 
 interface NearbyData { radius: number; places: Record<string, PlaceItem[]>; }
 interface NearbyMapModalProps { open: boolean; onClose: () => void; googleMapUrl?: string | null; address?: string; propertyNumber?: string; propertyType?: string; }
 
-// ---- カテゴリ定義 ----
 const CATS = [
   { type: 'supermarket',       label: 'スーパー',             icon: '🛒' },
   { type: 'convenience_store', label: 'コンビニ',             icon: '🏪' },
@@ -40,7 +38,6 @@ const COLORS: Record<string, string> = {
   train_station: '#283593', bus_station: '#37474f',
 };
 
-// ---- 距離計算 ----
 function calcDist(lat1: number, lng1: number, lat2: number, lng2: number): number {
   const R = 6371000;
   const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -49,7 +46,6 @@ function calcDist(lat1: number, lng1: number, lat2: number, lng2: number): numbe
   return Math.round(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
 }
 
-// ---- URL から座標抽出 ----
 async function extractCoords(url: string, apiBase: string): Promise<{ lat: number; lng: number } | null> {
   if (!url) return null;
   try {
@@ -58,20 +54,20 @@ async function extractCoords(url: string, apiBase: string): Promise<{ lat: numbe
       const r = await fetch(`${apiBase}/api/url-redirect/resolve?url=${encodeURIComponent(s)}`);
       if (r.ok) { const d = await r.json(); s = d.redirectedUrl || s; }
     }
-    for (const p of [
-      /[?&]q=(-?\d+\.?\d*),(-?\d+\.?\d*)/,
-      /\/search\/(-?\d+\.?\d*),\+?(-?\d+\.?\d*)/,
-      /\/place\/(-?\d+\.?\d*),(-?\d+\.?\d*)/,
-      /\/@(-?\d+\.?\d*),(-?\d+\.?\d*),/,
-    ]) { const m = s.match(p); if (m) return { lat: +m[1], lng: +m[2] }; }
+    for (const p of [/[?&]q=(-?\d+\.?\d*),(-?\d+\.?\d*)/, /\/search\/(-?\d+\.?\d*),\+?(-?\d+\.?\d*)/, /\/place\/(-?\d+\.?\d*),(-?\d+\.?\d*)/, /\/@(-?\d+\.?\d*),(-?\d+\.?\d*),/]) {
+      const m = s.match(p); if (m) return { lat: +m[1], lng: +m[2] };
+    }
     return null;
   } catch { return null; }
 }
 
-// ---- 1カテゴリ検索 ----
+// Places API で1カテゴリ検索（タイムアウト付き）
 function searchOne(svc: google.maps.places.PlacesService, ll: google.maps.LatLng, radius: number, type: string): Promise<PlaceItem[]> {
   return new Promise((resolve) => {
+    // 10秒でタイムアウト
+    const timer = setTimeout(() => resolve([]), 10000);
     svc.nearbySearch({ location: ll, radius, type: type as any }, (results, status) => {
+      clearTimeout(timer);
       if (status === google.maps.places.PlacesServiceStatus.OK && results?.length) {
         resolve(results.slice(0, 5).map((r) => ({
           name: r.name || '',
@@ -88,14 +84,16 @@ function searchOne(svc: google.maps.places.PlacesService, ll: google.maps.LatLng
   });
 }
 
-// ---- 全カテゴリ取得 ----
 async function fetchAll(svc: google.maps.places.PlacesService, center: { lat: number; lng: number }, radius: number): Promise<NearbyData> {
   const ll = new google.maps.LatLng(center.lat, center.lng);
-  const entries = await Promise.all(CATS.map(async (cat) => [cat.type, await searchOne(svc, ll, radius, cat.type)] as const));
-  return { radius, places: Object.fromEntries(entries) };
+  // 順番に実行（並列だとPlaces APIのレート制限に引っかかる可能性）
+  const places: Record<string, PlaceItem[]> = {};
+  for (const cat of CATS) {
+    places[cat.type] = await searchOne(svc, ll, radius, cat.type);
+  }
+  return { radius, places };
 }
 
-// ---- SVGラベルアイコン ----
 function labelIcon(name: string, color: string, emoji: string) {
   const dn = name.length > 10 ? name.slice(0, 10) + '…' : name;
   const txt = `${emoji} ${dn}`;
@@ -104,26 +102,29 @@ function labelIcon(name: string, color: string, emoji: string) {
   return { url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg), w, h: h + ah };
 }
 
-// ---- 物件マーカー ----
-function propIcon() {
-  const w = 46; const h = 18; const ah = 6;
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h+ah}"><rect width="${w}" height="${h}" rx="4" fill="#d32f2f" opacity=".97"/><text x="${w/2}" y="12" font-family="'Hiragino Sans','Meiryo',sans-serif" font-size="9" font-weight="bold" fill="white" text-anchor="middle">📍物件</text><polygon points="${w/2-4},${h} ${w/2+4},${h} ${w/2},${h+ah}" fill="#d32f2f" opacity=".97"/></svg>`;
-  return { url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg), w, h: h + ah };
-}
-
-// ---- マーカー描画 ----
 function drawMarkers(map: google.maps.Map, data: NearbyData, center: { lat: number; lng: number }, address: string, iw: google.maps.InfoWindow, ref: React.MutableRefObject<google.maps.Marker[]>) {
   ref.current.forEach((m) => m.setMap(null)); ref.current = [];
-  const pi = propIcon();
-  ref.current.push(new google.maps.Marker({ position: center, map, title: address || '物件', zIndex: 2000, icon: { url: pi.url, anchor: new google.maps.Point(pi.w / 2, pi.h), scaledSize: new google.maps.Size(pi.w, pi.h) } }));
+  // 物件マーカー（シンプルな赤丸）
+  const centerMk = new google.maps.Marker({
+    position: center, map, title: address || '物件', zIndex: 2000,
+    icon: { path: google.maps.SymbolPath.CIRCLE, scale: 10, fillColor: '#d32f2f', fillOpacity: 1, strokeColor: '#fff', strokeWeight: 2 },
+  });
+  const centerLabel = new google.maps.InfoWindow({ content: `<b style="color:#d32f2f;">📍 物件</b>` });
+  centerLabel.open(map, centerMk);
+  ref.current.push(centerMk);
+
   CATS.forEach((cat) => {
     const color = COLORS[cat.type] || '#757575';
     (data.places[cat.type] || []).forEach((p, idx) => {
       if (!p.lat || !p.lng) return;
       const ic = labelIcon(p.name, color, cat.icon);
-      const mk = new google.maps.Marker({ position: { lat: p.lat, lng: p.lng }, map, title: `${p.name} (${p.distance}m)`, zIndex: 1000 - idx, icon: { url: ic.url, anchor: new google.maps.Point(ic.w / 2, ic.h), scaledSize: new google.maps.Size(ic.w, ic.h) } });
+      const mk = new google.maps.Marker({
+        position: { lat: p.lat, lng: p.lng }, map,
+        title: `${p.name} (${p.distance}m)`, zIndex: 1000 - idx,
+        icon: { url: ic.url, anchor: new google.maps.Point(ic.w / 2, ic.h), scaledSize: new google.maps.Size(ic.w, ic.h) },
+      });
       mk.addListener('click', () => {
-        iw.setContent(`<div style="font-size:12px;padding:5px 8px;min-width:160px;line-height:1.6;font-family:'Hiragino Sans','Meiryo',sans-serif;"><b style="font-size:13px;">${cat.icon} ${p.name}</b><br/><span style="color:#555;font-size:11px;">${p.vicinity}</span><br/><span style="color:#1565c0;font-weight:bold;">物件から約 ${p.distance}m</span>${p.rating ? `<br/><span style="color:#e65100;">★ ${p.rating}</span>` : ''}</div>`);
+        iw.setContent(`<div style="font-size:12px;padding:5px 8px;min-width:160px;line-height:1.6;"><b>${cat.icon} ${p.name}</b><br/><span style="color:#555;font-size:11px;">${p.vicinity}</span><br/><span style="color:#1565c0;font-weight:bold;">物件から約 ${p.distance}m</span>${p.rating ? `<br/><span style="color:#e65100;">★ ${p.rating}</span>` : ''}</div>`);
         iw.open(map, mk);
       });
       ref.current.push(mk);
@@ -131,14 +132,11 @@ function drawMarkers(map: google.maps.Map, data: NearbyData, center: { lat: numb
   });
 }
 
-// ---- HTML エスケープ ----
 function esc(s: string) { return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 
-// ---- 施設リストHTML（印刷用） ----
 function listHtml(data: NearbyData): string {
   const rows = CATS.map((cat) => {
-    const ps = data.places[cat.type] || [];
-    if (!ps.length) return '';
+    const ps = data.places[cat.type] || []; if (!ps.length) return '';
     const color = COLORS[cat.type] || '#757575';
     const trs = ps.map((p) => `<tr><td class="n">${esc(p.name)}</td><td class="a">${esc(p.vicinity)}</td><td class="d">約${p.distance}m</td><td class="r">${p.rating ? `★${p.rating}` : ''}</td></tr>`).join('');
     return `<div class="cb"><div class="ch" style="background:${color}">${cat.icon} ${cat.label}（${ps.length}件）</div><table><tbody>${trs}</tbody></table></div>`;
@@ -146,7 +144,6 @@ function listHtml(data: NearbyData): string {
   return rows || '<p class="nd">この圏内に施設が見つかりませんでした</p>';
 }
 
-// ---- PDF印刷（非表示div + window.print） ----
 function doPrint(address: string, d1: NearbyData | null, d2: NearbyData | null) {
   const l1 = d1 ? listHtml(d1) : '<p class="nd">データなし</p>';
   const l2 = d2 ? listHtml(d2) : '<p class="nd">データなし</p>';
@@ -171,46 +168,59 @@ const NearbyMapModal: React.FC<NearbyMapModalProps> = ({ open, onClose, googleMa
   const [data1, setData1] = useState<NearbyData | null>(null);
   const [data2, setData2] = useState<NearbyData | null>(null);
   const [loading, setLoading] = useState(false);
-  const [fetchDone, setFetchDone] = useState(false);
   const [tab, setTab] = useState(0);
 
+  // refで管理（stateにしない）
   const mapRef = useRef<google.maps.Map | null>(null);
   const svcRef = useRef<google.maps.places.PlacesService | null>(null);
   const iwRef = useRef<google.maps.InfoWindow | null>(null);
   const mkRef = useRef<google.maps.Marker[]>([]);
+  const isFetchingRef = useRef(false); // 二重実行防止
 
   // ---- 座標取得 ----
   useEffect(() => {
     if (!open || !googleMapUrl) return;
-    setCoords(null); setData1(null); setData2(null); setFetchDone(false);
+    setCoords(null); setData1(null); setData2(null);
+    isFetchingRef.current = false;
     extractCoords(googleMapUrl, apiBase).then((c) => { if (c) setCoords(c); });
   }, [open, googleMapUrl, apiBase]);
+
+  // ---- 施設取得（地図ロード後に呼ぶ） ----
+  const doFetch = useCallback(async (svc: google.maps.places.PlacesService, c: { lat: number; lng: number }) => {
+    if (isFetchingRef.current) return;
+    isFetchingRef.current = true;
+    setLoading(true);
+    try {
+      // 1km取得
+      const d1 = await fetchAll(svc, c, 1000);
+      setData1(d1);
+      // 2km取得
+      const d2 = await fetchAll(svc, c, 2000);
+      setData2(d2);
+    } finally {
+      setLoading(false);
+      isFetchingRef.current = false;
+    }
+  }, []);
 
   // ---- 地図ロード ----
   const onMapLoad = useCallback((map: google.maps.Map) => {
     mapRef.current = map;
     iwRef.current = new google.maps.InfoWindow();
-    svcRef.current = new google.maps.places.PlacesService(map);
-    // 地図ロード完了を通知するためにダミーstateを更新
-    setFetchDone((prev) => { void prev; return false; }); // 再レンダリングをトリガー
-  }, []);
+    const svc = new google.maps.places.PlacesService(map);
+    svcRef.current = svc;
+    // coordsが既にある場合はすぐ取得開始
+    if (coords) {
+      doFetch(svc, coords);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [coords, doFetch]);
 
-  // ---- 座標 AND サービス両方揃ったら取得 ----
-  // fetchDone=false かつ coords あり かつ svcRef.current あり のとき実行
+  // ---- 座標確定後、地図が既にロード済みなら取得開始 ----
   useEffect(() => {
-    if (!coords || !svcRef.current || fetchDone || loading) return;
-    const svc = svcRef.current;
-    setLoading(true);
-    setFetchDone(true);
-    Promise.all([
-      fetchAll(svc, coords, 1000),
-      fetchAll(svc, coords, 2000),
-    ]).then(([d1, d2]) => {
-      setData1(d1);
-      setData2(d2);
-      setLoading(false);
-    }).catch(() => setLoading(false));
-  }, [coords, fetchDone, loading]);
+    if (!coords || !svcRef.current || isFetchingRef.current) return;
+    doFetch(svcRef.current, coords);
+  }, [coords, doFetch]);
 
   // ---- タブ切り替え・データ更新時にマーカー再描画 ----
   useEffect(() => {
@@ -224,15 +234,18 @@ const NearbyMapModal: React.FC<NearbyMapModalProps> = ({ open, onClose, googleMa
   // ---- 再取得 ----
   const refetch = useCallback(() => {
     if (!coords || !svcRef.current) return;
-    setData1(null); setData2(null); setFetchDone(false);
-  }, [coords]);
+    isFetchingRef.current = false;
+    setData1(null); setData2(null);
+    doFetch(svcRef.current, coords);
+  }, [coords, doFetch]);
 
   // ---- 閉じる ----
   const handleClose = () => {
     mkRef.current.forEach((m) => m.setMap(null)); mkRef.current = [];
     iwRef.current?.close(); iwRef.current = null;
     mapRef.current = null; svcRef.current = null;
-    setCoords(null); setData1(null); setData2(null); setFetchDone(false); setTab(0);
+    isFetchingRef.current = false;
+    setCoords(null); setData1(null); setData2(null); setLoading(false); setTab(0);
     onClose();
   };
 
@@ -265,7 +278,6 @@ const NearbyMapModal: React.FC<NearbyMapModalProps> = ({ open, onClose, googleMa
 
         {coords && isLoaded && (
           <Box sx={{ display: 'flex', gap: 2, height: '100%' }}>
-            {/* 地図（左65%） */}
             <Box sx={{ flex: '1 1 65%', borderRadius: 1, overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.15)', minWidth: 0 }}>
               <GoogleMap
                 mapContainerStyle={{ width: '100%', height: '100%' }}
@@ -276,7 +288,6 @@ const NearbyMapModal: React.FC<NearbyMapModalProps> = ({ open, onClose, googleMa
               />
             </Box>
 
-            {/* 施設リスト（右35%） */}
             <Box sx={{ flex: '0 0 35%', overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 0.75 }}>
               {loading && (
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 1 }}>
