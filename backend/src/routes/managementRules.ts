@@ -1,24 +1,7 @@
 import { Router, Request, Response } from 'express';
-import multer from 'multer';
 import Anthropic from '@anthropic-ai/sdk';
 
 const router = Router();
-
-// メモリストレージ（ファイルをディスクに保存しない → 文字化けリスクなし）
-const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: {
-    fileSize: 20 * 1024 * 1024, // 20MB
-  },
-  fileFilter: (_req, file, cb) => {
-    const allowed = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'];
-    if (allowed.includes(file.mimetype)) {
-      cb(null, true);
-    } else {
-      cb(new Error('対応ファイル形式: JPEG, PNG, GIF, WebP, PDF'));
-    }
-  },
-});
 
 // チェック項目の定義
 const CHECK_ITEMS = [
@@ -39,10 +22,13 @@ const CHECK_ITEMS = [
 /**
  * POST /api/management-rules/analyze
  * 管理規約の画像/PDFを解析して項目ごとの条文を抽出
+ * リクエスト形式: JSON { files: [{ name, mimeType, base64 }] }
  */
-router.post('/analyze', upload.array('files', 20), async (req: Request, res: Response) => {
+router.post('/analyze', async (req: Request, res: Response) => {
   try {
-    const files = req.files as Express.Multer.File[];
+    const { files } = req.body as {
+      files: Array<{ name: string; mimeType: string; base64: string }>;
+    };
 
     if (!files || files.length === 0) {
       return res.status(400).json({ error: 'ファイルが選択されていません' });
@@ -59,25 +45,23 @@ router.post('/analyze', upload.array('files', 20), async (req: Request, res: Res
     const contentBlocks: Anthropic.ContentBlockParam[] = [];
 
     for (const file of files) {
-      if (file.mimetype === 'application/pdf') {
-        // PDFはdocumentタイプで送信
+      if (file.mimeType === 'application/pdf') {
         contentBlocks.push({
           type: 'document',
           source: {
             type: 'base64',
             media_type: 'application/pdf',
-            data: file.buffer.toString('base64'),
+            data: file.base64,
           },
         } as any);
       } else {
-        // 画像ファイル
-        const mediaType = file.mimetype as 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp';
+        const mediaType = file.mimeType as 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp';
         contentBlocks.push({
           type: 'image',
           source: {
             type: 'base64',
             media_type: mediaType,
-            data: file.buffer.toString('base64'),
+            data: file.base64,
           },
         });
       }

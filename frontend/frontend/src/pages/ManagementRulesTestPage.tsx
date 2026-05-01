@@ -84,15 +84,28 @@ const ManagementRulesTestPage: React.FC = () => {
     setResults(null);
 
     try {
-      const formData = new FormData();
-      files.forEach((file) => {
-        formData.append('files', file);
-      });
+      // ファイルをBase64に変換（Vercelのmultipart制限を回避）
+      const filePayloads = await Promise.all(
+        files.map(
+          (file) =>
+            new Promise<{ name: string; mimeType: string; base64: string }>((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onload = () => {
+                const dataUrl = reader.result as string;
+                // "data:image/jpeg;base64,XXXX" → "XXXX" だけ取り出す
+                const base64 = dataUrl.split(',')[1];
+                resolve({ name: file.name, mimeType: file.type, base64 });
+              };
+              reader.onerror = reject;
+              reader.readAsDataURL(file);
+            })
+        )
+      );
 
       const response = await fetch(`${API_BASE_URL}/api/management-rules/analyze`, {
         method: 'POST',
-        body: formData,
-        // Content-Typeはfetchが自動設定（multipart/form-data + boundary）
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ files: filePayloads }),
       });
 
       if (!response.ok) {
