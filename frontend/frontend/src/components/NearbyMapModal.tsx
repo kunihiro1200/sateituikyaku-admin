@@ -63,17 +63,17 @@ async function extractCoords(url: string, apiBase: string): Promise<{ lat: numbe
   } catch { return null; }
 }
 
-// ---- 丸囲み文字SVGマーカー ----
+// ---- 丸囲み文字SVGマーカー（全ケース統一サイズ） ----
 function makeCircleTextMarker(char: string, color: string): { url: string; w: number; h: number } {
-  const size = 52; // 2倍サイズ
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size + 14}" viewBox="0 0 ${size} ${size + 14}">
-    <circle cx="${size/2}" cy="${size/2}" r="${size/2 - 2}" fill="${color}" stroke="white" stroke-width="2.5"/>
-    <text x="${size/2}" y="${size/2 + 9}" font-family="Meiryo,'Yu Gothic',sans-serif"
-      font-size="24" font-weight="bold" fill="white" text-anchor="middle">${char}</text>
-    <polygon points="${size/2-6},${size} ${size/2+6},${size} ${size/2},${size+14}" fill="${color}"/>
+  const size = 32;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size + 8}" viewBox="0 0 ${size} ${size + 8}">
+    <circle cx="${size/2}" cy="${size/2}" r="${size/2 - 2}" fill="${color}" stroke="white" stroke-width="2"/>
+    <text x="${size/2}" y="${size/2 + 6}" font-family="Meiryo,'Yu Gothic',sans-serif"
+      font-size="15" font-weight="bold" fill="white" text-anchor="middle">${char}</text>
+    <polygon points="${size/2-5},${size} ${size/2+5},${size} ${size/2},${size+8}" fill="${color}"/>
   </svg>`;
-  try { return { url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg), w: size, h: size + 14 }; }
-  catch { return { url: 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg))), w: size, h: size + 14 }; }
+  try { return { url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg), w: size, h: size + 8 }; }
+  catch { return { url: 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg))), w: size, h: size + 8 }; }
 }
 
 // ---- フォーク＆ナイフSVGマーカー（飲食店） ----
@@ -220,17 +220,12 @@ function drawMarkers(map: google.maps.Map, data: NearbyData, iw: google.maps.Inf
           dotAnchorX = 10;
           dotAnchorY = 20;
         } else if (CIRCLE_ICONS[cat.type]) {
-          // 丸囲み文字カテゴリは小さめの丸アイコン
-          const char = CIRCLE_ICONS[cat.type];
-          const sz = 18;
-          const dotSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="${sz}" height="${sz}">
-            <circle cx="${sz/2}" cy="${sz/2}" r="${sz/2-1}" fill="${color}" stroke="white" stroke-width="1.5"/>
-            <text x="${sz/2}" y="${sz/2+4}" font-family="Meiryo,'Yu Gothic',sans-serif" font-size="9" font-weight="bold" fill="white" text-anchor="middle">${char}</text>
-          </svg>`;
-          dotUrl = 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(dotSvg);
-          dotSize = sz;
-          dotAnchorX = sz / 2;
-          dotAnchorY = sz / 2;
+          // 丸囲み文字カテゴリは同じアイコンを使用（統一サイズ）
+          const ci = makeCircleTextMarker(CIRCLE_ICONS[cat.type], color);
+          dotUrl = ci.url;
+          dotSize = ci.w;
+          dotAnchorX = ci.w / 2;
+          dotAnchorY = ci.h;
         } else {
           const dotSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12">
             <circle cx="6" cy="6" r="5" fill="${color}" stroke="white" stroke-width="1.5" opacity="0.9"/>
