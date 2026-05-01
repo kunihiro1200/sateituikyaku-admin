@@ -515,7 +515,17 @@ const NearbyMapModal: React.FC<NearbyMapModalProps> = ({ open, onClose, googleMa
                 mapContainerStyle={{ width: '100%', height: '100%' }}
                 center={coords}
                 zoom={14}
-                options={{ zoomControl: true, streetViewControl: false, mapTypeControl: false, fullscreenControl: true, clickableIcons: false }}
+                options={{
+                  zoomControl: true,
+                  streetViewControl: false,
+                  mapTypeControl: false,
+                  fullscreenControl: true,
+                  clickableIcons: false,
+                  styles: [
+                    // 飲食店・カフェ・バーを非表示
+                    { featureType: 'poi.food_and_drink', elementType: 'all', stylers: [{ visibility: 'off' }] },
+                  ],
+                }}
                 onLoad={onMapLoad}
               />
             </Box>
