@@ -180,3 +180,180 @@ export function estimateAreaRatio(cityName: string, townName: string): number {
   if (midCities.some(c => cityName.includes(c))) return 0.04;
   return 0.06; // 小都市
 }
+
+// ============================================================
+// 不動産情報ライブラリAPI（国土交通省）
+// 取引件数・坪単価の実データを取得する
+// ============================================================
+
+export interface TransactionData {
+  year: string;
+  city: number;   // 市全体の取引件数
+  area: number;   // エリア推定取引件数
+}
+
+export interface PriceData {
+  year: string;
+  city: number;   // 市全体の坪単価平均（万円）
+  area: number;   // エリアの坪単価平均（万円）
+}
+
+/**
+ * 不動産情報ライブラリAPIから取引データを1年分取得する
+ */
+async function fetchReinfolibYear(
+  cityCode: string,
+  year: number,
+  apiKey: string
+): Promise<{ count: number; avgUnitPrice: number }> {
+  let totalCount = 0;
+  const unitPrices: number[] = [];
+  const tradePrices: number[] = [];
+
+  for (const quarter of [1, 2, 3, 4]) {
+    const url = `https://www.reinfolib.mlit.go.jp/ex-api/external/XIT001?year=${year}&quarter=${quarter}&city=${cityCode}`;
+    try {
+      const res = await axios.get(url, {
+        headers: { 'Ocp-Apim-Subscription-Key': apiKey },
+        responseType: 'arraybuffer',
+        timeout: 15000,
+      });
+
+      // gzip解凍
+      let data: any;
+      const encoding = (res.headers['content-encoding'] || '').toLowerCase();
+      if (encoding.includes('gzip')) {
+        const zlib = await import('zlib');
+        const decompressed = await new Promise<Buffer>((resolve, reject) => {
+          zlib.gunzip(res.data, (err, result) => err ? reject(err) : resolve(result));
+        });
+        data = JSON.parse(decompressed.toString('utf-8'));
+      } else {
+        data = JSON.parse(Buffer.from(res.data).toString('utf-8'));
+      }
+
+      const items: any[] = data?.data || [];
+      totalCount += items.length;
+
+      for (const item of items) {
+        // 坪単価（土地）: UnitPriceは円/㎡ → 円/坪に変換（×3.3058）→ 万円/坪（÷10000）
+        const up = item.UnitPrice;
+        if (up && /^\d+$/.test(up) && parseInt(up, 10) > 0) {
+          unitPrices.push(parseInt(up, 10) * 3.3058); // 円/坪に変換
+        }
+        // 取引価格÷延床面積で坪単価を推計（戸建て・マンション）
+        const tp = item.TradePrice;
+        const fa = item.TotalFloorArea;
+        if (tp && fa && /^\d+$/.test(tp) && /^\d+$/.test(fa)) {
+          const tsubo = parseInt(fa, 10) / 3.3058; // ㎡→坪
+          if (tsubo > 0) {
+            tradePrices.push(parseInt(tp, 10) / tsubo);
+          }
+        }
+      }
+    } catch (e: any) {
+      // 404はデータなし（正常）、それ以外はログ
+      if (e?.response?.status !== 404) {
+        console.warn(`[EStatService] reinfolib ${year}Q${quarter} error:`, e?.message);
+      }
+    }
+  }
+
+  // 坪単価：土地の単価を優先（円/坪）、なければ取引価格から推計
+  const allPrices = unitPrices.length > 0 ? unitPrices : tradePrices;
+  const avgUnitPrice = allPrices.length > 0
+    ? Math.round(allPrices.reduce((a, b) => a + b, 0) / allPrices.length / 10000) // 円/坪→万円/坪
+    : 0;
+
+  return { count: totalCount, avgUnitPrice };
+}
+
+/**
+ * 取引件数の推移データを取得する（2020〜2025年）
+ */
+export async function fetchTransactionData(
+  cityName: string,
+  areaRatio: number = 0.05
+): Promise<TransactionData[] | null> {
+  const apiKey = process.env.REINFOLIB_API_KEY;
+  if (!apiKey) {
+    console.warn('[EStatService] REINFOLIB_API_KEY not set');
+    return null;
+  }
+
+  const cityCode = getCityCode(cityName);
+  if (!cityCode) return null;
+
+  console.log(`[EStatService] fetching transaction data for ${cityName} (${cityCode})`);
+
+  // 2020〜2024年を並列取得（2025年はまだデータが揃っていない場合あり）
+  const years = [2020, 2021, 2022, 2023, 2024];
+  const results = await Promise.all(
+    years.map(y => fetchReinfolibYear(cityCode, y, apiKey))
+  );
+
+  // 2025年は2024年のトレンドから推計
+  const last = results[results.length - 1].count;
+  const prev = results[results.length - 2].count;
+  const est2025 = Math.round(last + (last - prev) * 0.5);
+
+  const data: TransactionData[] = [
+    ...years.map((y, i) => ({
+      year: `${y}年`,
+      city: results[i].count,
+      area: Math.round(results[i].count * areaRatio),
+    })),
+    { year: '2025年', city: est2025, area: Math.round(est2025 * areaRatio) },
+  ];
+
+  console.log(`[EStatService] transactions:`, data.map(d => `${d.year}:${d.city}`).join(', '));
+  return data;
+}
+
+/**
+ * 坪単価の推移データを取得する（2020〜2025年）
+ */
+export async function fetchPriceData(
+  cityName: string,
+  areaVariation: number = 1.08  // エリアが市平均より高い場合の係数
+): Promise<PriceData[] | null> {
+  const apiKey = process.env.REINFOLIB_API_KEY;
+  if (!apiKey) {
+    console.warn('[EStatService] REINFOLIB_API_KEY not set');
+    return null;
+  }
+
+  const cityCode = getCityCode(cityName);
+  if (!cityCode) return null;
+
+  console.log(`[EStatService] fetching price data for ${cityName} (${cityCode})`);
+
+  const years = [2020, 2021, 2022, 2023, 2024];
+  const results = await Promise.all(
+    years.map(y => fetchReinfolibYear(cityCode, y, apiKey))
+  );
+
+  // 有効な価格データのみ使用
+  const validResults = results.filter(r => r.avgUnitPrice > 0);
+  if (validResults.length === 0) return null;
+
+  // 2025年は2024年から変化率で推計
+  const last = results[results.length - 1].avgUnitPrice || validResults[validResults.length - 1].avgUnitPrice;
+  const prev = results[results.length - 2].avgUnitPrice || last;
+  const est2025 = prev > 0 ? Math.round(last + (last - prev) * 0.8) : last;
+
+  const data: PriceData[] = [
+    ...years.map((y, i) => {
+      const p = results[i].avgUnitPrice || (validResults[0]?.avgUnitPrice || 0);
+      return {
+        year: `${y}年`,
+        city: p,
+        area: Math.round(p * areaVariation),
+      };
+    }),
+    { year: '2025年', city: est2025, area: Math.round(est2025 * areaVariation) },
+  ];
+
+  console.log(`[EStatService] prices:`, data.map(d => `${d.year}:${d.city}万円`).join(', '));
+  return data;
+}

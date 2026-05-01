@@ -11,7 +11,7 @@ import { BuyerService } from '../services/BuyerService';
 import { PerformanceMetricsService } from '../services/PerformanceMetricsService';
 import { SpreadsheetSyncService } from '../services/SpreadsheetSyncService';
 import { GoogleSheetsClient } from '../services/GoogleSheetsClient';
-import { fetchPopulationData, estimateAreaRatio } from '../services/EStatService';
+import { fetchPopulationData, estimateAreaRatio, fetchTransactionData, fetchPriceData } from '../services/EStatService';
 
 const router = Router();
 const sellerService = new SellerService();
@@ -1937,19 +1937,33 @@ router.post('/:id/area-report', async (req: Request, res: Response) => {
 
     // e-Stat APIから実際の人口データを取得
     const areaRatio = estimateAreaRatio(city, town);
-    const realPopData = await fetchPopulationData(city, areaRatio);
+    const [realPopData, realTrxData, realPriceData] = await Promise.all([
+      fetchPopulationData(city, areaRatio),
+      fetchTransactionData(city, areaRatio),
+      fetchPriceData(city),
+    ]);
 
     // 人口データをプロンプトに埋め込む（実データがある場合）
     const populationHint = realPopData
       ? `\n【実際の国勢調査データ（必ずこの数値を使用すること）】\n人口（${cityLabel}全体）:\n${realPopData.map(r => `  ${r.year}: ${r.city.toLocaleString()}人`).join('\n')}\n人口（${detailArea}エリア推計）:\n${realPopData.map(r => `  ${r.year}: ${r.area.toLocaleString()}人`).join('\n')}\n※上記の人口数値は国勢調査の実データです。populationフィールドには必ずこの数値を使用してください。`
       : '';
 
+    // 取引件数データをプロンプトに埋め込む
+    const transactionHint = realTrxData
+      ? `\n【実際の取引件数データ（必ずこの数値を使用すること）】\n取引件数（${cityLabel}全体）:\n${realTrxData.map(r => `  ${r.year}: ${r.city}件`).join('\n')}\n取引件数（${detailArea}エリア推計）:\n${realTrxData.map(r => `  ${r.year}: ${r.area}件`).join('\n')}\n※上記の取引件数は国土交通省の実データです。transactionsフィールドには必ずこの数値を使用してください。`
+      : '';
+
+    // 価格データをプロンプトに埋め込む
+    const priceHint = realPriceData
+      ? `\n【実際の坪単価データ（必ずこの数値を使用すること）】\n坪単価（${cityLabel}全体・万円）:\n${realPriceData.map(r => `  ${r.year}: ${r.city}万円`).join('\n')}\n坪単価（${detailArea}エリア推計・万円）:\n${realPriceData.map(r => `  ${r.year}: ${r.area}万円`).join('\n')}\n※上記の坪単価は国土交通省の実データです。pricesフィールドには必ずこの数値を使用してください。`
+      : '';
+
     const jsonPrompt = `${cityLabel}の${detailArea}エリアについて、実際の統計・市場データに基づいた不動産売却資料用のJSONを返してください。現在2026年。
-${populationHint}
+${populationHint}${transactionHint}${priceHint}
 【重要な数値生成ルール】
 - 人口：${realPopData ? '上記の実データを必ず使用すること（改変禁止）' : '国勢調査・住民基本台帳の実態に近い数値を使用。毎年一定ではなく、年によって増減幅が異なる'}
-- 取引件数：景気・金利・コロナ禍（2020-2021年）の影響を反映。コロナ禍は件数が落ち込み、2022年以降に回復するなど現実的な波を持たせる
-- 不動産価格：**坪単価を万円単位の整数**で返すこと（例：大分市なら15〜30程度、絶対に円単位の大きな数値にしない）。2020年以降の全国的な地価上昇トレンドを反映しつつ、エリアの特性に応じた現実的な数値（毎年同額上昇にならないよう）
+- 取引件数：${realTrxData ? '上記の実データを必ず使用すること（改変禁止）' : '景気・金利・コロナ禍（2020-2021年）の影響を反映。コロナ禍は件数が落ち込み、2022年以降に回復するなど現実的な波を持たせる'}
+- 不動産価格：${realPriceData ? '上記の実データを必ず使用すること（改変禁止）' : '坪単価を万円単位の整数で返すこと。2020年以降の全国的な地価上昇トレンドを反映しつつ、エリアの特性に応じた現実的な数値'}
 - 世帯構成：そのエリアの実態（高齢化率・単身世帯増加傾向など）を反映した%
 - 絶対に等差数列（毎年同じ増減幅）にしないこと。実際のデータは不規則にばらつく
 
