@@ -139,10 +139,14 @@ const NearbyMapModal: React.FC<NearbyMapModalProps> = ({ open, onClose, googleMa
         api.get('/api/nearby-map/places', { params: { lat: c.lat, lng: c.lng, radius: 1000 } }),
         api.get('/api/nearby-map/places', { params: { lat: c.lat, lng: c.lng, radius: 2000 } }),
       ]);
+      console.log('[NearbyMap] 1km data:', r1.data);
+      console.log('[NearbyMap] 2km data:', r2.data);
       setData1(r1.data);
       setData2(r2.data);
     } catch (e: any) {
-      setError(e.response?.data?.error || '施設の取得に失敗しました');
+      const msg = e.response?.data?.error || '施設の取得に失敗しました';
+      console.error('[NearbyMap] fetch error:', e.response?.status, msg);
+      setError(msg);
     } finally {
       setLoading(false);
     }

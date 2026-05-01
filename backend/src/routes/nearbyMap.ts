@@ -109,8 +109,10 @@ router.get('/places', authenticate, async (req: Request, res: Response) => {
     }
 
     const apiKey = process.env.GOOGLE_MAPS_API_KEY;
+    console.log('[nearbyMap] GOOGLE_MAPS_API_KEY set:', !!apiKey, '| length:', apiKey?.length ?? 0);
     if (!apiKey) {
-      return res.status(500).json({ error: 'Google Maps APIキーが設定されていません' });
+      console.error('[nearbyMap] GOOGLE_MAPS_API_KEY is not set in environment variables');
+      return res.status(500).json({ error: 'Google Maps APIキーが設定されていません。Vercelの環境変数にGOOGLE_MAPS_API_KEYを設定してください。' });
     }
 
     const latNum = parseFloat(lat as string);
