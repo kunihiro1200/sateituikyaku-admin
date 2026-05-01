@@ -247,15 +247,19 @@ const NearbyMapModal: React.FC<NearbyMapModalProps> = ({ open, onClose, googleMa
     // 地図コンテナのサイズを取得
     const mapAreaEl = document.querySelector('.nearby-map-area') as HTMLElement | null;
     if (!mapAreaEl || !coords) return;
-    const mapW = mapAreaEl.offsetWidth;
-    const mapH = mapAreaEl.offsetHeight;
+
+    // A4横の印刷サイズに合わせた固定サイズを使用（モーダルサイズに依存しない）
+    // A4横 = 297mm x 210mm、96dpi換算で約1123px x 794px
+    const PRINT_W = 1123;
+    const HEADER_H = 36;
+    const PRINT_MAP_H = 794 - HEADER_H;
 
     // 印刷用ラッパーを body に追加（地図DOMを移動）
     const printWrap = document.createElement('div');
     printWrap.id = 'nearby-map-print-wrap';
-    printWrap.style.cssText = `position:fixed;top:0;left:0;width:${mapW}px;height:${mapH}px;z-index:99999;background:white;overflow:hidden;`;
+    printWrap.style.cssText = `position:fixed;top:${HEADER_H}px;left:0;width:${PRINT_W}px;height:${PRINT_MAP_H}px;z-index:99999;background:white;overflow:hidden;`;
 
-    // ヘッダーdivを作成（地図の上に重ねる）
+    // ヘッダーdivを作成
     const headerWrap = document.createElement('div');
     headerWrap.id = 'nearby-header-print-wrap';
     headerWrap.innerHTML = `
@@ -264,22 +268,20 @@ const NearbyMapModal: React.FC<NearbyMapModalProps> = ({ open, onClose, googleMa
       <span style="font-size:9pt;color:#1565c0;margin-left:auto;">${tabLabel}</span>
     `;
     headerWrap.style.cssText = `
-      position:fixed;top:0;left:0;width:${mapW}px;z-index:100000;
+      position:fixed;top:0;left:0;width:${PRINT_W}px;height:${HEADER_H}px;z-index:100000;
       display:flex;align-items:center;gap:6px;
       background:white;padding:4px 10px;
       border-bottom:1px solid #ccc;box-sizing:border-box;
       font-family:'Meiryo','Yu Gothic',sans-serif;
     `;
     document.body.appendChild(headerWrap);
-    const headerH = headerWrap.offsetHeight || 32;
-
-    // 地図ラッパーをヘッダー分下にずらす
-    printWrap.style.top = `${headerH}px`;
-    printWrap.style.height = `${mapH - headerH}px`;
 
     // 地図の内部divを移動
     const mapInner = mapAreaEl.firstElementChild as HTMLElement | null;
     if (mapInner) {
+      // 印刷用サイズに強制リサイズ
+      mapInner.style.width = `${PRINT_W}px`;
+      mapInner.style.height = `${PRINT_MAP_H}px`;
       printWrap.appendChild(mapInner);
       document.body.appendChild(printWrap);
       if (mapRef.current) {
@@ -312,20 +314,21 @@ const NearbyMapModal: React.FC<NearbyMapModalProps> = ({ open, onClose, googleMa
         #nearby-header-print-wrap {
           position: static !important;
           width: 100% !important;
+          height: auto !important;
           display: flex !important;
           align-items: center !important;
-          padding: 3mm 5mm !important;
+          padding: 2mm 5mm !important;
           border-bottom: 1px solid #ccc !important;
           background: white !important;
           page-break-after: avoid !important;
           break-after: avoid !important;
         }
 
-        /* 1ページ目：地図をページいっぱいに（ヘッダー分を除く） */
+        /* 1ページ目：地図（ヘッダー込みで1ページに収める） */
         #nearby-map-print-wrap {
           position: static !important;
           width: 100% !important;
-          height: calc(100vh - 12mm) !important;
+          height: calc(100vh - 10mm) !important;
           page-break-after: always !important;
           break-after: page !important;
           overflow: hidden !important;
@@ -364,6 +367,8 @@ const NearbyMapModal: React.FC<NearbyMapModalProps> = ({ open, onClose, googleMa
       // 印刷後に元に戻す
       setTimeout(() => {
         if (mapInner && mapAreaEl) {
+          mapInner.style.width = '';
+          mapInner.style.height = '';
           mapAreaEl.appendChild(mapInner);
           if (mapRef.current) {
             google.maps.event.trigger(mapRef.current, 'resize');
