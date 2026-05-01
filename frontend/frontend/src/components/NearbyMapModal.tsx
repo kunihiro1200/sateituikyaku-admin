@@ -285,7 +285,7 @@ const NearbyMapModal: React.FC<NearbyMapModalProps> = ({ open, onClose, googleMa
       printWrap.appendChild(mapInner);
       document.body.appendChild(printWrap);
       // 元のコンテナを非表示にして印刷時に映り込まないようにする
-      mapAreaEl.style.visibility = 'hidden';
+      mapAreaEl.style.display = 'none';
       if (mapRef.current) {
         google.maps.event.trigger(mapRef.current, 'resize');
         mapRef.current.setCenter(coords);
@@ -373,7 +373,7 @@ const NearbyMapModal: React.FC<NearbyMapModalProps> = ({ open, onClose, googleMa
         if (mapInner && mapAreaEl) {
           mapInner.style.width = '';
           mapInner.style.height = '';
-          mapAreaEl.style.visibility = '';
+          mapAreaEl.style.display = '';
           mapAreaEl.appendChild(mapInner);
           if (mapRef.current) {
             google.maps.event.trigger(mapRef.current, 'resize');
