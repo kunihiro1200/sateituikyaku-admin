@@ -69,8 +69,8 @@ const CAT_PREFIX: Record<string, string> = {
   cram_school: '塾',
 };
 
-// ---- テキストラベルSVGマーカー（吹き出し口は常に下、オフセットで尻尾伸縮） ----
-// offsetX: ラベルを右にずらす量（px、負=左）、offsetY: ラベルを上にずらす量（px、正=上）
+// ---- テキストラベルSVGマーカー（吹き出し口はオフセット方向に応じて自動切替） ----
+// offsetX: 右が正、offsetY: 上が正
 function makeTextMarker(
   name: string, color: string, prefix: string,
   offsetX = 0, offsetY = 0
@@ -84,39 +84,70 @@ function makeTextMarker(
   for (const ch of displayText) { textW += ch.charCodeAt(0) > 127 ? 10 : 7; }
   const boxW = Math.max(60, textW + 24);
   const boxH = 22;
-  const tailMinH = 8;
+  const tailLen = 10 + Math.sqrt(offsetX * offsetX + offsetY * offsetY) * 0.5; // 距離に応じて尻尾を伸ばす
 
-  // SVGキャンバスサイズ：ラベル＋尻尾の伸び分
-  const absX = Math.abs(offsetX);
-  const absY = Math.abs(offsetY);
-  const svgW = boxW + absX;
-  const svgH = boxH + tailMinH + absY;
+  // オフセット方向を判定
+  const isAbove  = offsetY > Math.abs(offsetX);   // 主に上
+  const isBelow  = offsetY < -Math.abs(offsetX);  // 主に下
+  const isRight  = offsetX > Math.abs(offsetY);   // 主に右
+  const isLeft   = offsetX < -Math.abs(offsetY);  // 主に左
 
-  // ラベルボックスの左上座標
-  // offsetX>0（右ずれ）→ボックスを左端に配置、offsetX<0（左ずれ）→右端に配置
-  const boxX = offsetX >= 0 ? 0 : absX;
-  // offsetY>0（上ずれ）→ボックスを上端に配置
-  const boxY = 0;
+  let svgW: number, svgH: number;
+  let boxX: number, boxY: number;
+  let tailPoints: string;
+  let anchorX: number, anchorY: number;
 
-  // 尻尾の根元：ラベルの底辺上で、水平オフセットに応じて左右に寄せる
-  // 右ずれなら根元を右寄り、左ずれなら左寄り
-  const baseRatio = offsetX === 0 ? 0.5 : (offsetX > 0 ? 0.75 : 0.25);
-  const baseX = boxX + boxW * baseRatio;
-  const baseY = boxH;
+  if (isAbove) {
+    // ラベルが上：尻尾はラベル下から出る
+    svgW = boxW;
+    svgH = boxH + tailLen;
+    boxX = 0; boxY = 0;
+    const bx = boxW / 2;
+    tailPoints = `${bx-5},${boxH} ${bx+5},${boxH} ${bx},${svgH}`;
+    anchorX = bx; anchorY = svgH;
 
-  // 尻尾の先端（実際の地点 = アンカー）
-  // 水平：ボックス中央から offsetX 分ずれた位置
-  const tipX = boxX + boxW / 2 - offsetX;
-  const tipY = svgH;
+  } else if (isBelow) {
+    // ラベルが下：尻尾はラベル上から出る
+    svgW = boxW;
+    svgH = boxH + tailLen;
+    boxX = 0; boxY = tailLen;
+    const bx = boxW / 2;
+    tailPoints = `${bx-5},${boxY} ${bx+5},${boxY} ${bx},${0}`;
+    anchorX = bx; anchorY = 0;
 
-  const anchorX = tipX;
-  const anchorY = tipY;
+  } else if (isRight) {
+    // ラベルが右：尻尾はラベル左端から出る
+    svgW = boxW + tailLen;
+    svgH = boxH;
+    boxX = tailLen; boxY = 0;
+    const by = boxH / 2;
+    tailPoints = `${boxX},${by-5} ${boxX},${by+5} ${0},${by}`;
+    anchorX = 0; anchorY = by;
+
+  } else if (isLeft) {
+    // ラベルが左：尻尾はラベル右端から出る
+    svgW = boxW + tailLen;
+    svgH = boxH;
+    boxX = 0; boxY = 0;
+    const by = boxH / 2;
+    tailPoints = `${boxW},${by-5} ${boxW},${by+5} ${svgW},${by}`;
+    anchorX = svgW; anchorY = by;
+
+  } else {
+    // デフォルト（真下に尻尾）
+    svgW = boxW;
+    svgH = boxH + tailLen;
+    boxX = 0; boxY = 0;
+    const bx = boxW / 2;
+    tailPoints = `${bx-5},${boxH} ${bx+5},${boxH} ${bx},${svgH}`;
+    anchorX = bx; anchorY = svgH;
+  }
 
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${svgW}" height="${svgH}">
     <rect x="${boxX}" y="${boxY}" width="${boxW}" height="${boxH}" rx="4" ry="4" fill="${color}" opacity="0.93"/>
     <text x="${boxX + boxW/2}" y="${boxY + 15}" font-family="Meiryo,'Yu Gothic',sans-serif"
       font-size="10" font-weight="bold" fill="white" text-anchor="middle">${label}</text>
-    <polygon points="${baseX-5},${baseY} ${baseX+5},${baseY} ${tipX},${tipY}" fill="${color}" opacity="0.93"/>
+    <polygon points="${tailPoints}" fill="${color}" opacity="0.93"/>
   </svg>`;
 
   try { return { url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg), w: svgW, h: svgH, anchorX, anchorY }; }
@@ -160,19 +191,34 @@ function findBestOffset(
   placed: PlacedLabel[]
 ): { dx: number; dy: number } {
   for (const { dx, dy } of OFFSET_CANDIDATES) {
-    // ラベル左上座標
-    const absX = Math.abs(dx);
-    const svgW = labelW + absX;
-    const boxX = dx >= 0 ? 0 : absX;
-    // アンカー（尻尾先端）のSVG内X座標
-    const anchorSvgX = boxX + labelW / 2 - dx;
-    // アンカーのSVG内Y座標 = svgH（最下端）
-    // ラベル左上の実座標 = (px - anchorSvgX, py - svgH)
-    const lx = px - anchorSvgX;
-    const ly = py - labelH; // labelH = svgH
+    const isAbove  = dy > Math.abs(dx);
+    const isBelow  = dy < -Math.abs(dx);
+    const isRight  = dx > Math.abs(dy);
+    const isLeft   = dx < -Math.abs(dy);
+    const tailLen  = 10 + Math.sqrt(dx * dx + dy * dy) * 0.5;
 
+    let svgW: number, svgH: number, anchorX: number, anchorY: number;
+    if (isAbove) {
+      svgW = labelW; svgH = labelH + tailLen;
+      anchorX = labelW / 2; anchorY = svgH;
+    } else if (isBelow) {
+      svgW = labelW; svgH = labelH + tailLen;
+      anchorX = labelW / 2; anchorY = 0;
+    } else if (isRight) {
+      svgW = labelW + tailLen; svgH = labelH;
+      anchorX = 0; anchorY = labelH / 2;
+    } else if (isLeft) {
+      svgW = labelW + tailLen; svgH = labelH;
+      anchorX = svgW; anchorY = labelH / 2;
+    } else {
+      svgW = labelW; svgH = labelH + tailLen;
+      anchorX = labelW / 2; anchorY = svgH;
+    }
+
+    const lx = px - anchorX;
+    const ly = py - anchorY;
     const overlaps = placed.some(q =>
-      !(lx + svgW < q.lx || lx > q.lx + q.lw || ly + labelH < q.ly || ly > q.ly + q.lh)
+      !(lx + svgW < q.lx || lx > q.lx + q.lw || ly + svgH < q.ly || ly > q.ly + q.lh)
     );
     if (!overlaps) return { dx, dy };
   }
@@ -237,12 +283,9 @@ function drawMarkers(map: google.maps.Map, data: NearbyData, iw: google.maps.Inf
       const { dx, dy } = findBestOffset(ppx.x, ppx.y, labelW, labelH, placedLabels);
       const ic = makeTextMarker(p.name, color, prefix, dx, dy);
 
-      // 配置済みリストに追加（ラベルの実際の位置）
-      const absX = Math.abs(dx);
-      const boxX = dx >= 0 ? 0 : absX;
-      const anchorSvgX = boxX + labelW / 2 - dx;
-      const lx = ppx.x - anchorSvgX;
-      const ly = ppx.y - ic.h;
+      // 配置済みリストに追加（アンカーを基準にラベル左上を計算）
+      const lx = ppx.x - ic.anchorX;
+      const ly = ppx.y - ic.anchorY;
       placedLabels.push({ lx, ly, lw: ic.w, lh: ic.h });
 
       const mk = new google.maps.Marker({
