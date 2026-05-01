@@ -1924,9 +1924,11 @@ router.post('/:id/area-report', async (req: Request, res: Response) => {
     }
     const cityEnd = address.indexOf(city) + city.length;
     const afterCity = address.slice(cityEnd);
-    const townMatch = afterCity.match(/^([^\d\s\-0-9]{2,10}?)(?=\d|[0-9\-]|$)/);
+    // 全角数字・半角数字・ハイフン・スペースの前までを町名として抽出
+    // 「大字葛木９９６」→「大字葛木」、「金池町1丁目」→「金池町」、「南太平寺1丁目」→「南太平寺」
+    const townMatch = afterCity.match(/^([^\d\s\-0-9０-９]{2,12}?)(?=[\d０-９\s\-]|$)/);
     const townRaw = townMatch ? townMatch[1].trim() : '';
-    // 「南太平寺1丁目」→「南太平寺」（丁目番号のみ除去、末尾の「町」は残す）
+    // 「南太平寺1丁目」→「南太平寺」（丁目番号のみ除去、末尾の「町」「字」は残す）
     const town = townRaw.replace(/\d+丁目$/, '').trim();
     const detailArea = town || city;
     const cityLabel = city;
