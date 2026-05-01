@@ -214,7 +214,7 @@ const NearbyMapModal: React.FC<NearbyMapModalProps> = ({ open, onClose, googleMa
     onClose();
   };
 
-  // ---- 印刷：新規ウィンドウで地図画像＋施設リストを印刷 ----
+  // ---- 印刷：地図DOMを移動して印刷する方式 ----
   const handlePrint = () => {
     const curData = tab === 0 ? data1 : data2;
     const tabLabel = tab === 0 ? '半径1km圏内の施設' : '半径2km圏内の施設';
@@ -244,135 +244,102 @@ const NearbyMapModal: React.FC<NearbyMapModalProps> = ({ open, onClose, googleMa
           }).join('')
       : '';
 
-    // Google Maps Embed APIで地図iframe生成（テキストラベル付き）
-    const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '';
-    let mapImgHtml = '';
-    if (coords) {
-      const zoom = tab === 0 ? 14 : 13;
-      // Embed APIはテキストラベル付きの地図を表示できる
-      const embedUrl = `https://www.google.com/maps/embed/v1/view?key=${apiKey}&center=${coords.lat},${coords.lng}&zoom=${zoom}&maptype=roadmap&language=ja`;
-      mapImgHtml = `<iframe
-        src="${embedUrl}"
-        style="width:100%;height:160mm;border:none;display:block;"
-        allowfullscreen
-        loading="eager"
-      ></iframe>`;
-    } else {
-      mapImgHtml = `<div style="padding:20px;text-align:center;color:#666;">地図を表示できませんでした</div>`;
+    // 地図コンテナのサイズを取得
+    const mapAreaEl = document.querySelector('.nearby-map-area') as HTMLElement | null;
+    if (!mapAreaEl || !coords) return;
+    const mapW = mapAreaEl.offsetWidth;
+    const mapH = mapAreaEl.offsetHeight;
+
+    // 印刷用ラッパーを body に追加（地図DOMを移動）
+    const printWrap = document.createElement('div');
+    printWrap.id = 'nearby-map-print-wrap';
+    printWrap.style.cssText = `position:fixed;top:0;left:0;width:${mapW}px;height:${mapH}px;z-index:99999;background:white;overflow:hidden;`;
+
+    // 地図の内部divを移動
+    const mapInner = mapAreaEl.firstElementChild as HTMLElement | null;
+    if (mapInner) {
+      printWrap.appendChild(mapInner);
+      document.body.appendChild(printWrap);
+      if (mapRef.current) {
+        google.maps.event.trigger(mapRef.current, 'resize');
+        mapRef.current.setCenter(coords);
+      }
     }
 
-    const printHtml = `<!DOCTYPE html>
-<html lang="ja">
-<head>
-<meta charset="UTF-8"/>
-<title>近隣MAP - ${address || ''}</title>
-<style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'Meiryo', 'Yu Gothic', sans-serif; background: white; }
-  @page { size: A4 landscape; margin: 8mm; }
+    // 施設リスト用div
+    const facilityWrap = document.createElement('div');
+    facilityWrap.id = 'nearby-facility-print-wrap';
+    facilityWrap.innerHTML = facilityHtml;
+    document.body.appendChild(facilityWrap);
 
-  /* ===== 1ページ目：地図 ===== */
-  .page-map {
-    page-break-after: always;
-    break-after: page;
-    width: 100%;
-  }
-  .print-header {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 3mm 0 2mm;
-    border-bottom: 1px solid #ccc;
-    margin-bottom: 3mm;
-  }
-  .print-header h1 { font-size: 13pt; font-weight: bold; }
-  .print-header .addr { font-size: 9pt; color: #666; }
-  .print-header .tab-label { font-size: 9pt; color: #1565c0; margin-left: auto; }
-  .map-container { width: 100%; }
-  .map-container img { width: 100%; height: auto; display: block; border: 1px solid #ddd; }
-  .map-container iframe { width: 100%; height: 160mm; border: none; display: block; }
+    // 印刷スタイル
+    const styleId = 'nearby-print-style';
+    const old = document.getElementById(styleId); if (old) old.remove();
+    const st = document.createElement('style');
+    st.id = styleId;
+    st.textContent = `
+      @media print {
+        @page { size: A4 landscape; margin: 0; }
 
-  /* ===== 2ページ目：施設リスト ===== */
-  .page-list {
-    page-break-before: always;
-    break-before: page;
-    width: 100%;
-    columns: 3;
-    column-gap: 6mm;
-  }
-  .cat-block {
-    break-inside: avoid;
-    padding: 3px 6px;
-    margin-bottom: 5px;
-    background: #fafafa;
-  }
-  .cat-header {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    margin-bottom: 2px;
-  }
-  .cat-label { font-size: 9pt; font-weight: bold; }
-  .cat-count {
-    margin-left: auto;
-    font-size: 8pt;
-    background: #eee;
-    border-radius: 8px;
-    padding: 0 5px;
-  }
-  .place-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-    padding: 1px 0;
-    border-bottom: 1px dotted #eee;
-  }
-  .place-name { font-size: 8.5pt; }
-  .place-dist { font-size: 7.5pt; color: #888; white-space: nowrap; margin-left: 4px; }
-  .list-header {
-    font-size: 11pt;
-    font-weight: bold;
-    margin-bottom: 4mm;
-    padding-bottom: 2mm;
-    border-bottom: 1px solid #ccc;
-    column-span: all;
-  }
-  -webkit-print-color-adjust: exact;
-  print-color-adjust: exact;
-</style>
-</head>
-<body>
+        /* 地図と施設リスト以外を全て非表示 */
+        body > *:not(#nearby-map-print-wrap):not(#nearby-facility-print-wrap):not(#nearby-print-style) {
+          display: none !important;
+        }
 
-<!-- 1ページ目：地図 -->
-<div class="page-map">
-  <div class="print-header">
-    <h1>🗺️ 近隣MAP</h1>
-    ${address ? `<span class="addr">${address}</span>` : ''}
-    <span class="tab-label">🔵 ${tabLabel}</span>
-  </div>
-  <div class="map-container">${mapImgHtml}</div>
-</div>
+        /* 1ページ目：地図をページいっぱいに */
+        #nearby-map-print-wrap {
+          position: static !important;
+          width: 100vw !important;
+          height: 100vh !important;
+          page-break-after: always !important;
+          break-after: page !important;
+          overflow: hidden !important;
+        }
+        #nearby-map-print-wrap > div {
+          width: 100% !important;
+          height: 100% !important;
+        }
 
-<!-- 2ページ目：施設リスト -->
-<div class="page-list">
-  <div class="list-header">📍 ${tabLabel}</div>
-  ${facilityHtml}
-</div>
+        /* 2ページ目：施設リスト */
+        #nearby-facility-print-wrap {
+          display: block !important;
+          page-break-before: always !important;
+          break-before: page !important;
+          padding: 8mm !important;
+          columns: 3 !important;
+          column-gap: 6mm !important;
+          font-family: 'Meiryo', 'Yu Gothic', sans-serif !important;
+        }
+        .cat-block { break-inside: avoid; padding: 3px 6px; margin-bottom: 5px; background: #fafafa; }
+        .cat-header { display: flex; align-items: center; gap: 4px; margin-bottom: 2px; }
+        .cat-label { font-size: 9pt; font-weight: bold; }
+        .cat-count { margin-left: auto; font-size: 8pt; background: #eee; border-radius: 8px; padding: 0 5px; }
+        .place-item { display: flex; justify-content: space-between; padding: 1px 0; border-bottom: 1px dotted #eee; }
+        .place-name { font-size: 8.5pt; }
+        .place-dist { font-size: 7.5pt; color: #888; white-space: nowrap; margin-left: 4px; }
 
-</body>
-</html>`;
-
-    const win = window.open('', '_blank', 'width=1200,height=800');
-    if (!win) { alert('ポップアップがブロックされました。許可してから再試行してください。'); return; }
-    win.document.write(printHtml);
-    win.document.close();
-    // iframeの地図読み込みを待ってから印刷（3秒待機）
-    setTimeout(() => {
-      if (!win.closed) {
-        win.print();
-        win.close();
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
       }
-    }, 3000);
+    `;
+    document.head.appendChild(st);
+
+    setTimeout(() => {
+      window.print();
+      // 印刷後に元に戻す
+      setTimeout(() => {
+        if (mapInner && mapAreaEl) {
+          mapAreaEl.appendChild(mapInner);
+          if (mapRef.current) {
+            google.maps.event.trigger(mapRef.current, 'resize');
+            mapRef.current.setCenter(coords);
+          }
+        }
+        printWrap.remove();
+        facilityWrap.remove();
+        st.remove();
+      }, 1000);
+    }, 400);
   };
 
   const cur = tab === 0 ? data1 : data2;
