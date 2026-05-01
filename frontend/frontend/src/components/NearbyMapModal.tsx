@@ -186,7 +186,7 @@ function findBestOffset(
   }
   // 全方向で重なる場合はデフォルト（下）
   return OFFSET_CANDIDATES[4];
-}}
+}
 
 // ---- 物件マーカー（家マーク・吹き出しなし） ----
 function makePropertyMarker(): { url: string; w: number; h: number } {
