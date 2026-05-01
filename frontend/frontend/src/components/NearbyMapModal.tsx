@@ -163,24 +163,27 @@ function latLngToPixel(lat: number, lng: number, zoom: number): { x: number; y: 
   return { x, y };
 }
 
-// ---- オフセット候補（8方向＋デフォルト、間隔を広げる） ----
+// ---- オフセット候補（多方向・広間隔） ----
 // dx: 右が正、dy: 上が正（ラベルを地点からずらす方向）
 const OFFSET_CANDIDATES = [
-  { dx:  0,   dy:  0  }, // デフォルト（真下に尻尾）
-  { dx:  0,   dy: 45  }, // 上
-  { dx:  60,  dy:  0  }, // 右
-  { dx: -60,  dy:  0  }, // 左
-  { dx:  50,  dy: 40  }, // 右上
-  { dx: -50,  dy: 40  }, // 左上
-  { dx:  50,  dy: -30 }, // 右下
-  { dx: -50,  dy: -30 }, // 左下
-  { dx:  0,   dy: 85  }, // さらに上
-  { dx:  100, dy:  0  }, // さらに右
-  { dx: -100, dy:  0  }, // さらに左
-  { dx:  80,  dy: 70  }, // 右上遠
-  { dx: -80,  dy: 70  }, // 左上遠
-  { dx:  80,  dy: -55 }, // 右下遠
-  { dx: -80,  dy: -55 }, // 左下遠
+  { dx:   0,  dy:   0 }, // デフォルト（真下に尻尾）
+  { dx:   0,  dy:  55 }, // 上
+  { dx:  75,  dy:   0 }, // 右
+  { dx: -75,  dy:   0 }, // 左
+  { dx:  60,  dy:  50 }, // 右上
+  { dx: -60,  dy:  50 }, // 左上
+  { dx:  60,  dy: -40 }, // 右下
+  { dx: -60,  dy: -40 }, // 左下
+  { dx:   0,  dy: 100 }, // さらに上
+  { dx: 120,  dy:   0 }, // さらに右
+  { dx:-120,  dy:   0 }, // さらに左
+  { dx: 100,  dy:  80 }, // 右上遠
+  { dx:-100,  dy:  80 }, // 左上遠
+  { dx: 100,  dy: -70 }, // 右下遠
+  { dx:-100,  dy: -70 }, // 左下遠
+  { dx:   0,  dy: 150 }, // 上遠
+  { dx: 160,  dy:   0 }, // 右遠
+  { dx:-160,  dy:   0 }, // 左遠
 ];
 
 interface PlacedLabel {
@@ -505,11 +508,10 @@ const NearbyMapModal: React.FC<NearbyMapModalProps> = ({ open, onClose, googleMa
     const mapAreaEl = document.querySelector('.nearby-map-area') as HTMLElement | null;
     if (!mapAreaEl || !coords) return;
 
-    // A4横の印刷サイズに合わせた固定サイズを使用（モーダルサイズに依存しない）
-    // A4横 = 297mm x 210mm、96dpi換算で約1123px x 794px
-    const PRINT_W = 1123;
+    // 実際の地図コンテナサイズを使用（モーダルサイズに追従）
+    const PRINT_W = mapAreaEl.offsetWidth || 800;
     const HEADER_H = 36;
-    const PRINT_MAP_H = 794 - HEADER_H;
+    const PRINT_MAP_H = mapAreaEl.offsetHeight - HEADER_H || 500;
 
     // 印刷用ラッパーを body に追加（地図DOMを移動）
     const printWrap = document.createElement('div');
