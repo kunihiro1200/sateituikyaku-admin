@@ -307,49 +307,45 @@ const NearbyMapModal: React.FC<NearbyMapModalProps> = ({ open, onClose, googleMa
       @media print {
         @page { size: A4 landscape; margin: 0; }
 
-        /* 地図・ヘッダー・施設リスト以外を全て非表示 */
-        body > *:not(#nearby-header-print-wrap):not(#nearby-map-print-wrap):not(#nearby-facility-print-wrap):not(#nearby-print-style) {
+        /* ダイアログ全体を非表示 */
+        body > *:not(#nearby-header-print-wrap):not(#nearby-map-print-wrap):not(#nearby-facility-print-wrap) {
           display: none !important;
         }
-        /* 元の地図コンテナ（空）も非表示 */
-        .nearby-map-area { display: none !important; }
 
-        /* 1ページ目：ヘッダー */
+        /* 1ページ目：ヘッダー＋地図をまとめて1ページ */
         #nearby-header-print-wrap {
           position: static !important;
-          width: 100% !important;
-          height: auto !important;
           display: flex !important;
           align-items: center !important;
+          width: 100% !important;
           padding: 2mm 5mm !important;
           border-bottom: 1px solid #ccc !important;
           background: white !important;
-          page-break-after: avoid !important;
-          break-after: avoid !important;
+          box-sizing: border-box !important;
         }
 
-        /* 1ページ目：地図（ヘッダー込みで1ページに収める） */
         #nearby-map-print-wrap {
           position: static !important;
+          display: block !important;
           width: 100% !important;
-          height: calc(100vh - 10mm) !important;
+          height: 185mm !important;
+          overflow: hidden !important;
           page-break-after: always !important;
           break-after: page !important;
-          overflow: hidden !important;
         }
         #nearby-map-print-wrap > div {
           width: 100% !important;
           height: 100% !important;
         }
 
-        /* 2ページ目：施設リスト */
+        /* 2ページ目：施設リスト（余白なし） */
         #nearby-facility-print-wrap {
           display: block !important;
-          page-break-before: always !important;
-          break-before: page !important;
-          padding: 8mm !important;
+          width: 100% !important;
+          padding: 6mm !important;
+          box-sizing: border-box !important;
           columns: 3 !important;
-          column-gap: 6mm !important;
+          column-gap: 5mm !important;
           font-family: 'Meiryo', 'Yu Gothic', sans-serif !important;
         }
         .cat-block { break-inside: avoid; padding: 3px 6px; margin-bottom: 5px; background: #fafafa; }
