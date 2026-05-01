@@ -1627,10 +1627,8 @@ const CallModePage = () => {
       .then((res) => {
         if (cancelled) return;
         const files: any[] = res.data.files || [];
-        const imageCount = files.filter((f) =>
-          f.mimeType && f.mimeType.startsWith('image/')
-        ).length;
-        setDriveImageCount(imageCount);
+        // PDFも含む全ファイル数をバッジに表示
+        setDriveImageCount(files.length);
       })
       .catch(() => {
         // 取得失敗時はバッジを非表示にする（エラーは無視）
