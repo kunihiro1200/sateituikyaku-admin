@@ -47,23 +47,45 @@ async function extractCoords(url: string, apiBase: string): Promise<{ lat: numbe
   } catch { return null; }
 }
 
-// ---- テキストラベル付きSVGマーカー ----
+// ---- テキストラベル付きSVGマーカー（文字切れ防止） ----
 function makeTextMarker(name: string, color: string): { url: string; w: number; h: number } {
-  const raw = name.length > 14 ? name.slice(0, 14) + '…' : name;
+  // 最大12文字に制限（それ以上は省略）
+  const raw = name.length > 12 ? name.slice(0, 12) + '…' : name;
   const label = raw.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-  const w = Math.max(60, raw.length * 6.5 + 14);
+  // 日本語1文字=8px、英数字=5px で幅を計算（余裕を持たせる）
+  let textW = 0;
+  for (const ch of raw) { textW += ch.charCodeAt(0) > 127 ? 8 : 5; }
+  const w = Math.max(50, textW + 20); // 左右パディング10pxずつ
   const h = 20; const ah = 6; const totalH = h + ah;
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${totalH}"><rect x="0" y="0" width="${w}" height="${h}" rx="4" ry="4" fill="${color}" opacity="0.92"/><text x="${w/2}" y="14" font-family="Meiryo,sans-serif" font-size="9" font-weight="bold" fill="white" text-anchor="middle">${label}</text><polygon points="${w/2-5},${h} ${w/2+5},${h} ${w/2},${totalH}" fill="${color}" opacity="0.92"/></svg>`;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${totalH}">
+    <rect x="0" y="0" width="${w}" height="${h}" rx="4" ry="4" fill="${color}" opacity="0.93"/>
+    <text x="${w/2}" y="14" font-family="Meiryo,'Yu Gothic',sans-serif"
+      font-size="9" font-weight="bold" fill="white" text-anchor="middle">${label}</text>
+    <polygon points="${w/2-5},${h} ${w/2+5},${h} ${w/2},${totalH}" fill="${color}" opacity="0.93"/>
+  </svg>`;
   try { return { url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg), w, h: totalH }; }
   catch { return { url: 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg))), w, h: totalH }; }
 }
 
-// ---- 物件マーカー ----
+// ---- 物件マーカー（家マーク・吹き出しなし） ----
 function makePropertyMarker(): { url: string; w: number; h: number } {
-  const w = 72; const h = 26; const ah = 8; const totalH = h + ah;
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${totalH}"><rect x="0" y="0" width="${w}" height="${h}" rx="5" ry="5" fill="#d32f2f"/><text x="${w/2}" y="18" font-family="Meiryo,sans-serif" font-size="13" font-weight="bold" fill="white" text-anchor="middle">&#x1F4CD; &#x7269;&#x4EF6;</text><polygon points="${w/2-6},${h} ${w/2+6},${h} ${w/2},${totalH}" fill="#d32f2f"/></svg>`;
-  try { return { url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg), w, h: totalH }; }
-  catch { return { url: 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg))), w, h: totalH }; }
+  const w = 40; const h = 40;
+  // 家の形をSVGパスで描画
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 40 40">
+    <!-- 影 -->
+    <ellipse cx="20" cy="38" rx="10" ry="3" fill="rgba(0,0,0,0.2)"/>
+    <!-- 家の本体 -->
+    <polygon points="20,4 36,18 32,18 32,36 8,36 8,18 4,18" fill="#d32f2f" stroke="white" stroke-width="1.5"/>
+    <!-- 屋根の強調 -->
+    <polygon points="20,4 36,18 4,18" fill="#b71c1c" stroke="white" stroke-width="1"/>
+    <!-- ドア -->
+    <rect x="16" y="26" width="8" height="10" rx="1" fill="white" opacity="0.9"/>
+    <!-- 窓 -->
+    <rect x="11" y="22" width="6" height="5" rx="1" fill="white" opacity="0.8"/>
+    <rect x="23" y="22" width="6" height="5" rx="1" fill="white" opacity="0.8"/>
+  </svg>`;
+  try { return { url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg), w, h }; }
+  catch { return { url: 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg))), w, h }; }
 }
 
 // ---- マーカー描画 ----
@@ -72,7 +94,11 @@ function drawMarkers(map: google.maps.Map, data: NearbyData, iw: google.maps.Inf
   const pm = makePropertyMarker();
   ref.current.push(new google.maps.Marker({
     position: data.center, map, title: '物件', zIndex: 3000,
-    icon: { url: pm.url, anchor: new google.maps.Point(pm.w / 2, pm.h), scaledSize: new google.maps.Size(pm.w, pm.h) },
+    icon: {
+      url: pm.url,
+      anchor: new google.maps.Point(pm.w / 2, pm.h), // 家の底中央を基準点に
+      scaledSize: new google.maps.Size(pm.w, pm.h),
+    },
   }));
   data.categories.filter(cat => DISPLAY_CATS.has(cat.type)).forEach((cat) => {
     const color = COLORS[cat.type] || '#757575';
