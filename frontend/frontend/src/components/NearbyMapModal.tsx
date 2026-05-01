@@ -284,6 +284,8 @@ const NearbyMapModal: React.FC<NearbyMapModalProps> = ({ open, onClose, googleMa
       mapInner.style.height = `${PRINT_MAP_H}px`;
       printWrap.appendChild(mapInner);
       document.body.appendChild(printWrap);
+      // 元のコンテナを非表示にして印刷時に映り込まないようにする
+      mapAreaEl.style.visibility = 'hidden';
       if (mapRef.current) {
         google.maps.event.trigger(mapRef.current, 'resize');
         mapRef.current.setCenter(coords);
@@ -309,6 +311,8 @@ const NearbyMapModal: React.FC<NearbyMapModalProps> = ({ open, onClose, googleMa
         body > *:not(#nearby-header-print-wrap):not(#nearby-map-print-wrap):not(#nearby-facility-print-wrap):not(#nearby-print-style) {
           display: none !important;
         }
+        /* 元の地図コンテナ（空）も非表示 */
+        .nearby-map-area { display: none !important; }
 
         /* 1ページ目：ヘッダー */
         #nearby-header-print-wrap {
@@ -369,6 +373,7 @@ const NearbyMapModal: React.FC<NearbyMapModalProps> = ({ open, onClose, googleMa
         if (mapInner && mapAreaEl) {
           mapInner.style.width = '';
           mapInner.style.height = '';
+          mapAreaEl.style.visibility = '';
           mapAreaEl.appendChild(mapInner);
           if (mapRef.current) {
             google.maps.event.trigger(mapRef.current, 'resize');
