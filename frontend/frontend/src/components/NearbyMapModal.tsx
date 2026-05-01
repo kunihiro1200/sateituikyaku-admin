@@ -246,7 +246,37 @@ function makePropertyMarker(): { url: string; w: number; h: number } {
   catch { return { url: 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg))), w, h }; }
 }
 
-// ---- マーカー描画（全カテゴリ統一テキストラベル、吹き出し口は常に下） ----
+// ---- 公園用ツリーアイコンマーカー ----
+function makeParkMarker(): { url: string; w: number; h: number } {
+  const w = 28; const h = 32;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 28 32">
+    <ellipse cx="14" cy="12" rx="11" ry="11" fill="#33691e" opacity="0.95"/>
+    <ellipse cx="14" cy="10" rx="8" ry="8" fill="#558b2f" opacity="0.9"/>
+    <rect x="12" y="21" width="4" height="8" rx="1" fill="#5d4037"/>
+    <ellipse cx="14" cy="12" rx="5" ry="4" fill="#7cb342" opacity="0.6"/>
+  </svg>`;
+  try { return { url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg), w, h }; }
+  catch { return { url: 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg))), w, h }; }
+}
+
+// ---- フォーク＆ナイフSVGマーカー（飲食店） ----
+function makeRestaurantMarker(): { url: string; w: number; h: number } {
+  const w = 32; const h = 38;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 32 38">
+    <circle cx="16" cy="14" r="13" fill="#d84315" stroke="white" stroke-width="2"/>
+    <line x1="11" y1="7" x2="11" y2="21" stroke="white" stroke-width="1.8" stroke-linecap="round"/>
+    <line x1="9"  y1="7" x2="9"  y2="12" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+    <line x1="11" y1="7" x2="11" y2="12" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+    <line x1="13" y1="7" x2="13" y2="12" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+    <line x1="20" y1="7" x2="20" y2="21" stroke="white" stroke-width="1.8" stroke-linecap="round"/>
+    <path d="M20,7 Q24,9 24,13 L20,15" fill="white" stroke="white" stroke-width="0.5"/>
+    <polygon points="13,28 19,28 16,38" fill="#d84315"/>
+  </svg>`;
+  try { return { url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg), w, h }; }
+  catch { return { url: 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg))), w, h }; }
+}
+
+// ---- マーカー描画 ----
 function drawMarkers(map: google.maps.Map, data: NearbyData, iw: google.maps.InfoWindow, ref: React.MutableRefObject<google.maps.Marker[]>) {
   ref.current.forEach((m) => m.setMap(null)); ref.current = [];
   const zoom = map.getZoom() ?? 14;
@@ -270,7 +300,41 @@ function drawMarkers(map: google.maps.Map, data: NearbyData, iw: google.maps.Inf
 
       const ppx = latLngToPixel(p.lat, p.lng, zoom);
 
-      // ラベルサイズを事前計算
+      // 公園：ツリーアイコン
+      if (cat.type === 'park') {
+        const pk = makeParkMarker();
+        placedLabels.push({ lx: ppx.x - pk.w/2, ly: ppx.y - pk.h, lw: pk.w, lh: pk.h });
+        const mk = new google.maps.Marker({
+          position: { lat: p.lat, lng: p.lng }, map,
+          title: `${p.name} (${p.distance}m)`, zIndex: 800 - idx,
+          icon: { url: pk.url, anchor: new google.maps.Point(pk.w / 2, pk.h), scaledSize: new google.maps.Size(pk.w, pk.h) },
+        });
+        mk.addListener('click', () => {
+          iw.setContent(`<div style="font-size:12px;padding:5px 8px;min-width:160px;line-height:1.6;"><b>🌳 ${p.name}</b><br/><span style="color:#555;font-size:11px;">${p.vicinity}</span><br/><span style="color:#1565c0;font-weight:bold;">物件から約 ${p.distance}m</span></div>`);
+          iw.open(map, mk);
+        });
+        ref.current.push(mk);
+        return;
+      }
+
+      // 飲食店：フォーク＆ナイフアイコン
+      if (cat.type === 'restaurant') {
+        const rm = makeRestaurantMarker();
+        placedLabels.push({ lx: ppx.x - rm.w/2, ly: ppx.y - rm.h, lw: rm.w, lh: rm.h });
+        const mk = new google.maps.Marker({
+          position: { lat: p.lat, lng: p.lng }, map,
+          title: `${p.name} (${p.distance}m)`, zIndex: 800 - idx,
+          icon: { url: rm.url, anchor: new google.maps.Point(rm.w / 2, rm.h), scaledSize: new google.maps.Size(rm.w, rm.h) },
+        });
+        mk.addListener('click', () => {
+          iw.setContent(`<div style="font-size:12px;padding:5px 8px;min-width:160px;line-height:1.6;"><b>🍴 ${p.name}</b><br/><span style="color:#555;font-size:11px;">${p.vicinity}</span><br/><span style="color:#1565c0;font-weight:bold;">物件から約 ${p.distance}m</span>${p.rating ? `<br/><span style="color:#e65100;">★ ${p.rating}</span>` : ''}</div>`);
+          iw.open(map, mk);
+        });
+        ref.current.push(mk);
+        return;
+      }
+
+      // それ以外：テキストラベル（オフセット＋尻尾）
       const maxChars = 10;
       const rawName = p.name.length > maxChars ? p.name.slice(0, maxChars) + '…' : p.name;
       const displayText = prefix ? `${prefix} ${rawName}` : rawName;
