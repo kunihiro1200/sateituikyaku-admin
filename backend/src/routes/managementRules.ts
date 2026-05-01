@@ -3,24 +3,23 @@ import Anthropic from '@anthropic-ai/sdk';
 
 const router = Router();
 
-// チェック項目の定義
+// チェック項目の定義（表示順）
 const CHECK_ITEMS = [
+  { key: 'usage_restriction', label: '用途制限' },
   { key: 'pets', label: 'ペットの飼育' },
   { key: 'piano', label: 'ピアノ・楽器の使用' },
   { key: 'flooring', label: 'フローリング張替え工事' },
   { key: 'renovation', label: 'リフォーム・改修工事全般' },
-  { key: 'sublease', label: '民泊・短期賃貸（Airbnb等）' },
-  { key: 'parking', label: '駐車場・駐輪場の利用' },
   { key: 'balcony_exclusive', label: '専用使用権 - バルコニー' },
   { key: 'parking_exclusive', label: '専用使用権 - 専用駐車場' },
   { key: 'bicycle_exclusive', label: '専用使用権 - 専用駐輪場' },
   { key: 'garden_exclusive', label: '専用使用権 - 専用庭' },
   { key: 'storage_exclusive', label: '専用使用権 - 専用倉庫' },
-  { key: 'usage_restriction', label: '用途制限' },
+  { key: 'sublease', label: '民泊・短期賃貸（Airbnb等）' },
+  { key: 'parking', label: '駐車場・駐輪場の利用' },
   { key: 'noise', label: '騒音・生活音の制限' },
   { key: 'garbage', label: 'ゴミ出しルール' },
   { key: 'subletting', label: '専有部分の第三者への貸与' },
-  { key: 'signage', label: '看板・広告物の掲示' },
 ];
 
 /**
@@ -109,7 +108,7 @@ ${itemsDetail}
 5. 見つからない場合はnull
 6. 必ず以下のJSON形式のみで応答すること（説明文・コードブロック記号は不要）
 
-{"pets":null,"piano":null,"flooring":null,"renovation":null,"sublease":null,"parking":null,"balcony_exclusive":null,"parking_exclusive":null,"bicycle_exclusive":null,"garden_exclusive":null,"storage_exclusive":null,"usage_restriction":null,"noise":null,"garbage":null,"subletting":null,"signage":null}`,
+{"usage_restriction":null,"pets":null,"piano":null,"flooring":null,"renovation":null,"balcony_exclusive":null,"parking_exclusive":null,"bicycle_exclusive":null,"garden_exclusive":null,"storage_exclusive":null,"sublease":null,"parking":null,"noise":null,"garbage":null,"subletting":null}`,
     });
 
     // Claude APIに送信（PDF直接対応）
