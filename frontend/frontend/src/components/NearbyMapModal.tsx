@@ -216,6 +216,11 @@ const NearbyMapModal: React.FC<NearbyMapModalProps> = ({ open, onClose, googleMa
 
   // ---- 印刷：1ページ目=地図（A4横いっぱい）、2ページ目=施設リスト ----
   const handlePrint = () => {
+    // 地図コンテナの実際のサイズを取得（Google Mapsはpx指定が必要）
+    const mapEl = document.querySelector('.nearby-map-area') as HTMLElement | null;
+    const mapH = mapEl ? mapEl.offsetHeight : 500;
+    const mapW = mapEl ? mapEl.offsetWidth : 800;
+
     const styleId = 'nearby-print-override';
     const old = document.getElementById(styleId); if (old) old.remove();
     const st = document.createElement('style'); st.id = styleId;
@@ -267,11 +272,11 @@ const NearbyMapModal: React.FC<NearbyMapModalProps> = ({ open, onClose, googleMa
           height: auto !important;
         }
 
-        /* 1ページ目：地図をA4横いっぱい */
+        /* 1ページ目：地図（px固定でGoogle Mapsが正しく描画される） */
         .nearby-map-area {
           display: block !important;
-          width: 100vw !important;
-          height: 100vh !important;
+          width: ${mapW}px !important;
+          height: ${mapH}px !important;
           flex: none !important;
           page-break-after: always !important;
           break-after: page !important;
@@ -307,8 +312,15 @@ const NearbyMapModal: React.FC<NearbyMapModalProps> = ({ open, onClose, googleMa
       }
     `;
     document.head.appendChild(st);
-    window.print();
-    setTimeout(() => st.remove(), 3000);
+
+    // Google Mapsにリサイズを通知してから印刷
+    if (mapRef.current) {
+      google.maps.event.trigger(mapRef.current, 'resize');
+    }
+    setTimeout(() => {
+      window.print();
+      setTimeout(() => st.remove(), 3000);
+    }, 300);
   };
 
   const cur = tab === 0 ? data1 : data2;
