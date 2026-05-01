@@ -217,62 +217,90 @@ function listHtml(data: NearbyData): string {
   return rows || '<p class="nd">この圏内に施設が見つかりませんでした</p>';
 }
 
-// ---- PDF 印刷（新しいウィンドウ） ----
-// srcdoc/iframeはブラウザによって動作が不安定なため、
-// Blob URL + 新しいウィンドウ方式に変更
+// ---- PDF 印刷 ----
+// 非表示divをbodyに直接追加してwindow.print()する方式
+// ポップアップブロックの影響を受けず、最も確実
 function doPrint(address: string, d1: NearbyData | null, d2: NearbyData | null) {
   const l1 = d1 ? listHtml(d1) : '<p class="nd">データなし</p>';
   const l2 = d2 ? listHtml(d2) : '<p class="nd">データなし</p>';
 
-  const html = `<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"/>
-<title>近隣環境マップ</title>
-<style>
-@page{size:A4 portrait;margin:10mm 12mm;}
-*{box-sizing:border-box;margin:0;padding:0;}
-body{font-family:'Hiragino Sans','Meiryo','Yu Gothic',sans-serif;font-size:9px;color:#111;}
-h1{font-size:13px;color:#1565c0;margin-bottom:2px;}
-.sub{font-size:8px;color:#555;margin-bottom:5px;}
-hr{border:none;border-top:2px solid #1565c0;margin:4px 0 8px;}
-.cols{display:flex;gap:8px;}
-.col{flex:1;min-width:0;}
-.ct{font-size:10px;font-weight:bold;color:white;padding:3px 7px;border-radius:3px;margin-bottom:5px;}
-.c1{background:#1565c0;}.c2{background:#2e7d32;}
-.cb{margin-bottom:5px;break-inside:avoid;}
-.ch{color:white;padding:2px 6px;border-radius:2px;font-size:9px;font-weight:bold;margin-bottom:2px;}
-table{width:100%;border-collapse:collapse;}
-.n{padding:1px 4px;font-size:9px;border-bottom:1px solid #eee;}
-.a{padding:1px 4px;font-size:8px;color:#555;border-bottom:1px solid #eee;}
-.d{padding:1px 4px;font-size:9px;color:#1565c0;text-align:right;border-bottom:1px solid #eee;white-space:nowrap;}
-.r{padding:1px 4px;font-size:8px;color:#e65100;border-bottom:1px solid #eee;}
-.nd{font-size:9px;color:#999;padding:4px;}
-</style></head><body>
-<h1>近隣環境マップ</h1>
-<div class="sub">${esc(address)}</div><hr/>
-<div class="cols">
-  <div class="col"><div class="ct c1">&#x1F535; 半径1km圏内の施設</div>${l1}</div>
-  <div class="col"><div class="ct c2">&#x1F7E2; 半径2km圏内の施設</div>${l2}</div>
-</div>
-</body></html>`;
+  // 既存の印刷エリアを削除
+  const existing = document.getElementById('nearby-map-print-root');
+  if (existing) existing.remove();
 
-  // Blob URL 方式（srcdocより確実）
-  const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const win = window.open(url, '_blank');
-  if (win) {
-    win.onload = () => {
-      setTimeout(() => {
-        win.print();
-        setTimeout(() => { win.close(); URL.revokeObjectURL(url); }, 2000);
-      }, 500);
-    };
-  } else {
-    // ポップアップブロック時のフォールバック：リンクをクリック
-    const a = document.createElement('a');
-    a.href = url;
-    a.target = '_blank';
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(url), 10000);
-  }
+  // 印刷専用スタイルを追加
+  const styleId = 'nearby-map-print-style';
+  const existingStyle = document.getElementById(styleId);
+  if (existingStyle) existingStyle.remove();
+
+  const style = document.createElement('style');
+  style.id = styleId;
+  style.textContent = `
+    @media print {
+      body > *:not(#nearby-map-print-root) { display: none !important; }
+      #nearby-map-print-root {
+        display: block !important;
+        position: fixed !important;
+        top: 0 !important; left: 0 !important;
+        width: 100% !important;
+        background: white !important;
+        z-index: 999999 !important;
+        padding: 10mm 12mm !important;
+        font-family: 'Hiragino Sans','Meiryo','Yu Gothic',sans-serif !important;
+        font-size: 9px !important;
+        color: #111 !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+      #nearby-map-print-root h1 { font-size: 13px; color: #1565c0; margin-bottom: 2px; }
+      #nearby-map-print-root .sub { font-size: 8px; color: #555; margin-bottom: 5px; }
+      #nearby-map-print-root hr { border: none; border-top: 2px solid #1565c0; margin: 4px 0 8px; }
+      #nearby-map-print-root .cols { display: flex; gap: 8px; }
+      #nearby-map-print-root .col { flex: 1; min-width: 0; }
+      #nearby-map-print-root .ct { font-size: 10px; font-weight: bold; color: white; padding: 3px 7px; border-radius: 3px; margin-bottom: 5px; }
+      #nearby-map-print-root .c1 { background: #1565c0 !important; }
+      #nearby-map-print-root .c2 { background: #2e7d32 !important; }
+      #nearby-map-print-root .cb { margin-bottom: 5px; break-inside: avoid; }
+      #nearby-map-print-root .ch { color: white !important; padding: 2px 6px; border-radius: 2px; font-size: 9px; font-weight: bold; margin-bottom: 2px; }
+      #nearby-map-print-root table { width: 100%; border-collapse: collapse; }
+      #nearby-map-print-root .n { padding: 1px 4px; font-size: 9px; border-bottom: 1px solid #eee; }
+      #nearby-map-print-root .a { padding: 1px 4px; font-size: 8px; color: #555; border-bottom: 1px solid #eee; }
+      #nearby-map-print-root .d { padding: 1px 4px; font-size: 9px; color: #1565c0; text-align: right; border-bottom: 1px solid #eee; white-space: nowrap; }
+      #nearby-map-print-root .r { padding: 1px 4px; font-size: 8px; color: #e65100; border-bottom: 1px solid #eee; }
+      #nearby-map-print-root .nd { font-size: 9px; color: #999; padding: 4px; }
+    }
+  `;
+  document.head.appendChild(style);
+
+  // 印刷コンテンツをbodyに追加
+  const div = document.createElement('div');
+  div.id = 'nearby-map-print-root';
+  div.style.display = 'none'; // 通常時は非表示
+  div.innerHTML = `
+    <h1>近隣環境マップ</h1>
+    <div class="sub">${esc(address)}</div>
+    <hr/>
+    <div class="cols">
+      <div class="col">
+        <div class="ct c1">🔵 半径1km圏内の施設</div>
+        ${l1}
+      </div>
+      <div class="col">
+        <div class="ct c2">🟢 半径2km圏内の施設</div>
+        ${l2}
+      </div>
+    </div>
+  `;
+  document.body.appendChild(div);
+
+  // 印刷実行
+  window.print();
+
+  // 印刷後にクリーンアップ
+  setTimeout(() => {
+    div.remove();
+    style.remove();
+  }, 3000);
 }
 
 // ---- メインコンポーネント ----
