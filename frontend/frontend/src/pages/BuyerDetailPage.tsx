@@ -1510,6 +1510,8 @@ export default function BuyerDetailPage() {
             buyerNumber={buyer?.buyer_number}
             propertyNumber={linkedProperties[0]?.property_number}
             houseMaker={linkedProperties[0]?.house_maker}
+            googleMapUrl={linkedProperties[0]?.google_map_url}
+            address={linkedProperties[0]?.display_address || linkedProperties[0]?.address || ''}
           />
           {/* 近隣物件ボタン */}
           {linkedProperties.length > 0 && (

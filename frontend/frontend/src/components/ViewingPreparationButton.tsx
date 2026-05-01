@@ -6,6 +6,8 @@ export interface ViewingPreparationButtonProps {
   buyerNumber: string | null | undefined;
   propertyNumber: string | null | undefined;
   houseMaker?: string | null | undefined;
+  googleMapUrl?: string | null | undefined;
+  address?: string | null | undefined;
 }
 
 /**
@@ -16,6 +18,8 @@ export const ViewingPreparationButton: React.FC<ViewingPreparationButtonProps> =
   buyerNumber,
   propertyNumber,
   houseMaker,
+  googleMapUrl,
+  address,
 }) => {
   const [open, setOpen] = useState(false);
 
@@ -38,6 +42,8 @@ export const ViewingPreparationButton: React.FC<ViewingPreparationButtonProps> =
         buyerNumber={buyerNumber}
         propertyNumber={propertyNumber}
         houseMaker={houseMaker}
+        googleMapUrl={googleMapUrl}
+        address={address}
       />
     </>
   );

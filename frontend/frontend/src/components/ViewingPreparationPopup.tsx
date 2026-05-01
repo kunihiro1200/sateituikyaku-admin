@@ -15,6 +15,7 @@ import {
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import CheckIcon from '@mui/icons-material/Check';
 import HouseMakerModal from './HouseMakerModal';
+import NearbyMapModal from './NearbyMapModal';
 
 export interface ViewingPreparationPopupProps {
   open: boolean;
@@ -22,6 +23,8 @@ export interface ViewingPreparationPopupProps {
   buyerNumber: string | null | undefined;
   propertyNumber: string | null | undefined;
   houseMaker?: string | null | undefined;
+  googleMapUrl?: string | null | undefined;
+  address?: string | null | undefined;
 }
 
 // 固定リンク定数
@@ -101,10 +104,13 @@ export const ViewingPreparationPopup: React.FC<ViewingPreparationPopupProps> = (
   buyerNumber,
   propertyNumber,
   houseMaker,
+  googleMapUrl,
+  address,
 }) => {
   const hasBuyerNumber = buyerNumber != null && buyerNumber !== '';
   const hasPropertyNumber = propertyNumber != null && propertyNumber !== '';
   const [houseMakerModalOpen, setHouseMakerModalOpen] = useState(false);
+  const [nearbyMapModalOpen, setNearbyMapModalOpen] = useState(false);
 
   return (
     <>
@@ -198,6 +204,26 @@ export const ViewingPreparationPopup: React.FC<ViewingPreparationPopupProps> = (
         </List>
       </DialogContent>
       <DialogActions>
+        {/* 近隣MAPボタン（google_map_urlがある場合のみ表示） */}
+        {googleMapUrl && (
+          <Button
+            variant="contained"
+            size="small"
+            startIcon={<span style={{ fontSize: '1.1em' }}>🗺️</span>}
+            onClick={() => setNearbyMapModalOpen(true)}
+            sx={{
+              background: 'linear-gradient(135deg, #0277bd 0%, #01579b 100%)',
+              color: 'white',
+              fontWeight: 'bold',
+              mr: 'auto',
+              '&:hover': {
+                background: 'linear-gradient(135deg, #01579b 0%, #013a6b 100%)',
+              },
+            }}
+          >
+            近隣MAP
+          </Button>
+        )}
         <Button onClick={onClose} variant="outlined">
           閉じる
         </Button>
@@ -211,6 +237,16 @@ export const ViewingPreparationPopup: React.FC<ViewingPreparationPopupProps> = (
         onClose={() => setHouseMakerModalOpen(false)}
         commentHtml={houseMaker}
         mode="buyer"
+      />
+    )}
+
+    {/* 近隣MAPモーダル */}
+    {googleMapUrl && (
+      <NearbyMapModal
+        open={nearbyMapModalOpen}
+        onClose={() => setNearbyMapModalOpen(false)}
+        googleMapUrl={googleMapUrl}
+        address={address || ''}
       />
     )}
     </>
