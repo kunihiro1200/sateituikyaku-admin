@@ -508,56 +508,18 @@ const NearbyMapModal: React.FC<NearbyMapModalProps> = ({ open, onClose, googleMa
     const mapAreaEl = document.querySelector('.nearby-map-area') as HTMLElement | null;
     if (!mapAreaEl || !coords) return;
 
-    // 実際の地図コンテナサイズを使用（モーダルサイズに追従）
-    const PRINT_W = mapAreaEl.offsetWidth || 800;
+    // 地図の実際のサイズを取得（px）
+    const mapW = mapAreaEl.offsetWidth;
+    const mapH = mapAreaEl.offsetHeight;
     const HEADER_H = 36;
-    const PRINT_MAP_H = mapAreaEl.offsetHeight || 500;
 
-    // 印刷用ラッパーを body に追加（地図DOMを移動）
-    const printWrap = document.createElement('div');
-    printWrap.id = 'nearby-map-print-wrap';
-    printWrap.style.cssText = `position:fixed;top:${HEADER_H}px;left:0;width:${PRINT_W}px;height:${PRINT_MAP_H}px;z-index:99999;background:white;overflow:hidden;`;
-
-    // ヘッダーdivを作成
-    const headerWrap = document.createElement('div');
-    headerWrap.id = 'nearby-header-print-wrap';
-    headerWrap.innerHTML = `
-      <span style="font-size:13pt;font-weight:bold;">🗺️ 近隣MAP</span>
-      ${address ? `<span style="font-size:9pt;color:#555;margin-left:8px;">${address}</span>` : ''}
-      <span style="font-size:9pt;color:#1565c0;margin-left:auto;">${tabLabel}</span>
-    `;
-    headerWrap.style.cssText = `
-      position:fixed;top:0;left:0;width:${PRINT_W}px;height:${HEADER_H}px;z-index:100000;
-      display:flex;align-items:center;gap:6px;
-      background:white;padding:4px 10px;
-      border-bottom:1px solid #ccc;box-sizing:border-box;
-      font-family:'Meiryo','Yu Gothic',sans-serif;
-    `;
-    document.body.appendChild(headerWrap);
-
-    // 地図の内部divを移動
-    const mapInner = mapAreaEl.firstElementChild as HTMLElement | null;
-    if (mapInner) {
-      // 印刷用サイズに強制リサイズ
-      mapInner.style.width = `${PRINT_W}px`;
-      mapInner.style.height = `${PRINT_MAP_H}px`;
-      printWrap.appendChild(mapInner);
-      document.body.appendChild(printWrap);
-      // 元のコンテナを非表示にして印刷時に映り込まないようにする
-      mapAreaEl.style.display = 'none';
-      if (mapRef.current) {
-        google.maps.event.trigger(mapRef.current, 'resize');
-        mapRef.current.setCenter(coords);
-      }
-    }
-
-    // 施設リスト用div
+    // 施設リスト用div（body直下に追加）
     const facilityWrap = document.createElement('div');
     facilityWrap.id = 'nearby-facility-print-wrap';
     facilityWrap.innerHTML = facilityHtml;
     document.body.appendChild(facilityWrap);
 
-    // 印刷スタイル
+    // 印刷スタイル：地図はその場に置いたまま、CSSで制御
     const styleId = 'nearby-print-style';
     const old = document.getElementById(styleId); if (old) old.remove();
     const st = document.createElement('style');
@@ -566,38 +528,66 @@ const NearbyMapModal: React.FC<NearbyMapModalProps> = ({ open, onClose, googleMa
       @media print {
         @page { size: A4 landscape; margin: 0; }
 
-        /* ダイアログ全体を非表示 */
-        body > *:not(#nearby-header-print-wrap):not(#nearby-map-print-wrap):not(#nearby-facility-print-wrap) {
+        /* ダイアログ以外を非表示 */
+        body > *:not(.MuiDialog-root):not(#nearby-facility-print-wrap) {
           display: none !important;
         }
 
-        /* 1ページ目：ヘッダー＋地図をまとめて1ページ */
-        #nearby-header-print-wrap {
+        /* ダイアログをフラット展開 */
+        .MuiDialog-root, .MuiDialog-container, .MuiDialog-paper {
+          all: unset !important;
+          display: block !important;
           position: static !important;
-          display: flex !important;
-          align-items: center !important;
           width: 100% !important;
-          padding: 2mm 5mm !important;
-          border-bottom: 1px solid #ccc !important;
+          height: auto !important;
+          overflow: visible !important;
+          margin: 0 !important; padding: 0 !important;
+          box-shadow: none !important;
           background: white !important;
-          box-sizing: border-box !important;
+        }
+        .MuiBackdrop-root { display: none !important; }
+
+        /* ヘッダー・タブ・ボタン類を非表示 */
+        .MuiDialogTitle-root, .MuiTabs-root, .MuiDialogActions-root,
+        .MuiDivider-root, .no-print { display: none !important; }
+
+        /* コンテンツエリア */
+        .MuiDialogContent-root {
+          all: unset !important;
+          display: block !important;
+          overflow: visible !important;
+          padding: 0 !important;
+          width: 100% !important;
         }
 
-        #nearby-map-print-wrap {
-          position: static !important;
+        /* 地図ラッパー */
+        .nearby-print-wrapper {
           display: block !important;
           width: 100% !important;
-          height: ${PRINT_MAP_H}px !important;
+          height: auto !important;
+        }
+
+        /* 地図エリア：実際のサイズをpxで指定 */
+        .nearby-map-area {
+          display: block !important;
+          width: ${mapW}px !important;
+          height: ${mapH}px !important;
+          flex: none !important;
           overflow: hidden !important;
           page-break-after: always !important;
           break-after: page !important;
+          margin: 0 !important; padding: 0 !important;
         }
-        #nearby-map-print-wrap > div {
+        .nearby-map-area > div {
           width: 100% !important;
           height: 100% !important;
         }
 
-        /* 2ページ目：施設リスト（余白なし） */
+        /* 施設リストエリアを非表示（body直下のfacilityWrapを使う） */
+        .nearby-screen-only, .nearby-print-only,
+        .nearby-map-area ~ * { display: none !important; }
+
+        /* 2ページ目：施設リスト */
         #nearby-facility-print-wrap {
           display: block !important;
           width: 100% !important;
@@ -621,23 +611,16 @@ const NearbyMapModal: React.FC<NearbyMapModalProps> = ({ open, onClose, googleMa
     `;
     document.head.appendChild(st);
 
+    // Google Mapsにリサイズを通知してから印刷
+    if (mapRef.current) {
+      google.maps.event.trigger(mapRef.current, 'resize');
+      mapRef.current.setCenter(coords);
+    }
+
     setTimeout(() => {
       window.print();
-      // 印刷後に元に戻す
       setTimeout(() => {
-        if (mapInner && mapAreaEl) {
-          mapInner.style.width = '';
-          mapInner.style.height = '';
-          mapAreaEl.style.display = '';
-          mapAreaEl.appendChild(mapInner);
-          if (mapRef.current) {
-            google.maps.event.trigger(mapRef.current, 'resize');
-            mapRef.current.setCenter(coords);
-          }
-        }
-        printWrap.remove();
         facilityWrap.remove();
-        headerWrap.remove();
         st.remove();
       }, 1000);
     }, 400);
