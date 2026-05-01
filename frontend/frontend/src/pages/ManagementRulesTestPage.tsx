@@ -26,6 +26,9 @@ const API_BASE_URL =
     ? 'https://sateituikyaku-admin-backend.vercel.app'
     : import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
+// 1リクエストの最大サイズ（Vercel制限4.5MB → Base64は約3MB相当のバイナリ）
+const MAX_BYTES_PER_REQUEST = 3 * 1024 * 1024; // 3MB
+
 interface CheckResult {
   key: string;
   label: string;
@@ -39,25 +42,136 @@ interface AnalyzeResponse {
   results: CheckResult[];
 }
 
+interface FilePayload {
+  name: string;
+  mimeType: string;
+  base64: string;
+}
+
 /**
- * ファイルをBase64に変換
+ * PDFを指定バイト以下のチャンクに分割する
+ * pdfjs-distでページごとに分割してBase64化
+ */
+async function splitPdfIntoChunks(
+  file: File,
+  maxBytes: number,
+  onProgress?: (page: number, total: number) => void
+): Promise<FilePayload[][]> {
+  const pdfjsLib = await import('pdfjs-dist');
+  pdfjsLib.GlobalWorkerOptions.workerSrc =
+    'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.worker.min.mjs';
+
+  const arrayBuffer = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+  const totalPages = pdf.numPages;
+
+  const pages: FilePayload[] = [];
+
+  for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
+    onProgress?.(pageNum, totalPages);
+
+    const page = await pdf.getPage(pageNum);
+    const viewport = page.getViewport({ scale: 1.5 });
+
+    const canvas = document.createElement('canvas');
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
+    const ctx = canvas.getContext('2d')!;
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    await page.render({ canvasContext: ctx, viewport }).promise;
+
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.75);
+    const base64 = dataUrl.split(',')[1];
+
+    pages.push({
+      name: `${file.name}_p${pageNum}.jpg`,
+      mimeType: 'image/jpeg',
+      base64,
+    });
+  }
+
+  // ページをサイズ制限内のチャンクに分割
+  const chunks: FilePayload[][] = [];
+  let currentChunk: FilePayload[] = [];
+  let currentSize = 0;
+
+  for (const page of pages) {
+    const pageSize = page.base64.length * 0.75; // Base64→バイト換算
+    if (currentSize + pageSize > maxBytes && currentChunk.length > 0) {
+      chunks.push(currentChunk);
+      currentChunk = [];
+      currentSize = 0;
+    }
+    currentChunk.push(page);
+    currentSize += pageSize;
+  }
+  if (currentChunk.length > 0) chunks.push(currentChunk);
+
+  return chunks;
+}
+
+/**
+ * 画像ファイルをBase64に変換
  */
 function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onload = () => {
-      const dataUrl = reader.result as string;
-      resolve(dataUrl.split(',')[1]);
-    };
+    reader.onload = () => resolve((reader.result as string).split(',')[1]);
     reader.onerror = reject;
     reader.readAsDataURL(file);
   });
+}
+
+/**
+ * チャンクをAPIに送信
+ */
+async function analyzeChunk(files: FilePayload[]): Promise<CheckResult[]> {
+  const response = await fetch(`${API_BASE_URL}/api/management-rules/analyze`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ files }),
+  });
+
+  if (!response.ok) {
+    const errData = await response.json().catch(() => ({ error: 'サーバーエラー' }));
+    throw new Error(errData.error?.message || errData.error || `HTTP ${response.status}`);
+  }
+
+  const data: AnalyzeResponse = await response.json();
+  return data.results;
+}
+
+/**
+ * 複数チャンクの結果をマージ（より詳しい内容を優先）
+ */
+function mergeResults(allResults: CheckResult[][]): CheckResult[] {
+  if (allResults.length === 0) return [];
+  const merged = allResults[0].map((r) => ({ ...r }));
+
+  for (let i = 1; i < allResults.length; i++) {
+    for (const result of allResults[i]) {
+      const existing = merged.find((m) => m.key === result.key);
+      if (!existing) continue;
+      if (!existing.found && result.found) {
+        existing.content = result.content;
+        existing.found = true;
+      } else if (existing.found && result.found && result.content) {
+        // より長い（詳しい）内容を優先
+        if ((result.content?.length ?? 0) > (existing.content?.length ?? 0) * 1.2) {
+          existing.content = result.content;
+        }
+      }
+    }
+  }
+  return merged;
 }
 
 const ManagementRulesTestPage: React.FC = () => {
   const [files, setFiles] = useState<File[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
+  const [progress, setProgress] = useState(0);
   const [results, setResults] = useState<CheckResult[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
@@ -93,39 +207,48 @@ const ManagementRulesTestPage: React.FC = () => {
     setLoading(true);
     setError(null);
     setResults(null);
+    setProgress(0);
 
     try {
-      setLoadingMessage('ファイルを読み込み中...');
+      const allChunkResults: CheckResult[][] = [];
 
-      // ファイルをBase64に変換してそのまま送信（PDF変換不要）
-      const filePayloads = await Promise.all(
-        files.map(async (file) => ({
-          name: file.name,
-          mimeType: file.type,
-          base64: await fileToBase64(file),
-        }))
-      );
+      for (const file of files) {
+        if (file.type === 'application/pdf') {
+          // PDFはページ分割して送信
+          setLoadingMessage(`PDFを変換中: ${file.name}`);
+          const chunks = await splitPdfIntoChunks(file, MAX_BYTES_PER_REQUEST, (page, total) => {
+            setLoadingMessage(`PDFを変換中: ${file.name} (${page}/${total}ページ)`);
+          });
 
-      setLoadingMessage('Claude AIが管理規約を解析中... （しばらくお待ちください）');
-
-      const response = await fetch(`${API_BASE_URL}/api/management-rules/analyze`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ files: filePayloads }),
-      });
-
-      if (!response.ok) {
-        const errData = await response.json().catch(() => ({ error: 'サーバーエラー' }));
-        throw new Error(errData.error?.message || errData.error || `HTTP ${response.status}`);
+          for (let i = 0; i < chunks.length; i++) {
+            setLoadingMessage(
+              `Claude AIが解析中... (${i + 1}/${chunks.length}バッチ)`
+            );
+            setProgress(Math.round(((i + 1) / chunks.length) * 100));
+            const chunkResults = await analyzeChunk(chunks[i]);
+            allChunkResults.push(chunkResults);
+          }
+        } else {
+          // 画像はそのまま送信
+          setLoadingMessage(`Claude AIが解析中: ${file.name}`);
+          const base64 = await fileToBase64(file);
+          const chunkResults = await analyzeChunk([{
+            name: file.name,
+            mimeType: file.type,
+            base64,
+          }]);
+          allChunkResults.push(chunkResults);
+        }
       }
 
-      const data: AnalyzeResponse = await response.json();
-      setResults(data.results);
+      setProgress(100);
+      setResults(mergeResults(allChunkResults));
     } catch (err: any) {
       setError(err.message || '解析中にエラーが発生しました');
     } finally {
       setLoading(false);
       setLoadingMessage('');
+      setProgress(0);
     }
   };
 
@@ -142,16 +265,13 @@ const ManagementRulesTestPage: React.FC = () => {
         テキストPDF・スキャンPDF両方に対応しています。
       </Typography>
 
-      {/* アップロードエリア */}
       <Paper
         variant="outlined"
         sx={{
           p: 3, mb: 2,
           border: dragOver ? '2px dashed #1976d2' : '2px dashed #ccc',
           backgroundColor: dragOver ? '#e3f2fd' : '#fafafa',
-          cursor: 'pointer',
-          transition: 'all 0.2s',
-          textAlign: 'center',
+          cursor: 'pointer', transition: 'all 0.2s', textAlign: 'center',
         }}
         onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
         onDragLeave={() => setDragOver(false)}
@@ -171,11 +291,10 @@ const ManagementRulesTestPage: React.FC = () => {
           ここにファイルをドロップ、またはクリックして選択
         </Typography>
         <Typography variant="caption" color="text.disabled">
-          対応形式: PDF（テキスト・スキャン両対応）、JPEG、PNG（複数ファイル可）
+          対応形式: PDF（テキスト・スキャン両対応）、JPEG、PNG
         </Typography>
       </Paper>
 
-      {/* 選択済みファイル */}
       {files.length > 0 && (
         <Box sx={{ mb: 2, display: 'flex', flexWrap: 'wrap', gap: 1 }}>
           {files.map((file, i) => (
@@ -192,9 +311,7 @@ const ManagementRulesTestPage: React.FC = () => {
         </Box>
       )}
 
-      {error && (
-        <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>
-      )}
+      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
       <Button
         variant="contained"
@@ -210,14 +327,13 @@ const ManagementRulesTestPage: React.FC = () => {
 
       {loading && (
         <Box sx={{ mb: 3 }}>
-          <LinearProgress />
+          <LinearProgress variant={progress > 0 ? 'determinate' : 'indeterminate'} value={progress} />
           <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block', textAlign: 'center' }}>
             {loadingMessage}
           </Typography>
         </Box>
       )}
 
-      {/* 結果 */}
       {results && (
         <Paper variant="outlined" sx={{ p: 2 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
@@ -234,21 +350,14 @@ const ManagementRulesTestPage: React.FC = () => {
                 {i > 0 && <Divider component="li" />}
                 <ListItem alignItems="flex-start" sx={{ py: 1.5 }}>
                   <ListItemIcon sx={{ minWidth: 36, mt: 0.5 }}>
-                    {result.found
-                      ? <CheckCircleIcon color="success" />
-                      : <CancelIcon color="disabled" />}
+                    {result.found ? <CheckCircleIcon color="success" /> : <CancelIcon color="disabled" />}
                   </ListItemIcon>
                   <ListItemText
-                    primary={
-                      <Typography variant="subtitle2" fontWeight="bold">
-                        {result.label}
-                      </Typography>
-                    }
+                    primary={<Typography variant="subtitle2" fontWeight="bold">{result.label}</Typography>}
                     secondary={
                       result.found ? (
                         <Typography
-                          variant="body2"
-                          color="text.primary"
+                          variant="body2" color="text.primary"
                           sx={{ mt: 0.5, p: 1, backgroundColor: '#f0f7ff', borderRadius: 1, borderLeft: '3px solid #1976d2' }}
                         >
                           {result.content}
