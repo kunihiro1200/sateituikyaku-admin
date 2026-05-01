@@ -13,7 +13,6 @@ import {
   Tooltip,
 } from '@mui/material';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
-import AreaReportModal from './AreaReportModal';
 import HouseMakerModal from './HouseMakerModal';
 import MansionModal from './MansionModal';
 
@@ -207,7 +206,6 @@ export const VisitPreparationPopup: React.FC<VisitPreparationPopupProps> = ({
   propertyAddress,
   commentHtml = '',
 }) => {
-  const [areaReportOpen, setAreaReportOpen] = useState(false);
   const [houseMakerModalOpen, setHouseMakerModalOpen] = useState(false);
   const [mansionModalOpen, setMansionModalOpen] = useState(false);
 
@@ -325,22 +323,17 @@ export const VisitPreparationPopup: React.FC<VisitPreparationPopupProps> = ({
         <span>（リンクなし）</span>
       ),
     },
-    // 7. エリア情勢（ボタンクリックでモーダルを開く）
+    // 7. エリア情勢（クリックで別タブに遷移）
     {
       label: 'エリア情勢',
       content: sellerId ? (
-        <Box
-          component="span"
-          sx={{
-            color: '#1a237e',
-            textDecoration: 'underline',
-            cursor: 'pointer',
-            '&:hover': { opacity: 0.7 },
-          }}
-          onClick={() => setAreaReportOpen(true)}
+        <a
+          href={`/sellers/${sellerId}/area-report`}
+          target="_blank"
+          rel="noopener noreferrer"
         >
           エリア情勢
-        </Box>
+        </a>
       ) : (
         <span>（リンクなし）</span>
       ),
@@ -437,17 +430,6 @@ export const VisitPreparationPopup: React.FC<VisitPreparationPopupProps> = ({
         </Button>
       </DialogActions>
     </Dialog>
-
-    {/* エリア情勢モーダル */}
-    {sellerId && (
-      <AreaReportModal
-        open={areaReportOpen}
-        onClose={() => setAreaReportOpen(false)}
-        sellerId={sellerId}
-        sellerNumber={sellerNumber}
-        propertyAddress={propertyAddress}
-      />
-    )}
 
     {/* ハウスメーカーモーダル */}
     <HouseMakerModal
