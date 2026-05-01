@@ -84,11 +84,11 @@ const DOT_ONLY_TYPES = new Set(['pharmacy', 'park', 'bus_station']);
 
 // ---- 物件マーカー（大きく目立つ） ----
 function makePropertyMarker(): { url: string; w: number; h: number } {
-  const w = 60; const h = 26; const ah = 8; const totalH = h + ah;
+  const w = 72; const h = 26; const ah = 8; const totalH = h + ah;
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${totalH}">
     <rect x="0" y="0" width="${w}" height="${h}" rx="5" ry="5" fill="#d32f2f"/>
     <text x="${w/2}" y="18" font-family="Meiryo,sans-serif"
-      font-size="12" font-weight="bold" fill="white" text-anchor="middle">&#x1F4CD; &#x7269;&#x4EF6;</text>
+      font-size="12" font-weight="bold" fill="white" text-anchor="middle">&#x5F53;&#x7269;&#x4EF6;</text>
     <polygon points="${w/2-6},${h} ${w/2+6},${h} ${w/2},${totalH}" fill="#d32f2f"/>
   </svg>`;
   try {
@@ -159,8 +159,8 @@ function buildStaticMapUrl(data: NearbyData, apiKey: string): string {
   let url = `https://maps.googleapis.com/maps/api/staticmap?`;
   url += `center=${center.lat},${center.lng}&zoom=${zoom}&size=640x400&scale=2&language=ja&key=${apiKey}`;
 
-  // 物件マーカー（赤・大）
-  url += `&markers=color:red%7Csize:large%7Clabel:P%7C${center.lat},${center.lng}`;
+  // 物件マーカー（赤・大・「当」）
+  url += `&markers=color:red%7Csize:large%7Clabel:%E5%BD%93%7C${center.lat},${center.lng}`;
 
   // 施設マーカー（カテゴリ別色・小）
   data.categories.forEach((cat) => {
