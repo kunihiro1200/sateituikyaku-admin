@@ -63,18 +63,18 @@ interface NearbyMapModalProps {
 
 // ---- カテゴリ別カラー ----
 const CATEGORY_COLORS: Record<string, string> = {
-  supermarket:       '#e53935', // 赤
-  convenience_store: '#e53935',
-  school:            '#1e88e5', // 青
-  kindergarten:      '#039be5',
-  hospital:          '#43a047', // 緑
-  pharmacy:          '#00897b',
-  bank:              '#fb8c00', // オレンジ
-  post_office:       '#f4511e',
-  park:              '#558b2f', // 深緑
-  restaurant:        '#8e24aa', // 紫
-  train_station:     '#3949ab', // 紺
-  bus_station:       '#546e7a',
+  supermarket:       '#e53935',
+  convenience_store: '#c62828',
+  school:            '#1565c0',
+  kindergarten:      '#0277bd',
+  hospital:          '#2e7d32',
+  pharmacy:          '#00695c',
+  bank:              '#e65100',
+  post_office:       '#bf360c',
+  park:              '#33691e',
+  restaurant:        '#6a1b9a',
+  train_station:     '#283593',
+  bus_station:       '#37474f',
 };
 
 // ---- Google Map URL から座標を抽出 ----
@@ -110,92 +110,108 @@ async function extractCoords(
   }
 }
 
-// ---- カスタムHTMLマーカーを作成（施設名ラベル付き吹き出し） ----
-function createCustomMarker(
-  map: google.maps.Map,
-  position: google.maps.LatLngLiteral,
-  label: string,
-  color: string,
-  icon: string,
-  subText: string
-): google.maps.marker.AdvancedMarkerElement | google.maps.Marker {
-  // AdvancedMarkerElement が使えるか確認
-  if (
-    google.maps.marker &&
-    google.maps.marker.AdvancedMarkerElement
-  ) {
-    const container = document.createElement('div');
-    container.style.cssText = `
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      cursor: pointer;
-    `;
+// ---- SVGアイコンURLを生成（施設名ラベル付き吹き出し） ----
+function makeLabelIconUrl(label: string, color: string, emoji: string): string {
+  // 表示名を最大10文字に制限
+  const displayName = label.length > 10 ? label.slice(0, 10) + '…' : label;
+  const text = `${emoji} ${displayName}`;
+  // 文字数に応じて幅を調整
+  const width = Math.max(80, text.length * 8 + 16);
+  const height = 28;
+  const arrowH = 8;
+  const totalH = height + arrowH;
 
-    // 吹き出し本体
-    const bubble = document.createElement('div');
-    bubble.style.cssText = `
-      background: ${color};
-      color: white;
-      padding: 3px 7px;
-      border-radius: 12px;
-      font-size: 11px;
-      font-weight: bold;
-      white-space: nowrap;
-      max-width: 120px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.35);
-      line-height: 1.4;
-      text-align: center;
-    `;
-    bubble.textContent = `${icon} ${label}`;
-    bubble.title = `${label}\n${subText}`;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${totalH}">
+    <rect x="0" y="0" width="${width}" height="${height}" rx="6" ry="6"
+      fill="${color}" opacity="0.95"/>
+    <text x="${width / 2}" y="18" font-family="'Noto Sans JP','Hiragino Sans','Meiryo',sans-serif"
+      font-size="11" font-weight="bold" fill="white" text-anchor="middle">${text}</text>
+    <polygon points="${width / 2 - 6},${height} ${width / 2 + 6},${height} ${width / 2},${totalH}"
+      fill="${color}" opacity="0.95"/>
+  </svg>`;
 
-    // 三角形の矢印
-    const arrow = document.createElement('div');
-    arrow.style.cssText = `
-      width: 0;
-      height: 0;
-      border-left: 5px solid transparent;
-      border-right: 5px solid transparent;
-      border-top: 7px solid ${color};
-      margin-top: -1px;
-    `;
+  return 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg);
+}
 
-    container.appendChild(bubble);
-    container.appendChild(arrow);
+// ---- 物件マーカー用SVG ----
+function makePropertyIconUrl(): string {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="90" height="36">
+    <rect x="0" y="0" width="90" height="28" rx="6" ry="6" fill="#d32f2f" opacity="0.97"/>
+    <text x="45" y="19" font-family="'Noto Sans JP','Hiragino Sans','Meiryo',sans-serif"
+      font-size="12" font-weight="bold" fill="white" text-anchor="middle">📍 物件</text>
+    <polygon points="39,28 51,28 45,36" fill="#d32f2f" opacity="0.97"/>
+  </svg>`;
+  return 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg);
+}
 
-    const marker = new google.maps.marker.AdvancedMarkerElement({
-      map,
-      position,
-      content: container,
-      title: label,
-    });
-    return marker;
+// ---- 印刷用HTMLを生成して別ウィンドウで印刷 ----
+function printNearbyMap(address: string, nearbyData: NearbyData) {
+  const categoryColors = CATEGORY_COLORS;
+
+  // カテゴリ別リストのHTML
+  const listHtml = nearbyData.categories
+    .map((cat) => {
+      const places = nearbyData.places[cat.type] || [];
+      if (places.length === 0) return '';
+      const color = categoryColors[cat.type] || '#757575';
+      const rows = places
+        .map(
+          (p) =>
+            `<tr>
+              <td style="padding:3px 6px;font-size:11px;">${p.name}</td>
+              <td style="padding:3px 6px;font-size:11px;color:#555;">${p.vicinity}</td>
+              <td style="padding:3px 6px;font-size:11px;color:#1565c0;text-align:right;">約${p.distance}m</td>
+              ${p.rating ? `<td style="padding:3px 6px;font-size:11px;color:#e65100;">★${p.rating}</td>` : '<td></td>'}
+            </tr>`
+        )
+        .join('');
+      return `
+        <div style="margin-bottom:12px;break-inside:avoid;">
+          <div style="background:${color};color:white;padding:4px 10px;border-radius:4px;font-size:12px;font-weight:bold;margin-bottom:4px;">
+            ${cat.icon} ${cat.label}（${places.length}件）
+          </div>
+          <table style="width:100%;border-collapse:collapse;border:1px solid #ddd;">
+            <thead>
+              <tr style="background:#f5f5f5;">
+                <th style="padding:3px 6px;font-size:11px;text-align:left;border-bottom:1px solid #ddd;">施設名</th>
+                <th style="padding:3px 6px;font-size:11px;text-align:left;border-bottom:1px solid #ddd;">住所</th>
+                <th style="padding:3px 6px;font-size:11px;text-align:right;border-bottom:1px solid #ddd;">距離</th>
+                <th style="padding:3px 6px;font-size:11px;border-bottom:1px solid #ddd;">評価</th>
+              </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>`;
+    })
+    .join('');
+
+  const html = `<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8"/>
+  <title>近隣環境マップ - ${address}</title>
+  <style>
+    @page { size: A4; margin: 12mm 15mm; }
+    body { font-family: 'Noto Sans JP','Hiragino Sans','Meiryo',sans-serif; margin:0; padding:0; }
+    h1 { font-size:16px; margin:0 0 4px; }
+    .subtitle { font-size:11px; color:#555; margin-bottom:12px; }
+    .divider { border:none; border-top:2px solid #1565c0; margin:8px 0 12px; }
+  </style>
+</head>
+<body>
+  <h1>近隣環境マップ</h1>
+  <div class="subtitle">${address} ／ 半径${(nearbyData.radius / 1000).toFixed(1)}km圏内の施設</div>
+  <hr class="divider"/>
+  ${listHtml}
+  <script>window.onload = function(){ window.print(); window.close(); };<\/script>
+</body>
+</html>`;
+
+  const win = window.open('', '_blank', 'width=800,height=900');
+  if (win) {
+    win.document.write(html);
+    win.document.close();
   }
-
-  // フォールバック: 通常Marker + InfoWindow
-  const marker = new google.maps.Marker({
-    position,
-    map,
-    title: label,
-    label: {
-      text: `${icon}${label.length > 8 ? label.slice(0, 8) + '…' : label}`,
-      color: 'white',
-      fontSize: '10px',
-      fontWeight: 'bold',
-    },
-    icon: {
-      path: google.maps.SymbolPath.CIRCLE,
-      scale: 10,
-      fillColor: color,
-      fillOpacity: 1,
-      strokeColor: '#fff',
-      strokeWeight: 2,
-    },
-  });
-  return marker;
 }
 
 // ---- メインコンポーネント ----
@@ -215,11 +231,7 @@ const NearbyMapModal: React.FC<NearbyMapModalProps> = ({
   const [errorPlaces, setErrorPlaces] = useState<string | null>(null);
 
   const mapRef = useRef<google.maps.Map | null>(null);
-  // AdvancedMarkerElement と Marker の両方に対応
-  const markersRef = useRef<Array<google.maps.marker.AdvancedMarkerElement | google.maps.Marker>>([]);
-  // 物件中心マーカー（通常Marker）
-  const centerMarkerRef = useRef<google.maps.Marker | null>(null);
-  // InfoWindow（クリック時）
+  const markersRef = useRef<google.maps.Marker[]>([]);
   const infoWindowRef = useRef<google.maps.InfoWindow | null>(null);
 
   // ---- 座標取得 ----
@@ -254,20 +266,10 @@ const NearbyMapModal: React.FC<NearbyMapModalProps> = ({
   }, [coords]);
 
   // ---- マーカーをすべて削除 ----
-  const clearMarkers = () => {
-    markersRef.current.forEach((m) => {
-      if ('setMap' in m) {
-        (m as google.maps.Marker).setMap(null);
-      } else if ('map' in m) {
-        (m as google.maps.marker.AdvancedMarkerElement).map = null;
-      }
-    });
+  const clearMarkers = useCallback(() => {
+    markersRef.current.forEach((m) => m.setMap(null));
     markersRef.current = [];
-    if (centerMarkerRef.current) {
-      centerMarkerRef.current.setMap(null);
-      centerMarkerRef.current = null;
-    }
-  };
+  }, []);
 
   // ---- マップロード時 ----
   const handleMapLoad = useCallback(
@@ -276,6 +278,7 @@ const NearbyMapModal: React.FC<NearbyMapModalProps> = ({
       infoWindowRef.current = new google.maps.InfoWindow();
       if (nearbyData) renderMarkers(map, nearbyData);
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [nearbyData]
   );
 
@@ -289,95 +292,68 @@ const NearbyMapModal: React.FC<NearbyMapModalProps> = ({
   const renderMarkers = (map: google.maps.Map, data: NearbyData) => {
     clearMarkers();
 
-    // 物件マーカー（赤い大きな丸）
-    const center = new google.maps.Marker({
+    // 物件マーカー（中心）
+    const centerMarker = new google.maps.Marker({
       position: data.center,
       map,
       title: address || '物件',
-      zIndex: 1000,
+      zIndex: 2000,
       icon: {
-        path: google.maps.SymbolPath.CIRCLE,
-        scale: 14,
-        fillColor: '#f44336',
-        fillOpacity: 1,
-        strokeColor: '#fff',
-        strokeWeight: 3,
+        url: makePropertyIconUrl(),
+        anchor: new google.maps.Point(45, 36),
       },
     });
-    // 物件ラベル（InfoWindow常時表示の代わりにラベル）
-    const propertyLabel = new google.maps.Marker({
-      position: data.center,
-      map,
-      zIndex: 1001,
-      icon: {
-        url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
-          <svg xmlns="http://www.w3.org/2000/svg" width="80" height="28">
-            <rect rx="6" ry="6" width="80" height="24" fill="#f44336" opacity="0.95"/>
-            <text x="40" y="17" font-family="sans-serif" font-size="11" font-weight="bold"
-              fill="white" text-anchor="middle">📍 物件</text>
-          </svg>
-        `),
-        anchor: new google.maps.Point(40, 36),
-      },
-    });
-    centerMarkerRef.current = center;
-    markersRef.current.push(propertyLabel);
+    markersRef.current.push(centerMarker);
 
-    // 施設マーカー
+    // 施設マーカー（カテゴリ別ラベル付き）
     data.categories.forEach((cat) => {
       const places = data.places[cat.type] || [];
       const color = CATEGORY_COLORS[cat.type] || '#757575';
 
-      places.forEach((place) => {
+      places.forEach((place, idx) => {
         if (!place.lat || !place.lng) return;
 
-        const marker = createCustomMarker(
-          map,
-          { lat: place.lat, lng: place.lng },
-          place.name,
-          color,
-          cat.icon,
-          `${place.vicinity} (${place.distance}m)`
-        );
+        const iconUrl = makeLabelIconUrl(place.name, color, cat.icon);
+        // 文字数に応じた幅
+        const displayName = place.name.length > 10 ? place.name.slice(0, 10) + '…' : place.name;
+        const text = `${cat.icon} ${displayName}`;
+        const iconWidth = Math.max(80, text.length * 8 + 16);
+        const iconHeight = 36; // height + arrowH
 
-        // クリックでInfoWindow表示
-        const clickHandler = () => {
+        const marker = new google.maps.Marker({
+          position: { lat: place.lat, lng: place.lng },
+          map,
+          title: `${place.name} (${place.distance}m)`,
+          zIndex: 1000 - idx,
+          icon: {
+            url: iconUrl,
+            anchor: new google.maps.Point(iconWidth / 2, iconHeight),
+            scaledSize: new google.maps.Size(iconWidth, iconHeight),
+          },
+        });
+
+        // クリックでInfoWindow
+        marker.addListener('click', () => {
           if (infoWindowRef.current) {
             infoWindowRef.current.setContent(`
-              <div style="font-size:13px;padding:6px 10px;min-width:160px;line-height:1.6;">
-                <div style="font-weight:bold;font-size:14px;margin-bottom:4px;">
+              <div style="font-size:13px;padding:6px 10px;min-width:180px;line-height:1.7;font-family:'Noto Sans JP','Hiragino Sans','Meiryo',sans-serif;">
+                <div style="font-weight:bold;font-size:14px;margin-bottom:4px;color:#111;">
                   ${cat.icon} ${place.name}
                 </div>
-                <div style="color:#555;">${place.vicinity}</div>
-                <div style="color:#1976d2;font-weight:bold;margin-top:4px;">
-                  物件から約 ${place.distance}m
+                <div style="color:#555;font-size:12px;">${place.vicinity}</div>
+                <div style="color:#1565c0;font-weight:bold;margin-top:6px;">
+                  物件から約 <span style="font-size:15px;">${place.distance}</span>m
                 </div>
-                ${place.rating ? `<div style="color:#f57c00;">★ ${place.rating}</div>` : ''}
+                ${place.rating ? `<div style="color:#e65100;margin-top:2px;">★ ${place.rating}</div>` : ''}
               </div>
             `);
-            if ('setMap' in marker) {
-              infoWindowRef.current.open(map, marker as google.maps.Marker);
-            } else {
-              infoWindowRef.current.setPosition({ lat: place.lat, lng: place.lng });
-              infoWindowRef.current.open(map);
-            }
+            infoWindowRef.current.open(map, marker);
           }
-        };
-
-        if ('addListener' in marker) {
-          (marker as google.maps.Marker).addListener('click', clickHandler);
-        } else {
-          (marker as google.maps.marker.AdvancedMarkerElement).addEventListener('click', clickHandler);
-        }
+        });
 
         markersRef.current.push(marker);
       });
     });
-  };
-
-  // ---- PDF印刷 ----
-  const handlePrint = () => {
-    window.print();
   };
 
   // ---- モーダルを閉じる ----
@@ -397,287 +373,215 @@ const NearbyMapModal: React.FC<NearbyMapModalProps> = ({
   const hasCoords = !!coords;
   const hasPlaces = !!nearbyData;
 
-  // 施設の総件数
   const totalPlaces = nearbyData
     ? Object.values(nearbyData.places).reduce((sum, arr) => sum + arr.length, 0)
     : 0;
 
   return (
-    <>
-      {/* 印刷用スタイル */}
-      <style>{`
-        @media print {
-          body * { visibility: hidden !important; }
-          #nearby-map-print-area,
-          #nearby-map-print-area * { visibility: visible !important; }
-          #nearby-map-print-area {
-            position: fixed !important;
-            top: 0 !important;
-            left: 0 !important;
-            width: 100% !important;
-            padding: 16px !important;
-            background: white !important;
-          }
-          .no-print { display: none !important; }
-        }
-      `}</style>
-
-      <Dialog
-        open={open}
-        onClose={handleClose}
-        maxWidth="lg"
-        fullWidth
-        PaperProps={{
-          sx: { height: '92vh', display: 'flex', flexDirection: 'column' },
-        }}
+    <Dialog
+      open={open}
+      onClose={handleClose}
+      maxWidth="lg"
+      fullWidth
+      PaperProps={{
+        sx: { height: '92vh', display: 'flex', flexDirection: 'column' },
+      }}
+    >
+      {/* ヘッダー */}
+      <DialogTitle
+        sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', pb: 1 }}
       >
-        {/* ヘッダー */}
-        <DialogTitle
-          sx={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            pb: 1,
-          }}
-        >
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-            <MapIcon color="primary" />
-            <Typography variant="h6" fontWeight="bold">
-              近隣MAP
-            </Typography>
-            {address && (
-              <Typography variant="body2" color="text.secondary">
-                {address}
-              </Typography>
-            )}
-            {hasPlaces && (
-              <Chip
-                label={`${totalPlaces}件の施設`}
-                size="small"
-                color="primary"
-                variant="outlined"
-              />
-            )}
-          </Box>
-          <IconButton onClick={handleClose} size="small" className="no-print">
-            <CloseIcon />
-          </IconButton>
-        </DialogTitle>
-
-        <Divider />
-
-        <DialogContent
-          sx={{ flex: 1, overflow: 'auto', p: 2 }}
-          id="nearby-map-print-area"
-        >
-          {/* 印刷用タイトル */}
-          <Box
-            sx={{
-              display: 'none',
-              '@media print': { display: 'block' },
-              mb: 2,
-            }}
-          >
-            <Typography variant="h5" fontWeight="bold" gutterBottom>
-              近隣環境マップ
-            </Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+          <MapIcon color="primary" />
+          <Typography variant="h6" fontWeight="bold">
+            近隣MAP
+          </Typography>
+          {address && (
             <Typography variant="body2" color="text.secondary">
-              {address} ／ 半径2km圏内の施設
+              {address}
             </Typography>
-            <Divider sx={{ my: 1 }} />
+          )}
+          {hasPlaces && (
+            <Chip
+              label={`${totalPlaces}件の施設`}
+              size="small"
+              color="primary"
+              variant="outlined"
+            />
+          )}
+        </Box>
+        <IconButton onClick={handleClose} size="small">
+          <CloseIcon />
+        </IconButton>
+      </DialogTitle>
+
+      <Divider />
+
+      <DialogContent sx={{ flex: 1, overflow: 'auto', p: 2 }}>
+        {/* 座標が取得できない場合 */}
+        {!hasCoords && !loadingPlaces && (
+          <Alert severity="warning" sx={{ mb: 2 }}>
+            Google Map URLから座標を取得できませんでした。URLが正しく設定されているか確認してください。
+          </Alert>
+        )}
+
+        {/* ローディング */}
+        {loadingPlaces && (
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', py: 4, gap: 2 }}>
+            <CircularProgress size={28} />
+            <Typography>近隣施設を検索中...</Typography>
           </Box>
+        )}
 
-          {/* 座標が取得できない場合 */}
-          {!hasCoords && !loadingPlaces && (
-            <Alert severity="warning" sx={{ mb: 2 }}>
-              Google Map URLから座標を取得できませんでした。URLが正しく設定されているか確認してください。
-            </Alert>
-          )}
+        {/* エラー */}
+        {errorPlaces && (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {errorPlaces}
+          </Alert>
+        )}
 
-          {/* ローディング */}
-          {loadingPlaces && (
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', py: 4, gap: 2 }}>
-              <CircularProgress size={28} />
-              <Typography>近隣施設を検索中...</Typography>
-            </Box>
-          )}
-
-          {/* エラー */}
-          {errorPlaces && (
-            <Alert severity="error" sx={{ mb: 2 }}>
-              {errorPlaces}
-            </Alert>
-          )}
-
-          {/* Google Map（大きめ表示） */}
-          {hasCoords && isMapLoaded && (
+        {/* 地図 + 施設リスト（横並び） */}
+        {hasCoords && isMapLoaded && (
+          <Box sx={{ display: 'flex', gap: 2, height: 600 }}>
+            {/* Google Map（左側・大きめ） */}
             <Box
               sx={{
-                width: '100%',
-                height: 600, // スクショ相当の大きさ
+                flex: '1 1 65%',
                 borderRadius: 1,
                 overflow: 'hidden',
-                mb: 2,
                 boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                minWidth: 0,
               }}
             >
               <GoogleMap
                 mapContainerStyle={{ width: '100%', height: '100%' }}
                 center={coords!}
-                zoom={15}
+                zoom={13}  // 2km圏内が全部見えるズームレベル
                 options={{
                   zoomControl: true,
-                  streetViewControl: true,
+                  streetViewControl: false,
                   mapTypeControl: false,
                   fullscreenControl: true,
-                  mapId: 'DEMO_MAP_ID', // AdvancedMarkerElement に必要
+                  clickableIcons: false, // 既存のGoogleアイコンクリックを無効化
                 }}
                 onLoad={handleMapLoad}
               />
             </Box>
-          )}
 
-          {/* 施設一覧（地図の下） */}
-          {hasPlaces && nearbyData && (
-            <Box>
-              <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 1.5 }}>
-                近隣施設一覧（半径{(nearbyData.radius / 1000).toFixed(1)}km圏内）
-              </Typography>
-
-              {/* 凡例 */}
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75, mb: 2 }}>
-                {nearbyData.categories.map((cat) => {
-                  const count = (nearbyData.places[cat.type] || []).length;
-                  if (count === 0) return null;
-                  const color = CATEGORY_COLORS[cat.type] || '#757575';
-                  return (
-                    <Chip
-                      key={cat.type}
-                      label={`${cat.icon} ${cat.label} ${count}件`}
-                      size="small"
-                      sx={{
-                        bgcolor: color,
-                        color: 'white',
-                        fontWeight: 'bold',
-                        fontSize: '11px',
-                      }}
-                    />
-                  );
-                })}
-              </Box>
-
-              {/* カテゴリ別リスト */}
-              <Box
-                sx={{
-                  display: 'grid',
-                  gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: '1fr 1fr 1fr' },
-                  gap: 1.5,
-                }}
-              >
-                {nearbyData.categories.map((cat) => {
-                  const places = nearbyData.places[cat.type] || [];
-                  if (places.length === 0) return null;
-                  const color = CATEGORY_COLORS[cat.type] || '#757575';
-                  return (
-                    <Paper
-                      key={cat.type}
-                      variant="outlined"
-                      sx={{ p: 1.5, borderLeft: `4px solid ${color}` }}
-                    >
-                      <Box
-                        sx={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 0.5,
-                          mb: 0.75,
-                        }}
+            {/* 施設リスト（右側パネル） */}
+            <Box
+              sx={{
+                flex: '0 0 35%',
+                overflow: 'auto',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 1,
+              }}
+            >
+              {hasPlaces && nearbyData ? (
+                <>
+                  <Typography variant="subtitle2" fontWeight="bold" color="text.secondary" sx={{ px: 0.5 }}>
+                    半径{(nearbyData.radius / 1000).toFixed(1)}km圏内の施設
+                  </Typography>
+                  {nearbyData.categories.map((cat) => {
+                    const places = nearbyData.places[cat.type] || [];
+                    if (places.length === 0) return null;
+                    const color = CATEGORY_COLORS[cat.type] || '#757575';
+                    return (
+                      <Paper
+                        key={cat.type}
+                        variant="outlined"
+                        sx={{ p: 1, borderLeft: `4px solid ${color}`, flexShrink: 0 }}
                       >
-                        <Typography fontSize={16}>{cat.icon}</Typography>
-                        <Typography
-                          variant="subtitle2"
-                          fontWeight="bold"
-                          sx={{ color }}
-                        >
-                          {cat.label}
-                        </Typography>
-                        <Chip
-                          label={places.length}
-                          size="small"
-                          sx={{ ml: 'auto', height: 18, fontSize: '10px' }}
-                        />
-                      </Box>
-                      <List dense disablePadding>
-                        {places.map((place, idx) => (
-                          <ListItem key={idx} disablePadding sx={{ py: 0.2 }}>
-                            <ListItemText
-                              primary={
-                                <Typography
-                                  variant="body2"
-                                  sx={{ fontWeight: idx === 0 ? 'bold' : 'normal' }}
-                                >
-                                  {place.name}
-                                </Typography>
-                              }
-                              secondary={
-                                <Typography variant="caption" color="text.secondary">
-                                  約{place.distance}m
-                                  {place.rating ? `　★${place.rating}` : ''}
-                                </Typography>
-                              }
-                            />
-                          </ListItem>
-                        ))}
-                      </List>
-                    </Paper>
-                  );
-                })}
-              </Box>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5 }}>
+                          <Typography fontSize={14}>{cat.icon}</Typography>
+                          <Typography variant="caption" fontWeight="bold" sx={{ color }}>
+                            {cat.label}
+                          </Typography>
+                          <Chip
+                            label={places.length}
+                            size="small"
+                            sx={{ ml: 'auto', height: 16, fontSize: '10px' }}
+                          />
+                        </Box>
+                        <List dense disablePadding>
+                          {places.map((place, idx) => (
+                            <ListItem key={idx} disablePadding sx={{ py: 0.1 }}>
+                              <ListItemText
+                                primary={
+                                  <Typography
+                                    variant="caption"
+                                    sx={{ fontWeight: idx === 0 ? 'bold' : 'normal', display: 'block' }}
+                                  >
+                                    {place.name}
+                                  </Typography>
+                                }
+                                secondary={
+                                  <Typography variant="caption" color="text.secondary" sx={{ fontSize: '10px' }}>
+                                    約{place.distance}m
+                                    {place.rating ? `　★${place.rating}` : ''}
+                                  </Typography>
+                                }
+                              />
+                            </ListItem>
+                          ))}
+                        </List>
+                      </Paper>
+                    );
+                  })}
+                </>
+              ) : (
+                !loadingPlaces && (
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+                    <Typography variant="body2" color="text.secondary">
+                      施設情報を読み込み中...
+                    </Typography>
+                  </Box>
+                )
+              )}
             </Box>
-          )}
-        </DialogContent>
+          </Box>
+        )}
+      </DialogContent>
 
-        {/* フッター */}
-        <Divider />
-        <DialogActions
-          sx={{ px: 2, py: 1.5, gap: 1 }}
-          className="no-print"
+      {/* フッター */}
+      <Divider />
+      <DialogActions sx={{ px: 2, py: 1.5, gap: 1 }}>
+        {/* 再取得ボタン */}
+        {hasCoords && (
+          <Tooltip title="近隣施設情報を再取得します">
+            <span>
+              <Button
+                variant="outlined"
+                startIcon={<RefreshIcon />}
+                onClick={fetchNearbyPlaces}
+                disabled={loadingPlaces}
+                size="small"
+              >
+                再取得
+              </Button>
+            </span>
+          </Tooltip>
+        )}
+
+        <Box sx={{ flex: 1 }} />
+
+        {/* PDF印刷（別ウィンドウで印刷 → print.cssの影響を受けない） */}
+        <Button
+          variant="contained"
+          color="primary"
+          startIcon={<PrintIcon />}
+          onClick={() => nearbyData && printNearbyMap(address || '', nearbyData)}
+          disabled={!hasPlaces}
         >
-          {/* 再取得ボタン */}
-          {hasCoords && (
-            <Tooltip title="近隣施設情報を再取得します">
-              <span>
-                <Button
-                  variant="outlined"
-                  startIcon={<RefreshIcon />}
-                  onClick={fetchNearbyPlaces}
-                  disabled={loadingPlaces}
-                  size="small"
-                >
-                  再取得
-                </Button>
-              </span>
-            </Tooltip>
-          )}
+          PDFで印刷
+        </Button>
 
-          <Box sx={{ flex: 1 }} />
-
-          {/* PDF印刷 */}
-          <Button
-            variant="contained"
-            color="primary"
-            startIcon={<PrintIcon />}
-            onClick={handlePrint}
-            disabled={!hasPlaces}
-          >
-            PDFで印刷
-          </Button>
-
-          <Button variant="outlined" onClick={handleClose}>
-            閉じる
-          </Button>
-        </DialogActions>
-      </Dialog>
-    </>
+        <Button variant="outlined" onClick={handleClose}>
+          閉じる
+        </Button>
+      </DialogActions>
+    </Dialog>
   );
 };
 
