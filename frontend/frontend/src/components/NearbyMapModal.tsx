@@ -306,7 +306,7 @@ function drawMarkers(map: google.maps.Map, data: NearbyData, iw: google.maps.Inf
         placedLabels.push({ lx: ppx.x - pk.w/2, ly: ppx.y - pk.h, lw: pk.w, lh: pk.h });
         const mk = new google.maps.Marker({
           position: { lat: p.lat, lng: p.lng }, map,
-          title: `${p.name} (${p.distance}m)`, zIndex: 800 - idx,
+          title: `${p.name} (${p.distance}m)`, zIndex: 100 - idx,
           icon: { url: pk.url, anchor: new google.maps.Point(pk.w / 2, pk.h), scaledSize: new google.maps.Size(pk.w, pk.h) },
         });
         mk.addListener('click', () => {
@@ -323,7 +323,7 @@ function drawMarkers(map: google.maps.Map, data: NearbyData, iw: google.maps.Inf
         placedLabels.push({ lx: ppx.x - rm.w/2, ly: ppx.y - rm.h, lw: rm.w, lh: rm.h });
         const mk = new google.maps.Marker({
           position: { lat: p.lat, lng: p.lng }, map,
-          title: `${p.name} (${p.distance}m)`, zIndex: 800 - idx,
+          title: `${p.name} (${p.distance}m)`, zIndex: 100 - idx,
           icon: { url: rm.url, anchor: new google.maps.Point(rm.w / 2, rm.h), scaledSize: new google.maps.Size(rm.w, rm.h) },
         });
         mk.addListener('click', () => {
@@ -354,7 +354,7 @@ function drawMarkers(map: google.maps.Map, data: NearbyData, iw: google.maps.Inf
 
       const mk = new google.maps.Marker({
         position: { lat: p.lat, lng: p.lng }, map,
-        title: `${p.name} (${p.distance}m)`, zIndex: 1000 - idx,
+        title: `${p.name} (${p.distance}m)`, zIndex: 500 - idx,
         icon: { url: ic.url, anchor: new google.maps.Point(ic.anchorX, ic.anchorY), scaledSize: new google.maps.Size(ic.w, ic.h) },
       });
       mk.addListener('click', () => {
