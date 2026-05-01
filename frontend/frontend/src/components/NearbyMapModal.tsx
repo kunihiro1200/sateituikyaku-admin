@@ -214,113 +214,173 @@ const NearbyMapModal: React.FC<NearbyMapModalProps> = ({ open, onClose, googleMa
     onClose();
   };
 
-  // ---- 印刷：1ページ目=地図（A4横いっぱい）、2ページ目=施設リスト ----
+  // ---- 印刷：新規ウィンドウで地図画像＋施設リストを印刷 ----
   const handlePrint = () => {
-    // 地図コンテナの実際のサイズを取得（Google Mapsはpx指定が必要）
-    const mapEl = document.querySelector('.nearby-map-area') as HTMLElement | null;
-    const mapH = mapEl ? mapEl.offsetHeight : 500;
-    const mapW = mapEl ? mapEl.offsetWidth : 800;
+    const curData = tab === 0 ? data1 : data2;
+    const tabLabel = tab === 0 ? '半径1km圏内の施設' : '半径2km圏内の施設';
 
-    const styleId = 'nearby-print-override';
-    const old = document.getElementById(styleId); if (old) old.remove();
-    const st = document.createElement('style'); st.id = styleId;
-    st.textContent = `
-      @media print {
-        @page { size: A4 landscape; margin: 0; }
+    // 施設リストのHTML生成
+    const facilityHtml = curData
+      ? curData.categories
+          .filter(cat => DISPLAY_CATS.has(cat.type))
+          .map(cat => {
+            const places = curData.places[cat.type] || [];
+            if (!places.length) return '';
+            const color = COLORS[cat.type] || '#757575';
+            const rows = places.map((p, i) =>
+              `<div class="place-item">
+                <span class="place-name" style="font-weight:${i === 0 ? 'bold' : 'normal'}">${p.name}</span>
+                <span class="place-dist">約${p.distance}m${p.rating ? `　★${p.rating}` : ''}</span>
+              </div>`
+            ).join('');
+            return `<div class="cat-block" style="border-left:3px solid ${color}">
+              <div class="cat-header">
+                <span>${cat.icon}</span>
+                <span class="cat-label" style="color:${color}">${cat.label}</span>
+                <span class="cat-count">${places.length}</span>
+              </div>
+              ${rows}
+            </div>`;
+          }).join('')
+      : '';
 
-        /* ダイアログ以外を非表示 */
-        body > *:not(.MuiDialog-root) { display: none !important; }
-
-        /* ダイアログ全体をフラットに展開 */
-        .MuiDialog-root,
-        .MuiDialog-container,
-        .MuiDialog-paper {
-          all: unset !important;
-          display: block !important;
-          position: static !important;
-          width: 100% !important;
-          height: auto !important;
-          max-height: none !important;
-          overflow: visible !important;
-          margin: 0 !important;
-          padding: 0 !important;
-          box-shadow: none !important;
-          background: white !important;
-        }
-        .MuiBackdrop-root { display: none !important; }
-
-        /* タイトル・タブ・ボタン類を非表示 */
-        .MuiDialogTitle-root,
-        .MuiTabs-root,
-        .MuiDialogActions-root,
-        .MuiDivider-root,
-        .no-print { display: none !important; }
-
-        /* コンテンツエリア */
-        .MuiDialogContent-root {
-          all: unset !important;
-          display: block !important;
-          overflow: visible !important;
-          padding: 0 !important;
-          width: 100% !important;
-        }
-
-        /* 横並びコンテナを縦並びに */
-        .nearby-print-wrapper {
-          display: block !important;
-          width: 100% !important;
-          height: auto !important;
-        }
-
-        /* 1ページ目：地図（px固定でGoogle Mapsが正しく描画される） */
-        .nearby-map-area {
-          display: block !important;
-          width: ${mapW}px !important;
-          height: ${mapH}px !important;
-          flex: none !important;
-          page-break-after: always !important;
-          break-after: page !important;
-          overflow: hidden !important;
-          margin: 0 !important;
-          padding: 0 !important;
-        }
-        .nearby-map-area > div {
-          width: 100% !important;
-          height: 100% !important;
-        }
-
-        /* 2ページ目：施設リスト1列 */
-        .nearby-list-area {
-          display: block !important;
-          width: 100% !important;
-          page-break-before: always !important;
-          break-before: page !important;
-          overflow: visible !important;
-          padding: 8mm !important;
-          box-sizing: border-box !important;
-        }
-        .nearby-list-area > * { width: 100% !important; }
-
-        /* 通常表示用を非表示 */
-        .nearby-screen-only { display: none !important; }
-
-        /* 印刷用を表示 */
-        .nearby-print-only { display: block !important; }
-
-        -webkit-print-color-adjust: exact !important;
-        print-color-adjust: exact !important;
+    // Google Static Maps APIで地図画像URL生成
+    const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '';
+    let mapImgHtml = '';
+    if (coords) {
+      // マーカーパラメータ生成
+      const markerParams: string[] = [];
+      // 物件マーカー
+      markerParams.push(`markers=color:red%7Clabel:P%7C${coords.lat},${coords.lng}`);
+      // 施設マーカー（カテゴリ別）
+      if (curData) {
+        curData.categories.filter(cat => DISPLAY_CATS.has(cat.type)).forEach(cat => {
+          const places = curData.places[cat.type] || [];
+          places.forEach(p => {
+            if (p.lat && p.lng) {
+              markerParams.push(`markers=size:tiny%7C${p.lat},${p.lng}`);
+            }
+          });
+        });
       }
-    `;
-    document.head.appendChild(st);
-
-    // Google Mapsにリサイズを通知してから印刷
-    if (mapRef.current) {
-      google.maps.event.trigger(mapRef.current, 'resize');
+      const zoom = tab === 0 ? 14 : 13;
+      const staticUrl = `https://maps.googleapis.com/maps/api/staticmap?center=${coords.lat},${coords.lng}&zoom=${zoom}&size=1200x630&scale=2&language=ja&${markerParams.join('&')}&key=${apiKey}`;
+      mapImgHtml = `<img src="${staticUrl}" style="width:100%;height:auto;display:block;" alt="近隣MAP"/>`;
+    } else {
+      // Static Maps APIキーがない場合はGoogle Maps埋め込みURLを使用
+      mapImgHtml = `<div style="padding:20px;text-align:center;color:#666;">地図を表示できませんでした</div>`;
     }
-    setTimeout(() => {
-      window.print();
-      setTimeout(() => st.remove(), 3000);
-    }, 300);
+
+    const printHtml = `<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8"/>
+<title>近隣MAP - ${address || ''}</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Meiryo', 'Yu Gothic', sans-serif; background: white; }
+  @page { size: A4 landscape; margin: 8mm; }
+
+  /* ===== 1ページ目：地図 ===== */
+  .page-map {
+    page-break-after: always;
+    break-after: page;
+    width: 100%;
+  }
+  .print-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 3mm 0 2mm;
+    border-bottom: 1px solid #ccc;
+    margin-bottom: 3mm;
+  }
+  .print-header h1 { font-size: 13pt; font-weight: bold; }
+  .print-header .addr { font-size: 9pt; color: #666; }
+  .print-header .tab-label { font-size: 9pt; color: #1565c0; margin-left: auto; }
+  .map-container { width: 100%; }
+  .map-container img { width: 100%; height: auto; display: block; border: 1px solid #ddd; }
+
+  /* ===== 2ページ目：施設リスト ===== */
+  .page-list {
+    page-break-before: always;
+    break-before: page;
+    width: 100%;
+    columns: 3;
+    column-gap: 6mm;
+  }
+  .cat-block {
+    break-inside: avoid;
+    padding: 3px 6px;
+    margin-bottom: 5px;
+    background: #fafafa;
+  }
+  .cat-header {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-bottom: 2px;
+  }
+  .cat-label { font-size: 9pt; font-weight: bold; }
+  .cat-count {
+    margin-left: auto;
+    font-size: 8pt;
+    background: #eee;
+    border-radius: 8px;
+    padding: 0 5px;
+  }
+  .place-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 1px 0;
+    border-bottom: 1px dotted #eee;
+  }
+  .place-name { font-size: 8.5pt; }
+  .place-dist { font-size: 7.5pt; color: #888; white-space: nowrap; margin-left: 4px; }
+  .list-header {
+    font-size: 11pt;
+    font-weight: bold;
+    margin-bottom: 4mm;
+    padding-bottom: 2mm;
+    border-bottom: 1px solid #ccc;
+    column-span: all;
+  }
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+</style>
+</head>
+<body>
+
+<!-- 1ページ目：地図 -->
+<div class="page-map">
+  <div class="print-header">
+    <h1>🗺️ 近隣MAP</h1>
+    ${address ? `<span class="addr">${address}</span>` : ''}
+    <span class="tab-label">🔵 ${tabLabel}</span>
+  </div>
+  <div class="map-container">${mapImgHtml}</div>
+</div>
+
+<!-- 2ページ目：施設リスト -->
+<div class="page-list">
+  <div class="list-header">📍 ${tabLabel}</div>
+  ${facilityHtml}
+</div>
+
+</body>
+</html>`;
+
+    const win = window.open('', '_blank', 'width=1200,height=800');
+    if (!win) { alert('ポップアップがブロックされました。許可してから再試行してください。'); return; }
+    win.document.write(printHtml);
+    win.document.close();
+    win.onload = () => {
+      setTimeout(() => {
+        win.print();
+        win.close();
+      }, 500);
+    };
   };
 
   const cur = tab === 0 ? data1 : data2;
