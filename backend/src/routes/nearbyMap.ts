@@ -17,6 +17,14 @@ const PLACE_CATEGORIES = [
   { type: 'kindergarten',      label: '幼稚園・保育園',     icon: '🎒' },
 ];
 
+// カテゴリごとの名前フィルタ（関係ない施設を除外）
+const CATEGORY_NAME_FILTERS: Record<string, RegExp> = {
+  // 幼稚園・保育園：名前に関連キーワードが含まれるものだけ通す
+  kindergarten: /幼稚園|保育園|保育所|こども園|認定こども園|託児所|ナーサリー|nursery|kindergarten/i,
+  // 小学校・中学校：学校名に関連キーワードが含まれるものだけ通す
+  school: /小学校|中学校|学校|スクール|school/i,
+};
+
 /**
  * 近隣施設を取得するエンドポイント（旧版Places API使用）
  * GET /api/nearby-map/places?lat=33.28&lng=131.48&radius=2000
@@ -59,7 +67,12 @@ router.get('/places', authenticate, async (req: Request, res: Response) => {
           );
 
           if (response.data.status === 'OK' && response.data.results?.length > 0) {
-            results[category.type] = response.data.results
+            const nameFilter = CATEGORY_NAME_FILTERS[category.type];
+            const filtered = nameFilter
+              ? response.data.results.filter((p: any) => nameFilter.test(p.name || ''))
+              : response.data.results;
+
+            results[category.type] = filtered
               .slice(0, 5)
               .map((p: any) => ({
                 name: p.name,

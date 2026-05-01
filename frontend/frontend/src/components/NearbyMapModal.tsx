@@ -52,15 +52,15 @@ function makeTextMarker(name: string, color: string): { url: string; w: number; 
   // 最大12文字に制限（それ以上は省略）
   const raw = name.length > 12 ? name.slice(0, 12) + '…' : name;
   const label = raw.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-  // 日本語1文字=8px、英数字=5px で幅を計算（余裕を持たせる）
+  // 日本語1文字=10px、英数字=7px で幅を計算（font-size:10px bold 基準）
   let textW = 0;
-  for (const ch of raw) { textW += ch.charCodeAt(0) > 127 ? 8 : 5; }
-  const w = Math.max(50, textW + 20); // 左右パディング10pxずつ
-  const h = 20; const ah = 6; const totalH = h + ah;
+  for (const ch of raw) { textW += ch.charCodeAt(0) > 127 ? 10 : 7; }
+  const w = Math.max(56, textW + 28); // 左右パディング14pxずつ
+  const h = 22; const ah = 6; const totalH = h + ah;
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${totalH}">
     <rect x="0" y="0" width="${w}" height="${h}" rx="4" ry="4" fill="${color}" opacity="0.93"/>
-    <text x="${w/2}" y="14" font-family="Meiryo,'Yu Gothic',sans-serif"
-      font-size="9" font-weight="bold" fill="white" text-anchor="middle">${label}</text>
+    <text x="${w/2}" y="15" font-family="Meiryo,'Yu Gothic',sans-serif"
+      font-size="10" font-weight="bold" fill="white" text-anchor="middle">${label}</text>
     <polygon points="${w/2-5},${h} ${w/2+5},${h} ${w/2},${totalH}" fill="${color}" opacity="0.93"/>
   </svg>`;
   try { return { url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg), w, h: totalH }; }
@@ -221,41 +221,95 @@ const NearbyMapModal: React.FC<NearbyMapModalProps> = ({ open, onClose, googleMa
     const st = document.createElement('style'); st.id = styleId;
     st.textContent = `
       @media print {
-        @page { size: A4 landscape; margin: 5mm 6mm; }
+        @page { size: A4 landscape; margin: 4mm 5mm; }
+
+        /* ダイアログ以外を非表示 */
         body > *:not(.MuiDialog-root) { display: none !important; }
-        .MuiDialog-root { position: static !important; }
-        .MuiDialog-container { height: auto !important; align-items: flex-start !important; }
-        .MuiDialog-paper {
-          height: auto !important; max-height: none !important;
-          box-shadow: none !important; margin: 0 !important;
-          width: 100% !important; max-width: 100% !important;
-          overflow: visible !important;
+
+        /* ダイアログ全体をフラットに展開 */
+        .MuiDialog-root {
+          position: static !important;
+          display: block !important;
         }
-        .MuiDialogTitle-root { padding: 2px 6px !important; border-bottom: 1px solid #ccc !important; }
-        .MuiTabs-root, .MuiDialogActions-root, .no-print { display: none !important; }
-        .MuiDialogContent-root { overflow: visible !important; padding: 0 !important; height: auto !important; }
+        .MuiBackdrop-root { display: none !important; }
+        .MuiDialog-container {
+          display: block !important;
+          height: auto !important;
+          transform: none !important;
+        }
+        .MuiDialog-paper {
+          position: static !important;
+          height: auto !important;
+          max-height: none !important;
+          box-shadow: none !important;
+          margin: 0 !important;
+          width: 100% !important;
+          max-width: 100% !important;
+          overflow: visible !important;
+          display: block !important;
+          transform: none !important;
+        }
+
+        /* タイトルを最小化 */
+        .MuiDialogTitle-root {
+          padding: 1mm 3mm !important;
+          min-height: 0 !important;
+          line-height: 1.2 !important;
+          border-bottom: 0.5px solid #ccc !important;
+        }
+        .MuiDialogTitle-root .MuiTypography-h6 { font-size: 11pt !important; }
+
+        /* 不要な要素を非表示 */
+        .MuiTabs-root,
+        .MuiDialogActions-root,
+        .no-print,
+        .MuiDivider-root { display: none !important; }
+
+        /* コンテンツエリア */
+        .MuiDialogContent-root {
+          overflow: visible !important;
+          padding: 0 !important;
+          height: auto !important;
+          flex: none !important;
+        }
+
         /* 横並びコンテナを縦並びに（印刷時） */
-        .nearby-print-wrapper { display: block !important; height: auto !important; }
-        /* 1ページ目：地図をA4横いっぱい */
+        .nearby-print-wrapper {
+          display: block !important;
+          height: auto !important;
+        }
+
+        /* 1ページ目：地図をA4横いっぱい（タイトル分を引いた高さ） */
         .nearby-map-area {
-          width: 100% !important; height: 160mm !important;
-          flex: none !important; display: block !important;
-          page-break-after: always !important; break-after: page !important;
+          width: 100% !important;
+          height: 185mm !important;
+          flex: none !important;
+          display: block !important;
+          page-break-after: always !important;
+          break-after: page !important;
           overflow: hidden !important;
+          margin: 0 !important;
         }
         .nearby-map-area > div { height: 100% !important; }
+
         /* 2ページ目：施設リスト2列 */
         .nearby-list-area {
-          display: flex !important; flex-direction: row !important;
-          gap: 8px !important; width: 100% !important;
-          page-break-before: always !important; break-before: page !important;
+          display: flex !important;
+          flex-direction: row !important;
+          gap: 6mm !important;
+          width: 100% !important;
+          page-break-before: always !important;
+          break-before: page !important;
           overflow: visible !important;
         }
         .nearby-list-area > * { flex: 1 !important; min-width: 0 !important; }
+
         /* 通常表示用の要素を印刷時に非表示 */
         .nearby-screen-only { display: none !important; }
+
         /* 印刷用要素を表示 */
         .nearby-print-only { display: flex !important; }
+
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
       }
