@@ -292,17 +292,15 @@ const NearbyMapModal: React.FC<NearbyMapModalProps> = ({ open, onClose, googleMa
         }
         .nearby-map-area > div { height: 100% !important; }
 
-        /* 2ページ目：施設リスト2列 */
+        /* 2ページ目：施設リスト1列（選択中タブのみ） */
         .nearby-list-area {
-          display: flex !important;
-          flex-direction: row !important;
-          gap: 6mm !important;
+          display: block !important;
           width: 100% !important;
           page-break-before: always !important;
           break-before: page !important;
           overflow: visible !important;
         }
-        .nearby-list-area > * { flex: 1 !important; min-width: 0 !important; }
+        .nearby-list-area > * { width: 100% !important; }
 
         /* 通常表示用の要素を印刷時に非表示 */
         .nearby-screen-only { display: none !important; }
@@ -389,13 +387,14 @@ const NearbyMapModal: React.FC<NearbyMapModalProps> = ({ open, onClose, googleMa
                 )}
               </Box>
 
-              {/* 印刷用（2ページ目：1km・2km 2列） */}
+              {/* 印刷用（2ページ目：選択中タブの1列のみ） */}
               <Box className="nearby-list-area nearby-print-only" sx={{ display: 'none' }}>
-                <Box>
-                  <FacilityList data={data1} label="🔵 半径1km圏内の施設" color="#1565c0" />
-                </Box>
-                <Box>
-                  <FacilityList data={data2} label="🟢 半径2km圏内の施設" color="#2e7d32" />
+                <Box sx={{ width: '100%' }}>
+                  <FacilityList
+                    data={tab === 0 ? data1 : data2}
+                    label={tab === 0 ? '🔵 半径1km圏内の施設' : '🟢 半径2km圏内の施設'}
+                    color={tab === 0 ? '#1565c0' : '#2e7d32'}
+                  />
                 </Box>
               </Box>
 

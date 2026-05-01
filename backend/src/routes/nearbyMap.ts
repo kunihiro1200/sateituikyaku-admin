@@ -17,12 +17,12 @@ const PLACE_CATEGORIES = [
   { type: 'kindergarten',      label: '幼稚園・保育園',     icon: '🎒' },
 ];
 
-// カテゴリごとの名前フィルタ（関係ない施設を除外）
-const CATEGORY_NAME_FILTERS: Record<string, RegExp> = {
-  // 幼稚園・保育園：名前に関連キーワードが含まれるものだけ通す
-  kindergarten: /幼稚園|保育園|保育所|こども園|認定こども園|託児所|ナーサリー|nursery|kindergarten/i,
-  // 小学校・中学校：学校名に関連キーワードが含まれるものだけ通す
-  school: /小学校|中学校|学校|スクール|school/i,
+// カテゴリごとの除外フィルタ（明らかに無関係な施設を除外するブラックリスト方式）
+const CATEGORY_EXCLUDE_FILTERS: Record<string, RegExp> = {
+  // 幼稚園・保育園：飲食店・小売店・一般企業などを除外
+  kindergarten: /弁当|食堂|レストラン|ラーメン|寿司|焼肉|居酒屋|カフェ|コーヒー|ベーカリー|パン|スーパー|コンビニ|ドラッグ|薬局|ホテル|旅館|銀行|郵便|病院|クリニック|整骨|歯科|美容|理容|ガソリン|駐車|不動産|建設|工務|設計|税理|法律|会計|保険|証券|自動車|バイク|自転車|電気|水道|ガス工|米穀|酒|酒屋|肉|魚|八百|青果|花屋|書店|文具|眼鏡|時計|宝飾|靴|衣料|洋服|クリーニング|印刷|広告|運送|倉庫|工場|製造|農業|漁業|林業|鉱業|建材|金属|化学|医療機器|介護|福祉施設(?!.*こども)|老人|高齢|障害|就労|職業|ハローワーク|公共職業/i,
+  // 小学校・中学校：学校以外を除外
+  school: /弁当|食堂|レストラン|ラーメン|居酒屋|カフェ|コンビニ|ドラッグ|ホテル|旅館|銀行|病院|クリニック|美容|理容|ガソリン|不動産|自動車|バイク|工場|製造/i,
 };
 
 /**
@@ -67,9 +67,9 @@ router.get('/places', authenticate, async (req: Request, res: Response) => {
           );
 
           if (response.data.status === 'OK' && response.data.results?.length > 0) {
-            const nameFilter = CATEGORY_NAME_FILTERS[category.type];
-            const filtered = nameFilter
-              ? response.data.results.filter((p: any) => nameFilter.test(p.name || ''))
+            const excludeFilter = CATEGORY_EXCLUDE_FILTERS[category.type];
+            const filtered = excludeFilter
+              ? response.data.results.filter((p: any) => !excludeFilter.test(p.name || ''))
               : response.data.results;
 
             results[category.type] = filtered
