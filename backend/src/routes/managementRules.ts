@@ -116,7 +116,9 @@ ${itemsDetail}
     );
 
     const responseText = (response.data?.choices?.[0]?.message?.content || '').trim();
-    console.log('[management-rules] raw response:', responseText.substring(0, 200));
+    console.log('[management-rules] raw response (first 300):', responseText.substring(0, 300));
+    console.log('[management-rules] finish_reason:', response.data?.choices?.[0]?.finish_reason);
+    console.log('[management-rules] image count:', files.length);
 
     let extractedData: Record<string, string | null> = {};
 
@@ -138,11 +140,10 @@ ${itemsDetail}
         });
       }
     } else {
-      console.error('[management-rules] No JSON found in response:', responseText);
-      return res.status(500).json({
-        error: 'AIの応答にJSONが含まれていませんでした',
-        rawResponse: responseText,
-      });
+      // JSONが見つからない場合（画像が読めなかった等）は全項目nullで返す
+      // エラーにせず空結果として処理することでチャンク処理を継続できる
+      console.warn('[management-rules] No JSON found in response:', responseText.substring(0, 200));
+      extractedData = {};
     }
 
     // チェック項目のラベルと結合して返す

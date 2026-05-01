@@ -57,10 +57,18 @@ async function pdfToImages(
   onProgress?: (page: number, total: number) => void
 ): Promise<FilePayload[]> {
   const pdfjsLib = await import('pdfjs-dist');
-  pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+
+  // workerをCDNから読み込む（バージョン固定）
+  pdfjsLib.GlobalWorkerOptions.workerSrc =
+    'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.worker.min.mjs';
 
   const arrayBuffer = await file.arrayBuffer();
-  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+  const pdf = await pdfjsLib.getDocument({
+    data: arrayBuffer,
+    useWorkerFetch: false,
+    isEvalSupported: false,
+  }).promise;
+
   const totalPages = pdf.numPages;
   const images: FilePayload[] = [];
 
@@ -68,7 +76,6 @@ async function pdfToImages(
     onProgress?.(pageNum, totalPages);
 
     const page = await pdf.getPage(pageNum);
-    // scale: 1.5 に下げてファイルサイズを削減（元は2.0）
     const viewport = page.getViewport({ scale: 1.5 });
 
     const canvas = document.createElement('canvas');
@@ -76,11 +83,22 @@ async function pdfToImages(
     canvas.height = viewport.height;
     const ctx = canvas.getContext('2d')!;
 
+    // 白背景を塗る（透明だとJPEGで黒くなる）
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
     await page.render({ canvasContext: ctx, viewport }).promise;
 
-    // 品質0.7に下げてサイズ削減（元は0.85）
-    const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
     const base64 = dataUrl.split(',')[1];
+
+    // base64が空でないか確認
+    if (!base64 || base64.length < 100) {
+      console.warn(`[PDF変換] ページ${pageNum}のbase64が空です`);
+      continue;
+    }
+
+    console.log(`[PDF変換] p${pageNum}: ${Math.round(base64.length * 0.75 / 1024)}KB`);
 
     images.push({
       name: `${file.name}_p${pageNum}.jpg`,
@@ -237,6 +255,10 @@ const ManagementRulesTestPage: React.FC = () => {
           setLoadingMessage(`PDFを変換中: ${file.name}`);
           const images = await pdfToImages(file, (page, total) => {
             setLoadingMessage(`PDFを変換中: ${file.name} (${page}/${total}ページ)`);
+          });
+          // 各ページのサイズをログ出力（デバッグ用）
+          images.forEach((img, i) => {
+            console.log(`[PDF変換] ${img.name}: base64長=${img.base64.length}, 推定サイズ=${Math.round(img.base64.length * 0.75 / 1024)}KB`);
           });
           allPages.push(...images);
         } else {
