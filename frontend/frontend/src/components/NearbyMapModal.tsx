@@ -126,47 +126,19 @@ function esc(s: string) { return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').
 
 // ---- Static Maps URL生成（PDF用地図画像） ----
 function buildStaticMapUrl(data: NearbyData, apiKey: string): string {
+  if (!apiKey) return '';
   const { center, radius } = data;
-  // ズームレベルを半径から計算
   const zoom = radius <= 1000 ? 14 : 13;
-  const size = '600x300';
-
-  // マーカーを追加（物件 + 施設）
-  const markers: string[] = [];
-
-  // 物件マーカー（赤・大）
-  markers.push(`markers=color:red%7Csize:large%7C${center.lat},${center.lng}`);
-
-  // 施設マーカー（カテゴリ別色）
-  const colorMap: Record<string, string> = {
-    supermarket: 'red', convenience_store: 'red',
-    school: 'blue', kindergarten: 'blue',
-    hospital: 'green', pharmacy: 'green',
-    bank: 'orange', post_office: 'orange',
-    park: 'green', restaurant: 'purple',
-    train_station: 'blue', bus_station: 'gray',
-  };
-
-  data.categories.forEach((cat) => {
-    const places = data.places[cat.type] || [];
-    const color = colorMap[cat.type] || 'gray';
-    places.slice(0, 3).forEach((p) => {
-      if (p.lat && p.lng) {
-        markers.push(`markers=color:${color}%7Clabel:${encodeURIComponent(cat.icon.slice(0, 1))}%7C${p.lat},${p.lng}`);
-      }
-    });
+  // マーカーは物件のみ（施設マーカーはURLが長くなりすぎるため省略）
+  const params = new URLSearchParams({
+    center: `${center.lat},${center.lng}`,
+    zoom: String(zoom),
+    size: '580x280',
+    language: 'ja',
+    key: apiKey,
+    markers: `color:red|size:large|${center.lat},${center.lng}`,
   });
-
-  const params = [
-    `center=${center.lat},${center.lng}`,
-    `zoom=${zoom}`,
-    `size=${size}`,
-    `language=ja`,
-    `key=${apiKey}`,
-    ...markers,
-  ].join('&');
-
-  return `https://maps.googleapis.com/maps/api/staticmap?${params}`;
+  return `https://maps.googleapis.com/maps/api/staticmap?${params.toString()}`;
 }
 
 // ---- 施設リストHTML（印刷用） ----
@@ -188,6 +160,7 @@ function doPrint(address: string, d1: NearbyData | null, d2: NearbyData | null) 
   const l2 = d2 ? listHtml(d2) : '<p class="nd">データなし</p>';
   const map1Url = d1 && apiKey ? buildStaticMapUrl(d1, apiKey) : '';
   const map2Url = d2 && apiKey ? buildStaticMapUrl(d2, apiKey) : '';
+  console.log('[doPrint] map1Url:', map1Url.slice(0, 80));
 
   // 既存要素を削除
   ['nbp-root', 'nbp-style'].forEach((id) => { const el = document.getElementById(id); if (el) el.remove(); });
@@ -232,33 +205,35 @@ function doPrint(address: string, d1: NearbyData | null, d2: NearbyData | null) 
   document.head.appendChild(st);
 
   const div = document.createElement('div'); div.id = 'nbp-root';
-  // 通常時も表示（印刷プレビュー確認用）、ただし画面外に配置
   div.style.cssText = 'position:fixed;top:-9999px;left:0;width:210mm;background:white;z-index:-1;';
   div.innerHTML = `
     <h1>近隣環境マップ</h1>
     <div class="sub">${esc(address)}</div>
     <hr/>
     ${(map1Url || map2Url) ? `<div class="maps">
-      ${map1Url ? `<div class="map-block"><div class="map-label" style="color:#1565c0">🔵 半径1km</div><img src="${map1Url}" alt="1km地図"/></div>` : ''}
-      ${map2Url ? `<div class="map-block"><div class="map-label" style="color:#2e7d32">🟢 半径2km</div><img src="${map2Url}" alt="2km地図"/></div>` : ''}
+      ${map1Url ? `<div class="map-block"><div class="map-label" style="color:#1565c0">半径1km</div><img src="${map1Url}" alt="1km地図"/></div>` : ''}
+      ${map2Url ? `<div class="map-block"><div class="map-label" style="color:#2e7d32">半径2km</div><img src="${map2Url}" alt="2km地図"/></div>` : ''}
     </div>` : ''}
     <div class="cols">
-      <div class="col"><div class="ct c1">🔵 半径1km圏内の施設</div>${l1}</div>
-      <div class="col"><div class="ct c2">🟢 半径2km圏内の施設</div>${l2}</div>
+      <div class="col"><div class="ct c1">半径1km圏内の施設</div>${l1}</div>
+      <div class="col"><div class="ct c2">半径2km圏内の施設</div>${l2}</div>
     </div>`;
   document.body.appendChild(div);
+  console.log('[doPrint] div appended, calling window.print()');
 
   // 地図画像の読み込みを待ってから印刷
-  const imgs = div.querySelectorAll('img');
+  const imgs = Array.from(div.querySelectorAll('img'));
   if (imgs.length === 0) {
+    console.log('[doPrint] no images, printing now');
     window.print();
     setTimeout(() => { div.remove(); st.remove(); }, 3000);
   } else {
     let loaded = 0;
-    const total = imgs.length;
     const tryPrint = () => {
       loaded++;
-      if (loaded >= total) {
+      console.log('[doPrint] image loaded/errored:', loaded, '/', imgs.length);
+      if (loaded >= imgs.length) {
+        console.log('[doPrint] all images ready, printing');
         window.print();
         setTimeout(() => { div.remove(); st.remove(); }, 3000);
       }
@@ -268,7 +243,11 @@ function doPrint(address: string, d1: NearbyData | null, d2: NearbyData | null) 
       else { img.onload = tryPrint; img.onerror = tryPrint; }
     });
     // 5秒でタイムアウト
-    setTimeout(() => { window.print(); setTimeout(() => { div.remove(); st.remove(); }, 3000); }, 5000);
+    setTimeout(() => {
+      console.log('[doPrint] timeout, forcing print');
+      window.print();
+      setTimeout(() => { div.remove(); st.remove(); }, 3000);
+    }, 5000);
   }
 }
 
