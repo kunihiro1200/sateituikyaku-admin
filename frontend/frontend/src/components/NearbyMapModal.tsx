@@ -17,18 +17,32 @@ interface PlaceCategory { type: string; label: string; icon: string; }
 interface NearbyData { center: { lat: number; lng: number }; radius: number; categories: PlaceCategory[]; places: Record<string, PlaceItem[]>; }
 interface NearbyMapModalProps { open: boolean; onClose: () => void; googleMapUrl?: string | null; address?: string; propertyNumber?: string; propertyType?: string; }
 
-// 表示するカテゴリ（飲食店・薬局・バス停は除外）
+// 表示するカテゴリ
 const DISPLAY_CATS = new Set([
-  'supermarket', 'convenience_store', 'school', 'kindergarten',
-  'hospital', 'bank', 'post_office', 'park', 'train_station',
+  'supermarket', 'convenience_store',
+  'elementary_school', 'middle_school', 'high_school', 'kindergarten', 'cram_school',
+  'hospital', 'dentist', 'bank', 'post_office', 'park', 'train_station',
 ]);
 
 const COLORS: Record<string, string> = {
   supermarket: '#e53935', convenience_store: '#c62828',
-  school: '#1565c0', kindergarten: '#0277bd',
-  hospital: '#2e7d32',
+  elementary_school: '#1565c0', middle_school: '#1565c0', high_school: '#1565c0',
+  kindergarten: '#0277bd', cram_school: '#1565c0',
+  hospital: '#2e7d32', dentist: '#2e7d32',
   bank: '#e65100', post_office: '#bf360c',
   park: '#33691e', train_station: '#283593',
+};
+
+// 丸囲み文字アイコンを使うカテゴリと表示文字
+const CIRCLE_ICONS: Record<string, string> = {
+  kindergarten: '幼',
+  elementary_school: '小',
+  middle_school: '中',
+  high_school: '高',
+  hospital: '病',
+  dentist: '歯',
+  bank: '銀',
+  cram_school: '塾',
 };
 
 // ---- URL から座標抽出 ----
@@ -45,6 +59,19 @@ async function extractCoords(url: string, apiBase: string): Promise<{ lat: numbe
     }
     return null;
   } catch { return null; }
+}
+
+// ---- 丸囲み文字SVGマーカー ----
+function makeCircleTextMarker(char: string, color: string): { url: string; w: number; h: number } {
+  const size = 26;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size + 8}" viewBox="0 0 ${size} ${size + 8}">
+    <circle cx="${size/2}" cy="${size/2}" r="${size/2 - 1}" fill="${color}" stroke="white" stroke-width="1.5"/>
+    <text x="${size/2}" y="${size/2 + 5}" font-family="Meiryo,'Yu Gothic',sans-serif"
+      font-size="13" font-weight="bold" fill="white" text-anchor="middle">${char}</text>
+    <polygon points="${size/2-4},${size} ${size/2+4},${size} ${size/2},${size+8}" fill="${color}"/>
+  </svg>`;
+  try { return { url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg), w: size, h: size + 8 }; }
+  catch { return { url: 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg))), w: size, h: size + 8 }; }
 }
 
 // ---- テキストラベル付きSVGマーカー（文字切れ防止） ----
@@ -165,6 +192,18 @@ function drawMarkers(map: google.maps.Map, data: NearbyData, iw: google.maps.Inf
           dotSize = pk.w;
           dotAnchorX = pk.w / 2;
           dotAnchorY = pk.h;
+        } else if (CIRCLE_ICONS[cat.type]) {
+          // 丸囲み文字カテゴリは小さめの丸アイコン
+          const char = CIRCLE_ICONS[cat.type];
+          const sz = 18;
+          const dotSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="${sz}" height="${sz}">
+            <circle cx="${sz/2}" cy="${sz/2}" r="${sz/2-1}" fill="${color}" stroke="white" stroke-width="1.5"/>
+            <text x="${sz/2}" y="${sz/2+4}" font-family="Meiryo,'Yu Gothic',sans-serif" font-size="9" font-weight="bold" fill="white" text-anchor="middle">${char}</text>
+          </svg>`;
+          dotUrl = 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(dotSvg);
+          dotSize = sz;
+          dotAnchorX = sz / 2;
+          dotAnchorY = sz / 2;
         } else {
           const dotSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12">
             <circle cx="6" cy="6" r="5" fill="${color}" stroke="white" stroke-width="1.5" opacity="0.9"/>
@@ -185,12 +224,15 @@ function drawMarkers(map: google.maps.Map, data: NearbyData, iw: google.maps.Inf
         });
         ref.current.push(mk);
       } else {
-        // 重ならない場合：公園はツリーアイコン、それ以外はテキストラベル
+        // 重ならない場合：公園はツリーアイコン、丸囲み文字カテゴリは丸アイコン、それ以外はテキストラベル
         placed.push({ lat: p.lat, lng: p.lng });
         let icon: google.maps.Icon;
         if (cat.type === 'park') {
           const pk = makeParkMarker();
           icon = { url: pk.url, anchor: new google.maps.Point(pk.w / 2, pk.h), scaledSize: new google.maps.Size(pk.w, pk.h) };
+        } else if (CIRCLE_ICONS[cat.type]) {
+          const ci = makeCircleTextMarker(CIRCLE_ICONS[cat.type], color);
+          icon = { url: ci.url, anchor: new google.maps.Point(ci.w / 2, ci.h), scaledSize: new google.maps.Size(ci.w, ci.h) };
         } else {
           const ic = makeTextMarker(p.name, color);
           icon = { url: ic.url, anchor: new google.maps.Point(ic.w / 2, ic.h), scaledSize: new google.maps.Size(ic.w, ic.h) };

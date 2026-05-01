@@ -4,18 +4,38 @@ import axios from 'axios';
 
 const router = Router();
 
-// カテゴリ定義（飲食店・薬局は不要のため削除）
+// カテゴリ定義
 const PLACE_CATEGORIES = [
   { type: 'supermarket',       label: 'スーパー',           icon: '🛒' },
   { type: 'convenience_store', label: 'コンビニ',           icon: '🏪' },
-  { type: 'school',            label: '小学校・中学校',     icon: '🏫' },
-  { type: 'hospital',          label: '病院・クリニック',   icon: '🏥' },
-  { type: 'bank',              label: '銀行・ATM',          icon: '🏦' },
+  { type: 'elementary_school', label: '小学校',             icon: '小' },
+  { type: 'middle_school',     label: '中学校',             icon: '中' },
+  { type: 'high_school',       label: '高校',               icon: '高' },
+  { type: 'hospital',          label: '病院・クリニック',   icon: '病' },
+  { type: 'dentist',           label: '歯科',               icon: '歯' },
+  { type: 'bank',              label: '銀行・ATM',          icon: '銀' },
   { type: 'post_office',       label: '郵便局',             icon: '📮' },
   { type: 'park',              label: '公園',               icon: '🌳' },
   { type: 'train_station',     label: '駅',                 icon: '🚉' },
-  { type: 'kindergarten',      label: '幼稚園・保育園',     icon: '🎒' },
+  { type: 'kindergarten',      label: '幼稚園・保育園',     icon: '幼' },
+  { type: 'cram_school',       label: '塾',                 icon: '塾' },
 ];
+
+// Google Places APIのtypeマッピング（カスタムtypeをAPIのtypeに変換）
+const PLACES_API_TYPE_MAP: Record<string, string> = {
+  elementary_school: 'school',
+  middle_school: 'school',
+  high_school: 'school',
+  cram_school: 'school',
+};
+
+// カテゴリごとの名前フィルタ（特定カテゴリのみ名前で絞り込む）
+const CATEGORY_NAME_FILTERS: Record<string, RegExp> = {
+  elementary_school: /小学校/,
+  middle_school: /中学校/,
+  high_school: /高校|高等学校/,
+  cram_school: /塾|学習塾|進学塾|予備校|学院(?!.*小学|.*中学|.*高校|.*大学)/,
+};
 
 // カテゴリごとの除外フィルタ（明らかに無関係な施設を除外するブラックリスト方式）
 const CATEGORY_EXCLUDE_FILTERS: Record<string, RegExp> = {
@@ -52,13 +72,16 @@ router.get('/places', authenticate, async (req: Request, res: Response) => {
     await Promise.all(
       PLACE_CATEGORIES.map(async (category) => {
         try {
+          // カスタムtypeはAPIのtypeにマッピング
+          const apiType = PLACES_API_TYPE_MAP[category.type] || category.type;
+
           const response = await axios.get(
             'https://maps.googleapis.com/maps/api/place/nearbysearch/json',
             {
               params: {
                 location: `${latNum},${lngNum}`,
                 radius: radiusNum,
-                type: category.type,
+                type: apiType,
                 language: 'ja',
                 key: apiKey,
               },
@@ -67,10 +90,18 @@ router.get('/places', authenticate, async (req: Request, res: Response) => {
           );
 
           if (response.data.status === 'OK' && response.data.results?.length > 0) {
+            // 名前フィルタ（小学校・中学校・高校・塾の絞り込み）
+            const nameFilter = CATEGORY_NAME_FILTERS[category.type];
+            // 除外フィルタ（幼稚園など）
             const excludeFilter = CATEGORY_EXCLUDE_FILTERS[category.type];
-            const filtered = excludeFilter
-              ? response.data.results.filter((p: any) => !excludeFilter.test(p.name || ''))
-              : response.data.results;
+
+            let filtered = response.data.results;
+            if (nameFilter) {
+              filtered = filtered.filter((p: any) => nameFilter.test(p.name || ''));
+            }
+            if (excludeFilter) {
+              filtered = filtered.filter((p: any) => !excludeFilter.test(p.name || ''));
+            }
 
             results[category.type] = filtered
               .slice(0, 5)
