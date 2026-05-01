@@ -1226,13 +1226,14 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
       if (value) {
         const currentDueDate = editedData['site_registration_due_date'] ?? data?.site_registration_due_date;
         if (!currentDueDate) {
-          // デフォルト納期予定日を計算（火曜+3日、それ以外+2日、12:00 JST → UTC変換）
+          // デフォルト納期予定日を計算（火曜+3日、それ以外+2日、12:00 JST）
+          // setHours はブラウザのローカルタイム（JST）で設定されるため、toISOString() でUTCに変換される
           const today = new Date();
           const daysToAdd = today.getDay() === 2 ? 3 : 2;
           const defaultDate = new Date(today);
           defaultDate.setDate(today.getDate() + daysToAdd);
           defaultDate.setHours(12, 0, 0, 0);
-          const utcIso = new Date(defaultDate.getTime() - (9 * 60 * 60 * 1000)).toISOString();
+          const utcIso = defaultDate.toISOString();
           setEditedData(prev => ({ ...prev, [field]: value, site_registration_due_date: utcIso }));
         } else {
           setEditedData(prev => ({ ...prev, [field]: value }));
@@ -1564,10 +1565,8 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
       const dd = String(d.getDate()).padStart(2, '0');
       const hh = String(d.getHours()).padStart(2, '0');
       const mm = String(d.getMinutes()).padStart(2, '0');
-      // DATE型からTIMESTAMPTZに変換された値はUTC 00:00:00 → JST 09:00になるため 12:00 にフォールバック
-      if (d.getUTCHours() === 0 && d.getUTCMinutes() === 0 && d.getUTCSeconds() === 0) {
-        return `${yyyy}-${MM}-${dd}T12:00`;
-      }
+      // DBの値（UTC）をブラウザのローカルタイム（JST）に変換してそのまま表示する
+      // 例: UTC 03:00 → JST 12:00、UTC 00:00 → JST 09:00
       return `${yyyy}-${MM}-${dd}T${hh}:${mm}`;
     } catch {
       return '';
@@ -2193,6 +2192,9 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
       }
       if (emailDist === '新着配信、即公開（期日関係無）') {
         return '公開前配信メールを「新着配信」に変更して、同時に公開もお願い致します。公開方法→https://docs.google.com/document/d/145LKr_Q7ftxnRVvNalaKPO1NH_FqncOlOY5bqP5P48c/edit?usp=sharing';
+      }
+      if (emailDist.includes('要') && emailDist.includes('期日通り')) {
+        return '公開前配信・要、サイト公開は期日通りでおねがいします';
       }
       return '';
     };

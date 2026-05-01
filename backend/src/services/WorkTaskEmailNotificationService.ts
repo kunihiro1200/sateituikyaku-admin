@@ -253,6 +253,8 @@ export class WorkTaskEmailNotificationService {
       emailDistComment =
         '公開前配信メールを「新着配信」に変更して、同時に公開もお願い致します。公開方法→' +
         'https://docs.google.com/document/d/145LKr_Q7ftxnRVvNalaKPO1NH_FqncOlOY5bqP5P48c/edit?usp=sharing<br>';
+    } else if (emailDist.includes('要') && emailDist.includes('期日通り')) {
+      emailDistComment = '公開前配信・要、サイト公開は期日通りでおねがいします<br>';
     }
     result = result.split('{メール配信コメント}').join(emailDistComment);
 
