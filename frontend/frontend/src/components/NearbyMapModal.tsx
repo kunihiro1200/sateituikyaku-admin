@@ -95,25 +95,98 @@ function makeRestaurantMarker(): { url: string; w: number; h: number } {
   catch { return { url: 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg))), w, h }; }
 }
 
-// ---- テキストラベル付きSVGマーカー（文字切れ防止） ----
-function makeTextMarker(name: string, color: string): { url: string; w: number; h: number } {
-  // 最大12文字に制限（それ以上は省略）
+// ---- テキストラベル付きSVGマーカー（オフセット対応・尻尾伸縮） ----
+// offsetX/offsetY: ラベルを実際の座標からずらすピクセル数（尻尾がその分伸びる）
+function makeTextMarker(name: string, color: string, offsetX = 0, offsetY = 0): { url: string; w: number; h: number; anchorX: number; anchorY: number } {
   const raw = name.length > 12 ? name.slice(0, 12) + '…' : name;
   const label = raw.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-  // 日本語1文字=10px、英数字=7px で幅を計算（font-size:10px bold 基準）
   let textW = 0;
   for (const ch of raw) { textW += ch.charCodeAt(0) > 127 ? 10 : 7; }
-  const w = Math.max(56, textW + 28); // 左右パディング14pxずつ
-  const h = 22; const ah = 6; const totalH = h + ah;
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${totalH}">
-    <rect x="0" y="0" width="${w}" height="${h}" rx="4" ry="4" fill="${color}" opacity="0.93"/>
-    <text x="${w/2}" y="15" font-family="Meiryo,'Yu Gothic',sans-serif"
+  const boxW = Math.max(56, textW + 28);
+  const boxH = 22;
+
+  // SVGキャンバスサイズ：ラベルボックス＋尻尾の伸び分を含む
+  const padX = Math.abs(offsetX);
+  const padY = Math.abs(offsetY);
+  const svgW = boxW + padX;
+  const svgH = boxH + 6 + padY; // 6 = 最小尻尾高さ
+
+  // ラベルボックスの左上座標（オフセット方向によって配置を変える）
+  const boxX = offsetX < 0 ? 0 : padX;
+  const boxY = offsetY < 0 ? 0 : padY;
+
+  // 尻尾の先端（実際のマーカー位置 = アンカー）
+  // アンカーはSVG内の「実際の地点」を指す座標
+  const tipX = offsetX < 0 ? svgW : (offsetX > 0 ? 0 : svgW / 2);
+  const tipY = offsetY < 0 ? svgH : (offsetY > 0 ? 0 : svgH);
+
+  // 尻尾の根元（ボックス底辺中央）
+  const baseX = boxX + boxW / 2;
+  const baseY = boxY + boxH;
+
+  // アンカー位置（SVG内でのピクセル座標）
+  const anchorX = offsetX < 0 ? svgW : (offsetX > 0 ? 0 : svgW / 2);
+  const anchorY = offsetY < 0 ? svgH : (offsetY > 0 ? 0 : svgH);
+
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${svgW}" height="${svgH}">
+    <rect x="${boxX}" y="${boxY}" width="${boxW}" height="${boxH}" rx="4" ry="4" fill="${color}" opacity="0.93"/>
+    <text x="${boxX + boxW/2}" y="${boxY + 15}" font-family="Meiryo,'Yu Gothic',sans-serif"
       font-size="10" font-weight="bold" fill="white" text-anchor="middle">${label}</text>
-    <polygon points="${w/2-5},${h} ${w/2+5},${h} ${w/2},${totalH}" fill="${color}" opacity="0.93"/>
+    <polygon points="${baseX-5},${baseY} ${baseX+5},${baseY} ${tipX},${tipY}" fill="${color}" opacity="0.93"/>
   </svg>`;
-  try { return { url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg), w, h: totalH }; }
-  catch { return { url: 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg))), w, h: totalH }; }
+
+  try { return { url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg), w: svgW, h: svgH, anchorX, anchorY }; }
+  catch { return { url: 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg))), w: svgW, h: svgH, anchorX, anchorY }; }
 }
+
+// ---- ピクセル座標変換 ----
+function latLngToPixel(lat: number, lng: number, zoom: number): { x: number; y: number } {
+  const scale = Math.pow(2, zoom);
+  const x = (lng + 180) / 360 * 256 * scale;
+  const sinLat = Math.sin(lat * Math.PI / 180);
+  const y = (0.5 - Math.log((1 + sinLat) / (1 - sinLat)) / (4 * Math.PI)) * 256 * scale;
+  return { x, y };
+}
+
+// ---- オフセット計算：配置済みラベルと被らない方向を探す ----
+// 候補方向：上・右上・右・右下・下・左下・左・左上
+const OFFSET_CANDIDATES = [
+  { dx: 0,   dy: -35 }, // 上
+  { dx: 35,  dy: -25 }, // 右上
+  { dx: 40,  dy: 0   }, // 右
+  { dx: 35,  dy: 25  }, // 右下
+  { dx: 0,   dy: 35  }, // 下（デフォルト）
+  { dx: -35, dy: 25  }, // 左下
+  { dx: -40, dy: 0   }, // 左
+  { dx: -35, dy: -25 }, // 左上
+];
+
+interface PlacedLabel {
+  px: number; py: number;   // 地点のピクセル座標
+  lx: number; ly: number;   // ラベル左上のピクセル座標
+  lw: number; lh: number;   // ラベルサイズ
+}
+
+function findBestOffset(
+  px: number, py: number,
+  labelW: number, labelH: number,
+  placed: PlacedLabel[]
+): { dx: number; dy: number } {
+  for (const { dx, dy } of OFFSET_CANDIDATES) {
+    // ラベル左上座標（アンカーからオフセット、ラベル中央下がアンカー）
+    const lx = px + dx - labelW / 2;
+    const ly = py + dy - labelH;
+
+    // 既存ラベルと重なるか確認
+    const overlaps = placed.some(q => {
+      return !(lx + labelW < q.lx || lx > q.lx + q.lw ||
+               ly + labelH < q.ly || ly > q.ly + q.lh);
+    });
+    if (!overlaps) return { dx, dy };
+  }
+  // 全方向で重なる場合はデフォルト（下）
+  return OFFSET_CANDIDATES[4];
+}}
 
 // ---- 物件マーカー（家マーク・吹き出しなし） ----
 function makePropertyMarker(): { url: string; w: number; h: number } {
@@ -150,19 +223,20 @@ function makeParkMarker(): { url: string; w: number; h: number } {
 }
 
 
-// ---- マーカー描画（間引きなし・全件表示） ----
+// ---- マーカー描画（オフセット付き尻尾伸縮でラベル被り回避） ----
 function drawMarkers(map: google.maps.Map, data: NearbyData, iw: google.maps.InfoWindow, ref: React.MutableRefObject<google.maps.Marker[]>) {
   ref.current.forEach((m) => m.setMap(null)); ref.current = [];
+  const zoom = map.getZoom() ?? 14;
 
-  // 物件マーカー
+  const placedLabels: PlacedLabel[] = [];
+
+  // 物件マーカー（常に最優先）
   const pm = makePropertyMarker();
+  const centerPx = latLngToPixel(data.center.lat, data.center.lng, zoom);
+  placedLabels.push({ px: centerPx.x, py: centerPx.y, lx: centerPx.x - pm.w/2, ly: centerPx.y - pm.h, lw: pm.w, lh: pm.h });
   ref.current.push(new google.maps.Marker({
     position: data.center, map, title: '物件', zIndex: 3000,
-    icon: {
-      url: pm.url,
-      anchor: new google.maps.Point(pm.w / 2, pm.h),
-      scaledSize: new google.maps.Size(pm.w, pm.h),
-    },
+    icon: { url: pm.url, anchor: new google.maps.Point(pm.w / 2, pm.h), scaledSize: new google.maps.Size(pm.w, pm.h) },
   }));
 
   data.categories.filter(cat => DISPLAY_CATS.has(cat.type)).forEach((cat) => {
@@ -170,32 +244,84 @@ function drawMarkers(map: google.maps.Map, data: NearbyData, iw: google.maps.Inf
     (data.places[cat.type] || []).forEach((p, idx) => {
       if (!p.lat || !p.lng) return;
 
-      // カテゴリ別アイコン選択
-      let icon: google.maps.Icon;
-      if (cat.type === 'park') {
-        const pk = makeParkMarker();
-        icon = { url: pk.url, anchor: new google.maps.Point(pk.w / 2, pk.h), scaledSize: new google.maps.Size(pk.w, pk.h) };
-      } else if (cat.type === 'restaurant') {
-        const rm = makeRestaurantMarker();
-        icon = { url: rm.url, anchor: new google.maps.Point(rm.w / 2, rm.h), scaledSize: new google.maps.Size(rm.w, rm.h) };
-      } else if (CIRCLE_ICONS[cat.type]) {
-        const ci = makeCircleTextMarker(CIRCLE_ICONS[cat.type], color);
-        icon = { url: ci.url, anchor: new google.maps.Point(ci.w / 2, ci.h), scaledSize: new google.maps.Size(ci.w, ci.h) };
-      } else {
-        const ic = makeTextMarker(p.name, color);
-        icon = { url: ic.url, anchor: new google.maps.Point(ic.w / 2, ic.h), scaledSize: new google.maps.Size(ic.w, ic.h) };
-      }
+      const ppx = latLngToPixel(p.lat, p.lng, zoom);
 
-      const mk = new google.maps.Marker({
-        position: { lat: p.lat, lng: p.lng }, map,
-        title: `${p.name} (${p.distance}m)`, zIndex: 1000 - idx,
-        icon,
-      });
-      mk.addListener('click', () => {
-        iw.setContent(`<div style="font-size:12px;padding:5px 8px;min-width:160px;line-height:1.6;"><b>${cat.icon} ${p.name}</b><br/><span style="color:#555;font-size:11px;">${p.vicinity}</span><br/><span style="color:#1565c0;font-weight:bold;">物件から約 ${p.distance}m</span>${p.rating ? `<br/><span style="color:#e65100;">★ ${p.rating}</span>` : ''}</div>`);
-        iw.open(map, mk);
-      });
-      ref.current.push(mk);
+      if (cat.type === 'park') {
+        // 公園：ツリーアイコン（オフセットなし）
+        const pk = makeParkMarker();
+        placedLabels.push({ px: ppx.x, py: ppx.y, lx: ppx.x - pk.w/2, ly: ppx.y - pk.h, lw: pk.w, lh: pk.h });
+        const mk = new google.maps.Marker({
+          position: { lat: p.lat, lng: p.lng }, map,
+          title: `${p.name} (${p.distance}m)`, zIndex: 800 - idx,
+          icon: { url: pk.url, anchor: new google.maps.Point(pk.w / 2, pk.h), scaledSize: new google.maps.Size(pk.w, pk.h) },
+        });
+        mk.addListener('click', () => {
+          iw.setContent(`<div style="font-size:12px;padding:5px 8px;min-width:160px;line-height:1.6;"><b>${cat.icon} ${p.name}</b><br/><span style="color:#555;font-size:11px;">${p.vicinity}</span><br/><span style="color:#1565c0;font-weight:bold;">物件から約 ${p.distance}m</span>${p.rating ? `<br/><span style="color:#e65100;">★ ${p.rating}</span>` : ''}</div>`);
+          iw.open(map, mk);
+        });
+        ref.current.push(mk);
+
+      } else if (cat.type === 'restaurant') {
+        // 飲食店：フォーク＆ナイフアイコン（オフセットなし）
+        const rm = makeRestaurantMarker();
+        placedLabels.push({ px: ppx.x, py: ppx.y, lx: ppx.x - rm.w/2, ly: ppx.y - rm.h, lw: rm.w, lh: rm.h });
+        const mk = new google.maps.Marker({
+          position: { lat: p.lat, lng: p.lng }, map,
+          title: `${p.name} (${p.distance}m)`, zIndex: 800 - idx,
+          icon: { url: rm.url, anchor: new google.maps.Point(rm.w / 2, rm.h), scaledSize: new google.maps.Size(rm.w, rm.h) },
+        });
+        mk.addListener('click', () => {
+          iw.setContent(`<div style="font-size:12px;padding:5px 8px;min-width:160px;line-height:1.6;"><b>${cat.icon} ${p.name}</b><br/><span style="color:#555;font-size:11px;">${p.vicinity}</span><br/><span style="color:#1565c0;font-weight:bold;">物件から約 ${p.distance}m</span>${p.rating ? `<br/><span style="color:#e65100;">★ ${p.rating}</span>` : ''}</div>`);
+          iw.open(map, mk);
+        });
+        ref.current.push(mk);
+
+      } else if (CIRCLE_ICONS[cat.type]) {
+        // 丸囲み文字：オフセットなし（コンパクトなので被りにくい）
+        const ci = makeCircleTextMarker(CIRCLE_ICONS[cat.type], color);
+        placedLabels.push({ px: ppx.x, py: ppx.y, lx: ppx.x - ci.w/2, ly: ppx.y - ci.h, lw: ci.w, lh: ci.h });
+        const mk = new google.maps.Marker({
+          position: { lat: p.lat, lng: p.lng }, map,
+          title: `${p.name} (${p.distance}m)`, zIndex: 900 - idx,
+          icon: { url: ci.url, anchor: new google.maps.Point(ci.w / 2, ci.h), scaledSize: new google.maps.Size(ci.w, ci.h) },
+        });
+        mk.addListener('click', () => {
+          iw.setContent(`<div style="font-size:12px;padding:5px 8px;min-width:160px;line-height:1.6;"><b>${cat.icon} ${p.name}</b><br/><span style="color:#555;font-size:11px;">${p.vicinity}</span><br/><span style="color:#1565c0;font-weight:bold;">物件から約 ${p.distance}m</span>${p.rating ? `<br/><span style="color:#e65100;">★ ${p.rating}</span>` : ''}</div>`);
+          iw.open(map, mk);
+        });
+        ref.current.push(mk);
+
+      } else {
+        // テキストラベル：被らない方向にオフセット＋尻尾伸縮
+        // まずデフォルトサイズを計算
+        const raw = p.name.length > 12 ? p.name.slice(0, 12) + '…' : p.name;
+        let textW = 0;
+        for (const ch of raw) { textW += ch.charCodeAt(0) > 127 ? 10 : 7; }
+        const labelW = Math.max(56, textW + 28);
+        const labelH = 28; // boxH + tail
+
+        const { dx, dy } = findBestOffset(ppx.x, ppx.y, labelW, labelH, placedLabels);
+        const ic = makeTextMarker(p.name, color, dx, dy);
+
+        // 配置済みリストに追加
+        placedLabels.push({
+          px: ppx.x, py: ppx.y,
+          lx: ppx.x + dx - ic.w / 2,
+          ly: ppx.y + dy - ic.h,
+          lw: ic.w, lh: ic.h,
+        });
+
+        const mk = new google.maps.Marker({
+          position: { lat: p.lat, lng: p.lng }, map,
+          title: `${p.name} (${p.distance}m)`, zIndex: 1000 - idx,
+          icon: { url: ic.url, anchor: new google.maps.Point(ic.anchorX, ic.anchorY), scaledSize: new google.maps.Size(ic.w, ic.h) },
+        });
+        mk.addListener('click', () => {
+          iw.setContent(`<div style="font-size:12px;padding:5px 8px;min-width:160px;line-height:1.6;"><b>${cat.icon} ${p.name}</b><br/><span style="color:#555;font-size:11px;">${p.vicinity}</span><br/><span style="color:#1565c0;font-weight:bold;">物件から約 ${p.distance}m</span>${p.rating ? `<br/><span style="color:#e65100;">★ ${p.rating}</span>` : ''}</div>`);
+          iw.open(map, mk);
+        });
+        ref.current.push(mk);
+      }
     });
   });
 }
