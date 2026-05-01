@@ -767,6 +767,9 @@ const CallModePage = () => {
   const [editedCompetitors, setEditedCompetitors] = useState<string[]>([]);
   const [editedExclusiveOtherDecisionFactors, setEditedExclusiveOtherDecisionFactors] = useState<string[]>([]);
   const [editedCompetitorNameAndReason, setEditedCompetitorNameAndReason] = useState<string>('');
+  // 手打ち入力用state
+  const [competitorFreeText, setCompetitorFreeText] = useState<string>('');
+  const [exclusiveFactorFreeText, setExclusiveFactorFreeText] = useState<string>('');
   
   const [editedPinrichStatus, setEditedPinrichStatus] = useState<string>('');
   const [savingStatus, setSavingStatus] = useState(false);
@@ -7595,7 +7598,13 @@ HP：https://ifoo-oita.com/
                           renderValue={(selected) => (
                             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
                               {selected.map((value) => (
-                                <Chip key={value} label={value} size="small" />
+                                <Chip
+                                  key={value}
+                                  label={value}
+                                  size="small"
+                                  onDelete={() => { setEditedCompetitors(editedCompetitors.filter(v => v !== value)); setStatusChanged(true); statusChangedRef.current = true; }}
+                                  onMouseDown={(e) => e.stopPropagation()}
+                                />
                               ))}
                             </Box>
                           )}
@@ -7612,6 +7621,45 @@ HP：https://ifoo-oita.com/
                           </Typography>
                         )}
                       </FormControl>
+                      {/* 手打ち入力欄 */}
+                      <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
+                        <TextField
+                          size="small"
+                          fullWidth
+                          placeholder="リストにない競合を手打ちで追加"
+                          value={competitorFreeText}
+                          onChange={(e) => setCompetitorFreeText(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && competitorFreeText.trim()) {
+                              e.preventDefault();
+                              const val = competitorFreeText.trim();
+                              if (!editedCompetitors.includes(val)) {
+                                setEditedCompetitors([...editedCompetitors, val]);
+                                setStatusChanged(true);
+                                statusChangedRef.current = true;
+                              }
+                              setCompetitorFreeText('');
+                            }
+                          }}
+                        />
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          sx={{ whiteSpace: 'nowrap', minWidth: 'auto', px: 1.5 }}
+                          disabled={!competitorFreeText.trim()}
+                          onClick={() => {
+                            const val = competitorFreeText.trim();
+                            if (val && !editedCompetitors.includes(val)) {
+                              setEditedCompetitors([...editedCompetitors, val]);
+                              setStatusChanged(true);
+                              statusChangedRef.current = true;
+                            }
+                            setCompetitorFreeText('');
+                          }}
+                        >
+                          追加
+                        </Button>
+                      </Box>
                     </Grid>
                     <Grid item xs={12}>
                       <FormControl fullWidth size="small" required error={editedExclusiveOtherDecisionFactors.length === 0}>
@@ -7624,7 +7672,13 @@ HP：https://ifoo-oita.com/
                           renderValue={(selected) => (
                             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
                               {selected.map((value) => (
-                                <Chip key={value} label={value} size="small" />
+                                <Chip
+                                  key={value}
+                                  label={value}
+                                  size="small"
+                                  onDelete={() => { setEditedExclusiveOtherDecisionFactors(editedExclusiveOtherDecisionFactors.filter(v => v !== value)); setStatusChanged(true); statusChangedRef.current = true; }}
+                                  onMouseDown={(e) => e.stopPropagation()}
+                                />
                               ))}
                             </Box>
                           )}
@@ -7641,6 +7695,45 @@ HP：https://ifoo-oita.com/
                           </Typography>
                         )}
                       </FormControl>
+                      {/* 手打ち入力欄 */}
+                      <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
+                        <TextField
+                          size="small"
+                          fullWidth
+                          placeholder="リストにない要因を手打ちで追加"
+                          value={exclusiveFactorFreeText}
+                          onChange={(e) => setExclusiveFactorFreeText(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && exclusiveFactorFreeText.trim()) {
+                              e.preventDefault();
+                              const val = exclusiveFactorFreeText.trim();
+                              if (!editedExclusiveOtherDecisionFactors.includes(val)) {
+                                setEditedExclusiveOtherDecisionFactors([...editedExclusiveOtherDecisionFactors, val]);
+                                setStatusChanged(true);
+                                statusChangedRef.current = true;
+                              }
+                              setExclusiveFactorFreeText('');
+                            }
+                          }}
+                        />
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          sx={{ whiteSpace: 'nowrap', minWidth: 'auto', px: 1.5 }}
+                          disabled={!exclusiveFactorFreeText.trim()}
+                          onClick={() => {
+                            const val = exclusiveFactorFreeText.trim();
+                            if (val && !editedExclusiveOtherDecisionFactors.includes(val)) {
+                              setEditedExclusiveOtherDecisionFactors([...editedExclusiveOtherDecisionFactors, val]);
+                              setStatusChanged(true);
+                              statusChangedRef.current = true;
+                            }
+                            setExclusiveFactorFreeText('');
+                          }}
+                        >
+                          追加
+                        </Button>
+                      </Box>
                     </Grid>
                     
                     {/* 競合名、理由フィールド */}
