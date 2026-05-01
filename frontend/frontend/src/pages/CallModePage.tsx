@@ -29,6 +29,7 @@ import {
   Accordion,
   AccordionSummary,
   AccordionDetails,
+  Badge,
 } from '@mui/material';
 import { ArrowBack, Phone, Save, CalendarToday, Email, Image as ImageIcon, ContentCopy as ContentCopyIcon, Search as SearchIcon, Clear as ClearIcon, Delete as DeleteIcon, ExpandMore as ExpandMoreIcon, ExpandLess as ExpandLessIcon, Sms as SmsIcon, OpenInNew as OpenInNewIcon } from '@mui/icons-material';
 import api, { emailImageApi } from '../services/api';
@@ -859,6 +860,8 @@ const CallModePage = () => {
 
   // ドキュメントモーダル用の状態
   const [documentModalOpen, setDocumentModalOpen] = useState(false);
+  // 画像数バッジ用の状態
+  const [driveImageCount, setDriveImageCount] = useState<number | null>(null);
   // エリア情勢レポートモーダル用の状態
   const [areaReportOpen, setAreaReportOpen] = useState(false);
   const [detailsError, setDetailsError] = useState<string | null>(null);
@@ -1615,6 +1618,25 @@ const CallModePage = () => {
       console.log('→ sellerがnullのため、fetchSidebarSellersをスキップ');
     }
   }, [seller, fetchSidebarSellers]);
+
+  // 画像数をバックグラウンドで取得（「画像」ボタンのバッジ表示用）
+  useEffect(() => {
+    if (!seller?.sellerNumber) return;
+    let cancelled = false;
+    api.get(`/api/drive/folders/${seller.sellerNumber}`)
+      .then((res) => {
+        if (cancelled) return;
+        const files: any[] = res.data.files || [];
+        const imageCount = files.filter((f) =>
+          f.mimeType && f.mimeType.startsWith('image/')
+        ).length;
+        setDriveImageCount(imageCount);
+      })
+      .catch(() => {
+        // 取得失敗時はバッジを非表示にする（エラーは無視）
+      });
+    return () => { cancelled = true; };
+  }, [seller?.sellerNumber]);
 
   // デバウンスタイマーのクリーンアップ（コンポーネントのアンマウント時）
   useEffect(() => {
@@ -4398,14 +4420,20 @@ HP：https://ifoo-oita.com/
               commentHtml={savedComments}
             />
             {/* 画像ボタン */}
-            <Button
-              variant="outlined"
-              startIcon={<ImageIcon />}
-              onClick={() => setDocumentModalOpen(true)}
-              size="small"
+            <Badge
+              badgeContent={driveImageCount && driveImageCount > 0 ? driveImageCount : null}
+              color="primary"
+              max={99}
             >
-              画像
-            </Button>
+              <Button
+                variant="outlined"
+                startIcon={<ImageIcon />}
+                onClick={() => setDocumentModalOpen(true)}
+                size="small"
+              >
+                画像
+              </Button>
+            </Badge>
 
             {/* エリア情勢レポートボタン */}
             <Button
