@@ -28,8 +28,8 @@ export interface VisitPreparationPopupProps {
 
 // ゼンリンのログイン情報
 const ZENRIN_CREDENTIALS = [
-  { region: '大分', id: 'AFXVeUrJRPW', pw: 'mLP7e2i4j' },
-  { region: '福岡', id: 'kc4XUPASDGPW', pw: 'ifoo2022' },
+  { region: '大分', id: 'AFXVeUrJR', pw: 'mLP7e2i4j' },
+  { region: '福岡', id: 'kc4XUPASDG', pw: 'ifoo2022' },
 ] as const;
 
 // 固定リンク定数（添付資料・謄本）
@@ -302,13 +302,18 @@ export const VisitPreparationPopup: React.FC<VisitPreparationPopupProps> = ({
     {
       label: '成約事例',
       content: (
-        <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-          <a href={FIXED_LINKS_AFTER_ASSESSMENT[0].url} target="_blank" rel="noopener noreferrer">
-            成約事例
-          </a>
-          <a href="https://docs.google.com/document/d/1qXQ9dYuIXS5HgqWDt-0S7fAsFzVTxxv3xtn3zFCFXEo/edit?tab=t.x250eg61pmmp" target="_blank" rel="noopener noreferrer">
-            マンションの場合は事務が成約事例をだす
-          </a>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+          <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+            <a href={FIXED_LINKS_AFTER_ASSESSMENT[0].url} target="_blank" rel="noopener noreferrer">
+              成約事例
+            </a>
+            <a href="https://docs.google.com/document/d/1qXQ9dYuIXS5HgqWDt-0S7fAsFzVTxxv3xtn3zFCFXEo/edit?tab=t.x250eg61pmmp" target="_blank" rel="noopener noreferrer">
+              マンションの場合は事務が成約事例をだす
+            </a>
+          </Box>
+          <Box component="span" sx={{ color: 'red', fontSize: '0.85em' }}>
+            （マンションの成約事例は、画像ボタンよりPDF保存してください）
+          </Box>
         </Box>
       ),
     },
