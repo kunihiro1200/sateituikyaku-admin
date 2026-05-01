@@ -244,30 +244,20 @@ const NearbyMapModal: React.FC<NearbyMapModalProps> = ({ open, onClose, googleMa
           }).join('')
       : '';
 
-    // Google Static Maps APIで地図画像URL生成
+    // Google Maps Embed APIで地図iframe生成（テキストラベル付き）
     const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '';
     let mapImgHtml = '';
     if (coords) {
-      // マーカーパラメータ生成
-      const markerParams: string[] = [];
-      // 物件マーカー
-      markerParams.push(`markers=color:red%7Clabel:P%7C${coords.lat},${coords.lng}`);
-      // 施設マーカー（カテゴリ別）
-      if (curData) {
-        curData.categories.filter(cat => DISPLAY_CATS.has(cat.type)).forEach(cat => {
-          const places = curData.places[cat.type] || [];
-          places.forEach(p => {
-            if (p.lat && p.lng) {
-              markerParams.push(`markers=size:tiny%7C${p.lat},${p.lng}`);
-            }
-          });
-        });
-      }
       const zoom = tab === 0 ? 14 : 13;
-      const staticUrl = `https://maps.googleapis.com/maps/api/staticmap?center=${coords.lat},${coords.lng}&zoom=${zoom}&size=1200x630&scale=2&language=ja&${markerParams.join('&')}&key=${apiKey}`;
-      mapImgHtml = `<img src="${staticUrl}" style="width:100%;height:auto;display:block;" alt="近隣MAP"/>`;
+      // Embed APIはテキストラベル付きの地図を表示できる
+      const embedUrl = `https://www.google.com/maps/embed/v1/view?key=${apiKey}&center=${coords.lat},${coords.lng}&zoom=${zoom}&maptype=roadmap&language=ja`;
+      mapImgHtml = `<iframe
+        src="${embedUrl}"
+        style="width:100%;height:160mm;border:none;display:block;"
+        allowfullscreen
+        loading="eager"
+      ></iframe>`;
     } else {
-      // Static Maps APIキーがない場合はGoogle Maps埋め込みURLを使用
       mapImgHtml = `<div style="padding:20px;text-align:center;color:#666;">地図を表示できませんでした</div>`;
     }
 
@@ -300,6 +290,7 @@ const NearbyMapModal: React.FC<NearbyMapModalProps> = ({ open, onClose, googleMa
   .print-header .tab-label { font-size: 9pt; color: #1565c0; margin-left: auto; }
   .map-container { width: 100%; }
   .map-container img { width: 100%; height: auto; display: block; border: 1px solid #ddd; }
+  .map-container iframe { width: 100%; height: 160mm; border: none; display: block; }
 
   /* ===== 2ページ目：施設リスト ===== */
   .page-list {
@@ -375,12 +366,13 @@ const NearbyMapModal: React.FC<NearbyMapModalProps> = ({ open, onClose, googleMa
     if (!win) { alert('ポップアップがブロックされました。許可してから再試行してください。'); return; }
     win.document.write(printHtml);
     win.document.close();
-    win.onload = () => {
-      setTimeout(() => {
+    // iframeの地図読み込みを待ってから印刷（3秒待機）
+    setTimeout(() => {
+      if (!win.closed) {
         win.print();
         win.close();
-      }, 500);
-    };
+      }
+    }, 3000);
   };
 
   const cur = tab === 0 ? data1 : data2;
