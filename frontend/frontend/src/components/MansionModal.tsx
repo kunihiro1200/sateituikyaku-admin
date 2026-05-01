@@ -1,6 +1,7 @@
 ﻿import React from 'react';
-import { Dialog, DialogContent, Box, Typography, IconButton } from '@mui/material';
+import { Dialog, DialogContent, Box, Typography, Button, IconButton } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
+import PrintIcon from '@mui/icons-material/Print';
 import ApartmentIcon from '@mui/icons-material/Apartment';
 
 interface MansionSection { title: string; points: string[]; }
@@ -448,6 +449,38 @@ function detectBrand(address: string): MansionContent | null {
 
 const MansionModal: React.FC<MansionModalProps> = ({ open, onClose, address }) => {
   const content = open ? detectBrand(address) : null;
+
+  const handlePrint = () => {
+    if (!content) return;
+    const win = window.open('', '_blank');
+    if (!win) return;
+    const sectionsHtml = content.sections.map((s) => {
+      const icon = SECTION_ICONS[s.title] || '📌';
+      const pts = s.points.map((p) => `<div class="point"><span class="dot"></span><span>${p}</span></div>`).join('');
+      return `<div class="section"><div class="sh">${icon} ${s.title}</div><div class="sb">${pts}</div></div>`;
+    }).join('');
+    win.document.write(`<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><title>${content.brandName}</title><style>
+@page{size:A4 portrait;margin:12mm 15mm}*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Hiragino Kaku Gothic ProN','Meiryo','Yu Gothic',sans-serif;font-size:10pt;color:#1a2e1a;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.header{background:linear-gradient(135deg,#1b5e20,#2e7d32)!important;color:#fff!important;padding:14px 20px 12px;border-radius:6px;margin-bottom:14px}
+.badge{display:inline-block;background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.4);border-radius:4px;padding:2px 8px;font-size:7.5pt;margin-bottom:6px;color:#fff}
+.mn{font-size:22pt;font-weight:800;color:#fff}.tl{font-size:10pt;color:rgba(255,255,255,.9);margin-top:3px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+.section{border:1px solid #c8e6c9;border-radius:6px;overflow:hidden;break-inside:avoid}
+.sh{background:#f1f8e9!important;padding:7px 10px;font-size:9pt;font-weight:700;color:#1b5e20!important;border-bottom:1px solid #c8e6c9}
+.sb{padding:9px 10px}.point{display:flex;align-items:flex-start;gap:7px;margin-bottom:6px;font-size:8.5pt;line-height:1.55}
+.point:last-child{margin-bottom:0}.dot{display:inline-block;width:5px;height:5px;min-width:5px;background:#2e7d32!important;border-radius:50%;margin-top:5px}
+.sum{background:linear-gradient(135deg,#e8f5e9,#f1f8e9)!important;border:1px solid #a5d6a7;border-radius:6px;padding:10px 14px;text-align:center;font-size:10pt;font-weight:600;color:#1b5e20!important}
+</style></head><body>
+<div class="header"><div class="badge">マンションブランド資料</div><div class="mn">${content.brandName}</div><div class="tl">${content.developer} / ${content.tagline}</div></div>
+<div class="grid">${sectionsHtml}</div>
+<div class="sum">${content.summary}</div>
+</body></html>`);
+    win.document.close();
+    win.focus();
+    setTimeout(() => { win.print(); win.close(); }, 600);
+  };
+
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth transitionDuration={0} PaperProps={{ sx: { borderRadius: 2, maxHeight: '90vh' } }}>
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: 3, py: 2, background: 'linear-gradient(135deg, #1b5e20 0%, #2e7d32 100%)', color: 'white' }}>
@@ -455,7 +488,15 @@ const MansionModal: React.FC<MansionModalProps> = ({ open, onClose, address }) =
           <ApartmentIcon />
           <Typography variant="h6" fontWeight={700}>{content ? `${content.brandName} 特徴・メリット` : 'マンション情報'}</Typography>
         </Box>
-        <IconButton onClick={onClose} size="small" sx={{ color: 'white' }}><CloseIcon /></IconButton>
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          {content && (
+            <Button variant="outlined" size="small" startIcon={<PrintIcon />} onClick={handlePrint}
+              sx={{ color: 'white', borderColor: 'rgba(255,255,255,0.6)', '&:hover': { borderColor: 'white', background: 'rgba(255,255,255,0.1)' } }}>
+              PDF印刷
+            </Button>
+          )}
+          <IconButton onClick={onClose} size="small" sx={{ color: 'white' }}><CloseIcon /></IconButton>
+        </Box>
       </Box>
       <DialogContent sx={{ p: 3 }}>
         {!content && (
