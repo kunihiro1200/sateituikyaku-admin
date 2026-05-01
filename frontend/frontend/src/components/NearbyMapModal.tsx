@@ -17,7 +17,7 @@ interface PlaceCategory { type: string; label: string; icon: string; }
 interface NearbyData { center: { lat: number; lng: number }; radius: number; categories: PlaceCategory[]; places: Record<string, PlaceItem[]>; }
 interface NearbyMapModalProps { open: boolean; onClose: () => void; googleMapUrl?: string | null; address?: string; propertyNumber?: string; propertyType?: string; }
 
-// 飲食店・薬局・バス停を除外したカテゴリ
+// 表示するカテゴリ（飲食店・薬局・バス停は除外）
 const DISPLAY_CATS = new Set([
   'supermarket', 'convenience_store', 'school', 'kindergarten',
   'hospital', 'bank', 'post_office', 'park', 'train_station',
@@ -28,8 +28,7 @@ const COLORS: Record<string, string> = {
   school: '#1565c0', kindergarten: '#0277bd',
   hospital: '#2e7d32',
   bank: '#e65100', post_office: '#bf360c',
-  park: '#33691e',
-  train_station: '#283593',
+  park: '#33691e', train_station: '#283593',
 };
 
 // ---- URL から座標抽出 ----
@@ -59,10 +58,9 @@ function makeTextMarker(name: string, color: string): { url: string; w: number; 
   catch { return { url: 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg))), w, h: totalH }; }
 }
 
-// ---- 物件マーカー「📍 物件」 ----
+// ---- 物件マーカー ----
 function makePropertyMarker(): { url: string; w: number; h: number } {
   const w = 72; const h = 26; const ah = 8; const totalH = h + ah;
-  // 絵文字を使わずテキストのみ（エンコードエラー回避）
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${totalH}"><rect x="0" y="0" width="${w}" height="${h}" rx="5" ry="5" fill="#d32f2f"/><text x="${w/2}" y="18" font-family="Meiryo,sans-serif" font-size="13" font-weight="bold" fill="white" text-anchor="middle">&#x1F4CD; &#x7269;&#x4EF6;</text><polygon points="${w/2-6},${h} ${w/2+6},${h} ${w/2},${totalH}" fill="#d32f2f"/></svg>`;
   try { return { url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg), w, h: totalH }; }
   catch { return { url: 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg))), w, h: totalH }; }
@@ -93,6 +91,40 @@ function drawMarkers(map: google.maps.Map, data: NearbyData, iw: google.maps.Inf
       ref.current.push(mk);
     });
   });
+}
+
+// ---- 施設リストコンポーネント（印刷・通常共用） ----
+function FacilityList({ data, label, color }: { data: NearbyData | null; label: string; color: string }) {
+  if (!data) return <Typography variant="caption" color="text.secondary">データなし</Typography>;
+  return (
+    <Box>
+      <Typography variant="subtitle2" fontWeight="bold" sx={{ color, mb: 0.5, fontSize: '11px' }}>{label}</Typography>
+      {data.categories.filter(cat => DISPLAY_CATS.has(cat.type)).map((cat) => {
+        const places = data.places[cat.type] || [];
+        if (!places.length) return null;
+        const c = COLORS[cat.type] || '#757575';
+        return (
+          <Paper key={cat.type} variant="outlined" sx={{ p: 0.75, borderLeft: `3px solid ${c}`, mb: 0.75, flexShrink: 0 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.25 }}>
+              <Typography fontSize={12}>{cat.icon}</Typography>
+              <Typography variant="caption" fontWeight="bold" sx={{ color: c, fontSize: '10px' }}>{cat.label}</Typography>
+              <Chip label={places.length} size="small" sx={{ ml: 'auto', height: 14, fontSize: '9px' }} />
+            </Box>
+            <List dense disablePadding>
+              {places.map((p, i) => (
+                <ListItem key={i} disablePadding sx={{ py: 0 }}>
+                  <ListItemText
+                    primary={<Typography variant="caption" sx={{ fontWeight: i === 0 ? 'bold' : 'normal', display: 'block', fontSize: '10px' }}>{p.name}</Typography>}
+                    secondary={<Typography variant="caption" color="text.secondary" sx={{ fontSize: '9px' }}>約{p.distance}m{p.rating ? `　★${p.rating}` : ''}</Typography>}
+                  />
+                </ListItem>
+              ))}
+            </List>
+          </Paper>
+        );
+      })}
+    </Box>
+  );
 }
 
 // ---- メインコンポーネント ----
@@ -156,15 +188,14 @@ const NearbyMapModal: React.FC<NearbyMapModalProps> = ({ open, onClose, googleMa
     onClose();
   };
 
-  // ---- 印刷：モーダルコンテンツをそのまま印刷 ----
+  // ---- 印刷：1ページ目=地図（A4横いっぱい）、2ページ目=施設リスト ----
   const handlePrint = () => {
-    // 印刷用スタイルを一時的に追加
     const styleId = 'nearby-print-override';
     const old = document.getElementById(styleId); if (old) old.remove();
     const st = document.createElement('style'); st.id = styleId;
     st.textContent = `
       @media print {
-        @page { size: A4 landscape; margin: 8mm; }
+        @page { size: A4 landscape; margin: 5mm 6mm; }
         body > *:not(.MuiDialog-root) { display: none !important; }
         .MuiDialog-root { position: static !important; }
         .MuiDialog-container { height: auto !important; align-items: flex-start !important; }
@@ -172,14 +203,31 @@ const NearbyMapModal: React.FC<NearbyMapModalProps> = ({ open, onClose, googleMa
           height: auto !important; max-height: none !important;
           box-shadow: none !important; margin: 0 !important;
           width: 100% !important; max-width: 100% !important;
+          overflow: visible !important;
         }
-        .MuiDialogTitle-root { padding: 4px 8px !important; }
-        .MuiDialogContent-root { overflow: visible !important; height: auto !important; }
-        .MuiDialogActions-root { display: none !important; }
-        .MuiTabs-root { display: none !important; }
-        .no-print { display: none !important; }
-        /* 地図エリアを固定高さで印刷 */
-        .nearby-map-container { height: 400px !important; }
+        .MuiDialogTitle-root { padding: 2px 6px !important; border-bottom: 1px solid #ccc !important; }
+        .MuiTabs-root, .MuiDialogActions-root, .no-print { display: none !important; }
+        .MuiDialogContent-root { overflow: visible !important; padding: 0 !important; height: auto !important; }
+        /* 1ページ目：地図をA4横いっぱい */
+        .nearby-map-area {
+          width: 100% !important; height: 185mm !important;
+          flex: none !important; display: block !important;
+          page-break-after: always !important; break-after: page !important;
+        }
+        /* 2ページ目：施設リスト2列 */
+        .nearby-list-area {
+          display: flex !important; flex-direction: row !important;
+          gap: 8px !important; width: 100% !important;
+          page-break-before: always !important; break-before: page !important;
+          overflow: visible !important;
+        }
+        .nearby-list-area > * { flex: 1 !important; min-width: 0 !important; }
+        /* 通常表示用の要素を印刷時に非表示 */
+        .nearby-screen-only { display: none !important; }
+        /* 印刷用要素を表示 */
+        .nearby-print-only { display: flex !important; }
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
       }
     `;
     document.head.appendChild(st);
@@ -188,18 +236,12 @@ const NearbyMapModal: React.FC<NearbyMapModalProps> = ({ open, onClose, googleMa
   };
 
   const cur = tab === 0 ? data1 : data2;
-  const c1 = data1 ? Object.values(data1.places).filter((_, i) => DISPLAY_CATS.has(Object.keys(data1.places)[i])).reduce((s, a) => s + a.length, 0) : 0;
-  const c2 = data2 ? Object.values(data2.places).filter((_, i) => DISPLAY_CATS.has(Object.keys(data2.places)[i])).reduce((s, a) => s + a.length, 0) : 0;
+  const c1 = data1 ? Object.values(data1.places).reduce((s, a) => s + a.length, 0) : 0;
+  const c2 = data2 ? Object.values(data2.places).reduce((s, a) => s + a.length, 0) : 0;
 
   return (
     <Dialog open={open} onClose={handleClose} maxWidth="xl" fullWidth
       PaperProps={{ sx: { height: '92vh', display: 'flex', flexDirection: 'column' } }}>
-
-      {/* 印刷用タイトル（通常時は非表示） */}
-      <Box sx={{ display: 'none', '@media print': { display: 'block' }, px: 2, pt: 1 }}>
-        <Typography variant="h6" fontWeight="bold">近隣環境マップ</Typography>
-        {address && <Typography variant="body2" color="text.secondary">{address}</Typography>}
-      </Box>
 
       <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', pb: 1 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
@@ -212,6 +254,7 @@ const NearbyMapModal: React.FC<NearbyMapModalProps> = ({ open, onClose, googleMa
       </DialogTitle>
       <Divider />
 
+      {/* タブ（通常表示のみ） */}
       <Box sx={{ borderBottom: 1, borderColor: 'divider', px: 2 }} className="no-print">
         <Tabs value={tab} onChange={(_, v) => setTab(v)}>
           <Tab label={<Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}><span>🔵 半径1km</span>{c1 > 0 && <Chip label={`${c1}件`} size="small" sx={{ height: 18, fontSize: '10px' }} />}</Box>} />
@@ -225,8 +268,9 @@ const NearbyMapModal: React.FC<NearbyMapModalProps> = ({ open, onClose, googleMa
 
         {coords && isLoaded && (
           <Box sx={{ display: 'flex', gap: 2, height: '100%' }}>
-            {/* 地図（左65%） */}
-            <Box className="nearby-map-container" sx={{ flex: '1 1 65%', borderRadius: 1, overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.15)', minWidth: 0 }}>
+
+            {/* ===== 地図エリア（1ページ目） ===== */}
+            <Box className="nearby-map-area" sx={{ flex: '1 1 65%', borderRadius: 1, overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.15)', minWidth: 0 }}>
               <GoogleMap
                 mapContainerStyle={{ width: '100%', height: '100%' }}
                 center={coords}
@@ -236,50 +280,41 @@ const NearbyMapModal: React.FC<NearbyMapModalProps> = ({ open, onClose, googleMa
               />
             </Box>
 
-            {/* 施設リスト（右35%） */}
-            <Box sx={{ flex: '0 0 35%', overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 0.75 }}>
-              {loading && (
-                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 1 }}>
-                  <CircularProgress size={24} />
-                  <Typography variant="body2">施設を検索中...</Typography>
+            {/* ===== 施設リストエリア ===== */}
+            <Box sx={{ flex: '0 0 35%', overflow: 'hidden', display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+
+              {/* 通常表示（タブで切り替え） */}
+              <Box className="nearby-screen-only" sx={{ flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 0.75 }}>
+                {loading && (
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 1 }}>
+                    <CircularProgress size={24} />
+                    <Typography variant="body2">施設を検索中...</Typography>
+                  </Box>
+                )}
+                {!loading && cur && (
+                  <FacilityList
+                    data={cur}
+                    label={tab === 0 ? '🔵 半径1km圏内の施設' : '🟢 半径2km圏内の施設'}
+                    color={tab === 0 ? '#1565c0' : '#2e7d32'}
+                  />
+                )}
+                {!loading && !cur && !error && (
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+                    <Typography variant="body2" color="text.secondary">地図を読み込み中...</Typography>
+                  </Box>
+                )}
+              </Box>
+
+              {/* 印刷用（2ページ目：1km・2km 2列） */}
+              <Box className="nearby-list-area nearby-print-only" sx={{ display: 'none' }}>
+                <Box>
+                  <FacilityList data={data1} label="🔵 半径1km圏内の施設" color="#1565c0" />
                 </Box>
-              )}
-              {!loading && cur && (
-                <>
-                  <Typography variant="caption" fontWeight="bold" color="text.secondary" sx={{ px: 0.5 }}>
-                    半径{(cur.radius / 1000).toFixed(0)}km圏内の施設
-                  </Typography>
-                  {cur.categories.filter(cat => DISPLAY_CATS.has(cat.type)).map((cat) => {
-                    const places = cur.places[cat.type] || [];
-                    if (!places.length) return null;
-                    const color = COLORS[cat.type] || '#757575';
-                    return (
-                      <Paper key={cat.type} variant="outlined" sx={{ p: 0.75, borderLeft: `3px solid ${color}`, flexShrink: 0 }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.25 }}>
-                          <Typography fontSize={13}>{cat.icon}</Typography>
-                          <Typography variant="caption" fontWeight="bold" sx={{ color, fontSize: '11px' }}>{cat.label}</Typography>
-                          <Chip label={places.length} size="small" sx={{ ml: 'auto', height: 15, fontSize: '9px' }} />
-                        </Box>
-                        <List dense disablePadding>
-                          {places.map((p, i) => (
-                            <ListItem key={i} disablePadding sx={{ py: 0 }}>
-                              <ListItemText
-                                primary={<Typography variant="caption" sx={{ fontWeight: i === 0 ? 'bold' : 'normal', display: 'block', fontSize: '11px' }}>{p.name}</Typography>}
-                                secondary={<Typography variant="caption" color="text.secondary" sx={{ fontSize: '9px' }}>約{p.distance}m{p.rating ? `　★${p.rating}` : ''}</Typography>}
-                              />
-                            </ListItem>
-                          ))}
-                        </List>
-                      </Paper>
-                    );
-                  })}
-                </>
-              )}
-              {!loading && !cur && !error && (
-                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
-                  <Typography variant="body2" color="text.secondary">地図を読み込み中...</Typography>
+                <Box>
+                  <FacilityList data={data2} label="🟢 半径2km圏内の施設" color="#2e7d32" />
                 </Box>
-              )}
+              </Box>
+
             </Box>
           </Box>
         )}
