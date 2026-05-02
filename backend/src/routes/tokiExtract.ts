@@ -32,20 +32,12 @@ router.post('/:propertyNumber/extract', async (req: Request, res: Response) => {
     if (!spreadsheetUrl) {
       return res.status(400).json({ error: 'スプシURLが設定されていません' });
     }
-    if (!mediationType) {
-      return res.status(400).json({ error: '媒介形態が設定されていません' });
-    }
     if (!propertyType) {
       return res.status(400).json({ error: '種別が設定されていません' });
     }
 
-    // シート名を決定
-    const sheetName = tokiExtractService.getSheetName(mediationType, propertyType);
-    if (!sheetName) {
-      return res.status(400).json({
-        error: `この種別（${propertyType}）または媒介形態（${mediationType}）には現在対応していません`,
-      });
-    }
+    // シート名を決定（媒介形態が未設定の場合は専任媒介シートをデフォルトとして使用）
+    const sheetName = tokiExtractService.getSheetName(mediationType ?? '', propertyType);
 
     // DriveフォルダからPDFを検索
     console.log(`[TokiExtract] 謄本PDF検索開始: ${propertyNumber}`);
