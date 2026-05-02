@@ -7145,6 +7145,8 @@ HP：https://ifoo-oita.com/
                 'ミサワホーム', 'ミサワ',
                 '谷川建設', '谷川',
                 '住友林業', 'すみりん',
+                'GIJ株式会社', 'GIJ',
+                '三越商事',
                 'ハウスメーカー',
               ];
               const plainComment = savedComments.replace(/<[^>]+>/g, '');

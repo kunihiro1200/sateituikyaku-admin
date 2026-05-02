@@ -1,8 +1,9 @@
-import React from 'react';
-import { Dialog, DialogContent, Box, Typography, Button, IconButton } from '@mui/material';
+import React, { useState, useEffect } from 'react';
+import { Dialog, DialogContent, Box, Typography, Button, IconButton, CircularProgress } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import PrintIcon from '@mui/icons-material/Print';
 import HomeWorkIcon from '@mui/icons-material/HomeWork';
+import api from '../services/api';
 
 interface HouseMakerSection { title: string; points: string[]; }
 interface HouseMakerContent { makerName: string; tagline: string; sections: HouseMakerSection[]; summary: string; buyerSummary: string; }
@@ -160,9 +161,45 @@ function detectMaker(text: string): HouseMakerContent | null {
 }
 
 const HouseMakerModal: React.FC<HouseMakerModalProps> = ({ open, onClose, commentHtml, mode = 'seller' }) => {
-  const content = open ? detectMaker(commentHtml) : null;
+  const staticContent = open ? detectMaker(commentHtml) : null;
+  const [aiContent, setAiContent] = useState<HouseMakerContent | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+
+  // DATAにない場合はAI APIで動的生成
+  useEffect(() => {
+    if (!open) {
+      setAiContent(null);
+      setAiError(null);
+      return;
+    }
+    if (staticContent) return; // 静的データがあればAI不要
+
+    setAiLoading(true);
+    setAiError(null);
+    setAiContent(null);
+
+    api.post('/summarize/house-maker-info', { commentText: commentHtml })
+      .then((res) => {
+        const c = res.data?.content;
+        if (c && c.makerName) {
+          // buyerSummaryがない場合はsummaryで代用
+          if (!c.buyerSummary) c.buyerSummary = c.summary || '';
+          setAiContent(c as HouseMakerContent);
+        } else {
+          setAiError('ハウスメーカー情報が見つかりませんでした。');
+        }
+      })
+      .catch((err) => {
+        const msg = err?.response?.data?.error || 'ハウスメーカー情報の取得に失敗しました。';
+        setAiError(msg);
+      })
+      .finally(() => setAiLoading(false));
+  }, [open, commentHtml, staticContent]);
+
+  const content = staticContent ?? aiContent;
   const isBuyer = mode === 'buyer';
-  const displaySummary = content ? (isBuyer ? content.buyerSummary : content.summary) : '';
+  const displaySummary = content ? (isBuyer ? (content.buyerSummary || content.summary) : content.summary) : '';
 
   const handlePrint = () => {
     if (!content) return;
@@ -214,7 +251,18 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo','Yu Gothic',sans-serif;fon
       </Box>
 
       <DialogContent sx={{ p: 3 }}>
-        {!content && (
+        {aiLoading && (
+          <Box sx={{ textAlign: 'center', py: 6 }}>
+            <CircularProgress size={40} sx={{ mb: 2 }} />
+            <Typography color="text.secondary">AIがハウスメーカー情報を生成中です...</Typography>
+          </Box>
+        )}
+        {!aiLoading && aiError && !content && (
+          <Box sx={{ textAlign: 'center', py: 4 }}>
+            <Typography color="text.secondary">{aiError}</Typography>
+          </Box>
+        )}
+        {!aiLoading && !content && !aiError && (
           <Box sx={{ textAlign: 'center', py: 4 }}>
             <Typography color="text.secondary">ハウスメーカー情報が見つかりませんでした。</Typography>
           </Box>
