@@ -181,21 +181,29 @@ export const ViewingPreparationPopup: React.FC<ViewingPreparationPopupProps> = (
             >
               <ListItemText
                 primary={
-                  <Typography component="span">
-                    近隣MAP：
-                    <Box
-                      component="span"
-                      sx={{
-                        color: 'primary.main',
-                        textDecoration: 'underline',
-                        cursor: 'pointer',
-                        '&:hover': { opacity: 0.7 },
-                      }}
-                      onClick={() => setNearbyMapModalOpen(true)}
+                  <Box>
+                    <Typography component="span">
+                      近隣MAP：
+                      <Box
+                        component="span"
+                        sx={{
+                          color: 'primary.main',
+                          textDecoration: 'underline',
+                          cursor: 'pointer',
+                          '&:hover': { opacity: 0.7 },
+                        }}
+                        onClick={() => setNearbyMapModalOpen(true)}
+                      >
+                        🗺️ クリックして表示
+                      </Box>
+                    </Typography>
+                    <Typography
+                      component="div"
+                      sx={{ color: 'error.main', fontSize: '0.8rem', mt: 0.3 }}
                     >
-                      🗺️ クリックして表示
-                    </Box>
-                  </Typography>
+                      ※＋を２回押して拡大表示して印刷してください。カラーの両面印刷です。
+                    </Typography>
+                  </Box>
                 }
               />
             </ListItem>
