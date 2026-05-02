@@ -573,9 +573,11 @@ function checkMandatoryRevisionFields(
         errorFields.push('契約～決済担当者：許可済み？（山本/国広）');
       }
     }
-    // 担当者（全社員）が必須
-    if (isEmpty(getValue('contract_to_settlement_admin_person'))) {
-      errorFields.push('契約～決済担当者：担当者');
+    // 「他」の場合のみ担当者（全社員）が必須
+    if (getValue('contract_to_settlement_admin_staff') === '他') {
+      if (isEmpty(getValue('contract_to_settlement_admin_person'))) {
+        errorFields.push('契約～決済担当者：担当者');
+      }
     }
   }
   //    親フィールド: mediation_checker を今回変更した場合のみチェック
@@ -3072,38 +3074,40 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
                 </Grid>
               )}
 
-              {/* 担当者（全社員から選択） */}
-              <Grid container spacing={2} alignItems="center" sx={{ mb: 0.5 }}>
-                <Grid item xs={4}>
-                  <Typography variant="body2" color="error" sx={{ fontWeight: 700 }}>
-                    担当者*（必須）
-                  </Typography>
-                </Grid>
-                <Grid item xs={8}>
-                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                    {activeEmployees.map((emp) => (
-                      <Button
-                        key={emp.id}
-                        size="small"
-                        variant={getValue('contract_to_settlement_admin_person') === emp.name ? 'contained' : 'outlined'}
-                        color={getValue('contract_to_settlement_admin_person') === emp.name ? 'primary' : 'inherit'}
-                        onClick={(e) => {
-                          (e.currentTarget as HTMLButtonElement).blur();
-                          handleFieldChange('contract_to_settlement_admin_person', getValue('contract_to_settlement_admin_person') === emp.name ? null : emp.name);
-                        }}
-                        sx={{ minWidth: 'auto', px: 1 }}
-                      >
-                        {emp.name}
-                      </Button>
-                    ))}
-                  </Box>
-                  {!getValue('contract_to_settlement_admin_person') && (
-                    <Typography variant="caption" color="error" sx={{ display: 'block', mt: 0.5 }}>
-                      必須項目です
+              {/* 担当者（全社員から選択）: 「他」選択時のみ表示・必須 */}
+              {getValue('contract_to_settlement_admin_staff') === '他' && (
+                <Grid container spacing={2} alignItems="center" sx={{ mb: 0.5 }}>
+                  <Grid item xs={4}>
+                    <Typography variant="body2" color="error" sx={{ fontWeight: 700 }}>
+                      担当者*（必須）
                     </Typography>
-                  )}
+                  </Grid>
+                  <Grid item xs={8}>
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                      {activeEmployees.map((emp) => (
+                        <Button
+                          key={emp.id}
+                          size="small"
+                          variant={getValue('contract_to_settlement_admin_person') === emp.name ? 'contained' : 'outlined'}
+                          color={getValue('contract_to_settlement_admin_person') === emp.name ? 'primary' : 'inherit'}
+                          onClick={(e) => {
+                            (e.currentTarget as HTMLButtonElement).blur();
+                            handleFieldChange('contract_to_settlement_admin_person', getValue('contract_to_settlement_admin_person') === emp.name ? null : emp.name);
+                          }}
+                          sx={{ minWidth: 'auto', px: 1 }}
+                        >
+                          {emp.name}
+                        </Button>
+                      ))}
+                    </Box>
+                    {!getValue('contract_to_settlement_admin_person') && (
+                      <Typography variant="caption" color="error" sx={{ display: 'block', mt: 0.5 }}>
+                        必須項目です
+                      </Typography>
+                    )}
+                  </Grid>
                 </Grid>
-              </Grid>
+              )}
             </Box>
           )}
 
