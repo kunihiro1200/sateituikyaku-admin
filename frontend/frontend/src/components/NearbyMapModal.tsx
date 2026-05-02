@@ -533,6 +533,8 @@ const NearbyMapModal: React.FC<NearbyMapModalProps> = ({ open, onClose, googleMa
 
     const printWrap = document.createElement('div');
     printWrap.id = 'nearby-map-print-wrap';
+    // 印刷時はページ全体を使う（A4横 = 297mm x 210mm、96dpi換算）
+    // JSでは画面サイズを使い、CSSで100%に拡張する
     printWrap.style.cssText = `
       position:fixed;top:${HEADER_H}px;left:0;
       width:${mapW}px;height:${mapH}px;
@@ -541,10 +543,16 @@ const NearbyMapModal: React.FC<NearbyMapModalProps> = ({ open, onClose, googleMa
 
     const mapInner = mapAreaEl.firstElementChild as HTMLElement | null;
     if (mapInner) {
+      // 印刷用に地図を画面全幅・全高にリサイズ
+      const printW = window.innerWidth;
+      const printH = window.innerHeight - HEADER_H;
+      mapInner.style.width = `${printW}px`;
+      mapInner.style.height = `${printH}px`;
+      printWrap.style.width = `${printW}px`;
+      printWrap.style.height = `${printH}px`;
       printWrap.appendChild(mapInner);
       document.body.appendChild(printWrap);
       mapAreaEl.style.visibility = 'hidden';
-      // Google Mapsにサイズ変更なしでリサイズ通知
       if (mapRef.current) {
         google.maps.event.trigger(mapRef.current, 'resize');
         mapRef.current.setCenter(coords);
@@ -585,8 +593,8 @@ const NearbyMapModal: React.FC<NearbyMapModalProps> = ({ open, onClose, googleMa
         #nearby-map-print-wrap {
           position: static !important;
           display: block !important;
-          width: 100% !important;
-          height: ${mapH - HEADER_H}px !important;
+          width: 100vw !important;
+          height: calc(100vh - ${HEADER_H}px) !important;
           overflow: hidden !important;
           page-break-after: always !important;
           break-after: page !important;
@@ -625,6 +633,8 @@ const NearbyMapModal: React.FC<NearbyMapModalProps> = ({ open, onClose, googleMa
       setTimeout(() => {
         // 後片付け
         if (mapInner && mapAreaEl) {
+          mapInner.style.width = '';
+          mapInner.style.height = '';
           mapAreaEl.appendChild(mapInner);
           mapAreaEl.style.visibility = '';
           if (mapRef.current) {
