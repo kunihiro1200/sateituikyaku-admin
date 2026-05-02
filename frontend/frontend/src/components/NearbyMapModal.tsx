@@ -543,13 +543,13 @@ const NearbyMapModal: React.FC<NearbyMapModalProps> = ({ open, onClose, googleMa
 
     const mapInner = mapAreaEl.firstElementChild as HTMLElement | null;
     if (mapInner) {
-      // 印刷用に地図を画面全幅・全高にリサイズ
-      const printW = window.innerWidth;
-      const printH = window.innerHeight - HEADER_H;
-      mapInner.style.width = `${printW}px`;
-      mapInner.style.height = `${printH}px`;
-      printWrap.style.width = `${printW}px`;
-      printWrap.style.height = `${printH}px`;
+      // A4横の印刷サイズ固定（96dpi: 297mm x 210mm）
+      const A4_W = 1122;
+      const A4_H = 794 - HEADER_H;
+      mapInner.style.width = `${A4_W}px`;
+      mapInner.style.height = `${A4_H}px`;
+      printWrap.style.width = `${A4_W}px`;
+      printWrap.style.height = `${A4_H}px`;
       printWrap.appendChild(mapInner);
       document.body.appendChild(printWrap);
       mapAreaEl.style.visibility = 'hidden';
@@ -593,8 +593,8 @@ const NearbyMapModal: React.FC<NearbyMapModalProps> = ({ open, onClose, googleMa
         #nearby-map-print-wrap {
           position: static !important;
           display: block !important;
-          width: 100vw !important;
-          height: calc(100vh - ${HEADER_H}px) !important;
+          width: 1122px !important;
+          height: ${794 - HEADER_H}px !important;
           overflow: hidden !important;
           page-break-after: always !important;
           break-after: page !important;
