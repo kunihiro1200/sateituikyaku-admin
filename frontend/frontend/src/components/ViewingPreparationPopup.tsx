@@ -173,6 +173,33 @@ export const ViewingPreparationPopup: React.FC<ViewingPreparationPopupProps> = (
               />
             </ListItem>
           ))}
+          {/* 近隣MAP（google_map_urlがある場合のみ表示） */}
+          {googleMapUrl && (
+            <ListItem
+              component="li"
+              sx={{ display: 'list-item', py: 0.5 }}
+            >
+              <ListItemText
+                primary={
+                  <Typography component="span">
+                    近隣MAP：
+                    <Box
+                      component="span"
+                      sx={{
+                        color: 'primary.main',
+                        textDecoration: 'underline',
+                        cursor: 'pointer',
+                        '&:hover': { opacity: 0.7 },
+                      }}
+                      onClick={() => setNearbyMapModalOpen(true)}
+                    >
+                      🗺️ クリックして表示
+                    </Box>
+                  </Typography>
+                }
+              />
+            </ListItem>
+          )}
           {/* ハウスメーカー（house_makerフィールドに値がある場合のみ表示） */}
           {houseMaker && (
             <ListItem
@@ -204,26 +231,6 @@ export const ViewingPreparationPopup: React.FC<ViewingPreparationPopupProps> = (
         </List>
       </DialogContent>
       <DialogActions>
-        {/* 近隣MAPボタン（google_map_urlがある場合のみ表示） */}
-        {googleMapUrl && (
-          <Button
-            variant="contained"
-            size="small"
-            startIcon={<span style={{ fontSize: '1.1em' }}>🗺️</span>}
-            onClick={() => setNearbyMapModalOpen(true)}
-            sx={{
-              background: 'linear-gradient(135deg, #0277bd 0%, #01579b 100%)',
-              color: 'white',
-              fontWeight: 'bold',
-              mr: 'auto',
-              '&:hover': {
-                background: 'linear-gradient(135deg, #01579b 0%, #013a6b 100%)',
-              },
-            }}
-          >
-            近隣MAP
-          </Button>
-        )}
         <Button onClick={onClose} variant="outlined">
           閉じる
         </Button>
