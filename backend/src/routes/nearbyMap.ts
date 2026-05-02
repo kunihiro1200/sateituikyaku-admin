@@ -30,6 +30,14 @@ const PLACES_API_TYPE_MAP: Record<string, string> = {
   cram_school: 'school',
 };
 
+// カテゴリごとのkeywordパラメータ（APIレベルで絞り込む）
+const PLACES_API_KEYWORD_MAP: Record<string, string> = {
+  elementary_school: '小学校',
+  middle_school: '中学校',
+  high_school: '高校',
+  kindergarten: '幼稚園 保育園',
+};
+
 // カテゴリごとの名前フィルタ（特定カテゴリのみ名前で絞り込む）
 const CATEGORY_NAME_FILTERS: Record<string, RegExp> = {
   elementary_school: /小学校/,
@@ -77,6 +85,8 @@ router.get('/places', authenticate, async (req: Request, res: Response) => {
         try {
           // カスタムtypeはAPIのtypeにマッピング
           const apiType = PLACES_API_TYPE_MAP[category.type] || category.type;
+          // keywordパラメータ（APIレベルで絞り込む）
+          const apiKeyword = PLACES_API_KEYWORD_MAP[category.type];
 
           const response = await axios.get(
             'https://maps.googleapis.com/maps/api/place/nearbysearch/json',
@@ -85,6 +95,7 @@ router.get('/places', authenticate, async (req: Request, res: Response) => {
                 location: `${latNum},${lngNum}`,
                 radius: radiusNum,
                 type: apiType,
+                ...(apiKeyword ? { keyword: apiKeyword } : {}),
                 language: 'ja',
                 key: apiKey,
               },
