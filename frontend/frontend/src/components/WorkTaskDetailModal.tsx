@@ -28,7 +28,7 @@ import {
   useMediaQuery,
   useTheme,
 } from '@mui/material';
-import { Close as CloseIcon, Save as SaveIcon, ContentCopy as ContentCopyIcon, Check as CheckIcon, WarningAmber as WarningAmberIcon, Email as EmailIcon, Image as ImageIcon, EditNote as EditNoteIcon } from '@mui/icons-material';
+import { Close as CloseIcon, Save as SaveIcon, ContentCopy as ContentCopyIcon, Check as CheckIcon, WarningAmber as WarningAmberIcon, Email as EmailIcon, Image as ImageIcon, EditNote as EditNoteIcon, OpenInNew } from '@mui/icons-material';
 import Popover from '@mui/material/Popover';
 import Tooltip from '@mui/material/Tooltip';
 import Badge from '@mui/material/Badge';
@@ -1325,6 +1325,17 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
   // 画像ボタン用の状態
   const [documentModalOpen, setDocumentModalOpen] = useState(false);
   const [driveImageCount, setDriveImageCount] = useState<number | null>(null);
+  // ドキュメントフォルダURL（自動取得）
+  const [documentFolderUrl, setDocumentFolderUrl] = useState<string>('');
+
+  // フォルダURL取得時のコールバック：storage_urlが空欄の場合のみ自動セット
+  const handleFolderUrlReady = (url: string) => {
+    setDocumentFolderUrl(url);
+    const currentStorageUrl = getValue('storage_url');
+    if (!currentStorageUrl && url) {
+      handleFieldChange('storage_url', url);
+    }
+  };
   // Email送信履歴（SellerBuyerDetailSectionから引き上げ）
   const [emailHistory, setEmailHistory] = useState<Array<{
     id: number;
@@ -3890,6 +3901,22 @@ ${pageUrl}`;
                   画像
                 </Button>
               </Badge>
+              {/* フォルダURLリンク */}
+              {documentFolderUrl && (
+                <Tooltip title="Google Driveフォルダを開く">
+                  <IconButton
+                    component="a"
+                    href={documentFolderUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    size="small"
+                    color="primary"
+                    sx={{ p: 0.5 }}
+                  >
+                    <OpenInNew fontSize="small" />
+                  </IconButton>
+                </Tooltip>
+              )}
               <IconButton onClick={onClose} size="small" sx={{ p: 0.5 }}><CloseIcon fontSize="small" /></IconButton>
             </Box>
           ) : (
@@ -4039,6 +4066,21 @@ ${pageUrl}`;
                     画像
                   </Button>
                 </Badge>
+                {/* フォルダURLリンク */}
+                {documentFolderUrl && (
+                  <Tooltip title="Google Driveフォルダを開く">
+                    <IconButton
+                      component="a"
+                      href={documentFolderUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      size="small"
+                      color="primary"
+                    >
+                      <OpenInNew />
+                    </IconButton>
+                  </Tooltip>
+                )}
                 <IconButton onClick={onClose} size="small"><CloseIcon /></IconButton>
               </Box>
             </>
@@ -4405,6 +4447,7 @@ ${pageUrl}`;
           open={documentModalOpen}
           onClose={() => setDocumentModalOpen(false)}
           sellerNumber={propertyNumber}
+          onFolderUrlReady={handleFolderUrlReady}
         />
       )}
     </>

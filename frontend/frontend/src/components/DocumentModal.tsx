@@ -46,7 +46,7 @@ interface DocumentModalProps {
   sellerNumber: string;
 }
 
-const DocumentModal = ({ open, onClose, sellerNumber }: DocumentModalProps) => {
+const DocumentModal = ({ open, onClose, sellerNumber, onFolderUrlReady }: DocumentModalProps) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [files, setFiles] = useState<DriveFile[]>([]);
@@ -65,7 +65,11 @@ const DocumentModal = ({ open, onClose, sellerNumber }: DocumentModalProps) => {
     try {
       const response = await api.get(`/api/drive/folders/${sellerNumber}`);
       setFiles(response.data.files || []);
-      setFolderUrl(response.data.folderUrl || '');
+      const url = response.data.folderUrl || '';
+      setFolderUrl(url);
+      if (url && onFolderUrlReady) {
+        onFolderUrlReady(url);
+      }
     } catch (err: any) {
       console.error('Error loading folder:', err);
       if (err.response?.data?.code === 'GOOGLE_AUTH_REQUIRED') {
