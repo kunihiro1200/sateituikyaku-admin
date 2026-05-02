@@ -7228,8 +7228,8 @@ HP：https://ifoo-oita.com/
             <CommentHighlightsPanel
               commentHtml={savedComments}
               quickButtonIds={[
-                { id: 'call-memo-b-prime', label: "B'", insertText: '価格が知りたかっただけ' },
-                { id: 'call-memo-wood-2f', label: '木造２F', insertText: '木造２F' },
+                { id: 'call-memo-b-prime', label: '確度', insertText: '確度：' },
+                { id: 'call-memo-wood-2f', label: '構造', insertText: '構造：' },
                 { id: 'call-memo-land-area', label: '土地面積', insertText: '土地面積：だいたい' },
                 { id: 'call-memo-solar', label: '太陽光', insertText: '太陽光付き' },
                 { id: 'call-memo-desk-valuation', label: '机上査定', insertText: '一旦机上査定して、その後訪問考える' },
