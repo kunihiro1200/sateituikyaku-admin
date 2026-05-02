@@ -107,7 +107,6 @@ router.get('/places', authenticate, async (req: Request, res: Response) => {
             }
 
             results[category.type] = filtered
-              .slice(0, 5)
               .map((p: any) => ({
                 name: p.name,
                 vicinity: p.vicinity,
@@ -116,7 +115,8 @@ router.get('/places', authenticate, async (req: Request, res: Response) => {
                 rating: p.rating,
                 distance: calcDistance(latNum, lngNum, p.geometry?.location?.lat, p.geometry?.location?.lng),
               }))
-              .sort((a: any, b: any) => a.distance - b.distance);
+              .sort((a: any, b: any) => a.distance - b.distance)
+              .slice(0, 5);
           } else {
             console.log(`[nearbyMap] ${category.type}: status=${response.data.status}, count=${response.data.results?.length ?? 0}`);
             results[category.type] = [];
