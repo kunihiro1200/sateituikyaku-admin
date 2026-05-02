@@ -36,6 +36,8 @@ const CATEGORY_NAME_FILTERS: Record<string, RegExp> = {
   middle_school: /中学校/,
   high_school: /高校|高等学校/,
   cram_school: /塾|学習塾|進学塾|予備校|学院(?!.*小学|.*中学|.*高校|.*大学)/,
+  // 幼稚園・保育園：関連キーワードが含まれるものだけ通す（ホワイトリスト）
+  kindergarten: /幼稚園|保育園|保育所|こども園|認定こども園|託児所|ナーサリー|nursery|kindergarten/i,
 };
 
 // カテゴリごとの除外フィルタ（明らかに無関係な施設を除外するブラックリスト方式）
