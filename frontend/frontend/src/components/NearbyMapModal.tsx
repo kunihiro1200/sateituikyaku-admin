@@ -504,33 +504,60 @@ const NearbyMapModal: React.FC<NearbyMapModalProps> = ({ open, onClose, googleMa
           }).join('')
       : '';
 
-    // 地図コンテナのサイズを取得
-    const mapAreaEl = document.querySelector('.nearby-map-area') as HTMLElement | null;
-    if (!mapAreaEl || !coords) return;
+    if (!coords) return;
 
-    // 地図の実際のサイズを取得（px）
+    // ---- ヘッダーdiv ----
+    const HEADER_H = 32;
+    const headerWrap = document.createElement('div');
+    headerWrap.id = 'nearby-header-print-wrap';
+    headerWrap.innerHTML = `
+      <span style="font-size:12pt;font-weight:bold;font-family:Meiryo,sans-serif;">🗺️ 近隣MAP</span>
+      ${address ? `<span style="font-size:9pt;color:#555;margin-left:8px;font-family:Meiryo,sans-serif;">${address}</span>` : ''}
+      <span style="font-size:9pt;color:#1565c0;margin-left:auto;font-family:Meiryo,sans-serif;">${tabLabel}</span>
+    `;
+    headerWrap.style.cssText = `
+      position:fixed;top:0;left:0;right:0;height:${HEADER_H}px;z-index:100001;
+      display:flex;align-items:center;gap:6px;
+      background:white;padding:0 10px;
+      border-bottom:1px solid #ccc;box-sizing:border-box;
+    `;
+    document.body.appendChild(headerWrap);
+
+    // ---- 地図DOMを移動 ----
+    const mapAreaEl = document.querySelector('.nearby-map-area') as HTMLElement | null;
+    if (!mapAreaEl) { headerWrap.remove(); return; }
+
+    // 地図の実サイズ取得
     const mapW = mapAreaEl.offsetWidth;
     const mapH = mapAreaEl.offsetHeight;
-    const HEADER_H = 36;
 
-    // 施設リスト用div（body直下に追加）
+    const printWrap = document.createElement('div');
+    printWrap.id = 'nearby-map-print-wrap';
+    printWrap.style.cssText = `
+      position:fixed;top:${HEADER_H}px;left:0;
+      width:${mapW}px;height:${mapH}px;
+      z-index:100000;background:white;overflow:hidden;
+    `;
+
+    const mapInner = mapAreaEl.firstElementChild as HTMLElement | null;
+    if (mapInner) {
+      printWrap.appendChild(mapInner);
+      document.body.appendChild(printWrap);
+      mapAreaEl.style.visibility = 'hidden';
+      // Google Mapsにサイズ変更なしでリサイズ通知
+      if (mapRef.current) {
+        google.maps.event.trigger(mapRef.current, 'resize');
+        mapRef.current.setCenter(coords);
+      }
+    }
+
+    // ---- 施設リストdiv ----
     const facilityWrap = document.createElement('div');
     facilityWrap.id = 'nearby-facility-print-wrap';
     facilityWrap.innerHTML = facilityHtml;
     document.body.appendChild(facilityWrap);
 
-    // ヘッダーdiv（body直下に追加）
-    const headerWrap = document.createElement('div');
-    headerWrap.id = 'nearby-header-print-wrap';
-    headerWrap.innerHTML = `
-      <span style="font-size:13pt;font-weight:bold;">🗺️ 近隣MAP</span>
-      ${address ? `<span style="font-size:9pt;color:#555;margin-left:8px;">${address}</span>` : ''}
-      <span style="font-size:9pt;color:#1565c0;margin-left:auto;">${tabLabel}</span>
-    `;
-    headerWrap.style.cssText = `display:none;`; // 通常時は非表示
-    document.body.appendChild(headerWrap);
-
-    // 印刷スタイル：地図はその場に置いたまま、CSSで制御
+    // ---- 印刷CSS ----
     const styleId = 'nearby-print-style';
     const old = document.getElementById(styleId); if (old) old.remove();
     const st = document.createElement('style');
@@ -539,77 +566,35 @@ const NearbyMapModal: React.FC<NearbyMapModalProps> = ({ open, onClose, googleMa
       @media print {
         @page { size: A4 landscape; margin: 0; }
 
-        /* ダイアログ・ヘッダー・施設リスト以外を非表示 */
-        body > *:not(.MuiDialog-root):not(#nearby-facility-print-wrap):not(#nearby-header-print-wrap) {
+        /* ヘッダー・地図・施設リスト以外を非表示 */
+        body > *:not(#nearby-header-print-wrap):not(#nearby-map-print-wrap):not(#nearby-facility-print-wrap) {
           display: none !important;
         }
 
-        /* ヘッダー（1ページ目の先頭） */
+        /* ヘッダー（1ページ目先頭） */
         #nearby-header-print-wrap {
-          display: flex !important;
-          align-items: center !important;
-          gap: 8px !important;
-          width: 100% !important;
-          padding: 3mm 5mm 2mm !important;
-          border-bottom: 1px solid #ccc !important;
-          background: white !important;
-          box-sizing: border-box !important;
-          font-family: 'Meiryo', 'Yu Gothic', sans-serif !important;
-        }
-
-        /* ダイアログをフラット展開 */
-        .MuiDialog-root, .MuiDialog-container, .MuiDialog-paper {
-          all: unset !important;
-          display: block !important;
           position: static !important;
+          display: flex !important;
           width: 100% !important;
-          height: auto !important;
-          overflow: visible !important;
-          margin: 0 !important; padding: 0 !important;
-          box-shadow: none !important;
-          background: white !important;
-        }
-        .MuiBackdrop-root { display: none !important; }
-
-        /* タイトル・タブ・ボタン類を非表示 */
-        .MuiDialogTitle-root, .MuiTabs-root, .MuiDialogActions-root,
-        .MuiDivider-root, .no-print { display: none !important; }
-
-        /* コンテンツエリア */
-        .MuiDialogContent-root {
-          all: unset !important;
-          display: block !important;
-          overflow: visible !important;
-          padding: 0 !important;
-          width: 100% !important;
+          height: ${HEADER_H}px !important;
+          page-break-after: avoid !important;
+          break-after: avoid !important;
         }
 
-        /* 地図ラッパー */
-        .nearby-print-wrapper {
+        /* 地図（ヘッダーの直後、1ページ目） */
+        #nearby-map-print-wrap {
+          position: static !important;
           display: block !important;
           width: 100% !important;
-          height: auto !important;
-        }
-
-        /* 地図エリア：実際のサイズをpxで指定 */
-        .nearby-map-area {
-          display: block !important;
-          width: 100% !important;
-          height: ${mapH}px !important;
-          flex: none !important;
+          height: ${mapH - HEADER_H}px !important;
           overflow: hidden !important;
           page-break-after: always !important;
           break-after: page !important;
-          margin: 0 !important; padding: 0 !important;
         }
-        .nearby-map-area > div {
+        #nearby-map-print-wrap > div {
           width: 100% !important;
           height: 100% !important;
         }
-
-        /* 施設リストエリアを非表示（body直下のfacilityWrapを使う） */
-        .nearby-screen-only, .nearby-print-only,
-        .nearby-map-area ~ * { display: none !important; }
 
         /* 2ページ目：施設リスト */
         #nearby-facility-print-wrap {
@@ -635,15 +620,19 @@ const NearbyMapModal: React.FC<NearbyMapModalProps> = ({ open, onClose, googleMa
     `;
     document.head.appendChild(st);
 
-    // Google Mapsにリサイズを通知してから印刷
-    if (mapRef.current) {
-      google.maps.event.trigger(mapRef.current, 'resize');
-      mapRef.current.setCenter(coords);
-    }
-
     setTimeout(() => {
       window.print();
       setTimeout(() => {
+        // 後片付け
+        if (mapInner && mapAreaEl) {
+          mapAreaEl.appendChild(mapInner);
+          mapAreaEl.style.visibility = '';
+          if (mapRef.current) {
+            google.maps.event.trigger(mapRef.current, 'resize');
+            mapRef.current.setCenter(coords);
+          }
+        }
+        printWrap.remove();
         facilityWrap.remove();
         headerWrap.remove();
         st.remove();
