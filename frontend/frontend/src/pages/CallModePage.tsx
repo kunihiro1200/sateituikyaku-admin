@@ -4436,33 +4436,7 @@ HP：https://ifoo-oita.com/
               </Button>
             </Badge>
 
-            {/* エリア情勢レポートボタン */}
-            <Button
-              variant="outlined"
-              onClick={() => window.open(`/sellers/${seller.id}/area-report`, '_blank')}
-              size="small"
-              sx={{
-                borderColor: '#1a237e',
-                color: '#1a237e',
-                '&:hover': { borderColor: '#283593', backgroundColor: '#e8eaf6' },
-              }}
-            >
-              エリア情勢
-            </Button>
-
-            {/* 売買実績ボタン */}
-            <Button
-              variant="outlined"
-              onClick={() => window.open(`/sellers/${seller.id}/sales-history`, '_blank')}
-              size="small"
-              sx={{
-                borderColor: '#4a148c',
-                color: '#4a148c',
-                '&:hover': { borderColor: '#6a1b9a', backgroundColor: '#f3e5f5' },
-              }}
-            >
-              売買実績
-            </Button>
+            {/* エリア情勢・売買実績ボタンは訪問準備ボタン内に移動済みのため非表示 */}
 
             {/* Emailテンプレート選択 */}
             <FormControl size="small" sx={{ minWidth: 200 }}>
