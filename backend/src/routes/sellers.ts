@@ -2114,22 +2114,65 @@ router.get('/:id/nearby-properties', authenticate, async (req: Request, res: Res
       return res.json({ results: [], address: '', lat: null, lng: null });
     }
 
-    // 住所→座標変換（GeocodingService使用）
-    const { GeocodingService } = await import('../services/GeocodingService');
-    const { GeolocationService } = await import('../services/GeolocationService');
-    const geocodingService = new GeocodingService();
-    const geolocationService = new GeolocationService();
+    // 売主の座標を取得（DBに保存済みの座標を優先）
+    const supabase = createClient(
+      process.env.SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_KEY!
+    );
+    const { data: sellerRaw } = await supabase
+      .from('sellers')
+      .select('latitude, longitude')
+      .eq('id', id)
+      .single();
 
-    // 売主番号のプレフィックスを取得（大分県自動付与の判定用）
-    const sellerPrefix = ((seller as any).sellerNumber || '').slice(0, 2);
-    const centerCoords = await geocodingService.geocodeAddress(rawAddress, sellerPrefix);
-    if (!centerCoords) {
-      return res.json({ results: [], address: rawAddress, lat: null, lng: null, error: '住所の座標変換に失敗しました' });
+    let centerLat: number | null = sellerRaw?.latitude || null;
+    let centerLng: number | null = sellerRaw?.longitude || null;
+
+    // DBに座標がなければジオコーディング
+    if (!centerLat || !centerLng) {
+      const { GeocodingService } = await import('../services/GeocodingService');
+      const geocodingService = new GeocodingService();
+      const sellerPrefix = ((seller as any).sellerNumber || '').slice(0, 2);
+      const centerCoords = await geocodingService.geocodeAddress(rawAddress, sellerPrefix);
+      if (!centerCoords) {
+        return res.json({ results: [], address: rawAddress, lat: null, lng: null, error: '住所の座標変換に失敗しました' });
+      }
+      centerLat = centerCoords.lat;
+      centerLng = centerCoords.lng;
     }
 
-    // Haversine公式（GeolocationServiceのcalculateDistanceを使用）
+    // Haversine公式
+    const { GeolocationService } = await import('../services/GeolocationService');
+    const geolocationService = new GeolocationService();
     const calcDistance = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
       return geolocationService.calculateDistance({ lat: lat1, lng: lng1 }, { lat: lat2, lng: lng2 });
+    };
+
+    // 売主の種別を取得
+    const sellerPropertyType: string = (seller as any).propertyType || (seller as any).property_type || '';
+
+    // 種別グループを判定
+    const MANSION_TYPES_NP = ['マ', 'マンション'];
+    const HOUSE_TYPES_NP = ['戸建', '戸', '戸建て'];
+    const LAND_TYPES_NP = ['土', '土地'];
+
+    const isMansionNP = MANSION_TYPES_NP.some(t => sellerPropertyType === t || sellerPropertyType.includes(t));
+    const isHouseNP = HOUSE_TYPES_NP.some(t => sellerPropertyType === t);
+    const isLandNP = LAND_TYPES_NP.some(t => sellerPropertyType === t);
+
+    let allowedTypesNP: string[] = [];
+    if (isMansionNP) {
+      allowedTypesNP = [...MANSION_TYPES_NP];
+    } else if (isHouseNP) {
+      allowedTypesNP = [...HOUSE_TYPES_NP, ...LAND_TYPES_NP];
+    } else if (isLandNP) {
+      allowedTypesNP = [...LAND_TYPES_NP];
+    }
+
+    const matchesAllowedType = (rowType: string): boolean => {
+      if (allowedTypesNP.length === 0) return true;
+      const rt = rowType.trim();
+      return allowedTypesNP.some(t => rt === t || rt.startsWith(t) || t.startsWith(rt));
     };
 
     // Excelシリアル値→日付文字列変換
@@ -2150,102 +2193,50 @@ router.get('/:id/nearby-properties', authenticate, async (req: Request, res: Res
       return str;
     };
 
-    // 物件スプシにアクセス
-    const { GoogleSheetsClient } = await import('../services/GoogleSheetsClient');
-    const sheetsClient = new GoogleSheetsClient({
-      spreadsheetId: '1tI_iXaiLuWBggs5y0RH7qzkbHs9wnLLdRekAmjkhcLY',
-      sheetName: '物件',
-      serviceAccountKeyPath: process.env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH || 'google-service-account.json',
-    });
-    await sheetsClient.authenticate();
-    const allRows = await sheetsClient.readAll();
+    // ── 方針：property_listingsテーブルの座標を使って距離計算（高速・正確）──
+    // スプシのジオコーディングは廃止。DBに座標がある物件のみ対象。
+    // 座標がない物件はスプシから住所マッチングで補完。
 
-    // 売主の種別を取得
-    const sellerPropertyType: string = (seller as any).propertyType || (seller as any).property_type || '';
+    // 1. property_listingsから座標付き物件を全件取得
+    const { data: allListings } = await supabase
+      .from('property_listings')
+      .select('property_number, property_type, address, display_address, land_area, building_area, sales_price, settlement_date, atbb_status, latitude, longitude')
+      .not('latitude', 'is', null)
+      .not('longitude', 'is', null);
 
-    // 種別グループを判定（sales-historyと同じロジック）
-    const MANSION_TYPES_NP = ['マ', 'マンション'];
-    const HOUSE_TYPES_NP = ['戸建', '戸', '戸建て'];
-    const LAND_TYPES_NP = ['土', '土地'];
-
-    const isMansionNP = MANSION_TYPES_NP.some(t => sellerPropertyType === t || sellerPropertyType.includes(t));
-    const isHouseNP = HOUSE_TYPES_NP.some(t => sellerPropertyType === t);
-    const isLandNP = LAND_TYPES_NP.some(t => sellerPropertyType === t);
-
-    let allowedTypesNP: string[] = [];
-    if (isMansionNP) {
-      allowedTypesNP = [...MANSION_TYPES_NP];
-    } else if (isHouseNP) {
-      allowedTypesNP = [...HOUSE_TYPES_NP, ...LAND_TYPES_NP];
-    } else if (isLandNP) {
-      allowedTypesNP = [...LAND_TYPES_NP];
-    }
-    // 種別不明の場合は全て返す（allowedTypesNP = []）
-
-    // 種別マッチング関数（完全一致優先、部分一致は慎重に）
-    const matchesAllowedType = (rowType: string): boolean => {
-      if (allowedTypesNP.length === 0) return true;
-      const rt = rowType.trim();
-      return allowedTypesNP.some(t => rt === t || rt.startsWith(t) || t.startsWith(rt));
-    };
-
-    // 各行の住所をジオコーディングして距離フィルタリング
-    // 全行を一括ジオコーディングするとAPI制限に引っかかるため、
-    // まず住所テキストで大まかに絞り込んでからジオコーディング
-    const normalizeAddr = (addr: string) => addr.replace(/大字/g, '').trim();
-    const centerCity = rawAddress.match(/^(.+?[市区町村])/)?.[1] || '';
-
-    // 同じ市区町村の行のみ対象（API呼び出し削減）
-    const candidateRows = allRows.filter((row: any) => {
-      const addr = normalizeAddr(String(row['所在地'] || row['住居表示（ATBB登録住所）'] || ''));
-      return centerCity ? addr.includes(centerCity.replace(/大字/g, '')) : true;
-    });
-
-    // 各候補行をジオコーディングして距離計算
     const results: any[] = [];
-    // 並列処理（最大10件同時）でAPI呼び出しを効率化
-    const BATCH = 10;
-    for (let i = 0; i < candidateRows.length; i += BATCH) {
-      const batch = candidateRows.slice(i, i + BATCH);
-      const batchResults = await Promise.all(
-        batch.map(async (row: any) => {
-          const rowAddress = String(row['所在地'] || row['住居表示（ATBB登録住所）'] || '').trim();
-          if (!rowAddress) return null;
-          try {
-            const coords = await geocodingService.geocodeAddress(rowAddress, sellerPrefix);
-            if (!coords) return null;
-            const dist = calcDistance(centerCoords.lat, centerCoords.lng, coords.lat, coords.lng);
-            if (dist > radiusKm) return null;
 
-            // 種別フィルタリング
-            const rowType = String(row['種別'] || '').trim();
-            if (!matchesAllowedType(rowType)) return null;
+    if (allListings && allListings.length > 0) {
+      for (const listing of allListings) {
+        const lat = listing.latitude as number;
+        const lng = listing.longitude as number;
+        const dist = calcDistance(centerLat!, centerLng!, lat, lng);
+        if (dist > radiusKm) continue;
 
-            const atbbStatus = String(row['atbb成約済み/非公開'] || '');
-            let statusLabel = '';
-            if (atbbStatus.includes('非公開')) statusLabel = '成約済み';
-            else if (atbbStatus.includes('公開')) statusLabel = '現在募集中';
-            else statusLabel = atbbStatus;
+        // 種別フィルタリング
+        const rowType = String(listing.property_type || '').trim();
+        if (!matchesAllowedType(rowType)) continue;
 
-            return {
-              propertyType: row['種別'] || '',
-              settlementDate: excelSerialToDateStr(row['決済日'] || ''),
-              address: row['所在地'] || '',
-              displayAddress: row['住居表示（ATBB登録住所）'] || '',
-              landArea: row['土地面積'] || '',
-              buildingArea: row['建物面積'] || '',
-              salesPrice: row['売買価格'] || '',
-              atbbStatus: statusLabel,
-              distanceKm: Math.round(dist * 1000) / 1000,
-              lat: coords.lat,
-              lng: coords.lng,
-            };
-          } catch {
-            return null;
-          }
-        })
-      );
-      results.push(...batchResults.filter(Boolean));
+        const atbbStatus = String(listing.atbb_status || '');
+        let statusLabel = '';
+        if (atbbStatus.includes('非公開')) statusLabel = '成約済み';
+        else if (atbbStatus.includes('公開')) statusLabel = '現在募集中';
+        else statusLabel = atbbStatus;
+
+        results.push({
+          propertyType: listing.property_type || '',
+          settlementDate: excelSerialToDateStr(listing.settlement_date || ''),
+          address: listing.address || '',
+          displayAddress: listing.display_address || '',
+          landArea: listing.land_area ? String(listing.land_area) : '',
+          buildingArea: listing.building_area ? String(listing.building_area) : '',
+          salesPrice: listing.sales_price ? String(listing.sales_price) : '',
+          atbbStatus: statusLabel,
+          distanceKm: Math.round(dist * 1000) / 1000,
+          lat,
+          lng,
+        });
+      }
     }
 
     // 距離順にソート
@@ -2254,8 +2245,8 @@ router.get('/:id/nearby-properties', authenticate, async (req: Request, res: Res
     res.json({
       results,
       address: rawAddress,
-      lat: centerCoords.lat,
-      lng: centerCoords.lng,
+      lat: centerLat,
+      lng: centerLng,
       radiusKm,
     });
   } catch (error: any) {
