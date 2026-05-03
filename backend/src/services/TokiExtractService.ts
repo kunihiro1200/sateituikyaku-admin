@@ -86,10 +86,6 @@ export interface TokiKeiyakuExtractResult {
   buildingType: string | null;           // M49: 種類
   buildingStructure: string | null;      // M50: 構造（1階建除く）
 
-  // 他シート参照
-  buildingNameFromOtherSheet: string | null;  // K41: 専任媒介契建物（売却）C98 or 一般媒介契建物（売却）C118
-  contractPriceFromOtherSheet: string | null; // R52: 専任媒介契建物（売却）C102
-
   // 乙区・権利チェック
   hasMortgage: boolean;                  // K92, K109: 抵当権・根抵当権・賃借権
   hasOtherRights: boolean;               // K87: 所有権以外の権利
