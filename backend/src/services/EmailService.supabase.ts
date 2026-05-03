@@ -1003,9 +1003,13 @@ ${bodyHtml}
 
         for (const attachment of attachments) {
           messageParts.push(`--${boundary}`);
-          messageParts.push(`Content-Type: ${attachment.mimeType}; name="${attachment.filename}"`);
+          // ファイル名に日本語が含まれる場合はRFC 2047形式でエンコード（文字化け防止）
+          const encodedFilename = this.encodeSubject(attachment.filename);
+          messageParts.push(`Content-Type: ${attachment.mimeType}; name="${encodedFilename}"`);
           messageParts.push('Content-Transfer-Encoding: base64');
-          messageParts.push(`Content-Disposition: attachment; filename="${attachment.filename}"`);
+          // Content-Disposition は RFC 5987 形式（filename*）で UTF-8 エンコードも付与する
+          const utf8EncodedFilename = encodeURIComponent(attachment.filename);
+          messageParts.push(`Content-Disposition: attachment; filename="${encodedFilename}"; filename*=UTF-8''${utf8EncodedFilename}`);
           messageParts.push('');
           const base64Data = attachment.data.toString('base64');
           const lines = base64Data.match(/.{1,76}/g) || [];
@@ -1140,11 +1144,14 @@ ${bodyHtml}
 
           for (const attachment of params.attachments!) {
             const base64Data = attachment.data.toString('base64');
+            // ファイル名に日本語が含まれる場合はRFC 2047形式でエンコード（文字化け防止）
+            const encodedAttachFilename = this.encodeSubject(attachment.filename);
+            const utf8EncodedAttachFilename = encodeURIComponent(attachment.filename);
             messageParts.push(
               `--${boundary}`,
-              `Content-Type: ${attachment.mimeType}; name="${attachment.filename}"`,
+              `Content-Type: ${attachment.mimeType}; name="${encodedAttachFilename}"`,
               'Content-Transfer-Encoding: base64',
-              `Content-Disposition: attachment; filename="${attachment.filename}"`,
+              `Content-Disposition: attachment; filename="${encodedAttachFilename}"; filename*=UTF-8''${utf8EncodedAttachFilename}`,
               '',
               base64Data,
             );

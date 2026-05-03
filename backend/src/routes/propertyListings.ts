@@ -1268,8 +1268,9 @@ router.post('/:propertyNumber/send-report-email', authenticate, upload.array('at
     });
 
     // 添付ファイルを EmailAttachment 形式に変換
+    // multer は originalname を latin1 として扱うため、UTF-8 に変換する
     const attachments = (files || []).map((file) => ({
-      filename: file.originalname,
+      filename: Buffer.from(file.originalname, 'latin1').toString('utf8'),
       mimeType: file.mimetype,
       data: file.buffer,
       cid: `attachment-${Date.now()}-${file.originalname}`,
