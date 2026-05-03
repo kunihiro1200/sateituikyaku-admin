@@ -2182,13 +2182,18 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
     }
   };
 
-  // 謄本（戸建て用）読み取りハンドラー
+  // 謄本（戸建て用）読み取りハンドラー（複数PDF対応）
   const handleTokiKodateExtract = async () => {
     if (!propertyNumber) return;
     setTokiKodateLoading(true);
     try {
       const res = await api.post(`/api/toki-extract/${propertyNumber}/extract-kodate`);
-      setTokiKodateResult(res.data);
+      // fileNames（複数）または fileName（単数）に対応
+      const data = res.data;
+      if (data.fileNames && !data.fileName) {
+        data.fileName = data.fileNames.join(', ');
+      }
+      setTokiKodateResult(data);
       setTokiKodateDialog(true);
     } catch (err: any) {
       const msg = err?.response?.data?.error || '謄本の読み取りに失敗しました';

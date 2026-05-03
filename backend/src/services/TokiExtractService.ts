@@ -1182,6 +1182,182 @@ export class TokiExtractService {
    * 戸建て用：Google DriveフォルダURLから謄本PDFを複数検索してBase64で返す
    * 「全部事項」または「全部謄本」を含むPDFをすべて取得する
    */
+  /**
+   * 戸建て用（媒介契約タブ）：Google DriveフォルダURLから謄本PDFを複数取得する
+   * - 「土地_全部事項」を含むPDFをすべて取得（土地謄本）
+   * - 「建物_全部事項」を含むPDFを1件取得（建物謄本）
+   * - どちらも見つからない場合は「全部事項」「全部謄本」を含むPDFにフォールバック
+   */
+  async findTokiPdfsForKodate(storageFolderUrl: string): Promise<{
+    landPdfs: Array<{ base64: string; fileName: string }>;
+    buildingPdf: { base64: string; fileName: string } | null;
+  }> {
+    try {
+      const folderId = this.extractFolderIdFromUrl(storageFolderUrl);
+      if (!folderId) {
+        console.error('[TokiKodate] フォルダIDの抽出に失敗:', storageFolderUrl);
+        return { landPdfs: [], buildingPdf: null };
+      }
+
+      console.log('[TokiKodate] フォルダ検索中:', folderId);
+      const files = await this.driveService.listFiles(folderId);
+
+      const pdfFiles = files.filter(
+        (f) =>
+          (f.mimeType === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf'))
+      );
+
+      // 「土地_全部事項」を含むPDFをすべて取得
+      const landFiles = pdfFiles.filter((f) => f.name.includes('土地_全部事項'));
+
+      // 「建物_全部事項」を含むPDFを1件取得
+      const buildingFile = pdfFiles.find((f) => f.name.includes('建物_全部事項')) ?? null;
+
+      // フォールバック：土地も建物も見つからない場合は「全部事項」「全部謄本」を含むPDFを全取得
+      const fallbackFiles =
+        landFiles.length === 0 && buildingFile === null
+          ? pdfFiles.filter((f) => f.name.includes('全部事項') || f.name.includes('全部謄本'))
+          : [];
+
+      console.log(
+        `[TokiKodate] 土地謄本: ${landFiles.length}件, 建物謄本: ${buildingFile ? 1 : 0}件, フォールバック: ${fallbackFiles.length}件`
+      );
+
+      // 土地PDFを取得
+      const landPdfs: Array<{ base64: string; fileName: string }> = [];
+      const targetLandFiles = landFiles.length > 0 ? landFiles : fallbackFiles;
+      for (const f of targetLandFiles) {
+        const fileData = await this.driveService.getFile(f.id);
+        if (fileData) {
+          landPdfs.push({ base64: fileData.data.toString('base64'), fileName: f.name });
+        }
+      }
+
+      // 建物PDFを取得
+      let buildingPdf: { base64: string; fileName: string } | null = null;
+      if (buildingFile) {
+        const fileData = await this.driveService.getFile(buildingFile.id);
+        if (fileData) {
+          buildingPdf = { base64: fileData.data.toString('base64'), fileName: buildingFile.name };
+        }
+      }
+
+      return { landPdfs, buildingPdf };
+    } catch (error: any) {
+      console.error('[TokiKodate] PDF検索エラー:', error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * 戸建て用（媒介契約タブ）：複数の謄本PDFを統合して抽出結果を返す
+   * - 土地謄本（複数）：土地情報を統合し、面積の多い順にソート
+   *   同じ所有者の場合は名前を1つにまとめる
+   * - 建物謄本（1件）：建物情報を取得
+   * - 建物謄本がない場合は土地謄本1枚目から建物情報を取得
+   */
+  async extractFromPdfsForKodate(
+    landPdfs: Array<{ base64: string; fileName: string }>,
+    buildingPdf: { base64: string; fileName: string } | null
+  ): Promise<{ mergedResult: TokiKodateExtractResult; fileNames: string[] }> {
+    if (landPdfs.length === 0 && buildingPdf === null) {
+      throw new Error('謄本PDFが見つかりませんでした');
+    }
+
+    const fileNames: string[] = [];
+
+    // 土地謄本を解析（複数）
+    const landResults: TokiKodateExtractResult[] = [];
+    for (const pdf of landPdfs) {
+      console.log(`[TokiKodate] 土地謄本解析中: ${pdf.fileName}`);
+      const result = await this.extractFromPdfForKodate(pdf.base64);
+      landResults.push(result);
+      fileNames.push(pdf.fileName);
+    }
+
+    // 建物謄本を解析（1件）
+    let buildingResult: TokiKodateExtractResult | null = null;
+    if (buildingPdf) {
+      console.log(`[TokiKodate] 建物謄本解析中: ${buildingPdf.fileName}`);
+      buildingResult = await this.extractFromPdfForKodate(buildingPdf.base64);
+      fileNames.push(buildingPdf.fileName);
+    }
+
+    // 基準となる結果を決定
+    // 建物謄本がある場合：建物情報は建物謄本から、所有者情報は建物謄本から取得
+    // 建物謄本がない場合：土地謄本1枚目を基準とする
+    const baseResult: TokiKodateExtractResult =
+      buildingResult ?? (landResults.length > 0 ? landResults[0] : (() => { throw new Error('謄本PDFが見つかりませんでした'); })());
+
+    // 土地情報を全土地謄本から収集
+    const allLands: TokiKodateExtractResult['lands'] = [];
+    for (const r of landResults) {
+      allLands.push(...r.lands);
+    }
+    // 土地謄本がない場合は建物謄本の土地情報を使用
+    if (allLands.length === 0 && buildingResult) {
+      allLands.push(...buildingResult.lands);
+    }
+
+    // 土地を面積の多い順にソート（areaNumericがnullのものは末尾）
+    allLands.sort((a, b) => {
+      if (a.areaNumeric === null && b.areaNumeric === null) return 0;
+      if (a.areaNumeric === null) return 1;
+      if (b.areaNumeric === null) return -1;
+      return b.areaNumeric - a.areaNumeric;
+    });
+
+    // 所有者情報の統合：同じ所有者の場合は名前を1つにまとめる
+    // 建物謄本の所有者を基準とし、土地謄本の所有者と比較
+    let mergedOwnerName = baseResult.ownerName;
+    let mergedOwnerAddress = baseResult.ownerAddress;
+    let mergedCoOwners = baseResult.coOwners;
+
+    // 土地謄本の所有者情報を確認（建物謄本と異なる場合は追記）
+    if (buildingResult && landResults.length > 0) {
+      const differentOwners: string[] = [];
+      for (const r of landResults) {
+        // 所有者名が異なる場合のみ追記
+        if (r.ownerName && r.ownerName !== baseResult.ownerName) {
+          const ownerInfo = `${r.ownerName}（${r.ownerAddress ?? '住所不明'}）`;
+          if (!differentOwners.includes(ownerInfo)) {
+            differentOwners.push(ownerInfo);
+          }
+        }
+        // 共有者情報も統合
+        if (r.coOwners && r.coOwners !== baseResult.coOwners) {
+          if (!mergedCoOwners) {
+            mergedCoOwners = r.coOwners;
+          } else if (!mergedCoOwners.includes(r.coOwners)) {
+            mergedCoOwners = mergedCoOwners + '
+' + r.coOwners;
+          }
+        }
+      }
+      // 異なる所有者がいる場合は coOwners に追記
+      if (differentOwners.length > 0) {
+        const additionalInfo = differentOwners.join('
+');
+        if (!mergedCoOwners) {
+          mergedCoOwners = additionalInfo;
+        } else {
+          mergedCoOwners = mergedCoOwners + '
+' + additionalInfo;
+        }
+      }
+    }
+
+    const mergedResult: TokiKodateExtractResult = {
+      ...baseResult,
+      ownerName: mergedOwnerName,
+      ownerAddress: mergedOwnerAddress,
+      coOwners: mergedCoOwners,
+      lands: allLands,
+    };
+
+    return { mergedResult, fileNames };
+  }
+
   async findTokiPdfsForKodateKeiyaku(storageFolderUrl: string): Promise<Array<{ base64: string; fileName: string }>> {
     try {
       const folderId = this.extractFolderIdFromUrl(storageFolderUrl);

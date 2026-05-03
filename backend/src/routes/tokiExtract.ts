@@ -252,25 +252,25 @@ router.post('/:propertyNumber/extract-kodate', async (req: Request, res: Respons
       return res.status(400).json({ error: '対応するシートが見つかりません' });
     }
 
-    // DriveフォルダからPDFを検索
+    // DriveフォルダからPDFを検索（「土地_全部事項」「建物_全部事項」を区別して複数取得）
     console.log(`[TokiKodate] 謄本PDF検索開始: ${propertyNumber}`);
-    const pdfData = await tokiExtractService.findTokiPdf(storageUrl);
-    if (!pdfData) {
+    const { landPdfs, buildingPdf } = await tokiExtractService.findTokiPdfsForKodate(storageUrl);
+    if (landPdfs.length === 0 && buildingPdf === null) {
       return res.status(404).json({
         error: '格納先フォルダに「全部事項」を含むPDFが見つかりませんでした',
       });
     }
 
-    // Claude APIで謄本を解析（戸建て用）
-    console.log(`[TokiKodate] 謄本解析開始: ${pdfData.fileName}`);
-    const extractResult = await tokiExtractService.extractFromPdfForKodate(pdfData.base64);
+    // Claude APIで謄本を解析（戸建て用・複数PDF統合）
+    console.log(`[TokiKodate] 謄本解析開始: 土地${landPdfs.length}件, 建物${buildingPdf ? 1 : 0}件`);
+    const { mergedResult, fileNames } = await tokiExtractService.extractFromPdfsForKodate(landPdfs, buildingPdf);
 
     return res.json({
       success: true,
-      fileName: pdfData.fileName,
+      fileNames,
       sheetName,
       spreadsheetUrl,
-      extractResult,
+      extractResult: mergedResult,
     });
   } catch (error: any) {
     console.error('[TokiKodate] 抽出エラー:', error.message);
