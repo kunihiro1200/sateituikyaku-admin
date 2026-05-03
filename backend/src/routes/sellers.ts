@@ -2160,6 +2160,35 @@ router.get('/:id/nearby-properties', authenticate, async (req: Request, res: Res
     await sheetsClient.authenticate();
     const allRows = await sheetsClient.readAll();
 
+    // 売主の種別を取得
+    const sellerPropertyType: string = (seller as any).propertyType || (seller as any).property_type || '';
+
+    // 種別グループを判定（sales-historyと同じロジック）
+    const MANSION_TYPES_NP = ['マ', 'マンション'];
+    const HOUSE_TYPES_NP = ['戸建', '戸', '戸建て'];
+    const LAND_TYPES_NP = ['土', '土地'];
+
+    const isMansionNP = MANSION_TYPES_NP.some(t => sellerPropertyType === t || sellerPropertyType.includes(t));
+    const isHouseNP = HOUSE_TYPES_NP.some(t => sellerPropertyType === t);
+    const isLandNP = LAND_TYPES_NP.some(t => sellerPropertyType === t);
+
+    let allowedTypesNP: string[] = [];
+    if (isMansionNP) {
+      allowedTypesNP = [...MANSION_TYPES_NP];
+    } else if (isHouseNP) {
+      allowedTypesNP = [...HOUSE_TYPES_NP, ...LAND_TYPES_NP];
+    } else if (isLandNP) {
+      allowedTypesNP = [...LAND_TYPES_NP];
+    }
+    // 種別不明の場合は全て返す（allowedTypesNP = []）
+
+    // 種別マッチング関数（完全一致優先、部分一致は慎重に）
+    const matchesAllowedType = (rowType: string): boolean => {
+      if (allowedTypesNP.length === 0) return true;
+      const rt = rowType.trim();
+      return allowedTypesNP.some(t => rt === t || rt.startsWith(t) || t.startsWith(rt));
+    };
+
     // 各行の住所をジオコーディングして距離フィルタリング
     // 全行を一括ジオコーディングするとAPI制限に引っかかるため、
     // まず住所テキストで大まかに絞り込んでからジオコーディング
@@ -2187,6 +2216,10 @@ router.get('/:id/nearby-properties', authenticate, async (req: Request, res: Res
             if (!coords) return null;
             const dist = calcDistance(centerCoords.lat, centerCoords.lng, coords.lat, coords.lng);
             if (dist > radiusKm) return null;
+
+            // 種別フィルタリング
+            const rowType = String(row['種別'] || '').trim();
+            if (!matchesAllowedType(rowType)) return null;
 
             const atbbStatus = String(row['atbb成約済み/非公開'] || '');
             let statusLabel = '';
@@ -2311,9 +2344,9 @@ router.get('/:id/sales-history', authenticate, async (req: Request, res: Respons
     const HOUSE_TYPES = ['戸建', '戸', '戸建て'];
     const LAND_TYPES = ['土', '土地'];
 
-    const isMansion = MANSION_TYPES.some(t => sellerPropertyType.includes(t));
-    const isHouse = HOUSE_TYPES.some(t => sellerPropertyType === t || sellerPropertyType.includes(t));
-    const isLand = LAND_TYPES.some(t => sellerPropertyType === t || sellerPropertyType.includes(t));
+    const isMansion = MANSION_TYPES.some(t => sellerPropertyType === t || sellerPropertyType.includes(t));
+    const isHouse = HOUSE_TYPES.some(t => sellerPropertyType === t);
+    const isLand = LAND_TYPES.some(t => sellerPropertyType === t);
 
     // 許可する種別リストを決定
     let allowedTypes: string[] = [];
@@ -2364,7 +2397,7 @@ router.get('/:id/sales-history', authenticate, async (req: Request, res: Respons
         // 種別フィルタリング
         if (allowedTypes.length === 0) return true;
         const rowType = String(row['種別'] || '').trim();
-        return allowedTypes.some(t => rowType === t || rowType.includes(t));
+        return allowedTypes.some(t => rowType === t || rowType.startsWith(t) || t.startsWith(rowType));
       })
       .map((row: any) => {
         // atbb成約済み/非公開 → 表示ラベル変換
