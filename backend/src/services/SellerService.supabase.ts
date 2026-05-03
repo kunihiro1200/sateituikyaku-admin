@@ -1353,10 +1353,16 @@ export class SellerService extends BaseRepository {
           while (true) {
             const { data, error } = await this.table('sellers')
               .select('id, seller_number, status, next_call_date, visit_assignee, phone_contact_person, preferred_contact_time, contact_method')
+              .is('deleted_at', null)
+              .not('next_call_date', 'is', null)
+              .lte('next_call_date', todayJST)
+              .order('id')
+              .range(tcwiPage * tcwiPageSize, (tcwiPage + 1) * tcwiPageSize - 1);
+            
+            if (error) {
+              console.error('❌ todayCallWithInfoCandidates取得エラー:', error);
               break;
             }
-            
-            if (!data || data.length === 0) break;
             
             todayCallWithInfoCandidates = todayCallWithInfoCandidates.concat(data);
             
