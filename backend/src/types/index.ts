@@ -478,7 +478,7 @@ export interface ListSellersParams {
   // Deletion sync filter
   includeDeleted?: boolean; // Default: false (exclude deleted sellers)
   // サイドバーカテゴリフィルター
-  statusCategory?: 'all' | 'todayCall' | 'todayCallWithInfo' | 'todayCallAssigned' | 'visitDayBefore' | 'visitScheduled' | 'visitCompleted' | 'unvaluated' | 'mailingPending' | 'todayCallNotStarted' | 'pinrichEmpty' | 'pinrichChangeRequired' | 'exclusive' | 'general' | 'visitOtherDecision' | 'unvisitedOtherDecision';
+  statusCategory?: 'all' | 'todayCall' | 'todayCallWithInfo' | 'todayCallAssigned' | 'visitDayBefore' | 'visitScheduled' | 'visitCompleted' | 'unvaluated' | 'mailingPending' | 'todayCallNotStarted' | 'pinrichEmpty' | 'pinrichChangeRequired' | 'exclusive' | 'general' | 'visitOtherDecision' | 'unvisitedOtherDecision' | string;
 }
 
 export interface PaginatedResult<T> {

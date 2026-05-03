@@ -117,6 +117,7 @@ export interface TokiKodateExtractResult {
     lotNumber: string | null;        // C91以降（地番）
     landType: string | null;         // D91以降（地目）
     area: string | null;             // E91以降（地積）
+    areaNumeric: number | null;      // ソート用（書き込みには使わない）
   }>;
 
   // 私道共有チェック
@@ -1329,20 +1330,17 @@ export class TokiExtractService {
           if (!mergedCoOwners) {
             mergedCoOwners = r.coOwners;
           } else if (!mergedCoOwners.includes(r.coOwners)) {
-            mergedCoOwners = mergedCoOwners + '
-' + r.coOwners;
+            mergedCoOwners = mergedCoOwners + '\n' + r.coOwners;
           }
         }
       }
       // 異なる所有者がいる場合は coOwners に追記
       if (differentOwners.length > 0) {
-        const additionalInfo = differentOwners.join('
-');
+        const additionalInfo = differentOwners.join('\n');
         if (!mergedCoOwners) {
           mergedCoOwners = additionalInfo;
         } else {
-          mergedCoOwners = mergedCoOwners + '
-' + additionalInfo;
+          mergedCoOwners = mergedCoOwners + '\n' + additionalInfo;
         }
       }
     }
