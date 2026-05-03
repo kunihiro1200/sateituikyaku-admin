@@ -102,6 +102,56 @@ export interface TokiKeiyakuWriteRequest {
 }
 
 // -------------------------------------------------------
+// 戸建て用の型定義（媒介契約タブ）
+// -------------------------------------------------------
+
+export interface TokiKodateExtractResult {
+  // 所有者情報（甲区）
+  ownerAddress: string | null;       // A84（住所）
+  ownerName: string | null;          // C84（氏名）
+  coOwners: string | null;           // B112（2人目以降の共有者情報）
+
+  // 土地情報（表題部：土地）複数対応
+  lands: Array<{
+    location: string | null;         // A91以降（所在）
+    lotNumber: string | null;        // C91以降（地番）
+    landType: string | null;         // D91以降（地目）
+    area: string | null;             // E91以降（地積）
+  }>;
+
+  // 私道共有チェック
+  isPrivateRoadShared: boolean;      // F91（私道共有チェックボックス）
+
+  // 主である建物の表示
+  buildingLocation: string | null;   // A99（所在）
+  houseNumber: string | null;        // C99（家屋番号）
+  buildingType: string | null;       // D99（種類）
+
+  // 附属建物
+  annexBuildings: string | null;     // C101（附属建物の種類）
+
+  // 構造
+  structure: string | null;          // A103（構造）
+  roofType: string | null;           // C103（屋根）
+  floors: string | null;             // D103（階数）
+
+  // 床面積
+  floor1Area: string | null;         // C105（1階）
+  floor2Area: string | null;         // D105（2階）
+
+  // 日付
+  registrationDate: string | null;   // A107（登記日）
+  extensionDate: string | null;      // C107（増築日）
+  renovationDate: string | null;     // D107（改築日）
+}
+
+export interface TokiKodateWriteRequest {
+  spreadsheetUrl: string;
+  sheetName: string;
+  extractResult: TokiKodateExtractResult;
+}
+
+// -------------------------------------------------------
 // 謄本解析サービス
 // -------------------------------------------------------
 
@@ -438,14 +488,278 @@ export class TokiExtractService {
   getSheetName(mediationType: string, propertyType: string): string | null {
     const isManshon =
       propertyType === 'マ' || propertyType === 'マンション';
+    const isKodate =
+      propertyType === '戸' || propertyType === '戸建' || propertyType === '戸建て';
 
-    if (!isManshon) {
-      // マンション以外は今後対応
-      return null;
+    if (isManshon) {
+      // 媒介形態に関わらず常に専任媒介シートを使用
+      return '専任媒介契建物（売却)';
     }
 
-    // 媒介形態に関わらず常に専任媒介シートを使用
-    return '専任媒介契建物（売却)';
+    if (isKodate) {
+      // 戸建て用シート
+      return '専任媒介契土地建物（売却)';
+    }
+
+    return null;
+  }
+
+  /**
+   * 戸建て用：謄本PDFから媒介契約シート向けの情報を抽出する
+   */
+  async extractFromPdfForKodate(pdfBase64: string): Promise<TokiKodateExtractResult> {
+    const apiKey = process.env.ANTHROPIC_API_KEY;
+    if (!apiKey) {
+      throw new Error('ANTHROPIC_API_KEY が設定されていません');
+    }
+
+    const client = new Anthropic({ apiKey });
+
+    const prompt = `あなたは不動産登記簿謄本の専門家です。
+添付された登記簿謄本（全部事項証明書）のPDFを読み取り、以下の情報をJSONで返してください。
+
+【共通ルール】
+- 全角スペース・半角スペース・改行の揺れを吸収して読み取ること
+- 下線が引かれている情報は抹消事項として除外すること（抹消された登記は無視する）
+- 抽出できない場合は null を返すこと
+- 面積・地積の「：」は小数点「.」に変換すること（例：１６１５：６７ → 1615.67）
+- 全角数字は半角数字に変換すること
+- 和暦の日付は西暦に変換すること（例：平成21年2月26日 → 2009-02-26）
+- 推測せず、読み取れない場合は必ず null にすること
+- 複数行ある場合は上から順に配列に格納すること
+
+【所有者情報（権利部（甲区）（所有権に関する事項）から取得）】
+- 「登記の目的」が「所有権保存」または「所有権移転」の行を対象とする
+- 移転が複数回ある場合は最新（最後）の所有者を取得する
+- 下線あり（抹消）の行は除外する
+- 「権利者その他の事項」欄から住所・氏名を取得する
+- 「共有者」と書かれている場合は1番目の共有者の情報のみ owner_address・owner_name に入れる
+- 2番目以降の共有者は co_owners にまとめて出力する（氏名・住所・持分を改行区切りで）
+- 共有者がいない場合は co_owners は null
+
+【土地情報（表題部（土地の表示）から取得）】
+- 「① 所在」欄から所在を取得 → location
+- 「① 地番」欄から地番を取得 → lot_number
+- 「② 地目」欄から地目を取得 → land_type
+- 「④ 地積 ㎡」欄から地積を取得（「：」→「.」変換） → area
+- 下線あり（抹消）の行は除外する
+- 土地が複数行ある場合はlandsの配列に順番に格納する
+
+【私道共有チェック】
+以下の条件をすべて満たす場合のみ is_private_road_shared を true にする：
+- 甲区に所有者が複数存在する
+- 各所有者に持分割合（例：1/2, 1/3）が記載されている
+※ 協同担保目録などは対象外
+
+【主である建物の表示（表題部（主である建物の表示）から取得）】
+- building_location: 「所在」欄の値
+- house_number: 「家屋番号」欄の値
+- building_type: 「① 種類」欄の値
+
+【附属建物（表題部（附属建物）から取得）】
+- 「原因及びその日付」欄から附属建物に関する記載をすべて抽出する
+- 各建物の種類（例：車庫、物置）を取得する
+- 複数ある場合は改行区切りで連結する
+- annex_buildings: 附属建物の種類（改行区切り）
+
+【構造（表題部（主である建物の表示）の「② 構造」から取得）】
+- structure: 構造部分のみ（例：鉄骨鉄筋コンクリート造陸屋根14階建 → "鉄骨鉄筋コンクリート造"）
+  対象：木造、土蔵造、石造、れんが造、コンクリートブロック造、鉄骨造、鉄筋コンクリート造、鉄骨鉄筋コンクリート造、木骨石造、木骨煉瓦造、軽量鉄骨造
+- roof_type: 屋根部分のみ（例：鉄骨鉄筋コンクリート造陸屋根14階建 → "陸屋根"）
+  対象：瓦ぶき、スレートぶき、亜鉛メッキ鋼板ぶき、草ぶき、陸屋根、セメント瓦ぶき、アルミニュームぶき、板ぶき、杉皮ぶき、石板ぶき、銅板ぶき、ルーフィングぶき、ビニール板ぶき、合金メッキ鋼板ぶき
+- floors: 「〇階建」の数字のみ（例：14階建 → "14"）
+
+【床面積（表題部（主である建物の表示）の「③ 床面積 ㎡」から取得）】
+- floor1_area: 1階の床面積（「：」→「.」変換）
+- floor2_area: 2階の床面積（「：」→「.」変換）。2階がない場合は null
+
+【日付（表題部（主である建物の表示）の「原因及びその日付」から取得）】
+- registration_date: 1行目の日付（和暦→西暦変換）（例：平成21年2月26日新築 → "2009-02-26"）
+- extension_date: 「増築」が含まれる行の日付（和暦→西暦変換）。なければ null
+- renovation_date: 「改築」が含まれる行の日付（和暦→西暦変換）。なければ null
+
+【出力形式】
+必ず以下のJSON形式のみで応答してください（説明文・コードブロック記号は不要）：
+
+{
+  "owner_address": null,
+  "owner_name": null,
+  "co_owners": null,
+  "lands": [
+    {
+      "location": null,
+      "lot_number": null,
+      "land_type": null,
+      "area": null
+    }
+  ],
+  "is_private_road_shared": false,
+  "building_location": null,
+  "house_number": null,
+  "building_type": null,
+  "annex_buildings": null,
+  "structure": null,
+  "roof_type": null,
+  "floors": null,
+  "floor1_area": null,
+  "floor2_area": null,
+  "registration_date": null,
+  "extension_date": null,
+  "renovation_date": null
+}`;
+
+    const response = await client.messages.create({
+      model: 'claude-opus-4-5',
+      max_tokens: 4096,
+      messages: [
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'document',
+              source: {
+                type: 'base64',
+                media_type: 'application/pdf',
+                data: pdfBase64,
+              },
+            } as any,
+            {
+              type: 'text',
+              text: prompt,
+            },
+          ],
+        },
+      ],
+    });
+
+    const responseText =
+      response.content[0].type === 'text' ? response.content[0].text.trim() : '';
+
+    console.log('[TokiKodate] Claude response (first 500):', responseText.substring(0, 500));
+
+    // JSONを抽出（コードブロックあり・なし両対応）
+    const jsonBlockMatch = responseText.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+    const jsonRawMatch = responseText.match(/\{[\s\S]*\}/);
+    const jsonStr = jsonBlockMatch?.[1] ?? jsonRawMatch?.[0] ?? null;
+
+    if (!jsonStr) {
+      throw new Error('Claude APIからJSONを取得できませんでした');
+    }
+
+    let raw: any;
+    try {
+      raw = JSON.parse(jsonStr);
+    } catch (e) {
+      throw new Error(`JSONパースエラー: ${jsonStr.substring(0, 200)}`);
+    }
+
+    return {
+      ownerAddress: raw.owner_address ?? null,
+      ownerName: raw.owner_name ?? null,
+      coOwners: raw.co_owners ?? null,
+      lands: Array.isArray(raw.lands)
+        ? raw.lands.map((l: any) => ({
+            location: l.location ?? null,
+            lotNumber: l.lot_number ?? null,
+            landType: l.land_type ?? null,
+            area: l.area ?? null,
+          }))
+        : [],
+      isPrivateRoadShared: raw.is_private_road_shared === true,
+      buildingLocation: raw.building_location ?? null,
+      houseNumber: raw.house_number ?? null,
+      buildingType: raw.building_type ?? null,
+      annexBuildings: raw.annex_buildings ?? null,
+      structure: raw.structure ?? null,
+      roofType: raw.roof_type ?? null,
+      floors: raw.floors ?? null,
+      floor1Area: raw.floor1_area ?? null,
+      floor2Area: raw.floor2_area ?? null,
+      registrationDate: raw.registration_date ?? null,
+      extensionDate: raw.extension_date ?? null,
+      renovationDate: raw.renovation_date ?? null,
+    };
+  }
+
+  /**
+   * 戸建て用：抽出結果をスプレッドシートの指定セルに書き込む
+   */
+  async writeToSpreadsheetForKodate(req: TokiKodateWriteRequest): Promise<void> {
+    const { spreadsheetUrl, sheetName, extractResult } = req;
+
+    const spreadsheetId = this.extractSpreadsheetId(spreadsheetUrl);
+    if (!spreadsheetId) {
+      throw new Error(`スプレッドシートIDの抽出に失敗しました: ${spreadsheetUrl}`);
+    }
+
+    const sheetsClient = new GoogleSheetsClient({
+      spreadsheetId,
+      sheetName,
+      serviceAccountKeyPath:
+        process.env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH || './google-service-account.json',
+    });
+
+    await sheetsClient.authenticate();
+
+    const writes: Array<{ cell: string; value: string }> = [];
+
+    const add = (cell: string, value: string | null | boolean) => {
+      if (value !== null && value !== undefined) {
+        if (typeof value === 'boolean') {
+          writes.push({ cell, value: value ? 'TRUE' : 'FALSE' });
+        } else {
+          writes.push({ cell, value: String(value) });
+        }
+      }
+    };
+
+    // 所有者情報（甲区）
+    add('A84', extractResult.ownerAddress);
+    add('C84', extractResult.ownerName);
+    add('B112', extractResult.coOwners);
+
+    // 土地情報（複数行対応：91行目から下方向）
+    extractResult.lands.forEach((land, index) => {
+      const row = 91 + index;
+      add(`A${row}`, land.location);
+      add(`C${row}`, land.lotNumber);
+      add(`D${row}`, land.landType);
+      add(`E${row}`, land.area);
+    });
+
+    // 私道共有チェック
+    add('F91', extractResult.isPrivateRoadShared);
+
+    // 主である建物の表示
+    add('A99', extractResult.buildingLocation);
+    add('C99', extractResult.houseNumber);
+    add('D99', extractResult.buildingType);
+
+    // 附属建物
+    add('C101', extractResult.annexBuildings);
+
+    // 構造
+    add('A103', extractResult.structure);
+    add('C103', extractResult.roofType);
+    add('D103', extractResult.floors);
+
+    // 床面積
+    add('C105', extractResult.floor1Area);
+    add('D105', extractResult.floor2Area);
+
+    // 日付
+    add('A107', extractResult.registrationDate);
+    add('C107', extractResult.extensionDate);
+    add('D107', extractResult.renovationDate);
+
+    console.log(`[TokiKodate] スプレッドシートへの書き込み開始: ${writes.length}セル`);
+
+    for (const w of writes) {
+      await sheetsClient.writeRawCell(w.cell, w.value);
+      console.log(`[TokiKodate] 書き込み完了: ${w.cell} = ${w.value}`);
+    }
+
+    console.log('[TokiKodate] スプレッドシートへの書き込み完了');
   }
 
   /**

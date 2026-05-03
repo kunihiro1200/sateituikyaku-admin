@@ -860,6 +860,12 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
   const [tokiKeiyakuDialog, setTokiKeiyakuDialog] = useState(false);
   const [tokiKeiyakuWriteLoading, setTokiKeiyakuWriteLoading] = useState(false);
 
+  // 謄本（戸建て用）のstate
+  const [tokiKodateLoading, setTokiKodateLoading] = useState(false);
+  const [tokiKodateResult, setTokiKodateResult] = useState<any>(null);
+  const [tokiKodateDialog, setTokiKodateDialog] = useState(false);
+  const [tokiKodateWriteLoading, setTokiKodateWriteLoading] = useState(false);
+
   // ログインユーザーの営業フラグを取得
   useEffect(() => {
     if (open && employee) {
@@ -2131,6 +2137,42 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
       setSnackbar({ open: true, message: msg, severity: 'error' });
     } finally {
       setTokiKeiyakuWriteLoading(false);
+    }
+  };
+
+  // 謄本（戸建て用）読み取りハンドラー
+  const handleTokiKodateExtract = async () => {
+    if (!propertyNumber) return;
+    setTokiKodateLoading(true);
+    try {
+      const res = await api.post(`/api/toki-extract/${propertyNumber}/extract-kodate`);
+      setTokiKodateResult(res.data);
+      setTokiKodateDialog(true);
+    } catch (err: any) {
+      const msg = err?.response?.data?.error || '謄本の読み取りに失敗しました';
+      setSnackbar({ open: true, message: msg, severity: 'error' });
+    } finally {
+      setTokiKodateLoading(false);
+    }
+  };
+
+  const handleTokiKodateWrite = async () => {
+    if (!tokiKodateResult) return;
+    setTokiKodateWriteLoading(true);
+    try {
+      await api.post(`/api/toki-extract/${propertyNumber}/write-kodate`, {
+        extractResult: tokiKodateResult.extractResult,
+        sheetName: tokiKodateResult.sheetName,
+        spreadsheetUrl: tokiKodateResult.spreadsheetUrl,
+      });
+      setSnackbar({ open: true, message: `スプレッドシートへの書き込みが完了しました（シート：${tokiKodateResult.sheetName}）`, severity: 'success' });
+      setTokiKodateDialog(false);
+      setTokiKodateResult(null);
+    } catch (err: any) {
+      const msg = err?.response?.data?.error || 'スプレッドシートへの書き込みに失敗しました';
+      setSnackbar({ open: true, message: msg, severity: 'error' });
+    } finally {
+      setTokiKodateWriteLoading(false);
     }
   };
 
@@ -3955,6 +3997,19 @@ ${pageUrl}`;
                   {tokiExtractLoading ? '読取中...' : '📄 謄本'}
                 </Button>
               )}
+              {/* 謄本読み取りボタン: 媒介契約タブ かつ 種別が戸・戸建の場合のみ表示 */}
+              {tabIndex === 0 && ['戸', '戸建', '戸建て'].includes(getValue('property_type') || '') && (
+                <Button
+                  variant="contained"
+                  size="small"
+                  disabled={tokiKodateLoading}
+                  onClick={handleTokiKodateExtract}
+                  startIcon={tokiKodateLoading ? <CircularProgress size={12} color="inherit" /> : null}
+                  sx={{ whiteSpace: 'nowrap', fontWeight: 700, bgcolor: '#0277bd', '&:hover': { bgcolor: '#01579b' }, fontSize: '0.75rem', px: 1, py: 0.4, minWidth: 0 }}
+                >
+                  {tokiKodateLoading ? '読取中...' : '📄 謄本'}
+                </Button>
+              )}
               {(tabIndex === 2 || tabIndex === 3) && (
                 <Button variant="contained" size="small" disabled={!getValue('spreadsheet_url')}
                   onClick={() => { const url = getValue('spreadsheet_url'); if (url) window.open(buildLedgerSheetUrl(url), '_blank', 'noopener,noreferrer'); }}
@@ -4119,6 +4174,19 @@ ${pageUrl}`;
                     sx={{ whiteSpace: 'nowrap', fontWeight: 700, bgcolor: '#0277bd', '&:hover': { bgcolor: '#01579b' } }}
                   >
                     {tokiExtractLoading ? '読取中...' : '📄 謄本'}
+                  </Button>
+                )}
+                {/* 謄本読み取りボタン（モバイル）: 媒介契約タブ かつ 種別が戸・戸建の場合のみ表示 */}
+                {tabIndex === 0 && ['戸', '戸建', '戸建て'].includes(getValue('property_type') || '') && (
+                  <Button
+                    variant="contained"
+                    size="small"
+                    disabled={tokiKodateLoading}
+                    onClick={handleTokiKodateExtract}
+                    startIcon={tokiKodateLoading ? <CircularProgress size={12} color="inherit" /> : null}
+                    sx={{ whiteSpace: 'nowrap', fontWeight: 700, bgcolor: '#0277bd', '&:hover': { bgcolor: '#01579b' } }}
+                  >
+                    {tokiKodateLoading ? '読取中...' : '📄 謄本'}
                   </Button>
                 )}
                 {(tabIndex === 2 || tabIndex === 3) && (
@@ -4371,6 +4439,115 @@ ${pageUrl}`;
             startIcon={tokiWriteLoading ? <CircularProgress size={16} color="inherit" /> : null}
           >
             {tokiWriteLoading ? '書き込み中...' : 'スプシに反映する'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 謄本読み取り結果プレビューダイアログ（戸建て用） */}
+      <Dialog open={tokiKodateDialog} onClose={() => setTokiKodateDialog(false)} maxWidth="md" fullWidth>
+        <DialogTitle sx={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 1 }}>
+          📄 謄本読み取り結果の確認（戸建て）
+          <IconButton onClick={() => setTokiKodateDialog(false)} sx={{ ml: 'auto' }}>
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent dividers>
+          {tokiKodateResult && (
+            <Box>
+              <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block' }}>
+                ファイル：{tokiKodateResult.fileName}　／　書き込み先シート：{tokiKodateResult.sheetName}
+              </Typography>
+              {/* 所有者情報 */}
+              <Typography variant="caption" sx={{ fontWeight: 700, color: '#555', display: 'block', mt: 1, mb: 0.5 }}>所有者情報（甲区）</Typography>
+              <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1, mb: 1 }}>
+                {[
+                  { label: 'A84 所有者住所', value: tokiKodateResult.extractResult?.ownerAddress },
+                  { label: 'C84 所有者氏名', value: tokiKodateResult.extractResult?.ownerName },
+                  { label: 'B112 共有者情報', value: tokiKodateResult.extractResult?.coOwners },
+                  { label: 'F91 私道共有', value: tokiKodateResult.extractResult?.isPrivateRoadShared ? 'TRUE' : 'FALSE' },
+                ].map(({ label, value }) => (
+                  <Box key={label} sx={{ p: 1, bgcolor: value && value !== 'FALSE' ? '#f0f7ff' : '#f5f5f5', borderRadius: 1, border: '1px solid #e0e0e0' }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontWeight: 600 }}>{label}</Typography>
+                    <Typography variant="body2" sx={{ color: value && value !== 'FALSE' ? '#1a1a1a' : '#aaa' }}>
+                      {value ?? '（取得なし）'}
+                    </Typography>
+                  </Box>
+                ))}
+              </Box>
+              {/* 主である建物の表示 */}
+              <Typography variant="caption" sx={{ fontWeight: 700, color: '#555', display: 'block', mt: 1, mb: 0.5 }}>主である建物の表示</Typography>
+              <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1, mb: 1 }}>
+                {[
+                  { label: 'A99 所在', value: tokiKodateResult.extractResult?.buildingLocation },
+                  { label: 'C99 家屋番号', value: tokiKodateResult.extractResult?.houseNumber },
+                  { label: 'D99 種類', value: tokiKodateResult.extractResult?.buildingType },
+                  { label: 'C101 附属建物', value: tokiKodateResult.extractResult?.annexBuildings },
+                ].map(({ label, value }) => (
+                  <Box key={label} sx={{ p: 1, bgcolor: value ? '#f0f7ff' : '#f5f5f5', borderRadius: 1, border: '1px solid #e0e0e0' }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontWeight: 600 }}>{label}</Typography>
+                    <Typography variant="body2" sx={{ color: value ? '#1a1a1a' : '#aaa' }}>
+                      {value ?? '（取得なし）'}
+                    </Typography>
+                  </Box>
+                ))}
+              </Box>
+              {/* 構造・床面積・日付 */}
+              <Typography variant="caption" sx={{ fontWeight: 700, color: '#555', display: 'block', mt: 1, mb: 0.5 }}>構造・床面積・日付</Typography>
+              <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1, mb: 1 }}>
+                {[
+                  { label: 'A103 構造', value: tokiKodateResult.extractResult?.structure },
+                  { label: 'C103 屋根', value: tokiKodateResult.extractResult?.roofType },
+                  { label: 'D103 階数', value: tokiKodateResult.extractResult?.floors },
+                  { label: 'C105 1階床面積', value: tokiKodateResult.extractResult?.floor1Area },
+                  { label: 'D105 2階床面積', value: tokiKodateResult.extractResult?.floor2Area },
+                  { label: 'A107 登記日', value: tokiKodateResult.extractResult?.registrationDate },
+                  { label: 'C107 増築日', value: tokiKodateResult.extractResult?.extensionDate },
+                  { label: 'D107 改築日', value: tokiKodateResult.extractResult?.renovationDate },
+                ].map(({ label, value }) => (
+                  <Box key={label} sx={{ p: 1, bgcolor: value ? '#f0f7ff' : '#f5f5f5', borderRadius: 1, border: '1px solid #e0e0e0' }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontWeight: 600 }}>{label}</Typography>
+                    <Typography variant="body2" sx={{ color: value ? '#1a1a1a' : '#aaa' }}>
+                      {value ?? '（取得なし）'}
+                    </Typography>
+                  </Box>
+                ))}
+              </Box>
+              {/* 土地情報 */}
+              {tokiKodateResult.extractResult?.lands?.length > 0 && (
+                <Box sx={{ mt: 2 }}>
+                  <Typography variant="caption" sx={{ fontWeight: 700, color: '#555' }}>土地情報（A91〜）</Typography>
+                  {tokiKodateResult.extractResult.lands.map((land: any, i: number) => (
+                    <Box key={i} sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 0.5, mt: 0.5 }}>
+                      {[
+                        { label: `A${91 + i} 所在`, value: land.location },
+                        { label: `C${91 + i} 地番`, value: land.lotNumber },
+                        { label: `D${91 + i} 地目`, value: land.landType },
+                        { label: `E${91 + i} 地積`, value: land.area },
+                      ].map(({ label, value }) => (
+                        <Box key={label} sx={{ p: 0.75, bgcolor: value ? '#f0f7ff' : '#f5f5f5', borderRadius: 1, border: '1px solid #e0e0e0' }}>
+                          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontWeight: 600, fontSize: '0.7rem' }}>{label}</Typography>
+                          <Typography variant="body2" sx={{ color: value ? '#1a1a1a' : '#aaa', fontSize: '0.8rem' }}>
+                            {value ?? '（取得なし）'}
+                          </Typography>
+                        </Box>
+                      ))}
+                    </Box>
+                  ))}
+                </Box>
+              )}
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setTokiKodateDialog(false)} color="inherit">キャンセル</Button>
+          <Button
+            variant="contained"
+            color="primary"
+            disabled={tokiKodateWriteLoading}
+            onClick={handleTokiKodateWrite}
+            startIcon={tokiKodateWriteLoading ? <CircularProgress size={16} color="inherit" /> : null}
+          >
+            {tokiKodateWriteLoading ? '書き込み中...' : 'スプシに反映する'}
           </Button>
         </DialogActions>
       </Dialog>
