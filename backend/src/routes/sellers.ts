@@ -2204,6 +2204,8 @@ router.get('/:id/nearby-properties', authenticate, async (req: Request, res: Res
               salesPrice: row['売買価格'] || '',
               atbbStatus: statusLabel,
               distanceKm: Math.round(dist * 1000) / 1000,
+              lat: coords.lat,
+              lng: coords.lng,
             };
           } catch {
             return null;
