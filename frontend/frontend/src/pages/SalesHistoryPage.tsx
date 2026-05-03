@@ -306,12 +306,28 @@ export default function SalesHistoryPage() {
                 </Box>
               </Box>
 
-              {/* 印刷用：Static Maps API画像 */}
+              {/* 印刷用：Static Maps API画像（円をpathで近似） */}
               {(() => {
                 const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '';
-                const center = `${nearbyData.lat},${nearbyData.lng}`;
-                // 中心マーカー（赤）
-                const centerMarker = `markers=color:red%7Csize:mid%7C${center}`;
+                const lat = nearbyData.lat!;
+                const lng = nearbyData.lng!;
+                const center = `${lat},${lng}`;
+
+                // 1km円を36角形で近似（pathパラメータ）
+                const R = 6371; // 地球半径km
+                const radiusKm = nearbyData.radiusKm;
+                const points: string[] = [];
+                for (let i = 0; i <= 36; i++) {
+                  const angle = (i * 10) * (Math.PI / 180);
+                  const dLat = (radiusKm / R) * (180 / Math.PI) * Math.cos(angle);
+                  const dLng = (radiusKm / R) * (180 / Math.PI) * Math.sin(angle) / Math.cos(lat * Math.PI / 180);
+                  points.push(`${(lat + dLat).toFixed(6)},${(lng + dLng).toFixed(6)}`);
+                }
+                const circlePath = `path=color:0xff000099%7Cweight:3%7Cfillcolor:0xff000022%7C${points.join('%7C')}`;
+
+                // 中心マーカー（赤・大）
+                const centerMarker = `markers=color:red%7Csize:mid%7Clabel:★%7C${center}`;
+
                 // 近隣物件マーカー（成約済み→gray、それ以外→blue）
                 const nearbyMarkers = nearbyData.results
                   .filter(item => item.lat && item.lng)
@@ -320,16 +336,18 @@ export default function SalesHistoryPage() {
                     return `markers=color:${color}%7Csize:small%7C${item.lat},${item.lng}`;
                   })
                   .join('&');
-                const staticUrl = `https://maps.googleapis.com/maps/api/staticmap?center=${center}&zoom=15&size=600x400&scale=2&${centerMarker}&${nearbyMarkers}&key=${apiKey}`;
+
+                const staticUrl = `https://maps.googleapis.com/maps/api/staticmap?center=${center}&zoom=15&size=640x480&scale=2&${circlePath}&${centerMarker}&${nearbyMarkers ? nearbyMarkers + '&' : ''}key=${apiKey}`;
+
                 return (
                   <Box className="print-only" sx={{ mb: 3 }}>
                     <Typography variant="subtitle2" fontWeight="bold" sx={{ mb: 1, color: '#1a237e' }}>
-                      📍 半径1km以内マップ（●赤：対象物件　●青：募集中　●グレー：成約済み）
+                      📍 半径{radiusKm}kmマップ（★赤：対象物件　●青：募集中　●グレー：成約済み）
                     </Typography>
                     <img
                       src={staticUrl}
                       alt="近隣物件マップ"
-                      style={{ width: '100%', maxWidth: 700, border: '1px solid #e0e0e0', borderRadius: 4 }}
+                      style={{ width: '100%', maxWidth: 720, border: '1px solid #e0e0e0', borderRadius: 4 }}
                     />
                   </Box>
                 );
