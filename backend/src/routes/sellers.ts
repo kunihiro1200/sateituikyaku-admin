@@ -1690,7 +1690,10 @@ router.get('/:id/nearby-buyers', async (req: Request, res: Response) => {
 
     const googleMapUrl = (seller as any).googleMapUrl || null;
     // overridePropertyType が指定された場合はそちらを使用（例: 戸建物件で土地希望買主を検索）
-    const propertyType = (typeof overridePropertyType === 'string' ? overridePropertyType : null) || seller.propertyType || null;
+    // sellers.property_type が null の場合は properties テーブルの値をフォールバックとして使用
+    const propertyTypeFromProperties = seller.property?.propertyType || null;
+    const propertyType = (typeof overridePropertyType === 'string' ? overridePropertyType : null) || seller.propertyType || propertyTypeFromProperties || null;
+    console.log(`🏠 propertyType resolved: sellers.property_type=${seller.propertyType}, properties.property_type=${propertyTypeFromProperties}, final=${propertyType}`);
 
     // 査定額の中央値を売出価格として使用
     let salesPrice: number | null = null;

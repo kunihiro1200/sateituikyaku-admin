@@ -1311,6 +1311,25 @@ export class EnhancedAutoSyncService {
       };
       propertyType = typeMapping[typeStr] || 'その他';
     }
+    // スプレッドシートの種別が空欄の場合、propertiesテーブルの値をフォールバックとして使用
+    if (!propertyType) {
+      const { data: sellerForType } = await this.supabase
+        .from('sellers')
+        .select('id')
+        .eq('seller_number', sellerNumber)
+        .single();
+      if (sellerForType) {
+        const { data: propForType } = await this.supabase
+          .from('properties')
+          .select('property_type')
+          .eq('seller_id', sellerForType.id)
+          .single();
+        if (propForType?.property_type) {
+          propertyType = propForType.property_type;
+          console.log(`📋 ${sellerNumber}: property_type フォールバック（propertiesテーブルから）: ${propertyType}`);
+        }
+      }
+    }
     const landArea = row['土（㎡）'];
     const buildingArea = row['建（㎡）'];
     const landAreaVerified = row['土地（当社調べ）'];
@@ -1641,6 +1660,25 @@ export class EnhancedAutoSyncService {
         '土地': '土地', '戸建': '戸建て', '戸建て': '戸建て', 'マンション': 'マンション', '事業用': '事業用',
       };
       propertyType = typeMapping[typeStr] || 'その他';
+    }
+    // スプレッドシートの種別が空欄の場合、propertiesテーブルの値をフォールバックとして使用
+    if (!propertyType) {
+      const { data: existingSeller } = await this.supabase
+        .from('sellers')
+        .select('id')
+        .eq('seller_number', sellerNumber)
+        .single();
+      if (existingSeller) {
+        const { data: propForType } = await this.supabase
+          .from('properties')
+          .select('property_type')
+          .eq('seller_id', existingSeller.id)
+          .single();
+        if (propForType?.property_type) {
+          propertyType = propForType.property_type;
+          console.log(`📋 ${sellerNumber}: property_type フォールバック（propertiesテーブルから）: ${propertyType}`);
+        }
+      }
     }
     const landArea = row['土（㎡）'];
     const buildingArea = row['建（㎡）'];
