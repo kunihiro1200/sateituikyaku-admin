@@ -155,6 +155,27 @@ export interface TokiKodateWriteRequest {
 // 謄本解析サービス
 // -------------------------------------------------------
 
+/**
+ * 面積などの数値文字列を正規化する
+ * - 全角コロン「：」→ 小数点「.」変換（例：1465：68 → 1465.68）
+ * - 全角数字 → 半角数字変換
+ * - 単位（㎡など）や余分な空白を除去
+ * - 数値として有効な文字列のみ返す（無効な場合は null）
+ */
+function normalizeNumericString(value: any): string | null {
+  if (value === null || value === undefined) return null;
+  let s = String(value).trim();
+  // 全角数字→半角
+  s = s.replace(/[０-９]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xFEE0));
+  // 全角コロン→小数点
+  s = s.replace(/：/g, '.');
+  // 単位・空白を除去
+  s = s.replace(/[㎡\s　]/g, '');
+  // 数値として有効か確認
+  if (s === '' || isNaN(Number(s))) return null;
+  return s;
+}
+
 export class TokiExtractService {
   private driveService: GoogleDriveService;
 
@@ -950,7 +971,7 @@ export class TokiExtractService {
             location: l.location ?? null,
             lotNumber: l.lot_number ?? null,
             landType: l.land_type ?? null,
-            area: l.area ?? null,
+            area: normalizeNumericString(l.area),
             sikichikenType: l.sikichiken_type ?? null,
             sikichikenRatio: l.sikichiken_ratio ?? null,
           }))
@@ -961,10 +982,10 @@ export class TokiExtractService {
       roofType: raw.roof_type ?? null,
       floors: raw.floors ?? null,
       basementFloors: raw.basement_floors ?? null,
-      buildingArea: raw.building_area ?? null,
+      buildingArea: normalizeNumericString(raw.building_area),
       floorNumber: raw.floor_number ?? null,
       roomNumber: raw.room_number ?? null,
-      exclusiveArea: raw.exclusive_area ?? null,
+      exclusiveArea: normalizeNumericString(raw.exclusive_area),
       constructionDate: raw.construction_date ?? null,
       houseNumber: raw.house_number ?? null,
       buildingType: raw.building_type ?? null,
