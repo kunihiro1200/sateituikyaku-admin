@@ -152,6 +152,64 @@ export interface TokiKodateWriteRequest {
 }
 
 // -------------------------------------------------------
+// 戸建て用「契約決済タブ」重説シート向けの型定義
+// -------------------------------------------------------
+
+export interface TokiKodateKeiyakuExtractResult {
+  // 謄本取得日
+  acquisitionYearWareki: string | null;   // AB89
+  acquisitionMonth: string | null;        // AF80
+  acquisitionDay: string | null;          // AJ80
+
+  // 所有者情報
+  ownerAddress: string | null;            // K36, V90, V104
+  ownerNames: string | null;              // K37, V91, V105
+  otherAddressOwnerCount: string | null;  // AX37
+  totalOwnerCount: string | null;         // BF37
+  ownerDetails: string | null;            // O85, F111
+
+  // 土地情報（複数対応、面積降順）
+  lands: Array<{
+    location: string | null;              // H42, H44, H46... (2行おき)
+    lotNumber: string | null;             // X42, X44, X46...
+    landType: string | null;              // AG42, AG44, AG46...
+    area: string | null;                  // AR42, AR44, AR46...
+    areaNumeric: number | null;           // ソート用（書き込みには使わない）
+  }>;
+
+  // 共有持分チェック
+  hasSharedOwnership: boolean;            // AY42
+
+  // 主である建物の表示
+  buildingLocation: string | null;        // O76
+  houseNumber: string | null;             // AV76
+  buildingType: string | null;            // O78
+  annexBuildings: string | null;          // AZ77
+  structure: string | null;              // O79
+  roofType: string | null;               // AI79
+  floors: string | null;                 // BC79
+  floor1Area: string | null;             // R81
+  floor2Area: string | null;             // AB81
+  registrationDate: string | null;       // J84
+  extensionDate: string | null;          // AE84
+  renovationDate: string | null;         // AS84
+  hasExtension: boolean;                 // Z84〜AA84
+  hasRenovation: boolean;                // AN84〜AO84
+
+  // 乙区・権利チェック
+  hasOtherRights: boolean;               // P96
+  hasMortgage: boolean;                  // P102, P110
+  rightChecks96: string[];               // V98〜V102 に対応する権利名
+  rightChecks110: string[];              // V112〜V115 に対応する権利名
+}
+
+export interface TokiKodateKeiyakuWriteRequest {
+  spreadsheetUrl: string;
+  sheetName: string;
+  extractResult: TokiKodateKeiyakuExtractResult;
+}
+
+// -------------------------------------------------------
 // 謄本解析サービス
 // -------------------------------------------------------
 
@@ -1114,6 +1172,386 @@ export class TokiExtractService {
     }
 
     console.log('[TokiKeiyaku] スプレッドシートへの書き込み完了');
+  }
+
+  // -------------------------------------------------------
+  // 戸建て用「契約決済タブ」重説シート向けメソッド
+  // -------------------------------------------------------
+
+  /**
+   * 戸建て用：Google DriveフォルダURLから謄本PDFを複数検索してBase64で返す
+   * 「全部事項」または「全部謄本」を含むPDFをすべて取得する
+   */
+  async findTokiPdfsForKodateKeiyaku(storageFolderUrl: string): Promise<Array<{ base64: string; fileName: string }>> {
+    try {
+      const folderId = this.extractFolderIdFromUrl(storageFolderUrl);
+      if (!folderId) {
+        console.error('[TokiKodateKeiyaku] フォルダIDの抽出に失敗:', storageFolderUrl);
+        return [];
+      }
+
+      console.log('[TokiKodateKeiyaku] フォルダ検索中:', folderId);
+      const files = await this.driveService.listFiles(folderId);
+
+      // 「全部事項」または「全部謄本」を含むPDFをすべて取得
+      const tokiFiles = files.filter(
+        (f) =>
+          (f.name.includes('全部事項') || f.name.includes('全部謄本')) &&
+          (f.mimeType === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf'))
+      );
+
+      if (tokiFiles.length === 0) {
+        console.warn('[TokiKodateKeiyaku] 謄本PDFが見つかりません。フォルダ内ファイル:', files.map((f) => f.name));
+        return [];
+      }
+
+      console.log(`[TokiKodateKeiyaku] 謄本PDF発見: ${tokiFiles.length}件`, tokiFiles.map((f) => f.name));
+
+      const results: Array<{ base64: string; fileName: string }> = [];
+      for (const tokiFile of tokiFiles) {
+        const fileData = await this.driveService.getFile(tokiFile.id);
+        if (fileData) {
+          results.push({ base64: fileData.data.toString('base64'), fileName: tokiFile.name });
+        }
+      }
+      return results;
+    } catch (error: any) {
+      console.error('[TokiKodateKeiyaku] PDF検索エラー:', error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * 戸建て用：謄本PDFから重説シート向けの情報を抽出する（1枚分）
+   */
+  async extractFromPdfForKodateKeiyaku(pdfBase64: string): Promise<TokiKodateKeiyakuExtractResult> {
+    const apiKey = process.env.ANTHROPIC_API_KEY;
+    if (!apiKey) throw new Error('ANTHROPIC_API_KEY が設定されていません');
+
+    const client = new Anthropic({ apiKey });
+
+    const prompt = `あなたは不動産登記簿謄本の専門家です。
+添付された登記簿謄本（全部事項証明書）のPDFを読み取り、以下の情報をJSONで返してください。
+
+【共通ルール】
+- 全角スペース・半角スペース・改行の揺れを吸収して読み取ること
+- 下線が引かれている情報は抹消事項として除外すること
+- 抽出できない場合は null を返すこと
+- 全角数字は半角数字に変換すること
+- 面積・地積の「：」は小数点「.」に変換すること（例：１６１５：６７ → 1615.67）
+- 和暦の日付は西暦に変換すること
+- 推測せず、読み取れない場合は必ず null にすること
+- 共同担保目録は所有者判定・共有判定・乙区権利残存判定の根拠にしないこと
+
+【謄本取得日】
+謄本の一番左上にある日付（例：2026/05/01）から取得：
+- acquisition_year_wareki: 西暦年を令和年に変換し年の数字のみ（令和N年 = 西暦年 - 2018）
+- acquisition_month: 月の数字のみ
+- acquisition_day: 日の数字のみ
+
+【所有者情報（権利部（甲区）（所有権に関する事項）から取得）】
+条件：
+- 「登記の目的」が「所有権保存」または「所有権移転」の行を対象
+- 移転を繰り返している場合は現在の所有者を判定
+- 下線付きの抹消事項は除外
+- 「共有者」と書かれている場合は共有者全員を所有者として扱う
+
+出力ルール：
+- owner_address: 一番上の所有者の住所（代表住所）
+- owner_names: 代表住所と同じ住所の所有者名を全員「,」で連結
+- other_address_owner_count: 所有者総数 − 代表住所と同じ住所の所有者数（数字のみ）
+- total_owner_count: 有効な現在所有者の総数（数字のみ）
+- owner_details: 現在の所有者全員について「住所\\n氏名\\n共有持分」を出力し、最後に空行を入れて「以下余白」と記載
+
+【共有持分チェック】
+甲区の現在所有者情報のみを根拠に判定：
+- 現所有者が複数名いる かつ 各所有者に持分割合（例：1/2, 1/3）が明示されている場合 has_shared_ownership = true
+- 共同担保目録は判断根拠にしないこと
+
+【土地の表示（表題部（土地の表示）から取得）】
+- location: 「① 所在」欄の値
+- lot_number: 「① 地番」欄の値（下線付き抹消は除外）
+- land_type: 「② 地目」欄の値（下線付き抹消は除外）
+- area: 「④ 地積 ㎡」欄の値（「：」→「.」変換）
+- area_numeric: area を数値に変換した値（ソート用）
+- 土地が複数行ある場合はlandsの配列に格納
+
+【主である建物の表示（表題部（主である建物の表示）から取得）】
+- building_location: 「所在」欄の値
+- house_number: 「家屋番号」欄の値
+- building_type: 「① 種類」欄の値
+- annex_buildings: 附属建物の種類（複数ある場合は改行区切り）
+- structure: 「② 構造」欄から構造部分のみ（例：木造、鉄骨造、鉄筋コンクリート造、鉄骨鉄筋コンクリート造、軽量鉄骨造）
+- roof_type: 「② 構造」欄から屋根部分のみ（例：陸屋根、瓦葺、スレート葺、亜鉛メッキ鋼板葺、合金メッキ鋼板葺、金属板葺、セメント瓦葺）
+- floors: 「② 構造」欄から「〇階建」の数字のみ
+- floor1_area: 「③ 床面積 ㎡」の1階の値（「：」→「.」変換）
+- floor2_area: 「③ 床面積 ㎡」の2階の値（「：」→「.」変換）。なければ null
+- registration_date: 「原因及びその日付」欄の1行目の日付（和暦→西暦）
+- extension_date: 「増築」が含まれる行の日付（和暦→西暦）。なければ null
+- has_extension: extension_date が存在する場合 true
+- renovation_date: 「改築」が含まれる行の日付（和暦→西暦）。なければ null
+- has_renovation: renovation_date が存在する場合 true
+
+【乙区・権利チェック（権利部（乙区）（所有権以外の権利に関する事項）から取得）】
+- has_other_rights: 乙区に何らかの権利が残っている場合 true（抹消済みは除外）
+- has_mortgage: 乙区に「抵当権設定」「根抵当権設定」「賃借権」が残っている場合 true（抹消済みは除外）
+- remaining_rights: 乙区に残っている権利名の配列（抹消済みは除外）
+
+【出力形式】
+必ず以下のJSON形式のみで応答してください（説明文・コードブロック記号は不要）：
+
+{
+  "acquisition_year_wareki": null,
+  "acquisition_month": null,
+  "acquisition_day": null,
+  "owner_address": null,
+  "owner_names": null,
+  "other_address_owner_count": null,
+  "total_owner_count": null,
+  "owner_details": null,
+  "has_shared_ownership": false,
+  "lands": [
+    {
+      "location": null,
+      "lot_number": null,
+      "land_type": null,
+      "area": null,
+      "area_numeric": null
+    }
+  ],
+  "building_location": null,
+  "house_number": null,
+  "building_type": null,
+  "annex_buildings": null,
+  "structure": null,
+  "roof_type": null,
+  "floors": null,
+  "floor1_area": null,
+  "floor2_area": null,
+  "registration_date": null,
+  "extension_date": null,
+  "has_extension": false,
+  "renovation_date": null,
+  "has_renovation": false,
+  "has_other_rights": false,
+  "has_mortgage": false,
+  "remaining_rights": []
+}`;
+
+    const response = await client.messages.create({
+      model: 'claude-opus-4-5',
+      max_tokens: 4096,
+      messages: [
+        {
+          role: 'user',
+          content: [
+            { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: pdfBase64 } } as any,
+            { type: 'text', text: prompt },
+          ],
+        },
+      ],
+    });
+
+    const responseText = response.content[0].type === 'text' ? response.content[0].text.trim() : '';
+    console.log('[TokiKodateKeiyaku] Claude response (first 500):', responseText.substring(0, 500));
+
+    const jsonBlockMatch = responseText.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+    const jsonRawMatch = responseText.match(/\{[\s\S]*\}/);
+    const jsonStr = jsonBlockMatch?.[1] ?? jsonRawMatch?.[0] ?? null;
+    if (!jsonStr) throw new Error('Claude APIからJSONを取得できませんでした');
+
+    let raw: any;
+    try { raw = JSON.parse(jsonStr); } catch (e) { throw new Error(`JSONパースエラー: ${jsonStr.substring(0, 200)}`); }
+
+    const remainingRights: string[] = Array.isArray(raw.remaining_rights) ? raw.remaining_rights : [];
+
+    return {
+      acquisitionYearWareki: raw.acquisition_year_wareki ? String(raw.acquisition_year_wareki) : null,
+      acquisitionMonth: raw.acquisition_month ? String(raw.acquisition_month) : null,
+      acquisitionDay: raw.acquisition_day ? String(raw.acquisition_day) : null,
+      ownerAddress: raw.owner_address ?? null,
+      ownerNames: raw.owner_names ?? null,
+      otherAddressOwnerCount: raw.other_address_owner_count ? String(raw.other_address_owner_count) : null,
+      totalOwnerCount: raw.total_owner_count ? String(raw.total_owner_count) : null,
+      ownerDetails: raw.owner_details ?? null,
+      hasSharedOwnership: raw.has_shared_ownership === true,
+      lands: Array.isArray(raw.lands)
+        ? raw.lands.map((l: any) => ({
+            location: l.location ?? null,
+            lotNumber: l.lot_number ?? null,
+            landType: l.land_type ?? null,
+            area: normalizeNumericString(l.area),
+            areaNumeric: l.area_numeric !== null && l.area_numeric !== undefined ? Number(l.area_numeric) : null,
+          }))
+        : [],
+      buildingLocation: raw.building_location ?? null,
+      houseNumber: raw.house_number ?? null,
+      buildingType: raw.building_type ?? null,
+      annexBuildings: raw.annex_buildings ?? null,
+      structure: raw.structure ?? null,
+      roofType: raw.roof_type ?? null,
+      floors: raw.floors ?? null,
+      floor1Area: normalizeNumericString(raw.floor1_area),
+      floor2Area: normalizeNumericString(raw.floor2_area),
+      registrationDate: raw.registration_date ?? null,
+      extensionDate: raw.extension_date ?? null,
+      hasExtension: raw.has_extension === true,
+      renovationDate: raw.renovation_date ?? null,
+      hasRenovation: raw.has_renovation === true,
+      hasOtherRights: raw.has_other_rights === true,
+      hasMortgage: raw.has_mortgage === true,
+      rightChecks96: remainingRights,
+      rightChecks110: remainingRights,
+    };
+  }
+
+  /**
+   * 戸建て用：複数謄本PDFを読み取り、土地を面積降順にマージして返す
+   */
+  async extractFromPdfsForKodateKeiyaku(
+    pdfs: Array<{ base64: string; fileName: string }>
+  ): Promise<{ mergedResult: TokiKodateKeiyakuExtractResult; fileNames: string[] }> {
+    if (pdfs.length === 0) throw new Error('謄本PDFが見つかりませんでした');
+
+    // 1枚目を基準として使用（所有者情報・建物情報は1枚目から取得）
+    const firstResult = await this.extractFromPdfForKodateKeiyaku(pdfs[0].base64);
+    const fileNames = [pdfs[0].fileName];
+
+    // 2枚目以降の土地情報をマージ
+    for (let i = 1; i < pdfs.length; i++) {
+      console.log(`[TokiKodateKeiyaku] ${i + 1}枚目解析中: ${pdfs[i].fileName}`);
+      const result = await this.extractFromPdfForKodateKeiyaku(pdfs[i].base64);
+      firstResult.lands.push(...result.lands);
+      fileNames.push(pdfs[i].fileName);
+    }
+
+    // 土地を面積降順にソート（areaNumericがnullのものは末尾）
+    firstResult.lands.sort((a, b) => {
+      if (a.areaNumeric === null && b.areaNumeric === null) return 0;
+      if (a.areaNumeric === null) return 1;
+      if (b.areaNumeric === null) return -1;
+      return b.areaNumeric - a.areaNumeric;
+    });
+
+    return { mergedResult: firstResult, fileNames };
+  }
+
+  /**
+   * 戸建て用：抽出結果を「重説」シートの指定セルに書き込む
+   */
+  async writeToSpreadsheetForKodateKeiyaku(req: TokiKodateKeiyakuWriteRequest): Promise<void> {
+    const { spreadsheetUrl, sheetName, extractResult } = req;
+
+    const spreadsheetId = this.extractSpreadsheetId(spreadsheetUrl);
+    if (!spreadsheetId) throw new Error(`スプレッドシートIDの抽出に失敗しました: ${spreadsheetUrl}`);
+
+    const sheetsClient = new GoogleSheetsClient({
+      spreadsheetId,
+      sheetName,
+      serviceAccountKeyPath: process.env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH || './google-service-account.json',
+    });
+
+    await sheetsClient.authenticate();
+
+    const writes: Array<{ cell: string; value: string | boolean }> = [];
+
+    const add = (cell: string, value: string | null | boolean) => {
+      if (value !== null && value !== undefined) {
+        writes.push({ cell, value: typeof value === 'boolean' ? value : String(value) });
+      }
+    };
+
+    // nullでも空文字で上書き（既存値を消す必要がある場合）
+    const addForce = (cell: string, value: string | null | boolean) => {
+      if (typeof value === 'boolean') {
+        writes.push({ cell, value });
+      } else {
+        writes.push({ cell, value: value !== null && value !== undefined ? String(value) : '' });
+      }
+    };
+
+    // 謄本取得日
+    add('AB89', extractResult.acquisitionYearWareki);
+    add('AF80', extractResult.acquisitionMonth);
+    add('AJ80', extractResult.acquisitionDay);
+
+    // 所有者情報
+    add('K36', extractResult.ownerAddress);
+    add('K37', extractResult.ownerNames);
+    add('AX37', extractResult.otherAddressOwnerCount);
+    add('BF37', extractResult.totalOwnerCount);
+    if (extractResult.ownerDetails !== null) {
+      add('O85', extractResult.ownerDetails);
+      add('F111', extractResult.ownerDetails);
+    }
+    add('V90', extractResult.ownerAddress);
+    add('V91', extractResult.ownerNames);
+    add('V104', extractResult.ownerAddress);
+    add('V105', extractResult.ownerNames);
+
+    // 共有持分チェック
+    add('AY42', extractResult.hasSharedOwnership);
+
+    // 土地情報（複数行対応：H42から2行おき）
+    // スプレッドシートは各土地行が2行結合セルのため H42,H44,H46... と2行おき
+    extractResult.lands.forEach((land, index) => {
+      const row = 42 + index * 2;
+      addForce(`H${row}`, land.location);
+      addForce(`X${row}`, land.lotNumber);
+      addForce(`AG${row}`, land.landType);
+      addForce(`AR${row}`, land.area);
+    });
+
+    // 主である建物の表示
+    add('O76', extractResult.buildingLocation);
+    add('AV76', extractResult.houseNumber);
+    add('O78', extractResult.buildingType);
+    add('AZ77', extractResult.annexBuildings);
+    add('O79', extractResult.structure);
+    add('AI79', extractResult.roofType);
+    add('BC79', extractResult.floors);
+    add('R81', extractResult.floor1Area);
+    add('AB81', extractResult.floor2Area);
+    add('J84', extractResult.registrationDate);
+    add('AE84', extractResult.extensionDate);
+    add('AS84', extractResult.renovationDate);
+    if (extractResult.hasExtension) {
+      add('Z84', true);
+      add('AA84', true);
+    }
+    if (extractResult.hasRenovation) {
+      add('AN84', true);
+      add('AO84', true);
+    }
+
+    // 乙区・権利チェック
+    add('P96', extractResult.hasOtherRights);
+    add('P102', extractResult.hasMortgage);
+    add('P110', extractResult.hasMortgage);
+
+    // V98〜V102: P102=trueの場合のみ残存権利をチェック
+    if (extractResult.hasMortgage && extractResult.rightChecks96.length > 0) {
+      const cells96 = ['V98', 'V99', 'V100', 'V101', 'V102'];
+      cells96.forEach((cell) => add(cell, true));
+    }
+    // V112〜V115: P110=trueの場合のみ
+    if (extractResult.hasMortgage && extractResult.rightChecks110.length > 0) {
+      const cells110 = ['V112', 'V113', 'V114', 'V115'];
+      cells110.forEach((cell) => add(cell, true));
+    }
+
+    console.log(`[TokiKodateKeiyaku] スプレッドシートへの書き込み開始: ${writes.length}セル`);
+
+    for (const w of writes) {
+      if (typeof w.value === 'boolean') {
+        await sheetsClient.writeRawCell(w.cell, w.value ? 'TRUE' : 'FALSE');
+      } else {
+        await sheetsClient.writeRawCell(w.cell, w.value as string);
+      }
+      console.log(`[TokiKodateKeiyaku] 書き込み完了: ${w.cell} = ${w.value}`);
+    }
+
+    console.log('[TokiKodateKeiyaku] スプレッドシートへの書き込み完了');
   }
 
   // -------------------------------------------------------
