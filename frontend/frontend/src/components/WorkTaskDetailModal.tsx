@@ -845,7 +845,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
     open: boolean;
     title: string;
     emptyFields: string[];
-    onConfirmAction: 'site' | 'floor' | 'mandatory' | 'cadastral' | 'binding_completed' | 'sales_assignee' | 'publish_scheduled_date' | 'storage_url' | null;
+    onConfirmAction: 'site' | 'floor' | 'mandatory' | 'cadastral' | 'binding_completed' | 'sales_assignee' | 'publish_scheduled_date' | 'storage_url' | 'distribution_date_required' | null;
   }>({ open: false, title: '', emptyFields: [], onConfirmAction: null });
 
   // 謄本読み取り関連のstate
@@ -1092,6 +1092,24 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
       return;
     }
 
+    // サイト登録確認OK送信に値がある場合、配信日・公開予定日を必須チェック
+    if (!isEmpty(getValue('site_registration_ok_sent'))) {
+      const distributionDate = getValue('distribution_date');
+      const publishScheduledDate2 = getValue('publish_scheduled_date');
+      const missingFields: string[] = [];
+      if (isEmpty(distributionDate)) missingFields.push('配信日');
+      if (isEmpty(publishScheduledDate2)) missingFields.push('公開予定日');
+      if (missingFields.length > 0) {
+        setValidationWarningDialog({
+          open: true,
+          title: '「サイト登録確認OK送信」に値が入っているため、以下の項目は必須です',
+          emptyFields: missingFields,
+          onConfirmAction: 'distribution_date_required',
+        });
+        return;
+      }
+    }
+
     // 地積測量図・字図 未格納チェック
     // site_registration_ok_sent に値が入っていて、かつ cadastral_map_field === '未' または cadastral_map_url === '未' の場合に警告
     if (!isEmpty(getValue('site_registration_ok_sent'))) {
@@ -1234,6 +1252,18 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
         requestAnimationFrame(() => {
           if (storageUrlRef.current) {
             storageUrlRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        });
+      });
+    }
+
+    // 配信日・公開予定日必須エラーの場合、サイト登録タブ（tabIndex=1）に切り替えて配信日までスクロール
+    if (action === 'distribution_date_required') {
+      setTabIndex(1);
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          if (distributionDateRef.current) {
+            distributionDateRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
           }
         });
       });
@@ -1698,6 +1728,9 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
 
   // 格納先URLフィールドへのスクロール用 ref
   const storageUrlRef = useRef<HTMLDivElement>(null);
+
+  // 配信日フィールドへのスクロール用 ref
+  const distributionDateRef = useRef<HTMLDivElement>(null);
 
   // editedData 変更後に左右ペインのスクロール位置を復元（サイト登録タブのみ）
   useEffect(() => {
@@ -2718,7 +2751,9 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
 
         <Box sx={{ bgcolor: '#fafafa', borderRadius: 1, p: 1, mb: 1 }}>
         <SectionHeader label="【確認後処理】" />
-        <EditableField label="配信日" field="distribution_date" type="date" />
+        <Box ref={distributionDateRef}>
+          <EditableField label="配信日" field="distribution_date" type="date" />
+        </Box>
         <Box ref={propertyFileRef}>
           <EditableButtonSelect label="物件ファイル" field="property_file" options={['担当に渡し済み', '未']} />
         </Box>
