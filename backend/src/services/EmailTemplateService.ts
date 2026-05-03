@@ -389,7 +389,7 @@ export class EmailTemplateService {
     if (properties.length === 1) {
       const prop = properties[0];
       result = result.replace(/<<住居表示>>/g, prop.address || '');
-      result = result.replace(/<<GoogleMap>>/g, prop.googleMapUrl ? `Googleマップ: ${prop.googleMapUrl}` : '');
+      result = result.replace(/<<GoogleMap>>/g, prop.googleMapUrl ? `GoogleMap：${prop.googleMapUrl}` : '');
       result = result.replace(/<<athome URL>>/g, prop.athomeUrl || '');
       result = result.replace(/<<物件詳細URL>>/g, prop.detailUrl || prop.athomeUrl || '');
       result = result.replace(/<<現況>>/g, prop.currentStatus || '');
@@ -398,11 +398,11 @@ export class EmailTemplateService {
       result = result.replace(/<<鍵等v>>/g, prop.viewingKey || '');
     } else {
       const addressList = properties.map((p, i) => `【物件${i + 1}】${p.address || ''}`).join('\n');
-      const mapList = properties.filter(p => p.googleMapUrl).map((p, i) => `【物件${i + 1}】Googleマップ: ${p.googleMapUrl}`).join('\n');
+      const mapList = properties.filter(p => p.googleMapUrl).map((p, i) => `【物件${i + 1}】GoogleMap：${p.googleMapUrl}`).join('\n');
       const athomeList = properties.filter(p => p.athomeUrl).map(p => p.athomeUrl).join('\n');
       const detailList = properties.map(p => p.detailUrl || p.athomeUrl || '').filter(Boolean).join('\n');
       result = result.replace(/<<住居表示>>/g, addressList);
-      result = result.replace(/<<GoogleMap>>/g, mapList ? `Googleマップ:\n${mapList}` : '');
+      result = result.replace(/<<GoogleMap>>/g, mapList ? mapList : '');
       result = result.replace(/<<athome URL>>/g, athomeList);
       result = result.replace(/<<物件詳細URL>>/g, detailList);
       // 複数物件の場合は最初の物件の現況を使用
