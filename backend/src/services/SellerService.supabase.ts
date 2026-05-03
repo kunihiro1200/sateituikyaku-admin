@@ -1265,6 +1265,7 @@ export class SellerService extends BaseRepository {
         case 'todayCall':
           // 当日TEL分（追客中 OR 他決→追客 AND 次電日が今日以前 AND コミュニケーション情報なし AND 営担なし）
           // 🚨 重要: 「他決→追客」も含める（getSidebarCountsFallback()と同じロジック）
+          // 🚨 重要: FI売主（seller_numberがFIで始まる）は福岡専用カテゴリーに表示するため除外
           // 全件取得してJSでフィルタ（ORクエリが複雑なため）
           let todayCallCandidates: any[] = [];
           let tcPage = 0;
@@ -1294,6 +1295,10 @@ export class SellerService extends BaseRepository {
           
           // JSでフィルタ
           const todayCallIds = (todayCallCandidates || []).filter((s: any) => {
+            // FI売主（福岡）は福岡専用カテゴリーに表示するため除外
+            const sellerNum = (s.seller_number || '').toString();
+            if (sellerNum.toUpperCase().startsWith('FI')) return false;
+
             const status = s.status || '';
             // 「追客中」を含む OR 「他決→追客」と完全一致
             const isFollowingUp = status.includes('追客中') || status === '他決→追客';
@@ -1347,15 +1352,7 @@ export class SellerService extends BaseRepository {
           
           while (true) {
             const { data, error } = await this.table('sellers')
-              .select('id, status, next_call_date, visit_assignee, phone_contact_person, preferred_contact_time, contact_method')
-              .is('deleted_at', null)
-              .not('next_call_date', 'is', null)
-              .lte('next_call_date', todayJST)
-              .order('id')
-              .range(tcwiPage * tcwiPageSize, (tcwiPage + 1) * tcwiPageSize - 1);
-            
-            if (error) {
-              console.error('❌ todayCallWithInfoCandidates取得エラー:', error);
+              .select('id, seller_number, status, next_call_date, visit_assignee, phone_contact_person, preferred_contact_time, contact_method')
               break;
             }
             
@@ -1369,6 +1366,10 @@ export class SellerService extends BaseRepository {
           
           // JSでフィルタ
           const todayCallWithInfoIds = (todayCallWithInfoCandidates || []).filter((s: any) => {
+            // FI売主（福岡）は福岡専用カテゴリーに表示するため除外
+            const sellerNum = (s.seller_number || '').toString();
+            if (sellerNum.toUpperCase().startsWith('FI')) return false;
+
             const status = s.status || '';
             // 「追客中」を含む OR 「他決→追客」と完全一致
             const isFollowingUp = status.includes('追客中') || status === '他決→追客';
@@ -1436,6 +1437,10 @@ export class SellerService extends BaseRepository {
           
           // JavaScriptで当日TEL_未着手の条件を満たす売主を除外
           const unvaluatedIds = unvaluatedCandidates.filter(s => {
+            // FI売主（福岡）は福岡専用カテゴリーに表示するため除外
+            const sellerNum = (s.seller_number || '').toString();
+            if (sellerNum.toUpperCase().startsWith('FI')) return false;
+
             const hasNoValuation = !s.valuation_amount_1 && !s.valuation_amount_2 && !s.valuation_amount_3;
             const valuationMethod = s.valuation_method || '';
             const isNotRequired = valuationMethod === '不要';
@@ -1483,6 +1488,7 @@ export class SellerService extends BaseRepository {
         case 'todayCallNotStarted': {
           // 当日TEL_未着手: 全条件をDBレベルで直接フィルタ（IDリスト方式を廃止）
           // null を含むフィールドは or(field.is.null,...) で対応
+          // 🚨 重要: FI売主（seller_numberがFIで始まる）は福岡専用カテゴリーに表示するため除外
           query = query
             .eq('status', '追客中')
             .not('next_call_date', 'is', null)
@@ -1493,7 +1499,8 @@ export class SellerService extends BaseRepository {
             .or('confidence_level.is.null,and(confidence_level.neq.ダブり,confidence_level.neq.D,confidence_level.neq.AI査定)')
             .or('phone_contact_person.is.null,phone_contact_person.eq.')
             .or('preferred_contact_time.is.null,preferred_contact_time.eq.')
-            .or('contact_method.is.null,contact_method.eq.');
+            .or('contact_method.is.null,contact_method.eq.')
+            .not('seller_number', 'ilike', 'FI%');
           break;
         }
         case 'pinrichEmpty': {
