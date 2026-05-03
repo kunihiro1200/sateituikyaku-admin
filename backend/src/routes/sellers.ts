@@ -2182,6 +2182,27 @@ router.get('/:id/sales-history', authenticate, async (req: Request, res: Respons
       allowedTypes = [];
     }
 
+    // Excelシリアル値を日付文字列（YYYY/MM/DD）に変換
+    const excelSerialToDateStr = (value: any): string => {
+      if (!value) return '';
+      const str = String(value).trim();
+      if (!str) return '';
+      // 既に YYYY/MM/DD or YYYY-MM-DD 形式の場合はそのまま返す
+      if (/^\d{4}[\/\-]\d{1,2}[\/\-]\d{1,2}/.test(str)) return str;
+      // 数値（Excelシリアル値）の場合は変換
+      const num = parseFloat(str);
+      if (!isNaN(num) && num > 1000) {
+        // Excelのシリアル値は1900/1/1を1として計算（ただし1900/2/29バグあり）
+        const excelEpoch = new Date(1899, 11, 30); // 1899-12-30
+        const date = new Date(excelEpoch.getTime() + num * 86400000);
+        const y = date.getFullYear();
+        const m = String(date.getMonth() + 1).padStart(2, '0');
+        const d = String(date.getDate()).padStart(2, '0');
+        return `${y}/${m}/${d}`;
+      }
+      return str;
+    };
+
     // 住所マッチング＋種別フィルタリング
     const searchNormalized = normalizeAddress(searchKeyword);
 
@@ -2212,7 +2233,7 @@ router.get('/:id/sales-history', authenticate, async (req: Request, res: Respons
 
         return {
           propertyType: row['種別'] || '',
-          settlementDate: row['決済日'] || '',
+          settlementDate: excelSerialToDateStr(row['決済日'] || ''),
           address: row['所在地'] || '',
           displayAddress: row['住居表示（ATBB登録住所）'] || '',
           landArea: row['土地面積'] || '',
