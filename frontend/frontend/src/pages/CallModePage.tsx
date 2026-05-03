@@ -4450,6 +4450,20 @@ HP：https://ifoo-oita.com/
               エリア情勢
             </Button>
 
+            {/* 売買実績ボタン */}
+            <Button
+              variant="outlined"
+              onClick={() => window.open(`/sellers/${seller.id}/sales-history`, '_blank')}
+              size="small"
+              sx={{
+                borderColor: '#4a148c',
+                color: '#4a148c',
+                '&:hover': { borderColor: '#6a1b9a', backgroundColor: '#f3e5f5' },
+              }}
+            >
+              売買実績
+            </Button>
+
             {/* Emailテンプレート選択 */}
             <FormControl size="small" sx={{ minWidth: 200 }}>
               <InputLabel>Email送信</InputLabel>

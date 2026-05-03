@@ -2089,5 +2089,150 @@ JSONのみ返してください。`;
   }
 });
 
+// ============================================================
+// 売買実績エンドポイント
+// 売主の物件住所に基づいて物件スプシから売買実績を取得
+// ============================================================
+
+/**
+ * GET /api/sellers/:id/sales-history
+ * 売主の物件住所に基づいて物件スプシから売買実績を取得
+ * F列「所在地」またはG列「住居表示（ATBB登録住所）」に住所が含まれる行を返す
+ * 種別フィルタリング：
+ *   - マ/マンション → 物件スプシの種別が同じ（マ/マンション）
+ *   - 戸建/戸/戸建て → 物件スプシの種別が戸建/戸/戸建て + 土/土地
+ *   - 土/土地 → 物件スプシの種別が土/土地
+ */
+router.get('/:id/sales-history', authenticate, async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    // 売主情報を取得
+    const seller = await sellerService.getSeller(id);
+    if (!seller) {
+      return res.status(404).json({ error: 'Seller not found' });
+    }
+
+    // 物件住所を取得（property_address優先）
+    const rawAddress: string = (seller as any).propertyAddress || (seller as any).property_address || seller.address || '';
+    if (!rawAddress) {
+      return res.json({ results: [], address: '' });
+    }
+
+    // 「大字」を除去して検索キーワードを生成
+    // 例: 「大分市大字乙津町3-1-2」→「大分市乙津町」
+    // 例: 「大分市乙津町3-1-2」→「大分市乙津町」
+    const normalizeAddress = (addr: string): string => {
+      return addr.replace(/大字/g, '').trim();
+    };
+
+    // 住所から町名部分を抽出（番地を除く）
+    // 例: 「大分市乙津町3-1-2」→「大分市乙津町」
+    const extractTownPart = (addr: string): string => {
+      const normalized = normalizeAddress(addr);
+      // 数字（番地）の前で切る
+      const match = normalized.match(/^(.*?[町丁目区村])(?:\d|$)/);
+      if (match) return match[1];
+      // 数字で始まる部分の前で切る
+      const numMatch = normalized.match(/^(.*?)[\d０-９]/);
+      if (numMatch && numMatch[1].length > 2) return numMatch[1];
+      return normalized;
+    };
+
+    const searchKeyword = extractTownPart(rawAddress);
+    if (!searchKeyword || searchKeyword.length < 3) {
+      return res.json({ results: [], address: rawAddress, searchKeyword: '' });
+    }
+
+    // 売主の種別を取得
+    const sellerPropertyType: string = (seller as any).propertyType || (seller as any).property_type || '';
+
+    // 物件スプシにアクセス
+    const { GoogleSheetsClient } = await import('../services/GoogleSheetsClient');
+    const sheetsClient = new GoogleSheetsClient({
+      spreadsheetId: '1tI_iXaiLuWBggs5y0RH7qzkbHs9wnLLdRekAmjkhcLY',
+      sheetName: '物件',
+      serviceAccountKeyPath: process.env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH || 'google-service-account.json',
+    });
+    await sheetsClient.authenticate();
+
+    // 全データを取得
+    const allRows = await sheetsClient.readAll();
+
+    // 種別グループを判定
+    const MANSION_TYPES = ['マ', 'マンション'];
+    const HOUSE_TYPES = ['戸建', '戸', '戸建て'];
+    const LAND_TYPES = ['土', '土地'];
+
+    const isMansion = MANSION_TYPES.some(t => sellerPropertyType.includes(t));
+    const isHouse = HOUSE_TYPES.some(t => sellerPropertyType === t || sellerPropertyType.includes(t));
+    const isLand = LAND_TYPES.some(t => sellerPropertyType === t || sellerPropertyType.includes(t));
+
+    // 許可する種別リストを決定
+    let allowedTypes: string[] = [];
+    if (isMansion) {
+      allowedTypes = [...MANSION_TYPES];
+    } else if (isHouse) {
+      // 戸建の場合は土地も含める
+      allowedTypes = [...HOUSE_TYPES, ...LAND_TYPES];
+    } else if (isLand) {
+      allowedTypes = [...LAND_TYPES];
+    } else {
+      // 種別不明の場合は全て返す
+      allowedTypes = [];
+    }
+
+    // 住所マッチング＋種別フィルタリング
+    const searchNormalized = normalizeAddress(searchKeyword);
+
+    const results = allRows
+      .filter((row: any) => {
+        // F列「所在地」またはG列「住居表示（ATBB登録住所）」に住所が含まれるか
+        const address = normalizeAddress(String(row['所在地'] || ''));
+        const displayAddress = normalizeAddress(String(row['住居表示（ATBB登録住所）'] || ''));
+        const addressMatch = address.includes(searchNormalized) || displayAddress.includes(searchNormalized);
+        if (!addressMatch) return false;
+
+        // 種別フィルタリング
+        if (allowedTypes.length === 0) return true;
+        const rowType = String(row['種別'] || '').trim();
+        return allowedTypes.some(t => rowType === t || rowType.includes(t));
+      })
+      .map((row: any) => {
+        // atbb成約済み/非公開 → 表示ラベル変換
+        const atbbStatus = String(row['atbb成約済み/非公開'] || '');
+        let statusLabel = '';
+        if (atbbStatus.includes('非公開')) {
+          statusLabel = '成約済み';
+        } else if (atbbStatus.includes('公開')) {
+          statusLabel = '現在募集中';
+        } else {
+          statusLabel = atbbStatus;
+        }
+
+        return {
+          propertyType: row['種別'] || '',
+          settlementDate: row['決済日'] || '',
+          address: row['所在地'] || '',
+          displayAddress: row['住居表示（ATBB登録住所）'] || '',
+          landArea: row['土地面積'] || '',
+          buildingArea: row['建物面積'] || '',
+          salesPrice: row['売買価格'] || '',
+          atbbStatus: statusLabel,
+        };
+      });
+
+    res.json({
+      results,
+      address: rawAddress,
+      searchKeyword,
+      sellerPropertyType,
+    });
+  } catch (error: any) {
+    console.error('Sales history error:', error?.message || error);
+    res.status(500).json({ error: error?.message || '売買実績の取得に失敗しました' });
+  }
+});
+
 export default router;
 

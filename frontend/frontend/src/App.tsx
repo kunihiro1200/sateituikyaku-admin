@@ -38,6 +38,7 @@ import NearbyBuyersPage from './pages/NearbyBuyersPage';
 import OtherCompanyDistributionPage from './pages/OtherCompanyDistributionPage';
 import ReinsRegistrationPage from './pages/ReinsRegistrationPage';
 import ManagementRulesTestPage from './pages/ManagementRulesTestPage';
+import SalesHistoryPage from './pages/SalesHistoryPage';
 import ProtectedRoute from './components/ProtectedRoute';
 import { useAuthStore } from './store/authStore';
 import { GoogleMapsProvider } from './contexts/GoogleMapsContext';
@@ -301,6 +302,14 @@ function App() {
         }
       />
       <Route path="/sellers/:sellerId/area-report" element={<AreaReportPage />} />
+      <Route
+        path="/sellers/:id/sales-history"
+        element={
+          <ProtectedRoute>
+            <SalesHistoryPage />
+          </ProtectedRoute>
+        }
+      />
       <Route
         path="/management-rules-test"
         element={
