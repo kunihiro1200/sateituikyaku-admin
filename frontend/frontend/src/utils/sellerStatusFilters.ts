@@ -1167,6 +1167,10 @@ export const filterSellersByCategory = (
   sellers: (Seller | any)[],
   category: StatusCategory
 ): (Seller | any)[] => {
+  // FI（福岡）売主かどうかを判定するヘルパー
+  const isFiSeller = (s: any): boolean =>
+    ((s.sellerNumber || s.seller_number || '') as string).toUpperCase().startsWith('FI');
+
   // 動的カテゴリーの処理（switch文より前に処理）
   if (typeof category === 'string' && category.startsWith('visitAssigned:')) {
     const assignee = category.replace('visitAssigned:', '');
@@ -1178,14 +1182,17 @@ export const filterSellersByCategory = (
   }
   if (typeof category === 'string' && category.startsWith('todayCallWithInfo:')) {
     const targetLabel = category.replace('todayCallWithInfo:', '');
-    return sellers.filter(s => isTodayCallWithInfo(s) && getTodayCallWithInfoLabel(s) === targetLabel);
+    // FI売主は一般の当日TEL（内容）に含めない
+    return sellers.filter(s => !isFiSeller(s) && isTodayCallWithInfo(s) && getTodayCallWithInfoLabel(s) === targetLabel);
   }
 
   switch (category) {
     case 'todayCall':
-      return sellers.filter(s => isTodayCall(s) && !isTodayCallNotStarted(s));
+      // FI売主は福岡専用カテゴリー（fi:todayCall）に表示するため除外
+      return sellers.filter(s => !isFiSeller(s) && isTodayCall(s) && !isTodayCallNotStarted(s));
     case 'todayCallWithInfo':
-      return sellers.filter(isTodayCallWithInfo);
+      // FI売主は福岡専用カテゴリー（fi:todayCallWithInfo）に表示するため除外
+      return sellers.filter(s => !isFiSeller(s) && isTodayCallWithInfo(s));
     case 'todayCallAssigned':
       return sellers.filter(isTodayCallAssigned);
     case 'visitDayBefore':
@@ -1195,11 +1202,13 @@ export const filterSellersByCategory = (
     case 'visitCompleted':
       return sellers.filter(isVisitCompleted);
     case 'unvaluated':
-      return sellers.filter(isUnvaluated);
+      // FI売主は福岡専用カテゴリー（fi:unvaluated）に表示するため除外
+      return sellers.filter(s => !isFiSeller(s) && isUnvaluated(s));
     case 'mailingPending':
       return sellers.filter(isMailingPending);
     case 'todayCallNotStarted':
-      return sellers.filter(isTodayCallNotStarted);
+      // FI売主は福岡専用カテゴリー（fi:todayCallNotStarted）に表示するため除外
+      return sellers.filter(s => !isFiSeller(s) && isTodayCallNotStarted(s));
     case 'pinrichEmpty':
       return sellers.filter(isPinrichEmpty);
     case 'pinrichChangeRequired':

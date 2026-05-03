@@ -82,6 +82,10 @@ const getSellerCategory = (seller: Seller | any): StatusCategory | null => {
 const filterSellersByCategory = (sellers: any[], category: StatusCategory): any[] => {
   if (!sellers) return [];
 
+  // FI（福岡）売主かどうかを判定するヘルパー
+  const isFiSeller = (s: any): boolean =>
+    ((s.sellerNumber || s.seller_number || '') as string).toUpperCase().startsWith('FI');
+
   // FI（福岡）カテゴリの処理
   if (typeof category === 'string' && category.startsWith('fi:')) {
     const isFi = (s: any) => ((s.sellerNumber || s.seller_number || '') as string).startsWith('FI');
@@ -108,20 +112,25 @@ const filterSellersByCategory = (sellers: any[], category: StatusCategory): any[
   }
   if (typeof category === 'string' && category.startsWith('todayCallWithInfo:')) {
     const targetLabel = category.replace('todayCallWithInfo:', '');
-    return sellers.filter(s => isTodayCallWithInfo(s) && getTodayCallWithInfoLabel(s) === targetLabel);
+    // FI売主は福岡専用カテゴリーに表示するため除外
+    return sellers.filter(s => !isFiSeller(s) && isTodayCallWithInfo(s) && getTodayCallWithInfoLabel(s) === targetLabel);
   }
 
   switch (category) {
     case 'todayCall':
-      return sellers.filter(isTodayCall);
+      // FI売主は福岡専用カテゴリー（fi:todayCall）に表示するため除外
+      return sellers.filter(s => !isFiSeller(s) && isTodayCall(s));
     case 'todayCallWithInfo':
-      return sellers.filter(isTodayCallWithInfo);
+      // FI売主は福岡専用カテゴリー（fi:todayCallWithInfo）に表示するため除外
+      return sellers.filter(s => !isFiSeller(s) && isTodayCallWithInfo(s));
     case 'unvaluated':
-      return sellers.filter(isUnvaluated);
+      // FI売主は福岡専用カテゴリー（fi:unvaluated）に表示するため除外
+      return sellers.filter(s => !isFiSeller(s) && isUnvaluated(s));
     case 'mailingPending':
       return sellers.filter(isMailingPending);
     case 'todayCallNotStarted':
-      return sellers.filter(isTodayCallNotStarted);
+      // FI売主は福岡専用カテゴリー（fi:todayCallNotStarted）に表示するため除外
+      return sellers.filter(s => !isFiSeller(s) && isTodayCallNotStarted(s));
     case 'pinrichEmpty':
       return sellers.filter(isPinrichEmpty);
     case 'todayCallAssigned':
