@@ -179,10 +179,10 @@ export class TokiExtractService {
       // フォルダ内のファイル一覧を取得
       const files = await this.driveService.listFiles(folderId);
 
-      // 「全部事項」を含むPDFを検索
+      // 「全部事項」を含むPDFを検索（「全部謄本（土地・建物）」も対象）
       const tokiFile = files.find(
         (f) =>
-          f.name.includes('全部事項') &&
+          (f.name.includes('全部事項') || f.name.includes('全部謄本')) &&
           (f.mimeType === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf'))
       );
 
@@ -223,7 +223,7 @@ export class TokiExtractService {
 
       const files = await this.driveService.listFiles(folderId);
 
-      // 「建物_全部事項」を含むPDFを優先検索、なければ「全部事項」を含むPDFにフォールバック
+      // 「建物_全部事項」を含むPDFを優先検索、なければ「全部事項」「全部謄本」を含むPDFにフォールバック
       let tokiFile = files.find(
         (f) =>
           f.name.includes('建物_全部事項') &&
@@ -231,10 +231,10 @@ export class TokiExtractService {
       );
 
       if (!tokiFile) {
-        // フォールバック：「全部事項」を含むPDFを検索
+        // フォールバック：「全部事項」または「全部謄本」を含むPDFを検索
         tokiFile = files.find(
           (f) =>
-            f.name.includes('全部事項') &&
+            (f.name.includes('全部事項') || f.name.includes('全部謄本')) &&
             (f.mimeType === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf'))
         );
       }
