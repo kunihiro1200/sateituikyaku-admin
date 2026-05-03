@@ -344,7 +344,22 @@ export const VisitPreparationPopup: React.FC<VisitPreparationPopupProps> = ({
         <span>（リンクなし）</span>
       ),
     },
-    // 8. ハウスメーカー（コメントにハウスメーカー名がある場合のみ）
+    // 8. 売買実績
+    {
+      label: '売買実績',
+      content: sellerId ? (
+        <a
+          href={`/sellers/${sellerId}/sales-history`}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          売買実績
+        </a>
+      ) : (
+        <span>（リンクなし）</span>
+      ),
+    },
+    // 9. ハウスメーカー（コメントにハウスメーカー名がある場合のみ）
     ...(hasHouseMaker ? [{
       label: 'ハウスメーカー',
       content: (
