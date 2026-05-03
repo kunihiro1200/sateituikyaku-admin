@@ -1589,9 +1589,37 @@ export class SellerService extends BaseRepository {
             .or('visit_assignee.is.null,visit_assignee.eq.,visit_assignee.eq.外す');
           break;
         default: {
-          // visitAssigned:xxx または todayCallAssigned:xxx または todayCallWithInfo:xxx の動的カテゴリ
+          // visitAssigned:xxx または todayCallAssigned:xxx または todayCallWithInfo:xxx または fi:xxx の動的カテゴリ
           const dynamicCategory = statusCategory as string;
-          if (dynamicCategory.startsWith('visitAssigned:')) {
+          if (dynamicCategory.startsWith('fi:')) {
+            // 福岡（FI）カテゴリ：seller_numberがFIで始まる売主のみ
+            const fiSubCat = dynamicCategory.replace('fi:', '');
+            query = query.ilike('seller_number', 'FI%');
+            if (fiSubCat === 'todayCall') {
+              query = query
+                .or('visit_assignee.is.null,visit_assignee.eq.,visit_assignee.eq.外す')
+                .lte('next_call_date', todayJST)
+                .or('status.ilike.%追客中%,status.eq.他決→追客')
+                .not('status', 'ilike', '%追客不要%');
+            } else if (fiSubCat === 'todayCallNotStarted') {
+              query = query
+                .or('visit_assignee.is.null,visit_assignee.eq.,visit_assignee.eq.外す')
+                .lte('next_call_date', todayJST)
+                .eq('status', '追客中')
+                .not('status', 'ilike', '%追客不要%');
+            } else if (fiSubCat === 'todayCallWithInfo' || fiSubCat.startsWith('todayCallWithInfo:')) {
+              query = query
+                .or('visit_assignee.is.null,visit_assignee.eq.,visit_assignee.eq.外す')
+                .lte('next_call_date', todayJST)
+                .or('status.ilike.%追客中%,status.eq.他決→追客')
+                .not('status', 'ilike', '%追客不要%');
+            } else if (fiSubCat === 'unvaluated') {
+              query = query
+                .or('visit_assignee.is.null,visit_assignee.eq.,visit_assignee.eq.外す')
+                .ilike('status', '%追客中%')
+                .gte('inquiry_date', '2025-12-08');
+            }
+          } else if (dynamicCategory.startsWith('visitAssigned:')) {
             const assignee = dynamicCategory.replace('visitAssigned:', '');
             // 担当者別（営担が指定のイニシャルの全売主、一般媒介・専任媒介・追客不要・他社買取は除外）
             query = query
@@ -1742,10 +1770,14 @@ export class SellerService extends BaseRepository {
       }
     }
 
-    // todayCallWithInfo:xxx の場合、ラベルでJS側フィルタリング
+    // todayCallWithInfo:xxx または fi:todayCallWithInfo:xxx の場合、ラベルでJS側フィルタリング
     let finalSellers = decryptedSellers;
-    if (typeof statusCategory === 'string' && statusCategory.startsWith('todayCallWithInfo:')) {
-      const targetLabel = statusCategory.replace('todayCallWithInfo:', '');
+    const isLabelFilter = (typeof statusCategory === 'string') &&
+      (statusCategory.startsWith('todayCallWithInfo:') || statusCategory.startsWith('fi:todayCallWithInfo:'));
+    if (isLabelFilter) {
+      const targetLabel = (statusCategory as string).startsWith('fi:todayCallWithInfo:')
+        ? (statusCategory as string).replace('fi:todayCallWithInfo:', '')
+        : (statusCategory as string).replace('todayCallWithInfo:', '');
       const isValidVal = (v: string | null | undefined): boolean =>
         !!(v && v.trim() !== '' && v.trim().toLowerCase() !== 'null');
       finalSellers = decryptedSellers.filter((s: any) => {
@@ -1761,6 +1793,27 @@ export class SellerService extends BaseRepository {
       });
     }
 
+    // fi:todayCallNotStarted の場合、JS側で不通・確度・反響日付フィルタリング
+    if (typeof statusCategory === 'string' && statusCategory === 'fi:todayCallNotStarted') {
+      const todayJSTStr = (() => {
+        const now = new Date();
+        const jst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+        return `${jst.getUTCFullYear()}-${String(jst.getUTCMonth() + 1).padStart(2, '0')}-${String(jst.getUTCDate()).padStart(2, '0')}`;
+      })();
+      finalSellers = decryptedSellers.filter((s: any) => {
+        const hasInfo = (s.phoneContactPerson || s.phone_contact_person || '').trim() ||
+                        (s.preferredContactTime || s.preferred_contact_time || '').trim() ||
+                        (s.contactMethod || s.contact_method || '').trim();
+        if (hasInfo) return false;
+        const unreachable = s.unreachableStatus || s.unreachable_status || '';
+        if (unreachable && unreachable.trim() !== '') return false;
+        const confidence = s.confidenceLevel || s.confidence_level || '';
+        if (confidence === 'ダブり' || confidence === 'D' || confidence === 'AI査定') return false;
+        const inquiryDate = (s.inquiryDate || s.inquiry_date || '').substring(0, 10);
+        return inquiryDate >= '2026-01-01';
+      });
+    }
+
     // lastCalledAt を各売主に付与（キーは sellerNumber）
     const sellersWithCallDate = finalSellers.map((seller: any) => ({
       ...seller,
@@ -1769,19 +1822,20 @@ export class SellerService extends BaseRepository {
 
     const result = {
       data: sellersWithCallDate,
-      total: (typeof statusCategory === 'string' && statusCategory.startsWith('todayCallWithInfo:'))
+      total: isLabelFilter || statusCategory === 'fi:todayCallNotStarted'
         ? sellersWithCallDate.length
         : (count || 0),
       page,
       pageSize,
-      totalPages: Math.ceil(((typeof statusCategory === 'string' && statusCategory.startsWith('todayCallWithInfo:'))
+      totalPages: Math.ceil((isLabelFilter || statusCategory === 'fi:todayCallNotStarted'
         ? sellersWithCallDate.length
         : (count || 0)) / pageSize),
     };
 
     // キャッシュに保存（インメモリ + Redis）
     // 日付依存カテゴリ（visitDayBefore等）はキャッシュしない（日付が変わると結果が変わるため）
-    const skipCache = statusCategory === 'visitDayBefore' || statusCategory === 'visitCompleted' || (typeof statusCategory === 'string' && statusCategory.startsWith('todayCallWithInfo:'));
+    const skipCache = statusCategory === 'visitDayBefore' || statusCategory === 'visitCompleted' || isLabelFilter ||
+      (typeof statusCategory === 'string' && statusCategory.startsWith('fi:'));
     if (!skipCache) {
       setListSellersCache(cacheKey, result);
       await CacheHelper.set(cacheKey, result, CACHE_TTL.SELLER_LIST);
@@ -2473,6 +2527,12 @@ export class SellerService extends BaseRepository {
     todayCallAssignedCounts: Record<string, number>;
     todayCallWithInfoLabels: string[];
     todayCallWithInfoLabelCounts: Record<string, number>;
+    // 福岡（FI）専用カウント
+    fi_todayCall: number;
+    fi_todayCallNotStarted: number;
+    fi_todayCallWithInfo: number;
+    fi_unvaluated: number;
+    fi_todayCallWithInfoLabelCounts: Record<string, number>;
   }> {
     try {
       // seller_sidebar_countsテーブルから全行を取得（1クエリで高速）
@@ -2491,6 +2551,7 @@ export class SellerService extends BaseRepository {
       const visitAssignedCounts: Record<string, number> = {};
       const todayCallAssignedCounts: Record<string, number> = {};
       const todayCallWithInfoLabelCounts: Record<string, number> = {};
+      const fi_todayCallWithInfoLabelCounts: Record<string, number> = {};
 
       rows.forEach((r: any) => {
         if (r.category === 'visitAssigned' && r.assignee) {
@@ -2499,6 +2560,8 @@ export class SellerService extends BaseRepository {
           todayCallAssignedCounts[r.assignee] = r.count;
         } else if (r.category === 'todayCallWithInfo' && r.label) {
           todayCallWithInfoLabelCounts[r.label] = r.count;
+        } else if (r.category === 'fi_todayCallWithInfo' && r.label) {
+          fi_todayCallWithInfoLabelCounts[r.label] = r.count;
         }
       });
 
@@ -2525,6 +2588,12 @@ export class SellerService extends BaseRepository {
         todayCallAssignedCounts,
         todayCallWithInfoLabels,
         todayCallWithInfoLabelCounts,
+        // 福岡（FI）専用カウント
+        fi_todayCall: getCount('fi_todayCall'),
+        fi_todayCallNotStarted: getCount('fi_todayCallNotStarted'),
+        fi_todayCallWithInfo: getCount('fi_todayCallWithInfo'),
+        fi_unvaluated: getCount('fi_unvaluated'),
+        fi_todayCallWithInfoLabelCounts,
       };
     } catch (err) {
       console.warn('⚠️ [SidebarCounts] Unexpected error, falling back to DB calculation:', err);
@@ -2555,6 +2624,11 @@ export class SellerService extends BaseRepository {
     todayCallAssignedCounts: Record<string, number>;
     todayCallWithInfoLabels: string[];
     todayCallWithInfoLabelCounts: Record<string, number>;
+    fi_todayCall: number;
+    fi_todayCallNotStarted: number;
+    fi_todayCallWithInfo: number;
+    fi_unvaluated: number;
+    fi_todayCallWithInfoLabelCounts: Record<string, number>;
   }> {
     // JST今日の日付を計算
     const now = new Date();
@@ -2635,20 +2709,20 @@ export class SellerService extends BaseRepository {
         .not('status', 'ilike', '%他社買取%'),
       // 5. 当日TEL分/当日TEL（内容）用データ（複雑なフィルタリングが必要）
       this.table('sellers')
-        .select('id, visit_assignee, phone_contact_person, preferred_contact_time, contact_method, unreachable_status, inquiry_date, pinrich_status, confidence_level, exclusion_date, status')
+        .select('id, seller_number, visit_assignee, phone_contact_person, preferred_contact_time, contact_method, unreachable_status, inquiry_date, pinrich_status, confidence_level, exclusion_date, status')
         .is('deleted_at', null)
         .ilike('status', '%追客中%')
         .not('next_call_date', 'is', null)
         .lte('next_call_date', todayJST),
       this.table('sellers')
-        .select('id, visit_assignee, phone_contact_person, preferred_contact_time, contact_method, unreachable_status, inquiry_date, pinrich_status, confidence_level, exclusion_date, status')
+        .select('id, seller_number, visit_assignee, phone_contact_person, preferred_contact_time, contact_method, unreachable_status, inquiry_date, pinrich_status, confidence_level, exclusion_date, status')
         .is('deleted_at', null)
         .eq('status', '他決→追客')
         .not('next_call_date', 'is', null)
         .lte('next_call_date', todayJST),
       // 6. 未査定用データ（複雑なフィルタリングが必要）
       this.table('sellers')
-        .select('id, status, valuation_amount_1, valuation_amount_2, valuation_amount_3, visit_assignee, valuation_method, inquiry_date, unreachable_status, confidence_level, exclusion_date, next_call_date, phone_contact_person, preferred_contact_time, contact_method')
+        .select('id, seller_number, status, valuation_amount_1, valuation_amount_2, valuation_amount_3, visit_assignee, valuation_method, inquiry_date, unreachable_status, confidence_level, exclusion_date, next_call_date, phone_contact_person, preferred_contact_time, contact_method')
         .is('deleted_at', null)
         .ilike('status', '%追客中%')
         .gte('inquiry_date', cutoffDate)
@@ -2769,7 +2843,16 @@ export class SellerService extends BaseRepository {
       return !hasValidVisitAssignee(s.visit_assignee);
     });
 
-    const todayCallWithInfoSellers = filteredTodayCallSellers.filter(s => {
+    // FI（福岡）売主と通常売主を分離（seller_numberがFIで始まるかどうか）
+    const isFiSeller = (s: any): boolean => {
+      const num = (s.seller_number || s.sellerNumber || '').toString();
+      return num.startsWith('FI');
+    };
+
+    const filteredTodayCallNormal = filteredTodayCallSellers.filter(s => !isFiSeller(s));
+    const filteredTodayCallFI = filteredTodayCallSellers.filter(s => isFiSeller(s));
+
+    const todayCallWithInfoSellers = filteredTodayCallNormal.filter(s => {
       const hasInfo = (s.phone_contact_person && s.phone_contact_person.trim() !== '') ||
                       (s.preferred_contact_time && s.preferred_contact_time.trim() !== '') ||
                       (s.contact_method && s.contact_method.trim() !== '');
@@ -2790,7 +2873,7 @@ export class SellerService extends BaseRepository {
     });
     const todayCallWithInfoLabels = Object.keys(labelCountMap);
 
-    const todayCallNoInfoCount = filteredTodayCallSellers.filter(s => {
+    const todayCallNoInfoCount = filteredTodayCallNormal.filter(s => {
       const hasInfo = (s.phone_contact_person && s.phone_contact_person.trim() !== '') ||
                       (s.preferred_contact_time && s.preferred_contact_time.trim() !== '') ||
                       (s.contact_method && s.contact_method.trim() !== '');
@@ -2809,9 +2892,9 @@ export class SellerService extends BaseRepository {
       return !isNotStarted;
     }).length;
 
-    // 6. 未査定のカウント
+    // 6. 未査定のカウント（FI分離）
     const unvaluatedSellers = unvaluatedSellersResult.data || [];
-    const unvaluatedCount = unvaluatedSellers.filter(s => {
+    const unvaluatedFilterFn = (s: any): boolean => {
       const hasNoValuation = !s.valuation_amount_1 && !s.valuation_amount_2 && !s.valuation_amount_3;
       const valuationMethod = (s as any).valuation_method || '';
       const isNotRequired = valuationMethod === '不要';
@@ -2823,7 +2906,6 @@ export class SellerService extends BaseRepository {
                       ((s as any).contact_method?.trim());
       const unreachable = (s as any).unreachable_status || '';
       const confidence = (s as any).confidence_level || '';
-      const exclusionDate = (s as any).exclusion_date || '';
       const inquiryDate = (s as any).inquiry_date || '';
       const isTodayCallNotStarted = (
         status === '追客中' &&
@@ -2834,7 +2916,13 @@ export class SellerService extends BaseRepository {
         inquiryDate >= '2026-01-01'
       );
       return !isTodayCallNotStarted;
-    }).length;
+    };
+    const isFiSellerNum = (s: any): boolean => {
+      const num = (s.seller_number || s.sellerNumber || '').toString();
+      return num.startsWith('FI');
+    };
+    const unvaluatedCount = unvaluatedSellers.filter(s => !isFiSellerNum(s) && unvaluatedFilterFn(s)).length;
+    const fi_unvaluatedCount = unvaluatedSellers.filter(s => isFiSellerNum(s) && unvaluatedFilterFn(s)).length;
 
     // 7. 査定（郵送）カウント
     const mailingPendingCount = mailingPendingCountResult.count || 0;
@@ -2843,7 +2931,7 @@ export class SellerService extends BaseRepository {
     // バグ修正: filteredTodayCallSellers は ilike('%追客中%') ベースのため「除外後追客中」などが混入する
     // listSellers() の todayCallNotStarted と同じ条件（status === '追客中' 完全一致）を使用するため
     // filteredTodayCallSellers から status === '追客中' のみを抽出した notStartedBaseSellers を使用する
-    const notStartedBaseSellers = filteredTodayCallSellers.filter(s => (s as any).status === '追客中');
+    const notStartedBaseSellers = filteredTodayCallNormal.filter(s => (s as any).status === '追客中');
     const todayCallNotStartedCount = notStartedBaseSellers.filter(s => {
       const hasInfo = (s.phone_contact_person && s.phone_contact_person.trim() !== '') ||
                       (s.preferred_contact_time && s.preferred_contact_time.trim() !== '') ||
@@ -2855,6 +2943,56 @@ export class SellerService extends BaseRepository {
       if (confidence === 'ダブり' || confidence === 'D' || confidence === 'AI査定') return false;
       const inquiryDate = (s as any).inquiry_date || '';
       return inquiryDate >= '2026-01-01';
+    }).length;
+
+    // FI（福岡）専用カウント計算
+    const isValidValueFI = (v: string | null | undefined): boolean =>
+      !!(v && v.trim() !== '' && v.trim().toLowerCase() !== 'null');
+    const fi_todayCallWithInfoSellers = filteredTodayCallFI.filter(s => {
+      const hasInfo = (s.phone_contact_person && s.phone_contact_person.trim() !== '') ||
+                      (s.preferred_contact_time && s.preferred_contact_time.trim() !== '') ||
+                      (s.contact_method && s.contact_method.trim() !== '');
+      return hasInfo;
+    });
+    const fi_todayCallWithInfoCount = fi_todayCallWithInfoSellers.length;
+    const fi_labelCountMap: Record<string, number> = {};
+    fi_todayCallWithInfoSellers.forEach(s => {
+      const parts: string[] = [];
+      if (isValidValueFI(s.phone_contact_person)) parts.push(s.phone_contact_person!.trim());
+      if (isValidValueFI(s.preferred_contact_time)) parts.push(s.preferred_contact_time!.trim());
+      if (isValidValueFI(s.contact_method)) parts.push(s.contact_method!.trim());
+      const label = parts.length > 0 ? `当日TEL(${parts.join('・')})` : '当日TEL（内容）';
+      fi_labelCountMap[label] = (fi_labelCountMap[label] || 0) + 1;
+    });
+    const fi_notStartedBaseSellers = filteredTodayCallFI.filter(s => (s as any).status === '追客中');
+    const fi_todayCallNotStartedCount = fi_notStartedBaseSellers.filter(s => {
+      const hasInfo = (s.phone_contact_person && s.phone_contact_person.trim() !== '') ||
+                      (s.preferred_contact_time && s.preferred_contact_time.trim() !== '') ||
+                      (s.contact_method && s.contact_method.trim() !== '');
+      if (hasInfo) return false;
+      const unreachable = (s as any).unreachable_status || '';
+      if (unreachable && unreachable.trim() !== '') return false;
+      const confidence = (s as any).confidence_level || '';
+      if (confidence === 'ダブり' || confidence === 'D' || confidence === 'AI査定') return false;
+      const inquiryDate = (s as any).inquiry_date || '';
+      return inquiryDate >= '2026-01-01';
+    }).length;
+    const fi_todayCallNoInfoCount = filteredTodayCallFI.filter(s => {
+      const hasInfo = (s.phone_contact_person && s.phone_contact_person.trim() !== '') ||
+                      (s.preferred_contact_time && s.preferred_contact_time.trim() !== '') ||
+                      (s.contact_method && s.contact_method.trim() !== '');
+      if (hasInfo) return false;
+      const status = (s as any).status || '';
+      const unreachable = (s as any).unreachable_status || '';
+      const confidence = (s as any).confidence_level || '';
+      const inquiryDate = (s as any).inquiry_date || '';
+      const isNotStarted = (
+        status === '追客中' &&
+        !unreachable &&
+        confidence !== 'ダブり' && confidence !== 'D' && confidence !== 'AI査定' &&
+        inquiryDate >= '2026-01-01'
+      );
+      return !isNotStarted;
     }).length;
 
     // 9. Pinrich空欄: 次電日に関係なく「追客中 + Pinrich空欄 + 反響日2026/1/1以降 + 営担なし」
@@ -2965,6 +3103,12 @@ export class SellerService extends BaseRepository {
       todayCallAssignedCounts,
       todayCallWithInfoLabels,
       todayCallWithInfoLabelCounts: labelCountMap,
+      // 福岡（FI）専用カウント
+      fi_todayCall: fi_todayCallNoInfoCount || 0,
+      fi_todayCallNotStarted: fi_todayCallNotStartedCount || 0,
+      fi_todayCallWithInfo: fi_todayCallWithInfoCount || 0,
+      fi_unvaluated: fi_unvaluatedCount || 0,
+      fi_todayCallWithInfoLabelCounts: fi_labelCountMap,
     };
 
     console.log(`✅ [Performance] Sidebar counts calculation completed in ${Date.now() - startTime}ms`);

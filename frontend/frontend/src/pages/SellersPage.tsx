@@ -157,6 +157,12 @@ export default function SellersPage() {
     todayCallAssignedCounts?: Record<string, number>;
     todayCallWithInfoLabels?: string[];
     todayCallWithInfoLabelCounts?: Record<string, number>;
+    // 福岡（FI）専用カウント
+    fi_todayCall?: number;
+    fi_todayCallNotStarted?: number;
+    fi_todayCallWithInfo?: number;
+    fi_unvaluated?: number;
+    fi_todayCallWithInfoLabelCounts?: Record<string, number>;
   }>({
     todayCall: 0,
     todayCallWithInfo: 0,
@@ -171,6 +177,11 @@ export default function SellersPage() {
     todayCallAssignedCounts: {},
     todayCallWithInfoLabels: [],
     todayCallWithInfoLabelCounts: {},
+    fi_todayCall: 0,
+    fi_todayCallNotStarted: 0,
+    fi_todayCallWithInfo: 0,
+    fi_unvaluated: 0,
+    fi_todayCallWithInfoLabelCounts: {},
   });
   const [sidebarLoading, setSidebarLoading] = useState(!pageDataCache.get(CACHE_KEYS.SELLERS_SIDEBAR_COUNTS));
   // 担当者イニシャル一覧（スタッフスプレッドシートから取得）
@@ -709,6 +720,11 @@ export default function SellersPage() {
                    selectedCategory === 'unvisitedOtherDecision' ? '未訪問他決' :
                    typeof selectedCategory === 'string' && selectedCategory.startsWith('visitAssigned:') ? `担当（${selectedCategory.replace('visitAssigned:', '')}）` :
                    typeof selectedCategory === 'string' && selectedCategory.startsWith('todayCallAssigned:') ? `当日TEL(${selectedCategory.replace('todayCallAssigned:', '')})` :
+                   typeof selectedCategory === 'string' && selectedCategory === 'fi:todayCall' ? '福岡 当日TEL分' :
+                   typeof selectedCategory === 'string' && selectedCategory === 'fi:todayCallNotStarted' ? '福岡 当日TEL_未着手' :
+                   typeof selectedCategory === 'string' && selectedCategory === 'fi:todayCallWithInfo' ? '福岡 当日TEL（内容）' :
+                   typeof selectedCategory === 'string' && selectedCategory === 'fi:unvaluated' ? '福岡 未査定' :
+                   typeof selectedCategory === 'string' && selectedCategory.startsWith('fi:todayCallWithInfo:') ? `福岡 ${selectedCategory.replace('fi:todayCallWithInfo:', '')}` :
                    selectedCategory}
                 </Typography>
                 <Chip label={`${total}件`} size="small" color="primary" />

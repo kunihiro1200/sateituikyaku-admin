@@ -70,6 +70,12 @@ export interface CategoryCounts {
   todayCallAssignedCounts?: Record<string, number>; // 担当者別当日TEL件数
   todayCallWithInfoLabels?: string[];               // 当日TEL（内容）のユニークラベル一覧（全件対象）
   todayCallWithInfoLabelCounts?: Record<string, number>; // ラベル別件数（全件対象）
+  // 福岡（FI）専用カウント
+  fi_todayCall?: number;
+  fi_todayCallNotStarted?: number;
+  fi_todayCallWithInfo?: number;
+  fi_unvaluated?: number;
+  fi_todayCallWithInfoLabelCounts?: Record<string, number>;
 }
 
 /**

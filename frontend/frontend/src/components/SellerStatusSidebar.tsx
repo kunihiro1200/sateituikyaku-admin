@@ -81,7 +81,23 @@ const getSellerCategory = (seller: Seller | any): StatusCategory | null => {
  */
 const filterSellersByCategory = (sellers: any[], category: StatusCategory): any[] => {
   if (!sellers) return [];
-  
+
+  // FI（福岡）カテゴリの処理
+  if (typeof category === 'string' && category.startsWith('fi:')) {
+    const isFi = (s: any) => ((s.sellerNumber || s.seller_number || '') as string).startsWith('FI');
+    const subCat = category.replace('fi:', '') as StatusCategory;
+    const fiSellers = sellers.filter(isFi);
+    if (subCat === 'todayCall') return fiSellers.filter(isTodayCall);
+    if (subCat === 'todayCallNotStarted') return fiSellers.filter(isTodayCallNotStarted);
+    if (subCat === 'unvaluated') return fiSellers.filter(isUnvaluated);
+    if (subCat === 'todayCallWithInfo') return fiSellers.filter(isTodayCallWithInfo);
+    if (typeof subCat === 'string' && subCat.startsWith('todayCallWithInfo:')) {
+      const targetLabel = subCat.replace('todayCallWithInfo:', '');
+      return fiSellers.filter(s => isTodayCallWithInfo(s) && getTodayCallWithInfoLabel(s) === targetLabel);
+    }
+    return fiSellers;
+  }
+
   if (typeof category === 'string' && category.startsWith('visitAssigned:')) {
     const assignee = category.replace('visitAssigned:', '');
     return sellers.filter(s => isVisitAssignedTo(s, assignee));
@@ -158,6 +174,8 @@ const getCategoryLabel = (category: StatusCategory): string => {
       return '訪問後他決';
     case 'unvisitedOtherDecision':
       return '未訪問他決';
+    case 'fi':
+      return 'FI売主';
     case 'all':
       return 'All';
     default:
@@ -169,6 +187,15 @@ const getCategoryLabel = (category: StatusCategory): string => {
       }
       if (typeof category === 'string' && category.startsWith('todayCallWithInfo:')) {
         return category.replace('todayCallWithInfo:', '');
+      }
+      // FI（福岡）カテゴリ
+      if (typeof category === 'string' && category.startsWith('fi:')) {
+        const sub = category.replace('fi:', '');
+        if (sub === 'todayCall') return '当日TEL分';
+        if (sub === 'todayCallNotStarted') return '当日TEL_未着手';
+        if (sub === 'todayCallWithInfo') return '当日TEL（内容）';
+        if (sub.startsWith('todayCallWithInfo:')) return sub.replace('todayCallWithInfo:', '');
+        if (sub === 'unvaluated') return '未査定';
       }
       return category as string;
   }
@@ -207,6 +234,8 @@ const getCategoryColor = (category: StatusCategory): string => {
       return '#ff9800';
     case 'unvisitedOtherDecision':
       return '#ff5722';
+    case 'fi':
+      return '#1a237e';
     default:
       if (typeof category === 'string' && category.startsWith('visitAssigned:')) {
         return '#4caf50';
@@ -216,6 +245,14 @@ const getCategoryColor = (category: StatusCategory): string => {
       }
       if (typeof category === 'string' && category.startsWith('todayCallWithInfo:')) {
         return '#9c27b0';
+      }
+      // FI（福岡）カテゴリ
+      if (typeof category === 'string' && category.startsWith('fi:')) {
+        const sub = category.replace('fi:', '');
+        if (sub === 'todayCall' || sub.startsWith('todayCall')) return '#d32f2f';
+        if (sub === 'todayCallNotStarted') return '#ff9800';
+        if (sub === 'unvaluated') return '#ed6c02';
+        if (sub.startsWith('todayCallWithInfo')) return '#9c27b0';
       }
       return '#555555';
   }
@@ -477,6 +514,100 @@ function SellerStatusSidebarComponent({
     );
   };
 
+  // 福岡（FI）セクションをレンダリング
+  const renderFukuokaSection = () => {
+    const fiTodayCall = categoryCounts?.fi_todayCall ?? 0;
+    const fiTodayCallNotStarted = categoryCounts?.fi_todayCallNotStarted ?? 0;
+    const fiTodayCallWithInfo = categoryCounts?.fi_todayCallWithInfo ?? 0;
+    const fiUnvaluated = categoryCounts?.fi_unvaluated ?? 0;
+    const fiLabelCounts = categoryCounts?.fi_todayCallWithInfoLabelCounts ?? {};
+    const fiTotal = fiTodayCall + fiTodayCallNotStarted + fiTodayCallWithInfo + fiUnvaluated;
+
+    // FI売主が1件もない場合は表示しない
+    if (fiTotal === 0 && Object.keys(fiLabelCounts).length === 0) return null;
+
+    // FI専用カテゴリキーのプレフィックス
+    const FI_PREFIX = 'fi:';
+
+    const renderFiButton = (
+      categoryKey: StatusCategory,
+      label: string,
+      count: number,
+      color: string,
+      indent = false,
+    ) => {
+      if (count === 0) return null;
+      const isExpanded = expandedCategory === categoryKey;
+      const active = isActive(categoryKey);
+      return (
+        <Button
+          key={categoryKey}
+          fullWidth
+          onClick={() => handleCategoryClick(categoryKey)}
+          sx={{
+            justifyContent: 'space-between',
+            textAlign: 'left',
+            fontSize: '0.85rem',
+            py: 1,
+            pl: indent ? 3.5 : 1.5,
+            pr: 1.5,
+            color: active || isExpanded ? 'white' : color,
+            bgcolor: active || isExpanded ? color : 'transparent',
+            borderRadius: 1,
+            '&:hover': {
+              bgcolor: active || isExpanded ? color : `${color}22`,
+            },
+          }}
+        >
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <span>{label}</span>
+            <Chip
+              label={count}
+              size="small"
+              sx={{
+                height: 20,
+                fontSize: '0.7rem',
+                bgcolor: active || isExpanded ? 'rgba(255,255,255,0.3)' : undefined,
+                color: active || isExpanded ? 'white' : undefined,
+              }}
+            />
+          </Box>
+          {isExpanded ? <ExpandLess /> : <ExpandMore />}
+        </Button>
+      );
+    };
+
+    return (
+      <Box sx={{ mt: 0.5, pt: 0.5, borderTop: '1px solid', borderColor: 'indigo.200', bgcolor: '#e8eaf6', borderRadius: 1, px: 0.5 }}>
+        {/* セクションヘッダー */}
+        <Typography variant="caption" sx={{ px: 1.5, py: 0.5, display: 'block', color: '#1a237e', fontWeight: 'bold', fontSize: '0.75rem' }}>
+          ── 福岡 ──
+        </Typography>
+
+        {/* 当日TEL_未着手（FI） */}
+        {renderFiButton(`${FI_PREFIX}todayCallNotStarted` as StatusCategory, '当日TEL_未着手', fiTodayCallNotStarted, '#ff9800')}
+
+        {/* 当日TEL分（FI） */}
+        {renderFiButton(`${FI_PREFIX}todayCall` as StatusCategory, '当日TEL分', fiTodayCall, '#d32f2f')}
+
+        {/* 当日TEL（内容）ラベル別（FI） */}
+        {Object.keys(fiLabelCounts).length > 0
+          ? Object.entries(fiLabelCounts).map(([label, count]) => {
+              if (!count) return null;
+              const catKey = `${FI_PREFIX}todayCallWithInfo:${label}` as StatusCategory;
+              return renderFiButton(catKey, label, count, '#9c27b0');
+            })
+          : fiTodayCallWithInfo > 0
+            ? renderFiButton(`${FI_PREFIX}todayCallWithInfo` as StatusCategory, '当日TEL（内容）', fiTodayCallWithInfo, '#9c27b0')
+            : null
+        }
+
+        {/* 未査定（FI） */}
+        {renderFiButton(`${FI_PREFIX}unvaluated` as StatusCategory, '未査定', fiUnvaluated, '#ed6c02')}
+      </Box>
+    );
+  };
+
   // 担当者別カテゴリーをレンダリング
   // assigneeInitials prop（スタッフスプレッドシートから取得）を使用
   const renderAssigneeCategories = () => {
@@ -708,6 +839,9 @@ function SellerStatusSidebarComponent({
 
       {/* 担当者別カテゴリー（動的生成・区切り線なし） */}
       {/* assigneeInitialsが空でもsellersから動的取得するため常に表示 */}
+      {/* 福岡（FI）セクション：担当（）より上に表示 */}
+      {renderFukuokaSection()}
+
       <Box sx={{ mt: 0.5 }}>
         {renderAssigneeCategories()}
       </Box>
