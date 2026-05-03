@@ -2120,26 +2120,31 @@ router.get('/:id/sales-history', authenticate, async (req: Request, res: Respons
     }
 
     // 「大字」を除去して検索キーワードを生成
-    // 例: 「大分市大字乙津町3-1-2」→「大分市乙津町」
-    // 例: 「大分市乙津町3-1-2」→「大分市乙津町」
     const normalizeAddress = (addr: string): string => {
       return addr.replace(/大字/g, '').trim();
     };
 
-    // 住所から町名部分を抽出（番地を除く）
-    // 例: 「大分市乙津町3-1-2」→「大分市乙津町」
-    const extractTownPart = (addr: string): string => {
+    // 住所から検索キーワードを抽出
+    // ルール：市区町村名の後ろ2文字まで取得
+    // 例1: 「大分市乙津町3-1-2」→「大分市乙津」
+    // 例2: 「大分市大字乙津町3-1-2」→「大分市乙津」（大字除去後）
+    // 例3: 「大分市明野高尾明野高城1-1」→「大分市明野」
+    // 例4: 「別府市大字鶴見1234」→「別府市鶴見」
+    const extractSearchKeyword = (addr: string): string => {
       const normalized = normalizeAddress(addr);
-      // 数字（番地）の前で切る
-      const match = normalized.match(/^(.*?[町丁目区村])(?:\d|$)/);
-      if (match) return match[1];
-      // 数字で始まる部分の前で切る
-      const numMatch = normalized.match(/^(.*?)[\d０-９]/);
-      if (numMatch && numMatch[1].length > 2) return numMatch[1];
-      return normalized;
+      // 市・区・町・村・郡 で終わる行政区画を検出
+      const cityMatch = normalized.match(/^(.+?[市区町村郡])/);
+      if (!cityMatch) return normalized.slice(0, 5); // フォールバック
+      const cityPart = cityMatch[1]; // 例: 「大分市」「別府市」「福岡市」
+      const rest = normalized.slice(cityPart.length); // 市区町村以降
+      if (!rest) return cityPart;
+      // 残りの先頭2文字を取得（数字・記号・ハイフンが来たら打ち切り）
+      const townMatch = rest.match(/^([^\d０-９\-－\s]{1,2})/);
+      if (townMatch) return cityPart + townMatch[1];
+      return cityPart;
     };
 
-    const searchKeyword = extractTownPart(rawAddress);
+    const searchKeyword = extractSearchKeyword(rawAddress);
     if (!searchKeyword || searchKeyword.length < 3) {
       return res.json({ results: [], address: rawAddress, searchKeyword: '' });
     }
