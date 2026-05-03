@@ -1273,7 +1273,7 @@ export class SellerService extends BaseRepository {
           
           while (true) {
             const { data, error } = await this.table('sellers')
-              .select('id, status, next_call_date, visit_assignee, phone_contact_person, preferred_contact_time, contact_method, unreachable_status, confidence_level, inquiry_date')
+              .select('id, seller_number, status, next_call_date, visit_assignee, phone_contact_person, preferred_contact_time, contact_method, unreachable_status, confidence_level, inquiry_date')
               .is('deleted_at', null)
               .not('next_call_date', 'is', null)
               .lte('next_call_date', todayJST)
@@ -1609,11 +1609,15 @@ export class SellerService extends BaseRepository {
             const fiSubCat = dynamicCategory.replace('fi:', '');
             query = query.ilike('seller_number', 'FI%');
             if (fiSubCat === 'todayCall') {
+              // コミュニケーション情報が全て空 AND 未着手除外（unreachable_statusあり OR inquiry_date < 2026-01-01）
               query = query
                 .or('visit_assignee.is.null,visit_assignee.eq.,visit_assignee.eq.外す')
                 .lte('next_call_date', todayJST)
                 .or('status.ilike.%追客中%,status.eq.他決→追客')
-                .not('status', 'ilike', '%追客不要%');
+                .not('status', 'ilike', '%追客不要%')
+                .or('phone_contact_person.is.null,phone_contact_person.eq.')
+                .or('preferred_contact_time.is.null,preferred_contact_time.eq.')
+                .or('contact_method.is.null,contact_method.eq.');
             } else if (fiSubCat === 'todayCallNotStarted') {
               query = query
                 .or('visit_assignee.is.null,visit_assignee.eq.,visit_assignee.eq.外す')
@@ -1621,11 +1625,13 @@ export class SellerService extends BaseRepository {
                 .eq('status', '追客中')
                 .not('status', 'ilike', '%追客不要%');
             } else if (fiSubCat === 'todayCallWithInfo' || fiSubCat.startsWith('todayCallWithInfo:')) {
+              // コミュニケーション情報のいずれかに入力あり
               query = query
                 .or('visit_assignee.is.null,visit_assignee.eq.,visit_assignee.eq.外す')
                 .lte('next_call_date', todayJST)
                 .or('status.ilike.%追客中%,status.eq.他決→追客')
-                .not('status', 'ilike', '%追客不要%');
+                .not('status', 'ilike', '%追客不要%')
+                .or('phone_contact_person.not.is.null,preferred_contact_time.not.is.null,contact_method.not.is.null');
             } else if (fiSubCat === 'unvaluated') {
               query = query
                 .or('visit_assignee.is.null,visit_assignee.eq.,visit_assignee.eq.外す')
