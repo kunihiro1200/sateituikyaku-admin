@@ -854,6 +854,12 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
   const [tokiExtractDialog, setTokiExtractDialog] = useState(false);
   const [tokiWriteLoading, setTokiWriteLoading] = useState(false);
 
+  // 謄本_売買契約・重説（契約決済タブ用）のstate
+  const [tokiKeiyakuLoading, setTokiKeiyakuLoading] = useState(false);
+  const [tokiKeiyakuResult, setTokiKeiyakuResult] = useState<any>(null);
+  const [tokiKeiyakuDialog, setTokiKeiyakuDialog] = useState(false);
+  const [tokiKeiyakuWriteLoading, setTokiKeiyakuWriteLoading] = useState(false);
+
   // ログインユーザーの営業フラグを取得
   useEffect(() => {
     if (open && employee) {
@@ -2056,6 +2062,42 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
       setSnackbar({ open: true, message: msg, severity: 'error' });
     } finally {
       setTokiWriteLoading(false);
+    }
+  };
+
+  // 謄本_売買契約・重説（契約決済タブ用）読み取りハンドラー
+  const handleTokiKeiyakuExtract = async () => {
+    if (!propertyNumber) return;
+    setTokiKeiyakuLoading(true);
+    try {
+      const res = await api.post(`/api/toki-extract/${propertyNumber}/extract-keiyaku`);
+      setTokiKeiyakuResult(res.data);
+      setTokiKeiyakuDialog(true);
+    } catch (err: any) {
+      const msg = err?.response?.data?.error || '謄本の読み取りに失敗しました';
+      setSnackbar({ open: true, message: msg, severity: 'error' });
+    } finally {
+      setTokiKeiyakuLoading(false);
+    }
+  };
+
+  const handleTokiKeiyakuWrite = async () => {
+    if (!tokiKeiyakuResult) return;
+    setTokiKeiyakuWriteLoading(true);
+    try {
+      await api.post(`/api/toki-extract/${propertyNumber}/write-keiyaku`, {
+        extractResult: tokiKeiyakuResult.extractResult,
+        sheetName: tokiKeiyakuResult.sheetName,
+        spreadsheetUrl: tokiKeiyakuResult.spreadsheetUrl,
+      });
+      setSnackbar({ open: true, message: `スプレッドシートへの書き込みが完了しました（シート：${tokiKeiyakuResult.sheetName}）`, severity: 'success' });
+      setTokiKeiyakuDialog(false);
+      setTokiKeiyakuResult(null);
+    } catch (err: any) {
+      const msg = err?.response?.data?.error || 'スプレッドシートへの書き込みに失敗しました';
+      setSnackbar({ open: true, message: msg, severity: 'error' });
+    } finally {
+      setTokiKeiyakuWriteLoading(false);
     }
   };
 
@@ -3893,6 +3935,19 @@ ${pageUrl}`;
                   sx={{ whiteSpace: 'nowrap', fontWeight: 700, bgcolor: '#7b1fa2', '&:hover': { bgcolor: '#6a1b9a' }, fontSize: '0.75rem', px: 1, py: 0.4, minWidth: 0 }}
                 >管理規約</Button>
               )}
+              {/* 謄本_売買契約・重説ボタン: 契約決済タブ かつ 種別がマ・マンションの場合のみ表示 */}
+              {tabIndex === 2 && ['マ', 'マンション'].includes(getValue('property_type') || '') && (
+                <Button
+                  variant="contained"
+                  size="small"
+                  disabled={tokiKeiyakuLoading}
+                  onClick={handleTokiKeiyakuExtract}
+                  startIcon={tokiKeiyakuLoading ? <CircularProgress size={12} color="inherit" /> : null}
+                  sx={{ whiteSpace: 'nowrap', fontWeight: 700, bgcolor: '#e65100', '&:hover': { bgcolor: '#bf360c' }, fontSize: '0.75rem', px: 1, py: 0.4, minWidth: 0 }}
+                >
+                  {tokiKeiyakuLoading ? '読取中...' : '📄 謄本_売買契約、重説'}
+                </Button>
+              )}
               {/* 画像ボタン */}
               <Badge badgeContent={driveImageCount && driveImageCount > 0 ? driveImageCount : null} color="primary" max={99}>
                 <Button
@@ -4056,6 +4111,19 @@ ${pageUrl}`;
                     sx={{ whiteSpace: 'nowrap', fontWeight: 700, bgcolor: '#7b1fa2', '&:hover': { bgcolor: '#6a1b9a' }, fontSize: '0.85rem', px: 1.5 }}
                   >
                     管理規約解析
+                  </Button>
+                )}
+                {/* 謄本_売買契約・重説ボタン（モバイル）: 契約決済タブ かつ 種別がマ・マンションの場合のみ表示 */}
+                {tabIndex === 2 && ['マ', 'マンション'].includes(getValue('property_type') || '') && (
+                  <Button
+                    variant="contained"
+                    size="small"
+                    disabled={tokiKeiyakuLoading}
+                    onClick={handleTokiKeiyakuExtract}
+                    startIcon={tokiKeiyakuLoading ? <CircularProgress size={12} color="inherit" /> : null}
+                    sx={{ whiteSpace: 'nowrap', fontWeight: 700, bgcolor: '#e65100', '&:hover': { bgcolor: '#bf360c' }, fontSize: '0.85rem', px: 1.5 }}
+                  >
+                    {tokiKeiyakuLoading ? '読取中...' : '📄 謄本_売買契約、重説'}
                   </Button>
                 )}
                 {/* 画像ボタン */}
@@ -4271,6 +4339,145 @@ ${pageUrl}`;
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* 謄本_売買契約・重説 読み取り結果プレビューダイアログ（契約決済タブ用） */}
+      <Dialog open={tokiKeiyakuDialog} onClose={() => setTokiKeiyakuDialog(false)} maxWidth="md" fullWidth>
+        <DialogTitle sx={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 1 }}>
+          📄 謄本読み取り結果の確認（重説シート）
+          <IconButton onClick={() => setTokiKeiyakuDialog(false)} sx={{ ml: 'auto' }}>
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent dividers>
+          {tokiKeiyakuResult && (
+            <Box>
+              <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block' }}>
+                ファイル：{tokiKeiyakuResult.fileName}　／　書き込み先シート：{tokiKeiyakuResult.sheetName}
+              </Typography>
+              {/* 謄本取得日 */}
+              <Typography variant="caption" sx={{ fontWeight: 700, color: '#555', display: 'block', mt: 1, mb: 0.5 }}>謄本取得日</Typography>
+              <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 1, mb: 1 }}>
+                {[
+                  { label: 'AB80 令和年', value: tokiKeiyakuResult.extractResult?.acquisitionYearWareki },
+                  { label: 'AF80 月', value: tokiKeiyakuResult.extractResult?.acquisitionMonth },
+                  { label: 'AJ80 日', value: tokiKeiyakuResult.extractResult?.acquisitionDay },
+                ].map(({ label, value }) => (
+                  <Box key={label} sx={{ p: 0.75, bgcolor: value ? '#f0f7ff' : '#f5f5f5', borderRadius: 1, border: '1px solid #e0e0e0' }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontWeight: 600, fontSize: '0.7rem' }}>{label}</Typography>
+                    <Typography variant="body2" sx={{ color: value ? '#1a1a1a' : '#aaa', fontSize: '0.8rem' }}>{value ?? '（取得なし）'}</Typography>
+                  </Box>
+                ))}
+              </Box>
+              {/* 所有者情報 */}
+              <Typography variant="caption" sx={{ fontWeight: 700, color: '#555', display: 'block', mt: 1, mb: 0.5 }}>所有者情報</Typography>
+              <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1, mb: 1 }}>
+                {[
+                  { label: 'K35/V81/V94 代表住所', value: tokiKeiyakuResult.extractResult?.ownerAddress },
+                  { label: 'K36/B82/V95 代表住所の所有者名', value: tokiKeiyakuResult.extractResult?.ownerNames },
+                  { label: 'AX36 別住所所有者数', value: tokiKeiyakuResult.extractResult?.otherAddressOwnerCount },
+                  { label: 'BF36 所有者総数', value: tokiKeiyakuResult.extractResult?.totalOwnerCount },
+                ].map(({ label, value }) => (
+                  <Box key={label} sx={{ p: 0.75, bgcolor: value ? '#f0f7ff' : '#f5f5f5', borderRadius: 1, border: '1px solid #e0e0e0' }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontWeight: 600, fontSize: '0.7rem' }}>{label}</Typography>
+                    <Typography variant="body2" sx={{ color: value ? '#1a1a1a' : '#aaa', fontSize: '0.8rem' }}>{value ?? '（取得なし）'}</Typography>
+                  </Box>
+                ))}
+              </Box>
+              {tokiKeiyakuResult.extractResult?.ownerDetails && (
+                <Box sx={{ p: 0.75, bgcolor: '#f0f7ff', borderRadius: 1, border: '1px solid #e0e0e0', mb: 1 }}>
+                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontWeight: 600, fontSize: '0.7rem' }}>F54/F111 所有者詳細</Typography>
+                  <Typography variant="body2" sx={{ color: '#1a1a1a', fontSize: '0.8rem', whiteSpace: 'pre-wrap' }}>{tokiKeiyakuResult.extractResult.ownerDetails}</Typography>
+                </Box>
+              )}
+              {/* 一棟の建物の表示 */}
+              <Typography variant="caption" sx={{ fontWeight: 700, color: '#555', display: 'block', mt: 1, mb: 0.5 }}>一棟の建物の表示</Typography>
+              <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1, mb: 1 }}>
+                {[
+                  { label: 'K40 建物名称', value: tokiKeiyakuResult.extractResult?.buildingName },
+                  { label: 'M44 所在', value: tokiKeiyakuResult.extractResult?.buildingLocation },
+                  { label: 'M45 構造', value: tokiKeiyakuResult.extractResult?.structure },
+                  { label: 'AK45 屋根', value: tokiKeiyakuResult.extractResult?.roofType },
+                  { label: 'Q46 階数', value: tokiKeiyakuResult.extractResult?.floors },
+                  { label: 'AC46 地下階数', value: tokiKeiyakuResult.extractResult?.basementFloors },
+                  { label: 'M47 一棟床面積合計', value: tokiKeiyakuResult.extractResult?.buildingArea },
+                ].map(({ label, value }) => (
+                  <Box key={label} sx={{ p: 0.75, bgcolor: value ? '#f0f7ff' : '#f5f5f5', borderRadius: 1, border: '1px solid #e0e0e0' }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontWeight: 600, fontSize: '0.7rem' }}>{label}</Typography>
+                    <Typography variant="body2" sx={{ color: value ? '#1a1a1a' : '#aaa', fontSize: '0.8rem' }}>{value ?? '（取得なし）'}</Typography>
+                  </Box>
+                ))}
+              </Box>
+              {/* 専有部分の建物の表示 */}
+              <Typography variant="caption" sx={{ fontWeight: 700, color: '#555', display: 'block', mt: 1, mb: 0.5 }}>専有部分の建物の表示</Typography>
+              <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1, mb: 1 }}>
+                {[
+                  { label: 'AX40 所在階', value: tokiKeiyakuResult.extractResult?.floorNumber },
+                  { label: 'BD40 部屋番号', value: tokiKeiyakuResult.extractResult?.roomNumber },
+                  { label: 'AE52 専有面積', value: tokiKeiyakuResult.extractResult?.exclusiveArea },
+                  { label: 'AS47 新築日', value: tokiKeiyakuResult.extractResult?.constructionDate },
+                  { label: 'M48 家屋番号', value: tokiKeiyakuResult.extractResult?.houseNumber },
+                  { label: 'M49 種類', value: tokiKeiyakuResult.extractResult?.buildingType },
+                  { label: 'M50 構造', value: tokiKeiyakuResult.extractResult?.buildingStructure },
+                ].map(({ label, value }) => (
+                  <Box key={label} sx={{ p: 0.75, bgcolor: value ? '#f0f7ff' : '#f5f5f5', borderRadius: 1, border: '1px solid #e0e0e0' }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontWeight: 600, fontSize: '0.7rem' }}>{label}</Typography>
+                    <Typography variant="body2" sx={{ color: value ? '#1a1a1a' : '#aaa', fontSize: '0.8rem' }}>{value ?? '（取得なし）'}</Typography>
+                  </Box>
+                ))}
+              </Box>
+              {/* 乙区・権利チェック */}
+              <Typography variant="caption" sx={{ fontWeight: 700, color: '#555', display: 'block', mt: 1, mb: 0.5 }}>乙区・権利チェック</Typography>
+              <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 1, mb: 1 }}>
+                {[
+                  { label: 'K87 所有権以外の権利あり', value: tokiKeiyakuResult.extractResult?.hasOtherRights ? 'TRUE' : 'FALSE' },
+                  { label: 'K92/K109 抵当権等あり', value: tokiKeiyakuResult.extractResult?.hasMortgage ? 'TRUE' : 'FALSE' },
+                ].map(({ label, value }) => (
+                  <Box key={label} sx={{ p: 0.75, bgcolor: value === 'TRUE' ? '#fff3e0' : '#f5f5f5', borderRadius: 1, border: '1px solid #e0e0e0' }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontWeight: 600, fontSize: '0.7rem' }}>{label}</Typography>
+                    <Typography variant="body2" sx={{ color: value === 'TRUE' ? '#e65100' : '#aaa', fontSize: '0.8rem', fontWeight: value === 'TRUE' ? 700 : 400 }}>{value}</Typography>
+                  </Box>
+                ))}
+              </Box>
+              {/* 土地情報 */}
+              {tokiKeiyakuResult.extractResult?.lands?.length > 0 && (
+                <Box sx={{ mt: 1 }}>
+                  <Typography variant="caption" sx={{ fontWeight: 700, color: '#555' }}>敷地権の目的である土地（F63〜）</Typography>
+                  {tokiKeiyakuResult.extractResult.lands.map((land: any, i: number) => (
+                    <Box key={i} sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr 1fr 1fr', gap: 0.5, mt: 0.5 }}>
+                      {[
+                        { label: `F${63 + i} 所在`, value: land.location },
+                        { label: `V${63 + i} 地番`, value: land.lotNumber },
+                        { label: `AD${63 + i} 地目`, value: land.landType },
+                        { label: `AO${63 + i} 地積`, value: land.area },
+                        { label: `AX${63 + i} 敷地権種類`, value: land.sikichikenType },
+                        { label: `BE${63 + i} 敷地権割合`, value: land.sikichikenRatio },
+                      ].map(({ label, value }) => (
+                        <Box key={label} sx={{ p: 0.75, bgcolor: value ? '#f0f7ff' : '#f5f5f5', borderRadius: 1, border: '1px solid #e0e0e0' }}>
+                          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontWeight: 600, fontSize: '0.65rem' }}>{label}</Typography>
+                          <Typography variant="body2" sx={{ color: value ? '#1a1a1a' : '#aaa', fontSize: '0.75rem' }}>{value ?? '（取得なし）'}</Typography>
+                        </Box>
+                      ))}
+                    </Box>
+                  ))}
+                </Box>
+              )}
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setTokiKeiyakuDialog(false)} color="inherit">キャンセル</Button>
+          <Button
+            variant="contained"
+            sx={{ bgcolor: '#e65100', '&:hover': { bgcolor: '#bf360c' } }}
+            disabled={tokiKeiyakuWriteLoading}
+            onClick={handleTokiKeiyakuWrite}
+            startIcon={tokiKeiyakuWriteLoading ? <CircularProgress size={16} color="inherit" /> : null}
+          >
+            {tokiKeiyakuWriteLoading ? '書き込み中...' : 'スプシに反映する'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
       <DeadlineWarningDialog
         open={warningDialog.open}
         fieldLabel={warningDialog.fieldLabel}
