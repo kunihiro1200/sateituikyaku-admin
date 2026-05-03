@@ -150,6 +150,14 @@ export default function SalesHistoryPage() {
     return '#616161';
   };
 
+  // マーカー色：状態に応じて変える
+  const markerColor = (atbbStatus: string, isSelected: boolean): string => {
+    if (isSelected) return '#ff6f00'; // 選択中：オレンジ
+    if (atbbStatus === '成約済み') return '#9e9e9e'; // 成約済み：グレー
+    if (atbbStatus === '現在募集中') return '#1565c0'; // 募集中：青
+    return '#1565c0'; // デフォルト：青
+  };
+
   const hasPrintContent = mergedItems.length > 0;
 
   return (
@@ -208,7 +216,7 @@ export default function SalesHistoryPage() {
 
         <Container maxWidth="xl" sx={{ py: 3 }} className="print-area" ref={printRef}>
 
-          {/* ── 地図（画面のみ） ── */}
+          {/* ── 地図 ── */}
           {nearbyLoading ? (
             <Box sx={{ display: 'flex', alignItems: 'center', py: 3 }} className="no-print">
               <CircularProgress size={20} />
@@ -217,84 +225,116 @@ export default function SalesHistoryPage() {
               </Typography>
             </Box>
           ) : nearbyData?.lat && nearbyData?.lng && isMapLoaded ? (
-            <Box className="no-print" sx={{ display: 'flex', gap: 2, mb: 3, height: 420 }}>
-              {/* 地図 */}
-              <Box sx={{ flex: '0 0 62%', borderRadius: 2, overflow: 'hidden', border: '1px solid #e0e0e0' }}>
-                <GoogleMap
-                  mapContainerStyle={{ width: '100%', height: '100%' }}
-                  center={{ lat: nearbyData.lat, lng: nearbyData.lng }}
-                  zoom={15}
-                  onLoad={onMapLoad}
-                  onUnmount={onMapUnmount}
-                  options={{ streetViewControl: false, mapTypeControl: false, fullscreenControl: false }}
-                >
-                  {/* 中心マーカー */}
-                  <Marker
-                    position={{ lat: nearbyData.lat, lng: nearbyData.lng }}
-                    icon={{ path: google.maps.SymbolPath.CIRCLE, fillColor: '#d32f2f', fillOpacity: 1, strokeColor: '#fff', strokeWeight: 2, scale: 13 }}
-                    title={nearbyData.address}
-                    zIndex={9999}
-                  />
-                  {/* 半径1kmの赤い円 */}
-                  <Circle
+            <>
+              {/* 画面表示用インタラクティブ地図 */}
+              <Box className="no-print" sx={{ display: 'flex', gap: 2, mb: 3, height: 420 }}>
+                {/* 地図 */}
+                <Box sx={{ flex: '0 0 62%', borderRadius: 2, overflow: 'hidden', border: '1px solid #e0e0e0' }}>
+                  <GoogleMap
+                    mapContainerStyle={{ width: '100%', height: '100%' }}
                     center={{ lat: nearbyData.lat, lng: nearbyData.lng }}
-                    radius={nearbyData.radiusKm * 1000}
-                    options={{ strokeColor: '#d32f2f', strokeOpacity: 0.9, strokeWeight: 2, fillColor: '#ef9a9a', fillOpacity: 0.15 }}
-                  />
-                  {/* 近隣物件マーカー（実際の座標） */}
+                    zoom={15}
+                    onLoad={onMapLoad}
+                    onUnmount={onMapUnmount}
+                    options={{ streetViewControl: false, mapTypeControl: false, fullscreenControl: false }}
+                  >
+                    {/* 中心マーカー */}
+                    <Marker
+                      position={{ lat: nearbyData.lat, lng: nearbyData.lng }}
+                      icon={{ path: google.maps.SymbolPath.CIRCLE, fillColor: '#d32f2f', fillOpacity: 1, strokeColor: '#fff', strokeWeight: 2, scale: 13 }}
+                      title={nearbyData.address}
+                      zIndex={9999}
+                    />
+                    {/* 半径1kmの赤い円 */}
+                    <Circle
+                      center={{ lat: nearbyData.lat, lng: nearbyData.lng }}
+                      radius={nearbyData.radiusKm * 1000}
+                      options={{ strokeColor: '#d32f2f', strokeOpacity: 0.9, strokeWeight: 2, fillColor: '#ef9a9a', fillOpacity: 0.15 }}
+                    />
+                    {/* 近隣物件マーカー（実際の座標） */}
+                    {nearbyData.results.map((item, idx) => {
+                      if (!item.lat || !item.lng) return null;
+                      const isSelected = selectedItem?.address === item.address;
+                      return (
+                        <Marker
+                          key={idx}
+                          position={{ lat: item.lat, lng: item.lng }}
+                          icon={{ path: google.maps.SymbolPath.CIRCLE, fillColor: markerColor(item.atbbStatus, isSelected), fillOpacity: 1, strokeColor: '#fff', strokeWeight: 2, scale: isSelected ? 11 : 9 }}
+                          title={item.address}
+                          onClick={() => setSelectedItem(isSelected ? null : { ...item, source: 'nearby' })}
+                          zIndex={isSelected ? 999 : idx}
+                        />
+                      );
+                    })}
+                  </GoogleMap>
+                </Box>
+                {/* 地図右側：近隣物件リスト */}
+                <Box sx={{ flex: 1, overflowY: 'auto', border: '1px solid #e0e0e0', borderRadius: 2, bgcolor: 'background.paper' }}>
+                  <Box sx={{ p: 1.5, borderBottom: '1px solid #e0e0e0', bgcolor: '#1a237e' }}>
+                    <Typography variant="body2" fontWeight="bold" sx={{ color: 'white' }}>
+                      半径{nearbyData.radiusKm}km以内　{nearbyData.results.length}件（近い順）
+                    </Typography>
+                  </Box>
                   {nearbyData.results.map((item, idx) => {
-                    if (!item.lat || !item.lng) return null;
                     const isSelected = selectedItem?.address === item.address;
                     return (
-                      <Marker
-                        key={idx}
-                        position={{ lat: item.lat, lng: item.lng }}
-                        icon={{ path: google.maps.SymbolPath.CIRCLE, fillColor: isSelected ? '#ff6f00' : '#1565c0', fillOpacity: 1, strokeColor: '#fff', strokeWeight: 2, scale: isSelected ? 11 : 9 }}
-                        title={item.address}
-                        onClick={() => setSelectedItem(isSelected ? null : { ...item, source: 'nearby' })}
-                        zIndex={isSelected ? 999 : idx}
-                      />
+                      <Box key={idx} onClick={() => setSelectedItem(isSelected ? null : { ...item, source: 'nearby' })}
+                        sx={{ p: 1.2, borderBottom: '1px solid #f0f0f0', cursor: 'pointer', bgcolor: isSelected ? '#e3f2fd' : 'transparent', '&:hover': { bgcolor: '#f5f5f5' } }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8, mb: 0.3 }}>
+                          <span className="type-badge" style={{ backgroundColor: typeColor(item.propertyType), fontSize: '11px', padding: '1px 6px' }}>
+                            {item.propertyType || '-'}
+                          </span>
+                          <Typography variant="caption" sx={{ color: '#1565c0', fontWeight: 'bold' }}>
+                            {item.distanceKm.toFixed(2)}km
+                          </Typography>
+                          {item.atbbStatus && (
+                            <span className="status-badge" style={{ fontSize: '11px', padding: '1px 6px', backgroundColor: item.atbbStatus === '成約済み' ? '#e0e0e0' : '#e8f5e9', color: item.atbbStatus === '成約済み' ? '#424242' : '#2e7d32', border: `1px solid ${item.atbbStatus === '成約済み' ? '#bdbdbd' : '#a5d6a7'}` }}>
+                              {item.atbbStatus}
+                            </span>
+                          )}
+                        </Box>
+                        <Typography variant="body2" sx={{ fontSize: '0.77rem' }}>{item.address || '-'}</Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {item.settlementDate ? formatDate(item.settlementDate) : ''}
+                          {item.salesPrice ? `　${formatPrice(item.salesPrice)}` : ''}
+                          {item.landArea ? `　土地${formatArea(item.landArea)}` : ''}
+                          {item.buildingArea ? `　建物${formatArea(item.buildingArea)}` : ''}
+                        </Typography>
+                      </Box>
                     );
                   })}
-                </GoogleMap>
-              </Box>
-              {/* 地図右側：近隣物件リスト */}
-              <Box sx={{ flex: 1, overflowY: 'auto', border: '1px solid #e0e0e0', borderRadius: 2, bgcolor: 'background.paper' }}>
-                <Box sx={{ p: 1.5, borderBottom: '1px solid #e0e0e0', bgcolor: '#1a237e' }}>
-                  <Typography variant="body2" fontWeight="bold" sx={{ color: 'white' }}>
-                    半径{nearbyData.radiusKm}km以内　{nearbyData.results.length}件（近い順）
-                  </Typography>
                 </Box>
-                {nearbyData.results.map((item, idx) => {
-                  const isSelected = selectedItem?.address === item.address;
-                  return (
-                    <Box key={idx} onClick={() => setSelectedItem(isSelected ? null : { ...item, source: 'nearby' })}
-                      sx={{ p: 1.2, borderBottom: '1px solid #f0f0f0', cursor: 'pointer', bgcolor: isSelected ? '#e3f2fd' : 'transparent', '&:hover': { bgcolor: '#f5f5f5' } }}>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8, mb: 0.3 }}>
-                        <span className="type-badge" style={{ backgroundColor: typeColor(item.propertyType), fontSize: '11px', padding: '1px 6px' }}>
-                          {item.propertyType || '-'}
-                        </span>
-                        <Typography variant="caption" sx={{ color: '#1565c0', fontWeight: 'bold' }}>
-                          {item.distanceKm.toFixed(2)}km
-                        </Typography>
-                        {item.atbbStatus && (
-                          <span className="status-badge" style={{ fontSize: '11px', padding: '1px 6px', backgroundColor: item.atbbStatus === '成約済み' ? '#e0e0e0' : '#e8f5e9', color: item.atbbStatus === '成約済み' ? '#424242' : '#2e7d32', border: `1px solid ${item.atbbStatus === '成約済み' ? '#bdbdbd' : '#a5d6a7'}` }}>
-                            {item.atbbStatus}
-                          </span>
-                        )}
-                      </Box>
-                      <Typography variant="body2" sx={{ fontSize: '0.77rem' }}>{item.address || '-'}</Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        {item.settlementDate ? formatDate(item.settlementDate) : ''}
-                        {item.salesPrice ? `　${formatPrice(item.salesPrice)}` : ''}
-                        {item.landArea ? `　土地${formatArea(item.landArea)}` : ''}
-                        {item.buildingArea ? `　建物${formatArea(item.buildingArea)}` : ''}
-                      </Typography>
-                    </Box>
-                  );
-                })}
               </Box>
-            </Box>
+
+              {/* 印刷用：Static Maps API画像 */}
+              {(() => {
+                const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '';
+                const center = `${nearbyData.lat},${nearbyData.lng}`;
+                // 中心マーカー（赤）
+                const centerMarker = `markers=color:red%7Csize:mid%7C${center}`;
+                // 近隣物件マーカー（成約済み→gray、それ以外→blue）
+                const nearbyMarkers = nearbyData.results
+                  .filter(item => item.lat && item.lng)
+                  .map(item => {
+                    const color = item.atbbStatus === '成約済み' ? 'gray' : 'blue';
+                    return `markers=color:${color}%7Csize:small%7C${item.lat},${item.lng}`;
+                  })
+                  .join('&');
+                const staticUrl = `https://maps.googleapis.com/maps/api/staticmap?center=${center}&zoom=15&size=600x400&scale=2&${centerMarker}&${nearbyMarkers}&key=${apiKey}`;
+                return (
+                  <Box className="print-only" sx={{ mb: 3 }}>
+                    <Typography variant="subtitle2" fontWeight="bold" sx={{ mb: 1, color: '#1a237e' }}>
+                      📍 半径1km以内マップ（●赤：対象物件　●青：募集中　●グレー：成約済み）
+                    </Typography>
+                    <img
+                      src={staticUrl}
+                      alt="近隣物件マップ"
+                      style={{ width: '100%', maxWidth: 700, border: '1px solid #e0e0e0', borderRadius: 4 }}
+                    />
+                  </Box>
+                );
+              })()}
+            </>
           ) : null}
 
           <Divider sx={{ my: 2 }} />
