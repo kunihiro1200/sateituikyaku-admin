@@ -1970,6 +1970,7 @@ ${populationHint}${transactionHint}${priceHint}
 - 取引件数：${realTrxData ? '上記の実データを必ず使用すること（改変禁止）' : '景気・金利・コロナ禍（2020-2021年）の影響を反映。コロナ禍は件数が落ち込み、2022年以降に回復するなど現実的な波を持たせる'}
 - 不動産価格：${realPriceData ? '上記の実データを必ず使用すること（改変禁止）' : '坪単価を万円単位の整数で返すこと。2020年以降の全国的な地価上昇トレンドを反映しつつ、エリアの特性に応じた現実的な数値'}
 - 世帯構成：そのエリアの実態（高齢化率・単身世帯増加傾向など）を反映した%
+- 年齢構成の推移：国勢調査の実態に近い数値を使用。年少人口（0-14歳）・生産年齢人口（15-64歳）・老年人口（65歳以上）の割合（%）を返すこと。高齢化の進行を反映した現実的な数値にすること
 - 絶対に等差数列（毎年同じ増減幅）にしないこと。実際のデータは不規則にばらつく
 
 各コメントはデータの傾向を客観的に説明する内容にしてください（40〜60字程度）。
@@ -1977,7 +1978,7 @@ ${populationHint}${transactionHint}${priceHint}
 「〜の傾向が見られます」「〜となっています」のように事実を述べる表現で終わること。
 summaryの各項目は売却意欲を高める内容にしてください。「〇〇のため、早めの売却が望ましい」「〇〇により、売却時期として適している」のように、データを根拠にした売却推奨の表現を使うこと。
 
-{"population":[{"year":"2015年","city":数値,"area":数値},{"year":"2018年","city":数値,"area":数値},{"year":"2021年","city":数値,"area":数値},{"year":"2024年","city":数値,"area":数値},{"year":"2025年","city":数値,"area":数値}],"populationComment":"人口動向の客観的説明","household":[{"type":"単身世帯","city":"XX%","area":"XX%"},{"type":"夫婦のみ","city":"XX%","area":"XX%"},{"type":"核家族","city":"XX%","area":"XX%"},{"type":"三世代同居","city":"XX%","area":"XX%"}],"householdComment":"世帯構成の客観的説明","transactions":[{"year":"2020年","city":数値,"area":数値},{"year":"2021年","city":数値,"area":数値},{"year":"2022年","city":数値,"area":数値},{"year":"2023年","city":数値,"area":数値},{"year":"2024年","city":数値,"area":数値},{"year":"2025年","city":数値,"area":数値}],"transactionsComment":"取引件数の客観的説明","prices":[{"year":"2020年","city":数値,"area":数値},{"year":"2021年","city":数値,"area":数値},{"year":"2022年","city":数値,"area":数値},{"year":"2023年","city":数値,"area":数値},{"year":"2024年","city":数値,"area":数値},{"year":"2025年","city":数値,"area":数値}],"pricesComment":"価格推移の客観的説明","summary":["市場の特徴1（客観的事実）","市場の特徴2（客観的事実）","市場の特徴3（客観的事実）","市場の特徴4（客観的事実）","市場の特徴5（客観的事実）"]}
+{"population":[{"year":"2015年","city":数値,"area":数値},{"year":"2018年","city":数値,"area":数値},{"year":"2021年","city":数値,"area":数値},{"year":"2024年","city":数値,"area":数値},{"year":"2025年","city":数値,"area":数値}],"populationComment":"人口動向の客観的説明","ageDistribution":[{"year":"2015年","young":"XX%","working":"XX%","elderly":"XX%"},{"year":"2018年","young":"XX%","working":"XX%","elderly":"XX%"},{"year":"2021年","young":"XX%","working":"XX%","elderly":"XX%"},{"year":"2024年","young":"XX%","working":"XX%","elderly":"XX%"},{"year":"2025年","young":"XX%","working":"XX%","elderly":"XX%"}],"ageDistributionComment":"年齢構成推移の客観的説明","household":[{"type":"単身世帯","city":"XX%","area":"XX%"},{"type":"夫婦のみ","city":"XX%","area":"XX%"},{"type":"核家族","city":"XX%","area":"XX%"},{"type":"三世代同居","city":"XX%","area":"XX%"}],"householdComment":"世帯構成の客観的説明","transactions":[{"year":"2020年","city":数値,"area":数値},{"year":"2021年","city":数値,"area":数値},{"year":"2022年","city":数値,"area":数値},{"year":"2023年","city":数値,"area":数値},{"year":"2024年","city":数値,"area":数値},{"year":"2025年","city":数値,"area":数値}],"transactionsComment":"取引件数の客観的説明","prices":[{"year":"2020年","city":数値,"area":数値},{"year":"2021年","city":数値,"area":数値},{"year":"2022年","city":数値,"area":数値},{"year":"2023年","city":数値,"area":数値},{"year":"2024年","city":数値,"area":数値},{"year":"2025年","city":数値,"area":数値}],"pricesComment":"価格推移の客観的説明","summary":["市場の特徴1（客観的事実）","市場の特徴2（客観的事実）","市場の特徴3（客観的事実）","市場の特徴4（客観的事実）","市場の特徴5（客観的事実）"]}
 
 JSONのみ返してください。`;
 
@@ -1987,11 +1988,11 @@ JSONのみ返してください。`;
       {
         model: 'gpt-4o-mini',
         messages: [
-          { role: 'system', content: `あなたは日本の不動産市場に精通したデータアナリストです。国勢調査・住民基本台帳・国土交通省地価公示・不動産取引価格情報などの実際の統計データの知識を活かし、${cityLabel}の実態に即したリアルな数値を生成してください。左列ラベルは必ず「${cityLabel}全体」、右列ラベルは必ず「${detailArea}エリア」を使用します。数値は毎年同じ増減幅（等差数列）にならないよう、現実のデータのような不規則なばらつきを持たせてください。コメントは客観的な事実の説明のみとし、売却を促す表現は一切使わないこと。` },
+          { role: 'system', content: `あなたは日本の不動産市場に精通したデータアナリストです。国勢調査・住民基本台帳・国土交通省地価公示・不動産取引価格情報などの実際の統計データの知識を活かし、${cityLabel}の実態に即したリアルな数値を生成してください。左列ラベルは必ず「${cityLabel}全体」、右列ラベルは必ず「${detailArea}エリア」を使用します。数値は毎年同じ増減幅（等差数列）にならないよう、現実のデータのような不規則なばらつきを持たせてください。コメントは客観的な事実の説明のみとし、売却を促す表現は一切使わないこと。年齢構成の推移（ageDistribution）は年少人口（0-14歳）・生産年齢人口（15-64歳）・老年人口（65歳以上）の割合（%）を返すこと。` },
           { role: 'user', content: jsonPrompt },
         ],
         temperature: 0.7,
-        max_tokens: 1200,
+        max_tokens: 1600,
       },
       { headers: { 'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`, 'Content-Type': 'application/json' }, timeout: 55000 }
     );
@@ -2019,6 +2020,18 @@ JSONのみ返してください。`;
       const b = i === pop.length - 1 ? 'font-weight:bold;' : '';
       return `<tr><td style="${td}${b}">${r.year}</td><td style="${td}${b}">${Number(r.city).toLocaleString()}人${arw(r.city, i > 0 ? pop[i-1].city : null)}</td><td style="${tda}${b}">${Number(r.area).toLocaleString()}人${arw(r.area, i > 0 ? pop[i-1].area : null)}</td></tr>`;
     }).join('');
+
+    // 年齢構成の推移テーブル（②）
+    const age = data.ageDistribution || [];
+    const ageTh = 'border:1px solid #90caf9;padding:6px 10px;text-align:center;';
+    const ageTd = 'border:1px solid #ccc;padding:5px 10px;text-align:center;';
+    const ageRows = age.map((r: any, i: number) => {
+      const b = i === age.length - 1 ? 'font-weight:bold;' : '';
+      return `<tr><td style="${ageTd}${b}">${r.year}</td><td style="${ageTd}${b}">${r.young}</td><td style="${ageTd}${b}">${r.working}</td><td style="${ageTd}${b}">${r.elderly}</td></tr>`;
+    }).join('');
+    const ageTbl = age.length > 0
+      ? `<table style="width:100%;border-collapse:collapse;margin-bottom:8px;"><thead><tr style="background:#e3f2fd;"><th style="${ageTh}width:20%">年</th><th style="${ageTh}width:26%">年少人口<br><span style="font-size:10px;font-weight:normal;">（0〜14歳）</span></th><th style="${ageTh}width:27%">生産年齢人口<br><span style="font-size:10px;font-weight:normal;">（15〜64歳）</span></th><th style="${ageTh}width:27%;background:#fff9c4">老年人口<br><span style="font-size:10px;font-weight:normal;">（65歳以上）</span></th></tr></thead><tbody>${ageRows}</tbody></table>`
+      : '<p style="color:#999;font-size:11px;">データなし</p>';
 
     const hh = data.household || [];
     const hhRows = hh.map((r: any) => `<tr><td style="${td}">${r.type}</td><td style="${td}">${r.city}</td><td style="${tda}">${r.area}</td></tr>`).join('');
@@ -2057,11 +2070,12 @@ JSONのみ返してください。`;
 <div style="font-size:10px;color:#888;margin-top:4px;">作成日：${today}　物件種別：${propertyType || '不動産'}</div>
 </div>
 <div style="margin-bottom:24px;">${sec('①', '人口の推移')}${tbl(popRows)}${cmt(data.populationComment || '')}</div>
-<div style="margin-bottom:24px;">${sec('②', '世帯種類の推移')}${hhTbl}${cmt(data.householdComment || '')}</div>
-<div style="margin-bottom:24px;">${sec('③', '物件種別の取引件数推移')}${tbl(trRows)}${cmt(data.transactionsComment || '')}</div>
-<div style="margin-bottom:24px;">${sec('④', '不動産価格の推移（坪単価・万円）')}${tbl(prRows)}${cmt(data.pricesComment || '')}</div>
+<div style="margin-bottom:24px;">${sec('②', '年齢構成の推移')}${ageTbl}${cmt(data.ageDistributionComment || '')}</div>
+<div style="margin-bottom:24px;">${sec('③', '世帯種類の推移')}${hhTbl}${cmt(data.householdComment || '')}</div>
+<div style="margin-bottom:24px;">${sec('④', '物件種別の取引件数推移')}${tbl(trRows)}${cmt(data.transactionsComment || '')}</div>
+<div style="margin-bottom:24px;">${sec('⑤', '不動産価格の推移（坪単価・万円）')}${tbl(prRows)}${cmt(data.pricesComment || '')}</div>
 <div style="margin-bottom:24px;background:#fffde7;border:2px solid #f9a825;border-radius:8px;padding:16px;">
-<h2 style="font-size:15px;color:#e65100;border-left:4px solid #e65100;padding-left:8px;margin-bottom:12px;">⑤ まとめ ── ${AL}で今が売却のチャンスである理由</h2>
+<h2 style="font-size:15px;color:#e65100;border-left:4px solid #e65100;padding-left:8px;margin-bottom:12px;">⑥ まとめ ── ${AL}で今が売却のチャンスである理由</h2>
 <ul style="margin:0;padding-left:20px;line-height:2;">${summary}</ul>
 <div style="margin-top:12px;text-align:center;background:#e65100;color:white;padding:8px;border-radius:4px;font-size:13px;font-weight:bold;">✅ ${AL}のデータが示す通り、今が最も有利な売却タイミングです</div>
 </div>
