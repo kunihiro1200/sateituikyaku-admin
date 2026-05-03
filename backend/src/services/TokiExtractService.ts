@@ -1044,10 +1044,11 @@ export class TokiExtractService {
       add('F111', extractResult.ownerDetails);
     }
 
-    // 敷地権の目的である土地（複数行対応：63行目から下方向）
+    // 敷地権の目的である土地（複数行対応：63行目から2行おき）
+    // スプレッドシートは各土地行が2行結合セルのため、63, 65, 67... と2行おきに書き込む
     // nullでも空文字で上書き（既存値を消す必要があるため addForce を使用）
     extractResult.lands.forEach((land, index) => {
-      const row = 63 + index;
+      const row = 63 + index * 2;
       addForce(`F${row}`, land.location);
       addForce(`V${row}`, land.lotNumber);
       addForce(`AD${row}`, land.landType);
