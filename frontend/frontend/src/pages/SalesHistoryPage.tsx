@@ -340,14 +340,14 @@ export default function SalesHistoryPage() {
                 const staticUrl = `https://maps.googleapis.com/maps/api/staticmap?center=${center}&zoom=15&size=640x480&scale=2&${circlePath}&${centerMarker}&${nearbyMarkers ? nearbyMarkers + '&' : ''}key=${apiKey}`;
 
                 return (
-                  <Box className="print-only" sx={{ mb: 3 }}>
+                  <Box className="print-only" sx={{ mb: 3, textAlign: 'center' }}>
                     <Typography variant="subtitle2" fontWeight="bold" sx={{ mb: 1, color: '#1a237e' }}>
                       📍 半径{radiusKm}kmマップ（★赤：対象物件　●青：募集中　●グレー：成約済み）
                     </Typography>
                     <img
                       src={staticUrl}
                       alt="近隣物件マップ"
-                      style={{ width: '100%', maxWidth: 720, border: '1px solid #e0e0e0', borderRadius: 4 }}
+                      style={{ display: 'block', width: '100%', maxWidth: 720, margin: '0 auto', border: '1px solid #e0e0e0', borderRadius: 4 }}
                     />
                   </Box>
                 );
