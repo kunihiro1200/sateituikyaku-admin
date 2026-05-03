@@ -692,6 +692,15 @@ export class TokiExtractService {
       }
     };
 
+    // nullでも空文字で上書きする（既存値を消す必要がある場合に使用）
+    const addForce = (cell: string, value: string | null | boolean) => {
+      if (typeof value === 'boolean') {
+        writes.push({ cell, value: value ? 'TRUE' : 'FALSE' });
+      } else {
+        writes.push({ cell, value: value !== null && value !== undefined ? String(value) : '' });
+      }
+    };
+
     // 謄本取得日
     add('AB80', extractResult.acquisitionYearWareki);
     add('AF80', extractResult.acquisitionMonth);
@@ -722,14 +731,15 @@ export class TokiExtractService {
     }
 
     // 敷地権の目的である土地（複数行対応：63行目から下方向）
+    // nullでも空文字で上書き（既存値を消す必要があるため addForce を使用）
     extractResult.lands.forEach((land, index) => {
       const row = 63 + index;
-      add(`F${row}`, land.location);
-      add(`V${row}`, land.lotNumber);
-      add(`AD${row}`, land.landType);
-      add(`AO${row}`, land.area);
-      add(`AX${row}`, land.sikichikenType);
-      add(`BE${row}`, land.sikichikenRatio);
+      addForce(`F${row}`, land.location);
+      addForce(`V${row}`, land.lotNumber);
+      addForce(`AD${row}`, land.landType);
+      addForce(`AO${row}`, land.area);
+      addForce(`AX${row}`, land.sikichikenType);
+      addForce(`BE${row}`, land.sikichikenRatio);
     });
 
     // 一棟の建物の表示
