@@ -13,7 +13,6 @@ import {
   TableHead,
   TableRow,
   Paper,
-  Chip,
   Container,
 } from '@mui/material';
 import { ArrowBack, Print as PrintIcon } from '@mui/icons-material';
@@ -109,9 +108,31 @@ export default function SalesHistoryPage() {
           body { margin: 0; padding: 0; }
           .print-area { padding: 16px; }
           @page { size: A4 landscape; margin: 12mm; }
+          .type-badge, .status-badge {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            color-adjust: exact !important;
+          }
         }
         @media screen {
           .print-only { display: none; }
+        }
+        .type-badge {
+          display: inline-block;
+          padding: 2px 8px;
+          border-radius: 12px;
+          font-size: 12px;
+          font-weight: bold;
+          color: white;
+          white-space: nowrap;
+        }
+        .status-badge {
+          display: inline-block;
+          padding: 2px 8px;
+          border-radius: 12px;
+          font-size: 12px;
+          font-weight: bold;
+          white-space: nowrap;
         }
       `}</style>
 
@@ -218,16 +239,12 @@ export default function SalesHistoryPage() {
                             }}
                           >
                             <TableCell sx={{ whiteSpace: 'nowrap' }}>
-                              <Chip
-                                label={item.propertyType || '-'}
-                                size="small"
-                                sx={{
-                                  bgcolor: typeColor(item.propertyType),
-                                  color: 'white',
-                                  fontWeight: 'bold',
-                                  fontSize: '0.7rem',
-                                }}
-                              />
+                              <span
+                                className="type-badge"
+                                style={{ backgroundColor: typeColor(item.propertyType) }}
+                              >
+                                {item.propertyType || '-'}
+                              </span>
                             </TableCell>
                             <TableCell sx={{ whiteSpace: 'nowrap' }}>
                               {item.settlementDate ? formatDate(item.settlementDate) : '-'}
@@ -253,12 +270,16 @@ export default function SalesHistoryPage() {
                             </TableCell>
                             <TableCell sx={{ whiteSpace: 'nowrap' }}>
                               {item.atbbStatus ? (
-                                <Chip
-                                  label={item.atbbStatus}
-                                  size="small"
-                                  color={item.atbbStatus === '成約済み' ? 'default' : 'success'}
-                                  sx={{ fontWeight: 'bold', fontSize: '0.7rem' }}
-                                />
+                                <span
+                                  className="status-badge"
+                                  style={{
+                                    backgroundColor: item.atbbStatus === '成約済み' ? '#e0e0e0' : '#e8f5e9',
+                                    color: item.atbbStatus === '成約済み' ? '#424242' : '#2e7d32',
+                                    border: `1px solid ${item.atbbStatus === '成約済み' ? '#bdbdbd' : '#a5d6a7'}`,
+                                  }}
+                                >
+                                  {item.atbbStatus}
+                                </span>
                               ) : '-'}
                             </TableCell>
                           </TableRow>
