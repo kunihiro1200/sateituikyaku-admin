@@ -120,6 +120,7 @@ export default function OtherCompanyDistributionPage() {
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
   const [emailSubject, setEmailSubject] = useState('新着物件のご案内です！！');
   const [emailBody, setEmailBody] = useState('');
+  const [propertyUrl, setPropertyUrl] = useState(''); // 物件URL
   const [selectedImages, setSelectedImages] = useState<ImageFile[]>([]);
   const [imageSelectorOpen, setImageSelectorOpen] = useState(false); // 0: Google Drive, 1: ローカルファイル, 2: URL（デフォルトはローカルファイル）
   const [sending, setSending] = useState(false);
@@ -251,7 +252,8 @@ export default function OtherCompanyDistributionPage() {
 
   // メール本文生成
   const buildEmailBody = (buyer: Buyer) => {
-    return `${buyer.name}様\n\n大変お世話になっております。\n不動産会社の㈱いふうです。\n\n新着物件がでましたので、添付致します。\n他社様の物件でも気になる物件がございましたらまとめてご案内可能ですのでお申し付けくださいませ。${SIGNATURE_EMAIL}`;
+    const urlLine = propertyUrl.trim() ? `\n物件URL: ${propertyUrl.trim()}\n` : '';
+    return `${buyer.name}様\n\n大変お世話になっております。\n不動産会社の㈱いふうです。\n\n新着物件がでましたので、添付致します。\n他社様の物件でも気になる物件がございましたらまとめてご案内可能ですのでお申し付けくださいませ。${urlLine}${SIGNATURE_EMAIL}`;
   };
 
   const openEmailDialog = () => {
@@ -694,6 +696,16 @@ export default function OtherCompanyDistributionPage() {
             value={emailSubject}
             onChange={e => setEmailSubject(e.target.value)}
             fullWidth
+          />
+          <TextField
+            label="URL（物件ページのURLを入力すると本文に自動挿入されます）"
+            value={propertyUrl}
+            onChange={e => setPropertyUrl(e.target.value)}
+            fullWidth
+            placeholder="例: https://www.athome.co.jp/mansion/6990582043/"
+            InputProps={{
+              startAdornment: <LinkIcon sx={{ mr: 1, color: 'text.secondary', fontSize: 20 }} />,
+            }}
           />
           <TextField
             label="本文（各買主の名前が自動的に挿入されます）"
