@@ -35,6 +35,8 @@ interface PreviewData {
   show_parking?: boolean;
   show_features?: boolean;
   show_map?: boolean;
+  points?: string[];
+  image_categories?: Record<string, string[]>;
 }
 
 // ── お問い合わせフォーム ──────────────────────────────
@@ -165,6 +167,7 @@ export default function PropertyPreviewPage() {
   const [error, setError] = useState<string | null>(null);
   const [imgIndex, setImgIndex] = useState(0);
   const [showProvider, setShowProvider] = useState(false);
+  const [imageTab, setImageTab] = useState<'all' | 'layout' | 'exterior'>('all');
 
   useEffect(() => {
     if (!slug) return;
@@ -220,6 +223,9 @@ export default function PropertyPreviewPage() {
     showBuiltYear && data.built_year && { label: '築年月',  value: data.built_year },
     showParking   && data.parking   && { label: '駐車場',   value: data.parking },
     showFeatures  && data.features  && { label: '設備',     value: data.features },
+    data.details?.['販売スケジュール'] && { label: '販売スケジュール', value: data.details['販売スケジュール'] },
+    data.details?.['引渡可能時期'] && { label: '引渡可能時期', value: data.details['引渡可能時期'] },
+    data.details?.['完成時期'] && { label: '完成時期', value: data.details['完成時期'] },
   ].filter(Boolean) as { label: string; value: string }[];
 
   return (
