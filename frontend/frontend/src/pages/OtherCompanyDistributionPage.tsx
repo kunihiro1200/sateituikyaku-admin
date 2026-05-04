@@ -204,28 +204,21 @@ export default function OtherCompanyDistributionPage() {
       }
 
       // ペットを自動判定
-      // 1. まず「ペット」フィールドを確認
-      const petField = data.details?.['ペット'] || '';
-      if (petField) {
-        // 「ペット」フィールドがある場合
-        if (petField.includes('可') || petField.includes('大型犬') || petField.includes('小型犬') || petField.includes('猫')) {
+      // 「ペット」フィールドを確認
+      const petField = data.details?.['ペット'];
+      
+      if (petField !== undefined) {
+        // 「ペット」フィールドが存在する場合
+        const petValue = petField.trim();
+        if (petValue && petValue !== '－' && petValue !== '-') {
+          // 何か書かれている場合（「大型犬可 小型犬可 猫可」「相談」など） → 「可」
           setSelectedPet('可');
-        } else if (petField.includes('不可') || petField.includes('禁止') || petField.includes('相談')) {
-          setSelectedPet('不可');
-        }
-      } else {
-        // 2. 「ペット」フィールドがない場合は、設備・サービスや備考から検索
-        const features = data.details?.['設備・サービス'] || data.features || '';
-        const remarks = data.details?.['備考'] || data.remarks || '';
-        const allText = (features + ' ' + remarks).toLowerCase();
-        
-        if (allText.includes('ペット可') || allText.includes('大型犬可') || allText.includes('小型犬可') || allText.includes('猫可')) {
-          setSelectedPet('可');
-        } else if (allText.includes('ペット不可') || allText.includes('ペット禁止')) {
+        } else {
+          // 空または「－」の場合 → 「不可」
           setSelectedPet('不可');
         }
       }
-      // ペット情報がない場合は「どちらでも」のまま
+      // 「ペット」フィールド自体がない場合は「どちらでも」のまま
     }
 
     // 温泉を自動判定（全物件種別）
@@ -289,6 +282,20 @@ export default function OtherCompanyDistributionPage() {
       
       // 自動入力を実行
       autoFillFromScrapedData(result.data);
+      
+      // 画像を自動選択（最初の3枚）
+      if (result.data.images && result.data.images.length > 0) {
+        const firstThreeImages: ImageFile[] = result.data.images.slice(0, 3).map((imgUrl: string, index: number) => ({
+          id: `scraped-${Date.now()}-${index}`,
+          name: `物件画像${index + 1}.jpg`,
+          source: 'url' as const,
+          size: 0, // URLの場合はサイズ不明
+          mimeType: 'image/jpeg',
+          previewUrl: imgUrl,
+          url: imgUrl,
+        }));
+        setSelectedImages(firstThreeImages);
+      }
       
       setSnackbar({ open: true, message: '物件情報を取得し、フィルターに自動入力しました', severity: 'success' });
     } catch (err: any) {
@@ -433,12 +440,62 @@ export default function OtherCompanyDistributionPage() {
   const buildEmailBody = (buyer: Buyer) => {
     // プレビューURLがあればそれを使用、なければ元のURLを使用
     const linkUrl = previewUrl || propertyUrl.trim();
+    
+    // スクレイピングデータがある場合は新フォーマット
+    if (previewData) {
+      const propertyAddress = previewData.address || '住所情報なし';
+      const propertyPrice = previewData.price || '価格情報なし';
+      
+      // 物件情報を整形
+      const propertyDetails = [];
+      if (previewData.layout) propertyDetails.push(`間取り: ${previewData.layout}`);
+      if (previewData.area) propertyDetails.push(`面積: ${previewData.area}`);
+      if (previewData.floor) propertyDetails.push(`階: ${previewData.floor}`);
+      if (previewData.built_year) propertyDetails.push(`築年月: ${previewData.built_year}`);
+      if (previewData.parking) propertyDetails.push(`駐車場: ${previewData.parking}`);
+      if (previewData.access) propertyDetails.push(`交通: ${previewData.access}`);
+      
+      const propertyInfo = propertyDetails.length > 0 ? propertyDetails.join('\n') : '';
+      
+      // おすすめコメント欄（空欄で編集可能）
+      const recommendComment = '';
+      
+      return `${buyer.name}様
+
+大変お世話になっております。
+不動産会社の㈱いふうです。
+
+新着物件がでましたので、ご案内致します。
+
+${propertyAddress}/${propertyPrice}/
+
+[画像は添付ファイルをご確認ください]
+
+他にはこちらから
+${linkUrl}
+
+${recommendComment}
+
+${propertyInfo}${SIGNATURE_EMAIL}`;
+    }
+    
+    // スクレイピングデータがない場合は従来フォーマット
     const urlLine = linkUrl ? `\n物件情報はこちら: ${linkUrl}\n` : '';
     return `${buyer.name}様\n\n大変お世話になっております。\n不動産会社の㈱いふうです。\n\n新着物件がでましたので、ご案内致します。\n他社様の物件でも気になる物件がございましたらまとめてご案内可能ですのでお申し付けくださいませ。${urlLine}${SIGNATURE_EMAIL}`;
   };
 
   const openEmailDialog = () => {
     if (checkedBuyers.length === 0) return;
+    
+    // スクレイピングデータがある場合は件名も更新
+    if (previewData) {
+      const propertyAddress = previewData.address || '住所情報なし';
+      const propertyPrice = previewData.price || '価格情報なし';
+      setEmailSubject(`${propertyAddress}/${propertyPrice}/おまたせしました！新着物件です！`);
+    } else {
+      setEmailSubject('新着物件のご案内です！！');
+    }
+    
     // 最初の買主の名前で本文を生成（個別送信なので各買主ごとに変わる）
     setEmailBody(buildEmailBody(checkedBuyers[0]));
     setEmailDialogOpen(true);
@@ -472,10 +529,14 @@ export default function OtherCompanyDistributionPage() {
         formData.append('body', buildEmailBody(buyer)); // 各買主ごとに本文を生成
         formData.append('senderEmail', 'tenant@ifoo-oita.com');
         
-        // 画像を添付ファイルに変換（ローカルファイルのみ）
+        // 画像を添付ファイルに変換
         for (const image of selectedImages) {
           if (image.source === 'local' && image.localFile) {
+            // ローカルファイルの場合
             formData.append('attachments', image.localFile);
+          } else if (image.source === 'url' && image.url) {
+            // URL画像の場合はURLを送信（バックエンドでダウンロード）
+            formData.append('imageUrls', image.url);
           }
         }
 
