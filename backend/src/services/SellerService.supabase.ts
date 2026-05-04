@@ -101,10 +101,10 @@ export function invalidateSellerCache(sellerId: string): void {
   _sellerCache.delete(sellerId);
 }
 
-// listSellers 用インメモリキャッシュ（60秒TTL）
-// Redis が遅い/未接続の場合でも高速レスポンスを返すための前段キャッシュ
+// listSellers 用インメモリキャッシュ（無効化 - 復号失敗データがキャッシュされる問題を防ぐ）
+// Vercelサーバーレスではインスタンス間でキャッシュが共有されないため、インメモリキャッシュは不要
 const _listSellersCache = new Map<string, { data: any; expiresAt: number }>();
-const LIST_SELLERS_CACHE_TTL_MS = 5 * 60 * 1000; // 5分（Vercelコールドスタート対策）
+const LIST_SELLERS_CACHE_TTL_MS = 0; // 0 = キャッシュ無効
 
 function getListSellersCache(cacheKey: string): any | null {
   const entry = _listSellersCache.get(cacheKey);
