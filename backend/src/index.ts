@@ -69,6 +69,7 @@ import nearbyMapRoutes from './routes/nearbyMap';
 import managementRulesRoutes from './routes/managementRules';
 import tokiExtractRoutes from './routes/tokiExtract';
 import propertyPreviewRoutes from './routes/propertyPreview';
+import tateuriPreviewRoutes from './routes/tateuriPreview';
 import { activityLogger } from './middleware/activityLogger';
 import { authenticate } from './middleware/auth';
 
@@ -765,6 +766,7 @@ app.use('/api/property-listing-sync', propertyListingSyncRoutes);
 app.use('/api/staff-sync', staffSyncRoutes); // スタッフ同期API
 app.use('/api/nearby-map', nearbyMapRoutes); // 近隣MAPapi
 app.use('/api/property-preview', propertyPreviewRoutes); // 物件プレビュー（認証不要・公開）
+app.use('/api/tateuri', tateuriPreviewRoutes); // 建売専門HP（認証不要・公開）
 
 // Error handling middleware
 app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {

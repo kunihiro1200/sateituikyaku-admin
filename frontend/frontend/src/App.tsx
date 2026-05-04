@@ -41,6 +41,8 @@ import ReinsRegistrationPage from './pages/ReinsRegistrationPage';
 import ManagementRulesTestPage from './pages/ManagementRulesTestPage';
 import SalesHistoryPage from './pages/SalesHistoryPage';
 import PropertyPreviewPage from './pages/PropertyPreviewPage';
+import TateuriPage from './pages/TateuriPage';
+import TateuriManagePage from './pages/TateuriManagePage';
 import ProtectedRoute from './components/ProtectedRoute';
 import { useAuthStore } from './store/authStore';
 import { GoogleMapsProvider } from './contexts/GoogleMapsContext';
@@ -65,6 +67,10 @@ function App() {
         <Route path="/public/properties/:id" element={<PublicPropertyDetailPage />} />
         {/* 物件プレビュー（認証不要・買主向け公開ページ） */}
         <Route path="/property-preview/:slug" element={<PropertyPreviewPage />} />
+        {/* 建売専門HP（認証不要・公開） */}
+        <Route path="/tateuri" element={<TateuriPage />} />
+        {/* 建売専門HP管理（認証不要・スタッフ向け） */}
+        <Route path="/tateuri/manage" element={<TateuriManagePage />} />
         <Route
           path="/"
           element={
