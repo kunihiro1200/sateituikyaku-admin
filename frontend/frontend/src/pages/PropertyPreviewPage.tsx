@@ -187,6 +187,8 @@ export default function PropertyPreviewPage() {
   );
 
   const images = data.images || [];
+  // タイトルから [物件番号]以降の不要テキストを除去
+  const cleanTitle = (data.title || '').replace(/\[\d+\].+$/, '').trim();
   const showImages    = data.show_images    !== false;
   const showPrice     = data.show_price     !== false;
   const showAddress   = data.show_address   !== false;
@@ -220,7 +222,7 @@ export default function PropertyPreviewPage() {
     <div style={{ fontFamily: "'Hiragino Sans', 'Meiryo', sans-serif", background: '#f5f5f5', minHeight: '100vh' }}>
       {/* ヘッダー */}
       <div style={{ background: '#e84040', color: 'white', padding: '20px 24px' }}>
-        <h1 style={{ fontSize: 20, fontWeight: 'bold', margin: 0 }}>{data.title || '物件情報'}</h1>
+        <h1 style={{ fontSize: 20, fontWeight: 'bold', margin: 0 }}>{cleanTitle || '物件情報'}</h1>
         {showPrice && data.price && (
           <div style={{ fontSize: 28, fontWeight: 'bold', marginTop: 6 }}>{data.price}</div>
         )}
