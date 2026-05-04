@@ -204,14 +204,26 @@ export default function OtherCompanyDistributionPage() {
       }
 
       // ペットを自動判定
-      const features = data.details?.['設備・サービス'] || data.features || '';
-      const remarks = data.details?.['備考'] || data.remarks || '';
-      const allText = (features + ' ' + remarks).toLowerCase();
-      
-      if (allText.includes('ペット可') || allText.includes('大型犬可') || allText.includes('小型犬可') || allText.includes('猫可')) {
-        setSelectedPet('可');
-      } else if (allText.includes('ペット不可') || allText.includes('ペット禁止')) {
-        setSelectedPet('不可');
+      // 1. まず「ペット」フィールドを確認
+      const petField = data.details?.['ペット'] || '';
+      if (petField) {
+        // 「ペット」フィールドがある場合
+        if (petField.includes('可') || petField.includes('大型犬') || petField.includes('小型犬') || petField.includes('猫')) {
+          setSelectedPet('可');
+        } else if (petField.includes('不可') || petField.includes('禁止') || petField.includes('相談')) {
+          setSelectedPet('不可');
+        }
+      } else {
+        // 2. 「ペット」フィールドがない場合は、設備・サービスや備考から検索
+        const features = data.details?.['設備・サービス'] || data.features || '';
+        const remarks = data.details?.['備考'] || data.remarks || '';
+        const allText = (features + ' ' + remarks).toLowerCase();
+        
+        if (allText.includes('ペット可') || allText.includes('大型犬可') || allText.includes('小型犬可') || allText.includes('猫可')) {
+          setSelectedPet('可');
+        } else if (allText.includes('ペット不可') || allText.includes('ペット禁止')) {
+          setSelectedPet('不可');
+        }
       }
       // ペット情報がない場合は「どちらでも」のまま
     }
