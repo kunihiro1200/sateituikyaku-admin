@@ -122,11 +122,55 @@ export default function OtherCompanyDistributionPage() {
   const [emailBody, setEmailBody] = useState('');
   const [propertyUrl, setPropertyUrl] = useState(''); // 物件URL
   const [selectedImages, setSelectedImages] = useState<ImageFile[]>([]);
-  const [imageSelectorOpen, setImageSelectorOpen] = useState(false); // 0: Google Drive, 1: ローカルファイル, 2: URL（デフォルトはローカルファイル）
+  const [imageSelectorOpen, setImageSelectorOpen] = useState(false);
   const [sending, setSending] = useState(false);
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
     open: false, message: '', severity: 'success',
   });
+
+  // 物件プレビュー取得
+  const [scraping, setScraping] = useState(false);
+  const [previewData, setPreviewData] = useState<any | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string>('');
+  const [showFields, setShowFields] = useState({
+    images: true, price: true, address: true, access: true,
+    layout: true, area: true, floor: false, built_year: false,
+    parking: false, features: false, map: true,
+  });
+
+  const handleScrape = async () => {
+    if (!propertyUrl.trim()) return;
+    setScraping(true);
+    setPreviewData(null);
+    setPreviewUrl('');
+    try {
+      // ローカルスクレイピングサーバーに送信
+      const res = await fetch('http://localhost:8765/scrape', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: propertyUrl.trim() }),
+      });
+      if (!res.ok) throw new Error(`スクレイピングサーバーエラー: ${res.status}`);
+      const result = await res.json();
+      if (!result.success) throw new Error(result.error || '取得失敗');
+      setPreviewData(result.data);
+      setPreviewUrl(result.preview_url);
+      setSnackbar({ open: true, message: '物件情報を取得しました', severity: 'success' });
+    } catch (err: any) {
+      setSnackbar({ open: true, message: `取得失敗: ${err.message}。scrape_server.pyが起動しているか確認してください。`, severity: 'error' });
+    } finally {
+      setScraping(false);
+    }
+  };
+
+  const toggleField = (key: keyof typeof showFields) => {
+    setShowFields(prev => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const copyPreviewUrl = () => {
+    navigator.clipboard.writeText(previewUrl);
+    setSnackbar({ open: true, message: '公開URLをコピーしました', severity: 'success' });
+  };
 
   // API呼び出し
   const fetchBuyers = async () => {
@@ -252,8 +296,10 @@ export default function OtherCompanyDistributionPage() {
 
   // メール本文生成
   const buildEmailBody = (buyer: Buyer) => {
-    const urlLine = propertyUrl.trim() ? `\n物件URL: ${propertyUrl.trim()}\n` : '';
-    return `${buyer.name}様\n\n大変お世話になっております。\n不動産会社の㈱いふうです。\n\n新着物件がでましたので、添付致します。\n他社様の物件でも気になる物件がございましたらまとめてご案内可能ですのでお申し付けくださいませ。${urlLine}${SIGNATURE_EMAIL}`;
+    // プレビューURLがあればそれを使用、なければ元のURLを使用
+    const linkUrl = previewUrl || propertyUrl.trim();
+    const urlLine = linkUrl ? `\n物件情報はこちら: ${linkUrl}\n` : '';
+    return `${buyer.name}様\n\n大変お世話になっております。\n不動産会社の㈱いふうです。\n\n新着物件がでましたので、ご案内致します。\n他社様の物件でも気になる物件がございましたらまとめてご案内可能ですのでお申し付けくださいませ。${urlLine}${SIGNATURE_EMAIL}`;
   };
 
   const openEmailDialog = () => {
@@ -346,13 +392,20 @@ export default function OtherCompanyDistributionPage() {
           onChange={e => setPropertyUrl(e.target.value)}
           placeholder="https://www.athome.co.jp/mansion/..."
           size="small"
-          sx={{ width: 420 }}
+          sx={{ width: 380 }}
           InputProps={{
             startAdornment: <LinkIcon sx={{ mr: 1, color: 'text.secondary', fontSize: 20 }} />,
           }}
         />
-        <Box sx={{ display: 'flex', gap: 2 }}>
-          <Button
+        <Button
+          variant="contained"
+          onClick={handleScrape}
+          disabled={scraping || !propertyUrl.trim()}
+          sx={{ backgroundColor: '#555', '&:hover': { backgroundColor: '#333' }, whiteSpace: 'nowrap' }}
+        >
+          {scraping ? '取得中...' : '物件情報を取得'}
+        </Button>
+        <Box sx={{ display: 'flex', gap: 2 }}>          <Button
             variant="contained"
             startIcon={<EmailIcon />}
             disabled={checkedIds.size === 0}
@@ -382,6 +435,55 @@ export default function OtherCompanyDistributionPage() {
           </Button>
         </Box>
       </Box>
+
+      {/* 物件プレビュー選択UI */}
+      {previewData && (
+        <Paper sx={{ p: 2, mb: 2, border: '2px solid', borderColor: SECTION_COLORS.buyer.main }}>
+          <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 1.5, color: SECTION_COLORS.buyer.main }}>
+            📋 公開する情報を選択
+          </Typography>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
+            {[
+              { key: 'images',     label: `写真（${previewData.images?.length || 0}枚）` },
+              { key: 'price',      label: `価格：${previewData.price || '-'}` },
+              { key: 'address',    label: `所在地：${previewData.address || '-'}` },
+              { key: 'access',     label: `交通：${previewData.access || '-'}` },
+              { key: 'layout',     label: `間取り：${previewData.layout || '-'}` },
+              { key: 'area',       label: `面積：${previewData.area || '-'}` },
+              { key: 'floor',      label: `階：${previewData.floor || '-'}` },
+              { key: 'built_year', label: `築年月：${previewData.built_year || '-'}` },
+              { key: 'parking',    label: `駐車場：${previewData.parking || '-'}` },
+              { key: 'features',   label: '設備・サービス' },
+              { key: 'map',        label: '地図' },
+            ].map(({ key, label }) => (
+              <Chip
+                key={key}
+                label={label}
+                onClick={() => toggleField(key as keyof typeof showFields)}
+                color={showFields[key as keyof typeof showFields] ? 'primary' : 'default'}
+                variant={showFields[key as keyof typeof showFields] ? 'filled' : 'outlined'}
+                sx={{ cursor: 'pointer', maxWidth: 280 }}
+              />
+            ))}
+          </Box>
+          {previewUrl && (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+              <Typography variant="body2" sx={{ color: 'text.secondary' }}>公開URL:</Typography>
+              <Typography variant="body2" sx={{ fontFamily: 'monospace', color: SECTION_COLORS.buyer.main, wordBreak: 'break-all' }}>
+                {previewUrl}
+              </Typography>
+              <Button size="small" variant="contained" onClick={copyPreviewUrl}
+                sx={{ backgroundColor: SECTION_COLORS.buyer.main, '&:hover': { backgroundColor: SECTION_COLORS.buyer.dark } }}>
+                URLをコピー
+              </Button>
+              <Button size="small" variant="outlined" onClick={() => window.open(previewUrl, '_blank')}
+                sx={{ borderColor: SECTION_COLORS.buyer.main, color: SECTION_COLORS.buyer.main }}>
+                プレビュー確認
+              </Button>
+            </Box>
+          )}
+        </Paper>
+      )}
 
       {/* フィルター */}
       <Paper sx={{ p: 2, mb: 2 }}>

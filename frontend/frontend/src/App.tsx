@@ -40,6 +40,7 @@ import BuyerNearbyMapPage from './pages/BuyerNearbyMapPage';
 import ReinsRegistrationPage from './pages/ReinsRegistrationPage';
 import ManagementRulesTestPage from './pages/ManagementRulesTestPage';
 import SalesHistoryPage from './pages/SalesHistoryPage';
+import PropertyPreviewPage from './pages/PropertyPreviewPage';
 import ProtectedRoute from './components/ProtectedRoute';
 import { useAuthStore } from './store/authStore';
 import { GoogleMapsProvider } from './contexts/GoogleMapsContext';
@@ -62,6 +63,8 @@ function App() {
         {/* Public routes - no authentication required */}
         <Route path="/public/properties" element={<PublicPropertiesPage />} />
         <Route path="/public/properties/:id" element={<PublicPropertyDetailPage />} />
+        {/* 物件プレビュー（認証不要・買主向け公開ページ） */}
+        <Route path="/property-preview/:slug" element={<PropertyPreviewPage />} />
         <Route
           path="/"
           element={
