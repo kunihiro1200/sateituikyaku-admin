@@ -144,8 +144,9 @@ export default function OtherCompanyDistributionPage() {
     setPreviewData(null);
     setPreviewUrl('');
     try {
-      // ローカルスクレイピングサーバーに送信
-      const res = await fetch('http://localhost:8765/scrape', {
+      // RailwayのスクレイピングAPIサーバーに送信
+      const scrapeApiUrl = import.meta.env.VITE_SCRAPE_API_URL || 'http://localhost:8765';
+      const res = await fetch(`${scrapeApiUrl}/scrape`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url: propertyUrl.trim() }),
