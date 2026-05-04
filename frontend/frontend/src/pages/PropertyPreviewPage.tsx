@@ -21,6 +21,9 @@ interface PreviewData {
   lng: number | null;
   details: Record<string, string>;
   appeal_comment?: string | null;
+  provider_name?: string | null;
+  provider_phone?: string | null;
+  provider_hours?: string | null;
   show_images?: boolean;
   show_price?: boolean;
   show_address?: boolean;
@@ -161,6 +164,7 @@ export default function PropertyPreviewPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [imgIndex, setImgIndex] = useState(0);
+  const [showProvider, setShowProvider] = useState(false);
 
   useEffect(() => {
     if (!slug) return;
@@ -333,6 +337,61 @@ export default function PropertyPreviewPage() {
           >
             🖨
           </button>
+          {/* 提供元情報ボタン（極めて目立たない・左下隅） */}
+          <button
+            onClick={() => setShowProvider(v => !v)}
+            title=""
+            style={{
+              position: 'absolute', bottom: 10, left: 12,
+              width: 18, height: 18, borderRadius: '50%',
+              background: '#e8e8e8', border: 'none',
+              cursor: 'pointer', fontSize: 9,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              opacity: 0.3,
+              transition: 'opacity 0.2s',
+              color: '#999',
+            }}
+            onMouseEnter={e => (e.currentTarget.style.opacity = '0.7')}
+            onMouseLeave={e => (e.currentTarget.style.opacity = '0.3')}
+          >
+            ℹ
+          </button>
+          {/* 提供元情報ポップアップ */}
+          {showProvider && (
+            <div style={{
+              position: 'absolute', bottom: 36, left: 12,
+              background: 'white', border: '1px solid #ddd',
+              borderRadius: 8, padding: '12px 16px',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+              textAlign: 'left', zIndex: 10, minWidth: 220,
+            }}>
+              <div style={{ fontSize: 11, color: '#999', marginBottom: 6 }}>提供元情報</div>
+              {(data.provider_name || data.details?.['お問合せ先']) && (
+                <div style={{ fontSize: 13, fontWeight: 'bold', color: '#333', marginBottom: 4 }}>
+                  {data.provider_name || data.details?.['お問合せ先']}
+                </div>
+              )}
+              {(data.provider_phone || data.details?.['電話番号']) && (
+                <div style={{ fontSize: 13, color: '#555', marginBottom: 4 }}>
+                  📞 {data.provider_phone || data.details?.['電話番号']}
+                </div>
+              )}
+              {(data.provider_hours || data.details?.['営業時間']) && (
+                <div style={{ fontSize: 12, color: '#777' }}>
+                  🕐 {data.provider_hours || data.details?.['営業時間']}
+                </div>
+              )}
+              {!data.provider_name && !data.details?.['お問合せ先'] && (
+                <div style={{ fontSize: 12, color: '#999' }}>情報がありません</div>
+              )}
+              <button
+                onClick={() => setShowProvider(false)}
+                style={{ marginTop: 8, fontSize: 11, color: '#999', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+              >
+                閉じる
+              </button>
+            </div>
+          )}
         </div>
 
         {/* お問い合わせフォーム */}
