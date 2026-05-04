@@ -120,6 +120,7 @@ export default function OtherCompanyDistributionPage() {
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
   const [emailSubject, setEmailSubject] = useState('新着物件のご案内です！！');
   const [emailBody, setEmailBody] = useState('');
+  const [recommendComment, setRecommendComment] = useState(''); // おすすめコメント
   const [propertyUrl, setPropertyUrl] = useState(''); // 物件URL
   const [selectedImages, setSelectedImages] = useState<ImageFile[]>([]);
   const [imageSelectorOpen, setImageSelectorOpen] = useState(false);
@@ -457,8 +458,14 @@ export default function OtherCompanyDistributionPage() {
       
       const propertyInfo = propertyDetails.length > 0 ? propertyDetails.join('\n') : '';
       
-      // おすすめコメント欄（空欄で編集可能）
-      const recommendComment = '';
+      // おすすめコメント（入力されている場合のみ表示）
+      const commentSection = recommendComment.trim() ? `\n${recommendComment.trim()}\n` : '';
+      
+      // 画像HTML（最初の3枚のみ、大きめに表示）
+      const imageHtml = selectedImages.slice(0, 3).map((image, index) => {
+        const imgSrc = image.url || image.previewUrl;
+        return `<img src="${imgSrc}" alt="物件画像${index + 1}" style="max-width: 600px; width: 100%; height: auto; margin: 10px 0; display: block;" />`;
+      }).join('');
       
       return `${buyer.name}様
 
@@ -469,13 +476,10 @@ export default function OtherCompanyDistributionPage() {
 
 ${propertyAddress}/${propertyPrice}/
 
-[画像は添付ファイルをご確認ください]
+${imageHtml}
 
 他にはこちらから
-${linkUrl}
-
-${recommendComment}
-
+${linkUrl}${commentSection}
 ${propertyInfo}${SIGNATURE_EMAIL}`;
     }
     
@@ -500,6 +504,13 @@ ${propertyInfo}${SIGNATURE_EMAIL}`;
     setEmailBody(buildEmailBody(checkedBuyers[0]));
     setEmailDialogOpen(true);
   };
+
+  // おすすめコメントが変更されたら本文を再生成
+  useEffect(() => {
+    if (emailDialogOpen && checkedBuyers.length > 0) {
+      setEmailBody(buildEmailBody(checkedBuyers[0]));
+    }
+  }, [recommendComment]);
 
   const handleOpenImageSelector = () => {
     setImageSelectorOpen(true);
@@ -567,6 +578,7 @@ ${propertyInfo}${SIGNATURE_EMAIL}`;
       setSnackbar({ open: true, message: `${checkedBuyers.length}件のメールを送信しました`, severity: 'success' });
       setCheckedIds(new Set()); // チェックをクリア
       setSelectedImages([]); // 選択画像をクリア
+      setRecommendComment(''); // おすすめコメントをクリア
     } catch (err: any) {
       setSnackbar({ open: true, message: err.response?.data?.error || 'メール送信に失敗しました', severity: 'error' });
     } finally {
@@ -995,7 +1007,15 @@ ${propertyInfo}${SIGNATURE_EMAIL}`;
       )}
 
       {/* メール送信ダイアログ */}
-      <Dialog open={emailDialogOpen} onClose={() => setEmailDialogOpen(false)} maxWidth="md" fullWidth>
+      <Dialog 
+        open={emailDialogOpen} 
+        onClose={() => {
+          setEmailDialogOpen(false);
+          setRecommendComment(''); // ダイアログを閉じたらおすすめコメントをリセット
+        }} 
+        maxWidth="md" 
+        fullWidth
+      >
         <DialogTitle>Email送信（{checkedBuyers.length}件）</DialogTitle>
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
           <Typography variant="body2" color="text.secondary">
@@ -1007,6 +1027,21 @@ ${propertyInfo}${SIGNATURE_EMAIL}`;
             onChange={e => setEmailSubject(e.target.value)}
             fullWidth
           />
+          
+          {/* おすすめコメント入力欄（スクレイピングデータがある場合のみ表示） */}
+          {previewData && (
+            <TextField
+              label="おすすめコメント（任意）"
+              value={recommendComment}
+              onChange={e => setRecommendComment(e.target.value)}
+              multiline
+              rows={3}
+              fullWidth
+              placeholder="この物件のおすすめポイントを入力してください"
+              helperText="入力したコメントは「他にはこちらから」の下に表示されます"
+            />
+          )}
+          
           <TextField
             label="本文（各買主の名前が自動的に挿入されます）"
             value={emailBody}
@@ -1054,7 +1089,10 @@ ${propertyInfo}${SIGNATURE_EMAIL}`;
           </Box>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setEmailDialogOpen(false)}>キャンセル</Button>
+          <Button onClick={() => {
+            setEmailDialogOpen(false);
+            setRecommendComment(''); // キャンセル時もおすすめコメントをリセット
+          }}>キャンセル</Button>
           <Button
             variant="contained"
             onClick={sendEmails}

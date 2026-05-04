@@ -53,6 +53,7 @@ router.post('/send', upload.array('attachments'), async (req, res) => {
   const { buyerId, propertyIds, senderEmail, subject, templateName } = body;
   const bodyText = body.body;
   const attachments = (req.files as Express.Multer.File[]) || [];
+  const imageUrls = body.imageUrls ? (Array.isArray(body.imageUrls) ? body.imageUrls : [body.imageUrls]) : [];
   
   try {
 
@@ -66,6 +67,40 @@ router.post('/send', upload.array('attachments'), async (req, res) => {
       return res.status(404).json({ error: '買主が見つからないか、メールアドレスが登録されていません' });
     }
 
+    // URL画像をダウンロードして添付ファイルに追加
+    const downloadedImages: Express.Multer.File[] = [];
+    if (imageUrls.length > 0) {
+      for (let i = 0; i < imageUrls.length; i++) {
+        const imageUrl = imageUrls[i];
+        try {
+          const response = await fetch(imageUrl);
+          if (!response.ok) {
+            console.warn(`[gmail/send] 画像ダウンロード失敗: ${imageUrl}`);
+            continue;
+          }
+          const arrayBuffer = await response.arrayBuffer();
+          const buffer = Buffer.from(arrayBuffer);
+          
+          // ファイル名を生成
+          const urlObj = new URL(imageUrl);
+          const pathname = urlObj.pathname;
+          const filename = pathname.split('/').pop() || `image${i + 1}.jpg`;
+          
+          // Express.Multer.File形式に変換
+          downloadedImages.push({
+            fieldname: 'attachments',
+            originalname: filename,
+            encoding: '7bit',
+            mimetype: response.headers.get('content-type') || 'image/jpeg',
+            buffer: buffer,
+            size: buffer.length,
+          } as Express.Multer.File);
+        } catch (err) {
+          console.error(`[gmail/send] 画像ダウンロードエラー: ${imageUrl}`, err);
+        }
+      }
+    }
+
     // メール送信（30秒タイムアウト）
     const sendWithTimeout = Promise.race([
       emailService.sendBuyerEmail({
@@ -73,7 +108,7 @@ router.post('/send', upload.array('attachments'), async (req, res) => {
         subject,
         body: bodyText,
         from: senderEmail,
-        attachments,
+        attachments: [...attachments, ...downloadedImages],
       }),
       new Promise<never>((_, reject) =>
         setTimeout(() => reject(new Error('メール送信がタイムアウトしました（30秒）。ネットワーク接続を確認してください。')), 30000)
@@ -149,6 +184,7 @@ router.post('/send', upload.array('attachments'), async (req, res) => {
       bodyLength: bodyText?.length || 0,
       senderEmail: senderEmail,
       attachmentsCount: attachments?.length || 0,
+      imageUrlsCount: imageUrls?.length || 0,
       errorMessage: error.message,
       errorStack: error.stack,
       errorCode: error.code,
