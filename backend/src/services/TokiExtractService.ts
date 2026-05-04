@@ -577,8 +577,8 @@ export class TokiExtractService {
     }
 
     if (isKodate) {
-      // 戸建て用シート
-      return '専任媒介契土地建物（売却)';
+      // 戸建て用シート（マンションと同じシート名）
+      return '専任媒介契建物（売却)';
     }
 
     return null;
