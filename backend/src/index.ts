@@ -145,6 +145,32 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// 暗号化キー診断エンドポイント（一時的）
+app.get('/debug/encryption-check', (req, res) => {
+  const key = process.env.ENCRYPTION_KEY;
+  const { decrypt } = require('./utils/encryption');
+  
+  // テスト用の既知の暗号化文字列（実データではない）
+  let decryptTest = null;
+  let decryptError = null;
+  try {
+    // 短すぎる文字列は平文として返るはず
+    decryptTest = decrypt('hello');
+  } catch (e: any) {
+    decryptError = e.message;
+  }
+
+  res.json({
+    hasKey: !!key,
+    keyLength: key?.length ?? 0,
+    keyFirst3: key ? key.substring(0, 3) + '...' : null,
+    keyLast3: key ? '...' + key.substring(key.length - 3) : null,
+    decryptShortString: decryptTest,
+    decryptError,
+    nodeEnv: process.env.NODE_ENV,
+  });
+});
+
 // Cron Job: 問い合わせをスプレッドシートに同期（一定ごとに実行）
 // ⚠️ 注意: 他のルートより前に設定（より具体的なルートを優先）
 app.get('/api/cron/sync-inquiries', async (req, res) => {
