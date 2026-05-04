@@ -121,7 +121,7 @@ ${itemsDetail}
     // Claude APIに送信（PDF直接対応）
     const response = await client.messages.create({
       model: 'claude-opus-4-5',
-      max_tokens: 4096,
+      max_tokens: 8192,
       messages: [
         {
           role: 'user',
