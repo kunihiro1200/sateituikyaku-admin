@@ -88,4 +88,28 @@ router.post('/delete', async (req: Request, res: Response) => {
   }
 });
 
+// GET /api/tateuri/cron/price-check - 建売物件の価格変動チェック（Vercel Cron Job用）
+router.get('/cron/price-check', async (req: Request, res: Response) => {
+  try {
+    console.log('[Cron TateuriPriceCheck] 価格チェックジョブ開始');
+
+    // Vercel Cron Jobの認証チェック
+    const authHeader = req.headers.authorization;
+    if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+      console.error('[Cron TateuriPriceCheck] 認証失敗');
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const { TateuriPriceCheckService } = await import('../services/TateuriPriceCheckService');
+    const service = new TateuriPriceCheckService();
+    const result = await service.checkPrices();
+
+    console.log(`[Cron TateuriPriceCheck] 完了: チェック=${result.checked}件, 変動=${result.changed}件, エラー=${result.errors}件`);
+    return res.status(200).json({ success: true, ...result });
+  } catch (err: any) {
+    console.error('[Cron TateuriPriceCheck] エラー:', err.message);
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 export default router;

@@ -45,6 +45,10 @@
     {
       "path": "/api/cron/reset-private-mail-delivery",
       "schedule": "0 15 * * *"
+    },
+    {
+      "path": "/api/tateuri/cron/price-check",
+      "schedule": "0 0 * * *"
     }
   ]
 }
