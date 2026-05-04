@@ -143,7 +143,12 @@ export default function TateuriManagePage() {
         <div style={sectionStyle}>
           <h2 style={{ fontSize: 16, fontWeight: 'bold', marginBottom: 16, color: '#c0392b' }}>🗑 物件を削除（売却済み等）</h2>
           <p style={{ fontSize: 13, color: '#666', marginBottom: 12 }}>
-            削除したい物件のURLを入力してください。
+            削除したい物件のURLを入力してください。<br />
+            <span style={{ color: '#888' }}>
+              ・元のathome等のURL（例: https://www.athome.co.jp/kodate/...）<br />
+              ・プレビューURL（例: https://sateituikyaku-admin-frontend.vercel.app/property-preview/abc123）<br />
+              どちらでも削除できます。
+            </span>
           </p>
           <div style={{ display: 'flex', gap: 10 }}>
             <input

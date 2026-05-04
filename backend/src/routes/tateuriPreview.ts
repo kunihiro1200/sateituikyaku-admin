@@ -28,7 +28,8 @@ router.get('/', async (req: Request, res: Response) => {
   }
 });
 
-// POST /api/tateuri/delete - URLで物件を削除（認証不要・URLが秘密鍵代わり）
+// POST /api/tateuri/delete - URLで物件を削除（認証不要）
+// source_url（元のathome等のURL）またはpreview URL（/property-preview/:slug）で削除可能
 router.post('/delete', async (req: Request, res: Response) => {
   try {
     const { source_url } = req.body;
@@ -37,6 +38,23 @@ router.post('/delete', async (req: Request, res: Response) => {
     }
 
     const supabase = getSupabase();
+
+    // プレビューURL（/property-preview/:slug）からslugを抽出
+    const slugMatch = source_url.match(/\/property-preview\/([a-f0-9]{12})/);
+    if (slugMatch) {
+      const slug = slugMatch[1];
+      const { data, error } = await supabase
+        .from('property_previews')
+        .update({ is_active: false })
+        .eq('slug', slug)
+        .select('slug, title');
+
+      if (error) throw error;
+      if (!data || data.length === 0) {
+        return res.status(404).json({ error: '該当する物件が見つかりません' });
+      }
+      return res.json({ success: true, deleted: data });
+    }
 
     // URLを正規化（クエリパラメータを除去して比較）
     const normalizeUrl = (url: string) => {
@@ -50,11 +68,10 @@ router.post('/delete', async (req: Request, res: Response) => {
 
     const normalized = normalizeUrl(source_url);
 
-    // source_urlが一致するものを非アクティブ化（論理削除）
+    // source_urlが一致するものを非アクティブ化（is_tateuriに関わらず削除）
     const { data, error } = await supabase
       .from('property_previews')
       .update({ is_active: false })
-      .eq('is_tateuri', true)
       .like('source_url', `${normalized}%`)
       .select('slug, title');
 
