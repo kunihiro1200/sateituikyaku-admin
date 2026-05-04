@@ -18,6 +18,14 @@ interface PriceChangeResult {
   source_url: string;
 }
 
+interface SoldOutResult {
+  slug: string;
+  title: string | null;
+  address: string | null;
+  price: string | null;
+  source_url: string;
+}
+
 /**
  * 建売専門HP掲載物件の価格変動チェックサービス
  * 毎日スクレイピングして値下げを検知し、メール通知する
@@ -61,6 +69,7 @@ export class TateuriPriceCheckService {
 
     const scrapeApiUrl = process.env.SCRAPE_API_URL || 'http://localhost:8765';
     const priceChanges: PriceChangeResult[] = [];
+    const soldOuts: SoldOutResult[] = [];
     let errors = 0;
 
     for (const property of properties as TateuriProperty[]) {
@@ -78,6 +87,24 @@ export class TateuriPriceCheckService {
           signal: AbortSignal.timeout(30000),
         });
 
+        // 404 or ページが存在しない → 売却済みとして自動削除
+        if (res.status === 404 || res.status === 410) {
+          console.log(`[TateuriPriceCheck] 売却済み検知（${res.status}）: ${property.slug}`);
+          await this.supabase
+            .from('property_previews')
+            .update({ is_active: false })
+            .eq('slug', property.slug);
+
+          soldOuts.push({
+            slug: property.slug,
+            title: property.title,
+            address: property.address,
+            price: property.price,
+            source_url: property.source_url,
+          });
+          continue;
+        }
+
         if (!res.ok) {
           console.warn(`[TateuriPriceCheck] スクレイピング失敗 ${property.slug}: ${res.status}`);
           errors++;
@@ -85,9 +112,28 @@ export class TateuriPriceCheckService {
         }
 
         const result = await res.json();
+
+        // スクレイピングサーバーが sold_out フラグを返す場合
         if (!result.success || !result.data) {
           console.warn(`[TateuriPriceCheck] データ取得失敗 ${property.slug}`);
           errors++;
+          continue;
+        }
+
+        if (result.data.sold_out === true) {
+          console.log(`[TateuriPriceCheck] 売却済み検知（sold_out flag）: ${property.slug}`);
+          await this.supabase
+            .from('property_previews')
+            .update({ is_active: false })
+            .eq('slug', property.slug);
+
+          soldOuts.push({
+            slug: property.slug,
+            title: property.title,
+            address: property.address,
+            price: property.price,
+            source_url: property.source_url,
+          });
           continue;
         }
 
@@ -103,7 +149,6 @@ export class TateuriPriceCheckService {
             .update({
               price: newPrice,
               title: result.data.title || property.title,
-              // 最終チェック日時を記録
               updated_at: new Date().toISOString(),
             })
             .eq('slug', property.slug);
@@ -123,39 +168,60 @@ export class TateuriPriceCheckService {
       }
     }
 
-    // 値下げがあればメール通知
+    // 値下げ or 売却済みがあればメール通知
     const priceDowns = priceChanges.filter(c => isPriceDown(c.oldPrice, c.newPrice));
-    if (priceDowns.length > 0) {
-      await this.sendPriceDownNotification(priceDowns);
+    if (priceDowns.length > 0 || soldOuts.length > 0) {
+      await this.sendNotification(priceDowns, soldOuts);
     }
 
-    console.log(`[TateuriPriceCheck] 完了: チェック=${properties.length}件, 変動=${priceChanges.length}件, エラー=${errors}件`);
+    console.log(`[TateuriPriceCheck] 完了: チェック=${properties.length}件, 値下げ=${priceDowns.length}件, 売却済み=${soldOuts.length}件, エラー=${errors}件`);
     return { checked: properties.length, changed: priceChanges.length, errors };
   }
 
   /**
-   * 値下げ通知メールを送信
+   * 値下げ・売却済み通知メールをまとめて送信
    */
-  private async sendPriceDownNotification(changes: PriceChangeResult[]): Promise<void> {
+  private async sendNotification(priceDowns: PriceChangeResult[], soldOuts: SoldOutResult[]): Promise<void> {
     const notifyEmail = process.env.TATEURI_NOTIFY_EMAIL || 'tenant@ifoo-oita.com';
+    const sections: string[] = [];
 
-    const lines = changes.map(c => {
-      const title = cleanTitle(c.title) || c.address || '物件';
-      return [
-        `■ ${title}`,
-        `  住所: ${c.address || '不明'}`,
-        `  変更前: ${c.oldPrice || '不明'}`,
-        `  変更後: ${c.newPrice || '不明'}`,
-        `  URL: https://sateituikyaku-admin-frontend.vercel.app/property-preview/${c.slug}`,
-        `  元URL: ${c.source_url}`,
-      ].join('\n');
-    });
+    if (priceDowns.length > 0) {
+      const lines = priceDowns.map(c => {
+        const title = cleanTitle(c.title) || c.address || '物件';
+        return [
+          `■ ${title}`,
+          `  住所: ${c.address || '不明'}`,
+          `  変更前: ${c.oldPrice || '不明'}`,
+          `  変更後: ${c.newPrice || '不明'}`,
+          `  URL: https://sateituikyaku-admin-frontend.vercel.app/property-preview/${c.slug}`,
+        ].join('\n');
+      });
+      sections.push(`【値下げ物件 ${priceDowns.length}件】\n${lines.join('\n\n')}`);
+    }
+
+    if (soldOuts.length > 0) {
+      const lines = soldOuts.map(c => {
+        const title = cleanTitle(c.title) || c.address || '物件';
+        return [
+          `■ ${title}`,
+          `  住所: ${c.address || '不明'}`,
+          `  価格: ${c.price || '不明'}`,
+          `  ※ 掲載から自動削除しました`,
+          `  元URL: ${c.source_url}`,
+        ].join('\n');
+      });
+      sections.push(`【売却済み（自動削除）${soldOuts.length}件】\n${lines.join('\n\n')}`);
+    }
+
+    const subject = [
+      priceDowns.length > 0 ? `値下げ${priceDowns.length}件` : '',
+      soldOuts.length > 0 ? `売却済み${soldOuts.length}件` : '',
+    ].filter(Boolean).join('・');
 
     const body = [
-      `建売専門HPに掲載中の物件で値下げが検知されました。`,
+      `建売専門HPの物件に変動がありました。`,
       ``,
-      `【値下げ物件一覧】`,
-      ...lines,
+      ...sections,
       ``,
       `管理画面: https://sateituikyaku-admin-frontend.vercel.app/tateuri/manage`,
     ].join('\n');
@@ -163,10 +229,10 @@ export class TateuriPriceCheckService {
     try {
       await this.emailService.sendEmail({
         to: [notifyEmail],
-        subject: `【建売専門HP】値下げ通知 ${changes.length}件`,
+        subject: `【建売専門HP】${subject}`,
         body,
       });
-      console.log(`[TateuriPriceCheck] 値下げ通知メール送信完了: ${changes.length}件`);
+      console.log(`[TateuriPriceCheck] 通知メール送信完了`);
     } catch (err: any) {
       console.error('[TateuriPriceCheck] メール送信エラー:', err.message);
     }
