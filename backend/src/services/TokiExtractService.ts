@@ -159,8 +159,8 @@ export interface TokiKodateWriteRequest {
 export interface TokiKodateKeiyakuExtractResult {
   // 謄本取得日
   acquisitionYearWareki: string | null;   // AB89
-  acquisitionMonth: string | null;        // AF80
-  acquisitionDay: string | null;          // AJ80
+  acquisitionMonth: string | null;        // AF89
+  acquisitionDay: string | null;          // AJ89
 
   // 所有者情報
   ownerAddress: string | null;            // K36, V90, V104
@@ -1741,8 +1741,8 @@ export class TokiExtractService {
 
     // 謄本取得日
     add('AB89', extractResult.acquisitionYearWareki);
-    add('AF80', extractResult.acquisitionMonth);
-    add('AJ80', extractResult.acquisitionDay);
+    add('AF89', extractResult.acquisitionMonth);
+    add('AJ89', extractResult.acquisitionDay);
 
     // 所有者情報
     add('K36', extractResult.ownerAddress);
