@@ -802,7 +802,14 @@ export class TokiExtractService {
     extractResult.lands.forEach((land, index) => {
       const row = 91 + index;
       add(`A${row}`, land.location);
-      add(`C${row}`, land.lotNumber);
+      // 地番：全角数字・全角スペースを半角に統一
+      const normalizedLotNumber = land.lotNumber
+        ? land.lotNumber
+            .replace(/[０-９]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xFEE0))
+            .replace(/　/g, ' ')
+            .trim()
+        : null;
+      add(`C${row}`, normalizedLotNumber);
       add(`D${row}`, land.landType);
       add(`E${row}`, land.area);
     });
@@ -814,9 +821,6 @@ export class TokiExtractService {
     add('A99', extractResult.buildingLocation);
     add('C99', extractResult.houseNumber);
     add('D99', extractResult.buildingType);
-
-    // 附属建物
-    add('C101', extractResult.annexBuildings);
 
     // 構造
     add('A103', extractResult.structure);
