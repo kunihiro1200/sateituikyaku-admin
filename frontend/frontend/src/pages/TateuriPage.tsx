@@ -63,13 +63,13 @@ export default function TateuriPage() {
     <div style={{ fontFamily: "'Hiragino Sans', 'Meiryo', sans-serif", height: '100vh', display: 'flex', flexDirection: 'column', background: '#f5f5f5' }}>
 
       {/* ヘッダー */}
-      <div style={{ background: '#2c5f2e', color: 'white', padding: '14px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+      <div style={{ background: '#FFC107', color: '#333', padding: '14px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
         <div>
           <h1 style={{ fontSize: 20, fontWeight: 'bold', margin: 0 }}>🏠 大分の建売専門サイト</h1>
-          <p style={{ fontSize: 12, margin: '2px 0 0', opacity: 0.8 }}>株式会社いふう｜大分市舞鶴町1-3-30 STビル１F　097-533-2022</p>
+          <p style={{ fontSize: 12, margin: '2px 0 0', opacity: 0.75 }}>株式会社いふう｜大分市舞鶴町1-3-30 STビル１F　097-533-2022</p>
         </div>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-          <span style={{ fontSize: 13, opacity: 0.8 }}>掲載中: {properties.length}件</span>
+          <span style={{ fontSize: 13, opacity: 0.75 }}>掲載中: {properties.length}件</span>
         </div>
       </div>
 
@@ -94,7 +94,7 @@ export default function TateuriPage() {
                   borderBottom: '1px solid #f0f0f0',
                   cursor: 'pointer',
                   background: selected === p.slug ? '#f0f7f0' : 'white',
-                  borderLeft: selected === p.slug ? '4px solid #2c5f2e' : '4px solid transparent',
+                  borderLeft: selected === p.slug ? '4px solid #FFC107' : '4px solid transparent',
                   transition: 'background 0.15s',
                 }}
                 onMouseEnter={e => { if (selected !== p.slug) e.currentTarget.style.background = '#f9f9f9'; }}

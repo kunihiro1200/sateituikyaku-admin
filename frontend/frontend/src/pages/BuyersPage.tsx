@@ -621,15 +621,13 @@ export default function BuyersPage() {
             他社物件新着配信
           </Button>
           <Button
-            variant="outlined"
+            variant="contained"
             onClick={() => navigate('/tateuri')}
             sx={{
-              borderColor: '#2c5f2e',
-              color: '#2c5f2e',
-              '&:hover': {
-                borderColor: '#1a3d1c',
-                backgroundColor: '#2c5f2e15',
-              },
+              backgroundColor: '#FFC107',
+              color: '#333',
+              fontWeight: 'bold',
+              '&:hover': { backgroundColor: '#FFB300' },
             }}
           >
             🏠 建売専門HP

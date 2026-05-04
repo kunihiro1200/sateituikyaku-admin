@@ -100,10 +100,10 @@ export default function TateuriManagePage() {
     <div style={{ fontFamily: "'Hiragino Sans', 'Meiryo', sans-serif", background: '#f5f5f5', minHeight: '100vh' }}>
 
       {/* ヘッダー */}
-      <div style={{ background: '#2c5f2e', color: 'white', padding: '14px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <div style={{ background: '#FFC107', color: '#333', padding: '14px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <h1 style={{ fontSize: 18, fontWeight: 'bold', margin: 0 }}>🏠 建売専門HP 管理画面</h1>
         <button onClick={() => navigate('/tateuri')}
-          style={{ background: 'rgba(255,255,255,0.2)', border: '1px solid rgba(255,255,255,0.5)', color: 'white', padding: '6px 14px', borderRadius: 6, cursor: 'pointer', fontSize: 13 }}>
+          style={{ background: 'rgba(0,0,0,0.1)', border: '1px solid rgba(0,0,0,0.2)', color: '#333', padding: '6px 14px', borderRadius: 6, cursor: 'pointer', fontSize: 13 }}>
           ← 公開サイトを見る
         </button>
       </div>
@@ -112,7 +112,7 @@ export default function TateuriManagePage() {
 
         {/* 物件追加 */}
         <div style={sectionStyle}>
-          <h2 style={{ fontSize: 16, fontWeight: 'bold', marginBottom: 16, color: '#2c5f2e' }}>＋ 物件を追加</h2>
+          <h2 style={{ fontSize: 16, fontWeight: 'bold', marginBottom: 16, color: '#b8860b' }}>＋ 物件を追加</h2>
           <p style={{ fontSize: 13, color: '#666', marginBottom: 12 }}>
             athomeなどの物件URLを入力してください。スクレイピングして自動で情報を取得します。
           </p>
@@ -127,7 +127,7 @@ export default function TateuriManagePage() {
             <button
               onClick={handleAdd}
               disabled={adding || !addUrl.trim()}
-              style={{ background: '#2c5f2e', color: 'white', border: 'none', padding: '10px 20px', borderRadius: 6, cursor: adding ? 'not-allowed' : 'pointer', fontSize: 14, whiteSpace: 'nowrap', opacity: adding ? 0.7 : 1 }}
+              style={{ background: '#FFC107', color: '#333', border: 'none', padding: '10px 20px', borderRadius: 6, cursor: adding ? 'not-allowed' : 'pointer', fontSize: 14, whiteSpace: 'nowrap', opacity: adding ? 0.7 : 1, fontWeight: 'bold' }}
             >
               {adding ? '取得中...' : '追加'}
             </button>
@@ -200,7 +200,7 @@ export default function TateuriManagePage() {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flexShrink: 0 }}>
                     <button
                       onClick={() => window.open(`/property-preview/${p.slug}`, '_blank')}
-                      style={{ background: '#2c5f2e', color: 'white', border: 'none', padding: '5px 12px', borderRadius: 4, cursor: 'pointer', fontSize: 12 }}
+                      style={{ background: '#FFC107', color: '#333', border: 'none', padding: '5px 12px', borderRadius: 4, cursor: 'pointer', fontSize: 12, fontWeight: 'bold' }}
                     >
                       確認
                     </button>
