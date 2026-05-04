@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { CacheHelper } from '../utils/cache';
+import redisClient from '../config/redis';
 
 const router = Router();
 
@@ -63,6 +64,28 @@ router.delete('/sellers/list', async (req: Request, res: Response) => {
     res.json({
       success: true,
       message: 'Cache clear attempted (error ignored)',
+      warning: error.message,
+    });
+  }
+});
+
+/**
+ * DELETE /cache/all
+ * Redis全キャッシュをクリア（緊急用）
+ */
+router.delete('/all', async (req: Request, res: Response) => {
+  try {
+    await redisClient.flushDb();
+    console.log('✅ All Redis cache cleared');
+    res.json({
+      success: true,
+      message: 'All Redis cache cleared successfully',
+    });
+  } catch (error: any) {
+    console.error('❌ Failed to clear all cache:', error);
+    res.json({
+      success: false,
+      message: 'Failed to clear all cache',
       warning: error.message,
     });
   }

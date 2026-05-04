@@ -1855,7 +1855,17 @@ export class SellerService extends BaseRepository {
     // 日付依存カテゴリ（visitDayBefore等）はキャッシュしない（日付が変わると結果が変わるため）
     const skipCache = statusCategory === 'visitDayBefore' || statusCategory === 'visitCompleted' || isLabelFilter ||
       (typeof statusCategory === 'string' && statusCategory.startsWith('fi:'));
-    if (!skipCache) {
+    
+    // 復号失敗チェック：nameが暗号文のまま（Base64形式）の場合はキャッシュしない
+    const hasEncryptedName = sellersWithCallDate.some((s: any) => {
+      const name = s.name || '';
+      // Base64文字列の特徴：英数字+/+=のみで構成され、長さが96バイト以上
+      return name.length > 50 && /^[A-Za-z0-9+/]+=*$/.test(name);
+    });
+    
+    if (hasEncryptedName) {
+      console.error('❌ 復号失敗を検出：暗号文がnameに含まれているためキャッシュをスキップ');
+    } else if (!skipCache) {
       setListSellersCache(cacheKey, result);
       await CacheHelper.set(cacheKey, result, CACHE_TTL.SELLER_LIST);
     }
