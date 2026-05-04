@@ -208,16 +208,27 @@ export default function OtherCompanyDistributionPage() {
       // 「ペット」フィールドを確認
       const petField = data.details?.['ペット'];
       
+      console.log('[自動入力] ペット判定:', {
+        petField,
+        petFieldExists: petField !== undefined,
+        petValue: petField?.trim(),
+        allDetails: Object.keys(data.details || {})
+      });
+      
       if (petField !== undefined) {
         // 「ペット」フィールドが存在する場合
         const petValue = petField.trim();
         if (petValue && petValue !== '－' && petValue !== '-') {
           // 何か書かれている場合（「大型犬可 小型犬可 猫可」「相談」など） → 「可」
+          console.log('[自動入力] ペット: 可 (理由: 何か書かれている)', petValue);
           setSelectedPet('可');
         } else {
           // 空または「－」の場合 → 「不可」
+          console.log('[自動入力] ペット: 不可 (理由: 空または「－」)', petValue);
           setSelectedPet('不可');
         }
+      } else {
+        console.log('[自動入力] ペット: どちらでも (理由: フィールドなし)');
       }
       // 「ペット」フィールド自体がない場合は「どちらでも」のまま
     }
