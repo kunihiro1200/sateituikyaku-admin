@@ -1,5 +1,4 @@
 import { useEffect, useState, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 
 interface TateuriProperty {
@@ -17,7 +16,6 @@ interface TateuriProperty {
 }
 
 export default function TateuriPage() {
-  const navigate = useNavigate();
   const [properties, setProperties] = useState<TateuriProperty[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<string | null>(null);
@@ -68,16 +66,10 @@ export default function TateuriPage() {
       <div style={{ background: '#2c5f2e', color: 'white', padding: '14px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
         <div>
           <h1 style={{ fontSize: 20, fontWeight: 'bold', margin: 0 }}>🏠 大分の建売専門サイト</h1>
-          <p style={{ fontSize: 12, margin: '2px 0 0', opacity: 0.8 }}>株式会社いふう｜大分市舞鶴町1-3-30 STビル１F</p>
+          <p style={{ fontSize: 12, margin: '2px 0 0', opacity: 0.8 }}>株式会社いふう｜大分市舞鶴町1-3-30 STビル１F　097-533-2022</p>
         </div>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
           <span style={{ fontSize: 13, opacity: 0.8 }}>掲載中: {properties.length}件</span>
-          <button
-            onClick={() => navigate('/tateuri/manage')}
-            style={{ background: 'rgba(255,255,255,0.2)', border: '1px solid rgba(255,255,255,0.5)', color: 'white', padding: '6px 14px', borderRadius: 6, cursor: 'pointer', fontSize: 13 }}
-          >
-            ⚙ 管理
-          </button>
         </div>
       </div>
 
@@ -90,17 +82,13 @@ export default function TateuriPage() {
             <div style={{ padding: 24, textAlign: 'center', color: '#999' }}>読み込み中...</div>
           ) : properties.length === 0 ? (
             <div style={{ padding: 24, textAlign: 'center', color: '#999' }}>
-              <p>物件がありません</p>
-              <button onClick={() => navigate('/tateuri/manage')}
-                style={{ marginTop: 12, background: '#2c5f2e', color: 'white', border: 'none', padding: '8px 16px', borderRadius: 6, cursor: 'pointer' }}>
-                物件を追加する
-              </button>
+              <p>現在掲載中の物件はありません</p>
             </div>
           ) : (
             properties.map(p => (
               <div
                 key={p.slug}
-                onClick={() => handleSelect(p.slug)}
+                onClick={() => handleOpen(p.slug)}
                 style={{
                   padding: '12px 14px',
                   borderBottom: '1px solid #f0f0f0',
@@ -109,6 +97,8 @@ export default function TateuriPage() {
                   borderLeft: selected === p.slug ? '4px solid #2c5f2e' : '4px solid transparent',
                   transition: 'background 0.15s',
                 }}
+                onMouseEnter={e => { if (selected !== p.slug) e.currentTarget.style.background = '#f9f9f9'; }}
+                onMouseLeave={e => { if (selected !== p.slug) e.currentTarget.style.background = 'white'; }}
               >
                 <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
                   {/* サムネイル */}
@@ -127,13 +117,6 @@ export default function TateuriPage() {
                     </div>
                   </div>
                 </div>
-                {/* 詳細ボタン */}
-                <button
-                  onClick={e => { e.stopPropagation(); handleOpen(p.slug); }}
-                  style={{ marginTop: 8, width: '100%', background: '#2c5f2e', color: 'white', border: 'none', padding: '6px', borderRadius: 4, cursor: 'pointer', fontSize: 12 }}
-                >
-                  詳細を見る →
-                </button>
               </div>
             ))
           )}
