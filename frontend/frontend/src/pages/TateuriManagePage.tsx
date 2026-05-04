@@ -56,7 +56,8 @@ export default function TateuriManagePage() {
       if (!res.ok) throw new Error(`スクレイピングサーバーエラー: ${res.status}`);
       const result = await res.json();
       if (!result.success) throw new Error(result.error || '取得失敗');
-      setAddResult({ success: true, message: `「${result.data.title?.replace(/\[\d+\].+$/, '').trim() || result.data.address}」を追加しました` });
+      const addedTitle = result.data?.title?.replace(/\[\d+\].+$/, '').trim() || result.data?.address || '物件';
+      setAddResult({ success: true, message: `「${addedTitle}」を追加しました` });
       setAddUrl('');
       await fetchProperties();
     } catch (err: any) {
@@ -67,7 +68,7 @@ export default function TateuriManagePage() {
   };
 
   const handleDelete = async () => {
-    if (!deleteUrl.trim()) return;
+    if (!deleteUrl || !deleteUrl.trim()) return;
     setDeleting(true);
     setDeleteResult(null);
     try {
@@ -75,6 +76,23 @@ export default function TateuriManagePage() {
       const deleted = res.data.deleted || [];
       setDeleteResult({ success: true, message: `${deleted.length}件を削除しました` });
       setDeleteUrl('');
+      await fetchProperties();
+    } catch (err: any) {
+      const msg = err.response?.data?.error || err.message;
+      setDeleteResult({ success: false, message: msg });
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const handleDeleteBySlug = async (slug: string, title: string | null) => {
+    if (!window.confirm(`「${cleanTitle(title) || '物件'}」を削除しますか？`)) return;
+    setDeleting(true);
+    setDeleteResult(null);
+    try {
+      const res = await api.post('/api/tateuri/delete', { source_url: `/property-preview/${slug}` });
+      const deleted = res.data.deleted || [];
+      setDeleteResult({ success: true, message: `削除しました（${deleted.length}件）` });
       await fetchProperties();
     } catch (err: any) {
       const msg = err.response?.data?.error || err.message;
@@ -205,7 +223,8 @@ export default function TateuriManagePage() {
                       確認
                     </button>
                     <button
-                      onClick={() => { setDeleteUrl(p.source_url); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                      onClick={() => handleDeleteBySlug(p.slug, p.title)}
+                      disabled={deleting}
                       style={{ background: '#fff', color: '#c0392b', border: '1px solid #c0392b', padding: '5px 12px', borderRadius: 4, cursor: 'pointer', fontSize: 12 }}
                     >
                       削除
