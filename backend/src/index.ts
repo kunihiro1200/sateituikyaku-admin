@@ -145,57 +145,6 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// 暗号化キー診断エンドポイント（一時的）
-app.get('/debug/encryption-check', async (req, res) => {
-  const key = process.env.ENCRYPTION_KEY;
-  const { decrypt } = require('./utils/encryption');
-  
-  // 複数の売主で復号テスト
-  let dbDecryptResults: any[] = [];
-  let dbDecryptError = null;
-  try {
-    const { data } = await supabase
-      .from('sellers')
-      .select('seller_number, name')
-      .not('name', 'is', null)
-      .in('seller_number', ['AA14063', 'AA14062', 'AA14061', 'FI33', 'AA3718'])
-      .limit(10);
-    
-    if (data) {
-      for (const row of data) {
-        const rawName = row.name;
-        let decryptedName = null;
-        let error = null;
-        try {
-          decryptedName = decrypt(rawName);
-        } catch (e: any) {
-          error = e.message;
-        }
-        dbDecryptResults.push({
-          sellerNumber: row.seller_number,
-          rawNameLength: rawName?.length,
-          rawNameFirst10: rawName?.substring(0, 10),
-          decryptedName,
-          decryptedSameAsRaw: decryptedName === rawName,
-          error,
-        });
-      }
-    }
-  } catch (e: any) {
-    dbDecryptError = e.message;
-  }
-
-  res.json({
-    hasKey: !!key,
-    keyLength: key?.length ?? 0,
-    keyFirst3: key ? key.substring(0, 3) + '...' : null,
-    keyLast3: key ? '...' + key.substring(key.length - 3) : null,
-    nodeEnv: process.env.NODE_ENV,
-    dbDecryptResults,
-    dbDecryptError,
-  });
-});
-
 // Cron Job: 問い合わせをスプレッドシートに同期（一定ごとに実行）
 // ⚠️ 注意: 他のルートより前に設定（より具体的なルートを優先）
 app.get('/api/cron/sync-inquiries', async (req, res) => {
