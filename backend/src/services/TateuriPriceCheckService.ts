@@ -193,7 +193,8 @@ export class TateuriPriceCheckService {
           `  住所: ${c.address || '不明'}`,
           `  変更前: ${c.oldPrice || '不明'}`,
           `  変更後: ${c.newPrice || '不明'}`,
-          `  URL: https://sateituikyaku-admin-frontend.vercel.app/property-preview/${c.slug}`,
+          `  掲載URL: https://sateituikyaku-admin-frontend.vercel.app/property-preview/${c.slug}`,
+          `  元URL: ${c.source_url}`,
         ].join('\n');
       });
       sections.push(`【値下げ物件 ${priceDowns.length}件】\n${lines.join('\n\n')}`);
@@ -207,6 +208,7 @@ export class TateuriPriceCheckService {
           `  住所: ${c.address || '不明'}`,
           `  価格: ${c.price || '不明'}`,
           `  ※ 掲載から自動削除しました`,
+          `  掲載URL: https://sateituikyaku-admin-frontend.vercel.app/property-preview/${c.slug}`,
           `  元URL: ${c.source_url}`,
         ].join('\n');
       });
