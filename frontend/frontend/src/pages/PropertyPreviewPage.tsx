@@ -306,10 +306,8 @@ export default function PropertyPreviewPage() {
 
         {/* 署名 + 印刷ボタン（目立たない小さな丸ボタン） */}
         <div style={{ background: 'white', borderRadius: 10, padding: 24, textAlign: 'center', boxShadow: '0 1px 4px rgba(0,0,0,0.08)', marginBottom: 16, position: 'relative' }}>
-          <div style={{ fontSize: 17, fontWeight: 'bold', marginBottom: 6 }}>株式会社いふう</div>
-          <div style={{ fontSize: 22, fontWeight: 'bold', color: '#e84040' }}>
-            <a href="tel:0975332022" style={{ color: 'inherit', textDecoration: 'none' }}>097-533-2022</a>
-          </div>
+          <div style={{ fontSize: 17, fontWeight: 'bold', marginBottom: 4 }}>株式会社いふう</div>
+          <div style={{ fontSize: 13, color: '#666', marginBottom: 2 }}>大分市舞鶴町1-3-30 STビル１F</div>
           {/* 印刷ボタン（目立たない小さな丸ボタン・右下隅） */}
           <button
             onClick={() => window.print()}
