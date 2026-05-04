@@ -221,16 +221,23 @@ export default function PropertyPreviewPage() {
   return (
     <div style={{ fontFamily: "'Hiragino Sans', 'Meiryo', sans-serif", background: '#f5f5f5', minHeight: '100vh' }}>
       {/* ヘッダー */}
-      <div style={{ background: '#e84040', color: 'white', padding: '20px 24px' }}>
-        <h1 style={{ fontSize: 20, fontWeight: 'bold', margin: 0 }}>{cleanTitle || '物件情報'}</h1>
-        {showPrice && data.price && (
-          <div style={{ fontSize: 28, fontWeight: 'bold', marginTop: 6 }}>{data.price}</div>
-        )}
-        {(showAddress || showAccess) && (
-          <div style={{ fontSize: 13, opacity: 0.85, marginTop: 4 }}>
-            {showAddress && data.address}{showAddress && showAccess && data.access ? ' ／ ' : ''}{showAccess && data.access}
-          </div>
-        )}
+      <div style={{ background: '#e84040', color: 'white', padding: '20px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+        <div>
+          <h1 style={{ fontSize: 20, fontWeight: 'bold', margin: 0 }}>{cleanTitle || '物件情報'}</h1>
+          {showPrice && data.price && (
+            <div style={{ fontSize: 28, fontWeight: 'bold', marginTop: 6 }}>{data.price}</div>
+          )}
+          {(showAddress || showAccess) && (
+            <div style={{ fontSize: 13, opacity: 0.85, marginTop: 4 }}>
+              {showAddress && data.address}{showAddress && showAccess && data.access ? ' ／ ' : ''}{showAccess && data.access}
+            </div>
+          )}
+        </div>
+        {/* 右端の署名 */}
+        <div style={{ textAlign: 'right', opacity: 0.95, flexShrink: 0 }}>
+          <div style={{ fontSize: 15, fontWeight: 'bold' }}>株式会社いふう</div>
+          <div style={{ fontSize: 11, marginTop: 2, opacity: 0.85 }}>大分市舞鶴町1-3-30 STビル１F</div>
+        </div>
       </div>
 
       <div style={{ maxWidth: 900, margin: '0 auto', padding: '20px 16px' }}>
