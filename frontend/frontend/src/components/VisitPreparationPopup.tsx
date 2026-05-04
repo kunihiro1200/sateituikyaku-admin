@@ -333,13 +333,18 @@ export const VisitPreparationPopup: React.FC<VisitPreparationPopupProps> = ({
     {
       label: 'エリア情勢',
       content: sellerId ? (
-        <a
-          href={`/sellers/${sellerId}/area-report`}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          エリア情勢
-        </a>
+        <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 1 }}>
+          <a
+            href={`/sellers/${sellerId}/area-report`}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            エリア情勢
+          </a>
+          <Typography component="span" sx={{ fontWeight: 'bold', fontSize: '0.85rem' }}>
+            両面カラー印刷
+          </Typography>
+        </Box>
       ) : (
         <span>（リンクなし）</span>
       ),
@@ -348,13 +353,18 @@ export const VisitPreparationPopup: React.FC<VisitPreparationPopupProps> = ({
     {
       label: '売買実績',
       content: sellerId ? (
-        <a
-          href={`/sellers/${sellerId}/sales-history`}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          売買実績
-        </a>
+        <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 1 }}>
+          <a
+            href={`/sellers/${sellerId}/sales-history`}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            売買実績
+          </a>
+          <Typography component="span" sx={{ fontWeight: 'bold', fontSize: '0.85rem' }}>
+            両面カラー印刷
+          </Typography>
+        </Box>
       ) : (
         <span>（リンクなし）</span>
       ),
