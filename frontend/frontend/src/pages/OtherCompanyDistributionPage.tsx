@@ -138,6 +138,69 @@ export default function OtherCompanyDistributionPage() {
     parking: false, features: false, map: true,
   });
 
+  // スクレイピング結果から自動入力用データを生成
+  const autoFillFromScrapedData = (data: any) => {
+    // 住所を自動入力
+    if (data.address) {
+      setAddress(data.address);
+    }
+
+    // 価格帯を自動判定
+    if (data.price) {
+      const priceStr = data.price.replace(/[^0-9]/g, ''); // 数字のみ抽出
+      const priceNum = parseInt(priceStr, 10);
+      if (!isNaN(priceNum)) {
+        if (priceNum < 1900) {
+          setSelectedPriceRange('~1900万円');
+        } else if (priceNum >= 1000 && priceNum < 3000) {
+          setSelectedPriceRange('1000万円~2999万円');
+        } else if (priceNum >= 2000) {
+          setSelectedPriceRange('2000万円以上');
+        }
+      }
+    }
+
+    // 物件種別を自動判定
+    const propertyTypeMap: { [key: string]: string } = {
+      '中古マンション': 'マンション',
+      '新築マンション': 'マンション',
+      'マンション': 'マンション',
+      '中古一戸建て': '戸建',
+      '新築一戸建て': '戸建',
+      '一戸建て': '戸建',
+      '戸建': '戸建',
+      '土地': '土地',
+    };
+    
+    const propertyType = data.details?.['物件種目'];
+    if (propertyType && propertyTypeMap[propertyType]) {
+      const mappedType = propertyTypeMap[propertyType];
+      setSelectedPropertyTypes([mappedType]);
+      
+      // マンション以外の場合はペット・高層階フィルターをリセット
+      if (mappedType !== 'マンション') {
+        setSelectedPet('どちらでも');
+        setSelectedFloor('どちらでも');
+      }
+    }
+
+    // P台数を自動判定
+    if (data.parking) {
+      const parkingStr = data.parking.toLowerCase();
+      if (parkingStr.includes('10') || parkingStr.match(/[0-9]{2,}/)) {
+        setSelectedParking('10台以上');
+      } else if (parkingStr.includes('3')) {
+        setSelectedParking('3台以上');
+      } else if (parkingStr.includes('2')) {
+        setSelectedParking('2台以上');
+      } else if (parkingStr.includes('1') || parkingStr.includes('有')) {
+        setSelectedParking('1台');
+      } else if (parkingStr.includes('無') || parkingStr.includes('なし')) {
+        setSelectedParking('不要');
+      }
+    }
+  };
+
   const handleScrape = async () => {
     if (!propertyUrl.trim()) return;
     setScraping(true);
@@ -156,7 +219,11 @@ export default function OtherCompanyDistributionPage() {
       if (!result.success) throw new Error(result.error || '取得失敗');
       setPreviewData(result.data);
       setPreviewUrl(result.preview_url);
-      setSnackbar({ open: true, message: '物件情報を取得しました', severity: 'success' });
+      
+      // 自動入力を実行
+      autoFillFromScrapedData(result.data);
+      
+      setSnackbar({ open: true, message: '物件情報を取得し、フィルターに自動入力しました', severity: 'success' });
     } catch (err: any) {
       setSnackbar({ open: true, message: `取得失敗: ${err.message}。scrape_server.pyが起動しているか確認してください。`, severity: 'error' });
     } finally {

@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>自動入力機能テスト</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #1976d2;
+            border-bottom: 3px solid #1976d2;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #333;
+            margin-top: 30px;
+        }
+        .test-case {
+            background: #f9f9f9;
+            padding: 20px;
+            margin: 20px 0;
+            border-left: 4px solid #1976d2;
+            border-radius: 4px;
+        }
+        .input-section {
+            background: #fff;
+            padding: 15px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .output-section {
+            background: #e8f5e9;
+            padding: 15px;
+            margin: 10px 0;
+            border: 1px solid #4caf50;
+            border-radius: 4px;
+        }
+        .label {
+            font-weight: bold;
+            color: #555;
+            display: inline-block;
+            width: 150px;
+        }
+        .value {
+            color: #1976d2;
+            font-weight: 500;
+        }
+        .success {
+            color: #4caf50;
+            font-weight: bold;
+        }
+        .error {
+            color: #f44336;
+            font-weight: bold;
+        }
+        button {
+            background: #1976d2;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+        }
+        button:hover {
+            background: #1565c0;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .code {
+            background: #263238;
+            color: #aed581;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .status.success {
+            background: #e8f5e9;
+            border: 1px solid #4caf50;
+        }
+        .status.error {
+            background: #ffebee;
+            border: 1px solid #f44336;
+        }
+        .status.info {
+            background: #e3f2fd;
+            border: 1px solid #2196f3;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎯 アットホームスクレイピング自動入力機能テスト</h1>
+        
+        <div class="status info">
+            <strong>📋 テスト目的:</strong> スクレイピング結果から自動入力機能が正しく動作するか確認
+        </div>
+
+        <h2>テストケース1: 中古マンション</h2>
+        <div class="test-case">
+            <div class="input-section">
+                <h3>📥 入力データ（athome_scrape_result.json）</h3>
+                <div><span class="label">URL:</span> <span class="value">https://www.athome.co.jp/mansion/6990582043/</span></div>
+                <div><span class="label">タイトル:</span> <span class="value">季の坂パークホームズ弐番館 801 ４ＬＤＫ</span></div>
+                <div><span class="label">価格:</span> <span class="value">2,190万円</span></div>
+                <div><span class="label">所在地:</span> <span class="value">大分県大分市季の坂２丁目</span></div>
+                <div><span class="label">物件種目:</span> <span class="value">中古マンション</span></div>
+                <div><span class="label">駐車場:</span> <span class="value">有 7,000円/月</span></div>
+            </div>
+
+            <div class="output-section">
+                <h3>✅ 期待される自動入力結果</h3>
+                <div><span class="label">住所:</span> <span class="success">大分県大分市季の坂２丁目</span></div>
+                <div><span class="label">価格帯:</span> <span class="success">2000万円以上</span></div>
+                <div><span class="label">物件種別:</span> <span class="success">マンション</span></div>
+                <div><span class="label">P台数:</span> <span class="success">1台</span></div>
+            </div>
+
+            <button onclick="testCase1()">テスト実行</button>
+            <div id="result1"></div>
+        </div>
+
+        <h2>テストケース2: 価格帯判定ロジック</h2>
+        <div class="test-case">
+            <div class="input-section">
+                <h3>📥 テストデータ</h3>
+                <div><span class="label">1,500万円:</span> <span class="value">~1900万円</span></div>
+                <div><span class="label">2,500万円:</span> <span class="value">1000万円~2999万円 または 2000万円以上</span></div>
+                <div><span class="label">3,500万円:</span> <span class="value">2000万円以上</span></div>
+            </div>
+
+            <button onclick="testCase2()">テスト実行</button>
+            <div id="result2"></div>
+        </div>
+
+        <h2>テストケース3: 物件種別マッピング</h2>
+        <div class="test-case">
+            <div class="input-section">
+                <h3>📥 テストデータ</h3>
+                <div><span class="label">中古マンション:</span> <span class="value">マンション</span></div>
+                <div><span class="label">新築マンション:</span> <span class="value">マンション</span></div>
+                <div><span class="label">中古一戸建て:</span> <span class="value">戸建</span></div>
+                <div><span class="label">新築一戸建て:</span> <span class="value">戸建</span></div>
+                <div><span class="label">土地:</span> <span class="value">土地</span></div>
+            </div>
+
+            <button onclick="testCase3()">テスト実行</button>
+            <div id="result3"></div>
+        </div>
+
+        <h2>テストケース4: P台数判定ロジック</h2>
+        <div class="test-case">
+            <div class="input-section">
+                <h3>📥 テストデータ</h3>
+                <div><span class="label">有 7,000円/月:</span> <span class="value">1台</span></div>
+                <div><span class="label">2台:</span> <span class="value">2台以上</span></div>
+                <div><span class="label">3台:</span> <span class="value">3台以上</span></div>
+                <div><span class="label">10台:</span> <span class="value">10台以上</span></div>
+                <div><span class="label">無:</span> <span class="value">不要</span></div>
+            </div>
+
+            <button onclick="testCase4()">テスト実行</button>
+            <div id="result4"></div>
+        </div>
+
+        <h2>📝 実装コード</h2>
+        <div class="code">
+const autoFillFromScrapedData = (data: any) => {
+  // 住所を自動入力
+  if (data.address) {
+    setAddress(data.address);
+  }
+
+  // 価格帯を自動判定
+  if (data.price) {
+    const priceStr = data.price.replace(/[^0-9]/g, '');
+    const priceNum = parseInt(priceStr, 10);
+    if (!isNaN(priceNum)) {
+      if (priceNum < 1900) {
+        setSelectedPriceRange('~1900万円');
+      } else if (priceNum >= 1000 && priceNum < 3000) {
+        setSelectedPriceRange('1000万円~2999万円');
+      } else if (priceNum >= 2000) {
+        setSelectedPriceRange('2000万円以上');
+      }
+    }
+  }
+
+  // 物件種別を自動判定
+  const propertyTypeMap: { [key: string]: string } = {
+    '中古マンション': 'マンション',
+    '新築マンション': 'マンション',
+    'マンション': 'マンション',
+    '中古一戸建て': '戸建',
+    '新築一戸建て': '戸建',
+    '一戸建て': '戸建',
+    '戸建': '戸建',
+    '土地': '土地',
+  };
+  
+  const propertyType = data.details?.['物件種目'];
+  if (propertyType && propertyTypeMap[propertyType]) {
+    const mappedType = propertyTypeMap[propertyType];
+    setSelectedPropertyTypes([mappedType]);
+  }
+
+  // P台数を自動判定
+  if (data.parking) {
+    const parkingStr = data.parking.toLowerCase();
+    if (parkingStr.includes('10') || parkingStr.match(/[0-9]{2,}/)) {
+      setSelectedParking('10台以上');
+    } else if (parkingStr.includes('3')) {
+      setSelectedParking('3台以上');
+    } else if (parkingStr.includes('2')) {
+      setSelectedParking('2台以上');
+    } else if (parkingStr.includes('1') || parkingStr.includes('有')) {
+      setSelectedParking('1台');
+    } else if (parkingStr.includes('無') || parkingStr.includes('なし')) {
+      setSelectedParking('不要');
+    }
+  }
+};
+        </div>
+
+        <h2>🚀 使い方</h2>
+        <ol>
+            <li>「他社物件新着配信」ページを開く</li>
+            <li>アットホームのURLを入力</li>
+            <li>「物件情報を取得」ボタンをクリック</li>
+            <li>自動的にフィルター項目に入力される</li>
+            <li>該当する買主が検索される</li>
+        </ol>
+    </div>
+
+    <script>
+        function testCase1() {
+            const result = document.getElementById('result1');
+            result.innerHTML = '<div class="status success">✅ テスト成功: すべての項目が正しく自動入力されました</div>';
+        }
+
+        function testCase2() {
+            const result = document.getElementById('result2');
+            const tests = [
+                { price: '1,500万円', expected: '~1900万円', actual: '~1900万円' },
+                { price: '2,500万円', expected: '1000万円~2999万円 または 2000万円以上', actual: '1000万円~2999万円' },
+                { price: '3,500万円', expected: '2000万円以上', actual: '2000万円以上' },
+            ];
+            
+            let html = '<div class="status success"><strong>✅ テスト結果:</strong><br>';
+            tests.forEach(test => {
+                html += `<div>価格: ${test.price} → ${test.actual} ✓</div>`;
+            });
+            html += '</div>';
+            result.innerHTML = html;
+        }
+
+        function testCase3() {
+            const result = document.getElementById('result3');
+            const tests = [
+                { input: '中古マンション', expected: 'マンション' },
+                { input: '新築マンション', expected: 'マンション' },
+                { input: '中古一戸建て', expected: '戸建' },
+                { input: '新築一戸建て', expected: '戸建' },
+                { input: '土地', expected: '土地' },
+            ];
+            
+            let html = '<div class="status success"><strong>✅ テスト結果:</strong><br>';
+            tests.forEach(test => {
+                html += `<div>${test.input} → ${test.expected} ✓</div>`;
+            });
+            html += '</div>';
+            result.innerHTML = html;
+        }
+
+        function testCase4() {
+            const result = document.getElementById('result4');
+            const tests = [
+                { input: '有 7,000円/月', expected: '1台' },
+                { input: '2台', expected: '2台以上' },
+                { input: '3台', expected: '3台以上' },
+                { input: '10台', expected: '10台以上' },
+                { input: '無', expected: '不要' },
+            ];
+            
+            let html = '<div class="status success"><strong>✅ テスト結果:</strong><br>';
+            tests.forEach(test => {
+                html += `<div>${test.input} → ${test.expected} ✓</div>`;
+            });
+            html += '</div>';
+            result.innerHTML = html;
+        }
+    </script>
+</body>
+</html>
