@@ -5,15 +5,11 @@
       "src": "src/index.ts",
       "use": "@vercel/node",
       "config": {
-        "maxLambdaSize": "50mb"
+        "maxLambdaSize": "50mb",
+        "maxDuration": 300
       }
     }
   ],
-  "functions": {
-    "src/index.ts": {
-      "maxDuration": 300
-    }
-  },
   "routes": [
     {
       "src": "/(.*)",
