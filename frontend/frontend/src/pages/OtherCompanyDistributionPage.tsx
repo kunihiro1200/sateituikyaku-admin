@@ -121,6 +121,7 @@ export default function OtherCompanyDistributionPage() {
   const [emailSubject, setEmailSubject] = useState('新着物件のご案内です！！');
   const [emailBody, setEmailBody] = useState('');
   const [recommendComment, setRecommendComment] = useState(''); // おすすめコメント
+  const [previewMode, setPreviewMode] = useState<'edit' | 'preview'>('edit'); // プレビューモード
   const [propertyUrl, setPropertyUrl] = useState(''); // 物件URL
   const [selectedImages, setSelectedImages] = useState<ImageFile[]>([]);
   const [imageSelectorOpen, setImageSelectorOpen] = useState(false);
@@ -176,8 +177,16 @@ export default function OtherCompanyDistributionPage() {
     const propertyType = data.details?.['物件種目'];
     const isMansion = propertyType && propertyTypeMap[propertyType] === 'マンション';
     
+    console.log('[自動入力] 物件種別判定:', {
+      propertyType,
+      isMansion,
+      mappedType: propertyTypeMap[propertyType],
+      allDetailsKeys: Object.keys(data.details || {})
+    });
+    
     if (propertyType && propertyTypeMap[propertyType]) {
       const mappedType = propertyTypeMap[propertyType];
+      console.log('[自動入力] 物件種別:', mappedType);
       setSelectedPropertyTypes([mappedType]);
       
       // マンション以外の場合はペット・高層階フィルターをリセット
@@ -185,6 +194,8 @@ export default function OtherCompanyDistributionPage() {
         setSelectedPet('どちらでも');
         setSelectedFloor('どちらでも');
       }
+    } else {
+      console.log('[自動入力] 物件種別: 判定できず (propertyType:', propertyType, ')');
     }
 
     // マンションの場合のみ、高層階・ペット・温泉を自動判定
@@ -1010,6 +1021,7 @@ export default function OtherCompanyDistributionPage() {
         onClose={() => {
           setEmailDialogOpen(false);
           setRecommendComment(''); // ダイアログを閉じたらおすすめコメントをリセット
+          setPreviewMode('edit'); // プレビューモードをリセット
         }} 
         maxWidth="md" 
         fullWidth
@@ -1019,35 +1031,63 @@ export default function OtherCompanyDistributionPage() {
           <Typography variant="body2" color="text.secondary">
             選択した買主に個別にメールを送信します
           </Typography>
-          <TextField
-            label="件名"
-            value={emailSubject}
-            onChange={e => setEmailSubject(e.target.value)}
-            fullWidth
-          />
           
-          {/* おすすめコメント入力欄（スクレイピングデータがある場合のみ表示） */}
-          {previewData && (
-            <TextField
-              label="おすすめコメント（任意）"
-              value={recommendComment}
-              onChange={e => setRecommendComment(e.target.value)}
-              multiline
-              rows={3}
-              fullWidth
-              placeholder="この物件のおすすめポイントを入力してください"
-              helperText="入力したコメントは「他の画像はこちらから」の下に表示されます"
-            />
+          {/* タブ切り替え */}
+          <Tabs value={previewMode} onChange={(e, newValue) => setPreviewMode(newValue)}>
+            <Tab label="編集" value="edit" />
+            <Tab label="プレビュー" value="preview" />
+          </Tabs>
+          
+          {previewMode === 'edit' ? (
+            <>
+              <TextField
+                label="件名"
+                value={emailSubject}
+                onChange={e => setEmailSubject(e.target.value)}
+                fullWidth
+              />
+              
+              {/* おすすめコメント入力欄（スクレイピングデータがある場合のみ表示） */}
+              {previewData && (
+                <TextField
+                  label="おすすめコメント（任意）"
+                  value={recommendComment}
+                  onChange={e => setRecommendComment(e.target.value)}
+                  multiline
+                  rows={3}
+                  fullWidth
+                  placeholder="この物件のおすすめポイントを入力してください"
+                  helperText="入力したコメントは「他の画像はこちらから」の下に表示されます"
+                />
+              )}
+              
+              <TextField
+                label="本文（各買主の名前が自動的に挿入されます）"
+                value={emailBody}
+                onChange={e => setEmailBody(e.target.value)}
+                multiline
+                rows={14}
+                fullWidth
+              />
+            </>
+          ) : (
+            <Box sx={{ 
+              border: '1px solid #ddd', 
+              borderRadius: 1, 
+              p: 2, 
+              maxHeight: '500px', 
+              overflowY: 'auto',
+              backgroundColor: '#f9f9f9'
+            }}>
+              <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 'bold' }}>
+                件名: {emailSubject}
+              </Typography>
+              <Box 
+                sx={{ mt: 2 }}
+                dangerouslySetInnerHTML={{ __html: emailBody }}
+              />
+            </Box>
           )}
-          
-          <TextField
-            label="本文（各買主の名前が自動的に挿入されます）"
-            value={emailBody}
-            onChange={e => setEmailBody(e.target.value)}
-            multiline
-            rows={14}
-            fullWidth
-          />
           
           {/* 画像添付ボタン */}
           <Box>
@@ -1090,6 +1130,7 @@ export default function OtherCompanyDistributionPage() {
           <Button onClick={() => {
             setEmailDialogOpen(false);
             setRecommendComment(''); // キャンセル時もおすすめコメントをリセット
+            setPreviewMode('edit'); // プレビューモードをリセット
           }}>キャンセル</Button>
           <Button
             variant="contained"
