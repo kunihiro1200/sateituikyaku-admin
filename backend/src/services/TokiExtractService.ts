@@ -1214,20 +1214,20 @@ export class TokiExtractService {
       // 「建物_全部事項」を含むPDFを1件取得
       const buildingFile = pdfFiles.find((f) => f.name.includes('建物_全部事項')) ?? null;
 
-      // フォールバック：土地も建物も見つからない場合は「全部事項」「全部謄本」を含むPDFを全取得
-      const fallbackFiles =
+      // フォールバック：土地も建物も見つからない場合は「全部事項」「全部謄本」を含むPDFを1件だけ取得
+      // （旧来の命名規則のファイルは1枚として扱う）
+      const fallbackFile =
         landFiles.length === 0 && buildingFile === null
-          ? pdfFiles.filter((f) => f.name.includes('全部事項') || f.name.includes('全部謄本'))
-          : [];
+          ? (pdfFiles.find((f) => f.name.includes('全部事項') || f.name.includes('全部謄本')) ?? null)
+          : null;
 
       console.log(
-        `[TokiKodate] 土地謄本: ${landFiles.length}件, 建物謄本: ${buildingFile ? 1 : 0}件, フォールバック: ${fallbackFiles.length}件`
+        `[TokiKodate] 土地謄本: ${landFiles.length}件, 建物謄本: ${buildingFile ? 1 : 0}件, フォールバック: ${fallbackFile ? fallbackFile.name : 'なし'}`
       );
 
       // 土地PDFを取得
       const landPdfs: Array<{ base64: string; fileName: string }> = [];
-      const targetLandFiles = landFiles.length > 0 ? landFiles : fallbackFiles;
-      for (const f of targetLandFiles) {
+      for (const f of landFiles) {
         const fileData = await this.driveService.getFile(f.id);
         if (fileData) {
           landPdfs.push({ base64: fileData.data.toString('base64'), fileName: f.name });
@@ -1240,6 +1240,14 @@ export class TokiExtractService {
         const fileData = await this.driveService.getFile(buildingFile.id);
         if (fileData) {
           buildingPdf = { base64: fileData.data.toString('base64'), fileName: buildingFile.name };
+        }
+      }
+
+      // フォールバック：土地も建物も見つからない場合は1枚だけ土地PDFとして扱う
+      if (landPdfs.length === 0 && buildingPdf === null && fallbackFile) {
+        const fileData = await this.driveService.getFile(fallbackFile.id);
+        if (fileData) {
+          landPdfs.push({ base64: fileData.data.toString('base64'), fileName: fallbackFile.name });
         }
       }
 
