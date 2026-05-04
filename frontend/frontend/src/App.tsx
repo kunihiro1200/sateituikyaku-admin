@@ -36,6 +36,7 @@ import NewSharedItemPage from './pages/NewSharedItemPage';
 import BuyerNearbyPropertiesPage from './pages/BuyerNearbyPropertiesPage';
 import NearbyBuyersPage from './pages/NearbyBuyersPage';
 import OtherCompanyDistributionPage from './pages/OtherCompanyDistributionPage';
+import BuyerNearbyMapPage from './pages/BuyerNearbyMapPage';
 import ReinsRegistrationPage from './pages/ReinsRegistrationPage';
 import ManagementRulesTestPage from './pages/ManagementRulesTestPage';
 import SalesHistoryPage from './pages/SalesHistoryPage';
@@ -210,6 +211,14 @@ function App() {
         element={
           <ProtectedRoute>
             <OtherCompanyDistributionPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/buyers/nearby-map"
+        element={
+          <ProtectedRoute>
+            <BuyerNearbyMapPage />
           </ProtectedRoute>
         }
       />

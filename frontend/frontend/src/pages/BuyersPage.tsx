@@ -537,10 +537,11 @@ export default function BuyersPage() {
     }
   };
 
-  const handleRowClick = (buyerId: string) => {
+  const handleRowClick = (buyerId: string, viewingDate?: string | null) => {
     // selectedCalculatedStatusはカテゴリキー（例: 'visitDayBefore'）なので、日本語表示名に変換して比較
     const displayName = categoryKeyToDisplayName[selectedCalculatedStatus || ''] || selectedCalculatedStatus;
-    if (displayName === '内覧日前日') {
+    // 内覧日が入っている場合は内覧結果ページへ直接遷移
+    if (displayName === '内覧日前日' || viewingDate) {
       navigate(`/buyers/${buyerId}/viewing-result`);
     } else {
       navigate(`/buyers/${buyerId}`);
@@ -590,6 +591,21 @@ export default function BuyersPage() {
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
         <Typography variant="h5" fontWeight="bold" sx={{ color: SECTION_COLORS.buyer.main }}>買主リスト</Typography>
         <Box sx={{ display: 'flex', gap: 1 }}>
+          <Button
+            variant="outlined"
+            onClick={() => navigate('/buyers/nearby-map')}
+            startIcon={<span style={{ fontSize: '1.1em' }}>🗺️</span>}
+            sx={{
+              borderColor: '#0277bd',
+              color: '#0277bd',
+              '&:hover': {
+                borderColor: '#01579b',
+                backgroundColor: '#0277bd15',
+              },
+            }}
+          >
+            何でも近隣MAP
+          </Button>
           <Button
             variant="outlined"
             onClick={() => navigate('/buyers/other-company-distribution')}
@@ -735,7 +751,7 @@ export default function BuyersPage() {
                   return (
                     <Card
                       key={buyer.buyer_number}
-                      onClick={() => handleRowClick(buyer.buyer_number)}
+                      onClick={() => handleRowClick(buyer.buyer_number, buyer.viewing_date)}
                       sx={{
                         mb: 1,
                         cursor: 'pointer',
@@ -854,7 +870,7 @@ export default function BuyersPage() {
                         key={buyer.buyer_number}
                         hover
                         sx={{ cursor: 'pointer' }}
-                        onClick={() => handleRowClick(buyer.buyer_number)}
+                        onClick={() => handleRowClick(buyer.buyer_number, buyer.viewing_date)}
                       >
                         <TableCell>
                           <Box
