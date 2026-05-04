@@ -622,7 +622,7 @@ export default function BuyersPage() {
           </Button>
           <Button
             variant="contained"
-            onClick={() => navigate('/tateuri')}
+            onClick={() => navigate('/tateuri/manage')}
             sx={{
               backgroundColor: '#FFC107',
               color: '#333',
