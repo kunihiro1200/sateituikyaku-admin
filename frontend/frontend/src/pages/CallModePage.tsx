@@ -956,6 +956,9 @@ const CallModePage = () => {
   // 郵送ステータス用の状態
   const [mailingStatus, setMailingStatus] = useState<string>('');
   const [savingMailingStatus, setSavingMailingStatus] = useState(false);
+  // 郵送先住所用の状態
+  const [mailingAddress, setMailingAddress] = useState<string>('');
+  const [mailingAddressConfirmed, setMailingAddressConfirmed] = useState<boolean>(false);
 
   // コミュニケーションフィールド用の状態
   const [editedPhoneContactPerson, setEditedPhoneContactPerson] = useState<string>('');
@@ -1887,6 +1890,9 @@ const CallModePage = () => {
       const defaultMailingStatus = sellerData.mailingStatus ||
         (initialValuationMethod.includes('郵送') ? '未' : '');
       setMailingStatus(defaultMailingStatus);
+      // 郵送先住所の初期化（売主住所をデフォルト）
+      setMailingAddress(sellerData.address || '');
+      setMailingAddressConfirmed(false);
 
       // Pinrichステータスの初期化
       setEditedPinrichStatus(sellerData.pinrichStatus || '');
@@ -3138,6 +3144,14 @@ const CallModePage = () => {
         await api.put(`/api/sellers/${id}`, {
           mailingStatus: '未',
         });
+      }
+      // 「郵送」系が選択された場合、郵送先住所を売主住所で初期化し確認フラグをリセット
+      if (newMethod.includes('郵送')) {
+        setMailingAddress(seller?.address || '');
+        setMailingAddressConfirmed(false);
+      } else {
+        // 郵送系以外に変更された場合はリセット
+        setMailingAddressConfirmed(false);
       }
 
       if (newMethod === '') {
@@ -6252,13 +6266,54 @@ HP：https://ifoo-oita.com/
                             </span>
                           )}
                         </Typography>
+                        {/* 郵送先住所フィールド */}
+                        <Box sx={{ mb: 2 }}>
+                          <TextField
+                            fullWidth
+                            size="small"
+                            label="郵送先住所"
+                            value={mailingAddress}
+                            onChange={(e) => {
+                              setMailingAddress(e.target.value);
+                              setMailingAddressConfirmed(false);
+                            }}
+                            placeholder="売主住所が自動入力されます"
+                            sx={{ mb: 1 }}
+                            InputProps={{
+                              endAdornment: mailingAddressConfirmed ? (
+                                <InputAdornment position="end">
+                                  <Chip label="✓ 確認済み" color="success" size="small" />
+                                </InputAdornment>
+                              ) : undefined,
+                            }}
+                          />
+                          {!mailingAddressConfirmed && (
+                            <Alert
+                              severity="warning"
+                              sx={{ mb: 1, py: 0.5 }}
+                              action={
+                                <Button
+                                  color="warning"
+                                  size="small"
+                                  variant="contained"
+                                  onClick={() => setMailingAddressConfirmed(true)}
+                                  sx={{ whiteSpace: 'nowrap' }}
+                                >
+                                  確認済み
+                                </Button>
+                              }
+                            >
+                              本当にここの住所で合っていますか？コメントも確認しましたか？
+                            </Alert>
+                          )}
+                        </Box>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                           <Button
                             variant={mailingStatus === '未' ? 'contained' : 'outlined'}
                             color="warning"
                             size="small"
                             onClick={() => handleMailingStatusChange('未')}
-                            disabled={savingMailingStatus}
+                            disabled={savingMailingStatus || !mailingAddressConfirmed}
                             sx={{ minWidth: 60 }}
                           >
                             未
@@ -6268,12 +6323,17 @@ HP：https://ifoo-oita.com/
                             color="success"
                             size="small"
                             onClick={() => handleMailingStatusChange('済')}
-                            disabled={savingMailingStatus}
+                            disabled={savingMailingStatus || !mailingAddressConfirmed}
                             sx={{ minWidth: 60 }}
                           >
                             済
                           </Button>
                           {savingMailingStatus && <CircularProgress size={20} />}
+                          {!mailingAddressConfirmed && (
+                            <Typography variant="caption" color="warning.main" sx={{ ml: 1 }}>
+                              ※「確認済み」を押してから操作してください
+                            </Typography>
+                          )}
                         </Box>
                       </Box>
                     )}
@@ -6409,13 +6469,54 @@ HP：https://ifoo-oita.com/
                                 </span>
                               )}
                             </Typography>
+                            {/* 郵送先住所フィールド */}
+                            <Box sx={{ mb: 2 }}>
+                              <TextField
+                                fullWidth
+                                size="small"
+                                label="郵送先住所"
+                                value={mailingAddress}
+                                onChange={(e) => {
+                                  setMailingAddress(e.target.value);
+                                  setMailingAddressConfirmed(false);
+                                }}
+                                placeholder="売主住所が自動入力されます"
+                                sx={{ mb: 1 }}
+                                InputProps={{
+                                  endAdornment: mailingAddressConfirmed ? (
+                                    <InputAdornment position="end">
+                                      <Chip label="✓ 確認済み" color="success" size="small" />
+                                    </InputAdornment>
+                                  ) : undefined,
+                                }}
+                              />
+                              {!mailingAddressConfirmed && (
+                                <Alert
+                                  severity="warning"
+                                  sx={{ mb: 1, py: 0.5 }}
+                                  action={
+                                    <Button
+                                      color="warning"
+                                      size="small"
+                                      variant="contained"
+                                      onClick={() => setMailingAddressConfirmed(true)}
+                                      sx={{ whiteSpace: 'nowrap' }}
+                                    >
+                                      確認済み
+                                    </Button>
+                                  }
+                                >
+                                  本当にここの住所で合っていますか？コメントも確認しましたか？
+                                </Alert>
+                              )}
+                            </Box>
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                               <Button
                                 variant={mailingStatus === '未' ? 'contained' : 'outlined'}
                                 color="warning"
                                 size="small"
                                 onClick={() => handleMailingStatusChange('未')}
-                                disabled={savingMailingStatus}
+                                disabled={savingMailingStatus || !mailingAddressConfirmed}
                                 sx={{ minWidth: 60 }}
                               >
                                 未
@@ -6425,12 +6526,17 @@ HP：https://ifoo-oita.com/
                                 color="success"
                                 size="small"
                                 onClick={() => handleMailingStatusChange('済')}
-                                disabled={savingMailingStatus}
+                                disabled={savingMailingStatus || !mailingAddressConfirmed}
                                 sx={{ minWidth: 60 }}
                               >
                                 済
                               </Button>
                               {savingMailingStatus && <CircularProgress size={20} />}
+                              {!mailingAddressConfirmed && (
+                                <Typography variant="caption" color="warning.main" sx={{ ml: 1 }}>
+                                  ※「確認済み」を押してから操作してください
+                                </Typography>
+                              )}
                             </Box>
                           </Box>
                         </Grid>
