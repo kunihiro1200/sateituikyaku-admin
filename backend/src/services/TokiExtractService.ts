@@ -814,8 +814,7 @@ export class TokiExtractService {
       add(`E${row}`, land.area);
     });
 
-    // 私道共有チェック
-    add('F91', extractResult.isPrivateRoadShared);
+    // 私道共有チェック：ノータッチ（F91〜F95は書き込み不要）
 
     // 主である建物の表示
     add('A99', extractResult.buildingLocation);
