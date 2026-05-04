@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>物件情報</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Hiragino Sans', 'Meiryo', sans-serif; background: #f5f5f5; color: #333; }
+
+    /* ヘッダー */
+    .header { background: #e84040; color: white; padding: 20px 30px; }
+    .header h1 { font-size: 20px; font-weight: bold; }
+    .header .price { font-size: 30px; font-weight: bold; margin-top: 6px; }
+    .header .sub { font-size: 13px; opacity: 0.85; margin-top: 4px; }
+
+    .container { max-width: 960px; margin: 0 auto; padding: 24px 16px; }
+
+    .section { background: white; border-radius: 10px; padding: 24px; margin-bottom: 20px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+    .section h2 { font-size: 16px; font-weight: bold; border-left: 4px solid #e84040; padding-left: 10px; margin-bottom: 18px; }
+
+    /* ── ポイントセクション ── */
+    .points-list {
+      list-style: none;
+      padding: 0;
+    }
+    .points-list > li {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      margin-bottom: 14px;
+      font-size: 14px;
+      line-height: 1.7;
+    }
+    .points-list > li:last-child { margin-bottom: 0; }
+    .point-bullet {
+      flex-shrink: 0;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #e84040;
+      margin-top: 6px;
+    }
+    .point-text { flex: 1; white-space: pre-wrap; }
+
+    /* ── 画像タブ ── */
+    .img-tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 14px;
+      flex-wrap: wrap;
+    }
+    .img-tab {
+      padding: 6px 16px;
+      border-radius: 20px;
+      border: 1.5px solid #e84040;
+      background: white;
+      color: #e84040;
+      font-size: 13px;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+    }
+    .img-tab.active {
+      background: #e84040;
+      color: white;
+    }
+
+    /* ── 画像スライダー ── */
+    .slider-wrap {
+      position: relative;
+      background: #111;
+      border-radius: 8px;
+      overflow: hidden;
+      margin-bottom: 10px;
+      aspect-ratio: 4/3;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      user-select: none;
+    }
+    .slider-wrap img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+      display: block;
+      pointer-events: none;
+      -webkit-user-drag: none;
+    }
+    .slider-click-area {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      cursor: pointer;
+    }
+    .slider-click-area .click-prev {
+      width: 50%;
+      height: 100%;
+      cursor: w-resize;
+    }
+    .slider-click-area .click-next {
+      width: 50%;
+      height: 100%;
+      cursor: e-resize;
+    }
+    .counter {
+      position: absolute;
+      top: 10px;
+      left: 12px;
+      background: rgba(0,0,0,0.55);
+      color: white;
+      font-size: 13px;
+      padding: 3px 10px;
+      border-radius: 20px;
+    }
+    /* 画像カテゴリラベル */
+    .img-category-label {
+      position: absolute;
+      top: 10px;
+      right: 12px;
+      background: rgba(232,64,64,0.85);
+      color: white;
+      font-size: 12px;
+      padding: 3px 10px;
+      border-radius: 20px;
+    }
+    .nav {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      background: rgba(255,255,255,0.85);
+      border: none;
+      font-size: 22px;
+      width: 40px;
+      height: 56px;
+      cursor: pointer;
+      border-radius: 4px;
+      color: #333;
+      transition: background 0.15s;
+    }
+    .nav:hover { background: white; }
+    .nav.prev { left: 8px; }
+    .nav.next { right: 8px; }
+
+    .thumbs {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .thumbs img {
+      width: 72px;
+      height: 54px;
+      object-fit: cover;
+      border-radius: 4px;
+      cursor: pointer;
+      border: 2px solid transparent;
+      opacity: 0.65;
+      transition: opacity 0.15s, border-color 0.15s;
+    }
+    .thumbs img:hover { opacity: 1; }
+    .thumbs img.active { border-color: #e84040; opacity: 1; }
+
+    /* ── 地図 ── */
+    .map-wrap {
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid #e0e0e0;
+    }
+    .map-wrap iframe {
+      width: 100%;
+      height: 400px;
+      display: block;
+      border: none;
+    }
+    .map-address { font-size: 13px; color: #666; margin-bottom: 10px; }
+
+    /* ── 物件概要テーブル ── */
+    .detail-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    .detail-table tr { border-bottom: 1px solid #f0f0f0; }
+    .detail-table tr:last-child { border-bottom: none; }
+    .detail-table th {
+      width: 160px;
+      padding: 10px 12px;
+      background: #fafafa;
+      color: #666;
+      font-weight: normal;
+      text-align: left;
+      vertical-align: top;
+      white-space: nowrap;
+    }
+    .detail-table td { padding: 10px 12px; line-height: 1.6; }
+
+    /* 販売スケジュール等の強調行 */
+    .detail-table tr.highlight th {
+      background: #fff5f5;
+      color: #c00;
+      font-weight: bold;
+    }
+    .detail-table tr.highlight td {
+      color: #c00;
+      font-weight: bold;
+    }
+
+    /* ── 署名 ── */
+    .signature {
+      text-align: center;
+      padding: 28px 16px;
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    }
+    .signature .company { font-size: 18px; font-weight: bold; color: #333; margin-bottom: 6px; }
+    .signature .tel { font-size: 22px; font-weight: bold; color: #e84040; letter-spacing: 1px; }
+    .signature .tel a { color: inherit; text-decoration: none; }
+  </style>
+</head>
+<body>
+
+<div id="app"><p style="padding:40px;text-align:center;color:#999;">読み込み中...</p></div>
+
+<script>
+// ── 画像カテゴリ分類 ──────────────────────────────────────────
+// commentsの先頭ラベルを使って画像をカテゴリ分け
+// 建売向けカテゴリ: 区画・間取り / 外観 / 室内 / その他
+const CATEGORY_KEYWORDS = {
+  '区画・間取り': ['間取', '区画', '配置', '平面', 'フロア', '図面'],
+  '外観':         ['外観', 'エントランス', '玄関', '外壁', '駐車場', '共有部', '共用部', 'エレベーター', '廊下'],
+  '室内':         ['リビング', '室内', 'キッチン', 'バス', 'トイレ', '洗面', '収納', 'バルコニー', '眺望', '設備', '和室', '洋室'],
+};
+
+function classifyImage(comment) {
+  if (!comment) return 'その他';
+  for (const [cat, keywords] of Object.entries(CATEGORY_KEYWORDS)) {
+    if (keywords.some(kw => comment.includes(kw))) return cat;
+  }
+  return 'その他';
+}
+
+// commentsは画像と1:1対応（偶数インデックスがラベル、奇数が説明文）
+// athomeのcomments配列は [ラベル, 説明, ラベル, 説明, ...] の構造
+function buildImageCategories(images, comments) {
+  // ラベルのみ抽出（偶数インデックス）
+  const labels = [];
+  for (let i = 0; i < comments.length; i += 2) {
+    labels.push(comments[i] || '');
+  }
+
+  const categorized = { 'すべて': images, '区画・間取り': [], '外観': [], '室内': [], 'その他': [] };
+
+  images.forEach((url, i) => {
+    const label = labels[i] || '';
+    const cat = classifyImage(label);
+    categorized[cat].push({ url, label, index: i });
+  });
+
+  // 空カテゴリを除去（「すべて」は常に残す）
+  return Object.fromEntries(
+    Object.entries(categorized).filter(([k, v]) => k === 'すべて' || v.length > 0)
+  );
+}
+
+// ── ポイント文字列をパース ────────────────────────────────────
+// detailsの「ポイント」または「備考」からポイントリストを生成
+// 建売物件では「◆」「・」区切りが多い
+function parsePoints(text) {
+  if (!text) return [];
+  // 「◆」または「・」で始まる行を分割
+  const lines = text.split(/\n/).map(l => l.trim()).filter(Boolean);
+  const points = [];
+  let current = null;
+
+  for (const line of lines) {
+    if (line.startsWith('◆') || line.startsWith('●') || line.startsWith('■')) {
+      if (current) points.push(current);
+      current = line;
+    } else if (line.startsWith('・') || line.startsWith('•')) {
+      if (current) current += '\n　' + line;
+      else current = line;
+    } else {
+      if (current) current += '\n　' + line;
+      else current = line;
+    }
+  }
+  if (current) points.push(current);
+  return points.length > 0 ? points : [text];
+}
+
+// ── メイン ───────────────────────────────────────────────────
+async function init() {
+  let data;
+  try {
+    const res = await fetch('athome_scrape_result.json');
+    data = await res.json();
+  } catch(e) {
+    document.getElementById('app').innerHTML = `
+      <div style="padding:40px;text-align:center;color:#c00;">
+        <p>⚠️ JSONファイルの読み込みに失敗しました。</p>
+        <p style="font-size:13px;margin-top:8px;">ターミナルで <code>python -m http.server 8080</code> を実行後、<br>
+        <a href="http://localhost:8080/athome_viewer.html">http://localhost:8080/athome_viewer.html</a> を開いてください。</p>
+      </div>`;
+    return;
+  }
+
+  const images   = data.images || [];
+  const details  = data.details || {};
+  const comments = data.comments || [];
+  const address  = details['所在地'] || '';
+
+  // ── ポイント生成 ──
+  // 「ポイント」キーがあればそれを使用、なければ「備考」から生成
+  const pointsRaw = details['ポイント'] || details['おすすめポイント'] || '';
+  const pointsList = parsePoints(pointsRaw);
+
+  // 周辺環境情報（「周辺環境」キーまたは備考から抽出）
+  const envRaw = details['周辺環境'] || '';
+  const envLines = envRaw ? envRaw.split(/\n/).map(l => l.trim()).filter(Boolean) : [];
+
+  // ── 画像カテゴリ分類 ──
+  const categorized = buildImageCategories(images, comments);
+  const catKeys = Object.keys(categorized);
+
+  // ── 物件概要表示項目（建売向け） ──
+  // 通常項目
+  const normalKeys = [
+    '所在地', '交通', '物件種目', '価格', '間取り',
+    '専有面積', '土地面積', '建物面積',
+    '構造', '建蔽率/容積率', '接道情報',
+    '階建 / 階', '階建/階', '築年月',
+    '駐車場', '駐輪場', '設備', '権利', '用途地域',
+    '都市計画', '地目', '建築確認番号',
+    '私道負担', '土地権利',
+    'バス・トイレ', 'キッチン', '設備・サービス', 'その他',
+    'エネルギー消費性能', '断熱性能', '目安光熱費',
+    '瑕疵保証', '瑕疵保険', '評価・証明書',
+    '管理形態／管理員の勤務形態', '修繕積立金', '維持費等',
+    '備考',
+  ];
+
+  // 建売専用：販売スケジュール・引渡・完成時期（強調表示）
+  const highlightKeys = [
+    '販売スケジュール', '販売期', '先着順受付',
+    '引渡可能時期', '引渡時期', '入居可能時期',
+    '完成時期', '竣工時期', '完成予定',
+  ];
+
+  // Google Maps embed URL
+  let mapSrc;
+  if (data.lat && data.lng) {
+    mapSrc = `https://maps.google.com/maps?q=${data.lat},${data.lng}&z=17&output=embed&hl=ja`;
+  } else {
+    const mapQuery = encodeURIComponent(address || data.title || '');
+    mapSrc = `https://maps.google.com/maps?q=${mapQuery}&output=embed&z=16&hl=ja`;
+  }
+
+  // ── ポイントHTML ──
+  const pointsHTML = pointsList.length > 0 ? `
+    <ul class="points-list">
+      ${pointsList.map(p => `
+        <li>
+          <span class="point-bullet"></span>
+          <span class="point-text">${escHtml(p)}</span>
+        </li>
+      `).join('')}
+    </ul>
+  ` : '';
+
+  // 周辺環境HTML
+  const envHTML = envLines.length > 0 ? `
+    <ul class="points-list" style="margin-top:14px;">
+      <li>
+        <span class="point-bullet" style="background:#f90;"></span>
+        <span class="point-text" style="font-weight:bold;">【周辺環境】</span>
+      </li>
+      ${envLines.map(l => `
+        <li style="padding-left:18px;">
+          <span class="point-text">${escHtml(l)}</span>
+        </li>
+      `).join('')}
+    </ul>
+  ` : '';
+
+  // ── 画像タブHTML ──
+  const tabsHTML = catKeys.length > 1 ? `
+    <div class="img-tabs" id="imgTabs">
+      ${catKeys.map((k, i) => {
+        const count = k === 'すべて' ? images.length : categorized[k].length;
+        return `<button class="img-tab${i===0?' active':''}" onclick="switchTab('${k}')">${k}（${count}）</button>`;
+      }).join('')}
+    </div>
+  ` : '';
+
+  // ── 物件概要テーブルHTML ──
+  // 強調行（販売スケジュール等）を先頭に
+  const highlightRows = highlightKeys
+    .filter(k => details[k] && details[k] !== '－')
+    .map(k => `<tr class="highlight"><th>${escHtml(k)}</th><td>${escHtml(details[k])}</td></tr>`)
+    .join('');
+
+  const normalRows = normalKeys
+    .filter(k => details[k] && details[k] !== '－')
+    .map(k => `<tr><th>${escHtml(k)}</th><td>${escHtml(details[k])}</td></tr>`)
+    .join('');
+
+  // ── 全体HTML組み立て ──
+  document.getElementById('app').innerHTML = `
+    <!-- ヘッダー -->
+    <div class="header">
+      <h1>${escHtml(data.title || '物件情報')}</h1>
+      <div class="price">${escHtml(details['価格'] || data.price || '')}</div>
+      <div class="sub">${escHtml(address)} ／ ${escHtml(details['交通'] || '')}</div>
+    </div>
+
+    <div class="container">
+
+      <!-- ポイント -->
+      ${(pointsHTML || envHTML) ? `
+      <div class="section">
+        <h2>ポイント 👍</h2>
+        ${pointsHTML}
+        ${envHTML}
+      </div>
+      ` : ''}
+
+      <!-- 画像スライダー -->
+      <div class="section">
+        <h2>物件写真（${images.length}枚）</h2>
+        ${tabsHTML}
+        ${images.length > 0 ? `
+          <div class="slider-wrap">
+            <img id="mainImg" src="${images[0]}" alt="物件写真">
+            <div class="slider-click-area">
+              <div class="click-prev" onclick="move(-1)" title="前の画像"></div>
+              <div class="click-next" onclick="move(1)"  title="次の画像"></div>
+            </div>
+            <button class="nav prev" onclick="move(-1)">&#8249;</button>
+            <button class="nav next" onclick="move(1)">&#8250;</button>
+            <span class="counter" id="counter">1 / ${images.length}</span>
+            <span class="img-category-label" id="imgCatLabel"></span>
+          </div>
+          <div class="thumbs" id="thumbs"></div>
+        ` : '<p style="color:#999;font-size:14px;">画像がありません</p>'}
+      </div>
+
+      <!-- 地図 -->
+      <div class="section">
+        <h2>地図</h2>
+        <p class="map-address">${escHtml(address)}周辺の地図</p>
+        <div class="map-wrap">
+          <iframe src="${mapSrc}" allowfullscreen loading="lazy"
+            referrerpolicy="no-referrer-when-downgrade"></iframe>
+        </div>
+      </div>
+
+      <!-- 物件概要 -->
+      <div class="section">
+        <h2>物件概要</h2>
+        <table class="detail-table">
+          ${highlightRows}
+          ${normalRows}
+        </table>
+      </div>
+
+      <!-- 署名 -->
+      <div class="signature">
+        <div class="company">株式会社いふう</div>
+        <div class="tel"><a href="tel:0975332022">097-533-2022</a></div>
+      </div>
+
+    </div>
+  `;
+
+  // ── スライダー初期化 ──
+  window._categorized = categorized;
+  window._currentCat  = 'すべて';
+  window._currentList = images.map((url, i) => ({ url, label: '', index: i }));
+  window._idx = 0;
+  renderThumbs();
+  updateMainImage();
+}
+
+// ── タブ切り替え ──────────────────────────────────────────────
+function switchTab(cat) {
+  window._currentCat  = cat;
+  const list = cat === 'すべて'
+    ? (window._categorized['すべて'] || []).map((url, i) => ({ url, label: '', index: i }))
+    : (window._categorized[cat] || []);
+  window._currentList = list;
+  window._idx = 0;
+
+  // タブのactive切り替え
+  document.querySelectorAll('.img-tab').forEach(btn => {
+    btn.classList.toggle('active', btn.textContent.startsWith(cat));
+  });
+
+  renderThumbs();
+  updateMainImage();
+}
+
+// ── サムネイル描画 ────────────────────────────────────────────
+function renderThumbs() {
+  const list = window._currentList;
+  const thumbsEl = document.getElementById('thumbs');
+  if (!thumbsEl) return;
+  thumbsEl.innerHTML = list.map((item, i) =>
+    `<img src="${item.url}" class="${i===0?'active':''}" onclick="go(${i})" alt="">`
+  ).join('');
+}
+
+// ── 画像移動 ─────────────────────────────────────────────────
+function go(i) {
+  const list = window._currentList;
+  if (!list || list.length === 0) return;
+  window._idx = i;
+  updateMainImage();
+  document.querySelectorAll('#thumbs img').forEach((el, j) => el.classList.toggle('active', j===i));
+  document.querySelectorAll('#thumbs img')[i]?.scrollIntoView({behavior:'smooth', block:'nearest', inline:'center'});
+}
+
+function move(dir) {
+  const len = (window._currentList || []).length;
+  if (len === 0) return;
+  go((window._idx + dir + len) % len);
+}
+
+function updateMainImage() {
+  const list = window._currentList;
+  const i    = window._idx;
+  if (!list || list.length === 0) return;
+  const item = list[i];
+  const mainImg = document.getElementById('mainImg');
+  const counter = document.getElementById('counter');
+  const catLabel = document.getElementById('imgCatLabel');
+  if (mainImg) mainImg.src = item.url;
+  if (counter) counter.textContent = `${i+1} / ${list.length}`;
+  if (catLabel) {
+    // カテゴリラベルを表示（「すべて」タブ時は画像のカテゴリを表示）
+    if (window._currentCat !== 'すべて') {
+      catLabel.textContent = window._currentCat;
+      catLabel.style.display = '';
+    } else {
+      catLabel.style.display = 'none';
+    }
+  }
+}
+
+// ── キーボード操作 ────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight') move(1);
+  if (e.key === 'ArrowLeft')  move(-1);
+});
+
+// ── HTMLエスケープ ────────────────────────────────────────────
+function escHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+init();
+</script>
+</body>
+</html>
