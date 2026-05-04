@@ -95,10 +95,21 @@ export class EmailService extends BaseRepository {
       const gmail = google.gmail({ version: 'v1', auth: authClient });
 
       const from = params.from || 'tenant@ifoo-oita.com';
-      const urlToLink = (text: string): string =>
-        text.replace(/(https?:\/\/[^\s\u3000\u3001\u3002\uff01\uff09\u300d\u300f\u3011\u3015\u3017\u3019\u301b\u301f\uff3d\uff5d\u300b\u300f]+)/g,
-          (url) => `<a href="${url}">${url}</a>`);
-      const htmlBody = urlToLink(params.body).replace(/\n/g, '<br>');
+      
+      // HTMLタグが既に含まれているかチェック
+      const containsHtml = /<img|<a|<br|<div|<p|<span/i.test(params.body);
+      
+      let htmlBody: string;
+      if (containsHtml) {
+        // 既にHTMLが含まれている場合はそのまま使用
+        htmlBody = params.body;
+      } else {
+        // プレーンテキストの場合はHTMLに変換
+        const urlToLink = (text: string): string =>
+          text.replace(/(https?:\/\/[^\s\u3000\u3001\u3002\uff01\uff09\u300d\u300f\u3011\u3015\u3017\u3019\u301b\u301f\uff3d\uff5d\u300b\u300f]+)/g,
+            (url) => `<a href="${url}">${url}</a>`);
+        htmlBody = urlToLink(params.body).replace(/\n/g, '<br>');
+      }
 
       const encodedSubject = /^[\x00-\x7F]*$/.test(params.subject)
         ? params.subject

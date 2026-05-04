@@ -467,10 +467,10 @@ export default function OtherCompanyDistributionPage() {
       if (previewData.parking) propertyDetails.push(`駐車場: ${previewData.parking}`);
       if (previewData.access) propertyDetails.push(`交通: ${previewData.access}`);
       
-      const propertyInfo = propertyDetails.length > 0 ? propertyDetails.join('\n') : '';
+      const propertyInfo = propertyDetails.join('<br>');
       
       // おすすめコメント（入力されている場合のみ表示）
-      const commentSection = recommendComment.trim() ? `\n${recommendComment.trim()}\n` : '';
+      const commentSection = recommendComment.trim() ? `<br>${recommendComment.trim().replace(/\n/g, '<br>')}<br>` : '';
       
       // 画像HTML（最初の3枚のみ、大きめに表示）
       const imageHtml = selectedImages.slice(0, 3).map((image, index) => {
@@ -478,25 +478,12 @@ export default function OtherCompanyDistributionPage() {
         return `<img src="${imgSrc}" alt="物件画像${index + 1}" style="max-width: 600px; width: 100%; height: auto; margin: 10px 0; display: block;" />`;
       }).join('');
       
-      return `${buyer.name}様
-
-大変お世話になっております。
-不動産会社の㈱いふうです。
-
-新着物件がでましたので、ご案内致します。
-
-${propertyAddress}/${propertyPrice}/
-
-${imageHtml}
-
-他にはこちらから
-${linkUrl}${commentSection}
-${propertyInfo}${SIGNATURE_EMAIL}`;
+      return `${buyer.name}様<br><br>大変お世話になっております。<br>不動産会社の㈱いふうです。<br><br>新着物件がでましたので、ご案内致します。<br><br>${propertyAddress}/${propertyPrice}/<br><br>${imageHtml}<br>他の画像はこちらから<br><a href="${linkUrl}">${linkUrl}</a>${commentSection}<br>${propertyInfo}${SIGNATURE_EMAIL.replace(/\n/g, '<br>')}`;
     }
     
     // スクレイピングデータがない場合は従来フォーマット
-    const urlLine = linkUrl ? `\n物件情報はこちら: ${linkUrl}\n` : '';
-    return `${buyer.name}様\n\n大変お世話になっております。\n不動産会社の㈱いふうです。\n\n新着物件がでましたので、ご案内致します。\n他社様の物件でも気になる物件がございましたらまとめてご案内可能ですのでお申し付けくださいませ。${urlLine}${SIGNATURE_EMAIL}`;
+    const urlLine = linkUrl ? `<br>物件情報はこちら: <a href="${linkUrl}">${linkUrl}</a><br>` : '';
+    return `${buyer.name}様<br><br>大変お世話になっております。<br>不動産会社の㈱いふうです。<br><br>新着物件がでましたので、ご案内致します。<br>他社様の物件でも気になる物件がございましたらまとめてご案内可能ですのでお申し付けくださいませ。${urlLine}${SIGNATURE_EMAIL.replace(/\n/g, '<br>')}`;
   };
 
   const openEmailDialog = () => {
@@ -1049,7 +1036,7 @@ ${propertyInfo}${SIGNATURE_EMAIL}`;
               rows={3}
               fullWidth
               placeholder="この物件のおすすめポイントを入力してください"
-              helperText="入力したコメントは「他にはこちらから」の下に表示されます"
+              helperText="入力したコメントは「他の画像はこちらから」の下に表示されます"
             />
           )}
           
