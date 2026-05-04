@@ -154,7 +154,7 @@ export default function OtherCompanyDistributionPage() {
           setSelectedPriceRange('~1900万円');
         } else if (priceNum >= 1000 && priceNum < 3000) {
           setSelectedPriceRange('1000万円~2999万円');
-        } else if (priceNum >= 2000) {
+        } else if (priceNum >= 3000) {
           setSelectedPriceRange('2000万円以上');
         }
       }
@@ -173,6 +173,8 @@ export default function OtherCompanyDistributionPage() {
     };
     
     const propertyType = data.details?.['物件種目'];
+    const isMansion = propertyType && propertyTypeMap[propertyType] === 'マンション';
+    
     if (propertyType && propertyTypeMap[propertyType]) {
       const mappedType = propertyTypeMap[propertyType];
       setSelectedPropertyTypes([mappedType]);
@@ -184,16 +186,69 @@ export default function OtherCompanyDistributionPage() {
       }
     }
 
+    // マンションの場合のみ、高層階・ペット・温泉を自動判定
+    if (isMansion) {
+      // 高層階を自動判定（7階以上 → 高層階）
+      const floorInfo = data.details?.['階建/階'] || data.details?.['階建 / 階'] || data.floor;
+      if (floorInfo) {
+        // 「15階建 / 8階」のような形式から階数を抽出
+        const floorMatch = floorInfo.match(/\/\s*(\d+)階/);
+        if (floorMatch) {
+          const floor = parseInt(floorMatch[1], 10);
+          if (floor >= 7) {
+            setSelectedFloor('高層階');
+          } else {
+            setSelectedFloor('低層階');
+          }
+        }
+      }
+
+      // ペットを自動判定
+      const features = data.details?.['設備・サービス'] || data.features || '';
+      const remarks = data.details?.['備考'] || data.remarks || '';
+      const allText = (features + ' ' + remarks).toLowerCase();
+      
+      if (allText.includes('ペット可') || allText.includes('大型犬可') || allText.includes('小型犬可') || allText.includes('猫可')) {
+        setSelectedPet('可');
+      } else if (allText.includes('ペット不可') || allText.includes('ペット禁止')) {
+        setSelectedPet('不可');
+      }
+      // ペット情報がない場合は「どちらでも」のまま
+    }
+
+    // 温泉を自動判定（全物件種別）
+    const features = data.details?.['設備・サービス'] || data.features || '';
+    const remarks = data.details?.['備考'] || data.remarks || '';
+    const allText = (features + ' ' + remarks).toLowerCase();
+    
+    if (allText.includes('温泉') || allText.includes('天然温泉') || allText.includes('源泉')) {
+      setSelectedOnsen('あり');
+    } else {
+      // 温泉情報がない場合は「なし」
+      setSelectedOnsen('なし');
+    }
+
     // P台数を自動判定
     if (data.parking) {
       const parkingStr = data.parking.toLowerCase();
-      if (parkingStr.includes('10') || parkingStr.match(/[0-9]{2,}/)) {
-        setSelectedParking('10台以上');
-      } else if (parkingStr.includes('3')) {
-        setSelectedParking('3台以上');
-      } else if (parkingStr.includes('2')) {
-        setSelectedParking('2台以上');
-      } else if (parkingStr.includes('1') || parkingStr.includes('有')) {
+      
+      // 「○台」という明示的な表記を優先的に検索
+      const explicitMatch = parkingStr.match(/(\d+)\s*台/);
+      
+      if (explicitMatch) {
+        // 「10台」「2台」のような明示的な表記がある場合
+        const parkingNum = parseInt(explicitMatch[1], 10);
+        if (parkingNum >= 10) {
+          setSelectedParking('10台以上');
+        } else if (parkingNum >= 3) {
+          setSelectedParking('3台以上');
+        } else if (parkingNum >= 2) {
+          setSelectedParking('2台以上');
+        } else if (parkingNum >= 1) {
+          setSelectedParking('1台');
+        }
+      } else if (parkingStr.includes('有')) {
+        // 「有」のみの場合は1台（マンションの場合は基本1台）
         setSelectedParking('1台');
       } else if (parkingStr.includes('無') || parkingStr.includes('なし')) {
         setSelectedParking('不要');
