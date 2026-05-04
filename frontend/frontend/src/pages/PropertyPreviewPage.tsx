@@ -20,6 +20,7 @@ interface PreviewData {
   lat: number | null;
   lng: number | null;
   details: Record<string, string>;
+  appeal_comment?: string | null;
   // 表示フラグ
   show_images?: boolean;
   show_price?: boolean;
@@ -142,6 +143,18 @@ export default function PropertyPreviewPage() {
                   style={{ width: 72, height: 54, objectFit: 'cover', borderRadius: 4, cursor: 'pointer', border: i === imgIndex ? '2px solid #e84040' : '2px solid transparent', opacity: i === imgIndex ? 1 : 0.65 }} />
               ))}
             </div>
+          </div>
+        )}
+
+        {/* おすすめコメント */}
+        {data.appeal_comment && (
+          <div style={{ background: 'white', borderRadius: 10, padding: 20, marginBottom: 16, boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
+            <h2 style={{ fontSize: 15, fontWeight: 'bold', borderLeft: '4px solid #e84040', paddingLeft: 10, marginBottom: 14, display: 'flex', alignItems: 'center', gap: 6 }}>
+              ★ おすすめコメント
+            </h2>
+            <p style={{ fontSize: 14, lineHeight: 1.8, color: '#333', whiteSpace: 'pre-wrap' }}>
+              {data.appeal_comment}
+            </p>
           </div>
         )}
 
