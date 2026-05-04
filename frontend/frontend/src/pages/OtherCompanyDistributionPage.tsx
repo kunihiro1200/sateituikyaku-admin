@@ -339,6 +339,18 @@ export default function OtherCompanyDistributionPage() {
         <Typography variant="h5" fontWeight="bold" sx={{ color: SECTION_COLORS.buyer.main }}>
           他社物件新着配信
         </Typography>
+        {/* URL入力フィールド */}
+        <TextField
+          label="URL"
+          value={propertyUrl}
+          onChange={e => setPropertyUrl(e.target.value)}
+          placeholder="https://www.athome.co.jp/mansion/..."
+          size="small"
+          sx={{ width: 420 }}
+          InputProps={{
+            startAdornment: <LinkIcon sx={{ mr: 1, color: 'text.secondary', fontSize: 20 }} />,
+          }}
+        />
         <Box sx={{ display: 'flex', gap: 2 }}>
           <Button
             variant="contained"
@@ -696,16 +708,6 @@ export default function OtherCompanyDistributionPage() {
             value={emailSubject}
             onChange={e => setEmailSubject(e.target.value)}
             fullWidth
-          />
-          <TextField
-            label="URL（物件ページのURLを入力すると本文に自動挿入されます）"
-            value={propertyUrl}
-            onChange={e => setPropertyUrl(e.target.value)}
-            fullWidth
-            placeholder="例: https://www.athome.co.jp/mansion/6990582043/"
-            InputProps={{
-              startAdornment: <LinkIcon sx={{ mr: 1, color: 'text.secondary', fontSize: 20 }} />,
-            }}
           />
           <TextField
             label="本文（各買主の名前が自動的に挿入されます）"
