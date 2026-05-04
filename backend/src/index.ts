@@ -146,18 +146,34 @@ app.get('/health', (req, res) => {
 });
 
 // 暗号化キー診断エンドポイント（一時的）
-app.get('/debug/encryption-check', (req, res) => {
+app.get('/debug/encryption-check', async (req, res) => {
   const key = process.env.ENCRYPTION_KEY;
   const { decrypt } = require('./utils/encryption');
   
-  // テスト用の既知の暗号化文字列（実データではない）
-  let decryptTest = null;
-  let decryptError = null;
+  // 実際のDBデータで復号テスト
+  let dbDecryptResult = null;
+  let dbDecryptError = null;
   try {
-    // 短すぎる文字列は平文として返るはず
-    decryptTest = decrypt('hello');
+    const { data } = await supabase
+      .from('sellers')
+      .select('seller_number, name')
+      .not('name', 'is', null)
+      .limit(1)
+      .single();
+    
+    if (data?.name) {
+      const rawName = data.name;
+      const decrypted = decrypt(rawName);
+      dbDecryptResult = {
+        sellerNumber: data.seller_number,
+        rawNameLength: rawName.length,
+        rawNameFirst10: rawName.substring(0, 10),
+        decryptedName: decrypted,
+        decryptedSameAsRaw: decrypted === rawName,
+      };
+    }
   } catch (e: any) {
-    decryptError = e.message;
+    dbDecryptError = e.message;
   }
 
   res.json({
@@ -165,9 +181,9 @@ app.get('/debug/encryption-check', (req, res) => {
     keyLength: key?.length ?? 0,
     keyFirst3: key ? key.substring(0, 3) + '...' : null,
     keyLast3: key ? '...' + key.substring(key.length - 3) : null,
-    decryptShortString: decryptTest,
-    decryptError,
     nodeEnv: process.env.NODE_ENV,
+    dbDecryptResult,
+    dbDecryptError,
   });
 });
 
