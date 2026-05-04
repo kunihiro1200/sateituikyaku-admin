@@ -75,11 +75,16 @@ router.delete('/sellers/list', async (req: Request, res: Response) => {
  */
 router.delete('/all', async (req: Request, res: Response) => {
   try {
-    await redisClient.flushDb();
-    console.log('✅ All Redis cache cleared');
+    const keys = await redisClient.keys('*');
+    let deleted = 0;
+    for (const key of keys) {
+      await redisClient.del(key);
+      deleted++;
+    }
+    console.log(`✅ All Redis cache cleared: ${deleted} keys deleted`);
     res.json({
       success: true,
-      message: 'All Redis cache cleared successfully',
+      message: `All Redis cache cleared: ${deleted} keys deleted`,
     });
   } catch (error: any) {
     console.error('❌ Failed to clear all cache:', error);
