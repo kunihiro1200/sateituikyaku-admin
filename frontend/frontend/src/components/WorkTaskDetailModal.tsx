@@ -2146,13 +2146,50 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
     }
   };
 
-  // 謄本_売買契約・重説（戸建て用・契約決済タブ用）読み取りハンドラー
+  // 謄本_売買契約・重説（戸建て用・契約決済タブ用）読み取りハンドラー（1枚ずつ処理）
   const handleTokiKodateKeiyakuExtract = async () => {
     if (!propertyNumber) return;
     setTokiKodateKeiyakuLoading(true);
     try {
-      const res = await api.post(`/api/toki-extract/${propertyNumber}/extract-kodate-keiyaku`);
-      setTokiKodateKeiyakuResult(res.data);
+      // Step1: PDF一覧を取得（高速）
+      const listRes = await api.get(`/api/toki-extract/${propertyNumber}/list-kodate-keiyaku-pdfs`);
+      const { pdfList, sheetName, spreadsheetUrl } = listRes.data as {
+        pdfList: Array<{ fileId: string; fileName: string }>;
+        sheetName: string;
+        spreadsheetUrl: string;
+      };
+
+      // Step2: 1枚ずつ順番に解析
+      const results: any[] = [];
+      const fileNames: string[] = [];
+      for (let i = 0; i < pdfList.length; i++) {
+        const pdf = pdfList[i];
+        setSnackbar({ open: true, message: `謄本解析中... (${i + 1}/${pdfList.length}) ${pdf.fileName}`, severity: 'info' });
+        const singleRes = await api.post(`/api/toki-extract/${propertyNumber}/extract-kodate-keiyaku-single`, {
+          fileId: pdf.fileId,
+          fileName: pdf.fileName,
+        });
+        results.push(singleRes.data.extractResult);
+        fileNames.push(pdf.fileName);
+      }
+
+      if (results.length === 0) throw new Error('解析結果が取得できませんでした');
+
+      // Step3: 1枚目を基準に土地情報をマージ（面積降順ソート）
+      const mergedResult = { ...results[0] };
+      for (let i = 1; i < results.length; i++) {
+        mergedResult.lands = [...(mergedResult.lands ?? []), ...(results[i].lands ?? [])];
+      }
+      mergedResult.lands = (mergedResult.lands ?? []).sort((a: any, b: any) => {
+        const aNum = a.areaNumeric ?? (a.area ? Number(a.area) : null);
+        const bNum = b.areaNumeric ?? (b.area ? Number(b.area) : null);
+        if (aNum === null && bNum === null) return 0;
+        if (aNum === null) return 1;
+        if (bNum === null) return -1;
+        return bNum - aNum;
+      });
+
+      setTokiKodateKeiyakuResult({ extractResult: mergedResult, sheetName, spreadsheetUrl, fileNames });
       setTokiKodateKeiyakuDialog(true);
     } catch (err: any) {
       const msg = err?.response?.data?.error || '謄本の読み取りに失敗しました';

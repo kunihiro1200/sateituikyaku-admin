@@ -386,6 +386,64 @@ router.post('/:propertyNumber/write-kodate', async (req: Request, res: Response)
 });
 
 /**
+ * GET /api/toki-extract/:propertyNumber/list-kodate-keiyaku-pdfs
+ * 戸建て用（契約決済タブ）：格納先フォルダのPDF一覧（fileId付き）を返す（高速）
+ */
+router.get('/:propertyNumber/list-kodate-keiyaku-pdfs', async (req: Request, res: Response) => {
+  try {
+    const { propertyNumber } = req.params;
+
+    const workTask = await workTaskService.getByPropertyNumber(propertyNumber);
+    if (!workTask) return res.status(404).json({ error: '業務データが見つかりません' });
+
+    const storageUrl: string | null = workTask.storage_url ?? null;
+    const spreadsheetUrl: string | null = workTask.spreadsheet_url ?? null;
+    const propertyType: string | null = workTask.property_type ?? null;
+
+    if (!storageUrl) return res.status(400).json({ error: '格納先URLが設定されていません' });
+    if (!spreadsheetUrl) return res.status(400).json({ error: 'スプシURLが設定されていません' });
+    if (!propertyType) return res.status(400).json({ error: '種別が設定されていません' });
+
+    const isKodate = ['戸', '戸建', '戸建て'].includes(propertyType);
+    if (!isKodate) return res.status(400).json({ error: 'この機能は戸建て（種別：戸）のみ対応しています' });
+
+    const pdfList = await tokiExtractService.listTokiPdfsForKodateKeiyaku(storageUrl);
+    if (pdfList.length === 0) {
+      return res.status(404).json({ error: '格納先フォルダに「全部事項」または「全部謄本」を含むPDFが見つかりませんでした' });
+    }
+
+    return res.json({ success: true, pdfList, sheetName: '重説', spreadsheetUrl });
+  } catch (error: any) {
+    console.error('[TokiKodateKeiyaku] PDF一覧取得エラー:', error.message);
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * POST /api/toki-extract/:propertyNumber/extract-kodate-keiyaku-single
+ * 戸建て用（契約決済タブ）：fileIdを受け取り、1枚のPDFだけを解析して返す
+ */
+router.post('/:propertyNumber/extract-kodate-keiyaku-single', async (req: Request, res: Response) => {
+  try {
+    const { propertyNumber } = req.params;
+    const { fileId, fileName } = req.body as { fileId: string; fileName: string };
+
+    if (!fileId) return res.status(400).json({ error: 'fileId は必須です' });
+
+    console.log(`[TokiKodateKeiyaku] 1枚解析開始: ${fileName}`);
+    const extractResult = await tokiExtractService.extractSingleTokiPdfForKodateKeiyaku(fileId, fileName);
+
+    return res.json({ success: true, fileName, extractResult });
+  } catch (error: any) {
+    console.error('[TokiKodateKeiyaku] 1枚解析エラー:', error.message);
+    if (error?.status === 429 || error?.error?.type === 'rate_limit_error') {
+      return res.status(429).json({ error: 'APIのレート制限に達しました。しばらく待ってから再試行してください。' });
+    }
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+/**
  * POST /api/toki-extract/:propertyNumber/extract-kodate-keiyaku
  * 戸建て用（契約決済タブ）：謄本PDFを複数読み取り、重説シート向けの抽出結果をプレビューとして返す
  */
