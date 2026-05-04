@@ -1275,28 +1275,28 @@ export class TokiExtractService {
 
     const fileNames: string[] = [];
 
-    // 土地謄本を解析（複数）
-    const landResults: TokiKodateExtractResult[] = [];
-    for (const pdf of landPdfs) {
-      console.log(`[TokiKodate] 土地謄本解析中: ${pdf.fileName}`);
-      const result = await this.extractFromPdfForKodate(pdf.base64);
-      landResults.push(result);
-      fileNames.push(pdf.fileName);
-    }
+    // 土地謄本と建物謄本を並列処理（API呼び出しを同時実行して高速化）
+    console.log(`[TokiKodate] 並列解析開始: 土地${landPdfs.length}件, 建物${buildingPdf ? 1 : 0}件`);
 
-    // 建物謄本を解析（1件）
-    let buildingResult: TokiKodateExtractResult | null = null;
-    if (buildingPdf) {
-      console.log(`[TokiKodate] 建物謄本解析中: ${buildingPdf.fileName}`);
-      buildingResult = await this.extractFromPdfForKodate(buildingPdf.base64);
-      fileNames.push(buildingPdf.fileName);
-    }
+    const [landResults, buildingResult] = await Promise.all([
+      // 土地謄本：複数を並列処理
+      Promise.all(
+        landPdfs.map(async (pdf) => {
+          console.log(`[TokiKodate] 土地謄本解析中: ${pdf.fileName}`);
+          return this.extractFromPdfForKodate(pdf.base64);
+        })
+      ),
+      // 建物謄本：1件処理
+      buildingPdf
+        ? (async () => {
+            console.log(`[TokiKodate] 建物謄本解析中: ${buildingPdf.fileName}`);
+            return this.extractFromPdfForKodate(buildingPdf.base64);
+          })()
+        : Promise.resolve(null),
+    ]);
 
-    // 基準となる結果を決定
-    // 建物謄本がある場合：建物情報は建物謄本から、所有者情報は建物謄本から取得
-    // 建物謄本がない場合：土地謄本1枚目を基準とする
-    const baseResult: TokiKodateExtractResult =
-      buildingResult ?? (landResults.length > 0 ? landResults[0] : (() => { throw new Error('謄本PDFが見つかりませんでした'); })());
+    landPdfs.forEach((pdf) => fileNames.push(pdf.fileName));
+    if (buildingPdf) fileNames.push(buildingPdf.fileName);
 
     // 土地情報を全土地謄本から収集
     const allLands: TokiKodateExtractResult['lands'] = [];
@@ -1316,25 +1316,27 @@ export class TokiExtractService {
       return b.areaNumeric - a.areaNumeric;
     });
 
-    // 所有者情報の統合：同じ所有者の場合は名前を1つにまとめる
-    // 建物謄本の所有者を基準とし、土地謄本の所有者と比較
-    let mergedOwnerName = baseResult.ownerName;
-    let mergedOwnerAddress = baseResult.ownerAddress;
-    let mergedCoOwners = baseResult.coOwners;
+    // 所有者情報：建物謄本があれば建物謄本から、なければ土地謄本1枚目から
+    const ownerSource = buildingResult ?? (landResults.length > 0 ? landResults[0] : null);
+    if (!ownerSource) throw new Error('謄本PDFが見つかりませんでした');
 
-    // 土地謄本の所有者情報を確認（建物謄本と異なる場合は追記）
+    // 建物情報：建物謄本があれば建物謄本から、なければ土地謄本1枚目から（通常nullになる）
+    const buildingSource = buildingResult ?? (landResults.length > 0 ? landResults[0] : ownerSource);
+
+    // 所有者情報の統合：同じ所有者の場合は名前を1つにまとめる
+    let mergedCoOwners = ownerSource.coOwners;
+
     if (buildingResult && landResults.length > 0) {
+      // 土地謄本の所有者が建物謄本と異なる場合のみ追記
       const differentOwners: string[] = [];
       for (const r of landResults) {
-        // 所有者名が異なる場合のみ追記
-        if (r.ownerName && r.ownerName !== baseResult.ownerName) {
+        if (r.ownerName && r.ownerName !== buildingResult.ownerName) {
           const ownerInfo = `${r.ownerName}（${r.ownerAddress ?? '住所不明'}）`;
           if (!differentOwners.includes(ownerInfo)) {
             differentOwners.push(ownerInfo);
           }
         }
-        // 共有者情報も統合
-        if (r.coOwners && r.coOwners !== baseResult.coOwners) {
+        if (r.coOwners && r.coOwners !== buildingResult.coOwners) {
           if (!mergedCoOwners) {
             mergedCoOwners = r.coOwners;
           } else if (!mergedCoOwners.includes(r.coOwners)) {
@@ -1342,7 +1344,6 @@ export class TokiExtractService {
           }
         }
       }
-      // 異なる所有者がいる場合は coOwners に追記
       if (differentOwners.length > 0) {
         const additionalInfo = differentOwners.join('\n');
         if (!mergedCoOwners) {
@@ -1354,11 +1355,23 @@ export class TokiExtractService {
     }
 
     const mergedResult: TokiKodateExtractResult = {
-      ...baseResult,
-      ownerName: mergedOwnerName,
-      ownerAddress: mergedOwnerAddress,
+      ownerAddress: ownerSource.ownerAddress,
+      ownerName: ownerSource.ownerName,
       coOwners: mergedCoOwners,
       lands: allLands,
+      isPrivateRoadShared: landResults.some((r) => r.isPrivateRoadShared) || (buildingResult?.isPrivateRoadShared ?? false),
+      buildingLocation: buildingSource.buildingLocation,
+      houseNumber: buildingSource.houseNumber,
+      buildingType: buildingSource.buildingType,
+      annexBuildings: buildingSource.annexBuildings,
+      structure: buildingSource.structure,
+      roofType: buildingSource.roofType,
+      floors: buildingSource.floors,
+      floor1Area: buildingSource.floor1Area,
+      floor2Area: buildingSource.floor2Area,
+      registrationDate: buildingSource.registrationDate,
+      extensionDate: buildingSource.extensionDate,
+      renovationDate: buildingSource.renovationDate,
     };
 
     return { mergedResult, fileNames };
