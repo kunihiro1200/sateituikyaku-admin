@@ -2182,18 +2182,93 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
     }
   };
 
-  // 謄本（戸建て用）読み取りハンドラー（複数PDF対応）
+  // 謄本（戸建て用）読み取りハンドラー（1枚ずつ処理・タイムアウト対策）
   const handleTokiKodateExtract = async () => {
     if (!propertyNumber) return;
     setTokiKodateLoading(true);
     try {
-      const res = await api.post(`/api/toki-extract/${propertyNumber}/extract-kodate`);
-      // fileNames（複数）または fileName（単数）に対応
-      const data = res.data;
-      if (data.fileNames && !data.fileName) {
-        data.fileName = data.fileNames.join(', ');
+      // Step1: PDF一覧を取得（高速・タイムアウトなし）
+      const listRes = await api.get(`/api/toki-extract/${propertyNumber}/list-kodate-pdfs`);
+      const { pdfList, sheetName, spreadsheetUrl } = listRes.data as {
+        pdfList: Array<{ fileId: string; fileName: string; pdfType: 'land' | 'building' | 'unknown' }>;
+        sheetName: string;
+        spreadsheetUrl: string;
+      };
+
+      // Step2: 1枚ずつ順番に解析
+      const landResults: any[] = [];
+      let buildingResult: any = null;
+      const fileNames: string[] = [];
+
+      for (let i = 0; i < pdfList.length; i++) {
+        const pdf = pdfList[i];
+        setSnackbar({ open: true, message: `謄本解析中... (${i + 1}/${pdfList.length}) ${pdf.fileName}`, severity: 'info' });
+        const singleRes = await api.post(`/api/toki-extract/${propertyNumber}/extract-kodate-single`, {
+          fileId: pdf.fileId,
+          fileName: pdf.fileName,
+          pdfType: pdf.pdfType,
+        });
+        fileNames.push(pdf.fileName);
+        if (pdf.pdfType === 'building') {
+          buildingResult = singleRes.data.extractResult;
+        } else {
+          landResults.push(singleRes.data.extractResult);
+        }
       }
-      setTokiKodateResult(data);
+
+      // Step3: 結果をマージ（土地は面積降順ソート、所有者統合）
+      const ownerSource = buildingResult ?? (landResults.length > 0 ? landResults[0] : null);
+      if (!ownerSource) throw new Error('解析結果が取得できませんでした');
+      const buildingSource = buildingResult ?? (landResults.length > 0 ? landResults[0] : ownerSource);
+
+      // 全土地を収集
+      const allLands: any[] = [];
+      for (const r of landResults) allLands.push(...(r.lands ?? []));
+      if (allLands.length === 0 && buildingResult) allLands.push(...(buildingResult.lands ?? []));
+
+      // 面積降順ソート
+      allLands.sort((a: any, b: any) => {
+        const aNum = a.areaNumeric ?? (a.area ? Number(a.area) : null);
+        const bNum = b.areaNumeric ?? (b.area ? Number(b.area) : null);
+        if (aNum === null && bNum === null) return 0;
+        if (aNum === null) return 1;
+        if (bNum === null) return -1;
+        return bNum - aNum;
+      });
+
+      // 所有者統合
+      let mergedCoOwners = ownerSource.coOwners ?? null;
+      if (buildingResult && landResults.length > 0) {
+        for (const r of landResults) {
+          if (r.ownerName && r.ownerName !== buildingResult.ownerName) {
+            const info = `${r.ownerName}（${r.ownerAddress ?? '住所不明'}）`;
+            if (!mergedCoOwners) mergedCoOwners = info;
+            else if (!mergedCoOwners.includes(info)) mergedCoOwners += '\n' + info;
+          }
+        }
+      }
+
+      const mergedResult = {
+        ownerAddress: ownerSource.ownerAddress,
+        ownerName: ownerSource.ownerName,
+        coOwners: mergedCoOwners,
+        lands: allLands,
+        isPrivateRoadShared: landResults.some((r: any) => r.isPrivateRoadShared) || (buildingResult?.isPrivateRoadShared ?? false),
+        buildingLocation: buildingSource.buildingLocation,
+        houseNumber: buildingSource.houseNumber,
+        buildingType: buildingSource.buildingType,
+        annexBuildings: buildingSource.annexBuildings,
+        structure: buildingSource.structure,
+        roofType: buildingSource.roofType,
+        floors: buildingSource.floors,
+        floor1Area: buildingSource.floor1Area,
+        floor2Area: buildingSource.floor2Area,
+        registrationDate: buildingSource.registrationDate,
+        extensionDate: buildingSource.extensionDate,
+        renovationDate: buildingSource.renovationDate,
+      };
+
+      setTokiKodateResult({ extractResult: mergedResult, sheetName, spreadsheetUrl, fileName: fileNames.join(', ') });
       setTokiKodateDialog(true);
     } catch (err: any) {
       const msg = err?.response?.data?.error || '謄本の読み取りに失敗しました';

@@ -211,6 +211,73 @@ router.post('/:propertyNumber/write-keiyaku', async (req: Request, res: Response
 });
 
 /**
+ * GET /api/toki-extract/:propertyNumber/list-kodate-pdfs
+ * 戸建て用：格納先フォルダのPDF一覧（fileId付き）を返す（高速・タイムアウトなし）
+ */
+router.get('/:propertyNumber/list-kodate-pdfs', async (req: Request, res: Response) => {
+  try {
+    const { propertyNumber } = req.params;
+
+    const workTask = await workTaskService.getByPropertyNumber(propertyNumber);
+    if (!workTask) return res.status(404).json({ error: '業務データが見つかりません' });
+
+    const storageUrl: string | null = workTask.storage_url ?? null;
+    const spreadsheetUrl: string | null = workTask.spreadsheet_url ?? null;
+    const mediationType: string | null = workTask.mediation_type ?? null;
+    const propertyType: string | null = workTask.property_type ?? null;
+
+    if (!storageUrl) return res.status(400).json({ error: '格納先URLが設定されていません' });
+    if (!spreadsheetUrl) return res.status(400).json({ error: 'スプシURLが設定されていません' });
+    if (!propertyType) return res.status(400).json({ error: '種別が設定されていません' });
+
+    const isKodate = ['戸', '戸建', '戸建て'].includes(propertyType);
+    if (!isKodate) return res.status(400).json({ error: 'この機能は戸建て（種別：戸）のみ対応しています' });
+
+    const sheetName = tokiExtractService.getSheetName(mediationType ?? '', propertyType);
+    if (!sheetName) return res.status(400).json({ error: '対応するシートが見つかりません' });
+
+    // PDF一覧のみ返す（ダウンロード・解析はしない）
+    const pdfList = await tokiExtractService.listTokiPdfsForKodate(storageUrl);
+    if (pdfList.length === 0) {
+      return res.status(404).json({ error: '格納先フォルダに「全部事項」を含むPDFが見つかりませんでした' });
+    }
+
+    return res.json({ success: true, pdfList, sheetName, spreadsheetUrl });
+  } catch (error: any) {
+    console.error('[TokiKodate] PDF一覧取得エラー:', error.message);
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * POST /api/toki-extract/:propertyNumber/extract-kodate-single
+ * 戸建て用：fileIdを受け取り、1枚のPDFだけを解析して返す（タイムアウト対策）
+ */
+router.post('/:propertyNumber/extract-kodate-single', async (req: Request, res: Response) => {
+  try {
+    const { propertyNumber } = req.params;
+    const { fileId, fileName, pdfType } = req.body as {
+      fileId: string;
+      fileName: string;
+      pdfType: 'land' | 'building' | 'unknown';
+    };
+
+    if (!fileId) return res.status(400).json({ error: 'fileId は必須です' });
+
+    console.log(`[TokiKodate] 1枚解析開始: ${fileName} (${pdfType})`);
+    const extractResult = await tokiExtractService.extractSingleTokiPdfForKodate(fileId, fileName);
+
+    return res.json({ success: true, fileName, pdfType, extractResult });
+  } catch (error: any) {
+    console.error('[TokiKodate] 1枚解析エラー:', error.message);
+    if (error?.status === 429 || error?.error?.type === 'rate_limit_error') {
+      return res.status(429).json({ error: 'APIのレート制限に達しました。しばらく待ってから再試行してください。' });
+    }
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+/**
  * POST /api/toki-extract/:propertyNumber/extract-kodate
  * 戸建て用：謄本PDFを読み取り、媒介契約シート向けの抽出結果をプレビューとして返す
  */

@@ -1184,6 +1184,50 @@ export class TokiExtractService {
    * 「全部事項」または「全部謄本」を含むPDFをすべて取得する
    */
   /**
+   * 戸建て用（媒介契約タブ）：PDF一覧のみ返す（fileId付き・高速）
+   * ダウンロード・解析はしない
+   */
+  async listTokiPdfsForKodate(storageFolderUrl: string): Promise<Array<{
+    fileId: string;
+    fileName: string;
+    pdfType: 'land' | 'building' | 'unknown';
+  }>> {
+    const folderId = this.extractFolderIdFromUrl(storageFolderUrl);
+    if (!folderId) return [];
+
+    const files = await this.driveService.listFiles(folderId);
+    const pdfFiles = files.filter(
+      (f) => f.mimeType === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf')
+    );
+
+    const landFiles = pdfFiles.filter((f) => f.name.includes('土地_全部事項'));
+    const buildingFile = pdfFiles.find((f) => f.name.includes('建物_全部事項')) ?? null;
+
+    const result: Array<{ fileId: string; fileName: string; pdfType: 'land' | 'building' | 'unknown' }> = [];
+
+    if (landFiles.length === 0 && buildingFile === null) {
+      // フォールバック：「全部事項」「全部謄本」を含むPDFを1件
+      const fallback = pdfFiles.find((f) => f.name.includes('全部事項') || f.name.includes('全部謄本'));
+      if (fallback) result.push({ fileId: fallback.id, fileName: fallback.name, pdfType: 'unknown' });
+    } else {
+      for (const f of landFiles) result.push({ fileId: f.id, fileName: f.name, pdfType: 'land' });
+      if (buildingFile) result.push({ fileId: buildingFile.id, fileName: buildingFile.name, pdfType: 'building' });
+    }
+
+    return result;
+  }
+
+  /**
+   * 戸建て用（媒介契約タブ）：fileIdを受け取り1枚だけ解析して返す
+   */
+  async extractSingleTokiPdfForKodate(fileId: string, fileName: string): Promise<TokiKodateExtractResult> {
+    const fileData = await this.driveService.getFile(fileId);
+    if (!fileData) throw new Error(`PDFの取得に失敗しました: ${fileName}`);
+    const base64 = fileData.data.toString('base64');
+    return this.extractFromPdfForKodate(base64);
+  }
+
+  /**
    * 戸建て用（媒介契約タブ）：Google DriveフォルダURLから謄本PDFを複数取得する
    * - 「土地_全部事項」を含むPDFをすべて取得（土地謄本）
    * - 「建物_全部事項」を含むPDFを1件取得（建物謄本）
