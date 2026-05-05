@@ -246,17 +246,19 @@ router.post(
 
         console.log('Inquiry synced to buyer sheet:', {
           buyerNumber,
-          propertyNumber: property.property_number,
+          propertyNumber: propertyNumber,
           customerName: inquiryData.name
         });
 
       } catch (syncError) {
-        // 転記エラーはログに記録するが、ユーザーには成功を返す
+        // 転記エラーはログに記録し、ユーザーにもエラーを返す
         console.error('Failed to sync inquiry to buyer sheet:', syncError);
         console.error('Sync error details:', {
           message: (syncError as Error).message,
           stack: (syncError as Error).stack
         });
+        // エラーを投げて外側のcatchで処理
+        throw syncError;
       }
 
       // Return success response
