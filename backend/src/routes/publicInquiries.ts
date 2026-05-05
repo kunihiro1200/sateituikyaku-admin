@@ -25,7 +25,7 @@ const supabase = createClient(
 const sheetsClient = new GoogleSheetsClient({
   spreadsheetId: process.env.GOOGLE_SHEETS_SPREADSHEET_ID!,
   sheetName: process.env.GOOGLE_SHEETS_BUYER_SHEET_NAME || '買主リスト',
-  serviceAccountKeyPath: process.env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH || './google-service-account.json',
+  // Vercel環境では環境変数から読み込む（serviceAccountKeyPathは使用しない）
 });
 
 // 認証を実行（同期的に待つ）
@@ -238,10 +238,18 @@ router.post(
         // allRows.length = 実際のデータ行数
         // targetRowIndex = ヘッダー行(1) + データ行数(allRows.length) + 1
         const targetRowIndex = allRows.length + 2;
+        
+        console.log('[publicInquiries] Row calculation:', {
+          allRowsLength: allRows.length,
+          allRowsLengthType: typeof allRows.length,
+          targetRowIndex,
+          targetRowIndexType: typeof targetRowIndex,
+          isInteger: Number.isInteger(targetRowIndex)
+        });
 
         // スプレッドシートの特定行に直接書き込み
         console.log('[publicInquiries] Writing to row:', targetRowIndex, 'with data:', rowData);
-        await sheetsClient.updateRow(targetRowIndex, rowData);
+        await sheetsClient.updateRow(Math.floor(targetRowIndex), rowData); // 念のため整数に変換
         console.log('[publicInquiries] Row written successfully');
 
         console.log('Inquiry synced to buyer sheet:', {
@@ -269,9 +277,14 @@ router.post(
 
     } catch (error) {
       console.error('Unexpected error in inquiry submission:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error('Error message:', errorMessage);
+      console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+      
       return res.status(500).json({
         success: false,
-        message: 'お問い合わせの送信中にエラーが発生しました。しばらくしてから再度お試しください。'
+        message: `お問い合わせの送信中にエラーが発生しました: ${errorMessage}`,
+        error: process.env.NODE_ENV === 'development' ? errorMessage : undefined
       });
     }
   }
