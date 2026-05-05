@@ -313,7 +313,8 @@ export class GoogleSheetsClient {
     }
 
     this.ensureAuthenticated();
-    const range = `'${this.config.sheetName}'!1:1`;
+    // Google Sheets APIの仕様に合わせて、A1:FZ1形式で指定
+    const range = `'${this.config.sheetName}'!A1:FZ1`;
     console.log(`[GoogleSheetsClient.getHeaders] Fetching headers for sheet: ${this.config.sheetName}, range: ${range}`);
     
     const response = await this.sheets!.spreadsheets.values.get({
