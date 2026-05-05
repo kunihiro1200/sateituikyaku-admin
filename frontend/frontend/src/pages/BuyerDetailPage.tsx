@@ -3882,7 +3882,33 @@ TEL：097-533-2022`;
         <DialogTitle>メール本文</DialogTitle>
         <DialogContent>
           <Box sx={{ whiteSpace: 'pre-wrap', fontFamily: 'monospace', fontSize: '0.9rem', p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
-            {selectedEmailBody}
+            {selectedEmailBody.split('\n').map((line, lineIndex) => {
+              // URLを検出してリンクに変換
+              const urlRegex = /(https?:\/\/[^\s]+)/g;
+              const parts = line.split(urlRegex);
+              
+              return (
+                <span key={lineIndex}>
+                  {parts.map((part, partIndex) => {
+                    if (part.match(urlRegex)) {
+                      return (
+                        <Link
+                          key={partIndex}
+                          href={part}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          sx={{ color: 'primary.main', textDecoration: 'underline' }}
+                        >
+                          {part}
+                        </Link>
+                      );
+                    }
+                    return <span key={partIndex}>{part}</span>;
+                  })}
+                  {lineIndex < selectedEmailBody.split('\n').length - 1 && '\n'}
+                </span>
+              );
+            })}
           </Box>
         </DialogContent>
         <DialogActions>
