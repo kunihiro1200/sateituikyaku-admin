@@ -90,11 +90,11 @@ export default function PropertyPrintSheet({ data, onClose }: PropertyPrintSheet
         @media print {
           @page {
             size: A4 landscape;
-            margin: 10mm;
+            margin: 8mm;
           }
           body {
-            margin: 0;
-            padding: 0;
+            margin: 0 !important;
+            padding: 0 !important;
           }
           .no-print {
             display: none !important;
@@ -103,13 +103,27 @@ export default function PropertyPrintSheet({ data, onClose }: PropertyPrintSheet
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
           }
+          .print-sheet {
+            width: 100% !important;
+            height: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            box-shadow: none !important;
+            page-break-after: avoid !important;
+            page-break-inside: avoid !important;
+          }
         }
         @media screen {
+          body {
+            background: #666;
+            margin: 0;
+            padding: 20px;
+          }
           .print-sheet {
             width: 297mm;
             height: 210mm;
-            margin: 20px auto;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            margin: 0 auto;
+            box-shadow: 0 0 20px rgba(0,0,0,0.3);
           }
         }
       `}</style>
@@ -158,19 +172,22 @@ export default function PropertyPrintSheet({ data, onClose }: PropertyPrintSheet
         width: '297mm',
         height: '210mm',
         backgroundColor: '#fff',
-        padding: '8mm',
+        padding: '6mm',
         boxSizing: 'border-box',
-        fontFamily: '"Hiragino Kaku Gothic ProN", "Meiryo", sans-serif'
+        fontFamily: '"Hiragino Kaku Gothic ProN", "Meiryo", sans-serif',
+        overflow: 'hidden',
+        position: 'relative'
       }}>
         {/* ヘッダー（赤背景） */}
         <Box sx={{ 
           backgroundColor: '#d32f2f',
           color: '#fff',
-          padding: '8px 16px',
-          marginBottom: '8px',
+          padding: '6px 12px',
+          marginBottom: '6px',
           display: 'flex',
           justifyContent: 'space-between',
-          alignItems: 'center'
+          alignItems: 'center',
+          minHeight: '60px'
         }}>
           <Box>
             <Typography variant="h5" sx={{ fontWeight: 'bold', fontSize: '20px' }}>
@@ -194,35 +211,36 @@ export default function PropertyPrintSheet({ data, onClose }: PropertyPrintSheet
         </Box>
 
         {/* メインコンテンツ */}
-        <Grid container spacing={1} sx={{ height: 'calc(100% - 80px)' }}>
+        <Grid container spacing={1} sx={{ height: 'calc(100% - 72px)' }}>
           {/* 左側：物件写真（13枚） */}
           <Grid item xs={6}>
             <Box sx={{ 
               border: '1px solid #ddd',
-              padding: '8px',
+              padding: '6px',
               height: '100%',
               display: 'flex',
-              flexDirection: 'column'
+              flexDirection: 'column',
+              overflow: 'hidden'
             }}>
               <Typography variant="subtitle2" sx={{ 
                 fontWeight: 'bold', 
-                marginBottom: '8px',
+                marginBottom: '4px',
                 color: '#d32f2f',
-                fontSize: '14px'
+                fontSize: '12px'
               }}>
-                物件写真 ({interiorImages.length}枚)
+                物件写真 ({interiorImages.length + 1}枚)
               </Typography>
               
               {/* 間取り図（大きめ） */}
               {floorPlanImage && (
-                <Box sx={{ marginBottom: '8px' }}>
+                <Box sx={{ marginBottom: '4px' }}>
                   <img 
                     src={floorPlanImage} 
                     alt="間取り図" 
                     style={{ 
                       width: '100%', 
                       height: 'auto',
-                      maxHeight: '120px',
+                      maxHeight: '90px',
                       objectFit: 'contain',
                       border: '1px solid #eee'
                     }} 
@@ -230,7 +248,7 @@ export default function PropertyPrintSheet({ data, onClose }: PropertyPrintSheet
                   <Typography variant="caption" sx={{ 
                     display: 'block', 
                     textAlign: 'center',
-                    fontSize: '10px',
+                    fontSize: '8px',
                     color: '#666'
                   }}>
                     間取り図 (1/13)
@@ -239,7 +257,7 @@ export default function PropertyPrintSheet({ data, onClose }: PropertyPrintSheet
               )}
 
               {/* その他の写真（グリッド表示） */}
-              <Grid container spacing={0.5} sx={{ flex: 1 }}>
+              <Grid container spacing={0.3} sx={{ flex: 1, overflow: 'hidden' }}>
                 {interiorImages.slice(0, 12).map((img: string, index: number) => (
                   <Grid item xs={4} key={index}>
                     <Box sx={{ 
@@ -291,18 +309,20 @@ export default function PropertyPrintSheet({ data, onClose }: PropertyPrintSheet
               {/* 物件情報 */}
               <Box sx={{ 
                 border: '1px solid #ddd',
-                padding: '8px',
-                flex: '0 0 auto'
+                padding: '6px',
+                flex: '0 0 auto',
+                maxHeight: '45%',
+                overflow: 'hidden'
               }}>
                 <Typography variant="subtitle2" sx={{ 
                   fontWeight: 'bold', 
-                  marginBottom: '8px',
+                  marginBottom: '4px',
                   color: '#d32f2f',
-                  fontSize: '14px'
+                  fontSize: '12px'
                 }}>
                   物件情報
                 </Typography>
-                <Grid container spacing={0.5} sx={{ fontSize: '11px' }}>
+                <Grid container spacing={0.3} sx={{ fontSize: '10px' }}>
                   {[
                     { label: '所在地', value: enhancedData.details?.['所在地'] || enhancedData.address },
                     { label: '交通', value: enhancedData.details?.['交通'] || enhancedData.access },
@@ -317,18 +337,22 @@ export default function PropertyPrintSheet({ data, onClose }: PropertyPrintSheet
                     { label: '引渡可能時期', value: enhancedData.details?.['引渡可能時期'] },
                   ].filter(item => item.value).map((item, index) => (
                     <Grid item xs={12} key={index}>
-                      <Box sx={{ display: 'flex', borderBottom: '1px solid #f0f0f0', padding: '2px 0' }}>
+                      <Box sx={{ display: 'flex', borderBottom: '1px solid #f0f0f0', padding: '1px 0' }}>
                         <Typography sx={{ 
-                          width: '100px', 
+                          width: '80px', 
                           fontWeight: 'bold',
-                          fontSize: '10px',
-                          color: '#666'
+                          fontSize: '9px',
+                          color: '#666',
+                          flexShrink: 0
                         }}>
                           {item.label}
                         </Typography>
                         <Typography sx={{ 
                           flex: 1,
-                          fontSize: '10px'
+                          fontSize: '9px',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap'
                         }}>
                           {item.value}
                         </Typography>
@@ -338,34 +362,14 @@ export default function PropertyPrintSheet({ data, onClose }: PropertyPrintSheet
                 </Grid>
               </Box>
 
-              {/* 設備・サービス */}
-              {enhancedData.details?.['設備・サービス'] && (
-                <Box sx={{ 
-                  border: '1px solid #ddd',
-                  padding: '8px',
-                  flex: '0 0 auto'
-                }}>
-                  <Typography variant="subtitle2" sx={{ 
-                    fontWeight: 'bold', 
-                    marginBottom: '4px',
-                    color: '#d32f2f',
-                    fontSize: '12px'
-                  }}>
-                    設備・サービス
-                  </Typography>
-                  <Typography sx={{ fontSize: '10px', lineHeight: 1.4 }}>
-                    {enhancedData.details['設備・サービス']}
-                  </Typography>
-                </Box>
-              )}
-
               {/* 地図 */}
               {enhancedData.lat && enhancedData.lng && (
                 <Box sx={{ 
                   border: '1px solid #ddd',
                   flex: 1,
                   overflow: 'hidden',
-                  position: 'relative'
+                  position: 'relative',
+                  minHeight: '150px'
                 }}>
                   <img 
                     src={`https://maps.googleapis.com/maps/api/staticmap?center=${enhancedData.lat},${enhancedData.lng}&zoom=15&size=600x400&markers=color:red%7C${enhancedData.lat},${enhancedData.lng}&key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY}`}
