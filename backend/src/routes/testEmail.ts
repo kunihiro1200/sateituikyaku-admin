@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { authenticate } from '../middleware/auth';
-import { sendEmailWithCcAndAttachments } from '../services/gmailService';
+import { EmailService } from '../services/EmailService.supabase';
 
 const router = Router();
 
@@ -45,15 +45,14 @@ router.post('/send', async (req: Request, res: Response) => {
       subject,
     });
 
-    // Gmail APIを使用してメール送信
-    await sendEmailWithCcAndAttachments(
-      recipientEmail,
+    // EmailServiceを使用してメール送信
+    const emailService = new EmailService();
+    await emailService.sendEmailWithCcAndAttachments({
+      to: recipientEmail,
       subject,
-      htmlBody || content,
+      body: htmlBody || content,
       from,
-      undefined, // CC
-      undefined  // attachments
-    );
+    });
 
     console.log('[TestEmail] Test email sent successfully');
 
