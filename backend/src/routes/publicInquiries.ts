@@ -25,6 +25,7 @@ const supabase = createClient(
 const sheetsClient = new GoogleSheetsClient({
   spreadsheetId: process.env.GOOGLE_SHEETS_SPREADSHEET_ID!,
   sheetName: process.env.GOOGLE_SHEETS_BUYER_SHEET_NAME || '買主リスト',
+  sheetId: 137236677, // 買主リストのシートID（gid）
   // Vercel環境では環境変数から読み込む（serviceAccountKeyPathは使用しない）
 });
 

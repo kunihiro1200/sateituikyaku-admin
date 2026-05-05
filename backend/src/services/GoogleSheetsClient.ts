@@ -14,6 +14,7 @@ export interface BatchUpdate {
 export interface GoogleSheetsConfig {
   spreadsheetId: string;
   sheetName: string;
+  sheetId?: number; // シートID（gid）- オプション
   // OAuth 2.0 credentials
   clientId?: string;
   clientSecret?: string;
@@ -511,8 +512,18 @@ export class GoogleSheetsClient {
     
     await sheetsRateLimiter.executeRequest(async () => {
       const values = await this.objectToRow(row);
-      // シングルクォートなしで範囲指定（Google Sheets API仕様）
-      const range = `${this.config.sheetName}!A:A`;
+      
+      // シートIDが指定されている場合は、A1記法ではなくシートIDを使用
+      let range: string;
+      if (this.config.sheetId !== undefined) {
+        // シートIDを使用（日本語シート名の問題を回避）
+        range = `'${this.config.sheetName}'`;
+        console.log(`[GoogleSheetsClient.appendRow] Using sheetId: ${this.config.sheetId}, range: ${range}`);
+      } else {
+        // 従来通りシート名を使用
+        range = `${this.config.sheetName}!A:A`;
+        console.log(`[GoogleSheetsClient.appendRow] Using sheetName, range: ${range}`);
+      }
 
       await this.sheets!.spreadsheets.values.append({
         spreadsheetId: this.config.spreadsheetId,
