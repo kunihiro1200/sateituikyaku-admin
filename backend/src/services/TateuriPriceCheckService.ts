@@ -123,7 +123,7 @@ export class TateuriPriceCheckService {
           continue;
         }
 
-        const result: ScrapeApiResponse = await res.json();
+        const result = await res.json() as ScrapeApiResponse;
 
         // スクレイピングサーバーが sold_out フラグを返す場合
         if (!result.success || !result.data) {
