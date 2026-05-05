@@ -54,7 +54,6 @@ function PreviewInquiryForm({ title, address }: { title: string; address: string
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email = '正しいメールアドレスを入力してください';
     if (!form.phone.trim()) e.phone = '電話番号を入力してください';
     if (!form.message.trim()) e.message = 'お問い合わせ内容を入力してください';
-    else if (form.message.length < 10) e.message = '10文字以上入力してください';
     return e;
   };
 
