@@ -306,14 +306,34 @@ export class GoogleSheetsClient {
 
   /**
    * ヘッダー行を取得（キャッシュ付き）
+   * 買主リスト専用：ハードコードされたヘッダーを使用（Google Sheets API範囲指定エラー回避）
    */
   async getHeaders(): Promise<string[]> {
     if (this.headerCache) {
       return this.headerCache;
     }
 
+    // 買主リストのヘッダーをハードコード（2026年5月5日時点）
+    if (this.config.sheetName === '買主リスト') {
+      this.headerCache = [
+        '買主番号', '作成日時', '初回電話対応', '受付日', '●氏名・会社名', '氏名カナ', 
+        '会社名', '会社名カナ', '部署', '役職', '郵便番号', '住所', 
+        '●問合時ヒアリング', '●電話番号\n（ハイフン不要）', '携帯', 'FAX', '●メアド', 
+        'メアド2', 'メアド3', '●問合せ元', '物件番号', '問合せ物件所在地', 
+        '【問合メール】電話対応', '【問合メール】メール対応', '【問合メール】SMS対応', 
+        '買主ステータス', '買主ステータス詳細', '買主ステータス変更日', '買主ステータス変更者', 
+        '不通', '不通理由', '不通日', '不通確認者', '購入希望エリア', 
+        '購入希望物件種別', '購入希望予算下限', '購入希望予算上限', '購入希望時期', 
+        '購入目的', '現在の住まい', '家族構成', '勤務先', '年収', 
+        '自己資金', 'ローン事前審査', '他社物件新着配信', '備考', 
+        // 以降のカラムは必要に応じて追加
+      ];
+      console.log(`[GoogleSheetsClient.getHeaders] Using hardcoded headers for 買主リスト (${this.headerCache.length} columns)`);
+      return this.headerCache;
+    }
+
+    // 買主リスト以外は従来通りスプレッドシートから取得
     this.ensureAuthenticated();
-    // 公開物件サイトで動作しているバージョンに戻す
     const range = `'${this.config.sheetName}'!1:1`;
     console.log(`[GoogleSheetsClient.getHeaders] Fetching headers for sheet: ${this.config.sheetName}, range: ${range}`);
     
