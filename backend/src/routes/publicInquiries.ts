@@ -129,40 +129,26 @@ router.post(
         }
       }
 
-      // 買主番号を採番（buyersテーブルから最新の番号を取得）
-      // buyer_numberはTEXT型なので、数値として扱うためにCASTする
-      const { data: buyers, error: buyerError } = await supabase
-        .from('buyers')
-        .select('buyer_number')
-        .not('buyer_number', 'is', null)
-        .order('created_at', { ascending: false })
-        .limit(100); // 最新100件を取得
-
-      console.log('[publicInquiries] Latest buyers query result:', { 
-        count: buyers?.length,
-        buyerError,
-        sample: buyers?.slice(0, 5)
-      });
-
-      // 数値として解析できる買主番号のみを抽出し、最大値を取得
-      let maxBuyerNumber = 0;
-      if (buyers && buyers.length > 0) {
-        for (const buyer of buyers) {
-          const parsed = parseInt(buyer.buyer_number, 10);
-          if (!isNaN(parsed) && parsed > maxBuyerNumber) {
-            maxBuyerNumber = parsed;
-          }
-        }
-      }
-
-      const nextBuyerNumber = (maxBuyerNumber + 1).toString();
+      // 買主番号を採番（スプレッドシートの連番シートB2セルから取得）
+      // 新規買主作成と同じロジックを使用して番号の衝突を防ぐ
+      const { BuyerNumberSpreadsheetClient } = await import('../services/BuyerNumberSpreadsheetClient');
+      const { GoogleSheetsClient } = await import('../services/GoogleSheetsClient');
       
-      console.log('[publicInquiries] Buyer number calculation:', { 
-        maxBuyerNumber, 
-        nextBuyerNumber 
+      const BUYER_NUMBER_SPREADSHEET_ID = process.env.BUYER_NUMBER_SPREADSHEET_ID || '1tI_iXaiLuWBggs5y0RH7qzkbHs9wnLLdRekAmjkhcLY';
+      const BUYER_NUMBER_SHEET_NAME = process.env.BUYER_NUMBER_SHEET_NAME || '連番';
+      const BUYER_NUMBER_CELL = process.env.BUYER_NUMBER_CELL || 'B2';
+      
+      const sheetsClient = new GoogleSheetsClient({
+        spreadsheetId: BUYER_NUMBER_SPREADSHEET_ID,
+        sheetName: BUYER_NUMBER_SHEET_NAME,
       });
       
-      const buyerNumber = nextBuyerNumber;
+      await sheetsClient.authenticate();
+      
+      const buyerNumberClient = new BuyerNumberSpreadsheetClient(sheetsClient, BUYER_NUMBER_CELL);
+      const buyerNumber = await buyerNumberClient.getNextBuyerNumber();
+      
+      console.log('[publicInquiries] Generated buyer_number from spreadsheet:', buyerNumber);
       
       // buyer_idを生成（buyer_number + タイムスタンプ）
       const buyerId = `buyer_${buyerNumber}_${Date.now()}`;
@@ -225,6 +211,16 @@ router.post(
         buyer_number: savedBuyer.buyer_number,
         name: savedBuyer.name
       });
+
+      // DB保存成功後、採番スプレッドシートのB2セルを更新
+      // 新規買主作成と同じロジックで、次回の採番に反映させる
+      try {
+        await buyerNumberClient.updateBuyerNumber(buyerNumber);
+        console.log('[publicInquiries] Updated buyer number cell to:', buyerNumber);
+      } catch (updateError: any) {
+        console.warn('[publicInquiries] Failed to update buyer number cell:', updateError.message);
+        // 更新失敗してもユーザーにはエラーを返さない
+      }
 
       // property_inquiriesテーブルにも記録（履歴用）
       await supabase
