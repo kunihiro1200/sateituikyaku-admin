@@ -90,11 +90,14 @@ export default function PropertyPrintSheet({ data, onClose }: PropertyPrintSheet
         @media print {
           @page {
             size: A4 landscape;
-            margin: 8mm;
+            margin: 5mm;
           }
-          body {
+          html, body {
             margin: 0 !important;
             padding: 0 !important;
+            width: 297mm !important;
+            height: 210mm !important;
+            overflow: hidden !important;
           }
           .no-print {
             display: none !important;
@@ -102,14 +105,23 @@ export default function PropertyPrintSheet({ data, onClose }: PropertyPrintSheet
           * {
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
+            page-break-inside: avoid !important;
+            page-break-after: avoid !important;
+            page-break-before: avoid !important;
           }
           .print-sheet {
-            width: 100% !important;
-            height: 100% !important;
+            width: 287mm !important;
+            height: 200mm !important;
             margin: 0 !important;
-            padding: 0 !important;
+            padding: 5mm !important;
             box-shadow: none !important;
-            page-break-after: avoid !important;
+            overflow: hidden !important;
+            position: absolute !important;
+            top: 0 !important;
+            left: 0 !important;
+          }
+          img {
+            max-height: 100% !important;
             page-break-inside: avoid !important;
           }
         }
@@ -171,23 +183,28 @@ export default function PropertyPrintSheet({ data, onClose }: PropertyPrintSheet
       <Box className="print-sheet" sx={{ 
         width: '297mm',
         height: '210mm',
+        maxWidth: '297mm',
+        maxHeight: '210mm',
         backgroundColor: '#fff',
-        padding: '6mm',
+        padding: '5mm',
         boxSizing: 'border-box',
         fontFamily: '"Hiragino Kaku Gothic ProN", "Meiryo", sans-serif',
         overflow: 'hidden',
-        position: 'relative'
+        position: 'relative',
+        display: 'flex',
+        flexDirection: 'column'
       }}>
         {/* ヘッダー（赤背景） */}
         <Box sx={{ 
           backgroundColor: '#d32f2f',
           color: '#fff',
-          padding: '6px 12px',
-          marginBottom: '6px',
+          padding: '4px 10px',
+          marginBottom: '4px',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          minHeight: '60px'
+          minHeight: '50px',
+          flexShrink: 0
         }}>
           <Box>
             <Typography variant="h5" sx={{ fontWeight: 'bold', fontSize: '20px' }}>
@@ -211,54 +228,49 @@ export default function PropertyPrintSheet({ data, onClose }: PropertyPrintSheet
         </Box>
 
         {/* メインコンテンツ */}
-        <Grid container spacing={1} sx={{ height: 'calc(100% - 72px)' }}>
-          {/* 左側：物件写真（13枚） */}
-          <Grid item xs={6}>
+        <Grid container spacing={0.5} sx={{ flex: 1, overflow: 'hidden', minHeight: 0 }}>
+          {/* 左側：物件写真（最大9枚に削減） */}
+          <Grid item xs={6} sx={{ height: '100%', overflow: 'hidden' }}>
             <Box sx={{ 
               border: '1px solid #ddd',
-              padding: '6px',
+              padding: '4px',
               height: '100%',
               display: 'flex',
               flexDirection: 'column',
-              overflow: 'hidden'
+              overflow: 'hidden',
+              boxSizing: 'border-box'
             }}>
               <Typography variant="subtitle2" sx={{ 
                 fontWeight: 'bold', 
-                marginBottom: '4px',
+                marginBottom: '2px',
                 color: '#d32f2f',
-                fontSize: '12px'
+                fontSize: '10px',
+                flexShrink: 0
               }}>
-                物件写真 ({interiorImages.length + 1}枚)
+                物件写真
               </Typography>
               
               {/* 間取り図（大きめ） */}
               {floorPlanImage && (
-                <Box sx={{ marginBottom: '4px' }}>
+                <Box sx={{ marginBottom: '2px', flexShrink: 0 }}>
                   <img 
                     src={floorPlanImage} 
                     alt="間取り図" 
                     style={{ 
                       width: '100%', 
                       height: 'auto',
-                      maxHeight: '90px',
+                      maxHeight: '70px',
                       objectFit: 'contain',
-                      border: '1px solid #eee'
+                      border: '1px solid #eee',
+                      display: 'block'
                     }} 
                   />
-                  <Typography variant="caption" sx={{ 
-                    display: 'block', 
-                    textAlign: 'center',
-                    fontSize: '8px',
-                    color: '#666'
-                  }}>
-                    間取り図 (1/13)
-                  </Typography>
                 </Box>
               )}
 
-              {/* その他の写真（グリッド表示） */}
-              <Grid container spacing={0.3} sx={{ flex: 1, overflow: 'hidden' }}>
-                {interiorImages.slice(0, 12).map((img: string, index: number) => (
+              {/* その他の写真（グリッド表示・最大8枚に削減） */}
+              <Grid container spacing={0.2} sx={{ flex: 1, overflow: 'hidden', minHeight: 0 }}>
+                {interiorImages.slice(0, 8).map((img: string, index: number) => (
                   <Grid item xs={4} key={index}>
                     <Box sx={{ 
                       position: 'relative',
@@ -299,30 +311,31 @@ export default function PropertyPrintSheet({ data, onClose }: PropertyPrintSheet
           </Grid>
 
           {/* 右側：物件詳細情報 */}
-          <Grid item xs={6}>
+          <Grid item xs={6} sx={{ height: '100%', overflow: 'hidden' }}>
             <Box sx={{ 
               display: 'flex',
               flexDirection: 'column',
               height: '100%',
-              gap: 1
+              gap: 0.5,
+              overflow: 'hidden'
             }}>
               {/* 物件情報 */}
               <Box sx={{ 
                 border: '1px solid #ddd',
-                padding: '6px',
+                padding: '4px',
                 flex: '0 0 auto',
-                maxHeight: '45%',
+                maxHeight: '50%',
                 overflow: 'hidden'
               }}>
                 <Typography variant="subtitle2" sx={{ 
                   fontWeight: 'bold', 
-                  marginBottom: '4px',
+                  marginBottom: '2px',
                   color: '#d32f2f',
-                  fontSize: '12px'
+                  fontSize: '10px'
                 }}>
                   物件情報
                 </Typography>
-                <Grid container spacing={0.3} sx={{ fontSize: '10px' }}>
+                <Grid container spacing={0.2} sx={{ fontSize: '9px' }}>
                   {[
                     { label: '所在地', value: enhancedData.details?.['所在地'] || enhancedData.address },
                     { label: '交通', value: enhancedData.details?.['交通'] || enhancedData.access },
@@ -337,11 +350,11 @@ export default function PropertyPrintSheet({ data, onClose }: PropertyPrintSheet
                     { label: '引渡可能時期', value: enhancedData.details?.['引渡可能時期'] },
                   ].filter(item => item.value).map((item, index) => (
                     <Grid item xs={12} key={index}>
-                      <Box sx={{ display: 'flex', borderBottom: '1px solid #f0f0f0', padding: '1px 0' }}>
+                      <Box sx={{ display: 'flex', borderBottom: '1px solid #f0f0f0', padding: '0.5px 0' }}>
                         <Typography sx={{ 
-                          width: '80px', 
+                          width: '70px', 
                           fontWeight: 'bold',
-                          fontSize: '9px',
+                          fontSize: '8px',
                           color: '#666',
                           flexShrink: 0
                         }}>
@@ -349,7 +362,7 @@ export default function PropertyPrintSheet({ data, onClose }: PropertyPrintSheet
                         </Typography>
                         <Typography sx={{ 
                           flex: 1,
-                          fontSize: '9px',
+                          fontSize: '8px',
                           overflow: 'hidden',
                           textOverflow: 'ellipsis',
                           whiteSpace: 'nowrap'
@@ -369,7 +382,8 @@ export default function PropertyPrintSheet({ data, onClose }: PropertyPrintSheet
                   flex: 1,
                   overflow: 'hidden',
                   position: 'relative',
-                  minHeight: '150px'
+                  minHeight: 0,
+                  maxHeight: '50%'
                 }}>
                   <img 
                     src={`https://maps.googleapis.com/maps/api/staticmap?center=${enhancedData.lat},${enhancedData.lng}&zoom=15&size=600x400&markers=color:red%7C${enhancedData.lat},${enhancedData.lng}&key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY}`}
