@@ -165,43 +165,67 @@ router.post(
       // Get client IP for logging
       const clientIp = req.ip || req.socket.remoteAddress || 'unknown';
 
-      // 直接買主リストに転記（property_inquiriesテーブルをバイパス）
+      // 買主番号を採番
+      const buyerNumber = Date.now() % 1000000; // 一時的な採番方法
+
+      // フィールドマッピング
+      const normalizedPhone = inquiryData.phone.replace(/[^0-9]/g, ''); // 数字のみ抽出
+      const receptionDate = new Date().toLocaleDateString('ja-JP'); // 受付日（今日の日付）
+
+      // コメント欄に追記する情報を整形
+      const additionalInfo = [];
+      if ((inquiryData as any).propertyAddress) {
+        additionalInfo.push(`物件住所: ${(inquiryData as any).propertyAddress}`);
+      }
+      if ((inquiryData as any).previewUrl) {
+        additionalInfo.push(`プレビューURL: ${(inquiryData as any).previewUrl}`);
+      }
+      if ((inquiryData as any).sourceUrl) {
+        additionalInfo.push(`元のURL: ${(inquiryData as any).sourceUrl}`);
+      }
+      
+      // ユーザーのメッセージと追加情報を結合
+      const fullMessage = additionalInfo.length > 0
+        ? `${inquiryData.message}\n\n--- 物件情報 ---\n${additionalInfo.join('\n')}`
+        : inquiryData.message;
+
+      // まずDBに保存（必ず成功させる）
+      let sheetSyncStatus = 'pending'; // デフォルトは保留
+      
+      const { data: savedInquiry, error: saveError } = await supabase
+        .from('property_inquiries')
+        .insert({
+          property_id: null, // UUIDがないのでnull
+          property_number: propertyNumber,
+          name: inquiryData.name,
+          email: inquiryData.email,
+          phone: inquiryData.phone,
+          message: fullMessage,
+          buyer_number: buyerNumber,
+          sheet_sync_status: sheetSyncStatus,
+          created_at: new Date().toISOString()
+        })
+        .select()
+        .single();
+
+      if (saveError) {
+        console.error('[publicInquiries] Database save error:', saveError);
+        return res.status(500).json({
+          success: false,
+          message: 'お問い合わせの保存中にエラーが発生しました。'
+        });
+      }
+
+      console.log('[publicInquiries] Inquiry saved to database:', savedInquiry.id);
+
+      // スプレッドシートに転記を試みる（失敗しても問題ない）
       try {
         // GoogleSheetsClientの認証を確認
         if (!isAuthenticated) {
           console.error('[publicInquiries] GoogleSheetsClient not authenticated yet');
-          // 認証を再試行
           await sheetsClient.authenticate();
           isAuthenticated = true;
         }
-
-        console.log('[publicInquiries] Generating buyer number...');
-        // 買主番号を採番（公開物件サイトと同じ方法：シンプルなカウンター）
-        // 注意：本来はデータベースから最大値を取得すべきだが、
-        // 現在はproperty_inquiriesテーブルを使用していないため、
-        // シンプルなカウンターを使用
-        const buyerNumber = Date.now() % 1000000; // 一時的な採番方法
-
-        // フィールドマッピング
-        const normalizedPhone = inquiryData.phone.replace(/[^0-9]/g, ''); // 数字のみ抽出
-        const receptionDate = new Date().toLocaleDateString('ja-JP'); // 受付日（今日の日付）
-
-        // コメント欄に追記する情報を整形
-        const additionalInfo = [];
-        if ((inquiryData as any).propertyAddress) {
-          additionalInfo.push(`物件住所: ${(inquiryData as any).propertyAddress}`);
-        }
-        if ((inquiryData as any).previewUrl) {
-          additionalInfo.push(`プレビューURL: ${(inquiryData as any).previewUrl}`);
-        }
-        if ((inquiryData as any).sourceUrl) {
-          additionalInfo.push(`元のURL: ${(inquiryData as any).sourceUrl}`);
-        }
-        
-        // ユーザーのメッセージと追加情報を結合
-        const fullMessage = additionalInfo.length > 0
-          ? `${inquiryData.message}\n\n--- 物件情報 ---\n${additionalInfo.join('\n')}`
-          : inquiryData.message;
 
         const rowData = {
           '買主番号': buyerNumber.toString(),
@@ -212,13 +236,20 @@ router.post(
           '●メアド': inquiryData.email,
           '●問合せ元': inquirySource,
           '物件番号': propertyNumber,
-          '問合せ物件所在地': propertyAddress, // 物件が見つからない場合はpropertyIdOrNumberが入る
+          '問合せ物件所在地': propertyAddress,
         };
 
-        // 公開物件サイトと同じ方法：appendRow()を使用
         console.log('[publicInquiries] Appending row to buyer sheet with data:', rowData);
         await sheetsClient.appendRow(rowData);
         console.log('[publicInquiries] Row appended successfully');
+
+        // 成功したらステータスを更新
+        await supabase
+          .from('property_inquiries')
+          .update({ sheet_sync_status: 'synced' })
+          .eq('id', savedInquiry.id);
+
+        sheetSyncStatus = 'synced';
 
         console.log('Inquiry synced to buyer sheet:', {
           buyerNumber,
@@ -227,17 +258,23 @@ router.post(
         });
 
       } catch (syncError) {
-        // 転記エラーはログに記録し、ユーザーにもエラーを返す
+        // 転記エラーはログに記録するが、ユーザーにはエラーを返さない
         console.error('Failed to sync inquiry to buyer sheet:', syncError);
         console.error('Sync error details:', {
           message: (syncError as Error).message,
           stack: (syncError as Error).stack
         });
-        // エラーを投げて外側のcatchで処理
-        throw syncError;
+        
+        // ステータスを'failed'に更新
+        await supabase
+          .from('property_inquiries')
+          .update({ sheet_sync_status: 'failed' })
+          .eq('id', savedInquiry.id);
+
+        console.log('[publicInquiries] Inquiry saved to DB but sheet sync failed. Will retry later.');
       }
 
-      // Return success response
+      // ユーザーには常に成功を返す（DBに保存されているので）
       return res.status(201).json({
         success: true,
         message: 'お問い合わせを受け付けました。担当者より折り返しご連絡いたします。'
