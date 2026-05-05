@@ -71,6 +71,7 @@ import tokiExtractRoutes from './routes/tokiExtract';
 import propertyPreviewRoutes from './routes/propertyPreview';
 import tateuriPreviewRoutes from './routes/tateuriPreview';
 import scrapedUrlsRoutes from './routes/scraped-urls';
+import testEmailRoutes from './routes/testEmail';
 import { activityLogger } from './middleware/activityLogger';
 import { authenticate } from './middleware/auth';
 
@@ -755,6 +756,7 @@ app.use('/api/sellers', sellerRecoveryRoutes);
 app.use('/api/inquiry-response', inquiryResponseRoutes);
 app.use('/api/email-templates', emailTemplateRoutes);
 app.use('/api/gmail', authenticate, gmailRoutes);
+app.use('/api/test-email', testEmailRoutes);
 app.use('/api/shared-items', sharedItemsRoutes); // 共有アイテムAPI（認証不要）
 app.use('/api/public/inquiries', publicInquiriesRoutes);
 app.use('/api/public', publicPropertiesRoutes);

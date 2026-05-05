@@ -10,6 +10,7 @@ import {
   Share as ShareIcon,
   Menu as MenuIcon,
 } from '@mui/icons-material';
+import TestGmailSendButton from './TestGmailSendButton';
 
 const NAV_COLORS = {
   '/': { main: '#e53935', light: '#ffebee', text: '#e53935' },           // 売主リスト: 赤
@@ -110,6 +111,9 @@ export default function PageNavigation({ onNavigate }: PageNavigationProps = {})
                 <ListItemText primary="公開物件サイト" />
               </ListItemButton>
             </ListItem>
+            <ListItem disablePadding sx={{ px: 1, pt: 1 }}>
+              <TestGmailSendButton size="small" variant="outlined" />
+            </ListItem>
           </List>
         </Drawer>
       </>
@@ -155,6 +159,7 @@ export default function PageNavigation({ onNavigate }: PageNavigationProps = {})
       >
         公開物件サイト
       </Button>
+      <TestGmailSendButton size="medium" variant="outlined" />
     </Box>
   );
 }
