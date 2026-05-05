@@ -503,9 +503,18 @@ export class GoogleSheetsClient {
   async updateRow(rowIndex: number, row: SheetRow): Promise<void> {
     this.ensureAuthenticated();
     
+    console.log('[GoogleSheetsClient.updateRow] Input:', {
+      rowIndex,
+      rowIndexType: typeof rowIndex,
+      isInteger: Number.isInteger(rowIndex),
+      sheetName: this.config.sheetName
+    });
+    
     await sheetsRateLimiter.executeRequest(async () => {
       const values = await this.objectToRow(row);
       const range = `'${this.config.sheetName}'!A${rowIndex}:ZZ${rowIndex}`;
+      
+      console.log('[GoogleSheetsClient.updateRow] Range:', range);
 
       await this.sheets!.spreadsheets.values.update({
         spreadsheetId: this.config.spreadsheetId,
