@@ -22,8 +22,8 @@ const DUMMY_IMAGES = [
   'https://images.unsplash.com/photo-1570129477492-45c003edd2be?w=600&h=400&fit=crop',
 ];
 
-// プレビューURL（実在するURL）
-const PREVIEW_URL = 'https://sateituikyaku-admin-frontend.vercel.app/public/properties';
+// プレビューURL（スクレイピング後のプレビューページ形式）
+const PREVIEW_URL = 'https://sateituikyaku-admin-frontend.vercel.app/property-preview/4f96c22b6d60';
 
 /**
  * テスト送信専用のGmailボタン
