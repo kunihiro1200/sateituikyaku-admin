@@ -66,13 +66,13 @@ type InquiryFormData = z.infer<typeof inquirySchema>;
  * POST /api/public/inquiries
  * Submit a property inquiry
  * 
- * Rate limited to 3 requests per IP per hour
+ * Rate limited to 10 requests per IP per hour
  */
 router.post(
   '/',
   createRateLimiter({
     windowMs: 60 * 60 * 1000, // 1 hour
-    maxRequests: 3
+    maxRequests: 10
   }),
   async (req: Request, res: Response) => {
     try {
