@@ -365,10 +365,9 @@ export class GoogleSheetsClient {
     this.ensureAuthenticated();
     
     return await sheetsRateLimiter.executeRequest(async () => {
-      // 範囲を指定せず、シート全体を読み込む
-      // シート名をシングルクォートで囲む（日本語対応）
-      // Cache bust: 2026-05-05
-      const range = `'${this.config.sheetName}'`;
+      // Google Sheets APIの仕様：シート名のみでは受け付けないため、範囲指定を追加
+      // A:FZ = 158列まで（買主リストの全列）
+      const range = `'${this.config.sheetName}'!A:FZ`;
       console.log('[GoogleSheetsClient.readAll] Range:', range);
       
       const response = await this.sheets!.spreadsheets.values.get({
