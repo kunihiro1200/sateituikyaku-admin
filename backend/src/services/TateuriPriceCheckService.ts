@@ -26,6 +26,18 @@ interface SoldOutResult {
   source_url: string;
 }
 
+interface ScrapeApiResponse {
+  success: boolean;
+  message?: string;
+  data?: {
+    title?: string;
+    price?: string;
+    address?: string;
+    sold_out?: boolean;
+    [key: string]: any;
+  };
+}
+
 /**
  * 建売専門HP掲載物件の価格変動チェックサービス
  * 毎日スクレイピングして値下げを検知し、メール通知する
@@ -111,7 +123,7 @@ export class TateuriPriceCheckService {
           continue;
         }
 
-        const result = await res.json();
+        const result: ScrapeApiResponse = await res.json();
 
         // スクレイピングサーバーが sold_out フラグを返す場合
         if (!result.success || !result.data) {
@@ -137,7 +149,7 @@ export class TateuriPriceCheckService {
           continue;
         }
 
-        const newPrice = result.data.price || null;
+        const newPrice = result.data?.price || null;
         const oldPrice = property.price;
 
         // 価格が変わっていたらDBを更新
@@ -148,7 +160,7 @@ export class TateuriPriceCheckService {
             .from('property_previews')
             .update({
               price: newPrice,
-              title: result.data.title || property.title,
+              title: result.data?.title || property.title,
               updated_at: new Date().toISOString(),
             })
             .eq('slug', property.slug);
