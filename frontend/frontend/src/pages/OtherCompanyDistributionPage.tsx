@@ -40,12 +40,14 @@ import {
   CloudUpload as CloudUploadIcon,
   Link as LinkIcon,
   Delete as DeleteIcon,
+  Print as PrintIcon,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { SECTION_COLORS } from '../theme/sectionColors';
 import ImageSelectorModal from '../components/ImageSelectorModal';
 import TestGmailSendButton from '../components/TestGmailSendButton';
+import PropertyPrintSheet from '../components/PropertyPrintSheet';
 
 // 画像ファイル型（ImageSelectorModalと同じ）
 interface ImageFile {
@@ -142,6 +144,7 @@ export default function OtherCompanyDistributionPage() {
     parking: false, features: false, map: true,
   });
   const [showProviderInfo, setShowProviderInfo] = useState(false); // 販売元情報の表示状態
+  const [showPrintSheet, setShowPrintSheet] = useState(false); // 印刷シート表示状態
 
   // スクレイピング結果から自動入力用データを生成
   const autoFillFromScrapedData = (data: any) => {
@@ -787,6 +790,19 @@ export default function OtherCompanyDistributionPage() {
                 sx={{ borderColor: SECTION_COLORS.buyer.main, color: SECTION_COLORS.buyer.main }}>
                 プレビュー確認
               </Button>
+              <Button 
+                size="small" 
+                variant="contained" 
+                startIcon={<PrintIcon />}
+                onClick={() => setShowPrintSheet(true)}
+                sx={{ 
+                  backgroundColor: '#666', 
+                  color: '#fff',
+                  '&:hover': { backgroundColor: '#555' } 
+                }}
+              >
+                印刷
+              </Button>
             </Box>
           )}
         </Paper>
@@ -1263,6 +1279,14 @@ export default function OtherCompanyDistributionPage() {
         onConfirm={handleImageSelectionConfirm}
         onCancel={handleImageSelectionCancel}
       />
+
+      {/* 印刷シート（モーダル表示） */}
+      {showPrintSheet && previewData && (
+        <PropertyPrintSheet 
+          data={previewData} 
+          onClose={() => setShowPrintSheet(false)} 
+        />
+      )}
     </Container>
   );
 }
