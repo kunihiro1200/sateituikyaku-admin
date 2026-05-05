@@ -1137,11 +1137,15 @@ router.get('/:buyerNumber/nearby-properties', async (req: Request, res: Response
 // 他社物件新着配信用の買主取得
 router.get('/other-company-distribution', authenticate, async (req: Request, res: Response) => {
   try {
-    const { area, priceRange, propertyTypes } = req.query;
+    const { area, priceRange, propertyTypes, propertyNumber } = req.query;
 
-    // バリデーション
-    if (!area || !propertyTypes) {
-      return res.status(400).json({ error: 'area and propertyTypes are required' });
+    // バリデーション（areaまたはpropertyNumberのいずれかが必須）
+    if (!area && !propertyNumber) {
+      return res.status(400).json({ error: 'area or propertyNumber is required' });
+    }
+
+    if (!propertyTypes) {
+      return res.status(400).json({ error: 'propertyTypes is required' });
     }
 
     const propertyTypesArray = Array.isArray(propertyTypes) 
@@ -1149,9 +1153,10 @@ router.get('/other-company-distribution', authenticate, async (req: Request, res
       : [propertyTypes];
 
     const result = await buyerService.getOtherCompanyDistributionBuyers({
-      area: area as string,
+      area: area as string | undefined,
       priceRange: (priceRange as string) || '指定なし',
       propertyTypes: propertyTypesArray as string[],
+      propertyNumber: propertyNumber as string | undefined,
     });
 
     res.json(result);

@@ -108,6 +108,7 @@ export default function OtherCompanyDistributionPage() {
   const navigate = useNavigate();
 
   const [address, setAddress] = useState<string>(''); // 住所入力
+  const [propertyNumber, setPropertyNumber] = useState<string>(''); // 物件番号入力
   const [selectedPriceRange, setSelectedPriceRange] = useState<string>('指定なし');
   const [selectedPropertyTypes, setSelectedPropertyTypes] = useState<string[]>([]);
   const [selectedPet, setSelectedPet] = useState<string>('どちらでも');
@@ -265,32 +266,8 @@ export default function OtherCompanyDistributionPage() {
       setSelectedOnsen('なし');
     }
 
-    // P台数を自動判定
-    if (data.parking) {
-      const parkingStr = data.parking.toLowerCase();
-      
-      // 「○台」という明示的な表記を優先的に検索
-      const explicitMatch = parkingStr.match(/(\d+)\s*台/);
-      
-      if (explicitMatch) {
-        // 「10台」「2台」のような明示的な表記がある場合
-        const parkingNum = parseInt(explicitMatch[1], 10);
-        if (parkingNum >= 10) {
-          setSelectedParking('10台以上');
-        } else if (parkingNum >= 3) {
-          setSelectedParking('3台以上');
-        } else if (parkingNum >= 2) {
-          setSelectedParking('2台以上');
-        } else if (parkingNum >= 1) {
-          setSelectedParking('1台');
-        }
-      } else if (parkingStr.includes('有')) {
-        // 「有」のみの場合は1台（マンションの場合は基本1台）
-        setSelectedParking('1台');
-      } else if (parkingStr.includes('無') || parkingStr.includes('なし')) {
-        setSelectedParking('不要');
-      }
-    }
+    // P台数の自動入力は削除（ユーザーが手動で入力する）
+    // 物件種別が「土地」以外の場合は「指定なし」のままにして、ユーザーに入力を促す
   };
 
   const handleScrape = async () => {
@@ -349,32 +326,32 @@ export default function OtherCompanyDistributionPage() {
 
   // API呼び出し
   const fetchBuyers = async () => {
-    // 住所と物件種別が未入力の場合は検索しない
-    if (!address.trim() || selectedPropertyTypes.length === 0) {
+    // 物件番号または住所、かつ物件種別が必須
+    if ((!propertyNumber.trim() && !address.trim()) || selectedPropertyTypes.length === 0) {
       setBuyers([]);
       setError('');
-      return;
-    }
-
-    // 住所のバリデーション（最大200文字）
-    if (address.length > 200) {
-      setError('住所は200文字以内で入力してください');
-      setBuyers([]);
       return;
     }
 
     setLoading(true);
     setError('');
     try {
-      const response = await api.post('/api/buyers/radius-search', {
-        address: address.trim(),
-        priceRange: selectedPriceRange,
-        propertyTypes: selectedPropertyTypes,
-        pet: selectedPet,
-        parking: selectedParking,
-        onsen: selectedOnsen,
-        floor: selectedFloor,
-      });
+      const params = new URLSearchParams();
+      
+      // 物件番号が入力されている場合
+      if (propertyNumber.trim()) {
+        params.append('propertyNumber', propertyNumber.trim());
+      }
+      
+      // 住所が入力されている場合（エリア検索として使用）
+      if (address.trim()) {
+        params.append('area', address.trim());
+      }
+      
+      params.append('priceRange', selectedPriceRange);
+      selectedPropertyTypes.forEach(type => params.append('propertyTypes', type));
+
+      const response = await api.get(`/api/buyers/other-company-distribution?${params.toString()}`);
       setBuyers(response.data.buyers);
     } catch (err: any) {
       console.error('Failed to fetch buyers:', err);
@@ -396,7 +373,7 @@ export default function OtherCompanyDistributionPage() {
 
   useEffect(() => {
     fetchBuyers();
-  }, [address, selectedPriceRange, selectedPropertyTypes, selectedPet, selectedParking, selectedOnsen, selectedFloor]);
+  }, [propertyNumber, address, selectedPriceRange, selectedPropertyTypes, selectedPet, selectedParking, selectedOnsen, selectedFloor]);
 
   // 物件種別ボタンのトグル
   const togglePropertyType = (type: string) => {
@@ -408,6 +385,10 @@ export default function OtherCompanyDistributionPage() {
       if (!next.includes('マンション')) {
         setSelectedPet('どちらでも');
         setSelectedFloor('どちらでも');
+      }
+      // 土地のみが選択された場合はP台数を「指定なし」にリセット
+      if (next.length === 1 && next.includes('土地')) {
+        setSelectedParking('指定なし');
       }
       return next;
     });
@@ -904,36 +885,62 @@ export default function OtherCompanyDistributionPage() {
             </Grid>
           )}
 
-          {/* P台数フィルター（常時表示） */}
-          <Grid item xs={12} md={4}>
-            <Box>
-              <Typography variant="body2" sx={{ mb: 1, color: 'text.secondary' }}>
-                P台数
-              </Typography>
-              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                {PARKING_OPTIONS.map(option => (
-                  <Button
-                    key={option}
-                    variant={selectedParking === option ? 'contained' : 'outlined'}
-                    onClick={() => setSelectedParking(option)}
-                    sx={{
-                      borderColor: SECTION_COLORS.buyer.main,
-                      color: selectedParking === option ? '#fff' : SECTION_COLORS.buyer.main,
-                      backgroundColor: selectedParking === option ? SECTION_COLORS.buyer.main : 'transparent',
-                      '&:hover': {
-                        borderColor: SECTION_COLORS.buyer.dark,
-                        backgroundColor: selectedParking === option
-                          ? SECTION_COLORS.buyer.dark
-                          : `${SECTION_COLORS.buyer.main}15`,
-                      },
-                    }}
-                  >
-                    {option}
-                  </Button>
-                ))}
+          {/* P台数フィルター（物件種別が「土地」以外の場合のみ表示） */}
+          {!selectedPropertyTypes.includes('土地') && (
+            <Grid item xs={12} md={4}>
+              <Box
+                sx={{
+                  p: 1.5,
+                  borderRadius: 1,
+                  border: '2px solid',
+                  borderColor: selectedParking === '指定なし' ? '#ff9800' : 'transparent',
+                  backgroundColor: selectedParking === '指定なし' ? 'rgba(255, 152, 0, 0.1)' : 'transparent',
+                  animation: selectedParking === '指定なし' ? 'pulse 2s ease-in-out infinite' : 'none',
+                  '@keyframes pulse': {
+                    '0%, 100%': {
+                      boxShadow: '0 0 0 0 rgba(255, 152, 0, 0.7)',
+                    },
+                    '50%': {
+                      boxShadow: '0 0 0 8px rgba(255, 152, 0, 0)',
+                    },
+                  },
+                }}
+              >
+                <Typography 
+                  variant="body2" 
+                  sx={{ 
+                    mb: 1, 
+                    color: selectedParking === '指定なし' ? '#ff9800' : 'text.secondary',
+                    fontWeight: selectedParking === '指定なし' ? 'bold' : 'normal',
+                  }}
+                >
+                  P台数 {selectedParking === '指定なし' && '⚠️ 入力してください'}
+                </Typography>
+                <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                  {PARKING_OPTIONS.map(option => (
+                    <Button
+                      key={option}
+                      variant={selectedParking === option ? 'contained' : 'outlined'}
+                      onClick={() => setSelectedParking(option)}
+                      sx={{
+                        borderColor: SECTION_COLORS.buyer.main,
+                        color: selectedParking === option ? '#fff' : SECTION_COLORS.buyer.main,
+                        backgroundColor: selectedParking === option ? SECTION_COLORS.buyer.main : 'transparent',
+                        '&:hover': {
+                          borderColor: SECTION_COLORS.buyer.dark,
+                          backgroundColor: selectedParking === option
+                            ? SECTION_COLORS.buyer.dark
+                            : `${SECTION_COLORS.buyer.main}15`,
+                        },
+                      }}
+                    >
+                      {option}
+                    </Button>
+                  ))}
+                </Box>
               </Box>
-            </Box>
-          </Grid>
+            </Grid>
+          )}
 
           {/* 温泉フィルター（常時表示） */}
           <Grid item xs={12} md={3}>

@@ -3310,16 +3310,17 @@ export class BuyerService {
    * @returns 条件に合う買主のリスト
    */
   async getOtherCompanyDistributionBuyers(params: {
-    area: string;
+    area?: string;
     priceRange: string;
     propertyTypes: string[];
+    propertyNumber?: string;
   }): Promise<{ buyers: any[]; total: number }> {
-    const { area, priceRange, propertyTypes } = params;
+    const { area, priceRange, propertyTypes, propertyNumber } = params;
 
-    console.log('[getOtherCompanyDistributionBuyers] params:', { area, priceRange, propertyTypes });
+    console.log('[getOtherCompanyDistributionBuyers] params:', { area, priceRange, propertyTypes, propertyNumber });
 
     // キャッシュキー生成
-    const cacheKey = `${area}:${priceRange}:${propertyTypes.join(',')}`;
+    const cacheKey = `${area || 'none'}:${priceRange}:${propertyTypes.join(',')}:${propertyNumber || 'none'}`;
     
     // キャッシュチェック
     const cached = distributionCache.get(cacheKey);
@@ -3328,34 +3329,110 @@ export class BuyerService {
       return cached as { buyers: any[]; total: number };
     }
 
-    // エリアグループルール適用
-    const targetAreas = this.applyAreaGroupRules(area);
-    console.log('[getOtherCompanyDistributionBuyers] targetAreas:', targetAreas);
+    let allBuyers: any[] = [];
 
-    // クエリ構築
-    let query = this.supabase
-      .from('buyers')
-      .select('buyer_number, name, desired_area, desired_property_type, price_range_house, price_range_apartment, price_range_land, reception_date, phone_number, email, latest_status, inquiry_hearing')
-      .is('deleted_at', null);
+    // 物件番号が指定されている場合、半径1km以内の買主を取得
+    if (propertyNumber) {
+      console.log('[getOtherCompanyDistributionBuyers] Fetching buyers within 1km radius of property:', propertyNumber);
+      
+      // 物件の座標を取得
+      const { data: property, error: propertyError } = await this.supabase
+        .from('property_listings')
+        .select('latitude, longitude')
+        .eq('property_number', propertyNumber)
+        .maybeSingle();
 
-    // エリアフィルタ（OR条件で複数エリアを検索）
-    if (targetAreas.length > 0) {
-      const areaConditions = targetAreas.map(a => `desired_area.ilike.%${a}%`).join(',');
-      query = query.or(areaConditions);
+      if (propertyError) {
+        console.error('[getOtherCompanyDistributionBuyers] Property query error:', propertyError);
+      } else if (property?.latitude && property?.longitude) {
+        const propertyLat = property.latitude;
+        const propertyLng = property.longitude;
+        console.log('[getOtherCompanyDistributionBuyers] Property coordinates:', { propertyLat, propertyLng });
+
+        // 半径1kmの矩形範囲を計算（緯度1度≒111km、経度1度≒91km（大分付近））
+        const RADIUS_KM = 1;
+        const latDelta = RADIUS_KM / 111;
+        const lngDelta = RADIUS_KM / 91;
+
+        const minLat = propertyLat - latDelta;
+        const maxLat = propertyLat + latDelta;
+        const minLng = propertyLng - lngDelta;
+        const maxLng = propertyLng + lngDelta;
+
+        // 座標範囲内の買主を取得
+        const { data: nearbyBuyers, error: nearbyError } = await this.supabase
+          .from('buyers')
+          .select('buyer_number, name, desired_area, desired_property_type, price_range_house, price_range_apartment, price_range_land, reception_date, phone_number, email, latest_status, inquiry_hearing, desired_area_lat, desired_area_lng')
+          .is('deleted_at', null)
+          .not('desired_area_lat', 'is', null)
+          .not('desired_area_lng', 'is', null)
+          .gte('desired_area_lat', minLat)
+          .lte('desired_area_lat', maxLat)
+          .gte('desired_area_lng', minLng)
+          .lte('desired_area_lng', maxLng);
+
+        if (nearbyError) {
+          console.error('[getOtherCompanyDistributionBuyers] Nearby buyers query error:', nearbyError);
+        } else if (nearbyBuyers) {
+          // 正確な距離でフィルタリング（矩形範囲内から円形範囲に絞り込む）
+          const buyersWithinRadius = nearbyBuyers.filter(buyer => {
+            const distance = this.calcDistanceKm(
+              propertyLat,
+              propertyLng,
+              buyer.desired_area_lat,
+              buyer.desired_area_lng
+            );
+            return distance <= RADIUS_KM;
+          });
+
+          console.log('[getOtherCompanyDistributionBuyers] Buyers within 1km radius:', buyersWithinRadius.length);
+          allBuyers = buyersWithinRadius;
+        }
+      } else {
+        console.log('[getOtherCompanyDistributionBuyers] Property coordinates not found for:', propertyNumber);
+      }
     }
 
-    // データ取得
-    const { data: allBuyers, error } = await query;
+    // エリアが指定されている場合、エリアベースの検索も実行
+    if (area) {
+      // エリアグループルール適用
+      const targetAreas = this.applyAreaGroupRules(area);
+      console.log('[getOtherCompanyDistributionBuyers] targetAreas:', targetAreas);
 
-    if (error) {
-      console.error('[getOtherCompanyDistributionBuyers] Query error:', error);
-      throw new Error(`Failed to fetch buyers: ${error.message}`);
+      // クエリ構築
+      let query = this.supabase
+        .from('buyers')
+        .select('buyer_number, name, desired_area, desired_property_type, price_range_house, price_range_apartment, price_range_land, reception_date, phone_number, email, latest_status, inquiry_hearing, desired_area_lat, desired_area_lng')
+        .is('deleted_at', null);
+
+      // エリアフィルタ（OR条件で複数エリアを検索）
+      if (targetAreas.length > 0) {
+        const areaConditions = targetAreas.map(a => `desired_area.ilike.%${a}%`).join(',');
+        query = query.or(areaConditions);
+      }
+
+      // データ取得
+      const { data: areaBuyers, error } = await query;
+
+      if (error) {
+        console.error('[getOtherCompanyDistributionBuyers] Query error:', error);
+        throw new Error(`Failed to fetch buyers: ${error.message}`);
+      }
+
+      console.log('[getOtherCompanyDistributionBuyers] areaBuyers count:', areaBuyers?.length || 0);
+
+      // 半径検索の結果とマージ（重複を除外）
+      if (areaBuyers) {
+        const existingBuyerNumbers = new Set(allBuyers.map(b => b.buyer_number));
+        const newBuyers = areaBuyers.filter(b => !existingBuyerNumbers.has(b.buyer_number));
+        allBuyers = [...allBuyers, ...newBuyers];
+      }
     }
 
-    console.log('[getOtherCompanyDistributionBuyers] allBuyers count:', allBuyers?.length || 0);
+    console.log('[getOtherCompanyDistributionBuyers] Total buyers before filtering:', allBuyers.length);
     
     // デバッグ：最初の3件のデータを出力
-    if (allBuyers && allBuyers.length > 0) {
+    if (allBuyers.length > 0) {
       console.log('[getOtherCompanyDistributionBuyers] Sample buyers (first 3):', 
         allBuyers.slice(0, 3).map(b => ({
           buyer_number: b.buyer_number,
@@ -3369,7 +3446,7 @@ export class BuyerService {
     }
 
     // 物件種別フィルタ（アプリケーション層）
-    const propertyTypeFiltered = (allBuyers || []).filter(buyer => {
+    const propertyTypeFiltered = allBuyers.filter(buyer => {
       if (!buyer.desired_property_type) {
         console.log(`[getOtherCompanyDistributionBuyers] Buyer ${buyer.buyer_number}: No desired_property_type`);
         return false;
@@ -3437,10 +3514,11 @@ export class BuyerService {
    * 物件種別をDBカラム値にマッピング
    */
   private mapPropertyTypeToDb(type: string): string {
+    // 1文字で部分一致検索（「戸」「マ」「土」）
     const mapping: Record<string, string> = {
-      '戸建': '戸建て',
-      'マンション': 'マンション',
-      '土地': '土地',
+      '戸建': '戸',
+      'マンション': 'マ',
+      '土地': '土',
     };
     return mapping[type] || type;
   }
