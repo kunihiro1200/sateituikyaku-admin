@@ -365,9 +365,9 @@ export class GoogleSheetsClient {
     this.ensureAuthenticated();
     
     return await sheetsRateLimiter.executeRequest(async () => {
-      // 範囲を指定（A2から最後まで、終了列は指定しない）
+      // 範囲を指定せず、シート全体を読み込む
       // シート名をシングルクォートで囲む（日本語対応）
-      const range = `'${this.config.sheetName}'!A2:FZ`;
+      const range = `'${this.config.sheetName}'`;
       console.log('[GoogleSheetsClient.readAll] Range:', range);
       
       const response = await this.sheets!.spreadsheets.values.get({
@@ -381,9 +381,12 @@ export class GoogleSheetsClient {
 
       const rows = response.data.values || [];
       console.log('[GoogleSheetsClient.readAll] Got', rows.length, 'rows');
+      
+      // ヘッダー行を除外（最初の行はヘッダー）
+      const dataRows = rows.slice(1);
       const result: SheetRow[] = [];
 
-      for (const row of rows) {
+      for (const row of dataRows) {
         result.push(await this.rowToObject(row));
       }
 
