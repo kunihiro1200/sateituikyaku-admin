@@ -49,15 +49,6 @@ export default function PropertyPrintSheet({ data, onClose }: PropertyPrintSheet
     }
   };
 
-  useEffect(() => {
-    // 印刷ダイアログを自動的に開く
-    if (!loading && enhancedData) {
-      setTimeout(() => {
-        window.print();
-      }, 500);
-    }
-  }, [loading, enhancedData]);
-
   if (loading || !enhancedData) {
     return (
       <Box sx={{ 
@@ -81,8 +72,8 @@ export default function PropertyPrintSheet({ data, onClose }: PropertyPrintSheet
     img.includes('外観')
   ) || enhancedData.image_categories?.['外観・室内']?.[0];
 
-  const interiorImages = enhancedData.image_categories?.['外観・室内']?.slice(1, 4) || 
-    enhancedData.images?.slice(0, 3) || [];
+  const interiorImages = enhancedData.image_categories?.['外観・室内']?.slice(1, 13) || 
+    enhancedData.images?.slice(0, 12) || [];
 
   return (
     <>
@@ -255,7 +246,7 @@ export default function PropertyPrintSheet({ data, onClose }: PropertyPrintSheet
                 fontSize: '10px',
                 flexShrink: 0
               }}>
-                物件写真
+                物件写真 ({interiorImages.length + 1}枚)
               </Typography>
               
               {/* 間取り図（大きめ） */}
@@ -276,10 +267,10 @@ export default function PropertyPrintSheet({ data, onClose }: PropertyPrintSheet
                 </Box>
               )}
 
-              {/* その他の写真（グリッド表示・最大8枚に削減） */}
+              {/* その他の写真（グリッド表示・最大12枚） */}
               <Grid container spacing={0.2} sx={{ flex: 1, overflow: 'hidden', minHeight: 0 }}>
-                {interiorImages.slice(0, 8).map((img: string, index: number) => (
-                  <Grid item xs={4} key={index}>
+                {interiorImages.slice(0, 12).map((img: string, index: number) => (
+                  <Grid item xs={3} key={index}>
                     <Box sx={{ 
                       position: 'relative',
                       paddingTop: '75%',
@@ -306,10 +297,10 @@ export default function PropertyPrintSheet({ data, onClose }: PropertyPrintSheet
                         backgroundColor: 'rgba(0,0,0,0.6)',
                         color: '#fff',
                         textAlign: 'center',
-                        fontSize: '9px',
-                        padding: '2px'
+                        fontSize: '8px',
+                        padding: '1px'
                       }}>
-                        {index + 2}/13
+                        {index + 2}
                       </Typography>
                     </Box>
                   </Grid>
