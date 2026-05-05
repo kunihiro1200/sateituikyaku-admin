@@ -141,6 +141,7 @@ export default function OtherCompanyDistributionPage() {
     layout: true, area: true, floor: false, built_year: false,
     parking: false, features: false, map: true,
   });
+  const [showProviderInfo, setShowProviderInfo] = useState(false); // 販売元情報の表示状態
 
   // スクレイピング結果から自動入力用データを生成
   const autoFillFromScrapedData = (data: any) => {
@@ -307,6 +308,7 @@ export default function OtherCompanyDistributionPage() {
       if (!result.success) throw new Error(result.error || '取得失敗');
       setPreviewData(result.data);
       setPreviewUrl(result.preview_url);
+      setShowProviderInfo(false); // 新しいスクレイピング時は販売元情報を非表示に
       
       // 自動入力を実行
       autoFillFromScrapedData(result.data);
@@ -682,6 +684,68 @@ export default function OtherCompanyDistributionPage() {
       {/* 物件プレビュー選択UI */}
       {previewData && (
         <Paper sx={{ p: 2, mb: 2, border: '2px solid', borderColor: SECTION_COLORS.buyer.main }}>
+          {/* 当社の電話番号と隠しボタン */}
+          <Box sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
+              当社の電話番号: 097-533-2022
+            </Typography>
+            <Box
+              onClick={() => setShowProviderInfo(!showProviderInfo)}
+              sx={{
+                width: 20,
+                height: 20,
+                backgroundColor: '#f0f0f0',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                opacity: 0.3,
+                transition: 'opacity 0.2s',
+                '&:hover': {
+                  opacity: 0.6,
+                },
+              }}
+              title="販売元情報を表示"
+            />
+          </Box>
+
+          {/* 販売元情報（隠しボタンクリック時に表示） */}
+          {showProviderInfo && (
+            <Box sx={{ mb: 2, p: 2, backgroundColor: '#f9f9f9', borderRadius: 1, border: '1px solid #ddd' }}>
+              <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1, color: '#666' }}>
+                📞 販売元情報
+              </Typography>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                {previewData.provider_name && (
+                  <Typography variant="body2">
+                    <strong>会社名:</strong> {previewData.provider_name}
+                  </Typography>
+                )}
+                {previewData.provider_phone && (
+                  <Typography variant="body2">
+                    <strong>電話番号:</strong> {previewData.provider_phone}
+                  </Typography>
+                )}
+                {previewData.provider_hours && (
+                  <Typography variant="body2">
+                    <strong>営業時間:</strong> {previewData.provider_hours}
+                  </Typography>
+                )}
+                {propertyUrl && (
+                  <Typography variant="body2">
+                    <strong>元のURL:</strong>{' '}
+                    <a
+                      href={propertyUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{ color: SECTION_COLORS.buyer.main, textDecoration: 'underline' }}
+                    >
+                      {propertyUrl}
+                    </a>
+                  </Typography>
+                )}
+              </Box>
+            </Box>
+          )}
+
           <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 1.5, color: SECTION_COLORS.buyer.main }}>
             📋 公開する情報を選択
           </Typography>
