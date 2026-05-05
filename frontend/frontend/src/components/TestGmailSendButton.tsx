@@ -15,12 +15,15 @@ const SIGNATURE = `*****************************
 TEL:097-533-2022
 ******************************`;
 
-// ダミー画像URL（3枚）
+// ダミー画像URL（3枚）- 実際に表示される画像URLを使用
 const DUMMY_IMAGES = [
-  'https://via.placeholder.com/600x400/4CAF50/FFFFFF?text=Sample+Image+1',
-  'https://via.placeholder.com/600x400/2196F3/FFFFFF?text=Sample+Image+2',
-  'https://via.placeholder.com/600x400/FF9800/FFFFFF?text=Sample+Image+3',
+  'https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=600&h=400&fit=crop',
+  'https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=600&h=400&fit=crop',
+  'https://images.unsplash.com/photo-1570129477492-45c003edd2be?w=600&h=400&fit=crop',
 ];
+
+// プレビューURL（実在するURL）
+const PREVIEW_URL = 'https://sateituikyaku-admin-frontend.vercel.app/public/properties';
 
 /**
  * テスト送信専用のGmailボタン
@@ -42,7 +45,7 @@ export default function TestGmailSendButton({
       `<img src="${imgSrc}" alt="物件画像${index + 1}" style="max-width: 600px; width: 100%; height: auto; margin: 10px 0; display: block;" />`
     ).join('');
     
-    return `${recipientName}様<br><br>大変お世話になっております。<br>不動産会社の㈱いふうです。<br><br>新着物件がでましたので、ご案内致します。<br><br>大分市中央町1-1-1/2,190万円/<br><br>${imageHtml}<br>他の画像はこちらから<br><a href="https://www.athome.co.jp/kodate/example">https://www.athome.co.jp/kodate/example</a><br><br>間取り: 3LDK<br>面積: 85.50m²<br>階: 2階建<br>築年月: 2020年3月<br>駐車場: 2台<br>交通: JR日豊本線 大分駅 徒歩15分<br>${SIGNATURE.replace(/\n/g, '<br>')}`;
+    return `${recipientName}様<br><br>大変お世話になっております。<br>不動産会社の㈱いふうです。<br><br>新着物件がでましたので、ご案内致します。<br><br>大分市中央町1-1-1/2,190万円/<br><br>${imageHtml}<br>他の画像はこちらから<br><a href="${PREVIEW_URL}">${PREVIEW_URL}</a><br><br>間取り: 3LDK<br>面積: 85.50m²<br>階: 2階建<br>築年月: 2020年3月<br>駐車場: 2台<br>交通: JR日豊本線 大分駅 徒歩15分<br>${SIGNATURE.replace(/\n/g, '<br>')}`;
   };
 
   const [body, setBody] = useState(generateHtmlBody('{お客様名}'));
