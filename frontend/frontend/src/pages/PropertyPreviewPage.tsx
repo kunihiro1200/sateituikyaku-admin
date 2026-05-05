@@ -40,7 +40,7 @@ interface PreviewData {
 }
 
 // ── お問い合わせフォーム ──────────────────────────────
-function PreviewInquiryForm({ title, address }: { title: string; address: string }) {
+function PreviewInquiryForm({ title, address, slug }: { title: string; address: string; slug: string }) {
   const [form, setForm] = useState({ name: '', email: '', phone: '', message: '' });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [sending, setSending] = useState(false);
@@ -456,7 +456,7 @@ export default function PropertyPreviewPage() {
         </div>
 
         {/* お問い合わせフォーム */}
-        <PreviewInquiryForm title={data.title || ''} address={data.address || ''} />
+        <PreviewInquiryForm title={data.title || ''} address={data.address || ''} slug={slug || ''} />
 
       </div>
 
