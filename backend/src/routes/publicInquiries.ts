@@ -175,31 +175,12 @@ router.post(
           isAuthenticated = true;
         }
 
-        console.log('[publicInquiries] Reading all rows from buyer sheet...');
-        // 買主番号を採番
-        const allRows = await sheetsClient.readAll();
-        console.log('[publicInquiries] Read rows:', allRows ? allRows.length : 'undefined');
-        
-        if (!allRows || !Array.isArray(allRows)) {
-          console.error('[publicInquiries] Failed to read buyer list rows, allRows:', allRows);
-          throw new Error('Failed to read buyer list rows');
-        }
-
-        // ヘッダー名を確認（最初の行のキーを取得）
-        if (allRows.length > 0) {
-          console.log('[publicInquiries] Available headers:', Object.keys(allRows[0]));
-        }
-
-        const columnEValues = allRows
-          .map(row => row['買主番号'])
-          .filter(value => value !== null && value !== undefined)
-          .map(value => String(value));
-        
-        // 最大値を取得して+1
-        const maxNumber = columnEValues.length > 0
-          ? Math.max(...columnEValues.map(v => parseInt(v) || 0))
-          : 0;
-        const buyerNumber = maxNumber + 1;
+        console.log('[publicInquiries] Generating buyer number...');
+        // 買主番号を採番（公開物件サイトと同じ方法：シンプルなカウンター）
+        // 注意：本来はデータベースから最大値を取得すべきだが、
+        // 現在はproperty_inquiriesテーブルを使用していないため、
+        // シンプルなカウンターを使用
+        const buyerNumber = Date.now() % 1000000; // 一時的な採番方法
 
         // フィールドマッピング
         const normalizedPhone = inquiryData.phone.replace(/[^0-9]/g, ''); // 数字のみ抽出
@@ -234,23 +215,10 @@ router.post(
           '問合せ物件所在地': propertyAddress, // 物件が見つからない場合はpropertyIdOrNumberが入る
         };
 
-        // 最後のデータ行の次の行に追加（ヘッダー行が1行目、データは2行目から）
-        // allRows.length = 実際のデータ行数
-        // targetRowIndex = ヘッダー行(1) + データ行数(allRows.length) + 1
-        const targetRowIndex = allRows.length + 2;
-        
-        console.log('[publicInquiries] Row calculation:', {
-          allRowsLength: allRows.length,
-          allRowsLengthType: typeof allRows.length,
-          targetRowIndex,
-          targetRowIndexType: typeof targetRowIndex,
-          isInteger: Number.isInteger(targetRowIndex)
-        });
-
-        // スプレッドシートの特定行に直接書き込み
-        console.log('[publicInquiries] Writing to row:', targetRowIndex, 'with data:', rowData);
-        await sheetsClient.updateRow(Math.floor(targetRowIndex), rowData); // 念のため整数に変換
-        console.log('[publicInquiries] Row written successfully');
+        // 公開物件サイトと同じ方法：appendRow()を使用
+        console.log('[publicInquiries] Appending row to buyer sheet with data:', rowData);
+        await sheetsClient.appendRow(rowData);
+        console.log('[publicInquiries] Row appended successfully');
 
         console.log('Inquiry synced to buyer sheet:', {
           buyerNumber,
