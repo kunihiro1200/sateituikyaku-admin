@@ -313,8 +313,8 @@ export class GoogleSheetsClient {
     }
 
     this.ensureAuthenticated();
-    // Google Sheets APIの仕様に合わせて、A1:FZ1形式で指定
-    const range = `'${this.config.sheetName}'!A1:FZ1`;
+    // シングルクォートなしで試す（日本語シート名の場合、APIが正しく解釈できない可能性がある）
+    const range = `${this.config.sheetName}!A1:FZ1`;
     console.log(`[GoogleSheetsClient.getHeaders] Fetching headers for sheet: ${this.config.sheetName}, range: ${range}`);
     
     const response = await this.sheets!.spreadsheets.values.get({
@@ -368,7 +368,7 @@ export class GoogleSheetsClient {
     return await sheetsRateLimiter.executeRequest(async () => {
       // Google Sheets APIの仕様：シート名のみでは受け付けないため、範囲指定を追加
       // A:FZ = 158列まで（買主リストの全列）
-      const range = `'${this.config.sheetName}'!A:FZ`;
+      const range = `${this.config.sheetName}!A:FZ`;
       console.log('[GoogleSheetsClient.readAll] Range:', range);
       
       const response = await this.sheets!.spreadsheets.values.get({
@@ -438,7 +438,7 @@ export class GoogleSheetsClient {
 
     const response = await this.sheets!.spreadsheets.values.get({
       spreadsheetId: this.config.spreadsheetId,
-      range: `'${this.config.sheetName}'!${range}`,
+      range: `${this.config.sheetName}!${range}`,
     });
 
     return (response.data.values || []) as string[][];
@@ -453,7 +453,7 @@ export class GoogleSheetsClient {
 
     await this.sheets!.spreadsheets.values.update({
       spreadsheetId: this.config.spreadsheetId,
-      range: `'${this.config.sheetName}'!${cell}`,
+      range: `${this.config.sheetName}!${cell}`,
       valueInputOption: 'USER_ENTERED',
       requestBody: {
         values: [[value]],
@@ -491,7 +491,7 @@ export class GoogleSheetsClient {
     
     await sheetsRateLimiter.executeRequest(async () => {
       const values = await this.objectToRow(row);
-      const range = `'${this.config.sheetName}'!A:A`;
+      const range = `${this.config.sheetName}!A:A`;
 
       await this.sheets!.spreadsheets.values.append({
         spreadsheetId: this.config.spreadsheetId,
@@ -519,7 +519,7 @@ export class GoogleSheetsClient {
     
     await sheetsRateLimiter.executeRequest(async () => {
       const values = await this.objectToRow(row);
-      const range = `'${this.config.sheetName}'!A${rowIndex}:FZ${rowIndex}`;
+      const range = `${this.config.sheetName}!A${rowIndex}:FZ${rowIndex}`;
       
       console.log('[GoogleSheetsClient.updateRow] Range:', range);
 
@@ -586,7 +586,7 @@ export class GoogleSheetsClient {
 
       for (const update of updates) {
         const values = await this.objectToRow(update.values);
-        const range = `'${this.config.sheetName}'!A${update.rowIndex}:ZZ${update.rowIndex}`;
+        const range = `${this.config.sheetName}!A${update.rowIndex}:ZZ${update.rowIndex}`;
         
         data.push({
           range,
@@ -627,7 +627,7 @@ export class GoogleSheetsClient {
     const columnLetter = this.numberToColumnLetter(columnIndex);
     
     // 検索範囲を明示的に指定（最大10000行まで）
-    const range = `'${this.config.sheetName}'!${columnLetter}2:${columnLetter}10000`;
+    const range = `${this.config.sheetName}!${columnLetter}2:${columnLetter}10000`;
 
     console.log(`🔍 [GoogleSheetsClient] Reading range: ${range}`);
 
