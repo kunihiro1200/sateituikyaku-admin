@@ -25,10 +25,17 @@ export default function TestGmailSendButton({
 }: TestGmailSendButtonProps) {
   const [loading, setLoading] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [subject, setSubject] = useState('【テスト送信】メール配信テスト');
+  const [subject, setSubject] = useState('【テスト送信】新着物件のご案内');
   const [body, setBody] = useState(
-    `これはテスト送信です。\n\n` +
-    `メール配信機能が正常に動作していることを確認するためのテストメールです。\n\n` +
+    `{お客様名}様\n` +
+    `いつもお世話になっております。\n` +
+    `新着物件のご案内です。\n\n` +
+    `物件住所: {物件住所}\n` +
+    `種別：{物件種別}\n` +
+    `価格：{価格}\n` +
+    `詳細情報：{詳細URL}\n\n` +
+    `詳細はお問い合わせください。\n\n` +
+    `よろしくお願いいたします。\n\n` +
     `${SIGNATURE}`
   );
   const [snackbar, setSnackbar] = useState<{
