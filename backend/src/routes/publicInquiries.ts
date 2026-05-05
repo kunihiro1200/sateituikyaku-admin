@@ -43,6 +43,9 @@ sheetsClient.authenticate()
 const inquirySchema = z.object({
   property_id: z.string().min(1, '物件IDまたは物件番号を指定してください').optional(),
   propertyId: z.string().min(1, '物件IDまたは物件番号を指定してください').optional(),
+  propertyAddress: z.string().optional(), // 物件住所
+  sourceUrl: z.string().optional(), // 元のURL
+  previewUrl: z.string().optional(), // プレビューURL
   name: z.string().min(1, '名前を入力してください').max(100, '名前は100文字以内で入力してください'),
   email: z.string().email('有効なメールアドレスを入力してください').max(255, 'メールアドレスは255文字以内で入力してください'),
   phone: z.string()
@@ -202,11 +205,28 @@ router.post(
         const normalizedPhone = inquiryData.phone.replace(/[^0-9]/g, ''); // 数字のみ抽出
         const receptionDate = new Date().toLocaleDateString('ja-JP'); // 受付日（今日の日付）
 
+        // コメント欄に追記する情報を整形
+        const additionalInfo = [];
+        if ((inquiryData as any).propertyAddress) {
+          additionalInfo.push(`物件住所: ${(inquiryData as any).propertyAddress}`);
+        }
+        if ((inquiryData as any).previewUrl) {
+          additionalInfo.push(`プレビューURL: ${(inquiryData as any).previewUrl}`);
+        }
+        if ((inquiryData as any).sourceUrl) {
+          additionalInfo.push(`元のURL: ${(inquiryData as any).sourceUrl}`);
+        }
+        
+        // ユーザーのメッセージと追加情報を結合
+        const fullMessage = additionalInfo.length > 0
+          ? `${inquiryData.message}\n\n--- 物件情報 ---\n${additionalInfo.join('\n')}`
+          : inquiryData.message;
+
         const rowData = {
           '買主番号': buyerNumber.toString(),
           '受付日': receptionDate,
           '●氏名・会社名': inquiryData.name,
-          '●問合時ヒアリング': inquiryData.message,
+          '●問合時ヒアリング': fullMessage,
           '●電話番号\n（ハイフン不要）': normalizedPhone,
           '●メアド': inquiryData.email,
           '●問合せ元': inquirySource,

@@ -40,7 +40,7 @@ interface PreviewData {
 }
 
 // ── お問い合わせフォーム ──────────────────────────────
-function PreviewInquiryForm({ title, address, slug }: { title: string; address: string; slug: string }) {
+function PreviewInquiryForm({ title, address, slug, sourceUrl }: { title: string; address: string; slug: string; sourceUrl: string }) {
   const [form, setForm] = useState({ name: '', email: '', phone: '', message: '' });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [sending, setSending] = useState(false);
@@ -73,6 +73,9 @@ function PreviewInquiryForm({ title, address, slug }: { title: string; address: 
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           propertyId: slug, // slugを物件IDとして送信
+          propertyAddress: address, // 物件住所
+          sourceUrl: sourceUrl, // 元のURL
+          previewUrl: window.location.href, // プレビューURL
           name: form.name,
           email: form.email,
           phone: form.phone,
@@ -456,7 +459,7 @@ export default function PropertyPreviewPage() {
         </div>
 
         {/* お問い合わせフォーム */}
-        <PreviewInquiryForm title={data.title || ''} address={data.address || ''} slug={slug || ''} />
+        <PreviewInquiryForm title={data.title || ''} address={data.address || ''} slug={slug || ''} sourceUrl={data.source_url || ''} />
 
       </div>
 
