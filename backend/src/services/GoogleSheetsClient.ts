@@ -365,9 +365,9 @@ export class GoogleSheetsClient {
     this.ensureAuthenticated();
     
     return await sheetsRateLimiter.executeRequest(async () => {
-      // 範囲を拡大（ZZZまで = 18,278列）
+      // 範囲を指定（A2:ZZ = 702列まで）
       // シート名をシングルクォートで囲む（日本語対応）
-      const range = `'${this.config.sheetName}'!A2:ZZZ`;
+      const range = `'${this.config.sheetName}'!A2:ZZ`;
       const response = await this.sheets!.spreadsheets.values.get({
         spreadsheetId: this.config.spreadsheetId,
         range,
@@ -396,8 +396,8 @@ export class GoogleSheetsClient {
     this.ensureAuthenticated();
     
     return await sheetsRateLimiter.executeRequest(async () => {
-      // 範囲を拡大（ZZZまで = 18,278列）
-      const range = `${this.config.sheetName}!A2:ZZZ`;
+      // 範囲を指定（A2:ZZ = 702列まで）
+      const range = `${this.config.sheetName}!A2:ZZ`;
       const response = await this.sheets!.spreadsheets.values.get({
         spreadsheetId: this.config.spreadsheetId,
         range,
