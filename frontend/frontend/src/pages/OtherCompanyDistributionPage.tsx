@@ -616,8 +616,15 @@ export default function OtherCompanyDistributionPage() {
         <Typography variant="h5" fontWeight="bold" sx={{ color: SECTION_COLORS.buyer.main }}>
           他社物件新着配信
         </Typography>
-        {/* テスト送信ボタン */}
-        <TestGmailSendButton size="small" variant="outlined" />
+        {/* テスト送信ボタン（スクレイピングデータがある場合のみ表示） */}
+        {previewData && previewUrl && (
+          <TestGmailSendButton 
+            size="small" 
+            variant="outlined"
+            previewData={previewData}
+            previewUrl={previewUrl}
+          />
+        )}
         {/* URL入力フィールド */}
         <TextField
           label="URL"

@@ -7,6 +7,8 @@ import api from '../services/api';
 interface TestGmailSendButtonProps {
   size?: 'small' | 'medium' | 'large';
   variant?: 'text' | 'outlined' | 'contained';
+  previewData?: any; // スクレイピングデータ
+  previewUrl?: string; // プレビューURL
 }
 
 const SIGNATURE = `*****************************
@@ -15,37 +17,63 @@ const SIGNATURE = `*****************************
 TEL:097-533-2022
 ******************************`;
 
-// ダミー画像URL（3枚）- 実際に表示される画像URLを使用
-const DUMMY_IMAGES = [
-  'https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=600&h=400&fit=crop',
-  'https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=600&h=400&fit=crop',
-  'https://images.unsplash.com/photo-1570129477492-45c003edd2be?w=600&h=400&fit=crop',
-];
-
-// プレビューURL（スクレイピング後のプレビューページ形式）
-const PREVIEW_URL = 'https://sateituikyaku-admin-frontend.vercel.app/property-preview/4f96c22b6d60';
-
 /**
  * テスト送信専用のGmailボタン
  * 物件選択不要で、任意のメールアドレスにテストメールを送信できる
- * 本番と全く同じ形式（画像3枚埋め込み）
+ * スクレイピングデータがある場合は、そのデータを使用
  */
 export default function TestGmailSendButton({
   size = 'small',
   variant = 'outlined',
+  previewData,
+  previewUrl,
 }: TestGmailSendButtonProps) {
   const [loading, setLoading] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [recipientEmail, setRecipientEmail] = useState('');
-  const [subject, setSubject] = useState('大分市中央町1-1-1/2,190万円/おまたせしました！新着物件です！');
+  
+  // スクレイピングデータがある場合はそれを使用、ない場合はダミーデータ
+  const propertyAddress = previewData?.address || '大分市中央町1-1-1';
+  const propertyPrice = previewData?.price || '2,190万円';
+  const linkUrl = previewUrl || 'https://sateituikyaku-admin-frontend.vercel.app/property-preview/4f96c22b6d60';
+  
+  // 画像: スクレイピングデータがある場合は最初の3枚、ない場合はダミー画像
+  const images = previewData?.images?.slice(0, 3) || [
+    'https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=600&h=400&fit=crop',
+    'https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=600&h=400&fit=crop',
+    'https://images.unsplash.com/photo-1570129477492-45c003edd2be?w=600&h=400&fit=crop',
+  ];
+  
+  // 物件詳細情報
+  const propertyDetails = [];
+  if (previewData?.layout) propertyDetails.push(`間取り: ${previewData.layout}`);
+  if (previewData?.area) propertyDetails.push(`面積: ${previewData.area}`);
+  if (previewData?.floor) propertyDetails.push(`階: ${previewData.floor}`);
+  if (previewData?.built_year) propertyDetails.push(`築年月: ${previewData.built_year}`);
+  if (previewData?.parking) propertyDetails.push(`駐車場: ${previewData.parking}`);
+  if (previewData?.access) propertyDetails.push(`交通: ${previewData.access}`);
+  
+  // デフォルトの物件詳細（スクレイピングデータがない場合）
+  if (propertyDetails.length === 0) {
+    propertyDetails.push('間取り: 3LDK');
+    propertyDetails.push('面積: 85.50m²');
+    propertyDetails.push('階: 2階建');
+    propertyDetails.push('築年月: 2020年3月');
+    propertyDetails.push('駐車場: 2台');
+    propertyDetails.push('交通: JR日豊本線 大分駅 徒歩15分');
+  }
+  
+  const [subject, setSubject] = useState(`${propertyAddress}/${propertyPrice}/おまたせしました！新着物件です！`);
   
   // 本番と同じHTML形式の本文（画像3枚埋め込み）
   const generateHtmlBody = (recipientName: string) => {
-    const imageHtml = DUMMY_IMAGES.map((imgSrc, index) => 
+    const imageHtml = images.map((imgSrc, index) => 
       `<img src="${imgSrc}" alt="物件画像${index + 1}" style="max-width: 600px; width: 100%; height: auto; margin: 10px 0; display: block;" />`
     ).join('');
     
-    return `${recipientName}様<br><br>大変お世話になっております。<br>不動産会社の㈱いふうです。<br><br>新着物件がでましたので、ご案内致します。<br><br>大分市中央町1-1-1/2,190万円/<br><br>${imageHtml}<br>他の画像はこちらから<br><a href="${PREVIEW_URL}">${PREVIEW_URL}</a><br><br>間取り: 3LDK<br>面積: 85.50m²<br>階: 2階建<br>築年月: 2020年3月<br>駐車場: 2台<br>交通: JR日豊本線 大分駅 徒歩15分<br>${SIGNATURE.replace(/\n/g, '<br>')}`;
+    const propertyInfo = propertyDetails.join('<br>');
+    
+    return `${recipientName}様<br><br>大変お世話になっております。<br>不動産会社の㈱いふうです。<br><br>新着物件がでましたので、ご案内致します。<br><br>${propertyAddress}/${propertyPrice}/<br><br>${imageHtml}<br>他の画像はこちらから<br><a href="${linkUrl}">${linkUrl}</a><br><br>${propertyInfo}<br>${SIGNATURE.replace(/\n/g, '<br>')}`;
   };
 
   const [body, setBody] = useState(generateHtmlBody('{お客様名}'));
