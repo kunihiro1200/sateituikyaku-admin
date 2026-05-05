@@ -298,8 +298,63 @@ export default function PropertyPreviewPage() {
           <div style={{ background: 'white', borderRadius: 10, padding: 20, marginBottom: 16, boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
             <h2 style={{ fontSize: 15, fontWeight: 'bold', borderLeft: '4px solid #e84040', paddingLeft: 10, marginBottom: 10 }}>地図</h2>
             {data.address && <p style={{ fontSize: 13, color: '#666', marginBottom: 10 }}>{data.address}周辺</p>}
-            <div style={{ borderRadius: 8, overflow: 'hidden', border: '1px solid #e0e0e0' }}>
+            <div style={{ position: 'relative', borderRadius: 8, overflow: 'hidden', border: '1px solid #e0e0e0' }}>
               <iframe src={mapSrc} width="100%" height="380" style={{ border: 'none', display: 'block' }} allowFullScreen loading="lazy" />
+              {/* 拡大縮小ボタン */}
+              <div style={{ position: 'absolute', top: 10, right: 10, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <button
+                  onClick={() => {
+                    const currentZoom = parseInt(mapSrc.match(/z=(\d+)/)?.[1] || '17');
+                    const newZoom = Math.min(currentZoom + 1, 21);
+                    const newMapSrc = mapSrc.replace(/z=\d+/, `z=${newZoom}`);
+                    const iframe = document.querySelector('iframe[src*="maps.google.com"]') as HTMLIFrameElement;
+                    if (iframe) iframe.src = newMapSrc;
+                  }}
+                  style={{
+                    width: 36,
+                    height: 36,
+                    background: 'white',
+                    border: '1px solid #ccc',
+                    borderRadius: 4,
+                    fontSize: 20,
+                    fontWeight: 'bold',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                  }}
+                  title="拡大"
+                >
+                  +
+                </button>
+                <button
+                  onClick={() => {
+                    const currentZoom = parseInt(mapSrc.match(/z=(\d+)/)?.[1] || '17');
+                    const newZoom = Math.max(currentZoom - 1, 1);
+                    const newMapSrc = mapSrc.replace(/z=\d+/, `z=${newZoom}`);
+                    const iframe = document.querySelector('iframe[src*="maps.google.com"]') as HTMLIFrameElement;
+                    if (iframe) iframe.src = newMapSrc;
+                  }}
+                  style={{
+                    width: 36,
+                    height: 36,
+                    background: 'white',
+                    border: '1px solid #ccc',
+                    borderRadius: 4,
+                    fontSize: 20,
+                    fontWeight: 'bold',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                  }}
+                  title="縮小"
+                >
+                  −
+                </button>
+              </div>
             </div>
           </div>
         )}
