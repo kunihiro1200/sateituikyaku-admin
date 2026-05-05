@@ -122,8 +122,14 @@ const initializeConnections = async () => {
 };
 
 // Middleware
-app.use(helmet());
-app.use(cors({
+// Helmetの設定を調整（CORSと競合しないように）
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+  crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" },
+}));
+
+// CORS設定を最優先で適用
+const corsOptions = {
   origin: [
     'http://localhost:5173',
     'http://localhost:5174',
@@ -138,7 +144,14 @@ app.use(cors({
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
-}));
+  optionsSuccessStatus: 200, // プリフライトリクエストの成功ステータス
+};
+
+app.use(cors(corsOptions));
+
+// プリフライトリクエストを明示的に処理
+app.options('*', cors(corsOptions));
+
 app.use(compression());
 app.use(morgan('dev'));
 app.use(express.json({ limit: '50mb' }));
