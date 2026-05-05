@@ -32,48 +32,45 @@ export default function TestGmailSendButton({
   const [dialogOpen, setDialogOpen] = useState(false);
   const [recipientEmail, setRecipientEmail] = useState('');
   
-  // スクレイピングデータがある場合はそれを使用、ない場合はダミーデータ
-  const propertyAddress = previewData?.address || '大分市中央町1-1-1';
-  const propertyPrice = previewData?.price || '2,190万円';
-  const linkUrl = previewUrl || 'https://sateituikyaku-admin-frontend.vercel.app/property-preview/4f96c22b6d60';
+  // スクレイピングデータを使用（必須）
+  const propertyAddress = previewData?.details?.['所在地'] || previewData?.address || '住所情報なし';
+  const propertyPrice = previewData?.details?.['価格'] || previewData?.price || '価格情報なし';
+  const linkUrl = previewUrl || '';
   
-  // 画像: スクレイピングデータがある場合は最初の3枚、ない場合はダミー画像
-  const images = previewData?.images?.slice(0, 3) || [
-    'https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=600&h=400&fit=crop',
-    'https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=600&h=400&fit=crop',
-    'https://images.unsplash.com/photo-1570129477492-45c003edd2be?w=600&h=400&fit=crop',
-  ];
+  // 画像: スクレイピングデータから取得（必須）
+  const images = previewData?.images?.slice(0, 3) || [];
   
-  // 物件詳細情報
+  // 物件詳細情報（スクレイピングデータから取得）
   const propertyDetails = [];
-  if (previewData?.layout) propertyDetails.push(`間取り: ${previewData.layout}`);
-  if (previewData?.area) propertyDetails.push(`面積: ${previewData.area}`);
-  if (previewData?.floor) propertyDetails.push(`階: ${previewData.floor}`);
-  if (previewData?.built_year) propertyDetails.push(`築年月: ${previewData.built_year}`);
-  if (previewData?.parking) propertyDetails.push(`駐車場: ${previewData.parking}`);
-  if (previewData?.access) propertyDetails.push(`交通: ${previewData.access}`);
-  
-  // デフォルトの物件詳細（スクレイピングデータがない場合）
-  if (propertyDetails.length === 0) {
-    propertyDetails.push('間取り: 3LDK');
-    propertyDetails.push('面積: 85.50m²');
-    propertyDetails.push('階: 2階建');
-    propertyDetails.push('築年月: 2020年3月');
-    propertyDetails.push('駐車場: 2台');
-    propertyDetails.push('交通: JR日豊本線 大分駅 徒歩15分');
+  if (previewData?.details?.['間取り']) propertyDetails.push(`間取り: ${previewData.details['間取り']}`);
+  if (previewData?.details?.['専有面積']) propertyDetails.push(`面積: ${previewData.details['専有面積']}`);
+  if (previewData?.details?.['階建 / 階'] || previewData?.details?.['階建/階']) {
+    const floorInfo = previewData.details['階建 / 階'] || previewData.details['階建/階'];
+    propertyDetails.push(`階: ${floorInfo}`);
   }
+  if (previewData?.details?.['築年月']) propertyDetails.push(`築年月: ${previewData.details['築年月']}`);
+  if (previewData?.details?.['駐車場']) propertyDetails.push(`駐車場: ${previewData.details['駐車場']}`);
+  if (previewData?.details?.['交通']) propertyDetails.push(`交通: ${previewData.details['交通']}`);
   
   const [subject, setSubject] = useState(`${propertyAddress}/${propertyPrice}/おまたせしました！新着物件です！`);
   
   // 本番と同じHTML形式の本文（画像3枚埋め込み）
   const generateHtmlBody = (recipientName: string) => {
-    const imageHtml = images.map((imgSrc, index) => 
-      `<img src="${imgSrc}" alt="物件画像${index + 1}" style="max-width: 600px; width: 100%; height: auto; margin: 10px 0; display: block;" />`
-    ).join('');
+    // 画像が存在しない場合は空文字列
+    const imageHtml = images.length > 0 
+      ? images.map((imgSrc, index) => 
+          `<img src="${imgSrc}" alt="物件画像${index + 1}" style="max-width: 600px; width: 100%; height: auto; margin: 10px 0; display: block;" />`
+        ).join('')
+      : '';
     
     const propertyInfo = propertyDetails.join('<br>');
     
-    return `${recipientName}様<br><br>大変お世話になっております。<br>不動産会社の㈱いふうです。<br><br>新着物件がでましたので、ご案内致します。<br><br>${propertyAddress}/${propertyPrice}/<br><br>${imageHtml}<br>他の画像はこちらから<br><a href="${linkUrl}">${linkUrl}</a><br><br>${propertyInfo}<br>${SIGNATURE.replace(/\n/g, '<br>')}`;
+    // URLが存在しない場合はリンクを表示しない
+    const linkSection = linkUrl 
+      ? `他の画像はこちらから<br><a href="${linkUrl}">${linkUrl}</a><br><br>`
+      : '';
+    
+    return `${recipientName}様<br><br>大変お世話になっております。<br>不動産会社の㈱いふうです。<br><br>新着物件がでましたので、ご案内致します。<br><br>${propertyAddress}/${propertyPrice}/<br><br>${imageHtml}<br>${linkSection}${propertyInfo}<br>${SIGNATURE.replace(/\n/g, '<br>')}`;
   };
 
   const [body, setBody] = useState(generateHtmlBody('{お客様名}'));
@@ -90,6 +87,13 @@ export default function TestGmailSendButton({
   const { employee } = useAuthStore();
 
   const handleButtonClick = () => {
+    console.log('[TestGmailSendButton] previewData:', previewData);
+    console.log('[TestGmailSendButton] previewUrl:', previewUrl);
+    console.log('[TestGmailSendButton] images:', images);
+    console.log('[TestGmailSendButton] propertyAddress:', propertyAddress);
+    console.log('[TestGmailSendButton] propertyPrice:', propertyPrice);
+    console.log('[TestGmailSendButton] linkUrl:', linkUrl);
+    
     if (!employee?.email) {
       setSnackbar({
         open: true,
@@ -98,6 +102,27 @@ export default function TestGmailSendButton({
       });
       return;
     }
+    
+    // スクレイピングデータが存在しない場合はエラー
+    if (!previewData || !previewUrl) {
+      setSnackbar({
+        open: true,
+        message: 'スクレイピングデータが存在しません。先に「物件情報を取得」ボタンをクリックしてください。',
+        severity: 'error'
+      });
+      return;
+    }
+    
+    // 画像が存在しない場合はエラー
+    if (!images || images.length === 0) {
+      setSnackbar({
+        open: true,
+        message: 'スクレイピングした画像が存在しません。',
+        severity: 'error'
+      });
+      return;
+    }
+    
     // デフォルトの送信先をログイン中のユーザーのメールアドレスに設定
     setRecipientEmail(employee.email);
     // 本文を再生成（ログイン中のユーザー名を使用）
