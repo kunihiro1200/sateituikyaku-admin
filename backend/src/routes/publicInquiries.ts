@@ -128,12 +128,32 @@ router.post(
 
       console.log('[publicInquiries] Property search result:', { property, propertyError });
 
+      // 物件が見つからない場合でも問い合わせを受け付ける
+      // property_numberは空、問合せ物件所在地にpropertyIdOrNumberを記録
+      let propertyNumber = '';
+      let propertyAddress = '';
+      let inquirySource = 'サイト'; // デフォルト
+
       if (propertyError || !property) {
-        console.error('[publicInquiries] Property not found or error:', propertyError);
-        return res.status(404).json({
-          success: false,
-          message: '指定された物件が見つかりません'
-        });
+        console.log('[publicInquiries] Property not found, but accepting inquiry. Using propertyId as address.');
+        // 物件が見つからない場合は、propertyIdOrNumberを住所として扱う
+        propertyAddress = propertyIdOrNumber;
+      } else {
+        // 物件が見つかった場合
+        propertyNumber = property.property_number;
+        propertyAddress = property.address || '';
+        
+        // ATBB状況に基づいて問合せ元を判定
+        if (property.atbb_status) {
+          const status = property.atbb_status.toLowerCase();
+          if (status.includes('公開中')) {
+            inquirySource = 'いふう独自サイト';
+          } else if (status.includes('公開前')) {
+            inquirySource = '公開前・いふう独自サイト';
+          } else if (status.includes('非公開')) {
+            inquirySource = '非公開・いふう独自サイト';
+          }
+        }
       }
 
       // 公開物件かどうかのチェックは一旦スキップ（全ての物件に対して問い合わせを受け付ける）
@@ -181,19 +201,6 @@ router.post(
         // フィールドマッピング
         const normalizedPhone = inquiryData.phone.replace(/[^0-9]/g, ''); // 数字のみ抽出
         const receptionDate = new Date().toLocaleDateString('ja-JP'); // 受付日（今日の日付）
-        
-        // ATBB状況に基づいて問合せ元を判定
-        let inquirySource = 'サイト'; // デフォルト
-        if (property.atbb_status) {
-          const status = property.atbb_status.toLowerCase();
-          if (status.includes('公開中')) {
-            inquirySource = 'いふう独自サイト';
-          } else if (status.includes('公開前')) {
-            inquirySource = '公開前・いふう独自サイト';
-          } else if (status.includes('非公開')) {
-            inquirySource = '非公開・いふう独自サイト';
-          }
-        }
 
         const rowData = {
           '買主番号': buyerNumber.toString(),
@@ -203,7 +210,8 @@ router.post(
           '●電話番号\n（ハイフン不要）': normalizedPhone,
           '●メアド': inquiryData.email,
           '●問合せ元': inquirySource,
-          '物件番号': property.property_number,
+          '物件番号': propertyNumber,
+          '問合せ物件所在地': propertyAddress, // 物件が見つからない場合はpropertyIdOrNumberが入る
         };
 
         // 最後のデータ行の次の行に追加（ヘッダー行が1行目、データは2行目から）
