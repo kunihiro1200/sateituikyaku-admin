@@ -45,6 +45,7 @@ import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { SECTION_COLORS } from '../theme/sectionColors';
 import ImageSelectorModal from '../components/ImageSelectorModal';
+import TestGmailSendButton from '../components/TestGmailSendButton';
 
 // 画像ファイル型（ImageSelectorModalと同じ）
 interface ImageFile {
@@ -615,6 +616,8 @@ export default function OtherCompanyDistributionPage() {
         <Typography variant="h5" fontWeight="bold" sx={{ color: SECTION_COLORS.buyer.main }}>
           他社物件新着配信
         </Typography>
+        {/* テスト送信ボタン */}
+        <TestGmailSendButton size="small" variant="outlined" />
         {/* URL入力フィールド */}
         <TextField
           label="URL"
