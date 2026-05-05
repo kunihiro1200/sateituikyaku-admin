@@ -731,7 +731,7 @@ router.post('/:propertyNumber/send-distribution-emails', authenticate, async (re
         
         for (const buyerNumber of buyerNumbersToFetch) {
           try {
-            const buyer = await buyerService.getBuyer(buyerNumber);
+            const buyer = await buyerService.getByBuyerNumber(buyerNumber);
             if (buyer && buyer.name) {
               buyerNameMap[buyerNumber] = buyer.name;
             }
