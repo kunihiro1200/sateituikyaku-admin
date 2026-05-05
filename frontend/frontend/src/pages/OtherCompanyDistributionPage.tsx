@@ -122,6 +122,7 @@ export default function OtherCompanyDistributionPage() {
   const [emailBody, setEmailBody] = useState('');
   const [recommendComment, setRecommendComment] = useState(''); // おすすめコメント
   const [previewMode, setPreviewMode] = useState<'edit' | 'preview'>('edit'); // プレビューモード
+  const [testEmail, setTestEmail] = useState(''); // テスト送信用メールアドレス
   const [propertyUrl, setPropertyUrl] = useState(''); // 物件URL
   const [selectedImages, setSelectedImages] = useState<ImageFile[]>([]);
   const [imageSelectorOpen, setImageSelectorOpen] = useState(false);
@@ -541,8 +542,13 @@ export default function OtherCompanyDistributionPage() {
   const sendEmails = async () => {
     setSending(true);
     try {
+      // テストメールアドレスが入力されている場合は、最初の買主にのみテスト送信
+      const buyersToSend = testEmail.trim() 
+        ? [{ ...checkedBuyers[0], email: testEmail.trim() }] 
+        : checkedBuyers;
+      
       // 各買主に個別送信
-      for (const buyer of checkedBuyers) {
+      for (const buyer of buyersToSend) {
         const formData = new FormData();
         formData.append('buyerId', buyer.buyer_number);
         formData.append('subject', emailSubject);
@@ -567,27 +573,34 @@ export default function OtherCompanyDistributionPage() {
         });
 
         // activity_logsに記録（メール送信成功後）
-        try {
-          await api.post('/api/activity-logs/email', {
-            buyerId: buyer.buyer_number,
-            propertyNumbers: [], // 他社物件のため空配列
-            recipientEmail: buyer.email,
-            subject: emailSubject,
-            templateName: '他社物件新着配信',
-            senderEmail: 'tenant@ifoo-oita.com',
-            source: 'other_company_distribution', // 送信元識別子
-          });
-        } catch (logError) {
-          // activity_logs記録失敗はログのみ（ユーザーには通知しない）
-          console.error('Failed to log email activity:', logError);
+        // テスト送信の場合は記録しない
+        if (!testEmail.trim()) {
+          try {
+            await api.post('/api/activity-logs/email', {
+              buyerId: buyer.buyer_number,
+              propertyNumbers: [], // 他社物件のため空配列
+              recipientEmail: buyer.email,
+              subject: emailSubject,
+              templateName: '他社物件新着配信',
+              senderEmail: 'tenant@ifoo-oita.com',
+              source: 'other_company_distribution', // 送信元識別子
+            });
+          } catch (logError) {
+            // activity_logs記録失敗はログのみ（ユーザーには通知しない）
+            console.error('Failed to log email activity:', logError);
+          }
         }
       }
 
       setEmailDialogOpen(false);
-      setSnackbar({ open: true, message: `${checkedBuyers.length}件のメールを送信しました`, severity: 'success' });
+      const message = testEmail.trim() 
+        ? `テストメール（${testEmail}）を送信しました` 
+        : `${checkedBuyers.length}件のメールを送信しました`;
+      setSnackbar({ open: true, message, severity: 'success' });
       setCheckedIds(new Set()); // チェックをクリア
       setSelectedImages([]); // 選択画像をクリア
       setRecommendComment(''); // おすすめコメントをクリア
+      setTestEmail(''); // テストメールアドレスをクリア
     } catch (err: any) {
       setSnackbar({ open: true, message: err.response?.data?.error || 'メール送信に失敗しました', severity: 'error' });
     } finally {
@@ -1022,6 +1035,7 @@ export default function OtherCompanyDistributionPage() {
           setEmailDialogOpen(false);
           setRecommendComment(''); // ダイアログを閉じたらおすすめコメントをリセット
           setPreviewMode('edit'); // プレビューモードをリセット
+          setTestEmail(''); // テストメールアドレスをリセット
         }} 
         maxWidth="md" 
         fullWidth
@@ -1040,6 +1054,17 @@ export default function OtherCompanyDistributionPage() {
           
           {previewMode === 'edit' ? (
             <>
+              {/* テスト送信用メールアドレス */}
+              <TextField
+                label="テスト送信用メールアドレス（任意）"
+                value={testEmail}
+                onChange={e => setTestEmail(e.target.value)}
+                fullWidth
+                placeholder="test@example.com"
+                helperText="入力すると、選択した買主の代わりにこのアドレスにテスト送信されます"
+                type="email"
+              />
+              
               <TextField
                 label="件名"
                 value={emailSubject}
@@ -1131,13 +1156,14 @@ export default function OtherCompanyDistributionPage() {
             setEmailDialogOpen(false);
             setRecommendComment(''); // キャンセル時もおすすめコメントをリセット
             setPreviewMode('edit'); // プレビューモードをリセット
+            setTestEmail(''); // テストメールアドレスをリセット
           }}>キャンセル</Button>
           <Button
             variant="contained"
             onClick={sendEmails}
             disabled={sending}
           >
-            {sending ? '送信中...' : `送信 (${checkedBuyers.length}件)`}
+            {sending ? '送信中...' : testEmail.trim() ? 'テスト送信' : `送信 (${checkedBuyers.length}件)`}
           </Button>
         </DialogActions>
       </Dialog>
