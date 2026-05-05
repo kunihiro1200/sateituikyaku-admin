@@ -15,9 +15,17 @@ const SIGNATURE = `*****************************
 TEL:097-533-2022
 ******************************`;
 
+// ダミー画像URL（3枚）
+const DUMMY_IMAGES = [
+  'https://via.placeholder.com/600x400/4CAF50/FFFFFF?text=Sample+Image+1',
+  'https://via.placeholder.com/600x400/2196F3/FFFFFF?text=Sample+Image+2',
+  'https://via.placeholder.com/600x400/FF9800/FFFFFF?text=Sample+Image+3',
+];
+
 /**
  * テスト送信専用のGmailボタン
- * 物件選択不要で、ログイン中のユーザー自身にテストメールを送信できる
+ * 物件選択不要で、任意のメールアドレスにテストメールを送信できる
+ * 本番と全く同じ形式（画像3枚埋め込み）
  */
 export default function TestGmailSendButton({
   size = 'small',
@@ -25,19 +33,19 @@ export default function TestGmailSendButton({
 }: TestGmailSendButtonProps) {
   const [loading, setLoading] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [subject, setSubject] = useState('【テスト送信】新着物件のご案内');
-  const [body, setBody] = useState(
-    `{お客様名}様\n` +
-    `いつもお世話になっております。\n` +
-    `新着物件のご案内です。\n\n` +
-    `物件住所: {物件住所}\n` +
-    `種別：{物件種別}\n` +
-    `価格：{価格}\n` +
-    `詳細情報：{詳細URL}\n\n` +
-    `詳細はお問い合わせください。\n\n` +
-    `よろしくお願いいたします。\n\n` +
-    `${SIGNATURE}`
-  );
+  const [recipientEmail, setRecipientEmail] = useState('');
+  const [subject, setSubject] = useState('大分市中央町1-1-1/2,190万円/おまたせしました！新着物件です！');
+  
+  // 本番と同じHTML形式の本文（画像3枚埋め込み）
+  const generateHtmlBody = (recipientName: string) => {
+    const imageHtml = DUMMY_IMAGES.map((imgSrc, index) => 
+      `<img src="${imgSrc}" alt="物件画像${index + 1}" style="max-width: 600px; width: 100%; height: auto; margin: 10px 0; display: block;" />`
+    ).join('');
+    
+    return `${recipientName}様<br><br>大変お世話になっております。<br>不動産会社の㈱いふうです。<br><br>新着物件がでましたので、ご案内致します。<br><br>大分市中央町1-1-1/2,190万円/<br><br>${imageHtml}<br>他の画像はこちらから<br><a href="https://www.athome.co.jp/kodate/example">https://www.athome.co.jp/kodate/example</a><br><br>間取り: 3LDK<br>面積: 85.50m²<br>階: 2階建<br>築年月: 2020年3月<br>駐車場: 2台<br>交通: JR日豊本線 大分駅 徒歩15分<br>${SIGNATURE.replace(/\n/g, '<br>')}`;
+  };
+
+  const [body, setBody] = useState(generateHtmlBody('{お客様名}'));
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
     message: string;
@@ -59,14 +67,29 @@ export default function TestGmailSendButton({
       });
       return;
     }
+    // デフォルトの送信先をログイン中のユーザーのメールアドレスに設定
+    setRecipientEmail(employee.email);
+    // 本文を再生成（ログイン中のユーザー名を使用）
+    setBody(generateHtmlBody(employee.name || 'お客様'));
     setDialogOpen(true);
   };
 
   const handleSend = async () => {
-    if (!employee?.email) {
+    if (!recipientEmail || !recipientEmail.trim()) {
       setSnackbar({
         open: true,
-        message: 'ログイン情報が取得できません。',
+        message: '送信先メールアドレスを入力してください。',
+        severity: 'error'
+      });
+      return;
+    }
+
+    // メールアドレスの形式チェック
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(recipientEmail)) {
+      setSnackbar({
+        open: true,
+        message: '有効なメールアドレスを入力してください。',
         severity: 'error'
       });
       return;
@@ -75,23 +98,20 @@ export default function TestGmailSendButton({
     setLoading(true);
 
     try {
-      // プレーンテキストの改行をHTMLの<br>に変換
-      const htmlBody = body.replace(/\n/g, '<br>');
-
       // テスト送信用のAPIエンドポイントを呼び出し
       const response = await api.post('/api/test-email/send', {
-        recipientEmail: employee.email,
-        recipientName: employee.name,
+        recipientEmail: recipientEmail.trim(),
+        recipientName: employee?.name || 'お客様',
         subject,
-        content: body,
-        htmlBody,
+        content: body.replace(/<br>/g, '\n').replace(/<[^>]*>/g, ''), // プレーンテキスト版
+        htmlBody: body, // HTML版
         from: 'tenant@ifoo-oita.com',
       });
 
       setDialogOpen(false);
       setSnackbar({
         open: true,
-        message: `テストメールを送信しました\n送信先: ${employee.email}`,
+        message: `テストメールを送信しました\n送信先: ${recipientEmail}`,
         severity: 'success'
       });
     } catch (error: any) {
@@ -131,12 +151,13 @@ export default function TestGmailSendButton({
         <DialogTitle>テストメール送信</DialogTitle>
         <DialogContent>
           <TextField
-            label="送信先"
-            value={employee?.email || ''}
-            disabled
+            label="送信先メールアドレス"
+            value={recipientEmail}
+            onChange={(e) => setRecipientEmail(e.target.value)}
             fullWidth
             margin="normal"
-            helperText="ログイン中のユーザーのメールアドレスに送信されます"
+            helperText="テスト送信先のメールアドレスを入力してください"
+            type="email"
           />
           <TextField
             label="件名"
@@ -146,13 +167,14 @@ export default function TestGmailSendButton({
             margin="normal"
           />
           <TextField
-            label="本文"
+            label="本文（HTML形式）"
             value={body}
             onChange={(e) => setBody(e.target.value)}
             fullWidth
             multiline
-            rows={12}
+            rows={16}
             margin="normal"
+            helperText="本番と同じHTML形式（画像3枚埋め込み済み）"
           />
         </DialogContent>
         <DialogActions>
