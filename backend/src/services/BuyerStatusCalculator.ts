@@ -39,6 +39,7 @@ export interface BuyerData {
   viewing_date?: Date | string | null;
   next_call_date?: Date | string | null;
   follow_up_assignee?: string | null;
+  project_assignee?: string | null;  // 案件担当
   latest_status?: string | null;
   inquiry_confidence?: string | null;
   inquiry_email_phone?: string | null;
@@ -313,6 +314,7 @@ export function calculateBuyerStatusComplete(buyer: BuyerData): StatusResult {
     // 🚨 重要：次電日が今日以前の場合は「当日TEL(イニシャル)」を優先（内覧済みよりも優先）
     // 内覧日が過去の場合は「内覧済み(林)」、次電日が今日以前の場合は「当日TEL(林)」、そうでなければ「担当(林)」
     // 固定リストにない担当者（林など）も汎用的に対応
+    // 🆕 優先順位: follow_up_assignee（後続担当）が最優先、空の場合のみ project_assignee（案件担当）を使用
     const knownAssignees: Array<{ assignee: string; priority: number }> = [
       { assignee: 'Y', priority: 23 },
       { assignee: 'W', priority: 24 },
@@ -324,8 +326,11 @@ export function calculateBuyerStatusComplete(buyer: BuyerData): StatusResult {
       { assignee: 'R', priority: 30 },
     ];
 
-    if (isNotBlank(buyer.follow_up_assignee)) {
-      const assignee = buyer.follow_up_assignee || '';
+    // 🆕 優先順位: 後続担当が最優先、空の場合のみ案件担当を使用
+    const effectiveAssignee = buyer.follow_up_assignee || buyer.project_assignee;
+
+    if (isNotBlank(effectiveAssignee)) {
+      const assignee = effectiveAssignee || '';
       const known = knownAssignees.find(a => a.assignee === assignee);
       const priority = known ? known.priority : 23; // 未知の担当者は priority 23 扱い
 
@@ -345,7 +350,7 @@ export function calculateBuyerStatusComplete(buyer: BuyerData): StatusResult {
       }
       
       // Priority 37: 担当(イニシャル) - 通常の担当カテゴリ
-      // latest_status や next_call_date が null でも、follow_up_assignee があれば担当カテゴリに分類
+      // latest_status や next_call_date が null でも、follow_up_assignee または project_assignee があれば担当カテゴリに分類
       const status = `担当(${assignee})`;
       console.log(`[calculateBuyerStatusComplete] Priority 37: ${status} for buyer:`, buyer.buyer_number);
       return { status, priority: 37, matchedCondition: `担当${assignee}`, color: getStatusColor(`担当(${assignee})`) };

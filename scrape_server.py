@@ -50,7 +50,7 @@ async def scrape_athome(url: str) -> dict:
         'title': None, 'price': None, 'address': None, 'access': None,
         'layout': None, 'area': None, 'floor': None, 'built_year': None,
         'parking': None, 'features': None, 'remarks': None,
-        'images': [], 'lat': None, 'lng': None, 'details': {},
+        'images': [], 'lat': None, 'lng': None, 'details': {}, 'points': [],
     }
 
     async with Stealth().use_async(async_playwright()) as p:
@@ -98,18 +98,53 @@ async def scrape_athome(url: str) -> dict:
             t = re.sub(r'【[^】]+】', '', t).strip()
             result['title'] = t
 
-        # スライダー画像（margin=false の39枚）
-        slide_imgs = await page.query_selector_all("[class*='slide'] img")
+        # 画像取得（スライダー画像 + 設備・仕様・構造の画像）
         seen = set()
         images = []
+        
+        # 1. スライダー画像を取得
+        slide_imgs = await page.query_selector_all("[class*='slide'] img")
         for img in slide_imgs:
             src = await img.get_attribute('src')
-            if src and 'image_files/path' in src and 'margin=false' in src:
-                large = re.sub(r'width=\d+', 'width=800', src)
-                large = re.sub(r'height=\d+', 'height=600', large)
-                if large not in seen:
-                    seen.add(large)
-                    images.append(large)
+            if src and ('image_files/path' in src or 'data_images' in src):
+                # SVGアイコンは除外
+                if '.svg' in src:
+                    continue
+                # 相対URLを絶対URLに変換
+                if src.startswith('/'):
+                    src = f"https://www.athome.co.jp{src}"
+                # 大きいサイズに変換（可能な場合）
+                if 'width=' in src:
+                    src = re.sub(r'width=\d+', 'width=800', src)
+                if 'height=' in src:
+                    src = re.sub(r'height=\d+', 'height=600', src)
+                if src not in seen:
+                    seen.add(src)
+                    images.append(src)
+        
+        # 2. 設備・仕様・構造セクションの画像を取得
+        all_imgs = await page.query_selector_all('img')
+        for img in all_imgs:
+            src = await img.get_attribute('src')
+            if src and ('image_files/path' in src or 'data_images' in src):
+                # SVGアイコンは除外
+                if '.svg' in src:
+                    continue
+                # 既にスライダーで取得した画像はスキップ
+                if src in seen:
+                    continue
+                # 相対URLを絶対URLに変換
+                if src.startswith('/'):
+                    src = f"https://www.athome.co.jp{src}"
+                # 大きいサイズに変換（可能な場合）
+                if 'width=' in src:
+                    src = re.sub(r'width=\d+', 'width=800', src)
+                if 'height=' in src:
+                    src = re.sub(r'height=\d+', 'height=600', src)
+                if src not in seen:
+                    seen.add(src)
+                    images.append(src)
+        
         result['images'] = images
         print(f'[scrape] 画像: {len(images)}枚')
 
@@ -121,8 +156,10 @@ async def scrape_athome(url: str) -> dict:
         if lngs:
             result['lng'] = float(lngs[0])
 
-        # 詳細テーブル
+        # 詳細テーブル（物件概要を含む）
         details = {}
+        
+        # テーブル形式のデータを取得
         for table in soup.find_all('table'):
             for row in table.find_all('tr'):
                 th = row.find('th')
@@ -132,14 +169,76 @@ async def scrape_athome(url: str) -> dict:
                     v = td.get_text(strip=True)
                     if k and v:
                         details[k] = v
+        
+        # dl/dt/dd形式のデータを取得
         for dl in soup.find_all('dl'):
             for dt, dd in zip(dl.find_all('dt'), dl.find_all('dd')):
                 k = dt.get_text(strip=True)
                 v = dd.get_text(strip=True)
                 if k and v:
                     details[k] = v
+        
+        # 「物件概要」セクションを明示的に取得
+        # 販売スケジュール、造成完成時期、引渡可能時期、モデルハウス情報など
+        overview_section = soup.find('h2', string=re.compile(r'物件概要'))
+        if overview_section:
+            # 物件概要セクションの次の要素から情報を取得
+            next_elem = overview_section.find_next_sibling()
+            while next_elem:
+                if next_elem.name == 'table':
+                    for row in next_elem.find_all('tr'):
+                        th = row.find('th')
+                        td = row.find('td')
+                        if th and td:
+                            k = th.get_text(strip=True)
+                            v = td.get_text(strip=True)
+                            if k and v:
+                                details[k] = v
+                elif next_elem.name == 'dl':
+                    for dt, dd in zip(next_elem.find_all('dt'), next_elem.find_all('dd')):
+                        k = dt.get_text(strip=True)
+                        v = dd.get_text(strip=True)
+                        if k and v:
+                            details[k] = v
+                elif next_elem.name == 'h2':
+                    # 次のセクションに到達したら終了
+                    break
+                next_elem = next_elem.find_next_sibling()
 
         result['details'] = details
+        print(f'[scrape] 詳細情報: {len(details)}項目')
+
+        # 「ポイント」または「設備・仕様・構造」セクションを取得
+        points = []
+        point_section = soup.find('h2', string=re.compile(r'(ポイント|設備・仕様・構造)'))
+        if point_section:
+            # ポイントセクションの次の要素から情報を取得
+            next_elem = point_section.find_next_sibling()
+            while next_elem:
+                if next_elem.name == 'ul':
+                    for li in next_elem.find_all('li'):
+                        text = li.get_text(strip=True)
+                        if text and len(text) > 2:  # 2文字以上
+                            points.append(text)
+                elif next_elem.name == 'div':
+                    # div内のテキストを取得
+                    text = next_elem.get_text(strip=True)
+                    if text and len(text) > 5:  # 5文字以上
+                        # 改行で分割して複数のポイントとして扱う
+                        lines = [line.strip() for line in text.split('\n') if line.strip() and len(line.strip()) > 5]
+                        points.extend(lines)
+                elif next_elem.name == 'p':
+                    # p内のテキストを取得（タイトルなど）
+                    text = next_elem.get_text(strip=True)
+                    if text and len(text) > 2:
+                        points.append(text)
+                elif next_elem.name == 'h2':
+                    # 次のセクションに到達したら終了
+                    break
+                next_elem = next_elem.find_next_sibling()
+        
+        result['points'] = points
+        print(f'[scrape] ポイント: {len(points)}項目')
 
         # 主要フィールドをdetailsから抽出
         field_map = {
@@ -189,6 +288,7 @@ def save_to_supabase(data: dict) -> str:
         'lat': data.get('lat'),
         'lng': data.get('lng'),
         'details': data.get('details', {}),
+        'points': data.get('points', []),
     }
 
     body = json.dumps(payload).encode('utf-8')
@@ -283,11 +383,11 @@ class ScrapeHandler(BaseHTTPRequestHandler):
 
 
 if __name__ == '__main__':
-    PORT = 8765
+    PORT = int(os.environ.get('PORT', 8765))
     print(f'🚀 スクレイピングAPIサーバー起動中... http://localhost:{PORT}')
     print(f'   Supabase URL: {SUPABASE_URL[:40]}...' if SUPABASE_URL else '   ⚠️ Supabase URL未設定')
     print(f'   ヘルスチェック: http://localhost:{PORT}/health')
     print(f'   スクレイピング: POST http://localhost:{PORT}/scrape')
     print()
-    server = HTTPServer(('', PORT), ScrapeHandler)
+    server = HTTPServer(('0.0.0.0', PORT), ScrapeHandler)
     server.serve_forever()

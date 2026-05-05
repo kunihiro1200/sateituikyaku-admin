@@ -229,8 +229,10 @@ export default function PropertyPreviewPage() {
     showParking   && data.parking   && { label: '駐車場',   value: data.parking },
     showFeatures  && data.features  && { label: '設備',     value: data.features },
     data.details?.['販売スケジュール'] && { label: '販売スケジュール', value: data.details['販売スケジュール'] },
+    data.details?.['造成完成時期'] && { label: '造成完成時期', value: data.details['造成完成時期'] },
     data.details?.['引渡可能時期'] && { label: '引渡可能時期', value: data.details['引渡可能時期'] },
     data.details?.['完成時期'] && { label: '完成時期', value: data.details['完成時期'] },
+    data.details?.['モデルハウス情報'] && { label: 'モデルハウス情報', value: data.details['モデルハウス情報'] },
   ].filter(Boolean) as { label: string; value: string }[];
 
   return (
@@ -295,6 +297,22 @@ export default function PropertyPreviewPage() {
             <p style={{ fontSize: 14, lineHeight: 1.8, color: '#333', whiteSpace: 'pre-wrap' }}>
               {data.appeal_comment}
             </p>
+          </div>
+        )}
+
+        {/* ポイント（設備・仕様・構造） */}
+        {data.points && data.points.length > 0 && (
+          <div style={{ background: 'white', borderRadius: 10, padding: 20, marginBottom: 16, boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
+            <h2 style={{ fontSize: 15, fontWeight: 'bold', borderLeft: '4px solid #e84040', paddingLeft: 10, marginBottom: 14 }}>
+              👍 ポイント
+            </h2>
+            <div style={{ fontSize: 14, lineHeight: 1.8, color: '#333' }}>
+              {data.points.map((point, i) => (
+                <div key={i} style={{ marginBottom: 12 }}>
+                  <div style={{ fontWeight: 'bold', marginBottom: 4 }}>{point}</div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 

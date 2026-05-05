@@ -258,6 +258,7 @@ const BUYER_FIELD_SECTIONS: BuyerFieldSection[] = [
       { key: 'reception_date', label: '受付日', type: 'date', inlineEditable: true },
       { key: 'inquiry_source', label: '問合せ元', inlineEditable: true },
       { key: 'latest_status', label: '★最新状況', inlineEditable: true },
+      { key: 'project_assignee', label: '案件担当', inlineEditable: true, fieldType: 'staffSelect' },
       { key: 'neighbor_property_email_sent', label: '近隣物件送付メール', inlineEditable: true, fieldType: 'buttonSelect' },
       { key: 'distribution_type', label: '配信メール', inlineEditable: true, fieldType: 'buttonSelect', required: true },
       { key: 'pinrich', label: 'Pinrich', inlineEditable: true, fieldType: 'dropdown' },
@@ -3320,6 +3321,58 @@ TEL：097-533-2022`;
                                   </Button>
                                 );
                               })}
+                            </Box>
+                          </Box>
+                        </Grid>
+                      );
+                    }
+
+                    // project_assignee フィールドは特別処理（スタッフイニシャル選択）
+                    if (field.key === 'project_assignee') {
+                      return (
+                        <Grid item xs={12} key={`${section.title}-${field.key}`}>
+                          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                            <Typography variant="caption" color="text.secondary">
+                              {field.label}
+                            </Typography>
+                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                              {normalInitials.map((initial) => {
+                                const isSelected = buyer.project_assignee === initial;
+                                return (
+                                  <Button
+                                    key={initial}
+                                    size="small"
+                                    variant={isSelected ? 'contained' : 'outlined'}
+                                    color="primary"
+                                    onClick={async () => {
+                                      const newValue = isSelected ? '' : initial;
+                                      setBuyer((prev: any) => prev ? { ...prev, project_assignee: newValue } : prev);
+                                      // 即座に保存
+                                      await handleInlineFieldSave('project_assignee', newValue);
+                                    }}
+                                    sx={{
+                                      minWidth: 40,
+                                      px: 1.5,
+                                      py: 0.5,
+                                      fontWeight: isSelected ? 'bold' : 'normal',
+                                      borderRadius: 1,
+                                    }}
+                                  >
+                                    {initial}
+                                  </Button>
+                                );
+                              })}
+                              {/* 現在の値がリストにない場合も表示 */}
+                              {buyer.project_assignee && !normalInitials.includes(buyer.project_assignee) && (
+                                <Button
+                                  size="small"
+                                  variant="contained"
+                                  color="primary"
+                                  sx={{ minWidth: 40, px: 1.5, py: 0.5, fontWeight: 'bold', borderRadius: 1 }}
+                                >
+                                  {buyer.project_assignee}
+                                </Button>
+                              )}
                             </Box>
                           </Box>
                         </Grid>
