@@ -99,7 +99,7 @@ export default function PropertyPrintSheet({ data, onClose }: PropertyPrintSheet
             height: 210mm !important;
             overflow: hidden !important;
           }
-          .no-print {
+          .no-print, .original-content {
             display: none !important;
           }
           * {
@@ -126,9 +126,15 @@ export default function PropertyPrintSheet({ data, onClose }: PropertyPrintSheet
           }
         }
         @media screen {
-          body {
+          .print-sheet-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
             background: #666;
-            margin: 0;
+            z-index: 9998;
+            overflow: auto;
             padding: 20px;
           }
           .print-sheet {
@@ -140,47 +146,49 @@ export default function PropertyPrintSheet({ data, onClose }: PropertyPrintSheet
         }
       `}</style>
 
-      {/* 閉じるボタン（画面表示時のみ） */}
-      <Box className="no-print" sx={{ 
-        position: 'fixed', 
-        top: 20, 
-        right: 20, 
-        zIndex: 9999,
-        display: 'flex',
-        gap: 2
-      }}>
-        <button
-          onClick={() => window.print()}
-          style={{
-            padding: '10px 20px',
-            backgroundColor: '#666',
-            color: '#fff',
-            border: 'none',
-            borderRadius: '4px',
-            cursor: 'pointer',
-            fontSize: '14px'
-          }}
-        >
-          印刷
-        </button>
-        <button
-          onClick={onClose}
-          style={{
-            padding: '10px 20px',
-            backgroundColor: '#999',
-            color: '#fff',
-            border: 'none',
-            borderRadius: '4px',
-            cursor: 'pointer',
-            fontSize: '14px'
-          }}
-        >
-          閉じる
-        </button>
-      </Box>
+      {/* フルスクリーンオーバーレイ */}
+      <Box className="print-sheet-overlay">
+        {/* 閉じるボタン（画面表示時のみ） */}
+        <Box className="no-print" sx={{ 
+          position: 'fixed', 
+          top: 20, 
+          right: 20, 
+          zIndex: 9999,
+          display: 'flex',
+          gap: 2
+        }}>
+          <button
+            onClick={() => window.print()}
+            style={{
+              padding: '10px 20px',
+              backgroundColor: '#666',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              fontSize: '14px'
+            }}
+          >
+            印刷
+          </button>
+          <button
+            onClick={onClose}
+            style={{
+              padding: '10px 20px',
+              backgroundColor: '#999',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              fontSize: '14px'
+            }}
+          >
+            閉じる
+          </button>
+        </Box>
 
-      {/* A4横向き1枚のレイアウト */}
-      <Box className="print-sheet" sx={{ 
+        {/* A4横向き1枚のレイアウト */}
+        <Box className="print-sheet" sx={{ 
         width: '297mm',
         height: '210mm',
         maxWidth: '297mm',
@@ -411,6 +419,7 @@ export default function PropertyPrintSheet({ data, onClose }: PropertyPrintSheet
             </Box>
           </Grid>
         </Grid>
+      </Box>
       </Box>
     </>
   );
