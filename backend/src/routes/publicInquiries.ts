@@ -225,6 +225,17 @@ router.post(
         // 更新失敗してもユーザーにはエラーを返さない
       }
 
+      // サイドバーカウントを更新（非同期、ノンブロッキング）
+      try {
+        const { SidebarCountsUpdateService } = await import('../services/SidebarCountsUpdateService');
+        const sidebarService = new SidebarCountsUpdateService(supabase);
+        await sidebarService.updateBuyerSidebarCounts(buyerNumber, null);
+        console.log('[publicInquiries] Updated buyer sidebar counts for:', buyerNumber);
+      } catch (sidebarError: any) {
+        console.warn('[publicInquiries] Failed to update sidebar counts:', sidebarError.message);
+        // サイドバーカウント更新失敗してもユーザーにはエラーを返さない
+      }
+
       // property_inquiriesテーブルにも記録（履歴用）
       await supabase
         .from('property_inquiries')
