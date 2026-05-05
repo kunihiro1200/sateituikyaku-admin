@@ -193,7 +193,10 @@ router.post(
           created_datetime: receptionDate.toISOString(),
           created_at: receptionDate.toISOString(),
           updated_at: receptionDate.toISOString(),
-          is_deleted: false
+          is_deleted: false,
+          // 他社物件問合せとしてマーク（サイドバーカテゴリー用）
+          other_company_property: propertyAddress || propertyIdOrNumber,
+          inquiry_email_reply: '未' // 「他社物件問合せ未」カテゴリーに表示するため
         })
         .select()
         .single();

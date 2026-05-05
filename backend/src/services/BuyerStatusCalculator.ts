@@ -65,6 +65,7 @@ export interface BuyerData {
   price?: string | null;
   atbb_status?: string | null;
   seller_viewing_date_contact?: string | null;
+  other_company_property?: string | null; // 他社物件問合せ判定用
 }
 
 export interface StatusResult {
@@ -176,6 +177,12 @@ export function calculateBuyerStatus(buyer: BuyerData): StatusResult {
         )
       )
     ) {
+      // 他社物件問合せの場合は「他社物件問合せ未」として表示
+      if (isNotBlank(buyer.other_company_property)) {
+        const status = '他社物件問合せ未';
+        return { status, priority: 5, matchedCondition: '他社物件の問い合わせメールへの対応が未完了', color: getStatusColor(status) };
+      }
+      
       const status = '問合メール未対応';
       return { status, priority: 5, matchedCondition: '問い合わせメールへの対応が未完了', color: getStatusColor(status) };
     }

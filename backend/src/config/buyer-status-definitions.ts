@@ -17,6 +17,7 @@ export const STATUS_DEFINITIONS: StatusDefinition[] = [
   { priority: 2, status: '業者問合せあり', description: '業者向けアンケートが未回答', color: '#2e7d32' },
   { priority: 3, status: '内覧日前日', description: '内覧日の前日（木曜日は2日前）', color: '#388e3c' },
   { priority: 4, status: '内覧未確定', description: '内覧日が未確定', color: '#43a047' },
+  { priority: 5, status: '他社物件問合せ未', description: '他社物件の問い合わせメールへの対応が未完了', color: '#ff6f00' },
   { priority: 5, status: '問合せメール未対応', description: '問い合わせメールへの対応が未完了', color: '#43a047' },
   { priority: 6, status: '当日TEL', description: '次電日が当日以前', color: '#388e3c' },
   { priority: 7, status: '3回架電未', description: '3回架電が未完了', color: '#4caf50' },
