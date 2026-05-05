@@ -72,6 +72,7 @@ function PreviewInquiryForm({ title, address }: { title: string; address: string
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          propertyId: slug, // slugを物件IDとして送信
           name: form.name,
           email: form.email,
           phone: form.phone,
