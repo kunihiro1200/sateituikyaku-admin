@@ -172,7 +172,9 @@ export default function OtherCompanyDistributionPage() {
       '中古一戸建て': '戸建',
       '新築一戸建て': '戸建',
       '一戸建て': '戸建',
+      '戸建て': '戸建',
       '戸建': '戸建',
+      '戸': '戸建',
       '土地': '土地',
     };
     
