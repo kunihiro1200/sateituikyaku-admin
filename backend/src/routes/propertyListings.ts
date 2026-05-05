@@ -718,10 +718,45 @@ router.post('/:propertyNumber/send-distribution-emails', authenticate, async (re
       });
     }
 
+    // 買主番号から買主名を取得するマップを作成
+    const buyerNameMap: Record<string, string> = {};
+    const buyerNumbersToFetch = normalizedRecipients
+      .map(r => typeof r === 'string' ? undefined : r.buyerNumber)
+      .filter((bn): bn is string => !!bn);
+    
+    if (buyerNumbersToFetch.length > 0) {
+      try {
+        const { BuyerService } = await import('../services/BuyerService.supabase');
+        const buyerService = new BuyerService();
+        
+        for (const buyerNumber of buyerNumbersToFetch) {
+          try {
+            const buyer = await buyerService.getBuyer(buyerNumber);
+            if (buyer && buyer.name) {
+              buyerNameMap[buyerNumber] = buyer.name;
+            }
+          } catch (err) {
+            console.warn(`Failed to fetch buyer name for ${buyerNumber}:`, err);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to import BuyerService:', err);
+      }
+    }
+
     // 各受信者にメールを送信
     const results = await Promise.allSettled(
       normalizedRecipients.map(async (recipient) => {
         const email = typeof recipient === 'string' ? recipient : recipient.email;
+        const buyerNumber = typeof recipient === 'string' ? undefined : recipient.buyerNumber;
+        
+        // 買主名を取得（買主番号がある場合）、なければ「お客様」
+        const buyerName = buyerNumber && buyerNameMap[buyerNumber] ? buyerNameMap[buyerNumber] : 'お客様';
+        
+        // {buyerName}プレースホルダーを実際の買主名に置換
+        const personalizedSubject = subject.replace(/\{buyerName\}/g, buyerName);
+        const personalizedContent = content.replace(/\{buyerName\}/g, buyerName);
+        const personalizedHtmlBody = htmlBody ? htmlBody.replace(/\{buyerName\}/g, buyerName) : undefined;
 
         // 添付ファイルがある場合は各ソースに応じてデータを取得して添付付きで送信
         if (attachments && Array.isArray(attachments) && attachments.length > 0) {
@@ -784,8 +819,8 @@ router.post('/:propertyNumber/send-distribution-emails', authenticate, async (re
 
           return await emailService.sendEmailWithCcAndAttachments({
             to: email,
-            subject,
-            body: htmlBody || content,
+            subject: personalizedSubject,
+            body: personalizedHtmlBody || personalizedContent,
             from,
             attachments: emailAttachments,
             isHtml: !!htmlBody,
@@ -797,7 +832,7 @@ router.post('/:propertyNumber/send-distribution-emails', authenticate, async (re
         const dummySeller = {
           id: property.id,
           seller_number: propertyNumber,
-          name: '買主様',
+          name: buyerName,
           email: email,
           phone_number: '',
           property_address: property.property_address || '',
@@ -807,11 +842,11 @@ router.post('/:propertyNumber/send-distribution-emails', authenticate, async (re
 
         return await emailService.sendTemplateEmail(
           dummySeller as any,
-          subject,
-          content,
+          personalizedSubject,
+          personalizedContent,
           from,
           req.employee?.id || 'system',
-          htmlBody,
+          personalizedHtmlBody,
           from
         );
       })
@@ -859,6 +894,13 @@ router.post('/:propertyNumber/send-distribution-emails', authenticate, async (re
           const email = typeof recipient === 'string' ? recipient : recipient.email;
           const buyerNumber = typeof recipient === 'string' ? undefined : recipient.buyerNumber;
           
+          // 買主名を取得（買主番号がある場合）、なければ「お客様」
+          const buyerName = buyerNumber && buyerNameMap[buyerNumber] ? buyerNameMap[buyerNumber] : 'お客様';
+          
+          // {buyerName}プレースホルダーを実際の買主名に置換した本文を記録
+          const personalizedSubject = subject.replace(/\{buyerName\}/g, buyerName);
+          const personalizedContent = content.replace(/\{buyerName\}/g, buyerName);
+          
           // 買主番号がカンマ区切りの場合、分割して各買主番号ごとに記録
           const buyerNumbers = buyerNumber ? buyerNumber.split(',').map((n: string) => n.trim()) : [];
           
@@ -871,11 +913,11 @@ router.post('/:propertyNumber/send-distribution-emails', authenticate, async (re
                 propertyNumbers: [propertyNumber],
                 propertyAddresses: propertyAddresses,
                 recipientEmail: email,
-                subject,
+                subject: personalizedSubject,
                 templateName: '公開前・値下げメール',
                 senderEmail: from,
                 source: 'pre_public_price_reduction', // 送信元識別子
-                body: content, // メール本文を追加
+                body: personalizedContent, // 個別化されたメール本文を記録
                 createdBy: req.employee?.id || 'system',
               });
               console.log(`[send-distribution-emails] Successfully logged email for buyer: ${singleBuyerNumber}`);
@@ -888,11 +930,11 @@ router.post('/:propertyNumber/send-distribution-emails', authenticate, async (re
               propertyNumbers: [propertyNumber],
               propertyAddresses: propertyAddresses,
               recipientEmail: email,
-              subject,
+              subject: personalizedSubject,
               templateName: '公開前・値下げメール',
               senderEmail: from,
               source: 'pre_public_price_reduction', // 送信元識別子
-              body: content, // メール本文を追加
+              body: personalizedContent, // 個別化されたメール本文を記録
               createdBy: req.employee?.id || 'system',
             });
             console.log(`[send-distribution-emails] Successfully logged email for email: ${email}`);
