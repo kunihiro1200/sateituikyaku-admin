@@ -52,6 +52,7 @@ router.post('/send', async (req: Request, res: Response) => {
       subject,
       body: htmlBody || content,
       from,
+      isHtml: true, // HTMLメールとして送信
     });
 
     console.log('[TestEmail] Test email sent successfully');
