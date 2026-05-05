@@ -334,7 +334,7 @@ export class GoogleSheetsClient {
 
     // 買主リスト以外は従来通りスプレッドシートから取得
     this.ensureAuthenticated();
-    const range = `'${this.config.sheetName}'!1:1`;
+    const range = `${this.config.sheetName}!1:1`;
     console.log(`[GoogleSheetsClient.getHeaders] Fetching headers for sheet: ${this.config.sheetName}, range: ${range}`);
     
     const response = await this.sheets!.spreadsheets.values.get({
@@ -388,7 +388,7 @@ export class GoogleSheetsClient {
     return await sheetsRateLimiter.executeRequest(async () => {
       // Google Sheets APIの仕様：シート名のみでは受け付けないため、範囲指定を追加
       // A:FZ = 158列まで（買主リストの全列）
-      const range = `'${this.config.sheetName}'!A:FZ`;
+      const range = `${this.config.sheetName}!A:FZ`;
       console.log('[GoogleSheetsClient.readAll] Range:', range);
       
       const response = await this.sheets!.spreadsheets.values.get({
@@ -511,7 +511,8 @@ export class GoogleSheetsClient {
     
     await sheetsRateLimiter.executeRequest(async () => {
       const values = await this.objectToRow(row);
-      const range = `'${this.config.sheetName}'!A:A`;
+      // シングルクォートなしで範囲指定（Google Sheets API仕様）
+      const range = `${this.config.sheetName}!A:A`;
 
       await this.sheets!.spreadsheets.values.append({
         spreadsheetId: this.config.spreadsheetId,
