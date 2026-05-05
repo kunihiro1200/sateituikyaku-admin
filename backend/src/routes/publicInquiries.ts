@@ -130,18 +130,37 @@ router.post(
       }
 
       // 買主番号を採番（buyersテーブルから最新の番号を取得）
-      const { data: latestBuyer } = await supabase
+      // buyer_numberはTEXT型なので、数値として扱うためにCASTする
+      const { data: buyers, error: buyerError } = await supabase
         .from('buyers')
         .select('buyer_number')
         .not('buyer_number', 'is', null)
-        .order('buyer_number', { ascending: false })
-        .limit(1)
-        .single();
+        .order('created_at', { ascending: false })
+        .limit(100); // 最新100件を取得
 
-      // 最新の買主番号+1、または存在しない場合は1から開始
-      const nextBuyerNumber = latestBuyer?.buyer_number 
-        ? (parseInt(latestBuyer.buyer_number, 10) + 1).toString()
-        : '1';
+      console.log('[publicInquiries] Latest buyers query result:', { 
+        count: buyers?.length,
+        buyerError,
+        sample: buyers?.slice(0, 5)
+      });
+
+      // 数値として解析できる買主番号のみを抽出し、最大値を取得
+      let maxBuyerNumber = 0;
+      if (buyers && buyers.length > 0) {
+        for (const buyer of buyers) {
+          const parsed = parseInt(buyer.buyer_number, 10);
+          if (!isNaN(parsed) && parsed > maxBuyerNumber) {
+            maxBuyerNumber = parsed;
+          }
+        }
+      }
+
+      const nextBuyerNumber = (maxBuyerNumber + 1).toString();
+      
+      console.log('[publicInquiries] Buyer number calculation:', { 
+        maxBuyerNumber, 
+        nextBuyerNumber 
+      });
       
       const buyerNumber = nextBuyerNumber;
       
