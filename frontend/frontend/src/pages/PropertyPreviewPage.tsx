@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import api from '../services/api';
+import PropertyPrintSheet from '../components/PropertyPrintSheet';
 
 interface PreviewData {
   slug: string;
@@ -171,6 +172,7 @@ export default function PropertyPreviewPage() {
   const [imgIndex, setImgIndex] = useState(0);
   const [showProvider, setShowProvider] = useState(false);
   const [imageTab, setImageTab] = useState<'all' | 'layout' | 'exterior'>('all');
+  const [showPrintSheet, setShowPrintSheet] = useState(false);
 
   useEffect(() => {
     if (!slug) return;
@@ -385,7 +387,7 @@ export default function PropertyPreviewPage() {
           <div style={{ fontSize: 13, color: '#666', marginBottom: 2 }}>大分市舞鶴町1-3-30 STビル１F</div>
           {/* 印刷ボタン（目立たない小さな丸ボタン・右下隅） */}
           <button
-            onClick={() => window.print()}
+            onClick={() => setShowPrintSheet(true)}
             title="印刷"
             style={{
               position: 'absolute', bottom: 10, right: 12,
@@ -462,6 +464,14 @@ export default function PropertyPreviewPage() {
         <PreviewInquiryForm title={data.title || ''} address={data.address || ''} slug={slug || ''} sourceUrl={data.source_url || ''} />
 
       </div>
+
+      {/* 印刷シート（モーダル表示） */}
+      {showPrintSheet && data && (
+        <PropertyPrintSheet 
+          data={data} 
+          onClose={() => setShowPrintSheet(false)} 
+        />
+      )}
 
       {/* 印刷用スタイル */}
       <style>{`
