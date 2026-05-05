@@ -171,6 +171,7 @@ export default function OtherCompanyDistributionPage() {
       'マンション': 'マンション',
       '中古一戸建て': '戸建',
       '新築一戸建て': '戸建',
+      '未入居一戸建て': '戸建',
       '一戸建て': '戸建',
       '戸建て': '戸建',
       '戸建': '戸建',
