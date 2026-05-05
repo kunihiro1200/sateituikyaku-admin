@@ -129,8 +129,21 @@ router.post(
         }
       }
 
-      // 買主番号を採番（タイムスタンプベース）
-      const buyerNumber = (Date.now() % 1000000).toString();
+      // 買主番号を採番（buyersテーブルから最新の番号を取得）
+      const { data: latestBuyer } = await supabase
+        .from('buyers')
+        .select('buyer_number')
+        .not('buyer_number', 'is', null)
+        .order('buyer_number', { ascending: false })
+        .limit(1)
+        .single();
+
+      // 最新の買主番号+1、または存在しない場合は1から開始
+      const nextBuyerNumber = latestBuyer?.buyer_number 
+        ? (parseInt(latestBuyer.buyer_number, 10) + 1).toString()
+        : '1';
+      
+      const buyerNumber = nextBuyerNumber;
       
       // buyer_idを生成（buyer_number + タイムスタンプ）
       const buyerId = `buyer_${buyerNumber}_${Date.now()}`;
