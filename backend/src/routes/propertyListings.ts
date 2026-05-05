@@ -726,7 +726,7 @@ router.post('/:propertyNumber/send-distribution-emails', authenticate, async (re
     
     if (buyerNumbersToFetch.length > 0) {
       try {
-        const { BuyerService } = await import('../services/BuyerService.supabase');
+        const { BuyerService } = await import('../services/BuyerService');
         const buyerService = new BuyerService();
         
         for (const buyerNumber of buyerNumbersToFetch) {
