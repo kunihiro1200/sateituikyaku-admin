@@ -142,6 +142,26 @@ export class BuyerWriteService {
       // Apply second inquiry rule before writing to spreadsheet
       updates = this.applySecondInquiryRule(updates);
 
+      // スプレッドシートにマッピングが存在しないフィールドを除外
+      const filteredUpdates: Record<string, any> = {};
+      for (const [dbColumn, value] of Object.entries(updates)) {
+        const spreadsheetColumn = this.columnMapper.getSpreadsheetColumnName(dbColumn);
+        if (spreadsheetColumn) {
+          filteredUpdates[dbColumn] = value;
+        } else {
+          console.log(`[BuyerWriteService] Skipping field without spreadsheet mapping: ${dbColumn}`);
+        }
+      }
+
+      // マッピングが存在するフィールドがない場合は成功として扱う
+      if (Object.keys(filteredUpdates).length === 0) {
+        console.log(`[BuyerWriteService] No fields to sync to spreadsheet (all fields skipped)`);
+        return {
+          success: true,
+          rowNumber: undefined
+        };
+      }
+
       // 行番号を検索
       const rowNumber = await this.findRowByBuyerNumber(buyerNumber);
       
@@ -156,7 +176,7 @@ export class BuyerWriteService {
       console.log(`[BuyerWriteService] Found buyer at row ${rowNumber}`);
 
       // 変更フィールドのみをスプシに書き込み（数式を壊さないよう部分更新）
-      const formattedValues = this.columnMapper.mapDatabaseToSpreadsheet(updates);
+      const formattedValues = this.columnMapper.mapDatabaseToSpreadsheet(filteredUpdates);
       console.log(`[BuyerWriteService] Formatted values for spreadsheet:`, JSON.stringify(formattedValues, null, 2));
       
       await this.sheetsClient.updateRowPartial(rowNumber, formattedValues);
