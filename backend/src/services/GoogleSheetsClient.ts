@@ -313,8 +313,8 @@ export class GoogleSheetsClient {
     }
 
     this.ensureAuthenticated();
-    // シングルクォートなしで試す（日本語シート名の場合、APIが正しく解釈できない可能性がある）
-    const range = `${this.config.sheetName}!A1:FZ1`;
+    // 公開物件サイトで動作しているバージョンに戻す
+    const range = `'${this.config.sheetName}'!1:1`;
     console.log(`[GoogleSheetsClient.getHeaders] Fetching headers for sheet: ${this.config.sheetName}, range: ${range}`);
     
     const response = await this.sheets!.spreadsheets.values.get({
@@ -368,7 +368,7 @@ export class GoogleSheetsClient {
     return await sheetsRateLimiter.executeRequest(async () => {
       // Google Sheets APIの仕様：シート名のみでは受け付けないため、範囲指定を追加
       // A:FZ = 158列まで（買主リストの全列）
-      const range = `${this.config.sheetName}!A:FZ`;
+      const range = `'${this.config.sheetName}'!A:FZ`;
       console.log('[GoogleSheetsClient.readAll] Range:', range);
       
       const response = await this.sheets!.spreadsheets.values.get({
@@ -491,7 +491,7 @@ export class GoogleSheetsClient {
     
     await sheetsRateLimiter.executeRequest(async () => {
       const values = await this.objectToRow(row);
-      const range = `${this.config.sheetName}!A:A`;
+      const range = `'${this.config.sheetName}'!A:A`;
 
       await this.sheets!.spreadsheets.values.append({
         spreadsheetId: this.config.spreadsheetId,
