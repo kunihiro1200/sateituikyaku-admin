@@ -9,6 +9,7 @@ import {
   Grid,
   Chip,
   Button,
+  Badge,
   Divider,
   CircularProgress,
   IconButton,
@@ -1817,14 +1818,35 @@ TEL：097-533-2022`;
           >
             希望条件
           </Button>
-          <Button
-            variant="outlined"
-            color="success"
-            size="small"
-            onClick={() => handleNavigate(`/buyers/${buyer_number}/viewing-result`)}
-          >
-            内覧
-          </Button>
+          {(() => {
+            const vd = buyer?.viewing_date;
+            const hasViewingDate = Boolean(vd && String(vd).trim() !== '');
+            const viewingDateLabel = (() => {
+              if (!hasViewingDate) return '';
+              const d = new Date(String(vd));
+              if (isNaN(d.getTime())) return `内覧日: ${String(vd)}`;
+              return `内覧日: ${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;
+            })();
+            return (
+              <Tooltip title={viewingDateLabel} placement="top">
+                <Badge
+                  variant="dot"
+                  color="error"
+                  invisible={!hasViewingDate}
+                  sx={{ '& .MuiBadge-dot': { width: 10, height: 10, borderRadius: '50%', top: 4, right: 4 } }}
+                >
+                  <Button
+                    variant="outlined"
+                    color="success"
+                    size="small"
+                    onClick={() => handleNavigate(`/buyers/${buyer_number}/viewing-result`)}
+                  >
+                    内覧
+                  </Button>
+                </Badge>
+              </Tooltip>
+            );
+          })()}
 
           <Divider orientation="vertical" flexItem sx={{ mx: 0.5 }} />
 

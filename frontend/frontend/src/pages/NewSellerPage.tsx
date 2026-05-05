@@ -329,21 +329,17 @@ export default function NewSellerPage() {
     e.preventDefault();
     setError('');
 
-    // 次電日未入力の場合は確認ダイアログを表示
-    if (!nextCallDate && !nextCallDateConfirmOpen) {
-      setNextCallDateConfirmOpen(true);
-      return;
-    }
-    setNextCallDateConfirmOpen(false);
-
-    // バリデーション
+    // バリデーション（必須項目チェック）
     const missingFields: string[] = [];
     if (!name) missingFields.push('名前');
     if (!phoneNumber) missingFields.push('電話番号');
     if (!propertyAddress) missingFields.push('物件所在地');
     if (!propertyType) missingFields.push('物件種別');
+    if (!structure) missingFields.push('構造');
+    if (!landArea) missingFields.push('土地面積');
+    if (!buildYear) missingFields.push('築年');
     if (!confidence) missingFields.push('確度');
-    if (!site) missingFields.push('サイト');
+    if (!nextCallDate) missingFields.push('次電日');
 
     if (missingFields.length > 0) {
       setValidationError(missingFields);
@@ -723,6 +719,7 @@ export default function NewSellerPage() {
               <Grid item xs={12} sm={6}>
                 <TextField
                   fullWidth
+                  required
                   select
                   label="構造"
                   value={structure}
@@ -739,6 +736,7 @@ export default function NewSellerPage() {
               <Grid item xs={12} sm={6}>
                 <TextField
                   fullWidth
+                  required
                   label="土地面積（㎡）"
                   type="number"
                   value={landArea}
@@ -789,6 +787,7 @@ export default function NewSellerPage() {
               <Grid item xs={12} sm={6}>
                 <TextField
                   fullWidth
+                  required
                   label="築年"
                   type="number"
                   value={buildYear}
@@ -1019,6 +1018,7 @@ export default function NewSellerPage() {
               <Grid item xs={12} sm={6} sx={{ backgroundColor: '#fff9c4', borderRadius: 1, p: 1 }}>
                 <TextField
                   fullWidth
+                  required
                   label="次電日"
                   type="date"
                   value={nextCallDate}
@@ -1201,27 +1201,7 @@ export default function NewSellerPage() {
             </DialogActions>
           </Dialog>
 
-          {/* 次電日未入力確認ダイアログ */}
-          <Dialog open={nextCallDateConfirmOpen} onClose={() => setNextCallDateConfirmOpen(false)}>
-            <DialogTitle>次電日が未入力です</DialogTitle>
-            <DialogContent>
-              <Typography>次電日が入力されていませんがよろしいですか？</Typography>
-            </DialogContent>
-            <DialogActions>
-              <Button onClick={() => setNextCallDateConfirmOpen(false)}>戻る</Button>
-              <Button
-                variant="contained"
-                onClick={async () => {
-                  setNextCallDateConfirmOpen(false);
-                  // フォームを直接送信
-                  const fakeEvent = { preventDefault: () => {} } as React.FormEvent;
-                  await handleSubmit(fakeEvent);
-                }}
-              >
-                このまま登録する
-              </Button>
-            </DialogActions>
-          </Dialog>
+
 
           <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
             <Button

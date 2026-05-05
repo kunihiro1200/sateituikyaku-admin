@@ -60,7 +60,9 @@ const REINS_FIELDS: {
 
 function buildEmailBody(sellerName: string, suumoUrl: string): string {
   const suumoLine = suumoUrl ? `■SUUMO\n${suumoUrl}` : '■SUUMO';
-  return `${sellerName}様
+  // seller_name に既に「様」が含まれている場合は重複しないようにする
+  const nameWithSama = sellerName.endsWith('様') ? sellerName : `${sellerName}様`;
+  return `${nameWithSama}
 
 お世話になっております。
 株式会社いふうです。

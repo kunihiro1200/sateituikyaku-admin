@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>スクレイピングURL重複チェックAPIテスト</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        .container {
+            border: 1px solid #ddd;
+            padding: 20px;
+            border-radius: 8px;
+        }
+        input {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 4px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        .success {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .warning {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>スクレイピングURL重複チェックAPIテスト</h1>
+        
+        <h2>1. URLで重複チェック</h2>
+        <input type="text" id="urlInput" placeholder="https://www.athome.co.jp/mansion/6990582043/" value="https://www.athome.co.jp/mansion/6990582043/">
+        <button onclick="checkDuplicateByUrl()">URLで重複チェック</button>
+        
+        <h2>2. 物件番号で重複チェック</h2>
+        <input type="text" id="propertyNumberInput" placeholder="6990582043" value="6990582043">
+        <button onclick="checkDuplicateByPropertyNumber()">物件番号で重複チェック</button>
+        
+        <h2>3. URLを保存</h2>
+        <input type="text" id="saveUrlInput" placeholder="元のURL" value="https://www.athome.co.jp/mansion/6990582043/">
+        <input type="text" id="referenceUrlInput" placeholder="参照元URL" value="https://www.athome.co.jp/kodate/1168173407">
+        <input type="text" id="scrapedResultUrlInput" placeholder="スクレイピング後のURL" value="https://sateituikyaku-admin-frontend.vercel.app/property-preview/9b57f5f1e9">
+        <input type="text" id="propertyNumberSaveInput" placeholder="物件番号" value="6990582043">
+        <button onclick="saveScrapedUrl()">URLを保存</button>
+        
+        <div id="result"></div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:3000/api/scraped-urls';
+
+        async function checkDuplicateByUrl() {
+            const url = document.getElementById('urlInput').value;
+            const resultDiv = document.getElementById('result');
+            
+            resultDiv.innerHTML = '<div class="result">チェック中...</div>';
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/check-duplicate`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ url }),
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    const isDuplicate = data.data.isDuplicate;
+                    const className = isDuplicate ? 'warning' : 'success';
+                    resultDiv.innerHTML = `<div class="result ${className}">${JSON.stringify(data, null, 2)}</div>`;
+                } else {
+                    resultDiv.innerHTML = `<div class="result error">${JSON.stringify(data, null, 2)}</div>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="result error">エラー: ${error.message}</div>`;
+            }
+        }
+
+        async function checkDuplicateByPropertyNumber() {
+            const propertyNumber = document.getElementById('propertyNumberInput').value;
+            const resultDiv = document.getElementById('result');
+            
+            resultDiv.innerHTML = '<div class="result">チェック中...</div>';
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/check-duplicate-by-property-number`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ 
+                        propertyNumber,
+                        sourceSite: 'athome'
+                    }),
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    const isDuplicate = data.data.isDuplicate;
+                    const className = isDuplicate ? 'warning' : 'success';
+                    resultDiv.innerHTML = `<div class="result ${className}">${JSON.stringify(data, null, 2)}</div>`;
+                } else {
+                    resultDiv.innerHTML = `<div class="result error">${JSON.stringify(data, null, 2)}</div>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="result error">エラー: ${error.message}</div>`;
+            }
+        }
+
+        async function saveScrapedUrl() {
+            const url = document.getElementById('saveUrlInput').value;
+            const referenceUrl = document.getElementById('referenceUrlInput').value;
+            const scrapedResultUrl = document.getElementById('scrapedResultUrlInput').value;
+            const propertyNumber = document.getElementById('propertyNumberSaveInput').value;
+            const resultDiv = document.getElementById('result');
+            
+            resultDiv.innerHTML = '<div class="result">保存中...</div>';
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        url,
+                        referenceUrl,
+                        scrapedResultUrl,
+                        propertyNumber,
+                        sourceSite: 'athome',
+                        title: '季の坂パークホームズ弐番館 801 ４ＬＤＫ',
+                        price: '2,190万円',
+                        address: '大分県大分市季の坂２丁目'
+                    }),
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    resultDiv.innerHTML = `<div class="result success">${JSON.stringify(data, null, 2)}</div>`;
+                } else {
+                    resultDiv.innerHTML = `<div class="result error">${JSON.stringify(data, null, 2)}</div>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="result error">エラー: ${error.message}</div>`;
+            }
+        }
+    </script>
+</body>
+</html>

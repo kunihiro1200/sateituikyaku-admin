@@ -128,6 +128,7 @@ app.use(cors({
     'http://localhost:5174',
     'http://localhost:5175',
     'http://localhost:3000',
+    'http://localhost:8080',
     'https://new-admin-management-system-v2.vercel.app',
     'https://sateituikyaku-admin-frontend.vercel.app',
     'https://property-site-frontend-kappa.vercel.app',
