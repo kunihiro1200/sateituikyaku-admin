@@ -195,7 +195,8 @@ router.post(
           updated_at: receptionDate.toISOString(),
           is_deleted: false,
           // 他社物件問合せとしてマーク（サイドバーカテゴリー用）
-          other_company_property: propertyAddress || propertyIdOrNumber,
+          // フォームから送信された物件住所を使用（propertyAddressパラメータ）
+          other_company_property: (inquiryData as any).propertyAddress || propertyAddress || null,
           inquiry_email_reply: '未' // 「他社物件問合せ未」カテゴリーに表示するため
         })
         .select()
