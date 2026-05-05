@@ -513,11 +513,14 @@ export class GoogleSheetsClient {
     await sheetsRateLimiter.executeRequest(async () => {
       const values = await this.objectToRow(row);
       
-      // シートIDが指定されている場合は、A1記法ではなくシートIDを使用
+      // 日本語シート名の場合は、シートIDを使用してA1記法で範囲指定
       let range: string;
       if (this.config.sheetId !== undefined) {
-        // シートIDを使用（日本語シート名の問題を回避）
-        range = `'${this.config.sheetName}'`;
+        // シートIDを使用してA1記法で範囲指定
+        // Google Sheets APIは gid= パラメータをサポートしていないため、
+        // シート名を使用する必要がある
+        // 回避策：シート名をエンコードせずに使用
+        range = `${this.config.sheetName}!A:A`;
         console.log(`[GoogleSheetsClient.appendRow] Using sheetId: ${this.config.sheetId}, range: ${range}`);
       } else {
         // 従来通りシート名を使用
