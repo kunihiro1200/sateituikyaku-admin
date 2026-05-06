@@ -13,9 +13,16 @@ import os
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 
-# Supabase接続情報（backend/.envから読み込み）
+# Supabase接続情報（環境変数から読み込み）
 def load_env():
     env = {}
+    # まず環境変数から読み込む（Railway用）
+    if os.environ.get('SUPABASE_URL'):
+        env['SUPABASE_URL'] = os.environ.get('SUPABASE_URL')
+        env['SUPABASE_SERVICE_KEY'] = os.environ.get('SUPABASE_SERVICE_KEY', '')
+        return env
+    
+    # 環境変数がない場合は.envファイルから読み込む（ローカル開発用）
     env_path = os.path.join(os.path.dirname(__file__), 'backend', '.env')
     try:
         with open(env_path, encoding='utf-8') as f:
@@ -32,12 +39,15 @@ ENV = load_env()
 SUPABASE_URL = ENV.get('SUPABASE_URL', '')
 SUPABASE_SERVICE_KEY = ENV.get('SUPABASE_SERVICE_KEY', '')
 
+# デバッグ用ログ
+print(f'[ENV] SUPABASE_URL: {SUPABASE_URL[:40]}...' if SUPABASE_URL else '[ENV] SUPABASE_URL: NOT SET')
+print(f'[ENV] SUPABASE_SERVICE_KEY: {"SET" if SUPABASE_SERVICE_KEY else "NOT SET"}')
+
 
 async def scrape_athome(url: str) -> dict:
     """athomeページをスクレイピングして物件情報を返す"""
     from playwright.async_api import async_playwright
-    from playwright_stealth import Stealth
-    from bs4 import BeautifulSoup
+        from bs4 import BeautifulSoup
 
     # URLからクリーンなベースURLを取得
     parsed = urlparse(url)
@@ -53,10 +63,10 @@ async def scrape_athome(url: str) -> dict:
         'images': [], 'lat': None, 'lng': None, 'details': {}, 'points': [],
     }
 
-    async with Stealth().use_async(async_playwright()) as p:
-        browser = await p.chromium.launch(headless=True)
+    async with async_playwright() as p:
+        browser = await p.firefox.launch(headless=True)
         context = await browser.new_context(
-            user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+            user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/115.0',
             viewport={'width': 1280, 'height': 800},
             locale='ja-JP',
         )
@@ -148,13 +158,30 @@ async def scrape_athome(url: str) -> dict:
         result['images'] = images
         print(f'[scrape] 画像: {len(images)}枚')
 
-        # 緯度経度
-        lats = list(set(re.findall(r'3[0-9]\.\d{5,}', html)))
-        lngs = list(set(re.findall(r'13[0-9]\.\d{5,}', html)))
-        if lats:
-            result['lat'] = float(lats[0])
-        if lngs:
-            result['lng'] = float(lngs[0])
+        # 緯度経度（改善版：Google Maps APIのパラメータから取得）
+        # Google MapsのURLパラメータから座標を抽出
+        lat_lng_match = re.search(r'center=([0-9.]+),([0-9.]+)', html)
+        if lat_lng_match:
+            result['lat'] = float(lat_lng_match.group(1))
+            result['lng'] = float(lat_lng_match.group(2))
+        else:
+            # フォールバック：HTMLから数値パターンで抽出
+            # 緯度: 30-45の範囲、経度: 120-150の範囲
+            lat_candidates = re.findall(r'\b(3[0-9]|4[0-5])\.\d{6,}\b', html)
+            lng_candidates = re.findall(r'\b(12[0-9]|13[0-9]|14[0-9])\.\d{6,}\b', html)
+            
+            # 重複を削除し、最も精度の高いものを選択
+            if lat_candidates:
+                lat_candidates = list(set(lat_candidates))
+                lat_candidates.sort(key=lambda x: len(x.split('.')[1]) if '.' in x else 0, reverse=True)
+                result['lat'] = float(lat_candidates[0])
+            
+            if lng_candidates:
+                lng_candidates = list(set(lng_candidates))
+                lng_candidates.sort(key=lambda x: len(x.split('.')[1]) if '.' in x else 0, reverse=True)
+                result['lng'] = float(lng_candidates[0])
+        
+        print(f'[scrape] 座標: lat={result["lat"]}, lng={result["lng"]}')
 
         # 詳細テーブル（物件概要を含む）
         details = {}
@@ -221,8 +248,8 @@ async def scrape_athome(url: str) -> dict:
                         if text and len(text) > 2:  # 2文字以上
                             points.append(text)
                 elif next_elem.name == 'div':
-                    # div内の<p class="point-text">を明示的に取得
-                    point_texts = next_elem.find_all('p', class_='point-text')
+                    # div内の<p class="point-text">を柔軟に取得（ngcontent属性対応）
+                    point_texts = next_elem.find_all('p', class_=lambda x: x and 'point-text' in x)
                     if point_texts:
                         for p in point_texts:
                             text = p.get_text(strip=True)
@@ -245,8 +272,8 @@ async def scrape_athome(url: str) -> dict:
                     break
                 next_elem = next_elem.find_next_sibling()
         
-        # point-textクラスを持つ全てのp要素を取得（セクション外にある場合も対応）
-        all_point_texts = soup.find_all('p', class_='point-text')
+        # point-textクラスを持つ全てのp要素を取得（セクション外にある場合も対応、ngcontent属性対応）
+        all_point_texts = soup.find_all('p', class_=lambda x: x and 'point-text' in x)
         for p in all_point_texts:
             text = p.get_text(strip=True)
             if text and len(text) > 2 and text not in points:
@@ -279,7 +306,7 @@ async def scrape_athome(url: str) -> dict:
     return result
 
 
-def save_to_supabase(data: dict) -> str:
+def save_to_supabase(data: dict, is_tateuri: bool = False) -> str:
     """Supabaseにデータを保存してslugを返す"""
     import urllib.request
 
@@ -304,6 +331,8 @@ def save_to_supabase(data: dict) -> str:
         'lng': data.get('lng'),
         'details': data.get('details', {}),
         'points': data.get('points', []),
+        'is_tateuri': is_tateuri,  # 建売専門HP用フラグ
+        'is_active': True,  # デフォルトでアクティブ
     }
 
     body = json.dumps(payload).encode('utf-8')
@@ -361,16 +390,17 @@ class ScrapeHandler(BaseHTTPRequestHandler):
         try:
             req_data = json.loads(body)
             url = req_data.get('url', '').strip()
+            is_tateuri = req_data.get('is_tateuri', False)  # 建売専門HP用フラグ
             if not url:
                 raise ValueError('URLが指定されていません')
 
-            print(f'[scrape] リクエスト受信: {url}')
+            print(f'[scrape] リクエスト受信: {url} (is_tateuri={is_tateuri})')
 
             # スクレイピング実行
             data = asyncio.run(scrape_athome(url))
 
             # Supabaseに保存
-            slug = save_to_supabase(data)
+            slug = save_to_supabase(data, is_tateuri=is_tateuri)
 
             # レスポンス
             response = {
@@ -399,10 +429,19 @@ class ScrapeHandler(BaseHTTPRequestHandler):
 
 if __name__ == '__main__':
     PORT = int(os.environ.get('PORT', 8765))
-    print(f'🚀 スクレイピングAPIサーバー起動中... http://localhost:{PORT}')
-    print(f'   Supabase URL: {SUPABASE_URL[:40]}...' if SUPABASE_URL else '   ⚠️ Supabase URL未設定')
-    print(f'   ヘルスチェック: http://localhost:{PORT}/health')
-    print(f'   スクレイピング: POST http://localhost:{PORT}/scrape')
-    print()
+    
+    # 環境変数を強制的に出力（バッファリング無効化）
+    import sys
+    sys.stdout.flush()
+    print('=' * 50, flush=True)
+    print('🚀 スクレイピングAPIサーバー起動中...', flush=True)
+    print(f'   Port: {PORT}', flush=True)
+    print(f'   Supabase URL: {SUPABASE_URL[:40]}...' if SUPABASE_URL else '   ⚠️ Supabase URL未設定', flush=True)
+    print(f'   Supabase Key: {"SET ✓" if SUPABASE_SERVICE_KEY else "NOT SET ✗"}', flush=True)
+    print(f'   ヘルスチェック: http://localhost:{PORT}/health', flush=True)
+    print(f'   スクレイピング: POST http://localhost:{PORT}/scrape', flush=True)
+    print('=' * 50, flush=True)
+    sys.stdout.flush()
+    
     server = HTTPServer(('0.0.0.0', PORT), ScrapeHandler)
     server.serve_forever()
