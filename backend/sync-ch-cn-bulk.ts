@@ -38,6 +38,7 @@ async function main() {
     .gte('reception_date', '2026-04-01')
     .not('property_number', 'is', null)
     .neq('property_number', '')
+    .is('deleted_at', null)
     .order('reception_date', { ascending: true });
 
   if (error) {
@@ -49,6 +50,36 @@ async function main() {
   if (!buyers || buyers.length === 0) {
     console.log('対象データなし。終了します。');
     return;
+  }
+
+  // property_listingsからviewing_key（鍵等）を取得してkey_infoに補完する
+  // property_listingsにはkey_infoカラムがなく、viewing_keyカラムが対応している
+  const propertyNumbers = [...new Set(buyers.map(b => b.property_number).filter(Boolean))];
+  const propertyKeyMap: Record<string, string | null> = {};
+  if (propertyNumbers.length > 0) {
+    const { data: propertyListings } = await supabase
+      .from('property_listings')
+      .select('property_number, viewing_key')
+      .in('property_number', propertyNumbers);
+    for (const pl of propertyListings ?? []) {
+      propertyKeyMap[pl.property_number] = pl.viewing_key ?? null;
+    }
+    console.log(`✅ property_listings取得完了（${propertyListings?.length ?? 0}件）\n`);
+  }
+
+  // key_infoがnullの買主にproperty_listingsのviewing_keyを補完
+  for (const buyer of buyers) {
+    if ((buyer.key_info === null || buyer.key_info === undefined || buyer.key_info === '') && buyer.property_number) {
+      const viewingKey = propertyKeyMap[buyer.property_number];
+      if (viewingKey) {
+        buyer.key_info = viewingKey;
+        // DBにも保存
+        await supabase
+          .from('buyers')
+          .update({ key_info: viewingKey })
+          .eq('buyer_number', buyer.buyer_number);
+      }
+    }
   }
 
   // Google Sheets認証（BuyerSyncServiceと同じ方法）

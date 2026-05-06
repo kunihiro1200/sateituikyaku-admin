@@ -954,7 +954,7 @@ export class BuyerService {
       try {
         const { data: propertyListing, error: propertyError } = await this.supabase
           .from('property_listings')
-          .select('address, display_address, price, sales_assignee, pre_viewing_notes, sale_reason, price_reduction_history, viewing_notes, parking, viewing_parking')
+          .select('address, display_address, price, sales_assignee, pre_viewing_notes, viewing_key, sale_reason, price_reduction_history, viewing_notes, parking, viewing_parking')
           .eq('property_number', allowedData.property_number)
           .maybeSingle();
 
@@ -965,6 +965,7 @@ export class BuyerService {
           allowedData.price = propertyListing.price ?? null;
           allowedData.property_assignee = propertyListing.sales_assignee ?? null;
           allowedData.pre_viewing_notes = propertyListing.pre_viewing_notes ?? null;
+          allowedData.key_info = propertyListing.viewing_key ?? null; // CI列: 鍵等（property_listingsのviewing_keyカラム）
           allowedData.sale_reason = propertyListing.sale_reason ?? null;
           allowedData.price_reduction_history = propertyListing.price_reduction_history ?? null;
           allowedData.viewing_notes = propertyListing.viewing_notes ?? null;
