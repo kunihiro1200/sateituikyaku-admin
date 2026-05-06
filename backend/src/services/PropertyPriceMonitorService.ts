@@ -246,7 +246,7 @@ export class PropertyPriceMonitorService {
     const emailService = new EmailService();
 
     await emailService.sendEmail({
-      to: 'tenant@ifoo-oita.com',
+      to: ['tenant@ifoo-oita.com'],
       subject: `【価格変動通知】建売専門HP 価格変動 ${changes.length}件`,
       body: emailBody,
     });
