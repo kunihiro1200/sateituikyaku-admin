@@ -78,7 +78,7 @@ const PurchaseApplicationPrintSheet = React.forwardRef<HTMLDivElement, PurchaseA
           <TableRow label="メールアドレス" value="" />
           <TableRow label="契約名義人氏名" value="" />
           <TableRow label="勤務先" value="" />
-          <TableRow label="勤続年数" value="" suffix="年収" isLastRow />
+          <TableRowSplit leftLabel="勤続年数" rightLabel="年収" isLastRow />
         </Box>
 
         {/* 仲介業者情報 */}
@@ -295,6 +295,58 @@ function TableRow({
           )}
         </Box>
       )}
+    </Box>
+  );
+}
+
+function TableRowSplit({
+  leftLabel,
+  rightLabel,
+  isLastRow,
+}: {
+  leftLabel: string;
+  rightLabel: string;
+  isLastRow?: boolean;
+}) {
+  return (
+    <Box
+      sx={{
+        display: 'flex',
+        alignItems: 'center',
+        borderBottom: isLastRow ? 'none' : '1px solid #000',
+        minHeight: '32px',
+      }}
+    >
+      {/* 左ラベル: 勤続年数 */}
+      <Box
+        sx={{
+          width: '140px',
+          px: 1,
+          py: 0.5,
+          borderRight: '1px solid #000',
+          fontSize: '9pt',
+        }}
+      >
+        <Typography sx={{ fontSize: '9pt' }}>{leftLabel}</Typography>
+      </Box>
+      {/* 左記入欄 */}
+      <Box sx={{ flex: 1, px: 1, py: 0.5, borderRight: '1px solid #000', minHeight: '32px' }}>
+      </Box>
+      {/* 右ラベル: 年収 */}
+      <Box
+        sx={{
+          width: '80px',
+          px: 1,
+          py: 0.5,
+          borderRight: '1px solid #000',
+          fontSize: '9pt',
+        }}
+      >
+        <Typography sx={{ fontSize: '9pt' }}>{rightLabel}</Typography>
+      </Box>
+      {/* 右記入欄 */}
+      <Box sx={{ flex: 1, px: 1, py: 0.5, minHeight: '32px' }}>
+      </Box>
     </Box>
   );
 }
