@@ -16,6 +16,7 @@ import ViewingPreparationPrintSheet from './ViewingPreparationPrintSheet';
 import PurchaseApplicationPrintSheet from './PurchaseApplicationPrintSheet';
 import ExclusiveMediationContractSheet from './ExclusiveMediationContractSheet';
 import FundingPlanSheet from './FundingPlanSheet';
+import ReformEstimateSheet from './ReformEstimateSheet';
 
 // ============================================================
 // 型定義
@@ -208,13 +209,17 @@ export function ViewingPreparationPrintButton({
                   />
                 </div>
                 {/* 4枚目: 資金計画書 */}
-                <div className={index < propertyDetails.length - 1 ? 'viewing-prep-page' : ''}>
+                <div className="viewing-prep-page">
                   <FundingPlanSheet
                     propertyAddress={property.display_address || property.address}
                     propertyPrice={property.price || property.listing_price}
                     propertyType={property.property_type}
                     printDate={today}
                   />
+                </div>
+                {/* 5枚目: リフォーム概算表 */}
+                <div className={index < propertyDetails.length - 1 ? 'viewing-prep-page' : ''}>
+                  <ReformEstimateSheet />
                 </div>
               </React.Fragment>
             ))}
@@ -358,6 +363,18 @@ export function ViewingPreparationPrintButton({
                       propertyPrice={property.price || property.listing_price}
                       propertyType={property.property_type}
                     />
+                  </Box>
+                  {/* 5枚目: リフォーム概算表 */}
+                  <Box
+                    sx={{
+                      boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+                      bgcolor: '#fff',
+                      transform: 'scale(0.7)',
+                      transformOrigin: 'top center',
+                      mb: '-90mm',
+                    }}
+                  >
+                    <ReformEstimateSheet />
                   </Box>
                 </React.Fragment>
               ))}
