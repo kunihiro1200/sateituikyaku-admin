@@ -2430,7 +2430,8 @@ export class BuyerService {
             const assignee = match[1];
             result.assignedCounts[assignee] = (result.assignedCounts[assignee] || 0) + 1;
           }
-        }
+        } else if (status === '問合メール未対応') {
+          result.inquiryEmailUnanswered++;
         } else if (status === '業者問合せあり') {
           result.brokerInquiry++;
         } else if (status === '一般媒介_内覧後売主連絡未') {
