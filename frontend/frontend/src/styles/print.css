@@ -377,3 +377,32 @@
     display: inline !important;
   }
 }
+
+/* ============================================================
+   内覧準備資料 専用印刷スタイル
+   ============================================================ */
+@media print {
+  /* 内覧準備資料印刷時は通常のUI要素を全て非表示 */
+  body:has(.viewing-preparation-print-area) .no-print,
+  body:has(.viewing-preparation-print-area) header,
+  body:has(.viewing-preparation-print-area) nav,
+  body:has(.viewing-preparation-print-area) .MuiAppBar-root,
+  body:has(.viewing-preparation-print-area) .MuiDrawer-root {
+    display: none !important;
+  }
+
+  /* 内覧準備資料エリアを印刷時に表示 */
+  .viewing-preparation-print-area {
+    display: block !important;
+  }
+
+  /* ページ区切り */
+  .print-page-break {
+    page-break-after: always !important;
+  }
+
+  /* 内覧準備資料のページ設定 */
+  .viewing-preparation-print-area + * {
+    display: none !important;
+  }
+}
