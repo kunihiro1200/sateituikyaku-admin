@@ -105,7 +105,7 @@ export function ViewingPreparationPrintButton({
             printWindow.close();
             setPrinting(false);
           }, 500);
-        }, 600);
+        }, 800);
       };
 
       printWindow.onload = doPrint;

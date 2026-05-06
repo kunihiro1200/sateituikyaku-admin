@@ -85,7 +85,7 @@ export function generatePage1Html(buyer: Record<string,unknown>, property: Recor
     ${buyer.valuation_required?row('要査定',buyer.valuation_required):''}
     ${buyer.message_to_assignee?sbox('担当への確認事項',`<div style="font-size:7pt;white-space:pre-wrap;line-height:1.3;">${esc(stripHtml(buyer.message_to_assignee as string))}</div>`,'#f0f0f0'):''}
   `;
-  return `<div style="width:210mm;height:297mm;padding:8mm 10mm;background:#fff;font-family:${FONT};font-size:8pt;color:#000;box-sizing:border-box;overflow:hidden;">
+  return `<div style="width:100%;height:100%;padding:8mm 10mm;background:#fff;font-family:${FONT};font-size:8pt;color:#000;box-sizing:border-box;overflow:hidden;">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;padding-bottom:4px;border-bottom:2px solid #000;">
       <span style="font-size:11pt;font-weight:bold;">内覧準備資料</span>
       <div style="text-align:right;"><div style="font-size:7.5pt;color:#444;">作成日: ${esc(today)}</div>${buyer.buyer_number?`<div style="font-size:7.5pt;color:#444;">買主番号: ${esc(buyer.buyer_number as string)}</div>`:''}</div>
@@ -108,7 +108,7 @@ export function generatePage2Html(propertyAddress: string, propertyPrice: number
   const priceStr = propertyPrice ? propertyPrice.toLocaleString('ja-JP') : '';
   const tdStyle = 'border:1px solid #000;padding:4px 8px;font-size:9pt;';
   const thStyle = 'border:1px solid #000;padding:4px 8px;font-size:9pt;width:140px;';
-  return `<div style="width:210mm;height:297mm;padding:15mm 20mm;background:#fff;font-family:${FONT};font-size:10pt;color:#000;box-sizing:border-box;overflow:hidden;">
+  return `<div style="width:100%;height:100%;padding:15mm 20mm;background:#fff;font-family:${FONT};font-size:10pt;color:#000;box-sizing:border-box;overflow:hidden;">
     <div style="font-size:18pt;font-weight:bold;text-align:center;text-decoration:underline;margin-bottom:16px;">買付申込書</div>
     <div style="text-align:right;margin-bottom:24px;font-size:10pt;">　　　　年　　　月　　　日</div>
     <table style="width:100%;border-collapse:collapse;margin-bottom:24px;">
@@ -183,7 +183,7 @@ export function generatePage2Html(propertyAddress: string, propertyPrice: number
 // ============================================================
 export function generatePage3Html(propertyAddress: string): string {
   const lineStyle = 'border:none;border-bottom:1px solid #000;display:block;width:100%;height:28px;';
-  return `<div style="width:210mm;height:297mm;padding:12mm 18mm;background:#fff;font-family:${FONT};font-size:9pt;color:#000;box-sizing:border-box;overflow:hidden;">
+  return `<div style="width:100%;height:100%;padding:12mm 18mm;background:#fff;font-family:${FONT};font-size:9pt;color:#000;box-sizing:border-box;overflow:hidden;">
     <div style="font-size:8pt;text-align:center;margin-bottom:4px;">この媒介契約は、国土交通省が定めた標準媒介契約約款に基づく契約です。</div>
     <div style="font-size:16pt;font-weight:bold;text-align:center;letter-spacing:0.3em;margin-bottom:4px;">内　覧　証　明　書</div>
     <div style="font-size:9pt;text-align:center;margin-bottom:12px;">依頼の内容：購入</div>
@@ -279,7 +279,7 @@ export function generatePage4Html(propertyAddress: string, propertyPrice: number
     <td style="${td};text-align:right;">${amount}</td>
     <td style="${td};font-size:7.5pt;white-space:pre-wrap;">${note}</td>
   </tr>`;
-  return `<div style="width:210mm;height:297mm;padding:10mm 15mm;background:#fff;font-family:${FONT};font-size:9pt;color:#000;box-sizing:border-box;display:flex;flex-direction:column;overflow:hidden;">
+  return `<div style="width:100%;height:100%;padding:10mm 15mm;background:#fff;font-family:${FONT};font-size:9pt;color:#000;box-sizing:border-box;display:flex;flex-direction:column;overflow:hidden;">
     <div style="border:2px solid #000;text-align:center;padding:8px;margin-bottom:4px;">
       <span style="font-size:14pt;font-weight:bold;">資金計画書《概算》</span>
     </div>
@@ -375,7 +375,7 @@ export function generatePage5Html(): string {
     {item:'●庭→駐車場',price:'70万円',notes:['1台分']},
     {item:'●オール電化工事',price:'100万円',notes:['エコキュート370L','IH取付']},
   ]);
-  return `<div style="width:210mm;height:297mm;padding:12mm 15mm;background:#fff;font-family:${FONT};font-size:9pt;color:#000;box-sizing:border-box;overflow:hidden;">
+  return `<div style="width:100%;height:100%;padding:12mm 15mm;background:#fff;font-family:${FONT};font-size:9pt;color:#000;box-sizing:border-box;overflow:hidden;">
     <div style="font-size:11pt;font-weight:bold;text-align:center;margin-bottom:8px;">マンションリフォーム概算表【税抜価格】</div>
     <table style="width:100%;border-collapse:collapse;margin-bottom:24px;">${manRows}</table>
     <div style="font-size:11pt;font-weight:bold;text-align:center;margin-bottom:8px;">戸建リフォーム概算表【税抜価格】</div>
@@ -408,8 +408,12 @@ export function generateAllPagesHtml(buyer: Record<string,unknown>, propertyDeta
 <style>
   @page{size:A4 portrait;margin:0;}
   *{box-sizing:border-box;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}
-  body{margin:0;padding:0;font-family:"Noto Sans JP","Hiragino Kaku Gothic ProN","Meiryo",sans-serif;width:794px;}
-  .page{width:210mm;height:297mm;background:white;page-break-after:always;break-after:page;overflow:hidden;}
+  html{font-size:16px;}
+  body{margin:0;padding:0;font-family:"Noto Sans JP","Hiragino Kaku Gothic ProN","Meiryo",sans-serif;}
+  .page{width:794px;min-height:1123px;background:white;page-break-after:always;break-after:page;overflow:hidden;}
+  @media print{
+    .page{width:210mm;height:297mm;min-height:unset;}
+  }
 </style>
 </head>
 <body>${pagesHtml}</body>
