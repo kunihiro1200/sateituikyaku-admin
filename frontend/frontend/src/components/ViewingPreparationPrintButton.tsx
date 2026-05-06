@@ -14,6 +14,7 @@ import PrintIcon from '@mui/icons-material/Print';
 import api from '../services/api';
 import ViewingPreparationPrintSheet from './ViewingPreparationPrintSheet';
 import PurchaseApplicationPrintSheet from './PurchaseApplicationPrintSheet';
+import ExclusiveMediationContractSheet from './ExclusiveMediationContractSheet';
 
 // ============================================================
 // 型定義
@@ -184,7 +185,7 @@ export function ViewingPreparationPrintButton({
           <>
             {propertyDetails.map((property, index) => (
               <React.Fragment key={property.property_number || index}>
-                {/* 1枚目: 内覧準備資料 */}
+                {/* 1枚目: 内覧準備資料（白黒） */}
                 <div className="viewing-prep-page">
                   <ViewingPreparationPrintSheet
                     buyer={buyer}
@@ -193,10 +194,16 @@ export function ViewingPreparationPrintButton({
                   />
                 </div>
                 {/* 2枚目: 買付申込書 */}
-                <div className={index < propertyDetails.length - 1 ? 'viewing-prep-page' : ''}>
+                <div className="viewing-prep-page">
                   <PurchaseApplicationPrintSheet
                     propertyAddress={property.display_address || property.address}
                     propertyPrice={property.price || property.listing_price}
+                  />
+                </div>
+                {/* 3枚目: 専任媒介契約書 */}
+                <div className={index < propertyDetails.length - 1 ? 'viewing-prep-page' : ''}>
+                  <ExclusiveMediationContractSheet
+                    propertyAddress={property.display_address || property.address}
                   />
                 </div>
               </React.Fragment>
@@ -282,7 +289,7 @@ export function ViewingPreparationPrintButton({
             >
               {propertyDetails.map((property, index) => (
                 <React.Fragment key={property.property_number || index}>
-                  {/* 1枚目: 内覧準備資料 */}
+                  {/* 1枚目: 内覧準備資料（白黒） */}
                   <Box
                     sx={{
                       boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
@@ -310,6 +317,20 @@ export function ViewingPreparationPrintButton({
                     <PurchaseApplicationPrintSheet
                       propertyAddress={property.display_address || property.address}
                       propertyPrice={property.price || property.listing_price}
+                    />
+                  </Box>
+                  {/* 3枚目: 専任媒介契約書 */}
+                  <Box
+                    sx={{
+                      boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+                      bgcolor: '#fff',
+                      transform: 'scale(0.7)',
+                      transformOrigin: 'top center',
+                      mb: '-90mm',
+                    }}
+                  >
+                    <ExclusiveMediationContractSheet
+                      propertyAddress={property.display_address || property.address}
                     />
                   </Box>
                 </React.Fragment>

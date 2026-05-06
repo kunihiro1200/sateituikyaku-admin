@@ -118,75 +118,14 @@ function stripHtml(html?: string | null): string {
 }
 
 // ============================================================
-// 印刷用スタイル定数
-// ============================================================
-
-const PRINT_STYLES = {
-  section: {
-    mb: 1.5,
-    breakInside: 'avoid',
-  } as React.CSSProperties,
-  sectionTitle: {
-    fontSize: '10pt',
-    fontWeight: 'bold',
-    bgcolor: '#e8f5e9',
-    px: 1,
-    py: 0.5,
-    mb: 0.5,
-    borderLeft: '3px solid #4caf50',
-  },
-  fieldRow: {
-    display: 'flex',
-    gap: 1,
-    mb: 0.5,
-    alignItems: 'flex-start',
-  } as React.CSSProperties,
-  fieldLabel: {
-    fontSize: '8pt',
-    color: '#666',
-    minWidth: '80px',
-    flexShrink: 0,
-    lineHeight: 1.4,
-  },
-  fieldValue: {
-    fontSize: '9pt',
-    color: '#000',
-    lineHeight: 1.4,
-    wordBreak: 'break-all' as const,
-    flex: 1,
-  },
-  highlightBox: {
-    p: 1,
-    bgcolor: '#fff9e6',
-    border: '1px solid #f0e5c0',
-    borderRadius: 0.5,
-    mb: 1,
-  },
-  infoBox: {
-    p: 1,
-    bgcolor: '#e3f2fd',
-    border: '1px solid #bbdefb',
-    borderRadius: 0.5,
-    mb: 1,
-  },
-  sellerBox: {
-    p: 1,
-    bgcolor: '#fff3e0',
-    border: '1px solid #ffe0b2',
-    borderRadius: 0.5,
-    mb: 1,
-  },
-};
-
-// ============================================================
-// サブコンポーネント: フィールド行
+// サブコンポーネント: フィールド行（白黒）
 // ============================================================
 
 function FieldRow({ label, value }: { label: string; value?: string | null }) {
   if (!value || !String(value).trim()) return null;
   return (
     <Box sx={{ display: 'flex', gap: 1, mb: 0.4, alignItems: 'flex-start' }}>
-      <Typography sx={{ fontSize: '8pt', color: '#666', minWidth: '80px', flexShrink: 0, lineHeight: 1.4 }}>
+      <Typography sx={{ fontSize: '8pt', color: '#444', minWidth: '80px', flexShrink: 0, lineHeight: 1.4 }}>
         {label}
       </Typography>
       <Typography sx={{ fontSize: '9pt', color: '#000', lineHeight: 1.4, wordBreak: 'break-all', flex: 1, whiteSpace: 'pre-wrap' }}>
@@ -197,7 +136,7 @@ function FieldRow({ label, value }: { label: string; value?: string | null }) {
 }
 
 // ============================================================
-// メインコンポーネント
+// メインコンポーネント（白黒）
 // ============================================================
 
 const ViewingPreparationPrintSheet = React.forwardRef<HTMLDivElement, ViewingPreparationPrintSheetProps>(
@@ -224,17 +163,17 @@ const ViewingPreparationPrintSheet = React.forwardRef<HTMLDivElement, ViewingPre
           },
         }}
       >
-        {/* ヘッダー */}
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5, pb: 1, borderBottom: '2px solid #4caf50' }}>
-          <Typography sx={{ fontSize: '13pt', fontWeight: 'bold', color: '#2e7d32' }}>
+        {/* ヘッダー（白黒） */}
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5, pb: 1, borderBottom: '2px solid #000' }}>
+          <Typography sx={{ fontSize: '13pt', fontWeight: 'bold', color: '#000' }}>
             内覧準備資料
           </Typography>
           <Box sx={{ textAlign: 'right' }}>
-            <Typography sx={{ fontSize: '8pt', color: '#666' }}>
+            <Typography sx={{ fontSize: '8pt', color: '#444' }}>
               作成日: {today}
             </Typography>
             {buyer.buyer_number && (
-              <Typography sx={{ fontSize: '8pt', color: '#666' }}>
+              <Typography sx={{ fontSize: '8pt', color: '#444' }}>
                 買主番号: {buyer.buyer_number}
               </Typography>
             )}
@@ -245,9 +184,9 @@ const ViewingPreparationPrintSheet = React.forwardRef<HTMLDivElement, ViewingPre
         <Grid container spacing={1.5}>
           {/* 左カラム: 物件詳細カード */}
           <Grid item xs={6}>
-            <Box sx={{ pr: 1, borderRight: '1px solid #e0e0e0' }}>
-              <Typography sx={{ fontSize: '11pt', fontWeight: 'bold', color: '#2e7d32', mb: 1, pb: 0.5, borderBottom: '1px solid #c8e6c9' }}>
-                🏠 物件詳細カード
+            <Box sx={{ pr: 1, borderRight: '1px solid #ccc' }}>
+              <Typography sx={{ fontSize: '11pt', fontWeight: 'bold', color: '#000', mb: 1, pb: 0.5, borderBottom: '2px solid #000' }}>
+                物件詳細カード
               </Typography>
 
               {/* 物件基本情報 */}
@@ -264,7 +203,7 @@ const ViewingPreparationPrintSheet = React.forwardRef<HTMLDivElement, ViewingPre
                 {property.building_area && <FieldRow label="建物面積" value={`${property.building_area}㎡`} />}
               </Box>
 
-              <Divider sx={{ my: 1 }} />
+              <Divider sx={{ my: 1, borderColor: '#ccc' }} />
 
               {/* 所在地 */}
               <Box sx={{ mb: 1.5 }}>
@@ -278,7 +217,7 @@ const ViewingPreparationPrintSheet = React.forwardRef<HTMLDivElement, ViewingPre
                 )}
               </Box>
 
-              <Divider sx={{ my: 1 }} />
+              <Divider sx={{ my: 1, borderColor: '#ccc' }} />
 
               {/* 価格情報 */}
               <Box sx={{ mb: 1.5 }}>
@@ -293,10 +232,10 @@ const ViewingPreparationPrintSheet = React.forwardRef<HTMLDivElement, ViewingPre
                 <FieldRow label="売却理由" value={property.sale_reason} />
               </Box>
 
-              {/* 内覧前伝達事項 */}
+              {/* 内覧前伝達事項（白黒：薄いグレー背景） */}
               {property.pre_viewing_notes && (
-                <Box sx={{ p: 1, bgcolor: '#fff9e6', border: '1px solid #f0e5c0', borderRadius: 0.5, mb: 1.5 }}>
-                  <Typography sx={{ fontSize: '8pt', fontWeight: 'bold', color: '#666', mb: 0.5 }}>
+                <Box sx={{ p: 1, bgcolor: '#f5f5f5', border: '1px solid #bbb', borderRadius: 0.5, mb: 1.5 }}>
+                  <Typography sx={{ fontSize: '8pt', fontWeight: 'bold', color: '#333', mb: 0.5 }}>
                     内覧前伝達事項
                   </Typography>
                   <Typography sx={{ fontSize: '8.5pt', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>
@@ -305,10 +244,10 @@ const ViewingPreparationPrintSheet = React.forwardRef<HTMLDivElement, ViewingPre
                 </Box>
               )}
 
-              {/* 内覧情報 */}
+              {/* 内覧情報（白黒） */}
               {(property.viewing_key || property.viewing_parking || property.viewing_notes || property.viewing_available_date) && (
-                <Box sx={{ p: 1, bgcolor: '#e3f2fd', border: '1px solid #bbdefb', borderRadius: 0.5, mb: 1.5 }}>
-                  <Typography sx={{ fontSize: '8pt', fontWeight: 'bold', color: '#1565c0', mb: 0.5 }}>
+                <Box sx={{ p: 1, bgcolor: '#f0f0f0', border: '1px solid #bbb', borderRadius: 0.5, mb: 1.5 }}>
+                  <Typography sx={{ fontSize: '8pt', fontWeight: 'bold', color: '#000', mb: 0.5 }}>
                     内覧情報
                   </Typography>
                   <FieldRow label="鍵等" value={property.viewing_key} />
@@ -318,10 +257,10 @@ const ViewingPreparationPrintSheet = React.forwardRef<HTMLDivElement, ViewingPre
                 </Box>
               )}
 
-              {/* 売主情報 */}
+              {/* 売主情報（白黒） */}
               {(property.seller_name || property.seller_contact || property.seller_email) && (
-                <Box sx={{ p: 1, bgcolor: '#fff3e0', border: '1px solid #ffe0b2', borderRadius: 0.5, mb: 1.5 }}>
-                  <Typography sx={{ fontSize: '8pt', fontWeight: 'bold', color: '#e65100', mb: 0.5 }}>
+                <Box sx={{ p: 1, bgcolor: '#f8f8f8', border: '1px solid #bbb', borderRadius: 0.5, mb: 1.5 }}>
+                  <Typography sx={{ fontSize: '8pt', fontWeight: 'bold', color: '#000', mb: 0.5 }}>
                     売主情報
                   </Typography>
                   <FieldRow label="売主名" value={property.seller_name} />
@@ -330,9 +269,9 @@ const ViewingPreparationPrintSheet = React.forwardRef<HTMLDivElement, ViewingPre
                 </Box>
               )}
 
-              {/* 業者対応日 */}
+              {/* 業者対応日（白黒） */}
               {property.broker_response && (
-                <Box sx={{ p: 1, bgcolor: '#fff3f3', border: '1px solid #ffcdd2', borderRadius: 0.5, mb: 1.5 }}>
+                <Box sx={{ p: 1, bgcolor: '#f0f0f0', border: '1px solid #bbb', borderRadius: 0.5, mb: 1.5 }}>
                   <FieldRow label="業者対応日" value={String(property.broker_response)} />
                 </Box>
               )}
@@ -342,13 +281,13 @@ const ViewingPreparationPrintSheet = React.forwardRef<HTMLDivElement, ViewingPre
           {/* 右カラム: 問合せ内容 */}
           <Grid item xs={6}>
             <Box sx={{ pl: 1 }}>
-              <Typography sx={{ fontSize: '11pt', fontWeight: 'bold', color: '#1565c0', mb: 1, pb: 0.5, borderBottom: '1px solid #bbdefb' }}>
-                📋 問合せ内容
+              <Typography sx={{ fontSize: '11pt', fontWeight: 'bold', color: '#000', mb: 1, pb: 0.5, borderBottom: '2px solid #000' }}>
+                問合せ内容
               </Typography>
 
               {/* 買主基本情報 */}
               <Box sx={{ mb: 1.5 }}>
-                <Typography sx={{ fontSize: '9pt', fontWeight: 'bold', color: '#333', mb: 0.5 }}>
+                <Typography sx={{ fontSize: '9pt', fontWeight: 'bold', color: '#000', mb: 0.5, borderBottom: '1px solid #ccc', pb: 0.3 }}>
                   基本情報
                 </Typography>
                 <FieldRow label="氏名・会社名" value={buyer.name} />
@@ -358,11 +297,11 @@ const ViewingPreparationPrintSheet = React.forwardRef<HTMLDivElement, ViewingPre
                 <FieldRow label="業者問合せ" value={buyer.broker_inquiry} />
               </Box>
 
-              <Divider sx={{ my: 1 }} />
+              <Divider sx={{ my: 1, borderColor: '#ccc' }} />
 
               {/* 問合せ情報 */}
               <Box sx={{ mb: 1.5 }}>
-                <Typography sx={{ fontSize: '9pt', fontWeight: 'bold', color: '#333', mb: 0.5 }}>
+                <Typography sx={{ fontSize: '9pt', fontWeight: 'bold', color: '#000', mb: 0.5, borderBottom: '1px solid #ccc', pb: 0.3 }}>
                   問合せ情報
                 </Typography>
                 <FieldRow label="受付日" value={formatDate(buyer.reception_date)} />
@@ -373,10 +312,10 @@ const ViewingPreparationPrintSheet = React.forwardRef<HTMLDivElement, ViewingPre
                 <FieldRow label="次電日" value={formatDate(buyer.next_call_date)} />
               </Box>
 
-              {/* 問合時ヒアリング */}
+              {/* 問合時ヒアリング（白黒） */}
               {buyer.inquiry_hearing && (
-                <Box sx={{ p: 1, bgcolor: '#f3f8ff', border: '1px solid #c5d8f5', borderRadius: 0.5, mb: 1.5 }}>
-                  <Typography sx={{ fontSize: '8pt', fontWeight: 'bold', color: '#1565c0', mb: 0.5 }}>
+                <Box sx={{ p: 1, bgcolor: '#f5f5f5', border: '1px solid #bbb', borderRadius: 0.5, mb: 1.5 }}>
+                  <Typography sx={{ fontSize: '8pt', fontWeight: 'bold', color: '#000', mb: 0.5 }}>
                     問合時ヒアリング
                   </Typography>
                   <Typography sx={{ fontSize: '8.5pt', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>
@@ -385,11 +324,11 @@ const ViewingPreparationPrintSheet = React.forwardRef<HTMLDivElement, ViewingPre
                 </Box>
               )}
 
-              <Divider sx={{ my: 1 }} />
+              <Divider sx={{ my: 1, borderColor: '#ccc' }} />
 
               {/* 対応状況 */}
               <Box sx={{ mb: 1.5 }}>
-                <Typography sx={{ fontSize: '9pt', fontWeight: 'bold', color: '#333', mb: 0.5 }}>
+                <Typography sx={{ fontSize: '9pt', fontWeight: 'bold', color: '#000', mb: 0.5, borderBottom: '1px solid #ccc', pb: 0.3 }}>
                   対応状況
                 </Typography>
                 <FieldRow label="電話対応" value={buyer.inquiry_email_phone} />
@@ -407,17 +346,17 @@ const ViewingPreparationPrintSheet = React.forwardRef<HTMLDivElement, ViewingPre
                 </Box>
               )}
 
-              {/* 内覧アンケート */}
+              {/* 内覧アンケート（白黒） */}
               {buyer.viewing_survey_result && (
-                <Box sx={{ p: 1, bgcolor: '#f9f9f9', border: '1px solid #e0e0e0', borderRadius: 0.5, mb: 1.5 }}>
-                  <Typography sx={{ fontSize: '8pt', fontWeight: 'bold', color: '#333', mb: 0.5 }}>
+                <Box sx={{ p: 1, bgcolor: '#f5f5f5', border: '1px solid #bbb', borderRadius: 0.5, mb: 1.5 }}>
+                  <Typography sx={{ fontSize: '8pt', fontWeight: 'bold', color: '#000', mb: 0.5 }}>
                     内覧アンケート内容
                   </Typography>
                   <Typography sx={{ fontSize: '8.5pt', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>
                     {buyer.viewing_survey_result}
                   </Typography>
                   {buyer.viewing_survey_confirmed && (
-                    <Typography sx={{ fontSize: '8pt', color: '#4caf50', mt: 0.5 }}>
+                    <Typography sx={{ fontSize: '8pt', color: '#333', mt: 0.5 }}>
                       ✓ {buyer.viewing_survey_confirmed}
                     </Typography>
                   )}
@@ -439,10 +378,10 @@ const ViewingPreparationPrintSheet = React.forwardRef<HTMLDivElement, ViewingPre
                 </Box>
               )}
 
-              {/* 担当への確認事項 */}
+              {/* 担当への確認事項（白黒） */}
               {buyer.message_to_assignee && (
-                <Box sx={{ p: 1, bgcolor: '#fff8e1', border: '1px solid #ffe082', borderRadius: 0.5, mb: 1.5 }}>
-                  <Typography sx={{ fontSize: '8pt', fontWeight: 'bold', color: '#f57f17', mb: 0.5 }}>
+                <Box sx={{ p: 1, bgcolor: '#f0f0f0', border: '1px solid #bbb', borderRadius: 0.5, mb: 1.5 }}>
+                  <Typography sx={{ fontSize: '8pt', fontWeight: 'bold', color: '#000', mb: 0.5 }}>
                     担当への確認事項
                   </Typography>
                   <Typography sx={{ fontSize: '8.5pt', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>
@@ -455,11 +394,11 @@ const ViewingPreparationPrintSheet = React.forwardRef<HTMLDivElement, ViewingPre
         </Grid>
 
         {/* フッター */}
-        <Box sx={{ mt: 2, pt: 1, borderTop: '1px solid #e0e0e0', display: 'flex', justifyContent: 'space-between' }}>
-          <Typography sx={{ fontSize: '7pt', color: '#999' }}>
+        <Box sx={{ mt: 2, pt: 1, borderTop: '1px solid #ccc', display: 'flex', justifyContent: 'space-between' }}>
+          <Typography sx={{ fontSize: '7pt', color: '#666' }}>
             内覧準備資料 - 社内管理システム
           </Typography>
-          <Typography sx={{ fontSize: '7pt', color: '#999' }}>
+          <Typography sx={{ fontSize: '7pt', color: '#666' }}>
             {today}
           </Typography>
         </Box>
