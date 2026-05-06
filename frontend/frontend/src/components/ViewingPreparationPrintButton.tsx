@@ -86,7 +86,7 @@ export function ViewingPreparationPrintButton({
     import('../utils/printHtmlGenerators').then(({ generateAllPagesHtml }) => {
       const html = generateAllPagesHtml(buyer, propertyDetails, today);
 
-      const printWindow = window.open('', '_blank', 'width=900,height=700');
+      const printWindow = window.open('', '_blank', 'width=794,height=1123,scrollbars=yes');
       if (!printWindow) {
         alert('ポップアップを許可してください（アドレスバー右側のアイコンをクリック）');
         setPrinting(false);
