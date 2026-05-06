@@ -33,9 +33,9 @@ export class PropertyPriceMonitorService {
     // 建売専門HPが設定されている買主を取得
     const { data: buyers, error } = await this.supabase
       .from('buyers')
-      .select('buyer_number, name, tateuri_senmon_hp_url')
-      .not('tateuri_senmon_hp_url', 'is', null)
-      .neq('tateuri_senmon_hp_url', '');
+      .select('buyer_number, name, athome_url')
+      .not('athome_url', 'is', null)
+      .neq('athome_url', '');
 
     if (error) {
       console.error('[PropertyPriceMonitor] 買主取得エラー:', error);
@@ -56,7 +56,7 @@ export class PropertyPriceMonitorService {
         const changes = await this.checkBuyerPriceChanges(
           buyer.buyer_number,
           buyer.name,
-          buyer.tateuri_senmon_hp_url
+          buyer.athome_url
         );
         allChanges.push(...changes);
       } catch (error) {
