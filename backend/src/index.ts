@@ -738,6 +738,10 @@ app.post('/api/sync/seller-row', async (req, res) => {
 // Routes
 app.use('/auth', authSupabaseRoutes);
 app.use('/api/auth', authSupabaseRoutes);
+
+// 認証不要ルート（最優先で登録）
+app.use('/api/tateuri', tateuriPreviewRoutes); // 建売専門HP（認証不要・公開）
+app.use('/api/property-preview', propertyPreviewRoutes); // 物件プレビュー（認証不要・公開）
 // Sidebar counts endpoint (authentication not required) - must be registered before other /api/sellers routes
 app.use('/api/sellers', sellerRoutes);
 app.use('/api/sellers', sellersManagementRoutes);
@@ -785,7 +789,6 @@ app.use('/api/property-listing-sync', propertyListingSyncRoutes);
 app.use('/api/staff-sync', staffSyncRoutes); // スタッフ同期API
 app.use('/api/nearby-map', nearbyMapRoutes); // 近隣MAPapi
 app.use('/api/property-preview', propertyPreviewRoutes); // 物件プレビュー（認証不要・公開）
-app.use('/api/tateuri', tateuriPreviewRoutes); // 建売専門HP（認証不要・公開）
 app.use('/api/ai', aiPropertyEnhanceRoutes); // AI物件情報解析（認証不要）
 
 // Cron Job: 買主の建売専門HP価格変動チェック（毎日実行）
