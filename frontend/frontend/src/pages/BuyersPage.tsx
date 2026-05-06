@@ -165,16 +165,16 @@ export default function BuyersPage() {
                   return matches;
                 } else if (selectedCalculatedStatus.startsWith('todayCallAssigned:')) {
                   const assignee = selectedCalculatedStatus.replace('todayCallAssigned:', '');
-                  // バックエンドと同じロジック: follow_up_assignee が一致 AND next_call_date が今日以前
-                  // 🚨 重要：タイムゾーン問題を回避するため、JST（日本時間）で今日の日付を取得
+                  // バックエンドと同じロジック: effectiveAssignee（follow_up_assignee優先、空ならproject_assignee）が一致 AND next_call_date が今日以前
                   const now = new Date();
                   const JST_OFFSET_MS = 9 * 60 * 60 * 1000;
                   const jstTime = new Date(now.getTime() + JST_OFFSET_MS);
                   const todayStr = jstTime.toISOString().split('T')[0];  // JST日付（YYYY-MM-DD）
                   const nextCallDateStr = b.next_call_date ? b.next_call_date.substring(0, 10) : null;
+                  const effectiveAssignee = b.follow_up_assignee || (b as any).project_assignee || null;
                   
                   const matches = (
-                    b.follow_up_assignee === assignee &&
+                    effectiveAssignee === assignee &&
                     nextCallDateStr !== null &&
                     nextCallDateStr <= todayStr
                   );

@@ -1882,7 +1882,7 @@ export class BuyerService {
     const BUYER_COLUMNS = [
       'buyer_number', 'buyer_id', 'name', 'phone_number', 'email',
       'reception_date', 'latest_viewing_date', 'viewing_date', 'next_call_date',
-      'follow_up_assignee', 'initial_assignee', 'latest_status',
+      'follow_up_assignee', 'project_assignee', 'initial_assignee', 'latest_status',
       'inquiry_confidence', 'inquiry_email_phone', 'inquiry_email_reply',
       'three_calls_confirmed', 'broker_inquiry', 'inquiry_source',
       'viewing_result_follow_up', 'viewing_unconfirmed', 'viewing_type_general',
@@ -2098,16 +2098,25 @@ export class BuyerService {
   }
 
   /**
-   * サイドバー用のカテゴリカウントを取得（高速版）
+   * サイドバー用のカテゴリカウントを取得
    * 【根本解決】buyer_sidebar_countsテーブルへの依存を廃止。
    * 常にBuyerStatusCalculatorと同じロジック（getSidebarCountsFallback）で計算する。
-   * これによりサイドバーカウントと一覧表示のズレが完全に解消される。
+   * インメモリキャッシュ（5分TTL）で速度問題も解決。
    */
   async getSidebarCounts(): Promise<{
     categoryCounts: any;
     normalStaffInitials: string[];
   }> {
     const startTime = Date.now();
+    const CACHE_TTL = 5 * 60 * 1000; // 5分
+
+    // インメモリキャッシュが有効なら即返す
+    if (_moduleLevelStatusCache && (Date.now() - _moduleLevelStatusCache.computedAt) < CACHE_TTL) {
+      console.log('🔍 [BuyerService] getSidebarCounts - cache hit');
+      // キャッシュからカウントを再計算して返す
+      return this._buildSidebarCountsFromCache(_moduleLevelStatusCache.buyers);
+    }
+
     console.log('🔍 [BuyerService] getSidebarCounts called - using BuyerStatusCalculator (always accurate)');
 
     try {
@@ -2124,6 +2133,56 @@ export class BuyerService {
       console.error('[ERROR] Stack trace:', (e as Error).stack);
       throw e;
     }
+  }
+
+  /**
+   * キャッシュ済みの全買主データからサイドバーカウントを構築（高速）
+   */
+  private _buildSidebarCountsFromCache(cachedBuyers: any[]): {
+    categoryCounts: any;
+    normalStaffInitials: string[];
+  } {
+    const result: any = {
+      all: cachedBuyers.length,
+      viewingDayBefore: 0,
+      todayCall: 0,
+      threeCallUnchecked: 0,
+      assignedCounts: {} as Record<string, number>,
+      todayCallAssignedCounts: {} as Record<string, number>,
+      inquiryEmailUnanswered: 0,
+      brokerInquiry: 0,
+      generalViewingSellerContactPending: 0,
+      viewingPromotionRequired: 0,
+      pinrichUnregistered: 0,
+      pinrich500manUnregistered: 0,
+      nextCallDateBlankCounts: {} as Record<string, number>,
+      viewingSurveyUnchecked: 0,
+      viewingUnconfirmed: 0,
+      sellerViewingContactPending: 0,
+    };
+
+    for (const buyer of cachedBuyers) {
+      const status = buyer.calculated_status || '';
+      if (status === '内覧日前日') result.viewingDayBefore++;
+      else if (status === '当日TEL') result.todayCall++;
+      else if (status === '3回架電未') result.threeCallUnchecked++;
+      else if (status === '問合メール未対応') result.inquiryEmailUnanswered++;
+      else if (status === '業者問合せあり') result.brokerInquiry++;
+      else if (status === '一般媒介_内覧後売主連絡未') result.generalViewingSellerContactPending++;
+      else if (status === '要内覧促進客') result.viewingPromotionRequired++;
+      else if (status === '内覧未確定') result.viewingUnconfirmed++;
+      else if (status === '売主内覧連絡未') result.sellerViewingContactPending++;
+      else if (status.startsWith('当日TEL(')) {
+        const match = status.match(/^当日TEL\((.+)\)$/);
+        if (match) result.todayCallAssignedCounts[match[1]] = (result.todayCallAssignedCounts[match[1]] || 0) + 1;
+      } else if (status.startsWith('担当(')) {
+        const match = status.match(/^担当\((.+)\)$/);
+        if (match) result.assignedCounts[match[1]] = (result.assignedCounts[match[1]] || 0) + 1;
+      }
+    }
+
+    const normalStaffInitials = Object.keys(result.assignedCounts);
+    return { categoryCounts: result, normalStaffInitials };
   }
 
   /**
@@ -2445,6 +2504,9 @@ export class BuyerService {
       if (duration > 5000) {
         console.warn(`[WARN] getSidebarCountsFallback took ${duration}ms (> 5000ms)`);
       }
+
+      // インメモリキャッシュを更新（次回のgetSidebarCounts呼び出しを高速化）
+      _moduleLevelStatusCache = { buyers: allBuyers, computedAt: Date.now() };
       
       // ✅ 修正: categoryCounts形式で返す（categories配列ではなく）
       return { categoryCounts: result, normalStaffInitials };
