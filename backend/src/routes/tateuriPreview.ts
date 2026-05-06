@@ -95,8 +95,10 @@ router.get('/cron/price-check', async (req: Request, res: Response) => {
 
     // Vercel Cron Jobの認証チェック
     const authHeader = req.headers.authorization;
-    if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-      console.error('[Cron TateuriPriceCheck] 認証失敗');
+    const cronSecret = process.env.CRON_SECRET;
+    // CRON_SECRETが設定されている場合のみ認証チェック
+    if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+      console.error('[Cron TateuriPriceCheck] 認証失敗', { authHeader: authHeader?.substring(0, 20) });
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
