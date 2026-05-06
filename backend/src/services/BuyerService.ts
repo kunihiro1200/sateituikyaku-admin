@@ -735,7 +735,7 @@ export class BuyerService {
    */
   private shouldUpdateBuyerSidebarCounts(updateData: Partial<any>): boolean {
     // サイドバーカテゴリーに影響するフィールド
-    const sidebarFields = ['next_call_date', 'follow_up_assignee', 'viewing_date', 'notification_sender', 'inquiry_email_phone', 'pinrich', 'inquiry_source', 'latest_status', 'broker_inquiry', 'pinrich_500man_registration', 'viewing_survey_result', 'viewing_survey_confirmed', 'vendor_survey', 'viewing_type_general', 'post_viewing_seller_contact', 'atbb_status', 'viewing_promotion_not_needed', 'viewing_promotion_sender', 'inquiry_confidence', 'inquiry_email_reply', 'three_call_unchecked', 'seller_viewing_date_contact', 'other_company_property'];
+    const sidebarFields = ['next_call_date', 'follow_up_assignee', 'project_assignee', 'viewing_date', 'notification_sender', 'inquiry_email_phone', 'pinrich', 'inquiry_source', 'latest_status', 'broker_inquiry', 'pinrich_500man_registration', 'viewing_survey_result', 'viewing_survey_confirmed', 'vendor_survey', 'viewing_type_general', 'post_viewing_seller_contact', 'atbb_status', 'viewing_promotion_not_needed', 'viewing_promotion_sender', 'inquiry_confidence', 'inquiry_email_reply', 'three_call_unchecked', 'seller_viewing_date_contact', 'other_company_property'];
     return sidebarFields.some(field => field in updateData);
   }
 
@@ -2099,110 +2099,29 @@ export class BuyerService {
 
   /**
    * サイドバー用のカテゴリカウントを取得（高速版）
-   * buyer_sidebar_counts テーブルから1クエリで高速取得。
-   * テーブルが空または取得失敗の場合は重いDBクエリにフォールバック。
+   * 【根本解決】buyer_sidebar_countsテーブルへの依存を廃止。
+   * 常にBuyerStatusCalculatorと同じロジック（getSidebarCountsFallback）で計算する。
+   * これによりサイドバーカウントと一覧表示のズレが完全に解消される。
    */
   async getSidebarCounts(): Promise<{
     categoryCounts: any;
     normalStaffInitials: string[];
   }> {
-    const startTime = Date.now();  // 処理開始時刻（Requirements 5.1）
-    
+    const startTime = Date.now();
+    console.log('🔍 [BuyerService] getSidebarCounts called - using BuyerStatusCalculator (always accurate)');
+
     try {
-      // まずbuyer_sidebar_countsテーブルから取得を試みる（高速）
-      console.log('🔍 [BuyerService] getSidebarCounts called - trying buyer_sidebar_counts table first');
-      
-      const { data, error } = await this.supabase
-        .from('buyer_sidebar_counts')
-        .select('*');
-      
-      // テーブルにデータがある場合は高速パスを使用
-      if (!error && data && data.length > 0) {
-        const duration = Date.now() - startTime;
-        console.log(`[INFO] getSidebarCounts from table completed in ${duration}ms`);
-        
-        // カウントを集計
-        const categoryCounts: any = {
-          all: 0,
-          viewingDayBefore: 0,
-          todayCall: 0,
-          threeCallUnchecked: 0,
-          assignedCounts: {} as Record<string, number>,
-          todayCallAssignedCounts: {} as Record<string, number>,
-          inquiryEmailUnanswered: 0,
-          brokerInquiry: 0,
-          generalViewingSellerContactPending: 0,
-          viewingPromotionRequired: 0,
-          pinrichUnregistered: 0,
-          pinrich500manUnregistered: 0,
-          nextCallDateBlankCounts: {} as Record<string, number>,
-          viewingSurveyUnchecked: 0,  // 内覧アンケート未確認
-          viewingUnconfirmed: 0,  // 内覧未確定
-          sellerViewingContactPending: 0,  // 売主内覧連絡未
-        };
-        
-        for (const row of data) {
-          if (row.category === 'viewingDayBefore') {
-            categoryCounts.viewingDayBefore = row.count || 0;
-          } else if (row.category === 'todayCall') {
-            categoryCounts.todayCall = row.count || 0;
-          } else if (row.category === 'threeCallUnchecked') {
-            categoryCounts.threeCallUnchecked = row.count || 0;
-          } else if (row.category === 'assigned' && row.assignee) {
-            categoryCounts.assignedCounts[row.assignee] = row.count || 0;
-          } else if (row.category === 'todayCallAssigned' && row.assignee) {
-            categoryCounts.todayCallAssignedCounts[row.assignee] = row.count || 0;
-          } else if (row.category === 'inquiryEmailUnanswered') {
-            categoryCounts.inquiryEmailUnanswered = row.count || 0;
-          } else if (row.category === 'brokerInquiry') {
-            categoryCounts.brokerInquiry = row.count || 0;
-          } else if (row.category === 'generalViewingSellerContactPending') {
-            categoryCounts.generalViewingSellerContactPending = row.count || 0;
-          } else if (row.category === 'viewingPromotionRequired') {
-            categoryCounts.viewingPromotionRequired = row.count || 0;
-          } else if (row.category === 'pinrichUnregistered') {
-            categoryCounts.pinrichUnregistered = row.count || 0;
-          } else if (row.category === 'pinrich500manUnregistered') {
-            categoryCounts.pinrich500manUnregistered = row.count || 0;
-          } else if (row.category === 'nextCallDateBlank' && row.assignee) {
-            categoryCounts.nextCallDateBlankCounts[row.assignee] = row.count || 0;
-          } else if (row.category === 'viewingSurveyUnchecked') {
-            categoryCounts.viewingSurveyUnchecked = row.count || 0;
-          } else if (row.category === 'viewingUnconfirmed') {
-            categoryCounts.viewingUnconfirmed = row.count || 0;
-          } else if (row.category === 'sellerViewingContactPending') {
-            categoryCounts.sellerViewingContactPending = row.count || 0;
-          }
-        }
-        
-        // 通常スタッフのイニシャルを取得
-        const normalStaffInitials = await this.fetchNormalStaffInitials();
-        
-        return { categoryCounts, normalStaffInitials };
-      }
-      
-      // テーブルが空または取得失敗の場合は動的計算にフォールバック
-      console.log('⚠️ buyer_sidebar_counts empty or error, falling back to dynamic calculation');
       const result = await this.getSidebarCountsFallback();
-      
-      const duration = Date.now() - startTime;  // 処理時間
-      
-      // Requirements 5.1: 処理時間をログに記録
-      console.log(`[INFO] getSidebarCounts (fallback) completed in ${duration}ms`);
-      
-      // Requirements 5.2: 5秒超過時の警告ログ
+      const duration = Date.now() - startTime;
+      console.log(`[INFO] getSidebarCounts completed in ${duration}ms`);
       if (duration > 5000) {
         console.warn(`[WARN] getSidebarCounts took ${duration}ms (> 5000ms)`);
       }
-      
       return result;
     } catch (e) {
       const duration = Date.now() - startTime;
-      
-      // Requirements 5.3: エラー内容とスタックトレースをログに記録
       console.error(`[ERROR] getSidebarCounts error after ${duration}ms:`, e);
       console.error('[ERROR] Stack trace:', (e as Error).stack);
-      
       throw e;
     }
   }
@@ -2221,6 +2140,7 @@ export class BuyerService {
       'viewing_date',
       'next_call_date',
       'follow_up_assignee',
+      'project_assignee',
       'initial_assignee',
       'latest_status',
       'inquiry_confidence',
