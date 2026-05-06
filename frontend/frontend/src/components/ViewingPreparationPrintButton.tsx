@@ -11,7 +11,6 @@ import {
   Alert,
 } from '@mui/material';
 import PrintIcon from '@mui/icons-material/Print';
-import { createPortal } from 'react-dom';
 import api from '../services/api';
 import ViewingPreparationPrintSheet from './ViewingPreparationPrintSheet';
 import PurchaseApplicationPrintSheet from './PurchaseApplicationPrintSheet';
@@ -30,32 +29,6 @@ interface PropertyListing {
 }
 
 interface BuyerDetails {
-  buyer_number?: string;
-  name?: string;
-  phone_number?: string;
-  email?: string;
-  company_name?: string;
-  broker_inquiry?: string;
-  vendor_survey?: string;
-  viewing_survey_result?: string;
-  viewing_survey_confirmed?: string;
-  inquiry_hearing?: string;
-  initial_assignee?: string;
-  reception_date?: string;
-  inquiry_source?: string;
-  latest_status?: string;
-  project_assignee?: string;
-  neighbor_property_email_sent?: string;
-  distribution_type?: string;
-  pinrich?: string;
-  inquiry_email_phone?: string;
-  inquiry_email_reply?: string;
-  three_calls_confirmed?: string;
-  next_call_date?: string;
-  owned_home_hearing_inquiry?: string;
-  owned_home_hearing_result?: string;
-  valuation_required?: string;
-  message_to_assignee?: string;
   [key: string]: any;
 }
 
@@ -64,69 +37,9 @@ interface ViewingPreparationPrintButtonProps {
   linkedProperties: PropertyListing[];
 }
 
-// ============================================================
-// 今日の日付
-// ============================================================
-
 function getTodayStr(): string {
   const d = new Date();
   return `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
-}
-
-// ============================================================
-// 印刷コンテンツ（全ページ）
-// ============================================================
-
-function PrintContent({
-  buyer,
-  propertyDetails,
-  today,
-}: {
-  buyer: BuyerDetails;
-  propertyDetails: any[];
-  today: string;
-}) {
-  return (
-    <>
-      {propertyDetails.map((property, index) => (
-        <React.Fragment key={property.property_number || index}>
-          {/* 1枚目: 内覧準備資料 */}
-          <div style={{ pageBreakAfter: 'always', breakAfter: 'page' }}>
-            <ViewingPreparationPrintSheet buyer={buyer} property={property} printDate={today} />
-          </div>
-          {/* 2枚目: 買付申込書 */}
-          <div style={{ pageBreakAfter: 'always', breakAfter: 'page' }}>
-            <PurchaseApplicationPrintSheet
-              propertyAddress={property.display_address || property.address}
-              propertyPrice={property.price || property.listing_price}
-            />
-          </div>
-          {/* 3枚目: 内覧証明書 */}
-          <div style={{ pageBreakAfter: 'always', breakAfter: 'page' }}>
-            <ExclusiveMediationContractSheet
-              propertyAddress={property.display_address || property.address}
-            />
-          </div>
-          {/* 4枚目: 資金計画書 */}
-          <div style={{ pageBreakAfter: 'always', breakAfter: 'page' }}>
-            <FundingPlanSheet
-              propertyAddress={property.display_address || property.address}
-              propertyPrice={property.price || property.listing_price}
-              propertyType={property.property_type}
-              printDate={today}
-            />
-          </div>
-          {/* 5枚目: リフォーム概算表 */}
-          <div style={{
-            pageBreakAfter: index < propertyDetails.length - 1 ? 'always' : 'auto',
-            breakAfter: index < propertyDetails.length - 1 ? 'page' : 'auto',
-          }}>
-            <ReformEstimateSheet />
-          </div>
-        </React.Fragment>
-      ))}
-    </>
-  );
 }
 
 // ============================================================
@@ -142,9 +55,9 @@ export function ViewingPreparationPrintButton({
   const [error, setError] = useState<string | null>(null);
   const [propertyDetails, setPropertyDetails] = useState<any[]>([]);
   const [printing, setPrinting] = useState(false);
+  const printAreaRef = useRef<HTMLDivElement>(null);
   const today = getTodayStr();
 
-  // 物件詳細データをAPIから取得
   const fetchPropertyDetails = useCallback(async () => {
     if (!linkedProperties || linkedProperties.length === 0) return;
     setLoading(true);
@@ -157,7 +70,6 @@ export function ViewingPreparationPrintButton({
       );
       setPropertyDetails(results);
     } catch (err: any) {
-      console.error('物件詳細の取得に失敗しました:', err);
       setError('物件詳細の取得に失敗しました。再度お試しください。');
     } finally {
       setLoading(false);
@@ -173,85 +85,177 @@ export function ViewingPreparationPrintButton({
     setDialogOpen(false);
   };
 
+  // ============================================================
+  // 印刷：新しいウィンドウを開いてそこに印刷
+  // ============================================================
   const handlePrint = () => {
-    if (propertyDetails.length === 0) return;
+    if (!printAreaRef.current || propertyDetails.length === 0) return;
     setPrinting(true);
 
-    // 印刷用スタイルを注入
-    const styleId = 'viewing-prep-print-style';
-    const existing = document.getElementById(styleId);
-    if (existing) existing.remove();
+    // 印刷用の新しいウィンドウを開く
+    const printWindow = window.open('', '_blank', 'width=900,height=700');
+    if (!printWindow) {
+      alert('ポップアップがブロックされています。ポップアップを許可してください。');
+      setPrinting(false);
+      return;
+    }
 
-    const style = document.createElement('style');
-    style.id = styleId;
-    style.textContent = `
-      @media print {
-        @page {
-          size: A4 portrait;
-          margin: 0;
-        }
-        /* 通常のページ要素を全て非表示 */
-        body > *:not(#vp-print-container) {
-          display: none !important;
-          visibility: hidden !important;
-        }
-        /* 印刷コンテナを表示 */
-        #vp-print-container {
-          display: block !important;
-          visibility: visible !important;
-          position: static !important;
-          width: 210mm !important;
-          margin: 0 !important;
-          padding: 0 !important;
-        }
-        #vp-print-container * {
-          visibility: visible !important;
-        }
-        /* 背景色を保持 */
-        * {
-          -webkit-print-color-adjust: exact !important;
-          print-color-adjust: exact !important;
-          color-adjust: exact !important;
-        }
+    // プレビューエリアのHTMLを取得
+    const printContent = printAreaRef.current.innerHTML;
+
+    // 新しいウィンドウにHTMLを書き込む
+    printWindow.document.write(`
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>内覧準備資料</title>
+  <style>
+    /* リセット */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+      color-adjust: exact !important;
+    }
+
+    body {
+      font-family: "Noto Sans JP", "Hiragino Kaku Gothic ProN", "Meiryo", sans-serif;
+      background: white;
+    }
+
+    /* 各ページ */
+    .print-page {
+      width: 210mm;
+      min-height: 297mm;
+      page-break-after: always;
+      break-after: page;
+      overflow: hidden;
+      position: relative;
+      background: white;
+    }
+
+    .print-page:last-child {
+      page-break-after: auto;
+      break-after: auto;
+    }
+
+    @page {
+      size: A4 portrait;
+      margin: 0;
+    }
+
+    @media print {
+      html, body {
+        width: 210mm;
+        height: 297mm;
       }
-    `;
-    document.head.appendChild(style);
 
-    // 印刷用コンテナをbodyに直接追加（position: staticで全ページ流れる）
-    const container = document.createElement('div');
-    container.id = 'vp-print-container';
-    container.style.cssText = 'display:none; position:absolute; top:0; left:0; width:210mm;';
-    document.body.appendChild(container);
+      .print-page {
+        width: 210mm;
+        min-height: 297mm;
+        page-break-after: always;
+        break-after: page;
+        overflow: hidden;
+      }
 
-    // React でレンダリング
-    import('react-dom/client').then(({ createRoot }) => {
-      const root = createRoot(container);
-      root.render(
-        <PrintContent
-          buyer={buyer}
-          propertyDetails={propertyDetails}
-          today={today}
-        />
-      );
+      .print-page:last-child {
+        page-break-after: auto;
+        break-after: auto;
+      }
 
-      // レンダリング完了を待ってから印刷
+      * {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        color-adjust: exact !important;
+      }
+    }
+
+    /* MUIのスタイルを最低限インライン化 */
+    .MuiBox-root, .MuiTypography-root, .MuiGrid-root, .MuiGrid-item,
+    .MuiDivider-root, .MuiPaper-root {
+      box-sizing: border-box;
+    }
+  </style>
+</head>
+<body>
+  ${printContent}
+</body>
+</html>
+    `);
+
+    printWindow.document.close();
+
+    // ロード完了後に印刷
+    printWindow.onload = () => {
       setTimeout(() => {
-        container.style.display = 'block';
-        window.print();
+        printWindow.focus();
+        printWindow.print();
+        printWindow.close();
+        setPrinting(false);
+      }, 500);
+    };
 
-        // 印刷後クリーンアップ
-        setTimeout(() => {
-          root.unmount();
-          container.remove();
-          const s = document.getElementById(styleId);
-          if (s) s.remove();
-          setPrinting(false);
-        }, 1000);
-      }, 600);
-    });
+    // onloadが発火しない場合のフォールバック
+    setTimeout(() => {
+      if (!printWindow.closed) {
+        printWindow.focus();
+        printWindow.print();
+        printWindow.close();
+      }
+      setPrinting(false);
+    }, 2000);
   };
 
   if (!linkedProperties || linkedProperties.length === 0) return null;
+
+  // 全ページのリスト
+  const allPages = propertyDetails.flatMap((property, propIndex) => [
+    {
+      key: `${propIndex}-1`,
+      label: '1枚目：内覧準備資料',
+      node: <ViewingPreparationPrintSheet buyer={buyer} property={property} printDate={today} />,
+    },
+    {
+      key: `${propIndex}-2`,
+      label: '2枚目：買付申込書',
+      node: (
+        <PurchaseApplicationPrintSheet
+          propertyAddress={property.display_address || property.address}
+          propertyPrice={property.price || property.listing_price}
+        />
+      ),
+    },
+    {
+      key: `${propIndex}-3`,
+      label: '3枚目：内覧証明書',
+      node: (
+        <ExclusiveMediationContractSheet
+          propertyAddress={property.display_address || property.address}
+        />
+      ),
+    },
+    {
+      key: `${propIndex}-4`,
+      label: '4枚目：資金計画書',
+      node: (
+        <FundingPlanSheet
+          propertyAddress={property.display_address || property.address}
+          propertyPrice={property.price || property.listing_price}
+          propertyType={property.property_type}
+          printDate={today}
+        />
+      ),
+    },
+    {
+      key: `${propIndex}-5`,
+      label: '5枚目：リフォーム概算表',
+      node: <ReformEstimateSheet />,
+    },
+  ]);
 
   return (
     <>
@@ -280,17 +284,17 @@ export function ViewingPreparationPrintButton({
         PaperProps={{ sx: { maxHeight: '95vh', height: '95vh' } }}
       >
         <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 1 }}>
-          <Typography variant="h6">内覧準備資料 - 印刷プレビュー（全5枚）</Typography>
+          <Typography variant="h6">内覧準備資料 - 印刷プレビュー（全{allPages.length}枚）</Typography>
           <Typography variant="caption" color="text.secondary">
             印刷設定：A4・余白なし
           </Typography>
         </DialogTitle>
 
-        <DialogContent dividers sx={{ p: 0, overflow: 'auto', bgcolor: '#e0e0e0' }}>
+        <DialogContent dividers sx={{ p: 0, overflow: 'auto', bgcolor: '#888' }}>
           {loading && (
             <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 300 }}>
               <CircularProgress />
-              <Typography sx={{ ml: 2 }}>物件情報を読み込み中...</Typography>
+              <Typography sx={{ ml: 2, color: '#fff' }}>物件情報を読み込み中...</Typography>
             </Box>
           )}
 
@@ -301,36 +305,36 @@ export function ViewingPreparationPrintButton({
           )}
 
           {!loading && !error && propertyDetails.length > 0 && (
-            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, p: 2 }}>
-              {propertyDetails.map((property, propIndex) => {
-                const pages = [
-                  { label: '1枚目：内覧準備資料', node: <ViewingPreparationPrintSheet buyer={buyer} property={property} printDate={today} /> },
-                  { label: '2枚目：買付申込書', node: <PurchaseApplicationPrintSheet propertyAddress={property.display_address || property.address} propertyPrice={property.price || property.listing_price} /> },
-                  { label: '3枚目：内覧証明書', node: <ExclusiveMediationContractSheet propertyAddress={property.display_address || property.address} /> },
-                  { label: '4枚目：資金計画書', node: <FundingPlanSheet propertyAddress={property.display_address || property.address} propertyPrice={property.price || property.listing_price} propertyType={property.property_type} printDate={today} /> },
-                  { label: '5枚目：リフォーム概算表', node: <ReformEstimateSheet /> },
-                ];
-                return pages.map((page, pageIndex) => (
-                  <Box key={`${propIndex}-${pageIndex}`} sx={{ width: '100%', maxWidth: '700px' }}>
-                    <Typography variant="caption" sx={{ display: 'block', mb: 0.5, color: '#555', fontWeight: 'bold' }}>
-                      {page.label}
-                    </Typography>
-                    <Box
-                      sx={{
-                        boxShadow: '0 2px 8px rgba(0,0,0,0.25)',
-                        bgcolor: '#fff',
-                        transform: 'scale(0.72)',
-                        transformOrigin: 'top left',
-                        width: '210mm',
-                        mb: `calc(297mm * 0.72 - 297mm + 8px)`,
-                      }}
-                    >
-                      {page.node}
-                    </Box>
+            <>
+              {/* 印刷用の実寸DOM（スクロールで確認できるプレビュー兼印刷ソース） */}
+              <Box
+                ref={printAreaRef}
+                sx={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: '8px',
+                  p: '16px',
+                }}
+              >
+                {allPages.map((page) => (
+                  <Box
+                    key={page.key}
+                    className="print-page"
+                    sx={{
+                      width: '210mm',
+                      minHeight: '297mm',
+                      bgcolor: '#fff',
+                      boxShadow: '0 2px 12px rgba(0,0,0,0.4)',
+                      overflow: 'hidden',
+                      flexShrink: 0,
+                    }}
+                  >
+                    {page.node}
                   </Box>
-                ));
-              })}
-            </Box>
+                ))}
+              </Box>
+            </>
           )}
         </DialogContent>
 
@@ -345,7 +349,7 @@ export function ViewingPreparationPrintButton({
             onClick={handlePrint}
             disabled={printing || loading || !!error || propertyDetails.length === 0}
           >
-            {printing ? '印刷中...' : `印刷する（${propertyDetails.length * 5}枚）`}
+            {printing ? '印刷中...' : `印刷する（${allPages.length}枚）`}
           </Button>
         </DialogActions>
       </Dialog>
