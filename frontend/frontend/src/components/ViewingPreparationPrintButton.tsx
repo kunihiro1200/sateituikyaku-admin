@@ -77,89 +77,43 @@ export function ViewingPreparationPrintButton({
   };
 
   // ============================================================
-  // 印刷：iframeにプレビューHTMLとCSSをコピーして印刷
+  // 印刷：純粋HTMLを新しいウィンドウで印刷（MUI非依存）
   // ============================================================
   const handlePrint = () => {
-    const printArea = document.getElementById('vp-print-area');
-    if (!printArea) return;
+    if (propertyDetails.length === 0) return;
     setPrinting(true);
 
-    // 既存のiframeを削除
-    const existingIframe = document.getElementById('vp-print-iframe') as HTMLIFrameElement | null;
-    if (existingIframe) existingIframe.remove();
+    import('../utils/printHtmlGenerators').then(({ generateAllPagesHtml }) => {
+      const html = generateAllPagesHtml(buyer, propertyDetails, today);
 
-    // 非表示iframeを作成
-    const iframe = document.createElement('iframe');
-    iframe.id = 'vp-print-iframe';
-    iframe.style.cssText = 'position:fixed;top:0;left:0;width:0;height:0;border:none;visibility:hidden;';
-    document.body.appendChild(iframe);
-
-    const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
-    if (!iframeDoc) { setPrinting(false); return; }
-
-    // 現在のページの全スタイルシートをiframeにコピー
-    const styleLinks = Array.from(document.querySelectorAll('link[rel="stylesheet"]'))
-      .map((el) => el.outerHTML)
-      .join('\n');
-
-    const inlineStyles = Array.from(document.querySelectorAll('style'))
-      .filter((el) => el.id !== 'vp-print-style')
-      .map((el) => `<style>${el.textContent}</style>`)
-      .join('\n');
-
-    // 各ページのHTMLを取得（.vp-page要素）
-    const pages = Array.from(printArea.querySelectorAll('.vp-page'));
-    const pagesHtml = pages
-      .map((page, i) => {
-        const isLast = i === pages.length - 1;
-        return `<div style="
-          width:210mm;
-          page-break-after:${isLast ? 'auto' : 'always'};
-          break-after:${isLast ? 'auto' : 'page'};
-          background:white;
-          overflow:hidden;
-        ">${page.innerHTML}</div>`;
-      })
-      .join('');
-
-    iframeDoc.open();
-    iframeDoc.write(`<!DOCTYPE html>
-<html lang="ja">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-${styleLinks}
-${inlineStyles}
-<style>
-  @page { size: A4 portrait; margin: 0; }
-  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; box-sizing: border-box; }
-  body { margin: 0; padding: 0; background: white; font-family: "Noto Sans JP","Hiragino Kaku Gothic ProN","Meiryo",sans-serif; }
-</style>
-</head>
-<body>${pagesHtml}</body>
-</html>`);
-    iframeDoc.close();
-
-    // フォント・画像の読み込みを待ってから印刷
-    iframe.onload = () => {
-      setTimeout(() => {
-        iframe.contentWindow?.focus();
-        iframe.contentWindow?.print();
-        setTimeout(() => {
-          iframe.remove();
-          setPrinting(false);
-        }, 1000);
-      }, 500);
-    };
-
-    // フォールバック
-    setTimeout(() => {
-      if (document.getElementById('vp-print-iframe')) {
-        iframe.contentWindow?.focus();
-        iframe.contentWindow?.print();
-        setTimeout(() => { iframe.remove(); setPrinting(false); }, 1000);
+      const printWindow = window.open('', '_blank', 'width=900,height=700');
+      if (!printWindow) {
+        alert('ポップアップを許可してください（アドレスバー右側のアイコンをクリック）');
+        setPrinting(false);
+        return;
       }
-    }, 2500);
+
+      printWindow.document.write(html);
+      printWindow.document.close();
+
+      // ロード完了後に印刷
+      const doPrint = () => {
+        setTimeout(() => {
+          printWindow.focus();
+          printWindow.print();
+          setTimeout(() => {
+            printWindow.close();
+            setPrinting(false);
+          }, 500);
+        }, 600);
+      };
+
+      printWindow.onload = doPrint;
+      // フォールバック（onloadが発火しない場合）
+      setTimeout(() => {
+        if (!printWindow.closed) doPrint();
+      }, 2000);
+    });
   };
 
   if (!linkedProperties || linkedProperties.length === 0) return null;
