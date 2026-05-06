@@ -300,6 +300,23 @@ async def scrape_athome(url: str) -> dict:
                 if k in details and details[k] and details[k] != '－':
                     result[field] = details[k]
                     break
+        
+        # 価格を数値として抽出（価格変動監視用）
+        if result['price']:
+            # "3,980万円" → 39800000 に変換
+            price_match = re.search(r'([0-9,]+)万円', result['price'])
+            if price_match:
+                man_yen = float(price_match.group(1).replace(',', ''))
+                result['price_numeric'] = int(man_yen * 10000)
+            else:
+                # "39,800,000円" のようなパターン
+                price_match2 = re.search(r'([0-9,]+)円', result['price'])
+                if price_match2:
+                    result['price_numeric'] = int(price_match2.group(1).replace(',', ''))
+        
+        # 売却済み判定
+        sold_keywords = ['売却済', '成約済', 'SOLD', '販売終了']
+        result['is_sold'] = any(keyword in html for keyword in sold_keywords)
 
         await browser.close()
 

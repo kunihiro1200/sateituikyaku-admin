@@ -171,19 +171,23 @@ export class PropertyPriceMonitorService {
         { timeout: 60000 } // 60秒タイムアウト
       );
 
-      const data = response.data;
+      const data = response.data?.data || response.data;
 
-      // 価格を抽出（例: "3,980万円" → 39800000）
+      // 価格を抽出
       let price: number | undefined;
-      if (data.price_text) {
-        price = this.extractPrice(data.price_text);
+      if (data.price_numeric) {
+        // スクレイピングサーバーが数値化した価格
+        price = data.price_numeric;
+      } else if (data.price) {
+        // 価格文字列から数値を抽出
+        price = this.extractPrice(data.price);
       }
 
       // ステータスを判定
       let status: 'available' | 'sold' | 'deleted' = 'available';
       if (response.status === 404 || data.error) {
         status = 'deleted';
-      } else if (data.sold || data.status === 'sold') {
+      } else if (data.is_sold || data.sold || data.status === 'sold') {
         status = 'sold';
       }
 
