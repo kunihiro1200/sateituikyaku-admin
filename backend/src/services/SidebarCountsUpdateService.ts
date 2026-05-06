@@ -190,9 +190,13 @@ export class SidebarCountsUpdateService {
       }
     }
 
-    // 当日TEL
-    console.log(`[determineBuyerCategories] Checking todayCall: !follow_up_assignee=${!buyer.follow_up_assignee}, has next_call_date=${!!buyer.next_call_date}`);
-    if (!buyer.follow_up_assignee && buyer.next_call_date) {
+    // 🆕 優先順位: follow_up_assignee（後続担当）が最優先、空の場合のみ project_assignee（案件担当）を使用
+    // BuyerStatusCalculator.ts の effectiveAssignee ロジックと一致させる
+    const effectiveAssignee = buyer.follow_up_assignee || buyer.project_assignee || null;
+
+    // 当日TEL（後続担当・案件担当ともに空 かつ 次電日が今日以前）
+    console.log(`[determineBuyerCategories] Checking todayCall: effectiveAssignee=${effectiveAssignee}, has next_call_date=${!!buyer.next_call_date}`);
+    if (!effectiveAssignee && buyer.next_call_date) {
       const nextCallDateStr = buyer.next_call_date.substring(0, 10);
       console.log(`[determineBuyerCategories] next_call_date=${nextCallDateStr}, today=${todayStr}`);
       console.log(`[determineBuyerCategories] nextCallDateStr <= todayStr: ${nextCallDateStr <= todayStr}`);
@@ -203,11 +207,12 @@ export class SidebarCountsUpdateService {
     }
 
     // 担当(イニシャル)
-    const assignee = buyer.follow_up_assignee || buyer.initial_assignee;
+    // 後続担当が最優先、空の場合のみ案件担当を使用（initial_assigneeはフォールバック）
+    const assignee = buyer.follow_up_assignee || buyer.project_assignee || buyer.initial_assignee;
     if (assignee) {
       categories.push({ category: 'assigned', assignee });
 
-      // 当日TEL(イニシャル)
+      // 当日TEL(イニシャル)（担当あり かつ 次電日が今日以前）
       if (buyer.next_call_date) {
         const nextCallDateStr = buyer.next_call_date.substring(0, 10);
         if (nextCallDateStr <= todayStr) {

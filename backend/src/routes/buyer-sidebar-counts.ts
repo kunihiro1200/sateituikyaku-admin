@@ -57,8 +57,9 @@ router.get('/rebuild', async (req, res) => {
         }
       }
 
-      // 当日TEL（後続担当が空 + 次電日が今日以前）
-      if (!buyer.follow_up_assignee && buyer.next_call_date) {
+      // 当日TEL（後続担当・案件担当ともに空 + 次電日が今日以前）
+      const effectiveAssignee = buyer.follow_up_assignee || buyer.project_assignee || null;
+      if (!effectiveAssignee && buyer.next_call_date) {
         const nextCallDateStr = new Date(buyer.next_call_date).toISOString().split('T')[0];
         if (nextCallDateStr <= todayStr) {
           counts['todayCall'] = (counts['todayCall'] || 0) + 1;
@@ -66,15 +67,16 @@ router.get('/rebuild', async (req, res) => {
       }
 
       // 担当(イニシャル)
-      const assignee = buyer.follow_up_assignee || buyer.initial_assignee;
+      // 後続担当が最優先、空の場合のみ案件担当を使用
+      const assignee = buyer.follow_up_assignee || buyer.project_assignee || buyer.initial_assignee;
       if (assignee) {
         assignedCounts[assignee] = (assignedCounts[assignee] || 0) + 1;
 
-        // 当日TEL(イニシャル)（後続担当が空でない + 次電日が今日以前）
-        if (buyer.follow_up_assignee && buyer.next_call_date) {
+        // 当日TEL(イニシャル)（担当あり + 次電日が今日以前）
+        if (buyer.next_call_date) {
           const nextCallDateStr = new Date(buyer.next_call_date).toISOString().split('T')[0];
           if (nextCallDateStr <= todayStr) {
-            todayCallAssignedCounts[buyer.follow_up_assignee] = (todayCallAssignedCounts[buyer.follow_up_assignee] || 0) + 1;
+            todayCallAssignedCounts[assignee] = (todayCallAssignedCounts[assignee] || 0) + 1;
           }
         }
       }
