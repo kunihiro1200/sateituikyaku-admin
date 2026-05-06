@@ -112,17 +112,17 @@ export function generatePage2Html(propertyAddress: string, propertyPrice: number
     <div style="font-size:18pt;font-weight:bold;text-align:center;text-decoration:underline;margin-bottom:16px;">買付申込書</div>
     <div style="text-align:right;margin-bottom:24px;font-size:10pt;">　　　　年　　　月　　　日</div>
     <table style="width:100%;border-collapse:collapse;margin-bottom:24px;">
-      <tr><td style="${thStyle}">住所</td><td style="${tdStyle}"></td></tr>
-      <tr><td colspan="2" style="${tdStyle}">□借家　□持ち家（売却ご予定　ある・なし）</td></tr>
-      <tr><td style="${thStyle}">連絡先電話番号</td><td style="${tdStyle}"></td></tr>
-      <tr><td style="${thStyle}">メールアドレス</td><td style="${tdStyle}"></td></tr>
-      <tr><td style="${thStyle}">契約名義人氏名</td><td style="${tdStyle}"></td></tr>
-      <tr><td style="${thStyle}">勤務先</td><td style="${tdStyle}"></td></tr>
+      <tr><td style="${thStyle}">住所</td><td colspan="3" style="${tdStyle}"></td></tr>
+      <tr><td colspan="4" style="${tdStyle}">□借家　□持ち家（売却ご予定　ある・なし）</td></tr>
+      <tr><td style="${thStyle}">連絡先電話番号</td><td colspan="3" style="${tdStyle}"></td></tr>
+      <tr><td style="${thStyle}">メールアドレス</td><td colspan="3" style="${tdStyle}"></td></tr>
+      <tr><td style="${thStyle}">契約名義人氏名</td><td colspan="3" style="${tdStyle}"></td></tr>
+      <tr><td style="${thStyle}">勤務先</td><td colspan="3" style="${tdStyle}"></td></tr>
       <tr>
-        <td style="${thStyle}">勤続年数</td>
-        <td style="${tdStyle}"></td>
+        <td style="border:1px solid #000;padding:4px 8px;font-size:9pt;width:140px;">勤続年数</td>
+        <td style="border:1px solid #000;padding:4px 8px;font-size:9pt;"></td>
         <td style="border:1px solid #000;padding:4px 8px;font-size:9pt;width:80px;">年収</td>
-        <td style="${tdStyle}"></td>
+        <td style="border:1px solid #000;padding:4px 8px;font-size:9pt;width:120px;"></td>
       </tr>
     </table>
     <div style="font-size:9pt;margin-bottom:16px;">
