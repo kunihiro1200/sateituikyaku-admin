@@ -148,16 +148,13 @@ const ViewingPreparationPrintSheet = React.forwardRef<HTMLDivElement, ViewingPre
         ref={ref}
         sx={{
           width: '210mm',
-          height: '297mm',
-          p: '6mm 8mm',
+          minHeight: '297mm',
+          p: '8mm 10mm',
           bgcolor: '#fff',
           fontFamily: '"Noto Sans JP", "Hiragino Kaku Gothic ProN", "Meiryo", sans-serif',
-          fontSize: '7.5pt',
+          fontSize: '8pt',
           color: '#000',
           boxSizing: 'border-box',
-          overflow: 'hidden',
-          display: 'flex',
-          flexDirection: 'column',
         }}
       >
         {/* ヘッダー（白黒） */}
@@ -166,11 +163,11 @@ const ViewingPreparationPrintSheet = React.forwardRef<HTMLDivElement, ViewingPre
             内覧準備資料
           </Typography>
           <Box sx={{ textAlign: 'right' }}>
-            <Typography sx={{ fontSize: '7pt', color: '#444' }}>
+            <Typography sx={{ fontSize: '7.5pt', color: '#444' }}>
               作成日: {today}
             </Typography>
             {buyer.buyer_number && (
-              <Typography sx={{ fontSize: '7pt', color: '#444' }}>
+              <Typography sx={{ fontSize: '7.5pt', color: '#444' }}>
                 買主番号: {buyer.buyer_number}
               </Typography>
             )}

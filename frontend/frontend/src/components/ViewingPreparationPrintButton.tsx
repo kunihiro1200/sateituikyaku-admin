@@ -77,89 +77,89 @@ export function ViewingPreparationPrintButton({
   };
 
   // ============================================================
-  // 印刷：プレビューのDOMをそのまま window.print() で印刷
+  // 印刷：iframeにプレビューHTMLとCSSをコピーして印刷
   // ============================================================
   const handlePrint = () => {
+    const printArea = document.getElementById('vp-print-area');
+    if (!printArea) return;
     setPrinting(true);
 
-    // 印刷用スタイルを注入
-    const styleId = 'vp-print-style';
-    const existing = document.getElementById(styleId);
-    if (existing) existing.remove();
+    // 既存のiframeを削除
+    const existingIframe = document.getElementById('vp-print-iframe') as HTMLIFrameElement | null;
+    if (existingIframe) existingIframe.remove();
 
-    const style = document.createElement('style');
-    style.id = styleId;
-    style.textContent = `
-      @media print {
-        @page {
-          size: A4 portrait;
-          margin: 0;
-        }
+    // 非表示iframeを作成
+    const iframe = document.createElement('iframe');
+    iframe.id = 'vp-print-iframe';
+    iframe.style.cssText = 'position:fixed;top:0;left:0;width:0;height:0;border:none;visibility:hidden;';
+    document.body.appendChild(iframe);
 
-        /* 全要素を非表示 */
-        body * {
-          visibility: hidden !important;
-        }
+    const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
+    if (!iframeDoc) { setPrinting(false); return; }
 
-        /* 印刷エリアとその子要素だけ表示 */
-        #vp-print-area,
-        #vp-print-area * {
-          visibility: visible !important;
-        }
+    // 現在のページの全スタイルシートをiframeにコピー
+    const styleLinks = Array.from(document.querySelectorAll('link[rel="stylesheet"]'))
+      .map((el) => el.outerHTML)
+      .join('\n');
 
-        /* 印刷エリアを左上に固定 */
-        #vp-print-area {
-          position: absolute !important;
-          top: 0 !important;
-          left: 0 !important;
-          width: 210mm !important;
-          background: white !important;
-        }
+    const inlineStyles = Array.from(document.querySelectorAll('style'))
+      .filter((el) => el.id !== 'vp-print-style')
+      .map((el) => `<style>${el.textContent}</style>`)
+      .join('\n');
 
-        /* 各ページ */
-        .vp-page {
-          width: 210mm !important;
-          page-break-after: always !important;
-          break-after: page !important;
-          page-break-inside: avoid !important;
-          display: block !important;
-          background: white !important;
-        }
+    // 各ページのHTMLを取得（.vp-page要素）
+    const pages = Array.from(printArea.querySelectorAll('.vp-page'));
+    const pagesHtml = pages
+      .map((page, i) => {
+        const isLast = i === pages.length - 1;
+        return `<div style="
+          width:210mm;
+          page-break-after:${isLast ? 'auto' : 'always'};
+          break-after:${isLast ? 'auto' : 'page'};
+          background:white;
+          overflow:hidden;
+        ">${page.innerHTML}</div>`;
+      })
+      .join('');
 
-        .vp-page:last-child {
-          page-break-after: auto !important;
-          break-after: auto !important;
-        }
+    iframeDoc.open();
+    iframeDoc.write(`<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+${styleLinks}
+${inlineStyles}
+<style>
+  @page { size: A4 portrait; margin: 0; }
+  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; box-sizing: border-box; }
+  body { margin: 0; padding: 0; background: white; font-family: "Noto Sans JP","Hiragino Kaku Gothic ProN","Meiryo",sans-serif; }
+</style>
+</head>
+<body>${pagesHtml}</body>
+</html>`);
+    iframeDoc.close();
 
-        /* 背景色保持 */
-        * {
-          -webkit-print-color-adjust: exact !important;
-          print-color-adjust: exact !important;
-        }
-      }
-    `;
-    document.head.appendChild(style);
-
-    setTimeout(() => {
-      window.print();
-
-      const cleanup = () => {
-        const s = document.getElementById(styleId);
-        if (s) s.remove();
-        setPrinting(false);
-        window.removeEventListener('afterprint', cleanup);
-      };
-      window.addEventListener('afterprint', cleanup);
-
-      // フォールバック
+    // フォント・画像の読み込みを待ってから印刷
+    iframe.onload = () => {
       setTimeout(() => {
-        const s = document.getElementById(styleId);
-        if (s) {
-          s.remove();
+        iframe.contentWindow?.focus();
+        iframe.contentWindow?.print();
+        setTimeout(() => {
+          iframe.remove();
           setPrinting(false);
-        }
-      }, 5000);
-    }, 300);
+        }, 1000);
+      }, 500);
+    };
+
+    // フォールバック
+    setTimeout(() => {
+      if (document.getElementById('vp-print-iframe')) {
+        iframe.contentWindow?.focus();
+        iframe.contentWindow?.print();
+        setTimeout(() => { iframe.remove(); setPrinting(false); }, 1000);
+      }
+    }, 2500);
   };
 
   if (!linkedProperties || linkedProperties.length === 0) return null;
