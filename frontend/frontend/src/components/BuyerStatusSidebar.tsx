@@ -14,6 +14,7 @@ interface CategoryCounts {
   threeCallUnchecked?: number;  // ３回架電未カテゴリ（新規）
   assignedCounts?: Record<string, number>;
   todayCallAssignedCounts?: Record<string, number>;
+  projectAssigneeOnlyTodayCallCounts?: Record<string, number>;  // 🆕 案件担当のみの当日TEL（当日TEL直下に表示）
   
   // 新規追加（2026年4月）
   inquiryEmailUnanswered?: number;  // 問合メール未対応
@@ -198,6 +199,22 @@ export default function BuyerStatusSidebar({
         label: getCategoryLabel(key),
         count,
         color: getCategoryColor(key),
+      });
+    }
+
+    // 「当日TEL」の直後に案件担当のみの当日TEL(K)を表示
+    if (key === 'todayCall' && categoryCounts.projectAssigneeOnlyTodayCallCounts) {
+      Object.entries(categoryCounts.projectAssigneeOnlyTodayCallCounts).forEach(([assignee, cnt]) => {
+        if (cnt > 0) {
+          categoryList.push({
+            key: `todayCallAssigned:${assignee}`,
+            label: `当日TEL(${assignee})`,
+            count: cnt,
+            color: getCategoryColor('todayCallAssigned'),
+            isSubCategory: true,
+            parentKey: 'todayCall',
+          });
+        }
       });
     }
   });

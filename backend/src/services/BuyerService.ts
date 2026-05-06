@@ -2149,6 +2149,7 @@ export class BuyerService {
       threeCallUnchecked: 0,
       assignedCounts: {} as Record<string, number>,
       todayCallAssignedCounts: {} as Record<string, number>,
+      projectAssigneeOnlyTodayCallCounts: {} as Record<string, number>,
       inquiryEmailUnanswered: 0,
       brokerInquiry: 0,
       generalViewingSellerContactPending: 0,
@@ -2174,7 +2175,14 @@ export class BuyerService {
       else if (status === '売主内覧連絡未') result.sellerViewingContactPending++;
       else if (status.startsWith('当日TEL(')) {
         const match = status.match(/^当日TEL\((.+)\)$/);
-        if (match) result.todayCallAssignedCounts[match[1]] = (result.todayCallAssignedCounts[match[1]] || 0) + 1;
+        if (match) {
+          const assignee = match[1];
+          if (!buyer.follow_up_assignee && buyer.project_assignee) {
+            result.projectAssigneeOnlyTodayCallCounts[assignee] = (result.projectAssigneeOnlyTodayCallCounts[assignee] || 0) + 1;
+          } else {
+            result.todayCallAssignedCounts[assignee] = (result.todayCallAssignedCounts[assignee] || 0) + 1;
+          }
+        }
       } else if (status.startsWith('担当(')) {
         const match = status.match(/^担当\((.+)\)$/);
         if (match) result.assignedCounts[match[1]] = (result.assignedCounts[match[1]] || 0) + 1;
@@ -2372,7 +2380,8 @@ export class BuyerService {
         todayCall: 0,          // ✅ 買主用：当日TEL
         threeCallUnchecked: 0, // ✅ 買主用：３回架電未（新規）
         assignedCounts: {} as Record<string, number>,  // ✅ 買主用：担当別
-        todayCallAssignedCounts: {} as Record<string, number>,  // ✅ 買主用：当日TEL担当別
+        todayCallAssignedCounts: {} as Record<string, number>,  // ✅ 買主用：当日TEL担当別（後続担当あり）
+        projectAssigneeOnlyTodayCallCounts: {} as Record<string, number>,  // 🆕 案件担当のみの当日TEL（当日TEL直下に表示）
         // 🆕 新カテゴリ（2026年4月）
         inquiryEmailUnanswered: 0,  // 問合メール未対応
         brokerInquiry: 0,  // 業者問合せあり
@@ -2396,34 +2405,32 @@ export class BuyerService {
         
         // カテゴリキーへのマッピング（買主リスト専用）
         if (status === '内覧日前日') {
-          result.viewingDayBefore++;  // ✅ 買主用：内覧日前日
+          result.viewingDayBefore++;
         } else if (status === '当日TEL') {
-          result.todayCall++;  // ✅ 買主用：当日TEL
+          result.todayCall++;
         } else if (status === '3回架電未') {
-          result.threeCallUnchecked++;  // ✅ 買主用：３回架電未（新規）
+          result.threeCallUnchecked++;
         } else if (status.startsWith('当日TEL(')) {
-          // 当日TEL(Y) などの担当別
+          // 当日TEL(K) などの担当別
           const match = status.match(/^当日TEL\((.+)\)$/);
           if (match) {
             const assignee = match[1];
-            result.todayCallAssignedCounts[assignee] = (result.todayCallAssignedCounts[assignee] || 0) + 1;
+            if (!buyer.follow_up_assignee && buyer.project_assignee) {
+              // 案件担当のみ → 「当日TEL」直下に表示するための専用カウント
+              result.projectAssigneeOnlyTodayCallCounts[assignee] = (result.projectAssigneeOnlyTodayCallCounts[assignee] || 0) + 1;
+            } else {
+              // 後続担当あり → 担当(K)の子項目として表示
+              result.todayCallAssignedCounts[assignee] = (result.todayCallAssignedCounts[assignee] || 0) + 1;
+            }
           }
         } else if (status.startsWith('担当(')) {
           // 担当(Y) などの担当別
           const match = status.match(/^担当\((.+)\)$/);
           if (match) {
             const assignee = match[1];
-            result.assignedCounts[assignee] = (result.assignedCounts[assignee] || 0) + 1;  // ✅ 買主用：担当別
+            result.assignedCounts[assignee] = (result.assignedCounts[assignee] || 0) + 1;
           }
         }
-        // 🚨 売主専用のカテゴリは削除（買主リストには不要）
-        // - 内覧済み、未査定、査定（郵送）、当日TEL未着手、Pinrich空欄、専任、一般、訪問後他決、未訪問他決、当日TEL（内容）
-        
-        // 🆕 新カテゴリの条件式（2026年4月）
-        // ✅ 修正：calculated_statusを使用してカウント（優先度を考慮）
-        
-        if (status === '問合メール未対応') {
-          result.inquiryEmailUnanswered++;
         } else if (status === '業者問合せあり') {
           result.brokerInquiry++;
         } else if (status === '一般媒介_内覧後売主連絡未') {
