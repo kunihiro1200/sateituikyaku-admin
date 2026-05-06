@@ -38,76 +38,6 @@ function getTodayStr(): string {
   return `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
 }
 
-// ============================================================
-// 印刷用グローバルスタイルを注入・削除
-// ============================================================
-
-const PRINT_STYLE_ID = 'vp-print-global-style';
-
-function injectPrintStyle() {
-  if (document.getElementById(PRINT_STYLE_ID)) return;
-  const style = document.createElement('style');
-  style.id = PRINT_STYLE_ID;
-  style.textContent = `
-    @media print {
-      @page {
-        size: A4 portrait;
-        margin: 0mm;
-      }
-
-      /* プレビューダイアログ以外を全て非表示 */
-      body > *:not(#vp-print-overlay) {
-        display: none !important;
-      }
-
-      /* 印刷オーバーレイを表示 */
-      #vp-print-overlay {
-        display: block !important;
-        position: fixed !important;
-        top: 0 !important;
-        left: 0 !important;
-        width: 0 !important;
-        height: 0 !important;
-        overflow: visible !important;
-        z-index: 999999 !important;
-      }
-
-      /* 各ページ */
-      .vp-print-page {
-        width: 210mm !important;
-        height: 297mm !important;
-        overflow: hidden !important;
-        page-break-after: always !important;
-        break-after: page !important;
-        position: relative !important;
-        display: block !important;
-      }
-
-      .vp-print-page:last-child {
-        page-break-after: auto !important;
-        break-after: auto !important;
-      }
-
-      /* 背景色・画像を保持 */
-      * {
-        -webkit-print-color-adjust: exact !important;
-        print-color-adjust: exact !important;
-        color-adjust: exact !important;
-      }
-    }
-  `;
-  document.head.appendChild(style);
-}
-
-function removePrintStyle() {
-  const el = document.getElementById(PRINT_STYLE_ID);
-  if (el) el.remove();
-}
-
-// ============================================================
-// コンポーネント
-// ============================================================
-
 export function ViewingPreparationPrintButton({
   buyer,
   linkedProperties,
@@ -144,98 +74,105 @@ export function ViewingPreparationPrintButton({
 
   const handleClose = () => {
     setDialogOpen(false);
-    removePrintStyle();
   };
 
   // ============================================================
-  // 印刷：body直下に印刷専用オーバーレイを作り window.print()
+  // 印刷：プレビューのDOMをそのまま window.print() で印刷
   // ============================================================
   const handlePrint = () => {
-    if (propertyDetails.length === 0) return;
     setPrinting(true);
 
-    // 既存のオーバーレイを削除
-    const existing = document.getElementById('vp-print-overlay');
+    // 印刷用スタイルを注入
+    const styleId = 'vp-print-style';
+    const existing = document.getElementById(styleId);
     if (existing) existing.remove();
 
-    // 印刷専用オーバーレイをbody直下に作成
-    const overlay = document.createElement('div');
-    overlay.id = 'vp-print-overlay';
-    overlay.style.cssText = 'display:none;';
-    document.body.appendChild(overlay);
+    const style = document.createElement('style');
+    style.id = styleId;
+    style.textContent = `
+      @media print {
+        @page {
+          size: A4 portrait;
+          margin: 0;
+        }
 
-    // React でレンダリング
-    import('react-dom/client').then(({ createRoot }) => {
-      const root = createRoot(overlay);
+        /* 全要素を非表示 */
+        body * {
+          visibility: hidden !important;
+        }
 
-      const pages = propertyDetails.flatMap((property, propIndex) => [
-        <div key={`${propIndex}-1`} className="vp-print-page">
-          <ViewingPreparationPrintSheet buyer={buyer} property={property} printDate={today} />
-        </div>,
-        <div key={`${propIndex}-2`} className="vp-print-page">
-          <PurchaseApplicationPrintSheet
-            propertyAddress={property.display_address || property.address}
-            propertyPrice={property.price || property.listing_price}
-          />
-        </div>,
-        <div key={`${propIndex}-3`} className="vp-print-page">
-          <ExclusiveMediationContractSheet
-            propertyAddress={property.display_address || property.address}
-          />
-        </div>,
-        <div key={`${propIndex}-4`} className="vp-print-page">
-          <FundingPlanSheet
-            propertyAddress={property.display_address || property.address}
-            propertyPrice={property.price || property.listing_price}
-            propertyType={property.property_type}
-            printDate={today}
-          />
-        </div>,
-        <div key={`${propIndex}-5`} className="vp-print-page">
-          <ReformEstimateSheet />
-        </div>,
-      ]);
+        /* 印刷エリアとその子要素だけ表示 */
+        #vp-print-area,
+        #vp-print-area * {
+          visibility: visible !important;
+        }
 
-      root.render(<>{pages}</>);
+        /* 印刷エリアを左上に固定 */
+        #vp-print-area {
+          position: absolute !important;
+          top: 0 !important;
+          left: 0 !important;
+          width: 210mm !important;
+          background: white !important;
+        }
 
-      // レンダリング完了を待ってから印刷
+        /* 各ページ */
+        .vp-page {
+          width: 210mm !important;
+          page-break-after: always !important;
+          break-after: page !important;
+          page-break-inside: avoid !important;
+          display: block !important;
+          background: white !important;
+        }
+
+        .vp-page:last-child {
+          page-break-after: auto !important;
+          break-after: auto !important;
+        }
+
+        /* 背景色保持 */
+        * {
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+        }
+      }
+    `;
+    document.head.appendChild(style);
+
+    setTimeout(() => {
+      window.print();
+
+      const cleanup = () => {
+        const s = document.getElementById(styleId);
+        if (s) s.remove();
+        setPrinting(false);
+        window.removeEventListener('afterprint', cleanup);
+      };
+      window.addEventListener('afterprint', cleanup);
+
+      // フォールバック
       setTimeout(() => {
-        injectPrintStyle();
-
-        // afterprint イベントでクリーンアップ
-        const cleanup = () => {
-          root.unmount();
-          overlay.remove();
-          removePrintStyle();
+        const s = document.getElementById(styleId);
+        if (s) {
+          s.remove();
           setPrinting(false);
-          window.removeEventListener('afterprint', cleanup);
-        };
-        window.addEventListener('afterprint', cleanup);
-
-        window.print();
-
-        // afterprint が発火しない場合のフォールバック
-        setTimeout(() => {
-          if (document.getElementById('vp-print-overlay')) {
-            cleanup();
-          }
-        }, 3000);
-      }, 800);
-    });
+        }
+      }, 5000);
+    }, 300);
   };
 
   if (!linkedProperties || linkedProperties.length === 0) return null;
 
-  // プレビュー用ページリスト
   const previewPages = propertyDetails.flatMap((property, propIndex) => [
     {
       key: `${propIndex}-1`,
-      label: `1枚目：内覧準備資料`,
+      label: '1枚目：内覧準備資料',
       node: <ViewingPreparationPrintSheet buyer={buyer} property={property} printDate={today} />,
     },
     {
       key: `${propIndex}-2`,
-      label: `2枚目：買付申込書`,
+      label: '2枚目：買付申込書',
       node: (
         <PurchaseApplicationPrintSheet
           propertyAddress={property.display_address || property.address}
@@ -245,7 +182,7 @@ export function ViewingPreparationPrintButton({
     },
     {
       key: `${propIndex}-3`,
-      label: `3枚目：内覧証明書`,
+      label: '3枚目：内覧証明書',
       node: (
         <ExclusiveMediationContractSheet
           propertyAddress={property.display_address || property.address}
@@ -254,7 +191,7 @@ export function ViewingPreparationPrintButton({
     },
     {
       key: `${propIndex}-4`,
-      label: `4枚目：資金計画書`,
+      label: '4枚目：資金計画書',
       node: (
         <FundingPlanSheet
           propertyAddress={property.display_address || property.address}
@@ -266,7 +203,7 @@ export function ViewingPreparationPrintButton({
     },
     {
       key: `${propIndex}-5`,
-      label: `5枚目：リフォーム概算表`,
+      label: '5枚目：リフォーム概算表',
       node: <ReformEstimateSheet />,
     },
   ]);
@@ -304,14 +241,13 @@ export function ViewingPreparationPrintButton({
           </Typography>
         </DialogTitle>
 
-        <DialogContent dividers sx={{ p: 0, overflow: 'auto', bgcolor: '#777' }}>
+        <DialogContent dividers sx={{ p: 0, overflow: 'auto', bgcolor: '#666' }}>
           {loading && (
             <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 300 }}>
               <CircularProgress sx={{ color: '#fff' }} />
               <Typography sx={{ ml: 2, color: '#fff' }}>物件情報を読み込み中...</Typography>
             </Box>
           )}
-
           {error && (
             <Box sx={{ p: 2 }}>
               <Alert severity="error">{error}</Alert>
@@ -319,39 +255,38 @@ export function ViewingPreparationPrintButton({
           )}
 
           {!loading && !error && previewPages.length > 0 && (
+            /* ===== 印刷対象エリア ===== */
             <Box
+              id="vp-print-area"
               sx={{
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
-                gap: '24px',
-                py: '24px',
+                gap: '20px',
+                py: '20px',
                 px: '16px',
               }}
             >
               {previewPages.map((page) => (
-                <Box key={page.key} sx={{ width: '100%', maxWidth: '820px' }}>
-                  {/* ページラベル */}
+                <Box key={page.key} sx={{ width: '100%', maxWidth: '860px' }}>
+                  {/* ページラベル（印刷時は非表示） */}
                   <Typography
-                    sx={{
-                      color: '#fff',
-                      fontSize: '11px',
-                      fontWeight: 'bold',
-                      mb: '6px',
-                      pl: '4px',
-                    }}
+                    className="vp-no-print"
+                    sx={{ color: '#fff', fontSize: '11px', fontWeight: 'bold', mb: '6px', pl: '4px' }}
                   >
                     {page.label}
                   </Typography>
-                  {/* A4実寸ページ（スクロールで全体確認可能） */}
+
+                  {/* A4ページ本体 */}
                   <Box
+                    className="vp-page"
                     sx={{
                       width: '210mm',
                       minHeight: '297mm',
                       bgcolor: '#fff',
                       boxShadow: '0 4px 16px rgba(0,0,0,0.5)',
-                      overflow: 'hidden',
                       mx: 'auto',
+                      overflow: 'visible',
                     }}
                   >
                     {page.node}
@@ -377,6 +312,13 @@ export function ViewingPreparationPrintButton({
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* ページラベルを印刷時に非表示にするスタイル */}
+      <style>{`
+        @media print {
+          .vp-no-print { display: none !important; }
+        }
+      `}</style>
     </>
   );
 }
