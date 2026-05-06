@@ -16,9 +16,8 @@ interface PurchaseApplicationPrintSheetProps {
 
 function formatPriceWithComma(price?: number | null): string {
   if (!price) return '';
-  // 万円単位の場合は円に変換（10000以上は万円と判断）
-  const yen = price >= 10000 ? price * 10000 : price;
-  return yen.toLocaleString('ja-JP');
+  // DBの価格は円単位で保存されているのでそのままカンマ区切りにする
+  return price.toLocaleString('ja-JP');
 }
 
 // ============================================================
@@ -109,7 +108,7 @@ const PurchaseApplicationPrintSheet = React.forwardRef<HTMLDivElement, PurchaseA
           <Typography sx={{ fontSize: '10pt', minWidth: '80px' }}>
             １，物件
           </Typography>
-          <Box sx={{ flex: 1, borderBottom: '1px solid #000', pb: 0.5, ml: 2 }}>
+          <Box sx={{ flex: 1, borderBottom: '1px solid #000', pb: 0.5, ml: 2, textAlign: 'center' }}>
             <Typography sx={{ fontSize: '12pt', fontWeight: 'bold' }}>
               {propertyAddress || ''}
             </Typography>
@@ -127,7 +126,7 @@ const PurchaseApplicationPrintSheet = React.forwardRef<HTMLDivElement, PurchaseA
             <Typography sx={{ fontSize: '10pt', minWidth: '80px' }}>
               購入価格
             </Typography>
-            <Box sx={{ flex: 1, borderBottom: '1px solid #000', pb: 0.5, mx: 1 }}>
+            <Box sx={{ flex: 1, borderBottom: '1px solid #000', pb: 0.5, mx: 1, textAlign: 'center' }}>
               <Typography sx={{ fontSize: '12pt', fontWeight: 'bold' }}>
                 {priceDisplay}
               </Typography>
