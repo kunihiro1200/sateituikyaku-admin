@@ -13,6 +13,7 @@ import {
 import PrintIcon from '@mui/icons-material/Print';
 import api from '../services/api';
 import ViewingPreparationPrintSheet from './ViewingPreparationPrintSheet';
+import PurchaseApplicationPrintSheet from './PurchaseApplicationPrintSheet';
 
 // ============================================================
 // 型定義
@@ -182,16 +183,23 @@ export function ViewingPreparationPrintButton({
         <React.StrictMode>
           <>
             {propertyDetails.map((property, index) => (
-              <div
-                key={property.property_number || index}
-                className="viewing-prep-page"
-              >
-                <ViewingPreparationPrintSheet
-                  buyer={buyer}
-                  property={property}
-                  printDate={today}
-                />
-              </div>
+              <React.Fragment key={property.property_number || index}>
+                {/* 1枚目: 内覧準備資料 */}
+                <div className="viewing-prep-page">
+                  <ViewingPreparationPrintSheet
+                    buyer={buyer}
+                    property={property}
+                    printDate={today}
+                  />
+                </div>
+                {/* 2枚目: 買付申込書 */}
+                <div className={index < propertyDetails.length - 1 ? 'viewing-prep-page' : ''}>
+                  <PurchaseApplicationPrintSheet
+                    propertyAddress={property.display_address || property.address}
+                    propertyPrice={property.price || property.listing_price}
+                  />
+                </div>
+              </React.Fragment>
             ))}
           </>
         </React.StrictMode>
@@ -273,22 +281,38 @@ export function ViewingPreparationPrintButton({
               }}
             >
               {propertyDetails.map((property, index) => (
-                <Box
-                  key={property.property_number || index}
-                  sx={{
-                    boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
-                    bgcolor: '#fff',
-                    // プレビュー用スケール（A4サイズを縮小表示）
-                    transform: 'scale(0.7)',
-                    transformOrigin: 'top center',
-                    mb: '-90mm',
-                  }}
-                >
-                  <ViewingPreparationPrintSheet
-                    buyer={buyer}
-                    property={property}
-                  />
-                </Box>
+                <React.Fragment key={property.property_number || index}>
+                  {/* 1枚目: 内覧準備資料 */}
+                  <Box
+                    sx={{
+                      boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+                      bgcolor: '#fff',
+                      transform: 'scale(0.7)',
+                      transformOrigin: 'top center',
+                      mb: '-90mm',
+                    }}
+                  >
+                    <ViewingPreparationPrintSheet
+                      buyer={buyer}
+                      property={property}
+                    />
+                  </Box>
+                  {/* 2枚目: 買付申込書 */}
+                  <Box
+                    sx={{
+                      boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+                      bgcolor: '#fff',
+                      transform: 'scale(0.7)',
+                      transformOrigin: 'top center',
+                      mb: '-90mm',
+                    }}
+                  >
+                    <PurchaseApplicationPrintSheet
+                      propertyAddress={property.display_address || property.address}
+                      propertyPrice={property.price || property.listing_price}
+                    />
+                  </Box>
+                </React.Fragment>
               ))}
             </Box>
           )}
