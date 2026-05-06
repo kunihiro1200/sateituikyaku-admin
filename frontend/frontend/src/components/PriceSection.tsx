@@ -1,10 +1,11 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Box, Typography, TextField, Grid, Button, Dialog, DialogTitle, DialogContent, DialogActions, Tooltip, IconButton as MuiIconButton } from '@mui/material';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import CheckIcon from '@mui/icons-material/Check';
 import api from '../services/api';
 import ImageSelectorModal from './ImageSelectorModal';
 import { PropertyChatSendData } from '../types/chat';
+import { supabase } from '../config/supabase';
 
 // 月々ローン支払い計算（元利均等返済、金利年3%/12、420回）
 function calcMonthlyPayment(price: number): number {
@@ -75,36 +76,53 @@ export default function PriceSection({
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
   const [chatSource, setChatSource] = useState<'blue' | 'orange'>('blue'); // どちらのバーから開いたか
   const [imageSelectorOpen, setImageSelectorOpen] = useState(false);
-  const [selectedImageUrl, setSelectedImageUrl] = useState<string | undefined>(undefined);
-  const [uploadingImage, setUploadingImage] = useState(false);
+  const [selectedImageUrls, setSelectedImageUrls] = useState<string[]>([]); // 複数画像対応
+  const [uploadingCount, setUploadingCount] = useState(0);
+  const uploadingImage = uploadingCount > 0;
   const [chatMessageBody, setChatMessageBody] = useState('');
   const [copiedMonthly, setCopiedMonthly] = useState(false);
 
-  // ローカルファイル/スクショをDriveにアップロードしてURLを取得
-  const uploadImageToDrive = async (file: File): Promise<string> => {
-    const formData = new FormData();
-    formData.append('file', file);
-    const res = await api.post(`/api/drive/folders/${propertyNumber}/files`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
-    return res.data?.file?.webViewLink || res.data?.file?.webContentLink || '';
+  // ファイルをSupabase Storageにアップロードして公開URLを取得（Google Chat表示用）
+  const uploadImageToStorage = async (file: File): Promise<string> => {
+    const timestamp = Date.now();
+    const ext = file.name.includes('.') ? '.' + file.name.split('.').pop() : '.png';
+    const safeName = file.name
+      .slice(0, file.name.length - ext.length)
+      .replace(/[^a-zA-Z0-9_-]/g, '_')
+      .replace(/^_+|_+$/g, '') || 'image';
+    const filePath = `chat-images/${timestamp}_${safeName}${ext}`;
+
+    const { error } = await supabase.storage
+      .from('shared-items')
+      .upload(filePath, file, { contentType: file.type, upsert: false });
+
+    if (error) throw new Error(`画像アップロード失敗: ${error.message}`);
+
+    const { data } = supabase.storage.from('shared-items').getPublicUrl(filePath);
+    return data.publicUrl;
   };
 
-  // ファイル選択ハンドラ
-  const handleLocalFileSelect = async (file: File) => {
-    setUploadingImage(true);
+  // ファイル選択ハンドラ（複数対応・useCallbackで最新状態を参照）
+  const handleLocalFileSelect = useCallback(async (file: File) => {
+    setUploadingCount(prev => prev + 1);
     try {
-      const url = await uploadImageToDrive(file);
-      setSelectedImageUrl(url);
+      const url = await uploadImageToStorage(file);
+      setSelectedImageUrls(prev => [...prev, url]); // 配列に追加
     } catch (err) {
       console.error('画像アップロードエラー:', err);
       onChatSendError('画像のアップロードに失敗しました');
     } finally {
-      setUploadingImage(false);
+      setUploadingCount(prev => prev - 1);
     }
-  };
+  }, [propertyNumber, onChatSendError]);
 
-  // クリップボード貼り付けハンドラ（ダイアログが開いている間だけグローバルに登録）
+  // handleLocalFileSelectの最新版をrefで保持（useEffect内クロージャ問題を回避）
+  const handleLocalFileSelectRef = useRef(handleLocalFileSelect);
+  useEffect(() => {
+    handleLocalFileSelectRef.current = handleLocalFileSelect;
+  }, [handleLocalFileSelect]);
+
+  // クリップボード貼り付けハンドラ（refで最新のhandleLocalFileSelectを参照）
   useEffect(() => {
     if (!confirmDialogOpen) return;
     const handleGlobalPaste = async (e: ClipboardEvent) => {
@@ -115,7 +133,7 @@ export default function PriceSection({
           const file = item.getAsFile();
           if (file) {
             e.preventDefault();
-            await handleLocalFileSelect(file);
+            await handleLocalFileSelectRef.current(file); // refで最新関数を参照
             break;
           }
         }
@@ -173,32 +191,25 @@ export default function PriceSection({
     setSendingChat(true);
     setConfirmDialogOpen(false);
     try {
-      const webhookUrl = 'https://chat.googleapis.com/v1/spaces/AAAAw9wyS-o/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=t6SJmZ8af-yyB38DZzAqGOKYI-DnIl6wYtVo-Lyskuk';
-      const propertyUrl = `${window.location.origin}/property-listings/${propertyNumber}`;
-
+      // 複数画像のURLを改行で連結
+      const imageUrlLines = selectedImageUrls.length > 0 
+        ? '\n' + selectedImageUrls.map(url => `📷 ${url}`).join('\n')
+        : '';
+      
       const GOOGLE_CHAT_LIMIT = 4096;
       const TRUNCATE_SUFFIX = '...';
       const SAFE_LIMIT = GOOGLE_CHAT_LIMIT - TRUNCATE_SUFFIX.length; // 4093
 
-      const imageUrlLine = selectedImageUrl ? `\n📷 ${selectedImageUrl}` : '';
-      const fullText = `${chatMessageBody}${imageUrlLine}`;
+      const fullText = `${chatMessageBody}${imageUrlLines}`;
       const truncatedText = fullText.length > GOOGLE_CHAT_LIMIT
         ? fullText.substring(0, SAFE_LIMIT) + TRUNCATE_SUFFIX
         : fullText;
-      const message = {
-        text: truncatedText
-      };
 
-      const response = await fetch(webhookUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(message),
+      // バックエンドのAPIを使用して物件担当へ送信
+      await api.post(`/api/property-listings/${propertyNumber}/send-chat-to-assignee`, {
+        message: truncatedText,
+        senderName: '物件リスト詳細画面',
       });
-
-      if (!response.ok) {
-        const body = await response.text().catch(() => '');
-        throw new Error(`HTTP ${response.status}: ${body}`);
-      }
 
       // 青いバーから送信した場合は確認=「未」にする（onChatSendSuccessを呼ぶ）
       // オレンジバーから送信した場合は確認を変えない（onPriceReductionChatSendSuccessを呼ぶ）
@@ -208,7 +219,7 @@ export default function PriceSection({
         (onPriceReductionChatSendSuccess ?? onChatSendSuccess)('値下げ通知を送信しました');
       }
       setChatSent(true);  // オレンジのバーを非表示にする
-      setSelectedImageUrl(undefined);
+      setSelectedImageUrls([]); // 画像リストをクリア
       setChatMessageBody('');
     } catch (error: any) {
       console.error('Failed to send price reduction chat:', error);
@@ -409,7 +420,7 @@ export default function PriceSection({
       )}
 
       {/* 送信確認ダイアログ */}
-      <Dialog open={confirmDialogOpen} onClose={() => { setConfirmDialogOpen(false); setSelectedImageUrl(undefined); setChatMessageBody(''); }} maxWidth="sm" fullWidth>
+      <Dialog open={confirmDialogOpen} onClose={() => { setConfirmDialogOpen(false); setSelectedImageUrls([]); setChatMessageBody(''); }} maxWidth="sm" fullWidth>
         <DialogTitle>Chat送信の確認</DialogTitle>
         <DialogContent>
           <Typography variant="body2" color="text.secondary" gutterBottom>
@@ -423,65 +434,98 @@ export default function PriceSection({
             onChange={(e) => setChatMessageBody(e.target.value)}
             sx={{ mt: 1, fontFamily: 'monospace', fontSize: '0.75rem', '& .MuiInputBase-input': { fontFamily: 'monospace', fontSize: '0.75rem' } }}
           />
-          {/* 画像添付セクション */}
+          {/* 画像添付セクション（複数対応） */}
           <Box sx={{ mt: 2 }}>
             <Typography variant="body2" color="text.secondary" gutterBottom>
-              画像添付（任意）：
+              画像添付（任意・複数可）：
             </Typography>
-            {uploadingImage ? (
+            {uploadingImage && (
               <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>アップロード中...</Typography>
-            ) : selectedImageUrl ? (
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1 }}>
-                <Box
-                  component="img"
-                  src={selectedImageUrl.startsWith('http') ? selectedImageUrl : undefined}
-                  alt="添付画像"
-                  sx={{ width: 80, height: 60, objectFit: 'cover', borderRadius: 1, border: '1px solid #ddd', display: selectedImageUrl.startsWith('http') ? 'block' : 'none' }}
-                />
-                {!selectedImageUrl.startsWith('http') && (
-                  <Typography variant="caption" color="text.secondary">画像添付済み</Typography>
-                )}
-                <Button size="small" color="error" onClick={() => setSelectedImageUrl(undefined)}>
-                  削除
-                </Button>
-              </Box>
-            ) : (
-              <Box sx={{ display: 'flex', gap: 1, mt: 0.5, flexWrap: 'wrap' }}>
-                {/* ローカルファイル選択 */}
-                <Button
-                  size="small"
-                  variant="outlined"
-                  component="label"
-                >
-                  📁 ファイルを選択
-                  <input
-                    type="file"
-                    hidden
-                    accept="image/*"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) handleLocalFileSelect(file);
-                      e.target.value = '';
-                    }}
-                  />
-                </Button>
-                {/* Google Drive選択 */}
-                <Button
-                  size="small"
-                  variant="outlined"
-                  onClick={() => setImageSelectorOpen(true)}
-                >
-                  ☁️ Driveから選択
-                </Button>
-                <Typography variant="caption" color="text.secondary" sx={{ alignSelf: 'center' }}>
-                  またはここにスクショを貼り付け（Ctrl+V）
-                </Typography>
+            )}
+            {/* 添付済み画像一覧 */}
+            {selectedImageUrls.length > 0 && (
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1, mb: 1 }}>
+                {selectedImageUrls.map((url, index) => (
+                  <Box key={index} sx={{ position: 'relative', width: 80, height: 60 }}>
+                    <Box
+                      component="img"
+                      src={url.startsWith('http') ? url : undefined}
+                      alt={`添付画像${index + 1}`}
+                      sx={{ 
+                        width: '100%', 
+                        height: '100%', 
+                        objectFit: 'cover', 
+                        borderRadius: 1, 
+                        border: '1px solid #ddd',
+                        display: url.startsWith('http') ? 'block' : 'none'
+                      }}
+                    />
+                    {!url.startsWith('http') && (
+                      <Typography variant="caption" color="text.secondary">画像{index + 1}</Typography>
+                    )}
+                    <Button 
+                      size="small" 
+                      color="error" 
+                      onClick={() => setSelectedImageUrls(prev => prev.filter((_, i) => i !== index))}
+                      sx={{ 
+                        position: 'absolute', 
+                        top: -8, 
+                        right: -8, 
+                        minWidth: 24, 
+                        width: 24, 
+                        height: 24, 
+                        p: 0,
+                        backgroundColor: 'white',
+                        '&:hover': { backgroundColor: '#ffebee' }
+                      }}
+                    >
+                      ×
+                    </Button>
+                  </Box>
+                ))}
               </Box>
             )}
+            {/* 画像追加ボタン */}
+            <Box sx={{ display: 'flex', gap: 1, mt: 0.5, flexWrap: 'wrap' }}>
+              {/* ローカルファイル選択（複数選択可能） */}
+              <Button
+                size="small"
+                variant="outlined"
+                component="label"
+                disabled={uploadingImage}
+              >
+                📁 ファイルを選択
+                <input
+                  type="file"
+                  hidden
+                  accept="image/*"
+                  multiple
+                  onChange={async (e) => {
+                    const files = Array.from(e.target.files || []);
+                    for (const file of files) {
+                      await handleLocalFileSelect(file);
+                    }
+                    e.target.value = '';
+                  }}
+                />
+              </Button>
+              {/* Google Drive選択 */}
+              <Button
+                size="small"
+                variant="outlined"
+                onClick={() => setImageSelectorOpen(true)}
+                disabled={uploadingImage}
+              >
+                ☁️ Driveから選択
+              </Button>
+              <Typography variant="caption" color="text.secondary" sx={{ alignSelf: 'center' }}>
+                またはここにスクショを貼り付け（Ctrl+V）
+              </Typography>
+            </Box>
           </Box>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => { setConfirmDialogOpen(false); setSelectedImageUrl(undefined); setChatMessageBody(''); }}>キャンセル</Button>
+          <Button onClick={() => { setConfirmDialogOpen(false); setSelectedImageUrls([]); setChatMessageBody(''); }}>キャンセル</Button>
           <Button
             variant="contained"
             onClick={handleSendPriceReductionChat}
@@ -493,20 +537,22 @@ export default function PriceSection({
         </DialogActions>
       </Dialog>
 
-      {/* 画像選択モーダル */}
+      {/* 画像選択モーダル（複数選択対応） */}
       <ImageSelectorModal
         open={imageSelectorOpen}
         onClose={() => setImageSelectorOpen(false)}
         onConfirm={async (images) => {
-          if (images.length > 0) {
-            const img = images[0];
+          // 複数画像を処理
+          for (const img of images) {
             if (img.source === 'local' && img.localFile) {
               // ローカルファイル: Driveにアップロード
               await handleLocalFileSelect(img.localFile);
             } else {
               // Google Drive画像またはURL: そのまま使用
               const imgUrl = img.url || img.previewUrl || '';
-              setSelectedImageUrl(imgUrl);
+              if (imgUrl) {
+                setSelectedImageUrls(prev => [...prev, imgUrl]);
+              }
             }
           }
           setImageSelectorOpen(false);

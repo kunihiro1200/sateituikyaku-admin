@@ -1511,8 +1511,62 @@ router.post('/:propertyNumber/send-chat-to-assignee', async (req: Request, res: 
     ].filter(Boolean).join('\n');
 
     const senderLabel = senderName ? `送信者: ${senderName}` : null;
-    const chatMessage = `📩 *物件担当への質問・伝言*\n\n物件番号: ${property.property_number}\n所在地: ${property.address || '未設定'}\n担当: ${property.sales_assignee}\n${sellerInfo ? sellerInfo + '\n' : ''}物件URL: ${propertyUrl}\n${senderLabel ? senderLabel + '\n' : ''}\n${String(message).trim()}`;
-    await axios.post(result.webhookUrl, { text: chatMessage });
+
+    // messageから📷で始まる画像URLを抽出し、テキスト部分と分離
+    const messageStr = String(message).trim();
+    const imageUrls: string[] = [];
+    const textLines = messageStr.split('\n').filter(line => {
+      const trimmed = line.trim();
+      if (trimmed.startsWith('📷 ')) {
+        const url = trimmed.replace(/^📷\s+/, '').trim();
+        if (url) imageUrls.push(url);
+        return false; // テキスト部分から除外
+      }
+      return true;
+    });
+    const textOnly = textLines.join('\n').trim();
+
+    // Google DriveのURLを直接表示可能な形式に変換
+    // /file/d/FILE_ID/view → https://drive.google.com/uc?export=view&id=FILE_ID
+    const toDirectImageUrl = (url: string): string => {
+      const match = url.match(/\/file\/d\/([^/]+)\//);
+      if (match) {
+        return `https://drive.google.com/uc?export=view&id=${match[1]}`;
+      }
+      return url;
+    };
+
+    const chatMessage = `📩 *物件担当への質問・伝言*\n\n物件番号: ${property.property_number}\n所在地: ${property.address || '未設定'}\n担当: ${property.sales_assignee}\n${sellerInfo ? sellerInfo + '\n' : ''}物件URL: ${propertyUrl}\n${senderLabel ? senderLabel + '\n' : ''}\n${textOnly}`;
+
+    if (imageUrls.length > 0) {
+      // 画像がある場合はcardsV2形式で送信（画像をインライン表示）
+      const imageWidgets = imageUrls.map(url => ({
+        image: {
+          imageUrl: toDirectImageUrl(url),
+          altText: '添付画像',
+        },
+      }));
+
+      const payload = {
+        text: chatMessage,
+        cardsV2: [
+          {
+            cardId: 'imageCard',
+            card: {
+              sections: [
+                {
+                  widgets: imageWidgets,
+                },
+              ],
+            },
+          },
+        ],
+      };
+      await axios.post(result.webhookUrl, payload);
+    } else {
+      // 画像なしの場合はテキストのみ
+      await axios.post(result.webhookUrl, { text: chatMessage });
+    }
 
     console.log(`[send-chat-to-assignee] Sent to ${property.sales_assignee} for ${propertyNumber}`);
     // CHAT送信履歴を保存
