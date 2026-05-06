@@ -15,6 +15,7 @@ import api from '../services/api';
 import ViewingPreparationPrintSheet from './ViewingPreparationPrintSheet';
 import PurchaseApplicationPrintSheet from './PurchaseApplicationPrintSheet';
 import ExclusiveMediationContractSheet from './ExclusiveMediationContractSheet';
+import FundingPlanSheet from './FundingPlanSheet';
 
 // ============================================================
 // 型定義
@@ -200,10 +201,19 @@ export function ViewingPreparationPrintButton({
                     propertyPrice={property.price || property.listing_price}
                   />
                 </div>
-                {/* 3枚目: 専任媒介契約書 */}
-                <div className={index < propertyDetails.length - 1 ? 'viewing-prep-page' : ''}>
+                {/* 3枚目: 内覧証明書 */}
+                <div className="viewing-prep-page">
                   <ExclusiveMediationContractSheet
                     propertyAddress={property.display_address || property.address}
+                  />
+                </div>
+                {/* 4枚目: 資金計画書 */}
+                <div className={index < propertyDetails.length - 1 ? 'viewing-prep-page' : ''}>
+                  <FundingPlanSheet
+                    propertyAddress={property.display_address || property.address}
+                    propertyPrice={property.price || property.listing_price}
+                    propertyType={property.property_type}
+                    printDate={today}
                   />
                 </div>
               </React.Fragment>
@@ -319,7 +329,7 @@ export function ViewingPreparationPrintButton({
                       propertyPrice={property.price || property.listing_price}
                     />
                   </Box>
-                  {/* 3枚目: 専任媒介契約書 */}
+                  {/* 3枚目: 内覧証明書 */}
                   <Box
                     sx={{
                       boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
@@ -331,6 +341,22 @@ export function ViewingPreparationPrintButton({
                   >
                     <ExclusiveMediationContractSheet
                       propertyAddress={property.display_address || property.address}
+                    />
+                  </Box>
+                  {/* 4枚目: 資金計画書 */}
+                  <Box
+                    sx={{
+                      boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+                      bgcolor: '#fff',
+                      transform: 'scale(0.7)',
+                      transformOrigin: 'top center',
+                      mb: '-90mm',
+                    }}
+                  >
+                    <FundingPlanSheet
+                      propertyAddress={property.display_address || property.address}
+                      propertyPrice={property.price || property.listing_price}
+                      propertyType={property.property_type}
                     />
                   </Box>
                 </React.Fragment>

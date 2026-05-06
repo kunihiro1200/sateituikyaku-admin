@@ -50,7 +50,7 @@ const ExclusiveMediationContractSheet = React.forwardRef<HTMLDivElement, Exclusi
             mb: 0.5,
           }}
         >
-          専 任 媒 介 契 約 書
+          内 覧 証 明 書
         </Typography>
 
         {/* 依頼の内容 */}
