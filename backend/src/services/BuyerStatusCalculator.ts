@@ -146,13 +146,14 @@ export function calculateBuyerStatus(buyer: BuyerData): StatusResult {
       return { status, priority: 8.5, matchedCondition: '売主内覧日連絡が未（2026-04-29以降）', color: getStatusColor(status) };
     }
 
-    // Priority 6: 当日TEL（次電日が当日以前 かつ 追客担当なし）
-    // 追客担当がある場合は Priority 23以降の担当者別カテゴリで「当日TEL(林)」として表示
+    // Priority 6: 当日TEL（次電日が当日以前 かつ 追客担当なし かつ 案件担当なし）
+    // 追客担当または案件担当がある場合は Priority 23以降の担当者別カテゴリで「当日TEL(K)」として表示
     if (
       and(
         isNotBlank(buyer.next_call_date),
         isTodayOrPast(buyer.next_call_date),
-        isBlank(buyer.follow_up_assignee)
+        isBlank(buyer.follow_up_assignee),
+        isBlank(buyer.project_assignee)
       )
     ) {
       const status = '当日TEL';
