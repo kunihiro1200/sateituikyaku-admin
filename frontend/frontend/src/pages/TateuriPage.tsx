@@ -71,7 +71,15 @@ export default function TateuriPage() {
     markersRef.current.forEach(m => m.setMap(null));
     markersRef.current = [];
 
-    const validProps = properties.filter(p => p.lat && p.lng);
+    const validProps = properties.filter(p => {
+      if (!p.lat || !p.lng) return false;
+      // 大分県の範囲内かチェック（海上・範囲外の座標を除外）
+      const inOita = p.lat >= 32.5 && p.lat <= 34.0 && p.lng >= 130.5 && p.lng <= 132.5;
+      if (!inOita) {
+        console.warn(`[TateuriPage] 座標が大分県範囲外のためスキップ: ${p.address} (${p.lat}, ${p.lng})`);
+      }
+      return inOita;
+    });
     if (validProps.length === 0) return;
 
     const bounds = new window.google.maps.LatLngBounds();
@@ -141,10 +149,18 @@ export default function TateuriPage() {
     window.open(`/property-preview/${slug}`, '_blank');
   };
 
+  // タイトルから不要テキストを除去
   const cleanTitle = (title: string | null) =>
     (title || '')
       .replace(/\[\d+\].+$/, '')        // [番号]以降を除去
       .replace(/支払額シミュレーション.*$/, '') // 「支払額シミュレーション」以降を除去
+      .trim();
+
+  // 価格から不要テキストを除去（「支払額シミュレーション借入可能額シミュレーション」等）
+  const cleanPrice = (price: string | null) =>
+    (price || '')
+      .replace(/支払額シミュレーション.*$/, '')
+      .replace(/借入可能額シミュレーション.*$/, '')
       .trim();
 
   return (
@@ -197,7 +213,7 @@ export default function TateuriPage() {
                     <div style={{ fontSize: 13, fontWeight: 'bold', color: '#333', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {cleanTitle(p.title) || p.address || '物件情報'}
                     </div>
-                    {p.price && <div style={{ fontSize: 15, fontWeight: 'bold', color: '#e84040', marginTop: 2 }}>{p.price}</div>}
+                    {p.price && <div style={{ fontSize: 15, fontWeight: 'bold', color: '#e84040', marginTop: 2 }}>{cleanPrice(p.price)}</div>}
                     {p.address && <div style={{ fontSize: 11, color: '#666', marginTop: 2 }}>{p.address}</div>}
                     <div style={{ display: 'flex', gap: 6, marginTop: 4, flexWrap: 'wrap' }}>
                       {p.layout && <span style={{ fontSize: 11, background: '#f0f0f0', padding: '1px 6px', borderRadius: 3 }}>{p.layout}</span>}
@@ -260,7 +276,7 @@ export default function TateuriPage() {
                       {/* 価格 */}
                       {selectedProperty.price && (
                         <div style={{ fontSize: 16, fontWeight: 'bold', color: '#e84040', marginBottom: 4 }}>
-                          {selectedProperty.price}
+                          {cleanPrice(selectedProperty.price)}
                         </div>
                       )}
                       {/* 住所 */}

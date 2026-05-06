@@ -15,13 +15,42 @@ router.get('/', async (req: Request, res: Response) => {
     const supabase = getSupabase();
     const { data, error } = await supabase
       .from('property_previews')
-      .select('slug, title, price, address, access, layout, area, images, lat, lng, created_at')
+      .select('slug, title, price, address, access, layout, area, images, lat, lng, google_map_url, created_at')
       .eq('is_tateuri', true)
       .eq('is_active', true)
       .order('address', { ascending: true });
 
     if (error) throw error;
-    res.json(data || []);
+
+    // google_map_urlから座標を抽出して補完（lat/lngが無効な場合）
+    const isValidOitaCoord = (lat: number | null, lng: number | null) =>
+      lat != null && lng != null &&
+      lat >= 32.5 && lat <= 34.0 &&
+      lng >= 130.5 && lng <= 132.5;
+
+    const extractCoordsFromMapUrl = (url: string | null): { lat: number; lng: number } | null => {
+      if (!url) return null;
+      // @lat,lng または q=lat,lng パターンを抽出
+      const atMatch = url.match(/@(3[2-4]\.\d+),(13[0-2]\.\d+)/);
+      if (atMatch) return { lat: parseFloat(atMatch[1]), lng: parseFloat(atMatch[2]) };
+      const qMatch = url.match(/[?&]q=(3[2-4]\.\d+),(13[0-2]\.\d+)/);
+      if (qMatch) return { lat: parseFloat(qMatch[1]), lng: parseFloat(qMatch[2]) };
+      return null;
+    };
+
+    const enriched = (data || []).map((p: any) => {
+      if (!isValidOitaCoord(p.lat, p.lng)) {
+        const coords = extractCoordsFromMapUrl(p.google_map_url);
+        if (coords) {
+          return { ...p, lat: coords.lat, lng: coords.lng };
+        }
+        // 座標が取れない場合はnullにする
+        return { ...p, lat: null, lng: null };
+      }
+      return p;
+    });
+
+    res.json(enriched);
   } catch (err: any) {
     console.error('[tateuri] GET error:', err);
     res.status(500).json({ error: err.message });
