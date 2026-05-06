@@ -201,6 +201,9 @@ export default function PropertyPreviewPage() {
   const images = data.images || [];
   // タイトルから [物件番号]以降の不要テキストを除去
   const cleanTitle = (data.title || '').replace(/\[\d+\].+$/, '').trim();
+  // 価格から「支払額シミュレーション」以降の不要テキストを除去
+  const cleanPrice = (price: string | null | undefined) =>
+    (price || '').replace(/支払額シミュレーション.*$/, '').trim();
   const showImages    = data.show_images    !== false;
   const showPrice     = data.show_price     !== false;
   const showAddress   = data.show_address   !== false;
@@ -219,7 +222,7 @@ export default function PropertyPreviewPage() {
   const mapSrc = `https://maps.google.com/maps?q=${mapQuery}&z=17&output=embed&hl=ja`;
 
   const detailRows = [
-    showPrice     && data.price     && { label: '価格',     value: data.price },
+    showPrice     && data.price     && { label: '価格',     value: cleanPrice(data.price) },
     showAddress   && data.address   && { label: '所在地',   value: data.address },
     showAccess    && data.access    && { label: '交通',     value: data.access },
     showLayout    && data.layout    && { label: '間取り',   value: data.layout },
@@ -242,7 +245,7 @@ export default function PropertyPreviewPage() {
         <div>
           <h1 style={{ fontSize: 20, fontWeight: 'bold', margin: 0 }}>{cleanTitle || '物件情報'}</h1>
           {showPrice && data.price && (
-            <div style={{ fontSize: 28, fontWeight: 'bold', marginTop: 6 }}>{data.price}</div>
+            <div style={{ fontSize: 28, fontWeight: 'bold', marginTop: 6 }}>{cleanPrice(data.price)}</div>
           )}
           {(showAddress || showAccess) && (
             <div style={{ fontSize: 13, opacity: 0.85, marginTop: 4 }}>
