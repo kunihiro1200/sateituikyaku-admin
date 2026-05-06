@@ -221,12 +221,20 @@ async def scrape_athome(url: str) -> dict:
                         if text and len(text) > 2:  # 2文字以上
                             points.append(text)
                 elif next_elem.name == 'div':
-                    # div内のテキストを取得
-                    text = next_elem.get_text(strip=True)
-                    if text and len(text) > 5:  # 5文字以上
-                        # 改行で分割して複数のポイントとして扱う
-                        lines = [line.strip() for line in text.split('\n') if line.strip() and len(line.strip()) > 5]
-                        points.extend(lines)
+                    # div内の<p class="point-text">を明示的に取得
+                    point_texts = next_elem.find_all('p', class_='point-text')
+                    if point_texts:
+                        for p in point_texts:
+                            text = p.get_text(strip=True)
+                            if text and len(text) > 2:
+                                points.append(text)
+                    else:
+                        # point-textクラスがない場合は通常のテキスト取得
+                        text = next_elem.get_text(strip=True)
+                        if text and len(text) > 5:  # 5文字以上
+                            # 改行で分割して複数のポイントとして扱う
+                            lines = [line.strip() for line in text.split('\n') if line.strip() and len(line.strip()) > 5]
+                            points.extend(lines)
                 elif next_elem.name == 'p':
                     # p内のテキストを取得（タイトルなど）
                     text = next_elem.get_text(strip=True)
@@ -236,6 +244,13 @@ async def scrape_athome(url: str) -> dict:
                     # 次のセクションに到達したら終了
                     break
                 next_elem = next_elem.find_next_sibling()
+        
+        # point-textクラスを持つ全てのp要素を取得（セクション外にある場合も対応）
+        all_point_texts = soup.find_all('p', class_='point-text')
+        for p in all_point_texts:
+            text = p.get_text(strip=True)
+            if text and len(text) > 2 and text not in points:
+                points.append(text)
         
         result['points'] = points
         print(f'[scrape] ポイント: {len(points)}項目')
