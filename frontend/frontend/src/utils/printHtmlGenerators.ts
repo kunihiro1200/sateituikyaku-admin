@@ -133,7 +133,7 @@ export function generateViewingPrep2Html(buyer: Record<string,unknown>, _today: 
     <div style="text-align:center;margin-bottom:12px;"><span style="font-size:24pt;font-weight:bold;letter-spacing:0.05em;">${esc(nameWithSama)}</span></div>
     <div style="border-bottom:1.5px solid #000;"></div>
   </div>
-  <div style="flex:1;display:flex;flex-direction:column;justify-content:flex-start;padding-top:32px;">
+  <div style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;padding-bottom:24px;">
     <div style="text-align:center;margin-bottom:24px;">
       <div style="font-size:12pt;font-weight:bold;line-height:1.9;">本日は貴重なお時間いただきまして</div>
       <div style="font-size:12pt;font-weight:bold;line-height:1.9;">誠にありがとうございます</div>
