@@ -12,18 +12,6 @@
       "has": [{ "type": "host", "value": "www.oita-tateuri.com" }],
       "destination": "/tateuri",
       "permanent": false
-    },
-    {
-      "source": "/tateuri",
-      "has": [{ "type": "host", "value": "sateituikyaku-admin-frontend.vercel.app" }],
-      "destination": "https://oita-tateuri.com",
-      "permanent": true
-    },
-    {
-      "source": "/tateuri/:path*",
-      "has": [{ "type": "host", "value": "sateituikyaku-admin-frontend.vercel.app" }],
-      "destination": "https://oita-tateuri.com",
-      "permanent": true
     }
   ],
   "rewrites": [
