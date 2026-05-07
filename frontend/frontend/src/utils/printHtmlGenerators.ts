@@ -108,6 +108,8 @@ export function generatePage1Html(buyer: Record<string,unknown>, property: Recor
 // ============================================================
 // 内覧準備資料２: 挨拶状（いふうスタイル・実画像版）
 // ============================================================
+// 内覧準備資料２: 挨拶状（いふうスタイル・実画像版）
+// ============================================================
 export function generateViewingPrep2Html(buyer: Record<string,unknown>, _today: string): string {
   const rawName = (buyer.name as string) || '';
   const nameWithSama = rawName
@@ -132,70 +134,78 @@ export function generateViewingPrep2Html(buyer: Record<string,unknown>, _today: 
 </head>
 <body>
 <div style="width:794px;height:1123px;padding:16px;background:#fff;">
-<div style="border:2px solid #f5c518;width:100%;height:100%;padding:24px 36px 20px 36px;display:flex;flex-direction:column;gap:0;">
+<div style="border:2px solid #f5c518;width:100%;height:100%;padding:24px 36px 20px 36px;display:flex;flex-direction:column;">
 
-  <!-- ロゴ -->
-  <div style="margin-bottom:16px;">
-    <img src="${imgLogo}" height="52" style="display:block;"/>
-  </div>
-
-  <!-- 買主名 -->
-  <div style="text-align:center;margin-bottom:10px;">
-    <span style="font-size:24pt;font-weight:bold;letter-spacing:0.05em;">${esc(nameWithSama)}</span>
-  </div>
-
-  <!-- 横線（黒） -->
-  <div style="border-bottom:1.5px solid #000;margin-bottom:18px;"></div>
-
-  <!-- お礼メッセージ -->
-  <div style="text-align:center;margin-bottom:22px;">
-    <div style="font-size:12pt;font-weight:bold;line-height:1.9;">本日は貴重なお時間いただきまして</div>
-    <div style="font-size:12pt;font-weight:bold;line-height:1.9;">誠にありがとうございます</div>
-  </div>
-
-  <!-- 中段：左キャラ＋中央本文＋右家イラスト -->
-  <div style="display:flex;align-items:center;margin-bottom:10px;">
-    <!-- 左：吹き出し＋女性キャラ -->
-    <div style="width:160px;flex-shrink:0;">
-      <img src="${imgCharaLeft}" width="160" style="display:block;"/>
+  <!-- ===== 上部固定：ロゴ・名前・横線 ===== -->
+  <div>
+    <!-- ロゴ -->
+    <div style="margin-bottom:18px;">
+      <img src="${imgLogo}" height="52" style="display:block;"/>
     </div>
-    <!-- 中央：本文 -->
-    <div style="flex:1;padding:0 8px;text-align:center;font-size:10.5pt;line-height:2.0;">
-      <div style="margin-bottom:6px;">
-        大分市・別府市の不動産購入は<br>
-        いふうにおまかせください！
+    <!-- 買主名 -->
+    <div style="text-align:center;margin-bottom:12px;">
+      <span style="font-size:24pt;font-weight:bold;letter-spacing:0.05em;">${esc(nameWithSama)}</span>
+    </div>
+    <!-- 横線（黒） -->
+    <div style="border-bottom:1.5px solid #000;"></div>
+  </div>
+
+  <!-- ===== 中央エリア：縦方向に中央寄せ ===== -->
+  <div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:0;">
+
+    <!-- お礼メッセージ -->
+    <div style="text-align:center;margin-bottom:24px;">
+      <div style="font-size:12pt;font-weight:bold;line-height:1.9;">本日は貴重なお時間いただきまして</div>
+      <div style="font-size:12pt;font-weight:bold;line-height:1.9;">誠にありがとうございます</div>
+    </div>
+
+    <!-- 中段：左キャラ＋中央本文＋右家イラスト -->
+    <div style="display:flex;align-items:center;margin-bottom:16px;">
+      <!-- 左：吹き出し＋女性キャラ -->
+      <div style="width:160px;flex-shrink:0;">
+        <img src="${imgCharaLeft}" width="160" style="display:block;"/>
       </div>
-      <div style="text-align:left;display:inline-block;">
-        「資金計画」や「現地見学」「売買契約」など、<br>
-        お住まい購入時の流れやポイントを<br>
-        丁寧にご説明いたします<br>
-        お気軽にご相談ください！
+      <!-- 中央：本文 -->
+      <div style="flex:1;padding:0 8px;text-align:center;font-size:10.5pt;line-height:2.0;">
+        <div style="margin-bottom:6px;">
+          大分市・別府市の不動産購入は<br>
+          いふうにおまかせください！
+        </div>
+        <div style="text-align:left;display:inline-block;">
+          「資金計画」や「現地見学」「売買契約」など、<br>
+          お住まい購入時の流れやポイントを<br>
+          丁寧にご説明いたします<br>
+          お気軽にご相談ください！
+        </div>
+      </div>
+      <!-- 右：家＋ハートイラスト -->
+      <div style="width:140px;flex-shrink:0;">
+        <img src="${imgHouseHeart}" width="140" style="display:block;"/>
       </div>
     </div>
-    <!-- 右：家＋ハートイラスト -->
-    <div style="width:140px;flex-shrink:0;">
-      <img src="${imgHouseHeart}" width="140" style="display:block;"/>
+
+    <!-- どーんっ！女性キャラ（右寄り） -->
+    <div style="display:flex;justify-content:flex-end;">
+      <img src="${imgCharaRight}" width="200" style="display:block;"/>
     </div>
-  </div>
 
-  <!-- どーんっ！女性キャラ（右寄り） -->
-  <div style="display:flex;justify-content:flex-end;margin-bottom:16px;">
-    <img src="${imgCharaRight}" width="200" style="display:block;"/>
-  </div>
+  </div><!-- /中央エリア -->
 
-  <!-- 横線（グレー） -->
-  <div style="border-bottom:1px solid #ccc;margin-bottom:14px;"></div>
-
-  <!-- フッター -->
-  <div style="display:flex;align-items:center;justify-content:space-between;">
-    <img src="${imgWaHouses}" width="200" style="display:block;"/>
-    <div style="text-align:left;">
-      <div style="font-size:8.5pt;margin-bottom:4px;">不動産のことなら「いふう」へ</div>
-      <div style="background:#f5c518;padding:4px 18px;font-size:10.5pt;font-weight:bold;text-align:center;margin-bottom:6px;">株式会社いふう</div>
-      <div style="font-size:9pt;line-height:1.9;">
-        大分市舞鶴町1-3-30<br>
-        TEL：097-533-2022<br>
-        FAX：097-529-7160
+  <!-- ===== 下部固定：横線＋フッター ===== -->
+  <div>
+    <!-- 横線（グレー） -->
+    <div style="border-bottom:1px solid #ccc;margin-bottom:14px;"></div>
+    <!-- フッター -->
+    <div style="display:flex;align-items:center;justify-content:space-between;">
+      <img src="${imgWaHouses}" width="200" style="display:block;"/>
+      <div style="text-align:left;">
+        <div style="font-size:8.5pt;margin-bottom:4px;">不動産のことなら「いふう」へ</div>
+        <div style="background:#f5c518;padding:4px 18px;font-size:10.5pt;font-weight:bold;text-align:center;margin-bottom:6px;">株式会社いふう</div>
+        <div style="font-size:9pt;line-height:1.9;">
+          大分市舞鶴町1-3-30<br>
+          TEL：097-533-2022<br>
+          FAX：097-529-7160
+        </div>
       </div>
     </div>
   </div>
