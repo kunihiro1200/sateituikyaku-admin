@@ -67,6 +67,61 @@ router.get('/', async (req: Request, res: Response) => {
   }
 });
 
+// POST /api/tateuri/check-duplicate - URLが既に登録済みか確認（認証不要）
+router.post('/check-duplicate', async (req: Request, res: Response) => {
+  try {
+    const { source_url } = req.body;
+    if (!source_url) {
+      return res.status(400).json({ error: 'source_url is required' });
+    }
+
+    const supabase = getSupabase();
+
+    // URLを正規化（クエリパラメータを除去して比較）
+    const normalizeUrl = (url: string) => {
+      try {
+        const u = new URL(url);
+        return `${u.protocol}//${u.host}${u.pathname}`.replace(/\/$/, '') + '/';
+      } catch {
+        return url;
+      }
+    };
+
+    const normalized = normalizeUrl(source_url);
+
+    // 同じsource_urlで is_active = true のレコードが存在するか確認
+    const { data, error } = await supabase
+      .from('property_previews')
+      .select('slug, title, address, created_at')
+      .like('source_url', `${normalized}%`)
+      .eq('is_tateuri', true)
+      .eq('is_active', true);
+
+    if (error) throw error;
+
+    if (data && data.length > 0) {
+      // 重複あり
+      const existing = data[0];
+      const cleanTitle = (existing.title || '').replace(/\[\d+\].+$/, '').trim();
+      return res.json({
+        isDuplicate: true,
+        existing: {
+          slug: existing.slug,
+          title: cleanTitle,
+          address: existing.address,
+          created_at: existing.created_at,
+        },
+      });
+    }
+
+    // 重複なし
+    return res.json({ isDuplicate: false });
+  } catch (err: any) {
+    console.error('[tateuri] check-duplicate error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // POST /api/tateuri/delete - URLで物件を削除（認証不要）
 // source_url（元のathome等のURL）またはpreview URL（/property-preview/:slug）で削除可能
 router.post('/delete', async (req: Request, res: Response) => {
@@ -124,6 +179,37 @@ router.post('/delete', async (req: Request, res: Response) => {
   } catch (err: any) {
     console.error('[tateuri] DELETE error:', err);
     res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/tateuri/scrape - スクレイピングサーバーを経由して物件情報を取得・保存（認証不要）
+router.post('/scrape', async (req: Request, res: Response) => {
+  try {
+    const { url } = req.body;
+    if (!url) {
+      return res.status(400).json({ error: 'url is required' });
+    }
+
+    const scrapeApiUrl = process.env.SCRAPE_API_URL || 'https://sateituikyaku-scrape-server-production.up.railway.app';
+
+    // スクレイピングサーバーにリクエスト（バックエンド経由でCORSを回避）
+    const scrapeRes = await fetch(`${scrapeApiUrl}/scrape`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url, is_tateuri: true }),
+    });
+
+    if (!scrapeRes.ok) {
+      const errText = await scrapeRes.text();
+      console.error('[tateuri/scrape] スクレイピングサーバーエラー:', scrapeRes.status, errText);
+      return res.status(scrapeRes.status).json({ error: `スクレイピングサーバーエラー: ${scrapeRes.status}` });
+    }
+
+    const result = await scrapeRes.json();
+    return res.json(result);
+  } catch (err: any) {
+    console.error('[tateuri/scrape] エラー:', err.message);
+    return res.status(500).json({ error: err.message });
   }
 });
 

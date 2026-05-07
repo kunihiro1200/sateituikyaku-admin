@@ -45,16 +45,23 @@ export default function TateuriManagePage() {
     setAdding(true);
     setAddResult(null);
     try {
-      const scrapeApiUrl = import.meta.env.VITE_SCRAPE_API_URL || 'http://localhost:8765';
-      const res = await fetch(`${scrapeApiUrl}/scrape`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: addUrl.trim(), is_tateuri: true }),
-      });
-      if (!res.ok) throw new Error(`スクレイピングサーバーエラー: ${res.status}`);
-      const result = await res.json();
-      if (!result.success) throw new Error(result.error || '取得失敗');
-      const addedTitle = result.data?.title?.replace(/\[\d+\].+$/, '').trim() || result.data?.address || '物件';
+      // 重複チェック：同じURLが既に登録済みか確認
+      const dupCheck = await api.post('/api/tateuri/check-duplicate', { source_url: addUrl.trim() });
+      if (dupCheck.data.isDuplicate) {
+        const existing = dupCheck.data.existing;
+        const existingTitle = existing.title || existing.address || '物件';
+        const existingDate = new Date(existing.created_at).toLocaleDateString('ja-JP');
+        setAddResult({
+          success: false,
+          message: `「${existingTitle}」は既に登録済みです（登録日: ${existingDate}）`,
+        });
+        return;
+      }
+
+      // 重複なし → バックエンド経由でスクレイピングして追加
+      const res = await api.post('/api/tateuri/scrape', { url: addUrl.trim() });
+      if (!res.data.success) throw new Error(res.data.error || '取得失敗');
+      const addedTitle = res.data?.data?.title?.replace(/\[\d+\].+$/, '').trim() || res.data?.data?.address || '物件';
       setAddResult({ success: true, message: `「${addedTitle}」を追加しました` });
       setAddUrl('');
       await fetchProperties();
