@@ -181,25 +181,18 @@ export default function GmailDistributionButton({
     setTemplateSelectorOpen(true);
   };
 
-  // テスト送信ボタンクリック
+  // テスト送信ボタンクリック → まずスタッフ選択へ
   const handleTestButtonClick = () => {
     if (!senderAddress || senderAddress.trim() === '') {
       setSenderAddress(DEFAULT_SENDER);
     }
     setIsTestMode(true);
-    setTestTemplateSelectorOpen(true);
-  };
-
-  // テスト送信用テンプレート選択後 → スタッフ選択へ
-  const handleTestTemplateSelect = (template: EmailTemplate) => {
-    setSelectedTemplate(template);
-    setTestTemplateSelectorOpen(false);
     setTestStaffSelectorOpen(true);
   };
 
-  // テスト送信用スタッフ選択後 → 確認モーダルへ
+  // テスト送信用スタッフ選択後 → テンプレート選択へ
   const handleTestStaffConfirm = (selectedStaff: StaffMember[]) => {
-    if (!selectedTemplate || selectedStaff.length === 0) return;
+    if (selectedStaff.length === 0) return;
     // スタッフをbuyerと同じ形式に変換（buyer_numberなし）
     const staffAsBuyers = selectedStaff.map((s) => ({
       email: s.email,
@@ -207,10 +200,18 @@ export default function GmailDistributionButton({
       buyer_number: undefined as any,
     }));
     setSelectedBuyers(staffAsBuyers);
-    const previewName = selectedStaff.length === 1 ? selectedStaff[0].name : '{buyerName}';
-    setEditedBody(replacePlaceholders(selectedTemplate.body, previewName));
-    setSelectedImages([]);
     setTestStaffSelectorOpen(false);
+    setTestTemplateSelectorOpen(true);
+  };
+
+  // テスト送信用テンプレート選択後 → 確認モーダルへ
+  const handleTestTemplateSelect = (template: EmailTemplate) => {
+    setSelectedTemplate(template);
+    setTestTemplateSelectorOpen(false);
+    // 確認モーダル用に本文を初期化
+    const previewName = selectedBuyers.length === 1 ? (selectedBuyers[0].name || 'お客様') : '{buyerName}';
+    setEditedBody(replacePlaceholders(template.body, previewName));
+    setSelectedImages([]);
     setConfirmationOpen(true);
   };
 
