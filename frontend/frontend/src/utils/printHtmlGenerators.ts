@@ -142,16 +142,16 @@ export function generateViewingPrep2Html(buyer: Record<string,unknown>, _today: 
       <div style="width:160px;flex-shrink:0;"><img src="${imgCharaLeft}" width="160" style="display:block;"/></div>
       <div style="flex:1;padding:0 8px;text-align:center;font-size:10.5pt;line-height:2.0;">
         <div style="margin-bottom:6px;">大分市・別府市の不動産購入は<br>いふうにおまかせください！</div>
-        <div style="text-align:left;display:inline-block;">「資金計画」や「現地見学」「売買契約」など、<br>お住まい購入時の流れやポイントを<br>丁寧にご説明いたします<br>お気軽にご相談ください！</div>
+        <div>「資金計画」や「現地見学」「売買契約」など、<br>お住まい購入時の流れやポイントを<br>丁寧にご説明いたします<br>お気軽にご相談ください！</div>
       </div>
       <div style="width:140px;flex-shrink:0;"><img src="${imgHouseHeart}" width="140" style="display:block;"/></div>
     </div>
-    <div style="display:flex;justify-content:flex-end;">
+    <div style="display:flex;justify-content:flex-end;margin-bottom:4px;">
       <img src="${imgCharaRight}" width="200" style="display:block;"/>
     </div>
   </div>
   <div>
-    <div style="border-bottom:1px solid #ccc;margin-bottom:14px;"></div>
+    <div style="border-bottom:1px solid #ccc;margin-bottom:10px;"></div>
     <div style="display:flex;align-items:center;justify-content:space-between;">
       <img src="${imgWaHouses}" width="200" style="display:block;"/>
       <div style="text-align:left;">
