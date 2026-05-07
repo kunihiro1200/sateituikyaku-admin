@@ -222,20 +222,23 @@ export default function GmailDistributionButton({
   const fetchPropertyImagesForTemplate = async (templateId: string) => {
     if (templateId !== 'price-reduction') return [];
     try {
-      const response = await api.get(`/api/emails/images/${propertyNumber}`);
-      const images: any[] = response.data?.images || [];
-      // 最初の3枚を公開プロキシURL形式で返す
-      // 公開物件サイトの /api/public/images/{fileId} を使用（認証不要・外部からアクセス可能）
+      // 公開物件サイトの画像API（storage_urlのDriveフォルダから取得）を使用
+      // /api/emails/images は売主フォルダを参照するため使わない
       const PUBLIC_SITE_BASE = 'https://property-site-frontend-kappa.vercel.app';
+      const response = await fetch(`${PUBLIC_SITE_BASE}/api/public/properties/${propertyNumber}/images`);
+      if (!response.ok) throw new Error(`画像取得失敗: ${response.status}`);
+      const data = await response.json();
+      const images: any[] = data?.images || [];
+      // 最初の3枚を返す（fullImageUrlを使用）
       return images.slice(0, 3).map((img: any) => ({
         id: img.id,
         name: img.name || `image-${img.id}.jpg`,
         source: 'url' as const,
         size: img.size || 0,
         mimeType: img.mimeType || 'image/jpeg',
-        thumbnailUrl: `${PUBLIC_SITE_BASE}/api/public/images/${img.id}/thumbnail`,
-        previewUrl: `${PUBLIC_SITE_BASE}/api/public/images/${img.id}/thumbnail`,
-        url: `${PUBLIC_SITE_BASE}/api/public/images/${img.id}`,
+        thumbnailUrl: img.thumbnailUrl,
+        previewUrl: img.thumbnailUrl || img.fullImageUrl || '',
+        url: img.fullImageUrl,
       }));
     } catch (err) {
       console.warn('[GmailDistributionButton] 画像の自動取得に失敗しました:', err);
