@@ -38,6 +38,65 @@ function getTodayStr(): string {
   return `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
 }
 
+// ============================================================
+// 内覧準備資料２ボタン（挨拶状スタイル）
+// ============================================================
+export function ViewingPreparation2PrintButton({
+  buyer,
+}: {
+  buyer: BuyerDetails;
+}) {
+  const [printing, setPrinting] = useState(false);
+  const today = getTodayStr();
+
+  const handlePrint = () => {
+    setPrinting(true);
+    import('../utils/printHtmlGenerators').then(({ generateViewingPrep2Html }) => {
+      const html = generateViewingPrep2Html(buyer, today);
+      const printWindow = window.open('', '_blank', 'width=794,height=1123,scrollbars=yes');
+      if (!printWindow) {
+        alert('ポップアップを許可してください（アドレスバー右側のアイコンをクリック）');
+        setPrinting(false);
+        return;
+      }
+      printWindow.document.write(html);
+      printWindow.document.close();
+      const doPrint = () => {
+        setTimeout(() => {
+          printWindow.focus();
+          printWindow.print();
+          setTimeout(() => {
+            printWindow.close();
+            setPrinting(false);
+          }, 500);
+        }, 800);
+      };
+      printWindow.onload = doPrint;
+      setTimeout(() => {
+        if (!printWindow.closed) doPrint();
+      }, 2000);
+    });
+  };
+
+  return (
+    <Button
+      variant="outlined"
+      size="small"
+      startIcon={printing ? <CircularProgress size={14} color="inherit" /> : <PrintIcon />}
+      onClick={handlePrint}
+      disabled={printing}
+      sx={{
+        borderColor: '#f5c518',
+        color: '#b8860b',
+        fontSize: '0.75rem',
+        '&:hover': { borderColor: '#b8860b', bgcolor: '#fffde7' },
+      }}
+    >
+      {printing ? '印刷中...' : '内覧準備資料２'}
+    </Button>
+  );
+}
+
 export function ViewingPreparationPrintButton({
   buyer,
   linkedProperties,
