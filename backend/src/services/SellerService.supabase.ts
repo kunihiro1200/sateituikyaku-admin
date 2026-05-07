@@ -1793,15 +1793,21 @@ export class SellerService extends BaseRepository {
 
       finalSellers = decryptedSellers.filter((s: any) => {
         const status = s.status || '';
-        const visitAssignee = (s.visitAssignee || s.visit_assignee || '').trim();
-        const hasValidAssignee = visitAssignee !== '' && visitAssignee !== '外す';
-        const nextCallDate = (s.nextCallDate || s.next_call_date || '').substring(0, 10);
-        const hasInfo = (s.phoneContactPerson || s.phone_contact_person || '').trim() ||
-                        (s.preferredContactTime || s.preferred_contact_time || '').trim() ||
-                        (s.contactMethod || s.contact_method || '').trim();
-        const unreachable = (s.unreachableStatus || s.unreachable_status || '').trim();
-        const confidence = s.confidenceLevel || s.confidence_level || '';
-        const inquiryDate = (s.inquiryDate || s.inquiry_date || '').substring(0, 10);
+        // visitAssigneeInitials = 元のイニシャル（visitAssigneeはフルネームに変換済みのため使わない）
+        const visitAssigneeInitials = (s.visitAssigneeInitials || '').trim();
+        const hasValidAssignee = visitAssigneeInitials !== '' && visitAssigneeInitials !== '外す';
+        // nextCallDateは文字列
+        const nextCallDate = (s.nextCallDate || '').substring(0, 10);
+        const hasInfo = (s.phoneContactPerson || '').trim() ||
+                        (s.preferredContactTime || '').trim() ||
+                        (s.contactMethod || '').trim();
+        const unreachable = (s.unreachableStatus || '').trim();
+        const confidence = s.confidenceLevel || s.confidence || '';
+        // inquiryDateはDateオブジェクトなので文字列に変換
+        const inquiryDateRaw = s.inquiryDate;
+        const inquiryDate = inquiryDateRaw instanceof Date
+          ? `${inquiryDateRaw.getFullYear()}-${String(inquiryDateRaw.getMonth() + 1).padStart(2, '0')}-${String(inquiryDateRaw.getDate()).padStart(2, '0')}`
+          : (typeof inquiryDateRaw === 'string' ? inquiryDateRaw.substring(0, 10) : '');
 
         if (fiSubCat === 'todayCallNotStarted') {
           // 当日TEL_未着手: 営担なし + 追客中 + 次電日今日以前 + コミュニケーション情報なし + 不通空 + 確度OK + 反響日2026/1/1以降
