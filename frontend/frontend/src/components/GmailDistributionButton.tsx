@@ -224,16 +224,18 @@ export default function GmailDistributionButton({
     try {
       const response = await api.get(`/api/emails/images/${propertyNumber}`);
       const images: any[] = response.data?.images || [];
-      // 最初の3枚をselectedImages形式に変換
+      // 最初の3枚を公開プロキシURL形式で返す
+      // 公開物件サイトの /api/public/images/{fileId} を使用（認証不要・外部からアクセス可能）
+      const PUBLIC_SITE_BASE = 'https://property-site-frontend-kappa.vercel.app';
       return images.slice(0, 3).map((img: any) => ({
         id: img.id,
         name: img.name || `image-${img.id}.jpg`,
-        source: 'drive' as const,
+        source: 'url' as const,
         size: img.size || 0,
         mimeType: img.mimeType || 'image/jpeg',
-        thumbnailUrl: img.thumbnailLink || img.thumbnailUrl,
-        previewUrl: img.thumbnailLink || img.thumbnailUrl || '',
-        driveFileId: img.id,
+        thumbnailUrl: `${PUBLIC_SITE_BASE}/api/public/images/${img.id}/thumbnail`,
+        previewUrl: `${PUBLIC_SITE_BASE}/api/public/images/${img.id}/thumbnail`,
+        url: `${PUBLIC_SITE_BASE}/api/public/images/${img.id}`,
       }));
     } catch (err) {
       console.warn('[GmailDistributionButton] 画像の自動取得に失敗しました:', err);

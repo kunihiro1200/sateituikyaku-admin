@@ -759,88 +759,72 @@ router.post('/:propertyNumber/send-distribution-emails', authenticate, async (re
 
         // 添付ファイルがある場合は各ソースに応じてデータを取得して添付付きで送信
         if (attachments && Array.isArray(attachments) && attachments.length > 0) {
-          const { GoogleDriveService } = await import('../services/GoogleDriveService');
-          const driveService = new GoogleDriveService();
 
-          const emailAttachmentsRaw = await Promise.all(
-            attachments.map(async (img: any) => {
-              // ローカルファイル（Base64データ）
-              if (img.base64Data) {
-                return {
-                  filename: img.name || 'attachment.jpg',
-                  mimeType: img.mimeType || 'image/jpeg',
-                  data: Buffer.from(img.base64Data, 'base64'),
-                  cid: `attachment-${img.id}`,
-                };
-              }
-              // URL指定
-              if (img.url) {
-                try {
-                  const https = await import('https');
-                  const http = await import('http');
-                  const data = await new Promise<Buffer>((resolve, reject) => {
-                    const client = img.url.startsWith('https') ? https : http;
-                    (client as any).get(img.url, (res: any) => {
-                      const chunks: Buffer[] = [];
-                      res.on('data', (chunk: Buffer) => chunks.push(chunk));
-                      res.on('end', () => resolve(Buffer.concat(chunks)));
-                      res.on('error', reject);
-                    }).on('error', reject);
-                  });
-                  return {
-                    filename: img.name || 'attachment.jpg',
-                    mimeType: 'image/jpeg',
-                    data,
-                    cid: `attachment-${img.id}`,
-                  };
-                } catch (urlErr) {
-                  console.warn(`⚠️ Could not fetch image from URL: ${img.url}`, urlErr);
-                  return null;
-                }
-              }
-              // Google Drive ファイル（driveFileId または id を使用）
-              const fileId = img.driveFileId || img.id;
-              const fileData = await driveService.getFile(fileId);
-              if (!fileData) {
-                console.warn(`⚠️ Could not fetch file from Google Drive: ${fileId}`);
-                return null;
-              }
-              return {
-                filename: img.name || `image-${fileId}.jpg`,
-                mimeType: fileData.mimeType || 'image/jpeg',
-                data: fileData.data,
-                cid: `attachment-${img.id}`,
-              };
-            })
-          );
-          // nullを除外
-          const emailAttachments = emailAttachmentsRaw.filter((a): a is NonNullable<typeof a> => a !== null);
+          // URL指定の画像（公開プロキシURL）は<img>タグとしてHTMLに直接埋め込む
+          // 「他社物件新着配信」と同じ方式
+          const urlImages = attachments.filter((img: any) => img.url);
+          const fileImages = attachments.filter((img: any) => !img.url);
 
-          // {propertyImages}プレースホルダーをbase64 data URI形式の<img>タグに置換
-          // 「他社物件新着配信」と同じ方式：HTMLメール本文に画像を直接埋め込む
-          const imgTags = emailAttachments
-            .map(att => {
-              const base64 = att.data.toString('base64');
-              const dataUri = `data:${att.mimeType};base64,${base64}`;
-              return `<img src="${dataUri}" alt="${att.filename}" style="max-width:600px;width:100%;height:auto;display:block;margin:8px 0;" />`;
-            })
+          // URL画像を<img>タグに変換
+          const urlImgTags = urlImages
+            .map((img: any) => `<img src="${img.url}" alt="${img.name || '物件画像'}" style="max-width:600px;width:100%;height:auto;display:block;margin:8px 0;" />`)
             .join('\n');
 
-          // htmlBodyの{propertyImages}を置換（buyerName置換も含む）
+          // {propertyImages}プレースホルダーをURL画像の<img>タグに置換
           const rawHtmlBody = htmlBody ? htmlBody.replace(/\{buyerName\}/g, buyerName) : undefined;
           const personalizedHtmlBody = rawHtmlBody
-            ? rawHtmlBody.replace(/\{propertyImages\}/g, imgTags)
+            ? rawHtmlBody.replace(/\{propertyImages\}/g, urlImgTags)
             : undefined;
-          // プレーンテキスト版も{propertyImages}を除去
           const cleanContent = personalizedContent.replace(/\{propertyImages\}/g, '');
 
-          // 画像はHTMLに埋め込み済みなので添付ファイルとしては送らない
+          // ファイル添付（DriveファイルやBase64）がある場合のみ添付処理
+          if (fileImages.length > 0) {
+            const { GoogleDriveService } = await import('../services/GoogleDriveService');
+            const driveService = new GoogleDriveService();
+
+            const emailAttachmentsRaw = await Promise.all(
+              fileImages.map(async (img: any) => {
+                if (img.base64Data) {
+                  return {
+                    filename: img.name || 'attachment.jpg',
+                    mimeType: img.mimeType || 'image/jpeg',
+                    data: Buffer.from(img.base64Data, 'base64'),
+                    cid: `attachment-${img.id}`,
+                  };
+                }
+                const fileId = img.driveFileId || img.id;
+                const fileData = await driveService.getFile(fileId);
+                if (!fileData) {
+                  console.warn(`⚠️ Could not fetch file from Google Drive: ${fileId}`);
+                  return null;
+                }
+                return {
+                  filename: img.name || `image-${fileId}.jpg`,
+                  mimeType: fileData.mimeType || 'image/jpeg',
+                  data: fileData.data,
+                  cid: `attachment-${img.id}`,
+                };
+              })
+            );
+            const emailAttachments = emailAttachmentsRaw.filter((a): a is NonNullable<typeof a> => a !== null);
+
+            return await emailService.sendEmailWithCcAndAttachments({
+              to: email,
+              subject: personalizedSubject,
+              body: personalizedHtmlBody || cleanContent,
+              from,
+              attachments: emailAttachments,
+              isHtml: !!htmlBody,
+            });
+          }
+
+          // URL画像のみ（添付なし）: HTMLに埋め込み済みなので添付なしで送信
           return await emailService.sendEmailWithCcAndAttachments({
             to: email,
             subject: personalizedSubject,
             body: personalizedHtmlBody || cleanContent,
             from,
-            attachments: [], // 画像はdata URIで本文に埋め込み済み
+            attachments: [],
             isHtml: !!htmlBody,
           });
         }
