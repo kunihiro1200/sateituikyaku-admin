@@ -219,11 +219,10 @@ export default function GmailDistributionButton({
   };
 
   // price-reductionテンプレート選択時に物件画像を最大3枚自動取得する
-  const fetchPropertyImagesForTemplate = async (templateId: string) => {
-    if (templateId !== 'price-reduction') return [];
+  const fetchPropertyImagesForTemplate = async (_templateId: string) => {
+    // 全テンプレートで画像を取得する
     try {
       // 公開物件サイトの画像API（storage_urlのDriveフォルダから取得）を使用
-      // /api/emails/images は売主フォルダを参照するため使わない
       const PUBLIC_SITE_BASE = 'https://property-site-frontend-kappa.vercel.app';
       const response = await fetch(`${PUBLIC_SITE_BASE}/api/public/properties/${propertyNumber}/images`);
       if (!response.ok) throw new Error(`画像取得失敗: ${response.status}`);
@@ -231,7 +230,6 @@ export default function GmailDistributionButton({
       const images: any[] = data?.images || [];
       // 最初の3枚を返す（fullImageUrlを絶対URLに変換）
       return images.slice(0, 3).map((img: any) => {
-        // fullImageUrlが相対パスの場合は絶対URLに変換
         const fullUrl = img.fullImageUrl?.startsWith('http')
           ? img.fullImageUrl
           : `${PUBLIC_SITE_BASE}${img.fullImageUrl}`;

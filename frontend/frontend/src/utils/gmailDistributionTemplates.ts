@@ -46,12 +46,13 @@ export const EMAIL_TEMPLATES: EmailTemplate[] = [
 価格：{price}
 詳細情報：{publicUrl}
 
+{propertyImages}
 詳細はお問い合わせください。
 
 よろしくお願いいたします。
 
 {signature}`,
-    placeholders: ['address', 'propertyNumber', 'publicUrl', 'buyerName', 'propertyType', 'price', 'signature']
+    placeholders: ['address', 'propertyNumber', 'publicUrl', 'buyerName', 'propertyType', 'price', 'signature', 'propertyImages']
   },
   {
     id: 'pre-listing',
@@ -65,12 +66,13 @@ export const EMAIL_TEMPLATES: EmailTemplate[] = [
 価格：{price}
 詳細情報：{publicUrl}
 
+{propertyImages}
 詳細はお問い合わせください。
 
 よろしくお願いいたします。
 
 {signature}`,
-    placeholders: ['address', 'propertyNumber', 'publicUrl', 'buyerName', 'propertyType', 'price', 'signature']
+    placeholders: ['address', 'propertyNumber', 'publicUrl', 'buyerName', 'propertyType', 'price', 'signature', 'propertyImages']
   },
   {
     id: 'private-email-only',
@@ -86,6 +88,7 @@ export const EMAIL_TEMPLATES: EmailTemplate[] = [
 物件住所：{address}
 詳細URL:{publicUrl}
 
+{propertyImages}
 内覧は可能ですので、こちらのメールに
 ■名前
 ■電話番号
@@ -109,7 +112,7 @@ FAX：097-529-7160
 HP：https://ifoo-oita.com/
 店休日：毎週水曜日　年末年始、GW、盆
 ***************************`,
-    placeholders: ['address', 'publicUrl', 'buyerName']
+    placeholders: ['address', 'publicUrl', 'buyerName', 'propertyImages']
   }
 ];
 
