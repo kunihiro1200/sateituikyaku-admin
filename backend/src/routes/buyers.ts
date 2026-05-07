@@ -617,6 +617,136 @@ router.get('/sync/status', async (_req: Request, res: Response) => {
   }
 });
 
+// DBにあってスプレッドシートにない買主を検出してスプシに書き戻す
+// POST /api/buyers/restore-to-sheet
+router.post('/restore-to-sheet', authenticateOrApiKey, async (_req: Request, res: Response) => {
+  try {
+    console.log('[POST /buyers/restore-to-sheet] ===== START =====');
+
+    // BuyerWriteServiceを初期化（BuyerServiceのinitSyncServicesと同じパターン）
+    await (buyerService as any).initSyncServices();
+    const writeService = (buyerService as any).writeService as import('../services/BuyerWriteService').BuyerWriteService;
+
+    if (!writeService) {
+      return res.status(500).json({ error: 'BuyerWriteService の初期化に失敗しました' });
+    }
+
+    // 1. スプレッドシートの全買主番号を取得（E列 = 買主番号）
+    const { google } = await import('googleapis');
+    const path = await import('path');
+    const auth = new google.auth.GoogleAuth({
+      keyFile: path.join(__dirname, '../../google-service-account.json'),
+      scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+    });
+    const sheets = google.sheets({ version: 'v4', auth });
+    const spreadsheetId = process.env.GOOGLE_SHEETS_BUYER_SPREADSHEET_ID!;
+    const sheetName = process.env.GOOGLE_SHEETS_BUYER_SHEET_NAME || '買主リスト';
+
+    console.log('[restore-to-sheet] スプレッドシートから買主番号を取得中...');
+    const sheetResponse = await sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range: `'${sheetName}'!E:E`,  // E列 = 買主番号
+    });
+    const sheetValues = sheetResponse.data.values || [];
+    // ヘッダー行をスキップ、空白・無効値を除外
+    const sheetBuyerNumbers = new Set<string>(
+      sheetValues.slice(1)
+        .map((row: any[]) => String(row[0] || '').trim())
+        .filter((v: string) => v && /^\d+$/.test(v))
+    );
+    console.log(`[restore-to-sheet] スプレッドシートの買主数: ${sheetBuyerNumbers.size}`);
+
+    // 2. DBのアクティブな全買主を取得
+    const supabase = (buyerService as any).supabase;
+    const PAGE_SIZE = 1000;
+    const allDbBuyers: any[] = [];
+    let offset = 0;
+    let hasMore = true;
+
+    while (hasMore) {
+      const { data, error } = await supabase
+        .from('buyers')
+        .select('*')
+        .is('deleted_at', null)
+        .range(offset, offset + PAGE_SIZE - 1);
+
+      if (error) throw new Error(`DB取得エラー: ${error.message}`);
+      if (!data || data.length === 0) {
+        hasMore = false;
+      } else {
+        allDbBuyers.push(...data);
+        offset += PAGE_SIZE;
+        if (data.length < PAGE_SIZE) hasMore = false;
+      }
+    }
+    console.log(`[restore-to-sheet] DBの買主数: ${allDbBuyers.length}`);
+
+    // 3. スプレッドシートにない買主を特定
+    const missingBuyers = allDbBuyers.filter(b =>
+      b.buyer_number && !sheetBuyerNumbers.has(String(b.buyer_number).trim())
+    );
+    console.log(`[restore-to-sheet] スプシに存在しない買主数: ${missingBuyers.length}`);
+
+    if (missingBuyers.length === 0) {
+      return res.json({
+        success: true,
+        message: 'スプレッドシートに存在しない買主はいませんでした',
+        restored: 0,
+        failed: 0,
+        missingBuyerNumbers: [],
+      });
+    }
+
+    // 4. 買主番号でソート（昇順）
+    missingBuyers.sort((a, b) => {
+      const numA = parseInt(String(a.buyer_number), 10);
+      const numB = parseInt(String(b.buyer_number), 10);
+      return numA - numB;
+    });
+
+    const missingBuyerNumbers = missingBuyers.map(b => b.buyer_number);
+    console.log(`[restore-to-sheet] 書き戻し対象: ${missingBuyerNumbers.slice(0, 10).join(', ')}${missingBuyerNumbers.length > 10 ? '...' : ''}`);
+
+    // 5. スプレッドシートに書き戻す（appendRow）
+    let restored = 0;
+    let failed = 0;
+    const errors: Array<{ buyerNumber: string; error: string }> = [];
+
+    for (const buyer of missingBuyers) {
+      try {
+        const result = await writeService.appendNewBuyer(buyer);
+        if (result.success) {
+          restored++;
+          console.log(`[restore-to-sheet] ✅ 復元成功: ${buyer.buyer_number}`);
+        } else {
+          failed++;
+          errors.push({ buyerNumber: buyer.buyer_number, error: result.error || 'Unknown error' });
+          console.error(`[restore-to-sheet] ❌ 復元失敗: ${buyer.buyer_number} - ${result.error}`);
+        }
+      } catch (err: any) {
+        failed++;
+        errors.push({ buyerNumber: buyer.buyer_number, error: err.message });
+        console.error(`[restore-to-sheet] ❌ 例外: ${buyer.buyer_number} - ${err.message}`);
+      }
+    }
+
+    console.log(`[restore-to-sheet] 完了: 成功=${restored}, 失敗=${failed}`);
+
+    res.json({
+      success: true,
+      message: `${restored}件をスプレッドシートに書き戻しました`,
+      restored,
+      failed,
+      missingBuyerNumbers,
+      errors: errors.length > 0 ? errors : undefined,
+    });
+
+  } catch (error: any) {
+    console.error('[POST /buyers/restore-to-sheet] エラー:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // 検索
 router.get('/search', async (req: Request, res: Response) => {
   try {
