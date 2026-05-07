@@ -504,22 +504,22 @@ export function generateAllPagesHtml(buyer: Record<string,unknown>, propertyDeta
 
 // ページA: 住まい購入の流れ
 export function generateExtraPage1Html(base: string): string {
-  const imgFlow = `${base}/ifoo-assets/スクリーンショット 2026-05-07 115323.png`;
-  const imgSub  = `${base}/ifoo-assets/スクリーンショット 2026-05-07 115337.png`;
+  const imgFlow = `${base}/ifoo-assets/flow-main.png`;
+  const imgSub  = `${base}/ifoo-assets/flow-sub.png`;
   const F = '"Noto Sans JP","Hiragino Kaku Gothic ProN","Meiryo",sans-serif';
   return `
-<div style="width:100%;height:100%;padding:20px 28px;font-family:${F};font-size:9pt;color:#000;background:#fff;box-sizing:border-box;">
+<div style="width:100%;height:100%;padding:40px 28px 20px 28px;font-family:${F};font-size:9pt;color:#000;background:#fff;box-sizing:border-box;">
   <!-- ヘッダー -->
-  <div style="display:flex;align-items:center;margin-bottom:10px;">
+  <div style="display:flex;align-items:center;margin-bottom:16px;">
     <div style="font-size:20pt;font-weight:bold;margin-right:16px;">住まい購入の流れ</div>
     <img src="${imgSub}" height="60" style="margin-left:auto;"/>
   </div>
   <!-- メインイラスト -->
-  <div style="text-align:center;margin-bottom:12px;">
-    <img src="${imgFlow}" style="max-width:100%;max-height:900px;"/>
+  <div style="text-align:center;">
+    <img src="${imgFlow}" style="max-width:100%;height:auto;"/>
   </div>
   <!-- フッター -->
-  <div style="text-align:right;font-size:7.5pt;color:#666;margin-top:4px;">4</div>
+  <div style="text-align:right;font-size:7.5pt;color:#666;margin-top:8px;">4</div>
 </div>`;
 }
 
@@ -535,7 +535,7 @@ export function generateExtraPage2Html(): string {
   <div style="background:${yellow};text-align:center;padding:18px 0 14px;margin-bottom:24px;">
     <span style="font-size:20pt;font-weight:bold;">よくあるご質問♪1/2</span>
   </div>
-  <div style="padding:0 28px;">
+  <div style="padding:0 28px 0 28px;padding-top:20px;">
     <!-- Q1 -->
     <div style="border:2px solid ${yellow};border-radius:4px;padding:8px 14px;margin-bottom:8px;">
       <div style="font-weight:bold;font-size:10pt;color:#333;">Q1. とても気に入っていて自分の条件にあうのですが<br><span style="margin-left:2em;">1軒目で決めるのはちょっと不安…</span></div>
@@ -606,7 +606,7 @@ export function generateExtraPage3Html(): string {
   <div style="background:${yellow};text-align:center;padding:18px 0 14px;margin-bottom:20px;">
     <span style="font-size:20pt;font-weight:bold;">よくあるご質問♪2/2</span>
   </div>
-  <div style="padding:0 28px;">
+  <div style="padding:0 28px 0 28px;padding-top:20px;">
     <!-- Q3 -->
     <div style="border:2px solid ${yellow};border-radius:4px;padding:8px 14px;margin-bottom:8px;">
       <div style="font-weight:bold;font-size:10pt;color:#333;">Q3. 予算が合わないのですが…</div>
@@ -655,7 +655,7 @@ export function generateExtraPage4Html(): string {
   const orange = '#f0a050';
   const boxStyle = `background:${orange};color:#fff;border-radius:8px;padding:14px 10px;text-align:center;font-weight:bold;font-size:11pt;flex:1;margin:4px;`;
   return `
-<div style="width:100%;height:100%;padding:28px 36px;font-family:${F};font-size:9.5pt;color:#000;background:#fff;box-sizing:border-box;">
+<div style="width:100%;height:100%;padding:40px 36px 28px 36px;font-family:${F};font-size:9.5pt;color:#000;background:#fff;box-sizing:border-box;">
   <!-- タイトル -->
   <div style="background:#f5c5a0;border-radius:4px;text-align:center;padding:14px 0;margin-bottom:20px;">
     <span style="font-size:18pt;font-weight:bold;">アフターメンテナンスのご案内</span>
@@ -696,7 +696,7 @@ export function generateExtraPage5Html(): string {
   const orange = '#f0a050';
   const boxStyle = `background:${orange};color:#fff;border-radius:8px;padding:12px 8px;text-align:center;font-weight:bold;font-size:10.5pt;flex:1;margin:4px;`;
   return `
-<div style="width:100%;height:100%;padding:28px 36px;font-family:${F};font-size:9.5pt;color:#000;background:#fff;box-sizing:border-box;">
+<div style="width:100%;height:100%;padding:40px 36px 28px 36px;font-family:${F};font-size:9.5pt;color:#000;background:#fff;box-sizing:border-box;">
   <!-- タイトル -->
   <div style="background:#f5c5a0;border-radius:4px;text-align:center;padding:14px 0;margin-bottom:20px;">
     <span style="font-size:16pt;font-weight:bold;">e暮らしサポートサービスのご案内</span>
