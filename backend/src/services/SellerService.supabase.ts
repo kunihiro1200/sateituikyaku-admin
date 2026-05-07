@@ -1605,41 +1605,9 @@ export class SellerService extends BaseRepository {
           // visitAssigned:xxx または todayCallAssigned:xxx または todayCallWithInfo:xxx または fi:xxx の動的カテゴリ
           const dynamicCategory = statusCategory as string;
           if (dynamicCategory.startsWith('fi:')) {
-            // 福岡（FI）カテゴリ：seller_numberがFIで始まる売主のみ
-            const fiSubCat = dynamicCategory.replace('fi:', '');
+            // 福岡（FI）カテゴリ：全件取得してJS側でフィルタリング
+            // DBクエリはFI売主に絞るだけ（複雑なOR条件はJS側で処理）
             query = query.ilike('seller_number', 'FI%');
-            if (fiSubCat === 'todayCall') {
-              // コミュニケーション情報が全て空 AND 未着手除外（unreachable_statusあり OR inquiry_date < 2026-01-01）
-              query = query
-                .or('visit_assignee.is.null,visit_assignee.eq.,visit_assignee.eq.外す')
-                .lte('next_call_date', todayJST)
-                .or('status.ilike.%追客中%,status.eq.他決→追客')
-                .not('status', 'ilike', '%追客不要%')
-                .or('phone_contact_person.is.null,phone_contact_person.eq.')
-                .or('preferred_contact_time.is.null,preferred_contact_time.eq.')
-                .or('contact_method.is.null,contact_method.eq.');
-            } else if (fiSubCat === 'todayCallNotStarted') {
-              // FI売主の当日TEL_未着手: DBで絞り込み可能な条件のみ適用し、残りはJS側でフィルタリング
-              // （複雑なOR条件はJS側で処理）
-              query = query
-                .eq('status', '追客中')
-                .not('next_call_date', 'is', null)
-                .lte('next_call_date', todayJST)
-                .gte('inquiry_date', '2026-01-01');
-            } else if (fiSubCat === 'todayCallWithInfo' || fiSubCat.startsWith('todayCallWithInfo:')) {
-              // コミュニケーション情報のいずれかに入力あり
-              query = query
-                .or('visit_assignee.is.null,visit_assignee.eq.,visit_assignee.eq.外す')
-                .lte('next_call_date', todayJST)
-                .or('status.ilike.%追客中%,status.eq.他決→追客')
-                .not('status', 'ilike', '%追客不要%')
-                .or('phone_contact_person.not.is.null,preferred_contact_time.not.is.null,contact_method.not.is.null');
-            } else if (fiSubCat === 'unvaluated') {
-              query = query
-                .or('visit_assignee.is.null,visit_assignee.eq.,visit_assignee.eq.外す')
-                .ilike('status', '%追客中%')
-                .gte('inquiry_date', '2025-12-08');
-            }
           } else if (dynamicCategory.startsWith('visitAssigned:')) {
             const assignee = dynamicCategory.replace('visitAssigned:', '');
             // 担当者別（営担が指定のイニシャルの全売主、一般媒介・専任媒介・追客不要・他社買取は除外）
@@ -1814,26 +1782,82 @@ export class SellerService extends BaseRepository {
       });
     }
 
-    // fi:todayCallNotStarted の場合、JS側で営担なし・不通・確度・コミュニケーション情報フィルタリング
-    if (typeof statusCategory === 'string' && statusCategory === 'fi:todayCallNotStarted') {
+    // fi:xxx カテゴリの場合、JS側で各カテゴリの条件でフィルタリング
+    if (typeof statusCategory === 'string' && statusCategory.startsWith('fi:')) {
+      const fiSubCat = statusCategory.replace('fi:', '');
+      const todayJSTStr = (() => {
+        const now = new Date();
+        const jst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+        return `${jst.getUTCFullYear()}-${String(jst.getUTCMonth() + 1).padStart(2, '0')}-${String(jst.getUTCDate()).padStart(2, '0')}`;
+      })();
+
       finalSellers = decryptedSellers.filter((s: any) => {
-        // 営担なし（空 または「外す」）
+        const status = s.status || '';
         const visitAssignee = (s.visitAssignee || s.visit_assignee || '').trim();
-        if (visitAssignee !== '' && visitAssignee !== '外す') return false;
-        // コミュニケーション情報が全て空
+        const hasValidAssignee = visitAssignee !== '' && visitAssignee !== '外す';
+        const nextCallDate = (s.nextCallDate || s.next_call_date || '').substring(0, 10);
         const hasInfo = (s.phoneContactPerson || s.phone_contact_person || '').trim() ||
                         (s.preferredContactTime || s.preferred_contact_time || '').trim() ||
                         (s.contactMethod || s.contact_method || '').trim();
-        if (hasInfo) return false;
-        // 不通が空欄
-        const unreachable = s.unreachableStatus || s.unreachable_status || '';
-        if (unreachable && unreachable.trim() !== '') return false;
-        // 確度が「ダブり」「D」「AI査定」でない
+        const unreachable = (s.unreachableStatus || s.unreachable_status || '').trim();
         const confidence = s.confidenceLevel || s.confidence_level || '';
-        if (confidence === 'ダブり' || confidence === 'D' || confidence === 'AI査定') return false;
-        // 反響日付が2026/1/1以降
         const inquiryDate = (s.inquiryDate || s.inquiry_date || '').substring(0, 10);
-        return inquiryDate >= '2026-01-01';
+
+        if (fiSubCat === 'todayCallNotStarted') {
+          // 当日TEL_未着手: 営担なし + 追客中 + 次電日今日以前 + コミュニケーション情報なし + 不通空 + 確度OK + 反響日2026/1/1以降
+          if (hasValidAssignee) return false;
+          if (!status.includes('追客中') || status.includes('追客不要')) return false;
+          if (!nextCallDate || nextCallDate > todayJSTStr) return false;
+          if (hasInfo) return false;
+          if (unreachable) return false;
+          if (confidence === 'ダブり' || confidence === 'D' || confidence === 'AI査定') return false;
+          if (!inquiryDate || inquiryDate < '2026-01-01') return false;
+          return status === '追客中'; // 完全一致（除外後追客中・他決→追客は除外）
+
+        } else if (fiSubCat === 'todayCall') {
+          // 当日TEL分: 営担なし + 追客中系 + 次電日今日以前 + コミュニケーション情報なし + 未着手除外
+          if (hasValidAssignee) return false;
+          if (!status.includes('追客中') || status.includes('追客不要')) return false;
+          if (status !== '追客中' && status !== '他決→追客') return false;
+          if (!nextCallDate || nextCallDate > todayJSTStr) return false;
+          if (hasInfo) return false;
+          // 未着手条件を満たす場合は todayCall から除外
+          if (status === '追客中' && !unreachable && confidence !== 'ダブり' && confidence !== 'D' && confidence !== 'AI査定' && inquiryDate >= '2026-01-01') return false;
+          return true;
+
+        } else if (fiSubCat === 'todayCallWithInfo' || fiSubCat.startsWith('todayCallWithInfo:')) {
+          // 当日TEL（内容）: 営担なし + 追客中系 + 次電日今日以前 + コミュニケーション情報あり
+          if (hasValidAssignee) return false;
+          if (!status.includes('追客中') || status.includes('追客不要')) return false;
+          if (!nextCallDate || nextCallDate > todayJSTStr) return false;
+          if (!hasInfo) return false;
+          if (fiSubCat.startsWith('todayCallWithInfo:')) {
+            const targetLabel = fiSubCat.replace('todayCallWithInfo:', '');
+            const parts: string[] = [];
+            const isValidVal = (v: string | null | undefined) => !!(v && v.trim() !== '' && v.trim().toLowerCase() !== 'null');
+            if (isValidVal(s.phoneContactPerson || s.phone_contact_person)) parts.push((s.phoneContactPerson || s.phone_contact_person).trim());
+            if (isValidVal(s.preferredContactTime || s.preferred_contact_time)) parts.push((s.preferredContactTime || s.preferred_contact_time).trim());
+            if (isValidVal(s.contactMethod || s.contact_method)) parts.push((s.contactMethod || s.contact_method).trim());
+            const label = parts.length > 0 ? `当日TEL(${parts.join('・')})` : '当日TEL（内容）';
+            return label === targetLabel;
+          }
+          return true;
+
+        } else if (fiSubCat === 'unvaluated') {
+          // 未査定: 営担なし + 追客中 + 査定額なし + 反響日2025/12/8以降
+          if (hasValidAssignee) return false;
+          if (!status.includes('追客中') || status.includes('追客不要')) return false;
+          if (!inquiryDate || inquiryDate < '2025-12-08') return false;
+          const hasValuation = s.valuationAmount1 || s.valuation_amount_1 ||
+                               s.valuationAmount2 || s.valuation_amount_2 ||
+                               s.valuationAmount3 || s.valuation_amount_3;
+          if (hasValuation) return false;
+          const valuationMethod = s.valuationMethod || s.valuation_method || '';
+          if (valuationMethod === '不要') return false;
+          return true;
+        }
+
+        return true;
       });
     }
 
@@ -1845,12 +1869,12 @@ export class SellerService extends BaseRepository {
 
     const result = {
       data: sellersWithCallDate,
-      total: isLabelFilter || statusCategory === 'fi:todayCallNotStarted'
+      total: isLabelFilter || (typeof statusCategory === 'string' && statusCategory.startsWith('fi:'))
         ? sellersWithCallDate.length
         : (count || 0),
       page,
       pageSize,
-      totalPages: Math.ceil((isLabelFilter || statusCategory === 'fi:todayCallNotStarted'
+      totalPages: Math.ceil((isLabelFilter || (typeof statusCategory === 'string' && statusCategory.startsWith('fi:'))
         ? sellersWithCallDate.length
         : (count || 0)) / pageSize),
     };
