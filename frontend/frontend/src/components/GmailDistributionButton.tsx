@@ -278,7 +278,7 @@ export default function GmailDistributionButton({
     }
   };
 
-  const handleFilterSummaryConfirm = (buyers: Array<{ email: string; name: string | null }>) => {
+  const handleFilterSummaryConfirm = async (buyers: Array<{ email: string; name: string | null }>) => {
     if (!selectedTemplate || buyers.length === 0) {
       return;
     }
