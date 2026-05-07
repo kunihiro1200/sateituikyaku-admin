@@ -133,20 +133,22 @@ export class EmailService extends BaseRepository {
       let rawMessage: string;
 
       if (files.length === 0) {
-        // 添付なし: シンプルな text/html メッセージ
+        // 添付なし: シンプルな text/html メッセージ（base64エンコード）
+        const htmlBodyBase64 = Buffer.from(htmlBody, 'utf-8').toString('base64');
         const messageParts = [
           `From: ${from}`,
           `To: ${params.to}`,
           `Subject: ${encodedSubject}`,
           'MIME-Version: 1.0',
           'Content-Type: text/html; charset=utf-8',
-          'Content-Transfer-Encoding: quoted-printable',
+          'Content-Transfer-Encoding: base64',
           '',
-          htmlBody,
+          htmlBodyBase64,
         ];
         rawMessage = messageParts.join('\n');
       } else {
-        // 添付あり: multipart/mixed メッセージ
+        // 添付あり: multipart/mixed メッセージ（base64エンコード）
+        const htmlBodyBase64 = Buffer.from(htmlBody, 'utf-8').toString('base64');
         const boundary = `boundary_${Date.now()}_${Math.random().toString(36).slice(2)}`;
         const parts: string[] = [
           `From: ${from}`,
@@ -157,9 +159,9 @@ export class EmailService extends BaseRepository {
           '',
           `--${boundary}`,
           'Content-Type: text/html; charset=utf-8',
-          'Content-Transfer-Encoding: quoted-printable',
+          'Content-Transfer-Encoding: base64',
           '',
-          htmlBody,
+          htmlBodyBase64,
         ];
 
         for (const file of files) {
