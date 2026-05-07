@@ -170,7 +170,7 @@ export default function TateuriPage() {
       <div style={{ background: '#FFC107', color: '#333', padding: '14px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
         <div>
           <h1 style={{ fontSize: 20, fontWeight: 'bold', margin: 0 }}>🏠 大分の建売専門サイト</h1>
-          <p style={{ fontSize: 12, margin: '2px 0 0', opacity: 0.75 }}>株式会社いふう｜大分市舞鶴町1-3-30 STビル１F　097-533-2022</p>
+          <p style={{ fontSize: 12, margin: '2px 0 0', opacity: 0.75 }}>株式会社いふう｜大分市舞鶴町1-3-30 STビル１F　097-533-2022　大分県知事（3）第3183号</p>
         </div>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
           <span style={{ fontSize: 13, opacity: 0.75 }}>掲載中: {properties.length}件</span>
