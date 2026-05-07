@@ -61,20 +61,34 @@ export function ViewingPreparation2PrintButton({
       }
       printWindow.document.write(html);
       printWindow.document.close();
+
+      let done = false;
       const doPrint = () => {
+        if (done) return;
+        done = true;
         setTimeout(() => {
-          printWindow.focus();
-          printWindow.print();
+          try {
+            printWindow.focus();
+            printWindow.print();
+          } catch (_) { /* ignore */ }
           setTimeout(() => {
-            printWindow.close();
+            try { printWindow.close(); } catch (_) { /* ignore */ }
             setPrinting(false);
-          }, 500);
-        }, 800);
+          }, 1000);
+        }, 1200);
       };
+
       printWindow.onload = doPrint;
+      // Base64画像が大きいため余裕を持って5秒待つ
       setTimeout(() => {
-        if (!printWindow.closed) doPrint();
-      }, 2000);
+        if (!done) doPrint();
+      }, 5000);
+      // 最終フォールバック：何があっても8秒後にはボタンを戻す
+      setTimeout(() => {
+        setPrinting(false);
+      }, 8000);
+    }).catch(() => {
+      setPrinting(false);
     });
   };
 
