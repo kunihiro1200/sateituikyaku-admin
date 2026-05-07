@@ -587,38 +587,48 @@ router.post('/restore-to-sheet', authenticateOrApiKey, async (req: Request, res:
       return res.status(500).json({ error: 'BuyerWriteService の初期化に失敗しました' });
     }
 
-    // 1. スプレッドシートのE列（買主番号）を取得
-    const { google } = await import('googleapis');
-    const pathMod = await import('path');
-    const spreadsheetId = process.env.GOOGLE_SHEETS_BUYER_SPREADSHEET_ID!;
-    const sheetName = process.env.GOOGLE_SHEETS_BUYER_SHEET_NAME || '買主リスト';
+    // 1. スプレッドシートの買主番号を取得
+    // knownSheetNumbersがリクエストで渡された場合はそれを使用（スプシ取得をスキップ）
+    // 渡されない場合はスプシから取得
+    let sheetBuyerNumbers: Set<string>;
+    const knownSheetNumbers: string[] | undefined = req.body?.knownSheetNumbers;
 
-    const saJson = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
-    let authConfig: any;
-    if (saJson) {
-      try {
-        const creds = JSON.parse(saJson);
-        authConfig = { credentials: creds, scopes: ['https://www.googleapis.com/auth/spreadsheets'] };
-      } catch {
+    if (knownSheetNumbers && Array.isArray(knownSheetNumbers) && knownSheetNumbers.length > 0) {
+      sheetBuyerNumbers = new Set<string>(knownSheetNumbers.map(String));
+      console.log(`[restore-to-sheet] knownSheetNumbers使用: ${sheetBuyerNumbers.size}件`);
+    } else {
+      const { google } = await import('googleapis');
+      const pathMod = await import('path');
+      const spreadsheetId = process.env.GOOGLE_SHEETS_BUYER_SPREADSHEET_ID!;
+      const sheetName = process.env.GOOGLE_SHEETS_BUYER_SHEET_NAME || '買主リスト';
+
+      const saJson = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
+      let authConfig: any;
+      if (saJson) {
+        try {
+          const creds = JSON.parse(saJson);
+          authConfig = { credentials: creds, scopes: ['https://www.googleapis.com/auth/spreadsheets'] };
+        } catch {
+          authConfig = { keyFile: pathMod.join(__dirname, '../../google-service-account.json'), scopes: ['https://www.googleapis.com/auth/spreadsheets'] };
+        }
+      } else {
         authConfig = { keyFile: pathMod.join(__dirname, '../../google-service-account.json'), scopes: ['https://www.googleapis.com/auth/spreadsheets'] };
       }
-    } else {
-      authConfig = { keyFile: pathMod.join(__dirname, '../../google-service-account.json'), scopes: ['https://www.googleapis.com/auth/spreadsheets'] };
-    }
-    const auth = new google.auth.GoogleAuth(authConfig);
-    const sheets = google.sheets({ version: 'v4', auth });
+      const auth = new google.auth.GoogleAuth(authConfig);
+      const sheets = google.sheets({ version: 'v4', auth });
 
-    const sheetResponse = await sheets.spreadsheets.values.get({
-      spreadsheetId,
-      range: `'${sheetName}'!E:E`,
-    });
-    const sheetValues = sheetResponse.data.values || [];
-    const sheetBuyerNumbers = new Set<string>(
-      sheetValues.slice(1)
-        .map((row: any[]) => String(row[0] || '').trim())
-        .filter((v: string) => v && /^\d+$/.test(v))
-    );
-    console.log(`[restore-to-sheet] スプレッドシートの買主数: ${sheetBuyerNumbers.size}`);
+      const sheetResponse = await sheets.spreadsheets.values.get({
+        spreadsheetId,
+        range: `'${sheetName}'!E:E`,
+      });
+      const sheetValues = sheetResponse.data.values || [];
+      sheetBuyerNumbers = new Set<string>(
+        sheetValues.slice(1)
+          .map((row: any[]) => String(row[0] || '').trim())
+          .filter((v: string) => v && /^\d+$/.test(v))
+      );
+      console.log(`[restore-to-sheet] スプレッドシートから取得: ${sheetBuyerNumbers.size}件`);
+    }
 
     // 2. 指定範囲のDBアクティブ買主のみ取得（タイムアウト回避）
     const supabase = (buyerService as any).supabase;
