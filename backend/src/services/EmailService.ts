@@ -110,16 +110,19 @@ export class EmailService extends BaseRepository {
             return `<a href="${url}">${url}</a>`;
           });
 
-      // HTMLタグが既に含まれているかチェック
-      const containsHtml = /<img|<a|<br|<div|<p|<span/i.test(params.body);
+      // 常にURLをリンク化する
+      const linkedBody = urlToLink(params.body);
+
+      // HTMLタグ（<br>以外）が含まれているかチェック
+      const containsStructuralHtml = /<img|<div|<p|<span|<table|<td|<!DOCTYPE/i.test(linkedBody);
 
       let htmlBody: string;
-      if (containsHtml) {
-        // 既にHTMLが含まれている場合でも、<a>タグで囲まれていないURLをリンク化する
-        htmlBody = urlToLink(params.body);
+      if (containsStructuralHtml) {
+        // 構造的なHTMLが含まれている場合はそのまま使用（改行変換しない）
+        htmlBody = linkedBody;
       } else {
-        // プレーンテキストの場合はHTMLに変換（URLリンク化 + 改行を<br>に変換）
-        htmlBody = urlToLink(params.body).replace(/\n/g, '<br>');
+        // プレーンテキスト（または<br>のみ）の場合は改行を<br>に変換
+        htmlBody = linkedBody.replace(/\n/g, '<br>');
       }
 
       const encodedSubject = /^[\x00-\x7F]*$/.test(params.subject)
