@@ -1,0 +1,11 @@
+User-agent: *
+Allow: /tateuri
+Allow: /property-preview/
+Disallow: /
+Disallow: /sellers
+Disallow: /buyers
+Disallow: /properties
+Disallow: /employees
+Disallow: /calendar
+
+Sitemap: https://oita-tateuri.com/sitemap.xml
