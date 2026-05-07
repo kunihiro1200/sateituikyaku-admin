@@ -1,5 +1,19 @@
 {
   "installCommand": "npm install --legacy-peer-deps",
+  "redirects": [
+    {
+      "source": "/",
+      "has": [{ "type": "host", "value": "oita-tateuri.com" }],
+      "destination": "/tateuri",
+      "permanent": false
+    },
+    {
+      "source": "/",
+      "has": [{ "type": "host", "value": "www.oita-tateuri.com" }],
+      "destination": "/tateuri",
+      "permanent": false
+    }
+  ],
   "rewrites": [
     { "source": "/(.*)", "destination": "/index.html" }
   ]
