@@ -115,6 +115,16 @@ export function generateViewingPrep2Html(buyer: Record<string,unknown>, _today: 
   const imgHouseHeart = `${base}/ifoo-assets/house-heart.png`;
   const imgCharaRight = `${base}/ifoo-assets/chara-right.png`;
   const imgWaHouses   = `${base}/ifoo-assets/wa-houses.png`;
+  // 追加5ページのHTML
+  const extraPages = [
+    generateExtraPage1Html(base),
+    generateExtraPage2Html(),
+    generateExtraPage3Html(),
+    generateExtraPage4Html(),
+    generateExtraPage5Html(),
+  ];
+  const extraPagesHtml = extraPages.map(p => `<div class="page">${p}</div>`).join('');
+
   return `<!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -123,10 +133,12 @@ export function generateViewingPrep2Html(buyer: Record<string,unknown>, _today: 
   @page { size: A4 portrait; margin: 0; }
   * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
   body { margin: 0; padding: 0; background: #fff; font-family: "Noto Sans JP","Hiragino Kaku Gothic ProN","Meiryo",sans-serif; color: #000; }
+  .page { width: 794px; height: 1123px; background: #fff; page-break-after: always; break-after: page; overflow: hidden; }
+  @media print { .page { width: 210mm; height: 297mm; } }
 </style>
 </head>
 <body>
-<div style="width:794px;height:1123px;padding:16px;background:#fff;">
+<div class="page" style="padding:16px;">
 <div style="border:2px solid #f5c518;width:100%;height:100%;padding:24px 36px 20px 36px;display:flex;flex-direction:column;">
   <div>
     <div style="margin-bottom:18px;"><img src="${imgLogo}" height="52" style="display:block;"/></div>
@@ -163,6 +175,7 @@ export function generateViewingPrep2Html(buyer: Record<string,unknown>, _today: 
   </div>
 </div>
 </div>
+${extraPagesHtml}
 </body>
 </html>`;
 }
@@ -453,7 +466,6 @@ export function generatePage5Html(): string {
 // 全ページ結合
 // ============================================================
 export function generateAllPagesHtml(buyer: Record<string,unknown>, propertyDetails: Record<string,unknown>[], today: string): string {
-  const base = typeof window !== 'undefined' ? window.location.origin : '';
   const pages: string[] = [];
   for (const property of propertyDetails) {
     const addr = (property.display_address || property.address || '') as string;
@@ -465,12 +477,6 @@ export function generateAllPagesHtml(buyer: Record<string,unknown>, propertyDeta
     pages.push(generatePage4Html(addr, price, ptype, today));
     pages.push(generatePage5Html());
   }
-  // 追加5ページ（内覧準備資料の後に印刷）
-  pages.push(generateExtraPage1Html(base));
-  pages.push(generateExtraPage2Html());
-  pages.push(generateExtraPage3Html());
-  pages.push(generateExtraPage4Html());
-  pages.push(generateExtraPage5Html());
   const pagesHtml = pages.map((p,i)=>`<div class="page" style="${i===pages.length-1?'page-break-after:auto;break-after:auto;':''}">${p}</div>`).join('');
   return `<!DOCTYPE html>
 <html lang="ja">
