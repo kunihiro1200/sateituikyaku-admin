@@ -102,10 +102,9 @@ export function generatePage1Html(buyer: Record<string,unknown>, property: Recor
 }
 
 // ============================================================
-// 内覧準備資料２: 挨拶状（いふうスタイル）
+// 内覧準備資料２: 挨拶状（いふうスタイル・添付画像完全再現）
 // ============================================================
 export function generateViewingPrep2Html(buyer: Record<string,unknown>, _today: string): string {
-  // 買主名に「様」を付ける（既に「様」で終わっている場合はダブらないようにする）
   const rawName = (buyer.name as string) || '';
   const nameWithSama = rawName
     ? (rawName.endsWith('様') ? rawName : rawName + '様')
@@ -118,100 +117,103 @@ export function generateViewingPrep2Html(buyer: Record<string,unknown>, _today: 
 <style>
   @page { size: A4 portrait; margin: 0; }
   * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-  body { margin: 0; padding: 0; background: #fff; font-family: "Noto Sans JP","Hiragino Kaku Gothic ProN","Meiryo",sans-serif; }
+  body { margin: 0; padding: 0; background: #fff; font-family: "Noto Sans JP","Hiragino Kaku Gothic ProN","Meiryo",sans-serif; color: #000; }
 </style>
 </head>
 <body>
-<div style="width:794px;min-height:1123px;background:#fff;padding:24px 28px;display:flex;flex-direction:column;">
+<!--
+  A4 = 794px × 1123px
+  外余白: 上下左右 20px
+  外枠: 2px solid #f5c518
+  内余白: 上下左右 36px
+-->
+<div style="width:794px;height:1123px;padding:20px;background:#fff;">
+<div style="border:2px solid #f5c518;width:100%;height:100%;padding:36px 44px;display:flex;flex-direction:column;">
 
-  <!-- 外枠（黄色細線） -->
-  <div style="border:2px solid #f5c200;flex:1;padding:28px 32px;display:flex;flex-direction:column;gap:0;">
+  <!-- ① ロゴ（左上） -->
+  <div style="margin-bottom:32px;">
+    <div style="display:inline-block;border:2px solid #000;background:#f5c518;padding:4px 10px;font-size:13pt;font-weight:bold;letter-spacing:0.08em;line-height:1.2;">IFOO</div>
+  </div>
 
-    <!-- ① ロゴ（左上） -->
-    <div style="margin-bottom:28px;">
-      <div style="display:inline-block;border:2px solid #000;background:#f5c200;padding:5px 12px;font-size:15pt;font-weight:bold;letter-spacing:0.05em;line-height:1;">IFOO</div>
-    </div>
+  <!-- ② 買主名（中央・大） -->
+  <div style="text-align:center;margin-bottom:18px;">
+    <span style="font-size:24pt;font-weight:bold;letter-spacing:0.05em;">${esc(nameWithSama)}</span>
+  </div>
 
-    <!-- ② 買主名（中央・大） -->
-    <div style="text-align:center;margin-bottom:20px;">
-      <span style="font-size:26pt;font-weight:bold;">${esc(nameWithSama)}</span>
-    </div>
+  <!-- ③ 横線（黒・細） -->
+  <div style="border-bottom:1px solid #000;margin-bottom:30px;"></div>
 
-    <!-- ③ 横線 -->
-    <div style="border-bottom:1px solid #000;margin-bottom:28px;"></div>
+  <!-- ④ お礼メッセージ（中央・太字） -->
+  <div style="text-align:center;margin-bottom:40px;">
+    <div style="font-size:12.5pt;font-weight:bold;line-height:2.0;">本日は貴重なお時間いただきまして</div>
+    <div style="font-size:12.5pt;font-weight:bold;line-height:2.0;">誠にありがとうございます</div>
+  </div>
 
-    <!-- ④ お礼メッセージ（中央・太字） -->
-    <div style="text-align:center;margin-bottom:36px;">
-      <div style="font-size:13pt;font-weight:bold;line-height:2;">本日は貴重なお時間いただきまして</div>
-      <div style="font-size:13pt;font-weight:bold;line-height:2;">誠にありがとうございます</div>
-    </div>
+  <!-- ⑤ 中段：左（吹き出し＋キャラ）＋中央（本文）＋右（家） -->
+  <div style="display:flex;align-items:flex-start;margin-bottom:0;flex:1;">
 
-    <!-- ⑤ 中段：左キャラ＋中央本文＋右家アイコン -->
-    <div style="display:flex;align-items:flex-start;margin-bottom:32px;gap:0;">
-
-      <!-- 左：吹き出し＋顔キャラ -->
-      <div style="width:110px;flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:10px;padding-top:4px;">
-        <!-- 吹き出し（黄色角丸） -->
-        <div style="position:relative;background:#f5c200;border-radius:10px;padding:7px 10px;font-size:9.5pt;font-weight:bold;text-align:center;line-height:1.5;white-space:nowrap;">
-          いふうなら<br>安心です！
-          <!-- 下向き三角 -->
-          <div style="position:absolute;bottom:-9px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:8px solid transparent;border-right:8px solid transparent;border-top:9px solid #f5c200;"></div>
-        </div>
-        <!-- 顔文字キャラ（スマイル） -->
-        <div style="font-size:36pt;line-height:1;margin-top:6px;">🙂</div>
+    <!-- 左カラム：吹き出し＋顔キャラ -->
+    <div style="width:120px;flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:14px;">
+      <!-- 黄色角丸吹き出し -->
+      <div style="position:relative;background:#f5c518;border-radius:12px;padding:8px 12px;font-size:9.5pt;font-weight:bold;text-align:center;line-height:1.6;">
+        いふうなら<br>安心です！
+        <div style="position:absolute;bottom:-10px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:9px solid transparent;border-right:9px solid transparent;border-top:10px solid #f5c518;"></div>
       </div>
+      <!-- 丸顔キャラ（黄色スマイル） -->
+      <div style="font-size:44px;line-height:1;margin-top:4px;">😊</div>
+    </div>
 
-      <!-- 中央：本文テキスト -->
-      <div style="flex:1;text-align:center;padding:0 8px;">
-        <div style="font-size:11pt;line-height:2.0;margin-bottom:8px;">
-          大分市・別府市の不動産購入は<br>
-          いふうにおまかせください！
-        </div>
-        <div style="font-size:10pt;line-height:1.9;text-align:left;display:inline-block;">
-          「資金計画」や「現地見学」「売買契約」な<br>
-          ど、<br>
-          お住まい購入時の流れやポイントを<br>
-          丁寧にご説明いたします<br>
-          お気軽にご相談ください！
-        </div>
+    <!-- 中央カラム：本文 -->
+    <div style="flex:1;padding:0 16px 0 8px;">
+      <div style="font-size:11pt;line-height:2.1;margin-bottom:10px;text-align:center;">
+        大分市・別府市の不動産購入は<br>
+        いふうにおまかせください！
       </div>
-
-      <!-- 右：家アイコン -->
-      <div style="width:80px;flex-shrink:0;text-align:center;padding-top:4px;">
-        <div style="font-size:42pt;line-height:1;">🏠</div>
+      <div style="font-size:10pt;line-height:2.0;text-align:left;">
+        「資金計画」や「現地見学」「売買契約」な<br>
+        ど、<br>
+        お住まい購入時の流れやポイントを<br>
+        丁寧にご説明いたします<br>
+        お気軽にご相談ください！
       </div>
     </div>
 
-    <!-- ⑥ 右下：担当者メッセージ＋スーツ女性 -->
-    <div style="display:flex;justify-content:flex-end;margin-bottom:28px;">
-      <div style="text-align:center;">
-        <div style="font-size:10pt;line-height:1.8;">とーんと！と<br>おまかせください</div>
-        <div style="font-size:38pt;line-height:1;margin-top:6px;">👩‍💼</div>
+    <!-- 右カラム：家アイコン -->
+    <div style="width:80px;flex-shrink:0;text-align:center;padding-top:0;">
+      <div style="font-size:52px;line-height:1;">🏠</div>
+    </div>
+  </div>
+
+  <!-- ⑥ 右下：「とーんと！と おまかせください」＋スーツ女性 -->
+  <div style="display:flex;justify-content:flex-end;margin-bottom:24px;margin-top:16px;">
+    <div style="text-align:center;">
+      <div style="font-size:10pt;line-height:1.9;">とーんと！と<br>おまかせください</div>
+      <div style="font-size:46px;line-height:1;margin-top:6px;">👩‍💼</div>
+    </div>
+  </div>
+
+  <!-- ⑦ 横線（グレー・細） -->
+  <div style="border-bottom:1px solid #ccc;margin-bottom:20px;"></div>
+
+  <!-- ⑧ フッター：左に家×3、右に会社情報 -->
+  <div style="display:flex;align-items:center;justify-content:space-between;">
+
+    <!-- 左：家アイコン×3 -->
+    <div style="font-size:34px;line-height:1;letter-spacing:6px;">🏠🏠🏠</div>
+
+    <!-- 右：会社情報ブロック -->
+    <div style="text-align:left;">
+      <div style="font-size:8.5pt;margin-bottom:5px;">不動産のことなら「いふう」へ</div>
+      <div style="background:#f5c518;padding:5px 20px;font-size:11pt;font-weight:bold;text-align:center;margin-bottom:7px;">株式会社いふう</div>
+      <div style="font-size:9pt;line-height:1.9;">
+        大分市舞鶴町1-3-30<br>
+        TEL：097-533-2022<br>
+        FAX：097-529-7160
       </div>
     </div>
+  </div>
 
-    <!-- ⑦ 横線（フッター上） -->
-    <div style="border-bottom:1px solid #ccc;margin-bottom:20px;"></div>
-
-    <!-- ⑧ フッター：左に家×3、右に会社情報 -->
-    <div style="display:flex;align-items:center;justify-content:space-between;">
-
-      <!-- 左：家アイコン×3 -->
-      <div style="font-size:30pt;line-height:1;letter-spacing:4px;">🏠🏠🏠</div>
-
-      <!-- 右：会社情報 -->
-      <div style="text-align:left;">
-        <div style="font-size:8.5pt;margin-bottom:4px;">不動産のことなら「いふう」へ</div>
-        <div style="background:#f5c200;padding:4px 16px;font-size:10.5pt;font-weight:bold;text-align:center;margin-bottom:6px;">株式会社いふう</div>
-        <div style="font-size:9pt;line-height:1.8;">
-          大分市舞鶴町1-3-30<br>
-          TEL：097-533-2022<br>
-          FAX：097-529-7160
-        </div>
-      </div>
-    </div>
-
-  </div><!-- /外枠 -->
+</div><!-- /外枠 -->
 </div>
 </body>
 </html>`;
