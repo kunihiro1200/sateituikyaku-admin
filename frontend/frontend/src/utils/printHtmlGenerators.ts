@@ -504,22 +504,110 @@ export function generateAllPagesHtml(buyer: Record<string,unknown>, propertyDeta
 
 // ページA: 住まい購入の流れ
 export function generateExtraPage1Html(base: string): string {
-  const imgFlow = `${base}/ifoo-assets/flow-main.png`;
-  const imgSub  = `${base}/ifoo-assets/flow-sub.png`;
+  const imgFamily = `${base}/ifoo-assets/flow-main.png`;
+  const imgIcon   = `${base}/ifoo-assets/flow-sub.png`;
   const F = '"Noto Sans JP","Hiragino Kaku Gothic ProN","Meiryo",sans-serif';
+  const yellow = '#f5c518';
+  const pink = '#f4b8b8';
+  const blue = '#b8d4f4';
+  const cellH = 'border:1px solid #ccc;padding:6px 4px;text-align:center;font-size:8pt;vertical-align:middle;';
+  const cellV = 'border:1px solid #ccc;padding:4px 6px;text-align:center;font-size:8pt;vertical-align:middle;writing-mode:vertical-rl;';
   return `
-<div style="width:100%;height:100%;padding:40px 28px 20px 28px;font-family:${F};font-size:9pt;color:#000;background:#fff;box-sizing:border-box;">
+<div style="width:100%;height:100%;padding:28px 28px 16px 28px;font-family:${F};font-size:9pt;color:#000;background:#fff;box-sizing:border-box;">
   <!-- ヘッダー -->
-  <div style="display:flex;align-items:center;margin-bottom:16px;">
-    <div style="font-size:20pt;font-weight:bold;margin-right:16px;">住まい購入の流れ</div>
-    <img src="${imgSub}" height="60" style="margin-left:auto;"/>
+  <div style="display:flex;align-items:center;margin-bottom:12px;">
+    <img src="${imgIcon}" height="48" style="margin-right:12px;"/>
+    <div style="font-size:18pt;font-weight:bold;">住まい購入の流れ</div>
+    <img src="${imgFamily}" height="90" style="margin-left:auto;"/>
   </div>
-  <!-- メインイラスト -->
-  <div style="text-align:center;">
-    <img src="${imgFlow}" style="max-width:100%;height:auto;"/>
+  <!-- 購入までの行程 -->
+  <div style="display:flex;align-items:center;margin-bottom:10px;">
+    <span style="font-size:9pt;margin-right:8px;">🐾</span>
+    <span style="font-size:11pt;font-weight:bold;">購入までの行程</span>
+    <div style="margin-left:12px;background:#f0f0f0;border-radius:4px;padding:2px 10px;font-size:8pt;">物件探しはこちらから！</div>
   </div>
-  <!-- フッター -->
-  <div style="text-align:right;font-size:7.5pt;color:#666;margin-top:8px;">4</div>
+  <!-- フロー表 -->
+  <table style="width:100%;border-collapse:collapse;margin-bottom:10px;">
+    <tr>
+      <td style="${cellV}background:${pink};width:32px;font-weight:bold;">購入の流れ</td>
+      <td style="${cellH}background:${pink};width:60px;">内覧</td>
+      <td style="${cellH}background:${pink};width:60px;">買付申込</td>
+      <td style="${cellH}background:${pink};width:80px;">契約・手付金</td>
+      <td style="${cellH}background:${pink};width:80px;">決済・引渡し</td>
+      <td style="${cellH}background:${pink};width:80px;">残金支払</td>
+    </tr>
+  </table>
+  <!-- 期間 -->
+  <table style="width:100%;border-collapse:collapse;margin-bottom:10px;">
+    <tr>
+      <td style="${cellH}font-weight:bold;width:60px;">例</td>
+      <td style="${cellH}width:100px;">約1〜2週間</td>
+      <td style="${cellH}width:80px;">約1週間</td>
+      <td style="${cellH}width:100px;">約3週間</td>
+      <td style="${cellH}width:120px;">約1〜2週間</td>
+      <td style="${cellH}width:60px;">▶</td>
+    </tr>
+  </table>
+  <!-- ローンの流れ -->
+  <table style="width:100%;border-collapse:collapse;margin-bottom:14px;">
+    <tr>
+      <td style="${cellV}background:${blue};width:32px;font-weight:bold;">ローンの流れ</td>
+      <td style="${cellH}background:${blue};width:60px;">仮審査申込</td>
+      <td style="${cellH}background:${blue};width:80px;">仮審査承認通知</td>
+      <td style="${cellH}background:${blue};width:80px;">本審査申込</td>
+      <td style="${cellH}background:${blue};width:80px;">本審査承認通知</td>
+      <td style="${cellH}background:${blue};width:60px;">融資実行</td>
+    </tr>
+  </table>
+  <!-- 押さえておきたい税 -->
+  <div style="display:flex;align-items:center;margin-bottom:10px;">
+    <span style="font-size:9pt;margin-right:8px;">🐾</span>
+    <span style="font-size:11pt;font-weight:bold;">押さえておきたい税とお得な制度！</span>
+  </div>
+  <div style="display:flex;gap:12px;">
+    <!-- 左列 -->
+    <div style="flex:1;">
+      <div style="display:flex;align-items:center;margin-bottom:6px;">
+        <span style="background:${yellow};border-radius:50%;width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;font-weight:bold;font-size:8pt;margin-right:6px;">01</span>
+        <span style="font-weight:bold;font-size:9.5pt;">不動産取得税の税率</span>
+      </div>
+      <div style="font-size:8pt;line-height:1.8;margin-bottom:8px;">
+        【原則】<br>宅地……評価額×4%<br>住宅……評価額×4%<br><br>
+        【軽減措置】<br>・宅地……評価額×1/2×3%－控除額<br>・住宅……（評価額－控除額）×3%<br>
+        　住宅の基礎控除最大1,200万円<br>　（新築年月日により変動、条件あり）<br>
+        ＊2024年3月31日まで<br>＊不動産を取得した日から60日以内に申告すること！
+      </div>
+      <div style="display:flex;align-items:center;margin-bottom:6px;">
+        <span style="background:${yellow};border-radius:50%;width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;font-weight:bold;font-size:8pt;margin-right:6px;">02</span>
+        <span style="font-weight:bold;font-size:9.5pt;">住宅ローン控除</span>
+      </div>
+      <div style="font-size:8pt;line-height:1.8;">
+        ＊毎年末の住宅ローン残高<br>＊住宅の取得対価<br>上記いずれか少ない方の金額の0.7%が13年間（中古住宅10年）に渡り所得税の額から控除！<br><br>
+        【条件】<br>＊年収が2000万円以下であること<br>＊住宅ローンの借入期間が10年以上<br>（昭和57年以降に建築された住宅）<br>⇒耐震基準適合証明書が必要
+      </div>
+    </div>
+    <!-- 右列 -->
+    <div style="flex:1;">
+      <div style="display:flex;align-items:center;margin-bottom:6px;">
+        <span style="background:${yellow};border-radius:50%;width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;font-weight:bold;font-size:8pt;margin-right:6px;">03</span>
+        <span style="font-weight:bold;font-size:9.5pt;">リフォームの優遇措置</span>
+      </div>
+      <div style="font-size:8pt;line-height:1.8;">
+        〈子育てエコホーム支援事業〉<br>
+        対象のリフォーム工事を行った世帯（子育て世帯以外も）を対象に、<span style="color:#e53935;font-weight:bold;">最大60万円</span>の補助が受けられるものです。<br>
+        交付申請期間：2024年4月2日〜予算上限に達するまで（遅くとも2024年12月31日）<br>
+        対象工事：住宅の省エネ改修（必須）、子育て／防災性向上／バリアフリー改修他<br><br>
+        詳細は下記サイトをご確認ください。<br>「子育てエコホーム支援事業」<br>https://kosodate-ecohome.mlit.go.jp/<br><br>
+        〈建築物グリーン化促進事業〉<br>
+        ●既存住宅における断熱リフォーム支援事業<br>
+        ●先進的窓リノベ2024事業<br>
+        ●給湯省エネ2024事業<br>
+        ●長期優良住宅化リフォーム推進事業　ほか<br><br>
+        大分県のホームページに支援事業がまとめられていますので、ぜひご参考下さい！
+      </div>
+    </div>
+  </div>
+  <div style="text-align:right;font-size:7.5pt;color:#666;margin-top:6px;">4</div>
 </div>`;
 }
 
@@ -532,10 +620,10 @@ export function generateExtraPage2Html(): string {
   return `
 <div style="width:100%;height:100%;padding:0;font-family:${F};font-size:9pt;color:#000;background:#fff;box-sizing:border-box;">
   <!-- タイトル帯 -->
-  <div style="background:${yellow};text-align:center;padding:18px 0 14px;margin-bottom:24px;">
+  <div style="background:${yellow};text-align:center;padding:18px 0 14px;margin-top:40px;margin-bottom:24px;">
     <span style="font-size:20pt;font-weight:bold;">よくあるご質問♪1/2</span>
   </div>
-  <div style="padding:0 28px 0 28px;padding-top:20px;">
+  <div style="padding:0 28px;">
     <!-- Q1 -->
     <div style="border:2px solid ${yellow};border-radius:4px;padding:8px 14px;margin-bottom:8px;">
       <div style="font-weight:bold;font-size:10pt;color:#333;">Q1. とても気に入っていて自分の条件にあうのですが<br><span style="margin-left:2em;">1軒目で決めるのはちょっと不安…</span></div>
@@ -603,10 +691,10 @@ export function generateExtraPage3Html(): string {
   const tdS = `border:1px solid #ccc;padding:5px 8px;font-size:8pt;`;
   return `
 <div style="width:100%;height:100%;padding:0;font-family:${F};font-size:9pt;color:#000;background:#fff;box-sizing:border-box;">
-  <div style="background:${yellow};text-align:center;padding:18px 0 14px;margin-bottom:20px;">
+  <div style="background:${yellow};text-align:center;padding:18px 0 14px;margin-top:40px;margin-bottom:20px;">
     <span style="font-size:20pt;font-weight:bold;">よくあるご質問♪2/2</span>
   </div>
-  <div style="padding:0 28px 0 28px;padding-top:20px;">
+  <div style="padding:0 28px;">
     <!-- Q3 -->
     <div style="border:2px solid ${yellow};border-radius:4px;padding:8px 14px;margin-bottom:8px;">
       <div style="font-weight:bold;font-size:10pt;color:#333;">Q3. 予算が合わないのですが…</div>
