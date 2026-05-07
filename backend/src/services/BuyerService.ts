@@ -3322,6 +3322,75 @@ export class BuyerService {
 
     let allBuyers: any[] = [];
 
+    // 住所が指定されている場合、ジオコーディングして半径3km以内の買主を取得
+    if (area) {
+      // エリア番号（①など）ではなく住所文字列の場合のみジオコーディング
+      const isCircledNumber = /[①-⑳㉑-㉟㊱-㊿]/.test(area);
+      if (!isCircledNumber) {
+        console.log('[getOtherCompanyDistributionBuyers] Geocoding address for radius search:', area);
+        try {
+          const { GeocodingService } = await import('./GeocodingService');
+          const geocodingService = new GeocodingService();
+          const coordinates = await geocodingService.geocodeAddress(area);
+
+          if (coordinates) {
+            console.log('[getOtherCompanyDistributionBuyers] Geocoded coordinates:', coordinates);
+            const RADIUS_KM = 3;
+            const latDelta = RADIUS_KM / 111;
+            const lngDelta = RADIUS_KM / 91;
+
+            const minLat = coordinates.lat - latDelta;
+            const maxLat = coordinates.lat + latDelta;
+            const minLng = coordinates.lng - lngDelta;
+            const maxLng = coordinates.lng + lngDelta;
+
+            // 座標範囲内の全買主を取得（ページネーション）
+            let from = 0;
+            const pageSize = 1000;
+            while (true) {
+              const { data: page, error: pageError } = await this.supabase
+                .from('buyers')
+                .select('buyer_number, name, desired_area, desired_property_type, price_range_house, price_range_apartment, price_range_land, reception_date, phone_number, email, latest_status, inquiry_hearing, desired_area_lat, desired_area_lng')
+                .is('deleted_at', null)
+                .not('desired_area_lat', 'is', null)
+                .not('desired_area_lng', 'is', null)
+                .gte('desired_area_lat', minLat)
+                .lte('desired_area_lat', maxLat)
+                .gte('desired_area_lng', minLng)
+                .lte('desired_area_lng', maxLng)
+                .range(from, from + pageSize - 1);
+
+              if (pageError) {
+                console.error('[getOtherCompanyDistributionBuyers] Radius query error:', pageError);
+                break;
+              }
+              if (!page || page.length === 0) break;
+
+              // 正確な距離でフィルタリング（矩形→円形）
+              const withinRadius = page.filter(buyer => {
+                const distance = this.calcDistanceKm(
+                  coordinates.lat, coordinates.lng,
+                  buyer.desired_area_lat, buyer.desired_area_lng
+                );
+                return distance <= RADIUS_KM;
+              });
+
+              const existingNumbers = new Set(allBuyers.map(b => b.buyer_number));
+              allBuyers = [...allBuyers, ...withinRadius.filter(b => !existingNumbers.has(b.buyer_number))];
+
+              if (page.length < pageSize) break;
+              from += pageSize;
+            }
+            console.log('[getOtherCompanyDistributionBuyers] Buyers within 3km radius (geocoded):', allBuyers.length);
+          } else {
+            console.log('[getOtherCompanyDistributionBuyers] Geocoding failed for:', area);
+          }
+        } catch (geoErr) {
+          console.error('[getOtherCompanyDistributionBuyers] Geocoding error:', geoErr);
+        }
+      }
+    }
+
     // 物件番号が指定されている場合、半径1km以内の買主を取得
     if (propertyNumber) {
       console.log('[getOtherCompanyDistributionBuyers] Fetching buyers within 1km radius of property:', propertyNumber);
@@ -3384,9 +3453,9 @@ export class BuyerService {
       }
     }
 
-    // エリアが指定されている場合、エリアベースの検索も実行
+    // エリアが指定されている場合、エリア番号ベースの検索も実行
     if (area) {
-      // エリアグループルール適用
+      // エリアグループルール適用（住所文字列の場合も一応実行するが、丸数字がなければそのまま検索）
       const targetAreas = this.applyAreaGroupRules(area);
       console.log('[getOtherCompanyDistributionBuyers] targetAreas:', targetAreas);
 
