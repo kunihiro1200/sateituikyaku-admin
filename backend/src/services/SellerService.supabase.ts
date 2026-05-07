@@ -1619,18 +1619,13 @@ export class SellerService extends BaseRepository {
                 .or('preferred_contact_time.is.null,preferred_contact_time.eq.')
                 .or('contact_method.is.null,contact_method.eq.');
             } else if (fiSubCat === 'todayCallNotStarted') {
-              // 通常のtodayCallNotStartedと同じ条件（FI売主のみ）
+              // FI売主の当日TEL_未着手: DBで絞り込み可能な条件のみ適用し、残りはJS側でフィルタリング
+              // （複雑なOR条件はJS側で処理）
               query = query
                 .eq('status', '追客中')
                 .not('next_call_date', 'is', null)
                 .lte('next_call_date', todayJST)
-                .gte('inquiry_date', '2026-01-01')
-                .or('visit_assignee.is.null,visit_assignee.eq.,visit_assignee.eq.外す')
-                .or('unreachable_status.is.null,unreachable_status.eq.')
-                .or('confidence_level.is.null,and(confidence_level.neq.ダブり,confidence_level.neq.D,confidence_level.neq.AI査定)')
-                .or('phone_contact_person.is.null,phone_contact_person.eq.')
-                .or('preferred_contact_time.is.null,preferred_contact_time.eq.')
-                .or('contact_method.is.null,contact_method.eq.');
+                .gte('inquiry_date', '2026-01-01');
             } else if (fiSubCat === 'todayCallWithInfo' || fiSubCat.startsWith('todayCallWithInfo:')) {
               // コミュニケーション情報のいずれかに入力あり
               query = query
@@ -1819,22 +1814,24 @@ export class SellerService extends BaseRepository {
       });
     }
 
-    // fi:todayCallNotStarted の場合、JS側で不通・確度・反響日付フィルタリング
+    // fi:todayCallNotStarted の場合、JS側で営担なし・不通・確度・コミュニケーション情報フィルタリング
     if (typeof statusCategory === 'string' && statusCategory === 'fi:todayCallNotStarted') {
-      const todayJSTStr = (() => {
-        const now = new Date();
-        const jst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
-        return `${jst.getUTCFullYear()}-${String(jst.getUTCMonth() + 1).padStart(2, '0')}-${String(jst.getUTCDate()).padStart(2, '0')}`;
-      })();
       finalSellers = decryptedSellers.filter((s: any) => {
+        // 営担なし（空 または「外す」）
+        const visitAssignee = (s.visitAssignee || s.visit_assignee || '').trim();
+        if (visitAssignee !== '' && visitAssignee !== '外す') return false;
+        // コミュニケーション情報が全て空
         const hasInfo = (s.phoneContactPerson || s.phone_contact_person || '').trim() ||
                         (s.preferredContactTime || s.preferred_contact_time || '').trim() ||
                         (s.contactMethod || s.contact_method || '').trim();
         if (hasInfo) return false;
+        // 不通が空欄
         const unreachable = s.unreachableStatus || s.unreachable_status || '';
         if (unreachable && unreachable.trim() !== '') return false;
+        // 確度が「ダブり」「D」「AI査定」でない
         const confidence = s.confidenceLevel || s.confidence_level || '';
         if (confidence === 'ダブり' || confidence === 'D' || confidence === 'AI査定') return false;
+        // 反響日付が2026/1/1以降
         const inquiryDate = (s.inquiryDate || s.inquiry_date || '').substring(0, 10);
         return inquiryDate >= '2026-01-01';
       });
