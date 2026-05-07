@@ -21,6 +21,7 @@ export const EMAIL_TEMPLATES: EmailTemplate[] = [
 {priceChangeText}
 値下げ後、問合せが増えることが想定されますので、ご興味のある場合はお早めにご連絡ください。
 
+{propertyImages}
 お問合せが増えることが予想されますので、ご興味のある方はお早めにご連絡ください！
 
 詳細：{publicUrl}
@@ -30,7 +31,7 @@ export const EMAIL_TEMPLATES: EmailTemplate[] = [
 よろしくお願いいたします。
 
 {signature}`,
-    placeholders: ['address', 'propertyNumber', 'publicUrl', 'priceChangeText', 'buyerName', 'signature']
+    placeholders: ['address', 'propertyNumber', 'publicUrl', 'priceChangeText', 'buyerName', 'signature', 'propertyImages']
   },
   {
     id: 'new-listing',

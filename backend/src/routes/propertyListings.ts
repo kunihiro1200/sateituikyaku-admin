@@ -756,7 +756,6 @@ router.post('/:propertyNumber/send-distribution-emails', authenticate, async (re
         // {buyerName}プレースホルダーを実際の買主名に置換
         const personalizedSubject = subject.replace(/\{buyerName\}/g, buyerName);
         const personalizedContent = content.replace(/\{buyerName\}/g, buyerName);
-        const personalizedHtmlBody = htmlBody ? htmlBody.replace(/\{buyerName\}/g, buyerName) : undefined;
 
         // 添付ファイルがある場合は各ソースに応じてデータを取得して添付付きで送信
         if (attachments && Array.isArray(attachments) && attachments.length > 0) {
@@ -817,10 +816,23 @@ router.post('/:propertyNumber/send-distribution-emails', authenticate, async (re
           // nullを除外
           const emailAttachments = emailAttachmentsRaw.filter((a): a is NonNullable<typeof a> => a !== null);
 
+          // {propertyImages}プレースホルダーを<img>タグに置換（インライン画像表示）
+          const imgTags = emailAttachments
+            .map(att => `<img src="cid:${att.cid}" alt="${att.filename}" style="max-width:100%;height:auto;display:block;margin:8px 0;" />`)
+            .join('\n');
+
+          // htmlBodyまたはcontentの{propertyImages}を置換
+          const rawHtmlBody = htmlBody ? htmlBody.replace(/\{buyerName\}/g, buyerName) : undefined;
+          const personalizedHtmlBody = rawHtmlBody
+            ? rawHtmlBody.replace(/\{propertyImages\}/g, imgTags).replace(/\{propertyImages\}<br>/g, imgTags)
+            : undefined;
+          // プレーンテキスト版も{propertyImages}を除去
+          const cleanContent = personalizedContent.replace(/\{propertyImages\}/g, '');
+
           return await emailService.sendEmailWithCcAndAttachments({
             to: email,
             subject: personalizedSubject,
-            body: personalizedHtmlBody || personalizedContent,
+            body: personalizedHtmlBody || cleanContent,
             from,
             attachments: emailAttachments,
             isHtml: !!htmlBody,
@@ -843,10 +855,10 @@ router.post('/:propertyNumber/send-distribution-emails', authenticate, async (re
         return await emailService.sendTemplateEmail(
           dummySeller as any,
           personalizedSubject,
-          personalizedContent,
+          personalizedContent.replace(/\{propertyImages\}/g, ''),
           from,
           req.employee?.id || 'system',
-          personalizedHtmlBody,
+          htmlBody ? htmlBody.replace(/\{buyerName\}/g, buyerName).replace(/\{propertyImages\}/g, '') : undefined,
           from
         );
       })

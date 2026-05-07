@@ -170,7 +170,8 @@ export default function GmailDistributionButton({
       .replace(/\{propertyType\}/g, propertyType || '')
       .replace(/\{price\}/g, getPriceText())
       .replace(/\{signature\}/g, SIGNATURE)
-      .replace(/\{buyerName\}/g, buyerName || '');
+      .replace(/\{buyerName\}/g, buyerName || '')
+      .replace(/\{propertyImages\}/g, ''); // 画像はバックエンドで埋め込むためプレビューでは空
   };
 
   const handleButtonClick = () => {
@@ -205,14 +206,39 @@ export default function GmailDistributionButton({
   };
 
   // テスト送信用テンプレート選択後 → 確認モーダルへ
-  const handleTestTemplateSelect = (template: EmailTemplate) => {
+  const handleTestTemplateSelect = async (template: EmailTemplate) => {
     setSelectedTemplate(template);
     setTestTemplateSelectorOpen(false);
     // 確認モーダル用に本文を初期化
     const previewName = selectedBuyers.length === 1 ? (selectedBuyers[0].name || 'お客様') : '{buyerName}';
     setEditedBody(replacePlaceholders(template.body, previewName));
-    setSelectedImages([]);
+    // price-reductionテンプレートの場合は画像を自動取得
+    const autoImages = await fetchPropertyImagesForTemplate(template.id);
+    setSelectedImages(autoImages);
     setConfirmationOpen(true);
+  };
+
+  // price-reductionテンプレート選択時に物件画像を最大3枚自動取得する
+  const fetchPropertyImagesForTemplate = async (templateId: string) => {
+    if (templateId !== 'price-reduction') return [];
+    try {
+      const response = await api.get(`/api/emails/images/${propertyNumber}`);
+      const images: any[] = response.data?.images || [];
+      // 最初の3枚をselectedImages形式に変換
+      return images.slice(0, 3).map((img: any) => ({
+        id: img.id,
+        name: img.name || `image-${img.id}.jpg`,
+        source: 'drive' as const,
+        size: img.size || 0,
+        mimeType: img.mimeType || 'image/jpeg',
+        thumbnailUrl: img.thumbnailLink || img.thumbnailUrl,
+        previewUrl: img.thumbnailLink || img.thumbnailUrl || '',
+        driveFileId: img.id,
+      }));
+    } catch (err) {
+      console.warn('[GmailDistributionButton] 画像の自動取得に失敗しました:', err);
+      return [];
+    }
   };
 
   const handleTemplateSelect = async (template: EmailTemplate) => {
@@ -269,7 +295,9 @@ export default function GmailDistributionButton({
     // 確認モーダル表示時に本文を初期化（複数時は{buyerName}プレースホルダーのまま表示）
     const previewName = buyers.length === 1 ? (buyers[0].name || 'お客様') : '{buyerName}';
     setEditedBody(replacePlaceholders(selectedTemplate.body, previewName));
-    setSelectedImages([]);
+    // price-reductionテンプレートの場合は画像を自動取得
+    const autoImages = await fetchPropertyImagesForTemplate(selectedTemplate.id);
+    setSelectedImages(autoImages);
     setFilterSummaryOpen(false);
     setConfirmationOpen(true);
   };
