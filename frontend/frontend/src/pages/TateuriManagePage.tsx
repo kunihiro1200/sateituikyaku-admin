@@ -1,5 +1,4 @@
 import { useEffect, useState, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 
 interface TateuriProperty {
@@ -13,7 +12,6 @@ interface TateuriProperty {
 }
 
 export default function TateuriManagePage() {
-  const navigate = useNavigate();
   const [properties, setProperties] = useState<TateuriProperty[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -120,9 +118,9 @@ export default function TateuriManagePage() {
       {/* ヘッダー */}
       <div style={{ background: '#FFC107', color: '#333', padding: '14px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <h1 style={{ fontSize: 18, fontWeight: 'bold', margin: 0 }}>🏠 建売専門HP 管理画面</h1>
-        <button onClick={() => navigate('/tateuri')}
+        <button onClick={() => window.open('/tateuri', '_blank')}
           style={{ background: 'rgba(0,0,0,0.1)', border: '1px solid rgba(0,0,0,0.2)', color: '#333', padding: '6px 14px', borderRadius: 6, cursor: 'pointer', fontSize: 13 }}>
-          ← 公開サイトを見る
+          🔗 公開サイトを見る
         </button>
       </div>
 
