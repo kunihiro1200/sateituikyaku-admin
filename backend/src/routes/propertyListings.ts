@@ -770,12 +770,23 @@ router.post('/:propertyNumber/send-distribution-emails', authenticate, async (re
             .map((img: any) => `<img src="${img.url}" alt="${img.name || '物件画像'}" style="max-width:600px;width:100%;height:auto;display:block;margin:8px 0;" />`)
             .join('\n');
 
-          // {propertyImages}プレースホルダーをURL画像の<img>タグに置換
+          // content（プレーンテキスト）から公開URLを抽出して<a>タグを生成
+          const publicUrlMatch = (content || '').match(/https:\/\/property-site-frontend-kappa\.vercel\.app\/public\/properties\/[^\s]+/);
+          const extractedPublicUrl = publicUrlMatch ? publicUrlMatch[0] : '';
+          const publicUrlAnchor = extractedPublicUrl
+            ? `<a href="${extractedPublicUrl}" style="color:#1a73e8;font-weight:bold;">こちら</a>`
+            : 'こちら';
+
+          // {propertyImages}と{publicUrlLink}を置換
           const rawHtmlBody = htmlBody ? htmlBody.replace(/\{buyerName\}/g, buyerName) : undefined;
           const personalizedHtmlBody = rawHtmlBody
-            ? rawHtmlBody.replace(/\{propertyImages\}/g, urlImgTags)
+            ? rawHtmlBody
+                .replace(/\{propertyImages\}/g, urlImgTags)
+                .replace(/\{publicUrlLink\}/g, publicUrlAnchor)
             : undefined;
-          const cleanContent = personalizedContent.replace(/\{propertyImages\}/g, '');
+          const cleanContent = personalizedContent
+            .replace(/\{propertyImages\}/g, '')
+            .replace(/\{publicUrlLink\}/g, 'こちら');
 
           // ファイル添付（DriveファイルやBase64）がある場合のみ添付処理
           if (fileImages.length > 0) {
@@ -845,10 +856,10 @@ router.post('/:propertyNumber/send-distribution-emails', authenticate, async (re
         return await emailService.sendTemplateEmail(
           dummySeller as any,
           personalizedSubject,
-          personalizedContent.replace(/\{propertyImages\}/g, ''),
+          personalizedContent.replace(/\{propertyImages\}/g, '').replace(/\{publicUrlLink\}/g, 'こちら'),
           from,
           req.employee?.id || 'system',
-          htmlBody ? htmlBody.replace(/\{buyerName\}/g, buyerName).replace(/\{propertyImages\}/g, '') : undefined,
+          htmlBody ? htmlBody.replace(/\{buyerName\}/g, buyerName).replace(/\{propertyImages\}/g, '').replace(/\{publicUrlLink\}/g, 'こちら') : undefined,
           from
         );
       })

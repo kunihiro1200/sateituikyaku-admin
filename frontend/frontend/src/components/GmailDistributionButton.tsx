@@ -166,6 +166,7 @@ export default function GmailDistributionButton({
       .replace(/\{address\}/g, propertyAddress || '')
       .replace(/\{propertyNumber\}/g, propertyNumber)
       .replace(/\{publicUrl\}/g, publicUrl || '')
+      .replace(/\{publicUrlLink\}/g, 'こちら') // プレビューではテキストのみ（HTMLはバックエンドで処理）
       .replace(/\{priceChangeText\}/g, generatePriceChangeText())
       .replace(/\{propertyType\}/g, propertyType || '')
       .replace(/\{price\}/g, getPriceText())

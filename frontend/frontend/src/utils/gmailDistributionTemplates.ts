@@ -21,7 +21,10 @@ export const EMAIL_TEMPLATES: EmailTemplate[] = [
 {priceChangeText}
 値下げ後、問合せが増えることが想定されますので、ご興味のある場合はお早めにご連絡ください。
 
+その他の画像は{publicUrlLink}
 {propertyImages}
+その他の画像は{publicUrlLink}
+
 お問合せが増えることが予想されますので、ご興味のある方はお早めにご連絡ください！
 
 詳細：{publicUrl}
@@ -31,7 +34,7 @@ export const EMAIL_TEMPLATES: EmailTemplate[] = [
 よろしくお願いいたします。
 
 {signature}`,
-    placeholders: ['address', 'propertyNumber', 'publicUrl', 'priceChangeText', 'buyerName', 'signature', 'propertyImages']
+    placeholders: ['address', 'propertyNumber', 'publicUrl', 'publicUrlLink', 'priceChangeText', 'buyerName', 'signature', 'propertyImages']
   },
   {
     id: 'new-listing',
@@ -46,13 +49,16 @@ export const EMAIL_TEMPLATES: EmailTemplate[] = [
 価格：{price}
 詳細情報：{publicUrl}
 
+その他の画像は{publicUrlLink}
 {propertyImages}
+その他の画像は{publicUrlLink}
+
 詳細はお問い合わせください。
 
 よろしくお願いいたします。
 
 {signature}`,
-    placeholders: ['address', 'propertyNumber', 'publicUrl', 'buyerName', 'propertyType', 'price', 'signature', 'propertyImages']
+    placeholders: ['address', 'propertyNumber', 'publicUrl', 'publicUrlLink', 'buyerName', 'propertyType', 'price', 'signature', 'propertyImages']
   },
   {
     id: 'pre-listing',
@@ -66,13 +72,16 @@ export const EMAIL_TEMPLATES: EmailTemplate[] = [
 価格：{price}
 詳細情報：{publicUrl}
 
+その他の画像は{publicUrlLink}
 {propertyImages}
+その他の画像は{publicUrlLink}
+
 詳細はお問い合わせください。
 
 よろしくお願いいたします。
 
 {signature}`,
-    placeholders: ['address', 'propertyNumber', 'publicUrl', 'buyerName', 'propertyType', 'price', 'signature', 'propertyImages']
+    placeholders: ['address', 'propertyNumber', 'publicUrl', 'publicUrlLink', 'buyerName', 'propertyType', 'price', 'signature', 'propertyImages']
   },
   {
     id: 'private-email-only',
@@ -88,7 +97,10 @@ export const EMAIL_TEMPLATES: EmailTemplate[] = [
 物件住所：{address}
 詳細URL:{publicUrl}
 
+その他の画像は{publicUrlLink}
 {propertyImages}
+その他の画像は{publicUrlLink}
+
 内覧は可能ですので、こちらのメールに
 ■名前
 ■電話番号
@@ -112,7 +124,7 @@ FAX：097-529-7160
 HP：https://ifoo-oita.com/
 店休日：毎週水曜日　年末年始、GW、盆
 ***************************`,
-    placeholders: ['address', 'publicUrl', 'buyerName', 'propertyImages']
+    placeholders: ['address', 'publicUrl', 'publicUrlLink', 'buyerName', 'propertyImages']
   }
 ];
 
