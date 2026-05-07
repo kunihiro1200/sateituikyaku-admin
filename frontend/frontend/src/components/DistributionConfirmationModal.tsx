@@ -53,6 +53,8 @@ interface DistributionConfirmationModalProps {
   onBodyChange?: (body: string) => void;
   selectedImages?: ImageFile[];
   onImagesChange?: (images: ImageFile[]) => void;
+  /** テスト送信モードの場合はtrue（タイトルが変わる） */
+  isTestMode?: boolean;
 }
 
 export default function DistributionConfirmationModal({
@@ -68,6 +70,7 @@ export default function DistributionConfirmationModal({
   onBodyChange,
   selectedImages = [],
   onImagesChange,
+  isTestMode = false,
 }: DistributionConfirmationModalProps) {
   const [sending, setSending] = useState(false);
   const [editedBody, setEditedBody] = useState(bodyPreview);
@@ -111,7 +114,7 @@ export default function DistributionConfirmationModal({
     <>
       <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
         <DialogTitle>
-          メール配信の確認
+          {isTestMode ? 'テスト送信の確認' : 'メール配信の確認'}
         </DialogTitle>
         <DialogContent>
           <Box sx={{ mb: 2 }}>

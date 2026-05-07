@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
-import { Button, CircularProgress, Snackbar, Alert } from '@mui/material';
-import { Email as EmailIcon } from '@mui/icons-material';
+import { Button, ButtonGroup, CircularProgress, Snackbar, Alert, Tooltip } from '@mui/material';
+import { Email as EmailIcon, Science as ScienceIcon } from '@mui/icons-material';
 import EmailTemplateSelector from './EmailTemplateSelector';
 import BuyerFilterSummaryModal from './BuyerFilterSummaryModal';
 import DistributionConfirmationModal from './DistributionConfirmationModal';
+import TestEmailStaffSelectorModal, { StaffMember } from './TestEmailStaffSelectorModal';
 import gmailDistributionService, { EnhancedBuyerEmailsResponse } from '../services/gmailDistributionService';
 import { EmailTemplate, getAllTemplates } from '../utils/gmailDistributionTemplates';
 import { getActiveEmployees } from '../services/employeeService';
@@ -63,6 +64,11 @@ export default function GmailDistributionButton({
   const [buyerData, setBuyerData] = useState<EnhancedBuyerEmailsResponse | null>(null);
   const [selectedTemplate, setSelectedTemplate] = useState<EmailTemplate | null>(null);
   const [selectedBuyers, setSelectedBuyers] = useState<Array<{ email: string; name: string | null }>>([]);
+
+  // テスト送信用のstate
+  const [isTestMode, setIsTestMode] = useState(false);
+  const [testTemplateSelectorOpen, setTestTemplateSelectorOpen] = useState(false);
+  const [testStaffSelectorOpen, setTestStaffSelectorOpen] = useState(false);
   const [editedBody, setEditedBody] = useState<string>('');
   const [selectedImages, setSelectedImages] = useState<Array<{
     id: string;
@@ -171,7 +177,41 @@ export default function GmailDistributionButton({
     if (!senderAddress || senderAddress.trim() === '') {
       setSenderAddress(DEFAULT_SENDER);
     }
+    setIsTestMode(false);
     setTemplateSelectorOpen(true);
+  };
+
+  // テスト送信ボタンクリック
+  const handleTestButtonClick = () => {
+    if (!senderAddress || senderAddress.trim() === '') {
+      setSenderAddress(DEFAULT_SENDER);
+    }
+    setIsTestMode(true);
+    setTestTemplateSelectorOpen(true);
+  };
+
+  // テスト送信用テンプレート選択後 → スタッフ選択へ
+  const handleTestTemplateSelect = (template: EmailTemplate) => {
+    setSelectedTemplate(template);
+    setTestTemplateSelectorOpen(false);
+    setTestStaffSelectorOpen(true);
+  };
+
+  // テスト送信用スタッフ選択後 → 確認モーダルへ
+  const handleTestStaffConfirm = (selectedStaff: StaffMember[]) => {
+    if (!selectedTemplate || selectedStaff.length === 0) return;
+    // スタッフをbuyerと同じ形式に変換（buyer_numberなし）
+    const staffAsBuyers = selectedStaff.map((s) => ({
+      email: s.email,
+      name: s.name,
+      buyer_number: undefined as any,
+    }));
+    setSelectedBuyers(staffAsBuyers);
+    const previewName = selectedStaff.length === 1 ? selectedStaff[0].name : '{buyerName}';
+    setEditedBody(replacePlaceholders(selectedTemplate.body, previewName));
+    setSelectedImages([]);
+    setTestStaffSelectorOpen(false);
+    setConfirmationOpen(true);
   };
 
   const handleTemplateSelect = async (template: EmailTemplate) => {
@@ -310,7 +350,8 @@ export default function GmailDistributionButton({
         senderAddress,
         buyers,
         attachments.length > 0 ? attachments : undefined,
-        assigneeEmail || undefined
+        // テスト送信時はCCを付けない
+        isTestMode ? undefined : (assigneeEmail || undefined)
       );
 
       setConfirmationOpen(false);
@@ -318,16 +359,20 @@ export default function GmailDistributionButton({
       setSelectedImages([]);
 
       if (result.success) {
-        // 送信成功時に親コンポーネントへ通知（履歴保存のため）
-        onSendSuccess?.({
-          successCount: result.successCount,
-          subject: replacePlaceholders(selectedTemplate.subject, buyerName),
-          senderAddress,
-          body: editedBody || replacePlaceholders(selectedTemplate.body, buyerName),
-        });
+        // 通常送信時のみ親コンポーネントへ通知（履歴保存のため）
+        if (!isTestMode) {
+          onSendSuccess?.({
+            successCount: result.successCount,
+            subject: replacePlaceholders(selectedTemplate.subject, buyerName),
+            senderAddress,
+            body: editedBody || replacePlaceholders(selectedTemplate.body, buyerName),
+          });
+        }
         setSnackbar({
           open: true,
-          message: `メールを送信しました (${result.successCount}件)\n送信元: ${senderAddress}`,
+          message: isTestMode
+            ? `テスト送信しました (${result.successCount}件)\n送信元: ${senderAddress}`
+            : `メールを送信しました (${result.successCount}件)\n送信元: ${senderAddress}`,
           severity: 'success'
         });
       } else {
@@ -412,15 +457,25 @@ export default function GmailDistributionButton({
 
   return (
     <>
-      <Button
-        size={size}
-        variant={variant}
-        startIcon={loading ? <CircularProgress size={16} /> : <EmailIcon />}
-        onClick={handleButtonClick}
-        disabled={loading}
-      >
-        公開前、値下げメール
-      </Button>
+      {/* メインボタン群 */}
+      <ButtonGroup size={size} variant={variant} disableElevation>
+        <Button
+          startIcon={loading ? <CircularProgress size={16} /> : <EmailIcon />}
+          onClick={handleButtonClick}
+          disabled={loading}
+        >
+          公開前、値下げメール
+        </Button>
+        <Tooltip title="スタッフにテスト送信">
+          <Button
+            onClick={handleTestButtonClick}
+            disabled={loading}
+            sx={{ px: 1, minWidth: 'auto' }}
+          >
+            <ScienceIcon fontSize="small" />
+          </Button>
+        </Tooltip>
+      </ButtonGroup>
 
       <EmailTemplateSelector
         open={templateSelectorOpen}
@@ -466,6 +521,32 @@ export default function GmailDistributionButton({
         onBodyChange={setEditedBody}
         selectedImages={selectedImages}
         onImagesChange={setSelectedImages}
+        isTestMode={isTestMode}
+      />
+
+      {/* テスト送信用テンプレート選択 */}
+      <EmailTemplateSelector
+        open={testTemplateSelectorOpen}
+        onClose={() => {
+          setTestTemplateSelectorOpen(false);
+          setSenderAddress(DEFAULT_SENDER);
+        }}
+        onSelect={handleTestTemplateSelect}
+        templates={templates}
+        senderAddress={senderAddress}
+        onSenderAddressChange={handleSenderAddressChange}
+        employees={employees}
+      />
+
+      {/* テスト送信用スタッフ選択 */}
+      <TestEmailStaffSelectorModal
+        open={testStaffSelectorOpen}
+        onClose={() => {
+          setTestStaffSelectorOpen(false);
+          setSenderAddress(DEFAULT_SENDER);
+        }}
+        onConfirm={handleTestStaffConfirm}
+        employees={employees as StaffMember[]}
       />
 
       <Snackbar
