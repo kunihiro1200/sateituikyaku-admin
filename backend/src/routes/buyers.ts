@@ -567,55 +567,6 @@ router.post('/radius-search', authenticate, async (req: Request, res: Response) 
   }
 });
 
-// 全てのルートに認証を適用（sidebar-countsの後、PUT /:id の後に配置）
-router.use(authenticate);
-
-// 次の買主番号を取得（/:id よりも前に定義する必要がある）
-router.get('/next-buyer-number', async (_req: Request, res: Response) => {
-  try {
-    const buyerNumber = await (buyerService as any).generateBuyerNumber();
-    res.json({ buyerNumber });
-  } catch (error: any) {
-    console.error('Error generating buyer number:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// 同期実行
-router.post('/sync', async (_req: Request, res: Response) => {
-  try {
-    if (buyerSyncService.isSyncInProgress()) {
-      return res.status(409).json({ error: 'Sync is already in progress' });
-    }
-
-    const result = await buyerSyncService.syncAll();
-    
-    // 🆕 キャッシュを無効化（サイドバーが即座に更新されるように）
-    await invalidateBuyerStatusCache();
-    console.log('[POST /buyers/sync] Buyer status cache invalidated');
-    
-    res.json(result);
-  } catch (error: any) {
-    console.error('Error syncing buyers:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// 同期ステータス取得
-router.get('/sync/status', async (_req: Request, res: Response) => {
-  try {
-    const stats = await buyerSyncService.getSyncStats();
-    const isSyncing = buyerSyncService.isSyncInProgress();
-    
-    res.json({
-      isSyncing,
-      ...stats
-    });
-  } catch (error: any) {
-    console.error('Error fetching sync status:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
 
 // DBにあってスプレッドシートにない買主を検出してスプシに書き戻す
 // POST /api/buyers/restore-to-sheet
@@ -761,6 +712,57 @@ router.post('/restore-to-sheet', authenticateOrApiKey, async (req: Request, res:
     res.status(500).json({ error: error.message });
   }
 });
+
+// 全てのルートに認証を適用（sidebar-countsの後、PUT /:id の後に配置）
+router.use(authenticate);
+
+// 次の買主番号を取得（/:id よりも前に定義する必要がある）
+router.get('/next-buyer-number', async (_req: Request, res: Response) => {
+  try {
+    const buyerNumber = await (buyerService as any).generateBuyerNumber();
+    res.json({ buyerNumber });
+  } catch (error: any) {
+    console.error('Error generating buyer number:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 同期実行
+router.post('/sync', async (_req: Request, res: Response) => {
+  try {
+    if (buyerSyncService.isSyncInProgress()) {
+      return res.status(409).json({ error: 'Sync is already in progress' });
+    }
+
+    const result = await buyerSyncService.syncAll();
+    
+    // 🆕 キャッシュを無効化（サイドバーが即座に更新されるように）
+    await invalidateBuyerStatusCache();
+    console.log('[POST /buyers/sync] Buyer status cache invalidated');
+    
+    res.json(result);
+  } catch (error: any) {
+    console.error('Error syncing buyers:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 同期ステータス取得
+router.get('/sync/status', async (_req: Request, res: Response) => {
+  try {
+    const stats = await buyerSyncService.getSyncStats();
+    const isSyncing = buyerSyncService.isSyncInProgress();
+    
+    res.json({
+      isSyncing,
+      ...stats
+    });
+  } catch (error: any) {
+    console.error('Error fetching sync status:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 
 // 検索
 router.get('/search', async (req: Request, res: Response) => {
