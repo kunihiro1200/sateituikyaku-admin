@@ -307,50 +307,18 @@ export class GoogleSheetsClient {
 
   /**
    * ヘッダー行を取得（キャッシュ付き）
-   * 買主リスト専用：ハードコードされたヘッダーを使用（Google Sheets API範囲指定エラー回避）
+   * スプレッドシートから直接読み込む（ハードコードは使用しない）
+   * シート名に日本語が含まれる場合はシングルクォートで囲む
    */
   async getHeaders(): Promise<string[]> {
     if (this.headerCache) {
       return this.headerCache;
     }
 
-    // 買主リストのヘッダーをハードコード（buyer-column-mapping.jsonのspreadsheetToDatabaseの順序に合わせる）
-    // A=削除, B=作成日時, C=初動担当, D=買主ID, E=買主番号, F=受付日, G=●氏名・会社名
-    // AO-AQ=2度目以降過去内覧（3列）, AV=最新確度（初動確認タブ）を確認, AY=物件所在地
-    if (this.config.sheetName === '買主リスト') {
-      this.headerCache = [
-        // A-F: 基本情報
-        '削除', '作成日時', '初動担当', '買主ID', '買主番号', '受付日',
-        // G-J: 氏名・内覧情報
-        '●氏名・会社名', '建物名/価格 内覧物件は赤表示（★は他社物件）', '●内覧日(最新）', '●希望時期',
-        // K-N: 担当・対応
-        '後続担当', '再問合\n（内覧）', '●問合時ヒアリング', '★内覧結果・後続対応',
-        // O-S: 状況・配信
-        '●問合時確度', '★最新状況\n', '配信種別', '★次電日', 'Pinrich',
-        // T-X: 希望条件
-        '★エリア', '★希望種別', '内覧後売主連絡', '★築年数', '★間取り',
-        // Y-AF: 詳細条件
-        '★温泉あり', '●P台数', '★月極でも可', '★庭付き', '★眺望良好',
-        '★ペット可', '★高層階', '★角部屋',
-        // AG-AL: 連絡先
-        '内覧シート', 'LINE', 'ニックネーム', '●電話番号\n（ハイフン不要）', '●メアド', '●問合せ元',
-        // AM-AQ: 住居・過去内覧（AO-AQは3列）
-        '現住居', 'athome URL', '2度目以降過去内覧', '2度目以降過去内覧', '2度目以降過去内覧',
-        // AR-AU: キャンペーン・物件
-        'キャンペーン　1500万円以上\n（渡した日）', '電話番号重複件数', '物件番号', '物件担当者',
-        // AV: 最新確度（初動確認タブ）
-        '最新確度（初動確認タブ）を確認',
-        // AW-AZ: その他
-        'a', 'メアド確認', '物件所在地', '公開/非公開',
-        // 以降のカラムは必要に応じて追加
-      ];
-      console.log(`[GoogleSheetsClient.getHeaders] Using hardcoded headers for 買主リスト (${this.headerCache.length} columns)`);
-      return this.headerCache;
-    }
-
-    // 買主リスト以外は従来通りスプレッドシートから取得
     this.ensureAuthenticated();
-    const range = `${this.config.sheetName}!1:1`;
+    // シート名に日本語・特殊文字が含まれる場合はシングルクォートで囲む（Google Sheets API仕様）
+    const sheetNameEscaped = `'${this.config.sheetName}'`;
+    const range = `${sheetNameEscaped}!A1:FZ1`;
     console.log(`[GoogleSheetsClient.getHeaders] Fetching headers for sheet: ${this.config.sheetName}, range: ${range}`);
     
     const response = await this.sheets!.spreadsheets.values.get({
@@ -404,7 +372,8 @@ export class GoogleSheetsClient {
     return await sheetsRateLimiter.executeRequest(async () => {
       // Google Sheets APIの仕様：シート名のみでは受け付けないため、範囲指定を追加
       // A:FZ = 158列まで（買主リストの全列）
-      const range = `${this.config.sheetName}!A:FZ`;
+      // シート名に日本語・特殊文字が含まれる場合はシングルクォートで囲む（Google Sheets API仕様）
+      const range = `'${this.config.sheetName}'!A:FZ`;
       console.log('[GoogleSheetsClient.readAll] Range:', range);
       
       const response = await this.sheets!.spreadsheets.values.get({
@@ -440,7 +409,8 @@ export class GoogleSheetsClient {
     
     return await sheetsRateLimiter.executeRequest(async () => {
       // 範囲を指定（A2:FZ = 158列まで）
-      const range = `${this.config.sheetName}!A2:FZ`;
+      // シート名に日本語・特殊文字が含まれる場合はシングルクォートで囲む（Google Sheets API仕様）
+      const range = `'${this.config.sheetName}'!A2:FZ`;
       const response = await this.sheets!.spreadsheets.values.get({
         spreadsheetId: this.config.spreadsheetId,
         range,
@@ -474,7 +444,7 @@ export class GoogleSheetsClient {
 
     const response = await this.sheets!.spreadsheets.values.get({
       spreadsheetId: this.config.spreadsheetId,
-      range: `${this.config.sheetName}!${range}`,
+      range: `'${this.config.sheetName}'!${range}`,
     });
 
     return (response.data.values || []) as string[][];
@@ -489,7 +459,7 @@ export class GoogleSheetsClient {
 
     await this.sheets!.spreadsheets.values.update({
       spreadsheetId: this.config.spreadsheetId,
-      range: `${this.config.sheetName}!${cell}`,
+      range: `'${this.config.sheetName}'!${cell}`,
       valueInputOption: 'USER_ENTERED',
       requestBody: {
         values: [[value]],
@@ -505,7 +475,7 @@ export class GoogleSheetsClient {
     
     const response = await this.sheets!.spreadsheets.values.get({
       spreadsheetId: this.config.spreadsheetId,
-      range: `${this.config.sheetName}!${range}`,
+      range: `'${this.config.sheetName}'!${range}`,
       valueRenderOption: 'UNFORMATTED_VALUE',
     });
 
@@ -535,11 +505,11 @@ export class GoogleSheetsClient {
         // Google Sheets APIは gid= パラメータをサポートしていないため、
         // シート名を使用する必要がある
         // 回避策：シート名をエンコードせずに使用
-        range = `${this.config.sheetName}!A:A`;
+        range = `'${this.config.sheetName}'!A:A`;
         console.log(`[GoogleSheetsClient.appendRow] Using sheetId: ${this.config.sheetId}, range: ${range}`);
       } else {
         // 従来通りシート名を使用
-        range = `${this.config.sheetName}!A:A`;
+        range = `'${this.config.sheetName}'!A:A`;
         console.log(`[GoogleSheetsClient.appendRow] Using sheetName, range: ${range}`);
       }
 
@@ -569,7 +539,7 @@ export class GoogleSheetsClient {
     
     await sheetsRateLimiter.executeRequest(async () => {
       const values = await this.objectToRow(row);
-      const range = `${this.config.sheetName}!A${rowIndex}:FZ${rowIndex}`;
+      const range = `'${this.config.sheetName}'!A${rowIndex}:FZ${rowIndex}`;
       
       console.log('[GoogleSheetsClient.updateRow] Range:', range);
 
@@ -636,7 +606,7 @@ export class GoogleSheetsClient {
 
       for (const update of updates) {
         const values = await this.objectToRow(update.values);
-        const range = `${this.config.sheetName}!A${update.rowIndex}:ZZ${update.rowIndex}`;
+        const range = `'${this.config.sheetName}'!A${update.rowIndex}:ZZ${update.rowIndex}`;
         
         data.push({
           range,
@@ -677,7 +647,7 @@ export class GoogleSheetsClient {
     const columnLetter = this.numberToColumnLetter(columnIndex);
     
     // 検索範囲を明示的に指定（最大10000行まで）
-    const range = `${this.config.sheetName}!${columnLetter}2:${columnLetter}10000`;
+    const range = `'${this.config.sheetName}'!${columnLetter}2:${columnLetter}10000`;
 
     console.log(`🔍 [GoogleSheetsClient] Reading range: ${range}`);
 
