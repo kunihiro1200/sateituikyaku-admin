@@ -97,11 +97,11 @@ export class EmailService extends BaseRepository {
       const from = params.from || 'tenant@ifoo-oita.com';
       
       // URLをリンク化する関数（<a>タグで囲まれていないURLのみ対象）
-      const urlToLink = (text: string): string =>
-        text.replace(/(https?:\/\/[^\s\u3000\u3001\u3002\uff01\uff09\u300d\u300f\u3011\u3015\u3017\u3019\u301b\u301f\uff3d\uff5d\u300b\u300f]+)/g,
-          (url, _offset, fullText) => {
+      const urlToLink = (inputText: string): string =>
+        inputText.replace(/(https?:\/\/[^\s\u3000\u3001\u3002\uff01\uff09\u300d\u300f\u3011\u3015\u3017\u3019\u301b\u301f\uff3d\uff5d\u300b\u300f]+)/g,
+          (url, _group1, offset) => {
             // 既に<a href="...">の中にあるURLはスキップ
-            const before = fullText.slice(0, fullText.indexOf(url));
+            const before = inputText.slice(0, offset);
             const lastAnchorOpen = before.lastIndexOf('<a ');
             const lastAnchorClose = before.lastIndexOf('</a>');
             if (lastAnchorOpen > lastAnchorClose) {
