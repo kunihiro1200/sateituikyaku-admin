@@ -55,6 +55,8 @@ TEL：097-533-2022
 
 https://docs.google.com/forms/d/e/1FAIpQLSefXwsYKryraVM4jtnLgcYtboUg3w-lx7tasftVA47E5jXUlQ/viewform?usp=pp_url&entry.267319544=<<買主番号>>&entry.2056434590=<<住居表示>>
 
+★大分市の新築建売専門サイト↓↓
+https://sateituikyaku-admin-frontend.vercel.app/tateuri
 ★非公開の物件はこちらから↓↓
 https://property-site-frontend-kappa.vercel.app/public/properties
 お気軽にお問い合わせください。
@@ -87,6 +89,8 @@ TEL：097-533-2022
 現地確認につきましては、敷地外からはご自由に見ていただいて大丈夫です。
 
 所在地：<<住居表示>>
+★大分市の新築建売専門サイト↓↓
+https://sateituikyaku-admin-frontend.vercel.app/tateuri
 ★非公開の物件はこちらから↓↓
 https://property-site-frontend-kappa.vercel.app/public/properties
 ご不明な点等ございましたら、お気軽にお問い合わせください。
@@ -124,6 +128,8 @@ TEL：097-533-2022
 
 https://docs.google.com/forms/d/e/1FAIpQLSefXwsYKryraVM4jtnLgcYtboUg3w-lx7tasftVA47E5jXUlQ/viewform?usp=pp_url&entry.267319544=<<買主番号>>&entry.2056434590=<<住居表示>>
 
+★大分市の新築建売専門サイト↓↓
+https://sateituikyaku-admin-frontend.vercel.app/tateuri
 ★非公開の物件はこちらから↓↓
 https://property-site-frontend-kappa.vercel.app/public/properties
 ご不明な点等ございましたら、お気軽にお問い合わせください。
@@ -155,6 +161,8 @@ TEL：097-533-2022
 万が一契約まで至らなかった場合、ご連絡さしあげるという形でよろしいでしょうか？
 
 他に気になる物件がございましたら、他社の物件でもご紹介可能ですので、お気軽にお問い合わせくださいませ。
+★大分市の新築建売専門サイト↓↓
+https://sateituikyaku-admin-frontend.vercel.app/tateuri
 ★非公開の物件はこちらから↓↓
 https://property-site-frontend-kappa.vercel.app/public/properties
 
@@ -186,6 +194,8 @@ TEL：097-533-2022
 内覧のご予約はこちらから↓↓
 https://docs.google.com/forms/d/e/1FAIpQLSefXwsYKryraVM4jtnLgcYtboUg3w-lx7tasftVA47E5jXUlQ/viewform?usp=pp_url&entry.267319544=<<買主番号>>&entry.2056434590=<<住居表示>>
 
+★大分市の新築建売専門サイト↓↓
+https://sateituikyaku-admin-frontend.vercel.app/tateuri
 ★非公開の物件はこちらから↓↓
 https://property-site-frontend-kappa.vercel.app/public/properties
 
@@ -231,6 +241,8 @@ https://docs.google.com/forms/d/e/1FAIpQLSefXwsYKryraVM4jtnLgcYtboUg3w-lx7tasftV
 
 既に当社で別の物件を内覧予定、済でしたら申し訳ございません、本メールは無視してください。
 気になる物件がございましたら他社様の物件もご内覧可能です。
+★大分市の新築建売専門サイト↓↓
+https://sateituikyaku-admin-frontend.vercel.app/tateuri
 ★非公開の物件はこちらから↓↓
 https://property-site-frontend-kappa.vercel.app/public/properties
 引き続き宜しくお願い致します。
@@ -256,6 +268,8 @@ TEL：097-533-2022
 まだ物件をお探しであれば是非いふうにてお手伝い出来ればと存じますのでお気軽にお申し付け下さい。
 
 他に気になる物件がございましたら他社様の物件もご内覧可能です。
+★大分市の新築建売専門サイト↓↓
+https://sateituikyaku-admin-frontend.vercel.app/tateuri
 ★非公開の物件はこちらから↓↓
 https://property-site-frontend-kappa.vercel.app/public/properties
 引き続き宜しくお願い致します。
@@ -275,6 +289,8 @@ TEL：097-533-2022
 まだ物件をお探しであれば是非いふうにてお手伝い出来ればと存じますのでお気軽にお申し付け下さい。
 
 他に気になる物件がございましたら他社様の物件もご内覧可能です。
+★大分市の新築建売専門サイト↓↓
+https://sateituikyaku-admin-frontend.vercel.app/tateuri
 ★非公開の物件はこちらから↓↓
 https://property-site-frontend-kappa.vercel.app/public/properties
 引き続き宜しくお願い致します。
