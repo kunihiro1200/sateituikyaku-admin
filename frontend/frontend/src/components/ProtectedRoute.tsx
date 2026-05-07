@@ -1,14 +1,19 @@
 import { useEffect } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { Box, CircularProgress } from '@mui/material';
 import { useAuthStore } from '../store/authStore';
+import { EmployeeRole } from '../types';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
 }
 
+// viewerロールがアクセスできるパスのプレフィックス
+const VIEWER_ALLOWED_PATHS = ['/property-listings'];
+
 export default function ProtectedRoute({ children }: ProtectedRouteProps) {
-  const { isAuthenticated, isLoading, checkAuth } = useAuthStore();
+  const { isAuthenticated, isLoading, checkAuth, employee } = useAuthStore();
+  const location = useLocation();
 
   useEffect(() => {
     // 認証チェック開始
@@ -45,6 +50,16 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
+  }
+
+  // viewerロールは物件リスト系ページのみアクセス許可
+  if (employee?.role === EmployeeRole.VIEWER) {
+    const isAllowed = VIEWER_ALLOWED_PATHS.some(prefix =>
+      location.pathname.startsWith(prefix)
+    );
+    if (!isAllowed) {
+      return <Navigate to="/property-listings" replace />;
+    }
   }
 
   return <>{children}</>;

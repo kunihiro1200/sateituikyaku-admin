@@ -10,6 +10,8 @@ import {
   Share as ShareIcon,
   Menu as MenuIcon,
 } from '@mui/icons-material';
+import { useAuthStore } from '../store/authStore';
+import { EmployeeRole } from '../types';
 
 const NAV_COLORS = {
   '/': { main: '#e53935', light: '#ffebee', text: '#e53935' },           // 売主リスト: 赤
@@ -29,6 +31,10 @@ export default function PageNavigation({ onNavigate }: PageNavigationProps = {})
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const { employee } = useAuthStore();
+
+  // viewerロールは物件リストのみ表示
+  const isViewer = employee?.role === EmployeeRole.VIEWER;
 
   const handleNav = (path: string) => {
     if (onNavigate) {
@@ -39,13 +45,15 @@ export default function PageNavigation({ onNavigate }: PageNavigationProps = {})
     setDrawerOpen(false);
   };
 
-  const navItems = [
-    { path: '/', label: '売主リスト', icon: <HomeIcon /> },
-    { path: '/buyers', label: '買主リスト', icon: <PeopleIcon /> },
-    { path: '/property-listings', label: '物件リスト', icon: <ShoppingCartIcon /> },
-    { path: '/work-tasks', label: '業務依頼', icon: <AssignmentIcon /> },
-    { path: '/shared-items', label: '共有', icon: <ShareIcon /> },
+  const allNavItems = [
+    { path: '/', label: '売主リスト', icon: <HomeIcon />, viewerAllowed: false },
+    { path: '/buyers', label: '買主リスト', icon: <PeopleIcon />, viewerAllowed: false },
+    { path: '/property-listings', label: '物件リスト', icon: <ShoppingCartIcon />, viewerAllowed: true },
+    { path: '/work-tasks', label: '業務依頼', icon: <AssignmentIcon />, viewerAllowed: false },
+    { path: '/shared-items', label: '共有', icon: <ShareIcon />, viewerAllowed: false },
   ];
+
+  const navItems = isViewer ? allNavItems.filter(item => item.viewerAllowed) : allNavItems;
 
   const handlePublicSiteClick = () => {
     window.open('https://property-site-frontend-kappa.vercel.app/public/properties', '_blank', 'noopener,noreferrer');

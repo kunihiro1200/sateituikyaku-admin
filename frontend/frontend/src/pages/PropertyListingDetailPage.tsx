@@ -248,6 +248,8 @@ export default function PropertyListingDetailPage() {
   const location = useLocation();
   
   const { employee } = useAuthStore();
+  // viewerロール判定（物件リスト閲覧＋メール送信のみ許可）
+  const isViewer = employee?.role === 'viewer';
   const [data, setData] = useState<PropertyListing | null>(null);
   const [loading, setLoading] = useState(true);
   const [editedData, setEditedData] = useState<Record<string, any>>({});
@@ -1560,6 +1562,7 @@ export default function PropertyListingDetailPage() {
             {/* ヘッダーボタン（2行レイアウト） */}
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, mt: 0.5 }}>
               {/* 第1行: 売主TEL、EMAIL送信、SMS、公開URL */}
+              {!isViewer && (
               <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
                 {data.seller_contact && (
                   <Button
@@ -1681,8 +1684,10 @@ export default function PropertyListingDetailPage() {
                   <ContentCopyIcon fontSize="small" />
                 </IconButton>
               </Box>
+              )}
               
               {/* 第2行: 担当へCHAT、事務へCHAT */}
+              {!isViewer && (
               <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
                 {data.sales_assignee && (
                   <Button
@@ -1718,6 +1723,7 @@ export default function PropertyListingDetailPage() {
                   事務へCHAT
                 </Button>
               </Box>
+              )}
             </Box>
             {chatPanelOpen && data.sales_assignee && (
               <Box sx={{ display: 'flex', gap: 1, mt: 0.5 }}>
@@ -1836,6 +1842,7 @@ export default function PropertyListingDetailPage() {
         })()}
 
         <Box sx={{ display: 'flex', gap: 2 }}>
+          {!isViewer && (
           <Button
             variant="outlined"
             onClick={() => window.open(`/property-listings/${propertyNumber}/reins-registration`, '_blank', 'noopener,noreferrer')}
@@ -1843,6 +1850,8 @@ export default function PropertyListingDetailPage() {
           >
             レインズ登録、サイト入力
           </Button>
+          )}
+          {!isViewer && (
           <Button
             variant="outlined"
             startIcon={<AssignmentIcon />}
@@ -1858,6 +1867,8 @@ export default function PropertyListingDetailPage() {
           >
             報告
           </Button>
+          )}
+          {!isViewer && (
           <Button
             variant="outlined"
             startIcon={<PersonIcon />}
@@ -1873,6 +1884,7 @@ export default function PropertyListingDetailPage() {
           >
             買主候補リスト
           </Button>
+          )}
           <GmailDistributionButton
             propertyNumber={data.property_number}
             propertyAddress={data.address || data.display_address}
@@ -2052,7 +2064,7 @@ export default function PropertyListingDetailPage() {
             </Box>
           </Box>
           <Box sx={{ display: 'flex', gap: 1 }}>
-            {isHeaderEditMode ? (
+            {!isViewer && (isHeaderEditMode ? (
               <>
                 <Button size="small" variant="contained" onClick={handleSaveHeader} disabled={Object.keys(editedData).length === 0}>
                   保存
@@ -2065,7 +2077,7 @@ export default function PropertyListingDetailPage() {
               <Button size="small" variant="outlined" onClick={() => setIsHeaderEditMode(true)}>
                 編集
               </Button>
-            )}
+            ))}
           </Box>
         </Box>
         <Grid container spacing={0.5} alignItems="flex-start" sx={{ flexWrap: 'nowrap', overflowX: 'auto' }}>
