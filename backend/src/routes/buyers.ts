@@ -570,15 +570,18 @@ router.post('/radius-search', authenticate, async (req: Request, res: Response) 
 
 // DBにあってスプレッドシートにない買主を検出してスプシに書き戻す
 // POST /api/buyers/restore-to-sheet
-// body: { fromBuyerNumber: number, toBuyerNumber: number, dryRun?: boolean }
-// 買主番号の範囲を指定してバッチ処理（DBタイムアウト回避）
+// body: { buyerNumbers: string[], dryRun?: boolean }
+// 書き戻すべき買主番号リストを直接指定（スプシ取得・DB全件取得不要）
 router.post('/restore-to-sheet', authenticateOrApiKey, async (req: Request, res: Response) => {
   try {
-    const fromBuyerNumber = parseInt(req.body?.fromBuyerNumber ?? '0', 10);
-    const toBuyerNumber = parseInt(req.body?.toBuyerNumber ?? '9999', 10);
+    const buyerNumbers: string[] = req.body?.buyerNumbers || [];
     const dryRun = req.body?.dryRun === true || req.body?.dryRun === 'true';
 
-    console.log(`[POST /buyers/restore-to-sheet] from=${fromBuyerNumber}, to=${toBuyerNumber}, dryRun=${dryRun}`);
+    console.log(`[POST /buyers/restore-to-sheet] buyerNumbers=${buyerNumbers.length}件, dryRun=${dryRun}`);
+
+    if (buyerNumbers.length === 0) {
+      return res.json({ success: true, message: '処理対象なし', batchSize: 0, restored: 0, failed: 0 });
+    }
 
     // BuyerWriteServiceを初期化
     await (buyerService as any).initSyncServices();
@@ -587,87 +590,33 @@ router.post('/restore-to-sheet', authenticateOrApiKey, async (req: Request, res:
       return res.status(500).json({ error: 'BuyerWriteService の初期化に失敗しました' });
     }
 
-    // 1. スプレッドシートの買主番号を取得
-    // knownSheetNumbersがリクエストで渡された場合はそれを使用（スプシ取得をスキップ）
-    // 渡されない場合はスプシから取得
-    let sheetBuyerNumbers: Set<string>;
-    const knownSheetNumbers: string[] | undefined = req.body?.knownSheetNumbers;
-
-    if (knownSheetNumbers && Array.isArray(knownSheetNumbers) && knownSheetNumbers.length > 0) {
-      sheetBuyerNumbers = new Set<string>(knownSheetNumbers.map(String));
-      console.log(`[restore-to-sheet] knownSheetNumbers使用: ${sheetBuyerNumbers.size}件`);
-    } else {
-      const { google } = await import('googleapis');
-      const pathMod = await import('path');
-      const spreadsheetId = process.env.GOOGLE_SHEETS_BUYER_SPREADSHEET_ID!;
-      const sheetName = process.env.GOOGLE_SHEETS_BUYER_SHEET_NAME || '買主リスト';
-
-      const saJson = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
-      let authConfig: any;
-      if (saJson) {
-        try {
-          const creds = JSON.parse(saJson);
-          authConfig = { credentials: creds, scopes: ['https://www.googleapis.com/auth/spreadsheets'] };
-        } catch {
-          authConfig = { keyFile: pathMod.join(__dirname, '../../google-service-account.json'), scopes: ['https://www.googleapis.com/auth/spreadsheets'] };
-        }
-      } else {
-        authConfig = { keyFile: pathMod.join(__dirname, '../../google-service-account.json'), scopes: ['https://www.googleapis.com/auth/spreadsheets'] };
-      }
-      const auth = new google.auth.GoogleAuth(authConfig);
-      const sheets = google.sheets({ version: 'v4', auth });
-
-      const sheetResponse = await sheets.spreadsheets.values.get({
-        spreadsheetId,
-        range: `'${sheetName}'!E:E`,
-      });
-      const sheetValues = sheetResponse.data.values || [];
-      sheetBuyerNumbers = new Set<string>(
-        sheetValues.slice(1)
-          .map((row: any[]) => String(row[0] || '').trim())
-          .filter((v: string) => v && /^\d+$/.test(v))
-      );
-      console.log(`[restore-to-sheet] スプレッドシートから取得: ${sheetBuyerNumbers.size}件`);
-    }
-
-    // 2. 指定範囲のDBアクティブ買主のみ取得（タイムアウト回避）
+    // 指定された買主番号のDBデータを取得
     const supabase = (buyerService as any).supabase;
-    const { data: rangeBuyers, error: dbError } = await supabase
+    const { data: buyers, error: dbError } = await supabase
       .from('buyers')
       .select('*')
       .is('deleted_at', null)
-      .gte('buyer_number', String(fromBuyerNumber))
-      .lte('buyer_number', String(toBuyerNumber))
-      .order('buyer_number', { ascending: true });
+      .in('buyer_number', buyerNumbers);
 
     if (dbError) throw new Error(`DB取得エラー: ${dbError.message}`);
-    console.log(`[restore-to-sheet] 範囲内のDB買主数: ${(rangeBuyers || []).length}`);
+    console.log(`[restore-to-sheet] DB取得: ${(buyers || []).length}件`);
 
-    // 3. スプシにない買主を特定
-    const missingBuyers = (rangeBuyers || []).filter((b: any) =>
-      b.buyer_number &&
-      /^\d+$/.test(String(b.buyer_number).trim()) &&
-      !sheetBuyerNumbers.has(String(b.buyer_number).trim())
-    );
-    console.log(`[restore-to-sheet] スプシに存在しない買主数（範囲内）: ${missingBuyers.length}`);
-
-    if (missingBuyers.length === 0 || dryRun) {
+    if (!buyers || buyers.length === 0 || dryRun) {
       return res.json({
         success: true,
-        message: dryRun ? `ドライラン: ${missingBuyers.length}件が対象` : '処理対象なし',
-        batchSize: missingBuyers.length,
+        message: dryRun ? `ドライラン: ${(buyers || []).length}件が対象` : '処理対象なし',
+        batchSize: (buyers || []).length,
         restored: 0,
         failed: 0,
-        processedBuyerNumbers: missingBuyers.map((b: any) => b.buyer_number),
       });
     }
 
-    // 4. スプシに書き戻す
+    // スプシに書き戻す
     let restored = 0;
     let failed = 0;
     const errors: Array<{ buyerNumber: string; error: string }> = [];
 
-    for (const buyer of missingBuyers) {
+    for (const buyer of buyers) {
       try {
         const result = await writeService.appendNewBuyer(buyer);
         if (result.success) { restored++; }
@@ -686,10 +635,9 @@ router.post('/restore-to-sheet', authenticateOrApiKey, async (req: Request, res:
     res.json({
       success: true,
       message: `${restored}件をスプレッドシートに書き戻しました`,
-      batchSize: missingBuyers.length,
+      batchSize: buyers.length,
       restored,
       failed,
-      processedBuyerNumbers: missingBuyers.map((b: any) => b.buyer_number),
       errors: errors.length > 0 ? errors : undefined,
     });
 
@@ -698,7 +646,6 @@ router.post('/restore-to-sheet', authenticateOrApiKey, async (req: Request, res:
     res.status(500).json({ error: error.message });
   }
 });
-
 
 // スプシのE列（買主番号）一覧を返す軽量エンドポイント
 // POST /api/buyers/get-sheet-buyer-numbers
