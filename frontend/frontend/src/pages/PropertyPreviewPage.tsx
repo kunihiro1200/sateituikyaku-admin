@@ -1,7 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
+import { GoogleMap } from '@react-google-maps/api';
 import api from '../services/api';
 import PropertyPrintSheet from '../components/PropertyPrintSheet';
+import { useGoogleMaps } from '../contexts/GoogleMapsContext';
 
 interface PreviewData {
   slug: string;
@@ -186,7 +188,32 @@ export default function PropertyPreviewPage() {
       .finally(() => setLoading(false));
   }, [slug]);
 
-  if (loading) return (
+  const { isLoaded: mapsLoaded } = useGoogleMaps();
+  const [mapInstance, setMapInstance] = useState<google.maps.Map | null>(null);
+
+  const onMapLoad = useCallback((map: google.maps.Map) => {
+    setMapInstance(map);
+  }, []);
+
+  // 地図とデータが揃ったらマーカーを配置
+  useEffect(() => {
+    if (!mapInstance || !mapsLoaded || !data?.lat || !data?.lng) return;
+    const marker = new window.google.maps.Marker({
+      position: { lat: data.lat, lng: data.lng },
+      map: mapInstance,
+      icon: {
+        path: window.google.maps.SymbolPath.CIRCLE,
+        fillColor: '#e84040',
+        fillOpacity: 1,
+        strokeColor: '#fff',
+        strokeWeight: 2,
+        scale: 11,
+      },
+    });
+    return () => marker.setMap(null);
+  }, [mapInstance, mapsLoaded, data?.lat, data?.lng]);
+
+
     <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontFamily: 'sans-serif' }}>
       <p style={{ color: '#999' }}>読み込み中...</p>
     </div>
@@ -215,11 +242,6 @@ export default function PropertyPreviewPage() {
   const showParking   = data.show_parking   !== false;
   const showFeatures  = data.show_features  !== false;
   const showMap       = data.show_map       !== false;
-
-  const mapQuery = data.lat && data.lng
-    ? `${data.lat},${data.lng}`
-    : encodeURIComponent(data.address || data.title || '');
-  const mapSrc = `https://maps.google.com/maps?q=${mapQuery}&z=17&output=embed&hl=ja`;
 
   const detailRows = [
     showPrice     && data.price     && { label: '価格',     value: cleanPrice(data.price) },
@@ -324,63 +346,20 @@ export default function PropertyPreviewPage() {
           <div style={{ background: 'white', borderRadius: 10, padding: 20, marginBottom: 16, boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
             <h2 style={{ fontSize: 15, fontWeight: 'bold', borderLeft: '4px solid #e84040', paddingLeft: 10, marginBottom: 10 }}>地図</h2>
             {data.address && <p style={{ fontSize: 13, color: '#666', marginBottom: 10 }}>{data.address}周辺</p>}
-            <div style={{ position: 'relative', borderRadius: 8, overflow: 'hidden', border: '1px solid #e0e0e0' }}>
-              <iframe src={mapSrc} width="100%" height="380" style={{ border: 'none', display: 'block' }} allowFullScreen loading="lazy" />
-              {/* 拡大縮小ボタン */}
-              <div style={{ position: 'absolute', top: 10, right: 10, display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <button
-                  onClick={() => {
-                    const currentZoom = parseInt(mapSrc.match(/z=(\d+)/)?.[1] || '17');
-                    const newZoom = Math.min(currentZoom + 1, 21);
-                    const newMapSrc = mapSrc.replace(/z=\d+/, `z=${newZoom}`);
-                    const iframe = document.querySelector('iframe[src*="maps.google.com"]') as HTMLIFrameElement;
-                    if (iframe) iframe.src = newMapSrc;
-                  }}
-                  style={{
-                    width: 36,
-                    height: 36,
-                    background: 'white',
-                    border: '1px solid #ccc',
-                    borderRadius: 4,
-                    fontSize: 20,
-                    fontWeight: 'bold',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-                  }}
-                  title="拡大"
-                >
-                  +
-                </button>
-                <button
-                  onClick={() => {
-                    const currentZoom = parseInt(mapSrc.match(/z=(\d+)/)?.[1] || '17');
-                    const newZoom = Math.max(currentZoom - 1, 1);
-                    const newMapSrc = mapSrc.replace(/z=\d+/, `z=${newZoom}`);
-                    const iframe = document.querySelector('iframe[src*="maps.google.com"]') as HTMLIFrameElement;
-                    if (iframe) iframe.src = newMapSrc;
-                  }}
-                  style={{
-                    width: 36,
-                    height: 36,
-                    background: 'white',
-                    border: '1px solid #ccc',
-                    borderRadius: 4,
-                    fontSize: 20,
-                    fontWeight: 'bold',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-                  }}
-                  title="縮小"
-                >
-                  −
-                </button>
-              </div>
+            <div style={{ borderRadius: 8, overflow: 'hidden', border: '1px solid #e0e0e0', height: 380 }}>
+              {mapsLoaded && data.lat && data.lng ? (
+                <GoogleMap
+                  mapContainerStyle={{ width: '100%', height: '100%' }}
+                  center={{ lat: data.lat, lng: data.lng }}
+                  zoom={17}
+                  onLoad={onMapLoad}
+                  options={{ zoomControl: true, streetViewControl: false, mapTypeControl: false, fullscreenControl: true }}
+                />
+              ) : (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#999', fontSize: 14 }}>
+                  地図を読み込み中...
+                </div>
+              )}
             </div>
           </div>
         )}
