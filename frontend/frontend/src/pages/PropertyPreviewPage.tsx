@@ -213,7 +213,7 @@ export default function PropertyPreviewPage() {
     return () => marker.setMap(null);
   }, [mapInstance, mapsLoaded, data?.lat, data?.lng]);
 
-
+  if (loading) return (
     <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontFamily: 'sans-serif' }}>
       <p style={{ color: '#999' }}>読み込み中...</p>
     </div>
