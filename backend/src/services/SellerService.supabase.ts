@@ -1619,11 +1619,18 @@ export class SellerService extends BaseRepository {
                 .or('preferred_contact_time.is.null,preferred_contact_time.eq.')
                 .or('contact_method.is.null,contact_method.eq.');
             } else if (fiSubCat === 'todayCallNotStarted') {
+              // 通常のtodayCallNotStartedと同じ条件（FI売主のみ）
               query = query
-                .or('visit_assignee.is.null,visit_assignee.eq.,visit_assignee.eq.外す')
-                .lte('next_call_date', todayJST)
                 .eq('status', '追客中')
-                .not('status', 'ilike', '%追客不要%');
+                .not('next_call_date', 'is', null)
+                .lte('next_call_date', todayJST)
+                .gte('inquiry_date', '2026-01-01')
+                .or('visit_assignee.is.null,visit_assignee.eq.,visit_assignee.eq.外す')
+                .or('unreachable_status.is.null,unreachable_status.eq.')
+                .or('confidence_level.is.null,and(confidence_level.neq.ダブり,confidence_level.neq.D,confidence_level.neq.AI査定)')
+                .or('phone_contact_person.is.null,phone_contact_person.eq.')
+                .or('preferred_contact_time.is.null,preferred_contact_time.eq.')
+                .or('contact_method.is.null,contact_method.eq.');
             } else if (fiSubCat === 'todayCallWithInfo' || fiSubCat.startsWith('todayCallWithInfo:')) {
               // コミュニケーション情報のいずれかに入力あり
               query = query
