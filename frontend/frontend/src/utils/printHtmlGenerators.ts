@@ -453,6 +453,7 @@ export function generatePage5Html(): string {
 // 全ページ結合
 // ============================================================
 export function generateAllPagesHtml(buyer: Record<string,unknown>, propertyDetails: Record<string,unknown>[], today: string): string {
+  const base = typeof window !== 'undefined' ? window.location.origin : '';
   const pages: string[] = [];
   for (const property of propertyDetails) {
     const addr = (property.display_address || property.address || '') as string;
@@ -464,6 +465,12 @@ export function generateAllPagesHtml(buyer: Record<string,unknown>, propertyDeta
     pages.push(generatePage4Html(addr, price, ptype, today));
     pages.push(generatePage5Html());
   }
+  // 追加5ページ（内覧準備資料の後に印刷）
+  pages.push(generateExtraPage1Html(base));
+  pages.push(generateExtraPage2Html());
+  pages.push(generateExtraPage3Html());
+  pages.push(generateExtraPage4Html());
+  pages.push(generateExtraPage5Html());
   const pagesHtml = pages.map((p,i)=>`<div class="page" style="${i===pages.length-1?'page-break-after:auto;break-after:auto;':''}">${p}</div>`).join('');
   return `<!DOCTYPE html>
 <html lang="ja">
@@ -483,4 +490,242 @@ export function generateAllPagesHtml(buyer: Record<string,unknown>, propertyDeta
 </head>
 <body>${pagesHtml}</body>
 </html>`;
+}
+
+// ============================================================
+// 追加ページ群：内覧準備資料の後に印刷する5ページ
+// ============================================================
+
+// ページA: 住まい購入の流れ
+export function generateExtraPage1Html(base: string): string {
+  const imgFlow = `${base}/ifoo-assets/スクリーンショット 2026-05-07 115323.png`;
+  const imgSub  = `${base}/ifoo-assets/スクリーンショット 2026-05-07 115337.png`;
+  const F = '"Noto Sans JP","Hiragino Kaku Gothic ProN","Meiryo",sans-serif';
+  return `
+<div style="width:100%;height:100%;padding:20px 28px;font-family:${F};font-size:9pt;color:#000;background:#fff;box-sizing:border-box;">
+  <!-- ヘッダー -->
+  <div style="display:flex;align-items:center;margin-bottom:10px;">
+    <div style="font-size:20pt;font-weight:bold;margin-right:16px;">住まい購入の流れ</div>
+    <img src="${imgSub}" height="60" style="margin-left:auto;"/>
+  </div>
+  <!-- メインイラスト -->
+  <div style="text-align:center;margin-bottom:12px;">
+    <img src="${imgFlow}" style="max-width:100%;max-height:900px;"/>
+  </div>
+  <!-- フッター -->
+  <div style="text-align:right;font-size:7.5pt;color:#666;margin-top:4px;">4</div>
+</div>`;
+}
+
+// ページB: よくあるご質問 1/2
+export function generateExtraPage2Html(): string {
+  const F = '"Noto Sans JP","Hiragino Kaku Gothic ProN","Meiryo",sans-serif';
+  const yellow = '#f5c518';
+  const th = `border:1px solid #ccc;padding:6px 10px;background:#f5c518;font-weight:bold;font-size:9pt;`;
+  const td = `border:1px solid #ccc;padding:6px 10px;font-size:9pt;`;
+  return `
+<div style="width:100%;height:100%;padding:0;font-family:${F};font-size:9pt;color:#000;background:#fff;box-sizing:border-box;">
+  <!-- タイトル帯 -->
+  <div style="background:${yellow};text-align:center;padding:18px 0 14px;margin-bottom:24px;">
+    <span style="font-size:20pt;font-weight:bold;">よくあるご質問♪1/2</span>
+  </div>
+  <div style="padding:0 28px;">
+    <!-- Q1 -->
+    <div style="border:2px solid ${yellow};border-radius:4px;padding:8px 14px;margin-bottom:8px;">
+      <div style="font-weight:bold;font-size:10pt;color:#333;">Q1. とても気に入っていて自分の条件にあうのですが<br><span style="margin-left:2em;">1軒目で決めるのはちょっと不安…</span></div>
+    </div>
+    <div style="margin-bottom:6px;">→ <span style="font-weight:bold;text-decoration:underline;color:#e53935;">約80%</span>の方が1件目で購入されています。</div>
+    <div style="margin-bottom:14px;font-size:8.5pt;">最初に内覧する物件は、希望条件に合致しているケースが多く、数ある物件から選んでいただいたご自身の直感は大事です！！</div>
+    <!-- グラフ＋購入理由 -->
+    <div style="display:flex;gap:16px;margin-bottom:18px;align-items:flex-start;">
+      <!-- 棒グラフ（簡易） -->
+      <div style="flex:1;">
+        <div style="font-size:8pt;text-align:center;margin-bottom:4px;font-weight:bold;">内覧件数別購入割合</div>
+        <div style="display:flex;align-items:flex-end;gap:8px;height:100px;border-left:1px solid #333;border-bottom:1px solid #333;padding:0 8px 0 4px;">
+          <div style="display:flex;flex-direction:column;align-items:center;flex:1;">
+            <div style="font-size:7pt;">79</div>
+            <div style="background:#4472c4;width:100%;height:79px;"></div>
+            <div style="font-size:7pt;margin-top:2px;">1軒目</div>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:center;flex:1;">
+            <div style="font-size:7pt;">16</div>
+            <div style="background:#ed7d31;width:100%;height:16px;"></div>
+            <div style="font-size:7pt;margin-top:2px;">2軒目</div>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:center;flex:1;">
+            <div style="font-size:7pt;">5</div>
+            <div style="background:#ed7d31;width:100%;height:5px;"></div>
+            <div style="font-size:7pt;margin-top:2px;">3軒目以降</div>
+          </div>
+        </div>
+        <div style="font-size:7pt;text-align:center;margin-top:2px;">内覧件数</div>
+      </div>
+      <!-- 購入理由 -->
+      <div style="border:1.5px dashed #aaa;border-radius:4px;padding:10px 14px;font-size:8.5pt;line-height:2.0;min-width:160px;">
+        <div style="font-weight:bold;margin-bottom:4px;">購入を決めた理由：</div>
+        <div>★他の人に決められたら<br>　後悔すると思った</div>
+        <div>★ここで生活する<br>　　イメージが湧いた</div>
+        <div>★条件にあっていた</div>
+      </div>
+    </div>
+    <!-- Q2 -->
+    <div style="border:2px solid ${yellow};border-radius:4px;padding:8px 14px;margin-bottom:8px;">
+      <div style="font-weight:bold;font-size:10pt;color:#333;">Q2. 何軒も内覧していて、ちょっと疲れました…<br><span style="margin-left:2em;">なかなかよい物件に出会えない</span></div>
+    </div>
+    <div style="margin-bottom:8px;">→ 譲れない条件を整理しましょう。<br>以下のチェック項目を参考に、ご自身の優先順位を明確にしてみてください。</div>
+    <!-- 表 -->
+    <table style="width:100%;border-collapse:collapse;margin-bottom:14px;">
+      <tr><th style="${th}">希望条件</th><th style="${th}">優先度（高・中・低）</th></tr>
+      <tr><td style="${td}">立地（エリア・駅距離）</td><td style="${td}"></td></tr>
+      <tr><td style="${td}">価格帯（月々支払い）</td><td style="${td}"></td></tr>
+      <tr><td style="${td}">間取り・広さ</td><td style="${td}"></td></tr>
+      <tr><td style="${td}">築年数・設備</td><td style="${td}"></td></tr>
+      <tr><td style="${td}">駐車場・庭の有無</td><td style="${td}"></td></tr>
+      <tr><td style="${td}">学校区・周辺環境</td><td style="${td}"></td></tr>
+    </table>
+    <div style="font-size:8pt;color:#333;">※ 上記をメモしながらお話しすると、ご自身でも気づかなかった<br>　　"優先条件"が明確になることがあります。</div>
+  </div>
+  <div style="text-align:right;font-size:7.5pt;color:#666;padding-right:28px;margin-top:8px;">5</div>
+</div>`;
+}
+
+// ページC: よくあるご質問 2/2
+export function generateExtraPage3Html(): string {
+  const F = '"Noto Sans JP","Hiragino Kaku Gothic ProN","Meiryo",sans-serif';
+  const yellow = '#f5c518';
+  const thS = `border:1px solid #ccc;padding:5px 8px;background:#f5c518;font-weight:bold;font-size:8.5pt;`;
+  const tdS = `border:1px solid #ccc;padding:5px 8px;font-size:8pt;`;
+  return `
+<div style="width:100%;height:100%;padding:0;font-family:${F};font-size:9pt;color:#000;background:#fff;box-sizing:border-box;">
+  <div style="background:${yellow};text-align:center;padding:18px 0 14px;margin-bottom:20px;">
+    <span style="font-size:20pt;font-weight:bold;">よくあるご質問♪2/2</span>
+  </div>
+  <div style="padding:0 28px;">
+    <!-- Q3 -->
+    <div style="border:2px solid ${yellow};border-radius:4px;padding:8px 14px;margin-bottom:8px;">
+      <div style="font-weight:bold;font-size:10pt;color:#333;">Q3. 予算が合わないのですが…</div>
+    </div>
+    <div style="margin-bottom:6px;">→ 仮審査は<span style="font-weight:bold;">無料</span>です。審査をしたからといって購入する必要はございません！<br>月々の支払額が具体化され、実現可能な選択肢を確認できます。</div>
+    <div style="font-weight:bold;margin-bottom:8px;font-size:8.5pt;">＊ 事前にご予約が必要です！</div>
+    <!-- 金融機関表 -->
+    <table style="width:100%;border-collapse:collapse;margin-bottom:12px;">
+      <tr>
+        <th style="${thS}">金融機関</th>
+        <th style="${thS}">窓口名</th>
+        <th style="${thS}">住所</th>
+        <th style="${thS}">電話番号</th>
+        <th style="${thS}">定休日</th>
+      </tr>
+      <tr><td style="${tdS}" rowspan="3">大分銀行</td><td style="${tdS}">ローンプラザ宗麟館</td><td style="${tdS}">大分市東大道1丁目9番1号3階</td><td style="${tdS}">0120-67-0189</td><td style="${tdS}">水、祝</td></tr>
+      <tr><td style="${tdS}">わさだローンプラザ</td><td style="${tdS}">大分市大字市1157番地</td><td style="${tdS}">0120-56-0189</td><td style="${tdS}">水、祝</td></tr>
+      <tr><td style="${tdS}">鶴崎ローンプラザ</td><td style="${tdS}">大分市南鶴崎3丁目1番12号</td><td style="${tdS}">0120-53-0189</td><td style="${tdS}">水、祝</td></tr>
+      <tr><td style="${tdS}" rowspan="2">ろうきん</td><td style="${tdS}">ローンセンターおあいた</td><td style="${tdS}">大分市寿町1-3（大分支店3F）</td><td style="${tdS}">097-536-6366</td><td style="${tdS}">水、土、祝</td></tr>
+      <tr><td style="${tdS}">鶴崎支店</td><td style="${tdS}">大分市中鶴崎2-3-18</td><td style="${tdS}">097-521-8101</td><td style="${tdS}">土、日、祝</td></tr>
+      <tr><td style="${tdS}">伊予銀行</td><td style="${tdS}">大分支店</td><td style="${tdS}">大分市府内町3-1-9</td><td style="${tdS}">097-532-6171</td><td style="${tdS}">土、日、祝</td></tr>
+    </table>
+    <!-- 銀行相談前 -->
+    <div style="border:1.5px dashed #aaa;border-radius:4px;padding:8px 12px;margin-bottom:10px;font-size:8.5pt;">
+      <div style="font-weight:bold;margin-bottom:4px;">【銀行へご相談に行く前に・・・】</div>
+      <div style="margin-bottom:4px;">事前に連絡して、予約をされることをお勧めいたします。</div>
+      <div style="font-weight:bold;margin-bottom:4px;">▼ 基本的な準備書類（※ 金融機関によって異なります。必ず事前にご確認ください）</div>
+      <div>① 身分証明書（運転免許証等）<br>② 健康保険証（勤務先名の記載があるもの）<br>③ 源泉徴収票（直近のもの）</div>
+    </div>
+    <div style="margin-bottom:10px;font-size:8.5pt;font-weight:bold;">大分銀行の無料シミュレーションはこちら（30秒）→<br><span style="font-weight:normal;">※現在、9割のお客様が変動金利を選択されております（ご参考まで）</span></div>
+    <!-- Q4 -->
+    <div style="border:2px solid ${yellow};border-radius:4px;padding:8px 14px;margin-bottom:8px;">
+      <div style="font-weight:bold;font-size:10pt;color:#e53935;">Q4. リフォーム費用が心配です</div>
+    </div>
+    <div style="margin-bottom:10px;">→ ご希望があれば、信頼できる業者様をご紹介可能です。<br>もちろん、お客様ご自身で手配されても問題ございません。</div>
+    <div style="font-weight:bold;margin-bottom:8px;">何でもお申し付けくださいませ！！</div>
+    <div style="font-size:7.5pt;color:#666;text-align:center;">※ 本資料はご検討の一助です。詳細は担当者までご相談ください。</div>
+  </div>
+  <div style="text-align:right;font-size:7.5pt;color:#666;padding-right:28px;margin-top:4px;">6</div>
+</div>`;
+}
+
+// ページD: アフターメンテナンスのご案内
+export function generateExtraPage4Html(): string {
+  const F = '"Noto Sans JP","Hiragino Kaku Gothic ProN","Meiryo",sans-serif';
+  const orange = '#f0a050';
+  const boxStyle = `background:${orange};color:#fff;border-radius:8px;padding:14px 10px;text-align:center;font-weight:bold;font-size:11pt;flex:1;margin:4px;`;
+  return `
+<div style="width:100%;height:100%;padding:28px 36px;font-family:${F};font-size:9.5pt;color:#000;background:#fff;box-sizing:border-box;">
+  <!-- タイトル -->
+  <div style="background:#f5c5a0;border-radius:4px;text-align:center;padding:14px 0;margin-bottom:20px;">
+    <span style="font-size:18pt;font-weight:bold;">アフターメンテナンスのご案内</span>
+  </div>
+  <div style="margin-bottom:16px;line-height:1.9;">
+    平素は格別のご高配を賜り、厚く御礼申し上げます。<br>
+    さて、このたび物件購入されましたお客様向けに生活の安心を高める目的として、アフターメンテナンス（定期点検）のご案内をさせていただきます。お客様の大切な建物の維持に少しでもお役に立ちたいという想いと、未来永劫のお付き合いをさせていただきたいという想いを少しでも形にできるよう努めてまいります。
+  </div>
+  <!-- 点検内容 -->
+  <div style="border:1.5px solid #333;display:inline-block;padding:2px 10px;font-weight:bold;margin-bottom:12px;">点検内容</div>
+  <div style="display:flex;gap:8px;margin-bottom:8px;">
+    <div style="${boxStyle}">屋外部分<br><span style="font-size:9.5pt;">外壁・屋根・雨樋　etc</span></div>
+    <div style="${boxStyle}">屋内部分<br><span style="font-size:9.5pt;">床・壁・天井　etc</span></div>
+  </div>
+  <div style="display:flex;gap:8px;margin-bottom:16px;">
+    <div style="${boxStyle}">建具<br><span style="font-size:9.5pt;">ドア・窓・サッシ　etc</span></div>
+    <div style="${boxStyle}">住宅設備機器<br><span style="font-size:9.5pt;">給水・排水・水栓　etc</span></div>
+  </div>
+  <!-- 注意書き -->
+  <div style="background:${orange};color:#fff;border-radius:8px;padding:14px 18px;margin-bottom:20px;line-height:2.0;font-size:10pt;font-weight:bold;">
+    ※点検作業費は、無料で実施となります。<br>
+    ※点検は、目視点検・動作確認となります。<br>
+    ※点検後、気になる箇所はご希望応じて御見積書のご提出をさせていただきます。
+  </div>
+  <!-- 署名 -->
+  <div style="text-align:right;line-height:2.0;font-size:9pt;">
+    株式会社いふう<br>
+    点検会社：株式会社ネクストイノベーション<br>
+    お問い合わせ先：097-576-9398
+  </div>
+  <div style="text-align:right;font-size:7.5pt;color:#666;margin-top:8px;">7</div>
+</div>`;
+}
+
+// ページE: e暮らしサポートサービスのご案内
+export function generateExtraPage5Html(): string {
+  const F = '"Noto Sans JP","Hiragino Kaku Gothic ProN","Meiryo",sans-serif';
+  const orange = '#f0a050';
+  const boxStyle = `background:${orange};color:#fff;border-radius:8px;padding:12px 8px;text-align:center;font-weight:bold;font-size:10.5pt;flex:1;margin:4px;`;
+  return `
+<div style="width:100%;height:100%;padding:28px 36px;font-family:${F};font-size:9.5pt;color:#000;background:#fff;box-sizing:border-box;">
+  <!-- タイトル -->
+  <div style="background:#f5c5a0;border-radius:4px;text-align:center;padding:14px 0;margin-bottom:20px;">
+    <span style="font-size:16pt;font-weight:bold;">e暮らしサポートサービスのご案内</span>
+  </div>
+  <div style="margin-bottom:16px;line-height:1.9;">
+    平素は格別のご高配を賜り、厚く御礼申し上げます。<br>
+    さて、このたび物件購入されましたお客様向けに生活の安心を高める目的として、24時間365日駆け付けサービスのご案内をさせていただきます。<br>
+    従来、生活上のトラブルにつきましては、お客様自身にて対応をお願いしておりますので、ご加入はあくまで任意となります。
+  </div>
+  <!-- サービスのご案内 -->
+  <div style="border:1.5px solid #333;display:inline-block;padding:2px 10px;font-weight:bold;margin-bottom:12px;">サービスのご案内</div>
+  <!-- メインボックス -->
+  <div style="background:${orange};color:#fff;border-radius:8px;padding:14px;text-align:center;font-weight:bold;font-size:12pt;margin-bottom:12px;line-height:1.8;">
+    駆け付け費・一次対応費　無料<br>月額／1,100円（税込）
+  </div>
+  <!-- トラブル一覧 -->
+  <div style="display:flex;gap:8px;margin-bottom:8px;">
+    <div style="${boxStyle}">水廻りの<br>トラブル</div>
+    <div style="${boxStyle}">カギの<br>トラブル</div>
+    <div style="${boxStyle}">ガラスの<br>トラブル</div>
+  </div>
+  <div style="display:flex;gap:8px;margin-bottom:16px;">
+    <div style="${boxStyle}">電気の<br>トラブル</div>
+    <div style="${boxStyle}">ガス器具の<br>トラブル</div>
+    <div style="${boxStyle}">建具の<br>トラブル</div>
+  </div>
+  <div style="margin-bottom:16px;line-height:1.8;">
+    加入につきましては、別紙申込書に記載していただきますよう、宜しくお願い致します。
+  </div>
+  <!-- 署名 -->
+  <div style="text-align:right;line-height:2.0;font-size:9pt;">
+    株式会社いふう<br>
+    運営会社：株式会社ネクストイノベーション<br>
+    お問い合わせ先：097-576-9398
+  </div>
+  <div style="text-align:right;font-size:7.5pt;color:#666;margin-top:8px;">8</div>
+</div>`;
 }
