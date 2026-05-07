@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { createClient } from '@supabase/supabase-js';
+import { GeocodingService } from '../services/GeocodingService';
 
 const router = Router();
 
@@ -21,7 +22,45 @@ router.get('/', async (req: Request, res: Response) => {
       .order('address', { ascending: true });
 
     if (error) throw error;
-    res.json(data || []);
+
+    // 不正座標を検出する（33.3333... のような繰り返しパターン、または大分県範囲外）
+    const isValidCoord = (lat: number | null, lng: number | null): boolean => {
+      if (lat == null || lng == null) return false;
+      // 大分県の範囲チェック
+      if (lat < 32.5 || lat > 34.0 || lng < 130.5 || lng > 132.5) return false;
+      // 繰り返しパターン検出（小数点以下4桁以上が同じ数字の繰り返し）
+      const latStr = lat.toString();
+      const lngStr = lng.toString();
+      if (/\.\d*(\d)\1{4,}/.test(latStr)) return false;
+      if (/\.\d*(\d)\1{4,}/.test(lngStr)) return false;
+      return true;
+    };
+
+    // 不正座標の物件を住所からジオコーディングして補正
+    const geocodingService = new GeocodingService();
+    const supabase2 = getSupabase();
+    const enriched = await Promise.all((data || []).map(async (p: any) => {
+      if (!isValidCoord(p.lat, p.lng)) {
+        if (!p.address) return { ...p, lat: null, lng: null };
+        try {
+          const coords = await geocodingService.geocodeAddress(p.address);
+          if (coords && isValidCoord(coords.lat, coords.lng)) {
+            console.log(`[tateuri] Geocoded "${p.address}": (${coords.lat}, ${coords.lng})`);
+            // DBにも正しい座標を保存
+            await supabase2.from('property_previews')
+              .update({ lat: coords.lat, lng: coords.lng })
+              .eq('slug', p.slug);
+            return { ...p, lat: coords.lat, lng: coords.lng };
+          }
+        } catch (e) {
+          console.error(`[tateuri] Geocoding failed for "${p.address}":`, e);
+        }
+        return { ...p, lat: null, lng: null };
+      }
+      return p;
+    }));
+
+    res.json(enriched);
   } catch (err: any) {
     console.error('[tateuri] GET error:', err);
     res.status(500).json({ error: err.message });
