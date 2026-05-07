@@ -816,25 +816,31 @@ router.post('/:propertyNumber/send-distribution-emails', authenticate, async (re
           // nullを除外
           const emailAttachments = emailAttachmentsRaw.filter((a): a is NonNullable<typeof a> => a !== null);
 
-          // {propertyImages}プレースホルダーを<img>タグに置換（インライン画像表示）
+          // {propertyImages}プレースホルダーをbase64 data URI形式の<img>タグに置換
+          // 「他社物件新着配信」と同じ方式：HTMLメール本文に画像を直接埋め込む
           const imgTags = emailAttachments
-            .map(att => `<img src="cid:${att.cid}" alt="${att.filename}" style="max-width:100%;height:auto;display:block;margin:8px 0;" />`)
+            .map(att => {
+              const base64 = att.data.toString('base64');
+              const dataUri = `data:${att.mimeType};base64,${base64}`;
+              return `<img src="${dataUri}" alt="${att.filename}" style="max-width:600px;width:100%;height:auto;display:block;margin:8px 0;" />`;
+            })
             .join('\n');
 
-          // htmlBodyまたはcontentの{propertyImages}を置換
+          // htmlBodyの{propertyImages}を置換（buyerName置換も含む）
           const rawHtmlBody = htmlBody ? htmlBody.replace(/\{buyerName\}/g, buyerName) : undefined;
           const personalizedHtmlBody = rawHtmlBody
-            ? rawHtmlBody.replace(/\{propertyImages\}/g, imgTags).replace(/\{propertyImages\}<br>/g, imgTags)
+            ? rawHtmlBody.replace(/\{propertyImages\}/g, imgTags)
             : undefined;
           // プレーンテキスト版も{propertyImages}を除去
           const cleanContent = personalizedContent.replace(/\{propertyImages\}/g, '');
 
+          // 画像はHTMLに埋め込み済みなので添付ファイルとしては送らない
           return await emailService.sendEmailWithCcAndAttachments({
             to: email,
             subject: personalizedSubject,
             body: personalizedHtmlBody || cleanContent,
             from,
-            attachments: emailAttachments,
+            attachments: [], // 画像はdata URIで本文に埋め込み済み
             isHtml: !!htmlBody,
           });
         }
