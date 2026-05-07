@@ -229,17 +229,26 @@ export default function GmailDistributionButton({
       if (!response.ok) throw new Error(`画像取得失敗: ${response.status}`);
       const data = await response.json();
       const images: any[] = data?.images || [];
-      // 最初の3枚を返す（fullImageUrlを使用）
-      return images.slice(0, 3).map((img: any) => ({
-        id: img.id,
-        name: img.name || `image-${img.id}.jpg`,
-        source: 'url' as const,
-        size: img.size || 0,
-        mimeType: img.mimeType || 'image/jpeg',
-        thumbnailUrl: img.thumbnailUrl,
-        previewUrl: img.thumbnailUrl || img.fullImageUrl || '',
-        url: img.fullImageUrl,
-      }));
+      // 最初の3枚を返す（fullImageUrlを絶対URLに変換）
+      return images.slice(0, 3).map((img: any) => {
+        // fullImageUrlが相対パスの場合は絶対URLに変換
+        const fullUrl = img.fullImageUrl?.startsWith('http')
+          ? img.fullImageUrl
+          : `${PUBLIC_SITE_BASE}${img.fullImageUrl}`;
+        const thumbUrl = img.thumbnailUrl?.startsWith('http')
+          ? img.thumbnailUrl
+          : `${PUBLIC_SITE_BASE}${img.thumbnailUrl}`;
+        return {
+          id: img.id,
+          name: img.name || `image-${img.id}.jpg`,
+          source: 'url' as const,
+          size: img.size || 0,
+          mimeType: img.mimeType || 'image/jpeg',
+          thumbnailUrl: thumbUrl,
+          previewUrl: thumbUrl || fullUrl || '',
+          url: fullUrl,
+        };
+      });
     } catch (err) {
       console.warn('[GmailDistributionButton] 画像の自動取得に失敗しました:', err);
       return [];
