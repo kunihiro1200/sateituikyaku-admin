@@ -105,10 +105,9 @@ export function generatePage1Html(buyer: Record<string,unknown>, property: Recor
 // ページ2: 買付申込書
 // ============================================================
 export function generatePage2Html(propertyAddress: string, propertyPrice: number | null): string {
-  const priceStr = propertyPrice ? propert// ============================================================
-// 内覧準備資料２: 挨拶状（いふうスタイル・publicフォルダ画像版）
-// ============================================================
-export function generateViewingPrep2Html(buyer: Record<string,unknown>, _today: string): string {
+  const priceStr = propertyPrice ? propertyPrice.toLocaleString('ja-JP') : '';
+  const tdStyle = 'border:1px solid #000;padding:4px 8px;font-size:9pt;';
+  const thStyle = 'border:1px solid #000;padding:4px 8px;font-size:9pt;width:140px;';
   const rawName = (buyer.name as string) || '';
   const nameWithSama = rawName
     ? (rawName.endsWith('様') ? rawName : rawName + '様')
