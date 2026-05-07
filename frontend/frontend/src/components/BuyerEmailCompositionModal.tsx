@@ -69,17 +69,36 @@ export default function BuyerEmailCompositionModal({
     setAttachments(prev => prev.filter((_, i) => i !== index));
   };
 
+  // URLをHTMLリンクに変換する（<a>タグで囲まれていないURLのみ）
+  const linkifyUrls = (inputText: string): string => {
+    return inputText.replace(
+      /(https?:\/\/[^\s\u3000\u3001\u3002\uff01\uff09\u300d\u300f\u3011\u3015\u3017\u3019\u301b\u301f\uff3d\uff5d\u300b\u300f]+)/g,
+      (url: string, _group1: string, offset: number, fullText: string) => {
+        const before = fullText.slice(0, offset);
+        const lastAnchorOpen = before.lastIndexOf('<a ');
+        const lastAnchorClose = before.lastIndexOf('</a>');
+        if (lastAnchorOpen > lastAnchorClose) {
+          return url;
+        }
+        return `<a href="${url}">${url}</a>`;
+      }
+    );
+  };
+
   const handleSend = async () => {
     setSending(true);
     setError(null);
 
     try {
+      // 送信前にURLをHTMLリンクに変換し、改行を<br>に変換
+      const htmlBody = linkifyUrls(body).replace(/\n/g, '<br>');
+
       const emailData: EmailData = {
         buyerId,
         propertyId: propertyIds.length > 0 ? propertyIds[0] : undefined,
         templateId,
         subject,
-        body,
+        body: htmlBody,
         recipientEmail: buyerEmail,
         attachments,
       };
