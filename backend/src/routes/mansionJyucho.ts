@@ -72,22 +72,60 @@ router.get('/debug-cells', (_req: Request, res: Response) => {
 //   L480  : 専有部分「有」チェック                    (boolean)
 //   L481  : 専有部分「無」チェック                    (boolean)
 //   P480  : 専有部分修繕履歴入力欄
+//
+// ─── 日付セル（令和年・月・日）────────────────────────────────────────
+//   (6) 当該住戸の計画修繕積立金 滞納額の日付
+//     AU445(年) AY445(月) BC445(日)
+//   (6) 管理組合積立総額 滞納額の日付
+//     AU448(年) AY448(月) BC448(日)
+//   (7) 通常の管理費 現在日付
+//     Z457(年) AD457(月) AH457(日)
+//   (7) 当該管理組合の滞納額の日付
+//     AW460(年) BA460(月) BE460(日)
+
+// 西暦→令和変換（令和元年=2019年）
+function seirekiToReiwa(year: number): number {
+  return year - 2018; // 2019→1, 2026→8
+}
+
+// PDFから抽出した西暦年月日を令和に変換して日付セルグループに書き込む
+// dateStr: "2026年04月" or "2026年04月30日" 形式
+function parseDateToReiwa(dateStr: string | null): { year: string | null; month: string | null; day: string | null } {
+  if (!dateStr) return { year: null, month: null, day: null };
+  const m = dateStr.match(/(\d{4})年(\d{1,2})月(?:(\d{1,2})日)?/);
+  if (!m) return { year: null, month: null, day: null };
+  const reiwaYear = seirekiToReiwa(parseInt(m[1], 10));
+  return {
+    year: String(reiwaYear),
+    month: String(parseInt(m[2], 10)),
+    day: m[3] ? String(parseInt(m[3], 10)) : null,
+  };
+}
+
 const JYUCHO_ITEMS = [
   // ── (6) 計画修繕積立金等に関する事項 ──
-  { key: 'repair_fund_none',              label: '計画修繕積立金制度「無」',                    cell: 'T443',  type: 'boolean' },
-  { key: 'repair_fund_exists',            label: '計画修繕積立金制度「有—別添規約等参照」',      cell: 'Z443',  type: 'boolean' },
-  { key: 'repair_monthly_amount',         label: '当該住戸の計画修繕積立金 月額',               cell: 'W445',  type: 'text' },
-  { key: 'repair_monthly_arrears',        label: '当該住戸の計画修繕積立金 滞納額',             cell: 'AI445', type: 'text' },
-  { key: 'repair_total_amount',           label: '管理組合 積立総額',                           cell: 'W448',  type: 'text' },
-  { key: 'repair_total_arrears',          label: '管理組合 積立総額 滞納額',                    cell: 'AI448', type: 'text' },
-  { key: 'deposit_holder_kumiai',         label: '預金名義人「管理組合」',                      cell: 'T450',  type: 'boolean' },
-  { key: 'deposit_holder_other_check',    label: '預金名義人「その他」チェック',                cell: 'AB450', type: 'boolean' },
-  { key: 'deposit_holder_other_text',     label: '預金名義人「その他」入力欄',                  cell: 'AE450', type: 'text' },
-  { key: 'repair_fund_note',              label: '(6) 備考',                                    cell: 'F451',  type: 'text' },
+  { key: 'repair_fund_none',              label: '計画修繕積立金制度「無」',                                        cell: 'T443',  type: 'boolean' },
+  { key: 'repair_fund_exists',            label: '計画修繕積立金制度「有—別添規約等参照」',                          cell: 'Z443',  type: 'boolean' },
+  { key: 'repair_monthly_amount',         label: '当該住戸の計画修繕積立金 月額',                                   cell: 'W445',  type: 'text' },
+  { key: 'repair_monthly_arrears',        label: '当該住戸の計画修繕積立金 滞納額',                                 cell: 'AI445', type: 'text' },
+  { key: 'repair_monthly_date',           label: '当該住戸の計画修繕積立金 基準日（西暦 例:"2026年04月30日"）',     cell: null,    type: 'date',
+    dateCells: { year: 'AU445', month: 'AY445', day: 'BC445' } },
+  { key: 'repair_total_amount',           label: '管理組合 積立総額',                                               cell: 'W448',  type: 'text' },
+  { key: 'repair_total_arrears',          label: '管理組合 積立総額 滞納額',                                        cell: 'AI448', type: 'text' },
+  { key: 'repair_total_date',             label: '管理組合 積立総額 基準日（西暦 例:"2026年04月30日"）',            cell: null,    type: 'date',
+    dateCells: { year: 'AU448', month: 'AY448', day: 'BC448' } },
+  { key: 'deposit_holder_kumiai',         label: '預金名義人「管理組合」',                                          cell: 'T450',  type: 'boolean' },
+  { key: 'deposit_holder_other_check',    label: '預金名義人「その他」チェック',                                    cell: 'AB450', type: 'boolean' },
+  { key: 'deposit_holder_other_text',     label: '預金名義人「その他」入力欄',                                      cell: 'AE450', type: 'text' },
+  { key: 'repair_fund_note',              label: '(6) 備考',                                                        cell: 'F451',  type: 'text' },
   // ── (7) 通常の管理費用の額 ──
-  { key: 'management_fee_amount',         label: '通常の管理費 月額',                           cell: 'J457',  type: 'text' },
-  { key: 'management_fee_arrears_unit',   label: '当該住戸の滞納額',                            cell: 'Q460',  type: 'text' },
-  { key: 'management_fee_arrears_kumiai', label: '当該管理組合の滞納額',                        cell: 'AK460', type: 'text' },
+  { key: 'management_fee_amount',         label: '通常の管理費 月額',                                               cell: 'J457',  type: 'text' },
+  { key: 'management_fee_date',           label: '通常の管理費 基準日（西暦 例:"2026年04月"）',                     cell: null,    type: 'date',
+    dateCells: { year: 'Z457', month: 'AD457', day: 'AH457' } },
+  { key: 'management_fee_arrears_unit',   label: '当該住戸の滞納額',                                               cell: 'Q460',  type: 'text' },
+  { key: 'management_fee_arrears_kumiai', label: '当該管理組合の滞納額',                                           cell: 'AK460', type: 'text' },
+  { key: 'management_fee_arrears_date',   label: '当該管理組合の滞納額 基準日（西暦 例:"2026年04月30日"）',         cell: null,    type: 'date',
+    dateCells: { year: 'AW460', month: 'BA460', day: 'BE460' } },
   { key: 'management_fee_note',           label: '(7) 備考（その他・請求時期など）',             cell: 'G462',  type: 'text' },
   // ── (8) 管理の委託先 ──
   // management_form は "委託管理(全部)" / "委託管理(一部)" / "自主管理" の3択
@@ -197,8 +235,12 @@ ${itemsDetail}
    - チェックなし・「無」・「該当しない」→ false
    - 記載がない場合は null
 6. 管理会社の住所と名称が同じセルに入る場合（management_company_name）は「名称\n住所」の形式で返すこと
-7. 見つからない場合はnull
-8. 必ず以下のJSON形式のみで応答すること（説明文・コードブロック記号は不要）
+7. date型の項目（基準日）は「○○年○○月○○日」または「○○年○○月」の形式で西暦のまま返すこと
+   - 例: "2026年04月30日" または "2026年04月"
+   - 同じ書類内で複数の基準日がある場合は、その項目に対応する日付を返すこと
+   - 通常は同じ日付が複数箇所に使われる（例: 「2026年04月現在」「2026年04月30日現在」）
+8. 見つからない場合はnull
+9. 必ず以下のJSON形式のみで応答すること（説明文・コードブロック記号は不要）
 
 {${keyList}}`,
     });
@@ -291,35 +333,53 @@ router.post('/write', async (req: Request, res: Response) => {
     // 常に最新のセルマッピングを使って書き込む（古いキャッシュのセル値を無視）
     const itemMap = new Map(JYUCHO_ITEMS.map((i) => [i.key, i]));
 
-    const writableItems = results
-      .map((r) => {
-        const master = itemMap.get(r.key);
-        if (!master || !master.cell) return null;
-        if (r.content === null || r.content === undefined || r.content === '') return null;
-        return { cell: master.cell, content: r.content, type: master.type };
-      })
-      .filter((x): x is { cell: string; content: string; type: string } => x !== null);
+    // 通常セルへの書き込みリスト
+    const writableItems: Array<{ cell: string; content: string; type: string }> = [];
+    // 日付セルへの書き込みリスト（令和年・月・日に分割済み）
+    const dateWrites: Array<{ cell: string; value: string }> = [];
 
-    console.log(`[mansion-jyucho] 書き込み対象: ${writableItems.length}セル`);
+    for (const r of results) {
+      const master = itemMap.get(r.key) as any;
+      if (!master) continue;
+      if (r.content === null || r.content === undefined || r.content === '') continue;
+
+      if (master.type === 'date' && master.dateCells) {
+        // 日付型: 西暦→令和変換して年・月・日セルに分割書き込み
+        const parsed = parseDateToReiwa(r.content);
+        const dc = master.dateCells as { year: string; month: string; day: string };
+        if (parsed.year) dateWrites.push({ cell: dc.year, value: parsed.year });
+        if (parsed.month) dateWrites.push({ cell: dc.month, value: parsed.month });
+        if (parsed.day) dateWrites.push({ cell: dc.day, value: parsed.day });
+      } else if (master.cell) {
+        writableItems.push({ cell: master.cell, content: r.content, type: master.type });
+      }
+    }
+
+    console.log(`[mansion-jyucho] 通常セル: ${writableItems.length}件, 日付セル: ${dateWrites.length}件`);
 
     for (const item of writableItems) {
       let writeValue: string;
-
       if (item.type === 'boolean') {
         const boolVal = item.content === 'true' || item.content === true as any;
         writeValue = boolVal ? 'TRUE' : 'FALSE';
       } else {
         writeValue = item.content;
       }
-
       await sheetsClient.writeRawCell(item.cell, writeValue);
       console.log(`[mansion-jyucho] 書き込み完了: ${item.cell} = ${writeValue}`);
     }
 
+    for (const dw of dateWrites) {
+      await sheetsClient.writeRawCell(dw.cell, dw.value);
+      console.log(`[mansion-jyucho] 日付書き込み完了: ${dw.cell} = ${dw.value}`);
+    }
+
+    const totalWritten = writableItems.length + dateWrites.length;
+
     return res.json({
       success: true,
-      message: `重説シートへの書き込みが完了しました（${writableItems.length}セル）`,
-      writtenCount: writableItems.length,
+      message: `重説シートへの書き込みが完了しました（${totalWritten}セル）`,
+      writtenCount: totalWritten,
     });
   } catch (error: any) {
     console.error('[mansion-jyucho] 書き込みエラー:', error?.message || error);
