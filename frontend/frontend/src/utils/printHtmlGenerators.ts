@@ -488,9 +488,9 @@ export function generateAllPagesHtml(buyer: Record<string,unknown>, propertyDeta
   *{box-sizing:border-box;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}
   html{font-size:16px;}
   body{margin:0;padding:0;font-family:"Noto Sans JP","Hiragino Kaku Gothic ProN","Meiryo",sans-serif;}
-  .page{width:794px;min-height:1123px;background:white;page-break-after:always;break-after:page;overflow:hidden;}
+  .page{width:794px;height:1123px;background:white;page-break-after:always;break-after:page;overflow:hidden;}
   @media print{
-    .page{width:210mm;height:297mm;min-height:unset;}
+    .page{width:210mm;height:297mm;}
   }
 </style>
 </head>
