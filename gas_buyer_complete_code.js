@@ -541,8 +541,9 @@ function syncUpdatesToSupabase_(sheetRows) {
       } else {
         updateData.viewing_time = normalizedSheetViewingTime;
         needsUpdate = true;
-      } else if (buyerNumber === '7282') {
-        Logger.log('  ✅ ' + buyerNumber + ': 内覧時間を更新 (新値: ' + normalizedSheetViewingTime + ', 旧値: ' + normalizedDbViewingTime + ')');
+        if (buyerNumber === '7282') {
+          Logger.log('  ✅ ' + buyerNumber + ': 内覧時間を更新 (新値: ' + normalizedSheetViewingTime + ', 旧値: ' + normalizedDbViewingTime + ')');
+        }
       }
     } else if (buyerNumber === '7282') {
       Logger.log('  ℹ️ ' + buyerNumber + ': 内覧時間は変更なし (' + normalizedSheetViewingTime + ')');
