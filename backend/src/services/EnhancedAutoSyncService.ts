@@ -3366,13 +3366,10 @@ export class EnhancedAutoSyncService {
     delete updateData.buyer_number;
     delete updateData.buyer_id;
 
-    // 手動入力優先フィールド: DBがスプレッドシートより後に更新されていれば上書きしない
-    const manualPriorityFields = ['desired_area'];
-
     // DBの現在値を取得して比較
     const { data: existingBuyer } = await this.supabase
       .from('buyers')
-      .select('db_updated_at, last_synced_at, desired_area, property_number')
+      .select('db_updated_at, last_synced_at, property_number')
       .eq('buyer_number', buyerNumber)
       .maybeSingle();
 
@@ -3380,22 +3377,25 @@ export class EnhancedAutoSyncService {
       const dbUpdatedAt = existingBuyer.db_updated_at ? new Date(existingBuyer.db_updated_at) : null;
       const lastSyncedAt = existingBuyer.last_synced_at ? new Date(existingBuyer.last_synced_at) : null;
 
-      // DBが手動更新されている（db_updated_at > last_synced_at）場合、手動優先フィールドを保護
+      // DBが手動更新されている（db_updated_at > last_synced_at）場合、
+      // スプシから空で来たフィールドは全て上書きしない
+      // （DBに直接入力された値をスプシの空欄で消さないため）
       const isManuallyUpdated = dbUpdatedAt && lastSyncedAt
         ? dbUpdatedAt > lastSyncedAt
-        : dbUpdatedAt && !lastSyncedAt; // last_synced_atがない場合も手動更新とみなす
+        : dbUpdatedAt && !lastSyncedAt;
 
       if (isManuallyUpdated) {
-        for (const field of manualPriorityFields) {
-          if (field in updateData) {
-            console.log(`[updateSingleBuyer] ${buyerNumber}: ${field} is manually updated (db_updated_at=${existingBuyer.db_updated_at} > last_synced_at=${existingBuyer.last_synced_at}), skipping spreadsheet overwrite`);
+        for (const field of Object.keys(updateData)) {
+          const val = updateData[field];
+          if (val === null || val === '' || val === undefined) {
+            console.log(`[updateSingleBuyer] ${buyerNumber}: ${field} is empty in spreadsheet but DB was manually updated, skipping overwrite`);
             delete updateData[field];
           }
         }
       }
 
       // property_number 保護: DBに値があるのにスプレッドシートが空欄の場合は上書きしない
-      // （物件リストから買主登録した場合など、DBに正しい値が入っているケース）
+      // （手動更新フラグに関わらず常に保護）
       if (existingBuyer.property_number && !updateData.property_number) {
         console.log(`[updateSingleBuyer] ${buyerNumber}: property_number is set in DB (${existingBuyer.property_number}) but empty in spreadsheet, skipping overwrite`);
         delete updateData.property_number;

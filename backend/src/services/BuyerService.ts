@@ -816,7 +816,6 @@ export class BuyerService {
       console.log(`[BuyerService.update] ${buyerNumber}: property_number is set in DB (${existing.property_number}) but empty in update data, skipping overwrite`);
       delete allowedData.property_number;
     }
-
     // latest_status が更新される場合、latest_status_updated_at を記録
     if (allowedData.latest_status !== undefined) {
       allowedData.latest_status_updated_at = new Date().toISOString();
@@ -962,6 +961,25 @@ export class BuyerService {
         && existing.property_number) {
       console.log(`[updateWithSync] ${buyerNumber}: property_number is set in DB (${existing.property_number}) but empty in update data, skipping overwrite`);
       delete allowedData.property_number;
+    }
+
+    // db_updated_at > last_synced_at の場合、スプシから空で来た全フィールドを保護
+    // （DBに直接入力された値をスプシの空欄で消さないため）
+    const dbUpdatedAt = existing.db_updated_at ? new Date(existing.db_updated_at) : null;
+    const lastSyncedAt = existing.last_synced_at ? new Date(existing.last_synced_at) : null;
+    const isManuallyUpdated = dbUpdatedAt && lastSyncedAt
+      ? dbUpdatedAt > lastSyncedAt
+      : dbUpdatedAt && !lastSyncedAt;
+
+    if (isManuallyUpdated) {
+      for (const field of Object.keys(allowedData)) {
+        if (field === 'db_updated_at') continue; // タイムスタンプは除外
+        const val = allowedData[field];
+        if (val === null || val === '' || val === undefined) {
+          console.log(`[updateWithSync] ${buyerNumber}: ${field} is empty in update data but DB was manually updated, skipping overwrite`);
+          delete allowedData[field];
+        }
+      }
     }
 
     // property_number が含まれ、かつ非null・非空文字の場合、property_listingsから物件情報を取得して同期
