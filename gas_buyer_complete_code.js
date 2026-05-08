@@ -294,10 +294,12 @@ function syncUpdatesToSupabase_(sheetRows) {
     var normalizedSheetStatus = normalizeValue(sheetStatus);
     var normalizedDbStatus = normalizeValue(dbBuyer.latest_status);
     if (normalizedSheetStatus !== normalizedDbStatus) {
-      updateData.latest_status = normalizedSheetStatus;
-      needsUpdate = true;
+      // スプシが空でDBに値がある場合はスキップ（DBの値を保護）
       if (normalizedSheetStatus === null && normalizedDbStatus !== null) {
-        Logger.log('  🗑️ ' + buyerNumber + ': 最新状況を削除 (旧値: ' + normalizedDbStatus + ')');
+        Logger.log('  🛡️ ' + buyerNumber + ': 最新状況はDBに値があるためスキップ (DB値: ' + normalizedDbStatus + ')');
+      } else {
+        updateData.latest_status = normalizedSheetStatus;
+        needsUpdate = true;
       }
     }
     
@@ -307,10 +309,12 @@ function syncUpdatesToSupabase_(sheetRows) {
     var normalizedSheetNextCallDate = normalizeValue(sheetNextCallDate);
     var normalizedDbNextCallDate = normalizeValue(dbNextCallDate);
     if (normalizedSheetNextCallDate !== normalizedDbNextCallDate) {
-      updateData.next_call_date = normalizedSheetNextCallDate;
-      needsUpdate = true;
+      // スプシが空でDBに値がある場合はスキップ（DBの値を保護）
       if (normalizedSheetNextCallDate === null && normalizedDbNextCallDate !== null) {
-        Logger.log('  🗑️ ' + buyerNumber + ': 次電日を削除 (旧値: ' + normalizedDbNextCallDate + ')');
+        Logger.log('  🛡️ ' + buyerNumber + ': 次電日はDBに値があるためスキップ (DB値: ' + normalizedDbNextCallDate + ')');
+      } else {
+        updateData.next_call_date = normalizedSheetNextCallDate;
+        needsUpdate = true;
       }
     }
     
@@ -322,10 +326,12 @@ function syncUpdatesToSupabase_(sheetRows) {
     var normalizedSheetInitialAssignee = normalizeValue(sheetInitialAssignee);
     var normalizedDbInitialAssignee = normalizeValue(dbBuyer.initial_assignee);
     if (normalizedSheetInitialAssignee !== normalizedDbInitialAssignee) {
-      updateData.initial_assignee = normalizedSheetInitialAssignee;
-      needsUpdate = true;
+      // スプシが空でDBに値がある場合はスキップ（DBの値を保護）
       if (normalizedSheetInitialAssignee === null && normalizedDbInitialAssignee !== null) {
-        Logger.log('  🗑️ ' + buyerNumber + ': 初動担当を削除 (旧値: ' + normalizedDbInitialAssignee + ')');
+        Logger.log('  🛡️ ' + buyerNumber + ': 初動担当はDBに値があるためスキップ (DB値: ' + normalizedDbInitialAssignee + ')');
+      } else {
+        updateData.initial_assignee = normalizedSheetInitialAssignee;
+        needsUpdate = true;
       }
     }
     
@@ -347,10 +353,12 @@ function syncUpdatesToSupabase_(sheetRows) {
     var normalizedSheetInquiryEmailPhone = normalizeValue(sheetInquiryEmailPhone);
     var normalizedDbInquiryEmailPhone = normalizeValue(dbBuyer.inquiry_email_phone);
     if (normalizedSheetInquiryEmailPhone !== normalizedDbInquiryEmailPhone) {
-      updateData.inquiry_email_phone = normalizedSheetInquiryEmailPhone;
-      needsUpdate = true;
+      // スプシが空でDBに値がある場合はスキップ（DBの値を保護）
       if (normalizedSheetInquiryEmailPhone === null && normalizedDbInquiryEmailPhone !== null) {
-        Logger.log('  🗑️ ' + buyerNumber + ': 問合メール電話対応を削除 (旧値: ' + normalizedDbInquiryEmailPhone + ')');
+        Logger.log('  🛡️ ' + buyerNumber + ': 問合メール電話対応はDBに値があるためスキップ (DB値: ' + normalizedDbInquiryEmailPhone + ')');
+      } else {
+        updateData.inquiry_email_phone = normalizedSheetInquiryEmailPhone;
+        needsUpdate = true;
       }
     }
     
@@ -359,10 +367,12 @@ function syncUpdatesToSupabase_(sheetRows) {
     var normalizedSheetInquiryEmailReply = normalizeValue(sheetInquiryEmailReply);
     var normalizedDbInquiryEmailReply = normalizeValue(dbBuyer.inquiry_email_reply);
     if (normalizedSheetInquiryEmailReply !== normalizedDbInquiryEmailReply) {
-      updateData.inquiry_email_reply = normalizedSheetInquiryEmailReply;
-      needsUpdate = true;
+      // スプシが空でDBに値がある場合はスキップ（DBの値を保護）
       if (normalizedSheetInquiryEmailReply === null && normalizedDbInquiryEmailReply !== null) {
-        Logger.log('  🗑️ ' + buyerNumber + ': 問合メール返信を削除 (旧値: ' + normalizedDbInquiryEmailReply + ')');
+        Logger.log('  🛡️ ' + buyerNumber + ': 問合メール返信はDBに値があるためスキップ (DB値: ' + normalizedDbInquiryEmailReply + ')');
+      } else {
+        updateData.inquiry_email_reply = normalizedSheetInquiryEmailReply;
+        needsUpdate = true;
       }
     }
     
@@ -371,10 +381,12 @@ function syncUpdatesToSupabase_(sheetRows) {
     var normalizedSheetInquiryHearing = normalizeValue(sheetInquiryHearing);
     var normalizedDbInquiryHearing = normalizeValue(dbBuyer.inquiry_hearing);
     if (normalizedSheetInquiryHearing !== normalizedDbInquiryHearing) {
-      updateData.inquiry_hearing = normalizedSheetInquiryHearing;
-      needsUpdate = true;
+      // スプシが空でDBに値がある場合はスキップ（DBの値を保護）
       if (normalizedSheetInquiryHearing === null && normalizedDbInquiryHearing !== null) {
-        Logger.log('  🗑️ ' + buyerNumber + ': 問合時ヒアリングを削除 (旧値: ' + normalizedDbInquiryHearing + ')');
+        Logger.log('  🛡️ ' + buyerNumber + ': 問合時ヒアリングはDBに値があるためスキップ (DB値: ' + normalizedDbInquiryHearing + ')');
+      } else {
+        updateData.inquiry_hearing = normalizedSheetInquiryHearing;
+        needsUpdate = true;
       }
     }
 
@@ -383,10 +395,12 @@ function syncUpdatesToSupabase_(sheetRows) {
     var normalizedSheetInquiryConfidence = normalizeValue(sheetInquiryConfidence);
     var normalizedDbInquiryConfidence = normalizeValue(dbBuyer.inquiry_confidence);
     if (normalizedSheetInquiryConfidence !== normalizedDbInquiryConfidence) {
-      updateData.inquiry_confidence = normalizedSheetInquiryConfidence;
-      needsUpdate = true;
+      // スプシが空でDBに値がある場合はスキップ（DBの値を保護）
       if (normalizedSheetInquiryConfidence === null && normalizedDbInquiryConfidence !== null) {
-        Logger.log('  🗑️ ' + buyerNumber + ': 問合時確度を削除 (旧値: ' + normalizedDbInquiryConfidence + ')');
+        Logger.log('  🛡️ ' + buyerNumber + ': 問合時確度はDBに値があるためスキップ (DB値: ' + normalizedDbInquiryConfidence + ')');
+      } else {
+        updateData.inquiry_confidence = normalizedSheetInquiryConfidence;
+        needsUpdate = true;
       }
     }
 
@@ -395,10 +409,12 @@ function syncUpdatesToSupabase_(sheetRows) {
     var normalizedSheetViewingResultFollowUp = normalizeValue(sheetViewingResultFollowUp);
     var normalizedDbViewingResultFollowUp = normalizeValue(dbBuyer.viewing_result_follow_up);
     if (normalizedSheetViewingResultFollowUp !== normalizedDbViewingResultFollowUp) {
-      updateData.viewing_result_follow_up = normalizedSheetViewingResultFollowUp;
-      needsUpdate = true;
+      // スプシが空でDBに値がある場合はスキップ（DBの値を保護）
       if (normalizedSheetViewingResultFollowUp === null && normalizedDbViewingResultFollowUp !== null) {
-        Logger.log('  🗑️ ' + buyerNumber + ': 内覧結果・後続対応を削除 (旧値: ' + normalizedDbViewingResultFollowUp + ')');
+        Logger.log('  🛡️ ' + buyerNumber + ': 内覧結果・後続対応はDBに値があるためスキップ (DB値: ' + normalizedDbViewingResultFollowUp + ')');
+      } else {
+        updateData.viewing_result_follow_up = normalizedSheetViewingResultFollowUp;
+        needsUpdate = true;
       }
     }
 
@@ -407,10 +423,12 @@ function syncUpdatesToSupabase_(sheetRows) {
     var normalizedSheetThreeCallsConfirmed = normalizeValue(sheetThreeCallsConfirmed);
     var normalizedDbThreeCallsConfirmed = normalizeValue(dbBuyer.three_call_confirmed);
     if (normalizedSheetThreeCallsConfirmed !== normalizedDbThreeCallsConfirmed) {
-      updateData.three_call_confirmed = normalizedSheetThreeCallsConfirmed;
-      needsUpdate = true;
+      // スプシが空でDBに値がある場合はスキップ（DBの値を保護）
       if (normalizedSheetThreeCallsConfirmed === null && normalizedDbThreeCallsConfirmed !== null) {
-        Logger.log('  🗑️ ' + buyerNumber + ': 3回架電確認済みを削除 (旧値: ' + normalizedDbThreeCallsConfirmed + ')');
+        Logger.log('  🛡️ ' + buyerNumber + ': 3回架電確認済みはDBに値があるためスキップ (DB値: ' + normalizedDbThreeCallsConfirmed + ')');
+      } else {
+        updateData.three_call_confirmed = normalizedSheetThreeCallsConfirmed;
+        needsUpdate = true;
       }
     }
     
@@ -420,10 +438,12 @@ function syncUpdatesToSupabase_(sheetRows) {
     var normalizedSheetReceptionDate = normalizeValue(sheetReceptionDate);
     var normalizedDbReceptionDate = normalizeValue(dbReceptionDate);
     if (normalizedSheetReceptionDate !== normalizedDbReceptionDate) {
-      updateData.reception_date = normalizedSheetReceptionDate;
-      needsUpdate = true;
+      // スプシが空でDBに値がある場合はスキップ（DBの値を保護）
       if (normalizedSheetReceptionDate === null && normalizedDbReceptionDate !== null) {
-        Logger.log('  🗑️ ' + buyerNumber + ': 受付日を削除 (旧値: ' + normalizedDbReceptionDate + ')');
+        Logger.log('  🛡️ ' + buyerNumber + ': 受付日はDBに値があるためスキップ (DB値: ' + normalizedDbReceptionDate + ')');
+      } else {
+        updateData.reception_date = normalizedSheetReceptionDate;
+        needsUpdate = true;
       }
     }
     
@@ -432,10 +452,12 @@ function syncUpdatesToSupabase_(sheetRows) {
     var normalizedSheetDistributionType = normalizeValue(sheetDistributionType);
     var normalizedDbDistributionType = normalizeValue(dbBuyer.distribution_type);
     if (normalizedSheetDistributionType !== normalizedDbDistributionType) {
-      updateData.distribution_type = normalizedSheetDistributionType;
-      needsUpdate = true;
+      // スプシが空でDBに値がある場合はスキップ（DBの値を保護）
       if (normalizedSheetDistributionType === null && normalizedDbDistributionType !== null) {
-        Logger.log('  🗑️ ' + buyerNumber + ': 配信種別を削除 (旧値: ' + normalizedDbDistributionType + ')');
+        Logger.log('  🛡️ ' + buyerNumber + ': 配信種別はDBに値があるためスキップ (DB値: ' + normalizedDbDistributionType + ')');
+      } else {
+        updateData.distribution_type = normalizedSheetDistributionType;
+        needsUpdate = true;
       }
     }
     
@@ -444,10 +466,12 @@ function syncUpdatesToSupabase_(sheetRows) {
     var normalizedSheetDesiredArea = normalizeValue(sheetDesiredArea);
     var normalizedDbDesiredArea = normalizeValue(dbBuyer.desired_area);
     if (normalizedSheetDesiredArea !== normalizedDbDesiredArea) {
-      updateData.desired_area = normalizedSheetDesiredArea;
-      needsUpdate = true;
+      // スプシが空でDBに値がある場合はスキップ（DBの値を保護）
       if (normalizedSheetDesiredArea === null && normalizedDbDesiredArea !== null) {
-        Logger.log('  🗑️ ' + buyerNumber + ': エリアを削除 (旧値: ' + normalizedDbDesiredArea + ')');
+        Logger.log('  🛡️ ' + buyerNumber + ': エリアはDBに値があるためスキップ (DB値: ' + normalizedDbDesiredArea + ')');
+      } else {
+        updateData.desired_area = normalizedSheetDesiredArea;
+        needsUpdate = true;
       }
     }
     
@@ -583,10 +607,12 @@ function syncUpdatesToSupabase_(sheetRows) {
     var normalizedSheetLatestViewingDate = normalizeValue(sheetLatestViewingDate);
     var normalizedDbLatestViewingDate = normalizeValue(dbLatestViewingDate);
     if (normalizedSheetLatestViewingDate !== normalizedDbLatestViewingDate) {
-      updateData.latest_viewing_date = normalizedSheetLatestViewingDate;
-      needsUpdate = true;
+      // スプシが空でDBに値がある場合はスキップ（DBの値を保護）
       if (normalizedSheetLatestViewingDate === null && normalizedDbLatestViewingDate !== null) {
-        Logger.log('  🗑️ ' + buyerNumber + ': 最新内覧日を削除 (旧値: ' + normalizedDbLatestViewingDate + ')');
+        Logger.log('  🛡️ ' + buyerNumber + ': 最新内覧日はDBに値があるためスキップ (DB値: ' + normalizedDbLatestViewingDate + ')');
+      } else {
+        updateData.latest_viewing_date = normalizedSheetLatestViewingDate;
+        needsUpdate = true;
       }
     }
     
@@ -595,10 +621,12 @@ function syncUpdatesToSupabase_(sheetRows) {
     var normalizedSheetPostViewingSellerContact = normalizeValue(sheetPostViewingSellerContact);
     var normalizedDbPostViewingSellerContact = normalizeValue(dbBuyer.post_viewing_seller_contact);
     if (normalizedSheetPostViewingSellerContact !== normalizedDbPostViewingSellerContact) {
-      updateData.post_viewing_seller_contact = normalizedSheetPostViewingSellerContact;
-      needsUpdate = true;
+      // スプシが空でDBに値がある場合はスキップ（DBの値を保護）
       if (normalizedSheetPostViewingSellerContact === null && normalizedDbPostViewingSellerContact !== null) {
-        Logger.log('  🗑️ ' + buyerNumber + ': 内覧後売主連絡を削除 (旧値: ' + normalizedDbPostViewingSellerContact + ')');
+        Logger.log('  🛡️ ' + buyerNumber + ': 内覧後売主連絡はDBに値があるためスキップ (DB値: ' + normalizedDbPostViewingSellerContact + ')');
+      } else {
+        updateData.post_viewing_seller_contact = normalizedSheetPostViewingSellerContact;
+        needsUpdate = true;
       }
     }
     
@@ -607,10 +635,12 @@ function syncUpdatesToSupabase_(sheetRows) {
     var normalizedSheetViewingPromotionEmail = normalizeValue(sheetViewingPromotionEmail);
     var normalizedDbViewingPromotionEmail = normalizeValue(dbBuyer.viewing_promotion_email);
     if (normalizedSheetViewingPromotionEmail !== normalizedDbViewingPromotionEmail) {
-      updateData.viewing_promotion_email = normalizedSheetViewingPromotionEmail;
-      needsUpdate = true;
+      // スプシが空でDBに値がある場合はスキップ（DBの値を保護）
       if (normalizedSheetViewingPromotionEmail === null && normalizedDbViewingPromotionEmail !== null) {
-        Logger.log('  🗑️ ' + buyerNumber + ': 内覧促進メールを削除 (旧値: ' + normalizedDbViewingPromotionEmail + ')');
+        Logger.log('  🛡️ ' + buyerNumber + ': 内覧促進メールはDBに値があるためスキップ (DB値: ' + normalizedDbViewingPromotionEmail + ')');
+      } else {
+        updateData.viewing_promotion_email = normalizedSheetViewingPromotionEmail;
+        needsUpdate = true;
       }
     }
     
@@ -619,10 +649,12 @@ function syncUpdatesToSupabase_(sheetRows) {
     var normalizedSheetNotificationSender = normalizeValue(sheetNotificationSender);
     var normalizedDbNotificationSender = normalizeValue(dbBuyer.notification_sender);
     if (normalizedSheetNotificationSender !== normalizedDbNotificationSender) {
-      updateData.notification_sender = normalizedSheetNotificationSender;
-      needsUpdate = true;
+      // スプシが空でDBに値がある場合はスキップ（DBの値を保護）
       if (normalizedSheetNotificationSender === null && normalizedDbNotificationSender !== null) {
-        Logger.log('  🗑️ ' + buyerNumber + ': 通知送信者を削除 (旧値: ' + normalizedDbNotificationSender + ')');
+        Logger.log('  🛡️ ' + buyerNumber + ': 通知送信者はDBに値があるためスキップ (DB値: ' + normalizedDbNotificationSender + ')');
+      } else {
+        updateData.notification_sender = normalizedSheetNotificationSender;
+        needsUpdate = true;
       }
     }
     
@@ -631,10 +663,12 @@ function syncUpdatesToSupabase_(sheetRows) {
     var normalizedSheetPreViewingNotes = normalizeValue(sheetPreViewingNotes);
     var normalizedDbPreViewingNotes = normalizeValue(dbBuyer.pre_viewing_notes);
     if (normalizedSheetPreViewingNotes !== normalizedDbPreViewingNotes) {
-      updateData.pre_viewing_notes = normalizedSheetPreViewingNotes;
-      needsUpdate = true;
+      // スプシが空でDBに値がある場合はスキップ（DBの値を保護）
       if (normalizedSheetPreViewingNotes === null && normalizedDbPreViewingNotes !== null) {
-        Logger.log('  🗑️ ' + buyerNumber + ': 内覧前伝達事項を削除 (旧値: ' + normalizedDbPreViewingNotes + ')');
+        Logger.log('  🛡️ ' + buyerNumber + ': 内覧前伝達事項はDBに値があるためスキップ (DB値: ' + normalizedDbPreViewingNotes + ')');
+      } else {
+        updateData.pre_viewing_notes = normalizedSheetPreViewingNotes;
+        needsUpdate = true;
       }
     }
     
@@ -643,10 +677,12 @@ function syncUpdatesToSupabase_(sheetRows) {
     var normalizedSheetViewingNotes = normalizeValue(sheetViewingNotes);
     var normalizedDbViewingNotes = normalizeValue(dbBuyer.viewing_notes);
     if (normalizedSheetViewingNotes !== normalizedDbViewingNotes) {
-      updateData.viewing_notes = normalizedSheetViewingNotes;
-      needsUpdate = true;
+      // スプシが空でDBに値がある場合はスキップ（DBの値を保護）
       if (normalizedSheetViewingNotes === null && normalizedDbViewingNotes !== null) {
-        Logger.log('  🗑️ ' + buyerNumber + ': 内覧の時の伝達事項を削除 (旧値: ' + normalizedDbViewingNotes + ')');
+        Logger.log('  🛡️ ' + buyerNumber + ': 内覧の時の伝達事項はDBに値があるためスキップ (DB値: ' + normalizedDbViewingNotes + ')');
+      } else {
+        updateData.viewing_notes = normalizedSheetViewingNotes;
+        needsUpdate = true;
       }
     }
     
@@ -655,10 +691,12 @@ function syncUpdatesToSupabase_(sheetRows) {
     var normalizedSheetPreViewingHearing = normalizeValue(sheetPreViewingHearing);
     var normalizedDbPreViewingHearing = normalizeValue(dbBuyer.pre_viewing_hearing);
     if (normalizedSheetPreViewingHearing !== normalizedDbPreViewingHearing) {
-      updateData.pre_viewing_hearing = normalizedSheetPreViewingHearing;
-      needsUpdate = true;
+      // スプシが空でDBに値がある場合はスキップ（DBの値を保護）
       if (normalizedSheetPreViewingHearing === null && normalizedDbPreViewingHearing !== null) {
-        Logger.log('  🗑️ ' + buyerNumber + ': 内覧前ヒアリングを削除 (旧値: ' + normalizedDbPreViewingHearing + ')');
+        Logger.log('  🛡️ ' + buyerNumber + ': 内覧前ヒアリングはDBに値があるためスキップ (DB値: ' + normalizedDbPreViewingHearing + ')');
+      } else {
+        updateData.pre_viewing_hearing = normalizedSheetPreViewingHearing;
+        needsUpdate = true;
       }
     }
     
@@ -667,10 +705,12 @@ function syncUpdatesToSupabase_(sheetRows) {
     var normalizedSheetOfferComment = normalizeValue(sheetOfferComment);
     var normalizedDbOfferComment = normalizeValue(dbBuyer.offer_comment);
     if (normalizedSheetOfferComment !== normalizedDbOfferComment) {
-      updateData.offer_comment = normalizedSheetOfferComment;
-      needsUpdate = true;
+      // スプシが空でDBに値がある場合はスキップ（DBの値を保護）
       if (normalizedSheetOfferComment === null && normalizedDbOfferComment !== null) {
-        Logger.log('  🗑️ ' + buyerNumber + ': 買付コメント（任意）を削除 (旧値: ' + normalizedDbOfferComment + ')');
+        Logger.log('  🛡️ ' + buyerNumber + ': 買付コメント（任意）はDBに値があるためスキップ (DB値: ' + normalizedDbOfferComment + ')');
+      } else {
+        updateData.offer_comment = normalizedSheetOfferComment;
+        needsUpdate = true;
       }
     }
     
@@ -679,10 +719,12 @@ function syncUpdatesToSupabase_(sheetRows) {
     var normalizedSheetCompanyName = normalizeValue(sheetCompanyName);
     var normalizedDbCompanyName = normalizeValue(dbBuyer.company_name);
     if (normalizedSheetCompanyName !== normalizedDbCompanyName) {
-      updateData.company_name = normalizedSheetCompanyName;
-      needsUpdate = true;
+      // スプシが空でDBに値がある場合はスキップ（DBの値を保護）
       if (normalizedSheetCompanyName === null && normalizedDbCompanyName !== null) {
-        Logger.log('  🗑️ ' + buyerNumber + ': 法人名を削除 (旧値: ' + normalizedDbCompanyName + ')');
+        Logger.log('  🛡️ ' + buyerNumber + ': 法人名はDBに値があるためスキップ (DB値: ' + normalizedDbCompanyName + ')');
+      } else {
+        updateData.company_name = normalizedSheetCompanyName;
+        needsUpdate = true;
       }
     }
     
@@ -691,10 +733,12 @@ function syncUpdatesToSupabase_(sheetRows) {
     var normalizedSheetEmail = normalizeValue(sheetEmail);
     var normalizedDbEmail = normalizeValue(dbBuyer.email);
     if (normalizedSheetEmail !== normalizedDbEmail) {
-      updateData.email = normalizedSheetEmail;
-      needsUpdate = true;
+      // スプシが空でDBに値がある場合はスキップ（DBの値を保護）
       if (normalizedSheetEmail === null && normalizedDbEmail !== null) {
-        Logger.log('  🗑️ ' + buyerNumber + ': ●メアドを削除 (旧値: ' + normalizedDbEmail + ')');
+        Logger.log('  🛡️ ' + buyerNumber + ': ●メアドはDBに値があるためスキップ (DB値: ' + normalizedDbEmail + ')');
+      } else {
+        updateData.email = normalizedSheetEmail;
+        needsUpdate = true;
       }
     }
     
@@ -703,10 +747,12 @@ function syncUpdatesToSupabase_(sheetRows) {
     var normalizedSheetOtherCompanyProperty = normalizeValue(sheetOtherCompanyProperty);
     var normalizedDbOtherCompanyProperty = normalizeValue(dbBuyer.other_company_property);
     if (normalizedSheetOtherCompanyProperty !== normalizedDbOtherCompanyProperty) {
-      updateData.other_company_property = normalizedSheetOtherCompanyProperty;
-      needsUpdate = true;
+      // スプシが空でDBに値がある場合はスキップ（DBの値を保護）
       if (normalizedSheetOtherCompanyProperty === null && normalizedDbOtherCompanyProperty !== null) {
-        Logger.log('  🗑️ ' + buyerNumber + ': 他社物件を削除 (旧値: ' + normalizedDbOtherCompanyProperty + ')');
+        Logger.log('  🛡️ ' + buyerNumber + ': 他社物件はDBに値があるためスキップ (DB値: ' + normalizedDbOtherCompanyProperty + ')');
+      } else {
+        updateData.other_company_property = normalizedSheetOtherCompanyProperty;
+        needsUpdate = true;
       }
     }
     
@@ -715,10 +761,12 @@ function syncUpdatesToSupabase_(sheetRows) {
     var normalizedSheetBuildingNamePrice = normalizeValue(sheetBuildingNamePrice);
     var normalizedDbBuildingNamePrice = normalizeValue(dbBuyer.building_name_price);
     if (normalizedSheetBuildingNamePrice !== normalizedDbBuildingNamePrice) {
-      updateData.building_name_price = normalizedSheetBuildingNamePrice;
-      needsUpdate = true;
+      // スプシが空でDBに値がある場合はスキップ（DBの値を保護）
       if (normalizedSheetBuildingNamePrice === null && normalizedDbBuildingNamePrice !== null) {
-        Logger.log('  🗑️ ' + buyerNumber + ': 建物名/価格を削除 (旧値: ' + normalizedDbBuildingNamePrice + ')');
+        Logger.log('  🛡️ ' + buyerNumber + ': 建物名/価格はDBに値があるためスキップ (DB値: ' + normalizedDbBuildingNamePrice + ')');
+      } else {
+        updateData.building_name_price = normalizedSheetBuildingNamePrice;
+        needsUpdate = true;
       }
     }
     
