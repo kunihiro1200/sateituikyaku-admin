@@ -142,6 +142,8 @@ const corsOptions = {
     'https://sateituikyaku-admin-frontend.vercel.app',
     'https://property-site-frontend-kappa.vercel.app',
     'https://baikyaku-property-site3.vercel.app',
+    'https://oita-tateuri.com',
+    'https://www.oita-tateuri.com',
   ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
