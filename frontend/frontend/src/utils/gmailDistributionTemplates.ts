@@ -24,6 +24,8 @@ export const EMAIL_TEMPLATES: EmailTemplate[] = [
 その他の画像は{publicUrlLink}
 {propertyImages}
 その他の画像は{publicUrlLink}
+★新築建売専門サイトはこちら
+https://sateituikyaku-admin-frontend.vercel.app/tateuri
 
 お問合せが増えることが予想されますので、ご興味のある方はお早めにご連絡ください！
 
@@ -52,6 +54,8 @@ export const EMAIL_TEMPLATES: EmailTemplate[] = [
 その他の画像は{publicUrlLink}
 {propertyImages}
 その他の画像は{publicUrlLink}
+★新築建売専門サイトはこちら
+https://sateituikyaku-admin-frontend.vercel.app/tateuri
 
 詳細はお問い合わせください。
 
@@ -75,6 +79,8 @@ export const EMAIL_TEMPLATES: EmailTemplate[] = [
 その他の画像は{publicUrlLink}
 {propertyImages}
 その他の画像は{publicUrlLink}
+★新築建売専門サイトはこちら
+https://sateituikyaku-admin-frontend.vercel.app/tateuri
 
 詳細はお問い合わせください。
 
@@ -100,6 +106,8 @@ export const EMAIL_TEMPLATES: EmailTemplate[] = [
 その他の画像は{publicUrlLink}
 {propertyImages}
 その他の画像は{publicUrlLink}
+★新築建売専門サイトはこちら
+https://sateituikyaku-admin-frontend.vercel.app/tateuri
 
 内覧は可能ですので、こちらのメールに
 ■名前

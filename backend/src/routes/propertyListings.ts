@@ -779,10 +779,13 @@ router.post('/:propertyNumber/send-distribution-emails', authenticate, async (re
 
           // {propertyImages}と{publicUrlLink}を置換
           const rawHtmlBody = htmlBody ? htmlBody.replace(/\{buyerName\}/g, buyerName) : undefined;
+          const tateuriUrl = 'https://sateituikyaku-admin-frontend.vercel.app/tateuri';
+          const tateuriAnchor = `<a href="${tateuriUrl}" style="color:#1a73e8;font-weight:bold;">${tateuriUrl}</a>`;
           const personalizedHtmlBody = rawHtmlBody
             ? rawHtmlBody
                 .replace(/\{propertyImages\}/g, urlImgTags)
                 .replace(/\{publicUrlLink\}/g, publicUrlAnchor)
+                .replace(new RegExp(tateuriUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), tateuriAnchor)
             : undefined;
           const cleanContent = personalizedContent
             .replace(/\{propertyImages\}/g, '')
@@ -853,13 +856,23 @@ router.post('/:propertyNumber/send-distribution-emails', authenticate, async (re
           updated_at: new Date()
         };
 
+        const tateuriUrlNoAttach = 'https://sateituikyaku-admin-frontend.vercel.app/tateuri';
+        const tateuriAnchorNoAttach = `<a href="${tateuriUrlNoAttach}" style="color:#1a73e8;font-weight:bold;">${tateuriUrlNoAttach}</a>`;
+        const htmlBodyNoAttach = htmlBody
+          ? htmlBody
+              .replace(/\{buyerName\}/g, buyerName)
+              .replace(/\{propertyImages\}/g, '')
+              .replace(/\{publicUrlLink\}/g, 'こちら')
+              .replace(new RegExp(tateuriUrlNoAttach.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), tateuriAnchorNoAttach)
+          : undefined;
+
         return await emailService.sendTemplateEmail(
           dummySeller as any,
           personalizedSubject,
           personalizedContent.replace(/\{propertyImages\}/g, '').replace(/\{publicUrlLink\}/g, 'こちら'),
           from,
           req.employee?.id || 'system',
-          htmlBody ? htmlBody.replace(/\{buyerName\}/g, buyerName).replace(/\{propertyImages\}/g, '').replace(/\{publicUrlLink\}/g, 'こちら') : undefined,
+          htmlBodyNoAttach,
           from
         );
       })
