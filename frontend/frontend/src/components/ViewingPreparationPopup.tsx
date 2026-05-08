@@ -11,9 +11,11 @@ import {
   ListItemText,
   Box,
   Tooltip,
+  CircularProgress,
 } from '@mui/material';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import CheckIcon from '@mui/icons-material/Check';
+import PrintIcon from '@mui/icons-material/Print';
 import HouseMakerModal from './HouseMakerModal';
 import NearbyMapModal from './NearbyMapModal';
 
@@ -25,15 +27,12 @@ export interface ViewingPreparationPopupProps {
   houseMaker?: string | null | undefined;
   googleMapUrl?: string | null | undefined;
   address?: string | null | undefined;
+  buyer?: Record<string, any> | null;
+  linkedProperties?: Array<Record<string, any>>;
 }
 
-// 固定リンク定数
+// 固定リンク定数（ATBBのみ）
 const FIXED_LINKS = [
-  {
-    label: 'スプシの資料',
-    url: 'https://docs.google.com/spreadsheets/d/1M9uVzHWD2ipzoY5Om3h3a2-_uQa9D_UGhpB5U4_nyRc/edit?gid=195766785#gid=195766785',
-    description: undefined,
-  },
   {
     label: 'ATBB',
     url: 'https://atbb.athome.jp/',
@@ -106,11 +105,86 @@ export const ViewingPreparationPopup: React.FC<ViewingPreparationPopupProps> = (
   houseMaker,
   googleMapUrl,
   address,
+  buyer,
+  linkedProperties,
 }) => {
   const hasBuyerNumber = buyerNumber != null && buyerNumber !== '';
   const hasPropertyNumber = propertyNumber != null && propertyNumber !== '';
   const [houseMakerModalOpen, setHouseMakerModalOpen] = useState(false);
   const [nearbyMapModalOpen, setNearbyMapModalOpen] = useState(false);
+  const [printing1, setPrinting1] = useState(false);
+  const [printing2, setPrinting2] = useState(false);
+
+  function getTodayStr(): string {
+    const d = new Date();
+    return `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
+  }
+
+  // 内覧準備資料１（白黒）印刷
+  const handlePrint1 = () => {
+    if (!buyer || !linkedProperties || linkedProperties.length === 0) return;
+    setPrinting1(true);
+    import('../services/api').then(({ default: api }) => {
+      Promise.all(
+        linkedProperties.map((lp: Record<string, any>) =>
+          api.get(`/api/property-listings/${lp.property_number}`).then((r: any) => r.data)
+        )
+      ).then((propertyDetails) => {
+        import('../utils/printHtmlGenerators').then(({ generateAllPagesHtml }) => {
+          const html = generateAllPagesHtml(buyer, propertyDetails, getTodayStr());
+          const printWindow = window.open('', '_blank', 'width=794,height=1123,scrollbars=yes');
+          if (!printWindow) {
+            alert('ポップアップを許可してください（アドレスバー右側のアイコンをクリック）');
+            setPrinting1(false);
+            return;
+          }
+          printWindow.document.write(html);
+          printWindow.document.close();
+          let done = false;
+          const doPrint = () => {
+            if (done) return;
+            done = true;
+            setTimeout(() => {
+              printWindow.focus();
+              printWindow.print();
+              setTimeout(() => { printWindow.close(); setPrinting1(false); }, 500);
+            }, 800);
+          };
+          printWindow.onload = doPrint;
+          setTimeout(() => { if (!printWindow.closed) doPrint(); }, 2000);
+        });
+      }).catch(() => { setPrinting1(false); });
+    }).catch(() => { setPrinting1(false); });
+  };
+
+  // 内覧準備資料２（カラー）印刷
+  const handlePrint2 = () => {
+    if (!buyer) return;
+    setPrinting2(true);
+    import('../utils/printHtmlGenerators').then(({ generateViewingPrep2Html }) => {
+      const html = generateViewingPrep2Html(buyer, getTodayStr());
+      const printWindow = window.open('', '_blank', 'width=794,height=1123,scrollbars=yes');
+      if (!printWindow) {
+        alert('ポップアップを許可してください（アドレスバー右側のアイコンをクリック）');
+        setPrinting2(false);
+        return;
+      }
+      printWindow.document.write(html);
+      printWindow.document.close();
+      let done = false;
+      const doPrint = () => {
+        if (done) return;
+        done = true;
+        setTimeout(() => {
+          try { printWindow.focus(); printWindow.print(); } catch (_) { /* ignore */ }
+          setTimeout(() => { try { printWindow.close(); } catch (_) { /* ignore */ } setPrinting2(false); }, 1000);
+        }, 1200);
+      };
+      printWindow.onload = doPrint;
+      setTimeout(() => { if (!done) doPrint(); }, 5000);
+      setTimeout(() => { setPrinting2(false); }, 8000);
+    }).catch(() => { setPrinting2(false); });
+  };
 
   return (
     <>
@@ -155,6 +229,56 @@ export const ViewingPreparationPopup: React.FC<ViewingPreparationPopupProps> = (
 
         {/* リンク一覧（番号付きリスト） */}
         <List component="ol" sx={{ listStyleType: 'decimal', pl: 2 }}>
+          {/* 内覧準備資料（白黒） */}
+          <ListItem component="li" sx={{ display: 'list-item', py: 0.5 }}>
+            <ListItemText
+              primary={
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Typography component="span">内覧準備資料（白黒）：</Typography>
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    startIcon={printing1 ? <CircularProgress size={14} color="inherit" /> : <PrintIcon />}
+                    onClick={handlePrint1}
+                    disabled={printing1 || !buyer || !linkedProperties || linkedProperties.length === 0}
+                    sx={{
+                      borderColor: '#4caf50',
+                      color: '#2e7d32',
+                      fontSize: '0.75rem',
+                      '&:hover': { borderColor: '#2e7d32', bgcolor: '#f1f8e9' },
+                    }}
+                  >
+                    {printing1 ? '印刷中...' : '印刷'}
+                  </Button>
+                </Box>
+              }
+            />
+          </ListItem>
+          {/* 内覧準備資料（カラー） */}
+          <ListItem component="li" sx={{ display: 'list-item', py: 0.5 }}>
+            <ListItemText
+              primary={
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Typography component="span">内覧準備資料（カラー）：</Typography>
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    startIcon={printing2 ? <CircularProgress size={14} color="inherit" /> : <PrintIcon />}
+                    onClick={handlePrint2}
+                    disabled={printing2 || !buyer}
+                    sx={{
+                      borderColor: '#f5c518',
+                      color: '#b8860b',
+                      fontSize: '0.75rem',
+                      '&:hover': { borderColor: '#b8860b', bgcolor: '#fffde7' },
+                    }}
+                  >
+                    {printing2 ? '印刷中...' : '印刷'}
+                  </Button>
+                </Box>
+              }
+            />
+          </ListItem>
           {FIXED_LINKS.map((link, index) => (
             <ListItem
               key={index}

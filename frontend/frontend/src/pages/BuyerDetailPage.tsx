@@ -1515,6 +1515,8 @@ export default function BuyerDetailPage() {
             houseMaker={linkedProperties[0]?.house_maker}
             googleMapUrl={linkedProperties[0]?.google_map_url}
             address={linkedProperties[0]?.display_address || linkedProperties[0]?.address || ''}
+            buyer={buyer}
+            linkedProperties={linkedProperties}
           />
           {/* 近隣物件ボタン */}
           {linkedProperties.length > 0 && (
