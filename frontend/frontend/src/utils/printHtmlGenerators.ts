@@ -526,37 +526,31 @@ export function generateExtraPage1Html(base: string): string {
     <span style="font-size:11pt;font-weight:bold;">購入までの行程</span>
     <div style="margin-left:12px;background:#f0f0f0;border-radius:4px;padding:2px 10px;font-size:8pt;">物件探しはこちらから！</div>
   </div>
-  <!-- フロー表 -->
-  <table style="width:100%;border-collapse:collapse;margin-bottom:10px;">
-    <tr>
-      <td style="${cellV}background:${pink};width:32px;font-weight:bold;">購入の流れ</td>
-      <td style="${cellH}background:${pink};width:60px;">内覧</td>
-      <td style="${cellH}background:${pink};width:60px;">買付申込</td>
-      <td style="${cellH}background:${pink};width:80px;">契約・手付金</td>
-      <td style="${cellH}background:${pink};width:80px;">決済・引渡し</td>
-      <td style="${cellH}background:${pink};width:80px;">残金支払</td>
-    </tr>
-  </table>
-  <!-- 期間 -->
-  <table style="width:100%;border-collapse:collapse;margin-bottom:10px;">
-    <tr>
-      <td style="${cellH}font-weight:bold;width:60px;">例</td>
-      <td style="${cellH}width:100px;">約1〜2週間</td>
-      <td style="${cellH}width:80px;">約1週間</td>
-      <td style="${cellH}width:100px;">約3週間</td>
-      <td style="${cellH}width:120px;">約1〜2週間</td>
-      <td style="${cellH}width:60px;">▶</td>
-    </tr>
-  </table>
-  <!-- ローンの流れ -->
+  <!-- 統合フロー表（購入の流れ・例・ローンの流れ） -->
   <table style="width:100%;border-collapse:collapse;margin-bottom:14px;">
     <tr>
+      <td rowspan="1" style="${cellV}background:${pink};width:32px;font-weight:bold;">購入の流れ</td>
+      <td style="${cellH}background:${pink};">内覧</td>
+      <td style="${cellH}background:${pink};">買付申込</td>
+      <td style="${cellH}background:${pink};">契約・手付金</td>
+      <td style="${cellH}background:${pink};">決済・引渡し</td>
+      <td style="${cellH}background:${pink};">残金支払</td>
+    </tr>
+    <tr>
+      <td style="${cellH}font-weight:bold;">例</td>
+      <td style="${cellH}">約1〜2週間</td>
+      <td style="${cellH}">約1週間</td>
+      <td style="${cellH}">約3週間</td>
+      <td style="${cellH}">約1〜2週間</td>
+      <td style="${cellH}">▶</td>
+    </tr>
+    <tr>
       <td style="${cellV}background:${blue};width:32px;font-weight:bold;">ローンの流れ</td>
-      <td style="${cellH}background:${blue};width:60px;">仮審査申込</td>
-      <td style="${cellH}background:${blue};width:80px;">仮審査承認通知</td>
-      <td style="${cellH}background:${blue};width:80px;">本審査申込</td>
-      <td style="${cellH}background:${blue};width:80px;">本審査承認通知</td>
-      <td style="${cellH}background:${blue};width:60px;">融資実行</td>
+      <td style="${cellH}background:${blue};">仮審査申込</td>
+      <td style="${cellH}background:${blue};">仮審査承認通知</td>
+      <td style="${cellH}background:${blue};">本審査申込</td>
+      <td style="${cellH}background:${blue};">本審査承認通知</td>
+      <td style="${cellH}background:${blue};">融資実行</td>
     </tr>
   </table>
   <!-- 押さえておきたい税 -->
