@@ -3299,7 +3299,7 @@ export class EnhancedAutoSyncService {
     // 既存の買主を確認（deleted_at も取得して論理削除状態を判定）
     const { data: existingBuyer, error: checkError } = await this.supabase
       .from('buyers')
-      .select('buyer_id, deleted_at')
+      .select('buyer_id, deleted_at, property_number')
       .eq('buyer_number', buyerNumber)
       .maybeSingle();
 
@@ -3318,6 +3318,12 @@ export class EnhancedAutoSyncService {
       if (existingBuyer.deleted_at !== null) {
         updateData.deleted_at = null;
         console.log(`[syncSingleBuyer] 論理削除済み買主を復元: buyer_number=${buyerNumber}`);
+      }
+
+      // property_number 保護: DBに値があるのにスプレッドシートが空欄の場合は上書きしない
+      if (existingBuyer.property_number && !updateData.property_number) {
+        console.log(`[syncSingleBuyer] ${buyerNumber}: property_number is set in DB (${existingBuyer.property_number}) but empty in spreadsheet, skipping overwrite`);
+        delete updateData.property_number;
       }
 
       const { error: updateError } = await this.supabase
@@ -3366,7 +3372,7 @@ export class EnhancedAutoSyncService {
     // DBの現在値を取得して比較
     const { data: existingBuyer } = await this.supabase
       .from('buyers')
-      .select('db_updated_at, last_synced_at, desired_area')
+      .select('db_updated_at, last_synced_at, desired_area, property_number')
       .eq('buyer_number', buyerNumber)
       .maybeSingle();
 
@@ -3386,6 +3392,13 @@ export class EnhancedAutoSyncService {
             delete updateData[field];
           }
         }
+      }
+
+      // property_number 保護: DBに値があるのにスプレッドシートが空欄の場合は上書きしない
+      // （物件リストから買主登録した場合など、DBに正しい値が入っているケース）
+      if (existingBuyer.property_number && !updateData.property_number) {
+        console.log(`[updateSingleBuyer] ${buyerNumber}: property_number is set in DB (${existingBuyer.property_number}) but empty in spreadsheet, skipping overwrite`);
+        delete updateData.property_number;
       }
     }
 

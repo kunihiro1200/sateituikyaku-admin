@@ -530,6 +530,149 @@ router.post('/backfill-property-info', authenticateOrApiKey, async (req: Request
   }
 });
 
+// スプレッドシートの物件番号列を読み取り、DBでnullになっている買主を一括修復
+// POST /api/buyers/repair-property-numbers
+// スプシのE列（買主番号）とF列相当の「物件番号」列を突き合わせてDBを更新する
+router.post('/repair-property-numbers', authenticateOrApiKey, async (req: Request, res: Response) => {
+  try {
+    const dryRun = req.body?.dryRun === true || req.body?.dryRun === 'true';
+    console.log(`[POST /buyers/repair-property-numbers] START dryRun=${dryRun}`);
+
+    const { google } = await import('googleapis');
+    const pathMod = await import('path');
+    const spreadsheetId = process.env.GOOGLE_SHEETS_BUYER_SPREADSHEET_ID!;
+    const sheetName = process.env.GOOGLE_SHEETS_BUYER_SHEET_NAME || '買主リスト';
+
+    // Google認証（get-sheet-buyer-numbersと同じパターン）
+    const saJson = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
+    let authConfig: any;
+    if (saJson) {
+      try {
+        const creds = JSON.parse(saJson);
+        authConfig = { credentials: creds, scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'] };
+      } catch {
+        authConfig = { keyFile: pathMod.join(__dirname, '../../google-service-account.json'), scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'] };
+      }
+    } else {
+      authConfig = { keyFile: pathMod.join(__dirname, '../../google-service-account.json'), scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'] };
+    }
+    const auth = new google.auth.GoogleAuth(authConfig);
+    const sheets = google.sheets({ version: 'v4', auth });
+
+    // スプレッドシートのヘッダー行を取得して「物件番号」列のインデックスを特定
+    const headerResponse = await sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range: `'${sheetName}'!1:1`,
+    });
+    const headers: string[] = (headerResponse.data.values?.[0] || []).map((h: any) => String(h));
+
+    // E列（0-indexed: 4）が買主番号、「物件番号」列のインデックスを動的に取得
+    const buyerNumberColIdx = 4; // E列固定
+    const propertyNumberColIdx = headers.indexOf('物件番号');
+
+    if (propertyNumberColIdx === -1) {
+      return res.status(500).json({ success: false, error: 'スプレッドシートに「物件番号」列が見つかりません' });
+    }
+    console.log(`[repair-property-numbers] 物件番号列インデックス: ${propertyNumberColIdx} (${headers[propertyNumberColIdx]})`);
+
+    // 全データ行を取得
+    const dataResponse = await sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range: `'${sheetName}'!A2:GZ`,
+    });
+    const rows = dataResponse.data.values || [];
+    console.log(`[repair-property-numbers] スプレッドシート行数: ${rows.length}`);
+
+    // スプレッドシートから「買主番号 → 物件番号」マップを作成（物件番号が空でない行のみ）
+    const sheetPropertyMap: Record<string, string> = {};
+    for (const row of rows) {
+      const buyerNum = String(row[buyerNumberColIdx] || '').trim();
+      const propNum = String(row[propertyNumberColIdx] || '').trim();
+      if (buyerNum && /^\d+$/.test(buyerNum) && propNum) {
+        sheetPropertyMap[buyerNum] = propNum;
+      }
+    }
+    console.log(`[repair-property-numbers] スプシで物件番号あり: ${Object.keys(sheetPropertyMap).length}件`);
+
+    // DBでproperty_numberがnullまたは空の買主を全件取得
+    const supabase = (buyerService as any).supabase;
+    const { data: nullBuyers, error: dbError } = await supabase
+      .from('buyers')
+      .select('buyer_number, property_number')
+      .is('deleted_at', null)
+      .or('property_number.is.null,property_number.eq.');
+
+    if (dbError) {
+      throw new Error(`DB取得エラー: ${dbError.message}`);
+    }
+
+    console.log(`[repair-property-numbers] DBでproperty_numberがnull/空の買主: ${(nullBuyers || []).length}件`);
+
+    // 修復対象を特定（スプシに物件番号がある買主のみ）
+    const targets: Array<{ buyerNumber: string; propertyNumber: string }> = [];
+    for (const buyer of nullBuyers || []) {
+      const sheetPropNum = sheetPropertyMap[buyer.buyer_number];
+      if (sheetPropNum) {
+        targets.push({ buyerNumber: buyer.buyer_number, propertyNumber: sheetPropNum });
+      }
+    }
+
+    console.log(`[repair-property-numbers] 修復対象: ${targets.length}件`);
+
+    if (dryRun) {
+      return res.json({
+        success: true,
+        dryRun: true,
+        message: `ドライラン: ${targets.length}件が修復対象です`,
+        targets,
+        nullBuyersTotal: (nullBuyers || []).length,
+        sheetHasPropertyNumber: Object.keys(sheetPropertyMap).length,
+      });
+    }
+
+    // 一括修復
+    let repaired = 0;
+    let failed = 0;
+    const errors: Array<{ buyerNumber: string; error: string }> = [];
+
+    for (const target of targets) {
+      try {
+        const { error: updateError } = await supabase
+          .from('buyers')
+          .update({
+            property_number: target.propertyNumber,
+            db_updated_at: new Date().toISOString(),
+          })
+          .eq('buyer_number', target.buyerNumber);
+
+        if (updateError) {
+          throw new Error(updateError.message);
+        }
+        repaired++;
+        console.log(`[repair-property-numbers] ✓ ${target.buyerNumber} → ${target.propertyNumber}`);
+      } catch (err: any) {
+        failed++;
+        errors.push({ buyerNumber: target.buyerNumber, error: err.message });
+        console.error(`[repair-property-numbers] ✗ ${target.buyerNumber}: ${err.message}`);
+      }
+    }
+
+    console.log(`[repair-property-numbers] 完了: 修復=${repaired}, 失敗=${failed}`);
+    res.json({
+      success: true,
+      message: `${repaired}件の物件番号を修復しました`,
+      repaired,
+      failed,
+      nullBuyersTotal: (nullBuyers || []).length,
+      errors: errors.length > 0 ? errors : undefined,
+    });
+
+  } catch (error: any) {
+    console.error('[POST /buyers/repair-property-numbers] Error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // 半径検索用の買主取得（認証必須だが、router.use(authenticate)の前に定義）
 router.post('/radius-search', authenticate, async (req: Request, res: Response) => {
   try {
