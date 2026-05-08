@@ -872,6 +872,12 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
   const [tokiKodateDialog, setTokiKodateDialog] = useState(false);
   const [tokiKodateWriteLoading, setTokiKodateWriteLoading] = useState(false);
 
+  // 謄本（土地用）のstate
+  const [tokiTochiLoading, setTokiTochiLoading] = useState(false);
+  const [tokiTochiResult, setTokiTochiResult] = useState<any>(null);
+  const [tokiTochiDialog, setTokiTochiDialog] = useState(false);
+  const [tokiTochiWriteLoading, setTokiTochiWriteLoading] = useState(false);
+
   // ログインユーザーの営業フラグを取得
   useEffect(() => {
     if (open && employee) {
@@ -2332,6 +2338,79 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
       setSnackbar({ open: true, message: msg, severity: 'error' });
     } finally {
       setTokiKodateWriteLoading(false);
+    }
+  };
+
+  // 謄本（土地用）読み取りハンドラー（1枚ずつ処理・タイムアウト対策）
+  const handleTokiTochiExtract = async () => {
+    if (!propertyNumber) return;
+    setTokiTochiLoading(true);
+    try {
+      // Step1: PDF一覧を取得（高速・タイムアウトなし）
+      const listRes = await api.get(`/api/toki-extract/${propertyNumber}/list-tochi-pdfs`);
+      const { pdfList, sheetName, spreadsheetUrl } = listRes.data as {
+        pdfList: Array<{ fileId: string; fileName: string }>;
+        sheetName: string;
+        spreadsheetUrl: string;
+      };
+
+      // Step2: 1枚ずつ順番に解析してマージ
+      const allResults: any[] = [];
+      const fileNames: string[] = [];
+
+      for (let i = 0; i < pdfList.length; i++) {
+        const pdf = pdfList[i];
+        setSnackbar({ open: true, message: `謄本解析中... (${i + 1}/${pdfList.length}) ${pdf.fileName}`, severity: 'info' });
+        const singleRes = await api.post(`/api/toki-extract/${propertyNumber}/extract-tochi-single`, {
+          fileId: pdf.fileId,
+          fileName: pdf.fileName,
+        });
+        fileNames.push(pdf.fileName);
+        allResults.push(singleRes.data.extractResult);
+      }
+
+      if (allResults.length === 0) throw new Error('解析結果が取得できませんでした');
+
+      // Step3: 結果をマージ（最初のPDFを基準に土地情報を統合）
+      const baseResult = allResults[0];
+      const allLands: any[] = [];
+      for (const r of allResults) allLands.push(...(r.lands ?? []));
+
+      const mergedResult = {
+        ownerAddress: baseResult.ownerAddress,
+        ownerName: baseResult.ownerName,
+        coOwners: baseResult.coOwners,
+        lands: allLands,
+        isSharedOwnership: allResults.some((r: any) => r.isSharedOwnership),
+      };
+
+      setTokiTochiResult({ extractResult: mergedResult, sheetName, spreadsheetUrl, fileName: fileNames.join(', ') });
+      setTokiTochiDialog(true);
+    } catch (err: any) {
+      const msg = err?.response?.data?.error || '謄本の読み取りに失敗しました';
+      setSnackbar({ open: true, message: msg, severity: 'error' });
+    } finally {
+      setTokiTochiLoading(false);
+    }
+  };
+
+  const handleTokiTochiWrite = async () => {
+    if (!tokiTochiResult) return;
+    setTokiTochiWriteLoading(true);
+    try {
+      await api.post(`/api/toki-extract/${propertyNumber}/write-tochi`, {
+        extractResult: tokiTochiResult.extractResult,
+        sheetName: tokiTochiResult.sheetName,
+        spreadsheetUrl: tokiTochiResult.spreadsheetUrl,
+      });
+      setSnackbar({ open: true, message: `スプレッドシートへの書き込みが完了しました（シート：${tokiTochiResult.sheetName}）`, severity: 'success' });
+      setTokiTochiDialog(false);
+      setTokiTochiResult(null);
+    } catch (err: any) {
+      const msg = err?.response?.data?.error || 'スプレッドシートへの書き込みに失敗しました';
+      setSnackbar({ open: true, message: msg, severity: 'error' });
+    } finally {
+      setTokiTochiWriteLoading(false);
     }
   };
 
@@ -4169,6 +4248,19 @@ ${pageUrl}`;
                   {tokiKodateLoading ? '読取中...' : '📄 謄本'}
                 </Button>
               )}
+              {/* 謄本読み取りボタン: 媒介契約タブ かつ 種別が土・土地の場合のみ表示 */}
+              {tabIndex === 0 && ['土', '土地'].includes(getValue('property_type') || '') && (
+                <Button
+                  variant="contained"
+                  size="small"
+                  disabled={tokiTochiLoading}
+                  onClick={handleTokiTochiExtract}
+                  startIcon={tokiTochiLoading ? <CircularProgress size={12} color="inherit" /> : null}
+                  sx={{ whiteSpace: 'nowrap', fontWeight: 700, bgcolor: '#0277bd', '&:hover': { bgcolor: '#01579b' }, fontSize: '0.75rem', px: 1, py: 0.4, minWidth: 0 }}
+                >
+                  {tokiTochiLoading ? '読取中...' : '📄 謄本'}
+                </Button>
+              )}
               {(tabIndex === 2 || tabIndex === 3) && (
                 <Button variant="contained" size="small" disabled={!getValue('spreadsheet_url')}
                   onClick={() => { const url = getValue('spreadsheet_url'); if (url) window.open(buildLedgerSheetUrl(url), '_blank', 'noopener,noreferrer'); }}
@@ -4359,6 +4451,19 @@ ${pageUrl}`;
                     sx={{ whiteSpace: 'nowrap', fontWeight: 700, bgcolor: '#0277bd', '&:hover': { bgcolor: '#01579b' } }}
                   >
                     {tokiKodateLoading ? '読取中...' : '📄 謄本'}
+                  </Button>
+                )}
+                {/* 謄本読み取りボタン（モバイル）: 媒介契約タブ かつ 種別が土・土地の場合のみ表示 */}
+                {tabIndex === 0 && ['土', '土地'].includes(getValue('property_type') || '') && (
+                  <Button
+                    variant="contained"
+                    size="small"
+                    disabled={tokiTochiLoading}
+                    onClick={handleTokiTochiExtract}
+                    startIcon={tokiTochiLoading ? <CircularProgress size={12} color="inherit" /> : null}
+                    sx={{ whiteSpace: 'nowrap', fontWeight: 700, bgcolor: '#0277bd', '&:hover': { bgcolor: '#01579b' } }}
+                  >
+                    {tokiTochiLoading ? '読取中...' : '📄 謄本'}
                   </Button>
                 )}
                 {(tabIndex === 2 || tabIndex === 3) && (
@@ -4733,6 +4838,77 @@ ${pageUrl}`;
             startIcon={tokiKodateWriteLoading ? <CircularProgress size={16} color="inherit" /> : null}
           >
             {tokiKodateWriteLoading ? '書き込み中...' : 'スプシに反映する'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 謄本読み取り結果プレビューダイアログ（土地用） */}
+      <Dialog open={tokiTochiDialog} onClose={() => setTokiTochiDialog(false)} maxWidth="md" fullWidth>
+        <DialogTitle sx={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 1 }}>
+          📄 謄本読み取り結果の確認（土地）
+          <IconButton onClick={() => setTokiTochiDialog(false)} sx={{ ml: 'auto' }}>
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent dividers>
+          {tokiTochiResult && (
+            <Box>
+              <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block' }}>
+                ファイル：{tokiTochiResult.fileName}　／　書き込み先シート：{tokiTochiResult.sheetName}
+              </Typography>
+              {/* 所有者情報 */}
+              <Typography variant="caption" sx={{ fontWeight: 700, color: '#555', display: 'block', mt: 1, mb: 0.5 }}>所有者情報（甲区）</Typography>
+              <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1, mb: 1 }}>
+                {[
+                  { label: 'A84 所有者住所', value: tokiTochiResult.extractResult?.ownerAddress },
+                  { label: 'C84 所有者氏名', value: tokiTochiResult.extractResult?.ownerName },
+                  { label: 'B112 共有者情報', value: tokiTochiResult.extractResult?.coOwners },
+                  { label: 'F91 共有あり', value: tokiTochiResult.extractResult?.isSharedOwnership ? 'TRUE' : 'FALSE' },
+                ].map(({ label, value }) => (
+                  <Box key={label} sx={{ p: 1, bgcolor: value && value !== 'FALSE' ? '#f0f7ff' : '#f5f5f5', borderRadius: 1, border: '1px solid #e0e0e0' }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontWeight: 600 }}>{label}</Typography>
+                    <Typography variant="body2" sx={{ color: value && value !== 'FALSE' ? '#1a1a1a' : '#aaa' }}>
+                      {value ?? '（取得なし）'}
+                    </Typography>
+                  </Box>
+                ))}
+              </Box>
+              {/* 土地情報 */}
+              {tokiTochiResult.extractResult?.lands?.length > 0 && (
+                <Box sx={{ mt: 2 }}>
+                  <Typography variant="caption" sx={{ fontWeight: 700, color: '#555' }}>土地情報（A91〜）</Typography>
+                  {tokiTochiResult.extractResult.lands.map((land: any, i: number) => (
+                    <Box key={i} sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 0.5, mt: 0.5 }}>
+                      {[
+                        { label: `A${91 + i} 所在`, value: land.location },
+                        { label: `C${91 + i} 地番`, value: land.lotNumber },
+                        { label: `D${91 + i} 地目`, value: land.landType },
+                        { label: `E${91 + i} 地積`, value: land.area },
+                      ].map(({ label, value }) => (
+                        <Box key={label} sx={{ p: 0.75, bgcolor: value ? '#f0f7ff' : '#f5f5f5', borderRadius: 1, border: '1px solid #e0e0e0' }}>
+                          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontWeight: 600, fontSize: '0.7rem' }}>{label}</Typography>
+                          <Typography variant="body2" sx={{ color: value ? '#1a1a1a' : '#aaa', fontSize: '0.8rem' }}>
+                            {value ?? '（取得なし）'}
+                          </Typography>
+                        </Box>
+                      ))}
+                    </Box>
+                  ))}
+                </Box>
+              )}
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setTokiTochiDialog(false)} color="inherit">キャンセル</Button>
+          <Button
+            variant="contained"
+            color="primary"
+            disabled={tokiTochiWriteLoading}
+            onClick={handleTokiTochiWrite}
+            startIcon={tokiTochiWriteLoading ? <CircularProgress size={16} color="inherit" /> : null}
+          >
+            {tokiTochiWriteLoading ? '書き込み中...' : 'スプシに反映する'}
           </Button>
         </DialogActions>
       </Dialog>

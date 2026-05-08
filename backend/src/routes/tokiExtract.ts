@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { WorkTaskService } from '../services/WorkTaskService';
-import { TokiExtractService } from '../services/TokiExtractService';
+import { TokiExtractService, TokiTochiExtractResult } from '../services/TokiExtractService';
 
 const router = Router();
 const workTaskService = new WorkTaskService();
@@ -521,6 +521,100 @@ router.post('/:propertyNumber/write-kodate-keiyaku', async (req: Request, res: R
     });
   } catch (error: any) {
     console.error('[TokiKodateKeiyaku] 書き込みエラー:', error.message);
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * GET /api/toki-extract/:propertyNumber/list-tochi-pdfs
+ * 土地用：格納先フォルダのPDF一覧（fileId付き）を返す（高速・タイムアウトなし）
+ */
+router.get('/:propertyNumber/list-tochi-pdfs', async (req: Request, res: Response) => {
+  try {
+    const { propertyNumber } = req.params;
+
+    const workTask = await workTaskService.getByPropertyNumber(propertyNumber);
+    if (!workTask) {
+      return res.status(404).json({ error: '業務データが見つかりません', propertyNumber });
+    }
+
+    const storageUrl: string | null = workTask.storage_url ?? null;
+    const spreadsheetUrl: string | null = workTask.spreadsheet_url ?? null;
+    const propertyType: string | null = workTask.property_type ?? null;
+
+    if (!storageUrl) return res.status(400).json({ error: '格納先URLが設定されていません' });
+    if (!spreadsheetUrl) return res.status(400).json({ error: 'スプシURLが設定されていません' });
+    if (!propertyType) return res.status(400).json({ error: '種別が設定されていません' });
+
+    const isTochi = ['土', '土地'].includes(propertyType);
+    if (!isTochi) return res.status(400).json({ error: 'この機能は土地（種別：土）のみ対応しています' });
+
+    const sheetName = tokiExtractService.getSheetName('', propertyType);
+    if (!sheetName) return res.status(400).json({ error: '対応するシートが見つかりません' });
+
+    // PDF一覧のみ返す（ダウンロード・解析はしない）
+    const pdfList = await tokiExtractService.listTokiPdfsForTochi(storageUrl);
+
+    if (pdfList.length === 0) {
+      return res.status(404).json({ error: '格納先フォルダに「全部事項」を含むPDFが見つかりませんでした' });
+    }
+
+    return res.json({ success: true, pdfList, sheetName, spreadsheetUrl });
+  } catch (error: any) {
+    console.error('[TokiTochi] PDF一覧取得エラー:', error.message);
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * POST /api/toki-extract/:propertyNumber/extract-tochi-single
+ * 土地用：fileIdを受け取り、1枚のPDFだけを解析して返す（タイムアウト対策）
+ */
+router.post('/:propertyNumber/extract-tochi-single', async (req: Request, res: Response) => {
+  try {
+    const { propertyNumber } = req.params;
+    const { fileId, fileName } = req.body;
+
+    if (!fileId || !fileName) {
+      return res.status(400).json({ error: 'fileId・fileName は必須です' });
+    }
+
+    console.log(`[TokiTochi] 1枚解析開始: ${fileName}`);
+    const extractResult = await tokiExtractService.extractSingleTokiPdfForTochi(fileId, fileName);
+
+    return res.json({ success: true, fileName, extractResult });
+  } catch (error: any) {
+    console.error('[TokiTochi] 1枚解析エラー:', error.message);
+    if (error?.status === 429 || error?.error?.type === 'rate_limit_error') {
+      return res.status(429).json({ error: 'APIのレート制限に達しました。しばらく待ってから再試行してください。' });
+    }
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * POST /api/toki-extract/:propertyNumber/write-tochi
+ * 土地用：抽出結果をスプレッドシートの指定セルに書き込む
+ */
+router.post('/:propertyNumber/write-tochi', async (req: Request, res: Response) => {
+  try {
+    const { propertyNumber } = req.params;
+    const { extractResult, sheetName, spreadsheetUrl } = req.body;
+
+    if (!extractResult || !sheetName || !spreadsheetUrl) {
+      return res.status(400).json({ error: 'extractResult・sheetName・spreadsheetUrl は必須です' });
+    }
+
+    console.log(`[TokiTochi] スプシ書き込み開始: ${propertyNumber} → シート「${sheetName}」`);
+
+    await tokiExtractService.writeToSpreadsheetForTochi({ spreadsheetUrl, sheetName, extractResult });
+
+    return res.json({
+      success: true,
+      message: `スプレッドシートへの書き込みが完了しました（シート：${sheetName}）`,
+    });
+  } catch (error: any) {
+    console.error('[TokiTochi] 書き込みエラー:', error.message);
     return res.status(500).json({ error: error.message });
   }
 });

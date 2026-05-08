@@ -211,6 +211,35 @@ export interface TokiKodateKeiyakuWriteRequest {
 }
 
 // -------------------------------------------------------
+// 土地用の型定義（媒介契約タブ）
+// -------------------------------------------------------
+
+export interface TokiTochiExtractResult {
+  // 所有者情報（甲区）
+  ownerAddress: string | null;       // A84（住所）
+  ownerName: string | null;          // C84（氏名）
+  coOwners: string | null;           // B112（2人目以降の共有者情報）
+
+  // 土地情報（表題部：土地）複数対応
+  lands: Array<{
+    location: string | null;         // A91以降（所在）
+    lotNumber: string | null;        // C91以降（地番）
+    landType: string | null;         // D91以降（地目）
+    area: string | null;             // E91以降（地積）
+    areaNumeric: number | null;      // ソート用（書き込みには使わない）
+  }>;
+
+  // 共有チェック
+  isSharedOwnership: boolean;        // F91（共有チェック）
+}
+
+export interface TokiTochiWriteRequest {
+  spreadsheetUrl: string;
+  sheetName: string;
+  extractResult: TokiTochiExtractResult;
+}
+
+// -------------------------------------------------------
 // 謄本解析サービス
 // -------------------------------------------------------
 
@@ -570,6 +599,8 @@ export class TokiExtractService {
       propertyType === 'マ' || propertyType === 'マンション';
     const isKodate =
       propertyType === '戸' || propertyType === '戸建' || propertyType === '戸建て';
+    const isTochi =
+      propertyType === '土' || propertyType === '土地';
 
     if (isManshon) {
       // 媒介形態に関わらず常に専任媒介シートを使用
@@ -579,6 +610,11 @@ export class TokiExtractService {
     if (isKodate) {
       // 戸建て用シート（マンションと同じシート名）
       return '専任媒介契建物（売却)';
+    }
+
+    if (isTochi) {
+      // 土地用シート
+      return '専任媒介契土地（売却)';
     }
 
     return null;
@@ -1821,6 +1857,238 @@ export class TokiExtractService {
     }
 
     console.log('[TokiKodateKeiyaku] スプレッドシートへの書き込み完了');
+  }
+
+  // -------------------------------------------------------
+  // 土地用メソッド（媒介契約タブ）
+  // -------------------------------------------------------
+
+  /**
+   * 土地用：格納先フォルダのPDF一覧（fileId付き）を返す（高速・タイムアウトなし）
+   */
+  async listTokiPdfsForTochi(storageFolderUrl: string): Promise<Array<{
+    fileId: string;
+    fileName: string;
+  }>> {
+    const folderId = this.extractFolderIdFromUrl(storageFolderUrl);
+    if (!folderId) return [];
+
+    const files = await this.driveService.listFiles(folderId);
+    const pdfFiles = files.filter(
+      (f) => f.mimeType === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf')
+    );
+
+    // 「全部事項」を含むPDFを対象とする
+    const tochiFiles = pdfFiles.filter((f) => f.name.includes('全部事項') || f.name.includes('全部謄本'));
+
+    return tochiFiles.map((f) => ({ fileId: f.id, fileName: f.name }));
+  }
+
+  /**
+   * 土地用：fileIdを受け取り1枚のPDFを解析して返す
+   */
+  async extractSingleTokiPdfForTochi(fileId: string, fileName: string): Promise<TokiTochiExtractResult> {
+    const fileData = await this.driveService.getFile(fileId);
+    if (!fileData) throw new Error(`PDFの取得に失敗しました: ${fileName}`);
+    const base64 = fileData.data.toString('base64');
+    return this.extractFromPdfForTochi(base64);
+  }
+
+  /**
+   * 土地用：謄本PDFから媒介契約シート向けの情報を抽出する
+   */
+  async extractFromPdfForTochi(pdfBase64: string): Promise<TokiTochiExtractResult> {
+    const apiKey = process.env.ANTHROPIC_API_KEY;
+    if (!apiKey) {
+      throw new Error('ANTHROPIC_API_KEY が設定されていません');
+    }
+
+    const client = new Anthropic({ apiKey });
+
+    const prompt = `あなたは不動産登記簿謄本の専門家です。
+添付された登記簿謄本（全部事項証明書）のPDFを読み取り、以下の情報をJSONで返してください。
+
+【共通ルール】
+- 全角スペース・半角スペース・改行の揺れを吸収して読み取ること
+- 下線が引かれている情報は抹消事項として除外すること（抹消された登記は無視する）
+- 抽出できない場合は null を返すこと
+- 面積・地積の「：」は小数点「.」に変換すること（例：１６１５：６７ → 1615.67）
+- 全角数字は半角数字に変換すること
+- 推測せず、読み取れない場合は必ず null にすること
+
+【所有者情報（権利部（甲区）（所有権に関する事項）から取得）】
+- 「登記の目的」が「所有権保存」または「所有権移転」の行を対象とする
+- 移転が複数回ある場合は最新（最後）の所有者を取得する
+- 下線あり（抹消）の行は除外する
+- 「権利者その他の事項」欄から住所・氏名を取得する
+- 「共有者」と書かれている場合は1番目の共有者の情報のみ owner_address・owner_name に入れる
+- 2番目以降の共有者は co_owners にまとめて出力する（氏名・住所・持分を改行区切りで）
+- 共有者がいない場合は co_owners は null
+
+【土地情報（表題部（土地の表示）から取得）】
+- 「① 所在」欄から所在を取得 → location
+- 「① 地番」欄から地番を取得 → lot_number
+- 「② 地目」欄から地目を取得 → land_type
+- 「④ 地積 ㎡」欄から地積を取得（「：」→「.」変換） → area
+- 下線あり（抹消）の行は除外する
+- 土地が複数行ある場合はlandsの配列に順番に格納する
+
+【共有チェック（甲区のみ対象）】
+以下の条件をすべて満たす場合のみ is_shared_ownership を true にする：
+- 甲区に所有者が複数存在する
+- 各所有者に持分割合（例：1/2、1/3）が記載されている
+※ 協同担保目録などは対象外
+
+【出力形式】
+必ず以下のJSON形式のみで応答してください（説明文・コードブロック記号は不要）：
+
+{
+  "owner_address": null,
+  "owner_name": null,
+  "co_owners": null,
+  "lands": [
+    {
+      "location": null,
+      "lot_number": null,
+      "land_type": null,
+      "area": null
+    }
+  ],
+  "is_shared_ownership": false
+}`;
+
+    const response = await client.messages.create({
+      model: 'claude-opus-4-5',
+      max_tokens: 4096,
+      messages: [
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'document',
+              source: {
+                type: 'base64',
+                media_type: 'application/pdf',
+                data: pdfBase64,
+              },
+            } as any,
+            {
+              type: 'text',
+              text: prompt,
+            },
+          ],
+        },
+      ],
+    });
+
+    const responseText =
+      response.content[0].type === 'text' ? response.content[0].text.trim() : '';
+
+    console.log('[TokiTochi] Claude response (first 500):', responseText.substring(0, 500));
+
+    // JSONを抽出（コードブロックあり・なし両対応）
+    const jsonBlockMatch = responseText.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+    const jsonRawMatch = responseText.match(/\{[\s\S]*\}/);
+    const jsonStr = jsonBlockMatch?.[1] ?? jsonRawMatch?.[0] ?? null;
+
+    if (!jsonStr) {
+      throw new Error('Claude APIからJSONを取得できませんでした');
+    }
+
+    let raw: any;
+    try {
+      raw = JSON.parse(jsonStr);
+    } catch (e) {
+      throw new Error(`JSONパースエラー: ${jsonStr.substring(0, 200)}`);
+    }
+
+    const lands = Array.isArray(raw.lands)
+      ? raw.lands.map((l: any) => {
+          const normalizedArea = normalizeNumericString(l.area);
+          return {
+            location: l.location ?? null,
+            lotNumber: l.lot_number ?? null,
+            landType: l.land_type ?? null,
+            area: normalizedArea,
+            areaNumeric: normalizedArea !== null ? Number(normalizedArea) : null,
+          };
+        })
+      : [];
+
+    return {
+      ownerAddress: raw.owner_address ?? null,
+      ownerName: raw.owner_name ?? null,
+      coOwners: raw.co_owners ?? null,
+      lands,
+      isSharedOwnership: raw.is_shared_ownership === true,
+    };
+  }
+
+  /**
+   * 土地用：抽出結果をスプレッドシートの指定セルに書き込む
+   * シート：専任媒介契土地（売却)
+   */
+  async writeToSpreadsheetForTochi(req: TokiTochiWriteRequest): Promise<void> {
+    const { spreadsheetUrl, sheetName, extractResult } = req;
+
+    const spreadsheetId = this.extractSpreadsheetId(spreadsheetUrl);
+    if (!spreadsheetId) {
+      throw new Error(`スプレッドシートIDの抽出に失敗しました: ${spreadsheetUrl}`);
+    }
+
+    const sheetsClient = new GoogleSheetsClient({
+      spreadsheetId,
+      sheetName,
+      serviceAccountKeyPath:
+        process.env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH || './google-service-account.json',
+    });
+
+    await sheetsClient.authenticate();
+
+    const writes: Array<{ cell: string; value: string }> = [];
+
+    const add = (cell: string, value: string | null | boolean) => {
+      if (value !== null && value !== undefined) {
+        if (typeof value === 'boolean') {
+          writes.push({ cell, value: value ? 'TRUE' : 'FALSE' });
+        } else {
+          writes.push({ cell, value: String(value) });
+        }
+      }
+    };
+
+    // 所有者情報（甲区）
+    add('A84', extractResult.ownerAddress);
+    add('C84', extractResult.ownerName);
+    add('B112', extractResult.coOwners);
+
+    // 土地情報（複数行対応：91行目から下方向）
+    extractResult.lands.forEach((land, index) => {
+      const row = 91 + index;
+      add(`A${row}`, land.location);
+      // 地番：全角数字・全角スペースを半角に統一
+      const normalizedLotNumber = land.lotNumber
+        ? land.lotNumber
+            .replace(/[０-９]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xFEE0))
+            .replace(/　/g, ' ')
+            .trim()
+        : null;
+      add(`C${row}`, normalizedLotNumber);
+      add(`D${row}`, land.landType);
+      add(`E${row}`, land.area);
+    });
+
+    // 共有チェック（F91）
+    add('F91', extractResult.isSharedOwnership);
+
+    console.log(`[TokiTochi] スプレッドシートへの書き込み開始: ${writes.length}セル`);
+
+    for (const w of writes) {
+      await sheetsClient.writeRawCell(w.cell, w.value);
+      console.log(`[TokiTochi] 書き込み完了: ${w.cell} = ${w.value}`);
+    }
+
+    console.log('[TokiTochi] スプレッドシートへの書き込み完了');
   }
 
   // -------------------------------------------------------
