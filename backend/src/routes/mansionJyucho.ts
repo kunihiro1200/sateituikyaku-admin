@@ -15,6 +15,15 @@ function extractSpreadsheetId(url: string): string | null {
   return match ? match[1] : null;
 }
 
+/**
+ * GET /api/mansion-jyucho/debug-cells
+ * 現在のセルマッピングを返す（デバッグ用）
+ */
+router.get('/debug-cells', (_req: Request, res: Response) => {
+  const cells = JYUCHO_ITEMS.filter((i) => i.cell).map((i) => ({ key: i.key, label: i.label, cell: i.cell }));
+  return res.json({ success: true, cells });
+});
+
 // 重調（重要事項説明書）の抽出項目定義
 // 重説シートのセルマッピング付き
 //
@@ -371,6 +380,15 @@ router.get('/:propertyNumber', async (req: Request, res: Response) => {
   } catch (error: any) {
     return res.status(500).json({ error: error.message });
   }
+});
+
+/**
+ * GET /api/mansion-jyucho/debug-cells
+ * 現在のセルマッピングを返す（デバッグ用）
+ */
+router.get('/debug-cells', (_req: Request, res: Response) => {
+  const cells = JYUCHO_ITEMS.filter((i) => i.cell).map((i) => ({ key: i.key, label: i.label, cell: i.cell }));
+  return res.json({ success: true, cells });
 });
 
 export default router;
