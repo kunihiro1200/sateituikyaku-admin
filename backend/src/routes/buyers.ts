@@ -1358,6 +1358,37 @@ router.post('/scrape-property', authenticate, async (req: Request, res: Response
   }
 });
 
+// スクレイピングサーバーのヘルスチェック（Vercel Cron Job用）
+// 定期的にpingして、サーバーが落ちていたら自動復旧を促す
+router.get('/cron/scrape-server-ping', async (req: Request, res: Response) => {
+  try {
+    const scrapeApiUrl = process.env.SCRAPE_API_URL || 'https://sateituikyaku-scrape-server-production.up.railway.app';
+    const start = Date.now();
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 25000); // 25秒タイムアウト
+
+    try {
+      const pingRes = await fetch(`${scrapeApiUrl}/health`, {
+        method: 'GET',
+        signal: controller.signal,
+      });
+      clearTimeout(timeout);
+      const elapsed = Date.now() - start;
+      console.log(`[scrape-server-ping] status=${pingRes.status}, elapsed=${elapsed}ms`);
+      return res.json({ success: true, status: pingRes.status, elapsed });
+    } catch (fetchErr: any) {
+      clearTimeout(timeout);
+      const elapsed = Date.now() - start;
+      console.error(`[scrape-server-ping] failed: ${fetchErr.message}, elapsed=${elapsed}ms`);
+      return res.json({ success: false, error: fetchErr.message, elapsed });
+    }
+  } catch (err: any) {
+    console.error('[scrape-server-ping] error:', err.message);
+    return res.status(500).json({ error: err.message });
+  }
+});
+
 // ===== 汎用ルート（最後に定義する必要がある） =====
 
 // 気づき（viewing_insight）が入力されている全買主を取得
