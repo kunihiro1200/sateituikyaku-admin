@@ -2691,14 +2691,16 @@ TEL：097-533-2022`;
                         return null;
                       }
                       const INQUIRY_EMAIL_PHONE_BTNS = ['済', '未', '不通', '電話番号なし', '不要'];
+                      const isEmailPhoneUnsaved = sectionChangedFields[section.title]?.['inquiry_email_phone'] !== undefined;
                       return (
                         <Grid item xs={12} key={`${section.title}-${field.key}`}>
                           <Box sx={{
                             display: 'flex', alignItems: 'center', gap: 1,
-                            border: missingRequiredFields.has('inquiry_email_phone') ? '2px solid #f44336' : 'none',
-                            borderRadius: missingRequiredFields.has('inquiry_email_phone') ? 1 : 0,
-                            p: missingRequiredFields.has('inquiry_email_phone') ? 0.5 : 0,
-                            bgcolor: missingRequiredFields.has('inquiry_email_phone') ? 'rgba(244,67,54,0.05)' : 'transparent',
+                            border: missingRequiredFields.has('inquiry_email_phone') ? '2px solid #f44336' : isEmailPhoneUnsaved ? '2px solid #ff6d00' : 'none',
+                            borderRadius: (missingRequiredFields.has('inquiry_email_phone') || isEmailPhoneUnsaved) ? 1 : 0,
+                            p: (missingRequiredFields.has('inquiry_email_phone') || isEmailPhoneUnsaved) ? 0.5 : 0,
+                            bgcolor: missingRequiredFields.has('inquiry_email_phone') ? 'rgba(244,67,54,0.05)' : isEmailPhoneUnsaved ? 'rgba(255,109,0,0.05)' : 'transparent',
+                            ...(isEmailPhoneUnsaved && !missingRequiredFields.has('inquiry_email_phone') && { boxShadow: '0 0 6px rgba(255,109,0,0.4)' }),
                           }}>
                             <Typography variant="caption" color={missingRequiredFields.has('inquiry_email_phone') ? 'error' : 'text.secondary'} sx={{ whiteSpace: 'nowrap', flexShrink: 0, fontWeight: missingRequiredFields.has('inquiry_email_phone') ? 'bold' : 'normal' }}>
                               {field.label}{missingRequiredFields.has('inquiry_email_phone') ? ' *' : ''}
@@ -2744,14 +2746,16 @@ TEL：097-533-2022`;
                     // inquiry_email_replyフィールドは特別処理（ボタン選択 + 即時保存）
                     if (field.key === 'inquiry_email_reply') {
                       const INQUIRY_EMAIL_REPLY_BTNS = ['済', '未', '不要'];
+                      const isEmailReplyUnsaved = sectionChangedFields[section.title]?.['inquiry_email_reply'] !== undefined;
                       return (
                         <Grid item xs={12} key={`${section.title}-${field.key}`}>
                           <Box sx={{
                             display: 'flex', alignItems: 'center', gap: 1,
-                            border: missingRequiredFields.has('inquiry_email_reply') ? '2px solid #f44336' : 'none',
-                            borderRadius: missingRequiredFields.has('inquiry_email_reply') ? 1 : 0,
-                            p: missingRequiredFields.has('inquiry_email_reply') ? 0.5 : 0,
-                            bgcolor: missingRequiredFields.has('inquiry_email_reply') ? 'rgba(244,67,54,0.05)' : 'transparent',
+                            border: missingRequiredFields.has('inquiry_email_reply') ? '2px solid #f44336' : isEmailReplyUnsaved ? '2px solid #ff6d00' : 'none',
+                            borderRadius: (missingRequiredFields.has('inquiry_email_reply') || isEmailReplyUnsaved) ? 1 : 0,
+                            p: (missingRequiredFields.has('inquiry_email_reply') || isEmailReplyUnsaved) ? 0.5 : 0,
+                            bgcolor: missingRequiredFields.has('inquiry_email_reply') ? 'rgba(244,67,54,0.05)' : isEmailReplyUnsaved ? 'rgba(255,109,0,0.05)' : 'transparent',
+                            ...(isEmailReplyUnsaved && !missingRequiredFields.has('inquiry_email_reply') && { boxShadow: '0 0 6px rgba(255,109,0,0.4)' }),
                           }}>
                             <Typography variant="caption" color={missingRequiredFields.has('inquiry_email_reply') ? 'error' : 'text.secondary'} sx={{ whiteSpace: 'nowrap', flexShrink: 0, fontWeight: missingRequiredFields.has('inquiry_email_reply') ? 'bold' : 'normal' }}>
                               {field.label}{missingRequiredFields.has('inquiry_email_reply') ? ' *' : ''}
@@ -2797,6 +2801,7 @@ TEL：097-533-2022`;
                     // distribution_typeフィールドは特別処理（必須・ボタン選択UI）
                     if (field.key === 'distribution_type') {
                       const isDistributionMissing = missingRequiredFields.has('distribution_type');
+                      const isDistributionUnsaved = sectionChangedFields[section.title]?.['distribution_type'] !== undefined;
                       return (
                         <Grid item xs={12} sm={6} key={`${section.title}-${field.key}`}>
                           {isDistributionMissing && (
@@ -2804,7 +2809,16 @@ TEL：097-533-2022`;
                               ⚠ 配信メール（必須）
                             </Typography>
                           )}
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Box sx={{
+                            display: 'flex', alignItems: 'center', gap: 1,
+                            ...(isDistributionUnsaved && !isDistributionMissing && {
+                              border: '2px solid #ff6d00',
+                              borderRadius: 1,
+                              p: 0.5,
+                              bgcolor: 'rgba(255,109,0,0.05)',
+                              boxShadow: '0 0 6px rgba(255,109,0,0.4)',
+                            }),
+                          }}>
                             <Typography variant="caption" color={isDistributionMissing ? 'error' : 'text.secondary'} sx={{ whiteSpace: 'nowrap', flexShrink: 0, fontWeight: isDistributionMissing ? 'bold' : 'normal' }}>
                               {field.label}{isDistributionMissing ? ' *' : ''}
                             </Typography>
@@ -2862,9 +2876,13 @@ TEL：097-533-2022`;
                         '2件目以降',
                         '受信エラー',
                       ];
+                      const isPinrichUnsaved = sectionChangedFields[section.title]?.['pinrich'] !== undefined || sectionChangedFields[section.title]?.['pinrich_500man_registration'] !== undefined;
                       return (
                         <Grid item xs={12} key={`${section.title}-${field.key}`}>
-                          <Box sx={{ backgroundColor: '#e3f2fd', borderRadius: 1, p: 1.5, border: '1px solid #90caf9' }}>
+                          <Box sx={{
+                            backgroundColor: '#e3f2fd', borderRadius: 1, p: 1.5, border: isPinrichUnsaved ? '2px solid #ff6d00' : '1px solid #90caf9',
+                            ...(isPinrichUnsaved && { boxShadow: '0 0 6px rgba(255,109,0,0.4)' }),
+                          }}>
                             <Grid container spacing={1}>
                               {/* Pinrichドロップダウン */}
                               <Grid item xs={12} sm={6}>
@@ -2964,15 +2982,27 @@ TEL：097-533-2022`;
                     // vendor_surveyフィールドは特別処理（値がある場合のみ表示、「未」のときはオレンジ強調）
                     if (field.key === 'vendor_survey') {
                       // 値がない場合は非表示（スプシに入力があった場合のみ表示）
+                      // ただし未保存の変更がある場合は表示を維持する
+                      const vendorSurveyChanged = sectionChangedFields[section.title]?.['vendor_survey'] !== undefined;
                       if (!buyer?.vendor_survey || !String(buyer.vendor_survey).trim()) {
-                        return null;
+                        if (!vendorSurveyChanged) return null;
                       }
                       const VENDOR_SURVEY_BTNS = ['確認済み', '未'];
                       const isUmi = buyer?.vendor_survey === '未';
+                      const isVendorSurveyUnsaved = vendorSurveyChanged;
                       return (
                         <Grid item xs={12} key={`${section.title}-${field.key}`}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <Typography variant="caption" sx={{ whiteSpace: 'nowrap', flexShrink: 0, fontWeight: 'bold', color: isUmi ? 'warning.main' : 'text.secondary' }}>
+                          <Box sx={{
+                            display: 'flex', alignItems: 'center', gap: 1,
+                            ...(isVendorSurveyUnsaved && {
+                              border: '2px solid #ff6d00',
+                              borderRadius: 1,
+                              p: 0.5,
+                              bgcolor: 'rgba(255,109,0,0.05)',
+                              boxShadow: '0 0 6px rgba(255,109,0,0.4)',
+                            }),
+                          }}>
+                            <Typography variant="caption" sx={{ whiteSpace: 'nowrap', flexShrink: 0, fontWeight: 'bold', color: isUmi ? 'warning.main' : (isVendorSurveyUnsaved ? '#ff6d00' : 'text.secondary') }}>
                               {field.label}
                             </Typography>
                             <Box sx={{ display: 'flex', gap: 0.5, flex: 1 }}>
@@ -3061,14 +3091,16 @@ TEL：097-533-2022`;
                       }
                       const THREE_CALLS_BTNS = ['3回架電OK', '3回架電未', '他'];
                       const isThreeCallsMissing = missingRequiredFields.has('three_calls_confirmed');
+                      const isThreeCallsUnsaved = sectionChangedFields[section.title]?.['three_calls_confirmed'] !== undefined;
                       return (
                         <Grid item xs={12} key={`${section.title}-${field.key}`}>
                           <Box sx={{
                             display: 'flex', alignItems: 'center', gap: 1,
-                            border: isThreeCallsMissing ? '2px solid #f44336' : 'none',
-                            borderRadius: isThreeCallsMissing ? 1 : 0,
-                            p: isThreeCallsMissing ? 0.5 : 0,
-                            bgcolor: isThreeCallsMissing ? 'rgba(244,67,54,0.05)' : 'transparent',
+                            border: isThreeCallsMissing ? '2px solid #f44336' : isThreeCallsUnsaved ? '2px solid #ff6d00' : 'none',
+                            borderRadius: (isThreeCallsMissing || isThreeCallsUnsaved) ? 1 : 0,
+                            p: (isThreeCallsMissing || isThreeCallsUnsaved) ? 0.5 : 0,
+                            bgcolor: isThreeCallsMissing ? 'rgba(244,67,54,0.05)' : isThreeCallsUnsaved ? 'rgba(255,109,0,0.05)' : 'transparent',
+                            ...(isThreeCallsUnsaved && !isThreeCallsMissing && { boxShadow: '0 0 6px rgba(255,109,0,0.4)' }),
                           }}>
                             <Typography variant="caption" color={isThreeCallsMissing ? 'error' : 'text.secondary'} sx={{ whiteSpace: 'nowrap', flexShrink: 0, fontWeight: isThreeCallsMissing ? 'bold' : 'normal' }}>
                               {field.label}{isThreeCallsMissing ? ' *' : ''}
@@ -3137,10 +3169,11 @@ TEL：097-533-2022`;
 
                     // initial_assigneeフィールドは特別処理（ボックス選択）
                     if (field.key === 'initial_assignee') {
+                      const isInitialAssigneeUnsaved = sectionChangedFields[section.title]?.['initial_assignee'] !== undefined;
                       return (
                         <Grid item xs={12} key={`${section.title}-${field.key}`}>
                           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
-                            <Typography variant="caption" color={missingRequiredFields.has('initial_assignee') ? 'error' : 'text.secondary'} sx={{ fontWeight: missingRequiredFields.has('initial_assignee') ? 'bold' : 'normal' }}>
+                            <Typography variant="caption" color={missingRequiredFields.has('initial_assignee') ? 'error' : (isInitialAssigneeUnsaved ? '#ff6d00' : 'text.secondary')} sx={{ fontWeight: (missingRequiredFields.has('initial_assignee') || isInitialAssigneeUnsaved) ? 'bold' : 'normal' }}>
                               {field.label}{missingRequiredFields.has('initial_assignee') ? ' *' : ''}
                             </Typography>
                             {/* 「問合せ内容」セクションの保存ボタンは初動担当の右横に配置 */}
@@ -3154,10 +3187,11 @@ TEL：097-533-2022`;
                           </Box>
                           <Box sx={{
                             display: 'flex', flexWrap: 'wrap', gap: 0.5,
-                            border: missingRequiredFields.has('initial_assignee') ? '2px solid #f44336' : 'none',
-                            borderRadius: missingRequiredFields.has('initial_assignee') ? 1 : 0,
-                            p: missingRequiredFields.has('initial_assignee') ? 0.5 : 0,
-                            bgcolor: missingRequiredFields.has('initial_assignee') ? 'rgba(244,67,54,0.05)' : 'transparent',
+                            border: missingRequiredFields.has('initial_assignee') ? '2px solid #f44336' : isInitialAssigneeUnsaved ? '2px solid #ff6d00' : 'none',
+                            borderRadius: (missingRequiredFields.has('initial_assignee') || isInitialAssigneeUnsaved) ? 1 : 0,
+                            p: (missingRequiredFields.has('initial_assignee') || isInitialAssigneeUnsaved) ? 0.5 : 0,
+                            bgcolor: missingRequiredFields.has('initial_assignee') ? 'rgba(244,67,54,0.05)' : isInitialAssigneeUnsaved ? 'rgba(255,109,0,0.05)' : 'transparent',
+                            ...(isInitialAssigneeUnsaved && !missingRequiredFields.has('initial_assignee') && { boxShadow: '0 0 6px rgba(255,109,0,0.4)' }),
                           }}>
                             {normalInitials.length === 0 && (
                               <Typography variant="caption" color="text.secondary">読み込み中...</Typography>
@@ -3216,12 +3250,22 @@ TEL：097-533-2022`;
                     // broker_inquiryフィールドは特別処理（ボックス選択・法人名の右隣xs=6）
                     if (field.key === 'broker_inquiry') {
                       const BROKER_OPTIONS = ['業者問合せ', '業者（両手）'];
+                      const isBrokerUnsaved = sectionChangedFields[section.title]?.['broker_inquiry'] !== undefined;
                       return (
                         <Grid item xs={6} key={`${section.title}-${field.key}`}>
-                          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+                          <Typography variant="caption" color={isBrokerUnsaved ? '#ff6d00' : 'text.secondary'} sx={{ display: 'block', mb: 0.5, fontWeight: isBrokerUnsaved ? 'bold' : 'normal' }}>
                             {field.label}
                           </Typography>
-                          <Box sx={{ display: 'flex', gap: 0.5 }}>
+                          <Box sx={{
+                            display: 'flex', gap: 0.5,
+                            ...(isBrokerUnsaved && {
+                              border: '2px solid #ff6d00',
+                              borderRadius: 1,
+                              p: 0.5,
+                              bgcolor: 'rgba(255,109,0,0.05)',
+                              boxShadow: '0 0 6px rgba(255,109,0,0.4)',
+                            }),
+                          }}>
                             {BROKER_OPTIONS.map((option) => {
                               const isSelected = buyer.broker_inquiry === option;
                               return (
@@ -3270,16 +3314,18 @@ TEL：097-533-2022`;
                     if (field.key === 'owned_home_hearing_inquiry') {
                       const SPECIAL_OPTIONS = ['不要', '未'];  // 追加
                       const isOwnedHomeHearingMissing = missingRequiredFields.has('owned_home_hearing_inquiry');
+                      const isOwnedHomeHearingUnsaved = sectionChangedFields[section.title]?.['owned_home_hearing_inquiry'] !== undefined;
                       return (
                         <Grid item xs={12} key={`${section.title}-${field.key}`}>
                           <Box sx={{
                             display: 'flex', flexDirection: 'column', gap: 0.5,
-                            border: isOwnedHomeHearingMissing ? '2px solid #f44336' : 'none',
-                            borderRadius: isOwnedHomeHearingMissing ? 1 : 0,
-                            p: isOwnedHomeHearingMissing ? 0.5 : 0,
-                            bgcolor: isOwnedHomeHearingMissing ? 'rgba(244,67,54,0.05)' : 'transparent',
+                            border: isOwnedHomeHearingMissing ? '2px solid #f44336' : isOwnedHomeHearingUnsaved ? '2px solid #ff6d00' : 'none',
+                            borderRadius: (isOwnedHomeHearingMissing || isOwnedHomeHearingUnsaved) ? 1 : 0,
+                            p: (isOwnedHomeHearingMissing || isOwnedHomeHearingUnsaved) ? 0.5 : 0,
+                            bgcolor: isOwnedHomeHearingMissing ? 'rgba(244,67,54,0.05)' : isOwnedHomeHearingUnsaved ? 'rgba(255,109,0,0.05)' : 'transparent',
+                            ...(isOwnedHomeHearingUnsaved && !isOwnedHomeHearingMissing && { boxShadow: '0 0 6px rgba(255,109,0,0.4)' }),
                           }}>
-                            <Typography variant="caption" color={isOwnedHomeHearingMissing ? 'error' : 'text.secondary'} sx={{ fontWeight: isOwnedHomeHearingMissing ? 'bold' : 'normal' }}>
+                            <Typography variant="caption" color={isOwnedHomeHearingMissing ? 'error' : (isOwnedHomeHearingUnsaved ? '#ff6d00' : 'text.secondary')} sx={{ fontWeight: (isOwnedHomeHearingMissing || isOwnedHomeHearingUnsaved) ? 'bold' : 'normal' }}>
                               {field.label}{isOwnedHomeHearingMissing ? ' *' : ''}
                             </Typography>
                             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
@@ -3391,12 +3437,20 @@ TEL：097-533-2022`;
                         buyer.owned_home_hearing_result
                       );
                       const isResultMissing = missingRequiredFields.has('owned_home_hearing_result');
+                      const isResultUnsaved = sectionChangedFields[section.title]?.['owned_home_hearing_result'] !== undefined;
                       return (
                         <Grid item xs={12} key={`${section.title}-${field.key}`}>
                           <Box sx={{
                             display: 'flex', flexDirection: 'column', gap: 0.5,
+                            ...(isResultUnsaved && !isResultMissing && {
+                              border: '2px solid #ff6d00',
+                              borderRadius: 1,
+                              p: 0.5,
+                              bgcolor: 'rgba(255,109,0,0.05)',
+                              boxShadow: '0 0 6px rgba(255,109,0,0.4)',
+                            }),
                           }}>
-                            <Typography variant="caption" color={isResultMissing ? 'error' : 'text.secondary'} sx={{ fontWeight: isResultMissing ? 'bold' : 'normal' }}>
+                            <Typography variant="caption" color={isResultMissing ? 'error' : (isResultUnsaved ? '#ff6d00' : 'text.secondary')} sx={{ fontWeight: (isResultMissing || isResultUnsaved) ? 'bold' : 'normal' }}>
                               {field.label}{isResultMissing ? ' *' : ''}
                             </Typography>
                             <Box sx={{ display: 'flex', gap: 0.5 }}>
@@ -3456,11 +3510,21 @@ TEL：097-533-2022`;
                       );
                       if (!showValuation) return null;
                       const VALUATION_OPTIONS = ['要', '不要'];
+                      const isValuationUnsaved = sectionChangedFields[section.title]?.['valuation_required'] !== undefined;
                       return (
                         <>
                           <Grid item xs={12} key={`${section.title}-${field.key}`}>
-                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                              <Typography variant="caption" color="text.secondary">
+                            <Box sx={{
+                              display: 'flex', flexDirection: 'column', gap: 0.5,
+                              ...(isValuationUnsaved && {
+                                border: '2px solid #ff6d00',
+                                borderRadius: 1,
+                                p: 0.5,
+                                bgcolor: 'rgba(255,109,0,0.05)',
+                                boxShadow: '0 0 6px rgba(255,109,0,0.4)',
+                              }),
+                            }}>
+                              <Typography variant="caption" color={isValuationUnsaved ? '#ff6d00' : 'text.secondary'} sx={{ fontWeight: isValuationUnsaved ? 'bold' : 'normal' }}>
                                 {field.label}
                               </Typography>
                               <Box sx={{ display: 'flex', gap: 0.5 }}>
