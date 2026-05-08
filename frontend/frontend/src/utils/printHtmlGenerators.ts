@@ -511,7 +511,7 @@ export function generateExtraPage1Html(base: string): string {
   const pink = '#f4b8b8';
   const blue = '#b8d4f4';
   const cellH = 'border:1px solid #ccc;padding:6px 4px;text-align:center;font-size:8pt;vertical-align:middle;';
-  const cellV = 'border:1px solid #ccc;padding:4px 6px;text-align:center;font-size:8pt;vertical-align:middle;writing-mode:vertical-rl;';
+  const cellV = 'border:1px solid #ccc;padding:4px 2px;text-align:center;font-size:7pt;vertical-align:middle;writing-mode:vertical-rl;width:22px;';
   return `
 <div style="width:100%;height:100%;padding:28px 28px 16px 28px;font-family:${F};font-size:9pt;color:#000;background:#fff;box-sizing:border-box;">
   <!-- ヘッダー -->
@@ -529,7 +529,7 @@ export function generateExtraPage1Html(base: string): string {
   <!-- 統合フロー表（購入の流れ・例・ローンの流れ） -->
   <table style="width:100%;border-collapse:collapse;margin-bottom:14px;">
     <tr>
-      <td rowspan="1" style="${cellV}background:${pink};width:32px;font-weight:bold;">購入の流れ</td>
+      <td style="${cellV}background:${pink};font-weight:bold;">購入の流れ</td>
       <td style="${cellH}background:${pink};">内覧</td>
       <td style="${cellH}background:${pink};">買付申込</td>
       <td style="${cellH}background:${pink};">契約・手付金</td>
@@ -537,7 +537,7 @@ export function generateExtraPage1Html(base: string): string {
       <td style="${cellH}background:${pink};">残金支払</td>
     </tr>
     <tr>
-      <td style="${cellH}font-weight:bold;">例</td>
+      <td style="border:1px solid #ccc;padding:6px 4px;text-align:center;font-size:8pt;vertical-align:middle;font-weight:bold;">例</td>
       <td style="${cellH}">約1〜2週間</td>
       <td style="${cellH}">約1週間</td>
       <td style="${cellH}">約3週間</td>
@@ -545,7 +545,7 @@ export function generateExtraPage1Html(base: string): string {
       <td style="${cellH}">▶</td>
     </tr>
     <tr>
-      <td style="${cellV}background:${blue};width:32px;font-weight:bold;">ローンの流れ</td>
+      <td style="${cellV}background:${blue};font-weight:bold;">ローンの流れ</td>
       <td style="${cellH}background:${blue};">仮審査申込</td>
       <td style="${cellH}background:${blue};">仮審査承認通知</td>
       <td style="${cellH}background:${blue};">本審査申込</td>
