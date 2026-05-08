@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
+import { Helmet } from 'react-helmet-async';
 import { GoogleMap, InfoWindow } from '@react-google-maps/api';
 import { useGoogleMaps } from '../contexts/GoogleMapsContext';
 import api from '../services/api';
@@ -166,16 +167,47 @@ export default function TateuriPage() {
   return (
     <div style={{ fontFamily: "'Hiragino Sans', 'Meiryo', sans-serif", height: '100vh', display: 'flex', flexDirection: 'column', background: '#f5f5f5' }}>
 
+      {/* SEOメタタグ */}
+      <Helmet>
+        <title>大分の建売専門サイト｜新築一戸建て物件情報｜株式会社いふう</title>
+        <meta name="description" content={`大分県の建売住宅専門サイト。現在${properties.length}件の新築建売物件を掲載中。大分市・別府市・由布市など大分県内の物件情報を地図付きでご紹介。株式会社いふう（097-533-2022）`} />
+        <meta name="keywords" content="大分 建売,大分市 建売住宅,大分 新築一戸建て,大分 不動産,建売住宅 大分県,大分市 新築,別府 建売,由布市 建売,大分 住宅購入" />
+        <link rel="canonical" href="https://oita-tateuri.com/tateuri" />
+        <meta property="og:title" content="大分の建売専門サイト｜新築一戸建て物件情報｜株式会社いふう" />
+        <meta property="og:description" content={`大分県の建売住宅専門サイト。現在${properties.length}件の新築建売物件を掲載中。地図付きで物件情報をご紹介します。`} />
+        <meta property="og:url" content="https://oita-tateuri.com/tateuri" />
+        <meta property="og:type" content="website" />
+        <script type="application/ld+json">{JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "ItemList",
+          "name": "大分県の建売住宅一覧",
+          "description": "大分県内の新築建売住宅物件一覧",
+          "numberOfItems": properties.length,
+          "itemListElement": properties.slice(0, 10).map((p, i) => ({
+            "@type": "ListItem",
+            "position": i + 1,
+            "item": {
+              "@type": "House",
+              "name": cleanTitle(p.title) || p.address || "建売住宅",
+              "description": `${p.address || ""}${p.layout ? ` ${p.layout}` : ""}${p.area ? ` ${p.area}` : ""}`,
+              "url": `https://oita-tateuri.com/property-preview/${p.slug}`,
+              ...(p.price ? { "offers": { "@type": "Offer", "price": p.price, "priceCurrency": "JPY" } } : {}),
+              ...(p.address ? { "address": { "@type": "PostalAddress", "streetAddress": p.address, "addressRegion": "大分県", "addressCountry": "JP" } } : {}),
+            }
+          }))
+        })}</script>
+      </Helmet>
+
       {/* ヘッダー */}
-      <div style={{ background: '#FFC107', color: '#333', padding: '14px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+      <header style={{ background: '#FFC107', color: '#333', padding: '14px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
         <div>
           <h1 style={{ fontSize: 20, fontWeight: 'bold', margin: 0 }}>🏠 大分の建売専門サイト</h1>
-          <p style={{ fontSize: 12, margin: '2px 0 0', opacity: 0.75 }}>株式会社いふう｜大分市舞鶴町1-3-30 STビル１F　097-533-2022　大分県知事（3）第3183号</p>
+          <p style={{ fontSize: 12, margin: '2px 0 0', opacity: 0.75 }}>株式会社いふう｜大分市舞鶴町1-3-30 STビル１F　<a href="tel:0975332022" style={{ color: 'inherit', textDecoration: 'none' }}>097-533-2022</a>　大分県知事（3）第3183号</p>
         </div>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
           <span style={{ fontSize: 13, opacity: 0.75 }}>掲載中: {properties.length}件</span>
         </div>
-      </div>
+      </header>
 
       {/* メインコンテンツ */}
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
@@ -339,6 +371,20 @@ export default function TateuriPage() {
           )}
         </div>
       </div>
+
+      {/* フッター（SEO・クローラー向けテキスト情報） */}
+      <footer style={{ background: '#333', color: '#ccc', padding: '12px 24px', fontSize: 11, flexShrink: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+        <div>
+          <strong style={{ color: '#fff' }}>株式会社いふう</strong>
+          　大分市舞鶴町1-3-30 STビル１F
+          　<a href="tel:0975332022" style={{ color: '#FFC107', textDecoration: 'none' }}>097-533-2022</a>
+          　大分県知事（3）第3183号
+        </div>
+        <div style={{ color: '#888' }}>
+          大分県の建売住宅・新築一戸建て専門サイト
+          　© {new Date().getFullYear()} 株式会社いふう
+        </div>
+      </footer>
     </div>
   );
 }

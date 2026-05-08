@@ -1,11 +1,20 @@
 User-agent: *
 Allow: /tateuri
 Allow: /property-preview/
-Disallow: /
 Disallow: /sellers
 Disallow: /buyers
 Disallow: /properties
 Disallow: /employees
 Disallow: /calendar
+Disallow: /settings
+Disallow: /activity-logs
+Disallow: /calls
+Disallow: /work-tasks
+Disallow: /property-listings
+Disallow: /shared-items
+Disallow: /mansion-jyucho
+Disallow: /tateuri/manage
+Disallow: /login
+Disallow: /auth
 
 Sitemap: https://oita-tateuri.com/sitemap.xml

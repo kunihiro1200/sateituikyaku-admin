@@ -1,17 +1,40 @@
 {
   "installCommand": "npm install --legacy-peer-deps",
+  "headers": [
+    {
+      "source": "/tateuri",
+      "headers": [
+        { "key": "X-Robots-Tag", "value": "index, follow" },
+        { "key": "Cache-Control", "value": "public, max-age=3600, stale-while-revalidate=86400" }
+      ]
+    },
+    {
+      "source": "/property-preview/(.*)",
+      "headers": [
+        { "key": "X-Robots-Tag", "value": "index, follow" },
+        { "key": "Cache-Control", "value": "public, max-age=3600, stale-while-revalidate=86400" }
+      ]
+    },
+    {
+      "source": "/sitemap.xml",
+      "headers": [
+        { "key": "Content-Type", "value": "application/xml; charset=utf-8" },
+        { "key": "Cache-Control", "value": "public, max-age=86400" }
+      ]
+    }
+  ],
   "redirects": [
     {
       "source": "/",
       "has": [{ "type": "host", "value": "oita-tateuri.com" }],
       "destination": "/tateuri",
-      "permanent": false
+      "permanent": true
     },
     {
       "source": "/",
       "has": [{ "type": "host", "value": "www.oita-tateuri.com" }],
       "destination": "/tateuri",
-      "permanent": false
+      "permanent": true
     }
   ],
   "rewrites": [
