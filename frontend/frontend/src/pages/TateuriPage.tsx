@@ -298,7 +298,7 @@ export default function TateuriPage() {
                         <img
                           src={selectedProperty.images[0]}
                           alt=""
-                          style={{ width: '100%', height: 120, objectFit: 'cover', borderRadius: 4, marginBottom: 8 }}
+                          style={{ width: '100%', height: 80, objectFit: 'cover', borderRadius: 4, marginBottom: 8 }}
                         />
                       )}
                       {/* タイトル */}
