@@ -333,10 +333,12 @@ function syncUpdatesToSupabase_(sheetRows) {
     var normalizedSheetFollowUpAssignee = normalizeValue(sheetFollowUpAssignee);
     var normalizedDbFollowUpAssignee = normalizeValue(dbBuyer.follow_up_assignee);
     if (normalizedSheetFollowUpAssignee !== normalizedDbFollowUpAssignee) {
-      updateData.follow_up_assignee = normalizedSheetFollowUpAssignee;
-      needsUpdate = true;
+      // スプシが空でDBに値がある場合はスキップ（DB→スプシ即時同期フィールドを保護）
       if (normalizedSheetFollowUpAssignee === null && normalizedDbFollowUpAssignee !== null) {
-        Logger.log('  🗑️ ' + buyerNumber + ': 後続担当を削除 (旧値: ' + normalizedDbFollowUpAssignee + ')');
+        Logger.log('  🛡️ ' + buyerNumber + ': 後続担当はDBに値があるためスキップ (DB値: ' + normalizedDbFollowUpAssignee + ')');
+      } else {
+        updateData.follow_up_assignee = normalizedSheetFollowUpAssignee;
+        needsUpdate = true;
       }
     }
     
@@ -455,10 +457,12 @@ function syncUpdatesToSupabase_(sheetRows) {
     var normalizedSheetViewingDate = normalizeValue(sheetViewingDate);
     var normalizedDbViewingDate = normalizeValue(dbViewingDate);
     if (normalizedSheetViewingDate !== normalizedDbViewingDate) {
-      updateData.viewing_date = normalizedSheetViewingDate;
-      needsUpdate = true;
+      // スプシが空でDBに値がある場合はスキップ（DB→スプシ即時同期フィールドを保護）
       if (normalizedSheetViewingDate === null && normalizedDbViewingDate !== null) {
-        Logger.log('  🗑️ ' + buyerNumber + ': 内覧日を削除 (旧値: ' + normalizedDbViewingDate + ')');
+        Logger.log('  🛡️ ' + buyerNumber + ': 内覧日はDBに値があるためスキップ (DB値: ' + normalizedDbViewingDate + ')');
+      } else {
+        updateData.viewing_date = normalizedSheetViewingDate;
+        needsUpdate = true;
       }
     }
     
@@ -531,10 +535,12 @@ function syncUpdatesToSupabase_(sheetRows) {
     }
     
     if (normalizedSheetViewingTime !== normalizedDbViewingTime) {
-      updateData.viewing_time = normalizedSheetViewingTime;
-      needsUpdate = true;
+      // スプシが空でDBに値がある場合はスキップ（DB→スプシ即時同期フィールドを保護）
       if (normalizedSheetViewingTime === null && normalizedDbViewingTime !== null) {
-        Logger.log('  🗑️ ' + buyerNumber + ': 内覧時間を削除 (旧値: ' + normalizedDbViewingTime + ')');
+        Logger.log('  🛡️ ' + buyerNumber + ': 内覧時間はDBに値があるためスキップ (DB値: ' + normalizedDbViewingTime + ')');
+      } else {
+        updateData.viewing_time = normalizedSheetViewingTime;
+        needsUpdate = true;
       } else if (buyerNumber === '7282') {
         Logger.log('  ✅ ' + buyerNumber + ': 内覧時間を更新 (新値: ' + normalizedSheetViewingTime + ', 旧値: ' + normalizedDbViewingTime + ')');
       }
@@ -547,10 +553,12 @@ function syncUpdatesToSupabase_(sheetRows) {
     var normalizedSheetViewingMobile = normalizeValue(sheetViewingMobile);
     var normalizedDbViewingMobile = normalizeValue(dbBuyer.viewing_mobile);
     if (normalizedSheetViewingMobile !== normalizedDbViewingMobile) {
-      updateData.viewing_mobile = normalizedSheetViewingMobile;
-      needsUpdate = true;
+      // スプシが空でDBに値がある場合はスキップ（DB→スプシ即時同期フィールドを保護）
       if (normalizedSheetViewingMobile === null && normalizedDbViewingMobile !== null) {
-        Logger.log('  🗑️ ' + buyerNumber + ': 内覧形態を削除 (旧値: ' + normalizedDbViewingMobile + ')');
+        Logger.log('  🛡️ ' + buyerNumber + ': 内覧形態はDBに値があるためスキップ (DB値: ' + normalizedDbViewingMobile + ')');
+      } else {
+        updateData.viewing_mobile = normalizedSheetViewingMobile;
+        needsUpdate = true;
       }
     }
     
@@ -559,10 +567,12 @@ function syncUpdatesToSupabase_(sheetRows) {
     var normalizedSheetViewingTypeGeneral = normalizeValue(sheetViewingTypeGeneral);
     var normalizedDbViewingTypeGeneral = normalizeValue(dbBuyer.viewing_type_general);
     if (normalizedSheetViewingTypeGeneral !== normalizedDbViewingTypeGeneral) {
-      updateData.viewing_type_general = normalizedSheetViewingTypeGeneral;
-      needsUpdate = true;
+      // スプシが空でDBに値がある場合はスキップ（DB→スプシ即時同期フィールドを保護）
       if (normalizedSheetViewingTypeGeneral === null && normalizedDbViewingTypeGeneral !== null) {
-        Logger.log('  🗑️ ' + buyerNumber + ': 内覧形態_一般媒介を削除 (旧値: ' + normalizedDbViewingTypeGeneral + ')');
+        Logger.log('  🛡️ ' + buyerNumber + ': 内覧形態_一般媒介はDBに値があるためスキップ (DB値: ' + normalizedDbViewingTypeGeneral + ')');
+      } else {
+        updateData.viewing_type_general = normalizedSheetViewingTypeGeneral;
+        needsUpdate = true;
       }
     }
     

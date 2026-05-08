@@ -3369,36 +3369,24 @@ export class EnhancedAutoSyncService {
     // DBの現在値を取得して比較
     const { data: existingBuyer } = await this.supabase
       .from('buyers')
-      .select('db_updated_at, last_synced_at, property_number')
+      .select('*')
       .eq('buyer_number', buyerNumber)
       .maybeSingle();
 
     if (existingBuyer) {
-      const dbUpdatedAt = existingBuyer.db_updated_at ? new Date(existingBuyer.db_updated_at) : null;
-      const lastSyncedAt = existingBuyer.last_synced_at ? new Date(existingBuyer.last_synced_at) : null;
-
-      // DBが手動更新されている（db_updated_at > last_synced_at）場合、
-      // スプシから空で来たフィールドは全て上書きしない
-      // （DBに直接入力された値をスプシの空欄で消さないため）
-      const isManuallyUpdated = dbUpdatedAt && lastSyncedAt
-        ? dbUpdatedAt > lastSyncedAt
-        : dbUpdatedAt && !lastSyncedAt;
-
-      if (isManuallyUpdated) {
-        for (const field of Object.keys(updateData)) {
-          const val = updateData[field];
-          if (val === null || val === '' || val === undefined) {
-            console.log(`[updateSingleBuyer] ${buyerNumber}: ${field} is empty in spreadsheet but DB was manually updated, skipping overwrite`);
-            delete updateData[field];
-          }
+      // 保護ルール: DBに値があるのにスプシから空で来た場合は上書きしない
+      // 対象: DB→スプシへ即時同期されるフィールド（画面入力→DB保存→スプシ反映）
+      // 例: property_number, viewing_date, viewing_time, viewing_mobile,
+      //     viewing_type_general, follow_up_assignee など
+      for (const field of Object.keys(updateData)) {
+        const dbVal = existingBuyer[field];
+        const sheetVal = updateData[field];
+        // DBに値があってスプシが空（null/空文字）なら上書きしない
+        if ((dbVal !== null && dbVal !== '' && dbVal !== undefined)
+            && (sheetVal === null || sheetVal === '' || sheetVal === undefined)) {
+          console.log(`[updateSingleBuyer] ${buyerNumber}: ${field} has value in DB ("${dbVal}") but empty in spreadsheet, skipping overwrite`);
+          delete updateData[field];
         }
-      }
-
-      // property_number 保護: DBに値があるのにスプレッドシートが空欄の場合は上書きしない
-      // （手動更新フラグに関わらず常に保護）
-      if (existingBuyer.property_number && !updateData.property_number) {
-        console.log(`[updateSingleBuyer] ${buyerNumber}: property_number is set in DB (${existingBuyer.property_number}) but empty in spreadsheet, skipping overwrite`);
-        delete updateData.property_number;
       }
     }
 
