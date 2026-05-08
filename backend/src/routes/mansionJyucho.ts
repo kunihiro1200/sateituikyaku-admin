@@ -260,12 +260,13 @@ ${itemsDetail}
 /**
  * POST /api/mansion-jyucho/write
  * 解析結果を重説シートの指定セルに書き込む
+ * ※ フロントから送られる cell 値は無視し、常に最新の JYUCHO_ITEMS のセルマッピングを使用する
  */
 router.post('/write', async (req: Request, res: Response) => {
   try {
     const { spreadsheetUrl, results } = req.body as {
       spreadsheetUrl: string;
-      results: Array<{ key: string; label: string; content: string | null; cell: string | null; type?: string }>;
+      results: Array<{ key: string; label: string; content: string | null; cell?: string | null; type?: string }>;
     };
 
     if (!spreadsheetUrl || !results) {
@@ -286,22 +287,32 @@ router.post('/write', async (req: Request, res: Response) => {
 
     await sheetsClient.authenticate();
 
-    // セルがあり、かつ値が存在するものだけ書き込む
-    const writableItems = results.filter((r) => r.cell && r.content !== null && r.content !== undefined && r.content !== '');
+    // フロントから送られた results を key で JYUCHO_ITEMS と突合し、
+    // 常に最新のセルマッピングを使って書き込む（古いキャッシュのセル値を無視）
+    const itemMap = new Map(JYUCHO_ITEMS.map((i) => [i.key, i]));
+
+    const writableItems = results
+      .map((r) => {
+        const master = itemMap.get(r.key);
+        if (!master || !master.cell) return null;
+        if (r.content === null || r.content === undefined || r.content === '') return null;
+        return { cell: master.cell, content: r.content, type: master.type };
+      })
+      .filter((x): x is { cell: string; content: string; type: string } => x !== null);
+
     console.log(`[mansion-jyucho] 書き込み対象: ${writableItems.length}セル`);
 
     for (const item of writableItems) {
       let writeValue: string;
 
       if (item.type === 'boolean') {
-        // boolean型: "true"/"false" 文字列 → TRUE/FALSE
         const boolVal = item.content === 'true' || item.content === true as any;
         writeValue = boolVal ? 'TRUE' : 'FALSE';
       } else {
-        writeValue = item.content!;
+        writeValue = item.content;
       }
 
-      await sheetsClient.writeRawCell(item.cell!, writeValue);
+      await sheetsClient.writeRawCell(item.cell, writeValue);
       console.log(`[mansion-jyucho] 書き込み完了: ${item.cell} = ${writeValue}`);
     }
 
