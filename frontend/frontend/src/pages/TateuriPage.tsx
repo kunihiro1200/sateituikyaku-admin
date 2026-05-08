@@ -292,40 +292,40 @@ export default function TateuriPage() {
                       setInfoWindowPos(null);
                     }}
                   >
-                    <div style={{ maxWidth: 240, fontFamily: "'Hiragino Sans', 'Meiryo', sans-serif" }}>
+                    <div style={{ width: 220, fontFamily: "'Hiragino Sans', 'Meiryo', sans-serif" }}>
                       {/* サムネイル */}
                       {selectedProperty.images?.[0] && (
                         <img
                           src={selectedProperty.images[0]}
                           alt=""
-                          style={{ width: '100%', height: 80, objectFit: 'cover', borderRadius: 4, marginBottom: 8 }}
+                          style={{ width: '100%', height: 60, objectFit: 'cover', borderRadius: 4, marginBottom: 6 }}
                         />
                       )}
                       {/* タイトル */}
-                      <div style={{ fontSize: 13, fontWeight: 'bold', color: '#333', marginBottom: 4 }}>
+                      <div style={{ fontSize: 12, fontWeight: 'bold', color: '#333', marginBottom: 3, lineHeight: 1.3 }}>
                         {cleanTitle(selectedProperty.title) || selectedProperty.address || '物件情報'}
                       </div>
                       {/* 価格 */}
                       {selectedProperty.price && (
-                        <div style={{ fontSize: 16, fontWeight: 'bold', color: '#e84040', marginBottom: 4 }}>
+                        <div style={{ fontSize: 15, fontWeight: 'bold', color: '#e84040', marginBottom: 3 }}>
                           {cleanPrice(selectedProperty.price)}
                         </div>
                       )}
                       {/* 住所 */}
                       {selectedProperty.address && (
-                        <div style={{ fontSize: 11, color: '#666', marginBottom: 4 }}>
+                        <div style={{ fontSize: 10, color: '#666', marginBottom: 3 }}>
                           {selectedProperty.address}
                         </div>
                       )}
                       {/* 間取り・面積 */}
-                      <div style={{ display: 'flex', gap: 6, marginBottom: 10, flexWrap: 'wrap' }}>
+                      <div style={{ display: 'flex', gap: 4, marginBottom: 8, flexWrap: 'wrap' }}>
                         {selectedProperty.layout && (
-                          <span style={{ fontSize: 11, background: '#f0f0f0', padding: '2px 6px', borderRadius: 3 }}>
+                          <span style={{ fontSize: 10, background: '#f0f0f0', padding: '1px 5px', borderRadius: 3 }}>
                             {selectedProperty.layout}
                           </span>
                         )}
                         {selectedProperty.area && (
-                          <span style={{ fontSize: 11, background: '#f0f0f0', padding: '2px 6px', borderRadius: 3 }}>
+                          <span style={{ fontSize: 10, background: '#f0f0f0', padding: '1px 5px', borderRadius: 3 }}>
                             {selectedProperty.area}
                           </span>
                         )}
