@@ -53,40 +53,37 @@ export function ViewingPreparation2PrintButton({
     setPrinting(true);
     import('../utils/printHtmlGenerators').then(({ generateViewingPrep2Html }) => {
       const html = generateViewingPrep2Html(buyer, today);
-      const printWindow = window.open('', '_blank', 'width=794,height=1123,scrollbars=yes');
-      if (!printWindow) {
-        alert('ポップアップを許可してください（アドレスバー右側のアイコンをクリック）');
-        setPrinting(false);
-        return;
-      }
-      printWindow.document.write(html);
-      printWindow.document.close();
+      // iframe方式: @page margin:0 が確実に効く（window.openでは無視されることがある）
+      const iframe = document.createElement('iframe');
+      iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;border:none;';
+      document.body.appendChild(iframe);
+      const doc = iframe.contentDocument || iframe.contentWindow?.document;
+      if (!doc) { setPrinting(false); document.body.removeChild(iframe); return; }
+      doc.open();
+      doc.write(html);
+      doc.close();
 
-      let done = false;
-      const doPrint = () => {
-        if (done) return;
-        done = true;
+      const cleanup = () => {
         setTimeout(() => {
-          try {
-            printWindow.focus();
-            printWindow.print();
-          } catch (_) { /* ignore */ }
-          setTimeout(() => {
-            try { printWindow.close(); } catch (_) { /* ignore */ }
-            setPrinting(false);
-          }, 1000);
-        }, 1200);
+          try { document.body.removeChild(iframe); } catch (_) { /* ignore */ }
+          setPrinting(false);
+        }, 1000);
       };
 
-      printWindow.onload = doPrint;
-      // Base64画像が大きいため余裕を持って5秒待つ
-      setTimeout(() => {
-        if (!done) doPrint();
-      }, 5000);
-      // 最終フォールバック：何があっても8秒後にはボタンを戻す
-      setTimeout(() => {
-        setPrinting(false);
-      }, 8000);
+      const doPrint = () => {
+        try {
+          iframe.contentWindow?.focus();
+          iframe.contentWindow?.print();
+        } catch (_) { /* ignore */ }
+        cleanup();
+      };
+
+      if (iframe.contentDocument?.readyState === 'complete') {
+        setTimeout(doPrint, 1200);
+      } else {
+        iframe.onload = () => setTimeout(doPrint, 1200);
+        setTimeout(doPrint, 5000); // フォールバック（画像読み込み待ち）
+      }
     }).catch(() => {
       setPrinting(false);
     });
@@ -150,7 +147,7 @@ export function ViewingPreparationPrintButton({
   };
 
   // ============================================================
-  // 印刷：純粋HTMLを新しいウィンドウで印刷（MUI非依存）
+  // 印刷：iframe方式（@page margin:0 が確実に効く）
   // ============================================================
   const handlePrint = () => {
     if (propertyDetails.length === 0) return;
@@ -159,33 +156,41 @@ export function ViewingPreparationPrintButton({
     import('../utils/printHtmlGenerators').then(({ generateAllPagesHtml }) => {
       const html = generateAllPagesHtml(buyer, propertyDetails, today);
 
-      const printWindow = window.open('', '_blank', 'width=794,height=1123,scrollbars=yes');
-      if (!printWindow) {
-        alert('ポップアップを許可してください（アドレスバー右側のアイコンをクリック）');
+      // iframe方式: window.open と違い @page { margin:0 } が確実に適用される
+      const iframe = document.createElement('iframe');
+      iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;border:none;';
+      document.body.appendChild(iframe);
+      const doc = iframe.contentDocument || iframe.contentWindow?.document;
+      if (!doc) {
         setPrinting(false);
+        document.body.removeChild(iframe);
         return;
       }
+      doc.open();
+      doc.write(html);
+      doc.close();
 
-      printWindow.document.write(html);
-      printWindow.document.close();
-
-      // ロード完了後に印刷
-      const doPrint = () => {
+      const cleanup = () => {
         setTimeout(() => {
-          printWindow.focus();
-          printWindow.print();
-          setTimeout(() => {
-            printWindow.close();
-            setPrinting(false);
-          }, 500);
-        }, 800);
+          try { document.body.removeChild(iframe); } catch (_) { /* ignore */ }
+          setPrinting(false);
+        }, 1000);
       };
 
-      printWindow.onload = doPrint;
-      // フォールバック（onloadが発火しない場合）
-      setTimeout(() => {
-        if (!printWindow.closed) doPrint();
-      }, 2000);
+      const doPrint = () => {
+        try {
+          iframe.contentWindow?.focus();
+          iframe.contentWindow?.print();
+        } catch (_) { /* ignore */ }
+        cleanup();
+      };
+
+      if (iframe.contentDocument?.readyState === 'complete') {
+        setTimeout(doPrint, 800);
+      } else {
+        iframe.onload = () => setTimeout(doPrint, 800);
+        setTimeout(doPrint, 2000); // フォールバック
+      }
     });
   };
 

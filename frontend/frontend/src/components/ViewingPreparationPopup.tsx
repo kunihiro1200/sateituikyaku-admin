@@ -132,26 +132,16 @@ export const ViewingPreparationPopup: React.FC<ViewingPreparationPopupProps> = (
       ).then((propertyDetails) => {
         import('../utils/printHtmlGenerators').then(({ generateAllPagesHtml }) => {
           const html = generateAllPagesHtml(buyer, propertyDetails, getTodayStr());
-          const printWindow = window.open('', '_blank', 'width=794,height=1123,scrollbars=yes');
-          if (!printWindow) {
-            alert('ポップアップを許可してください（アドレスバー右側のアイコンをクリック）');
-            setPrinting1(false);
-            return;
-          }
-          printWindow.document.write(html);
-          printWindow.document.close();
-          let done = false;
-          const doPrint = () => {
-            if (done) return;
-            done = true;
-            setTimeout(() => {
-              printWindow.focus();
-              printWindow.print();
-              setTimeout(() => { printWindow.close(); setPrinting1(false); }, 500);
-            }, 800);
-          };
-          printWindow.onload = doPrint;
-          setTimeout(() => { if (!printWindow.closed) doPrint(); }, 2000);
+          const iframe = document.createElement('iframe');
+          iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;border:none;';
+          document.body.appendChild(iframe);
+          const doc = iframe.contentDocument || iframe.contentWindow?.document;
+          if (!doc) { setPrinting1(false); document.body.removeChild(iframe); return; }
+          doc.open(); doc.write(html); doc.close();
+          const cleanup = () => { setTimeout(() => { try { document.body.removeChild(iframe); } catch (_) {} setPrinting1(false); }, 1000); };
+          const doPrint = () => { try { iframe.contentWindow?.focus(); iframe.contentWindow?.print(); } catch (_) {} cleanup(); };
+          if (iframe.contentDocument?.readyState === 'complete') { setTimeout(doPrint, 800); }
+          else { iframe.onload = () => setTimeout(doPrint, 800); setTimeout(doPrint, 2000); }
         });
       }).catch(() => { setPrinting1(false); });
     }).catch(() => { setPrinting1(false); });
@@ -163,25 +153,16 @@ export const ViewingPreparationPopup: React.FC<ViewingPreparationPopupProps> = (
     setPrinting2(true);
     import('../utils/printHtmlGenerators').then(({ generateViewingPrep2Html }) => {
       const html = generateViewingPrep2Html(buyer, getTodayStr());
-      const printWindow = window.open('', '_blank', 'width=794,height=1123,scrollbars=yes');
-      if (!printWindow) {
-        alert('ポップアップを許可してください（アドレスバー右側のアイコンをクリック）');
-        setPrinting2(false);
-        return;
-      }
-      printWindow.document.write(html);
-      printWindow.document.close();
-      let done = false;
-      const doPrint = () => {
-        if (done) return;
-        done = true;
-        setTimeout(() => {
-          try { printWindow.focus(); printWindow.print(); } catch (_) { /* ignore */ }
-          setTimeout(() => { try { printWindow.close(); } catch (_) { /* ignore */ } setPrinting2(false); }, 1000);
-        }, 1200);
-      };
-      printWindow.onload = doPrint;
-      setTimeout(() => { if (!done) doPrint(); }, 5000);
+      const iframe = document.createElement('iframe');
+      iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;border:none;';
+      document.body.appendChild(iframe);
+      const doc = iframe.contentDocument || iframe.contentWindow?.document;
+      if (!doc) { setPrinting2(false); document.body.removeChild(iframe); return; }
+      doc.open(); doc.write(html); doc.close();
+      const cleanup = () => { setTimeout(() => { try { document.body.removeChild(iframe); } catch (_) {} setPrinting2(false); }, 1000); };
+      const doPrint = () => { try { iframe.contentWindow?.focus(); iframe.contentWindow?.print(); } catch (_) {} cleanup(); };
+      if (iframe.contentDocument?.readyState === 'complete') { setTimeout(doPrint, 1200); }
+      else { iframe.onload = () => setTimeout(doPrint, 1200); setTimeout(doPrint, 5000); }
       setTimeout(() => { setPrinting2(false); }, 8000);
     }).catch(() => { setPrinting2(false); });
   };

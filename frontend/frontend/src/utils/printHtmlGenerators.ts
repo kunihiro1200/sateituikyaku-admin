@@ -133,12 +133,8 @@ export function generateViewingPrep2Html(buyer: Record<string,unknown>, _today: 
   @page { size: A4 portrait; margin: 0; }
   * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
   html,body { margin: 0; padding: 0; background: #fff; font-family: "Noto Sans JP","Hiragino Kaku Gothic ProN","Meiryo",sans-serif; color: #000; }
-  .page { width: 794px; height: 1123px; background: #fff; overflow: hidden; display: block; position: relative; }
-  @media print {
-    html,body { width: 210mm; margin: 0; padding: 0; }
-    .page { width: 210mm; height: 297mm; page-break-after: always; break-after: page; page-break-inside: avoid; break-inside: avoid; }
-    .page:last-child { page-break-after: auto; break-after: auto; }
-  }
+  .page { width: 210mm; height: 297mm; background: #fff; overflow: hidden; display: block; page-break-after: always; break-after: page; }
+  .page:last-child { page-break-after: auto; break-after: auto; }
 </style>
 </head>
 <body>
@@ -486,34 +482,12 @@ export function generateAllPagesHtml(buyer: Record<string,unknown>, propertyDeta
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=794px">
 <style>
   @page{size:A4 portrait;margin:0;}
   *{box-sizing:border-box;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}
   html,body{margin:0;padding:0;font-family:"Noto Sans JP","Hiragino Kaku Gothic ProN","Meiryo",sans-serif;}
-  .page{
-    width:794px;
-    height:1123px;
-    background:white;
-    overflow:hidden;
-    display:block;
-    position:relative;
-  }
-  @media print{
-    html,body{width:210mm;margin:0;padding:0;}
-    .page{
-      width:210mm;
-      height:297mm;
-      page-break-after:always;
-      break-after:page;
-      page-break-inside:avoid;
-      break-inside:avoid;
-    }
-    .page:last-child{
-      page-break-after:auto;
-      break-after:auto;
-    }
-  }
+  .page{width:210mm;height:297mm;background:white;overflow:hidden;display:block;page-break-after:always;break-after:page;}
+  .page:last-child{page-break-after:auto;break-after:auto;}
 </style>
 </head>
 <body>${pagesHtml}</body>
