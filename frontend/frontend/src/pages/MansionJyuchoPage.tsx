@@ -178,6 +178,10 @@ const MansionJyuchoPage: React.FC = () => {
   const [snackbarSeverity, setSnackbarSeverity] = useState<'success' | 'error'>('success');
 
   // ページ表示時に保存済みデータを読み込む
+  // ※ 保存済み結果はあくまで「前回の解析内容の確認用」
+  //   書き込みは必ず再解析後に行うこと（セルマッピングが変わっている可能性があるため）
+  const [isFromCache, setIsFromCache] = React.useState(false);
+
   React.useEffect(() => {
     if (!propertyNumber) return;
     fetch(`${API_BASE_URL}/api/mansion-jyucho/${encodeURIComponent(propertyNumber)}`)
@@ -186,6 +190,7 @@ const MansionJyuchoPage: React.FC = () => {
         if (json.data?.results) {
           setResults(json.data.results);
           setSavedAt(json.data.analyzed_at);
+          setIsFromCache(true); // 保存済みデータであることを記録
         }
       })
       .catch(() => {});
@@ -256,6 +261,7 @@ const MansionJyuchoPage: React.FC = () => {
       setProgress(100);
       const merged = mergeResults(allChunkResults);
       setResults(merged);
+      setIsFromCache(false); // 新規解析結果なのでキャッシュではない
 
       // 物件番号がある場合は自動保存
       if (propertyNumber) {
@@ -465,28 +471,38 @@ const MansionJyuchoPage: React.FC = () => {
                 label={`${foundCount} / ${totalCount} 項目が見つかりました`}
                 color={foundCount > 0 ? 'success' : 'default'}
               />
-              {/* 重説シートへの書き込みボタン */}
+              {/* 書き込みボタン：キャッシュ時は再解析を促す */}
               {spreadsheetUrl && writableCount > 0 && (
-                <Button
-                  variant="contained"
-                  size="small"
-                  startIcon={
-                    writing ? <CircularProgress size={14} color="inherit" /> : <SaveIcon />
-                  }
-                  onClick={handleWriteToSheet}
-                  disabled={writing || writeSuccess}
-                  sx={{
-                    bgcolor: writeSuccess ? '#2e7d32' : '#1565c0',
-                    '&:hover': { bgcolor: writeSuccess ? '#1b5e20' : '#0d47a1' },
-                    fontWeight: 700,
-                  }}
-                >
-                  {writing
-                    ? '書き込み中...'
-                    : writeSuccess
-                    ? '✓ 書き込み完了'
-                    : `重説シートに書き込む（${writableCount}項目）`}
-                </Button>
+                isFromCache ? (
+                  <Chip
+                    label="⚠️ 再解析してから書き込んでください"
+                    size="small"
+                    color="warning"
+                    variant="filled"
+                    sx={{ fontWeight: 700 }}
+                  />
+                ) : (
+                  <Button
+                    variant="contained"
+                    size="small"
+                    startIcon={
+                      writing ? <CircularProgress size={14} color="inherit" /> : <SaveIcon />
+                    }
+                    onClick={handleWriteToSheet}
+                    disabled={writing || writeSuccess}
+                    sx={{
+                      bgcolor: writeSuccess ? '#2e7d32' : '#1565c0',
+                      '&:hover': { bgcolor: writeSuccess ? '#1b5e20' : '#0d47a1' },
+                      fontWeight: 700,
+                    }}
+                  >
+                    {writing
+                      ? '書き込み中...'
+                      : writeSuccess
+                      ? '✓ 書き込み完了'
+                      : `重説シートに書き込む（${writableCount}項目）`}
+                  </Button>
+                )
               )}
               {!spreadsheetUrl && (
                 <Chip
@@ -502,6 +518,13 @@ const MansionJyuchoPage: React.FC = () => {
           {writeError && (
             <Alert severity="error" sx={{ mb: 2 }}>
               {writeError}
+            </Alert>
+          )}
+
+          {/* キャッシュ読み込み時の警告 */}
+          {isFromCache && (
+            <Alert severity="warning" sx={{ mb: 2 }} icon={false}>
+              ⚠️ これは前回の保存済み解析結果です。<strong>PDFを再アップロードして再解析してから書き込んでください。</strong>
             </Alert>
           )}
 
