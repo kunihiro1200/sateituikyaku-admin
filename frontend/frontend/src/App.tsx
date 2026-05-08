@@ -39,6 +39,7 @@ import OtherCompanyDistributionPage from './pages/OtherCompanyDistributionPage';
 import BuyerNearbyMapPage from './pages/BuyerNearbyMapPage';
 import ReinsRegistrationPage from './pages/ReinsRegistrationPage';
 import ManagementRulesTestPage from './pages/ManagementRulesTestPage';
+import MansionJyuchoPage from './pages/MansionJyuchoPage';
 import SalesHistoryPage from './pages/SalesHistoryPage';
 import PropertyPreviewPage from './pages/PropertyPreviewPage';
 import TateuriPage from './pages/TateuriPage';
@@ -333,6 +334,14 @@ function App() {
         element={
           <ProtectedRoute>
             <ManagementRulesTestPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/mansion-jyucho"
+        element={
+          <ProtectedRoute>
+            <MansionJyuchoPage />
           </ProtectedRoute>
         }
       />
