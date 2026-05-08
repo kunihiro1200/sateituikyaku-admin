@@ -132,9 +132,13 @@ export function generateViewingPrep2Html(buyer: Record<string,unknown>, _today: 
 <style>
   @page { size: A4 portrait; margin: 0; }
   * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-  body { margin: 0; padding: 0; background: #fff; font-family: "Noto Sans JP","Hiragino Kaku Gothic ProN","Meiryo",sans-serif; color: #000; }
-  .page { width: 794px; height: 1123px; background: #fff; page-break-after: always; break-after: page; overflow: hidden; }
-  @media print { .page { width: 210mm; height: 297mm; } }
+  html,body { margin: 0; padding: 0; background: #fff; font-family: "Noto Sans JP","Hiragino Kaku Gothic ProN","Meiryo",sans-serif; color: #000; }
+  .page { width: 794px; height: 1123px; background: #fff; overflow: hidden; display: block; position: relative; }
+  @media print {
+    html,body { width: 210mm; margin: 0; padding: 0; }
+    .page { width: 210mm; height: 297mm; page-break-after: always; break-after: page; page-break-inside: avoid; break-inside: avoid; }
+    .page:last-child { page-break-after: auto; break-after: auto; }
+  }
 </style>
 </head>
 <body>
@@ -477,7 +481,7 @@ export function generateAllPagesHtml(buyer: Record<string,unknown>, propertyDeta
     pages.push(generatePage4Html(addr, price, ptype, today));
     pages.push(generatePage5Html());
   }
-  const pagesHtml = pages.map((p,i)=>`<div class="page" style="${i===pages.length-1?'page-break-after:auto;break-after:auto;':''}">${p}</div>`).join('');
+  const pagesHtml = pages.map((p)=>`<div class="page">${p}</div>`).join('');
   return `<!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -486,11 +490,29 @@ export function generateAllPagesHtml(buyer: Record<string,unknown>, propertyDeta
 <style>
   @page{size:A4 portrait;margin:0;}
   *{box-sizing:border-box;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}
-  html{font-size:16px;}
-  body{margin:0;padding:0;font-family:"Noto Sans JP","Hiragino Kaku Gothic ProN","Meiryo",sans-serif;}
-  .page{width:794px;height:1123px;background:white;page-break-after:always;break-after:page;overflow:hidden;}
+  html,body{margin:0;padding:0;font-family:"Noto Sans JP","Hiragino Kaku Gothic ProN","Meiryo",sans-serif;}
+  .page{
+    width:794px;
+    height:1123px;
+    background:white;
+    overflow:hidden;
+    display:block;
+    position:relative;
+  }
   @media print{
-    .page{width:210mm;height:297mm;}
+    html,body{width:210mm;margin:0;padding:0;}
+    .page{
+      width:210mm;
+      height:297mm;
+      page-break-after:always;
+      break-after:page;
+      page-break-inside:avoid;
+      break-inside:avoid;
+    }
+    .page:last-child{
+      page-break-after:auto;
+      break-after:auto;
+    }
   }
 </style>
 </head>
