@@ -277,7 +277,7 @@ export default function OtherCompanyDistributionPage() {
     setPreviewUrl('');
     try {
       // バックエンド経由でスクレイピング（CORS回避）
-      const res = await api.post('/api/tateuri/scrape', { url: propertyUrl.trim() });
+      const res = await api.post('/api/buyers/scrape-property', { url: propertyUrl.trim() });
       const result = res.data;
       if (!result.success) throw new Error(result.error || '取得失敗');
       setPreviewData(result.data);
