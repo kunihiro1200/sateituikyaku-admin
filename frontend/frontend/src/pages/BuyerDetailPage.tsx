@@ -280,6 +280,7 @@ const BUYER_FIELD_SECTIONS: BuyerFieldSection[] = [
     title: '基本情報',
     fields: [
       { key: 'buyer_number', label: '買主番号', inlineEditable: true, readOnly: true },
+      { key: 'property_number', label: '物件番号', inlineEditable: true, fieldType: 'propertyNumber' },
       { key: 'name', label: '氏名・会社名', inlineEditable: true },
       { key: 'phone_number', label: '電話番号', inlineEditable: true },
       { key: 'email', label: 'メールアドレス', inlineEditable: true },
@@ -2212,39 +2213,40 @@ TEL：097-533-2022`;
               ))
             ) : (
               <>
-                {/* 物件番号手動入力フォーム */}
-                {!buyer?.property_number && (
-                  <div style={{ padding: '16px', border: '1px solid #e0e0e0', borderRadius: '8px', marginBottom: '16px' }}>
-                    <p style={{ marginBottom: '8px', color: '#666', fontSize: '14px' }}>物件番号を入力して物件詳細カードを表示できます</p>
-                    <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', flexDirection: 'column' }}>
-                      <input
-                        type="text"
-                        value={manualPropertyNumber}
-                        onChange={e => setManualPropertyNumber(e.target.value)}
-                        placeholder="物件番号を入力（例：AA1234）"
-                        style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '14px' }}
-                      />
-                      {manualPropertyNumberError && (
-                        <p style={{ color: '#d32f2f', fontSize: '12px', margin: 0 }}>{manualPropertyNumberError}</p>
-                      )}
-                      <button
-                        onClick={handleSavePropertyNumber}
-                        disabled={isSavingPropertyNumber}
-                        style={{
-                          padding: '8px 16px',
-                          backgroundColor: isSavingPropertyNumber ? '#ccc' : '#1976d2',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '4px',
-                          cursor: isSavingPropertyNumber ? 'not-allowed' : 'pointer',
-                          fontSize: '14px',
-                        }}
-                      >
-                        {isSavingPropertyNumber ? '保存中...' : '保存'}
-                      </button>
-                    </div>
+                {/* 物件番号手動入力フォーム（常に表示・上書き可能） */}
+                <div style={{ padding: '16px', border: '1px solid #e0e0e0', borderRadius: '8px', marginBottom: '16px' }}>
+                  <p style={{ marginBottom: '4px', color: '#666', fontSize: '14px' }}>物件番号を入力して物件詳細カードを表示できます</p>
+                  {buyer?.property_number && (
+                    <p style={{ marginBottom: '8px', color: '#1976d2', fontSize: '13px', fontWeight: 'bold' }}>現在の物件番号: {buyer.property_number}</p>
+                  )}
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', flexDirection: 'column' }}>
+                    <input
+                      type="text"
+                      value={manualPropertyNumber}
+                      onChange={e => setManualPropertyNumber(e.target.value)}
+                      placeholder="物件番号を入力（例：AA1234）"
+                      style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '14px' }}
+                    />
+                    {manualPropertyNumberError && (
+                      <p style={{ color: '#d32f2f', fontSize: '12px', margin: 0 }}>{manualPropertyNumberError}</p>
+                    )}
+                    <button
+                      onClick={handleSavePropertyNumber}
+                      disabled={isSavingPropertyNumber}
+                      style={{
+                        padding: '8px 16px',
+                        backgroundColor: isSavingPropertyNumber ? '#ccc' : '#1976d2',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '4px',
+                        cursor: isSavingPropertyNumber ? 'not-allowed' : 'pointer',
+                        fontSize: '14px',
+                      }}
+                    >
+                      {isSavingPropertyNumber ? '保存中...' : '保存'}
+                    </button>
                   </div>
-                )}
+                </div>
 
 
               </>
@@ -3780,6 +3782,58 @@ TEL：097-533-2022`;
                               </>
                             );
                           })()}
+                        </Grid>
+                      );
+                    }
+
+                    // property_numberフィールドは専用の入力フォームで表示
+                    if (field.key === 'property_number') {
+                      // 物件番号が設定済みの場合は読み取り専用で表示
+                      if (buyer?.property_number) {
+                        return (
+                          <Grid item {...gridSize} key={`${section.title}-${field.key}`}>
+                            <InlineEditableField
+                              label={field.label}
+                              value={buyer.property_number}
+                              fieldName={field.key}
+                              fieldType="text"
+                              onSave={handleFieldSave}
+                              onChange={(fieldName, newValue) => handleFieldChange(section.title, fieldName, newValue)}
+                              readOnly={true}
+                              buyerId={buyer_number}
+                              enableConflictDetection={false}
+                              showEditIndicator={false}
+                            />
+                          </Grid>
+                        );
+                      }
+                      // 物件番号が未設定の場合は入力フォームを表示
+                      return (
+                        <Grid item xs={12} key={`${section.title}-${field.key}`}>
+                          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+                            {field.label}
+                          </Typography>
+                          <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
+                            <TextField
+                              size="small"
+                              value={manualPropertyNumber}
+                              onChange={e => setManualPropertyNumber(e.target.value)}
+                              placeholder="例：AA1234"
+                              error={!!manualPropertyNumberError}
+                              helperText={manualPropertyNumberError}
+                              sx={{ flex: 1 }}
+                              onKeyDown={e => { if (e.key === 'Enter') handleSavePropertyNumber(); }}
+                            />
+                            <Button
+                              variant="contained"
+                              size="small"
+                              onClick={handleSavePropertyNumber}
+                              disabled={isSavingPropertyNumber}
+                              sx={{ whiteSpace: 'nowrap', mt: 0.25 }}
+                            >
+                              {isSavingPropertyNumber ? '保存中...' : '保存'}
+                            </Button>
+                          </Box>
                         </Grid>
                       );
                     }
