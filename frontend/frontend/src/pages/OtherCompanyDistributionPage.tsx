@@ -474,12 +474,12 @@ export default function OtherCompanyDistributionPage() {
         return `<img src="${imgSrc}" alt="物件画像${index + 1}" style="max-width: 600px; width: 100%; height: auto; margin: 10px 0; display: block;" />`;
       }).join('');
       
-      return `${buyer.name}様<br><br>大変お世話になっております。<br>不動産会社の㈱いふうです。<br><br>新着物件がでましたので、ご案内致します。<br><br>${propertyAddress}/${propertyPrice}/<br><br>${imageHtml}<br>他の画像はこちらから<br><a href="${linkUrl}">${linkUrl}</a>${commentSection}<br>${propertyInfo}${SIGNATURE_EMAIL.replace(/\n/g, '<br>')}`;
+      return `${buyer.name}様<br><br>大変お世話になっております。<br>不動産会社の㈱いふうです。<br><br>新着物件がでましたので、ご案内致します。<br><br>${propertyAddress}/${propertyPrice}/<br><br>${imageHtml}<br>他の画像はこちらから<br><a href="${linkUrl}">${linkUrl}</a>${commentSection}<br>${propertyInfo}<br>★建売専門HPはこちら<br><a href="https://sateituikyaku-admin-frontend.vercel.app/tateuri">https://sateituikyaku-admin-frontend.vercel.app/tateuri</a>${SIGNATURE_EMAIL.replace(/\n/g, '<br>')}`;
     }
     
     // スクレイピングデータがない場合は従来フォーマット
     const urlLine = linkUrl ? `<br>物件情報はこちら: <a href="${linkUrl}">${linkUrl}</a><br>` : '';
-    return `${buyer.name}様<br><br>大変お世話になっております。<br>不動産会社の㈱いふうです。<br><br>新着物件がでましたので、ご案内致します。<br>他社様の物件でも気になる物件がございましたらまとめてご案内可能ですのでお申し付けくださいませ。${urlLine}${SIGNATURE_EMAIL.replace(/\n/g, '<br>')}`;
+    return `${buyer.name}様<br><br>大変お世話になっております。<br>不動産会社の㈱いふうです。<br><br>新着物件がでましたので、ご案内致します。<br>他社様の物件でも気になる物件がございましたらまとめてご案内可能ですのでお申し付けくださいませ。${urlLine}<br>★建売専門HPはこちら<br><a href="https://sateituikyaku-admin-frontend.vercel.app/tateuri">https://sateituikyaku-admin-frontend.vercel.app/tateuri</a>${SIGNATURE_EMAIL.replace(/\n/g, '<br>')}`;
   };
 
   const openEmailDialog = () => {
