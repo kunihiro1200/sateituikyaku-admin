@@ -505,7 +505,8 @@ export function generateAllPagesHtml(buyer: Record<string,unknown>, propertyDeta
 // ページA: 住まい購入の流れ
 export function generateExtraPage1Html(base: string): string {
   const imgFamily = `${base}/ifoo-assets/flow-main.png`;
-  const imgIcon   = `${base}/ifoo-assets/flow-sub.png`;
+  const imgIcon   = `${base}/ifoo-assets/ifoo-logo-yellow.png`;
+  const imgOitaQr = `${base}/ifoo-assets/oita-qr-box.png`;
   const F = '"Noto Sans JP","Hiragino Kaku Gothic ProN","Meiryo",sans-serif';
   const yellow = '#f5c518';
   const pink = '#f4b8b8';
@@ -572,7 +573,7 @@ export function generateExtraPage1Html(base: string): string {
         ●先進的窓リノベ2024事業<br>
         ●給湯省エネ2024事業<br>
         ●長期優良住宅化リフォーム推進事業　ほか<br><br>
-        大分県のホームページに支援事業がまとめられていますので、ぜひご参考下さい！
+        <img src="${imgOitaQr}" style="width:100%;display:block;margin-top:6px;"/>
       </div>
     </div>
   </div>
