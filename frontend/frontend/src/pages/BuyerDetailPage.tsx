@@ -1589,6 +1589,7 @@ export default function BuyerDetailPage() {
               buyerNumber={buyer_number || ''}
               propertyAddress={linkedProperties[0]?.display_address || linkedProperties[0]?.address || ''}
               propertyType={linkedProperties[0]?.property_type || ''}
+              propertyNumber={linkedProperties[0]?.property_number || ''}
               senderName={employee?.name || ''}
               onSmsSent={fetchActivities}
               preViewingNotes={linkedProperties[0]?.pre_viewing_notes || ''}
