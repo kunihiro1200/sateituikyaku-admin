@@ -108,11 +108,11 @@ const JYUCHO_ITEMS = [
   { key: 'repair_fund_exists',            label: '計画修繕積立金制度「有—別添規約等参照」',                          cell: 'Z443',  type: 'boolean' },
   { key: 'repair_monthly_amount',         label: '当該住戸の計画修繕積立金 月額（その住戸1戸分の月額。数字のみ、カンマ・円不要）',                cell: 'W445',  type: 'text' },
   { key: 'repair_monthly_arrears',        label: '当該住戸の計画修繕積立金 滞納額（その住戸1戸分の修繕積立金滞納額。「管理費等滞納及び借入の状況」ではなく当該住戸の滞納額。数字のみ、0円の場合は"0"）', cell: 'AI445', type: 'text' },
-  { key: 'repair_monthly_date',           label: '当該住戸の計画修繕積立金 基準日（西暦 例:"2026年04月30日"）',     cell: null,    type: 'date',
+  { key: 'repair_monthly_date',           label: '当該住戸の計画修繕積立金 基準日（その項目の直近に記載の日付のみ。「○月現在」なら"2026年04月"、「○月○日現在」なら"2026年04月30日"）', cell: null,    type: 'date',
     dateCells: { year: 'AU445', month: 'AY445', day: 'BC445' } },
   { key: 'repair_total_amount',           label: '当該管理組合に既に積み立てられている計画修繕積立金等の総額（「積立金会計繰越額」または「積立金残高」の金額。数字のみ、カンマ・円不要）', cell: 'W448',  type: 'text' },
   { key: 'repair_total_arrears',          label: '管理組合 積立金の滞納額（「管理費等滞納及び借入の状況」表の「積立金会計滞納額」の金額。数字のみ、カンマ・円不要。0円の場合は"0"）', cell: 'AI448', type: 'text' },
-  { key: 'repair_total_date',             label: '管理組合 積立総額 基準日（西暦 例:"2026年04月30日"）',            cell: null,    type: 'date',
+  { key: 'repair_total_date',             label: '管理組合 積立総額 基準日（その項目の直近に記載の日付のみ。「○月現在」なら"2026年04月"、「○月○日現在」なら"2026年04月30日"）', cell: null,    type: 'date',
     dateCells: { year: 'AU448', month: 'AY448', day: 'BC448' } },
   { key: 'deposit_holder_kumiai',         label: '預金名義人「管理組合」',                                          cell: 'T450',  type: 'boolean' },
   { key: 'deposit_holder_other_check',    label: '預金名義人「その他」チェック',                                    cell: 'AB450', type: 'boolean' },
@@ -120,11 +120,11 @@ const JYUCHO_ITEMS = [
   { key: 'repair_fund_note',              label: '(6) 備考',                                                        cell: 'F451',  type: 'text' },
   // ── (7) 通常の管理費用の額 ──
   { key: 'management_fee_amount',         label: '通常の管理費 月額',                                               cell: 'J457',  type: 'text' },
-  { key: 'management_fee_date',           label: '通常の管理費 基準日（西暦 例:"2026年04月"）',                     cell: null,    type: 'date',
+  { key: 'management_fee_date',           label: '通常の管理費 基準日（その項目の直近に記載の日付のみ。「○月現在」なら"2026年04月"、「○月○日現在」なら"2026年04月30日"）', cell: null,    type: 'date',
     dateCells: { year: 'Z457', month: 'AD457', day: 'AH457' } },
   { key: 'management_fee_arrears_unit',   label: '当該住戸の管理費滞納額（その住戸1戸分の管理費滞納額。「管理費等滞納及び借入の状況」ではなく当該住戸の滞納額。数字のみ、0円の場合は"0"）', cell: 'Q460',  type: 'text' },
   { key: 'management_fee_arrears_kumiai', label: '当該管理組合の管理費滞納額（「管理費等滞納及び借入の状況」表の「管理費会計滞納額」の金額。数字のみ、0円の場合は"0"）', cell: 'AK460', type: 'text' },
-  { key: 'management_fee_arrears_date',   label: '当該管理組合の滞納額 基準日（西暦 例:"2026年04月30日"）',         cell: null,    type: 'date',
+  { key: 'management_fee_arrears_date',   label: '当該管理組合の滞納額 基準日（その項目の直近に記載の日付のみ。「○月現在」なら"2026年04月"、「○月○日現在」なら"2026年04月30日"）', cell: null,    type: 'date',
     dateCells: { year: 'AW460', month: 'BA460', day: 'BE460' } },
   { key: 'management_fee_note',           label: '(7) 備考（その他・請求時期など）',             cell: 'G462',  type: 'text' },
   // ── (8) 管理の委託先 ──
@@ -235,10 +235,11 @@ ${itemsDetail}
    - チェックなし・「無」・「該当しない」→ false
    - 記載がない場合は null
 6. 管理会社の住所と名称が同じセルに入る場合（management_company_name）は「名称\n住所」の形式で返すこと
-7. date型の項目（基準日）は「○○年○○月○○日」または「○○年○○月」の形式で西暦のまま返すこと
-   - 例: "2026年04月30日" または "2026年04月"
-   - 同じ書類内で複数の基準日がある場合は、その項目に対応する日付を返すこと
-   - 通常は同じ日付が複数箇所に使われる（例: 「2026年04月現在」「2026年04月30日現在」）
+7. date型の項目（基準日）は文書に記載されている日付をそのまま西暦で返すこと
+   - 「○○年○○月現在」→ "2026年04月"（日は含めない）
+   - 「○○年○○月○○日現在」→ "2026年04月30日"（日まで含める）
+   - **その項目の直近に記載されている日付のみを使うこと。他の箇所の日付を流用しないこと**
+   - 日付の記載が見つからない場合はnull
 8. 見つからない場合はnull
 9. 必ず以下のJSON形式のみで応答すること（説明文・コードブロック記号は不要）
 
