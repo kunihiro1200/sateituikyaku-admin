@@ -810,6 +810,13 @@ export class BuyerService {
     // 手動更新時刻を記録（スプレッドシート同期による上書きを防ぐため）
     allowedData.db_updated_at = new Date().toISOString();
 
+    // property_number 保護: 空で来た場合、DBに既存値があれば上書きしない
+    if ((allowedData.property_number === null || allowedData.property_number === '' || allowedData.property_number === undefined)
+        && existing.property_number) {
+      console.log(`[BuyerService.update] ${buyerNumber}: property_number is set in DB (${existing.property_number}) but empty in update data, skipping overwrite`);
+      delete allowedData.property_number;
+    }
+
     // latest_status が更新される場合、latest_status_updated_at を記録
     if (allowedData.latest_status !== undefined) {
       allowedData.latest_status_updated_at = new Date().toISOString();
@@ -948,6 +955,14 @@ export class BuyerService {
 
     // 手動更新時刻を記録（スプレッドシート同期による上書きを防ぐため）
     allowedData.db_updated_at = new Date().toISOString();
+
+    // property_number 保護: スプシから空で来た場合、DBに既存値があれば上書きしない
+    // （物件リストから買主登録した場合など、DBに正しい値が入っているケース）
+    if ((allowedData.property_number === null || allowedData.property_number === '' || allowedData.property_number === undefined)
+        && existing.property_number) {
+      console.log(`[updateWithSync] ${buyerNumber}: property_number is set in DB (${existing.property_number}) but empty in update data, skipping overwrite`);
+      delete allowedData.property_number;
+    }
 
     // property_number が含まれ、かつ非null・非空文字の場合、property_listingsから物件情報を取得して同期
     if (allowedData.property_number != null && allowedData.property_number !== '') {
