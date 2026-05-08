@@ -127,6 +127,9 @@ const JYUCHO_ITEMS = [
   { key: 'management_fee_arrears_date',   label: '当該管理組合の滞納額 基準日（その項目の直近に記載の日付のみ。「○月現在」なら"2026年04月"、「○月○日現在」なら"2026年04月30日"）', cell: null,    type: 'date',
     dateCells: { year: 'AW460', month: 'BA460', day: 'BE460' } },
   { key: 'management_fee_note',           label: '(7) 備考（その他・請求時期など）',             cell: 'G462',  type: 'text' },
+  // ── 駐車場・駐輪場情報 ──
+  { key: 'parking_info',                  label: '駐車場の台数・料金・利用条件等の詳細（記載があれば全て。台数、月額料金、空き状況など）', cell: 'M431',  type: 'text' },
+  { key: 'bicycle_parking_info',          label: '駐輪場・バイク置き場の料金・台数・利用条件等の詳細（記載があれば全て）',               cell: 'M432',  type: 'text' },
   // ── (8) 管理の委託先 ──
   // management_form は "委託管理(全部)" / "委託管理(一部)" / "自主管理" の3択
   { key: 'management_form',               label: '管理の形態（委託管理(全部)/委託管理(一部)/自主管理 のいずれか）', cell: 'L467',  type: 'text' },
