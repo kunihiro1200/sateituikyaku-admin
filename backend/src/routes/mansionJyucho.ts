@@ -19,71 +19,85 @@ function extractSpreadsheetId(url: string): string | null {
 // 重説シートのセルマッピング付き
 //
 // ─── (6) 計画修繕積立金等に関する事項 ───────────────────────────────
-//   T440  : 計画修繕積立金制度「無」チェック          (boolean)
-//   Z440  : 計画修繕積立金制度「有—別添規約等参照」チェック (boolean)
-//   W442  : 当該住戸の計画修繕積立金 月額（金額）
-//   AI442 : 当該住戸の計画修繕積立金 滞納額
-//   W445  : 管理組合積立総額（金額）
-//   AI445 : 管理組合積立総額 滞納額
-//   T447  : 預金名義人「管理組合」チェック            (boolean)
-//   AB447 : 預金名義人「その他」チェック              (boolean)
-//   AE447 : 預金名義人「その他」入力欄
-//   F448  : 備考欄
+//   T443  : 計画修繕積立金制度「無」チェック          (boolean)
+//   Z443  : 計画修繕積立金制度「有—別添規約等参照」チェック (boolean)
+//   W445  : 当該住戸の計画修繕積立金 月額（金額）
+//   AI445 : 当該住戸の計画修繕積立金 滞納額
+//   AU445 : 当該住戸の計画修繕積立金 滞納額 年
+//   AY445 : 当該住戸の計画修繕積立金 滞納額 月
+//   BC445 : 当該住戸の計画修繕積立金 滞納額 日
+//   W448  : 管理組合積立総額（金額）
+//   AI448 : 管理組合積立総額 滞納額
+//   AU448 : 管理組合積立総額 滞納額 年
+//   AY448 : 管理組合積立総額 滞納額 月
+//   BC448 : 管理組合積立総額 滞納額 日
+//   T450  : 預金名義人「管理組合」チェック            (boolean)
+//   AB450 : 預金名義人「その他」チェック              (boolean)
+//   AE450 : 預金名義人「その他」入力欄
+//   F451  : 備考欄
 // ─── (7) 通常の管理費用の額 ─────────────────────────────────────────
-//   J454  : 通常の管理費 月額（金額）
-//   Q457  : 当該住戸の滞納額
-//   AK457 : 当該管理組合の滞納額
-//   G459  : 備考（その他・請求時期など）
+//   J457  : 通常の管理費 月額（金額）
+//   Z457  : 通常の管理費 年
+//   AD457 : 通常の管理費 月
+//   AH457 : 通常の管理費 日
+//   Q460  : 当該住戸の滞納額
+//   AK460 : 当該管理組合の滞納額
+//   AW460 : 当該管理組合の滞納額 年
+//   BA460 : 当該管理組合の滞納額 月
+//   BE460 : 当該管理組合の滞納額 日
+//   G462  : 備考（その他・請求時期など）
 // ─── (8) 管理の委託先 ────────────────────────────────────────────────
-//   L464  : 管理の形態（プルダウン: "委託管理(全部)" / "委託管理(一部)" / "自主管理"）
-//   AG464 : 管理組合の名称
-//   W465  : 管理会社名・住所（氏名（商号又は名称）＋住所）
-//   AZ465 : 管理会社TEL
-//   AH466 : 登録回数
-//   AR466 : 登録番号
+//   L467  : 管理の形態（プルダウン: "委託管理(全部)" / "委託管理(一部)" / "自主管理"）
+//   AG467 : 管理組合の名称
+//   W468  : 管理会社名・住所（氏名（商号又は名称）＋住所）
+//   AZ468 : 管理会社TEL
+//   AH469 : 登録回数
+//   AR469 : 登録番号
+// ─── (9) 管理業者管理者方式か否か ───────────────────────────────────
+//   T474  : 「該当する」チェック                      (boolean)
+//   AF474 : 「該当しない」チェック                    (boolean)
 // ─── (10) 建物の維持修繕の実施状況の記録 ────────────────────────────
-//   T471  : 「該当する」チェック                      (boolean)
-//   AF471 : 「該当しない」チェック                    (boolean)
-//   L475  : 共用部分「有」チェック                    (boolean)
-//   L476  : 共用部分「無」チェック                    (boolean)
-//   P475  : 共用部分修繕履歴入力欄
-//   L477  : 専有部分「有」チェック                    (boolean)
-//   L478  : 専有部分「無」チェック                    (boolean)
-//   P477  : 専有部分修繕履歴入力欄
+//   L478  : 共用部分「有」チェック                    (boolean)
+//   L479  : 共用部分「無」チェック                    (boolean)
+//   P478  : 共用部分修繕履歴入力欄
+//   L480  : 専有部分「有」チェック                    (boolean)
+//   L481  : 専有部分「無」チェック                    (boolean)
+//   P480  : 専有部分修繕履歴入力欄
 const JYUCHO_ITEMS = [
   // ── (6) 計画修繕積立金等に関する事項 ──
-  { key: 'repair_fund_none',              label: '計画修繕積立金制度「無」',                    cell: 'T440',  type: 'boolean' },
-  { key: 'repair_fund_exists',            label: '計画修繕積立金制度「有—別添規約等参照」',      cell: 'Z440',  type: 'boolean' },
-  { key: 'repair_monthly_amount',         label: '当該住戸の計画修繕積立金 月額',               cell: 'W442',  type: 'text' },
-  { key: 'repair_monthly_arrears',        label: '当該住戸の計画修繕積立金 滞納額',             cell: 'AI442', type: 'text' },
-  { key: 'repair_total_amount',           label: '管理組合 積立総額',                           cell: 'W445',  type: 'text' },
-  { key: 'repair_total_arrears',          label: '管理組合 積立総額 滞納額',                    cell: 'AI445', type: 'text' },
-  { key: 'deposit_holder_kumiai',         label: '預金名義人「管理組合」',                      cell: 'T447',  type: 'boolean' },
-  { key: 'deposit_holder_other_check',    label: '預金名義人「その他」チェック',                cell: 'AB447', type: 'boolean' },
-  { key: 'deposit_holder_other_text',     label: '預金名義人「その他」入力欄',                  cell: 'AE447', type: 'text' },
-  { key: 'repair_fund_note',              label: '(6) 備考',                                    cell: 'F448',  type: 'text' },
+  { key: 'repair_fund_none',              label: '計画修繕積立金制度「無」',                    cell: 'T443',  type: 'boolean' },
+  { key: 'repair_fund_exists',            label: '計画修繕積立金制度「有—別添規約等参照」',      cell: 'Z443',  type: 'boolean' },
+  { key: 'repair_monthly_amount',         label: '当該住戸の計画修繕積立金 月額',               cell: 'W445',  type: 'text' },
+  { key: 'repair_monthly_arrears',        label: '当該住戸の計画修繕積立金 滞納額',             cell: 'AI445', type: 'text' },
+  { key: 'repair_total_amount',           label: '管理組合 積立総額',                           cell: 'W448',  type: 'text' },
+  { key: 'repair_total_arrears',          label: '管理組合 積立総額 滞納額',                    cell: 'AI448', type: 'text' },
+  { key: 'deposit_holder_kumiai',         label: '預金名義人「管理組合」',                      cell: 'T450',  type: 'boolean' },
+  { key: 'deposit_holder_other_check',    label: '預金名義人「その他」チェック',                cell: 'AB450', type: 'boolean' },
+  { key: 'deposit_holder_other_text',     label: '預金名義人「その他」入力欄',                  cell: 'AE450', type: 'text' },
+  { key: 'repair_fund_note',              label: '(6) 備考',                                    cell: 'F451',  type: 'text' },
   // ── (7) 通常の管理費用の額 ──
-  { key: 'management_fee_amount',         label: '通常の管理費 月額',                           cell: 'J454',  type: 'text' },
-  { key: 'management_fee_arrears_unit',   label: '当該住戸の滞納額',                            cell: 'Q457',  type: 'text' },
-  { key: 'management_fee_arrears_kumiai', label: '当該管理組合の滞納額',                        cell: 'AK457', type: 'text' },
-  { key: 'management_fee_note',           label: '(7) 備考（その他・請求時期など）',             cell: 'G459',  type: 'text' },
+  { key: 'management_fee_amount',         label: '通常の管理費 月額',                           cell: 'J457',  type: 'text' },
+  { key: 'management_fee_arrears_unit',   label: '当該住戸の滞納額',                            cell: 'Q460',  type: 'text' },
+  { key: 'management_fee_arrears_kumiai', label: '当該管理組合の滞納額',                        cell: 'AK460', type: 'text' },
+  { key: 'management_fee_note',           label: '(7) 備考（その他・請求時期など）',             cell: 'G462',  type: 'text' },
   // ── (8) 管理の委託先 ──
   // management_form は "委託管理(全部)" / "委託管理(一部)" / "自主管理" の3択
-  { key: 'management_form',               label: '管理の形態（委託管理(全部)/委託管理(一部)/自主管理 のいずれか）', cell: 'L464',  type: 'text' },
-  { key: 'management_kumiai_name',        label: '管理組合の名称',                              cell: 'AG464', type: 'text' },
-  { key: 'management_company_name',       label: '管理会社名（氏名・商号）と住所（改行区切り）', cell: 'W465',  type: 'text' },
-  { key: 'management_company_tel',        label: '管理会社TEL',                                 cell: 'AZ465', type: 'text' },
-  { key: 'management_reg_count',          label: '管理業者登録回数（数字のみ）',                cell: 'AH466', type: 'text' },
-  { key: 'management_reg_no',             label: '管理業者登録番号（数字のみ）',                cell: 'AR466', type: 'text' },
+  { key: 'management_form',               label: '管理の形態（委託管理(全部)/委託管理(一部)/自主管理 のいずれか）', cell: 'L467',  type: 'text' },
+  { key: 'management_kumiai_name',        label: '管理組合の名称',                              cell: 'AG467', type: 'text' },
+  { key: 'management_company_name',       label: '管理会社名（氏名・商号）と住所（改行区切り）', cell: 'W468',  type: 'text' },
+  { key: 'management_company_tel',        label: '管理会社TEL',                                 cell: 'AZ468', type: 'text' },
+  { key: 'management_reg_count',          label: '管理業者登録回数（数字のみ）',                cell: 'AH469', type: 'text' },
+  { key: 'management_reg_no',             label: '管理業者登録番号（数字のみ）',                cell: 'AR469', type: 'text' },
+  // ── (9) 管理業者管理者方式か否か ──
+  { key: 'mgmt_agent_applicable',         label: '管理業者管理者方式「該当する」',              cell: 'T474',  type: 'boolean' },
+  { key: 'mgmt_agent_not_applicable',     label: '管理業者管理者方式「該当しない」',            cell: 'AF474', type: 'boolean' },
   // ── (10) 建物の維持修繕の実施状況の記録 ──
-  { key: 'repair_record_applicable',      label: '維持修繕記録「該当する」',                    cell: 'T471',  type: 'boolean' },
-  { key: 'repair_record_not_applicable',  label: '維持修繕記録「該当しない」',                  cell: 'AF471', type: 'boolean' },
-  { key: 'common_area_repair_exists',     label: '共用部分修繕「有」',                          cell: 'L475',  type: 'boolean' },
-  { key: 'common_area_repair_none',       label: '共用部分修繕「無」',                          cell: 'L476',  type: 'boolean' },
-  { key: 'common_area_repair_history',    label: '共用部分修繕履歴',                            cell: 'P475',  type: 'text' },
-  { key: 'exclusive_area_repair_exists',  label: '専有部分修繕「有」',                          cell: 'L477',  type: 'boolean' },
-  { key: 'exclusive_area_repair_none',    label: '専有部分修繕「無」',                          cell: 'L478',  type: 'boolean' },
-  { key: 'exclusive_area_repair_history', label: '専有部分修繕履歴',                            cell: 'P477',  type: 'text' },
+  { key: 'common_area_repair_exists',     label: '共用部分修繕「有」',                          cell: 'L478',  type: 'boolean' },
+  { key: 'common_area_repair_none',       label: '共用部分修繕「無」',                          cell: 'L479',  type: 'boolean' },
+  { key: 'common_area_repair_history',    label: '共用部分修繕履歴',                            cell: 'P478',  type: 'text' },
+  { key: 'exclusive_area_repair_exists',  label: '専有部分修繕「有」',                          cell: 'L480',  type: 'boolean' },
+  { key: 'exclusive_area_repair_none',    label: '専有部分修繕「無」',                          cell: 'L481',  type: 'boolean' },
+  { key: 'exclusive_area_repair_history', label: '専有部分修繕履歴',                            cell: 'P480',  type: 'text' },
   // ── 管理規約関連（参考情報・書き込みなし）──
   { key: 'usage_restriction',             label: '用途制限',                                    cell: null,    type: 'text' },
   { key: 'pets',                          label: 'ペットの飼育',                                cell: null,    type: 'text' },
