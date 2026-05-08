@@ -2528,13 +2528,12 @@ export class BuyerService {
         console.warn(`[WARN] getSidebarCountsFallback took ${duration}ms (> 5000ms)`);
       }
 
-      // インメモリキャッシュを更新（次回のgetSidebarCounts呼び出しを高速化）
-      // ⚠️ 注意: SIDEBAR_COLUMNSはname/property_addressを含まない軽量クエリのため、
-      // 既にfetchAllBuyersWithStatus()（BUYER_COLUMNS使用）のキャッシュがある場合は上書きしない。
-      // 上書きするとBuyersPage一覧で氏名・物件所在地が消える問題が発生する。
-      if (!_moduleLevelStatusCache || (Date.now() - _moduleLevelStatusCache.computedAt) >= _MODULE_STATUS_CACHE_TTL) {
-        _moduleLevelStatusCache = { buyers: allBuyers, computedAt: Date.now() };
-      }
+      // ⚠️ 重要: _moduleLevelStatusCacheはここでは更新しない。
+      // getSidebarCountsFallback()はSIDEBAR_COLUMNS（nameなし、property_addressなし）の
+      // 軽量データを使用しているため、このデータでキャッシュを更新すると
+      // fetchAllBuyersWithStatus()がキャッシュヒットしてnameなしのデータを返してしまい、
+      // BuyersPage一覧で氏名・物件所在地が消える問題が発生する。
+      // キャッシュの更新はfetchAllBuyersWithStatus()（BUYER_COLUMNS使用）のみが行う。
       
       // ✅ 修正: categoryCounts形式で返す（categories配列ではなく）
       return { categoryCounts: result, normalStaffInitials };
