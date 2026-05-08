@@ -276,15 +276,9 @@ export default function OtherCompanyDistributionPage() {
     setPreviewData(null);
     setPreviewUrl('');
     try {
-      // RailwayのスクレイピングAPIサーバーに送信
-      const scrapeApiUrl = import.meta.env.VITE_SCRAPE_API_URL || 'http://localhost:8765';
-      const res = await fetch(`${scrapeApiUrl}/scrape`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: propertyUrl.trim() }),
-      });
-      if (!res.ok) throw new Error(`スクレイピングサーバーエラー: ${res.status}`);
-      const result = await res.json();
+      // バックエンド経由でスクレイピング（CORS回避）
+      const res = await api.post('/api/tateuri/scrape', { url: propertyUrl.trim() });
+      const result = res.data;
       if (!result.success) throw new Error(result.error || '取得失敗');
       setPreviewData(result.data);
       setPreviewUrl(result.preview_url);
