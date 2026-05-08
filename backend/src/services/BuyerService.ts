@@ -2514,7 +2514,12 @@ export class BuyerService {
       }
 
       // インメモリキャッシュを更新（次回のgetSidebarCounts呼び出しを高速化）
-      _moduleLevelStatusCache = { buyers: allBuyers, computedAt: Date.now() };
+      // ⚠️ 注意: SIDEBAR_COLUMNSはname/property_addressを含まない軽量クエリのため、
+      // 既にfetchAllBuyersWithStatus()（BUYER_COLUMNS使用）のキャッシュがある場合は上書きしない。
+      // 上書きするとBuyersPage一覧で氏名・物件所在地が消える問題が発生する。
+      if (!_moduleLevelStatusCache || (Date.now() - _moduleLevelStatusCache.computedAt) >= _MODULE_STATUS_CACHE_TTL) {
+        _moduleLevelStatusCache = { buyers: allBuyers, computedAt: Date.now() };
+      }
       
       // ✅ 修正: categoryCounts形式で返す（categories配列ではなく）
       return { categoryCounts: result, normalStaffInitials };
