@@ -1513,8 +1513,48 @@ router.post('/:propertyNumber/send-chat-to-assignee', async (req: Request, res: 
       return;
     }
 
+    // 物件担当がいない場合は事務チャットへ送信
     if (!property.sales_assignee) {
-      res.status(400).json({ error: '物件担当が設定されていません' });
+      console.log(`[send-chat-to-assignee] No assignee for ${propertyNumber}, sending to office chat`);
+      
+      const officeWebhookUrl = 'https://chat.googleapis.com/v1/spaces/AAAAw9wyS-o/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=t6SJmZ8af-yyB38DZzAqGOKYI-DnIl6wYtVo-Lyskuk';
+      
+      // 物件詳細画面のURL
+      const propertyUrl = `https://sateituikyaku-admin-frontend.vercel.app/property-listings/${property.property_number}`;
+      
+      // 売主情報
+      const sellerInfo = [
+        property.seller_name ? `売主氏名: ${property.seller_name}` : null,
+        property.seller_contact ? `売主電話: ${property.seller_contact}` : null,
+        property.seller_email ? `売主メール: ${property.seller_email}` : null,
+      ].filter(Boolean).join('\n');
+      
+      const senderLabel = senderName ? `送信者: ${senderName}` : null;
+      
+      const chatMessage = `📩 *物件担当への質問・伝言（担当未設定のため事務へ送信）*\n\n物件番号: ${property.property_number}\n所在地: ${property.address || '未設定'}\n担当: 未設定\n${sellerInfo ? sellerInfo + '\n' : ''}物件URL: ${propertyUrl}\n${senderLabel ? senderLabel + '\n' : ''}\n${String(message).trim()}`;
+      
+      await axios.post(officeWebhookUrl, { text: chatMessage });
+      console.log(`[send-chat-to-assignee] Sent to office chat for ${propertyNumber}`);
+      
+      // CHAT送信履歴を保存
+      try {
+        await supabase
+          .from('property_chat_history')
+          .insert({
+            property_number: propertyNumber,
+            recipient_type: 'office',
+            recipient_name: '事務',
+            message: String(message).trim(),
+            sender_label: senderLabel || null,
+            sent_at: new Date().toISOString(),
+          });
+        console.log(`[send-chat-to-assignee] Chat history saved for ${propertyNumber}`);
+      } catch (historyError: any) {
+        console.error(`[send-chat-to-assignee] Failed to save chat history:`, historyError);
+        // 履歴保存エラーでもレスポンスは成功を返す
+      }
+      
+      res.json({ success: true });
       return;
     }
 
