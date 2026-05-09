@@ -355,21 +355,53 @@ router.post('/transfer-to-spreadsheet', async (req: Request, res: Response) => {
     // 転記データを準備
     const transferData: Record<string, any> = {};
 
-    // ヘルパー関数: 条文番号やページ番号を抽出
-    const extractReference = (content: string): string => {
-      const match = content.match(/第(\d+)条|ページ\s*(\d+)|p\.?\s*(\d+)/i);
-      if (match) {
-        if (match[1]) return `第${match[1]}条`;
-        if (match[2]) return `ページ${match[2]}`;
-        if (match[3]) return `p.${match[3]}`;
+    // ヘルパー関数: 条文番号やページ番号を抽出（複数対応）
+    const extractReferences = (content: string): string => {
+      const references: string[] = [];
+      
+      // 第○条を抽出
+      const articleMatches = content.matchAll(/第(\d+)条/g);
+      for (const match of articleMatches) {
+        const ref = `第${match[1]}条`;
+        if (!references.includes(ref)) {
+          references.push(ref);
+        }
       }
-      return '';
+      
+      // ページ番号を抽出
+      const pageMatches = content.matchAll(/(?:ページ|p\.?)\s*(\d+)/gi);
+      for (const match of pageMatches) {
+        const ref = `${match[1]}ページ`;
+        if (!references.includes(ref)) {
+          references.push(ref);
+        }
+      }
+      
+      return references.join('、');
     };
 
-    // ヘルパー関数: テキストを指定文字数以内に要約
-    const truncate = (text: string, maxLength: number): string => {
-      if (text.length <= maxLength) return text;
-      return text.substring(0, maxLength - 1) + '…';
+    // ヘルパー関数: 条文番号やページ番号を除去して内容のみを抽出
+    const extractContentOnly = (text: string, maxLength: number): string => {
+      // 条文番号やページ番号のパターンを除去
+      let content = text
+        .replace(/第\d+条[（(][^)）]*[)）]/g, '') // 第○条（○○）を除去
+        .replace(/第\d+条/g, '') // 第○条を除去
+        .replace(/(?:ページ|p\.?)\s*\d+/gi, '') // ページ番号を除去
+        .replace(/使用細則第\d+条第?\d*項?/g, '') // 使用細則第○条第○項を除去
+        .replace(/[（(]\d+ページ[)）]/g, '') // （○ページ）を除去
+        .replace(/により|を遵守。?/g, '') // 「により」「を遵守」を除去
+        .replace(/^[、。：:\s]+/, '') // 先頭の句読点・空白を除去
+        .replace(/[、。：:\s]+$/, '') // 末尾の句読点・空白を除去
+        .trim();
+      
+      // 空になった場合は元のテキストを使用
+      if (!content) {
+        content = text;
+      }
+      
+      // 指定文字数以内に切り詰め
+      if (content.length <= maxLength) return content;
+      return content.substring(0, maxLength - 1) + '…';
     };
 
     // ヘルパー関数: 専用使用なしうる者の範囲を判定
@@ -383,9 +415,26 @@ router.post('/transfer-to-spreadsheet', async (req: Request, res: Response) => {
       return '区分所有者に限る'; // デフォルト
     };
 
-    // ヘルパー関数: 専用使用料の有無を判定
+    // ヘルパー関数: 専用使用料の有無を判定（厳格版）
     const hasFee = (content: string): boolean => {
-      return /使用料|料金|負担|支払|徴収/.test(content);
+      // 「無償」「発生しない」「不要」などの否定表現がある場合は明確に「無」
+      if (/無償|発生しない|不要|徴収しない|負担なし|無料/.test(content)) {
+        return false;
+      }
+      
+      // 金額が明示されている場合のみ「有」
+      // 例: 「月額○○円」「○○円/月」「金○○円」
+      if (/\d+円|金\d+|月額\d+/.test(content)) {
+        return true;
+      }
+      
+      // 「使用料を徴収」「使用料を支払」など、明確に料金が発生する表現がある場合のみ「有」
+      if (/使用料を徴収|使用料を支払|使用料の支払|料金を徴収/.test(content)) {
+        return true;
+      }
+      
+      // それ以外は「無」（デフォルト）
+      return false;
     };
 
     // ヘルパー関数: 支払先を判定
@@ -396,44 +445,97 @@ router.post('/transfer-to-spreadsheet', async (req: Request, res: Response) => {
       return '管理組合'; // デフォルト
     };
 
+    // ヘルパー関数: 用途制限の種類を判定
+    const determineUsageRestriction = (content: string): string => {
+      const lowerContent = content.toLowerCase();
+      
+      // 住居専用の判定
+      if (/住居専用|居住専用|住宅専用|居住の用/.test(content)) {
+        return '住居専用';
+      }
+      
+      // 店舗専用の判定
+      if (/店舗専用|店舗の用/.test(content)) {
+        return '店舗専用';
+      }
+      
+      // 事務所専用の判定
+      if (/事務所専用|事務所の用/.test(content)) {
+        return '事務所専用';
+      }
+      
+      // デフォルトは住居専用
+      return '住居専用';
+    };
+
     // 1. 用途制限（L410, AS410）
     const usageRestriction = results.find(r => r.key === 'usage_restriction');
     if (usageRestriction?.found && usageRestriction.content) {
-      // L410: 「有」を設定（プルダウンは手動選択が必要）
-      transferData['L410'] = '有';
+      // L410: 用途制限の種類を判定
+      transferData['L410'] = determineUsageRestriction(usageRestriction.content);
       // AS410: 条文番号やページ番号
-      const ref = extractReference(usageRestriction.content);
-      if (ref) transferData['AS410'] = ref;
+      const refs = extractReferences(usageRestriction.content);
+      if (refs) transferData['AS410'] = refs;
     }
 
-    // 2. ペットの飼育（L411, V411）
+    // 2. ペットの飼育（L411, V411, AS411に条文番号追加）
     const pets = results.find(r => r.key === 'pets');
     if (pets?.found && pets.content) {
       transferData['L411'] = true;
-      transferData['V411'] = truncate(pets.content, 52);
+      // V411: 内容のみ（条文番号除去）
+      transferData['V411'] = extractContentOnly(pets.content, 52);
+      // AS411: 条文番号を追加
+      const refs = extractReferences(pets.content);
+      if (refs) {
+        transferData['AS411'] = transferData['AS411'] 
+          ? `${transferData['AS411']}、${refs}` 
+          : refs;
+      }
     }
 
-    // 3. ピアノの使用（L412, V412）
+    // 3. ピアノの使用（L412, V412, AS411に条文番号追加）
     const piano = results.find(r => r.key === 'piano');
     if (piano?.found && piano.content) {
       transferData['L412'] = true;
-      transferData['V412'] = truncate(piano.content, 52);
+      // V412: 内容のみ（条文番号除去）
+      transferData['V412'] = extractContentOnly(piano.content, 52);
+      // AS411: 条文番号を追加
+      const refs = extractReferences(piano.content);
+      if (refs) {
+        transferData['AS411'] = transferData['AS411'] 
+          ? `${transferData['AS411']}、${refs}` 
+          : refs;
+      }
     }
 
-    // 4. フローリング張替え工事（L413, Z413）
+    // 4. フローリング張替え工事（L413, Z413, AS411に条文番号追加）
     const flooring = results.find(r => r.key === 'flooring');
     if (flooring?.found && flooring.content) {
       transferData['L413'] = true;
-      transferData['Z413'] = truncate(flooring.content, 40);
+      // Z413: 内容のみ（条文番号除去）
+      transferData['Z413'] = extractContentOnly(flooring.content, 40);
+      // AS411: 条文番号を追加
+      const refs = extractReferences(flooring.content);
+      if (refs) {
+        transferData['AS411'] = transferData['AS411'] 
+          ? `${transferData['AS411']}、${refs}` 
+          : refs;
+      }
     }
 
-    // 5. 上記以外の利用の制限（L414, S414, AS411）
+    // 5. 上記以外の利用の制限（L414, S414, AS411に条文番号追加）
     const renovation = results.find(r => r.key === 'renovation');
     if (renovation?.found && renovation.content) {
       transferData['L414'] = true;
-      transferData['S414'] = truncate(renovation.content, 52);
-      const ref = extractReference(renovation.content);
-      if (ref) transferData['AS411'] = ref;
+      // S414: 内容のみ（条文番号除去）
+      transferData['S414'] = extractContentOnly(renovation.content, 52);
+      // AS411: 条文番号を追加
+      const refs = extractReferences(renovation.content);
+      if (refs) {
+        transferData['AS411'] = transferData['AS411'] 
+          ? `${transferData['AS411']}、${refs}` 
+          : refs;
+      }
     }
 
     // 6. 専用使用権 - バルコニー（M419, Q419, AE419, AI419）
