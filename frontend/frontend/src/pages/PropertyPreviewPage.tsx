@@ -227,23 +227,9 @@ export default function PropertyPreviewPage() {
 
   const images = data.images || [];
 
-  // 画像インデックスから決定論的にスタイルを生成（別の人が撮った写真風）
+  // 画像スタイル（元の状態：加工なし）
   const getImageStyleByIndex = (index: number): React.CSSProperties => {
-    const variants = [
-      // 0: 右寄り・少し上・-2度・1.08倍（var-c）
-      { objectPosition: '70% 45%', transform: 'rotate(-2deg) scale(1.08)', transformOrigin: 'center' },
-      // 1: 左寄り・下気味・+1.5度・1.08倍
-      { objectPosition: '30% 55%', transform: 'rotate(1.5deg) scale(1.08)', transformOrigin: 'center' },
-      // 2: 上から引き気味・+2.5度・1.1倍
-      { objectPosition: '50% 30%', transform: 'rotate(2.5deg) scale(1.10)', transformOrigin: 'center' },
-      // 3: 右寄り・ほぼ正面・+1度・1.06倍
-      { objectPosition: '65% 50%', transform: 'rotate(1deg) scale(1.06)', transformOrigin: 'center' },
-      // 4: 下から寄り気味・-1.5度・1.12倍
-      { objectPosition: '40% 70%', transform: 'rotate(-1.5deg) scale(1.12)', transformOrigin: 'center' },
-      // 5: 左上・-2.5度・1.09倍
-      { objectPosition: '25% 35%', transform: 'rotate(-2.5deg) scale(1.09)', transformOrigin: 'center' },
-    ];
-    return variants[index % variants.length] as React.CSSProperties;
+    return {};
   };
   // タイトルから [物件番号]以降の不要テキストを除去
   const cleanTitle = (data.title || '').replace(/\[\d+\].+$/, '').trim();
@@ -310,7 +296,7 @@ export default function PropertyPreviewPage() {
               物件写真（{images.length}枚）
             </h2>
             <div style={{ position: 'relative', background: '#111', borderRadius: 8, overflow: 'hidden', marginBottom: 10, aspectRatio: '4/3', userSelect: 'none' }}>
-              <img src={images[imgIndex]} alt="物件写真" style={{ width: '100%', height: '100%', objectFit: 'cover', pointerEvents: 'none', display: 'block', ...getImageStyleByIndex(imgIndex) }} />
+              <img src={images[imgIndex]} alt="物件写真" style={{ width: '100%', height: '100%', objectFit: 'cover', pointerEvents: 'none', display: 'block' }} />
               {/* 左右クリックエリア（矢印ボタンの後ろに配置） */}
               <div style={{ position: 'absolute', inset: 0, display: 'flex', zIndex: 1 }}>
                 <div style={{ width: '50%', cursor: 'w-resize' }} onClick={() => setImgIndex(i => (i - 1 + images.length) % images.length)} />
@@ -332,7 +318,7 @@ export default function PropertyPreviewPage() {
                   border: i === imgIndex ? '2px solid #e84040' : '2px solid transparent',
                   opacity: i === imgIndex ? 1 : 0.65,
                 }}>
-                  <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', ...getImageStyleByIndex(i) }} />
+                  <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
                 </div>
               ))}
             </div>

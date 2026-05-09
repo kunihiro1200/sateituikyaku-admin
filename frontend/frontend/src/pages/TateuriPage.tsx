@@ -164,20 +164,9 @@ export default function TateuriPage() {
       .replace(/借入可能額シミュレーション.*$/, '')
       .trim();
 
-  // slugから決定論的に画像スタイルを生成（var-cベース：右寄り・少し上・-2度・拡大）
-  // 物件ごとに微妙に異なる構図に見せる
+  // 画像スタイル（元の状態：加工なし）
   const getImageStyle = (slug: string): React.CSSProperties => {
-    // slugの文字コードの合計でバリエーションを決定（リロードしても変わらない）
-    const seed = slug.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
-    const posX = 60 + (seed % 5) * 4;        // 60〜76%（右寄り）
-    const posY = 38 + (seed % 4) * 4;        // 38〜50%（少し上）
-    const rotate = -2.5 + (seed % 3) * 0.5; // -2.5〜-1.5度
-    const scale = 1.10 + (seed % 3) * 0.02; // 1.10〜1.14（拡大）
-    return {
-      objectPosition: `${posX}% ${posY}%`,
-      transform: `rotate(${rotate}deg) scale(${scale})`,
-      transformOrigin: 'center',
-    };
+    return {};
   };
 
   return (
@@ -256,7 +245,7 @@ export default function TateuriPage() {
                   {/* サムネイル */}
                   {p.images?.[0] && (
                     <div style={{ width: 72, height: 54, borderRadius: 4, flexShrink: 0, overflow: 'hidden', position: 'relative' }}>
-                      <img src={p.images[0]} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', ...getImageStyle(p.slug) }} />
+                      <img src={p.images[0]} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                       {/* 当社帯 */}
                       <img src="/company-obi.png" alt="" style={{ position: 'absolute', bottom: 0, left: 0, width: '100%', height: 'auto', pointerEvents: 'none' }} />
                     </div>
@@ -319,7 +308,7 @@ export default function TateuriPage() {
                           <img
                             src={selectedProperty.images[0]}
                             alt=""
-                            style={{ width: '100%', height: '100%', objectFit: 'cover', ...getImageStyle(selectedProperty.slug) }}
+                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                           />
                           {/* 当社帯 */}
                           <img src="/company-obi.png" alt="" style={{ position: 'absolute', bottom: 0, left: 0, width: '100%', height: 'auto', pointerEvents: 'none' }} />
