@@ -255,8 +255,10 @@ export default function TateuriPage() {
                 <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
                   {/* サムネイル */}
                   {p.images?.[0] && (
-                    <div style={{ width: 72, height: 54, borderRadius: 4, flexShrink: 0, overflow: 'hidden' }}>
+                    <div style={{ width: 72, height: 54, borderRadius: 4, flexShrink: 0, overflow: 'hidden', position: 'relative' }}>
                       <img src={p.images[0]} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', ...getImageStyle(p.slug) }} />
+                      {/* 当社帯 */}
+                      <img src="/company-obi.png" alt="" style={{ position: 'absolute', bottom: 0, left: 0, width: '100%', height: 'auto', pointerEvents: 'none' }} />
                     </div>
                   )}
                   <div style={{ flex: 1, minWidth: 0 }}>
@@ -313,12 +315,14 @@ export default function TateuriPage() {
                     <div style={{ width: 220, fontFamily: "'Hiragino Sans', 'Meiryo', sans-serif" }}>
                       {/* サムネイル */}
                       {selectedProperty.images?.[0] && (
-                        <div style={{ width: '100%', height: 60, borderRadius: 4, marginBottom: 6, overflow: 'hidden' }}>
+                        <div style={{ width: '100%', height: 60, borderRadius: 4, marginBottom: 6, overflow: 'hidden', position: 'relative' }}>
                           <img
                             src={selectedProperty.images[0]}
                             alt=""
                             style={{ width: '100%', height: '100%', objectFit: 'cover', ...getImageStyle(selectedProperty.slug) }}
                           />
+                          {/* 当社帯 */}
+                          <img src="/company-obi.png" alt="" style={{ position: 'absolute', bottom: 0, left: 0, width: '100%', height: 'auto', pointerEvents: 'none' }} />
                         </div>
                       )}
                       {/* タイトル */}
