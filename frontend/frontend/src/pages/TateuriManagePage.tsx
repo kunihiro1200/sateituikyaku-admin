@@ -14,6 +14,8 @@ interface TateuriProperty {
 export default function TateuriManagePage() {
   const [properties, setProperties] = useState<TateuriProperty[]>([]);
   const [loading, setLoading] = useState(true);
+  const [region, setRegion] = useState<'oita' | 'fukuoka'>('oita');
+  const [lastAddedSlug, setLastAddedSlug] = useState<string | null>(null);
 
   // 追加フォーム
   const [addUrl, setAddUrl] = useState('');
@@ -25,16 +27,22 @@ export default function TateuriManagePage() {
   const [deleting, setDeleting] = useState(false);
   const [deleteResult, setDeleteResult] = useState<{ success: boolean; message: string } | null>(null);
 
-  const fetchProperties = useCallback(async () => {
+  const fetchProperties = useCallback(async (r?: 'oita' | 'fukuoka') => {
     try {
-      const res = await api.get('/api/tateuri');
-      setProperties(res.data);
+      const targetRegion = r || region;
+      const res = await api.get(`/api/tateuri?region=${targetRegion}`);
+      // 追加日の新しい順に並び替え
+      const sorted = [...(res.data || [])].sort(
+        (a: TateuriProperty, b: TateuriProperty) =>
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
+      setProperties(sorted);
     } catch (err) {
       console.error('Failed to fetch:', err);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [region]);
 
   useEffect(() => {
     fetchProperties();
@@ -45,8 +53,8 @@ export default function TateuriManagePage() {
     setAdding(true);
     setAddResult(null);
     try {
-      // 重複チェック：同じURLが既に登録済みか確認
-      const dupCheck = await api.post('/api/tateuri/check-duplicate', { source_url: addUrl.trim() });
+      // 重複チェック
+      const dupCheck = await api.post('/api/tateuri/check-duplicate', { source_url: addUrl.trim(), region });
       if (dupCheck.data.isDuplicate) {
         const existing = dupCheck.data.existing;
         const existingTitle = existing.title || existing.address || '物件';
@@ -58,11 +66,13 @@ export default function TateuriManagePage() {
         return;
       }
 
-      // 重複なし → バックエンド経由でスクレイピングして追加
-      const res = await api.post('/api/tateuri/scrape', { url: addUrl.trim() });
+      // 重複なし → スクレイピングして追加
+      const res = await api.post('/api/tateuri/scrape', { url: addUrl.trim(), region });
       if (!res.data.success) throw new Error(res.data.error || '取得失敗');
       const addedTitle = res.data?.data?.title?.replace(/\[\d+\].+$/, '').trim() || res.data?.data?.address || '物件';
+      const addedSlug = res.data?.slug || res.data?.data?.slug || null;
       setAddResult({ success: true, message: `「${addedTitle}」を追加しました` });
+      setLastAddedSlug(addedSlug);
       setAddUrl('');
       await fetchProperties();
     } catch (err: any) {
@@ -98,6 +108,7 @@ export default function TateuriManagePage() {
       const res = await api.post('/api/tateuri/delete', { source_url: `/property-preview/${slug}` });
       const deleted = res.data.deleted || [];
       setDeleteResult({ success: true, message: `削除しました（${deleted.length}件）` });
+      if (lastAddedSlug === slug) setLastAddedSlug(null);
       await fetchProperties();
     } catch (err: any) {
       const msg = err.response?.data?.error || err.message;
@@ -119,6 +130,22 @@ export default function TateuriManagePage() {
     border: '1px solid #ddd', borderRadius: 6, boxSizing: 'border-box',
   };
 
+  // regionが変わったら再取得
+  const handleRegionChange = (r: 'oita' | 'fukuoka') => {
+    setRegion(r);
+    setLastAddedSlug(null);
+    setLoading(true);
+    fetchProperties(r);
+  };
+
+  // 表示用リスト：最後に追加した物件を先頭に
+  const displayProperties = lastAddedSlug
+    ? [
+        ...properties.filter(p => p.slug === lastAddedSlug),
+        ...properties.filter(p => p.slug !== lastAddedSlug),
+      ]
+    : properties;
+
   return (
     <div style={{ fontFamily: "'Hiragino Sans', 'Meiryo', sans-serif", background: '#f5f5f5', minHeight: '100vh' }}>
 
@@ -133,16 +160,40 @@ export default function TateuriManagePage() {
 
       <div style={{ maxWidth: 800, margin: '0 auto', padding: '24px 16px' }}>
 
+        {/* regionタブ */}
+        <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
+          <button
+            onClick={() => handleRegionChange('oita')}
+            style={{
+              padding: '8px 24px', borderRadius: 6, border: 'none', cursor: 'pointer', fontSize: 14, fontWeight: 'bold',
+              background: region === 'oita' ? '#FFC107' : '#e0e0e0',
+              color: region === 'oita' ? '#333' : '#666',
+            }}
+          >
+            🏠 大分（/tateuri）
+          </button>
+          <button
+            onClick={() => handleRegionChange('fukuoka')}
+            style={{
+              padding: '8px 24px', borderRadius: 6, border: 'none', cursor: 'pointer', fontSize: 14, fontWeight: 'bold',
+              background: region === 'fukuoka' ? '#4CAF50' : '#e0e0e0',
+              color: region === 'fukuoka' ? 'white' : '#666',
+            }}
+          >
+            🏠 福岡（/fukuoka-tateuri）
+          </button>
+        </div>
+
         {/* 物件追加 */}
         <div style={sectionStyle}>
           <h2 style={{ fontSize: 16, fontWeight: 'bold', marginBottom: 16, color: '#b8860b' }}>＋ 物件を追加</h2>
           <p style={{ fontSize: 13, color: '#666', marginBottom: 12 }}>
-            athomeなどの物件URLを入力してください。スクレイピングして自動で情報を取得します。
+            {region === 'oita' ? 'athome' : 'SUUMO'}などの物件URLを入力してください。スクレイピングして自動で情報を取得します。
           </p>
           <div style={{ display: 'flex', gap: 10 }}>
             <input
               style={{ ...inputStyle, flex: 1 }}
-              placeholder="https://www.athome.co.jp/kodate/..."
+              placeholder={region === 'oita' ? 'https://www.athome.co.jp/kodate/...' : 'https://suumo.jp/ikkodate/...'}
               value={addUrl}
               onChange={e => setAddUrl(e.target.value)}
               disabled={adding}
@@ -198,20 +249,29 @@ export default function TateuriManagePage() {
 
         {/* 掲載中物件一覧 */}
         <div style={sectionStyle}>
-          <h2 style={{ fontSize: 16, fontWeight: 'bold', marginBottom: 16 }}>掲載中の物件（{properties.length}件）</h2>
+          <h2 style={{ fontSize: 16, fontWeight: 'bold', marginBottom: 16 }}>
+            掲載中の物件（{properties.length}件）
+            {lastAddedSlug && <span style={{ fontSize: 12, color: '#2c5f2e', marginLeft: 10, fontWeight: 'normal' }}>✅ 追加した物件を先頭に表示中</span>}
+          </h2>
           {loading ? (
             <p style={{ color: '#999', textAlign: 'center' }}>読み込み中...</p>
           ) : properties.length === 0 ? (
             <p style={{ color: '#999', textAlign: 'center' }}>掲載中の物件はありません</p>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {properties.map(p => (
-                <div key={p.slug} style={{ display: 'flex', gap: 12, alignItems: 'center', padding: '10px 12px', background: '#fafafa', borderRadius: 8, border: '1px solid #eee' }}>
+              {displayProperties.map(p => (
+                <div key={p.slug} style={{
+                  display: 'flex', gap: 12, alignItems: 'center', padding: '10px 12px',
+                  background: p.slug === lastAddedSlug ? '#f0f7f0' : '#fafafa',
+                  borderRadius: 8,
+                  border: p.slug === lastAddedSlug ? '2px solid #4CAF50' : '1px solid #eee',
+                }}>
                   {p.images?.[0] && (
                     <img src={p.images[0]} alt="" style={{ width: 80, height: 60, objectFit: 'cover', borderRadius: 4, flexShrink: 0 }} />
                   )}
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 14, fontWeight: 'bold', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {p.slug === lastAddedSlug && <span style={{ fontSize: 11, background: '#4CAF50', color: 'white', padding: '1px 6px', borderRadius: 3, marginRight: 6 }}>NEW</span>}
                       {cleanTitle(p.title) || p.address || '物件情報'}
                     </div>
                     {p.price && <div style={{ fontSize: 14, color: '#e84040', fontWeight: 'bold' }}>{p.price}</div>}
