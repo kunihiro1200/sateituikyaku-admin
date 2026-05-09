@@ -309,8 +309,10 @@ export default function PropertyPreviewPage() {
             <h2 style={{ fontSize: 15, fontWeight: 'bold', borderLeft: '4px solid #e84040', paddingLeft: 10, marginBottom: 14 }}>
               物件写真（{images.length}枚）
             </h2>
-            <div style={{ position: 'relative', background: '#111', borderRadius: 8, overflow: 'hidden', marginBottom: 10, aspectRatio: '4/3', display: 'flex', alignItems: 'center', justifyContent: 'center', userSelect: 'none' }}>
-              <img src={images[imgIndex]} alt="物件写真" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', pointerEvents: 'none' }} />
+            <div style={{ position: 'relative', background: '#111', borderRadius: 8, overflow: 'hidden', marginBottom: 10, aspectRatio: '4/3', userSelect: 'none' }}>
+              <img src={images[imgIndex]} alt="物件写真" style={{ width: '100%', height: '100%', objectFit: 'cover', pointerEvents: 'none', display: 'block', ...getImageStyleByIndex(imgIndex) }} />
+              {/* 当社帯オーバーレイ */}
+              <img src="/company-obi.png" alt="" style={{ position: 'absolute', bottom: 0, left: 0, width: '100%', height: 'auto', pointerEvents: 'none', zIndex: 3 }} />
               {/* 左右クリックエリア（矢印ボタンの後ろに配置） */}
               <div style={{ position: 'absolute', inset: 0, display: 'flex', zIndex: 1 }}>
                 <div style={{ width: '50%', cursor: 'w-resize' }} onClick={() => setImgIndex(i => (i - 1 + images.length) % images.length)} />
@@ -318,17 +320,23 @@ export default function PropertyPreviewPage() {
               </div>
               {/* 矢印ボタン（クリックエリアより前面・位置固定） */}
               <button onClick={() => setImgIndex(i => (i - 1 + images.length) % images.length)}
-                style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', background: 'rgba(255,255,255,0.85)', border: 'none', borderRadius: 4, width: 40, height: 56, fontSize: 22, cursor: 'pointer', zIndex: 2, flexShrink: 0 }}>‹</button>
+                style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', background: 'rgba(255,255,255,0.85)', border: 'none', borderRadius: 4, width: 40, height: 56, fontSize: 22, cursor: 'pointer', zIndex: 4, flexShrink: 0 }}>‹</button>
               <button onClick={() => setImgIndex(i => (i + 1) % images.length)}
-                style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'rgba(255,255,255,0.85)', border: 'none', borderRadius: 4, width: 40, height: 56, fontSize: 22, cursor: 'pointer', zIndex: 2, flexShrink: 0 }}>›</button>
-              <span style={{ position: 'absolute', top: 10, left: 12, background: 'rgba(0,0,0,0.55)', color: 'white', fontSize: 13, padding: '3px 10px', borderRadius: 20, zIndex: 2 }}>
+                style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'rgba(255,255,255,0.85)', border: 'none', borderRadius: 4, width: 40, height: 56, fontSize: 22, cursor: 'pointer', zIndex: 4, flexShrink: 0 }}>›</button>
+              <span style={{ position: 'absolute', top: 10, left: 12, background: 'rgba(0,0,0,0.55)', color: 'white', fontSize: 13, padding: '3px 10px', borderRadius: 20, zIndex: 4 }}>
                 {imgIndex + 1} / {images.length}
               </span>
             </div>
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
               {images.map((url, i) => (
-                <img key={i} src={url} alt="" onClick={() => setImgIndex(i)}
-                  style={{ width: 72, height: 54, objectFit: 'cover', borderRadius: 4, cursor: 'pointer', border: i === imgIndex ? '2px solid #e84040' : '2px solid transparent', opacity: i === imgIndex ? 1 : 0.65 }} />
+                <div key={i} onClick={() => setImgIndex(i)} style={{
+                  width: 72, height: 54, borderRadius: 4, overflow: 'hidden', position: 'relative', cursor: 'pointer', flexShrink: 0,
+                  border: i === imgIndex ? '2px solid #e84040' : '2px solid transparent',
+                  opacity: i === imgIndex ? 1 : 0.65,
+                }}>
+                  <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', ...getImageStyleByIndex(i) }} />
+                  <img src="/company-obi.png" alt="" style={{ position: 'absolute', bottom: 0, left: 0, width: '100%', height: 'auto', pointerEvents: 'none' }} />
+                </div>
               ))}
             </div>
           </div>
