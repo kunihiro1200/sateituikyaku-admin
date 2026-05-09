@@ -384,19 +384,45 @@ router.post('/transfer-to-spreadsheet', async (req: Request, res: Response) => {
     const extractContentOnly = (text: string, maxLength: number): string => {
       // 条文番号やページ番号のパターンを除去
       let content = text
-        .replace(/第\d+条[（(][^)）]*[)）]/g, '') // 第○条（○○）を除去
-        .replace(/第\d+条/g, '') // 第○条を除去
-        .replace(/(?:ページ|p\.?)\s*\d+/gi, '') // ページ番号を除去
-        .replace(/使用細則第\d+条第?\d*項?/g, '') // 使用細則第○条第○項を除去
-        .replace(/[（(]\d+ページ[)）]/g, '') // （○ページ）を除去
-        .replace(/により|を遵守。?/g, '') // 「により」「を遵守」を除去
-        .replace(/^[、。：:\s]+/, '') // 先頭の句読点・空白を除去
-        .replace(/[、。：:\s]+$/, '') // 末尾の句読点・空白を除去
+        // 第○条（○○）を除去
+        .replace(/第\d+条[（(][^)）]*[)）]/g, '')
+        // 第○条を除去
+        .replace(/第\d+条/g, '')
+        // ページ番号を除去
+        .replace(/(?:ページ|p\.?)\s*\d+/gi, '')
+        .replace(/[（(]\d+ページ[)）]/g, '')
+        // 使用細則第○条第○項を除去
+        .replace(/使用細則第\d+条第?\d*項?/g, '')
+        // 管理規約第○条第○項を除去
+        .replace(/管理規約第\d+条第?\d*項?/g, '')
+        // 「により」「を遵守」を除去
+        .replace(/により|を遵守。?/g, '')
+        // 「使用細則」単体を除去
+        .replace(/使用細則/g, '')
+        // 「管理規約」単体を除去
+        .replace(/管理規約/g, '')
+        // 先頭の句読点・空白・コロンを除去
+        .replace(/^[、。：:\s]+/, '')
+        // 末尾の句読点・空白を除去
+        .replace(/[、。：:\s]+$/, '')
         .trim();
       
-      // 空になった場合は元のテキストを使用
-      if (!content) {
-        content = text;
+      // 空になった場合や、あまりにも短い場合は元のテキストから再抽出
+      if (!content || content.length < 10) {
+        // 「：」以降の内容を抽出（条文の説明部分）
+        const colonMatch = text.match(/[：:]\s*(.+)/);
+        if (colonMatch && colonMatch[1]) {
+          content = colonMatch[1]
+            .replace(/第\d+条/g, '')
+            .replace(/(?:ページ|p\.?)\s*\d+/gi, '')
+            .replace(/[（(]\d+ページ[)）]/g, '')
+            .trim();
+        }
+        
+        // それでも短い場合は元のテキストを使用
+        if (!content || content.length < 10) {
+          content = text;
+        }
       }
       
       // 指定文字数以内に切り詰め
