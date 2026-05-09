@@ -311,8 +311,6 @@ export default function PropertyPreviewPage() {
             </h2>
             <div style={{ position: 'relative', background: '#111', borderRadius: 8, overflow: 'hidden', marginBottom: 10, aspectRatio: '4/3', userSelect: 'none' }}>
               <img src={images[imgIndex]} alt="物件写真" style={{ width: '100%', height: '100%', objectFit: 'cover', pointerEvents: 'none', display: 'block', ...getImageStyleByIndex(imgIndex) }} />
-              {/* 当社帯オーバーレイ */}
-              <img src="/company-obi.png" alt="" style={{ position: 'absolute', bottom: 0, left: 0, width: '100%', height: 'auto', pointerEvents: 'none', zIndex: 3 }} />
               {/* 左右クリックエリア（矢印ボタンの後ろに配置） */}
               <div style={{ position: 'absolute', inset: 0, display: 'flex', zIndex: 1 }}>
                 <div style={{ width: '50%', cursor: 'w-resize' }} onClick={() => setImgIndex(i => (i - 1 + images.length) % images.length)} />
@@ -335,7 +333,6 @@ export default function PropertyPreviewPage() {
                   opacity: i === imgIndex ? 1 : 0.65,
                 }}>
                   <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', ...getImageStyleByIndex(i) }} />
-                  <img src="/company-obi.png" alt="" style={{ position: 'absolute', bottom: 0, left: 0, width: '100%', height: 'auto', pointerEvents: 'none' }} />
                 </div>
               ))}
             </div>
