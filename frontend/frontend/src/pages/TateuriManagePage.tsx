@@ -17,10 +17,15 @@ export default function TateuriManagePage() {
   const [region, setRegion] = useState<'oita' | 'fukuoka'>('oita');
   const [lastAddedSlug, setLastAddedSlug] = useState<string | null>(null);
 
-  // 追加フォーム
+  // 追加フォーム（通常）
   const [addUrl, setAddUrl] = useState('');
   const [adding, setAdding] = useState(false);
   const [addResult, setAddResult] = useState<{ success: boolean; message: string } | null>(null);
+
+  // 画像加工用URL追加フォーム
+  const [processedUrl, setProcessedUrl] = useState('');
+  const [addingProcessed, setAddingProcessed] = useState(false);
+  const [processedResult, setProcessedResult] = useState<{ success: boolean; message: string } | null>(null);
 
   // 削除フォーム
   const [deleteUrl, setDeleteUrl] = useState('');
@@ -66,8 +71,8 @@ export default function TateuriManagePage() {
         return;
       }
 
-      // 重複なし → スクレイピングして追加
-      const res = await api.post('/api/tateuri/scrape', { url: addUrl.trim(), region });
+      // 重複なし → スクレイピングして追加（加工なし）
+      const res = await api.post('/api/tateuri/scrape', { url: addUrl.trim(), region, processImages: false });
       if (!res.data.success) throw new Error(res.data.error || '取得失敗');
       const addedTitle = res.data?.data?.title?.replace(/\[\d+\].+$/, '').trim() || res.data?.data?.address || '物件';
       const addedSlug = res.data?.slug || res.data?.data?.slug || null;
@@ -79,6 +84,40 @@ export default function TateuriManagePage() {
       setAddResult({ success: false, message: err.message });
     } finally {
       setAdding(false);
+    }
+  };
+
+  const handleAddProcessed = async () => {
+    if (!processedUrl.trim()) return;
+    setAddingProcessed(true);
+    setProcessedResult(null);
+    try {
+      // 重複チェック
+      const dupCheck = await api.post('/api/tateuri/check-duplicate', { source_url: processedUrl.trim(), region });
+      if (dupCheck.data.isDuplicate) {
+        const existing = dupCheck.data.existing;
+        const existingTitle = existing.title || existing.address || '物件';
+        const existingDate = new Date(existing.created_at).toLocaleDateString('ja-JP');
+        setProcessedResult({
+          success: false,
+          message: `「${existingTitle}」は既に登録済みです（登録日: ${existingDate}）`,
+        });
+        return;
+      }
+
+      // 重複なし → スクレイピングして追加（画像加工あり）
+      const res = await api.post('/api/tateuri/scrape', { url: processedUrl.trim(), region, processImages: true });
+      if (!res.data.success) throw new Error(res.data.error || '取得失敗');
+      const addedTitle = res.data?.data?.title?.replace(/\[\d+\].+$/, '').trim() || res.data?.data?.address || '物件';
+      const addedSlug = res.data?.slug || res.data?.data?.slug || null;
+      setProcessedResult({ success: true, message: `「${addedTitle}」を追加しました（画像加工済み）` });
+      setLastAddedSlug(addedSlug);
+      setProcessedUrl('');
+      await fetchProperties();
+    } catch (err: any) {
+      setProcessedResult({ success: false, message: err.message });
+    } finally {
+      setAddingProcessed(false);
     }
   };
 
@@ -184,11 +223,12 @@ export default function TateuriManagePage() {
           </button>
         </div>
 
-        {/* 物件追加 */}
+        {/* 物件追加（通常：加工なし） */}
         <div style={sectionStyle}>
-          <h2 style={{ fontSize: 16, fontWeight: 'bold', marginBottom: 16, color: '#b8860b' }}>＋ 物件を追加</h2>
+          <h2 style={{ fontSize: 16, fontWeight: 'bold', marginBottom: 16, color: '#b8860b' }}>＋ 物件を追加（画像加工なし）</h2>
           <p style={{ fontSize: 13, color: '#666', marginBottom: 12 }}>
-            {region === 'oita' ? 'athome' : 'SUUMO'}などの物件URLを入力してください。スクレイピングして自動で情報を取得します。
+            {region === 'oita' ? 'athome' : 'SUUMO'}などの物件URLを入力してください。スクレイピングして自動で情報を取得します。<br />
+            <strong style={{ color: '#e84040' }}>※ 画像は元のまま（角度・拡大・帯なし）</strong>
           </p>
           <div style={{ display: 'flex', gap: 10 }}>
             <input
@@ -209,6 +249,36 @@ export default function TateuriManagePage() {
           {addResult && (
             <div style={{ marginTop: 10, padding: '8px 12px', borderRadius: 6, fontSize: 13, background: addResult.success ? '#f0f7f0' : '#fff0f0', color: addResult.success ? '#2c5f2e' : '#e84040', border: `1px solid ${addResult.success ? '#c3e6c3' : '#f5c6c6'}` }}>
               {addResult.success ? '✅ ' : '❌ '}{addResult.message}
+            </div>
+          )}
+        </div>
+
+        {/* 物件追加（画像加工あり） */}
+        <div style={sectionStyle}>
+          <h2 style={{ fontSize: 16, fontWeight: 'bold', marginBottom: 16, color: '#4CAF50' }}>✨ 物件を追加（画像加工あり）</h2>
+          <p style={{ fontSize: 13, color: '#666', marginBottom: 12 }}>
+            {region === 'oita' ? 'athome' : 'SUUMO'}などの物件URLを入力してください。スクレイピングして自動で情報を取得します。<br />
+            <strong style={{ color: '#4CAF50' }}>※ 画像に角度・拡大・帯を適用します（別の人が撮った写真風）</strong>
+          </p>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <input
+              style={{ ...inputStyle, flex: 1 }}
+              placeholder={region === 'oita' ? 'https://www.athome.co.jp/kodate/...' : 'https://suumo.jp/ikkodate/...'}
+              value={processedUrl}
+              onChange={e => setProcessedUrl(e.target.value)}
+              disabled={addingProcessed}
+            />
+            <button
+              onClick={handleAddProcessed}
+              disabled={addingProcessed || !processedUrl.trim()}
+              style={{ background: '#4CAF50', color: 'white', border: 'none', padding: '10px 20px', borderRadius: 6, cursor: addingProcessed ? 'not-allowed' : 'pointer', fontSize: 14, whiteSpace: 'nowrap', opacity: addingProcessed ? 0.7 : 1, fontWeight: 'bold' }}
+            >
+              {addingProcessed ? '取得中...' : '追加'}
+            </button>
+          </div>
+          {processedResult && (
+            <div style={{ marginTop: 10, padding: '8px 12px', borderRadius: 6, fontSize: 13, background: processedResult.success ? '#f0f7f0' : '#fff0f0', color: processedResult.success ? '#2c5f2e' : '#e84040', border: `1px solid ${processedResult.success ? '#c3e6c3' : '#f5c6c6'}` }}>
+              {processedResult.success ? '✅ ' : '❌ '}{processedResult.message}
             </div>
           )}
         </div>

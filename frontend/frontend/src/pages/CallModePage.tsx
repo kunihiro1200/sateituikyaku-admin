@@ -737,6 +737,9 @@ const CallModePage = () => {
   const [editableComments, setEditableComments] = useState<string>('');
   const [savedComments, setSavedComments] = useState<string>(''); // 保存済みコメント（変更検知用）
   const [savingComments, setSavingComments] = useState(false);
+  
+  // 保存処理のロック（同時実行を防ぐ）
+  const savingLockRef = useRef<boolean>(false);
 
   // ハウスメーカーモーダルの状態
   const [houseMakerModalOpen, setHouseMakerModalOpen] = useState(false);
@@ -1493,7 +1496,14 @@ const CallModePage = () => {
 
     // デバウンス処理（1秒後に保存）
     const timeoutId = setTimeout(async () => {
+      // 保存処理のロックチェック（同時実行を防ぐ）
+      if (savingLockRef.current) {
+        console.warn('⚠️ 保存処理が既に実行中です。自動保存をスキップします。');
+        return;
+      }
+      
       try {
+        savingLockRef.current = true; // ロックを取得
         setSavingCommunication(true);
         console.log('🔄 コミュニケーションフィールドを自動保存中...');
 
@@ -1510,6 +1520,7 @@ const CallModePage = () => {
         setError('自動保存に失敗しました');
       } finally {
         setSavingCommunication(false);
+        savingLockRef.current = false; // ロックを解放
       }
     }, 1000); // 1秒のデバウンス
 
@@ -2280,9 +2291,18 @@ const CallModePage = () => {
       return;
     }
 
+    // 保存処理のロックチェック（同時実行を防ぐ）
+    if (savingLockRef.current) {
+      console.warn('⚠️ 保存処理が既に実行中です。スキップします。');
+      return;
+    }
+
     try {
+      savingLockRef.current = true; // ロックを取得
       setSaving(true);
       setError(null);
+
+      console.log('💾 不通・コミュニケーションフィールドを保存中...');
 
       // 不通・1番電話・コミュニケーションフィールドを保存（条件なしで常に保存）
       await api.put(`/api/sellers/${id}`, {
@@ -2292,6 +2312,8 @@ const CallModePage = () => {
         contactMethod: editedContactMethod || null,
         firstCallPerson: editedFirstCallPerson || null,
       });
+
+      console.log('✅ 保存成功');
 
       // クイックボタンの状態を永続化（pending → persisted）- メールのみ
       if (confirmDialog.type === 'email') {
@@ -2310,9 +2332,11 @@ const CallModePage = () => {
         setSuccessMessage(null);
       }, 3000);
     } catch (err: any) {
+      console.error('❌ 保存エラー:', err);
       setError(err.response?.data?.error?.message || '保存に失敗しました');
     } finally {
       setSaving(false);
+      savingLockRef.current = false; // ロックを解放
     }
   };
 
@@ -2359,25 +2383,36 @@ const CallModePage = () => {
 
   // コメント保存の実処理（ダイアログ確認後も共通で使用）
   const doSaveComments = async () => {
+    // 保存処理のロックチェック（同時実行を防ぐ）
+    if (savingLockRef.current) {
+      console.warn('⚠️ 保存処理が既に実行中です。スキップします。');
+      return;
+    }
+    
     try {
+      savingLockRef.current = true; // ロックを取得
       setSavingComments(true);
       setError(null);
+
+      console.log('💾 コメントを保存中...', { comments: editableComments.substring(0, 50) });
 
       // HTMLをそのまま保存（太字・色などの書式を保持）
       await api.put(`/api/sellers/${id}`, {
         comments: editableComments,
       });
 
+      console.log('✅ コメント保存成功');
       setSuccessMessage('コメントを保存しました');
       setSavedComments(editableComments); // 保存済み状態を更新
       setTimeout(() => {
         setSuccessMessage(null);
       }, 3000);
     } catch (err: any) {
-      console.error('コメント保存エラー:', err);
+      console.error('❌ コメント保存エラー:', err);
       setError('コメントの保存に失敗しました');
     } finally {
       setSavingComments(false);
+      savingLockRef.current = false; // ロックを解放
     }
   };
 

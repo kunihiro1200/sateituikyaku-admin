@@ -198,7 +198,7 @@ router.post('/delete', async (req: Request, res: Response) => {
 // POST /api/tateuri/scrape - スクレイピングサーバーを経由して物件情報を取得・保存（認証不要）
 router.post('/scrape', async (req: Request, res: Response) => {
   try {
-    const { url, region = 'oita' } = req.body;
+    const { url, region = 'oita', processImages = false } = req.body;
     if (!url) {
       return res.status(400).json({ error: 'url is required' });
     }
@@ -207,10 +207,11 @@ router.post('/scrape', async (req: Request, res: Response) => {
     const scrapeApiUrl = process.env.SCRAPE_API_URL || 'https://sateituikyaku-scrape-server-production.up.railway.app';
 
     // スクレイピングサーバーにリクエスト（バックエンド経由でCORSを回避）
+    // processImages=trueの場合、画像加工を指示
     const scrapeRes = await fetch(`${scrapeApiUrl}/scrape`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url, is_tateuri: true, region }),
+      body: JSON.stringify({ url, is_tateuri: true, region, process_images: processImages }),
     });
 
     if (!scrapeRes.ok) {

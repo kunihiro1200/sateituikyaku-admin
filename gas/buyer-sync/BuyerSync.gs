@@ -433,7 +433,9 @@ function syncBuyers() {
       // 失敗した行はハッシュを前回値に戻す（次回リトライ）
       for (var f = 0; f < failedBuyerNumbers.length; f++) {
         var fn = failedBuyerNumbers[f];
-        newHashes[fn] = prevHashes[fn] || '';
+        // 🚨 修正: 前回値に戻すのではなく、完全に削除することで次回必ず再試行される
+        delete newHashes[fn];
+        Logger.log('⚠️ ' + fn + ': upsert失敗のためハッシュを削除（次回リトライ）');
       }
 
       var duration = (new Date() - startTime) / 1000;
