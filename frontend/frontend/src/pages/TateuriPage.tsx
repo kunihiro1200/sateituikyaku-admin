@@ -164,6 +164,22 @@ export default function TateuriPage() {
       .replace(/借入可能額シミュレーション.*$/, '')
       .trim();
 
+  // slugから決定論的に画像スタイルを生成（var-cベース：右寄り・少し上・-2度・拡大）
+  // 物件ごとに微妙に異なる構図に見せる
+  const getImageStyle = (slug: string): React.CSSProperties => {
+    // slugの文字コードの合計でバリエーションを決定（リロードしても変わらない）
+    const seed = slug.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
+    const posX = 60 + (seed % 5) * 4;        // 60〜76%（右寄り）
+    const posY = 38 + (seed % 4) * 4;        // 38〜50%（少し上）
+    const rotate = -2.5 + (seed % 3) * 0.5; // -2.5〜-1.5度
+    const scale = 1.10 + (seed % 3) * 0.02; // 1.10〜1.14（拡大）
+    return {
+      objectPosition: `${posX}% ${posY}%`,
+      transform: `rotate(${rotate}deg) scale(${scale})`,
+      transformOrigin: 'center',
+    };
+  };
+
   return (
     <div style={{ fontFamily: "'Hiragino Sans', 'Meiryo', sans-serif", height: '100vh', display: 'flex', flexDirection: 'column', background: '#f5f5f5' }}>
 
@@ -239,7 +255,9 @@ export default function TateuriPage() {
                 <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
                   {/* サムネイル */}
                   {p.images?.[0] && (
-                    <img src={p.images[0]} alt="" style={{ width: 72, height: 54, objectFit: 'cover', borderRadius: 4, flexShrink: 0 }} />
+                    <div style={{ width: 72, height: 54, borderRadius: 4, flexShrink: 0, overflow: 'hidden' }}>
+                      <img src={p.images[0]} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', ...getImageStyle(p.slug) }} />
+                    </div>
                   )}
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 13, fontWeight: 'bold', color: '#333', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -295,11 +313,13 @@ export default function TateuriPage() {
                     <div style={{ width: 220, fontFamily: "'Hiragino Sans', 'Meiryo', sans-serif" }}>
                       {/* サムネイル */}
                       {selectedProperty.images?.[0] && (
-                        <img
-                          src={selectedProperty.images[0]}
-                          alt=""
-                          style={{ width: '100%', height: 60, objectFit: 'cover', borderRadius: 4, marginBottom: 6 }}
-                        />
+                        <div style={{ width: '100%', height: 60, borderRadius: 4, marginBottom: 6, overflow: 'hidden' }}>
+                          <img
+                            src={selectedProperty.images[0]}
+                            alt=""
+                            style={{ width: '100%', height: '100%', objectFit: 'cover', ...getImageStyle(selectedProperty.slug) }}
+                          />
+                        </div>
                       )}
                       {/* タイトル */}
                       <div style={{ fontSize: 12, fontWeight: 'bold', color: '#333', marginBottom: 3, lineHeight: 1.3 }}>
