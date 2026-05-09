@@ -323,11 +323,24 @@ async def scrape_athome(url: str) -> dict:
     return result
 
 
-def save_to_supabase(data: dict, is_tateuri: bool = False) -> str:
+def save_to_supabase(data: dict, is_tateuri: bool = False, process_images: bool = False) -> str:
     """Supabaseにデータを保存してslugを返す"""
     import urllib.request
 
     slug = uuid.uuid4().hex[:12]  # 例: a3f9b2c1d4e5
+
+    # 画像処理（Replicate API）
+    images = data.get('images', [])
+    if process_images and images:
+        print(f'[scrape] 画像処理開始: {len(images)}枚')
+        try:
+            from replicate_image_processor import process_images_with_replicate
+            images = process_images_with_replicate(images, num_variations=4)
+            print(f'[scrape] 画像処理完了: {len(images)}枚')
+        except Exception as e:
+            print(f'[scrape] 画像処理エラー: {e}')
+            # エラーの場合は元の画像を使用
+            images = data.get('images', [])
 
     payload = {
         'slug': slug,
@@ -343,7 +356,7 @@ def save_to_supabase(data: dict, is_tateuri: bool = False) -> str:
         'parking': data.get('parking'),
         'features': data.get('features'),
         'remarks': data.get('remarks'),
-        'images': data.get('images', []),
+        'images': images,  # 処理済み画像
         'lat': data.get('lat'),
         'lng': data.get('lng'),
         'details': data.get('details', {}),
@@ -408,16 +421,17 @@ class ScrapeHandler(BaseHTTPRequestHandler):
             req_data = json.loads(body)
             url = req_data.get('url', '').strip()
             is_tateuri = req_data.get('is_tateuri', False)  # 建売専門HP用フラグ
+            process_images = req_data.get('process_images', False)  # 画像処理フラグ
             if not url:
                 raise ValueError('URLが指定されていません')
 
-            print(f'[scrape] リクエスト受信: {url} (is_tateuri={is_tateuri})')
+            print(f'[scrape] リクエスト受信: {url} (is_tateuri={is_tateuri}, process_images={process_images})')
 
             # スクレイピング実行
             data = asyncio.run(scrape_athome(url))
 
-            # Supabaseに保存
-            slug = save_to_supabase(data, is_tateuri=is_tateuri)
+            # Supabaseに保存（画像処理を含む）
+            slug = save_to_supabase(data, is_tateuri=is_tateuri, process_images=process_images)
 
             # レスポンス
             response = {
