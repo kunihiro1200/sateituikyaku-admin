@@ -41,7 +41,7 @@ export default function TateuriPage() {
 
   const fetchProperties = useCallback(async () => {
     try {
-      const res = await api.get('/api/tateuri');
+      const res = await api.get('/api/tateuri?region=oita');
       setProperties(res.data);
     } catch (err) {
       console.error('Failed to fetch tateuri properties:', err);
