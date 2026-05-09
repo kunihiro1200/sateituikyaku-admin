@@ -173,28 +173,64 @@ router.post(
 
       // カレンダー登録成功後にメール通知を送信（失敗してもカレンダー登録は成功扱い）
       try {
+        console.log('[BuyerAppointments] ===== メール送信処理開始 =====');
+        console.log('[BuyerAppointments] propertyNumber:', propertyNumber || '（未設定）');
+        
         // 1. 物件担当者（sales_assignee）のメールアドレスを取得
         let salesEmployee = null;
         let displayAddress = '（住所未設定）';
-        if (propertyNumber) {
-          const { data: propertyData } = await supabase
+        
+        if (!propertyNumber || propertyNumber.trim() === '') {
+          console.log('[BuyerAppointments] ⚠️ 物件番号が設定されていないため、メール送信をスキップします');
+        } else {
+          console.log('[BuyerAppointments] 物件情報を取得中... property_number:', propertyNumber);
+          
+          const { data: propertyData, error: propertyError } = await supabase
             .from('property_listings')
             .select('sales_assignee, display_address, address')
             .eq('property_number', propertyNumber)
             .single();
 
-          // display_address → address → '（住所未設定）' のフォールバック
-          displayAddress = propertyData?.display_address || propertyData?.address || '（住所未設定）';
+          if (propertyError) {
+            console.log('[BuyerAppointments] ⚠️ 物件情報の取得に失敗:', propertyError.message);
+          } else {
+            console.log('[BuyerAppointments] 物件情報取得成功:', {
+              property_number: propertyNumber,
+              sales_assignee: propertyData?.sales_assignee || '（未設定）',
+              display_address: propertyData?.display_address || '（未設定）',
+            });
 
-          if (propertyData?.sales_assignee) {
-            salesEmployee = await employeeUtils.getEmployeeByInitials(propertyData.sales_assignee);
+            // display_address → address → '（住所未設定）' のフォールバック
+            displayAddress = propertyData?.display_address || propertyData?.address || '（住所未設定）';
+
+            if (!propertyData?.sales_assignee) {
+              console.log('[BuyerAppointments] ⚠️ 物件に物件担当（sales_assignee）が設定されていません');
+            } else {
+              console.log('[BuyerAppointments] 物件担当の従業員情報を取得中... initials:', propertyData.sales_assignee);
+              
+              try {
+                salesEmployee = await employeeUtils.getEmployeeByInitials(propertyData.sales_assignee);
+                
+                if (salesEmployee) {
+                  console.log('[BuyerAppointments] 物件担当の従業員情報取得成功:', {
+                    name: salesEmployee.name,
+                    email: salesEmployee.email || '（未設定）',
+                  });
+                } else {
+                  console.log('[BuyerAppointments] ⚠️ イニシャル「' + propertyData.sales_assignee + '」に一致する従業員が見つかりません');
+                }
+              } catch (employeeError: any) {
+                console.log('[BuyerAppointments] ⚠️ 従業員情報の取得に失敗:', employeeError.message);
+              }
+            }
           }
         }
 
         // sales_assignee が存在しない or メールアドレスなし → スキップ
         if (!salesEmployee?.email) {
-          console.log('[BuyerAppointments] No sales_assignee email found, skipping notification email');
+          console.log('[BuyerAppointments] ===== メール送信をスキップ（物件担当のメールアドレスなし） =====');
         } else {
+          console.log('[BuyerAppointments] メール送信を実行します。宛先:', salesEmployee.email);
           // 2. 売主情報を取得（物件番号 = 売主番号）
           let ownerName = 'なし';
           let ownerPhone = 'なし';
@@ -232,11 +268,13 @@ router.post(
           ].join('\n');
 
           await emailService.sendEmail({ to: [salesEmployee.email], subject, body });
-          console.log('[BuyerAppointments] Notification email sent to:', salesEmployee.email);
+          console.log('[BuyerAppointments] ===== メール送信成功 ===== 宛先:', salesEmployee.email);
         }
       } catch (emailError: any) {
         // メール送信失敗はログのみ（カレンダー登録の成功に影響させない）
-        console.error('[BuyerAppointments] Failed to send notification email (non-fatal):', emailError.message);
+        console.error('[BuyerAppointments] ===== メール送信失敗（non-fatal） =====');
+        console.error('[BuyerAppointments] エラー詳細:', emailError.message);
+        console.error('[BuyerAppointments] スタックトレース:', emailError.stack);
       }
 
       res.status(201).json({
