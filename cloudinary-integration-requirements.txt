@@ -1,0 +1,4 @@
+# スクレイピングサーバーのrequirements.txtに追加する内容
+
+cloudinary==1.36.0
+Pillow==10.2.0
