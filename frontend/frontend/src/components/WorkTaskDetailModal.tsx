@@ -4272,7 +4272,12 @@ ${pageUrl}`;
                 <Button
                   variant="contained"
                   size="small"
-                  onClick={() => window.open(`/management-rules-test?propertyNumber=${propertyNumber}`, '_blank', 'noopener,noreferrer')}
+                  onClick={() => {
+                    const url = getValue('spreadsheet_url');
+                    const params = new URLSearchParams({ propertyNumber: propertyNumber || '' });
+                    if (url) params.set('spreadsheetUrl', url);
+                    window.open(`/management-rules-test?${params.toString()}`, '_blank', 'noopener,noreferrer');
+                  }}
                   sx={{ whiteSpace: 'nowrap', fontWeight: 700, bgcolor: '#7b1fa2', '&:hover': { bgcolor: '#6a1b9a' }, fontSize: '0.75rem', px: 1, py: 0.4, minWidth: 0 }}
                 >管理規約</Button>
               )}
@@ -4501,7 +4506,12 @@ ${pageUrl}`;
                   <Button
                     variant="contained"
                     size="small"
-                    onClick={() => window.open(`/management-rules-test?propertyNumber=${propertyNumber}`, '_blank', 'noopener,noreferrer')}
+                    onClick={() => {
+                      const url = getValue('spreadsheet_url');
+                      const params = new URLSearchParams({ propertyNumber: propertyNumber || '' });
+                      if (url) params.set('spreadsheetUrl', url);
+                      window.open(`/management-rules-test?${params.toString()}`, '_blank', 'noopener,noreferrer');
+                    }}
                     sx={{ whiteSpace: 'nowrap', fontWeight: 700, bgcolor: '#7b1fa2', '&:hover': { bgcolor: '#6a1b9a' }, fontSize: '0.85rem', px: 1.5 }}
                   >
                     管理規約解析

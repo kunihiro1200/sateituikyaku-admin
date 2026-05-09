@@ -312,4 +312,236 @@ router.get('/:propertyNumber', async (req: Request, res: Response) => {
   }
 });
 
+/**
+ * POST /api/management-rules/transfer-to-spreadsheet
+ * 管理規約解析結果をスプレッドシートの「重説」シートに転記
+ */
+router.post('/transfer-to-spreadsheet', async (req: Request, res: Response) => {
+  try {
+    const { propertyNumber, spreadsheetUrl, results } = req.body as {
+      propertyNumber: string;
+      spreadsheetUrl: string;
+      results: Array<{ key: string; label: string; content: string | null; found: boolean }>;
+    };
+
+    if (!propertyNumber) {
+      return res.status(400).json({ error: 'propertyNumber が必要です' });
+    }
+    if (!spreadsheetUrl) {
+      return res.status(400).json({ error: 'spreadsheetUrl が必要です' });
+    }
+    if (!results || !Array.isArray(results)) {
+      return res.status(400).json({ error: 'results が必要です' });
+    }
+
+    // スプレッドシートIDを抽出
+    const spreadsheetIdMatch = spreadsheetUrl.match(/\/d\/([a-zA-Z0-9-_]+)/);
+    if (!spreadsheetIdMatch) {
+      return res.status(400).json({ error: '無効なスプレッドシートURLです' });
+    }
+    const spreadsheetId = spreadsheetIdMatch[1];
+
+    // GoogleSheetsClientをインポート
+    const { GoogleSheetsClient } = await import('../services/GoogleSheetsClient');
+
+    // 重説シートに接続
+    const sheetsClient = new GoogleSheetsClient({
+      spreadsheetId,
+      sheetName: '重説',
+    });
+
+    await sheetsClient.authenticate();
+
+    // 転記データを準備
+    const transferData: Record<string, any> = {};
+
+    // ヘルパー関数: 条文番号やページ番号を抽出
+    const extractReference = (content: string): string => {
+      const match = content.match(/第(\d+)条|ページ\s*(\d+)|p\.?\s*(\d+)/i);
+      if (match) {
+        if (match[1]) return `第${match[1]}条`;
+        if (match[2]) return `ページ${match[2]}`;
+        if (match[3]) return `p.${match[3]}`;
+      }
+      return '';
+    };
+
+    // ヘルパー関数: テキストを指定文字数以内に要約
+    const truncate = (text: string, maxLength: number): string => {
+      if (text.length <= maxLength) return text;
+      return text.substring(0, maxLength - 1) + '…';
+    };
+
+    // ヘルパー関数: 専用使用なしうる者の範囲を判定
+    const determineUserRange = (content: string): string => {
+      if (content.includes('区分所有者') || content.includes('各住戸')) {
+        return '区分所有者に限る';
+      }
+      if (content.includes('区分所有者、占有者') || content.includes('占有者')) {
+        return '区分所有者、占有者に限らない';
+      }
+      return '区分所有者に限る'; // デフォルト
+    };
+
+    // ヘルパー関数: 専用使用料の有無を判定
+    const hasFee = (content: string): boolean => {
+      return /使用料|料金|負担|支払|徴収/.test(content);
+    };
+
+    // ヘルパー関数: 支払先を判定
+    const determinePayee = (content: string): string => {
+      if (content.includes('管理組合')) return '管理組合';
+      if (content.includes('管理会社')) return '管理会社';
+      if (content.includes('理事会')) return '理事会';
+      return '管理組合'; // デフォルト
+    };
+
+    // 1. 用途制限（L410, AS410）
+    const usageRestriction = results.find(r => r.key === 'usage_restriction');
+    if (usageRestriction?.found && usageRestriction.content) {
+      // L410: 「有」を設定（プルダウンは手動選択が必要）
+      transferData['L410'] = '有';
+      // AS410: 条文番号やページ番号
+      const ref = extractReference(usageRestriction.content);
+      if (ref) transferData['AS410'] = ref;
+    }
+
+    // 2. ペットの飼育（L411, V411）
+    const pets = results.find(r => r.key === 'pets');
+    if (pets?.found && pets.content) {
+      transferData['L411'] = true;
+      transferData['V411'] = truncate(pets.content, 52);
+    }
+
+    // 3. ピアノの使用（L412, V412）
+    const piano = results.find(r => r.key === 'piano');
+    if (piano?.found && piano.content) {
+      transferData['L412'] = true;
+      transferData['V412'] = truncate(piano.content, 52);
+    }
+
+    // 4. フローリング張替え工事（L413, Z413）
+    const flooring = results.find(r => r.key === 'flooring');
+    if (flooring?.found && flooring.content) {
+      transferData['L413'] = true;
+      transferData['Z413'] = truncate(flooring.content, 40);
+    }
+
+    // 5. 上記以外の利用の制限（L414, S414, AS411）
+    const renovation = results.find(r => r.key === 'renovation');
+    if (renovation?.found && renovation.content) {
+      transferData['L414'] = true;
+      transferData['S414'] = truncate(renovation.content, 52);
+      const ref = extractReference(renovation.content);
+      if (ref) transferData['AS411'] = ref;
+    }
+
+    // 6. 専用使用権 - バルコニー（M419, Q419, AE419, AI419）
+    const balconyExclusive = results.find(r => r.key === 'balcony_exclusive');
+    if (balconyExclusive?.found && balconyExclusive.content) {
+      transferData['M419'] = '有';
+      transferData['Q419'] = determineUserRange(balconyExclusive.content);
+      const fee = hasFee(balconyExclusive.content);
+      transferData['AE419'] = fee ? '有' : '無';
+      if (fee) {
+        transferData['AI419'] = determinePayee(balconyExclusive.content);
+      }
+    }
+
+    // 7. 専用使用権 - 専用駐車場（M420, Q420, AE420, AI420）
+    const parkingExclusive = results.find(r => r.key === 'parking_exclusive');
+    if (parkingExclusive?.found && parkingExclusive.content) {
+      transferData['M420'] = '有';
+      transferData['Q420'] = determineUserRange(parkingExclusive.content);
+      const fee = hasFee(parkingExclusive.content);
+      transferData['AE420'] = fee ? '有' : '無';
+      if (fee) {
+        transferData['AI420'] = determinePayee(parkingExclusive.content);
+      }
+    }
+
+    // 8. 専用使用権 - 専用駐輪場（M421, Q421, AE421, AI421）
+    const bicycleExclusive = results.find(r => r.key === 'bicycle_exclusive');
+    if (bicycleExclusive?.found && bicycleExclusive.content) {
+      transferData['M421'] = '有';
+      transferData['Q421'] = determineUserRange(bicycleExclusive.content);
+      const fee = hasFee(bicycleExclusive.content);
+      transferData['AE421'] = fee ? '有' : '無';
+      if (fee) {
+        transferData['AI421'] = determinePayee(bicycleExclusive.content);
+      }
+    }
+
+    // 9. 専用使用権 - 専用庭（M422, Q422, AE422, AI422）
+    const gardenExclusive = results.find(r => r.key === 'garden_exclusive');
+    if (gardenExclusive?.found && gardenExclusive.content) {
+      transferData['M422'] = '有';
+      transferData['Q422'] = determineUserRange(gardenExclusive.content);
+      const fee = hasFee(gardenExclusive.content);
+      transferData['AE422'] = fee ? '有' : '無';
+      if (fee) {
+        transferData['AI422'] = determinePayee(gardenExclusive.content);
+      }
+    }
+
+    // 10. 専用使用権 - 専用倉庫（M423, Q423, AE423, AI423）
+    const storageExclusive = results.find(r => r.key === 'storage_exclusive');
+    if (storageExclusive?.found && storageExclusive.content) {
+      transferData['M423'] = '有';
+      transferData['Q423'] = determineUserRange(storageExclusive.content);
+      const fee = hasFee(storageExclusive.content);
+      transferData['AE423'] = fee ? '有' : '無';
+      if (fee) {
+        transferData['AI423'] = determinePayee(storageExclusive.content);
+      }
+    }
+
+    // 11. 専用使用権 - ルーフバルコニー（M424, Q424, AE424, AI424）
+    // ルーフバルコニーは別表に含まれる可能性があるため、balcony_exclusiveから判定
+    if (balconyExclusive?.found && balconyExclusive.content?.includes('ルーフバルコニー')) {
+      transferData['M424'] = '有';
+      transferData['Q424'] = determineUserRange(balconyExclusive.content);
+      const fee = hasFee(balconyExclusive.content);
+      transferData['AE424'] = fee ? '有' : '無';
+      if (fee) {
+        transferData['AI424'] = determinePayee(balconyExclusive.content);
+      }
+    }
+
+    // スプレッドシートに書き込み
+    const { google } = await import('googleapis');
+    const sheets = google.sheets({ version: 'v4', auth: sheetsClient.getAuth() });
+
+    const updateRequests: any[] = [];
+
+    for (const [cell, value] of Object.entries(transferData)) {
+      updateRequests.push({
+        range: `重説!${cell}`,
+        values: [[value]],
+      });
+    }
+
+    if (updateRequests.length > 0) {
+      await sheets.spreadsheets.values.batchUpdate({
+        spreadsheetId,
+        requestBody: {
+          valueInputOption: 'USER_ENTERED',
+          data: updateRequests,
+        },
+      });
+    }
+
+    return res.json({
+      success: true,
+      transferredCells: Object.keys(transferData).length,
+      message: `${Object.keys(transferData).length}個のセルに転記しました`,
+      details: transferData,
+    });
+
+  } catch (error: any) {
+    console.error('[management-rules/transfer-to-spreadsheet] Error:', error.message);
+    return res.status(500).json({ error: error.message });
+  }
+});
+
 export default router;

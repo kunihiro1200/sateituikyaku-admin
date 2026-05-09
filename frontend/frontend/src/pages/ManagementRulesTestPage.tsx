@@ -337,6 +337,11 @@ const ManagementRulesTestPage: React.FC = () => {
   const [dragOver, setDragOver] = useState(false);
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [transferring, setTransferring] = useState(false);
+  const [transferSuccess, setTransferSuccess] = useState(false);
+  const [transferError, setTransferError] = useState<string | null>(null);
+
+  const spreadsheetUrl = searchParams.get('spreadsheetUrl');
 
   // ページ表示時に保存済みデータを読み込む
   React.useEffect(() => {
@@ -448,6 +453,42 @@ const ManagementRulesTestPage: React.FC = () => {
 
   const foundCount = results?.filter((r) => r.found).length ?? 0;
   const totalCount = results?.length ?? 0;
+
+  const handleTransferToSpreadsheet = async () => {
+    if (!propertyNumber || !spreadsheetUrl || !results) {
+      setTransferError('物件番号、スプレッドシートURL、または解析結果が不足しています');
+      return;
+    }
+
+    setTransferring(true);
+    setTransferError(null);
+    setTransferSuccess(false);
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/management-rules/transfer-to-spreadsheet`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          propertyNumber,
+          spreadsheetUrl,
+          results,
+        }),
+      });
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({ error: 'サーバーエラー' }));
+        throw new Error(errData.error || `HTTP ${response.status}`);
+      }
+
+      const data = await response.json();
+      setTransferSuccess(true);
+      setTimeout(() => setTransferSuccess(false), 3000);
+    } catch (err: any) {
+      setTransferError(err.message || 'スプレッドシートへの転記に失敗しました');
+    } finally {
+      setTransferring(false);
+    }
+  };
 
   return (
     <Box sx={{ maxWidth: 800, mx: 'auto', p: 3 }}>
@@ -561,8 +602,32 @@ const ManagementRulesTestPage: React.FC = () => {
                 label={`${foundCount} / ${totalCount} 項目が見つかりました`}
                 color={foundCount > 0 ? 'success' : 'default'}
               />
+              {spreadsheetUrl && (
+                <Button
+                  variant="contained"
+                  size="small"
+                  disabled={transferring || foundCount === 0}
+                  onClick={handleTransferToSpreadsheet}
+                  startIcon={transferring ? <CircularProgress size={14} color="inherit" /> : null}
+                  sx={{
+                    whiteSpace: 'nowrap',
+                    fontWeight: 700,
+                    bgcolor: transferSuccess ? '#2e7d32' : '#1e8e3e',
+                    '&:hover': { bgcolor: transferSuccess ? '#2e7d32' : '#166d30' },
+                    fontSize: '0.85rem',
+                    px: 1.5,
+                  }}
+                >
+                  {transferring ? '転記中...' : transferSuccess ? '✓ 転記完了' : 'スプシに転記する'}
+                </Button>
+              )}
             </Box>
           </Box>
+          {transferError && (
+            <Alert severity="error" sx={{ mb: 2 }} onClose={() => setTransferError(null)}>
+              {transferError}
+            </Alert>
+          )}
           <Divider sx={{ mb: 1 }} />
           <List disablePadding>
             {results.map((result, i) => (
