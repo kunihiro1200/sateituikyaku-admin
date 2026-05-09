@@ -222,18 +222,18 @@ router.post('/scrape', async (req: Request, res: Response) => {
 
     const result = await scrapeRes.json() as any;
 
-    // スクレイピング成功後、regionをDBに反映（スクレイピングサーバーはregionを知らないため）
+    // スクレイピング成功後、regionとis_tateuriをDBに反映（スクレイピングサーバーはこれらを知らないため）
     if (result.success && result.slug) {
       const supabase = getSupabase();
       const { error: updateError } = await supabase
         .from('property_previews')
-        .update({ region })
+        .update({ region, is_tateuri: true })
         .eq('slug', result.slug);
       
       if (updateError) {
-        console.error(`[tateuri/scrape] region更新エラー: slug=${result.slug}`, updateError);
+        console.error(`[tateuri/scrape] 更新エラー: slug=${result.slug}`, updateError);
       } else {
-        console.log(`[tateuri/scrape] region='${region}' をslug=${result.slug}に設定`);
+        console.log(`[tateuri/scrape] region='${region}', is_tateuri=true をslug=${result.slug}に設定`);
       }
     }
 
