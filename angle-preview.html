@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>画像角度＋位置プレビュー</title>
+  <style>
+    body {
+      background: #f0f0f0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px;
+      font-family: sans-serif;
+      gap: 40px;
+    }
+    h2 { margin: 0; color: #333; }
+    .section {
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      width: 640px;
+    }
+    .label {
+      font-size: 12px;
+      color: #888;
+      text-align: center;
+    }
+
+    /* 物件カードサイズで比較 */
+    .compare {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+      justify-content: center;
+    }
+    .compare-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+    .compare-item .lbl {
+      font-size: 11px;
+      color: #666;
+      text-align: center;
+      max-width: 140px;
+    }
+
+    /* 共通：画像コンテナ（overflow:hiddenで見切れ部分を隠す） */
+    .img-wrap {
+      width: 160px;
+      height: 120px;
+      overflow: hidden;
+      border-radius: 6px;
+      box-shadow: 2px 4px 10px rgba(0,0,0,0.15);
+    }
+    .img-wrap img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    /* 各バリエーション */
+    /* A: 元（変更なし） */
+    .var-a img { object-position: center center; transform: none; }
+
+    /* B: 少し左から・わずかに右傾き */
+    .var-b img {
+      object-position: 30% 55%;
+      transform: rotate(1.5deg) scale(1.08);
+      transform-origin: center;
+    }
+
+    /* C: 少し右から・わずかに左傾き */
+    .var-c img {
+      object-position: 70% 45%;
+      transform: rotate(-2deg) scale(1.08);
+      transform-origin: center;
+    }
+
+    /* D: 少し上から（引き気味）・右傾き */
+    .var-d img {
+      object-position: 50% 30%;
+      transform: rotate(2.5deg) scale(1.1);
+      transform-origin: center;
+    }
+
+    /* E: 少し下から（寄り気味）・左傾き */
+    .var-e img {
+      object-position: 40% 70%;
+      transform: rotate(-1.5deg) scale(1.12);
+      transform-origin: center;
+    }
+
+    /* F: 右寄り・ほぼ正面 */
+    .var-f img {
+      object-position: 65% 50%;
+      transform: rotate(1deg) scale(1.06);
+      transform-origin: center;
+    }
+  </style>
+</head>
+<body>
+
+  <h2>「別の人が撮った写真」風プレビュー</h2>
+  <p style="color:#666; font-size:13px; text-align:center;">
+    角度 ＋ 表示位置（object-position）の組み合わせで<br>
+    同じ写真でも「違う構図・違う人が撮った」ように見せます
+  </p>
+
+  <!-- URL入力 -->
+  <div class="section" style="width:500px;">
+    <div style="font-size:14px; font-weight:bold;">テスト画像URL（athome画像URLを貼り付け）</div>
+    <input id="imgUrl" type="text"
+      placeholder="https://www.athome.co.jp/..."
+      style="width:100%; padding:8px; border:1px solid #ccc; border-radius:6px; font-size:13px;"
+      value="https://images.unsplash.com/photo-1570129477492-45c003edd2be?w=640&q=80"
+    />
+    <button onclick="updateImages()"
+      style="padding:8px 20px; background:#4CAF50; color:white; border:none; border-radius:6px; cursor:pointer; font-size:14px;">
+      適用
+    </button>
+  </div>
+
+  <!-- 比較セクション -->
+  <div class="section" style="width:700px;">
+    <h2 style="font-size:15px;">全バリエーション比較（物件カードサイズ）</h2>
+    <div class="compare">
+
+      <div class="compare-item">
+        <div class="img-wrap var-a">
+          <img class="preview-img" src="https://images.unsplash.com/photo-1570129477492-45c003edd2be?w=640&q=80" alt="" />
+        </div>
+        <div class="lbl">A: 元（変更なし）<br>center / 0度</div>
+      </div>
+
+      <div class="compare-item">
+        <div class="img-wrap var-b">
+          <img class="preview-img" src="https://images.unsplash.com/photo-1570129477492-45c003edd2be?w=640&q=80" alt="" />
+        </div>
+        <div class="lbl">B: 左寄り・下気味<br>+1.5度 / scale1.08</div>
+      </div>
+
+      <div class="compare-item">
+        <div class="img-wrap var-c">
+          <img class="preview-img" src="https://images.unsplash.com/photo-1570129477492-45c003edd2be?w=640&q=80" alt="" />
+        </div>
+        <div class="lbl">C: 右寄り・上気味<br>-2度 / scale1.08</div>
+      </div>
+
+      <div class="compare-item">
+        <div class="img-wrap var-d">
+          <img class="preview-img" src="https://images.unsplash.com/photo-1570129477492-45c003edd2be?w=640&q=80" alt="" />
+        </div>
+        <div class="lbl">D: 上から引き気味<br>+2.5度 / scale1.1</div>
+      </div>
+
+      <div class="compare-item">
+        <div class="img-wrap var-e">
+          <img class="preview-img" src="https://images.unsplash.com/photo-1570129477492-45c003edd2be?w=640&q=80" alt="" />
+        </div>
+        <div class="lbl">E: 下から寄り気味<br>-1.5度 / scale1.12</div>
+      </div>
+
+      <div class="compare-item">
+        <div class="img-wrap var-f">
+          <img class="preview-img" src="https://images.unsplash.com/photo-1570129477492-45c003edd2be?w=640&q=80" alt="" />
+        </div>
+        <div class="lbl">F: 右寄り・ほぼ正面<br>+1度 / scale1.06</div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- 実際の物件カード風 -->
+  <div class="section" style="width:700px;">
+    <h2 style="font-size:15px;">物件カード風（実際の表示イメージ）</h2>
+    <p style="font-size:12px; color:#888; margin:0;">同じ物件が並んでいても「別々の写真」に見えるか確認</p>
+    <div style="display:flex; flex-wrap:wrap; gap:16px; justify-content:center;">
+
+      <!-- カードA -->
+      <div style="width:200px; border:1px solid #e0e0e0; border-radius:8px; overflow:hidden; box-shadow:0 2px 6px rgba(0,0,0,0.08);">
+        <div class="img-wrap var-b" style="width:200px; height:150px; border-radius:0;">
+          <img class="preview-img" src="https://images.unsplash.com/photo-1570129477492-45c003edd2be?w=640&q=80" alt="" style="width:100%;height:100%;object-fit:cover;" />
+        </div>
+        <div style="padding:10px; font-size:12px; color:#333;">
+          <div style="font-weight:bold;">大分市〇〇町 3LDK</div>
+          <div style="color:#e67e00; font-weight:bold;">2,480万円</div>
+        </div>
+      </div>
+
+      <!-- カードB -->
+      <div style="width:200px; border:1px solid #e0e0e0; border-radius:8px; overflow:hidden; box-shadow:0 2px 6px rgba(0,0,0,0.08);">
+        <div class="img-wrap var-c" style="width:200px; height:150px; border-radius:0;">
+          <img class="preview-img" src="https://images.unsplash.com/photo-1570129477492-45c003edd2be?w=640&q=80" alt="" style="width:100%;height:100%;object-fit:cover;" />
+        </div>
+        <div style="padding:10px; font-size:12px; color:#333;">
+          <div style="font-weight:bold;">大分市△△町 4LDK</div>
+          <div style="color:#e67e00; font-weight:bold;">3,180万円</div>
+        </div>
+      </div>
+
+      <!-- カードC -->
+      <div style="width:200px; border:1px solid #e0e0e0; border-radius:8px; overflow:hidden; box-shadow:0 2px 6px rgba(0,0,0,0.08);">
+        <div class="img-wrap var-e" style="width:200px; height:150px; border-radius:0;">
+          <img class="preview-img" src="https://images.unsplash.com/photo-1570129477492-45c003edd2be?w=640&q=80" alt="" style="width:100%;height:100%;object-fit:cover;" />
+        </div>
+        <div style="padding:10px; font-size:12px; color:#333;">
+          <div style="font-weight:bold;">大分市□□町 3LDK</div>
+          <div style="color:#e67e00; font-weight:bold;">2,980万円</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    function updateImages() {
+      const url = document.getElementById('imgUrl').value.trim();
+      if (!url) return;
+      document.querySelectorAll('.preview-img').forEach(img => {
+        img.src = url;
+      });
+    }
+  </script>
+
+</body>
+</html>

@@ -634,6 +634,18 @@ export default function BuyersPage() {
           </Button>
           <Button
             variant="contained"
+            onClick={() => navigate('/fukuoka-tateuri/manage')}
+            sx={{
+              backgroundColor: '#2196F3',
+              color: '#fff',
+              fontWeight: 'bold',
+              '&:hover': { backgroundColor: '#1976D2' },
+            }}
+          >
+            🏠 福岡建売HP
+          </Button>
+          <Button
+            variant="contained"
             onClick={() => navigate('/buyers/new')}
             sx={{
               backgroundColor: SECTION_COLORS.buyer.main,

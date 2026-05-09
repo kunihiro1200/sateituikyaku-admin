@@ -109,7 +109,10 @@ export const ViewingPreparationPopup: React.FC<ViewingPreparationPopupProps> = (
   linkedProperties,
 }) => {
   const hasBuyerNumber = buyerNumber != null && buyerNumber !== '';
-  const hasPropertyNumber = propertyNumber != null && propertyNumber !== '';
+  // 物件番号があるかどうか：propertyNumber プロップ、かつ linkedProperties に有効な物件番号を持つものがある
+  const hasPropertyNumber = (propertyNumber != null && propertyNumber !== '')
+    && (linkedProperties != null && linkedProperties.length > 0
+        && linkedProperties.some((lp) => lp.property_number != null && lp.property_number !== ''));
   const [houseMakerModalOpen, setHouseMakerModalOpen] = useState(false);
   const [nearbyMapModalOpen, setNearbyMapModalOpen] = useState(false);
   const [printing1, setPrinting1] = useState(false);
@@ -214,52 +217,60 @@ export const ViewingPreparationPopup: React.FC<ViewingPreparationPopupProps> = (
           <ListItem component="li" sx={{ display: 'list-item', py: 0.5 }}>
             <ListItemText
               primary={
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <Typography component="span">内覧準備資料（白黒）：</Typography>
-                  <Button
-                    variant="outlined"
-                    size="small"
-                    startIcon={printing1 ? <CircularProgress size={14} color="inherit" /> : <PrintIcon />}
-                    onClick={handlePrint1}
-                    disabled={printing1 || !buyer || !linkedProperties || linkedProperties.length === 0}
-                    sx={{
-                      borderColor: '#4caf50',
-                      color: '#2e7d32',
-                      fontSize: '0.75rem',
-                      '&:hover': { borderColor: '#2e7d32', bgcolor: '#f1f8e9' },
-                    }}
-                  >
-                    {printing1 ? '印刷中...' : '印刷'}
-                  </Button>
-                </Box>
+                hasPropertyNumber && linkedProperties && linkedProperties.length > 0 ? (
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Typography component="span">内覧準備資料（白黒）：</Typography>
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      startIcon={printing1 ? <CircularProgress size={14} color="inherit" /> : <PrintIcon />}
+                      onClick={handlePrint1}
+                      disabled={printing1 || !buyer || !linkedProperties || linkedProperties.length === 0}
+                      sx={{
+                        borderColor: '#4caf50',
+                        color: '#2e7d32',
+                        fontSize: '0.75rem',
+                        '&:hover': { borderColor: '#2e7d32', bgcolor: '#f1f8e9' },
+                      }}
+                    >
+                      {printing1 ? '印刷中...' : '印刷'}
+                    </Button>
+                  </Box>
+                ) : (
+                  <Typography component="span">
+                    内覧準備資料　<a href="https://docs.google.com/spreadsheets/d/1M9uVzHWD2ipzoY5Om3h3a2-_uQa9D_UGhpB5U4_nyRc/edit?gid=1575477339#gid=1575477339" target="_blank" rel="noopener noreferrer">こちらから</a>
+                  </Typography>
+                )
               }
             />
           </ListItem>
           {/* 内覧準備資料（カラー） */}
-          <ListItem component="li" sx={{ display: 'list-item', py: 0.5 }}>
-            <ListItemText
-              primary={
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <Typography component="span">内覧準備資料（カラー）：</Typography>
-                  <Button
-                    variant="outlined"
-                    size="small"
-                    startIcon={printing2 ? <CircularProgress size={14} color="inherit" /> : <PrintIcon />}
-                    onClick={handlePrint2}
-                    disabled={printing2 || !buyer}
-                    sx={{
-                      borderColor: '#f5c518',
-                      color: '#b8860b',
-                      fontSize: '0.75rem',
-                      '&:hover': { borderColor: '#b8860b', bgcolor: '#fffde7' },
-                    }}
-                  >
-                    {printing2 ? '印刷中...' : '印刷'}
-                  </Button>
-                </Box>
-              }
-            />
-          </ListItem>
+          {(hasPropertyNumber && linkedProperties && linkedProperties.length > 0) && (
+            <ListItem component="li" sx={{ display: 'list-item', py: 0.5 }}>
+              <ListItemText
+                primary={
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Typography component="span">内覧準備資料（カラー）：</Typography>
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      startIcon={printing2 ? <CircularProgress size={14} color="inherit" /> : <PrintIcon />}
+                      onClick={handlePrint2}
+                      disabled={printing2 || !buyer}
+                      sx={{
+                        borderColor: '#f5c518',
+                        color: '#b8860b',
+                        fontSize: '0.75rem',
+                        '&:hover': { borderColor: '#b8860b', bgcolor: '#fffde7' },
+                      }}
+                    >
+                      {printing2 ? '印刷中...' : '印刷'}
+                    </Button>
+                  </Box>
+                }
+              />
+            </ListItem>
+          )}
           {FIXED_LINKS.map((link, index) => (
             <ListItem
               key={index}

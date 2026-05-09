@@ -44,6 +44,8 @@ import SalesHistoryPage from './pages/SalesHistoryPage';
 import PropertyPreviewPage from './pages/PropertyPreviewPage';
 import TateuriPage from './pages/TateuriPage';
 import TateuriManagePage from './pages/TateuriManagePage';
+import FukuokaTateuriPage from './pages/FukuokaTateuriPage';
+import FukuokaTateuriManagePage from './pages/FukuokaTateuriManagePage';
 import ProtectedRoute from './components/ProtectedRoute';
 import { useAuthStore } from './store/authStore';
 import { GoogleMapsProvider } from './contexts/GoogleMapsContext';
@@ -72,6 +74,10 @@ function App() {
         <Route path="/tateuri" element={<TateuriPage />} />
         {/* 建売専門HP管理（認証不要・スタッフ向け） */}
         <Route path="/tateuri/manage" element={<TateuriManagePage />} />
+        {/* 福岡建売専門HP（認証不要・公開） */}
+        <Route path="/fukuoka-tateuri" element={<FukuokaTateuriPage />} />
+        {/* 福岡建売専門HP管理（認証不要・スタッフ向け） */}
+        <Route path="/fukuoka-tateuri/manage" element={<FukuokaTateuriManagePage />} />
         <Route
           path="/"
           element={
