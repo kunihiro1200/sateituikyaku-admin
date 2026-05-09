@@ -216,11 +216,17 @@ router.post(
                     name: salesEmployee.name,
                     email: salesEmployee.email || '（未設定）',
                   });
+                  
+                  if (!salesEmployee.email) {
+                    console.log('[BuyerAppointments] ⚠️ 物件担当のメールアドレスが設定されていません');
+                  }
                 } else {
                   console.log('[BuyerAppointments] ⚠️ イニシャル「' + propertyData.sales_assignee + '」に一致する従業員が見つかりません');
+                  console.log('[BuyerAppointments] ⚠️ これは従業員マスタの問題です。物件担当が「' + propertyData.sales_assignee + '」の場合、従業員マスタでイニシャルまたは名前が一致する必要があります');
                 }
               } catch (employeeError: any) {
                 console.log('[BuyerAppointments] ⚠️ 従業員情報の取得に失敗:', employeeError.message);
+                console.log('[BuyerAppointments] エラースタック:', employeeError.stack);
               }
             }
           }
