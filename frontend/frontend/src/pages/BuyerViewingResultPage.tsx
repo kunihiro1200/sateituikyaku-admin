@@ -778,6 +778,43 @@ export default function BuyerViewingResultPage() {
       }
     }
 
+    // バックエンドAPIを呼び出してカレンダー登録とメール送信を実行
+    try {
+      const viewingDate = new Date(startDateStr.replace(/(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})/, '$1-$2-$3T$4:$5:$6'));
+      const endDate = new Date(endDateStr.replace(/(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})/, '$1-$2-$3T$4:$5:$6'));
+
+      console.log('[BuyerViewingResultPage] Calling /api/buyer-appointments');
+      
+      const response = await api.post('/api/buyer-appointments', {
+        buyerNumber: buyer.buyer_number,
+        startTime: viewingDate.toISOString(),
+        endTime: endDate.toISOString(),
+        assignedTo: buyer.follow_up_assignee,
+        followUpAssignee: buyer.follow_up_assignee,
+        buyerName: buyer.name,
+        buyerPhone: buyer.phone_number,
+        buyerEmail: buyer.email,
+        viewingMobile: buyer.viewing_mobile || '',
+        viewingTypeGeneral: buyer.viewing_type_general || '',
+        viewingDate: buyer.viewing_date || '',
+        viewingTime: buyer.viewing_time || '',
+        propertyAddress: property?.address || '',
+        propertyNumber: property?.property_number || '',
+        propertyGoogleMapUrl: property?.google_map_url || '',
+        inquiryHearing: buyer.inquiry_hearing || '',
+        creatorName: buyer.name,
+        customTitle: title,
+        customDescription: description,
+      });
+
+      console.log('[BuyerViewingResultPage] Calendar event created:', response.data);
+    } catch (error: any) {
+      console.error('[BuyerViewingResultPage] Calendar event creation error:', error);
+      const errorMessage = error.response?.data?.error?.message || 'カレンダー登録に失敗しました';
+      setSnackbar({ open: true, message: errorMessage, severity: 'error' });
+      return; // エラーの場合はGoogleカレンダーを開かない
+    }
+
     // Googleカレンダー新規イベント作成URLを直接開く
     const params = new URLSearchParams({
       action: 'TEMPLATE',
