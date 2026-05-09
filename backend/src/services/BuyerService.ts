@@ -259,10 +259,11 @@ export class BuyerService {
               `follow_up_assignee.eq.${assigneeInitial},initial_assignee.eq.${assigneeInitial}`
             );
           } else if (dynamicCategory.startsWith('todayCallAssigned:')) {
-            // 当日TEL(イニシャル): follow_up_assignee = イニシャル AND 次電日が空でない AND 次電日 <= 今日
+            // 🆕 案件担当のみの当日TEL: follow_up_assignee が空 AND project_assignee = イニシャル AND 次電日が空でない AND 次電日 <= 今日
             const assigneeInitial = dynamicCategory.replace('todayCallAssigned:', '');
             query = query
-              .eq('follow_up_assignee', assigneeInitial)
+              .is('follow_up_assignee', null)  // 後続担当が空
+              .eq('project_assignee', assigneeInitial)  // 案件担当が一致
               .not('next_call_date', 'is', null)
               .lte('next_call_date', todayStr);
           } else if (dynamicCategory.startsWith('nextCallDateBlank:')) {
