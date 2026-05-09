@@ -170,23 +170,20 @@ export default function TateuriPage() {
     // 全ての画像から上部15%を切り取る（ロゴを削除）
     const baseStyle: React.CSSProperties = {
       clipPath: 'inset(15% 0 0 0)',
-      transform: 'scale(1.18)', // 切り取った分を補うために拡大
-      transformOrigin: 'center',
     };
     
-    if (!property.processed_images) return baseStyle; // 加工なしの場合はクロップ+拡大のみ
+    if (!property.processed_images) return baseStyle; // 加工なしの場合はクロップのみ
     
-    // 加工ありの場合：クロップ + 角度・さらに拡大
+    // 加工ありの場合：クロップ + 角度・拡大
     const seed = property.slug.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
     const posX = 60 + (seed % 5) * 4;        // 60〜76%（右寄り）
     const posY = 38 + (seed % 4) * 4;        // 38〜50%（少し上）
     const rotate = -2.5 + (seed % 3) * 0.5; // -2.5〜-1.5度
-    const additionalScale = 1.10 + (seed % 3) * 0.02; // 1.10〜1.14（追加の拡大）
-    const totalScale = 1.18 * additionalScale; // 基本拡大 × 追加拡大
+    const scale = 1.10 + (seed % 3) * 0.02; // 1.10〜1.14（拡大）
     return {
-      clipPath: 'inset(15% 0 0 0)',
+      ...baseStyle,
       objectPosition: `${posX}% ${posY}%`,
-      transform: `rotate(${rotate}deg) scale(${totalScale})`,
+      transform: `rotate(${rotate}deg) scale(${scale})`,
       transformOrigin: 'center',
     };
   };
