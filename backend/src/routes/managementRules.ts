@@ -382,12 +382,23 @@ router.post('/transfer-to-spreadsheet', async (req: Request, res: Response) => {
 
     // ヘルパー関数: 条文番号やページ番号を除去して内容のみを抽出
     const extractContentOnly = (text: string, maxLength: number): string => {
+      let content = text;
+      
+      // まず「：」で分割して、最後の部分（実際の内容）を取得
+      const colonParts = text.split(/[：:]/);
+      if (colonParts.length > 1) {
+        // 最後の部分を取得（実際の制限内容）
+        content = colonParts[colonParts.length - 1].trim();
+      }
+      
       // 条文番号やページ番号のパターンを除去
-      let content = text
+      content = content
         // 第○条（○○）を除去
         .replace(/第\d+条[（(][^)）]*[)）]/g, '')
         // 第○条を除去
         .replace(/第\d+条/g, '')
+        // 第○項を除去
+        .replace(/第\d+項/g, '')
         // ページ番号を除去
         .replace(/(?:ページ|p\.?)\s*\d+/gi, '')
         .replace(/[（(]\d+ページ[)）]/g, '')
@@ -404,25 +415,31 @@ router.post('/transfer-to-spreadsheet', async (req: Request, res: Response) => {
         // 先頭の句読点・空白・コロンを除去
         .replace(/^[、。：:\s]+/, '')
         // 末尾の句読点・空白を除去
-        .replace(/[、。：:\s]+$/, '')
+        .replace(/[、。\s]+$/, '')
         .trim();
       
-      // 空になった場合や、あまりにも短い場合は元のテキストから再抽出
-      if (!content || content.length < 10) {
-        // 「：」以降の内容を抽出（条文の説明部分）
-        const colonMatch = text.match(/[：:]\s*(.+)/);
-        if (colonMatch && colonMatch[1]) {
-          content = colonMatch[1]
-            .replace(/第\d+条/g, '')
-            .replace(/(?:ページ|p\.?)\s*\d+/gi, '')
-            .replace(/[（(]\d+ページ[)）]/g, '')
-            .trim();
-        }
-        
-        // それでも短い場合は元のテキストを使用
-        if (!content || content.length < 10) {
-          content = text;
-        }
+      // 空になった場合は元のテキストから再抽出
+      if (!content || content.length < 5) {
+        // 元のテキスト全体から条文参照を除去
+        content = text
+          .replace(/第\d+条[（(][^)）]*[)）]/g, '')
+          .replace(/第\d+条/g, '')
+          .replace(/第\d+項/g, '')
+          .replace(/(?:ページ|p\.?)\s*\d+/gi, '')
+          .replace(/[（(]\d+ページ[)）]/g, '')
+          .replace(/使用細則第?\d*条?第?\d*項?/g, '')
+          .replace(/管理規約第?\d*条?第?\d*項?/g, '')
+          .replace(/により|を遵守。?/g, '')
+          .replace(/使用細則/g, '')
+          .replace(/管理規約/g, '')
+          .replace(/^[、。：:\s]+/, '')
+          .replace(/[、。\s]+$/, '')
+          .trim();
+      }
+      
+      // それでも空の場合は元のテキストを使用
+      if (!content) {
+        content = text;
       }
       
       // 指定文字数以内に切り詰め
