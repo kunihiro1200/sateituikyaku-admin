@@ -75,7 +75,7 @@ export default function TateuriManagePage() {
       const res = await api.post('/api/tateuri/scrape', { url: addUrl.trim(), region, processImages: false });
       if (!res.data.success) throw new Error(res.data.error || '取得失敗');
       const addedTitle = res.data?.data?.title?.replace(/\[\d+\].+$/, '').trim() || res.data?.data?.address || '物件';
-      const addedSlug = res.data?.slug || res.data?.data?.slug || null;
+      const addedSlug = res.data?.slug || null;
       setAddResult({ success: true, message: `「${addedTitle}」を追加しました` });
       setLastAddedSlug(addedSlug);
       setAddUrl('');
@@ -109,7 +109,7 @@ export default function TateuriManagePage() {
       const res = await api.post('/api/tateuri/scrape', { url: processedUrl.trim(), region, processImages: true });
       if (!res.data.success) throw new Error(res.data.error || '取得失敗');
       const addedTitle = res.data?.data?.title?.replace(/\[\d+\].+$/, '').trim() || res.data?.data?.address || '物件';
-      const addedSlug = res.data?.slug || res.data?.data?.slug || null;
+      const addedSlug = res.data?.slug || null;
       setProcessedResult({ success: true, message: `「${addedTitle}」を追加しました（画像加工済み）` });
       setLastAddedSlug(addedSlug);
       setProcessedUrl('');
