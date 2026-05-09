@@ -260,12 +260,35 @@ router.post(
             }
           }
 
+          // 内覧日時を読みやすい形式に変換
+          let formattedViewingDateTime = '';
+          if (viewingDate) {
+            // viewingDateが "2026-05-09" または "2026-05-09T00:00:00+00:00" の形式の場合
+            const dateMatch = viewingDate.match(/(\d{4})-(\d{2})-(\d{2})/);
+            if (dateMatch) {
+              const year = dateMatch[1];
+              const month = parseInt(dateMatch[2], 10);
+              const day = parseInt(dateMatch[3], 10);
+              formattedViewingDateTime = `${year}年${month}月${day}日`;
+              if (viewingTime) {
+                formattedViewingDateTime += ` ${viewingTime}`;
+              }
+            } else {
+              // フォールバック
+              formattedViewingDateTime = viewingDate;
+              if (viewingTime) {
+                formattedViewingDateTime += ` ${viewingTime}`;
+              }
+            }
+          }
+
           const subject = `${displayAddress}の内覧入りました！`;
           const body = [
             `内覧担当は${followUpAssignee || assignedTo || ''}です。`,
             `${viewingMobile || viewingTypeGeneral || ''}`,
             `物件所在地${displayAddress}`,
-            `内覧日${viewingDate || ''}${viewingTime ? ' ' + viewingTime : ''}`,
+            `内覧日${formattedViewingDateTime || 'なし'}`,
+            `買主名：${buyerName || 'なし'}`,
             `問合時コメント：${inquiryHearing || 'なし'}`,
             `売主様：${ownerName}様`,
             `所有者連絡先${ownerPhone}`,
@@ -416,12 +439,38 @@ router.post(
         }
       }
 
+      // 3. 買主情報を取得
+      let buyerName = 'なし';
+      const { data: buyerData } = await supabase
+        .from('buyers')
+        .select('name')
+        .eq('buyer_number', buyerNumber)
+        .single();
+      if (buyerData) {
+        buyerName = buyerData.name || 'なし';
+      }
+
+      // 内覧日時を読みやすい形式に変換
+      let formattedViewingDate = '';
+      if (previousViewingDate) {
+        const dateMatch = previousViewingDate.match(/(\d{4})-(\d{2})-(\d{2})/);
+        if (dateMatch) {
+          const year = dateMatch[1];
+          const month = parseInt(dateMatch[2], 10);
+          const day = parseInt(dateMatch[3], 10);
+          formattedViewingDate = `${year}年${month}月${day}日`;
+        } else {
+          formattedViewingDate = previousViewingDate;
+        }
+      }
+
       const subject = `${displayAddress}の内覧キャンセルです`;
       const body = [
         `内覧担当は${followUpAssignee || ''}でした。`,
         `${viewingMobile || viewingTypeGeneral || ''}`,
         `物件所在地${displayAddress}`,
-        `内覧日${previousViewingDate || ''}の予定でしたがキャンセルとなりました。報告書記入の際はお気をつけください。`,
+        `内覧日${formattedViewingDate || 'なし'}の予定でしたがキャンセルとなりました。報告書記入の際はお気をつけください。`,
+        `買主名：${buyerName}`,
         `問合時コメント：${inquiryHearing || 'なし'}`,
         `売主様：${ownerName}様`,
         `所有者連絡先${ownerPhone}`,
