@@ -227,9 +227,11 @@ export default function PropertyPreviewPage() {
 
   const images = data.images || [];
 
-  // 画像スタイル（元の状態：加工なし）
+  // 画像スタイル（全ての画像から上部15%を切り取ってロゴを削除）
   const getImageStyleByIndex = (index: number): React.CSSProperties => {
-    return {};
+    return {
+      clipPath: 'inset(15% 0 0 0)', // 上部15%を切り取る（ロゴを削除）
+    };
   };
   // タイトルから [物件番号]以降の不要テキストを除去
   const cleanTitle = (data.title || '').replace(/\[\d+\].+$/, '').trim();
@@ -296,7 +298,7 @@ export default function PropertyPreviewPage() {
               物件写真（{images.length}枚）
             </h2>
             <div style={{ position: 'relative', background: '#111', borderRadius: 8, overflow: 'hidden', marginBottom: 10, aspectRatio: '4/3', userSelect: 'none' }}>
-              <img src={images[imgIndex]} alt="物件写真" style={{ width: '100%', height: '100%', objectFit: 'cover', pointerEvents: 'none', display: 'block' }} />
+              <img src={images[imgIndex]} alt="物件写真" style={{ width: '100%', height: '100%', objectFit: 'cover', pointerEvents: 'none', display: 'block', ...getImageStyleByIndex(imgIndex) }} />
               {/* 左右クリックエリア（矢印ボタンの後ろに配置） */}
               <div style={{ position: 'absolute', inset: 0, display: 'flex', zIndex: 1 }}>
                 <div style={{ width: '50%', cursor: 'w-resize' }} onClick={() => setImgIndex(i => (i - 1 + images.length) % images.length)} />
@@ -318,7 +320,7 @@ export default function PropertyPreviewPage() {
                   border: i === imgIndex ? '2px solid #e84040' : '2px solid transparent',
                   opacity: i === imgIndex ? 1 : 0.65,
                 }}>
-                  <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                  <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', ...getImageStyleByIndex(i) }} />
                 </div>
               ))}
             </div>
