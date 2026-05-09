@@ -78,6 +78,9 @@ def generate_processed_url(public_id: str, index: int) -> str:
     - 角度変更（-3度〜+3度）
     - 拡大（1.1〜1.15倍）
     - 位置調整（右寄り・左寄り・中央など）
+    - 色調補正（明るさ・コントラスト・彩度）
+    - ノイズ追加
+    - フィルター適用
     
     Args:
         public_id: CloudinaryのPublic ID
@@ -90,27 +93,23 @@ def generate_processed_url(public_id: str, index: int) -> str:
     
     # インデックスに応じてバリエーションを変える
     variations = [
-        # 0: 右寄り・少し上・-2度・1.12倍
-        {'crop': 'fill', 'gravity': 'north_east', 'width': 1200, 'height': 900, 'angle': -2, 'zoom': 1.12},
-        # 1: 左寄り・下気味・+2度・1.10倍
-        {'crop': 'fill', 'gravity': 'south_west', 'width': 1200, 'height': 900, 'angle': 2, 'zoom': 1.10},
-        # 2: 上から引き気味・+3度・1.15倍
-        {'crop': 'fill', 'gravity': 'north', 'width': 1200, 'height': 900, 'angle': 3, 'zoom': 1.15},
-        # 3: 右寄り・ほぼ正面・+1度・1.08倍
-        {'crop': 'fill', 'gravity': 'east', 'width': 1200, 'height': 900, 'angle': 1, 'zoom': 1.08},
-        # 4: 下から寄り気味・-2度・1.13倍
-        {'crop': 'fill', 'gravity': 'south', 'width': 1200, 'height': 900, 'angle': -2, 'zoom': 1.13},
-        # 5: 左上・-3度・1.11倍
-        {'crop': 'fill', 'gravity': 'north_west', 'width': 1200, 'height': 900, 'angle': -3, 'zoom': 1.11},
+        # 0: 右寄り・少し上・-2度・1.12倍・明るめ・高コントラスト
+        {'crop': 'fill', 'gravity': 'north_east', 'width': 1200, 'height': 900, 'angle': -2, 'zoom': 1.12, 'brightness': 10, 'contrast': 15, 'saturation': 5, 'effect': 'sharpen:80'},
+        # 1: 左寄り・下気味・+2度・1.10倍・暗め・低コントラスト
+        {'crop': 'fill', 'gravity': 'south_west', 'width': 1200, 'height': 900, 'angle': 2, 'zoom': 1.10, 'brightness': -10, 'contrast': -10, 'saturation': -5, 'effect': 'blur:50'},
+        # 2: 上から引き気味・+3度・1.15倍・彩度高め・ノイズ
+        {'crop': 'fill', 'gravity': 'north', 'width': 1200, 'height': 900, 'angle': 3, 'zoom': 1.15, 'brightness': 5, 'contrast': 10, 'saturation': 15, 'effect': 'noise:20'},
+        # 3: 右寄り・ほぼ正面・+1度・1.08倍・セピア風
+        {'crop': 'fill', 'gravity': 'east', 'width': 1200, 'height': 900, 'angle': 1, 'zoom': 1.08, 'brightness': 0, 'contrast': 5, 'saturation': -10, 'effect': 'sepia:30'},
+        # 4: 下から寄り気味・-2度・1.13倍・ビネット効果
+        {'crop': 'fill', 'gravity': 'south', 'width': 1200, 'height': 900, 'angle': -2, 'zoom': 1.13, 'brightness': -5, 'contrast': 20, 'saturation': 10, 'effect': 'vignette:30'},
+        # 5: 左上・-3度・1.11倍・グレイン追加
+        {'crop': 'fill', 'gravity': 'north_west', 'width': 1200, 'height': 900, 'angle': -3, 'zoom': 1.11, 'brightness': 8, 'contrast': -5, 'saturation': 0, 'effect': 'grayscale:20'},
     ]
     
     variation = variations[index % len(variations)]
     
     # Cloudinary変換URLを生成
-    # 1. 上部15%をクロップ（ロゴ削除）
-    # 2. 角度変更
-    # 3. 拡大
-    # 4. 位置調整
     transformations = [
         f"c_{variation['crop']}",
         f"g_{variation['gravity']}",
@@ -119,6 +118,10 @@ def generate_processed_url(public_id: str, index: int) -> str:
         f"a_{variation['angle']}",
         f"z_{variation['zoom']}",
         "y_0.15",  # 上部15%をクロップ（ロゴ削除）
+        f"e_brightness:{variation['brightness']}",  # 明るさ調整
+        f"e_contrast:{variation['contrast']}",  # コントラスト調整
+        f"e_saturation:{variation['saturation']}",  # 彩度調整
+        f"e_{variation['effect']}",  # 特殊効果（ノイズ・ぼかし・フィルター）
         "q_auto",  # 自動品質調整
         "f_auto",  # 自動フォーマット
     ]
