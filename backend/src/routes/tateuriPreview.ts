@@ -468,24 +468,108 @@ router.get('/cron/price-check', async (req: Request, res: Response) => {
   try {
     console.log('[Cron TateuriPriceCheck] 価格チェックジョブ開始');
 
-    // Vercel Cron Jobの認証チェック（一時的に無効化してテスト）
-    // TODO: 動作確認後に認証を再有効化する
-    // const authHeader = req.headers.authorization;
-    // const cronSecret = process.env.CRON_SECRET;
-    // if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
-    //   console.error('[Cron TateuriPriceCheck] 認証失敗');
-    //   return res.status(401).json({ error: 'Unauthorized' });
-    // }
+    // 超軽量テスト：環境変数のみ確認
+    const quickTest = req.query.quick === 'true';
+    if (quickTest) {
+      return res.json({
+        success: true,
+        message: 'クイックテスト完了',
+        environment: {
+          SUPABASE_URL: !!process.env.SUPABASE_URL,
+          SUPABASE_SERVICE_KEY: !!process.env.SUPABASE_SERVICE_KEY,
+          SCRAPE_API_URL: process.env.SCRAPE_API_URL || 'デフォルト値使用',
+          TATEURI_NOTIFY_EMAIL: process.env.TATEURI_NOTIFY_EMAIL || 'デフォルト値使用',
+        },
+        timestamp: new Date().toISOString(),
+      });
+    }
 
+    // テスト用：件数制限パラメータ
+    const limit = parseInt(req.query.limit as string) || 0; // 0 = 全件
+    const testMode = req.query.test === 'true'; // テストモード（スクレイピングなし）
+    console.log(`[Cron TateuriPriceCheck] 処理制限: ${limit === 0 ? '全件' : `${limit}件`}, テストモード: ${testMode}`);
+
+    if (testMode) {
+      // テストモード：データベースから物件情報のみ取得（スクレイピングなし）
+      const { createClient } = await import('@supabase/supabase-js');
+      const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!);
+
+      // まず件数のみ取得（高速）
+      const { count, error: countError } = await supabase
+        .from('property_previews')
+        .select('*', { count: 'exact', head: true })
+        .eq('is_tateuri', true)
+        .eq('is_active', true);
+
+      if (countError) {
+        throw countError;
+      }
+
+      // 件数が多い場合は詳細データを取得しない
+      if (count && count > 50 && !limit) {
+        return res.json({
+          success: true,
+          testMode: true,
+          totalCount: count,
+          message: `物件数が多いため詳細データをスキップ: ${count}件`,
+          recommendation: 'limit パラメータを使用してください（例: ?test=true&limit=10）',
+          timestamp: new Date().toISOString(),
+        });
+      }
+
+      const query = supabase
+        .from('property_previews')
+        .select('slug, title, price, address, source_url')
+        .eq('is_tateuri', true)
+        .eq('is_active', true);
+
+      if (limit > 0) {
+        query.limit(limit);
+      }
+
+      const { data: properties, error } = await query;
+
+      if (error) {
+        throw error;
+      }
+
+      return res.json({
+        success: true,
+        testMode: true,
+        totalCount: count,
+        checked: properties?.length || 0,
+        changed: 0,
+        errors: 0,
+        sampleProperties: properties?.slice(0, 3) || [], // 最初の3件のみ表示
+        message: `テストモード: ${properties?.length || 0}件の物件情報を取得`,
+        timestamp: new Date().toISOString(),
+      });
+    }
+
+    // 通常モード（スクレイピングあり）
     const { TateuriPriceCheckService } = await import('../services/TateuriPriceCheckService');
     const service = new TateuriPriceCheckService();
-    const result = await service.checkPrices();
+    
+    // テスト用：制限付きでチェック実行
+    const result = limit > 0 
+      ? await service.checkPricesLimited(limit)
+      : await service.checkPrices();
 
     console.log(`[Cron TateuriPriceCheck] 完了: チェック=${result.checked}件, 変動=${result.changed}件, エラー=${result.errors}件`);
-    return res.status(200).json({ success: true, ...result });
+    return res.status(200).json({ 
+      success: true, 
+      ...result,
+      timestamp: new Date().toISOString(),
+      limitApplied: limit > 0 ? limit : null
+    });
   } catch (err: any) {
     console.error('[Cron TateuriPriceCheck] エラー:', err.message);
-    return res.status(500).json({ success: false, error: err.message });
+    return res.status(500).json({ 
+      success: false, 
+      error: err.message,
+      stack: err.stack,
+      timestamp: new Date().toISOString()
+    });
   }
 });
 

@@ -745,6 +745,177 @@ app.use('/api/auth', authSupabaseRoutes);
 // 認証不要ルート（最優先で登録）
 app.use('/api/tateuri', tateuriPreviewRoutes); // 建売専門HP（認証不要・公開）
 app.use('/api/property-preview', propertyPreviewRoutes); // 物件プレビュー（認証不要・公開）
+
+// テスト用エンドポイント（認証不要）
+app.get('/api/test/simple', (req, res) => {
+  res.json({
+    success: true,
+    message: 'シンプルテスト成功',
+    timestamp: new Date().toISOString(),
+  });
+});
+
+app.get('/api/test/tateuri-property-count', async (req, res) => {
+  try {
+    const { createClient } = await import('@supabase/supabase-js');
+    const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!);
+
+    // 掲載中の建売物件数を取得
+    const { count: activeCount, error: activeError } = await supabase
+      .from('property_previews')
+      .select('*', { count: 'exact', head: true })
+      .eq('is_tateuri', true)
+      .eq('is_active', true);
+
+    if (activeError) throw activeError;
+
+    // 全建売物件数も取得
+    const { count: totalCount, error: totalError } = await supabase
+      .from('property_previews')
+      .select('*', { count: 'exact', head: true })
+      .eq('is_tateuri', true);
+
+    if (totalError) throw totalError;
+
+    // source_urlが設定されている物件数
+    const { count: withUrlCount, error: urlError } = await supabase
+      .from('property_previews')
+      .select('*', { count: 'exact', head: true })
+      .eq('is_tateuri', true)
+      .eq('is_active', true)
+      .not('source_url', 'is', null)
+      .neq('source_url', '');
+
+    if (urlError) throw urlError;
+
+    // サンプル物件を5件取得
+    const { data: sampleProperties, error: sampleError } = await supabase
+      .from('property_previews')
+      .select('slug, title, price, address, source_url')
+      .eq('is_tateuri', true)
+      .eq('is_active', true)
+      .limit(5);
+
+    if (sampleError) throw sampleError;
+
+    res.json({
+      success: true,
+      activeProperties: activeCount || 0,
+      totalProperties: totalCount || 0,
+      propertiesWithUrl: withUrlCount || 0,
+      sampleProperties: sampleProperties || [],
+      message: `掲載中物件: ${activeCount || 0}件 / 全物件: ${totalCount || 0}件 / URL設定済み: ${withUrlCount || 0}件`,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error: any) {
+    console.error('[Test] 物件数確認エラー:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      timestamp: new Date().toISOString(),
+    });
+  }
+});
+
+app.get('/api/test/tateuri-price-check-small', async (req, res) => {
+  try {
+    console.log('[Test] 建売専門HP価格チェック（小規模テスト）開始');
+
+    const { createClient } = await import('@supabase/supabase-js');
+    const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!);
+
+    // 最初の10件のみを取得
+    const { data: properties, error } = await supabase
+      .from('property_previews')
+      .select('slug, title, price, address, source_url')
+      .eq('is_tateuri', true)
+      .eq('is_active', true)
+      .not('source_url', 'is', null)
+      .neq('source_url', '')
+      .limit(10);
+
+    if (error) throw error;
+
+    if (!properties || properties.length === 0) {
+      return res.json({
+        success: true,
+        checked: 0,
+        changed: 0,
+        errors: 0,
+        message: 'テスト対象物件なし',
+        timestamp: new Date().toISOString(),
+      });
+    }
+
+    console.log(`[Test] ${properties.length}件をテスト`);
+
+    const scrapeApiUrl = process.env.SCRAPE_API_URL || 'https://sateituikyaku-scrape-server-production.up.railway.app';
+    const results = [];
+    let errors = 0;
+
+    // 1件ずつ順次処理（テスト用）
+    for (const property of properties) {
+      try {
+        console.log(`[Test] チェック中: ${property.slug}`);
+
+        const res = await fetch(`${scrapeApiUrl}/scrape`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: property.source_url }),
+          signal: AbortSignal.timeout(15000), // 15秒タイムアウト
+        });
+
+        const result = {
+          slug: property.slug,
+          title: property.title,
+          currentPrice: property.price,
+          sourceUrl: property.source_url,
+          status: res.status,
+          success: res.ok,
+        };
+
+        if (res.ok) {
+          const data = await res.json();
+          result['scrapedPrice'] = data?.data?.price || null;
+          result['scrapedTitle'] = data?.data?.title || null;
+        } else {
+          result['error'] = `HTTP ${res.status}`;
+        }
+
+        results.push(result);
+      } catch (err: any) {
+        console.error(`[Test] エラー ${property.slug}:`, err.message);
+        results.push({
+          slug: property.slug,
+          title: property.title,
+          sourceUrl: property.source_url,
+          error: err.message,
+          success: false,
+        });
+        errors++;
+      }
+    }
+
+    console.log(`[Test] 小規模テスト完了: ${properties.length}件, エラー=${errors}件`);
+
+    res.json({
+      success: true,
+      checked: properties.length,
+      errors: errors,
+      results: results,
+      message: `小規模テスト完了: ${properties.length}件チェック, ${errors}件エラー`,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error: any) {
+    console.error('[Test] 小規模テストエラー:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      stack: error.stack,
+      timestamp: new Date().toISOString(),
+    });
+  }
+});
 // Sidebar counts endpoint (authentication not required) - must be registered before other /api/sellers routes
 app.use('/api/sellers', sellerRoutes);
 app.use('/api/sellers', sellersManagementRoutes);
