@@ -3813,10 +3813,12 @@ export class EnhancedAutoSyncService {
       syncMissingResult = await this.syncMissingBuyers(missingBuyers);
     }
 
+    // スプシ→DB更新同期は無効化（新規のみ同期ポリシー）
+    // スプシで値が変更されてもDBには反映しない。DBでの作業を保護するため。
     let syncUpdatedResult: SyncResult | null = null;
-    if (updatedBuyers.length > 0) {
-      syncUpdatedResult = await this.syncUpdatedBuyers(updatedBuyers);
-    }
+    // if (updatedBuyers.length > 0) {
+    //   syncUpdatedResult = await this.syncUpdatedBuyers(updatedBuyers);
+    // }
 
     let deletionSyncResult: DeletionSyncResult | null = null;
     if (deletedBuyers.length > 0) {
