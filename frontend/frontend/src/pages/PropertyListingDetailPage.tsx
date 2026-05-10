@@ -2335,27 +2335,27 @@ export default function PropertyListingDetailPage() {
           <Box sx={{ mb: 1, p: 1, bgcolor: '#fff8e1', borderRadius: 1, border: '1px solid #ffe082' }}>
             <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
               <Typography variant="body2" fontWeight="bold">確認:</Typography>
-              {confirmation !== null && (
+              {(confirmation !== null || data?.category === '未完了') && (
                 <ButtonGroup size="small" disabled={confirmationUpdating}>
                   <Button
-                    variant={confirmation === '未' ? 'contained' : 'outlined'}
+                    variant={(confirmation || '未') === '未' ? 'contained' : 'outlined'}
                     onClick={() => handleUpdateConfirmation('未')}
                     aria-label="確認を未に設定"
-                    aria-pressed={confirmation === '未'}
+                    aria-pressed={(confirmation || '未') === '未'}
                   >
                     未
                   </Button>
                   <Button
-                    variant={confirmation === '済' ? 'contained' : 'outlined'}
+                    variant={(confirmation || '未') === '済' ? 'contained' : 'outlined'}
                     onClick={() => handleUpdateConfirmation('済')}
                     aria-label="確認を済に設定"
-                    aria-pressed={confirmation === '済'}
+                    aria-pressed={(confirmation || '未') === '済'}
                   >
                     済
                   </Button>
                 </ButtonGroup>
               )}
-              {confirmation === null && (
+              {confirmation === null && data?.category !== '未完了' && (
                 <Typography variant="body2" color="text.secondary">
                   （事務へCHAT送信後に表示されます）
                 </Typography>
