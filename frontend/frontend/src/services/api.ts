@@ -17,7 +17,7 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 120000, // 120秒タイムアウト
+  timeout: 600000, // 600秒（10分）タイムアウト - 画像加工処理用
 });
 
 // リクエストインターセプター（JWT認証トークンを追加）
