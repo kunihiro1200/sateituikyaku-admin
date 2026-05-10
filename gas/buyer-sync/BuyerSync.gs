@@ -3,7 +3,8 @@
  *
  * 概要:
  * - スプレッドシートの「買主リスト」シートを読み込み
- * - Supabase の buyers テーブルに upsert（buyer_number をキーに）
+ * - Supabase の buyers テーブルに insert（新規のみ、buyer_number をキーに）
+ * - 既存レコードはスキップ（スプシで値が変更されてもDBには反映しない）
  * - 10分ごとのトリガーで自動実行
  *
  * ※ 同一GASプロジェクト内の他スクリプトと関数名が衝突しないよう
@@ -576,8 +577,9 @@ function buyerParseNumber(value) {
 }
 
 // ============================================================
-// Supabase upsert（バルクPOST方式 - 1リクエストで複数件upsert）
-// Prefer: resolution=merge-duplicates でupsert
+// Supabase insert（バルクPOST方式 - 新規のみ）
+// Prefer: resolution=ignore-duplicates で既存レコードは無視
+// ※ スプシで値が変更されてもDBには反映しない。DBでの作業を保護するため。
 // ============================================================
 function buyerUpsertToSupabase(records) {
   var baseUrl = BUYER_CONFIG.SUPABASE_URL + '/rest/v1/' + BUYER_CONFIG.TABLE_NAME;
@@ -591,7 +593,7 @@ function buyerUpsertToSupabase(records) {
         'Content-Type': 'application/json',
         'apikey': BUYER_CONFIG.SUPABASE_SERVICE_KEY,
         'Authorization': 'Bearer ' + BUYER_CONFIG.SUPABASE_SERVICE_KEY,
-        'Prefer': 'resolution=merge-duplicates,return=minimal'
+        'Prefer': 'resolution=ignore-duplicates,return=minimal'
       },
       payload: JSON.stringify(records),
       muteHttpExceptions: true
