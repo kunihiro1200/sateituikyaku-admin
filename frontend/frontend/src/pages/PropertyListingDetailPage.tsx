@@ -416,8 +416,8 @@ export default function PropertyListingDetailPage() {
     try {
       const response = await api.get(`/api/property-listings/${propertyNumber}`);
       setData(response.data);
-      // 確認フィールドを設定（nullまたはundefinedの場合は「未」をデフォルト値として設定）
-      setConfirmation(response.data.confirmation ?? '未');
+      // 確認フィールドを設定（nullの場合はそのまま）
+      setConfirmation(response.data.confirmation);
       // 一般媒介非公開（仮）フィールドを設定
       setGeneralMediationPrivate(response.data.general_mediation_private ?? null);
       // 非公開配信メールフィールドを設定
