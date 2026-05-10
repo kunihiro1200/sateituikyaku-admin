@@ -2556,18 +2556,9 @@ export class EnhancedAutoSyncService {
         console.log('✅ No missing sellers to sync');
       }
 
-      // Phase 2: 更新同期 - 既存売主のデータを更新
-      console.log('\n🔄 Phase 2: Seller Update Sync');
-      const updatedSellers = await this.detectUpdatedSellers();
-      
-      if (updatedSellers.length > 0) {
-        const updateResult = await this.syncUpdatedSellers(updatedSellers);
-        additionResult.totalProcessed += updatedSellers.length;
-        additionResult.successfullyUpdated = updateResult.updatedSellersCount;
-        additionResult.failed += updateResult.errors.length;
-      } else {
-        console.log('✅ No sellers to update');
-      }
+      // Phase 2: 更新同期 - 無効化（新規のみ同期ポリシー）
+      // スプシで値が変更されてもDBには反映しない。DBでの作業を保護するため。
+      console.log('\n⏭️  Phase 2: Seller Update Sync (Disabled - insert only policy)');
 
       // Phase 3: 削除同期 - 削除された売主を検出してソフトデリート
       if (this.isDeletionSyncEnabled()) {
@@ -3881,16 +3872,9 @@ export class EnhancedAutoSyncService {
         console.log('✅ No missing sellers to sync');
       }
 
-      // Phase 2: 更新同期
-      console.log('\n🔄 Phase 2: Seller Update Sync');
-      const updatedSellers = await this.detectUpdatedSellers();
-      if (updatedSellers.length > 0) {
-        const updateResult = await this.syncUpdatedSellers(updatedSellers);
-        updated = updateResult.updatedSellersCount;
-        errors.push(...updateResult.errors);
-      } else {
-        console.log('✅ No updated sellers to sync');
-      }
+      // Phase 2: 更新同期 - 無効化（新規のみ同期ポリシー）
+      // スプシで値が変更されてもDBには反映しない。DBでの作業を保護するため。
+      console.log('\n⏭️  Phase 2: Seller Update Sync (Disabled - insert only policy)');
 
       // Phase 3: 削除同期（deletionOnly=true で別途呼ぶため、ここではスキップ）
       console.log('\n⏭️  Phase 3: Seller Deletion Sync (skipped - use deletionOnly=true)');

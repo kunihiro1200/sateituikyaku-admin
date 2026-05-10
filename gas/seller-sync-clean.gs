@@ -371,8 +371,9 @@ function syncSellerList() {
     Logger.log('⚠️ 追加同期エラー: ' + e.toString());
   }
 
-  // Phase 2: 更新同期（Supabase直接PATCH）
-  syncUpdatesToSupabase_(sheetRows, startTime);
+  // Phase 2: 更新同期 - 無効化（新規のみ同期ポリシー）
+  // スプシで値が変更されてもDBには反映しない。DBでの作業を保護するため。
+  Logger.log('⏭️ Phase 2: 更新同期はスキップ（新規のみ同期ポリシー）');
 
   // Phase 3: 削除同期（バックエンドAPI経由）
   try {
@@ -400,44 +401,12 @@ function syncSellerList() {
 // ============================================================
 
 /**
- * スプレッドシート編集時に即時同期
- * ※ setupOnEditTrigger() で登録済みであること
+ * スプレッドシート編集時の即時同期 - 無効化（新規のみ同期ポリシー）
+ * スプシで値が変更されてもDBには反映しない。DBでの作業を保護するため。
  */
 function onEditTrigger(e) {
-  try {
-    var sheet = e.range.getSheet();
-    if (sheet.getName() !== '売主リスト') return;
-    var editedRow = e.range.getRow();
-    if (editedRow <= 1) return;
-
-    var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-    var normalizedHeaders = headers.map(function(h) {
-      return String(h).replace(/^[\s\u3000\n\r]+|[\s\u3000\n\r]+$/g, '');
-    });
-    var sellerNumberColIndex = normalizedHeaders.indexOf('売主番号');
-    if (sellerNumberColIndex === -1) {
-      Logger.log('⚠️ 売主番号列が見つかりません');
-      return;
-    }
-
-    var rowData = sheet.getRange(editedRow, 1, 1, sheet.getLastColumn()).getValues()[0];
-    var sellerNumber = rowData[sellerNumberColIndex];
-    if (!sellerNumber || typeof sellerNumber !== 'string' || !sellerNumber.startsWith('AA')) return;
-
-    var rowObj = rowToObject(headers, rowData);
-    Logger.log('📝 編集検知: ' + sellerNumber + ' (行 ' + editedRow + ')');
-
-    var response = postToBackend('/api/sync/seller-row', rowObj);
-    var statusCode = response.getResponseCode();
-    if (statusCode >= 200 && statusCode < 300) {
-      var result = JSON.parse(response.getContentText());
-      Logger.log('✅ 即時同期成功: ' + sellerNumber + ' (' + result.action + ')');
-    } else {
-      Logger.log('❌ 即時同期失敗: HTTP ' + statusCode + ' / ' + response.getContentText());
-    }
-  } catch (e) {
-    Logger.log('❌ onEditTrigger エラー: ' + e.toString());
-  }
+  // 新規のみ同期ポリシーにより、編集時の即時同期は無効化
+  Logger.log('⏭️ onEditTrigger: スキップ（新規のみ同期ポリシー）');
 }
 
 // ============================================================

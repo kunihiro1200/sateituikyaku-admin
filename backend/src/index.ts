@@ -679,9 +679,10 @@ app.post('/api/webhook/seller-row', async (req, res) => {
       .single();
 
     if (existing) {
-      await syncService.updateSingleSeller(sellerNumber, row);
-      console.log(`✅ [Cron seller-row] Updated: ${sellerNumber}`);
-      res.json({ success: true, action: 'updated', sellerNumber });
+      // 既存売主はスキップ（新規のみ同期ポリシー）
+      // スプシで値が変更されてもDBには反映しない。DBでの作業を保護するため。
+      console.log(`⏭️ [Cron seller-row] Skipped (existing): ${sellerNumber}`);
+      res.json({ success: true, action: 'skipped', sellerNumber });
     } else {
       await syncService.syncSingleSeller(sellerNumber, row);
       console.log(`✅ [Cron seller-row] Created: ${sellerNumber}`);
@@ -724,9 +725,10 @@ app.post('/api/sync/seller-row', async (req, res) => {
       .single();
 
     if (existing) {
-      await syncService.updateSingleSeller(sellerNumber, row);
-      console.log(`✅ [sync seller-row] Updated: ${sellerNumber}`);
-      res.json({ success: true, action: 'updated', sellerNumber });
+      // 既存売主はスキップ（新規のみ同期ポリシー）
+      // スプシで値が変更されてもDBには反映しない。DBでの作業を保護するため。
+      console.log(`⏭️ [sync seller-row] Skipped (existing): ${sellerNumber}`);
+      res.json({ success: true, action: 'skipped', sellerNumber });
     } else {
       await syncService.syncSingleSeller(sellerNumber, row);
       console.log(`✅ [sync seller-row] Created: ${sellerNumber}`);
