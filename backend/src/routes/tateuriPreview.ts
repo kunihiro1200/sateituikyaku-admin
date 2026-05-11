@@ -463,6 +463,48 @@ async function scrapeSuumoAndSave(url: string, region: string, res: Response) {
   }
 }
 
+// GET /api/tateuri/test/send-notification - メール通知テスト用エンドポイント
+router.get('/test/send-notification', async (req: Request, res: Response) => {
+  try {
+    console.log('[Test] メール通知テスト開始');
+
+    const { TateuriPriceCheckService } = await import('../services/TateuriPriceCheckService');
+    const service = new (TateuriPriceCheckService as any)();
+
+    // テスト用のダミーデータ
+    const testPriceDowns = [{
+      slug: '021cb17e0b31',
+      title: 'セキュレ南田江（分譲地）',
+      address: '大分市南田江',
+      oldPrice: '2,800万円',
+      newPrice: '2,500万円',
+      source_url: 'https://www.athome.co.jp/kodate/3918864382/',
+    }];
+
+    const testSoldOuts = [{
+      slug: 'test-sold',
+      title: 'テスト物件（売却済み）',
+      address: '大分市テスト',
+      price: '3,000万円',
+      source_url: 'https://example.com/test',
+    }];
+
+    // メール送信（privateメソッドを直接呼び出せないため、リフレクションを使用）
+    await (service as any).sendNotification(testPriceDowns, testSoldOuts);
+
+    console.log('[Test] メール通知テスト完了');
+    return res.json({
+      success: true,
+      message: 'テストメールを送信しました。tenant@ifoo-oita.com を確認してください。',
+      priceDowns: testPriceDowns.length,
+      soldOuts: testSoldOuts.length,
+    });
+  } catch (err: any) {
+    console.error('[Test] メール通知テストエラー:', err.message);
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // GET /api/tateuri/cron/price-check - 建売物件の価格変動チェック（Vercel Cron Job用）
 router.get('/cron/price-check', async (req: Request, res: Response) => {
   try {

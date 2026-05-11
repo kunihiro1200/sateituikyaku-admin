@@ -56,16 +56,19 @@ export class TateuriPriceCheckService {
 
   /**
    * 掲載中の全物件を再スクレイピングして価格変動をチェック
+   * 毎日全件ではなく、slug順で分割して処理（Vercelタイムアウト対策）
+   * 1回の実行で最大30件まで処理
    */
   async checkPrices(): Promise<{ checked: number; changed: number; errors: number }> {
     console.log('[TateuriPriceCheck] 価格チェック開始');
 
-    // 掲載中の建売物件を全件取得
+    // 掲載中の建売物件を全件取得（slug順でソート）
     const { data: properties, error } = await this.supabase
       .from('property_previews')
       .select('slug, title, price, address, source_url')
       .eq('is_tateuri', true)
-      .eq('is_active', true);
+      .eq('is_active', true)
+      .order('slug', { ascending: true });
 
     if (error) {
       console.error('[TateuriPriceCheck] DB取得エラー:', error);
@@ -77,36 +80,36 @@ export class TateuriPriceCheckService {
       return { checked: 0, changed: 0, errors: 0 };
     }
 
-    console.log(`[TateuriPriceCheck] ${properties.length}件をチェック`);
+    // 毎日30件ずつ処理（日付ベースでオフセットを計算）
+    const DAILY_LIMIT = 30;
+    const today = new Date();
+    const dayOfYear = Math.floor((today.getTime() - new Date(today.getFullYear(), 0, 0).getTime()) / 86400000);
+    const offset = (dayOfYear * DAILY_LIMIT) % properties.length;
+    
+    // オフセットから30件取得（末尾に達したら先頭に折り返す）
+    let targetProperties: typeof properties;
+    if (offset + DAILY_LIMIT <= properties.length) {
+      targetProperties = properties.slice(offset, offset + DAILY_LIMIT);
+    } else {
+      targetProperties = [
+        ...properties.slice(offset),
+        ...properties.slice(0, DAILY_LIMIT - (properties.length - offset))
+      ];
+    }
+
+    console.log(`[TateuriPriceCheck] 全${properties.length}件中 ${offset}〜${offset + targetProperties.length}件目をチェック（本日分）`);
 
     const scrapeApiUrl = process.env.SCRAPE_API_URL || 'https://sateituikyaku-scrape-server-production.up.railway.app';
     const priceChanges: PriceChangeResult[] = [];
     const soldOuts: SoldOutResult[] = [];
     let errors = 0;
 
-    // 並列処理でパフォーマンス向上（同時実行数を制限）
-    const BATCH_SIZE = 5; // 同時に5件まで処理
-    const batches = [];
-    
-    for (let i = 0; i < properties.length; i += BATCH_SIZE) {
-      batches.push(properties.slice(i, i + BATCH_SIZE));
-    }
-
-    for (const batch of batches) {
-      const promises = batch.map(property => this.checkSingleProperty(property as TateuriProperty, scrapeApiUrl));
-      const results = await Promise.allSettled(promises);
-      
-      results.forEach((result, index) => {
-        if (result.status === 'fulfilled') {
-          const { priceChange, soldOut, error } = result.value;
-          if (priceChange) priceChanges.push(priceChange);
-          if (soldOut) soldOuts.push(soldOut);
-          if (error) errors++;
-        } else {
-          console.error(`[TateuriPriceCheck] バッチ処理エラー:`, result.reason);
-          errors++;
-        }
-      });
+    // 順次処理（スクレイピングサーバーへの負荷を抑える）
+    for (const property of targetProperties as TateuriProperty[]) {
+      const result = await this.checkSingleProperty(property, scrapeApiUrl);
+      if (result.priceChange) priceChanges.push(result.priceChange);
+      if (result.soldOut) soldOuts.push(result.soldOut);
+      if (result.error) errors++;
     }
 
     // 値下げ or 売却済みがあればメール通知
@@ -115,8 +118,8 @@ export class TateuriPriceCheckService {
       await this.sendNotification(priceDowns, soldOuts);
     }
 
-    console.log(`[TateuriPriceCheck] 完了: チェック=${properties.length}件, 値下げ=${priceDowns.length}件, 売却済み=${soldOuts.length}件, エラー=${errors}件`);
-    return { checked: properties.length, changed: priceChanges.length, errors };
+    console.log(`[TateuriPriceCheck] 完了: チェック=${targetProperties.length}件, 値下げ=${priceDowns.length}件, 売却済み=${soldOuts.length}件, エラー=${errors}件`);
+    return { checked: targetProperties.length, changed: priceChanges.length, errors };
   }
 
   /**
@@ -182,7 +185,7 @@ export class TateuriPriceCheckService {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url: property.source_url, is_tateuri: true, update_only: true }),
-        signal: AbortSignal.timeout(20000), // 20秒に短縮
+        signal: AbortSignal.timeout(60000), // 60秒（スクレイピングに35秒程度かかるため）
       });
 
       // 404 or ページが存在しない → 売却済みとして自動削除
