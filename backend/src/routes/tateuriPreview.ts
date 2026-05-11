@@ -24,7 +24,7 @@ router.get('/', async (req: Request, res: Response) => {
       .eq('is_tateuri', true)
       .eq('is_active', true)
       .eq('region', region)
-      .order('address', { ascending: true });
+      .order('created_at', { ascending: false }); // 新しい順
 
     if (error) throw error;
 
@@ -203,7 +203,15 @@ router.post('/scrape', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'url is required' });
     }
 
-    // SUUMOもathomeも同じスクレイピングサーバーに転送（サーバー側でURL判定して分岐）
+    // URLに応じて処理を分岐
+    if (url.includes('suumo.jp')) {
+      // SUUMOの場合はバックエンド内で直接処理（スクレイピングサーバーを使わない）
+      console.log('[tateuri/scrape] SUUMO URLを検出、バックエンド内で処理します');
+      return await scrapeSuumoAndSave(url, region, res);
+    }
+
+    // athomeの場合はスクレイピングサーバーに転送（既存の動作を維持）
+    console.log('[tateuri/scrape] athome URLを検出、スクレイピングサーバーに転送します');
     const scrapeApiUrl = process.env.SCRAPE_API_URL || 'https://sateituikyaku-scrape-server-production.up.railway.app';
 
     // スクレイピングサーバーにリクエスト（バックエンド経由でCORSを回避）
@@ -356,18 +364,85 @@ async function scrapeSuumoAndSave(url: string, region: string, res: Response) {
       if (trainMatch) access = trainMatch[1].trim();
     }
 
-    // --- アピールコメント（売主コメント・担当者コメント） ---
+    // --- アピールコメント（特徴ピックアップ） ---
     let appeal_comment: string | null = null;
-    // 「担当者より」セクションのテキスト
-    const appealM = html.match(/担当者より[\s\S]{0,500}?<p[^>]*>([\s\S]{20,500}?)<\/p>/i);
-    if (appealM) {
-      appeal_comment = stripTags(appealM[1]).trim();
+    
+    // パターン1: 「特徴ピックアップ」セクションを取得
+    const pickupMatch = html.match(/特徴ピックアップ[\s\S]{0,100}?<[^>]*>([\s\S]{50,2000}?)<\/(?:p|div|dd)>/i);
+    if (pickupMatch) {
+      appeal_comment = stripTags(pickupMatch[1])
+        .replace(/\s+/g, ' ')
+        .trim();
     }
-    // フォールバック: 「この物件について」
+    
+    // パターン2: 「担当者より」セクション
+    if (!appeal_comment) {
+      const appealM = html.match(/担当者より[\s\S]{0,500}?<p[^>]*>([\s\S]{20,500}?)<\/p>/i);
+      if (appealM) {
+        appeal_comment = stripTags(appealM[1]).trim();
+      }
+    }
+    
+    // パターン3: 「この物件について」
     if (!appeal_comment) {
       const m2 = html.match(/【この物件について】\s*([^<【]{10,300})/);
       if (m2) appeal_comment = m2[1].trim();
     }
+
+    // --- 提供元情報（会社名・電話番号） ---
+    let provider_name: string | null = null;
+    let provider_phone: string | null = null;
+
+    // パターン1: 「お問い合わせ先」セクションから取得
+    const contactMatch = html.match(/お問い?合わ?せ先[\s\S]{0,500}?<\/(?:th|dt)>[\s\S]{0,100}?<(?:td|dd)[^>]*>([\s\S]{10,500}?)<\/(?:td|dd)>/i);
+    if (contactMatch) {
+      const contactText = stripTags(contactMatch[1]);
+      
+      // 会社名を抽出（(株)、株式会社、有限会社などを含む）
+      const companyMatch = contactText.match(/([（(]株[）)]|株式会社|有限会社|合同会社|[ァ-ヶー]+(?:不動産|ハウス|ホーム|建設|工務店))[^\n\r]{0,50}/);
+      if (companyMatch) {
+        provider_name = companyMatch[0].trim();
+      }
+      
+      // 電話番号を抽出（TEL: 092-XXX-XXXX形式）
+      const phoneMatch = contactText.match(/TEL\s*[:：]?\s*(0\d{1,4}[-\s]?\d{1,4}[-\s]?\d{4})/i);
+      if (phoneMatch) {
+        provider_phone = phoneMatch[1].replace(/\s+/g, '').trim();
+      }
+    }
+
+    // パターン2: HTMLから直接会社名を探す（より広範囲）
+    if (!provider_name) {
+      const companyPatterns = [
+        /([（(]株[）)]|株式会社|有限会社|合同会社)\s*[ァ-ヶー\w]+/,
+        /[ァ-ヶー]+(?:不動産|ハウス|ホーム|建設|工務店|住宅)/,
+      ];
+      for (const pattern of companyPatterns) {
+        const match = html.match(pattern);
+        if (match) {
+          provider_name = match[0].trim();
+          break;
+        }
+      }
+    }
+
+    // パターン3: HTMLから直接電話番号を探す
+    if (!provider_phone) {
+      const phonePatterns = [
+        /TEL\s*[:：]?\s*(0\d{1,4}[-\s]?\d{1,4}[-\s]?\d{4})/i,
+        /電話\s*[:：]?\s*(0\d{1,4}[-\s]?\d{1,4}[-\s]?\d{4})/i,
+        /\b(0\d{1,4}[-]\d{1,4}[-]\d{4})\b/,
+      ];
+      for (const pattern of phonePatterns) {
+        const match = html.match(pattern);
+        if (match) {
+          provider_phone = match[1].replace(/\s+/g, '').trim();
+          break;
+        }
+      }
+    }
+
+    console.log(`[suumo/scrape] 提供元情報: name=${provider_name}, phone=${provider_phone}`);
 
     // --- 緯度経度 ---
     // SUUMOは地図データをJSに埋め込む。複数パターンを試みる
@@ -399,21 +474,80 @@ async function scrapeSuumoAndSave(url: string, region: string, res: Response) {
     console.log(`[suumo/scrape] 座標: lat=${lat}, lng=${lng}`);
 
     // --- 画像 ---
-    // SUUMOの画像はJSで動的ロードされるため静的HTMLには含まれない
-    // 物件番号からSUUMO画像APIのURLを構築する
+    // HTMLから画像URLを抽出
     const images: string[] = [];
-    if (propertyNumber) {
-      // SUUMOの画像URL形式: /jj/bukken/ichiran/JJ010FJ001.jpg?ar=011&bs=011&rn=XX&pn=XXXXXXXX&sp=0&no=N
-      // rn は物件番号の先頭2桁
+    
+    // パターン1: data-src属性から取得（遅延読み込み画像）
+    const dataSrcMatches = html.matchAll(/data-src=["']([^"']+\.(?:jpg|jpeg|png|webp)[^"']*)["']/gi);
+    for (const match of dataSrcMatches) {
+      let imgUrl = match[1];
+      // 相対URLの場合は絶対URLに変換
+      if (imgUrl.startsWith('//')) {
+        imgUrl = 'https:' + imgUrl;
+      } else if (imgUrl.startsWith('/')) {
+        imgUrl = 'https://suumo.jp' + imgUrl;
+      }
+      
+      // 除外する画像（明らかに不要なもの）
+      const shouldExclude = 
+        imgUrl.includes('/icon/') ||
+        imgUrl.includes('/logo') ||
+        imgUrl.includes('/banner') ||
+        imgUrl.includes('/btn_') ||
+        imgUrl.includes('/common/') ||
+        imgUrl.includes('/edit/assets/') ||
+        imgUrl.includes('/pagetop') ||
+        imgUrl.includes('_logo') ||
+        imgUrl.includes('_icon') ||
+        imgUrl.includes('_btn') ||
+        imgUrl.match(/\d+x\d+\.(jpg|png)/); // サイズ指定の小さい画像
+      
+      if (!images.includes(imgUrl) && imgUrl.includes('suumo') && !shouldExclude) {
+        images.push(imgUrl);
+      }
+    }
+
+    // パターン2: src属性から取得（通常の画像）
+    const srcMatches = html.matchAll(/src=["']([^"']+\.(?:jpg|jpeg|png|webp)[^"']*)["']/gi);
+    for (const match of srcMatches) {
+      let imgUrl = match[1];
+      // 相対URLの場合は絶対URLに変換
+      if (imgUrl.startsWith('//')) {
+        imgUrl = 'https:' + imgUrl;
+      } else if (imgUrl.startsWith('/')) {
+        imgUrl = 'https://suumo.jp' + imgUrl;
+      }
+      
+      // 除外する画像
+      const shouldExclude = 
+        imgUrl.includes('/icon/') ||
+        imgUrl.includes('/logo') ||
+        imgUrl.includes('/banner') ||
+        imgUrl.includes('/btn_') ||
+        imgUrl.includes('/common/') ||
+        imgUrl.includes('/edit/assets/') ||
+        imgUrl.includes('/pagetop') ||
+        imgUrl.includes('_logo') ||
+        imgUrl.includes('_icon') ||
+        imgUrl.includes('_btn') ||
+        imgUrl.match(/\d+x\d+\.(jpg|png)/);
+      
+      if (!images.includes(imgUrl) && imgUrl.includes('suumo') && !shouldExclude) {
+        images.push(imgUrl);
+      }
+    }
+
+    // パターン3: 物件番号から画像URLを構築（フォールバック）
+    if (images.length === 0 && propertyNumber) {
       const rn = propertyNumber.substring(0, 2);
-      // 最大15枚試みる
       for (let i = 1; i <= 15; i++) {
         images.push(
           `https://img.suumo.com/jj/bukken/ichiran/JJ010FJ001.jpg?ar=011&bs=011&rn=${rn}&pn=${propertyNumber}&sp=0&no=${i}&ts=1`
         );
       }
     }
-    console.log(`[suumo/scrape] 画像URL生成: ${images.length}枚`);
+
+    console.log(`[suumo/scrape] 画像URL抽出: ${images.length}枚`);
 
     // --- DBに保存 ---
     const supabase = getSupabase();
@@ -432,6 +566,8 @@ async function scrapeSuumoAndSave(url: string, region: string, res: Response) {
       lat,
       lng,
       appeal_comment,
+      provider_name,
+      provider_phone,
       is_tateuri: true,
       is_active: true,
       region,
