@@ -485,6 +485,12 @@ async function scrapeSuumoAndSave(url: string, region: string, res: Response) {
       // HTMLエンティティをデコード（&amp; → &）
       imgUrl = imgUrl.replace(/&amp;/g, '&');
       
+      // サイズパラメータを削除して元の画像を取得（より高解像度）
+      // 例: &w=96&h=72 → 削除
+      imgUrl = imgUrl.replace(/&w=\d+&h=\d+/g, '');
+      imgUrl = imgUrl.replace(/&w=\d+/g, '');
+      imgUrl = imgUrl.replace(/&h=\d+/g, '');
+      
       // 会社ロゴを除外（gazo/kaisha/）
       if (!imgUrl.includes('kaisha') && !images.includes(imgUrl)) {
         images.push(imgUrl);
