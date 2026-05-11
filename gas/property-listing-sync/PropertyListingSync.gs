@@ -343,6 +343,16 @@ function mapRowToRecord(headers, row) {
     record[dbColumn] = converted;
   }
 
+  // 売主名のフォールバックロジック: seller_nameが空または"様"のみの場合はowner_infoを使用
+  if (record.seller_name !== undefined && record.owner_info !== undefined) {
+    var trimmedSellerName = record.seller_name ? String(record.seller_name).trim() : '';
+    var isBlankOrSamaOnly = !trimmedSellerName || trimmedSellerName === '様';
+    if (isBlankOrSamaOnly && record.owner_info) {
+      record.seller_name = record.owner_info;
+      Logger.log('売主名フォールバック適用: owner_info="' + record.owner_info + '" → seller_name');
+    }
+  }
+
   return record;
 }
 
