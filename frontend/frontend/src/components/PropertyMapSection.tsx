@@ -72,31 +72,6 @@ const PropertyMapSection: React.FC<PropertyMapSectionProps> = ({ sellerNumber, p
     }
   }, [isEditMode]);
 
-  // 座標が変更されたときにマーカーを作成または更新
-  useEffect(() => {
-    if (!mapRef.current || !mapCoordinates) return;
-
-    // 既存のマーカーがあれば削除
-    if (markerRef.current) {
-      markerRef.current.setMap(null);
-    }
-
-    // 新しいマーカーを作成
-    const marker = new google.maps.Marker({
-      position: { lat: mapCoordinates.lat, lng: mapCoordinates.lng },
-      map: mapRef.current,
-      title: propertyAddress,
-      draggable: isEditMode,
-    });
-
-    markerRef.current = marker;
-
-    // ドラッグ終了時のイベントリスナー
-    marker.addListener('dragend', handleMarkerDragEnd);
-
-    console.log('🗺️ [PropertyMapSection] Marker created/updated at:', mapCoordinates, 'draggable:', isEditMode);
-  }, [mapCoordinates, isEditMode, propertyAddress]);
-
   // 編集モード切り替え
   const handleEditModeToggle = () => {
     if (isEditMode) {
@@ -244,7 +219,21 @@ const PropertyMapSection: React.FC<PropertyMapSectionProps> = ({ sellerNumber, p
             }}
             onLoad={(map) => {
               mapRef.current = map;
-              console.log('🗺️ [PropertyMapSection] Map loaded');
+              
+              // マーカーを作成
+              const marker = new google.maps.Marker({
+                position: { lat: mapCoordinates.lat, lng: mapCoordinates.lng },
+                map: map,
+                title: propertyAddress,
+                draggable: false, // 初期状態はドラッグ不可
+              });
+
+              markerRef.current = marker;
+
+              // ドラッグ終了時のイベントリスナー
+              marker.addListener('dragend', handleMarkerDragEnd);
+              
+              console.log('🗺️ [PropertyMapSection] Map and marker loaded');
             }}
           >
           </GoogleMap>
