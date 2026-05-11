@@ -28,6 +28,7 @@ const PropertyMapSection: React.FC<PropertyMapSectionProps> = ({ sellerNumber, p
   const [isSaving, setIsSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const markerRef = useRef<google.maps.Marker | null>(null);
+  const mapRef = useRef<google.maps.Map | null>(null);
 
   useEffect(() => {
     if (!sellerNumber) {
@@ -67,8 +68,34 @@ const PropertyMapSection: React.FC<PropertyMapSectionProps> = ({ sellerNumber, p
   useEffect(() => {
     if (markerRef.current) {
       markerRef.current.setDraggable(isEditMode);
+      console.log('🗺️ [PropertyMapSection] Marker draggable set to:', isEditMode);
     }
   }, [isEditMode]);
+
+  // 座標が変更されたときにマーカーを作成または更新
+  useEffect(() => {
+    if (!mapRef.current || !mapCoordinates) return;
+
+    // 既存のマーカーがあれば削除
+    if (markerRef.current) {
+      markerRef.current.setMap(null);
+    }
+
+    // 新しいマーカーを作成
+    const marker = new google.maps.Marker({
+      position: { lat: mapCoordinates.lat, lng: mapCoordinates.lng },
+      map: mapRef.current,
+      title: propertyAddress,
+      draggable: isEditMode,
+    });
+
+    markerRef.current = marker;
+
+    // ドラッグ終了時のイベントリスナー
+    marker.addListener('dragend', handleMarkerDragEnd);
+
+    console.log('🗺️ [PropertyMapSection] Marker created/updated at:', mapCoordinates, 'draggable:', isEditMode);
+  }, [mapCoordinates, isEditMode, propertyAddress]);
 
   // 編集モード切り替え
   const handleEditModeToggle = () => {
@@ -216,17 +243,8 @@ const PropertyMapSection: React.FC<PropertyMapSectionProps> = ({ sellerNumber, p
               clickableIcons: false,
             }}
             onLoad={(map) => {
-              const marker = new google.maps.Marker({
-                position: { lat: mapCoordinates.lat, lng: mapCoordinates.lng },
-                map: map,
-                title: propertyAddress,
-                draggable: isEditMode,
-              });
-
-              markerRef.current = marker;
-
-              // ドラッグ終了時のイベントリスナー
-              marker.addListener('dragend', handleMarkerDragEnd);
+              mapRef.current = map;
+              console.log('🗺️ [PropertyMapSection] Map loaded');
             }}
           >
           </GoogleMap>
