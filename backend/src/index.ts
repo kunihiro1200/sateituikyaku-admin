@@ -74,6 +74,7 @@ import tateuriPreviewRoutes from './routes/tateuriPreview';
 import scrapedUrlsRoutes from './routes/scraped-urls';
 import testEmailRoutes from './routes/testEmail';
 import aiPropertyEnhanceRoutes from './routes/aiPropertyEnhance';
+import sitemapRoutes from './routes/sitemap';
 import { activityLogger } from './middleware/activityLogger';
 import { authenticate } from './middleware/auth';
 
@@ -747,6 +748,7 @@ app.use('/api/auth', authSupabaseRoutes);
 // 認証不要ルート（最優先で登録）
 app.use('/api/tateuri', tateuriPreviewRoutes); // 建売専門HP（認証不要・公開）
 app.use('/api/property-preview', propertyPreviewRoutes); // 物件プレビュー（認証不要・公開）
+app.use('/api', sitemapRoutes); // サイトマップ（認証不要・公開）
 
 // テスト用エンドポイント（認証不要）
 app.get('/api/test/simple', (req, res) => {
