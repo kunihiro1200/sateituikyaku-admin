@@ -25,19 +25,5 @@
         { "key": "Cache-Control", "value": "public, max-age=86400" }
       ]
     }
-  ],
-  "redirects": [
-    {
-      "source": "/",
-      "has": [{ "type": "host", "value": "oita-tateuri.com" }],
-      "destination": "/tateuri",
-      "permanent": true
-    },
-    {
-      "source": "/",
-      "has": [{ "type": "host", "value": "www.oita-tateuri.com" }],
-      "destination": "/tateuri",
-      "permanent": true
-    }
   ]
 }
