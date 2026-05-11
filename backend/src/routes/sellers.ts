@@ -897,6 +897,72 @@ router.get('/by-number/:sellerNumber', async (req: Request, res: Response) => {
 });
 
 /**
+ * 売主番号で座標を更新
+ * PATCH /api/sellers/by-number/:sellerNumber
+ */
+router.patch('/by-number/:sellerNumber', async (req: Request, res: Response) => {
+  try {
+    const { sellerNumber } = req.params;
+    const { latitude, longitude } = req.body;
+
+    // バリデーション
+    if (latitude === undefined || longitude === undefined) {
+      return res.status(400).json({ error: 'latitude and longitude are required' });
+    }
+
+    if (typeof latitude !== 'number' || typeof longitude !== 'number') {
+      return res.status(400).json({ error: 'latitude and longitude must be numbers' });
+    }
+
+    // 座標の範囲チェック（日本の範囲内）
+    if (latitude < 20 || latitude > 46 || longitude < 122 || longitude > 154) {
+      return res.status(400).json({ error: 'Invalid coordinates for Japan' });
+    }
+
+    const supabase = createClient(
+      process.env.SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_KEY!
+    );
+
+    // 売主が存在するか確認
+    const { data: seller, error: fetchError } = await supabase
+      .from('sellers')
+      .select('id, seller_number')
+      .eq('seller_number', sellerNumber)
+      .single();
+
+    if (fetchError || !seller) {
+      return res.status(404).json({ error: 'Seller not found' });
+    }
+
+    // 座標を更新
+    const { error: updateError } = await supabase
+      .from('sellers')
+      .update({
+        latitude,
+        longitude,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('seller_number', sellerNumber);
+
+    if (updateError) {
+      console.error('Update coordinates error:', updateError);
+      return res.status(500).json({ error: 'Failed to update coordinates' });
+    }
+
+    res.json({
+      success: true,
+      sellerNumber,
+      latitude,
+      longitude,
+    });
+  } catch (error) {
+    console.error('Update seller coordinates by number error:', error);
+    res.status(500).json({ error: 'Failed to update seller coordinates' });
+  }
+});
+
+/**
  * 売主の座標を property_listings テーブルに保存
  * PATCH /api/sellers/:id/coordinates
  */
