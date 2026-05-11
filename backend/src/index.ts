@@ -877,7 +877,7 @@ app.get('/api/test/tateuri-price-check-small', async (req, res) => {
         };
 
         if (res.ok) {
-          const data = await res.json();
+          const data = await res.json() as any;
           result['scrapedPrice'] = data?.data?.price || null;
           result['scrapedTitle'] = data?.data?.title || null;
         } else {
