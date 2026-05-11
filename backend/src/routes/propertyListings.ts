@@ -718,6 +718,15 @@ router.post('/:propertyNumber/send-distribution-emails', authenticate, async (re
       });
     }
 
+    // 売主名のフォールバックロジック: seller_nameが空または"様"のみの場合はowner_infoを使用
+    const resolveSellerName = (sellerName: string | null | undefined, ownerInfo: string | null | undefined): string | null => {
+      const trimmed = (sellerName || '').trim();
+      const isBlankOrSamaOnly = !trimmed || trimmed === '様';
+      return isBlankOrSamaOnly ? (ownerInfo || null) : trimmed;
+    };
+    const effectiveSellerName = resolveSellerName(property.seller_name, property.owner_info);
+    console.log(`[send-distribution-emails] Seller name resolved: "${property.seller_name}" → "${effectiveSellerName}" (owner_info: "${property.owner_info}")`);
+
     // 買主番号から買主名を取得するマップを作成
     const buyerNameMap: Record<string, string> = {};
     const buyerNumbersToFetch = normalizedRecipients
@@ -1504,7 +1513,7 @@ router.post('/:propertyNumber/send-chat-to-assignee', async (req: Request, res: 
     );
     const { data: property, error } = await supabase
       .from('property_listings')
-      .select('property_number, address, sales_assignee, seller_name, seller_contact, seller_email')
+      .select('property_number, address, sales_assignee, seller_name, seller_contact, seller_email, owner_info')
       .eq('property_number', propertyNumber)
       .single();
 
@@ -1512,6 +1521,14 @@ router.post('/:propertyNumber/send-chat-to-assignee', async (req: Request, res: 
       res.status(404).json({ error: '物件が見つかりませんでした' });
       return;
     }
+
+    // 売主名のフォールバックロジック: seller_nameが空または"様"のみの場合はowner_infoを使用
+    const resolveSellerName = (sellerName: string | null | undefined, ownerInfo: string | null | undefined): string | null => {
+      const trimmed = (sellerName || '').trim();
+      const isBlankOrSamaOnly = !trimmed || trimmed === '様';
+      return isBlankOrSamaOnly ? (ownerInfo || null) : trimmed;
+    };
+    const effectiveSellerName = resolveSellerName(property.seller_name, property.owner_info);
 
     // 物件担当がいない場合は事務チャットへ送信
     if (!property.sales_assignee) {
@@ -1524,7 +1541,7 @@ router.post('/:propertyNumber/send-chat-to-assignee', async (req: Request, res: 
       
       // 売主情報
       const sellerInfo = [
-        property.seller_name ? `売主氏名: ${property.seller_name}` : null,
+        effectiveSellerName ? `売主氏名: ${effectiveSellerName}` : null,
         property.seller_contact ? `売主電話: ${property.seller_contact}` : null,
         property.seller_email ? `売主メール: ${property.seller_email}` : null,
       ].filter(Boolean).join('\n');
@@ -1713,7 +1730,7 @@ router.post('/:propertyNumber/send-chat-to-office', async (req: Request, res: Re
     );
     const { data: property, error } = await supabase
       .from('property_listings')
-      .select('property_number, address, sales_assignee, seller_name, seller_contact, seller_email')
+      .select('property_number, address, sales_assignee, seller_name, seller_contact, seller_email, owner_info')
       .eq('property_number', propertyNumber)
       .single();
 
@@ -1722,12 +1739,20 @@ router.post('/:propertyNumber/send-chat-to-office', async (req: Request, res: Re
       return;
     }
 
+    // 売主名のフォールバックロジック: seller_nameが空または"様"のみの場合はowner_infoを使用
+    const resolveSellerName = (sellerName: string | null | undefined, ownerInfo: string | null | undefined): string | null => {
+      const trimmed = (sellerName || '').trim();
+      const isBlankOrSamaOnly = !trimmed || trimmed === '様';
+      return isBlankOrSamaOnly ? (ownerInfo || null) : trimmed;
+    };
+    const effectiveSellerName = resolveSellerName(property.seller_name, property.owner_info);
+
     const staffService = new StaffManagementService();
     const propertyUrl = `https://sateituikyaku-admin-frontend.vercel.app/property-listings/${property.property_number}`;
 
     // 売主情報
     const sellerInfo = [
-      property.seller_name ? `売主氏名: ${property.seller_name}` : null,
+      effectiveSellerName ? `売主氏名: ${effectiveSellerName}` : null,
       property.seller_contact ? `売主電話: ${property.seller_contact}` : null,
       property.seller_email ? `売主メール: ${property.seller_email}` : null,
     ].filter(Boolean).join('\n');
