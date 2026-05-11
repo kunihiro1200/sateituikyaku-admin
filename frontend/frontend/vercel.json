@@ -3,9 +3,69 @@
   "rewrites": [
     { "source": "/(.*)", "destination": "/index.html" }
   ],
+  "redirects": [
+    {
+      "source": "/",
+      "has": [
+        {
+          "type": "host",
+          "value": "oita-tateuri.com"
+        }
+      ],
+      "destination": "/tateuri-root",
+      "permanent": false
+    },
+    {
+      "source": "/",
+      "has": [
+        {
+          "type": "host",
+          "value": "www.oita-tateuri.com"
+        }
+      ],
+      "destination": "/tateuri-root",
+      "permanent": false
+    },
+    {
+      "source": "/",
+      "has": [
+        {
+          "type": "host",
+          "value": "fukuoka-tateuri.com"
+        }
+      ],
+      "destination": "/tateuri-root",
+      "permanent": false
+    },
+    {
+      "source": "/",
+      "has": [
+        {
+          "type": "host",
+          "value": "www.fukuoka-tateuri.com"
+        }
+      ],
+      "destination": "/tateuri-root",
+      "permanent": false
+    }
+  ],
   "headers": [
     {
       "source": "/tateuri",
+      "headers": [
+        { "key": "X-Robots-Tag", "value": "index, follow" },
+        { "key": "Cache-Control", "value": "public, max-age=3600, stale-while-revalidate=86400" }
+      ]
+    },
+    {
+      "source": "/tateuri-root",
+      "headers": [
+        { "key": "X-Robots-Tag", "value": "index, follow" },
+        { "key": "Cache-Control", "value": "public, max-age=3600, stale-while-revalidate=86400" }
+      ]
+    },
+    {
+      "source": "/fukuoka-tateuri",
       "headers": [
         { "key": "X-Robots-Tag", "value": "index, follow" },
         { "key": "Cache-Control", "value": "public, max-age=3600, stale-while-revalidate=86400" }

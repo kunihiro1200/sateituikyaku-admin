@@ -46,6 +46,7 @@ import TateuriPage from './pages/TateuriPage';
 import TateuriManagePage from './pages/TateuriManagePage';
 import FukuokaTateuriPage from './pages/FukuokaTateuriPage';
 import FukuokaTateuriManagePage from './pages/FukuokaTateuriManagePage';
+import TateuriRootPage from './pages/TateuriRootPage';
 import ProtectedRoute from './components/ProtectedRoute';
 import { useAuthStore } from './store/authStore';
 import { GoogleMapsProvider } from './contexts/GoogleMapsContext';
@@ -70,11 +71,13 @@ function App() {
         <Route path="/public/properties/:id" element={<PublicPropertyDetailPage />} />
         {/* 物件プレビュー（認証不要・買主向け公開ページ） */}
         <Route path="/property-preview/:slug" element={<PropertyPreviewPage />} />
-        {/* 建売専門HP（認証不要・公開） */}
+        {/* 建売専門HP（認証不要・公開） - ドメイン判定でルートパスに表示 */}
+        <Route path="/tateuri-root" element={<TateuriRootPage />} />
+        {/* 建売専門HP（認証不要・公開） - 大分専用パス（後方互換性） */}
         <Route path="/tateuri" element={<TateuriPage />} />
         {/* 建売専門HP管理（認証不要・スタッフ向け） */}
         <Route path="/tateuri/manage" element={<TateuriManagePage />} />
-        {/* 福岡建売専門HP（認証不要・公開） */}
+        {/* 福岡建売専門HP（認証不要・公開） - 福岡専用パス（後方互換性） */}
         <Route path="/fukuoka-tateuri" element={<FukuokaTateuriPage />} />
         {/* 福岡建売専門HP管理（認証不要・スタッフ向け） */}
         <Route path="/fukuoka-tateuri/manage" element={<FukuokaTateuriManagePage />} />
