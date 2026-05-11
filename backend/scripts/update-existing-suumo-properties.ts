@@ -111,6 +111,7 @@ async function updateProperty(slug: string, sourceUrl: string) {
         imgUrl.includes('/btn_') ||
         imgUrl.includes('/common/') ||
         imgUrl.includes('/edit/assets/') ||
+        imgUrl.includes('/edit/include/') ||
         imgUrl.includes('/pagetop') ||
         imgUrl.includes('_logo') ||
         imgUrl.includes('_icon') ||
@@ -140,6 +141,7 @@ async function updateProperty(slug: string, sourceUrl: string) {
         imgUrl.includes('/btn_') ||
         imgUrl.includes('/common/') ||
         imgUrl.includes('/edit/assets/') ||
+        imgUrl.includes('/edit/include/') ||
         imgUrl.includes('/pagetop') ||
         imgUrl.includes('_logo') ||
         imgUrl.includes('_icon') ||

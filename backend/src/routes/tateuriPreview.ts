@@ -496,6 +496,7 @@ async function scrapeSuumoAndSave(url: string, region: string, res: Response) {
         imgUrl.includes('/btn_') ||
         imgUrl.includes('/common/') ||
         imgUrl.includes('/edit/assets/') ||
+        imgUrl.includes('/edit/include/') ||
         imgUrl.includes('/pagetop') ||
         imgUrl.includes('_logo') ||
         imgUrl.includes('_icon') ||
@@ -526,6 +527,7 @@ async function scrapeSuumoAndSave(url: string, region: string, res: Response) {
         imgUrl.includes('/btn_') ||
         imgUrl.includes('/common/') ||
         imgUrl.includes('/edit/assets/') ||
+        imgUrl.includes('/edit/include/') ||
         imgUrl.includes('/pagetop') ||
         imgUrl.includes('_logo') ||
         imgUrl.includes('_icon') ||
