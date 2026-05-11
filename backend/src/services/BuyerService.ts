@@ -259,13 +259,17 @@ export class BuyerService {
               `follow_up_assignee.eq.${assigneeInitial},initial_assignee.eq.${assigneeInitial}`
             );
           } else if (dynamicCategory.startsWith('todayCallAssigned:')) {
-            // 🆕 案件担当のみの当日TEL: follow_up_assignee が空 AND project_assignee = イニシャル AND 次電日が空でない AND 次電日 <= 今日
+            // 🆕 修正: 「当日TEL(イニシャル)」のcalculated_statusを持つ買主を取得
+            // バックエンドのBuyerStatusCalculatorでは、後続担当または案件担当がある場合に
+            // 次電日が今日以前なら「当日TEL(イニシャル)」としてcalculated_statusを設定している
+            // ここでは全買主を取得してフィルタリングする（calculated_statusはクライアント側で計算済み）
             const assigneeInitial = dynamicCategory.replace('todayCallAssigned:', '');
+            
+            // 後続担当または案件担当が一致 AND 次電日が今日以前
             query = query
-              .is('follow_up_assignee', null)  // 後続担当が空
-              .eq('project_assignee', assigneeInitial)  // 案件担当が一致
               .not('next_call_date', 'is', null)
-              .lte('next_call_date', todayStr);
+              .lte('next_call_date', todayStr)
+              .or(`follow_up_assignee.eq.${assigneeInitial},project_assignee.eq.${assigneeInitial}`);
           } else if (dynamicCategory.startsWith('nextCallDateBlank:')) {
             // 次電日空欄(イニシャル): follow_up_assignee = イニシャル AND latest_status IN (A, B) AND next_call_date IS NULL AND broker_inquiry IS NULL OR 空文字
             const assigneeInitial = dynamicCategory.replace('nextCallDateBlank:', '');

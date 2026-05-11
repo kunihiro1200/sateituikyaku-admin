@@ -165,19 +165,12 @@ export default function BuyersPage() {
                   return matches;
                 } else if (selectedCalculatedStatus.startsWith('todayCallAssigned:')) {
                   const assignee = selectedCalculatedStatus.replace('todayCallAssigned:', '');
-                  // 🆕 案件担当のみの当日TEL: follow_up_assignee が空 AND project_assignee が一致 AND next_call_date が今日以前
-                  const now = new Date();
-                  const JST_OFFSET_MS = 9 * 60 * 60 * 1000;
-                  const jstTime = new Date(now.getTime() + JST_OFFSET_MS);
-                  const todayStr = jstTime.toISOString().split('T')[0];  // JST日付（YYYY-MM-DD）
-                  const nextCallDateStr = b.next_call_date ? b.next_call_date.substring(0, 10) : null;
                   
-                  const matches = (
-                    !b.follow_up_assignee &&  // 後続担当が空
-                    (b as any).project_assignee === assignee &&  // 案件担当が一致
-                    nextCallDateStr !== null &&
-                    nextCallDateStr <= todayStr
-                  );
+                  // 🆕 修正: 「当日TEL(イニシャル)」のcalculated_statusを持つ買主を表示
+                  // バックエンドのBuyerStatusCalculatorでは、後続担当または案件担当がある場合に
+                  // 次電日が今日以前なら「当日TEL(イニシャル)」としてcalculated_statusを設定している
+                  const targetStatus = `当日TEL(${assignee})`;
+                  const matches = b.calculated_status === targetStatus;
                   
                   return matches;
                 } else if (selectedCalculatedStatus.startsWith('nextCallDateBlank:')) {
@@ -219,6 +212,7 @@ export default function BuyersPage() {
                   
                   // バックエンドのcalculated_statusは既に日本語（例: "内覧日前日", "担当(Y)", "当日TEL(Y)"）
                   // フィルタリングは日本語の表示名で直接比較
+                  // 🆕 動的ステータス（当日TEL(R)、担当(林)、内覧済み(Y)など）にも対応
                   const matches = b.calculated_status === displayName;
                   
                   return matches;
