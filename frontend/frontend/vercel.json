@@ -1,6 +1,7 @@
 {
   "installCommand": "npm install --legacy-peer-deps",
   "rewrites": [
+    { "source": "/sitemap.xml", "destination": "https://baikyaku-property-site3.vercel.app/api/sitemap.xml" },
     { "source": "/(.*)", "destination": "/index.html" }
   ],
   "redirects": [
