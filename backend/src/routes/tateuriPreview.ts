@@ -477,19 +477,14 @@ async function scrapeSuumoAndSave(url: string, region: string, res: Response) {
     // HTMLから画像URLを抽出
     const images: string[] = [];
     
-    // パターン1: URLエンコードされた画像URL（gazo%2Fbukken%2F...）をデコード
-    const encodedMatches = html.matchAll(/gazo%2Fbukken%2F[^"'\s&]+?\.jpg/gi);
-    for (const match of encodedMatches) {
-      try {
-        const decodedPath = decodeURIComponent(match[0]);
-        const imgUrl = `https://suumo.jp/${decodedPath}`;
-        
-        // 会社ロゴを除外（gazo/kaisha/）
-        if (!imgUrl.includes('/kaisha/') && !images.includes(imgUrl)) {
-          images.push(imgUrl);
-        }
-      } catch (e) {
-        // デコードエラーは無視
+    // パターン1: img01.suumo.com の resizeImage URL（URLエンコードされたまま使用）
+    const resizeImageMatches = html.matchAll(/https:\/\/img01\.suumo\.com\/jj\/resizeImage\?src=gazo%2Fbukken%2F[^"'\s&]+?\.jpg/gi);
+    for (const match of resizeImageMatches) {
+      const imgUrl = match[0];
+      
+      // 会社ロゴを除外（gazo/kaisha/）
+      if (!imgUrl.includes('kaisha') && !images.includes(imgUrl)) {
+        images.push(imgUrl);
       }
     }
     
