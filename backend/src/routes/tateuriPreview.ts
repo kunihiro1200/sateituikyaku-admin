@@ -484,7 +484,8 @@ async function scrapeSuumoAndSave(url: string, region: string, res: Response) {
         const decodedPath = decodeURIComponent(match[0]);
         const imgUrl = `https://suumo.jp/${decodedPath}`;
         
-        if (!images.includes(imgUrl)) {
+        // 会社ロゴを除外（gazo/kaisha/）
+        if (!imgUrl.includes('/kaisha/') && !images.includes(imgUrl)) {
           images.push(imgUrl);
         }
       } catch (e) {
