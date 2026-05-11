@@ -916,7 +916,7 @@ router.post(
         // sellersテーブルに見つからない場合、property_listingsテーブルから検索（物件リスト用）
         const { data: propertyRow, error: propertyError } = await supabase
           .from('property_listings')
-          .select('property_number, seller_name, seller_email, seller_contact')
+          .select('property_number, seller_name, seller_email, seller_contact, owner_info')
           .eq('property_number', sellerNumber.toUpperCase())
           .single();
 
@@ -930,11 +930,19 @@ router.post(
           });
         }
 
+        // 売主名のフォールバックロジック: seller_nameが空または"様"のみの場合はowner_infoを使用
+        const resolveSellerName = (sellerName: string | null | undefined, ownerInfo: string | null | undefined): string | null => {
+          const trimmed = (sellerName || '').trim();
+          const isBlankOrSamaOnly = !trimmed || trimmed === '様';
+          return isBlankOrSamaOnly ? (ownerInfo || null) : trimmed;
+        };
+        const effectiveSellerName = resolveSellerName(propertyRow.seller_name, propertyRow.owner_info);
+
         // property_listingsのデータをseller形式に変換（暗号化なし）
         seller = {
           id: propertyRow.property_number,
           seller_number: propertyRow.property_number,
-          name: propertyRow.seller_name || '',
+          name: effectiveSellerName || '',
           email: propertyRow.seller_email || '',
           phone_number: propertyRow.seller_contact || '',
           property_address: '',
