@@ -478,12 +478,15 @@ async function scrapeSuumoAndSave(url: string, region: string, res: Response) {
     const images: string[] = [];
     
     // パターン1: img01.suumo.com の resizeImage URL（URLエンコードされたまま使用）
-    const resizeImageMatches = html.matchAll(/https:\/\/img01\.suumo\.com\/jj\/resizeImage\?src=gazo%2Fbukken%2F[^"'\s<>]+?\.jpg[^"'\s<>]*/gi);
+    const resizeImageMatches = html.matchAll(/https:\/\/img01\.suumo\.com\/jj\/resizeImage\?src=gazo%2Fbukken%2F[^"'\s<>,]+?\.jpg[^"'\s<>,]*/gi);
     for (const match of resizeImageMatches) {
       let imgUrl = match[0];
       
       // HTMLエンティティをデコード（&amp; → &）
       imgUrl = imgUrl.replace(/&amp;/g, '&');
+      
+      // カンマ以降を削除（例: &w=500,現地土地写真 → &w=500）
+      imgUrl = imgUrl.split(',')[0];
       
       // 小さいサイズパラメータをより大きいサイズに変更（高解像度化）
       // 96x72 → 800x600, 220x165 → 800x600, 452x339 → 800x600
@@ -491,6 +494,7 @@ async function scrapeSuumoAndSave(url: string, region: string, res: Response) {
       imgUrl = imgUrl.replace(/&w=220&h=165/g, '&w=800&h=600');
       imgUrl = imgUrl.replace(/&w=452&h=339/g, '&w=800&h=600');
       imgUrl = imgUrl.replace(/&w=296&h=222/g, '&w=800&h=600');
+      imgUrl = imgUrl.replace(/&w=500/g, '&w=800&h=600');
       
       // 会社ロゴを除外（gazo/kaisha/）
       if (!imgUrl.includes('kaisha') && !images.includes(imgUrl)) {
