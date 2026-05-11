@@ -2,6 +2,7 @@
   "installCommand": "npm install --legacy-peer-deps",
   "rewrites": [
     { "source": "/sitemap.xml", "destination": "https://sateituikyaku-admin-backend.vercel.app/api/sitemap.xml" },
+    { "source": "/google([a-z0-9]+).html", "destination": "/google$1.html" },
     { "source": "/(.*)", "destination": "/index.html" }
   ],
   "redirects": [
