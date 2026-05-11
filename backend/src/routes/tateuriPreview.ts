@@ -477,7 +477,22 @@ async function scrapeSuumoAndSave(url: string, region: string, res: Response) {
     // HTMLから画像URLを抽出
     const images: string[] = [];
     
-    // パターン1: data-src属性から取得（遅延読み込み画像）
+    // パターン1: URLエンコードされた画像URL（gazo%2Fbukken%2F...）をデコード
+    const encodedMatches = html.matchAll(/gazo%2Fbukken%2F[^"'\s&]+?\.jpg/gi);
+    for (const match of encodedMatches) {
+      try {
+        const decodedPath = decodeURIComponent(match[0]);
+        const imgUrl = `https://suumo.jp/${decodedPath}`;
+        
+        if (!images.includes(imgUrl)) {
+          images.push(imgUrl);
+        }
+      } catch (e) {
+        // デコードエラーは無視
+      }
+    }
+    
+    // パターン2: data-src属性から取得（遅延読み込み画像）
     const dataSrcMatches = html.matchAll(/data-src=["']([^"']+\.(?:jpg|jpeg|png|webp)[^"']*)["']/gi);
     for (const match of dataSrcMatches) {
       let imgUrl = match[1];
@@ -508,7 +523,7 @@ async function scrapeSuumoAndSave(url: string, region: string, res: Response) {
       }
     }
 
-    // パターン2: src属性から取得（通常の画像）
+    // パターン3: src属性から取得（通常の画像）
     const srcMatches = html.matchAll(/src=["']([^"']+\.(?:jpg|jpeg|png|webp)[^"']*)["']/gi);
     for (const match of srcMatches) {
       let imgUrl = match[1];
@@ -539,7 +554,7 @@ async function scrapeSuumoAndSave(url: string, region: string, res: Response) {
       }
     }
 
-    // パターン3: 物件番号から画像URLを構築（フォールバック）
+    // パターン4: 物件番号から画像URLを構築（フォールバック）
     if (images.length === 0 && propertyNumber) {
       const rn = propertyNumber.substring(0, 2);
       for (let i = 1; i <= 15; i++) {
