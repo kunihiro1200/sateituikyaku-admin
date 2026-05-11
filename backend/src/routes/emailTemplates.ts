@@ -151,40 +151,59 @@ router.post('/property/merge', async (req, res) => {
     }
 
     // 売主データを取得
-    // property_listings の seller_number を使って sellers テーブルを検索
-    // name は暗号化されているため SellerService 経由で復号化して取得
+    // 優先順位:
+    // 1. property_listings.seller_name (owner_infoにフォールバック)
+    // 2. sellersテーブル（暗号化されているため復号化が必要）
     let sellerName = '';
     let sellerEmail = '';
-    try {
-      // まず property_listings から seller_number を取得
-      const sellerNumber = property.seller_number;
-      if (sellerNumber) {
-        const { data: sellerRow } = await supabase
-          .from('sellers')
-          .select('id')
-          .eq('seller_number', sellerNumber)
-          .single();
-        if (sellerRow?.id) {
-          const decryptedSeller = await sellerService.getSeller(sellerRow.id);
-          if (decryptedSeller?.name) sellerName = decryptedSeller.name;
-          if (decryptedSeller?.email) sellerEmail = decryptedSeller.email;
+    
+    // まず property_listings から seller_name と owner_info を取得
+    const resolveSellerName = (sellerNameValue: string | null | undefined, ownerInfo: string | null | undefined): string | null => {
+      const trimmed = (sellerNameValue || '').trim();
+      const isBlankOrSamaOnly = !trimmed || trimmed === '様';
+      return isBlankOrSamaOnly ? (ownerInfo || null) : trimmed;
+    };
+    const effectiveSellerName = resolveSellerName(property.seller_name, property.owner_info);
+    if (effectiveSellerName) {
+      sellerName = effectiveSellerName;
+    }
+    if (property.seller_email) {
+      sellerEmail = property.seller_email;
+    }
+    
+    // property_listings に売主名がない場合のみ、sellersテーブルから取得を試みる
+    if (!sellerName) {
+      try {
+        // まず property_listings から seller_number を取得
+        const sellerNumber = property.seller_number;
+        if (sellerNumber) {
+          const { data: sellerRow } = await supabase
+            .from('sellers')
+            .select('id')
+            .eq('seller_number', sellerNumber)
+            .single();
+          if (sellerRow?.id) {
+            const decryptedSeller = await sellerService.getSeller(sellerRow.id);
+            if (decryptedSeller?.name) sellerName = decryptedSeller.name;
+            if (decryptedSeller?.email && !sellerEmail) sellerEmail = decryptedSeller.email;
+          }
         }
-      }
-      // seller_number がない場合は property_number で試みる（後方互換）
-      if (!sellerName) {
-        const { data: sellerRow } = await supabase
-          .from('sellers')
-          .select('id')
-          .eq('seller_number', propertyNumber)
-          .single();
-        if (sellerRow?.id) {
-          const decryptedSeller = await sellerService.getSeller(sellerRow.id);
-          if (decryptedSeller?.name && !sellerName) sellerName = decryptedSeller.name;
-          if (decryptedSeller?.email && !sellerEmail) sellerEmail = decryptedSeller.email;
+        // seller_number がない場合は property_number で試みる（後方互換）
+        if (!sellerName) {
+          const { data: sellerRow } = await supabase
+            .from('sellers')
+            .select('id')
+            .eq('seller_number', propertyNumber)
+            .single();
+          if (sellerRow?.id) {
+            const decryptedSeller = await sellerService.getSeller(sellerRow.id);
+            if (decryptedSeller?.name && !sellerName) sellerName = decryptedSeller.name;
+            if (decryptedSeller?.email && !sellerEmail) sellerEmail = decryptedSeller.email;
+          }
         }
+      } catch {
+        // 売主が見つからない場合は空文字のまま
       }
-    } catch {
-      // 売主が見つからない場合は空文字のまま
     }
 
     // スタッフ情報を取得（sales_assignee のイニシャルまたは姓名の部分一致で検索）
