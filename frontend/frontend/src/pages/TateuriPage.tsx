@@ -176,8 +176,8 @@ export default function TateuriPage() {
       {/* SEOメタタグ */}
       <Helmet>
         <title>大分の建売専門サイト｜新築一戸建て物件情報｜株式会社いふう</title>
-        <meta name="description" content={`大分県の建売住宅専門サイト。現在${properties.length}件の新築建売物件を掲載中。大分市・別府市・由布市など大分県内の物件情報を地図付きでご紹介。株式会社いふう（097-533-2022）`} />
-        <meta name="keywords" content="大分 建売,大分市 建売住宅,大分 新築一戸建て,大分 不動産,建売住宅 大分県,大分市 新築,別府 建売,由布市 建売,大分 住宅購入" />
+        <meta name="description" content={`大分県の建売住宅専門サイト。現在${properties.length}件の新築建売物件を掲載中。大分市・別府市など大分県内の物件情報を地図付きでご紹介。株式会社いふう（097-533-2022）`} />
+        <meta name="keywords" content="大分 建売,大分市 建売住宅,大分 新築一戸建て,大分 不動産,建売住宅 大分県,大分市 新築,別府 建売,大分 住宅購入" />
         <link rel="canonical" href="https://oita-tateuri.com/tateuri" />
         <meta property="og:title" content="大分の建売専門サイト｜新築一戸建て物件情報｜株式会社いふう" />
         <meta property="og:description" content={`大分県の建売住宅専門サイト。現在${properties.length}件の新築建売物件を掲載中。地図付きで物件情報をご紹介します。`} />

@@ -459,6 +459,13 @@ export default function PropertyPreviewPage() {
                   🕐 {data.provider_hours || data.details?.['営業時間']}
                 </div>
               )}
+              {data.source_url && (
+                <div style={{ fontSize: 11, color: '#777', marginTop: 8, wordBreak: 'break-all' }}>
+                  🔗 <a href={data.source_url} target="_blank" rel="noopener noreferrer" style={{ color: '#0066cc', textDecoration: 'none' }}>
+                    元のURL
+                  </a>
+                </div>
+              )}
               {!data.provider_name && !data.details?.['お問合せ先'] && (
                 <div style={{ fontSize: 12, color: '#999' }}>情報がありません</div>
               )}
