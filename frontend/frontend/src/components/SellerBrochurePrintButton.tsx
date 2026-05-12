@@ -1,81 +1,71 @@
 import React, { useState } from 'react';
-import { Button } from '@mui/material';
+import { Button, CircularProgress } from '@mui/material';
 import PrintIcon from '@mui/icons-material/Print';
 import { generateSellerBrochureHtml } from '../utils/sellerBrochureGenerator';
 
 /**
  * 売主向けパンフレット印刷ボタン
- * 
- * 「株式会社くじら不動産」の不動産売却案内パンフレットを印刷します。
+ * 内覧準備資料２と同じiframe方式で印刷します
  */
 export function SellerBrochurePrintButton() {
   const [printing, setPrinting] = useState(false);
 
-  const handlePrint = async () => {
+  const handlePrint = () => {
     setPrinting(true);
 
-    try {
-      // 画像を読み込んでbase64に変換
-      const imagePath = '/ifoo-assets/brochure/page1-bg.png';
-      const response = await fetch(imagePath);
-      const blob = await response.blob();
-      
-      // BlobをBase64に変換
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const base64data = reader.result as string;
-        
-        // HTMLを生成（base64画像を使用）
-        const html = generateSellerBrochureHtml(base64data);
+    const html = generateSellerBrochureHtml();
 
-        // 新しいウィンドウを開いてHTMLを書き込む
-        const printWindow = window.open('', '_blank');
-        if (!printWindow) {
-          alert('ポップアップがブロックされました。ポップアップを許可してください。');
-          setPrinting(false);
-          return;
-        }
+    // iframe方式（内覧準備資料２と同じ方式）
+    const iframe = document.createElement('iframe');
+    iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;border:none;';
+    document.body.appendChild(iframe);
 
-        printWindow.document.write(html);
-        printWindow.document.close();
-
-        // 画像などのリソースが読み込まれるまで待機
-        printWindow.onload = () => {
-          setTimeout(() => {
-            printWindow.print();
-            setPrinting(false);
-          }, 500);
-        };
-
-        // 念のため、onloadが発火しない場合のフォールバック
-        setTimeout(() => {
-          if (printing) {
-            printWindow.print();
-            setPrinting(false);
-          }
-        }, 2000);
-      };
-      
-      reader.readAsDataURL(blob);
-    } catch (error) {
-      console.error('印刷エラー:', error);
-      alert('印刷に失敗しました。');
+    const doc = iframe.contentDocument || iframe.contentWindow?.document;
+    if (!doc) {
       setPrinting(false);
+      document.body.removeChild(iframe);
+      return;
+    }
+
+    doc.open();
+    doc.write(html);
+    doc.close();
+
+    const cleanup = () => {
+      setTimeout(() => {
+        try { document.body.removeChild(iframe); } catch (_) { /* ignore */ }
+        setPrinting(false);
+      }, 1000);
+    };
+
+    const doPrint = () => {
+      try {
+        iframe.contentWindow?.focus();
+        iframe.contentWindow?.print();
+      } catch (_) { /* ignore */ }
+      cleanup();
+    };
+
+    if (iframe.contentDocument?.readyState === 'complete') {
+      setTimeout(doPrint, 1200);
+    } else {
+      iframe.onload = () => setTimeout(doPrint, 1200);
+      setTimeout(doPrint, 5000); // フォールバック（画像読み込み待ち）
     }
   };
 
   return (
     <Button
       variant="outlined"
-      startIcon={<PrintIcon />}
+      startIcon={printing ? <CircularProgress size={14} color="inherit" /> : <PrintIcon />}
       onClick={handlePrint}
       disabled={printing}
       sx={{
         borderColor: '#f5c518',
-        color: '#f5c518',
+        color: '#b8860b',
         '&:hover': {
-          borderColor: '#d4a817',
-          backgroundColor: 'rgba(245, 197, 24, 0.04)',
+          borderColor: '#b8860b',
+          backgroundColor: '#fffde7',
         },
       }}
     >

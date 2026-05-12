@@ -11,13 +11,10 @@ function esc(s: unknown): string {
 // ============================================================
 // 表紙ページ（1ページ目）
 // ============================================================
-export function generateCoverPageHtml(base64Image: string): string {
+export function generateCoverPageHtml(imgUrl: string): string {
   return `<div style="width:210mm;height:297mm;position:relative;overflow:hidden;display:block;">
-    <!-- 背景画像（base64・A4全体に引き伸ばし） -->
-    <img src="${base64Image}" style="position:absolute;top:0;left:0;width:210mm;height:297mm;object-fit:fill;display:block;" />
-    
-    <!-- 会社情報を上書き（画像内の会社情報エリアに重ねる） -->
-    <!-- 元画像の会社情報エリアは下部中央付近 -->
+    <img src="${imgUrl}" style="position:absolute;top:0;left:0;width:210mm;height:297mm;object-fit:fill;display:block;" />
+    <!-- 会社情報を上書き -->
     <div style="position:absolute;bottom:18mm;left:95mm;right:5mm;background:white;padding:10px 14px;border-radius:4px;">
       <div style="font-size:14pt;font-weight:bold;margin-bottom:4px;color:#000;">株式会社　くじら　不動産</div>
       <div style="font-size:9pt;margin-bottom:2px;color:#333;">〒810-0073</div>
@@ -207,8 +204,12 @@ export function generateSalesPageHtml(): string {
 // ============================================================
 // 完全なHTMLドキュメント生成（印刷用）
 // ============================================================
-export function generateSellerBrochureHtml(base64Image: string): string {
-  const coverPage = generateCoverPageHtml(base64Image);
+export function generateSellerBrochureHtml(): string {
+  // 内覧準備資料２と同じ方式：window.location.originで絶対URLを作成
+  const base = window.location.origin;
+  const page1ImgUrl = `${base}/ifoo-assets/brochure/page1-bg.png`;
+
+  const coverPage = generateCoverPageHtml(page1ImgUrl);
   const companyPage = generateCompanyPageHtml();
   const salesPage = generateSalesPageHtml();
 
@@ -216,19 +217,13 @@ export function generateSellerBrochureHtml(base64Image: string): string {
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>不動産売却案内パンフレット - 株式会社くじら不動産</title>
 <style>
   @page { size: A4 portrait; margin: 0; }
   * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
   html, body { margin: 0; padding: 0; background: #fff; font-family: ${FONT}; }
-  .page { page-break-after: always; break-after: page; }
+  .page { width: 210mm; height: 297mm; overflow: hidden; display: block; page-break-after: always; break-after: page; }
   .page:last-child { page-break-after: auto; break-after: auto; }
-  @media print {
-    body { margin: 0; padding: 0; }
-    .page { page-break-after: always; }
-    .page:last-child { page-break-after: auto; }
-  }
 </style>
 </head>
 <body>
