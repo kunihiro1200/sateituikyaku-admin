@@ -11,10 +11,10 @@ function esc(s: unknown): string {
 // ============================================================
 // 表紙ページ（1ページ目）
 // ============================================================
-export function generateCoverPageHtml(): string {
+export function generateCoverPageHtml(base64Image: string): string {
   return `<div style="width:210mm;height:297mm;position:relative;overflow:hidden;">
-    <!-- 背景画像 -->
-    <img src="/ifoo-assets/brochure/page1-bg.png" style="width:100%;height:100%;object-fit:cover;position:absolute;top:0;left:0;" />
+    <!-- 背景画像（base64） -->
+    <img src="${base64Image}" style="width:100%;height:100%;object-fit:cover;position:absolute;top:0;left:0;" />
     
     <!-- 会社情報を上書き（画像の下部にある会社情報エリア） -->
     <div style="position:absolute;bottom:22mm;left:50%;transform:translateX(-50%);text-align:center;background:white;padding:18px 30px;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.1);">
@@ -207,8 +207,8 @@ export function generateSalesPageHtml(): string {
 // ============================================================
 // 完全なHTMLドキュメント生成（印刷用）
 // ============================================================
-export function generateSellerBrochureHtml(): string {
-  const coverPage = generateCoverPageHtml();
+export function generateSellerBrochureHtml(base64Image: string): string {
+  const coverPage = generateCoverPageHtml(base64Image);
   const companyPage = generateCompanyPageHtml();
   const salesPage = generateSalesPageHtml();
 
