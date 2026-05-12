@@ -2495,11 +2495,12 @@ router.get('/:id/sales-history', authenticate, async (req: Request, res: Respons
 
 /**
  * POST /api/sellers/manual-sync
- * 手動転記実行：①メール転記GAS（メール→売主リストスプシ）→ ②seller-sync.gs（スプシ→DB）を順番に実行
+ * 手動転記実行：①メール転記GAS（メール→売主リストスプシ）→ ②/api/sync/trigger（スプシ→DB）を順番に実行
  */
 router.post('/manual-sync', async (_req: Request, res: Response) => {
   const STEP1_URL = 'https://script.google.com/macros/s/AKfycbyBbOeDPwwrlLX8w8xbyumP8eRjKFkYkzFjiKP0zzdeNY5M3njdEOICcH9sWpj6hQ/exec';
-  const STEP2_URL = process.env.GAS_SELLER_SYNC_URL || ''; // seller-sync.gsのURL（デプロイ後に設定）
+  const BACKEND_URL = process.env.BACKEND_URL || 'https://sateituikyaku-admin-backend.vercel.app';
+  const CRON_SECRET = process.env.CRON_SECRET || 'your-secret-cron-key-12345678901234567890';
 
   try {
     console.log('[seller manual-sync] ステップ1開始: メール転記GAS（メール→売主リストスプシ）');
@@ -2515,22 +2516,20 @@ router.post('/manual-sync', async (_req: Request, res: Response) => {
       });
     }
 
-    if (!STEP2_URL) {
-      return res.status(500).json({ error: 'GAS_SELLER_SYNC_URL が設定されていません' });
-    }
-
-    console.log('[seller manual-sync] ステップ2開始: seller-sync.gs（スプシ→DB）');
-    const step2Res = await axios.get(STEP2_URL, { timeout: 300000 });
+    console.log('[seller manual-sync] ステップ2開始: /api/sync/trigger（スプシ→DB）');
+    const step2Res = await axios.post(
+      `${BACKEND_URL}/api/sync/trigger?async=false`,
+      {},
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${CRON_SECRET}`,
+        },
+        timeout: 300000,
+      }
+    );
     const step2Data = step2Res.data;
     console.log('[seller manual-sync] ステップ2完了:', step2Data);
-
-    if (step2Data?.success === false) {
-      return res.status(500).json({
-        step: 2,
-        error: 'ステップ2（スプシ→DB）でエラーが発生しました',
-        detail: step2Data.error,
-      });
-    }
 
     return res.json({
       success: true,
