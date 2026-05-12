@@ -69,7 +69,9 @@ interface WorkTaskData {
   mediation_deadline: string;
   mediation_completed: string;
   mediation_creator: string;
-  mediation_checker: string;
+  mediation_delivery_method: string;
+  mediation_pre_mail_check: string;
+  mediation_print_or_mail_prep: string;
   mediation_revision: string;
   mediation_revision_content: string;
   mediation_notes: string;
@@ -580,12 +582,7 @@ function checkMandatoryRevisionFields(
       }
     }
   }
-  //    親フィールド: mediation_checker を今回変更した場合のみチェック
-  if (editedData.hasOwnProperty('mediation_checker') && !isEmpty(getValue('mediation_checker'))) {
-    if (isEmpty(getValue('mediation_revision'))) {
-      errorFields.push('媒介契約修正');
-    }
-  }
+  //    （媒介確認者フィールドは削除済みのため、このバリデーションは無効化）
 
   // 4. 間取図修正（当社ミス）
   //    親フィールド: floor_plan_ok_sent を今回変更した場合のみチェック
@@ -1793,7 +1790,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
 
 
   // 編集可能テキストフィールド
-  const EditableField = ({ label, field, type = 'text', labelColor, required, highlight, multiline }: { label: string; field: string; type?: string; labelColor?: 'error' | 'text.secondary'; required?: boolean; highlight?: boolean; multiline?: boolean }) => (
+  const EditableField = ({ label, field, type = 'text', labelColor, required, highlight, multiline, readOnly }: { label: string; field: string; type?: string; labelColor?: 'error' | 'text.secondary'; required?: boolean; highlight?: boolean; multiline?: boolean; readOnly?: boolean }) => (
     <Grid container spacing={2} alignItems={multiline ? 'flex-start' : 'center'} sx={{ mb: 1.5, ...(highlight ? { bgcolor: '#fff3e0', borderRadius: 1, p: 0.5, border: '2px solid #ff9800' } : {}) }}>
       <Grid item xs={4}>
         <Typography variant="body2" color={highlight ? 'warning.dark' : (labelColor || 'text.secondary')} sx={{ fontWeight: (highlight || labelColor === 'error') ? 700 : 500, ...(multiline ? { mt: 0.5 } : {}) }}>
@@ -1801,7 +1798,11 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
         </Typography>
       </Grid>
       <Grid item xs={8}>
-        {type === 'date' ? (
+        {readOnly ? (
+          <Typography variant="body2" sx={{ color: 'text.secondary', py: 0.5 }}>
+            {getValue(field) || '—'}
+          </Typography>
+        ) : type === 'date' ? (
           <TextField
             size="small"
             type="date"
@@ -1992,26 +1993,9 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
     </Grid>
   );
 
-  // 媒介確認者が必須かどうかの判定（媒介作成完了が2026/4/23以降）
-  const isMediationCheckerRequired = (() => {
-    const completed = getValue('mediation_completed');
-    if (!completed) return false;
-    try {
-      return new Date(completed) >= new Date('2026-04-23');
-    } catch {
-      return false;
-    }
-  })();
+  // （媒介確認者フィールドは削除済み）
 
-  // 媒介契約修正履歴（全案件・全担当者）
-  const [mediationRevisionHistory, setMediationRevisionHistory] = useState<Array<{
-    property_number: string;
-    mediation_completed: string | null;
-    mediation_checker: string | null;
-    mediation_creator: string;
-    mediation_revision_content: string;
-    mediation_revision_countermeasure: string | null;
-  }>>([]);
+  // （媒介契約修正内容まとめは削除済み）
 
   // サイト登録修正履歴（全案件）
   const [siteRegistrationRevisionHistory, setSiteRegistrationRevisionHistory] = useState<Array<{
@@ -2045,20 +2029,6 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
       return dateStr;
     }
   };
-
-  // モーダルが開いたとき（data取得後）に修正履歴を全件取得
-  useEffect(() => {
-    if (!open) return;
-    const fetchHistory = async () => {
-      try {
-        const res = await api.get('/api/work-tasks/mediation-revisions');
-        setMediationRevisionHistory(res.data || []);
-      } catch {
-        setMediationRevisionHistory([]);
-      }
-    };
-    fetchHistory();
-  }, [open]);
 
   // サイト登録修正履歴・間取図修正履歴を取得
   const fetchRevisionHistories = React.useCallback(async () => {
@@ -2430,100 +2400,35 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
       <EditableField label="媒介作成完了" field="mediation_completed" type="date" />
       <EditableButtonSelect label="媒介作成者" field="mediation_creator" options={normalInitials} />
 
-      {/* 媒介作成完了に値がある場合のみ媒介確認者を表示 */}
-      {getValue('mediation_completed') && (
-        <>
-          <EditableButtonSelect
-            label={isMediationCheckerRequired ? '媒介確認者*（必須）' : '媒介確認者'}
-            field="mediation_checker"
-            options={normalInitials}
-            labelColor={isMediationCheckerRequired && !getValue('mediation_checker') ? 'error' : undefined}
-          />
+      {/* お渡し手段（GASから転記、編集不可） */}
+      <EditableField label="お渡し手段" field="mediation_delivery_method" readOnly />
 
-          {/* 媒介確認者に値がある場合のみ媒介契約修正を表示 */}
-          {getValue('mediation_checker') && (
-            <>
-              <Grid container spacing={2} alignItems="center" sx={{ mb: 1.5 }}>
-                <Grid item xs={4}>
-                  <Typography variant="body2" color="error" sx={{ fontWeight: 700 }}>媒介契約修正*（必須）</Typography>
-                </Grid>
-                <Grid item xs={8}>
-                  <ButtonGroup size="small" variant="outlined">
-                    {['あり', 'なし'].map((opt) => (
-                      <Button
-                        key={opt}
-                        variant={getValue('mediation_revision') === opt ? 'contained' : 'outlined'}
-                        color={getValue('mediation_revision') === opt ? (opt === 'あり' ? 'error' : 'primary') : 'inherit'}
-                        onClick={(e) => { (e.currentTarget as HTMLButtonElement).blur(); handleFieldChange('mediation_revision', getValue('mediation_revision') === opt ? null : opt); }}
-                      >
-                        {opt}
-                      </Button>
-                    ))}
-                  </ButtonGroup>
-                </Grid>
-              </Grid>
-
-              {/* 媒介契約修正が「あり」の場合のみ修正内容を表示 */}
-              {getValue('mediation_revision') === 'あり' && (
-                <MediationRevisionContentField
-                  value={getValue('mediation_revision_content') || ''}
-                  onCommit={(v) => handleFieldChange('mediation_revision_content', v)}
-                />
-              )}
-            </>
-          )}
-        </>
+      {/* 郵送前営業確認（お渡し手段に「郵送」が含まれる場合のみ表示、GASから転記、編集不可） */}
+      {getValue('mediation_delivery_method')?.includes('郵送') && (
+        <EditableField label="郵送前営業確認" field="mediation_pre_mail_check" readOnly />
       )}
+
+      {/* 印刷OR郵送準備（DB編集可能、選択肢は「済」のみ） */}
+      <Grid container spacing={2} alignItems="center" sx={{ mb: 1.5 }}>
+        <Grid item xs={4}>
+          <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>印刷OR郵送準備</Typography>
+        </Grid>
+        <Grid item xs={8}>
+          <Button
+            size="small"
+            variant={getValue('mediation_print_or_mail_prep') === '済' ? 'contained' : 'outlined'}
+            color={getValue('mediation_print_or_mail_prep') === '済' ? 'primary' : 'inherit'}
+            onClick={(e) => {
+              (e.currentTarget as HTMLButtonElement).blur();
+              handleFieldChange('mediation_print_or_mail_prep', getValue('mediation_print_or_mail_prep') === '済' ? null : '済');
+            }}
+          >
+            済
+          </Button>
+        </Grid>
+      </Grid>
 
       <EditableYesNo label="保留" field="on_hold" />
-
-      {/* 媒介契約修正内容まとめ（常時表示・全担当者） */}
-      {mediationRevisionHistory.length > 0 && (
-        <Box sx={{ mt: 2, p: 1.5, bgcolor: '#fff3e0', border: '2px solid #ff9800', borderRadius: 1 }}>
-          <Typography variant="body2" sx={{ fontWeight: 700, color: '#e65100', mb: 1 }}>
-            ⚠️ 媒介契約修正内容まとめ
-          </Typography>
-          <Box sx={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
-              <thead>
-                <tr style={{ backgroundColor: '#ffe0b2' }}>
-                  <th style={{ border: '1px solid #ffb74d', padding: '4px 8px', textAlign: 'left', whiteSpace: 'nowrap' }}>物件番号</th>
-                  <th style={{ border: '1px solid #ffb74d', padding: '4px 8px', textAlign: 'left', whiteSpace: 'nowrap' }}>媒介作成完了日</th>
-                  <th style={{ border: '1px solid #ffb74d', padding: '4px 8px', textAlign: 'left', whiteSpace: 'nowrap' }}>媒介確認者</th>
-                  <th style={{ border: '1px solid #ffb74d', padding: '4px 8px', textAlign: 'left', whiteSpace: 'nowrap' }}>媒介作成者</th>
-                  <th style={{ border: '1px solid #ffb74d', padding: '4px 8px', textAlign: 'left', width: '35%' }}>修正内容</th>
-                  <th style={{ border: '1px solid #ffb74d', padding: '4px 8px', textAlign: 'left', width: '25%' }}>対策案</th>
-                </tr>
-              </thead>
-              <tbody>
-                {mediationRevisionHistory.map((item, idx) => (
-                  <tr key={idx} style={{ backgroundColor: idx % 2 === 0 ? '#fff8f0' : '#fff3e0' }}>
-                    <td style={{ border: '1px solid #ffb74d', padding: '4px 8px', whiteSpace: 'nowrap' }}>
-                      {item.property_number
-                        ? <span onClick={() => onNavigate?.(item.property_number, 0)} style={{ color: '#1565c0', cursor: 'pointer', textDecoration: 'underline', fontWeight: 600 }}>{item.property_number}</span>
-                        : '-'}
-                    </td>
-                    <td style={{ border: '1px solid #ffb74d', padding: '4px 8px', whiteSpace: 'nowrap' }}>{formatDateShort(item.mediation_completed)}</td>
-                    <td style={{ border: '1px solid #ffb74d', padding: '4px 8px', whiteSpace: 'nowrap' }}>{item.mediation_checker || '-'}</td>
-                    <td style={{ border: '1px solid #ffb74d', padding: '4px 8px', whiteSpace: 'nowrap' }}>{item.mediation_creator || '-'}</td>
-                    <td style={{ border: '1px solid #ffb74d', padding: '4px 8px', whiteSpace: 'pre-wrap', width: '35%', color: 'inherit', fontWeight: 'normal' }}><span dangerouslySetInnerHTML={{ __html: item.mediation_revision_content }} /></td>
-                    <td style={{ border: '1px solid #ffb74d', padding: '4px 8px', width: '25%', color: 'inherit', fontWeight: 'normal' }}>
-                      <CountermeasureCell
-                        propertyNumber={item.property_number}
-                        field="mediation_revision_countermeasure"
-                        value={item.mediation_revision_countermeasure || ''}
-                        onSaved={(val) => {
-                          setMediationRevisionHistory(prev => prev.map((r, i) => i === idx ? { ...r, mediation_revision_countermeasure: val } : r));
-                        }}
-                      />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </Box>
-        </Box>
-      )}
     </Box>
   );
 

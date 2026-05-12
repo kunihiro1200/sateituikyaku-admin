@@ -170,7 +170,7 @@ export class WorkTaskService {
   async getMediationRevisionsByCreator(creator?: string, excludePropertyNumber?: string): Promise<WorkTaskData[]> {
     let query = this.supabase
       .from('work_tasks')
-      .select('property_number, mediation_completed, mediation_checker, mediation_creator, mediation_revision_content, mediation_revision_countermeasure')
+      .select('property_number, mediation_completed, mediation_creator, mediation_revision_content, mediation_revision_countermeasure')
       .eq('mediation_revision', 'あり')
       .not('mediation_revision_content', 'is', null)
       .neq('mediation_revision_content', '')

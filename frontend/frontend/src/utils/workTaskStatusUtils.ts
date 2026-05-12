@@ -12,6 +12,10 @@ export interface WorkTask {
   mediation_deadline: string;
   mediation_completed: string;
   mediation_notes: string;
+  mediation_creator: string;
+  mediation_delivery_method: string;
+  mediation_pre_mail_check: string;
+  mediation_print_or_mail_prep: string;
   sales_contract_confirmed: string;
   sales_contract_deadline: string;
   binding_scheduled_date: string;
@@ -273,7 +277,19 @@ export const calculateTaskStatus = (task: WorkTask): string => {
     return `サイト登録要確認 ${formatDateMD(task.site_registration_deadline)}`;
   }
 
-  // 11. 媒介作成_締日
+  // 11. 媒介作成の印刷OR郵送　未
+  // mediation_creatorに値がある かつ mediation_print_or_mail_prepが空欄
+  // かつ mediation_deadlineが2026/5/13以降
+  const MEDIATION_PRINT_BASE_DATE = new Date('2026-05-13');
+  if (
+    isNotBlank(task.mediation_creator) &&
+    isBlank(task.mediation_print_or_mail_prep) &&
+    dateGte(task.mediation_deadline, MEDIATION_PRINT_BASE_DATE)
+  ) {
+    return '媒介作成の印刷OR郵送　未';
+  }
+
+  // 12. 媒介作成_締日
   if (
     isBlank(task.mediation_completed) &&
     isNotBlank(task.mediation_deadline) &&
@@ -295,6 +311,7 @@ export const calculateTaskStatus = (task: WorkTask): string => {
 
 // カテゴリグループの背景色マッピング（プレフィックス → 背景色）
 const CATEGORY_GROUP_COLORS: [string, string][] = [
+  ['媒介作成の印刷OR郵送　未',   '#e8f5e9'],
   ['媒介作成_締日',              '#e8f5e9'],
   ['サイト登録依頼してください', '#f3e5f5'],
   ['サイト依頼済み納品待ち',     '#f3e5f5'],
@@ -322,6 +339,7 @@ export const getCategoryGroupColor = (label: string): string | undefined => {
 
 // カテゴリの優先順位（ステータスのプレフィックスで判定）
 const CATEGORY_ORDER = [
+  '媒介作成の印刷OR郵送　未',
   '媒介作成_締日',
   'サイト登録依頼してください',
   'サイト依頼済み納品待ち',
@@ -437,6 +455,7 @@ const getStatusKey = (status: string): string => {
   if (status.startsWith('売買契約 依頼未')) return 'sales_contract_unrequested';
   if (status.startsWith('サイト依頼済み納品待ち')) return 'site_delivery_pending';
   if (status.startsWith('サイト登録要確認')) return 'site_registration_check';
+  if (status.startsWith('媒介作成の印刷OR郵送　未')) return 'mediation_print_pending';
   if (status.startsWith('媒介作成_締日')) return 'mediation_deadline';
   if (status === '保留') return 'on_hold';
   return '';
