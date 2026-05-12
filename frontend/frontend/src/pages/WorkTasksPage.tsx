@@ -19,15 +19,18 @@ import {
   ListItemText,
   Badge,
   Snackbar,
+  Alert,
   Card,
   CardContent,
   Accordion,
   AccordionSummary,
   AccordionDetails,
+  Button,
+  CircularProgress,
   useTheme,
   useMediaQuery,
 } from '@mui/material';
-import { Search as SearchIcon, ExpandMore as ExpandMoreIcon, Clear as ClearIcon } from '@mui/icons-material';
+import { Search as SearchIcon, ExpandMore as ExpandMoreIcon, Clear as ClearIcon, Sync as SyncIcon } from '@mui/icons-material';
 import IconButton from '@mui/material/IconButton';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import api from '../services/api';
@@ -71,7 +74,32 @@ export default function WorkTasksPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
+  const [snackbarSeverity, setSnackbarSeverity] = useState<'success' | 'error' | 'info'>('success');
   const [initialTabIndex, setInitialTabIndex] = useState(0);
+  const [manualSyncing, setManualSyncing] = useState(false);
+
+  const handleManualSync = async () => {
+    setManualSyncing(true);
+    setSnackbarMessage('転記実行中... スプシ→集計表→DBの順に処理しています（数分かかります）');
+    setSnackbarSeverity('info');
+    setSnackbarOpen(true);
+    try {
+      const res = await api.post('/api/work-tasks/manual-sync');
+      setSnackbarMessage(res.data?.message || '転記が完了しました');
+      setSnackbarSeverity('success');
+      setSnackbarOpen(true);
+      // データを再取得
+      const response = await api.get('/api/work-tasks', { params: { limit: 1000 } });
+      setAllWorkTasks(Array.isArray(response.data?.data) ? response.data.data : []);
+    } catch (err: any) {
+      const msg = err?.response?.data?.error || '転記中にエラーが発生しました';
+      setSnackbarMessage(msg);
+      setSnackbarSeverity('error');
+      setSnackbarOpen(true);
+    } finally {
+      setManualSyncing(false);
+    }
+  };
 
   const handleCopyPropertyNumber = async (propertyNumber: string, event: React.MouseEvent) => {
     event.stopPropagation();
@@ -248,7 +276,20 @@ export default function WorkTasksPage() {
 
   return (
     <Container maxWidth="xl" sx={isMobile ? { overflowX: 'hidden', px: 1, py: 2 } : { py: 3 }}>
-      <Typography variant="h5" fontWeight="bold" sx={{ mb: 2 }}>業務依頼</Typography>
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+        <Typography variant="h5" fontWeight="bold">業務依頼</Typography>
+        <Button
+          variant="contained"
+          color="primary"
+          size="small"
+          startIcon={manualSyncing ? <CircularProgress size={16} color="inherit" /> : <SyncIcon />}
+          onClick={handleManualSync}
+          disabled={manualSyncing}
+          sx={{ whiteSpace: 'nowrap' }}
+        >
+          {manualSyncing ? '転記実行中...' : '転記実行'}
+        </Button>
+      </Box>
 
       <PageNavigation />
 
@@ -545,11 +586,14 @@ export default function WorkTasksPage() {
 
       <Snackbar
         open={snackbarOpen}
-        autoHideDuration={2000}
+        autoHideDuration={snackbarSeverity === 'info' ? null : 4000}
         onClose={() => setSnackbarOpen(false)}
-        message={snackbarMessage}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-      />
+      >
+        <Alert onClose={() => setSnackbarOpen(false)} severity={snackbarSeverity} sx={{ width: '100%' }}>
+          {snackbarMessage}
+        </Alert>
+      </Snackbar>
     </Container>
   );
 }

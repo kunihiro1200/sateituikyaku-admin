@@ -189,6 +189,58 @@ router.put('/:propertyNumber', async (req: Request, res: Response) => {
 });
 
 /**
+ * POST /api/work-tasks/manual-sync
+ * 手動転記実行：①コード.gs（スプシ→業務依頼集計表）→ ②GyomuWorkTaskSync.gs（集計表→DB）を順番に実行
+ */
+router.post('/manual-sync', async (_req: Request, res: Response) => {
+  // GAS Web App URLs
+  const STEP1_URL = 'https://script.google.com/macros/s/AKfycbw7WZf6b4f9zjBKS1QWKNBQUKGaw4E_XFDikSesvp49jxGuHAMKgDRUMhhYxZ1vqDc/exec';
+  const STEP2_URL = process.env.GAS_GYOMU_SYNC_URL || ''; // GyomuWorkTaskSync.gsのURL（環境変数 or 後で設定）
+
+  try {
+    console.log('[manual-sync] ステップ1開始: コード.gs（スプシ→業務依頼集計表）');
+    const step1Res = await axios.get(STEP1_URL, { timeout: 300000 }); // 5分タイムアウト
+    const step1Data = step1Res.data;
+    console.log('[manual-sync] ステップ1完了:', step1Data);
+
+    if (step1Data?.success === false) {
+      return res.status(500).json({
+        step: 1,
+        error: 'ステップ1（スプシ→業務依頼集計表）でエラーが発生しました',
+        detail: step1Data.error,
+      });
+    }
+
+    if (!STEP2_URL) {
+      return res.status(500).json({ error: 'GAS_GYOMU_SYNC_URL が設定されていません' });
+    }
+
+    console.log('[manual-sync] ステップ2開始: GyomuWorkTaskSync.gs（集計表→DB）');
+    const step2Res = await axios.get(STEP2_URL, { timeout: 300000 }); // 5分タイムアウト
+    const step2Data = step2Res.data;
+    console.log('[manual-sync] ステップ2完了:', step2Data);
+
+    if (step2Data?.success === false) {
+      return res.status(500).json({
+        step: 2,
+        error: 'ステップ2（集計表→DB）でエラーが発生しました',
+        detail: step2Data.error,
+      });
+    }
+
+    return res.json({
+      success: true,
+      message: '転記が完了しました（スプシ→集計表→DB）',
+      step1: step1Data,
+      step2: step2Data,
+    });
+  } catch (error: any) {
+    console.error('[manual-sync] エラー:', error);
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+/**
  * POST /api/work-tasks/sync
  * 全データを同期
  */

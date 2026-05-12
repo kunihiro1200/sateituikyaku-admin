@@ -862,3 +862,26 @@ function syncCwCounts() {
 
   Logger.log('--- CWカウント同期完了 ---');
 }
+
+// ============================================================
+// Web App エンドポイント（フロントエンドからの手動同期用）
+// ============================================================
+
+/**
+ * GETリクエストで syncGyomuWorkTasks() を実行する
+ * デプロイ設定: 実行ユーザー=自分, アクセス=全員
+ */
+function doGet(e) {
+  try {
+    syncGyomuWorkTasks();
+    return ContentService.createTextOutput(JSON.stringify({
+      success: true,
+      message: '業務依頼DBへの同期が完了しました'
+    })).setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({
+      success: false,
+      error: err.toString()
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
+}
