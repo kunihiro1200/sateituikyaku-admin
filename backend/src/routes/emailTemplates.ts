@@ -407,6 +407,21 @@ router.post('/:templateId/mergeMultiple', async (req, res) => {
           '福岡市中央区舞鶴3丁目1－10'
         );
       }
+      // 業者問合せ判定: broker_inquiry === '業者問合せ' の場合、建売専門サイトリンクを削除
+      if (buyer.broker_inquiry === '業者問合せ') {
+        mergedContent.body = mergedContent.body.replace(
+          /\n?★大分市の新築建売専門サイト↓↓\nhttps:\/\/sateituikyaku-admin-frontend\.vercel\.app\/tateuri\n★非公開の情報はこちらから検索可能です↓↓\nhttps:\/\/property-site-frontend-kappa\.vercel\.app\/public\/properties/g,
+          ''
+        );
+        mergedContent.body = mergedContent.body.replace(
+          /\n?★大分市の新築建売専門サイト↓↓\nhttps:\/\/sateituikyaku-admin-frontend\.vercel\.app\/tateuri\n★非公開の物件はこちらから↓↓\nhttps:\/\/property-site-frontend-kappa\.vercel\.app\/public\/properties\nお気軽にお問い合わせください。/g,
+          ''
+        );
+        mergedContent.body = mergedContent.body.replace(
+          /\n?★大分市の新築建売専門サイト↓↓\nhttps:\/\/sateituikyaku-admin-frontend\.vercel\.app\/tateuri\n★非公開の物件はこちらから↓↓\nhttps:\/\/property-site-frontend-kappa\.vercel\.app\/public\/properties/g,
+          ''
+        );
+      }
       return res.json(mergedContent);
     }
 
@@ -474,6 +489,22 @@ router.post('/:templateId/mergeMultiple', async (req, res) => {
       mergedContent.body = mergedContent.body.replace(
         /〒870-0044大分市舞鶴町1丁目3-30/g,
         '福岡市中央区舞鶴3丁目1－10'
+      );
+    }
+
+    // 業者問合せ判定: broker_inquiry === '業者問合せ' の場合、建売専門サイトリンクを削除
+    if (buyer.broker_inquiry === '業者問合せ') {
+      mergedContent.body = mergedContent.body.replace(
+        /\n?★大分市の新築建売専門サイト↓↓\nhttps:\/\/sateituikyaku-admin-frontend\.vercel\.app\/tateuri\n★非公開の情報はこちらから検索可能です↓↓\nhttps:\/\/property-site-frontend-kappa\.vercel\.app\/public\/properties/g,
+        ''
+      );
+      mergedContent.body = mergedContent.body.replace(
+        /\n?★大分市の新築建売専門サイト↓↓\nhttps:\/\/sateituikyaku-admin-frontend\.vercel\.app\/tateuri\n★非公開の物件はこちらから↓↓\nhttps:\/\/property-site-frontend-kappa\.vercel\.app\/public\/properties\nお気軽にお問い合わせください。/g,
+        ''
+      );
+      mergedContent.body = mergedContent.body.replace(
+        /\n?★大分市の新築建売専門サイト↓↓\nhttps:\/\/sateituikyaku-admin-frontend\.vercel\.app\/tateuri\n★非公開の物件はこちらから↓↓\nhttps:\/\/property-site-frontend-kappa\.vercel\.app\/public\/properties/g,
+        ''
       );
     }
 
