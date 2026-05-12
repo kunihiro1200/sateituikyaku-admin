@@ -2500,7 +2500,7 @@ router.get('/:id/sales-history', authenticate, async (req: Request, res: Respons
 router.post('/manual-sync', async (_req: Request, res: Response) => {
   const STEP1_URL = 'https://script.google.com/macros/s/AKfycbyBbOeDPwwrlLX8w8xbyumP8eRjKFkYkzFjiKP0zzdeNY5M3njdEOICcH9sWpj6hQ/exec';
   const BACKEND_URL = process.env.BACKEND_URL || 'https://sateituikyaku-admin-backend.vercel.app';
-  const CRON_SECRET = process.env.CRON_SECRET || 'your-secret-cron-key-12345678901234567890';
+  const CRON_SECRET = process.env.CRON_SECRET || 'a0z8ahNnFyUY+BXloL5JsotDTbuu9b5L6UApoflR59s=';
 
   try {
     console.log('[seller manual-sync] ステップ1開始: メール転記GAS（メール→売主リストスプシ）');
