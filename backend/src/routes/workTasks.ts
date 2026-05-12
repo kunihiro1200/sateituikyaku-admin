@@ -195,7 +195,7 @@ router.put('/:propertyNumber', async (req: Request, res: Response) => {
 router.post('/manual-sync', async (_req: Request, res: Response) => {
   // GAS Web App URLs
   const STEP1_URL = 'https://script.google.com/macros/s/AKfycbw7WZf6b4f9zjBKS1QWKNBQUKGaw4E_XFDikSesvp49jxGuHAMKgDRUMhhYxZ1vqDc/exec';
-  const STEP2_URL = process.env.GAS_GYOMU_SYNC_URL || ''; // GyomuWorkTaskSync.gsのURL（環境変数 or 後で設定）
+  const STEP2_URL = 'https://script.google.com/macros/s/AKfycbz84oQQ6sI4rcKFFGHYbEFEwpex1J0RTrnoCTgN5xn_HQ-Q7EXItc5T1ei-E_bi/exec';
 
   try {
     console.log('[manual-sync] ステップ1開始: コード.gs（スプシ→業務依頼集計表）');
@@ -211,12 +211,8 @@ router.post('/manual-sync', async (_req: Request, res: Response) => {
       });
     }
 
-    if (!STEP2_URL) {
-      return res.status(500).json({ error: 'GAS_GYOMU_SYNC_URL が設定されていません' });
-    }
-
     console.log('[manual-sync] ステップ2開始: GyomuWorkTaskSync.gs（集計表→DB）');
-    const step2Res = await axios.get(STEP2_URL, { timeout: 300000 }); // 5分タイムアウト
+    const step2Res = await axios.get(STEP2_URL, { timeout: 300000 });
     const step2Data = step2Res.data;
     console.log('[manual-sync] ステップ2完了:', step2Data);
 
