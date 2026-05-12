@@ -409,17 +409,10 @@ router.post('/:templateId/mergeMultiple', async (req, res) => {
       }
       // 業者問合せ判定: broker_inquiry === '業者問合せ' の場合、建売専門サイトリンクを削除
       if (buyer.broker_inquiry === '業者問合せ') {
+        // ★大分市の新築建売専門サイト↓↓ とURLの行を、後続行に関わらず削除
         mergedContent.body = mergedContent.body.replace(
-          /\n?★大分市の新築建売専門サイト↓↓\nhttps:\/\/sateituikyaku-admin-frontend\.vercel\.app\/tateuri\n★非公開の情報はこちらから検索可能です↓↓\nhttps:\/\/property-site-frontend-kappa\.vercel\.app\/public\/properties/g,
-          ''
-        );
-        mergedContent.body = mergedContent.body.replace(
-          /\n?★大分市の新築建売専門サイト↓↓\nhttps:\/\/sateituikyaku-admin-frontend\.vercel\.app\/tateuri\n★非公開の物件はこちらから↓↓\nhttps:\/\/property-site-frontend-kappa\.vercel\.app\/public\/properties\nお気軽にお問い合わせください。/g,
-          ''
-        );
-        mergedContent.body = mergedContent.body.replace(
-          /\n?★大分市の新築建売専門サイト↓↓\nhttps:\/\/sateituikyaku-admin-frontend\.vercel\.app\/tateuri\n★非公開の物件はこちらから↓↓\nhttps:\/\/property-site-frontend-kappa\.vercel\.app\/public\/properties/g,
-          ''
+          /\n?★大分市の新築建売専門サイト↓↓\nhttps:\/\/sateituikyaku-admin-frontend\.vercel\.app\/tateuri\n/g,
+          '\n'
         );
       }
       return res.json(mergedContent);
@@ -494,17 +487,10 @@ router.post('/:templateId/mergeMultiple', async (req, res) => {
 
     // 業者問合せ判定: broker_inquiry === '業者問合せ' の場合、建売専門サイトリンクを削除
     if (buyer.broker_inquiry === '業者問合せ') {
+      // ★大分市の新築建売専門サイト↓↓ とURLの行を、後続行に関わらず削除
       mergedContent.body = mergedContent.body.replace(
-        /\n?★大分市の新築建売専門サイト↓↓\nhttps:\/\/sateituikyaku-admin-frontend\.vercel\.app\/tateuri\n★非公開の情報はこちらから検索可能です↓↓\nhttps:\/\/property-site-frontend-kappa\.vercel\.app\/public\/properties/g,
-        ''
-      );
-      mergedContent.body = mergedContent.body.replace(
-        /\n?★大分市の新築建売専門サイト↓↓\nhttps:\/\/sateituikyaku-admin-frontend\.vercel\.app\/tateuri\n★非公開の物件はこちらから↓↓\nhttps:\/\/property-site-frontend-kappa\.vercel\.app\/public\/properties\nお気軽にお問い合わせください。/g,
-        ''
-      );
-      mergedContent.body = mergedContent.body.replace(
-        /\n?★大分市の新築建売専門サイト↓↓\nhttps:\/\/sateituikyaku-admin-frontend\.vercel\.app\/tateuri\n★非公開の物件はこちらから↓↓\nhttps:\/\/property-site-frontend-kappa\.vercel\.app\/public\/properties/g,
-        ''
+        /\n?★大分市の新築建売専門サイト↓↓\nhttps:\/\/sateituikyaku-admin-frontend\.vercel\.app\/tateuri\n/g,
+        '\n'
       );
     }
 
