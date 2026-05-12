@@ -12,18 +12,18 @@ function esc(s: unknown): string {
 // 表紙ページ（1ページ目）
 // ============================================================
 export function generateCoverPageHtml(base64Image: string): string {
-  return `<div style="width:210mm;height:297mm;position:relative;overflow:hidden;">
-    <!-- 背景画像（base64） -->
-    <img src="${base64Image}" style="width:100%;height:100%;object-fit:cover;position:absolute;top:0;left:0;" />
+  return `<div style="width:210mm;height:297mm;position:relative;overflow:hidden;display:block;">
+    <!-- 背景画像（base64・A4全体に引き伸ばし） -->
+    <img src="${base64Image}" style="position:absolute;top:0;left:0;width:210mm;height:297mm;object-fit:fill;display:block;" />
     
-    <!-- 会社情報を上書き（画像の下部にある会社情報エリア） -->
-    <div style="position:absolute;bottom:22mm;left:50%;transform:translateX(-50%);text-align:center;background:white;padding:18px 30px;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.1);">
-      <div style="font-size:11pt;margin-bottom:5px;color:#666;">HPはコチラ</div>
-      <div style="font-size:18pt;font-weight:bold;margin-bottom:8px;color:#000;">株式会社　くじら　不動産</div>
-      <div style="font-size:10pt;margin-bottom:3px;color:#333;">〒810-0073</div>
-      <div style="font-size:10pt;margin-bottom:8px;color:#333;line-height:1.5;">福岡市中央区舞鶴3－1－10<br/>オフィスニューガイア赤坂セレスNo.19 201号</div>
-      <div style="font-size:16pt;font-weight:bold;margin-bottom:5px;color:#000;">☎ 097-533-2022</div>
-      <div style="font-size:9pt;color:#666;">AM10:00〜PM18:00/定休日：水曜日</div>
+    <!-- 会社情報を上書き（画像内の会社情報エリアに重ねる） -->
+    <!-- 元画像の会社情報エリアは下部中央付近 -->
+    <div style="position:absolute;bottom:18mm;left:95mm;right:5mm;background:white;padding:10px 14px;border-radius:4px;">
+      <div style="font-size:14pt;font-weight:bold;margin-bottom:4px;color:#000;">株式会社　くじら　不動産</div>
+      <div style="font-size:9pt;margin-bottom:2px;color:#333;">〒810-0073</div>
+      <div style="font-size:9pt;margin-bottom:4px;color:#333;line-height:1.5;">福岡市中央区舞鶴3－1－10<br/>オフィスニューガイア赤坂セレスNo.19 201号</div>
+      <div style="font-size:13pt;font-weight:bold;margin-bottom:2px;color:#000;">☎ 097-533-2022</div>
+      <div style="font-size:8pt;color:#666;">AM10:00〜PM18:00/定休日：水曜日</div>
     </div>
   </div>`;
 }
