@@ -393,3 +393,26 @@ function testOnEditSync() {
   Logger.log('ステータス: ' + response.getResponseCode());
   Logger.log('レスポンス: ' + response.getContentText());
 }
+
+// ============================================================
+// Web App エンドポイント（フロントエンドからの手動同期用）
+// ============================================================
+
+/**
+ * GETリクエストで syncSellerList() を実行する
+ * デプロイ設定: 実行ユーザー=自分, アクセス=全員
+ */
+function doGet(e) {
+  try {
+    syncSellerList();
+    return ContentService.createTextOutput(JSON.stringify({
+      success: true,
+      message: '売主リストDBへの同期が完了しました'
+    })).setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({
+      success: false,
+      error: err.toString()
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
+}

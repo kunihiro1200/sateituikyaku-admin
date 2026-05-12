@@ -2,6 +2,7 @@
 import { Router, Request, Response } from 'express';
 import { createClient } from '@supabase/supabase-js';
 import { body, query, validationResult } from 'express-validator';
+import axios from 'axios';
 import { SellerService } from '../services/SellerService.supabase';
 import { authenticate } from '../middleware/auth';
 import { CreateSellerRequest, ListSellersParams } from '../types';
@@ -2489,6 +2490,57 @@ router.get('/:id/sales-history', authenticate, async (req: Request, res: Respons
   } catch (error: any) {
     console.error('Sales history error:', error?.message || error);
     res.status(500).json({ error: error?.message || '売買実績の取得に失敗しました' });
+  }
+});
+
+/**
+ * POST /api/sellers/manual-sync
+ * 手動転記実行：①メール転記GAS（メール→売主リストスプシ）→ ②seller-sync.gs（スプシ→DB）を順番に実行
+ */
+router.post('/manual-sync', async (_req: Request, res: Response) => {
+  const STEP1_URL = 'https://script.google.com/macros/s/AKfycbyBbOeDPwwrlLX8w8xbyumP8eRjKFkYkzFjiKP0zzdeNY5M3njdEOICcH9sWpj6hQ/exec';
+  const STEP2_URL = process.env.GAS_SELLER_SYNC_URL || ''; // seller-sync.gsのURL（デプロイ後に設定）
+
+  try {
+    console.log('[seller manual-sync] ステップ1開始: メール転記GAS（メール→売主リストスプシ）');
+    const step1Res = await axios.get(STEP1_URL, { timeout: 300000 });
+    const step1Data = step1Res.data;
+    console.log('[seller manual-sync] ステップ1完了:', step1Data);
+
+    if (step1Data?.success === false) {
+      return res.status(500).json({
+        step: 1,
+        error: 'ステップ1（メール→売主リストスプシ）でエラーが発生しました',
+        detail: step1Data.error,
+      });
+    }
+
+    if (!STEP2_URL) {
+      return res.status(500).json({ error: 'GAS_SELLER_SYNC_URL が設定されていません' });
+    }
+
+    console.log('[seller manual-sync] ステップ2開始: seller-sync.gs（スプシ→DB）');
+    const step2Res = await axios.get(STEP2_URL, { timeout: 300000 });
+    const step2Data = step2Res.data;
+    console.log('[seller manual-sync] ステップ2完了:', step2Data);
+
+    if (step2Data?.success === false) {
+      return res.status(500).json({
+        step: 2,
+        error: 'ステップ2（スプシ→DB）でエラーが発生しました',
+        detail: step2Data.error,
+      });
+    }
+
+    return res.json({
+      success: true,
+      message: '転記が完了しました（メール→売主リスト→DB）',
+      step1: step1Data,
+      step2: step2Data,
+    });
+  } catch (error: any) {
+    console.error('[seller manual-sync] エラー:', error);
+    return res.status(500).json({ error: error.message });
   }
 });
 

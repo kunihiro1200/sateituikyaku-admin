@@ -25,6 +25,8 @@ import {
   useTheme,
   useMediaQuery,
   Snackbar,
+  Alert,
+  CircularProgress,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -32,6 +34,7 @@ import {
   FilterList as FilterListIcon,
   Clear as ClearIcon,
   ExpandMore as ExpandMoreIcon,
+  Sync as SyncIcon,
 } from '@mui/icons-material';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -549,6 +552,33 @@ export default function SellersPage() {
   // 売主番号コピー用の状態
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
+  const [snackbarSeverity, setSnackbarSeverity] = useState<'success' | 'error' | 'info'>('success');
+
+  // 転記実行ボタン用の状態
+  const [sellerManualSyncing, setSellerManualSyncing] = useState(false);
+
+  const handleSellerManualSync = async () => {
+    setSellerManualSyncing(true);
+    setSnackbarMessage('転記実行中... メール→売主リスト→DBの順に処理しています（数分かかります）');
+    setSnackbarSeverity('info');
+    setSnackbarOpen(true);
+    try {
+      const res = await api.post('/api/sellers/manual-sync');
+      setSnackbarMessage(res.data?.message || '転記が完了しました');
+      setSnackbarSeverity('success');
+      setSnackbarOpen(true);
+      // データを再取得
+      pageDataCache.invalidate(CACHE_KEYS.SELLERS_LIST);
+      fetchSellers();
+    } catch (err: any) {
+      const msg = err?.response?.data?.error || '転記中にエラーが発生しました';
+      setSnackbarMessage(msg);
+      setSnackbarSeverity('error');
+      setSnackbarOpen(true);
+    } finally {
+      setSellerManualSyncing(false);
+    }
+  };
 
   // 売主番号をクリップボードにコピーする関数
   const handleCopySellerNumber = async (sellerNumber: string, event: React.MouseEvent) => {
@@ -587,6 +617,17 @@ export default function SellersPage() {
             売主リスト
           </Typography>
           <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+            <Button
+              variant="contained"
+              color="primary"
+              size="small"
+              startIcon={sellerManualSyncing ? <CircularProgress size={16} color="inherit" /> : <SyncIcon />}
+              onClick={handleSellerManualSync}
+              disabled={sellerManualSyncing}
+              sx={{ whiteSpace: 'nowrap' }}
+            >
+              {sellerManualSyncing ? '転記実行中...' : '転記実行'}
+            </Button>
             <Button
               variant="outlined"
               onClick={async () => {
@@ -1218,11 +1259,14 @@ export default function SellersPage() {
       </Box>
       <Snackbar
         open={snackbarOpen}
-        autoHideDuration={2000}
+        autoHideDuration={snackbarSeverity === 'info' ? null : 4000}
         onClose={() => setSnackbarOpen(false)}
-        message={snackbarMessage}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-      />
+      >
+        <Alert onClose={() => setSnackbarOpen(false)} severity={snackbarSeverity} sx={{ width: '100%' }}>
+          {snackbarMessage}
+        </Alert>
+      </Snackbar>
     </Container>
   );
 }
