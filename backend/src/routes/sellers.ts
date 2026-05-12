@@ -2516,9 +2516,9 @@ router.post('/manual-sync', async (_req: Request, res: Response) => {
       });
     }
 
-    console.log('[seller manual-sync] ステップ2開始: /api/sync/trigger（スプシ→DB）');
+    console.log('[seller manual-sync] ステップ2開始: /api/sync/trigger（スプシ→DB、additionOnly）');
     const step2Res = await axios.post(
-      `${BACKEND_URL}/api/sync/trigger?async=false`,
+      `${BACKEND_URL}/api/sync/trigger?additionOnly=true`,
       {},
       {
         headers: {
