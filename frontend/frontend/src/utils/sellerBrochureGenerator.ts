@@ -12,83 +12,19 @@ function esc(s: unknown): string {
 // 表紙ページ（1ページ目）
 // ============================================================
 export function generateCoverPageHtml(): string {
-  return `<div style="width:210mm;height:297mm;background:linear-gradient(135deg, #f5c518 0%, #f5c518 100%);padding:20mm;box-sizing:border-box;display:flex;flex-direction:column;justify-content:center;align-items:center;position:relative;overflow:hidden;">
-    <!-- 装飾的な鳩のアイコン -->
-    <div style="position:absolute;top:30mm;left:30mm;font-size:48pt;color:rgba(255,255,255,0.3);">🕊️</div>
+  return `<div style="width:210mm;height:297mm;position:relative;overflow:hidden;">
+    <!-- 背景画像 -->
+    <img src="/ifoo-assets/brochure/page1-bg.png" style="width:100%;height:100%;object-fit:cover;position:absolute;top:0;left:0;" />
     
-    <!-- メインコンテンツ -->
-    <div style="background:white;border-radius:50%;width:280px;height:280px;display:flex;align-items:center;justify-content:center;margin-bottom:30px;box-shadow:0 8px 16px rgba(0,0,0,0.1);">
-      <div style="text-align:center;padding:20px;">
-        <div style="font-size:28pt;font-weight:bold;line-height:1.5;letter-spacing:0.1em;">あんしん</div>
-        <div style="font-size:28pt;font-weight:bold;line-height:1.5;letter-spacing:0.1em;">スッキリ</div>
-        <div style="font-size:28pt;font-weight:bold;line-height:1.5;letter-spacing:0.1em;">対話型</div>
-      </div>
+    <!-- 会社情報を上書き（画像の下部にある会社情報エリア） -->
+    <div style="position:absolute;bottom:22mm;left:50%;transform:translateX(-50%);text-align:center;background:white;padding:18px 30px;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.1);">
+      <div style="font-size:11pt;margin-bottom:5px;color:#666;">HPはコチラ</div>
+      <div style="font-size:18pt;font-weight:bold;margin-bottom:8px;color:#000;">株式会社　くじら　不動産</div>
+      <div style="font-size:10pt;margin-bottom:3px;color:#333;">〒810-0073</div>
+      <div style="font-size:10pt;margin-bottom:8px;color:#333;line-height:1.5;">福岡市中央区舞鶴3－1－10<br/>オフィスニューガイア赤坂セレスNo.19 201号</div>
+      <div style="font-size:16pt;font-weight:bold;margin-bottom:5px;color:#000;">☎ 097-533-2022</div>
+      <div style="font-size:9pt;color:#666;">AM10:00〜PM18:00/定休日：水曜日</div>
     </div>
-
-    <!-- タイトルエリア -->
-    <div style="background:white;padding:30px 40px;border-radius:8px;text-align:center;box-shadow:0 4px 12px rgba(0,0,0,0.1);margin-bottom:20px;">
-      <div style="font-size:14pt;margin-bottom:10px;">大分市・別府市で、不動産売却を"本気で"お考えの方！</div>
-      <div style="display:flex;gap:10px;justify-content:center;margin-bottom:15px;">
-        <div style="background:#000;color:#fff;padding:8px 16px;border-radius:4px;font-size:12pt;font-weight:bold;">中古住宅</div>
-        <div style="background:#000;color:#fff;padding:8px 16px;border-radius:4px;font-size:12pt;font-weight:bold;">マンション<br/>(一室・一棟)</div>
-        <div style="background:#000;color:#fff;padding:8px 16px;border-radius:4px;font-size:12pt;font-weight:bold;">宅地</div>
-      </div>
-      <div style="font-size:32pt;font-weight:bold;line-height:1.3;margin-bottom:10px;">不動産売却なら</div>
-      <div style="font-size:48pt;font-weight:bold;line-height:1.2;margin-bottom:10px;">いふうの</div>
-      <div style="font-size:40pt;font-weight:bold;line-height:1.2;">無料査定!!</div>
-      <div style="margin-top:15px;display:flex;align-items:center;justify-content:center;gap:10px;">
-        <div style="font-size:11pt;">売れるまで</div>
-        <div style="background:#f5c518;padding:4px 12px;border-radius:20px;font-size:12pt;font-weight:bold;">一切無料</div>
-      </div>
-    </div>
-
-    <!-- 3つのポイント -->
-    <div style="display:flex;gap:15px;margin-bottom:30px;">
-      <div style="background:#f5c518;padding:15px;border-radius:8px;flex:1;text-align:center;">
-        <div style="font-size:10pt;font-weight:bold;margin-bottom:8px;">高く売るためのコツ</div>
-        <div style="font-size:9pt;line-height:1.5;">なるべく<br/>お金をかけずに<br/>高く売りたい!</div>
-        <div style="background:#000;color:#f5c518;padding:4px 12px;border-radius:20px;font-size:14pt;font-weight:bold;margin-top:10px;display:inline-block;">GO!</div>
-      </div>
-      <div style="background:#f5c518;padding:15px;border-radius:8px;flex:1;text-align:center;">
-        <div style="font-size:10pt;font-weight:bold;margin-bottom:8px;">不動産を売る前に<br/>知っておきたいこと</div>
-        <div style="font-size:9pt;line-height:1.5;">入居中でも<br/>売れるの？<br/>税金は<br/>どのくらい<br/>かかるの？</div>
-        <div style="background:#000;color:#f5c518;padding:4px 12px;border-radius:20px;font-size:14pt;font-weight:bold;margin-top:10px;display:inline-block;">GO!</div>
-      </div>
-      <div style="background:#f5c518;padding:15px;border-radius:8px;flex:1;text-align:center;">
-        <div style="font-size:10pt;font-weight:bold;margin-bottom:8px;">不動産会社の選び方</div>
-        <div style="font-size:9pt;line-height:1.5;">選ぶポイントを<br/>ご説明</div>
-        <div style="background:#000;color:#f5c518;padding:4px 12px;border-radius:20px;font-size:14pt;font-weight:bold;margin-top:10px;display:inline-block;">GO!</div>
-      </div>
-    </div>
-
-    <!-- 悩みポイント -->
-    <div style="display:flex;gap:15px;margin-bottom:30px;">
-      <div style="background:white;padding:12px;border-radius:8px;flex:1;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,0.1);">
-        <div style="font-size:24pt;margin-bottom:5px;">💡</div>
-        <div style="font-size:9pt;font-weight:bold;">ローン残のあるまま...</div>
-      </div>
-      <div style="background:white;padding:12px;border-radius:8px;flex:1;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,0.1);">
-        <div style="font-size:24pt;margin-bottom:5px;">💡</div>
-        <div style="font-size:9pt;font-weight:bold;">なかなか家が売れない...</div>
-      </div>
-      <div style="background:white;padding:12px;border-radius:8px;flex:1;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,0.1);">
-        <div style="font-size:24pt;margin-bottom:5px;">💡</div>
-        <div style="font-size:9pt;font-weight:bold;">相続したんだけど...</div>
-      </div>
-    </div>
-
-    <!-- 会社情報 -->
-    <div style="background:white;padding:20px;border-radius:8px;text-align:center;box-shadow:0 4px 12px rgba(0,0,0,0.1);">
-      <div style="font-size:11pt;margin-bottom:5px;">HPはコチラ</div>
-      <div style="font-size:18pt;font-weight:bold;margin-bottom:10px;">株式会社 くじら不動産</div>
-      <div style="font-size:10pt;margin-bottom:5px;">〒870-0044</div>
-      <div style="font-size:10pt;margin-bottom:10px;">大分市舞鶴町1-3-30 STビル1F</div>
-      <div style="font-size:16pt;font-weight:bold;margin-bottom:5px;">☎ 097-533-2022</div>
-      <div style="font-size:9pt;">AM10:00〜PM18:00/定休日：水曜日</div>
-    </div>
-
-    <!-- 装飾的な家のアイコン（下部） -->
-    <div style="position:absolute;bottom:20mm;right:0;left:0;text-align:center;font-size:32pt;color:rgba(255,255,255,0.3);">🏠🏠🏠🏠🏠🏠🏠🏠</div>
   </div>`;
 }
 
