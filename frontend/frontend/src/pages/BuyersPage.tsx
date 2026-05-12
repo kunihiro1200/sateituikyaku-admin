@@ -615,15 +615,12 @@ export default function BuyersPage() {
             他社物件新着配信
           </Button>
           <Button
-            variant="outlined"
+            variant="contained"
             onClick={() => window.open('https://docs.google.com/spreadsheets/d/1Ot8NeypzS4pftxF7c3yE635QWDcAMXia_PK6uhbsrl0/edit?gid=1106587220#gid=1106587220', '_blank')}
             sx={{
-              borderColor: '#43a047',
-              color: '#43a047',
-              '&:hover': {
-                borderColor: '#2e7d32',
-                backgroundColor: '#43a04715',
-              },
+              backgroundColor: '#43a047',
+              color: '#fff',
+              '&:hover': { backgroundColor: '#2e7d32' },
             }}
           >
             業者問合一覧
