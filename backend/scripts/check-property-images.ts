@@ -12,7 +12,7 @@ async function checkImages() {
   const { data, error } = await supabase
     .from('property_previews')
     .select('slug, title, source_url, images')
-    .eq('source_url', 'https://suumo.jp/ikkodate/fukuoka/sc_fukuokashijonan/nc_20024050/')
+    .eq('slug', '38542dc01ed3')
     .single();
 
   if (error) {
@@ -26,6 +26,7 @@ async function checkImages() {
   }
 
   console.log('物件:', data.title);
+  console.log('ソースURL:', data.source_url);
   console.log('画像数:', data.images?.length || 0);
   console.log('画像URL:');
   data.images?.forEach((url: string, i: number) => {

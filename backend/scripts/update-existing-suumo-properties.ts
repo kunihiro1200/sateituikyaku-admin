@@ -93,62 +93,26 @@ async function updateProperty(slug: string, sourceUrl: string) {
     // --- 画像 ---
     const images: string[] = [];
     
-    // data-src属性から取得
-    const dataSrcMatches = html.matchAll(/data-src=["']([^"']+\.(?:jpg|jpeg|png|webp)[^"']*)["']/gi);
-    for (const match of dataSrcMatches) {
-      let imgUrl = match[1];
-      if (imgUrl.startsWith('//')) {
-        imgUrl = 'https:' + imgUrl;
-      } else if (imgUrl.startsWith('/')) {
-        imgUrl = 'https://suumo.jp' + imgUrl;
-      }
+    // img01.suumo.com の resizeImage URL
+    const resizeImageMatches = html.matchAll(/https:\/\/img01\.suumo\.com\/jj\/resizeImage\?src=gazo%2Fbukken%2F[^"'\s<>,]+?\.jpg[^"'\s<>,]*/gi);
+    for (const match of resizeImageMatches) {
+      let imgUrl = match[0];
       
-      // 除外する画像
-      const shouldExclude = 
-        imgUrl.includes('/icon/') ||
-        imgUrl.includes('/logo') ||
-        imgUrl.includes('/banner') ||
-        imgUrl.includes('/btn_') ||
-        imgUrl.includes('/common/') ||
-        imgUrl.includes('/edit/assets/') ||
-        imgUrl.includes('/edit/include/') ||
-        imgUrl.includes('/pagetop') ||
-        imgUrl.includes('_logo') ||
-        imgUrl.includes('_icon') ||
-        imgUrl.includes('_btn') ||
-        imgUrl.match(/\d+x\d+\.(jpg|png)/);
+      // HTMLエンティティをデコード（&amp; → &）
+      imgUrl = imgUrl.replace(/&amp;/g, '&');
       
-      if (!images.includes(imgUrl) && imgUrl.includes('suumo') && !shouldExclude) {
-        images.push(imgUrl);
-      }
-    }
-
-    // src属性から取得
-    const srcMatches = html.matchAll(/src=["']([^"']+\.(?:jpg|jpeg|png|webp)[^"']*)["']/gi);
-    for (const match of srcMatches) {
-      let imgUrl = match[1];
-      if (imgUrl.startsWith('//')) {
-        imgUrl = 'https:' + imgUrl;
-      } else if (imgUrl.startsWith('/')) {
-        imgUrl = 'https://suumo.jp' + imgUrl;
-      }
+      // カンマ以降を削除（例: &w=500,現地土地写真 → &w=500）
+      imgUrl = imgUrl.split(',')[0];
       
-      // 除外する画像
-      const shouldExclude = 
-        imgUrl.includes('/icon/') ||
-        imgUrl.includes('/logo') ||
-        imgUrl.includes('/banner') ||
-        imgUrl.includes('/btn_') ||
-        imgUrl.includes('/common/') ||
-        imgUrl.includes('/edit/assets/') ||
-        imgUrl.includes('/edit/include/') ||
-        imgUrl.includes('/pagetop') ||
-        imgUrl.includes('_logo') ||
-        imgUrl.includes('_icon') ||
-        imgUrl.includes('_btn') ||
-        imgUrl.match(/\d+x\d+\.(jpg|png)/);
+      // 小さいサイズパラメータをより大きいサイズに変更（高解像度化）
+      imgUrl = imgUrl.replace(/&w=96&h=72/g, '&w=800&h=600');
+      imgUrl = imgUrl.replace(/&w=220&h=165/g, '&w=800&h=600');
+      imgUrl = imgUrl.replace(/&w=452&h=339/g, '&w=800&h=600');
+      imgUrl = imgUrl.replace(/&w=296&h=222/g, '&w=800&h=600');
+      imgUrl = imgUrl.replace(/&w=500/g, '&w=800&h=600');
       
-      if (!images.includes(imgUrl) && imgUrl.includes('suumo') && !shouldExclude) {
+      // 会社ロゴを除外（gazo/kaisha/）
+      if (!imgUrl.includes('kaisha') && !images.includes(imgUrl)) {
         images.push(imgUrl);
       }
     }

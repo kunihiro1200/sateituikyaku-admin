@@ -48,6 +48,7 @@ import { SyncNotification, SyncNotificationData } from '../components/SyncNotifi
 import { useAutoSync } from '../hooks/useAutoSync';
 import { useSellerStatus } from '../hooks/useSellerStatus';
 import { useSellerPresenceSubscribe, formatPresenceLabel } from '../hooks/useSellerPresence';
+import { SellerBrochurePrintButton } from '../components/SellerBrochurePrintButton';
 import SellerStatusBadges from '../components/SellerStatusBadges';
 import SellerStatusSidebar from '../components/SellerStatusSidebar';
 import { SECTION_COLORS } from '../theme/sectionColors';
@@ -587,6 +588,7 @@ export default function SellersPage() {
             売主リスト
           </Typography>
           <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+            <SellerBrochurePrintButton />
             <Button
               variant="outlined"
               onClick={async () => {

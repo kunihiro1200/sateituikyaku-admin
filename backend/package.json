@@ -31,7 +31,8 @@
     "validate-coordinates": "ts-node src/scripts/validate-and-fix-coordinates.ts",
     "validate-coordinates:single": "ts-node src/scripts/validate-and-fix-coordinates.ts",
     "diagnose-comments": "ts-node diagnose-comments-display.ts",
-    "test:buyer-assigned-y": "ts-node test-buyer-assigned-y-filter-bug.ts"
+    "test:buyer-assigned-y": "ts-node test-buyer-assigned-y-filter-bug.ts",
+    "update-suumo-properties": "ts-node scripts/update-existing-suumo-properties.ts"
   },
   "keywords": [
     "real-estate",

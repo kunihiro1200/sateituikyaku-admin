@@ -1,0 +1,44 @@
+import * as dotenv from 'dotenv';
+import { createClient } from '@supabase/supabase-js';
+
+dotenv.config();
+
+const supabase = createClient(
+  process.env.SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_KEY!
+);
+
+async function checkLatest() {
+  // 最新の物件を取得
+  const { data, error } = await supabase
+    .from('property_previews')
+    .select('slug, title, source_url, images, created_at')
+    .eq('region', 'fukuoka')
+    .eq('is_tateuri', true)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .single();
+
+  if (error) {
+    console.error('エラー:', error);
+    return;
+  }
+
+  if (!data) {
+    console.log('物件が見つかりません');
+    return;
+  }
+
+  console.log('最新物件:');
+  console.log('  Slug:', data.slug);
+  console.log('  タイトル:', data.title);
+  console.log('  ソースURL:', data.source_url);
+  console.log('  作成日時:', data.created_at);
+  console.log('  画像数:', data.images?.length || 0);
+  console.log('\n画像URL（全て）:');
+  data.images?.forEach((url: string, i: number) => {
+    console.log(`  ${i + 1}. ${url}`);
+  });
+}
+
+checkLatest();
