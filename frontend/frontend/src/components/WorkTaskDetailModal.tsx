@@ -874,6 +874,23 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
   const [hazardPdfUrl, setHazardPdfUrl] = useState<string | null>(null);
   const [hazardCircle, setHazardCircle] = useState<{ x: number; y: number } | null>(null);
   const [hazardPageNo, setHazardPageNo] = useState<number | null>(null);
+  // 索引図
+  const [hazardIndexFile, setHazardIndexFile] = useState<File | null>(null);
+  const [hazardIndexImageUrl, setHazardIndexImageUrl] = useState<string | null>(null);
+  const [hazardIndexPdfUrl, setHazardIndexPdfUrl] = useState<string | null>(null);
+  // Google Maps URL → 座標
+  const [hazardGmapUrl, setHazardGmapUrl] = useState('');
+  const [hazardPageNoLoading, setHazardPageNoLoading] = useState(false);
+  const [hazardPageNoError, setHazardPageNoError] = useState('');
+  const [hazardResolvedLat, setHazardResolvedLat] = useState<number | null>(null);
+  const [hazardResolvedLng, setHazardResolvedLng] = useState<number | null>(null);
+
+  // hazardCircleが変化したらCanvasに赤丸を再描画
+  useEffect(() => {
+    if (hazardCircle) {
+      drawCircleOnCanvas();
+    }
+  }, [hazardCircle, drawCircleOnCanvas]);
 
   // 謄本（土地用）のstate
   const [tokiTochiLoading, setTokiTochiLoading] = useState(false);
@@ -3071,41 +3088,229 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
   );
 
   // ハザード関係セクション
+  const hazardCanvasRef = useRef<HTMLCanvasElement>(null);
+  const hazardPdfBytesRef = useRef<ArrayBuffer | null>(null);
+  const hazardPdfDimensionsRef = useRef<{ width: number; height: number } | null>(null);
+
+  // PDFをCanvasにレンダリングする
+  const renderPdfToCanvas = React.useCallback(async (arrayBuffer: ArrayBuffer) => {
+    try {
+      const pdfjsLib = await import('pdfjs-dist');
+      pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer.slice(0) }).promise;
+      const page = await pdf.getPage(1);
+      const viewport = page.getViewport({ scale: 2.0 });
+      const canvas = hazardCanvasRef.current;
+      if (!canvas) return;
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+      hazardPdfDimensionsRef.current = { width: viewport.width, height: viewport.height };
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+      await page.render({ canvasContext: ctx, viewport }).promise;
+    } catch (e) {
+      console.error('PDF render error', e);
+    }
+  }, []);
+
+  // Canvasに赤丸を再描画する（PDFレンダリング後に呼ぶ）
+  const drawCircleOnCanvas = React.useCallback(() => {
+    if (!hazardCircle || !hazardCanvasRef.current || !hazardPdfDimensionsRef.current) return;
+    const canvas = hazardCanvasRef.current;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    const { width, height } = hazardPdfDimensionsRef.current;
+    const cx = (hazardCircle.x / 100) * width;
+    const cy = (hazardCircle.y / 100) * height;
+    const radius = Math.min(width, height) * 0.03;
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, 0, 2 * Math.PI);
+    ctx.strokeStyle = '#e53935';
+    ctx.lineWidth = Math.max(4, radius * 0.15);
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(229, 57, 53, 0.15)';
+    ctx.fill();
+  }, [hazardCircle]);
+
+  // 赤丸付きPDFをダウンロードする
+  const handleDownloadHazardPdf = React.useCallback(async () => {
+    if (!hazardPdfBytesRef.current || !hazardCanvasRef.current) return;
+    try {
+      // Canvasに赤丸を描いた状態の画像を取得
+      const canvas = hazardCanvasRef.current;
+      const imgDataUrl = canvas.toDataURL('image/png');
+      const imgBytes = await fetch(imgDataUrl).then(r => r.arrayBuffer());
+
+      const { PDFDocument } = await import('pdf-lib');
+      const pdfDoc = await PDFDocument.create();
+      const pngImage = await pdfDoc.embedPng(imgBytes);
+      const { width, height } = pngImage.scale(1);
+      const page = pdfDoc.addPage([width, height]);
+      page.drawImage(pngImage, { x: 0, y: 0, width, height });
+      const pdfBytes = await pdfDoc.save();
+
+      const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `ハザードマップ_${propertyNumber || 'map'}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error('PDF download error', e);
+    }
+  }, [propertyNumber]);
+
   const renderHazardSection = () => (
     <Box sx={{ p: 2, display: 'flex', flexDirection: 'column', gap: 3 }}>
-      {/* 索引図エリア */}
+
+      {/* ① 索引図エリア */}
       <Box>
         <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#00838f', mb: 1 }}>
-          🗺️ ハザードマップ索引図
+          🗺️ ① 索引図（大まかな地図）
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          物件住所のGoogle MapsリンクからハザードマップのページNo.を特定します。
+          索引図（画像またはPDF）をアップロードしてください。Google Maps URLと照らし合わせて該当番号を表示します。
         </Typography>
 
-        {/* 物件住所・地図番号表示エリア */}
-        <Box sx={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 2, mb: 3 }}>
-          <Box sx={{ flex: 1, p: 2, border: '1px solid #b2dfdb', borderRadius: 2, bgcolor: '#e0f2f1' }}>
-            <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>物件住所</Typography>
-            <Typography variant="body1" sx={{ fontWeight: 700, mt: 0.5 }}>
-              {data?.property_address || '（住所未登録）'}
+        {/* 索引図アップロード */}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+          <Button
+            variant="outlined"
+            component="label"
+            sx={{ borderColor: '#00838f', color: '#00838f', '&:hover': { borderColor: '#006064', bgcolor: '#e0f2f1' } }}
+          >
+            📂 索引図を選択（画像/PDF）
+            <input
+              type="file"
+              accept="image/*,application/pdf"
+              hidden
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                setHazardIndexFile(file);
+                if (file.type === 'application/pdf') {
+                  setHazardIndexImageUrl(null);
+                  setHazardIndexPdfUrl(URL.createObjectURL(file));
+                } else {
+                  setHazardIndexPdfUrl(null);
+                  setHazardIndexImageUrl(URL.createObjectURL(file));
+                }
+              }}
+            />
+          </Button>
+          {hazardIndexFile && (
+            <Typography variant="body2" color="text.secondary">{hazardIndexFile.name}</Typography>
+          )}
+        </Box>
+
+        {/* 索引図プレビュー */}
+        {hazardIndexImageUrl && (
+          <Box sx={{ border: '1px solid #b2dfdb', borderRadius: 2, overflow: 'hidden', mb: 2 }}>
+            <img src={hazardIndexImageUrl} alt="索引図" style={{ width: '100%', display: 'block' }} />
+          </Box>
+        )}
+        {hazardIndexPdfUrl && (
+          <Box sx={{ border: '1px solid #b2dfdb', borderRadius: 2, overflow: 'hidden', mb: 2 }}>
+            <iframe src={hazardIndexPdfUrl + '#toolbar=0&navpanes=0'} style={{ width: '100%', height: '40vh', border: 'none', display: 'block' }} title="索引図PDF" />
+          </Box>
+        )}
+        {!hazardIndexFile && (
+          <Box sx={{ p: 3, border: '2px dashed #b2dfdb', borderRadius: 2, textAlign: 'center', color: '#80cbc4', mb: 2 }}>
+            <Typography variant="body2">索引図がまだアップロードされていません</Typography>
+          </Box>
+        )}
+      </Box>
+
+      {/* ② Google Maps URL → 番号判定 */}
+      <Box>
+        <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#00838f', mb: 1 }}>
+          📍 ② Google Maps URL → 該当番号判定
+        </Typography>
+        <Box sx={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 1, mb: 2 }}>
+          <TextField
+            size="small"
+            fullWidth
+            placeholder="https://maps.app.goo.gl/xxxxx"
+            value={hazardGmapUrl}
+            onChange={(e) => setHazardGmapUrl(e.target.value)}
+            label="Google Maps URL"
+          />
+          <Button
+            variant="contained"
+            disabled={!hazardGmapUrl || hazardPageNoLoading}
+            onClick={async () => {
+              setHazardPageNoLoading(true);
+              setHazardPageNo(null);
+              setHazardPageNoError('');
+              try {
+                const API_BASE = import.meta.env.MODE === 'production'
+                  ? 'https://sateituikyaku-admin-backend.vercel.app'
+                  : (import.meta.env.VITE_API_URL || 'http://localhost:3000');
+                const res = await fetch(`${API_BASE}/api/url-redirect/resolve?url=${encodeURIComponent(hazardGmapUrl)}`);
+                const json = await res.json();
+                const redirected: string = json.redirectedUrl || hazardGmapUrl;
+                // 座標を抽出 @lat,lng
+                const match = redirected.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+                if (match) {
+                  setHazardResolvedLat(parseFloat(match[1]));
+                  setHazardResolvedLng(parseFloat(match[2]));
+                  setHazardPageNoError('座標を取得しました。索引図と照らし合わせて番号を手動で入力してください。');
+                } else {
+                  setHazardPageNoError('座標を取得できませんでした。URLを確認してください。');
+                }
+              } catch {
+                setHazardPageNoError('URL解決に失敗しました。');
+              } finally {
+                setHazardPageNoLoading(false);
+              }
+            }}
+            sx={{ whiteSpace: 'nowrap', bgcolor: '#00838f', '&:hover': { bgcolor: '#006064' }, minWidth: 120 }}
+          >
+            {hazardPageNoLoading ? <CircularProgress size={18} color="inherit" /> : '座標を取得'}
+          </Button>
+        </Box>
+
+        {/* 座標表示 */}
+        {(hazardResolvedLat !== null && hazardResolvedLng !== null) && (
+          <Box sx={{ p: 1.5, bgcolor: '#e0f2f1', borderRadius: 1, mb: 2 }}>
+            <Typography variant="body2" sx={{ fontWeight: 600, color: '#00838f' }}>
+              📌 緯度: {hazardResolvedLat?.toFixed(6)}　経度: {hazardResolvedLng?.toFixed(6)}
             </Typography>
           </Box>
-          <Box sx={{ flex: 1, p: 2, border: '1px solid #b2dfdb', borderRadius: 2, bgcolor: '#e0f2f1', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-            <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>ハザードマップ 該当ページNo.</Typography>
-            <Typography variant="h3" sx={{ fontWeight: 900, color: '#00838f', mt: 0.5 }}>
-              {hazardPageNo ?? '—'}
-            </Typography>
-          </Box>
+        )}
+        {hazardPageNoError && (
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>{hazardPageNoError}</Typography>
+        )}
+
+        {/* 番号入力 */}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <Typography variant="body2" sx={{ fontWeight: 600 }}>該当ページNo.（手動入力）:</Typography>
+          <TextField
+            size="small"
+            type="number"
+            value={hazardPageNo ?? ''}
+            onChange={(e) => setHazardPageNo(e.target.value ? Number(e.target.value) : null)}
+            sx={{ width: 100 }}
+            inputProps={{ min: 1 }}
+          />
+          {hazardPageNo !== null && (
+            <Box sx={{ px: 2, py: 0.5, bgcolor: '#00838f', borderRadius: 2 }}>
+              <Typography variant="h5" sx={{ fontWeight: 900, color: '#fff' }}>
+                No. {hazardPageNo}
+              </Typography>
+            </Box>
+          )}
         </Box>
       </Box>
 
-      {/* PDFアップロード・表示エリア */}
+      {/* ③ 詳細PDFアップロード・赤丸・保存 */}
       <Box>
         <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#00838f', mb: 1 }}>
-          📄 ハザードマップPDF
+          📄 ③ 詳細ハザードマップPDF（赤丸マーキング）
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          該当ページのPDFを手動でアップロードしてください。アップロード後、赤丸で場所を指定できます。
+          該当ページのPDFをアップロードし、地図上をクリックして赤丸でマーキングしてください。完了後PDFとして保存できます。
         </Typography>
 
         {/* PDFアップロードボタン */}
@@ -3120,74 +3325,69 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
               type="file"
               accept="application/pdf"
               hidden
-              onChange={(e) => {
+              onChange={async (e) => {
                 const file = e.target.files?.[0];
-                if (file) {
-                  setHazardPdfFile(file);
-                  setHazardPdfUrl(URL.createObjectURL(file));
-                  setHazardCircle(null);
-                }
+                if (!file) return;
+                setHazardPdfFile(file);
+                setHazardCircle(null);
+                const buf = await file.arrayBuffer();
+                hazardPdfBytesRef.current = buf;
+                await renderPdfToCanvas(buf);
               }}
             />
           </Button>
           {hazardPdfFile && (
-            <Typography variant="body2" color="text.secondary">
-              {hazardPdfFile.name}
-            </Typography>
+            <Typography variant="body2" color="text.secondary">{hazardPdfFile.name}</Typography>
+          )}
+          {hazardCircle && (
+            <Button size="small" onClick={() => {
+              setHazardCircle(null);
+              if (hazardPdfBytesRef.current) renderPdfToCanvas(hazardPdfBytesRef.current);
+            }} sx={{ color: '#e53935' }}>
+              赤丸を削除
+            </Button>
+          )}
+          {hazardPdfFile && hazardCircle && (
+            <Button
+              variant="contained"
+              size="small"
+              onClick={handleDownloadHazardPdf}
+              sx={{ bgcolor: '#e53935', '&:hover': { bgcolor: '#b71c1c' }, whiteSpace: 'nowrap' }}
+            >
+              💾 PDFとして保存
+            </Button>
           )}
         </Box>
 
-        {/* PDFビューア + 赤丸クリック */}
-        {hazardPdfUrl && (
+        {/* Canvasビューア（PDFレンダリング + 赤丸クリック） */}
+        {hazardPdfFile ? (
           <Box sx={{ position: 'relative', border: '2px solid #00838f', borderRadius: 2, overflow: 'hidden' }}>
             <Typography variant="caption" sx={{ display: 'block', p: 1, bgcolor: '#e0f2f1', color: '#00838f', fontWeight: 600 }}>
               📍 地図上をクリックすると赤丸でマーキングできます
-              {hazardCircle && (
-                <Button
-                  size="small"
-                  onClick={() => setHazardCircle(null)}
-                  sx={{ ml: 2, color: '#e53935', fontSize: '0.7rem' }}
-                >
-                  赤丸を削除
-                </Button>
-              )}
             </Typography>
             <Box
-              sx={{ position: 'relative', cursor: 'crosshair' }}
+              sx={{ position: 'relative', cursor: 'crosshair', overflow: 'auto', maxHeight: isMobile ? '60vh' : '70vh' }}
               onClick={(e) => {
-                const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                const canvas = hazardCanvasRef.current;
+                if (!canvas) return;
+                const rect = canvas.getBoundingClientRect();
                 const x = ((e.clientX - rect.left) / rect.width) * 100;
                 const y = ((e.clientY - rect.top) / rect.height) * 100;
-                setHazardCircle({ x, y });
+                // 一旦PDFを再描画してから赤丸を描く
+                if (hazardPdfBytesRef.current) {
+                  renderPdfToCanvas(hazardPdfBytesRef.current).then(() => {
+                    setHazardCircle({ x, y });
+                  });
+                }
               }}
             >
-              <iframe
-                src={hazardPdfUrl + '#toolbar=0&navpanes=0'}
-                style={{ width: '100%', height: isMobile ? '60vh' : '70vh', border: 'none', display: 'block', pointerEvents: 'none' }}
-                title="ハザードマップPDF"
+              <canvas
+                ref={hazardCanvasRef}
+                style={{ width: '100%', display: 'block' }}
               />
-              {/* 赤丸オーバーレイ */}
-              {hazardCircle && (
-                <Box
-                  sx={{
-                    position: 'absolute',
-                    left: `calc(${hazardCircle.x}% - 20px)`,
-                    top: `calc(${hazardCircle.y}% - 20px)`,
-                    width: 40,
-                    height: 40,
-                    borderRadius: '50%',
-                    border: '4px solid #e53935',
-                    bgcolor: 'rgba(229, 57, 53, 0.15)',
-                    pointerEvents: 'none',
-                    boxShadow: '0 0 0 2px rgba(229,57,53,0.4)',
-                  }}
-                />
-              )}
             </Box>
           </Box>
-        )}
-
-        {!hazardPdfUrl && (
+        ) : (
           <Box sx={{ p: 4, border: '2px dashed #b2dfdb', borderRadius: 2, textAlign: 'center', color: '#80cbc4' }}>
             <Typography variant="body2">PDFがまだアップロードされていません</Typography>
           </Box>
