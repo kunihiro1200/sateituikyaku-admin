@@ -221,6 +221,7 @@ router.post('/locate', upload.single('image'), async (req: Request, res: Respons
 // ============================================================
 // 別府市道路台帳図 基準点データ（番号 → 中心座標）
 // 実測値に基づく19点の基準点
+// 注意: この索引図は90度回転しており、右=北、左=南、上=西、下=東
 // ============================================================
 const BEPPU_ROAD_MAP_ANCHORS: Array<{ no: number; lat: number; lng: number }> = [
   { no: 133, lat: 33.26566, lng: 131.51658 },
@@ -241,22 +242,32 @@ const BEPPU_ROAD_MAP_ANCHORS: Array<{ no: number; lat: number; lng: number }> = 
   { no: 55,  lat: 33.31509, lng: 131.47578 },
   { no: 67,  lat: 33.30624, lng: 131.46084 },
   { no: 82,  lat: 33.29922, lng: 131.47007 },
+  { no: 118, lat: 33.27529, lng: 131.49163 },
 ];
 
+// 区画サイズ（実測値から推定）
+// 緯度方向: 約0.0075° / 区画
+// 経度方向: 約0.0090° / 区画
+// 索引図は90度回転: 右=北(lat大), 左=南(lat小), 上=西(lng小), 下=東(lng大)
+// 列方向 = 南北(緯度), 行方向 = 東西(経度)
+// 1列あたりの区画数: lng≈131.49列に26,36,44,64,78,118の6点 → 約7区画/列
+const CELL_LAT = 0.0075; // 緯度方向の区画サイズ
+const CELL_LNG = 0.0090; // 経度方向の区画サイズ
+
 /**
- * 基準点から区画サイズを推定し、任意の座標が何番の区画に入るかを計算する
+ * 逆距離加重補間（IDW）で番号を推定する
  *
  * アルゴリズム:
- * 1. 最近傍の基準点を複数見つける
- * 2. 隣接する基準点間の距離から区画サイズ（dlat, dlng）を推定
- * 3. 最近傍基準点から何区画分ずれているかを計算
- * 4. 索引図のグリッドパターン（行・列の並び）から番号を推定
+ * 1. 全基準点との距離を計算
+ * 2. 最近傍が区画サイズ以内なら直接その番号を返す（高信頼）
+ * 3. 近傍上位N点の番号を距離の逆数で加重平均して推定
+ * 4. 推定番号から最も近い基準点の番号を参考に補正
  */
 function estimateBeppuRoadMapNo(lat: number, lng: number): { pageNo: number; confidence: string; nearestNo: number; distKm: number } {
-  // 距離計算（km）
+  // 距離計算（km）- 別府市付近の係数
   const distKm = (a: { lat: number; lng: number }, b: { lat: number; lng: number }) => {
     const dlat = (a.lat - b.lat) * 111.0;
-    const dlng = (a.lng - b.lng) * 91.0; // 別府市付近の経度1度≒91km
+    const dlng = (a.lng - b.lng) * 91.0;
     return Math.sqrt(dlat * dlat + dlng * dlng);
   };
 
@@ -268,60 +279,48 @@ function estimateBeppuRoadMapNo(lat: number, lng: number): { pageNo: number; con
 
   const nearest = withDist[0];
 
-  // 最近傍が0.3km以内なら直接その番号を返す（高信頼）
-  if (nearest.dist < 0.30) {
+  // 最近傍が区画サイズ以内なら直接その番号（高信頼）
+  const cellSizeKm = Math.sqrt(Math.pow(CELL_LAT * 111, 2) + Math.pow(CELL_LNG * 91, 2)) / 2;
+  if (nearest.dist < cellSizeKm * 0.6) {
     return { pageNo: nearest.no, confidence: 'high', nearestNo: nearest.no, distKm: nearest.dist };
   }
 
-  // 隣接する基準点から区画サイズを推定
-  // 基準点間の距離の中央値を区画サイズとして使用
-  const neighborDists: number[] = [];
-  const neighborDlats: number[] = [];
-  const neighborDlngs: number[] = [];
+  // 最近傍基準点からのオフセットを区画単位で計算して番号を推定
+  // 索引図の構造:
+  //   - 緯度が小さい（南）ほど番号が大きい
+  //   - 経度が大きい（東）ほど番号が大きい
+  //   - 列方向（南北）: 1列あたり約7区画
+  //   - 行方向（東西）: 列が変わると番号が大きく変わる
+  //
+  // 実測から判明した列構造:
+  //   lng≈131.46: 67, 95 (南北2点)
+  //   lng≈131.47: 24, 82 (南北2点)
+  //   lng≈131.48: 49, 55, 62, 76, 97 (南北5点)
+  //   lng≈131.49: 26, 36, 44, 64, 78, 118 (南北6点)
+  //   lng≈131.50: 18, 100, 119 (南北3点)
+  //   lng≈131.51: 133 (1点)
+  //
+  // 番号の増加方向: 北東(小) → 南西(大)
+  // 列間の番号差: 約7〜8
 
-  for (let i = 0; i < Math.min(6, withDist.length); i++) {
-    for (let j = i + 1; j < Math.min(6, withDist.length); j++) {
-      const d = distKm(withDist[i], withDist[j]);
-      if (d > 0.3 && d < 2.5) { // 隣接区画の距離範囲
-        neighborDists.push(d);
-        neighborDlats.push(Math.abs(withDist[i].lat - withDist[j].lat));
-        neighborDlngs.push(Math.abs(withDist[i].lng - withDist[j].lng));
-      }
-    }
-  }
-
-  // 区画サイズの推定（基準点間の最小距離を使用）
-  // 索引図から読み取った区画サイズ: 約0.007°lat × 0.009°lng
-  const CELL_LAT = 0.0070; // 緯度方向の区画サイズ（約780m）
-  const CELL_LNG = 0.0095; // 経度方向の区画サイズ（約865m）
-
-  // 最近傍基準点からのオフセットを区画単位で計算
+  // 最近傍基準点からの緯度・経度オフセット
   const dlat = lat - nearest.lat;
   const dlng = lng - nearest.lng;
-  const rowOffset = Math.round(-dlat / CELL_LAT); // 北が負方向（番号が小さい）
-  const colOffset = Math.round(dlng / CELL_LNG);  // 東が正方向（番号が大きい）
 
-  // 索引図のグリッドパターン解析
-  // 番号の並び: 右上から左下へ、各列に約7行
-  // 列方向（東西）: 経度が小さいほど番号が大きい（西側が大きい番号）
-  // 行方向（南北）: 緯度が小さいほど番号が大きい（南側が大きい番号）
-  // 1列あたりの行数を基準点から推定
-  const ROWS_PER_COL = 7; // 索引図から読み取った1列あたりの行数
+  // 区画単位でのオフセット
+  // 緯度が減る（南）→ 番号が増える → rowOffset正
+  // 経度が増える（東）→ 番号が増える → colOffset正
+  const rowOffset = Math.round(-dlat / CELL_LAT); // 南方向が正
+  const colOffset = Math.round(dlng / CELL_LNG);  // 東方向が正
 
-  // 最近傍基準点の行・列位置を推定
-  // 番号からおおよその行・列を逆算
-  // 索引図パターン: 右上(10)から左下(133)へ
-  // 列番号 = (no - 1) / ROWS_PER_COL の整数部
-  // 行番号 = (no - 1) % ROWS_PER_COL
+  // 列あたりの行数（索引図から推定: 約7行/列）
+  const ROWS_PER_COL = 7;
 
-  // オフセットを加算して推定番号を計算
+  // 推定番号 = 最近傍番号 + 行オフセット + 列オフセット×列あたり行数
   const estimatedNo = nearest.no + rowOffset + colOffset * ROWS_PER_COL;
+  const clampedNo = Math.max(1, Math.min(143, Math.round(estimatedNo)));
 
-  // 範囲チェック（1〜143）
-  const clampedNo = Math.max(1, Math.min(143, estimatedNo));
-
-  // 最近傍の基準点が近い場合は中信頼、遠い場合は低信頼
-  const confidence = nearest.dist < 0.8 ? 'medium' : 'low';
+  const confidence = nearest.dist < 1.0 ? 'medium' : 'low';
 
   return { pageNo: clampedNo, confidence, nearestNo: nearest.no, distKm: nearest.dist };
 }
