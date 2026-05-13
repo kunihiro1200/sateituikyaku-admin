@@ -265,14 +265,13 @@ const ROWS_PER_COL = 10; // 1列あたりの行数（東西方向の区画数）
  * 4. 推定番号から最も近い基準点の番号を参考に補正
  */
 function estimateBeppuRoadMapNo(lat: number, lng: number): { pageNo: number; confidence: string; nearestNo: number; distKm: number } {
-  // 距離計算（km）- 別府市付近の係数
+  // 距離計算（km）
   const distKm = (a: { lat: number; lng: number }, b: { lat: number; lng: number }) => {
     const dlat = (a.lat - b.lat) * 111.0;
     const dlng = (a.lng - b.lng) * 91.0;
     return Math.sqrt(dlat * dlat + dlng * dlng);
   };
 
-  // 全基準点との距離を計算してソート
   const withDist = BEPPU_ROAD_MAP_ANCHORS.map(a => ({
     ...a,
     dist: distKm({ lat, lng }, { lat: a.lat, lng: a.lng }),
@@ -280,49 +279,36 @@ function estimateBeppuRoadMapNo(lat: number, lng: number): { pageNo: number; con
 
   const nearest = withDist[0];
 
-  // 最近傍が区画サイズ以内なら直接その番号（高信頼）
+  // 区画サイズの半分以内なら直接その番号（高信頼）
   const cellSizeKm = Math.sqrt(Math.pow(CELL_LAT * 111, 2) + Math.pow(CELL_LNG * 91, 2)) / 2;
   if (nearest.dist < cellSizeKm * 0.6) {
     return { pageNo: nearest.no, confidence: 'high', nearestNo: nearest.no, distKm: nearest.dist };
   }
 
-  // 最近傍基準点からのオフセットを区画単位で計算して番号を推定
-  // 索引図の構造:
-  //   - 緯度が小さい（南）ほど番号が大きい
-  //   - 経度が大きい（東）ほど番号が大きい
-  //   - 列方向（南北）: 1列あたり約7区画
-  //   - 行方向（東西）: 列が変わると番号が大きく変わる
-  //
-  // 実測から判明した列構造:
-  //   lng≈131.46: 67, 95 (南北2点)
-  //   lng≈131.47: 24, 82 (南北2点)
-  //   lng≈131.48: 49, 55, 62, 76, 97 (南北5点)
-  //   lng≈131.49: 26, 36, 44, 64, 78, 118 (南北6点)
-  //   lng≈131.50: 18, 100, 119 (南北3点)
-  //   lng≈131.51: 133 (1点)
-  //
-  // 番号の増加方向: 北東(小) → 南西(大)
-  // 列間の番号差: 約7〜8
+  // 近傍上位3点を使って加重補間で番号を推定
+  // 各基準点からのオフセット（行・列）を計算し、距離の逆数で加重平均
+  const topN = withDist.slice(0, 3);
+  let weightedNo = 0;
+  let totalWeight = 0;
 
-  // 最近傍基準点からの緯度・経度オフセット
-  const dlat = lat - nearest.lat;
-  const dlng = lng - nearest.lng;
+  for (const anchor of topN) {
+    const dlat = lat - anchor.lat;
+    const dlng = lng - anchor.lng;
+    // 東(lng+)方向に番号+1、南(lat-)方向に列+ROWS_PER_COL
+    const rowOffset = Math.round(dlng / CELL_LNG);
+    const colOffset = Math.round(-dlat / CELL_LAT);
+    const estimatedNo = anchor.no + rowOffset + colOffset * ROWS_PER_COL;
+    const weight = 1.0 / Math.max(anchor.dist, 0.01);
+    weightedNo += estimatedNo * weight;
+    totalWeight += weight;
+  }
 
-  // 区画単位でのオフセット
-  // 緯度が減る（南）→ 番号が増える → rowOffset正
-  // 経度が増える（東）→ 番号が増える → colOffset正
-  // 東(lng+)方向に番号+1、南(lat-)方向に列+1(番号+ROWS_PER_COL)
-  const rowOffset = Math.round(dlng / CELL_LNG);   // 東方向に番号+1
-  const colOffset = Math.round(-dlat / CELL_LAT);  // 南方向に列+1
-
-  const estimatedNo = nearest.no + rowOffset + colOffset * ROWS_PER_COL;
+  const estimatedNo = weightedNo / totalWeight;
   const clampedNo = Math.max(1, Math.min(143, Math.round(estimatedNo)));
 
   const confidence = nearest.dist < 1.0 ? 'medium' : 'low';
-
   return { pageNo: clampedNo, confidence, nearestNo: nearest.no, distKm: nearest.dist };
 }
-
 /**
  * 別府市道路台帳図の索引図から該当番号を判定する（計算ベース・AIなし）
  * POST /api/hazard/beppu-road-map
@@ -349,13 +335,27 @@ router.post('/beppu-road-map', upload.single('image'), async (req: Request, res:
 
     const result = estimateBeppuRoadMapNo(latNum, lngNum);
 
-    console.log(`[BeppuRoadMap] lat=${latNum}, lng=${lngNum} → No.${result.pageNo} (confidence=${result.confidence}, nearest=${result.nearestNo}, dist=${result.distKm.toFixed(2)}km)`);
+    console.log(\[BeppuRoadMap] lat=\, lng=\ -> No.\);
+
+    // 推定番号の画像上の位置を計算（ハイライト用）
+    const MAP_LAT_MIN = 33.25816, MAP_LAT_MAX = 33.35347;
+    const MAP_LNG_MIN = 131.45184, MAP_LNG_MAX = 131.52558;
+    const nearestAnchor = BEPPU_ROAD_MAP_ANCHORS.find(a => a.no === result.nearestNo)!;
+    const dn = result.pageNo - nearestAnchor.no;
+    const rowOff = dn % ROWS_PER_COL;
+    const colOff = Math.round((dn - rowOff) / ROWS_PER_COL);
+    const estLat = nearestAnchor.lat - colOff * CELL_LAT;
+    const estLng = nearestAnchor.lng + rowOff * CELL_LNG;
+    const highlightX = Math.min(100, Math.max(0, ((estLat - MAP_LAT_MIN) / (MAP_LAT_MAX - MAP_LAT_MIN)) * 100));
+    const highlightY = Math.min(100, Math.max(0, ((estLng - MAP_LNG_MIN) / (MAP_LNG_MAX - MAP_LNG_MIN)) * 100));
 
     res.json({
       pageNo: result.pageNo,
       confidence: result.confidence,
       nearestNo: result.nearestNo,
       distKm: result.distKm,
+      highlightX,
+      highlightY,
       success: true,
     });
   } catch (error: any) {
