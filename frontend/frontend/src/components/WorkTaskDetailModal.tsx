@@ -876,8 +876,20 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
   const [hazardPdfUrl, setHazardPdfUrl] = useState<string | null>(null);
   const [hazardCircle, setHazardCircle] = useState<{ x: number; y: number } | null>(null);
   const [hazardPageNo, setHazardPageNo] = useState<number | null>(null);
-  const [hazardLocating, setHazardLocating] = useState(false); // 赤丸位置特定中
+  const [hazardLocating, setHazardLocating] = useState(false);
+  // キャリブレーション（地図の2点の緯度経度を手動入力）
+  const [hazardCalibMode, setHazardCalibMode] = useState(false);
+  const [hazardCalibStep, setHazardCalibStep] = useState<0|1|2>(0);
+  const [hazardCalibPoints, setHazardCalibPoints] = useState<Array<{px: number; py: number; lat: number; lng: number}>>([]);
+  const [hazardCalibInput, setHazardCalibInput] = useState({ lat1: '', lng1: '', lat2: '', lng2: '' });
   // 索引図
+  const [hazardIndexFile, setHazardIndexFile] = useState<File | null>(null);
+  const [hazardIndexImageUrl, setHazardIndexImageUrl] = useState<string | null>(null);
+  const [hazardIndexPdfUrl, setHazardIndexPdfUrl] = useState<string | null>(null);
+  // ゼンリン地図
+  const [hazardZenrinFile, setHazardZenrinFile] = useState<File | null>(null);
+  const [hazardZenrinImageUrl, setHazardZenrinImageUrl] = useState<string | null>(null);
+  const [hazardZenrinPdfUrl, setHazardZenrinPdfUrl] = useState<string | null>(null);
   const [hazardIndexFile, setHazardIndexFile] = useState<File | null>(null);
   const [hazardIndexImageUrl, setHazardIndexImageUrl] = useState<string | null>(null);
   const [hazardIndexPdfUrl, setHazardIndexPdfUrl] = useState<string | null>(null);
@@ -3237,10 +3249,65 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
         )}
       </Box>
 
-      {/* ② Google Maps URL → 番号判定 */}
+      {/* ② ゼンリン地図（赤い印付き）アップロード */}
       <Box>
         <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#00838f', mb: 1 }}>
-          📍 ② Google Maps URL → 該当番号判定
+          🗾 ② ゼンリン地図（赤い印付き）
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          物件の場所に赤い印を付けたゼンリン地図（画像またはPDF）をアップロードしてください。
+          ハザードマップと照らし合わせて赤丸の位置を自動判定します。
+        </Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+          <Button
+            variant="outlined"
+            component="label"
+            sx={{ borderColor: '#e65100', color: '#e65100', '&:hover': { borderColor: '#bf360c', bgcolor: '#fbe9e7' } }}
+          >
+            📂 ゼンリン地図を選択（画像/PDF）
+            <input
+              type="file"
+              accept="image/*,application/pdf"
+              hidden
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                setHazardZenrinFile(file);
+                if (file.type === 'application/pdf') {
+                  setHazardZenrinImageUrl(null);
+                  setHazardZenrinPdfUrl(URL.createObjectURL(file));
+                } else {
+                  setHazardZenrinPdfUrl(null);
+                  setHazardZenrinImageUrl(URL.createObjectURL(file));
+                }
+              }}
+            />
+          </Button>
+          {hazardZenrinFile && (
+            <Typography variant="body2" color="text.secondary">{hazardZenrinFile.name}</Typography>
+          )}
+        </Box>
+        {hazardZenrinImageUrl && (
+          <Box sx={{ border: '1px solid #ffccbc', borderRadius: 2, overflow: 'hidden', mb: 2 }}>
+            <img src={hazardZenrinImageUrl} alt="ゼンリン地図" style={{ width: '100%', display: 'block' }} />
+          </Box>
+        )}
+        {hazardZenrinPdfUrl && (
+          <Box sx={{ border: '1px solid #ffccbc', borderRadius: 2, overflow: 'hidden', mb: 2 }}>
+            <iframe src={hazardZenrinPdfUrl + '#toolbar=0&navpanes=0'} style={{ width: '100%', height: '35vh', border: 'none', display: 'block' }} title="ゼンリン地図PDF" />
+          </Box>
+        )}
+        {!hazardZenrinFile && (
+          <Box sx={{ p: 3, border: '2px dashed #ffccbc', borderRadius: 2, textAlign: 'center', color: '#ffab91', mb: 2 }}>
+            <Typography variant="body2">ゼンリン地図がまだアップロードされていません</Typography>
+          </Box>
+        )}
+      </Box>
+
+      {/* ③ Google Maps URL → 番号判定 */}
+      <Box>
+        <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#00838f', mb: 1 }}>
+          📍 ③ Google Maps URL → 該当番号判定
         </Typography>
         <Box sx={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 1, mb: 2 }}>
           <TextField
@@ -3369,13 +3436,13 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
         </Box>
       </Box>
 
-      {/* ③ 詳細PDFアップロード・赤丸・保存 */}
+      {/* ④ 詳細ハザードマップPDF（赤丸マーキング） */}
       <Box>
         <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#00838f', mb: 1 }}>
-          📄 ③ 詳細ハザードマップPDF（赤丸マーキング）
+          📄 ④ 詳細ハザードマップPDF（赤丸マーキング）
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          該当ページのPDFをアップロードすると、AIが自動で赤丸位置を判定します。位置がずれている場合は地図上をクリックして修正できます。完了後PDFとして保存できます。
+          該当ページのPDFをアップロードしてください。ゼンリン地図の赤い印と照らし合わせてAIが自動で赤丸位置を判定します。ずれている場合は地図上をクリックして修正できます。
         </Typography>
 
         {/* PDFアップロードボタン */}
@@ -3400,28 +3467,48 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
                 // PDFをCanvasにレンダリング
                 await renderPdfToCanvas(buf);
 
-                // 座標が取得済みであればClaudeで赤丸位置を自動判定
-                if (hazardResolvedLat !== null && hazardResolvedLng !== null) {
+                // ゼンリン地図がアップロードされていればClaudeで赤丸位置を自動判定
+                if (hazardZenrinFile) {
                   setHazardLocating(true);
                   try {
                     const API_BASE = import.meta.env.MODE === 'production'
                       ? 'https://sateituikyaku-admin-backend.vercel.app'
                       : (import.meta.env.VITE_API_URL || 'http://localhost:3000');
 
-                    // CanvasをPNG画像として取得
+                    // ハザードマップCanvasをPNG画像として取得
                     const canvas = hazardCanvasRef.current;
                     if (!canvas) return;
-                    const blob = await new Promise<Blob>((resolve) => canvas.toBlob(b => resolve(b!), 'image/png'));
-                    const formData = new FormData();
-                    formData.append('image', blob, 'detail.png');
-                    formData.append('lat', String(hazardResolvedLat));
-                    formData.append('lng', String(hazardResolvedLng));
+                    const hazardBlob = await new Promise<Blob>((resolve) => canvas.toBlob(b => resolve(b!), 'image/png'));
 
-                    const aiRes = await fetch(`${API_BASE}/api/hazard/locate`, {
+                    // ゼンリン地図を画像化（PDFの場合はCanvas変換）
+                    let zenrinBlob: Blob;
+                    if (hazardZenrinFile.type === 'application/pdf') {
+                      const buf = await hazardZenrinFile.arrayBuffer();
+                      const pdfjsLib = await import('pdfjs-dist');
+                      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://unpkg.com/pdfjs-dist@4.4.168/build/pdf.worker.min.mjs';
+                      const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+                      const page = await pdf.getPage(1);
+                      const viewport = page.getViewport({ scale: 1.5 });
+                      const tmpCanvas = document.createElement('canvas');
+                      tmpCanvas.width = viewport.width;
+                      tmpCanvas.height = viewport.height;
+                      await page.render({ canvasContext: tmpCanvas.getContext('2d')!, viewport }).promise;
+                      zenrinBlob = await new Promise<Blob>((resolve) => tmpCanvas.toBlob(b => resolve(b!), 'image/png'));
+                    } else {
+                      zenrinBlob = hazardZenrinFile;
+                    }
+
+                    const formData = new FormData();
+                    formData.append('hazard', hazardBlob, 'hazard.png');
+                    formData.append('zenrin', zenrinBlob, 'zenrin.png');
+                    if (data?.property_address) formData.append('address', data.property_address);
+
+                    const aiRes = await fetch(`${API_BASE}/api/hazard/locate-by-zenrin`, {
                       method: 'POST',
                       body: formData,
                     });
                     const aiJson = await aiRes.json();
+                    console.log('[HazardLocate] response:', aiJson);
                     if (typeof aiJson.x === 'number' && typeof aiJson.y === 'number') {
                       setHazardCircle({ x: aiJson.x, y: aiJson.y });
                     }

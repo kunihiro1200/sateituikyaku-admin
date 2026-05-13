@@ -337,4 +337,103 @@ router.post('/beppu-road-map', upload.single('image'), async (req: Request, res:
   }
 });
 
+/**
+ * ゼンリン地図（赤い印付き）とハザードマップを比較して赤丸位置を特定
+ * POST /api/hazard/locate-by-zenrin
+ * multipart/form-data:
+ *   - hazard: ハザードマップ画像
+ *   - zenrin: ゼンリン地図画像（赤い印付き）
+ *   - address: 物件住所（任意）
+ */
+router.post('/locate-by-zenrin', upload.fields([
+  { name: 'hazard', maxCount: 1 },
+  { name: 'zenrin', maxCount: 1 },
+]), async (req: Request, res: Response) => {
+  try {
+    const files = req.files as { [fieldname: string]: Express.Multer.File[] };
+    const hazardFile = files?.['hazard']?.[0];
+    const zenrinFile = files?.['zenrin']?.[0];
+    const address = req.body.address || '';
+
+    if (!hazardFile || !zenrinFile) {
+      return res.status(400).json({ error: 'ハザードマップとゼンリン地図の両方が必要です' });
+    }
+
+    const apiKey = process.env.ANTHROPIC_API_KEY;
+    if (!apiKey) {
+      return res.status(500).json({ error: 'ANTHROPIC_API_KEYが設定されていません' });
+    }
+
+    const hazardBase64 = hazardFile.buffer.toString('base64');
+    const zenrinBase64 = zenrinFile.buffer.toString('base64');
+    const hazardMediaType = 'image/png' as const;
+    const zenrinMediaType = ((['image/jpeg','image/png','image/gif','image/webp'].includes(zenrinFile.mimetype)
+      ? zenrinFile.mimetype : 'image/png') as 'image/jpeg'|'image/png'|'image/gif'|'image/webp');
+
+    const client = new Anthropic({ apiKey });
+
+    const message = await client.messages.create({
+      model: 'claude-opus-4-5',
+      max_tokens: 512,
+      messages: [{
+        role: 'user',
+        content: [
+          {
+            type: 'text',
+            text: '【画像1】はゼンリン地図です。赤い印（マーク）が付いています。',
+          },
+          {
+            type: 'image',
+            source: { type: 'base64', media_type: zenrinMediaType, data: zenrinBase64 },
+          },
+          {
+            type: 'text',
+            text: '【画像2】はハザードマップの詳細地図です。',
+          },
+          {
+            type: 'image',
+            source: { type: 'base64', media_type: hazardMediaType, data: hazardBase64 },
+          },
+          {
+            type: 'text',
+            text: `ゼンリン地図（画像1）の赤い印の場所が、ハザードマップ（画像2）のどの位置に該当するか特定してください。
+${address ? `物件住所: ${address}` : ''}
+
+両方の地図に共通して写っている道路・河川・施設名などのランドマークを手がかりに、
+ゼンリン地図の赤い印と同じ場所がハザードマップ上のどこにあるかを判断してください。
+
+ハザードマップ画像（画像2）の左上を(0,0)、右下を(100,100)として、
+該当位置のx%, y%を答えてください。
+
+必ず以下のJSON形式のみで回答してください（説明不要）:
+{"x": 数値, "y": 数値}
+
+例: {"x": 65.5, "y": 42.3}`,
+          },
+        ],
+      }],
+    });
+
+    const resultText = message.content[0].type === 'text' ? message.content[0].text.trim() : '{"x":50,"y":50}';
+    console.log(`[HazardLocateByZenrin] address="${address}" → Claude回答: "${resultText}"`);
+
+    const jsonMatch = resultText.match(/\{[\s\S]*?\}/);
+    let x = 50, y = 50;
+    if (jsonMatch) {
+      try {
+        const parsed = JSON.parse(jsonMatch[0]);
+        x = typeof parsed.x === 'number' ? Math.min(100, Math.max(0, parsed.x)) : 50;
+        y = typeof parsed.y === 'number' ? Math.min(100, Math.max(0, parsed.y)) : 50;
+      } catch {
+        console.warn('[HazardLocateByZenrin] JSON parse failed');
+      }
+    }
+
+    res.json({ x, y, rawAnswer: resultText });
+  } catch (error: any) {
+    console.error('[HazardLocateByZenrin] Error:', error.message);
+    res.status(500).json({ error: 'AI解析に失敗しました', message: error.message });
+  }
+});
+
 export default router;
