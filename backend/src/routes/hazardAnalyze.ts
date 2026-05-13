@@ -251,8 +251,9 @@ const BEPPU_ROAD_MAP_ANCHORS: Array<{ no: number; lat: number; lng: number }> = 
 // 索引図は90度回転: 右=北(lat大), 左=南(lat小), 上=西(lng小), 下=東(lng大)
 // 列方向 = 南北(緯度), 行方向 = 東西(経度)
 // 1列あたりの区画数: lng≈131.49列に26,36,44,64,78,118の6点 → 約7区画/列
-const CELL_LAT = 0.0075; // 緯度方向の区画サイズ
-const CELL_LNG = 0.0090; // 経度方向の区画サイズ
+const CELL_LAT = 0.0070; // 緯度方向の区画サイズ（南北）
+const CELL_LNG = 0.0088; // 経度方向の区画サイズ（東西）
+const ROWS_PER_COL = 10; // 1列あたりの行数（東西方向の区画数）
 
 /**
  * 逆距離加重補間（IDW）で番号を推定する
@@ -310,13 +311,10 @@ function estimateBeppuRoadMapNo(lat: number, lng: number): { pageNo: number; con
   // 区画単位でのオフセット
   // 緯度が減る（南）→ 番号が増える → rowOffset正
   // 経度が増える（東）→ 番号が増える → colOffset正
-  const rowOffset = Math.round(-dlat / CELL_LAT); // 南方向が正
-  const colOffset = Math.round(dlng / CELL_LNG);  // 東方向が正
+  // 東(lng+)方向に番号+1、南(lat-)方向に列+1(番号+ROWS_PER_COL)
+  const rowOffset = Math.round(dlng / CELL_LNG);   // 東方向に番号+1
+  const colOffset = Math.round(-dlat / CELL_LAT);  // 南方向に列+1
 
-  // 列あたりの行数（索引図から推定: 約7行/列）
-  const ROWS_PER_COL = 7;
-
-  // 推定番号 = 最近傍番号 + 行オフセット + 列オフセット×列あたり行数
   const estimatedNo = nearest.no + rowOffset + colOffset * ROWS_PER_COL;
   const clampedNo = Math.max(1, Math.min(143, Math.round(estimatedNo)));
 
@@ -351,26 +349,13 @@ router.post('/beppu-road-map', upload.single('image'), async (req: Request, res:
 
     const result = estimateBeppuRoadMapNo(latNum, lngNum);
 
-    // 画像上のハイライト位置を計算
-    // 索引図の地理的範囲（基準点から推定）
-    const MAP_LAT_MIN = 33.25816;
-    const MAP_LAT_MAX = 33.35347;
-    const MAP_LNG_MIN = 131.45184;
-    const MAP_LNG_MAX = 131.52558;
-    // 索引図は90度回転: 右=北(lat大), 左=南(lat小), 上=西(lng小), 下=東(lng大)
-    // x(左右) = lat方向, y(上下) = lng方向
-    const highlightX = ((latNum - MAP_LAT_MIN) / (MAP_LAT_MAX - MAP_LAT_MIN)) * 100;
-    const highlightY = ((lngNum - MAP_LNG_MIN) / (MAP_LNG_MAX - MAP_LNG_MIN)) * 100;
-
-    console.log(`[BeppuRoadMap] lat=${latNum}, lng=${lngNum} → No.${result.pageNo} (confidence=${result.confidence}, nearest=${result.nearestNo}, dist=${result.distKm.toFixed(2)}km, highlight=${highlightX.toFixed(1)}%,${highlightY.toFixed(1)}%)`);
+    console.log(`[BeppuRoadMap] lat=${latNum}, lng=${lngNum} → No.${result.pageNo} (confidence=${result.confidence}, nearest=${result.nearestNo}, dist=${result.distKm.toFixed(2)}km)`);
 
     res.json({
       pageNo: result.pageNo,
       confidence: result.confidence,
       nearestNo: result.nearestNo,
       distKm: result.distKm,
-      highlightX: Math.min(100, Math.max(0, highlightX)),
-      highlightY: Math.min(100, Math.max(0, highlightY)),
       success: true,
     });
   } catch (error: any) {
