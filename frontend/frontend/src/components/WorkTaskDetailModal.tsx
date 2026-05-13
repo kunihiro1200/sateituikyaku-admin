@@ -885,6 +885,77 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
   const [hazardResolvedLat, setHazardResolvedLat] = useState<number | null>(null);
   const [hazardResolvedLng, setHazardResolvedLng] = useState<number | null>(null);
 
+  // ハザード関係 ref（stateより後、useCallbackより前に定義）
+  const hazardCanvasRef = useRef<HTMLCanvasElement>(null);
+  const hazardPdfBytesRef = useRef<ArrayBuffer | null>(null);
+  const hazardPdfDimensionsRef = useRef<{ width: number; height: number } | null>(null);
+
+  // PDFをCanvasにレンダリングする
+  const renderPdfToCanvas = React.useCallback(async (arrayBuffer: ArrayBuffer) => {
+    try {
+      const pdfjsLib = await import('pdfjs-dist');
+      pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer.slice(0) }).promise;
+      const page = await pdf.getPage(1);
+      const viewport = page.getViewport({ scale: 2.0 });
+      const canvas = hazardCanvasRef.current;
+      if (!canvas) return;
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+      hazardPdfDimensionsRef.current = { width: viewport.width, height: viewport.height };
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+      await page.render({ canvasContext: ctx, viewport }).promise;
+    } catch (e) {
+      console.error('PDF render error', e);
+    }
+  }, []);
+
+  // Canvasに赤丸を再描画する
+  const drawCircleOnCanvas = React.useCallback(() => {
+    if (!hazardCircle || !hazardCanvasRef.current || !hazardPdfDimensionsRef.current) return;
+    const canvas = hazardCanvasRef.current;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    const { width, height } = hazardPdfDimensionsRef.current;
+    const cx = (hazardCircle.x / 100) * width;
+    const cy = (hazardCircle.y / 100) * height;
+    const radius = Math.min(width, height) * 0.03;
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, 0, 2 * Math.PI);
+    ctx.strokeStyle = '#e53935';
+    ctx.lineWidth = Math.max(4, radius * 0.15);
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(229, 57, 53, 0.15)';
+    ctx.fill();
+  }, [hazardCircle]);
+
+  // 赤丸付きPDFをダウンロードする
+  const handleDownloadHazardPdf = React.useCallback(async () => {
+    if (!hazardPdfBytesRef.current || !hazardCanvasRef.current) return;
+    try {
+      const canvas = hazardCanvasRef.current;
+      const imgDataUrl = canvas.toDataURL('image/png');
+      const imgBytes = await fetch(imgDataUrl).then(r => r.arrayBuffer());
+      const { PDFDocument } = await import('pdf-lib');
+      const pdfDoc = await PDFDocument.create();
+      const pngImage = await pdfDoc.embedPng(imgBytes);
+      const { width, height } = pngImage.scale(1);
+      const page = pdfDoc.addPage([width, height]);
+      page.drawImage(pngImage, { x: 0, y: 0, width, height });
+      const pdfBytes = await pdfDoc.save();
+      const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `ハザードマップ_${propertyNumber || 'map'}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error('PDF download error', e);
+    }
+  }, [propertyNumber]);
+
   // hazardCircleが変化したらCanvasに赤丸を再描画
   useEffect(() => {
     if (hazardCircle) {
@@ -3086,80 +3157,6 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
       </Grid>
     </Grid>
   );
-
-  // ハザード関係セクション
-  const hazardCanvasRef = useRef<HTMLCanvasElement>(null);
-  const hazardPdfBytesRef = useRef<ArrayBuffer | null>(null);
-  const hazardPdfDimensionsRef = useRef<{ width: number; height: number } | null>(null);
-
-  // PDFをCanvasにレンダリングする
-  const renderPdfToCanvas = React.useCallback(async (arrayBuffer: ArrayBuffer) => {
-    try {
-      const pdfjsLib = await import('pdfjs-dist');
-      pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
-      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer.slice(0) }).promise;
-      const page = await pdf.getPage(1);
-      const viewport = page.getViewport({ scale: 2.0 });
-      const canvas = hazardCanvasRef.current;
-      if (!canvas) return;
-      canvas.width = viewport.width;
-      canvas.height = viewport.height;
-      hazardPdfDimensionsRef.current = { width: viewport.width, height: viewport.height };
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
-      await page.render({ canvasContext: ctx, viewport }).promise;
-    } catch (e) {
-      console.error('PDF render error', e);
-    }
-  }, []);
-
-  // Canvasに赤丸を再描画する（PDFレンダリング後に呼ぶ）
-  const drawCircleOnCanvas = React.useCallback(() => {
-    if (!hazardCircle || !hazardCanvasRef.current || !hazardPdfDimensionsRef.current) return;
-    const canvas = hazardCanvasRef.current;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    const { width, height } = hazardPdfDimensionsRef.current;
-    const cx = (hazardCircle.x / 100) * width;
-    const cy = (hazardCircle.y / 100) * height;
-    const radius = Math.min(width, height) * 0.03;
-    ctx.beginPath();
-    ctx.arc(cx, cy, radius, 0, 2 * Math.PI);
-    ctx.strokeStyle = '#e53935';
-    ctx.lineWidth = Math.max(4, radius * 0.15);
-    ctx.stroke();
-    ctx.fillStyle = 'rgba(229, 57, 53, 0.15)';
-    ctx.fill();
-  }, [hazardCircle]);
-
-  // 赤丸付きPDFをダウンロードする
-  const handleDownloadHazardPdf = React.useCallback(async () => {
-    if (!hazardPdfBytesRef.current || !hazardCanvasRef.current) return;
-    try {
-      // Canvasに赤丸を描いた状態の画像を取得
-      const canvas = hazardCanvasRef.current;
-      const imgDataUrl = canvas.toDataURL('image/png');
-      const imgBytes = await fetch(imgDataUrl).then(r => r.arrayBuffer());
-
-      const { PDFDocument } = await import('pdf-lib');
-      const pdfDoc = await PDFDocument.create();
-      const pngImage = await pdfDoc.embedPng(imgBytes);
-      const { width, height } = pngImage.scale(1);
-      const page = pdfDoc.addPage([width, height]);
-      page.drawImage(pngImage, { x: 0, y: 0, width, height });
-      const pdfBytes = await pdfDoc.save();
-
-      const blob = new Blob([pdfBytes], { type: 'application/pdf' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `ハザードマップ_${propertyNumber || 'map'}.pdf`;
-      a.click();
-      URL.revokeObjectURL(url);
-    } catch (e) {
-      console.error('PDF download error', e);
-    }
-  }, [propertyNumber]);
 
   const renderHazardSection = () => (
     <Box sx={{ p: 2, display: 'flex', flexDirection: 'column', gap: 3 }}>

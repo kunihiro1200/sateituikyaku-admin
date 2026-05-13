@@ -74,6 +74,7 @@ import tateuriPreviewRoutes from './routes/tateuriPreview';
 import scrapedUrlsRoutes from './routes/scraped-urls';
 import testEmailRoutes from './routes/testEmail';
 import aiPropertyEnhanceRoutes from './routes/aiPropertyEnhance';
+import hazardAnalyzeRoutes from './routes/hazardAnalyze';
 import sitemapRoutes from './routes/sitemap';
 import { activityLogger } from './middleware/activityLogger';
 import { authenticate } from './middleware/auth';
@@ -969,6 +970,7 @@ app.use('/api/staff-sync', staffSyncRoutes); // スタッフ同期API
 app.use('/api/nearby-map', nearbyMapRoutes); // 近隣MAPapi
 app.use('/api/property-preview', propertyPreviewRoutes); // 物件プレビュー（認証不要・公開）
 app.use('/api/ai', aiPropertyEnhanceRoutes); // AI物件情報解析（認証不要）
+app.use('/api/hazard', hazardAnalyzeRoutes); // ハザードマップAI解析（認証不要）
 
 // Cron Job: 買主の建売専門HP価格変動チェック（毎日実行）
 app.post('/api/cron/check-property-prices', async (req, res) => {
