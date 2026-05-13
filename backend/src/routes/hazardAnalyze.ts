@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import Anthropic from '@anthropic-ai/sdk';
 import multer from 'multer';
+import axios from 'axios';
 
 const router = Router();
 
@@ -220,21 +221,22 @@ router.post('/locate', upload.single('image'), async (req: Request, res: Respons
 /**
  * 別府市道路台帳図の索引図から該当番号を判定する
  * POST /api/hazard/beppu-road-map
- * multipart/form-data:
- *   - image: 別府市道路台帳図の索引図画像
+ * body (JSON):
+ *   - lat: 緯度
+ *   - lng: 経度
+ *   - imageUrl: 索引図画像のURL（省略時はデフォルト画像を使用）
+ * または multipart/form-data:
+ *   - image: 索引図画像ファイル（アップロード時）
  *   - lat: 緯度
  *   - lng: 経度
  */
 router.post('/beppu-road-map', upload.single('image'), async (req: Request, res: Response) => {
   try {
-    const { lat, lng } = req.body;
+    const { lat, lng, imageUrl } = req.body;
     const file = req.file;
 
-    console.log(`[BeppuRoadMap] received - lat=${lat}, lng=${lng}, file=${file ? `${file.originalname} (${file.mimetype}, ${file.size}bytes)` : 'NONE'}`);
+    console.log(`[BeppuRoadMap] received - lat=${lat}, lng=${lng}, imageUrl=${imageUrl || 'none'}, file=${file ? `${file.originalname}` : 'NONE'}`);
 
-    if (!file) {
-      return res.status(400).json({ error: '索引図ファイルが必要です' });
-    }
     if (!lat || !lng) {
       return res.status(400).json({ error: '緯度・経度が必要です' });
     }
@@ -244,9 +246,24 @@ router.post('/beppu-road-map', upload.single('image'), async (req: Request, res:
       return res.status(500).json({ error: 'ANTHROPIC_API_KEYが設定されていません' });
     }
 
-    const imageBase64 = file.buffer.toString('base64');
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-    const mediaType = (allowedTypes.includes(file.mimetype) ? file.mimetype : 'image/png') as 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp';
+    let imageBase64: string;
+    let mediaType: 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp';
+
+    if (file) {
+      // ファイルアップロードの場合
+      imageBase64 = file.buffer.toString('base64');
+      const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+      mediaType = (allowedTypes.includes(file.mimetype) ? file.mimetype : 'image/png') as typeof mediaType;
+    } else if (imageUrl) {
+      // URLから画像を取得
+      const imgRes = await axios.get(imageUrl, { responseType: 'arraybuffer', timeout: 15000 });
+      imageBase64 = Buffer.from(imgRes.data).toString('base64');
+      const ct = imgRes.headers['content-type'] || 'image/png';
+      const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+      mediaType = (allowedTypes.includes(ct) ? ct : 'image/png') as typeof mediaType;
+    } else {
+      return res.status(400).json({ error: '索引図ファイルまたはimageUrlが必要です' });
+    }
 
     const client = new Anthropic({ apiKey });
 

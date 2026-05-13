@@ -889,11 +889,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
   const [hazardResolvedLng, setHazardResolvedLng] = useState<number | null>(null);
 
   // 別府市道路台帳図のstate
-  const [beppuRoadMapFile, setBeppuRoadMapFile] = useState<File | null>(null);
-  const [beppuRoadMapPreviewUrl, setBeppuRoadMapPreviewUrl] = useState<string | null>(null);
-  const [beppuRoadMapSavedUrl, setBeppuRoadMapSavedUrl] = useState<string | null>(null);
   const [beppuRoadMapPageNo, setBeppuRoadMapPageNo] = useState<number | null>(null);
-  const [beppuRoadMapUploading, setBeppuRoadMapUploading] = useState(false);
   const [beppuRoadMapAnalyzing, setBeppuRoadMapAnalyzing] = useState(false);
   const [beppuRoadMapError, setBeppuRoadMapError] = useState('');
 
@@ -1039,13 +1035,9 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
     return () => { cancelled = true; };
   }, [open, propertyNumber]);
 
-  // データロード後、別府市道路台帳図の保存済みデータを復元
+  // データロード後、別府市道路台帳図の保存済み番号を復元
   useEffect(() => {
     if (!data) return;
-    if (data.beppu_road_map_image_url) {
-      setBeppuRoadMapSavedUrl(data.beppu_road_map_image_url);
-      setBeppuRoadMapPreviewUrl(null); // 保存済みURLを使用するのでプレビューはリセット
-    }
     if (data.beppu_road_map_page_no != null) {
       setBeppuRoadMapPageNo(Number(data.beppu_road_map_page_no));
     }
@@ -3522,76 +3514,14 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
           🗺️ ④ 別府市道路台帳図
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          別府市道路台帳図の画像をアップロードして保存します。上記のGoogle Maps URLを入力してAI判定ボタンを押すと、該当する番号を自動判定します。
+          上の「② Google Maps URL」を入力してAI判定ボタンを押すと、別府市道路台帳図の該当番号を自動判定します。
         </Typography>
 
-        {/* 画像アップロード */}
+        {/* AI判定ボタン */}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2, flexWrap: 'wrap' }}>
-          <Button
-            variant="outlined"
-            component="label"
-            disabled={beppuRoadMapUploading}
-            sx={{ borderColor: '#00838f', color: '#00838f', '&:hover': { borderColor: '#006064', bgcolor: '#e0f2f1' } }}
-          >
-            📂 画像を選択
-            <input
-              type="file"
-              accept="image/*"
-              hidden
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (!file) return;
-                setBeppuRoadMapFile(file);
-                setBeppuRoadMapPreviewUrl(URL.createObjectURL(file));
-                setBeppuRoadMapError('');
-              }}
-            />
-          </Button>
-          {beppuRoadMapFile && (
-            <Typography variant="body2" color="text.secondary">{beppuRoadMapFile.name}</Typography>
-          )}
-          {/* アップロード＆保存ボタン */}
           <Button
             variant="contained"
-            disabled={!beppuRoadMapFile || beppuRoadMapUploading}
-            onClick={async () => {
-              if (!beppuRoadMapFile || !propertyNumber) return;
-              setBeppuRoadMapUploading(true);
-              setBeppuRoadMapError('');
-              try {
-                const timestamp = Date.now();
-                const ext = beppuRoadMapFile.name.includes('.') ? '.' + beppuRoadMapFile.name.split('.').pop() : '.png';
-                const filePath = `beppu-road-map/${propertyNumber}_${timestamp}${ext}`;
-                const { error: uploadError } = await supabase.storage
-                  .from('shared-items')
-                  .upload(filePath, beppuRoadMapFile, { contentType: beppuRoadMapFile.type, upsert: false });
-                if (uploadError) throw new Error(`アップロード失敗: ${uploadError.message}`);
-                const { data: urlData } = supabase.storage.from('shared-items').getPublicUrl(filePath);
-                const publicUrl = urlData.publicUrl;
-                setBeppuRoadMapSavedUrl(publicUrl);
-                // DBに保存
-                await api.put(`/api/work-tasks/${propertyNumber}`, {
-                  beppu_road_map_image_url: publicUrl,
-                  ...(beppuRoadMapPageNo !== null ? { beppu_road_map_page_no: beppuRoadMapPageNo } : {}),
-                });
-                setBeppuRoadMapError('✅ 画像を保存しました');
-              } catch (err: any) {
-                setBeppuRoadMapError(`❌ 保存に失敗しました: ${err?.message || String(err)}`);
-              } finally {
-                setBeppuRoadMapUploading(false);
-              }
-            }}
-            sx={{ bgcolor: '#00838f', '&:hover': { bgcolor: '#006064' }, whiteSpace: 'nowrap' }}
-          >
-            {beppuRoadMapUploading ? <CircularProgress size={18} color="inherit" /> : '💾 保存'}
-          </Button>
-        </Box>
-
-        {/* AI判定ボタン（GMAPURLが入力済みの場合のみ有効） */}
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2, flexWrap: 'wrap' }}>
-          <Button
-            variant="outlined"
-            disabled={!hazardGmapUrl || beppuRoadMapAnalyzing || !(beppuRoadMapFile || beppuRoadMapSavedUrl)}
+            disabled={!hazardGmapUrl || beppuRoadMapAnalyzing}
             onClick={async () => {
               setBeppuRoadMapAnalyzing(true);
               setBeppuRoadMapError('');
@@ -3616,29 +3546,19 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
                   lng = parseFloat(match[2]);
                 }
 
-                // Step2: 道路台帳図画像でAI判定
+                // Step2: デフォルト索引図URLを使ってAI判定（バックエンドがURLから画像取得）
                 setBeppuRoadMapError('🤖 AIが道路台帳図を解析中...');
-                const formData = new FormData();
-                if (beppuRoadMapFile) {
-                  formData.append('image', beppuRoadMapFile);
-                } else if (beppuRoadMapSavedUrl) {
-                  // 保存済みURLから画像を取得
-                  const imgRes = await fetch(beppuRoadMapSavedUrl);
-                  const imgBlob = await imgRes.blob();
-                  formData.append('image', imgBlob, 'road_map.png');
-                }
-                formData.append('lat', String(lat));
-                formData.append('lng', String(lng));
-
-                const aiRes = await fetch(`${API_BASE}/api/hazard/analyze`, {
+                const defaultIndexUrl = 'https://sateituikyaku-admin-frontend.vercel.app/beppu-road-map-index.png';
+                const aiRes = await fetch(`${API_BASE}/api/hazard/beppu-road-map`, {
                   method: 'POST',
-                  body: formData,
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ lat, lng, imageUrl: defaultIndexUrl }),
                 });
                 const aiJson = await aiRes.json();
                 if (aiJson.success && aiJson.pageNo !== null && aiJson.pageNo !== undefined) {
                   setBeppuRoadMapPageNo(aiJson.pageNo);
                   setBeppuRoadMapError(`✅ AIが「No.${aiJson.pageNo}」と判定しました（修正可能）`);
-                  // 番号もDBに保存
+                  // 番号をDBに自動保存
                   if (propertyNumber) {
                     await api.put(`/api/work-tasks/${propertyNumber}`, { beppu_road_map_page_no: aiJson.pageNo });
                   }
@@ -3652,18 +3572,13 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
                 setBeppuRoadMapAnalyzing(false);
               }
             }}
-            sx={{ borderColor: '#00838f', color: '#00838f', '&:hover': { borderColor: '#006064', bgcolor: '#e0f2f1' }, whiteSpace: 'nowrap' }}
+            sx={{ bgcolor: '#00838f', '&:hover': { bgcolor: '#006064' }, whiteSpace: 'nowrap' }}
           >
             {beppuRoadMapAnalyzing ? <CircularProgress size={18} color="inherit" /> : '🤖 AI判定（番号を自動判定）'}
           </Button>
           {!hazardGmapUrl && (
             <Typography variant="caption" color="text.secondary">
               ※ 上の「② Google Maps URL」を入力するとAI判定が使えます
-            </Typography>
-          )}
-          {!(beppuRoadMapFile || beppuRoadMapSavedUrl) && hazardGmapUrl && (
-            <Typography variant="caption" color="text.secondary">
-              ※ 画像を選択または保存済み画像が必要です
             </Typography>
           )}
         </Box>
@@ -3673,9 +3588,9 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
           <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>{beppuRoadMapError}</Typography>
         )}
 
-        {/* 番号入力 */}
+        {/* 番号表示・手動入力 */}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
-          <Typography variant="body2" sx={{ fontWeight: 600 }}>該当番号（手動入力）:</Typography>
+          <Typography variant="body2" sx={{ fontWeight: 600 }}>該当番号（手動修正可）:</Typography>
           <TextField
             size="small"
             type="number"
@@ -3703,20 +3618,14 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
           )}
         </Box>
 
-        {/* 画像プレビュー */}
-        {(beppuRoadMapPreviewUrl || beppuRoadMapSavedUrl) ? (
-          <Box sx={{ border: '1px solid #b2dfdb', borderRadius: 2, overflow: 'hidden' }}>
-            <img
-              src={beppuRoadMapPreviewUrl || beppuRoadMapSavedUrl || ''}
-              alt="別府市道路台帳図"
-              style={{ width: '100%', display: 'block' }}
-            />
-          </Box>
-        ) : (
-          <Box sx={{ p: 3, border: '2px dashed #b2dfdb', borderRadius: 2, textAlign: 'center', color: '#80cbc4' }}>
-            <Typography variant="body2">別府市道路台帳図がまだアップロードされていません</Typography>
-          </Box>
-        )}
+        {/* 索引図プレビュー（常に表示） */}
+        <Box sx={{ border: '1px solid #b2dfdb', borderRadius: 2, overflow: 'hidden' }}>
+          <img
+            src="/beppu-road-map-index.png"
+            alt="別府市道路台帳図索引図"
+            style={{ width: '100%', display: 'block' }}
+          />
+        </Box>
       </Box>
     </Box>
   );
