@@ -351,13 +351,26 @@ router.post('/beppu-road-map', upload.single('image'), async (req: Request, res:
 
     const result = estimateBeppuRoadMapNo(latNum, lngNum);
 
-    console.log(`[BeppuRoadMap] lat=${latNum}, lng=${lngNum} → No.${result.pageNo} (confidence=${result.confidence}, nearest=${result.nearestNo}, dist=${result.distKm.toFixed(2)}km)`);
+    // 画像上のハイライト位置を計算
+    // 索引図の地理的範囲（基準点から推定）
+    const MAP_LAT_MIN = 33.25816;
+    const MAP_LAT_MAX = 33.35347;
+    const MAP_LNG_MIN = 131.45184;
+    const MAP_LNG_MAX = 131.52558;
+    // 索引図は90度回転: 右=北(lat大), 左=南(lat小), 上=西(lng小), 下=東(lng大)
+    // x(左右) = lat方向, y(上下) = lng方向
+    const highlightX = ((latNum - MAP_LAT_MIN) / (MAP_LAT_MAX - MAP_LAT_MIN)) * 100;
+    const highlightY = ((lngNum - MAP_LNG_MIN) / (MAP_LNG_MAX - MAP_LNG_MIN)) * 100;
+
+    console.log(`[BeppuRoadMap] lat=${latNum}, lng=${lngNum} → No.${result.pageNo} (confidence=${result.confidence}, nearest=${result.nearestNo}, dist=${result.distKm.toFixed(2)}km, highlight=${highlightX.toFixed(1)}%,${highlightY.toFixed(1)}%)`);
 
     res.json({
       pageNo: result.pageNo,
       confidence: result.confidence,
       nearestNo: result.nearestNo,
       distKm: result.distKm,
+      highlightX: Math.min(100, Math.max(0, highlightX)),
+      highlightY: Math.min(100, Math.max(0, highlightY)),
       success: true,
     });
   } catch (error: any) {

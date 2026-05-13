@@ -901,6 +901,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
   const [beppuRoadMapPageNo, setBeppuRoadMapPageNo] = useState<number | null>(null);
   const [beppuRoadMapAnalyzing, setBeppuRoadMapAnalyzing] = useState(false);
   const [beppuRoadMapError, setBeppuRoadMapError] = useState('');
+  const [beppuRoadMapHighlight, setBeppuRoadMapHighlight] = useState<{ x: number; y: number } | null>(null);
 
   // ハザードマップCanvasのズームstate
   const [hazardZoom, setHazardZoom] = useState(1.0);
@@ -3669,6 +3670,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
                 const aiJson = await aiRes.json();
                 if (aiJson.success && aiJson.pageNo !== null && aiJson.pageNo !== undefined) {
                   setBeppuRoadMapPageNo(aiJson.pageNo);
+                  setBeppuRoadMapHighlight({ x: aiJson.highlightX ?? 50, y: aiJson.highlightY ?? 50 });
                   const confLabel = aiJson.confidence === 'high' ? '✅ 高精度' : aiJson.confidence === 'medium' ? '🟡 中精度' : '🟠 低精度';
                   setBeppuRoadMapError(`${confLabel}：「No.${aiJson.pageNo}」と判定しました（最近傍No.${aiJson.nearestNo}から${aiJson.distKm?.toFixed(2)}km）`);
                   // 番号をDBに自動保存
@@ -3730,13 +3732,44 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
           )}
         </Box>
 
-        {/* 索引図プレビュー（常に表示） */}
-        <Box sx={{ border: '1px solid #b2dfdb', borderRadius: 2, overflow: 'hidden' }}>
+        {/* 索引図プレビュー（常に表示）＋ハイライトオーバーレイ */}
+        <Box sx={{ position: 'relative', border: '1px solid #b2dfdb', borderRadius: 2, overflow: 'hidden' }}>
           <img
             src="/beppu-road-map-index.png"
             alt="別府市道路台帳図索引図"
             style={{ width: '100%', display: 'block' }}
           />
+          {/* 該当番号ハイライト */}
+          {beppuRoadMapHighlight && beppuRoadMapPageNo !== null && (
+            <Box
+              sx={{
+                position: 'absolute',
+                // x=lat方向(左右), y=lng方向(上下)
+                left: `${beppuRoadMapHighlight.x}%`,
+                top: `${beppuRoadMapHighlight.y}%`,
+                transform: 'translate(-50%, -50%)',
+                width: '7%',
+                height: '7%',
+                bgcolor: 'rgba(255, 200, 0, 0.45)',
+                border: '2px solid #ff6600',
+                borderRadius: '4px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                animation: 'beppu-pulse 1.2s ease-in-out infinite',
+                '@keyframes beppu-pulse': {
+                  '0%':   { boxShadow: '0 0 0 0 rgba(255,100,0,0.7)', bgcolor: 'rgba(255,200,0,0.45)' },
+                  '50%':  { boxShadow: '0 0 0 8px rgba(255,100,0,0)', bgcolor: 'rgba(255,220,0,0.65)' },
+                  '100%': { boxShadow: '0 0 0 0 rgba(255,100,0,0)', bgcolor: 'rgba(255,200,0,0.45)' },
+                },
+                pointerEvents: 'none',
+              }}
+            >
+              <Typography sx={{ fontSize: '0.55rem', fontWeight: 900, color: '#c00', lineHeight: 1, textShadow: '0 0 3px #fff' }}>
+                {beppuRoadMapPageNo}
+              </Typography>
+            </Box>
+          )}
         </Box>
       </Box>
     </Box>
