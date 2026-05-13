@@ -894,7 +894,9 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
   const renderPdfToCanvas = React.useCallback(async (arrayBuffer: ArrayBuffer) => {
     try {
       const pdfjsLib = await import('pdfjs-dist');
-      pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+      // pdfjs-dist 4.x: ローカルのworkerファイルを使用
+      const workerUrl = new URL('pdfjs-dist/build/pdf.worker.min.mjs', import.meta.url).href;
+      pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl;
       const pdf = await pdfjsLib.getDocument({ data: arrayBuffer.slice(0) }).promise;
       const page = await pdf.getPage(1);
       const viewport = page.getViewport({ scale: 2.0 });
@@ -908,6 +910,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
       await page.render({ canvasContext: ctx, viewport }).promise;
     } catch (e) {
       console.error('PDF render error', e);
+      alert(`PDFの表示に失敗しました: ${e instanceof Error ? e.message : String(e)}`);
     }
   }, []);
 
@@ -3268,7 +3271,8 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
                     // PDFを一時Canvasにレンダリングして画像化
                     const buf = await hazardIndexFile.arrayBuffer();
                     const pdfjsLib = await import('pdfjs-dist');
-                    pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+                    const workerUrl2 = new URL('pdfjs-dist/build/pdf.worker.min.mjs', import.meta.url).href;
+                    pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl2;
                     const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
                     const page = await pdf.getPage(1);
                     const viewport = page.getViewport({ scale: 1.5 });
