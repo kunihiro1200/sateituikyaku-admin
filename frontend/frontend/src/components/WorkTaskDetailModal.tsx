@@ -3771,11 +3771,22 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
             </Box>
           )}
         </Box>
+        {/* 各番号図面リンク */}
+        <Box sx={{ mt: 1.5 }}>
+          <Button
+            variant="outlined"
+            size="small"
+            href="https://www.city.beppu.oita.jp/seikatu/sumai_tosi/sumai/kijunhou_douro_map.html"
+            target="_blank"
+            rel="noopener noreferrer"
+            sx={{ borderColor: '#00838f', color: '#00838f', '&:hover': { borderColor: '#006064', bgcolor: '#e0f2f1' } }}
+          >
+            🗺️ 各番号図面（別府市公式サイト）
+          </Button>
+        </Box>
       </Box>
     </Box>
   );
-
-  // 契約決済セクション（関数呼び出し形式で再マウントを防ぐ）
   const renderContractSettlementSection = () => (
     <Box sx={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 0, flex: isMobile ? 'none' : 1, minHeight: 0, overflow: isMobile ? 'visible' : 'hidden' }}>
       {/* 左ペイン: 契約書・重説作成 */}
