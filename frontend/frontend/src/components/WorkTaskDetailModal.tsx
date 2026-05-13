@@ -3659,25 +3659,24 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
                   lng = parseFloat(match[2]);
                 }
 
-                // Step2: デフォルト索引図URLを使ってAI判定（バックエンドがURLから画像取得）
-                setBeppuRoadMapError('🤖 AIが道路台帳図を解析中...');
-                const defaultIndexUrl = 'https://sateituikyaku-admin-frontend.vercel.app/beppu-road-map-index.png';
+                // Step2: 計算ベースで番号を判定（AIなし・高速）
+                setBeppuRoadMapError('🔢 座標から番号を計算中...');
                 const aiRes = await fetch(`${API_BASE}/api/hazard/beppu-road-map`, {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ lat, lng, imageUrl: defaultIndexUrl }),
+                  body: JSON.stringify({ lat, lng }),
                 });
                 const aiJson = await aiRes.json();
                 if (aiJson.success && aiJson.pageNo !== null && aiJson.pageNo !== undefined) {
                   setBeppuRoadMapPageNo(aiJson.pageNo);
-                  setBeppuRoadMapError(`✅ AIが「No.${aiJson.pageNo}」と判定しました（修正可能）`);
+                  const confLabel = aiJson.confidence === 'high' ? '✅ 高精度' : aiJson.confidence === 'medium' ? '🟡 中精度' : '🟠 低精度';
+                  setBeppuRoadMapError(`${confLabel}：「No.${aiJson.pageNo}」と判定しました（最近傍No.${aiJson.nearestNo}から${aiJson.distKm?.toFixed(2)}km）`);
                   // 番号をDBに自動保存
                   if (propertyNumber) {
                     await api.put(`/api/work-tasks/${propertyNumber}`, { beppu_road_map_page_no: aiJson.pageNo });
                   }
                 } else {
-                  const detail = typeof aiJson.rawAnswer === 'string' ? aiJson.rawAnswer : JSON.stringify(aiJson);
-                  setBeppuRoadMapError(`⚠️ AIが番号を判定できませんでした（詳細: ${detail}）。手動で入力してください。`);
+                  setBeppuRoadMapError(`⚠️ 番号を判定できませんでした。手動で入力してください。`);
                 }
               } catch (err: any) {
                 setBeppuRoadMapError(`❌ AI解析に失敗しました: ${err?.message || String(err)}`);

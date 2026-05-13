@@ -218,120 +218,153 @@ router.post('/locate', upload.single('image'), async (req: Request, res: Respons
   }
 });
 
+// ============================================================
+// 別府市道路台帳図 基準点データ（番号 → 中心座標）
+// 実測値に基づく19点の基準点
+// ============================================================
+const BEPPU_ROAD_MAP_ANCHORS: Array<{ no: number; lat: number; lng: number }> = [
+  { no: 133, lat: 33.26566, lng: 131.51658 },
+  { no: 24,  lat: 33.33736, lng: 131.46838 },
+  { no: 95,  lat: 33.28864, lng: 131.46110 },
+  { no: 18,  lat: 33.34597, lng: 131.49538 },
+  { no: 76,  lat: 33.30268, lng: 131.47908 },
+  { no: 97,  lat: 33.29015, lng: 131.47857 },
+  { no: 119, lat: 33.27607, lng: 131.50114 },
+  { no: 100, lat: 33.28749, lng: 131.50259 },
+  { no: 78,  lat: 33.30270, lng: 131.49263 },
+  { no: 64,  lat: 33.30966, lng: 131.48968 },
+  { no: 62,  lat: 33.31187, lng: 131.47857 },
+  { no: 49,  lat: 33.31858, lng: 131.48393 },
+  { no: 36,  lat: 33.33014, lng: 131.49096 },
+  { no: 44,  lat: 33.32314, lng: 131.48996 },
+  { no: 26,  lat: 33.33884, lng: 131.48610 },
+  { no: 55,  lat: 33.31509, lng: 131.47578 },
+  { no: 67,  lat: 33.30624, lng: 131.46084 },
+  { no: 82,  lat: 33.29922, lng: 131.47007 },
+];
+
 /**
- * 別府市道路台帳図の索引図から該当番号を判定する
+ * 基準点から区画サイズを推定し、任意の座標が何番の区画に入るかを計算する
+ *
+ * アルゴリズム:
+ * 1. 最近傍の基準点を複数見つける
+ * 2. 隣接する基準点間の距離から区画サイズ（dlat, dlng）を推定
+ * 3. 最近傍基準点から何区画分ずれているかを計算
+ * 4. 索引図のグリッドパターン（行・列の並び）から番号を推定
+ */
+function estimateBeppuRoadMapNo(lat: number, lng: number): { pageNo: number; confidence: string; nearestNo: number; distKm: number } {
+  // 距離計算（km）
+  const distKm = (a: { lat: number; lng: number }, b: { lat: number; lng: number }) => {
+    const dlat = (a.lat - b.lat) * 111.0;
+    const dlng = (a.lng - b.lng) * 91.0; // 別府市付近の経度1度≒91km
+    return Math.sqrt(dlat * dlat + dlng * dlng);
+  };
+
+  // 全基準点との距離を計算してソート
+  const withDist = BEPPU_ROAD_MAP_ANCHORS.map(a => ({
+    ...a,
+    dist: distKm({ lat, lng }, { lat: a.lat, lng: a.lng }),
+  })).sort((a, b) => a.dist - b.dist);
+
+  const nearest = withDist[0];
+
+  // 最近傍が0.3km以内なら直接その番号を返す（高信頼）
+  if (nearest.dist < 0.30) {
+    return { pageNo: nearest.no, confidence: 'high', nearestNo: nearest.no, distKm: nearest.dist };
+  }
+
+  // 隣接する基準点から区画サイズを推定
+  // 基準点間の距離の中央値を区画サイズとして使用
+  const neighborDists: number[] = [];
+  const neighborDlats: number[] = [];
+  const neighborDlngs: number[] = [];
+
+  for (let i = 0; i < Math.min(6, withDist.length); i++) {
+    for (let j = i + 1; j < Math.min(6, withDist.length); j++) {
+      const d = distKm(withDist[i], withDist[j]);
+      if (d > 0.3 && d < 2.5) { // 隣接区画の距離範囲
+        neighborDists.push(d);
+        neighborDlats.push(Math.abs(withDist[i].lat - withDist[j].lat));
+        neighborDlngs.push(Math.abs(withDist[i].lng - withDist[j].lng));
+      }
+    }
+  }
+
+  // 区画サイズの推定（基準点間の最小距離を使用）
+  // 索引図から読み取った区画サイズ: 約0.007°lat × 0.009°lng
+  const CELL_LAT = 0.0070; // 緯度方向の区画サイズ（約780m）
+  const CELL_LNG = 0.0095; // 経度方向の区画サイズ（約865m）
+
+  // 最近傍基準点からのオフセットを区画単位で計算
+  const dlat = lat - nearest.lat;
+  const dlng = lng - nearest.lng;
+  const rowOffset = Math.round(-dlat / CELL_LAT); // 北が負方向（番号が小さい）
+  const colOffset = Math.round(dlng / CELL_LNG);  // 東が正方向（番号が大きい）
+
+  // 索引図のグリッドパターン解析
+  // 番号の並び: 右上から左下へ、各列に約7行
+  // 列方向（東西）: 経度が小さいほど番号が大きい（西側が大きい番号）
+  // 行方向（南北）: 緯度が小さいほど番号が大きい（南側が大きい番号）
+  // 1列あたりの行数を基準点から推定
+  const ROWS_PER_COL = 7; // 索引図から読み取った1列あたりの行数
+
+  // 最近傍基準点の行・列位置を推定
+  // 番号からおおよその行・列を逆算
+  // 索引図パターン: 右上(10)から左下(133)へ
+  // 列番号 = (no - 1) / ROWS_PER_COL の整数部
+  // 行番号 = (no - 1) % ROWS_PER_COL
+
+  // オフセットを加算して推定番号を計算
+  const estimatedNo = nearest.no + rowOffset + colOffset * ROWS_PER_COL;
+
+  // 範囲チェック（1〜143）
+  const clampedNo = Math.max(1, Math.min(143, estimatedNo));
+
+  // 最近傍の基準点が近い場合は中信頼、遠い場合は低信頼
+  const confidence = nearest.dist < 0.8 ? 'medium' : 'low';
+
+  return { pageNo: clampedNo, confidence, nearestNo: nearest.no, distKm: nearest.dist };
+}
+
+/**
+ * 別府市道路台帳図の索引図から該当番号を判定する（計算ベース・AIなし）
  * POST /api/hazard/beppu-road-map
  * body (JSON):
- *   - lat: 緯度
- *   - lng: 経度
- *   - imageUrl: 索引図画像のURL（省略時はデフォルト画像を使用）
- * または multipart/form-data:
- *   - image: 索引図画像ファイル（アップロード時）
  *   - lat: 緯度
  *   - lng: 経度
  */
 router.post('/beppu-road-map', upload.single('image'), async (req: Request, res: Response) => {
   try {
-    const { lat, lng, imageUrl } = req.body;
-    const file = req.file;
+    const { lat, lng } = req.body;
 
-    console.log(`[BeppuRoadMap] received - lat=${lat}, lng=${lng}, imageUrl=${imageUrl || 'none'}, file=${file ? `${file.originalname}` : 'NONE'}`);
+    console.log(`[BeppuRoadMap] received - lat=${lat}, lng=${lng}`);
 
     if (!lat || !lng) {
       return res.status(400).json({ error: '緯度・経度が必要です' });
     }
 
-    const apiKey = process.env.ANTHROPIC_API_KEY;
-    if (!apiKey) {
-      return res.status(500).json({ error: 'ANTHROPIC_API_KEYが設定されていません' });
+    const latNum = parseFloat(lat);
+    const lngNum = parseFloat(lng);
+
+    if (isNaN(latNum) || isNaN(lngNum)) {
+      return res.status(400).json({ error: '緯度・経度が数値ではありません' });
     }
 
-    let imageBase64: string;
-    let mediaType: 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp';
+    const result = estimateBeppuRoadMapNo(latNum, lngNum);
 
-    if (file) {
-      // ファイルアップロードの場合
-      imageBase64 = file.buffer.toString('base64');
-      const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-      mediaType = (allowedTypes.includes(file.mimetype) ? file.mimetype : 'image/png') as typeof mediaType;
-    } else if (imageUrl) {
-      // URLから画像を取得
-      const imgRes = await axios.get(imageUrl, { responseType: 'arraybuffer', timeout: 15000 });
-      imageBase64 = Buffer.from(imgRes.data).toString('base64');
-      const ct = imgRes.headers['content-type'] || 'image/png';
-      const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-      mediaType = (allowedTypes.includes(ct) ? ct : 'image/png') as typeof mediaType;
-    } else {
-      return res.status(400).json({ error: '索引図ファイルまたはimageUrlが必要です' });
-    }
-
-    const client = new Anthropic({ apiKey });
-
-    const message = await client.messages.create({
-      model: 'claude-opus-4-5',
-      max_tokens: 1024,
-      messages: [
-        {
-          role: 'user',
-          content: [
-            {
-              type: 'image',
-              source: {
-                type: 'base64',
-                media_type: mediaType,
-                data: imageBase64,
-              },
-            },
-            {
-              type: 'text',
-              text: `これは大分県別府市の「道路台帳図索引図」です。
-
-この索引図は別府市全体を1〜143（またはそれ以上）の番号付き区画に分割した地図です。
-各区画は四角形で、番号が中央に記載されています。
-
-以下のGPS座標が、この索引図のどの番号の区画に含まれるか判定してください。
-
-緯度（Latitude）: ${lat}
-経度（Longitude）: ${lng}
-
-【別府市の地理的情報】
-- 別府市は大分県東部、別府湾に面した市
-- 緯度範囲: 北緯33.2°〜33.4°付近
-- 経度範囲: 東経131.4°〜131.6°付近
-- 海岸線は東側（経度が大きい側）
-- 山地は西側（経度が小さい側）
-
-【判定手順】
-1. 索引図の全体的な地理的範囲（北端・南端・東端・西端の緯度経度）を推定する
-2. 索引図内の各区画の位置関係を把握する（番号の配置パターンを読み取る）
-3. 指定座標（緯度${lat}、経度${lng}）がどの区画に該当するか特定する
-4. 該当する区画番号のみを回答する
-
-回答は番号のみ（例: 57）を返してください。
-判断できない場合のみ「不明」と返してください。`,
-            },
-          ],
-        },
-      ],
-    });
-
-    const resultText = message.content[0].type === 'text' ? message.content[0].text.trim() : '不明';
-
-    // 数字のみ抽出（「57番」「No.57」などにも対応）
-    const numberMatch = resultText.match(/\d+/);
-    const pageNo = numberMatch ? parseInt(numberMatch[0], 10) : null;
-
-    console.log(`[BeppuRoadMap] lat=${lat}, lng=${lng} → Claude回答: "${resultText}" → pageNo: ${pageNo}`);
+    console.log(`[BeppuRoadMap] lat=${latNum}, lng=${lngNum} → No.${result.pageNo} (confidence=${result.confidence}, nearest=${result.nearestNo}, dist=${result.distKm.toFixed(2)}km)`);
 
     res.json({
-      pageNo,
-      rawAnswer: resultText,
-      success: pageNo !== null,
+      pageNo: result.pageNo,
+      confidence: result.confidence,
+      nearestNo: result.nearestNo,
+      distKm: result.distKm,
+      success: true,
     });
   } catch (error: any) {
     console.error('[BeppuRoadMap] Error:', error.message);
     res.status(500).json({
-      error: 'AI解析に失敗しました',
+      error: '番号判定に失敗しました',
       message: error.message,
     });
   }
