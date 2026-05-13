@@ -890,9 +890,6 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
   const [hazardZenrinFile, setHazardZenrinFile] = useState<File | null>(null);
   const [hazardZenrinImageUrl, setHazardZenrinImageUrl] = useState<string | null>(null);
   const [hazardZenrinPdfUrl, setHazardZenrinPdfUrl] = useState<string | null>(null);
-  const [hazardIndexFile, setHazardIndexFile] = useState<File | null>(null);
-  const [hazardIndexImageUrl, setHazardIndexImageUrl] = useState<string | null>(null);
-  const [hazardIndexPdfUrl, setHazardIndexPdfUrl] = useState<string | null>(null);
   // Google Maps URL → 座標
   const [hazardGmapUrl, setHazardGmapUrl] = useState('');
   const [hazardPageNoLoading, setHazardPageNoLoading] = useState(false);
