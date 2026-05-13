@@ -902,6 +902,10 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
   const [beppuRoadMapAnalyzing, setBeppuRoadMapAnalyzing] = useState(false);
   const [beppuRoadMapError, setBeppuRoadMapError] = useState('');
 
+  // ハザードマップCanvasのズームstate
+  const [hazardZoom, setHazardZoom] = useState(1.0);
+  const hazardViewerRef = useRef<HTMLDivElement>(null);
+
   // ハザード関係 ref（stateより後、useCallbackより前に定義）
   const hazardCanvasRef = useRef<HTMLCanvasElement>(null);
   const hazardPdfBytesRef = useRef<ArrayBuffer | null>(null);
@@ -3544,34 +3548,54 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
         {/* Canvasビューア（PDFレンダリング + 赤丸クリック） */}
         {hazardPdfFile ? (
           <Box sx={{ position: 'relative', border: '2px solid #00838f', borderRadius: 2, overflow: 'hidden' }}>
-            <Typography variant="caption" sx={{ display: 'block', p: 1, bgcolor: '#e0f2f1', color: '#00838f', fontWeight: 600 }}>
-              {hazardLocating
-                ? '🤖 AIが赤丸の位置を特定中...'
-                : hazardCircle
-                  ? '✅ 赤丸を配置しました。ずれている場合はクリックして修正できます'
-                  : '📍 AIが自動で赤丸を配置します。ずれている場合はクリックして修正できます'
-              }
-              {hazardLocating && <CircularProgress size={12} sx={{ ml: 1, color: '#00838f' }} />}
+            <Typography variant="caption" sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', p: 1, bgcolor: '#e0f2f1', color: '#00838f', fontWeight: 600, gap: 1 }}>
+              <span>
+                {hazardLocating
+                  ? '🤖 AIが赤丸の位置を特定中...'
+                  : hazardCircle
+                    ? '✅ 赤丸を配置しました。ずれている場合はクリックして修正できます'
+                    : '📍 地図上をクリックして赤丸を配置してください'
+                }
+                {hazardLocating && <CircularProgress size={12} sx={{ ml: 1, color: '#00838f' }} />}
+              </span>
+              {/* ズームコントロール */}
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, ml: 'auto' }}>
+                <Button size="small" variant="outlined"
+                  onClick={() => setHazardZoom(s => Math.max(0.25, Math.round((s - 0.25) * 10) / 10))}
+                  sx={{ minWidth: 32, px: 0.5, py: 0.2, fontSize: '1rem', borderColor: '#00838f', color: '#00838f' }}>－</Button>
+                <Typography variant="caption" sx={{ minWidth: 40, textAlign: 'center', fontWeight: 700 }}>
+                  {Math.round(hazardZoom * 100)}%
+                </Typography>
+                <Button size="small" variant="outlined"
+                  onClick={() => setHazardZoom(s => Math.min(4, Math.round((s + 0.25) * 10) / 10))}
+                  sx={{ minWidth: 32, px: 0.5, py: 0.2, fontSize: '1rem', borderColor: '#00838f', color: '#00838f' }}>＋</Button>
+                <Button size="small" variant="outlined" onClick={() => setHazardZoom(1)}
+                  sx={{ minWidth: 48, px: 0.5, py: 0.2, fontSize: '0.7rem', borderColor: '#00838f', color: '#00838f' }}>リセット</Button>
+              </Box>
               {hazardCircle && !hazardLocating && (
-                <Button
-                  variant="contained"
-                  size="small"
-                  onClick={handleDownloadHazardPdf}
-                  sx={{ ml: 2, bgcolor: '#e53935', '&:hover': { bgcolor: '#b71c1c' }, fontSize: '0.75rem', py: 0.3 }}
-                >
+                <Button variant="contained" size="small" onClick={handleDownloadHazardPdf}
+                  sx={{ bgcolor: '#e53935', '&:hover': { bgcolor: '#b71c1c' }, fontSize: '0.75rem', py: 0.3 }}>
                   💾 PDFとして保存
                 </Button>
               )}
             </Typography>
             <Box
               sx={{ position: 'relative', cursor: 'crosshair', overflow: 'auto', maxHeight: isMobile ? '60vh' : '70vh' }}
+              ref={hazardViewerRef}
+              onWheel={(e) => {
+                e.preventDefault();
+                setHazardZoom(prev => {
+                  const delta = e.deltaY < 0 ? 0.1 : -0.1;
+                  return Math.min(4.0, Math.max(0.25, Math.round((prev + delta) * 10) / 10));
+                });
+              }}
               onClick={(e) => {
                 const canvas = hazardCanvasRef.current;
                 if (!canvas) return;
                 const rect = canvas.getBoundingClientRect();
+                // ズーム倍率を考慮して実際のCanvas上の座標を計算
                 const x = ((e.clientX - rect.left) / rect.width) * 100;
                 const y = ((e.clientY - rect.top) / rect.height) * 100;
-                // 一旦PDFを再描画してから赤丸を描く
                 if (hazardPdfBytesRef.current) {
                   renderPdfToCanvas(hazardPdfBytesRef.current).then(() => {
                     setHazardCircle({ x, y });
@@ -3581,7 +3605,12 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
             >
               <canvas
                 ref={hazardCanvasRef}
-                style={{ width: '100%', display: 'block' }}
+                style={{
+                  width: `${hazardZoom * 100}%`,
+                  display: 'block',
+                  transformOrigin: 'top left',
+                  transition: 'width 0.15s ease',
+                }}
               />
             </Box>
           </Box>

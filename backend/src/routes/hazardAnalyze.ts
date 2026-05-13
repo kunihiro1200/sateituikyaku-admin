@@ -554,12 +554,9 @@ ${landmarkNames}
 });
 
 /**
- * ゼンリン地図（赤い印付き）とハザードマップを比較して赤丸位置を特定
+ * ゼンリン地図とハザードマップから複数ランドマークを抽出し
+ * アフィン変換で正確な赤丸位置を特定
  * POST /api/hazard/locate-by-zenrin
- * multipart/form-data:
- *   - hazard: ハザードマップ画像
- *   - zenrin: ゼンリン地図画像（赤い印付き）
- *   - address: 物件住所（任意）
  */
 router.post('/locate-by-zenrin', upload.fields([
   { name: 'hazard', maxCount: 1 },
@@ -583,69 +580,187 @@ router.post('/locate-by-zenrin', upload.fields([
     const hazardBase64 = hazardFile.buffer.toString('base64');
     const zenrinBase64 = zenrinFile.buffer.toString('base64');
     const hazardMediaType = 'image/png' as const;
-    const zenrinMediaType = ((['image/jpeg','image/png','image/gif','image/webp'].includes(zenrinFile.mimetype)
-      ? zenrinFile.mimetype : 'image/png') as 'image/jpeg'|'image/png'|'image/gif'|'image/webp');
+    const zenrinMediaType = (['image/jpeg','image/png','image/gif','image/webp'].includes(zenrinFile.mimetype)
+      ? zenrinFile.mimetype : 'image/png') as 'image/jpeg'|'image/png'|'image/gif'|'image/webp';
 
     const client = new Anthropic({ apiKey });
 
-    const message = await client.messages.create({
+    // Step1: ゼンリン地図から複数ランドマーク位置 + 物件（赤い印）位置を抽出
+    const zenrinMsg = await client.messages.create({
       model: 'claude-opus-4-5',
-      max_tokens: 512,
+      max_tokens: 1024,
       messages: [{
         role: 'user',
         content: [
-          {
-            type: 'text',
-            text: '【画像1】はゼンリン地図です。赤い印（マーク）が付いています。',
-          },
           {
             type: 'image',
             source: { type: 'base64', media_type: zenrinMediaType, data: zenrinBase64 },
           },
           {
             type: 'text',
-            text: '【画像2】はハザードマップの詳細地図です。',
+            text: `これはゼンリン地図です。
+${address ? `物件住所: ${address}` : ''}
+
+この地図から以下を抽出してください：
+1. 地図上に書かれている施設名・道路名・地名などのランドマークを5〜10個
+2. 各ランドマークの画像上の位置（左上を(0,0)、右下を(100,100)としたx%, y%）
+3. 赤い印（物件マーク）の位置（x%, y%）
+
+必ず以下のJSON形式のみで回答してください：
+{
+  "landmarks": [
+    {"name": "施設名や道路名", "x": 数値, "y": 数値},
+    ...
+  ],
+  "target": {"x": 数値, "y": 数値}
+}`,
           },
+        ],
+      }],
+    });
+
+    const zenrinText = zenrinMsg.content[0].type === 'text' ? zenrinMsg.content[0].text.trim() : '';
+    console.log(`[HazardLocateByZenrin] ゼンリン解析: ${zenrinText}`);
+
+    const zenrinJsonMatch = zenrinText.match(/\{[\s\S]*\}/);
+    if (!zenrinJsonMatch) {
+      return res.status(500).json({ error: 'ゼンリン地図の解析に失敗しました', rawAnswer: zenrinText });
+    }
+    const zenrinData = JSON.parse(zenrinJsonMatch[0]);
+    const zenrinLandmarks: Array<{name: string; x: number; y: number}> = zenrinData.landmarks || [];
+    const zenrinTarget: {x: number; y: number} = zenrinData.target || { x: 50, y: 50 };
+
+    if (zenrinLandmarks.length < 2) {
+      return res.status(500).json({ error: 'ランドマークが不足しています', rawAnswer: zenrinText });
+    }
+
+    // Step2: ハザードマップから同じランドマークの位置を抽出
+    const landmarkNames = zenrinLandmarks.map(l => l.name).join('、');
+    const hazardMsg = await client.messages.create({
+      model: 'claude-opus-4-5',
+      max_tokens: 1024,
+      messages: [{
+        role: 'user',
+        content: [
           {
             type: 'image',
             source: { type: 'base64', media_type: hazardMediaType, data: hazardBase64 },
           },
           {
             type: 'text',
-            text: `ゼンリン地図（画像1）の赤い印の場所が、ハザードマップ（画像2）のどの位置に該当するか特定してください。
-${address ? `物件住所: ${address}` : ''}
+            text: `これはハザードマップの詳細地図です。
 
-両方の地図に共通して写っている道路・河川・施設名などのランドマークを手がかりに、
-ゼンリン地図の赤い印と同じ場所がハザードマップ上のどこにあるかを判断してください。
+以下のランドマークがこの地図上のどこにあるか、それぞれの位置（x%, y%）を答えてください。
+左上を(0,0)、右下を(100,100)とします。
 
-ハザードマップ画像（画像2）の左上を(0,0)、右下を(100,100)として、
-該当位置のx%, y%を答えてください。
+ランドマーク一覧: ${landmarkNames}
 
-必ず以下のJSON形式のみで回答してください（説明不要）:
-{"x": 数値, "y": 数値}
+地図上に見つからないランドマークはnullとしてください。
 
-例: {"x": 65.5, "y": 42.3}`,
+必ず以下のJSON形式のみで回答してください：
+{
+  "landmarks": [
+    {"name": "施設名", "x": 数値または null, "y": 数値または null},
+    ...
+  ]
+}`,
           },
         ],
       }],
     });
 
-    const resultText = message.content[0].type === 'text' ? message.content[0].text.trim() : '{"x":50,"y":50}';
-    console.log(`[HazardLocateByZenrin] address="${address}" → Claude回答: "${resultText}"`);
+    const hazardText = hazardMsg.content[0].type === 'text' ? hazardMsg.content[0].text.trim() : '';
+    console.log(`[HazardLocateByZenrin] ハザード解析: ${hazardText}`);
 
-    const jsonMatch = resultText.match(/\{[\s\S]*?\}/);
-    let x = 50, y = 50;
-    if (jsonMatch) {
-      try {
-        const parsed = JSON.parse(jsonMatch[0]);
-        x = typeof parsed.x === 'number' ? Math.min(100, Math.max(0, parsed.x)) : 50;
-        y = typeof parsed.y === 'number' ? Math.min(100, Math.max(0, parsed.y)) : 50;
-      } catch {
-        console.warn('[HazardLocateByZenrin] JSON parse failed');
+    const hazardJsonMatch = hazardText.match(/\{[\s\S]*\}/);
+    if (!hazardJsonMatch) {
+      return res.status(500).json({ error: 'ハザードマップの解析に失敗しました', rawAnswer: hazardText });
+    }
+    const hazardData = JSON.parse(hazardJsonMatch[0]);
+    const hazardLandmarks: Array<{name: string; x: number|null; y: number|null}> = hazardData.landmarks || [];
+
+    // Step3: 共通ランドマークでアフィン変換行列を計算
+    const pairs: Array<{zx: number; zy: number; hx: number; hy: number}> = [];
+    for (const zl of zenrinLandmarks) {
+      const hl = hazardLandmarks.find(h => h.name === zl.name);
+      if (hl && hl.x !== null && hl.y !== null) {
+        pairs.push({ zx: zl.x, zy: zl.y, hx: hl.x, hy: hl.y });
       }
     }
 
-    res.json({ x, y, rawAnswer: resultText });
+    console.log(`[HazardLocateByZenrin] 対応点数: ${pairs.length}`);
+
+    let resultX = 50, resultY = 50;
+
+    if (pairs.length >= 3) {
+      // 最小二乗法でアフィン変換 [hx, hy] = A * [zx, zy, 1]
+      // 簡易実装: 重み付き平均による補間
+      const n = pairs.length;
+      let sumZx = 0, sumZy = 0, sumHx = 0, sumHy = 0;
+      let sumZxZx = 0, sumZxZy = 0, sumZyZy = 0;
+      let sumZxHx = 0, sumZyHx = 0, sumZxHy = 0, sumZyHy = 0;
+      for (const p of pairs) {
+        sumZx += p.zx; sumZy += p.zy; sumHx += p.hx; sumHy += p.hy;
+        sumZxZx += p.zx * p.zx; sumZxZy += p.zx * p.zy; sumZyZy += p.zy * p.zy;
+        sumZxHx += p.zx * p.hx; sumZyHx += p.zy * p.hx;
+        sumZxHy += p.zx * p.hy; sumZyHy += p.zy * p.hy;
+      }
+      // アフィン変換: hx = a*zx + b*zy + c, hy = d*zx + e*zy + f
+      // 正規方程式を解く（3x3連立方程式）
+      const A = [
+        [sumZxZx, sumZxZy, sumZx],
+        [sumZxZy, sumZyZy, sumZy],
+        [sumZx,   sumZy,   n    ],
+      ];
+      const bx = [sumZxHx, sumZyHx, sumHx];
+      const by = [sumZxHy, sumZyHy, sumHy];
+
+      // ガウス消去法
+      const solve = (mat: number[][], b: number[]): number[] => {
+        const m = mat.map((row, i) => [...row, b[i]]);
+        for (let i = 0; i < 3; i++) {
+          let maxRow = i;
+          for (let k = i+1; k < 3; k++) if (Math.abs(m[k][i]) > Math.abs(m[maxRow][i])) maxRow = k;
+          [m[i], m[maxRow]] = [m[maxRow], m[i]];
+          for (let k = i+1; k < 3; k++) {
+            const f = m[k][i] / m[i][i];
+            for (let j = i; j <= 3; j++) m[k][j] -= f * m[i][j];
+          }
+        }
+        const x = [0, 0, 0];
+        for (let i = 2; i >= 0; i--) {
+          x[i] = m[i][3];
+          for (let j = i+1; j < 3; j++) x[i] -= m[i][j] * x[j];
+          x[i] /= m[i][i];
+        }
+        return x;
+      };
+
+      const [a, b, c] = solve(A, bx);
+      const [d, e, f] = solve(A, by);
+
+      resultX = a * zenrinTarget.x + b * zenrinTarget.y + c;
+      resultY = d * zenrinTarget.x + e * zenrinTarget.y + f;
+      resultX = Math.min(100, Math.max(0, resultX));
+      resultY = Math.min(100, Math.max(0, resultY));
+      console.log(`[HazardLocateByZenrin] アフィン変換結果: x=${resultX.toFixed(1)}, y=${resultY.toFixed(1)}`);
+    } else if (pairs.length >= 1) {
+      // 対応点が少ない場合は平均オフセットで補正
+      const avgOffsetX = pairs.reduce((s, p) => s + (p.hx - p.zx), 0) / pairs.length;
+      const avgOffsetY = pairs.reduce((s, p) => s + (p.hy - p.zy), 0) / pairs.length;
+      resultX = Math.min(100, Math.max(0, zenrinTarget.x + avgOffsetX));
+      resultY = Math.min(100, Math.max(0, zenrinTarget.y + avgOffsetY));
+      console.log(`[HazardLocateByZenrin] オフセット補正: x=${resultX.toFixed(1)}, y=${resultY.toFixed(1)}`);
+    }
+
+    res.json({
+      x: resultX,
+      y: resultY,
+      pairsCount: pairs.length,
+      zenrinTarget,
+      rawZenrin: zenrinText,
+      rawHazard: hazardText,
+    });
   } catch (error: any) {
     console.error('[HazardLocateByZenrin] Error:', error.message);
     res.status(500).json({ error: 'AI解析に失敗しました', message: error.message });
