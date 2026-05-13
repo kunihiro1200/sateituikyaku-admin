@@ -869,6 +869,12 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
   const [tokiKodateDialog, setTokiKodateDialog] = useState(false);
   const [tokiKodateWriteLoading, setTokiKodateWriteLoading] = useState(false);
 
+  // ハザード関係タブのstate
+  const [hazardPdfFile, setHazardPdfFile] = useState<File | null>(null);
+  const [hazardPdfUrl, setHazardPdfUrl] = useState<string | null>(null);
+  const [hazardCircle, setHazardCircle] = useState<{ x: number; y: number } | null>(null);
+  const [hazardPageNo, setHazardPageNo] = useState<number | null>(null);
+
   // 謄本（土地用）のstate
   const [tokiTochiLoading, setTokiTochiLoading] = useState(false);
   const [tokiTochiResult, setTokiTochiResult] = useState<any>(null);
@@ -3064,6 +3070,132 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
     </Grid>
   );
 
+  // ハザード関係セクション
+  const renderHazardSection = () => (
+    <Box sx={{ p: 2, display: 'flex', flexDirection: 'column', gap: 3 }}>
+      {/* 索引図エリア */}
+      <Box>
+        <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#00838f', mb: 1 }}>
+          🗺️ ハザードマップ索引図
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          物件住所のGoogle MapsリンクからハザードマップのページNo.を特定します。
+        </Typography>
+
+        {/* 物件住所・地図番号表示エリア */}
+        <Box sx={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 2, mb: 3 }}>
+          <Box sx={{ flex: 1, p: 2, border: '1px solid #b2dfdb', borderRadius: 2, bgcolor: '#e0f2f1' }}>
+            <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>物件住所</Typography>
+            <Typography variant="body1" sx={{ fontWeight: 700, mt: 0.5 }}>
+              {data?.property_address || '（住所未登録）'}
+            </Typography>
+          </Box>
+          <Box sx={{ flex: 1, p: 2, border: '1px solid #b2dfdb', borderRadius: 2, bgcolor: '#e0f2f1', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+            <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>ハザードマップ 該当ページNo.</Typography>
+            <Typography variant="h3" sx={{ fontWeight: 900, color: '#00838f', mt: 0.5 }}>
+              {hazardPageNo ?? '—'}
+            </Typography>
+          </Box>
+        </Box>
+      </Box>
+
+      {/* PDFアップロード・表示エリア */}
+      <Box>
+        <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#00838f', mb: 1 }}>
+          📄 ハザードマップPDF
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          該当ページのPDFを手動でアップロードしてください。アップロード後、赤丸で場所を指定できます。
+        </Typography>
+
+        {/* PDFアップロードボタン */}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+          <Button
+            variant="outlined"
+            component="label"
+            sx={{ borderColor: '#00838f', color: '#00838f', '&:hover': { borderColor: '#006064', bgcolor: '#e0f2f1' } }}
+          >
+            📂 PDFを選択
+            <input
+              type="file"
+              accept="application/pdf"
+              hidden
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) {
+                  setHazardPdfFile(file);
+                  setHazardPdfUrl(URL.createObjectURL(file));
+                  setHazardCircle(null);
+                }
+              }}
+            />
+          </Button>
+          {hazardPdfFile && (
+            <Typography variant="body2" color="text.secondary">
+              {hazardPdfFile.name}
+            </Typography>
+          )}
+        </Box>
+
+        {/* PDFビューア + 赤丸クリック */}
+        {hazardPdfUrl && (
+          <Box sx={{ position: 'relative', border: '2px solid #00838f', borderRadius: 2, overflow: 'hidden' }}>
+            <Typography variant="caption" sx={{ display: 'block', p: 1, bgcolor: '#e0f2f1', color: '#00838f', fontWeight: 600 }}>
+              📍 地図上をクリックすると赤丸でマーキングできます
+              {hazardCircle && (
+                <Button
+                  size="small"
+                  onClick={() => setHazardCircle(null)}
+                  sx={{ ml: 2, color: '#e53935', fontSize: '0.7rem' }}
+                >
+                  赤丸を削除
+                </Button>
+              )}
+            </Typography>
+            <Box
+              sx={{ position: 'relative', cursor: 'crosshair' }}
+              onClick={(e) => {
+                const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                const x = ((e.clientX - rect.left) / rect.width) * 100;
+                const y = ((e.clientY - rect.top) / rect.height) * 100;
+                setHazardCircle({ x, y });
+              }}
+            >
+              <iframe
+                src={hazardPdfUrl + '#toolbar=0&navpanes=0'}
+                style={{ width: '100%', height: isMobile ? '60vh' : '70vh', border: 'none', display: 'block', pointerEvents: 'none' }}
+                title="ハザードマップPDF"
+              />
+              {/* 赤丸オーバーレイ */}
+              {hazardCircle && (
+                <Box
+                  sx={{
+                    position: 'absolute',
+                    left: `calc(${hazardCircle.x}% - 20px)`,
+                    top: `calc(${hazardCircle.y}% - 20px)`,
+                    width: 40,
+                    height: 40,
+                    borderRadius: '50%',
+                    border: '4px solid #e53935',
+                    bgcolor: 'rgba(229, 57, 53, 0.15)',
+                    pointerEvents: 'none',
+                    boxShadow: '0 0 0 2px rgba(229,57,53,0.4)',
+                  }}
+                />
+              )}
+            </Box>
+          </Box>
+        )}
+
+        {!hazardPdfUrl && (
+          <Box sx={{ p: 4, border: '2px dashed #b2dfdb', borderRadius: 2, textAlign: 'center', color: '#80cbc4' }}>
+            <Typography variant="body2">PDFがまだアップロードされていません</Typography>
+          </Box>
+        )}
+      </Box>
+    </Box>
+  );
+
   // 契約決済セクション（関数呼び出し形式で再マウントを防ぐ）
   const renderContractSettlementSection = () => (
     <Box sx={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 0, flex: isMobile ? 'none' : 1, minHeight: 0, overflow: isMobile ? 'visible' : 'hidden' }}>
@@ -4061,7 +4193,7 @@ ${pageUrl}`;
     </Box>
   );
 
-  const tabLabels = ['媒介契約', 'サイト登録', '契約決済', '売主、買主詳細'];
+  const tabLabels = ['媒介契約', 'サイト登録', '契約決済', 'ハザード関係', '売主、買主詳細'];
 
   return (
     <>
@@ -4166,7 +4298,7 @@ ${pageUrl}`;
                   {tokiTochiLoading ? '読取中...' : '📄 謄本'}
                 </Button>
               )}
-              {(tabIndex === 2 || tabIndex === 3) && (
+              {(tabIndex === 2 || tabIndex === 4) && (
                 <Button variant="contained" size="small" disabled={!getValue('spreadsheet_url')}
                   onClick={() => { const url = getValue('spreadsheet_url'); if (url) window.open(buildLedgerSheetUrl(url), '_blank', 'noopener,noreferrer'); }}
                   sx={{ whiteSpace: 'nowrap', fontWeight: 700, bgcolor: '#1e8e3e', '&:hover': { bgcolor: '#166d30' }, fontSize: '0.75rem', px: 1, py: 0.4, minWidth: 0 }}
@@ -4390,7 +4522,7 @@ ${pageUrl}`;
                     {tokiTochiLoading ? '読取中...' : '📄 謄本'}
                   </Button>
                 )}
-                {(tabIndex === 2 || tabIndex === 3) && (
+                {(tabIndex === 2 || tabIndex === 4) && (
                   <Button
                     variant="contained"
                     size="small"
@@ -4506,7 +4638,7 @@ ${pageUrl}`;
                 sx={{
                   fontWeight: 700,
                   bgcolor: [
-                    '#2e7d32', '#1565c0', '#e65100', '#6a1b9a'
+                    '#2e7d32', '#1565c0', '#e65100', '#00838f', '#6a1b9a'
                   ][tabIndex],
                   color: '#fff',
                   '& .MuiSelect-icon': { color: '#fff' },
@@ -4532,7 +4664,8 @@ ${pageUrl}`;
                 '& .MuiTab-root:nth-of-type(1)': { bgcolor: '#2e7d32' },
                 '& .MuiTab-root:nth-of-type(2)': { bgcolor: '#1565c0' },
                 '& .MuiTab-root:nth-of-type(3)': { bgcolor: '#e65100' },
-                '& .MuiTab-root:nth-of-type(4)': { bgcolor: '#6a1b9a' },
+                '& .MuiTab-root:nth-of-type(4)': { bgcolor: '#00838f' },
+                '& .MuiTab-root:nth-of-type(5)': { bgcolor: '#6a1b9a' },
                 '& .Mui-selected': {
                   color: '#fff !important',
                   fontWeight: 800,
@@ -4547,7 +4680,7 @@ ${pageUrl}`;
             </Tabs>
           )}
         </Box>
-        <DialogContent sx={{ p: 0, flex: (tabIndex === 3 && isMobile) ? 'none' : 1, overflow: (tabIndex === 3 && !isMobile) ? 'hidden' : 'auto', display: 'flex', flexDirection: 'column', minHeight: (tabIndex === 3 && isMobile) ? 'unset' : 0 }}>
+        <DialogContent sx={{ p: 0, flex: (tabIndex === 4 && isMobile) ? 'none' : 1, overflow: (tabIndex === 4 && !isMobile) ? 'hidden' : 'auto', display: 'flex', flexDirection: 'column', minHeight: (tabIndex === 4 && isMobile) ? 'unset' : 0 }}>
           {loading ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', flex: 1 }}>
               <CircularProgress />
@@ -4565,7 +4698,8 @@ ${pageUrl}`;
                   : <SiteRegistrationSection cwCounts={cwCounts} leftPaneRef={leftPaneRef} rightPaneRef={rightPaneRef} propertyFileRef={propertyFileRef} storageUrlRef={storageUrlRef} />
               )}
               {tabIndex === 2 && renderContractSettlementSection()}
-              {tabIndex === 3 && <Box sx={isMobile ? { width: '100%' } : { flex: 1, display: 'flex', minHeight: 0, height: '100%', width: '100%', overflow: 'hidden' }}>{renderSellerBuyerDetailSection()}</Box>}
+              {tabIndex === 3 && renderHazardSection()}
+              {tabIndex === 4 && <Box sx={isMobile ? { width: '100%' } : { flex: 1, display: 'flex', minHeight: 0, height: '100%', width: '100%', overflow: 'hidden' }}>{renderSellerBuyerDetailSection()}</Box>}
             </>
           )}
         </DialogContent>
