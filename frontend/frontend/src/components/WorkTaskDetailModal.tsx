@@ -876,6 +876,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
   const [hazardPdfUrl, setHazardPdfUrl] = useState<string | null>(null);
   const [hazardCircle, setHazardCircle] = useState<{ x: number; y: number } | null>(null);
   const [hazardPageNo, setHazardPageNo] = useState<number | null>(null);
+  const [hazardLocating, setHazardLocating] = useState(false); // 赤丸位置特定中
   // 索引図
   const [hazardIndexFile, setHazardIndexFile] = useState<File | null>(null);
   const [hazardIndexImageUrl, setHazardIndexImageUrl] = useState<string | null>(null);
@@ -3409,6 +3410,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
 
                 // 座標が取得済みであればClaudeで赤丸位置を自動判定
                 if (hazardResolvedLat !== null && hazardResolvedLng !== null) {
+                  setHazardLocating(true);
                   try {
                     const API_BASE = import.meta.env.MODE === 'production'
                       ? 'https://sateituikyaku-admin-backend.vercel.app'
@@ -3429,11 +3431,12 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
                     });
                     const aiJson = await aiRes.json();
                     if (typeof aiJson.x === 'number' && typeof aiJson.y === 'number') {
-                      // 赤丸を自動セット（useEffectでdrawCircleOnCanvasが呼ばれる）
                       setHazardCircle({ x: aiJson.x, y: aiJson.y });
                     }
                   } catch (err) {
                     console.error('AI locate error', err);
+                  } finally {
+                    setHazardLocating(false);
                   }
                 }
               }}
@@ -3466,7 +3469,23 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
         {hazardPdfFile ? (
           <Box sx={{ position: 'relative', border: '2px solid #00838f', borderRadius: 2, overflow: 'hidden' }}>
             <Typography variant="caption" sx={{ display: 'block', p: 1, bgcolor: '#e0f2f1', color: '#00838f', fontWeight: 600 }}>
-              📍 AIが自動で赤丸を配置します。ずれている場合はクリックして修正できます
+              {hazardLocating
+                ? '🤖 AIが赤丸の位置を特定中...'
+                : hazardCircle
+                  ? '✅ 赤丸を配置しました。ずれている場合はクリックして修正できます'
+                  : '📍 AIが自動で赤丸を配置します。ずれている場合はクリックして修正できます'
+              }
+              {hazardLocating && <CircularProgress size={12} sx={{ ml: 1, color: '#00838f' }} />}
+              {hazardCircle && !hazardLocating && (
+                <Button
+                  variant="contained"
+                  size="small"
+                  onClick={handleDownloadHazardPdf}
+                  sx={{ ml: 2, bgcolor: '#e53935', '&:hover': { bgcolor: '#b71c1c' }, fontSize: '0.75rem', py: 0.3 }}
+                >
+                  💾 PDFとして保存
+                </Button>
+              )}
             </Typography>
             <Box
               sx={{ position: 'relative', cursor: 'crosshair', overflow: 'auto', maxHeight: isMobile ? '60vh' : '70vh' }}
