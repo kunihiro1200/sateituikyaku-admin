@@ -3244,27 +3244,70 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
                 const API_BASE = import.meta.env.MODE === 'production'
                   ? 'https://sateituikyaku-admin-backend.vercel.app'
                   : (import.meta.env.VITE_API_URL || 'http://localhost:3000');
+
+                // Step1: 短縮URL → 座標取得
                 const res = await fetch(`${API_BASE}/api/url-redirect/resolve?url=${encodeURIComponent(hazardGmapUrl)}`);
                 const json = await res.json();
                 const redirected: string = json.redirectedUrl || hazardGmapUrl;
-                // 座標を抽出 @lat,lng
                 const match = redirected.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
-                if (match) {
-                  setHazardResolvedLat(parseFloat(match[1]));
-                  setHazardResolvedLng(parseFloat(match[2]));
-                  setHazardPageNoError('座標を取得しました。索引図と照らし合わせて番号を手動で入力してください。');
-                } else {
+                if (!match) {
                   setHazardPageNoError('座標を取得できませんでした。URLを確認してください。');
+                  return;
+                }
+                const lat = parseFloat(match[1]);
+                const lng = parseFloat(match[2]);
+                setHazardResolvedLat(lat);
+                setHazardResolvedLng(lng);
+
+                // Step2: 索引図がアップロードされていればClaudeで番号を自動判定
+                if (hazardIndexFile) {
+                  setHazardPageNoError('🤖 AIが索引図を解析中...');
+                  const formData = new FormData();
+                  // 索引図がPDFの場合はCanvasで画像化してから送る
+                  if (hazardIndexFile.type === 'application/pdf') {
+                    // PDFを一時Canvasにレンダリングして画像化
+                    const buf = await hazardIndexFile.arrayBuffer();
+                    const pdfjsLib = await import('pdfjs-dist');
+                    pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+                    const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+                    const page = await pdf.getPage(1);
+                    const viewport = page.getViewport({ scale: 1.5 });
+                    const tmpCanvas = document.createElement('canvas');
+                    tmpCanvas.width = viewport.width;
+                    tmpCanvas.height = viewport.height;
+                    const ctx = tmpCanvas.getContext('2d')!;
+                    await page.render({ canvasContext: ctx, viewport }).promise;
+                    const blob = await new Promise<Blob>((resolve) => tmpCanvas.toBlob(b => resolve(b!), 'image/png'));
+                    formData.append('image', blob, 'index.png');
+                  } else {
+                    formData.append('image', hazardIndexFile);
+                  }
+                  formData.append('lat', String(lat));
+                  formData.append('lng', String(lng));
+
+                  const aiRes = await fetch(`${API_BASE}/api/hazard/analyze`, {
+                    method: 'POST',
+                    body: formData,
+                  });
+                  const aiJson = await aiRes.json();
+                  if (aiJson.pageNo !== null && aiJson.pageNo !== undefined) {
+                    setHazardPageNo(aiJson.pageNo);
+                    setHazardPageNoError(`✅ AIが「No.${aiJson.pageNo}」と判定しました（修正可能）`);
+                  } else {
+                    setHazardPageNoError('⚠️ AIが番号を判定できませんでした。手動で入力してください。');
+                  }
+                } else {
+                  setHazardPageNoError('📌 座標を取得しました。索引図をアップロードするとAIが番号を自動判定します。');
                 }
               } catch {
-                setHazardPageNoError('URL解決に失敗しました。');
+                setHazardPageNoError('URL解決またはAI解析に失敗しました。');
               } finally {
                 setHazardPageNoLoading(false);
               }
             }}
             sx={{ whiteSpace: 'nowrap', bgcolor: '#00838f', '&:hover': { bgcolor: '#006064' }, minWidth: 120 }}
           >
-            {hazardPageNoLoading ? <CircularProgress size={18} color="inherit" /> : '座標を取得'}
+            {hazardPageNoLoading ? <CircularProgress size={18} color="inherit" /> : '🤖 AI判定'}
           </Button>
         </Box>
 
@@ -3307,7 +3350,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
           📄 ③ 詳細ハザードマップPDF（赤丸マーキング）
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          該当ページのPDFをアップロードし、地図上をクリックして赤丸でマーキングしてください。完了後PDFとして保存できます。
+          該当ページのPDFをアップロードすると、AIが自動で赤丸位置を判定します。位置がずれている場合は地図上をクリックして修正できます。完了後PDFとして保存できます。
         </Typography>
 
         {/* PDFアップロードボタン */}
@@ -3329,7 +3372,38 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
                 setHazardCircle(null);
                 const buf = await file.arrayBuffer();
                 hazardPdfBytesRef.current = buf;
+                // PDFをCanvasにレンダリング
                 await renderPdfToCanvas(buf);
+
+                // 座標が取得済みであればClaudeで赤丸位置を自動判定
+                if (hazardResolvedLat !== null && hazardResolvedLng !== null) {
+                  try {
+                    const API_BASE = import.meta.env.MODE === 'production'
+                      ? 'https://sateituikyaku-admin-backend.vercel.app'
+                      : (import.meta.env.VITE_API_URL || 'http://localhost:3000');
+
+                    // CanvasをPNG画像として取得
+                    const canvas = hazardCanvasRef.current;
+                    if (!canvas) return;
+                    const blob = await new Promise<Blob>((resolve) => canvas.toBlob(b => resolve(b!), 'image/png'));
+                    const formData = new FormData();
+                    formData.append('image', blob, 'detail.png');
+                    formData.append('lat', String(hazardResolvedLat));
+                    formData.append('lng', String(hazardResolvedLng));
+
+                    const aiRes = await fetch(`${API_BASE}/api/hazard/locate`, {
+                      method: 'POST',
+                      body: formData,
+                    });
+                    const aiJson = await aiRes.json();
+                    if (typeof aiJson.x === 'number' && typeof aiJson.y === 'number') {
+                      // 赤丸を自動セット（useEffectでdrawCircleOnCanvasが呼ばれる）
+                      setHazardCircle({ x: aiJson.x, y: aiJson.y });
+                    }
+                  } catch (err) {
+                    console.error('AI locate error', err);
+                  }
+                }
               }}
             />
           </Button>
@@ -3360,7 +3434,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
         {hazardPdfFile ? (
           <Box sx={{ position: 'relative', border: '2px solid #00838f', borderRadius: 2, overflow: 'hidden' }}>
             <Typography variant="caption" sx={{ display: 'block', p: 1, bgcolor: '#e0f2f1', color: '#00838f', fontWeight: 600 }}>
-              📍 地図上をクリックすると赤丸でマーキングできます
+              📍 AIが自動で赤丸を配置します。ずれている場合はクリックして修正できます
             </Typography>
             <Box
               sx={{ position: 'relative', cursor: 'crosshair', overflow: 'auto', maxHeight: isMobile ? '60vh' : '70vh' }}
