@@ -155,6 +155,8 @@ interface WorkTaskData {
   contract_to_settlement_admin_staff: string;
   contract_to_settlement_admin_approver: string;
   contract_to_settlement_admin_person: string;
+  beppu_road_map_image_url: string;
+  beppu_road_map_page_no: number | null;
   [key: string]: any;
 }
 
@@ -1035,6 +1037,18 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
       });
     return () => { cancelled = true; };
   }, [open, propertyNumber]);
+
+  // データロード後、別府市道路台帳図の保存済みデータを復元
+  useEffect(() => {
+    if (!data) return;
+    if (data.beppu_road_map_image_url) {
+      setBeppuRoadMapSavedUrl(data.beppu_road_map_image_url);
+      setBeppuRoadMapPreviewUrl(null); // 保存済みURLを使用するのでプレビューはリセット
+    }
+    if (data.beppu_road_map_page_no != null) {
+      setBeppuRoadMapPageNo(Number(data.beppu_road_map_page_no));
+    }
+  }, [data]);
 
   // データロード後、通常仲介手数料を売買価格から自動計算してeditedDataに反映
   useEffect(() => {
