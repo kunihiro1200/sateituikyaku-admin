@@ -3500,12 +3500,12 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
                     formData.append('zenrin', zenrinBlob, 'zenrin.png');
                     if (data?.property_address) formData.append('address', data.property_address);
 
-                    const aiRes = await fetch(`${API_BASE}/api/hazard/locate-by-zenrin`, {
+                    const aiRes = await fetch(`${API_BASE}/api/hazard/locate-by-landmark`, {
                       method: 'POST',
                       body: formData,
                     });
                     const aiJson = await aiRes.json();
-                    console.log('[HazardLocate] response:', aiJson);
+                    console.log('[HazardLocate] response:', aiJson, `method=${aiJson.method}, correspondences=${aiJson.correspondences}`);
                     if (typeof aiJson.x === 'number' && typeof aiJson.y === 'number') {
                       setHazardCircle({ x: aiJson.x, y: aiJson.y });
                     }

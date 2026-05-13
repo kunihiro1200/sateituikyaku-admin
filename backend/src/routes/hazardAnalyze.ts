@@ -338,6 +338,222 @@ router.post('/beppu-road-map', upload.single('image'), async (req: Request, res:
 });
 
 /**
+ * ランドマーク照合によるアフィン変換で赤丸位置を精密特定
+ * POST /api/hazard/locate-by-landmark
+ * multipart/form-data:
+ *   - hazard: ハザードマップ画像
+ *   - zenrin: ゼンリン地図画像（赤い印付き）
+ *   - address: 物件住所（任意）
+ *
+ * 処理フロー:
+ * 1. ゼンリン地図から複数ランドマークの位置(x%,y%)と赤い印の位置を取得
+ * 2. ハザードマップから同じランドマークの位置(x%,y%)を取得
+ * 3. 対応点からアフィン変換行列を計算（最小二乗法）
+ * 4. ゼンリンの赤い印位置をハザードマップ座標に変換
+ */
+router.post('/locate-by-landmark', upload.fields([
+  { name: 'hazard', maxCount: 1 },
+  { name: 'zenrin', maxCount: 1 },
+]), async (req: Request, res: Response) => {
+  try {
+    const files = req.files as { [fieldname: string]: Express.Multer.File[] };
+    const hazardFile = files?.['hazard']?.[0];
+    const zenrinFile = files?.['zenrin']?.[0];
+    const address = req.body.address || '';
+
+    if (!hazardFile || !zenrinFile) {
+      return res.status(400).json({ error: 'ハザードマップとゼンリン地図の両方が必要です' });
+    }
+
+    const apiKey = process.env.ANTHROPIC_API_KEY;
+    if (!apiKey) {
+      return res.status(500).json({ error: 'ANTHROPIC_API_KEYが設定されていません' });
+    }
+
+    const hazardBase64 = hazardFile.buffer.toString('base64');
+    const zenrinBase64 = zenrinFile.buffer.toString('base64');
+    const toMediaType = (mime: string) =>
+      (['image/jpeg','image/png','image/gif','image/webp'].includes(mime) ? mime : 'image/png') as
+      'image/jpeg'|'image/png'|'image/gif'|'image/webp';
+
+    const client = new Anthropic({ apiKey });
+
+    // --- Step1: ゼンリン地図からランドマーク位置と赤い印位置を取得 ---
+    const zenrinMsg = await client.messages.create({
+      model: 'claude-opus-4-5',
+      max_tokens: 1024,
+      messages: [{
+        role: 'user',
+        content: [
+          {
+            type: 'image',
+            source: { type: 'base64', media_type: toMediaType(zenrinFile.mimetype), data: zenrinBase64 },
+          },
+          {
+            type: 'text',
+            text: `これはゼンリン地図です。${address ? `物件住所: ${address}` : ''}
+
+以下の2つを特定してください：
+
+1. 地図上の赤い印（マーク・十字・ピン等）の位置
+2. 地図上に記載されている施設名・道路名・建物名などのランドマーク（できるだけ多く、最低5個）
+
+画像の左上を(0,0)、右下を(100,100)として各位置のx%, y%を答えてください。
+
+必ず以下のJSON形式のみで回答してください：
+{
+  "redMark": {"x": 数値, "y": 数値},
+  "landmarks": [
+    {"name": "施設名や道路名", "x": 数値, "y": 数値},
+    {"name": "施設名や道路名", "x": 数値, "y": 数値}
+  ]
+}`,
+          },
+        ],
+      }],
+    });
+
+    const zenrinText = zenrinMsg.content[0].type === 'text' ? zenrinMsg.content[0].text.trim() : '';
+    console.log(`[HazardLandmark] Step1 ゼンリン解析: ${zenrinText}`);
+
+    const zenrinJsonMatch = zenrinText.match(/\{[\s\S]*\}/);
+    if (!zenrinJsonMatch) {
+      return res.status(500).json({ error: 'ゼンリン地図の解析に失敗しました', rawAnswer: zenrinText });
+    }
+    const zenrinData = JSON.parse(zenrinJsonMatch[0]);
+    const zenrinRedMark: {x:number,y:number} = zenrinData.redMark;
+    const zenrinLandmarks: Array<{name:string,x:number,y:number}> = zenrinData.landmarks || [];
+
+    if (!zenrinRedMark || zenrinLandmarks.length < 2) {
+      return res.status(500).json({ error: 'ゼンリン地図からランドマークを十分取得できませんでした', rawAnswer: zenrinText });
+    }
+
+    // --- Step2: ハザードマップから同じランドマーク位置を取得 ---
+    const landmarkNames = zenrinLandmarks.map(l => `「${l.name}」`).join('、');
+    const hazardMsg = await client.messages.create({
+      model: 'claude-opus-4-5',
+      max_tokens: 1024,
+      messages: [{
+        role: 'user',
+        content: [
+          {
+            type: 'image',
+            source: { type: 'base64', media_type: toMediaType(hazardFile.mimetype), data: hazardBase64 },
+          },
+          {
+            type: 'text',
+            text: `これはハザードマップの詳細地図です。
+
+以下のランドマークがこの地図上のどこにあるか特定してください：
+${landmarkNames}
+
+画像の左上を(0,0)、右下を(100,100)として各位置のx%, y%を答えてください。
+地図上に見当たらないランドマークはnullにしてください。
+
+必ず以下のJSON形式のみで回答してください：
+{
+  "landmarks": [
+    {"name": "施設名や道路名", "x": 数値または null, "y": 数値または null},
+    ...
+  ]
+}`,
+          },
+        ],
+      }],
+    });
+
+    const hazardText = hazardMsg.content[0].type === 'text' ? hazardMsg.content[0].text.trim() : '';
+    console.log(`[HazardLandmark] Step2 ハザード解析: ${hazardText}`);
+
+    const hazardJsonMatch = hazardText.match(/\{[\s\S]*\}/);
+    if (!hazardJsonMatch) {
+      return res.status(500).json({ error: 'ハザードマップの解析に失敗しました', rawAnswer: hazardText });
+    }
+    const hazardData = JSON.parse(hazardJsonMatch[0]);
+    const hazardLandmarks: Array<{name:string,x:number|null,y:number|null}> = hazardData.landmarks || [];
+
+    // --- Step3: 対応点を収集してアフィン変換行列を計算 ---
+    // ゼンリンとハザードで共通して見つかったランドマークのみ使用
+    const correspondences: Array<{zx:number,zy:number,hx:number,hy:number}> = [];
+    for (const zl of zenrinLandmarks) {
+      const hl = hazardLandmarks.find(h => h.name === zl.name && h.x !== null && h.y !== null);
+      if (hl && hl.x !== null && hl.y !== null) {
+        correspondences.push({ zx: zl.x, zy: zl.y, hx: hl.x, hy: hl.y });
+      }
+    }
+
+    console.log(`[HazardLandmark] 対応点数: ${correspondences.length}`);
+
+    if (correspondences.length < 3) {
+      // 対応点が少ない場合は単純な平均オフセットで補正
+      if (correspondences.length >= 1) {
+        const avgDx = correspondences.reduce((s,c) => s + (c.hx - c.zx), 0) / correspondences.length;
+        const avgDy = correspondences.reduce((s,c) => s + (c.hy - c.zy), 0) / correspondences.length;
+        const x = Math.min(100, Math.max(0, zenrinRedMark.x + avgDx));
+        const y = Math.min(100, Math.max(0, zenrinRedMark.y + avgDy));
+        console.log(`[HazardLandmark] オフセット補正: dx=${avgDx.toFixed(1)}, dy=${avgDy.toFixed(1)} → (${x.toFixed(1)}, ${y.toFixed(1)})`);
+        return res.json({ x, y, method: 'offset', correspondences: correspondences.length });
+      }
+      return res.status(500).json({ error: '共通ランドマークが不足しています', correspondences: correspondences.length });
+    }
+
+    // アフィン変換: [hx, hy] = A * [zx, zy, 1]^T を最小二乗法で解く
+    // 行列形式: Ax = b
+    // [zx1 zy1 1] [a]   [hx1]
+    // [zx2 zy2 1] [b] = [hx2]  (x方向)
+    // [zx3 zy3 1] [c]   [hx3]
+    const n = correspondences.length;
+
+    // 最小二乗法で a,b,c を求める（x方向）
+    const solveAffine = (src: number[][], dst: number[]): number[] => {
+      // 正規方程式 (A^T A) x = A^T b
+      let AtA = [[0,0,0],[0,0,0],[0,0,0]];
+      let Atb = [0,0,0];
+      for (let i = 0; i < src.length; i++) {
+        const [s0, s1, s2] = src[i];
+        const d = dst[i];
+        AtA[0][0] += s0*s0; AtA[0][1] += s0*s1; AtA[0][2] += s0*s2;
+        AtA[1][0] += s1*s0; AtA[1][1] += s1*s1; AtA[1][2] += s1*s2;
+        AtA[2][0] += s2*s0; AtA[2][1] += s2*s1; AtA[2][2] += s2*s2;
+        Atb[0] += s0*d; Atb[1] += s1*d; Atb[2] += s2*d;
+      }
+      // 3x3逆行列を使って解く
+      const det = AtA[0][0]*(AtA[1][1]*AtA[2][2]-AtA[1][2]*AtA[2][1])
+                - AtA[0][1]*(AtA[1][0]*AtA[2][2]-AtA[1][2]*AtA[2][0])
+                + AtA[0][2]*(AtA[1][0]*AtA[2][1]-AtA[1][1]*AtA[2][0]);
+      if (Math.abs(det) < 1e-10) return [0,0,0];
+      const inv = [
+        [(AtA[1][1]*AtA[2][2]-AtA[1][2]*AtA[2][1])/det, -(AtA[0][1]*AtA[2][2]-AtA[0][2]*AtA[2][1])/det, (AtA[0][1]*AtA[1][2]-AtA[0][2]*AtA[1][1])/det],
+        [-(AtA[1][0]*AtA[2][2]-AtA[1][2]*AtA[2][0])/det, (AtA[0][0]*AtA[2][2]-AtA[0][2]*AtA[2][0])/det, -(AtA[0][0]*AtA[1][2]-AtA[0][2]*AtA[1][0])/det],
+        [(AtA[1][0]*AtA[2][1]-AtA[1][1]*AtA[2][0])/det, -(AtA[0][0]*AtA[2][1]-AtA[0][1]*AtA[2][0])/det, (AtA[0][0]*AtA[1][1]-AtA[0][1]*AtA[1][0])/det],
+      ];
+      return [
+        inv[0][0]*Atb[0]+inv[0][1]*Atb[1]+inv[0][2]*Atb[2],
+        inv[1][0]*Atb[0]+inv[1][1]*Atb[1]+inv[1][2]*Atb[2],
+        inv[2][0]*Atb[0]+inv[2][1]*Atb[1]+inv[2][2]*Atb[2],
+      ];
+    };
+
+    const srcMatrix = correspondences.map(c => [c.zx, c.zy, 1]);
+    const [ax, bx, cx] = solveAffine(srcMatrix, correspondences.map(c => c.hx));
+    const [ay, by, cy] = solveAffine(srcMatrix, correspondences.map(c => c.hy));
+
+    // ゼンリンの赤い印位置をアフィン変換
+    const hx = ax * zenrinRedMark.x + bx * zenrinRedMark.y + cx;
+    const hy = ay * zenrinRedMark.x + by * zenrinRedMark.y + cy;
+    const x = Math.min(100, Math.max(0, hx));
+    const y = Math.min(100, Math.max(0, hy));
+
+    console.log(`[HazardLandmark] アフィン変換結果: ゼンリン赤印(${zenrinRedMark.x},${zenrinRedMark.y}) → ハザード(${x.toFixed(1)},${y.toFixed(1)}), 対応点数=${correspondences.length}`);
+
+    res.json({ x, y, method: 'affine', correspondences: correspondences.length, zenrinRedMark });
+  } catch (error: any) {
+    console.error('[HazardLandmark] Error:', error.message);
+    res.status(500).json({ error: 'AI解析に失敗しました', message: error.message });
+  }
+});
+
+/**
  * ゼンリン地図（赤い印付き）とハザードマップを比較して赤丸位置を特定
  * POST /api/hazard/locate-by-zenrin
  * multipart/form-data:
