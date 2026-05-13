@@ -963,6 +963,7 @@ app.use('/api/management-rules', managementRulesRoutes); // 管理規約解析AP
 app.use('/api/mansion-jyucho', mansionJyuchoRoutes); // マンション重調解析API（認証不要 - /api catchallより前に登録）
 app.use('/api/toki-extract', tokiExtractRoutes); // 謄本読み取りAPI（認証不要 - /api catchallより前に登録）
 app.use('/api/scraped-urls', scrapedUrlsRoutes); // スクレイピングURL重複チェック（認証不要 - /api catchallより前に登録）
+app.use('/api/hazard', hazardAnalyzeRoutes); // ハザードマップAI解析（認証不要 - /api catchallより前に登録）
 app.use('/api', inquiryHistoryRoutes);
 app.use('/api/audit-logs', auditLogRoutes);
 app.use('/api/property-listing-sync', propertyListingSyncRoutes);
@@ -970,7 +971,6 @@ app.use('/api/staff-sync', staffSyncRoutes); // スタッフ同期API
 app.use('/api/nearby-map', nearbyMapRoutes); // 近隣MAPapi
 app.use('/api/property-preview', propertyPreviewRoutes); // 物件プレビュー（認証不要・公開）
 app.use('/api/ai', aiPropertyEnhanceRoutes); // AI物件情報解析（認証不要）
-app.use('/api/hazard', hazardAnalyzeRoutes); // ハザードマップAI解析（認証不要）
 
 // Cron Job: 買主の建売専門HP価格変動チェック（毎日実行）
 app.post('/api/cron/check-property-prices', async (req, res) => {

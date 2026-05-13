@@ -885,6 +885,15 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
   const [hazardResolvedLat, setHazardResolvedLat] = useState<number | null>(null);
   const [hazardResolvedLng, setHazardResolvedLng] = useState<number | null>(null);
 
+  // 別府市道路台帳図のstate
+  const [beppuRoadMapFile, setBeppuRoadMapFile] = useState<File | null>(null);
+  const [beppuRoadMapPreviewUrl, setBeppuRoadMapPreviewUrl] = useState<string | null>(null);
+  const [beppuRoadMapSavedUrl, setBeppuRoadMapSavedUrl] = useState<string | null>(null);
+  const [beppuRoadMapPageNo, setBeppuRoadMapPageNo] = useState<number | null>(null);
+  const [beppuRoadMapUploading, setBeppuRoadMapUploading] = useState(false);
+  const [beppuRoadMapAnalyzing, setBeppuRoadMapAnalyzing] = useState(false);
+  const [beppuRoadMapError, setBeppuRoadMapError] = useState('');
+
   // ハザード関係 ref（stateより後、useCallbackより前に定義）
   const hazardCanvasRef = useRef<HTMLCanvasElement>(null);
   const hazardPdfBytesRef = useRef<ArrayBuffer | null>(null);
@@ -894,9 +903,8 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
   const renderPdfToCanvas = React.useCallback(async (arrayBuffer: ArrayBuffer) => {
     try {
       const pdfjsLib = await import('pdfjs-dist');
-      // pdfjs-dist 4.x: ローカルのworkerファイルを使用
-      const workerUrl = new URL('pdfjs-dist/build/pdf.worker.min.mjs', import.meta.url).href;
-      pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl;
+      // pdfjs-dist 4.4.168 対応の固定CDN URL
+      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://unpkg.com/pdfjs-dist@4.4.168/build/pdf.worker.min.mjs';
       const pdf = await pdfjsLib.getDocument({ data: arrayBuffer.slice(0) }).promise;
       const page = await pdf.getPage(1);
       const viewport = page.getViewport({ scale: 2.0 });
@@ -3271,8 +3279,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
                     // PDFを一時Canvasにレンダリングして画像化
                     const buf = await hazardIndexFile.arrayBuffer();
                     const pdfjsLib = await import('pdfjs-dist');
-                    const workerUrl2 = new URL('pdfjs-dist/build/pdf.worker.min.mjs', import.meta.url).href;
-                    pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl2;
+                    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://unpkg.com/pdfjs-dist@4.4.168/build/pdf.worker.min.mjs';
                     const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
                     const page = await pdf.getPage(1);
                     const viewport = page.getViewport({ scale: 1.5 });
@@ -3472,6 +3479,209 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
         ) : (
           <Box sx={{ p: 4, border: '2px dashed #b2dfdb', borderRadius: 2, textAlign: 'center', color: '#80cbc4' }}>
             <Typography variant="body2">PDFがまだアップロードされていません</Typography>
+          </Box>
+        )}
+      </Box>
+
+      {/* ④ 別府市道路台帳図 */}
+      <Box>
+        <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#00838f', mb: 1 }}>
+          🗺️ ④ 別府市道路台帳図
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          別府市道路台帳図の画像をアップロードして保存します。上記のGoogle Maps URLを入力してAI判定ボタンを押すと、該当する番号を自動判定します。
+        </Typography>
+
+        {/* 画像アップロード */}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2, flexWrap: 'wrap' }}>
+          <Button
+            variant="outlined"
+            component="label"
+            disabled={beppuRoadMapUploading}
+            sx={{ borderColor: '#00838f', color: '#00838f', '&:hover': { borderColor: '#006064', bgcolor: '#e0f2f1' } }}
+          >
+            📂 画像を選択
+            <input
+              type="file"
+              accept="image/*"
+              hidden
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                setBeppuRoadMapFile(file);
+                setBeppuRoadMapPreviewUrl(URL.createObjectURL(file));
+                setBeppuRoadMapError('');
+              }}
+            />
+          </Button>
+          {beppuRoadMapFile && (
+            <Typography variant="body2" color="text.secondary">{beppuRoadMapFile.name}</Typography>
+          )}
+          {/* アップロード＆保存ボタン */}
+          <Button
+            variant="contained"
+            disabled={!beppuRoadMapFile || beppuRoadMapUploading}
+            onClick={async () => {
+              if (!beppuRoadMapFile || !propertyNumber) return;
+              setBeppuRoadMapUploading(true);
+              setBeppuRoadMapError('');
+              try {
+                const timestamp = Date.now();
+                const ext = beppuRoadMapFile.name.includes('.') ? '.' + beppuRoadMapFile.name.split('.').pop() : '.png';
+                const filePath = `beppu-road-map/${propertyNumber}_${timestamp}${ext}`;
+                const { error: uploadError } = await supabase.storage
+                  .from('shared-items')
+                  .upload(filePath, beppuRoadMapFile, { contentType: beppuRoadMapFile.type, upsert: false });
+                if (uploadError) throw new Error(`アップロード失敗: ${uploadError.message}`);
+                const { data: urlData } = supabase.storage.from('shared-items').getPublicUrl(filePath);
+                const publicUrl = urlData.publicUrl;
+                setBeppuRoadMapSavedUrl(publicUrl);
+                // DBに保存
+                await api.put(`/api/work-tasks/${propertyNumber}`, {
+                  beppu_road_map_image_url: publicUrl,
+                  ...(beppuRoadMapPageNo !== null ? { beppu_road_map_page_no: beppuRoadMapPageNo } : {}),
+                });
+                setBeppuRoadMapError('✅ 画像を保存しました');
+              } catch (err: any) {
+                setBeppuRoadMapError(`❌ 保存に失敗しました: ${err?.message || String(err)}`);
+              } finally {
+                setBeppuRoadMapUploading(false);
+              }
+            }}
+            sx={{ bgcolor: '#00838f', '&:hover': { bgcolor: '#006064' }, whiteSpace: 'nowrap' }}
+          >
+            {beppuRoadMapUploading ? <CircularProgress size={18} color="inherit" /> : '💾 保存'}
+          </Button>
+        </Box>
+
+        {/* AI判定ボタン（GMAPURLが入力済みの場合のみ有効） */}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2, flexWrap: 'wrap' }}>
+          <Button
+            variant="outlined"
+            disabled={!hazardGmapUrl || beppuRoadMapAnalyzing || !(beppuRoadMapFile || beppuRoadMapSavedUrl)}
+            onClick={async () => {
+              setBeppuRoadMapAnalyzing(true);
+              setBeppuRoadMapError('');
+              try {
+                const API_BASE = import.meta.env.MODE === 'production'
+                  ? 'https://sateituikyaku-admin-backend.vercel.app'
+                  : (import.meta.env.VITE_API_URL || 'http://localhost:3000');
+
+                // Step1: GMAPURLから座標を取得（既に取得済みの場合はそれを使用）
+                let lat = hazardResolvedLat;
+                let lng = hazardResolvedLng;
+                if (lat === null || lng === null) {
+                  const res = await fetch(`${API_BASE}/api/url-redirect/resolve?url=${encodeURIComponent(hazardGmapUrl)}`);
+                  const json = await res.json();
+                  const redirected: string = json.redirectedUrl || hazardGmapUrl;
+                  const match = redirected.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+                  if (!match) {
+                    setBeppuRoadMapError('⚠️ 座標を取得できませんでした。Google Maps URLを確認してください。');
+                    return;
+                  }
+                  lat = parseFloat(match[1]);
+                  lng = parseFloat(match[2]);
+                }
+
+                // Step2: 道路台帳図画像でAI判定
+                setBeppuRoadMapError('🤖 AIが道路台帳図を解析中...');
+                const formData = new FormData();
+                if (beppuRoadMapFile) {
+                  formData.append('image', beppuRoadMapFile);
+                } else if (beppuRoadMapSavedUrl) {
+                  // 保存済みURLから画像を取得
+                  const imgRes = await fetch(beppuRoadMapSavedUrl);
+                  const imgBlob = await imgRes.blob();
+                  formData.append('image', imgBlob, 'road_map.png');
+                }
+                formData.append('lat', String(lat));
+                formData.append('lng', String(lng));
+
+                const aiRes = await fetch(`${API_BASE}/api/hazard/analyze`, {
+                  method: 'POST',
+                  body: formData,
+                });
+                const aiJson = await aiRes.json();
+                if (aiJson.success && aiJson.pageNo !== null && aiJson.pageNo !== undefined) {
+                  setBeppuRoadMapPageNo(aiJson.pageNo);
+                  setBeppuRoadMapError(`✅ AIが「No.${aiJson.pageNo}」と判定しました（修正可能）`);
+                  // 番号もDBに保存
+                  if (propertyNumber) {
+                    await api.put(`/api/work-tasks/${propertyNumber}`, { beppu_road_map_page_no: aiJson.pageNo });
+                  }
+                } else {
+                  const detail = typeof aiJson.rawAnswer === 'string' ? aiJson.rawAnswer : JSON.stringify(aiJson);
+                  setBeppuRoadMapError(`⚠️ AIが番号を判定できませんでした（詳細: ${detail}）。手動で入力してください。`);
+                }
+              } catch (err: any) {
+                setBeppuRoadMapError(`❌ AI解析に失敗しました: ${err?.message || String(err)}`);
+              } finally {
+                setBeppuRoadMapAnalyzing(false);
+              }
+            }}
+            sx={{ borderColor: '#00838f', color: '#00838f', '&:hover': { borderColor: '#006064', bgcolor: '#e0f2f1' }, whiteSpace: 'nowrap' }}
+          >
+            {beppuRoadMapAnalyzing ? <CircularProgress size={18} color="inherit" /> : '🤖 AI判定（番号を自動判定）'}
+          </Button>
+          {!hazardGmapUrl && (
+            <Typography variant="caption" color="text.secondary">
+              ※ 上の「② Google Maps URL」を入力するとAI判定が使えます
+            </Typography>
+          )}
+          {!(beppuRoadMapFile || beppuRoadMapSavedUrl) && hazardGmapUrl && (
+            <Typography variant="caption" color="text.secondary">
+              ※ 画像を選択または保存済み画像が必要です
+            </Typography>
+          )}
+        </Box>
+
+        {/* エラー・ステータスメッセージ */}
+        {beppuRoadMapError && (
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>{beppuRoadMapError}</Typography>
+        )}
+
+        {/* 番号入力 */}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+          <Typography variant="body2" sx={{ fontWeight: 600 }}>該当番号（手動入力）:</Typography>
+          <TextField
+            size="small"
+            type="number"
+            value={beppuRoadMapPageNo ?? ''}
+            onChange={(e) => {
+              const val = e.target.value ? Number(e.target.value) : null;
+              setBeppuRoadMapPageNo(val);
+            }}
+            onBlur={async () => {
+              if (propertyNumber && beppuRoadMapPageNo !== null) {
+                try {
+                  await api.put(`/api/work-tasks/${propertyNumber}`, { beppu_road_map_page_no: beppuRoadMapPageNo });
+                } catch { /* 保存失敗は無視 */ }
+              }
+            }}
+            sx={{ width: 100 }}
+            inputProps={{ min: 1 }}
+          />
+          {beppuRoadMapPageNo !== null && (
+            <Box sx={{ px: 2, py: 0.5, bgcolor: '#00838f', borderRadius: 2 }}>
+              <Typography variant="h5" sx={{ fontWeight: 900, color: '#fff' }}>
+                No. {beppuRoadMapPageNo}
+              </Typography>
+            </Box>
+          )}
+        </Box>
+
+        {/* 画像プレビュー */}
+        {(beppuRoadMapPreviewUrl || beppuRoadMapSavedUrl) ? (
+          <Box sx={{ border: '1px solid #b2dfdb', borderRadius: 2, overflow: 'hidden' }}>
+            <img
+              src={beppuRoadMapPreviewUrl || beppuRoadMapSavedUrl || ''}
+              alt="別府市道路台帳図"
+              style={{ width: '100%', display: 'block' }}
+            />
+          </Box>
+        ) : (
+          <Box sx={{ p: 3, border: '2px dashed #b2dfdb', borderRadius: 2, textAlign: 'center', color: '#80cbc4' }}>
+            <Typography variant="body2">別府市道路台帳図がまだアップロードされていません</Typography>
           </Box>
         )}
       </Box>
