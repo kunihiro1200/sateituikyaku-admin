@@ -3291,11 +3291,16 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
                   });
                   const aiJson = await aiRes.json();
                   console.log('[HazardAnalyze] response:', aiJson);
-                  if (aiJson.pageNo !== null && aiJson.pageNo !== undefined) {
+                  if (aiJson.success && aiJson.pageNo !== null && aiJson.pageNo !== undefined) {
                     setHazardPageNo(aiJson.pageNo);
                     setHazardPageNoError(`✅ AIが「No.${aiJson.pageNo}」と判定しました（修正可能）`);
                   } else {
-                    setHazardPageNoError(`⚠️ AIが番号を判定できませんでした（AI回答: "${aiJson.rawAnswer || aiJson.error || '不明'}"）。手動で入力してください。`);
+                    const detail = typeof aiJson.rawAnswer === 'string'
+                      ? aiJson.rawAnswer
+                      : typeof aiJson.error === 'string'
+                        ? aiJson.error
+                        : JSON.stringify(aiJson);
+                    setHazardPageNoError(`⚠️ AIが番号を判定できませんでした（詳細: ${detail}）。手動で入力してください。`);
                   }
                 } else {
                   setHazardPageNoError('📌 座標を取得しました。索引図をアップロードするとAIが番号を自動判定します。');

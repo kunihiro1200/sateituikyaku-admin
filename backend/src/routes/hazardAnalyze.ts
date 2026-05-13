@@ -23,8 +23,10 @@ router.post('/analyze', upload.single('image'), async (req: Request, res: Respon
     const { lat, lng } = req.body;
     const file = req.file;
 
+    console.log(`[HazardAnalyze] received - lat=${lat}, lng=${lng}, file=${file ? `${file.originalname} (${file.mimetype}, ${file.size}bytes)` : 'NONE'}`);
+
     if (!file) {
-      return res.status(400).json({ error: '索引図ファイルが必要です' });
+      return res.status(400).json({ error: '索引図ファイルが必要です', detail: 'file is undefined - check multipart/form-data field name "image"' });
     }
     if (!lat || !lng) {
       return res.status(400).json({ error: '緯度・経度が必要です' });
@@ -37,7 +39,9 @@ router.post('/analyze', upload.single('image'), async (req: Request, res: Respon
 
     // 画像をbase64に変換
     const imageBase64 = file.buffer.toString('base64');
-    const mediaType = (file.mimetype as 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp') || 'image/jpeg';
+    // mimetypeを安全なAnthropicの型に変換
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    const mediaType = (allowedTypes.includes(file.mimetype) ? file.mimetype : 'image/png') as 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp';
 
     const client = new Anthropic({ apiKey });
 
@@ -92,6 +96,7 @@ router.post('/analyze', upload.single('image'), async (req: Request, res: Respon
     res.json({
       pageNo,
       rawAnswer: resultText,
+      success: pageNo !== null,
     });
   } catch (error: any) {
     console.error('[HazardAnalyze] Error:', error.message);
