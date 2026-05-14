@@ -103,10 +103,11 @@ const normalizeDateString = (dateStr: string | Date | undefined | null): string 
     let dateString: string;
     
     if (dateStr instanceof Date) {
-      // Dateオブジェクトの場合、ローカル日付を取得
-      const year = dateStr.getFullYear();
-      const month = String(dateStr.getMonth() + 1).padStart(2, '0');
-      const day = String(dateStr.getDate()).padStart(2, '0');
+      // UTC基準で日付文字列を生成（Vercel UTC環境との一致を保証）
+      // getFullYear()はローカルタイム依存のため使用しない
+      const year = dateStr.getUTCFullYear();
+      const month = String(dateStr.getUTCMonth() + 1).padStart(2, '0');
+      const day = String(dateStr.getUTCDate()).padStart(2, '0');
       dateString = `${year}-${month}-${day}`;
     } else {
       dateString = dateStr;

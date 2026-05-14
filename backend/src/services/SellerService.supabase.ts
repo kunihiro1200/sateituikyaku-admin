@@ -18,6 +18,15 @@ import { CalendarService } from './CalendarService.supabase';
 import { ExclusionDateCalculator } from './ExclusionDateCalculator';
 import { SyncQueue } from './SyncQueue';
 import { createClient } from '@supabase/supabase-js';
+import {
+  hasValidVisitAssignee as sharedHasValidVisitAssignee,
+  isFiSeller as sharedIsFiSeller,
+  isTodayCallNotStarted as sharedIsTodayCallNotStarted,
+  isTodayCallNoInfo as sharedIsTodayCallNoInfo,
+  isTodayCallWithInfo as sharedIsTodayCallWithInfo,
+  isUnvaluated as sharedIsUnvaluated,
+  getTodayCallWithInfoLabel as sharedGetTodayCallWithInfoLabel,
+} from '../utils/sellerCategoryFilters';
 
 // モジュールレベルのインメモリキャッシュ（プロセス内で持続、Redis 不要）
 // Vercel サーバーレスでは同一プロセス内のリクエスト間でキャッシュが共有される
@@ -1792,75 +1801,41 @@ export class SellerService extends BaseRepository {
       })();
 
       finalSellers = decryptedSellers.filter((s: any) => {
-        const status = s.status || '';
-        // visitAssigneeInitials = 元のイニシャル（visitAssigneeはフルネームに変換済みのため使わない）
-        const visitAssigneeInitials = (s.visitAssigneeInitials || '').trim();
-        const hasValidAssignee = visitAssigneeInitials !== '' && visitAssigneeInitials !== '外す';
-        // nextCallDateは文字列
-        const nextCallDate = (s.nextCallDate || '').substring(0, 10);
-        const hasInfo = (s.phoneContactPerson || '').trim() ||
-                        (s.preferredContactTime || '').trim() ||
-                        (s.contactMethod || '').trim();
-        const unreachable = (s.unreachableStatus || '').trim();
-        const confidence = s.confidenceLevel || s.confidence || '';
-        // inquiryDateはDateオブジェクトなので文字列に変換
-        const inquiryDateRaw = s.inquiryDate;
-        const inquiryDate = inquiryDateRaw instanceof Date
-          ? `${inquiryDateRaw.getFullYear()}-${String(inquiryDateRaw.getMonth() + 1).padStart(2, '0')}-${String(inquiryDateRaw.getDate()).padStart(2, '0')}`
-          : (typeof inquiryDateRaw === 'string' ? inquiryDateRaw.substring(0, 10) : '');
+        // decryptSeller経由のデータ（camelCase）をsnake_case形式に正規化して共通関数に渡す
+        const inquiryDateRaw = s.inquiryDate || s.inquiry_date;
+        const normalized = {
+          status: s.status || '',
+          next_call_date: (s.nextCallDate || s.next_call_date || '').substring(0, 10) || null,
+          visit_assignee: s.visitAssigneeInitials || s.visit_assignee_initials || null,
+          phone_contact_person: s.phoneContactPerson || s.phone_contact_person || null,
+          preferred_contact_time: s.preferredContactTime || s.preferred_contact_time || null,
+          contact_method: s.contactMethod || s.contact_method || null,
+          unreachable_status: s.unreachableStatus || s.unreachable_status || null,
+          confidence_level: s.confidenceLevel || s.confidence_level || s.confidence || null,
+          // inquiryDateはDateオブジェクト（decryptSeller経由）の場合はUTC基準で文字列化
+          inquiry_date: inquiryDateRaw instanceof Date
+            ? `${inquiryDateRaw.getUTCFullYear()}-${String(inquiryDateRaw.getUTCMonth() + 1).padStart(2, '0')}-${String(inquiryDateRaw.getUTCDate()).padStart(2, '0')}`
+            : (typeof inquiryDateRaw === 'string' ? inquiryDateRaw.substring(0, 10) : null),
+          seller_number: s.sellerNumber || s.seller_number || null,
+          valuation_amount_1: s.valuationAmount1 || s.valuation_amount_1 || null,
+          valuation_amount_2: s.valuationAmount2 || s.valuation_amount_2 || null,
+          valuation_amount_3: s.valuationAmount3 || s.valuation_amount_3 || null,
+          valuation_method: s.valuationMethod || s.valuation_method || null,
+        };
 
         if (fiSubCat === 'todayCallNotStarted') {
-          // 当日TEL_未着手: 営担なし + 追客中 + 次電日今日以前 + コミュニケーション情報なし + 不通空 + 確度OK + 反響日2026/1/1以降
-          if (hasValidAssignee) return false;
-          if (!status.includes('追客中') || status.includes('追客不要')) return false;
-          if (!nextCallDate || nextCallDate > todayJSTStr) return false;
-          if (hasInfo) return false;
-          if (unreachable) return false;
-          if (confidence === 'ダブり' || confidence === 'D' || confidence === 'AI査定') return false;
-          if (!inquiryDate || inquiryDate < '2026-01-01') return false;
-          return status === '追客中'; // 完全一致（除外後追客中・他決→追客は除外）
-
+          return sharedIsTodayCallNotStarted(normalized, todayJSTStr);
         } else if (fiSubCat === 'todayCall') {
-          // 当日TEL分: 営担なし + 追客中系 + 次電日今日以前 + コミュニケーション情報なし + 未着手除外
-          if (hasValidAssignee) return false;
-          if (!status.includes('追客中') || status.includes('追客不要')) return false;
-          if (status !== '追客中' && status !== '他決→追客') return false;
-          if (!nextCallDate || nextCallDate > todayJSTStr) return false;
-          if (hasInfo) return false;
-          // 未着手条件を満たす場合は todayCall から除外
-          if (status === '追客中' && !unreachable && confidence !== 'ダブり' && confidence !== 'D' && confidence !== 'AI査定' && inquiryDate >= '2026-01-01') return false;
-          return true;
-
+          return sharedIsTodayCallNoInfo(normalized, todayJSTStr);
         } else if (fiSubCat === 'todayCallWithInfo' || fiSubCat.startsWith('todayCallWithInfo:')) {
-          // 当日TEL（内容）: 営担なし + 追客中系 + 次電日今日以前 + コミュニケーション情報あり
-          if (hasValidAssignee) return false;
-          if (!status.includes('追客中') || status.includes('追客不要')) return false;
-          if (!nextCallDate || nextCallDate > todayJSTStr) return false;
-          if (!hasInfo) return false;
+          if (!sharedIsTodayCallWithInfo(normalized, todayJSTStr)) return false;
           if (fiSubCat.startsWith('todayCallWithInfo:')) {
             const targetLabel = fiSubCat.replace('todayCallWithInfo:', '');
-            const parts: string[] = [];
-            const isValidVal = (v: string | null | undefined) => !!(v && v.trim() !== '' && v.trim().toLowerCase() !== 'null');
-            if (isValidVal(s.phoneContactPerson || s.phone_contact_person)) parts.push((s.phoneContactPerson || s.phone_contact_person).trim());
-            if (isValidVal(s.preferredContactTime || s.preferred_contact_time)) parts.push((s.preferredContactTime || s.preferred_contact_time).trim());
-            if (isValidVal(s.contactMethod || s.contact_method)) parts.push((s.contactMethod || s.contact_method).trim());
-            const label = parts.length > 0 ? `当日TEL(${parts.join('・')})` : '当日TEL（内容）';
-            return label === targetLabel;
+            return sharedGetTodayCallWithInfoLabel(normalized) === targetLabel;
           }
           return true;
-
         } else if (fiSubCat === 'unvaluated') {
-          // 未査定: 営担なし + 追客中 + 査定額なし + 反響日2025/12/8以降
-          if (hasValidAssignee) return false;
-          if (!status.includes('追客中') || status.includes('追客不要')) return false;
-          if (!inquiryDate || inquiryDate < '2025-12-08') return false;
-          const hasValuation = s.valuationAmount1 || s.valuation_amount_1 ||
-                               s.valuationAmount2 || s.valuation_amount_2 ||
-                               s.valuationAmount3 || s.valuation_amount_3;
-          if (hasValuation) return false;
-          const valuationMethod = s.valuationMethod || s.valuation_method || '';
-          if (valuationMethod === '不要') return false;
-          return true;
+          return sharedIsUnvaluated(normalized, todayJSTStr);
         }
 
         return true;
@@ -2903,160 +2878,48 @@ export class SellerService extends BaseRepository {
     });
 
     const filteredTodayCallSellers = todayCallBaseSellers.filter(s => {
-      return !hasValidVisitAssignee(s.visit_assignee);
+      return !sharedHasValidVisitAssignee(s.visit_assignee);
     });
 
-    // FI（福岡）売主と通常売主を分離（seller_numberがFIで始まるかどうか）
-    const isFiSeller = (s: any): boolean => {
-      const num = (s.seller_number || s.sellerNumber || '').toString();
-      return num.startsWith('FI');
-    };
+    // FI（福岡）売主と通常売主を分離（共通関数を使用）
+    const isFiSeller = sharedIsFiSeller;
 
     const filteredTodayCallNormal = filteredTodayCallSellers.filter(s => !isFiSeller(s));
     const filteredTodayCallFI = filteredTodayCallSellers.filter(s => isFiSeller(s));
 
-    const todayCallWithInfoSellers = filteredTodayCallNormal.filter(s => {
-      const hasInfo = (s.phone_contact_person && s.phone_contact_person.trim() !== '') ||
-                      (s.preferred_contact_time && s.preferred_contact_time.trim() !== '') ||
-                      (s.contact_method && s.contact_method.trim() !== '');
-      return hasInfo;
-    });
+    // ── 共通フィルタ関数を使用してカウント計算 ──────────────────────────────
+    const todayCallWithInfoSellers = filteredTodayCallNormal.filter(s => sharedIsTodayCallWithInfo(s, todayJST));
     const todayCallWithInfoCount = todayCallWithInfoSellers.length;
-
     const labelCountMap: Record<string, number> = {};
-    const isValidValue = (v: string | null | undefined): boolean =>
-      !!(v && v.trim() !== '' && v.trim().toLowerCase() !== 'null');
     todayCallWithInfoSellers.forEach(s => {
-      const parts: string[] = [];
-      if (isValidValue(s.phone_contact_person)) parts.push(s.phone_contact_person!.trim());
-      if (isValidValue(s.preferred_contact_time)) parts.push(s.preferred_contact_time!.trim());
-      if (isValidValue(s.contact_method)) parts.push(s.contact_method!.trim());
-      const label = parts.length > 0 ? `当日TEL(${parts.join('・')})` : '当日TEL（内容）';
+      const label = sharedGetTodayCallWithInfoLabel(s);
       labelCountMap[label] = (labelCountMap[label] || 0) + 1;
     });
     const todayCallWithInfoLabels = Object.keys(labelCountMap);
 
-    const todayCallNoInfoCount = filteredTodayCallNormal.filter(s => {
-      const hasInfo = (s.phone_contact_person && s.phone_contact_person.trim() !== '') ||
-                      (s.preferred_contact_time && s.preferred_contact_time.trim() !== '') ||
-                      (s.contact_method && s.contact_method.trim() !== '');
-      if (hasInfo) return false;
-      // 当日TEL_未着手（todayCallNotStarted）に該当する場合は除外（未着手を優先）
-      const status = (s as any).status || '';
-      const unreachable = (s as any).unreachable_status || '';
-      const confidence = (s as any).confidence_level || '';
-      const inquiryDate = (s as any).inquiry_date || '';
-      const isNotStarted = (
-        status === '追客中' &&
-        !unreachable &&
-        confidence !== 'ダブり' && confidence !== 'D' && confidence !== 'AI査定' &&
-        inquiryDate >= '2026-01-01'
-      );
-      return !isNotStarted;
-    }).length;
+    const todayCallNoInfoCount = filteredTodayCallNormal.filter(s => sharedIsTodayCallNoInfo(s, todayJST)).length;
 
     // 6. 未査定のカウント（FI分離）
     const unvaluatedSellers = unvaluatedSellersResult.data || [];
-    const unvaluatedFilterFn = (s: any): boolean => {
-      const hasNoValuation = !s.valuation_amount_1 && !s.valuation_amount_2 && !s.valuation_amount_3;
-      const valuationMethod = (s as any).valuation_method || '';
-      const isNotRequired = valuationMethod === '不要';
-      if (!hasNoValuation || isNotRequired) return false;
-      const status = (s as any).status || '';
-      const nextCallDate = (s as any).next_call_date || '';
-      const hasInfo = ((s as any).phone_contact_person?.trim()) ||
-                      ((s as any).preferred_contact_time?.trim()) ||
-                      ((s as any).contact_method?.trim());
-      const unreachable = (s as any).unreachable_status || '';
-      const confidence = (s as any).confidence_level || '';
-      const inquiryDate = (s as any).inquiry_date || '';
-      const isTodayCallNotStarted = (
-        status === '追客中' &&
-        nextCallDate && nextCallDate <= todayJST &&
-        !hasInfo &&
-        !unreachable &&
-        confidence !== 'ダブり' && confidence !== 'D' && confidence !== 'AI査定' &&
-        inquiryDate >= '2026-01-01'
-      );
-      return !isTodayCallNotStarted;
-    };
-    const isFiSellerNum = (s: any): boolean => {
-      const num = (s.seller_number || s.sellerNumber || '').toString();
-      return num.startsWith('FI');
-    };
-    const unvaluatedCount = unvaluatedSellers.filter(s => !isFiSellerNum(s) && unvaluatedFilterFn(s)).length;
-    const fi_unvaluatedCount = unvaluatedSellers.filter(s => isFiSellerNum(s) && unvaluatedFilterFn(s)).length;
+    const unvaluatedCount = unvaluatedSellers.filter(s => !isFiSeller(s) && sharedIsUnvaluated(s, todayJST)).length;
+    const fi_unvaluatedCount = unvaluatedSellers.filter(s => isFiSeller(s) && sharedIsUnvaluated(s, todayJST)).length;
 
     // 7. 査定（郵送）カウント
     const mailingPendingCount = mailingPendingCountResult.count || 0;
 
     // 8. 当日TEL_未着手
-    // バグ修正: filteredTodayCallSellers は ilike('%追客中%') ベースのため「除外後追客中」などが混入する
-    // listSellers() の todayCallNotStarted と同じ条件（status === '追客中' 完全一致）を使用するため
-    // filteredTodayCallSellers から status === '追客中' のみを抽出した notStartedBaseSellers を使用する
-    const notStartedBaseSellers = filteredTodayCallNormal.filter(s => (s as any).status === '追客中');
-    const todayCallNotStartedCount = notStartedBaseSellers.filter(s => {
-      const hasInfo = (s.phone_contact_person && s.phone_contact_person.trim() !== '') ||
-                      (s.preferred_contact_time && s.preferred_contact_time.trim() !== '') ||
-                      (s.contact_method && s.contact_method.trim() !== '');
-      if (hasInfo) return false;
-      const unreachable = (s as any).unreachable_status || '';
-      if (unreachable && unreachable.trim() !== '') return false;
-      const confidence = (s as any).confidence_level || '';
-      if (confidence === 'ダブり' || confidence === 'D' || confidence === 'AI査定') return false;
-      const inquiryDate = (s as any).inquiry_date || '';
-      return inquiryDate >= '2026-01-01';
-    }).length;
+    const todayCallNotStartedCount = filteredTodayCallNormal.filter(s => sharedIsTodayCallNotStarted(s, todayJST)).length;
 
-    // FI（福岡）専用カウント計算
-    const isValidValueFI = (v: string | null | undefined): boolean =>
-      !!(v && v.trim() !== '' && v.trim().toLowerCase() !== 'null');
-    const fi_todayCallWithInfoSellers = filteredTodayCallFI.filter(s => {
-      const hasInfo = (s.phone_contact_person && s.phone_contact_person.trim() !== '') ||
-                      (s.preferred_contact_time && s.preferred_contact_time.trim() !== '') ||
-                      (s.contact_method && s.contact_method.trim() !== '');
-      return hasInfo;
-    });
+    // FI（福岡）専用カウント計算（共通関数を使用）
+    const fi_todayCallWithInfoSellers = filteredTodayCallFI.filter(s => sharedIsTodayCallWithInfo(s, todayJST));
     const fi_todayCallWithInfoCount = fi_todayCallWithInfoSellers.length;
     const fi_labelCountMap: Record<string, number> = {};
     fi_todayCallWithInfoSellers.forEach(s => {
-      const parts: string[] = [];
-      if (isValidValueFI(s.phone_contact_person)) parts.push(s.phone_contact_person!.trim());
-      if (isValidValueFI(s.preferred_contact_time)) parts.push(s.preferred_contact_time!.trim());
-      if (isValidValueFI(s.contact_method)) parts.push(s.contact_method!.trim());
-      const label = parts.length > 0 ? `当日TEL(${parts.join('・')})` : '当日TEL（内容）';
+      const label = sharedGetTodayCallWithInfoLabel(s);
       fi_labelCountMap[label] = (fi_labelCountMap[label] || 0) + 1;
     });
-    const fi_notStartedBaseSellers = filteredTodayCallFI.filter(s => (s as any).status === '追客中');
-    const fi_todayCallNotStartedCount = fi_notStartedBaseSellers.filter(s => {
-      const hasInfo = (s.phone_contact_person && s.phone_contact_person.trim() !== '') ||
-                      (s.preferred_contact_time && s.preferred_contact_time.trim() !== '') ||
-                      (s.contact_method && s.contact_method.trim() !== '');
-      if (hasInfo) return false;
-      const unreachable = (s as any).unreachable_status || '';
-      if (unreachable && unreachable.trim() !== '') return false;
-      const confidence = (s as any).confidence_level || '';
-      if (confidence === 'ダブり' || confidence === 'D' || confidence === 'AI査定') return false;
-      const inquiryDate = (s as any).inquiry_date || '';
-      return inquiryDate >= '2026-01-01';
-    }).length;
-    const fi_todayCallNoInfoCount = filteredTodayCallFI.filter(s => {
-      const hasInfo = (s.phone_contact_person && s.phone_contact_person.trim() !== '') ||
-                      (s.preferred_contact_time && s.preferred_contact_time.trim() !== '') ||
-                      (s.contact_method && s.contact_method.trim() !== '');
-      if (hasInfo) return false;
-      const status = (s as any).status || '';
-      const unreachable = (s as any).unreachable_status || '';
-      const confidence = (s as any).confidence_level || '';
-      const inquiryDate = (s as any).inquiry_date || '';
-      const isNotStarted = (
-        status === '追客中' &&
-        !unreachable &&
-        confidence !== 'ダブり' && confidence !== 'D' && confidence !== 'AI査定' &&
-        inquiryDate >= '2026-01-01'
-      );
-      return !isNotStarted;
-    }).length;
+    const fi_todayCallNotStartedCount = filteredTodayCallFI.filter(s => sharedIsTodayCallNotStarted(s, todayJST)).length;
+    const fi_todayCallNoInfoCount = filteredTodayCallFI.filter(s => sharedIsTodayCallNoInfo(s, todayJST)).length;
 
     // 9. Pinrich空欄: 次電日に関係なく「追客中 + Pinrich空欄 + 反響日2026/1/1以降 + 営担なし」
     // ※ filteredTodayCallSellers（次電日が今日以前）には依存しない

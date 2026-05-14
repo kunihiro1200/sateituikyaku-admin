@@ -1,7 +1,7 @@
 -- Migration: 060_add_beppu_road_map
 -- Description: work_tasksテーブルに別府市道路台帳図の画像URLカラムを追加
 -- Created: 2026-05-13
-
+urin
 ALTER TABLE work_tasks
   ADD COLUMN IF NOT EXISTS beppu_road_map_image_url TEXT,
   ADD COLUMN IF NOT EXISTS beppu_road_map_page_no INTEGER;

@@ -419,15 +419,15 @@ export default function SellersPage() {
     fetchAssigneeInitials();
   }, []);
 
-  // ページに戻ってきた時にサイドバーカウントを再取得（キャッシュが無効化されている場合）
+  // ページに戻ってきた時にサイドバーカウントを再取得（常に最新を取得）
   useEffect(() => {
     // /sellers ページに戻ってきたときのみ実行
     if (location.pathname === '/' || location.pathname === '/sellers') {
-      const cached = pageDataCache.get(CACHE_KEYS.SELLERS_SIDEBAR_COUNTS);
-      if (!cached) {
-        console.log('[SellersPage] Returned to sellers page, cache invalidated, fetching sidebar counts immediately');
-        fetchSidebarCounts(true);
-      }
+      // 売主詳細ページで更新があった場合にカウントが古くなるため、
+      // 戻ってきた時は常にキャッシュを無効化して再取得する
+      console.log('[SellersPage] Returned to sellers page, refreshing sidebar counts');
+      pageDataCache.invalidate(CACHE_KEYS.SELLERS_SIDEBAR_COUNTS);
+      fetchSidebarCounts(true);
     }
   }, [location.pathname]);
 
