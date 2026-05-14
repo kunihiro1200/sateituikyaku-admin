@@ -396,48 +396,11 @@ router.post('/:propertyNumber/send-settlement-chat', async (req: Request, res: R
 });
 
 /**
- * POST /api/work-tasks/:propertyNumber/floor-plan-compare
- * 【STEP1】業務詳細画面のボタンから呼ぶ
- * 格納先フォルダに「間取図比較チェック」スプシを作成するだけ（AI比較はしない）
- * 既存スプシがあればそのURLを返す（重複作成しない）
- */
-router.post('/:propertyNumber/floor-plan-compare', async (req: Request, res: Response) => {
-  try {
-    const { propertyNumber } = req.params;
-    const { storageUrl } = req.body;
-
-    if (!storageUrl) {
-      return res.status(400).json({ error: '格納先URLが指定されていません。業務詳細の「格納先URL」を入力してください。' });
-    }
-
-    console.log(`[FloorPlanCompare] スプシ作成開始: ${propertyNumber}, URL: ${storageUrl}`);
-
-    const { FloorPlanCompareService } = await import('../services/FloorPlanCompareService');
-    const service = new FloorPlanCompareService();
-    const result = await service.createSpreadsheet(storageUrl, propertyNumber);
-
-    console.log(`[FloorPlanCompare] スプシ${result.isNew ? '作成' : '既存取得'}完了: ${result.spreadsheetUrl}`);
-
-    return res.json({
-      success: true,
-      spreadsheetUrl: result.spreadsheetUrl,
-      spreadsheetId: result.spreadsheetId,
-      isNew: result.isNew,
-      message: result.isNew
-        ? 'チェックシートをドライブに作成しました。掲載用図面が揃ったらスプシを開いてメニューから比較を実行してください。'
-        : '既存のチェックシートを開きます。メニューから比較を再実行できます。',
-    });
-  } catch (error: any) {
-    console.error('[FloorPlanCompare] スプシ作成エラー:', error.message);
-    return res.status(500).json({ error: error.message });
-  }
-});
-
-/**
  * POST /api/work-tasks/floor-plan-compare-run
  * 【STEP2】スプシ内のGASボタンまたは業務詳細画面から呼ぶ
  * フォルダ内の図面をAIで比較してスプシに結果を書き込む
  * 認証: FLOOR_PLAN_API_KEY（環境変数）またはCRON_SECRET
+ * ⚠️ /:propertyNumber より前に定義すること（ルーティング競合防止）
  */
 router.post('/floor-plan-compare-run', async (req: Request, res: Response) => {
   try {
@@ -474,6 +437,44 @@ router.post('/floor-plan-compare-run', async (req: Request, res: Response) => {
   } catch (error: any) {
     console.error('[FloorPlanCompare] AI比較エラー:', error.message);
     return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * POST /api/work-tasks/:propertyNumber/floor-plan-compare
+ * 【STEP1】業務詳細画面のボタンから呼ぶ
+ * 格納先フォルダに「間取図比較チェック」スプシを作成するだけ（AI比較はしない）
+ * 既存スプシがあればそのURLを返す（重複作成しない）
+ */
+router.post('/:propertyNumber/floor-plan-compare', async (req: Request, res: Response) => {
+  try {
+    const { propertyNumber } = req.params;
+    const { storageUrl } = req.body;
+
+    if (!storageUrl) {
+      return res.status(400).json({ error: '格納先URLが指定されていません。業務詳細の「格納先URL」を入力してください。' });
+    }
+
+    console.log(`[FloorPlanCompare] スプシ作成開始: ${propertyNumber}, URL: ${storageUrl}`);
+
+    const { FloorPlanCompareService } = await import('../services/FloorPlanCompareService');
+    const service = new FloorPlanCompareService();
+    const result = await service.createSpreadsheet(storageUrl, propertyNumber);
+
+    console.log(`[FloorPlanCompare] スプシ${result.isNew ? '作成' : '既存取得'}完了: ${result.spreadsheetUrl}`);
+
+    return res.json({
+      success: true,
+      spreadsheetUrl: result.spreadsheetUrl,
+      spreadsheetId: result.spreadsheetId,
+      isNew: result.isNew,
+      message: result.isNew
+        ? 'チェックシートをドライブに作成しました。掲載用図面が揃ったらスプシを開いてメニューから比較を実行してください。'
+        : '既存のチェックシートを開きます。メニューから比較を再実行できます。',
+    });
+  } catch (error: any) {
+    console.error('[FloorPlanCompare] スプシ作成エラー:', error.message);
+    return res.status(500).json({ error: error.message });
   }
 });
 
