@@ -72,9 +72,9 @@ router.get('/sitemap.xml', async (req: Request, res: Response) => {
 
       if (oitaError) throw oitaError;
 
-      // 大分トップページ
+      // 大分トップページ（/tateuriが実際のコンテンツページ）
       xml += '  <url>\n';
-      xml += '    <loc>https://oita-tateuri.com/</loc>\n';
+      xml += '    <loc>https://oita-tateuri.com/tateuri</loc>\n';
       xml += `    <lastmod>${now}</lastmod>\n`;
       xml += '    <changefreq>daily</changefreq>\n';
       xml += '    <priority>1.0</priority>\n';

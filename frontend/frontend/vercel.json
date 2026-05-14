@@ -15,8 +15,8 @@
           "value": "oita-tateuri.com"
         }
       ],
-      "destination": "/tateuri-root",
-      "permanent": false
+      "destination": "/tateuri",
+      "permanent": true
     },
     {
       "source": "/",
@@ -26,8 +26,8 @@
           "value": "www.oita-tateuri.com"
         }
       ],
-      "destination": "/tateuri-root",
-      "permanent": false
+      "destination": "/tateuri",
+      "permanent": true
     },
     {
       "source": "/",
@@ -37,8 +37,8 @@
           "value": "fukuoka-tateuri.com"
         }
       ],
-      "destination": "/tateuri-root",
-      "permanent": false
+      "destination": "/fukuoka-tateuri",
+      "permanent": true
     },
     {
       "source": "/",
@@ -48,8 +48,8 @@
           "value": "www.fukuoka-tateuri.com"
         }
       ],
-      "destination": "/tateuri-root",
-      "permanent": false
+      "destination": "/fukuoka-tateuri",
+      "permanent": true
     }
   ],
   "headers": [
