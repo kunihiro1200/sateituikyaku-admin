@@ -5,7 +5,7 @@ import { WorkTaskService } from '../services/WorkTaskService';
 import { WorkTaskSyncService } from '../services/WorkTaskSyncService';
 import { WorkTaskEmailNotificationService } from '../services/WorkTaskEmailNotificationService';
 import { StaffManagementService } from '../services/StaffManagementService';
-import { FloorPlanCompareService } from '../services/FloorPlanCompareService';
+// FloorPlanCompareService は動的importで読み込む（起動時エラー防止）
 
 // 決済完了チャット専用Webhook URL
 const SETTLEMENT_CHAT_WEBHOOK_URL = 'https://chat.googleapis.com/v1/spaces/AAAAEZtcLfM/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=jpLkd-Tp1o9mPLCWA4YMyu-Te_fX4lymfoyj_qFnzLY';
@@ -412,6 +412,7 @@ router.post('/:propertyNumber/floor-plan-compare', async (req: Request, res: Res
 
     console.log(`[FloorPlanCompare] スプシ作成開始: ${propertyNumber}, URL: ${storageUrl}`);
 
+    const { FloorPlanCompareService } = await import('../services/FloorPlanCompareService');
     const service = new FloorPlanCompareService();
     const result = await service.createSpreadsheet(storageUrl, propertyNumber);
 
@@ -459,6 +460,7 @@ router.post('/floor-plan-compare-run', async (req: Request, res: Response) => {
 
     console.log(`[FloorPlanCompare] AI比較開始: ${propertyNumber}, フォルダ: ${folderId}`);
 
+    const { FloorPlanCompareService } = await import('../services/FloorPlanCompareService');
     const service = new FloorPlanCompareService();
     const result = await service.runCompare({ spreadsheetId, folderId, propertyNumber });
 
