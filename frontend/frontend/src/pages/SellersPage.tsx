@@ -13,6 +13,7 @@ import {
   TableHead,
   TableRow,
   TablePagination,
+  TableSortLabel,
   Chip,
   InputAdornment,
   MenuItem,
@@ -202,6 +203,10 @@ export default function SellersPage() {
   const [total, setTotal] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
   
+  // ソート状態
+  const [sortBy, setSortBy] = useState<string>('inquiry_date');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+
   // Phase 1 filters
   const [confidenceLevelFilter, setConfidenceLevelFilter] = useState('');
   const [inquirySiteFilter, setInquirySiteFilter] = useState('');
@@ -447,15 +452,15 @@ export default function SellersPage() {
 
   useEffect(() => {
     fetchSellers();
-  }, [page, rowsPerPage, confidenceLevelFilter, inquirySiteFilter, propertyTypeFilter, statusFilterValue, selectedCategory]);
+  }, [page, rowsPerPage, confidenceLevelFilter, inquirySiteFilter, propertyTypeFilter, statusFilterValue, selectedCategory, sortBy, sortOrder]);
 
   const fetchSellers = async () => {
     try {
       const params: any = {
         page: page + 1,
         pageSize: rowsPerPage,
-        sortBy: 'inquiry_date',
-        sortOrder: 'desc',
+        sortBy: sortBy,
+        sortOrder: sortOrder,
       };
       
       // Add Phase 1 filters
@@ -1085,12 +1090,44 @@ export default function SellersPage() {
                 <TableCell sx={{ width: 60 }}>対応中</TableCell>
                 <TableCell sx={{ width: 90 }}>最終電話</TableCell>
                 <TableCell sx={{ width: 90 }}>反響日付</TableCell>
-                <TableCell sx={{ width: 90 }}>次電日</TableCell>
+                <TableCell sx={{ width: 90, cursor: 'pointer' }}>
+                  <TableSortLabel
+                    active={sortBy === 'next_call_date'}
+                    direction={sortBy === 'next_call_date' ? sortOrder : 'asc'}
+                    onClick={() => {
+                      if (sortBy === 'next_call_date') {
+                        setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+                      } else {
+                        setSortBy('next_call_date');
+                        setSortOrder('asc');
+                      }
+                      setPage(0);
+                    }}
+                  >
+                    次電日
+                  </TableSortLabel>
+                </TableCell>
                 <TableCell sx={{ width: 200 }}>物件所在地</TableCell>
                 <TableCell sx={{ width: 60 }}>種別</TableCell>
                 <TableCell sx={{ width: 90 }}>査定額</TableCell>
                 <TableCell sx={{ width: 60 }}>営担</TableCell>
-                <TableCell sx={{ width: 90 }}>訪問日</TableCell>
+                <TableCell sx={{ width: 90, cursor: 'pointer' }}>
+                  <TableSortLabel
+                    active={sortBy === 'visit_date'}
+                    direction={sortBy === 'visit_date' ? sortOrder : 'asc'}
+                    onClick={() => {
+                      if (sortBy === 'visit_date') {
+                        setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+                      } else {
+                        setSortBy('visit_date');
+                        setSortOrder('asc');
+                      }
+                      setPage(0);
+                    }}
+                  >
+                    訪問日
+                  </TableSortLabel>
+                </TableCell>
                 <TableCell sx={{ width: 120 }}>状況（当社）</TableCell>
               </TableRow>
             </TableHead>

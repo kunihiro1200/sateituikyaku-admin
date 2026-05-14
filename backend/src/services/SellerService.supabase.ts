@@ -1688,6 +1688,11 @@ export class SellerService extends BaseRepository {
       query = query
         .order(sortBy, { ascending: sortOrder === 'asc', nullsFirst: false })
         .order('seller_number', { ascending: sortOrder === 'asc' });
+    } else if (sortBy === 'next_call_date' || sortBy === 'visit_date') {
+      // 次電日・訪問日のソート: nullは最後に表示
+      query = query
+        .order(sortBy, { ascending: sortOrder === 'asc', nullsFirst: false })
+        .order('seller_number', { ascending: false });
     } else {
       query = query.order(sortBy, { ascending: sortOrder === 'asc' });
     }
