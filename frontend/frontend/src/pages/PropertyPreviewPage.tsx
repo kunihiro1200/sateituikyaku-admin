@@ -298,7 +298,9 @@ export default function PropertyPreviewPage() {
     '株式会社いふう',
   ].filter(Boolean);
 
-  const canonicalUrl = `https://fukuoka-tateuri.com/property-preview/${slug}`;
+  // ドメインに応じてcanonical URLを動的に設定
+  const currentDomain = typeof window !== 'undefined' ? window.location.origin : 'https://oita-tateuri.com';
+  const canonicalUrl = `${currentDomain}/property-preview/${slug}`;
   const ogImage = data.images?.[0] || '';
 
   // JSON-LD 構造化データ（不動産物件）
