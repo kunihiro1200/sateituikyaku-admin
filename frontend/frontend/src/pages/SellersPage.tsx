@@ -1103,6 +1103,7 @@ export default function SellersPage() {
                       }
                       setPage(0);
                     }}
+                    sx={{ '& .MuiTableSortLabel-icon': { opacity: 1 } }}
                   >
                     次電日
                   </TableSortLabel>
@@ -1124,6 +1125,7 @@ export default function SellersPage() {
                       }
                       setPage(0);
                     }}
+                    sx={{ '& .MuiTableSortLabel-icon': { opacity: 1 } }}
                   >
                     訪問日
                   </TableSortLabel>
