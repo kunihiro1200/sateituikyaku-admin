@@ -413,30 +413,30 @@ export class FloorPlanCompareService {
     const contentParts: any[] = [
       {
         type: 'text',
-        text: `不動産の間取り図を比較してください。
+        text: `建築図面の品質チェックを行います。2種類の図面画像を比較して、以下の項目の差異を報告してください。
 
-【元図面】と【掲載用図面（athome等掲載用）】を比較し、以下の項目について差異を洗い出してください。
-
-## 確認項目
-1. **部屋数** - 部屋の数が一致しているか
-2. **洋室・和室の違い** - 洋室/和室の種別が正しいか
-3. **各部屋の面積** - 面積表記の違い
-4. **窓の数・位置** - 窓の数と配置が一致しているか
-5. **扉の数・位置** - 扉（ドア）の数と配置が一致しているか
-6. **収納** - 収納・WIC・押入れ・納戸の有無と位置
-7. **水回り** - キッチン・浴室・トイレ・洗面の位置
-8. **方位** - 方位（N方向）が一致しているか
-9. **玄関位置** - 玄関の位置が一致しているか
-10. **階段位置** - 階段の位置（2F建ての場合）
+## チェック項目
+1. **部屋数** - 部屋の数は同じか
+2. **洋室・和室** - 各部屋の種別（洋室/和室）は一致しているか
+3. **各部屋の面積** - 面積の数値表記に違いはあるか
+4. **窓の数・位置** - 窓の数と配置は一致しているか
+5. **扉の数・位置** - ドアの数と配置は一致しているか
+6. **収納スペース** - 収納・WIC・押入れ・納戸の有無と位置
+7. **水回り設備** - キッチン・浴室・トイレ・洗面台の位置
+8. **方位** - 北方向（N）の向きは一致しているか
+9. **玄関位置** - 玄関の位置は一致しているか
+10. **階段位置** - 階段の位置は一致しているか（2階建ての場合）
 
 ## 出力形式
-各項目について「✅ 一致」または「⚠️ 差異あり: [内容]」で回答してください。
-最後に「## 総評」として全体的な評価を記載してください。`,
+各項目を「✅ 一致」または「⚠️ 差異あり: [具体的な内容]」で回答してください。
+最後に「## 総評」として全体的な評価を記載してください。
+
+【図面A】（白黒または手書きの原本図面）と【図面B】（カラーの掲載用図面）を比較します。`,
       },
     ];
 
     if (originalImages.length > 0) {
-      contentParts.push({ type: 'text', text: '## 元図面' });
+      contentParts.push({ type: 'text', text: '## 図面A（原本図面）' });
       for (const img of originalImages) {
         contentParts.push({
           type: 'image_url',
@@ -444,11 +444,11 @@ export class FloorPlanCompareService {
         });
       }
     } else {
-      contentParts.push({ type: 'text', text: '## 元図面\n（PDFのため画像取得不可）' });
+      contentParts.push({ type: 'text', text: '## 図面A（原本図面）\n（PDFのため画像取得不可）' });
     }
 
     if (publishedImages.length > 0) {
-      contentParts.push({ type: 'text', text: '## 掲載用図面（athome等掲載用）' });
+      contentParts.push({ type: 'text', text: '## 図面B（掲載用図面）' });
       for (const img of publishedImages) {
         contentParts.push({
           type: 'image_url',
@@ -456,7 +456,7 @@ export class FloorPlanCompareService {
         });
       }
     } else {
-      contentParts.push({ type: 'text', text: '## 掲載用図面（athome等掲載用）\n（PDFのため画像取得不可）' });
+      contentParts.push({ type: 'text', text: '## 図面B（掲載用図面）\n（PDFのため画像取得不可）' });
     }
 
     const response = await this.openai.chat.completions.create({
