@@ -183,15 +183,8 @@ export class FloorPlanCompareService {
 
     // マスタースプシなし → 空のスプシを直接作成
     console.log(`📊 マスタースプシ未設定のため空スプシを作成`);
+    let spreadsheetId: string;
     const driveCreateRes = await drive.files.create({
-      requestBody: {
-        name: spreadsheetTitle,
-        mimeType: 'application/vnd.google-apps.spreadsheet',
-        parents: [folderId],
-      },
-      fields: 'id',
-      supportsAllDrives: true,
-    });
       requestBody: {
         name: spreadsheetTitle,
         mimeType: 'application/vnd.google-apps.spreadsheet',
