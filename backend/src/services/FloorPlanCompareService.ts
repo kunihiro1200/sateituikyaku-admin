@@ -115,8 +115,10 @@ export class FloorPlanCompareService {
 
     const spreadsheetTitle = `${FloorPlanCompareService.SPREADSHEET_TITLE_PREFIX}${propertyNumber}`;
 
-    // 既存スプシを検索（重複作成防止）
-    let spreadsheetId: string | null = null;
+    // 既存スプシを検索
+    // 既存スプシが見つかった場合：マスタースプシが設定されていれば削除して作り直す
+    // （GASメニューを確実に含めるため）
+    let existingSpreadsheetId: string | null = null;
     try {
       const searchParams: any = {
         q: `'${folderId}' in parents and name = '${spreadsheetTitle}' and mimeType = 'application/vnd.google-apps.spreadsheet' and trashed = false`,
@@ -130,28 +132,39 @@ export class FloorPlanCompareService {
       }
       const existing = await drive.files.list(searchParams);
       if (existing.data.files && existing.data.files.length > 0) {
-        spreadsheetId = existing.data.files[0].id!;
-        console.log(`📊 既存スプシ発見: ${spreadsheetId}`);
-        return {
-          spreadsheetId,
-          spreadsheetUrl: `https://docs.google.com/spreadsheets/d/${spreadsheetId}`,
-          isNew: false,
-        };
+        existingSpreadsheetId = existing.data.files[0].id!;
+        console.log(`📊 既存スプシ発見: ${existingSpreadsheetId}`);
       }
     } catch (err: any) {
       console.warn('既存スプシ検索エラー:', err.message);
     }
 
-    // 新規スプシ作成（直接対象フォルダに作成する）
-    // マスタースプシIDが設定されている場合はコピーして作成（GAS付き）
-    // 設定されていない場合は空のスプシを作成
     const masterSpreadsheetId = process.env.FLOOR_PLAN_MASTER_SPREADSHEET_ID;
+
+    // 既存スプシがあり、マスターが設定されていない場合はそのまま返す
+    if (existingSpreadsheetId && !masterSpreadsheetId) {
+      return {
+        spreadsheetId: existingSpreadsheetId,
+        spreadsheetUrl: `https://docs.google.com/spreadsheets/d/${existingSpreadsheetId}`,
+        isNew: false,
+      };
+    }
+
+    // 既存スプシがあり、マスターが設定されている場合は削除して作り直す（GAS付きにするため）
+    if (existingSpreadsheetId && masterSpreadsheetId) {
+      console.log(`🗑️ 既存スプシを削除して作り直します: ${existingSpreadsheetId}`);
+      try {
+        await drive.files.delete({ fileId: existingSpreadsheetId, supportsAllDrives: true });
+      } catch (err: any) {
+        console.warn('既存スプシ削除エラー（続行）:', err.message);
+      }
+    }
 
     if (masterSpreadsheetId) {
       // マスタースプシをコピーして対象フォルダに配置
       console.log(`📋 マスタースプシをコピー: ${masterSpreadsheetId} → フォルダ: ${folderId}`);
-      const copyRes = await drive.files.copy({
-        fileId: masterSpreadsheetId,
+      let spreadsheetId: string;
+      const copyRes = await drive.files.copy({        fileId: masterSpreadsheetId,
         requestBody: {
           name: spreadsheetTitle,
           parents: [folderId],
