@@ -2849,7 +2849,6 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
         <Box ref={storageUrlRef}>
           <EditableField label="格納先URL" field="storage_url" type="url" />
         </Box>
-        <FloorPlanCompareButton storageUrl={getValue('storage_url') || ''} propertyNumber={propertyNumber || ''} />
         <EditableYesNo label="CWの方へ依頼メール（サイト登録）" field="cw_request_email_site" />
         <EditableButtonSelect label="CWの方*" field="cw_person" options={['浅沼様（土日OK, 平日は中１日あけて納期）']} />
         <EditableField label="メール配信" field="email_distribution" />
