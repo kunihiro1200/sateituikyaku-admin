@@ -143,9 +143,51 @@ export class FloorPlanCompareService {
     }
 
     // 新規スプシ作成（直接対象フォルダに作成する）
-    // drive.files.create でスプシを作成し、parentsに対象フォルダを指定
-    // ※ sheets.spreadsheets.create はマイドライブにしか作れないため drive.files.create を使う
+    // マスタースプシIDが設定されている場合はコピーして作成（GAS付き）
+    // 設定されていない場合は空のスプシを作成
+    const masterSpreadsheetId = process.env.FLOOR_PLAN_MASTER_SPREADSHEET_ID;
+
+    if (masterSpreadsheetId) {
+      // マスタースプシをコピーして対象フォルダに配置
+      console.log(`📋 マスタースプシをコピー: ${masterSpreadsheetId} → フォルダ: ${folderId}`);
+      const copyRes = await drive.files.copy({
+        fileId: masterSpreadsheetId,
+        requestBody: {
+          name: spreadsheetTitle,
+          parents: [folderId],
+        },
+        fields: 'id',
+        supportsAllDrives: true,
+      });
+      spreadsheetId = copyRes.data.id!;
+      console.log(`📊 マスタースプシコピー完了: ${spreadsheetId}`);
+
+      // 物件番号・フォルダIDをシートに書き込む
+      await sheets.spreadsheets.values.update({
+        spreadsheetId,
+        range: '比較結果!B2:B3',
+        valueInputOption: 'RAW',
+        requestBody: { values: [[propertyNumber], [folderId]] },
+      });
+
+      return {
+        spreadsheetId,
+        spreadsheetUrl: `https://docs.google.com/spreadsheets/d/${spreadsheetId}`,
+        isNew: true,
+      };
+    }
+
+    // マスタースプシなし → 空のスプシを直接作成
+    console.log(`📊 マスタースプシ未設定のため空スプシを作成`);
     const driveCreateRes = await drive.files.create({
+      requestBody: {
+        name: spreadsheetTitle,
+        mimeType: 'application/vnd.google-apps.spreadsheet',
+        parents: [folderId],
+      },
+      fields: 'id',
+      supportsAllDrives: true,
+    });
       requestBody: {
         name: spreadsheetTitle,
         mimeType: 'application/vnd.google-apps.spreadsheet',

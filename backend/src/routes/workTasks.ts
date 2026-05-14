@@ -434,16 +434,20 @@ router.post('/:propertyNumber/floor-plan-compare', async (req: Request, res: Res
 
 /**
  * POST /api/work-tasks/floor-plan-compare-run
- * 【STEP2】スプシ内のGASボタンから呼ぶ
+ * 【STEP2】スプシ内のGASボタンまたは業務詳細画面から呼ぶ
  * フォルダ内の図面をAIで比較してスプシに結果を書き込む
- * CRON_SECRET認証（GASから呼ぶため認証ミドルウェアは使わない）
+ * 認証: FLOOR_PLAN_API_KEY（環境変数）またはCRON_SECRET
  */
 router.post('/floor-plan-compare-run', async (req: Request, res: Response) => {
   try {
-    // CRON_SECRET認証
+    // 認証: FLOOR_PLAN_API_KEY または CRON_SECRET のどちらかが一致すればOK
     const authHeader = req.headers.authorization;
+    const floorPlanKey = process.env.FLOOR_PLAN_API_KEY;
     const cronSecret = process.env.CRON_SECRET;
-    if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+    const isAuthorized =
+      (floorPlanKey && authHeader === `Bearer ${floorPlanKey}`) ||
+      (cronSecret && authHeader === `Bearer ${cronSecret}`);
+    if (!isAuthorized) {
       return res.status(401).json({ success: false, error: '認証エラー' });
     }
 
