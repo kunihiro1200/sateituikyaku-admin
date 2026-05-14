@@ -4,7 +4,8 @@ import { useJsApiLoader, Libraries } from '@react-google-maps/api';
 const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '';
 
 // librariesは定数として定義（再レンダリングのたびに新しい配列が作られるのを防ぐ）
-const LIBRARIES: Libraries = ['places'];
+// drawing: 面積計測用のDrawingManager、geometry: 面積計算用のspherical
+const LIBRARIES: Libraries = ['places', 'drawing', 'geometry'];
 
 interface GoogleMapsContextType {
   isLoaded: boolean;

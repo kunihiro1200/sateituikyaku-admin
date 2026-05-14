@@ -6,6 +6,8 @@ import { useGoogleMaps } from '../contexts/GoogleMapsContext';
 import EditLocationIcon from '@mui/icons-material/EditLocation';
 import SaveIcon from '@mui/icons-material/Save';
 import CancelIcon from '@mui/icons-material/Cancel';
+import SquareFootIcon from '@mui/icons-material/SquareFoot';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 
 interface PropertyMapSectionProps {
   sellerNumber: string;
@@ -27,8 +29,13 @@ const PropertyMapSection: React.FC<PropertyMapSectionProps> = ({ sellerNumber, p
   const [isEditMode, setIsEditMode] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  // 面積計測用のstate
+  const [isMeasureMode, setIsMeasureMode] = useState(false);
+  const [measuredArea, setMeasuredArea] = useState<number | null>(null);
   const markerRef = useRef<google.maps.Marker | null>(null);
   const mapRef = useRef<google.maps.Map | null>(null);
+  const drawingManagerRef = useRef<google.maps.drawing.DrawingManager | null>(null);
+  const measurePolygonRef = useRef<google.maps.Polygon | null>(null);
 
   useEffect(() => {
     if (!sellerNumber) {
@@ -83,8 +90,104 @@ const PropertyMapSection: React.FC<PropertyMapSectionProps> = ({ sellerNumber, p
         }
       }
     }
+    // 編集モードに入るとき/出るときは計測モードを終了する
+    if (!isEditMode && isMeasureMode) {
+      handleMeasureModeOff();
+    }
     setIsEditMode(!isEditMode);
     setSaveMessage(null);
+  };
+
+  // 面積計測モードをONにする
+  const handleMeasureModeOn = () => {
+    if (!mapRef.current) return;
+
+    // 編集モード中は計測モードに入れない
+    if (isEditMode) return;
+
+    setIsMeasureMode(true);
+    setMeasuredArea(null);
+
+    // DrawingManagerを作成してポリゴン描画を有効化
+    const drawingManager = new google.maps.drawing.DrawingManager({
+      drawingMode: google.maps.drawing.OverlayType.POLYGON,
+      drawingControl: false, // カスタムボタンを使うので非表示
+      polygonOptions: {
+        fillColor: '#2196F3',
+        fillOpacity: 0.25,
+        strokeColor: '#1565C0',
+        strokeWeight: 2,
+        editable: true,
+        draggable: false,
+      },
+    });
+
+    drawingManager.setMap(mapRef.current);
+    drawingManagerRef.current = drawingManager;
+
+    // ポリゴン描画完了時に面積を計算
+    google.maps.event.addListener(drawingManager, 'polygoncomplete', (polygon: google.maps.Polygon) => {
+      // 前のポリゴンがあれば削除
+      if (measurePolygonRef.current) {
+        measurePolygonRef.current.setMap(null);
+      }
+      measurePolygonRef.current = polygon;
+
+      // 描画モードを終了（追加描画を防ぐ）
+      drawingManager.setDrawingMode(null);
+
+      // 面積を計算（㎡）
+      const area = google.maps.geometry.spherical.computeArea(polygon.getPath());
+      setMeasuredArea(area);
+
+      // ポリゴンの頂点が変更されたときも再計算
+      google.maps.event.addListener(polygon.getPath(), 'set_at', () => {
+        const updatedArea = google.maps.geometry.spherical.computeArea(polygon.getPath());
+        setMeasuredArea(updatedArea);
+      });
+      google.maps.event.addListener(polygon.getPath(), 'insert_at', () => {
+        const updatedArea = google.maps.geometry.spherical.computeArea(polygon.getPath());
+        setMeasuredArea(updatedArea);
+      });
+      google.maps.event.addListener(polygon.getPath(), 'remove_at', () => {
+        const updatedArea = google.maps.geometry.spherical.computeArea(polygon.getPath());
+        setMeasuredArea(updatedArea);
+      });
+    });
+  };
+
+  // 面積計測モードをOFFにする（クリーンアップ）
+  const handleMeasureModeOff = () => {
+    if (drawingManagerRef.current) {
+      drawingManagerRef.current.setMap(null);
+      drawingManagerRef.current = null;
+    }
+    if (measurePolygonRef.current) {
+      measurePolygonRef.current.setMap(null);
+      measurePolygonRef.current = null;
+    }
+    setIsMeasureMode(false);
+    setMeasuredArea(null);
+  };
+
+  // 描画をクリアして再描画できるようにする
+  const handleMeasureClear = () => {
+    if (measurePolygonRef.current) {
+      measurePolygonRef.current.setMap(null);
+      measurePolygonRef.current = null;
+    }
+    setMeasuredArea(null);
+
+    // DrawingManagerを再度描画モードに戻す
+    if (drawingManagerRef.current) {
+      drawingManagerRef.current.setDrawingMode(google.maps.drawing.OverlayType.POLYGON);
+    }
+  };
+
+  // 面積を読みやすい形式にフォーマット（㎡ / 坪）
+  const formatArea = (areaSqm: number): string => {
+    const tsubo = areaSqm / 3.30579; // 1坪 = 3.30579㎡
+    return `${areaSqm.toFixed(1)} ㎡（約 ${tsubo.toFixed(1)} 坪）`;
   };
 
   // 座標を保存
@@ -153,20 +256,37 @@ const PropertyMapSection: React.FC<PropertyMapSectionProps> = ({ sellerNumber, p
               （ピンをドラッグして位置を修正）
             </Typography>
           )}
+          {isMeasureMode && measuredArea === null && (
+            <Typography variant="caption" color="success.main" sx={{ ml: 1 }}>
+              （地図上をクリックして範囲を描画、最初の点をクリックで確定）
+            </Typography>
+          )}
         </Box>
 
         {mapCoordinates && (
-          <Box sx={{ display: 'flex', gap: 1 }}>
-            {!isEditMode ? (
-              <Button
-                variant="outlined"
-                size="small"
-                startIcon={<EditLocationIcon />}
-                onClick={handleEditModeToggle}
-              >
-                位置を修正
-              </Button>
-            ) : (
+          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+            {!isEditMode && !isMeasureMode && (
+              <>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  startIcon={<EditLocationIcon />}
+                  onClick={handleEditModeToggle}
+                >
+                  位置を修正
+                </Button>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  color="success"
+                  startIcon={<SquareFootIcon />}
+                  onClick={handleMeasureModeOn}
+                >
+                  面積を計る
+                </Button>
+              </>
+            )}
+            {isEditMode && (
               <>
                 <Button
                   variant="contained"
@@ -188,6 +308,29 @@ const PropertyMapSection: React.FC<PropertyMapSectionProps> = ({ sellerNumber, p
                 </Button>
               </>
             )}
+            {isMeasureMode && (
+              <>
+                {measuredArea !== null && (
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    color="success"
+                    startIcon={<DeleteOutlineIcon />}
+                    onClick={handleMeasureClear}
+                  >
+                    描画をクリア
+                  </Button>
+                )}
+                <Button
+                  variant="outlined"
+                  size="small"
+                  startIcon={<CancelIcon />}
+                  onClick={handleMeasureModeOff}
+                >
+                  計測を終了
+                </Button>
+              </>
+            )}
           </Box>
         )}
       </Box>
@@ -195,6 +338,30 @@ const PropertyMapSection: React.FC<PropertyMapSectionProps> = ({ sellerNumber, p
       {saveMessage && (
         <Alert severity={saveMessage.type} sx={{ mb: 2 }}>
           {saveMessage.text}
+        </Alert>
+      )}
+
+      {/* 面積計測結果の表示 */}
+      {isMeasureMode && measuredArea !== null && (
+        <Alert
+          severity="success"
+          icon={<SquareFootIcon />}
+          sx={{ mb: 2 }}
+        >
+          <Typography variant="body2" fontWeight="bold">
+            計測面積: {formatArea(measuredArea)}
+          </Typography>
+          <Typography variant="caption" color="text.secondary">
+            ※ 頂点をドラッグして範囲を調整できます
+          </Typography>
+        </Alert>
+      )}
+
+      {isMeasureMode && measuredArea === null && (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          <Typography variant="body2">
+            地図上をクリックして計測したい範囲の頂点を打ち、最初の点をクリックして確定してください
+          </Typography>
         </Alert>
       )}
 
@@ -254,6 +421,28 @@ const PropertyMapSection: React.FC<PropertyMapSectionProps> = ({ sellerNumber, p
             >
               <Typography variant="caption" color="text.secondary">
                 緯度: {mapCoordinates.lat.toFixed(7)}, 経度: {mapCoordinates.lng.toFixed(7)}
+              </Typography>
+            </Box>
+          )}
+
+          {isMeasureMode && measuredArea !== null && (
+            <Box
+              sx={{
+                position: 'absolute',
+                bottom: 16,
+                left: '50%',
+                transform: 'translateX(-50%)',
+                bgcolor: 'rgba(255, 255, 255, 0.97)',
+                px: 2,
+                py: 1,
+                borderRadius: 1,
+                boxShadow: 2,
+                textAlign: 'center',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              <Typography variant="body2" fontWeight="bold" color="success.main">
+                📐 {formatArea(measuredArea)}
               </Typography>
             </Box>
           )}
