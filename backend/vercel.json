@@ -35,6 +35,10 @@
       "schedule": "0 0 * * *"
     },
     {
+      "path": "/api/cron/work-task-kinshu-notification",
+      "schedule": "0 0 * * *"
+    },
+    {
       "path": "/api/cron/work-task-upcoming-deadline-notification",
       "schedule": "0 0,7 * * *"
     },

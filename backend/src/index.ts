@@ -370,6 +370,37 @@ app.get('/api/cron/work-task-deadline-notification', async (req, res) => {
   }
 });
 
+// Cron Job: 業務リスト「金種表送付　未」通知（毎日 UTC 00:00 = JST 09:00 に実行）
+app.get('/api/cron/work-task-kinshu-notification', async (req, res) => {
+  try {
+    console.log('[Cron WorkTaskKinshu] 金種表送付未通知ジョブ開始');
+
+    const authHeader = req.headers.authorization;
+    if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+      console.error('[Cron WorkTaskKinshu] 認証失敗');
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const { WorkTaskKinshuNotificationService } = await import('./services/WorkTaskKinshuNotificationService');
+    const service = new WorkTaskKinshuNotificationService();
+
+    const targets = await service.getKinshuMiTargets();
+    console.log(`[Cron WorkTaskKinshu] 通知対象: ${targets.length}件`);
+
+    if (targets.length === 0) {
+      return res.status(200).json({ success: true, sent: 0, failed: 0, skipped: 0 });
+    }
+
+    const result = await service.sendNotifications(targets);
+    console.log(`[Cron WorkTaskKinshu] 完了: 送信成功=${result.sent}, 失敗=${result.failed}, スキップ=${result.skipped}`);
+
+    return res.status(200).json({ success: true, ...result });
+  } catch (error: any) {
+    console.error('[Cron WorkTaskKinshu] エラー:', error.message);
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // Cron Job: 業務リスト締切日迫る通知（毎日 UTC 00:00 = JST 09:00 に実行）
 // サイト登録締め日2日前・売買契約締め日3日前・媒介作成締め日2日前
 app.get('/api/cron/work-task-upcoming-deadline-notification', async (req, res) => {
