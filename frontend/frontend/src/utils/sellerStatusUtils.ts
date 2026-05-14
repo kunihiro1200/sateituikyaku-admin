@@ -207,18 +207,41 @@ export function calculateSellerStatus(seller: Seller): string[] {
 
   // 1. 当日TEL チェック（次電日が今日以前の場合）
   // コミュニケーション情報の3つのフィールドのいずれかに入力がある場合は「当日TEL(内容)」
-  // どれも入力がない場合は「当日TEL分」
+  // どれも入力がない場合は「当日TEL分」または「当日TEL_未着手」
   if (isNextCallDateToday) {
-    // 優先順位: 連絡方法 > 連絡取りやすい時間 > 電話担当
-    if (contactMethod && contactMethod.trim() !== '') {
-      statuses.push(`当日TEL(${contactMethod})`);
-    } else if (preferredContactTime && preferredContactTime.trim() !== '') {
-      statuses.push(`当日TEL(${preferredContactTime})`);
-    } else if (phoneContactPerson && phoneContactPerson.trim() !== '') {
-      statuses.push(`当日TEL(${phoneContactPerson})`);
+    const hasContactInfo = (contactMethod && contactMethod.trim() !== '' && contactMethod.trim().toLowerCase() !== 'null') ||
+                           (preferredContactTime && preferredContactTime.trim() !== '' && preferredContactTime.trim().toLowerCase() !== 'null') ||
+                           (phoneContactPerson && phoneContactPerson.trim() !== '' && phoneContactPerson.trim().toLowerCase() !== 'null');
+
+    if (hasContactInfo) {
+      // コミュニケーション情報がある場合は「当日TEL(内容)」
+      // 表示順: 電話担当 → 連絡取りやすい時間 → 連絡方法
+      const parts: string[] = [];
+      const isValid = (v: string | null | undefined) => !!(v && v.trim() !== '' && v.trim().toLowerCase() !== 'null');
+      if (isValid(phoneContactPerson)) parts.push(phoneContactPerson!.trim());
+      if (isValid(preferredContactTime)) parts.push(preferredContactTime!.trim());
+      if (isValid(contactMethod)) parts.push(contactMethod!.trim());
+      statuses.push(parts.length > 0 ? `当日TEL(${parts.join('・')})` : '当日TEL（内容）');
     } else {
-      // どのコミュニケーション情報も入力がない場合のみ「当日TEL分」
-      statuses.push('当日TEL分');
+      // コミュニケーション情報が全て空の場合
+      // 未着手条件チェック（status完全一致 + 不通空 + 確度OK + 反響日2026/1/1以降）
+      const unreachableStatus = seller.unreachableStatus || seller.unreachable_status || '';
+      const confidence = seller.confidence || seller.confidenceLevel || seller.confidence_level || '';
+      const inquiryDateRaw = seller.inquiryDate || seller.inquiry_date;
+      const inquiryDateStr = inquiryDateRaw instanceof Date
+        ? `${inquiryDateRaw.getUTCFullYear()}-${String(inquiryDateRaw.getUTCMonth() + 1).padStart(2, '0')}-${String(inquiryDateRaw.getUTCDate()).padStart(2, '0')}`
+        : (typeof inquiryDateRaw === 'string' ? inquiryDateRaw.substring(0, 10) : '');
+      const isNotStarted = situationCompany === '追客中' &&
+        !hasVisitAssignee &&
+        (!unreachableStatus || unreachableStatus.trim() === '') &&
+        confidence !== 'ダブり' && confidence !== 'D' && confidence !== 'AI査定' &&
+        inquiryDateStr >= '2026-01-01';
+
+      if (isNotStarted) {
+        statuses.push('当日TEL_未着手');
+      } else {
+        statuses.push('当日TEL分');
+      }
     }
   }
 
