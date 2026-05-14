@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
+import { Helmet } from 'react-helmet-async';
 import { GoogleMap } from '@react-google-maps/api';
 import api from '../services/api';
 import PropertyPrintSheet from '../components/PropertyPrintSheet';
@@ -265,8 +266,117 @@ export default function PropertyPreviewPage() {
     data.details?.['モデルハウス情報'] && { label: 'モデルハウス情報', value: data.details['モデルハウス情報'] },
   ].filter(Boolean) as { label: string; value: string }[];
 
+  // ── SEO用データ生成 ──────────────────────────────────
+  const seoTitle = (() => {
+    const parts: string[] = [];
+    if (cleanTitle) parts.push(cleanTitle);
+    if (showPrice && data.price) parts.push(cleanPrice(data.price));
+    if (showAddress && data.address) parts.push(data.address);
+    return parts.length > 0
+      ? `${parts.join(' | ')} | 株式会社いふう`
+      : '物件情報 | 株式会社いふう';
+  })();
+
+  const seoDescription = (() => {
+    const parts: string[] = [];
+    if (cleanTitle) parts.push(cleanTitle);
+    if (showPrice && data.price) parts.push(`価格：${cleanPrice(data.price)}`);
+    if (showAddress && data.address) parts.push(`所在地：${data.address}`);
+    if (showAccess && data.access) parts.push(`交通：${data.access}`);
+    if (showLayout && data.layout) parts.push(`間取り：${data.layout}`);
+    if (showArea && data.area) parts.push(`面積：${data.area}`);
+    const base = parts.join('　');
+    return base.length > 0
+      ? `${base}。株式会社いふう（097-533-2022）にお問い合わせください。`
+      : '株式会社いふうの物件情報です。お気軽にお問い合わせください。';
+  })();
+
+  const seoKeywords = [
+    '建売', '新築一戸建て', '福岡', '不動産',
+    ...(data.address ? [data.address.replace(/[0-9０-９\-－]/g, '').trim()] : []),
+    ...(data.layout ? [data.layout] : []),
+    '株式会社いふう',
+  ].filter(Boolean);
+
+  const canonicalUrl = `https://fukuoka-tateuri.com/property-preview/${slug}`;
+  const ogImage = data.images?.[0] || '';
+
+  // JSON-LD 構造化データ（不動産物件）
+  const structuredData = {
+    '@context': 'https://schema.org',
+    '@type': 'RealEstateListing',
+    name: cleanTitle || '物件情報',
+    description: seoDescription,
+    url: canonicalUrl,
+    ...(ogImage && { image: ogImage }),
+    ...(showPrice && data.price && {
+      offers: {
+        '@type': 'Offer',
+        price: cleanPrice(data.price).replace(/[^0-9]/g, ''),
+        priceCurrency: 'JPY',
+        availability: 'https://schema.org/InStock',
+      },
+    }),
+    ...(showAddress && data.address && {
+      address: {
+        '@type': 'PostalAddress',
+        addressLocality: data.address,
+        addressCountry: 'JP',
+      },
+    }),
+    ...(data.lat && data.lng && {
+      geo: {
+        '@type': 'GeoCoordinates',
+        latitude: data.lat,
+        longitude: data.lng,
+      },
+    }),
+    seller: {
+      '@type': 'RealEstateAgent',
+      name: '株式会社いふう',
+      telephone: '097-533-2022',
+      address: {
+        '@type': 'PostalAddress',
+        streetAddress: '舞鶴町1-3-30 STビル１F',
+        addressLocality: '大分市',
+        addressRegion: '大分県',
+        addressCountry: 'JP',
+      },
+    },
+  };
+
   return (
     <div style={{ fontFamily: "'Hiragino Sans', 'Meiryo', sans-serif", background: '#f5f5f5', minHeight: '100vh' }}>
+
+      {/* SEOメタタグ */}
+      <Helmet>
+        <title>{seoTitle}</title>
+        <meta name="description" content={seoDescription} />
+        <meta name="keywords" content={seoKeywords.join(', ')} />
+        <link rel="canonical" href={canonicalUrl} />
+        <meta name="robots" content="index, follow" />
+
+        {/* Open Graph */}
+        <meta property="og:title" content={seoTitle} />
+        <meta property="og:description" content={seoDescription} />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content={canonicalUrl} />
+        {ogImage && <meta property="og:image" content={ogImage} />}
+        <meta property="og:site_name" content="福岡の建売専門サイト｜株式会社いふう" />
+        <meta property="og:locale" content="ja_JP" />
+
+        {/* Twitter Card */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={seoTitle} />
+        <meta name="twitter:description" content={seoDescription} />
+        {ogImage && <meta name="twitter:image" content={ogImage} />}
+
+        {/* JSON-LD 構造化データ */}
+        <script type="application/ld+json">
+          {JSON.stringify(structuredData)}
+        </script>
+      </Helmet>
+
       {/* ヘッダー */}
       <div style={{ background: '#e84040', color: 'white', padding: '20px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
         <div>
