@@ -142,22 +142,37 @@ export class FloorPlanCompareService {
       console.warn('既存スプシ検索エラー:', err.message);
     }
 
-    // 新規スプシ作成
-    const created = await sheets.spreadsheets.create({
+    // 新規スプシ作成（直接対象フォルダに作成する）
+    // drive.files.create でスプシを作成し、parentsに対象フォルダを指定
+    // ※ sheets.spreadsheets.create はマイドライブにしか作れないため drive.files.create を使う
+    const driveCreateRes = await drive.files.create({
       requestBody: {
-        properties: { title: spreadsheetTitle },
-        sheets: [{ properties: { title: '比較結果', sheetId: 0 } }],
+        name: spreadsheetTitle,
+        mimeType: 'application/vnd.google-apps.spreadsheet',
+        parents: [folderId],
       },
-    });
-    spreadsheetId = created.data.spreadsheetId!;
-
-    // 対象フォルダに移動（マイドライブから）
-    await drive.files.update({
-      fileId: spreadsheetId,
-      addParents: folderId,
-      removeParents: 'root',
+      fields: 'id',
       supportsAllDrives: true,
-      fields: 'id, parents',
+    });
+    spreadsheetId = driveCreateRes.data.id!;
+
+    console.log(`📊 スプシ作成完了（フォルダ直接配置）: ${spreadsheetId}`);
+
+    // シート名を「シート1」→「比較結果」に変更
+    const spreadsheetInfo = await sheets.spreadsheets.get({ spreadsheetId });
+    const firstSheetId = spreadsheetInfo.data.sheets?.[0]?.properties?.sheetId ?? 0;
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId,
+      requestBody: {
+        requests: [
+          {
+            updateSheetProperties: {
+              properties: { sheetId: firstSheetId, title: '比較結果' },
+              fields: 'title',
+            },
+          },
+        ],
+      },
     });
 
     // 初期コンテンツを書き込む
@@ -190,7 +205,7 @@ export class FloorPlanCompareService {
           {
             // タイトル行：青背景・白太字
             repeatCell: {
-              range: { sheetId: 0, startRowIndex: 0, endRowIndex: 1, startColumnIndex: 0, endColumnIndex: 3 },
+              range: { sheetId: firstSheetId, startRowIndex: 0, endRowIndex: 1, startColumnIndex: 0, endColumnIndex: 3 },
               cell: {
                 userEnteredFormat: {
                   backgroundColor: { red: 0.2, green: 0.4, blue: 0.8 },
@@ -203,7 +218,7 @@ export class FloorPlanCompareService {
           {
             // 使い方セクション：薄黄色背景
             repeatCell: {
-              range: { sheetId: 0, startRowIndex: 4, endRowIndex: 8, startColumnIndex: 0, endColumnIndex: 3 },
+              range: { sheetId: firstSheetId, startRowIndex: 4, endRowIndex: 8, startColumnIndex: 0, endColumnIndex: 3 },
               cell: {
                 userEnteredFormat: {
                   backgroundColor: { red: 1.0, green: 0.98, blue: 0.8 },
@@ -214,7 +229,7 @@ export class FloorPlanCompareService {
           },
           {
             autoResizeDimensions: {
-              dimensions: { sheetId: 0, dimension: 'COLUMNS', startIndex: 0, endIndex: 3 },
+              dimensions: { sheetId: firstSheetId, dimension: 'COLUMNS', startIndex: 0, endIndex: 3 },
             },
           },
         ],
