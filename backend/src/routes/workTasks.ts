@@ -5,6 +5,7 @@ import { WorkTaskService } from '../services/WorkTaskService';
 import { WorkTaskSyncService } from '../services/WorkTaskSyncService';
 import { WorkTaskEmailNotificationService } from '../services/WorkTaskEmailNotificationService';
 import { StaffManagementService } from '../services/StaffManagementService';
+import { FloorPlanCompareService } from '../services/FloorPlanCompareService';
 
 // 決済完了チャット専用Webhook URL
 const SETTLEMENT_CHAT_WEBHOOK_URL = 'https://chat.googleapis.com/v1/spaces/AAAAEZtcLfM/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=jpLkd-Tp1o9mPLCWA4YMyu-Te_fX4lymfoyj_qFnzLY';
@@ -391,6 +392,82 @@ router.post('/:propertyNumber/send-settlement-chat', async (req: Request, res: R
   } catch (error: any) {
     console.error('[WorkTask] チャット送信エラー:', error.message);
     return res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * POST /api/work-tasks/:propertyNumber/floor-plan-compare
+ * 【STEP1】業務詳細画面のボタンから呼ぶ
+ * 格納先フォルダに「間取図比較チェック」スプシを作成するだけ（AI比較はしない）
+ * 既存スプシがあればそのURLを返す（重複作成しない）
+ */
+router.post('/:propertyNumber/floor-plan-compare', async (req: Request, res: Response) => {
+  try {
+    const { propertyNumber } = req.params;
+    const { storageUrl } = req.body;
+
+    if (!storageUrl) {
+      return res.status(400).json({ error: '格納先URLが指定されていません。業務詳細の「格納先URL」を入力してください。' });
+    }
+
+    console.log(`[FloorPlanCompare] スプシ作成開始: ${propertyNumber}, URL: ${storageUrl}`);
+
+    const service = new FloorPlanCompareService();
+    const result = await service.createSpreadsheet(storageUrl, propertyNumber);
+
+    console.log(`[FloorPlanCompare] スプシ${result.isNew ? '作成' : '既存取得'}完了: ${result.spreadsheetUrl}`);
+
+    return res.json({
+      success: true,
+      spreadsheetUrl: result.spreadsheetUrl,
+      spreadsheetId: result.spreadsheetId,
+      isNew: result.isNew,
+      message: result.isNew
+        ? 'チェックシートをドライブに作成しました。掲載用図面が揃ったらスプシを開いてメニューから比較を実行してください。'
+        : '既存のチェックシートを開きます。メニューから比較を再実行できます。',
+    });
+  } catch (error: any) {
+    console.error('[FloorPlanCompare] スプシ作成エラー:', error.message);
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * POST /api/work-tasks/floor-plan-compare-run
+ * 【STEP2】スプシ内のGASボタンから呼ぶ
+ * フォルダ内の図面をAIで比較してスプシに結果を書き込む
+ * CRON_SECRET認証（GASから呼ぶため認証ミドルウェアは使わない）
+ */
+router.post('/floor-plan-compare-run', async (req: Request, res: Response) => {
+  try {
+    // CRON_SECRET認証
+    const authHeader = req.headers.authorization;
+    const cronSecret = process.env.CRON_SECRET;
+    if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+      return res.status(401).json({ success: false, error: '認証エラー' });
+    }
+
+    const { spreadsheetId, folderId, propertyNumber } = req.body;
+
+    if (!spreadsheetId || !folderId || !propertyNumber) {
+      return res.status(400).json({ error: 'spreadsheetId, folderId, propertyNumber は必須です' });
+    }
+
+    console.log(`[FloorPlanCompare] AI比較開始: ${propertyNumber}, フォルダ: ${folderId}`);
+
+    const service = new FloorPlanCompareService();
+    const result = await service.runCompare({ spreadsheetId, folderId, propertyNumber });
+
+    console.log(`[FloorPlanCompare] AI比較完了: ${propertyNumber}`);
+
+    return res.json({
+      success: true,
+      spreadsheetUrl: result.spreadsheetUrl,
+      summary: result.summary,
+    });
+  } catch (error: any) {
+    console.error('[FloorPlanCompare] AI比較エラー:', error.message);
+    return res.status(500).json({ success: false, error: error.message });
   }
 });
 

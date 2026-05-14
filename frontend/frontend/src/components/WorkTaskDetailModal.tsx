@@ -815,6 +815,87 @@ const CountermeasureCell = React.memo(({ propertyNumber, field, value, onSaved }
   );
 });
 
+/**
+ * 間取図比較チェックボタン（propsで値を受け取る）
+ */
+const FloorPlanCompareButton = React.memo(function FloorPlanCompareButton({
+  storageUrl,
+  propertyNumber,
+}: {
+  storageUrl: string;
+  propertyNumber: string;
+}) {
+  const [loading, setLoading] = React.useState(false);
+  const [snackOpen, setSnackOpen] = React.useState(false);
+  const [snackMsg, setSnackMsg] = React.useState('');
+  const [snackSeverity, setSnackSeverity] = React.useState<'success' | 'error' | 'info'>('info');
+
+  const handleCompare = async () => {
+    if (!storageUrl) {
+      setSnackMsg('格納先URLが入力されていません。先に格納先URLを入力してください。');
+      setSnackSeverity('error');
+      setSnackOpen(true);
+      return;
+    }
+
+    setLoading(true);
+    setSnackMsg('チェックシートをドライブに作成中です...');
+    setSnackSeverity('info');
+    setSnackOpen(true);
+
+    try {
+      const res = await api.post(`/api/work-tasks/${propertyNumber}/floor-plan-compare`, {
+        storageUrl,
+      });
+
+      if (res.data?.spreadsheetUrl) {
+        setSnackMsg(res.data.message || 'チェックシートを開きます。');
+        setSnackSeverity('success');
+        setSnackOpen(true);
+        window.open(res.data.spreadsheetUrl, '_blank', 'noopener,noreferrer');
+      }
+    } catch (err: any) {
+      const msg = err?.response?.data?.error || 'チェックシートの作成中にエラーが発生しました';
+      setSnackMsg(msg);
+      setSnackSeverity('error');
+      setSnackOpen(true);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <>
+      <Box sx={{ mb: 1.5 }}>
+        <Button
+          variant="outlined"
+          color="secondary"
+          size="small"
+          onClick={handleCompare}
+          disabled={loading}
+          startIcon={loading ? <CircularProgress size={14} color="inherit" /> : <EditNoteIcon />}
+          sx={{ fontSize: '12px' }}
+        >
+          {loading ? '作成中...' : '間取図比較チェックシートを作成'}
+        </Button>
+        <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>
+          ドライブにチェックシートを作成→掲載用図面が揃ったらシート内で比較実行
+        </Typography>
+      </Box>
+      <Snackbar
+        open={snackOpen}
+        autoHideDuration={snackSeverity === 'info' ? null : 6000}
+        onClose={() => setSnackOpen(false)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert onClose={() => setSnackOpen(false)} severity={snackSeverity} sx={{ width: '100%' }}>
+          {snackMsg}
+        </Alert>
+      </Snackbar>
+    </>
+  );
+});
+
 export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onUpdate, initialData, initialTabIndex, onNavigate }: WorkTaskDetailModalProps) {
   const [tabIndex, setTabIndex] = useState(0);
   const navigate = useNavigate();
@@ -2709,6 +2790,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
         <Box ref={storageUrlRef}>
           <EditableField label="格納先URL" field="storage_url" type="url" />
         </Box>
+        <FloorPlanCompareButton storageUrl={getValue('storage_url') || ''} propertyNumber={propertyNumber || ''} />
         <EditableYesNo label="CWの方へ依頼メール（サイト登録）" field="cw_request_email_site" />
         <EditableButtonSelect label="CWの方*" field="cw_person" options={['浅沼様（土日OK, 平日は中１日あけて納期）']} />
         <EditableField label="メール配信" field="email_distribution" />
