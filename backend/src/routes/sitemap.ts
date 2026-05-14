@@ -16,10 +16,13 @@ router.get('/sitemap.xml', async (req: Request, res: Response) => {
     console.log('[Sitemap] サイトマップ生成開始');
 
     // リクエスト元ドメインを判定
+    // 1. クエリパラメータ ?domain=fukuoka（vercel.jsonのリライトで付与）
+    // 2. x-forwarded-host ヘッダー（直接アクセス時）
+    const domainParam = req.query.domain as string || '';
     const host = (req.headers['x-forwarded-host'] as string) || req.headers.host || '';
-    const isFukuoka = host.includes('fukuoka-tateuri.com');
+    const isFukuoka = domainParam === 'fukuoka' || host.includes('fukuoka-tateuri.com');
 
-    console.log(`[Sitemap] Host: ${host}, isFukuoka: ${isFukuoka}`);
+    console.log(`[Sitemap] Host: ${host}, domainParam: ${domainParam}, isFukuoka: ${isFukuoka}`);
 
     const supabase = getSupabase();
     const now = new Date().toISOString();
@@ -39,9 +42,9 @@ router.get('/sitemap.xml', async (req: Request, res: Response) => {
 
       if (fukuokaError) throw fukuokaError;
 
-      // 福岡トップページ
+      // 福岡トップページ（/fukuoka-tateuriが実際のコンテンツページ）
       xml += '  <url>\n';
-      xml += '    <loc>https://fukuoka-tateuri.com/</loc>\n';
+      xml += '    <loc>https://fukuoka-tateuri.com/fukuoka-tateuri</loc>\n';
       xml += `    <lastmod>${now}</lastmod>\n`;
       xml += '    <changefreq>daily</changefreq>\n';
       xml += '    <priority>1.0</priority>\n';
