@@ -97,7 +97,7 @@ export class FloorPlanCompareService {
   /**
    * 格納先フォルダに「間取図比較チェック」スプシを作成する。
    * 既存のスプシがあればそのURLを返す（重複作成しない）。
-   * スプシにはGASボタンを埋め込み、押すとバックエンドAPIを呼んで比較を実行する。
+   * ※ GAS埋め込みは行わない。比較実行は業務詳細画面のボタンから行う。
    */
   async createSpreadsheet(storageUrl: string, propertyNumber: string): Promise<CreateSpreadsheetResult> {
     if (!this.sheetsAuth) {
@@ -161,12 +161,6 @@ export class FloorPlanCompareService {
     });
 
     // 初期コンテンツを書き込む
-    const backendUrl = process.env.BACKEND_URL || process.env.VERCEL_URL
-      ? `https://${process.env.VERCEL_URL}`
-      : 'https://sateituikyaku-admin-backend.vercel.app';
-
-    const gasCode = this.buildGasCode(spreadsheetId, folderId, propertyNumber, backendUrl);
-
     const initialValues: any[][] = [
       ['間取図比較チェックシート'],
       ['物件番号', propertyNumber],
@@ -174,7 +168,7 @@ export class FloorPlanCompareService {
       [''],
       ['▼ 使い方'],
       ['1. 掲載用図面（カラー）がドライブフォルダに格納されたことを確認する'],
-      ['2. 上のメニュー「間取図比較」→「▶ 比較を実行する」をクリックする'],
+      ['2. 業務詳細画面の「比較を実行」ボタンを押す'],
       ['3. しばらく待つと下に比較結果が表示される（30秒〜2分程度）'],
       [''],
       ['【比較結果】'],
@@ -227,8 +221,7 @@ export class FloorPlanCompareService {
       },
     });
 
-    // GASスクリプトをスプシに埋め込む
-    await this.attachGasScript(spreadsheetId, gasCode, auth);
+    // GASスクリプトをスプシに埋め込む（不要のため削除）
 
     console.log(`📊 新規スプシ作成完了: ${spreadsheetId}`);
 
@@ -239,149 +232,8 @@ export class FloorPlanCompareService {
     };
   }
 
-  /**
-   * スプシに埋め込むGASコードを生成する
-   * GASはバックエンドAPIを呼んで比較を実行する
-   */
-  private buildGasCode(
-    spreadsheetId: string,
-    folderId: string,
-    propertyNumber: string,
-    backendUrl: string
-  ): string {
-    const apiUrl = `${backendUrl}/api/work-tasks/floor-plan-compare-run`;
-    const cronSecret = process.env.CRON_SECRET || '';
-
-    return `
-// 間取図比較チェック GAS
-// このスクリプトはバックエンドAPIを呼んでAI比較を実行します
-
-var SPREADSHEET_ID = "${spreadsheetId}";
-var FOLDER_ID = "${folderId}";
-var PROPERTY_NUMBER = "${propertyNumber}";
-var API_URL = "${apiUrl}";
-var API_SECRET = "${cronSecret}";
-
-function onOpen() {
-  var ui = SpreadsheetApp.getUi();
-  ui.createMenu('間取図比較')
-    .addItem('▶ 比較を実行する', 'runCompare')
-    .addToUi();
-}
-
-function runCompare() {
-  var ui = SpreadsheetApp.getUi();
-  var result = ui.alert(
-    '間取図比較を実行しますか？',
-    'フォルダ内の元図面と掲載用図面をAIで比較します。\\n30秒〜2分程度かかります。',
-    ui.ButtonSet.OK_CANCEL
-  );
-  if (result !== ui.Button.OK) return;
-
-  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('比較結果');
-  if (!sheet) {
-    ui.alert('エラー', '「比較結果」シートが見つかりません', ui.ButtonSet.OK);
-    return;
-  }
-
-  // 実行中メッセージを表示
-  sheet.getRange('A11').setValue('⏳ AI分析中です... しばらくお待ちください');
-
-  try {
-    var payload = JSON.stringify({
-      spreadsheetId: SPREADSHEET_ID,
-      folderId: FOLDER_ID,
-      propertyNumber: PROPERTY_NUMBER
-    });
-
-    var options = {
-      method: 'post',
-      contentType: 'application/json',
-      payload: payload,
-      headers: { 'Authorization': 'Bearer ' + API_SECRET },
-      muteHttpExceptions: true
-    };
-
-    var response = UrlFetchApp.fetch(API_URL, options);
-    var statusCode = response.getResponseCode();
-    var responseText = response.getContentText();
-
-    if (statusCode !== 200) {
-      sheet.getRange('A11').setValue('❌ エラーが発生しました: ' + responseText);
-      ui.alert('エラー', 'API呼び出しに失敗しました。\\n' + responseText, ui.ButtonSet.OK);
-      return;
-    }
-
-    var data = JSON.parse(responseText);
-    if (data.success) {
-      ui.alert('完了', '比較が完了しました。シートを確認してください。', ui.ButtonSet.OK);
-    } else {
-      sheet.getRange('A11').setValue('❌ エラー: ' + (data.error || '不明なエラー'));
-      ui.alert('エラー', data.error || '不明なエラーが発生しました', ui.ButtonSet.OK);
-    }
-  } catch (e) {
-    sheet.getRange('A11').setValue('❌ 通信エラー: ' + e.toString());
-    ui.alert('エラー', '通信エラーが発生しました: ' + e.toString(), ui.ButtonSet.OK);
-  }
-}
-`.trim();
-  }
-
-  /**
-   * Google Apps Script APIを使ってスプシにGASを埋め込む
-   */
-  private async attachGasScript(spreadsheetId: string, gasCode: string, auth: any): Promise<void> {
-    try {
-      const script = google.script({ version: 'v1', auth });
-
-      // 既存プロジェクトを検索（スプシにバインドされたプロジェクト）
-      // Apps Script APIでスプシにバインドされたプロジェクトを作成
-      const project = await script.projects.create({
-        requestBody: {
-          title: '間取図比較チェック',
-          parentId: spreadsheetId,
-        },
-      });
-
-      const scriptId = project.data.scriptId!;
-
-      // GASコードをアップロード
-      await script.projects.updateContent({
-        scriptId,
-        requestBody: {
-          files: [
-            {
-              name: 'Code',
-              type: 'SERVER_JS',
-              source: gasCode,
-            },
-            {
-              name: 'appsscript',
-              type: 'JSON',
-              source: JSON.stringify({
-                timeZone: 'Asia/Tokyo',
-                dependencies: {},
-                exceptionLogging: 'STACKDRIVER',
-                runtimeVersion: 'V8',
-                oauthScopes: [
-                  'https://www.googleapis.com/auth/spreadsheets',
-                  'https://www.googleapis.com/auth/script.external_request',
-                ],
-              }),
-            },
-          ],
-        },
-      });
-
-      console.log(`✅ GASスクリプト埋め込み完了: ${scriptId}`);
-    } catch (err: any) {
-      // GAS埋め込みに失敗してもスプシ自体は作成済みなので警告のみ
-      console.warn(`⚠️ GASスクリプト埋め込み失敗（手動でGASを設定してください）: ${err.message}`);
-    }
-  }
-
   // ============================================================
-  // STEP 2: AI比較を実行してスプシに書き込む（GASボタンから呼ぶ）
+  // STEP 2: AI比較を実行してスプシに書き込む（業務詳細画面から呼ぶ）
   // ============================================================
 
   /**

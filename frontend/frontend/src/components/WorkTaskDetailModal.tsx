@@ -817,6 +817,8 @@ const CountermeasureCell = React.memo(({ propertyNumber, field, value, onSaved }
 
 /**
  * 間取図比較チェックボタン（propsで値を受け取る）
+ * ボタン1: チェックシートをドライブに作成
+ * ボタン2: AIで比較を実行してスプシに書き込む
  */
 const FloorPlanCompareButton = React.memo(function FloorPlanCompareButton({
   storageUrl,
@@ -825,61 +827,118 @@ const FloorPlanCompareButton = React.memo(function FloorPlanCompareButton({
   storageUrl: string;
   propertyNumber: string;
 }) {
-  const [loading, setLoading] = React.useState(false);
+  const [creating, setCreating] = React.useState(false);
+  const [comparing, setComparing] = React.useState(false);
+  const [spreadsheetUrl, setSpreadsheetUrl] = React.useState<string | null>(null);
+  const [spreadsheetId, setSpreadsheetId] = React.useState<string | null>(null);
+  const [folderId, setFolderId] = React.useState<string | null>(null);
   const [snackOpen, setSnackOpen] = React.useState(false);
   const [snackMsg, setSnackMsg] = React.useState('');
   const [snackSeverity, setSnackSeverity] = React.useState<'success' | 'error' | 'info'>('info');
 
-  const handleCompare = async () => {
+  const showSnack = (msg: string, severity: 'success' | 'error' | 'info') => {
+    setSnackMsg(msg);
+    setSnackSeverity(severity);
+    setSnackOpen(true);
+  };
+
+  // STEP1: チェックシートをドライブに作成
+  const handleCreate = async () => {
     if (!storageUrl) {
-      setSnackMsg('格納先URLが入力されていません。先に格納先URLを入力してください。');
-      setSnackSeverity('error');
-      setSnackOpen(true);
+      showSnack('格納先URLが入力されていません。先に格納先URLを入力してください。', 'error');
       return;
     }
-
-    setLoading(true);
-    setSnackMsg('チェックシートをドライブに作成中です...');
-    setSnackSeverity('info');
-    setSnackOpen(true);
-
+    setCreating(true);
+    showSnack('チェックシートをドライブに作成中...', 'info');
     try {
-      const res = await api.post(`/api/work-tasks/${propertyNumber}/floor-plan-compare`, {
-        storageUrl,
-      });
-
+      const res = await api.post(`/api/work-tasks/${propertyNumber}/floor-plan-compare`, { storageUrl });
       if (res.data?.spreadsheetUrl) {
-        setSnackMsg(res.data.message || 'チェックシートを開きます。');
-        setSnackSeverity('success');
-        setSnackOpen(true);
+        setSpreadsheetUrl(res.data.spreadsheetUrl);
+        setSpreadsheetId(res.data.spreadsheetId);
+        // フォルダIDをURLから抽出
+        const match = storageUrl.match(/\/folders\/([a-zA-Z0-9_-]+)/);
+        if (match) setFolderId(match[1]);
+        showSnack(res.data.isNew
+          ? 'チェックシートを作成しました。掲載用図面が揃ったら「比較を実行」を押してください。'
+          : '既存のチェックシートを取得しました。「比較を実行」で最新の比較結果に更新できます。'
+        , 'success');
         window.open(res.data.spreadsheetUrl, '_blank', 'noopener,noreferrer');
       }
     } catch (err: any) {
-      const msg = err?.response?.data?.error || 'チェックシートの作成中にエラーが発生しました';
-      setSnackMsg(msg);
-      setSnackSeverity('error');
-      setSnackOpen(true);
+      showSnack(err?.response?.data?.error || 'チェックシートの作成中にエラーが発生しました', 'error');
     } finally {
-      setLoading(false);
+      setCreating(false);
+    }
+  };
+
+  // STEP2: AIで比較を実行してスプシに書き込む
+  const handleCompare = async () => {
+    if (!spreadsheetId || !folderId) {
+      showSnack('先に「チェックシートを作成」を押してください。', 'error');
+      return;
+    }
+    setComparing(true);
+    showSnack('AIが図面を分析中です... 30秒〜2分程度かかります', 'info');
+    try {
+      const res = await api.post(`/api/work-tasks/floor-plan-compare-run`, {
+        spreadsheetId,
+        folderId,
+        propertyNumber,
+      });
+      if (res.data?.success) {
+        showSnack('比較完了！チェックシートに結果を書き込みました。', 'success');
+        if (spreadsheetUrl) window.open(spreadsheetUrl, '_blank', 'noopener,noreferrer');
+      }
+    } catch (err: any) {
+      showSnack(err?.response?.data?.error || 'AI比較中にエラーが発生しました', 'error');
+    } finally {
+      setComparing(false);
     }
   };
 
   return (
     <>
-      <Box sx={{ mb: 1.5 }}>
-        <Button
-          variant="outlined"
-          color="secondary"
-          size="small"
-          onClick={handleCompare}
-          disabled={loading}
-          startIcon={loading ? <CircularProgress size={14} color="inherit" /> : <EditNoteIcon />}
-          sx={{ fontSize: '12px' }}
-        >
-          {loading ? '作成中...' : '間取図比較チェックシートを作成'}
-        </Button>
-        <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>
-          ドライブにチェックシートを作成→掲載用図面が揃ったらシート内で比較実行
+      <Box sx={{ mb: 1.5, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
+          {/* STEP1ボタン */}
+          <Button
+            variant="outlined"
+            color="secondary"
+            size="small"
+            onClick={handleCreate}
+            disabled={creating || comparing}
+            startIcon={creating ? <CircularProgress size={14} color="inherit" /> : <EditNoteIcon />}
+            sx={{ fontSize: '12px' }}
+          >
+            {creating ? '作成中...' : '①チェックシートを作成'}
+          </Button>
+          {/* STEP2ボタン（スプシ作成後に有効化） */}
+          <Button
+            variant="contained"
+            color="secondary"
+            size="small"
+            onClick={handleCompare}
+            disabled={comparing || creating || !spreadsheetId}
+            startIcon={comparing ? <CircularProgress size={14} color="inherit" /> : <EditNoteIcon />}
+            sx={{ fontSize: '12px' }}
+          >
+            {comparing ? 'AI分析中...' : '②比較を実行'}
+          </Button>
+          {/* スプシURLが取得済みなら開くリンク */}
+          {spreadsheetUrl && (
+            <Button
+              variant="text"
+              size="small"
+              onClick={() => window.open(spreadsheetUrl, '_blank', 'noopener,noreferrer')}
+              endIcon={<OpenInNew fontSize="small" />}
+              sx={{ fontSize: '11px' }}
+            >
+              シートを開く
+            </Button>
+          )}
+        </Box>
+        <Typography variant="caption" color="text.secondary">
+          ①でシート作成→掲載用図面が揃ったら②で比較実行（何度でも再実行可）
         </Typography>
       </Box>
       <Snackbar
