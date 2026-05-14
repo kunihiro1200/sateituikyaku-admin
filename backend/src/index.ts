@@ -146,6 +146,8 @@ const corsOptions = {
     'https://baikyaku-property-site3.vercel.app',
     'https://oita-tateuri.com',
     'https://www.oita-tateuri.com',
+    'https://fukuoka-tateuri.com',
+    'https://www.fukuoka-tateuri.com',
   ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
