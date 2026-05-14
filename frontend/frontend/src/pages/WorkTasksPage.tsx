@@ -33,11 +33,13 @@ import {
 import { Search as SearchIcon, ExpandMore as ExpandMoreIcon, Clear as ClearIcon, Sync as SyncIcon } from '@mui/icons-material';
 import IconButton from '@mui/material/IconButton';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import CompareArrowsIcon from '@mui/icons-material/CompareArrows';
 import api from '../services/api';
 import WorkTaskDetailModal from '../components/WorkTaskDetailModal';
 import { WorkTask, getStatusCategories, filterTasksByStatus, calculateTaskStatus, getCategoryGroupColor } from '../utils/workTaskStatusUtils';
 import PageNavigation from '../components/PageNavigation';
 import { pageDataCache, CACHE_KEYS } from '../store/pageDataCache';
+import { useNavigate } from 'react-router-dom';
 
 /**
  * カテゴリーキー文字列からタブインデックスを返す
@@ -62,6 +64,7 @@ function getInitialTabIndexFromCategory(category: string | null): number {
 export default function WorkTasksPage() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const navigate = useNavigate();
 
   const [allWorkTasks, setAllWorkTasks] = useState<WorkTask[]>([]);
   const [loading, setLoading] = useState(true);
@@ -278,17 +281,29 @@ export default function WorkTasksPage() {
     <Container maxWidth="xl" sx={isMobile ? { overflowX: 'hidden', px: 1, py: 2 } : { py: 3 }}>
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
         <Typography variant="h5" fontWeight="bold">業務依頼</Typography>
-        <Button
-          variant="contained"
-          color="primary"
-          size="small"
-          startIcon={manualSyncing ? <CircularProgress size={16} color="inherit" /> : <SyncIcon />}
-          onClick={handleManualSync}
-          disabled={manualSyncing}
-          sx={{ whiteSpace: 'nowrap' }}
-        >
-          {manualSyncing ? '転記実行中...' : '転記実行'}
-        </Button>
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          <Button
+            variant="outlined"
+            color="secondary"
+            size="small"
+            startIcon={<CompareArrowsIcon />}
+            onClick={() => navigate('/floor-plan-compare')}
+            sx={{ whiteSpace: 'nowrap' }}
+          >
+            間取り図比較
+          </Button>
+          <Button
+            variant="contained"
+            color="primary"
+            size="small"
+            startIcon={manualSyncing ? <CircularProgress size={16} color="inherit" /> : <SyncIcon />}
+            onClick={handleManualSync}
+            disabled={manualSyncing}
+            sx={{ whiteSpace: 'nowrap' }}
+          >
+            {manualSyncing ? '転記実行中...' : '転記実行'}
+          </Button>
+        </Box>
       </Box>
 
       <PageNavigation />
