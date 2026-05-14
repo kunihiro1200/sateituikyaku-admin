@@ -1,9 +1,8 @@
 {
   "installCommand": "npm install --legacy-peer-deps",
   "rewrites": [
-    { "source": "/sitemap.xml", "has": [{"type": "host", "value": "fukuoka-tateuri.com"}], "destination": "https://sateituikyaku-admin-backend.vercel.app/api/sitemap.xml?domain=fukuoka" },
-    { "source": "/sitemap.xml", "has": [{"type": "host", "value": "www.fukuoka-tateuri.com"}], "destination": "https://sateituikyaku-admin-backend.vercel.app/api/sitemap.xml?domain=fukuoka" },
     { "source": "/sitemap.xml", "destination": "https://sateituikyaku-admin-backend.vercel.app/api/sitemap.xml?domain=oita" },
+    { "source": "/sitemap-fukuoka.xml", "destination": "https://sateituikyaku-admin-backend.vercel.app/api/sitemap.xml?domain=fukuoka" },
     { "source": "/property-preview/:slug", "destination": "https://sateituikyaku-admin-backend.vercel.app/api/property-preview/html/:slug" },
     { "source": "/google([a-z0-9]+).html", "destination": "/google$1.html" },
     { "source": "/(.*)", "destination": "/index.html" }

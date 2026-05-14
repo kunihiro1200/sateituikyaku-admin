@@ -1,5 +1,6 @@
 User-agent: *
 Allow: /tateuri
+Allow: /fukuoka-tateuri
 Allow: /property-preview/
 Disallow: /sellers
 Disallow: /buyers
@@ -14,7 +15,9 @@ Disallow: /property-listings
 Disallow: /shared-items
 Disallow: /mansion-jyucho
 Disallow: /tateuri/manage
+Disallow: /fukuoka-tateuri/manage
 Disallow: /login
 Disallow: /auth
 
 Sitemap: https://oita-tateuri.com/sitemap.xml
+Sitemap: https://fukuoka-tateuri.com/sitemap-fukuoka.xml
