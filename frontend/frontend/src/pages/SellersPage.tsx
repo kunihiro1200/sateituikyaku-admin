@@ -339,7 +339,7 @@ export default function SellersPage() {
       const response = await api.get('/api/sellers/sidebar-counts');
       console.log('[SellersPage] Sidebar counts fetched:', response.data);
       setSidebarCounts(response.data);
-      pageDataCache.set(CACHE_KEYS.SELLERS_SIDEBAR_COUNTS, response.data, 15 * 60 * 1000);
+      pageDataCache.set(CACHE_KEYS.SELLERS_SIDEBAR_COUNTS, response.data, 3 * 60 * 1000);
     } catch (error) {
       console.error('Failed to fetch sidebar counts:', error);
       // エラー時はカウントを0にリセット
@@ -448,6 +448,15 @@ export default function SellersPage() {
 
     window.addEventListener('focus', handleFocus);
     return () => window.removeEventListener('focus', handleFocus);
+  }, []);
+
+  // 3分ごとにサイドバーカウントを自動更新（ページを開いたまま待っていても最新が表示される）
+  useEffect(() => {
+    const interval = setInterval(() => {
+      pageDataCache.invalidate(CACHE_KEYS.SELLERS_SIDEBAR_COUNTS);
+      fetchSidebarCounts(true);
+    }, 3 * 60 * 1000); // 3分
+    return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {
