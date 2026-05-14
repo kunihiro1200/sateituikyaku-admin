@@ -335,7 +335,7 @@ router.post('/beppu-road-map', upload.single('image'), async (req: Request, res:
 
     const result = estimateBeppuRoadMapNo(latNum, lngNum);
 
-    console.log(\[BeppuRoadMap] lat=\, lng=\ -> No.\);
+    console.log(`[BeppuRoadMap] lat=${latNum}, lng=${lngNum} -> No.${result.pageNo} (confidence=${result.confidence}, nearest=${result.nearestNo}, dist=${result.distKm.toFixed(2)}km)`);
 
     // 推定番号の画像上の位置を計算（ハイライト用）
     const MAP_LAT_MIN = 33.25816, MAP_LAT_MAX = 33.35347;
