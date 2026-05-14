@@ -2917,6 +2917,14 @@ const CallModePage = () => {
   const autoCalculateValuations = useCallback(async (roadPrice: string) => {
     if (!roadPrice || !id) return;
     
+    // 路線価が現実的な値かチェック（最低1000円/㎡以上）
+    // 入力途中（例：「1」「10」「100」）の場合はスキップ
+    const roadPriceNum = parseFloat(roadPrice);
+    if (isNaN(roadPriceNum) || roadPriceNum < 1000) {
+      console.log('⏭️ 路線価が小さすぎるため計算をスキップ（入力途中の可能性）:', roadPriceNum);
+      return;
+    }
+    
     // 手入力値が存在する場合は自動計算をスキップ
     if (isManualValuation) {
       console.log('Manual valuation exists, skipping auto-calculation');
@@ -6066,7 +6074,7 @@ HP：https://ifoo-oita.com/
                       // この処理は編集モードの終了とは独立して実行される
                       (async () => {
                         // 固定資産税路線価が変更されている場合、査定額を再計算
-                        if (editedFixedAssetTaxRoadPrice && parseFloat(editedFixedAssetTaxRoadPrice) > 0) {
+                        if (editedFixedAssetTaxRoadPrice && parseFloat(editedFixedAssetTaxRoadPrice) >= 1000) {
                           console.log('🔄 固定資産税路線価が設定されているため、査定額を再計算します:', editedFixedAssetTaxRoadPrice);
                           
                           // 🚨 重要：自動計算モードに切り替え
@@ -6626,7 +6634,7 @@ HP：https://ifoo-oita.com/
                               const value = e.target.value;
                               console.log('🔄 固定資産税路線価が変更されました:', value);
                               setEditedFixedAssetTaxRoadPrice(value);
-                              if (value && parseFloat(value) > 0) {
+                              if (value && parseFloat(value) >= 1000) {
                                 console.log('✅ debouncedAutoCalculateを呼び出します');
                                 // 土地面積の警告チェック（確認済みの場合は表示しない）
                                 if (!landAreaWarningConfirmed) {
