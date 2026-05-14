@@ -141,23 +141,14 @@ export class FloorPlanCompareService {
 
     const masterSpreadsheetId = process.env.FLOOR_PLAN_MASTER_SPREADSHEET_ID;
 
-    // 既存スプシがあり、マスターが設定されていない場合はそのまま返す
-    if (existingSpreadsheetId && !masterSpreadsheetId) {
+    // 既存スプシが見つかった場合はそのまま返す（削除・作り直しはしない）
+    if (existingSpreadsheetId) {
+      console.log(`📊 既存スプシを返します: ${existingSpreadsheetId}`);
       return {
         spreadsheetId: existingSpreadsheetId,
         spreadsheetUrl: `https://docs.google.com/spreadsheets/d/${existingSpreadsheetId}`,
         isNew: false,
       };
-    }
-
-    // 既存スプシがあり、マスターが設定されている場合は削除して作り直す（GAS付きにするため）
-    if (existingSpreadsheetId && masterSpreadsheetId) {
-      console.log(`🗑️ 既存スプシを削除して作り直します: ${existingSpreadsheetId}`);
-      try {
-        await drive.files.delete({ fileId: existingSpreadsheetId, supportsAllDrives: true });
-      } catch (err: any) {
-        console.warn('既存スプシ削除エラー（続行）:', err.message);
-      }
     }
 
     if (masterSpreadsheetId) {

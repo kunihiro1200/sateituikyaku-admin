@@ -859,9 +859,9 @@ const FloorPlanCompareButton = React.memo(function FloorPlanCompareButton({
         const match = storageUrl.match(/\/folders\/([a-zA-Z0-9_-]+)/);
         if (match) setFolderId(match[1]);
         showSnack(res.data.isNew
-          ? 'チェックシートを作成しました。掲載用図面が揃ったら「比較を実行」を押してください。'
-          : '既存のチェックシートを取得しました。「比較を実行」で最新の比較結果に更新できます。'
-        , 'success');
+          ? 'チェックシートを作成しました。掲載用図面が揃ったら「②比較を実行」を押してください。'
+          : '✅ チェックシートは作成済みです。「②比較を実行」で比較できます。'
+        , res.data.isNew ? 'success' : 'info');
         window.open(res.data.spreadsheetUrl, '_blank', 'noopener,noreferrer');
       }
     } catch (err: any) {
