@@ -1689,6 +1689,15 @@ const CallModePage = () => {
             setSavedComments(freshData.comments || '');
             // statusChanged が false の場合のみステータスフィールドを更新
             // （ユーザーが編集中の場合は上書きしない）
+            // 除外日を更新（キャッシュヒット時もバックグラウンドで最新値を反映）
+            if (freshData.exclusionDate) {
+              const exclusionDateObj = new Date(freshData.exclusionDate);
+              setExclusionDate(exclusionDateObj.toISOString().split('T')[0]);
+            } else {
+              setExclusionDate('');
+            }
+            setExclusionAction(freshData.exclusionAction || '');
+
             if (!statusChangedRef.current) {
               setEditedStatus(freshData.status);
               setEditedConfidence(freshData.confidence || '');
@@ -2129,8 +2138,9 @@ const CallModePage = () => {
     }
 
     // 確度が必須条件を満たしているのに未入力の場合は警告
+    // editedStatusを参照（画面上の現在値、保存前も含む）
     const isAfterJan2026 = seller?.inquiryDate && new Date(seller.inquiryDate) >= new Date('2026-01-01');
-    const isFollowingUp = seller?.status?.includes('追客中');
+    const isFollowingUp = editedStatus?.includes('追客中');
     const isNotUnreachable = unreachableStatus === '通電OK';
     if (isAfterJan2026 && isFollowingUp && isNotUnreachable && !editedConfidence) {
       setNavigationWarningDialog({
@@ -2197,7 +2207,8 @@ const CallModePage = () => {
     }
 
     // 確度が必須条件を満たしているのに未入力の場合は警告
-    const isFollowingUp = seller?.status?.includes('追客中');
+    // editedStatusを参照（画面上の現在値、保存前も含む）
+    const isFollowingUp = editedStatus?.includes('追客中');
     const isNotUnreachable = unreachableStatus === '通電OK';
     if (isAfterJan2026 && isFollowingUp && isNotUnreachable && !editedConfidence) {
       setNavigationWarningDialog({
