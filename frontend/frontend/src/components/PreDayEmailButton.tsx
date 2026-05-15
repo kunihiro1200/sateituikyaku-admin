@@ -102,10 +102,7 @@ export default function PreDayEmailButton({
   };
 
   const handleSendEmail = async (emailData: EmailData) => {
-    const senderEmail = employee?.email;
-    if (!senderEmail) {
-      throw new Error('送信者のメールアドレスが取得できません');
-    }
+    const senderEmail = 'tenant@ifoo-oita.com'; // 文字化け防止のため固定
 
     const propertyIds = Array.from(selectedPropertyIds);
     const files = emailData.attachments || [];

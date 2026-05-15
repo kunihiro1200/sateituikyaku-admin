@@ -1328,10 +1328,7 @@ router.post('/:propertyNumber/send-report-email', authenticate, upload.array('at
 
     const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!);
 
-    const senderEmail = from || req.employee?.email || 'tenant@ifoo-oita.com';
-    const senderName = req.employee?.name || '';
-    // 名前がある場合は "名前 <email>" 形式にする（encodeFromでRFC2047エンコードされる）
-    const senderAddress = senderName ? `${senderName} <${senderEmail}>` : senderEmail;
+    const senderAddress = 'tenant@ifoo-oita.com'; // 文字化け防止のため固定
     const employeeId = req.employee?.id || 'system';
 
     console.log('[send-report-email] Sending email:', {

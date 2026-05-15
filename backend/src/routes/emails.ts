@@ -495,7 +495,7 @@ router.post(
         to,
         subject,
         body,
-        from: req.employee!.email,
+        from: 'tenant@ifoo-oita.com', // 文字化け防止のため固定
         selectedImages,
       });
 
