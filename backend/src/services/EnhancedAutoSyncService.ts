@@ -1423,6 +1423,7 @@ export class EnhancedAutoSyncService {
     }
 
     // 除外日を計算（inquiry_site または inquiry_date が存在する場合）
+    // 注意: nullで上書きしない（一度計算した除外日は消さない）
     {
       const siteForCalc = inquirySite ? String(inquirySite) : null;
       const dateForCalc = inquiryDate ? this.formatInquiryDate(inquiryYear, inquiryDate) : null;
@@ -1430,9 +1431,8 @@ export class EnhancedAutoSyncService {
         const exclusionDate = ExclusionDateCalculator.calculateExclusionDate(dateForCalc, siteForCalc);
         if (exclusionDate !== null) {
           updateData.exclusion_date = exclusionDate.toISOString().split('T')[0];
-        } else {
-          updateData.exclusion_date = null;
         }
+        // exclusionDate === null の場合は上書きしない（DBの既存値を保持）
       }
     }
 
@@ -1758,6 +1758,7 @@ export class EnhancedAutoSyncService {
     }
 
     // 除外日を計算（inquiry_site または inquiry_date が存在する場合）
+    // 注意: nullで上書きしない（一度計算した除外日は消さない）
     {
       const siteForCalc = inquirySite ? String(inquirySite) : null;
       const dateForCalc = inquiryDate ? this.formatInquiryDate(inquiryYear, inquiryDate) : null;
@@ -1765,9 +1766,8 @@ export class EnhancedAutoSyncService {
         const exclusionDate = ExclusionDateCalculator.calculateExclusionDate(dateForCalc, siteForCalc);
         if (exclusionDate !== null) {
           encryptedData.exclusion_date = exclusionDate.toISOString().split('T')[0];
-        } else {
-          encryptedData.exclusion_date = null;
         }
+        // exclusionDate === null の場合は上書きしない（DBの既存値を保持）
       }
     }
 
