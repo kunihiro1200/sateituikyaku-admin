@@ -20,7 +20,7 @@
   "crons": [
     {
       "path": "/api/sellers/sidebar-counts/update",
-      "schedule": "*/10 * * * *"
+      "schedule": "* * * * *"
     },
     {
       "path": "/api/buyers/update-sidebar-counts",
