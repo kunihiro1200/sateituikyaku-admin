@@ -1,8 +1,37 @@
 import { Router, Request, Response } from 'express';
 import OpenAI from 'openai';
-import axios from 'axios';
+import { google } from 'googleapis';
+import * as fs from 'fs';
+import * as path from 'path';
 
 const router = Router();
+
+// ============================================================
+// Google Drive サービスアカウント認証
+// ============================================================
+
+function getGoogleAuth() {
+  try {
+    let keyFile: any;
+    if (process.env.GOOGLE_SERVICE_ACCOUNT_JSON) {
+      keyFile = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON);
+      if (keyFile.private_key) {
+        keyFile.private_key = keyFile.private_key.replace(/\\n/g, '\n');
+      }
+    } else {
+      const keyPath = process.env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH || './google-service-account.json';
+      const absolutePath = path.resolve(__dirname, '../../', keyPath);
+      if (!fs.existsSync(absolutePath)) return null;
+      keyFile = JSON.parse(fs.readFileSync(absolutePath, 'utf8'));
+    }
+    return new google.auth.GoogleAuth({
+      credentials: keyFile,
+      scopes: ['https://www.googleapis.com/auth/drive.readonly'],
+    });
+  } catch {
+    return null;
+  }
+}
 
 // ============================================================
 // URL解析
@@ -50,8 +79,7 @@ function isLikelyFloorPlan(fileName: string): 'yes' | 'no' | 'maybe' {
 }
 
 // ============================================================
-// Google Drive APIキーでフォルダ内ファイル一覧を取得
-// （「リンクを知っている全員が閲覧可能」のフォルダに対応）
+// フォルダ内ファイル一覧取得（サービスアカウント）
 // ============================================================
 
 interface DriveFileInfo {
@@ -61,29 +89,26 @@ interface DriveFileInfo {
   likelyFloorPlan: 'yes' | 'no' | 'maybe';
 }
 
-async function listFilesInFolderByApiKey(folderId: string): Promise<DriveFileInfo[]> {
-  const apiKey = process.env.GOOGLE_MAPS_API_KEY; // Google APIキー（Drive APIも有効化済みの場合）
-  if (!apiKey) {
-    throw new Error('Google APIキーが設定されていません（GOOGLE_MAPS_API_KEY）');
-  }
+async function listFilesInFolder(folderId: string): Promise<DriveFileInfo[]> {
+  const auth = getGoogleAuth();
+  if (!auth) throw new Error('Google Drive認証が設定されていません（GOOGLE_SERVICE_ACCOUNT_JSON）');
+
+  const authClient = await auth.getClient();
+  const drive = google.drive({ version: 'v3', auth: authClient as any });
 
   const imageMimeTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
   const mimeQuery = imageMimeTypes.map(m => `mimeType='${m}'`).join(' or ');
 
-  const url = 'https://www.googleapis.com/drive/v3/files';
-  const params = {
+  const res = await drive.files.list({
     q: `'${folderId}' in parents and (${mimeQuery}) and trashed=false`,
-    fields: 'files(id,name,mimeType)',
-    pageSize: '200',
+    fields: 'files(id, name, mimeType)',
+    supportsAllDrives: true,
+    includeItemsFromAllDrives: true,
+    pageSize: 200,
     orderBy: 'name',
-    key: apiKey,
-    supportsAllDrives: 'true',
-    includeItemsFromAllDrives: 'true',
-  };
+  });
 
-  const res = await axios.get(url, { params, timeout: 30000 });
   const files = (res.data.files || []) as { id: string; name: string; mimeType: string }[];
-
   return files.map(f => ({
     id: f.id,
     name: f.name,
@@ -93,49 +118,29 @@ async function listFilesInFolderByApiKey(folderId: string): Promise<DriveFileInf
 }
 
 // ============================================================
-// ファイルをBase64で取得（APIキー経由）
+// ファイルをBase64で取得（サービスアカウント）
 // ============================================================
 
-async function fetchFileAsBase64ByApiKey(
+async function fetchFileAsBase64(
   fileId: string,
   mimeType: string
 ): Promise<{ base64: string; mimeType: string } | null> {
   if (mimeType === 'application/pdf') return null;
 
-  const apiKey = process.env.GOOGLE_MAPS_API_KEY;
-  if (!apiKey) return null;
-
   try {
-    // APIキーでダウンロード
-    const downloadUrl = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&key=${apiKey}`;
-    const response = await axios.get(downloadUrl, {
-      responseType: 'arraybuffer',
-      timeout: 30000,
-    });
-    const contentType = (response.headers['content-type'] || mimeType).split(';')[0];
-    if (contentType.includes('pdf') || contentType.includes('html')) return null;
-    const base64 = Buffer.from(response.data).toString('base64');
-    return { base64, mimeType: contentType };
+    const auth = getGoogleAuth();
+    if (!auth) return null;
+    const authClient = await auth.getClient();
+    const drive = google.drive({ version: 'v3', auth: authClient as any });
+    const res = await drive.files.get(
+      { fileId, alt: 'media', supportsAllDrives: true },
+      { responseType: 'arraybuffer' }
+    );
+    const base64 = Buffer.from(res.data as ArrayBuffer).toString('base64');
+    return { base64, mimeType };
   } catch (err: any) {
-    console.warn(`APIキーでのファイル取得失敗 (${fileId}):`, err.message);
-
-    // フォールバック: 公開ダウンロードURL
-    try {
-      const fallbackUrl = `https://drive.google.com/uc?export=download&id=${fileId}`;
-      const response = await axios.get(fallbackUrl, {
-        responseType: 'arraybuffer',
-        timeout: 30000,
-        maxRedirects: 5,
-        headers: { 'User-Agent': 'Mozilla/5.0' },
-      });
-      const contentType = (response.headers['content-type'] || mimeType).split(';')[0];
-      if (contentType.includes('pdf') || contentType.includes('html')) return null;
-      const base64 = Buffer.from(response.data).toString('base64');
-      return { base64, mimeType: contentType };
-    } catch (err2: any) {
-      console.warn(`公開URLでのファイル取得も失敗 (${fileId}):`, err2.message);
-      return null;
-    }
+    console.warn(`ファイル取得失敗 (${fileId}):`, err.message);
+    return null;
   }
 }
 
@@ -154,10 +159,10 @@ async function collectFloorPlansFromFolder(
   openai: OpenAI,
   maxImages: number = 4
 ): Promise<SelectedFloorPlan[]> {
-  const files = await listFilesInFolderByApiKey(folderId);
+  const files = await listFilesInFolder(folderId);
 
   if (files.length === 0) {
-    throw new Error('フォルダ内に画像ファイル（JPG/PNG）が見つかりませんでした。フォルダの共有設定を「リンクを知っている全員が閲覧可能」にしてください。');
+    throw new Error('フォルダ内に画像ファイル（JPG/PNG）が見つかりませんでした。');
   }
 
   console.log(`[FloorPlanCompare] フォルダ内ファイル数: ${files.length}`);
@@ -167,7 +172,6 @@ async function collectFloorPlansFromFolder(
   const maybeFiles = files.filter(f => f.likelyFloorPlan === 'maybe');
   const noFiles = files.filter(f => f.likelyFloorPlan === 'no');
 
-  // 優先順位: yes → maybe → no
   const candidates = yesFiles.length > 0 ? yesFiles
     : maybeFiles.length > 0 ? maybeFiles
     : noFiles;
@@ -177,16 +181,14 @@ async function collectFloorPlansFromFolder(
   for (const file of candidates) {
     if (results.length >= maxImages) break;
 
-    const imageData = await fetchFileAsBase64ByApiKey(file.id, file.mimeType);
+    const imageData = await fetchFileAsBase64(file.id, file.mimeType);
     if (!imageData) continue;
 
-    // ファイル名で確実に間取り図と判断できる場合はAI判定スキップ
     if (file.likelyFloorPlan === 'yes') {
       results.push({ image: imageData, fileName: file.name, fileId: file.id });
       continue;
     }
 
-    // AIで間取り図かどうか判定（低解像度・低コスト）
     try {
       const aiRes = await openai.chat.completions.create({
         model: 'gpt-4o',
@@ -225,7 +227,7 @@ router.get('/list-files', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'フォルダURLを入力してください（/folders/... の形式）' });
     }
 
-    const files = await listFilesInFolderByApiKey(parsed.id);
+    const files = await listFilesInFolder(parsed.id);
     return res.json({
       folderId: parsed.id,
       files: files.map(f => ({
@@ -268,13 +270,12 @@ router.post('/from-folder', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'フォルダURLの形式が正しくありません（/folders/... の形式で入力してください）' });
     }
 
-    // 間取り図を収集
     let floorPlans: SelectedFloorPlan[];
 
     if (selectedFileIds && selectedFileIds.length >= 2) {
       floorPlans = [];
       for (const fileId of selectedFileIds.slice(0, 4)) {
-        const imageData = await fetchFileAsBase64ByApiKey(fileId, 'image/jpeg');
+        const imageData = await fetchFileAsBase64(fileId, 'image/jpeg');
         if (imageData) {
           floorPlans.push({ image: imageData, fileName: fileId, fileId });
         }
@@ -300,7 +301,6 @@ router.post('/from-folder', async (req: Request, res: Response) => {
 
     console.log(`[FloorPlanCompare] 間取り図 ${floorPlans.length} 枚を取得。GPT-4o比較開始`);
 
-    // GPT-4o Vision で差異を洗い出す
     const contentParts: any[] = [
       {
         type: 'text',
