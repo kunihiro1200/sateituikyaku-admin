@@ -581,9 +581,12 @@ export default function SellersPage() {
       setSnackbarMessage(res.data?.message || '転記が完了しました');
       setSnackbarSeverity('success');
       setSnackbarOpen(true);
-      // データを再取得
+      // データを再取得（売主リスト + サイドバーカウント両方）
       pageDataCache.invalidate(CACHE_KEYS.SELLERS_LIST);
+      pageDataCache.invalidate(CACHE_KEYS.SELLERS_SIDEBAR_COUNTS);
       fetchSellers();
+      // サイドバーカウントは少し遅らせて取得（DBへの書き込み完了を待つ）
+      setTimeout(() => fetchSidebarCounts(true), 1000);
     } catch (err: any) {
       const msg = err?.response?.data?.error || '転記中にエラーが発生しました';
       setSnackbarMessage(msg);
