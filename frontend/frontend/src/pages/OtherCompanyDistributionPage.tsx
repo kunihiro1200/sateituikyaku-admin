@@ -631,7 +631,6 @@ export default function OtherCompanyDistributionPage() {
         <Box sx={{ display: 'flex', gap: 2 }}>          <Button
             variant="contained"
             startIcon={<EmailIcon />}
-            disabled={checkedIds.size === 0}
             onClick={openEmailDialog}
             sx={{
               backgroundColor: SECTION_COLORS.buyer.main,
@@ -1255,7 +1254,7 @@ export default function OtherCompanyDistributionPage() {
           <Button
             variant="contained"
             onClick={sendEmails}
-            disabled={sending}
+            disabled={sending || (!testEmail.trim() && checkedBuyers.length === 0)}
           >
             {sending ? '送信中...' : testEmail.trim() ? 'テスト送信' : `送信 (${checkedBuyers.length}件)`}
           </Button>
