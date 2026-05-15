@@ -445,9 +445,10 @@ export default function OtherCompanyDistributionPage() {
   };
 
   // メール本文生成
-  const buildEmailBody = (buyer: Buyer) => {
+  const buildEmailBody = (buyer: Buyer | null) => {
     // プレビューURLがあればそれを使用、なければ元のURLを使用
     const linkUrl = previewUrl || propertyUrl.trim();
+    const buyerName = buyer?.name || '（買主名）';
     
     // スクレイピングデータがある場合は新フォーマット
     if (previewData) {
@@ -474,17 +475,15 @@ export default function OtherCompanyDistributionPage() {
         return `<img src="${imgSrc}" alt="物件画像${index + 1}" style="max-width: 600px; width: 100%; height: auto; margin: 10px 0; display: block;" />`;
       }).join('');
       
-      return `${buyer.name}様<br><br>大変お世話になっております。<br>不動産会社の㈱いふうです。<br><br>新着物件がでましたので、ご案内致します。<br><br>${propertyAddress}/${propertyPrice}/<br><br>${imageHtml}<br>他の画像はこちらから<br><a href="${linkUrl}">${linkUrl}</a>${commentSection}<br>${propertyInfo}<br>★建売専門HPはこちら<br><a href="https://sateituikyaku-admin-frontend.vercel.app/tateuri">https://sateituikyaku-admin-frontend.vercel.app/tateuri</a>${SIGNATURE_EMAIL.replace(/\n/g, '<br>')}`;
+      return `${buyerName}様<br><br>大変お世話になっております。<br>不動産会社の㈱いふうです。<br><br>新着物件がでましたので、ご案内致します。<br><br>${propertyAddress}/${propertyPrice}/<br><br>${imageHtml}<br>他の画像はこちらから<br><a href="${linkUrl}">${linkUrl}</a>${commentSection}<br>${propertyInfo}<br>★建売専門HPはこちら<br><a href="https://sateituikyaku-admin-frontend.vercel.app/tateuri">https://sateituikyaku-admin-frontend.vercel.app/tateuri</a>${SIGNATURE_EMAIL.replace(/\n/g, '<br>')}`;
     }
     
     // スクレイピングデータがない場合は従来フォーマット
     const urlLine = linkUrl ? `<br>物件情報はこちら: <a href="${linkUrl}">${linkUrl}</a><br>` : '';
-    return `${buyer.name}様<br><br>大変お世話になっております。<br>不動産会社の㈱いふうです。<br><br>新着物件がでましたので、ご案内致します。<br>他社様の物件でも気になる物件がございましたらまとめてご案内可能ですのでお申し付けくださいませ。${urlLine}<br>★建売専門HPはこちら<br><a href="https://sateituikyaku-admin-frontend.vercel.app/tateuri">https://sateituikyaku-admin-frontend.vercel.app/tateuri</a>${SIGNATURE_EMAIL.replace(/\n/g, '<br>')}`;
+    return `${buyerName}様<br><br>大変お世話になっております。<br>不動産会社の㈱いふうです。<br><br>新着物件がでましたので、ご案内致します。<br>他社様の物件でも気になる物件がございましたらまとめてご案内可能ですのでお申し付けくださいませ。${urlLine}<br>★建売専門HPはこちら<br><a href="https://sateituikyaku-admin-frontend.vercel.app/tateuri">https://sateituikyaku-admin-frontend.vercel.app/tateuri</a>${SIGNATURE_EMAIL.replace(/\n/g, '<br>')}`;
   };
 
   const openEmailDialog = () => {
-    if (checkedBuyers.length === 0) return;
-    
     // スクレイピングデータがある場合は件名も更新
     if (previewData) {
       const propertyAddress = previewData.address || '住所情報なし';
@@ -494,8 +493,12 @@ export default function OtherCompanyDistributionPage() {
       setEmailSubject('新着物件のご案内です！！');
     }
     
-    // 最初の買主の名前で本文を生成（個別送信なので各買主ごとに変わる）
-    setEmailBody(buildEmailBody(checkedBuyers[0]));
+    // 買主が選択されている場合は最初の買主の名前で本文を生成、未選択の場合はデフォルト本文
+    if (checkedBuyers.length > 0) {
+      setEmailBody(buildEmailBody(checkedBuyers[0]));
+    } else {
+      setEmailBody(buildEmailBody(null));
+    }
     setEmailDialogOpen(true);
   };
 
