@@ -290,11 +290,13 @@ export class EmailService extends BaseRepository {
 
       // fromが指定されていない場合はemployeeEmailを使用（後方互換性）
       const senderAddress = from || employeeEmail;
+      const encodedSenderAddress = this.encodeFrom(senderAddress);
 
       console.log('📧 Sending template email:');
       console.log(`  To: ${seller.email}`);
       console.log(`  Subject: ${subject}`);
-      console.log(`  From: ${senderAddress}`);
+      console.log(`  From (raw): ${senderAddress}`);
+      console.log(`  From (encoded): ${encodedSenderAddress}`);
 
       // Gmail APIでメール送信（リトライ付き）
       const gmail = google.gmail({ version: 'v1', auth: this.oauth2Client });
@@ -976,8 +978,9 @@ ${bodyHtml}
       console.log(`  To: ${params.to}`);
       console.log(`  CC: ${params.cc || '(none)'}`);
       console.log(`  Subject: ${params.subject}`);
-      console.log(`  From: ${params.from}`);
-      console.log(`  Attachments: ${params.attachments?.length || 0}`);
+      console.log(`  From (raw): ${params.from}`);
+      const encodedFromHeader = this.encodeFrom(params.from);
+      console.log(`  From (encoded): ${encodedFromHeader}`);
 
       const gmail = google.gmail({ version: 'v1', auth: this.oauth2Client });
 
@@ -985,7 +988,7 @@ ${bodyHtml}
       const encodedSubject = this.encodeSubject(params.subject);
 
       const messageParts: string[] = [
-        `From: ${this.encodeFrom(params.from)}`,
+        `From: ${encodedFromHeader}`,
         `To: ${params.to}`,
       ];
       // Reply-To ヘッダーを From の直後に追加（replyTo が指定された場合のみ）
