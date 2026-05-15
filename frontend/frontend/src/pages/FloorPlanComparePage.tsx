@@ -8,9 +8,7 @@ import {
   Container,
   Divider,
   Paper,
-  Stack,
   TextField,
-  Tooltip,
   Typography,
 } from '@mui/material';
 import CompareArrowsIcon from '@mui/icons-material/CompareArrows';
@@ -18,30 +16,14 @@ import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 import FolderOpenIcon from '@mui/icons-material/FolderOpen';
-import AutoFixHighIcon from '@mui/icons-material/AutoFixHigh';
-import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://sateituikyaku-admin-backend.vercel.app';
+const API_BASE_URL = 'https://sateituikyaku-admin-backend.vercel.app';
 
 // ============================================================
-// 型定義
+// 比較結果の1行表示
 // ============================================================
-
-interface DriveFileItem {
-  id: string;
-  name: string;
-  mimeType: string;
-  likelyFloorPlan: 'yes' | 'no' | 'maybe';
-  thumbnailUrl: string;
-  viewUrl: string;
-}
-
-// ============================================================
-// 比較結果の行表示
-// ============================================================
-
 function ResultLine({ line }: { line: string }) {
-  const trimmed = line.trim();
+  const trimmed = (line || '').trim();
 
   if (trimmed.startsWith('✅')) {
     return (
@@ -89,100 +71,59 @@ function ResultLine({ line }: { line: string }) {
   );
 }
 
-function parseStats(result: string) {
-  const lines = result.split('\n');
-  let ok = 0, warn = 0, unknown = 0;
-  for (const line of lines) {
-    if (line.includes('✅')) ok++;
-    else if (line.includes('⚠️')) warn++;
-    else if (line.includes('❓')) unknown++;
-  }
-  return { ok, warn, unknown };
-}
-
 // ============================================================
 // メインページ
 // ============================================================
-
 export default function FloorPlanComparePage() {
   const [folderUrl, setFolderUrl] = useState('');
-
-  // ファイル一覧プレビュー
-  const [files, setFiles] = useState<DriveFileItem[] | null>(null);
-  const [loadingFiles, setLoadingFiles] = useState(false);
-
-  // 手動選択（任意）
-  const [selectedFileIds, setSelectedFileIds] = useState<string[]>([]);
-
-  // 比較結果
   const [comparing, setComparing] = useState(false);
-  const [result, setResult] = useState<string | null>(null);
+  const [result, setResult] = useState('');
   const [foundFiles, setFoundFiles] = useState<string[]>([]);
-  const [error, setError] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState('');
 
-  // フォルダ内ファイル一覧を取得
-  const handleLoadFiles = async () => {
-    if (!folderUrl.trim()) return;
-    setLoadingFiles(true);
-    setFiles(null);
-    setSelectedFileIds([]);
-    setError(null);
-    try {
-      const res = await axios.get(`${API_BASE_URL}/api/floor-plan-compare/list-files`, {
-        params: { url: folderUrl.trim() },
-        timeout: 30000,
-      });
-      setFiles(res.data.files || []);
-    } catch (err: any) {
-      const msg = err?.response?.data?.error || err.message || 'ファイル一覧の取得に失敗しました';
-      setError(msg);
-      setFiles([]);
-    } finally {
-      setLoadingFiles(false);
-    }
-  };
-
-  // ファイル選択トグル
-  const toggleFileSelect = (fileId: string) => {
-    setSelectedFileIds(prev =>
-      prev.includes(fileId) ? prev.filter(id => id !== fileId) : [...prev, fileId]
-    );
-  };
-
-  // 比較実行
   const handleCompare = async () => {
-    if (!folderUrl.trim()) {
-      setError('フォルダURLを入力してください');
+    const url = folderUrl.trim();
+    if (!url) {
+      setErrorMsg('フォルダURLを入力してください');
       return;
     }
     setComparing(true);
-    setResult(null);
+    setResult('');
     setFoundFiles([]);
-    setError(null);
+    setErrorMsg('');
 
     try {
-      const res = await axios.post(
-        `${API_BASE_URL}/api/floor-plan-compare/from-folder`,
-        {
-          folderUrl: folderUrl.trim(),
-          selectedFileIds: selectedFileIds.length >= 2 ? selectedFileIds : undefined,
-        },
-        { timeout: 180000 }
-      );
-      setResult(res.data.result);
-      setFoundFiles(res.data.foundFiles || []);
+      const response = await fetch(`${API_BASE_URL}/api/floor-plan-compare/from-folder`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ folderUrl: url }),
+        signal: AbortSignal.timeout(180000),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        const errText = typeof data.error === 'string' ? data.error
+          : data.error?.message ? String(data.error.message)
+          : '比較中にエラーが発生しました';
+        setErrorMsg(errText);
+        return;
+      }
+
+      setResult(typeof data.result === 'string' ? data.result : '');
+      setFoundFiles(Array.isArray(data.foundFiles) ? data.foundFiles.map(String) : []);
     } catch (err: any) {
-      const msg =
-        err?.response?.data?.error ||
-        err.message ||
-        '比較中にエラーが発生しました。しばらく待ってから再試行してください。';
-      setError(msg);
+      setErrorMsg(err?.message ? String(err.message) : '通信エラーが発生しました');
     } finally {
       setComparing(false);
     }
   };
 
-  const stats = result ? parseStats(result) : null;
+  // 結果の統計
+  const lines = result ? result.split('\n') : [];
+  const okCount = lines.filter(l => l.includes('✅')).length;
+  const warnCount = lines.filter(l => l.includes('⚠️')).length;
+  const unknownCount = lines.filter(l => l.includes('❓')).length;
 
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: '#f5f5f5', py: 4 }}>
@@ -215,10 +156,8 @@ export default function FloorPlanComparePage() {
             value={folderUrl}
             onChange={(e) => {
               setFolderUrl(e.target.value);
-              setFiles(null);
-              setSelectedFileIds([]);
-              setResult(null);
-              setError(null);
+              setResult('');
+              setErrorMsg('');
             }}
             fullWidth
             size="small"
@@ -228,120 +167,16 @@ export default function FloorPlanComparePage() {
             }}
           />
 
-          {/* ファイル確認ボタン */}
-          {folderUrl.includes('/folders/') && (
-            <Box sx={{ mt: 1.5 }}>
-              <Button
-                size="small"
-                variant="outlined"
-                startIcon={loadingFiles ? <CircularProgress size={14} /> : <FolderOpenIcon />}
-                onClick={handleLoadFiles}
-                disabled={loadingFiles}
-              >
-                {loadingFiles ? 'ファイル一覧を読み込み中...' : 'フォルダ内のファイルを確認（任意）'}
-              </Button>
-            </Box>
-          )}
-
-          {/* ファイル一覧サムネイル */}
-          {files && files.length > 0 && (
-            <Box sx={{ mt: 2 }}>
-              <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block' }}>
-                フォルダ内のファイル一覧 — 比較したいファイルを2枚以上クリックして選択できます（選択しない場合はAIが自動選択）
-              </Typography>
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                {/* 自動選択オプション */}
-                <Tooltip title="AIが自動で間取り図を選択します">
-                  <Box
-                    onClick={() => setSelectedFileIds([])}
-                    sx={{
-                      border: selectedFileIds.length === 0 ? '2px solid' : '1px solid',
-                      borderColor: selectedFileIds.length === 0 ? 'primary.main' : 'divider',
-                      borderRadius: 1,
-                      p: 1,
-                      cursor: 'pointer',
-                      bgcolor: selectedFileIds.length === 0 ? 'primary.50' : 'background.paper',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      gap: 0.5,
-                      width: 80,
-                      '&:hover': { borderColor: 'primary.main' },
-                    }}
-                  >
-                    <AutoFixHighIcon sx={{ fontSize: 24, color: 'primary.main' }} />
-                    <Typography variant="caption" fontWeight={selectedFileIds.length === 0 ? 'bold' : 'normal'} textAlign="center">
-                      自動選択
-                    </Typography>
-                  </Box>
-                </Tooltip>
-
-                {/* 各ファイル */}
-                {files.map(file => {
-                  const isSelected = selectedFileIds.includes(file.id);
-                  return (
-                    <Tooltip key={file.id} title={file.name}>
-                      <Box
-                        onClick={() => toggleFileSelect(file.id)}
-                        sx={{
-                          border: isSelected ? '2px solid' : '1px solid',
-                          borderColor: isSelected ? 'primary.main'
-                            : file.likelyFloorPlan === 'yes' ? 'success.light'
-                            : file.likelyFloorPlan === 'no' ? 'grey.300'
-                            : 'divider',
-                          borderRadius: 1,
-                          p: 0.5,
-                          cursor: 'pointer',
-                          bgcolor: isSelected ? 'primary.50' : 'background.paper',
-                          width: 80,
-                          opacity: file.likelyFloorPlan === 'no' ? 0.5 : 1,
-                          '&:hover': { borderColor: 'primary.main', opacity: 1 },
-                        }}
-                      >
-                        <Box
-                          component="img"
-                          src={file.thumbnailUrl}
-                          alt={file.name}
-                          onError={(e: any) => { e.target.style.display = 'none'; }}
-                          sx={{ width: '100%', height: 60, objectFit: 'cover', borderRadius: 0.5, display: 'block' }}
-                        />
-                        <Typography variant="caption" sx={{
-                          display: 'block', mt: 0.25,
-                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '10px',
-                        }}>
-                          {file.name}
-                        </Typography>
-                        {file.likelyFloorPlan === 'yes' && (
-                          <Chip label="間取り図" size="small" color="success"
-                            sx={{ fontSize: '9px', height: 14, mt: 0.25, '& .MuiChip-label': { px: 0.5 } }} />
-                        )}
-                      </Box>
-                    </Tooltip>
-                  );
-                })}
-              </Box>
-              {selectedFileIds.length > 0 && selectedFileIds.length < 2 && (
-                <Alert severity="warning" sx={{ mt: 1 }}>
-                  比較するには2枚以上選択してください（現在 {selectedFileIds.length} 枚）
-                </Alert>
-              )}
-            </Box>
-          )}
-
-          {files && files.length === 0 && (
-            <Alert severity="warning" sx={{ mt: 1 }}>
-              フォルダ内に画像ファイル（JPG/PNG）が見つかりませんでした
-            </Alert>
-          )}
-
-          {/* 比較ボタン */}
           <Box sx={{ mt: 3, display: 'flex', justifyContent: 'center' }}>
             <Button
               variant="contained"
               size="large"
-              startIcon={comparing ? <CircularProgress size={20} color="inherit" /> : <CompareArrowsIcon />}
+              startIcon={comparing
+                ? <CircularProgress size={20} color="inherit" />
+                : <CompareArrowsIcon />
+              }
               onClick={handleCompare}
-              disabled={!folderUrl.trim() || comparing || (selectedFileIds.length > 0 && selectedFileIds.length < 2)}
+              disabled={!folderUrl.trim() || comparing}
               sx={{ minWidth: 220 }}
             >
               {comparing ? 'AI比較中...' : '差異を洗い出す'}
@@ -355,43 +190,56 @@ export default function FloorPlanComparePage() {
           )}
         </Paper>
 
-        {/* エラー表示 */}
-        {error && (
+        {/* エラー */}
+        {errorMsg !== '' && (
           <Alert severity="error" sx={{ mb: 3 }}>
-            {error}
+            {errorMsg}
           </Alert>
         )}
 
         {/* 使用ファイル情報 */}
-        {result && foundFiles.length > 0 && (
+        {result !== '' && foundFiles.length > 0 && (
           <Paper sx={{ p: 2, mb: 2, bgcolor: '#f9f9f9' }}>
             <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
-              比較に使用した図面ファイル（{foundFiles.length}枚）
+              {`比較に使用した図面ファイル（${foundFiles.length}枚）`}
             </Typography>
-            <Stack spacing={0.5}>
-              {foundFiles.map((name, idx) => (
-                <Typography key={idx} variant="body2">
-                  {`図面${idx + 1}: ${name}`}
-                </Typography>
-              ))}
-            </Stack>
+            {foundFiles.map((name, idx) => (
+              <Typography key={idx} variant="body2">
+                {`図面${idx + 1}: ${String(name)}`}
+              </Typography>
+            ))}
           </Paper>
         )}
 
         {/* 比較結果 */}
-        {result && stats && (
+        {result !== '' && (
           <Paper sx={{ p: 3 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2, flexWrap: 'wrap', gap: 1 }}>
               <Typography variant="h6" fontWeight="bold">
                 差異チェック結果
               </Typography>
               <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                <Chip icon={<CheckCircleOutlineIcon />} label={`一致 ${stats.ok}件`} color="success" size="small" />
-                {stats.warn > 0 && (
-                  <Chip icon={<WarningAmberIcon />} label={`差異あり ${stats.warn}件`} color="warning" size="small" />
+                <Chip
+                  icon={<CheckCircleOutlineIcon />}
+                  label={`一致 ${okCount}件`}
+                  color="success"
+                  size="small"
+                />
+                {warnCount > 0 && (
+                  <Chip
+                    icon={<WarningAmberIcon />}
+                    label={`差異あり ${warnCount}件`}
+                    color="warning"
+                    size="small"
+                  />
                 )}
-                {stats.unknown > 0 && (
-                  <Chip icon={<HelpOutlineIcon />} label={`判定不可 ${stats.unknown}件`} color="default" size="small" />
+                {unknownCount > 0 && (
+                  <Chip
+                    icon={<HelpOutlineIcon />}
+                    label={`判定不可 ${unknownCount}件`}
+                    color="default"
+                    size="small"
+                  />
                 )}
               </Box>
             </Box>
@@ -399,13 +247,18 @@ export default function FloorPlanComparePage() {
             <Divider sx={{ mb: 2 }} />
 
             <Box>
-              {result.split('\n').map((line, idx) => (
+              {lines.map((line, idx) => (
                 <ResultLine key={idx} line={line} />
               ))}
             </Box>
 
             <Box sx={{ mt: 3, display: 'flex', justifyContent: 'center' }}>
-              <Button variant="outlined" startIcon={<CompareArrowsIcon />} onClick={handleCompare} disabled={comparing}>
+              <Button
+                variant="outlined"
+                startIcon={<CompareArrowsIcon />}
+                onClick={handleCompare}
+                disabled={comparing}
+              >
                 再チェックする
               </Button>
             </Box>
@@ -413,7 +266,7 @@ export default function FloorPlanComparePage() {
         )}
 
         {/* 使い方ガイド */}
-        {!result && !comparing && (
+        {result === '' && !comparing && (
           <Paper sx={{ p: 3, bgcolor: '#fff8e1' }}>
             <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
               使い方
@@ -442,6 +295,7 @@ export default function FloorPlanComparePage() {
             </Alert>
           </Paper>
         )}
+
       </Container>
     </Box>
   );
