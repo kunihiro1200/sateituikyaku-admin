@@ -373,33 +373,6 @@ export class SellerService extends BaseRepository {
     // サイドバーカウントキャッシュも無効化（新規売主追加により集計が変わる可能性があるため）
     await CacheHelper.del('sellers:sidebar-counts');
 
-    // サイドバーカウントを即座に更新（新規売主追加により未着手カテゴリ等が変わるため）
-    // updateSeller と同様に updateAffectedCategories を呼び出す
-    try {
-      const { SellerSidebarCountsUpdateService } = await import('./SellerSidebarCountsUpdateService');
-      const sidebarService = new SellerSidebarCountsUpdateService(this.supabase);
-      // 新規売主に関係するフィールドを全て渡す（status, inquiry_date, next_call_date が主要）
-      const newSellerFields = [
-        'status',
-        'inquiry_date',
-        'next_call_date',
-        'visit_assignee',
-        'confidence_level',
-        'unreachable_status',
-        'phone_contact_person',
-        'preferred_contact_time',
-        'contact_method',
-        'valuation_amount_1',
-        'valuation_amount_2',
-        'valuation_amount_3',
-        'valuation_method',
-        'pinrich_status',
-      ];
-      await sidebarService.updateAffectedCategories(newSellerFields);
-    } catch (err: any) {
-      console.error('⚠️ Failed to update sidebar counts after createSeller:', err);
-    }
-
     // スプレッドシートに同期（非同期）
     const activeSyncQueue = this.getActiveSyncQueue();
     if (activeSyncQueue) {
@@ -2576,8 +2549,22 @@ export class SellerService extends BaseRepository {
 
   /**
    * サイドバー用のカテゴリカウントを取得
-   * seller_sidebar_counts テーブルから1クエリで高速取得。
-   * テーブルが空または取得失敗の場合は重いDBクエリにフォールバック。
+   *
+   * 【根本解決 2026-05-15】
+   * seller_sidebar_counts テーブルへの依存を廃止。
+   * 常に getSidebarCountsFallback()（DBから直接計算）を呼び出す。
+   *
+   * 理由:
+   * - seller_sidebar_counts テーブルは updateAffectedCategories() で更新されるが、
+   *   Vercel サーバーレス環境ではプロセス打ち切りにより確実に実行されない。
+   * - 新規売主登録・スプレッドシート同期など複数の更新経路があり、
+   *   全てのパスで確実にテーブルを更新することは不可能。
+   * - buyer_sidebar_counts も同様の理由で廃止済み（コミット 9608f860）。
+   *
+   * パフォーマンス:
+   * - フロントエンドのキャッシュ（1分TTL）+ 1分ポーリングで十分な速度を確保。
+   * - バックエンド側のインメモリキャッシュは Vercel サーバーレスでは
+   *   インスタンス間で共有されないため使用しない。
    */
   async getSidebarCounts(): Promise<{
     todayCall: number;
@@ -2605,71 +2592,9 @@ export class SellerService extends BaseRepository {
     fi_unvaluated: number;
     fi_todayCallWithInfoLabelCounts: Record<string, number>;
   }> {
-    try {
-      // seller_sidebar_countsテーブルから全行を取得（1クエリで高速）
-      const { data: rows, error } = await this.table('seller_sidebar_counts')
-        .select('category, count, label, assignee');
-
-      if (error || !rows || rows.length === 0) {
-        console.warn('⚠️ [SidebarCounts] Table empty or error, falling back to DB calculation:', error?.message);
-        return this.getSidebarCountsFallback();
-      }
-
-      // テーブルのデータを返却形式に変換
-      const getCount = (category: string) =>
-        rows.find((r: any) => r.category === category && !r.label && !r.assignee)?.count ?? 0;
-
-      const visitAssignedCounts: Record<string, number> = {};
-      const todayCallAssignedCounts: Record<string, number> = {};
-      const todayCallWithInfoLabelCounts: Record<string, number> = {};
-      const fi_todayCallWithInfoLabelCounts: Record<string, number> = {};
-
-      rows.forEach((r: any) => {
-        if (r.category === 'visitAssigned' && r.assignee) {
-          visitAssignedCounts[r.assignee] = r.count;
-        } else if (r.category === 'todayCallAssigned' && r.assignee) {
-          todayCallAssignedCounts[r.assignee] = r.count;
-        } else if (r.category === 'todayCallWithInfo' && r.label) {
-          todayCallWithInfoLabelCounts[r.label] = r.count;
-        } else if (r.category === 'fi_todayCallWithInfo' && r.label) {
-          fi_todayCallWithInfoLabelCounts[r.label] = r.count;
-        }
-      });
-
-      const todayCallWithInfoLabels = Object.keys(todayCallWithInfoLabelCounts);
-
-      console.log('✅ [SidebarCounts] Served from seller_sidebar_counts table (fast path)');
-
-      return {
-        todayCall: getCount('todayCall'),
-        todayCallWithInfo: getCount('todayCallWithInfo'),
-        todayCallAssigned: getCount('todayCallAssigned'),
-        visitDayBefore: getCount('visitDayBefore'),
-        visitCompleted: getCount('visitCompleted'),
-        unvaluated: getCount('unvaluated'),
-        mailingPending: getCount('mailingPending'),
-        todayCallNotStarted: getCount('todayCallNotStarted'),
-        pinrichEmpty: getCount('pinrichEmpty'),
-        pinrichChangeRequired: getCount('pinrichChangeRequired'),
-        exclusive: getCount('exclusive'),
-        general: getCount('general'),
-        visitOtherDecision: getCount('visitOtherDecision'),
-        unvisitedOtherDecision: getCount('unvisitedOtherDecision'),
-        visitAssignedCounts,
-        todayCallAssignedCounts,
-        todayCallWithInfoLabels,
-        todayCallWithInfoLabelCounts,
-        // 福岡（FI）専用カウント
-        fi_todayCall: getCount('fi_todayCall'),
-        fi_todayCallNotStarted: getCount('fi_todayCallNotStarted'),
-        fi_todayCallWithInfo: getCount('fi_todayCallWithInfo'),
-        fi_unvaluated: getCount('fi_unvaluated'),
-        fi_todayCallWithInfoLabelCounts,
-      };
-    } catch (err) {
-      console.warn('⚠️ [SidebarCounts] Unexpected error, falling back to DB calculation:', err);
-      return this.getSidebarCountsFallback();
-    }
+    // seller_sidebar_counts テーブルを使わず、常にDBから直接計算する
+    // これにより新規売主追加・スプレッドシート同期後も即座に反映される
+    return this.getSidebarCountsFallback();
   }
 
     /**
