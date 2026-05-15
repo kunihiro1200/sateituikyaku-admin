@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import multer from 'multer';
+import { google } from 'googleapis';
 import { EmailService } from '../services/EmailService';
 import { BuyerService } from '../services/BuyerService';
 import { EmailHistoryService } from '../services/EmailHistoryService';
@@ -210,6 +211,47 @@ router.post('/send', upload.array('attachments'), async (req, res) => {
       details: process.env.NODE_ENV === 'development' ? error.message : undefined,
       code: 'EMAIL_SEND_ERROR',
     });
+  }
+});
+
+// Gmail sendAs 設定を確認するエンドポイント（送信者名の文字化け調査用）
+router.get('/send-as', async (req, res) => {
+  try {
+    const { GoogleAuthService } = await import('../services/GoogleAuthService');
+    const googleAuthService = new GoogleAuthService();
+    const authClient = await googleAuthService.getAuthenticatedClient();
+    const gmail = google.gmail({ version: 'v1', auth: authClient });
+
+    const result = await gmail.users.settings.sendAs.list({ userId: 'me' });
+    res.json({ sendAs: result.data.sendAs || [] });
+  } catch (error: any) {
+    console.error('[gmail/send-as] エラー:', error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Gmail sendAs 表示名を更新するエンドポイント
+router.patch('/send-as', async (req, res) => {
+  try {
+    const { sendAsEmail, displayName } = req.body;
+    if (!sendAsEmail || !displayName) {
+      return res.status(400).json({ error: 'sendAsEmail と displayName は必須です' });
+    }
+
+    const { GoogleAuthService } = await import('../services/GoogleAuthService');
+    const googleAuthService = new GoogleAuthService();
+    const authClient = await googleAuthService.getAuthenticatedClient();
+    const gmail = google.gmail({ version: 'v1', auth: authClient });
+
+    const result = await gmail.users.settings.sendAs.patch({
+      userId: 'me',
+      sendAsEmail,
+      requestBody: { displayName },
+    });
+    res.json({ success: true, updated: result.data });
+  } catch (error: any) {
+    console.error('[gmail/send-as PATCH] エラー:', error.message);
+    res.status(500).json({ error: error.message });
   }
 });
 
