@@ -118,7 +118,7 @@ export class EmailService extends BaseRepository {
       };
       const from = encodeFromHeader(fromRaw);
 
-      // URLをリンク化する関数（<a>タグで囲まれていないURLのみ対象）
+      // URLをリンク化する関数（<a>タグや<img>タグで囲まれていないURLのみ対象）
       const urlToLink = (inputText: string): string =>
         inputText.replace(/(https?:\/\/[^\s\u3000\u3001\u3002\uff01\uff09\u300d\u300f\u3011\u3015\u3017\u3019\u301b\u301f\uff3d\uff5d\u300b\u300f]+)/g,
           (url, _group1, offset) => {
@@ -128,6 +128,12 @@ export class EmailService extends BaseRepository {
             const lastAnchorClose = before.lastIndexOf('</a>');
             if (lastAnchorOpen > lastAnchorClose) {
               return url; // <a>タグの中にあるのでそのまま返す
+            }
+            // <img src="..."> など属性値の中にあるURLはスキップ
+            const lastTagOpen = before.lastIndexOf('<');
+            const lastTagClose = before.lastIndexOf('>');
+            if (lastTagOpen > lastTagClose) {
+              return url; // タグの属性値の中にあるのでそのまま返す
             }
             return `<a href="${url}">${url}</a>`;
           });

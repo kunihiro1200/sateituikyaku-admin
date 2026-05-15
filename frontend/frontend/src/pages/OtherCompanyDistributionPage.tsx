@@ -540,7 +540,8 @@ export default function OtherCompanyDistributionPage() {
         const formData = new FormData();
         if (buyer) formData.append('buyerId', buyer.buyer_number);
         formData.append('subject', emailSubject);
-        formData.append('body', buildEmailBody(buyer)); // 各買主ごとに本文を生成
+        // 送信時は常にbuildEmailBodyで再生成（テキストエリアのHTMLエスケープ問題を回避）
+        formData.append('body', buildEmailBody(buyer));
         formData.append('senderEmail', 'tenant@ifoo-oita.com');
         // テスト送信の場合はtoEmailを指定（バックエンドで宛先として使用）
         if (isTestSend) formData.append('toEmail', testEmail.trim());
