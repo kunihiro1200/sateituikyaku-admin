@@ -911,6 +911,45 @@ router.post('/seller-row', async (req: Request, res: Response) => {
       console.log(`✅ [seller-row] Created: ${sellerNumber}`);
       res.json({ success: true, action: 'created', sellerNumber });
     }
+
+    // サイドバーカウントを即時更新（非同期・ノンブロッキング）
+    // GAS onEditトリガー経由の更新でもカテゴリーが即座に反映されるようにする
+    const updatedFields = Object.keys(row)
+      .map((jpKey: string) => {
+        // スプレッドシートの日本語カラム名 → DBカラム名に変換
+        const mapping: Record<string, string> = {
+          '状況（当社）': 'status',
+          '次電日': 'next_call_date',
+          '営担': 'visit_assignee',
+          '訪問日 \nY/M/D': 'visit_date',
+          '訪問日 Y/M/D': 'visit_date',
+          '不通': 'unreachable_status',
+          '確度': 'confidence_level',
+          '反響日付': 'inquiry_date',
+          '電話担当（任意）': 'phone_contact_person',
+          '連絡取りやすい日、時間帯': 'preferred_contact_time',
+          '連絡方法': 'contact_method',
+          'Pinrich': 'pinrich_status',
+          '査定方法': 'valuation_method',
+          '郵送ステータス': 'mailing_status',
+          '査定額1': 'valuation_amount_1',
+          '査定額2': 'valuation_amount_2',
+          '査定額3': 'valuation_amount_3',
+          '契約年月 他決は分かった時点': 'contract_year_month',
+          '専任他決打合せ': 'exclusive_other_decision_meeting',
+        };
+        return mapping[jpKey] || null;
+      })
+      .filter((f): f is string => f !== null);
+
+    if (updatedFields.length > 0) {
+      import('../services/SellerSidebarCountsUpdateService').then(({ SellerSidebarCountsUpdateService }) => {
+        const sidebarService = new SellerSidebarCountsUpdateService(supabaseClient);
+        sidebarService.updateAffectedCategories(updatedFields).catch((err: any) => {
+          console.error('⚠️ [seller-row] Failed to update sidebar counts:', err);
+        });
+      }).catch((err: any) => console.error('⚠️ [seller-row] Import error:', err));
+    }
   } catch (error: any) {
     console.error('[seller-row] Error:', error.message);
     res.status(500).json({ success: false, error: error.message });
