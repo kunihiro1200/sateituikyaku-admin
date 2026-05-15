@@ -53,19 +53,37 @@ router.post('/send', upload.array('attachments'), async (req, res) => {
   const body = req.body;
   const { buyerId, propertyIds, senderEmail, subject, templateName } = body;
   const bodyText = body.body;
+  const toEmail = body.toEmail; // テスト送信用の宛先上書き
   const attachments = (req.files as Express.Multer.File[]) || [];
   const imageUrls = body.imageUrls ? (Array.isArray(body.imageUrls) ? body.imageUrls : [body.imageUrls]) : [];
   
   try {
 
-    if (!buyerId || !subject || !bodyText) {
-      return res.status(400).json({ error: 'buyerId, subject, body は必須です' });
+    if (!subject || !bodyText) {
+      return res.status(400).json({ error: 'subject, body は必須です' });
     }
 
-    // 買主情報を取得
-    const buyer = await buyerService.getById(buyerId);
-    if (!buyer || !buyer.email) {
-      return res.status(404).json({ error: '買主が見つからないか、メールアドレスが登録されていません' });
+    // テスト送信（toEmailあり）の場合はbuyerIdなしでも送信可能
+    let recipientEmail: string;
+    let buyer: any = null;
+
+    if (toEmail && toEmail.trim()) {
+      // テスト送信：toEmailを宛先として使用
+      recipientEmail = toEmail.trim();
+      // buyerIdがあれば買主情報も取得（なくてもOK）
+      if (buyerId && buyerId !== 'test') {
+        buyer = await buyerService.getById(buyerId).catch(() => null);
+      }
+    } else {
+      // 通常送信：buyerIdが必須
+      if (!buyerId) {
+        return res.status(400).json({ error: 'buyerId は必須です（テスト送信の場合は toEmail を指定してください）' });
+      }
+      buyer = await buyerService.getById(buyerId);
+      if (!buyer || !buyer.email) {
+        return res.status(404).json({ error: '買主が見つからないか、メールアドレスが登録されていません' });
+      }
+      recipientEmail = buyer.email;
     }
 
     // URL画像をダウンロードして添付ファイルに追加
@@ -105,7 +123,7 @@ router.post('/send', upload.array('attachments'), async (req, res) => {
     // メール送信（30秒タイムアウト）
     const sendWithTimeout = Promise.race([
       emailService.sendBuyerEmail({
-        to: buyer.email,
+        to: recipientEmail,
         subject,
         body: bodyText,
         from: senderEmail,
@@ -144,37 +162,41 @@ router.post('/send', upload.array('attachments'), async (req, res) => {
     // employee_id を取得（未ログイン時は会社アカウントUUIDをフォールバック）
     const employeeId = (req as any).employee?.id || COMPANY_ACCOUNT_UUID;
 
-    // email_history テーブルに記録
-    try {
-      await emailHistoryService.saveEmailHistory({
-        buyerId: buyer.buyer_number || buyerId,
-        propertyNumbers,
-        recipientEmail: buyer.email,
-        subject,
-        body: bodyText,
-        senderEmail: senderEmail || 'tenant@ifoo-oita.com',
-        emailType: 'gmail_send',
-      });
-    } catch (err) {
-      console.error('[gmail/send] email_history保存エラー:', err);
-      // 履歴保存失敗はレスポンスに影響させない
+    // email_history テーブルに記録（テスト送信の場合はスキップ）
+    if (!toEmail?.trim()) {
+      try {
+        await emailHistoryService.saveEmailHistory({
+          buyerId: buyer?.buyer_number || buyerId,
+          propertyNumbers,
+          recipientEmail: recipientEmail,
+          subject,
+          body: bodyText,
+          senderEmail: senderEmail || 'tenant@ifoo-oita.com',
+          emailType: 'gmail_send',
+        });
+      } catch (err) {
+        console.error('[gmail/send] email_history保存エラー:', err);
+        // 履歴保存失敗はレスポンスに影響させない
+      }
     }
 
-    // activity_logs テーブルに記録
-    try {
-      await activityLogService.logEmail({
-        buyerId: buyer.buyer_number || buyerId,
-        propertyNumbers,
-        recipientEmail: buyer.email,
-        subject,
-        templateName: templateName || undefined,
-        senderEmail: senderEmail || 'tenant@ifoo-oita.com',
-        createdBy: employeeId,
-        body: bodyText,
-      });
-    } catch (err) {
-      console.error('[gmail/send] activity_log保存エラー:', err);
-      // ログ保存失敗はレスポンスに影響させない
+    // activity_logs テーブルに記録（テスト送信の場合はスキップ）
+    if (!toEmail?.trim()) {
+      try {
+        await activityLogService.logEmail({
+          buyerId: buyer?.buyer_number || buyerId,
+          propertyNumbers,
+          recipientEmail: recipientEmail,
+          subject,
+          templateName: templateName || undefined,
+          senderEmail: senderEmail || 'tenant@ifoo-oita.com',
+          createdBy: employeeId,
+          body: bodyText,
+        });
+      } catch (err) {
+        console.error('[gmail/send] activity_log保存エラー:', err);
+        // ログ保存失敗はレスポンスに影響させない
+      }
     }
 
     res.json({ success: true });

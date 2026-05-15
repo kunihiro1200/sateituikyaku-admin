@@ -529,18 +529,21 @@ export default function OtherCompanyDistributionPage() {
   const sendEmails = async () => {
     setSending(true);
     try {
-      // テストメールアドレスが入力されている場合は、最初の買主にのみテスト送信
-      const buyersToSend = testEmail.trim() 
-        ? [{ ...checkedBuyers[0], email: testEmail.trim() }] 
+      // テストメールアドレスが入力されている場合は、テスト送信（買主選択不要）
+      const isTestSend = !!testEmail.trim();
+      const buyersToSend = isTestSend
+        ? [checkedBuyers.length > 0 ? checkedBuyers[0] : null]
         : checkedBuyers;
       
       // 各買主に個別送信
       for (const buyer of buyersToSend) {
         const formData = new FormData();
-        formData.append('buyerId', buyer.buyer_number);
+        if (buyer) formData.append('buyerId', buyer.buyer_number);
         formData.append('subject', emailSubject);
         formData.append('body', buildEmailBody(buyer)); // 各買主ごとに本文を生成
         formData.append('senderEmail', 'tenant@ifoo-oita.com');
+        // テスト送信の場合はtoEmailを指定（バックエンドで宛先として使用）
+        if (isTestSend) formData.append('toEmail', testEmail.trim());
         
         // 画像を添付ファイルに変換
         for (const image of selectedImages) {
