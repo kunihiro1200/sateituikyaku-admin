@@ -2,9 +2,13 @@ import { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { GoogleMap } from '@react-google-maps/api';
-import api from '../services/api';
 import PropertyPrintSheet from '../components/PropertyPrintSheet';
 import { useGoogleMaps } from '../contexts/GoogleMapsContext';
+
+// 公開ページ専用：認証不要のバックエンドURL直接アクセス
+const BACKEND_URL = import.meta.env.MODE === 'production'
+  ? 'https://sateituikyaku-admin-backend.vercel.app'
+  : (import.meta.env.VITE_API_URL || 'http://localhost:3000');
 
 interface PreviewData {
   slug: string;
@@ -179,11 +183,18 @@ export default function PropertyPreviewPage() {
 
   useEffect(() => {
     if (!slug) return;
-    api.get(`/api/property-preview/${slug}`)
-      .then(res => setData(res.data))
+    // 公開ページ：認証不要のfetchで直接バックエンドにアクセス（api インスタンスを使わない）
+    fetch(`${BACKEND_URL}/api/property-preview/${slug}`)
+      .then(async res => {
+        if (res.status === 404) throw new Error('404');
+        if (res.status === 410) throw new Error('410');
+        if (!res.ok) throw new Error('error');
+        return res.json();
+      })
+      .then(data => setData(data))
       .catch(err => {
-        if (err.response?.status === 404) setError('物件情報が見つかりません');
-        else if (err.response?.status === 410) setError('この物件情報は期限切れです');
+        if (err.message === '404') setError('物件情報が見つかりません');
+        else if (err.message === '410') setError('この物件情報は期限切れです');
         else setError('読み込みに失敗しました');
       })
       .finally(() => setLoading(false));
