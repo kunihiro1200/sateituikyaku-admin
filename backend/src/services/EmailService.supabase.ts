@@ -202,12 +202,8 @@ export class EmailService extends BaseRepository {
     const encodedSubject = this.encodeSubject(subject);
     
     // メールヘッダーとボディを作成
-    const encodedFromHeader = this.encodeFrom(from);
-    console.log(`[createEmailMessage] from input: "${from}"`);
-    console.log(`[createEmailMessage] encodedFrom: "${encodedFromHeader}"`);
-    
     const messageParts = [
-      'From: ' + encodedFromHeader,
+      'From: ' + from,
       'To: ' + to,
       'Subject: ' + encodedSubject,
       'MIME-Version: 1.0',
@@ -294,8 +290,6 @@ export class EmailService extends BaseRepository {
 
       // fromが指定されていない場合はemployeeEmailを使用（後方互換性）
       const senderAddress = from || employeeEmail;
-
-      console.log(`[sendTemplateEmail] senderAddress: "${senderAddress}", hasHtmlBody: ${!!htmlBody}, hasEmbeddedImages: pending`);
 
       console.log('📧 Sending template email:');
       console.log(`  To: ${seller.email}`);
@@ -825,31 +819,6 @@ HP：https://ifoo-oita.com/
   }
 
   /**
-   * Fromヘッダー用エンコード
-   * "表示名 <email@example.com>" 形式の場合、表示名部分をRFC 2047でエンコードする
-   */
-  private encodeFrom(from: string): string {
-    // "表示名 <email>" 形式かチェック
-    const match = from.match(/^(.*?)\s*<([^>]+)>$/);
-    if (match) {
-      const displayName = match[1].trim();
-      const email = match[2].trim();
-      if (displayName && !/^[\x00-\x7F]*$/.test(displayName)) {
-        // 表示名に非ASCII文字が含まれる場合はエンコード
-        const encoded = Buffer.from(displayName, 'utf-8').toString('base64');
-        return `=?UTF-8?B?${encoded}?= <${email}>`;
-      }
-      return from;
-    }
-    // メールアドレスのみの場合: 会社名を付加してエンコード
-    // Gmail が Send As の displayName を自動付加すると文字化けするため、明示的に設定する
-    // "株式会社いふう" の UTF-8 を Base64 エンコードした値を直接使用
-    // （日本語リテラルはVercelビルド環境で二重エンコードされるため回避）
-    const COMPANY_NAME_B64 = '5qCq5byP5Lya56S+44GE44G144GG';
-    return `=?UTF-8?B?${COMPANY_NAME_B64}?= <${from}>`;
-  }
-
-  /**
    * 処理済みHTMLを最小限のメールテンプレートでラップ
    * 構造を変更せず、スタイルのみを追加
    */
@@ -904,7 +873,7 @@ ${bodyHtml}
     
     // RFC準拠の改行コード（\r\n）を使用
     const messageParts = [
-      `From: ${this.encodeFrom(from)}`,
+      `From: ${from}`,
       `To: ${to}`,
       `Subject: ${encodedSubject}`,
       'MIME-Version: 1.0',
@@ -995,7 +964,7 @@ ${bodyHtml}
       const encodedSubject = this.encodeSubject(params.subject);
 
       const messageParts: string[] = [
-        `From: ${this.encodeFrom(params.from)}`,
+        `From: ${params.from}`,
         `To: ${params.to}`,
       ];
       // Reply-To ヘッダーを From の直後に追加（replyTo が指定された場合のみ）
@@ -1059,7 +1028,7 @@ ${bodyHtml}
       }
 
       const message = messageParts.join('\r\n');
-      const encodedMessage = Buffer.from(message, 'utf-8')
+      const encodedMessage = Buffer.from(message)
         .toString('base64')
         .replace(/\+/g, '-')
         .replace(/\//g, '_')
@@ -1159,7 +1128,7 @@ ${bodyHtml}
           // MIMEマルチパートメッセージを構築
           const boundary = `boundary_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
           const messageParts = [
-            `From: ${this.encodeFrom(params.senderAddress)}`,
+            `From: ${params.senderAddress}`,
             `To: ${recipient.email}`,
             `Reply-To: ${effectiveReplyTo}`,
             `Subject: ${encodedPersonalizedSubject}`,
@@ -1198,7 +1167,7 @@ ${bodyHtml}
         } else {
           // 添付なし
           const messageParts = [
-            `From: ${this.encodeFrom(params.senderAddress)}`,
+            `From: ${params.senderAddress}`,
             `To: ${recipient.email}`,
             `Reply-To: ${effectiveReplyTo}`,
             `Subject: ${encodedPersonalizedSubject}`,
