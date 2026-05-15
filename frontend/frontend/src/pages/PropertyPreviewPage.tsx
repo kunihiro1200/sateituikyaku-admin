@@ -189,7 +189,11 @@ export default function PropertyPreviewPage() {
     const fetchWithRetry = async (retries = 3, delayMs = 2000) => {
       for (let i = 0; i < retries; i++) {
         try {
-          const res = await fetch(`${BACKEND_URL}/api/property-preview/${slug}`);
+          const res = await fetch(`${BACKEND_URL}/api/property-preview/${slug}`, {
+            method: 'GET',
+            mode: 'cors',
+            headers: { 'Content-Type': 'application/json' },
+          });
           if (res.status === 404) { setError('物件情報が見つかりません'); return; }
           if (res.status === 410) { setError('この物件情報は期限切れです'); return; }
           if (!res.ok) throw new Error(`status ${res.status}`);
@@ -197,6 +201,7 @@ export default function PropertyPreviewPage() {
           setData(data);
           return;
         } catch (err) {
+          console.error(`[PropertyPreview] fetch attempt ${i + 1} failed:`, err);
           if (i < retries - 1) {
             await new Promise(resolve => setTimeout(resolve, delayMs * (i + 1)));
           } else {
