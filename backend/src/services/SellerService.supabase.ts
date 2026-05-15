@@ -372,7 +372,34 @@ export class SellerService extends BaseRepository {
     await CacheHelper.delPattern('sellers:list:*');
     // サイドバーカウントキャッシュも無効化（新規売主追加により集計が変わる可能性があるため）
     await CacheHelper.del('sellers:sidebar-counts');
-    
+
+    // サイドバーカウントを即座に更新（新規売主追加により未着手カテゴリ等が変わるため）
+    // updateSeller と同様に updateAffectedCategories を呼び出す
+    try {
+      const { SellerSidebarCountsUpdateService } = await import('./SellerSidebarCountsUpdateService');
+      const sidebarService = new SellerSidebarCountsUpdateService(this.supabase);
+      // 新規売主に関係するフィールドを全て渡す（status, inquiry_date, next_call_date が主要）
+      const newSellerFields = [
+        'status',
+        'inquiry_date',
+        'next_call_date',
+        'visit_assignee',
+        'confidence_level',
+        'unreachable_status',
+        'phone_contact_person',
+        'preferred_contact_time',
+        'contact_method',
+        'valuation_amount_1',
+        'valuation_amount_2',
+        'valuation_amount_3',
+        'valuation_method',
+        'pinrich_status',
+      ];
+      await sidebarService.updateAffectedCategories(newSellerFields);
+    } catch (err: any) {
+      console.error('⚠️ Failed to update sidebar counts after createSeller:', err);
+    }
+
     // スプレッドシートに同期（非同期）
     const activeSyncQueue = this.getActiveSyncQueue();
     if (activeSyncQueue) {
