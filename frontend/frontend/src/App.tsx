@@ -1,5 +1,5 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { useEffect } from 'react';
+import { useEffect, lazy, Suspense } from 'react';
 import { warmupApi } from './utils/apiWarmup';
 import LoginPage from './pages/LoginPage';
 import AuthCallbackPage from './pages/AuthCallbackPage';
@@ -47,7 +47,8 @@ import TateuriManagePage from './pages/TateuriManagePage';
 import FukuokaTateuriPage from './pages/FukuokaTateuriPage';
 import FukuokaTateuriManagePage from './pages/FukuokaTateuriManagePage';
 import TateuriRootPage from './pages/TateuriRootPage';
-import FloorPlanComparePage from './pages/FloorPlanComparePage';
+// FloorPlanComparePage は遅延読み込み（他ページへの影響を完全に分離）
+const FloorPlanComparePage = lazy(() => import('./pages/FloorPlanComparePage'));
 import ProtectedRoute from './components/ProtectedRoute';
 import { useAuthStore } from './store/authStore';
 import { GoogleMapsProvider } from './contexts/GoogleMapsContext';
@@ -73,7 +74,11 @@ function App() {
         {/* 物件プレビュー（認証不要・買主向け公開ページ） */}
         <Route path="/property-preview/:slug" element={<PropertyPreviewPage />} />
         {/* 間取り図比較チェック（認証不要・外部公開） */}
-        <Route path="/floor-plan-compare" element={<FloorPlanComparePage />} />
+        <Route path="/floor-plan-compare" element={
+          <Suspense fallback={<div style={{ padding: 40, textAlign: 'center' }}>読み込み中...</div>}>
+            <FloorPlanComparePage />
+          </Suspense>
+        } />
         {/* 建売専門HP（認証不要・公開） - ドメイン判定でルートパスに表示 */}
         <Route path="/tateuri-root" element={<TateuriRootPage />} />
         {/* 建売専門HP（認証不要・公開） - 大分専用パス（後方互換性） */}
