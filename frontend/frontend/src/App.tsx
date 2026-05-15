@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useEffect, lazy, Suspense } from 'react';
 import { warmupApi } from './utils/apiWarmup';
 import LoginPage from './pages/LoginPage';
@@ -53,15 +53,31 @@ import ProtectedRoute from './components/ProtectedRoute';
 import { useAuthStore } from './store/authStore';
 import { GoogleMapsProvider } from './contexts/GoogleMapsContext';
 
+// 認証不要の公開ページパス（checkAuth・warmupApiをスキップ）
+const PUBLIC_PATHS = [
+  '/property-preview/',
+  '/public/',
+  '/tateuri',
+  '/fukuoka-tateuri',
+  '/floor-plan-compare',
+  '/login',
+  '/auth/callback',
+];
+
 function App() {
   const checkAuth = useAuthStore((state) => state.checkAuth);
-  
-  // アプリ起動時に認証状態を確認
+  const location = useLocation();
+
+  // 公開ページかどうか判定
+  const isPublicPage = PUBLIC_PATHS.some(p => location.pathname.startsWith(p));
+
+  // アプリ起動時に認証状態を確認（公開ページではスキップ）
   useEffect(() => {
+    if (isPublicPage) return;
     checkAuth();
     // Vercelコールドスタート対策：バックエンドAPIをウォームアップ
     warmupApi();
-  }, [checkAuth]);
+  }, [checkAuth, isPublicPage]);
   
   return (
     <GoogleMapsProvider>

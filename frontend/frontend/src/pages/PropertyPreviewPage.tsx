@@ -183,21 +183,30 @@ export default function PropertyPreviewPage() {
 
   useEffect(() => {
     if (!slug) return;
+
     // 公開ページ：認証不要のfetchで直接バックエンドにアクセス（api インスタンスを使わない）
-    fetch(`${BACKEND_URL}/api/property-preview/${slug}`)
-      .then(async res => {
-        if (res.status === 404) throw new Error('404');
-        if (res.status === 410) throw new Error('410');
-        if (!res.ok) throw new Error('error');
-        return res.json();
-      })
-      .then(data => setData(data))
-      .catch(err => {
-        if (err.message === '404') setError('物件情報が見つかりません');
-        else if (err.message === '410') setError('この物件情報は期限切れです');
-        else setError('読み込みに失敗しました');
-      })
-      .finally(() => setLoading(false));
+    // バックエンドのコールドスタート対策：最大3回リトライ
+    const fetchWithRetry = async (retries = 3, delayMs = 2000) => {
+      for (let i = 0; i < retries; i++) {
+        try {
+          const res = await fetch(`${BACKEND_URL}/api/property-preview/${slug}`);
+          if (res.status === 404) { setError('物件情報が見つかりません'); return; }
+          if (res.status === 410) { setError('この物件情報は期限切れです'); return; }
+          if (!res.ok) throw new Error(`status ${res.status}`);
+          const data = await res.json();
+          setData(data);
+          return;
+        } catch (err) {
+          if (i < retries - 1) {
+            await new Promise(resolve => setTimeout(resolve, delayMs * (i + 1)));
+          } else {
+            setError('読み込みに失敗しました');
+          }
+        }
+      }
+    };
+
+    fetchWithRetry().finally(() => setLoading(false));
   }, [slug]);
 
   const { isLoaded: mapsLoaded } = useGoogleMaps();
