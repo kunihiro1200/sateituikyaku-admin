@@ -96,10 +96,13 @@ export class EmailService extends BaseRepository {
 
       const fromRaw = params.from || 'tenant@ifoo-oita.com';
 
-      // From ヘッダー用エンコード: "表示名 <email>" 形式の場合、表示名を RFC 2047 でエンコード
+      // From ヘッダー用エンコード
+      // メールアドレスのみの場合は "株式会社いふう <email>" 形式に変換してRFC 2047エンコード
+      // Gmail が Send As の displayName を自動付加すると文字化けするため、明示的に設定する
       const encodeFromHeader = (f: string): string => {
         const m = f.match(/^(.*?)\s*<([^>]+)>$/);
         if (m) {
+          // "表示名 <email>" 形式
           const displayName = m[1].trim();
           const email = m[2].trim();
           if (displayName && !/^[\x00-\x7F]*$/.test(displayName)) {
@@ -108,7 +111,10 @@ export class EmailService extends BaseRepository {
           }
           return f;
         }
-        return f;
+        // メールアドレスのみの場合: 会社名を付加してエンコード
+        const COMPANY_NAME = '株式会社いふう';
+        const encoded = Buffer.from(COMPANY_NAME, 'utf-8').toString('base64');
+        return `=?UTF-8?B?${encoded}?= <${f}>`;
       };
       const from = encodeFromHeader(fromRaw);
 

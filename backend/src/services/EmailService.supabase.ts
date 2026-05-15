@@ -835,8 +835,11 @@ HP：https://ifoo-oita.com/
       }
       return from;
     }
-    // メールアドレスのみの場合はそのまま返す（ASCIIのみのはず）
-    return from;
+    // メールアドレスのみの場合: 会社名を付加してエンコード
+    // Gmail が Send As の displayName を自動付加すると文字化けするため、明示的に設定する
+    const COMPANY_NAME = '株式会社いふう';
+    const encoded = Buffer.from(COMPANY_NAME, 'utf-8').toString('base64');
+    return `=?UTF-8?B?${encoded}?= <${from}>`;
   }
 
   /**
