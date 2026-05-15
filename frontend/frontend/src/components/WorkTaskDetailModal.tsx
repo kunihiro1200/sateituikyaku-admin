@@ -2654,7 +2654,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
   const renderMediationSection = () => (
     <Box ref={mediationPaneRef} sx={{ p: 2, overflowY: 'auto', flex: 1 }}>
       <EditableField label="物件番号" field="property_number" />
-      <EditableField label="媒介備考" field="mediation_notes" />
+      <EditableField label="媒介備考" field="mediation_notes" highlight={!!getValue('mediation_notes')} />
       <EditableField label="物件所在" field="property_address" />
       <EditableField label="売主" field="seller_name" />
       <EditableField label="スプシURL" field="spreadsheet_url" type="url" />
@@ -2835,7 +2835,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
 
         <Box sx={{ bgcolor: '#e3f2fd', borderRadius: 1, p: 1, mb: 1 }}>
         <SectionHeader label="【サイト登録依頼】" />
-        <EditableField label="サイト備考" field="site_notes" />
+        <EditableField label="サイト備考" field="site_notes" highlight={!!getValue('site_notes')} />
         {getValue('property_type') === '土' && (
           <>
             <EditableButtonSelect label="字図、地積測量図URL*" field="cadastral_map_url" options={['URL入力済み', '未']} />
@@ -3952,7 +3952,7 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
         </Box>
         <Box sx={{ bgcolor: '#e3f2fd', borderRadius: 1, p: 1, mb: 1 }}>
           <EditableField label="売買契約締め日" field="sales_contract_deadline" type="date" />
-          <EditableField label="売買契約備考" field="sales_contract_notes" />
+          <EditableField label="売買契約備考" field="sales_contract_notes" highlight={!!getValue('sales_contract_notes')} />
           <EditableField label="契約形態" field="contract_type" />
 
           <EditableField label="重説・契約書入力納期" field="contract_input_deadline" type="date" />

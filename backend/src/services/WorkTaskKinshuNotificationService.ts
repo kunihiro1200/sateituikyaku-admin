@@ -58,8 +58,8 @@ const dateGte = (s: string | null | undefined, ref: Date): boolean => {
   return jst >= ref;
 };
 
-// 金種表送付未の基準日（2026/4/30以降の決済日のみ対象）
-const DENOMINATION_BASE_DATE = new Date('2026-04-30');
+// 金種表送付未の基準日（2026/5/20以降の決済日のみ対象）
+const DENOMINATION_BASE_DATE = new Date('2026-05-20');
 
 /**
  * タスクが「金種表送付　未」カテゴリーに該当するか判定

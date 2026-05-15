@@ -136,9 +136,9 @@ export const calculateTaskStatus = (task: WorkTask): string => {
   }
 
   // 0b. 金種表送付　未
-  // settlement_dateに値があり（2026/4/30以降）、今日がsettlement_dateの1週間前以降で、
+  // settlement_dateに値があり（2026/5/20以降）、今日がsettlement_dateの1週間前以降で、
   // settlement_seller_denomination_email と settlement_buyer_denomination_email が両方空の場合
-  const DENOMINATION_BASE_DATE = new Date('2026-04-30');
+  const DENOMINATION_BASE_DATE = new Date('2026-05-20');
   if (
     isNotBlank(task.settlement_date) &&
     isNotBlank(task.sales_contract_deadline) &&
