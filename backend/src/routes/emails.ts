@@ -318,17 +318,15 @@ router.post(
             replyTo,
           });
         } else {
-          // 既存フロー（変更なし）
-          const sellerWithUpdatedEmail = { ...seller, email: recipientEmail };
-          result = await emailService.sendTemplateEmail(
-            sellerWithUpdatedEmail,
+          // 添付なし・replyToなし: sendEmailWithCcAndAttachments を使用（sendTemplateEmailより確実）
+          result = await emailService.sendEmailWithCcAndAttachments({
+            to: recipientEmail,
             subject,
-            content || '',
-            req.employee!.email,
-            req.employee!.id,
-            htmlBody,  // オプション: カスタムHTMLボディ（貼り付けた画像を含む場合）
-            from       // オプション: 送信元メールアドレス
-          );
+            body: htmlBody || content || '',
+            from: from || req.employee!.email,
+            attachments: [],
+            isHtml: !!htmlBody,
+          });
         }
       }
 
@@ -1034,16 +1032,15 @@ router.post(
             replyTo,
           });
         } else {
-          // 既存フロー（変更なし）
-          result = await emailService.sendTemplateEmail(
-            sellerWithEmail,
+          // 添付なし・replyToなし: sendEmailWithCcAndAttachments を使用
+          result = await emailService.sendEmailWithCcAndAttachments({
+            to: recipientEmail,
             subject,
-            content || '',
-            senderEmail,
-            req.employee?.id || 'system',
-            htmlBody,
-            senderEmail
-          );
+            body: htmlBody || content || '',
+            from: senderEmail,
+            attachments: [],
+            isHtml: !!htmlBody,
+          });
         }
       }
 
