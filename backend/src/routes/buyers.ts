@@ -1471,6 +1471,7 @@ router.get('/other-company-distribution', authenticate, async (req: Request, res
 });
 
 // 他社物件新着配信用スクレイピングプロキシ（CORS回避のためバックエンド経由）
+// /scrape-preview を使用（DBに保存しない・建売専門HPの /scrape とは完全に独立）
 router.post('/scrape-property', authenticate, async (req: Request, res: Response) => {
   try {
     const { url } = req.body;
@@ -1480,8 +1481,9 @@ router.post('/scrape-property', authenticate, async (req: Request, res: Response
 
     const scrapeApiUrl = process.env.SCRAPE_API_URL || 'https://sateituikyaku-scrape-server-production.up.railway.app';
 
-    // スクレイピングサーバーにリクエスト（バックエンド経由でCORSを回避）
-    const scrapeRes = await fetch(`${scrapeApiUrl}/scrape`, {
+    // /scrape-preview を使用（DBに保存しない・他社物件配信専用エンドポイント）
+    // ※ /scrape は建売専門HP専用（DBに保存する）なので絶対に使わない
+    const scrapeRes = await fetch(`${scrapeApiUrl}/scrape-preview`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ url }),
