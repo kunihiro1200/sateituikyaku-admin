@@ -3,7 +3,17 @@
   "rewrites": [
     { "source": "/sitemap.xml", "destination": "https://sateituikyaku-admin-backend.vercel.app/api/sitemap.xml?domain=oita" },
     { "source": "/sitemap-fukuoka.xml", "destination": "https://sateituikyaku-admin-backend.vercel.app/api/sitemap.xml?domain=fukuoka" },
-    { "source": "/property-preview/:slug", "destination": "https://sateituikyaku-admin-backend.vercel.app/api/property-preview/html/:slug" },
+    {
+      "source": "/property-preview/:slug",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*(Googlebot|bingbot|Slurp|DuckDuckBot|Baiduspider|YandexBot|facebookexternalhit|Twitterbot|LinkedInBot|WhatsApp|Slack|Discordbot|TelegramBot|crawler|spider|bot).*"
+        }
+      ],
+      "destination": "https://sateituikyaku-admin-backend.vercel.app/api/property-preview/html/:slug"
+    },
     { "source": "/google([a-z0-9]+).html", "destination": "/google$1.html" },
     { "source": "/(.*)", "destination": "/index.html" }
   ],
