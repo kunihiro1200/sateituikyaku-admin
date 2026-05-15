@@ -210,6 +210,9 @@ router.post(
       const { sellerId } = req.params;
       const { templateId, to, subject, content, htmlBody, from, attachments, replyTo } = req.body;
 
+      // Fromアドレス: 常に tenant@ifoo-oita.com 固定（文字化け防止）
+      const resolvedFrom = 'tenant@ifoo-oita.com';
+
       // 売主情報を取得
       const seller = await sellerService.getSeller(sellerId);
       if (!seller) {
@@ -299,7 +302,7 @@ router.post(
           to: recipientEmail,
           subject,
           body: htmlBody || content,
-          from: from || req.employee!.email,
+          from: resolvedFrom,
           attachments: emailAttachments,
           isHtml: !!htmlBody,
           replyTo: replyTo || undefined,
@@ -312,7 +315,7 @@ router.post(
             to: recipientEmail,
             subject,
             body: htmlBody || content || '',
-            from: from || req.employee!.email,
+            from: resolvedFrom,
             attachments: [],
             isHtml: !!htmlBody,
             replyTo,
@@ -324,10 +327,10 @@ router.post(
             sellerWithUpdatedEmail,
             subject,
             content || '',
-            req.employee!.email,
+            resolvedFrom,
             req.employee!.id,
-            htmlBody,  // オプション: カスタムHTMLボディ（貼り付けた画像を含む場合）
-            from       // オプション: 送信元メールアドレス
+            htmlBody,
+            resolvedFrom
           );
         }
       }
@@ -957,7 +960,7 @@ router.post(
 
       let result;
 
-      const senderEmail = from || req.employee?.email || 'tenant@ifoo-oita.com';
+      const senderEmail = 'tenant@ifoo-oita.com'; // 常に固定（文字化け防止）
       const sellerWithEmail = { ...seller, email: recipientEmail } as any;
 
       if (attachments && Array.isArray(attachments) && attachments.length > 0) {
