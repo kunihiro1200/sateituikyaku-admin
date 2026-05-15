@@ -54,39 +54,26 @@ function parseDriveUrl(url: string): { type: 'file' | 'folder' | 'unknown'; id: 
 // ファイル名による間取り図判定
 // ============================================================
 
-const FLOOR_PLAN_KEYWORDS = [
-  '間取', 'madori', 'floor', '図面', 'layout', 'plan',
-  '1f', '2f', '3f', '1階', '2階', '3階',
-  'floorplan', 'floor_plan', 'floor-plan',
-];
-
 const NON_FLOOR_PLAN_KEYWORDS = [
-  '外観', '外壁', '現地', '写真', 'photo', 'img_', 'dsc_', 'dsc0',
-  '道路', '前面', '周辺', '地図', 'map', '公図', '謄本',
-  '登記', '測量', '重説', '契約', '領収', '請求', '見積',
-  'panorama', 'pano',
+  '外観', '外壁', '現地', '道路', '前面', '周辺', '地図', 'map',
+  '公図', '謄本', '登記', '測量', '重説', '契約', '領収', '請求',
+  '見積', 'panorama', 'pano',
 ];
 
-function isLikelyFloorPlan(fileName: string): 'yes' | 'no' | 'maybe' {
+function isLikelyNotFloorPlan(fileName: string): boolean {
   const lower = fileName.toLowerCase();
-  for (const kw of NON_FLOOR_PLAN_KEYWORDS) {
-    if (lower.includes(kw)) return 'no';
-  }
-  for (const kw of FLOOR_PLAN_KEYWORDS) {
-    if (lower.includes(kw)) return 'yes';
-  }
-  return 'maybe';
+  return NON_FLOOR_PLAN_KEYWORDS.some(kw => lower.includes(kw));
 }
 
 // ============================================================
-// フォルダ内ファイル一覧取得（サービスアカウント）
+// フォルダ内ファイル一覧取得（JPG/PNG/PDF対応）
 // ============================================================
 
 interface DriveFileInfo {
   id: string;
   name: string;
   mimeType: string;
-  likelyFloorPlan: 'yes' | 'no' | 'maybe';
+  thumbnailLink?: string;
 }
 
 async function listFilesInFolder(folderId: string): Promise<DriveFileInfo[]> {
@@ -96,42 +83,74 @@ async function listFilesInFolder(folderId: string): Promise<DriveFileInfo[]> {
   const authClient = await auth.getClient();
   const drive = google.drive({ version: 'v3', auth: authClient as any });
 
-  const imageMimeTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
-  const mimeQuery = imageMimeTypes.map(m => `mimeType='${m}'`).join(' or ');
+  // JPG/PNG/PDF全て取得
+  const targetMimeTypes = [
+    'image/jpeg', 'image/jpg', 'image/png', 'image/webp',
+    'application/pdf',
+  ];
+  const mimeQuery = targetMimeTypes.map(m => `mimeType='${m}'`).join(' or ');
 
   const res = await drive.files.list({
     q: `'${folderId}' in parents and (${mimeQuery}) and trashed=false`,
-    fields: 'files(id, name, mimeType)',
+    fields: 'files(id, name, mimeType, thumbnailLink)',
     supportsAllDrives: true,
     includeItemsFromAllDrives: true,
     pageSize: 200,
     orderBy: 'name',
   });
 
-  const files = (res.data.files || []) as { id: string; name: string; mimeType: string }[];
-  return files.map(f => ({
-    id: f.id,
-    name: f.name,
-    mimeType: f.mimeType,
-    likelyFloorPlan: isLikelyFloorPlan(f.name),
-  }));
+  const files = (res.data.files || []) as DriveFileInfo[];
+  // 明らかに間取り図でないファイルを除外
+  return files.filter(f => !isLikelyNotFloorPlan(f.name));
 }
 
 // ============================================================
-// ファイルをBase64で取得（サービスアカウント）
+// ファイルをBase64で取得
+// PDFはGoogleドライブのエクスポート機能でJPEGに変換して取得
 // ============================================================
 
 async function fetchFileAsBase64(
   fileId: string,
-  mimeType: string
+  mimeType: string,
+  thumbnailLink?: string
 ): Promise<{ base64: string; mimeType: string } | null> {
-  if (mimeType === 'application/pdf') return null;
+  const auth = getGoogleAuth();
+  if (!auth) return null;
 
+  const authClient = await auth.getClient();
+  const drive = google.drive({ version: 'v3', auth: authClient as any });
+
+  if (mimeType === 'application/pdf') {
+    // PDFはJPEGにエクスポートして取得
+    try {
+      const res = await drive.files.export(
+        { fileId, mimeType: 'image/jpeg' },
+        { responseType: 'arraybuffer' }
+      );
+      const base64 = Buffer.from(res.data as ArrayBuffer).toString('base64');
+      return { base64, mimeType: 'image/jpeg' };
+    } catch (err: any) {
+      console.warn(`PDF→JPEG変換失敗 (${fileId}):`, err.message);
+      // エクスポート失敗時はサムネイルで代替
+      if (thumbnailLink) {
+        try {
+          const { default: axios } = await import('axios');
+          const thumbRes = await axios.get(thumbnailLink.replace('=s220', '=s800'), {
+            responseType: 'arraybuffer',
+            timeout: 15000,
+          });
+          const base64 = Buffer.from(thumbRes.data).toString('base64');
+          return { base64, mimeType: 'image/jpeg' };
+        } catch {
+          console.warn(`サムネイル取得も失敗 (${fileId})`);
+        }
+      }
+      return null;
+    }
+  }
+
+  // JPG/PNG: 直接ダウンロード
   try {
-    const auth = getGoogleAuth();
-    if (!auth) return null;
-    const authClient = await auth.getClient();
-    const drive = google.drive({ version: 'v3', auth: authClient as any });
     const res = await drive.files.get(
       { fileId, alt: 'media', supportsAllDrives: true },
       { responseType: 'arraybuffer' }
@@ -145,72 +164,95 @@ async function fetchFileAsBase64(
 }
 
 // ============================================================
-// フォルダから間取り図を収集（AI判定付き）
+// AIで「元図面」か「掲載用図面」かを判定
 // ============================================================
 
-interface SelectedFloorPlan {
-  image: { base64: string; mimeType: string };
-  fileName: string;
-  fileId: string;
+async function classifyFloorPlan(
+  imageBase64: string,
+  mimeType: string,
+  fileName: string,
+  openai: OpenAI
+): Promise<'original' | 'published' | 'unknown'> {
+  try {
+    const res = await openai.chat.completions.create({
+      model: 'gpt-4o',
+      max_tokens: 20,
+      messages: [{
+        role: 'user',
+        content: [
+          {
+            type: 'text',
+            text: `この画像は不動産の間取り図です。以下のどちらですか？
+「元図面」: 白黒・手書き・写真撮影・CADの生データ
+「掲載用図面」: カラー・部屋に色付き・整形済みのプロ仕様・PDF
+
+「元図面」または「掲載用図面」の一言のみで答えてください。`,
+          },
+          {
+            type: 'image_url',
+            image_url: {
+              url: `data:${mimeType};base64,${imageBase64}`,
+              detail: 'low',
+            },
+          },
+        ],
+      }],
+    });
+    const answer = res.choices[0]?.message?.content?.trim() || '';
+    if (answer.includes('掲載用')) return 'published';
+    if (answer.includes('元図面')) return 'original';
+    return 'unknown';
+  } catch {
+    // ファイル名で推測
+    const lower = fileName.toLowerCase();
+    if (lower.includes('修正') || lower.includes('掲載') || lower.includes('カラー')) return 'published';
+    return 'original';
+  }
 }
 
-async function collectFloorPlansFromFolder(
+// ============================================================
+// フォルダから元図面・掲載用図面を収集してペアを作る
+// ============================================================
+
+interface FloorPlanPair {
+  originals: Array<{ image: { base64: string; mimeType: string }; fileName: string }>;
+  published: Array<{ image: { base64: string; mimeType: string }; fileName: string }>;
+}
+
+async function collectFloorPlanPairs(
   folderId: string,
-  openai: OpenAI,
-  maxImages: number = 4
-): Promise<SelectedFloorPlan[]> {
+  openai: OpenAI
+): Promise<FloorPlanPair> {
   const files = await listFilesInFolder(folderId);
 
   if (files.length === 0) {
-    throw new Error('フォルダ内に画像ファイル（JPG/PNG）が見つかりませんでした。');
+    throw new Error('フォルダ内に画像・PDFファイルが見つかりませんでした。');
   }
 
   console.log(`[FloorPlanCompare] フォルダ内ファイル数: ${files.length}`);
-  files.forEach(f => console.log(`  - ${f.name} (${f.likelyFloorPlan})`));
+  files.forEach(f => console.log(`  - ${f.name} (${f.mimeType})`));
 
-  const yesFiles = files.filter(f => f.likelyFloorPlan === 'yes');
-  const maybeFiles = files.filter(f => f.likelyFloorPlan === 'maybe');
-  const noFiles = files.filter(f => f.likelyFloorPlan === 'no');
+  const originals: FloorPlanPair['originals'] = [];
+  const published: FloorPlanPair['published'] = [];
 
-  const candidates = yesFiles.length > 0 ? yesFiles
-    : maybeFiles.length > 0 ? maybeFiles
-    : noFiles;
-
-  const results: SelectedFloorPlan[] = [];
-
-  for (const file of candidates) {
-    if (results.length >= maxImages) break;
-
-    const imageData = await fetchFileAsBase64(file.id, file.mimeType);
-    if (!imageData) continue;
-
-    if (file.likelyFloorPlan === 'yes') {
-      results.push({ image: imageData, fileName: file.name, fileId: file.id });
+  for (const file of files) {
+    const imageData = await fetchFileAsBase64(file.id, file.mimeType, file.thumbnailLink);
+    if (!imageData) {
+      console.warn(`スキップ: ${file.name} (取得失敗)`);
       continue;
     }
 
-    try {
-      const aiRes = await openai.chat.completions.create({
-        model: 'gpt-4o',
-        max_tokens: 10,
-        messages: [{
-          role: 'user',
-          content: [
-            { type: 'text', text: 'この画像は不動産の間取り図ですか？「はい」または「いいえ」のみで答えてください。' },
-            { type: 'image_url', image_url: { url: `data:${imageData.mimeType};base64,${imageData.base64}`, detail: 'low' } },
-          ],
-        }],
-      });
-      const answer = aiRes.choices[0]?.message?.content?.trim() || '';
-      if (answer.includes('はい') || answer.toLowerCase().includes('yes')) {
-        results.push({ image: imageData, fileName: file.name, fileId: file.id });
-      }
-    } catch {
-      results.push({ image: imageData, fileName: file.name, fileId: file.id });
+    const kind = await classifyFloorPlan(imageData.base64, imageData.mimeType, file.name, openai);
+    console.log(`  → ${file.name}: ${kind}`);
+
+    if (kind === 'published') {
+      published.push({ image: imageData, fileName: file.name });
+    } else {
+      originals.push({ image: imageData, fileName: file.name });
     }
   }
 
-  return results;
+  return { originals, published };
 }
 
 // ============================================================
@@ -234,8 +276,7 @@ router.get('/list-files', async (req: Request, res: Response) => {
         id: f.id,
         name: f.name,
         mimeType: f.mimeType,
-        likelyFloorPlan: f.likelyFloorPlan,
-        thumbnailUrl: `https://drive.google.com/thumbnail?id=${f.id}&sz=w200`,
+        thumbnailUrl: f.thumbnailLink || `https://drive.google.com/thumbnail?id=${f.id}&sz=w200`,
         viewUrl: `https://drive.google.com/file/d/${f.id}/view`,
       })),
     });
@@ -251,10 +292,7 @@ router.get('/list-files', async (req: Request, res: Response) => {
 
 router.post('/from-folder', async (req: Request, res: Response) => {
   try {
-    const { folderUrl, selectedFileIds } = req.body as {
-      folderUrl: string;
-      selectedFileIds?: string[];
-    };
+    const { folderUrl } = req.body as { folderUrl: string };
 
     if (!folderUrl) {
       return res.status(400).json({ error: 'フォルダURLを入力してください' });
@@ -270,41 +308,39 @@ router.post('/from-folder', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'フォルダURLの形式が正しくありません（/folders/... の形式で入力してください）' });
     }
 
-    let floorPlans: SelectedFloorPlan[];
+    // 元図面・掲載用図面を収集
+    const { originals, published } = await collectFloorPlanPairs(parsed.id, openai);
 
-    if (selectedFileIds && selectedFileIds.length >= 2) {
-      floorPlans = [];
-      for (const fileId of selectedFileIds.slice(0, 4)) {
-        const imageData = await fetchFileAsBase64(fileId, 'image/jpeg');
-        if (imageData) {
-          floorPlans.push({ image: imageData, fileName: fileId, fileId });
-        }
-      }
-    } else {
-      floorPlans = await collectFloorPlansFromFolder(parsed.id, openai);
-    }
+    console.log(`[FloorPlanCompare] 元図面: ${originals.length}枚, 掲載用: ${published.length}枚`);
 
-    if (floorPlans.length === 0) {
+    if (originals.length === 0 && published.length === 0) {
       return res.status(400).json({
         error: 'フォルダ内に間取り図が見つかりませんでした。',
-        hint: 'JPG/PNG形式の間取り図ファイルがフォルダ内にあるか確認してください。PDFは非対応です。',
+        hint: 'JPG/PNG/PDF形式の間取り図ファイルがフォルダ内にあるか確認してください。',
       });
     }
 
-    if (floorPlans.length < 2) {
-      return res.status(400).json({
-        error: `間取り図が1枚しか見つかりませんでした（${floorPlans[0].fileName}）。比較するには2枚以上の間取り図が必要です。`,
-        hint: '元図面と作成後の図面の両方がフォルダ内にあるか確認してください。',
-        foundFiles: floorPlans.map(f => f.fileName),
-      });
+    if (originals.length === 0 || published.length === 0) {
+      // 片方しかない場合は全ファイルを比較
+      const allFiles = [...originals, ...published];
+      if (allFiles.length < 2) {
+        return res.status(400).json({
+          error: `比較できる図面が${allFiles.length}枚しか見つかりませんでした。元図面と掲載用図面の両方がフォルダ内にあるか確認してください。`,
+          foundFiles: allFiles.map(f => f.fileName),
+        });
+      }
     }
 
-    console.log(`[FloorPlanCompare] 間取り図 ${floorPlans.length} 枚を取得。GPT-4o比較開始`);
-
+    // GPT-4o Vision で差異を洗い出す
+    const allImages = [...originals, ...published];
     const contentParts: any[] = [
       {
         type: 'text',
-        text: `不動産の間取り図が${floorPlans.length}枚あります。これらを比較して差異を洗い出してください。
+        text: `不動産の間取り図が${allImages.length}枚あります。
+${originals.length > 0 ? `・元図面（原本）: ${originals.map(f => f.fileName).join(', ')}` : ''}
+${published.length > 0 ? `・掲載用図面: ${published.map(f => f.fileName).join(', ')}` : ''}
+
+これらを比較して差異を洗い出してください。
 
 ## チェック項目
 1. **部屋数** - 部屋の数は同じか（LDK、洋室、和室、寝室など）
@@ -329,17 +365,21 @@ router.post('/from-folder', async (req: Request, res: Response) => {
       },
     ];
 
-    floorPlans.forEach((fp, idx) => {
-      contentParts.push({
-        type: 'text',
-        text: `## 図面${idx + 1}（${fp.fileName}）`,
-      });
+    // 元図面を先に追加
+    originals.forEach((fp, idx) => {
+      contentParts.push({ type: 'text', text: `## 元図面${idx + 1}（${fp.fileName}）` });
       contentParts.push({
         type: 'image_url',
-        image_url: {
-          url: `data:${fp.image.mimeType};base64,${fp.image.base64}`,
-          detail: 'high',
-        },
+        image_url: { url: `data:${fp.image.mimeType};base64,${fp.image.base64}`, detail: 'high' },
+      });
+    });
+
+    // 掲載用図面を後に追加
+    published.forEach((fp, idx) => {
+      contentParts.push({ type: 'text', text: `## 掲載用図面${idx + 1}（${fp.fileName}）` });
+      contentParts.push({
+        type: 'image_url',
+        image_url: { url: `data:${fp.image.mimeType};base64,${fp.image.base64}`, detail: 'high' },
       });
     });
 
@@ -355,8 +395,10 @@ router.post('/from-folder', async (req: Request, res: Response) => {
     return res.json({
       success: true,
       result: compareResult,
-      foundFiles: floorPlans.map(f => f.fileName),
-      fileCount: floorPlans.length,
+      foundFiles: allImages.map(f => f.fileName),
+      fileCount: allImages.length,
+      originalCount: originals.length,
+      publishedCount: published.length,
     });
   } catch (error: any) {
     console.error('[FloorPlanCompare] エラー:', error.message);
