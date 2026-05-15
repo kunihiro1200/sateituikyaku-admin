@@ -112,7 +112,10 @@ export class EmailService extends BaseRepository {
           return f;
         }
         // メールアドレスのみの場合: 会社名を付加してエンコード
-        const COMPANY_NAME = '株式会社いふう';
+        // Gmail が Send As の displayName を自動付加すると文字化けするため、明示的に設定する
+        // ※ 日本語リテラルをUnicodeエスケープで記述（コンパイル時のエンコーディング問題を回避）
+        // \u682a\u5f0f\u4f1a\u793e\u3044\u3075\u3046 = 株式会社いふう
+        const COMPANY_NAME = '\u682a\u5f0f\u4f1a\u793e\u3044\u3075\u3046';
         const encoded = Buffer.from(COMPANY_NAME, 'utf-8').toString('base64');
         return `=?UTF-8?B?${encoded}?= <${f}>`;
       };
