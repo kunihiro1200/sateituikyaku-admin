@@ -173,7 +173,7 @@ export class EmailService extends BaseRepository {
           '',
           htmlBodyBase64,
         ];
-        rawMessage = messageParts.join('\n');
+        rawMessage = messageParts.join('\r\n');
       } else {
         // 添付あり: multipart/mixed メッセージ（base64エンコード）
         const htmlBodyBase64 = Buffer.from(htmlBody, 'utf-8').toString('base64');
@@ -206,10 +206,10 @@ export class EmailService extends BaseRepository {
         }
 
         parts.push(`--${boundary}--`);
-        rawMessage = parts.join('\n');
+        rawMessage = parts.join('\r\n');
       }
 
-      const encodedMessage = Buffer.from(rawMessage)
+      const encodedMessage = Buffer.from(rawMessage, 'utf-8')
         .toString('base64')
         .replace(/\+/g, '-')
         .replace(/\//g, '_')
