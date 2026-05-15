@@ -94,8 +94,24 @@ export class EmailService extends BaseRepository {
       const authClient = await this.googleAuthService.getAuthenticatedClient();
       const gmail = google.gmail({ version: 'v1', auth: authClient });
 
-      const from = params.from || 'tenant@ifoo-oita.com';
-      
+      const fromRaw = params.from || 'tenant@ifoo-oita.com';
+
+      // From ヘッダー用エンコード: "表示名 <email>" 形式の場合、表示名を RFC 2047 でエンコード
+      const encodeFromHeader = (f: string): string => {
+        const m = f.match(/^(.*?)\s*<([^>]+)>$/);
+        if (m) {
+          const displayName = m[1].trim();
+          const email = m[2].trim();
+          if (displayName && !/^[\x00-\x7F]*$/.test(displayName)) {
+            const encoded = Buffer.from(displayName, 'utf-8').toString('base64');
+            return `=?UTF-8?B?${encoded}?= <${email}>`;
+          }
+          return f;
+        }
+        return f;
+      };
+      const from = encodeFromHeader(fromRaw);
+
       // URLをリンク化する関数（<a>タグで囲まれていないURLのみ対象）
       const urlToLink = (inputText: string): string =>
         inputText.replace(/(https?:\/\/[^\s\u3000\u3001\u3002\uff01\uff09\u300d\u300f\u3011\u3015\u3017\u3019\u301b\u301f\uff3d\uff5d\u300b\u300f]+)/g,
