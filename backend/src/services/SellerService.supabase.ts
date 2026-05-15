@@ -849,16 +849,17 @@ export class SellerService extends BaseRepository {
     // サイドバーカウントキャッシュも無効化（売主データ変更により集計が変わる可能性があるため）
     await CacheHelper.del('sellers:sidebar-counts');
 
-    // サイドバーカウント更新（非同期、ノンブロッキング）
-    // 更新されたフィールドに影響するカテゴリだけ再計算（全件再計算より大幅に高速）
+    // サイドバーカウント更新（awaitして確実に完了させる）
+    // Vercelサーバーレス環境ではレスポンス後に非同期処理が打ち切られるため、awaitが必須
     if (this.shouldUpdateSellerSidebarCounts(updates)) {
       const updatedFields = Object.keys(updates);
-      import('./SellerSidebarCountsUpdateService').then(({ SellerSidebarCountsUpdateService }) => {
+      try {
+        const { SellerSidebarCountsUpdateService } = await import('./SellerSidebarCountsUpdateService');
         const sidebarService = new SellerSidebarCountsUpdateService(this.supabase);
-        sidebarService.updateAffectedCategories(updatedFields).catch((err: any) => {
-          console.error('⚠️ Failed to update affected sidebar categories:', err);
-        });
-      }).catch((err: any) => console.error('⚠️ [SidebarCounts] Import error:', err));
+        await sidebarService.updateAffectedCategories(updatedFields);
+      } catch (err: any) {
+        console.error('⚠️ Failed to update affected sidebar categories:', err);
+      }
     }
 
     // スプレッドシートに同期（非同期・ノンブロッキング）

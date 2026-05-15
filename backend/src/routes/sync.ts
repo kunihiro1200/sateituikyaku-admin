@@ -912,8 +912,8 @@ router.post('/seller-row', async (req: Request, res: Response) => {
       res.json({ success: true, action: 'created', sellerNumber });
     }
 
-    // サイドバーカウントを即時更新（非同期・ノンブロッキング）
-    // GAS onEditトリガー経由の更新でもカテゴリーが即座に反映されるようにする
+    // サイドバーカウントを即時更新（awaitして確実に完了させる）
+    // Vercelサーバーレス環境ではレスポンス後に非同期処理が打ち切られるため、awaitが必須
     const updatedFields = Object.keys(row)
       .map((jpKey: string) => {
         // スプレッドシートの日本語カラム名 → DBカラム名に変換
@@ -943,12 +943,13 @@ router.post('/seller-row', async (req: Request, res: Response) => {
       .filter((f): f is string => f !== null);
 
     if (updatedFields.length > 0) {
-      import('../services/SellerSidebarCountsUpdateService').then(({ SellerSidebarCountsUpdateService }) => {
+      try {
+        const { SellerSidebarCountsUpdateService } = await import('../services/SellerSidebarCountsUpdateService');
         const sidebarService = new SellerSidebarCountsUpdateService(supabaseClient);
-        sidebarService.updateAffectedCategories(updatedFields).catch((err: any) => {
-          console.error('⚠️ [seller-row] Failed to update sidebar counts:', err);
-        });
-      }).catch((err: any) => console.error('⚠️ [seller-row] Import error:', err));
+        await sidebarService.updateAffectedCategories(updatedFields);
+      } catch (err: any) {
+        console.error('⚠️ [seller-row] Failed to update sidebar counts:', err);
+      }
     }
   } catch (error: any) {
     console.error('[seller-row] Error:', error.message);
