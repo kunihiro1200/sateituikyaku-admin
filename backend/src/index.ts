@@ -956,6 +956,7 @@ app.get('/api/test/tateuri-price-check-small', async (req, res) => {
   }
 });
 // Sidebar counts endpoint (authentication not required) - must be registered before other /api/sellers routes
+app.use('/api/floor-plan-compare', floorPlanCompareRoutes); // 間取り図比較（認証不要・公開）★sellerRoutesより前に登録
 app.use('/api/sellers', sellerRoutes);
 app.use('/api/sellers', sellersManagementRoutes);
 app.use('/properties', propertyRoutes);
@@ -1005,7 +1006,7 @@ app.use('/api/staff-sync', staffSyncRoutes); // スタッフ同期API
 app.use('/api/nearby-map', nearbyMapRoutes); // 近隣MAPapi
 app.use('/api/property-preview', propertyPreviewRoutes); // 物件プレビュー（認証不要・公開）
 app.use('/api/ai', aiPropertyEnhanceRoutes); // AI物件情報解析（認証不要）
-app.use('/api/floor-plan-compare', floorPlanCompareRoutes); // 間取り図比較（認証不要・公開）
+// floor-plan-compareは上部（sellerRoutesより前）に登録済み
 
 // Cron Job: 買主の建売専門HP価格変動チェック（毎日実行）
 app.post('/api/cron/check-property-prices', async (req, res) => {
