@@ -202,8 +202,12 @@ export class EmailService extends BaseRepository {
     const encodedSubject = this.encodeSubject(subject);
     
     // メールヘッダーとボディを作成
+    const encodedFromHeader = this.encodeFrom(from);
+    console.log(`[createEmailMessage] from input: "${from}"`);
+    console.log(`[createEmailMessage] encodedFrom: "${encodedFromHeader}"`);
+    
     const messageParts = [
-      'From: ' + this.encodeFrom(from),
+      'From: ' + encodedFromHeader,
       'To: ' + to,
       'Subject: ' + encodedSubject,
       'MIME-Version: 1.0',
@@ -290,6 +294,8 @@ export class EmailService extends BaseRepository {
 
       // fromが指定されていない場合はemployeeEmailを使用（後方互換性）
       const senderAddress = from || employeeEmail;
+
+      console.log(`[sendTemplateEmail] senderAddress: "${senderAddress}", hasHtmlBody: ${!!htmlBody}, hasEmbeddedImages: pending`);
 
       console.log('📧 Sending template email:');
       console.log(`  To: ${seller.email}`);
