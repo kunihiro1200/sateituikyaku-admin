@@ -3,6 +3,34 @@ import { GoogleDriveService } from './GoogleDriveService';
 import { GoogleSheetsClient } from './GoogleSheetsClient';
 
 // -------------------------------------------------------
+// Claude API リトライユーティリティ
+// overloaded_error (529) が返ってきた場合に自動リトライする
+// -------------------------------------------------------
+async function callClaudeWithRetry(
+  client: Anthropic,
+  params: Parameters<Anthropic['messages']['create']>[0],
+  maxRetries = 3
+): Promise<Anthropic.Message> {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await client.messages.create(params) as Anthropic.Message;
+    } catch (error: any) {
+      const isOverloaded =
+        error?.error?.type === 'overloaded_error' ||
+        error?.status === 529;
+      if (isOverloaded && attempt < maxRetries) {
+        const waitMs = attempt * 5000; // 5秒 → 10秒 → 15秒
+        console.log(`[TokiExtract] Anthropic overloaded, ${waitMs / 1000}秒後にリトライ (${attempt}/${maxRetries})`);
+        await new Promise(r => setTimeout(r, waitMs));
+        continue;
+      }
+      throw error;
+    }
+  }
+  throw new Error('Claude API リトライ上限に達しました');
+}
+
+// -------------------------------------------------------
 // 型定義
 // -------------------------------------------------------
 
@@ -451,7 +479,7 @@ export class TokiExtractService {
   "construction_date": null
 }`;
 
-    const response = await client.messages.create({
+    const response = await callClaudeWithRetry(client, {
       model: 'claude-opus-4-5',
       max_tokens: 4096,
       messages: [
@@ -724,7 +752,7 @@ export class TokiExtractService {
   "renovation_date": null
 }`;
 
-    const response = await client.messages.create({
+    const response = await callClaudeWithRetry(client, {
       model: 'claude-opus-4-5',
       max_tokens: 4096,
       messages: [
@@ -1005,7 +1033,7 @@ export class TokiExtractService {
   "remaining_rights": []
 }`;
 
-    const response = await client.messages.create({
+    const response = await callClaudeWithRetry(client, {
       model: 'claude-opus-4-5',
       max_tokens: 4096,
       messages: [
@@ -1616,7 +1644,7 @@ export class TokiExtractService {
   "remaining_rights": []
 }`;
 
-    const response = await client.messages.create({
+    const response = await callClaudeWithRetry(client, {
       model: 'claude-opus-4-5',
       max_tokens: 4096,
       messages: [
@@ -1957,7 +1985,7 @@ export class TokiExtractService {
   "is_shared_ownership": false
 }`;
 
-    const response = await client.messages.create({
+    const response = await callClaudeWithRetry(client, {
       model: 'claude-opus-4-5',
       max_tokens: 4096,
       messages: [
