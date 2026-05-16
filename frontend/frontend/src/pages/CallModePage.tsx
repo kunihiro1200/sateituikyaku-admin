@@ -3389,7 +3389,7 @@ HP：https://ifoo-oita.com/
     result = result.replace(/<<土（㎡）>>/g, _landAreaForTemplate);
     result = result.replace(/<<建（㎡）>>/g, _buildingAreaForTemplate);
     // 種別がマンション（「マ」を含む）の場合は面積行を削除
-    const _rawTypeForArea = String(property.propertyType || seller.propertyType || '');
+    const _rawTypeForArea = String(property?.propertyType || seller.propertyType || '');
     const _isApartmentForTemplate = _rawTypeForArea === 'apartment' || _rawTypeForArea === 'マ' || _rawTypeForArea === 'マンション';
     if (_isApartmentForTemplate) {
       result = result.replace(/\n?※土地[^\n]*㎡、建物[^\n]*で算出しております。/g, '');
