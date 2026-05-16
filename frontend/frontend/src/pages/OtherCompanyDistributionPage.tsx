@@ -528,15 +528,25 @@ export default function OtherCompanyDistributionPage() {
 
   const sendEmails = async () => {
     setSending(true);
-    try {
-      // テストメールアドレスが入力されている場合は、テスト送信（買主選択不要）
-      const isTestSend = !!testEmail.trim();
-      const buyersToSend = isTestSend
-        ? [checkedBuyers.length > 0 ? checkedBuyers[0] : null]
-        : checkedBuyers;
-      
-      // 各買主に個別送信
-      for (const buyer of buyersToSend) {
+    // テストメールアドレスが入力されている場合は、テスト送信（買主選択不要）
+    const isTestSend = !!testEmail.trim();
+    const buyersToSend = isTestSend
+      ? [checkedBuyers.length > 0 ? checkedBuyers[0] : null]
+      : checkedBuyers;
+
+    let successCount = 0;
+    const failedBuyers: string[] = [];
+
+    // 各買主に個別送信（1件失敗しても残りを続行する）
+    for (let i = 0; i < buyersToSend.length; i++) {
+      const buyer = buyersToSend[i];
+
+      // 2件目以降は500ms待機してGmail APIのレート制限を回避
+      if (i > 0) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+
+      try {
         const formData = new FormData();
         if (buyer) formData.append('buyerId', buyer.buyer_number);
         formData.append('subject', emailSubject);
@@ -545,7 +555,7 @@ export default function OtherCompanyDistributionPage() {
         formData.append('senderEmail', 'tenant@ifoo-oita.com');
         // テスト送信の場合はtoEmailを指定（バックエンドで宛先として使用）
         if (isTestSend) formData.append('toEmail', testEmail.trim());
-        
+
         // 画像を添付ファイルに変換
         for (const image of selectedImages) {
           if (image.source === 'local' && image.localFile) {
@@ -563,9 +573,11 @@ export default function OtherCompanyDistributionPage() {
           },
         });
 
+        successCount++;
+
         // activity_logsに記録（メール送信成功後）
         // テスト送信の場合は記録しない
-        if (!testEmail.trim()) {
+        if (!testEmail.trim() && buyer) {
           try {
             await api.post('/api/activity-logs/email', {
               buyerId: buyer.buyer_number,
@@ -581,22 +593,38 @@ export default function OtherCompanyDistributionPage() {
             console.error('Failed to log email activity:', logError);
           }
         }
+      } catch (err: any) {
+        // 1件の送信失敗はログのみ。残りの買主への送信は続行する
+        const buyerLabel = buyer ? `${buyer.name || buyer.buyer_number}` : 'unknown';
+        console.error(`[sendEmails] 送信失敗: ${buyerLabel}`, err);
+        failedBuyers.push(buyerLabel);
       }
-
-      setEmailDialogOpen(false);
-      const message = testEmail.trim() 
-        ? `テストメール（${testEmail}）を送信しました` 
-        : `${checkedBuyers.length}件のメールを送信しました`;
-      setSnackbar({ open: true, message, severity: 'success' });
-      setCheckedIds(new Set()); // チェックをクリア
-      setSelectedImages([]); // 選択画像をクリア
-      setRecommendComment(''); // おすすめコメントをクリア
-      setTestEmail(''); // テストメールアドレスをクリア
-    } catch (err: any) {
-      setSnackbar({ open: true, message: err.response?.data?.error || 'メール送信に失敗しました', severity: 'error' });
-    } finally {
-      setSending(false);
     }
+
+    setSending(false);
+    setEmailDialogOpen(false);
+
+    if (isTestSend) {
+      setSnackbar({ open: true, message: `テストメール（${testEmail}）を送信しました`, severity: 'success' });
+    } else if (failedBuyers.length === 0) {
+      // 全件成功
+      setSnackbar({ open: true, message: `${successCount}件のメールを送信しました`, severity: 'success' });
+    } else if (successCount > 0) {
+      // 一部成功・一部失敗
+      setSnackbar({
+        open: true,
+        message: `${successCount}件送信成功、${failedBuyers.length}件失敗（${failedBuyers.join('、')}）`,
+        severity: 'warning',
+      });
+    } else {
+      // 全件失敗
+      setSnackbar({ open: true, message: 'メール送信に失敗しました', severity: 'error' });
+    }
+
+    setCheckedIds(new Set()); // チェックをクリア
+    setSelectedImages([]); // 選択画像をクリア
+    setRecommendComment(''); // おすすめコメントをクリア
+    setTestEmail(''); // テストメールアドレスをクリア
   };
 
   return (
