@@ -107,6 +107,9 @@ export class EmailService extends BaseRepository {
       const files = params.attachments || [];
       let rawMessage: string;
 
+      // HTMLボディをbase64エンコード（quoted-printableだと=を含むURLが壊れるため）
+      const htmlBodyBase64 = Buffer.from(htmlBody, 'utf-8').toString('base64');
+
       if (files.length === 0) {
         // 添付なし: シンプルな text/html メッセージ
         const messageParts = [
@@ -115,9 +118,9 @@ export class EmailService extends BaseRepository {
           `Subject: ${encodedSubject}`,
           'MIME-Version: 1.0',
           'Content-Type: text/html; charset=utf-8',
-          'Content-Transfer-Encoding: quoted-printable',
+          'Content-Transfer-Encoding: base64',
           '',
-          htmlBody,
+          htmlBodyBase64,
         ];
         rawMessage = messageParts.join('\n');
       } else {
@@ -132,9 +135,9 @@ export class EmailService extends BaseRepository {
           '',
           `--${boundary}`,
           'Content-Type: text/html; charset=utf-8',
-          'Content-Transfer-Encoding: quoted-printable',
+          'Content-Transfer-Encoding: base64',
           '',
-          htmlBody,
+          htmlBodyBase64,
         ];
 
         for (const file of files) {
