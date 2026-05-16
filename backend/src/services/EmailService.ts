@@ -107,8 +107,12 @@ export class EmailService extends BaseRepository {
       const files = params.attachments || [];
       let rawMessage: string;
 
-      // HTMLボディをbase64エンコード（quoted-printableだと=を含むURLが壊れるため）
-      const htmlBodyBase64 = Buffer.from(htmlBody, 'utf-8').toString('base64');
+      // HTMLボディをbase64エンコード（RFC 2045準拠: 76文字ごとに改行）
+      const htmlBodyBase64 = Buffer.from(htmlBody, 'utf-8').toString('base64')
+        .replace(/(.{76})/g, '$1\r\n');
+
+      // RFC 2822 準拠: ヘッダーと本文の区切りは CRLF (\r\n)
+      const CRLF = '\r\n';
 
       if (files.length === 0) {
         // 添付なし: シンプルな text/html メッセージ
@@ -122,7 +126,7 @@ export class EmailService extends BaseRepository {
           '',
           htmlBodyBase64,
         ];
-        rawMessage = messageParts.join('\n');
+        rawMessage = messageParts.join(CRLF);
       } else {
         // 添付あり: multipart/mixed メッセージ
         const boundary = `boundary_${Date.now()}_${Math.random().toString(36).slice(2)}`;
@@ -142,7 +146,8 @@ export class EmailService extends BaseRepository {
 
         for (const file of files) {
           const encodedFilename = `=?UTF-8?B?${Buffer.from(file.originalname, 'utf-8').toString('base64')}?=`;
-          const fileBase64 = file.buffer.toString('base64');
+          // 添付ファイルも76文字改行
+          const fileBase64 = file.buffer.toString('base64').replace(/(.{76})/g, '$1\r\n');
           parts.push(
             `--${boundary}`,
             `Content-Type: ${file.mimetype || 'application/octet-stream'}`,
@@ -154,7 +159,7 @@ export class EmailService extends BaseRepository {
         }
 
         parts.push(`--${boundary}--`);
-        rawMessage = parts.join('\n');
+        rawMessage = parts.join(CRLF);
       }
 
       const encodedMessage = Buffer.from(rawMessage)
