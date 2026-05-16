@@ -392,24 +392,27 @@ router.get('/assignee-initials', async (req: Request, res: Response) => {
 
 /**
  * 次の売主番号を取得
- * 連番シート（ID: 19yAuVYQRm-_zhjYX7M7zjiGbnBibkG77Mpz93sN1xxs）のC2セルを読み取り、
- * "AA" + (n + 1) 形式で返す
+ * 連番シート（ID: 19yAuVYQRm-_zhjYX7M7zjiGbnBibkG77Mpz93sN1xxs）のC2セル（AA用）またはD2セル（FI用）を読み取り、
+ * プレフィックス + (n + 1) 形式で返す
  */
 router.get('/next-seller-number', async (req: Request, res: Response) => {
   try {
+    const prefix = (req.query.prefix as string || 'AA').toUpperCase();
+    const cell = prefix === 'FI' ? 'I2' : 'C2';
+
     const sheetsClient = new GoogleSheetsClient({
       spreadsheetId: '19yAuVYQRm-_zhjYX7M7zjiGbnBibkG77Mpz93sN1xxs',
       sheetName: '連番',
       serviceAccountKeyPath: process.env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH || './google-service-account.json',
     });
     await sheetsClient.authenticate();
-    const values = await sheetsClient.readRawRange('C2');
+    const values = await sheetsClient.readRawRange(cell);
     const c2Value = values?.[0]?.[0];
     if (c2Value === undefined || c2Value === null || c2Value === '') {
       return res.status(500).json({
         error: {
           code: 'NEXT_SELLER_NUMBER_ERROR',
-          message: '連番シートC2の読み取りに失敗しました',
+          message: `連番シート${cell}の読み取りに失敗しました`,
           retryable: true,
         },
       });
@@ -419,12 +422,12 @@ router.get('/next-seller-number', async (req: Request, res: Response) => {
       return res.status(500).json({
         error: {
           code: 'NEXT_SELLER_NUMBER_ERROR',
-          message: '連番シートC2の値が数値ではありません',
+          message: `連番シート${cell}の値が数値ではありません`,
           retryable: false,
         },
       });
     }
-    const sellerNumber = 'AA' + String(n + 1);
+    const sellerNumber = prefix + String(n + 1);
     res.json({ sellerNumber });
   } catch (error) {
     console.error('Get next seller number error:', error);

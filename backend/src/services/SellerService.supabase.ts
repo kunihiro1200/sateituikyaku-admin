@@ -301,7 +301,7 @@ export class SellerService extends BaseRepository {
       throw new Error(`Failed to create property: ${propertyError.message}`);
     }
 
-    // 連番シートC2を更新（ベストエフォート）
+    // 連番シートを更新（ベストエフォート）- AA用はC2、FI用はD2
     try {
       const { GoogleSheetsClient } = await import('./GoogleSheetsClient');
       const renbanClient = new GoogleSheetsClient({
@@ -310,12 +310,13 @@ export class SellerService extends BaseRepository {
         serviceAccountKeyPath: process.env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH || './google-service-account.json',
       });
       await renbanClient.authenticate();
-      const values = await renbanClient.readRawRange('C2');
+      const renbanCell = sellerNumber?.startsWith('FI') ? 'I2' : 'C2';
+      const values = await renbanClient.readRawRange(renbanCell);
       const currentNum = parseInt(values[0]?.[0] || '0', 10);
-      await renbanClient.writeRawCell('C2', String(currentNum + 1));
-      console.log(`✅ 連番シートC2を更新: ${currentNum} → ${currentNum + 1}`);
+      await renbanClient.writeRawCell(renbanCell, String(currentNum + 1));
+      console.log(`✅ 連番シート${renbanCell}を更新: ${currentNum} → ${currentNum + 1}`);
     } catch (err) {
-      console.error('⚠️ 連番シートC2更新失敗（ベストエフォート）:', err);
+      console.error('⚠️ 連番シート更新失敗（ベストエフォート）:', err);
     }
 
     // 売主リストスプレッドシートの最終行に追加（ベストエフォート）

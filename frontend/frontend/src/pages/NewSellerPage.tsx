@@ -217,10 +217,10 @@ export default function NewSellerPage() {
 
   // 売主番号取得
   useEffect(() => {
-    const fetchNextSellerNumber = async () => {
+    const fetchNextSellerNumber = async (prefix: string = 'AA') => {
       setSellerNumberLoading(true);
       try {
-        const response = await api.get('/api/sellers/next-seller-number');
+        const response = await api.get('/api/sellers/next-seller-number', { params: { prefix } });
         setSellerNumber(response.data.sellerNumber);
       } catch (err) {
         console.error('Failed to fetch next seller number:', err);
@@ -231,6 +231,28 @@ export default function NewSellerPage() {
     };
     fetchNextSellerNumber();
   }, []);
+
+  // 物件住所に「福岡」が含まれる場合、FI番号に切り替え
+  useEffect(() => {
+    const isFukuoka = propertyAddress.includes('福岡');
+    const currentPrefix = sellerNumber.startsWith('FI') ? 'FI' : 'AA';
+    const targetPrefix = isFukuoka ? 'FI' : 'AA';
+
+    if (currentPrefix !== targetPrefix && propertyAddress.length > 0) {
+      const fetchNumber = async () => {
+        setSellerNumberLoading(true);
+        try {
+          const response = await api.get('/api/sellers/next-seller-number', { params: { prefix: targetPrefix } });
+          setSellerNumber(response.data.sellerNumber);
+        } catch (err) {
+          console.error('Failed to fetch next seller number:', err);
+        } finally {
+          setSellerNumberLoading(false);
+        }
+      };
+      fetchNumber();
+    }
+  }, [propertyAddress]);
 
   // 社員リストを取得
   useEffect(() => {
