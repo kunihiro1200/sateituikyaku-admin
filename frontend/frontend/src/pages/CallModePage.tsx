@@ -547,6 +547,10 @@ const CallModePage = () => {
   const [seller, setSeller] = useState<Seller | null>(null);
   const [property, setProperty] = useState<PropertyInfo | null>(null);
 
+  // 物件住所の読み仮名
+  const [addressReading, setAddressReading] = useState<string | null>(null);
+  const [addressReadingLoading, setAddressReadingLoading] = useState(false);
+
   // プレゼンストラッキング（他のユーザーに「この売主を開いている」ことを通知）
   useSellerPresenceTrack(seller?.sellerNumber);
 
@@ -1619,6 +1623,25 @@ const CallModePage = () => {
       setSidebarLoading(false);
     }
   }, [fetchSidebarCounts]);
+
+  // 物件住所の読み仮名を取得（sellerが読み込まれた後にバックグラウンドで実行）
+  useEffect(() => {
+    if (!seller?.id) return;
+    const address = (seller as any).property?.address || seller.propertyAddress || '';
+    if (!address || address.trim() === '' || address.trim() === '未入力') return;
+
+    setAddressReadingLoading(true);
+    api.get(`/api/sellers/${seller.id}/address-reading`)
+      .then(res => {
+        setAddressReading(res.data.reading || null);
+      })
+      .catch(() => {
+        setAddressReading(null);
+      })
+      .finally(() => {
+        setAddressReadingLoading(false);
+      });
+  }, [seller?.id, seller?.propertyAddress]);
 
   // サイドバー用の売主リストを取得（sellerが読み込まれた後にバックグラウンドで実行）
   // メインコンテンツ（売主詳細）はすでに表示済みのため、サイドバーデータは非ブロッキングで取得
@@ -4325,6 +4348,7 @@ HP：https://ifoo-oita.com/
                 {propInfo.address && (
                   <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.72rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 180 }}>
                     {propInfo.address}
+                    {addressReading && `（${addressReading}）`}
                   </Typography>
                 )}
                 {propInfo.propertyType && (
@@ -4834,6 +4858,7 @@ HP：https://ifoo-oita.com/
                 </Typography>
                 <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.85rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {seller.propertyAddress || propInfo.address || '物件住所未登録'}
+                  {addressReading && `（${addressReading}）`}
                 </Typography>
               </Box>
             )}
@@ -5137,7 +5162,19 @@ HP：https://ifoo-oita.com/
                     {displayAddress && (
                       <Grid item xs={12}>
                         <Typography variant="caption" color="text.secondary">物件住所</Typography>
-                        <Typography variant="body2">{displayAddress}</Typography>
+                        <Typography variant="body2">
+                          {displayAddress}
+                          {addressReading && (
+                            <Typography component="span" variant="body2" color="text.secondary">
+                              （{addressReading}）
+                            </Typography>
+                          )}
+                          {addressReadingLoading && (
+                            <Typography component="span" variant="body2" color="text.secondary" sx={{ ml: 0.5 }}>
+                              <CircularProgress size={10} sx={{ verticalAlign: 'middle' }} />
+                            </Typography>
+                          )}
+                        </Typography>
                       </Grid>
                     )}
                     {displayPropertyType && (

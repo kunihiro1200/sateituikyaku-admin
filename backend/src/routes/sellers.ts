@@ -2160,6 +2160,66 @@ JSONのみ返してください。`;
 });
 
 // ============================================================
+// 住所読み仮名取得エンドポイント（OpenAI APIで住所のひらがな読みを取得）
+// ============================================================
+
+/**
+ * GET /api/sellers/:id/address-reading
+ * 売主の物件住所をOpenAI APIでひらがな読みに変換して返す
+ */
+router.get('/:id/address-reading', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    const seller = await sellerService.getSeller(id);
+    if (!seller) return res.status(404).json({ error: '売主が見つかりません' });
+
+    // 住所の取得（propertiesテーブル優先、なければsellersテーブル）
+    const address = (seller as any).property?.address || seller.propertyAddress || '';
+    if (!address || address.trim() === '' || address.trim() === '未入力') {
+      return res.status(400).json({ error: '物件住所が設定されていません' });
+    }
+
+    if (!process.env.OPENAI_API_KEY) {
+      return res.status(500).json({ error: 'OPENAI_API_KEYが設定されていません' });
+    }
+
+    const axiosLib = (await import('axios')).default;
+    const response = await axiosLib.post(
+      'https://api.openai.com/v1/chat/completions',
+      {
+        model: 'gpt-4o-mini',
+        messages: [
+          {
+            role: 'system',
+            content: '日本の住所をひらがなで読み仮名に変換するアシスタントです。住所のひらがな読みだけを返してください。余分な説明は不要です。',
+          },
+          {
+            role: 'user',
+            content: `次の住所のひらがな読みを返してください（住所全体をひらがなで）:\n${address}`,
+          },
+        ],
+        temperature: 0,
+        max_tokens: 200,
+      },
+      {
+        headers: {
+          'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        timeout: 15000,
+      }
+    );
+
+    const reading = response.data.choices[0]?.message?.content?.trim() || '';
+    return res.json({ address, reading });
+  } catch (error: any) {
+    console.error('[address-reading] エラー:', error?.message || error);
+    return res.status(500).json({ error: '読み仮名の取得に失敗しました' });
+  }
+});
+
+// ============================================================
 // 近隣売買物件エンドポイント（物件スプシから半径1km以内を取得）
 // ============================================================
 
