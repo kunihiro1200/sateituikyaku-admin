@@ -3248,14 +3248,19 @@ const CallModePage = () => {
     // メール件名
     const subject = `【査定結果】${seller.name}様の物件査定について`;
 
+    // 種別がマンション（「マ」を含む）の場合は面積行を削除
+    const _isApartmentType = editedPropertyType === 'apartment' || editedPropertyType === 'マ' || editedPropertyType === 'マンション';
+    const areaLine = _isApartmentType
+      ? ''
+      : `\n※土地${landArea}㎡、建物${buildingArea}㎡で算出しております。`;
+
     // メール本文
     const body = `${seller.name}様
 
 この度は査定依頼を頂きまして誠に有難うございます。
 大分市舞鶴町にございます、不動産会社の株式会社いふうです。
 
-机上査定は以下の通りとなっております。
-※土地${landArea}㎡、建物${buildingArea}㎡で算出しております。
+机上査定は以下の通りとなっております。${areaLine}
 
 ＜相場価格＞
 　　　${amount1Man}万円～${amount2Man}万円（3ヶ月で売却可能）
@@ -3383,6 +3388,12 @@ HP：https://ifoo-oita.com/
     const _buildingAreaForTemplate = editedBuildingAreaVerified || editedBuildingArea || property.buildingArea?.toString() || '';
     result = result.replace(/<<土（㎡）>>/g, _landAreaForTemplate);
     result = result.replace(/<<建（㎡）>>/g, _buildingAreaForTemplate);
+    // 種別がマンション（「マ」を含む）の場合は面積行を削除
+    const _rawTypeForArea = String(property.propertyType || seller.propertyType || '');
+    const _isApartmentForTemplate = _rawTypeForArea === 'apartment' || _rawTypeForArea === 'マ' || _rawTypeForArea === 'マンション';
+    if (_isApartmentForTemplate) {
+      result = result.replace(/\n?※土地[^\n]*㎡、建物[^\n]*で算出しております。/g, '');
+    }
     
     // 築年情報（条件付きロジック）
     // 物件種別が「戸建て」AND（築年が空 OR 築年≤0）の場合のみメッセージを表示
@@ -4363,16 +4374,29 @@ HP：https://ifoo-oita.com/
           )}
           {/* 削除ボタン */}
           {seller?.id && (
-            <Button
-              variant="outlined"
-              color="error"
-              startIcon={<DeleteIcon />}
-              onClick={() => setDeleteDialogOpen(true)}
-              sx={{ ml: 'auto' }}
-              size="small"
-            >
-              削除
-            </Button>
+            <>
+              {/* 文字起ボタン */}
+              <Button
+                variant="outlined"
+                color="info"
+                size="small"
+                onClick={() => navigate(`/sellers/${id}/transcription`)}
+                sx={{ ml: isMobile ? 0 : 1, fontWeight: 'bold' }}
+                title="通話を録音して文字起こし・要約"
+              >
+                文字起
+              </Button>
+              <Button
+                variant="outlined"
+                color="error"
+                startIcon={<DeleteIcon />}
+                onClick={() => setDeleteDialogOpen(true)}
+                sx={{ ml: 'auto' }}
+                size="small"
+              >
+                削除
+              </Button>
+            </>
           )}
         </Box>
 
