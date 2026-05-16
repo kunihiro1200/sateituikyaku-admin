@@ -1339,6 +1339,7 @@ export default function OtherCompanyDistributionPage() {
                   <TableCell>物件住所</TableCell>
                   <TableCell>金額</TableCell>
                   <TableCell>種別</TableCell>
+                  <TableCell>URL</TableCell>
                   <TableCell>送信数</TableCell>
                 </TableRow>
               </TableHead>
@@ -1349,6 +1350,13 @@ export default function OtherCompanyDistributionPage() {
                     <TableCell>{h.property_address}</TableCell>
                     <TableCell>{h.price}</TableCell>
                     <TableCell>{h.property_type || '-'}</TableCell>
+                    <TableCell>
+                      {h.source_url ? (
+                        <a href={h.source_url} target="_blank" rel="noopener noreferrer" style={{ color: '#1976d2', textDecoration: 'underline' }}>
+                          リンク
+                        </a>
+                      ) : '-'}
+                    </TableCell>
                     <TableCell>{h.sent_count}件</TableCell>
                   </TableRow>
                 ))}

@@ -61,6 +61,27 @@ export default function FukuokaTateuriManagePage() {
         return;
       }
 
+      // 重複なし → 先にプレビュー取得で配信履歴と重複チェック
+      const previewRes = await api.post('/api/buyers/scrape-property', { url: addUrl.trim() });
+      if (previewRes.data.success && previewRes.data.data) {
+        const scrapedAddress = previewRes.data.data.address;
+        const scrapedPrice = previewRes.data.data.price;
+        if (scrapedAddress && scrapedPrice) {
+          const dupHistRes = await api.post('/api/distribution-history/check-duplicate', {
+            propertyAddress: scrapedAddress,
+            price: scrapedPrice,
+          });
+          if (dupHistRes.data.isDuplicate) {
+            const histDate = new Date(dupHistRes.data.history.sent_at).toLocaleDateString('ja-JP');
+            setAddResult({
+              success: false,
+              message: `⚠️ この物件（${scrapedAddress} / ${scrapedPrice}）は${histDate}に登録済みです`,
+            });
+            return;
+          }
+        }
+      }
+
       // 重複なし → バックエンド経由でスクレイピングして追加
       const res = await api.post('/api/tateuri/scrape', {
         url: addUrl.trim(),
@@ -69,26 +90,7 @@ export default function FukuokaTateuriManagePage() {
       if (!res.data.success) throw new Error(res.data.error || '取得失敗');
       const addedTitle = res.data?.data?.title?.replace(/\[\d+\].+$/, '').trim() || res.data?.data?.address || '物件';
 
-      // 配信履歴との重複チェック（住所＋金額）
-      const scrapedAddress = res.data?.data?.address;
-      const scrapedPrice = res.data?.data?.price;
-      let distributionWarning = '';
-      if (scrapedAddress && scrapedPrice) {
-        try {
-          const dupHistRes = await api.post('/api/distribution-history/check-duplicate', {
-            propertyAddress: scrapedAddress,
-            price: scrapedPrice,
-          });
-          if (dupHistRes.data.isDuplicate) {
-            const histDate = new Date(dupHistRes.data.history.sent_at).toLocaleDateString('ja-JP');
-            distributionWarning = ` ⚠️ この物件は${histDate}に登録済みです`;
-          }
-        } catch (e) {
-          // 重複チェック失敗は無視
-        }
-      }
-
-      setAddResult({ success: true, message: `「${addedTitle}」を追加しました${distributionWarning}` });
+      setAddResult({ success: true, message: `「${addedTitle}」を追加しました` });
       setAddUrl('');
       await fetchProperties();
     } catch (err: any) {
