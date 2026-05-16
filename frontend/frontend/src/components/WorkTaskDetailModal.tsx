@@ -3277,10 +3277,23 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
     </Dialog>
   );
 
+  // 依頼前に確認フィールドのデフォルトテキスト（スプシ未入力時に表示）
+  const PRE_REQUEST_CHECK_DEFAULT = `【依頼前に当社でやること】
+★雛形のシートを最新のものに変更マニュアル↓
+https://docs.google.com/document/d/12vr8d5TQ-fWd7kQeOFmBe6Dd5kbt1dqaU0cjO9y2xnI/edit?tab=t.0
+★大分ガスか調べるためにガス会社にFAX（その後、重説にガス関係の内容を入力）
+★マンションの場合は、重説を取り寄せる
+★下記書類をドライブにあげた後、名前を自動でつける（https://docs.google.com/spreadsheets/d/15M5YsY4CYp2wGOb0qJhKDRGOUappjdSE5oVWHaZW8YU/edit?gid=449767833#gid=449767833）
+①謄本②字図③建物図面
+★市役所での取得した書類をドライブにあげる`;
+
   // 依頼前に確認ボタン（テキスト表示付き）コンポーネント
   const PreRequestCheckButton = () => {
     const [popupOpen, setPopupOpen] = useState(false);
-    const text = getValue('pre_request_check') || '';
+    const dbText = getValue('pre_request_check') || '';
+    // DBに値があればDBの値を、なければデフォルトテキストを表示
+    const text = dbText || PRE_REQUEST_CHECK_DEFAULT;
+    const isDefault = !dbText;
     return (
       <Grid container spacing={2} alignItems="flex-start" sx={{ mb: 1.5 }}>
         <Grid item xs={4}>
@@ -3289,44 +3302,36 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
           </Typography>
         </Grid>
         <Grid item xs={8}>
-          {text ? (
-            <>
-              <Typography
-                variant="body2"
-                sx={{
-                  whiteSpace: 'pre-wrap',
-                  wordBreak: 'break-word',
-                  cursor: 'pointer',
-                  p: 1,
-                  border: '1px solid',
-                  borderColor: 'divider',
-                  borderRadius: 1,
-                  bgcolor: '#fffde7',
-                  mb: 0.5,
-                  maxHeight: 80,
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  display: '-webkit-box',
-                  WebkitLineClamp: 3,
-                  WebkitBoxOrient: 'vertical',
-                }}
-                onClick={() => setPopupOpen(true)}
-              >
-                {text}
-              </Typography>
-              <Button
-                variant="outlined"
-                size="small"
-                onClick={() => setPopupOpen(true)}
-              >
-                全文を見る
-              </Button>
-            </>
-          ) : (
-            <Typography variant="body2" color="text.secondary" sx={{ pt: 1 }}>
-              （未入力）
-            </Typography>
-          )}
+          <Typography
+            variant="body2"
+            sx={{
+              whiteSpace: 'pre-wrap',
+              wordBreak: 'break-word',
+              cursor: 'pointer',
+              p: 1,
+              border: '1px solid',
+              borderColor: isDefault ? '#b0bec5' : 'divider',
+              borderRadius: 1,
+              bgcolor: isDefault ? '#f5f5f5' : '#fffde7',
+              mb: 0.5,
+              maxHeight: 80,
+              overflow: 'hidden',
+              display: '-webkit-box',
+              WebkitLineClamp: 3,
+              WebkitBoxOrient: 'vertical',
+              color: isDefault ? 'text.secondary' : 'text.primary',
+            }}
+            onClick={() => setPopupOpen(true)}
+          >
+            {text}
+          </Typography>
+          <Button
+            variant="outlined"
+            size="small"
+            onClick={() => setPopupOpen(true)}
+          >
+            全文を見る
+          </Button>
           <PreRequestCheckPopup
             open={popupOpen}
             text={text}
