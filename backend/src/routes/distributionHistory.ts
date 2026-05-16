@@ -31,23 +31,34 @@ router.get('/', async (_req: Request, res: Response) => {
 });
 
 /**
- * 重複チェック（物件住所＋金額の完全一致）
+ * 重複チェック（住所＋土地面積の一致、土地面積がない場合は住所＋金額）
  * POST /api/distribution-history/check-duplicate
- * Body: { propertyAddress: string, price: string }
+ * Body: { propertyAddress: string, price: string, landArea?: string }
  */
 router.post('/check-duplicate', async (req: Request, res: Response) => {
   try {
-    const { propertyAddress, price } = req.body;
+    const { propertyAddress, price, landArea } = req.body;
 
-    if (!propertyAddress || !price) {
+    if (!propertyAddress) {
       return res.json({ isDuplicate: false, history: null });
     }
 
-    const { data, error } = await supabase
+    let query = supabase
       .from('distribution_history')
       .select('*')
-      .eq('property_address', propertyAddress)
-      .eq('price', price)
+      .eq('property_address', propertyAddress);
+
+    // 土地面積がある場合は土地面積で重複チェック（価格は変わる可能性があるため）
+    if (landArea) {
+      query = query.eq('land_area', landArea);
+    } else if (price) {
+      // 土地面積がない場合は従来通り金額でチェック
+      query = query.eq('price', price);
+    } else {
+      return res.json({ isDuplicate: false, history: null });
+    }
+
+    const { data, error } = await query
       .order('sent_at', { ascending: false })
       .limit(1);
 
@@ -67,11 +78,11 @@ router.post('/check-duplicate', async (req: Request, res: Response) => {
 /**
  * 配信履歴を記録
  * POST /api/distribution-history
- * Body: { propertyAddress: string, price: string, propertyType?: string, sourceUrl?: string, sentCount: number }
+ * Body: { propertyAddress: string, price: string, propertyType?: string, sourceUrl?: string, landArea?: string, sentCount: number }
  */
 router.post('/', async (req: Request, res: Response) => {
   try {
-    const { propertyAddress, price, propertyType, sourceUrl, sentCount } = req.body;
+    const { propertyAddress, price, propertyType, sourceUrl, landArea, sentCount } = req.body;
 
     if (!propertyAddress || !price) {
       return res.status(400).json({ error: 'propertyAddress and price are required' });
@@ -84,6 +95,7 @@ router.post('/', async (req: Request, res: Response) => {
         price: price,
         property_type: propertyType || null,
         source_url: sourceUrl || null,
+        land_area: landArea || null,
         sent_count: sentCount || 1,
       })
       .select()

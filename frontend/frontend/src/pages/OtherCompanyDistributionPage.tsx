@@ -326,6 +326,7 @@ export default function OtherCompanyDistributionPage() {
           const dupRes = await api.post('/api/distribution-history/check-duplicate', {
             propertyAddress: result.data.address,
             price: result.data.price,
+            landArea: result.data.details?.['土地面積'] || null,
           });
           if (dupRes.data.isDuplicate) {
             setDuplicateWarning(dupRes.data);
@@ -634,6 +635,7 @@ export default function OtherCompanyDistributionPage() {
             price: previewData.price,
             propertyType: previewData.details?.['物件種目'] || null,
             sourceUrl: propertyUrl || null,
+            landArea: previewData.details?.['土地面積'] || null,
             sentCount: successCount,
           });
           // 履歴を再取得
@@ -1338,6 +1340,7 @@ export default function OtherCompanyDistributionPage() {
                   <TableCell>配信日</TableCell>
                   <TableCell>物件住所</TableCell>
                   <TableCell>金額</TableCell>
+                  <TableCell>土地面積</TableCell>
                   <TableCell>種別</TableCell>
                   <TableCell>URL</TableCell>
                   <TableCell>送信数</TableCell>
@@ -1349,6 +1352,7 @@ export default function OtherCompanyDistributionPage() {
                     <TableCell>{new Date(h.sent_at).toLocaleDateString('ja-JP')}</TableCell>
                     <TableCell>{h.property_address}</TableCell>
                     <TableCell>{h.price}</TableCell>
+                    <TableCell>{h.land_area || '-'}</TableCell>
                     <TableCell>{h.property_type || '-'}</TableCell>
                     <TableCell>
                       {h.source_url ? (
