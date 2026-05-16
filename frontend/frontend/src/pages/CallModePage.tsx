@@ -4380,9 +4380,9 @@ HP：https://ifoo-oita.com/
                 variant="outlined"
                 color="info"
                 size="small"
-                onClick={() => navigate(`/sellers/${id}/transcription`)}
+                onClick={() => window.open(`/sellers/${id}/transcription`, '_blank')}
                 sx={{ ml: isMobile ? 0 : 1, fontWeight: 'bold' }}
-                title="通話を録音して文字起こし・要約"
+                title="通話を録音して文字起こし・要約（新しいタブで開く）"
               >
                 文字起
               </Button>
