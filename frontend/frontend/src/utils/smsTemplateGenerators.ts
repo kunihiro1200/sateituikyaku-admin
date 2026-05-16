@@ -308,9 +308,17 @@ export const replacePlaceholders = (
 
     // FI売主の場合は署名の会社固定TEL・FAX行を削除
     // 担当者個人番号（TEL：<<担当名（営業）電話番号>>）は削除しない
+    // ※テンプレート内の電話番号は「TEL: 097-533-2022」（半角コロン+スペース）形式
+    //   または「097-533-2022」（プレフィックスなし）形式でハードコードされている
     if (hasFI) {
+      // 全角コロン形式（TEL：097-533-2022）
       result = result.replace(/^TEL：097-533-2022\n?/gm, '');
       result = result.replace(/^FAX：097-529-7160\n?/gm, '');
+      // 半角コロン+スペース形式（TEL: 097-533-2022）
+      result = result.replace(/^TEL: 097-533-2022\n?/gm, '');
+      result = result.replace(/^FAX: 097-529-7160\n?/gm, '');
+      // プレフィックスなし形式（行頭の 097-533-2022 のみ）
+      result = result.replace(/^097-533-2022\n?/gm, '');
     }
     
     return result;
