@@ -57,7 +57,7 @@ export class TateuriPriceCheckService {
   /**
    * 掲載中の全物件を再スクレイピングして価格変動をチェック
    * 毎日全件ではなく、slug順で分割して処理（Vercelタイムアウト対策）
-   * 1回の実行で最大30件まで処理
+   * 1回の実行で最大30件まで処理（GitHub Actionsから1日3回呼ばれる想定）
    */
   async checkPrices(): Promise<{ checked: number; changed: number; errors: number }> {
     console.log('[TateuriPriceCheck] 価格チェック開始');
