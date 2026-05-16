@@ -66,6 +66,7 @@ import geocodeRoutes from './routes/geocode';
 import urlRedirectRoutes from './routes/urlRedirect';
 import staffSyncRoutes from './routes/staff-sync';
 import nearbyMapRoutes from './routes/nearbyMap';
+import distributionHistoryRoutes from './routes/distributionHistory';
 import managementRulesRoutes from './routes/managementRules';
 import mansionJyuchoRoutes from './routes/mansionJyucho';
 import tokiExtractRoutes from './routes/tokiExtract';
@@ -1004,6 +1005,7 @@ app.use('/api/audit-logs', auditLogRoutes);
 app.use('/api/property-listing-sync', propertyListingSyncRoutes);
 app.use('/api/staff-sync', staffSyncRoutes); // スタッフ同期API
 app.use('/api/nearby-map', nearbyMapRoutes); // 近隣MAPapi
+app.use('/api/distribution-history', distributionHistoryRoutes); // 他社物件配信履歴
 app.use('/api/property-preview', propertyPreviewRoutes); // 物件プレビュー（認証不要・公開）
 app.use('/api/ai', aiPropertyEnhanceRoutes); // AI物件情報解析（認証不要）
 // floor-plan-compareは上部（sellerRoutesより前）に登録済み

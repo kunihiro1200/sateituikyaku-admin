@@ -147,6 +147,23 @@ export default function OtherCompanyDistributionPage() {
   const [showProviderInfo, setShowProviderInfo] = useState(false); // 販売元情報の表示状態
   const [showPrintSheet, setShowPrintSheet] = useState(false); // 印刷シート表示状態
 
+  // 配信履歴
+  const [distributionHistory, setDistributionHistory] = useState<any[]>([]);
+  const [duplicateWarning, setDuplicateWarning] = useState<{ isDuplicate: boolean; history: any } | null>(null);
+
+  // 配信履歴を取得
+  useEffect(() => {
+    const fetchHistory = async () => {
+      try {
+        const res = await api.get('/api/distribution-history');
+        setDistributionHistory(res.data);
+      } catch (err) {
+        console.error('Failed to fetch distribution history:', err);
+      }
+    };
+    fetchHistory();
+  }, []);
+
   // スクレイピング結果から自動入力用データを生成
   const autoFillFromScrapedData = (data: any) => {
     // 住所を自動入力
@@ -302,6 +319,23 @@ export default function OtherCompanyDistributionPage() {
       }
       
       setSnackbar({ open: true, message: '物件情報を取得し、フィルターに自動入力しました', severity: 'success' });
+      
+      // 重複チェック
+      if (result.data.address && result.data.price) {
+        try {
+          const dupRes = await api.post('/api/distribution-history/check-duplicate', {
+            propertyAddress: result.data.address,
+            price: result.data.price,
+          });
+          if (dupRes.data.isDuplicate) {
+            setDuplicateWarning(dupRes.data);
+          } else {
+            setDuplicateWarning(null);
+          }
+        } catch (dupErr) {
+          console.error('Duplicate check failed:', dupErr);
+        }
+      }
     } catch (err: any) {
       setSnackbar({ open: true, message: `取得失敗: ${err.message}。scrape_server.pyが起動しているか確認してください。`, severity: 'error' });
     } finally {
@@ -625,6 +659,24 @@ export default function OtherCompanyDistributionPage() {
     setSelectedImages([]); // 選択画像をクリア
     setRecommendComment(''); // おすすめコメントをクリア
     setTestEmail(''); // テストメールアドレスをクリア
+
+    // 配信履歴を記録（テスト送信以外）
+    if (!isTestSend && successCount > 0 && previewData?.address && previewData?.price) {
+      try {
+        await api.post('/api/distribution-history', {
+          propertyAddress: previewData.address,
+          price: previewData.price,
+          propertyType: previewData.details?.['物件種目'] || null,
+          sourceUrl: propertyUrl || null,
+          sentCount: successCount,
+        });
+        // 履歴を再取得
+        const histRes = await api.get('/api/distribution-history');
+        setDistributionHistory(histRes.data);
+      } catch (histErr) {
+        console.error('Failed to save distribution history:', histErr);
+      }
+    }
   };
 
   return (
@@ -696,6 +748,13 @@ export default function OtherCompanyDistributionPage() {
       {/* 物件プレビュー選択UI */}
       {previewData && (
         <Paper sx={{ p: 2, mb: 2, border: '2px solid', borderColor: SECTION_COLORS.buyer.main }}>
+
+      {/* 重複警告 */}
+      {duplicateWarning?.isDuplicate && (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          ⚠️ この物件は過去に配信済みです（{new Date(duplicateWarning.history.sent_at).toLocaleDateString('ja-JP')}に{duplicateWarning.history.sent_count}件送信）
+        </Alert>
+      )}
           {/* 当社の電話番号と隠しボタン */}
           <Box sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
             <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
@@ -1295,6 +1354,37 @@ export default function OtherCompanyDistributionPage() {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* 配信履歴 */}
+      {distributionHistory.length > 0 && (
+        <Paper sx={{ p: 2, mt: 3 }}>
+          <Typography variant="h6" sx={{ mb: 1 }}>配信履歴（最新50件）</Typography>
+          <TableContainer>
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell>配信日</TableCell>
+                  <TableCell>物件住所</TableCell>
+                  <TableCell>金額</TableCell>
+                  <TableCell>種別</TableCell>
+                  <TableCell>送信数</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {distributionHistory.map((h: any) => (
+                  <TableRow key={h.id}>
+                    <TableCell>{new Date(h.sent_at).toLocaleDateString('ja-JP')}</TableCell>
+                    <TableCell>{h.property_address}</TableCell>
+                    <TableCell>{h.price}</TableCell>
+                    <TableCell>{h.property_type || '-'}</TableCell>
+                    <TableCell>{h.sent_count}件</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </Paper>
+      )}
 
       {/* スナックバー */}
       <Snackbar
