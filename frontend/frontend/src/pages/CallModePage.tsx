@@ -3365,15 +3365,15 @@ HP：https://ifoo-oita.com/
 
   // Emailテンプレートのプレースホルダーを置換する関数
   const replaceEmailPlaceholders = (text: string, employeesOverride?: any[]): string => {
-    if (!seller || !property) return text;
+    if (!seller) return text;
 
     let result = text;
 
-    // 売主名（漢字のみ）
-    result = result.replace(/<<名前\(漢字のみ）>>/g, seller.name || '');
+    // 売主名（漢字のみ）- 半角括弧と全角括弧の両方に対応
+    result = result.replace(/<<名前[\(（]漢字のみ[\)）]>>/g, seller.name || '');
     
     // 物件所在地
-    result = result.replace(/<<物件所在地>>/g, property.address || '');
+    result = result.replace(/<<物件所在地>>/g, property?.address || '');
     
     // 査定額（万円単位）
     const amount1 = editedValuationAmount1 ? Math.round(parseInt(editedValuationAmount1) / 10000) : '';
@@ -3384,8 +3384,8 @@ HP：https://ifoo-oita.com/
     result = result.replace(/<<査定額3>>/g, amount3.toString());
     
     // 土地・建物面積（「当社調べ」があれば優先）
-    const _landAreaForTemplate = editedLandAreaVerified || editedLandArea || property.landArea?.toString() || '';
-    const _buildingAreaForTemplate = editedBuildingAreaVerified || editedBuildingArea || property.buildingArea?.toString() || '';
+    const _landAreaForTemplate = editedLandAreaVerified || editedLandArea || property?.landArea?.toString() || '';
+    const _buildingAreaForTemplate = editedBuildingAreaVerified || editedBuildingArea || property?.buildingArea?.toString() || '';
     result = result.replace(/<<土（㎡）>>/g, _landAreaForTemplate);
     result = result.replace(/<<建（㎡）>>/g, _buildingAreaForTemplate);
     // 種別がマンション（「マ」を含む）の場合は面積行を削除
@@ -3398,7 +3398,7 @@ HP：https://ifoo-oita.com/
     // 築年情報（条件付きロジック）
     // 物件種別が「戸建て」AND（築年が空 OR 築年≤0）の場合のみメッセージを表示
     let buildYearText = '';
-    if (property.propertyType === 'detached_house' && (!property.buildYear || property.buildYear <= 0)) {
+    if (property?.propertyType === 'detached_house' && (!property.buildYear || property.buildYear <= 0)) {
       buildYearText = '築年が不明のため、築年35年で算出しております。相違がある場合はお申し付けくださいませ。';
     }
     result = result.replace(/<<築年不明>>/g, buildYearText);
@@ -3462,10 +3462,10 @@ HP：https://ifoo-oita.com/
     
     // お客様紹介文言（条件付きロジック）
     let customerIntroText = '';
-    if (property.propertyType === 'apartment') {
+    if (property?.propertyType === 'apartment') {
       // マンションの場合
       customerIntroText = `以前査定のご依頼をいただいた${property.address || ''}で売却のご予定はございますでしょうか？ こちらのマンションでお探しのお客様よりお問い合わせをいただきました。`;
-    } else {
+    } else if (property) {
       // それ以外（戸建て、土地など）
       customerIntroText = `以前査定のご依頼をいただいた${property.address || ''}で売却のご予定はございますでしょうか？ こちらの周辺でお探しのお客様よりお問い合わせをいただきました。`;
     }
