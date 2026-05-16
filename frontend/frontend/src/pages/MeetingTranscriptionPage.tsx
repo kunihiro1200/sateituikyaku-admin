@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Box,
   Button,
@@ -19,13 +19,10 @@ import {
   ContentCopy as ContentCopyIcon,
   AutoAwesome as AutoAwesomeIcon,
 } from '@mui/icons-material';
-import api from '../services/api';
 import { useAudioTranscription } from '../hooks/useAudioTranscription';
 
-export default function CallTranscriptionPage() {
-  const { id } = useParams<{ id: string }>();
+export default function MeetingTranscriptionPage() {
   const navigate = useNavigate();
-  const [sellerName, setSellerName] = useState<string>('');
   const [copiedTranscript, setCopiedTranscript] = useState(false);
   const [copiedSummary, setCopiedSummary] = useState(false);
 
@@ -42,18 +39,7 @@ export default function CallTranscriptionPage() {
     stopRecording,
     handleSummarize,
     clearError,
-  } = useAudioTranscription(sellerName);
-
-  // 売主名を取得（ページタイトル用）
-  useEffect(() => {
-    if (!id) return;
-    api.get(`/api/sellers/${id}`)
-      .then((res) => {
-        const name = res.data?.name || res.data?.seller?.name || '';
-        setSellerName(name);
-      })
-      .catch(() => {});
-  }, [id]);
+  } = useAudioTranscription();
 
   const copyText = (text: string, type: 'transcript' | 'summary') => {
     navigator.clipboard.writeText(text).then(() => {
@@ -71,16 +57,11 @@ export default function CallTranscriptionPage() {
     <Box sx={{ minHeight: '100vh', bgcolor: 'background.default', display: 'flex', flexDirection: 'column' }}>
       {/* ヘッダー */}
       <Box sx={{ px: 2, py: 1.5, borderBottom: 1, borderColor: 'divider', bgcolor: 'background.paper', display: 'flex', alignItems: 'center', gap: 2 }}>
-        <Button startIcon={<ArrowBack />} variant="outlined" size="small" onClick={() => navigate(`/sellers/${id}/call`)}>
-          通話モードに戻る
+        <Button startIcon={<ArrowBack />} variant="outlined" size="small" onClick={() => navigate('/work-tasks')}>
+          業務依頼一覧に戻る
         </Button>
         <Typography variant="h6" fontWeight="bold">
-          通話文字起こし
-          {sellerName && (
-            <Typography component="span" variant="body2" color="text.secondary" sx={{ ml: 1 }}>
-              {sellerName}
-            </Typography>
-          )}
+          📋 議事録 文字起こし・要約
         </Typography>
       </Box>
 
@@ -89,11 +70,11 @@ export default function CallTranscriptionPage() {
 
         {/* 録音操作 */}
         <Paper sx={{ p: 3, mb: 3, textAlign: 'center' }}>
-          <Typography variant="h6" gutterBottom>通話を録音して文字起こし</Typography>
+          <Typography variant="h6" gutterBottom>会議・打ち合わせを録音して議事録作成</Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-            電話が終わった後に「録音開始」を押して、通話内容をマイクに向かって話してください。
+            「録音開始」を押して会議を始めてください。終わったら「録音停止」を押すと
             <br />
-            終わったら「録音停止」→ WhisperAIが文字起こしします（長時間録音も対応）。
+            WhisperAIが文字起こしし、「議事録作成」ボタンで要点をまとめます（長時間録音も対応）。
           </Typography>
 
           {status === 'idle' && (
@@ -158,10 +139,10 @@ export default function CallTranscriptionPage() {
                   </IconButton>
                 </Tooltip>
                 {copiedTranscript && <Typography variant="body2" color="success.main" fontWeight="bold">✓ コピー済み</Typography>}
-                <Button variant="contained" color="secondary"
+                <Button variant="contained" color="success"
                   startIcon={summarizing ? <CircularProgress size={16} color="inherit" /> : <AutoAwesomeIcon />}
-                  onClick={() => handleSummarize('call')} disabled={summarizing} sx={{ fontWeight: 'bold' }}>
-                  {summarizing ? '要約中...' : '要約'}
+                  onClick={() => handleSummarize('meeting')} disabled={summarizing} sx={{ fontWeight: 'bold' }}>
+                  {summarizing ? '作成中...' : '議事録作成'}
                 </Button>
               </Box>
             </Box>
@@ -174,11 +155,11 @@ export default function CallTranscriptionPage() {
           </Paper>
         )}
 
-        {/* AI要約結果 */}
+        {/* 議事録結果 */}
         {summary && (
-          <Paper sx={{ p: 3, border: 2, borderColor: 'secondary.main' }}>
+          <Paper sx={{ p: 3, border: 2, borderColor: 'success.main' }}>
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
-              <Typography variant="h6" fontWeight="bold" color="secondary.main">✨ AI要約</Typography>
+              <Typography variant="h6" fontWeight="bold" color="success.main">📋 議事録</Typography>
               <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
                 <Tooltip title={copiedSummary ? 'コピーしました！' : 'コピー'}>
                   <IconButton size="small" onClick={() => copyText(summary, 'summary')}>
@@ -191,7 +172,7 @@ export default function CallTranscriptionPage() {
             <Divider sx={{ mb: 2 }} />
             <Typography variant="body1" component="pre"
               sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: 'inherit', lineHeight: 1.8,
-                bgcolor: 'secondary.50', p: 2, borderRadius: 1 }}>
+                bgcolor: 'grey.50', p: 2, borderRadius: 1 }}>
               {summary}
             </Typography>
           </Paper>

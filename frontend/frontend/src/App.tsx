@@ -8,6 +8,7 @@ import NewSellerPage from './pages/NewSellerPage';
 import SellerDetailPage from './pages/SellerDetailPage';
 import CallModePage from './pages/CallModePage';
 import CallTranscriptionPage from './pages/CallTranscriptionPage';
+import MeetingTranscriptionPage from './pages/MeetingTranscriptionPage';
 import ActivityLogsPage from './pages/ActivityLogsPage';
 import SettingsPage from './pages/SettingsPage';
 import { PhoneSettingsPage } from './pages/PhoneSettingsPage';
@@ -143,6 +144,14 @@ function App() {
         element={
           <ProtectedRoute>
             <CallTranscriptionPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/meeting-transcription"
+        element={
+          <ProtectedRoute>
+            <MeetingTranscriptionPage />
           </ProtectedRoute>
         }
       />

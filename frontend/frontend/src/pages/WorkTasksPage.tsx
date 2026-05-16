@@ -30,7 +30,7 @@ import {
   useTheme,
   useMediaQuery,
 } from '@mui/material';
-import { Search as SearchIcon, ExpandMore as ExpandMoreIcon, Clear as ClearIcon, Sync as SyncIcon } from '@mui/icons-material';
+import { Search as SearchIcon, ExpandMore as ExpandMoreIcon, Clear as ClearIcon, Sync as SyncIcon, RecordVoiceOver as RecordVoiceOverIcon } from '@mui/icons-material';
 import IconButton from '@mui/material/IconButton';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import CompareArrowsIcon from '@mui/icons-material/CompareArrows';
@@ -282,6 +282,16 @@ export default function WorkTasksPage() {
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
         <Typography variant="h5" fontWeight="bold">業務依頼</Typography>
         <Box sx={{ display: 'flex', gap: 1 }}>
+          <Button
+            variant="outlined"
+            color="info"
+            size="small"
+            startIcon={<RecordVoiceOverIcon />}
+            onClick={() => navigate('/meeting-transcription')}
+            sx={{ whiteSpace: 'nowrap', fontWeight: 'bold' }}
+          >
+            議事録
+          </Button>
           <Button
             variant="outlined"
             color="secondary"

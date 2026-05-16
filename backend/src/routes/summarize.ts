@@ -701,7 +701,8 @@ router.post('/transcribe', authenticate, upload.single('audio'), async (req: Req
  */
 router.post('/summarize-transcript', authenticate, async (req: Request, res: Response) => {
   try {
-    const { transcript, sellerName } = req.body;
+    const { transcript, sellerName, summaryType } = req.body;
+    const type: 'call' | 'meeting' = summaryType === 'meeting' ? 'meeting' : 'call';
 
     if (!transcript || typeof transcript !== 'string' || transcript.trim().length === 0) {
       return res.status(400).json({ error: 'transcript は必須です' });
@@ -712,7 +713,22 @@ router.post('/summarize-transcript', authenticate, async (req: Request, res: Res
       return res.status(500).json({ error: 'OpenAI API key not configured' });
     }
 
-    const systemPrompt = `あなたは不動産会社の営業担当者のアシスタントです。
+    const systemPrompt = type === 'meeting'
+      ? `あなたは会議・打ち合わせの議事録作成アシスタントです。
+会議の文字起こしを読んで、以下の形式で議事録を作成してください。
+
+【議事録の構成】
+1. 会議の目的・概要（1〜2文）
+2. 決定事項（箇条書き）
+3. 議論になった主なポイント（箇条書き）
+4. 次のアクション・TODO（担当者・期限があれば記載）
+5. その他・特記事項
+
+【出力ルール】
+- 800文字以内で簡潔にまとめる
+- 決定事項とTODOを特に明確に書く
+- 誰が何を言ったかより「何が決まったか」を優先する`
+      : `あなたは不動産会社の営業担当者のアシスタントです。
 売主${sellerName ? `（${sellerName}様）` : ''}との電話通話の文字起こしを読んで、以下の点を簡潔に要約してください。
 
 【要約のポイント】
@@ -732,10 +748,10 @@ router.post('/summarize-transcript', authenticate, async (req: Request, res: Res
         model: 'gpt-4o-mini',
         messages: [
           { role: 'system', content: systemPrompt },
-          { role: 'user', content: `以下の通話内容を要約してください：\n\n${transcript}` },
+          { role: 'user', content: `以下の内容を${type === 'meeting' ? '議事録にまとめて' : '要約して'}ください：\n\n${transcript}` },
         ],
         temperature: 0.3,
-        max_tokens: 800,
+        max_tokens: 1000,
       },
       {
         headers: {
