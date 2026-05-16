@@ -242,6 +242,8 @@ export class SellerService extends BaseRepository {
       valuation_assignee: (data as any).valuationAssignee || null,
       // サイト
       inquiry_site: (data as any).site || null,
+      // 物件所在地（売主テーブルにも保存）
+      property_address: data.property?.address || null,
     };
 
     // 売主を作成
