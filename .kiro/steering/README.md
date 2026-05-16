@@ -50,6 +50,9 @@
 ### Spec作成時
 - `#spec-file-size-guidelines` - Specファイルサイズガイドライン
 
+### メール送信系（⚠️ 常時読み込みに変更済み）
+- `email-html-image-display-rules` - **メールHTML画像表示ルール** → `inclusion: auto` に変更（2026年5月。手動参照不要）
+
 ### 実装記録系（過去の修正記録）
 - `#visit-appointment-features` - 訪問予約機能の実装記録
 - `#property-listing-spreadsheet-sync-fix` - 物件リストスプレッドシート同期修正
