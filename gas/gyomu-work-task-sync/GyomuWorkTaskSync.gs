@@ -622,6 +622,56 @@ function debugHeaders() {
 }
 
 // ============================================================
+// デバッグ用：依頼前に確認フィールドの確認（手動実行のみ）
+// ============================================================
+function debugPreRequestCheck() {
+  var ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+  var sheet = ss.getSheetByName(CONFIG.SHEET_NAME);
+  var lastCol = sheet.getLastColumn();
+  var lastRow = sheet.getLastRow();
+  var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+
+  // 「依頼前に確認」列を探す
+  var targetHeader = '依頼前に確認';
+  var colIndex = -1;
+  for (var i = 0; i < headers.length; i++) {
+    if (String(headers[i]).trim() === targetHeader) {
+      colIndex = i;
+      Logger.log('✅ "' + targetHeader + '" 列が見つかりました: 列' + (i + 1));
+      break;
+    }
+  }
+
+  if (colIndex < 0) {
+    Logger.log('❌ "' + targetHeader + '" 列が見つかりません');
+    Logger.log('--- 類似ヘッダーを検索 ---');
+    for (var j = 0; j < headers.length; j++) {
+      var h = String(headers[j]);
+      if (h && (h.indexOf('依頼') >= 0 || h.indexOf('確認') >= 0)) {
+        Logger.log('  候補: 列' + (j + 1) + ' "' + h + '"');
+      }
+    }
+    return;
+  }
+
+  // 値が入っている行を確認（最大10件）
+  Logger.log('--- 値が入っている行（最大10件）---');
+  var data = sheet.getRange(2, 1, lastRow - 1, lastCol).getValues();
+  var count = 0;
+  for (var k = 0; k < data.length && count < 10; k++) {
+    var val = data[k][colIndex];
+    if (val && String(val).trim() !== '') {
+      var propNum = data[k][0]; // 物件番号は1列目想定
+      Logger.log('物件番号: ' + propNum + ' → "' + String(val).substring(0, 50) + '"');
+      count++;
+    }
+  }
+  if (count === 0) {
+    Logger.log('値が入っている行は0件でした（スプシ上は全て空）');
+  }
+}
+
+// ============================================================
 // デバッグ用：全ヘッダーを出力（手動実行のみ）
 // ============================================================
 function debugAllHeaders() {

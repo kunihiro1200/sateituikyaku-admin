@@ -3277,28 +3277,59 @@ export default function WorkTaskDetailModal({ open, onClose, propertyNumber, onU
     </Dialog>
   );
 
-  // 依頼前に確認ボタンコンポーネント
+  // 依頼前に確認ボタン（テキスト表示付き）コンポーネント
   const PreRequestCheckButton = () => {
     const [popupOpen, setPopupOpen] = useState(false);
+    const text = getValue('pre_request_check') || '';
     return (
-      <Grid container spacing={2} alignItems="center" sx={{ mb: 1.5 }}>
+      <Grid container spacing={2} alignItems="flex-start" sx={{ mb: 1.5 }}>
         <Grid item xs={4}>
-          <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>
+          <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500, pt: 1 }}>
             依頼前に確認
           </Typography>
         </Grid>
         <Grid item xs={8}>
-          <Button
-            variant="outlined"
-            size="small"
-            disabled={false}
-            onClick={() => setPopupOpen(true)}
-          >
-            確認する
-          </Button>
+          {text ? (
+            <>
+              <Typography
+                variant="body2"
+                sx={{
+                  whiteSpace: 'pre-wrap',
+                  wordBreak: 'break-word',
+                  cursor: 'pointer',
+                  p: 1,
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  borderRadius: 1,
+                  bgcolor: '#fffde7',
+                  mb: 0.5,
+                  maxHeight: 80,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  display: '-webkit-box',
+                  WebkitLineClamp: 3,
+                  WebkitBoxOrient: 'vertical',
+                }}
+                onClick={() => setPopupOpen(true)}
+              >
+                {text}
+              </Typography>
+              <Button
+                variant="outlined"
+                size="small"
+                onClick={() => setPopupOpen(true)}
+              >
+                全文を見る
+              </Button>
+            </>
+          ) : (
+            <Typography variant="body2" color="text.secondary" sx={{ pt: 1 }}>
+              （未入力）
+            </Typography>
+          )}
           <PreRequestCheckPopup
             open={popupOpen}
-            text={getValue('pre_request_check') || ''}
+            text={text}
             onClose={() => setPopupOpen(false)}
           />
         </Grid>
