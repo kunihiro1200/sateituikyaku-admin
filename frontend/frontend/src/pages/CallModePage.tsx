@@ -3107,8 +3107,7 @@ const CallModePage = () => {
       setEditedManualValuationAmount2(amount2InManEn?.toString() || '');
       setEditedManualValuationAmount3(amount3InManEn?.toString() || '');
       
-      // データを再読み込み
-      await loadAllData();
+      // ローカルstateを更新済みのため再読み込みは不要（再読み込みするとスクロール位置がリセットされ画面が一瞬真っ白になる）
     } catch (err: any) {
       setError(err.response?.data?.error?.message || '手入力査定額の保存に失敗しました');
     } finally {
@@ -3144,8 +3143,7 @@ const CallModePage = () => {
       setEditedValuationAmount2('');
       setEditedValuationAmount3('');
       
-      // データを再読み込み
-      await loadAllData();
+      // ローカルstateを更新済みのため再読み込みは不要（再読み込みするとスクロール位置がリセットされ画面が一瞬真っ白になる）
     } catch (err: any) {
       setError(err.response?.data?.error?.message || '手入力査定額のクリアに失敗しました');
     } finally {
