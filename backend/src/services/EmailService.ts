@@ -94,11 +94,57 @@ export class EmailService extends BaseRepository {
       const authClient = await this.googleAuthService.getAuthenticatedClient();
       const gmail = google.gmail({ version: 'v1', auth: authClient });
 
-      const from = params.from || 'tenant@ifoo-oita.com';
-      const urlToLink = (text: string): string =>
-        text.replace(/(https?:\/\/[^\s\u3000\u3001\u3002\uff01\uff09\u300d\u300f\u3011\u3015\u3017\u3019\u301b\u301f\uff3d\uff5d\u300b\u300f]+)/g,
-          (url) => `<a href="${url}">${url}</a>`);
-      const htmlBody = urlToLink(params.body).replace(/\n/g, '<br>');
+      const fromRaw = params.from || 'tenant@ifoo-oita.com';
+
+      // From ヘッダー用エンコード（会社名を付加してRFC 2047エンコード）
+      const encodeFromHeader = (f: string): string => {
+        const m = f.match(/^(.*?)\s*<([^>]+)>$/);
+        if (m) {
+          const displayName = m[1].trim();
+          const email = m[2].trim();
+          if (displayName && !/^[\x00-\x7F]*$/.test(displayName)) {
+            const encoded = Buffer.from(displayName, 'utf-8').toString('base64');
+            return `=?UTF-8?B?${encoded}?= <${email}>`;
+          }
+          return f;
+        }
+        const COMPANY_NAME = '株式会社いふう';
+        const encoded = Buffer.from(COMPANY_NAME, 'utf-8').toString('base64');
+        return `=?UTF-8?B?${encoded}?= <${f}>`;
+      };
+      const from = encodeFromHeader(fromRaw);
+
+      // URLをリンク化する関数（<a>タグや<img>タグで囲まれていないURLのみ対象）
+      const urlToLink = (inputText: string): string =>
+        inputText.replace(/(https?:\/\/[^\s\u3000\u3001\u3002\uff01\uff09\u300d\u300f\u3011\u3015\u3017\u3019\u301b\u301f\uff3d\uff5d\u300b\u300f]+)/g,
+          (url, _group1, offset) => {
+            // 既に<a href="...">の中にあるURLはスキップ
+            const before = inputText.slice(0, offset);
+            const lastAnchorOpen = before.lastIndexOf('<a ');
+            const lastAnchorClose = before.lastIndexOf('</a>');
+            if (lastAnchorOpen > lastAnchorClose) {
+              return url; // <a>タグの中にあるのでそのまま返す
+            }
+            // <img src="..."> など属性値の中にあるURLはスキップ
+            const lastTagOpen = before.lastIndexOf('<');
+            const lastTagClose = before.lastIndexOf('>');
+            if (lastTagOpen > lastTagClose) {
+              return url; // タグの属性値の中にあるのでそのまま返す
+            }
+            return `<a href="${url}">${url}</a>`;
+          });
+
+      // 常にURLをリンク化する
+      const linkedBody = urlToLink(params.body);
+
+      // 構造的なHTMLが含まれている場合はそのまま使用（改行変換しない）
+      const containsStructuralHtml = /<img|<div|<p|<span|<table|<td|<!DOCTYPE/i.test(linkedBody);
+      let htmlBody: string;
+      if (containsStructuralHtml) {
+        htmlBody = linkedBody; // <img>等があればそのまま使う（改行変換すると壊れる）
+      } else {
+        htmlBody = linkedBody.replace(/\n/g, '<br>');
+      }
 
       const encodedSubject = /^[\x00-\x7F]*$/.test(params.subject)
         ? params.subject
