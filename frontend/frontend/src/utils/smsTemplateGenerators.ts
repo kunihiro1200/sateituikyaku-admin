@@ -305,6 +305,13 @@ export const replacePlaceholders = (
     if (hasFI) {
       result = result.replace(/大分市舞鶴町にございます/g, '福岡市中央区舞鶴にございます');
     }
+
+    // FI売主の場合は署名の会社固定TEL・FAX行を削除
+    // 担当者個人番号（TEL：<<担当名（営業）電話番号>>）は削除しない
+    if (hasFI) {
+      result = result.replace(/^TEL：097-533-2022\n?/gm, '');
+      result = result.replace(/^FAX：097-529-7160\n?/gm, '');
+    }
     
     return result;
   } catch (error) {
