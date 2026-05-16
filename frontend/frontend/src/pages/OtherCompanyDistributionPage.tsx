@@ -323,10 +323,11 @@ export default function OtherCompanyDistributionPage() {
       // 重複チェック
       if (result.data.address && result.data.price) {
         try {
+          const landArea = result.data.details?.['土地面積'] || result.data.area || null;
           const dupRes = await api.post('/api/distribution-history/check-duplicate', {
             propertyAddress: result.data.address,
             price: result.data.price,
-            landArea: result.data.details?.['土地面積'] || null,
+            landArea: landArea,
           });
           if (dupRes.data.isDuplicate) {
             setDuplicateWarning(dupRes.data);
@@ -630,12 +631,14 @@ export default function OtherCompanyDistributionPage() {
       // 配信履歴を記録（テスト送信以外）
       if (!isTestSend && successCount > 0 && previewData?.address && previewData?.price) {
         try {
+          // 土地面積を取得（detailsから直接、またはareaフィールドから）
+          const landArea = previewData.details?.['土地面積'] || previewData.area || null;
           await api.post('/api/distribution-history', {
             propertyAddress: previewData.address,
             price: previewData.price,
             propertyType: previewData.details?.['物件種目'] || null,
             sourceUrl: propertyUrl || null,
-            landArea: previewData.details?.['土地面積'] || null,
+            landArea: landArea,
             sentCount: successCount,
           });
           // 履歴を再取得
