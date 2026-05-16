@@ -636,5 +636,128 @@ router.post('/house-maker-info', authenticate, async (req: Request, res: Respons
   }
 });
 
+/**
+ * 通話内容を文字起こし（Whisper API）
+ * POST /api/summarize/transcribe
+ * Body: multipart/form-data { audio: File }
+ * Response: { transcript: string }
+ */
+import multer from 'multer';
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 25 * 1024 * 1024 }, // 25MB
+});
+
+router.post('/transcribe', authenticate, upload.single('audio'), async (req: Request, res: Response) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: '音声ファイルが必要です' });
+    }
+
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) {
+      return res.status(500).json({ error: 'OpenAI API key not configured' });
+    }
+
+    // Node.js v18+ ビルトインの FormData + Blob を利用
+    const formData = new FormData();
+    const blob = new Blob([req.file.buffer], {
+      type: req.file.mimetype || 'audio/webm',
+    });
+    formData.append('file', blob, req.file.originalname || 'audio.webm');
+    formData.append('model', 'whisper-1');
+    formData.append('language', 'ja');
+
+    const response = await axios.post(
+      'https://api.openai.com/v1/audio/transcriptions',
+      formData,
+      {
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+        },
+        timeout: 60000,
+      }
+    );
+
+    const transcript: string = response.data?.text || '';
+    return res.json({ transcript });
+  } catch (error: any) {
+    const status = error?.response?.status;
+    const errMsg = error?.response?.data?.error?.message || error.message;
+    console.error(`[transcribe] Error (HTTP ${status}):`, errMsg);
+    if (status === 429) {
+      return res.status(429).json({ error: 'APIの利用制限に達しました。しばらく待ってから再試行してください。' });
+    }
+    return res.status(500).json({ error: `文字起こしに失敗しました: ${errMsg}` });
+  }
+});
+
+/**
+ * 文字起こしテキストを要約（GPT）
+ * POST /api/summarize/summarize-transcript
+ * Body: { transcript: string, sellerName?: string }
+ * Response: { summary: string }
+ */
+router.post('/summarize-transcript', authenticate, async (req: Request, res: Response) => {
+  try {
+    const { transcript, sellerName } = req.body;
+
+    if (!transcript || typeof transcript !== 'string' || transcript.trim().length === 0) {
+      return res.status(400).json({ error: 'transcript は必須です' });
+    }
+
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) {
+      return res.status(500).json({ error: 'OpenAI API key not configured' });
+    }
+
+    const systemPrompt = `あなたは不動産会社の営業担当者のアシスタントです。
+売主${sellerName ? `（${sellerName}様）` : ''}との電話通話の文字起こしを読んで、以下の点を簡潔に要約してください。
+
+【要約のポイント】
+- 通話の主な目的・内容
+- 売主の反応・感触（売却意欲・懸念点など）
+- 重要な情報（査定希望・ローン・名義・売却理由など）
+- 次のアクション（再連絡の約束・資料送付など）
+
+【出力ルール】
+- 500文字以内で簡潔にまとめる
+- 箇条書きを活用して読みやすく
+- 担当者が次の通話前に確認するメモとして役立つ内容にする`;
+
+    const completion = await axios.post(
+      'https://api.openai.com/v1/chat/completions',
+      {
+        model: 'gpt-4o-mini',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: `以下の通話内容を要約してください：\n\n${transcript}` },
+        ],
+        temperature: 0.3,
+        max_tokens: 800,
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        timeout: 30000,
+      }
+    );
+
+    const summary: string = completion.data?.choices?.[0]?.message?.content?.trim() || '';
+    return res.json({ summary });
+  } catch (error: any) {
+    const status = error?.response?.status;
+    const errMsg = error?.response?.data?.error?.message || error.message;
+    console.error(`[summarize-transcript] Error (HTTP ${status}):`, errMsg);
+    if (status === 429) {
+      return res.status(429).json({ error: 'APIの利用制限に達しました。しばらく待ってから再試行してください。' });
+    }
+    return res.status(500).json({ error: `要約に失敗しました: ${errMsg}` });
+  }
+});
+
 export default router;
 

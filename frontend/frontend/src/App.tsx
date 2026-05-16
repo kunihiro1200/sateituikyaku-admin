@@ -7,6 +7,7 @@ import SellersPage from './pages/SellersPage';
 import NewSellerPage from './pages/NewSellerPage';
 import SellerDetailPage from './pages/SellerDetailPage';
 import CallModePage from './pages/CallModePage';
+import CallTranscriptionPage from './pages/CallTranscriptionPage';
 import ActivityLogsPage from './pages/ActivityLogsPage';
 import SettingsPage from './pages/SettingsPage';
 import { PhoneSettingsPage } from './pages/PhoneSettingsPage';
@@ -134,6 +135,14 @@ function App() {
         element={
           <ProtectedRoute>
             <CallModePage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/sellers/:id/transcription"
+        element={
+          <ProtectedRoute>
+            <CallTranscriptionPage />
           </ProtectedRoute>
         }
       />
