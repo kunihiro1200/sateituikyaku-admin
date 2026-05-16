@@ -76,10 +76,12 @@ export default function TateuriManagePage() {
       if (previewRes.data.success && previewRes.data.data) {
         const scrapedAddress = previewRes.data.data.address;
         const scrapedPrice = previewRes.data.data.price;
-        if (scrapedAddress && scrapedPrice) {
+        const scrapedLandArea = previewRes.data.data.details?.['土地面積'] || previewRes.data.data.area || null;
+        if (scrapedAddress) {
           const dupHistRes = await api.post('/api/distribution-history/check-duplicate', {
             propertyAddress: scrapedAddress,
             price: scrapedPrice,
+            landArea: scrapedLandArea,
           });
           if (dupHistRes.data.isDuplicate) {
             const histDate = new Date(dupHistRes.data.history.sent_at).toLocaleDateString('ja-JP');
@@ -132,10 +134,12 @@ export default function TateuriManagePage() {
       if (previewRes.data.success && previewRes.data.data) {
         const scrapedAddress = previewRes.data.data.address;
         const scrapedPrice = previewRes.data.data.price;
-        if (scrapedAddress && scrapedPrice) {
+        const scrapedLandArea = previewRes.data.data.details?.['土地面積'] || previewRes.data.data.area || null;
+        if (scrapedAddress) {
           const dupHistRes = await api.post('/api/distribution-history/check-duplicate', {
             propertyAddress: scrapedAddress,
             price: scrapedPrice,
+            landArea: scrapedLandArea,
           });
           if (dupHistRes.data.isDuplicate) {
             const histDate = new Date(dupHistRes.data.history.sent_at).toLocaleDateString('ja-JP');

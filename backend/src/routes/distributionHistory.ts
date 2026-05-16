@@ -43,31 +43,37 @@ router.post('/check-duplicate', async (req: Request, res: Response) => {
       return res.json({ isDuplicate: false, history: null });
     }
 
-    let query = supabase
-      .from('distribution_history')
-      .select('*')
-      .eq('property_address', propertyAddress);
+    // 住所＋金額で重複チェック
+    if (price) {
+      const { data: priceMatch, error: priceError } = await supabase
+        .from('distribution_history')
+        .select('*')
+        .eq('property_address', propertyAddress)
+        .eq('price', price)
+        .order('sent_at', { ascending: false })
+        .limit(1);
 
-    // 土地面積がある場合は土地面積で重複チェック（価格は変わる可能性があるため）
-    if (landArea) {
-      query = query.eq('land_area', landArea);
-    } else if (price) {
-      // 土地面積がない場合は従来通り金額でチェック
-      query = query.eq('price', price);
-    } else {
-      return res.json({ isDuplicate: false, history: null });
+      if (!priceError && priceMatch && priceMatch.length > 0) {
+        return res.json({ isDuplicate: true, history: priceMatch[0] });
+      }
     }
 
-    const { data, error } = await query
-      .order('sent_at', { ascending: false })
-      .limit(1);
+    // 住所＋土地面積で重複チェック
+    if (landArea) {
+      const { data: areaMatch, error: areaError } = await supabase
+        .from('distribution_history')
+        .select('*')
+        .eq('property_address', propertyAddress)
+        .eq('land_area', landArea)
+        .order('sent_at', { ascending: false })
+        .limit(1);
 
-    if (error) throw error;
+      if (!areaError && areaMatch && areaMatch.length > 0) {
+        return res.json({ isDuplicate: true, history: areaMatch[0] });
+      }
+    }
 
-    if (data && data.length > 0) {
-      res.json({ isDuplicate: true, history: data[0] });
-    } else {
-      res.json({ isDuplicate: false, history: null });
+    res.json({ isDuplicate: false, history: null });
     }
   } catch (err: any) {
     console.error('[distribution-history] check-duplicate error:', err);
