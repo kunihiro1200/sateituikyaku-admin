@@ -320,10 +320,15 @@ export const replacePlaceholders = (
       result = result.replace(/\[改行\]FAX：097-529-7160/g, '');
       // [改行]097-533-2022 形式（プレフィックスなし）
       result = result.replace(/\[改行\]097-533-2022/g, '');
+      // 実績リンク削除（大分専用のため福岡では不要）
+      result = result.replace(/\[改行\]実績: bit\.ly\/3J61wzG/g, '');
+      result = result.replace(/\[改行\]売買実績はこちら：bit\.ly\/3J61wzG/g, '');
       // 万が一 \n に変換済みの場合も念のため対応
       result = result.replace(/\nTEL: 097-533-2022\n?/g, '\n');
       result = result.replace(/\nTEL：097-533-2022\n?/g, '\n');
       result = result.replace(/\n097-533-2022\n?/g, '\n');
+      result = result.replace(/\n実績: bit\.ly\/3J61wzG\n?/g, '\n');
+      result = result.replace(/\n売買実績はこちら：bit\.ly\/3J61wzG\n?/g, '\n');
     }
     
     return result;
