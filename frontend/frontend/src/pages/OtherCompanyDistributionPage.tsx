@@ -562,120 +562,92 @@ export default function OtherCompanyDistributionPage() {
 
   const sendEmails = async () => {
     setSending(true);
-    // テストメールアドレスが入力されている場合は、テスト送信（買主選択不要）
-    const isTestSend = !!testEmail.trim();
-    const buyersToSend = isTestSend
-      ? [checkedBuyers.length > 0 ? checkedBuyers[0] : null]
-      : checkedBuyers;
+    try {
+      // テストメールアドレスが入力されている場合は、テスト送信（買主選択不要）
+      const isTestSend = !!testEmail.trim();
 
-    let successCount = 0;
-    const failedBuyers: string[] = [];
+      // 宛先リストを組み立てる
+      const recipients: Array<{ email: string; name: string | null; buyerNumber: string }> = isTestSend
+        ? [{ email: testEmail.trim(), name: checkedBuyers[0]?.name || null, buyerNumber: checkedBuyers[0]?.buyer_number || 'test' }]
+        : checkedBuyers
+            .filter(b => b.email && b.email.trim())
+            .map(b => ({ email: b.email!, name: b.name || null, buyerNumber: b.buyer_number }));
 
-    // 各買主に個別送信（1件失敗しても残りを続行する）
-    for (let i = 0; i < buyersToSend.length; i++) {
-      const buyer = buyersToSend[i];
-
-      // 2件目以降は500ms待機してGmail APIのレート制限を回避
-      if (i > 0) {
-        await new Promise(resolve => setTimeout(resolve, 500));
+      if (recipients.length === 0) {
+        setSnackbar({ open: true, message: 'メールアドレスが登録されている買主がいません', severity: 'warning' });
+        setSending(false);
+        return;
       }
 
-      try {
-        const formData = new FormData();
-        if (buyer) formData.append('buyerId', buyer.buyer_number);
-        formData.append('subject', emailSubject);
-        // 送信時は常にbuildEmailBodyで再生成（テキストエリアのHTMLエスケープ問題を回避）
-        formData.append('body', buildEmailBody(buyer));
-        formData.append('senderEmail', 'tenant@ifoo-oita.com');
-        // テスト送信の場合はtoEmailを指定（バックエンドで宛先として使用）
-        if (isTestSend) formData.append('toEmail', testEmail.trim());
+      // 本文は {buyerName} プレースホルダーを使い、バックエンドで各買主名に置換させる
+      // buildEmailBody の buyerName 部分だけ {buyerName} に差し替えた汎用テンプレートを生成
+      const bodyTemplate = buildEmailBody(null).replace(/（買主名）/g, '{buyerName}');
 
-        // 画像を添付ファイルに変換
-        for (const image of selectedImages) {
-          if (image.source === 'local' && image.localFile) {
-            // ローカルファイルの場合
-            formData.append('attachments', image.localFile);
-          } else if (image.source === 'url' && image.url) {
-            // URL画像の場合はURLを送信（バックエンドでダウンロード）
-            formData.append('imageUrls', image.url);
-          }
-        }
+      // 添付画像をAPIの attachments 形式に変換
+      const attachments = selectedImages
+        .filter(img => img.url || (img.source === 'local' && img.localFile))
+        .map((img, index) => ({
+          id: img.id || `img-${index}`,
+          name: img.name || `image-${index + 1}.jpg`,
+          mimeType: img.mimeType || 'image/jpeg',
+          ...(img.url ? { url: img.url } : {}),
+        }));
 
-        await api.post('/api/gmail/send', formData, {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-          },
-        });
-
-        successCount++;
-
-        // activity_logsに記録（メール送信成功後）
-        // テスト送信の場合は記録しない
-        if (!testEmail.trim() && buyer) {
-          try {
-            await api.post('/api/activity-logs/email', {
-              buyerId: buyer.buyer_number,
-              propertyNumbers: [], // 他社物件のため空配列
-              recipientEmail: buyer.email,
-              subject: emailSubject,
-              templateName: '他社物件新着配信',
-              senderEmail: 'tenant@ifoo-oita.com',
-              source: 'other_company_distribution', // 送信元識別子
-            });
-          } catch (logError) {
-            // activity_logs記録失敗はログのみ（ユーザーには通知しない）
-            console.error('Failed to log email activity:', logError);
-          }
-        }
-      } catch (err: any) {
-        // 1件の送信失敗はログのみ。残りの買主への送信は続行する
-        const buyerLabel = buyer ? `${buyer.name || buyer.buyer_number}` : 'unknown';
-        console.error(`[sendEmails] 送信失敗: ${buyerLabel}`, err);
-        failedBuyers.push(buyerLabel);
-      }
-    }
-
-    setSending(false);
-    setEmailDialogOpen(false);
-
-    if (isTestSend) {
-      setSnackbar({ open: true, message: `テストメール（${testEmail}）を送信しました`, severity: 'success' });
-    } else if (failedBuyers.length === 0) {
-      // 全件成功
-      setSnackbar({ open: true, message: `${successCount}件のメールを送信しました`, severity: 'success' });
-    } else if (successCount > 0) {
-      // 一部成功・一部失敗
-      setSnackbar({
-        open: true,
-        message: `${successCount}件送信成功、${failedBuyers.length}件失敗（${failedBuyers.join('、')}）`,
-        severity: 'warning',
+      // /api/emails/send-distribution を使って一括送信（近隣買主・価格変更メールと同じAPI）
+      const response = await api.post('/api/emails/send-distribution', {
+        senderAddress: 'tenant@ifoo-oita.com',
+        recipients,
+        subject: emailSubject,
+        body: bodyTemplate,
+        source: 'other_company_distribution',
+        ...(attachments.length > 0 ? { attachments } : {}),
       });
-    } else {
-      // 全件失敗
-      setSnackbar({ open: true, message: 'メール送信に失敗しました', severity: 'error' });
-    }
 
-    setCheckedIds(new Set()); // チェックをクリア
-    setSelectedImages([]); // 選択画像をクリア
-    setRecommendComment(''); // おすすめコメントをクリア
-    setTestEmail(''); // テストメールアドレスをクリア
+      const result = response.data;
+      const successCount: number = result.successCount ?? recipients.length;
+      const failedCount: number = result.failedCount ?? 0;
 
-    // 配信履歴を記録（テスト送信以外）
-    if (!isTestSend && successCount > 0 && previewData?.address && previewData?.price) {
-      try {
-        await api.post('/api/distribution-history', {
-          propertyAddress: previewData.address,
-          price: previewData.price,
-          propertyType: previewData.details?.['物件種目'] || null,
-          sourceUrl: propertyUrl || null,
-          sentCount: successCount,
+      setEmailDialogOpen(false);
+
+      if (isTestSend) {
+        setSnackbar({ open: true, message: `テストメール（${testEmail}）を送信しました`, severity: 'success' });
+      } else if (failedCount === 0) {
+        setSnackbar({ open: true, message: `${successCount}件のメールを送信しました`, severity: 'success' });
+      } else {
+        setSnackbar({
+          open: true,
+          message: `${successCount}件送信成功、${failedCount}件失敗`,
+          severity: 'warning',
         });
-        // 履歴を再取得
-        const histRes = await api.get('/api/distribution-history');
-        setDistributionHistory(histRes.data);
-      } catch (histErr) {
-        console.error('Failed to save distribution history:', histErr);
       }
+
+      setCheckedIds(new Set()); // チェックをクリア
+      setSelectedImages([]); // 選択画像をクリア
+      setRecommendComment(''); // おすすめコメントをクリア
+      setTestEmail(''); // テストメールアドレスをクリア
+
+      // 配信履歴を記録（テスト送信以外）
+      if (!isTestSend && successCount > 0 && previewData?.address && previewData?.price) {
+        try {
+          await api.post('/api/distribution-history', {
+            propertyAddress: previewData.address,
+            price: previewData.price,
+            propertyType: previewData.details?.['物件種目'] || null,
+            sourceUrl: propertyUrl || null,
+            sentCount: successCount,
+          });
+          // 履歴を再取得
+          const histRes = await api.get('/api/distribution-history');
+          setDistributionHistory(histRes.data);
+        } catch (histErr) {
+          console.error('Failed to save distribution history:', histErr);
+        }
+      }
+    } catch (err: any) {
+      console.error('[sendEmails] エラー:', err);
+      setSnackbar({ open: true, message: err.response?.data?.error || 'メール送信に失敗しました', severity: 'error' });
+    } finally {
+      setSending(false);
     }
   };
 
