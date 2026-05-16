@@ -4,20 +4,24 @@ import api from '../services/api';
 // 録音状態の型
 export type RecordingStatus = 'idle' | 'recording' | 'transcribing' | 'done';
 
-// 1チャンク最大60秒（Vercelタイムアウト対策）
-const CHUNK_DURATION_SEC = 60;
+// 1チャンクの最大サイズ（Whisper API上限25MBに対して余裕を持たせた3MB）
+// 2時間録音 ≈ 150MB → 約50チャンク
+const MAX_CHUNK_BYTES = 3 * 1024 * 1024; // 3MB
+
+// 並列送信の最大数（レートリミット対策）
+const MAX_PARALLEL = 5;
 
 /**
- * BlobをchunkCount個に均等分割する
+ * Blobをサイズベースで分割する（Whisper API 25MB制限対策）
  */
-function splitBlobIntoChunks(blob: Blob, mimeType: string, chunkCount: number): Blob[] {
-  if (chunkCount <= 1) return [blob];
-  const chunkSize = Math.ceil(blob.size / chunkCount);
+function splitBlobBySize(blob: Blob, mimeType: string): Blob[] {
+  if (blob.size <= MAX_CHUNK_BYTES) return [blob];
   const chunks: Blob[] = [];
-  for (let i = 0; i < chunkCount; i++) {
-    const start = i * chunkSize;
-    const end = Math.min(start + chunkSize, blob.size);
-    chunks.push(blob.slice(start, end, mimeType));
+  let offset = 0;
+  while (offset < blob.size) {
+    const end = Math.min(offset + MAX_CHUNK_BYTES, blob.size);
+    chunks.push(blob.slice(offset, end, mimeType));
+    offset = end;
   }
   return chunks;
 }
@@ -84,8 +88,8 @@ export function useAudioTranscription(sellerName?: string) {
     return `${m}:${s}`;
   };
 
-  // 音声Blobを受け取り → 分割 → 並列文字起こし
-  const processAndTranscribe = useCallback(async (blob: Blob, mimeType: string, durationSec: number) => {
+  // 音声Blobを受け取り → 分割 → 並列文字起こし（最大MAX_PARALLEL並列）
+  const processAndTranscribe = useCallback(async (blob: Blob, mimeType: string, _durationSec: number) => {
     if (blob.size === 0) {
       setError('録音データが空です。もう一度お試しください。');
       setStatus('idle');
@@ -96,27 +100,34 @@ export function useAudioTranscription(sellerName?: string) {
     setTranscribeProgress(null);
 
     try {
-      const chunkCount = Math.max(1, Math.ceil(durationSec / CHUNK_DURATION_SEC));
+      // サイズベースで分割（3MB上限）
+      const chunks = splitBlobBySize(blob, mimeType);
+      setTranscribeProgress({ done: 0, total: chunks.length });
 
-      if (chunkCount === 1) {
-        setTranscribeProgress({ done: 0, total: 1 });
+      if (chunks.length === 1) {
+        // 1チャンクはそのまま送信
         const text = await transcribeChunk(blob, mimeType, 0);
         setTranscribeProgress({ done: 1, total: 1 });
         setTranscript(text);
       } else {
-        const chunks = splitBlobIntoChunks(blob, mimeType, chunkCount);
-        setTranscribeProgress({ done: 0, total: chunks.length });
+        // 最大MAX_PARALLEL並列で送信（レートリミット対策）
+        const results: { index: number; text: string }[] = [];
 
-        const results = await Promise.all(
-          chunks.map((chunk, i) =>
-            transcribeChunk(chunk, mimeType, i).then((text) => {
-              setTranscribeProgress((prev) =>
-                prev ? { done: prev.done + 1, total: prev.total } : null
-              );
-              return { index: i, text };
+        for (let i = 0; i < chunks.length; i += MAX_PARALLEL) {
+          const batch = chunks.slice(i, i + MAX_PARALLEL);
+          const batchResults = await Promise.all(
+            batch.map((chunk, batchIdx) => {
+              const globalIdx = i + batchIdx;
+              return transcribeChunk(chunk, mimeType, globalIdx).then((text) => {
+                setTranscribeProgress((prev) =>
+                  prev ? { done: prev.done + 1, total: prev.total } : null
+                );
+                return { index: globalIdx, text };
+              });
             })
-          )
-        );
+          );
+          results.push(...batchResults);
+        }
 
         const combined = results
           .sort((a, b) => a.index - b.index)

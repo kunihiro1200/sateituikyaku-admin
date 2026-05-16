@@ -694,10 +694,13 @@ router.post('/transcribe', authenticate, upload.single('audio'), async (req: Req
 });
 
 /**
- * 文字起こしテキストを要約（GPT）
+ * 文字起こしテキストを要約・議事録作成
  * POST /api/summarize/summarize-transcript
- * Body: { transcript: string, sellerName?: string }
+ * Body: { transcript: string, sellerName?: string, summaryType?: 'call' | 'meeting' }
  * Response: { summary: string }
+ *
+ * summaryType='call'  → GPT-4o-mini（通話メモ用・短文）
+ * summaryType='meeting' → Claude claude-sonnet-4-5（議事録用・2時間超対応）
  */
 router.post('/summarize-transcript', authenticate, async (req: Request, res: Response) => {
   try {
@@ -708,27 +711,74 @@ router.post('/summarize-transcript', authenticate, async (req: Request, res: Res
       return res.status(400).json({ error: 'transcript は必須です' });
     }
 
+    // ── 議事録モード：Claude claude-sonnet-4-5（200kトークン対応） ──────────────────
+    if (type === 'meeting') {
+      const anthropicKey = process.env.ANTHROPIC_API_KEY;
+      if (!anthropicKey) {
+        return res.status(500).json({ error: 'ANTHROPIC_API_KEY not configured' });
+      }
+
+      const systemPrompt = `あなたは会議・打ち合わせの議事録作成アシスタントです。
+会議の文字起こしを読んで、以下の形式で議事録を作成してください。
+
+【議事録の構成】
+## 1. 会議の目的・概要
+（1〜2文で簡潔に）
+
+## 2. 決定事項
+- （箇条書き。「決定した」「〜にすることになった」内容を全て列挙）
+
+## 3. 主な議論・検討事項
+- （箇条書き。議論になったが結論が出ていない内容・重要な意見）
+
+## 4. 次のアクション・TODO
+- 【担当者】内容（期限があれば記載）
+
+## 5. その他・特記事項
+- （共有情報・注意事項など）
+
+【出力ルール】
+- 決定事項とTODOを特に明確・具体的に書く
+- 誰が何を言ったかより「何が決まったか・何をすべきか」を優先する
+- 文字起こしが長い場合でも全体を漏れなく確認し、重要事項を全て拾う
+- 冗長な繰り返しはまとめる
+- 日本語で出力する`;
+
+      const response = await axios.post(
+        'https://api.anthropic.com/v1/messages',
+        {
+          model: 'claude-sonnet-4-5',
+          max_tokens: 4096,
+          system: systemPrompt,
+          messages: [
+            {
+              role: 'user',
+              content: `以下の会議の文字起こしから議事録を作成してください：\n\n${transcript}`,
+            },
+          ],
+        },
+        {
+          headers: {
+            'x-api-key': anthropicKey,
+            'anthropic-version': '2023-06-01',
+            'Content-Type': 'application/json',
+          },
+          timeout: 120000, // 2時間分のテキスト処理に余裕を持たせる
+        }
+      );
+
+      const summary: string =
+        response.data?.content?.[0]?.text?.trim() || '';
+      return res.json({ summary });
+    }
+
+    // ── 通話メモモード：GPT-4o-mini（短文・低コスト） ───────────────────────────
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
       return res.status(500).json({ error: 'OpenAI API key not configured' });
     }
 
-    const systemPrompt = type === 'meeting'
-      ? `あなたは会議・打ち合わせの議事録作成アシスタントです。
-会議の文字起こしを読んで、以下の形式で議事録を作成してください。
-
-【議事録の構成】
-1. 会議の目的・概要（1〜2文）
-2. 決定事項（箇条書き）
-3. 議論になった主なポイント（箇条書き）
-4. 次のアクション・TODO（担当者・期限があれば記載）
-5. その他・特記事項
-
-【出力ルール】
-- 800文字以内で簡潔にまとめる
-- 決定事項とTODOを特に明確に書く
-- 誰が何を言ったかより「何が決まったか」を優先する`
-      : `あなたは不動産会社の営業担当者のアシスタントです。
+    const callSystemPrompt = `あなたは不動産会社の営業担当者のアシスタントです。
 売主${sellerName ? `（${sellerName}様）` : ''}との電話通話の文字起こしを読んで、以下の点を簡潔に要約してください。
 
 【要約のポイント】
@@ -747,11 +797,11 @@ router.post('/summarize-transcript', authenticate, async (req: Request, res: Res
       {
         model: 'gpt-4o-mini',
         messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: `以下の内容を${type === 'meeting' ? '議事録にまとめて' : '要約して'}ください：\n\n${transcript}` },
+          { role: 'system', content: callSystemPrompt },
+          { role: 'user', content: `以下の通話内容を要約してください：\n\n${transcript}` },
         ],
         temperature: 0.3,
-        max_tokens: 1000,
+        max_tokens: 800,
       },
       {
         headers: {
@@ -764,6 +814,7 @@ router.post('/summarize-transcript', authenticate, async (req: Request, res: Res
 
     const summary: string = completion.data?.choices?.[0]?.message?.content?.trim() || '';
     return res.json({ summary });
+
   } catch (error: any) {
     const status = error?.response?.status;
     const errMsg = error?.response?.data?.error?.message || error.message;
