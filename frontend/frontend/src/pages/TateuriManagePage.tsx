@@ -76,7 +76,27 @@ export default function TateuriManagePage() {
       if (!res.data.success) throw new Error(res.data.error || '取得失敗');
       const addedTitle = res.data?.data?.title?.replace(/\[\d+\].+$/, '').trim() || res.data?.data?.address || '物件';
       const addedSlug = res.data?.slug || null;
-      setAddResult({ success: true, message: `「${addedTitle}」を追加しました` });
+
+      // 配信履歴との重複チェック（住所＋金額）
+      const scrapedAddress = res.data?.data?.address;
+      const scrapedPrice = res.data?.data?.price;
+      let distributionWarning = '';
+      if (scrapedAddress && scrapedPrice) {
+        try {
+          const dupHistRes = await api.post('/api/distribution-history/check-duplicate', {
+            propertyAddress: scrapedAddress,
+            price: scrapedPrice,
+          });
+          if (dupHistRes.data.isDuplicate) {
+            const histDate = new Date(dupHistRes.data.history.sent_at).toLocaleDateString('ja-JP');
+            distributionWarning = ` ⚠️ この物件は${histDate}に他社物件新着配信で送信済みです`;
+          }
+        } catch (e) {
+          // 重複チェック失敗は無視
+        }
+      }
+
+      setAddResult({ success: true, message: `「${addedTitle}」を追加しました${distributionWarning}` });
       setLastAddedSlug(addedSlug);
       setAddUrl('');
       await fetchProperties();
@@ -110,7 +130,27 @@ export default function TateuriManagePage() {
       if (!res.data.success) throw new Error(res.data.error || '取得失敗');
       const addedTitle = res.data?.data?.title?.replace(/\[\d+\].+$/, '').trim() || res.data?.data?.address || '物件';
       const addedSlug = res.data?.slug || null;
-      setProcessedResult({ success: true, message: `「${addedTitle}」を追加しました（画像加工済み）` });
+
+      // 配信履歴との重複チェック（住所＋金額）
+      const scrapedAddress = res.data?.data?.address;
+      const scrapedPrice = res.data?.data?.price;
+      let distributionWarning = '';
+      if (scrapedAddress && scrapedPrice) {
+        try {
+          const dupHistRes = await api.post('/api/distribution-history/check-duplicate', {
+            propertyAddress: scrapedAddress,
+            price: scrapedPrice,
+          });
+          if (dupHistRes.data.isDuplicate) {
+            const histDate = new Date(dupHistRes.data.history.sent_at).toLocaleDateString('ja-JP');
+            distributionWarning = ` ⚠️ この物件は${histDate}に他社物件新着配信で送信済みです`;
+          }
+        } catch (e) {
+          // 重複チェック失敗は無視
+        }
+      }
+
+      setProcessedResult({ success: true, message: `「${addedTitle}」を追加しました（画像加工済み）${distributionWarning}` });
       setLastAddedSlug(addedSlug);
       setProcessedUrl('');
       await fetchProperties();
