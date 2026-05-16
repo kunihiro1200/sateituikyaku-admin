@@ -286,7 +286,7 @@ export const calculateTaskStatus = (task: WorkTask): string => {
     isBlank(task.mediation_print_or_mail_prep) &&
     dateGte(task.mediation_deadline, MEDIATION_PRINT_BASE_DATE)
   ) {
-    return '媒介作成の印刷OR郵送　未';
+    return `媒介作成の印刷OR郵送　未 締め日${formatDateMD(task.mediation_deadline)}`;
   }
 
   // 12. 媒介作成_締日
