@@ -1335,7 +1335,28 @@ export default function OtherCompanyDistributionPage() {
       {/* 配信履歴 */}
       {distributionHistory.length > 0 && (
         <Paper sx={{ p: 2, mt: 3 }}>
-          <Typography variant="h6" sx={{ mb: 1 }}>配信履歴（最新50件）</Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+            <Typography variant="h6">配信履歴（最新50件）</Typography>
+            {distributionHistory.some((h: any) => !h.land_area && h.source_url) && (
+              <Button
+                size="small"
+                variant="outlined"
+                onClick={async () => {
+                  try {
+                    setSnackbar({ open: true, message: '土地面積を補完中...（約14秒）', severity: 'info' });
+                    const res = await api.post('/api/distribution-history/backfill-land-area');
+                    const histRes = await api.get('/api/distribution-history');
+                    setDistributionHistory(histRes.data);
+                    setSnackbar({ open: true, message: `土地面積を${res.data.updated}件補完しました`, severity: 'success' });
+                  } catch (err) {
+                    setSnackbar({ open: true, message: '土地面積の補完に失敗しました', severity: 'error' });
+                  }
+                }}
+              >
+                土地面積を補完
+              </Button>
+            )}
+          </Box>
           <TableContainer>
             <Table size="small">
               <TableHead>
