@@ -1160,10 +1160,10 @@ ${bodyHtml}
             `Content-Type: multipart/mixed; boundary="${boundary}"`,
             '',
             `--${boundary}`,
-            'Content-Type: text/plain; charset=utf-8',
-            'Content-Transfer-Encoding: 8bit',
+            'Content-Type: text/html; charset=utf-8',
+            'Content-Transfer-Encoding: base64',
             '',
-            personalizedBody,
+            Buffer.from(personalizedBody, 'utf-8').toString('base64').replace(/(.{76})/g, '$1\r\n'),
           ];
 
           for (const attachment of params.attachments!) {
@@ -1196,10 +1196,10 @@ ${bodyHtml}
             `Reply-To: ${effectiveReplyTo}`,
             `Subject: ${encodedPersonalizedSubject}`,
             'MIME-Version: 1.0',
-            'Content-Type: text/plain; charset=utf-8',
-            'Content-Transfer-Encoding: 8bit',
+            'Content-Type: text/html; charset=utf-8',
+            'Content-Transfer-Encoding: base64',
             '',
-            personalizedBody,
+            Buffer.from(personalizedBody, 'utf-8').toString('base64').replace(/(.{76})/g, '$1\r\n'),
           ];
 
           const message = messageParts.join('\r\n');
