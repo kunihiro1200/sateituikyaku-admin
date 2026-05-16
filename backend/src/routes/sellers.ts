@@ -259,7 +259,7 @@ router.post(
     body('inquiryDatetime').optional().isISO8601().withMessage('Inquiry datetime must be a valid datetime'),
     body('confidenceLevel').optional().isIn(['high', 'medium', 'low']).withMessage('Invalid confidence level'),
     body('firstCallerInitials').optional().isString().withMessage('First caller initials must be a string'),
-    body('sellerNumber').optional().matches(/^AA\d+$/).withMessage('Seller number must be in format AA{number}'),
+    body('sellerNumber').optional().matches(/^(AA|FI)\d+$/).withMessage('Seller number must be in format AA{number} or FI{number}'),
   ],
   async (req: Request, res: Response) => {
     try {
