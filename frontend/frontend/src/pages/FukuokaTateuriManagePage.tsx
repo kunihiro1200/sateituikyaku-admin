@@ -81,7 +81,7 @@ export default function FukuokaTateuriManagePage() {
           });
           if (dupHistRes.data.isDuplicate) {
             const histDate = new Date(dupHistRes.data.history.sent_at).toLocaleDateString('ja-JP');
-            distributionWarning = ` ⚠️ この物件は${histDate}に他社物件新着配信で送信済みです`;
+            distributionWarning = ` ⚠️ この物件は${histDate}に登録済みです`;
           }
         } catch (e) {
           // 重複チェック失敗は無視
