@@ -3290,10 +3290,6 @@ https://docs.google.com/document/d/12vr8d5TQ-fWd7kQeOFmBe6Dd5kbt1dqaU0cjO9y2xnI/
   // 依頼前に確認ボタン（テキスト表示付き）コンポーネント
   const PreRequestCheckButton = () => {
     const [popupOpen, setPopupOpen] = useState(false);
-    const dbText = getValue('pre_request_check') || '';
-    // DBに値があればDBの値を、なければデフォルトテキストを表示
-    const text = dbText || PRE_REQUEST_CHECK_DEFAULT;
-    const isDefault = !dbText;
     return (
       <Grid container spacing={2} alignItems="flex-start" sx={{ mb: 1.5 }}>
         <Grid item xs={4}>
@@ -3310,20 +3306,20 @@ https://docs.google.com/document/d/12vr8d5TQ-fWd7kQeOFmBe6Dd5kbt1dqaU0cjO9y2xnI/
               cursor: 'pointer',
               p: 1,
               border: '1px solid',
-              borderColor: isDefault ? '#b0bec5' : 'divider',
+              borderColor: '#b0bec5',
               borderRadius: 1,
-              bgcolor: isDefault ? '#f5f5f5' : '#fffde7',
+              bgcolor: '#f5f5f5',
               mb: 0.5,
               maxHeight: 80,
               overflow: 'hidden',
               display: '-webkit-box',
               WebkitLineClamp: 3,
               WebkitBoxOrient: 'vertical',
-              color: isDefault ? 'text.secondary' : 'text.primary',
+              color: 'text.secondary',
             }}
             onClick={() => setPopupOpen(true)}
           >
-            {text}
+            {PRE_REQUEST_CHECK_DEFAULT}
           </Typography>
           <Button
             variant="outlined"
@@ -3334,7 +3330,7 @@ https://docs.google.com/document/d/12vr8d5TQ-fWd7kQeOFmBe6Dd5kbt1dqaU0cjO9y2xnI/
           </Button>
           <PreRequestCheckPopup
             open={popupOpen}
-            text={text}
+            text={PRE_REQUEST_CHECK_DEFAULT}
             onClose={() => setPopupOpen(false)}
           />
         </Grid>
