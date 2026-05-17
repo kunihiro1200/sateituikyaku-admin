@@ -5865,11 +5865,15 @@ HP：https://ifoo-oita.com/
                           
                           // 訪問日が入力された場合、次電日を訪問日の1週間後に自動設定（営担の有無に関係なく）
                           try {
-                            const visitDateObj = new Date(newDate);
-                            if (!isNaN(visitDateObj.getTime())) {
-                              const nextCallDateObj = new Date(visitDateObj.getTime() + 7 * 24 * 60 * 60 * 1000);
+                            // datetime-local の値は "YYYY-MM-DDTHH:mm" 形式
+                            // new Date() はタイムゾーンずれの可能性があるため、文字列から直接日付を取り出す
+                            const datePart = newDate ? newDate.split('T')[0] : '';
+                            if (datePart && /^\d{4}-\d{2}-\d{2}$/.test(datePart)) {
+                              const [y, m, d] = datePart.split('-').map(Number);
+                              const visitDate = new Date(y, m - 1, d); // ローカル時刻でDate生成（タイムゾーンなし）
+                              visitDate.setDate(visitDate.getDate() + 7);
                               const pad = (n: number) => String(n).padStart(2, '0');
-                              const nextCallDateStr = `${nextCallDateObj.getFullYear()}-${pad(nextCallDateObj.getMonth() + 1)}-${pad(nextCallDateObj.getDate())}`;
+                              const nextCallDateStr = `${visitDate.getFullYear()}-${pad(visitDate.getMonth() + 1)}-${pad(visitDate.getDate())}`;
                               setEditedNextCallDate(nextCallDateStr);
                               setStatusChanged(true);
                               statusChangedRef.current = true;
