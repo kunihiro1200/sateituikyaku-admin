@@ -8,6 +8,8 @@ import SaveIcon from '@mui/icons-material/Save';
 import CancelIcon from '@mui/icons-material/Cancel';
 import SquareFootIcon from '@mui/icons-material/SquareFoot';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import SatelliteAltIcon from '@mui/icons-material/SatelliteAlt';
+import MapIcon from '@mui/icons-material/Map';
 
 interface PropertyMapSectionProps {
   sellerNumber: string;
@@ -32,6 +34,8 @@ const PropertyMapSection: React.FC<PropertyMapSectionProps> = ({ sellerNumber, p
   // 面積計測用のstate
   const [isMeasureMode, setIsMeasureMode] = useState(false);
   const [measuredArea, setMeasuredArea] = useState<number | null>(null);
+  // 航空写真（サテライト）表示切り替え
+  const [isSatellite, setIsSatellite] = useState(false);
   const markerRef = useRef<google.maps.Marker | null>(null);
   const mapRef = useRef<google.maps.Map | null>(null);
   const drawingManagerRef = useRef<google.maps.drawing.DrawingManager | null>(null);
@@ -190,6 +194,16 @@ const PropertyMapSection: React.FC<PropertyMapSectionProps> = ({ sellerNumber, p
     return `${areaSqm.toFixed(1)} ㎡（約 ${tsubo.toFixed(1)} 坪）`;
   };
 
+  // 航空写真 / 通常地図の切り替え
+  const handleToggleSatellite = () => {
+    if (!mapRef.current) return;
+    const next = !isSatellite;
+    setIsSatellite(next);
+    mapRef.current.setMapTypeId(
+      next ? google.maps.MapTypeId.HYBRID : google.maps.MapTypeId.ROADMAP
+    );
+  };
+
   // 座標を保存
   const handleSaveCoordinates = async () => {
     if (!mapCoordinates || !sellerNumber) return;
@@ -283,6 +297,15 @@ const PropertyMapSection: React.FC<PropertyMapSectionProps> = ({ sellerNumber, p
                   onClick={handleMeasureModeOn}
                 >
                   面積を計る
+                </Button>
+                <Button
+                  variant={isSatellite ? 'contained' : 'outlined'}
+                  size="small"
+                  color="primary"
+                  startIcon={isSatellite ? <MapIcon /> : <SatelliteAltIcon />}
+                  onClick={handleToggleSatellite}
+                >
+                  {isSatellite ? '通常地図' : '航空写真'}
                 </Button>
               </>
             )}
