@@ -2857,9 +2857,9 @@ const CallModePage = () => {
           console.log('updatedSeller.visitAssigneeInitials:', updatedSeller?.visitAssigneeInitials);
           console.log('employees配列:', employees);
           
-          // 営担が設定されていない場合は警告
+          // 営担が設定されていない場合は警告（カレンダーを開かないが、保存は成功済みなのでページは維持）
           if (!assignedToValue) {
-            setError('営業担当が設定されていません。訪問予約編集フォームで営担を設定してください。');
+            setAppointmentSuccessMessage('訪問予約情報を更新しました（営業担当が未設定のためカレンダーは開きませんでした）');
             return;
           }
           
@@ -2877,9 +2877,9 @@ const CallModePage = () => {
           
           const assignedEmployee = matchedEmployees[0];
           
-          // 営担に対応する社員が見つからない場合は警告
+          // 営担に対応する社員が見つからない場合は警告（カレンダーを開かないが、保存は成功済みなのでページは維持）
           if (!assignedEmployee) {
-            setError(`営業担当「${assignedToValue}」に対応する社員が見つかりません。スタッフ同期を実行してください。`);
+            setAppointmentSuccessMessage(`訪問予約情報を更新しました（営業担当「${assignedToValue}」が見つからないためカレンダーは開きませんでした）`);
             return;
           }
           
