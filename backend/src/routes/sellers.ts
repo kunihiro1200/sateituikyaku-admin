@@ -2184,19 +2184,23 @@ router.get('/:id/address-reading', async (req: Request, res: Response) => {
       return res.status(500).json({ error: 'OPENAI_API_KEYが設定されていません' });
     }
 
+    // 住所から「○○市」を抽出してプロンプトに含める（例: 福岡市、大分市）
+    const cityMatch = address.match(/([^\s都道府県]+市)/);
+    const cityHint = cityMatch ? `この住所は${cityMatch[1]}の地名です。` : '';
+
     const axiosLib = (await import('axios')).default;
     const response = await axiosLib.post(
       'https://api.openai.com/v1/chat/completions',
       {
-        model: 'gpt-4o-mini',
+        model: 'gpt-4o',
         messages: [
           {
             role: 'system',
-            content: '日本の住所から区・町名部分のひらがな読みだけを返すアシスタントです。都道府県・市は除外してください。丁目・番地（数字・ハイフン）も除外してください。区と町名のひらがな読みのみを返してください。余分な説明は不要です。',
+            content: '日本の住所から区・町名部分の正確なひらがな読みだけを返すアシスタントです。都道府県・市は除外してください。丁目・番地（数字・ハイフン）も除外してください。区と町名のひらがな読みのみを返してください。地名は慣用的な正しい読み方を使用してください。余分な説明は不要です。',
           },
           {
             role: 'user',
-            content: `次の住所の、区と町名のひらがな読みを返してください。都道府県・市・丁目・番地（数字・ハイフン）は全て不要です。\n例: 福岡県福岡市早良区賀茂１丁目49-11 → さわらくかも\n\n${address}`,
+            content: `次の住所の、区と町名のひらがな読みを返してください。都道府県・市・丁目・番地（数字・ハイフン）は全て不要です。${cityHint}地名の読みは正確に。\n\n例（福岡市）:\n福岡県福岡市早良区賀茂１丁目49-11 → さわらくかも\n福岡県福岡市城南区神松寺２丁目1-1 → じょうなんくしんしょうじ\n福岡県福岡市博多区千代１丁目1-1 → はかたくせんだい\n福岡県福岡市東区香椎１丁目1-1 → ひがしくかしい\n福岡県福岡市南区大橋１丁目1-1 → みなみくおおはし\n\n${address}`,
           },
         ],
         temperature: 0,
