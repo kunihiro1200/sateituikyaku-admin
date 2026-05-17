@@ -78,7 +78,7 @@ export default async function handler(
         };
 
         if (res.ok) {
-          const data = await res.json();
+          const data = await res.json() as { data?: { price?: string; title?: string } };
           result['scrapedPrice'] = data?.data?.price || null;
           result['scrapedTitle'] = data?.data?.title || null;
         } else {

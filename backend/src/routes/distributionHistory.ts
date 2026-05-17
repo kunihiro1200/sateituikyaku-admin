@@ -74,7 +74,6 @@ router.post('/check-duplicate', async (req: Request, res: Response) => {
     }
 
     res.json({ isDuplicate: false, history: null });
-    }
   } catch (err: any) {
     console.error('[distribution-history] check-duplicate error:', err);
     res.status(500).json({ error: err.message });
